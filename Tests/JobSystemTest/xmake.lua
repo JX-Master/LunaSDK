@@ -1,0 +1,6 @@
+target("JobSystemTest")
+    set_luna_sdk_test()
+    set_kind("binary")
+    add_files("**.cpp")
+    add_deps("Runtime", "JobSystem")
+target_end()

@@ -1,0 +1,7 @@
+target("ImGui")
+    set_luna_sdk_module()
+    add_headerfiles("**.hpp")
+    add_files("Source/**.cpp")
+    add_deps("Runtime", "RHI", "HID", "Font", "ShaderCompiler")
+    add_packages("imgui", {})
+target_end()

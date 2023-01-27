@@ -1,0 +1,148 @@
+/*
+* This file is a portion of Luna SDK.
+* For conditions of distribution and use, see the disclaimer
+* and license in LICENSE.txt
+* 
+* @file RHITestBed.cpp
+* @author JXMaster
+* @date 2020/8/2
+*/
+#include <Runtime/PlatformDefines.hpp>
+#define LUNA_RHI_TESTBED_API LUNA_EXPORT
+#include "RHITestBed.hpp"
+#include <Runtime/Runtime.hpp>
+#include <Runtime/Module.hpp>
+#include <Runtime/Debug.hpp>
+#include <Runtime/Log.hpp>
+#include <Window/Window.hpp>
+
+namespace Luna
+{
+	namespace RHITestBed
+	{
+		using namespace RHI;
+		using namespace Window;
+
+		void on_window_resize(IWindow* window, u32 width, u32 height);
+		void on_window_close(IWindow* window);
+
+		RV(*m_init_func)() = nullptr;
+		void(*m_close_func)() = nullptr;
+		void(*m_draw_func)() = nullptr;
+		void(*m_resize_func)(u32 new_width, u32 new_height) = nullptr;
+
+		Ref<ICommandQueue> m_queue;
+		Ref<IWindow> m_window;
+		Ref<ISwapChain> m_swap_chain;
+		Ref<IResource> m_back_buffer;
+		Ref<ICommandBuffer> m_command_buffer;
+
+		LUNA_RHI_TESTBED_API void register_init_func(RV(*init_func)())
+		{
+			m_init_func = init_func;
+		}
+		LUNA_RHI_TESTBED_API void register_close_func(void(*close_func)())
+		{
+			m_close_func = close_func;
+		}
+		LUNA_RHI_TESTBED_API void register_draw_func(void(*draw_func)())
+		{
+			m_draw_func = draw_func;
+		}
+		LUNA_RHI_TESTBED_API void register_resize_func(void(*resize_func)(u32 new_width, u32 new_height))
+		{
+			m_resize_func = resize_func;
+		}
+		void on_window_resize(IWindow* window, u32 width, u32 height)
+		{
+			// resize back buffer.
+			lupanic_if_failed(m_swap_chain->resize_buffers(2, width, height, Format::rgba8_unorm));
+			m_back_buffer = get_main_device()->new_resource(ResourceDesc::tex2d(ResourceHeapType::local, Format::rgba8_unorm,
+				ResourceUsageFlag::render_target | ResourceUsageFlag::shader_resource, width, height, 1, 1), nullptr).get();
+			if (m_resize_func) m_resize_func(width, height);
+		}
+		void on_window_close(IWindow* window)
+		{
+			window->close();
+		}
+		RV init()
+		{
+			lutry
+			{
+				set_log_std_enabled(true);
+				luset(m_queue, get_main_device()->new_command_queue(CommandQueueType::graphic));
+				luset(m_window, new_window("RHI Test", 0, 0, 0, 0, nullptr, WindowCreationFlag::default_size |
+					WindowCreationFlag::position_center |
+					WindowCreationFlag::resizable |
+					WindowCreationFlag::minimizable |
+					WindowCreationFlag::maximizable));
+				m_window->get_close_event() += on_window_close;
+				m_window->get_framebuffer_resize_event() += on_window_resize;
+				luset(m_swap_chain, new_swap_chain(m_queue, m_window, SwapChainDesc(0, 0, Format::rgba8_unorm, 2)));
+				auto sz = m_window->get_size();
+				luset(m_back_buffer, get_main_device()->new_resource(ResourceDesc::tex2d(ResourceHeapType::local, Format::rgba8_unorm,
+					ResourceUsageFlag::render_target | ResourceUsageFlag::shader_resource, sz.x, sz.y, 1, 1), nullptr));
+				luset(m_command_buffer, m_queue->new_command_buffer());
+			}
+			lucatchret;
+			return ok;
+		}
+		LUNA_RHI_TESTBED_API RV run()
+		{
+			auto r = init();
+			if (failed(r)) return r.errcode();
+			if (m_init_func)
+			{
+				auto r = m_init_func();
+				if (failed(r))
+				{
+					log_error("%s", explain(r.errcode()));
+					debug_break();
+				}
+			}
+			while (true)
+			{
+				Window::poll_events();
+				if (m_window->is_closed()) break;
+
+				lupanic_if_failed(m_command_buffer->reset());
+
+				if (m_draw_func) m_draw_func();
+
+				lupanic_if_failed(m_swap_chain->present(m_back_buffer, 0, 1));
+				m_swap_chain->wait();
+			}
+			if (m_close_func) m_close_func();
+			m_queue.reset();
+			m_window.reset();
+			m_swap_chain.reset();
+			m_back_buffer.reset();
+			m_command_buffer.reset();
+			return ok;
+		}
+		LUNA_RHI_TESTBED_API RHI::IResource* get_back_buffer()
+		{
+			return m_back_buffer;
+		}
+		LUNA_RHI_TESTBED_API RHI::ICommandBuffer* get_command_buffer()
+		{
+			return m_command_buffer;
+		}
+		LUNA_RHI_TESTBED_API Window::IWindow* get_window()
+		{
+			return m_window;
+		}
+		LUNA_RHI_TESTBED_API ShaderCompiler::TargetFormat get_platform_shader_target_format()
+		{
+			auto api = RHI::get_current_platform_api_type();
+			switch (api)
+			{
+			case APIType::d3d12: return ShaderCompiler::TargetFormat::dxil;
+			case APIType::vulkan: return ShaderCompiler::TargetFormat::spir_v;
+			default: lupanic(); return ShaderCompiler::TargetFormat::none;
+			}
+		}
+	}
+
+	StaticRegisterModule testbed_module("RHITestBed", "RHI", nullptr, nullptr);
+}

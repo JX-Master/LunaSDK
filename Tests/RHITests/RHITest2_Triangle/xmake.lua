@@ -1,0 +1,7 @@
+target("RHITest2_Triangle")
+    add_luna_sdk_options()
+    set_group("Tests/RHITest")
+    set_kind("binary")
+    add_files("*.cpp")
+    add_deps("Runtime", "RHI", "RHITestBed", "ShaderCompiler")
+target_end()

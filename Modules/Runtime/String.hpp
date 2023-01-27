@@ -1,0 +1,1261 @@
+/*
+* This file is a portion of Luna SDK.
+* For conditions of distribution and use, see the disclaimer
+* and license in LICENSE.txt
+* 
+* @file String.hpp
+* @author JXMaster
+* @date 2020/7/31
+*/
+#pragma once
+#include "Allocator.hpp"
+#include "Algorithm.hpp"
+#include "Iterator.hpp"
+#include "MemoryUtils.hpp"
+#include "TypeInfo.hpp"
+
+namespace Luna
+{
+	namespace Impl
+	{
+		template <typename _Char>
+		struct StringTraits;
+
+		template <>
+		struct StringTraits<c8>
+		{
+			static constexpr const c8* null_string = u8"";
+		};
+
+		template <>
+		struct StringTraits<c16>
+		{
+			static constexpr const c16* null_string = u"";
+		};
+
+		template <>
+		struct StringTraits<c32>
+		{
+			static constexpr const c32* null_string = U"";
+		};
+
+		template <>
+		struct StringTraits<wchar_t>
+		{
+			static constexpr const wchar_t* null_string = L"";
+		};
+	}
+
+	//! The string template used by String, String16 and String32.
+	template <typename _Char, typename _Alloc = Allocator>
+	class BasicString
+	{
+	public:
+		using value_type = _Char;
+		using allocator_type = _Alloc;
+		using reference = value_type&;
+		using const_reference = const value_type&;
+		using pointer = value_type*;
+		using const_pointer = const value_type*;
+		using iterator = pointer;
+		using const_iterator = const_pointer;
+		using reverse_iterator = ReverseIterator<iterator>;
+		using const_reverse_iterator = ReverseIterator<const_iterator>;
+
+		static constexpr usize npos = (usize)-1;
+
+		BasicString();
+		BasicString(const allocator_type& alloc);
+		BasicString(usize count, value_type ch, const allocator_type& alloc = allocator_type());
+		BasicString(const BasicString& rhs, usize pos, const allocator_type& alloc = allocator_type());
+		BasicString(const BasicString& rhs, usize pos, usize count, const allocator_type& alloc = allocator_type());
+		BasicString(const value_type* s, usize count, const allocator_type& alloc = allocator_type());
+		BasicString(const value_type* s, const allocator_type& alloc = allocator_type());
+		template <typename _InputIt>
+		BasicString(_InputIt first, _InputIt last, const allocator_type& alloc = allocator_type());
+		BasicString(const BasicString& rhs);
+		BasicString(const BasicString& rhs, const allocator_type& alloc);
+		BasicString(BasicString&& rhs);
+		BasicString(BasicString&& rhs, const allocator_type& alloc);
+		BasicString(InitializerList<value_type> ilist, const allocator_type& alloc = allocator_type());
+		BasicString& operator=(const BasicString& rhs);
+		BasicString& operator=(BasicString&& rhs);
+		BasicString& operator=(const value_type* s);
+		BasicString& operator=(value_type ch);
+		BasicString& operator=(InitializerList<value_type> ilist);
+		~BasicString();
+		pointer data();
+		const_pointer data() const;
+		const_pointer c_str() const;
+		iterator begin();
+		iterator end();
+		const_iterator begin() const;
+		const_iterator end() const;
+		const_iterator cbegin() const;
+		const_iterator cend() const;
+		reverse_iterator rbegin();
+		reverse_iterator rend();
+		const_reverse_iterator rbegin() const;
+		const_reverse_iterator rend() const;
+		const_reverse_iterator crbegin() const;
+		const_reverse_iterator crend() const;
+		usize size() const;
+		usize length() const;
+		usize capacity() const;
+		bool empty() const;
+		void reserve(usize new_cap);
+		void resize(usize n, value_type v);
+		void shrink_to_fit();
+		reference operator[] (usize n);
+		const_reference operator[] (usize n) const;
+		reference at(usize n);
+		const_reference at(usize n) const;
+		reference front();
+		const_reference front() const;
+		reference back();
+		const_reference back() const;
+		void clear();
+		void push_back(value_type ch);
+		void pop_back();
+		void assign(usize count, value_type ch);
+		void assign(const BasicString& str);
+		void assign(const BasicString& str, usize pos, usize count = npos);
+		void assign(BasicString&& str);
+		void assign(const value_type* s, usize count);
+		void assign(const value_type* s);
+		template <typename _InputIt>
+		void assign(_InputIt first, _InputIt last);
+		void assign(InitializerList<value_type> il);
+		void insert(usize index, usize count, value_type ch);
+		void insert(usize index, const value_type* s);
+		void insert(usize index, const value_type* s, usize count);
+		void insert(usize index, const BasicString& str);
+		void insert(usize index, const BasicString& str, usize index_str, usize count);
+		iterator insert(const_iterator pos, value_type ch);
+		iterator insert(const_iterator pos, usize count, value_type ch);
+		template <typename _InputIt>
+		iterator insert(const_iterator pos, _InputIt first, _InputIt last);
+		iterator insert(const_iterator pos, InitializerList<value_type> ilist);
+		void erase(usize index = 0, usize count = npos);
+		iterator erase(const_iterator pos);
+		iterator erase(const_iterator first, const_iterator last);
+		void swap(BasicString& rhs);
+		void append(usize count, value_type ch);
+		void append(const BasicString& str);
+		void append(const BasicString& str, usize pos, usize count = npos);
+		void append(const value_type* s, usize count);
+		void append(const value_type* s);
+		template <typename _InputIt>
+		void append(_InputIt first, _InputIt last);
+		void append(InitializerList<value_type> ilist);
+		BasicString& operator+=(const BasicString& str);
+		BasicString& operator+=(value_type ch);
+		BasicString& operator+=(const value_type* s);
+		BasicString& operator+=(InitializerList<value_type> ilist);
+		i32 compare(const BasicString& rhs) const;
+		i32 compare(usize pos1, usize count1, const BasicString& rhs) const;
+		i32 compare(usize pos1, usize count1, const BasicString& rhs, usize pos2, usize count2 = npos) const;
+		i32 compare(const value_type* s) const;
+		i32 compare(usize pos1, usize count1, const value_type* s) const;
+		i32 compare(usize pos1, usize count1, const value_type* s, usize count2) const;
+		void replace(usize pos, usize count, const BasicString& str);
+		void replace(const_iterator first, const_iterator last, const BasicString& str);
+		void replace(usize pos, usize count, const BasicString& str, usize pos2, usize count2 = npos);
+		template <typename _InputIt>
+		void replace(const_iterator first, const_iterator last, _InputIt first2, _InputIt last2);
+		void replace(usize pos, usize count, const value_type* cstr, usize count2);
+		void replace(const_iterator first, const_iterator last, const value_type* cstr, usize count2);
+		void replace(usize pos, usize count, const value_type* cstr);
+		void replace(const_iterator first, const_iterator last, const value_type* cstr);
+		void replace(usize pos, usize count, usize count2, value_type ch);
+		void replace(const_iterator first, const_iterator last, usize count2, value_type ch);
+		void replace(const_iterator first, const_iterator last, InitializerList<value_type> ilist);
+		BasicString substr(usize pos = 0, usize count = npos) const;
+		usize copy(value_type* dest, usize count, usize pos = 0) const;
+		allocator_type get_allocator() const;
+
+	private:
+		// -------------------- Begin of ABI compatible part --------------------
+		OptionalPair<allocator_type, _Char*> m_allocator_and_buffer;// The memory buffer.
+		usize m_size;			// Number of elements in the vector.
+		usize m_capacity;		// Number of elements that can be included in the buffer before a reallocation is needed.
+		// --------------------  End of ABI compatible part  --------------------
+
+		value_type* allocate(usize n);
+		void deallocate(value_type* ptr, usize n);
+
+		// Frees all dynamic memory.
+		void free_buffer();
+		usize strlength(const _Char* s);
+		void internal_expand_reserve(usize new_least_cap);
+	};
+
+	using String = BasicString<c8>;
+	using WString = BasicString<wchar_t>;
+	using String16 = BasicString<c16>;
+	using String32 = BasicString<c32>;
+
+	template <typename _Char, typename _Alloc>
+	inline BasicString<_Char, _Alloc>::BasicString() :
+		m_allocator_and_buffer(allocator_type(), nullptr),
+		m_size(0),
+		m_capacity(0) {}
+	template <typename _Char, typename _Alloc>
+	inline BasicString<_Char, _Alloc>::BasicString(const allocator_type& alloc) :
+		m_allocator_and_buffer(alloc, nullptr),
+		m_size(0),
+		m_capacity(0) {}
+	template <typename _Char, typename _Alloc>
+	inline BasicString<_Char, _Alloc>::BasicString(usize count, value_type ch, const allocator_type& alloc) :
+		m_allocator_and_buffer(alloc, nullptr),
+		m_size(count),
+		m_capacity(count)
+	{
+		if (count)
+		{
+			m_allocator_and_buffer.second() = allocate(count + 1);
+			for (value_type* i = m_allocator_and_buffer.second(); i < m_allocator_and_buffer.second() + m_size; ++i)
+			{
+				*i = ch;
+			}
+			m_allocator_and_buffer.second()[m_size] = (value_type)0;
+		}
+		else
+		{
+			m_allocator_and_buffer.second() = nullptr;
+		}
+	}
+	template <typename _Char, typename _Alloc>
+	inline BasicString<_Char, _Alloc>::BasicString(const BasicString& rhs, usize pos, const allocator_type& alloc) :
+		m_allocator_and_buffer(alloc, nullptr)
+	{
+		usize count = rhs.size() - pos;
+		m_size = count;
+		m_capacity = count;
+		if (count)
+		{
+			m_allocator_and_buffer.second() = allocate(count + 1);
+			memcpy(m_allocator_and_buffer.second(), rhs.c_str() + pos, sizeof(value_type) * count);
+			m_allocator_and_buffer.second()[count] = (value_type)0;
+		}
+		else
+		{
+			m_allocator_and_buffer.second() = nullptr;
+		}
+	}
+	template <typename _Char, typename _Alloc>
+	inline BasicString<_Char, _Alloc>::BasicString(const BasicString& rhs, usize pos, usize count, const allocator_type& alloc) :
+		m_allocator_and_buffer(alloc, nullptr)
+	{
+		count = (count == npos) ? rhs.size() - pos : count;
+		m_size = count;
+		m_capacity = count;
+		if (count)
+		{
+			m_allocator_and_buffer.second() = allocate(count + 1);
+			memcpy(m_allocator_and_buffer.second(), rhs.c_str() + pos, sizeof(value_type) * count);
+			m_allocator_and_buffer.second()[count] = (value_type)0;
+		}
+		else
+		{
+			m_allocator_and_buffer.second() = nullptr;
+		}
+	}
+	template <typename _Char, typename _Alloc>
+	inline BasicString<_Char, _Alloc>::BasicString(const value_type* s, usize count, const allocator_type& alloc) :
+		m_allocator_and_buffer(alloc, nullptr),
+		m_size(count),
+		m_capacity(count)
+	{
+		if (count)
+		{
+			m_allocator_and_buffer.second() = allocate(count + 1);
+			memcpy(m_allocator_and_buffer.second(), s, sizeof(value_type) * count);
+			m_allocator_and_buffer.second()[count] = (value_type)0;
+		}
+		else
+		{
+			m_allocator_and_buffer.second() = nullptr;
+		}
+	}
+	template <typename _Char, typename _Alloc>
+	inline BasicString<_Char, _Alloc>::BasicString(const value_type* s, const allocator_type& alloc) :
+		m_allocator_and_buffer(alloc, nullptr)
+	{
+		usize count = strlength(s);
+		m_size = count;
+		m_capacity = count;
+		if (count)
+		{
+			m_allocator_and_buffer.second() = allocate(count + 1);
+			memcpy(m_allocator_and_buffer.second(), s, sizeof(value_type) * count);
+			m_allocator_and_buffer.second()[count] = (value_type)0;
+		}
+		else
+		{
+			m_allocator_and_buffer.second() = nullptr;
+		}
+	}
+	template <typename _Char, typename _Alloc>
+	template <typename _InputIt>
+	inline BasicString<_Char, _Alloc>::BasicString(_InputIt first, _InputIt last, const allocator_type& alloc) :
+		m_allocator_and_buffer(alloc, nullptr),
+		m_size(0),
+		m_capacity(0)
+	{
+		for (; first != last; ++first)
+		{
+			push_back(*first);
+		}
+	}
+	template <typename _Char, typename _Alloc>
+	inline BasicString<_Char, _Alloc>::BasicString(const BasicString& rhs) :
+		m_allocator_and_buffer(rhs.m_allocator_and_buffer.first(), nullptr)
+	{
+		if (!rhs.empty())
+		{
+			m_size = rhs.m_size;
+			m_capacity = rhs.m_size;
+			m_allocator_and_buffer.second() = allocate(m_size + 1);
+			memcpy(m_allocator_and_buffer.second(), rhs.m_allocator_and_buffer.second(), sizeof(value_type) * (m_size + 1));
+		}
+		else
+		{
+			m_size = 0;
+			m_capacity = 0;
+			m_allocator_and_buffer.second() = nullptr;
+		}
+	}
+	template <typename _Char, typename _Alloc>
+	inline BasicString<_Char, _Alloc>::BasicString(const BasicString& rhs, const allocator_type& alloc) :
+		m_allocator_and_buffer(alloc, nullptr)
+	{
+		if (!rhs.empty())
+		{
+			m_size = rhs.m_size;
+			m_capacity = rhs.m_size;
+			m_allocator_and_buffer.second() = allocate(m_size + 1);
+			memcpy(m_allocator_and_buffer.second(), rhs.m_allocator_and_buffer.second(), sizeof(value_type) * (m_size + 1));
+		}
+		else
+		{
+			m_size = 0;
+			m_capacity = 0;
+			m_allocator_and_buffer.second() = nullptr;
+		}
+	}
+	template <typename _Char, typename _Alloc>
+	inline BasicString<_Char, _Alloc>::BasicString(BasicString&& rhs) :
+		m_allocator_and_buffer(move(rhs.m_allocator_and_buffer.first()), rhs.m_allocator_and_buffer.second()),
+		m_size(rhs.m_size),
+		m_capacity(rhs.m_capacity)
+	{
+		rhs.m_allocator_and_buffer.second() = nullptr;
+		rhs.m_size = 0;
+		rhs.m_capacity = 0;
+	}
+	template <typename _Char, typename _Alloc>
+	inline BasicString<_Char, _Alloc>::BasicString(BasicString&& rhs, const allocator_type& alloc) :
+		m_allocator_and_buffer(alloc, nullptr)
+	{
+		if (m_allocator_and_buffer.first() == rhs.m_allocator_and_buffer.first())
+		{
+			m_allocator_and_buffer.second() = rhs.m_allocator_and_buffer.second();
+			m_size = rhs.m_size;
+			m_capacity = rhs.m_capacity;
+			rhs.m_allocator_and_buffer.second() = nullptr;
+			rhs.m_size = 0;
+			rhs.m_capacity = 0;
+		}
+		else
+		{
+			if (!rhs.empty())
+			{
+				m_size = rhs.m_size;
+				m_capacity = rhs.m_size;
+				m_allocator_and_buffer.second() = allocate(m_size + 1);
+				memcpy(m_allocator_and_buffer.second(), rhs.m_allocator_and_buffer.second(), sizeof(value_type) * (m_size + 1));
+				rhs.clear();
+			}
+			else
+			{
+				m_size = 0;
+				m_capacity = 0;
+				m_allocator_and_buffer.second() = nullptr;
+			}
+		}
+	}
+	template <typename _Char, typename _Alloc>
+	inline BasicString<_Char, _Alloc>::BasicString(InitializerList<value_type> ilist, const allocator_type& alloc) :
+		m_allocator_and_buffer(alloc, nullptr),
+		m_size(ilist.size()),
+		m_capacity(ilist.size())
+	{
+		if (m_size)
+		{
+			m_allocator_and_buffer.second() = allocate(ilist.size() + 1);
+			value_type* i = m_allocator_and_buffer.second();
+			for (auto iter = ilist.begin(); iter != ilist.end(); ++iter)
+			{
+				*i = *iter;
+				++i;
+			}
+			m_allocator_and_buffer.second()[m_size] = 0;
+		}
+	}
+	template <typename _Char, typename _Alloc>
+	inline BasicString<_Char, _Alloc>& BasicString<_Char, _Alloc>::operator=(const BasicString& rhs)
+	{
+		free_buffer();
+		if (!rhs.empty())
+		{
+			reserve(rhs.m_size);
+			memcpy(m_allocator_and_buffer.second(), rhs.c_str(), (rhs.size() + 1) * sizeof(value_type));
+			m_size = rhs.size();
+		}
+		return *this;
+	}
+	template <typename _Char, typename _Alloc>
+	inline BasicString<_Char, _Alloc>& BasicString<_Char, _Alloc>::operator=(BasicString&& rhs)
+	{
+		free_buffer();
+		if (m_allocator_and_buffer.first() == rhs.m_allocator_and_buffer.first())
+		{
+			Luna::swap(m_allocator_and_buffer.second(), rhs.m_allocator_and_buffer.second());
+			Luna::swap(m_size, rhs.m_size);
+			Luna::swap(m_capacity, rhs.m_capacity);
+		}
+		else
+		{
+			if (!rhs.empty())
+			{
+				m_size = rhs.m_size;
+				m_capacity = rhs.m_size;
+				m_allocator_and_buffer.second() = allocate(m_size + 1);
+				memcpy(m_allocator_and_buffer.second(), rhs.m_allocator_and_buffer.second(), sizeof(value_type) * (m_size + 1));
+				rhs.clear();
+			}
+		}
+		return *this;
+	}
+	template <typename _Char, typename _Alloc>
+	inline BasicString<_Char, _Alloc>& BasicString<_Char, _Alloc>::operator=(const value_type* s)
+	{
+		clear();
+		usize count = strlen(s);
+		reserve(count);
+		if (count)
+		{
+			memcpy(m_allocator_and_buffer.second(), s, sizeof(value_type) * count);
+
+		}
+		m_size = count;
+		if (m_allocator_and_buffer.second())
+		{
+			m_allocator_and_buffer.second()[m_size] = (value_type)0;
+		}
+		return *this;
+	}
+	template <typename _Char, typename _Alloc>
+	inline BasicString<_Char, _Alloc>& BasicString<_Char, _Alloc>::operator=(value_type ch)
+	{
+		clear();
+		reserve(1);
+		m_allocator_and_buffer.second()[0] = ch;
+		m_size = 1;
+		m_allocator_and_buffer.second()[m_size] = (value_type)0;
+		return *this;
+	}
+	template <typename _Char, typename _Alloc>
+	inline BasicString<_Char, _Alloc>& BasicString<_Char, _Alloc>::operator=(InitializerList<value_type> ilist)
+	{
+		clear();
+		reserve(ilist.size());
+		if (ilist.size())
+		{
+			value_type* i = m_allocator_and_buffer.second();
+			for (auto iter = ilist.begin(); iter != ilist.end(); ++iter)
+			{
+				*i = *iter;
+				++i;
+			}
+		}
+		m_size = ilist.size();
+		if (m_allocator_and_buffer.second())
+		{
+			m_allocator_and_buffer.second()[m_size] = (value_type)0;
+		}
+		return *this;
+	}
+	template <typename _Char, typename _Alloc>
+	inline BasicString<_Char, _Alloc>::~BasicString()
+	{
+		free_buffer();
+	}
+	//! May returns `nullptr` if the string is empty.
+	template <typename _Char, typename _Alloc>
+	inline typename BasicString<_Char, _Alloc>::pointer BasicString<_Char, _Alloc>::data()
+	{
+		return m_allocator_and_buffer.second();
+	}
+	template <typename _Char, typename _Alloc>
+	inline typename BasicString<_Char, _Alloc>::const_pointer BasicString<_Char, _Alloc>::data() const
+	{
+		return m_allocator_and_buffer.second();
+	}
+	//! Unlike `data`, this call always returns a valid string, not `nullptr`, even if the string is empty.
+	template <typename _Char, typename _Alloc>
+	inline typename BasicString<_Char, _Alloc>::const_pointer BasicString<_Char, _Alloc>::c_str() const
+	{
+		return m_allocator_and_buffer.second() ? m_allocator_and_buffer.second() : Impl::StringTraits<value_type>::null_string;
+	}
+	// Returns a pointer to the first element. Can only be `nullptr` if `size` and `capacity` is both 0.
+	template <typename _Char, typename _Alloc>
+	inline typename BasicString<_Char, _Alloc>::iterator BasicString<_Char, _Alloc>::begin()
+	{
+		return m_allocator_and_buffer.second();
+	}
+	// Returns a pointer to the element next to the last element. Can only be `nullptr` if `size` and `capacity` is both 0.
+	template <typename _Char, typename _Alloc>
+	inline typename BasicString<_Char, _Alloc>::iterator BasicString<_Char, _Alloc>::end()
+	{
+		return m_allocator_and_buffer.second() + m_size;
+	}
+	template <typename _Char, typename _Alloc>
+	inline typename BasicString<_Char, _Alloc>::const_iterator BasicString<_Char, _Alloc>::begin() const
+	{
+		return m_allocator_and_buffer.second();
+	}
+	template <typename _Char, typename _Alloc>
+	inline typename BasicString<_Char, _Alloc>::const_iterator BasicString<_Char, _Alloc>::end() const
+	{
+		return m_allocator_and_buffer.second() + m_size;
+	}
+	template <typename _Char, typename _Alloc>
+	inline typename BasicString<_Char, _Alloc>::const_iterator BasicString<_Char, _Alloc>::cbegin() const
+	{
+		return m_allocator_and_buffer.second();
+	}
+	template <typename _Char, typename _Alloc>
+	inline typename BasicString<_Char, _Alloc>::const_iterator BasicString<_Char, _Alloc>::cend() const
+	{
+		return m_allocator_and_buffer.second() + m_size;
+	}
+	template <typename _Char, typename _Alloc>
+	inline typename BasicString<_Char, _Alloc>::reverse_iterator BasicString<_Char, _Alloc>::rbegin()
+	{
+		return reverse_iterator(end());
+	}
+	template <typename _Char, typename _Alloc>
+	inline typename BasicString<_Char, _Alloc>::reverse_iterator BasicString<_Char, _Alloc>::rend()
+	{
+		return reverse_iterator(begin());
+	}
+	template <typename _Char, typename _Alloc>
+	inline typename BasicString<_Char, _Alloc>::const_reverse_iterator BasicString<_Char, _Alloc>::rbegin() const
+	{
+		return const_reverse_iterator(end());
+	}
+	template <typename _Char, typename _Alloc>
+	inline typename BasicString<_Char, _Alloc>::const_reverse_iterator BasicString<_Char, _Alloc>::rend() const
+	{
+		return const_reverse_iterator(begin());
+	}
+	template <typename _Char, typename _Alloc>
+	inline typename BasicString<_Char, _Alloc>::const_reverse_iterator BasicString<_Char, _Alloc>::crbegin() const
+	{
+		return const_reverse_iterator(cend());
+	}
+	template <typename _Char, typename _Alloc>
+	inline typename BasicString<_Char, _Alloc>::const_reverse_iterator BasicString<_Char, _Alloc>::crend() const
+	{
+		return const_reverse_iterator(cbegin());
+	}
+	template <typename _Char, typename _Alloc>
+	inline usize BasicString<_Char, _Alloc>::size() const
+	{
+		return m_size;
+	}
+	template <typename _Char, typename _Alloc>
+	inline usize BasicString<_Char, _Alloc>::length() const
+	{
+		return m_size;
+	}
+	template <typename _Char, typename _Alloc>
+	inline usize BasicString<_Char, _Alloc>::capacity() const
+	{
+		return m_capacity;
+	}
+	template <typename _Char, typename _Alloc>
+	inline bool BasicString<_Char, _Alloc>::empty() const
+	{
+		return (m_size == 0);
+	}
+	template <typename _Char, typename _Alloc>
+	inline void BasicString<_Char, _Alloc>::reserve(usize new_cap)
+	{
+		if (new_cap > m_capacity)
+		{
+			value_type* new_buf = allocate(new_cap + 1);
+			if (m_allocator_and_buffer.second())
+			{
+				copy_relocate_range(begin(), end() + 1, new_buf);
+				deallocate(m_allocator_and_buffer.second(), m_capacity);
+			}
+			m_allocator_and_buffer.second() = new_buf;
+			m_capacity = new_cap;
+		}
+	}
+	template <typename _Char, typename _Alloc>
+	inline void BasicString<_Char, _Alloc>::resize(usize n, value_type v)
+	{
+		reserve(n);
+		if (n > m_size)
+		{
+			fill_construct_range(m_allocator_and_buffer.second() + m_size, m_allocator_and_buffer.second() + n, v);
+		}
+		m_size = n;
+		m_allocator_and_buffer.second()[n] = (value_type)0;
+	}
+	template <typename _Char, typename _Alloc>
+	inline void BasicString<_Char, _Alloc>::shrink_to_fit()
+	{
+		if (m_capacity != m_size)
+		{
+			if (!m_size)
+			{
+				free_buffer();
+			}
+			else
+			{
+				value_type* new_buf = allocate(m_size + 1);
+				if (m_allocator_and_buffer.second())
+				{
+					memcpy(new_buf, m_allocator_and_buffer.second(), sizeof(value_type) * (m_size + 1));
+					deallocate(m_allocator_and_buffer.second(), m_capacity);
+				}
+				m_allocator_and_buffer.second() = new_buf;
+				m_capacity = m_size;
+			}
+		}
+	}
+	template <typename _Char, typename _Alloc>
+	inline typename BasicString<_Char, _Alloc>::reference BasicString<_Char, _Alloc>::operator[] (usize n)
+	{
+		luassert(n < m_size);
+		return m_allocator_and_buffer.second()[n];
+	}
+	template <typename _Char, typename _Alloc>
+	inline typename BasicString<_Char, _Alloc>::const_reference BasicString<_Char, _Alloc>::operator[] (usize n) const
+	{
+		luassert(n < m_size);
+		return m_allocator_and_buffer.second()[n];
+	}
+	template <typename _Char, typename _Alloc>
+	inline typename BasicString<_Char, _Alloc>::reference BasicString<_Char, _Alloc>::at(usize n)
+	{
+		luassert(n < m_size);
+		return m_allocator_and_buffer.second()[n];
+	}
+	template <typename _Char, typename _Alloc>
+	inline typename BasicString<_Char, _Alloc>::const_reference BasicString<_Char, _Alloc>::at(usize n) const
+	{
+		luassert(n < m_size);
+		return m_allocator_and_buffer.second()[n];
+	}
+	template <typename _Char, typename _Alloc>
+	inline typename BasicString<_Char, _Alloc>::reference BasicString<_Char, _Alloc>::front()
+	{
+		luassert(!empty());
+		return m_allocator_and_buffer.second()[0];
+	}
+	template <typename _Char, typename _Alloc>
+	inline typename BasicString<_Char, _Alloc>::const_reference BasicString<_Char, _Alloc>::front() const
+	{
+		luassert(!empty());
+		return m_allocator_and_buffer.second()[0];
+	}
+	template <typename _Char, typename _Alloc>
+	inline typename BasicString<_Char, _Alloc>::reference BasicString<_Char, _Alloc>::back()
+	{
+		luassert(!empty());
+		return m_allocator_and_buffer.second()[m_size - 1];
+	}
+	template <typename _Char, typename _Alloc>
+	inline typename BasicString<_Char, _Alloc>::const_reference BasicString<_Char, _Alloc>::back() const
+	{
+		luassert(!empty());
+		return m_allocator_and_buffer.second()[m_size - 1];
+	}
+	template <typename _Char, typename _Alloc>
+	inline void BasicString<_Char, _Alloc>::clear()
+	{
+		if (m_allocator_and_buffer.second())
+		{
+			m_allocator_and_buffer.second()[0] = (value_type)0;
+		}
+		m_size = 0;
+	}
+	template <typename _Char, typename _Alloc>
+	inline void BasicString<_Char, _Alloc>::push_back(value_type ch)
+	{
+		internal_expand_reserve(size() + 1);
+		m_allocator_and_buffer.second()[m_size] = ch;
+		++m_size;
+		m_allocator_and_buffer.second()[m_size] = (value_type)0;
+	}
+	template <typename _Char, typename _Alloc>
+	inline void BasicString<_Char, _Alloc>::pop_back()
+	{
+		luassert(!empty());
+		--m_size;
+		m_allocator_and_buffer.second()[m_size] = (value_type)0;
+	}
+	template <typename _Char, typename _Alloc>
+	inline void BasicString<_Char, _Alloc>::assign(usize count, value_type ch)
+	{
+		clear();
+		reserve(count);
+		if (count)
+		{
+			fill_construct_range(m_allocator_and_buffer.second(), m_allocator_and_buffer.second() + count, ch);
+			m_allocator_and_buffer.second()[count] = (value_type)0;
+		}
+		m_size = count;
+	}
+	template <typename _Char, typename _Alloc>
+	inline void BasicString<_Char, _Alloc>::assign(const BasicString& str)
+	{
+		*this = str;
+	}
+	template <typename _Char, typename _Alloc>
+	inline void BasicString<_Char, _Alloc>::assign(const BasicString& str, usize pos, usize count)
+	{
+		clear();
+		count = (count == npos) ? str.size() - pos : count;
+		reserve(count);
+		if (count)
+		{
+			memcpy(m_allocator_and_buffer.second(), str.c_str() + pos, count * sizeof(value_type));
+			m_allocator_and_buffer.second()[count] = (value_type)0;
+		}
+		m_size = count;
+	}
+	template <typename _Char, typename _Alloc>
+	inline void BasicString<_Char, _Alloc>::assign(BasicString&& str)
+	{
+		free_buffer();
+		m_allocator_and_buffer.second() = str.m_allocator_and_buffer.second();
+		m_capacity = str.m_capacity;
+		m_size = str.m_size;
+		str.m_allocator_and_buffer.second() = nullptr;
+		str.m_capacity = 0;
+		str.m_size = 0;
+	}
+	template <typename _Char, typename _Alloc>
+	inline void BasicString<_Char, _Alloc>::assign(const value_type* s, usize count)
+	{
+		clear();
+		reserve(count);
+		if (count)
+		{
+			memcpy(m_allocator_and_buffer.second(), s, count * sizeof(value_type));
+			m_allocator_and_buffer.second()[count] = (value_type)0;
+			m_size = count;
+		}
+	}
+	template <typename _Char, typename _Alloc>
+	inline void BasicString<_Char, _Alloc>::assign(const value_type* s)
+	{
+		usize count = strlength(s);
+		clear();
+		reserve(count);
+		if (count)
+		{
+			memcpy(m_allocator_and_buffer.second(), s, count * sizeof(value_type));
+			m_allocator_and_buffer.second()[count] = (value_type)0;
+			m_size = count;
+		}
+	}
+	template <typename _Char, typename _Alloc>
+	template <typename _InputIt>
+	inline void BasicString<_Char, _Alloc>::assign(_InputIt first, _InputIt last)
+	{
+		clear();
+		for (auto iter = first; iter != last; ++iter)
+		{
+			push_back(*iter);
+		}
+	}
+	template <typename _Char, typename _Alloc>
+	inline void BasicString<_Char, _Alloc>::assign(InitializerList<value_type> il)
+	{
+		assign(il.begin(), il.end());
+	}
+	template <typename _Char, typename _Alloc>
+	inline void BasicString<_Char, _Alloc>::insert(usize index, usize count, value_type ch)
+	{
+		luassert(index <= m_size);
+		internal_expand_reserve(m_size + count);
+		if (index != m_size)
+		{
+			memmove(m_allocator_and_buffer.second() + index + count, m_allocator_and_buffer.second() + index, sizeof(value_type) * (m_size - index));
+		}
+		fill_construct_range(m_allocator_and_buffer.second() + index, m_allocator_and_buffer.second() + index + count, ch);
+		m_size += count;
+		m_allocator_and_buffer.second()[m_size] = (value_type)0;
+	}
+	template <typename _Char, typename _Alloc>
+	inline void BasicString<_Char, _Alloc>::insert(usize index, const value_type* s)
+	{
+		luassert(index <= m_size);
+		usize count = strlength(s);
+		internal_expand_reserve(m_size + count);
+		if (index != m_size)
+		{
+			memmove(m_allocator_and_buffer.second() + index + count, m_allocator_and_buffer.second() + index, sizeof(value_type) * (m_size - index));
+		}
+		memcpy(m_allocator_and_buffer.second() + index, s, sizeof(value_type) * count);
+		m_size += count;
+		m_allocator_and_buffer.second()[m_size] = (value_type)0;
+	}
+	template <typename _Char, typename _Alloc>
+	inline void BasicString<_Char, _Alloc>::insert(usize index, const value_type* s, usize count)
+	{
+		luassert(index <= m_size);
+		internal_expand_reserve(m_size + count);
+		if (index != m_size)
+		{
+			memmove(m_allocator_and_buffer.second() + index + count, m_allocator_and_buffer.second() + index, sizeof(value_type) * (m_size - index));
+		}
+		memcpy(m_allocator_and_buffer.second() + index, s, sizeof(value_type) * count);
+		m_size += count;
+		m_allocator_and_buffer.second()[m_size] = (value_type)0;
+	}
+	template <typename _Char, typename _Alloc>
+	inline void BasicString<_Char, _Alloc>::insert(usize index, const BasicString& str)
+	{
+		luassert(index <= m_size);
+		usize count = str.size();
+		internal_expand_reserve(m_size + count);
+		if (index != m_size)
+		{
+			memmove(m_allocator_and_buffer.second() + index + count, m_allocator_and_buffer.second() + index, sizeof(value_type) * (m_size - index));
+		}
+		memcpy(m_allocator_and_buffer.second() + index, str.c_str(), sizeof(value_type) * count);
+		m_size += count;
+		m_allocator_and_buffer.second()[m_size] = (value_type)0;
+	}
+	template <typename _Char, typename _Alloc>
+	inline void BasicString<_Char, _Alloc>::insert(usize index, const BasicString& str, usize index_str, usize count)
+	{
+		luassert(index <= m_size);
+		luassert(count <= (str.size() - index_str));
+		internal_expand_reserve(m_size + count);
+		if (index != m_size)
+		{
+			memmove(m_allocator_and_buffer.second() + index + count, m_allocator_and_buffer.second() + index, sizeof(value_type) * (m_size - index));
+		}
+		memcpy(m_allocator_and_buffer.second() + index, str.c_str() + index_str, sizeof(value_type) * count);
+		m_size += count;
+		m_allocator_and_buffer.second()[m_size] = (value_type)0;
+	}
+	template <typename _Char, typename _Alloc>
+	inline typename BasicString<_Char, _Alloc>::iterator BasicString<_Char, _Alloc>::insert(const_iterator pos, value_type ch)
+	{
+		luassert(((usize)pos >= (usize)m_allocator_and_buffer.second()) && ((usize)pos <= (usize)(m_allocator_and_buffer.second() + m_size)));
+		usize index = pos - cbegin();
+		internal_expand_reserve(m_size + 1);
+		auto mpos = begin() + index;
+		if (mpos != end())
+		{
+			memmove(m_allocator_and_buffer.second() + index + 1, m_allocator_and_buffer.second() + index, sizeof(value_type) * (m_size - index));
+		}
+		m_allocator_and_buffer.second()[index] = ch;
+		++m_size;
+		m_allocator_and_buffer.second()[m_size] = (value_type)0;
+		return mpos;
+	}
+	template <typename _Char, typename _Alloc>
+	inline typename BasicString<_Char, _Alloc>::iterator BasicString<_Char, _Alloc>::insert(const_iterator pos, usize count, value_type ch)
+	{
+		luassert(((usize)pos >= (usize)m_allocator_and_buffer.second()) && ((usize)pos <= (usize)(m_allocator_and_buffer.second() + m_size)));
+		usize index = pos - cbegin();
+		internal_expand_reserve(m_size + count);
+		auto mpos = begin() + index;
+		if (mpos != end())
+		{
+			memmove(m_allocator_and_buffer.second() + index + count, m_allocator_and_buffer.second() + index, sizeof(value_type) * (m_size - index));
+		}
+		fill_construct_range(m_allocator_and_buffer.second() + index, m_allocator_and_buffer.second() + index + count, ch);
+		m_size += count;
+		m_allocator_and_buffer.second()[m_size] = (value_type)0;
+		return mpos;
+	}
+	template <typename _Char, typename _Alloc>
+	template <typename _InputIt>
+	inline typename BasicString<_Char, _Alloc>::iterator BasicString<_Char, _Alloc>::insert(const_iterator pos, _InputIt first, _InputIt last)
+	{
+		luassert(((usize)pos >= (usize)m_allocator_and_buffer.second()) && ((usize)pos <= (usize)(m_allocator_and_buffer.second() + m_size)));
+		usize index = pos - cbegin();
+		for (auto iter = first; iter != last; ++iter)
+		{
+			pos = insert(pos, *iter);
+			++pos;
+		}
+		return begin() + index;
+	}
+	template <typename _Char, typename _Alloc>
+	inline typename BasicString<_Char, _Alloc>::iterator BasicString<_Char, _Alloc>::insert(const_iterator pos, InitializerList<value_type> ilist)
+	{
+		return insert(pos, ilist.begin(), ilist.end());
+	}
+	template <typename _Char, typename _Alloc>
+	inline void BasicString<_Char, _Alloc>::erase(usize index, usize count)
+	{
+		count = count == npos ? m_size - index : count;
+		luassert(index + count <= m_size);
+		if ((index + count) != m_size)
+		{
+			memmove(m_allocator_and_buffer.second() + index, m_allocator_and_buffer.second() + index + count, sizeof(value_type) * (m_size - index - count));
+		}
+		m_size -= count;
+		m_allocator_and_buffer.second()[m_size] = (value_type)0;
+	}
+	template <typename _Char, typename _Alloc>
+	inline typename BasicString<_Char, _Alloc>::iterator BasicString<_Char, _Alloc>::erase(const_iterator pos)
+	{
+		luassert(((usize)pos >= (usize)m_allocator_and_buffer.second()) && ((usize)pos < (usize)(m_allocator_and_buffer.second() + m_size)));
+		if (pos != (end() - 1))
+		{
+			move_relocate_range((value_type*)pos + 1, (value_type*)end(), (value_type*)pos);
+		}
+		--m_size;
+		m_allocator_and_buffer.second()[m_size] = (value_type)0;
+		return const_cast<iterator>(pos);
+	}
+	template <typename _Char, typename _Alloc>
+	inline typename BasicString<_Char, _Alloc>::iterator BasicString<_Char, _Alloc>::erase(const_iterator first, const_iterator last)
+	{
+		luassert(((usize)first >= (usize)m_allocator_and_buffer.second()) && ((usize)first < (usize)(m_allocator_and_buffer.second() + m_size)));
+		luassert(((usize)last >= (usize)m_allocator_and_buffer.second()) && ((usize)last <= (usize)(m_allocator_and_buffer.second() + m_size)));
+		if (last != end())
+		{
+			move_relocate_range((value_type*)last, (value_type*)end(), (value_type*)first);
+		}
+		m_size -= (last - first);
+		m_allocator_and_buffer.second()[m_size] = (value_type)0;
+		return const_cast<iterator>(first);
+	}
+	template <typename _Char, typename _Alloc>
+	inline void BasicString<_Char, _Alloc>::swap(BasicString& rhs)
+	{
+		BasicString tmp(move(*this));
+		(*this) = move(rhs);
+		rhs = move(tmp);
+	}
+	template <typename _Char, typename _Alloc>
+	inline void BasicString<_Char, _Alloc>::append(usize count, value_type ch)
+	{
+		if (count)
+		{
+			internal_expand_reserve(m_size + count);
+			fill_construct_range(m_allocator_and_buffer.second() + m_size, m_allocator_and_buffer.second() + m_size + count, ch);
+			m_size += count;
+			m_allocator_and_buffer.second()[m_size] = (value_type)0;
+		}
+	}
+	template <typename _Char, typename _Alloc>
+	inline void BasicString<_Char, _Alloc>::append(const BasicString& str)
+	{
+		if (!str.empty())
+		{
+			internal_expand_reserve(m_size + str.size());
+			memcpy(m_allocator_and_buffer.second() + m_size, str.c_str(), str.size() * sizeof(value_type));
+			m_size += str.size();
+			m_allocator_and_buffer.second()[m_size] = (value_type)0;
+		}
+	}
+	template <typename _Char, typename _Alloc>
+	inline void BasicString<_Char, _Alloc>::append(const BasicString& str, usize pos, usize count)
+	{
+		count = count == npos ? str.size() : count;
+		if (count)
+		{
+			internal_expand_reserve(m_size + count);
+			memcpy(m_allocator_and_buffer.second() + m_size, str.c_str() + pos, count * sizeof(value_type));
+			m_size += count;
+			m_allocator_and_buffer.second()[m_size] = (value_type)0;
+		}
+	}
+	template <typename _Char, typename _Alloc>
+	inline void BasicString<_Char, _Alloc>::append(const value_type* s, usize count)
+	{
+		if (count)
+		{
+			internal_expand_reserve(m_size + count);
+			memcpy(m_allocator_and_buffer.second() + m_size, s, count * sizeof(value_type));
+			m_size += count;
+			m_allocator_and_buffer.second()[m_size] = (value_type)0;
+		}
+	}
+	template <typename _Char, typename _Alloc>
+	inline void BasicString<_Char, _Alloc>::append(const value_type* s)
+	{
+		usize count = strlength(s);
+		if (count)
+		{
+			internal_expand_reserve(m_size + count);
+			memcpy(m_allocator_and_buffer.second() + m_size, s, count * sizeof(value_type));
+			m_size += count;
+			m_allocator_and_buffer.second()[m_size] = (value_type)0;
+		}
+	}
+	template <typename _Char, typename _Alloc>
+	template <typename _InputIt>
+	inline void BasicString<_Char, _Alloc>::append(_InputIt first, _InputIt last)
+	{
+		for (auto iter = first; iter != last; ++iter)
+		{
+			push_back(*iter);
+		}
+	}
+	template <typename _Char, typename _Alloc>
+	inline void BasicString<_Char, _Alloc>::append(InitializerList<value_type> ilist)
+	{
+		append(ilist.begin(), ilist.end());
+	}
+	template <typename _Char, typename _Alloc>
+	inline BasicString<_Char, _Alloc>& BasicString<_Char, _Alloc>::operator+=(const BasicString& str)
+	{
+		append(str);
+		return *this;
+	}
+	template <typename _Char, typename _Alloc>
+	inline BasicString<_Char, _Alloc>& BasicString<_Char, _Alloc>::operator+=(value_type ch)
+	{
+		push_back(ch);
+		return *this;
+	}
+	template <typename _Char, typename _Alloc>
+	inline BasicString<_Char, _Alloc>& BasicString<_Char, _Alloc>::operator+=(const value_type* s)
+	{
+		append(s);
+		return *this;
+	}
+	template <typename _Char, typename _Alloc>
+	inline BasicString<_Char, _Alloc>& BasicString<_Char, _Alloc>::operator+=(InitializerList<value_type> ilist)
+	{
+		append(ilist);
+		return *this;
+	}
+	template <typename _Char, typename _Alloc>
+	inline i32 BasicString<_Char, _Alloc>::compare(const BasicString& rhs) const
+	{
+		return strcmp(c_str(), rhs.c_str());
+	}
+	template <typename _Char, typename _Alloc>
+	inline i32 BasicString<_Char, _Alloc>::compare(usize pos1, usize count1, const BasicString& rhs) const
+	{
+		count1 = min(count1, size() - pos1);
+		return memcmp(c_str() + pos1, rhs.c_str(), count1 * sizeof(value_type));
+	}
+	template <typename _Char, typename _Alloc>
+	inline i32 BasicString<_Char, _Alloc>::compare(usize pos1, usize count1, const BasicString& rhs, usize pos2, usize count2) const
+	{
+		count1 = min(count1, size() - pos1);
+		count2 = min(count2, size() - pos2);
+		return memcmp(c_str() + pos1, rhs.c_str() + pos2, min(count1, count2) * sizeof(value_type));
+	}
+	template <typename _Char, typename _Alloc>
+	inline i32 BasicString<_Char, _Alloc>::compare(const value_type* s) const
+	{
+		return strcmp(c_str(), s);
+	}
+	template <typename _Char, typename _Alloc>
+	inline i32 BasicString<_Char, _Alloc>::compare(usize pos1, usize count1, const value_type* s) const
+	{
+		count1 = min(count1, size() - pos1);
+		return memcmp(c_str() + pos1, s, count1 * sizeof(value_type));
+	}
+	template <typename _Char, typename _Alloc>
+	inline i32 BasicString<_Char, _Alloc>::compare(usize pos1, usize count1, const value_type* s, usize count2) const
+	{
+		count1 = min(count1, size() - pos1);
+		return memcmp(c_str() + pos1, s, min(count1, count2) * sizeof(value_type));
+	}
+	template <typename _Char, typename _Alloc>
+	inline void BasicString<_Char, _Alloc>::replace(usize pos, usize count, const BasicString& str)
+	{
+		isize delta = str.size() - count;
+		if (delta > 0)
+		{
+			internal_expand_reserve(m_size + delta);
+		}
+		memmove(m_allocator_and_buffer.second() + pos + str.size(), m_allocator_and_buffer.second() + pos + count, sizeof(value_type) * (m_size - pos - count));
+		memcpy(m_allocator_and_buffer.second() + pos, str.c_str(), sizeof(value_type) * str.size());
+		m_size += delta;
+		m_allocator_and_buffer.second()[m_size] = (value_type)0;
+	}
+	template <typename _Char, typename _Alloc>
+	inline void BasicString<_Char, _Alloc>::replace(const_iterator first, const_iterator last, const BasicString& str)
+	{
+		usize pos = first - m_allocator_and_buffer.second();
+		usize count = last - first;
+		replace(pos, count, str);
+	}
+	template <typename _Char, typename _Alloc>
+	inline void BasicString<_Char, _Alloc>::replace(usize pos, usize count, const BasicString& str, usize pos2, usize count2)
+	{
+		count2 = (pos2 + count2 > str.size()) ? str.size() - pos2 : count2;
+		isize delta = count2 - count;
+		if (delta > 0)
+		{
+			internal_expand_reserve(m_size + delta);
+		}
+		memmove(m_allocator_and_buffer.second() + pos + count2, m_allocator_and_buffer.second() + pos + count, sizeof(value_type) * (m_size - pos - count));
+		memcpy(m_allocator_and_buffer.second() + pos, str.c_str() + pos2, sizeof(value_type) * count2);
+		m_size += delta;
+		m_allocator_and_buffer.second()[m_size] = (value_type)0;
+	}
+	template <typename _Char, typename _Alloc>
+	template <typename _InputIt>
+	inline void BasicString<_Char, _Alloc>::replace(const_iterator first, const_iterator last, _InputIt first2, _InputIt last2)
+	{
+		usize pos = first - m_allocator_and_buffer.second();
+		erase(first, last);
+		insert(begin() + pos, first2, last2);
+	}
+	template <typename _Char, typename _Alloc>
+	inline void BasicString<_Char, _Alloc>::replace(usize pos, usize count, const value_type* cstr, usize count2)
+	{
+		isize delta = count2 - count;
+		if (delta > 0)
+		{
+			internal_expand_reserve(m_size + delta);
+		}
+		memmove(m_allocator_and_buffer.second() + pos + count2, m_allocator_and_buffer.second() + pos + count, sizeof(value_type) * (m_size - pos - count));
+		memcpy(m_allocator_and_buffer.second() + pos, cstr, sizeof(value_type) * count2);
+		m_size += delta;
+		m_allocator_and_buffer.second()[m_size] = (value_type)0;
+	}
+	template <typename _Char, typename _Alloc>
+	inline void BasicString<_Char, _Alloc>::replace(const_iterator first, const_iterator last, const value_type* cstr, usize count2)
+	{
+		usize pos = first - m_allocator_and_buffer.second();
+		usize count = last - first;
+		replace(pos, count, cstr, count2);
+	}
+	template <typename _Char, typename _Alloc>
+	inline void BasicString<_Char, _Alloc>::replace(usize pos, usize count, const value_type* cstr)
+	{
+		usize count2 = strlength(cstr);
+		replace(pos, count, cstr, count2);
+	}
+	template <typename _Char, typename _Alloc>
+	inline void BasicString<_Char, _Alloc>::replace(const_iterator first, const_iterator last, const value_type* cstr)
+	{
+		usize pos = first - m_allocator_and_buffer.second();
+		usize count = last - first;
+		replace(pos, count, cstr);
+	}
+	template <typename _Char, typename _Alloc>
+	inline void BasicString<_Char, _Alloc>::replace(usize pos, usize count, usize count2, value_type ch)
+	{
+		isize delta = count2 - count;
+		if (delta > 0)
+		{
+			internal_expand_reserve(m_size + delta);
+		}
+		memmove(m_allocator_and_buffer.second() + pos + count2, m_allocator_and_buffer.second() + pos + count, sizeof(value_type) * (m_size - pos - count));
+		fill_construct_range(m_allocator_and_buffer.second() + pos, m_allocator_and_buffer.second() + pos + count2, ch);
+		m_size += delta;
+		m_allocator_and_buffer.second()[m_size] = (value_type)0;
+	}
+	template <typename _Char, typename _Alloc>
+	inline void BasicString<_Char, _Alloc>::replace(const_iterator first, const_iterator last, usize count2, value_type ch)
+	{
+		usize pos = first - m_allocator_and_buffer.second();
+		usize count = last - first;
+		replace(pos, count, count2, ch);
+	}
+	template <typename _Char, typename _Alloc>
+	inline void BasicString<_Char, _Alloc>::replace(const_iterator first, const_iterator last, InitializerList<value_type> ilist)
+	{
+		usize pos = first - m_allocator_and_buffer.second();
+		usize count = last - first;
+		isize delta = ilist.size() - count;
+		if (delta > 0)
+		{
+			internal_expand_reserve(m_size + delta);
+		}
+		memmove(m_allocator_and_buffer.second() + pos + ilist.size(), m_allocator_and_buffer.second() + pos + count, sizeof(value_type) * (m_size - pos - count));
+		auto iter = const_cast<iterator>(first);
+		for (auto& i : ilist)
+		{
+			*iter = i;
+			++iter;
+		}
+		m_size += delta;
+		m_allocator_and_buffer.second()[m_size] = (value_type)0;
+	}
+	template <typename _Char, typename _Alloc>
+	inline BasicString<_Char, _Alloc> BasicString<_Char, _Alloc>::substr(usize pos, usize count) const
+	{
+		luassert(pos <= m_size);
+		count = min(count, m_size - pos);
+		return BasicString(m_allocator_and_buffer.second() + pos, count, m_allocator_and_buffer.first());
+	}
+	template <typename _Char, typename _Alloc>
+	inline usize BasicString<_Char, _Alloc>::copy(value_type* dest, usize count, usize pos) const
+	{
+		luassert(pos <= m_size);
+		count = min(count, m_size - pos);
+		memcpy(dest, m_allocator_and_buffer.second() + pos, sizeof(value_type) * count);
+		return count;
+	}
+	template <typename _Char, typename _Alloc>
+	inline typename BasicString<_Char, _Alloc>::allocator_type BasicString<_Char, _Alloc>::get_allocator() const
+	{
+		return m_allocator_and_buffer.first();
+	}
+	template <typename _Char, typename _Alloc>
+	inline typename BasicString<_Char, _Alloc>::value_type* BasicString<_Char, _Alloc>::allocate(usize n)
+	{
+        return m_allocator_and_buffer.first().template allocate<value_type>(n);
+	}
+	template <typename _Char, typename _Alloc>
+	inline void BasicString<_Char, _Alloc>::deallocate(value_type* ptr, usize n)
+	{
+        m_allocator_and_buffer.first().template deallocate<value_type>(ptr, n);
+	}
+	template <typename _Char, typename _Alloc>
+	inline void BasicString<_Char, _Alloc>::free_buffer()
+	{
+		if (m_allocator_and_buffer.second())
+		{
+			deallocate(m_allocator_and_buffer.second(), m_capacity);
+			m_allocator_and_buffer.second() = nullptr;
+		}
+		m_size = 0;
+		m_capacity = 0;
+	}
+	template <typename _Char, typename _Alloc>
+	inline usize BasicString<_Char, _Alloc>::strlength(const _Char* s)
+	{
+		usize count = 0;
+		while (s[count] != (_Char)0) ++count;
+		return count;
+	}
+	template <typename _Char, typename _Alloc>
+	inline void BasicString<_Char, _Alloc>::internal_expand_reserve(usize new_least_cap)
+	{
+		if (new_least_cap > m_capacity)
+		{
+			reserve(max(max(new_least_cap, m_capacity * 2), (usize)4));	// Double the size by default.
+		}
+	}
+
+	LUNA_RUNTIME_API typeinfo_t string_type();
+	template <> struct typeof_t<String> { typeinfo_t operator()() const { return string_type(); } };
+}

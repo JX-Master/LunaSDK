@@ -1,0 +1,6 @@
+target("Asset")
+    set_luna_sdk_module()
+    add_headerfiles("**.hpp")
+    add_files("Source/**.cpp")
+    add_deps("Runtime", "VFS", "JobSystem")
+target_end()

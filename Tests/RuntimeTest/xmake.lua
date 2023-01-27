@@ -1,0 +1,7 @@
+target("RuntimeTest")
+    set_luna_sdk_test()
+    set_kind("binary")
+    add_headerfiles("Source/*.hpp")
+    add_files("Source/*.cpp")
+    add_deps("Runtime")
+target_end()
