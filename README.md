@@ -47,7 +47,11 @@ Designed target platforms:
 1. Open terminal and execute `xmake build` for all projects, or `xmake build {target}` for a specific target, like `Studio`. You may also use `Run and Debug` tab to build project if you install the `XMake` extension.
 
 ## Docs 
-See `wiki` page for docs.
+See [Luna SDK Docs](https://www.lunasdk.org).
+
+## FAQs
+### What is the design purpose of Luna SDK? Is this a Game Engine?
+The conclusion comes first: Luna SDK is NOT a Game Engine, but a lower level framework that you can use to create your own Game Engine. We interpret a Game Engine as a comprehensive game development toolset that enables game designers and artists to create game assets and game experience. Our Luna SDK, instead, is designed for developers with programming experience to build graphic programs quickly and easily, which is different from a Game Engine in designed usages and target users.
 
 ## Feedback & Discussion
 * `Issues` page is available for bug report and feature request (not guaranteed to be satisfied).
