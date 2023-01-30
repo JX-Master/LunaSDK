@@ -1,4 +1,4 @@
-/*
+/*!
 * This file is a portion of Luna SDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
@@ -419,21 +419,7 @@ namespace Luna
 			virtual void attach_graphic_object(IDeviceChild* obj) = 0;
 
 			//! Starts a new render pass. The previous render pass should be closed before beginning another one.
-			//! @param[in] render_pass The render pass object to apply to the render pass. 
-			//! Only one pipeline state should be applied to one render pass, if you need to change pso, you
-			//! need to make a new render pass.
-			//! @param[in] fbo The frame buffer object bound as the render target of the render pass.
-			//! Only one frame buffer object should be applied to one render pass, if you need to change fbo, you
-			//! need to make a new render pass.
-			//! @param[in] num_rt_clear_values The number of clear values used for render target.
-			//! @param[in] clear_values An array of clear values used for the render targets. Only render targets that
-			//! specify `RenderTargetLoadOp::clear` will be cleared when the render pass begins.
-			//! For example, if we have 4 render target attachments and only attachments at 0, 2 sets `RenderTargetLoadOp::clear`,
-			//! then only clear values at index 0 and 2 will be used.
-			//! @param[in] depth_clear_value The depth value to use for clear if `depth_load_op` specified in render pass
-			//! is `RenderTargetLoadOp::clear`.
-			//! @param[in] stencil_clear_value The stencil value to use for clear if `stencil_load_op` specified in render pass
-			//! is `RenderTargetLoadOp::clear`.
+			//! @param[in] desc The render pass descriptor object.
 			//! @remark In order to let LoadOp::clear works, the render textures that need to be cleared must be in
 			//! `ResourceState::render_target` state and the depth stencil texture that needs to be cleared must be in 
 			//! `ResourceState::depth_write` state.
