@@ -139,7 +139,7 @@ namespace Luna
 	//! Returns the Unicode character in the UTF-8 string `str`.
 	LUNA_RUNTIME_API c32 utf8_decode_char(const c8* str);
 
-	//! Returns the number of `Char16` characters needed to store the Unicode char `ch` in UTF-16 encoding.
+	//! Returns the number of `c16` characters needed to store the Unicode char `ch` in UTF-16 encoding.
 	inline constexpr usize utf16_charspan(c32 ch)
 	{
 		if (ch <= 0xFFFF)
@@ -149,14 +149,20 @@ namespace Luna
 		return 2;
 	}
 
-	//! Returns the number of `Char16` characters the next Unicode char takes in the specified UTF-16 string.
-	inline constexpr usize utf16_charlen(const c16* src)
+	//! Returns the number of `c16` characters the next Unicode char takes from the first `c16` character.
+	inline constexpr usize utf16_charlen(c16 ch)
 	{
-		if (src[0] >= 0xD800 && src[0] <= 0xDFFF)
+		if (ch >= 0xD800 && ch <= 0xDFFF)
 		{
 			return 2;
 		}
 		return 1;
+	}
+	
+	//! Returns the number of `c16` characters the next Unicode char takes in the specified UTF-16 string.
+	inline constexpr usize utf16_charlen(const c16* src)
+	{
+		return utf16_charlen(src[0]);
 	}
 
 	//! Checks the number of Unicode characters in a null-terminated utf-16 string, 
@@ -172,7 +178,7 @@ namespace Luna
 		return l;
 	}
 
-	//! Returns the position of the first `Char16` character for the `n`th Unicode character.
+	//! Returns the position of the first `c16` character for the `n`th Unicode character.
 	inline constexpr usize utf16_index(const c16* str, usize n)
 	{
 		usize i{ 0 };
@@ -185,8 +191,8 @@ namespace Luna
 		return p;
 	}
 
-	//! Encodes the Unicode character `ch` into 1~2 `Char16` bytes in the `dest` UTF-16 string.
-	//!  Returns the number of `Char16` characters printed to the `dest` buffer.
+	//! Encodes the Unicode character `ch` into 1~2 `c16` bytes in the `dest` UTF-16 string.
+	//!  Returns the number of `c16` characters printed to the `dest` buffer.
 	//! @param[in] le If `true`, then the character is encoded using Little Endian, else the character
 	//! is encoded using Big Endian.
 	LUNA_RUNTIME_API usize utf16_encode_char(c16* dest, c32 ch, bool le = true);

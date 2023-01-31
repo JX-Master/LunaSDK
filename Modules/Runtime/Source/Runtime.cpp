@@ -55,8 +55,11 @@ namespace Luna
 		impl_interface_for_type<ReadWriteLock, IReadWriteLock>();
 	}
 
+	static bool g_initialized = false;
+
 	LUNA_RUNTIME_API bool init()
 	{
+		if (g_initialized) return true;
 		OS::init();
 #ifdef LUNA_RUNTIME_CHECK_MEMORY_LEAK
 		memory_check_init();
@@ -71,10 +74,12 @@ namespace Luna
 		random_init();
 		log_init();
 		module_init();
+		g_initialized = true;
 		return true;
 	}
 	LUNA_RUNTIME_API void close()
 	{
+		if (!g_initialized) return;
 		module_close();
 		log_close();
 		random_close();
@@ -89,5 +94,6 @@ namespace Luna
 		memory_check_close();
 #endif
 		OS::close();
+		g_initialized = false;
 	}
 }

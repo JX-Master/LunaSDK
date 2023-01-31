@@ -6,12 +6,10 @@
 * @file Runtime.hpp
 * @author JXMaster
 * @date 2020/7/22
-* @brief This header file contains APIs that controls Luna Runtime, including APIs to initialize and close 
-* Luna Runtime, APIs to apply one assembly to Luna Runtime, etc.
+* @brief This header file contains APIs to initialize and close Luna SDK.
 */
 #pragma once
 #include "Result.hpp"
-#include "Name.hpp"
 
 #ifndef LUNA_RUNTIME_API
 #define LUNA_RUNTIME_API
@@ -19,9 +17,12 @@
 
 namespace Luna
 {
-	//! Initializes and starts Luna Runtime.
+	//! Initializes Luna SDK.
+	//! @return Returns `true` if Luna SDK is succssfully initialized, returns `false` otherwise.
+	//! @remark Calling this function when Luna SDK is already initialized does nothing and returns `true` directly.
 	LUNA_RUNTIME_API bool init();
 
 	//! Closes Luna Runtime.
+	//! @remark Calling this function when Luna SDK is not initialized does nothing and returns directly.
 	LUNA_RUNTIME_API void close();
 }
