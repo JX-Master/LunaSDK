@@ -16,6 +16,7 @@
 #include <RHI/RHI.hpp>
 #include <Font/Font.hpp>
 #include <Runtime/Math/Color.hpp>
+#include <Runtime/Span.hpp>
 
 #ifndef LUNA_VG_API
 #define LUNA_VG_API
@@ -163,17 +164,15 @@ namespace Luna
 			virtual usize get_command_buffer_size() = 0;
 
 			//! Appends new shape at the end of the shape buffer.
-			//! @param[in] commands A pointer to the command data of the shape. The first command must be `COMMAND_MOVE_TO`.
-			//! @param[in] num_commands The number of commands (f32 values) of the shape.
+			//! @param[in] commands The command data of the shape. The first command must be `COMMAND_MOVE_TO`.
 			//! @param[in] bounding_rect The bounding rect of the shape. If this is `nullptr`, the bounding rect will be calculated 
 			//! from shape commands.
 			//! @return Returns the index of the shape.
-			virtual usize add_shape(const f32* commands, usize num_commands, const RectF* bounding_rect) = 0;
+			virtual usize add_shape(Span<const f32> commands, const RectF* bounding_rect) = 0;
 
 			//! Adds multiple shapes in one call.
 			//! @param[in] commands A pointer to the command data of the shapes.
-			//! @param[in|out] shapes A pointer to an array of shape descriptors you want to add.
-			//! @param[in] num_shapes The number of shape descriptors you want to add.
+			//! @param[in|out] shapes An array of shape descriptors you want to add.
 			//! @return Returns the shape index of the first added shape.
 			//! @remark The shape descriptors are used for both input and output. When the shape descriptor is provided, `command_offset` and `num_commands` 
 			//! identify the shape command range in `commands`, and `bounding_rect` provides the bounding rect for the shape. If `bounding_rect` is 
@@ -181,7 +180,7 @@ namespace Luna
 			//! must be equal to `shapes[i + 1].command_offset`.
 			//! When the function returns, every shape descriptor provided is modified, so that `command_offset` and `num_commands` represents the shape command range
 			//! in the internal command buffer, and `bounding_rect` is the computed shape bounding rect.
-			virtual usize add_shapes(const f32* commands, ShapeDesc* shapes, usize num_shapes) = 0;
+			virtual usize add_shapes(const f32* commands, Span<ShapeDesc> shapes) = 0;
 
 			//! Copies shapes from another shape atlas to this shape atlas. The new shapes will be added to the end of the shape buffer.
 			//! @param[in] src The shape atlas to copy shapes from.
@@ -344,7 +343,7 @@ namespace Luna
 			virtual void append_draw_list(IShapeDrawList* draw_list) = 0;
 
 			//! Draws one shape by submitting vertices and indices directly.
-			virtual void draw_shape_raw(const Vertex* vertices, u32 num_vertices, const u32* indices, u32 num_indices) = 0;
+			virtual void draw_shape_raw(Span<const Vertex> vertices, Span<const u32> indices) = 0;
 
 			//! Draws one shape. The shape is drawn by adding one draw rect (two triangles) to the list.
 			virtual void draw_shape(u32 begin_command, u32 num_commands,

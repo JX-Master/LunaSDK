@@ -106,14 +106,14 @@ namespace Luna
 			}
 			drawcall_barrier();
 		}
-		void ShapeDrawList::draw_shape_raw(const Vertex* vertices, u32 num_vertices, const u32* indices, u32 num_indices)
+		void ShapeDrawList::draw_shape_raw(Span<const Vertex> vertices, Span<const u32> indices)
 		{
 			lutsassert(this);
 			auto& dc = get_current_draw_call();
 			auto& dc_res = get_draw_call_resource(m_target_dc_index);
 			lucheck_msg(dc.atlas, "Shape atlas must be set before adding draw calls to the shape draw list.");
-			dc_res.vertices.insert_n(dc_res.vertices.end(), vertices, num_vertices);
-			dc_res.indices.insert_n(dc_res.indices.end(), indices, num_indices);
+			dc_res.vertices.insert_n(dc_res.vertices.end(), vertices.data(), vertices.size());
+			dc_res.indices.insert_n(dc_res.indices.end(), indices.data(), indices.size());
 		}
 		void ShapeDrawList::draw_shape(u32 begin_command, u32 num_commands,
 			const Float2U& min_position, const Float2U& max_position,

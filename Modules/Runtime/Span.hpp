@@ -41,8 +41,8 @@ namespace Luna
 		constexpr reverse_iterator rbegin() const { return reverse_iterator(end()); }
 		constexpr reverse_iterator rend() const { return reverse_iterator(begin()); }
 
-		constexpr reference frond() const { return *m_buffer; }
-		constexpr reference back() const { return *(m_buffer + _Size); }
+		constexpr reference front() const { return *m_buffer; }
+		constexpr reference back() const { return *(m_buffer + _Size - 1); }
 		constexpr reference operator[](usize index) const { lucheck(index < _Size); return m_buffer[index]; }
 		constexpr pointer data() const { return m_buffer; }
 
@@ -96,8 +96,8 @@ namespace Luna
 		constexpr reverse_iterator rbegin() const { return reverse_iterator(end()); }
 		constexpr reverse_iterator rend() const { return reverse_iterator(begin()); }
 
-		constexpr reference frond() const { return *m_buffer; }
-		constexpr reference back() const { return *(m_buffer + m_size); }
+		constexpr reference front() const { return *m_buffer; }
+		constexpr reference back() const { return *(m_buffer + m_size - 1); }
 		constexpr reference operator[](usize index) const { lucheck(index < m_size); return m_buffer[index]; }
 		constexpr pointer data() const { return m_buffer; }
 

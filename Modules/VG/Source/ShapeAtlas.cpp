@@ -42,9 +42,9 @@ namespace Luna
 			sc.x = cosf(angle);
 			return center + radius * sc;
 		}
-		static void compute_bounding_rect(const f32* commands, usize num_commands, RectF* bounding_rect)
+		static void compute_bounding_rect(Span<const f32> commands, RectF* bounding_rect)
 		{
-			if (num_commands < 3)
+			if (commands.size() < 3)
 			{
 				*bounding_rect = RectF(0, 0, 0, 0);
 			}
@@ -54,7 +54,7 @@ namespace Luna
 				Float2 max_point = min_point;
 				Float2 last_point = Float2(0.0f);
 				usize i = 0;
-				while (i < num_commands)
+				while (i < commands.size())
 				{
 					if (commands[i] == COMMAND_MOVE_TO)
 					{
@@ -99,49 +99,49 @@ namespace Luna
 				*bounding_rect = RectF(min_point.x, min_point.y, max_point.x - min_point.x, max_point.y - min_point.y);
 			}
 		}
-		usize ShapeAtlas::add_shape(const f32* commands, usize num_commands, const RectF* bounding_rect)
+		usize ShapeAtlas::add_shape(Span<const f32> commands, const RectF* bounding_rect)
 		{
 			lutsassert(this);
 			usize begin = m_commands.size();
-			m_commands.insert_n(m_commands.end(), commands, num_commands);
+			m_commands.insert_n(m_commands.end(), commands.data(), commands.size());
 			ShapeDesc desc;
 			desc.command_offset = begin;
-			desc.num_commands = num_commands;
+			desc.num_commands = commands.size();
 			if (bounding_rect)
 			{
 				desc.bounding_rect = *bounding_rect;
 			}
 			else
 			{
-				compute_bounding_rect(commands, num_commands, &desc.bounding_rect);
+				compute_bounding_rect(commands, &desc.bounding_rect);
 			}
 			usize r = m_shapes.size();
 			m_shapes.push_back(desc);
 			m_buffer_resource_dirty = true;
 			return r;
 		}
-		usize ShapeAtlas::add_shapes(const f32* commands, ShapeDesc* shapes, usize num_shapes)
+		usize ShapeAtlas::add_shapes(const f32* commands, Span<ShapeDesc> shapes)
 		{
 			lutsassert(this);
 			usize r = m_shapes.size();
-			if (!num_shapes) return r;
-			usize num_commands = shapes[num_shapes - 1].command_offset + shapes[num_shapes - 1].num_commands;
+			if (shapes.empty()) return r;
+			usize num_commands = shapes.back().command_offset + shapes.back().num_commands;
 			usize begin = m_commands.size();
 			m_commands.insert_n(m_commands.end(), commands, num_commands);
 			lucheck(shapes[0].command_offset == 0);
-			for (usize i = 0; i < num_shapes; ++i)
+			for (usize i = 0; i < shapes.size(); ++i)
 			{
-				if (i < num_shapes - 1)
+				if (i < shapes.size() - 1)
 				{
 					lucheck(shapes[i].command_offset + shapes[i].num_commands == shapes[i + 1].command_offset);
 				}
 				if (shapes[i].bounding_rect == RectF(0, 0, 0, 0))
 				{
-					compute_bounding_rect(commands + shapes[i].command_offset, shapes[i].num_commands, &(shapes[i].bounding_rect));
+					compute_bounding_rect({ commands + shapes[i].command_offset, shapes[i].num_commands }, &(shapes[i].bounding_rect));
 				}
 				shapes[i].command_offset += begin;
 			}
-			m_shapes.insert_n(m_shapes.end(), shapes, num_shapes);
+			m_shapes.insert_n(m_shapes.end(), shapes.data(), shapes.size());
 			m_buffer_resource_dirty = true;
 			return r;
 		}

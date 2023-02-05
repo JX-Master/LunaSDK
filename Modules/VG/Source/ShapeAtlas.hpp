@@ -49,8 +49,8 @@ namespace Luna
 				lutsassert(this);
 				return m_commands.size();
 			}
-			usize add_shape(const f32* commands, usize num_commands, const RectF* bounding_rect);
-			usize add_shapes(const f32* commands, ShapeDesc* shapes, usize num_shapes);
+			usize add_shape(Span<const f32> commands, const RectF* bounding_rect);
+			usize add_shapes(const f32* commands, Span<ShapeDesc> shapes);
 			usize copy_shapes(IShapeAtlas* src, usize start_shape_index, usize num_shapes);
 			void remove_shapes(usize start_shape_index, usize num_shapes);
 			usize count_shapes()

@@ -181,7 +181,7 @@ namespace Luna
 				return m_clip_rect;
 			}
 			void append_draw_list(IShapeDrawList* draw_list);
-			void draw_shape_raw(const Vertex* vertices, u32 num_vertices, const u32* indices, u32 num_indices);
+			void draw_shape_raw(Span<const Vertex> vertices, Span<const u32> indices);
 			void draw_shape(u32 begin_command, u32 num_commands,
 				const Float2U& min_position, const Float2U& max_position,
 				const Float2U& min_shapecoord, const Float2U& max_shapecoord, u32 color,
