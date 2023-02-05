@@ -19,7 +19,7 @@ namespace Luna
 		{
 			ISeekableStream** stream = reinterpret_cast<ISeekableStream**>(user);
 			usize read_bytes;
-			RV r = (*stream)->read(data, size, &read_bytes);
+			RV r = (*stream)->read({(byte_t*)data, (usize)size}, &read_bytes);
 			if (!r.valid())
 			{
 				return 0;

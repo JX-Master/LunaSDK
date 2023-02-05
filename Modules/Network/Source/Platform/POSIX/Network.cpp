@@ -25,9 +25,10 @@ namespace Luna
 {
     namespace Net
     {
-        struct Socket
+        struct Socket : ISocket
         {
-            lutype("Net::Socket", "{35d804cf-4249-491f-a3e0-c95944ad5339}");
+            lustruct("Net::Socket", "{35d804cf-4249-491f-a3e0-c95944ad5339}");
+			luiimpl();
 
             int m_socket;
 
@@ -41,18 +42,12 @@ namespace Luna
                     m_socket = -1;
                 }
             }
-            static RV read(object_t self, void* buffer, usize size, usize* read_bytes);
-            static RV write(object_t self, const void* buffer, usize size, usize* write_bytes);
-            static RV bind_ipv4(object_t self, const SocketAddressIPv4& address);
-            static RV listen(object_t self, i32 len);
-            static RV connect_ipv4(object_t self, const SocketAddressIPv4& address);
-            static R<Ref<ISocket>> accept_ipv4(object_t self, SocketAddressIPv4& address);
-            static void reg()
-            {
-                register_boxed_type<Socket>();
-                impl_interface_for_type<Socket, IStream>({ read, write });
-                impl_interface_for_type<Socket, ISocket>({ read, write, bind_ipv4, listen, connect_ipv4, accept_ipv4 });
-            }
+            RV read(Span<byte_t> buffer, usize* read_bytes);
+            RV write(Span<const byte_t> buffer, usize* write_bytes);
+            RV bind_ipv4(const SocketAddressIPv4& address);
+            RV listen(i32 len);
+            RV connect_ipv4(const SocketAddressIPv4& address);
+            R<Ref<ISocket>> accept_ipv4(SocketAddressIPv4& address);
         };
 
         inline ErrCode translate_error(int err)
@@ -82,10 +77,9 @@ namespace Luna
             }
         }
 
-        RV Socket::read(object_t self, void* buffer, usize size, usize* read_bytes)
+        RV Socket::read(Span<byte_t> buffer, usize* read_bytes)
 		{
-			Socket* o = (Socket*)self;
-            isize read_sz = ::read(o->m_socket, buffer, size);
+            isize read_sz = ::read(m_socket, buffer.data(), buffer.size());
             if(read_sz == -1)
             {
                 if (read_bytes) *read_bytes = 0;
@@ -95,10 +89,9 @@ namespace Luna
             return ok;
 		}
 
-        RV Socket::write(object_t self, const void* buffer, usize size, usize* write_bytes)
+        RV Socket::write(Span<const byte_t> buffer, usize* write_bytes)
         {
-            Socket* o = (Socket*)self;
-            isize write_sz = ::write(o->m_socket, buffer, size);
+            isize write_sz = ::write(m_socket, buffer.data(), buffer.size());
             if(write_sz == -1)
             {
                 if (write_bytes) *write_bytes = 0;
@@ -107,50 +100,46 @@ namespace Luna
             if (write_bytes) *write_bytes = (usize)write_sz;
             return ok;
         }
-        RV Socket::bind_ipv4(object_t self, const SocketAddressIPv4& address)
+        RV Socket::bind_ipv4(const SocketAddressIPv4& address)
 		{
-			Socket* o = (Socket*)self;
 			sockaddr_in addr;
 			addr.sin_family = AF_INET;
 			addr.sin_port = address.port;
 			memcpy(&addr.sin_addr.s_addr, &address.address, 4);
-			auto r = ::bind(o->m_socket, (sockaddr*)&addr, sizeof(addr));
+			auto r = ::bind(m_socket, (sockaddr*)&addr, sizeof(addr));
 			if (r == -1)
 			{
 				return translate_error(errno);
 			}
 			return ok;
 		}
-        RV Socket::listen(object_t self, i32 len)
+        RV Socket::listen(i32 len)
 		{
-			Socket* o = (Socket*)self;
-			int r = ::listen(o->m_socket, len);
+			int r = ::listen(m_socket, len);
 			if (r == -1)
 			{
 				return translate_error(errno);
 			}
 			return ok;
 		}
-        RV Socket::connect_ipv4(object_t self, const SocketAddressIPv4& address)
+        RV Socket::connect_ipv4(const SocketAddressIPv4& address)
 		{
-			Socket* o = (Socket*)self;
 			sockaddr_in addr;
 			addr.sin_family = AF_INET;
 			addr.sin_port = address.port;
 			memcpy(&addr.sin_addr.s_addr, &address.address, 4);
-			int r = ::connect(o->m_socket, (sockaddr*)&addr, sizeof(addr));
+			int r = ::connect(m_socket, (sockaddr*)&addr, sizeof(addr));
 			if (r == -1)
 			{
 				return translate_error(errno);
 			}
 			return ok;
 		}
-        R<Ref<ISocket>> Socket::accept_ipv4(object_t self, SocketAddressIPv4& address)
+        R<Ref<ISocket>> Socket::accept_ipv4(SocketAddressIPv4& address)
 		{
-			Socket* o = (Socket*)self;
 			sockaddr_in addr;
 			socklen_t size = sizeof(addr);
-			auto r = ::accept(o->m_socket, (sockaddr*)&addr, &size);
+			auto r = ::accept(m_socket, (sockaddr*)&addr, &size);
 			if (r == -1)
 			{
 				return translate_error(errno);

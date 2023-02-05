@@ -57,7 +57,7 @@ namespace Luna
 			lulet(file, VFS::open_file(path, FileOpenFlag::write, FileCreationMode::create_always));
 			lulet(file_data, serialize(src));
 			auto file_data_json = json_write(file_data);
-			luexp(file->write(file_data_json.data(), file_data_json.size()));
+			luexp(file->write({(byte_t*)file_data_json.data(), file_data_json.size()}));
 		}
 		lucatchret;
 		return ok;

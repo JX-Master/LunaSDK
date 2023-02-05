@@ -34,8 +34,8 @@ namespace Luna
 					m_socket = INVALID_SOCKET;
 				}
 			}
-			RV read(void* buffer, usize size, usize* read_bytes);
-			RV write(const void* buffer, usize size, usize* write_bytes);
+			RV read(Span<byte_t> buffer, usize* read_bytes);
+			RV write(Span<const byte_t> buffer, usize* write_bytes);
 			RV bind(const SocketAddressIPv4& address);
 			RV listen(i32 len);
 			RV connect(const SocketAddressIPv4& address);
@@ -77,9 +77,9 @@ namespace Luna
 			}
 		}
 
-		RV Socket::read(void* buffer, usize size, usize* read_bytes)
+		RV Socket::read(Span<byte_t> buffer, usize* read_bytes)
 		{
-			int r = ::recv(m_socket, (char*)buffer, (int)size, 0);
+			int r = ::recv(m_socket, (char*)buffer.data(), (int)buffer.size(), 0);
 			if (r == SOCKET_ERROR)
 			{
 				if(read_bytes) *read_bytes = 0;
@@ -89,9 +89,9 @@ namespace Luna
 			if (read_bytes) *read_bytes = r;
 			return ok;
 		}
-		RV Socket::write(const void* buffer, usize size, usize* write_bytes)
+		RV Socket::write(Span<const byte_t> buffer, usize* write_bytes)
 		{
-			int r = ::send(m_socket, (const char*)buffer, (int)size, 0);
+			int r = ::send(m_socket, (const char*)buffer.data(), (int)buffer.size(), 0);
 			if (r == SOCKET_ERROR)
 			{
 				if(write_bytes) *write_bytes = 0;

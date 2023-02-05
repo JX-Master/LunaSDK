@@ -1654,7 +1654,7 @@ namespace Luna
 					lulet(psf, open_file("SkyboxCS.cso", FileOpenFlag::read, FileCreationMode::open_existing));
 					auto file_size = psf->get_size();
 					auto cs_blob = Blob((usize)file_size);
-					luexp(psf->read(cs_blob.data(), cs_blob.size()));
+					luexp(psf->read(cs_blob.span()));
 					psf = nullptr;
 					ComputePipelineStateDesc ps_desc;
 					ps_desc.cs = cs_blob.cspan();
@@ -1686,7 +1686,7 @@ namespace Luna
 					lulet(psf, open_file("LightingPassPixel.cso", FileOpenFlag::read, FileCreationMode::open_existing));
 					auto file_size = psf->get_size();
 					auto ps_blob = Blob((usize)file_size);
-					luexp(psf->read(ps_blob.data(), ps_blob.size()));
+					luexp(psf->read(ps_blob.span()));
 					psf = nullptr;
 
 					GraphicPipelineStateDesc ps_desc;
@@ -1727,7 +1727,7 @@ namespace Luna
 					lulet(psf, open_file("LumFirstCS.cso", FileOpenFlag::read, FileCreationMode::open_existing));
 					auto file_size = psf->get_size();
 					auto cs_blob = Blob((usize)file_size);
-					luexp(psf->read(cs_blob.data(), cs_blob.size()));
+					luexp(psf->read(cs_blob.span()));
 					psf = nullptr;
 					ComputePipelineStateDesc ps_desc;
 					ps_desc.cs = cs_blob.cspan();
@@ -1751,7 +1751,7 @@ namespace Luna
 					lulet(psf, open_file("LumCS.cso", FileOpenFlag::read, FileCreationMode::open_existing));
 					auto file_size = psf->get_size();
 					auto cs_blob = Blob((usize)file_size);
-					luexp(psf->read(cs_blob.data(), cs_blob.size()));
+					luexp(psf->read(cs_blob.span()));
 					psf = nullptr;
 					ComputePipelineStateDesc ps_desc;
 					ps_desc.cs = cs_blob.cspan();
@@ -1777,7 +1777,7 @@ namespace Luna
 					lulet(psf, open_file("ToneMappingCS.cso", FileOpenFlag::read, FileCreationMode::open_existing));
 					auto file_size = psf->get_size();
 					auto cs_blob = Blob((usize)file_size);
-					luexp(psf->read(cs_blob.data(), cs_blob.size()));
+					luexp(psf->read(cs_blob.span()));
 					psf = nullptr;
 					ComputePipelineStateDesc ps_desc;
 					ps_desc.cs = cs_blob.cspan();

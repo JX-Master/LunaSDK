@@ -20,7 +20,7 @@ namespace Luna
 			// Try to open one file from vfs and writes to it.
 			auto file = open_file("SampleFile.txt",
 				FileOpenFlag::write, FileCreationMode::create_always).get();
-			lutest(succeeded(file->write(s, sizeof(s) - sizeof(char))));
+			lutest(succeeded(file->write({(byte_t*)s, sizeof(s) - sizeof(char)})));
 			file = nullptr;
 		}
 
@@ -29,7 +29,7 @@ namespace Luna
 			auto file = open_file("SampleFile.txt", 
 				FileOpenFlag::read, FileCreationMode::open_existing).get();
 			char str[32];
-			lutest(succeeded(file->read(str, 13 * sizeof(char))));
+			lutest(succeeded(file->read({(byte_t*)str, 13 * sizeof(char)})));
 			str[13] = 0;
 			lutest(!strcmp(s, str));
 			file = nullptr;

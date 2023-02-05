@@ -10,6 +10,7 @@
 #pragma once
 #include "Interface.hpp"
 #include "Result.hpp"
+#include "Span.hpp"
 
 namespace Luna
 {
@@ -35,28 +36,25 @@ namespace Luna
 
 		//! Reads data from the current position the cursor is pointing to and offsets the cursor back. If the data to be
 		//! read is not ready, the platform suspends the calling thread until the data is ready.
-		//! @param[in] buffer The buffer to accept the read data. The buffer should be large enough to hold
-		//! at least `size` bytes of data.
-		//! @param[in] size The size of the data to read in bytes.
+		//! @param[in] buffer The buffer range to accept the read data.
 		//! @param[out] read_bytes If not `nullptr`, the system sets the actual size of bytes being read to the buffer 
 		//! to this parameter.
 		//! The actual size of bytes being read may be smaller than the size of bytes required to be read if the cursor
 		//! reaches the end of the stream, but this is NOT an error. Specially, if one read operation is performed when
 		//! the cursor is beyond or at the end of the stream, the read operation succeeds with 0 bytes being read. This 
 		//! can be considered as an EOF symbol in stdlib.
-		virtual RV read(void* buffer, usize size, usize* read_bytes = nullptr) = 0;
+		virtual RV read(Span<byte_t> buffer, usize* read_bytes = nullptr) = 0;
 
 		//! Writes data to the current position the cursor is pointing to and offsets the cursor back. This call returns after
 		//! all data have been written.
-		//! @param[in] buffer The buffer that holds the data to be written.
-		//! @param[in] size The size of the data to write in bytes.
+		//! @param[in] buffer The buffer range that holds the data to be written.
 		//! @param[out] write_bytes If not `nullptr`, the system sets the actual size of bytes being written to this parameter.
 		//! Mostly, if the cursor goes beyond the end of the stream buffer while writing data, the stream will be expanded so
 		//! the succeeding data can be written, so unless an error occurs, the size of bytes written will always equal to the 
 		//! size of bytes required by the user to write. However, if an error occurs while writing data, some of the data may have 
 		//! already be written while others are not, in such case the `write_bytes` reported by system may not be equal to `size` 
 		//! specified by the user.
-		virtual RV write(const void* buffer, usize size, usize* write_bytes = nullptr) = 0;
+		virtual RV write(Span<const byte_t> buffer, usize* write_bytes = nullptr) = 0;
 	};
 
 	//! @interface ISeekableStream
@@ -88,7 +86,7 @@ namespace Luna
 		//! size specified, with data between the last size and current size be uninitialized. 
 		//! If the current stream buffer size is greater than the size to set and this call succeeded, the stream buffer will be truncated and 
 		//! the data between the last size and current size will be discarded.
-		//! @param[in] length The size to set, in bytes.
-		virtual RV set_size(u64 sz) = 0;
+		//! @param[in] size The size to set, in bytes.
+		virtual RV set_size(u64 size) = 0;
 	};
 }

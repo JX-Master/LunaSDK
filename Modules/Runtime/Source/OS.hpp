@@ -335,9 +335,7 @@ namespace Luna
 		//! Reads data from the current position the cursor is pointing to and offsets the cursor back. If the data to be
 		//! read is not ready, the platform suspends this thread until the data is ready.
 		//! @param[in] file The file handle opened by `open_file`.
-		//! @param[in] buffer The buffer used to store the read data. The buffer should be large enough to hold
-		//! at least `size` bytes of data.
-		//! @param[in] size The size of the data to read in bytes.
+		//! @param[in] buffer The buffer range used to store the read data.
 		//! @param[out] read_bytes If this is not `nullptr`, the system sets the actual size of bytes being read to the buffer
 		//! to this parameter.
 		//! The actual size of bytes being read may be smaller than the size of bytes required to be read if the cursor
@@ -346,20 +344,19 @@ namespace Luna
 		//! can be considered as an EOF symbol in stdlib.
 		//! @return Returns success on success, returns the following error code on failure:
 		//! * BasicError::not_supported
-		RV read_file(opaque_t file, void* buffer, usize size, usize* read_bytes = nullptr);
+		RV read_file(opaque_t file, Span<byte_t> buffer, usize* read_bytes = nullptr);
 
 		//! Writes data to the current position the cursor is pointing to and offsets the cursor back. This call returns after
 		//! all data have been written.
 		//! @param[in] file The file handle opened by `open_file`.
-		//! @param[in] buffer The buffer that holds the data to be written.
-		//! @param[in] size The size of the data to write in bytes.
+		//! @param[in] buffer The buffer range that holds the data to be written.
 		//! @param[out] write_bytes If not `nullptr`, the system sets the actual size of bytes being written to this parameter.
 		//! Mostly, if the cursor goes beyond the end of the stream buffer while writing data, the stream will be expanded so
 		//! the succeeding data can be written, so unless an error occurs, the size of bytes written will always equal to the 
 		//! size of bytes required by the user to write. However, if an error occurs while writing data, some of the data may have 
 		//! already be written while others are not, in such case the `write_bytes` reported by system may not be equal to `size` 
 		//! specified by the user.
-		RV write_file(opaque_t file, const void* buffer, usize size, usize* write_bytes = nullptr);
+		RV write_file(opaque_t file, Span<const byte_t> buffer, usize* write_bytes = nullptr);
 
 		//! Gets the size of the file in bytes.
 		//! @param[in] file The file handle opened by `open_file`.
@@ -371,8 +368,8 @@ namespace Luna
 		//! with data between the last size and current size be uninitialized. If the current file size is greater than the size to set and this 
 		//! call succeeded, the stream will be truncated and the data between the last size and current size will be discarded.
 		//! @param[in] file The file handle opened by `open_file`.
-		//! @param[in] length The size to set, in bytes.
-		RV set_file_size(opaque_t file, u64 sz);
+		//! @param[in] size The size to set, in bytes.
+		RV set_file_size(opaque_t file, u64 size);
 
 		//! Gets the current position of the stream cursor. The position is number of bytes relative to the beginning of the 
 		//! stream.

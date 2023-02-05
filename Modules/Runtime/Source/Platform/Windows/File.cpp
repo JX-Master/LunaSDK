@@ -479,17 +479,17 @@ namespace Luna
 			else close_unbuffered_file(f->handle);
 			Luna::memdelete(f);
 		}
-		RV read_file(opaque_t file, void* buffer, usize size, usize* read_bytes)
+		RV read_file(opaque_t file, Span<byte_t> buffer, usize* read_bytes)
 		{
 			File* f = (File*)file;
-			return f->buffered ? read_buffered_file(f->handle, buffer, size, read_bytes) :
-				read_unbuffered_file(f->handle, buffer, size, read_bytes);
+			return f->buffered ? read_buffered_file(f->handle, buffer.data(), buffer.size(), read_bytes) :
+				read_unbuffered_file(f->handle, buffer.data(), buffer.size(), read_bytes);
 		}
-		RV write_file(opaque_t file, const void* buffer, usize size, usize* write_bytes)
+		RV write_file(opaque_t file, Span<const byte_t> buffer, usize* write_bytes)
 		{
 			File* f = (File*)file;
-			return f->buffered ? write_buffered_file(f->handle, buffer, size, write_bytes) :
-				write_unbuffered_file(f->handle, buffer, size, write_bytes);
+			return f->buffered ? write_buffered_file(f->handle, buffer.data(), buffer.size(), write_bytes) :
+				write_unbuffered_file(f->handle, buffer.data(), buffer.size(), write_bytes);
 		}
 		u64 get_file_size(opaque_t file)
 		{

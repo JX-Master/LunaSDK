@@ -150,7 +150,7 @@ namespace Luna
 						lulet2(asset, Asset::new_asset(file_path, get_static_texture_asset_type()));
 						file_path.append_extension("tex");
 						lulet2(file, VFS::open_file(file_path, FileOpenFlag::write, FileCreationMode::create_always));
-						luexp2(file->write(m_file_data.data(), m_file_data.size()));
+						luexp2(file->write({(byte_t*)m_file_data.data(), m_file_data.size()}));
 						file.reset();
 						Asset::load_asset(asset);
 					}

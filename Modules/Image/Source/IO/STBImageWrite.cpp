@@ -18,7 +18,7 @@ namespace Luna
 		void stbi_write_func(void* context, void* data, int size)
 		{
 			ISeekableStream** stream = (ISeekableStream**)context;
-			auto _ = (*stream)->write(data, size);
+			auto _ = (*stream)->write({(byte_t*)data, (usize)size});
 		}
 	}
 }

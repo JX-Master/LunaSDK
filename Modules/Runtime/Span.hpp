@@ -9,6 +9,7 @@
 */
 #pragma once
 #include "Iterator.hpp"
+#include "Assert.hpp"
 
 namespace Luna
 {
@@ -42,7 +43,7 @@ namespace Luna
 
 		constexpr reference frond() const { return *m_buffer; }
 		constexpr reference back() const { return *(m_buffer + _Size); }
-		constexpr reference operator[](usize index) const { return m_buffer[index]; }
+		constexpr reference operator[](usize index) const { lucheck(index < _Size); return m_buffer[index]; }
 		constexpr pointer data() const { return m_buffer; }
 
 		constexpr usize size() const { return _Size; }
@@ -97,7 +98,7 @@ namespace Luna
 
 		constexpr reference frond() const { return *m_buffer; }
 		constexpr reference back() const { return *(m_buffer + m_size); }
-		constexpr reference operator[](usize index) const { return m_buffer[index]; }
+		constexpr reference operator[](usize index) const { lucheck(index < m_size); return m_buffer[index]; }
 		constexpr pointer data() const { return m_buffer; }
 
 		constexpr usize size() const { return m_size; }

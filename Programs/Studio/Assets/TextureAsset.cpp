@@ -53,11 +53,11 @@ namespace Luna
 			lulet(psf, open_file("MipmapGenerationCS.cso", FileOpenFlag::read, FileCreationMode::open_existing));
 			auto file_size = psf->get_size();
 			auto cs_blob = Blob((usize)file_size);
-			luexp(psf->read(cs_blob.data(), cs_blob.size()));
+			luexp(psf->read(cs_blob.span()));
 			psf = nullptr;
 			ComputePipelineStateDesc ps_desc;
 			ps_desc.shader_input_layout = m_mipmapping_slayout;
-			ps_desc.cs = { cs_blob.data(), cs_blob.size() };
+			ps_desc.cs = cs_blob.cspan();
 			luset(m_mipmapping_pso, RHI::get_main_device()->new_compute_pipeline_state(ps_desc));
 		}
 		lucatchret;

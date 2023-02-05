@@ -122,7 +122,7 @@ namespace Luna
 			}
 			String data = json_write(var);
 			lulet(f, open_file("RecentProjects.json", FileOpenFlag::write | FileOpenFlag::user_buffering, FileCreationMode::create_always));
-			luexp(f->write(data.data(), data.size()));
+			luexp(f->write({(byte_t*)data.data(), data.size()}));
 		}
 		lucatch
 		{

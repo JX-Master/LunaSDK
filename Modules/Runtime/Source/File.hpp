@@ -31,13 +31,13 @@ namespace Luna
 				OS::close_file(m_file);
 			}
 		}
-		RV read(void* buffer, usize size, usize* read_bytes)
+		RV read(Span<byte_t> buffer, usize* read_bytes)
 		{
-			return OS::read_file(m_file, buffer, size, read_bytes);
+			return OS::read_file(m_file, buffer, read_bytes);
 		}
-		RV write(const void* buffer, usize size, usize* write_bytes)
+		RV write(Span<const byte_t> buffer, usize* write_bytes)
 		{
-			return OS::write_file(m_file, buffer, size, write_bytes);
+			return OS::write_file(m_file, buffer, write_bytes);
 		}
 		u64 get_size()
 		{

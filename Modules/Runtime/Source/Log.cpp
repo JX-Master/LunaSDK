@@ -64,7 +64,7 @@ namespace Luna
 			{
 				lulet(f, open_file(g_filelog->filename.c_str(), FileOpenFlag::write, FileCreationMode::open_always));
 				luexp(f->seek(0, SeekMode::end));
-				luexp(f->write(g_filelog->log_buffer.data(), g_filelog->log_buffer.size()));
+				luexp(f->write({(byte_t*)g_filelog->log_buffer.data(), g_filelog->log_buffer.size()}));
 				g_filelog->log_buffer.clear();
 			}
 			lucatch
