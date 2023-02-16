@@ -112,27 +112,35 @@ namespace Luna
 		g_errcat_registry.destruct();
 	}
 
-	static errcat_t interal_get_error_category_by_name(const c8* errcat_name, ErrCategroyRegistry** out_errtype_registry)
+	static errcat_t interal_get_error_category_by_name(const c8* errcat_name_begin, const c8* errcat_name_end, ErrCategroyRegistry** out_errtype_registry)
 	{
 		lucheck(errcat_name && *errcat_name != '\0');
-		usize errcat_name_sz = strlen(errcat_name);
-		usize h = memhash<usize>(errcat_name, errcat_name_sz * sizeof(c8));
+		usize errcat_name_sz = errcat_name_end - errcat_name_begin;
+		usize h = memhash<usize>(errcat_name_begin, errcat_name_sz * sizeof(c8));
 		auto& r = g_errcat_registry.get();
 		auto iter = r.find(h);
+		ErrCategroyRegistry* errtype_registry;
 		if (iter == r.end())
 		{
-			auto it2 = r.insert(make_pair(h, ErrCategroyRegistry(errcat_name, errcat_name_sz)));
-			if (out_errtype_registry)
+			auto it2 = r.insert(make_pair(h, ErrCategroyRegistry(errcat_name_begin, errcat_name_sz)));
+			errtype_registry = &(it2.first->second);
+			// Set parent error category if needed.
+			const c8* pattern = "::";
+			auto iter = find_end(errcat_name_begin, errcat_name_end, pattern, pattern + 2);
+			if(iter != errcat_name_end)
 			{
-				*out_errtype_registry = &(it2.first->second);
+				ErrCategroyRegistry* parent_registry;
+				errtype_registry->belonging_error_category = interal_get_error_category_by_name(errcat_name_begin, iter, &parent_registry);
+				parent_registry->subcategories.push_back(h);
 			}
 		}
 		else
 		{
-			if (out_errtype_registry)
-			{
-				*out_errtype_registry = &(iter->second);
-			}
+			errtype_registry = &(iter->second);
+		}
+		if (out_errtype_registry)
+		{
+			*out_errtype_registry = errtype_registry;
 		}
 		return h;
 	}
@@ -140,7 +148,8 @@ namespace Luna
 	LUNA_RUNTIME_API ErrCode get_error_code_by_name(const c8* errcat_name, const c8* errcode_name)
 	{
 		lucheck(errcode_name && errcat_name && *errcode_name != '\0' && *errcat_name != '\0');
-		usize h = strhash<u64>(errcat_name);
+		usize errcat_name_sz = strlen(errcat_name);
+		usize h = memhash<u64>(errcat_name, errcat_name_sz * sizeof(c8));
 		h = strhash<u64>(errcode_name, h);
 		auto& r = g_errcode_registry.get();
 		LockGuard g(g_error_mtx);
@@ -149,7 +158,7 @@ namespace Luna
 		{
 			auto it2 = r.insert(make_pair(h, ErrCodeRegistry(errcode_name)));
 			ErrCategroyRegistry* errcat;
-			it2.first->second.belonging_error_category = interal_get_error_category_by_name(errcat_name, &errcat);
+			it2.first->second.belonging_error_category = interal_get_error_category_by_name(errcat_name, errcat_name + errcat_name_sz, &errcat);
 			errcat->codes.push_back(ErrCode(h));
 		}
 		return ErrCode(h);
@@ -158,25 +167,9 @@ namespace Luna
 	LUNA_RUNTIME_API errcat_t get_error_category_by_name(const c8* errcat_name)
 	{
 		LockGuard g(g_error_mtx);
-		errcat_t r = interal_get_error_category_by_name(errcat_name, nullptr);
+		usize errcat_name_sz = strlen(errcat_name);
+		errcat_t r = interal_get_error_category_by_name(errcat_name, errcat_name + errcat_name_sz, nullptr);
 		return r;
-	}
-
-	LUNA_RUNTIME_API void set_error_subcategory(errcat_t parent_category, errcat_t child_category)
-	{
-		LockGuard g(g_error_mtx);
-		auto& r = g_errcat_registry.get();
-		auto iter1 = r.find(parent_category);
-		auto iter2 = r.find(child_category);
-		if (iter1 != r.end() && iter2 != r.end())
-		{
-			// prevent being set multiple times.
-			if (iter2->second.belonging_error_category == 0)
-			{
-				iter2->second.belonging_error_category = parent_category;
-				iter1->second.subcategories.push_back(child_category);
-			}
-		}
 	}
 
 	LUNA_RUNTIME_API const c8* get_error_code_name(ErrCode err_code)

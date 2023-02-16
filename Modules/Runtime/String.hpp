@@ -174,6 +174,15 @@ namespace Luna
 		usize copy(value_type* dest, usize count, usize pos = 0) const;
 		allocator_type get_allocator() const;
 
+		usize find(const BasicString& str, usize pos = 0) const;
+		usize find(const value_type* s, usize pos, usize count) const;
+		usize find(const value_type* s, usize pos = 0) const;
+		usize find(value_type ch, usize pos = 0) const;
+		usize rfind(const BasicString& str, usize pos = npos) const;
+		usize rfind(const value_type* s, usize pos, usize count) const;
+		usize rfind(const value_type* s, usize pos = 0) const;
+		usize rfind(value_type ch, usize pos = npos) const;
+
 	private:
 		// -------------------- Begin of ABI compatible part --------------------
 		OptionalPair<allocator_type, _Char*> m_allocator_and_buffer;// The memory buffer.
@@ -1218,6 +1227,70 @@ namespace Luna
 	inline typename BasicString<_Char, _Alloc>::allocator_type BasicString<_Char, _Alloc>::get_allocator() const
 	{
 		return m_allocator_and_buffer.first();
+	}
+	template <typename _Char, typename _Alloc>
+	inline usize BasicString<_Char, _Alloc>::find(const BasicString& str, usize pos) const
+	{
+		if(pos >= size()) return npos;
+		auto iter = search(cbegin() + pos, cend(), str.cbegin(), str.cend());
+		return iter == cend() ? npos : (usize)(iter - cbegin());
+	}
+	template <typename _Char, typename _Alloc>
+	inline usize BasicString<_Char, _Alloc>::find(const value_type* s, usize pos, usize count) const
+	{
+		if(pos >= size()) return npos;
+		auto iter = search(cbegin() + pos, cend(), s, s + count);
+		return iter == cend() ? npos : (usize)(iter - cbegin());
+	}
+	template <typename _Char, typename _Alloc>
+	inline usize BasicString<_Char, _Alloc>::find(const value_type* s, usize pos) const
+	{
+		if(pos >= size()) return npos;
+		auto count = strlen(s);
+		auto iter = search(cbegin() + pos, cend(), s, s + count);
+		return iter == cend() ? npos : (usize)(iter - cbegin());
+	}
+	template <typename _Char, typename _Alloc>
+	inline usize BasicString<_Char, _Alloc>::find(value_type ch, usize pos) const
+	{
+		if(pos >= size()) return npos;
+		auto iter = Luna::find(cbegin(), cend(), ch);
+		return iter == cend() ? npos : (usize)(iter - cbegin());
+	}
+	template <typename _Char, typename _Alloc>
+	inline usize BasicString<_Char, _Alloc>::rfind(const BasicString& str, usize pos) const
+	{
+		if(empty()) return npos;
+		auto str_end = (pos >= size() - 1) ? cend() : cbegin() + pos + 1;
+		auto iter = find_end(cbegin(), str_end, str.cbegin(), str.cend());
+		return iter == str_end ? npos : (usize)(iter - cbegin());
+	}
+	template <typename _Char, typename _Alloc>
+	inline usize BasicString<_Char, _Alloc>::rfind(const value_type* s, usize pos, usize count) const
+	{
+		if(empty()) return npos;
+		auto str_end = (pos >= size() - 1) ? cend() : cbegin() + pos + 1;
+		auto iter = find_end(cbegin(), str_end, s, s + count);
+		return iter == str_end ? npos : (usize)(iter - cbegin());
+	}
+	template <typename _Char, typename _Alloc>
+	inline usize BasicString<_Char, _Alloc>::rfind(const value_type* s, usize pos) const
+	{
+		if(empty()) return npos;
+		auto count = strlen(s);
+		auto str_end = (pos >= size() - 1) ? cend() : cbegin() + pos + 1;
+		auto iter = find_end(cbegin(), str_end, s, s + count);
+		return iter == str_end ? npos : (usize)(iter - cbegin());
+	}
+	template <typename _Char, typename _Alloc>
+	inline usize BasicString<_Char, _Alloc>::rfind(value_type ch, usize pos) const
+	{
+		if(empty()) return npos;
+		for(usize i = size() - 1; i > 0; --i)
+		{
+			if(at(i) == ch) return i;
+		}
+		return at(0) == ch : 0 : npos;
 	}
 	template <typename _Char, typename _Alloc>
 	inline typename BasicString<_Char, _Alloc>::value_type* BasicString<_Char, _Alloc>::allocate(usize n)

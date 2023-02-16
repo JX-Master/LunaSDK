@@ -41,25 +41,63 @@ namespace Luna
 		return register_struct_type(desc);
 	}
 
+	//! Allocates one boxed object.
+	//! @param[in] type The type of the object to allocate.
+	//! @return Returns one pointer to the allocated object. 
+	//! The object is not initialized, the user should call constructors of the type manually.
+	//! The object has 1 strong reference and 0 weak reference.
 	LUNA_RUNTIME_API object_t object_alloc(typeinfo_t type);
 
+	//! Increases the strong refernece counter value by one.
+	//! @param[in] object_ptr The object pointer returned by `object_alloc`.
+	//! @return Returns the strong reference counter value of the object after the operation.
 	LUNA_RUNTIME_API ref_count_t object_retain(object_t object_ptr);
 
+	//! Decreases the strong refernece counter value by one, and destroys the object if the reference counter drops to 0.
+	//! @param[in] object_ptr The object pointer returned by `object_alloc`.
+	//! @return Returns the strong reference counter value of the object after the operation.
 	LUNA_RUNTIME_API ref_count_t object_release(object_t object_ptr);
 
+	//! Fetches the strong refernece counter value of the boxed object.
+	//! @param[in] object_ptr The object pointer returned by `object_alloc`.
+	//! @return Returns the strong reference counter value of the object.
 	LUNA_RUNTIME_API ref_count_t object_ref_count(object_t object_ptr);
 
+	//! Increases the weak refernece counter value by one.
+	//! @param[in] object_ptr The object pointer returned by `object_alloc`.
+	//! @return Returns the weak reference counter value of the object after the operation.
 	LUNA_RUNTIME_API ref_count_t object_retain_weak(object_t object_ptr);
 
+	//! Decreases the weak refernece counter value by one.
+	//! @param[in] object_ptr The object pointer returned by `object_alloc`.
+	//! @return Returns the weak reference counter value of the object after the operation.
 	LUNA_RUNTIME_API ref_count_t object_release_weak(object_t object_ptr);
 
+	//! Fetches the weak refernece counter value of the boxed object.
+	//! @param[in] object_ptr The object pointer returned by `object_alloc`.
+	//! @return Returns the weak reference counter value of the object.
 	LUNA_RUNTIME_API ref_count_t object_weak_ref_count(object_t object_ptr);
 
+	//! Checks if the boxed object is expired, that is, destructed but its memeory is not freed.
+	//! One object will be expired if its strong reference counter value drops 0, but its weak reference counter value is not 0.
+	//! @param[in] object_ptr The object pointer returned by `object_alloc`.
+	//! @return Returns `true` if the object is expired, returns `false` otherwise.
 	LUNA_RUNTIME_API bool object_expired(object_t object_ptr);
 
+	//! Increases the strong refernece counter value by one if the boxed object is not expired.
+	//! This call is atomic and is used for casting one weak reference to one strong reference.
+	//! @param[in] object_ptr The object pointer returned by `object_alloc`.
+	//! @return Returns `true` if the object is valid and the strong reference counter value is successfully increased, 
+	//! returns `false` otherwise.
 	LUNA_RUNTIME_API bool object_retain_if_not_expired(object_t object_ptr);
 
+	//! Gets the type object of the boxed object.
+	//! @param[in] object_ptr The object pointer returned by `object_alloc`.
+	//! @return Returns the type object of the boxed object.
 	LUNA_RUNTIME_API typeinfo_t get_object_type(object_t object_ptr);
 
+	//! Checks whether the boxed object is the specified type or derived types of the specified type.
+	//! @param[in] object_ptr The object pointer returned by `object_alloc`.
+	//! @return Returns `true` if the boxed object is the specified type or derived types of the specified type, returns `false` otherwise.
 	LUNA_RUNTIME_API bool object_is_type(object_t object_ptr, typeinfo_t type);
 }

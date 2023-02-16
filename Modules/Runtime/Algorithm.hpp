@@ -11,6 +11,7 @@
 #pragma once
 #include "Base.hpp"
 #include "Iterator.hpp"
+#include "Memory.hpp"
 
 /*
 	Functions in Algorithm.hpp:
@@ -86,6 +87,142 @@ namespace Luna
 			}
 		}
 		return true;
+	}
+
+	namespace Impl
+	{
+		template <typename _RandomIt>
+		inline void kmp_compute_lps(_RandomIt pattern, usize pattern_len, usize* lps)
+		{
+			lps[0] = 0;
+			usize len = 0;
+			usize i = 1;
+			while(i < pattern_len)
+			{
+				if(pattern[i] == pattern[len])
+				{
+					++len;
+					lps[i] = len;
+					++i;
+				}
+				else
+				{
+					if(len != 0)
+					{
+						len = lps[len - 1];
+					}
+					else
+					{
+						lps[i] = 0;
+						++i;
+					}
+				}
+			}	
+		}
+		template <typename _RandomIt>
+		inline void kmp_compute_lps_reverse(_RandomIt pattern, usize pattern_len, usize* lps)
+		{
+			lps[pattern_len - 1] = 0;
+			usize len = 0;
+			usize i = 1;
+			while(i < pattern_len)
+			{
+				if(pattern[pattern_len - 1 - i] == pattern[pattern_len - 1 - len])
+				{
+					++len;
+					lps[pattern_len - 1 - i] = len;
+					++i;
+				}
+				else
+				{
+					if(len != 0)
+					{
+						len = lps[pattern_len - len];
+					}
+					else
+					{
+						lps[pattern_len - 1 - i] = 0;
+						++i;
+					}
+				}
+			}	
+		}
+		template <typename _RandomIt>
+		inline _RandomIt kmp_search(_RandomIt str, usize str_size, _RandomIt pattern, usize pattern_size, 
+			const usize* lps)
+		{
+			if(pattern_size > str_size) return str + str_size;
+			usize pattern_i = 0;
+			for(usize i = 0; i < str_size; ++i)
+			{
+				while(pattern_i && str[i] != pattern[pattern_i]) 
+				{
+					pattern_i = lps[pattern_i - 1];
+				}
+				if(str[i] == pattern[pattern_i])
+				{
+					if(pattern_i == pattern_size - 1) return str + i - pattern_i;
+					++pattern_i;
+				}
+			}
+			return str + str_size;
+		}
+		template <typename _RandomIt>
+		inline _RandomIt kmp_search_reverse(_RandomIt str, usize str_size, _RandomIt pattern, usize pattern_size, 
+			const usize* lps)
+		{
+			if(pattern_size > str_size) return str + str_size;
+			usize pattern_i = 0;
+			for(usize i = 0; i < str_size; ++i)
+			{
+				while(pattern_i && str[str_size - 1 - i] != pattern[pattern_size - 1 - pattern_i]) 
+				{
+					pattern_i = lps[pattern_size - pattern_i];
+				}
+				if(str[str_size - 1 - i] == pattern[pattern_size - 1 - pattern_i])
+				{
+					if(pattern_i == pattern_size - 1) return str + str_size - (i - pattern_i) - pattern_size;
+					++pattern_i;
+				}
+			}
+			return str + str_size;
+		}
+
+		constexpr usize KMP_STACK_SIZE_THRESHOLD = 256;
+	}
+
+	template <typename _ForwardIt>
+	auto search(_ForwardIt first, _ForwardIt last,
+		_ForwardIt pattern_first, _ForwardIt pattern_last) -> enable_if_t<is_pointer_v<_ForwardIt>, _ForwardIt>
+	{
+		usize str_size = (usize)distance(first, last);
+		usize pattern_size = (usize)distance(pattern_first, pattern_last);
+		if(pattern_size == 0) return first;
+		usize* lps;
+		usize lps_size_bytes = sizeof(usize) * pattern_size;
+		if(lps_size_bytes > Impl::KMP_STACK_SIZE_THRESHOLD) lps = (usize*)memalloc(lps_size_bytes);
+		else lps = (usize*)alloca(lps_size_bytes);
+		Impl::kmp_compute_lps(pattern_first, pattern_size, lps);
+		auto it = Impl::kmp_search(first, str_size, pattern_first, pattern_size, lps);
+		if(lps_size_bytes > Impl::KMP_STACK_SIZE_THRESHOLD) memfree(lps);
+		return it;
+	}
+
+	template <typename _ForwardIt>
+	auto find_end(_ForwardIt first, _ForwardIt last,
+		_ForwardIt pattern_first, _ForwardIt pattern_last) -> enable_if_t<is_pointer_v<_ForwardIt>, _ForwardIt>
+	{
+		usize str_size = (usize)distance(first, last);
+		usize pattern_size = (usize)distance(pattern_first, pattern_last);
+		if(pattern_size == 0) return last;
+		usize* lps;
+		usize lps_size_bytes = sizeof(usize) * pattern_size;
+		if(lps_size_bytes > Impl::KMP_STACK_SIZE_THRESHOLD) lps = (usize*)memalloc(lps_size_bytes);
+		else lps = (usize*)alloca(lps_size_bytes);
+		Impl::kmp_compute_lps_reverse(pattern_first, pattern_size, lps);
+		auto it = Impl::kmp_search_reverse(first, str_size, pattern_first, pattern_size, lps);
+		if(lps_size_bytes > Impl::KMP_STACK_SIZE_THRESHOLD) memfree(lps);
+		return it;
 	}
 
 	template<typename _InputIt, typename _Ty>

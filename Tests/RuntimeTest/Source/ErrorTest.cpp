@@ -40,17 +40,16 @@ namespace Luna
 		ErrCode err2 = get_error_code_by_name("TestError", "err2");
 		ErrCode err3 = get_error_code_by_name("TestError", "err3");
 		ErrCode err4 = get_error_code_by_name("TestError", "err4");
-		ErrCode err5 = get_error_code_by_name("SubError", "err5");
-		ErrCode err6 = get_error_code_by_name("SubError", "err6");
-		ErrCode err7 = get_error_code_by_name("SubError", "err7");
-		ErrCode err8 = get_error_code_by_name("SubError", "err8");
-		ErrCode err9 = get_error_code_by_name("SubError", "err9");
-		set_error_subcategory(get_error_category_by_name("TestError"), get_error_category_by_name("SubError"));
+		ErrCode err5 = get_error_code_by_name("TestError::SubError", "err5");
+		ErrCode err6 = get_error_code_by_name("TestError::SubError", "err6");
+		ErrCode err7 = get_error_code_by_name("TestError::SubError", "err7");
+		ErrCode err8 = get_error_code_by_name("TestError::SubError", "err8");
+		ErrCode err9 = get_error_code_by_name("TestError::SubError", "err9");
 
 		errcat_t test_error = get_error_category_by_name("TestError");
 		auto errs = get_all_error_codes_of_category(test_error);
 		auto subcats = get_all_error_subcategories_of_category(test_error);
-		errcat_t sub_error = get_error_category_by_name("SubError");
+		errcat_t sub_error = get_error_category_by_name("TestError::SubError");
 		auto suberrs = get_all_error_codes_of_category(sub_error);
 
 		lutest(subcats.size() == 1);

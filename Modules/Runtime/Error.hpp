@@ -62,6 +62,7 @@ namespace Luna
 
 	//! Gets the error code represented by the error name.
 	//! @param[in] errcat_name The name of the category that holds the error name.
+	//! Use "::" to separate category names if the category is a sub-category.
 	//! @param[in] errcode_name The name of the error code.
 	//! @return Returns the error code of the corresponding error name. The return value will never be 
 	//! 0, if the error code name is required for the first time, the system creates one new registry 
@@ -70,15 +71,11 @@ namespace Luna
 
 	//! Gets the error category represented by the error category name.
 	//! @param[in] errcat_name The full name of the error category.
+	//! Use "::" to separate category names if the category is a sub-category.
 	//! @return Returns the error category of the corresponding error name. The return value will never be 
 	//! 0, if the error category name is required for the first time, the system creates one new registry 
 	//! for the error category, and returns one valid error category number that represents to the error category.
 	LUNA_RUNTIME_API errcat_t get_error_category_by_name(const c8* errcat_name);
-
-	//! Sets one error category to be one subcategory of the specified category.
-	//! @param[in] parent_category The parent error category.
-	//! @param[in] child_category The child category to set as one subcategory.
-	LUNA_RUNTIME_API void set_error_subcategory(errcat_t parent_category, errcat_t child_category);
 
 	//! Fetches the name of the error code.
 	//! @param[in] err_code The error code value.
