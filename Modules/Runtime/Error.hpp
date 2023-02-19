@@ -115,7 +115,7 @@ namespace Luna
 	{
 		ErrCode code;
 		String message;
-		Variant object;
+		Variant info;
 		Error()
 		{
 			reset();
@@ -148,7 +148,7 @@ namespace Luna
 		{
 			code = ErrCode(0);
 			message = "";
-			object = Variant();
+			info = Variant();
 		}
 		const c8* explain() const
 		{

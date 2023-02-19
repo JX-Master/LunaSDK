@@ -227,9 +227,9 @@ namespace Luna
 	//! this call returns the error code stored in the error object of the current thread. If the error code of this object is not `BasicError::error_object`,
 	//! this call returns the error code as is.
 	template <typename _Ty>
-	inline ErrCode get_errcode(const R<_Ty>& obj)
+	inline ErrCode unwrap_errcode(const R<_Ty>& obj)
 	{
-		return get_errcode(obj.errcode());
+		return unwrap_errcode(obj.errcode());
 	}
 
 	//! The successful return value for functions that returns RV.

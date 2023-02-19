@@ -83,6 +83,28 @@ namespace Luna
 				luset(m_back_buffer, get_main_device()->new_resource(ResourceDesc::tex2d(ResourceHeapType::local, Format::rgba8_unorm,
 					ResourceUsageFlag::render_target | ResourceUsageFlag::shader_resource, sz.x, sz.y, 1, 1), nullptr));
 				luset(m_command_buffer, m_queue->new_command_buffer());
+
+				u32 adapter_index = 0;
+				auto res = RHI::get_adapter_desc(adapter_index);
+				while (succeeded(res))
+				{
+					log_info("RHITest", "Adapter %u", adapter_index);
+					auto& desc = res.get();
+					log_info("RHITest", "Name: %s", desc.name);
+					log_info("RHITest", "Shared Memory: %.4f MB", (f64)desc.shared_memory / (f64)1_mb);
+					log_info("RHITest", "Dedicated Memory: %.4f MB", (f64)desc.local_memory / (f64)1_mb);
+					if (test_flags(desc.flags, RHI::GraphicAdapterFlag::software))
+					{
+						log_info("RHITest", "Software simulated.");
+					}
+					if (test_flags(desc.flags, RHI::GraphicAdapterFlag::uma))
+					{
+						log_info("RHITest", "Universal memory architecture.");
+					}
+					log_info("RHITest", "====================");
+					++adapter_index;
+					res = RHI::get_adapter_desc(adapter_index);
+				}
 			}
 			lucatchret;
 			return ok;
