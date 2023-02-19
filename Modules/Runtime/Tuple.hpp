@@ -308,7 +308,7 @@ namespace Luna
 	template <typename... _Args>
 	inline Tuple<_Args&&...> forward_as_tuple(_Args&&... args)
 	{
-		return Tuple<_Types&&...>(forward<_Args>(args)...);
+		return Tuple<_Args&&...>(forward<_Args>(args)...);
 	}
 
 	LUNA_RUNTIME_API typeinfo_t tuple_type();

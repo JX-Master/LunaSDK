@@ -236,7 +236,7 @@ namespace Luna
 	static R<Variant> serialize_path(typeinfo_t type, const void* inst)
 	{
 		const Path* p = (const Path*)inst;
-		return Name(p->encode());
+		return Variant(Name(p->encode()));
 	}
 	static RV deserialize_path(typeinfo_t type, void* inst, const Variant& data)
 	{

@@ -325,7 +325,7 @@ namespace Luna
 		template <typename _Return>
 		struct InvokeRHelper<_Return, true>
 		{
-			template <typename _Return, typename _Func, typename... _Args>
+			template <typename _Func, typename... _Args>
 			static void call(_Func&& f, _Args&&... args)
 			{
 				invoke(forward<_Func>(f), forward<_Args>(args)...);
@@ -335,7 +335,7 @@ namespace Luna
 		template <typename _Return>
 		struct InvokeRHelper<_Return, false>
 		{
-			template <typename _Return, typename _Func, typename... _Args>
+			template <typename _Func, typename... _Args>
 			static _Return call(_Func&& f, _Args&&... args)
 			{
 				return invoke(forward<_Func>(f), forward<_Args>(args)...);
@@ -346,7 +346,7 @@ namespace Luna
 	template <typename _Return, typename _Func, typename... _Args>
 	inline _Return invoke_r(_Func&& f, _Args&&... args)
 	{
-		return Impl::InvokeRHelper<_Return>::template call<_Func, _Args>(forward<_Func>(f), forward<_Args>(args)...);
+		return Impl::InvokeRHelper<_Return>::template call<_Func, _Args...>(forward<_Func>(f), forward<_Args>(args)...);
 	}
 
 	namespace Impl

@@ -73,7 +73,7 @@ namespace Luna
             case ENETUNREACH: return NetworkError::network_unreachable();
             case EPROTOTYPE: return NetworkError::protocol_not_supported();
             case ETIMEDOUT: return BasicError::timeout();
-            default: return BasicError::bad_system_call();
+            default: return BasicError::bad_platform_call();
             }
         }
 

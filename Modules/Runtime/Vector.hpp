@@ -13,6 +13,7 @@
 #include "Assert.hpp"
 #include "Algorithm.hpp"
 #include "TypeInfo.hpp"
+#include "MemoryUtils.hpp"
 
 namespace Luna
 {

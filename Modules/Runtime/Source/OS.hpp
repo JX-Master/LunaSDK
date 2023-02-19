@@ -328,7 +328,7 @@ namespace Luna
 		//! * BasicError::bad_platform_call for all errors that cannot be identified.
 		R<opaque_t> open_file(const c8* path, FileOpenFlag flags, FileCreationMode creation);
 
-		//! Closes one file opened by `open_buffered_file`.
+		//! Closes one file opened by `open_file`.
 		//! @param[in] file The file handle opened by `open_file`.
 		void close_file(opaque_t file);
 

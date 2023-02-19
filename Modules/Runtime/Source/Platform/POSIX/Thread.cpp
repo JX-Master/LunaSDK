@@ -28,7 +28,7 @@ struct Thread
 
     thread_callback_func_t* m_func;
     void* m_params;
-    handle_t m_finish_signal;
+    opaque_t m_finish_signal;
 
     bool m_detached = false;
     
@@ -69,7 +69,7 @@ static void* posix_thread_main(void* cookie)
     return 0;
 }
 
-handle_t new_thread(thread_callback_func_t* callback, void* params, const c8* name, usize stack_size)
+opaque_t new_thread(thread_callback_func_t* callback, void* params, const c8* name, usize stack_size)
 {
     Thread* t = memnew<Thread>();
     t->m_func = callback;
@@ -105,7 +105,7 @@ handle_t new_thread(thread_callback_func_t* callback, void* params, const c8* na
 //! Sets the thread schedule priority.
 //! @param[in] thread The thread handle.
 //! @param[in] priority The priority to set.
-void set_thread_priority(handle_t thread, ThreadPriority priority)
+void set_thread_priority(opaque_t thread, ThreadPriority priority)
 {
     Thread* t = (Thread*)thread;
     sched_param param = t->m_sched_param;
@@ -130,21 +130,21 @@ void set_thread_priority(handle_t thread, ThreadPriority priority)
 }
 
 //! Waits for the thread to finish.
-void wait_thread(handle_t thread)
+void wait_thread(opaque_t thread)
 {
     Thread* t = (Thread*)thread;
     wait_signal(t->m_finish_signal);
 }
 
 //! Tries to wait for the thread to finish.
-bool try_wait_thread(handle_t thread)
+bool try_wait_thread(opaque_t thread)
 {
     Thread* t = (Thread*)thread;
     return try_wait_signal(t->m_finish_signal);
 }
 
 //! Closes the thread handle.
-void detach_thread(handle_t thread)
+void detach_thread(opaque_t thread)
 {
     Thread* t = (Thread*)thread;
     pthread_detach(t->m_handle);
@@ -152,7 +152,7 @@ void detach_thread(handle_t thread)
 }
 
 //! Gets the current thread handle.
-handle_t get_current_thread_handle()
+opaque_t get_current_thread_handle()
 {
     return tls_current_thread;
 }
@@ -183,7 +183,7 @@ void yield_current_thread()
 {
     ::sched_yield();
 }
-handle_t tls_alloc(tls_destructor* destructor)
+opaque_t tls_alloc(tls_destructor* destructor)
 {
     pthread_key_t key;
     int r = pthread_key_create(&key, destructor);
@@ -191,14 +191,14 @@ handle_t tls_alloc(tls_destructor* destructor)
     {
         lupanic_msg_always("pthread_key_create failed.");
     }
-    return (handle_t)(usize)key;
+    return (opaque_t)(usize)key;
 }
-void tls_free(handle_t handle)
+void tls_free(opaque_t handle)
 {
     pthread_key_t key = (pthread_key_t)(usize)handle;
     pthread_key_delete(key);
 }
-void tls_set(handle_t handle, void* ptr)
+void tls_set(opaque_t handle, void* ptr)
 {
     pthread_key_t key = (pthread_key_t)(usize)handle;
     int r = pthread_setspecific(key, ptr);
@@ -207,7 +207,7 @@ void tls_set(handle_t handle, void* ptr)
         lupanic_msg_always("pthread_setspecific failed.");
     }
 }
-void* tls_get(handle_t handle)
+void* tls_get(opaque_t handle)
 {
     pthread_key_t key = (pthread_key_t)(usize)handle;
     void* k = pthread_getspecific(key);

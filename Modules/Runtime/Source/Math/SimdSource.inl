@@ -203,7 +203,7 @@ namespace Luna
 #if defined(LUNA_SSE2_INTRINSICS)
 			return _mm_castps_si128(_mm_cmpeq_ps(a, b));
 #elif defined(LUNA_NEON_INTRINSICS)
-			return vreinterpret_s32_u32(vceqq_f32(a, b));
+			return vreinterpretq_s32_u32(vceqq_f32(a, b));
 #else 
 #error "Not implemented."
 #endif
@@ -213,7 +213,7 @@ namespace Luna
 #if defined(LUNA_SSE2_INTRINSICS)
 			return _mm_castps_si128(_mm_cmpneq_ps(a, b));
 #elif defined(LUNA_NEON_INTRINSICS)
-			return vreinterpret_s32_u32(vmvnq_u32(vceqq_f32(a, b)));
+			return vreinterpretq_s32_u32(vmvnq_u32(vceqq_f32(a, b)));
 #else 
 #error "Not implemented."
 #endif
@@ -223,7 +223,7 @@ namespace Luna
 #if defined(LUNA_SSE2_INTRINSICS)
 			return _mm_castps_si128(_mm_cmpgt_ps(a, b));
 #elif defined(LUNA_NEON_INTRINSICS)
-			return vreinterpret_s32_u32(vcgtq_f32(a, b));
+			return vreinterpretq_s32_u32(vcgtq_f32(a, b));
 #else 
 #error "Not implemented."
 #endif
@@ -233,7 +233,7 @@ namespace Luna
 #if defined(LUNA_SSE2_INTRINSICS)
 			return _mm_castps_si128(_mm_cmplt_ps(a, b));
 #elif defined(LUNA_NEON_INTRINSICS)
-			return vreinterpret_s32_u32(vcltq_f32(a, b));
+			return vreinterpretq_s32_u32(vcltq_f32(a, b));
 #else 
 #error "Not implemented."
 #endif
@@ -243,7 +243,7 @@ namespace Luna
 #if defined(LUNA_SSE2_INTRINSICS)
 			return _mm_castps_si128(_mm_cmpge_ps(a, b));
 #elif defined(LUNA_NEON_INTRINSICS)
-			return vreinterpret_s32_u32(vcgeq_f32(a, b));
+			return vreinterpretq_s32_u32(vcgeq_f32(a, b));
 #else 
 #error "Not implemented."
 #endif
@@ -253,7 +253,7 @@ namespace Luna
 #if defined(LUNA_SSE2_INTRINSICS)
 			return _mm_castps_si128(_mm_cmple_ps(a, b));
 #elif defined(LUNA_NEON_INTRINSICS)
-			return vreinterpret_s32_u32(vcleq_f32(a, b));
+			return vreinterpretq_s32_u32(vcleq_f32(a, b));
 #else 
 #error "Not implemented."
 #endif
@@ -270,7 +270,7 @@ namespace Luna
 			return _mm_movemask_ps(_mm_castsi128_ps(a));
 #elif defined(LUNA_NEON_INTRINSICS)
 			static const uint32x4_t mask = vld1q_u32(Impl::maskint_element_index);
-			uint32x4_t temp = vandq_u32(a, vreinterpret_u32_s32(mask));
+			uint32x4_t temp = vandq_u32(vreinterpretq_u32_s32(a), mask);
 			uint32x2_t l = vget_low_u32(temp);    // get low 2 uint32 
 			uint32x2_t h = vget_high_u32(temp);  // get high 2 uint32
 			l = vorr_u32(l, h);
@@ -336,7 +336,7 @@ namespace Luna
 			return _mm_fmadd_ps(a, b, c);
 #elif defined(LUNA_SSE2_INTRINSICS)
 			return _mm_add_ps(_mm_mul_ps(a, b), c);
-#elif defined(LUNA_ARM_NEON)
+#elif defined(LUNA_NEON_INTRINSICS)
 			return vmlaq_f32(c, a, b);
 #endif
 		}
@@ -346,7 +346,7 @@ namespace Luna
 			return _mm_fnmadd_ps(a, b, c);
 #elif defined(LUNA_SSE2_INTRINSICS)
 			return _mm_sub_ps(c, _mm_mul_ps(a, b));
-#elif defined(LUNA_ARM_NEON)
+#elif defined(LUNA_NEON_INTRINSICS)
 #ifdef LUNA_PLATFORM_ARM64
 			return vfmsq_f32(c, a, b);
 #else
@@ -360,7 +360,7 @@ namespace Luna
 			return _mm_fmadd_ps(a, _mm_set_ps1(b), c);
 #elif defined(LUNA_SSE2_INTRINSICS)
 			return _mm_add_ps(_mm_mul_ps(a, _mm_set_ps1(b)), c);
-#elif defined(LUNA_ARM_NEON)
+#elif defined(LUNA_NEON_INTRINSICS)
 			return vmlaq_n_f32(c, a, b);
 #endif
 		}
@@ -381,9 +381,9 @@ namespace Luna
 			float32x4_t R2 = vrsqrtsq_f32(P2, S2);
 			float32x4_t S3 = vmulq_f32(S2, R2);
 			// Check zero.
-			uint32x4_t equal_zero = vceqq_f32(a, vdupq_n_f32(0.0f);
+			uint32x4_t equal_zero = vceqq_f32(a, vdupq_n_f32(0.0f));
 			float32x4_t result = vmulq_f32(a, S3);
-			return vbslq_f32(equal_zero, result, a);
+			return vbslq_f32(equal_zero, a, result);
 #else 
 #error "Not implemented."
 #endif
@@ -634,7 +634,7 @@ namespace Luna
 			// axby, aybx
 			float32x2_t temp = vmul_f32(vget_low_f32(a), vrev64_f32(vget_low_f32(b)));
 			// axby, -aybx
-			temp = vmul_f32(temp, vld1_f32(cross2_parameter));
+			temp = vmul_f32(temp, vld1_f32(Impl::cross2_parameter));
 			// axby-aybx, axby-aybx
 			temp = vpadd_f32(temp, temp);
 			return vcombine_f32(temp, temp);
@@ -683,6 +683,14 @@ namespace Luna
 #error "Not implemented."
 #endif
 		}
+
+#if defined(LUNA_NEON_INTRINSICS)
+		namespace Impl
+		{
+			constexpr const u32 MASK_X[4]{ 0xFFFFFFFF, 0x00000000, 0x00000000, 0x00000000 };
+		}
+#endif
+
 		inline float4 LUNA_SIMD_CALL cross4_f4(float4 a, float4 b, float4 c)
 		{
 #if defined(LUNA_SSE2_INTRINSICS)
@@ -721,7 +729,7 @@ namespace Luna
 			res = muladd_f4(temp3, temp1, res);
 			return res;
 #elif defined(LUNA_NEON_INTRINSICS)
-			const uint32x2_t select = vget_low_u32(g_XMMaskX);
+			const uint32x2_t select = vld1_u32( Impl::MASK_X );
 
 			// Term1: bzwyz * cwzwy
 			const float32x2_t v2xy = vget_low_f32(b);

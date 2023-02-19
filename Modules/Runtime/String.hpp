@@ -1290,7 +1290,7 @@ namespace Luna
 		{
 			if(at(i) == ch) return i;
 		}
-		return at(0) == ch : 0 : npos;
+		return at(0) == ch ? 0 : npos;
 	}
 	template <typename _Char, typename _Alloc>
 	inline typename BasicString<_Char, _Alloc>::value_type* BasicString<_Char, _Alloc>::allocate(usize n)

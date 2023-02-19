@@ -105,9 +105,9 @@ namespace Luna
 	constexpr u64 VARIANT_DIFF_OP_DELETED = 0;
 	constexpr u64 VARIANT_DIFF_OP_ARRAYMOVE = 3;
 
-	Variant diff_object(const Variant& before, const Variant& after);
+	static Variant diff_object(const Variant& before, const Variant& after);
 
-	Variant diff_array(const Variant& before, const Variant& after);
+	static Variant diff_array(const Variant& before, const Variant& after);
 
 	LUNA_RUNTIME_API Variant diff_variant(const Variant& before, const Variant& after)
 	{
@@ -263,8 +263,8 @@ namespace Luna
 		return result;
 	}
 
-	void patch_object(Variant& before, const Variant& patch);
-	void patch_array(Variant& before, const Variant& patch);
+	static void patch_object(Variant& before, const Variant& patch);
+	static void patch_array(Variant& before, const Variant& patch);
 
 	LUNA_RUNTIME_API void patch_variant_diff(Variant& before, const Variant& diff)
 	{
@@ -305,8 +305,8 @@ namespace Luna
 		}
 	}
 
-	void reverse_object(Variant& after, const Variant& patch);
-	void reverse_array(Variant& after, const Variant& patch);
+	static void reverse_object(Variant& after, const Variant& patch);
+	static void reverse_array(Variant& after, const Variant& patch);
 
 	LUNA_RUNTIME_API void reverse_variant_diff(Variant& after, const Variant& diff)
 	{

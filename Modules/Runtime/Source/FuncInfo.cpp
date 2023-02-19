@@ -19,7 +19,7 @@
 namespace Luna
 {
 	Vector<UniquePtr<FuncInfo>> g_func_registry;
-	handle_t g_func_registry_lock;
+	opaque_t g_func_registry_lock;
 
 	UnorderedMultiMap<Name, FuncInfo*> g_func_name_map;
 	HashMap<Guid, FuncInfo*> g_func_guid_map;

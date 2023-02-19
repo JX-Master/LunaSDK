@@ -436,7 +436,7 @@ namespace Luna
 	_ForwardIt binary_search_iter(_ForwardIt first, _ForwardIt last, const _Ty& value, _Compare comp)
 	{
 		first = lower_bound(first, last, value, comp);
-		return (!(first == last) && !(comp(value, *first))) ? first : lsat;
+		return (!(first == last) && !(comp(value, *first))) ? first : last;
 	}
 
 	template<typename _ForwardIt, typename _Ty>

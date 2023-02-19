@@ -35,7 +35,13 @@ namespace Luna
 {
 	namespace OS
 	{
-		R<handle_t> open_file(const c8* path, FileOpenFlag flags, FileCreationMode creation)
+		struct File
+		{
+			opaque_t handle;
+			bool buffered;
+		};
+
+		R<opaque_t> open_unbuffered_file(const c8* path, FileOpenFlag flags, FileCreationMode creation)
 		{
 			lucheck(path);
 			int f = 0;
@@ -98,27 +104,27 @@ namespace Luna
 				case ENOENT:
 					return BasicError::not_found();
 				default:
-					return BasicError::bad_system_call();
+					return BasicError::bad_platform_call();
 				}
 			}
-			return (handle_t)(usize)fd;
+			return (opaque_t)(usize)fd;
 		}
-		void close_file(handle_t file)
+		void close_unbuffered_file(opaque_t file)
 		{
 			int fd = (int)(usize)file;
 			::close(fd);
 		}
-		RV read_file(handle_t file, void* buffer, usize size, usize* read_bytes)
+		RV read_unbuffered_file(opaque_t file, Span<byte_t> buffer, usize* read_bytes)
 		{
 			int fd = (int)(usize)file;
-			isize sz = ::read(fd, buffer, size);
+			isize sz = ::read(fd, buffer.data(), buffer.size());
 			if (sz == -1)
 			{
 				if (read_bytes)
 				{
 					*read_bytes = 0;
 				}
-				return BasicError::bad_system_call();
+				return BasicError::bad_platform_call();
 			}
 			if (read_bytes)
 			{
@@ -126,17 +132,17 @@ namespace Luna
 			}
 			return ok;
 		}
-		RV write_file(handle_t file, const void* buffer, usize size, usize* write_bytes)
+		RV write_unbuffered_file(opaque_t file, Span<const byte_t> buffer, usize* write_bytes)
 		{
 			int fd = (int)(usize)file;
-			isize sz = ::write(fd, buffer, size);
+			isize sz = ::write(fd, buffer.data(), buffer.size());
 			if (sz == -1)
 			{
 				if (write_bytes)
 				{
 					*write_bytes = 0;
 				}
-				return BasicError::bad_system_call();
+				return BasicError::bad_platform_call();
 			}
 			if (write_bytes)
 			{
@@ -144,7 +150,7 @@ namespace Luna
 			}
 			return ok;
 		}
-		u64 get_file_size(handle_t file)
+		u64 get_unbuffered_file_size(opaque_t file)
 		{
 			int fd = (int)(usize)file;
 			struct stat st;
@@ -152,24 +158,25 @@ namespace Luna
 			{
 				return st.st_size;
 			}
+			lupanic_msg_always("fstat failed.");
 			return 0;
 		}
-		RV set_file_size(handle_t file, u64 sz)
+		RV set_unbuffered_file_size(opaque_t file, u64 sz)
 		{
 			int fd = (int)(usize)file;
-			return ftruncate(fd, sz) ? BasicError::bad_system_call() : RV();
+			return ftruncate(fd, sz) ? BasicError::bad_platform_call() : RV();
 		}
-		R<u64> get_file_cursor(handle_t file)
+		R<u64> get_unbuffered_file_cursor(opaque_t file)
 		{
 			int fd = (int)(usize)file;
 			off_t r = lseek(fd, 0, SEEK_CUR);
 			if (r == (off_t)-1)
 			{
-				return R<u64>::failure(BasicError::bad_system_call());
+				return R<u64>::failure(BasicError::bad_platform_call());
 			}
 			return(u64)r;
 		}
-		RV set_file_cursor(handle_t file, i64 offset, SeekMode mode)
+		RV set_unbuffered_file_cursor(opaque_t file, i64 offset, SeekMode mode)
 		{
 			int fd = (int)(usize)file;
 			int origin;
@@ -188,16 +195,16 @@ namespace Luna
 			off_t r = lseek(fd, offset, origin);
 			if (r == (off_t)-1)
 			{
-				return BasicError::bad_system_call();
+				return BasicError::bad_platform_call();
 			}
 			return ok;
 		}
-		void flush_file(handle_t file)
+		void flush_unbuffered_file(opaque_t file)
 		{
 			int fd = (int)(usize)file;
 			fsync(fd);
 		}
-		R<handle_t> open_buffered_file(const c8* path, FileOpenFlag flags, FileCreationMode creation)
+		R<opaque_t> open_buffered_file(const c8* path, FileOpenFlag flags, FileCreationMode creation)
 		{
 			// use buffered version.
 			const char* mode;
@@ -332,25 +339,25 @@ namespace Luna
 					return BasicError::not_found();
 				default:
 					//get_error().set(e_bad_system_call, "fopen failed with err code %d", err);
-					return BasicError::bad_system_call();
+					return BasicError::bad_platform_call();
 				}
 			}
 			return f;
 		}
-		void close_buffered_file(handle_t file)
+		void close_buffered_file(opaque_t file)
 		{
 			FILE* f = (FILE*)file;
 			fclose(f);
 		}
-		RV read_buffered_file(handle_t file, void* buffer, usize size, usize* read_bytes)
+		RV read_buffered_file(opaque_t file, Span<byte_t> buffer, usize* read_bytes)
 		{
 			FILE* f = (FILE*)file;
-			usize sz = fread(buffer, 1, size, f);
+			usize sz = fread(buffer.data(), 1, buffer.size(), f);
 			if (read_bytes)
 			{
 				*read_bytes = sz;
 			}
-			if (sz != size)
+			if (sz != buffer.size())
 			{
 				if (feof(f))
 				{
@@ -358,26 +365,26 @@ namespace Luna
 					return ok;
 				}
 				clearerr(f);
-				return BasicError::bad_system_call();
+				return BasicError::bad_platform_call();
 			}
 			return ok;
 		}
-		RV write_buffered_file(handle_t file, void* buffer, usize size, usize* write_bytes)
+		RV write_buffered_file(opaque_t file, Span<const byte_t> buffer, usize* write_bytes)
 		{
 			FILE* f = (FILE*)file;
-			usize sz = fwrite(buffer, 1, size, f);
+			usize sz = fwrite(buffer.data(), 1, buffer.size(), f);
 			if (write_bytes)
 			{
 				*write_bytes = sz;
 			}
-			if (sz != size)
+			if (sz != buffer.size())
 			{
 				clearerr(f);
-				return BasicError::bad_system_call();
+				return BasicError::bad_platform_call();
 			}
 			return ok;
 		}
-		R<u64> get_buffered_file_size(handle_t file)
+		u64 get_buffered_file_size(opaque_t file)
 		{
 			FILE* f = (FILE*)file;
 			int fd = fileno(f);
@@ -386,26 +393,27 @@ namespace Luna
 			{
 				return st.st_size;
 			}
-			return R<u64>::failure(BasicError::bad_system_call());
+			lupanic_msg_always("fstat failed");
+			return 0;
 		}
-		RV set_buffered_file_size(handle_t file, u64 sz)
+		RV set_buffered_file_size(opaque_t file, u64 sz)
 		{
 			FILE* f = (FILE*)file;
 			int fd = fileno(f);
-			return ftruncate(fd, sz) ? BasicError::bad_system_call() : RV();
+			return ftruncate(fd, sz) ? BasicError::bad_platform_call() : RV();
 		}
-		R<u64> get_buffered_file_cursor(handle_t file)
+		R<u64> get_buffered_file_cursor(opaque_t file)
 		{
 			FILE* f = (FILE*)file;
 			long r = ftell(f);
 			if (r < 0)
 			{
 				clearerr(f);
-				return R<u64>::failure(BasicError::bad_system_call());
+				return R<u64>::failure(BasicError::bad_platform_call());
 			}
 			return (u64)r;
 		}
-		RV set_buffered_file_cursor(handle_t file, i64 offset, SeekMode mode)
+		RV set_buffered_file_cursor(opaque_t file, i64 offset, SeekMode mode)
 		{
 			FILE* f = (FILE*)file;
 			int origin;
@@ -424,28 +432,91 @@ namespace Luna
 			if (fseek(f, offset, origin))
 			{
 				clearerr(f);
-				return BasicError::bad_system_call();
+				return BasicError::bad_platform_call();
 			}
 			return ok;
 		}
-		RV flush_buffered_file(handle_t file)
+		void flush_buffered_file(opaque_t file)
 		{
 			FILE* f = (FILE*)file;
 			if (fflush(f))
 			{
-				clearerr(f);
-				return BasicError::bad_system_call();
+				lupanic_msg_always("fflush failed.");
 			}
-			return ok;
 		}
-
+		R<opaque_t> open_file(const c8* path, FileOpenFlag flags, FileCreationMode creation)
+		{
+			bool buffered = test_flags(flags, FileOpenFlag::user_buffering);
+			R<opaque_t> f = nullptr;
+			if (buffered)
+			{
+				f = open_buffered_file(path, flags, creation);
+			}
+			else
+			{
+				f = open_unbuffered_file(path, flags, creation);
+			}
+			if (failed(f))
+			{
+				return f;
+			}
+			File* ret = Luna::memnew<File>();
+			ret->buffered = buffered;
+			ret->handle = f.get();
+			return ret;
+		}
+		void close_file(opaque_t file)
+		{
+			File* f = (File*)file;
+			if (f->buffered) close_buffered_file(f->handle);
+			else close_unbuffered_file(f->handle);
+			Luna::memdelete(f);
+		}
+		RV read_file(opaque_t file, Span<byte_t> buffer, usize* read_bytes)
+		{
+			File* f = (File*)file;
+			return f->buffered ? read_buffered_file(f->handle, buffer, read_bytes) :
+				read_unbuffered_file(f->handle, buffer, read_bytes);
+		}
+		RV write_file(opaque_t file, Span<const byte_t> buffer, usize* write_bytes)
+		{
+			File* f = (File*)file;
+			return f->buffered ? write_buffered_file(f->handle, buffer, write_bytes) :
+				write_unbuffered_file(f->handle, buffer, write_bytes);
+		}
+		u64 get_file_size(opaque_t file)
+		{
+			File* f = (File*)file;
+			return f->buffered ? get_buffered_file_size(f->handle) : get_unbuffered_file_size(f->handle);
+		}
+		RV set_file_size(opaque_t file, u64 sz)
+		{
+			File* f = (File*)file;
+			return f->buffered ? set_buffered_file_size(f->handle, sz) : set_unbuffered_file_size(f->handle, sz);
+		}
+		R<u64> get_file_cursor(opaque_t file)
+		{
+			File* f = (File*)file;
+			return f->buffered ? get_buffered_file_cursor(f->handle) : get_unbuffered_file_cursor(f->handle);
+		}
+		RV set_file_cursor(opaque_t file, i64 offset, SeekMode mode)
+		{
+			File* f = (File*)file;
+			return f->buffered ? set_buffered_file_cursor(f->handle, offset, mode) : set_unbuffered_file_cursor(f->handle, offset, mode);
+		}
+		void flush_file(opaque_t file)
+		{
+			File* f = (File*)file;
+			if (f->buffered) flush_buffered_file(f->handle);
+			else flush_unbuffered_file(f->handle);
+		}
 		R<FileAttribute> file_attribute(const c8* path)
 		{
 			struct stat s;
 			int r = stat(path, &s);
 			if (r != 0)
 			{
-				return BasicError::bad_system_call();
+				return BasicError::bad_platform_call();
 			}
 			FileAttribute attribute;
 			attribute.size = s.st_size;
@@ -476,8 +547,8 @@ namespace Luna
 			lucheck(from_path && to_path);
 			constexpr u64 max_buffer_sz = 1_mb;
 			u8* buf = (u8*)memalloc(max_buffer_sz);
-			handle_t from_file = nullptr;
-			handle_t to_file = nullptr;
+			opaque_t from_file = nullptr;
+			opaque_t to_file = nullptr;
 			lutry
 			{
 				luset(from_file, OS::open_file(from_path, FileOpenFlag::read, FileCreationMode::open_existing));
@@ -494,12 +565,12 @@ namespace Luna
 				while (sz)
 				{
 					usize copy_size_onetime = min<usize>(sz, max_buffer_sz);
-					luexp(read_file(from_file, buf, copy_size_onetime, nullptr));
-					luexp(write_file(to_file, buf, copy_size_onetime, nullptr));
+					luexp(read_file(from_file, {buf, copy_size_onetime}, nullptr));
+					luexp(write_file(to_file, {buf, copy_size_onetime}, nullptr));
 					sz -= copy_size_onetime;
 				}
 			}
-				lucatch
+			lucatch
 			{
 				if (buf)
 				{
@@ -554,14 +625,14 @@ namespace Luna
         RV delete_file(const c8* path, FileDeleteFlag flags)
 		{
 			int res = ::remove(path);
-			return (res == 0) ? RV() : BasicError::bad_system_call();
+			return (res == 0) ? RV() : BasicError::bad_platform_call();
 		}
 		struct FileData
 		{
 			DIR* m_dir;
 			struct dirent* m_dirent;
         };
-		R<handle_t> open_dir(const c8* path)
+		R<opaque_t> open_dir(const c8* path)
 		{
 			DIR* dir = ::opendir(path);
 			if (dir == NULL)
@@ -581,7 +652,7 @@ namespace Luna
 				case ENOTDIR:
 					return BasicError::not_directory();
 				default:
-					return BasicError::bad_system_call();
+					return BasicError::bad_platform_call();
 				}
 			}
 			FileData* iter = memnew<FileData>();
@@ -589,18 +660,18 @@ namespace Luna
 			iter->m_dirent = ::readdir(dir);
 			return iter;
 		}
-		void close_dir(handle_t dir_iter)
+		void close_dir(opaque_t dir_iter)
 		{
 			FileData* data = (FileData*)dir_iter;
 			closedir(data->m_dir);
 			memdelete(data);
 		}
-		bool dir_iterator_valid(handle_t dir_iter)
+		bool dir_iterator_valid(opaque_t dir_iter)
 		{
 			FileData* data = (FileData*)dir_iter;
 			return data->m_dirent != nullptr;
 		}
-		const c8* dir_iterator_filename(handle_t dir_iter)
+		const c8* dir_iterator_filename(opaque_t dir_iter)
 		{
 			FileData* data = (FileData*)dir_iter;
 			if (data->m_dirent)
@@ -609,7 +680,7 @@ namespace Luna
 			}
 			return nullptr;
 		}
-		FileAttributeFlag dir_iterator_attribute(handle_t dir_iter)
+		FileAttributeFlag dir_iterator_attribute(opaque_t dir_iter)
 		{
 			FileData* data = (FileData*)dir_iter;
 			FileAttributeFlag flags = FileAttributeFlag::none;
@@ -630,7 +701,7 @@ namespace Luna
 			}
 			return flags;
 		}
-		bool dir_iterator_move_next(handle_t dir_iter)
+		bool dir_iterator_move_next(opaque_t dir_iter)
 		{
 			FileData* data = (FileData*)dir_iter;
 			if (data->m_dirent)
@@ -658,7 +729,7 @@ namespace Luna
 				case ENOTDIR:
 					return BasicError::not_directory();
 				default:
-					return BasicError::bad_system_call();
+					return BasicError::bad_platform_call();
 				}
 			}
 			return ok;
@@ -682,7 +753,7 @@ namespace Luna
 				case ENOTDIR:
 					return BasicError::not_directory();
 				default:
-					return BasicError::bad_system_call();
+					return BasicError::bad_platform_call();
 				}
 			}
 			return ok;
@@ -715,7 +786,7 @@ namespace Luna
 				case ENOTDIR:
 					return BasicError::not_directory();
 				default:
-					return BasicError::bad_system_call();
+					return BasicError::bad_platform_call();
 				}
 			}
 			return ok;

@@ -662,11 +662,11 @@ namespace Luna
 #endif
 
 
-	template <typename _Ty>
+	/*template <typename _Ty>
 	typename add_rvalue_reference<_Ty>::type declval()
 	{
 		static_assert(false, "declval not allowed in an evaluated context");
-	}
+	}*/
 
 	namespace impl
 	{
