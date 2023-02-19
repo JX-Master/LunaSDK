@@ -12,6 +12,7 @@
 #include <Runtime/Module.hpp>
 #include <Window/Window.hpp>
 #include <Runtime/Runtime.hpp>
+#include <Window/Application.hpp>
 
 namespace Luna
 {
@@ -21,7 +22,7 @@ void multi_window_test_run();
 void run()
 {
     using namespace Luna;
-    using namespace Luna::Windowing;
+    using namespace Luna::Window;
     
     StartupParams params;
     set_startup_params(params);
