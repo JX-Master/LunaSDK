@@ -33,17 +33,17 @@ namespace Luna
 			ret["rotation"] = move(data);
 			luset(data, serialize(entity->scale));
 			ret["scale"] = move(data);
-			data = Variant(Variant::Type::array);
+			data = Variant(VariantType::array);
 			for (auto& i : entity->children)
 			{
 				lulet(child, serialize_entity(i.get()));
 				data.push_back(move(child));
 			}
 			ret["children"] = move(data);
-			data = Variant(Variant::Type::array);
+			data = Variant(VariantType::array);
 			for (auto& i : entity->components)
 			{
-				Variant comp(Variant::Type::array);
+				Variant comp(VariantType::array);
 				lulet(type, serialize<Guid>(get_type_guid(i.first)));
 				lulet(value, serialize(i.first, i.second.get()));
 				comp.push_back(move(type));
@@ -97,17 +97,17 @@ namespace Luna
 				lutry
 				{
 					const Scene * scene = (const Scene*)inst;
-					Variant root_entities(Variant::Type::array);
+					Variant root_entities(VariantType::array);
 					for (auto& i : scene->root_entities)
 					{
 						lulet(data, serialize_entity(i.get()));
 						root_entities.push_back(move(data));
 					}
 					ret["root_entities"] = move(root_entities);
-					Variant scene_components(Variant::Type::array);
+					Variant scene_components(VariantType::array);
 					for (auto& i : scene->scene_components)
 					{
-						Variant comp(Variant::Type::array);
+						Variant comp(VariantType::array);
 						lulet(type, serialize<Guid>(get_type_guid(i.first)));
 						lulet(value, serialize(i.first, i.second.get()));
 						comp.push_back(move(type));

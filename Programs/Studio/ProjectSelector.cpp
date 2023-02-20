@@ -112,10 +112,10 @@ namespace Luna
 		}
 		lutry
 		{
-			Variant var(Variant::Type::array);
+			Variant var(VariantType::array);
 			for (auto& i : recents)
 			{
-				Variant item(Variant::Type::object);
+				Variant item(VariantType::object);
 				item["path"] = i.m_path.encode();
 				item["last_use_time"] = i.m_last_use_time;
 				var.push_back(move(item));

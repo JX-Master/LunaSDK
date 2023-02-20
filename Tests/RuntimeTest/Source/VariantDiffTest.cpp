@@ -16,26 +16,26 @@ namespace Luna
 	{
 		//Diff_EmptyObjects_EmptyPatch
 		{
-			Variant empty(Variant::Type::object);
+			Variant empty(VariantType::object);
 			Variant result = diff_variant(empty, empty);
-			lutest(result.type() == Variant::Type::null);
+			lutest(result.type() == VariantType::null);
 		}
 		//Diff_EqualBooleanProperty_NoDiff
 		{
 			Variant before = json_read("{\"p\": true }").get();
 			Variant after = json_read("{\"p\": true }").get();
 			Variant result = diff_variant(before, after);
-			lutest(result.type() == Variant::Type::null);
+			lutest(result.type() == VariantType::null);
 		}
 		//Diff_DiffBooleanProperty_ValidPatch
 		{
 			Variant before = json_read("{\"p\": true }").get();
 			Variant after = json_read("{\"p\": false }").get();
 			Variant result = diff_variant(before, after);
-			lutest(result.type() == Variant::Type::object);
+			lutest(result.type() == VariantType::object);
 			Variant& p = result["p"];
 			lutest(p.valid());
-			lutest(p.type() == Variant::Type::array);
+			lutest(p.type() == VariantType::array);
 			lutest(p.size() == 2);
 			lutest(p.at(0).boolean() == true);
 			lutest(p.at(1).boolean() == false);
@@ -45,10 +45,10 @@ namespace Luna
 			Variant before = json_read("{\"p\": true }").get();
 			Variant after = json_read("{ }").get();
 			Variant result = diff_variant(before, after);
-			lutest(result.type() == Variant::Type::object);
+			lutest(result.type() == VariantType::object);
 			Variant& p = result["p"];
 			lutest(p.valid());
-			lutest(p.type() == Variant::Type::array);
+			lutest(p.type() == VariantType::array);
 			lutest(p.size() == 3);
 			lutest(p.at(0).boolean() == true);
 			lutest(p.at(1).unum() == 0);
@@ -59,10 +59,10 @@ namespace Luna
 			Variant before = json_read("{ }").get();
 			Variant after = json_read("{\"p\": true}").get();
 			Variant result = diff_variant(before, after);
-			lutest(result.type() == Variant::Type::object);
+			lutest(result.type() == VariantType::object);
 			Variant& p = result["p"];
 			lutest(p.valid());
-			lutest(p.type() == Variant::Type::array);
+			lutest(p.type() == VariantType::array);
 			lutest(p.size() == 1);
 			lutest(p.at(0).boolean() == true);
 		}
@@ -70,7 +70,7 @@ namespace Luna
 		{
 			Variant array = json_read("[1,2,3]").get();
 			const Variant diff = diff_variant(array, array);
-			lutest(diff.type() == Variant::Type::null);
+			lutest(diff.type() == VariantType::null);
 		}
 		//Diff_EfficientArrayDiffDifferentHeadRemoved_ValidDiff
 		{
@@ -184,7 +184,7 @@ namespace Luna
 			Variant before = json_read("1").get();
 			Variant after = json_read("\"hello\"").get();
 			Variant diff = diff_variant(before, after);
-			lutest(diff.type() == Variant::Type::array);
+			lutest(diff.type() == VariantType::array);
 			lutest(diff.size() == 2);
 			lutest(diff[0] == before);
 			lutest(diff[1] == after);
@@ -206,7 +206,7 @@ namespace Luna
 			Variant patched = before;
 			patch_variant_diff(patched, patch);
 			lutest(patched == after);
-			lutest(patched["p"].type() == Variant::Type::boolean);
+			lutest(patched["p"].type() == VariantType::boolean);
 			lutest(patched["p"].boolean() == true);
 		}
 		//Patch_ObjectApplyEdit_Success
@@ -217,7 +217,7 @@ namespace Luna
 			Variant patched = before;
 			patch_variant_diff(patched, patch);
 			lutest(patched == after);
-			lutest(patched["p"].type() == Variant::Type::boolean);
+			lutest(patched["p"].type() == VariantType::boolean);
 			lutest(patched["p"].boolean() == true);
 		}
 		//Patch_ObjectApplyEditText_Success
@@ -228,7 +228,7 @@ namespace Luna
 			Variant patched = before;
 			patch_variant_diff(patched, patch);
 			lutest(patched == after);
-			lutest(patched["p"].type() == Variant::Type::string);
+			lutest(patched["p"].type() == VariantType::string);
 			lutest(patched["p"].str() == "blah1");
 		}
 		//Patch_NestedObjectApplyEdit_Success
@@ -489,9 +489,9 @@ namespace Luna
 			Variant after = json_read(after_json).get();
 			Variant diff = diff_variant(before, after);
 
-			Variant before2 = Variant::Type::object;
+			Variant before2 = VariantType::object;
 			before2["row"] = (u64)2;
-			Variant after2 = Variant::Type::object;
+			Variant after2 = VariantType::object;
 			after2["row"] = (u64)3;
 			Variant diff2 = diff_variant(before2, after2);
 

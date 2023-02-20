@@ -25,7 +25,7 @@ namespace Luna
 	static R<Variant> serialize_guid(typeinfo_t type, const void* inst)
 	{
 		const Guid* guid = (const Guid*)inst;
-		Variant ret(Variant::Type::array);
+		Variant ret(VariantType::array);
 		ret.push_back(guid->low);
 		ret.push_back(guid->high);
 		return ret;
@@ -40,7 +40,7 @@ namespace Luna
 	static R<Variant> serialize_version(typeinfo_t type, const void* inst)
 	{
 		const Version* v = (const Version*)inst;
-		Variant ret(Variant::Type::array);
+		Variant ret(VariantType::array);
 		ret.push_back((u64)v->major);
 		ret.push_back((u64)v->minor);
 		ret.push_back((u64)v->patch);
@@ -197,7 +197,7 @@ namespace Luna
 	}
 	static R<Variant> serialize_vector(typeinfo_t type, const void* inst)
 	{
-		Variant ret(Variant::Type::array);
+		Variant ret(VariantType::array);
 		lutry
 		{
 			VectorData* vec = (VectorData*)inst;
@@ -214,7 +214,7 @@ namespace Luna
 	}
 	static RV deserialize_vector(typeinfo_t type, void* inst, const Variant& data)
 	{
-		if (data.type() != Variant::Type::array) return BasicError::bad_arguments();
+		if (data.type() != VariantType::array) return BasicError::bad_arguments();
 		VectorData* vec = (VectorData*)inst;
 		typeinfo_t element_type = get_struct_generic_argument(type, 0);
 		usize element_size = get_type_size(element_type);
@@ -275,7 +275,7 @@ namespace Luna
 	}
 	static R<Variant> serialize_pair(typeinfo_t type, const void* inst)
 	{
-		Variant ret(Variant::Type::array);
+		Variant ret(VariantType::array);
 		lutry
 		{
 			auto first = get_struct_property(type, 0);
@@ -336,7 +336,7 @@ namespace Luna
 	}
 	static R<Variant> serialize_tuple(typeinfo_t type, const void* inst)
 	{
-		Variant ret(Variant::Type::array);
+		Variant ret(VariantType::array);
 		lutry
 		{
 			usize num_properties = count_struct_properties(type);
@@ -489,7 +489,7 @@ namespace Luna
 		R<Variant> do_serialize(typeinfo_t value_type) const
 		{
 			usize value_size = get_type_size(value_type);
-			Variant ret(Variant::Type::array);
+			Variant ret(VariantType::array);
 			lutry
 			{
 				for (usize i = 0; i < m_buffer_size; ++i)
@@ -725,7 +725,7 @@ namespace Luna
 	static R<Variant> quaternion_serialize(typeinfo_t type, const void* inst)
 	{
 		const Quaternion* q = (const Quaternion*)inst;
-		Variant r(Variant::Type::array);
+		Variant r(VariantType::array);
 		r.push_back(q->x);
 		r.push_back(q->y);
 		r.push_back(q->z);
@@ -1054,7 +1054,7 @@ namespace Luna
 			desc.serialize_func = [](typeinfo_t type, const void* inst) -> R<Variant>
 			{
 				auto v = (const Float2*)inst;
-				Variant r(Variant::Type::array);
+				Variant r(VariantType::array);
 				r.push_back(v->x);
 				r.push_back(v->y);
 				return r;
@@ -1079,7 +1079,7 @@ namespace Luna
 			desc.serialize_func = [](typeinfo_t type, const void* inst) -> R<Variant>
 			{
 				auto v = (const Float3*)inst;
-				Variant r(Variant::Type::array);
+				Variant r(VariantType::array);
 				r.push_back(v->x);
 				r.push_back(v->y);
 				r.push_back(v->z);
@@ -1107,7 +1107,7 @@ namespace Luna
 			desc.serialize_func = [](typeinfo_t type, const void* inst) -> R<Variant>
 			{
 				auto v = (const Float4*)inst;
-				Variant r(Variant::Type::array);
+				Variant r(VariantType::array);
 				r.push_back(v->x);
 				r.push_back(v->y);
 				r.push_back(v->z);
@@ -1152,7 +1152,7 @@ namespace Luna
 			SerializableTypeDesc serial;
 			serial.serialize_func = [](typeinfo_t type, const void* inst) -> R<Variant>
 			{
-				Variant r(Variant::Type::array);
+				Variant r(VariantType::array);
 				lutry
 				{
 					auto property = get_struct_property(type, 0);
@@ -1208,7 +1208,7 @@ namespace Luna
 			SerializableTypeDesc serial;
 			serial.serialize_func = [](typeinfo_t type, const void* inst) -> R<Variant>
 			{
-				Variant r(Variant::Type::array);
+				Variant r(VariantType::array);
 				lutry
 				{
 					auto property = get_struct_property(type, 0);
@@ -1270,7 +1270,7 @@ namespace Luna
 			SerializableTypeDesc serial;
 			serial.serialize_func = [](typeinfo_t type, const void* inst) -> R<Variant>
 			{
-				Variant r(Variant::Type::array);
+				Variant r(VariantType::array);
 				lutry
 				{
 					auto property = get_struct_property(type, 0);
@@ -1339,7 +1339,7 @@ namespace Luna
 			desc.serialize_func = [](typeinfo_t type, const void* inst) -> R<Variant>
 			{
 				auto q = (const Quaternion*)inst;
-				Variant r(Variant::Type::array);
+				Variant r(VariantType::array);
 				r.push_back(q->x);
 				r.push_back(q->y);
 				r.push_back(q->z);
@@ -1369,7 +1369,7 @@ namespace Luna
 			desc.serialize_func = [](typeinfo_t type, const void* inst) -> R<Variant>
 			{
 				auto v = (const Color*)inst;
-				Variant r(Variant::Type::array);
+				Variant r(VariantType::array);
 				r.push_back(v->r);
 				r.push_back(v->g);
 				r.push_back(v->b);
@@ -1412,7 +1412,7 @@ namespace Luna
 			desc.deserialize_func = [](typeinfo_t type, void* inst, const Variant& data) -> RV
 			{
 				auto v = (Blob*)inst;
-				if (data.type() == Variant::Type::blob)
+				if (data.type() == VariantType::blob)
 				{
 					*v = Blob(data.blob_data(), data.blob_size(), data.blob_alignment());
 					return ok;

@@ -74,8 +74,8 @@ namespace Luna
 			// are the same even if they are not, because we can package smaller deltas than an entire 
 			// object or array replacement by doing object to object or array to array diff.
 			if (before[before_begin + i - 1] == after[after_begin + j - 1]
-				|| (before[before_begin + i - 1].type() == Variant::Type::object && after[after_begin + j - 1].type() == Variant::Type::object)
-				|| (before[before_begin + i - 1].type() == Variant::Type::array && after[after_begin + j - 1].type() == Variant::Type::array))
+				|| (before[before_begin + i - 1].type() == VariantType::object && after[after_begin + j - 1].type() == VariantType::object)
+				|| (before[before_begin + i - 1].type() == VariantType::array && after[after_begin + j - 1].type() == VariantType::array))
 			{
 				result.sequence.push_back(before_begin + i - 1);
 				result.indices1.push_back(i - 1);
@@ -111,18 +111,18 @@ namespace Luna
 
 	LUNA_RUNTIME_API Variant diff_variant(const Variant& before, const Variant& after)
 	{
-		if (before.type() == Variant::Type::object && after.type() == Variant::Type::object)
+		if (before.type() == VariantType::object && after.type() == VariantType::object)
 		{
 			return diff_object(before, after);
 		}
-		if (before.type() == Variant::Type::array && after.type() == Variant::Type::array)
+		if (before.type() == VariantType::array && after.type() == VariantType::array)
 		{
 			return diff_array(before, after);
 		}
 		// Simply records two values.
 		if (before != after)
 		{
-			Variant diff_patch(Variant::Type::array);
+			Variant diff_patch(VariantType::array);
 			diff_patch.push_back(before);
 			diff_patch.push_back(after);
 			return diff_patch;
@@ -133,16 +133,16 @@ namespace Luna
 
 	static Variant diff_object(const Variant& before, const Variant& after)
 	{
-		Variant diff_patch(Variant::Type::object);
+		Variant diff_patch(VariantType::object);
 		// Find properties modified or deleted.
 		for (auto& lp : before.key_values())
 		{
 			const Variant& rp = after[lp.first];
 
 			// Property deleted
-			if (rp.type() == Variant::Type::null)
+			if (rp.type() == VariantType::null)
 			{
-				Variant delta(Variant::Type::array);
+				Variant delta(VariantType::array);
 				delta.push_back(lp.second);
 				delta.push_back((u64)0);
 				delta.push_back(VARIANT_DIFF_OP_DELETED);
@@ -152,7 +152,7 @@ namespace Luna
 
 			// Property changed.
 			Variant d = diff_variant(lp.second, rp);
-			if (d.type() != Variant::Type::null)
+			if (d.type() != VariantType::null)
 			{
 				diff_patch[lp.first] = move(d);
 			}
@@ -160,8 +160,8 @@ namespace Luna
 		// Find properties that were added.
 		for (auto& rp : after.key_values())
 		{
-			if (before[rp.first].type() != Variant::Type::null) continue;
-			Variant v(Variant::Type::array);
+			if (before[rp.first].type() != VariantType::null) continue;
+			Variant v(VariantType::array);
 			v.push_back(rp.second);
 			diff_patch[rp.first] = move(v);
 		}
@@ -171,7 +171,7 @@ namespace Luna
 
 	static Variant diff_array(const Variant& before, const Variant& after)
 	{
-		Variant result(Variant::Type::object);
+		Variant result(VariantType::object);
 		result["_t"] = "a";
 		usize common_head = 0;
 		usize common_tail = 0;
@@ -197,7 +197,7 @@ namespace Luna
 			{
 				c8 buf[32];
 				snprintf(buf, 32, "%llu", (u64)index);
-				Variant v(Variant::Type::array);
+				Variant v(VariantType::array);
 				v.push_back(after[index]);
 				result[buf] = move(v);
 			}
@@ -210,7 +210,7 @@ namespace Luna
 			{
 				c8 buf[32];
 				snprintf(buf, 32, "_%llu", (u64)index);
-				Variant v(Variant::Type::array);
+				Variant v(VariantType::array);
 				v.push_back(before[index]);
 				v.push_back((u64)0);
 				v.push_back(VARIANT_DIFF_OP_DELETED);
@@ -228,7 +228,7 @@ namespace Luna
 				// Removed.
 				c8 buf[32];
 				snprintf(buf, 32, "_%llu", (u64)index);
-				Variant v(Variant::Type::array);
+				Variant v(VariantType::array);
 				v.push_back(before[index]);
 				v.push_back((u64)0);
 				v.push_back(VARIANT_DIFF_OP_DELETED);
@@ -243,7 +243,7 @@ namespace Luna
 				// Added
 				c8 buf[32];
 				snprintf(buf, 32, "%llu", (u64)index);
-				Variant v(Variant::Type::array);
+				Variant v(VariantType::array);
 				v.push_back(after[index]);
 				result[buf] = move(v);
 			}
@@ -252,7 +252,7 @@ namespace Luna
 				usize bi = lcs.indices1[index_after] + common_head;
 				usize ai = lcs.indices2[index_after] + common_head;
 				Variant diff = diff_variant(before[bi], after[ai]);
-				if (diff.type() != Variant::Type::null)
+				if (diff.type() != VariantType::null)
 				{
 					c8 buf[32];
 					snprintf(buf, 32, "%llu", (u64)index);
@@ -268,10 +268,10 @@ namespace Luna
 
 	LUNA_RUNTIME_API void patch_variant_diff(Variant& before, const Variant& diff)
 	{
-		if (diff.type() == Variant::Type::object)
+		if (diff.type() == VariantType::object)
 		{
 			auto& array_magic = diff["_t"];
-			if (before.type() == Variant::Type::array 
+			if (before.type() == VariantType::array 
 				&& array_magic.str() == "a")
 			{
 				patch_array(before, diff);
@@ -280,7 +280,7 @@ namespace Luna
 			patch_object(before, diff);
 			return;
 		}
-		if (diff.type() == Variant::Type::array)
+		if (diff.type() == VariantType::array)
 		{
 			if (diff.size() == 1) // Add
 			{
@@ -310,10 +310,10 @@ namespace Luna
 
 	LUNA_RUNTIME_API void reverse_variant_diff(Variant& after, const Variant& diff)
 	{
-		if (diff.type() == Variant::Type::object)
+		if (diff.type() == VariantType::object)
 		{
 			auto& array_magic = diff["_t"];
-			if (after.type() == Variant::Type::array
+			if (after.type() == VariantType::array
 				&& array_magic.str() == "a")
 			{
 				reverse_array(after, diff);
@@ -322,7 +322,7 @@ namespace Luna
 			reverse_object(after, diff);
 			return;
 		}
-		if (diff.type() == Variant::Type::array)
+		if (diff.type() == VariantType::array)
 		{
 			if (diff.size() == 1) // Add (we need to remove the property)
 			{
@@ -356,7 +356,7 @@ namespace Luna
 
 			// We need to special case deletion when doing objects since a delete is a removal of a property
 			// not a null assignment
-			if (patch_value.type() == Variant::Type::array && patch_value.size() == 3 && patch_value[2].unum() == VARIANT_DIFF_OP_DELETED)
+			if (patch_value.type() == VariantType::array && patch_value.size() == 3 && patch_value[2].unum() == VARIANT_DIFF_OP_DELETED)
 			{
 				before.erase(diff.first);
 			}
@@ -376,7 +376,7 @@ namespace Luna
 
 			// We need to special case addition when doing objects since an undo add is a removal of a property
 			// not a null assignment
-			if (patch_value.type() == Variant::Type::array && patch_value.size() == 1)
+			if (patch_value.type() == VariantType::array && patch_value.size() == 1)
 			{
 				after.erase(diff.first);
 			}
@@ -420,7 +420,7 @@ namespace Luna
 			if (op.first.c_str()[0] == '_')
 			{
 				// removed item from original array
-				if (value.type() == Variant::Type::array && value.size() == 3
+				if (value.type() == VariantType::array && value.size() == 3
 					&& (value[2].unum() == VARIANT_DIFF_OP_DELETED || value[2].unum() == VARIANT_DIFF_OP_ARRAYMOVE))
 				{
 					usize remove_index = (usize)atoll(op.first.c_str() + 1);
@@ -428,7 +428,7 @@ namespace Luna
 					if (value[2].unum() == VARIANT_DIFF_OP_ARRAYMOVE)
 					{
 						usize insert_index = (usize)value[1].unum();
-						Variant v(Variant::Type::array);
+						Variant v(VariantType::array);
 						v.push_back(move(before[remove_index]));
 						to_insert.push_back(make_pair(insert_index, move(v)));
 					}
@@ -437,7 +437,7 @@ namespace Luna
 			else
 			{
 				usize insert_index = (usize)atoll(op.first.c_str());
-				if (value.type() == Variant::Type::array && value.size() == 1)
+				if (value.type() == VariantType::array && value.size() == 1)
 				{
 					to_insert.push_back(make_pair(insert_index, op.second));
 				}
@@ -483,14 +483,14 @@ namespace Luna
 			if (op.first.c_str()[0] == '_')
 			{
 				// removed item from original array
-				if (value.type() == Variant::Type::array && value.size() == 3
+				if (value.type() == VariantType::array && value.size() == 3
 					&& (value[2].unum() == VARIANT_DIFF_OP_DELETED || value[2].unum() == VARIANT_DIFF_OP_ARRAYMOVE))
 				{
 					usize insert_index = (usize)atoll(op.first.c_str() + 1);
 					if (value[2].unum() == VARIANT_DIFF_OP_ARRAYMOVE)
 					{
 						usize remove_index = (usize)value[1].unum();
-						Variant v(Variant::Type::array);
+						Variant v(VariantType::array);
 						v.push_back(move(after[remove_index]));
 						to_insert.push_back(make_pair(insert_index, move(v)));
 						to_remove.push_back(remove_index);
@@ -498,7 +498,7 @@ namespace Luna
 					else
 					{
 						// reverse removal
-						Variant v(Variant::Type::array);
+						Variant v(VariantType::array);
 						v.push_back(move(value[0]));
 						to_insert.push_back(make_pair(insert_index, move(v)));
 					}
@@ -507,7 +507,7 @@ namespace Luna
 			else
 			{
 				usize insert_index = (usize)atoll(op.first.c_str());
-				if (value.type() == Variant::Type::array && value.size() == 1)
+				if (value.type() == VariantType::array && value.size() == 1)
 				{
 					// reverse insertion.
 					to_remove.push_back(insert_index);
@@ -548,13 +548,13 @@ namespace Luna
 		for (auto iter = prefix_nodes.rbegin(); iter != prefix_nodes.rend(); ++iter)
 		{
 			Variant child = move(diff);
-			diff = Variant(Variant::Type::object);
-			if (iter->type() == Variant::Type::string)
+			diff = Variant(VariantType::object);
+			if (iter->type() == VariantType::string)
 			{
 				// property.
 				diff[iter->str()] = move(child);
 			}
-			else if (iter->type() == Variant::Type::number)
+			else if (iter->type() == VariantType::number)
 			{
 				// Array index.
 				diff["_t"] = "a";

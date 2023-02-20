@@ -16,30 +16,32 @@
 
 namespace Luna
 {
+	enum class VariantType : u8
+	{
+		null = 0,
+		object = 1,
+		array = 2,
+		number = 3,
+		string = 4,
+		boolean = 5,
+		blob = 6,
+		pointer = 7,	// Used only to pass data in the runtime, will not be serialized.
+	};
+
+	enum class VariantNumberType : u8
+	{
+		not_number = 0,
+		number_i64 = 1,
+		number_u64 = 2,
+		number_f64 = 3,
+	};
+
 	//! @class Variant
 	//! Represents one variant value. One variant value may hold any kind of primitive values, or other variants as subobjects.
 	//! Variants are the standard way in Luna to transfer arbitrary data between subsystems and between computers in networks.
 	class Variant
 	{
 	public:
-		enum class Type : u8
-		{
-			null = 0,
-			object = 1,
-			array = 2,
-			number = 3,
-			string = 4,
-			boolean = 5,
-			blob = 6,
-			pointer = 7,	// Used only to pass data in the runtime, will not be serialized.
-		};
-		enum class NumberType : u8
-		{
-			not_number = 0,
-			number_i64 = 1,
-			number_u64 = 2,
-			number_f64 = 3,
-		};
 		class ArrayEnumerator
 		{
 		public:
@@ -240,7 +242,7 @@ namespace Luna
 		using key_value_enumerator = ObjectEnumerator;
 		using const_key_value_enumerator = ConstObjectEnumerator;
 		//! Initializes one empty value with the specified value type.
-		Variant(Type type = Type::null);
+		Variant(VariantType type = VariantType::null);
 		//! Initializes the value with one copy of another value.
 		Variant(const Variant& rhs);
 		//! Initializes the value by moving the data of another value to this value.
@@ -289,9 +291,9 @@ namespace Luna
 		bool operator==(const Variant& rhs) const;
 		bool operator!=(const Variant& rhs) const;
 		//! Returns the type of the value.
-		Type type() const;
+		VariantType type() const;
 		//! Returns the number type of the value.
-		NumberType number_type() const;
+		VariantNumberType number_type() const;
 		//! Returns `true` if the value type is not `null`.
 		bool valid() const;
 		//! Returns `true` if `size() == 0`.
@@ -416,10 +418,10 @@ namespace Luna
 		// 32 : 63	: Blob size (for blobs whose size < 4GB) or CompoundTypeHeader for small array or object.
 		// 64 : 127	: Data payload. If data size is greater than 8 bytes, stores the pointer to the actual data.
 
-		Type m_type;
+		VariantType m_type;
 		union
 		{
-			NumberType m_num_type;
+			VariantNumberType m_num_type;
 			BlobFlag m_blob_flag;
 			ObjectFlag m_object_flag;
 			ArrayFlag m_array_flag;
@@ -456,7 +458,7 @@ namespace Luna
 			Vector<Variant>* m_big_arr;
 		};
 		void do_destruct();
-		void do_construct(Type type);
+		void do_construct(VariantType type);
 		void do_construct(const Variant& rhs);
 		void do_construct(Variant&& rhs);
 		void do_construct(const Vector<Pair<const Name, Variant>>& values);
@@ -498,7 +500,7 @@ namespace Luna
 
 	inline Variant::ObjectEnumerator::iterator Variant::ObjectEnumerator::begin()
 	{
-		if (m_value->type() != Variant::Type::object)
+		if (m_value->type() != VariantType::object)
 		{
 			return iterator((Pair<const Name, Variant>*)nullptr);
 		}
@@ -510,7 +512,7 @@ namespace Luna
 	}
 	inline Variant::ObjectEnumerator::const_iterator Variant::ObjectEnumerator::cbegin() const
 	{
-		if (m_value->type() != Variant::Type::object)
+		if (m_value->type() != VariantType::object)
 		{
 			return const_iterator((const Pair<const Name, Variant>*)nullptr);
 		}
@@ -522,7 +524,7 @@ namespace Luna
 	}
 	inline Variant::ObjectEnumerator::iterator Variant::ObjectEnumerator::end()
 	{
-		if (m_value->type() != Variant::Type::object)
+		if (m_value->type() != VariantType::object)
 		{
 			return iterator((Pair<const Name, Variant>*)nullptr);
 		}
@@ -534,7 +536,7 @@ namespace Luna
 	}
 	inline Variant::ObjectEnumerator::const_iterator Variant::ObjectEnumerator::cend() const
 	{
-		if (m_value->type() != Variant::Type::object)
+		if (m_value->type() != VariantType::object)
 		{
 			return const_iterator((const Pair<const Name, Variant>*)nullptr);
 		}
@@ -546,7 +548,7 @@ namespace Luna
 	}
 	inline Variant::ConstObjectEnumerator::const_iterator Variant::ConstObjectEnumerator::cbegin() const
 	{
-		if (m_value->type() != Variant::Type::object)
+		if (m_value->type() != VariantType::object)
 		{
 			return const_iterator((const Pair<const Name, Variant>*)nullptr);
 		}
@@ -558,7 +560,7 @@ namespace Luna
 	}
 	inline Variant::ConstObjectEnumerator::const_iterator Variant::ConstObjectEnumerator::cend() const
 	{
-		if (m_value->type() != Variant::Type::object)
+		if (m_value->type() != VariantType::object)
 		{
 			return const_iterator((const Pair<const Name, Variant>*)nullptr);
 		}
@@ -568,7 +570,7 @@ namespace Luna
 		}
 		return const_iterator(m_value->m_obj + m_value->m_array_or_object_header.m_size);
 	}
-	inline Variant::Variant(Type type)
+	inline Variant::Variant(VariantType type)
 	{
 		do_construct(type);
 	}
@@ -741,9 +743,9 @@ namespace Luna
 		if (m_type != rhs.m_type) return false;
 		switch (m_type)
 		{
-		case Type::null:
+		case VariantType::null:
 			return true;
-		case Type::object:
+		case VariantType::object:
 			//if (size() != rhs.size()) return false;
 			{
 				for (auto& i : key_values())
@@ -756,18 +758,18 @@ namespace Luna
 				}
 				return true;
 			}
-		case Type::array:
+		case VariantType::array:
 			if (size() != rhs.size()) return false;
 			return equal(values().begin(), values().end(), rhs.values().begin());
-		case Type::number:
+		case VariantType::number:
 			return (m_num_type == rhs.m_num_type) && (m_ii == rhs.m_ii);
-		case Type::string:
+		case VariantType::string:
 			return m_str == rhs.m_str;
-		case Type::boolean:
+		case VariantType::boolean:
 			return m_b == rhs.m_b;
-		case Type::blob:
+		case VariantType::blob:
 			return memcmp(blob_data(), rhs.blob_data(), blob_size()) == 0;
-		case Type::pointer:
+		case VariantType::pointer:
 			return m_ptr == rhs.m_ptr;
 		default:
 			lupanic();
@@ -778,18 +780,18 @@ namespace Luna
 	{
 		return !(*this == rhs);
 	}
-	inline Variant::Type Variant::type() const
+	inline VariantType Variant::type() const
 	{
 		return m_type;
 	}
-	inline Variant::NumberType Variant::number_type() const
+	inline VariantNumberType Variant::number_type() const
 	{
-		if (type() != Variant::Type::number) return Variant::NumberType::not_number;
+		if (type() != VariantType::number) return VariantNumberType::not_number;
 		return m_num_type;
 	}
 	inline bool Variant::valid() const
 	{
-		return m_type != Type::null;
+		return m_type != VariantType::null;
 	}
 	inline bool Variant::empty() const
 	{
@@ -797,7 +799,7 @@ namespace Luna
 	}
 	inline const Variant& Variant::at(usize i) const
 	{
-		if (type() != Type::array) return npos();
+		if (type() != VariantType::array) return npos();
 		if (i >= size()) return npos();
 		if(test_flags(m_array_flag, ArrayFlag::big_array)) return m_big_arr->at(i);
 		return m_arr[i];
@@ -811,7 +813,7 @@ namespace Luna
 	}
 	inline const Variant& Variant::find(const Name& k) const
 	{
-		if (type() != Type::object) return npos();
+		if (type() != VariantType::object) return npos();
 		if (test_flags(m_object_flag, ObjectFlag::big_object))
 		{
 			auto iter = m_big_obj->find(k);
@@ -832,11 +834,11 @@ namespace Luna
 	}
 	inline Variant& Variant::find_or_insert(const Name& k)
 	{
-		if (type() == Type::null)
+		if (type() == VariantType::null)
 		{
-			do_construct(Type::object);
+			do_construct(VariantType::object);
 		}
-		lucheck(type() == Type::object);
+		lucheck(type() == VariantType::object);
 		if (test_flags(m_object_flag, ObjectFlag::big_object))
 		{
 			auto iter = m_big_obj->find(k);
@@ -874,15 +876,15 @@ namespace Luna
 	}
 	inline usize Variant::size() const
 	{
-		if (type() == Type::array)
+		if (type() == VariantType::array)
 		{
 			return test_flags(m_array_flag, ArrayFlag::big_array) ? m_big_arr->size() : m_array_or_object_header.m_size;
 		}
-		else if (type() == Type::object)
+		else if (type() == VariantType::object)
 		{
 			return test_flags(m_object_flag, ObjectFlag::big_object) ? m_big_obj->size() : m_array_or_object_header.m_size;
 		}
-		else if (type() == Type::blob)
+		else if (type() == VariantType::blob)
 		{
 			return blob_size();
 		}
@@ -893,7 +895,7 @@ namespace Luna
 	}
 	inline bool Variant::contains(const Name& k) const
 	{
-		if (type() != Type::object) return false;
+		if (type() != VariantType::object) return false;
 		if (test_flags(m_object_flag, ObjectFlag::big_object))
 		{
 			auto iter = m_big_obj->find(k);
@@ -908,7 +910,7 @@ namespace Luna
 	inline Variant::value_enumerator Variant::values()
 	{
 		value_enumerator ret;
-		if (type() != Type::array)
+		if (type() != VariantType::array)
 		{
 			ret.m_begin = nullptr;
 			ret.m_end = nullptr;
@@ -928,7 +930,7 @@ namespace Luna
 	inline Variant::const_value_enumerator Variant::values() const
 	{
 		const_value_enumerator ret;
-		if (type() != Type::array)
+		if (type() != VariantType::array)
 		{
 			ret.m_begin = nullptr;
 			ret.m_end = nullptr;
@@ -959,11 +961,11 @@ namespace Luna
 	}
 	inline void Variant::insert(usize i, const Variant& val)
 	{
-		if (type() == Type::null)
+		if (type() == VariantType::null)
 		{
-			do_construct(Type::array);
+			do_construct(VariantType::array);
 		}
-		lucheck(type() == Type::array);
+		lucheck(type() == VariantType::array);
 		if (test_flags(m_array_flag, ArrayFlag::big_array))
 		{
 			m_big_arr->insert(m_big_arr->begin() + i, val);
@@ -975,11 +977,11 @@ namespace Luna
 	}
 	inline void Variant::insert(usize i, Variant&& val)
 	{
-		if (type() == Type::null)
+		if (type() == VariantType::null)
 		{
-			do_construct(Type::array);
+			do_construct(VariantType::array);
 		}
-		lucheck(type() == Type::array);
+		lucheck(type() == VariantType::array);
 		if (test_flags(m_array_flag, ArrayFlag::big_array))
 		{
 			m_big_arr->insert(m_big_arr->begin() + i, move(val));
@@ -991,11 +993,11 @@ namespace Luna
 	}
 	inline void Variant::push_back(const Variant& val)
 	{
-		if (type() == Type::null)
+		if (type() == VariantType::null)
 		{
-			do_construct(Type::array);
+			do_construct(VariantType::array);
 		}
-		lucheck(type() == Type::array);
+		lucheck(type() == VariantType::array);
 		if (test_flags(m_array_flag, ArrayFlag::big_array))
 		{
 			m_big_arr->push_back(val);
@@ -1007,11 +1009,11 @@ namespace Luna
 	}
 	inline void Variant::push_back(Variant&& val)
 	{
-		if (type() == Type::null)
+		if (type() == VariantType::null)
 		{
-			do_construct(Type::array);
+			do_construct(VariantType::array);
 		}
-		lucheck(type() == Type::array);
+		lucheck(type() == VariantType::array);
 		if (test_flags(m_array_flag, ArrayFlag::big_array))
 		{
 			m_big_arr->push_back(move(val));
@@ -1023,7 +1025,7 @@ namespace Luna
 	}
 	inline void Variant::erase(usize i)
 	{
-		lucheck(type() == Type::array);
+		lucheck(type() == VariantType::array);
 		if (test_flags(m_array_flag, ArrayFlag::big_array))
 		{
 			m_big_arr->erase(m_big_arr->begin() + i);
@@ -1035,7 +1037,7 @@ namespace Luna
 	}
 	inline void Variant::erase(usize begin, usize end)
 	{
-		lucheck(type() == Type::array);
+		lucheck(type() == VariantType::array);
 		if (test_flags(m_array_flag, ArrayFlag::big_array))
 		{
 			m_big_arr->erase(m_big_arr->begin() + begin, m_big_arr->begin() + end);
@@ -1047,7 +1049,7 @@ namespace Luna
 	}
 	inline void Variant::pop_back()
 	{
-		lucheck(type() == Type::array);
+		lucheck(type() == VariantType::array);
 		if (test_flags(m_array_flag, ArrayFlag::big_array))
 		{
 			m_big_arr->pop_back();
@@ -1059,11 +1061,11 @@ namespace Luna
 	}
 	inline bool Variant::insert(const Name& k, const Variant& val)
 	{
-		if (type() == Type::null)
+		if (type() == VariantType::null)
 		{
-			do_construct(Type::object);
+			do_construct(VariantType::object);
 		}
-		lucheck(type() == Type::object);
+		lucheck(type() == VariantType::object);
 		if (test_flags(m_object_flag, ObjectFlag::big_object))
 		{
 			auto res = m_big_obj->insert(make_pair(k, val));
@@ -1073,11 +1075,11 @@ namespace Luna
 	}
 	inline bool Variant::insert(const Name& k, Variant&& val)
 	{
-		if (type() == Type::null)
+		if (type() == VariantType::null)
 		{
-			do_construct(Type::object);
+			do_construct(VariantType::object);
 		}
-		lucheck(type() == Type::object);
+		lucheck(type() == VariantType::object);
 		if (test_flags(m_object_flag, ObjectFlag::big_object))
 		{
 			auto res = m_big_obj->insert(make_pair(k, move(val)));
@@ -1087,7 +1089,7 @@ namespace Luna
 	}
 	inline bool Variant::erase(const Name& k)
 	{
-		lucheck(type() == Type::object);
+		lucheck(type() == VariantType::object);
 		if (test_flags(m_object_flag, ObjectFlag::big_object))
 		{
 			auto res = m_big_obj->erase(k);
@@ -1097,23 +1099,23 @@ namespace Luna
 	}
 	inline Name Variant::str(const Name& default_value) const
 	{
-		return type() == Type::string ? m_str : default_value;
+		return type() == VariantType::string ? m_str : default_value;
 	}
 	inline const c8* Variant::c_str(const c8* default_value) const
 	{
-		return type() == Type::string ? m_str.c_str() : default_value;
+		return type() == VariantType::string ? m_str.c_str() : default_value;
 	}
 	inline i64 Variant::inum(i64 default_value) const
 	{
-		if (type() == Type::number)
+		if (type() == VariantType::number)
 		{
 			switch (m_num_type)
 			{
-			case NumberType::number_f64:
+			case VariantNumberType::number_f64:
 				return (i64)m_fi;
-			case NumberType::number_i64:
+			case VariantNumberType::number_i64:
 				return m_ii;
-			case NumberType::number_u64:
+			case VariantNumberType::number_u64:
 				return (i64)m_ui;
 			default:
 				lupanic();
@@ -1123,15 +1125,15 @@ namespace Luna
 	}
 	inline u64 Variant::unum(u64 default_value) const
 	{
-		if (type() == Type::number)
+		if (type() == VariantType::number)
 		{
 			switch (m_num_type)
 			{
-			case NumberType::number_f64:
+			case VariantNumberType::number_f64:
 				return (u64)m_fi;
-			case NumberType::number_i64:
+			case VariantNumberType::number_i64:
 				return (u64)m_ii;
-			case NumberType::number_u64:
+			case VariantNumberType::number_u64:
 				return m_ui;
 			default:
 				lupanic();
@@ -1141,15 +1143,15 @@ namespace Luna
 	}
 	inline f64 Variant::fnum(f64 default_value) const
 	{
-		if (type() == Type::number)
+		if (type() == VariantType::number)
 		{
 			switch (m_num_type)
 			{
-			case NumberType::number_f64:
+			case VariantNumberType::number_f64:
 				return m_fi;
-			case NumberType::number_i64:
+			case VariantNumberType::number_i64:
 				return (f64)m_ii;
-			case NumberType::number_u64:
+			case VariantNumberType::number_u64:
 				return (f64)m_ui;
 			default:
 				lupanic();
@@ -1159,11 +1161,11 @@ namespace Luna
 	}
 	inline bool Variant::boolean(bool default_value) const
 	{
-		return type() == Type::boolean ? m_b : default_value;
+		return type() == VariantType::boolean ? m_b : default_value;
 	}
 	inline byte_t* Variant::blob_data()
 	{
-		if (type() == Type::blob)
+		if (type() == VariantType::blob)
 		{
 			return test_flags(m_blob_flag, BlobFlag::big_blob) ? m_big_blob->data() : m_blob;
 		}
@@ -1171,7 +1173,7 @@ namespace Luna
 	}
 	inline const byte_t* Variant::blob_data() const
 	{
-		if (type() == Type::blob)
+		if (type() == VariantType::blob)
 		{
 			return test_flags(m_blob_flag, BlobFlag::big_blob) ? m_big_blob->data() : m_blob;
 		}
@@ -1179,7 +1181,7 @@ namespace Luna
 	}
 	inline usize Variant::blob_size() const
 	{
-		if (type() == Type::blob)
+		if (type() == VariantType::blob)
 		{
 			return test_flags(m_blob_flag, BlobFlag::big_blob) ? m_big_blob->size() : m_blob_size;
 		}
@@ -1187,7 +1189,7 @@ namespace Luna
 	}
 	inline usize Variant::blob_alignment() const
 	{
-		if (type() == Type::blob)
+		if (type() == VariantType::blob)
 		{
 			return test_flags(m_blob_flag, BlobFlag::big_blob) ? m_big_blob->alignment() : 0;
 		}
@@ -1195,7 +1197,7 @@ namespace Luna
 	}
 	inline Blob Variant::blob_detach()
 	{
-		if (type() == Type::blob)
+		if (type() == VariantType::blob)
 		{
 			Blob ret;
 			if (test_flags(m_blob_flag, BlobFlag::big_blob))
@@ -1214,7 +1216,7 @@ namespace Luna
 	}
 	inline void* Variant::pointer() const
 	{
-		if (type() == Type::pointer)
+		if (type() == VariantType::pointer)
 		{
 			return m_ptr;
 		}
@@ -1224,7 +1226,7 @@ namespace Luna
 	{
 		switch (m_type)
 		{
-		case Type::object:
+		case VariantType::object:
 			if (test_flags(m_object_flag, ObjectFlag::big_object))
 			{
 				memdelete(m_big_obj);
@@ -1238,7 +1240,7 @@ namespace Luna
 				}
 			}
 			break;
-		case Type::array:
+		case VariantType::array:
 			if (test_flags(m_array_flag, ArrayFlag::big_array))
 			{
 				memdelete(m_big_arr);
@@ -1252,10 +1254,10 @@ namespace Luna
 				}
 			}
 			break;
-		case Type::string:
+		case VariantType::string:
 			m_str.~Name();
 			break;
-		case Type::blob:
+		case VariantType::blob:
 			if (test_flags(m_blob_flag, BlobFlag::big_blob))
 			{
 				memdelete(m_big_blob);
@@ -1271,42 +1273,42 @@ namespace Luna
         default: break;
 		}
 	}
-	inline void Variant::do_construct(Type type)
+	inline void Variant::do_construct(VariantType type)
 	{
 		m_type = type;
 		switch (m_type)
 		{
-		case Type::object:
+		case VariantType::object:
 			m_object_flag = ObjectFlag::none;
 			m_array_or_object_header.m_size = 0;
 			m_array_or_object_header.m_capacity = 0;
 			m_obj = nullptr;
 			break;
-		case Type::array:
+		case VariantType::array:
 			m_array_flag = ArrayFlag::none;
 			m_array_or_object_header.m_size = 0;
 			m_array_or_object_header.m_capacity = 0;
 			m_arr = nullptr;
 			break;
-		case Type::number:
+		case VariantType::number:
 			m_ui = 0;
-			m_num_type = NumberType::number_u64;
+			m_num_type = VariantNumberType::number_u64;
 			break;
-		case Type::string:
+		case VariantType::string:
 			new (&m_str) Name();
 			break;
-		case Type::boolean:
+		case VariantType::boolean:
 			m_b = false;
 			break;
-		case Type::blob:
+		case VariantType::blob:
 			m_blob_flag = BlobFlag::none;
 			m_blob_size = 0;
 			m_blob = nullptr;
 			break;
-		case Type::pointer:
+		case VariantType::pointer:
 			m_ptr = nullptr;
 			break;
-		case Type::null:
+		case VariantType::null:
 			break;
 		}
 	}
@@ -1315,7 +1317,7 @@ namespace Luna
 		m_type = rhs.m_type;
 		switch (m_type)
 		{
-		case Type::object:
+		case VariantType::object:
 			m_object_flag = rhs.m_object_flag;
 			if (test_flags(m_object_flag, ObjectFlag::big_object))
 			{
@@ -1330,7 +1332,7 @@ namespace Luna
 				copy_construct_range(rhs.m_obj, rhs.m_obj + rhs.m_array_or_object_header.m_size, m_obj);
 			}
 			break;
-		case Type::array:
+		case VariantType::array:
 			m_array_flag = rhs.m_array_flag;
 			if (test_flags(m_array_flag, ArrayFlag::big_array))
 			{
@@ -1344,17 +1346,17 @@ namespace Luna
 				copy_construct_range(rhs.m_arr, rhs.m_arr + rhs.m_array_or_object_header.m_size, m_arr);
 			}
 			break;
-		case Type::number:
+		case VariantType::number:
 			m_ui = rhs.m_ui;
 			m_num_type = rhs.m_num_type;
 			break;
-		case Type::string:
+		case VariantType::string:
 			new (&m_str) Name(rhs.m_str);
 			break;
-		case Type::boolean:
+		case VariantType::boolean:
 			m_b = rhs.m_b;
 			break;
-		case Type::blob:
+		case VariantType::blob:
 			m_blob_flag = rhs.m_blob_flag;
 			if (test_flags(m_blob_flag, BlobFlag::big_blob))
 			{
@@ -1367,10 +1369,10 @@ namespace Luna
 				memcpy(m_blob, rhs.m_blob, m_blob_size);
 			}
 			break;
-		case Type::pointer:
+		case VariantType::pointer:
 			m_ptr = rhs.m_ptr;
 			break;
-		case Type::null:
+		case VariantType::null:
 			break;
 		}
 	}
@@ -1379,7 +1381,7 @@ namespace Luna
 		m_type = rhs.m_type;
 		switch (m_type)
 		{
-		case Type::object:
+		case VariantType::object:
 			m_object_flag = rhs.m_object_flag;
 			if (test_flags(m_object_flag, ObjectFlag::big_object))
 			{
@@ -1397,7 +1399,7 @@ namespace Luna
 			rhs.m_array_or_object_header.m_size = 0;
 			rhs.m_array_or_object_header.m_capacity = 0;
 			break;
-		case Type::array:
+		case VariantType::array:
 			m_array_flag = rhs.m_array_flag;
 			if (test_flags(m_array_flag, ArrayFlag::big_array))
 			{
@@ -1415,17 +1417,17 @@ namespace Luna
 			rhs.m_array_or_object_header.m_size = 0;
 			rhs.m_array_or_object_header.m_capacity = 0;
 			break;
-		case Type::number:
+		case VariantType::number:
 			m_ui = rhs.m_ui;
 			m_num_type = rhs.m_num_type;
 			break;
-		case Type::string:
+		case VariantType::string:
 			new (&m_str) Name(move(rhs.m_str));
 			break;
-		case Type::boolean:
+		case VariantType::boolean:
 			m_b = rhs.m_b;
 			break;
-		case Type::blob:
+		case VariantType::blob:
 			m_blob_flag = rhs.m_blob_flag;
 			if (test_flags(m_blob_flag, BlobFlag::big_blob))
 			{
@@ -1439,16 +1441,16 @@ namespace Luna
 				rhs.m_blob_size = 0;
 			}
 			break;
-		case Type::pointer:
+		case VariantType::pointer:
 			m_ptr = rhs.m_ptr;
 			break;
-		case Type::null:
+		case VariantType::null:
 			break;
 		}
 	}
 	inline void Variant::do_construct(const Vector<Pair<const Name, Variant>>& values)
 	{
-		m_type = Type::object;
+		m_type = VariantType::object;
 		m_object_flag = ObjectFlag::none;
 		if (values.size() > BIG_OBJECT_THRESHOLD)
 		{
@@ -1469,7 +1471,7 @@ namespace Luna
 	}
 	inline void Variant::do_construct(Vector<Pair<const Name, Variant>>&& values)
 	{
-		m_type = Type::object;
+		m_type = VariantType::object;
 		m_object_flag = ObjectFlag::none;
 		if (values.size() > BIG_OBJECT_THRESHOLD)
 		{
@@ -1491,7 +1493,7 @@ namespace Luna
 	}
 	inline void Variant::do_construct(const Vector<Variant>& values)
 	{
-		m_type = Type::array;
+		m_type = VariantType::array;
 		m_array_flag = ArrayFlag::none;
 		if (values.size() > (usize)U16_MAX)
 		{
@@ -1508,7 +1510,7 @@ namespace Luna
 	}
 	inline void Variant::do_construct(Vector<Variant>&& values)
 	{
-		m_type = Type::array;
+		m_type = VariantType::array;
 		m_array_flag = ArrayFlag::none;
 		if (values.size() > (usize)U16_MAX)
 		{
@@ -1526,7 +1528,7 @@ namespace Luna
 	}
 	inline void Variant::do_construct(const Blob& blob_data)
 	{
-		m_type = Type::blob;
+		m_type = VariantType::blob;
 		m_blob_flag = BlobFlag::none;
 		if (blob_data.size() > U32_MAX || blob_data.alignment() > MAX_ALIGN)
 		{
@@ -1542,7 +1544,7 @@ namespace Luna
 	}
 	inline void Variant::do_construct(Blob&& blob_data)
 	{
-		m_type = Type::blob;
+		m_type = VariantType::blob;
 		m_blob_flag = BlobFlag::none;
 		if (blob_data.size() > U32_MAX || blob_data.alignment() > MAX_ALIGN)
 		{
@@ -1557,40 +1559,40 @@ namespace Luna
 	}
 	inline void Variant::do_construct(const Name& v)
 	{
-		m_type = Type::string;
+		m_type = VariantType::string;
 		new (&m_str) Name(v);
 	}
 	inline void Variant::do_construct(Name&& v)
 	{
-		m_type = Type::string;
+		m_type = VariantType::string;
 		new (&m_str) Name(move(v));
 	}
 	inline void Variant::do_construct(i64 v)
 	{
-		m_type = Type::number;
-		m_num_type = NumberType::number_i64;
+		m_type = VariantType::number;
+		m_num_type = VariantNumberType::number_i64;
 		m_ii = v;
 	}
 	inline void Variant::do_construct(u64 v)
 	{
-		m_type = Type::number;
-		m_num_type = NumberType::number_u64;
+		m_type = VariantType::number;
+		m_num_type = VariantNumberType::number_u64;
 		m_ui = v;
 	}
 	inline void Variant::do_construct(f64 v)
 	{
-		m_type = Type::number;
-		m_num_type = NumberType::number_f64;
+		m_type = VariantType::number;
+		m_num_type = VariantNumberType::number_f64;
 		m_fi = v;
 	}
 	inline void Variant::do_construct(bool v)
 	{
-		m_type = Type::boolean;
+		m_type = VariantType::boolean;
 		m_b = v;
 	}
 	inline void Variant::do_construct(void* v)
 	{
-		m_type = Type::pointer;
+		m_type = VariantType::pointer;
 		m_ptr = v;
 	}
 	inline bool Variant::do_small_arr_reserve(usize new_cap)

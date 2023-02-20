@@ -18,7 +18,7 @@ namespace Luna
 
 	static R<Variant> default_structure_serialization(typeinfo_t type, const void* inst)
 	{
-		Variant ret(Variant::Type::object);
+		Variant ret(VariantType::object);
 		lutry
 		{
 			usize count = count_struct_properties(type);
@@ -59,7 +59,7 @@ namespace Luna
 		usize num_options = count_enum_options(type);
 		if (is_multienum_type(type))
 		{
-			Variant ret(Variant::Type::array);
+			Variant ret(VariantType::array);
 			for (usize i = 0; i < num_options; ++i)
 			{
 				auto desc = get_enum_option(type, i);

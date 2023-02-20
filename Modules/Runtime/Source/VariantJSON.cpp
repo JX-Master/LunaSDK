@@ -375,7 +375,7 @@ namespace Luna
 			lucheck(ctx.next_char() == '{');
 			ctx.consume('{');
 			ctx.skip_whitespaces_and_comments();
-			Variant v(Variant::Type::object);
+			Variant v(VariantType::object);
 			c32 ch = ctx.next_char();
 			while (ch && ch != '}')
 			{
@@ -407,7 +407,7 @@ namespace Luna
 			lucheck(ctx.next_char() == '[');
 			ctx.consume('[');
 			ctx.skip_whitespaces_and_comments();
-			Variant v(Variant::Type::array);
+			Variant v(VariantType::array);
 			c32 ch = ctx.next_char();
 			while (ch && ch != ']')
 			{
@@ -634,7 +634,7 @@ namespace Luna
 				ctx.consume('u');
 				ctx.consume('l');
 				ctx.consume('l');
-				return Variant(Variant::Type::null);
+				return Variant(VariantType::null);
 			}
 			else if (ch == '-' || ch == '0' || (ch >= '1' && ch <= '9'))
 			{
@@ -720,11 +720,11 @@ namespace Luna
 		{
 			switch (v.type())
 			{
-			case Variant::Type::null:
-			case Variant::Type::pointer:
+			case VariantType::null:
+			case VariantType::pointer:
 				s.append("null");
 				break;
-			case Variant::Type::object:
+			case VariantType::object:
 			{
 				if (v.empty())
 				{
@@ -747,7 +747,7 @@ namespace Luna
 						}
 						write_string_value(s, i.first);
 						s.push_back(':');
-						//if (indent && (i.second.type() == Variant::Type::array || i.second.type() == Variant::Type::object) && !i.second.empty())
+						//if (indent && (i.second.type() == VariantType::array || i.second.type() == VariantType::object) && !i.second.empty())
 						//{
 						//	s.push_back('\n');
 						//	write_indents(s, base_indent);
@@ -773,7 +773,7 @@ namespace Luna
 				}
 			}
 			break;
-			case Variant::Type::array:
+			case VariantType::array:
 			{
 				if (v.empty())
 				{
@@ -809,29 +809,29 @@ namespace Luna
 				}
 			}
 			break;
-			case Variant::Type::number:
+			case VariantType::number:
 			{
 				c8 buf[64];
 				switch (v.number_type())
 				{
-				case Variant::NumberType::number_f64:
+				case VariantNumberType::number_f64:
 					snprintf(buf, 64, "%f", v.fnum()); break;
-				case Variant::NumberType::number_i64:
+				case VariantNumberType::number_i64:
 					snprintf(buf, 64, "%lld", (long long int)v.inum()); break;
-				case Variant::NumberType::number_u64:
+				case VariantNumberType::number_u64:
 					snprintf(buf, 64, "%llu", (long long unsigned int)v.unum()); break;
                 default: lupanic(); break;
 				}
 				s.append(buf);
 			}
 			break;
-			case Variant::Type::string:
+			case VariantType::string:
 				write_string_value(s, v.str());
 				break;
-			case Variant::Type::boolean:
+			case VariantType::boolean:
 				s.append(v.boolean() ? "true" : "false");
 				break;
-			case Variant::Type::blob:
+			case VariantType::blob:
 				write_blob_value(s, v.blob_data(), v.blob_size(), v.blob_alignment());
 				break;
 			}

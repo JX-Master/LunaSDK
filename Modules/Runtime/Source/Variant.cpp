@@ -15,7 +15,7 @@ namespace Luna
 {
 	LUNA_RUNTIME_API const Variant& npos()
 	{
-		static Variant v(Variant::Type::null);
+		static Variant v(VariantType::null);
 		return v;
 	}
 }

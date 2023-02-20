@@ -15,7 +15,7 @@ namespace Luna
 	void variant_test()
 	{
 		{
-			Variant v(Variant::Type::array);
+			Variant v(VariantType::array);
 			for (usize i = 0; i < U16_MAX; ++i)
 			{
 				v.push_back(Variant(i));
@@ -28,7 +28,7 @@ namespace Luna
 		}
 
 		{
-			Variant v(Variant::Type::array);
+			Variant v(VariantType::array);
 			for (usize i = 0; i < U16_MAX * 2; ++i)
 			{
 				v.push_back(Variant(i));
@@ -41,7 +41,7 @@ namespace Luna
 		}
 
 		{
-			Variant v(Variant::Type::object);
+			Variant v(VariantType::object);
 			c8 name_buf[32];
 			for (usize i = 0; i < U8_MAX; ++i)
 			{
@@ -58,7 +58,7 @@ namespace Luna
 		}
 
 		{
-			Variant v(Variant::Type::object);
+			Variant v(VariantType::object);
 			c8 name_buf[32];
 			for (usize i = 0; i < 512; ++i)
 			{
@@ -76,8 +76,8 @@ namespace Luna
 
 		// BUG 20220627: The existance of `null` property in `object` type does not affect comparision.
 		{
-			Variant a(Variant::Type::object);
-			Variant b(Variant::Type::object);
+			Variant a(VariantType::object);
+			Variant b(VariantType::object);
 
 			a["k1"] = "Sample";
 			a["k2"] = Variant();

@@ -102,7 +102,7 @@ namespace Luna
 				m_optimization_level = OptimizationLevel::none;
 				m_include_paths.clear();
 				m_definitions.clear();
-				m_additional_arguments = Variant::Type::object;
+				m_additional_arguments = VariantType::object;
 				m_matrix_pack_mode = MatrixPackMode::dont_care;
 				m_debug = false;
 				m_skip_validation = false;
