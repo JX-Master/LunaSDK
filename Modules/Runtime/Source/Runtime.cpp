@@ -23,7 +23,6 @@
 #include "TypeInfo.hpp"
 #include "Interface.hpp"
 #include "Random.hpp"
-#include "FuncInfo.hpp"
 #include "ReadWriteLock.hpp"
 namespace Luna
 {
@@ -68,7 +67,6 @@ namespace Luna
 		name_init();
 		type_registry_init();
 		add_builtin_typeinfo();
-		//function_registry_init();
 		register_types_and_interfaces();
 		thread_init();
 		random_init();
@@ -85,8 +83,6 @@ namespace Luna
 		random_close();
 		thread_close();
 		object_close();
-		//interface_close();
-		//function_registry_close();
 		type_registry_close();
 		name_close();
 		error_close();

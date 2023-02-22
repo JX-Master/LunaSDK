@@ -4,7 +4,6 @@ target("Runtime")
     add_headerfiles("Math/**.hpp")
     add_headerfiles("Source/Math/**.inl")
     add_files("Source/*.cpp")
-    remove_files("Source/FuncInfo.cpp")
     if is_os("windows") then
         add_headerfiles("Platform/Windows/**.hpp")
         add_headerfiles("Source/Platform/Windows/*.hpp")
