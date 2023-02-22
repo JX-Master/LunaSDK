@@ -253,7 +253,7 @@ namespace Luna
 			for (u32 i = 0; i < (u32)entities.size(); ++i)
 			{
 				Float2 sel_pos = ImGui::GetCursorScreenPos();
-				if (in_rect(ImGui::GetIO().MousePos, sel_pos, sel_pos + sel_size) && !ImGui::IsPopupOpen(entity_popup_id) &&
+				if (in_bounds(ImGui::GetIO().MousePos, sel_pos, sel_pos + sel_size) && !ImGui::IsPopupOpen(entity_popup_id) &&
 					(ImGui::IsMouseClicked(ImGuiMouseButton_Left) || ImGui::IsMouseClicked(ImGuiMouseButton_Right)))
 				{
 					m_current_select_entity = i;
@@ -262,7 +262,7 @@ namespace Luna
 				if (i == m_current_select_entity && m_name_editing)
 				{
 					ImGui::InputText("###NameEdit", m_name_editing_buf);
-					if (!in_rect(ImGui::GetIO().MousePos, sel_pos, sel_pos + sel_size) && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+					if (!in_bounds(ImGui::GetIO().MousePos, sel_pos, sel_pos + sel_size) && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
 					{
 						for (usize i = 0; i < m_name_editing_buf.size(); ++i)
 						{
@@ -287,7 +287,7 @@ namespace Luna
 					ImGui::Text(entities[i]->name.c_str());
 				}
 
-				if (in_rect(ImGui::GetIO().MousePos, sel_pos, sel_pos + sel_size) && ImGui::IsMouseClicked(ImGuiMouseButton_Right))
+				if (in_bounds(ImGui::GetIO().MousePos, sel_pos, sel_pos + sel_size) && ImGui::IsMouseClicked(ImGuiMouseButton_Right))
 				{
 					ImGui::OpenPopup(entity_popup_id);
 				}
@@ -658,7 +658,7 @@ namespace Luna
 						{
 							p.strength = directional->intensity;
 							p.attenuation_power = 1.0f;
-							p.direction = AffineMatrix3D::forward(AffineMatrix3D::make_rotation(light_ts[i]->world_rotation()));
+							p.direction = AffineMatrix::forward(AffineMatrix::make_rotation(light_ts[i]->world_rotation()));
 							p.type = 0;
 							p.position = light_ts[i]->world_position();
 							p.spot_attenuation_power = 0.0f;
@@ -682,7 +682,7 @@ namespace Luna
 								{
 									p.strength = spot->intensity;
 									p.attenuation_power = spot->attenuation_power;
-									p.direction = AffineMatrix3D::forward(AffineMatrix3D::make_rotation(light_ts[i]->world_rotation()));
+									p.direction = AffineMatrix::forward(AffineMatrix::make_rotation(light_ts[i]->world_rotation()));
 									p.type = 2;
 									p.position = light_ts[i]->world_position();
 									p.spot_attenuation_power = spot->spot_power;
@@ -1084,7 +1084,7 @@ namespace Luna
 				ImGui::SetCursorPos(backup_pos);
 			}
 
-			if (ImGui::IsMouseClicked(ImGuiMouseButton_Right) && in_rect(ImGui::GetIO().MousePos, scene_pos, scene_pos + scene_sz))
+			if (ImGui::IsMouseClicked(ImGuiMouseButton_Right) && in_bounds(ImGui::GetIO().MousePos, scene_pos, scene_pos + scene_sz))
 			{
 				m_navigating = true;
 				m_scene_click_pos = HID::get_device<HID::IMouse>().get()->get_cursor_pos();
@@ -1103,12 +1103,12 @@ namespace Luna
 				auto _ = mouse->set_cursor_pos(m_scene_click_pos.x, m_scene_click_pos.y);
 				// Rotate camera based on mouse delta.
 				auto rot = camera_entity->rotation;
-				auto rot_mat = AffineMatrix3D::make_rotation(rot);
+				auto rot_mat = AffineMatrix::make_rotation(rot);
 
 				// Key control.
-				auto left = AffineMatrix3D::left(rot_mat);
-				auto forward = AffineMatrix3D::forward(rot_mat);
-				auto up = AffineMatrix3D::up(rot_mat);
+				auto left = AffineMatrix::left(rot_mat);
+				auto forward = AffineMatrix::forward(rot_mat);
+				auto up = AffineMatrix::up(rot_mat);
 
 				f32 camera_speed = m_camera_speed;
 				auto& io = ImGui::GetIO();
@@ -1163,7 +1163,7 @@ namespace Luna
 	{
 		ImGui::DragFloat3("Position", t->position.m, 0.01f);
 
-		auto euler = AffineMatrix3D::make_rotation(t->rotation).euler_angles();
+		auto euler = AffineMatrix::make_rotation(t->rotation).euler_angles();
 		euler *= 180.0f / PI;
 		if (euler.x > 89.0f || euler.x < -89.0f)
 		{

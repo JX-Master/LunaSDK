@@ -324,24 +324,24 @@ namespace Luna
 		return Float2(s / v.x, s / v.y);
 #endif
 	}
-	inline bool in_bounds(const Float2& vec, const Float2& bounds)
+	inline bool in_bounds(const Float2& point, const Float2& min_bound, const Float2& max_bound)
 	{
 #ifdef LUNA_SIMD
 		using namespace Simd;
-		float4 v1 = load_f2(vec.m);
-		float4 vbounds = load_f2(bounds.m);
+		float4 p = load_f2(point.m);
+		float4 minp = load_f2(min_bound.m);
+		float4 maxp = load_f2(max_bound.m);
 		// Test if less than or equal
-		int4 t1 = cmple_f4(v1, vbounds);
-		// Negate the bounds
-		// Test if greater or equal (Reversed)
-		int4 t2 = cmple_f4(mul_f4(vbounds, dup_f4(-1.0f)), v1);
+		int4 t1 = cmple_f4(p, maxp);
+		// Test if greater or equal
+		int4 t2 = cmpge_f4(p, minp);
 		// Blend answers
 		t1 = and_i4(t1, t2);
 		// x and y in bounds? (z and w are don't care)
-		return (maskint_i4(t1) & 0x3) == 0x3;
+		return (((maskint_i4(t1) & 0x3) == 0x3) != 0);
 #else
-		return (vec.x <= bounds.x && vec.x >= -bounds.x) &&
-			(vec.y <= bounds.y && vec.y >= -bounds.y);
+		return (vec.x <= max_bound.x && vec.x >= min_bound.x) &&
+			(vec.y <= max_bound.y && vec.y >= min_bound.y);
 #endif
 	}
 	inline f32 length(const Float2& vec)
@@ -638,26 +638,6 @@ namespace Luna
 			return ivec * refraction_index - nvec * (refraction_index * proj + sqrtf(deter));
 		}
 		return Float2(0.0f, 0.0f);
-#endif
-	}
-	inline bool in_rect(const Float2& point, const Float2& min_point, const Float2& max_point)
-	{
-#ifdef LUNA_SIMD
-		using namespace Simd;
-		float4 p = load_f2(point.m);
-		float4 minp = load_f2(min_point.m);
-		float4 maxp = load_f2(max_point.m);
-		// Test if less than or equal
-		int4 t1 = cmple_f4(p, maxp);
-		// Test if greater or equal
-		int4 t2 = cmpge_f4(p, minp);
-		// Blend answers
-		t1 = and_i4(t1, t2);
-		// x and y in bounds? (z and w are don't care)
-		return (((maskint_i4(t1) & 0x3) == 0x3) != 0);
-#else
-		return point.x >= min_point.x && point.x <= max_point.x &&
-			point.y >= min_point.y && point.y <= max_point.y;
 #endif
 	}
 }

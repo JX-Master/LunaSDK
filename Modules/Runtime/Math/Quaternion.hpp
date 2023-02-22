@@ -83,7 +83,6 @@ namespace Luna
 	Quaternion lerp(const Quaternion& q1, const Quaternion& q2, f32 t);
 	//! Spherical interpolation.
 	Quaternion slerp(const Quaternion& q1, const Quaternion& q2, f32 t);
-	Quaternion concatenate(const Quaternion& q1, const Quaternion& q2);
 
 	LUNA_RUNTIME_API typeinfo_t quaternion_type();
 	template <> struct typeof_t<Quaternion> { typeinfo_t operator()() const { return quaternion_type(); } };

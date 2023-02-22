@@ -32,10 +32,10 @@ namespace Luna
 		//! The function/module that sends the log.
 		Name sender;
 		//! The log message.
-		Name message;
+		String message;
 		//! The verbosity of the log.
 		LogVerbosity verbosity;
-		//! Extra parameters attached with the log.
+		//! Extra arguments attached to the log.
 		Variant extra;
 	};
 
@@ -61,4 +61,5 @@ namespace Luna
 	LUNA_RUNTIME_API void set_log_file_enabled(bool enabled);
 	LUNA_RUNTIME_API void set_log_file(const c8* file);
 	LUNA_RUNTIME_API void set_log_file_verbosity(LogVerbosity verbosity);
+	LUNA_RUNTIME_API void flush_log_to_file();
 }

@@ -17,11 +17,11 @@
 
 namespace Luna
 {
-	//! Queries the ticks of the high-performance counter of CPU.
+	//! Queries the ticks of the high-resolution counter of CPU.
 	//! @return Returns the current ticks of the CPU.
 	LUNA_RUNTIME_API u64 get_ticks();
 
-	//! Queries the resolution of high-performance counter of CPU represented by
+	//! Queries the resolution of high-resolution counter of CPU represented by
 	//! number of ticks per second.
 	//! @return Returns the number of ticks per second.
 	LUNA_RUNTIME_API f64 get_ticks_per_second();

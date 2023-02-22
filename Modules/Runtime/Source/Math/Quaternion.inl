@@ -406,17 +406,4 @@ namespace Luna
 		return result;
 #endif
 	}
-	inline Quaternion concatenate(const Quaternion& q1, const Quaternion& q2)
-	{
-#ifdef LUNA_SIMD
-		using namespace Simd;
-		float4 Q0 = load_f4(q1.m);
-		float4 Q1 = load_f4(q2.m);
-		Quaternion result;
-		store_f4(result.m, mulquat_f4(Q1, Q0));
-		return result;
-#else
-		return q1 * q2;
-#endif
-	}
 }

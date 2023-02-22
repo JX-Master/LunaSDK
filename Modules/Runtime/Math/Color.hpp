@@ -246,7 +246,7 @@ namespace Luna
 	Color max(const Color& a, const Color& b);
 	Color lerp(const Color& a, const Color& b, f32 t);
 	Color smoothstep(const Color& a, const Color& b, f32 t);
-	Color barycentric(const Color& a, const Color& b, const Float4& c, f32 f, f32 g);
+	Color barycentric(const Color& a, const Color& b, const Color& c, f32 f, f32 g);
 
 	LUNA_RUNTIME_API typeinfo_t color_type();
 	template <> struct typeof_t<Color> { typeinfo_t operator()() const { return color_type(); } };

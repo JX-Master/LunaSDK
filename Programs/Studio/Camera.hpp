@@ -33,11 +33,11 @@ namespace Luna
 		{
 			if (type == CameraType::perspective)
 			{
-				return perspective_projection_fov(fov, aspect_ratio, near_clipping_plane, far_clipping_plane);
+				return ProjectionMatrix::make_perspective_fov(fov, aspect_ratio, near_clipping_plane, far_clipping_plane);
 			}
 			else
 			{
-				return orthographic_projection(size, size / aspect_ratio, near_clipping_plane, far_clipping_plane);
+				return ProjectionMatrix::make_orthographic(size, size / aspect_ratio, near_clipping_plane, far_clipping_plane);
 			}
 		}
 	};

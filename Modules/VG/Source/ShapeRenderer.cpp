@@ -164,9 +164,9 @@ namespace Luna
 				for (usize i = 0; i < num_draw_calls; ++i)
 				{
 					Float4x4U* dest = (Float4x4U*)(((usize)cb_data) + i * cb_element_size);
-					Float4x4 transform = AffineMatrix3D::make_rotation_z(draw_calls[i].rotation / 180.0f * PI);
-					transform = mul(transform, AffineMatrix3D::make_translation(Float3(draw_calls[i].origin_point.x, draw_calls[i].origin_point.y, 0.0f)));
-					Float4x4 mat = orthographic_projection_off_center(0.0f, (f32)m_screen_width, 0.0f, (f32)m_screen_height, 0.0f, 1.0f);
+					Float4x4 transform = AffineMatrix::make_rotation_z(draw_calls[i].rotation / 180.0f * PI);
+					transform = mul(transform, AffineMatrix::make_translation(Float3(draw_calls[i].origin_point.x, draw_calls[i].origin_point.y, 0.0f)));
+					Float4x4 mat = ProjectionMatrix::make_orthographic_off_center(0.0f, (f32)m_screen_width, 0.0f, (f32)m_screen_height, 0.0f, 1.0f);
 					mat = mul(transform, mat);
 					*dest = mat;
 				}

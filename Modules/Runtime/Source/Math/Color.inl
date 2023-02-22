@@ -572,7 +572,7 @@ namespace Luna
 		return lerp(v1, v2, t);
 #endif
 	}
-	inline Color barycentric(const Color& v1, const Color& v2, const Float4& v3, f32 f, f32 g)
+	inline Color barycentric(const Color& v1, const Color& v2, const Color& v3, f32 f, f32 g)
 	{
 #ifdef LUNA_SIMD
 		using namespace Simd;

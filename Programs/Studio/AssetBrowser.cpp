@@ -200,7 +200,7 @@ namespace Luna
 					}
 					auto btn_min = ImGui::GetItemRectMin();
 					auto btn_max = ImGui::GetItemRectMax();
-					if (in_rect(mouse_pos, btn_min, btn_max) && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+					if (in_bounds(mouse_pos, btn_min, btn_max) && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
 					{
 						btn_clicked = true;
 					}
@@ -218,7 +218,7 @@ namespace Luna
 				}
 
 
-				if (in_rect(mouse_pos, region_min, region_max) && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !btn_clicked)
+				if (in_bounds(mouse_pos, region_min, region_max) && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !btn_clicked)
 				{
 					// Switch to text mode.
 					m_is_text_editing = true;
@@ -230,7 +230,7 @@ namespace Luna
 				ImGui::SetNextItemWidth(region_max.x - region_min.x);
 				ImGui::InputText("##PathTextEditing", m_path_edit_text);
 				auto mouse_pos = ImGui::GetIO().MousePos;
-				if (!in_rect(mouse_pos, region_min, region_max) && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+				if (!in_bounds(mouse_pos, region_min, region_max) && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
 				{
 					// Switch to normal mode.
 					m_is_text_editing = false;
@@ -472,7 +472,7 @@ namespace Luna
 		auto tile_ctx_min = ImGui::GetWindowPos();
 		auto tile_ctx_max = ImGui::GetWindowPos() + ImGui::GetWindowSize();
 
-		//if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) && in_rect(mouse_pos, tile_ctx_min, tile_ctx_max))
+		//if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) && in_bounds(mouse_pos, tile_ctx_min, tile_ctx_max))
 		//{
 		//	m_ms_mouse_begin_pos = mouse_pos;
 		//	m_ms_is_dragging = true;

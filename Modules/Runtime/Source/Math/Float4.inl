@@ -353,26 +353,26 @@ namespace Luna
 		return Float4(s / v.x, s / v.y, s / v.z, s / v.w);
 #endif
 	}
-	inline bool in_bounds(const Float4& vec, const Float4& bounds)
+	inline bool in_bounds(const Float4& point, const Float4& min_bound, const Float4& max_bound)
 	{
 #ifdef LUNA_SIMD
-		using namespace Simd; 
-		float4 v1 = load_f4(vec.m);
-		float4 v2 = load_f4(bounds.m);
+		using namespace Simd;
+		float4 p = load_f4(point.m);
+		float4 minp = load_f4(min_bound.m);
+		float4 maxp = load_f4(max_bound.m);
 		// Test if less than or equal
-		int4 temp1 = cmple_f4(v1, v2);
-		// Negate the bounds
-		// Test if greater or equal (Reversed)
-		int4 temp2 = cmple_f4(sub_f4(setzero_f4(), v2), v1);
+		int4 t1 = cmple_f4(p, maxp);
+		// Test if greater or equal
+		int4 t2 = cmpge_f4(p, minp);
 		// Blend answers
-		temp1 = and_i4(temp1, temp2);
+		t1 = and_i4(t1, t2);
 		// All in bounds?
-		return ((maskint_i4(temp1) == 0x0f) != 0);
+		return ((maskint_i4(t1) == 0x0f) != 0);
 #else
-		return (vec.x <= bounds.x && vec.x >= -bounds.x) &&
-			(vec.y <= bounds.y && vec.y >= -bounds.y) &&
-			(vec.z <= bounds.z && vec.z >= -bounds.z) &&
-			(vec.w <= bounds.w && vec.w >= -bounds.w);
+		return (vec.x <= max_bound.x && vec.x >= min_bound.x) &&
+			(vec.y <= max_bound.y && vec.y >= min_bound.y) &&
+			(vec.z <= max_bound.z && vec.z >= min_bound.z) &&
+			(vec.w <= max_bound.w && vec.w >= min_bound.w);
 #endif
 	}
 	inline f32 length(const Float4& vec)

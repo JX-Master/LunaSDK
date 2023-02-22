@@ -56,7 +56,7 @@ namespace Luna
 
 	static FileLog* g_filelog;
 
-	void flush_log_file()
+	static void flush_log_file()
 	{
 		if (!g_filelog->log_buffer.empty())
 		{
@@ -221,11 +221,17 @@ namespace Luna
 	LUNA_RUNTIME_API void set_log_file(const c8* file)
 	{
 		MutexGuard guard(g_log_mutex);
+		flush_log_file();
 		g_filelog->filename = file;
 	}
 	LUNA_RUNTIME_API void set_log_file_verbosity(LogVerbosity verbosity)
 	{
 		MutexGuard guard(g_log_mutex);
 		g_filelog->verbosity = verbosity;
+	}
+	LUNA_RUNTIME_API void flush_log_to_file()
+	{
+		MutexGuard guard(g_log_mutex);
+		flush_log_file();
 	}
 }

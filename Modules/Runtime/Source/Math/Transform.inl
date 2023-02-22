@@ -13,7 +13,7 @@
 
 namespace Luna
 {
-	namespace AffineMatrix2D
+	namespace AffineMatrix
 	{
 		inline Float3x3 make(const Float2& translation, f32 rotation, const Float2& scaling)
 		{
@@ -34,153 +34,6 @@ namespace Luna
 #endif
 			return affine_matrix;
 		}
-		inline f32 rotation(const Float3x3& affine_matrix)
-		{
-			if (affine_matrix.r[0].x != 0.0f || affine_matrix.r[0].y != 0.0f)
-			{
-				return atan2f(affine_matrix.r[0].y, affine_matrix.r[0].x);
-			}
-			else if (affine_matrix.r[1].x != 0.0f || affine_matrix.r[1].y != 0.0f)
-			{
-				return atan2f(-affine_matrix.r[1].x, affine_matrix.r[1].y);
-			}
-			else
-			{
-				// Both scalex and scaley is 0, rotation is meaningless.
-				return 0.0f;
-			}
-		}
-		inline Float2 up(const Float3x3& affine_matrix)
-		{
-			return affine_matrix.r[1].xy();
-		}
-		inline Float2 down(const Float3x3& affine_matrix)
-		{
-			return -affine_matrix.r[1].xy();
-		}
-		inline Float2 left(const Float3x3& affine_matrix)
-		{
-			return -affine_matrix.r[0].xy();
-		}
-		inline Float2 right(const Float3x3& affine_matrix)
-		{
-			return affine_matrix.r[0].xy();
-		}
-		inline Float2 translation(const Float3x3& affine_matrix)
-		{
-			return affine_matrix.r[2].xy();
-		}
-		inline Float2 scaling(const Float3x3& affine_matrix)
-		{
-#ifdef LUNA_SIMD
-			using namespace Simd;
-			float4 r0 = load_f4(affine_matrix.r[0].m);
-			float4 r1 = load_f4(affine_matrix.r[1].m);
-			float4 d0 = dot2v_f4(r0, r0);
-			float4 d1 = dot2v_f4(r1, r1);
-			d0 = select_f4<0, 1, 0, 0>(d0, d1);
-			d0 = sqrt_f4(d0);
-			Float2 ret;
-			store_f2(ret.m, d0);
-			return ret;
-#else
-			return Float2(
-				sqrtf(affine_matrix.r[0].x * affine_matrix.r[0].x + affine_matrix.r[0].y * affine_matrix.r[0].y),
-				sqrtf(affine_matrix.r[1].x * affine_matrix.r[1].x + affine_matrix.r[1].y * affine_matrix.r[1].y));
-#endif
-		}
-		inline Float3x3 translation_matrix(const Float3x3& affine_matrix)
-		{
-			Float3x3 ret;
-			ret.r[0] = Float3(1.0f, 0.0f, 0.0f);
-			ret.r[1] = Float3(0.0f, 1.0f, 0.0f);
-			ret.r[2] = affine_matrix.r[2];
-			return ret;
-		}
-		inline Float3x3 rotation_matrix(const Float3x3& affine_matrix)
-		{
-			Float2 scale = scaling(affine_matrix);
-			Float3x3 ret;
-			ret.r[0] = (scale.x == 0.0f) ? affine_matrix.r[0] : (affine_matrix.r[0] / scale.x);
-			ret.r[1] = (scale.y == 0.0f) ? affine_matrix.r[1] : (affine_matrix.r[1] / scale.y);
-			ret.r[2] = Float3(0.0f, 0.0f, 1.0f);
-			return ret;
-		}
-		inline Float3x3 scaling_matrix(const Float3x3& affine_matrix)
-		{
-			Float2 scale = scaling(affine_matrix);
-			return make_scaling(scale);
-		}
-		inline Float3x3 make_translation(const Float2& translation)
-		{
-			Float3x3 ret;
-#ifdef LUNA_SIMD
-			using namespace Simd;
-			float4 a = load_f2(translation.m);
-			float3x4 m = transform2d_translation_f3x4(a);
-			store_f3x4(ret.r[0].m, m);
-#else
-			ret = Float3x3(1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, translation.x, translation.y, 1.0f);
-#endif
-			return ret;
-		}
-		inline Float3x3 make_translation(f32 x, f32 y)
-		{
-			Float3x3 ret;
-#ifdef LUNA_SIMD
-			using namespace Simd;
-			float4 a = set_f4(x, y, 0.0f, 0.0f);
-			float3x4 m = transform2d_translation_f3x4(a);
-			store_f3x4(ret.r[0].m, m);
-#else
-			ret = Float3x3(1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, x, y, 1.0f);
-#endif
-			return ret;
-		}
-		inline Float3x3 make_rotation(f32 rotation)
-		{
-			Float3x3 ret;
-#ifdef LUNA_SIMD
-			using namespace Simd;
-			float3x4 m = transform2d_rotation_f3x4(rotation);
-			store_f3x4(ret.r[0].m, m);
-#else
-			f32 sine = sinf(rotation);
-			f32 cosine = cosf(rotation);
-			ret = Float3x3(cosine, sine, 0.0f, -sine, cosine, 0.0f, 0.0f, 0.0f, 1.0f);
-#endif
-			return ret;
-		}
-		inline Float3x3 make_scaling(const Float2& scaling)
-		{
-			Float3x3 ret;
-#ifdef LUNA_SIMD
-			using namespace Simd;
-			float4 a = load_f2(scaling.m);
-			float3x4 m = transform2d_scaling_f3x4(a);
-			store_f3x4(ret.r[0].m, m);
-#else
-			ret = Float3x3(scaling.x, 0.0f, 0.0f, 0.0f, scaling.y, 0.0f, 0.0f, 0.0f, 1.0f);
-#endif
-			return ret;
-		}
-		inline Float3x3 make_scaling(f32 scale_x, f32 scale_y)
-		{
-			Float3x3 ret;
-#ifdef LUNA_SIMD
-			using namespace Simd;
-			float4 a = set_f4(scale_x, scale_y, 0.0f, 0.0f);
-			float3x4 m = transform2d_scaling_f3x4(a);
-			store_f3x4(ret.r[0].m, m);
-#else
-			ret = Float3x3(scale_x, 0.0f, 0.0f, 0.0f, scale_y, 0.0f, 0.0f, 0.0f, 1.0f);
-#endif
-			return ret;
-		}
-	}
-
-	namespace AffineMatrix3D
-	{
 		inline Float4x4 make(const Float3& translation, const Quaternion& rotation, const Float3& scaling)
 		{
 			Float4x4 affine_matrix;
@@ -198,17 +51,33 @@ namespace Luna
 #endif	
 			return affine_matrix;
 		}
+		inline Float2 up(const Float3x3& affine_matrix)
+		{
+			return affine_matrix.r[1].xy();
+		}
 		inline Float3 up(const Float4x4& affine_matrix)
 		{
 			return affine_matrix.r[1].xyz();
+		}
+		inline Float2 down(const Float3x3& affine_matrix)
+		{
+			return -affine_matrix.r[1].xy();
 		}
 		inline Float3 down(const Float4x4& affine_matrix)
 		{
 			return -affine_matrix.r[1].xyz();
 		}
+		inline Float2 left(const Float3x3& affine_matrix)
+		{
+			return -affine_matrix.r[0].xy();
+		}
 		inline Float3 left(const Float4x4& affine_matrix)
 		{
 			return -affine_matrix.r[0].xyz();
+		}
+		inline Float2 right(const Float3x3& affine_matrix)
+		{
+			return affine_matrix.r[0].xy();
 		}
 		inline Float3 right(const Float4x4& affine_matrix)
 		{
@@ -222,9 +91,29 @@ namespace Luna
 		{
 			return -affine_matrix.r[2].xyz();
 		}
+		inline Float2 translation(const Float3x3& affine_matrix)
+		{
+			return affine_matrix.r[2].xy();
+		}
 		inline Float3 translation(const Float4x4& affine_matrix)
 		{
 			return affine_matrix.r[3].xyz();
+		}
+		inline f32 rotation(const Float3x3& affine_matrix)
+		{
+			if (affine_matrix.r[0].x != 0.0f || affine_matrix.r[0].y != 0.0f)
+			{
+				return atan2f(affine_matrix.r[0].y, affine_matrix.r[0].x);
+			}
+			else if (affine_matrix.r[1].x != 0.0f || affine_matrix.r[1].y != 0.0f)
+			{
+				return atan2f(-affine_matrix.r[1].x, affine_matrix.r[1].y);
+			}
+			else
+			{
+				// Both scalex and scaley is 0, rotation is meaningless.
+				return 0.0f;
+			}
 		}
 		inline Quaternion rotation(const Float4x4& affine_matrix)
 		{
@@ -257,6 +146,25 @@ namespace Luna
 			}
 			return v;
 		}
+		inline Float2 scaling(const Float3x3& affine_matrix)
+		{
+#ifdef LUNA_SIMD
+			using namespace Simd;
+			float4 r0 = load_f4(affine_matrix.r[0].m);
+			float4 r1 = load_f4(affine_matrix.r[1].m);
+			float4 d0 = dot2v_f4(r0, r0);
+			float4 d1 = dot2v_f4(r1, r1);
+			d0 = select_f4<0, 1, 0, 0>(d0, d1);
+			d0 = sqrt_f4(d0);
+			Float2 ret;
+			store_f2(ret.m, d0);
+			return ret;
+#else
+			return Float2(
+				sqrtf(affine_matrix.r[0].x * affine_matrix.r[0].x + affine_matrix.r[0].y * affine_matrix.r[0].y),
+				sqrtf(affine_matrix.r[1].x * affine_matrix.r[1].x + affine_matrix.r[1].y * affine_matrix.r[1].y));
+#endif
+		}
 		inline Float3 scaling(const Float4x4& affine_matrix)
 		{
 #ifdef LUNA_SIMD
@@ -279,6 +187,14 @@ namespace Luna
 			);
 #endif
 		}
+		inline Float3x3 translation_matrix(const Float3x3& affine_matrix)
+		{
+			Float3x3 ret;
+			ret.r[0] = Float3(1.0f, 0.0f, 0.0f);
+			ret.r[1] = Float3(0.0f, 1.0f, 0.0f);
+			ret.r[2] = affine_matrix.r[2];
+			return ret;
+		}
 		inline Float4x4 translation_matrix(const Float4x4& affine_matrix)
 		{
 			Float4x4 ret;
@@ -286,6 +202,15 @@ namespace Luna
 			ret.r[1] = Float4(0.0f, 1.0f, 0.0f, 0.0f);
 			ret.r[2] = Float4(0.0f, 0.0f, 1.0f, 0.0f);
 			ret.r[3] = affine_matrix.r[3];
+			return ret;
+		}
+		inline Float3x3 rotation_matrix(const Float3x3& affine_matrix)
+		{
+			Float2 scale = scaling(affine_matrix);
+			Float3x3 ret;
+			ret.r[0] = (scale.x == 0.0f) ? affine_matrix.r[0] : (affine_matrix.r[0] / scale.x);
+			ret.r[1] = (scale.y == 0.0f) ? affine_matrix.r[1] : (affine_matrix.r[1] / scale.y);
+			ret.r[2] = Float3(0.0f, 0.0f, 1.0f);
 			return ret;
 		}
 		inline Float4x4 rotation_matrix(const Float4x4& affine_matrix)
@@ -298,9 +223,40 @@ namespace Luna
 			ret.r[3] = Float4(0.0f, 0.0f, 0.0f, 1.0f);
 			return ret;
 		}
+		inline Float3x3 scaling_matrix(const Float3x3& affine_matrix)
+		{
+			Float2 scale = scaling(affine_matrix);
+			return make_scaling(scale);
+		}
 		inline Float4x4 scaling_matrix(const Float4x4& affine_matrix)
 		{
 			return make_scaling(scaling(affine_matrix));
+		}
+		inline Float3x3 make_translation(const Float2& translation)
+		{
+			Float3x3 ret;
+#ifdef LUNA_SIMD
+			using namespace Simd;
+			float4 a = load_f2(translation.m);
+			float3x4 m = transform2d_translation_f3x4(a);
+			store_f3x4(ret.r[0].m, m);
+#else
+			ret = Float3x3(1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, translation.x, translation.y, 1.0f);
+#endif
+			return ret;
+		}
+		inline Float3x3 make_translation(f32 x, f32 y)
+		{
+			Float3x3 ret;
+#ifdef LUNA_SIMD
+			using namespace Simd;
+			float4 a = set_f4(x, y, 0.0f, 0.0f);
+			float3x4 m = transform2d_translation_f3x4(a);
+			store_f3x4(ret.r[0].m, m);
+#else
+			ret = Float3x3(1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, x, y, 1.0f);
+#endif
+			return ret;
 		}
 		inline Float4x4 make_translation(const Float3& translation)
 		{
@@ -332,6 +288,20 @@ namespace Luna
 			ret.r[1] = Float4(0.0f, 1.0f, 0.0f, 0.0f);
 			ret.r[2] = Float4(0.0f, 0.0f, 1.0f, 0.0f);
 			ret.r[3] = Float4(x, y, z, 1.0f);
+#endif
+			return ret;
+		}
+		inline Float3x3 make_rotation(f32 rotation)
+		{
+			Float3x3 ret;
+#ifdef LUNA_SIMD
+			using namespace Simd;
+			float3x4 m = transform2d_rotation_f3x4(rotation);
+			store_f3x4(ret.r[0].m, m);
+#else
+			f32 sine = sinf(rotation);
+			f32 cosine = cosf(rotation);
+			ret = Float3x3(cosine, sine, 0.0f, -sine, cosine, 0.0f, 0.0f, 0.0f, 1.0f);
 #endif
 			return ret;
 		}
@@ -524,6 +494,32 @@ namespace Luna
 			return make_rotation(Quaternion::from_euler_angles(pitch, yaw, roll));
 #endif
 		}
+		inline Float3x3 make_scaling(const Float2& scaling)
+		{
+			Float3x3 ret;
+#ifdef LUNA_SIMD
+			using namespace Simd;
+			float4 a = load_f2(scaling.m);
+			float3x4 m = transform2d_scaling_f3x4(a);
+			store_f3x4(ret.r[0].m, m);
+#else
+			ret = Float3x3(scaling.x, 0.0f, 0.0f, 0.0f, scaling.y, 0.0f, 0.0f, 0.0f, 1.0f);
+#endif
+			return ret;
+		}
+		inline Float3x3 make_scaling(f32 scale_x, f32 scale_y)
+		{
+			Float3x3 ret;
+#ifdef LUNA_SIMD
+			using namespace Simd;
+			float4 a = set_f4(scale_x, scale_y, 0.0f, 0.0f);
+			float3x4 m = transform2d_scaling_f3x4(a);
+			store_f3x4(ret.r[0].m, m);
+#else
+			ret = Float3x3(scale_x, 0.0f, 0.0f, 0.0f, scale_y, 0.0f, 0.0f, 0.0f, 1.0f);
+#endif
+			return ret;
+		}
 		inline Float4x4 make_scaling(const Float3& scaling)
 		{
 			Float4x4 ret;
@@ -628,63 +624,66 @@ namespace Luna
 		}
 	}
 
-	inline Float4x4 perspective_projection(f32 width, f32 height, f32 near_z, f32 far_z)
+	namespace ProjectionMatrix
 	{
-		f32 range = far_z / (far_z - near_z);
-		f32 two_near_z = near_z + near_z;
-		return Float4x4(
-			two_near_z / width, 0, 0, 0,
-			0, two_near_z / height, 0, 0,
-			0, 0, range, 1.0f,
-			0, 0, -range * near_z, 0
-		);
-	}
-	inline Float4x4 perspective_projection_fov(f32 fov, f32 aspect_ratio, f32 near_z, f32 far_z)
-	{
-		fov *= 0.5f;
-		f32 height = cosf(fov) / sinf(fov);
-		f32 width = height / aspect_ratio;
-		f32 range = far_z / (far_z - near_z);
-		return Float4x4(
-			width, 0, 0, 0,
-			0, height, 0, 0,
-			0, 0, range, 1.0f,
-			0, 0, -range * near_z, 0
-		);
-	}
-	inline Float4x4 perspective_projection_off_center(f32 left, f32 right, f32 bottom, f32 top, f32 near_z, f32 far_z)
-	{
-		f32 two_near_z = near_z + near_z;
-		f32 inv_width = 1.0f / (right - left);
-		f32 inv_height = 1.0f / (top - bottom);
-		f32 range = far_z / (far_z - near_z);
-		return Float4x4(
-			two_near_z * inv_width, 0, 0, 0,
-			0, two_near_z * inv_height, 0, 0,
-			-(left + right) * inv_width, -(top + bottom) * inv_height, range, 1.0f,
-			0, 0, -range * near_z, 0
-		);
-	}
-	inline Float4x4 orthographic_projection(f32 width, f32 height, f32 near_z, f32 far_z)
-	{
-		f32 range = 1.0f / (far_z - near_z);
-		return Float4x4(
-			2.0f / width, 0, 0, 0,
-			0, 2.0f / height, 0, 0,
-			0, 0, range, 0,
-			0, 0, -range * near_z, 1.0f
-		);
-	}
-	inline Float4x4 orthographic_projection_off_center(f32 left, f32 right, f32 bottom, f32 top, f32 near_z, f32 far_z)
-	{
-		f32 inv_width = 1.0f / (right - left);
-		f32 inv_height = 1.0f / (top - bottom);
-		f32 range = 1.0f / (far_z - near_z);
-		return Float4x4(
-			inv_width + inv_width, 0, 0, 0,
-			0, inv_height + inv_height, 0, 0,
-			0, 0, range, 0,
-			-(left + right) * inv_width, -(top + bottom) * inv_height, -range * near_z, 1.0f
-		);
+		inline Float4x4 make_perspective(f32 width, f32 height, f32 near_z, f32 far_z)
+		{
+			f32 range = far_z / (far_z - near_z);
+			f32 two_near_z = near_z + near_z;
+			return Float4x4(
+				two_near_z / width, 0, 0, 0,
+				0, two_near_z / height, 0, 0,
+				0, 0, range, 1.0f,
+				0, 0, -range * near_z, 0
+			);
+		}
+		inline Float4x4 make_perspective_fov(f32 fov, f32 aspect_ratio, f32 near_z, f32 far_z)
+		{
+			fov *= 0.5f;
+			f32 height = cosf(fov) / sinf(fov);
+			f32 width = height / aspect_ratio;
+			f32 range = far_z / (far_z - near_z);
+			return Float4x4(
+				width, 0, 0, 0,
+				0, height, 0, 0,
+				0, 0, range, 1.0f,
+				0, 0, -range * near_z, 0
+			);
+		}
+		inline Float4x4 make_perspective_off_center(f32 left, f32 right, f32 bottom, f32 top, f32 near_z, f32 far_z)
+		{
+			f32 two_near_z = near_z + near_z;
+			f32 inv_width = 1.0f / (right - left);
+			f32 inv_height = 1.0f / (top - bottom);
+			f32 range = far_z / (far_z - near_z);
+			return Float4x4(
+				two_near_z * inv_width, 0, 0, 0,
+				0, two_near_z * inv_height, 0, 0,
+				-(left + right) * inv_width, -(top + bottom) * inv_height, range, 1.0f,
+				0, 0, -range * near_z, 0
+			);
+		}
+		inline Float4x4 make_orthographic(f32 width, f32 height, f32 near_z, f32 far_z)
+		{
+			f32 range = 1.0f / (far_z - near_z);
+			return Float4x4(
+				2.0f / width, 0, 0, 0,
+				0, 2.0f / height, 0, 0,
+				0, 0, range, 0,
+				0, 0, -range * near_z, 1.0f
+			);
+		}
+		inline Float4x4 make_orthographic_off_center(f32 left, f32 right, f32 bottom, f32 top, f32 near_z, f32 far_z)
+		{
+			f32 inv_width = 1.0f / (right - left);
+			f32 inv_height = 1.0f / (top - bottom);
+			f32 range = 1.0f / (far_z - near_z);
+			return Float4x4(
+				inv_width + inv_width, 0, 0, 0,
+				0, inv_height + inv_height, 0, 0,
+				0, 0, range, 0,
+				-(left + right) * inv_width, -(top + bottom) * inv_height, -range * near_z, 1.0f
+			);
+		}
 	}
 }

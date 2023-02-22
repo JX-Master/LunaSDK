@@ -87,7 +87,7 @@ namespace Luna
 	Float2 operator/ (const Float2& v, f32 s);
 	Float2 operator/ (f32 s, const Float2& v);
 
-	bool in_bounds(const Float2& vec, const Float2& bounds);
+	bool in_bounds(const Float2& point, const Float2& min_bound, const Float2& max_bound);
 	f32 length(const Float2& vec);
 	f32 length_squared(const Float2& vec);
 	f32 dot(const Float2& vec1, const Float2& vec2);
@@ -104,8 +104,7 @@ namespace Luna
 	Float2 catmull_rom(const Float2& vec1, const Float2& vec2, const Float2& vec3, const Float2& vec4, f32 t);
 	Float2 hermite(const Float2& vec1, const Float2& t1, const Float2& vec2, const Float2& t2, f32 t);
 	Float2 reflect(const Float2& ivec, const Float2& nvec);
-	Float2 refract(const Float2& ivec, const Float2& nvec, f32 refractionIndex);
-	bool in_rect(const Float2& point, const Float2& min_point, const Float2& max_point);
+	Float2 refract(const Float2& ivec, const Float2& nvec, f32 refraction_index);
 
 	template <typename _Ty>
 	struct Vec2U
@@ -221,7 +220,7 @@ namespace Luna
 	Float3 operator/ (const Float3& v, f32 s);
 	Float3 operator/ (f32 s, const Float3& v);
 
-	bool in_bounds(const Float3& vec, const Float3& bounds);
+	bool in_bounds(const Float3& point, const Float3& min_bound, const Float3& max_bound);
 	f32 length(const Float3& vec);
 	f32 length_squared(const Float3& vec);
 	f32 dot(const Float3& vec1, const Float3& vec2);
@@ -238,8 +237,7 @@ namespace Luna
 	Float3 catmull_rom(const Float3& vec1, const Float3& vec2, const Float3& vec3, const Float3& vec4, f32 t);
 	Float3 hermite(const Float3& vec1, const Float3& t1, const Float3& vec2, const Float3& t2, f32 t);
 	Float3 reflect(const Float3& ivec, const Float3& nvec);
-	Float3 refract(const Float3& ivec, const Float3& nvec, f32 refractionIndex);
-	bool in_box(const Float3& point, const Float3& min_point, const Float3& max_point);
+	Float3 refract(const Float3& ivec, const Float3& nvec, f32 refraction_index);
 
 	//! Unaligned version of Float3. This is used for storing or transferring data between CPU/GPU and network only. 
 	template <typename _Ty>
@@ -358,7 +356,7 @@ namespace Luna
 	Float4 operator/ (const Float4& v, f32 s);
 	Float4 operator/ (f32 s, const Float4& v);
 
-	bool in_bounds(const Float4& vec, const Float4& bounds);
+	bool in_bounds(const Float4& point, const Float4& min_bound, const Float4& max_bound);
 	f32 length(const Float4& vec);
 	f32 length_squared(const Float4& vec);
 	f32 dot(const Float4& vec1, const Float4& vec2);
@@ -375,7 +373,7 @@ namespace Luna
 	Float4 catmull_rom(const Float4& vec1, const Float4& vec2, const Float4& vec3, const Float4& vec4, f32 t);
 	Float4 hermite(const Float4& vec1, const Float4& t1, const Float4& vec2, const Float4& t2, f32 t);
 	Float4 reflect(const Float4& ivec, const Float4& nvec);
-	Float4 refract(const Float4& ivec, const Float4& nvec, f32 refractionIndex);
+	Float4 refract(const Float4& ivec, const Float4& nvec, f32 refraction_index);
 
 	template <typename _Ty>
 	struct Vec4U

@@ -70,7 +70,7 @@ namespace Luna
 		}
 		Float4x4 this_to_parent_matrix() const
 		{
-			return AffineMatrix3D::make(position, rotation, scale);
+			return AffineMatrix::make(position, rotation, scale);
 		}
 		Float4x4 parent_to_this_matrix() const
 		{
@@ -124,7 +124,7 @@ namespace Luna
 		}
 		void set_this_to_parent_matrix(const Float4x4& mat)
 		{
-			position = AffineMatrix3D::translation(mat);
+			position = AffineMatrix::translation(mat);
 			scale = mat.scale_factor();
 			Float3 eular_angles = mat.rotation_matrix().euler_angles();
 			rotation = Quaternion::from_euler_angles(Float3(eular_angles.x, eular_angles.y, eular_angles.z));
