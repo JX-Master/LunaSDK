@@ -1,6 +1,8 @@
+**This is an experimental project and is in actively development. The APIs, implementations and docs may subject to rapid changes. Please don't use this project in production environments.**
+
 # Luna SDK
 
-**This is an experimental project and is in actively development. The APIs, implementations and docs may subject to rapid changes. Please don't use this project in production environments.**
+![Luna SDK LOGO](https://www.lunasdk.org/logo.png)
 
 Luna SDK is a C++ software development framework for real-time rendering applications like video games, interactive multimedia programs, data visualization programs and so on.
 
@@ -48,10 +50,6 @@ Designed target platforms:
 
 ## Docs 
 See [Luna SDK Docs](https://www.lunasdk.org).
-
-## FAQs
-### What is the design purpose of Luna SDK? Is this a Game Engine?
-The conclusion comes first: Luna SDK is NOT a Game Engine, but a lower level framework that you can use to create your own Game Engine. We interpret a Game Engine as a comprehensive game development toolset that enables game designers and artists to create game assets and game experience. Our Luna SDK, instead, is designed for developers with programming experience to build graphic programs quickly and easily, which is different from a Game Engine in designed usages and target users.
 
 ## Feedback & Discussion
 * `Issues` page is available for bug report and feature request (not guaranteed to be satisfied).
