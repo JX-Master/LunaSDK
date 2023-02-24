@@ -51,11 +51,11 @@ RV recreate_window_resources()
 		{
 			if (!g_swap_chain)
 			{
-				g_swap_chain = new_swap_chain(g_command_queue, g_window, SwapChainDesc(sz.x, sz.y, Format::rgba8_unorm, 2)).get();
+				g_swap_chain = new_swap_chain(g_command_queue, g_window, SwapChainDesc({sz.x, sz.y, 2, Format::rgba8_unorm, true})).get();
 			}
 			else
 			{
-				g_swap_chain->resize_buffers(2, sz.x, sz.y, Format::rgba8_unorm);
+				g_swap_chain->reset({sz.x, sz.y, 2, Format::rgba8_unorm, true});
 			}
 		}
 	}
@@ -156,7 +156,7 @@ void run()
 		g_command_buffer->submit();
 		g_command_buffer->wait();
 
-		g_swap_chain->present(g_screen_tex, 0, 0);
+		g_swap_chain->present(g_screen_tex, 0);
 		g_swap_chain->wait();
 		g_command_buffer->reset();
 		g_shape_renderer->reset();

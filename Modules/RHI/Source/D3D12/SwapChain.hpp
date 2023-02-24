@@ -68,7 +68,7 @@ namespace Luna
 			RV init(Window::IWindow* window, CommandQueue* queue, const SwapChainDesc& desc);
 
 			//! Called when the back buffer is resized or when the swap chain is initialized.
-			RV reset_back_buffer_resources(u32 buffer_count, u32 width, u32 height, Format new_format);
+			RV reset_back_buffer_resources(const SwapChainDesc& desc);
 
 			IDevice* get_device()
 			{
@@ -102,8 +102,8 @@ namespace Luna
 			{
 				return m_desc;
 			}
-			RV present(IResource* resource, u32 subresource, u32 sync_interval);
-			RV resize_buffers(u32 buffer_count, u32 width, u32 height, Format new_format);
+			RV present(IResource* resource, u32 subresource);
+			RV reset(const SwapChainDesc& desc);
 		};
 	}
 }

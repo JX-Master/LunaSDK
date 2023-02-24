@@ -278,7 +278,7 @@ namespace Luna
 			{
 				return BasicError::bad_platform_call();
 			}
-			luexp(reset_back_buffer_resources(m_desc.buffer_count, m_desc.width, m_desc.height, m_desc.pixel_format));
+			luexp(reset_back_buffer_resources(m_desc));
 
 			hr = m_li->Close();
 			if (FAILED(hr))
@@ -294,13 +294,13 @@ namespace Luna
 			dest.BytecodeLength = src ? src->GetBufferSize() : 0;
 			dest.pShaderBytecode = src ? src->GetBufferPointer() : nullptr;
 		}
-		RV SwapChain::reset_back_buffer_resources(u32 buffer_count, u32 width, u32 height, Format new_format)
+		RV SwapChain::reset_back_buffer_resources(const SwapChainDesc& desc)
 		{
-			lucheck(buffer_count <= 8);
+			lucheck(desc.buffer_count <= 8);
 			// Fetch resources.
-			m_back_buffers.resize(buffer_count);
+			m_back_buffers.resize(desc.buffer_count);
 			D3D12_CPU_DESCRIPTOR_HANDLE h = m_rtvs->GetCPUDescriptorHandleForHeapStart();
-			for (u32 i = 0; i < buffer_count; ++i)
+			for (u32 i = 0; i < desc.buffer_count; ++i)
 			{
 				HRESULT hr = m_sc->GetBuffer(i, IID_PPV_ARGS(&m_back_buffers[i]));
 				if (FAILED(hr))
@@ -313,7 +313,7 @@ namespace Luna
 			m_current_back_buffer = 0;
 
 			// Recreate pso on format change.
-			if (!m_pso || m_desc.pixel_format != new_format)
+			if (!m_pso || m_desc.pixel_format != desc.pixel_format)
 			{
 				m_pso = nullptr;
 				D3D12_INPUT_ELEMENT_DESC input_elements[2];
@@ -388,7 +388,7 @@ namespace Luna
 				pipeline.IBStripCutValue = D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_DISABLED;
 				pipeline.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 				pipeline.NumRenderTargets = 1;
-				pipeline.RTVFormats[0] = encode_pixel_format(new_format);
+				pipeline.RTVFormats[0] = encode_pixel_format(desc.pixel_format);
 				pipeline.RTVFormats[1] = DXGI_FORMAT_UNKNOWN;
 				pipeline.RTVFormats[2] = DXGI_FORMAT_UNKNOWN;
 				pipeline.RTVFormats[3] = DXGI_FORMAT_UNKNOWN;
@@ -409,14 +409,11 @@ namespace Luna
 					return BasicError::bad_platform_call();
 				}
 			}
-			m_desc.buffer_count = buffer_count;
-			m_desc.width = width;
-			m_desc.height = height;
-			m_desc.pixel_format = new_format;
+			m_desc = desc;
 			return ok;
 		}
 
-		RV SwapChain::present(IResource* resource, u32 subresource, u32 sync_interval)
+		RV SwapChain::present(IResource* resource, u32 subresource)
 		{
 			lutsassert(this);
 			wait();
@@ -501,7 +498,7 @@ namespace Luna
 
 			ID3D12CommandList* cmdlist = m_li.Get();
 			m_queue->m_queue->ExecuteCommandLists(1, &cmdlist);
-			hr = m_sc->Present(sync_interval, 0);
+			hr = m_sc->Present(m_desc.vertical_synchronized ? 1 : 0, 0);
 			if (FAILED(hr))
 			{
 				if (hr == DXGI_ERROR_DEVICE_RESET)
@@ -527,45 +524,46 @@ namespace Luna
 			m_current_back_buffer = (m_current_back_buffer + 1) % (m_desc.buffer_count);
 			return ok;
 		}
-		RV SwapChain::resize_buffers(u32 buffer_count, u32 width, u32 height, Format new_format)
+		RV SwapChain::reset(const SwapChainDesc& desc)
 		{
 			lutsassert(this);
 			wait();
-			if (!buffer_count)
+			SwapChainDesc modified_desc = desc;
+			if (!modified_desc.buffer_count)
 			{
-				buffer_count = m_desc.buffer_count;
+				modified_desc.buffer_count = m_desc.buffer_count;
 			}
-			if (new_format == Format::unknown)
+			if (modified_desc.pixel_format == Format::unknown)
 			{
-				new_format = m_desc.pixel_format;
+				modified_desc.pixel_format = m_desc.pixel_format;
 			}
 			m_back_buffers.clear();
 
-			if (!width || !height)
+			if (!modified_desc.width || !modified_desc.height)
 			{
 				auto sz = m_window->get_size();
-				if (!width)
+				if (!modified_desc.width)
 				{
-					width = sz.x;
+					modified_desc.width = sz.x;
 				}
-				if (!height)
+				if (!modified_desc.height)
 				{
-					height = sz.y;
+					modified_desc.height = sz.y;
 				}
 			}
 
-			if (new_format == Format::unknown)
+			if (modified_desc.pixel_format == Format::unknown)
 			{
-				new_format = m_desc.pixel_format;
+				modified_desc.pixel_format = m_desc.pixel_format;
 			}
 
 			// Resize the back buffer.
-			HRESULT hr = m_sc->ResizeBuffers(buffer_count, width, height, encode_pixel_format(new_format), DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH);
+			HRESULT hr = m_sc->ResizeBuffers(modified_desc.buffer_count, modified_desc.width, modified_desc.height, encode_pixel_format(modified_desc.pixel_format), DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH);
 			if (FAILED(hr))
 			{
 				return BasicError::bad_platform_call();
 			}
-			return reset_back_buffer_resources(buffer_count, width, height, new_format);
+			return reset_back_buffer_resources(modified_desc);
 		}
 	}
 }

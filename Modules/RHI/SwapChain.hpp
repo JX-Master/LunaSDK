@@ -17,30 +17,35 @@ namespace Luna
 {
 	namespace RHI
 	{
+
 		struct SwapChainDesc
 		{
-			//! The number of back buffers in the swap chain.
-			u32 buffer_count;
 			//! The width of the swap chain back buffer. 
 			//! Specify 0 will determine the size from the bounding window's native size.
 			u32 width;
 			//! The width of the swap chain back buffer. 
 			//! Specify 0 will determine the size from the bounding window's native size.
 			u32 height;
+			//! The number of back buffers in the swap chain.
+			u32 buffer_count;
 			//! The pixel format of the back buffer.
 			Format pixel_format;
+			//! Whether to synchronize frame image presentation to vertical blanks of the monitor.
+			bool vertical_synchronized;
 
 			SwapChainDesc() = default;
 			SwapChainDesc(
 				u32 width,
 				u32 height,
+				u32 buffer_count,
 				Format pixel_format,
-				u32 buffer_count
+				bool vertical_synchronized
 			) :
 				width(width),
 				height(height),
+				buffer_count(buffer_count),
 				pixel_format(pixel_format),
-				buffer_count(buffer_count) {}
+				vertical_synchronized(vertical_synchronized) {}
 		};
 
 		//! @interface ISwapChain
@@ -72,25 +77,14 @@ namespace Luna
 			//! @param[in] resource The resource which holds the data to be displayed. The data should stay valid until the present call is finished.
 			//! @param[in] subresource The index of the subresource of the resource to present. The subresource must be a 2-D texture, if the texture
 			//! size does not match the back buffer size, the texture will be stretched.
-			//! @param[in] sync_interval Specify the sync interval of the presentation.
-			//! If the interval is 0, the GPU command queue will execute present command immediately without checking if the previous back buffer
-			//! is reading by the monitor control clip. The previous buffer will be discarded immediately and the monitor starts reading from the new
-			//! buffer immediately. This may cause image tearing.
-			//! If the interval is 1-4, the GPU command queue will waits n-vertical blacks before submitting the present operation. This may blocks the
-			//! GPU command queue if the presenting speed is higher than the monitor refresh rate.
-			//!
 			//! @remark This call is unsynchronized, the call submits the present request to the command queue and returns immediately. Use `ISwapChain::wait`
 			//! or `ISwapChain::try_wait` to wait for the present call to be processed. If another present call is submitted before the last present call 
 			//! gets processed, the current blocks until the last present call gets finished to prevent error.
-			virtual RV present(IResource* resource, u32 subresource, u32 sync_interval) = 0;
+			virtual RV present(IResource* resource, u32 subresource) = 0;
 
-			//! Changes the count, size or format of the back buffer. This should be called when the window is resized.
-			//! @param[in] buffer_count The new buffer count. Set to 0 to preserve the former buffer count.
-			//! @param[in] width The width of the back buffer. Specify 0 will determine the size from the bounding window's framebuffer size.
-			//! @param[in] height The height of the back buffer. Specify 0 will determine the size from the bounding window's framebuffer size.
-			//! @param[in] new_format The new format of the back buffer. Specify unknown to preserve the former back buffer format.
-			//! @return Returns success if the resize operation succeeded, failure otherwise.
-			virtual RV resize_buffers(u32 buffer_count, u32 width, u32 height, Format new_format) = 0;
+			//! Resets the swap chain.
+			//! @param[in] desc The new swap chain descriptor object.
+			virtual RV reset(const SwapChainDesc& desc) = 0;
 		};
 	}
 }

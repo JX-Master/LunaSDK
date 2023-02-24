@@ -56,7 +56,7 @@ namespace Luna
 		void on_window_resize(IWindow* window, u32 width, u32 height)
 		{
 			// resize back buffer.
-			lupanic_if_failed(m_swap_chain->resize_buffers(2, width, height, Format::rgba8_unorm));
+			lupanic_if_failed(m_swap_chain->reset({width, height, 2, Format::rgba8_unorm, true}));
 			m_back_buffer = get_main_device()->new_resource(ResourceDesc::tex2d(ResourceHeapType::local, Format::rgba8_unorm,
 				ResourceUsageFlag::render_target | ResourceUsageFlag::shader_resource, width, height, 1, 1), nullptr).get();
 			if (m_resize_func) m_resize_func(width, height);
@@ -78,7 +78,7 @@ namespace Luna
 					WindowCreationFlag::maximizable));
 				m_window->get_close_event() += on_window_close;
 				m_window->get_framebuffer_resize_event() += on_window_resize;
-				luset(m_swap_chain, new_swap_chain(m_queue, m_window, SwapChainDesc(0, 0, Format::rgba8_unorm, 2)));
+				luset(m_swap_chain, new_swap_chain(m_queue, m_window, SwapChainDesc({0, 0, 2, Format::rgba8_unorm, true})));
 				auto sz = m_window->get_size();
 				luset(m_back_buffer, get_main_device()->new_resource(ResourceDesc::tex2d(ResourceHeapType::local, Format::rgba8_unorm,
 					ResourceUsageFlag::render_target | ResourceUsageFlag::shader_resource, sz.x, sz.y, 1, 1), nullptr));
@@ -131,7 +131,7 @@ namespace Luna
 
 				if (m_draw_func) m_draw_func();
 
-				lupanic_if_failed(m_swap_chain->present(m_back_buffer, 0, 1));
+				lupanic_if_failed(m_swap_chain->present(m_back_buffer, 0));
 				m_swap_chain->wait();
 			}
 			if (m_close_func) m_close_func();

@@ -136,7 +136,7 @@ namespace Luna
 		lutry
 		{
 			lulet(window, Window::new_window("Luna Graphics Research Suite - Open Project", 0, 0, 1000, 500, nullptr, Window::WindowCreationFlag::position_center));
-			lulet(swap_chain, RHI::new_swap_chain(g_env->graphics_queue, window, RHI::SwapChainDesc(0, 0, RHI::Format::rgba8_unorm, 2)));
+			lulet(swap_chain, RHI::new_swap_chain(g_env->graphics_queue, window, RHI::SwapChainDesc({0, 0, 2, RHI::Format::rgba8_unorm, true})));
 			lulet(cmdbuf, g_env->graphics_queue->new_command_buffer());
 
 			window->get_close_event() += [](Window::IWindow* window) { window->close(); };
@@ -170,7 +170,7 @@ namespace Luna
 				auto sz = window->get_size();
 				if (sz.x && sz.y && (!back_buffer || sz.x != w || sz.y != h))
 				{
-					luexp(swap_chain->resize_buffers(2, sz.x, sz.y, RHI::Format::unknown));
+					luexp(swap_chain->reset({sz.x, sz.y, 2, RHI::Format::unknown, true}));
 					f32 clear_color[] = { 0.0f, 0.0f, 0.0f, 1.0f };
 					luset(back_buffer, RHI::get_main_device()->new_resource(RHI::ResourceDesc::tex2d(RHI::ResourceHeapType::local, RHI::Format::rgba8_unorm, RHI::ResourceUsageFlag::render_target, sz.x, sz.y, 1, 1),
 						&RHI::ClearValue::as_color(RHI::Format::rgba8_unorm, clear_color)));
@@ -290,7 +290,7 @@ namespace Luna
 				luexp(cmdbuf->submit());
 				cmdbuf->wait();
 				luexp(cmdbuf->reset());
-				luexp(swap_chain->present(back_buffer, 0, 1));
+				luexp(swap_chain->present(back_buffer, 0));
 				swap_chain->wait();
 			}
 			if (path.empty())

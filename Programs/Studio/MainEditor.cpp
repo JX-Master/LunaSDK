@@ -95,7 +95,7 @@ namespace Luna
 
 			m_window->get_close_event() += [](Window::IWindow* window) {window->close(); };
 
-			luset(m_swap_chain, RHI::new_swap_chain(g_env->graphics_queue, m_window, RHI::SwapChainDesc(0, 0, RHI::Format::rgba8_unorm, 2)));
+			luset(m_swap_chain, RHI::new_swap_chain(g_env->graphics_queue, m_window, RHI::SwapChainDesc({0, 0, 2, RHI::Format::rgba8_unorm, true})));
 			luset(m_cmdbuf, g_env->graphics_queue->new_command_buffer());
 
 			// Create back buffer.
@@ -156,7 +156,7 @@ namespace Luna
 			auto sz = m_window->get_size();
 			if (sz.x && sz.y && (!m_back_buffer || sz.x != m_main_window_width || sz.y != m_main_window_height))
 			{
-				luexp(m_swap_chain->resize_buffers(2, sz.x, sz.y, RHI::Format::unknown));
+				luexp(m_swap_chain->reset({sz.x, sz.y, 2, RHI::Format::unknown, true}));
 				f32 clear_color[] = { 0.0f, 0.0f, 0.0f, 1.0f };
 				luset(m_back_buffer, RHI::get_main_device()->new_resource(RHI::ResourceDesc::tex2d(RHI::ResourceHeapType::local, RHI::Format::rgba8_unorm, 
 					RHI::ResourceUsageFlag::render_target, sz.x, sz.y, 1, 1),
@@ -227,7 +227,7 @@ namespace Luna
 			luexp(m_cmdbuf->submit());
 			m_cmdbuf->wait();
 			luexp(m_cmdbuf->reset());
-			luexp(m_swap_chain->present(m_back_buffer, 0, 1));
+			luexp(m_swap_chain->present(m_back_buffer, 0));
 			m_swap_chain->wait();
 		}
 		lucatchret;

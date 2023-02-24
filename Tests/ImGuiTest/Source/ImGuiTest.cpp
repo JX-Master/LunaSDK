@@ -36,7 +36,7 @@ void run()
 
 	Ref<ICommandQueue> queue = dev->new_command_queue(CommandQueueType::graphic).get();
 
-	Ref<ISwapChain> swap_chain = new_swap_chain(queue, window, SwapChainDesc(0, 0, Format::rgba8_unorm, 2)).get();
+	Ref<ISwapChain> swap_chain = new_swap_chain(queue, window, SwapChainDesc({0, 0, 2, Format::rgba8_unorm, true})).get();
 
 	Ref<ICommandBuffer> cmdbuf = queue->new_command_buffer().get();
 
@@ -64,7 +64,7 @@ void run()
 		auto wh = sz.y;
 		if (!back_buffer || ww != w || wh != h)
 		{
-			swap_chain->resize_buffers(2, ww, wh, Format::unknown);
+			swap_chain->reset({ww, wh, 2, Format::unknown, true});
 			f32 clear_color[] = { 0.0f, 0.0f, 0.0f, 1.0f };
 			back_buffer = dev->new_resource(ResourceDesc::tex2d(ResourceHeapType::local, Format::rgba8_unorm, ResourceUsageFlag::render_target, ww, wh, 1, 1),
 				&ClearValue::as_color(Format::rgba8_unorm, clear_color)).get();
@@ -91,7 +91,7 @@ void run()
 		cmdbuf->submit();
 		cmdbuf->wait();
 		cmdbuf->reset();
-		swap_chain->present(back_buffer, 0, 1);
+		swap_chain->present(back_buffer, 0);
 		swap_chain->wait();
 	}
 }
