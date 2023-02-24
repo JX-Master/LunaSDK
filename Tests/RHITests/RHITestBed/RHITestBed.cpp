@@ -154,16 +154,6 @@ namespace Luna
 		{
 			return m_window;
 		}
-		LUNA_RHI_TESTBED_API ShaderCompiler::TargetFormat get_platform_shader_target_format()
-		{
-			auto api = RHI::get_current_platform_api_type();
-			switch (api)
-			{
-			case APIType::d3d12: return ShaderCompiler::TargetFormat::dxil;
-			case APIType::vulkan: return ShaderCompiler::TargetFormat::spir_v;
-			default: lupanic(); return ShaderCompiler::TargetFormat::none;
-			}
-		}
 	}
 
 	StaticRegisterModule testbed_module("RHITestBed", "RHI", nullptr, nullptr);

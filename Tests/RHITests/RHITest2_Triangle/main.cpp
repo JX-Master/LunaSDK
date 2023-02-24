@@ -14,6 +14,7 @@
 #include <Runtime/Math/Color.hpp>
 #include <ShaderCompiler/ShaderCompiler.hpp>
 #include <Runtime/Log.hpp>
+#include <RHI/ShaderCompileHelper.hpp>
 
 using namespace Luna;
 using namespace Luna::RHI;
@@ -65,7 +66,7 @@ RV start()
 			compiler->set_source({ vs_shader_code, sizeof(vs_shader_code) });
 			compiler->set_source_name("TestTriangleVS");
 			compiler->set_entry_point("main");
-			compiler->set_target_format(get_platform_shader_target_format());
+			compiler->set_target_format(RHI::get_current_platform_shader_target_format());
 			compiler->set_shader_type(ShaderCompiler::ShaderType::vertex);
 			compiler->set_shader_model(5, 0);
 			compiler->set_optimization_level(ShaderCompiler::OptimizationLevel::full);
@@ -91,7 +92,7 @@ RV start()
 			compiler->set_source({ ps_shader_code, sizeof(ps_shader_code) });
 			compiler->set_source_name("TestTrianglePS");
 			compiler->set_entry_point("main");
-			compiler->set_target_format(get_platform_shader_target_format());
+			compiler->set_target_format(RHI::get_current_platform_shader_target_format());
 			compiler->set_shader_type(ShaderCompiler::ShaderType::pixel);
 			compiler->set_shader_model(5, 0);
 			compiler->set_optimization_level(ShaderCompiler::OptimizationLevel::full);

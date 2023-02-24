@@ -14,20 +14,21 @@
 #include <Runtime/Math/Color.hpp>
 #include "ImageData.hpp"
 #include <Runtime/Log.hpp>
+#include <RHI/ShaderCompileHelper.hpp>
 
 using namespace Luna;
 using namespace Luna::RHI;
 using namespace Luna::RHITestBed;
 
-Ref<RHI::IRenderTargetView> m_rtv;
-Ref<RHI::IDescriptorSetLayout> m_desc_set_layout;
-Ref<RHI::IShaderInputLayout> m_shader_input_layout;
-Ref<RHI::IDescriptorSet> m_desc_set;
-Ref<RHI::IPipelineState> m_pso;
-Ref<RHI::IResource> m_tex;
+Ref<RHI::IRenderTargetView> rtv;
+Ref<RHI::IDescriptorSetLayout> desc_set_layout;
+Ref<RHI::IShaderInputLayout> shader_input_layout;
+Ref<RHI::IDescriptorSet> desc_set;
+Ref<RHI::IPipelineState> pso;
+Ref<RHI::IResource> tex;
 
-Ref<RHI::IResource> m_vb;
-Ref<RHI::IResource> m_ib;
+Ref<RHI::IResource> vb;
+Ref<RHI::IResource> ib;
 
 struct VertexData
 {
@@ -39,7 +40,7 @@ RV start()
 {
 	lutry
 	{
-		luset(m_rtv, get_main_device()->new_render_target_view(get_back_buffer()));
+		luset(rtv, get_main_device()->new_render_target_view(get_back_buffer()));
 
 		// create pso
 		{
@@ -69,7 +70,7 @@ RV start()
 			compiler->set_source({ vs_shader_code, sizeof(vs_shader_code) });
 			compiler->set_source_name("TestTextureVS");
 			compiler->set_entry_point("main");
-			compiler->set_target_format(get_platform_shader_target_format());
+			compiler->set_target_format(RHI::get_current_platform_shader_target_format());
 			compiler->set_shader_type(ShaderCompiler::ShaderType::vertex);
 			compiler->set_shader_model(5, 0);
 			compiler->set_optimization_level(ShaderCompiler::OptimizationLevel::full);
@@ -98,7 +99,7 @@ RV start()
 			compiler->set_source({ ps_shader_code, sizeof(ps_shader_code) });
 			compiler->set_source_name("TestTexturePS");
 			compiler->set_entry_point("main");
-			compiler->set_target_format(get_platform_shader_target_format());
+			compiler->set_target_format(RHI::get_current_platform_shader_target_format());
 			compiler->set_shader_type(ShaderCompiler::ShaderType::pixel);
 			compiler->set_shader_model(5, 0);
 			compiler->set_optimization_level(ShaderCompiler::OptimizationLevel::full);
@@ -108,13 +109,13 @@ RV start()
 			auto ps_data = compiler->get_output();
 			Blob ps(ps_data.data(), ps_data.size());
 
-			luset(m_desc_set_layout, get_main_device()->new_descriptor_set_layout(DescriptorSetLayoutDesc({
+			luset(desc_set_layout, get_main_device()->new_descriptor_set_layout(DescriptorSetLayoutDesc({
 				DescriptorSetLayoutBinding(DescriptorType::srv, 0, 1, ShaderVisibility::pixel),
 				DescriptorSetLayoutBinding(DescriptorType::sampler, 1, 1, ShaderVisibility::pixel)
 				})));
 
-			luset(m_shader_input_layout, get_main_device()->new_shader_input_layout(ShaderInputLayoutDesc(
-				{ m_desc_set_layout },
+			luset(shader_input_layout, get_main_device()->new_shader_input_layout(ShaderInputLayoutDesc(
+				{ desc_set_layout },
 				ShaderInputLayoutFlag::allow_input_assembler_input_layout |
 				ShaderInputLayoutFlag::deny_domain_shader_access | ShaderInputLayoutFlag::deny_geometry_shader_access |
 				ShaderInputLayoutFlag::deny_hull_shader_access)));
@@ -125,26 +126,26 @@ RV start()
 				InputElementDesc("TEXCOORD", 0, Format::rg32_float) });
 			desc.vs = { vs.data(), vs.size() };
 			desc.ps = { ps.data(), ps.size() };
-			desc.shader_input_layout = m_shader_input_layout;
+			desc.shader_input_layout = shader_input_layout;
 			desc.depth_stencil_state = DepthStencilDesc(false, false);
 			desc.num_render_targets = 1;
 			desc.rtv_formats[0] = Format::rgba8_unorm;
 
-			luset(m_pso, get_main_device()->new_graphic_pipeline_state(desc));
+			luset(pso, get_main_device()->new_graphic_pipeline_state(desc));
 
-			luset(m_vb, get_main_device()->new_resource(ResourceDesc::buffer(ResourceHeapType::upload, ResourceUsageFlag::vertex_buffer, sizeof(VertexData) * 4)));
+			luset(vb, get_main_device()->new_resource(ResourceDesc::buffer(ResourceHeapType::upload, ResourceUsageFlag::vertex_buffer, sizeof(VertexData) * 4)));
 			u32 incides[] = { 0, 1, 2, 1, 3, 2 };
-			luset(m_ib, get_main_device()->new_resource(ResourceDesc::buffer(ResourceHeapType::upload, ResourceUsageFlag::index_buffer, sizeof(incides))));
+			luset(ib, get_main_device()->new_resource(ResourceDesc::buffer(ResourceHeapType::upload, ResourceUsageFlag::index_buffer, sizeof(incides))));
 			void* mapped_data;
-			luexp(m_ib->map_subresource(0, false, &mapped_data));
+			luexp(ib->map_subresource(0, false, &mapped_data));
 			memcpy(mapped_data, incides, sizeof(incides));
-			m_ib->unmap_subresource(0, true);
+			ib->unmap_subresource(0, true);
 
 			// prepare texture - 128x128 with only 1 mip level.
-			luset(m_tex, get_main_device()->new_resource(ResourceDesc::tex2d(ResourceHeapType::shared_upload, Format::rgba8_unorm, ResourceUsageFlag::shader_resource,
+			luset(tex, get_main_device()->new_resource(ResourceDesc::tex2d(ResourceHeapType::shared_upload, Format::rgba8_unorm, ResourceUsageFlag::shader_resource,
 				128, 128, 1, 1)));
 
-			luexp(m_tex->map_subresource(0, false));
+			luexp(tex->map_subresource(0, false));
 
 			BoxU box;
 			box.offset_x = 0;
@@ -153,14 +154,14 @@ RV start()
 			box.width = 128;
 			box.height = 128;
 			box.depth = 1;
-			luexp(m_tex->write_subresource(0, test_image_data_v, 128 * 4, 128 * 128 * 4, box));
-			m_tex->unmap_subresource(0, true);
+			luexp(tex->write_subresource(0, test_image_data_v, 128 * 4, 128 * 128 * 4, box));
+			tex->unmap_subresource(0, true);
 
-			luset(m_desc_set, get_main_device()->new_descriptor_set(DescriptorSetDesc(m_desc_set_layout)));
+			luset(desc_set, get_main_device()->new_descriptor_set(DescriptorSetDesc(desc_set_layout)));
 
-			m_desc_set->set_srv(0, m_tex, nullptr);
+			desc_set->set_srv(0, tex, nullptr);
 			
-			m_desc_set->set_sampler(1, SamplerDesc(FilterMode::min_mag_mip_linear, TextureAddressMode::clamp,
+			desc_set->set_sampler(1, SamplerDesc(FilterMode::min_mag_mip_linear, TextureAddressMode::clamp,
 				TextureAddressMode::clamp, TextureAddressMode::clamp, 0.0f, 1, ComparisonFunc::always, { 0.0f, 0.0f, 0.0f, 1.0f }, 0.0f, 0.0f));
 		}
 	}
@@ -187,24 +188,24 @@ void draw()
 	};
 
 	void* mapped;
-	lupanic_if_failed(m_vb->map_subresource(0, false, &mapped));
+	lupanic_if_failed(vb->map_subresource(0, false, &mapped));
 	memcpy(mapped, data, sizeof(data));
-	m_vb->unmap_subresource(0, true);
+	vb->unmap_subresource(0, true);
 
 	auto cb = get_command_buffer();
 
 	cb->resource_barrier(ResourceBarrierDesc::as_transition(get_back_buffer(), ResourceState::render_target, 0));
 	RenderPassDesc desc;
-	desc.rtvs[0] = m_rtv;
+	desc.rtvs[0] = rtv;
 	desc.rt_load_ops[0] = LoadOp::clear;
 	desc.rt_clear_values[0] = Color::black();
 	cb->begin_render_pass(desc);
-	cb->set_pipeline_state(m_pso);
-	cb->set_graphic_shader_input_layout(m_shader_input_layout);
-	cb->set_graphic_descriptor_set(0, m_desc_set);
+	cb->set_pipeline_state(pso);
+	cb->set_graphic_shader_input_layout(shader_input_layout);
+	cb->set_graphic_descriptor_set(0, desc_set);
 	cb->set_primitive_topology(PrimitiveTopology::triangle_list);
-	cb->set_vertex_buffers(0, { &VertexBufferViewDesc(m_vb, 0, sizeof(VertexData) * 4, sizeof(VertexData)), 1 });
-	cb->set_index_buffer(m_ib, 0, sizeof(u32) * 6, Format::r32_uint);
+	cb->set_vertex_buffers(0, { &VertexBufferViewDesc(vb, 0, sizeof(VertexData) * 4, sizeof(VertexData)), 1 });
+	cb->set_index_buffer(ib, 0, sizeof(u32) * 6, Format::r32_uint);
 	cb->set_scissor_rect(RectI(0, 0, (i32)w, (i32)h));
 	cb->set_viewport(Viewport(0.0f, 0.0f, (f32)w, (f32)h, 0.0f, 1.0f));
 	cb->draw_indexed(6, 0, 0);
@@ -216,20 +217,20 @@ void draw()
 
 void resize(u32 width, u32 height)
 {
-	m_rtv = get_main_device()->new_render_target_view(get_back_buffer()).get();
+	rtv = get_main_device()->new_render_target_view(get_back_buffer()).get();
 	draw();
 }
 
 void cleanup()
 {
-	m_rtv.reset();
-	m_desc_set_layout.reset();
-	m_shader_input_layout.reset();
-	m_desc_set.reset();
-	m_pso.reset();
-	m_tex.reset();
-	m_vb.reset();
-	m_ib.reset();
+	rtv.reset();
+	desc_set_layout.reset();
+	shader_input_layout.reset();
+	desc_set.reset();
+	pso.reset();
+	tex.reset();
+	vb.reset();
+	ib.reset();
 }
 
 void run_app()
