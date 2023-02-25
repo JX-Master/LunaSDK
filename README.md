@@ -46,6 +46,10 @@ Designed target platforms:
 ### Visual Studio Code
 1. Clone or download this project.
 1. Open Code editor on the project root directory, then choose xmake toolchain in Code editor.
+1. Configure the building option by executing `xmake f -p [platform] -a [arch] -m [mode]`. Possible options include:
+   1. `-p` for target platform, including `windows` and `macosx`. This can be set automatically for most of the time.
+   1. `-a` for architecture, including `x64` and `arm64`. 
+   1. `-m` for mode, including `debug`, `profile`and `release`.
 1. Open terminal and execute `xmake build` for all projects, or `xmake build {target}` for a specific target, like `Studio`. You may also use `Run and Debug` tab to build project if you install the `XMake` extension.
 
 ## Docs 
