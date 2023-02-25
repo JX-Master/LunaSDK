@@ -6,6 +6,10 @@ function compile_shader(hlsl_file, options)
     options.entry_point = options.entry_point or "main"
     options.optimization_level = options.optimization_level or 3
 
+    if not os.exists(hlsl_file) then
+        raise("Shader file " .. hlsl_file .. " does not exist.")
+    end
+    
     local filename = path.basename(hlsl_file)
     local opt = {}
     if options.envs then

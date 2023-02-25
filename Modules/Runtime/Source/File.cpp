@@ -23,7 +23,14 @@ namespace Luna
 			file->m_file = file_handle;
 			ret = file;
 		}
+#ifdef LUNA_DEBUG
+		lucatch
+		{
+			return set_error(lures, "Failed to open file %s: %s", filename, explain(lures));
+		}
+#else
 		lucatchret;
+#endif
 		return ret;
 	}
 	LUNA_RUNTIME_API R<Blob> load_file_data(IFile* file)
