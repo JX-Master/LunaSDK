@@ -42,48 +42,127 @@ namespace Luna
 
 		struct SocketAddressIPv4
 		{
-			IPv4Address address = IPV4_ADDRESS_ANY;
+			IPv4Address address;
+			//! The port number of the address in host byte order.
 			u16 port;
+		};
+
+		enum class AddressFamily : u32
+		{
+			//! Maps to `AF_UNSPEC`. The address family is unspecified.
+			unspecified = 0,
+			//! Maps to `AF_INET`. The Internet Protocol version 4 (IPv4) address family.
+			ipv4,
+			//! Maps to `AF_INET6`. The Internet Protocol version 6 (IPv6) address family.
+			ipv6,
+			//! Maps to `AF_BTH` or `AF_BLUETOOTH`. The Bluetooth address family.
+			bluetooth
+		};
+
+		struct SocketAddress
+		{
+			AddressFamily family;
+			union
+			{
+				SocketAddressIPv4 ipv4;
+
+			};
 		};
 
 		struct ISocket : virtual IStream
 		{
 			luiid("{36233BD3-54A0-4E67-B01E-C79E8115F548}");
 
-			//! Binds one IPv4 address to this socket.
-			//! The socket must be created with `SocketAddressFamily::ipv4`, or this call fails.
-			virtual RV bind(const SocketAddressIPv4& address) = 0;
+			//! Gets the native handle of this socket.
+			//! On Windows platforms, the returned handle can be reinterpreted to `SOCKET` type.
+			//! On POSIX platforms, the returned handle can be reinterpreted to `int`, which is the file
+			//! descriptor of the socket.
+			virtual opaque_t get_native_handle() = 0;
+
+			//! Binds one address to this socket.
+			virtual RV bind(const SocketAddress& address) = 0;
 
 			//! Starts listening for incoming connections.
 			virtual RV listen(i32 len) = 0;
 
 			//! Connects to the specified host.
-			virtual RV connect(const SocketAddressIPv4& address) = 0;
+			virtual RV connect(const SocketAddress& address) = 0;
 
 			//! Permits incoming connection attempt on this socket.
-			virtual R<Ref<ISocket>> accept(SocketAddressIPv4& address) = 0;
-		};
-
-		enum class SocketAddressFamily : u32
-		{
-			//! Maps to AF_INET. The Internet Protocol version 4 (IPv4) address family.
-			ipv4,
-			//! Maps to AF_INET6. The Internet Protocol version 6 (IPv6) address family.
-			ipv6,
+			virtual R<Ref<ISocket>> accept(SocketAddress& address) = 0;
 		};
 
 		enum class SocketType : u32
 		{
-			//! Provides sequenced, reliable, two-way, connection-based byte streams.
-			//! If ipv4 or ipv6 is choosed, TCP will be used.
+			//! The socket type is unspecified.
+			unspecified = 0,
+			//! Maps to `SOCK_STREAM`
+			//! Provides sequenced, reliable, two-way, connection-based byte streams.  
+			//! An out-of-band data transmission mechanism may be supported.
 			stream,
-			//! Supports datagrams (connectionless, unreliable messages of a fixed 
-			//! maximum length).
-			//! If ipv4 or ipv6 is choosed, UDP will be used.
+			//! Maps to `SOCK_DGRAM`
+			//! Supports datagrams (connectionless, unreliable messages of a fixed maximum length).
 			dgram,
+			//! Maps to `SOCK_RAW`
+			//! Provides raw network protocol access.
+			raw,
+			//! Maps to `SOCK_RDM`
+			//! Provides a reliable datagram layer that does not guarantee ordering.
+			rdm,
 		};
 
-		LUNA_NETWORK_API R<Ref<ISocket>> socket(SocketAddressFamily af, SocketType type);
+		enum class Protocol : u32
+		{
+			//! The network protocol is unspecified. The system chooses the most suitable protocol based 
+			//! on `AddressFamily` and `SocketType` parameters.
+			unspecified = 0,
+			//! The Internet Control Message Protocol (ICMP). 
+			//! This is a possible value when the `AddressFamily` parameter is `unspecified`, `ipv4` or `ipv6`
+			//! and the `SocketType` parameter is `raw` or `unspecified`.
+			icmp,
+			//! The Internet Group Management Protocol (IGMP).
+			//! This is a possible value when the `AddressFamily` parameter is `unspecified`, `ipv4`, or `ipv6` 
+			//! and the `SocketType` parameter is `raw` or `unspecified`.
+			igmp,
+			//! The Bluetooth Radio Frequency Communications (Bluetooth RFCOMM) protocol. 
+			//! This is a possible value when the `AddressFamily` parameter is `bluetooth` 
+			//! and the `SocketType` parameter is `stream`.
+			rfcomm,
+			//! Use Transmission Control Protocol (TCP). 
+			//! This is a possible value when the `AddressFamily` parameter is `ipv4` or `ipv6` 
+			//! and the `SocketType` parameter is `stream`.
+			tcp,
+			//! Use User Datagram Protocol (UDP). 
+			//! This is a possible value when the `AddressFamily` parameter is `ipv4` or `ipv6` 
+			//! and the `SocketType` parameter is `dgram`.
+			udp,
+			//! The Internet Control Message Protocol Version 6 (ICMPv6). 
+			//! This is a possible value when the `AddressFamily` parameter is `unspecified`, `ipv4` or `ipv6`
+			//! and the `SocketType` parameter is `raw` or `unspecified`.
+			icmpv6,
+		};
+
+		//! Creates a new socket object.
+		LUNA_NETWORK_API R<Ref<ISocket>> new_socket(AddressFamily af, SocketType type, Protocol protocol);
+
+		enum class AddressInfoFlag : u8
+		{
+			none = 0,
+			//! If set, this address is used for `bind`. If unset, this address is used for `connect`.
+			passive = 0x01,
+		};
+
+		struct AddressInfo
+		{
+			AddressInfoFlag flags;
+			AddressFamily family;
+			SocketType socktype;
+			Protocol protocol;
+			Name canonname;
+			SocketAddress addr;
+		};
+
+		LUNA_NETWORK_API R<Vector<AddressInfo>> getaddrinfo(const c8* node, const c8* service, const AddressInfo* hints);
 	}
 
 	namespace NetworkError
@@ -134,5 +213,11 @@ namespace Luna
 
 		//! The specified protocol is not supported within this address family.
 		LUNA_NETWORK_API ErrCode protocol_not_supported();
+
+		//! The specified host cannot be found.
+		LUNA_NETWORK_API ErrCode host_not_found();
+
+		//! The service is not supported on the target host with specified socket type.
+		LUNA_NETWORK_API ErrCode service_not_found();
 	}
 }

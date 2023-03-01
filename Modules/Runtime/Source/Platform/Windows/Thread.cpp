@@ -7,7 +7,6 @@
 * @author JXMaster
 * @date 2020/7/30
 */
-#pragma once
 #include <Runtime/PlatformDefines.hpp>
 
 #ifdef LUNA_PLATFORM_WINDOWS

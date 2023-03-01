@@ -19,10 +19,18 @@ function compile_shader(hlsl_file, options)
     import("lib.detect.find_program")
     if tonumber(string.sub(options.shading_model, 1, 1)) >= 6 then
         program = find_program("dxc", opt)
+        if not program then
+           raise("dxc not found on the current platform.") 
+        end
+        print("Compile Shader: " .. program .. " /T " .. (options.type .. "_" .. options.shading_model) .. " " .. hlsl_file .. " /Fo " .. (options.output_path .. "/" .. filename .. ".cso") .. " /E " .. options.entry_point .. " /O " .. tostring(options.optimization_level))
         os.execv(program, {"/T", (options.type .. "_" .. options.shading_model), hlsl_file, "/Fo", (options.output_path .. "/" .. filename .. ".cso"), "/E", options.entry_point, ("/O" .. tostring(options.optimization_level))})
     else
         opt.check = function(program) end -- bypass --version checking, since fxc does not implement this.
         program = find_program("fxc", opt)
+        if not program then
+            raise("fxc not found on the current platform.") 
+        end
+        print("Compile Shader: " .. program .. " -T " .. (options.type .. "_" .. options.shading_model) .. " -Fo " .. (options.output_path .. "/" .. filename .. ".cso") .. " -E " .. options.entry_point .. " -O " .. tostring(options.optimization_level) .. " " .. hlsl_file)
         os.execv(program, {"-T", (options.type .. "_" .. options.shading_model), "-Fo", (options.output_path .. "/" .. filename .. ".cso"), "-E", options.entry_point, ("-O" .. tostring(options.optimization_level)), hlsl_file})
     end
 end

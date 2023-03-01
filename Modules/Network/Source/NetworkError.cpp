@@ -7,6 +7,8 @@
 * @author JXMaster
 * @date 2022/6/2
 */
+#include <Runtime/PlatformDefines.hpp>
+#define LUNA_NETWORK_API LUNA_EXPORT
 #include "../Network.hpp"
 
 namespace Luna
@@ -81,6 +83,16 @@ namespace Luna
 		LUNA_NETWORK_API ErrCode protocol_not_supported()
 		{
 			static ErrCode e = get_error_code_by_name("NetworkError", "protocol_not_supported");
+			return e;
+		}
+		LUNA_NETWORK_API ErrCode host_not_found()
+		{
+			static ErrCode e = get_error_code_by_name("NetworkError", "host_not_found");
+			return e;
+		}
+		LUNA_NETWORK_API ErrCode service_not_found()
+		{
+			static ErrCode e = get_error_code_by_name("NetworkError", "service_not_found");
 			return e;
 		}
 	}

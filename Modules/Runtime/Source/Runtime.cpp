@@ -24,6 +24,7 @@
 #include "Interface.hpp"
 #include "Random.hpp"
 #include "ReadWriteLock.hpp"
+#include "StdIO.hpp"
 namespace Luna
 {
 	void error_init();
@@ -52,6 +53,8 @@ namespace Luna
 		impl_interface_for_type<MainThread, IWaitable, IThread>();
 		register_boxed_type<ReadWriteLock>();
 		impl_interface_for_type<ReadWriteLock, IReadWriteLock>();
+		register_boxed_type<StdIOStream>();
+		impl_interface_for_type<StdIOStream, IStream>();
 	}
 
 	static bool g_initialized = false;
@@ -71,6 +74,7 @@ namespace Luna
 		thread_init();
 		random_init();
 		log_init();
+		std_io_init();
 		module_init();
 		g_initialized = true;
 		return true;
@@ -79,6 +83,7 @@ namespace Luna
 	{
 		if (!g_initialized) return;
 		module_close();
+		std_io_close();
 		log_close();
 		random_close();
 		thread_close();

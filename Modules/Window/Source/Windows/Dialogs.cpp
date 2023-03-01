@@ -15,6 +15,7 @@
 #include "../../FileDialog.hpp"
 #include "../../Window.hpp"
 #include <Runtime/Unicode.hpp>
+#include <Runtime/StringUtils.hpp>
 
 #include <Runtime/Platform/Windows/MiniWin.hpp>
 #include <commdlg.h>
@@ -175,11 +176,11 @@ namespace Luna
 					// Multiple file.
 					char* ret_buf = (char*)alloca(sizeof(char) * 1024);
 					usize dir_sz = utf16_to_utf8(ret_buf, 1024, (char16_t*)ofn.lpstrFile);
-					char16_t* wdir_cur = (char16_t*)ofn.lpstrFile + strlen16((char16_t*)ofn.lpstrFile) + 1;
+					char16_t* wdir_cur = (char16_t*)ofn.lpstrFile + strlen((char16_t*)ofn.lpstrFile) + 1;
 					while (wdir_cur)
 					{
 						utf16_to_utf8(ret_buf + dir_sz, 1024 - dir_sz, wdir_cur);
-						wdir_cur += strlen16(wdir_cur) + 1;
+						wdir_cur += strlen(wdir_cur) + 1;
 						auto ret_path = Path(ret_buf);
 						paths.push_back(ret_path);
 					}

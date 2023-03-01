@@ -21,16 +21,20 @@ namespace Luna
 		void thread_init();
 		void thread_close();
 		void file_init();
+		void std_io_init();
+		void std_io_close();
 
 		void init()
 		{
 			time_init();
 			thread_init();
 			file_init();
+			std_io_init();
 		}
 
 		void close() 
 		{
+			std_io_close();
 			thread_close();
 		}
 

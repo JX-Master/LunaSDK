@@ -42,6 +42,7 @@ namespace Luna
                     m_socket = -1;
                 }
             }
+			opaque_t get_native_handle() { return (opaque_t)m_socket; }
             RV read(Span<byte_t> buffer, usize* read_bytes);
             RV write(Span<const byte_t> buffer, usize* write_bytes);
             RV bind_ipv4(const SocketAddressIPv4& address);
@@ -177,16 +178,16 @@ namespace Luna
 		{
 			return ntohs(netshort);
 		}
-        LUNA_NETWORK_API R<Ref<ISocket>> socket(SocketAddressFamily af, SocketType type)
+        LUNA_NETWORK_API R<Ref<ISocket>> new_socket(AddressFamily af, SocketType type)
         {
             int iaf = 0;
 			int itype = 0;
 			switch (af)
 			{
-			case SocketAddressFamily::ipv4:
+			case AddressFamily::ipv4:
 				iaf = AF_INET;
 				break;
-			case SocketAddressFamily::ipv6:
+			case AddressFamily::ipv6:
 				iaf = AF_INET6;
 				break;
 			default: lupanic(); break;

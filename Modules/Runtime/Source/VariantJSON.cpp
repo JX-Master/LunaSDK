@@ -285,31 +285,31 @@ namespace Luna
 			{
 				if (ch == '\\')
 				{
-					ctx.consume(ch);
+					ctx.consume(ch); // for '\\'
 					ch = ctx.next_char();
 					c32 ch2;
 					switch (ch)
 					{
 					case '"':
-						ch2 = '\"'; break;
+						ch2 = '\"'; ctx.consume(ch); break;
 					case '\\':
-						ch2 = '\\'; break;
+						ch2 = '\\'; ctx.consume(ch); break;
 					case '/':
-						ch2 = '/'; break;
+						ch2 = '/'; ctx.consume(ch); break;
 					case 'b':
-						ch2 = '\b'; break;
+						ch2 = '\b'; ctx.consume(ch); break;
 					case 'f':
-						ch2 = '\f'; break;
+						ch2 = '\f'; ctx.consume(ch); break;
 					case 'n':
-						ch2 = '\n'; break;
+						ch2 = '\n'; ctx.consume(ch); break;
 					case 'r':
-						ch2 = '\r'; break;
+						ch2 = '\r'; ctx.consume(ch); break;
 					case 't':
-						ch2 = '\t'; break;
+						ch2 = '\t'; ctx.consume(ch); break;
 					case '0':
-						ch2 = '\0'; break;
+						ch2 = '\0'; ctx.consume(ch); break;
 					case '\'':
-						ch2 = '\''; break;
+						ch2 = '\''; ctx.consume(ch); break;
 					case 'u':
 					{
 						ctx.consume(ch); // for u
@@ -321,6 +321,7 @@ namespace Luna
 							{
 								return set_error(BasicError::format_error(), "Invalid Unicode number at line %d, pos %d.", ctx.get_line(), ctx.get_pos());
 							}
+							unicode_i <<= 4;
 							if (ch >= '0' && ch <= '9')
 							{
 								unicode_i += ch - '0';
@@ -333,7 +334,6 @@ namespace Luna
 							{
 								unicode_i += ch - 'A' + 10;
 							}
-							unicode_i <<= 4;
 							ctx.consume(ch);
 							ch = ctx.next_char();
 						}
@@ -349,7 +349,6 @@ namespace Luna
 					{
 						s.push_back(buf[i]);
 					}
-					ctx.consume(ch);
 					ch = ctx.next_char();
 					continue;
 				}

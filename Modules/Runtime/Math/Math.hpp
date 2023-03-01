@@ -10,6 +10,7 @@
  */
 #pragma once
 #include "../Base.hpp"
+#include <cmath>
 
 #ifdef LUNA_PLATFORM_WINDOWS
 #ifndef NOMINMAX
@@ -31,6 +32,11 @@ namespace Luna
 	constexpr f32 ONE_DIV_TWO_PI = 0.159154943f;
 	constexpr f32 PI_DIV_TWO = 1.570796327f;
 	constexpr f32 PI_DIV_FOUR = 0.785398163f;
+
+	constexpr f32 F32_INFINITY = (f32)HUGE_VALF;
+	constexpr f64 F64_INFINITY = (f64)HUGE_VAL;
+	constexpr f32 F32_NAN = (f32)NAN;
+	constexpr f64 F64_NAN = F64_INFINITY * 0.0;
 
 	//! Convert degree angle to radius angle.
 	inline constexpr f32 deg_to_rad(f32 degrees)
@@ -248,6 +254,8 @@ namespace Luna
 		}
 		return 1;
 	}
+	using std::isinf;
+	using std::isnan;
 }
 
 // Luna math library uses SIMD (Single-Instruction-Multiple-Data) for accelerating vector math compuations when possible. See

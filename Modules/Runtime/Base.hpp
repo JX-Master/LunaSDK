@@ -21,12 +21,12 @@
 #include <cstring>
 #include <cstdio>
 #include <cstdarg>
-#include <cmath>
 #include <cctype>
-
+#include <cstdlib>
 #include <new>
 #include <type_traits>
 #include <initializer_list>
+#include <limits>
 
 namespace Luna
 {
@@ -159,91 +159,35 @@ namespace Luna
 	constexpr f64 F64_MIN = (f64)DBL_MIN;
 	constexpr f64 F64_MAX = (f64)DBL_MAX;
 	constexpr f64 F64_EPSILON = (f64)DBL_EPSILON;
+	
+	template <typename _Ty>
+	using numeric_limits = std::numeric_limits<_Ty>;
 
-	constexpr i32 F32_INF_BITS = 0x7F800000;
-	constexpr i32 F32_NEGINF_BITS = 0xFF800000;
-	constexpr i32 F32_NAN_BITS = 0x7FC00000;
+	// 1-bit sign, 8-bits exponent, 27-bits fraction.
+
+	constexpr u32 F32_SIGN_MASK = 0x80000000;
+	constexpr u32 F32_EXPONENT_MASK = 0x7F800000;
+	constexpr u32 F32_FRACTION_MASK = 0x007FFFFF;
+
+	// 1-bit sign, 11-bits exponent, 52-bits fraction.
+
+	constexpr u64 F64_SIGN_MASK 	= 0x8000000000000000Ui64;
+	constexpr u64 F64_EXPONENT_MASK = 0x7FF0000000000000Ui64;
+	constexpr u64 F64_FRACTION_MASK = 0x000FFFFFFFFFFFFFUi64;
 
 	//------------------------------------------------------------------------------------------------------
 	//  Basic Functions
 	//------------------------------------------------------------------------------------------------------
 
-	using std::strncpy;
-	using std::strcat;
-	using std::strncat;
-	using std::strxfrm;
-	using std::strncmp;
-	using std::strcoll;
-	using std::strchr;
-	using std::strrchr;
-	using std::strspn;
-	using std::strcspn;
-	using std::strpbrk;
-	using std::strstr;
-	using std::strtok;
 	using std::memchr;
 	using std::memcmp;
 	using std::memset;
 	using std::memcpy;
 	using std::memmove;
 
-    using std::isalnum;
-    using std::isalpha;
-    using std::islower;
-    using std::isupper;
-    using std::isdigit;
-    using std::isxdigit;
-    using std::iscntrl;
-    using std::isgraph;
-    using std::isspace;
-    using std::isblank;
-    using std::isprint;
-    using std::ispunct;
-    using std::tolower;
-    using std::toupper;
-
-	// Additional functions to support c8, c16, c32 types.
-
-	template <typename _CharT>
-	usize strlen(const _CharT* s)
-	{
-		const _CharT* end = s;
-		while (*end++ != 0);
-		return end - s - 1;
-	}
-
-	template <typename _CharT>
-	_CharT* strcpy(_CharT* dest, const _CharT* src)
-	{
-		_CharT* t = dest;
-		while (*src)
-		{
-			*t = *src;
-			++t;
-			++src;
-		}
-		*t = (_CharT)0;
-		return dest;
-	}
-
-	template <typename _CharT>
-	i32 strcmp(const _CharT* lhs, const _CharT* rhs)
-	{
-		_CharT l = *lhs;
-		_CharT r = *rhs;
-		while (l && (l == r))
-		{
-			++lhs;
-			++rhs;
-			l = *lhs;
-			r = *rhs;
-		}
-		return (i32)l - (i32)r;
-	}
-
 	namespace Impl
 	{
-		constexpr const u8 bit_mask[] = {
+		constexpr const u8 BIT_MASK[] = {
 			0x01,	// 00000001
 			0x02,	// 00000010
 			0x04,	// 00000100
@@ -254,7 +198,7 @@ namespace Luna
 			0x80		// 10000000
 		};
 
-		constexpr const u8 bit_mask_reverse[] = {
+		constexpr const u8 BIT_MASK_REVERSE[] = {
 			0xfe,	// 11111110
 			0xfd,	// 11111101
 			0xfb,	// 11111011
@@ -262,7 +206,7 @@ namespace Luna
 			0xef,	// 11101111
 			0xdf,	// 11011111
 			0xbf,	// 10111111
-			0x7f		// 01111111
+			0x7f	// 01111111
 		};
 	}
 
@@ -313,7 +257,7 @@ namespace Luna
 	//! * value of `*((u8*)0x1001)` after reset: 0000 0000b.
 	inline bool bit_test(const void* base_addr, usize bit_offset)
 	{
-		return (*(const u8*)((usize)base_addr + bit_offset / 8)) & Impl::bit_mask[bit_offset % 8] ? true : false;;
+		return (*(const u8*)((usize)base_addr + bit_offset / 8)) & Impl::BIT_MASK[bit_offset % 8] ? true : false;;
 	}
 
 	//! Sets the specified bit to 1.
@@ -322,7 +266,7 @@ namespace Luna
 	//! @remark See remarks of `bit_test` for details.
 	inline void bit_set(void* addr, usize bit_offset)
 	{
-		*(u8*)((usize)addr + bit_offset / 8) |= Impl::bit_mask[bit_offset % 8];
+		*(u8*)((usize)addr + bit_offset / 8) |= Impl::BIT_MASK[bit_offset % 8];
 	}
 
 	//! Sets the specified bit to 0.
@@ -331,7 +275,7 @@ namespace Luna
 	//! @remark See remarks of `bit_test` for details.
 	inline void bit_reset(void* addr, usize bit_offset)
 	{
-		*(u8*)((usize)addr + bit_offset / 8) &= Impl::bit_mask_reverse[bit_offset % 8];
+		*(u8*)((usize)addr + bit_offset / 8) &= Impl::BIT_MASK_REVERSE[bit_offset % 8];
 	}
 
 	//! Sets the specified bit to 1 if `value` is `true`, or to 0 if `value` is `false`.
@@ -387,14 +331,6 @@ namespace Luna
 			++str2;
 		}
 		return 0;
-	}
-
-	inline usize strlen16(const c16* s)
-	{
-		if (!s) return 0;
-		usize len = 0;
-		while (s[len++]);
-		return len;
 	}
 
 	//! clear the specified memory region to 0.
