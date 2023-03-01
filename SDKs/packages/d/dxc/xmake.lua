@@ -19,5 +19,8 @@ package("dxc")
         result.links = "dxcompiler"
         result.linkdirs = package:installdir("lib")
         result.includedirs = package:installdir("../include")
+        result.libfiles = {
+            path.join(package:installdir("bin"), "dxcompiler.dll"),
+            path.join(package:installdir("bin"), "dxil.dll") }
         return result
     end)
