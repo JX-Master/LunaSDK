@@ -78,6 +78,32 @@ namespace Luna
 		}
 		return (i32)l - (i32)r;
 	}
+
+	//! Checks whether one string is the prefix string of another string.
+	//! This function compares two strings until one null terminator of one string is reached, and
+	//! returns 0 if the compared part is equal. Examples:
+	//! * "aaa" & "aaab" -> 0 (only "aaa" is compared).
+	//! * "aaa" & "aa" -> 0 (only "aa" is compared).
+	//! * "" & "aa" -> 0 (nothing is compared).
+	//! * "aba" & "aaa" -> not 0.
+	//! * "aaab" & "aaac" -> not 0.
+	template <typename _CharT>
+	inline i32 strcmp_prefix(const _CharT* str1, const _CharT* str2)
+	{
+		_CharT c1, c2;
+		while (*str1 && *str2)
+		{
+			c1 = *str1;
+			c2 = *str2;
+			if (c1 != c2)
+			{
+				return (i32)c1 - (i32)c2;
+			}
+			++str1;
+			++str2;
+		}
+		return 0;
+	}
     
     inline i64 strtoi64(const c8* str, c8** str_end, i32 base)
     {

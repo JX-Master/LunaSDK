@@ -10,39 +10,195 @@
 #pragma once
 #include "Iterator.hpp"
 
-/*
-	Provides low-level manual object construction/destruction/assignment operations on a single object 
-	or a range of objects.
-	
-	Functions in MemoryUtils.hpp:
-	
-	addressof
-	default_construct
-	value_construct
-	copy_construct
-	move_construct
-	direct_construct
-	destruct
-	copy_assign
-	move_assign
-	default_construct_range
-	value_construct_range
-	copy_construct_range
-	move_construct_range
-	destruct_range
-	copy_assign_range
-	move_assign_range
-	move_assign_range_backward
-	fill_construct_range
-	fill_assign_range
-	copy_relocate_range
-	copy_relocate
-	move_relocate_range
-	move_relocate_range_backward
-*/
-
 namespace Luna
 {
+	using std::memchr;
+	using std::memcmp;
+	using std::memset;
+	using std::memcpy;
+	using std::memmove;
+
+	//! clear the specified memory region to 0.
+	//! @param[in] dest The start address of memory region to clear.
+	//! @param[in] byteCount The size, in bytes, of the memory region to clear.
+	//! @return Returns the `dest` pointer.
+	inline void* memzero(void* dest, usize byte_count)
+	{
+		return memset(dest, 0, byte_count);
+	}
+	template <typename _Ty>
+	inline _Ty* memzero(_Ty* dest)
+	{
+		return (_Ty*)memzero(dest, sizeof(_Ty));
+	}
+
+	//! Copies the data for a 2D bitmap.
+	//! @param[in] dest A pointer to the first pixel to be copied in destination bitmap.
+	//! @param[in] src A pointer to the first pixel to be copied in source bitmap.
+	//! @param[in] copy_size_per_row The size of the data to be copied for every row, in bytes.
+	//! @param[in] num_rows The number of rows to copy.
+	//! @param[in] dest_row_pitch The size to advance for one row in destination bitmap in bytes.
+	//! @param[in] src_row_pitch The size to advance for one row in destination bitmap in bytes.
+	//! @return Returns the `dest` pointer.
+	inline void* memcpy_bitmap(void* dest, const void* src, usize copy_size_per_row, usize num_rows, usize dest_row_pitch, usize src_row_pitch)
+	{
+		for (usize r = 0; r < num_rows; ++r)
+		{
+			memcpy((void*)((usize)dest + r * dest_row_pitch), (const void*)((usize)src + r * src_row_pitch), copy_size_per_row);
+		}
+		return dest;
+	}
+
+	//! Copies the data for a 3D bitmap.
+	//! @param[in] dest A pointer to the first pixel to be copied in destination bitmap.
+	//! @param[in] src A pointer to the first pixel to be copied in source bitmap.
+	//! @param[in] copy_size_per_row The size of the data to be copied for every row, in bytes.
+	//! @param[in] num_rows The number of rows to copy.
+	//! @param[in] num_slices The number of slices (layers) to copy.
+	//! @param[in] dest_row_pitch The size to advance for one row in destination bitmap in bytes.
+	//! @param[in] src_row_pitch The size to advance for one row in destination bitmap in bytes.
+	//! @param[in] dest_slice_pitch The size to advance for one slice (layer) in destination bitmap in bytes.
+	//! @param[in] src_slice_pitch The size to advance for one slice (layer) in destination bitmap in bytes.
+	//! @return Returns the `dest` pointer.
+	inline void* memcpy_bitmap3d(
+		void* dest, const void* src,
+		usize copy_size_per_row,
+		usize num_rows, usize num_slices,
+		usize dest_row_pitch, usize src_row_pitch,
+		usize dest_slice_pitch, usize src_slice_pitch)
+	{
+		for (usize r = 0; r < num_slices; ++r)
+		{
+			memcpy_bitmap((void*)((usize)dest + r * dest_slice_pitch), (const void*)((usize)src + r * src_slice_pitch), copy_size_per_row,
+				num_rows, dest_row_pitch, src_row_pitch);
+		}
+		return dest;
+	}
+
+	//! Returns a pointer that offsets the specified pixels in the texture.
+	inline void* pixel_offset(void* base, usize x, usize y, usize z, usize bytes_per_pixel, usize row_pitch, usize slice_pitch)
+	{
+		usize r = (usize)base;
+		r += z * slice_pitch + y * row_pitch + x * bytes_per_pixel;
+		return (void*)r;
+	}
+	inline const void* pixel_offset(const void* base, usize x, usize y, usize z, usize bytes_per_pixel, usize row_pitch, usize slice_pitch)
+	{
+		usize r = (usize)base;
+		r += z * slice_pitch + y * row_pitch + x * bytes_per_pixel;
+		return (const void*)r;
+	}
+
+	namespace Impl
+	{
+		constexpr const u8 BIT_MASK[] = {
+			0x01,	// 00000001
+			0x02,	// 00000010
+			0x04,	// 00000100
+			0x08,	// 00001000
+			0x10,	// 00010000
+			0x20,	// 00100000
+			0x40,	// 01000000
+			0x80		// 10000000
+		};
+
+		constexpr const u8 BIT_MASK_REVERSE[] = {
+			0xfe,	// 11111110
+			0xfd,	// 11111101
+			0xfb,	// 11111011
+			0xf7,	// 11110111
+			0xef,	// 11101111
+			0xdf,	// 11011111
+			0xbf,	// 10111111
+			0x7f	// 01111111
+		};
+	}
+
+	inline constexpr unsigned long long operator"" _kb(unsigned long long v)
+	{
+		return v * 1024;
+	}
+
+	inline constexpr unsigned long long operator"" _mb(unsigned long long v)
+	{
+		return v * 1024 * 1024;
+	}
+
+	inline constexpr unsigned long long operator"" _gb(unsigned long long v)
+	{
+		return v * 1024 * 1024 * 1024;
+	}
+
+	inline constexpr unsigned long long operator"" _tb(unsigned long long v)
+	{
+		return v * 1024 * 1024 * 1024 * 1024;
+	}
+
+	//! Tests if specified bit is 1.
+	//! @param[in] base_addr The address of the bit to offset from.
+	//! @param[in] bit_offset The number of bits shifted from the `base_addr`.
+	//! @return Returns `true` if the bit is 1, `false` if the bit is 0.
+	//! @remark The following cases demonstrate the index order of `bit_test`, `bit_set` and `bit_reset`.
+	//! 
+	//! base_addr: 0x1000, bit_offset: 0, `*((u8*)0x1000)`: 0000 1000b
+	//! * test result: false.
+	//! * value of `*((u8*)0x1000)` after set: 0000 1001b
+	//! * value of `*((u8*)0x1000)` after reset: 0000 1000b.
+	//! 
+	//! base_addr: 0x1000, bit_offset: 3, `*((u8*)0x1000)`: 0000 1000b
+	//! * test result: true.
+	//! * value of `*((u8*)0x1000)` after set: 0000 1000b
+	//! * value of `*((u8*)0x1000)` after reset: 0000 0000b.
+	//! 
+	//! base_addr: 0x1000, bit_offset: 8, `*((u8*)0x1001)`: 0000 1000b
+	//! * test result: false.
+	//! * value of `*((u8*)0x1001)` after set: 0000 1001b
+	//! * value of `*((u8*)0x1001)` after reset: 0000 1000b.
+	//! 
+	//! base_addr: 0x1000, bit_offset: 11, `*((u8*)0x1001)`: 0000 1000b
+	//! * test result: true.
+	//! * value of `*((u8*)0x1001)` after set: 0000 1000b
+	//! * value of `*((u8*)0x1001)` after reset: 0000 0000b.
+	inline bool bit_test(const void* base_addr, usize bit_offset)
+	{
+		return (*(const u8*)((usize)base_addr + bit_offset / 8)) & Impl::BIT_MASK[bit_offset % 8] ? true : false;;
+	}
+
+	//! Sets the specified bit to 1.
+	//! @param[in] base_addr The address of the bit to offset from.
+	//! @param[in] bit_offset The number of bits shifted from the `base_addr`.
+	//! @remark See remarks of `bit_test` for details.
+	inline void bit_set(void* addr, usize bit_offset)
+	{
+		*(u8*)((usize)addr + bit_offset / 8) |= Impl::BIT_MASK[bit_offset % 8];
+	}
+
+	//! Sets the specified bit to 0.
+	//! @param[in] base_addr The address of the bit to offset from.
+	//! @param[in] bit_offset The number of bits shifted from the `base_addr`.
+	//! @remark See remarks of `bit_test` for details.
+	inline void bit_reset(void* addr, usize bit_offset)
+	{
+		*(u8*)((usize)addr + bit_offset / 8) &= Impl::BIT_MASK_REVERSE[bit_offset % 8];
+	}
+
+	//! Sets the specified bit to 1 if `value` is `true`, or to 0 if `value` is `false`.
+	inline void bit_set(void* addr, usize bit_offset, bool value)
+	{
+		if (value) bit_set(addr, bit_offset);
+		else bit_reset(addr, bit_offset);
+	}
+
+	//! Returns the address/size that aligns the origin address/size to the nearest matched aligned 
+	//! address/size that is greater than or equal to the the origin address/size.
+	//! @param[in] origin The unaligned address/size.
+	//! @param[in] alignment The alignment boundary. If alignment is 0, `origin` will be returned as-is.
+	//! @return Returns the aligned address/size.
+	inline constexpr usize align_upper(usize origin, usize alignment)
+	{
+		return alignment ? ((origin + alignment - 1) / alignment * alignment) : origin;
+	}
+
 	//! @class Unconstructed
 	//! `Unconstructed` provides a way to allocate the memory for a C++ object without their constructor/destructor
 	//! being called by system. You have the ability to call their constructor/destructor manually.
