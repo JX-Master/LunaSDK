@@ -61,7 +61,7 @@ namespace Luna
 			//! The userdata object. The object will be kept by the asset system and provided to every callback function.
 			ObjRef userdata;
 			//! Called when the asset data is being loaded.
-			R<ObjRef>(*on_load_asset)(object_t userdata, const Path& path);
+			R<ObjRef>(*on_load_asset)(object_t userdata, asset_t asset, const Path& path);
 			//! Called when the asset data is being saved.
 			RV(*on_save_asset)(object_t userdata, asset_t asset, const Path& path, object_t data);
 			//! Called when the asset data is being set.

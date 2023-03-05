@@ -285,7 +285,17 @@ namespace Luna
             ret.index = record->m_index;
 			return ret;
         }
-
+        void TaskContext::get_clusters(Vector<Cluster*>& result, filter_func_t* filter, void* userdata)
+        {
+            result.clear();
+            for(auto& cluster : m_world->m_clusters)
+            {
+                if(filter(cluster.get(), userdata))
+                {
+                    result.push_back(cluster.get());
+                }
+            }
+        }
         LUNA_ECS_API Ref<ITaskContext> new_task_context()
         {
             return new_object<TaskContext>();

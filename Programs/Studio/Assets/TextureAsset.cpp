@@ -172,7 +172,7 @@ namespace Luna
 		default: lupanic(); return RHI::Format::unknown;
 		}
 	}
-	static R<ObjRef> load_texture_asset(object_t userdata, const Path& path)
+	static R<ObjRef> load_texture_asset(object_t userdata, Asset::asset_t asset, const Path& path)
 	{
 		ObjRef ret;
 		lutry

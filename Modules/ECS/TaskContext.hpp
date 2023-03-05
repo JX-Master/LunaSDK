@@ -19,14 +19,34 @@ namespace Luna
     {
         enum class TaskExecutionMode : u8
         {
-            //! This task can run concurrently with other tasks.
+            //! This task can run concurrently with other tasks based on read and write components specified by the task.
+			//! 
+			//! The component types that can be read from and written to by this task is specified by `read_components` and `write_components` 
+			//! when `ITaskContext::begin` is called.
+			//! 
+			//! Structural changes (adding/removing entities, components and tags) will be cached and applied to the world in another trailing 
+			//! exclusive task when `end` is called.
             shared = 0,
             //! This task should have exclusive access to the world, no other tasks can run concurrently.
-            //! This is need if the components that is 
+			//!
+			//! The task have read and write access to all component types. `read_components` and `write_components` in `ITaskContext::begin` are ignored. 
+			//! All modifications (including structural changes) are written to the world immediately. No cache is used. 
             exclusive = 1,
         };
 
         struct IWorld;
+
+		using filter_func_t = bool(Cluster* cluster, void* userdata);
+
+		namespace Impl
+		{
+			template <typename _Ty>
+			bool filter_invoker(Cluster* cluster, void* userdata)
+			{
+				_Ty* filter = (_Ty*)userdata;
+				return (*filter)(cluster);
+			}
+		}
 
         //! Used by task to read and write world data.
         struct ITaskContext : virtual Interface
@@ -36,9 +56,10 @@ namespace Luna
             //! Resets the task context and begins a new task.
             //! @param[in] world The world to run the task on.
             //! @param[in] exec_mode The task execution mode.
-            //! @param[in] read_components If task mode is `shared`, specify components that will be read by this task.
-            //! @param[in] write_components If task mode is `shared`, specify components that will be read and written by
-            //! this task.
+            //! @param[in] read_components When `exec_mode` is `shared`, specify components that 
+			//! will be read from by this task.
+            //! @param[in] write_components When `exec_mode` is `shared`, specify components that will be read from and 
+            //! written to by this task.
             //! @remark This call may block the current thread until all components required by this task can be safely
             //! accessed by this task, or until all other tasks are finished if this is a exclusive task.
             virtual void begin(
@@ -53,6 +74,14 @@ namespace Luna
 
             //! Gets the entity address for the specified entity.
 			virtual R<EntityAddress> get_entity(entity_id_t id) = 0;
+
+			virtual void get_clusters(Vector<Cluster*>& result, filter_func_t* filter, void* userdata) = 0;
+
+			template <typename _Filter>
+			void get_clusters(Vector<Cluster*>& result, _Filter&& filter)
+			{
+				get_clusters(result, Impl::filter_invoker<_Filter>, (void*)addressof(filter));
+			}
 
             bool is_entity_valid(entity_id_t id)
 			{
@@ -75,9 +104,9 @@ namespace Luna
 				auto r = get_entity(id);
 				if (failed(r)) return r.errcode();
 				typeinfo_t type = typeof<_Ty>();
-				void* components = get_cluster_components_data(cluster, type);
+				void* components = get_cluster_components_data(r.get().cluster, type);
 				if (!components) return ECSError::component_not_found();
-				return (_Ty*)((usize)components + index * get_type_size(type));
+				return (_Ty*)((usize)components + r.get().index * get_type_size(type));
 			}
 
             //! Adds one entity to the world.

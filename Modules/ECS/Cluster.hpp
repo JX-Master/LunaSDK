@@ -38,6 +38,7 @@ namespace Luna
 			constexpr bool operator<(const entity_id_t& rhs) const { return value < rhs.value; }
 			constexpr bool operator>=(const entity_id_t& rhs) const { return value >= rhs.value; }
 			constexpr bool operator<=(const entity_id_t& rhs) const { return value <= rhs.value; }
+			constexpr operator bool() { return value != 0; }
 		};
 
 		//! The entity id zero always represents one invalid entity (null reference).

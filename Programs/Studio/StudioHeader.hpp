@@ -34,7 +34,7 @@ namespace Luna
 	}
 
 	template <typename _Ty>
-	inline R<ObjRef> load_json_asset(object_t userdata, const Path& path)
+	inline R<ObjRef> load_json_asset(object_t userdata, Asset::asset_t asset, const Path& path)
 	{
 		ObjRef ret;
 		lutry

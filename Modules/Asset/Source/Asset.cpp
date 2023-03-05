@@ -305,7 +305,7 @@ namespace Luna
 				ObjRef data;
 				if (desc.on_load_asset)
 				{
-					luset(data, desc.on_load_asset(desc.userdata.get(), path));
+					luset(data, desc.on_load_asset(desc.userdata.get(), asset, path));
 				}
 				else
 				{

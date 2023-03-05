@@ -47,6 +47,7 @@ namespace Luna
 
             virtual IWorld* get_world() override { return m_world; }
             virtual R<EntityAddress> get_entity(entity_id_t id) override;
+            virtual void get_clusters(Vector<Cluster*>& result, filter_func_t* filter, void* userdata) override;
             virtual entity_id_t add_entity() override { return m_data.add_entity(m_world->m_entity_id_allocator.allocate_id()); }
             virtual void remove_entity(entity_id_t id) override { return m_data.remove_entity(id); }
             virtual void remove_all_entities() override { m_data.remove_all_entities(); }

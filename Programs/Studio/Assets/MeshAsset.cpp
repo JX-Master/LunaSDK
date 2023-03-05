@@ -47,7 +47,7 @@ namespace Luna
 		return ok;
 	}
 
-	static R<ObjRef> load_static_mesh_asset(object_t userdata, const Path& path)
+	static R<ObjRef> load_static_mesh_asset(object_t userdata, Asset::asset_t asset, const Path& path)
 	{
 		ObjRef ret;
 		lutry
