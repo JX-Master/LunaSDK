@@ -198,10 +198,18 @@ namespace Luna
                 {
                     auto& data = m_node_data[i];
                     // Allocates resources.
+                    Vector<RHI::ResourceBarrierDesc> barriers;
                     for(ResourceHandle h : data.m_create_resources)
                     {
                         auto& res = get_resource(h);
                         luset(res.resource, m_transient_heap->allocate(res.resource_desc));
+                        barriers.push_back(
+                            RHI::ResourceBarrierDesc::as_aliasing(res.resource)
+                        );
+                    }
+                    if(!barriers.empty())
+                    {
+                        cmdbuf->resource_barriers({barriers.data(), barriers.size()});
                     }
                     m_current_pass = i;
                     MutexGuard guard(g_render_pass_types_mtx);
