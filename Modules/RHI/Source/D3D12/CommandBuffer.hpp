@@ -128,19 +128,12 @@ namespace Luna
 				}
 				case ResourceBarrierType::aliasing:
 				{
-					if (desc.aliasing.after)
+					if (desc.aliasing.resource)
 					{
 						D3D12_RESOURCE_BARRIER ba;
 						ba.Type = D3D12_RESOURCE_BARRIER_TYPE_ALIASING;
-						if (desc.aliasing.before)
-						{
-							ba.Aliasing.pResourceBefore = static_cast<const Resource*>(desc.aliasing.before->get_object())->m_res.Get();
-						}
-						else
-						{
-							ba.Aliasing.pResourceBefore = nullptr;
-						}
-						ba.Aliasing.pResourceAfter = static_cast<const Resource*>(desc.aliasing.after->get_object())->m_res.Get();
+						ba.Aliasing.pResourceBefore = nullptr;
+						ba.Aliasing.pResourceAfter = static_cast<const Resource*>(desc.aliasing.resource->get_object())->m_res.Get();
 						m_barriers.push_back(ba);
 					}
 				}

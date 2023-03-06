@@ -179,8 +179,7 @@ namespace Luna
 
 		struct ResourceAliasingBarrierDesc
 		{
-			IResource* before;
-			IResource* after;
+			IResource* resource;
 		};
 
 		struct ResourceBarrierDesc
@@ -218,11 +217,10 @@ namespace Luna
 				return ResourceBarrierDesc(desc, flags);
 			}
 
-			static ResourceBarrierDesc as_aliasing(IResource* before, IResource* after, ResourceBarrierFlag flags = ResourceBarrierFlag::none)
+			static ResourceBarrierDesc as_aliasing(IResource* resource, ResourceBarrierFlag flags = ResourceBarrierFlag::none)
 			{
 				ResourceAliasingBarrierDesc desc;
-				desc.before = before;
-				desc.after = after;
+				desc.resource = resource;
 				return ResourceBarrierDesc(desc, flags);
 			}
 

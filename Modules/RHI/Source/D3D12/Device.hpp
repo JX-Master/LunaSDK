@@ -107,9 +107,9 @@ namespace Luna
 			usize get_texture_data_pitch_alignment();
 			usize get_texture_data_placement_alignment();
 			usize get_constant_buffer_data_alignment();
-			void  calc_texture_subresource_buffer_placement(u32 width, u32 height, u32 depth, Format format,
+			void  get_texture_subresource_buffer_placement(u32 width, u32 height, u32 depth, Format format,
 				usize* row_pitch, usize* slice_pitch, usize* res_pitch);
-			usize calc_resource_size(const ResourceDesc& desc, usize* out_alignment);
+			usize get_resource_size(const ResourceDesc& desc, usize* out_alignment);
 			R<Ref<IResource>> new_resource(const ResourceDesc& desc, const ClearValue* optimized_clear_value);
 			R<Ref<IResourceHeap>> new_resource_heap(const ResourceHeapDesc& desc);
 			R<Ref<IShaderInputLayout>> new_shader_input_layout(const ShaderInputLayoutDesc& desc);

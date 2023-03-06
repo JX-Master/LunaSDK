@@ -17,7 +17,6 @@ namespace Luna
 {
 	namespace RHI
 	{
-
 		struct SwapChainDesc
 		{
 			//! The width of the swap chain back buffer. 
