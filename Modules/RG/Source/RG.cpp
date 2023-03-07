@@ -18,7 +18,7 @@ namespace Luna
         RV init()
         {
             register_boxed_type<RenderGraph>();
-            impl_interface_for_type<RenderGraph, IRenderGraph, RHI::IDeviceChild, IRenderPassContext>();
+            impl_interface_for_type<RenderGraph, IRenderGraph, RHI::IDeviceChild, IRenderPassContext, IRenderGraphCompiler>();
             register_boxed_type<TransientResourceHeap>();
             impl_interface_for_type<TransientResourceHeap, ITransientResourceHeap>();
             g_render_pass_types_mtx = new_mutex();

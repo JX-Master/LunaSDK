@@ -329,7 +329,7 @@ namespace Luna
 				return d;
 			}
 
-			static inline ResourceDesc tex2d(ResourceHeapType heap_type, Format pixel_format, ResourceUsageFlag usages, u32 width, u32 height, u32 array_size = 1, u32 mip_levels = 0,
+			static inline ResourceDesc tex2d(ResourceHeapType heap_type, Format pixel_format, ResourceUsageFlag usages, u64 width, u32 height, u32 array_size = 1, u32 mip_levels = 0,
 				u32 sample_count = 1, u32 sample_quality = 0, ResourceFlag flags = ResourceFlag::none)
 			{
 				ResourceDesc d;
@@ -347,7 +347,7 @@ namespace Luna
 				return d;
 			}
 
-			static inline ResourceDesc tex3d(ResourceHeapType heap_type, Format pixel_format, ResourceUsageFlag usages, u32 width, u32 height, u32 depth, u32 mip_levels = 0, ResourceFlag flags = ResourceFlag::none)
+			static inline ResourceDesc tex3d(ResourceHeapType heap_type, Format pixel_format, ResourceUsageFlag usages, u64 width, u32 height, u32 depth, u32 mip_levels = 0, ResourceFlag flags = ResourceFlag::none)
 			{
 				ResourceDesc d;
 				d.type = ResourceType::texture_3d;

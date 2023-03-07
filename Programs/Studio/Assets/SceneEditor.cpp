@@ -7,6 +7,7 @@
 * @author JXMaster
 * @date 2020/5/15
 */
+#include "SceneEditor.hpp"
 #include "Scene.hpp"
 #include "../MainEditor.hpp"
 #include <Runtime/Debug.hpp>
@@ -24,40 +25,12 @@
 #include "../EditObject.hpp"
 #include "../Mesh.hpp"
 #include "../Material.hpp"
+#include "../RenderPasses/LightingPass.hpp"
+#include "../RenderPasses/SkyBoxPass.hpp"
+#include "../RenderPasses/ToneMappingPass.hpp"
+#include "../RenderPasses/WireframePass.hpp"
 namespace Luna
 {
-	struct CameraCB
-	{
-		Float4x4 world_to_view;
-		Float4x4 view_to_proj;
-		Float4x4 world_to_proj;
-		Float4x4 view_to_world;
-		Float4 env_color;
-	};
-
-	struct LightingParams
-	{
-		Float3U strength;
-		f32 attenuation_power;
-		Float3U direction;
-		u32 type;
-		Float3U position;
-		f32 spot_attenuation_power;
-	};
-
-	struct ToneMappingParams
-	{
-		f32 exposure = 1.0f;
-	};
-
-	struct SkyboxParams
-	{
-		Float4x4 view_to_world;
-		f32 fov;
-		u32 width;
-		u32 height;
-	};
-
 	struct SceneEditorUserData
 	{
 		lustruct("SceneEditorUserData", "{5b4aea33-e61a-4042-ba91-1f4ec84f8194}");
@@ -68,48 +41,11 @@ namespace Luna
 		Ref<RHI::IShaderInputLayout> m_grid_slayout;
 		Ref<RHI::IPipelineState> m_grid_pso;
 
-		// Resources for rendering debug meshes.
-		Ref<RHI::IPipelineState> m_debug_mesh_renderer_pso;
-		Ref<RHI::IDescriptorSetLayout> m_debug_mesh_renderer_dlayout;
-		Ref<RHI::IShaderInputLayout> m_debug_mesh_renderer_slayout;
-
-		// Depth Pass.
-		Ref<RHI::IPipelineState> m_depth_pass_pso;
-		Ref<RHI::IDescriptorSetLayout> m_depth_pass_dlayout;
-		Ref<RHI::IShaderInputLayout> m_depth_pass_slayout;
-
-		// Sky box Pass.
-		Ref<RHI::IPipelineState> m_skybox_pass_pso;
-		Ref<RHI::IDescriptorSetLayout> m_skybox_pass_dlayout;
-		Ref<RHI::IShaderInputLayout> m_skybox_pass_slayout;
-
-		// Lighting Pass.
-		Ref<RHI::IPipelineState> m_lighting_pass_pso;
-		Ref<RHI::IDescriptorSetLayout> m_lighting_pass_dlayout;
-		Ref<RHI::IShaderInputLayout> m_lighting_pass_slayout;
-
-		Ref<RHI::IResource> m_default_base_color;	// 1.0f, 1.0f, 1.0f, 1.0f
-		Ref<RHI::IResource> m_default_roughness;	// 0.5f
-		Ref<RHI::IResource> m_default_normal;		// 0.5f, 0.5f, 1.0f, 1.0f
-		Ref<RHI::IResource> m_default_metallic;	// 0.0f
-		Ref<RHI::IResource> m_default_emissive;	// 0.0f, 0.0f, 0.0f, 0.0f
-
-		// Tone mapping pass.
-		Ref<RHI::IDescriptorSetLayout> m_first_lum_pass_dlayout;
-		Ref<RHI::IShaderInputLayout> m_first_lum_pass_slayout;
-		Ref<RHI::IPipelineState> m_first_lum_pass_pso;
-		Ref<RHI::IDescriptorSetLayout> m_lum_pass_dlayout;
-		Ref<RHI::IShaderInputLayout> m_lum_pass_slayout;
-		Ref<RHI::IPipelineState> m_lum_pass_pso;
-		Ref<RHI::IDescriptorSetLayout> m_tone_mapping_pass_dlayout;
-		Ref<RHI::IShaderInputLayout> m_tone_mapping_pass_slayout;
-		Ref<RHI::IPipelineState> m_tone_mapping_pass_pso;
-
 		SceneEditorUserData() {}
 
 		RV init();
 	};
-
+	
 	struct SceneEditor : public IAssetEditor
 	{
 	public:
@@ -119,6 +55,8 @@ namespace Luna
 		Ref<SceneEditorUserData> m_type;
 
 		Asset::asset_t m_scene;
+
+		Ref<RG::IRenderGraph> m_render_graph;
 
 		// States for entity list.
 		i32 m_new_entity_current_item = 0;
@@ -139,13 +77,8 @@ namespace Luna
 		Ref<RHI::IResource> m_model_matrices;
 		usize m_num_model_matrices = 0;
 
-		Ref<RHI::IResource> m_skybox_params;
-
 		Ref<RHI::IResource> m_lighting_params;
 		usize m_num_lights = 0;
-
-		Ref<RHI::IResource> m_tone_mapping_offset;
-		Ref<RHI::IResource> m_tone_mapping_params;
 
 		ImGui::GizmoMode m_gizmo_mode = ImGui::GizmoMode::local;
 		ImGui::GizmoOperation m_gizmo_op = ImGui::GizmoOperation::translate;
@@ -184,23 +117,11 @@ namespace Luna
 			using namespace RHI;
 			auto device = get_main_device();
 			u32 cb_align = device->get_constant_buffer_data_alignment();
-			luset(m_camera_cb, device->new_resource(ResourceDesc::buffer(ResourceHeapType::upload, ResourceUsageFlag::constant_buffer, align_upper(sizeof(CameraCB), cb_align))));
 			luset(m_scene_cmdbuf, g_env->graphics_queue->new_command_buffer());
 
 			luset(m_grid_desc_set, device->new_descriptor_set(DescriptorSetDesc(m_type->m_grid_dlayout)));
 			m_grid_desc_set->set_cbv(0, m_camera_cb, ConstantBufferViewDesc(0, (u32)align_upper(sizeof(CameraCB), cb_align)));
-			/*m_back_buffer_clear_pass = device->new_render_pass(
-				RenderPassDesc({ AttachmentDesc(Format::rgba8_unorm, EAttachmentLoadOp::clear, EAttachmentStoreOp::store) },
-					Format::d32_float, EAttachmentLoadOp::clear, EAttachmentStoreOp::store, EAttachmentLoadOp::dont_care, EAttachmentStoreOp::dont_care, 1, true)).get();*/
-
-			luset(m_lighting_params, device->new_resource(ResourceDesc::buffer(ResourceHeapType::upload, ResourceUsageFlag::shader_resource, align_upper(sizeof(LightingParams) * 4, cb_align))));
-			m_num_lights = 4;
-
-			luset(m_tone_mapping_offset, device->new_resource(ResourceDesc::buffer(ResourceHeapType::upload, ResourceUsageFlag::constant_buffer, align_upper(sizeof(Float4) * 16, cb_align))));
-
-			luset(m_tone_mapping_params, device->new_resource(ResourceDesc::buffer(ResourceHeapType::upload, ResourceUsageFlag::constant_buffer, align_upper(sizeof(ToneMappingParams), cb_align))));
-
-			luset(m_skybox_params, device->new_resource(ResourceDesc::buffer(ResourceHeapType::upload, ResourceUsageFlag::constant_buffer, align_upper(sizeof(SkyboxParams), cb_align))));
+			m_render_graph = RG::new_render_graph(device);
 		}
 		lucatchret;
 		return ok;
@@ -408,12 +329,6 @@ namespace Luna
 				return ok;
 			}
 
-			if (!scene_renderer->screen_buffer)
-			{
-				Float2 scene_sz = ImGui::GetContentRegionAvail();
-				luexp(scene_renderer->init(scene_sz));
-			}
-
 			// Fetch camera and transform component.
 			auto camera_entity = s->find_entity(scene_renderer->camera_entity);
 			if (!camera_entity)
@@ -523,19 +438,7 @@ namespace Luna
 			scene_sz.x -= 1.0f;
 			scene_sz.y -= 5.0f;
 
-			auto render_desc = scene_renderer->screen_buffer->get_desc();
-			if (render_desc.width_or_buffer_size != scene_sz.x || render_desc.height != scene_sz.y)
-			{
-				luexp(scene_renderer->resize_screen_buffer(UInt2U((u32)scene_sz.x, (u32)scene_sz.y)));
-			}
-
-			auto render_tex = scene_renderer->screen_buffer;
-			auto render_rtv = scene_renderer->screen_buffer_rtv;
-			auto depth_tex = scene_renderer->depth_buffer;
-			auto depth_dsv = scene_renderer->depth_buffer_dsv;
-
-			render_desc = render_tex->get_desc();
-			camera_component->aspect_ratio = (f32)render_desc.width_or_buffer_size / (f32)render_desc.height;
+			camera_component->aspect_ratio = scene_sz.x / scene_sz.y;
 
 			// Update and upload camera data.
 			m_camera_cb_data.world_to_view = camera_entity->world_to_local_matrix();
@@ -551,28 +454,12 @@ namespace Luna
 
 			auto device = RHI::get_main_device();
 
+			RHI::IResource* render_tex = nullptr;
+			RHI::IRenderTargetView* render_rtv = nullptr;
+
 			// Draw Scene.
 			{
 				using namespace RHI;
-
-				// Clear render and stencil pass.
-				{
-					ResourceBarrierDesc ts[2] = {
-						ResourceBarrierDesc::as_transition(render_tex, ResourceState::render_target),
-						ResourceBarrierDesc::as_transition(depth_tex, ResourceState::depth_stencil_write)
-					};
-					m_scene_cmdbuf->resource_barriers({ ts, 2 });
-					//m_back_buffer_clear_fbo = device->new_frame_buffer(m_back_buffer_clear_pass, 1, &render_tex, nullptr, depth_tex, nullptr).get();
-					RenderPassDesc render_pass;
-					render_pass.rtvs[0] = render_rtv;
-					render_pass.dsv = depth_dsv;
-					render_pass.rt_load_ops[0] = LoadOp::clear;
-					render_pass.rt_clear_values[0] = Float4U(0.0f, 0.0f, 0.0f, 1.0f);
-					render_pass.depth_load_op = LoadOp::clear;
-					render_pass.depth_clear_value = 1.0f;
-					m_scene_cmdbuf->begin_render_pass(render_pass);
-					m_scene_cmdbuf->end_render_pass();
-				}
 
 				// Fetch meshes to draw.
 				Vector<Ref<Entity>> ts;
@@ -712,324 +599,102 @@ namespace Luna
 
 				u32 cb_align = device->get_constant_buffer_data_alignment();
 
-				if (m_wireframe)
+				// Resources.
+				constexpr usize LIGHTING_BUFFER = 0;
+				constexpr usize DEPTH_BUFFER = 1;
+				constexpr usize BACK_BUFFER = 2;
+				constexpr usize WIREFRAME_BACK_BUFFER = 3;
+
+				// Passes.
+				constexpr usize WIREFRAME_PASS = 0;
+				constexpr usize SKYBOX_PASS = 1;
+				constexpr usize LIGHTING_PASS = 2;
+				constexpr usize TONE_MAPPING_PASS = 3;
+				
+				// Build render graph.
 				{
-					// Debug wireframe pass.
-					//auto debug_renderer_fbo = device->new_frame_buffer(m_type->m_debug_mesh_renderer_rp, 1, &render_tex, nullptr, nullptr, nullptr).get();
-					RenderPassDesc render_pass;
-					render_pass.rtvs[0] = render_rtv;
+					using namespace RG;
 					
-					m_scene_cmdbuf->begin_render_pass(render_pass);
-					m_scene_cmdbuf->set_graphic_shader_input_layout(m_type->m_debug_mesh_renderer_slayout);
-					m_scene_cmdbuf->set_pipeline_state(m_type->m_debug_mesh_renderer_pso);
-					m_scene_cmdbuf->set_primitive_topology(PrimitiveTopology::triangle_list);
-					m_scene_cmdbuf->set_viewport(Viewport(0.0f, 0.0f, (f32)render_desc.width_or_buffer_size, (f32)render_desc.height, 0.0f, 1.0f));
-					m_scene_cmdbuf->set_scissor_rect(RectI(0, 0, (i32)render_desc.width_or_buffer_size, (i32)render_desc.height));
-					// Draw Meshes.
-					for (usize i = 0; i < ts.size(); ++i)
+					
+					RenderGraphDesc desc;
+					desc.passes.resize(4);
+					desc.passes[WIREFRAME_PASS] = {"WireframePass", "Wireframe"};
+					desc.passes[SKYBOX_PASS] = {"SkyBoxPass", "SkyBox"};
+					desc.passes[LIGHTING_PASS] = {"LightingPass", "Lighting"};
+					desc.passes[TONE_MAPPING_PASS] = {"ToneMappingPass", "ToneMapping"};
+					desc.resources.resize(4);
+					desc.resources[LIGHTING_BUFFER] = {RenderGraphResourceType::internal, "LightingBuffer"};
+					desc.resources[DEPTH_BUFFER] = {RenderGraphResourceType::internal, "DepthBuffer"};
+					desc.resources[BACK_BUFFER] = {RenderGraphResourceType::internal, "BackBuffer"};
+					desc.resources[WIREFRAME_BACK_BUFFER] = {RenderGraphResourceType::internal, "WireframeBackBuffer"};
+					if(m_wireframe)
 					{
-						auto vs = device->new_descriptor_set(DescriptorSetDesc(m_type->m_debug_mesh_renderer_dlayout)).get();
-						vs->set_cbv(0, m_camera_cb, ConstantBufferViewDesc(0, (u32)align_upper(sizeof(CameraCB), cb_align)));
-						vs->set_srv(1, m_model_matrices, &ShaderResourceViewDesc::as_buffer(i, 1, sizeof(Float4x4) * 2, false));
-						m_scene_cmdbuf->set_graphic_descriptor_set(0, vs);
-						m_scene_cmdbuf->attach_graphic_object(vs);
-
-						// Draw pieces.
-						auto mesh = Asset::get_asset_data<Mesh>(Asset::get_asset_data<Model>(rs[i]->model)->mesh);
-
-						auto vb_view = VertexBufferViewDesc(mesh->vb, 0,
-							mesh->vb_count * sizeof(Vertex), sizeof(Vertex));
-
-						m_scene_cmdbuf->set_vertex_buffers(0, { &vb_view, 1 });
-						m_scene_cmdbuf->set_index_buffer(mesh->ib, 0, mesh->ib_count * sizeof(u32), Format::r32_uint);
-
-						u32 num_pieces = (u32)mesh->pieces.size();
-						for (u32 j = 0; j < num_pieces; ++j)
-						{
-							m_scene_cmdbuf->draw_indexed(mesh->pieces[j].num_indices, mesh->pieces[j].first_index_offset, 0);
-						}
+						desc.resources[WIREFRAME_BACK_BUFFER].type = RenderGraphResourceType::output;
 					}
-					m_scene_cmdbuf->end_render_pass();
+					else
+					{
+						desc.resources[BACK_BUFFER].type = RenderGraphResourceType::output;
+					}
+					desc.output_connections.push_back({WIREFRAME_PASS, "scene_texture", WIREFRAME_BACK_BUFFER});
+					desc.output_connections.push_back({SKYBOX_PASS, "texture", LIGHTING_BUFFER});
+					desc.output_connections.push_back({LIGHTING_PASS, "scene_texture", LIGHTING_BUFFER});
+					desc.output_connections.push_back({LIGHTING_PASS, "scene_depth_texture", DEPTH_BUFFER});
+					desc.input_connections.push_back({TONE_MAPPING_PASS, "hdr_texture", LIGHTING_BUFFER});
+					desc.output_connections.push_back({TONE_MAPPING_PASS, "ldr_texture", BACK_BUFFER});
+					desc.resource_descs.push_back({LIGHTING_BUFFER, ResourceDesc::tex2d(ResourceHeapType::local, Format::rgba16_float, 
+						ResourceUsageFlag::shader_resource | ResourceUsageFlag::render_target, (u32)scene_sz.x, (u32)scene_sz.y)});
+					desc.resource_descs.push_back({DEPTH_BUFFER, ResourceDesc::tex2d(ResourceHeapType::local, Format::d32_float, 
+						ResourceUsageFlag::shader_resource | ResourceUsageFlag::render_target, (u32)scene_sz.x, (u32)scene_sz.y)});
+					desc.resource_descs.push_back({WIREFRAME_BACK_BUFFER, ResourceDesc::tex2d(ResourceHeapType::local, Format::rgba8_unorm, 
+						ResourceUsageFlag::shader_resource | ResourceUsageFlag::render_target, (u32)scene_sz.x, (u32)scene_sz.y)});
+					m_render_graph->set_desc(desc);
+					luexp(m_render_graph->compile());
 				}
-				else
+
 				{
-					// Depth pass.
+					// Set parameters.
+					if(m_wireframe)
 					{
-						//auto fbo = device->new_frame_buffer(m_type->m_depth_pass_rp, 0, nullptr, nullptr, depth_tex, nullptr).get();
-						
-						//m_scene_cmdbuf->begin_render_pass(m_type->m_depth_pass_rp, fbo, 0, nullptr, 1.0f, 0xFF);
-						//m_scene_cmdbuf->attach_graphic_object(fbo);
-						//m_scene_cmdbuf->set_graphic_shader_input_layout(m_type->m_depth_pass_slayout);
-						//m_scene_cmdbuf->set_pipeline_state(m_type->m_depth_pass_pso);
-						//m_scene_cmdbuf->set_primitive_topology(PrimitiveTopology::triangle_list);
-						//m_scene_cmdbuf->set_viewport(Viewport(0.0f, 0.0f, render_desc.width, render_desc.height, 0.0f, 1.0f));
-						//m_scene_cmdbuf->set_scissor_rect(RectI(0, 0, render_desc.width, render_desc.height));
-						//// Draw Meshes.
-						//for (size_t i = 0; i < ts.size(); ++i)
-						//{
-						//	auto vs = device->new_descriptor_set(m_type->m_depth_pass_slayout, ViewSetDesc(1, 1, 0, 0)).get();
-						//	vs->set_cbv(0, m_camera_cb, ConstantBufferViewDesc(0, align_upper(sizeof(CameraCB), cb_align)));
-						//	vs->set_srv(0, m_model_matrices, &ShaderResourceViewDesc::as_buffer(Format::unknown, i, 1, sizeof(Float4x4), false));
-						//	m_scene_cmdbuf->set_graphic_descriptor_set(vs);
-						//	m_scene_cmdbuf->attach_graphic_object(vs);
-
-						//	// Draw pieces.
-						//	auto mesh = rs[i]->model().lock()->mesh().lock();
-						//	m_scene_cmdbuf->set_vertex_buffers(0, 1, &VertexBufferViewDesc(mesh->vertex_buffer(), 0,
-						//		mesh->count_vertices() * sizeof(Vertex), sizeof(Vertex)));
-						//	m_scene_cmdbuf->set_index_buffer(mesh->index_buffer(), 0, mesh->count_indices() * sizeof(u32), Format::r32_uint);
-
-						//	size_t num_pieces = mesh->count_pieces();
-						//	for (size_t j = 0; j < num_pieces; ++j)
-						//	{
-						//		m_scene_cmdbuf->draw_indexed(mesh->piece_count_indices(j), mesh->piece_first_index_offset(j), 0);
-						//	}
-						//}
-						//m_scene_cmdbuf->end_render_pass();
+						WireframePass* wireframe = query_interface<WireframePass>(m_render_graph->get_render_pass(WIREFRAME_PASS)->get_object());
+						wireframe->model_matrices = m_model_matrices;
+						wireframe->camera_cb = m_camera_cb;
+						wireframe->ts = {ts.data(), ts.size()};
+						wireframe->rs = {rs.data(), rs.size()};
 					}
-
-					// Sky Box Pass.
-					// Clears the lighting buffer to a skybox or black of the skybox is not present.
+					else
 					{
-						auto skybox = Asset::get_asset_data<RHI::IResource>(scene_renderer->skybox);
-						if (skybox && camera_component->type == CameraType::perspective)
-						{
-							// Draw skybox.
-							auto view_to_world = camera_entity->local_to_world_matrix();
-							SkyboxParams* mapped = nullptr;
-							luexp(m_skybox_params->map_subresource(0, false, (void**)&mapped));
-							auto camera_forward_dir = mul(Float4(0.0f, 0.0f, 1.0f, 0.0f), camera_entity->local_to_world_matrix());
-							memcpy(&mapped->view_to_world, &view_to_world, sizeof(Float4x4));
-							mapped->fov = camera_component->fov;
-							mapped->width = (u32)scene_sz.x;
-							mapped->height = (u32)scene_sz.y;
-							m_skybox_params->unmap_subresource(0, true);
-							m_scene_cmdbuf->resource_barriers({
-								ResourceBarrierDesc::as_transition(scene_renderer->lighting_buffer, ResourceState::unordered_access),
-								ResourceBarrierDesc::as_transition(skybox, ResourceState::shader_resource_non_pixel),
-								ResourceBarrierDesc::as_transition(m_skybox_params, ResourceState::vertex_and_constant_buffer)
-								});
-							m_scene_cmdbuf->set_compute_shader_input_layout(m_type->m_skybox_pass_slayout);
-							m_scene_cmdbuf->set_pipeline_state(m_type->m_skybox_pass_pso);
-							lulet(vs, device->new_descriptor_set(DescriptorSetDesc(m_type->m_skybox_pass_dlayout)));
-							vs->set_cbv(0, m_skybox_params, ConstantBufferViewDesc(0, (u32)align_upper(sizeof(SkyboxParams), cb_align)));
-							vs->set_srv(1, skybox);
-							vs->set_uav(2, scene_renderer->lighting_buffer);
-							vs->set_sampler(3, SamplerDesc(FilterMode::min_mag_mip_linear, TextureAddressMode::repeat, TextureAddressMode::repeat, TextureAddressMode::repeat));
-							m_scene_cmdbuf->set_compute_descriptor_set(0, vs);
-							m_scene_cmdbuf->attach_graphic_object(vs);
-							m_scene_cmdbuf->dispatch(max<u32>((u32)scene_sz.x / 8, 1), max<u32>((u32)scene_sz.y / 8, 1), 1);
-						}
-						else
-						{
-							// Clears to black.
-							m_scene_cmdbuf->resource_barrier(ResourceBarrierDesc::as_transition(scene_renderer->lighting_buffer, ResourceState::render_target));
-							auto lighting_rt = scene_renderer->lighting_buffer;
-
-							RenderPassDesc render_pass;
-							render_pass.rtvs[0] = scene_renderer->lighting_buffer_rtv;
-							render_pass.rt_load_ops[0] = LoadOp::clear;
-							render_pass.rt_store_ops[0] = StoreOp::store;
-							render_pass.rt_clear_values[0] = { 0.0f, 0.0f, 0.0f, 0.0f };
-							m_scene_cmdbuf->begin_render_pass(render_pass);
-							m_scene_cmdbuf->end_render_pass();
-						}
+						SkyBoxPass* skybox = query_interface<SkyBoxPass>(m_render_graph->get_render_pass(SKYBOX_PASS)->get_object());
+						LightingPass* lighting = query_interface<LightingPass>(m_render_graph->get_render_pass(LIGHTING_PASS)->get_object());
+						ToneMappingPass* tone_mapping = query_interface<ToneMappingPass>(m_render_graph->get_render_pass(TONE_MAPPING_PASS)->get_object());
+						skybox->camera_fov = camera_component->fov;
+						skybox->camera_type = camera_component->type;
+						skybox->view_to_world = camera_entity->local_to_world_matrix();
+						auto skybox_tex = Asset::get_asset_data<RHI::IResource>(scene_renderer->skybox);
+						skybox->skybox = skybox_tex;
+						lighting->skybox = skybox_tex;
+						lighting->model_matrices = m_model_matrices;
+						lighting->camera_cb = m_camera_cb;
+						lighting->ts = {ts.data(), ts.size()};
+						lighting->rs = {rs.data(), rs.size()};
+						lighting->light_params = m_lighting_params;
+						lighting->light_ts = {light_ts.data(), light_ts.size()};
+						tone_mapping->exposure = scene_renderer->exposure;
 					}
+				}
 
-					// Lighting Pass.
+				luexp(m_render_graph->execute(m_scene_cmdbuf));
+
+				// Set render pass parameters.
+				{
+					if(m_wireframe)
 					{
-						//auto fbo = device->new_frame_buffer(m_type->m_lighting_pass_rp, 1, &lighting_rt, nullptr, depth_tex, nullptr).get();
-						m_scene_cmdbuf->resource_barriers({ 
-							ResourceBarrierDesc::as_transition(scene_renderer->lighting_buffer, ResourceState::render_target),
-							ResourceBarrierDesc::as_transition(depth_tex, ResourceState::depth_stencil_write) });
-						RenderPassDesc render_pass;
-						render_pass.rtvs[0] = scene_renderer->lighting_buffer_rtv;
-						render_pass.dsv = depth_dsv;
-						m_scene_cmdbuf->begin_render_pass(render_pass);
-						m_scene_cmdbuf->set_graphic_shader_input_layout(m_type->m_lighting_pass_slayout);
-						m_scene_cmdbuf->set_pipeline_state(m_type->m_lighting_pass_pso);
-						m_scene_cmdbuf->set_primitive_topology(PrimitiveTopology::triangle_list);
-						m_scene_cmdbuf->set_viewport(Viewport(0.0f, 0.0f, (f32)render_desc.width_or_buffer_size, (f32)render_desc.height, 0.0f, 1.0f));
-						m_scene_cmdbuf->set_scissor_rect(RectI(0, 0, (i32)render_desc.width_or_buffer_size, (i32)render_desc.height));
-
-						// Draw Meshes.
-						for (usize i = 0; i < ts.size(); ++i)
-						{
-							auto model = Asset::get_asset_data<Model>(rs[i]->model);
-							auto mesh = Asset::get_asset_data<Mesh>(model->mesh);
-							m_scene_cmdbuf->set_vertex_buffers(0, { VertexBufferViewDesc(mesh->vb, 0,
-								mesh->vb_count * sizeof(Vertex), sizeof(Vertex)) });
-							m_scene_cmdbuf->set_index_buffer(mesh->ib, 0, mesh->ib_count * sizeof(u32), Format::r32_uint);
-
-							u32 num_pieces = (u32)mesh->pieces.size();
-
-							for (u32 j = 0; j < num_pieces; ++j)
-							{
-								Ref<RHI::IResource> base_color_tex = m_type->m_default_base_color;
-								Ref<RHI::IResource> roughness_tex = m_type->m_default_roughness;
-								Ref<RHI::IResource> normal_tex = m_type->m_default_normal;
-								Ref<RHI::IResource> metallic_tex = m_type->m_default_metallic;
-								Ref<RHI::IResource> emissive_tex = m_type->m_default_emissive;
-								Ref<RHI::IResource> sky_tex = m_type->m_default_emissive;
-
-								if (j < model->materials.size())
-								{
-									auto mat = Asset::get_asset_data<Material>(model->materials[j]);
-									if (mat)
-									{
-										// Set material for this piece.
-										Ref<RHI::IResource> mat_base_color_tex = Asset::get_asset_data<RHI::IResource>(mat->base_color);
-										Ref<RHI::IResource> mat_roughness_tex = Asset::get_asset_data<RHI::IResource>(mat->roughness);
-										Ref<RHI::IResource> mat_normal_tex = Asset::get_asset_data<RHI::IResource>(mat->normal);
-										Ref<RHI::IResource> mat_metallic_tex = Asset::get_asset_data<RHI::IResource>(mat->metallic);
-										Ref<RHI::IResource> mat_emissive_tex = Asset::get_asset_data<RHI::IResource>(mat->emissive);
-										if (mat_base_color_tex)
-										{
-											base_color_tex = mat_base_color_tex;
-										}
-										if (mat_roughness_tex)
-										{
-											roughness_tex = mat_roughness_tex;
-										}
-										if (mat_normal_tex)
-										{
-											normal_tex = mat_normal_tex;
-										}
-										if (mat_metallic_tex)
-										{
-											metallic_tex = mat_metallic_tex;
-										}
-										if (mat_emissive_tex)
-										{
-											emissive_tex = mat_emissive_tex;
-										}
-									}
-								}
-
-								auto skybox = Asset::get_asset_data<RHI::IResource>(scene_renderer->skybox);
-								if (skybox) sky_tex = skybox;
-								lulet(vs, device->new_descriptor_set(DescriptorSetDesc(m_type->m_lighting_pass_dlayout)));
-								vs->set_cbv(0, m_camera_cb, ConstantBufferViewDesc(0, (u32)align_upper(sizeof(CameraCB), cb_align)));
-								vs->set_srv(1, m_model_matrices, &ShaderResourceViewDesc::as_buffer(i, 1, sizeof(Float4x4) * 2, false));
-								if (light_ts.empty())
-								{
-									// Adds one fake light.
-									vs->set_srv(2, m_lighting_params, &ShaderResourceViewDesc::as_buffer(0, 1, sizeof(LightingParams)));
-								}
-								else
-								{
-									vs->set_srv(2, m_lighting_params, &ShaderResourceViewDesc::as_buffer(0, (u32)light_ts.size(), sizeof(LightingParams)));
-								}
-								// Set material texture: base_color(t2), roughness(t3), normal(t4), metallic(t5), emissive(t6).
-								vs->set_srv(3, base_color_tex);
-								vs->set_srv(4, roughness_tex);
-								vs->set_srv(5, normal_tex);
-								vs->set_srv(6, metallic_tex);
-								vs->set_srv(7, emissive_tex);
-								vs->set_srv(8, sky_tex);
-								vs->set_sampler(9, SamplerDesc(FilterMode::min_mag_mip_linear, TextureAddressMode::repeat, TextureAddressMode::repeat, TextureAddressMode::repeat));
-								m_scene_cmdbuf->set_graphic_descriptor_set(0, vs);
-								m_scene_cmdbuf->attach_graphic_object(vs);
-								m_scene_cmdbuf->draw_indexed(mesh->pieces[j].num_indices, mesh->pieces[j].first_index_offset, 0);
-							}
-						}
-						m_scene_cmdbuf->end_render_pass();
+						render_tex = m_render_graph->get_output_resource(WIREFRAME_BACK_BUFFER);
 					}
-
-					// Bloom Pass.
-					// The Bloom Pass is added to the lighting texture before it is tone-mapped.
-					// The original light texture will also be scaled down a little bit.
+					else
 					{
-
+						render_tex = m_render_graph->get_output_resource(BACK_BUFFER);
 					}
-
-					// Tone mapping pass.
-					{
-						// First Lum Pass.
-						{
-							m_scene_cmdbuf->set_compute_shader_input_layout(m_type->m_first_lum_pass_slayout);
-							m_scene_cmdbuf->set_pipeline_state(m_type->m_first_lum_pass_pso);
-							Float4 offsets[16];
-							{
-								// How much texels are covered by one sample pixel?
-								f32 TexelsCoveredPerSampleW = scene_sz.x / 1024.0f;
-								f32 TexelsCoveredPerSampleH = scene_sz.y / 1024.0f;
-								// The offset of one texel in uv-space.
-								f32 NormalizedWidthPerTexel = 1.0f / scene_sz.x;
-								f32 NormalizedHeightPerTexel = 1.0f / scene_sz.y;
-								for (i32 i = 0; i < 4; i++)
-								{
-									for (i32 j = 0; j < 4; j++)
-									{
-										offsets[4 * i + j] = Float4{
-											NormalizedWidthPerTexel * TexelsCoveredPerSampleW / 8.0f * (float)(2 * j - 3) ,
-											NormalizedHeightPerTexel * TexelsCoveredPerSampleH / 8.0f * (float)(2 * i - 3) ,0.0f,0.0f };
-									}
-								}
-							}
-							void* mapped = nullptr;
-							luexp(m_tone_mapping_offset->map_subresource(0, false, &mapped));
-							memcpy(mapped, offsets, sizeof(Float4) * 16);
-							m_tone_mapping_offset->unmap_subresource(0, true);
-							m_scene_cmdbuf->resource_barriers({ 
-								ResourceBarrierDesc::as_transition(scene_renderer->lighting_buffer, ResourceState::shader_resource_non_pixel, 0),
-								ResourceBarrierDesc::as_transition(scene_renderer->lighting_accms[0], ResourceState::unordered_access, 0),
-								ResourceBarrierDesc::as_transition(m_tone_mapping_offset, ResourceState::vertex_and_constant_buffer, 0) });
-							lulet(vs, device->new_descriptor_set(DescriptorSetDesc(m_type->m_first_lum_pass_dlayout)));
-							vs->set_cbv(0, m_tone_mapping_offset, ConstantBufferViewDesc(0, (u32)align_upper(sizeof(Float4) * 16, cb_align)));
-							vs->set_srv(1, scene_renderer->lighting_buffer);
-							vs->set_uav(2, scene_renderer->lighting_accms[0]);
-							vs->set_sampler(3, SamplerDesc(FilterMode::min_mag_mip_linear, TextureAddressMode::repeat, TextureAddressMode::repeat, TextureAddressMode::repeat));
-							m_scene_cmdbuf->set_compute_descriptor_set(0, vs);
-							m_scene_cmdbuf->attach_graphic_object(vs);
-							m_scene_cmdbuf->dispatch(128, 128, 1);
-						}
-
-						// Lum passes.
-						{
-							m_scene_cmdbuf->set_compute_shader_input_layout(m_type->m_lum_pass_slayout);
-							m_scene_cmdbuf->set_pipeline_state(m_type->m_lum_pass_pso);
-							for (u32 i = 0; i < 10; ++i)
-							{
-								m_scene_cmdbuf->resource_barriers({
-									ResourceBarrierDesc::as_transition(scene_renderer->lighting_accms[i], ResourceState::shader_resource_non_pixel, 0),
-									ResourceBarrierDesc::as_transition(scene_renderer->lighting_accms[i + 1], ResourceState::unordered_access, 0) });
-								lulet(vs, device->new_descriptor_set(DescriptorSetDesc(m_type->m_lum_pass_dlayout)));
-								vs->set_srv(0, scene_renderer->lighting_accms[i]);
-								vs->set_uav(1, scene_renderer->lighting_accms[i + 1]);
-								m_scene_cmdbuf->set_compute_descriptor_set(0, vs);
-								m_scene_cmdbuf->attach_graphic_object(vs);
-								u32 dispatches = max(64 >> i, 1);
-								m_scene_cmdbuf->dispatch(dispatches, dispatches, 1);
-							}
-						}
-
-						// Tone Mapping Pass.
-						{
-							void* mapped = nullptr;
-							luexp(m_tone_mapping_params->map_subresource(0, false, &mapped));
-							ToneMappingParams params;
-							params.exposure = scene_renderer->exposure;
-							memcpy(mapped, &params, sizeof(ToneMappingParams));
-							m_tone_mapping_params->unmap_subresource(0, true);
-							m_scene_cmdbuf->set_compute_shader_input_layout(m_type->m_tone_mapping_pass_slayout);
-							m_scene_cmdbuf->set_pipeline_state(m_type->m_tone_mapping_pass_pso);
-							m_scene_cmdbuf->resource_barriers({
-								ResourceBarrierDesc::as_transition(scene_renderer->lighting_accms[10], ResourceState::shader_resource_non_pixel),
-								ResourceBarrierDesc::as_transition(scene_renderer->lighting_buffer, ResourceState::shader_resource_non_pixel),
-								ResourceBarrierDesc::as_transition(scene_renderer->screen_buffer, ResourceState::unordered_access),
-								ResourceBarrierDesc::as_transition(m_tone_mapping_params, ResourceState::vertex_and_constant_buffer) });
-							lulet(vs, device->new_descriptor_set(DescriptorSetDesc(m_type->m_tone_mapping_pass_dlayout)));
-							vs->set_cbv(0, m_tone_mapping_params, ConstantBufferViewDesc(0, (u32)align_upper(sizeof(ToneMappingParams), cb_align)));
-							vs->set_srv(1, scene_renderer->lighting_buffer);
-							vs->set_srv(2, scene_renderer->lighting_accms[10]);
-							vs->set_uav(3, scene_renderer->screen_buffer);
-							m_scene_cmdbuf->set_compute_descriptor_set(0, vs);
-							m_scene_cmdbuf->attach_graphic_object(vs);
-							m_scene_cmdbuf->dispatch(max<u32>((u32)scene_sz.x / 8, 1), max<u32>((u32)scene_sz.y / 8, 1), 1);
-						}
-					}
-
+					luset(render_rtv, m_render_graph->get_device()->new_render_target_view(render_tex));
 				}
 			}
 
@@ -1048,8 +713,8 @@ namespace Luna
 				m_scene_cmdbuf->set_vertex_buffers(0, { VertexBufferViewDesc(m_type->m_grid_vb.get(), 0, sizeof(Float4) * 44, sizeof(Float4)) });
 				m_scene_cmdbuf->set_primitive_topology(PrimitiveTopology::line_list);
 				m_scene_cmdbuf->set_graphic_descriptor_set(0, m_grid_desc_set);
-				m_scene_cmdbuf->set_viewport(Viewport(0.0f, 0.0f, (f32)render_desc.width_or_buffer_size, (f32)render_desc.height, 0.0f, 1.0f));
-				m_scene_cmdbuf->set_scissor_rect(RectI(0, 0, (i32)render_desc.width_or_buffer_size, (i32)render_desc.height));
+				m_scene_cmdbuf->set_viewport(Viewport(0.0f, 0.0f, scene_sz.x, scene_sz.y, 0.0f, 1.0f));
+				m_scene_cmdbuf->set_scissor_rect(RectI(0, 0, (i32)scene_sz.x, (i32)scene_sz.y));
 				m_scene_cmdbuf->draw(44, 0);
 				m_scene_cmdbuf->end_render_pass();
 			}
@@ -1079,7 +744,6 @@ namespace Luna
 				ImGui::SetCursorScreenPos(scene_pos);
 
 				ImGui::Text("FPS: %f", ImGui::GetIO().Framerate);
-
 
 				ImGui::SetCursorPos(backup_pos);
 			}
@@ -1352,16 +1016,7 @@ namespace Luna
 			auto device = get_main_device();
 			{
 				luset(m_grid_vb, device->new_resource(ResourceDesc::buffer(ResourceHeapType::shared_upload, ResourceUsageFlag::vertex_buffer, sizeof(grids))));
-				luset(m_default_base_color, device->new_resource(
-					ResourceDesc::tex2d(ResourceHeapType::shared_upload, Format::rgba8_unorm, ResourceUsageFlag::shader_resource, 1, 1, 1, 1)));
-				luset(m_default_roughness, device->new_resource(
-					ResourceDesc::tex2d(ResourceHeapType::shared_upload, Format::r8_unorm, ResourceUsageFlag::shader_resource, 1, 1, 1, 1)));
-				luset(m_default_normal, device->new_resource(
-					ResourceDesc::tex2d(ResourceHeapType::shared_upload, Format::rgba8_unorm, ResourceUsageFlag::shader_resource, 1, 1, 1, 1)));
-				luset(m_default_metallic, device->new_resource(
-					ResourceDesc::tex2d(ResourceHeapType::shared_upload, Format::r8_unorm, ResourceUsageFlag::shader_resource, 1, 1, 1, 1)));
-				luset(m_default_emissive, device->new_resource(
-					ResourceDesc::tex2d(ResourceHeapType::shared_upload, Format::rgba8_unorm, ResourceUsageFlag::shader_resource, 1, 1, 1, 1)));
+				
 
 				DescriptorSetLayoutDesc dlayout({
 					DescriptorSetLayoutBinding(DescriptorType::cbv, 0, 1, ShaderVisibility::vertex)
@@ -1457,333 +1112,10 @@ namespace Luna
 			memcpy(mapped, grids, sizeof(grids));
 			m_grid_vb->unmap_subresource(0, true);
 
-			// Upload default texture data.
-			luexp(m_default_base_color->map_subresource(0, false));
-			luexp(m_default_roughness->map_subresource(0, false));
-			luexp(m_default_normal->map_subresource(0, false));
-			luexp(m_default_metallic->map_subresource(0, false));
-			luexp(m_default_emissive->map_subresource(0, false));
-			u8 data[4] = { 255, 255, 255, 255 };
-			luexp(m_default_base_color->write_subresource(0, data, 4, 4, BoxU(0, 0, 0, 1, 1, 1)));
-			data[0] = 127;
-			luexp(m_default_roughness->write_subresource(0, data, 1, 1, BoxU(0, 0, 0, 1, 1, 1)));
-			data[0] = 127;
-			data[1] = 127;
-			data[2] = 255;
-			data[3] = 255;
-			luexp(m_default_normal->write_subresource(0, data, 4, 4, BoxU(0, 0, 0, 1, 1, 1)));
-			data[0] = 0;
-			luexp(m_default_metallic->write_subresource(0, data, 1, 1, BoxU(0, 0, 0, 1, 1, 1)));
-			data[0] = 0;
-			data[1] = 0;
-			data[2] = 0;
-			data[3] = 0;
-			luexp(m_default_emissive->write_subresource(0, data, 4, 4, BoxU(0, 0, 0, 1, 1, 1)));
-			m_default_base_color->unmap_subresource(0, true);
-			m_default_roughness->unmap_subresource(0, true);
-			m_default_normal->unmap_subresource(0, true);
-			m_default_metallic->unmap_subresource(0, true);
-			m_default_emissive->unmap_subresource(0, true);
-
-			static const char* vertexShaderCommon =
-				"cbuffer vertexBuffer : register(b0) \
-						{\
-							float4x4 world_to_view; \
-							float4x4 view_to_proj; \
-							float4x4 world_to_proj; \
-							float4x4 view_to_world; \
-							float4 env_light_color; \
-						};\
-						struct MeshBuffer	\
-						{\
-							float4x4 model_to_world;	\
-							float4x4 world_to_model;	\
-						};\
-						StructuredBuffer<MeshBuffer> g_MeshBuffer : register(t1);\
-						struct VS_INPUT\
-						{\
-							float3 position : POSITION;	\
-							float3 normal : NORMAL;	\
-							float3 tangent : TANGENT;	\
-							float2 texcoord : TEXCOORD;	\
-							float4 color : COLOR;	\
-						};\
-						\
-						struct PS_INPUT\
-						{\
-							float4 position : SV_POSITION;	\
-							float3 normal : NORMAL;	\
-							float3 tangent : TANGENT;	\
-							float2 texcoord : TEXCOORD;	\
-							float4 color : COLOR;	\
-							float3 world_position : POSITION;	\
-						};\
-						\
-						PS_INPUT main(VS_INPUT input)\
-						{\
-							PS_INPUT output;\
-							output.world_position = mul(g_MeshBuffer[0].model_to_world, float4(input.position, 1.0f)).xyz;\
-							output.position = mul(world_to_proj, float4(output.world_position, 1.0f));\
-							output.normal = mul(float4(input.normal, 0.0f), g_MeshBuffer[0].world_to_model).xyz;\
-							output.tangent = mul(float4(input.tangent, 0.0f), g_MeshBuffer[0].world_to_model).xyz;\
-							output.texcoord = input.texcoord;	\
-							output.color = input.color;	\
-							return output;\
-						}";
-
-				auto compiler = ShaderCompiler::new_compiler();
-				compiler->set_source({ vertexShaderCommon, strlen(vertexShaderCommon) });
-				compiler->set_source_name("MeshDebugVS");
-				compiler->set_entry_point("main");
-				compiler->set_target_format(get_current_platform_shader_target_format());
-				compiler->set_shader_type(ShaderCompiler::ShaderType::vertex);
-				compiler->set_shader_model(5, 0);
-				compiler->set_optimization_level(ShaderCompiler::OptimizationLevel::full);
-				luexp(compiler->compile());
-
-				Blob vs_blob = compiler->get_output();
-
-				InputLayoutDesc input_layout_common({
-						InputElementDesc("POSITION", 0, Format::rgb32_float),
-						InputElementDesc("NORMAL", 0, Format::rgb32_float),
-						InputElementDesc("TANGENT", 0, Format::rgb32_float),
-						InputElementDesc("TEXCOORD", 0, Format::rg32_float),
-						InputElementDesc("COLOR", 0, Format::rgba32_float),
-					});
-
-				// Create Resources for debug mesh renderer.
-				{
-
-					luset(m_debug_mesh_renderer_dlayout, device->new_descriptor_set_layout(DescriptorSetLayoutDesc({
-						DescriptorSetLayoutBinding(DescriptorType::cbv, 0, 1, ShaderVisibility::vertex),
-						DescriptorSetLayoutBinding(DescriptorType::srv, 1, 1, ShaderVisibility::vertex) })));
-
-					luset(m_debug_mesh_renderer_slayout, device->new_shader_input_layout(ShaderInputLayoutDesc({ m_debug_mesh_renderer_dlayout },
-						ShaderInputLayoutFlag::allow_input_assembler_input_layout |
-						ShaderInputLayoutFlag::deny_domain_shader_access |
-						ShaderInputLayoutFlag::deny_geometry_shader_access |
-						ShaderInputLayoutFlag::deny_hull_shader_access)));
-					static const char* pixelShader =
-						"struct PS_INPUT\
-						{\
-							float4 position : SV_POSITION;	\
-							float3 normal : NORMAL;	\
-							float3 tangent : TANGENT;	\
-							float2 texcoord : TEXCOORD;	\
-							float4 color : COLOR;	\
-							float3 world_position : POSITION;	\
-						}; \
-						\
-						float4 main(PS_INPUT input) : SV_Target\
-						{\
-						  return float4(1.0f, 1.0f, 1.0f, 1.0f); \
-						}";
-					compiler->set_source({ pixelShader, strlen(pixelShader) });
-					compiler->set_source_name("MeshDebugPS");
-					compiler->set_entry_point("main");
-					compiler->set_target_format(get_current_platform_shader_target_format());
-					compiler->set_shader_type(ShaderCompiler::ShaderType::pixel);
-					compiler->set_shader_model(5, 0);
-					compiler->set_optimization_level(ShaderCompiler::OptimizationLevel::full);
-					luexp(compiler->compile());
-					Blob ps_blob = compiler->get_output();
-
-					GraphicPipelineStateDesc ps_desc;
-					ps_desc.primitive_topology_type = PrimitiveTopologyType::triangle;
-					ps_desc.sample_mask = U32_MAX;
-					ps_desc.sample_quality = 0;
-					ps_desc.blend_state = BlendDesc(false, false, { RenderTargetBlendDesc(true, false, BlendFactor::src_alpha,
-						BlendFactor::inv_src_alpha, BlendOp::add, BlendFactor::inv_src_alpha, BlendFactor::zero, BlendOp::add, LogicOp::noop, ColorWriteMask::all) });
-					ps_desc.rasterizer_state = RasterizerDesc(FillMode::wireframe, CullMode::none, 0, 0.0f, 0.0f, 0, false, true, false, true, false);
-					ps_desc.depth_stencil_state = DepthStencilDesc(false, false, ComparisonFunc::always, false, 0x00, 0x00, DepthStencilOpDesc(), DepthStencilOpDesc());
-					ps_desc.ib_strip_cut_value = IndexBufferStripCutValue::disabled;
-					ps_desc.input_layout = input_layout_common;
-					ps_desc.vs = vs_blob.cspan();
-					ps_desc.ps = ps_blob.cspan();
-					ps_desc.shader_input_layout = m_debug_mesh_renderer_slayout;
-					ps_desc.num_render_targets = 1;
-					ps_desc.rtv_formats[0] = Format::rgba8_unorm;
-					luset(m_debug_mesh_renderer_pso, device->new_graphic_pipeline_state(ps_desc));
-				}
-
-				// Depth Pass.
-				{
-					luset(m_depth_pass_dlayout, device->new_descriptor_set_layout(DescriptorSetLayoutDesc({
-						DescriptorSetLayoutBinding(DescriptorType::cbv, 0, 1, ShaderVisibility::vertex),
-						DescriptorSetLayoutBinding(DescriptorType::srv, 1, 1, ShaderVisibility::vertex)
-						})));
-					luset(m_depth_pass_slayout, device->new_shader_input_layout(ShaderInputLayoutDesc({ m_depth_pass_dlayout },
-						ShaderInputLayoutFlag::allow_input_assembler_input_layout |
-						ShaderInputLayoutFlag::deny_domain_shader_access |
-						ShaderInputLayoutFlag::deny_geometry_shader_access |
-						ShaderInputLayoutFlag::deny_hull_shader_access |
-						ShaderInputLayoutFlag::deny_pixel_shader_access)));
-
-					GraphicPipelineStateDesc ps_desc;
-					ps_desc.primitive_topology_type = PrimitiveTopologyType::triangle;
-					ps_desc.sample_mask = U32_MAX;
-					ps_desc.sample_quality = 0;
-					ps_desc.blend_state = BlendDesc(false, false, {});
-					ps_desc.rasterizer_state = RasterizerDesc(FillMode::solid, CullMode::back, 0, 0.0f, 0.0f, 0, false, true, false, false, false);
-					ps_desc.depth_stencil_state = DepthStencilDesc(true, true, ComparisonFunc::less , false, 0x00, 0x00, DepthStencilOpDesc(), DepthStencilOpDesc());
-					ps_desc.ib_strip_cut_value = IndexBufferStripCutValue::disabled;
-					ps_desc.input_layout = input_layout_common;
-					ps_desc.shader_input_layout = m_depth_pass_slayout;
-					ps_desc.vs = vs_blob.cspan();
-					ps_desc.dsv_format = Format::d32_float;
-
-					luset(m_depth_pass_pso, device->new_graphic_pipeline_state(ps_desc));
-				}
-
-				// Skybox pass.
-				{
-					luset(m_skybox_pass_dlayout, device->new_descriptor_set_layout(DescriptorSetLayoutDesc({
-						DescriptorSetLayoutBinding(DescriptorType::cbv, 0, 1, ShaderVisibility::all),
-						DescriptorSetLayoutBinding(DescriptorType::srv, 1, 1, ShaderVisibility::all),
-						DescriptorSetLayoutBinding(DescriptorType::uav, 2, 1, ShaderVisibility::all),
-						DescriptorSetLayoutBinding(DescriptorType::sampler, 3, 1, ShaderVisibility::all)
-						})));
-
-					luset(m_skybox_pass_slayout, device->new_shader_input_layout(ShaderInputLayoutDesc({ m_skybox_pass_dlayout },
-						ShaderInputLayoutFlag::deny_vertex_shader_access |
-						ShaderInputLayoutFlag::deny_domain_shader_access |
-						ShaderInputLayoutFlag::deny_geometry_shader_access |
-						ShaderInputLayoutFlag::deny_hull_shader_access |
-						ShaderInputLayoutFlag::deny_pixel_shader_access)));
-
-					lulet(psf, open_file("SkyboxCS.cso", FileOpenFlag::read, FileCreationMode::open_existing));
-					auto file_size = psf->get_size();
-					auto cs_blob = Blob((usize)file_size);
-					luexp(psf->read(cs_blob.span()));
-					psf = nullptr;
-					ComputePipelineStateDesc ps_desc;
-					ps_desc.cs = cs_blob.cspan();
-					ps_desc.shader_input_layout = m_skybox_pass_slayout;
-					luset(m_skybox_pass_pso, device->new_compute_pipeline_state(ps_desc));
-				}
-
-				// Lighting Pass.
-				{
-					luset(m_lighting_pass_dlayout, device->new_descriptor_set_layout(DescriptorSetLayoutDesc({
-						DescriptorSetLayoutBinding(DescriptorType::cbv, 0, 1, ShaderVisibility::all),
-						DescriptorSetLayoutBinding(DescriptorType::srv, 1, 1, ShaderVisibility::all),
-						DescriptorSetLayoutBinding(DescriptorType::srv, 2, 1, ShaderVisibility::pixel),
-						DescriptorSetLayoutBinding(DescriptorType::srv, 3, 1, ShaderVisibility::pixel),
-						DescriptorSetLayoutBinding(DescriptorType::srv, 4, 1, ShaderVisibility::pixel),
-						DescriptorSetLayoutBinding(DescriptorType::srv, 5, 1, ShaderVisibility::pixel),
-						DescriptorSetLayoutBinding(DescriptorType::srv, 6, 1, ShaderVisibility::pixel),
-						DescriptorSetLayoutBinding(DescriptorType::srv, 7, 1, ShaderVisibility::pixel),
-						DescriptorSetLayoutBinding(DescriptorType::srv, 8, 1, ShaderVisibility::pixel),
-						DescriptorSetLayoutBinding(DescriptorType::sampler, 9, 1, ShaderVisibility::pixel)
-						})));
-
-					luset(m_lighting_pass_slayout, device->new_shader_input_layout(ShaderInputLayoutDesc({ m_lighting_pass_dlayout },
-						ShaderInputLayoutFlag::allow_input_assembler_input_layout |
-						ShaderInputLayoutFlag::deny_domain_shader_access |
-						ShaderInputLayoutFlag::deny_geometry_shader_access |
-						ShaderInputLayoutFlag::deny_hull_shader_access)));
-
-					lulet(psf, open_file("LightingPassPixel.cso", FileOpenFlag::read, FileCreationMode::open_existing));
-					auto file_size = psf->get_size();
-					auto ps_blob = Blob((usize)file_size);
-					luexp(psf->read(ps_blob.span()));
-					psf = nullptr;
-
-					GraphicPipelineStateDesc ps_desc;
-					ps_desc.primitive_topology_type = PrimitiveTopologyType::triangle;
-					ps_desc.sample_mask = U32_MAX;
-					ps_desc.sample_quality = 0;
-					ps_desc.blend_state = BlendDesc(false, false, { RenderTargetBlendDesc(false, false, BlendFactor::src_alpha,
-						BlendFactor::inv_src_alpha, BlendOp::add, BlendFactor::inv_src_alpha, BlendFactor::zero, BlendOp::add, LogicOp::noop, ColorWriteMask::all) });
-					ps_desc.rasterizer_state = RasterizerDesc(FillMode::solid, CullMode::back, 0, 0.0f, 0.0f, 0, false, true, false, false, false);
-					ps_desc.depth_stencil_state = DepthStencilDesc(true, true, ComparisonFunc::less_equal, false, 0x00, 0x00, DepthStencilOpDesc(), DepthStencilOpDesc());
-					ps_desc.ib_strip_cut_value = IndexBufferStripCutValue::disabled;
-					ps_desc.input_layout = input_layout_common;
-					ps_desc.vs = vs_blob.cspan();
-					ps_desc.ps = ps_blob.cspan();
-					ps_desc.shader_input_layout = m_lighting_pass_slayout;
-					ps_desc.num_render_targets = 1;
-					ps_desc.rtv_formats[0] = Format::rgba32_float;
-					ps_desc.dsv_format = Format::d32_float;
-					luset(m_lighting_pass_pso, device->new_graphic_pipeline_state(ps_desc));
-				}
-
-				//First Lum Pass.
-				{
-					luset(m_first_lum_pass_dlayout, device->new_descriptor_set_layout(DescriptorSetLayoutDesc({
-						DescriptorSetLayoutBinding(DescriptorType::cbv, 0, 1, ShaderVisibility::all),
-						DescriptorSetLayoutBinding(DescriptorType::srv, 1, 1, ShaderVisibility::all),
-						DescriptorSetLayoutBinding(DescriptorType::uav, 2, 1, ShaderVisibility::all),
-						DescriptorSetLayoutBinding(DescriptorType::sampler, 3, 1, ShaderVisibility::all)
-						})));
-
-					luset(m_first_lum_pass_slayout, device->new_shader_input_layout(ShaderInputLayoutDesc({ m_first_lum_pass_dlayout },
-						ShaderInputLayoutFlag::deny_vertex_shader_access |
-						ShaderInputLayoutFlag::deny_domain_shader_access |
-						ShaderInputLayoutFlag::deny_geometry_shader_access |
-						ShaderInputLayoutFlag::deny_hull_shader_access |
-						ShaderInputLayoutFlag::deny_pixel_shader_access)));
-
-					lulet(psf, open_file("LumFirstCS.cso", FileOpenFlag::read, FileCreationMode::open_existing));
-					auto file_size = psf->get_size();
-					auto cs_blob = Blob((usize)file_size);
-					luexp(psf->read(cs_blob.span()));
-					psf = nullptr;
-					ComputePipelineStateDesc ps_desc;
-					ps_desc.cs = cs_blob.cspan();
-					ps_desc.shader_input_layout = m_first_lum_pass_slayout;
-					luset(m_first_lum_pass_pso, device->new_compute_pipeline_state(ps_desc));
-				}
-
-				//Lum Pass.
-				{
-					luset(m_lum_pass_dlayout, device->new_descriptor_set_layout(DescriptorSetLayoutDesc({
-						DescriptorSetLayoutBinding(DescriptorType::srv, 0, 1, ShaderVisibility::all),
-						DescriptorSetLayoutBinding(DescriptorType::uav, 1, 1, ShaderVisibility::all)
-						})));
-					luset(m_lum_pass_slayout, device->new_shader_input_layout(ShaderInputLayoutDesc({ m_lum_pass_dlayout },
-						ShaderInputLayoutFlag::deny_vertex_shader_access |
-						ShaderInputLayoutFlag::deny_domain_shader_access |
-						ShaderInputLayoutFlag::deny_geometry_shader_access |
-						ShaderInputLayoutFlag::deny_hull_shader_access |
-						ShaderInputLayoutFlag::deny_pixel_shader_access)));
-
-					lulet(psf, open_file("LumCS.cso", FileOpenFlag::read, FileCreationMode::open_existing));
-					auto file_size = psf->get_size();
-					auto cs_blob = Blob((usize)file_size);
-					luexp(psf->read(cs_blob.span()));
-					psf = nullptr;
-					ComputePipelineStateDesc ps_desc;
-					ps_desc.cs = cs_blob.cspan();
-					ps_desc.shader_input_layout = m_lum_pass_slayout;
-					luset(m_lum_pass_pso, device->new_compute_pipeline_state(ps_desc));
-				}
-
-				//Tone Mapping Pass.
-				{
-					luset(m_tone_mapping_pass_dlayout, device->new_descriptor_set_layout(DescriptorSetLayoutDesc({
-						DescriptorSetLayoutBinding(DescriptorType::cbv, 0, 1, ShaderVisibility::all),
-						DescriptorSetLayoutBinding(DescriptorType::srv, 1, 1, ShaderVisibility::all),
-						DescriptorSetLayoutBinding(DescriptorType::srv, 2, 1, ShaderVisibility::all),
-						DescriptorSetLayoutBinding(DescriptorType::uav, 3, 1, ShaderVisibility::all)
-						})));
-					luset(m_tone_mapping_pass_slayout, device->new_shader_input_layout(ShaderInputLayoutDesc({ m_tone_mapping_pass_dlayout },
-						ShaderInputLayoutFlag::deny_vertex_shader_access |
-						ShaderInputLayoutFlag::deny_domain_shader_access |
-						ShaderInputLayoutFlag::deny_geometry_shader_access |
-						ShaderInputLayoutFlag::deny_hull_shader_access |
-						ShaderInputLayoutFlag::deny_pixel_shader_access)));
-
-					lulet(psf, open_file("ToneMappingCS.cso", FileOpenFlag::read, FileCreationMode::open_existing));
-					auto file_size = psf->get_size();
-					auto cs_blob = Blob((usize)file_size);
-					luexp(psf->read(cs_blob.span()));
-					psf = nullptr;
-					ComputePipelineStateDesc ps_desc;
-					ps_desc.cs = cs_blob.cspan();
-					ps_desc.shader_input_layout = m_tone_mapping_pass_slayout;
-					luset(m_tone_mapping_pass_pso, device->new_compute_pipeline_state(ps_desc));
-				}
+			luexp(register_sky_box_pass());
+			luexp(register_wireframe_pass());
+			luexp(register_lighting_pass());
+			luexp(register_tone_mapping_pass());
 		}
 		lucatchret;
 		return ok;

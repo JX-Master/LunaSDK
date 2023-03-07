@@ -16,173 +16,122 @@ namespace Luna
 {
     namespace RG
     {
-        struct RenderGraphNodeExtractKey
+        struct RenderGraphPassNodeExtractKey
         {
-            const Name& operator()(const RenderGraphNode& rhs) const
+            const Name& operator()(const RenderGraphPassNode& rhs) const
             {
                 return rhs.name;
             }
         };
 
-        struct OutputResource
+        struct ResourceTrackData
         {
             // The output parameter this resource is attached to.
-            Name parameter;
+            // Name parameter;
             // The index of the node that creates resource.
-            usize creator;
+            usize first_access = USIZE_MAX;
             // The index of the node that last accesses the resource.
-            usize last_access;
+            usize last_access = 0;
+            // All passes that writes to this resource.
+            Vector<usize> write_passes;
         };
 
         RV RenderGraph::compile()
         {
             lutry
             {
-                // Check node names.
+                m_resource_data.clear();
+                m_resource_data.resize(m_desc.resources.size());
+                m_pass_data.clear();
+                m_pass_data.resize(m_desc.passes.size());
+                Vector<ResourceTrackData> resource_track_data(m_resource_data.size());
+                // Apply connections.
+                for(auto& i : m_desc.input_connections)
                 {
-                    SelfIndexedHashMap<Name, RenderGraphNode, RenderGraphNodeExtractKey> nodes;
-                    for(auto& i : m_desc.nodes)
+                    m_pass_data[i.pass].m_input_resources.insert(make_pair(i.parameter, i.resource));
+                    auto& res = resource_track_data[i.resource];
+                    res.first_access = min(res.first_access, i.pass);
+                    res.last_access = max(res.last_access, i.pass);
+                }
+                for(auto& i : m_desc.output_connections)
+                {
+                    m_pass_data[i.pass].m_output_resources.insert(make_pair(i.parameter, i.resource));
+                    auto& res = resource_track_data[i.resource];
+                    res.first_access = min(res.first_access, i.pass);
+                    res.last_access = max(res.last_access, i.pass);
+                    res.write_passes.push_back(i.pass);
+                }
+                // Check alive passes (cull out unrequired passes).
+                for(usize i = 0; i < m_desc.resources.size(); ++i)
+                {
+                    if(m_desc.resources[i].type == RenderGraphResourceType::output)
                     {
-                        auto result = nodes.insert(i);
-                        if(result.second == false) return set_error(BasicError::already_exists(), "Multiple nodes have the same name \"%s\", which is not allowed.", i.name.c_str());
+                        for(usize pass : resource_track_data[i].write_passes)
+                        {
+                            m_pass_data[pass].m_enabled = true;
+                        }
                     }
                 }
-                m_resources.clear();
-                m_node_data.clear();
-                m_node_data.resize(m_desc.nodes.size());
-                m_input_resources.clear();
-                m_output_resources.clear();
-                HashMap<ResourceHandle, OutputResource> output_resources;
-                // Create input resource entry.
-                for(auto& i : m_desc.input_parameters)
+                for(usize i = 0; i < m_desc.passes.size(); ++i)
                 {
-                    auto iter = m_input_resource_descs.find(i.name);
-                    if(iter != m_input_resource_descs.end())
+                    auto& pass = m_pass_data[m_desc.passes.size() - i - 1];
+                    if(pass.m_enabled)
                     {
-                        ResourceHandle handle = new_resource_entry();
-                        auto& res = get_resource(handle);
-                        res.type = ResourceType::input;
-                        res.resource_desc = iter->second;
-                        m_input_resources.insert(make_pair(i.name, handle));
-                        lulet(node_data, find_node(i.exported_node));
-                        node_data->m_input_resources.insert(make_pair(i.exported_parameter, handle));
+                        for(auto r : pass.m_input_resources)
+                        {
+                            for(usize prior_pass : resource_track_data[r.second].write_passes)
+                            {
+                                m_pass_data[prior_pass].m_enabled = true;
+                            }
+                        }
                     }
+                }
+                // Apply user-defined descs.
+                for(auto& i : m_desc.resource_descs)
+                {
+                    auto& res = m_resource_data[i.resource];
+                    res.m_resource_desc = i.desc;
+                    res.m_resource_desc_valid = true;
                 }
                 // Compile every node in execution order.
-                for(usize i = 0; i < m_desc.nodes.size(); ++i)
+                for(usize i = 0; i < m_desc.passes.size(); ++i)
                 {
-                    MutexGuard guard(g_render_pass_types_mtx);
-                    auto iter = g_render_pass_types.find(m_desc.nodes[i].type);
-                    if(iter == g_render_pass_types.end())
+                    m_current_compile_pass = i;
+                    if(m_pass_data[i].m_enabled)
                     {
-                        return set_error(BasicError::not_found(), "Render pass type \"%s\" is not found.", m_desc.nodes[i].type.c_str());
-                    }
-                    RenderPassInputInfo input_info;
-                    RenderPassOutputInfo output_info;
-                    for(auto input : m_node_data[i].m_input_resources)
-                    {
-                        auto& res = get_resource(input.second);
-                        input_info.input_parameters.insert(make_pair(input.first, res.resource_desc));
-                    }
-                    luset(output_info, iter->compile(iter->userdata.get(), input_info));
-                    guard.unlock();
-                    // Apply outputs.
-                    Vector<Pair<Name, Name>> targets;
-                    for(auto& o : output_info.output_parameters)
-                    {
-                        ResourceHandle handle;
-                        bool valid_output = false;
-                        if(o.second.type == RenderPassOutputParameterType::default)
+                        MutexGuard guard(g_render_pass_types_mtx);
+                        auto iter = g_render_pass_types.find(m_desc.passes[i].type);
+                        if(iter == g_render_pass_types.end())
                         {
-                            // Create a new output resource.
-                            valid_output = true;
-                            handle = new_resource_entry();
-                            auto& res = get_resource(handle);
-                            res.type = ResourceType::transient;
-                            res.resource_desc = o.second.resource_desc;
-                            OutputResource out_res;
-                            out_res.creator = i;
-                            out_res.last_access = i;
-                            out_res.parameter = o.first;
-                            output_resources.insert(make_pair(handle, out_res));
+                            return set_error(BasicError::not_found(), "Render pass type \"%s\" is not found.", m_desc.passes[i].type.c_str());
                         }
-                        else if(o.second.type == RenderPassOutputParameterType::input)
-                        {
-                            // Finds the resource entry.
-                            Name output_node;
-                            Name output_parameter;
-                            bool found = find_input_source(m_desc.nodes[i].name, o.second.input_name, output_node, output_parameter);
-                            if(found)
-                            {
-                                valid_output = true;
-                                lulet(node_data, find_node(output_node));
-                                auto iter = node_data->m_output_resources.find(output_parameter);
-                                if(iter == node_data->m_output_resources.end())
-                                {
-                                    return set_error(BasicError::not_found(), "Output parameter \"%s\" is not found on render pass \"%s\".", output_parameter.c_str(), output_node.c_str());
-                                }
-                                handle = iter->second;
-                                auto iter2 = output_resources.find(handle);
-                                if(iter2 != output_resources.end())
-                                {
-                                    iter2->second.last_access = max(iter2->second.last_access, i);
-                                }
-                            }
-                        }
-                        else 
-                        {
-                            lupanic(); 
-                        }
-                        if(valid_output)
-                        {
-                            m_node_data[i].m_output_resources.insert(make_pair(o.first, handle));
-                            // Broadcast output to connected inputs.
-                            find_output_targets(m_desc.nodes[i].name, o.first, targets);
-                            for(auto& t : targets)
-                            {
-                                lulet(t_node, find_node(t.first));
-                                t_node->m_input_resources.insert(make_pair(t.second, handle));
-                            }
-                        }
-                    }
-                }
-                // Apply global outputs.
-                for(auto& output : m_desc.output_parameters)
-                {
-                    for(auto iter = output_resources.begin(); iter != output_resources.end(); ++iter)
-                    {
-                        if(output.exported_node == m_desc.nodes[iter->second.creator].name && 
-                            output.exported_parameter == iter->second.parameter)
-                        {
-                            m_output_resources.insert(make_pair(output.name, iter->first));
-                            auto& res = get_resource(iter->first);
-                            if(res.type == ResourceType::transient)
-                            {
-                                // We do not modify input type to output, since they are not 
-                                // managed by render graph.
-                                res.type = ResourceType::output;
-                            }
-                            break;
-                        }
+                        luexp(iter->compile(iter->userdata.get(), this));
                     }
                 }
                 // Resolve transient resource lifetime.
-                for(auto& out_res : output_resources)
+                for(usize i = 0; i < resource_track_data.size(); ++i)
                 {
-                    auto& res = get_resource(out_res.first);
-                    if(res.type == ResourceType::transient)
+                    auto& res = resource_track_data[i];
+                    if(m_desc.resources[i].type == RenderGraphResourceType::internal && res.first_access != USIZE_MAX)
                     {
-                        m_node_data[out_res.second.creator].m_create_resources.push_back(out_res.first);
-                        m_node_data[out_res.second.last_access].m_release_resources.push_back(out_res.first);
+                        m_pass_data[resource_track_data[i].first_access].m_create_resources.push_back(i);
+                        m_pass_data[resource_track_data[i].last_access].m_release_resources.push_back(i);
                     }
                 }
                 // Create output resources.
-                for(auto& out_res : m_output_resources)
+                for(usize i = 0; i < m_desc.resources.size(); ++i)
                 {
-                    auto& res = get_resource(out_res.second);
-                    if(res.type == ResourceType::output)
+                    if(m_desc.resources[i].type == RenderGraphResourceType::output)
                     {
-                        luset(res.resource, m_device->new_resource(res.resource_desc));
+                        auto& res = m_resource_data[i];
+                        if(res.m_resource_desc_valid)
+                        {
+                            luset(res.m_resource, m_device->new_resource(res.m_resource_desc));
+                        }
+                        else
+                        {
+                            return set_error(BasicError::bad_data(), "Cannot create output resource %s because the resource layout is not specified.", m_desc.resources[i].name.c_str());
+                        }
                     }
                 }
             }
@@ -194,17 +143,25 @@ namespace Luna
             lutry
             {
                 m_cmdbuf = cmdbuf;
-                for(usize i = 0; i < m_node_data.size(); ++i)
+                for(usize i = 0; i < m_pass_data.size(); ++i)
                 {
-                    auto& data = m_node_data[i];
+                    auto& data = m_pass_data[i];
+                    if(!data.m_enabled) continue;
                     // Allocates resources.
                     Vector<RHI::ResourceBarrierDesc> barriers;
-                    for(ResourceHandle h : data.m_create_resources)
+                    for(usize h : data.m_create_resources)
                     {
-                        auto& res = get_resource(h);
-                        luset(res.resource, m_transient_heap->allocate(res.resource_desc));
+                        auto& res = m_resource_data[h];
+                        if(res.m_resource_desc_valid)
+                        {
+                            luset(res.m_resource, m_transient_heap->allocate(res.m_resource_desc));
+                        }
+                        else
+                        {
+                            return set_error(BasicError::bad_data(), "Cannot create transient resource %s because the resource layout is not specified.", m_desc.resources[h].name.c_str());
+                        }
                         barriers.push_back(
-                            RHI::ResourceBarrierDesc::as_aliasing(res.resource)
+                            RHI::ResourceBarrierDesc::as_aliasing(res.m_resource)
                         );
                     }
                     if(!barriers.empty())
@@ -212,23 +169,17 @@ namespace Luna
                         cmdbuf->resource_barriers({barriers.data(), barriers.size()});
                     }
                     m_current_pass = i;
-                    MutexGuard guard(g_render_pass_types_mtx);
-                    auto iter = g_render_pass_types.find(m_desc.nodes[i].type);
-                    if(iter == g_render_pass_types.end())
-                    {
-                        return set_error(BasicError::not_found(), "Render pass type \"%s\" is not found.", m_desc.nodes[i].type.c_str());
-                    }
-                    luexp(iter->execute(this));
+                    luexp(m_pass_data[i].m_render_pass->execute(this));
                     for(auto& res : m_temporary_resources)
                     {
                         m_transient_heap->release(res);
                     }
                     m_temporary_resources.clear();
                     // Release resources.
-                    for(ResourceHandle h : data.m_release_resources)
+                    for(usize h : data.m_release_resources)
                     {
-                        auto& res = get_resource(h);
-                        m_transient_heap->release(res.resource);
+                        auto& res = m_resource_data[h];
+                        m_transient_heap->release(res.m_resource);
                     }
                 }
             }

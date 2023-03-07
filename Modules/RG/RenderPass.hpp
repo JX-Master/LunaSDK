@@ -18,42 +18,15 @@ namespace Luna
 {
     namespace RG
     {
-        struct RenderPassInputInfo
-        {
-            HashMap<Name, RHI::ResourceDesc> input_parameters;
-        };
-
-        enum class RenderPassOutputParameterType : u8
-        {
-            //! The resource is an resource allocated by the render graph before this pass is executed.
-            default = 0,
-            //! The resource is the input resource of the specified input parameter.
-            input = 1
-        };
-
-        struct RenderPassOutputParameterInfo
-        {
-            RenderPassOutputParameterType type;
-            //! If `type` is `input`, specify the input name used. Otherwise, this is ignored.
-            Name input_name;
-            //! If `type` is `default`, specify the resource you want the render graph to create.
-            RHI::ResourceDesc resource_desc;
-        };
-
-        struct RenderPassOutputInfo
-        {
-            HashMap<Name, RenderPassOutputParameterInfo> output_parameters;
-        };
-
         struct IRenderPassContext : virtual Interface
         {
             luiid("{04ab587d-1e50-4816-89e6-6ff676d30bbf}");
 
             virtual RHI::ICommandBuffer* get_command_buffer() = 0;
 
-            virtual Ref<RHI::IResource> get_input(const Name& name) = 0;
+            virtual RHI::IResource* get_input(const Name& name) = 0;
 
-            virtual Ref<RHI::IResource> get_output(const Name& name) = 0;
+            virtual RHI::IResource* get_output(const Name& name) = 0;
 
             //! Allocates new temporary resource that exists only in the current pass.
             //! The resource will be released when the pass is finished, or the user can 
@@ -63,8 +36,29 @@ namespace Luna
             virtual void release_temporary_resource(RHI::IResource* res) = 0;
         };
 
-        using render_pass_compile_func_t = R<RenderPassOutputInfo>(object_t userdata, const RenderPassInputInfo& input);
-        using render_pass_execute_func_t = RV(IRenderPassContext* ctx);
+        struct IRenderPass : virtual Interface
+        {
+            luiid("{e8392032-e97e-4557-a40a-a5e22f5d0f2f}");
+
+            virtual RV execute(IRenderPassContext* ctx) = 0;
+        };
+
+        constexpr usize INVALID_RESOURCE = (usize)-1;
+
+        struct IRenderGraphCompiler : virtual Interface
+        {
+            luiid("{158df588-6b27-4438-ba8a-8913cebacaca}");
+
+            virtual usize get_input_resource(const Name& parameter) = 0;
+            virtual usize get_output_resource(const Name& parameter) = 0;
+
+            virtual bool get_resource_desc(usize resource, RHI::ResourceDesc* desc) = 0;
+            virtual void set_resource_desc(usize resource, const RHI::ResourceDesc& desc) = 0;
+
+            virtual void set_render_pass_object(IRenderPass* render_pass) = 0;
+        };
+
+        using render_pass_compile_func_t = RV(object_t userdata, IRenderGraphCompiler* compiler);
 
         struct RenderPassTypeParameter
         {
@@ -80,10 +74,7 @@ namespace Luna
             Vector<RenderPassTypeParameter> input_parameters;
             //! The resource that is used as outputs of the node.
             Vector<RenderPassTypeParameter> output_parameters;
-            //! The resource that is used as both input and output of the node.
-            Vector<RenderPassTypeParameter> inout_parameters;
             render_pass_compile_func_t* compile;
-            render_pass_execute_func_t* execute;
             ObjRef userdata;
         };
 

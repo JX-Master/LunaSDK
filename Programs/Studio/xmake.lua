@@ -2,7 +2,7 @@ target("Studio")
     set_luna_sdk_program()
     add_headerfiles("**.hpp")
     add_files("**.cpp")
-    add_deps("Runtime", "HID", "Window", "RHI", "Image", "Font", "ImGui", "Asset", "ObjLoader")
+    add_deps("Runtime", "HID", "Window", "RHI", "Image", "Font", "ImGui", "Asset", "ObjLoader", "RG")
     add_packages("imgui")
 
     after_build(function (target)
