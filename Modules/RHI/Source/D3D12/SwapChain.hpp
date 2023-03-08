@@ -27,7 +27,7 @@ namespace Luna
 		class BackBufferResource;
 		struct SwapChain : ISwapChain
 		{
-			lustruct("RHI::D3D12::SwapChain", "{067d14fa-59c7-4f66-8fb0-1981d90a5a45}");
+			lustruct("RHI::SwapChain", "{067d14fa-59c7-4f66-8fb0-1981d90a5a45}");
 			luiimpl();
 			lutsassert_lock();
 

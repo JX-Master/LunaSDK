@@ -59,7 +59,7 @@ namespace Luna
 		}
 		void DescriptorSet::set_cbv_array(u32 binding_slot, u32 offset, u32 num_descs, IResource** resources, const ConstantBufferViewDesc* descs)
 		{
-			lutsassert(this);
+			lutsassert();
 			auto iter = m_bound_index_to_offset.find(binding_slot);
 			lucheck_msg(iter != m_bound_index_to_offset.end(), "Invalid binding slot");
 			u32 index = iter->second;
@@ -109,7 +109,7 @@ namespace Luna
 		}
 		void DescriptorSet::set_srv_array(u32 binding_slot, u32 offset, u32 num_descs, IResource** resources, const ShaderResourceViewDesc* descs)
 		{
-			lutsassert(this);
+			lutsassert();
 			auto iter = m_bound_index_to_offset.find(binding_slot);
 			lucheck_msg(iter != m_bound_index_to_offset.end(), "Invalid binding slot");
 			u32 index = iter->second;
@@ -228,7 +228,7 @@ namespace Luna
 		}
 		void DescriptorSet::set_uav_array(u32 binding_slot, u32 offset, u32 num_descs, IResource** resources, IResource** counter_resources, const UnorderedAccessViewDesc* descs)
 		{
-			lutsassert(this);
+			lutsassert();
 			auto iter = m_bound_index_to_offset.find(binding_slot);
 			lucheck_msg(iter != m_bound_index_to_offset.end(), "Invalid binding slot");
 			u32 index = iter->second;
@@ -293,7 +293,7 @@ namespace Luna
 		}
 		void DescriptorSet::set_sampler_array(u32 binding_slot, u32 offset, u32 num_samplers, const SamplerDesc* samplers)
 		{
-			lutsassert(this);
+			lutsassert();
 			auto iter = m_bound_index_to_offset.find(binding_slot);
 			lucheck_msg(iter != m_bound_index_to_offset.end(), "Invalid binding slot");
 			u32 index = iter->second;

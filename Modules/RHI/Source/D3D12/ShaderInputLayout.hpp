@@ -22,7 +22,7 @@ namespace Luna
 	{
 		struct ShaderInputLayout : IShaderInputLayout
 		{
-			lustruct("RHI::D3D12::ShaderInputLayout", "{0a7ccb6d-bcf0-433a-af5b-ee454c37e5e2}");
+			lustruct("RHI::ShaderInputLayout", "{0a7ccb6d-bcf0-433a-af5b-ee454c37e5e2}");
 			luiimpl();
 
 			Ref<Device> m_device;

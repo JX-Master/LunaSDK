@@ -51,6 +51,13 @@ namespace Luna
 			lucatchret;
 			return buffer;
 		}
+		R<u64> CommandQueue::get_timestamp_frequency()
+		{
+			UINT64 t;
+			HRESULT hr = m_queue->GetTimestampFrequency(&t);
+			if (FAILED(hr)) return encode_d3d12_error(hr);
+			return t;
+		}
 	}
 }
 #endif

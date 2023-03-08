@@ -34,19 +34,19 @@ namespace Luna
 			
 			void clear()
 			{
-				lutsassert(this);
+				lutsassert();
 				m_commands.clear();
 				m_shapes.clear();
 				m_buffer_resource_dirty = false;
 			}
 			const f32* get_command_buffer_data()
 			{
-				lutsassert(this);
+				lutsassert();
 				return m_commands.data();
 			}
 			usize get_command_buffer_size()
 			{
-				lutsassert(this);
+				lutsassert();
 				return m_commands.size();
 			}
 			usize add_shape(Span<const f32> commands, const RectF* bounding_rect);
@@ -55,12 +55,12 @@ namespace Luna
 			void remove_shapes(usize start_shape_index, usize num_shapes);
 			usize count_shapes()
 			{
-				lutsassert(this);
+				lutsassert();
 				return m_shapes.size();
 			}
 			void get_shape(usize index, usize* data_offset, usize* data_size, RectF* bounding_rect)
 			{
-				lutsassert(this);
+				lutsassert();
 				lucheck(index < m_shapes.size());
 				auto& desc = m_shapes[index];
 				if (data_offset) *data_offset = desc.command_offset;
@@ -70,7 +70,7 @@ namespace Luna
 			R<RHI::IResource*> get_shape_resource();
 			usize get_shape_resource_size()
 			{
-				lutsassert(this);
+				lutsassert();
 				lutry
 				{
 					if (m_buffer_resource_dirty)

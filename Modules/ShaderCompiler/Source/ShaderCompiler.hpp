@@ -90,7 +90,7 @@ namespace Luna
 
 			void reset()
 			{
-				lutsassert(this);
+				lutsassert();
 				m_source = {};
 				m_source_file_path.clear();
 				m_source_name = "unnamed";

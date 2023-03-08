@@ -15,6 +15,7 @@
 #include <Runtime/Math/Vector.hpp>
 #include "RenderTargetView.hpp"
 #include "DepthStencilView.hpp"
+#include "QueryHeap.hpp"
 #include <Runtime/Span.hpp>
 
 namespace Luna
@@ -537,6 +538,19 @@ namespace Luna
 
 			//! Executes a command list from a thread group.
 			virtual void dispatch(u32 thread_group_count_x, u32 thread_group_count_y, u32 thread_group_count_z) = 0;
+
+			//! Writes the current GPU queue timestamp to the specified query heap.
+			//! @param[in] heap The query heap to write to.
+			//! @param[in] index The index of the query entry to write in the heap.
+			virtual void write_timestamp(IQueryHeap* heap, u32 index) = 0;
+
+			virtual void begin_pipeline_statistics_query(IQueryHeap* heap, u32 index) = 0;
+
+			virtual void end_pipeline_statistics_query(IQueryHeap* heap, u32 index) = 0;
+
+			virtual void begin_occlusion_query(IQueryHeap* heap, u32 index) = 0;
+
+			virtual void end_occlusion_query(IQueryHeap* heap, u32 index) = 0;
 
 			//virtual void dispatch_indirect(IResource* buffer, usize offset) = 0;
 

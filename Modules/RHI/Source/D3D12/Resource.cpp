@@ -218,7 +218,7 @@ namespace Luna
 
 		RV Resource::map_subresource(u32 subresource, bool load_data, void** out_data)
 		{
-			lutsassert(this);
+			lutsassert();
 			if (m_affiliate_resources.empty())
 			{
 				D3D12_RANGE range;
@@ -352,7 +352,7 @@ namespace Luna
 		}
 		void Resource::unmap_subresource(u32 subresource, bool store_data)
 		{
-			lutsassert(this);
+			lutsassert();
 			if (m_affiliate_resources.empty())
 			{
 				D3D12_RANGE range;
@@ -441,7 +441,7 @@ namespace Luna
 		}
 		RV Resource::read_subresource(void* dest, u32 dest_row_pitch, u32 dest_depth_pitch, u32 subresource, const BoxU& read_box)
 		{
-			lutsassert(this);
+			lutsassert();
 			D3D12_BOX b;
 			b.left = read_box.offset_x;
 			b.right = read_box.offset_x + read_box.width;
@@ -471,7 +471,7 @@ namespace Luna
 		}
 		RV Resource::write_subresource(u32 subresource, const void* src, u32 src_row_pitch, u32 src_depth_pitch, const BoxU& write_box)
 		{
-			lutsassert(this);
+			lutsassert();
 			D3D12_BOX b;
 			b.left = write_box.offset_x;
 			b.right = write_box.offset_x + write_box.width;

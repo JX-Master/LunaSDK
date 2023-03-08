@@ -40,7 +40,7 @@ namespace Luna
 
 		struct CommandQueue : ICommandQueue
 		{
-			lustruct("RHI::D3D12::CommandQueue", "{681926d0-8aaf-4766-ad37-591cf6ef428b}");
+			lustruct("RHI::CommandQueue", "{681926d0-8aaf-4766-ad37-591cf6ef428b}");
 			luiimpl();
 
 			Ref<Device> m_device;
@@ -65,6 +65,7 @@ namespace Luna
 			}
 			RV wait_command_buffer(ICommandBuffer* command_buffer);
 			R<Ref<ICommandBuffer>> new_command_buffer();
+			R<u64> get_timestamp_frequency();
 		};
 	}
 }

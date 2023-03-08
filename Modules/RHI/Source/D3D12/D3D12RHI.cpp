@@ -28,6 +28,7 @@
 #include "SwapChain.hpp"
 #include "DescriptorSet.hpp"
 #include "DescriptorSetLayout.hpp"
+#include "QueryHeap.hpp"
 
 namespace Luna
 {
@@ -62,6 +63,9 @@ namespace Luna
 			impl_interface_for_type<DescriptorSetLayout, IDescriptorSetLayout, IDeviceChild>();
 			register_boxed_type<DescriptorSet>();
 			impl_interface_for_type<DescriptorSet, IDescriptorSet, IDeviceChild>();
+			register_boxed_type<QueryHeap>();
+			impl_interface_for_type<QueryHeap, IQueryHeap, IDeviceChild>();
+
 
 			if (FAILED(::CreateDXGIFactory1(IID_PPV_ARGS(&g_dxgi))))
 			{

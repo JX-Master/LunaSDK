@@ -65,7 +65,7 @@ namespace Luna
 		}
 		void ShapeDrawList::reset()
 		{
-			lutsassert(this);
+			lutsassert();
 			for (auto& res : m_draw_call_resources)
 			{
 				res.vertices.clear();
@@ -84,7 +84,7 @@ namespace Luna
 		}
 		void ShapeDrawList::append_draw_list(IShapeDrawList* draw_list)
 		{
-			lutsassert(this);
+			lutsassert();
 			drawcall_barrier();
 			ShapeDrawList* rhs = static_cast<ShapeDrawList*>(draw_list->get_object());
 			m_draw_calls.reserve(m_draw_calls.size() + rhs->m_draw_calls.size());
@@ -108,7 +108,7 @@ namespace Luna
 		}
 		void ShapeDrawList::draw_shape_raw(Span<const Vertex> vertices, Span<const u32> indices)
 		{
-			lutsassert(this);
+			lutsassert();
 			auto& dc = get_current_draw_call();
 			auto& dc_res = get_draw_call_resource(m_target_dc_index);
 			lucheck_msg(dc.atlas, "Shape atlas must be set before adding draw calls to the shape draw list.");
@@ -120,7 +120,7 @@ namespace Luna
 			const Float2U& min_shapecoord, const Float2U& max_shapecoord, u32 color,
 			const Float2U& min_texcoord, const Float2U& max_texcoord)
 		{
-			lutsassert(this);
+			lutsassert();
 			auto& dc = get_current_draw_call();
 			auto& dc_res = get_draw_call_resource(m_target_dc_index);
 			lucheck_msg(dc.atlas, "Shape atlas must be set before adding draw calls to the shape draw list.");
@@ -161,7 +161,7 @@ namespace Luna
 		}
 		RV ShapeDrawList::close()
 		{
-			lutsassert(this);
+			lutsassert();
 			lutry
 			{
 				// Pack data.

@@ -47,19 +47,6 @@ namespace Luna
 
 	namespace RHI
 	{
-		// Only for Non-Simultaneous-Access Textures.
-		inline bool is_texture_decayable_to_common(ResourceState s)
-		{
-			/*if (s == ResourceState::common ||
-				s == ResourceState::shader_resource_non_pixel ||
-				s == ResourceState::shader_resource_pixel ||
-				s == ResourceState::copy_source)
-			{
-				return true;
-			}*/
-			return false;
-		}
-
 		class ResourceStateTrackingSystem
 		{
 		public:
@@ -172,7 +159,7 @@ namespace Luna
 
 		struct CommandBuffer : ICommandBuffer
 		{
-			lustruct("RHI::D3D12::CommandBuffer", "{2aa94bb6-f36d-4aa2-826b-3076026c2cec}");
+			lustruct("RHI::CommandBuffer", "{2aa94bb6-f36d-4aa2-826b-3076026c2cec}");
 			luiimpl();
 			lutsassert_lock();
 
@@ -318,6 +305,11 @@ namespace Luna
 			void resource_barrier(const ResourceBarrierDesc& barrier);
 			void resource_barriers(Span<const ResourceBarrierDesc> barriers);
 			void dispatch(u32 thread_group_count_x, u32 thread_group_count_y, u32 thread_group_count_z);
+			void write_timestamp(IQueryHeap* heap, u32 index);
+			void begin_pipeline_statistics_query(IQueryHeap* heap, u32 index);
+			void end_pipeline_statistics_query(IQueryHeap* heap, u32 index);
+			void begin_occlusion_query(IQueryHeap* heap, u32 index);
+			void end_occlusion_query(IQueryHeap* heap, u32 index);
 			RV submit();
 		};
 	}

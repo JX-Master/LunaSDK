@@ -76,7 +76,7 @@ namespace Luna
 		//! @class Device
 		struct Device : IDevice
 		{
-			lustruct("RHI::D3D12::Device", "{038b4cb4-5e16-41a1-ad6f-7e2a49e2241e}");
+			lustruct("RHI::Device", "{038b4cb4-5e16-41a1-ad6f-7e2a49e2241e}");
 			luiimpl()
 
 			ComPtr<ID3D12Device> m_device;
@@ -120,6 +120,7 @@ namespace Luna
 			R<Ref<ICommandQueue>> new_command_queue(CommandQueueType type);
 			R<Ref<IRenderTargetView>> new_render_target_view(IResource* resource, const RenderTargetViewDesc* desc);
 			R<Ref<IDepthStencilView>> new_depth_stencil_view(IResource* resource, const DepthStencilViewDesc* desc);
+			R<Ref<IQueryHeap>> new_query_heap(const QueryHeapDesc& desc);
 		};
 
 		inline D3D12_HEAP_PROPERTIES encode_heap_properties(Device* device, ResourceHeapType heap_type)

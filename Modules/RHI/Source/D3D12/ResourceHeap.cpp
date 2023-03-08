@@ -34,7 +34,7 @@ namespace Luna
 		}
 		R<Ref<IResource>> ResourceHeap::new_resource(u64 heap_offset, const ResourceDesc& desc, const ClearValue* optimized_clear_value)
 		{
-			lutsassert(this);
+			lutsassert();
 			Ref<Resource> obj = new_object<Resource>();
 			obj->m_device = m_device;
 			auto r = obj->init_as_placed(m_heap.Get(), heap_offset, desc, optimized_clear_value);

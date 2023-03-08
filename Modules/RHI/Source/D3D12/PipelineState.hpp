@@ -21,7 +21,7 @@ namespace Luna
 	{
 		struct PipelineState : IPipelineState
 		{
-			lustruct("RHI::D3D12::PipelineState", "{31F529FE-43C4-4DF1-842B-BAF52CCFCF3F}");
+			lustruct("RHI::PipelineState", "{31F529FE-43C4-4DF1-842B-BAF52CCFCF3F}");
 			luiimpl()
 
 			Ref<Device> m_device;

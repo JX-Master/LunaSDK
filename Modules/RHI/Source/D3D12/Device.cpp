@@ -20,6 +20,7 @@
 #include "DescriptorSetLayout.hpp"
 #include "RenderTargetView.hpp"
 #include "DepthStencilView.hpp"
+#include "QueryHeap.hpp"
 
 namespace Luna
 {
@@ -469,6 +470,17 @@ namespace Luna
 				return r.errcode();
 			}
 			return view;
+		}
+		R<Ref<IQueryHeap>> Device::new_query_heap(const QueryHeapDesc& desc)
+		{
+			Ref<QueryHeap> heap = new_object<QueryHeap>();
+			heap->m_device = this;
+			RV r = heap->init(desc);
+			if (!r.valid())
+			{
+				return r.errcode();
+			}
+			return heap;
 		}
 	}
 }

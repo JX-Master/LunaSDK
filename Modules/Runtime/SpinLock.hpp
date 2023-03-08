@@ -21,7 +21,7 @@ namespace Luna
 	//! is usually implemented in kernel-mode as an OS component, which means locking and releasing one spin lock is much faster than locking
 	//! and releasing one mutex, since the later is usually performed through a system call.
 	//! 2. The spin lock will never suspend one thread, nor will it yield the time slice of the waiting thread. If one spin lock is already
-	//! locked, the waiting thread will keep checking (busy-waiting) until it obtains the lock. In the other side, the mutex will usually suspends 
+	//! locked, the waiting thread will keep checking (not_currently_available-waiting) until it obtains the lock. In the other side, the mutex will usually suspends 
 	//! or yields the current thread if the mutex is already locked to let other threads use the processor. 
 	//! This makes the spin lock suitable for locking the resource for a very short period of time (hundreds or thousands of CPU-cycles), but not suitable 
 	//! if the lock will be obtained for a long time (>100us).
@@ -42,7 +42,7 @@ namespace Luna
 			while (atom_compare_exchange_u32(&counter, 1, 0) != 0)
 			{
 #if defined(LUNA_PLATFORM_X86) || defined(LUNA_PLATFORM_X86_64)
-				_mm_pause(); // busy-waiting.
+				_mm_pause(); // not_currently_available-waiting.
 #endif
 			}
 		}
@@ -83,7 +83,7 @@ namespace Luna
 			while (atom_compare_exchange_pointer(&th, t, nullptr) != nullptr)
 			{
 #if defined(LUNA_PLATFORM_X86) || defined(LUNA_PLATFORM_X86_64)
-				_mm_pause(); // busy-waiting.
+				_mm_pause(); // not_currently_available-waiting.
 #endif
 			}
 		}

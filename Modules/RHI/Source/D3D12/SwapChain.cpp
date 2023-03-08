@@ -415,7 +415,7 @@ namespace Luna
 
 		RV SwapChain::present(IResource* resource, u32 subresource)
 		{
-			lutsassert(this);
+			lutsassert();
 			wait();
 			HRESULT hr = m_ca->Reset();
 			if (FAILED(hr))
@@ -526,7 +526,7 @@ namespace Luna
 		}
 		RV SwapChain::reset(const SwapChainDesc& desc)
 		{
-			lutsassert(this);
+			lutsassert();
 			wait();
 			SwapChainDesc modified_desc = desc;
 			if (!modified_desc.buffer_count)
