@@ -17,7 +17,8 @@ namespace Luna
 	using namespace JobSystem;
 	static void test_func_1(void* params)
 	{
-		sleep(1);
+		sleep(100);
+		printf("Job executed in thread %lld\n", (u64)get_current_thread());
 	}
 
 	struct JobData
