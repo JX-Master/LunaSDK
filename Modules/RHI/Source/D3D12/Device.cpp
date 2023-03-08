@@ -448,6 +448,7 @@ namespace Luna
 		}
 		R<Ref<IRenderTargetView>> Device::new_render_target_view(IResource* res, const RenderTargetViewDesc* desc)
 		{
+			lucheck_msg(res, "\"res\" was nullptr");
 			Ref<RenderTargetView> view = new_object<RenderTargetView>();
 			view->m_device = this;
 			RV r = view->init(res, desc);
@@ -459,6 +460,7 @@ namespace Luna
 		}
 		R<Ref<IDepthStencilView>> Device::new_depth_stencil_view(IResource* res, const DepthStencilViewDesc* desc)
 		{
+			lucheck_msg(res, "\"res\" was nullptr");
 			Ref<DepthStencilView> view = new_object<DepthStencilView>();
 			view->m_device = this;
 			RV r = view->init(res, desc);

@@ -14,6 +14,7 @@
 #include "../../ShaderInputLayout.hpp"
 #include "Device.hpp"
 #include <Runtime/Ref.hpp>
+#include "D3D12Common.hpp"
 
 namespace Luna
 {
@@ -44,6 +45,7 @@ namespace Luna
 			{
 				return m_device.as<IDevice>();
 			}
+			void set_name(const Name& name) { set_object_name(m_rs.Get(), name); }
 		};
 	}
 }

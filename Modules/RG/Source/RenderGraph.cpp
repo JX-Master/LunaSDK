@@ -36,6 +36,24 @@ namespace Luna
             Vector<usize> write_passes;
         };
 
+        inline bool is_resource_desc_valid(const RHI::ResourceDesc& desc)
+        {
+            // The resource size cannot be 0, which means unintialized.
+            if(desc.type == RHI::ResourceType::texture_2d)
+            {
+                if(!desc.width_or_buffer_size || !desc.height) return false; 
+            }
+            else if(desc.type == RHI::ResourceType::texture_3d)
+            {
+                if(!desc.width_or_buffer_size || !desc.height || !desc.depth_or_array_size) return false;
+            }
+            else
+            {
+                if(!desc.width_or_buffer_size) return false; 
+            }
+            return true;
+        }
+
         RV RenderGraph::compile()
         {
             lutry
@@ -87,11 +105,9 @@ namespace Luna
                     }
                 }
                 // Apply user-defined descs.
-                for(auto& i : m_desc.resource_descs)
+                for(usize i = 0; i < m_desc.resources.size(); ++i)
                 {
-                    auto& res = m_resource_data[i.resource];
-                    res.m_resource_desc = i.desc;
-                    res.m_resource_desc_valid = true;
+                    m_resource_data[i].m_resource_desc = m_desc.resources[i].desc;
                 }
                 // Compile every node in execution order.
                 for(usize i = 0; i < m_desc.passes.size(); ++i)
@@ -124,9 +140,10 @@ namespace Luna
                     if(m_desc.resources[i].type == RenderGraphResourceType::output)
                     {
                         auto& res = m_resource_data[i];
-                        if(res.m_resource_desc_valid)
+                        if(is_resource_desc_valid(res.m_resource_desc))
                         {
                             luset(res.m_resource, m_device->new_resource(res.m_resource_desc));
+                            if (m_desc.resources[i].name) res.m_resource->set_name(m_desc.resources[i].name);
                         }
                         else
                         {
@@ -152,9 +169,10 @@ namespace Luna
                     for(usize h : data.m_create_resources)
                     {
                         auto& res = m_resource_data[h];
-                        if(res.m_resource_desc_valid)
+                        if(is_resource_desc_valid(res.m_resource_desc))
                         {
                             luset(res.m_resource, m_transient_heap->allocate(res.m_resource_desc));
+                            if(m_desc.resources[h].name) res.m_resource->set_name(m_desc.resources[h].name);
                         }
                         else
                         {
@@ -164,12 +182,11 @@ namespace Luna
                             RHI::ResourceBarrierDesc::as_aliasing(res.m_resource)
                         );
                     }
-                    if(!barriers.empty())
-                    {
-                        cmdbuf->resource_barriers({barriers.data(), barriers.size()});
-                    }
+                    if(!barriers.empty()) cmdbuf->resource_barriers({ barriers.data(), barriers.size() });
                     m_current_pass = i;
+                    if (m_desc.passes[i].name) cmdbuf->begin_event(m_desc.passes[i].name);
                     luexp(m_pass_data[i].m_render_pass->execute(this));
+                    if (m_desc.passes[i].name) cmdbuf->end_event();
                     for(auto& res : m_temporary_resources)
                     {
                         m_transient_heap->release(res);

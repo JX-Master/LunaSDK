@@ -15,6 +15,7 @@
 #include <d3d12.h>
 #include "../DXGI/Common.hpp"
 #include "../../CommandBuffer.hpp"
+#include <Runtime/Unicode.hpp>
 
 namespace Luna
 {
@@ -248,6 +249,14 @@ namespace Luna
 			}
 #endif
 			return rd;
+		}
+
+		inline void set_object_name(ID3D12Object* object, const Name& name)
+		{
+			usize len = utf8_to_utf16_len(name.c_str(), name.size());
+			wchar_t* buf = (wchar_t*)alloca(sizeof(wchar_t) * (len + 1));
+			utf8_to_utf16((c16*)buf, len + 1, name.c_str(), name.size());
+			object->SetName(buf);
 		}
 	}
 }

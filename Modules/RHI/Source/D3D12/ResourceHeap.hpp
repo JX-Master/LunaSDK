@@ -38,6 +38,7 @@ namespace Luna
 			{
 				return m_desc;
 			}
+			void set_name(const Name& name) { set_object_name(m_heap.Get(), name); }
 			R<Ref<IResource>> new_resource(u64 heap_offset, const ResourceDesc& desc, const ClearValue* optimized_clear_value);
 		};
 	}

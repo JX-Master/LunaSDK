@@ -36,6 +36,7 @@ namespace Luna
 			{
 				return m_device.as<IDevice>();
 			}
+			void set_name(const Name& name) {}
 			IResource* get_resource()
 			{
 				return m_resource;

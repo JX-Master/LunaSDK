@@ -38,11 +38,6 @@ namespace Luna
         {
             RenderGraphResourceType type;
             Name name; // The name of the resource.
-        };
-
-        struct RenderGraphResourceDesc
-        {
-            usize resource;
             RHI::ResourceDesc desc;
         };
 
@@ -60,12 +55,13 @@ namespace Luna
             Vector<RenderGraphResourceNode> resources;
             Vector<RenderGraphConnection> input_connections;
             Vector<RenderGraphConnection> output_connections;
-            Vector<RenderGraphResourceDesc> resource_descs;
         };
 
-        struct IRenderGraph : virtual RHI::IDeviceChild
+        struct IRenderGraph : virtual Interface
         {
             luiid("{ad007d31-b655-4276-8b11-db09a93db278}");
+
+            virtual RHI::IDevice* get_device() = 0;
 
             virtual const RenderGraphDesc& get_desc() = 0;
 

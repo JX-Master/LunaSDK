@@ -52,7 +52,7 @@ namespace Luna
             virtual usize get_input_resource(const Name& parameter) = 0;
             virtual usize get_output_resource(const Name& parameter) = 0;
 
-            virtual bool get_resource_desc(usize resource, RHI::ResourceDesc* desc) = 0;
+            virtual RHI::ResourceDesc get_resource_desc(usize resource) = 0;
             virtual void set_resource_desc(usize resource, const RHI::ResourceDesc& desc) = 0;
 
             virtual void set_render_pass_object(IRenderPass* render_pass) = 0;

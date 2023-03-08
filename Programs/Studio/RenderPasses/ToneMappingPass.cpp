@@ -222,7 +222,7 @@ namespace Luna
 					vs->set_srv(2, m_lighting_accms[10]);
 					vs->set_uav(3, output_tex);
 					cmdbuf->set_compute_descriptor_set(0, vs);
-					cmdbuf->dispatch(max<u32>((u32)output_tex_desc.width_or_buffer_size / 8, 1), max<u32>((u32)output_tex_desc.height / 8, 1), 1);
+					cmdbuf->dispatch((u32)align_upper(output_tex_desc.width_or_buffer_size, 8) / 8, (u32)align_upper(output_tex_desc.height, 8) / 8, 1);
 				}
 			}
         }
@@ -242,21 +242,12 @@ namespace Luna
 			if(ldr_texture == RG::INVALID_RESOURCE) return set_error(BasicError::bad_arguments(), "ToneMappingPass: Output \"ldr_texture\" is not specified.");
 
 			// Set output texture format if not specified.
-			RHI::ResourceDesc desc;
-			if(compiler->get_resource_desc(hdr_texture, &desc))
-			{
-				RHI::ResourceDesc desc2;
-				if(!compiler->get_resource_desc(ldr_texture, &desc2))
-				{
-					desc2 = RHI::ResourceDesc::tex2d(RHI::ResourceHeapType::local, RHI::Format::rgba8_unorm, RHI::ResourceUsageFlag::shader_resource, desc.width_or_buffer_size, desc.height);
-				}
-				desc2.usages |= RHI::ResourceUsageFlag::unordered_access;
-				compiler->set_resource_desc(ldr_texture, desc2);
-			}
-			else
-			{
-				set_error(BasicError::bad_arguments(), "ToneMappingPass: The resource layout for input \"hdr_texture\" is not specified.");
-			}
+			RHI::ResourceDesc desc = compiler->get_resource_desc(hdr_texture);
+			RHI::ResourceDesc desc2 = compiler->get_resource_desc(ldr_texture);
+			desc2.width_or_buffer_size = desc2.width_or_buffer_size ? desc.width_or_buffer_size : desc.width_or_buffer_size;
+			desc2.height = desc2.height ? desc2.height : desc.height;
+			desc2.usages |= RHI::ResourceUsageFlag::unordered_access;
+			compiler->set_resource_desc(ldr_texture, desc2);
             Ref<ToneMappingPass> pass = new_object<ToneMappingPass>();
             luexp(pass->init(data));
 			compiler->set_render_pass_object(pass);

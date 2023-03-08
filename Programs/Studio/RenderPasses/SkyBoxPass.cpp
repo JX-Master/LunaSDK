@@ -77,7 +77,7 @@ namespace Luna
         lutry
         {
             auto cmdbuf = ctx->get_command_buffer();
-            auto output_tex = ctx->get_input(m_global_data->m_texture_name);
+            auto output_tex = ctx->get_output(m_global_data->m_texture_name);
             lulet(output_tex_rtv, cmdbuf->get_device()->new_render_target_view(output_tex));
 			if (skybox && camera_type == CameraType::perspective)
 			{
@@ -131,15 +131,15 @@ namespace Luna
             SkyBoxPassGlobalData* data = (SkyBoxPassGlobalData*)userdata;
             Name _texture = data->m_texture_name;
             auto texture_resource = compiler->get_output_resource(_texture);
-            if(texture_resource != RG::INVALID_RESOURCE)
+            if(texture_resource == RG::INVALID_RESOURCE) return set_error(BasicError::bad_arguments(), "SkyBoxPass: Output \"texture\" is not specified.");
+            RHI::ResourceDesc desc = compiler->get_resource_desc(texture_resource);
+            if (desc.type != RHI::ResourceType::texture_2d ||
+                !desc.width_or_buffer_size || !desc.height)
             {
-                RHI::ResourceDesc desc;
-                bool r = compiler->get_resource_desc(texture_resource, &desc);
-                if(!r)
-                {
-                    return set_error(BasicError::bad_arguments(), "SkyBoxPass: The resource layout for output \"texture\" is not specified.");
-                }
+                return set_error(BasicError::bad_arguments(), "SkyBoxPass: The resource format for output \"texture\" is not specified or invalid.");
             }
+            desc.usages |= RHI::ResourceUsageFlag::unordered_access;
+            compiler->set_resource_desc(texture_resource, desc);
             Ref<SkyBoxPass> pass = new_object<SkyBoxPass>();
             luexp(pass->init(data));
             compiler->set_render_pass_object(pass);

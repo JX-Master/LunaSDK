@@ -13,6 +13,7 @@
 #include "Device.hpp"
 #include "ShaderInputLayout.hpp"
 #include "../../PipelineState.hpp"
+#include "D3D12Common.hpp"
 
 namespace Luna
 {
@@ -34,6 +35,7 @@ namespace Luna
 			{
 				return m_device.as<IDevice>();
 			}
+			void set_name(const Name& name) { set_object_name(m_pso.Get(), name); }
 
 			bool init_graphic(const GraphicPipelineStateDesc& desc);
 			bool init_compute(const ComputePipelineStateDesc& desc);

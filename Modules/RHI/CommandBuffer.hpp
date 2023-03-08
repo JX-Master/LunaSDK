@@ -416,6 +416,13 @@ namespace Luna
 			//! will not be released before GPU finishes accessing them.
 			virtual void attach_graphic_object(IDeviceChild* obj) = 0;
 
+			//! Begins a new event. This is for use in diagnostic tools like RenderDoc, PIX, etc to group commands into hierarchical
+			//! sections.
+			virtual void begin_event(const Name& event_name) = 0;
+
+			//! Ends the latest event begun with `begin_event` that has not benn ended.
+			virtual void end_event() = 0;
+
 			//! Starts a new render pass. The previous render pass should be closed before beginning another one.
 			//! @param[in] desc The render pass descriptor object.
 			//! @remark In order to let LoadOp::clear works, the render textures that need to be cleared must be in

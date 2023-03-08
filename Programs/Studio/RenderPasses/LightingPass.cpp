@@ -49,6 +49,9 @@ namespace Luna
 			luexp(psf->read(ps_blob.span()));
 			psf = nullptr;
 
+			m_common_vertex = new_object<CommonVertex>();
+			luexp(m_common_vertex->init());
+
 			GraphicPipelineStateDesc ps_desc;
 			ps_desc.primitive_topology_type = PrimitiveTopologyType::triangle;
 			ps_desc.sample_mask = U32_MAX;
@@ -127,8 +130,8 @@ namespace Luna
         using namespace RHI;
         lutry
         {
-            auto scene_tex = ctx->get_input("scene_texture");
-            auto depth_tex = ctx->get_input("scene_depth_texture");
+            auto scene_tex = ctx->get_output("scene_texture");
+            auto depth_tex = ctx->get_output("scene_depth_texture");
             auto render_desc = scene_tex->get_desc();
             auto cmdbuf = ctx->get_command_buffer();
             auto device = cmdbuf->get_device();
@@ -142,6 +145,8 @@ namespace Luna
 			RenderPassDesc render_pass;
 			render_pass.rtvs[0] = scene_tex_rtv;
 			render_pass.dsv = depth_dsv;
+			render_pass.depth_load_op = RHI::LoadOp::clear;
+			render_pass.depth_clear_value = 1.0f;
 			cmdbuf->begin_render_pass(render_pass);
 			cmdbuf->set_graphic_shader_input_layout(m_global_data->m_lighting_pass_slayout);
 			cmdbuf->set_pipeline_state(m_global_data->m_lighting_pass_pso);
@@ -243,9 +248,21 @@ namespace Luna
 			auto scene_depth_texture = compiler->get_output_resource("scene_depth_texture");
 			if(scene_texture == RG::INVALID_RESOURCE) return set_error(BasicError::bad_arguments(), "LightingPass: Output \"scene_texture\" is not specified.");
 			if(scene_depth_texture == RG::INVALID_RESOURCE) return set_error(BasicError::bad_arguments(), "LightingPass: Output \"scene_depth_texture\" is not specified.");
-			if(!compiler->get_resource_desc(scene_texture, nullptr)) return set_error(BasicError::bad_arguments(), "LightingPass: The resource layout for output \"scene_texture\" is not specified.");
-			if(!compiler->get_resource_desc(scene_depth_texture, nullptr)) return set_error(BasicError::bad_arguments(), "LightingPass: The resource layout for output \"scene_depth_texture\" is not specified.");
-            Ref<LightingPass> pass = new_object<LightingPass>();
+			RHI::ResourceDesc desc = compiler->get_resource_desc(scene_texture);
+			if (desc.pixel_format != RHI::Format::rgba32_float)
+			{
+				return set_error(BasicError::bad_arguments(), "LightingPass: Invalid format for \"scene_texture\" is specified. \"scene_texture\" must be Format::rgba32_float.");
+			}
+			desc.usages |= RHI::ResourceUsageFlag::render_target;
+			compiler->set_resource_desc(scene_texture, desc);
+			desc = compiler->get_resource_desc(scene_depth_texture);
+			if (desc.pixel_format != RHI::Format::d32_float)
+			{
+				return set_error(BasicError::bad_arguments(), "LightingPass: Invalid format for \"scene_depth_texture\" is specified. \"scene_depth_texture\" must be Format::d32_float.");
+			}
+			desc.usages |= RHI::ResourceUsageFlag::depth_stencil;
+			compiler->set_resource_desc(scene_depth_texture, desc);
+			Ref<LightingPass> pass = new_object<LightingPass>();
             luexp(pass->init(data));
 			compiler->set_render_pass_object(pass);
         }

@@ -57,6 +57,9 @@ namespace Luna
 			luexp(compiler->compile());
 			Blob ps_blob = compiler->get_output();
 
+			m_common_vertex = new_object<CommonVertex>();
+			luexp(m_common_vertex->init());
+
 			GraphicPipelineStateDesc ps_desc;
 			ps_desc.primitive_topology_type = PrimitiveTopologyType::triangle;
 			ps_desc.sample_mask = U32_MAX;
@@ -143,7 +146,9 @@ namespace Luna
             WireframePassGlobalData* data = (WireframePassGlobalData*)userdata;
 			auto scene_texture = compiler->get_output_resource("scene_texture");
 			if(scene_texture == RG::INVALID_RESOURCE) return set_error(BasicError::bad_arguments(), "WireframePass: Output \"scene_texture\" is not specified.");
-			if(!compiler->get_resource_desc(scene_texture, nullptr)) return set_error(BasicError::bad_arguments(), "WireframePass: The resource layout for output \"scene_texture\" is not specified.");
+			RHI::ResourceDesc desc = compiler->get_resource_desc(scene_texture);
+			desc.usages |= RHI::ResourceUsageFlag::render_target;
+			compiler->set_resource_desc(scene_texture, desc);
 			Ref<WireframePass> pass = new_object<WireframePass>();
             luexp(pass->init(data));
 			compiler->set_render_pass_object(pass);

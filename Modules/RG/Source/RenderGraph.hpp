@@ -39,7 +39,6 @@ namespace Luna
             {
                 RHI::ResourceDesc m_resource_desc;
                 Ref<RHI::IResource> m_resource;
-                bool m_resource_desc_valid = false;
             };
             Vector<PassData> m_pass_data;
             Vector<ResourceData> m_resource_data;
@@ -90,23 +89,17 @@ namespace Luna
                 return iter == pass.m_output_resources.end() ? INVALID_RESOURCE : iter->second;
             }
 
-            virtual bool get_resource_desc(usize resource, RHI::ResourceDesc* desc) override
+            virtual RHI::ResourceDesc get_resource_desc(usize resource) override
             {
-                if(resource >= m_resource_data.size()) return false;
+                lucheck(resource < m_resource_data.size());
                 auto& res = m_resource_data[resource];
-                if(res.m_resource_desc_valid)
-                {
-                    if(desc) *desc = res.m_resource_desc;
-                    return true;
-                }
-                return false;
+                return res.m_resource_desc;
             }
             virtual void set_resource_desc(usize resource, const RHI::ResourceDesc& desc) override
             {
                 if(resource >= m_resource_data.size()) return;
                 auto& res = m_resource_data[resource];
                 res.m_resource_desc = desc;
-                res.m_resource_desc_valid = true;
             }
             virtual void set_render_pass_object(IRenderPass* render_pass) override
             {

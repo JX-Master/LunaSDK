@@ -58,6 +58,7 @@ namespace Luna
 			{
 				return m_device.as<IDevice>();
 			}
+			void set_name(const Name& name) { set_object_name(m_queue.Get(), name); }
 			CommandQueueType get_type()
 			{
 				return m_type;

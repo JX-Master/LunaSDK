@@ -95,6 +95,7 @@ namespace Luna
 			{
 				return m_device.as<IDevice>();
 			}
+			void set_name(const Name& name) { set_object_name(m_res.Get(), name); }
 
 			ResourceDesc get_desc()
 			{
