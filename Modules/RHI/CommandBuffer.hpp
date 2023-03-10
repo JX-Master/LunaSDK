@@ -385,6 +385,8 @@ namespace Luna
 			u8 stencil_clear_value = 0;
 		};
 
+		struct ICommandQueue;
+
 		//! @interface ICommandBuffer
 		//! The command buffer is used to allocate memory for commands, record commands, submitting 
 		//! commands to GPU and tracks the state of the submitted commands.
@@ -401,6 +403,8 @@ namespace Luna
 			luiid("{2970a4c8-d905-4e58-9247-46ba6a33b220}");
 
 			virtual CommandQueueType get_type() = 0;
+
+			virtual ICommandQueue* get_command_queue() = 0;
 
 			//! Resets the command buffer. This call clears all commands in the command buffer, resets the state tracking
 			//! infrastructure and reopens the command buffer for recording new commands.

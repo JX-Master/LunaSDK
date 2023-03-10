@@ -245,6 +245,10 @@ namespace Luna
 			{
 				return m_queue->m_type;
 			}
+			ICommandQueue* get_command_queue()
+			{
+				return m_queue;
+			}
 			RV reset();
 			void attach_graphic_object(IDeviceChild* obj)
 			{

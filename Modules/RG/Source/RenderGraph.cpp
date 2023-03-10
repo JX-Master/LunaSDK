@@ -54,7 +54,7 @@ namespace Luna
             return true;
         }
 
-        RV RenderGraph::compile()
+        RV RenderGraph::compile(const RenderGraphCompileConfig& config)
         {
             lutry
             {
@@ -62,6 +62,8 @@ namespace Luna
                 m_resource_data.resize(m_desc.resources.size());
                 m_pass_data.clear();
                 m_pass_data.resize(m_desc.passes.size());
+                m_enable_time_profiling = config.enable_time_profiling;
+                m_enable_pipeline_statistics_profiling = config.enable_pipeline_statistics_profiling;
                 Vector<ResourceTrackData> resource_track_data(m_resource_data.size());
                 // Apply connections.
                 for(auto& i : m_desc.input_connections)
@@ -82,7 +84,7 @@ namespace Luna
                 // Check alive passes (cull out unrequired passes).
                 for(usize i = 0; i < m_desc.resources.size(); ++i)
                 {
-                    if(m_desc.resources[i].type == RenderGraphResourceType::output)
+                    if(test_flags(m_desc.resources[i].flags, RenderGraphResourceFlag::output))
                     {
                         for(usize pass : resource_track_data[i].write_passes)
                         {
@@ -110,11 +112,13 @@ namespace Luna
                     m_resource_data[i].m_resource_desc = m_desc.resources[i].desc;
                 }
                 // Compile every node in execution order.
+                usize num_enabled_passes = 0;
                 for(usize i = 0; i < m_desc.passes.size(); ++i)
                 {
                     m_current_compile_pass = i;
                     if(m_pass_data[i].m_enabled)
                     {
+                        ++num_enabled_passes;
                         MutexGuard guard(g_render_pass_types_mtx);
                         auto iter = g_render_pass_types.find(m_desc.passes[i].type);
                         if(iter == g_render_pass_types.end())
@@ -128,7 +132,7 @@ namespace Luna
                 for(usize i = 0; i < resource_track_data.size(); ++i)
                 {
                     auto& res = resource_track_data[i];
-                    if(m_desc.resources[i].type == RenderGraphResourceType::internal && res.first_access != USIZE_MAX)
+                    if(m_desc.resources[i].type == RenderGraphResourceType::transient && res.first_access != USIZE_MAX)
                     {
                         m_pass_data[resource_track_data[i].first_access].m_create_resources.push_back(i);
                         m_pass_data[resource_track_data[i].last_access].m_release_resources.push_back(i);
@@ -137,7 +141,7 @@ namespace Luna
                 // Create output resources.
                 for(usize i = 0; i < m_desc.resources.size(); ++i)
                 {
-                    if(m_desc.resources[i].type == RenderGraphResourceType::output)
+                    if(m_desc.resources[i].type == RenderGraphResourceType::persistent)
                     {
                         auto& res = m_resource_data[i];
                         if(is_resource_desc_valid(res.m_resource_desc))
@@ -151,15 +155,51 @@ namespace Luna
                         }
                     }
                 }
+                // Recreate time query heap.
+                if (m_enable_time_profiling)
+                {
+                    if (!m_time_query_heap || m_num_time_queries < num_enabled_passes)
+                    {
+                        RHI::QueryHeapDesc desc;
+                        desc.type = RHI::QueryHeapType::timestamp;
+                        desc.count = num_enabled_passes * 2;
+                        luset(m_time_query_heap, m_device->new_query_heap(desc));
+                        m_num_time_queries = num_enabled_passes;
+                    }
+                }
+                if (m_enable_pipeline_statistics_profiling)
+                {
+                    if (!m_ps_query_heap || m_num_ps_queries < num_enabled_passes)
+                    {
+                        RHI::QueryHeapDesc desc;
+                        desc.type = RHI::QueryHeapType::pipeline_statistics;
+                        desc.count = num_enabled_passes;
+                        luset(m_time_query_heap, m_device->new_query_heap(desc));
+                        m_num_ps_queries = num_enabled_passes;
+                    }
+                }
+                m_num_enabled_passes = num_enabled_passes;
             }
             lucatchret;
             return ok;
+        }
+        void RenderGraph::get_enabled_render_passes(Vector<usize>& render_passes)
+        {
+            render_passes.clear();
+            for (usize i = 0; i < m_pass_data.size(); ++i)
+            {
+                if (m_pass_data[i].m_enabled)
+                {
+                    render_passes.push_back(i);
+                }
+            }
         }
         RV RenderGraph::execute(RHI::ICommandBuffer* cmdbuf)
         {
             lutry
             {
                 m_cmdbuf = cmdbuf;
+                usize pass_index = 0;
                 for(usize i = 0; i < m_pass_data.size(); ++i)
                 {
                     auto& data = m_pass_data[i];
@@ -185,7 +225,11 @@ namespace Luna
                     if(!barriers.empty()) cmdbuf->resource_barriers({ barriers.data(), barriers.size() });
                     m_current_pass = i;
                     if (m_desc.passes[i].name) cmdbuf->begin_event(m_desc.passes[i].name);
+                    if (m_enable_pipeline_statistics_profiling) cmdbuf->begin_pipeline_statistics_query(m_ps_query_heap, pass_index);
+                    if (m_enable_time_profiling) cmdbuf->write_timestamp(m_time_query_heap, pass_index * 2);
                     luexp(m_pass_data[i].m_render_pass->execute(this));
+                    if (m_enable_time_profiling) cmdbuf->write_timestamp(m_time_query_heap, pass_index * 2 + 1);
+                    if (m_enable_pipeline_statistics_profiling) cmdbuf->end_pipeline_statistics_query(m_ps_query_heap, pass_index);
                     if (m_desc.passes[i].name) cmdbuf->end_event();
                     for(auto& res : m_temporary_resources)
                     {
@@ -198,6 +242,38 @@ namespace Luna
                         auto& res = m_resource_data[h];
                         m_transient_heap->release(res.m_resource);
                     }
+                    ++pass_index;
+                }
+            }
+            lucatchret;
+            return ok;
+        }
+        RV RenderGraph::get_pass_time_intervals(Vector<u64>& pass_time_intervals)
+        {
+            lutry
+            {
+                pass_time_intervals.clear();
+                if (m_enable_time_profiling)
+                {
+                    Vector<u64> times((usize)m_num_enabled_passes * 2);
+                    luexp(m_time_query_heap->get_timestamp_values(0, m_num_enabled_passes * 2, times.data()));
+                    for (usize i = 0; i < m_num_enabled_passes; ++i)
+                    {
+                        pass_time_intervals.push_back(times[i * 2 + 1] - times[i * 2]);
+                    }
+                }
+            }
+            lucatchret;
+            return ok;
+        }
+        RV RenderGraph::get_pass_pipeline_statistics(Vector<RHI::PipelineStatistics>& pass_pipeline_statistics)
+        {
+            lutry
+            {
+                pass_pipeline_statistics.resize(m_num_enabled_passes);
+                if (m_enable_pipeline_statistics_profiling)
+                {
+                    luexp(m_ps_query_heap->get_pipeline_statistics_values(0, m_num_enabled_passes, pass_pipeline_statistics.data()));
                 }
             }
             lucatchret;

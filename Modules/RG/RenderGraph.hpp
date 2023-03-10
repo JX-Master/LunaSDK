@@ -25,18 +25,29 @@ namespace Luna
             //! This resource is used to hold temporal data during the render graph execution.
             //! The render graph allocates this resource at first access, and releases the resource after last 
             //! access.
-            internal = 0,
+            transient = 0,
+            //! This resource is persistent. Such resources are used to hold data between render graph executions.
+            //! The render graph allocates this resource when the graph is being compiled, 
+            //! and does not release it after the render graph is finished.
+            persistent = 1,
             //! This resource is imported to the render graph. 
             //! The render graph does not manage the resource lifetime.
-            input = 1,
-            //! This resource is used to hold results of the render graph.
-            //! The render graph allocates this resource, and does not release it after the render graph is finished.
-            output = 2,
+            external = 2,
+        };
+
+        enum class RenderGraphResourceFlag : u8
+        {
+            none = 0x00,
+            //! This resource is the output of the render graph.
+            //! This is used to determine passes that should be retained during culling when the render graph
+            //! is being compiled.
+            output = 0x01,
         };
 
         struct RenderGraphResourceNode
         {
             RenderGraphResourceType type;
+            RenderGraphResourceFlag flags;
             Name name; // The name of the resource.
             RHI::ResourceDesc desc;
         };
@@ -57,6 +68,12 @@ namespace Luna
             Vector<RenderGraphConnection> output_connections;
         };
 
+        struct RenderGraphCompileConfig
+        {
+            bool enable_time_profiling = false;
+            bool enable_pipeline_statistics_profiling = false;
+        };
+
         struct IRenderGraph : virtual Interface
         {
             luiid("{ad007d31-b655-4276-8b11-db09a93db278}");
@@ -67,15 +84,21 @@ namespace Luna
 
             virtual void set_desc(const RenderGraphDesc& desc) = 0;
 
-            virtual RV compile() = 0;
+            virtual RV compile(const RenderGraphCompileConfig& config) = 0;
+
+            virtual void get_enabled_render_passes(Vector<usize>& render_passes) = 0;
 
             virtual IRenderPass* get_render_pass(usize index) = 0;
 
-            virtual void set_input_resource(usize index, RHI::IResource* resource) = 0;
+            virtual void set_external_resource(usize index, RHI::IResource* resource) = 0;
 
             virtual RV execute(RHI::ICommandBuffer* cmdbuf) = 0;
 
-            virtual RHI::IResource* get_output_resource(usize index) = 0;
+            virtual RHI::IResource* get_persistent_resource(usize index) = 0;
+
+            virtual RV get_pass_time_intervals(Vector<u64>& pass_times) = 0;
+
+            virtual RV get_pass_pipeline_statistics(Vector<RHI::PipelineStatistics>& pass_pipeline_statistics) = 0;
         };
 
         LUNA_RG_API Ref<IRenderGraph> new_render_graph(RHI::IDevice* device);

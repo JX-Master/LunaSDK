@@ -42,6 +42,14 @@ namespace Luna
             };
             Vector<PassData> m_pass_data;
             Vector<ResourceData> m_resource_data;
+            bool m_enable_time_profiling;
+            bool m_enable_pipeline_statistics_profiling;
+
+            Ref<RHI::IQueryHeap> m_time_query_heap;
+            Ref<RHI::IQueryHeap> m_ps_query_heap;
+            u32 m_num_time_queries = 0;
+            u32 m_num_ps_queries = 0;
+            u32 m_num_enabled_passes;
 
             // Compile context.
             usize m_current_compile_pass;
@@ -54,27 +62,30 @@ namespace Luna
             virtual RHI::IDevice* get_device() override { return m_device.get(); }
             virtual const RenderGraphDesc& get_desc() override { return m_desc; }
             virtual void set_desc(const RenderGraphDesc& desc) override { m_desc = desc; }
-            virtual RV compile() override;
+            virtual RV compile(const RenderGraphCompileConfig& config) override;
+            virtual void get_enabled_render_passes(Vector<usize>& render_passes) override;
             virtual IRenderPass* get_render_pass(usize index) override
             {
                 return m_pass_data[index].m_render_pass;
             }
-            virtual void set_input_resource(usize index, RHI::IResource* resource) override
+            virtual void set_external_resource(usize index, RHI::IResource* resource) override
             {
-                if(m_desc.resources[index].type == RenderGraphResourceType::input)
+                if(m_desc.resources[index].type == RenderGraphResourceType::external)
                 {
                     m_resource_data[index].m_resource = resource;
                 }
             }
             virtual RV execute(RHI::ICommandBuffer* cmdbuf) override;
-            virtual RHI::IResource* get_output_resource(usize index) override
+            virtual RHI::IResource* get_persistent_resource(usize index) override
             {
-                if(m_desc.resources[index].type == RenderGraphResourceType::output)
+                if(m_desc.resources[index].type == RenderGraphResourceType::persistent)
                 {
                     return m_resource_data[index].m_resource;
                 }
                 return nullptr;
             }
+            virtual RV get_pass_time_intervals(Vector<u64>& pass_time_intervals) override;
+            virtual RV get_pass_pipeline_statistics(Vector<RHI::PipelineStatistics>& pass_pipeline_statistics) override;
 
             virtual usize get_input_resource(const Name& parameter) override
             {

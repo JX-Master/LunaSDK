@@ -87,11 +87,16 @@ namespace Luna
 
 		bool m_wireframe = false;
 		bool m_grid = true;
+		bool m_profile_time = true;
 
 		bool m_navigating = false;
 		Int2U m_scene_click_pos;	// Stores the click mouse position in screen space.
 
 		bool m_open = true;
+
+		// Scene profiling data.
+		Vector<Name> m_enabled_passes;
+		Vector<f64> m_pass_time_intervals;
 
 		SceneEditor() {}
 
@@ -319,6 +324,30 @@ namespace Luna
 	{
 		lutry
 		{
+			// Collect last frame profiling data.
+			if(m_profile_time)
+			{
+				Vector<usize> render_passes;
+				m_render_graph->get_enabled_render_passes(render_passes);
+				if (!render_passes.empty())
+				{
+					m_enabled_passes.clear();
+					auto& desc = m_render_graph->get_desc();
+					for (usize i : render_passes)
+					{
+						m_enabled_passes.push_back(desc.passes[i].name);
+					}
+					lulet(freq, m_scene_cmdbuf->get_command_queue()->get_timestamp_frequency());
+					Vector<u64> times;
+					luexp(m_render_graph->get_pass_time_intervals(times));
+					m_pass_time_intervals.clear();
+					for (u64 t : times)
+					{
+						m_pass_time_intervals.push_back((f64)t / (f64)freq);
+					}
+				}
+			}
+
 			ImGui::Text("Scene");
 
 			auto s = Asset::get_asset_data<Scene>(m_scene);
@@ -433,6 +462,8 @@ namespace Luna
 			ImGui::Checkbox("Wireframe", &m_wireframe);
 			ImGui::SameLine();
 			ImGui::Checkbox("Grid", &m_grid);
+			ImGui::SameLine();
+			ImGui::Checkbox("Time Profiling", &m_profile_time);
 
 			Float2 scene_sz = ImGui::GetContentRegionAvail();
 			Float2 scene_pos = ImGui::GetCursorScreenPos();
@@ -624,25 +655,35 @@ namespace Luna
 					desc.passes[LIGHTING_PASS] = {"LightingPass", "Lighting"};
 					desc.passes[TONE_MAPPING_PASS] = {"ToneMappingPass", "ToneMapping"};
 					desc.resources.resize(4);
-					desc.resources[LIGHTING_BUFFER] = {RenderGraphResourceType::internal, "LightingBuffer", 
+					desc.resources[LIGHTING_BUFFER] = {RenderGraphResourceType::transient, 
+						RenderGraphResourceFlag::none,
+						"LightingBuffer", 
 						ResourceDesc::tex2d(ResourceHeapType::local, Format::rgba32_float, 
 						ResourceUsageFlag::shader_resource, (u32)scene_sz.x, (u32)scene_sz.y)};
-					desc.resources[DEPTH_BUFFER] = {RenderGraphResourceType::internal, "DepthBuffer",
+					desc.resources[DEPTH_BUFFER] = {RenderGraphResourceType::transient, 
+						RenderGraphResourceFlag::none,
+						"DepthBuffer",
 						ResourceDesc::tex2d(ResourceHeapType::local, Format::d32_float, 
 						ResourceUsageFlag::shader_resource, (u32)scene_sz.x, (u32)scene_sz.y)};
-					desc.resources[BACK_BUFFER] = {RenderGraphResourceType::internal, "BackBuffer",
+					desc.resources[BACK_BUFFER] = {RenderGraphResourceType::transient, 
+						RenderGraphResourceFlag::none,
+						"BackBuffer",
 						ResourceDesc::tex2d(ResourceHeapType::local, Format::rgba8_unorm,
 						ResourceUsageFlag::shader_resource | ResourceUsageFlag::render_target, 0, 0)};
-					desc.resources[WIREFRAME_BACK_BUFFER] = {RenderGraphResourceType::internal, "WireframeBackBuffer",
+					desc.resources[WIREFRAME_BACK_BUFFER] = {RenderGraphResourceType::transient, 
+						RenderGraphResourceFlag::none,
+						"WireframeBackBuffer",
 						ResourceDesc::tex2d(ResourceHeapType::local, Format::rgba8_unorm, 
 						ResourceUsageFlag::shader_resource | ResourceUsageFlag::render_target, (u32)scene_sz.x, (u32)scene_sz.y)};
 					if(m_wireframe)
 					{
-						desc.resources[WIREFRAME_BACK_BUFFER].type = RenderGraphResourceType::output;
+						desc.resources[WIREFRAME_BACK_BUFFER].type = RenderGraphResourceType::persistent;
+						desc.resources[WIREFRAME_BACK_BUFFER].flags |= RenderGraphResourceFlag::output;
 					}
 					else
 					{
-						desc.resources[BACK_BUFFER].type = RenderGraphResourceType::output;
+						desc.resources[BACK_BUFFER].type = RenderGraphResourceType::persistent;
+						desc.resources[BACK_BUFFER].flags |= RenderGraphResourceFlag::output;
 					}
 					desc.output_connections.push_back({WIREFRAME_PASS, "scene_texture", WIREFRAME_BACK_BUFFER});
 					desc.output_connections.push_back({SKYBOX_PASS, "texture", LIGHTING_BUFFER});
@@ -651,7 +692,9 @@ namespace Luna
 					desc.input_connections.push_back({TONE_MAPPING_PASS, "hdr_texture", LIGHTING_BUFFER});
 					desc.output_connections.push_back({TONE_MAPPING_PASS, "ldr_texture", BACK_BUFFER});
 					m_render_graph->set_desc(desc);
-					luexp(m_render_graph->compile());
+					RG::RenderGraphCompileConfig config;
+					config.enable_time_profiling = m_profile_time;
+					luexp(m_render_graph->compile(config));
 				}
 
 				{
@@ -691,11 +734,11 @@ namespace Luna
 				{
 					if(m_wireframe)
 					{
-						render_tex = m_render_graph->get_output_resource(WIREFRAME_BACK_BUFFER);
+						render_tex = m_render_graph->get_persistent_resource(WIREFRAME_BACK_BUFFER);
 					}
 					else
 					{
-						render_tex = m_render_graph->get_output_resource(BACK_BUFFER);
+						render_tex = m_render_graph->get_persistent_resource(BACK_BUFFER);
 					}
 					luset(render_rtv, m_render_graph->get_device()->new_render_target_view(render_tex));
 				}
@@ -746,7 +789,14 @@ namespace Luna
 				auto backup_pos = ImGui::GetCursorPos();
 				ImGui::SetCursorScreenPos(scene_pos);
 
-				ImGui::Text("FPS: %f", ImGui::GetIO().Framerate);
+				if (m_profile_time)
+				{
+					ImGui::Text("FPS: %f", ImGui::GetIO().Framerate);
+					for (usize i = 0; i < m_enabled_passes.size(); ++i)
+					{
+						ImGui::Text("%s: %fms", m_enabled_passes[i].c_str(), m_pass_time_intervals[i] * 1000.0);
+					}
+				}
 
 				ImGui::SetCursorPos(backup_pos);
 			}

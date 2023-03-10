@@ -16,12 +16,12 @@ namespace Luna
     {
         lustruct("ToneMappingPassGlobalData", "{83957a6a-f27c-44d5-8b74-a83d8050db08}");
 
-        Ref<RHI::IDescriptorSetLayout> m_first_lum_pass_dlayout;
-		Ref<RHI::IShaderInputLayout> m_first_lum_pass_slayout;
-		Ref<RHI::IPipelineState> m_first_lum_pass_pso;
-		Ref<RHI::IDescriptorSetLayout> m_lum_pass_dlayout;
-		Ref<RHI::IShaderInputLayout> m_lum_pass_slayout;
-		Ref<RHI::IPipelineState> m_lum_pass_pso;
+        Ref<RHI::IDescriptorSetLayout> m_histogram_pass_dlayout;
+		Ref<RHI::IShaderInputLayout> m_histogram_pass_slayout;
+		Ref<RHI::IPipelineState> m_histogram_pass_pso;
+		Ref<RHI::IDescriptorSetLayout> m_histogram_collect_pass_dlayout;
+		Ref<RHI::IShaderInputLayout> m_histogram_collect_pass_slayout;
+		Ref<RHI::IPipelineState> m_histogram_collect_pass_pso;
 		Ref<RHI::IDescriptorSetLayout> m_tone_mapping_pass_dlayout;
 		Ref<RHI::IShaderInputLayout> m_tone_mapping_pass_slayout;
 		Ref<RHI::IPipelineState> m_tone_mapping_pass_pso;
@@ -41,13 +41,15 @@ namespace Luna
 
         private:
         Ref<ToneMappingPassGlobalData> m_global_data;
-
-        Ref<RHI::IResource> m_tone_mapping_offset;
-		Ref<RHI::IResource> m_tone_mapping_params;
-        Ref<RHI::IDescriptorSet> m_first_lum_pass_ds;
-        Ref<RHI::IDescriptorSet> m_lum_pass_dss[10];
+        
+        Ref<RHI::IResource> m_histogram_cb;
+        Ref<RHI::IResource> m_histogram_buffer;
+        Ref<RHI::IResource> m_lum_tex;
+        Ref<RHI::IResource> m_histogram_collect_cb;
+        Ref<RHI::IResource> m_tone_mapping_cb;
+        Ref<RHI::IDescriptorSet> m_histogram_ds;
+        Ref<RHI::IDescriptorSet> m_histogram_collect_ds;
         Ref<RHI::IDescriptorSet> m_tone_mapping_pass_ds;
-        Ref<RHI::IResource> m_lighting_accms[11];		// R32_FLOAT from 1024.v
     };
 
     RV register_tone_mapping_pass();
