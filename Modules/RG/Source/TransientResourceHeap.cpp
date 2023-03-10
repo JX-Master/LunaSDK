@@ -108,6 +108,13 @@ namespace Luna
         R<Ref<RHI::IResource>> TransientResourceHeap::allocate_from_segment(usize i, u64 size, u64 alignment, const RHI::ResourceDesc& desc, const RHI::ClearValue* optimized_clear_value)
         {
             if(m_segments[i].m_heap_type != desc.heap_type) return nullptr;
+            if(!test_flags(m_segments[i].m_child_types, RHI::ResourceHeapChildType::buffer) && desc.type == RHI::ResourceType::buffer) return nullptr;
+            if((desc.type == RHI::ResourceType::texture_1d || desc.type == RHI::ResourceType::texture_2d || desc.type == RHI::ResourceType::texture_3d) && 
+                (test_flags(desc.usages, RHI::ResourceUsageFlag::render_target) || test_flags(desc.usages, RHI::ResourceUsageFlag::depth_stencil)) &&
+                !test_flags(m_segments[i].m_child_types, RHI::ResourceHeapChildType::texture_rt_ds)) return nullptr;
+            if((desc.type == RHI::ResourceType::texture_1d || desc.type == RHI::ResourceType::texture_2d || desc.type == RHI::ResourceType::texture_3d) && 
+                (!test_flags(desc.usages, RHI::ResourceUsageFlag::render_target) && !test_flags(desc.usages, RHI::ResourceUsageFlag::depth_stencil)) &&
+                !test_flags(m_segments[i].m_child_types, RHI::ResourceHeapChildType::texture_non_rt_ds)) return nullptr;
             u64 offset;
             bool allocated = m_segments[i].allocate(size, alignment, offset);
             if(allocated)
@@ -142,9 +149,27 @@ namespace Luna
                     TransientResourceHeapSegment segment;
                     RHI::ResourceHeapDesc heap_desc;
                     heap_desc.type = desc.heap_type;
+                    heap_desc.child_types = RHI::ResourceHeapChildType::none;
+                    if(desc.type == RHI::ResourceType::buffer)
+                    {
+                        set_flags(heap_desc.child_types, RHI::ResourceHeapChildType::buffer);
+                    }
+                    else if(desc.type == RHI::ResourceType::texture_1d || desc.type == RHI::ResourceType::texture_2d || desc.type == RHI::ResourceType::texture_3d)
+                    {
+                        if(test_flags(desc.usages, RHI::ResourceUsageFlag::render_target) || test_flags(desc.usages, RHI::ResourceUsageFlag::depth_stencil))
+                        {
+                            set_flags(heap_desc.child_types, RHI::ResourceHeapChildType::texture_rt_ds);
+                        }
+                        else
+                        {
+                            set_flags(heap_desc.child_types, RHI::ResourceHeapChildType::texture_non_rt_ds);
+                        }
+                    }
+                    else lupanic();
                     heap_desc.size = max(SEGMENT_SIZE, size);
                     heap_desc.alignment = 0;
                     segment.m_heap_type = desc.heap_type;
+                    segment.m_child_types = heap_desc.child_types;
                     luset(segment.m_heap, m_device->new_resource_heap(heap_desc));
                     segment.m_free_sections.push_back({0, heap_desc.size});
                     m_segments.push_back(move(segment));

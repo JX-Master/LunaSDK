@@ -28,6 +28,7 @@ namespace Luna
             };
 
             RHI::ResourceHeapType m_heap_type;
+            RHI::ResourceHeapChildType m_child_types;
             Ref<RHI::IResourceHeap> m_heap;
             Vector<HeapSection> m_free_sections;
 
