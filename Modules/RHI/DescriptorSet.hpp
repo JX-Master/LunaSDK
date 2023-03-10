@@ -130,116 +130,116 @@ namespace Luna
 				srv::TexCubeArray texcubearray;
 			};
 
-			static ShaderResourceViewDesc as_buffer(u64 _offset, u32 _count, u32 _element_size, bool _raw_view = false)
+			static ShaderResourceViewDesc as_buffer(u64 offset, u32 count, u32 element_size, bool raw_view = false)
 			{
 				ShaderResourceViewDesc desc;
 				desc.format = Format::unknown;
 				desc.type = ShaderResourceViewType::buffer;
-				desc.buffer.offset = _offset;
-				desc.buffer.count = _count;
-				desc.buffer.raw_view = _raw_view;
-				desc.buffer.element_size = _element_size;
+				desc.buffer.offset = offset;
+				desc.buffer.count = count;
+				desc.buffer.raw_view = raw_view;
+				desc.buffer.element_size = element_size;
 				return desc;
 			}
 
-			static ShaderResourceViewDesc as_tex1d(Format _format, u32 _most_detailed_mip, u32 _mip_levels, f32 _resource_min_lod_clamp)
+			static ShaderResourceViewDesc as_tex1d(Format format, u32 most_detailed_mip, u32 mip_levels, f32 resource_min_lod_clamp)
 			{
 				ShaderResourceViewDesc desc;
-				desc.format = _format;
+				desc.format = format;
 				desc.type = ShaderResourceViewType::tex1d;
-				desc.tex1d.mip_levels = _mip_levels;
-				desc.tex1d.most_detailed_mip = _most_detailed_mip;
-				desc.tex1d.resource_min_lod_clamp = _resource_min_lod_clamp;
+				desc.tex1d.mip_levels = mip_levels;
+				desc.tex1d.most_detailed_mip = most_detailed_mip;
+				desc.tex1d.resource_min_lod_clamp = resource_min_lod_clamp;
 				return desc;
 			}
 
-			static ShaderResourceViewDesc as_tex1darray(Format _format, u32 _most_detailed_mip, u32 _mip_levels, u32 _first_array_slice, u32 _array_size, f32 _resource_min_lod_clamp)
+			static ShaderResourceViewDesc as_tex1darray(Format format, u32 most_detailed_mip, u32 mip_levels, u32 first_array_slice, u32 array_size, f32 resource_min_lod_clamp)
 			{
 				ShaderResourceViewDesc desc;
-				desc.format = _format;
+				desc.format = format;
 				desc.type = ShaderResourceViewType::tex1darray;
-				desc.tex1darray.most_detailed_mip = _most_detailed_mip;
-				desc.tex1darray.mip_levels = _mip_levels;
-				desc.tex1darray.array_size = _array_size;
-				desc.tex1darray.first_array_slice = _first_array_slice;
-				desc.tex1darray.resource_min_lod_clamp = _resource_min_lod_clamp;
+				desc.tex1darray.most_detailed_mip = most_detailed_mip;
+				desc.tex1darray.mip_levels = mip_levels;
+				desc.tex1darray.array_size = array_size;
+				desc.tex1darray.first_array_slice = first_array_slice;
+				desc.tex1darray.resource_min_lod_clamp = resource_min_lod_clamp;
 				return desc;
 			}
 
-			static ShaderResourceViewDesc as_tex2d(Format _format, u32  _most_detailed_mip, u32  _mip_levels, f32 _resource_min_lod_clamp)
+			static ShaderResourceViewDesc as_tex2d(Format format, u32  most_detailed_mip, u32  mip_levels, f32 resource_min_lod_clamp)
 			{
 				ShaderResourceViewDesc desc;
-				desc.format = _format;
+				desc.format = format;
 				desc.type = ShaderResourceViewType::tex2d;
-				desc.tex2d.most_detailed_mip = _most_detailed_mip;
-				desc.tex2d.mip_levels = _mip_levels;
-				desc.tex2d.resource_min_lod_clamp = _resource_min_lod_clamp;
+				desc.tex2d.most_detailed_mip = most_detailed_mip;
+				desc.tex2d.mip_levels = mip_levels;
+				desc.tex2d.resource_min_lod_clamp = resource_min_lod_clamp;
 				return desc;
 			}
 
-			static ShaderResourceViewDesc as_tex2darray(Format _format, u32 _most_detailed_mip, u32 _mip_levels, u32 _first_array_slice, u32 _array_size, f32 _resource_min_lod_clamp)
+			static ShaderResourceViewDesc as_tex2darray(Format format, u32 most_detailed_mip, u32 mip_levels, u32 first_array_slice, u32 array_size, f32 resource_min_lod_clamp)
 			{
 				ShaderResourceViewDesc desc;
-				desc.format = _format;
+				desc.format = format;
 				desc.type = ShaderResourceViewType::tex2darray;
-				desc.tex2darray.most_detailed_mip = _most_detailed_mip;
-				desc.tex2darray.mip_levels = _mip_levels;
-				desc.tex2darray.first_array_slice = _first_array_slice;
-				desc.tex2darray.array_size = _array_size;
-				desc.tex2darray.resource_min_lod_clamp = _resource_min_lod_clamp;
+				desc.tex2darray.most_detailed_mip = most_detailed_mip;
+				desc.tex2darray.mip_levels = mip_levels;
+				desc.tex2darray.first_array_slice = first_array_slice;
+				desc.tex2darray.array_size = array_size;
+				desc.tex2darray.resource_min_lod_clamp = resource_min_lod_clamp;
 				return desc;
 			}
 
-			static ShaderResourceViewDesc as_tex2dms(Format _format)
+			static ShaderResourceViewDesc as_tex2dms(Format format)
 			{
 				ShaderResourceViewDesc desc;
-				desc.format = _format;
+				desc.format = format;
 				desc.type = ShaderResourceViewType::tex2dms;
 				return desc;
 			}
 
-			static ShaderResourceViewDesc as_tex2dmsarray(Format _format, u32 _first_array_slice, u32 _array_size)
+			static ShaderResourceViewDesc as_tex2dmsarray(Format format, u32 first_array_slice, u32 array_size)
 			{
 				ShaderResourceViewDesc desc;
-				desc.format = _format;
+				desc.format = format;
 				desc.type = ShaderResourceViewType::tex2dmsarray;
-				desc.tex2dmsarray.first_array_slice = _first_array_slice;
-				desc.tex2dmsarray.array_size = _array_size;
+				desc.tex2dmsarray.first_array_slice = first_array_slice;
+				desc.tex2dmsarray.array_size = array_size;
 				return desc;
 			}
 
-			static ShaderResourceViewDesc as_tex3d(Format _format, u32 _most_detailed_mip, u32 _mip_levels, f32 _resource_min_lod_clamp)
+			static ShaderResourceViewDesc as_tex3d(Format format, u32 most_detailed_mip, u32 mip_levels, f32 resource_min_lod_clamp)
 			{
 				ShaderResourceViewDesc desc;
-				desc.format = _format;
+				desc.format = format;
 				desc.type = ShaderResourceViewType::tex3d;
-				desc.tex3d.most_detailed_mip = _most_detailed_mip;
-				desc.tex3d.mip_levels = _mip_levels;
-				desc.tex3d.resource_min_lod_clamp = _resource_min_lod_clamp;
+				desc.tex3d.most_detailed_mip = most_detailed_mip;
+				desc.tex3d.mip_levels = mip_levels;
+				desc.tex3d.resource_min_lod_clamp = resource_min_lod_clamp;
 				return desc;
 			}
 
-			static ShaderResourceViewDesc as_texcube(Format _format, u32 _most_detailed_mip, u32 _mip_levels, f32 _resource_min_lod_clamp)
+			static ShaderResourceViewDesc as_texcube(Format format, u32 most_detailed_mip, u32 mip_levels, f32 resource_min_lod_clamp)
 			{
 				ShaderResourceViewDesc desc;
-				desc.format = _format;
+				desc.format = format;
 				desc.type = ShaderResourceViewType::texcube;
-				desc.texcube.mip_levels = _mip_levels;
-				desc.texcube.most_detailed_mip = _most_detailed_mip;
-				desc.texcube.resource_min_lod_clamp = _resource_min_lod_clamp;
+				desc.texcube.mip_levels = mip_levels;
+				desc.texcube.most_detailed_mip = most_detailed_mip;
+				desc.texcube.resource_min_lod_clamp = resource_min_lod_clamp;
 				return desc;
 			}
 
-			static ShaderResourceViewDesc as_texcubearray(Format _format, u32 _most_detailed_mip, u32 _mip_levels, u32 _first_2d_array_face, u32 _num_cubes, f32 _resource_min_lod_clamp)
+			static ShaderResourceViewDesc as_texcubearray(Format format, u32 most_detailed_mip, u32 mip_levels, u32 first_2d_array_face, u32 num_cubes, f32 resource_min_lod_clamp)
 			{
 				ShaderResourceViewDesc desc;
-				desc.format = _format;
+				desc.format = format;
 				desc.type = ShaderResourceViewType::texcubearray;
-				desc.texcubearray.first_2darray_face = _first_2d_array_face;
-				desc.texcubearray.mip_levels = _mip_levels;
-				desc.texcubearray.most_detailed_mip = _most_detailed_mip;
-				desc.texcubearray.num_cubes = _num_cubes;
-				desc.texcubearray.resource_min_lod_clamp = _resource_min_lod_clamp;
+				desc.texcubearray.first_2darray_face = first_2d_array_face;
+				desc.texcubearray.mip_levels = mip_levels;
+				desc.texcubearray.most_detailed_mip = most_detailed_mip;
+				desc.texcubearray.num_cubes = num_cubes;
+				desc.texcubearray.resource_min_lod_clamp = resource_min_lod_clamp;
 				return desc;
 			}
 		};
@@ -307,67 +307,67 @@ namespace Luna
 				uav::Tex3D tex3d;
 			};
 
-			static UnorderedAccessViewDesc as_buffer(Format _format, u64 _offset, u32 _count, u32 _element_size, u64 _counter_offset_in_bytes, bool _raw_view)
+			static UnorderedAccessViewDesc as_buffer(Format format, u64 offset, u32 count, u32 element_size, u64 counter_offset_in_bytes, bool raw_view)
 			{
 				UnorderedAccessViewDesc desc;
-				desc.format = _format;
+				desc.format = format;
 				desc.type = UnorderedAccessViewType::buffer;
-				desc.buffer.offset = _offset;
-				desc.buffer.count = _count;
-				desc.buffer.element_size = _element_size;
-				desc.buffer.counter_offset_in_bytes = _counter_offset_in_bytes;
-				desc.buffer.raw_view = _raw_view;
+				desc.buffer.offset = offset;
+				desc.buffer.count = count;
+				desc.buffer.element_size = element_size;
+				desc.buffer.counter_offset_in_bytes = counter_offset_in_bytes;
+				desc.buffer.raw_view = raw_view;
 				return desc;
 			}
 
-			static UnorderedAccessViewDesc as_tex1d(Format _format, u32 _mip_slice)
+			static UnorderedAccessViewDesc as_tex1d(Format format, u32 mip_slice)
 			{
 				UnorderedAccessViewDesc desc;
-				desc.format = _format;
+				desc.format = format;
 				desc.type = UnorderedAccessViewType::tex1d;
-				desc.tex1d.mip_slice = _mip_slice;
+				desc.tex1d.mip_slice = mip_slice;
 				return desc;
 			}
 
-			static UnorderedAccessViewDesc as_tex1darray(Format _format, u32 _mip_slice, u32 _first_array_slice, u32 _array_size)
+			static UnorderedAccessViewDesc as_tex1darray(Format format, u32 mip_slice, u32 first_array_slice, u32 array_size)
 			{
 				UnorderedAccessViewDesc desc;
-				desc.format = _format;
+				desc.format = format;
 				desc.type = UnorderedAccessViewType::tex1darray;
-				desc.tex1darray.array_size = _array_size;
-				desc.tex1darray.first_array_slice = _first_array_slice;
-				desc.tex1darray.mip_slice = _mip_slice;
+				desc.tex1darray.array_size = array_size;
+				desc.tex1darray.first_array_slice = first_array_slice;
+				desc.tex1darray.mip_slice = mip_slice;
 				return desc;
 			}
 
-			static UnorderedAccessViewDesc as_tex2d(Format _format, u32 _mip_slice)
+			static UnorderedAccessViewDesc as_tex2d(Format format, u32 mip_slice)
 			{
 				UnorderedAccessViewDesc desc;
-				desc.format = _format;
+				desc.format = format;
 				desc.type = UnorderedAccessViewType::tex2d;
-				desc.tex2d.mip_slice = _mip_slice;
+				desc.tex2d.mip_slice = mip_slice;
 				return desc;
 			}
 
-			static UnorderedAccessViewDesc as_tex2darray(Format _format, u32 _mip_slice, u32 _first_array_slice, u32 _array_size)
+			static UnorderedAccessViewDesc as_tex2darray(Format format, u32 mip_slice, u32 first_array_slice, u32 array_size)
 			{
 				UnorderedAccessViewDesc desc;
-				desc.format = _format;
+				desc.format = format;
 				desc.type = UnorderedAccessViewType::tex2darray;
-				desc.tex2darray.array_size = _array_size;
-				desc.tex2darray.first_array_slice = _first_array_slice;
-				desc.tex2darray.mip_slice = _mip_slice;
+				desc.tex2darray.array_size = array_size;
+				desc.tex2darray.first_array_slice = first_array_slice;
+				desc.tex2darray.mip_slice = mip_slice;
 				return desc;
 			}
 
-			static UnorderedAccessViewDesc as_tex3d(Format _format, u32 _mip_slice, u32 _first_layer_slice, u32 _layer_size)
+			static UnorderedAccessViewDesc as_tex3d(Format format, u32 mip_slice, u32 first_layer_slice, u32 layer_size)
 			{
 				UnorderedAccessViewDesc desc;
-				desc.format = _format;
+				desc.format = format;
 				desc.type = UnorderedAccessViewType::tex3d;
-				desc.tex3d.first_layer_slice = _first_layer_slice;
-				desc.tex3d.layer_size = _layer_size;
-				desc.tex3d.mip_slice = _mip_slice;
+				desc.tex3d.first_layer_slice = first_layer_slice;
+				desc.tex3d.layer_size = layer_size;
+				desc.tex3d.mip_slice = mip_slice;
 				return desc;
 			}
 		};
@@ -378,8 +378,8 @@ namespace Luna
 			u32 size;
 
 			ConstantBufferViewDesc() = default;
-			ConstantBufferViewDesc(u64 _offset, u32 _size) :
-				offset(_offset), size(_size) {}
+			ConstantBufferViewDesc(u64 offset, u32 size) :
+				offset(offset), size(size) {}
 		};
 
 		enum class FilterMode : u32

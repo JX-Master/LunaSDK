@@ -15,6 +15,7 @@
 #include <Runtime/Math/Vector.hpp>
 #include "RenderTargetView.hpp"
 #include "DepthStencilView.hpp"
+#include "QueryHeap.hpp"
 #include <Runtime/Span.hpp>
 
 namespace Luna
@@ -179,8 +180,7 @@ namespace Luna
 
 		struct ResourceAliasingBarrierDesc
 		{
-			IResource* before;
-			IResource* after;
+			IResource* resource;
 		};
 
 		struct ResourceBarrierDesc
@@ -218,11 +218,10 @@ namespace Luna
 				return ResourceBarrierDesc(desc, flags);
 			}
 
-			static ResourceBarrierDesc as_aliasing(IResource* before, IResource* after, ResourceBarrierFlag flags = ResourceBarrierFlag::none)
+			static ResourceBarrierDesc as_aliasing(IResource* resource, ResourceBarrierFlag flags = ResourceBarrierFlag::none)
 			{
 				ResourceAliasingBarrierDesc desc;
-				desc.before = before;
-				desc.after = after;
+				desc.resource = resource;
 				return ResourceBarrierDesc(desc, flags);
 			}
 
@@ -386,6 +385,8 @@ namespace Luna
 			u8 stencil_clear_value = 0;
 		};
 
+		struct ICommandQueue;
+
 		//! @interface ICommandBuffer
 		//! The command buffer is used to allocate memory for commands, record commands, submitting 
 		//! commands to GPU and tracks the state of the submitted commands.
@@ -403,6 +404,8 @@ namespace Luna
 
 			virtual CommandQueueType get_type() = 0;
 
+			virtual ICommandQueue* get_command_queue() = 0;
+
 			//! Resets the command buffer. This call clears all commands in the command buffer, resets the state tracking
 			//! infrastructure and reopens the command buffer for recording new commands.
 			//! 
@@ -417,6 +420,13 @@ namespace Luna
 			//! This is mainly used to keep references to the graphic objects used by the current command buffer, so they
 			//! will not be released before GPU finishes accessing them.
 			virtual void attach_graphic_object(IDeviceChild* obj) = 0;
+
+			//! Begins a new event. This is for use in diagnostic tools like RenderDoc, PIX, etc to group commands into hierarchical
+			//! sections.
+			virtual void begin_event(const Name& event_name) = 0;
+
+			//! Ends the latest event begun with `begin_event` that has not benn ended.
+			virtual void end_event() = 0;
 
 			//! Starts a new render pass. The previous render pass should be closed before beginning another one.
 			//! @param[in] desc The render pass descriptor object.
@@ -532,6 +542,19 @@ namespace Luna
 
 			//! Executes a command list from a thread group.
 			virtual void dispatch(u32 thread_group_count_x, u32 thread_group_count_y, u32 thread_group_count_z) = 0;
+
+			//! Writes the current GPU queue timestamp to the specified query heap.
+			//! @param[in] heap The query heap to write to.
+			//! @param[in] index The index of the query entry to write in the heap.
+			virtual void write_timestamp(IQueryHeap* heap, u32 index) = 0;
+
+			virtual void begin_pipeline_statistics_query(IQueryHeap* heap, u32 index) = 0;
+
+			virtual void end_pipeline_statistics_query(IQueryHeap* heap, u32 index) = 0;
+
+			virtual void begin_occlusion_query(IQueryHeap* heap, u32 index) = 0;
+
+			virtual void end_occlusion_query(IQueryHeap* heap, u32 index) = 0;
 
 			//virtual void dispatch_indirect(IResource* buffer, usize offset) = 0;
 

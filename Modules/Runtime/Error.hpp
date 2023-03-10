@@ -180,11 +180,12 @@ namespace Luna
 		LUNA_RUNTIME_API ErrCode not_found();
 		//! The specified item already exists.
 		LUNA_RUNTIME_API ErrCode already_exists();
-		//! Invalid arguments are specified.
+		//! Invalid arguments are specified. This is caused by a programming error and must be fixed before the application is released.
 		LUNA_RUNTIME_API ErrCode bad_arguments();
-		//! The system is not ready to perform the specified operation, like using one functionality before it is initialized, or 
+		//! The function calling time is not valid, like using one resource before it is initialized, or 
 		//! trying to reset one resource when the resource is still using.
-		LUNA_RUNTIME_API ErrCode not_ready();
+		//! This is caused by a programming error and must be fixed before the application is released.
+		LUNA_RUNTIME_API ErrCode bad_calling_time();
 		//! The system cannot allocate enough memory to finish this operation.
 		LUNA_RUNTIME_API ErrCode out_of_memory();
 		//! The required operation is not supported by the instance/platform/build.
@@ -201,9 +202,9 @@ namespace Luna
 		LUNA_RUNTIME_API ErrCode data_too_long();
 		//! The buffer provided by the user is not large enough to contain all returned data.
 		LUNA_RUNTIME_API ErrCode insufficient_user_buffer();
-		//! The service provider is too busy to handle this call. This usually happens when a non-blocking call is issued 
-		//! when the service provider is performing another operation.
-		LUNA_RUNTIME_API ErrCode busy();
+		//! The service provider is not capable of handling this call at this moment.
+		//! The user should try again later.
+		LUNA_RUNTIME_API ErrCode not_currently_available();
 		//! The value specified by the user is out of the valid range from the value.
 		LUNA_RUNTIME_API ErrCode out_of_range();
 		//! The system has run out of intenal resources (usually handles or resources with a fixed count limit) to finish the operation.

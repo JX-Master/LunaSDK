@@ -17,6 +17,8 @@
 #include "../../SwapChain.hpp"
 #include <Runtime/TSAssert.hpp>
 
+#pragma comment( lib, "dxguid.lib")
+
 namespace Luna
 {
 	namespace RHI
@@ -25,7 +27,7 @@ namespace Luna
 		class BackBufferResource;
 		struct SwapChain : ISwapChain
 		{
-			lustruct("RHI::D3D12::SwapChain", "{067d14fa-59c7-4f66-8fb0-1981d90a5a45}");
+			lustruct("RHI::SwapChain", "{067d14fa-59c7-4f66-8fb0-1981d90a5a45}");
 			luiimpl();
 			lutsassert_lock();
 
@@ -73,6 +75,13 @@ namespace Luna
 			IDevice* get_device()
 			{
 				return m_device.as<IDevice>();
+			}
+			void set_name(const Name& name) 
+			{
+				usize len = utf8_to_utf16_len(name.c_str(), name.size());
+				wchar_t* buf = (wchar_t*)alloca(sizeof(wchar_t) * (len + 1));
+				utf8_to_utf16((c16*)buf, len + 1, name.c_str(), name.size());
+				m_sc->SetPrivateData(WKPDID_D3DDebugObjectNameW, sizeof(wchar_t) * (len + 1), buf);
 			}
 
 			void wait()

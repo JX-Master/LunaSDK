@@ -21,7 +21,7 @@ namespace Luna
 	{
 		struct Resource : IResource
 		{
-			lustruct("RHI::D3D12::Resource", "{dd9486e7-5195-4be3-96a4-b27c2e06bc80}");
+			lustruct("RHI::Resource", "{dd9486e7-5195-4be3-96a4-b27c2e06bc80}");
 			luiimpl();
 			lutsassert_lock();
 
@@ -95,6 +95,7 @@ namespace Luna
 			{
 				return m_device.as<IDevice>();
 			}
+			void set_name(const Name& name) { set_object_name(m_res.Get(), name); }
 
 			ResourceDesc get_desc()
 			{

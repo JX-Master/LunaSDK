@@ -42,6 +42,7 @@ namespace Luna
 			{
 				return m_device.as<IDevice>();
 			}
+			void set_name(const Name& name) {}
 			void set_cbv(u32 binding_slot, IResource* res, const ConstantBufferViewDesc& cbv);
 			void set_cbv_array(u32 binding_slot, u32 offset, u32 num_descs, IResource** resources, const ConstantBufferViewDesc* descs);
 			void set_srv(u32 binding_slot, IResource* res, const ShaderResourceViewDesc* srv = nullptr);

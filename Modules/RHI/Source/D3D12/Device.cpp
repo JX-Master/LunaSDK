@@ -20,6 +20,7 @@
 #include "DescriptorSetLayout.hpp"
 #include "RenderTargetView.hpp"
 #include "DepthStencilView.hpp"
+#include "QueryHeap.hpp"
 
 namespace Luna
 {
@@ -217,7 +218,7 @@ namespace Luna
 		{
 			return 256;
 		}
-		void Device::calc_texture_subresource_buffer_placement(u32 width, u32 height, u32 depth, Format format,
+		void Device::get_texture_subresource_buffer_placement(u32 width, u32 height, u32 depth, Format format,
 			usize* row_pitch, usize* slice_pitch, usize* res_pitch)
 		{
 			u64 numBytes = 0;
@@ -360,12 +361,12 @@ namespace Luna
 				*res_pitch = (usize)(numBytes * depth);
 			}
 		}
-		usize Device::calc_resource_size(const ResourceDesc& desc, usize* out_alignment)
+		u64 Device::get_resource_size(const ResourceDesc& desc, u64* out_alignment)
 		{
 			D3D12_RESOURCE_DESC res_desc = encode_resource_desc(desc);
 			D3D12_RESOURCE_ALLOCATION_INFO info = m_device->GetResourceAllocationInfo(0, 1, &res_desc);
-			if (out_alignment) *out_alignment = (usize)info.Alignment;
-			return (usize)info.SizeInBytes;
+			if (out_alignment) *out_alignment = info.Alignment;
+			return info.SizeInBytes;
 		}
 		R<Ref<IResource>> Device::new_resource(const ResourceDesc& desc, const ClearValue* optimized_clear_value)
 		{
@@ -448,6 +449,7 @@ namespace Luna
 		}
 		R<Ref<IRenderTargetView>> Device::new_render_target_view(IResource* res, const RenderTargetViewDesc* desc)
 		{
+			lucheck_msg(res, "\"res\" was nullptr");
 			Ref<RenderTargetView> view = new_object<RenderTargetView>();
 			view->m_device = this;
 			RV r = view->init(res, desc);
@@ -459,6 +461,7 @@ namespace Luna
 		}
 		R<Ref<IDepthStencilView>> Device::new_depth_stencil_view(IResource* res, const DepthStencilViewDesc* desc)
 		{
+			lucheck_msg(res, "\"res\" was nullptr");
 			Ref<DepthStencilView> view = new_object<DepthStencilView>();
 			view->m_device = this;
 			RV r = view->init(res, desc);
@@ -467,6 +470,17 @@ namespace Luna
 				return r.errcode();
 			}
 			return view;
+		}
+		R<Ref<IQueryHeap>> Device::new_query_heap(const QueryHeapDesc& desc)
+		{
+			Ref<QueryHeap> heap = new_object<QueryHeap>();
+			heap->m_device = this;
+			RV r = heap->init(desc);
+			if (!r.valid())
+			{
+				return r.errcode();
+			}
+			return heap;
 		}
 	}
 }

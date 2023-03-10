@@ -88,6 +88,10 @@ namespace Luna
 	{
 		LUNA_RHI_API errcat_t errtype();
 
-		LUNA_RHI_API ErrCode device_lost();
+		LUNA_RHI_API ErrCode device_hung();
+		LUNA_RHI_API ErrCode device_reset();
+		LUNA_RHI_API ErrCode device_removed();
+		LUNA_RHI_API ErrCode driver_internal_error();
+		LUNA_RHI_API ErrCode frame_statistics_disjoint();
 	}
 }

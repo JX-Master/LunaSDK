@@ -90,12 +90,12 @@ namespace Luna
 			void reset();
 			void drawcall_barrier()
 			{
-				lutsassert(this);
+				lutsassert();
 				m_dc_barrier_index = (u32)m_draw_calls.size();
 			}
 			void set_shape_atlas(IShapeAtlas* atlas)
 			{
-				lutsassert(this);
+				lutsassert();
 				if (m_atlas != atlas)
 				{
 					m_state_dirty = true;
@@ -108,7 +108,7 @@ namespace Luna
 			}
 			void set_texture(RHI::IResource* tex)
 			{
-				lutsassert(this);
+				lutsassert();
 				if (m_texture != tex)
 				{
 					m_state_dirty = true;
@@ -121,7 +121,7 @@ namespace Luna
 			}
 			void set_sampler(const RHI::SamplerDesc* desc)
 			{
-				lutsassert(this);
+				lutsassert();
 				RHI::SamplerDesc d;
 				if (!desc)
 				{
@@ -143,7 +143,7 @@ namespace Luna
 			}
 			void set_origin(const Float2& origin)
 			{
-				lutsassert(this);
+				lutsassert();
 				if (m_origin != origin)
 				{
 					m_state_dirty = true;
@@ -156,7 +156,7 @@ namespace Luna
 			}
 			void set_rotation(f32 degrees)
 			{
-				lutsassert(this);
+				lutsassert();
 				if (m_rotation != degrees)
 				{
 					m_state_dirty = true;
@@ -169,7 +169,7 @@ namespace Luna
 			}
 			void set_clip_rect(const RectI& clip_rect)
 			{
-				lutsassert(this);
+				lutsassert();
 				if (m_clip_rect != clip_rect)
 				{
 					m_state_dirty = true;

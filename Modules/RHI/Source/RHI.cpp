@@ -39,9 +39,29 @@ namespace Luna
 			return e;
 		}
 
-		LUNA_RHI_API ErrCode device_lost()
+		LUNA_RHI_API ErrCode device_hung()
 		{
-			static ErrCode e = get_error_code_by_name("RHIError", "device_lost");
+			static ErrCode e = get_error_code_by_name("RHIError", "device_hung");
+			return e;
+		}
+		LUNA_RHI_API ErrCode device_reset()
+		{
+			static ErrCode e = get_error_code_by_name("RHIError", "device_reset");
+			return e;
+		}
+		LUNA_RHI_API ErrCode device_removed()
+		{
+			static ErrCode e = get_error_code_by_name("RHIError", "device_removed");
+			return e;
+		}
+		LUNA_RHI_API ErrCode driver_internal_error()
+		{
+			static ErrCode e = get_error_code_by_name("RHIError", "driver_internal_error");
+			return e;
+		}
+		LUNA_RHI_API ErrCode frame_statistics_disjoint()
+		{
+			static ErrCode e = get_error_code_by_name("RHIError", "frame_statistics_disjoint");
 			return e;
 		}
 	}

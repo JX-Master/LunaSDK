@@ -13,6 +13,7 @@
 #include "Device.hpp"
 #include "ShaderInputLayout.hpp"
 #include "../../PipelineState.hpp"
+#include "D3D12Common.hpp"
 
 namespace Luna
 {
@@ -20,7 +21,7 @@ namespace Luna
 	{
 		struct PipelineState : IPipelineState
 		{
-			lustruct("RHI::D3D12::PipelineState", "{31F529FE-43C4-4DF1-842B-BAF52CCFCF3F}");
+			lustruct("RHI::PipelineState", "{31F529FE-43C4-4DF1-842B-BAF52CCFCF3F}");
 			luiimpl()
 
 			Ref<Device> m_device;
@@ -34,6 +35,7 @@ namespace Luna
 			{
 				return m_device.as<IDevice>();
 			}
+			void set_name(const Name& name) { set_object_name(m_pso.Get(), name); }
 
 			bool init_graphic(const GraphicPipelineStateDesc& desc);
 			bool init_compute(const ComputePipelineStateDesc& desc);

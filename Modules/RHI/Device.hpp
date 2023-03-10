@@ -15,6 +15,7 @@
 #include "CommandQueue.hpp"
 #include "RenderTargetView.hpp"
 #include "DepthStencilView.hpp"
+#include "QueryHeap.hpp"
 
 namespace Luna
 {
@@ -34,7 +35,7 @@ namespace Luna
 			//! Gets the alignment for the buffer data start location and size.
 			virtual usize get_constant_buffer_data_alignment() = 0;
 
-			//! Calculates the placement information for the specified texture subresource. The texture data is arranged in row-major order.
+			//! Gets the placement information for the specified texture subresource. The texture data is arranged in row-major order.
 			//! @param[in] width The width of the subresource.
 			//! @param[in] height The height of the subresource.
 			//! @param[in] depth The depth of the subresource.
@@ -42,11 +43,14 @@ namespace Luna
 			//! @param[out] row_pitch The row pitch of the subresource. Specify `nullptr` if this is not needed.
 			//! @param[out] slice_pitch The slice pitch (size) of the subresource. Specify `nullptr` if this is not needed.
 			//! @param[out] res_pitch The pitch of the whole subresource, which is the size of the subresource. Specify `nullptr` if this is not needed.
-			virtual void calc_texture_subresource_buffer_placement(u32 width, u32 height, u32 depth, Format format,
+			virtual void get_texture_subresource_buffer_placement(u32 width, u32 height, u32 depth, Format format,
 				usize* row_pitch, usize* slice_pitch, usize* res_pitch) = 0;
 
-			//! Calculates the resource size by its descriptor. The size can be used to create buffers for uploading/reading data of the resource.
-			virtual usize calc_resource_size(const ResourceDesc& desc, usize* out_alignment = nullptr) = 0;
+			//! Gets the resource size by its descriptor. The size can be used to create buffers for uploading/reading data of the resource.
+			//! @param[in] desc The resource descriptor.
+			//! @param[out] out_alignment The optional pointer that retrieves the memory alignment of the resource.
+			//! @return The size of the resource in bytes.
+			virtual u64 get_resource_size(const ResourceDesc& desc, u64* out_alignment = nullptr) = 0;
 
 			//! Creates one new resource.
 			//! @param[in] desc The descriptor object.
@@ -83,6 +87,8 @@ namespace Luna
 			virtual R<Ref<IRenderTargetView>> new_render_target_view(IResource* resource, const RenderTargetViewDesc* desc = nullptr) = 0;
 
 			virtual R<Ref<IDepthStencilView>> new_depth_stencil_view(IResource* resource, const DepthStencilViewDesc* desc = nullptr) = 0;
+		
+			virtual R<Ref<IQueryHeap>> new_query_heap(const QueryHeapDesc& desc) = 0;
 		};
 	}
 }

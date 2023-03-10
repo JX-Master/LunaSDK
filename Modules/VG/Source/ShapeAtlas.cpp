@@ -101,7 +101,7 @@ namespace Luna
 		}
 		usize ShapeAtlas::add_shape(Span<const f32> commands, const RectF* bounding_rect)
 		{
-			lutsassert(this);
+			lutsassert();
 			usize begin = m_commands.size();
 			m_commands.insert_n(m_commands.end(), commands.data(), commands.size());
 			ShapeDesc desc;
@@ -122,7 +122,7 @@ namespace Luna
 		}
 		usize ShapeAtlas::add_shapes(const f32* commands, Span<ShapeDesc> shapes)
 		{
-			lutsassert(this);
+			lutsassert();
 			usize r = m_shapes.size();
 			if (shapes.empty()) return r;
 			usize num_commands = shapes.back().command_offset + shapes.back().num_commands;
@@ -147,7 +147,7 @@ namespace Luna
 		}
 		usize ShapeAtlas::copy_shapes(IShapeAtlas* src, usize start_shape_index, usize num_shapes)
 		{
-			lutsassert(this);
+			lutsassert();
 			ShapeAtlas* s = (ShapeAtlas*)src->get_object();
 			lucheck(start_shape_index + num_shapes <= s->m_shapes.size());
 			usize r = m_shapes.size();
@@ -168,7 +168,7 @@ namespace Luna
 		}
 		void ShapeAtlas::remove_shapes(usize start_shape_index, usize num_shapes)
 		{
-			lutsassert(this);
+			lutsassert();
 			lucheck(start_shape_index + num_shapes <= m_shapes.size());
 			if (!num_shapes) return;
 			usize remove_begin = m_shapes[start_shape_index].command_offset;
@@ -184,7 +184,7 @@ namespace Luna
 		}
 		R<RHI::IResource*> ShapeAtlas::get_shape_resource()
 		{
-			lutsassert(this);
+			lutsassert();
 			lutry
 			{
 				if (m_buffer_resource_dirty)

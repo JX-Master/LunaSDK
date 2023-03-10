@@ -76,7 +76,7 @@ namespace Luna
 		//! @class Device
 		struct Device : IDevice
 		{
-			lustruct("RHI::D3D12::Device", "{038b4cb4-5e16-41a1-ad6f-7e2a49e2241e}");
+			lustruct("RHI::Device", "{038b4cb4-5e16-41a1-ad6f-7e2a49e2241e}");
 			luiimpl()
 
 			ComPtr<ID3D12Device> m_device;
@@ -107,9 +107,9 @@ namespace Luna
 			usize get_texture_data_pitch_alignment();
 			usize get_texture_data_placement_alignment();
 			usize get_constant_buffer_data_alignment();
-			void  calc_texture_subresource_buffer_placement(u32 width, u32 height, u32 depth, Format format,
+			void  get_texture_subresource_buffer_placement(u32 width, u32 height, u32 depth, Format format,
 				usize* row_pitch, usize* slice_pitch, usize* res_pitch);
-			usize calc_resource_size(const ResourceDesc& desc, usize* out_alignment);
+			usize get_resource_size(const ResourceDesc& desc, usize* out_alignment);
 			R<Ref<IResource>> new_resource(const ResourceDesc& desc, const ClearValue* optimized_clear_value);
 			R<Ref<IResourceHeap>> new_resource_heap(const ResourceHeapDesc& desc);
 			R<Ref<IShaderInputLayout>> new_shader_input_layout(const ShaderInputLayoutDesc& desc);
@@ -120,6 +120,7 @@ namespace Luna
 			R<Ref<ICommandQueue>> new_command_queue(CommandQueueType type);
 			R<Ref<IRenderTargetView>> new_render_target_view(IResource* resource, const RenderTargetViewDesc* desc);
 			R<Ref<IDepthStencilView>> new_depth_stencil_view(IResource* resource, const DepthStencilViewDesc* desc);
+			R<Ref<IQueryHeap>> new_query_heap(const QueryHeapDesc& desc);
 		};
 
 		inline D3D12_HEAP_PROPERTIES encode_heap_properties(Device* device, ResourceHeapType heap_type)

@@ -45,7 +45,7 @@ namespace Luna
                 ErrCode err_code;
                 switch (code)
                 {
-                case GLFW_NOT_INITIALIZED: err_code = BasicError::not_ready(); break;
+                case GLFW_NOT_INITIALIZED: err_code = BasicError::bad_calling_time(); break;
                 case GLFW_NO_CURRENT_CONTEXT: err_code = BasicError::bad_platform_call(); break;
                 case GLFW_INVALID_ENUM: err_code = BasicError::bad_arguments(); break;
                 case GLFW_INVALID_VALUE: err_code = BasicError::bad_arguments(); break;

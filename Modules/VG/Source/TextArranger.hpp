@@ -48,7 +48,7 @@ namespace Luna
 
 			void reset()
 			{
-				lutsassert(this);
+				lutsassert();
 				m_text.clear();
 				m_states.clear();
 				m_state_dirty = true;
@@ -61,7 +61,7 @@ namespace Luna
 
 			void clear_text_buffer()
 			{
-				lutsassert(this);
+				lutsassert();
 				m_text.clear();
 				m_states.clear();
 				m_state_dirty = true;
@@ -73,7 +73,7 @@ namespace Luna
 			}
 			void  set_font(IFontAtlas* font)
 			{
-				lutsassert(this);
+				lutsassert();
 				if (font != m_current_state.m_font)
 				{
 					m_current_state.m_font = font;
@@ -86,7 +86,7 @@ namespace Luna
 			}
 			void  set_font_color(color_u32 color)
 			{
-				lutsassert(this);
+				lutsassert();
 				if (color != m_current_state.m_color)
 				{
 					m_current_state.m_color = color;
@@ -99,7 +99,7 @@ namespace Luna
 			}
 			void  set_font_size(f32 size)
 			{
-				lutsassert(this);
+				lutsassert();
 				if (m_current_state.m_size != size)
 				{
 					m_current_state.m_size = size;
@@ -112,7 +112,7 @@ namespace Luna
 			}
 			void set_char_span(f32 span)
 			{
-				lutsassert(this);
+				lutsassert();
 				if (m_current_state.m_char_span != span)
 				{
 					m_current_state.m_char_span = span;
@@ -125,7 +125,7 @@ namespace Luna
 			}
 			void  set_line_span(f32 span)
 			{
-				lutsassert(this);
+				lutsassert();
 				if (m_current_state.m_line_span != span)
 				{
 					m_current_state.m_line_span = span;

@@ -50,7 +50,7 @@ namespace Luna
 		{
 			switch (err)
 			{
-			case WSANOTINITIALISED: return BasicError::not_ready();
+			case WSANOTINITIALISED: return BasicError::bad_calling_time();
 			case WSAENETDOWN: return NetworkError::network_down();
 			case WSAENOBUFS: return BasicError::insufficient_system_buffer();
 			case WSAENOTCONN: return NetworkError::not_connected();
@@ -72,13 +72,13 @@ namespace Luna
 			case WSAECONNREFUSED: return NetworkError::connection_refused();
 			case WSAENETUNREACH: return NetworkError::network_unreachable();
 			case WSAEHOSTUNREACH: return NetworkError::host_unreachable();
-			case WSASYSNOTREADY: return BasicError::not_ready();
+			case WSASYSNOTREADY: return BasicError::bad_calling_time();
 			case WSAVERNOTSUPPORTED: return BasicError::not_supported();
 			case WSAEPROCLIM: return BasicError::out_of_resource();
 			case WSAEPROTOTYPE: return NetworkError::protocol_not_supported();
 			case WSAESOCKTNOSUPPORT: return BasicError::bad_arguments();
 			case WSAEPROTONOSUPPORT: return NetworkError::protocol_not_supported();
-			case WSATRY_AGAIN: return BasicError::busy();
+			case WSATRY_AGAIN: return BasicError::not_currently_available();
 			case WSANO_RECOVERY: return BasicError::bad_arguments();
 			case WSA_NOT_ENOUGH_MEMORY: return BasicError::out_of_memory();
 			case WSAHOST_NOT_FOUND: return NetworkError::host_not_found();

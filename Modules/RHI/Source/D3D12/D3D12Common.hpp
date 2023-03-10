@@ -15,6 +15,8 @@
 #include <d3d12.h>
 #include "../DXGI/Common.hpp"
 #include "../../CommandBuffer.hpp"
+#include <Runtime/Unicode.hpp>
+#include "../RHI.hpp"
 
 namespace Luna
 {
@@ -248,6 +250,43 @@ namespace Luna
 			}
 #endif
 			return rd;
+		}
+
+		inline void set_object_name(ID3D12Object* object, const Name& name)
+		{
+			usize len = utf8_to_utf16_len(name.c_str(), name.size());
+			wchar_t* buf = (wchar_t*)alloca(sizeof(wchar_t) * (len + 1));
+			utf8_to_utf16((c16*)buf, len + 1, name.c_str(), name.size());
+			object->SetName(buf);
+		}
+
+		inline ErrCode encode_d3d12_error(HRESULT code)
+		{
+			switch(code)
+			{
+			case D3D12_ERROR_ADAPTER_NOT_FOUND: 
+			case DXGI_ERROR_NOT_FOUND: return BasicError::not_found();
+			case D3D12_ERROR_DRIVER_VERSION_MISMATCH: return BasicError::version_dismatch();
+			case DXGI_ERROR_INVALID_CALL:
+			case E_INVALIDARG: return BasicError::bad_arguments();
+			case DXGI_ERROR_NONEXCLUSIVE:
+			case DXGI_ERROR_WAS_STILL_DRAWING: 
+			case DXGI_ERROR_NOT_CURRENTLY_AVAILABLE: return BasicError::not_currently_available();
+			case E_OUTOFMEMORY: return BasicError::out_of_memory();
+			case E_NOTIMPL: 
+			case DXGI_ERROR_UNSUPPORTED: return BasicError::not_supported();
+			case DXGI_ERROR_ACCESS_DENIED: return BasicError::access_denied();
+			case DXGI_ERROR_NAME_ALREADY_EXISTS:
+			case DXGI_ERROR_ALREADY_EXISTS: return BasicError::already_exists();
+			case DXGI_ERROR_DEVICE_HUNG: return RHIError::device_hung();
+			case DXGI_ERROR_DEVICE_REMOVED: return RHIError::device_removed();
+			case DXGI_ERROR_DEVICE_RESET: return RHIError::device_reset();
+			case DXGI_ERROR_DRIVER_INTERNAL_ERROR: return RHIError::driver_internal_error();
+			case DXGI_ERROR_FRAME_STATISTICS_DISJOINT: return RHIError::frame_statistics_disjoint();
+			case DXGI_ERROR_MORE_DATA: return BasicError::insufficient_user_buffer();
+			case DXGI_ERROR_WAIT_TIMEOUT: return BasicError::timeout();
+			default: return BasicError::bad_platform_call();
+			}
 		}
 	}
 }

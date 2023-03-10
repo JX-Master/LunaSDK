@@ -282,9 +282,9 @@ namespace Luna
 			static ErrCode e = get_error_code_by_name("BasicError", "bad_arguments");
 			return e;
 		}
-		LUNA_RUNTIME_API ErrCode not_ready()
+		LUNA_RUNTIME_API ErrCode bad_calling_time()
 		{
-			static ErrCode e = get_error_code_by_name("BasicError", "not_ready");
+			static ErrCode e = get_error_code_by_name("BasicError", "bad_calling_time");
 			return e;
 		}
 		LUNA_RUNTIME_API ErrCode out_of_memory()
@@ -332,9 +332,9 @@ namespace Luna
 			static ErrCode e = get_error_code_by_name("BasicError", "insufficient_buffer");
 			return e;
 		}
-		LUNA_RUNTIME_API ErrCode busy()
+		LUNA_RUNTIME_API ErrCode not_currently_available()
 		{
-			static ErrCode e = get_error_code_by_name("BasicError", "busy");
+			static ErrCode e = get_error_code_by_name("BasicError", "not_currently_available");
 			return e;
 		}
 		LUNA_RUNTIME_API ErrCode out_of_range()

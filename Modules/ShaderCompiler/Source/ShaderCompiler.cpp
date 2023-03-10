@@ -424,7 +424,7 @@ namespace Luna
 		}
 		RV Compiler::compile()
 		{
-			lutsassert(this);
+			lutsassert();
 			clear_output();
 			switch (m_target_format)
 			{
@@ -454,7 +454,7 @@ namespace Luna
 		}
 		Span<const byte_t> Compiler::get_output()
 		{
-			lutsassert(this);
+			lutsassert();
 			return Span<const byte_t>(m_out_data, m_out_size);
 		}
 

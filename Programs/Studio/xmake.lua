@@ -2,7 +2,7 @@ target("Studio")
     set_luna_sdk_program()
     add_headerfiles("**.hpp")
     add_files("**.cpp")
-    add_deps("Runtime", "HID", "Window", "RHI", "Image", "Font", "ImGui", "Asset", "ObjLoader")
+    add_deps("Runtime", "HID", "Window", "RHI", "Image", "Font", "ImGui", "Asset", "ObjLoader", "RG")
     add_packages("imgui")
 
     after_build(function (target)
@@ -11,15 +11,15 @@ target("Studio")
         local target_dir = target:targetdir()
         compile_shader.compile_shader(vformat("$(scriptdir)/Shaders/LightingPassPixel.hlsl"), 
             {type = "ps", shading_model = "5_1", output_path = target_dir, envs = runenvs})
-        compile_shader.compile_shader(vformat("$(scriptdir)/Shaders/LumCS.hlsl"), 
-            {type = "cs", shading_model = "5_1", output_path = target_dir, envs = runenvs})
-        compile_shader.compile_shader(vformat("$(scriptdir)/Shaders/LumFirstCS.hlsl"), 
-            {type = "cs", shading_model = "5_1", output_path = target_dir, envs = runenvs})
         compile_shader.compile_shader(vformat("$(scriptdir)/Shaders/MipmapGenerationCS.hlsl"), 
             {type = "cs", shading_model = "5_1", output_path = target_dir, envs = runenvs})
         compile_shader.compile_shader(vformat("$(scriptdir)/Shaders/SkyboxCS.hlsl"), 
             {type = "cs", shading_model = "5_1", output_path = target_dir, envs = runenvs})
         compile_shader.compile_shader(vformat("$(scriptdir)/Shaders/ToneMappingCS.hlsl"), 
+            {type = "cs", shading_model = "5_1", output_path = target_dir, envs = runenvs})
+        compile_shader.compile_shader(vformat("$(scriptdir)/Shaders/LumHistogram.hlsl"), 
+            {type = "cs", shading_model = "5_1", output_path = target_dir, envs = runenvs})
+        compile_shader.compile_shader(vformat("$(scriptdir)/Shaders/LumHistogramCollect.hlsl"), 
             {type = "cs", shading_model = "5_1", output_path = target_dir, envs = runenvs})
     end)
 
@@ -27,11 +27,11 @@ target("Studio")
         local shader_files = {
             "Studio.exe",
             "LightingPassPixel.cso",
-            "LumCS.cso",
-            "LumFirstCS.cso",
             "MipmapGenerationCS.cso",
             "SkyboxCS.cso",
-            "ToneMappingCS.cso"
+            "ToneMappingCS.cso",
+            "LumHistogram.cso",
+            "LumHistogramCollect.cso"
         }
 
         for _, i in pairs(shader_files) do

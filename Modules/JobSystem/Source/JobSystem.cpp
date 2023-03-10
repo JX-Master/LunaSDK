@@ -139,12 +139,15 @@ namespace Luna
 		{
 			SpinLock m_lock;
 			RingDeque<JobHeader*> m_jobs;
+			Ref<ISignal> m_wake_signal;
 			bool m_thread_dead = false;
 		};
 
 		static SpinLock g_worker_thread_contexts_lock;
 		static Vector<WorkerThreadContext*> g_worker_thread_contexts;
 		static Vector<Ref<IThread>> g_worker_threads;
+		static SpinLock g_sleep_worker_threads_lock;
+		static Vector<WorkerThreadContext*> g_sleep_worker_threads;
 		static opaque_t g_worker_thread_tls;
 		static bool g_job_system_exiting;
 
@@ -176,6 +179,11 @@ namespace Luna
 		void job_system_close()
 		{
 			g_job_system_exiting = true;
+			// Wake up all sleep threads.
+			for (auto& t : g_sleep_worker_threads)
+			{
+				t->m_wake_signal->trigger();
+			}
 			// Wait for all threads to exit.
 			g_worker_threads.clear();
 			g_worker_threads.shrink_to_fit();
@@ -189,6 +197,8 @@ namespace Luna
 			g_worker_thread_contexts.clear();
 			g_worker_thread_contexts.shrink_to_fit();
 			g_worker_thread_contexts_lock.unlock();
+			g_sleep_worker_threads.clear();
+			g_sleep_worker_threads.shrink_to_fit();
 			close_job_state_map();
 		}
 		static WorkerThreadContext* get_current_thread_worker_context()
@@ -209,26 +219,39 @@ namespace Luna
 		{
 			LockGuard guard(g_worker_thread_contexts_lock);
 			if (g_worker_thread_contexts.empty()) return nullptr;
-			u32 index = random_u32() % (u32)g_worker_thread_contexts.size();
-			WorkerThreadContext* steal_ctx = g_worker_thread_contexts[index];
-			if (steal_ctx == current_ctx) return nullptr;
-			steal_ctx->m_lock.lock();
-			if (steal_ctx->m_thread_dead && steal_ctx->m_jobs.empty())
+			u32 rand_index = random_u32() % (u32)g_worker_thread_contexts.size();
+			usize i = 0;
+			while (i < g_worker_thread_contexts.size())
 			{
-				// Remove this context.
-				steal_ctx->m_lock.unlock();
-				g_worker_thread_contexts.erase(g_worker_thread_contexts.begin() + index);
-				memdelete(steal_ctx);
-				return nullptr;
+				u32 index = (rand_index + i) % (u32)g_worker_thread_contexts.size();
+				WorkerThreadContext* steal_ctx = g_worker_thread_contexts[index];
+				if (steal_ctx == current_ctx)
+				{
+					++i;
+					continue;
+				}
+				steal_ctx->m_lock.lock();
+				if (steal_ctx->m_thread_dead && steal_ctx->m_jobs.empty())
+				{
+					// Remove this context.
+					steal_ctx->m_lock.unlock();
+					g_worker_thread_contexts.erase(g_worker_thread_contexts.begin() + index);
+					memdelete(steal_ctx);
+				}
+				else
+				{
+					JobHeader* job = nullptr;
+					if (!steal_ctx->m_jobs.empty())
+					{
+						job = steal_ctx->m_jobs.front();
+						steal_ctx->m_jobs.pop_front();
+					}
+					steal_ctx->m_lock.unlock();
+					if (job) return job;
+					++i;
+				}
 			}
-			JobHeader* job = nullptr;
-			if (!steal_ctx->m_jobs.empty())
-			{
-				job = steal_ctx->m_jobs.front();
-				steal_ctx->m_jobs.pop_front();
-			}
-			steal_ctx->m_lock.unlock();
-			return job;
+			return nullptr;
 		}
 		static JobHeader* consume_job()
 		{
@@ -276,6 +299,16 @@ namespace Luna
 			job->m_func(job->get_params());
 			finish_job(job);
 		}
+		static void worker_thread_sleep()
+		{
+			WorkerThreadContext* ctx = get_current_thread_worker_context();
+			if (!ctx->m_wake_signal) ctx->m_wake_signal = new_signal(false);
+			// Add the current thread to sleep list.
+			g_sleep_worker_threads_lock.lock();
+			g_sleep_worker_threads.push_back(ctx);
+			g_sleep_worker_threads_lock.unlock();
+			ctx->m_wake_signal->wait();
+		}
 		static void worker_thread_run(void* params)
 		{
 			while (!g_job_system_exiting)
@@ -284,6 +317,10 @@ namespace Luna
 				if (job)
 				{
 					execute_job(job);
+				}
+				else
+				{
+					worker_thread_sleep();
 				}
 			}
 		}
@@ -295,6 +332,15 @@ namespace Luna
 			WorkerThreadContext* ctx = get_current_thread_worker_context();
 			LockGuard lock(ctx->m_lock);
 			ctx->m_jobs.push_back(job);
+			// Wake up one worker thread if any.
+			g_sleep_worker_threads_lock.lock();
+			if (!g_sleep_worker_threads.empty())
+			{
+				WorkerThreadContext* worker = g_sleep_worker_threads.back();
+				g_sleep_worker_threads.pop_back();
+				worker->m_wake_signal->trigger();
+			}
+			g_sleep_worker_threads_lock.unlock();
 			return id;
 		}
 		LUNA_JOBSYSTEM_API job_id_t get_current_job_id(void* params)

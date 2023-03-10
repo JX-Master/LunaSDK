@@ -47,19 +47,6 @@ namespace Luna
 
 	namespace RHI
 	{
-		// Only for Non-Simultaneous-Access Textures.
-		inline bool is_texture_decayable_to_common(ResourceState s)
-		{
-			/*if (s == ResourceState::common ||
-				s == ResourceState::shader_resource_non_pixel ||
-				s == ResourceState::shader_resource_pixel ||
-				s == ResourceState::copy_source)
-			{
-				return true;
-			}*/
-			return false;
-		}
-
 		class ResourceStateTrackingSystem
 		{
 		public:
@@ -124,32 +111,29 @@ namespace Luna
 				{
 					Resource* res = const_cast<Resource*>(static_cast<const Resource*>(desc.transition.resource->get_object()));
 					pack_transition(res, desc.transition.subresource, desc.transition.after, desc.flags);
-					return;
+					break;
 				}
 				case ResourceBarrierType::aliasing:
 				{
-					if (desc.aliasing.after)
+					if (desc.aliasing.resource)
 					{
 						D3D12_RESOURCE_BARRIER ba;
 						ba.Type = D3D12_RESOURCE_BARRIER_TYPE_ALIASING;
-						if (desc.aliasing.before)
-						{
-							ba.Aliasing.pResourceBefore = static_cast<const Resource*>(desc.aliasing.before->get_object())->m_res.Get();
-						}
-						else
-						{
-							ba.Aliasing.pResourceBefore = nullptr;
-						}
-						ba.Aliasing.pResourceAfter = static_cast<const Resource*>(desc.aliasing.after->get_object())->m_res.Get();
+						ba.Aliasing.pResourceBefore = nullptr;
+						ba.Aliasing.pResourceAfter = static_cast<const Resource*>(desc.aliasing.resource->get_object())->m_res.Get();
+						ba.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
 						m_barriers.push_back(ba);
 					}
+					break;
 				}
 				case ResourceBarrierType::uav:
 				{
 					D3D12_RESOURCE_BARRIER ba;
 					ba.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
 					ba.UAV.pResource = static_cast<Resource*>(desc.uav.resource->get_object())->m_res.Get();
+					ba.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
 					m_barriers.push_back(ba);
+					break;
 				}
 				default:
 					lupanic();
@@ -175,7 +159,7 @@ namespace Luna
 
 		struct CommandBuffer : ICommandBuffer
 		{
-			lustruct("RHI::D3D12::CommandBuffer", "{2aa94bb6-f36d-4aa2-826b-3076026c2cec}");
+			lustruct("RHI::CommandBuffer", "{2aa94bb6-f36d-4aa2-826b-3076026c2cec}");
 			luiimpl();
 			lutsassert_lock();
 
@@ -256,14 +240,30 @@ namespace Luna
 			{
 				return m_device.as<IDevice>();
 			}
+			void set_name(const Name& name) { set_object_name(m_ca.Get(), name); set_object_name(m_li.Get(), name); }
 			CommandQueueType get_type()
 			{
 				return m_queue->m_type;
+			}
+			ICommandQueue* get_command_queue()
+			{
+				return m_queue;
 			}
 			RV reset();
 			void attach_graphic_object(IDeviceChild* obj)
 			{
 				m_objs.push_back(obj);
+			}
+			void begin_event(const Name& event_name)
+			{
+				usize len = utf8_to_utf16_len(event_name.c_str(), event_name.size());
+				wchar_t* buf = (wchar_t*)alloca(sizeof(wchar_t) * (len + 1));
+				utf8_to_utf16((c16*)buf, len + 1, event_name.c_str(), event_name.size());
+				m_li->BeginEvent(0, buf, sizeof(wchar_t) * (len + 1));
+			}
+			void end_event()
+			{
+				m_li->EndEvent();
 			}
 			void begin_render_pass(const RenderPassDesc& desc);
 			void set_pipeline_state(IPipelineState* pso);
@@ -309,6 +309,11 @@ namespace Luna
 			void resource_barrier(const ResourceBarrierDesc& barrier);
 			void resource_barriers(Span<const ResourceBarrierDesc> barriers);
 			void dispatch(u32 thread_group_count_x, u32 thread_group_count_y, u32 thread_group_count_z);
+			void write_timestamp(IQueryHeap* heap, u32 index);
+			void begin_pipeline_statistics_query(IQueryHeap* heap, u32 index);
+			void end_pipeline_statistics_query(IQueryHeap* heap, u32 index);
+			void begin_occlusion_query(IQueryHeap* heap, u32 index);
+			void end_occlusion_query(IQueryHeap* heap, u32 index);
 			RV submit();
 		};
 	}

@@ -118,11 +118,11 @@ namespace Luna
 		}
 		void FillShapeRenderer::reset()
 		{
-			lutsassert(this);
+			lutsassert();
 		}
 		RV FillShapeRenderer::set_render_target(RHI::IResource* render_target)
 		{
-			lutsassert(this);
+			lutsassert();
 			m_render_target = render_target;
 			lutry
 			{
@@ -147,7 +147,7 @@ namespace Luna
 		)
 		{
 			using namespace RHI;
-			lutsassert(this);
+			lutsassert();
 			lutry
 			{
 				u32 cb_element_size = max<u32>((u32)get_main_device()->get_constant_buffer_data_alignment(), (u32)sizeof(Float4x4U));
