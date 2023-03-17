@@ -96,7 +96,7 @@ namespace Luna
 			case ResourceType::texture_3d:
 				return ShaderResourceViewDesc::as_tex3d(d.pixel_format, 0, d.mip_levels, 0.0f);
 			case ResourceType::buffer:
-				return ShaderResourceViewDesc::as_buffer(0, (u32)d.width_or_buffer_size, 1, false);
+				return ShaderResourceViewDesc::as_buffer(Format::unknown, 0, (u32)d.width_or_buffer_size, 1, false);
 			default:
 				break;
 			}

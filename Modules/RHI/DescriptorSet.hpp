@@ -130,10 +130,10 @@ namespace Luna
 				srv::TexCubeArray texcubearray;
 			};
 
-			static ShaderResourceViewDesc as_buffer(u64 offset, u32 count, u32 element_size, bool raw_view = false)
+			static ShaderResourceViewDesc as_buffer(Format format, u64 offset, u32 count, u32 element_size, bool raw_view = false)
 			{
 				ShaderResourceViewDesc desc;
-				desc.format = Format::unknown;
+				desc.format = format;
 				desc.type = ShaderResourceViewType::buffer;
 				desc.buffer.offset = offset;
 				desc.buffer.count = count;

@@ -14,7 +14,8 @@ namespace Luna
 {
 	namespace RHI
 	{
-		enum class ResourceHeapChildType : u8
+		//! Describes resources that can be placed in the heap.
+		enum class ResourceHeapUsageFlag : u8
 		{
 			none = 0,
 			//! Allow buffer resources being created in the heap.
@@ -25,6 +26,8 @@ namespace Luna
 			//! Allow textures with `ResourceUsage::render_target` and `ResourceUsage::depth_stencil`
 			//! usages being created in this heap.
 			texture_rt_ds = 0x04,
+			//! Allow MSAA textures being created in this heap.
+			texture_msaa = 0x08,
 		};
 
 		struct ResourceHeapDesc
@@ -32,11 +35,9 @@ namespace Luna
 			//! The type of the resource heap.
 			ResourceHeapType type;
 			//! The type of resources that can be created in this heap.
-			ResourceHeapChildType child_types;
+			ResourceHeapUsageFlag usages;
 			//! The size of the resource heap in bytes.
 			u64 size;
-			//! The alignment of the resource heap in bytes.
-			u64 alignment;
 		};
 
 		//! @interface IResourceHeap
