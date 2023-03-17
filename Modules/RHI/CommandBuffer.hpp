@@ -460,7 +460,7 @@ namespace Luna
 
 			//! Sets the descriptor set to be used by the graphic pipeline.
 			//! This must be called after `set_pipeline_state`.
-			virtual void set_graphic_descriptor_set(usize index, IDescriptorSet* descriptor_set) = 0;
+			virtual void set_graphic_descriptor_set(u32 index, IDescriptorSet* descriptor_set) = 0;
 
 			//! Bind information about the primitive type, and data order that describes input data for the input assembler stage.
 			virtual void set_primitive_topology(PrimitiveTopology primitive_topology) = 0;
@@ -532,7 +532,7 @@ namespace Luna
 
 			//! Sets the view set to be used by the compute pipeline.
 			//! This must be called after `set_pipeline_state`.
-			virtual void set_compute_descriptor_set(usize index, IDescriptorSet* descriptor_set) = 0;
+			virtual void set_compute_descriptor_set(u32 index, IDescriptorSet* descriptor_set) = 0;
 
 			//! Issues one resource barrier.
 			virtual void resource_barrier(const ResourceBarrierDesc& barrier) = 0;

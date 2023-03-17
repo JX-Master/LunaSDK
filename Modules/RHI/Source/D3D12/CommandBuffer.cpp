@@ -371,7 +371,7 @@ namespace Luna
 			m_li->IASetIndexBuffer(&v);
 		}
 
-		void CommandBuffer::set_graphic_descriptor_set(usize index, IDescriptorSet* descriptor_set)
+		void CommandBuffer::set_graphic_descriptor_set(u32 index, IDescriptorSet* descriptor_set)
 		{
 			lutsassert();
 			lucheck_msg(m_graphic_shader_input_layout, "Graphic Shader Input Layout must be set before Graphic View Set can be bound!");
@@ -824,7 +824,7 @@ namespace Luna
 			m_li->SetComputeRootSignature(o->m_rs.Get());
 		}
 
-		void CommandBuffer::set_compute_descriptor_set(usize index, IDescriptorSet* descriptor_set)
+		void CommandBuffer::set_compute_descriptor_set(u32 index, IDescriptorSet* descriptor_set)
 		{
 			lutsassert();
 			lucheck_msg(m_compute_shader_input_layout, "Compute Shader Input Layout must be set before Compute View Set can be attached.");

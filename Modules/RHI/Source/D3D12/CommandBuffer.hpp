@@ -270,7 +270,7 @@ namespace Luna
 			void set_graphic_shader_input_layout(IShaderInputLayout* shader_input_layout);
 			void set_vertex_buffers(u32 start_slot, Span<const VertexBufferViewDesc> views);
 			void set_index_buffer(IResource* buffer, u32 offset_in_bytes, u32 size_in_bytes, Format format);
-			void set_graphic_descriptor_set(usize index, IDescriptorSet* descriptor_set);
+			void set_graphic_descriptor_set(u32 index, IDescriptorSet* descriptor_set);
 			void set_primitive_topology(PrimitiveTopology primitive_topology);
 			void set_stream_output_targets(u32 start_slot, Span<const StreamOutputBufferView> views);
 			void set_viewport(const Viewport& viewport)
@@ -305,7 +305,7 @@ namespace Luna
 			void copy_texture_region(const TextureCopyLocation& dst, u32 dst_x, u32 dst_y, u32 dst_z,
 				const TextureCopyLocation& src, const BoxU* src_box = nullptr);
 			void set_compute_shader_input_layout(IShaderInputLayout* shader_input_layout);
-			void set_compute_descriptor_set(usize index, IDescriptorSet* descriptor_set);
+			void set_compute_descriptor_set(u32 index, IDescriptorSet* descriptor_set);
 			void resource_barrier(const ResourceBarrierDesc& barrier);
 			void resource_barriers(Span<const ResourceBarrierDesc> barriers);
 			void dispatch(u32 thread_group_count_x, u32 thread_group_count_y, u32 thread_group_count_z);
