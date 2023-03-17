@@ -218,7 +218,6 @@ void draw()
 void resize(u32 width, u32 height)
 {
 	rtv = get_main_device()->new_render_target_view(get_back_buffer()).get();
-	draw();
 }
 
 void cleanup()

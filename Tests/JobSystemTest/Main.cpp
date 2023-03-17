@@ -17,7 +17,7 @@ namespace Luna
 	using namespace JobSystem;
 	static void test_func_1(void* params)
 	{
-		sleep(100);
+		sleep(1000);
 		printf("Job executed in thread %lld\n", (u64)get_current_thread());
 	}
 
@@ -32,7 +32,7 @@ namespace Luna
 		JobData* job_data = (JobData*)params;
 		if (!job_data->recursive_depth)
 		{
-			sleep(1);
+			sleep(100);
 		}
 		else
 		{
@@ -55,14 +55,16 @@ namespace Luna
 		{
 			u64 begin_time = get_ticks();
 			constexpr usize N = 100;
-			void* root = new_job(test_func_1, 0, 0);
+			job_id_t jobs[N];
 			for (usize i = 0; i < N; ++i)
 			{
-				void* job = new_job(test_func_1, 0, 0, root);
-				submit_job(job);
+				void* job = new_job(test_func_1, 0, 0);
+				jobs[i] = submit_job(job);
 			}
-			job_id_t id = submit_job(root);
-			wait_job(id);
+			for(usize i = 0; i < N; ++i)
+			{
+				wait_job(jobs[i]);
+			}
 			u64 end_time = get_ticks();
 			printf("Jon System Test 1: %u jobs finished in %f milliseconds.\n", (u32)N, (f64)(end_time - begin_time) / get_ticks_per_second() * 1000.0);
 		}
