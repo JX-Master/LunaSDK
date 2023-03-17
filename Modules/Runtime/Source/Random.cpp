@@ -63,12 +63,17 @@ namespace Luna
 	}
 	LUNA_RUNTIME_API f32 random_f32(f32 range_begin, f32 range_end)
 	{
-		return (f32)random_f64((f64)range_begin, (f64)range_end);
+		g_random_mutex->wait();
+		std::uniform_real_distribution<f32> dis(range_begin, range_end);
+		f64 r = dis(g_random_engine);
+		g_random_mutex->unlock();
+		return r;
 	}
 	LUNA_RUNTIME_API f64 random_f64(f64 range_begin, f64 range_end)
 	{
 		g_random_mutex->wait();
-		f64 r = (((f64)random_u64() / (f64)UINT64_MAX) - range_begin) * (range_end - range_begin);
+		std::uniform_real_distribution<f64> dis(range_begin, range_end);
+		f64 r = dis(g_random_engine);
 		g_random_mutex->unlock();
 		return r;
 	}

@@ -44,11 +44,13 @@ namespace Luna
 		}
 		f32 gen_f32(f32 range_begin, f32 range_end)
 		{
-			return (f32)((((f64)gen_u64() / (f64)UINT64_MAX) - (f64)range_begin) * ((f64)range_end - (f64)range_begin));
+			std::uniform_real_distribution<f32> dis(range_begin, range_end);
+			return dis(m_engine);
 		}
 		f64 gen_f64(f64 range_begin, f64 range_end)
 		{
-			return (((f64)gen_u64() / (f64)UINT64_MAX) - range_begin) * (range_end - range_begin);
+			std::uniform_real_distribution<f64> dis(range_begin, range_end);
+			return dis(m_engine);
 		}
 		Guid gen_guid()
 		{
