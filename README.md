@@ -66,7 +66,7 @@ See [Luna SDK Docs](https://www.lunasdk.org).
 * Zhihu: https://www.zhihu.com/people/jx-master
 * Bilibili: https://space.bilibili.com/9919368
 
-## Third Party SDKs
+## Third Party SDKs and References
 Luna SDK uses the following third party SDKs:
 1. [Dear ImGui](https://github.com/ocornut/imgui) for GUI rendering (MIT License).
 1. [DirectX Shader Compiler](https://github.com/microsoft/DirectXShaderCompiler) for compiling HLSL shaders (University of Illinois Open Source License).
@@ -76,6 +76,11 @@ Luna SDK uses the following third party SDKs:
 1. [minizip-ng](https://github.com/zlib-ng/minizip-ng) for zip archive file reading/writing (zlib License).
 
 All SDKs are either embedded in the project, or can be fetched automatically by xmake scripts, the user does not need to install them manually.
+
+The following SDKs are not directly used Luna SDK, but part of their design and implementation is referred when developing similar functionalities in Luna SDK:
+
+1. [jsondiffpatch.net](https://github.com/wbish/jsondiffpatch.net) when developing the variant differential library (MIT License).
+2. [DirectXMath](https://github.com/microsoft/DirectXMath) when developing the math library (MIT License).
 
 ## License
 Luna SDK is licensed under the zlib/libpng license, see [LICENSE.txt](./LICENSE.txt) for more information.
