@@ -109,6 +109,59 @@ namespace Luna
 		//! Emitted when one file is dropped on the window.
 		using window_drop_file_event_handler_t = void(IWindow* window, i32 x, i32 y, Span<const c8*> paths);
 
+		enum class WindowFlag : u32
+		{
+			none = 0x00,
+			//! Whether this window is borderless. One borderless window does not have border, titlebar 
+			//! and close/minimize/maximize buttons.
+			frameless = 0x01,
+			//! Whether this window is resizable by dragging the border of the window.
+			resizable = 0x02,
+			//! Whether this window is minimizable by clicking the minimize button on the title bar.
+			minimizable = 0x04,
+			//! Whether this window is maximizable by clicking the maximize button on the title bar.
+			maximizable = 0x08,
+		};
+
+		//! Specify this value as `x` or `y` of the window to let windowing system choose one suitable position for the window.
+		constexpr i32 DEFAULT_POS = I32_MAX;
+
+		struct WindowDisplaySettings
+		{
+			monitor_t monitor;
+			i32 x;
+			i32 y;
+			u32 width;
+			u32 height;
+			u32 refresh_rate;
+			bool full_screen;
+
+			static WindowDisplaySettings as_windowed(i32 x = DEFAULT_POS, i32 y = DEFAULT_POS, u32 width = 0, u32 height = 0)
+			{
+				WindowDisplaySettings ret;
+				ret.monitor = nullptr;
+				ret.x = x;
+				ret.y = y;
+				ret.width = width;
+				ret.height = height;
+				ret.refresh_rate = 0;
+				ret.full_screen = false;
+				return ret;
+			}
+			static WindowDisplaySettings as_full_screen(monitor_t monitor = nullptr, u32 width = 0, u32 height = 0, u32 refresh_rate = 0)
+			{
+				WindowDisplaySettings ret;
+				ret.monitor = monitor;
+				ret.x = DEFAULT_POS;
+				ret.y = DEFAULT_POS;
+				ret.width = width;
+				ret.height = height;
+				ret.refresh_rate = refresh_rate;
+				ret.full_screen = true;
+				return ret;
+			}
+		};
+
 		//! @interface IWindow
 		//! @threadsafe
 		//! Represents a system window that can be used to display user interface and can be drawn as surface.
@@ -120,15 +173,52 @@ namespace Luna
 			//! On single-window platforms, this causes the application to exit.
 			virtual void close() = 0;
 
-			//! Whether the window is closed. The window handle is invalid when one window is closed.
+			//! Checks whether the window is closed. The window handle is invalid when one window is closed.
 			virtual bool is_closed() = 0;
 
-			//! Sets the window as full scrren on the specified monitor.
-			//! @param[in] monitor The monitor to set for full scrren.
-			virtual RV set_fullscreen(monitor_t monitor, u32 width, u32 height, u32 refresh_rate = 0) = 0;
+			//! Checks whether the window has input focus.
+			virtual bool is_focused() = 0;
 
-			//! Restores one window from full screen mode.
-			virtual RV unset_fullscreen(i32 x, i32 y, u32 width, u32 height) = 0;
+			//! Brings this window to front and acquires input focus for the window.
+			virtual RV set_focus() = 0;
+
+			//! Checks whether the window is minimized.
+			virtual bool is_minimized() = 0;
+
+			//! Checks whether the window is maximized.
+			virtual bool is_maximized() = 0;
+
+			//! Minimize the window.
+			virtual RV set_minimized() = 0;
+
+			//! Maximize the window.
+			virtual RV set_maximized() = 0;
+
+			//! Restore the window from minimized or maximized state.
+			virtual RV set_restored() = 0;
+
+			//! Checks whether the cursor is currently directly over the content area of the window.
+			virtual bool is_hovered() = 0;
+
+			//! Checks whether the window is visible.
+			virtual bool is_visible() = 0;
+
+			//! Sets the visibility of the window.
+			virtual RV set_visible(bool visible) = 0;
+
+			//! Checks whether the window is resizable by dragging the border of the window.
+			virtual bool is_resizable() = 0;
+
+			//! Sets the resizable state of the window.
+			virtual RV set_resizable(bool resizable) = 0;
+
+			//! Checks whether the window is frameless.
+			//! One frameless window does not have border, titlebar 
+			//! and close/minimize/maximize buttons.
+			virtual bool is_frameless() = 0;
+
+			//! Sets the frameless state of the window.
+			virtual RV set_frameless(bool frameless) = 0;
 
 			//! Gets the position of the window client area.
 			virtual Int2U get_position() = 0;
@@ -141,16 +231,26 @@ namespace Luna
 			//! use `get_framebuffer_size` instead.
 			virtual UInt2U get_size() = 0;
 
-			//! Gets the framebuffer size of the window context area in pixels.
-			virtual UInt2U get_framebuffer_size() = 0;
-
 			//! Sets the size of the content area of the window measured in screen coordinates.
 			virtual RV set_size(u32 width, u32 height) = 0;
+
+			//! Gets the framebuffer size of the window context area in pixels.
+			virtual UInt2U get_framebuffer_size() = 0;
 
 			//! Gets the DPI scaling factor, which is the ratio between the current DPI and the platform's default DPI.
 			//! @return Returns the DPI scaling factor. The default (unscaled) DPI factor is 1.0.
 			//! @remark The DPI scale factor may be used if DPI scaling is enabled on the target monitor.
 			virtual f32 get_dpi_scale_factor() = 0;
+
+			//! Checks whether the window is full screen.
+			virtual bool is_full_screen() = 0;
+
+			//! Gets the monitor that one full screen window is attached to.
+			//! Returns `nullptr` if the window is not in full-screen mode.
+			virtual monitor_t get_monitor() = 0;
+
+			//! Sets the window display settings.
+			virtual RV set_display_settings(const WindowDisplaySettings& display_settings) = 0;
 
 			//! Converts one screen coordinate to one client coordinate.
 			virtual Int2U screen_to_client(const Int2U& point) = 0;
@@ -193,33 +293,18 @@ namespace Luna
 			//! Whether this window is resizable by dragging the border of the window.
 			//! This flag is effective in normal and borderless mode.
 			resizable = 0x02,
-			//! Whether this window is minimizable by clicking the minimize button on the title bar. 
-			//! This flag is ignored if the window is borderless.
-			minimizable = 0x04,
-			//! Whether this window is maximizable by clicking the maximize button on the title bar.
-			//! This flag is ignored if the window is borderless.
-			maximizable = 0x08,
-			//! Lets the system choose a proper initial size for the window.
-			default_size = 0x10,
-			//! Positions the window at the center of the main screen.
-			position_center = 0x20,
 			//! Window does not displayed when being created.
-			hidden = 0x40,
+			hidden = 0x04,
 		};
 
 		//! Creates a new window. The window will be displayed unless WindowCreationFlag::hidden is set.
 		//! @param[in] title The title of the window.
-		//! @param[in] x The x position of the window in screen space. If `WindowCreationFlag::default_size_pos` is set, this parameter is ignored.
-		//! @param[in] y The y position of the window in screen space. If `WindowCreationFlag::default_size_pos` is set, this parameter is ignored.
-		//! @param[in] width The width of the window. If `WindowCreationFlag::default_size_pos` is set, this parameter is ignored.
-		//! @param[in] height The height of the window. If `WindowCreationFlag::default_size_pos` is set, this parameter is ignored.
-		//! @param[in] monitor The monitor to use for full screen mode, or `nullptr` for windowed mode.
+		//! @param[in] display_settings The initial display settings for the window.
 		//! @param[in] flags Additional window creation flags.
 		//! @return Returns the window object, returns `BasicError::not_supportted` on single-window platforms.
 		//! @remark This function must only be called by the main thread.
-		LUNA_WINDOW_API R<Ref<IWindow>> new_window(const c8* title, i32 x, i32 y,
-			i32 width, i32 height, 
-			monitor_t monitor = nullptr,
+		LUNA_WINDOW_API R<Ref<IWindow>> new_window(const c8* title, 
+			const WindowDisplaySettings& display_settings,
 			WindowCreationFlag flags = WindowCreationFlag::none);
 
 		//! Gets the application main window.

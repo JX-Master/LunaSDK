@@ -181,7 +181,7 @@ namespace Luna
 					}
 					auto& ds = m_desc_sets[i];
 					ds->set_cbv(0, m_cbs_resource, ConstantBufferViewDesc(cb_element_size * i, cb_element_size));
-					ds->set_srv(1, shape_buffer, &ShaderResourceViewDesc::as_buffer(0, num_points, sizeof(f32)));
+					ds->set_srv(1, shape_buffer, &ShaderResourceViewDesc::as_buffer(RHI::Format::r32_float, 0, num_points, 0));
 					ds->set_srv(2, draw_calls[i].texture ? draw_calls[i].texture : g_white_tex);
 					ds->set_sampler(3, SamplerDesc(FilterMode::min_mag_mip_linear, TextureAddressMode::clamp, TextureAddressMode::clamp, TextureAddressMode::clamp));
 				}

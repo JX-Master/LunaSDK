@@ -98,11 +98,7 @@ void init()
 	lupanic_if_failed(init_modules());
 
 	// register event.
-	g_window = Window::new_window("Luna Vector Graphics Test", 0, 0, 0, 0, nullptr, Window::WindowCreationFlag::default_size |
-		Window::WindowCreationFlag::position_center |
-		Window::WindowCreationFlag::resizable |
-		Window::WindowCreationFlag::minimizable |
-		Window::WindowCreationFlag::maximizable).get();
+	g_window = Window::new_window("Luna Vector Graphics Test", Window::WindowDisplaySettings::as_windowed(), Window::WindowCreationFlag::resizable).get();
 
 	g_window->get_close_event() += on_window_close;
 	g_window->get_framebuffer_resize_event() += on_window_resize;

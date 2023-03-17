@@ -26,6 +26,52 @@ namespace Luna
 {
     namespace Window
     {
+		inline ErrCode encode_glfw_error()
+		{
+			const char* description;
+			int code = glfwGetError(&description);
+			if (code != GLFW_NO_ERROR)
+			{
+				ErrCode err_code;
+				switch (code)
+				{
+				case GLFW_NOT_INITIALIZED: err_code = BasicError::bad_calling_time(); break;
+				case GLFW_NO_CURRENT_CONTEXT: err_code = BasicError::bad_platform_call(); break;
+				case GLFW_INVALID_ENUM: err_code = BasicError::bad_arguments(); break;
+				case GLFW_INVALID_VALUE: err_code = BasicError::bad_arguments(); break;
+				case GLFW_OUT_OF_MEMORY: err_code = BasicError::out_of_memory(); break;
+				case GLFW_API_UNAVAILABLE: err_code = BasicError::not_supported(); break;
+				case GLFW_VERSION_UNAVAILABLE: err_code = BasicError::not_supported(); break;
+				case GLFW_PLATFORM_ERROR: err_code = BasicError::bad_platform_call(); break;
+				case GLFW_FORMAT_UNAVAILABLE: err_code = BasicError::not_supported(); break;
+				default: err_code = BasicError::bad_platform_call(); break;
+				}
+				// Handle error.
+				if (description)
+				{
+					set_error(err_code, description);
+					return BasicError::error_object();
+				}
+				return err_code;
+			}
+			return ErrCode(0);
+		}
+
+		inline RV check_glfw_error()
+		{
+			ErrCode code = encode_glfw_error();
+			if (code.code != 0)
+			{
+				return code;
+			}
+			return ok;
+		}
+
+		inline bool glfw_succeeded()
+		{
+			return glfwGetError(NULL) == GLFW_NO_ERROR;
+		}
+
 #ifdef LUNA_PLATFORM_WINDOWS
 		struct Window : public IWin32Window, public IGLFWWindow
 #else
@@ -38,16 +84,37 @@ namespace Luna
             GLFWwindow* m_window;
 			WindowEvents m_events;
 
+			// Used to restore window size and pos when exiting from full screen mode.
+			u32 m_windowed_width;
+			u32 m_windowed_height;
+			i32 m_windowed_pos_x;
+			i32 m_windowed_pos_y;
+
             void close();
-            bool is_closed();
-			RV set_fullscreen(monitor_t monitor, u32 width, u32 height, u32 refresh_rate);
-			RV unset_fullscreen(i32 x, i32 y, u32 width, u32 height);
+			bool is_closed() { return m_window == nullptr; }
+			bool is_focused() { return glfwGetWindowAttrib(m_window, GLFW_FOCUSED) != 0; }
+			RV set_focus() { glfwFocusWindow(m_window); return check_glfw_error(); }
+			bool is_minimized() { return glfwGetWindowAttrib(m_window, GLFW_ICONIFIED) != 0; }
+			bool is_maximized() { return glfwGetWindowAttrib(m_window, GLFW_MAXIMIZED) != 0; }
+			RV set_minimized() { glfwIconifyWindow(m_window); return check_glfw_error(); }
+			RV set_maximized() { glfwMaximizeWindow(m_window); return check_glfw_error(); }
+			RV set_restored() { glfwRestoreWindow(m_window); return check_glfw_error(); }
+			bool is_hovered() { return glfwGetWindowAttrib(m_window, GLFW_HOVERED) != 0; }
+			bool is_visible() { return glfwGetWindowAttrib(m_window, GLFW_VISIBLE) != 0; }
+			RV set_visible(bool visible) { if (visible) glfwShowWindow(m_window); else glfwHideWindow(m_window); return check_glfw_error(); }
+			bool is_resizable() { return glfwGetWindowAttrib(m_window, GLFW_RESIZABLE) != 0; }
+			RV set_resizable(bool resizable) { glfwSetWindowAttrib(m_window, GLFW_RESIZABLE, resizable ? GLFW_TRUE : GLFW_FALSE); return check_glfw_error(); }
+			bool is_frameless() { return glfwGetWindowAttrib(m_window, GLFW_DECORATED) == 0; }
+			RV set_frameless(bool frameless) { glfwSetWindowAttrib(m_window, GLFW_DECORATED, frameless ? GLFW_FALSE : GLFW_TRUE); return check_glfw_error(); }
 			Int2U get_position();
 			RV set_position(i32 x, i32 y);
-            UInt2U get_size();
+			UInt2U get_size();
 			RV set_size(u32 width, u32 height);
 			UInt2U get_framebuffer_size();
-            f32 get_dpi_scale_factor();
+			f32 get_dpi_scale_factor();
+			bool is_full_screen() { return get_monitor() != nullptr; }
+			monitor_t get_monitor() {return glfwGetWindowMonitor(m_window); }
+			RV set_display_settings(const WindowDisplaySettings& display_settings);
 			Int2U screen_to_client(const Int2U& point);
 			Int2U client_to_screen(const Int2U& point);
 #ifdef LUNA_PLATFORM_WINDOWS

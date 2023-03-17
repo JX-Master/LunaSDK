@@ -90,8 +90,7 @@ namespace Luna
 			auto name_no_ext = Path(name.c_str());
 			name_no_ext.replace_extension(nullptr);
 			sprintf_s(title, "%s - Luna Studio", name_no_ext[name_no_ext.size() - 1].c_str());
-			luset(m_window, Window::new_window(title, 0, 0, 0, 0, 0, Window::WindowCreationFlag::default_size | Window::WindowCreationFlag::position_center | 
-				Window::WindowCreationFlag::maximizable | Window::WindowCreationFlag::minimizable | Window::WindowCreationFlag::resizable));
+			luset(m_window, Window::new_window(title, Window::WindowDisplaySettings::as_windowed(), Window::WindowCreationFlag::resizable));
 
 			m_window->get_close_event() += [](Window::IWindow* window) {window->close(); };
 
@@ -302,7 +301,7 @@ namespace Luna
 		g_env->scene_component_types.insert(typeof<SceneRenderer>());
 		set_property_attribute(typeof<SceneRenderer>(), "environment_color", "color_gui", true);
 		set_property_attribute(typeof<SceneRenderer>(), "exposure", "gui_min", (f64)0.00001f);
-		set_property_attribute(typeof<SceneRenderer>(), "exposure", "gui_max", (f64)10.0f);
+		set_property_attribute(typeof<SceneRenderer>(), "exposure", "gui_max", (f64)1.0f);
 	}
 
 	void run_main_editor(const Path& project_path)

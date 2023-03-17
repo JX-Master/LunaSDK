@@ -135,7 +135,7 @@ namespace Luna
 		Path path;
 		lutry
 		{
-			lulet(window, Window::new_window("Luna Graphics Research Suite - Open Project", 0, 0, 1000, 500, nullptr, Window::WindowCreationFlag::position_center));
+			lulet(window, Window::new_window("Luna Graphics Research Suite - Open Project", Window::WindowDisplaySettings::as_windowed(Window::DEFAULT_POS, Window::DEFAULT_POS, 1000, 500)));
 			lulet(swap_chain, RHI::new_swap_chain(g_env->graphics_queue, window, RHI::SwapChainDesc({0, 0, 2, RHI::Format::rgba8_unorm, true})));
 			lulet(cmdbuf, g_env->graphics_queue->new_command_buffer());
 

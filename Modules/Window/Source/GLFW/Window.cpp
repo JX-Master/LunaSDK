@@ -32,55 +32,6 @@ namespace Luna
                 glfwDestroyWindow(ptr);
             }
         }
-        bool Window::is_closed()
-        {
-            return m_window == nullptr;
-        }
-        inline RV check_glfw_error()
-        {
-            const char* description;
-            int code = glfwGetError(&description);
-            if (code != GLFW_NO_ERROR)
-            {
-                ErrCode err_code;
-                switch (code)
-                {
-                case GLFW_NOT_INITIALIZED: err_code = BasicError::bad_calling_time(); break;
-                case GLFW_NO_CURRENT_CONTEXT: err_code = BasicError::bad_platform_call(); break;
-                case GLFW_INVALID_ENUM: err_code = BasicError::bad_arguments(); break;
-                case GLFW_INVALID_VALUE: err_code = BasicError::bad_arguments(); break;
-                case GLFW_OUT_OF_MEMORY: err_code = BasicError::out_of_memory(); break;
-                case GLFW_API_UNAVAILABLE: err_code = BasicError::not_supported(); break;
-                case GLFW_VERSION_UNAVAILABLE: err_code = BasicError::not_supported(); break;
-                case GLFW_PLATFORM_ERROR: err_code = BasicError::bad_platform_call(); break;
-                case GLFW_FORMAT_UNAVAILABLE: err_code = BasicError::not_supported(); break;
-                default: err_code = BasicError::bad_platform_call(); break;
-                }
-                // Handle error.
-                if (description)
-                {
-                    set_error(err_code, description);
-                    return BasicError::error_object();
-                }
-                return err_code;
-            }
-            return ok;
-        }
-        inline bool glfw_succeeded()
-        {
-            return glfwGetError(NULL) == GLFW_NO_ERROR;
-        }
-        RV Window::set_fullscreen(monitor_t monitor, u32 width, u32 height, u32 refresh_rate)
-        {
-            refresh_rate = refresh_rate ? refresh_rate : GLFW_DONT_CARE;
-            glfwSetWindowMonitor(m_window, (GLFWmonitor*)monitor, 0, 0, (int)width, (int)height, (int)refresh_rate);
-            return check_glfw_error();
-        }
-        RV Window::unset_fullscreen(i32 x, i32 y, u32 width, u32 height)
-        {
-            glfwSetWindowMonitor(m_window, NULL, x, y, (int)width, (int)height, GLFW_DONT_CARE);
-            return check_glfw_error();
-        }
         Int2U Window::get_position()
         {
             int x, y;
@@ -118,6 +69,56 @@ namespace Luna
             glfwGetWindowContentScale(m_window, &ret, nullptr);
             if (!glfw_succeeded()) return 1.0f;
             return ret;
+        }
+        RV Window::set_display_settings(const WindowDisplaySettings& display_settings)
+        {
+            if (display_settings.full_screen)
+            {
+                GLFWmonitor* monitor = (GLFWmonitor*)display_settings.monitor;
+                if (!monitor)
+                {
+                    monitor = glfwGetPrimaryMonitor();
+                }
+                auto video_mode = glfwGetVideoMode(monitor);
+                u32 width = display_settings.width ? display_settings.width : (u32)video_mode->width;
+                u32 height = display_settings.height ? display_settings.height : (u32)video_mode->height;
+                u32 refresh_rate = display_settings.refresh_rate ? display_settings.refresh_rate : GLFW_DONT_CARE;
+                if (glfwGetWindowMonitor(m_window) == NULL)
+                {
+                    int x, y;
+                    glfwGetWindowSize(m_window, &x, &y);
+                    m_windowed_width = (u32)x;
+                    m_windowed_height = (u32)y;
+                    glfwGetWindowPos(m_window, &x, &y);
+                    m_windowed_pos_x = (i32)x;
+                    m_windowed_pos_y = (i32)y;
+                }
+                glfwSetWindowMonitor(m_window, monitor, 0, 0, (int)width, (int)height, (int)refresh_rate);
+            }
+            else
+            {
+                u32 width, height;
+                i32 pos_x, pos_y;
+                if (glfwGetWindowMonitor(m_window))
+                {
+                    width = display_settings.width ? display_settings.width : m_windowed_width;
+                    height = display_settings.height ? display_settings.height : m_windowed_height;
+                    pos_x = display_settings.x == DEFAULT_POS ? m_windowed_pos_x : display_settings.x;
+                    pos_y = display_settings.y == DEFAULT_POS ? m_windowed_pos_y : display_settings.y;
+                }
+                else
+                {
+                    int x, y;
+                    glfwGetWindowSize(m_window, &x, &y);
+                    width = display_settings.width ? display_settings.width : (u32)x;
+                    height = display_settings.height ? display_settings.height : (u32)y;
+                    glfwGetWindowPos(m_window, &x, &y);
+                    pos_x = display_settings.x == DEFAULT_POS ? (i32)x : display_settings.x;
+                    pos_y = display_settings.y == DEFAULT_POS ? (i32)y : display_settings.y;
+                }
+                glfwSetWindowMonitor(m_window, NULL, (int)pos_x, (int)pos_y, (int)width, (int)height, GLFW_DONT_CARE);
+            }
+            return check_glfw_error();
         }
         Int2U Window::screen_to_client(const Int2U& point)
         {
@@ -328,69 +329,7 @@ namespace Luna
             glfwSetWindowContentScaleCallback(window, glfw_on_dpi_change);
         }
 
-        const u32 g_default_resolution_list[] = {
-            3840,
-            2560,
-            2160,
-        };
-
-        const UInt2U g_default_res_list[] = {
-            UInt2U(3840, 2160),
-            UInt2U(2560, 1600),
-            UInt2U(2560, 1440),
-            UInt2U(2048, 1536),
-            UInt2U(1920, 1440),
-            UInt2U(1920, 1200),
-            UInt2U(1920, 1080),
-            UInt2U(1768, 992),
-            UInt2U(1680, 1050),
-            UInt2U(1600, 1200),
-            UInt2U(1600, 1024),
-            UInt2U(1600, 900),
-            UInt2U(1440, 900),
-            UInt2U(1366, 768),
-            UInt2U(1360, 768),
-            UInt2U(1280, 1024),
-            UInt2U(1280, 960),
-            UInt2U(1280, 800),
-            UInt2U(1280, 768),
-            UInt2U(1280, 720),
-            UInt2U(1176, 664),
-            UInt2U(1152, 864),
-            UInt2U(1024, 768),
-            UInt2U(800, 600),
-            UInt2U(720, 576),
-            UInt2U(720, 480),
-            UInt2U(640, 480)
-        };
-
-        inline UInt2U get_default_window_size(UInt2U screen_size)
-        {
-            // May more precise margin values. Current values are chosen without further research.
-            const i32 margin_x = 10;
-            const i32 margin_y = 50;
-            for (auto& i : g_default_res_list)
-            {
-                if (screen_size.x >= screen_size.y)
-                {
-                    if ((i.x + margin_x < screen_size.x) && (i.y + margin_y < screen_size.y))
-                    {
-                        return i;
-                    }
-                }
-                else
-                {
-                    if ((i.x + margin_x < screen_size.y) && (i.y + margin_y < screen_size.x))
-                    {
-                        return UInt2U(i.y, i.x);
-                    }
-                }
-            }
-            return UInt2U(640, 480);
-        }
-
-        LUNA_WINDOW_API R<Ref<IWindow>> new_window(const c8* title, i32 x, i32 y,
-            i32 width, i32 height, monitor_t monitor, WindowCreationFlag flags)
+        LUNA_WINDOW_API R<Ref<IWindow>> new_window(const c8* title, const WindowDisplaySettings& display_settings, WindowCreationFlag flags)
         {
             lucheck_msg(get_current_thread() == get_main_thread(), "RHI::new_window must only be called from the main thread.");
             Ref<Window> window = new_object<Window>();
@@ -401,31 +340,65 @@ namespace Luna
             glfwWindowHint(GLFW_DECORATED, test_flags(flags, WindowCreationFlag::borderless) ? GLFW_FALSE : GLFW_TRUE);
             glfwWindowHint(GLFW_RESIZABLE, test_flags(flags, WindowCreationFlag::resizable) ? GLFW_TRUE : GLFW_FALSE);
             glfwWindowHint(GLFW_VISIBLE, test_flags(flags, WindowCreationFlag::hidden) ? GLFW_FALSE : GLFW_TRUE);
-            if (test_flags(flags, WindowCreationFlag::default_size) || test_flags(flags, WindowCreationFlag::position_center))
+            // Read monitor info.
+            GLFWmonitor* monitor = NULL;
+            if (display_settings.full_screen)
             {
-                // Get main screen size.
-                int screen_w;
-                int screen_h;
-                glfwGetMonitorWorkarea(glfwGetPrimaryMonitor(), nullptr, nullptr, &screen_w, &screen_h);
-                if (test_flags(flags, WindowCreationFlag::default_size))
-                {
-                    UInt2U default_size = get_default_window_size(UInt2U((u32)screen_w, (u32)screen_h));
-                    width = default_size.x;
-                    height = default_size.y;
-                }
-                if (test_flags(flags, WindowCreationFlag::position_center))
-                {
-                    x = (screen_w - width) / 2;
-                    y = (screen_h - height) / 2;
-                }
+                monitor = (GLFWmonitor*)display_settings.monitor;
             }
-            window->m_window = glfwCreateWindow(width, height, title, (GLFWmonitor*)monitor, NULL);
+            if (!monitor) monitor = glfwGetPrimaryMonitor();
+            auto mode = glfwGetVideoMode(monitor);
+            if (display_settings.full_screen)
+            {
+                glfwWindowHint(GLFW_RED_BITS, mode->redBits);
+                glfwWindowHint(GLFW_GREEN_BITS, mode->greenBits);
+                glfwWindowHint(GLFW_BLUE_BITS, mode->blueBits);
+            }
+            else
+            {
+                glfwWindowHint(GLFW_RED_BITS, GLFW_DONT_CARE);
+                glfwWindowHint(GLFW_GREEN_BITS, GLFW_DONT_CARE);
+                glfwWindowHint(GLFW_BLUE_BITS, GLFW_DONT_CARE);
+            }
+            // Calculate window size.
+            int screen_x;
+            int screen_y;
+            int screen_w;
+            int screen_h;
+            glfwGetMonitorWorkarea(glfwGetPrimaryMonitor(), &screen_x, &screen_y, &screen_w, &screen_h);
+            if (display_settings.full_screen)
+            {
+                window->m_windowed_width = screen_w * 3 / 4;
+                window->m_windowed_height = screen_h * 3 / 4;
+                window->m_windowed_pos_x = screen_x + (screen_w - window->m_windowed_width) / 2;
+                window->m_windowed_pos_y = screen_y + (screen_h - window->m_windowed_height) / 2;
+            }
+            else
+            {
+                window->m_windowed_width = display_settings.width ? display_settings.width : screen_w * 3 / 4;
+                window->m_windowed_height = display_settings.height ? display_settings.height : screen_h * 3 / 4;
+                window->m_windowed_pos_x = display_settings.x != DEFAULT_POS ? display_settings.x : screen_x + (screen_w - window->m_windowed_width) / 2;
+                window->m_windowed_pos_y = display_settings.y != DEFAULT_POS ? display_settings.y : screen_y + (screen_h - window->m_windowed_height) / 2;
+            }
+            // Create normal window first.
+            window->m_window = glfwCreateWindow(window->m_windowed_width, window->m_windowed_height, title, NULL, NULL);
             if (!window->m_window)
             {
-                return BasicError::error_object();
+                return encode_glfw_error();
             }
-            // Position the window.
-            glfwSetWindowPos(window->m_window, x, y);
+            // Set to full screen or position the window.
+            if (display_settings.full_screen)
+            {   
+                int width = display_settings.width ? (int)display_settings.width : mode->width;
+                int height = display_settings.height ? (int)display_settings.height : mode->height;
+                glfwSetWindowMonitor(window->m_window, monitor, 0, 0, width, height, display_settings.refresh_rate ? display_settings.refresh_rate : mode->refreshRate);
+            }
+            else
+            {
+                glfwSetWindowPos(window->m_window, window->m_windowed_pos_x, window->m_windowed_pos_y);
+            }
+            ErrCode err = encode_glfw_error();
+            if (err.code) return err;
             // Set userdata.
             glfwSetWindowUserPointer(window->m_window, window.object());
             // Set callbacks.

@@ -24,12 +24,7 @@ void run()
 {
 	using namespace RHI;
 	using namespace Window;
-	Ref<IWindow> window = new_window("ImGui Demo", 0, 0, 0, 0, nullptr,
-		WindowCreationFlag::default_size |
-		WindowCreationFlag::position_center |
-		WindowCreationFlag::minimizable |
-		WindowCreationFlag::maximizable |
-		WindowCreationFlag::resizable).get();
+	Ref<IWindow> window = new_window("ImGui Demo", WindowDisplaySettings::as_windowed(), WindowCreationFlag::resizable).get();
 	window->get_close_event() += on_window_close;
 
 	Ref<IDevice> dev = get_main_device();

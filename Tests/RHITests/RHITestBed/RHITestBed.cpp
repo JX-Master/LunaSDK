@@ -55,11 +55,14 @@ namespace Luna
 		}
 		void on_window_resize(IWindow* window, u32 width, u32 height)
 		{
-			// resize back buffer.
-			lupanic_if_failed(m_swap_chain->reset({width, height, 2, Format::rgba8_unorm, true}));
-			m_back_buffer = get_main_device()->new_resource(ResourceDesc::tex2d(ResourceHeapType::local, Format::rgba8_unorm,
-				ResourceUsageFlag::render_target | ResourceUsageFlag::shader_resource, width, height, 1, 1), nullptr).get();
-			if (m_resize_func) m_resize_func(width, height);
+			if(width && height)
+			{
+				// resize back buffer.
+				lupanic_if_failed(m_swap_chain->reset({width, height, 2, Format::rgba8_unorm, true}));
+				m_back_buffer = get_main_device()->new_resource(ResourceDesc::tex2d(ResourceHeapType::local, Format::rgba8_unorm,
+					ResourceUsageFlag::render_target | ResourceUsageFlag::shader_resource, width, height, 1, 1), nullptr).get();
+				if (m_resize_func) m_resize_func(width, height);
+			}
 		}
 		void on_window_close(IWindow* window)
 		{
@@ -71,11 +74,7 @@ namespace Luna
 			{
 				set_log_std_enabled(true);
 				luset(m_queue, get_main_device()->new_command_queue(CommandQueueType::graphic));
-				luset(m_window, new_window("RHI Test", 0, 0, 0, 0, nullptr, WindowCreationFlag::default_size |
-					WindowCreationFlag::position_center |
-					WindowCreationFlag::resizable |
-					WindowCreationFlag::minimizable |
-					WindowCreationFlag::maximizable));
+				luset(m_window, new_window("RHI Test", WindowDisplaySettings::as_windowed(), WindowCreationFlag::resizable));
 				m_window->get_close_event() += on_window_close;
 				m_window->get_framebuffer_resize_event() += on_window_resize;
 				luset(m_swap_chain, new_swap_chain(m_queue, m_window, SwapChainDesc({0, 0, 2, Format::rgba8_unorm, true})));
