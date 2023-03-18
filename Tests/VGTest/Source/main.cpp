@@ -84,30 +84,31 @@ void init()
 	g_window->get_framebuffer_resize_event() += on_window_resize;
 
 	g_shape_draw_list = VG::new_shape_draw_list();
-	g_command_queue = RHI::get_main_device()->new_command_queue(RHI::CommandQueueType::graphic).get();
+	g_command_queue = RHI::get_main_device()->new_command_queue(RHI::CommandQueueType::graphics).get();
 	lupanic_if_failed(recreate_window_resources());
 	g_shape_renderer = VG::new_fill_shape_renderer(g_screen_tex).get();
 
 	g_command_buffer = g_command_queue->new_command_buffer().get();
-
-	VG::ShapeBuilder builder;
-	builder.move_to(10.0f, 50.0f);
-	builder.line_to(40.0f, 50.0f);
-	builder.circle_to(10.0f, 90.0f, 0.0f);
-	builder.line_to(50.0f, 10.0f);
-	builder.circle_to(10.0f, 0.0f, -90.0f);
-	builder.line_to(10.0f, 0.0f);
-	builder.circle_to(10.0f, -90.0f, -180.0f);
-	builder.line_to(0.0f, 40.0f);
-	builder.circle_to(10.0f, 180.0f, 90.0f);
-
+	
 	g_shape_atlas = VG::new_shape_atlas();
-	g_shape_atlas->add_shape({ builder.points.data(), builder.points.size() }, &RectF(0.0f, 0.0f, 50.0f, 50.0f));
+
+	// Window.
+	VG::ShapeBuilder builder;
+	builder.add_rectangle_filled(100, 100, 500, 800);
+	g_shape_atlas->add_shape({ builder.points.data(), builder.points.size() }, nullptr);
 
 	builder.points.clear();
-	builder.move_to(10.0f, 20.0f);
-	builder.circle_to(10.0f, 90.0f, -270.0f);
+	builder.add_rectangle_filled(100, 100, 400, 650);
 	g_shape_atlas->add_shape({ builder.points.data(), builder.points.size() }, nullptr);
+
+	builder.points.clear();
+	builder.add_rectangle_bordered(100, 100, 500, 800, 2);
+	g_shape_atlas->add_shape({ builder.points.data(), builder.points.size() }, nullptr);
+
+	builder.points.clear();
+	builder.add_line(0, 0, 400, 0, 2);
+	g_shape_atlas->add_shape({ builder.points.data(), builder.points.size() }, nullptr);
+
 
 }
 
@@ -125,13 +126,16 @@ void run()
 		g_shape_draw_list->set_shape_atlas(g_shape_atlas);
 		usize offset, size;
 		RectF rect;
-		g_shape_atlas->get_shape(0, &offset, &size, &rect);
-		g_shape_draw_list->draw_shape(offset, size, Float2(100.0f, 100.0f), Float2U(500.0f, 500.0f), Float2U(rect.offset_x, rect.offset_y), 
-			Float2U(rect.offset_x + rect.width, rect.offset_y + rect.height));
-
-		g_shape_atlas->get_shape(1, &offset, &size, &rect);
-		g_shape_draw_list->draw_shape(offset, size, Float2(550.0f, 100.0f), Float2U(560.0f, 110.0f), Float2U(rect.offset_x, rect.offset_y),
-			Float2U(rect.offset_x + rect.width, rect.offset_y + rect.height));
+		
+		usize num_shapes = g_shape_atlas->count_shapes();
+		for(usize i = 0; i < num_shapes; ++i)
+		{
+			g_shape_atlas->get_shape(i, &offset, &size, &rect);
+			g_shape_draw_list->draw_shape(offset, size, 
+				Float2U(rect.offset_x, rect.offset_y), Float2U(rect.offset_x + rect.width, rect.offset_y + rect.height), 
+				Float2U(rect.offset_x, rect.offset_y), Float2U(rect.offset_x + rect.width, rect.offset_y + rect.height));
+			
+		}
 
 		lupanic_if_failed(g_shape_draw_list->close());
 

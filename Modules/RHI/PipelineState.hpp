@@ -368,7 +368,7 @@ namespace Luna
 			patch
 		};
 
-		struct GraphicPipelineStateDesc
+		struct GraphicsPipelineStateDesc
 		{
 			InputLayoutDesc input_layout;
 			IShaderInputLayout* shader_input_layout = nullptr;

@@ -22,7 +22,7 @@ namespace Luna
 		{
 			switch (t)
 			{
-			case CommandQueueType::graphic:
+			case CommandQueueType::graphics:
 				return D3D12_COMMAND_LIST_TYPE_DIRECT;
 				break;
 			case CommandQueueType::compute:

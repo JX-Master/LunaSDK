@@ -138,8 +138,150 @@ namespace Luna
 					}
 				}
 			}
+			void add_rectangle_filled(f32 min_x, f32 min_y, f32 max_x, f32 max_y)
+			{
+				move_to(min_x, min_y);
+				line_to(min_x, max_y);
+				line_to(max_x, max_y);
+				line_to(max_x, min_y);
+				line_to(min_x, min_y);
+			}
+			void add_rectangle_bordered(f32 min_x, f32 min_y, f32 max_x, f32 max_y, f32 border_width, f32 border_offset = 0.0f)
+			{
+				f32 border_width_div_2 = border_width / 2.0f;
+				f32 border_offset_outer = border_width_div_2 + border_offset;
+				f32 border_offset_inner = border_width_div_2 - border_offset;
+				f32 outer_min_x = min_x - border_offset_outer;
+				f32 outer_min_y = min_y - border_offset_outer;
+				f32 outer_max_x = max_x + border_offset_outer;
+				f32 outer_max_y = max_y + border_offset_outer;
+				f32 inner_min_x = min_x + border_offset_inner;
+				f32 inner_min_y = min_y + border_offset_inner;
+				f32 inner_max_x = max_x - border_offset_inner;
+				f32 inner_max_y = max_y - border_offset_inner;
+				move_to(outer_min_x, outer_min_y);
+				line_to(outer_min_x, outer_max_y);
+				line_to(outer_max_x, outer_max_y);
+				line_to(outer_max_x, outer_min_y);
+				line_to(outer_min_x, outer_min_y);
+				move_to(inner_min_x, inner_min_y);
+				line_to(inner_max_x, inner_min_y);
+				line_to(inner_max_x, inner_max_y);
+				line_to(inner_min_x, inner_max_y);
+				line_to(inner_min_x, inner_min_y);
+			}
+			void add_line(f32 p1_x, f32 p1_y, f32 p2_x, f32 p2_y, f32 border_width, f32 border_offset = 0.0f)
+			{
+				Float2 p1(p1_x, p1_y);
+				Float2 p2(p2_x, p2_y);
+				Float2 n(p1_y - p2_y, p2_x - p1_x);
+				n = normalize(n);
+				f32 border_width_div_2 = border_width / 2.0f;
+				Float2 n1 = n * (border_width_div_2 + border_offset);
+				Float2 n2 = -n * (border_width_div_2 - border_offset);
+				Float2 p1_1 = p1 + n1;
+				Float2 p1_2 = p1 + n2;
+				Float2 p2_1 = p2 + n1;
+				Float2 p2_2 = p2 + n2;
+				move_to(p1_2.x, p1_2.y);
+				line_to(p1_1.x, p1_1.y);
+				line_to(p2_1.x, p2_1.y);
+				line_to(p2_2.x, p2_2.y);
+				line_to(p1_2.x, p1_2.y);
+			}
+			void add_rounded_rectangle_filled(f32 min_x, f32 min_y, f32 max_x, f32 max_y, f32 radius)
+			{
+				move_to(min_x, min_y + radius);
+				line_to(min_x, max_y - radius);
+				circle_to(radius, 180.0f, 90.0f);
+				line_to(max_x - radius, max_y);
+				circle_to(radius, 90.0f, 0.0f);
+				line_to(max_x, min_y + radius);
+				circle_to(radius, 0.0f, -90.0f);
+				line_to(min_x + radius, min_y);
+				circle_to(radius, -90.0f, -180.0f);
+			}
+			void add_rounded_rectangle_bordered(f32 min_x, f32 min_y, f32 max_x, f32 max_y, f32 radius, f32 border_width, f32 border_offset = 0.0f)
+			{
+				f32 border_width_div_2 = border_width / 2.0f;
+				f32 border_offset_outer = border_width_div_2 + border_offset;
+				f32 border_offset_inner = border_width_div_2 - border_offset;
+				f32 outer_min_x = min_x - border_offset_outer;
+				f32 outer_min_y = min_y - border_offset_outer;
+				f32 outer_max_x = max_x + border_offset_outer;
+				f32 outer_max_y = max_y + border_offset_outer;
+				f32 inner_min_x = min_x + border_offset_inner;
+				f32 inner_min_y = min_y + border_offset_inner;
+				f32 inner_max_x = max_x - border_offset_inner;
+				f32 inner_max_y = max_y - border_offset_inner;
+				f32 inner_radius = max(radius - border_offset_inner, 0.0f);
+				f32 outer_radius = max(radius + border_offset_outer, 0.0f);
+				if(outer_radius > 0.0f)
+				{
+					move_to(outer_min_x, outer_min_y + outer_radius);
+					line_to(outer_min_x, outer_max_y - outer_radius);
+					circle_to(outer_radius, 180.0f, 90.0f);
+					line_to(outer_max_x - outer_radius, outer_max_y);
+					circle_to(outer_radius, 90.0f, 0.0f);
+					line_to(outer_max_x, outer_min_y + outer_radius);
+					circle_to(outer_radius, 0.0f, -90.0f);
+					line_to(outer_min_x + outer_radius, outer_min_y);
+					circle_to(outer_radius, -90.0f, -180.0f);
+				}
+				else
+				{
+					move_to(outer_min_x, outer_min_y);
+					line_to(outer_min_x, outer_max_y);
+					line_to(outer_max_x, outer_max_y);
+					line_to(outer_max_x, outer_min_y);
+					line_to(outer_min_x, outer_min_y);
+				}
+				if(inner_radius > 0.0f)
+				{
+					move_to(inner_min_x + inner_radius, inner_min_y);
+					line_to(inner_max_x - inner_radius, inner_min_y);
+					circle_to(inner_radius, -90.0f, 0.0f);
+					line_to(inner_max_x, inner_max_y - inner_radius);
+					circle_to(inner_radius, 0.0f, 90.0f);
+					line_to(inner_min_x + inner_radius, inner_max_y);
+					circle_to(inner_radius, 90.0f, 180.0f);
+					line_to(inner_min_x, inner_min_y + inner_radius);
+					circle_to(inner_radius, 180.0f, 270.0f);
+				}
+				else
+				{
+					move_to(inner_min_x, inner_min_y);
+					line_to(inner_max_x, inner_min_y);
+					line_to(inner_max_x, inner_max_y);
+					line_to(inner_min_x, inner_max_y);
+					line_to(inner_min_x, inner_min_y);
+				}
+			}
+			void add_circle_filled(f32 center_x, f32 center_y, f32 radius)
+			{
+				move_to(center_x, center_y + radius);
+				circle_to(radius, 90.0f, -270.0f);
+			}
+			void add_circle_bordered(f32 center_x, f32 center_y, f32 radius, f32 border_width, f32 border_offset = 0.0f)
+			{
+				f32 border_width_div_2 = border_width / 2.0f;
+				f32 border_offset_outer = border_width_div_2 + border_offset;
+				f32 border_offset_inner = border_width_div_2 - border_offset;
+				f32 inner_radius = max(radius - border_offset_inner, 0.0f);
+				f32 outer_radius = max(radius + border_offset_outer, 0.0f);
+				if(outer_radius > 0.0f)
+				{
+					move_to(center_x, center_y + outer_radius);
+					circle_to(radius, 90.0f, -270.0f);
+				}
+				if(inner_radius > 0.0f)
+				{
+					move_to(center_x, center_y + inner_radius);
+					circle_to(radius, -270.0f, 90.0f);
+				}
+			}
 		};
-
+		
 		struct ShapeDesc
 		{
 			usize command_offset;

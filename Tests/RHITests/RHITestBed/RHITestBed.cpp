@@ -73,7 +73,7 @@ namespace Luna
 			lutry
 			{
 				set_log_std_enabled(true);
-				luset(m_queue, get_main_device()->new_command_queue(CommandQueueType::graphic));
+				luset(m_queue, get_main_device()->new_command_queue(CommandQueueType::graphics));
 				luset(m_window, new_window("RHI Test", WindowDisplaySettings::as_windowed(), WindowCreationFlag::resizable));
 				m_window->get_close_event() += on_window_close;
 				m_window->get_framebuffer_resize_event() += on_window_resize;

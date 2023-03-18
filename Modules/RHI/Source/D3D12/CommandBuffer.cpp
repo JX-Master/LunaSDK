@@ -221,7 +221,7 @@ namespace Luna
 			m_vbs.clear();
 			m_ib.reset();
 			m_heap_set = false;
-			m_graphic_shader_input_layout.reset();
+			m_graphics_shader_input_layout.reset();
 			m_compute_shader_input_layout.reset();
 			return ok;
 		}
@@ -331,12 +331,12 @@ namespace Luna
 			m_li->SetPipelineState(p->m_pso.Get());
 		}
 
-		void CommandBuffer::set_graphic_shader_input_layout(IShaderInputLayout* shader_input_layout)
+		void CommandBuffer::set_graphics_shader_input_layout(IShaderInputLayout* shader_input_layout)
 		{
 			lutsassert();
 			lucheck(shader_input_layout);
 			ShaderInputLayout* o = static_cast<ShaderInputLayout*>(shader_input_layout->get_object());
-			m_graphic_shader_input_layout = o;
+			m_graphics_shader_input_layout = o;
 			m_li->SetGraphicsRootSignature(o->m_rs.Get());
 		}
 
@@ -359,22 +359,22 @@ namespace Luna
 			m_li->IASetVertexBuffers(start_slot, (UINT)views.size(), vbv);
 		}
 
-		void CommandBuffer::set_index_buffer(IResource* buffer, u32 offset_in_bytes, u32 size_in_bytes, Format format)
+		void CommandBuffer::set_index_buffer(const IndexBufferViewDesc& desc)
 		{
 			lutsassert();
-			Resource* b = static_cast<Resource*>(buffer->get_object());
+			Resource* b = static_cast<Resource*>(desc.resource->get_object());
 			m_ib = b;
 			D3D12_INDEX_BUFFER_VIEW v;
-			v.BufferLocation = b->m_res->GetGPUVirtualAddress() + offset_in_bytes;
-			v.Format = encode_pixel_format(format);
-			v.SizeInBytes = size_in_bytes;
+			v.BufferLocation = b->m_res->GetGPUVirtualAddress() + desc.offset_in_bytes;
+			v.Format = encode_pixel_format(desc.index_format);
+			v.SizeInBytes = desc.size_in_bytes;
 			m_li->IASetIndexBuffer(&v);
 		}
 
-		void CommandBuffer::set_graphic_descriptor_set(u32 index, IDescriptorSet* descriptor_set)
+		void CommandBuffer::set_graphics_descriptor_set(u32 index, IDescriptorSet* descriptor_set)
 		{
 			lutsassert();
-			lucheck_msg(m_graphic_shader_input_layout, "Graphic Shader Input Layout must be set before Graphic View Set can be bound!");
+			lucheck_msg(m_graphics_shader_input_layout, "Graphic Shader Input Layout must be set before Graphic View Set can be bound!");
 
 			if (!m_heap_set)
 			{
@@ -385,9 +385,9 @@ namespace Luna
 				m_heap_set = true;
 			}
 
-			lucheck_msg(m_graphic_shader_input_layout->m_descriptor_set_layouts.size() > index, "The binding index out of range specified by the shader input layout.");
+			lucheck_msg(m_graphics_shader_input_layout->m_descriptor_set_layouts.size() > index, "The binding index out of range specified by the shader input layout.");
 
-			auto& info = m_graphic_shader_input_layout->m_descriptor_set_layouts[index];
+			auto& info = m_graphics_shader_input_layout->m_descriptor_set_layouts[index];
 			DescriptorSet* set = static_cast<DescriptorSet*>(descriptor_set->get_object());
 			
 			for (u32 i = 0; i < (u32)info.m_heap_types.size(); ++i)

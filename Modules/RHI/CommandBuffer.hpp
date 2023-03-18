@@ -24,7 +24,7 @@ namespace Luna
 	{
 		enum class CommandQueueType : u32
 		{
-			graphic = 1,
+			graphics = 1,
 			compute = 2,
 			copy = 3,
 		};
@@ -245,14 +245,32 @@ namespace Luna
 			u32 stride_in_bytes;
 
 			VertexBufferViewDesc() = default;
-			VertexBufferViewDesc(IResource* _resource,
-				u64 _offset_in_bytes,
-				u32 _size_in_bytes,
-				u32 _stride_in_bytes) :
-				resource(_resource),
-				offset_in_bytes(_offset_in_bytes),
-				size_in_bytes(_size_in_bytes),
-				stride_in_bytes(_stride_in_bytes) {}
+			VertexBufferViewDesc(IResource* resource,
+				u64 offset_in_bytes,
+				u32 size_in_bytes,
+				u32 stride_in_bytes) :
+				resource(resource),
+				offset_in_bytes(offset_in_bytes),
+				size_in_bytes(size_in_bytes),
+				stride_in_bytes(stride_in_bytes) {}
+		};
+
+		struct IndexBufferViewDesc
+		{
+			IResource* resource;
+			u32 offset_in_bytes;
+			u32 size_in_bytes;
+			Format index_format;
+
+			IndexBufferViewDesc() = default;
+			IndexBufferViewDesc(IResource* resource,
+				u64 offset_in_bytes,
+				u32 size_in_bytes,
+				Format index_format) :
+				resource(resource),
+				offset_in_bytes(offset_in_bytes),
+				size_in_bytes(size_in_bytes),
+				index_format(index_format) {}
 		};
 
 		enum class PrimitiveTopology : u32
@@ -419,7 +437,7 @@ namespace Luna
 			//! to the object until the next `reset` is called.
 			//! This is mainly used to keep references to the graphic objects used by the current command buffer, so they
 			//! will not be released before GPU finishes accessing them.
-			virtual void attach_graphic_object(IDeviceChild* obj) = 0;
+			virtual void attach_device_object(IDeviceChild* obj) = 0;
 
 			//! Begins a new event. This is for use in diagnostic tools like RenderDoc, PIX, etc to group commands into hierarchical
 			//! sections.
@@ -450,17 +468,17 @@ namespace Luna
 			virtual void set_pipeline_state(IPipelineState* pso) = 0;
 
 			//! Sets the graphic shader input layout.
-			virtual void set_graphic_shader_input_layout(IShaderInputLayout* shader_input_layout) = 0;
+			virtual void set_graphics_shader_input_layout(IShaderInputLayout* shader_input_layout) = 0;
 
 			//! Sets vertex buffers.
 			virtual void set_vertex_buffers(u32 start_slot, Span<const VertexBufferViewDesc> views) = 0;
 
 			//! Sets index buffer.
-			virtual void set_index_buffer(IResource* buffer, u32 offset_in_bytes, u32 size_in_bytes, Format format) = 0;
+			virtual void set_index_buffer(const IndexBufferViewDesc& desc) = 0;
 
 			//! Sets the descriptor set to be used by the graphic pipeline.
 			//! This must be called after `set_pipeline_state`.
-			virtual void set_graphic_descriptor_set(u32 index, IDescriptorSet* descriptor_set) = 0;
+			virtual void set_graphics_descriptor_set(u32 index, IDescriptorSet* descriptor_set) = 0;
 
 			//! Bind information about the primitive type, and data order that describes input data for the input assembler stage.
 			virtual void set_primitive_topology(PrimitiveTopology primitive_topology) = 0;

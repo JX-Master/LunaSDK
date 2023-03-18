@@ -173,7 +173,7 @@ float4 main(PS_INPUT input) : SV_Target
                     ShaderInputLayoutFlag::deny_geometry_shader_access |
                     ShaderInputLayoutFlag::deny_hull_shader_access)));
 
-                GraphicPipelineStateDesc ps_desc;
+                GraphicsPipelineStateDesc ps_desc;
                 ps_desc.primitive_topology_type = PrimitiveTopologyType::triangle;
                 ps_desc.sample_mask = U32_MAX;
                 ps_desc.sample_quality = 0;
@@ -192,7 +192,7 @@ float4 main(PS_INPUT input) : SV_Target
                 ps_desc.shader_input_layout = g_slayout;
                 ps_desc.num_render_targets = 1;
                 ps_desc.rtv_formats[0] = Format::rgba8_unorm;
-                luset(g_pso, dev->new_graphic_pipeline_state(ps_desc));
+                luset(g_pso, dev->new_graphics_pipeline_state(ps_desc));
 
                 // Create constant buffer.
                 usize buffer_size_align = dev->get_constant_buffer_data_alignment();
@@ -628,10 +628,10 @@ float4 main(PS_INPUT input) : SV_Target
                 cmd_buffer->set_viewport(Viewport(0.0f, 0.0f, draw_data->DisplaySize.x, draw_data->DisplaySize.y, 0.0f, 1.0f));
 
                 cmd_buffer->set_vertex_buffers(0, { &VertexBufferViewDesc(g_vb, 0, (u32)(g_vb_size * sizeof(ImDrawVert)), (u32)sizeof(ImDrawVert)), 1 });
-                cmd_buffer->set_index_buffer(g_ib, 0, (u32)(g_ib_size * sizeof(ImDrawIdx)), sizeof(ImDrawIdx) == 2 ? Format::r16_uint : Format::r32_uint);
+                cmd_buffer->set_index_buffer({g_ib, 0, (u32)(g_ib_size * sizeof(ImDrawIdx)), sizeof(ImDrawIdx) == 2 ? Format::r16_uint : Format::r32_uint});
                 cmd_buffer->set_primitive_topology(PrimitiveTopology::triangle_list);
                 cmd_buffer->set_pipeline_state(g_pso);
-                cmd_buffer->set_graphic_shader_input_layout(g_slayout);
+                cmd_buffer->set_graphics_shader_input_layout(g_slayout);
                 const f32 blend_factor[4] = { 0.f, 0.f, 0.f, 0.f };
                 cmd_buffer->set_blend_factor(blend_factor);
 
@@ -670,7 +670,7 @@ float4 main(PS_INPUT input) : SV_Target
                         vs->set_srv(1, (IResource*)pcmd->TextureId);
                         vs->set_sampler(2, SamplerDesc(FilterMode::min_mag_mip_linear, TextureAddressMode::clamp, TextureAddressMode::clamp, TextureAddressMode::clamp));
                         cmd_buffer->resource_barrier(ResourceBarrierDesc::as_transition((IResource*)pcmd->TextureId, ResourceState::shader_resource_pixel));
-                        cmd_buffer->set_graphic_descriptor_set(0, vs);
+                        cmd_buffer->set_graphics_descriptor_set(0, vs);
                         cmd_buffer->set_scissor_rect(r);
                         cmd_buffer->draw_indexed(pcmd->ElemCount, pcmd->IdxOffset + idx_offset, pcmd->VtxOffset + vtx_offset);
                         ++num_draw_calls;

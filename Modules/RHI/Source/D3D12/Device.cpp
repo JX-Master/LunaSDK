@@ -401,7 +401,7 @@ namespace Luna
 			lucatchret;
 			return slayout;
 		}
-		R<Ref<IPipelineState>> Device::new_graphic_pipeline_state(const GraphicPipelineStateDesc& desc)
+		R<Ref<IPipelineState>> Device::new_graphics_pipeline_state(const GraphicsPipelineStateDesc& desc)
 		{
 			Ref<PipelineState> s = new_object<PipelineState>(this);
 			if (!s->init_graphic(desc))

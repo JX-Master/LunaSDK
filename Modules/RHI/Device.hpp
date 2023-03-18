@@ -67,7 +67,7 @@ namespace Luna
 
 			//! Creates one new graphic pipeline state.
 			//! @param[in] desc The descriptor object.
-			virtual R<Ref<IPipelineState>> new_graphic_pipeline_state(const GraphicPipelineStateDesc& desc) = 0;
+			virtual R<Ref<IPipelineState>> new_graphics_pipeline_state(const GraphicsPipelineStateDesc& desc) = 0;
 
 			//! Creates one compute pipeline state.
 			//! @param[in] desc The descriptor object.

@@ -190,11 +190,11 @@ namespace Luna
 			//! The current bound index buffer.
 			Ref<Resource> m_ib;
 			//! The current bound graphic pipeline state.
-			//Ref<GraphicPipelineState> m_graphic_pipeline_state;
+			//Ref<GraphicPipelineState> m_graphics_pipeline_state;
 			//! The current bound compute pipeline state.
 			//Ref<ComputePipelineState> m_compute_pipeline_state;
 			//! The current bound graphic shader input layout.
-			Ref<ShaderInputLayout> m_graphic_shader_input_layout;
+			Ref<ShaderInputLayout> m_graphics_shader_input_layout;
 			//! The current bound compute shader input layout.
 			Ref<ShaderInputLayout> m_compute_shader_input_layout;
 
@@ -250,7 +250,7 @@ namespace Luna
 				return m_queue;
 			}
 			RV reset();
-			void attach_graphic_object(IDeviceChild* obj)
+			void attach_device_object(IDeviceChild* obj)
 			{
 				m_objs.push_back(obj);
 			}
@@ -267,10 +267,10 @@ namespace Luna
 			}
 			void begin_render_pass(const RenderPassDesc& desc);
 			void set_pipeline_state(IPipelineState* pso);
-			void set_graphic_shader_input_layout(IShaderInputLayout* shader_input_layout);
+			void set_graphics_shader_input_layout(IShaderInputLayout* shader_input_layout);
 			void set_vertex_buffers(u32 start_slot, Span<const VertexBufferViewDesc> views);
-			void set_index_buffer(IResource* buffer, u32 offset_in_bytes, u32 size_in_bytes, Format format);
-			void set_graphic_descriptor_set(u32 index, IDescriptorSet* descriptor_set);
+			void set_index_buffer(const IndexBufferViewDesc& desc);
+			void set_graphics_descriptor_set(u32 index, IDescriptorSet* descriptor_set);
 			void set_primitive_topology(PrimitiveTopology primitive_topology);
 			void set_stream_output_targets(u32 start_slot, Span<const StreamOutputBufferView> views);
 			void set_viewport(const Viewport& viewport)

@@ -108,7 +108,7 @@ RV start()
 				ShaderInputLayoutFlag::deny_hull_shader_access | ShaderInputLayoutFlag::deny_pixel_shader_access |
 				ShaderInputLayoutFlag::deny_vertex_shader_access)));
 
-			GraphicPipelineStateDesc desc;
+			GraphicsPipelineStateDesc desc;
 			desc.input_layout = InputLayoutDesc({
 				InputElementDesc("POSITION", 0, Format::rg32_float),
 				InputElementDesc("COLOR", 0, Format::rgba32_float) });
@@ -120,7 +120,7 @@ RV start()
 			desc.num_render_targets = 1;
 			desc.rtv_formats[0] = Format::rgba8_unorm;
 
-			luset(pso, get_main_device()->new_graphic_pipeline_state(desc));
+			luset(pso, get_main_device()->new_graphics_pipeline_state(desc));
 
 			// prepare draw buffer. POSITION : COLOR
 			VertexData data[3]{
@@ -150,7 +150,7 @@ void draw()
 	desc.rt_clear_values[0] = Color::yellow();
 	cb->begin_render_pass(desc);
 	cb->set_pipeline_state(pso);
-	cb->set_graphic_shader_input_layout(shader_input_layout);
+	cb->set_graphics_shader_input_layout(shader_input_layout);
 	cb->set_primitive_topology(PrimitiveTopology::triangle_list);
 	cb->set_vertex_buffers(0, { &VertexBufferViewDesc(vb, 0, sizeof(VertexData) * 3, sizeof(VertexData)), 1 });
 	auto sz = get_window()->get_size();

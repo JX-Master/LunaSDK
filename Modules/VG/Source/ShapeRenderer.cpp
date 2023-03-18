@@ -72,7 +72,7 @@ namespace Luna
 					luset(g_fill_slayout, get_main_device()->new_shader_input_layout(desc));
 				}
 				{
-					GraphicPipelineStateDesc desc;
+					GraphicsPipelineStateDesc desc;
 					desc.input_layout = InputLayoutDesc({
 							InputElementDesc("POSITION", 0, Format::rg32_float),
 							InputElementDesc("SHAPECOORD", 0, Format::rg32_float),
@@ -89,7 +89,7 @@ namespace Luna
 					desc.rasterizer_state = RasterizerDesc(FillMode::solid, CullMode::back, 0, 0.0f, 0.0f, 0, false, false, false, false, false);
 					desc.num_render_targets = 1;
 					desc.rtv_formats[0] = Format::rgba8_unorm;
-					luset(g_fill_pso, get_main_device()->new_graphic_pipeline_state(desc));
+					luset(g_fill_pso, get_main_device()->new_graphics_pipeline_state(desc));
 				}
 				{
 					ResourceDesc desc = ResourceDesc::tex2d(ResourceHeapType::shared_upload, Format::rgba8_unorm, ResourceUsageFlag::shader_resource, 1, 1);
@@ -203,14 +203,14 @@ namespace Luna
 				desc.rt_clear_values[0] = Float4U{ 0.0f };
 				cmdbuf->begin_render_pass(desc);
 				cmdbuf->set_pipeline_state(g_fill_pso);
-				cmdbuf->set_graphic_shader_input_layout(g_fill_slayout);
+				cmdbuf->set_graphics_shader_input_layout(g_fill_slayout);
 				cmdbuf->set_primitive_topology(PrimitiveTopology::triangle_list);
 				cmdbuf->set_vertex_buffers(0, { &VertexBufferViewDesc(vertex_buffer, 0, sizeof(Vertex) * num_vertices, sizeof(Vertex)), 1 });
-				cmdbuf->set_index_buffer(index_buffer, 0, num_indices * sizeof(u32), Format::r32_uint);
+				cmdbuf->set_index_buffer({index_buffer, 0, num_indices * sizeof(u32), Format::r32_uint});
 				cmdbuf->set_viewport(Viewport(0.0f, 0.0f, (f32)m_screen_width, (f32)m_screen_height, 0.0f, 1.0f));
 				for (usize i = 0; i < num_draw_calls; ++i)
 				{
-					cmdbuf->set_graphic_descriptor_set(0, m_desc_sets[i]);
+					cmdbuf->set_graphics_descriptor_set(0, m_desc_sets[i]);
 					if (draw_calls[i].clip_rect != RectI(0, 0, 0, 0))
 					{
 						cmdbuf->set_scissor_rect(draw_calls[i].clip_rect);

@@ -121,7 +121,7 @@ RV start()
             ShaderInputLayoutFlag::deny_hull_shader_access |
             ShaderInputLayoutFlag::deny_domain_shader_access |
             ShaderInputLayoutFlag::deny_geometry_shader_access)));
-        GraphicPipelineStateDesc ps_desc;
+        GraphicsPipelineStateDesc ps_desc;
 		ps_desc.primitive_topology_type = PrimitiveTopologyType::triangle;
 		ps_desc.sample_mask = U32_MAX;
 		ps_desc.sample_quality = 0;
@@ -140,7 +140,7 @@ RV start()
 		ps_desc.num_render_targets = 1;
 		ps_desc.rtv_formats[0] = Format::rgba8_unorm;
 		ps_desc.dsv_format = Format::d32_float;
-        luset(pso, dev->new_graphic_pipeline_state(ps_desc));
+        luset(pso, dev->new_graphics_pipeline_state(ps_desc));
         
         auto window_size = get_window()->get_framebuffer_size();
         luset(depth_tex, dev->new_resource(ResourceDesc::tex2d(ResourceHeapType::local, Format::d32_float, 
@@ -250,14 +250,14 @@ void draw()
         desc.stencil_load_op = LoadOp::dont_care;
         desc.stencil_store_op = StoreOp::dont_care;
         cmdbuf->begin_render_pass(desc);
-        cmdbuf->set_graphic_shader_input_layout(slayout);
+        cmdbuf->set_graphics_shader_input_layout(slayout);
         cmdbuf->set_pipeline_state(pso);
-        cmdbuf->set_graphic_descriptor_set(0, desc_set);
+        cmdbuf->set_graphics_descriptor_set(0, desc_set);
         cmdbuf->set_primitive_topology(PrimitiveTopology::triangle_list);
         auto sz = vb->get_desc().width_or_buffer_size;
         cmdbuf->set_vertex_buffers(0, {VertexBufferViewDesc(vb, 0, sz, sizeof(Vertex))});
         sz = ib->get_desc().width_or_buffer_size;
-        cmdbuf->set_index_buffer(ib, 0, sz, Format::r32_uint);
+        cmdbuf->set_index_buffer({ib, 0, (u32)sz, Format::r32_uint});
         cmdbuf->set_scissor_rect(RectI(0, 0, (i32)window_sz.x, (i32)window_sz.y));
         cmdbuf->set_viewport(Viewport(0.0f, 0.0f, (f32)window_sz.x, (f32)window_sz.y, 0.0f, 1.0f));
         cmdbuf->draw_indexed(36, 0, 0);

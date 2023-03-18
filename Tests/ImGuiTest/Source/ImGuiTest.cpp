@@ -29,7 +29,7 @@ void run()
 
 	Ref<IDevice> dev = get_main_device();
 
-	Ref<ICommandQueue> queue = dev->new_command_queue(CommandQueueType::graphic).get();
+	Ref<ICommandQueue> queue = dev->new_command_queue(CommandQueueType::graphics).get();
 
 	Ref<ISwapChain> swap_chain = new_swap_chain(queue, window, SwapChainDesc({0, 0, 2, Format::rgba8_unorm, true})).get();
 

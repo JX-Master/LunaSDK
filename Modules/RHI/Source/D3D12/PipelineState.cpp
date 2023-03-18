@@ -153,9 +153,9 @@ namespace Luna
 			dest.pShaderBytecode = src.data();
 		}
 
-		bool PipelineState::init_graphic(const GraphicPipelineStateDesc& desc)
+		bool PipelineState::init_graphic(const GraphicsPipelineStateDesc& desc)
 		{
-			m_is_graphic = true;
+			m_is_graphics = true;
 			ShaderInputLayout* slayout = static_cast<ShaderInputLayout*>(desc.shader_input_layout->get_object());
 			D3D12_GRAPHICS_PIPELINE_STATE_DESC d;
 			d.pRootSignature = slayout->m_rs.Get();
@@ -371,7 +371,7 @@ namespace Luna
 		}
 		bool PipelineState::init_compute(const ComputePipelineStateDesc& desc)
 		{
-			m_is_graphic = false;
+			m_is_graphics = false;
 			ShaderInputLayout* slayout = static_cast<ShaderInputLayout*>(desc.shader_input_layout->get_object());
 			D3D12_COMPUTE_PIPELINE_STATE_DESC d;
 			d.pRootSignature = slayout->m_rs.Get();

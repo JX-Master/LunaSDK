@@ -113,7 +113,7 @@ namespace Luna
 			R<Ref<IResource>> new_resource(const ResourceDesc& desc, const ClearValue* optimized_clear_value);
 			R<Ref<IResourceHeap>> new_resource_heap(const ResourceHeapDesc& desc);
 			R<Ref<IShaderInputLayout>> new_shader_input_layout(const ShaderInputLayoutDesc& desc);
-			R<Ref<IPipelineState>> new_graphic_pipeline_state(const GraphicPipelineStateDesc& desc);
+			R<Ref<IPipelineState>> new_graphics_pipeline_state(const GraphicsPipelineStateDesc& desc);
 			R<Ref<IPipelineState>> new_compute_pipeline_state(const ComputePipelineStateDesc& desc);
 			R<Ref<IDescriptorSetLayout>> new_descriptor_set_layout(const DescriptorSetLayoutDesc& desc);
 			R<Ref<IDescriptorSet>> new_descriptor_set(DescriptorSetDesc& desc);

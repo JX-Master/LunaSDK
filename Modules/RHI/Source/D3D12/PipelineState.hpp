@@ -26,7 +26,7 @@ namespace Luna
 
 			Ref<Device> m_device;
 			ComPtr<ID3D12PipelineState> m_pso;
-			bool m_is_graphic;
+			bool m_is_graphics;
 
 			PipelineState(Device* dev) :
 				m_device(dev) {}
@@ -37,7 +37,7 @@ namespace Luna
 			}
 			void set_name(const Name& name) { set_object_name(m_pso.Get(), name); }
 
-			bool init_graphic(const GraphicPipelineStateDesc& desc);
+			bool init_graphic(const GraphicsPipelineStateDesc& desc);
 			bool init_compute(const ComputePipelineStateDesc& desc);
 		};
 	}
