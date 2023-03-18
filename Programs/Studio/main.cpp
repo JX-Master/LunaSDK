@@ -24,7 +24,7 @@ namespace Luna
 		lutry
 		{
 			g_env = memnew<AppEnv>();
-			luset(g_env->graphics_queue, RHI::get_main_device()->new_command_queue(RHI::CommandQueueType::graphic));
+			luset(g_env->graphics_queue, RHI::get_main_device()->new_command_queue(RHI::CommandQueueType::graphics));
 			luset(g_env->async_compute_queue, RHI::get_main_device()->new_command_queue(RHI::CommandQueueType::compute));
 		}
 		lucatchret;

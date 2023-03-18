@@ -100,6 +100,7 @@ namespace Luna
 	struct ToneMappingParams
 	{
 		f32 exposure = 1.0f;
+		u32 auto_exposure;
 	};
 	struct LumHistogramParams
 	{
@@ -207,6 +208,7 @@ namespace Luna
 					luexp(m_tone_mapping_cb->map_subresource(0, false, &mapped));
 					ToneMappingParams params;
 					params.exposure = exposure;
+					params.auto_exposure = 1;
 					memcpy(mapped, &params, sizeof(ToneMappingParams));
 					m_tone_mapping_cb->unmap_subresource(0, true);
 					cmdbuf->set_compute_shader_input_layout(m_global_data->m_tone_mapping_pass_slayout);

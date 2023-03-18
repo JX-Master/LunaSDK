@@ -5,6 +5,7 @@ RWTexture2D<float4> g_dest_tex : register(u3);
 cbuffer g_cb : register(b0)
 {
 	float g_exposure;
+    uint g_auto_exposure;
 }
 
 // @see: https://knarkowicz.wordpress.com/2016/01/06/aces-filmic-tone-mapping-curve/
@@ -33,8 +34,17 @@ float3 gamma_correction(float3 color, float gamma)
 void main(int3 dispatch_thread_id : SV_DispatchThreadID)
 {
 	float3 hdr_color = g_scene_tex[dispatch_thread_id.xy].xyz;
-	float lum_value = g_lum_tex[int2(0, 0)];
-	float3 ldr_color = tonemap(hdr_color, g_exposure);
+    float exposure;
+    if(g_auto_exposure > 0)
+    {
+        exposure = g_lum_tex[int2(0, 0)];
+        exposure = 1.0f / max(exposure, 0.00001f) / 9.6f;
+    }
+    else
+    {
+        exposure = g_exposure;
+    }
+	float3 ldr_color = tonemap(hdr_color, exposure);
 	float3 final = gamma_correction(ldr_color, 2.2);
 
 	g_dest_tex[dispatch_thread_id.xy] = float4(saturate(final.xyz), 1.0);

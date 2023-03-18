@@ -3,15 +3,12 @@
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
-* @file LightingPass.cpp
+* @file GeometryPass.cpp
 * @author JXMaster
-* @date 2023/3/7
+* @date 2023/3/11
 */
-#include "LightingPass.hpp"
+#include "GeometryPass.hpp"
 #include <Runtime/File.hpp>
-#include <ShaderCompiler/ShaderCompiler.hpp>
-#include <RHI/ShaderCompileHelper.hpp>
-#include <Asset/Asset.hpp>
 #include "../Mesh.hpp"
 #include "../Model.hpp"
 #include "../Material.hpp"
@@ -19,12 +16,12 @@
 
 namespace Luna
 {
-    RV LightingPassGlobalData::init(RHI::IDevice* device)
+    RV GeometryPassGlobalData::init(RHI::IDevice* device)
     {
         using namespace RHI;
         lutry
         {
-            luset(m_lighting_pass_dlayout, device->new_descriptor_set_layout(DescriptorSetLayoutDesc({
+            luset(m_geometry_pass_dlayout, device->new_descriptor_set_layout(DescriptorSetLayoutDesc({
 				DescriptorSetLayoutBinding(DescriptorType::cbv, 0, 1, ShaderVisibility::all),
 				DescriptorSetLayoutBinding(DescriptorType::srv, 1, 1, ShaderVisibility::all),
 				DescriptorSetLayoutBinding(DescriptorType::srv, 2, 1, ShaderVisibility::pixel),
@@ -32,18 +29,16 @@ namespace Luna
 				DescriptorSetLayoutBinding(DescriptorType::srv, 4, 1, ShaderVisibility::pixel),
 				DescriptorSetLayoutBinding(DescriptorType::srv, 5, 1, ShaderVisibility::pixel),
 				DescriptorSetLayoutBinding(DescriptorType::srv, 6, 1, ShaderVisibility::pixel),
-				DescriptorSetLayoutBinding(DescriptorType::srv, 7, 1, ShaderVisibility::pixel),
-				DescriptorSetLayoutBinding(DescriptorType::srv, 8, 1, ShaderVisibility::pixel),
-				DescriptorSetLayoutBinding(DescriptorType::sampler, 9, 1, ShaderVisibility::pixel)
+				DescriptorSetLayoutBinding(DescriptorType::sampler, 7, 1, ShaderVisibility::pixel)
 				})));
 
-			luset(m_lighting_pass_slayout, device->new_shader_input_layout(ShaderInputLayoutDesc({ m_lighting_pass_dlayout },
+			luset(m_geometry_pass_slayout, device->new_shader_input_layout(ShaderInputLayoutDesc({ m_geometry_pass_dlayout },
 				ShaderInputLayoutFlag::allow_input_assembler_input_layout |
 				ShaderInputLayoutFlag::deny_domain_shader_access |
 				ShaderInputLayoutFlag::deny_geometry_shader_access |
 				ShaderInputLayoutFlag::deny_hull_shader_access)));
 
-			lulet(psf, open_file("LightingPassPixel.cso", FileOpenFlag::read, FileCreationMode::open_existing));
+			lulet(psf, open_file("GeometryPixel.cso", FileOpenFlag::read, FileCreationMode::open_existing));
 			auto file_size = psf->get_size();
 			auto ps_blob = Blob((usize)file_size);
 			luexp(psf->read(ps_blob.span()));
@@ -59,16 +54,18 @@ namespace Luna
 			ps_desc.blend_state = BlendDesc(false, false, { RenderTargetBlendDesc(false, false, BlendFactor::src_alpha,
 				BlendFactor::inv_src_alpha, BlendOp::add, BlendFactor::inv_src_alpha, BlendFactor::zero, BlendOp::add, LogicOp::noop, ColorWriteMask::all) });
 			ps_desc.rasterizer_state = RasterizerDesc(FillMode::solid, CullMode::back, 0, 0.0f, 0.0f, 0, false, true, false, false, false);
-			ps_desc.depth_stencil_state = DepthStencilDesc(true, true, ComparisonFunc::less_equal, false, 0x00, 0x00, DepthStencilOpDesc(), DepthStencilOpDesc());
+			ps_desc.depth_stencil_state = DepthStencilDesc(true, false, ComparisonFunc::less_equal, false, 0x00, 0x00, DepthStencilOpDesc(), DepthStencilOpDesc());
 			ps_desc.ib_strip_cut_value = IndexBufferStripCutValue::disabled;
 			ps_desc.input_layout = get_vertex_input_layout_desc();
 			ps_desc.vs = m_common_vertex->vs_blob.cspan();
 			ps_desc.ps = ps_blob.cspan();
-			ps_desc.shader_input_layout = m_lighting_pass_slayout;
-			ps_desc.num_render_targets = 1;
-			ps_desc.rtv_formats[0] = Format::rgba32_float;
+			ps_desc.shader_input_layout = m_geometry_pass_slayout;
+			ps_desc.num_render_targets = 3;
+			ps_desc.rtv_formats[0] = Format::rgba8_unorm;
+            ps_desc.rtv_formats[1] = Format::rgba8_unorm;
+            ps_desc.rtv_formats[2] = Format::rgba16_float;
 			ps_desc.dsv_format = Format::d32_float;
-			luset(m_lighting_pass_pso, device->new_graphics_pipeline_state(ps_desc));
+			luset(m_geometry_pass_pso, device->new_graphics_pipeline_state(ps_desc));
 
             luset(m_default_base_color, device->new_resource(
 				ResourceDesc::tex2d(ResourceHeapType::shared_upload, Format::rgba8_unorm, ResourceUsageFlag::shader_resource, 1, 1, 1, 1)));
@@ -108,44 +105,52 @@ namespace Luna
 			m_default_normal->unmap_subresource(0, true);
 			m_default_metallic->unmap_subresource(0, true);
 			m_default_emissive->unmap_subresource(0, true);
-            
-
         }
         lucatchret;
         return ok;
     }
 
-    RV LightingPass::init(LightingPassGlobalData* global_data)
+    RV GeometryPass::init(GeometryPassGlobalData* global_data)
     {
-        m_global_data = global_data;
-		return ok;
+        lutry
+        {
+            m_global_data = global_data;
+        }
+        lucatchret;
+        return ok;
     }
 
-    RV LightingPass::execute(RG::IRenderPassContext* ctx)
+    RV GeometryPass::execute(RG::IRenderPassContext* ctx)
     {
         using namespace RHI;
         lutry
         {
-            auto scene_tex = ctx->get_output("scene_texture");
-            auto depth_tex = ctx->get_output("depth_texture");
-            auto render_desc = scene_tex->get_desc();
+            auto base_color_roughness_tex = ctx->get_output("base_color_roughness_texture");
+            auto normal_metallic_tex = ctx->get_output("normal_metallic_texture");
+			auto emissive_tex = ctx->get_output("emissive_texture");
+			auto depth_tex = ctx->get_input("depth_texture");
+            auto render_desc = base_color_roughness_tex->get_desc();
             auto cmdbuf = ctx->get_command_buffer();
             auto device = cmdbuf->get_device();
             auto cb_align = device->get_constant_buffer_data_alignment();
-            lulet(scene_tex_rtv, device->new_render_target_view(scene_tex));
+            lulet(base_color_rtv, device->new_render_target_view(base_color_roughness_tex));
+			lulet(normal_rtv, device->new_render_target_view(normal_metallic_tex));
+			lulet(emissive_rtv, device->new_render_target_view(emissive_tex));
             lulet(depth_dsv, device->new_depth_stencil_view(depth_tex));
             //auto fbo = device->new_frame_buffer(m_global_data->m_lighting_pass_rp, 1, &lighting_rt, nullptr, depth_tex, nullptr).get();
 			cmdbuf->resource_barriers({ 
-				ResourceBarrierDesc::as_transition(scene_tex, ResourceState::render_target),
-				ResourceBarrierDesc::as_transition(depth_tex, ResourceState::depth_stencil_write) });
+				ResourceBarrierDesc::as_transition(base_color_roughness_tex, ResourceState::render_target),
+				ResourceBarrierDesc::as_transition(normal_metallic_tex, ResourceState::render_target),
+				ResourceBarrierDesc::as_transition(depth_tex, ResourceState::depth_stencil_read) });
 			RenderPassDesc render_pass;
-			render_pass.rtvs[0] = scene_tex_rtv;
+			render_pass.rtvs[0] = base_color_rtv;
+			render_pass.rtvs[1] = normal_rtv;
+			render_pass.rtvs[2] = emissive_rtv;
 			render_pass.dsv = depth_dsv;
-			render_pass.depth_load_op = RHI::LoadOp::clear;
-			render_pass.depth_clear_value = 1.0f;
+			render_pass.depth_load_op = RHI::LoadOp::load;
 			cmdbuf->begin_render_pass(render_pass);
-			cmdbuf->set_graphics_shader_input_layout(m_global_data->m_lighting_pass_slayout);
-			cmdbuf->set_pipeline_state(m_global_data->m_lighting_pass_pso);
+			cmdbuf->set_graphics_shader_input_layout(m_global_data->m_geometry_pass_slayout);
+			cmdbuf->set_pipeline_state(m_global_data->m_geometry_pass_pso);
 			cmdbuf->set_primitive_topology(PrimitiveTopology::triangle_list);
 			cmdbuf->set_viewport(Viewport(0.0f, 0.0f, (f32)render_desc.width_or_buffer_size, (f32)render_desc.height, 0.0f, 1.0f));
 			cmdbuf->set_scissor_rect(RectI(0, 0, (i32)render_desc.width_or_buffer_size, (i32)render_desc.height));
@@ -203,28 +208,16 @@ namespace Luna
 							}
 						}
 					}
-
-					if (skybox) sky_tex = skybox;
-					lulet(vs, device->new_descriptor_set(DescriptorSetDesc(m_global_data->m_lighting_pass_dlayout)));
+					lulet(vs, device->new_descriptor_set(DescriptorSetDesc(m_global_data->m_geometry_pass_dlayout)));
 					vs->set_cbv(0, camera_cb, ConstantBufferViewDesc(0, (u32)align_upper(sizeof(CameraCB), cb_align)));
 					vs->set_srv(1, model_matrices, &ShaderResourceViewDesc::as_buffer(Format::unknown, i, 1, sizeof(Float4x4) * 2, false));
-					if (light_ts.empty())
-					{
-						// Adds one fake light.
-						vs->set_srv(2, light_params, &ShaderResourceViewDesc::as_buffer(Format::unknown, 0, 1, sizeof(LightingParams)));
-					}
-					else
-					{
-						vs->set_srv(2, light_params, &ShaderResourceViewDesc::as_buffer(Format::unknown, 0, (u32)light_ts.size(), sizeof(LightingParams)));
-					}
 					// Set material texture: base_color(t2), roughness(t3), normal(t4), metallic(t5), emissive(t6).
-					vs->set_srv(3, base_color_tex);
-					vs->set_srv(4, roughness_tex);
-					vs->set_srv(5, normal_tex);
-					vs->set_srv(6, metallic_tex);
-					vs->set_srv(7, emissive_tex);
-					vs->set_srv(8, sky_tex);
-					vs->set_sampler(9, SamplerDesc(FilterMode::min_mag_mip_linear, TextureAddressMode::repeat, TextureAddressMode::repeat, TextureAddressMode::repeat));
+					vs->set_srv(2, base_color_tex);
+					vs->set_srv(3, roughness_tex);
+					vs->set_srv(4, normal_tex);
+					vs->set_srv(5, metallic_tex);
+					vs->set_srv(6, emissive_tex);
+					vs->set_sampler(7, SamplerDesc(FilterMode::min_mag_mip_linear, TextureAddressMode::repeat, TextureAddressMode::repeat, TextureAddressMode::repeat));
 					cmdbuf->set_graphics_descriptor_set(0, vs);
 					cmdbuf->attach_device_object(vs);
 					cmdbuf->draw_indexed(mesh->pieces[j].num_indices, mesh->pieces[j].first_index_offset, 0);
@@ -235,50 +228,78 @@ namespace Luna
         lucatchret;
         return ok;
     }
-    RV compile_lighting_pass(object_t userdata, RG::IRenderGraphCompiler* compiler)
+	RV compile_geometry_pass(object_t userdata, RG::IRenderGraphCompiler* compiler)
     {
         lutry
         {
-            LightingPassGlobalData* data = (LightingPassGlobalData*)userdata;
-			auto scene_texture = compiler->get_output_resource("scene_texture");
-			auto depth_texture = compiler->get_output_resource("depth_texture");
-			if(scene_texture == RG::INVALID_RESOURCE) return set_error(BasicError::bad_arguments(), "LightingPass: Output \"scene_texture\" is not specified.");
-			if(depth_texture == RG::INVALID_RESOURCE) return set_error(BasicError::bad_arguments(), "LightingPass: Output \"depth_texture\" is not specified.");
-			RHI::ResourceDesc desc = compiler->get_resource_desc(scene_texture);
-			if (desc.pixel_format != RHI::Format::rgba32_float)
+            GeometryPassGlobalData* data = (GeometryPassGlobalData*)userdata;
+			auto depth_texture = compiler->get_input_resource("depth_texture");
+			if(depth_texture == RG::INVALID_RESOURCE) return set_error(BasicError::bad_arguments(), "GeometryPass: Input \"depth_texture\" is not specified.");
+			auto base_color_roughness_tex = compiler->get_output_resource("base_color_roughness_texture");
+            auto normal_metallic_tex = compiler->get_output_resource("normal_metallic_texture");
+			auto emissive_tex = compiler->get_output_resource("emissive_texture");
+			if(base_color_roughness_tex == RG::INVALID_RESOURCE) return set_error(BasicError::bad_arguments(), "GeometryPass: Output \"base_color_roughness_texture\" is not specified.");
+			if(normal_metallic_tex == RG::INVALID_RESOURCE) return set_error(BasicError::bad_arguments(), "GeometryPass: Output \"normal_metallic_tex\" is not specified.");
+			if(emissive_tex == RG::INVALID_RESOURCE) return set_error(BasicError::bad_arguments(), "GeometryPass: Output \"emissive_tex\" is not specified.");
+			RHI::ResourceDesc desc = compiler->get_resource_desc(depth_texture);
+			if(desc.type == RHI::ResourceType::texture_2d && desc.pixel_format == RHI::Format::unknown)
 			{
-				return set_error(BasicError::bad_arguments(), "LightingPass: Invalid format for \"scene_texture\" is specified. \"scene_texture\" must be Format::rgba32_float.");
+				desc.pixel_format = RHI::Format::d32_float;
 			}
-			desc.usages |= RHI::ResourceUsageFlag::render_target;
-			compiler->set_resource_desc(scene_texture, desc);
-			desc = compiler->get_resource_desc(depth_texture);
-			if (desc.pixel_format != RHI::Format::d32_float)
+			if (desc.type != RHI::ResourceType::texture_2d || desc.pixel_format != RHI::Format::d32_float)
 			{
-				return set_error(BasicError::bad_arguments(), "LightingPass: Invalid format for \"depth_texture\" is specified. \"depth_texture\" must be Format::d32_float.");
+				return set_error(BasicError::bad_arguments(), "DepthPass: Invalid format for \"depth_texture\" is specified. \"depth_texture\" must be 2D texture with Format::d32_float.");
 			}
 			desc.usages |= RHI::ResourceUsageFlag::depth_stencil;
 			compiler->set_resource_desc(depth_texture, desc);
-			Ref<LightingPass> pass = new_object<LightingPass>();
+
+			auto desc2 = compiler->get_resource_desc(base_color_roughness_tex);
+			desc2.type = RHI::ResourceType::texture_2d;
+			if(!desc2.width_or_buffer_size) desc2.width_or_buffer_size = desc.width_or_buffer_size;
+			if(!desc2.height) desc2.height = desc.height;
+			if(desc2.pixel_format == RHI::Format::unknown) desc2.pixel_format = RHI::Format::rgba8_unorm;
+			desc2.usages |= RHI::ResourceUsageFlag::render_target;
+			compiler->set_resource_desc(base_color_roughness_tex, desc2);
+
+			desc2 = compiler->get_resource_desc(normal_metallic_tex);
+			desc2.type = RHI::ResourceType::texture_2d;
+			if(!desc2.width_or_buffer_size) desc2.width_or_buffer_size = desc.width_or_buffer_size;
+			if(!desc2.height) desc2.height = desc.height;
+			if(desc2.pixel_format == RHI::Format::unknown) desc2.pixel_format = RHI::Format::rgba8_unorm;
+			desc2.usages |= RHI::ResourceUsageFlag::render_target;
+			compiler->set_resource_desc(normal_metallic_tex, desc2);
+
+			desc2 = compiler->get_resource_desc(emissive_tex);
+			desc2.type = RHI::ResourceType::texture_2d;
+			if(!desc2.width_or_buffer_size) desc2.width_or_buffer_size = desc.width_or_buffer_size;
+			if(!desc2.height) desc2.height = desc.height;
+			if(desc2.pixel_format == RHI::Format::unknown) desc2.pixel_format = RHI::Format::rgba16_float;
+			desc2.usages |= RHI::ResourceUsageFlag::render_target;
+			compiler->set_resource_desc(emissive_tex, desc2);
+
+			Ref<GeometryPass> pass = new_object<GeometryPass>();
             luexp(pass->init(data));
 			compiler->set_render_pass_object(pass);
         }
         lucatchret;
         return ok;
     }
-    RV register_lighting_pass()
+    RV register_geometry_pass()
     {
         lutry
         {
-            register_boxed_type<LightingPassGlobalData>();
-            register_boxed_type<LightingPass>();
-            impl_interface_for_type<LightingPass, RG::IRenderPass>();
+            register_boxed_type<GeometryPassGlobalData>();
+            register_boxed_type<GeometryPass>();
+            impl_interface_for_type<GeometryPass, RG::IRenderPass>();
             RG::RenderPassTypeDesc desc;
-            desc.name = "Lighting";
-            desc.desc = "Illuminate the scene.";
-            desc.output_parameters.push_back({"scene_texture", "The scene texture."});
-            desc.output_parameters.push_back({"depth_texture", "The scene depth texture"});
-            desc.compile = compile_lighting_pass;
-            auto data = new_object<LightingPassGlobalData>();
+            desc.name = "Geometry";
+            desc.desc = "Writes scene geometry information to the geometry buffer (G-buffer).";
+            desc.input_parameters.push_back({"depth_texture", "The scene depth texture with pre-rendered depth information."});
+			desc.output_parameters.push_back({"base_color_roughness_texture", "The base color (RGB) and roughness (A) G-buffer."});
+			desc.output_parameters.push_back({"normal_metallic_texture", "The normal (RGB) and metallic (A) G-buffer."});
+			desc.output_parameters.push_back({"emissive_texture", "The emissive (RGB) G-buffer."});
+            desc.compile = compile_geometry_pass;
+            auto data = new_object<GeometryPassGlobalData>();
             luexp(data->init(RHI::get_main_device()));
             desc.userdata = data.object();
             RG::register_render_pass_type(desc);

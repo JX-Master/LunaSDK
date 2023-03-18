@@ -81,7 +81,8 @@ namespace Luna
 					f32 v_edit = rad_to_deg(*data);
 					v_min = rad_to_deg(v_min);
 					v_max = rad_to_deg(v_max);
-					ImGui::DragFloat(name, &v_edit, 1.0f, v_min, v_max);
+					f32 speed = (v_max <= v_min) ? 1.0f : (v_max - v_min) / 100.0f;
+					ImGui::DragFloat(name, &v_edit, speed, v_min, v_max);
 					if (ImGui::IsItemEdited())
 					{
 						*data = deg_to_rad(v_edit);

@@ -26,6 +26,6 @@ namespace Luna
 		Float3 environment_color = Float3(0.0f, 0.0f, 0.0f);
 
 		f32 skybox_rotation = 0.0f;
-		f32 exposure = 1.0f;
+		f32 exposure = 1.0f / 9.6f;
 	};
 }

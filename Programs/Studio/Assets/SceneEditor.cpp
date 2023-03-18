@@ -29,6 +29,9 @@
 #include "../RenderPasses/SkyBoxPass.hpp"
 #include "../RenderPasses/ToneMappingPass.hpp"
 #include "../RenderPasses/WireframePass.hpp"
+#include "../RenderPasses/DepthPass.hpp"
+#include "../RenderPasses/GeometryPass.hpp"
+#include "../RenderPasses/DeferredLightingPass.hpp"
 namespace Luna
 {
 	struct SceneEditorUserData
@@ -476,9 +479,12 @@ namespace Luna
 			m_camera_cb_data.world_to_view = camera_entity->world_to_local_matrix();
 			m_camera_cb_data.view_to_proj = camera_component->get_projection_matrix();
 			m_camera_cb_data.world_to_proj = mul(m_camera_cb_data.world_to_view, m_camera_cb_data.view_to_proj);
+			m_camera_cb_data.proj_to_world = inverse(m_camera_cb_data.world_to_proj);
 			m_camera_cb_data.view_to_world = camera_entity->local_to_world_matrix();
 			Float3 env_color = scene_renderer->environment_color;
-			m_camera_cb_data.env_color = Float4(env_color.x, env_color.y, env_color.z, 1.0f);
+			m_camera_cb_data.env_light_color = Float4(env_color.x, env_color.y, env_color.z, 1.0f);
+			m_camera_cb_data.screen_width = (u32)scene_sz.x;
+			m_camera_cb_data.screen_height = (u32)scene_sz.y;
 			void* mapped = nullptr;
 			luexp(m_camera_cb->map_subresource(0, false, &mapped));
 			memcpy(mapped, &m_camera_cb_data, sizeof(CameraCB));
@@ -636,25 +642,31 @@ namespace Luna
 				constexpr usize DEPTH_BUFFER = 1;
 				constexpr usize BACK_BUFFER = 2;
 				constexpr usize WIREFRAME_BACK_BUFFER = 3;
+				constexpr usize BASE_COLOR_ROUGHNESS_BUFFER = 4;
+				constexpr usize NORMAL_METALLIC_BUFFER = 5;
+				constexpr usize EMISSIVE_BUFFER = 6;
 
 				// Passes.
 				constexpr usize WIREFRAME_PASS = 0;
-				constexpr usize SKYBOX_PASS = 1;
-				constexpr usize LIGHTING_PASS = 2;
-				constexpr usize TONE_MAPPING_PASS = 3;
+				constexpr usize DEPTH_PASS = 1;
+				constexpr usize GEOMETRY_PASS = 2;
+				constexpr usize SKYBOX_PASS = 3;
+				constexpr usize DEFERRED_LIGHTING_PASS = 4;
+				constexpr usize TONE_MAPPING_PASS = 5;
 				
 				// Build render graph.
 				{
 					using namespace RG;
 					
-					
 					RenderGraphDesc desc;
-					desc.passes.resize(4);
+					desc.passes.resize(6);
 					desc.passes[WIREFRAME_PASS] = {"WireframePass", "Wireframe"};
+					desc.passes[DEPTH_PASS] = {"DepthPass", "Depth"};
+					desc.passes[GEOMETRY_PASS] = {"GeometryPass", "Geometry"};
 					desc.passes[SKYBOX_PASS] = {"SkyBoxPass", "SkyBox"};
-					desc.passes[LIGHTING_PASS] = {"LightingPass", "Lighting"};
+					desc.passes[DEFERRED_LIGHTING_PASS] = {"DeferredLightingPass", "DeferredLighting"};
 					desc.passes[TONE_MAPPING_PASS] = {"ToneMappingPass", "ToneMapping"};
-					desc.resources.resize(4);
+					desc.resources.resize(7);
 					desc.resources[LIGHTING_BUFFER] = {RenderGraphResourceType::transient, 
 						RenderGraphResourceFlag::none,
 						"LightingBuffer", 
@@ -675,6 +687,21 @@ namespace Luna
 						"WireframeBackBuffer",
 						ResourceDesc::tex2d(ResourceHeapType::local, Format::rgba8_unorm, 
 						ResourceUsageFlag::shader_resource | ResourceUsageFlag::render_target, (u32)scene_sz.x, (u32)scene_sz.y)};
+					desc.resources[BASE_COLOR_ROUGHNESS_BUFFER] = {RenderGraphResourceType::transient, 
+						RenderGraphResourceFlag::none,
+						"BaseColorRoughnessBuffer",
+						ResourceDesc::tex2d(ResourceHeapType::local, Format::rgba8_unorm, 
+						ResourceUsageFlag::shader_resource | ResourceUsageFlag::render_target, 0, 0)};
+					desc.resources[NORMAL_METALLIC_BUFFER] = {RenderGraphResourceType::transient, 
+						RenderGraphResourceFlag::none,
+						"NormalMetallicBuffer",
+						ResourceDesc::tex2d(ResourceHeapType::local, Format::rgba8_unorm, 
+						ResourceUsageFlag::shader_resource | ResourceUsageFlag::render_target, 0, 0)};
+					desc.resources[EMISSIVE_BUFFER] = {RenderGraphResourceType::transient, 
+						RenderGraphResourceFlag::none,
+						"EmissiveBuffer",
+						ResourceDesc::tex2d(ResourceHeapType::local, Format::rgba16_float, 
+						ResourceUsageFlag::shader_resource | ResourceUsageFlag::render_target, 0, 0)};
 					if(m_wireframe)
 					{
 						desc.resources[WIREFRAME_BACK_BUFFER].type = RenderGraphResourceType::persistent;
@@ -686,9 +713,17 @@ namespace Luna
 						desc.resources[BACK_BUFFER].flags |= RenderGraphResourceFlag::output;
 					}
 					desc.output_connections.push_back({WIREFRAME_PASS, "scene_texture", WIREFRAME_BACK_BUFFER});
+					desc.output_connections.push_back({DEPTH_PASS, "depth_texture", DEPTH_BUFFER});
+					desc.input_connections.push_back({GEOMETRY_PASS, "depth_texture", DEPTH_BUFFER});
+					desc.output_connections.push_back({GEOMETRY_PASS, "base_color_roughness_texture", BASE_COLOR_ROUGHNESS_BUFFER});
+					desc.output_connections.push_back({GEOMETRY_PASS, "normal_metallic_texture", NORMAL_METALLIC_BUFFER});
+					desc.output_connections.push_back({GEOMETRY_PASS, "emissive_texture", EMISSIVE_BUFFER});
 					desc.output_connections.push_back({SKYBOX_PASS, "texture", LIGHTING_BUFFER});
-					desc.output_connections.push_back({LIGHTING_PASS, "scene_texture", LIGHTING_BUFFER});
-					desc.output_connections.push_back({LIGHTING_PASS, "scene_depth_texture", DEPTH_BUFFER});
+					desc.input_connections.push_back({DEFERRED_LIGHTING_PASS, "depth_texture", DEPTH_BUFFER});
+					desc.input_connections.push_back({DEFERRED_LIGHTING_PASS, "base_color_roughness_texture", BASE_COLOR_ROUGHNESS_BUFFER});
+					desc.input_connections.push_back({DEFERRED_LIGHTING_PASS, "normal_metallic_texture", NORMAL_METALLIC_BUFFER});
+					desc.input_connections.push_back({DEFERRED_LIGHTING_PASS, "emissive_texture", EMISSIVE_BUFFER});
+					desc.output_connections.push_back({DEFERRED_LIGHTING_PASS, "scene_texture", LIGHTING_BUFFER});
 					desc.input_connections.push_back({TONE_MAPPING_PASS, "hdr_texture", LIGHTING_BUFFER});
 					desc.output_connections.push_back({TONE_MAPPING_PASS, "ldr_texture", BACK_BUFFER});
 					m_render_graph->set_desc(desc);
@@ -710,18 +745,25 @@ namespace Luna
 					else
 					{
 						SkyBoxPass* skybox = cast_objct<SkyBoxPass>(m_render_graph->get_render_pass(SKYBOX_PASS)->get_object());
-						LightingPass* lighting = cast_objct<LightingPass>(m_render_graph->get_render_pass(LIGHTING_PASS)->get_object());
+						DepthPass* depth = cast_objct<DepthPass>(m_render_graph->get_render_pass(DEPTH_PASS)->get_object());
+						GeometryPass* geometry = cast_objct<GeometryPass>(m_render_graph->get_render_pass(GEOMETRY_PASS)->get_object());
+						DeferredLightingPass* lighting = cast_objct<DeferredLightingPass>(m_render_graph->get_render_pass(DEFERRED_LIGHTING_PASS)->get_object());
 						ToneMappingPass* tone_mapping = cast_objct<ToneMappingPass>(m_render_graph->get_render_pass(TONE_MAPPING_PASS)->get_object());
 						skybox->camera_fov = camera_component->fov;
 						skybox->camera_type = camera_component->type;
 						skybox->view_to_world = camera_entity->local_to_world_matrix();
 						auto skybox_tex = Asset::get_asset_data<RHI::IResource>(scene_renderer->skybox);
 						skybox->skybox = skybox_tex;
+						depth->ts = {ts.data(), ts.size()};
+						depth->rs = {rs.data(), rs.size()};
+						depth->camera_cb = m_camera_cb;
+						depth->model_matrices = m_model_matrices;
+						geometry->camera_cb = m_camera_cb;
+						geometry->ts = {ts.data(), ts.size()};
+						geometry->rs = {rs.data(), rs.size()};
+						geometry->model_matrices = m_model_matrices;
 						lighting->skybox = skybox_tex;
-						lighting->model_matrices = m_model_matrices;
 						lighting->camera_cb = m_camera_cb;
-						lighting->ts = {ts.data(), ts.size()};
-						lighting->rs = {rs.data(), rs.size()};
 						lighting->light_params = m_lighting_params;
 						lighting->light_ts = {light_ts.data(), light_ts.size()};
 						tone_mapping->exposure = scene_renderer->exposure;
@@ -754,11 +796,11 @@ namespace Luna
 				RenderPassDesc render_pass;
 				render_pass.rtvs[0] = render_rtv;
 				m_scene_cmdbuf->begin_render_pass(render_pass);
-				m_scene_cmdbuf->set_graphic_shader_input_layout(m_type->m_grid_slayout);
+				m_scene_cmdbuf->set_graphics_shader_input_layout(m_type->m_grid_slayout);
 				m_scene_cmdbuf->set_pipeline_state(m_type->m_grid_pso);
 				m_scene_cmdbuf->set_vertex_buffers(0, { VertexBufferViewDesc(m_type->m_grid_vb.get(), 0, sizeof(Float4) * 44, sizeof(Float4)) });
 				m_scene_cmdbuf->set_primitive_topology(PrimitiveTopology::line_list);
-				m_scene_cmdbuf->set_graphic_descriptor_set(0, m_grid_desc_set);
+				m_scene_cmdbuf->set_graphics_descriptor_set(0, m_grid_desc_set);
 				m_scene_cmdbuf->set_viewport(Viewport(0.0f, 0.0f, scene_sz.x, scene_sz.y, 0.0f, 1.0f));
 				m_scene_cmdbuf->set_scissor_rect(RectI(0, 0, (i32)scene_sz.x, (i32)scene_sz.y));
 				m_scene_cmdbuf->draw(44, 0);
@@ -1037,7 +1079,11 @@ namespace Luna
 
 		ImGui::NextColumn();
 
-		draw_scene();
+		RV r = draw_scene();
+		if(failed(r))
+		{
+			Window::message_box(explain(r.errcode()), "Scene Editor Error", Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
+		}
 
 		ImGui::NextColumn();
 
@@ -1140,7 +1186,7 @@ namespace Luna
 				luexp(compiler->compile());
 				Blob ps_blob = compiler->get_output();
 
-				GraphicPipelineStateDesc ps_desc;
+				GraphicsPipelineStateDesc ps_desc;
 				ps_desc.primitive_topology_type = PrimitiveTopologyType::line;
 				ps_desc.blend_state = BlendDesc(false, false, { RenderTargetBlendDesc(true, false, BlendFactor::src_alpha,
 					BlendFactor::inv_src_alpha, BlendOp::add, BlendFactor::inv_src_alpha, BlendFactor::zero, BlendOp::add, LogicOp::noop, ColorWriteMask::all) });
@@ -1156,7 +1202,7 @@ namespace Luna
 				ps_desc.num_render_targets = 1;
 				ps_desc.rtv_formats[0] = Format::rgba8_unorm;
 
-				luset(m_grid_pso, device->new_graphic_pipeline_state(ps_desc));
+				luset(m_grid_pso, device->new_graphics_pipeline_state(ps_desc));
 			}
 
 			// Upload grid vertex data.
@@ -1169,6 +1215,9 @@ namespace Luna
 			luexp(register_sky_box_pass());
 			luexp(register_wireframe_pass());
 			luexp(register_lighting_pass());
+			luexp(register_depth_pass());
+			luexp(register_geometry_pass());
+			luexp(register_deferred_lighting_pass());
 			luexp(register_tone_mapping_pass());
 		}
 		lucatchret;

@@ -74,14 +74,6 @@ namespace Luna
 			luexp(compiler->compile());
 
 			vs_blob = compiler->get_output();
-
-			input_layout_common = RHI::InputLayoutDesc({
-					InputElementDesc("POSITION", 0, Format::rgb32_float),
-					InputElementDesc("NORMAL", 0, Format::rgb32_float),
-					InputElementDesc("TANGENT", 0, Format::rgb32_float),
-					InputElementDesc("TEXCOORD", 0, Format::rg32_float),
-					InputElementDesc("COLOR", 0, Format::rgba32_float),
-				});
         }
         lucatchret;
         return ok;

@@ -60,7 +60,7 @@ namespace Luna
 			m_common_vertex = new_object<CommonVertex>();
 			luexp(m_common_vertex->init());
 
-			GraphicPipelineStateDesc ps_desc;
+			GraphicsPipelineStateDesc ps_desc;
 			ps_desc.primitive_topology_type = PrimitiveTopologyType::triangle;
 			ps_desc.sample_mask = U32_MAX;
 			ps_desc.sample_quality = 0;
@@ -69,13 +69,13 @@ namespace Luna
 			ps_desc.rasterizer_state = RasterizerDesc(FillMode::wireframe, CullMode::none, 0, 0.0f, 0.0f, 0, false, true, false, true, false);
 			ps_desc.depth_stencil_state = DepthStencilDesc(false, false, ComparisonFunc::always, false, 0x00, 0x00, DepthStencilOpDesc(), DepthStencilOpDesc());
 			ps_desc.ib_strip_cut_value = IndexBufferStripCutValue::disabled;
-			ps_desc.input_layout = m_common_vertex->input_layout_common;
+			ps_desc.input_layout = get_vertex_input_layout_desc();
 			ps_desc.vs = m_common_vertex->vs_blob.cspan();
 			ps_desc.ps = ps_blob.cspan();
 			ps_desc.shader_input_layout = m_debug_mesh_renderer_slayout;
 			ps_desc.num_render_targets = 1;
 			ps_desc.rtv_formats[0] = Format::rgba8_unorm;
-			luset(m_debug_mesh_renderer_pso, device->new_graphic_pipeline_state(ps_desc));
+			luset(m_debug_mesh_renderer_pso, device->new_graphics_pipeline_state(ps_desc));
         }
         lucatchret;
         return ok;
@@ -104,7 +104,7 @@ namespace Luna
 			render_pass.rtvs[0] = render_rtv;
 			auto render_desc = output_tex->get_desc();
 			cmdbuf->begin_render_pass(render_pass);
-			cmdbuf->set_graphic_shader_input_layout(m_global_data->m_debug_mesh_renderer_slayout);
+			cmdbuf->set_graphics_shader_input_layout(m_global_data->m_debug_mesh_renderer_slayout);
 			cmdbuf->set_pipeline_state(m_global_data->m_debug_mesh_renderer_pso);
 			cmdbuf->set_primitive_topology(PrimitiveTopology::triangle_list);
 			cmdbuf->set_viewport(Viewport(0.0f, 0.0f, (f32)render_desc.width_or_buffer_size, (f32)render_desc.height, 0.0f, 1.0f));
@@ -114,9 +114,9 @@ namespace Luna
 			{
 				auto vs = device->new_descriptor_set(DescriptorSetDesc(m_global_data->m_debug_mesh_renderer_dlayout)).get();
 				vs->set_cbv(0, camera_cb, ConstantBufferViewDesc(0, (u32)align_upper(sizeof(CameraCB), cb_align)));
-				vs->set_srv(1, model_matrices, &ShaderResourceViewDesc::as_buffer(i, 1, sizeof(Float4x4) * 2, false));
-				cmdbuf->set_graphic_descriptor_set(0, vs);
-				cmdbuf->attach_graphic_object(vs);
+				vs->set_srv(1, model_matrices, &ShaderResourceViewDesc::as_buffer(Format::unknown, i, 1, sizeof(Float4x4) * 2, false));
+				cmdbuf->set_graphics_descriptor_set(0, vs);
+				cmdbuf->attach_device_object(vs);
 
 				// Draw pieces.
 				auto mesh = Asset::get_asset_data<Mesh>(Asset::get_asset_data<Model>(rs[i]->model)->mesh);
@@ -125,7 +125,7 @@ namespace Luna
 					mesh->vb_count * sizeof(Vertex), sizeof(Vertex));
 
 				cmdbuf->set_vertex_buffers(0, { &vb_view, 1 });
-				cmdbuf->set_index_buffer(mesh->ib, 0, mesh->ib_count * sizeof(u32), Format::r32_uint);
+				cmdbuf->set_index_buffer({mesh->ib, 0, mesh->ib_count * sizeof(u32), Format::r32_uint});
 
 				u32 num_pieces = (u32)mesh->pieces.size();
 				for (u32 j = 0; j < num_pieces; ++j)

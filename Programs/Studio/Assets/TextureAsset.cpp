@@ -117,7 +117,7 @@ namespace Luna
 				vs->set_uav(2, resource_with_most_detailed_mip, nullptr, &UnorderedAccessViewDesc::as_tex2d(desc.pixel_format, dest_subresource));
 				vs->set_sampler(3, SamplerDesc(FilterMode::min_mag_mip_linear, TextureAddressMode::clamp, TextureAddressMode::clamp, TextureAddressMode::clamp));
 				compute_cmdbuf->set_compute_descriptor_set(0, vs);
-				compute_cmdbuf->attach_graphic_object(vs);
+				compute_cmdbuf->attach_device_object(vs);
 				compute_cmdbuf->dispatch(max<u32>(width / 8, 1), max<u32>(height / 8, 1), 1);
 				width = max<u32>(width / 2, 1);
 				height = max<u32>(height / 2, 1);

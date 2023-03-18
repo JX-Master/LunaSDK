@@ -78,7 +78,6 @@ namespace Luna
         {
             auto cmdbuf = ctx->get_command_buffer();
             auto output_tex = ctx->get_output(m_global_data->m_texture_name);
-            lulet(output_tex_rtv, cmdbuf->get_device()->new_render_target_view(output_tex));
 			if (skybox && camera_type == CameraType::perspective)
 			{
 				// Draw skybox.
@@ -112,6 +111,7 @@ namespace Luna
 				cmdbuf->resource_barrier(ResourceBarrierDesc::as_transition(output_tex, ResourceState::render_target));
 				auto lighting_rt = output_tex;
 				RenderPassDesc render_pass;
+                lulet(output_tex_rtv, cmdbuf->get_device()->new_render_target_view(output_tex));
 				render_pass.rtvs[0] = output_tex_rtv;
 				render_pass.rt_load_ops[0] = LoadOp::clear;
 				render_pass.rt_store_ops[0] = StoreOp::store;
@@ -138,7 +138,7 @@ namespace Luna
             {
                 return set_error(BasicError::bad_arguments(), "SkyBoxPass: The resource format for output \"texture\" is not specified or invalid.");
             }
-            desc.usages |= RHI::ResourceUsageFlag::unordered_access;
+            desc.usages |= RHI::ResourceUsageFlag::unordered_access | RHI::ResourceUsageFlag::render_target;
             compiler->set_resource_desc(texture_resource, desc);
             Ref<SkyBoxPass> pass = new_object<SkyBoxPass>();
             luexp(pass->init(data));
