@@ -43,8 +43,6 @@ namespace Luna
         Ref<ToneMappingPassGlobalData> m_global_data;
         
         Ref<RHI::IResource> m_histogram_cb;
-        Ref<RHI::IResource> m_histogram_buffer;
-        Ref<RHI::IResource> m_lum_tex;
         Ref<RHI::IResource> m_histogram_collect_cb;
         Ref<RHI::IResource> m_tone_mapping_cb;
         Ref<RHI::IDescriptorSet> m_histogram_ds;

@@ -187,6 +187,48 @@ namespace Luna
 			}
 		}
 
+		inline u32 calc_mip_levels(u32 width, u32 height, u32 depth)
+		{
+			return 1 + (u32)floorf(log2f((f32)max(width, max(height, depth))));
+		}
+
+		inline ResourceDesc validate_resource_desc(const ResourceDesc& desc)
+		{
+			ResourceDesc ret = desc;
+			if (ret.type == ResourceType::buffer)
+			{
+				ret.pixel_format = Format::unknown;
+				ret.height = 1;
+				ret.depth_or_array_size = 1;
+				ret.mip_levels = 1;
+				ret.sample_count = 1;
+				ret.sample_quality = 0;
+			}
+			else if (ret.type == ResourceType::texture_1d)
+			{
+				ret.height = 1;
+				ret.sample_count = 1;
+				ret.sample_quality = 0;
+			}
+			else if (ret.type == ResourceType::texture_3d)
+			{
+				ret.sample_count = 1;
+				ret.sample_quality = 0;
+			}
+			if (!ret.mip_levels)
+			{
+				if (ret.type != ResourceType::texture_3d)
+				{
+					ret.mip_levels = calc_mip_levels((u32)desc.width_or_buffer_size, desc.height, 1);
+				}
+				else
+				{
+					ret.mip_levels = calc_mip_levels((u32)desc.width_or_buffer_size, desc.height, desc.depth_or_array_size);
+				}
+			}
+			return ret;
+		}
+
 		inline D3D12_RESOURCE_DESC encode_resource_desc(const ResourceDesc& desc)
 		{
 			D3D12_RESOURCE_DESC rd;

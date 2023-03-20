@@ -363,7 +363,7 @@ namespace Luna
 		}
 		u64 Device::get_resource_size(const ResourceDesc& desc, u64* out_alignment)
 		{
-			D3D12_RESOURCE_DESC res_desc = encode_resource_desc(desc);
+			D3D12_RESOURCE_DESC res_desc = encode_resource_desc(validate_resource_desc(desc));
 			D3D12_RESOURCE_ALLOCATION_INFO info = m_device->GetResourceAllocationInfo(0, 1, &res_desc);
 			if (out_alignment) *out_alignment = info.Alignment;
 			return info.SizeInBytes;

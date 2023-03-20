@@ -83,8 +83,6 @@ namespace Luna
 				}
 				return m_desc.mip_levels * m_desc.depth_or_array_size;
 			}
-
-			void set_desc(const ResourceDesc& desc);
 			
 			RV init_as_committed(const ResourceDesc& desc, const ClearValue* optimized_clear_value);
 			RV init_as_placed(ID3D12Heap* heap, UINT64 heap_offset, const ResourceDesc& desc, const ClearValue* optimized_clear_value);

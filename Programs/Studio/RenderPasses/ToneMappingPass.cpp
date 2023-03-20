@@ -130,12 +130,6 @@ namespace Luna
             luset(m_histogram_cb, device->new_resource(ResourceDesc::buffer(ResourceHeapType::upload, ResourceUsageFlag::constant_buffer, align_upper(sizeof(LumHistogramParams), cb_align))));
 			luset(m_histogram_collect_cb, device->new_resource(ResourceDesc::buffer(ResourceHeapType::upload, ResourceUsageFlag::constant_buffer, align_upper(sizeof(LumHistogramCollectParams), cb_align))));
 			luset(m_tone_mapping_cb, device->new_resource(ResourceDesc::buffer(ResourceHeapType::upload, ResourceUsageFlag::constant_buffer, align_upper(sizeof(ToneMappingParams), cb_align))));
-            luset(m_histogram_buffer, device->new_resource(ResourceDesc::buffer(ResourceHeapType::local, ResourceUsageFlag::unordered_access, sizeof(u32) * 256)));
-			luset(m_lum_tex, device->new_resource(ResourceDesc::tex2d(ResourceHeapType::shared_upload, Format::r32_float, ResourceUsageFlag::unordered_access | ResourceUsageFlag::shader_resource, 1, 1)));
-			luexp(m_lum_tex->map_subresource(0, false));
-			f32 v = 0.0f;
-			luexp(m_lum_tex->write_subresource(0, &v, 4, 4, BoxU(0, 0, 0, 1, 1, 1)));
-			m_lum_tex->unmap_subresource(0, true);
 		}
         lucatchret;
         return ok;
@@ -156,6 +150,14 @@ namespace Luna
 			constexpr f32 max_brightness = 20.0f;
             // Tone mapping pass.
 			{
+				lulet(m_histogram_buffer, ctx->allocate_temporary_resource(ResourceDesc::buffer(ResourceHeapType::local, ResourceUsageFlag::unordered_access, sizeof(u32) * 256)));
+				lulet(m_lum_tex, ctx->allocate_temporary_resource(ResourceDesc::tex2d(ResourceHeapType::shared_upload, Format::r32_float, ResourceUsageFlag::unordered_access | ResourceUsageFlag::shader_resource, 1, 1)));
+				luexp(m_lum_tex->map_subresource(0, false));
+				f32 v = 0.0f;
+				luexp(m_lum_tex->write_subresource(0, &v, 4, 4, BoxU(0, 0, 0, 1, 1, 1)));
+				m_lum_tex->unmap_subresource(0, true);
+				cmdbuf->attach_device_object(m_histogram_buffer);
+				cmdbuf->attach_device_object(m_lum_tex);
 				// Histogram Lum Pass.
 				{
 					cmdbuf->set_compute_shader_input_layout(m_global_data->m_histogram_pass_slayout);

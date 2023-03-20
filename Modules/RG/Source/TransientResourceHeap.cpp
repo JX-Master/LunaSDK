@@ -164,12 +164,12 @@ namespace Luna
                         {
                             set_flags(heap_desc.usages, RHI::ResourceHeapUsageFlag::texture_non_rt_ds);
                         }
+                        if(desc.sample_count != 1)
+                        {
+                            set_flags(heap_desc.usages, RHI::ResourceHeapUsageFlag::texture_msaa);
+                        }
                     }
                     else lupanic();
-                    if(desc.sample_count != 1)
-                    {
-                        set_flags(heap_desc.usages, RHI::ResourceHeapUsageFlag::texture_msaa);
-                    }
                     heap_desc.size = max(SEGMENT_SIZE, size);
                     segment.m_heap_type = desc.heap_type;
                     segment.m_usages = heap_desc.usages;

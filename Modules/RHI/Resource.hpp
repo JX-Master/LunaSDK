@@ -282,11 +282,11 @@ namespace Luna
 			//! If the resources is a 1D and 2D texture, specify the number of array slices 
 			//! If the resource is a buffer, this is ignored when creating resources, and
 			//! will be set to 1 in its descriptor object.
-			//! Specify 0 tells the system to create full mip-map chain for the resource.
 			u32 depth_or_array_size;
 			//! If the resource is a texture, specify the number of mip-map slices.
 			//! If the resource is a buffer, this is ignored when creating resources, and
 			//! will be set to 1 in its descriptor object.
+			//! Specify 0 tells the system to create full mip-map chain for the resource.
 			u32 mip_levels;
 			//! The sample count per pixel for multi-sample texture resource, specify 1 if the 
 			//! multi-sample is disabled for this texture.

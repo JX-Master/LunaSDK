@@ -18,50 +18,9 @@ namespace Luna
 {
 	namespace RHI
 	{
-		inline u32 calc_mip_levels(u32 width, u32 height, u32 depth)
-		{
-			return 1 + (u32)floorf(log2f((f32)max(width, max(height, depth))));
-		}
-
-		void Resource::set_desc(const ResourceDesc& desc)
-		{
-			m_desc = desc;
-			if (m_desc.type == ResourceType::buffer)
-			{
-				m_desc.pixel_format = Format::unknown;
-				m_desc.height = 1;
-				m_desc.depth_or_array_size = 1;
-				m_desc.mip_levels = 1;
-				m_desc.sample_count = 1;
-				m_desc.sample_quality = 0;
-			}
-			else if (m_desc.type == ResourceType::texture_1d)
-			{
-				m_desc.height = 1;
-				m_desc.sample_count = 1;
-				m_desc.sample_quality = 0;
-			}
-			else if (m_desc.type == ResourceType::texture_3d)
-			{
-				m_desc.sample_count = 1;
-				m_desc.sample_quality = 0;
-			}
-			if (!m_desc.mip_levels)
-			{
-				if (m_desc.type != ResourceType::texture_3d)
-				{
-					m_desc.mip_levels = calc_mip_levels((u32)desc.width_or_buffer_size, desc.height, 1);
-				}
-				else
-				{
-					m_desc.mip_levels = calc_mip_levels((u32)desc.width_or_buffer_size, desc.height, desc.depth_or_array_size);
-				}
-			}
-		}
-
 		RV Resource::init_as_committed(const ResourceDesc& desc, const ClearValue* optimized_clear_value)
 		{
-			set_desc(desc);
+			m_desc = validate_resource_desc(desc);
 			D3D12_HEAP_PROPERTIES hp = encode_heap_properties(m_device.as<Device>(), m_desc.heap_type);
 			D3D12_HEAP_FLAGS flags = D3D12_HEAP_FLAG_NONE;
 			D3D12_RESOURCE_DESC rd = encode_resource_desc(m_desc);
@@ -108,7 +67,7 @@ namespace Luna
 
 		RV Resource::init_as_placed(ID3D12Heap* heap, UINT64 heap_offset, const ResourceDesc& desc, const ClearValue* optimized_clear_value)
 		{
-			set_desc(desc);
+			m_desc = validate_resource_desc(desc);
 			D3D12_RESOURCE_DESC rd = encode_resource_desc(m_desc);
 			D3D12_CLEAR_VALUE* pcv = nullptr;
 			D3D12_CLEAR_VALUE cv;
