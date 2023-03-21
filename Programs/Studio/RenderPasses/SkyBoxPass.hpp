@@ -20,6 +20,7 @@ namespace Luna
 		Ref<RHI::IDescriptorSetLayout> m_skybox_pass_dlayout;
 		Ref<RHI::IShaderInputLayout> m_skybox_pass_slayout;
         Name m_texture_name = "texture";
+        Name m_depth_texture_name = "depth_texture";
 
         RV init(RHI::IDevice* device);
     };

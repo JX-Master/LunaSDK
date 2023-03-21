@@ -23,8 +23,9 @@ namespace Luna
             luset(m_skybox_pass_dlayout, device->new_descriptor_set_layout(DescriptorSetLayoutDesc({
 						DescriptorSetLayoutBinding(DescriptorType::cbv, 0, 1, ShaderVisibility::all),
 						DescriptorSetLayoutBinding(DescriptorType::srv, 1, 1, ShaderVisibility::all),
-						DescriptorSetLayoutBinding(DescriptorType::uav, 2, 1, ShaderVisibility::all),
-						DescriptorSetLayoutBinding(DescriptorType::sampler, 3, 1, ShaderVisibility::all)
+                        DescriptorSetLayoutBinding(DescriptorType::srv, 2, 1, ShaderVisibility::all),
+						DescriptorSetLayoutBinding(DescriptorType::uav, 3, 1, ShaderVisibility::all),
+						DescriptorSetLayoutBinding(DescriptorType::sampler, 4, 1, ShaderVisibility::all)
 						})));
 
 			luset(m_skybox_pass_slayout, device->new_shader_input_layout(ShaderInputLayoutDesc({ m_skybox_pass_dlayout },
@@ -78,6 +79,7 @@ namespace Luna
         {
             auto cmdbuf = ctx->get_command_buffer();
             auto output_tex = ctx->get_output(m_global_data->m_texture_name);
+            auto depth_tex = ctx->get_input(m_global_data->m_depth_texture_name);
 			if (skybox && camera_type == CameraType::perspective)
 			{
 				// Draw skybox.
@@ -93,6 +95,7 @@ namespace Luna
 				cmdbuf->resource_barriers({
 					ResourceBarrierDesc::as_transition(output_tex, ResourceState::unordered_access),
 					ResourceBarrierDesc::as_transition(skybox, ResourceState::shader_resource_non_pixel),
+                    ResourceBarrierDesc::as_transition(depth_tex, ResourceState::shader_resource_non_pixel),
 					ResourceBarrierDesc::as_transition(m_skybox_params_cb, ResourceState::vertex_and_constant_buffer)
 					});
 				cmdbuf->set_compute_shader_input_layout(m_global_data->m_skybox_pass_slayout);
@@ -100,8 +103,9 @@ namespace Luna
                 auto cb_align = cmdbuf->get_device()->get_constant_buffer_data_alignment();
 				m_ds->set_cbv(0, m_skybox_params_cb, ConstantBufferViewDesc(0, (u32)align_upper(sizeof(SkyboxParams), cb_align)));
 				m_ds->set_srv(1, skybox);
-				m_ds->set_uav(2, output_tex);
-				m_ds->set_sampler(3, SamplerDesc(FilterMode::min_mag_mip_linear, TextureAddressMode::repeat, TextureAddressMode::repeat, TextureAddressMode::repeat));
+                m_ds->set_srv(2, depth_tex, &ShaderResourceViewDesc::as_tex2d(Format::r32_float, 0, 1, 0.0f));
+				m_ds->set_uav(3, output_tex);
+				m_ds->set_sampler(4, SamplerDesc(FilterMode::min_mag_mip_linear, TextureAddressMode::repeat, TextureAddressMode::repeat, TextureAddressMode::repeat));
 				cmdbuf->set_compute_descriptor_set(0, m_ds);
 				cmdbuf->dispatch(align_upper((u32)desc.width_or_buffer_size, 8) / 8, (u32)align_upper(desc.height, 8) / 8, 1);
 			}
@@ -129,15 +133,23 @@ namespace Luna
         lutry
         {
             SkyBoxPassGlobalData* data = (SkyBoxPassGlobalData*)userdata;
-            Name _texture = data->m_texture_name;
-            auto texture_resource = compiler->get_output_resource(_texture);
+            auto texture_resource = compiler->get_output_resource(data->m_texture_name);
+            auto depth_texture_resource = compiler->get_input_resource(data->m_depth_texture_name);
             if(texture_resource == RG::INVALID_RESOURCE) return set_error(BasicError::bad_arguments(), "SkyBoxPass: Output \"texture\" is not specified.");
-            RHI::ResourceDesc desc = compiler->get_resource_desc(texture_resource);
-            if (desc.type != RHI::ResourceType::texture_2d ||
-                !desc.width_or_buffer_size || !desc.height)
+            if(depth_texture_resource == RG::INVALID_RESOURCE) return set_error(BasicError::bad_arguments(), "SkyBoxPass: Input \"depth_texture\" is not specified.");
+            
+            RHI::ResourceDesc depth_desc = compiler->get_resource_desc(depth_texture_resource);
+            if (depth_desc.type != RHI::ResourceType::texture_2d ||
+                !depth_desc.width_or_buffer_size || !depth_desc.height)
             {
-                return set_error(BasicError::bad_arguments(), "SkyBoxPass: The resource format for output \"texture\" is not specified or invalid.");
+                return set_error(BasicError::bad_arguments(), "SkyBoxPass: The resource format for input \"depth_texture\" is not specified or invalid.");
             }
+            depth_desc.usages |= RHI::ResourceUsageFlag::shader_resource;
+            compiler->set_resource_desc(depth_texture_resource, depth_desc);
+
+            RHI::ResourceDesc desc = compiler->get_resource_desc(texture_resource);
+            desc.width_or_buffer_size = desc.width_or_buffer_size ? desc.width_or_buffer_size : depth_desc.width_or_buffer_size;
+            desc.height = desc.height ? desc.height : depth_desc.height;
             desc.usages |= RHI::ResourceUsageFlag::unordered_access | RHI::ResourceUsageFlag::render_target;
             compiler->set_resource_desc(texture_resource, desc);
             Ref<SkyBoxPass> pass = new_object<SkyBoxPass>();
@@ -158,6 +170,7 @@ namespace Luna
             RG::RenderPassTypeDesc desc;
             desc.name = "SkyBox";
             desc.desc = "Renders one sky box to the specified background using the specified texture";
+            desc.input_parameters.push_back({"depth_texture", "The scene depth texture."});
             desc.output_parameters.push_back({"texture", "The render target to render the sky box to."});
             desc.compile = compile_sky_box_pass;
             auto data = new_object<SkyBoxPassGlobalData>();

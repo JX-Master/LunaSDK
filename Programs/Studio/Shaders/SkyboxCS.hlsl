@@ -1,6 +1,8 @@
-Texture2D g_skybox : register(t1);
-SamplerState g_sampler : register(s3);
-RWTexture2D<float4> g_lighting_tex : register(u2);
+Texture2D<float4> g_skybox : register(t1);
+Texture2D<float> g_depth : register(t2);
+RWTexture2D<float4> g_lighting_tex : register(u3);
+SamplerState g_sampler : register(s4);
+
 
 cbuffer SkyboxParams : register(b0)
 {
@@ -17,6 +19,8 @@ cbuffer SkyboxParams : register(b0)
 [numthreads(8, 8, 1)]
 void main(int3 dispatch_thread_id : SV_DispatchThreadID)
 {
+	if(g_depth[dispatch_thread_id.xy] != 1.0) return;
+	
 	float focus_len = g_width / (2.0f * tan(g_fov / 2.0f));
 
 	float3 world_dir = normalize(float3((float)dispatch_thread_id.x - (float)(g_width / 2), -((float)dispatch_thread_id.y - (float)(g_height / 2)), focus_len));

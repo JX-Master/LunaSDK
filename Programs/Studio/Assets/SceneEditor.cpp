@@ -722,6 +722,7 @@ namespace Luna
 					desc.output_connections.push_back({GEOMETRY_PASS, "base_color_roughness_texture", BASE_COLOR_ROUGHNESS_BUFFER});
 					desc.output_connections.push_back({GEOMETRY_PASS, "normal_metallic_texture", NORMAL_METALLIC_BUFFER});
 					desc.output_connections.push_back({GEOMETRY_PASS, "emissive_texture", EMISSIVE_BUFFER});
+					desc.input_connections.push_back({SKYBOX_PASS, "depth_texture", DEPTH_BUFFER});
 					desc.output_connections.push_back({SKYBOX_PASS, "texture", LIGHTING_BUFFER});
 					desc.input_connections.push_back({DEFERRED_LIGHTING_PASS, "depth_texture", DEPTH_BUFFER});
 					desc.input_connections.push_back({DEFERRED_LIGHTING_PASS, "base_color_roughness_texture", BASE_COLOR_ROUGHNESS_BUFFER});
