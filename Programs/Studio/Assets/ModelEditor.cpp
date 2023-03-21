@@ -110,6 +110,9 @@ namespace Luna
 			{
 				model->materials.insert(model->materials.begin() + add_index, Asset::asset_t());
 			}
+			auto pos = ImGui::GetCursorPos();
+			pos.y += 100;
+			ImGui::SetCursorPos(pos);
 			if (ImGui::Button("Add a new material slot"))
 			{
 				model->materials.push_back(Asset::asset_t());

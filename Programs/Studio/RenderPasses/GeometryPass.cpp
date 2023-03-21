@@ -141,6 +141,7 @@ namespace Luna
 			cmdbuf->resource_barriers({ 
 				ResourceBarrierDesc::as_transition(base_color_roughness_tex, ResourceState::render_target),
 				ResourceBarrierDesc::as_transition(normal_metallic_tex, ResourceState::render_target),
+				ResourceBarrierDesc::as_transition(emissive_tex, ResourceState::render_target),
 				ResourceBarrierDesc::as_transition(depth_tex, ResourceState::depth_stencil_read) });
 			RenderPassDesc render_pass;
 			render_pass.rtvs[0] = base_color_rtv;

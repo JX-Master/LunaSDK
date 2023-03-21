@@ -279,6 +279,10 @@ namespace Luna
 
 					ImGui::PopID();
 				}
+				else
+				{
+					++iter;
+				}
 			}
 		}
 
