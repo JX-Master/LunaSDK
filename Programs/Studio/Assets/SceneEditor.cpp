@@ -838,6 +838,7 @@ namespace Luna
 
 				if (m_profile_time)
 				{
+					ImGui::Text("Frame Size: %ux%u", (u32)scene_sz.x, (u32)scene_sz.y);
 					ImGui::Text("FPS: %f", ImGui::GetIO().Framerate);
 					for (usize i = 0; i < m_enabled_passes.size(); ++i)
 					{
