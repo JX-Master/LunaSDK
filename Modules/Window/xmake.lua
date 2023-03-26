@@ -6,7 +6,7 @@ option("window_glfw")
 option_end()
 
 if has_config("window_glfw") then
-    add_requires("glfw", {configs = {shared = has_config("build_shared_lib")}})
+    add_requires("glfw", {configs = {shared = has_config("shared")}})
 end
 
 target("Window")

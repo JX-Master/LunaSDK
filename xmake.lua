@@ -5,7 +5,7 @@ add_repositories("luna-repo SDKs")
 
 add_rules("mode.debug", "mode.profile", "mode.release")
 
-option("build_shared_lib")
+option("shared")
     set_default(true)
     set_showmenu(true)
     set_description("Build All SDK Modules as Shared Library.")
@@ -33,13 +33,13 @@ option("build_tests")
 option_end()
 
 function add_luna_sdk_options()
-    add_options("build_shared_lib", "contract_assertion", "thread_safe_assertion")
+    add_options("shared", "contract_assertion", "thread_safe_assertion")
 end
 
 function set_luna_sdk_module()
     add_luna_sdk_options()
     set_group("Modules")
-    if has_config("build_shared_lib") then
+    if has_config("shared") then
         set_kind("shared")
     else
         set_kind("static")
@@ -57,9 +57,9 @@ function set_luna_sdk_program()
     set_kind("binary")
 end
 
-add_requires("imgui", {configs = {shared = has_config("build_shared_lib")}})
-add_requires("zlib-ng", {configs = {shared = has_config("build_shared_lib")}})
-add_requires("minizip-ng", {configs = {shared = has_config("build_shared_lib")}})
+add_requires("imgui", {configs = {shared = has_config("shared")}})
+add_requires("zlib-ng", {configs = {shared = has_config("shared")}})
+add_requires("minizip-ng", {configs = {shared = has_config("shared")}})
 
 add_includedirs("Modules")
 set_languages("c99", "cxx17")

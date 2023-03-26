@@ -1,7 +1,7 @@
 target("RHITestBed")
     add_luna_sdk_options()
     set_group("Tests/RHITest")
-    if has_config("build_shared_lib") then
+    if has_config("shared") then
         set_kind("shared")
     else
         set_kind("static")
