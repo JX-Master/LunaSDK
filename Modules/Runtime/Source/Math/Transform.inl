@@ -626,13 +626,13 @@ namespace Luna
 
 	namespace ProjectionMatrix
 	{
-		inline Float4x4 make_perspective(f32 width, f32 height, f32 near_z, f32 far_z)
+		inline Float4x4 make_perspective(f32 near_width, f32 near_height, f32 near_z, f32 far_z)
 		{
 			f32 range = far_z / (far_z - near_z);
 			f32 two_near_z = near_z + near_z;
 			return Float4x4(
-				two_near_z / width, 0, 0, 0,
-				0, two_near_z / height, 0, 0,
+				two_near_z / near_width, 0, 0, 0,
+				0, two_near_z / near_height, 0, 0,
 				0, 0, range, 1.0f,
 				0, 0, -range * near_z, 0
 			);
@@ -640,26 +640,53 @@ namespace Luna
 		inline Float4x4 make_perspective_fov(f32 fov, f32 aspect_ratio, f32 near_z, f32 far_z)
 		{
 			fov *= 0.5f;
-			f32 height = cosf(fov) / sinf(fov);
-			f32 width = height / aspect_ratio;
+			f32 diagonal = tanf(fov);
+			f32 height = diagonal / sqrtf(1 + aspect_ratio * aspect_ratio);
+			f32 width = height * aspect_ratio;
 			f32 range = far_z / (far_z - near_z);
 			return Float4x4(
-				width, 0, 0, 0,
-				0, height, 0, 0,
+				1.0f / width, 0, 0, 0,
+				0, 1.0f / height, 0, 0,
 				0, 0, range, 1.0f,
 				0, 0, -range * near_z, 0
 			);
 		}
-		inline Float4x4 make_perspective_off_center(f32 left, f32 right, f32 bottom, f32 top, f32 near_z, f32 far_z)
+		inline Float4x4 make_perspective_fov_w(f32 fov_w, f32 aspect_ratio, f32 near_z, f32 far_z)
+		{
+			fov_w *= 0.5f;
+			f32 width = tanf(fov_w);
+			f32 height = width / aspect_ratio;
+			f32 range = far_z / (far_z - near_z);
+			return Float4x4(
+				1.0f / width, 0, 0, 0,
+				0, 1.0f / height, 0, 0,
+				0, 0, range, 1.0f,
+				0, 0, -range * near_z, 0
+			);
+		}
+		inline Float4x4 make_perspective_fov_h(f32 fov_h, f32 aspect_ratio, f32 near_z, f32 far_z)
+		{
+			fov_h *= 0.5f;
+			f32 height = tanf(fov_h);
+			f32 width = height * aspect_ratio;
+			f32 range = far_z / (far_z - near_z);
+			return Float4x4(
+				1.0f / width, 0, 0, 0,
+				0, 1.0f / height, 0, 0,
+				0, 0, range, 1.0f,
+				0, 0, -range * near_z, 0
+			);
+		}
+		inline Float4x4 make_perspective_off_center(f32 near_left, f32 near_right, f32 near_bottom, f32 near_top, f32 near_z, f32 far_z)
 		{
 			f32 two_near_z = near_z + near_z;
-			f32 inv_width = 1.0f / (right - left);
-			f32 inv_height = 1.0f / (top - bottom);
+			f32 inv_width = 1.0f / (near_right - near_left);
+			f32 inv_height = 1.0f / (near_top - near_bottom);
 			f32 range = far_z / (far_z - near_z);
 			return Float4x4(
 				two_near_z * inv_width, 0, 0, 0,
 				0, two_near_z * inv_height, 0, 0,
-				-(left + right) * inv_width, -(top + bottom) * inv_height, range, 1.0f,
+				-(near_left + near_right) * inv_width, -(near_top + near_bottom) * inv_height, range, 1.0f,
 				0, 0, -range * near_z, 0
 			);
 		}

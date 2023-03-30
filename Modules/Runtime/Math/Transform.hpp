@@ -167,11 +167,15 @@ namespace Luna
 	namespace ProjectionMatrix
 	{
 		//! Constructs one perspective projection matrix using width, height, near clipping distance and far clipping distance.
-		Float4x4 make_perspective(f32 width, f32 height, f32 near_z, f32 far_z);
-		//! Constructs one perspective projection matrix using fov, aspect_ratio, near clipping distance and far clipping distance.
+		Float4x4 make_perspective(f32 near_width, f32 near_height, f32 near_z, f32 far_z);
+		//! Constructs one perspective projection matrix using diagonal fov, aspect_ratio, near clipping distance and far clipping distance.
 		Float4x4 make_perspective_fov(f32 fov, f32 aspect_ratio, f32 near_z, f32 far_z);
+		//! Constructs one perspective projection matrix using width fov, aspect_ratio, near clipping distance and far clipping distance.
+		Float4x4 make_perspective_fov_w(f32 fov_w, f32 aspect_ratio, f32 near_z, f32 far_z);
+		//! Constructs one perspective projection matrix using height fov, aspect_ratio, near clipping distance and far clipping distance.
+		Float4x4 make_perspective_fov_h(f32 fov_h, f32 aspect_ratio, f32 near_z, f32 far_z);
 		//! Constructs one perspective projection matrix using four offset values from the camera center, near clipping distance and far clipping distance.
-		Float4x4 make_perspective_off_center(f32 left, f32 right, f32 bottom, f32 top, f32 near_z, f32 far_z);
+		Float4x4 make_perspective_off_center(f32 near_left, f32 near_right, f32 near_bottom, f32 near_top, f32 near_z, f32 far_z);
 		//! Constructs one orthographic projection matrix using width, height near clipping distance, and far clipping distance.
 		Float4x4 make_orthographic(f32 width, f32 height, f32 near_z, f32 far_z);
 		//! Constructs one orthographic projection matrix using four offset values from the camera center, near clipping distance and far clipping distance.
