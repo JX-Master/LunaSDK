@@ -235,7 +235,7 @@ namespace Luna
 					// Switch to normal mode.
 					m_is_text_editing = false;
 					auto new_p = Path(m_path_edit_text.c_str());
-					auto attr = VFS::file_attribute(new_p);
+					auto attr = VFS::get_file_attribute(new_p);
 					if (succeeded(attr) && ((attr.get().attributes & FileAttributeFlag::directory) != FileAttributeFlag::none))
 					{
 						m_path.assign(new_p);

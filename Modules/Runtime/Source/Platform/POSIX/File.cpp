@@ -75,7 +75,7 @@ namespace Luna
 				fd = open(path, f, 0666);
 				break;
 			case FileCreationMode::create_new:
-				if (file_attribute(path).valid())
+				if (get_file_attribute(path).valid())
 				{
 					return BasicError::already_exists();
 				}
@@ -220,7 +220,7 @@ namespace Luna
 					f = fopen(path, mode);
 					break;
 				case FileCreationMode::create_new:
-					if (file_attribute(path).valid())
+					if (get_file_attribute(path).valid())
 					{
 						return BasicError::already_exists();
 					}
@@ -228,7 +228,7 @@ namespace Luna
 					f = fopen(path, mode);
 					break;
 				case FileCreationMode::open_always:
-					if (file_attribute(path).valid())
+					if (get_file_attribute(path).valid())
 					{
 						mode = "r+b";
 						f = fopen(path, mode);
@@ -244,7 +244,7 @@ namespace Luna
 					f = fopen(path, mode);
 					break;
 				case FileCreationMode::open_existing_as_new:
-					if (file_attribute(path).valid())
+					if (get_file_attribute(path).valid())
 					{
 						mode = "w+b";
 						f = fopen(path, mode);
@@ -289,7 +289,7 @@ namespace Luna
 					f = fopen(path, mode);
 					break;
 				case FileCreationMode::create_new:
-					if (file_attribute(path).valid())
+					if (get_file_attribute(path).valid())
 					{
 						return BasicError::already_exists();
 					}
@@ -297,7 +297,7 @@ namespace Luna
 					f = fopen(path, mode);
 					break;
 				case FileCreationMode::open_always:
-					if (file_attribute(path).valid())
+					if (get_file_attribute(path).valid())
 					{
 						mode = "r+b";
 						f = fopen(path, mode);
@@ -313,7 +313,7 @@ namespace Luna
 					f = fopen(path, mode);
 					break;
 				case FileCreationMode::open_existing_as_new:
-					if (file_attribute(path).valid())
+					if (get_file_attribute(path).valid())
 					{
 						mode = "wb";
 						f = fopen(path, mode);
@@ -510,7 +510,7 @@ namespace Luna
 			if (f->buffered) flush_buffered_file(f->handle);
 			else flush_unbuffered_file(f->handle);
 		}
-		R<FileAttribute> file_attribute(const c8* path)
+		R<FileAttribute> get_file_attribute(const c8* path)
 		{
 			struct stat s;
 			int r = stat(path, &s);
@@ -605,7 +605,7 @@ namespace Luna
         RV move_file(const c8* from_path, const c8* to_path, FileMoveFlag flags)
 		{
             bool fail_if_exists = test_flags(flags, FileMoveFlag::fail_if_exists);
-			if (fail_if_exists && file_attribute(to_path).valid())
+			if (fail_if_exists && get_file_attribute(to_path).valid())
 			{
 				return BasicError::already_exists();
 			}
@@ -616,13 +616,13 @@ namespace Luna
 				lutry
 				{
 					luexp(OS::copy_file(from_path, to_path, fail_if_exists? FileCopyFlag::fail_if_exists : FileCopyFlag::none));
-					luexp(OS::delete_file(from_path, FileDeleteFlag::none));
+					luexp(OS::delete_file(from_path));
 				}
 				lucatchret;
 			}
 			return ok;
 		}
-        RV delete_file(const c8* path, FileDeleteFlag flags)
+        RV delete_file(const c8* path)
 		{
 			int res = ::remove(path);
 			return (res == 0) ? RV() : BasicError::bad_platform_call();

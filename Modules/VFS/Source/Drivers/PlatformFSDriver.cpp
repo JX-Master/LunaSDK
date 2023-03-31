@@ -51,11 +51,11 @@ namespace Luna
 			auto native_path = data->make_native_path_str(path);
 			return Luna::open_file(native_path.c_str(), flags, creation);
 		}
-		static R<FileAttribute> fs_file_attribute(void* driver_data, void* mount_data, const Path& path)
+		static R<FileAttribute> fs_get_file_attribute(void* driver_data, void* mount_data, const Path& path)
 		{
 			auto data = (PlatformFileSystemMountData*)mount_data;
 			auto native_path = data->make_native_path_str(path);
-			return Luna::file_attribute(native_path.c_str());
+			return Luna::get_file_attribute(native_path.c_str());
 		}
 		static RV fs_copy_file(void* driver_data, void* from_mount_data, void* to_mount_data, const Path& from_path, const Path& to_path, FileCopyFlag flags)
 		{
@@ -73,7 +73,7 @@ namespace Luna
 			auto to = to_data->make_native_path_str(to_path);
 			return Luna::move_file(from.c_str(), to.c_str(), flags);
 		}
-		static RV fs_delete_file(void* driver_data, void* mount_data, const Path& path, FileDeleteFlag flags)
+		static RV fs_delete_file(void* driver_data, void* mount_data, const Path& path)
 		{
 			auto data = (PlatformFileSystemMountData*)mount_data;
 			auto native_path = data->make_native_path_str(path);
@@ -105,7 +105,7 @@ namespace Luna
 			desc.mount = fs_mount;
 			desc.unmount = fs_unmount;
 			desc.open_file = fs_open_file;
-			desc.file_attribute = fs_file_attribute;
+			desc.get_file_attribute = fs_get_file_attribute;
 			desc.copy_file = fs_copy_file;
 			desc.move_file = fs_move_file;
 			desc.delete_file = fs_delete_file;

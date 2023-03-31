@@ -69,7 +69,7 @@ namespace Luna
 				RecentFileRecord rec;
 				rec.m_path = item["path"].c_str();
 				rec.m_last_use_time = item["last_use_time"].unum();
-				auto attr = file_attribute(item["path"].c_str());
+				auto attr = get_file_attribute(item["path"].c_str());
 				if (succeeded(attr))
 				{
 					recents.push_back(rec);

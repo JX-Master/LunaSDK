@@ -125,7 +125,7 @@ namespace Luna
 	//! * BasicError::not_found
 	//! * BasicError::not_directory
 	//! * BasicError::bad_platform_call for all errors that cannot be identified.
-	LUNA_RUNTIME_API R<FileAttribute> file_attribute(const c8* path);
+	LUNA_RUNTIME_API R<FileAttribute> get_file_attribute(const c8* path);
 
 	enum class FileCopyFlag : u32
 	{
@@ -164,14 +164,6 @@ namespace Luna
 	//! * BasicError::bad_platform_call for all errors that cannot be identified.
 	LUNA_RUNTIME_API RV	move_file(const c8* from_path, const c8* to_path, FileMoveFlag flags = FileMoveFlag::none);
 
-	enum class FileDeleteFlag : u32
-	{
-		none = 0x00,
-		//! Puts the file or directory into recycle bin (Windows) or trash bin (macOS).
-		//! This flag is ignored if the underlying platform does not support undo.
-		allow_undo = 0x01,
-	};
-
 	//! Deletes the specified file or directory.
 	//! @param[in] file_path The file or directory to delete. If this is a non-empty directory, all its contexts will also be removed.
 	//! @return This call returns one of the following errors:
@@ -179,7 +171,7 @@ namespace Luna
 	//! * BasicError::not_found
 	//! * BasicError::access_denied
 	//! * BasicError::bad_platform_call for all errors that cannot be identified.
-	LUNA_RUNTIME_API RV	delete_file(const c8* file_path, FileDeleteFlag flags = FileDeleteFlag::none);
+	LUNA_RUNTIME_API RV	delete_file(const c8* file_path);
 	//! Creates a file iterator that can be used to iterate all files in the specified directory.
 	//! @param[in] path The directory path to open.
 	//! @return Returns a file iterator object if succeeded. The result will be one of the following:

@@ -168,7 +168,7 @@ namespace Luna
 			{
 				from_file = nullptr;
 				to_file = nullptr;
-				auto _ = to->m_driver->delete_file(to->m_driver->driver_data, to->m_mount_data, to_path, FileDeleteFlag::none);
+				auto _ = to->m_driver->delete_file(to->m_driver->driver_data, to->m_mount_data, to_path);
 				return lures;
 			}
 			// preparing buffer.
@@ -185,7 +185,7 @@ namespace Luna
 			{
 				from_file = nullptr;
 				to_file = nullptr;
-				auto _ = to->m_driver->delete_file(to->m_driver->driver_data, to->m_mount_data, to_path, FileDeleteFlag::none);
+				auto _ = to->m_driver->delete_file(to->m_driver->driver_data, to->m_mount_data, to_path);
 				return BasicError::out_of_memory();
 			}
 			// copying.
@@ -219,7 +219,7 @@ namespace Luna
 				memfree(buf);
 				from_file = nullptr;
 				to_file = nullptr;
-				auto _ = to->m_driver->delete_file(to->m_driver->driver_data, to->m_mount_data, to_path, FileDeleteFlag::none);
+				auto _ = to->m_driver->delete_file(to->m_driver->driver_data, to->m_mount_data, to_path);
 				return lures2;
 			}
 			memfree(buf);
@@ -238,7 +238,7 @@ namespace Luna
 			lucatchret;
 			return ret;
 		}
-		LUNA_VFS_API R<FileAttribute> file_attribute(const Path& path)
+		LUNA_VFS_API R<FileAttribute> get_file_attribute(const Path& path)
 		{
 			MutexGuard _guard(g_mounts_mutex);
 			Path relative_path;
@@ -246,7 +246,7 @@ namespace Luna
 			lutry
 			{
 				lulet(mnt, route_path(path, relative_path));
-				luset(ret, mnt.m_driver->file_attribute(mnt.m_driver->driver_data, mnt.m_mount_data, relative_path));
+				luset(ret, mnt.m_driver->get_file_attribute(mnt.m_driver->driver_data, mnt.m_mount_data, relative_path));
 			}
 			lucatchret;
 			return ret;
@@ -285,19 +285,19 @@ namespace Luna
 				}
 				// copy and delete.
 				luexp(copy_file_between_driver(&from, &to, from_path, to_path, test_flags(flags, FileMoveFlag::fail_if_exists)));
-				luexp(from.m_driver->delete_file(from.m_driver->driver_data, from.m_mount_data, from_path, FileDeleteFlag::none));
+				luexp(from.m_driver->delete_file(from.m_driver->driver_data, from.m_mount_data, from_path));
 			}
 			lucatchret;
 			return ok;
 		}
-		LUNA_VFS_API RV	delete_file(const Path& file_path, FileDeleteFlag flags)
+		LUNA_VFS_API RV	delete_file(const Path& file_path)
 		{
 			MutexGuard _guard(g_mounts_mutex);
 			Path relative_path;
 			lutry
 			{
 				lulet(mnt, route_path(file_path, relative_path));
-				luexp(mnt.m_driver->delete_file(mnt.m_driver->driver_data, mnt.m_mount_data, relative_path, flags));
+				luexp(mnt.m_driver->delete_file(mnt.m_driver->driver_data, mnt.m_mount_data, relative_path));
 			}
 			lucatchret;
 			return ok;

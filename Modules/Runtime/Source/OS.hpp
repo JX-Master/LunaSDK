@@ -399,7 +399,7 @@ namespace Luna
 		//! * BasicError::access_denied
 		//! * BasicError::not_found
 		//! * BasicError::bad_platform_call for all errors that cannot be identified.
-		R<FileAttribute> file_attribute(const c8* path);
+		R<FileAttribute> get_file_attribute(const c8* path);
 
 		//! Copies the file from the source path to the destination path.
 		//! Refer to docs in `File.hpp`.
@@ -411,9 +411,10 @@ namespace Luna
 
 		//! Deletes the specified file or directory.
 		//! Refer to docs in `File.hpp`.
-		RV	delete_file(const c8* path, FileDeleteFlag flags);
+		RV	delete_file(const c8* path);
 
-		//! Creates a file iterator handle that can be used to iterate all files in the specified directory.
+		//! Creates a file iterator handle that can be used to iterate all files in the specified directory. 
+		//! File placeholders for current and parent directory ("." and "..") should not be included in the iterator entry.
 		//! @param[in] path The directory path to open.
 		//! @return Returns a file iterator handle if succeeded. Returns one of the following error codes if failed:
 		//! * BasicError::access_denied

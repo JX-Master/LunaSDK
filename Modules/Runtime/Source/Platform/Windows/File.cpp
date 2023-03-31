@@ -17,6 +17,8 @@
 #include <Runtime/Unicode.hpp>
 #include "../../OS.hpp"
 #include <shellapi.h>
+#include "ErrCode.hpp"
+#include "../../../Path.hpp"
 
 #pragma comment(lib, "Shell32.lib")
 
@@ -67,22 +69,7 @@ namespace Luna
 			if (fileHandle == INVALID_HANDLE_VALUE)
 			{
 				DWORD dw = ::GetLastError();
-				if (dw == ERROR_ACCESS_DENIED)
-				{
-					return BasicError::access_denied();
-				}
-				else if (dw == ERROR_FILE_NOT_FOUND)
-				{
-					return BasicError::not_found();
-				}
-				else if (dw == ERROR_PATH_NOT_FOUND)
-				{
-					return BasicError::not_found();
-				}
-				else
-				{
-					return BasicError::bad_platform_call();
-				}
+				return translate_last_error(dw);
 			}
 			return fileHandle;
 		}
@@ -104,7 +91,7 @@ namespace Luna
 				return ok;
 			}
 			DWORD err = ::GetLastError();
-			return BasicError::bad_platform_call();
+			return translate_last_error(err);
 		}
 		RV write_unbuffered_file(opaque_t file, const void* buffer, usize size, usize* write_bytes)
 		{
@@ -120,7 +107,7 @@ namespace Luna
 				return ok;
 			}
 			DWORD err = ::GetLastError();
-			return BasicError::bad_platform_call();
+			return translate_last_error(err);
 		}
 		u64 get_unbuffered_file_size(opaque_t file)
 		{
@@ -141,20 +128,24 @@ namespace Luna
 			end.QuadPart = (LONGLONG)sz;
 			if (!::GetFileSizeEx(file, &old_cursor))
 			{
-				return BasicError::bad_platform_call();
+				DWORD err = ::GetLastError();
+				return translate_last_error(err);
 			}
 			if (!::SetFilePointerEx(file, end, &cursor, FILE_BEGIN))
 			{
-				return BasicError::bad_platform_call();
+				DWORD err = ::GetLastError();
+				return translate_last_error(err);
 			}
 			if (!::SetEndOfFile(file))
 			{
+				DWORD err = ::GetLastError();
 				::SetFilePointerEx(file, old_cursor, &cursor, FILE_BEGIN);
-				return BasicError::bad_platform_call();
+				return translate_last_error(err);
 			}
 			if (!::SetFilePointerEx(file, old_cursor, &cursor, FILE_BEGIN))
 			{
-				return BasicError::bad_platform_call();
+				DWORD err = ::GetLastError();
+				return translate_last_error(err);
 			}
 			return ok;
 		}
@@ -167,7 +158,7 @@ namespace Luna
 			if (::SetFilePointerEx(file, movement, &cursor, FILE_CURRENT) == 0)
 			{
 				DWORD err = ::GetLastError();
-				return R<u64>::failure(BasicError::bad_platform_call());
+				return translate_last_error(err);
 			}
 			return cursor.QuadPart;
 		}
@@ -193,7 +184,7 @@ namespace Luna
 			if (::SetFilePointerEx(file, movement, &cursor, method) == 0)
 			{
 				DWORD err = ::GetLastError();
-				return BasicError::bad_platform_call();
+				return translate_last_error(err);
 			}
 			return ok;
 		}
@@ -222,15 +213,15 @@ namespace Luna
 					err = _wfopen_s(&f, pathbuffer, mode);
 					break;
 				case FileCreationMode::create_new:
-					if (file_attribute(path).valid())
+					if (get_file_attribute(path).valid())
 					{
-						return BasicError::already_exists;
+						return BasicError::already_exists();
 					}
 					mode = L"w+b";
 					err = _wfopen_s(&f, pathbuffer, mode);
 					break;
 				case FileCreationMode::open_always:
-					if (file_attribute(path).valid())
+					if (get_file_attribute(path).valid())
 					{
 						mode = L"r+b";
 						err = _wfopen_s(&f, pathbuffer, mode);
@@ -246,7 +237,7 @@ namespace Luna
 					err = _wfopen_s(&f, pathbuffer, mode);
 					break;
 				case FileCreationMode::open_existing_as_new:
-					if ((file_attribute(path).valid()))
+					if ((get_file_attribute(path).valid()))
 					{
 						mode = L"w+b";
 						err = _wfopen_s(&f, pathbuffer, mode);
@@ -291,7 +282,7 @@ namespace Luna
 					err = _wfopen_s(&f, pathbuffer, mode);
 					break;
 				case FileCreationMode::create_new:
-					if (file_attribute(path).valid())
+					if (get_file_attribute(path).valid())
 					{
 						return BasicError::already_exists();
 					}
@@ -299,7 +290,7 @@ namespace Luna
 					err = _wfopen_s(&f, pathbuffer, mode);
 					break;
 				case FileCreationMode::open_always:
-					if (file_attribute(path).valid())
+					if (get_file_attribute(path).valid())
 					{
 						mode = L"r+b";
 						err = _wfopen_s(&f, pathbuffer, mode);
@@ -315,7 +306,7 @@ namespace Luna
 					err = _wfopen_s(&f, pathbuffer, mode);
 					break;
 				case FileCreationMode::open_existing_as_new:
-					if (file_attribute(path).valid())
+					if (get_file_attribute(path).valid())
 					{
 						mode = L"wb";
 						err = _wfopen_s(&f, pathbuffer, mode);
@@ -525,7 +516,7 @@ namespace Luna
 
 			return ((LONGLONG)(ui.QuadPart - 116444736000000000) / 10000000);
 		}
-		R<FileAttribute> file_attribute(const c8* path)
+		R<FileAttribute> get_file_attribute(const c8* path)
 		{
 			lucheck(path);
 			usize buffer_size = utf8_to_utf16_len(path) + 1;
@@ -559,78 +550,99 @@ namespace Luna
 		RV copy_file(const c8* from_path, const c8* to_path, FileCopyFlag flags)
 		{
 			lucheck(from_path && to_path);
-			usize from_size = utf8_to_utf16_len(from_path) + 2;
-			usize to_size = utf8_to_utf16_len(to_path) + 2;
+			usize from_size = utf8_to_utf16_len(from_path) + 1;
+			usize to_size = utf8_to_utf16_len(to_path) + 1;
 			wchar_t* fromBuffer = (wchar_t*)alloca(sizeof(wchar_t) * from_size);
 			wchar_t* toBuffer = (wchar_t*)alloca(sizeof(wchar_t) * to_size);
 			utf8_to_utf16((char16_t*)fromBuffer, from_size, from_path);
 			utf8_to_utf16((char16_t*)toBuffer, to_size, to_path);
-			fromBuffer[from_size - 1] = 0;
-			toBuffer[to_size - 1] = 0;
-			if (test_flags(flags, FileCopyFlag::fail_if_exists))
-			{
-				auto attr = file_attribute(to_path);
-				if (succeeded(attr)) return BasicError::already_exists();
-			}
-			SHFILEOPSTRUCTW FileOp = { 0 };
-			FileOp.fFlags = FOF_NOCONFIRMATION | FOF_NOCONFIRMMKDIR;
-			FileOp.pFrom = fromBuffer;
-			FileOp.pTo = toBuffer;
-			FileOp.wFunc = FO_COPY;
-			int r = SHFileOperationW(&FileOp);
-			return r ? BasicError::bad_platform_call() : ok;
+			BOOL r = CopyFileW(fromBuffer, toBuffer, test_flags(flags, FileCopyFlag::fail_if_exists));
+			if(r) return ok;
+			DWORD err = ::GetLastError();
+			return translate_last_error(err);
 		}
 		RV move_file(const c8* from_path, const c8* to_path, FileMoveFlag flags)
 		{
 			lucheck(from_path && to_path);
-			usize from_size = utf8_to_utf16_len(from_path) + 2;
-			usize to_size = utf8_to_utf16_len(to_path) + 2;
+			usize from_size = utf8_to_utf16_len(from_path) + 1;
+			usize to_size = utf8_to_utf16_len(to_path) + 1;
 			wchar_t* fromBuffer = (wchar_t*)alloca(sizeof(wchar_t) * from_size);
 			wchar_t* toBuffer = (wchar_t*)alloca(sizeof(wchar_t) * to_size);
 			utf8_to_utf16((char16_t*)fromBuffer, from_size, from_path);
 			utf8_to_utf16((char16_t*)toBuffer, to_size, to_path);
-			fromBuffer[from_size - 1] = 0;
-			toBuffer[to_size - 1] = 0;
-			if (test_flags(flags, FileMoveFlag::fail_if_exists))
+			DWORD dw = MOVEFILE_COPY_ALLOWED;
+			if(!test_flags(flags, FileMoveFlag::fail_if_exists))
 			{
-				auto attr = file_attribute(to_path);
-				if (succeeded(attr)) return BasicError::already_exists();
+				dw |= MOVEFILE_REPLACE_EXISTING;
 			}
-			SHFILEOPSTRUCTW FileOp = { 0 };
-			FileOp.fFlags = FOF_NOCONFIRMATION | FOF_NOCONFIRMMKDIR;
-			FileOp.pFrom = fromBuffer;
-			FileOp.pTo = toBuffer;
-			FileOp.wFunc = FO_MOVE;
-			int r = SHFileOperationW(&FileOp);
-			return r ? BasicError::bad_platform_call() : ok;
+			BOOL r = MoveFileExW(fromBuffer, toBuffer, dw);
+			if(r) return ok;
+			DWORD err = ::GetLastError();
+			return translate_last_error(err);
 		}
-		RV delete_file(const c8* path, FileDeleteFlag flags)
+		static RV delete_single_file(const c8* path)
 		{
-			lucheck(path);
-			usize buffer_size = utf8_to_utf16_len(path) + 2;
+			usize buffer_size = utf8_to_utf16_len(path) + 1;
 			wchar_t* pathbuffer = (wchar_t*)alloca(sizeof(wchar_t) * buffer_size);
 			utf8_to_utf16((char16_t*)pathbuffer, buffer_size, path);
-			pathbuffer[buffer_size - 1] = 0;
-			auto attr = file_attribute(path);
-			if (failed(attr)) return BasicError::not_found();
-			SHFILEOPSTRUCTW FileOp = { 0 };
-			FileOp.fFlags = FOF_NOCONFIRMATION;
-			if (test_flags(flags, FileDeleteFlag::allow_undo))
+			BOOL r = DeleteFileW(pathbuffer);
+			if(r) return ok;
+			DWORD err = ::GetLastError();
+			return translate_last_error(err);
+		}
+		static RV delete_empty_directory(const c8* path)
+		{
+			usize buffer_size = utf8_to_utf16_len(path) + 1;
+			wchar_t* pathbuffer = (wchar_t*)alloca(sizeof(wchar_t) * buffer_size);
+			utf8_to_utf16((char16_t*)pathbuffer, buffer_size, path);
+			BOOL r = RemoveDirectoryW(pathbuffer);
+			if(r) return ok;
+			DWORD err = ::GetLastError();
+			return translate_last_error(err);
+		}
+		RV delete_file(const c8* path)
+		{
+			lucheck(path);
+			lutry
 			{
-				FileOp.fFlags |= FOF_ALLOWUNDO;
+				lulet(attr, get_file_attribute(path));
+				if(test_flags(attr.attributes, FileAttributeFlag::directory))
+				{
+					// Remove all files in directory.
+					Vector<String> files;
+					lulet(iter, open_dir(path));
+					for(;dir_iterator_valid(iter); dir_iterator_move_next(iter))
+					{
+						const c8* filename = dir_iterator_filename(iter);
+						files.push_back(filename);
+					}
+					close_dir(iter);
+					String dir_path = path;
+					usize dir_size = dir_path.size();
+					for(auto& f : files)
+					{
+						dir_path.push_back('\\');
+						dir_path.append(f.c_str());
+						luexp(delete_file(dir_path.c_str()));
+						dir_path.erase(dir_path.begin() + dir_size, dir_path.end());
+					}
+					// Delete empty directory.
+					luexp(delete_empty_directory(path));
+				}
+				else
+				{
+					luexp(delete_single_file(path));
+				}
 			}
-			FileOp.pFrom = pathbuffer;
-			FileOp.pTo = NULL;
-			FileOp.wFunc = FO_DELETE;
-			int r = SHFileOperationW(&FileOp);
-			return r ? BasicError::bad_platform_call() : ok;
+			lucatchret;
+			return ok;
 		}
 		struct FileData
 		{
 			WIN32_FIND_DATAW m_data;
 			HANDLE m_h;
 			const char* m_filename_ptr;
-			char m_file_name[260];	// Buffer to store the file name in UTF-8 format.
+			char m_file_name[512];	// Buffer to store the file name in UTF-8 format.
 			bool m_allocated;
 
 			FileData() :
@@ -682,7 +694,14 @@ namespace Luna
 					return BasicError::bad_platform_call();
 				}
 			}
-			utf16_to_utf8(data->m_file_name, 260, (char16_t*)data->m_data.cFileName);
+			utf16_to_utf8(data->m_file_name, 512, (char16_t*)data->m_data.cFileName);
+			// Skip "." and "..".
+			while(dir_iterator_valid(data))
+			{
+				const c8* filename = dir_iterator_filename(data);
+				if(strcmp(filename, ".") && strcmp(filename, "..")) break;
+				dir_iterator_move_next(data);
+			}
 			return data;
 		}
 		void close_dir(opaque_t dir_iter)
@@ -727,7 +746,7 @@ namespace Luna
 			}
 			return r;
 		}
-		bool dir_iterator_move_next(opaque_t dir_iter)
+		bool internal_dir_iterator_move_next(opaque_t dir_iter)
 		{
 			FileData* f = (FileData*)dir_iter;
 			if (!dir_iterator_valid(dir_iter))
@@ -739,9 +758,21 @@ namespace Luna
 				f->m_allocated = false;
 				return false;
 			}
-			utf16_to_utf8(f->m_file_name, 260, (char16_t*)f->m_data.cFileName);
+			utf16_to_utf8(f->m_file_name, 512, (char16_t*)f->m_data.cFileName);
 			f->m_allocated = true;
 			return true;
+		}
+		bool dir_iterator_move_next(opaque_t dir_iter)
+		{
+			bool r = internal_dir_iterator_move_next(dir_iter);
+			// Skip . and ..
+			while(r)
+			{
+				const c8* filename = dir_iterator_filename(dir_iter);
+				if(strcmp(filename, ".") && strcmp(filename, "..")) break;
+				r = internal_dir_iterator_move_next(dir_iter);
+			}
+			return r;
 		}
 		RV	create_dir(const c8* path)
 		{

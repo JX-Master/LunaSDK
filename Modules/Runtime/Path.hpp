@@ -507,7 +507,7 @@ namespace Luna
 			}
 			usize filename_len = i;
 			usize new_filename_len;
-			if (new_extension)
+			if (new_extension && count)
 			{
 				new_filename_len = count + filename_len + 1;	// 1 for dot(.)
 			}
@@ -520,7 +520,7 @@ namespace Luna
 			// copy filename.
 			memcpy(buf, str, filename_len * sizeof(c8));
 			// copy extension.
-			if (new_extension)
+			if (new_extension && count)
 			{
 				buf[filename_len] = '.';
 				memcpy(buf + filename_len + 1, new_extension, count * sizeof(c8));
@@ -549,6 +549,10 @@ namespace Luna
 			// ends with NULL.
 			buf[sz + count + 1] = 0;
 			name = Name(buf);
+		}
+		void remove_extension()
+		{
+			replace_extension(nullptr);
 		}
 
 		const_reference at(usize index) const

@@ -26,10 +26,10 @@ namespace Luna
 			R<void*>(*mount)(void* driver_data, const c8* driver_path, const Path& mount_dir, typeinfo_t params_type, void* params_data);
 			RV(*unmount)(void* driver_data, void* mount_data);
 			R<Ref<IFile>>(*open_file)(void* driver_data, void* mount_data, const Path& path, FileOpenFlag flags, FileCreationMode creation);
-			R<FileAttribute>(*file_attribute)(void* driver_data, void* mount_data, const Path& path);
+			R<FileAttribute>(*get_file_attribute)(void* driver_data, void* mount_data, const Path& path);
 			RV(*copy_file)(void* driver_data, void* from_mount_data, void* to_mount_data, const Path& from_path, const Path& to_path, FileCopyFlag flags);
 			RV(*move_file)(void* driver_data, void* from_mount_data, void* to_mount_data, const Path& from_path, const Path& to_path, FileMoveFlag flags);
-			RV(*delete_file)(void* driver_data, void* mount_data, const Path& path, FileDeleteFlag flags);
+			RV(*delete_file)(void* driver_data, void* mount_data, const Path& path);
 			R<Ref<IFileIterator>>(*open_dir)(void* driver_data, void* mount_data, const Path& path);
 			RV(*create_dir)(void* driver_data, void* mount_data, const Path& path);
 			R<Name>(*get_native_path)(void* driver_data, void* mount_data, const Path& path);

@@ -47,9 +47,9 @@ namespace Luna
 		lucatchret;
 		return ret;
 	}
-	LUNA_RUNTIME_API R<FileAttribute> file_attribute(const c8* filename)
+	LUNA_RUNTIME_API R<FileAttribute> get_file_attribute(const c8* filename)
 	{
-		return OS::file_attribute(filename);
+		return OS::get_file_attribute(filename);
 	}
 	LUNA_RUNTIME_API RV	copy_file(const c8* from_path, const c8* to_path, FileCopyFlag flags)
 	{
@@ -59,9 +59,9 @@ namespace Luna
 	{
 		return OS::move_file(from_path, to_path, flags);
 	}
-	LUNA_RUNTIME_API RV	delete_file(const c8* filename, FileDeleteFlag flags)
+	LUNA_RUNTIME_API RV	delete_file(const c8* filename)
 	{
-		return OS::delete_file(filename, flags);
+		return OS::delete_file(filename);
 	}
 	LUNA_RUNTIME_API R<Ref<IFileIterator>> open_dir(const c8* dir_path)
 	{
