@@ -62,6 +62,8 @@ namespace Luna
 			ObjRef userdata;
 			//! Called when the asset data is being loaded.
 			R<ObjRef>(*on_load_asset)(object_t userdata, asset_t asset, const Path& path);
+			//! Called when the default asset data is requested. The system should create one default asset for the asset.
+			R<ObjRef>(*on_load_asset_default_data)(object_t userdata, asset_t asset);
 			//! Called when the asset data is being saved.
 			RV(*on_save_asset)(object_t userdata, asset_t asset, const Path& path, object_t data);
 			//! Called when the asset data is being set.
@@ -80,12 +82,17 @@ namespace Luna
 		//! @param[in] type The type of the asset.
 		LUNA_ASSET_API R<asset_t> new_asset(const Path& path, const Name& type);
 
-		//! Registers one existing asset to the system.
-		//! The system reads asset GUID and type by reading the asset meta file.
-		//! @param[in] path The path of the asset to register.
-		//! If the asset with the specified path is already registered, this call does nothing and returnes
-		//! the registered asset directly.
-		LUNA_ASSET_API R<asset_t> register_asset(const Path& path);
+		//! Updates asset metadata by reading asset meta files.
+		//! @param[in] path The path of the asset or direcotry.
+		//! If `path` represents one asset, the system loads the asset metadata by opening its meta file and reading from it.
+		//! If `path` represents one directory, the system loads assets metadata for all assets in the directory recursively, every
+		//! asset is loaded as if `update_assets_meta` is called for that particular asset.
+		//! @param[in] allow_overwrite Specify the behavior when the specified asset already exists in the system.
+		//! If `allow_overwrite` is `true`, the system will overwrite the asset metadata in the system using new asset metadata loaded
+		//! from asset meta file; if `allow_overwrite` is `false`, the system discards the new asset metadata and does not change the 
+		//! asset metadata in the system.
+		//! If `path` specifies one directory, this parameter is applied to all assets in that directory.
+		LUNA_ASSET_API RV update_assets_meta(const Path& path, bool allow_overwrite = true);
 
 		//! Gets or creates one asset entry. An asset is one block of application data that is stored on one asset file.
 		//! This function returns the asset entry corresponding to the specified Asset ID.
@@ -103,6 +110,12 @@ namespace Luna
 		//! Gets the asset VFS path.
 		LUNA_ASSET_API Path get_asset_path(asset_t asset);
 
+		//! Sets the asset VFS path.
+		//! This function only changes the asset path metadata in the system, it does not move the asset
+		//! file on VFS. The user should move asset files manually before calling this function.
+		//! The user can get files that should be moved by `get_asset_files`.
+		LUNA_ASSET_API RV set_asset_path(asset_t asset, const Path& path);
+
 		//! Gets the asset name, which is the last node of the asset VFS path, excluding the extension.
 		LUNA_ASSET_API Name get_asset_name(asset_t asset);
 
@@ -110,10 +123,12 @@ namespace Luna
 
 		LUNA_ASSET_API RV set_asset_type(asset_t asset, const Name& type);
 
-		//! Get all files associated to the specified asset.
+		//! Get filenames of all files associated to the specified asset.
 		LUNA_ASSET_API R<Vector<Name>> get_asset_files(asset_t asset);
 
 		//! Deletes one asset and all its associated files.
+		//! The asset handle will still be valid after this operation, but the asset state will 
+		//! be set to `unregistered`, and all operations to the asset is invalid.
 		LUNA_ASSET_API RV delete_asset(asset_t asset);
 
 		//! Moves all asset associated files to a new destination.
@@ -141,6 +156,9 @@ namespace Luna
 		LUNA_ASSET_API RV set_asset_data(asset_t asset, object_t data);
 
 		LUNA_ASSET_API void load_asset(asset_t asset, bool force_reload = false);
+
+		//! Creates one data object that contains the default data for the asset.
+		LUNA_ASSET_API RV load_asset_default_data(asset_t asset);
 
 		LUNA_ASSET_API AssetState get_asset_state(asset_t asset);
 

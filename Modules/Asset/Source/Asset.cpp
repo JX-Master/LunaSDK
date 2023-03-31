@@ -86,16 +86,16 @@ namespace Luna
 			g_asset_path_mapping.insert(make_pair(path, ret));
 			return ret;
 		}
-		LUNA_ASSET_API R<asset_t> register_asset(const Path& path)
+
+		struct AssetMetaUpdateInfo
 		{
-			{
-				MutexGuard g1(g_assets_mutex);
-				auto iter = g_asset_path_mapping.find(path);
-				if (iter != g_asset_path_mapping.end()) return iter->second;
-			}
+			Path path;
+			AssetMetaFile meta_file;
+		};
+
+		static R<AssetMetaFile> internal_load_asset_meta(const Path& meta_path)
+		{
 			// Read file.
-			Path meta_path = path;
-			meta_path.append_extension("meta");
 			AssetMetaFile file;
 			lutry
 			{
@@ -107,18 +107,97 @@ namespace Luna
 			{
 				if (lures == BasicError::not_found())
 				{
-					return set_error(AssetError::meta_file_not_found(), "Meta file for asset %s is not found.", path.encode().c_str());
+					return set_error(AssetError::meta_file_not_found(), "Asset meta file %s is not found.", meta_path.encode().c_str());
 				}
 				return lures;
 			}
-			asset_t ret = get_asset(file.guid);
-			luassert(get_asset_state(ret) == AssetState::unregistered);
-			AssetEntry* entry = (AssetEntry*)ret.handle;
-			LockGuard lock(entry->lock);
-			entry->path = path;
-			entry->type = file.type;
-			g_asset_path_mapping.insert(make_pair(path, ret));
-			return ret;
+			return file;
+		}
+
+		static RV recursive_load_asset_meta(const Path& directory, Vector<AssetMetaUpdateInfo>& assets)
+		{
+			lutry
+			{
+				lulet(iter, VFS::open_dir(directory));
+				Path path = directory;
+				for(; iter->valid(); iter->move_next())
+				{
+					path.push_back(iter->filename());
+					if(test_flags(iter->attribute(), FileAttributeFlag::directory))
+					{
+						luexp(recursive_load_asset_meta(path, assets));
+					}
+					else if(path.extension() == "meta")
+					{
+						lulet(meta_file, internal_load_asset_meta(path));
+						AssetMetaUpdateInfo info;
+						path.remove_extension();
+						info.path = path;
+						info.meta_file = move(meta_file);
+						assets.push_back(move(info));
+					}
+					path.pop_back();
+				}
+			}
+			lucatchret;
+			return ok;
+		}
+
+		inline AssetState internal_get_asset_state(AssetEntry* entry)
+		{
+			if (entry->type.empty()) return AssetState::unregistered;
+			if (entry->data) return AssetState::loaded;
+			if (!JobSystem::is_job_finished(entry->last_load_job)) return AssetState::loading;
+			return AssetState::unloaded;
+		}
+
+		LUNA_ASSET_API RV update_assets_meta(const Path& path, bool allow_overwrite)
+		{
+			lutry
+			{
+				// Collect assets to be updated.
+				Vector<AssetMetaUpdateInfo> update_assets;
+				auto attr = VFS::get_file_attribute(path);
+				if(succeeded(attr) && test_flags(attr.get().attributes, FileAttributeFlag::directory))
+				{
+					luexp(recursive_load_asset_meta(path, update_assets));
+				}
+				else
+				{
+					Path meta_path = path;
+					meta_path.append_extension("meta");
+					lulet(meta_file, internal_load_asset_meta(meta_path));
+					AssetMetaUpdateInfo info;
+					info.path = path;
+					info.meta_file = move(meta_file);
+					update_assets.push_back(move(info));
+				}
+				// Do update.
+				MutexGuard g(g_assets_mutex);
+				for(auto& info : update_assets)
+				{
+					auto asset = get_asset(info.meta_file.guid);
+					AssetEntry* entry = (AssetEntry*)asset.handle;
+					LockGuard g2(entry->lock);
+					auto state = internal_get_asset_state(entry);
+					if(state == AssetState::unregistered || allow_overwrite)
+					{
+						if(state != AssetState::unregistered)
+						{
+							auto iter = g_asset_path_mapping.find(entry->path);
+							if(iter != g_asset_path_mapping.end() && iter->second == asset)
+							{
+								g_asset_path_mapping.erase(iter);	
+							}
+						}
+						entry->type = info.meta_file.type;
+						entry->path = info.path;
+						g_asset_path_mapping.insert(make_pair(entry->path, asset));
+					}
+				}
+			}
+			lucatchret;
+			return ok;
 		}
 		LUNA_ASSET_API asset_t get_asset(const Guid& guid)
 		{
@@ -158,6 +237,17 @@ namespace Luna
 			LockGuard guard(entry->lock);
 			return entry->path;
 		}
+		LUNA_ASSET_API RV set_asset_path(asset_t asset, const Path& path)
+		{
+			AssetEntry* entry = (AssetEntry*)asset.handle;
+			MutexGuard g1(g_assets_mutex);
+			LockGuard guard(entry->lock);
+			auto iter = g_asset_path_mapping.insert(make_pair(path, asset));
+			if(!iter.second) return BasicError::already_exists();
+			g_asset_path_mapping.erase(entry->path);
+			entry->path = path;
+			return ok;
+		}
 		LUNA_ASSET_API Name get_asset_name(asset_t asset)
 		{
 			AssetEntry* entry = (AssetEntry*)asset.handle;
@@ -170,13 +260,6 @@ namespace Luna
 			AssetEntry* entry = (AssetEntry*)asset.handle;
 			LockGuard guard(entry->lock);
 			return entry->type;
-		}
-		inline AssetState internal_get_asset_state(AssetEntry* entry)
-		{
-			if (entry->type.empty()) return AssetState::unregistered;
-			if (entry->data) return AssetState::loaded;
-			if (!JobSystem::is_job_finished(entry->last_load_job)) return AssetState::loading;
-			return AssetState::unloaded;
 		}
 		LUNA_ASSET_API RV set_asset_type(asset_t asset, const Name& type)
 		{
@@ -383,6 +466,31 @@ namespace Luna
 			AssetEntry* entry = (AssetEntry*)asset.handle;
 			LockGuard g(entry->lock);
 			internal_load_asset(entry, force_reload);
+		}
+		LUNA_ASSET_API RV load_asset_default_data(asset_t asset)
+		{
+			AssetEntry* entry = (AssetEntry*)asset.handle;
+			LockGuard g(entry->lock);
+			lutry
+			{
+				if (entry->type.empty())
+				{
+					luthrow(AssetError::asset_not_registered());
+				}
+				lulet(desc, get_asset_type_desc(entry->type));
+				ObjRef data;
+				if (desc.on_load_asset_default_data)
+				{
+					luset(data, desc.on_load_asset_default_data(desc.userdata.get(), asset));
+				}
+				else
+				{
+					luthrow(set_error(BasicError::not_supported(), "Asset Default Data Loading is not Implemented by Asset %s", entry->type.c_str()));
+				}
+				entry->data = data;
+			}
+			lucatchret;
+			return ok;
 		}
 		LUNA_ASSET_API AssetState get_asset_state(asset_t asset)
 		{

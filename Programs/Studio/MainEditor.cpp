@@ -29,48 +29,6 @@ namespace Luna
 {
 	MainEditor* g_main_editor;
 
-	static RV load_asset_meta(const Path& search_dir)
-	{
-		lutry
-		{
-			lulet(iter, VFS::open_dir(search_dir));
-			while (iter->valid())
-			{
-				if ((iter->attribute() & FileAttributeFlag::directory) != FileAttributeFlag::none)
-				{
-					// This is a directory.
-					if (!strcmp(iter->filename(), ".") || !strcmp(iter->filename(), ".."))
-					{
-						iter->move_next();
-						continue;
-					}
-					auto subpath = search_dir;
-					subpath.push_back(iter->filename());
-					luexp(load_asset_meta(subpath));
-				}
-				else
-				{
-					// Ends with ".meta"
-					const char* name = iter->filename();
-					usize name_len = strlen(name);
-					if (name_len > 5)
-					{
-						if (!strcmp(name + name_len - 5, ".meta"))
-						{
-							auto asset_name = Name(name, name_len - 5);
-							auto asspath = search_dir;
-							asspath.push_back(asset_name);
-							luexp(Asset::register_asset(asspath))
-						}
-					}
-				}
-				iter->move_next();
-			}
-		}
-		lucatchret;
-		return RV();
-	}
-
 	RV MainEditor::init(const Path& project_path)
 	{
 		lutry
@@ -84,7 +42,7 @@ namespace Luna
 			luexp(VFS::mount(VFS::get_platform_filesystem_driver(), mount_path.encode(PathSeparator::system_preferred).c_str(), "/"));
 
 			// Load all asset metadata.
-			luexp(load_asset_meta("/"));
+			luexp(Asset::update_assets_meta("/"));
 
 			// Create window and render objects.
 			auto name_no_ext = Path(name.c_str());
