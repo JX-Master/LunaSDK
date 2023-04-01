@@ -24,34 +24,41 @@ namespace Luna
 			texture_3d
 		};
 
-		//! Specify which heap the resource should be created in.
+		//! Specify which heap the resource should be created in. See remarks for details.
+		//! @remark The resource heap type specifies the memory location and access policy for resource heaps and resources.
 		enum class ResourceHeapType : u8
 		{
-			//! The resource is optimized for maximum GPU bandwidth. CPU access is disabled.
-			//! For non-UMA devices, specifying this causes the resource to be allocated on physical video memory, such 
+			//! The resource heap is optimized for maximum GPU bandwidth. CPU access is disabled.
+			//! For non-UMA devices, specifying this causes the resource heap to be allocated on physical video memory, such 
 			//! memory cannot be accessed by CPU.
-			//! For UMA devices, the resource is allocated on physical system memory, but CPU access is disabled.
+			//! For UMA devices, the resource heap is allocated on physical system memory, but CPU access is disabled. This allows driver to perform
+			//! additional optimizations compared to `shared` heap type.
+			//! 
+			//! The typical usage for this heap type is to store render targets, intermediate rendering results and streaming textures that do not require
+			//! CPU access.
 			local = 0,
 
-			//! The resource is optimized for maximum GPU bandwidth, but can be accessed by both CPU and GPU.
+			//! The resource heap is optimized for maximum GPU bandwidth, but can be accessed by both CPU and GPU.
 			//! For non-UMA devices, specifying this causes the resource to be allocated on physical video memory, just as `local` does.
 			//! When CPU maps the resource data, GPU copies data from video memory to system memory and exposes them to CPU; when CPU unmaps the resource data, 
 			//! GPU copies the data on system memory back to video memory. The copy operation is costly and has high latency, so they should not be done very often.
 			//! For UMA devices, the resource is allocated on physical system memory, CPU can access the it just like normal memory. No data copy
 			//! is occured in such case.
+			//! 
+			//! The typical usage for this heap type is to store resources that should be written once by CPU, but 
 			shared = 1,
 
 			//! Same as `shared`, but CPU can only writes to the resource, never reads from it. Specify this instead of `shared`
 			//! gives the drive more room to optimize CPU bandwidth, such as using write-combined CPU cache mode.
 			shared_upload = 2,
 
-			//! The resource is created in a heap optimized for CPU writing. GPU bandwidth is limited.
+			//! The resource heap is created in a heap optimized for CPU writing. GPU bandwidth is limited.
 			//! The resource will be created in physical system memory, which does not require any data copy on mapping and unmapping resources.
 			//! On non-UMA devices, GPU will read the system memory through PCI-E bus, which limits the bandwidth for GPU.
 			//! Only buffer resources can be created on upload heap, CPU cannot read data from such resources, and GPU cannot write to such resources.
 			upload = 3,
 
-			//! The resource is created in a heap optimized for CPU reading. GPU bandwidth is limited.
+			//! The resource heap is created in a heap optimized for CPU reading. GPU bandwidth is limited.
 			//! The resource will be created in physical system memory, which does not require any data copy on mapping and unmapping resources.
 			//! On non-UMA devices, GPU will write to the system memory through PCI-E bus, which limits the bandwidth for GPU.
 			//! Only buffer resources can be created on readback heap, such resource can only be used as the copy destination for GPU copy commands.
