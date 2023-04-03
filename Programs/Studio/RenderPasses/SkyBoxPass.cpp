@@ -84,14 +84,14 @@ namespace Luna
 			{
 				// Draw skybox.
 				SkyboxParams* mapped = nullptr;
-				luexp(m_skybox_params_cb->map_subresource(0, false, (void**)&mapped));
+				luexp(m_skybox_params_cb->map_subresource(0, 0, 0, (void**)&mapped));
 				auto camera_forward_dir = mul(Float4(0.0f, 0.0f, 1.0f, 0.0f), view_to_world);
 				memcpy(&mapped->view_to_world, &view_to_world, sizeof(Float4x4));
 				mapped->fov = camera_fov;
                 auto desc = output_tex->get_desc();
 				mapped->width = (u32)desc.width_or_buffer_size;
 				mapped->height = (u32)desc.height;
-				m_skybox_params_cb->unmap_subresource(0, true);
+				m_skybox_params_cb->unmap_subresource(0, 0, sizeof(SkyboxParams));
 				cmdbuf->resource_barriers({
 					ResourceBarrierDesc::as_transition(output_tex, ResourceState::unordered_access),
 					ResourceBarrierDesc::as_transition(skybox, ResourceState::shader_resource_non_pixel),

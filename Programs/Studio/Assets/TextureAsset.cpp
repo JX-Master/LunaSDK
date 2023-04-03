@@ -88,7 +88,7 @@ namespace Luna
 				ResourceDesc::buffer(ResourceHeapType::upload, ResourceUsageFlag::constant_buffer, cb_size * (desc.mip_levels - 1))));
 
 			void* mapped = nullptr;
-			luexp(cb->map_subresource(0, false, &mapped));
+			luexp(cb->map_subresource(0, 0, 0, &mapped));
 			for (u32 j = 0; j < (u32)(desc.mip_levels - 1); ++j)
 			{
 				u32 width = max<u32>((u32)desc.width_or_buffer_size >> (j + 1), 1);
@@ -97,7 +97,7 @@ namespace Luna
 				dest->x = 1.0f / (f32)width;
 				dest->y = 1.0f / (f32)height;
 			}
-			cb->unmap_subresource(0, true);
+			cb->unmap_subresource(0, 0, USIZE_MAX);
 
 			u32 width = (u32)desc.width_or_buffer_size / 2;
 			u32 height = desc.height / 2;
@@ -187,14 +187,14 @@ namespace Luna
 			auto desired_format = get_desired_format(desc.format);
 			lulet(image_data, Image::read_image_file(file_data.data(), file_data.size(), desired_format, desc));
 			// Create resource.
-			lulet(tex, RHI::get_main_device()->new_resource(RHI::ResourceDesc::tex2d(RHI::ResourceHeapType::shared_upload,
+			lulet(tex, RHI::get_main_device()->new_resource(RHI::ResourceDesc::tex2d(RHI::ResourceHeapType::local,
 				get_pixel_format_from_image_format(desc.format), RHI::ResourceUsageFlag::shader_resource | RHI::ResourceUsageFlag::unordered_access, desc.width, desc.height)));
 			// Upload data.
-			luexp(tex->map_subresource(0, false));
-			luexp(tex->write_subresource(0, image_data.data(),
-				pixel_size(desc.format) * desc.width, pixel_size(desc.format) * desc.width * desc.height,
-				BoxU(0, 0, 0, desc.width, desc.height, 1)));
-			tex->unmap_subresource(0, true);
+			luexp(RHI::get_main_device()->copy_resource({
+				RHI::ResourceCopyDesc::as_write_texture(tex, image_data.data(), 
+					pixel_size(desc.format) * desc.width, pixel_size(desc.format) * desc.width * desc.height,
+					0, BoxU(0, 0, 0, desc.width, desc.height, 1))
+				}));
 			// Generate mipmaps.
 			Ref<TextureAssetUserdata> ctx = ObjRef(userdata);
 			lulet(cmdbuf, g_env->async_compute_queue->new_command_buffer());

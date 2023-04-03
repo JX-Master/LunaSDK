@@ -490,9 +490,9 @@ namespace Luna
 			m_camera_cb_data.screen_width = (u32)scene_sz.x;
 			m_camera_cb_data.screen_height = (u32)scene_sz.y;
 			void* mapped = nullptr;
-			luexp(m_camera_cb->map_subresource(0, false, &mapped));
+			luexp(m_camera_cb->map_subresource(0, 0, 0, &mapped));
 			memcpy(mapped, &m_camera_cb_data, sizeof(CameraCB));
-			m_camera_cb->unmap_subresource(0, true);
+			m_camera_cb->unmap_subresource(0, 0, sizeof(CameraCB));
 
 			auto device = RHI::get_main_device();
 
@@ -537,7 +537,7 @@ namespace Luna
 					if (!ts.empty())
 					{
 						void* mapped = nullptr;
-						luexp(m_model_matrices->map_subresource(0, false, &mapped));
+						luexp(m_model_matrices->map_subresource(0, 0, 0, &mapped));
 						for (usize i = 0; i < ts.size(); ++i)
 						{
 							Float4x4 m2w = ts[i]->local_to_world_matrix();
@@ -545,7 +545,7 @@ namespace Luna
 							memcpy((Float4x4*)mapped + i * 2, m2w.r[0].m, sizeof(Float4x4));
 							memcpy((Float4x4*)mapped + (i * 2 + 1), w2m.r[0].m, sizeof(Float4x4));
 						}
-						m_model_matrices->unmap_subresource(0, true);
+						m_model_matrices->unmap_subresource(0, 0, sizeof(Float4x4) * 2 * ts.size());
 					}
 				}
 
@@ -578,7 +578,7 @@ namespace Luna
 						m_num_lights = light_ts.size();
 					}
 					void* mapped = nullptr;
-					luexp(m_lighting_params->map_subresource(0, false, &mapped));
+					luexp(m_lighting_params->map_subresource(0, 0, 0, &mapped));
 					for (usize i = 0; i < light_ts.size(); ++i)
 					{
 						LightingParams p;
@@ -636,7 +636,7 @@ namespace Luna
 						p.spot_attenuation_power = 0.0f;
 						memcpy((LightingParams*)mapped, &p, sizeof(LightingParams));
 					}
-					m_lighting_params->unmap_subresource(0, true);
+					m_lighting_params->unmap_subresource(0, 0, sizeof(LightingParams) * max<usize>(light_ts.size(), 1));
 				}
 
 				u32 cb_align = device->get_constant_buffer_data_alignment();
@@ -1120,8 +1120,7 @@ namespace Luna
 			using namespace RHI;
 			auto device = get_main_device();
 			{
-				luset(m_grid_vb, device->new_resource(ResourceDesc::buffer(ResourceHeapType::shared_upload, ResourceUsageFlag::vertex_buffer, sizeof(grids))));
-				
+				luset(m_grid_vb, device->new_resource(ResourceDesc::buffer(ResourceHeapType::local, ResourceUsageFlag::vertex_buffer, sizeof(grids))));
 
 				DescriptorSetLayoutDesc dlayout({
 					DescriptorSetLayoutBinding(DescriptorType::cbv, 0, 1, ShaderVisibility::vertex)
@@ -1212,10 +1211,9 @@ namespace Luna
 			}
 
 			// Upload grid vertex data.
-			void* mapped = nullptr;
-			luexp(m_grid_vb->map_subresource(0, false, &mapped));
-			memcpy(mapped, grids, sizeof(grids));
-			m_grid_vb->unmap_subresource(0, true);
+			luexp(device->copy_resource({
+				ResourceCopyDesc::as_write_buffer(m_grid_vb, grids, sizeof(grids), 0)
+				}));
 
 			register_boxed_type<CommonVertex>();
 			luexp(register_sky_box_pass());

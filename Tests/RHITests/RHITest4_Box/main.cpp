@@ -175,15 +175,6 @@ RV start()
             16, 17, 18, 16, 18, 19,
             20, 21, 22, 20, 22, 23
         };
-        luset(vb, dev->new_resource(ResourceDesc::buffer(ResourceHeapType::shared_upload, ResourceUsageFlag::vertex_buffer, sizeof(vertices))));
-        luset(ib, dev->new_resource(ResourceDesc::buffer(ResourceHeapType::shared_upload, ResourceUsageFlag::index_buffer, sizeof(indices))));
-        void* mapped = nullptr;
-        luexp(vb->map_subresource(0, false, &mapped));
-        memcpy(mapped, vertices, sizeof(vertices));
-        vb->unmap_subresource(0, true);
-        luexp(ib->map_subresource(0, false, &mapped));
-        memcpy(mapped, indices, sizeof(indices));
-        ib->unmap_subresource(0, true);
         auto cb_align = dev->get_constant_buffer_data_alignment();
         luset(cb, dev->new_resource(ResourceDesc::buffer(ResourceHeapType::upload, ResourceUsageFlag::constant_buffer, align_upper(sizeof(Float4x4), cb_align))));
 
@@ -192,13 +183,16 @@ RV start()
         Image::ImageDesc image_desc;
         lulet(image_data, Image::read_image_file(image_file_data.data(), image_file_data.size(), Image::ImagePixelFormat::rgba8_unorm, image_desc));
 
-        luset(file_tex, dev->new_resource(ResourceDesc::tex2d(ResourceHeapType::shared_upload, Format::rgba8_unorm, 
+        luset(vb, dev->new_resource(ResourceDesc::buffer(ResourceHeapType::local, ResourceUsageFlag::vertex_buffer, sizeof(vertices))));
+        luset(ib, dev->new_resource(ResourceDesc::buffer(ResourceHeapType::local, ResourceUsageFlag::index_buffer, sizeof(indices))));
+        luset(file_tex, dev->new_resource(ResourceDesc::tex2d(ResourceHeapType::local, Format::rgba8_unorm, 
             ResourceUsageFlag::shader_resource, image_desc.width, image_desc.height, 1, 1)));
-        luexp(file_tex->map_subresource(0, false));
-        luexp(file_tex->write_subresource(0, image_data.data(), 
-            image_desc.width * Image::pixel_size(image_desc.format), 
-            image_desc.width * image_desc.height * Image::pixel_size(image_desc.format), BoxU(0, 0, 0, image_desc.width, image_desc.height, 1)));
-        file_tex->unmap_subresource(0, true);
+        luexp(dev->copy_resource({
+                ResourceCopyDesc::as_write_buffer(vb, vertices, sizeof(vertices), 0),
+                ResourceCopyDesc::as_write_buffer(ib, indices, sizeof(indices), 0),
+                ResourceCopyDesc::as_write_texture(file_tex, image_data.data(), image_desc.width * Image::pixel_size(image_desc.format),
+                    image_desc.width * image_desc.height * Image::pixel_size(image_desc.format), 0, BoxU(0, 0, 0, image_desc.width, image_desc.height, 1))
+            }));
 
         desc_set->set_cbv(0, cb, ConstantBufferViewDesc(0, align_upper(sizeof(Float4x4), cb_align)));
         desc_set->set_srv(1, file_tex);
@@ -216,14 +210,14 @@ void draw()
 	lutry
     {
         camera_rotation += 1.0f;
-        Float3 camera_pos(cosf(camera_rotation / 180.0f * PI) * 2.0f, 1.0f, sinf(camera_rotation / 180.0f * PI) * 2.0f);
+        Float3 camera_pos(cosf(camera_rotation / 180.0f * PI) * 3.0f, 1.0f, sinf(camera_rotation / 180.0f * PI) * 3.0f);
         Float4x4 camera_mat = AffineMatrix::make_look_at(camera_pos, Float3(0, 0, 0), Float3(0, 1, 0));
         auto window_sz = get_window()->get_framebuffer_size();
         camera_mat = mul(camera_mat, ProjectionMatrix::make_perspective_fov(PI / 3.0f, (f32)window_sz.x / (f32)window_sz.y, 0.001f, 100.0f));
         void* camera_mapped;
-        luexp(cb->map_subresource(0, false, &camera_mapped));
+        luexp(cb->map_subresource(0, 0, 0, &camera_mapped));
         memcpy(camera_mapped, &camera_mat, sizeof(Float4x4));
-        cb->unmap_subresource(0, true);
+        cb->unmap_subresource(0, 0, sizeof(Float4x4));
 
         using namespace RHI;
 

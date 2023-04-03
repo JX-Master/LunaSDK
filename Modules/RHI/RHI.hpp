@@ -50,12 +50,14 @@ namespace Luna
 		//! @param[in] index The index of the adapter.
 		//! @return Returns the descriptor object. Returns `BasicError::not_found` if the adpator at the specified index is not found.
 		LUNA_RHI_API R<GraphicAdapterDesc> get_adapter_desc(u32 index);
-
+		
+		//! Calculates the subresource index of the specified subresource.
 		inline constexpr u32 calc_subresource_index(u32 mip_slice, u32 array_slice, u32 mip_levels)
 		{
 			return mip_slice + array_slice * mip_levels;
 		}
 
+		//! Calculates the mipmap slice and array slice from subresource index.
 		inline constexpr void calc_mip_array_slice(u32 subresource, u32 mip_levels, u32& mip_slice, u32& array_slice)
 		{
 			mip_slice = subresource % mip_levels;

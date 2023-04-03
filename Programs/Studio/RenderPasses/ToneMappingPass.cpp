@@ -151,11 +151,11 @@ namespace Luna
             // Tone mapping pass.
 			{
 				lulet(m_histogram_buffer, ctx->allocate_temporary_resource(ResourceDesc::buffer(ResourceHeapType::local, ResourceUsageFlag::unordered_access, sizeof(u32) * 256)));
-				lulet(m_lum_tex, ctx->allocate_temporary_resource(ResourceDesc::tex2d(ResourceHeapType::shared_upload, Format::r32_float, ResourceUsageFlag::unordered_access | ResourceUsageFlag::shader_resource, 1, 1)));
-				luexp(m_lum_tex->map_subresource(0, false));
+				lulet(m_lum_tex, ctx->allocate_temporary_resource(ResourceDesc::tex2d(ResourceHeapType::local, Format::r32_float, ResourceUsageFlag::unordered_access | ResourceUsageFlag::shader_resource, 1, 1)));
 				f32 v = 0.0f;
-				luexp(m_lum_tex->write_subresource(0, &v, 4, 4, BoxU(0, 0, 0, 1, 1, 1)));
-				m_lum_tex->unmap_subresource(0, true);
+				luexp(m_lum_tex->get_device()->copy_resource({
+					ResourceCopyDesc::as_write_texture(m_lum_tex, &v, 4, 4, 0, BoxU(0, 0, 0, 1, 1, 1))
+					}));
 				cmdbuf->attach_device_object(m_histogram_buffer);
 				cmdbuf->attach_device_object(m_lum_tex);
 				// Histogram Lum Pass.
@@ -163,12 +163,12 @@ namespace Luna
 					cmdbuf->set_compute_shader_input_layout(m_global_data->m_histogram_pass_slayout);
 					cmdbuf->set_pipeline_state(m_global_data->m_histogram_pass_pso);
 					LumHistogramParams* mapped = nullptr;
-					luexp(m_histogram_cb->map_subresource(0, false, (void**)&mapped));
+					luexp(m_histogram_cb->map_subresource(0, 0, 0, (void**)&mapped));
 					mapped->src_width = (u32)lighting_tex_desc.width_or_buffer_size;
 					mapped->src_height = lighting_tex_desc.height;
 					mapped->min_brightness = min_brightness;
 					mapped->max_brightness = max_brightness;
-					m_histogram_cb->unmap_subresource(0, true);
+					m_histogram_cb->unmap_subresource(0, 0, sizeof(LumHistogramParams));
 					cmdbuf->resource_barriers({ 
 						ResourceBarrierDesc::as_transition(lighting_tex, ResourceState::shader_resource_non_pixel, 0),
 						ResourceBarrierDesc::as_transition(m_histogram_buffer, ResourceState::unordered_access, 0),
@@ -187,12 +187,12 @@ namespace Luna
 					cmdbuf->set_compute_shader_input_layout(m_global_data->m_histogram_collect_pass_slayout);
 					cmdbuf->set_pipeline_state(m_global_data->m_histogram_collect_pass_pso);
 					LumHistogramCollectParams* mapped = nullptr;
-					luexp(m_histogram_collect_cb->map_subresource(0, false, (void**)&mapped));
+					luexp(m_histogram_collect_cb->map_subresource(0, 0, 0, (void**)&mapped));
 					mapped->min_brightness = min_brightness;
 					mapped->max_brightness = max_brightness;
 					mapped->time_coeff = 0.5f;
 					mapped->num_pixels = (u32)lighting_tex_desc.width_or_buffer_size * lighting_tex_desc.height;
-					m_histogram_collect_cb->unmap_subresource(0, true);
+					m_histogram_collect_cb->unmap_subresource(0, 0, sizeof(LumHistogramCollectParams));
 					cmdbuf->resource_barriers({
 							ResourceBarrierDesc::as_uav(m_histogram_buffer),
 							ResourceBarrierDesc::as_transition(m_lum_tex, ResourceState::unordered_access, 0) });
@@ -207,12 +207,12 @@ namespace Luna
 				// Tone Mapping Pass.
 				{
 					void* mapped = nullptr;
-					luexp(m_tone_mapping_cb->map_subresource(0, false, &mapped));
+					luexp(m_tone_mapping_cb->map_subresource(0, 0, 0, &mapped));
 					ToneMappingParams params;
 					params.exposure = exposure;
 					params.auto_exposure = 1;
 					memcpy(mapped, &params, sizeof(ToneMappingParams));
-					m_tone_mapping_cb->unmap_subresource(0, true);
+					m_tone_mapping_cb->unmap_subresource(0, 0, sizeof(ToneMappingParams));
 					cmdbuf->set_compute_shader_input_layout(m_global_data->m_tone_mapping_pass_slayout);
 					cmdbuf->set_pipeline_state(m_global_data->m_tone_mapping_pass_pso);
 					cmdbuf->resource_barriers({

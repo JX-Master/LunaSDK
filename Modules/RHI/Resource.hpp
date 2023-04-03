@@ -24,45 +24,50 @@ namespace Luna
 			texture_3d
 		};
 
-		//! Specify which heap the resource should be created in. See remarks for details.
-		//! @remark The resource heap type specifies the memory location and access policy for resource heaps and resources.
+		//! Specify the resource heaps types. See remarks for details.
+		//! @remark The resource heap type determines the memory location and access policy for the heap.
+		//! The system will choose the most suitable memory location to allocate the resource heap or resource
+		//! based on the target platform and the target resource heap type.
+		//! 
+		//! The local heap type is allocated on memory that is visible only to GPU. Such memory gains maximum 
+		//! GPU bandwidth, but cannot be accessed by CPU. On platforms with non-uniform memory architecture (NUMA),
+		//! the local heap will be allocated on video memory, which cannot be accessed by CPU; in a platform with 
+		//! uniform memory architecture (UMA), the local heap will be allocated on system memory. While it is 
+		//! technically possible for CPU to access local heap on UMA, preventing such access gives the hardware and
+		//! driver more rooms for optimizing GPU access efficiency.
+		//!
+		//! The upload heap type is allocated on system memory that is optimized for CPU writing. GPU cannot write to this heap and
+		//! GPU reading from upload heap is slow. On NUMA platfroms, reading data from upload heap from GPU requires data transmission 
+		//! through PCI-Express bus, which is much slower than reading data in local heap from GPU. We recommend using upload heap only 
+		//! for uploading data to local heap or reading the data only once per CPU write.
+		//! 
+		//! The readback heap type is allocated on system memory that is optimized for CPU reading. GPU writing to read back heap 
+		//! is slow, and the only operation allowed for GPU is to copy data to the heap. On NUMA platfroms, writing data to readback heap 
+		//! from GPU requires data transmission through PCI-Express bus, which is a slow operation.
+		//! 
+		//! The user should choose the suitable heap type based on the use situation. Here are some basic principles:
+		//! 1. If you need to create texture resources, use local heap. If you need to upload texture data from CPU side, use one upload heap 
+		//! to copy data to the local heap.
+		//! 2. If you don't need to access resource data from CPU, use local heap.
+		//! 3. If you only need to upload data from CPU side once, like setting the initial data for static vertex and index buffers, use 
+		//! one local heap to store the data, then use one temporary upload heap to copy data to the local heap.
+		//! 4. If you need to upload data from CPU side multiple times, but the data is read by GPU only once per CPU update, use upload heap.
+		//! 5. If you need to upload data from CPU side multiple times, and the data will be read by GPU multiple times per CPU update, use one 
+		//! local heap resource for GPU access and one upload heap resource for CPU access, and copy data between two resources when needed.
+		//! 6. If you need to read resource data from CPU side, use readback heap.
 		enum class ResourceHeapType : u8
 		{
-			//! The resource heap is optimized for maximum GPU bandwidth. CPU access is disabled.
-			//! For non-UMA devices, specifying this causes the resource heap to be allocated on physical video memory, such 
-			//! memory cannot be accessed by CPU.
-			//! For UMA devices, the resource heap is allocated on physical system memory, but CPU access is disabled. This allows driver to perform
-			//! additional optimizations compared to `shared` heap type.
-			//! 
-			//! The typical usage for this heap type is to store render targets, intermediate rendering results and streaming textures that do not require
-			//! CPU access.
+			//! The resource heap can only be read and written by GPU. CPU access is not allowed.
 			local = 0,
 
-			//! The resource heap is optimized for maximum GPU bandwidth, but can be accessed by both CPU and GPU.
-			//! For non-UMA devices, specifying this causes the resource to be allocated on physical video memory, just as `local` does.
-			//! When CPU maps the resource data, GPU copies data from video memory to system memory and exposes them to CPU; when CPU unmaps the resource data, 
-			//! GPU copies the data on system memory back to video memory. The copy operation is costly and has high latency, so they should not be done very often.
-			//! For UMA devices, the resource is allocated on physical system memory, CPU can access the it just like normal memory. No data copy
-			//! is occured in such case.
-			//! 
-			//! The typical usage for this heap type is to store resources that should be written once by CPU, but 
-			shared = 1,
+			//! The resource heap can only be written by CPU and read by GPU.
+			//! Only buffer resources can be created on upload heap.
+			upload = 1,
 
-			//! Same as `shared`, but CPU can only writes to the resource, never reads from it. Specify this instead of `shared`
-			//! gives the drive more room to optimize CPU bandwidth, such as using write-combined CPU cache mode.
-			shared_upload = 2,
-
-			//! The resource heap is created in a heap optimized for CPU writing. GPU bandwidth is limited.
-			//! The resource will be created in physical system memory, which does not require any data copy on mapping and unmapping resources.
-			//! On non-UMA devices, GPU will read the system memory through PCI-E bus, which limits the bandwidth for GPU.
-			//! Only buffer resources can be created on upload heap, CPU cannot read data from such resources, and GPU cannot write to such resources.
-			upload = 3,
-
-			//! The resource heap is created in a heap optimized for CPU reading. GPU bandwidth is limited.
-			//! The resource will be created in physical system memory, which does not require any data copy on mapping and unmapping resources.
-			//! On non-UMA devices, GPU will write to the system memory through PCI-E bus, which limits the bandwidth for GPU.
-			//! Only buffer resources can be created on readback heap, such resource can only be used as the copy destination for GPU copy commands.
-			readback = 4,
+			//! The resource heap can only be read by CPU and written by GPU.
+			//! Only buffer resources can be created on readback heap.
+			//! The buffer resource can only be used as the copy destination for GPU copy commands.
+			readback = 2,
 		};
 
 		enum class Format : u16
@@ -424,56 +429,29 @@ namespace Luna
 			//! Gets the descriptor of the resource.
 			virtual ResourceDesc get_desc() = 0;
 
-			//! Maps the resource data to system memory and gets a pointer to the buffer in order to enable CPU read/write.
+			//! Maps the resource data to system memory and enables CPU access to the resource data.
 			//! Map/unmap operations are reference counted, for each `map_subresource` operation, you need to call `unmap_subresource` once to finally unmap the memory.
 			//! @param[in] subresource The index of the subresource you want to map. For buffer resources, always specify `0`.
-			//! @param[in] load_data Whether the mapped memory should be initialized by the subresource data.
-			//! This can only be `true` for resources created on `shared`, `shared_update` and `readback` heaps.
+			//! @param[in] read_begin The byte offset of the beginning of the data range that will be read by CPU.
+			//! @param[in] read_end The byte offset of the ending of the data range that will be read by CPU.
 			//! 
-			//! On non-UMA devices, for resources created on `shared` and `shared_update` heaps, specifying `true` causes the system to 
-			//! copy data from video memory to system memory in order to be read by CPU.
+			//! If `read_end <= read_begin`, no data will be read by CPU, which is required if resource heap type is not `ResourceHeapType::readback`.
 			//! 
-			//! `load_data` is only used for the first mapping call, subsequent mapping calls only increases the reference count, thus ignores this argument.
-			//! 
-			//! For best performance, specify `true` only when you do need to read data from video memory.
-			//! @param[out] out_data If not `nullptr`, returns one pointer to the mapped resource data.
-			//! The data pointer can only be fetched if the mapped resource is a buffer. For textures, the user must set `out_data` to `nullptr`, then
-			//! use `read_subresource` and `write_subresource` to read and write texture data.
-			virtual RV map_subresource(u32 subresource, bool load_data, void** out_data = nullptr) = 0;
+			//! If `read_end` is larger than the subresource size (like setting to `USIZE_MAX`), the read range will be clamped to [read_begin, resource_size). 
+			//! @param[out] out_data If not `nullptr`, returns one pointer to the mapped resource data. 
+			//! The returned pointer is not affected by `read_offset` and always points to the beginning of the subresource data.
+			virtual RV map_subresource(u32 subresource, usize read_begin, usize read_end, void** out_data) = 0;
 
-			//! Invalidates the pointer to the mapped data, and synchronizes change data with GPU when needed.
+			//! Invalidates the pointer to the mapped data, and synchronizes changed data when needed.
 			//! Map/unmap operations are reference counted, for each `map_subresource` operation, you need to call `unmap_subresource` once to finally unmap the memory.
 			//! @param[in] subresource The index of the subresource you want to unmap. For buffer resources, always specify `0`.
-			//! @param[in] store_data Whether the data in the mapped memory should be synchronized with (copied to) GPU.
-			//! This can only be `true` for resources created on `shared`, `shared_update` and `upload` heaps.
+			//! @param[in] write_begin The byte offset of the beginning of the data range that is changed by CPU and should be synchronized. 
+			//! @param[in] write_end The byte offset of the ending of the data range that is changed by CPU and should be synchronized.
 			//! 
-			//! On non-UMA devices, for resources created on `shared` and `shared_update` heaps, specifying `true` causes the system to 
-			//! copy data from system memory back to video memory in order to be accessed by GPU.
+			//! If `write_begin <= write_end`, no data will be synchronized, which is required if resource heap type is not `ResourceHeapType::upload`.
 			//! 
-			//! `store_data` is only used for the last unmapping call, former unmapping calls only decreases the reference count, thus ignores this argument.
-			//!
-			//! For best performance, specify `true` only when you do need to write data to video memory.
-			virtual void unmap_subresource(u32 subresource, bool store_data) = 0;
-		
-			//! Read data from subresource to the address specified.
-			//! The resource must be mapped first by calling `map_subresource`. No GPU queue should use the resource when the resource is mapped to the 
-			//! CPU, and the resource should be transferred to `EResourceState::common` state exlicitly or imexplicitly from the last command list.
-			//! @param[in] dest A pointer to the memory that the data will be written to.
-			//! @param[in] dest_row_pitch The offset between every row of destination buffer.
-			//! @param[in] dest_depth_pitch The offset between every layer of destination buffer.
-			//! @param[in] subresource The index of the subresource to operate.
-			//! @param[in] read_box Specify the read offset in width, height and depth, and the size to read in width, height and depth.
-			virtual RV read_subresource(void* dest, u32 dest_row_pitch, u32 dest_depth_pitch, u32 subresource, const BoxU& read_box) = 0;
-
-			//! Write data from the address specified to the resource.
-			//! The resource must be mapped first by calling `map_subresource`. No GPU queue should use the resource when the resource is mapped to the 
-			//! CPU, and the resource should be transferred to `EResourceState::common` state exlicitly or imexplicitly from the last command list.
-			//! @param[in] subresource The index of the subresource to operate.
-			//! @param[in] src A pointer to the source data.
-			//! @param[in] src_row_pitch The offset between every row of source data.
-			//! @param[in] src_depth_pitch The offset between every layer of source data.
-			//! @param[in] write_box Specify the write offset in width, height and depth, and the size to write in width, height and depth.
-			virtual RV write_subresource(u32 subresource, const void* src, u32 src_row_pitch, u32 src_depth_pitch, const BoxU& write_box) = 0;
+			//! If `write_end` is larger than the subresource size (like setting to `USIZE_MAX`), the write range will be clamped to [write_begin, resource_size). 
+			virtual void unmap_subresource(u32 subresource, usize write_begin, usize write_end) = 0;
 		};
 	}
 }

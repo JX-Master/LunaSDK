@@ -163,7 +163,7 @@ namespace Luna
 			end_only = 0x02,
 		};
 
-		constexpr u32 resource_barrier_all_subresources_v = U32_MAX;
+		constexpr u32 RESOURCE_BARRIER_ALL_SUBRESOURCES = U32_MAX;
 		struct IResource;
 
 		struct ResourceTransitionBarrierDesc
@@ -209,7 +209,7 @@ namespace Luna
 				uav(uav),
 				flags(flags) {}
 
-			static ResourceBarrierDesc as_transition(IResource* resource, ResourceState after, u32 subresource = resource_barrier_all_subresources_v, ResourceBarrierFlag flags = ResourceBarrierFlag::none)
+			static ResourceBarrierDesc as_transition(IResource* resource, ResourceState after, u32 subresource = RESOURCE_BARRIER_ALL_SUBRESOURCES, ResourceBarrierFlag flags = ResourceBarrierFlag::none)
 			{
 				ResourceTransitionBarrierDesc desc;
 				desc.resource = resource;

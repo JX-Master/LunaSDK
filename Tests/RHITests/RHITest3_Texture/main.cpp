@@ -137,15 +137,13 @@ RV start()
 			u32 incides[] = { 0, 1, 2, 1, 3, 2 };
 			luset(ib, get_main_device()->new_resource(ResourceDesc::buffer(ResourceHeapType::upload, ResourceUsageFlag::index_buffer, sizeof(incides))));
 			void* mapped_data;
-			luexp(ib->map_subresource(0, false, &mapped_data));
+			luexp(ib->map_subresource(0, 0, 0, &mapped_data));
 			memcpy(mapped_data, incides, sizeof(incides));
-			ib->unmap_subresource(0, true);
+			ib->unmap_subresource(0, 0, sizeof(incides));
 
 			// prepare texture - 128x128 with only 1 mip level.
-			luset(tex, get_main_device()->new_resource(ResourceDesc::tex2d(ResourceHeapType::shared_upload, Format::rgba8_unorm, ResourceUsageFlag::shader_resource,
+			luset(tex, get_main_device()->new_resource(ResourceDesc::tex2d(ResourceHeapType::local, Format::rgba8_unorm, ResourceUsageFlag::shader_resource,
 				128, 128, 1, 1)));
-
-			luexp(tex->map_subresource(0, false));
 
 			BoxU box;
 			box.offset_x = 0;
@@ -154,8 +152,7 @@ RV start()
 			box.width = 128;
 			box.height = 128;
 			box.depth = 1;
-			luexp(tex->write_subresource(0, test_image_data_v, 128 * 4, 128 * 128 * 4, box));
-			tex->unmap_subresource(0, true);
+			luexp(get_main_device()->copy_resource({ ResourceCopyDesc::as_write_texture(tex, test_image_data_v, 128 * 4, 128 * 128 * 4, 0, box) }));
 
 			luset(desc_set, get_main_device()->new_descriptor_set(DescriptorSetDesc(desc_set_layout)));
 
@@ -188,9 +185,9 @@ void draw()
 	};
 
 	void* mapped;
-	lupanic_if_failed(vb->map_subresource(0, false, &mapped));
+	lupanic_if_failed(vb->map_subresource(0, 0, 0, &mapped));
 	memcpy(mapped, data, sizeof(data));
-	vb->unmap_subresource(0, true);
+	vb->unmap_subresource(0, 0, sizeof(data));
 
 	auto cb = get_command_buffer();
 

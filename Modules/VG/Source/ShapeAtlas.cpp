@@ -26,9 +26,9 @@ namespace Luna
 					m_buffer_resource_capacity = m_commands.size();
 				}
 				void* shape_data;
-				luexp(m_buffer_resource->map_subresource(0, false, &shape_data));
+				luexp(m_buffer_resource->map_subresource(0, 0, 0, &shape_data));
 				memcpy(shape_data, m_commands.data(), m_commands.size() * sizeof(f32));
-				m_buffer_resource->unmap_subresource(0, true);
+				m_buffer_resource->unmap_subresource(0, 0, m_commands.size() * sizeof(f32));
 				m_buffer_resource_dirty = false;
 			}
 			lucatchret;

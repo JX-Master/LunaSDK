@@ -68,43 +68,30 @@ namespace Luna
 			luset(m_geometry_pass_pso, device->new_graphics_pipeline_state(ps_desc));
 
             luset(m_default_base_color, device->new_resource(
-				ResourceDesc::tex2d(ResourceHeapType::shared_upload, Format::rgba8_unorm, ResourceUsageFlag::shader_resource, 1, 1, 1, 1)));
+				ResourceDesc::tex2d(ResourceHeapType::local, Format::rgba8_unorm, ResourceUsageFlag::shader_resource, 1, 1, 1, 1)));
 			luset(m_default_roughness, device->new_resource(
-				ResourceDesc::tex2d(ResourceHeapType::shared_upload, Format::r8_unorm, ResourceUsageFlag::shader_resource, 1, 1, 1, 1)));
+				ResourceDesc::tex2d(ResourceHeapType::local, Format::r8_unorm, ResourceUsageFlag::shader_resource, 1, 1, 1, 1)));
 			luset(m_default_normal, device->new_resource(
-				ResourceDesc::tex2d(ResourceHeapType::shared_upload, Format::rgba8_unorm, ResourceUsageFlag::shader_resource, 1, 1, 1, 1)));
+				ResourceDesc::tex2d(ResourceHeapType::local, Format::rgba8_unorm, ResourceUsageFlag::shader_resource, 1, 1, 1, 1)));
 			luset(m_default_metallic, device->new_resource(
-				ResourceDesc::tex2d(ResourceHeapType::shared_upload, Format::r8_unorm, ResourceUsageFlag::shader_resource, 1, 1, 1, 1)));
+				ResourceDesc::tex2d(ResourceHeapType::local, Format::r8_unorm, ResourceUsageFlag::shader_resource, 1, 1, 1, 1)));
 			luset(m_default_emissive, device->new_resource(
-				ResourceDesc::tex2d(ResourceHeapType::shared_upload, Format::rgba8_unorm, ResourceUsageFlag::shader_resource, 1, 1, 1, 1)));
+				ResourceDesc::tex2d(ResourceHeapType::local, Format::rgba8_unorm, ResourceUsageFlag::shader_resource, 1, 1, 1, 1)));
 
 			// Upload default texture data.
-			luexp(m_default_base_color->map_subresource(0, false));
-			luexp(m_default_roughness->map_subresource(0, false));
-			luexp(m_default_normal->map_subresource(0, false));
-			luexp(m_default_metallic->map_subresource(0, false));
-			luexp(m_default_emissive->map_subresource(0, false));
-			u8 data[4] = { 255, 255, 255, 255 };
-			luexp(m_default_base_color->write_subresource(0, data, 4, 4, BoxU(0, 0, 0, 1, 1, 1)));
-			data[0] = 127;
-			luexp(m_default_roughness->write_subresource(0, data, 1, 1, BoxU(0, 0, 0, 1, 1, 1)));
-			data[0] = 127;
-			data[1] = 127;
-			data[2] = 255;
-			data[3] = 255;
-			luexp(m_default_normal->write_subresource(0, data, 4, 4, BoxU(0, 0, 0, 1, 1, 1)));
-			data[0] = 0;
-			luexp(m_default_metallic->write_subresource(0, data, 1, 1, BoxU(0, 0, 0, 1, 1, 1)));
-			data[0] = 0;
-			data[1] = 0;
-			data[2] = 0;
-			data[3] = 0;
-			luexp(m_default_emissive->write_subresource(0, data, 4, 4, BoxU(0, 0, 0, 1, 1, 1)));
-			m_default_base_color->unmap_subresource(0, true);
-			m_default_roughness->unmap_subresource(0, true);
-			m_default_normal->unmap_subresource(0, true);
-			m_default_metallic->unmap_subresource(0, true);
-			m_default_emissive->unmap_subresource(0, true);
+			u8 base_color_data[4] = { 255, 255, 255, 255 };
+			u8 roughness_data = 127;
+			u8 normal_data[4] = { 127, 127, 255, 255 };
+			u8 metallic_data = 0;
+			u8 emissive_data[4] = { 0, 0, 0, 0 };
+
+			luexp(device->copy_resource({
+				ResourceCopyDesc::as_write_texture(m_default_base_color, base_color_data, 4, 4, 0, BoxU(0, 0, 0, 1, 1, 1)),
+				ResourceCopyDesc::as_write_texture(m_default_roughness, &roughness_data, 1, 1, 0, BoxU(0, 0, 0, 1, 1, 1)),
+				ResourceCopyDesc::as_write_texture(m_default_normal, normal_data, 4, 4, 0, BoxU(0, 0, 0, 1, 1, 1)),
+				ResourceCopyDesc::as_write_texture(m_default_metallic, &metallic_data, 1, 1, 0, BoxU(0, 0, 0, 1, 1, 1)),
+				ResourceCopyDesc::as_write_texture(m_default_emissive, emissive_data, 4, 4, 0, BoxU(0, 0, 0, 1, 1, 1)),
+				}));
         }
         lucatchret;
         return ok;

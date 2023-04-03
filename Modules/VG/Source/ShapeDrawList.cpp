@@ -190,8 +190,8 @@ namespace Luna
 				m_index_buffer_size = num_indices;
 				void* vertex_data;
 				void* index_data;
-				luexp(m_vertex_buffer->map_subresource(0, false, &vertex_data));
-				luexp(m_index_buffer->map_subresource(0, false, &index_data));
+				luexp(m_vertex_buffer->map_subresource(0, 0, 0, &vertex_data));
+				luexp(m_index_buffer->map_subresource(0, 0, 0, &index_data));
 				u32 vertex_offset = 0;
 				u32 index_offset = 0;
 				for (usize i = 0; i < m_draw_calls.size(); ++i)
@@ -211,8 +211,8 @@ namespace Luna
 					vertex_offset += (u32)dc.vertices.size();
 					index_offset += (u32)dc.indices.size();
 				}
-				m_vertex_buffer->unmap_subresource(0, true);
-				m_index_buffer->unmap_subresource(0, true);
+				m_vertex_buffer->unmap_subresource(0, 0, sizeof(Vertex) * vertex_offset);
+				m_index_buffer->unmap_subresource(0, 0, sizeof(u32) * index_offset);
 			}
 			lucatchret;
 			return ok;

@@ -73,6 +73,69 @@ namespace Luna
 			void free_view(ID3D12DescriptorHeap* view);
 		};
 
+		struct ResourceCopyContext
+		{
+			ComPtr<ID3D12CommandAllocator> m_ca;
+			ComPtr<ID3D12GraphicsCommandList> m_li;
+			ComPtr<ID3D12Fence> m_fence;
+			HANDLE m_event;
+			u64 m_event_value;
+
+			ResourceCopyContext() :
+				m_event(NULL),
+				m_event_value(0) {}
+			ResourceCopyContext(const ResourceCopyContext&) = delete;
+			ResourceCopyContext(ResourceCopyContext&& rhs) :
+				m_ca(move(rhs.m_ca)),
+				m_li(move(rhs.m_li)),
+				m_fence(move(rhs.m_fence)),
+				m_event(rhs.m_event),
+				m_event_value(rhs.m_event_value)
+			{
+				rhs.m_event = NULL;
+			}
+			ResourceCopyContext& operator=(const ResourceCopyContext&) = delete;
+			ResourceCopyContext& operator=(ResourceCopyContext&& rhs)
+			{
+				m_ca = move(rhs.m_ca);
+				m_li = move(rhs.m_li);
+				m_fence = move(rhs.m_fence);
+				m_event = rhs.m_event;
+				rhs.m_event = NULL;
+				m_event_value = rhs.m_event_value;
+				return *this;
+			}
+			~ResourceCopyContext()
+			{
+				if (m_event)
+				{
+					::CloseHandle(m_event);
+					m_event = NULL;
+				}
+			}
+			RV init(ID3D12Device* device)
+			{
+				if (FAILED(device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_COPY, IID_PPV_ARGS(&m_ca))))
+				{
+					return BasicError::bad_platform_call();
+				}
+				if (FAILED(device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_COPY, m_ca.Get(), NULL, IID_PPV_ARGS(&m_li))))
+				{
+					return BasicError::bad_platform_call();
+				}
+				if (FAILED(device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_fence))))
+				{
+					return BasicError::bad_platform_call();
+				}
+				m_event = ::CreateEventA(NULL, TRUE, FALSE, NULL);
+				if (m_event == NULL)
+				{
+					return BasicError::bad_platform_call();
+				}
+				return ok;
+			}
+		};
+
 		//! @class Device
 		struct Device : IDevice
 		{
@@ -81,8 +144,10 @@ namespace Luna
 
 			ComPtr<ID3D12Device> m_device;
 
-			//! The queue for data upload/readback for shared resources.
+			//! The resources for data upload/readback for copy_resources.
 			ComPtr<ID3D12CommandQueue> m_internal_copy_queue;
+			Vector<ResourceCopyContext> m_copy_contexts;
+			SpinLock m_copy_contexts_lock;
 
 			D3D12_FEATURE_DATA_D3D12_OPTIONS m_feature_options;
 			D3D12_FEATURE_DATA_ARCHITECTURE m_architecture;
@@ -103,12 +168,10 @@ namespace Luna
 			~Device();
 
 			RV init(ID3D12Device* dev);
-
-			usize get_texture_data_pitch_alignment();
-			usize get_texture_data_placement_alignment();
+			
 			usize get_constant_buffer_data_alignment();
-			void  get_texture_subresource_buffer_placement(u32 width, u32 height, u32 depth, Format format,
-				usize* row_pitch, usize* slice_pitch, usize* res_pitch);
+			void  get_texture_data_placement_info(u32 width, u32 height, u32 depth, Format format,
+				u64* size, u64* alignment, u64* row_pitch, u64* slice_pitch);
 			usize get_resource_size(const ResourceDesc& desc, usize* out_alignment);
 			R<Ref<IResource>> new_resource(const ResourceDesc& desc, const ClearValue* optimized_clear_value);
 			R<Ref<IResourceHeap>> new_resource_heap(const ResourceHeapDesc& desc);
@@ -121,6 +184,7 @@ namespace Luna
 			R<Ref<IRenderTargetView>> new_render_target_view(IResource* resource, const RenderTargetViewDesc* desc);
 			R<Ref<IDepthStencilView>> new_depth_stencil_view(IResource* resource, const DepthStencilViewDesc* desc);
 			R<Ref<IQueryHeap>> new_query_heap(const QueryHeapDesc& desc);
+			RV copy_resource(Span<const ResourceCopyDesc> copies);
 		};
 
 		inline D3D12_HEAP_PROPERTIES encode_heap_properties(Device* device, ResourceHeapType heap_type)
@@ -133,32 +197,6 @@ namespace Luna
 			{
 			case ResourceHeapType::local:
 				hp.Type = D3D12_HEAP_TYPE_DEFAULT;
-				break;
-			case ResourceHeapType::shared:
-				if (device->m_architecture.UMA)
-				{
-					hp.Type = D3D12_HEAP_TYPE_CUSTOM;
-					D3D12_HEAP_PROPERTIES heap_properties = device->m_device->GetCustomHeapProperties(0, D3D12_HEAP_TYPE_READBACK);
-					hp.CPUPageProperty = heap_properties.CPUPageProperty;
-					hp.MemoryPoolPreference = heap_properties.MemoryPoolPreference;
-				}
-				else
-				{
-					hp.Type = D3D12_HEAP_TYPE_DEFAULT;
-				}
-				break;
-			case ResourceHeapType::shared_upload:
-				if (device->m_architecture.UMA)
-				{
-					hp.Type = D3D12_HEAP_TYPE_CUSTOM;
-					D3D12_HEAP_PROPERTIES heap_properties = device->m_device->GetCustomHeapProperties(0, D3D12_HEAP_TYPE_UPLOAD);
-					hp.CPUPageProperty = heap_properties.CPUPageProperty;
-					hp.MemoryPoolPreference = heap_properties.MemoryPoolPreference;
-				}
-				else
-				{
-					hp.Type = D3D12_HEAP_TYPE_DEFAULT;
-				}
 				break;
 			case ResourceHeapType::readback:
 				hp.Type = D3D12_HEAP_TYPE_READBACK;

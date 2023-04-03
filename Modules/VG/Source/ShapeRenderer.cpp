@@ -92,12 +92,12 @@ namespace Luna
 					luset(g_fill_pso, get_main_device()->new_graphics_pipeline_state(desc));
 				}
 				{
-					ResourceDesc desc = ResourceDesc::tex2d(ResourceHeapType::shared_upload, Format::rgba8_unorm, ResourceUsageFlag::shader_resource, 1, 1);
+					ResourceDesc desc = ResourceDesc::tex2d(ResourceHeapType::local, Format::rgba8_unorm, ResourceUsageFlag::shader_resource, 1, 1);
 					luset(g_white_tex, get_main_device()->new_resource(desc));
-					luexp(g_white_tex->map_subresource(0, false));
 					u32 data = 0xFFFFFFFF;
-					luexp(g_white_tex->write_subresource(0, &data, sizeof(u32), sizeof(u32), BoxU(0, 0, 0, 1, 1, 1)));
-					g_white_tex->unmap_subresource(0, true);
+					luexp(get_main_device()->copy_resource({
+						ResourceCopyDesc::as_write_texture(g_white_tex, &data, sizeof(u32), sizeof(u32), 0, BoxU(0, 0, 0, 1, 1, 1))
+						}));
 				}
 			}
 			lucatchret;
@@ -160,7 +160,7 @@ namespace Luna
 					m_cbs_capacity = num_draw_calls;
 				}
 				void* cb_data;
-				luexp(m_cbs_resource->map_subresource(0, false, &cb_data));
+				luexp(m_cbs_resource->map_subresource(0, 0, 0, &cb_data));
 				for (usize i = 0; i < num_draw_calls; ++i)
 				{
 					Float4x4U* dest = (Float4x4U*)(((usize)cb_data) + i * cb_element_size);
@@ -170,7 +170,7 @@ namespace Luna
 					mat = mul(transform, mat);
 					*dest = mat;
 				}
-				m_cbs_resource->unmap_subresource(0, true);
+				m_cbs_resource->unmap_subresource(0, 0, num_draw_calls * sizeof(Float4x4U));
 				// Build view sets.
 				for (usize i = 0; i < num_draw_calls; ++i)
 				{

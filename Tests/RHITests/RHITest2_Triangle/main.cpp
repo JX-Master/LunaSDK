@@ -131,9 +131,9 @@ RV start()
 
 			luset(vb, get_main_device()->new_resource(ResourceDesc::buffer(ResourceHeapType::upload, ResourceUsageFlag::vertex_buffer, sizeof(data))));
 			void* mapped_data;
-			luexp(vb->map_subresource(0, false, &mapped_data));
+			luexp(vb->map_subresource(0, 0, 0, &mapped_data));
 			memcpy(mapped_data, data, sizeof(data));
-			vb->unmap_subresource(0, true);
+			vb->unmap_subresource(0, 0, sizeof(data));
 		}
 	}
 	lucatchret;

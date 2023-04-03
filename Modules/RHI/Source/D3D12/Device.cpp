@@ -21,6 +21,7 @@
 #include "RenderTargetView.hpp"
 #include "DepthStencilView.hpp"
 #include "QueryHeap.hpp"
+#include "CommandBuffer.hpp"
 
 namespace Luna
 {
@@ -206,160 +207,21 @@ namespace Luna
 			}
 			return ok;
 		}
-		usize Device::get_texture_data_pitch_alignment()
-		{
-			return D3D12_TEXTURE_DATA_PITCH_ALIGNMENT;
-		}
-		usize Device::get_texture_data_placement_alignment()
-		{
-			return D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT;
-		}
 		usize Device::get_constant_buffer_data_alignment()
 		{
 			return 256;
 		}
-		void Device::get_texture_subresource_buffer_placement(u32 width, u32 height, u32 depth, Format format,
-			usize* row_pitch, usize* slice_pitch, usize* res_pitch)
+		void Device::get_texture_data_placement_info(u32 width, u32 height, u32 depth, Format format,
+				u64* size, u64* alignment, u64* row_pitch, u64* slice_pitch)
 		{
-			u64 numBytes = 0;
-			u64 rowBytes = 0;
-			u64 numRows = 0;
-
-			bool bc = false;
-			bool packed = false;
-			bool planar = false;
-			usize bpe = 0;
-			DXGI_FORMAT fmt = encode_pixel_format(format);
-			switch (fmt)
-			{
-			case DXGI_FORMAT_BC1_TYPELESS:
-			case DXGI_FORMAT_BC1_UNORM:
-			case DXGI_FORMAT_BC1_UNORM_SRGB:
-			case DXGI_FORMAT_BC4_TYPELESS:
-			case DXGI_FORMAT_BC4_UNORM:
-			case DXGI_FORMAT_BC4_SNORM:
-				bc = true;
-				bpe = 8;
-				break;
-
-			case DXGI_FORMAT_BC2_TYPELESS:
-			case DXGI_FORMAT_BC2_UNORM:
-			case DXGI_FORMAT_BC2_UNORM_SRGB:
-			case DXGI_FORMAT_BC3_TYPELESS:
-			case DXGI_FORMAT_BC3_UNORM:
-			case DXGI_FORMAT_BC3_UNORM_SRGB:
-			case DXGI_FORMAT_BC5_TYPELESS:
-			case DXGI_FORMAT_BC5_UNORM:
-			case DXGI_FORMAT_BC5_SNORM:
-			case DXGI_FORMAT_BC6H_TYPELESS:
-			case DXGI_FORMAT_BC6H_UF16:
-			case DXGI_FORMAT_BC6H_SF16:
-			case DXGI_FORMAT_BC7_TYPELESS:
-			case DXGI_FORMAT_BC7_UNORM:
-			case DXGI_FORMAT_BC7_UNORM_SRGB:
-				bc = true;
-				bpe = 16;
-				break;
-
-			case DXGI_FORMAT_R8G8_B8G8_UNORM:
-			case DXGI_FORMAT_G8R8_G8B8_UNORM:
-			case DXGI_FORMAT_YUY2:
-				packed = true;
-				bpe = 4;
-				break;
-
-			case DXGI_FORMAT_Y210:
-			case DXGI_FORMAT_Y216:
-				packed = true;
-				bpe = 8;
-				break;
-
-			case DXGI_FORMAT_NV12:
-			case DXGI_FORMAT_420_OPAQUE:
-			case DXGI_FORMAT_P208:
-				planar = true;
-				bpe = 2;
-				break;
-
-			case DXGI_FORMAT_P010:
-			case DXGI_FORMAT_P016:
-				planar = true;
-				bpe = 4;
-				break;
-
-			default:
-				break;
-			}
-
-			if (bc)
-			{
-				u64 numBlocksWide = 0;
-				if (width > 0)
-				{
-					numBlocksWide = max<u64>(1u, (u64(width) + 3u) / 4u);
-				}
-				u64 numBlocksHigh = 0;
-				if (height > 0)
-				{
-					numBlocksHigh = max<u64>(1u, (u64(height) + 3u) / 4u);
-				}
-				rowBytes = numBlocksWide * bpe;
-				numRows = numBlocksHigh;
-				numBytes = rowBytes * numBlocksHigh;
-			}
-			else if (packed)
-			{
-				rowBytes = ((u64(width) + 1u) >> 1) * bpe;
-				numRows = u64(height);
-				numBytes = rowBytes * height;
-			}
-			else if (fmt == DXGI_FORMAT_NV11)
-			{
-				rowBytes = ((u64(width) + 3u) >> 2) * 4u;
-				numRows = u64(height) * 2u; // Direct3D makes this simplifying assumption, although it is larger than the 4:1:1 data
-				numBytes = rowBytes * numRows;
-			}
-			else if (planar)
-			{
-				rowBytes = ((u64(width) + 1u) >> 1) * bpe;
-				numBytes = (rowBytes * u64(height)) + ((rowBytes * u64(height) + 1u) >> 1);
-				numRows = height + ((u64(height) + 1u) >> 1);
-			}
-			else
-			{
-				usize bpp = bits_per_pixel(format);
-				if (!bpp)
-				{
-					if (row_pitch)
-					{
-						*row_pitch = 0;
-					}
-					if (slice_pitch)
-					{
-						*slice_pitch = 0;
-					}
-					if (res_pitch)
-					{
-						*res_pitch = 0;
-					}
-					return;
-				}
-				rowBytes = (uint64_t(width) * bpp + 7u) / 8u; // round up to nearest byte
-				numRows = uint64_t(height);
-				numBytes = rowBytes * height;
-			}
-			if (row_pitch)
-			{
-				*row_pitch = (usize)rowBytes;
-			}
-			if (slice_pitch)
-			{
-				*slice_pitch = (usize)numBytes;
-			}
-			if (res_pitch)
-			{
-				*res_pitch = (usize)(numBytes * depth);
-			}
+			u64 bpp = bits_per_pixel(format);
+			u64 row = align_upper(bpp * width / 8, D3D12_TEXTURE_DATA_PITCH_ALIGNMENT);
+			if(row_pitch) *row_pitch = row;
+			u64 slice = row * height;
+			if(slice_pitch) *slice_pitch = slice;
+			u64 sz = align_upper(slice * depth, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT);
+			if(size) *size = sz;
+			if(alignment) *alignment = D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT;
 		}
 		u64 Device::get_resource_size(const ResourceDesc& desc, u64* out_alignment)
 		{
@@ -481,6 +343,229 @@ namespace Luna
 				return r.errcode();
 			}
 			return heap;
+		}
+		struct CopyBufferPlacementInfo
+		{
+			u64 offset;
+			u64 row_pitch;
+			u64 depth_pitch;
+			Format pixel_format;
+		};
+		RV Device::copy_resource(Span<const ResourceCopyDesc> copies)
+		{
+			ResourceStateTrackingSystem tracking_system;
+			// Allocate one upload and one readback heap.
+			u64 upload_buffer_size = 0;
+			u64 readback_buffer_size = 0;
+			Vector<CopyBufferPlacementInfo> placements;
+			placements.reserve(copies.size());
+			for (auto& i : copies)
+			{
+				if (i.op == ResourceCopyOp::read_buffer)
+				{
+					u64 offset = readback_buffer_size;
+					placements.push_back({ offset, 0, 0, Format::unknown });
+					readback_buffer_size += i.read_buffer.size;
+					tracking_system.pack_barrier(ResourceBarrierDesc::as_transition(i.resource, ResourceState::copy_source));
+				}
+				else if (i.op == ResourceCopyOp::write_buffer)
+				{
+					u64 offset = upload_buffer_size;
+					placements.push_back({ offset, 0, 0, Format::unknown });
+					upload_buffer_size += i.write_buffer.size;
+					tracking_system.pack_barrier(ResourceBarrierDesc::as_transition(i.resource, ResourceState::copy_dest));
+				}
+				else if (i.op == ResourceCopyOp::read_texture)
+				{
+					u64 size, alignment, row_pitch, depth_pitch;
+					auto desc = i.resource->get_desc();
+					get_texture_data_placement_info(i.read_texture.read_box.width, i.read_texture.read_box.height, i.read_texture.read_box.depth,
+						desc.pixel_format, &size, &alignment, &row_pitch, &depth_pitch);
+					u64 offset = align_upper(readback_buffer_size, alignment);
+					placements.push_back({ offset, row_pitch, depth_pitch, desc.pixel_format });
+					readback_buffer_size = offset + size;
+					tracking_system.pack_barrier(ResourceBarrierDesc::as_transition(i.resource, ResourceState::copy_source));
+				}
+				else if (i.op == ResourceCopyOp::write_texture)
+				{
+					u64 size, alignment, row_pitch, depth_pitch;
+					auto desc = i.resource->get_desc();
+					get_texture_data_placement_info(i.write_texture.write_box.width, i.write_texture.write_box.height, i.write_texture.write_box.depth,
+						desc.pixel_format, &size, &alignment, &row_pitch, &depth_pitch);
+					u64 offset = align_upper(upload_buffer_size, alignment);
+					placements.push_back({ offset, row_pitch, depth_pitch, desc.pixel_format });
+					upload_buffer_size = offset + size;
+					tracking_system.pack_barrier(ResourceBarrierDesc::as_transition(i.resource, ResourceState::copy_dest));
+				}
+			}
+			lutry
+			{
+				Ref<IResource> upload_buffer;
+				Ref<IResource> readback_buffer;
+				byte_t* upload_data = nullptr;
+				byte_t* readback_data = nullptr;
+				if (upload_buffer_size)
+				{
+					luset(upload_buffer, new_resource(ResourceDesc::buffer(ResourceHeapType::upload, ResourceUsageFlag::none, upload_buffer_size), nullptr));
+					luexp(upload_buffer->map_subresource(0, 0, 0, (void**)&upload_data));
+					// Fill upload data.
+					for (usize i = 0; i < copies.size(); ++i)
+					{
+						auto& copy = copies[i];
+						if (copy.op == ResourceCopyOp::write_buffer)
+						{
+							memcpy(upload_data + (usize)placements[i].offset, copy.write_buffer.src, copy.write_buffer.size);
+						}
+						else if (copy.op == ResourceCopyOp::write_texture)
+						{
+							usize copy_size_per_row = bits_per_pixel(placements[i].pixel_format) * copy.write_texture.write_box.width / 8;
+							memcpy_bitmap3d(upload_data + (usize)placements[i].offset, copy.write_texture.src,
+								copy_size_per_row, copy.write_texture.write_box.height, copy.write_texture.write_box.depth,
+								(usize)placements[i].row_pitch, copy.write_texture.src_row_pitch, (usize)placements[i].depth_pitch, copy.write_texture.src_depth_pitch);
+						}
+					}
+					upload_buffer->unmap_subresource(0, 0, USIZE_MAX);
+				}
+				if (readback_buffer_size)
+				{
+					luset(readback_buffer, new_resource(ResourceDesc::buffer(ResourceHeapType::readback, ResourceUsageFlag::none, readback_buffer_size), nullptr));
+				}
+				// Use GPU to copy data.
+				ResourceCopyContext context;
+				m_copy_contexts_lock.lock();
+				if (m_copy_contexts.empty())
+				{
+					m_copy_contexts_lock.unlock();
+					luexp(context.init(m_device.Get()));
+				}
+				else
+				{
+					context = move(m_copy_contexts.back());
+					m_copy_contexts.pop_back();
+					m_copy_contexts_lock.unlock();
+				}
+				auto barriers = tracking_system.m_barriers;
+				tracking_system.resolve();
+				barriers.insert(barriers.end(), tracking_system.m_barriers.begin(), tracking_system.m_barriers.end());
+				if (!barriers.empty())
+				{
+					context.m_li->ResourceBarrier((UINT)barriers.size(), barriers.data());
+				}
+				tracking_system.apply(CommandQueueType::copy);
+				for (usize i = 0; i < copies.size(); ++i)
+				{
+					auto& copy = copies[i];
+					if (copy.op == ResourceCopyOp::read_buffer)
+					{
+						context.m_li->CopyBufferRegion(((Resource*)readback_buffer.object())->m_res.Get(), placements[i].offset,
+							((Resource*)copy.resource->get_object())->m_res.Get(), copy.read_buffer.src_offset, copy.read_buffer.size);
+					}
+					else if (copy.op == ResourceCopyOp::write_buffer)
+					{
+						context.m_li->CopyBufferRegion(((Resource*)copy.resource->get_object())->m_res.Get(), copy.write_buffer.dest_offset,
+							((Resource*)upload_buffer.object())->m_res.Get(), placements[i].offset, copy.write_buffer.size);
+					}
+					else if (copy.op == ResourceCopyOp::read_texture)
+					{
+						D3D12_TEXTURE_COPY_LOCATION dest, src;
+						dest.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+						dest.pResource = ((Resource*)readback_buffer.object())->m_res.Get();
+						dest.PlacedFootprint.Offset = placements[i].offset;
+						dest.PlacedFootprint.Footprint.Width = copy.read_texture.read_box.width;
+						dest.PlacedFootprint.Footprint.Height = copy.read_texture.read_box.height;
+						dest.PlacedFootprint.Footprint.Depth = copy.read_texture.read_box.depth;
+						dest.PlacedFootprint.Footprint.Format = encode_pixel_format(placements[i].pixel_format);
+						dest.PlacedFootprint.Footprint.RowPitch = placements[i].row_pitch;
+						src.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+						src.pResource = ((Resource*)copy.resource->get_object())->m_res.Get();
+						src.SubresourceIndex = copy.read_texture.src_subresource;
+						D3D12_BOX src_box;
+						src_box.left = copy.read_texture.read_box.offset_x;
+						src_box.right = copy.read_texture.read_box.offset_x + copy.read_texture.read_box.width;
+						src_box.top = copy.read_texture.read_box.offset_y;
+						src_box.bottom = copy.read_texture.read_box.offset_y + copy.read_texture.read_box.height;
+						src_box.front = copy.read_texture.read_box.offset_z;
+						src_box.back = copy.read_texture.read_box.offset_z + copy.read_texture.read_box.depth;
+						context.m_li->CopyTextureRegion(&dest, 0, 0, 0, &src, &src_box);
+					}
+					else if (copy.op == ResourceCopyOp::write_texture)
+					{
+						D3D12_TEXTURE_COPY_LOCATION dest, src;
+						dest.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+						dest.pResource = ((Resource*)copy.resource->get_object())->m_res.Get();
+						dest.SubresourceIndex = copy.write_texture.dest_subresource;
+						src.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+						src.pResource = ((Resource*)upload_buffer.object())->m_res.Get();
+						src.PlacedFootprint.Offset = placements[i].offset;
+						src.PlacedFootprint.Footprint.Width = copy.write_texture.write_box.width;
+						src.PlacedFootprint.Footprint.Height = copy.write_texture.write_box.height;
+						src.PlacedFootprint.Footprint.Depth = copy.write_texture.write_box.depth;
+						src.PlacedFootprint.Footprint.Format = encode_pixel_format(placements[i].pixel_format);
+						src.PlacedFootprint.Footprint.RowPitch = placements[i].row_pitch;
+						D3D12_BOX src_box;
+						src_box.left = 0;
+						src_box.right = copy.write_texture.write_box.width;
+						src_box.top = 0;
+						src_box.bottom = copy.write_texture.write_box.height;
+						src_box.front = 0;
+						src_box.back = copy.write_texture.write_box.depth;
+						context.m_li->CopyTextureRegion(&dest,
+							copy.write_texture.write_box.offset_x, copy.write_texture.write_box.offset_y, copy.write_texture.write_box.offset_z,
+							&src, &src_box);
+					}
+				}
+				// Submit copy command to GPU and wait for completion.
+				HRESULT hr = context.m_li->Close();
+				if (FAILED(hr)) return encode_d3d12_error(hr);
+				ID3D12CommandList* list = context.m_li.Get();
+				m_internal_copy_queue->ExecuteCommandLists(1, &list);
+				++context.m_event_value;
+				hr = context.m_fence->SetEventOnCompletion(context.m_event_value, context.m_event);
+				if (FAILED(hr)) return encode_d3d12_error(hr);
+				hr = m_internal_copy_queue->Signal(context.m_fence.Get(), context.m_event_value);
+				if (FAILED(hr)) return encode_d3d12_error(hr);
+				DWORD res = ::WaitForSingleObject(context.m_event, INFINITE);
+				if (res != WAIT_OBJECT_0)
+				{
+					return BasicError::bad_platform_call();
+				}
+				BOOL b = ::ResetEvent(context.m_event);
+				if (!b)
+				{
+					return BasicError::bad_platform_call();
+				}
+				hr = context.m_ca->Reset();
+				if (FAILED(hr)) return encode_d3d12_error(hr);
+				hr = context.m_li->Reset(context.m_ca.Get(), NULL);
+				if (FAILED(hr)) return encode_d3d12_error(hr);
+				// Give back context.
+				m_copy_contexts_lock.lock();
+				m_copy_contexts.push_back(move(context));
+				m_copy_contexts_lock.unlock();
+				// Read data for read calls.
+				if (readback_buffer)
+				{
+					luexp(readback_buffer->map_subresource(0, 0, USIZE_MAX, (void**)&readback_data));
+					for (usize i = 0; i < copies.size(); ++i)
+					{
+						auto& copy = copies[i];
+						if (copy.op == ResourceCopyOp::read_buffer)
+						{
+							memcpy(copy.read_buffer.dest, readback_data + (usize)placements[i].offset, copy.read_buffer.size);
+						}
+						else if (copy.op == ResourceCopyOp::read_texture)
+						{
+							usize copy_size_per_row = bits_per_pixel(placements[i].pixel_format) * copy.read_texture.read_box.width / 8;
+							memcpy_bitmap3d(copy.read_texture.dest, readback_data + (usize)placements[i].offset,
+								copy_size_per_row, copy.read_texture.read_box.height, copy.read_texture.read_box.depth,
+								copy.read_texture.dest_row_pitch, (usize)placements[i].row_pitch, copy.read_texture.dest_depth_pitch, (usize)placements[i].depth_pitch);
+						}
+					}
+					readback_buffer->unmap_subresource(0, 0, 0);
+				}
+			}
+			lucatchret;
+			return ok;
 		}
 	}
 }

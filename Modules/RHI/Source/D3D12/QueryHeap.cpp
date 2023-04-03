@@ -59,9 +59,9 @@ namespace Luna
             lutry
             {
                 u64* mapped = nullptr;
-                luexp(m_result_buffer->map_subresource(0, true, (void**)&mapped));
+                luexp(m_result_buffer->map_subresource(0, index * sizeof(u64), (index + count) * sizeof(u64), (void**)&mapped));
                 memcpy(values, mapped + index, count * sizeof(u64));
-                m_result_buffer->unmap_subresource(0, false);
+                m_result_buffer->unmap_subresource(0, 0, 0);
             }
             lucatchret;
             return ok;
@@ -73,9 +73,9 @@ namespace Luna
             lutry
             {
                 u64* mapped = nullptr;
-                luexp(m_result_buffer->map_subresource(0, true, (void**)&mapped));
+                luexp(m_result_buffer->map_subresource(0, index * sizeof(u64), (index + count) * sizeof(u64), (void**)&mapped));
                 memcpy(values, mapped + index, count * sizeof(u64));
-                m_result_buffer->unmap_subresource(0, false);
+                m_result_buffer->unmap_subresource(0, 0, 0);
             }
             lucatchret;
             return ok;
@@ -87,7 +87,8 @@ namespace Luna
             lutry
             {
                 D3D12_QUERY_DATA_PIPELINE_STATISTICS* mapped = nullptr;
-                luexp(m_result_buffer->map_subresource(0, true, (void**)&mapped));
+                luexp(m_result_buffer->map_subresource(0, index * sizeof(D3D12_QUERY_DATA_PIPELINE_STATISTICS), 
+                    (index + count) * sizeof(D3D12_QUERY_DATA_PIPELINE_STATISTICS), (void**)&mapped));
                 for (usize i = 0; i < count; ++i)
                 {
                     values[i].input_vertices = mapped[index + i].IAVertices;
@@ -102,7 +103,7 @@ namespace Luna
                     values[i].ds_invocations = mapped[index + i].DSInvocations;
                     values[i].cs_invocations = mapped[index + i].CSInvocations;
                 }
-                m_result_buffer->unmap_subresource(0, false);
+                m_result_buffer->unmap_subresource(0, 0, 0);
             }
             lucatchret;
             return ok;

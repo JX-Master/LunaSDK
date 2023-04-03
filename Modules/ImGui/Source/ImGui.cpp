@@ -221,11 +221,11 @@ float4 main(PS_INPUT input) : SV_Target
                 io.Fonts->AddFontFromMemoryTTF(const_cast<void*>(font_data), (int)font_size, 18.0f * scale);
                 io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
                 auto dev = get_main_device();
-                luset(g_font_tex, dev->new_resource(ResourceDesc::tex2d(ResourceHeapType::shared_upload, Format::rgba8_unorm, ResourceUsageFlag::shader_resource, width, height, 1, 1)));
-                luexp(g_font_tex->map_subresource(0, false));
+                luset(g_font_tex, dev->new_resource(ResourceDesc::tex2d(ResourceHeapType::local, Format::rgba8_unorm, ResourceUsageFlag::shader_resource, width, height, 1, 1)));
                 u32 src_row_pitch = (u32)width * 4;
-                luexp(g_font_tex->write_subresource(0, pixels, src_row_pitch, src_row_pitch * height, BoxU(0, 0, 0, width, height, 1)));
-                g_font_tex->unmap_subresource(0, true);
+                luexp(dev->copy_resource({
+                    ResourceCopyDesc::as_write_texture(g_font_tex, pixels, src_row_pitch, src_row_pitch * height, 0, BoxU(0, 0, 0, width, height, 1))
+                    }));
                 io.Fonts->TexID = (IResource*)(g_font_tex);
             }
             lucatchret;
@@ -580,8 +580,8 @@ float4 main(PS_INPUT input) : SV_Target
 
                 // Upload vertex/index data into a single contiguous GPU buffer
                 void* vtx_resource,* idx_resource;
-                luexp(g_vb->map_subresource(0, false, &vtx_resource));
-                luexp(g_ib->map_subresource(0, false, &idx_resource));
+                luexp(g_vb->map_subresource(0, 0, 0, &vtx_resource));
+                luexp(g_ib->map_subresource(0, 0, 0, &idx_resource));
                 ImDrawVert* vtx_dst = (ImDrawVert*)vtx_resource;
                 ImDrawIdx* idx_dst = (ImDrawIdx*)idx_resource;
                 for (i32 n = 0; n < draw_data->CmdListsCount; ++n)
@@ -592,8 +592,8 @@ float4 main(PS_INPUT input) : SV_Target
                     vtx_dst += cmd_list->VtxBuffer.Size;
                     idx_dst += cmd_list->IdxBuffer.Size;
                 }
-                g_vb->unmap_subresource(0, true);
-                g_ib->unmap_subresource(0, true);
+                g_vb->unmap_subresource(0, 0, (usize)vtx_dst - (usize)vtx_resource);
+                g_ib->unmap_subresource(0, 0, (usize)idx_dst - (usize)idx_resource);
 
                 auto res = render_target->get_resource();
                 auto rt_desc = res->get_desc();
@@ -614,9 +614,9 @@ float4 main(PS_INPUT input) : SV_Target
                         { (R + L) / (L - R),	(T + B) / (B - T),  0.5f,       1.0f },
                     };
                     void* cb_resource;
-                    luexp(g_cb->map_subresource(0, false, &cb_resource));
+                    luexp(g_cb->map_subresource(0, 0, 0, &cb_resource));
                     memcpy(cb_resource, &mvp, sizeof(Float4x4));
-                    g_cb->unmap_subresource(0, true);
+                    g_cb->unmap_subresource(0, 0, sizeof(Float4x4));
                 }
 
                 cmd_buffer->resource_barrier(ResourceBarrierDesc::as_transition(res, ResourceState::render_target, 0));

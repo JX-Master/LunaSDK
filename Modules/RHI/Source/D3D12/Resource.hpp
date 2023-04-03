@@ -29,51 +29,12 @@ namespace Luna
 
 			ComPtr<ID3D12Resource> m_res;
 
-			struct AffiliateResource
-			{
-				ComPtr<ID3D12Resource> m_res;
-				void* m_mapped;
-				u64 m_size;
-				u64 m_width;
-				u32 m_height;
-				u32 m_depth;
-				u32 m_ref_count;
-				AffiliateResource() : 
-					m_mapped(nullptr),
-					m_size(0),
-					m_width(1),
-					m_height(1),
-					m_depth(1),
-					m_ref_count(0) {}
-			};
-
-			//! Used for CPU mapping for shared and shared_upload typed resource, 
-			//! when the UMA is not supportted.
-			//! One affiliarte resource for every subresource, so they can be mapped independently.
-			Vector<AffiliateResource> m_affiliate_resources;
-
-			// The following resources are created and shared if m_affiliate_resources is not empty.
-			ComPtr<ID3D12CommandAllocator> m_copy_ca;
-			ComPtr<ID3D12Fence> m_copy_fence;
-			HANDLE m_copy_event;
-			u64 m_copy_event_value;
-
 			ResourceDesc m_desc;
 
 			//! One for each subresource, 0 if this resource does not have a global state.
 			Vector<ResourceState> m_states;
 
-			Resource() :
-				m_copy_event(NULL) {}
-
-			~Resource()
-			{
-				if (m_copy_event)
-				{
-					::CloseHandle(m_copy_event);
-					m_copy_event = NULL;
-				}
-			}
+			Resource() {}
 
 			u32 count_subresources() const
 			{
@@ -124,10 +85,8 @@ namespace Luna
 				}
 			}*/
 
-			RV map_subresource(u32 subresource, bool load_data, void** out_data);
-			void unmap_subresource(u32 subresource, bool store_data);
-			RV read_subresource(void* dest, u32 dest_row_pitch, u32 dest_depth_pitch, u32 subresource, const BoxU& read_box);
-			RV write_subresource(u32 subresource, const void* src, u32 src_row_pitch, u32 src_depth_pitch, const BoxU& write_box);
+			RV map_subresource(u32 subresource, usize read_begin, usize read_end, void** out_data);
+			void unmap_subresource(u32 subresource, usize write_begin, usize write_end);
 		};
 	}
 }

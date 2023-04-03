@@ -21,34 +21,128 @@ namespace Luna
 {
 	namespace RHI
 	{
+		enum class ResourceCopyOp : u8
+		{
+			//! Copy data of one buffer resource from resource memory to system memory.
+			read_buffer,
+			//! Copy data of one buffer resource from system memory to resource memory.
+			write_buffer,
+			//! Copy data of one texture resource from resource memory to system memory.
+			read_texture,
+			//! Copy data of one texture resource from system memory to resource memory.
+			write_texture
+		};
+		struct ResourceCopyReadBufferDesc
+		{
+			void* dest;
+			usize size;
+			u64 src_offset;
+		};
+		struct ResourceCopyWriteBufferDesc
+		{
+			const void* src;
+			usize size;
+			u64 dest_offset;
+		};
+		struct ResourceCopyReadTextureDesc
+		{
+			void* dest;
+			u32 dest_row_pitch;
+			u32 dest_depth_pitch;
+			u32 src_subresource;
+			BoxU read_box;
+		};
+		struct ResourceCopyWriteTextureDesc
+		{
+			const void* src;
+			u32 src_row_pitch;
+			u32 src_depth_pitch;
+			u32 dest_subresource;
+			BoxU write_box;
+		};
+		struct ResourceCopyDesc
+		{
+			ResourceCopyOp op;
+			IResource* resource;
+			union
+			{
+				ResourceCopyReadBufferDesc read_buffer;
+				ResourceCopyWriteBufferDesc write_buffer;
+				ResourceCopyReadTextureDesc read_texture;
+				ResourceCopyWriteTextureDesc write_texture;
+			};
+			static ResourceCopyDesc as_read_buffer(IResource* resource, void* dest, usize size, u64 src_offset)
+			{
+				ResourceCopyDesc r;
+				r.op = ResourceCopyOp::read_buffer;
+				r.resource = resource;
+				r.read_buffer.dest = dest;
+				r.read_buffer.size = size;
+				r.read_buffer.src_offset = src_offset;
+				return r;
+			}
+			static ResourceCopyDesc as_write_buffer(IResource* resource, const void* src, usize size, u64 dest_offset)
+			{
+				ResourceCopyDesc r;
+				r.op = ResourceCopyOp::write_buffer;
+				r.resource = resource;
+				r.write_buffer.src = src;
+				r.write_buffer.size = size;
+				r.write_buffer.dest_offset = dest_offset;
+				return r;
+			}
+			static ResourceCopyDesc as_read_texture(IResource* resource, void* dest, u32 dest_row_pitch, u32 dest_depth_pitch, u32 src_subresource, const BoxU& read_box)
+			{
+				ResourceCopyDesc r;
+				r.op = ResourceCopyOp::read_texture;
+				r.resource = resource;
+				r.read_texture.dest = dest;
+				r.read_texture.dest_row_pitch = dest_row_pitch;
+				r.read_texture.dest_depth_pitch = dest_depth_pitch;
+				r.read_texture.src_subresource = src_subresource;
+				r.read_texture.read_box = read_box;
+				return r;
+			}
+			static ResourceCopyDesc as_write_texture(IResource* resource, const void* src, u32 src_row_pitch, u32 src_depth_pitch, u32 dest_subresource, const BoxU& write_box)
+			{
+				ResourceCopyDesc r;
+				r.op = ResourceCopyOp::write_texture;
+				r.resource = resource;
+				r.write_texture.src = src;
+				r.write_texture.src_row_pitch = src_row_pitch;
+				r.write_texture.src_depth_pitch = src_depth_pitch;
+				r.write_texture.dest_subresource = dest_subresource;
+				r.write_texture.write_box = write_box;
+				return r;
+			}
+		};
+
 		//! Represents one logical graphic device on the platform.
 		struct IDevice : virtual Interface
 		{
 			luiid("{099AB8FA-7239-41EE-B05C-D36B5DCE1ED7}");
 
-			//! Gets the alignment for the size of one row texture data to follow when placing texture data in buffers.
-			virtual usize get_texture_data_pitch_alignment() = 0;
-
-			//! Gets the alignment for the start offset of texture data to follow when placing texture data in buffers.
-			virtual usize get_texture_data_placement_alignment() = 0;
-
 			//! Gets the alignment for the buffer data start location and size.
 			virtual usize get_constant_buffer_data_alignment() = 0;
 
-			//! Gets the placement information for the specified texture subresource. The texture data is arranged in row-major order.
-			//! @param[in] width The width of the subresource.
-			//! @param[in] height The height of the subresource.
-			//! @param[in] depth The depth of the subresource.
-			//! @param[in] format The format of the subresource.
-			//! @param[out] row_pitch The row pitch of the subresource. Specify `nullptr` if this is not needed.
-			//! @param[out] slice_pitch The slice pitch (size) of the subresource. Specify `nullptr` if this is not needed.
-			//! @param[out] res_pitch The pitch of the whole subresource, which is the size of the subresource. Specify `nullptr` if this is not needed.
-			virtual void get_texture_subresource_buffer_placement(u32 width, u32 height, u32 depth, Format format,
-				usize* row_pitch, usize* slice_pitch, usize* res_pitch) = 0;
+			//! Gets the texture data placement information when storing texture data in a buffer. 
+			//! The texture data is arranged in row-major order.
+			//! @param[in] width The width of the texture data.
+			//! @param[in] height The height of the texture data.
+			//! @param[in] depth The depth of the texture data.
+			//! @param[in] format The format of the texture data.
+			//! @param[out] size The size of the texture data in the buffer. Specify `nullptr` if this is not needed.
+			//! @param[out] alignment The alignment requirement of the texture data. Specify `nullptr` if this is not needed.
+			//! @param[out] row_pitch The row pitch of the texture data. Specify `nullptr` if this is not needed.
+			//! @param[out] slice_pitch The slice (row * column) pitch of the texture data. Specify `nullptr` if this is not needed.
+			virtual void get_texture_data_placement_info(u32 width, u32 height, u32 depth, Format format,
+				u64* size = nullptr, u64* alignment = nullptr, u64* row_pitch = nullptr, u64* slice_pitch = nullptr) = 0;
 
-			//! Gets the resource size by its descriptor. The size can be used to create buffers for uploading/reading data of the resource.
+			//! Gets the resource size by its descriptor. The size can be used to create buffers for uploading/reading data of the resource, or it can
+			//! be used to allocate the resource from one resource heap.
 			//! @param[in] desc The resource descriptor.
-			//! @param[out] out_alignment The optional pointer that retrieves the memory alignment of the resource.
+			//! @param[out] out_alignment The optional pointer that retrieves the memory alignment of the resource. 
+			//! This is useful if you want to allocate resource memory from one resource heap.
 			//! @return The size of the resource in bytes.
 			virtual u64 get_resource_size(const ResourceDesc& desc, u64* out_alignment = nullptr) = 0;
 
@@ -89,6 +183,11 @@ namespace Luna
 			virtual R<Ref<IDepthStencilView>> new_depth_stencil_view(IResource* resource, const DepthStencilViewDesc* desc = nullptr) = 0;
 		
 			virtual R<Ref<IQueryHeap>> new_query_heap(const QueryHeapDesc& desc) = 0;
+
+			//! Copies resource data between system memory and resource memory.
+			//! @param[in] copies An array of resource copy operations to be performed. The user should
+			//! batch resource copy operations as much as possible to improve performance.
+			virtual RV copy_resource(Span<const ResourceCopyDesc> copies) = 0;
 		};
 	}
 }

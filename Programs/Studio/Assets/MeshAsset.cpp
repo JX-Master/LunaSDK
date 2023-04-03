@@ -26,17 +26,13 @@ namespace Luna
 			auto device = RHI::get_main_device();
 			// Upload resource.
 			lulet(vert_res, device->new_resource(RHI::ResourceDesc::buffer(
-				RHI::ResourceHeapType::shared_upload, RHI::ResourceUsageFlag::vertex_buffer, mesh_asset.vertex_data.size())));
+				RHI::ResourceHeapType::local, RHI::ResourceUsageFlag::vertex_buffer, mesh_asset.vertex_data.size())));
 			lulet(index_res, device->new_resource(RHI::ResourceDesc::buffer(
-				RHI::ResourceHeapType::shared_upload, RHI::ResourceUsageFlag::index_buffer, mesh_asset.index_data.size())));
-			void* vert_mapped = nullptr;
-			void* index_mapped = nullptr;
-			luexp(vert_res->map_subresource(0, false, &vert_mapped));
-			luexp(index_res->map_subresource(0, false, &index_mapped));
-			memcpy(vert_mapped, mesh_asset.vertex_data.data(), mesh_asset.vertex_data.size());
-			memcpy(index_mapped, mesh_asset.index_data.data(), mesh_asset.index_data.size());
-			vert_res->unmap_subresource(0, true);
-			index_res->unmap_subresource(0, true);
+				RHI::ResourceHeapType::local, RHI::ResourceUsageFlag::index_buffer, mesh_asset.index_data.size())));
+			luexp(device->copy_resource({
+				RHI::ResourceCopyDesc::as_write_buffer(vert_res, mesh_asset.vertex_data.data(), mesh_asset.vertex_data.size(), 0),
+				RHI::ResourceCopyDesc::as_write_buffer(index_res, mesh_asset.index_data.data(), mesh_asset.index_data.size(), 0)
+				}));
 			mesh.pieces = mesh_asset.pieces;
 			mesh.vb = vert_res;
 			mesh.ib = index_res;

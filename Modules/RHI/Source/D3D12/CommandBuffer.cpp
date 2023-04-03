@@ -55,7 +55,7 @@ namespace Luna
 			}
 			t.Transition.StateBefore = encode_resource_state(before);
 			t.Transition.StateAfter = encode_resource_state(after);
-			if (subresource == resource_barrier_all_subresources_v)
+			if (subresource == RESOURCE_BARRIER_ALL_SUBRESOURCES)
 			{
 				t.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
 			}
@@ -69,7 +69,7 @@ namespace Luna
 
 		void ResourceStateTrackingSystem::pack_transition(Resource* res, u32 subresource, ResourceState after, ResourceBarrierFlag flags)
 		{
-			if (subresource == resource_barrier_all_subresources_v)
+			if (subresource == RESOURCE_BARRIER_ALL_SUBRESOURCES)
 			{
 				u32 num_subresources = res->count_subresources();
 				for (u32 i = 0; i < num_subresources; ++i)
@@ -163,20 +163,11 @@ namespace Luna
 		{
 			HRESULT hr;
 			hr = m_device->m_device->CreateCommandAllocator(encode_command_list_type(m_queue->m_type), IID_PPV_ARGS(&m_ca));
-			if (FAILED(hr))
-			{
-				return BasicError::bad_platform_call();
-			}
+			if (FAILED(hr)) return encode_d3d12_error(hr);
 			hr = m_device->m_device->CreateCommandList(0, encode_command_list_type(m_queue->m_type), m_ca.Get(), NULL, IID_PPV_ARGS(&m_li));
-			if (FAILED(hr))
-			{
-				return BasicError::bad_platform_call();
-			}
+			if (FAILED(hr)) return encode_d3d12_error(hr);
 			hr = m_device->m_device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_fence));
-			if (FAILED(hr))
-			{
-				return BasicError::bad_platform_call();
-			}
+			if (FAILED(hr)) return encode_d3d12_error(hr);
 			m_event = ::CreateEventA(NULL, TRUE, FALSE, NULL);
 			if (m_event == NULL)
 			{
@@ -198,23 +189,14 @@ namespace Luna
 			if (!m_cmdlist_closed)
 			{
 				HRESULT hr = m_li->Close();
-				if (FAILED(hr))
-				{
-					return BasicError::bad_platform_call();
-				}
+				if (FAILED(hr)) return encode_d3d12_error(hr);
 				m_cmdlist_closed = true;
 			}
 			HRESULT hr = m_ca->Reset();
-			if (FAILED(hr))
-			{
-				return BasicError::bad_platform_call();
-			}
+			if (FAILED(hr)) return encode_d3d12_error(hr);
 			hr = m_li->Reset(m_ca.Get(), NULL);
 			m_cmdlist_closed = false;
-			if (FAILED(hr))
-			{
-				return BasicError::bad_platform_call();
-			}
+			if (FAILED(hr)) return encode_d3d12_error(hr);
 			m_tracking_system.reset();
 			m_objs.clear();
 
@@ -614,10 +596,7 @@ namespace Luna
 			lutsassert();
 			HRESULT hr;
 			hr = m_li->Close();
-			if (FAILED(hr))
-			{
-				return BasicError::bad_platform_call();
-			}
+			if (FAILED(hr)) return encode_d3d12_error(hr);
 			m_cmdlist_closed = true;
 
 			// Resolve barriers.
@@ -628,16 +607,10 @@ namespace Luna
 			{
 				ComPtr<ID3D12GraphicsCommandList> li;
 				hr = m_device->m_device->CreateCommandList(0, encode_command_list_type(m_queue->m_type), m_ca.Get(), NULL, IID_PPV_ARGS(&li));
-				if (FAILED(hr))
-				{
-					return BasicError::bad_platform_call();
-				}
+				if (FAILED(hr)) return encode_d3d12_error(hr);
 				li->ResourceBarrier((UINT)m_tracking_system.m_barriers.size(), m_tracking_system.m_barriers.data());
 				hr = li->Close();
-				if (FAILED(hr))
-				{
-					return BasicError::bad_platform_call();
-				}
+				if (FAILED(hr)) return encode_d3d12_error(hr);
 				ID3D12CommandList* lists[2];
 				lists[0] = li.Get();
 				lists[1] = m_li.Get();
@@ -645,7 +618,8 @@ namespace Luna
 			}
 			else
 			{
-				m_queue->m_queue->ExecuteCommandLists(1, (ID3D12CommandList**)m_li.GetAddressOf());
+				ID3D12CommandList* list = m_li.Get();
+				m_queue->m_queue->ExecuteCommandLists(1, &list);
 			}
 
 			MutexGuard guard(m_queue->m_mtx);
@@ -657,15 +631,9 @@ namespace Luna
 
 			// Set fences.
 			hr = m_fence->SetEventOnCompletion(m_wait_value, m_event);
-			if (FAILED(hr))
-			{
-				return BasicError::bad_platform_call();
-			}
+			if (FAILED(hr)) return encode_d3d12_error(hr);
 			hr = m_queue->m_queue->Signal(m_fence.Get(), m_wait_value);
-			if (FAILED(hr))
-			{
-				return BasicError::bad_platform_call();
-			}
+			if (FAILED(hr)) return encode_d3d12_error(hr);
 
 			return ok;
 		}
