@@ -176,7 +176,7 @@ namespace Luna
 	{
 		using namespace ImGui;
 
-		auto begin_pos = ImGui::GetCursorPos();
+		auto begin_pos = ImGui::GetCursorScreenPos();
 
 		String label = "##";
 		if (asset)
@@ -187,8 +187,8 @@ namespace Luna
 		ImGui::Text(name);
 		ImGui::SameLine();
 
-		auto pos_before = ImGui::GetCursorPos();
-		ImGui::SetCursorPos({ pos_before.x, pos_before.y + 10 });
+		auto pos_before = ImGui::GetCursorScreenPos();
+		ImGui::SetCursorScreenPos({ pos_before.x, pos_before.y + 10 });
 		ImGui::Button(label.c_str(), {100, 100});
 
 		if (BeginDragDropTarget())
@@ -206,12 +206,12 @@ namespace Luna
 		{
 			ImGui::SameLine();
 
-			auto pos_after = ImGui::GetCursorPos();
+			auto pos_after = ImGui::GetCursorScreenPos();
 
 			RectF draw_rect = RectF(pos_before.x, pos_before.y + 10, 100, 100);
 			draw_asset_tile(asset, draw_rect);
 
-			ImGui::SetCursorPos(pos_after);
+			ImGui::SetCursorScreenPos(pos_after);
 			auto path = Asset::get_asset_path(asset);
 			Text(path.encode().c_str());
 			SameLine();
@@ -223,6 +223,6 @@ namespace Luna
 			PopID();
 		}
 
-		ImGui::SetCursorPos({ begin_pos.x, begin_pos.y + 120 });
+		ImGui::SetCursorScreenPos({ begin_pos.x, begin_pos.y + 120 });
 	}
 }

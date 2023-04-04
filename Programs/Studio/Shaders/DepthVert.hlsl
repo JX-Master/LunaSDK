@@ -23,8 +23,17 @@ struct VS_INPUT
     float4 color : COLOR;
 };
 
-float4 main(VS_INPUT input) : SV_POSITION
+struct PS_INPUT
 {
+    float4 position : SV_POSITION;
+    float2 texcoord : TEXCOORD;
+};
+
+PS_INPUT main(VS_INPUT input)
+{
+    PS_INPUT o;
     float4 world_position = mul(g_MeshBuffer[0].model_to_world, float4(input.position, 1.0f));
-    return mul(world_to_proj, world_position);
+    o.position = mul(world_to_proj, world_position);
+    o.texcoord = input.texcoord;
+    return o;
 }

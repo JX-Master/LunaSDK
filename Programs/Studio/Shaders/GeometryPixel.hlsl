@@ -50,6 +50,7 @@ PSOutput main(PSInput i)
 
     // Sample every texture.
     float4 base_color = g_base_color.Sample(g_sampler, texcoord);
+    clip(base_color.w - 0.1f);
     float roughness = g_roughness.Sample(g_sampler, texcoord).x;
     float3 normal = normalize(g_normal.Sample(g_sampler, texcoord).xyz - 0.5f);
     float metallic = g_metallic.Sample(g_sampler, texcoord).x;

@@ -62,7 +62,7 @@ namespace Luna
 			Ref<RHI::IResource> tex = Asset::get_asset_data(asset);
 			if (tex)
 			{
-				ImGui::SetCursorPos({ draw_rect.offset_x, draw_rect.offset_y });
+				ImGui::SetCursorScreenPos({ draw_rect.offset_x, draw_rect.offset_y });
 				ImGui::Image(tex.get(), {draw_rect.width, draw_rect.height});
 			}
 		}
@@ -71,7 +71,7 @@ namespace Luna
 			// Draw tex.
 			auto text_sz = ImGui::CalcTextSize("Texture");
 			Float2 center = Float2(draw_rect.offset_x + draw_rect.width / 2.0f, draw_rect.offset_y + draw_rect.height / 2.0f);
-			ImGui::SetCursorPos({ center.x - text_sz.x / 2.0f, center.y - text_sz.y / 2.0f });
+			ImGui::SetCursorScreenPos({ center.x - text_sz.x / 2.0f, center.y - text_sz.y / 2.0f });
 			ImGui::Text("Texture");
 		}
 	}

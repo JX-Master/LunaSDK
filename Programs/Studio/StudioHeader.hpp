@@ -50,6 +50,12 @@ namespace Luna
 	}
 
 	template <typename _Ty>
+	inline R<ObjRef> create_default_object(object_t userdata, Asset::asset_t asset)
+	{
+		return ObjRef(new_object<_Ty>().object());
+	}
+
+	template <typename _Ty>
 	inline RV save_object_to_json_file(const _Ty& src, const Path& path)
 	{
 		lutry
@@ -107,6 +113,7 @@ namespace Luna
 		Ref<RHI::ICommandQueue> graphics_queue;
 		Ref<RHI::ICommandQueue> async_compute_queue;
 
+		HashSet<Name> new_asset_types; // Displayed on the "New" tab of asset browser.
 		HashMap<Name, AssetImporterDesc> importer_types;
 
 		HashMap<Name, AssetEditorDesc> editor_types;

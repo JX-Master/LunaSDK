@@ -13,7 +13,7 @@
 #include "../Mesh.hpp"
 #include "../Model.hpp"
 #include <Asset/Asset.hpp>
-#include "../Assets/SceneEditor.hpp"
+#include "../SceneRenderer.hpp"
 
 namespace Luna
 {
@@ -65,7 +65,7 @@ namespace Luna
 			ps_desc.sample_mask = U32_MAX;
 			ps_desc.sample_quality = 0;
 			ps_desc.blend_state = BlendDesc(false, false, { RenderTargetBlendDesc(true, false, BlendFactor::src_alpha,
-				BlendFactor::inv_src_alpha, BlendOp::add, BlendFactor::inv_src_alpha, BlendFactor::zero, BlendOp::add, LogicOp::noop, ColorWriteMask::all) });
+				BlendFactor::inv_src_alpha, BlendOp::add, BlendFactor::one, BlendFactor::zero, BlendOp::add, LogicOp::noop, ColorWriteMask::all) });
 			ps_desc.rasterizer_state = RasterizerDesc(FillMode::wireframe, CullMode::none, 0, 0.0f, 0.0f, 0, false, true, false, true, false);
 			ps_desc.depth_stencil_state = DepthStencilDesc(false, false, ComparisonFunc::always, false, 0x00, 0x00, DepthStencilOpDesc(), DepthStencilOpDesc());
 			ps_desc.ib_strip_cut_value = IndexBufferStripCutValue::disabled;
@@ -102,7 +102,11 @@ namespace Luna
             // Debug wireframe pass.
 			RenderPassDesc render_pass;
 			render_pass.rtvs[0] = render_rtv;
+			render_pass.rt_load_ops[0] = LoadOp::clear;
+			render_pass.rt_clear_values[0] = Float4U(0.0f);
+			render_pass.rt_store_ops[0] = StoreOp::store;
 			auto render_desc = output_tex->get_desc();
+			cmdbuf->resource_barrier(ResourceBarrierDesc::as_transition(output_tex, ResourceState::render_target));
 			cmdbuf->begin_render_pass(render_pass);
 			cmdbuf->set_graphics_shader_input_layout(m_global_data->m_debug_mesh_renderer_slayout);
 			cmdbuf->set_pipeline_state(m_global_data->m_debug_mesh_renderer_pso);

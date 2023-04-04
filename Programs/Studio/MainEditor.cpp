@@ -20,10 +20,18 @@
 
 #include "Camera.hpp"
 #include "Light.hpp"
-#include "SceneRenderer.hpp"
+#include "SceneSettings.hpp"
 #include "ModelRenderer.hpp"
 #include <Runtime/Serialization.hpp>
 #include "Scene.hpp"
+
+#include "RenderPasses/LightingPass.hpp"
+#include "RenderPasses/SkyBoxPass.hpp"
+#include "RenderPasses/ToneMappingPass.hpp"
+#include "RenderPasses/WireframePass.hpp"
+#include "RenderPasses/DepthPass.hpp"
+#include "RenderPasses/GeometryPass.hpp"
+#include "RenderPasses/DeferredLightingPass.hpp"
 
 namespace Luna
 {
@@ -63,14 +71,17 @@ namespace Luna
 			ImGuiUtils::set_active_window(m_window);
 
 			// Create asset browser instance.
-			Ref<AssetBrowser> browser = new_object<AssetBrowser>();
-			browser->m_editor = this;
-			//browser->m_index = m_next_asset_browser_index;
-			//++m_next_asset_browser_index;
-			browser->m_path = "/";
-			auto his_path = browser->m_path;
-			browser->m_histroy_paths.push_back(his_path);
-			m_asset_browser = browser;
+			for (usize i = 0; i < 4; ++i)
+			{
+				Ref<AssetBrowser> browser = new_object<AssetBrowser>();
+				browser->m_editor = this;
+				//browser->m_index = m_next_asset_browser_index;
+				//++m_next_asset_browser_index;
+				browser->m_path = "/";
+				auto his_path = browser->m_path;
+				browser->m_histroy_paths.push_back(his_path);
+				m_asset_browsers[i] = browser;
+			}
 
 			// Register types.
 
@@ -84,14 +95,24 @@ namespace Luna
 			
 			register_material_asset_type();
 			register_material_editor();
-			register_material_importer();
 			register_model_asset_type();
 			register_model_editor();
-			register_model_importer();
 
 			register_scene_asset_type();
 			luexp(register_scene_editor());
-			register_scene_importer();
+
+			g_env->new_asset_types.insert(get_material_asset_type());
+			g_env->new_asset_types.insert(get_model_asset_type());
+			g_env->new_asset_types.insert(get_scene_asset_type());
+
+			register_boxed_type<CommonVertex>();
+			luexp(register_sky_box_pass());
+			luexp(register_wireframe_pass());
+			luexp(register_lighting_pass());
+			luexp(register_depth_pass());
+			luexp(register_geometry_pass());
+			luexp(register_deferred_lighting_pass());
+			luexp(register_tone_mapping_pass());
 		}
 		lucatchret;
 		return ok;
@@ -148,15 +169,26 @@ namespace Luna
 			// Draw Asset Browser.
 			if (ImGui::BeginMainMenuBar())
 			{
-				if (ImGui::BeginMenu("Window"))
+				if (ImGui::BeginMenu("View"))
 				{
-
+					for (usize i = 0; i < 4; ++i)
+					{
+						c8 buf[32];
+						snprintf(buf, 32, "Asset Browser %u", (u32)i);
+						ImGui::Checkbox(buf, &m_asset_browsers_enabled[i]);
+					}
 					ImGui::EndMenu();
 				}
 				ImGui::EndMainMenuBar();
 			}
 
-			m_asset_browser->render();
+			for (usize i = 0; i < 4; ++i)
+			{
+				if (m_asset_browsers_enabled[i])
+				{
+					m_asset_browsers[i]->render();
+				}
+			}
 
 			// Draw Editors.
 			auto iter = m_editors.begin();
@@ -248,18 +280,18 @@ namespace Luna
 		set_serializable<ModelRenderer>();
 		g_env->component_types.insert(typeof<ModelRenderer>());
 
-		register_struct_type<SceneRenderer>({
-			luproperty(SceneRenderer, Asset::asset_t, skybox),
-			luproperty(SceneRenderer, Float3, environment_color),
-			luproperty(SceneRenderer, f32, skybox_rotation),
-			luproperty(SceneRenderer, f32, exposure),
-			luproperty(SceneRenderer, Name, camera_entity)
+		register_struct_type<SceneSettings>({
+			luproperty(SceneSettings, Asset::asset_t, skybox),
+			luproperty(SceneSettings, Float3, environment_color),
+			luproperty(SceneSettings, f32, skybox_rotation),
+			luproperty(SceneSettings, f32, exposure),
+			luproperty(SceneSettings, Name, camera_entity)
 			});
-		set_serializable<SceneRenderer>();
-		g_env->scene_component_types.insert(typeof<SceneRenderer>());
-		set_property_attribute(typeof<SceneRenderer>(), "environment_color", "color_gui", true);
-		set_property_attribute(typeof<SceneRenderer>(), "exposure", "gui_min", (f64)0.00001f);
-		set_property_attribute(typeof<SceneRenderer>(), "exposure", "gui_max", (f64)1.0f);
+		set_serializable<SceneSettings>();
+		g_env->scene_component_types.insert(typeof<SceneSettings>());
+		set_property_attribute(typeof<SceneSettings>(), "environment_color", "color_gui", true);
+		set_property_attribute(typeof<SceneSettings>(), "exposure", "gui_min", (f64)0.00001f);
+		set_property_attribute(typeof<SceneSettings>(), "exposure", "gui_max", (f64)1.0f);
 	}
 
 	void run_main_editor(const Path& project_path)

@@ -205,7 +205,7 @@ namespace Luna
 	//! @param[in] dest_max_chars The maximum characters the `dest` buffer can hold, 
 	//! including the null-terminator.
 	//! @param[in] src The null-terminated buffer holding the source string.
-	//! @param[in] src_chars The maximum characters to read. Specify `USize_max_v` to read till the end of the 
+	//! @param[in] src_chars The maximum characters to read. Specify `USIZE_MAX` to read till the end of the 
 	//! string.
 	//! @return Returns the number of characters outputted to the `dest` buffer, 
 	//! not including the null-terminator.
@@ -222,7 +222,7 @@ namespace Luna
 	//! @param[in] src The null-terminated buffer holding the source string.
 	//! @param[in] le If `true`, then the characters are encoded using Little Endian, else the characters
 	//! are encoded using Big Endian.
-	//! @param[in] src_chars The maximum characters to read. Specify `USize_max_v` to read till the end of the 
+	//! @param[in] src_chars The maximum characters to read. Specify `USIZE_MAX` to read till the end of the 
 	//! string.
 	//! @return Returns the number of characters outputted to the `dest` buffer, 
 	//! not including the null-terminator. Returns (usize)-1 if the input string is not

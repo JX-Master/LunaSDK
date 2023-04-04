@@ -25,6 +25,8 @@ target("Studio")
             {type = "ps", shading_model = "5_1", output_path = target_dir, envs = runenvs})
         compile_shader.compile_shader(vformat("$(scriptdir)/Shaders/DepthVert.hlsl"), 
             {type = "vs", shading_model = "5_1", output_path = target_dir, envs = runenvs})
+        compile_shader.compile_shader(vformat("$(scriptdir)/Shaders/DepthPixel.hlsl"), 
+            {type = "ps", shading_model = "5_1", output_path = target_dir, envs = runenvs})
         compile_shader.compile_shader(vformat("$(scriptdir)/Shaders/DeferredLighting.hlsl"), 
             {type = "cs", shading_model = "5_1", output_path = target_dir, envs = runenvs})
     end)
@@ -39,7 +41,9 @@ target("Studio")
             "LumHistogram.cso",
             "LumHistogramCollect.cso",
             "GeometryPixel.cso",
-            "DepthVert.cso"
+            "DepthVert.cso",
+            "DepthPixel.cso",
+            "DeferredLighting.cso"
         }
 
         for _, i in pairs(shader_files) do

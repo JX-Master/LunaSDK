@@ -7,8 +7,8 @@
 * @author JXMaster
 * @date 2020/5/15
 */
-#include "SceneEditor.hpp"
 #include "Scene.hpp"
+#include "../SceneRenderer.hpp"
 #include "../MainEditor.hpp"
 #include <Runtime/Debug.hpp>
 #include "../Scene.hpp"
@@ -16,22 +16,10 @@
 #include <RHI/ShaderCompileHelper.hpp>
 #include <Runtime/Math/Color.hpp>
 #include <Window/MessageBox.hpp>
-#include "../Light.hpp"
-#include "../Camera.hpp"
-#include "../ModelRenderer.hpp"
-#include "../SceneRenderer.hpp"
-#include "../Model.hpp"
 #include <HID/Mouse.hpp>
 #include "../EditObject.hpp"
-#include "../Mesh.hpp"
-#include "../Material.hpp"
-#include "../RenderPasses/LightingPass.hpp"
-#include "../RenderPasses/SkyBoxPass.hpp"
-#include "../RenderPasses/ToneMappingPass.hpp"
-#include "../RenderPasses/WireframePass.hpp"
-#include "../RenderPasses/DepthPass.hpp"
-#include "../RenderPasses/GeometryPass.hpp"
-#include "../RenderPasses/DeferredLightingPass.hpp"
+#include "../SceneSettings.hpp"
+#include "../Camera.hpp"
 namespace Luna
 {
 	struct SceneEditorUserData
@@ -59,49 +47,31 @@ namespace Luna
 
 		Asset::asset_t m_scene;
 
-		Ref<RG::IRenderGraph> m_render_graph;
+		SceneRenderer m_renderer;
 
 		// States for entity list.
 		i32 m_new_entity_current_item = 0;
 		u32 m_current_select_entity = 0;
 		bool m_name_editing = false;
-		String m_name_editing_buf = String();
+		String m_name_editing_buf;
 
 		// States for component grid.
 		WeakRef<Entity> m_current_entity;
 
 		// States for scene viewport.
-		CameraCB m_camera_cb_data;
-		Ref<RHI::IResource> m_camera_cb;
-		Ref<RHI::ICommandBuffer> m_scene_cmdbuf;
-
-		Ref<RHI::IDescriptorSet> m_grid_desc_set;
-
-		Ref<RHI::IResource> m_model_matrices;
-		usize m_num_model_matrices = 0;
-
-		Ref<RHI::IResource> m_lighting_params;
-		usize m_num_lights = 0;
 
 		ImGui::GizmoMode m_gizmo_mode = ImGui::GizmoMode::local;
 		ImGui::GizmoOperation m_gizmo_op = ImGui::GizmoOperation::translate;
 
 		f32 m_camera_speed = 1.0f;
 
-		bool m_wireframe = false;
-		bool m_grid = true;
-		bool m_profile_time = true;
-
 		bool m_navigating = false;
 		Int2U m_scene_click_pos;	// Stores the click mouse position in screen space.
 
 		bool m_open = true;
 
-		// Scene profiling data.
-		Vector<Name> m_enabled_passes;
-		Vector<f64> m_pass_time_intervals;
-
-		SceneEditor() {}
+		SceneEditor() :
+			m_renderer(RHI::get_main_device()) {}
 
 		RV init();
 
@@ -125,12 +95,12 @@ namespace Luna
 			using namespace RHI;
 			auto device = get_main_device();
 			u32 cb_align = device->get_constant_buffer_data_alignment();
-			luset(m_camera_cb, device->new_resource(ResourceDesc::buffer(ResourceHeapType::upload, ResourceUsageFlag::constant_buffer, align_upper(sizeof(CameraCB), cb_align))));
-			luset(m_scene_cmdbuf, g_env->graphics_queue->new_command_buffer());
-
-			luset(m_grid_desc_set, device->new_descriptor_set(DescriptorSetDesc(m_type->m_grid_dlayout)));
-			m_grid_desc_set->set_cbv(0, m_camera_cb, ConstantBufferViewDesc(0, (u32)align_upper(sizeof(CameraCB), cb_align)));
-			m_render_graph = RG::new_render_graph(device);
+			luset(m_renderer.command_buffer, g_env->graphics_queue->new_command_buffer());
+			SceneRendererSettings settings;
+			settings.frame_profiling = true;
+			settings.wireframe = false;
+			settings.screen_size = UInt2U(1024, 768);
+			luexp(m_renderer.reset(settings));
 		}
 		lucatchret;
 		return ok;
@@ -217,7 +187,7 @@ namespace Luna
 					ImGui::Text(entities[i]->name.c_str());
 				}
 
-				if (in_bounds(ImGui::GetIO().MousePos, sel_pos, sel_pos + sel_size) && ImGui::IsMouseClicked(ImGuiMouseButton_Right))
+				if (ImGui::IsWindowFocused() && in_bounds(ImGui::GetIO().MousePos, sel_pos, sel_pos + sel_size) && ImGui::IsMouseClicked(ImGuiMouseButton_Right))
 				{
 					ImGui::OpenPopup(entity_popup_id);
 				}
@@ -229,7 +199,7 @@ namespace Luna
 				if (ImGui::Selectable("Rename"))
 				{
 					m_name_editing = true;
-					m_name_editing_buf.assign(s->root_entities[m_current_select_entity]->name.c_str());
+					m_name_editing_buf = s->root_entities[m_current_select_entity]->name.c_str();
 					ImGui::CloseCurrentPopup();
 				}
 				if (ImGui::Selectable("Remove"))
@@ -332,53 +302,21 @@ namespace Luna
 		lutry
 		{
 			// Collect last frame profiling data.
-			if(m_profile_time)
+			if(m_renderer.get_settings().frame_profiling)
 			{
-				Vector<usize> render_passes;
-				m_render_graph->get_enabled_render_passes(render_passes);
-				if (!render_passes.empty())
-				{
-					m_enabled_passes.clear();
-					auto& desc = m_render_graph->get_desc();
-					for (usize i : render_passes)
-					{
-						m_enabled_passes.push_back(desc.passes[i].name);
-					}
-					lulet(freq, m_scene_cmdbuf->get_command_queue()->get_timestamp_frequency());
-					Vector<u64> times;
-					luexp(m_render_graph->get_pass_time_intervals(times));
-					m_pass_time_intervals.clear();
-					for (u64 t : times)
-					{
-						m_pass_time_intervals.push_back((f64)t / (f64)freq);
-					}
-				}
+				luexp(m_renderer.collect_frame_profiling_data());
 			}
 
 			ImGui::Text("Scene");
 
-			auto s = Asset::get_asset_data<Scene>(m_scene);
+			Scene* s = Asset::get_asset_data<Scene>(m_scene);
 
-			auto scene_renderer = s->get_scene_component<SceneRenderer>();
-			if (!scene_renderer)
+			m_renderer.scene = s;
+
+			auto r = m_renderer.render();
+			if(failed(r))
 			{
-				ImGui::Text("Please add Scene Renderer Component to the scene.");
-				return ok;
-			}
-
-			// Fetch camera and transform component.
-			auto camera_entity = s->find_entity(scene_renderer->camera_entity);
-			if (!camera_entity)
-			{
-				ImGui::Text("Camera Entity is not set in Scene Renderer Component.");
-				return ok;
-			}
-
-			auto camera_component = camera_entity->get_component<Camera>();
-
-			if (!camera_component)
-			{
-				ImGui::Text("Transform and Camera Component must be set to the Camera Entity set in Scene Renderer Component.");
+				ImGui::Text("%s", explain(r.errcode()));
 				return ok;
 			}
 
@@ -465,356 +403,28 @@ namespace Luna
 				m_gizmo_op = op;
 			}
 
+			auto settings = m_renderer.get_settings();
+
 			ImGui::SameLine();
-			ImGui::Checkbox("Wireframe", &m_wireframe);
+			ImGui::Checkbox("Wireframe", &settings.wireframe);
 			ImGui::SameLine();
-			ImGui::Checkbox("Grid", &m_grid);
-			ImGui::SameLine();
-			ImGui::Checkbox("Time Profiling", &m_profile_time);
+			ImGui::Checkbox("Time Profiling", &settings.frame_profiling);
 
 			Float2 scene_sz = ImGui::GetContentRegionAvail();
 			Float2 scene_pos = ImGui::GetCursorScreenPos();
 			scene_sz.x -= 1.0f;
 			scene_sz.y -= 5.0f;
 
-			camera_component->aspect_ratio = scene_sz.x / scene_sz.y;
-
-			// Update and upload camera data.
-			m_camera_cb_data.world_to_view = camera_entity->world_to_local_matrix();
-			m_camera_cb_data.view_to_proj = camera_component->get_projection_matrix();
-			m_camera_cb_data.world_to_proj = mul(m_camera_cb_data.world_to_view, m_camera_cb_data.view_to_proj);
-			m_camera_cb_data.proj_to_world = inverse(m_camera_cb_data.world_to_proj);
-			m_camera_cb_data.view_to_world = camera_entity->local_to_world_matrix();
-			Float3 env_color = scene_renderer->environment_color;
-			m_camera_cb_data.env_light_color = Float4(env_color.x, env_color.y, env_color.z, 1.0f);
-			m_camera_cb_data.screen_width = (u32)scene_sz.x;
-			m_camera_cb_data.screen_height = (u32)scene_sz.y;
-			void* mapped = nullptr;
-			luexp(m_camera_cb->map_subresource(0, 0, 0, &mapped));
-			memcpy(mapped, &m_camera_cb_data, sizeof(CameraCB));
-			m_camera_cb->unmap_subresource(0, 0, sizeof(CameraCB));
-
-			auto device = RHI::get_main_device();
-
-			RHI::IResource* render_tex = nullptr;
-			Ref<RHI::IRenderTargetView> render_rtv;
-
-			// Draw Scene.
-			{
-				using namespace RHI;
-
-				// Fetch meshes to draw.
-				Vector<Ref<Entity>> ts;
-				Vector<Ref<ModelRenderer>> rs;
-				auto& entities = s->root_entities;
-				for (auto& i : entities)
-				{
-					auto r = i->get_component<ModelRenderer>();
-					if (r)
-					{
-						auto model = Asset::get_asset_data<Model>(r->model);
-						if (!model)
-						{
-							continue;
-						}
-						auto mesh = Asset::get_asset_data<Mesh>(model->mesh);
-						if (!mesh)
-						{
-							continue;
-						}
-						ts.push_back(i);
-						rs.push_back(r);
-					}
-				}
-
-				// Upload mesh matrices.
-				{
-					if (m_num_model_matrices < ts.size())
-					{
-						m_model_matrices = device->new_resource(ResourceDesc::buffer(ResourceHeapType::upload, ResourceUsageFlag::shader_resource, (u64)sizeof(Float4x4) * 2 * (u64)ts.size())).get();
-						m_num_model_matrices = ts.size();
-					}
-					if (!ts.empty())
-					{
-						void* mapped = nullptr;
-						luexp(m_model_matrices->map_subresource(0, 0, 0, &mapped));
-						for (usize i = 0; i < ts.size(); ++i)
-						{
-							Float4x4 m2w = ts[i]->local_to_world_matrix();
-							Float4x4 w2m = ts[i]->world_to_local_matrix();
-							memcpy((Float4x4*)mapped + i * 2, m2w.r[0].m, sizeof(Float4x4));
-							memcpy((Float4x4*)mapped + (i * 2 + 1), w2m.r[0].m, sizeof(Float4x4));
-						}
-						m_model_matrices->unmap_subresource(0, 0, sizeof(Float4x4) * 2 * ts.size());
-					}
-				}
-
-				// Fetches lights to draw.
-				Vector<Ref<Entity>> light_ts;
-				Vector<ObjRef> light_rs;
-				for (auto& i : entities)
-				{
-					ObjRef r = ObjRef(i->get_component<DirectionalLight>());
-					if (!r)
-					{
-						r = i->get_component<PointLight>();
-						if (!r)
-						{
-							r = i->get_component<SpotLight>();
-						}
-					}
-					if (r)
-					{
-						light_ts.push_back(i);
-						light_rs.push_back(r);
-					}
-				}
-
-				// Upload lighting params.
-				{
-					if (m_num_lights < light_ts.size())
-					{
-						m_lighting_params = device->new_resource(ResourceDesc::buffer(ResourceHeapType::upload, ResourceUsageFlag::shader_resource, sizeof(LightingParams) * light_ts.size())).get();
-						m_num_lights = light_ts.size();
-					}
-					void* mapped = nullptr;
-					luexp(m_lighting_params->map_subresource(0, 0, 0, &mapped));
-					for (usize i = 0; i < light_ts.size(); ++i)
-					{
-						LightingParams p;
-						Ref<DirectionalLight> directional = light_rs[i];
-						if (directional)
-						{
-							p.strength = directional->intensity;
-							p.attenuation_power = 1.0f;
-							p.direction = AffineMatrix::forward(AffineMatrix::make_rotation(light_ts[i]->world_rotation()));
-							p.type = 0;
-							p.position = light_ts[i]->world_position();
-							p.spot_attenuation_power = 0.0f;
-						}
-						else
-						{
-							Ref<PointLight> point = light_rs[i];
-							if (point)
-							{
-								p.strength = point->intensity;
-								p.attenuation_power = point->attenuation_power;
-								p.direction = Float3U(0.0f, 0.0f, 1.0f);
-								p.type = 1;
-								p.position = light_ts[i]->world_position();
-								p.spot_attenuation_power = 0.0f;
-							}
-							else
-							{
-								Ref<SpotLight> spot = light_rs[i];
-								if (spot)
-								{
-									p.strength = spot->intensity;
-									p.attenuation_power = spot->attenuation_power;
-									p.direction = AffineMatrix::forward(AffineMatrix::make_rotation(light_ts[i]->world_rotation()));
-									p.type = 2;
-									p.position = light_ts[i]->world_position();
-									p.spot_attenuation_power = spot->spot_power;
-								}
-								else
-								{
-									lupanic_always();
-								}
-							}
-						}
-						memcpy((LightingParams*)mapped + i, &p, sizeof(LightingParams));
-					}
-					// Adds one fake light if there is no light so the SRV is not empty (which is invalid).
-					if (light_ts.empty())
-					{
-						LightingParams p;
-						p.strength = { 0.0f, 0.0f, 0.0f };
-						p.attenuation_power = 1.0f;
-						p.direction = { 0.0f, 0.0f, 1.0f };
-						p.type = 0;
-						p.position = { 0.0f, 0.0f, 0.0f };
-						p.spot_attenuation_power = 0.0f;
-						memcpy((LightingParams*)mapped, &p, sizeof(LightingParams));
-					}
-					m_lighting_params->unmap_subresource(0, 0, sizeof(LightingParams) * max<usize>(light_ts.size(), 1));
-				}
-
-				u32 cb_align = device->get_constant_buffer_data_alignment();
-
-				// Resources.
-				constexpr usize LIGHTING_BUFFER = 0;
-				constexpr usize DEPTH_BUFFER = 1;
-				constexpr usize BACK_BUFFER = 2;
-				constexpr usize WIREFRAME_BACK_BUFFER = 3;
-				constexpr usize BASE_COLOR_ROUGHNESS_BUFFER = 4;
-				constexpr usize NORMAL_METALLIC_BUFFER = 5;
-				constexpr usize EMISSIVE_BUFFER = 6;
-
-				// Passes.
-				constexpr usize WIREFRAME_PASS = 0;
-				constexpr usize DEPTH_PASS = 1;
-				constexpr usize GEOMETRY_PASS = 2;
-				constexpr usize SKYBOX_PASS = 3;
-				constexpr usize DEFERRED_LIGHTING_PASS = 4;
-				constexpr usize TONE_MAPPING_PASS = 5;
-				
-				// Build render graph.
-				{
-					using namespace RG;
-					
-					RenderGraphDesc desc;
-					desc.passes.resize(6);
-					desc.passes[WIREFRAME_PASS] = {"WireframePass", "Wireframe"};
-					desc.passes[DEPTH_PASS] = {"DepthPass", "Depth"};
-					desc.passes[GEOMETRY_PASS] = {"GeometryPass", "Geometry"};
-					desc.passes[SKYBOX_PASS] = {"SkyBoxPass", "SkyBox"};
-					desc.passes[DEFERRED_LIGHTING_PASS] = {"DeferredLightingPass", "DeferredLighting"};
-					desc.passes[TONE_MAPPING_PASS] = {"ToneMappingPass", "ToneMapping"};
-					desc.resources.resize(7);
-					desc.resources[LIGHTING_BUFFER] = {RenderGraphResourceType::transient, 
-						RenderGraphResourceFlag::none,
-						"LightingBuffer", 
-						ResourceDesc::tex2d(ResourceHeapType::local, Format::rgba32_float, 
-						ResourceUsageFlag::shader_resource, (u32)scene_sz.x, (u32)scene_sz.y)};
-					desc.resources[DEPTH_BUFFER] = {RenderGraphResourceType::transient, 
-						RenderGraphResourceFlag::none,
-						"DepthBuffer",
-						ResourceDesc::tex2d(ResourceHeapType::local, Format::d32_float, 
-						ResourceUsageFlag::shader_resource, (u32)scene_sz.x, (u32)scene_sz.y)};
-					desc.resources[BACK_BUFFER] = {RenderGraphResourceType::transient, 
-						RenderGraphResourceFlag::none,
-						"BackBuffer",
-						ResourceDesc::tex2d(ResourceHeapType::local, Format::rgba8_unorm,
-						ResourceUsageFlag::shader_resource | ResourceUsageFlag::render_target, 0, 0)};
-					desc.resources[WIREFRAME_BACK_BUFFER] = {RenderGraphResourceType::transient, 
-						RenderGraphResourceFlag::none,
-						"WireframeBackBuffer",
-						ResourceDesc::tex2d(ResourceHeapType::local, Format::rgba8_unorm, 
-						ResourceUsageFlag::shader_resource | ResourceUsageFlag::render_target, (u32)scene_sz.x, (u32)scene_sz.y)};
-					desc.resources[BASE_COLOR_ROUGHNESS_BUFFER] = {RenderGraphResourceType::transient, 
-						RenderGraphResourceFlag::none,
-						"BaseColorRoughnessBuffer",
-						ResourceDesc::tex2d(ResourceHeapType::local, Format::rgba8_unorm, 
-						ResourceUsageFlag::shader_resource | ResourceUsageFlag::render_target, 0, 0)};
-					desc.resources[NORMAL_METALLIC_BUFFER] = {RenderGraphResourceType::transient, 
-						RenderGraphResourceFlag::none,
-						"NormalMetallicBuffer",
-						ResourceDesc::tex2d(ResourceHeapType::local, Format::rgba8_unorm, 
-						ResourceUsageFlag::shader_resource | ResourceUsageFlag::render_target, 0, 0)};
-					desc.resources[EMISSIVE_BUFFER] = {RenderGraphResourceType::transient, 
-						RenderGraphResourceFlag::none,
-						"EmissiveBuffer",
-						ResourceDesc::tex2d(ResourceHeapType::local, Format::rgba16_float, 
-						ResourceUsageFlag::shader_resource | ResourceUsageFlag::render_target, 0, 0)};
-					if(m_wireframe)
-					{
-						desc.resources[WIREFRAME_BACK_BUFFER].type = RenderGraphResourceType::persistent;
-						desc.resources[WIREFRAME_BACK_BUFFER].flags |= RenderGraphResourceFlag::output;
-					}
-					else
-					{
-						desc.resources[BACK_BUFFER].type = RenderGraphResourceType::persistent;
-						desc.resources[BACK_BUFFER].flags |= RenderGraphResourceFlag::output;
-					}
-					desc.output_connections.push_back({WIREFRAME_PASS, "scene_texture", WIREFRAME_BACK_BUFFER});
-					desc.output_connections.push_back({DEPTH_PASS, "depth_texture", DEPTH_BUFFER});
-					desc.input_connections.push_back({GEOMETRY_PASS, "depth_texture", DEPTH_BUFFER});
-					desc.output_connections.push_back({GEOMETRY_PASS, "base_color_roughness_texture", BASE_COLOR_ROUGHNESS_BUFFER});
-					desc.output_connections.push_back({GEOMETRY_PASS, "normal_metallic_texture", NORMAL_METALLIC_BUFFER});
-					desc.output_connections.push_back({GEOMETRY_PASS, "emissive_texture", EMISSIVE_BUFFER});
-					desc.input_connections.push_back({SKYBOX_PASS, "depth_texture", DEPTH_BUFFER});
-					desc.output_connections.push_back({SKYBOX_PASS, "texture", LIGHTING_BUFFER});
-					desc.input_connections.push_back({DEFERRED_LIGHTING_PASS, "depth_texture", DEPTH_BUFFER});
-					desc.input_connections.push_back({DEFERRED_LIGHTING_PASS, "base_color_roughness_texture", BASE_COLOR_ROUGHNESS_BUFFER});
-					desc.input_connections.push_back({DEFERRED_LIGHTING_PASS, "normal_metallic_texture", NORMAL_METALLIC_BUFFER});
-					desc.input_connections.push_back({DEFERRED_LIGHTING_PASS, "emissive_texture", EMISSIVE_BUFFER});
-					desc.output_connections.push_back({DEFERRED_LIGHTING_PASS, "scene_texture", LIGHTING_BUFFER});
-					desc.input_connections.push_back({TONE_MAPPING_PASS, "hdr_texture", LIGHTING_BUFFER});
-					desc.output_connections.push_back({TONE_MAPPING_PASS, "ldr_texture", BACK_BUFFER});
-					m_render_graph->set_desc(desc);
-					RG::RenderGraphCompileConfig config;
-					config.enable_time_profiling = m_profile_time;
-					luexp(m_render_graph->compile(config));
-				}
-
-				{
-					// Set parameters.
-					if(m_wireframe)
-					{
-						WireframePass* wireframe = cast_objct<WireframePass>(m_render_graph->get_render_pass(WIREFRAME_PASS)->get_object());
-						wireframe->model_matrices = m_model_matrices;
-						wireframe->camera_cb = m_camera_cb;
-						wireframe->ts = {ts.data(), ts.size()};
-						wireframe->rs = {rs.data(), rs.size()};
-					}
-					else
-					{
-						SkyBoxPass* skybox = cast_objct<SkyBoxPass>(m_render_graph->get_render_pass(SKYBOX_PASS)->get_object());
-						DepthPass* depth = cast_objct<DepthPass>(m_render_graph->get_render_pass(DEPTH_PASS)->get_object());
-						GeometryPass* geometry = cast_objct<GeometryPass>(m_render_graph->get_render_pass(GEOMETRY_PASS)->get_object());
-						DeferredLightingPass* lighting = cast_objct<DeferredLightingPass>(m_render_graph->get_render_pass(DEFERRED_LIGHTING_PASS)->get_object());
-						ToneMappingPass* tone_mapping = cast_objct<ToneMappingPass>(m_render_graph->get_render_pass(TONE_MAPPING_PASS)->get_object());
-						skybox->camera_fov = camera_component->fov;
-						skybox->camera_type = camera_component->type;
-						skybox->view_to_world = camera_entity->local_to_world_matrix();
-						auto skybox_tex = Asset::get_asset_data<RHI::IResource>(scene_renderer->skybox);
-						skybox->skybox = skybox_tex;
-						depth->ts = {ts.data(), ts.size()};
-						depth->rs = {rs.data(), rs.size()};
-						depth->camera_cb = m_camera_cb;
-						depth->model_matrices = m_model_matrices;
-						geometry->camera_cb = m_camera_cb;
-						geometry->ts = {ts.data(), ts.size()};
-						geometry->rs = {rs.data(), rs.size()};
-						geometry->model_matrices = m_model_matrices;
-						lighting->skybox = skybox_tex;
-						lighting->camera_cb = m_camera_cb;
-						lighting->light_params = m_lighting_params;
-						lighting->light_ts = {light_ts.data(), light_ts.size()};
-						tone_mapping->exposure = scene_renderer->exposure;
-					}
-				}
-
-				luexp(m_render_graph->execute(m_scene_cmdbuf));
-
-				// Set render pass parameters.
-				{
-					if(m_wireframe)
-					{
-						render_tex = m_render_graph->get_persistent_resource(WIREFRAME_BACK_BUFFER);
-					}
-					else
-					{
-						render_tex = m_render_graph->get_persistent_resource(BACK_BUFFER);
-					}
-					luset(render_rtv, m_render_graph->get_device()->new_render_target_view(render_tex));
-				}
-			}
+			settings.screen_size = UInt2U((u32)scene_sz.x, (u32)scene_sz.y);
 
 			// Draw Overlays.
-			if(m_grid)
-			{
-				// Draw Grid.
-				using namespace RHI;
-				//m_grid_fb = device->new_frame_buffer(m_type->m_grid_rp, 1, &render_tex, nullptr, nullptr, nullptr).get();
-				m_scene_cmdbuf->resource_barrier(ResourceBarrierDesc::as_transition(render_tex, ResourceState::render_target));
-				RenderPassDesc render_pass;
-				render_pass.rtvs[0] = render_rtv;
-				m_scene_cmdbuf->begin_render_pass(render_pass);
-				m_scene_cmdbuf->set_graphics_shader_input_layout(m_type->m_grid_slayout);
-				m_scene_cmdbuf->set_pipeline_state(m_type->m_grid_pso);
-				m_scene_cmdbuf->set_vertex_buffers(0, { VertexBufferViewDesc(m_type->m_grid_vb.get(), 0, sizeof(Float4) * 44, sizeof(Float4)) });
-				m_scene_cmdbuf->set_primitive_topology(PrimitiveTopology::line_list);
-				m_scene_cmdbuf->set_graphics_descriptor_set(0, m_grid_desc_set);
-				m_scene_cmdbuf->set_viewport(Viewport(0.0f, 0.0f, scene_sz.x, scene_sz.y, 0.0f, 1.0f));
-				m_scene_cmdbuf->set_scissor_rect(RectI(0, 0, (i32)scene_sz.x, (i32)scene_sz.y));
-				m_scene_cmdbuf->draw(44, 0);
-				m_scene_cmdbuf->end_render_pass();
-			}
+			luexp(m_renderer.command_buffer->submit());
 
-			luexp(m_scene_cmdbuf->submit());
+			ImGui::Image(m_renderer.render_texture, scene_sz);
 
-			ImGui::Image(render_tex, scene_sz);
+			auto scene_renderer = s->get_scene_component<SceneSettings>();
+			auto camera_entity = s->find_entity(scene_renderer->camera_entity);
+			auto camera_component = camera_entity->get_component<Camera>();
 
 			// Draw GUI Overlays.
 			{
@@ -824,7 +434,7 @@ namespace Luna
 				{
 					Float4x4 world_mat = e->local_to_world_matrix();
 					bool edited = false;
-					ImGui::Gizmo(world_mat, m_camera_cb_data.world_to_view, m_camera_cb_data.view_to_proj,
+					ImGui::Gizmo(world_mat, camera_entity->world_to_local_matrix(), camera_component->get_projection_matrix(),
 						RectF(scene_pos.x, scene_pos.y, scene_sz.x, scene_sz.y), m_gizmo_op, m_gizmo_mode, 0.0f, true, false, nullptr, nullptr, &edited);
 					if (edited)
 					{
@@ -836,13 +446,13 @@ namespace Luna
 				auto backup_pos = ImGui::GetCursorPos();
 				ImGui::SetCursorScreenPos(scene_pos);
 
-				if (m_profile_time)
+				if (m_renderer.get_settings().frame_profiling)
 				{
 					ImGui::Text("Frame Size: %ux%u", (u32)scene_sz.x, (u32)scene_sz.y);
 					ImGui::Text("FPS: %f", ImGui::GetIO().Framerate);
-					for (usize i = 0; i < m_enabled_passes.size(); ++i)
+					for (usize i = 0; i < m_renderer.enabled_passes.size(); ++i)
 					{
-						ImGui::Text("%s: %fms", m_enabled_passes[i].c_str(), m_pass_time_intervals[i] * 1000.0);
+						ImGui::Text("%s: %fms", m_renderer.enabled_passes[i].c_str(), m_renderer.pass_time_intervals[i] * 1000.0);
 					}
 				}
 
@@ -911,17 +521,17 @@ namespace Luna
 				eular.x = clamp(eular.x, deg_to_rad(-85.0f), deg_to_rad(85.0f));
 				camera_entity->rotation = Quaternion::from_euler_angles(eular);
 			}
-
-
-			m_scene_cmdbuf->wait();
-			luassert_always(succeeded(m_scene_cmdbuf->reset()));
-
+			m_renderer.command_buffer->wait();
+			luassert_always(succeeded(m_renderer.command_buffer->reset()));
+			if(settings != m_renderer.get_settings())
+			{
+				m_renderer.reset(settings);
+			}
 			ImGui::EndChild();
 		}
 		lucatchret;
 		return ok;
 
-		
 	}
 
 	static void draw_transform(Entity* t)
@@ -985,6 +595,10 @@ namespace Luna
 						}
 
 						ImGui::PopID();
+					}
+					else
+					{
+						++iter;
 					}
 				}
 			}
@@ -1214,15 +828,6 @@ namespace Luna
 			luexp(device->copy_resource({
 				ResourceCopyDesc::as_write_buffer(m_grid_vb, grids, sizeof(grids), 0)
 				}));
-
-			register_boxed_type<CommonVertex>();
-			luexp(register_sky_box_pass());
-			luexp(register_wireframe_pass());
-			luexp(register_lighting_pass());
-			luexp(register_depth_pass());
-			luexp(register_geometry_pass());
-			luexp(register_deferred_lighting_pass());
-			luexp(register_tone_mapping_pass());
 		}
 		lucatchret;
 		return ok;
@@ -1254,77 +859,5 @@ namespace Luna
 		}
 		lucatchret;
 		return ok;
-	}
-
-
-	struct SceneCreator : public IAssetEditor
-	{
-		lustruct("SceneCreator", "{B91FE406-7281-43F5-9688-2C6CFF17BED2}");
-		luiimpl();
-
-		Path m_create_dir;
-		String m_asset_name;
-		bool m_open;
-
-		SceneCreator() :
-			m_open(true)
-		{
-			m_asset_name = String();
-		}
-
-		virtual void on_render() override;
-		virtual bool closed() override
-		{
-			return !m_open;
-		}
-	};
-
-	void SceneCreator::on_render()
-	{
-		char title[32];
-		sprintf_s(title, "Create Scene###%d", (u32)(usize)this);
-
-		ImGui::Begin(title, &m_open, ImGuiWindowFlags_NoCollapse);
-
-		ImGui::InputText("Scene Asset Name", m_asset_name);
-		if (!m_asset_name.empty())
-		{
-			ImGui::Text("The Scene will be created as: %s%s", m_create_dir.encode().c_str(), m_asset_name.c_str());
-			if (ImGui::Button("Create"))
-			{
-				lutry
-				{
-					Path asset_path = m_create_dir;
-					asset_path.push_back(m_asset_name);
-					lulet(asset, Asset::new_asset(asset_path, get_scene_asset_type()));
-					Ref<Scene> s = new_object<Scene>();
-					luexp(Asset::set_asset_data(asset, s.object()));
-					luexp(Asset::save_asset(asset));
-				}
-				lucatch
-				{
-					auto _ = Window::message_box(explain(lures), "Failed to create scene asset",
-									Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
-				}
-			}
-		}
-
-		ImGui::End();
-	}
-
-	static Ref<IAssetEditor> new_scene_importer(const Path& create_dir)
-	{
-		auto dialog = new_object<SceneCreator>();
-		dialog->m_create_dir = create_dir;
-		return dialog;
-	}
-
-	void register_scene_importer()
-	{
-		register_boxed_type<SceneCreator>();
-		impl_interface_for_type<SceneCreator, IAssetEditor>();
-		AssetImporterDesc desc;
-		desc.new_importer = new_scene_importer;
-		g_env->register_asset_importer_type(get_scene_asset_type(), desc);
 	}
 }

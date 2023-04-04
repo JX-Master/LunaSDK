@@ -30,7 +30,7 @@ namespace Luna
 		Path m_path;
 		String m_path_edit_text;
 		u32 m_current_location_in_histroy_path;
-		bool m_is_text_editing;
+		bool m_is_navbar_text_editing;
 		//----- End of States for navbar -----
 
 		//----- Begin of States for tile context -----
@@ -40,9 +40,15 @@ namespace Luna
 		HashSet<Name> m_selections;
 		//----- End of States for tile context -----
 
+		//----- Begin of States for asset popup menu -----
+		Name m_popup_asset;
+		Name m_editing_asset_name;
+		String m_asset_name_editing_buf;
+		//----- End of States for asset popup menu -----
+		
 		AssetBrowser() :
 			m_current_location_in_histroy_path(0),
-			m_is_text_editing(false),
+			m_is_navbar_text_editing(false),
 			m_tile_size(128) {}
 			//m_ms_is_dragging(false) {}
 

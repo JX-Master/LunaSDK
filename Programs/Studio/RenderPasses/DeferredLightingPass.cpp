@@ -9,7 +9,7 @@
 */
 #include "DeferredLightingPass.hpp"
 #include <Runtime/File.hpp>
-#include "../Assets/SceneEditor.hpp"
+#include "../SceneRenderer.hpp"
 
 namespace Luna
 {
@@ -46,6 +46,12 @@ namespace Luna
 			ps_desc.cs = cs_blob.cspan();
 			ps_desc.shader_input_layout = m_deferred_lighting_pass_slayout;
 			luset(m_deferred_lighting_pass_pso, device->new_compute_pipeline_state(ps_desc));
+
+            luset(m_default_skybox, device->new_resource(ResourceDesc::tex2d(ResourceHeapType::local, Format::rgba8_unorm, ResourceUsageFlag::shader_resource, 1, 1, 1, 1)));
+            u8 skybox_data[] = {0, 0, 0, 0};
+            luexp(device->copy_resource({
+                ResourceCopyDesc::as_write_texture(m_default_skybox, skybox_data, 4, 4, 0, BoxU(0, 0, 0, 1, 1, 1))
+            }));
         }
         lucatchret;
         return ok;
@@ -75,6 +81,7 @@ namespace Luna
             auto cmdbuf = ctx->get_command_buffer();
             auto device = cmdbuf->get_device();
             auto cb_align = device->get_constant_buffer_data_alignment();
+            auto sky_box = skybox ? skybox : m_global_data->m_default_skybox;
             cmdbuf->resource_barriers({
                 ResourceBarrierDesc::as_transition(camera_cb, ResourceState::vertex_and_constant_buffer),
                 ResourceBarrierDesc::as_transition(light_params, ResourceState::shader_resource_non_pixel),
@@ -82,7 +89,8 @@ namespace Luna
 				ResourceBarrierDesc::as_transition(depth_tex, ResourceState::shader_resource_non_pixel),
 				ResourceBarrierDesc::as_transition(base_color_roughness_tex, ResourceState::shader_resource_non_pixel),
                 ResourceBarrierDesc::as_transition(normal_metallic_tex, ResourceState::shader_resource_non_pixel),
-                ResourceBarrierDesc::as_transition(emissive_tex, ResourceState::shader_resource_non_pixel)});
+                ResourceBarrierDesc::as_transition(emissive_tex, ResourceState::shader_resource_non_pixel),
+                ResourceBarrierDesc::as_transition(sky_box, ResourceState::shader_resource_non_pixel)});
             
             m_ds->set_cbv(0, camera_cb, ConstantBufferViewDesc(0, (u32)align_upper(sizeof(CameraCB), cb_align)));
             if (light_ts.empty())
@@ -98,7 +106,7 @@ namespace Luna
             m_ds->set_srv(3, normal_metallic_tex);
             m_ds->set_srv(4, emissive_tex);
             m_ds->set_srv(5, depth_tex, &ShaderResourceViewDesc::as_tex2d(Format::r32_float, 0, 1, 0.0f));
-            m_ds->set_srv(6, skybox);
+            m_ds->set_srv(6, sky_box);
             m_ds->set_uav(7, scene_tex);
             m_ds->set_sampler(8, SamplerDesc(FilterMode::min_mag_mip_linear, TextureAddressMode::clamp, TextureAddressMode::clamp, TextureAddressMode::clamp));
             auto scene_desc = scene_tex->get_desc();

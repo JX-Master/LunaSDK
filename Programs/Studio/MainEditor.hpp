@@ -27,7 +27,8 @@ namespace Luna
 		Ref<RHI::IResource> m_back_buffer;
 		Ref<RHI::IRenderTargetView> m_back_buffer_rtv;
 
-		Ref<AssetBrowser> m_asset_browser;
+		Ref<AssetBrowser> m_asset_browsers[4];
+		bool m_asset_browsers_enabled[4] = { true, false, false, false };
 
 		Vector<Ref<IAssetEditor>> m_editors;
 

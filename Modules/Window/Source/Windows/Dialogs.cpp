@@ -165,7 +165,7 @@ namespace Luna
 			ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_NOCHANGEDIR | OFN_NONETWORKBUTTON;
 			if ((flags & FileOpenDialogFlag::multi_select) != FileOpenDialogFlag::none)
 			{
-				ofn.Flags |= OFN_ALLOWMULTISELECT;
+				ofn.Flags |= OFN_ALLOWMULTISELECT | OFN_EXPLORER;
 			}
 			bool res = ::GetOpenFileNameW(&ofn) != FALSE;
 			if (res)
@@ -174,15 +174,22 @@ namespace Luna
 				if (ofn.lpstrFile[ofn.nFileOffset - 1] == '\0')
 				{
 					// Multiple file.
-					char* ret_buf = (char*)alloca(sizeof(char) * 1024);
-					usize dir_sz = utf16_to_utf8(ret_buf, 1024, (char16_t*)ofn.lpstrFile);
-					char16_t* wdir_cur = (char16_t*)ofn.lpstrFile + strlen((char16_t*)ofn.lpstrFile) + 1;
-					while (wdir_cur)
+					usize dir_wsz = strlen((char16_t*)ofn.lpstrFile);
+					usize dir_sz = utf16_to_utf8_len((char16_t*)ofn.lpstrFile);
+					char* dir_buf = (char*)alloca(sizeof(char) * (dir_sz + 1));
+					utf16_to_utf8(dir_buf, (dir_sz + 1), (char16_t*)ofn.lpstrFile);
+					char16_t* wdir_cur = (char16_t*)ofn.lpstrFile + dir_wsz + 1;
+					Path file_path = dir_buf;
+					while (*wdir_cur)
 					{
-						utf16_to_utf8(ret_buf + dir_sz, 1024 - dir_sz, wdir_cur);
+						usize file_sz = utf16_to_utf8_len(wdir_cur);
+						char* file_buf = (char*)memalloc(sizeof(char) * (file_sz + 1));
+						utf16_to_utf8(file_buf, file_sz + 1, wdir_cur);
 						wdir_cur += strlen(wdir_cur) + 1;
-						auto ret_path = Path(ret_buf);
-						paths.push_back(ret_path);
+						file_path.push_back(file_buf);
+						paths.push_back(file_path);
+						file_path.pop_back();
+						memfree(file_buf);
 					}
 				}
 				else
@@ -201,6 +208,10 @@ namespace Luna
 				if (err_code == 0)
 				{
 					return BasicError::interrupted();
+				}
+				else if(err_code == 0x3003) // FNERR_BUFFERTOOSMALL
+				{
+					return set_error(BasicError::data_too_long(), "Too many files are selected.");
 				}
 				return set_error(BasicError::bad_platform_call(), "Open File Dialog (common dialog box) reports failure, error code: %u", err_code);
 			}

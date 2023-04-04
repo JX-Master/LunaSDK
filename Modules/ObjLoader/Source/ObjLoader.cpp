@@ -76,7 +76,7 @@ namespace Luna
 
 			std::string obj_source((const c8*)obj_file.data(), obj_file.size());
 			std::string mtl_source;
-			if (mtl_file.empty())
+			if (!mtl_file.empty())
 			{
 				mtl_source.assign((const c8*)mtl_file.data(), mtl_file.size());
 			}

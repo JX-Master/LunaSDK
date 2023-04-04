@@ -12,7 +12,7 @@
 #include "../Mesh.hpp"
 #include "../Model.hpp"
 #include "../Material.hpp"
-#include "../Assets/SceneEditor.hpp"
+#include "../SceneRenderer.hpp"
 
 namespace Luna
 {

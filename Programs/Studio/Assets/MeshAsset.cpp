@@ -51,7 +51,8 @@ namespace Luna
 			Path file_path = path;
 			file_path.append_extension("mesh");
 			lulet(file, VFS::open_file(file_path, FileOpenFlag::read | FileOpenFlag::user_buffering, FileCreationMode::open_existing));
-			lulet(file_data, json_read(file));
+			lulet(data, load_file_data(file));
+			lulet(file_data, json_read((const c8*)data.data(), data.size()));
 			MeshAsset mesh_asset;
 			luexp(deserialize(mesh_asset, file_data));
 			Ref<Mesh> mesh = new_object<Mesh>();

@@ -11,7 +11,8 @@
 #include <Runtime/File.hpp>
 #include "../Mesh.hpp"
 #include "../Model.hpp"
-#include "../Assets/SceneEditor.hpp"
+#include "../SceneRenderer.hpp"
+#include "../Material.hpp"
 
 namespace Luna
 {
@@ -23,6 +24,8 @@ namespace Luna
             luset(m_depth_pass_dlayout, device->new_descriptor_set_layout(DescriptorSetLayoutDesc({
 				DescriptorSetLayoutBinding(DescriptorType::cbv, 0, 1, ShaderVisibility::vertex),
 				DescriptorSetLayoutBinding(DescriptorType::srv, 1, 1, ShaderVisibility::vertex),
+				DescriptorSetLayoutBinding(DescriptorType::srv, 2, 1, ShaderVisibility::pixel),
+				DescriptorSetLayoutBinding(DescriptorType::sampler, 3, 1, ShaderVisibility::pixel),
 				})));
 
 			luset(m_depth_pass_slayout, device->new_shader_input_layout(ShaderInputLayoutDesc({ m_depth_pass_dlayout },
@@ -37,6 +40,12 @@ namespace Luna
 			luexp(vsf->read(vs_blob.span()));
 			vsf = nullptr;
 
+			lulet(psf, open_file("DepthPixel.cso", FileOpenFlag::read, FileCreationMode::open_existing));
+			file_size = psf->get_size();
+			auto ps_blob = Blob((usize)file_size);
+			luexp(psf->read(ps_blob.span()));
+			psf = nullptr;
+
 			GraphicsPipelineStateDesc ps_desc;
 			ps_desc.primitive_topology_type = PrimitiveTopologyType::triangle;
 			ps_desc.sample_mask = U32_MAX;
@@ -48,10 +57,17 @@ namespace Luna
 			ps_desc.ib_strip_cut_value = IndexBufferStripCutValue::disabled;
 			ps_desc.input_layout = get_vertex_input_layout_desc();
 			ps_desc.vs = vs_blob.cspan();
+			ps_desc.ps = ps_blob.cspan();
 			ps_desc.shader_input_layout = m_depth_pass_slayout;
 			ps_desc.num_render_targets = 0;
 			ps_desc.dsv_format = Format::d32_float;
 			luset(m_depth_pass_pso, device->new_graphics_pipeline_state(ps_desc));
+
+			luset(m_default_base_color, device->new_resource(
+				ResourceDesc::tex2d(ResourceHeapType::local, Format::rgba8_unorm, ResourceUsageFlag::shader_resource, 1, 1, 1, 1)));
+			u8 base_color_data[4] = { 255, 255, 255, 255 };
+			luexp(device->copy_resource({
+				ResourceCopyDesc::as_write_texture(m_default_base_color, base_color_data, 4, 4, 0, BoxU(0, 0, 0, 1, 1, 1))}));
         }
         lucatchret;
         return ok;
@@ -105,9 +121,27 @@ namespace Luna
 
 				for (u32 j = 0; j < num_pieces; ++j)
 				{
+					Ref<RHI::IResource> base_color_tex = m_global_data->m_default_base_color;
+
+					if (j < model->materials.size())
+					{
+						auto mat = Asset::get_asset_data<Material>(model->materials[j]);
+						if (mat)
+						{
+							// Set material for this piece.
+							Ref<RHI::IResource> mat_base_color_tex = Asset::get_asset_data<RHI::IResource>(mat->base_color);
+							if (mat_base_color_tex)
+							{
+								base_color_tex = mat_base_color_tex;
+							}
+						}
+					}
+
 					lulet(vs, device->new_descriptor_set(DescriptorSetDesc(m_global_data->m_depth_pass_dlayout)));
 					vs->set_cbv(0, camera_cb, ConstantBufferViewDesc(0, (u32)align_upper(sizeof(CameraCB), cb_align)));
 					vs->set_srv(1, model_matrices, &ShaderResourceViewDesc::as_buffer(Format::unknown, i, 1, sizeof(Float4x4) * 2, false));
+					vs->set_srv(2, base_color_tex);
+					vs->set_sampler(3, SamplerDesc(FilterMode::min_mag_mip_linear, TextureAddressMode::repeat, TextureAddressMode::repeat, TextureAddressMode::repeat));
 					cmdbuf->set_graphics_descriptor_set(0, vs);
 					cmdbuf->attach_device_object(vs);
 					cmdbuf->draw_indexed(mesh->pieces[j].num_indices, mesh->pieces[j].first_index_offset, 0);

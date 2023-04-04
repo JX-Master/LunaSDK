@@ -21,6 +21,8 @@ namespace Luna
 		Ref<RHI::IDescriptorSetLayout> m_deferred_lighting_pass_dlayout;
 		Ref<RHI::IShaderInputLayout> m_deferred_lighting_pass_slayout;
 
+        Ref<RHI::IResource> m_default_skybox;
+
         RV init(RHI::IDevice* device);
     };
 

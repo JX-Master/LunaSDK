@@ -153,6 +153,7 @@ namespace Luna
 			desc.name = get_scene_asset_type();
 			desc.on_load_asset = load_json_asset<Scene>;
 			desc.on_save_asset = save_json_asset<Scene>;
+			desc.on_load_asset_default_data = create_default_object<Scene>;
 			desc.on_set_asset_data = nullptr;
 			desc.userdata = nullptr;
 			Asset::register_asset_type(desc);

@@ -15,5 +15,4 @@ namespace Luna
 	Name get_model_asset_type();
 	void register_model_asset_type();
 	void register_model_editor();
-	void register_model_importer();
 }

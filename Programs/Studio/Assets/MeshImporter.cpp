@@ -189,6 +189,29 @@ namespace Luna
 		return ok;
 	}
 
+	static void import_static_mesh(const Path& path, const ObjLoader::ObjMesh& mesh, u32 shape_index)
+	{
+		lutry
+		{
+			auto file_path = path;
+			lulet(asset, Asset::new_asset(file_path, get_static_mesh_asset_type()));
+			file_path.append_extension("mesh");
+			MeshAsset mesh_asset;
+			luexp(create_mesh_asset_from_obj(mesh_asset, mesh, shape_index));
+			lulet(f, VFS::open_file(file_path, FileOpenFlag::write | FileOpenFlag::user_buffering, FileCreationMode::create_always));
+			lulet(data, serialize(mesh_asset));
+			auto json_data = json_write(data);
+			luexp(f->write({(byte_t*)json_data.data(), json_data.size()}));
+			f.reset();
+			Asset::load_asset(asset);
+		}
+		lucatch
+		{
+			auto _ = Window::message_box(explain(lures), "Failed to import obj mesh asset",
+				Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
+		}
+	}
+
 	void MeshImporter::on_render()
 	{
 		char title[32];
@@ -227,7 +250,7 @@ namespace Luna
 				m_import_names.clear();
 				for (auto& i : m_obj_file.shapes)
 				{
-					m_import_names.push_back(String());
+					m_import_names.push_back(String(i.name.c_str()));
 				}
 			}
 			lucatch
@@ -263,6 +286,18 @@ namespace Luna
 			else
 			{
 				ImGui::Text("%u meshes found", (u32)m_obj_file.shapes.size());
+				if(ImGui::Button("Import All"))
+				{
+					for (u32 i = 0; i < (u32)m_obj_file.shapes.size(); ++i)
+					{
+						if(!m_import_names[i].empty())
+						{
+							Path file_path = m_create_dir;
+							file_path.push_back(m_import_names[i]);
+							import_static_mesh(file_path, m_obj_file, i);
+						}
+					}
+				}
 				if (ImGui::CollapsingHeader("Shapes"))
 				{
 					for (u32 i = 0; i < (u32)m_obj_file.shapes.size(); ++i)
@@ -274,29 +309,12 @@ namespace Luna
 						ImGui::InputText("Asset Name", m_import_names[i]);
 						if (!m_import_names[i].empty())
 						{
-							ImGui::Text("The mesh will be imported as: %s%s", m_create_dir.encode().c_str(), m_import_names[i].c_str());
+							Path file_path = m_create_dir;
+							file_path.push_back(m_import_names[i]);
+							ImGui::Text("The mesh will be imported as: %s", file_path.encode().c_str());
 							if (ImGui::Button("Import"))
 							{
-								lutry2
-								{
-									Path file_path = m_create_dir;
-									file_path.push_back(m_import_names[i]);
-									lulet2(asset, Asset::new_asset(file_path, get_static_mesh_asset_type()));
-									file_path.append_extension("mesh");
-									MeshAsset mesh_asset;
-									luexp2(create_mesh_asset_from_obj(mesh_asset, m_obj_file, i));
-									lulet2(f, VFS::open_file(file_path, FileOpenFlag::write | FileOpenFlag::user_buffering, FileCreationMode::create_always));
-									lulet2(data, serialize(mesh_asset));
-									auto json_data = json_write(data);
-									luexp2(f->write({(byte_t*)json_data.data(), json_data.size()}));
-									f.reset();
-									Asset::load_asset(asset);
-								}
-								lucatch2
-								{
-									auto _ = Window::message_box(explain(lures2), "Failed to import obj mesh asset",
-										Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
-								}
+								import_static_mesh(file_path, m_obj_file, i);
 							}
 						}
 						ImGui::PopID();

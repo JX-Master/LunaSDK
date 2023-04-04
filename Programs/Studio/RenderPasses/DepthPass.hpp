@@ -22,6 +22,8 @@ namespace Luna
         Ref<RHI::IPipelineState> m_depth_pass_pso;
 		Ref<RHI::IDescriptorSetLayout> m_depth_pass_dlayout;
 		Ref<RHI::IShaderInputLayout> m_depth_pass_slayout;
+
+        Ref<RHI::IResource> m_default_base_color;	// 1.0f, 1.0f, 1.0f, 1.0f
     
         RV init(RHI::IDevice* device);
     };
