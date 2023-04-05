@@ -278,7 +278,7 @@ namespace Luna
 					Ref<DirectionalLight> directional = light_rs[i];
 					if (directional)
 					{
-						p.strength = directional->intensity;
+						p.strength = directional->intensity * directional->intensity_multiplier;
 						p.attenuation_power = 1.0f;
 						p.direction = AffineMatrix::forward(AffineMatrix::make_rotation(light_ts[i]->world_rotation()));
 						p.type = 0;
@@ -290,7 +290,7 @@ namespace Luna
 						Ref<PointLight> point = light_rs[i];
 						if (point)
 						{
-							p.strength = point->intensity;
+							p.strength = point->intensity * point->intensity_multiplier;
 							p.attenuation_power = point->attenuation_power;
 							p.direction = Float3U(0.0f, 0.0f, 1.0f);
 							p.type = 1;
@@ -302,7 +302,7 @@ namespace Luna
 							Ref<SpotLight> spot = light_rs[i];
 							if (spot)
 							{
-								p.strength = spot->intensity;
+								p.strength = spot->intensity * spot->intensity_multiplier;
 								p.attenuation_power = spot->attenuation_power;
 								p.direction = AffineMatrix::forward(AffineMatrix::make_rotation(light_ts[i]->world_rotation()));
 								p.type = 2;
@@ -392,7 +392,17 @@ namespace Luna
 					lighting->camera_cb = m_camera_cb;
 					lighting->light_params = m_lighting_params;
 					lighting->light_ts = {light_ts.data(), light_ts.size()};
+					switch (m_settings.mode)
+					{
+					case SceneRendererMode::lit: lighting->lighting_mode = 0; break;
+					case SceneRendererMode::emissive: lighting->lighting_mode = 1; break;
+					case SceneRendererMode::diffuse_lighting: lighting->lighting_mode = 2; break;
+					case SceneRendererMode::specular_lighting: lighting->lighting_mode = 3; break;
+					case SceneRendererMode::ambient_diffuse_lighting: lighting->lighting_mode = 4; break;
+					case SceneRendererMode::ambient_specular_lighting: lighting->lighting_mode = 5; break;
+					}
 					tone_mapping->exposure = scene_renderer->exposure;
+					tone_mapping->auto_exposure = scene_renderer->auto_exposure;
 				}
 			}
             luexp(m_render_graph->execute(command_buffer));

@@ -23,6 +23,8 @@ namespace Luna
 
         Ref<RHI::IResource> m_default_skybox;
 
+        Ref<RHI::IResource> m_integrate_brdf;
+
         RV init(RHI::IDevice* device);
     };
 
@@ -32,6 +34,7 @@ namespace Luna
         luiimpl();
 
         Ref<RHI::IResource> skybox;
+        u32 lighting_mode;
 
         Span<Ref<Entity>> light_ts;
         Ref<RHI::IResource> camera_cb;
@@ -41,6 +44,7 @@ namespace Luna
         RV execute(RG::IRenderPassContext* ctx) override;
 
         private:
+        Ref<RHI::IResource> m_lighting_mode_cb;
         Ref<DeferredLightingPassGlobalData> m_global_data;
         Ref<RHI::IDescriptorSet> m_ds;
     };

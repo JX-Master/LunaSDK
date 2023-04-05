@@ -45,6 +45,9 @@ namespace Luna
 		Name m_editing_asset_name;
 		String m_asset_name_editing_buf;
 		//----- End of States for asset popup menu -----
+
+		// The asset that should be deleted before rendering this frame.
+		Vector<Asset::asset_t> m_deleting_assets;
 		
 		AssetBrowser() :
 			m_current_location_in_histroy_path(0),

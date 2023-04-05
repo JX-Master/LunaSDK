@@ -35,6 +35,7 @@ namespace Luna
         luiimpl();
 
         f32 exposure;
+        bool auto_exposure;
 
         RV init(ToneMappingPassGlobalData* global_data);
         RV execute(RG::IRenderPassContext* ctx) override;

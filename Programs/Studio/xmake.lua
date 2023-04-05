@@ -31,6 +31,10 @@ target("Studio")
             {type = "cs", shading_model = "5_1", output_path = target_dir, envs = runenvs})
         compile_shader.compile_shader(vformat("$(scriptdir)/Shaders/BufferVisualization.hlsl"), 
             {type = "cs", shading_model = "5_1", output_path = target_dir, envs = runenvs})
+        compile_shader.compile_shader(vformat("$(scriptdir)/Shaders/PrecomputeIntegrateBRDF.hlsl"), 
+            {type = "cs", shading_model = "5_1", output_path = target_dir, envs = runenvs})
+        compile_shader.compile_shader(vformat("$(scriptdir)/Shaders/PrecomputeEnvironmentMapMips.hlsl"), 
+            {type = "cs", shading_model = "5_1", output_path = target_dir, envs = runenvs})
     end)
 
     after_install(function (target)
@@ -46,7 +50,9 @@ target("Studio")
             "DepthVert.cso",
             "DepthPixel.cso",
             "DeferredLighting.cso",
-            "BufferVisualization.cso"
+            "BufferVisualization.cso",
+            "PrecomputeIntegrateBRDF.cso",
+            "PrecomputeEnvironmentMapMips.cso"
         }
 
         for _, i in pairs(shader_files) do

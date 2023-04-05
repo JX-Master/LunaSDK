@@ -37,8 +37,8 @@ void main(int3 dispatch_thread_id : SV_DispatchThreadID)
     float exposure;
     if(g_auto_exposure > 0)
     {
-        exposure = g_lum_tex[int2(0, 0)];
-        exposure = 1.0f / max(exposure, 0.00001f) / 9.6f;
+        float average_luminance = g_lum_tex[int2(0, 0)];
+        exposure = g_exposure / max(0.0001, average_luminance);
     }
     else
     {

@@ -649,31 +649,37 @@ float4 main(PS_INPUT input) : SV_Target
                     for (i32 cmd_i = 0; cmd_i < cmd_list->CmdBuffer.Size; ++cmd_i)
                     {
                         const ImDrawCmd* pcmd = &cmd_list->CmdBuffer[cmd_i];
-                        // Project scissor/clipping rectangles into framebuffer space
-                        Float2 clip_min = Float2((pcmd->ClipRect.x - clip_off.x), (pcmd->ClipRect.y - clip_off.y)) * clip_scale;
-                        Float2 clip_max = Float2((pcmd->ClipRect.z - clip_off.x), (pcmd->ClipRect.w - clip_off.y)) * clip_scale;
-                        // Apply Scissor, Bind texture, Draw
-                        const RectI r = {
-                            (i32)(clip_min.x),
-                            (i32)(rt_desc.height - clip_max.y),
-                            (i32)(clip_max.x - clip_min.x),
-                            (i32)(clip_max.y - clip_min.y) };
-
-                        while (g_desc_sets.size() <= num_draw_calls)
+                        if (pcmd->UserCallback)
                         {
-                            lulet(new_vs, dev->new_descriptor_set(DescriptorSetDesc(g_desc_layout)));
-                            g_desc_sets.push_back(new_vs);
+                            pcmd->UserCallback(cmd_list, pcmd);
                         }
-                        IDescriptorSet* vs = g_desc_sets[num_draw_calls];
-                        usize cb_align = dev->get_constant_buffer_data_alignment();
-                        vs->set_cbv(0, g_cb, ConstantBufferViewDesc(0, (u32)align_upper(sizeof(Float4x4), cb_align)));
-                        vs->set_srv(1, (IResource*)pcmd->TextureId);
-                        vs->set_sampler(2, SamplerDesc(FilterMode::min_mag_mip_linear, TextureAddressMode::clamp, TextureAddressMode::clamp, TextureAddressMode::clamp));
-                        cmd_buffer->resource_barrier(ResourceBarrierDesc::as_transition((IResource*)pcmd->TextureId, ResourceState::shader_resource_pixel));
-                        cmd_buffer->set_graphics_descriptor_set(0, vs);
-                        cmd_buffer->set_scissor_rect(r);
-                        cmd_buffer->draw_indexed(pcmd->ElemCount, pcmd->IdxOffset + idx_offset, pcmd->VtxOffset + vtx_offset);
-                        ++num_draw_calls;
+                        else
+                        {
+                            // Project scissor/clipping rectangles into framebuffer space
+                            Float2 clip_min = Float2((pcmd->ClipRect.x - clip_off.x), (pcmd->ClipRect.y - clip_off.y)) * clip_scale;
+                            Float2 clip_max = Float2((pcmd->ClipRect.z - clip_off.x), (pcmd->ClipRect.w - clip_off.y)) * clip_scale;
+                            // Apply Scissor, Bind texture, Draw
+                            const RectI r = {
+                                (i32)(clip_min.x),
+                                (i32)(rt_desc.height - clip_max.y),
+                                (i32)(clip_max.x - clip_min.x),
+                                (i32)(clip_max.y - clip_min.y) };
+                            while (g_desc_sets.size() <= num_draw_calls)
+                            {
+                                lulet(new_vs, dev->new_descriptor_set(DescriptorSetDesc(g_desc_layout)));
+                                g_desc_sets.push_back(new_vs);
+                            }
+                            IDescriptorSet* vs = g_desc_sets[num_draw_calls];
+                            usize cb_align = dev->get_constant_buffer_data_alignment();
+                            vs->set_cbv(0, g_cb, ConstantBufferViewDesc(0, (u32)align_upper(sizeof(Float4x4), cb_align)));
+                            vs->set_srv(1, (IResource*)pcmd->TextureId);
+                            vs->set_sampler(2, SamplerDesc(FilterMode::min_mag_mip_linear, TextureAddressMode::clamp, TextureAddressMode::clamp, TextureAddressMode::clamp));
+                            cmd_buffer->resource_barrier(ResourceBarrierDesc::as_transition((IResource*)pcmd->TextureId, ResourceState::shader_resource_pixel));
+                            cmd_buffer->set_graphics_descriptor_set(0, vs);
+                            cmd_buffer->set_scissor_rect(r);
+                            cmd_buffer->draw_indexed(pcmd->ElemCount, pcmd->IdxOffset + idx_offset, pcmd->VtxOffset + vtx_offset);
+                            ++num_draw_calls;
+                        }
                     }
                     idx_offset += cmd_list->IdxBuffer.Size;
                     vtx_offset += cmd_list->VtxBuffer.Size;

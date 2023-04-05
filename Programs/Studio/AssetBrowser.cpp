@@ -118,6 +118,16 @@ namespace Luna
 
 	void AssetBrowser::render()
 	{
+		for (auto& asset : m_deleting_assets)
+		{
+			auto r = Asset::delete_asset(asset);
+			if (failed(r))
+			{
+				Window::message_box(explain(r.errcode()), "Delete asset failed", Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
+			}
+		}
+		m_deleting_assets.clear();
+
 		char title[64];
 		sprintf_s(title, "Asset Browser##%llu", (u64)this);
 
@@ -673,11 +683,7 @@ namespace Luna
 							}
 							else
 							{
-								auto r = Asset::delete_asset(asset.get());
-								if(failed(r))
-								{
-									Window::message_box(explain(r.errcode()), "Delete asset failed", Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
-								}
+								m_deleting_assets.push_back(asset.get());
 							}
 						}
 						ImGui::CloseCurrentPopup();

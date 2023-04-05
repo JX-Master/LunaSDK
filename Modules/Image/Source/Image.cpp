@@ -209,7 +209,6 @@ namespace Luna
 				(pixel_format == ImagePixelFormat::rgba32_float)
 				) ? true : false;
 		}
-
 		LUNA_IMAGE_API RV write_png_file(ISeekableStream* stream, const ImageDesc& desc, const Blob& image_data)
 		{
 			if (!check_png_format(desc.format))

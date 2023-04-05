@@ -58,6 +58,8 @@ namespace Luna
 			return;
 		}
 
+		ImGui::PushID((int)(usize)obj);
+
 		// A very simple GUI implementation based on type reflection.
 		if (is_primitive_type(type))
 		{
@@ -90,9 +92,18 @@ namespace Luna
 				}
 				else
 				{
-					
-					ImGui::DragFloat(name, data, 1.0f, v_min, v_max);
+					f32 speed = 1.0f;
+					if (v_max - v_min != 0.0f)
+					{
+						speed = (v_max - v_min) / 100.0f;
+					}
+					ImGui::DragFloat(name, data, speed, v_min, v_max);
 				}
+			}
+			else if (type == boolean_type())
+			{
+				bool* data = (bool*)obj;
+				ImGui::Checkbox(name, data);
 			}
 		}
 		else if (is_enum_type(type))
@@ -159,6 +170,8 @@ namespace Luna
 				*data = buf;
 			}
 		}
+
+		ImGui::PopID();
 	}
 
 	void edit_object(object_t obj)

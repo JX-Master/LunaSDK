@@ -126,6 +126,11 @@ namespace Luna
 				luoption(SceneRendererMode, roughness),
 				luoption(SceneRendererMode, metallic),
 				luoption(SceneRendererMode, depth),
+				luoption(SceneRendererMode, emissive),
+				luoption(SceneRendererMode, diffuse_lighting),
+				luoption(SceneRendererMode, specular_lighting),
+				luoption(SceneRendererMode, ambient_diffuse_lighting),
+				luoption(SceneRendererMode, ambient_specular_lighting)
 			});
 		}
 		lucatchret;
@@ -295,11 +300,12 @@ namespace Luna
 		g_env->component_types.insert(typeof<ModelRenderer>());
 
 		register_struct_type<SceneSettings>({
+			luproperty(SceneSettings, Name, camera_entity),
 			luproperty(SceneSettings, Asset::asset_t, skybox),
 			luproperty(SceneSettings, Float3, environment_color),
 			luproperty(SceneSettings, f32, skybox_rotation),
 			luproperty(SceneSettings, f32, exposure),
-			luproperty(SceneSettings, Name, camera_entity)
+			luproperty(SceneSettings, bool, auto_exposure)
 			});
 		set_serializable<SceneSettings>();
 		g_env->scene_component_types.insert(typeof<SceneSettings>());

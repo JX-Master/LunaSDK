@@ -210,7 +210,7 @@ namespace Luna
 					luexp(m_tone_mapping_cb->map_subresource(0, 0, 0, &mapped));
 					ToneMappingParams params;
 					params.exposure = exposure;
-					params.auto_exposure = 1;
+					params.auto_exposure = auto_exposure ? 1 : 0;
 					memcpy(mapped, &params, sizeof(ToneMappingParams));
 					m_tone_mapping_cb->unmap_subresource(0, 0, sizeof(ToneMappingParams));
 					cmdbuf->set_compute_shader_input_layout(m_global_data->m_tone_mapping_pass_slayout);

@@ -43,6 +43,11 @@ namespace Luna
         roughness,
         metallic,
         depth,
+        emissive,
+        diffuse_lighting,
+        specular_lighting,
+        ambient_diffuse_lighting,
+        ambient_specular_lighting
     };
 
     luenum(SceneRendererMode, "SceneRendererMode", "e66271d7-cbe7-4f0b-8de3-de0cc7b06982");
