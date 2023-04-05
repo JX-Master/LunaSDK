@@ -98,7 +98,7 @@ namespace Luna
 			luset(m_renderer.command_buffer, g_env->graphics_queue->new_command_buffer());
 			SceneRendererSettings settings;
 			settings.frame_profiling = true;
-			settings.wireframe = false;
+			settings.mode = SceneRendererMode::lit;
 			settings.screen_size = UInt2U(1024, 768);
 			luexp(m_renderer.reset(settings));
 		}
@@ -406,7 +406,34 @@ namespace Luna
 			auto settings = m_renderer.get_settings();
 
 			ImGui::SameLine();
-			ImGui::Checkbox("Wireframe", &settings.wireframe);
+			ImGui::SetNextItemWidth(150.0f);
+			{
+				auto render_mode_type = typeof<SceneRendererMode>();
+				usize num_options = count_enum_options(render_mode_type);
+				Name current_name;
+				for(usize i = 0; i < num_options; ++i)
+				{
+					auto desc = get_enum_option(render_mode_type, i);
+					if(desc.value == (i64)settings.mode)
+					{
+						current_name = desc.name;
+						break;
+					}
+				}
+				if(ImGui::BeginCombo("Render Mode", current_name.c_str()))
+				{
+					for(usize i = 0; i < num_options; ++i)
+					{
+						auto desc = get_enum_option(render_mode_type, i);
+						bool selected = (desc.value == (i64)settings.mode);
+						if(ImGui::Selectable(desc.name.c_str(), selected))
+						{
+							settings.mode = (SceneRendererMode)desc.value;
+						}
+					}
+					ImGui::EndCombo();
+				}
+			}
 			ImGui::SameLine();
 			ImGui::Checkbox("Time Profiling", &settings.frame_profiling);
 
@@ -455,8 +482,47 @@ namespace Luna
 						ImGui::Text("%s: %fms", m_renderer.enabled_passes[i].c_str(), m_renderer.pass_time_intervals[i] * 1000.0);
 					}
 				}
-
 				ImGui::SetCursorPos(backup_pos);
+
+				// Draw scene gizmos.
+				if(camera_entity)
+				{
+					f32 gizmo_size = 50.0f;
+					f32 gizmo_len = gizmo_size;
+
+					Float4x4 view_mat = inverse(AffineMatrix::make(camera_entity->position, camera_entity->rotation, Float3(1.0f)));
+					Float4 x_gizmo = mul(Float4(1.0f, 0.0f, 0.0f, 0.0f) * gizmo_len, view_mat);
+					Float4 y_gizmo = mul(Float4(0.0f, 1.0f, 0.0f, 0.0f) * gizmo_len, view_mat);
+					Float4 z_gizmo = mul(Float4(0.0f, 0.0f, 1.0f, 0.0f) * gizmo_len, view_mat);
+
+					ImDrawList* dw = ImGui::GetWindowDrawList();
+					Float2 origin_point = { scene_pos.x + gizmo_size, scene_pos.y + scene_sz.y - gizmo_size };
+
+					struct GizmoLine
+					{
+						Float3U line;
+						color_u32 color;
+
+						bool operator<(const GizmoLine& rhs) const
+						{
+							// Higher depth value gets drawn first (appear first in the draw list).
+							return line.z > rhs.line.z;
+						}
+					};
+
+					Vector<GizmoLine> lines;
+					lines.push_back({ x_gizmo.xyz(), Color::red().abgr8() });
+					lines.push_back({ y_gizmo.xyz(), Color::green().abgr8() });
+					lines.push_back({ z_gizmo.xyz(), Color::blue().abgr8() });
+
+					// Sort by depth to ensure correct drawing order.
+					sort(lines.begin(), lines.end());
+					for (auto& line : lines)
+					{
+						// Revert y axis, since y axis of ImGui points to down, not up.
+						dw->AddLine(origin_point, origin_point + Float2(line.line.x, -line.line.y), line.color, 5.0f);
+					}
+				}
 			}
 
 			if (ImGui::IsMouseClicked(ImGuiMouseButton_Right) && in_bounds(ImGui::GetIO().MousePos, scene_pos, scene_pos + scene_sz))

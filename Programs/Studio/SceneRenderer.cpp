@@ -21,6 +21,7 @@
 #include "RenderPasses/DepthPass.hpp"
 #include "RenderPasses/GeometryPass.hpp"
 #include "RenderPasses/DeferredLightingPass.hpp"
+#include "RenderPasses/BufferVisualizationPass.hpp"
 
 namespace Luna
 {
@@ -47,14 +48,15 @@ namespace Luna
 				using namespace RG;
 				
 				RenderGraphDesc desc;
-				desc.passes.resize(6);
+				desc.passes.resize(7);
 				desc.passes[WIREFRAME_PASS] = {"WireframePass", "Wireframe"};
 				desc.passes[DEPTH_PASS] = {"DepthPass", "Depth"};
 				desc.passes[GEOMETRY_PASS] = {"GeometryPass", "Geometry"};
+				desc.passes[BUFFER_VIS_PASS] = {"BufferVisualizationPass", "BufferVisualization"};
 				desc.passes[SKYBOX_PASS] = {"SkyBoxPass", "SkyBox"};
 				desc.passes[DEFERRED_LIGHTING_PASS] = {"DeferredLightingPass", "DeferredLighting"};
 				desc.passes[TONE_MAPPING_PASS] = {"ToneMappingPass", "ToneMapping"};
-				desc.resources.resize(7);
+				desc.resources.resize(8);
 				desc.resources[LIGHTING_BUFFER] = {RenderGraphResourceType::transient, 
 					RenderGraphResourceFlag::none,
 					"LightingBuffer", 
@@ -75,6 +77,11 @@ namespace Luna
 					"WireframeBackBuffer",
 					ResourceDesc::tex2d(ResourceHeapType::local, Format::rgba8_unorm, 
 					ResourceUsageFlag::shader_resource | ResourceUsageFlag::render_target, (u32)settings.screen_size.x, (u32)settings.screen_size.y, 1, 1)};
+				desc.resources[GBUFFER_VIS_BUFFER] = {RenderGraphResourceType::transient, 
+					RenderGraphResourceFlag::none,
+					"GBufferBackBuffer",
+					ResourceDesc::tex2d(ResourceHeapType::local, Format::rgba8_unorm, 
+					ResourceUsageFlag::shader_resource | ResourceUsageFlag::render_target, (u32)settings.screen_size.x, (u32)settings.screen_size.y, 1, 1)};
 				desc.resources[BASE_COLOR_ROUGHNESS_BUFFER] = {RenderGraphResourceType::transient, 
 					RenderGraphResourceFlag::none,
 					"BaseColorRoughnessBuffer",
@@ -90,16 +97,26 @@ namespace Luna
 					"EmissiveBuffer",
 					ResourceDesc::tex2d(ResourceHeapType::local, Format::rgba16_float, 
 					ResourceUsageFlag::shader_resource | ResourceUsageFlag::render_target, 0, 0, 1, 1)};
-				if(settings.wireframe)
+
+				switch(settings.mode)
 				{
-					desc.resources[WIREFRAME_BACK_BUFFER].type = RenderGraphResourceType::persistent;
-					desc.resources[WIREFRAME_BACK_BUFFER].flags |= RenderGraphResourceFlag::output;
+					case SceneRendererMode::wireframe:
+						desc.resources[WIREFRAME_BACK_BUFFER].type = RenderGraphResourceType::persistent;
+						desc.resources[WIREFRAME_BACK_BUFFER].flags |= RenderGraphResourceFlag::output;
+						break;
+					case SceneRendererMode::base_color:
+					case SceneRendererMode::normal:
+					case SceneRendererMode::roughness:
+					case SceneRendererMode::metallic:
+					case SceneRendererMode::depth:
+						desc.resources[GBUFFER_VIS_BUFFER].type = RenderGraphResourceType::persistent;
+						desc.resources[GBUFFER_VIS_BUFFER].flags |= RenderGraphResourceFlag::output;
+						break;
+					default:
+						desc.resources[BACK_BUFFER].type = RenderGraphResourceType::persistent;
+						desc.resources[BACK_BUFFER].flags |= RenderGraphResourceFlag::output;
 				}
-				else
-				{
-					desc.resources[BACK_BUFFER].type = RenderGraphResourceType::persistent;
-					desc.resources[BACK_BUFFER].flags |= RenderGraphResourceFlag::output;
-				}
+				
 				desc.output_connections.push_back({WIREFRAME_PASS, "scene_texture", WIREFRAME_BACK_BUFFER});
 				desc.output_connections.push_back({DEPTH_PASS, "depth_texture", DEPTH_BUFFER});
 				desc.input_connections.push_back({GEOMETRY_PASS, "depth_texture", DEPTH_BUFFER});
@@ -113,6 +130,10 @@ namespace Luna
 				desc.input_connections.push_back({DEFERRED_LIGHTING_PASS, "normal_metallic_texture", NORMAL_METALLIC_BUFFER});
 				desc.input_connections.push_back({DEFERRED_LIGHTING_PASS, "emissive_texture", EMISSIVE_BUFFER});
 				desc.output_connections.push_back({DEFERRED_LIGHTING_PASS, "scene_texture", LIGHTING_BUFFER});
+				desc.input_connections.push_back({BUFFER_VIS_PASS, "depth_texture", DEPTH_BUFFER});
+				desc.input_connections.push_back({BUFFER_VIS_PASS, "base_color_roughness_texture", BASE_COLOR_ROUGHNESS_BUFFER});
+				desc.input_connections.push_back({BUFFER_VIS_PASS, "normal_metallic_texture", NORMAL_METALLIC_BUFFER});
+				desc.output_connections.push_back({BUFFER_VIS_PASS, "scene_texture", GBUFFER_VIS_BUFFER});
 				desc.input_connections.push_back({TONE_MAPPING_PASS, "hdr_texture", LIGHTING_BUFFER});
 				desc.output_connections.push_back({TONE_MAPPING_PASS, "ldr_texture", BACK_BUFFER});
 				m_render_graph->set_desc(desc);
@@ -313,13 +334,39 @@ namespace Luna
 
             {
 				// Set parameters.
-				if(m_settings.wireframe)
+				if(m_settings.mode == SceneRendererMode::wireframe)
 				{
 					WireframePass* wireframe = cast_objct<WireframePass>(m_render_graph->get_render_pass(WIREFRAME_PASS)->get_object());
 					wireframe->model_matrices = m_model_matrices;
 					wireframe->camera_cb = m_camera_cb;
 					wireframe->ts = {ts.data(), ts.size()};
 					wireframe->rs = {rs.data(), rs.size()};
+				}
+				else if(m_settings.mode == SceneRendererMode::base_color ||
+						m_settings.mode == SceneRendererMode::normal ||
+						m_settings.mode == SceneRendererMode::roughness ||
+						m_settings.mode == SceneRendererMode::metallic ||
+						m_settings.mode == SceneRendererMode::depth)
+				{
+					DepthPass* depth = cast_objct<DepthPass>(m_render_graph->get_render_pass(DEPTH_PASS)->get_object());
+					GeometryPass* geometry = cast_objct<GeometryPass>(m_render_graph->get_render_pass(GEOMETRY_PASS)->get_object());
+					BufferVisualizationPass* buffer_vis = cast_objct<BufferVisualizationPass>(m_render_graph->get_render_pass(BUFFER_VIS_PASS)->get_object());
+					depth->ts = {ts.data(), ts.size()};
+					depth->rs = {rs.data(), rs.size()};
+					depth->camera_cb = m_camera_cb;
+					depth->model_matrices = m_model_matrices;
+					geometry->camera_cb = m_camera_cb;
+					geometry->ts = {ts.data(), ts.size()};
+					geometry->rs = {rs.data(), rs.size()};
+					geometry->model_matrices = m_model_matrices;
+					switch(m_settings.mode)
+					{
+						case SceneRendererMode::base_color: buffer_vis->vis_type = 0; break;
+						case SceneRendererMode::normal: buffer_vis->vis_type = 1; break;
+						case SceneRendererMode::roughness: buffer_vis->vis_type = 2; break;
+						case SceneRendererMode::metallic: buffer_vis->vis_type = 3; break;
+						case SceneRendererMode::depth: buffer_vis->vis_type = 4; break;
+					}
 				}
 				else
 				{
@@ -351,13 +398,20 @@ namespace Luna
             luexp(m_render_graph->execute(command_buffer));
 			// Set render pass parameters.
 			{
-				if(m_settings.wireframe)
+				switch(m_settings.mode)
 				{
-					render_texture = m_render_graph->get_persistent_resource(WIREFRAME_BACK_BUFFER);
-				}
-				else
-				{
-					render_texture = m_render_graph->get_persistent_resource(BACK_BUFFER);
+					case SceneRendererMode::wireframe:
+						render_texture = m_render_graph->get_persistent_resource(WIREFRAME_BACK_BUFFER);
+						break;
+					case SceneRendererMode::base_color:
+					case SceneRendererMode::normal:
+					case SceneRendererMode::roughness:
+					case SceneRendererMode::metallic:
+					case SceneRendererMode::depth:
+						render_texture = m_render_graph->get_persistent_resource(GBUFFER_VIS_BUFFER);
+						break;
+					default:
+						render_texture = m_render_graph->get_persistent_resource(BACK_BUFFER);
 				}
 			}
         }

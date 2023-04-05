@@ -32,6 +32,9 @@
 #include "RenderPasses/DepthPass.hpp"
 #include "RenderPasses/GeometryPass.hpp"
 #include "RenderPasses/DeferredLightingPass.hpp"
+#include "RenderPasses/BufferVisualizationPass.hpp"
+
+#include "SceneRenderer.hpp"
 
 namespace Luna
 {
@@ -113,6 +116,17 @@ namespace Luna
 			luexp(register_geometry_pass());
 			luexp(register_deferred_lighting_pass());
 			luexp(register_tone_mapping_pass());
+			luexp(register_buffer_visualization_pass());
+
+			register_enum_type<SceneRendererMode>({
+				luoption(SceneRendererMode, lit),
+				luoption(SceneRendererMode, wireframe),
+				luoption(SceneRendererMode, base_color),
+				luoption(SceneRendererMode, normal),
+				luoption(SceneRendererMode, roughness),
+				luoption(SceneRendererMode, metallic),
+				luoption(SceneRendererMode, depth),
+			});
 		}
 		lucatchret;
 		return ok;

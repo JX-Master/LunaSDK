@@ -29,6 +29,8 @@ target("Studio")
             {type = "ps", shading_model = "5_1", output_path = target_dir, envs = runenvs})
         compile_shader.compile_shader(vformat("$(scriptdir)/Shaders/DeferredLighting.hlsl"), 
             {type = "cs", shading_model = "5_1", output_path = target_dir, envs = runenvs})
+        compile_shader.compile_shader(vformat("$(scriptdir)/Shaders/BufferVisualization.hlsl"), 
+            {type = "cs", shading_model = "5_1", output_path = target_dir, envs = runenvs})
     end)
 
     after_install(function (target)
@@ -43,7 +45,8 @@ target("Studio")
             "GeometryPixel.cso",
             "DepthVert.cso",
             "DepthPixel.cso",
-            "DeferredLighting.cso"
+            "DeferredLighting.cso",
+            "BufferVisualization.cso"
         }
 
         for _, i in pairs(shader_files) do

@@ -134,6 +134,12 @@ namespace Luna
 			render_pass.rtvs[0] = base_color_rtv;
 			render_pass.rtvs[1] = normal_rtv;
 			render_pass.rtvs[2] = emissive_rtv;
+			render_pass.rt_load_ops[0] = LoadOp::clear;
+			render_pass.rt_clear_values[0] = Float4U(0.0f);
+			render_pass.rt_load_ops[1] = LoadOp::clear;
+			render_pass.rt_clear_values[1] = Float4U(0.0f);
+			render_pass.rt_load_ops[2] = LoadOp::clear;
+			render_pass.rt_clear_values[2] = Float4U(0.0f);
 			render_pass.dsv = depth_dsv;
 			render_pass.depth_load_op = RHI::LoadOp::load;
 			cmdbuf->begin_render_pass(render_pass);

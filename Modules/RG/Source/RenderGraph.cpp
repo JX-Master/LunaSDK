@@ -29,6 +29,7 @@ namespace Luna
             // The output parameter this resource is attached to.
             // Name parameter;
             // The index of the node that creates resource.
+            // If `first_access` is `USIZE_MAX`, this resource is never used and should not be tracked.
             usize first_access = USIZE_MAX;
             // The index of the node that last accesses the resource.
             usize last_access = 0;
@@ -65,23 +66,19 @@ namespace Luna
                 m_enable_time_profiling = config.enable_time_profiling;
                 m_enable_pipeline_statistics_profiling = config.enable_pipeline_statistics_profiling;
                 Vector<ResourceTrackData> resource_track_data(m_resource_data.size());
-                // Apply connections.
-                for(auto& i : m_desc.input_connections)
+                // Initialize pass data and resource track data.
+                for (auto& i : m_desc.input_connections)
                 {
                     m_pass_data[i.pass].m_input_resources.insert(make_pair(i.parameter, i.resource));
-                    auto& res = resource_track_data[i.resource];
-                    res.first_access = min(res.first_access, i.pass);
-                    res.last_access = max(res.last_access, i.pass);
                 }
-                for(auto& i : m_desc.output_connections)
+                for (auto& i : m_desc.output_connections)
                 {
                     m_pass_data[i.pass].m_output_resources.insert(make_pair(i.parameter, i.resource));
                     auto& res = resource_track_data[i.resource];
-                    res.first_access = min(res.first_access, i.pass);
-                    res.last_access = max(res.last_access, i.pass);
                     res.write_passes.push_back(i.pass);
                 }
-                // Check alive passes (cull out unrequired passes).
+                // Cull out unrequired passes.
+                // Scan the resource to find output resources, all passes that writes to output resources should be enabled.
                 for(usize i = 0; i < m_desc.resources.size(); ++i)
                 {
                     if(test_flags(m_desc.resources[i].flags, RenderGraphResourceFlag::output))
@@ -92,6 +89,7 @@ namespace Luna
                         }
                     }
                 }
+                // Scan the pass queue in reverse order, all passes that write to input resources of enabled passes should also be enabled.
                 for(usize i = 0; i < m_desc.passes.size(); ++i)
                 {
                     auto& pass = m_pass_data[m_desc.passes.size() - i - 1];
@@ -104,6 +102,25 @@ namespace Luna
                                 m_pass_data[prior_pass].m_enabled = true;
                             }
                         }
+                    }
+                }
+                // Determine transient resource lifetime.
+                for (auto& i : m_desc.input_connections)
+                {
+                    if (m_pass_data[i.pass].m_enabled)
+                    {
+                        auto& res = resource_track_data[i.resource];
+                        res.first_access = min(res.first_access, i.pass);
+                        res.last_access = max(res.last_access, i.pass);
+                    }   
+                }
+                for (auto& i : m_desc.output_connections)
+                {
+                    if (m_pass_data[i.pass].m_enabled)
+                    {
+                        auto& res = resource_track_data[i.resource];
+                        res.first_access = min(res.first_access, i.pass);
+                        res.last_access = max(res.last_access, i.pass);
                     }
                 }
                 // Apply user-defined descs.

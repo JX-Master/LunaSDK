@@ -34,18 +34,31 @@ namespace Luna
 		f32 spot_attenuation_power;
 	};
 
+    enum class SceneRendererMode : u8
+    {
+        lit = 0,
+        wireframe,
+        base_color,
+        normal,
+        roughness,
+        metallic,
+        depth,
+    };
+
+    luenum(SceneRendererMode, "SceneRendererMode", "e66271d7-cbe7-4f0b-8de3-de0cc7b06982");
+
     struct SceneRendererSettings
     {
         // The screen size.
         UInt2U screen_size;
         // Whether to collect profiling data.
         bool frame_profiling = false;
-        // Whether to render in wireframe mode.
-        bool wireframe = false;
+        // The rendering mode.
+        SceneRendererMode mode = SceneRendererMode::lit;
 
         bool operator==(const SceneRendererSettings& rhs) const
         {
-            return screen_size == rhs.screen_size && frame_profiling == rhs.frame_profiling && wireframe == rhs.wireframe;
+            return screen_size == rhs.screen_size && frame_profiling == rhs.frame_profiling && mode == rhs.mode;
         }
         bool operator!=(const SceneRendererSettings& rhs) const
         {
@@ -81,17 +94,19 @@ namespace Luna
 		static constexpr usize DEPTH_BUFFER = 1;
 		static constexpr usize BACK_BUFFER = 2;
 		static constexpr usize WIREFRAME_BACK_BUFFER = 3;
-		static constexpr usize BASE_COLOR_ROUGHNESS_BUFFER = 4;
-		static constexpr usize NORMAL_METALLIC_BUFFER = 5;
-		static constexpr usize EMISSIVE_BUFFER = 6;
+        static constexpr usize GBUFFER_VIS_BUFFER = 4;
+		static constexpr usize BASE_COLOR_ROUGHNESS_BUFFER = 5;
+		static constexpr usize NORMAL_METALLIC_BUFFER = 6;
+		static constexpr usize EMISSIVE_BUFFER = 7;
 
 		// Passes.
 		static constexpr usize WIREFRAME_PASS = 0;
 		static constexpr usize DEPTH_PASS = 1;
 		static constexpr usize GEOMETRY_PASS = 2;
-		static constexpr usize SKYBOX_PASS = 3;
-		static constexpr usize DEFERRED_LIGHTING_PASS = 4;
-		static constexpr usize TONE_MAPPING_PASS = 5;
+        static constexpr usize BUFFER_VIS_PASS = 3;
+		static constexpr usize SKYBOX_PASS = 4;
+		static constexpr usize DEFERRED_LIGHTING_PASS = 5;
+		static constexpr usize TONE_MAPPING_PASS = 6;
         Ref<RHI::IDevice> m_device;
         SceneRendererSettings m_settings;
         Ref<RG::IRenderGraph> m_render_graph;
