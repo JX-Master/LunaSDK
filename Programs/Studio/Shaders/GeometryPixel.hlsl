@@ -43,7 +43,6 @@ float3 normal_tangent_to_world(float3 normal_map, float3 normal_world, float3 ta
     return mul(normal_map, tbn);
 }
 
-
 PSOutput main(PSInput i)
 {
     float2 texcoord = float2(i.texcoord.x, 1.0f - i.texcoord.y);

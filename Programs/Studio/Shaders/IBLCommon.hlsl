@@ -22,17 +22,13 @@ float3 importance_sample_ggx(float2 Xi, float3 N, float roughness)
 	float sinTheta = sqrt(1.0 - cosTheta * cosTheta);
 
 	// from spherical coordinates to cartesian coordinates
-	float3 H;
-	H[0] = cos(phi) * sinTheta;
-	H[1] = sin(phi) * sinTheta;
-	H[2] = cosTheta;
+	float3 H = float3(cos(phi) * sinTheta, cosTheta, -sin(phi) * sinTheta);
 
 	// from tangent-space vector to world-space sample vector
-	float3 up = abs(N.z) < 0.999 ? float3(0.0, 0.0, 1.0) : float3(1.0, 0.0, 0.0);
-	float3 tangent = normalize(cross(up, N));
+	float3 up = abs(N.y) < 0.999 ? float3(0.0, 1.0, 0.0) : float3(1.0, 0.0, 0.0);
+	float3 tangent = normalize(cross(N, up));
 	float3 bitangent = cross(N, tangent);
-
-	float3 sampleVec = tangent * H.x + bitangent * H.y + N * H.z;
+	float3 sampleVec = tangent * H.x + N * H.y + bitangent * H.z;
 	return normalize(sampleVec);
 }
 

@@ -316,6 +316,10 @@ namespace Luna
 			{
 				lulet(files, get_asset_files(asset));
 				auto path = get_asset_path(asset);
+				{
+					MutexGuard g(g_assets_mutex);
+					g_asset_path_mapping.erase(path);
+				}
 				path.pop_back();
 				for (auto& f : files)
 				{

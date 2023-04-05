@@ -477,7 +477,8 @@ namespace Luna
 				}
 				--i;
 			}
-			return Name("");
+			// No extension found, return the filename directly.
+			return name;
 		}
 		void replace_extension(const c8* new_extension)
 		{

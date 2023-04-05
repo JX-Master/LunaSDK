@@ -44,8 +44,8 @@ namespace Luna
 	{
 		lutry
 		{
-			char title[64];
-			auto name = project_path[project_path.size() - 1];
+			char title[256];
+			auto name = project_path.filename();
 
 			// Mount Data folder.
 			auto mount_path = project_path;
@@ -56,9 +56,7 @@ namespace Luna
 			luexp(Asset::update_assets_meta("/"));
 
 			// Create window and render objects.
-			auto name_no_ext = Path(name.c_str());
-			name_no_ext.replace_extension(nullptr);
-			sprintf_s(title, "%s - Luna Studio", name_no_ext[name_no_ext.size() - 1].c_str());
+			snprintf(title, 256, "%s - Luna Studio", name.c_str());
 			luset(m_window, Window::new_window(title, Window::WindowDisplaySettings::as_windowed(), Window::WindowCreationFlag::resizable));
 
 			m_window->get_close_event() += [](Window::IWindow* window) {window->close(); };
