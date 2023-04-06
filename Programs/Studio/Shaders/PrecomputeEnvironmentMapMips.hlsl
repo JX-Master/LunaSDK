@@ -2,8 +2,10 @@
 #include "BRDF.hlsl"
 cbuffer CB : register(b0)
 {
-	float texel_size_x;	// 1.0 / destination dimension
-	float texel_size_y;
+	uint tex_width;
+	uint tex_height;
+	uint mip_0_width;
+	uint mip_0_height;
 	float roughness;
 }
 Texture2D<float4> g_src_mip : register(t1);
@@ -15,11 +17,14 @@ void main(uint3 dispatch_thread_id : SV_DispatchThreadID)
 {
 	//DTid is the thread ID * the values from numthreads above and in this case correspond to the pixels location in number of pixels.
 	//As a result texcoords (in 0-1 range) will point at the center between the 4 pixels used for the mipmap.
-	float2 texcoords = float2(texel_size_x, texel_size_y) * (dispatch_thread_id.xy + 0.5f);
+	float2 texcoords = float2(1.0 / (float)tex_width, 1.0 / (float)tex_height) * (dispatch_thread_id.xy + 0.5f);
 
 	float3 normal = get_dir_from_latlong(texcoords);
 
-	const uint num_samples = 1024;
+	// Keep a constant sampling rate for all mips.
+	uint num_samples = (uint)(8192.0 * roughness * roughness);
+	//uint num_samples = 1024;
+	float pixels_per_omega = ((float)mip_0_width * (float)mip_0_height) / (4.0 * PI);
 
 	float3 prefilter_color = 0;
 	float total_weight = 0;
@@ -34,12 +39,13 @@ void main(uint3 dispatch_thread_id : SV_DispatchThreadID)
 		{
 			float n_dot_h = max(1e-8, dot(normal, h));
 			// Probability Distribution Function
-			float pdf = ggx_normal_distrb(n_dot_h, roughness) / 4.0;
+			float pdf = ggx_normal_distrb(n_dot_h, roughness);
 
-			float omegaS = 1.0 / ((float)num_samples * pdf);
-			float omegaP = 4.0 * PI * texel_size_x * texel_size_y;
+			float sample_omega = 2.0 * PI / (pdf * num_samples);
 
-			float mip_level = 0.5 * log2(omegaS / omegaP) + 1.0;
+			float sample_pixels = pixels_per_omega * sample_omega;
+
+			float mip_level = 0.5 * log2(sample_pixels);
 
 			float3 radiance = g_src_mip.SampleLevel(g_sampler, get_latlong_from_dir(l), mip_level).xyz;
 			prefilter_color += radiance * n_dot_l;

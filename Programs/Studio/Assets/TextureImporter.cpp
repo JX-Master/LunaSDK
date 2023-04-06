@@ -229,8 +229,10 @@ namespace Luna
 			compute_cmdbuf->set_pipeline_state(m_env_mipmapping_pso);
 			struct CB
 			{
-				f32 texel_size_x;
-				f32 texel_size_y;
+				u32 tex_width;
+				u32 tex_height;
+				u32 mip_0_width;
+				u32 mip_0_height;
 				f32 roughness;
 			};
 			u32 cb_align = device->get_constant_buffer_data_alignment();
@@ -245,8 +247,10 @@ namespace Luna
 				u32 width = max<u32>((u32)desc.width_or_buffer_size >> (j + 1), 1);
 				u32 height = max<u32>(desc.height >> (j + 1), 1);
 				CB* dest = (CB*)((usize)mapped + cb_size * j);
-				dest->texel_size_x = 1.0f / (f32)width;
-				dest->texel_size_y = 1.0f / (f32)height;
+				dest->tex_width = width;
+				dest->tex_height = height;
+				dest->mip_0_width = (u32)desc.width_or_buffer_size;
+				dest->mip_0_height = desc.height;
 				dest->roughness = 1.0f / (desc.mip_levels - 1) * (j + 1);
 			}
 			cb->unmap_subresource(0, 0, USIZE_MAX);
@@ -439,7 +443,7 @@ namespace Luna
 			f.reset();
 			Asset::load_asset(asset);
 
-			file_path.pop_back();
+			/*file_path.pop_back();
 			for (u32 i = 0; i < desc.mip_levels; ++i)
 			{
 
@@ -455,7 +459,7 @@ namespace Luna
 				lulet(df, VFS::open_file(file_path, FileOpenFlag::write | FileOpenFlag::user_buffering, FileCreationMode::create_always));
 				luexp(Image::write_hdr_file(df, img_desc, img_data[i]));
 				file_path.pop_back();
-			}
+			}*/
 		}
 		lucatch
 		{
