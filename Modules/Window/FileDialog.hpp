@@ -28,6 +28,7 @@ namespace Luna
 		//! @param[in] filter The filter string used by the open file dialog. The string contains multiple substrings, each of the substring ends with a NULL character (`\0`), and
 		//! the last substring ends with two NULL characters. Every item in the filter contains a pair of substrings, the first substring is the text that describes the filter, and 
 		//! the second substring describes the filter (like "*.la"). If the filter contains multiple patterns, they are separated by semicolon (like "*.la;*.lb").
+		//! For example: "Image File\0*.jpg;*.jpeg;*.png;*.png;*.tga;*.bmp;*.psd;*.gif;*.hdr;*.pic\0\0"
 		//! @param[in] initial_dir The initial directory to set the file dialog to. If this is empty, the system decides the default directory. This path must be a platform native
 		//! path if specified.
 		//! @param[in] flags See FileOpenDialogFlag.

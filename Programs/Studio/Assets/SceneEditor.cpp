@@ -20,6 +20,8 @@
 #include "../EditObject.hpp"
 #include "../SceneSettings.hpp"
 #include "../Camera.hpp"
+#include <Window/FileDialog.hpp>
+#include <Window/MessageBox.hpp>
 namespace Luna
 {
 	struct SceneEditorUserData
@@ -86,6 +88,8 @@ namespace Luna
 		{
 			return !m_open;
 		}
+
+		void capture_scene_to_file(const Path& path);
 	};
 
 	RV SceneEditor::init()
@@ -737,6 +741,9 @@ namespace Luna
 			return;
 		}
 
+		bool capture_scene = false;
+		Path capture_save_path;
+
 		if (ImGui::BeginMenuBar())
 		{
 			if (ImGui::BeginMenu("File"))
@@ -750,6 +757,20 @@ namespace Luna
 					lucatch
 					{
 						auto _ = Window::message_box(explain(lures), "Failed to save scene", Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
+					}
+				}
+				ImGui::EndMenu();
+			}
+			if(ImGui::BeginMenu("Tools"))
+			{
+				if(ImGui::MenuItem("Capture scene"))
+				{
+					auto r = Window::save_file_dialog("BMP File\0*.bmp\0\0", "Save Capture File");
+					if(succeeded(r))
+					{
+						capture_scene = true;
+						capture_save_path = r.get();
+						capture_save_path.replace_extension("bmp");
 					}
 				}
 				ImGui::EndMenu();
@@ -778,6 +799,40 @@ namespace Luna
 		ImGui::NextColumn();
 
 		ImGui::End();
+
+		if(capture_scene)
+		{
+			capture_scene_to_file(capture_save_path);
+		}
+	}
+
+	void SceneEditor::capture_scene_to_file(const Path& path)
+	{
+		using namespace RHI;
+		lutry
+		{
+			lulet(cmdbuf, m_renderer.command_buffer->get_command_queue()->new_command_buffer());
+			cmdbuf->resource_barrier(ResourceBarrierDesc::as_transition(m_renderer.render_texture, ResourceState::copy_source, 0));
+			luexp(cmdbuf->submit());
+			cmdbuf->wait();
+			auto device = cmdbuf->get_device();
+			auto desc = m_renderer.render_texture->get_desc();
+			usize row_pitch = bits_per_pixel(desc.pixel_format) * (usize)desc.width_or_buffer_size / 8;
+			usize depth_pitch = row_pitch * desc.height;
+			Blob img_data(depth_pitch);
+			luexp(device->copy_resource({ResourceCopyDesc::as_read_texture(m_renderer.render_texture, img_data.data(), row_pitch, depth_pitch, 0, 
+				BoxU(0, 0, 0, (u32)desc.width_or_buffer_size, desc.height, 1))}));
+			Image::ImageDesc img_desc;
+			img_desc.width = (u32)desc.width_or_buffer_size;
+			img_desc.height = desc.height;
+			luset(img_desc.format, get_image_format_from_pixel_format(desc.pixel_format));
+			lulet(f, open_file(path.encode().c_str(), FileOpenFlag::write | FileOpenFlag::user_buffering, FileCreationMode::create_always));
+			luexp(Image::write_bmp_file(f, img_desc, img_data));
+		}
+		lucatch
+		{
+			Window::message_box(explain(lures), "Failed to capture image", Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
+		}
 	}
 
 	RV SceneEditorUserData::init()

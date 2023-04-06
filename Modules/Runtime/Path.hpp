@@ -506,6 +506,12 @@ namespace Luna
 				}
 				--i;
 			}
+			if(i == 0 && str[i] != '.')
+			{
+				// This file does not have extension name, append it.
+				append_extension(new_extension, count);
+				return;
+			}
 			usize filename_len = i;
 			usize new_filename_len;
 			if (new_extension && count)
