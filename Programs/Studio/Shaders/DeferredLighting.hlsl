@@ -115,6 +115,7 @@ void main(int3 dispatch_thread_id : SV_DispatchThreadID)
 
             float3 half_dir = normalize(light_dir + view_dir);
             float nl = dot(normal, light_dir);
+            if(nl <= 0.0) continue;
             float nh = dot(normal, half_dir);
             float vh = dot(view_dir, half_dir);
 
@@ -136,7 +137,7 @@ void main(int3 dispatch_thread_id : SV_DispatchThreadID)
             {
                 light_contrib = specular;
             }
-            final_color += light_contrib * light_color * max(nl, 0);
+            final_color += light_contrib * light_color * nl;
         }
     }
 
