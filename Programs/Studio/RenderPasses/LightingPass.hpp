@@ -20,8 +20,6 @@ namespace Luna
     {
         lustruct("LightingPassGlobalData", "{17fc5691-dc07-476e-ad53-d2837c8ffba7}");
 
-		Ref<CommonVertex> m_common_vertex;
-
         Ref<RHI::IPipelineState> m_lighting_pass_pso;
 		Ref<RHI::IDescriptorSetLayout> m_lighting_pass_dlayout;
 		Ref<RHI::IShaderInputLayout> m_lighting_pass_slayout;

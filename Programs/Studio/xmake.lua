@@ -21,6 +21,8 @@ target("Studio")
             {type = "cs", shading_model = "5_1", output_path = target_dir, envs = runenvs})
         compile_shader.compile_shader(vformat("$(scriptdir)/Shaders/LumHistogramCollect.hlsl"), 
             {type = "cs", shading_model = "5_1", output_path = target_dir, envs = runenvs})
+        compile_shader.compile_shader(vformat("$(scriptdir)/Shaders/GeometryVert.hlsl"), 
+            {type = "vs", shading_model = "5_1", output_path = target_dir, envs = runenvs})
         compile_shader.compile_shader(vformat("$(scriptdir)/Shaders/GeometryPixel.hlsl"), 
             {type = "ps", shading_model = "5_1", output_path = target_dir, envs = runenvs})
         compile_shader.compile_shader(vformat("$(scriptdir)/Shaders/DepthVert.hlsl"), 
@@ -46,6 +48,7 @@ target("Studio")
             "ToneMappingCS.cso",
             "LumHistogram.cso",
             "LumHistogramCollect.cso",
+            "GeometryVert.cso",
             "GeometryPixel.cso",
             "DepthVert.cso",
             "DepthPixel.cso",

@@ -19,8 +19,6 @@ namespace Luna
     {
         lustruct("GeometryPassGlobalData", "{8e00d9f0-e920-45e2-a9fc-c7e51644d286}");
 
-        Ref<CommonVertex> m_common_vertex;
-
         Ref<RHI::IPipelineState> m_geometry_pass_pso;
 		Ref<RHI::IDescriptorSetLayout> m_geometry_pass_dlayout;
 		Ref<RHI::IShaderInputLayout> m_geometry_pass_slayout;

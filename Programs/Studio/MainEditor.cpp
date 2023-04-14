@@ -109,7 +109,6 @@ namespace Luna
 			g_env->new_asset_types.insert(get_model_asset_type());
 			g_env->new_asset_types.insert(get_scene_asset_type());
 
-			register_boxed_type<CommonVertex>();
 			luexp(register_sky_box_pass());
 			luexp(register_wireframe_pass());
 			luexp(register_lighting_pass());

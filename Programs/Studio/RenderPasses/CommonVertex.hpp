@@ -12,15 +12,6 @@
 
 namespace Luna
 {
-    struct CommonVertex
-    {
-        lustruct("CommonVertex", "{8c672a8b-ed16-4bdc-a6e7-a42f01d92710}");
-
-        Blob vs_blob;
-
-        RV init();
-    };
-
     inline RHI::InputLayoutDesc get_vertex_input_layout_desc()
     {
         using namespace RHI;

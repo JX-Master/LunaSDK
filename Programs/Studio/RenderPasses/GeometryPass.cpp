@@ -38,14 +38,17 @@ namespace Luna
 				ShaderInputLayoutFlag::deny_geometry_shader_access |
 				ShaderInputLayoutFlag::deny_hull_shader_access)));
 
+			lulet(vsf, open_file("GeometryVert.cso", FileOpenFlag::read, FileCreationMode::open_existing));
+			auto file_size = vsf->get_size();
+			auto vs_blob = Blob((usize)file_size);
+			luexp(vsf->read(vs_blob.span()));
+			vsf = nullptr;
+
 			lulet(psf, open_file("GeometryPixel.cso", FileOpenFlag::read, FileCreationMode::open_existing));
-			auto file_size = psf->get_size();
+			file_size = psf->get_size();
 			auto ps_blob = Blob((usize)file_size);
 			luexp(psf->read(ps_blob.span()));
 			psf = nullptr;
-
-			m_common_vertex = new_object<CommonVertex>();
-			luexp(m_common_vertex->init());
 
 			GraphicsPipelineStateDesc ps_desc;
 			ps_desc.primitive_topology_type = PrimitiveTopologyType::triangle;
@@ -57,7 +60,7 @@ namespace Luna
 			ps_desc.depth_stencil_state = DepthStencilDesc(true, false, ComparisonFunc::less_equal, false, 0x00, 0x00, DepthStencilOpDesc(), DepthStencilOpDesc());
 			ps_desc.ib_strip_cut_value = IndexBufferStripCutValue::disabled;
 			ps_desc.input_layout = get_vertex_input_layout_desc();
-			ps_desc.vs = m_common_vertex->vs_blob.cspan();
+			ps_desc.vs = vs_blob.cspan();
 			ps_desc.ps = ps_blob.cspan();
 			ps_desc.shader_input_layout = m_geometry_pass_slayout;
 			ps_desc.num_render_targets = 3;

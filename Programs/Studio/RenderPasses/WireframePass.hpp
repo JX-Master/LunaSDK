@@ -19,8 +19,6 @@ namespace Luna
     {
         lustruct("WireframePassGlobalData", "{df0720b0-7ace-4cb4-94af-90260b82f8e7}");
 
-        Ref<CommonVertex> m_common_vertex;
-
         Ref<RHI::IPipelineState> m_debug_mesh_renderer_pso;
 		Ref<RHI::IDescriptorSetLayout> m_debug_mesh_renderer_dlayout;
 		Ref<RHI::IShaderInputLayout> m_debug_mesh_renderer_slayout;

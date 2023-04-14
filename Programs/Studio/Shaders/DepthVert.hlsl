@@ -1,3 +1,4 @@
+#include "CommonVertex.hlsl"
 cbuffer vertex_buffer : register(b0)
 {
     float4x4 world_to_view;
@@ -14,22 +15,13 @@ struct MeshBuffer
 
 StructuredBuffer<MeshBuffer> g_MeshBuffer : register(t1);
 
-struct VS_INPUT
-{
-    float3 position : POSITION;
-    float3 normal : NORMAL;
-    float3 tangent : TANGENT;
-    float2 texcoord : TEXCOORD;
-    float4 color : COLOR;
-};
-
 struct PS_INPUT
 {
     float4 position : SV_POSITION;
     float2 texcoord : TEXCOORD;
 };
 
-PS_INPUT main(VS_INPUT input)
+PS_INPUT main(MeshVertex input)
 {
     PS_INPUT o;
     float4 world_position = mul(g_MeshBuffer[0].model_to_world, float4(input.position, 1.0f));
