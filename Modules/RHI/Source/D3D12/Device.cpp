@@ -69,22 +69,21 @@ namespace Luna
 						before->size += after->size;
 						m_free_ranges.erase(after);
 					}
+					return;
 				}
 			}
-			else if ((after != m_free_ranges.end()) && ((offset + count) == after->offset))
+			if ((after != m_free_ranges.end()) && ((offset + count) == after->offset))
 			{
 				// Merge to after.
 				after->offset = offset;
 				after->size += count;
+				return;
 			}
-			else
-			{
-				// Cannot merge, insert a new node.
-				FreeRange range;
-				range.offset = offset;
-				range.size = count;
-				m_free_ranges.insert(after, range);
-			}
+			// Cannot merge, insert a new node.
+			FreeRange range;
+			range.offset = offset;
+			range.size = count;
+			m_free_ranges.insert(after, range);
 		}
 
 		u32 ShaderSourceDescriptorHeap::allocate_descs(u32 count)

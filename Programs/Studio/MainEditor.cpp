@@ -35,6 +35,7 @@
 #include "RenderPasses/BufferVisualizationPass.hpp"
 
 #include "SceneRenderer.hpp"
+#include <Runtime/Log.hpp>
 
 namespace Luna
 {
@@ -44,6 +45,8 @@ namespace Luna
 	{
 		lutry
 		{
+			set_log_std_enabled(true);
+
 			char title[256];
 			auto name = project_path.filename();
 
