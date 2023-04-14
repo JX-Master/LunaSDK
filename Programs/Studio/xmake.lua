@@ -37,6 +37,12 @@ target("Studio")
             {type = "cs", shading_model = "5_1", output_path = target_dir, envs = runenvs})
         compile_shader.compile_shader(vformat("$(scriptdir)/Shaders/PrecomputeEnvironmentMapMips.hlsl"), 
             {type = "cs", shading_model = "5_1", output_path = target_dir, envs = runenvs})
+        compile_shader.compile_shader(vformat("$(scriptdir)/Shaders/NormalVisualizationVert.hlsl"), 
+            {type = "vs", shading_model = "5_1", output_path = target_dir, envs = runenvs})
+        compile_shader.compile_shader(vformat("$(scriptdir)/Shaders/NormalVisualizationGeo.hlsl"), 
+            {type = "gs", shading_model = "5_1", output_path = target_dir, envs = runenvs})
+        compile_shader.compile_shader(vformat("$(scriptdir)/Shaders/NormalVisualizationPixel.hlsl"), 
+            {type = "ps", shading_model = "5_1", output_path = target_dir, envs = runenvs})
     end)
 
     after_install(function (target)
@@ -55,7 +61,10 @@ target("Studio")
             "DeferredLighting.cso",
             "BufferVisualization.cso",
             "PrecomputeIntegrateBRDF.cso",
-            "PrecomputeEnvironmentMapMips.cso"
+            "PrecomputeEnvironmentMapMips.cso",
+            "NormalVisualizationVert.cso",
+            "NormalVisualizationGeo.cso",
+            "NormalVisualizationPixel.cso"
         }
 
         for _, i in pairs(shader_files) do

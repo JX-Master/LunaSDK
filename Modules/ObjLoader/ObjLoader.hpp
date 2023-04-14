@@ -27,6 +27,18 @@ namespace Luna
 			i32 vertex_index;
 			i32 normal_index;
 			i32 texcoord_index;
+
+			bool operator==(const Index& rhs) const
+			{
+				return 
+					vertex_index == rhs.vertex_index && 
+					normal_index == rhs.normal_index && 
+					texcoord_index == rhs.texcoord_index;
+			}
+			bool operator!=(const Index& rhs) const
+			{
+				return !(*this == rhs);
+			}
 		};
 
 		struct Mesh

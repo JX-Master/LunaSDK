@@ -41,61 +41,77 @@ namespace Luna
 		}
 	};
 
+	template <>
+	struct hash<ObjLoader::Index>
+	{
+		usize operator()(const ObjLoader::Index& v) const
+		{
+			return hash<i32>()(v.vertex_index) ^ hash<i32>()(v.normal_index) ^ hash<i32>()(v.texcoord_index);
+		}
+	};
+
 	static RV create_mesh_asset_from_obj(MeshAsset& mesh, const ObjLoader::ObjMesh& obj_file, u32 shape_index)
 	{
 		auto& m = obj_file.shapes[shape_index].mesh;	// We only consider the mesh part of the specified shape.
 		auto& faces = m.num_face_vertices;	// 
 		auto& attrib = obj_file.attributes;
 
-		// Convert indices to vertices.
+		// Collect vertex used in this shape.
 		Vector<Vertex> vertices;
-		for (auto& i : m.indices)
+		HashMap<ObjLoader::Index, usize> vertices_map;
+		for(auto& i : m.indices)
 		{
-			Vertex v;
-			v.position = attrib.vertices[i.vertex_index];
-			auto& color3 = attrib.colors[i.vertex_index];
-			v.color = Float4U(color3.x, color3.y, color3.z, 1.0f);
-			if (i.normal_index != -1 && i.normal_index < attrib.normals.size())
+			if(!vertices_map.contains(i))
 			{
-				v.normal = attrib.normals[i.normal_index];
+				Vertex v;
+				v.position = attrib.vertices[i.vertex_index];
+				auto& color3 = attrib.colors[i.vertex_index];
+				v.color = Float4U(color3.x, color3.y, color3.z, 1.0f);
+				if (i.normal_index != -1 && i.normal_index < attrib.normals.size())
+				{
+					v.normal = attrib.normals[i.normal_index];
+				}
+				else
+				{
+					v.normal = Float3U(0.0f, 0.0f, 1.0f);
+				}
+				if (i.texcoord_index != -1 && i.texcoord_index < attrib.texcoords.size())
+				{
+					v.texcoord = attrib.texcoords[i.texcoord_index];
+				}
+				else
+				{
+					v.texcoord = Float2U(0.0f, 0.0f);
+				}
+				vertices.push_back(v);
+				vertices_map.insert(make_pair(i, vertices.size() - 1));
 			}
-			else
-			{
-				v.normal = Float3U(0.0f, 0.0f, 1.0f);
-			}
-			if (i.texcoord_index != -1 && i.texcoord_index < attrib.texcoords.size())
-			{
-				v.texcoord = attrib.texcoords[i.texcoord_index];
-			}
-			else
-			{
-				v.texcoord = Float2U(0.0f, 0.0f);
-			}
-			// Tangent is left to be computed later.
-			vertices.push_back(v);
 		}
 
-		// Build index list.
+		// Build index list for every material.
 		// Material ID -> Index list.
 		HashMap<u32, Vector<u32>> mat_map;
-		u32 vert_offset = 0;
-		for (u32 i = 0; i < (u32)faces.size(); ++i)	// Once per face.
+		usize index_offset = 0;
+		for(usize face_index = 0; face_index < faces.size(); ++face_index)
 		{
-			auto mat_id = m.material_ids[i];	// Finds the material ID for this face, this is used for pieces.
+			i32 mat_id = m.material_ids[face_index];
 			auto iter = mat_map.find(mat_id);
 			if (iter == mat_map.end())
 			{
 				iter = mat_map.insert(make_pair(mat_id, Vector<u32>())).first;
 			}
-
-			// If this is not a triangle face, convert this to triangles.
-			for (u32 j = 0; j < (u32)(faces[i] - 2); ++j)
+			u8 num_face_vertices = faces[face_index];
+			// If this is not a triangle face, convert this to triangle fans.
+			for (i32 j = 0; j < ((i32)num_face_vertices - 2); ++j)
 			{
-				iter->second.push_back(vert_offset);
-				iter->second.push_back(vert_offset + j + 1);
-				iter->second.push_back(vert_offset + j + 2);
+				auto index1 = m.indices[index_offset];
+				auto index2 = m.indices[index_offset + j + 1];
+				auto index3 = m.indices[index_offset + j + 2];
+				iter->second.push_back(vertices_map.find(index1)->second);
+				iter->second.push_back(vertices_map.find(index2)->second);
+				iter->second.push_back(vertices_map.find(index3)->second);
 			}
-			vert_offset += faces[i];
+			index_offset += num_face_vertices;
 		}
 
 		// Calculate tangents.
@@ -113,24 +129,23 @@ namespace Luna
 				u32 i1 = i.second[j * 3];
 				u32 i2 = i.second[j * 3 + 1];
 				u32 i3 = i.second[j * 3 + 2];
-				Vertex& v1 = vertices[i1];
-				Vertex& v2 = vertices[i2];
-				Vertex& v3 = vertices[i3];
-				Float3 e1 = v3.position - v1.position;
-				Float3 e2 = v2.position - v1.position;
-				Float2 uv1 = v3.texcoord - v1.texcoord;
-				Float2 uv2 = v2.texcoord - v1.texcoord;
-				f32 r = 1.0f / (uv1.x * uv2.y - uv1.y * uv2.x);
-				Float3U tangent(
-					((e1.x * uv2.y) - (e2.x * uv1.y)) * r,
-					((e1.y * uv2.y) - (e2.y * uv1.y)) * r,
-					((e1.z * uv2.y) - (e2.z * uv1.y)) * r
-				);
-				Float3U binormal(
-					((e1.x * uv2.x) - (e2.x * uv1.x)) * r,
-					((e1.y * uv2.x) - (e2.y * uv1.x)) * r,
-					((e1.z * uv2.x) - (e2.z * uv1.x)) * r
-				);
+				Vertex& p1 = vertices[i1];
+				Vertex& p2 = vertices[i2];
+				Vertex& p3 = vertices[i3];
+				Float3 e1 = p3.position - p1.position;
+				Float3 e2 = p2.position - p1.position;
+				f32 u1 = p3.texcoord.x - p1.texcoord.x;
+				f32 v1 = p3.texcoord.y - p1.texcoord.y;
+				f32 u2 = p2.texcoord.x - p1.texcoord.x;
+				f32 v2 = p2.texcoord.y - p1.texcoord.y;
+
+				f32 r = 1.0f / (v1 * u2 - v2 * u1);
+
+				Float3 tangent = (e2 * v1 - e1 * v2) * r;
+				Float3 binormal = (e1 * u2 - e2 * u1) * r;
+
+				auto& dest_tan = 
+
 				tangents[i1] = tangents[i1] + tangent;
 				tangents[i2] = tangents[i2] + tangent;
 				tangents[i3] = tangents[i3] + tangent;
@@ -144,11 +159,11 @@ namespace Luna
 
 		for (usize i = 0; i < vertices.size(); ++i)
 		{
-			Float3 n = vertices[i].normal;
-			Float3 t = tangents[i];
+			Float3 n = normalize(vertices[i].normal);
+			Float3 t = normalize(tangents[i]);
 
 			// Gram-Schmidt orthogonalize
-			Float3 tang = normalize(t - n * dot(n, t));
+			Float3 tang = normalize(t - dot(t, n) * n);
 
 			// Calculate handedness
 			f32 w = dot(cross(n, t), binormals[i]);

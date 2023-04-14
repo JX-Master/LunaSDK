@@ -22,6 +22,7 @@
 #include "RenderPasses/GeometryPass.hpp"
 #include "RenderPasses/DeferredLightingPass.hpp"
 #include "RenderPasses/BufferVisualizationPass.hpp"
+#include "RenderPasses/NormalVisualizationPass.hpp"
 
 namespace Luna
 {
@@ -48,7 +49,7 @@ namespace Luna
 				using namespace RG;
 				
 				RenderGraphDesc desc;
-				desc.passes.resize(7);
+				desc.passes.resize(8);
 				desc.passes[WIREFRAME_PASS] = {"WireframePass", "Wireframe"};
 				desc.passes[DEPTH_PASS] = {"DepthPass", "Depth"};
 				desc.passes[GEOMETRY_PASS] = {"GeometryPass", "Geometry"};
@@ -56,7 +57,8 @@ namespace Luna
 				desc.passes[SKYBOX_PASS] = {"SkyBoxPass", "SkyBox"};
 				desc.passes[DEFERRED_LIGHTING_PASS] = {"DeferredLightingPass", "DeferredLighting"};
 				desc.passes[TONE_MAPPING_PASS] = {"ToneMappingPass", "ToneMapping"};
-				desc.resources.resize(8);
+				desc.passes[NORMAL_VIS_PASS] = {"NormalVisualizationPass", "NormalVisualization"};
+				desc.resources.resize(9);
 				desc.resources[LIGHTING_BUFFER] = {RenderGraphResourceType::transient, 
 					RenderGraphResourceFlag::none,
 					"LightingBuffer", 
@@ -136,6 +138,12 @@ namespace Luna
 				desc.output_connections.push_back({BUFFER_VIS_PASS, "scene_texture", GBUFFER_VIS_BUFFER});
 				desc.input_connections.push_back({TONE_MAPPING_PASS, "hdr_texture", LIGHTING_BUFFER});
 				desc.output_connections.push_back({TONE_MAPPING_PASS, "ldr_texture", BACK_BUFFER});
+				if(m_settings.mode == SceneRendererMode::normal_visualization)
+				{
+					desc.input_connections.push_back({NORMAL_VIS_PASS, "depth_texture", DEPTH_BUFFER});
+					desc.output_connections.push_back({NORMAL_VIS_PASS, "scene_texture", BACK_BUFFER});
+				}
+
 				m_render_graph->set_desc(desc);
 				RG::RenderGraphCompileConfig config;
 				config.enable_time_profiling = settings.frame_profiling;
@@ -403,6 +411,15 @@ namespace Luna
 					}
 					tone_mapping->exposure = scene_renderer->exposure;
 					tone_mapping->auto_exposure = scene_renderer->auto_exposure;
+
+					if(m_settings.mode == SceneRendererMode::normal_visualization)
+					{
+						NormalVisualizationPass* normal_vis = cast_objct<NormalVisualizationPass>(m_render_graph->get_render_pass(NORMAL_VIS_PASS)->get_object());
+						normal_vis->ts = {ts.data(), ts.size()};
+						normal_vis->rs = {rs.data(), rs.size()};
+						normal_vis->camera_cb = m_camera_cb;
+						normal_vis->model_matrices = m_model_matrices;
+					}
 				}
 			}
             luexp(m_render_graph->execute(command_buffer));

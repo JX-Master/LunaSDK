@@ -47,7 +47,8 @@ namespace Luna
         diffuse_lighting,
         specular_lighting,
         ambient_diffuse_lighting,
-        ambient_specular_lighting
+        ambient_specular_lighting,
+        normal_visualization
     };
 
     luenum(SceneRendererMode, "SceneRendererMode", "e66271d7-cbe7-4f0b-8de3-de0cc7b06982");
@@ -63,7 +64,9 @@ namespace Luna
 
         bool operator==(const SceneRendererSettings& rhs) const
         {
-            return screen_size == rhs.screen_size && frame_profiling == rhs.frame_profiling && mode == rhs.mode;
+            return screen_size == rhs.screen_size && 
+            frame_profiling == rhs.frame_profiling && 
+            mode == rhs.mode;
         }
         bool operator!=(const SceneRendererSettings& rhs) const
         {
@@ -112,6 +115,7 @@ namespace Luna
 		static constexpr usize SKYBOX_PASS = 4;
 		static constexpr usize DEFERRED_LIGHTING_PASS = 5;
 		static constexpr usize TONE_MAPPING_PASS = 6;
+        static constexpr usize NORMAL_VIS_PASS = 7;
         Ref<RHI::IDevice> m_device;
         SceneRendererSettings m_settings;
         Ref<RG::IRenderGraph> m_render_graph;

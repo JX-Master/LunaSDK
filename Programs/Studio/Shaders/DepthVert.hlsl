@@ -7,12 +7,6 @@ cbuffer vertex_buffer : register(b0)
     float4x4 view_to_world;
 };
 
-struct MeshBuffer
-{
-    float4x4 model_to_world;
-    float4x4 world_to_model;
-};
-
 StructuredBuffer<MeshBuffer> g_MeshBuffer : register(t1);
 
 struct PS_INPUT

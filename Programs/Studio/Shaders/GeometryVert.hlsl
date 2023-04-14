@@ -11,11 +11,6 @@ cbuffer CBParam : register(b0)
 	uint screen_width;
 	uint screen_height;
 };
-struct MeshBuffer
-{
-	float4x4 model_to_world;	
-	float4x4 world_to_model;	
-};
 StructuredBuffer<MeshBuffer> g_MeshBuffer : register(t1);
 struct PS_INPUT
 {

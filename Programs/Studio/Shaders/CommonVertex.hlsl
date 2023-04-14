@@ -6,3 +6,8 @@ struct MeshVertex
     float2 texcoord : TEXCOORD;
     float4 color : COLOR;
 };
+struct MeshBuffer
+{
+	float4x4 model_to_world;	
+	float4x4 world_to_model;	
+};

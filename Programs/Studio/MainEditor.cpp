@@ -33,6 +33,7 @@
 #include "RenderPasses/GeometryPass.hpp"
 #include "RenderPasses/DeferredLightingPass.hpp"
 #include "RenderPasses/BufferVisualizationPass.hpp"
+#include "RenderPasses/NormalVisualizationPass.hpp"
 
 #include "SceneRenderer.hpp"
 #include <Runtime/Log.hpp>
@@ -117,6 +118,7 @@ namespace Luna
 			luexp(register_deferred_lighting_pass());
 			luexp(register_tone_mapping_pass());
 			luexp(register_buffer_visualization_pass());
+			luexp(register_normal_visualization_pass());
 
 			register_enum_type<SceneRendererMode>({
 				luoption(SceneRendererMode, lit),
@@ -130,7 +132,8 @@ namespace Luna
 				luoption(SceneRendererMode, diffuse_lighting),
 				luoption(SceneRendererMode, specular_lighting),
 				luoption(SceneRendererMode, ambient_diffuse_lighting),
-				luoption(SceneRendererMode, ambient_specular_lighting)
+				luoption(SceneRendererMode, ambient_specular_lighting),
+				luoption(SceneRendererMode, normal_visualization)
 			});
 		}
 		lucatchret;
