@@ -48,30 +48,33 @@ namespace Luna
 
 		void ShaderSourceDescriptorHeap::internal_free_descs(u32 offset, u32 count)
 		{
+			// Insert before this iterator. May be `end`.
 			auto after = m_free_ranges.begin();
-			auto before = after;
-			++after;
 			while (after != m_free_ranges.end())
 			{
-				if(after->offset >= (offset + count)) break;
-				before = after;
+				if (after->offset >= (offset + count)) break;
 				++after;
 			}
-			if ((before->offset + before->size) == offset)
+			if(after != m_free_ranges.begin())
 			{
 				// Merge to before.
-				before->size += count;
-				if (after != m_free_ranges.end() && (before->offset + before->size == after->offset))
+				auto before = after;
+				--before;
+				if ((before->offset + before->size) == offset)
 				{
-					// Merge before to after.
-					before->size += after->size;
-					m_free_ranges.erase(after);
+					before->size += count;
+					if (after != m_free_ranges.end() && (before->offset + before->size == after->offset))
+					{
+						// Merge before to after.
+						before->size += after->size;
+						m_free_ranges.erase(after);
+					}
 				}
 			}
-			else if((offset + count) == after->offset)
+			else if ((after != m_free_ranges.end()) && ((offset + count) == after->offset))
 			{
 				// Merge to after.
-				after->offset -= count;
+				after->offset = offset;
 				after->size += count;
 			}
 			else
