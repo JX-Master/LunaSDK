@@ -9,8 +9,6 @@ target("Studio")
         import("compile_shader")
         local runenvs = target:toolchain("msvc"):runenvs()
         local target_dir = target:targetdir()
-        compile_shader.compile_shader(vformat("$(scriptdir)/Shaders/LightingPassPixel.hlsl"), 
-            {type = "ps", shading_model = "5_1", output_path = target_dir, envs = runenvs})
         compile_shader.compile_shader(vformat("$(scriptdir)/Shaders/MipmapGenerationCS.hlsl"), 
             {type = "cs", shading_model = "5_1", output_path = target_dir, envs = runenvs})
         compile_shader.compile_shader(vformat("$(scriptdir)/Shaders/SkyboxCS.hlsl"), 
@@ -48,7 +46,6 @@ target("Studio")
     after_install(function (target)
         local shader_files = {
             "Studio.exe",
-            "LightingPassPixel.cso",
             "MipmapGenerationCS.cso",
             "SkyboxCS.cso",
             "ToneMappingCS.cso",

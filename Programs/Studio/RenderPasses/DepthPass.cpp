@@ -75,11 +75,7 @@ namespace Luna
 
     RV DepthPass::init(DepthPassGlobalData* global_data)
     {
-        lutry
-        {
-            m_global_data = global_data;
-        }
-        lucatchret;
+		m_global_data = global_data;
         return ok;
     }
 

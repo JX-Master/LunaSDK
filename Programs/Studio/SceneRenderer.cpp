@@ -14,7 +14,6 @@
 #include "Model.hpp"
 #include "ModelRenderer.hpp"
 #include "Mesh.hpp"
-#include "RenderPasses/LightingPass.hpp"
 #include "RenderPasses/SkyBoxPass.hpp"
 #include "RenderPasses/ToneMappingPass.hpp"
 #include "RenderPasses/WireframePass.hpp"
@@ -191,7 +190,6 @@ namespace Luna
 			camera_cb_data.proj_to_world = inverse(camera_cb_data.world_to_proj);
 			camera_cb_data.view_to_world = camera_entity->local_to_world_matrix();
 			Float3 env_color = scene_renderer->environment_color;
-			camera_cb_data.env_light_color = Float4(env_color.x, env_color.y, env_color.z, 1.0f);
 			camera_cb_data.screen_width = m_settings.screen_size.x;
 			camera_cb_data.screen_height = m_settings.screen_size.y;
 			void* mapped = nullptr;

@@ -19,7 +19,6 @@ namespace Luna
 		Float4x4U world_to_proj;
 		Float4x4U proj_to_world;
 		Float4x4U view_to_world;
-		Float4U env_light_color;
 		u32 screen_width;
 		u32 screen_height;
 	};

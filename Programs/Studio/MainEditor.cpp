@@ -25,7 +25,6 @@
 #include <Runtime/Serialization.hpp>
 #include "Scene.hpp"
 
-#include "RenderPasses/LightingPass.hpp"
 #include "RenderPasses/SkyBoxPass.hpp"
 #include "RenderPasses/ToneMappingPass.hpp"
 #include "RenderPasses/WireframePass.hpp"
@@ -112,7 +111,6 @@ namespace Luna
 
 			luexp(register_sky_box_pass());
 			luexp(register_wireframe_pass());
-			luexp(register_lighting_pass());
 			luexp(register_depth_pass());
 			luexp(register_geometry_pass());
 			luexp(register_deferred_lighting_pass());
