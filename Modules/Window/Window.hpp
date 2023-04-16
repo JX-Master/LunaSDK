@@ -306,18 +306,5 @@ namespace Luna
 		LUNA_WINDOW_API R<Ref<IWindow>> new_window(const c8* title, 
 			const WindowDisplaySettings& display_settings,
 			WindowCreationFlag flags = WindowCreationFlag::none);
-
-		//! Gets the application main window.
-		//! On single-window systems (like mobile phones, tablets, consoles), the main window is created by the system
-		//! and can be fetched by this call; on multiple-window systems, the main window is created by the user and 
-		//! set by `set_main_window`.
-		//! @return Returns the main window. Note that the returned window may be `nullptr` if the main window is not present
-		//! on multi-window platforms.
-		LUNA_WINDOW_API IWindow* get_main_window();
-
-		//! Sets the main window.
-		//! This call is not thread-safe and should be called when the application initializes. For single-window systems,
-		//! the main window is set up for you, so you don't need to call this function.
-		LUNA_WINDOW_API RV set_main_window(IWindow* window);
 	}
 }

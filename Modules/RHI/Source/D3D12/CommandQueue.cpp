@@ -10,8 +10,6 @@
 */
 #include "CommandQueue.hpp"
 
-#ifdef LUNA_RHI_D3D12
-
 #include "CommandBuffer.hpp"
 
 namespace Luna
@@ -60,4 +58,3 @@ namespace Luna
 		}
 	}
 }
-#endif

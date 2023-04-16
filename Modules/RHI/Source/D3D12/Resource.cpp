@@ -9,9 +9,6 @@
 * @brief D3D12 implementation of Resource Object
 */
 #include "Resource.hpp"
-
-#ifdef LUNA_RHI_D3D12
-
 #include "../../RHI.hpp"
 
 namespace Luna
@@ -142,5 +139,3 @@ namespace Luna
 		}
 	}
 }
-
-#endif

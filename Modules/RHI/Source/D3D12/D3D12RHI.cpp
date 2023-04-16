@@ -8,7 +8,6 @@
 * @date 2019/7/10
 */
 #include <Runtime/PlatformDefines.hpp>
-#ifdef LUNA_RHI_D3D12
 #define LUNA_RHI_API LUNA_EXPORT
 #include "../../RHI.hpp"
 #include <d3d12.h>
@@ -162,5 +161,3 @@ namespace Luna
 		}
 	}
 }
-
-#endif

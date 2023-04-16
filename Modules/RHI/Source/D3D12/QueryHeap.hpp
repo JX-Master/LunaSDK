@@ -8,8 +8,6 @@
 * @date 2023/3/8
 */
 #pragma once
-
-#ifdef LUNA_RHI_D3D12
 #include "D3D12Common.hpp"
 #include "Device.hpp"
 #include <Runtime/TSAssert.hpp>
@@ -45,5 +43,3 @@ namespace Luna
         };
     }
 }
-
-#endif

@@ -8,9 +8,6 @@
 * @date 2020/3/14
 */
 #include "ShaderInputLayout.hpp"
-
-#ifdef LUNA_RHI_D3D12
-
 #include "DescriptorSetLayout.hpp"
 
 namespace Luna
@@ -98,5 +95,3 @@ namespace Luna
 		}
 	}
 }
-
-#endif

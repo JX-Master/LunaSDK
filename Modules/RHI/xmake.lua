@@ -30,6 +30,10 @@ option("rhi_debug")
     add_defines("LUNA_RHI_DEBUG")
 option_end()
 
+if is_config("rhi_api", "Vulkan") then 
+    add_requires("vulkansdk", {configs = {shared = has_config("shared")}})
+end
+
 target("RHI")
     set_luna_sdk_module()
     add_options("rhi_api", "rhi_debug")
@@ -43,12 +47,13 @@ target("RHI")
         add_defines("LUNA_RHI_VULKAN")
         add_headerfiles("Source/Vulkan/**.hpp")
         add_files("Source/Vulkan/**.cpp")
+        add_packages("vulkansdk", "glfw")
     elseif is_config("rhi_api", "Metal") then
         add_defines("LUNA_RHI_METAL")
     end
     add_deps("Runtime", "Window")
     -- Generate shader file.
-    if is_os("windows") then
+    if is_os("windows") and is_config("rhi_api", "D3D12") then
         before_build(function (target)
             os.mkdir("$(buildir)/Shaders")
             local output_path = vformat("$(buildir)/Shaders")
@@ -69,9 +74,6 @@ target("RHI")
             import("bin_to_cpp")
             bin_to_cpp.bin_to_cpp(vs_path, vs_header_path, vs_source_path)
             bin_to_cpp.bin_to_cpp(ps_path, ps_header_path, ps_source_path)
-        end)
-        after_build(function (target)
-            
         end)
     end
 target_end()

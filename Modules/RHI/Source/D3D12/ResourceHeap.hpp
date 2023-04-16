@@ -9,8 +9,6 @@
 * @brief D3D12 implementation of Resource Heap Object
 */
 #pragma once
-
-#ifdef LUNA_RHI_D3D12
 #include "D3D12Common.hpp"
 #include "Device.hpp"
 #include <Runtime/TSAssert.hpp>
@@ -43,5 +41,3 @@ namespace Luna
 		};
 	}
 }
-
-#endif

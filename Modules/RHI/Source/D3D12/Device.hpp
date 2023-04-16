@@ -8,9 +8,6 @@
 * @date 2019/7/17
 */
 #pragma once
-
-#ifdef LUNA_RHI_D3D12
-
 #include "../DXGI/Common.hpp"
 #include "d3d12.h"
 #include "../../Device.hpp"
@@ -213,5 +210,3 @@ namespace Luna
 		}
 	}
 }
-
-#endif

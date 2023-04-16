@@ -8,9 +8,6 @@
 * @date 2019/9/20
 */
 #include "SwapChain.hpp"
-
-#ifdef LUNA_RHI_D3D12
-
 #include "Resource.hpp"
 #include "../../RHI.hpp"
 #include "SwapChainVS.hpp"
@@ -567,5 +564,3 @@ namespace Luna
 		}
 	}
 }
-
-#endif

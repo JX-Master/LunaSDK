@@ -8,10 +8,6 @@
 * @date 2019/8/10
 */
 #pragma once
-#include <Runtime/PlatformDefines.hpp>
-
-#ifdef LUNA_RHI_D3D12
-
 #include <d3d12.h>
 #include "../DXGI/Common.hpp"
 #include "../../CommandBuffer.hpp"
@@ -313,7 +309,7 @@ namespace Luna
 			case E_INVALIDARG: return BasicError::bad_arguments();
 			case DXGI_ERROR_NONEXCLUSIVE:
 			case DXGI_ERROR_WAS_STILL_DRAWING: 
-			case DXGI_ERROR_NOT_CURRENTLY_AVAILABLE: return BasicError::not_currently_available();
+			case DXGI_ERROR_NOT_CURRENTLY_AVAILABLE: return BasicError::not_ready();
 			case E_OUTOFMEMORY: return BasicError::out_of_memory();
 			case E_NOTIMPL: 
 			case DXGI_ERROR_UNSUPPORTED: return BasicError::not_supported();
@@ -332,5 +328,3 @@ namespace Luna
 		}
 	}
 }
-
-#endif

@@ -7,7 +7,6 @@
 * @author JXMaster
 * @date 2022/8/3
 */
-#ifdef LUNA_RHI_D3D12
 #include <Runtime/PlatformDefines.hpp>
 #define LUNA_RHI_API LUNA_EXPORT
 #include "DescriptorSet.hpp"
@@ -322,5 +321,3 @@ namespace Luna
 		}
 	}
 }
-
-#endif

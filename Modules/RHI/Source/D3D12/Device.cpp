@@ -8,9 +8,6 @@
 * @date 2019/7/17
 */
 #include "Device.hpp"
-
-#ifdef LUNA_RHI_D3D12
-
 #include "ResourceHeap.hpp"
 #include "PipelineState.hpp"
 #include "CommandQueue.hpp"
@@ -571,5 +568,3 @@ namespace Luna
 		}
 	}
 }
-
-#endif

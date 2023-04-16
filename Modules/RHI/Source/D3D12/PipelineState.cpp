@@ -8,9 +8,6 @@
 * @date 2019/8/15
 */
 #include "PipelineState.hpp"
-
-#ifdef LUNA_RHI_D3D12
-
 #include "D3D12Common.hpp"
 
 #include <Runtime/Vector.hpp>
@@ -388,5 +385,3 @@ namespace Luna
 		}
 	}
 }
-
-#endif

@@ -9,9 +9,6 @@
 * @brief D3D12 implementation of Resource Heap Object
 */
 #include "ResourceHeap.hpp"
-
-#ifdef LUNA_RHI_D3D12
-
 #include "Resource.hpp"
 #include "../../RHI.hpp"
 
@@ -66,5 +63,3 @@ namespace Luna
 		}
 	}
 }
-
-#endif

@@ -8,8 +8,6 @@
 * @date 2019/8/15
 */
 #pragma once
-#ifdef LUNA_RHI_D3D12
-
 #include "Device.hpp"
 #include "ShaderInputLayout.hpp"
 #include "../../PipelineState.hpp"
@@ -42,5 +40,3 @@ namespace Luna
 		};
 	}
 }
-
-#endif

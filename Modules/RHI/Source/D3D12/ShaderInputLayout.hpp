@@ -8,9 +8,6 @@
 * @date 2020/3/14
 */
 #pragma once
-
-#ifdef LUNA_RHI_D3D12
-
 #include "../../ShaderInputLayout.hpp"
 #include "Device.hpp"
 #include <Runtime/Ref.hpp>
@@ -49,5 +46,3 @@ namespace Luna
 		};
 	}
 }
-
-#endif

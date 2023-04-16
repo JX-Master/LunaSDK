@@ -332,9 +332,9 @@ namespace Luna
 			static ErrCode e = get_error_code_by_name("BasicError", "insufficient_buffer");
 			return e;
 		}
-		LUNA_RUNTIME_API ErrCode not_currently_available()
+		LUNA_RUNTIME_API ErrCode not_ready()
 		{
-			static ErrCode e = get_error_code_by_name("BasicError", "not_currently_available");
+			static ErrCode e = get_error_code_by_name("BasicError", "not_ready");
 			return e;
 		}
 		LUNA_RUNTIME_API ErrCode out_of_range()

@@ -8,9 +8,6 @@
 * @date 2023/3/8
 */
 #include "QueryHeap.hpp"
-
-#ifdef LUNA_RHI_D3D12
-
 namespace Luna
 {
     namespace RHI
@@ -110,5 +107,3 @@ namespace Luna
         }
     }
 }
-
-#endif

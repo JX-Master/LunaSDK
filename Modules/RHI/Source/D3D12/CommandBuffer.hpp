@@ -9,7 +9,6 @@
 */
 #pragma once
 
-#ifdef LUNA_RHI_D3D12
 #include "CommandQueue.hpp"
 #include <Runtime/TSAssert.hpp>
 #include <Runtime/HashMap.hpp>
@@ -318,5 +317,3 @@ namespace Luna
 		};
 	}
 }
-
-#endif

@@ -8,8 +8,6 @@
 * @date 2022/8/3
 */
 #include "DescriptorSetLayout.hpp"
-
-#ifdef LUNA_RHI_D3D12
 namespace Luna
 {
 	namespace RHI
@@ -198,4 +196,3 @@ namespace Luna
 		}
 	}
 }
-#endif

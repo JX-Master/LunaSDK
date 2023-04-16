@@ -9,8 +9,6 @@
 */
 #include "DepthStencilView.hpp"
 
-#ifdef LUNA_RHI_D3D12
-
 namespace Luna
 {
 	namespace RHI
@@ -118,5 +116,3 @@ namespace Luna
 		}	
 	}
 }
-
-#endif

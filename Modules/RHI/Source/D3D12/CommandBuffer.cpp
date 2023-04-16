@@ -9,8 +9,6 @@
 */
 #include "CommandBuffer.hpp"
 
-#ifdef LUNA_RHI_D3D12
-
 #include "QueryHeap.hpp"
 
 namespace Luna
@@ -903,5 +901,3 @@ namespace Luna
 		}
 	}
 }
-
-#endif
