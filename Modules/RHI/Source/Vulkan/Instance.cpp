@@ -18,11 +18,6 @@ namespace Luna
 
 		bool g_enable_validation_layers = false;
 
-		const c8* g_validation_layers[] = {
-			"VK_LAYER_KHRONOS_validation"
-		};
-		usize g_num_validation_layers = 1;
-
 		static VKAPI_ATTR VkBool32 VKAPI_CALL debug_callback(
 			VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
 			VkDebugUtilsMessageTypeFlagsEXT messageType,
@@ -75,7 +70,7 @@ namespace Luna
 			VkLayerProperties* available_layers = (VkLayerProperties*)alloca(layer_count * sizeof(VkLayerProperties));
 			vkEnumerateInstanceLayerProperties(&layer_count, available_layers);
 
-			for (const c8* layer_name : g_validation_layers)
+			for (const c8* layer_name : VK_ENABLED_LAYERS)
 			{
 				bool layer_found = false;
 				for (u32 i = 0; i < layer_count; ++i)
@@ -152,8 +147,8 @@ namespace Luna
 				if (g_enable_validation_layers)
 				{
 					// Enable validation layer.
-					create_info.enabledLayerCount = (u32)g_num_validation_layers;
-					create_info.ppEnabledLayerNames = g_validation_layers;
+					create_info.enabledLayerCount = (u32)NUM_VK_ENABLED_LAYERS;
+					create_info.ppEnabledLayerNames = VK_ENABLED_LAYERS;
 					init_debug_messenger_create_info(debug_create_info);
 					create_info.pNext = (VkDebugUtilsMessengerCreateInfoEXT*)&debug_create_info;
 				}

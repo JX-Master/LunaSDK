@@ -176,7 +176,7 @@ namespace Luna
 			virtual R<Ref<IDescriptorSet>> new_descriptor_set(DescriptorSetDesc& desc) = 0;
 
 			//! Creates one new command queue.
-			virtual R<Ref<ICommandQueue>> new_command_queue(CommandQueueType type) = 0;
+			virtual R<Ref<ICommandQueue>> new_command_queue(const CommandQueueDesc& desc) = 0;
 
 			virtual R<Ref<IRenderTargetView>> new_render_target_view(IResource* resource, const RenderTargetViewDesc* desc = nullptr) = 0;
 

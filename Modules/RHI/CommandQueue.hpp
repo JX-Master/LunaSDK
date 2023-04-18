@@ -15,13 +15,26 @@ namespace Luna
 {
 	namespace RHI
 	{
+		enum class CommandQueueFlags : u8
+		{
+			none = 0,
+			// This command queue supports swap chain presenting.
+			presenting = 0x01,
+		};
+
+		struct CommandQueueDesc
+		{
+			CommandQueueType type;
+			CommandQueueFlags flags;
+		};
+
 		//! @interface ICommandQueue
 		//! @threadsafe
 		struct ICommandQueue : virtual IDeviceChild
 		{
 			luiid("{7d6f857a-daa4-40ee-b635-90d251a58b78}");
 
-			virtual CommandQueueType get_type() = 0;
+			virtual CommandQueueDesc get_desc() = 0;
 
 			//! Tells the command queue to wait for the specified command buffer being finished by another 
 			//! command queue before proceeding to the next submitted command buffer.

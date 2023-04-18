@@ -9,90 +9,62 @@ namespace Luna
 {
 	namespace RHI
 	{
-		RV CommandQueue::init(CommandQueueType type)
+		RV CommandQueue::init(const CommandQueueDesc& desc)
 		{
 			MutexGuard guard(m_device->m_mtx);
 			m_queue = VK_NULL_HANDLE;
-			if (type == CommandQueueType::graphic)
+			m_desc = desc;
+			if (desc.type == CommandQueueType::copy)
 			{
-				for (auto& i : m_device->m_graphic_queues)
+				// Check copy queue.
+				for (usize i = 0; i < m_device->m_queues.size(); ++i)
 				{
-					if (!i.m_used)
+					if (m_device->m_queues[i].desc.type == CommandQueueType::copy && !m_device->m_queue_allocated[i])
 					{
-						m_queue = i.m_queue;
-						i.m_used = true;
-						break;
-					}
-				}
-			}
-			else if (type == CommandQueueType::compute)
-			{
-				for (auto& i : m_device->m_compute_queues)
-				{
-					if (!i.m_used)
-					{
-						m_queue = i.m_queue;
-						i.m_used = true;
-						break;
-					}
-				}
-				if (m_queue == VK_NULL_HANDLE)
-				{
-					// Fallback to graphic queue.
-					for (auto& i : m_device->m_graphic_queues)
-					{
-						if (!i.m_used)
+						if (!test_flags(desc.flags, CommandQueueFlags::presenting) || 
+							test_flags(m_device->m_queues[i].desc.flags, CommandQueueFlags::presenting))
 						{
-							m_queue = i.m_queue;
-							i.m_used = true;
-							break;
+							m_queue = m_device->m_queues[i].queue;
+							m_device->m_queue_allocated[i] = true;
+							return ok;
 						}
 					}
 				}
 			}
-			else if (type == CommandQueueType::copy)
+			if (desc.type == CommandQueueType::copy || desc.type == CommandQueueType::compute)
 			{
-				for (auto& i : m_device->m_copy_queues)
+				// Check compute queue.
+				for (usize i = 0; i < m_device->m_queues.size(); ++i)
 				{
-					if (!i.m_used)
+					if (m_device->m_queues[i].desc.type == CommandQueueType::compute && !m_device->m_queue_allocated[i])
 					{
-						m_queue = i.m_queue;
-						i.m_used = true;
-						break;
-					}
-				}
-				if (m_queue == VK_NULL_HANDLE)
-				{
-					// Fallback to compute queue.
-					for (auto& i : m_device->m_compute_queues)
-					{
-						if (!i.m_used)
+						if (!test_flags(desc.flags, CommandQueueFlags::presenting) ||
+							test_flags(m_device->m_queues[i].desc.flags, CommandQueueFlags::presenting))
 						{
-							m_queue = i.m_queue;
-							i.m_used = true;
-							break;
-						}
-					}
-				}
-				if (m_queue == VK_NULL_HANDLE)
-				{
-					// Fallback to graphic queue.
-					for (auto& i : m_device->m_graphic_queues)
-					{
-						if (!i.m_used)
-						{
-							m_queue = i.m_queue;
-							i.m_used = true;
-							break;
+							m_queue = m_device->m_queues[i].queue;
+							m_device->m_queue_allocated[i] = true;
+							return ok;
 						}
 					}
 				}
 			}
-			if (m_queue == VK_NULL_HANDLE)
 			{
-				return set_error(BasicError::out_of_resource(), "Command Queue allocation failed because all VkQueues are in use.");
+				// Check graphics queue.
+				for (usize i = 0; i < m_device->m_queues.size(); ++i)
+				{
+					if (m_device->m_queues[i].desc.type == CommandQueueType::graphics && !m_device->m_queue_allocated[i])
+					{
+						if (!test_flags(desc.flags, CommandQueueFlags::presenting) ||
+							test_flags(m_device->m_queues[i].desc.flags, CommandQueueFlags::presenting))
+						{
+							m_queue = m_device->m_queues[i].queue;
+							m_device->m_queue_allocated[i] = true;
+							return ok;
+						}
+					}
+				}
 			}
-			return ok;
+			return set_error(BasicError::out_of_resource(), "Command Queue allocation failed because all VkQueues are in use.");
 		}
 	}
 }

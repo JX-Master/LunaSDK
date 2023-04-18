@@ -7,12 +7,13 @@
 #include "SwapChain.hpp"
 #include <GLFW/glfw3.h>
 #include "VulkanRHI.hpp"
-#include <Window/GLFW/IGLFWWindow.hpp>
+#include <Window/GLFW/GLFWWindow.hpp>
+#include "Instance.hpp"
 namespace Luna
 {
 	namespace RHI
 	{
-		R<VkSurfaceFormatKHR> choose_swap_surface_format(const Vector<VkSurfaceFormatKHR>& available_formats, PixelFormat desired_format)
+		R<VkSurfaceFormatKHR> choose_swap_surface_format(const Vector<VkSurfaceFormatKHR>& available_formats, Format desired_format)
 		{
 			VkFormat desired_vk_format = encode_pixel_format(desired_format);
 			for (const auto& format : available_formats)
@@ -53,11 +54,15 @@ namespace Luna
 				auto framebuffer_size = window->get_framebuffer_size();
 				m_desc.width = desc.width == 0 ? framebuffer_size.x : desc.width;
 				m_desc.height = desc.height == 0 ? framebuffer_size.y : desc.height;
+				if (!test_flags(queue->get_desc().flags, CommandQueueFlags::presenting))
+				{
+					return set_error(BasicError::not_supported(), "The specified command queue for creating swap chain does not have presenting support");
+				}
 				m_presenting_queue = queue;
 				m_window = window;
-				Window::IGLFWWindow* w = interface_cast<Window::IGLFWWindow>(window->get_object());
+				Window::IGLFWWindow* w = query_interface<Window::IGLFWWindow>(window->get_object());
 				if (!w) return BasicError::not_supported();
-				luexp(encode_vk_result(glfwCreateWindowSurface(g_instance, w->get_glfw_window_handle(), nullptr, &m_surface)));
+				luexp(encode_vk_result(glfwCreateWindowSurface(g_vk_instance, w->get_glfw_window_handle(), nullptr, &m_surface)));
 				auto& surface_info = get_physical_device_surface_info(m_device->m_physical_device, m_surface);
 				lulet(surface_format, choose_swap_surface_format(surface_info.formats, desc.pixel_format));
 				auto present_mode = choose_present_mode(surface_info.present_modes);
@@ -103,7 +108,7 @@ namespace Luna
 			}
 			if (m_surface != VK_NULL_HANDLE)
 			{
-				vkDestroySurfaceKHR(g_instance, m_surface, nullptr);
+				vkDestroySurfaceKHR(g_vk_instance, m_surface, nullptr);
 				m_surface = VK_NULL_HANDLE;
 			}
 		}

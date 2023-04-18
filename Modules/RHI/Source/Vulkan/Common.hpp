@@ -14,6 +14,12 @@ namespace Luna
 {
 	namespace RHI
 	{
+		// enabled extensions.
+		constexpr const c8* VK_DEVICE_ENTENSIONS[] = {
+			VK_KHR_SWAPCHAIN_EXTENSION_NAME
+		};
+		constexpr usize NUM_VK_DEVICE_ENTENSIONS = sizeof(VK_DEVICE_ENTENSIONS) / sizeof(const c8*);
+
 		inline RV encode_vk_result(VkResult result)
 		{
 			switch (result)

@@ -22,21 +22,21 @@ namespace Luna
 {
 	namespace RHI
 	{
-		enum class CommandQueueType : u32
+		enum class CommandQueueType : u8
 		{
 			graphics = 1,
 			compute = 2,
 			copy = 3,
 		};
 
-		enum class ClearFlag : u32
+		enum class ClearFlag : u8
 		{
 			none = 0x00,
 			depth = 0x01,
 			stencil = 0x02
 		};
 
-		enum class TextureCopyType : u32
+		enum class TextureCopyType : u8
 		{
 			subresource_index,	// When the referencing resource is a texture.
 			placed_footprint	// When the referencing resource is a buffer.
