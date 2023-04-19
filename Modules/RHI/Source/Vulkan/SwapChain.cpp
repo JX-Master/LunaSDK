@@ -95,12 +95,35 @@ namespace Luna
 				luexp(encode_vk_result(vkGetSwapchainImagesKHR(m_device->m_device, m_swap_chain, &image_count, nullptr)));
 				m_swap_chain_images.resize(image_count);
 				luexp(encode_vk_result(vkGetSwapchainImagesKHR(m_device->m_device, m_swap_chain, &image_count, m_swap_chain_images.data())));
+				m_swap_chain_image_views.resize(image_count);
+				for (usize i = 0; i < m_swap_chain_image_views.size(); ++i)
+				{
+					VkImageViewCreateInfo createInfo{};
+					createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+					createInfo.image = m_swap_chain_images[i];
+					createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+					createInfo.format = surface_format.format;
+					createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+					createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+					createInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+					createInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+					createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+					createInfo.subresourceRange.baseMipLevel = 0;
+					createInfo.subresourceRange.levelCount = 1;
+					createInfo.subresourceRange.baseArrayLayer = 0;
+					createInfo.subresourceRange.layerCount = 1;
+					luexp(encode_vk_result(vkCreateImageView(m_device->m_device, &createInfo, nullptr, &m_swap_chain_image_views[i])));
+				}
 			}
 			lucatchret;
 			return ok;
 		}
 		SwapChain::~SwapChain()
 		{
+			for (VkImageView i : m_swap_chain_image_views)
+			{
+				vkDestroyImageView(m_device->m_device, i, nullptr);
+			}
 			if (m_swap_chain != VK_NULL_HANDLE)
 			{
 				vkDestroySwapchainKHR(m_device->m_device, m_swap_chain, nullptr);
