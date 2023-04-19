@@ -32,6 +32,7 @@ namespace Luna
 					variable_info.descriptorSetCount = 1;
 					alloc_info.pNext = &variable_info;
 				}
+				MutexGuard guard(m_device->m_mtx);
 				luexp(encode_vk_result(vkAllocateDescriptorSets(m_device->m_device, &alloc_info, &m_desc_set)));
 			}
 			lucatchret;
