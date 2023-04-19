@@ -1,5 +1,8 @@
-// Copyright 2018-2022 JXMaster. All rights reserved.
-/*
+/*!
+* This file is a portion of Luna SDK.
+* For conditions of distribution and use, see the disclaimer
+* and license in LICENSE.txt
+*
 * @file Device.hpp
 * @author JXMaster
 * @date 2022/10/27
@@ -16,28 +19,29 @@ namespace Luna
 		{
 			VkQueue queue;
 			CommandQueueDesc desc;
+			u32 queue_family_index;
 		};
 
 		struct Device : IDevice
 		{
 			lustruct("RHI::Device", "{9C0F7754-FA08-4FF3-BF66-B23125FA19F9}");
 
-			VkDevice m_device;
+			VkDevice m_device = VK_NULL_HANDLE;
 			VkPhysicalDevice m_physical_device;
 			// All created queues.
 			Vector<QueueInfo> m_queues;
 			Vector<bool> m_queue_allocated;
 			Ref<IMutex> m_mtx;
 
+			// Features.
+			bool m_descriptor_binding_variable_descriptor_count_supported;
+
+			// Descriptor Pools.
+			VkDescriptorPool m_desc_pool = VK_NULL_HANDLE;
+
 			RV init(VkPhysicalDevice physical_device, const Vector<QueueFamily>& queue_families);
-			~Device()
-			{
-				if (m_device != VK_NULL_HANDLE)
-				{
-					vkDestroyDevice(m_device, nullptr);
-					m_device = nullptr;
-				}
-			}
+			RV init_descriptor_pools();
+			~Device();
 
 			virtual usize get_constant_buffer_data_alignment() override;
 			virtual void get_texture_data_placement_info(u32 width, u32 height, u32 depth, Format format,

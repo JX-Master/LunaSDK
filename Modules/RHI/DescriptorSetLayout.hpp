@@ -14,22 +14,38 @@ namespace Luna
 {
 	namespace RHI
 	{
+		//! Specify the type of descriptors that can be placed in a descriptor set.
 		enum class DescriptorType : u32
 		{
-			srv, // Shader resource view.
-			uav, // Unordered access view.
-			cbv, // Constant buffer view.
-			sampler // Sampler view.
+			//! Specifies texture shader resource view (SRV).
+			//! Such descriptor allows sampling the specified texture using samplers.
+			texture_srv,
+			//! Specifies buffer shader resource view (SRV).
+			//! Such descriptor allows reading buffer data, but not writing to it.
+			buffer_srv,
+			//! Specifies texture unordered access view (UAV). 
+			//! Such descriptor allows reading, writing and performing atomic operations on the texture pixels.
+			texture_uav,
+			//! Specifies buffer unordered access view (UAV).
+			//! Such descriptor allows reading, writing and performing atomic operations on the buffer data.
+			buffer_uav,
+			//! Specifies constant buffer view (CBV). 
+			//! Such descriptor allows reading data from one uniform buffer.
+			cbv,
+			//! Specifies one sampler.
+			sampler,
 		};
 
-		enum class ShaderVisibility : u32
+		enum class ShaderVisibilityFlag : u32
 		{
-			all = 0,
-			vertex = 1,
-			hull = 2,
-			domain = 3,
-			geometry = 4,
-			pixel = 5
+			none = 0x00,
+			vertex = 0x01,
+			hull = 0x02,
+			domain = 0x04,
+			geometry = 0x08,
+			pixel = 0x10,
+			compute = 0x20,
+			all = vertex | hull | domain | geometry | pixel | compute
 		};
 
 		//! Describes one binding in one descriptor set.
@@ -49,14 +65,14 @@ namespace Luna
 			//! of descriptors that may be bound. This value may be used for hardware validation when needed.
 			u32 num_descs;
 			//! Specify which pipeline shader can access a resource for this binding.
-			ShaderVisibility shader_visibility;
+			ShaderVisibilityFlag shader_visibility_flags;
 
 			DescriptorSetLayoutBinding() = default;
-			DescriptorSetLayoutBinding(DescriptorType type, u32 binding_slot, u32 num_descs, ShaderVisibility shader_visibility) :
+			DescriptorSetLayoutBinding(DescriptorType type, u32 binding_slot, u32 num_descs, ShaderVisibilityFlag shader_visibility_flags) :
 				type(type),
 				binding_slot(binding_slot),
 				num_descs(num_descs),
-				shader_visibility(shader_visibility) {}
+				shader_visibility_flags(shader_visibility_flags) {}
 		};
 
 		enum class DescriptorSetLayoutFlag : u32

@@ -1,5 +1,8 @@
-// Copyright 2018-2022 JXMaster. All rights reserved.
-/*
+/*!
+* This file is a portion of Luna SDK.
+* For conditions of distribution and use, see the disclaimer
+* and license in LICENSE.txt
+*
 * @file SwapChain.cpp
 * @author JXMaster
 * @date 2022/10/29

@@ -1,5 +1,8 @@
-// Copyright 2018-2022 JXMaster. All rights reserved.
-/*
+/*!
+* This file is a portion of Luna SDK.
+* For conditions of distribution and use, see the disclaimer
+* and license in LICENSE.txt
+*
 * @file CommandQueue.cpp
 * @author JXMaster
 * @date 2022/10/29
@@ -25,6 +28,7 @@ namespace Luna
 							test_flags(m_device->m_queues[i].desc.flags, CommandQueueFlags::presenting))
 						{
 							m_queue = m_device->m_queues[i].queue;
+							m_queue_family_index = m_device->m_queues[i].queue_family_index;
 							m_device->m_queue_allocated[i] = true;
 							return ok;
 						}
@@ -42,6 +46,7 @@ namespace Luna
 							test_flags(m_device->m_queues[i].desc.flags, CommandQueueFlags::presenting))
 						{
 							m_queue = m_device->m_queues[i].queue;
+							m_queue_family_index = m_device->m_queues[i].queue_family_index;
 							m_device->m_queue_allocated[i] = true;
 							return ok;
 						}
@@ -58,6 +63,7 @@ namespace Luna
 							test_flags(m_device->m_queues[i].desc.flags, CommandQueueFlags::presenting))
 						{
 							m_queue = m_device->m_queues[i].queue;
+							m_queue_family_index = m_device->m_queues[i].queue_family_index;
 							m_device->m_queue_allocated[i] = true;
 							return ok;
 						}

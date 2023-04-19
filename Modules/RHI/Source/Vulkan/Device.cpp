@@ -1,5 +1,8 @@
-// Copyright 2018-2022 JXMaster. All rights reserved.
-/*
+/*!
+* This file is a portion of Luna SDK.
+* For conditions of distribution and use, see the disclaimer
+* and license in LICENSE.txt
+*
 * @file Device.cpp
 * @author JXMaster
 * @date 2022/10/27
@@ -10,17 +13,17 @@
 #include "../RHI.hpp"
 #include "VulkanRHI.hpp"
 #include "Instance.hpp"
+#include "DescriptorSetLayout.hpp"
 #include "CommandQueue.hpp"
 namespace Luna
 {
 	namespace RHI
 	{
-		constexpr const c8* VK_DEVICE_EXTENSIONS[] = {
-			VK_KHR_SWAPCHAIN_EXTENSION_NAME
-		};
-		constexpr usize NUM_VK_DEVICE_EXTENSIONS = 1;
 		RV Device::init(VkPhysicalDevice physical_device, const Vector<QueueFamily>& queue_families)
 		{
+			Vector<const c8*> enabled_extensions;
+			enabled_extensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+
 			m_mtx = new_mutex();
 			m_physical_device = physical_device;
 			// Create queues for every valid queue family.
@@ -38,12 +41,21 @@ namespace Luna
 				dest.pQueuePriorities = priorities;
 				dest.flags = 0;
 			}
-			VkPhysicalDeviceFeatures device_features{};
+			// Check device features.
+			VkPhysicalDeviceFeatures2 device_features{};
+			device_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+			VkPhysicalDeviceDynamicRenderingFeaturesKHR dynamic_rendering_features{};
+			dynamic_rendering_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR;
+			device_features.pNext = &dynamic_rendering_features;
+			VkPhysicalDeviceDescriptorIndexingFeaturesEXT descriptor_indexing_features{};
+			descriptor_indexing_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES_EXT;
+			dynamic_rendering_features.pNext = &descriptor_indexing_features;
+			vkGetPhysicalDeviceFeatures2(physical_device, &device_features);
 			VkDeviceCreateInfo create_info{};
 			create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 			create_info.pQueueCreateInfos = queue_create_infos.data();
 			create_info.queueCreateInfoCount = (u32)queue_create_infos.size();
-			create_info.pEnabledFeatures = &device_features;
+			create_info.pEnabledFeatures = &device_features.features;
 			if (g_enable_validation_layers)
 			{
 				create_info.enabledLayerCount = NUM_VK_ENABLED_LAYERS;
@@ -53,8 +65,28 @@ namespace Luna
 			{
 				create_info.enabledLayerCount = 0;
 			}
-			create_info.enabledExtensionCount = (u32)NUM_VK_DEVICE_EXTENSIONS;
-			create_info.ppEnabledExtensionNames = VK_DEVICE_EXTENSIONS;
+			// Enable VK_KHR_dynamic_rendering. This is currently required.
+			if (dynamic_rendering_features.dynamicRendering = VK_FALSE)
+			{
+				return set_error(BasicError::not_supported(), "Luna SDK requires VK_KHR_dynamic_rendering extension, which is not supported on the current device.");
+			}
+			enabled_extensions.push_back(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME);
+			create_info.pNext = &dynamic_rendering_features;
+			// Check and enable VK_EXT_descriptor_indexing.
+			m_descriptor_binding_variable_descriptor_count_supported = (descriptor_indexing_features.runtimeDescriptorArray &&
+				descriptor_indexing_features.descriptorBindingVariableDescriptorCount &&
+				descriptor_indexing_features.shaderSampledImageArrayNonUniformIndexing);
+			if (m_descriptor_binding_variable_descriptor_count_supported)
+			{
+				enabled_extensions.push_back(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME);
+				dynamic_rendering_features.pNext = &descriptor_indexing_features;
+			}
+			else
+			{
+				dynamic_rendering_features.pNext = nullptr;
+			}
+			create_info.enabledExtensionCount = (u32)enabled_extensions.size();
+			create_info.ppEnabledExtensionNames = enabled_extensions.data();
 			auto r = encode_vk_result(vkCreateDevice(physical_device, &create_info, nullptr, &m_device));
 			if (failed(r))
 			{
@@ -70,11 +102,61 @@ namespace Luna
 					QueueInfo info;
 					info.queue = queue;
 					info.desc = queue_families[i].desc;
+					info.queue_family_index = queue_families[i].index;
 					m_queues.push_back(info);
 					m_queue_allocated.push_back(false);
 				}
 			}
+			r = init_descriptor_pools();
+			if (failed(r))
+			{
+				return r.errcode();
+			}
 			return ok;
+		}
+		RV Device::init_descriptor_pools()
+		{
+			VkDescriptorPoolSize pool_sizes[5] = {
+				{VK_DESCRIPTOR_TYPE_SAMPLER, 1024},
+				{VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 8192},
+				{VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1024},
+				{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 8192},
+				{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1024}
+			};
+
+			VkDescriptorPoolCreateInfo create_info{};
+			create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+			create_info.poolSizeCount = 5;
+			create_info.pPoolSizes = pool_sizes;
+			create_info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+			create_info.maxSets = 8192;
+			return encode_vk_result(vkCreateDescriptorPool(m_device, &create_info, nullptr, &m_desc_pool));
+		}
+		Device::~Device()
+		{
+			if (m_desc_pool != VK_NULL_HANDLE)
+			{
+				vkDestroyDescriptorPool(m_device, m_desc_pool, nullptr);
+				m_desc_pool = VK_NULL_HANDLE;
+			}
+			if (m_device != VK_NULL_HANDLE)
+			{
+				vkDestroyDevice(m_device, nullptr);
+				m_device = nullptr;
+			}
+		}
+		R<Ref<IDescriptorSetLayout>> Device::new_descriptor_set_layout(const DescriptorSetLayoutDesc& desc)
+		{
+			Ref<IDescriptorSetLayout> ret;
+			lutry
+			{
+				auto layout = new_object<DescriptorSetLayout>();
+				layout->m_device = this;
+				luexp(layout->init(desc));
+				ret = layout;
+			}
+			lucatchret;
+			return ret;
 		}
 		R<Ref<ICommandQueue>> Device::new_command_queue(const CommandQueueDesc& desc)
 		{
