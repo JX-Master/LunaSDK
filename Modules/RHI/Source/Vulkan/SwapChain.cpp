@@ -18,7 +18,7 @@ namespace Luna
 	{
 		R<VkSurfaceFormatKHR> choose_swap_surface_format(const Vector<VkSurfaceFormatKHR>& available_formats, Format desired_format)
 		{
-			VkFormat desired_vk_format = encode_pixel_format(desired_format);
+			VkFormat desired_vk_format = encode_format(desired_format);
 			for (const auto& format : available_formats)
 			{
 				if (format.format == desired_vk_format)
