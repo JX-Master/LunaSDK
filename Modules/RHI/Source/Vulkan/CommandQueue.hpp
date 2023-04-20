@@ -20,16 +20,17 @@ namespace Luna
 			lustruct("RHI::CommandQueue", "{47F84AC7-CD6D-44F0-9A75-E85EDFBF633A}");
 
 			Ref<Device> m_device;
+			Ref<IMutex> m_mtx;
 			Name m_name;
 			VkQueue m_queue = VK_NULL_HANDLE;
 			CommandQueueDesc m_desc;
 			u32 m_queue_family_index;
 			RV init(const CommandQueueDesc& desc);
+			~CommandQueue();
 
 			virtual IDevice* get_device() override { return m_device.get(); }
 			virtual void set_name(const Name& name) override { m_name = name; }
 			virtual CommandQueueDesc get_desc() override { return m_desc; }
-
 		};
 	}
 }

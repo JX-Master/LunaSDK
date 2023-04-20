@@ -14,6 +14,7 @@ namespace Luna
 	{
 		RV CommandQueue::init(const CommandQueueDesc& desc)
 		{
+			m_mtx = new_mutex();
 			MutexGuard guard(m_device->m_mtx);
 			m_queue = VK_NULL_HANDLE;
 			m_desc = desc;
@@ -71,6 +72,17 @@ namespace Luna
 				}
 			}
 			return set_error(BasicError::out_of_resource(), "Command Queue allocation failed because all VkQueues are in use.");
+		}
+		CommandQueue::~CommandQueue()
+		{
+			MutexGuard guard(m_device->m_mtx);
+			for (usize i = 0; i < m_device->m_queues.size(); ++i)
+			{
+				if (m_queue == m_device->m_queues[i].queue)
+				{
+					m_device->m_queue_allocated[i] = false;
+				}
+			}
 		}
 	}
 }

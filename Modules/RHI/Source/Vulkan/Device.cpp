@@ -245,6 +245,7 @@ namespace Luna
 		}
 		R<Ref<IResource>> Device::new_resource(const ResourceDesc& desc, const ClearValue* optimized_clear_value)
 		{
+			MutexGuard guard(m_mtx);
 			Ref<IResource> ret;
 			lutry
 			{
@@ -268,6 +269,7 @@ namespace Luna
 		}
 		bool Device::is_resources_aliasing_compatible(Span<const ResourceDesc> descs)
 		{
+			MutexGuard guard(m_mtx);
 			if (descs.size() <= 1) return true;
 			ResourceHeapType heap_type = descs[0].heap_type;
 			for (auto& desc : descs)
@@ -282,6 +284,7 @@ namespace Luna
 		}
 		R<Ref<IResource>> Device::new_aliasing_resource(IResource* existing_resource, const ResourceDesc& desc, const ClearValue* optimized_clear_value)
 		{
+			MutexGuard guard(m_mtx);
 			Ref<IResource> ret;
 			lutry
 			{
@@ -318,6 +321,7 @@ namespace Luna
 		}
 		RV Device::new_aliasing_resources(Span<const ResourceDesc> descs, Span<const ClearValue*> optimized_clear_values, Span<Ref<IResource>> out_resources)
 		{
+			MutexGuard guard(m_mtx);
 			lutry
 			{
 				if (out_resources.size() < descs.size()) return BasicError::insufficient_user_buffer();
@@ -389,6 +393,7 @@ namespace Luna
 		}
 		R<Ref<IDescriptorSetLayout>> Device::new_descriptor_set_layout(const DescriptorSetLayoutDesc& desc)
 		{
+			MutexGuard guard(m_mtx);
 			Ref<IDescriptorSetLayout> ret;
 			lutry
 			{
@@ -402,6 +407,7 @@ namespace Luna
 		}
 		R<Ref<ICommandQueue>> Device::new_command_queue(const CommandQueueDesc& desc)
 		{
+			MutexGuard guard(m_mtx);
 			Ref<ICommandQueue> ret;
 			lutry
 			{
