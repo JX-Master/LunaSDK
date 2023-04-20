@@ -238,24 +238,28 @@ namespace Luna
 		enum class ResourceUsageFlag : u32
 		{
 			none = 0x00,
-			//! Allows this resource to be bound as a shader resource by graphic pipeline.
-			shader_resource = 0x01,
-			//! Allows this resource to be bound as a constant buffer by graphic pipeline.
-			constant_buffer = 0x02,
-			//! Allows this resource to be bound for unordered access by compute pipeline.
-			unordered_access = 0x04,
-			//! Allows this resource to be bound as a render target by graphic pipeline.
-			render_target = 0x08,
-			//! Allows this resource to be bound as a depth stencil target by graphic pipeline.
-			depth_stencil = 0x10,
-			//! Allows this resource to be bound as a vertex buffer by graphic pipeline.
-			vertex_buffer = 0x20,
-			//! Allows this resource to be bound as a index buffer by graphic pipeline.
-			index_buffer = 0x40,
-			//! Allows this resource to be bound as a streaming output buffer by graphic pipeline.
-			stream_output = 0x80,
+			//! Allows this resource to be bound as copy source.
+			copy_source = 0x01,
+			//! Allows this resource to be bound as copy destination.
+			copy_dest = 0x02,
+			//! Allows this resource to be bound as a shader resource.
+			shader_resource = 0x04,
+			//! Allows this resource to be bound as a constant buffer.
+			constant_buffer = 0x08,
+			//! Allows this resource to be bound for unordered access.
+			unordered_access = 0x10,
+			//! Allows this resource to be bound as a render target.
+			render_target = 0x20,
+			//! Allows this resource to be bound as a depth stencil target.
+			depth_stencil = 0x40,
+			//! Allows this resource to be bound as a vertex buffer.
+			vertex_buffer = 0x80,
+			//! Allows this resource to be bound as a index buffer.
+			index_buffer = 0x100,
+			//! Allows this resource to be bound as a streaming output buffer.
+			stream_output = 0x200,
 			//! Allows this resource to be bound as a buffer providing indirect draw arguments.
-			indirect_buffer = 0x100,
+			indirect_buffer = 0x400,
 		};
 
 		//! Additional flags for texture and buffer.

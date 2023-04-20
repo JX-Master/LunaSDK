@@ -42,8 +42,12 @@ namespace Luna
 			// Descriptor Pools.
 			VkDescriptorPool m_desc_pool = VK_NULL_HANDLE;
 
+			// Vulkan memory allocator.
+			VmaAllocator m_allocator = VK_NULL_HANDLE;
+
 			RV init(VkPhysicalDevice physical_device, const Vector<QueueFamily>& queue_families);
 			RV init_descriptor_pools();
+			RV init_vma_allocator();
 			~Device();
 
 			virtual bool check_device_feature(DeviceFeature feature) override;

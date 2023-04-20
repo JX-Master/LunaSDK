@@ -15,6 +15,7 @@
 #include "Instance.hpp"
 #include "DescriptorSetLayout.hpp"
 #include "CommandQueue.hpp"
+#include "Resource.hpp"
 namespace Luna
 {
 	namespace RHI
@@ -120,6 +121,11 @@ namespace Luna
 			{
 				return r.errcode();
 			}
+			r = init_vma_allocator();
+			if (failed(r))
+			{
+				return r.errcode();
+			}
 			return ok;
 		}
 		RV Device::init_descriptor_pools()
@@ -140,8 +146,22 @@ namespace Luna
 			create_info.maxSets = 8192;
 			return encode_vk_result(vkCreateDescriptorPool(m_device, &create_info, nullptr, &m_desc_pool));
 		}
+		RV Device::init_vma_allocator()
+		{
+			VmaAllocatorCreateInfo allocator_create_info = {};
+			allocator_create_info.vulkanApiVersion = g_vk_version;
+			allocator_create_info.physicalDevice = m_physical_device;
+			allocator_create_info.device = m_device;
+			allocator_create_info.instance = g_vk_instance;
+			return encode_vk_result(vmaCreateAllocator(&allocator_create_info, &m_allocator));
+		}
 		Device::~Device()
 		{
+			if (m_allocator != VK_NULL_HANDLE)
+			{
+				vmaDestroyAllocator(m_allocator);
+				m_allocator = VK_NULL_HANDLE;
+			}
 			if (m_desc_pool != VK_NULL_HANDLE)
 			{
 				vkDestroyDescriptorPool(m_device, m_desc_pool, nullptr);
@@ -161,6 +181,29 @@ namespace Luna
 				return m_descriptor_binding_variable_descriptor_count_supported;
 			}
 			return false;
+		}
+		R<Ref<IResource>> Device::new_resource(const ResourceDesc& desc, const ClearValue* optimized_clear_value)
+		{
+			Ref<IResource> ret;
+			lutry
+			{
+				if (desc.type == ResourceType::buffer)
+				{
+					auto res = new_object<BufferResource>();
+					res->m_device = this;
+					luexp(res->init_as_committed(desc));
+					ret = res;
+				}
+				else
+				{
+					auto res = new_object<ImageResource>();
+					res->m_device = this;
+					luexp(res->init_as_committed(desc));
+					ret = res;
+				}
+			}
+			lucatchret;
+			return ret;
 		}
 		R<Ref<IDescriptorSetLayout>> Device::new_descriptor_set_layout(const DescriptorSetLayoutDesc& desc)
 		{
