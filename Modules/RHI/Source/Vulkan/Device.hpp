@@ -38,6 +38,7 @@ namespace Luna
 
 			bool m_dynamic_rendering_supported;
 			bool m_descriptor_binding_variable_descriptor_count_supported;
+			bool m_device_memory_requirements_query_supported;
 
 			// Descriptor Pools.
 			VkDescriptorPool m_desc_pool = VK_NULL_HANDLE;

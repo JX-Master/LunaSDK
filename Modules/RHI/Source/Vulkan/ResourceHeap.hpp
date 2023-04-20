@@ -19,7 +19,9 @@ namespace Luna
 			lustruct("RHI::ResourceHeap", "{4197FC92-D885-4376-A159-70F9D9EC5EAD}");
 
 			Ref<Device> m_device;
-			VkDeviceMemory m_memory = VK_NULL_HANDLE;
+
+			VmaAllocation m_allocation = VK_NULL_HANDLE;
+			VmaAllocationInfo m_allocation_info;
 
 			RV init(const ResourceHeapDesc& desc);
 			~ResourceHeap();
