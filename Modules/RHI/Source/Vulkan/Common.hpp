@@ -11,6 +11,7 @@
 #include <Runtime/PlatformDefines.hpp>
 #include "../../RHI.hpp"
 #include <vulkan/vulkan.h>
+#include <vk_mem_alloc.h>
 #include <Runtime/Result.hpp>
 
 namespace Luna
@@ -22,6 +23,13 @@ namespace Luna
 			VK_KHR_SWAPCHAIN_EXTENSION_NAME
 		};
 		constexpr usize NUM_VK_DEVICE_ENTENSIONS = sizeof(VK_DEVICE_ENTENSIONS) / sizeof(const c8*);
+
+		// Used for Vulkan RTTI.
+		struct VkStructureHeader
+		{
+			VkStructureType sType;
+			const void* pNext;
+		};
 
 		inline RV encode_vk_result(VkResult result)
 		{
@@ -195,6 +203,12 @@ namespace Luna
 				lupanic();
 				return VK_FORMAT_UNDEFINED;
 			}
+		}
+
+		inline void choose_memory_heap(const VkPhysicalDeviceMemoryProperties& memory_properties,
+			const ResourceHeapType& heap_type, VkMemoryType& out_memory_type)
+		{
+
 		}
 	}
 }

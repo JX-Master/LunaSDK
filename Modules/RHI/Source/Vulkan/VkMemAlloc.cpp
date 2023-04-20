@@ -3,9 +3,9 @@
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 *
-* @file Resource.cpp
+* @file VkMemAlloc.cpp
 * @author JXMaster
-* @date 2023/4/19
+* @date 2023/4/20
 */
-#include "Resource.hpp"
-
+#define VMA_IMPLEMENTATION
+#include <vk_mem_alloc.h>

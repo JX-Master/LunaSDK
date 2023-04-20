@@ -22,6 +22,7 @@ namespace Luna
 		RV Device::init(VkPhysicalDevice physical_device, const Vector<QueueFamily>& queue_families)
 		{
 			Vector<const c8*> enabled_extensions;
+			// This is required.
 			enabled_extensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 
 			m_mtx = new_mutex();
@@ -42,48 +43,55 @@ namespace Luna
 				dest.flags = 0;
 			}
 			// Check device features.
+			vkGetPhysicalDeviceMemoryProperties(physical_device, &m_memory_properties);
 			VkPhysicalDeviceFeatures2 device_features{};
 			device_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
 			VkPhysicalDeviceDynamicRenderingFeaturesKHR dynamic_rendering_features{};
 			dynamic_rendering_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR;
-			device_features.pNext = &dynamic_rendering_features;
 			VkPhysicalDeviceDescriptorIndexingFeaturesEXT descriptor_indexing_features{};
 			descriptor_indexing_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES_EXT;
-			dynamic_rendering_features.pNext = &descriptor_indexing_features;
+			VkStructureHeader* last_feature = (VkStructureHeader*)&device_features;
+			// Check "VK_KHR_dynamic_rendering", proposed to Vulkan 1.3.
+			if (g_vk_version >= VULKAN_1_3)
+			{
+				last_feature->pNext = &dynamic_rendering_features;
+				last_feature = (VkStructureHeader*)&dynamic_rendering_features;
+			}
+			// Check VK_EXT_descriptor_indexing, proposed to Vulkan 1.2 and is mandatory in Vulkan 1.3
+			if (g_vk_version >= VULKAN_1_2)
+			{
+				last_feature->pNext = &descriptor_indexing_features;
+				last_feature = (VkStructureHeader*)&descriptor_indexing_features;
+			}
 			vkGetPhysicalDeviceFeatures2(physical_device, &device_features);
-			VkDeviceCreateInfo create_info{};
-			create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-			create_info.pQueueCreateInfos = queue_create_infos.data();
-			create_info.queueCreateInfoCount = (u32)queue_create_infos.size();
-			create_info.pEnabledFeatures = &device_features.features;
-			if (g_enable_validation_layers)
-			{
-				create_info.enabledLayerCount = NUM_VK_ENABLED_LAYERS;
-				create_info.ppEnabledLayerNames = VK_ENABLED_LAYERS;
-			}
-			else
-			{
-				create_info.enabledLayerCount = 0;
-			}
-			// Enable VK_KHR_dynamic_rendering. This is currently required.
-			if (dynamic_rendering_features.dynamicRendering = VK_FALSE)
-			{
-				return set_error(BasicError::not_supported(), "Luna SDK requires VK_KHR_dynamic_rendering extension, which is not supported on the current device.");
-			}
-			enabled_extensions.push_back(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME);
-			create_info.pNext = &dynamic_rendering_features;
-			// Check and enable VK_EXT_descriptor_indexing.
+			m_dynamic_rendering_supported = (dynamic_rendering_features.dynamicRendering != VK_FALSE);
 			m_descriptor_binding_variable_descriptor_count_supported = (descriptor_indexing_features.runtimeDescriptorArray &&
 				descriptor_indexing_features.descriptorBindingVariableDescriptorCount &&
 				descriptor_indexing_features.shaderSampledImageArrayNonUniformIndexing);
+			device_features.pNext = nullptr;
+			dynamic_rendering_features.pNext = nullptr;
+			descriptor_indexing_features.pNext = nullptr;
+			
+			// Create device.
+			VkDeviceCreateInfo create_info{};
+			VkStructureHeader* last = (VkStructureHeader*)&create_info;
+			create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+			create_info.pQueueCreateInfos = queue_create_infos.data();
+			create_info.queueCreateInfoCount = (u32)queue_create_infos.size();
+			create_info.pEnabledFeatures = &device_features.features;	// Enable all supported features.
+			create_info.enabledLayerCount = g_enabled_layers.size();	// Enable all layers specified when creating VkInstance.
+			create_info.ppEnabledLayerNames = g_enabled_layers.data();
+			if (m_dynamic_rendering_supported)
+			{
+				enabled_extensions.push_back(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME);
+				last->pNext = &dynamic_rendering_features;
+				last = (VkStructureHeader*)&dynamic_rendering_features;
+			}
 			if (m_descriptor_binding_variable_descriptor_count_supported)
 			{
 				enabled_extensions.push_back(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME);
-				dynamic_rendering_features.pNext = &descriptor_indexing_features;
-			}
-			else
-			{
-				dynamic_rendering_features.pNext = nullptr;
+				last->pNext = &descriptor_indexing_features;
+				last = (VkStructureHeader*)&descriptor_indexing_features;
 			}
 			create_info.enabledExtensionCount = (u32)enabled_extensions.size();
 			create_info.ppEnabledExtensionNames = enabled_extensions.data();
@@ -144,6 +152,15 @@ namespace Luna
 				vkDestroyDevice(m_device, nullptr);
 				m_device = nullptr;
 			}
+		}
+		bool Device::check_device_feature(DeviceFeature feature)
+		{
+			switch (feature)
+			{
+			case DeviceFeature::unbound_descriptor_array:
+				return m_descriptor_binding_variable_descriptor_count_supported;
+			}
+			return false;
 		}
 		R<Ref<IDescriptorSetLayout>> Device::new_descriptor_set_layout(const DescriptorSetLayoutDesc& desc)
 		{

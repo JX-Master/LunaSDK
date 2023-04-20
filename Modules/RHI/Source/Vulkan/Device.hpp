@@ -34,6 +34,9 @@ namespace Luna
 			Ref<IMutex> m_mtx;
 
 			// Features.
+			VkPhysicalDeviceMemoryProperties m_memory_properties;
+
+			bool m_dynamic_rendering_supported;
 			bool m_descriptor_binding_variable_descriptor_count_supported;
 
 			// Descriptor Pools.
@@ -43,6 +46,7 @@ namespace Luna
 			RV init_descriptor_pools();
 			~Device();
 
+			virtual bool check_device_feature(DeviceFeature feature) override;
 			virtual usize get_constant_buffer_data_alignment() override;
 			virtual void get_texture_data_placement_info(u32 width, u32 height, u32 depth, Format format,
 				u64* size, u64* alignment, u64* row_pitch, u64* slice_pitch) override;

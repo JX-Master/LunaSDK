@@ -14,15 +14,21 @@ namespace Luna
 {
 	namespace RHI
 	{
+		//! The vulkan instance version.
+		extern u32 g_vk_version;
 		//! The global Vulkan instance.
 		extern VkInstance g_vk_instance;
 
-		extern bool g_enable_validation_layers;
+		constexpr u32 VULKAN_1_0 = VK_MAKE_API_VERSION(0, 1, 0, 0);
+		constexpr u32 VULKAN_1_1 = VK_MAKE_API_VERSION(0, 1, 1, 0);
+		constexpr u32 VULKAN_1_2 = VK_MAKE_API_VERSION(0, 1, 2, 0);
+		constexpr u32 VULKAN_1_3 = VK_MAKE_API_VERSION(0, 1, 3, 0);
 
-		constexpr const c8* VK_ENABLED_LAYERS[] = {
-			"VK_LAYER_KHRONOS_validation"
-		};
-		constexpr usize NUM_VK_ENABLED_LAYERS = 1;
+		//! Whether the Vulkan validation layer is enabled.
+		extern bool g_enable_validation_layer;
+
+		//! The enabled Vulkan layers.
+		extern Vector<const c8*> g_enabled_layers;
 
 		RV create_vk_instance();
 		void destroy_vk_instance();

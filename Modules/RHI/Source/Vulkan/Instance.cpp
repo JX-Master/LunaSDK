@@ -16,10 +16,12 @@ namespace Luna
 	namespace RHI
 	{
 		//! The global Vulkan instance.
+		u32 g_vk_version;
 		VkInstance g_vk_instance;
 		VkDebugUtilsMessengerEXT g_vk_debug_messenger = VK_NULL_HANDLE;
 
-		bool g_enable_validation_layers = false;
+		bool g_enable_validation_layer = false;
+		Vector<const c8*> g_enabled_layers;
 
 		static VKAPI_ATTR VkBool32 VKAPI_CALL debug_callback(
 			VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
@@ -73,30 +75,23 @@ namespace Luna
 			VkLayerProperties* available_layers = (VkLayerProperties*)alloca(layer_count * sizeof(VkLayerProperties));
 			vkEnumerateInstanceLayerProperties(&layer_count, available_layers);
 
-			for (const c8* layer_name : VK_ENABLED_LAYERS)
+			bool layer_found = false;
+			for (u32 i = 0; i < layer_count; ++i)
 			{
-				bool layer_found = false;
-				for (u32 i = 0; i < layer_count; ++i)
+				if (strcmp("VK_LAYER_KHRONOS_validation", available_layers[i].layerName) == 0)
 				{
-					if (strcmp(layer_name, available_layers[i].layerName) == 0)
-					{
-						layer_found = true;
-						break;
-					}
-				}
-				if (!layer_found)
-				{
-					return false;
+					layer_found = true;
+					break;
 				}
 			}
-			return true;
+			return layer_found;
 		}
 
 		static RV setup_debug_messanger()
 		{
 			lutry
 			{
-				if (g_enable_validation_layers)
+				if (g_enable_validation_layer)
 				{
 					VkDebugUtilsMessengerCreateInfoEXT create_info{};
 					init_debug_messenger_create_info(create_info);
@@ -117,49 +112,47 @@ namespace Luna
 
 		RV create_vk_instance()
 		{
+			g_vk_version = 0;
 			g_vk_instance = VK_NULL_HANDLE;
 			lutry
 			{
+				luexp(encode_vk_result(vkEnumerateInstanceVersion(&g_vk_version)));
 				VkApplicationInfo app_info{};
 				app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-				app_info.pApplicationName = "Luna Engine";
+				app_info.pApplicationName = "Luna SDK";
 				app_info.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
-				app_info.pEngineName = "Luna Engine";
+				app_info.pEngineName = "Luna SDK";
 				app_info.engineVersion = VK_MAKE_VERSION(0, 8, 0);
-				app_info.apiVersion = VK_API_VERSION_1_2;
+				app_info.apiVersion = g_vk_version;
 				VkInstanceCreateInfo create_info{};
 				create_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
 				create_info.pApplicationInfo = &app_info;
 				u32 glfw_extensions_count = 0;
 				const c8** glfw_extensions = glfwGetRequiredInstanceExtensions(&glfw_extensions_count);
 				Vector<const c8*> extensions(glfw_extensions, glfw_extensions + glfw_extensions_count);
-				g_enable_validation_layers = false;
+				g_enable_validation_layer = false;
 #ifdef LUNA_RHI_DEBUG
 				if (check_validation_layer_support())
 				{
-					g_enable_validation_layers = true;
+					g_enable_validation_layer = true;
 				}
 #endif
-				if (g_enable_validation_layers)
+				if (g_enable_validation_layer)
 				{
 					extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 				}
 				create_info.enabledExtensionCount = (u32)extensions.size();
 				create_info.ppEnabledExtensionNames = extensions.data();
 				VkDebugUtilsMessengerCreateInfoEXT debug_create_info{};
-				if (g_enable_validation_layers)
+				if (g_enable_validation_layer)
 				{
 					// Enable validation layer.
-					create_info.enabledLayerCount = (u32)NUM_VK_ENABLED_LAYERS;
-					create_info.ppEnabledLayerNames = VK_ENABLED_LAYERS;
+					g_enabled_layers.push_back("VK_LAYER_KHRONOS_validation");
 					init_debug_messenger_create_info(debug_create_info);
 					create_info.pNext = (VkDebugUtilsMessengerCreateInfoEXT*)&debug_create_info;
 				}
-				else
-				{
-					create_info.enabledLayerCount = 0;
-					create_info.pNext = nullptr;
-				}
+				create_info.enabledLayerCount = (u32)g_enabled_layers.size();
+				create_info.ppEnabledLayerNames = g_enabled_layers.data();
 				luexp(encode_vk_result(vkCreateInstance(&create_info, nullptr, &g_vk_instance)));
 				luexp(setup_debug_messanger());
 			}
@@ -181,6 +174,8 @@ namespace Luna
 				vkDestroyInstance(g_vk_instance, nullptr);
 				g_vk_instance = VK_NULL_HANDLE;
 			}
+			g_enabled_layers.clear();
+			g_enabled_layers.shrink_to_fit();
 		}
 	}
 }

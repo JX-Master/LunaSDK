@@ -8,7 +8,7 @@ Luna SDK is a C++ software development framework for real-time rendering applica
 
 Key features:
 
-* Modern graphics API targeting Direct3D 12, Vulkan and Metal, including window management.
+* Modern graphics API targeting Direct3D 12, Vulkan (1.1 and newer) and Metal, including window management.
 * Full dynamic type reflection, including full support for generic types.
 * Serialization support based on reflection.
 * Fast entity-component-system scene representation.
@@ -31,7 +31,7 @@ Designed target platforms:
     * clang or gcc on Linux (not implemented yet).
 * xmake building system, check [here](https://xmake.io/#/guide/installation) for installation instructions.
 * For Visual Studio Code users, install `XMake`(tboox) and `C/C++`(Microsoft) extensions on Visual Studio Code to improve development experience.
-* [Vulkan SDK](https://www.lunarg.com/vulkan-sdk/) should be installed manually if you want to build Luna SDK with Vulkan backend. This is a requirement for Linux users. 
+* [Vulkan SDK](https://www.lunarg.com/vulkan-sdk/) should be installed manually if you want to build Luna SDK with Vulkan backend. This is a requirement for Linux users.
 
 ### Visual Studio
 1. Clone or download this project.

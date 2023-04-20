@@ -117,10 +117,19 @@ namespace Luna
 			}
 		};
 
+		enum class DeviceFeature : u32
+		{
+			//! `DescriptorSetLayoutFlag::variable_descriptors` is allowed when creating descriptor set layout.
+			unbound_descriptor_array,
+		};
+
 		//! Represents one logical graphic device on the platform.
 		struct IDevice : virtual Interface
 		{
 			luiid("{099AB8FA-7239-41EE-B05C-D36B5DCE1ED7}");
+
+			//! Checks whether the specified device feature is present.
+			virtual bool check_device_feature(DeviceFeature feature) = 0;
 
 			//! Gets the alignment for the buffer data start location and size.
 			virtual usize get_constant_buffer_data_alignment() = 0;
