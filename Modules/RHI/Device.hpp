@@ -8,7 +8,6 @@
 * @date 2019/7/17
 */
 #pragma once
-#include "ResourceHeap.hpp"
 #include "ShaderInputLayout.hpp"
 #include "PipelineState.hpp"
 #include "DescriptorSet.hpp"
@@ -147,23 +146,37 @@ namespace Luna
 			virtual void get_texture_data_placement_info(u32 width, u32 height, u32 depth, Format format,
 				u64* size = nullptr, u64* alignment = nullptr, u64* row_pitch = nullptr, u64* slice_pitch = nullptr) = 0;
 
-			//! Gets the resource size by its descriptor. The size can be used to create buffers for uploading/reading data of the resource, or it can
-			//! be used to allocate the resource from one resource heap.
-			//! @param[in] desc The resource descriptor.
-			//! @param[out] out_alignment The optional pointer that retrieves the memory alignment of the resource. 
-			//! This is useful if you want to allocate resource memory from one resource heap.
-			//! @return The size of the resource in bytes.
-			virtual u64 get_resource_size(const ResourceDesc& desc, u64* out_alignment = nullptr) = 0;
-
-			//! Creates one new resource.
+			//! Creates one new resource and allocates device memory for the resource.
 			//! @param[in] desc The descriptor object.
 			//! @param[in] optimized_clear_value The optional optimized clear value for a texture resource. Specify `nullptr` if this is a buffer
 			//! resource or the resource does not have a optimized clear value.
 			virtual R<Ref<IResource>> new_resource(const ResourceDesc& desc, const ClearValue* optimized_clear_value = nullptr) = 0;
-		
-			//! Creates one new resource heap.
-			//! @param[in] desc The descriptor object.
-			virtual R<Ref<IResourceHeap>> new_resource_heap(const ResourceHeapDesc& desc) = 0;
+
+			//! Checks whether the given resources can share the same device memory.
+			//! @param[in] descs The resource descriptors of resources being examined.
+			//! @return Returns `true` if such resources can share the same device memory, returns `false` otherwise.
+			virtual bool is_resources_aliasing_compatible(Span<const ResourceDesc> descs) = 0;
+
+			//! Creates one aliasing resource that shares the same device memory with the existing resource.
+			//! The user may create multiple aliasing resources with the same device memory, given that only one of them is active at any given time.
+			//! The user should use aliasing barrier to switch the active resource between aliasing resources sharing the same device memory.
+			virtual R<Ref<IResource>> new_aliasing_resource(IResource* existing_resource, const ResourceDesc& desc, const ClearValue* optimized_clear_value = nullptr) = 0;
+
+			//! Allocates device memory that is capable of storing multiple resources specified, and creating multiple aliasing resources 
+			//! that shares the same device memory.
+			//! @param[in] descs The resource descriptors of resources that shares the same device memory.
+			//! @param[in] optimized_clear_values The optimized clear values for each resource you want to create.
+			//! 
+			//! Every entry in the span can be `nullptr`, which indicates that the optimized clear value is not specified for that entry.
+			//! 
+			//! If `optimized_clear_values.size()` is smaller than `descs.size()`, the optimized clear values of first `descs.size()` enties will be specified, other enties 
+			//! will have no optimized clear value specified.
+			//! @param[out] out_resources Returns the creates resources. 
+			//! 
+			//! `out_resources.size()` must be greater than or equal to `descs.size()`, and the first `descs.size()` of `out_resources` will be filled.
+			//! @remark The user can call `is_resources_aliasing_compatible` before calling `new_aliasing_resources` to check whether the given 
+			//! resources can share the same device memory.
+			virtual RV new_aliasing_resources(Span<const ResourceDesc> descs, Span<const ClearValue*> optimized_clear_values, Span<Ref<IResource>> out_resources) = 0;
 
 			//! Creates one new shader input layout.
 			virtual R<Ref<IShaderInputLayout>> new_shader_input_layout(const ShaderInputLayoutDesc& desc) = 0;

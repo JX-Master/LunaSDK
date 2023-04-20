@@ -51,13 +51,16 @@ namespace Luna
 			RV init_vma_allocator();
 			~Device();
 
+			RV get_memory_requirements(Span<const ResourceDesc> descs, VkMemoryRequirements& memory_requirements);
+
 			virtual bool check_device_feature(DeviceFeature feature) override;
 			virtual usize get_constant_buffer_data_alignment() override;
 			virtual void get_texture_data_placement_info(u32 width, u32 height, u32 depth, Format format,
 				u64* size, u64* alignment, u64* row_pitch, u64* slice_pitch) override;
-			virtual u64 get_resource_size(const ResourceDesc& desc, u64* out_alignment) override;
 			virtual R<Ref<IResource>> new_resource(const ResourceDesc& desc, const ClearValue* optimized_clear_value) override;
-			virtual R<Ref<IResourceHeap>> new_resource_heap(const ResourceHeapDesc& desc) override;
+			virtual bool is_resources_aliasing_compatible(Span<const ResourceDesc> descs) override;
+			virtual R<Ref<IResource>> new_aliasing_resource(IResource* existing_resource, const ResourceDesc& desc, const ClearValue* optimized_clear_value) override;
+			virtual RV new_aliasing_resources(Span<const ResourceDesc> descs, Span<const ClearValue*> optimized_clear_values, Span<Ref<IResource>> out_resources) override;
 			virtual R<Ref<IShaderInputLayout>> new_shader_input_layout(const ShaderInputLayoutDesc& desc) override;
 			virtual R<Ref<IPipelineState>> new_graphics_pipeline_state(const GraphicsPipelineStateDesc& desc) override;
 			virtual R<Ref<IPipelineState>> new_compute_pipeline_state(const ComputePipelineStateDesc& desc) override;
