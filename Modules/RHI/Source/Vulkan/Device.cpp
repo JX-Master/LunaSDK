@@ -17,8 +17,7 @@
 #include "DescriptorSet.hpp"
 #include "CommandQueue.hpp"
 #include "Resource.hpp"
-#include "DeviceFence.hpp"
-#include "HostFence.hpp"
+#include "Fence.hpp"
 namespace Luna
 {
 	namespace RHI
@@ -416,27 +415,13 @@ namespace Luna
 			lucatchret;
 			return ret;
 		}
-		R<Ref<IDeviceFence>> Device::new_device_fence()
+		R<Ref<IFence>> Device::new_fence()
 		{
 			MutexGuard guard(m_mtx);
-			Ref<IDeviceFence> ret;
+			Ref<IFence> ret;
 			lutry
 			{
-				auto fence = new_object<DeviceFence>();
-				fence->m_device = this;
-				luexp(fence->init());
-				ret = fence;
-			}
-			lucatchret;
-			return ret;
-		}
-		R<Ref<IHostFence>> Device::new_host_fence()
-		{
-			MutexGuard guard(m_mtx);
-			Ref<IHostFence> ret;
-			lutry
-			{
-				auto fence = new_object<HostFence>();
+				auto fence = new_object<Fence>();
 				fence->m_device = this;
 				luexp(fence->init());
 				ret = fence;

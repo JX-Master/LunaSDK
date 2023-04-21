@@ -3,23 +3,23 @@
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 *
-* @file DeviceFence.cpp
+* @file Fence.cpp
 * @author JXMaster
 * @date 2023/4/21
 */
-#include "DeviceFence.hpp"
+#include "Fence.hpp"
 
 namespace Luna
 {
 	namespace RHI
 	{
-		RV DeviceFence::init()
+		RV Fence::init()
 		{
 			VkSemaphoreCreateInfo info{};
 			info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 			return encode_vk_result(m_device->m_funcs.vkCreateSemaphore(m_device->m_device, &info, nullptr, &m_semaphore));
 		}
-		DeviceFence::~DeviceFence()
+		Fence::~Fence()
 		{
 			if (m_semaphore != VK_NULL_HANDLE)
 			{

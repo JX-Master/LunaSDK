@@ -3,7 +3,7 @@
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 *
-* @file DeviceFence.hpp
+* @file Fence.hpp
 * @author JXMaster
 * @date 2023/4/21
 */
@@ -14,9 +14,9 @@ namespace Luna
 {
 	namespace RHI
 	{
-		struct DeviceFence : IDeviceFence
+		struct Fence : IFence
 		{
-			lustruct("RHI::DeviceFence", "{DCC665F4-475F-4EAA-8837-17362D44BAD9}");
+			lustruct("RHI::Fence", "{DCC665F4-475F-4EAA-8837-17362D44BAD9}");
 			luiimpl();
 
 			Ref<Device> m_device;
@@ -24,7 +24,7 @@ namespace Luna
 			Name m_name;
 
 			RV init();
-			~DeviceFence();
+			~Fence();
 
 			virtual IDevice* get_device() override { return m_device.get(); }
 			virtual void set_name(const Name& name) override { m_name = name; }

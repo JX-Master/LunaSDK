@@ -28,6 +28,7 @@ namespace Luna
 
 			VkCommandPool m_command_pool = VK_NULL_HANDLE;
 			VkCommandBuffer m_command_buffer = VK_NULL_HANDLE;
+			VkFence m_fence = VK_NULL_HANDLE;
 
 			RV init(CommandQueue* queue);
 			~CommandBuffer();
@@ -44,8 +45,8 @@ namespace Luna
 			virtual ICommandQueue* get_command_queue() override { return m_queue.get(); }
 			virtual RV reset() override;
 			virtual void attach_device_object(IDeviceChild* obj) override;
-			virtual void begin_event(const Name& event_name) override;
-			virtual void end_event() override;
+			virtual void begin_event(const Name& event_name) override {}
+			virtual void end_event() override {}
 			virtual void begin_render_pass(const RenderPassDesc& desc) override;
 			virtual void set_pipeline_state(IPipelineState* pso) override;
 			virtual void set_graphics_shader_input_layout(IShaderInputLayout* shader_input_layout) override;
@@ -83,7 +84,7 @@ namespace Luna
 			virtual void end_pipeline_statistics_query(IQueryHeap* heap, u32 index) override;
 			virtual void begin_occlusion_query(IQueryHeap* heap, u32 index) override;
 			virtual void end_occlusion_query(IQueryHeap* heap, u32 index) override;
-			virtual RV submit() override;
+			virtual RV submit(Span<IFence*> wait_fences, Span<IFence*> signal_fences, bool allow_host_waiting) override;
 		};
 	}
 }

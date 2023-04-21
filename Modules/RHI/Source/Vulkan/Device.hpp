@@ -71,8 +71,7 @@ namespace Luna
 			virtual R<Ref<IRenderTargetView>> new_render_target_view(IResource* resource, const RenderTargetViewDesc* desc) override;
 			virtual R<Ref<IDepthStencilView>> new_depth_stencil_view(IResource* resource, const DepthStencilViewDesc* desc) override;
 			virtual R<Ref<IQueryHeap>> new_query_heap(const QueryHeapDesc& desc) override;
-			virtual R<Ref<IDeviceFence>> new_device_fence() override;
-			virtual R<Ref<IHostFence>> new_host_fence() override;
+			virtual R<Ref<IFence>> new_fence() override;
 			virtual RV copy_resource(Span<const ResourceCopyDesc> copies) override;
 		};
 

@@ -29,6 +29,9 @@ namespace Luna
 				alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 				alloc_info.commandBufferCount = 1;
 				luexp(encode_vk_result(m_device->m_funcs.vkAllocateCommandBuffers(m_device->m_device, &alloc_info, &m_command_buffer)));
+				VkFenceCreateInfo fence_create_info{};
+				fence_create_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+				luexp(encode_vk_result(m_device->m_funcs.vkCreateFence(m_device->m_device, &fence_create_info, nullptr, &m_fence)));
 				luexp(begin_command_buffer());
 			}
 			lucatchret;
@@ -40,6 +43,11 @@ namespace Luna
 			{
 				m_device->m_funcs.vkDestroyCommandPool(m_device->m_device, m_command_pool, nullptr);
 				m_command_pool = VK_NULL_HANDLE;
+			}
+			if (m_fence != VK_NULL_HANDLE)
+			{
+				m_device->m_funcs.vkDestroyFence(m_device->m_device, m_fence, nullptr);
+				m_fence = VK_NULL_HANDLE;
 			}
 		}
 		RV CommandBuffer::begin_command_buffer()
@@ -55,9 +63,13 @@ namespace Luna
 			lucatchret;
 			return ok;
 		}
-		RV CommandBuffer::reset()
+		void CommandBuffer::wait()
 		{
-
+			auto r = m_device->m_funcs.vkWaitForFences(m_device->m_device, 1, &m_fence, VK_TRUE, U64_MAX);
+		}
+		bool CommandBuffer::try_wait()
+		{
+			return m_device->m_funcs.vkGetFenceStatus(m_device->m_device, m_fence) == VK_SUCCESS;
 		}
 		void CommandBuffer::attach_device_object(IDeviceChild* obj)
 		{
@@ -65,8 +77,7 @@ namespace Luna
 		}
 		void CommandBuffer::begin_render_pass(const RenderPassDesc& desc)
 		{
-			VkRenderingInfoKHR info{};
-
+			
 		}
 
 	}

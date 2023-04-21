@@ -17,6 +17,7 @@
 #include "DepthStencilView.hpp"
 #include "QueryHeap.hpp"
 #include <Runtime/Span.hpp>
+#include "ResolveTargetView.hpp"
 
 namespace Luna
 {
@@ -344,27 +345,30 @@ namespace Luna
 				max_depth(max_depth) {}
 		};
 
-		//! The operation to perform when the render texture is loaded to GPU.
+		//! The operation to perform when the attachment is loaded to GPU.
 		enum class LoadOp : u8
 		{
-			//! The previous contents of the texture within the render area will be preserved.
-			load = 0,
-			//! The contents within the render area will be cleared to a uniform value
-			clear = 1,
-			//! The previous contents within the area need not be preserved, and we don't clear 
-			//! the content before using it.
-			dont_care = 2,
+			//! The previous contents of the attachment does not need to be preserved. 
+			//! If this is specified, your application should not have any assumptions on 
+			//! the initial data of the attachment, and should overwrite the data in render
+			//! pass.
+			dont_care = 0,
+			//! The previous contents of the attachment shall be preserved.
+			load = 1,
+			//! The contents within of the attachment will be cleared to a uniform value.
+			clear = 2,
 		};
 
 		//! The operation to perform when the render texture is written back to resource memory.
 		enum class StoreOp : u8
 		{
-			//! Preserves the content of the texture after ending the render pass.
-			store = 0,
-			//! The content of the texture will not be preserved after ending the render pass.
+			//! The content of the attachment will be discarded and not stored back to the resource 
+			//! after ending the render pass.
 			//! This is used for attachments like depth buffer that is only used for the current 
 			//! render pass.
-			dont_care = 1
+			dont_care = 0,
+			//! Stores the content of the attachment to the resource after ending the render pass.
+			store = 1
 		};
 
 		//! Parameters passed to `begin_render_pass`.
@@ -372,6 +376,8 @@ namespace Luna
 		{
 			//! The render targets views to set.
 			IRenderTargetView* rtvs[8] = { nullptr };
+			//! The resolve target views to set.
+			IResolveTargetView* rsvs[8] = { nullptr };
 			//! The depth stencil view to set.
 			IDepthStencilView* dsv = nullptr;
 			//! The load operation for the render target. 
@@ -380,6 +386,12 @@ namespace Luna
 			//! The store operation for the render target.
 			//! If the corresponding render target resource is `nullptr`, this operation is ignored.
 			StoreOp rt_store_ops[8] = { StoreOp::store };
+			//! The load operation for the resolve target. 
+			//! If the corresponding resolve target resource is `nullptr`, this operation is ignored.
+			LoadOp resolve_load_ops[8] = { LoadOp::load };
+			//! The store operation for the resolve target.
+			//! If the corresponding resolve target resource is `nullptr`, this operation is ignored.
+			StoreOp resolve_store_ops[8] = { StoreOp::store };
 			//! The load operation for depth component.
 			//! If the depth stencil resource is `nullptr`, this operation is ignored.
 			LoadOp depth_load_op = LoadOp::load;
@@ -413,10 +425,10 @@ namespace Luna
 		//! should create multiple command buffers, one per thread. 
 		//! 
 		//! All synchroizations for command buffers are performed explicitly, for instance:
-		//! 1. To waits for one command buffer from CPU side, call `ICommandBuffer::wait`.
-		//! 2. To waits for one command buffer from another command queue, call `ICommandQueue::wait_command_buffer`.
+		//! 1. Use `ICommandBuffer::wait` to wait for one command buffer from host side, 
+		//! 2. Use fence objects to wait for one command buffer from another command buffer.
 		//! 3. Only call `ICommandBuffer::reset` after the command buffer is not submitted, or is finished by GPU.
-		struct ICommandBuffer : virtual IDeviceChild
+		struct ICommandBuffer : virtual IDeviceChild, virtual IWaitable
 		{
 			luiid("{2970a4c8-d905-4e58-9247-46ba6a33b220}");
 
@@ -574,10 +586,22 @@ namespace Luna
 
 			//virtual void dispatch_indirect(IResource* buffer, usize offset) = 0;
 
-			//! Submits the recorded content in this command buffer to the target command queue.
+			//! Submits the recorded content in this command buffer to the attached command queue.
 			//! The command buffer can only be submitted once, and the only operation after the submit is to 
 			//! reset the command buffer after it is executed by command queue.
-			virtual RV submit() = 0;
+			//! @param[in] wait_fences The fence objects to wait before this command buffer can be processed.
+			//! @param[in] signal_fences The fence objects to signal after this command buffer is completed.
+			//! @param[in] allow_host_waiting Whether `ICommandBuffer::wait` can be used to wait for the command buffer 
+			//! from host side. If this is `false`, the command buffer cannot be waited from host, and the behavior of 
+			//! calling `ICommandBuffer::wait` is undefined. Setting this to `false` may improve queue performance, and 
+			//! the command buffer can still be waited by other command buffers using fences.
+			//! 
+			//! @remark Synchronizations between command buffers are specified explicitly using fences when submitting
+			//! command buffers. For command buffers (A) and (B) submitted to the same command queue in order (A -> B), 
+			//! the system is allowed to execute (B) after (A) is started and before (A) is completed. If you want to
+			//! defer the execution of (B) until (A) is completed, using one fence (F) as the signal fence of (A) and the
+			//! wait fence of (B) to synchronize them explicitly.
+			virtual RV submit(Span<IFence*> wait_fences, Span<IFence*> signal_fences, bool allow_host_waiting) = 0;
 		};
 	}
 }
