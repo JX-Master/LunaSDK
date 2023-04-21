@@ -17,6 +17,7 @@ namespace Luna
 		struct DescriptorSetLayout : IDescriptorSetLayout
 		{
 			lustruct("RHI::DescriptorSetLayout", "{A98BDEC9-14D2-4CD0-AC5F-666BB828A1F7}");
+			luiimpl();
 
 			Ref<Device> m_device;
 			DescriptorSetLayoutDesc m_desc;

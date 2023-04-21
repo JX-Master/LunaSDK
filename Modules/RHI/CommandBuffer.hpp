@@ -416,7 +416,7 @@ namespace Luna
 		//! 1. To waits for one command buffer from CPU side, call `ICommandBuffer::wait`.
 		//! 2. To waits for one command buffer from another command queue, call `ICommandQueue::wait_command_buffer`.
 		//! 3. Only call `ICommandBuffer::reset` after the command buffer is not submitted, or is finished by GPU.
-		struct ICommandBuffer : virtual IDeviceChild, virtual IWaitable
+		struct ICommandBuffer : virtual IDeviceChild
 		{
 			luiid("{2970a4c8-d905-4e58-9247-46ba6a33b220}");
 

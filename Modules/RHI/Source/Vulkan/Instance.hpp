@@ -19,11 +19,6 @@ namespace Luna
 		//! The global Vulkan instance.
 		extern VkInstance g_vk_instance;
 
-		constexpr u32 VULKAN_1_0 = VK_MAKE_API_VERSION(0, 1, 0, 0);
-		constexpr u32 VULKAN_1_1 = VK_MAKE_API_VERSION(0, 1, 1, 0);
-		constexpr u32 VULKAN_1_2 = VK_MAKE_API_VERSION(0, 1, 2, 0);
-		constexpr u32 VULKAN_1_3 = VK_MAKE_API_VERSION(0, 1, 3, 0);
-
 		//! Whether the Vulkan validation layer is enabled.
 		extern bool g_enable_validation_layer;
 

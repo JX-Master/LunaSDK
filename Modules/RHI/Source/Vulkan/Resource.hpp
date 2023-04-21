@@ -17,6 +17,7 @@ namespace Luna
 		struct BufferResource : IResource
 		{
 			lustruct("RHI::BufferResource", "{2CE2F6F7-9CCB-4DD5-848A-DBE27F8A8B7A}");
+			luiimpl();
 
 			Ref<Device> m_device;
 			Name m_name;
@@ -36,6 +37,7 @@ namespace Luna
 		struct ImageResource : IResource
 		{
 			lustruct("RHI::ImageResource", "{731F1D3C-2864-44A4-B380-CF03CBB7AFED}");
+			luiimpl();
 		
 			Ref<Device> m_device;
 			Name m_name;

@@ -10,7 +10,9 @@
 #pragma once
 #include <Runtime/PlatformDefines.hpp>
 #include "../../RHI.hpp"
-#include <vulkan/vulkan.h>
+#include <volk.h>
+#define VMA_STATIC_VULKAN_FUNCTIONS 0
+#define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
 #include <vk_mem_alloc.h>
 #include <Runtime/Result.hpp>
 
@@ -318,18 +320,6 @@ namespace Luna
 				dest.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
 				break;
 			}
-		}
-		inline RV create_vk_buffer(VkDevice device, const ResourceDesc& validated_desc, VkBuffer* buffer)
-		{
-			VkBufferCreateInfo create_info{};
-			encode_buffer_create_info(create_info, validated_desc);
-			return encode_vk_result(vkCreateBuffer(device, &create_info, nullptr, buffer));
-		}
-		inline RV create_vk_image(VkDevice device, const ResourceDesc& validated_desc, VkImage* image)
-		{
-			VkImageCreateInfo create_info{};
-			encode_image_create_info(create_info, validated_desc);
-			return encode_vk_result(vkCreateImage(device, &create_info, nullptr, image));
 		}
 	}
 }

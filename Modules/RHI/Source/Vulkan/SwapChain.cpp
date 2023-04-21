@@ -93,11 +93,11 @@ namespace Luna
 				create_info.presentMode = present_mode;
 				create_info.clipped = VK_TRUE;
 				create_info.oldSwapchain = VK_NULL_HANDLE;
-				luexp(encode_vk_result(vkCreateSwapchainKHR(m_device->m_device, &create_info, nullptr, &m_swap_chain)));
+				luexp(encode_vk_result(m_device->m_funcs.vkCreateSwapchainKHR(m_device->m_device, &create_info, nullptr, &m_swap_chain)));
 				u32 image_count;
-				luexp(encode_vk_result(vkGetSwapchainImagesKHR(m_device->m_device, m_swap_chain, &image_count, nullptr)));
+				luexp(encode_vk_result(m_device->m_funcs.vkGetSwapchainImagesKHR(m_device->m_device, m_swap_chain, &image_count, nullptr)));
 				m_swap_chain_images.resize(image_count);
-				luexp(encode_vk_result(vkGetSwapchainImagesKHR(m_device->m_device, m_swap_chain, &image_count, m_swap_chain_images.data())));
+				luexp(encode_vk_result(m_device->m_funcs.vkGetSwapchainImagesKHR(m_device->m_device, m_swap_chain, &image_count, m_swap_chain_images.data())));
 				m_swap_chain_image_views.resize(image_count);
 				for (usize i = 0; i < m_swap_chain_image_views.size(); ++i)
 				{
@@ -115,7 +115,7 @@ namespace Luna
 					createInfo.subresourceRange.levelCount = 1;
 					createInfo.subresourceRange.baseArrayLayer = 0;
 					createInfo.subresourceRange.layerCount = 1;
-					luexp(encode_vk_result(vkCreateImageView(m_device->m_device, &createInfo, nullptr, &m_swap_chain_image_views[i])));
+					luexp(encode_vk_result(m_device->m_funcs.vkCreateImageView(m_device->m_device, &createInfo, nullptr, &m_swap_chain_image_views[i])));
 				}
 			}
 			lucatchret;
@@ -125,11 +125,11 @@ namespace Luna
 		{
 			for (VkImageView i : m_swap_chain_image_views)
 			{
-				vkDestroyImageView(m_device->m_device, i, nullptr);
+				m_device->m_funcs.vkDestroyImageView(m_device->m_device, i, nullptr);
 			}
 			if (m_swap_chain != VK_NULL_HANDLE)
 			{
-				vkDestroySwapchainKHR(m_device->m_device, m_swap_chain, nullptr);
+				m_device->m_funcs.vkDestroySwapchainKHR(m_device->m_device, m_swap_chain, nullptr);
 				m_swap_chain = nullptr;
 			}
 			if (m_surface != VK_NULL_HANDLE)

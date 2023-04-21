@@ -22,13 +22,13 @@ namespace Luna
 				pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 				pool_info.flags = 0;
 				pool_info.queueFamilyIndex = queue->m_queue_family_index;
-				luexp(encode_vk_result(vkCreateCommandPool(m_device->m_device, &pool_info, nullptr, &m_command_pool)));
+				luexp(encode_vk_result(m_device->m_funcs.vkCreateCommandPool(m_device->m_device, &pool_info, nullptr, &m_command_pool)));
 				VkCommandBufferAllocateInfo alloc_info{};
 				alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 				alloc_info.commandPool = m_command_pool;
 				alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 				alloc_info.commandBufferCount = 1;
-				luexp(encode_vk_result(vkAllocateCommandBuffers(m_device->m_device, &alloc_info, &m_command_buffer)));
+				luexp(encode_vk_result(m_device->m_funcs.vkAllocateCommandBuffers(m_device->m_device, &alloc_info, &m_command_buffer)));
 				luexp(begin_command_buffer());
 			}
 			lucatchret;
@@ -38,7 +38,7 @@ namespace Luna
 		{
 			if (m_command_pool != VK_NULL_HANDLE)
 			{
-				vkDestroyCommandPool(m_device->m_device, m_command_pool, nullptr);
+				m_device->m_funcs.vkDestroyCommandPool(m_device->m_device, m_command_pool, nullptr);
 				m_command_pool = VK_NULL_HANDLE;
 			}
 		}
@@ -50,7 +50,7 @@ namespace Luna
 				begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 				begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 				begin_info.pInheritanceInfo = nullptr;
-				luexp(encode_vk_result(vkBeginCommandBuffer(m_command_buffer, &begin_info)));
+				luexp(encode_vk_result(m_device->m_funcs.vkBeginCommandBuffer(m_command_buffer, &begin_info)));
 			}
 			lucatchret;
 			return ok;

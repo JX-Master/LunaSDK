@@ -14,8 +14,11 @@
 #include "VulkanRHI.hpp"
 #include "Instance.hpp"
 #include "DescriptorSetLayout.hpp"
+#include "DescriptorSet.hpp"
 #include "CommandQueue.hpp"
 #include "Resource.hpp"
+#include "DeviceFence.hpp"
+#include "HostFence.hpp"
 namespace Luna
 {
 	namespace RHI
@@ -44,34 +47,9 @@ namespace Luna
 				dest.flags = 0;
 			}
 			// Check device features.
-			vkGetPhysicalDeviceMemoryProperties(physical_device, &m_memory_properties);
-			VkPhysicalDeviceFeatures2 device_features{};
-			device_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-			VkPhysicalDeviceDynamicRenderingFeaturesKHR dynamic_rendering_features{};
-			dynamic_rendering_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR;
-			VkPhysicalDeviceDescriptorIndexingFeaturesEXT descriptor_indexing_features{};
-			descriptor_indexing_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES_EXT;
-			VkStructureHeader* last_feature = (VkStructureHeader*)&device_features;
-			// Check "VK_KHR_dynamic_rendering", proposed to Vulkan 1.3.
-			if (g_vk_version >= VULKAN_1_3)
-			{
-				last_feature->pNext = &dynamic_rendering_features;
-				last_feature = (VkStructureHeader*)&dynamic_rendering_features;
-			}
-			// Check VK_EXT_descriptor_indexing, proposed to Vulkan 1.2 and is mandatory in Vulkan 1.3
-			if (g_vk_version >= VULKAN_1_2)
-			{
-				last_feature->pNext = &descriptor_indexing_features;
-				last_feature = (VkStructureHeader*)&descriptor_indexing_features;
-			}
-			vkGetPhysicalDeviceFeatures2(physical_device, &device_features);
-			m_dynamic_rendering_supported = (dynamic_rendering_features.dynamicRendering != VK_FALSE);
-			m_descriptor_binding_variable_descriptor_count_supported = (descriptor_indexing_features.runtimeDescriptorArray &&
-				descriptor_indexing_features.descriptorBindingVariableDescriptorCount &&
-				descriptor_indexing_features.shaderSampledImageArrayNonUniformIndexing);
-			device_features.pNext = nullptr;
-			dynamic_rendering_features.pNext = nullptr;
-			descriptor_indexing_features.pNext = nullptr;
+			//vkGetPhysicalDeviceMemoryProperties(physical_device, &m_memory_properties);
+			VkPhysicalDeviceFeatures device_features{};
+			vkGetPhysicalDeviceFeatures(physical_device, &device_features);
 			
 			// Create device.
 			VkDeviceCreateInfo create_info{};
@@ -79,24 +57,13 @@ namespace Luna
 			create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 			create_info.pQueueCreateInfos = queue_create_infos.data();
 			create_info.queueCreateInfoCount = (u32)queue_create_infos.size();
-			create_info.pEnabledFeatures = &device_features.features;	// Enable all supported features.
+			create_info.pEnabledFeatures = &device_features;	// Enable all supported features.
 			create_info.enabledLayerCount = g_enabled_layers.size();	// Enable all layers specified when creating VkInstance.
 			create_info.ppEnabledLayerNames = g_enabled_layers.data();
-			if (m_dynamic_rendering_supported)
-			{
-				enabled_extensions.push_back(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME);
-				last->pNext = &dynamic_rendering_features;
-				last = (VkStructureHeader*)&dynamic_rendering_features;
-			}
-			if (m_descriptor_binding_variable_descriptor_count_supported)
-			{
-				enabled_extensions.push_back(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME);
-				last->pNext = &descriptor_indexing_features;
-				last = (VkStructureHeader*)&descriptor_indexing_features;
-			}
 			create_info.enabledExtensionCount = (u32)enabled_extensions.size();
 			create_info.ppEnabledExtensionNames = enabled_extensions.data();
 			auto r = encode_vk_result(vkCreateDevice(physical_device, &create_info, nullptr, &m_device));
+			volkLoadDeviceTable(&m_funcs, m_device);
 			if (failed(r))
 			{
 				return r.errcode();
@@ -107,7 +74,7 @@ namespace Luna
 				VkQueue queue;
 				for (usize j = 0; j < queue_families[i].num_queues; ++j)
 				{
-					vkGetDeviceQueue(m_device, queue_families[i].index, j, &queue);
+					m_funcs.vkGetDeviceQueue(m_device, queue_families[i].index, j, &queue);
 					QueueInfo info;
 					info.queue = queue;
 					info.desc = queue_families[i].desc;
@@ -144,7 +111,7 @@ namespace Luna
 			create_info.pPoolSizes = pool_sizes;
 			create_info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
 			create_info.maxSets = 8192;
-			return encode_vk_result(vkCreateDescriptorPool(m_device, &create_info, nullptr, &m_desc_pool));
+			return encode_vk_result(m_funcs.vkCreateDescriptorPool(m_device, &create_info, nullptr, &m_desc_pool));
 		}
 		RV Device::init_vma_allocator()
 		{
@@ -153,6 +120,27 @@ namespace Luna
 			allocator_create_info.physicalDevice = m_physical_device;
 			allocator_create_info.device = m_device;
 			allocator_create_info.instance = g_vk_instance;
+			VmaVulkanFunctions funcs{};
+			funcs.vkGetInstanceProcAddr = vkGetInstanceProcAddr;
+			funcs.vkGetDeviceProcAddr = vkGetDeviceProcAddr;
+			funcs.vkGetPhysicalDeviceProperties = vkGetPhysicalDeviceProperties;
+			funcs.vkGetPhysicalDeviceMemoryProperties = vkGetPhysicalDeviceMemoryProperties;
+			funcs.vkAllocateMemory = m_funcs.vkAllocateMemory;
+			funcs.vkFreeMemory = m_funcs.vkFreeMemory;
+			funcs.vkMapMemory = m_funcs.vkMapMemory;
+			funcs.vkUnmapMemory = m_funcs.vkUnmapMemory;
+			funcs.vkFlushMappedMemoryRanges = m_funcs.vkFlushMappedMemoryRanges;
+			funcs.vkInvalidateMappedMemoryRanges = m_funcs.vkInvalidateMappedMemoryRanges;
+			funcs.vkBindBufferMemory = m_funcs.vkBindBufferMemory;
+			funcs.vkBindImageMemory = m_funcs.vkBindImageMemory;
+			funcs.vkGetBufferMemoryRequirements = m_funcs.vkGetBufferMemoryRequirements;
+			funcs.vkGetImageMemoryRequirements = m_funcs.vkGetImageMemoryRequirements;
+			funcs.vkCreateBuffer = m_funcs.vkCreateBuffer;
+			funcs.vkDestroyBuffer = m_funcs.vkDestroyBuffer;
+			funcs.vkCreateImage = m_funcs.vkCreateImage;
+			funcs.vkDestroyImage = m_funcs.vkDestroyImage;
+			funcs.vkCmdCopyBuffer = m_funcs.vkCmdCopyBuffer;
+			allocator_create_info.pVulkanFunctions = &funcs;
 			return encode_vk_result(vmaCreateAllocator(&allocator_create_info, &m_allocator));
 		}
 		Device::~Device()
@@ -164,12 +152,12 @@ namespace Luna
 			}
 			if (m_desc_pool != VK_NULL_HANDLE)
 			{
-				vkDestroyDescriptorPool(m_device, m_desc_pool, nullptr);
+				m_funcs.vkDestroyDescriptorPool(m_device, m_desc_pool, nullptr);
 				m_desc_pool = VK_NULL_HANDLE;
 			}
 			if (m_device != VK_NULL_HANDLE)
 			{
-				vkDestroyDevice(m_device, nullptr);
+				m_funcs.vkDestroyDevice(m_device, nullptr);
 				m_device = nullptr;
 			}
 		}
@@ -184,46 +172,17 @@ namespace Luna
 				{
 					VkMemoryRequirements desc_memory_requirements;
 					auto validated_desc = validate_resource_desc(desc);
-					if (g_vk_version >= VULKAN_1_3)
+					if (validated_desc.type == ResourceType::buffer)
 					{
-						VkMemoryRequirements2 memory_requirements_2{};
-						memory_requirements_2.sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2;
-						if (validated_desc.type == ResourceType::buffer)
-						{
-							VkBufferCreateInfo create_info;
-							encode_buffer_create_info(create_info, validated_desc);
-							VkDeviceBufferMemoryRequirements buffer_memory_requirements{};
-							buffer_memory_requirements.sType = VK_STRUCTURE_TYPE_DEVICE_BUFFER_MEMORY_REQUIREMENTS;
-							buffer_memory_requirements.pCreateInfo = &create_info;
-							vkGetDeviceBufferMemoryRequirements(m_device, &buffer_memory_requirements, &memory_requirements_2);
-						}
-						else
-						{
-							VkImageCreateInfo create_info;
-							encode_image_create_info(create_info, validated_desc);
-							VkDeviceImageMemoryRequirements image_memory_requirements{};
-							image_memory_requirements.sType = VK_STRUCTURE_TYPE_DEVICE_IMAGE_MEMORY_REQUIREMENTS;
-							image_memory_requirements.pCreateInfo = &create_info;
-							vkGetDeviceImageMemoryRequirements(m_device, &image_memory_requirements, &memory_requirements_2);
-						}
-						desc_memory_requirements = memory_requirements_2.memoryRequirements;
+						lulet(buffer, create_vk_buffer(validated_desc));
+						m_funcs.vkGetBufferMemoryRequirements(m_device, buffer, &desc_memory_requirements);
+						m_funcs.vkDestroyBuffer(m_device, buffer, nullptr);
 					}
 					else
 					{
-						if (validated_desc.type == ResourceType::buffer)
-						{
-							VkBuffer buffer;
-							luexp(create_vk_buffer(m_device, validated_desc, &buffer));
-							vkGetBufferMemoryRequirements(m_device, buffer, &desc_memory_requirements);
-							vkDestroyBuffer(m_device, buffer, nullptr);
-						}
-						else
-						{
-							VkImage image;
-							luexp(create_vk_image(m_device, validated_desc, &image));
-							vkGetImageMemoryRequirements(m_device, image, &desc_memory_requirements);
-							vkDestroyImage(m_device, image, nullptr);
-						}
+						lulet(image, create_vk_image(validated_desc));
+						m_funcs.vkGetImageMemoryRequirements(m_device, image, &desc_memory_requirements);
+						m_funcs.vkDestroyImage(m_device, image, nullptr);
 					}
 					memory_requirements.size = max(memory_requirements.size, desc_memory_requirements.size);
 					memory_requirements.alignment = max(memory_requirements.alignment, desc_memory_requirements.alignment);
@@ -234,12 +193,36 @@ namespace Luna
 			lucatchret;
 			return ok;
 		}
+		R<VkBuffer> Device::create_vk_buffer(const ResourceDesc& validated_desc)
+		{
+			VkBuffer ret = VK_NULL_HANDLE;
+			lutry
+			{
+				VkBufferCreateInfo create_info{};
+				encode_buffer_create_info(create_info, validated_desc);
+				luexp(encode_vk_result(m_funcs.vkCreateBuffer(m_device, &create_info, nullptr, &ret)));
+			}
+			lucatchret;
+			return ret;
+		}
+		R<VkImage> Device::create_vk_image(const ResourceDesc& validated_desc)
+		{
+			VkImage ret = VK_NULL_HANDLE;
+			lutry
+			{
+				VkImageCreateInfo create_info{};
+			encode_image_create_info(create_info, validated_desc);
+				luexp(encode_vk_result(m_funcs.vkCreateImage(m_device, &create_info, nullptr, &ret)));
+			}
+			lucatchret;
+			return ret;
+		}
 		bool Device::check_device_feature(DeviceFeature feature)
 		{
 			switch (feature)
 			{
 			case DeviceFeature::unbound_descriptor_array:
-				return m_descriptor_binding_variable_descriptor_count_supported;
+				return false;
 			}
 			return false;
 		}
@@ -343,8 +326,8 @@ namespace Luna
 						auto buffer = new_object<BufferResource>();
 						buffer->m_device = this;
 						buffer->m_desc = validate_resource_desc(descs[i]);
-						luexp(create_vk_buffer(m_device, buffer->m_desc, &buffer->m_buffer));
-						vkGetBufferMemoryRequirements(m_device, buffer->m_buffer, &desc_memory_requirements);
+						luset(buffer->m_buffer, create_vk_buffer(buffer->m_desc));
+						m_funcs.vkGetBufferMemoryRequirements(m_device, buffer->m_buffer, &desc_memory_requirements);
 						out_resources[i] = buffer;
 					}
 					else
@@ -352,8 +335,8 @@ namespace Luna
 						auto image = new_object<ImageResource>();
 						image->m_device = this;
 						image->m_desc = validate_resource_desc(descs[i]);
-						luexp(create_vk_image(m_device, image->m_desc, &image->m_image));
-						vkGetImageMemoryRequirements(m_device, image->m_image, &desc_memory_requirements);
+						luset(image->m_image, create_vk_image(image->m_desc));
+						m_funcs.vkGetImageMemoryRequirements(m_device, image->m_image, &desc_memory_requirements);
 						out_resources[i] = image;
 					}
 					memory_requirements.size = max(memory_requirements.size, desc_memory_requirements.size);
@@ -405,6 +388,20 @@ namespace Luna
 			lucatchret;
 			return ret;
 		}
+		R<Ref<IDescriptorSet>> Device::new_descriptor_set(DescriptorSetDesc& desc)
+		{
+			MutexGuard guard(m_mtx);
+			Ref<IDescriptorSet> ret;
+			lutry
+			{
+				auto set = new_object<DescriptorSet>();
+				set->m_device = this;
+				luexp(set->init(desc));
+				ret = set;
+			}
+			lucatchret;
+			return ret;
+		}
 		R<Ref<ICommandQueue>> Device::new_command_queue(const CommandQueueDesc& desc)
 		{
 			MutexGuard guard(m_mtx);
@@ -415,6 +412,34 @@ namespace Luna
 				queue->m_device = this;
 				luexp(queue->init(desc));
 				ret = queue;
+			}
+			lucatchret;
+			return ret;
+		}
+		R<Ref<IDeviceFence>> Device::new_device_fence()
+		{
+			MutexGuard guard(m_mtx);
+			Ref<IDeviceFence> ret;
+			lutry
+			{
+				auto fence = new_object<DeviceFence>();
+				fence->m_device = this;
+				luexp(fence->init());
+				ret = fence;
+			}
+			lucatchret;
+			return ret;
+		}
+		R<Ref<IHostFence>> Device::new_host_fence()
+		{
+			MutexGuard guard(m_mtx);
+			Ref<IHostFence> ret;
+			lutry
+			{
+				auto fence = new_object<HostFence>();
+				fence->m_device = this;
+				luexp(fence->init());
+				ret = fence;
 			}
 			lucatchret;
 			return ret;

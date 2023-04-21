@@ -25,6 +25,7 @@ namespace Luna
 		struct Device : IDevice
 		{
 			lustruct("RHI::Device", "{9C0F7754-FA08-4FF3-BF66-B23125FA19F9}");
+			luiimpl();
 
 			VkDevice m_device = VK_NULL_HANDLE;
 			VkPhysicalDevice m_physical_device;
@@ -33,12 +34,10 @@ namespace Luna
 			Vector<bool> m_queue_allocated;
 			Ref<IMutex> m_mtx;
 
-			// Features.
-			VkPhysicalDeviceMemoryProperties m_memory_properties;
+			VolkDeviceTable m_funcs;
 
-			bool m_dynamic_rendering_supported;
-			bool m_descriptor_binding_variable_descriptor_count_supported;
-			bool m_device_memory_requirements_query_supported;
+			// Features.
+			//VkPhysicalDeviceMemoryProperties m_memory_properties;
 
 			// Descriptor Pools.
 			VkDescriptorPool m_desc_pool = VK_NULL_HANDLE;
@@ -52,6 +51,8 @@ namespace Luna
 			~Device();
 
 			RV get_memory_requirements(Span<const ResourceDesc> descs, VkMemoryRequirements& memory_requirements);
+			R<VkBuffer> create_vk_buffer(const ResourceDesc& validated_desc);
+			R<VkImage> create_vk_image(const ResourceDesc& validated_desc);
 
 			virtual bool check_device_feature(DeviceFeature feature) override;
 			virtual usize get_constant_buffer_data_alignment() override;
@@ -70,6 +71,8 @@ namespace Luna
 			virtual R<Ref<IRenderTargetView>> new_render_target_view(IResource* resource, const RenderTargetViewDesc* desc) override;
 			virtual R<Ref<IDepthStencilView>> new_depth_stencil_view(IResource* resource, const DepthStencilViewDesc* desc) override;
 			virtual R<Ref<IQueryHeap>> new_query_heap(const QueryHeapDesc& desc) override;
+			virtual R<Ref<IDeviceFence>> new_device_fence() override;
+			virtual R<Ref<IHostFence>> new_host_fence() override;
 			virtual RV copy_resource(Span<const ResourceCopyDesc> copies) override;
 		};
 

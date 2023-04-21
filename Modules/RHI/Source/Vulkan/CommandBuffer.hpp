@@ -20,6 +20,7 @@ namespace Luna
 		struct CommandBuffer : ICommandBuffer
 		{
 			lustruct("RHI::CommandBuffer", "{057DBF2F-5817-490B-9683-18A0D3C4C5CB}");
+			luiimpl();
 
 			Ref<Device> m_device;
 			Ref<CommandQueue> m_queue;

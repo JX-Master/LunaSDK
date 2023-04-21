@@ -112,11 +112,12 @@ namespace Luna
 
 		RV create_vk_instance()
 		{
-			g_vk_version = 0;
+			g_vk_version = VK_API_VERSION_1_0;
 			g_vk_instance = VK_NULL_HANDLE;
 			lutry
 			{
-				luexp(encode_vk_result(vkEnumerateInstanceVersion(&g_vk_version)));
+				luexp(encode_vk_result(volkInitialize()));
+				//luexp(encode_vk_result(vkEnumerateInstanceVersion(&g_vk_version)));
 				VkApplicationInfo app_info{};
 				app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
 				app_info.pApplicationName = "Luna SDK";
@@ -155,6 +156,7 @@ namespace Luna
 				create_info.ppEnabledLayerNames = g_enabled_layers.data();
 				luexp(encode_vk_result(vkCreateInstance(&create_info, nullptr, &g_vk_instance)));
 				luexp(setup_debug_messanger());
+				volkLoadInstance(g_vk_instance);
 			}
 			lucatchret;
 			return ok;

@@ -31,7 +31,7 @@ option("rhi_debug")
 option_end()
 
 if is_config("rhi_api", "Vulkan") then 
-    add_requires("vulkansdk", {configs = {shared = has_config("shared")}})
+    add_requires("volk", {configs = {header_only = true}})
     add_requires("vulkan-memory-allocator")
 end
 
@@ -47,8 +47,8 @@ target("RHI")
     elseif is_config("rhi_api", "Vulkan") then
         add_defines("LUNA_RHI_VULKAN")
         add_headerfiles("Source/Vulkan/**.hpp")
-        add_files("Source/Vulkan/**.cpp")
-        add_packages("vulkansdk", "vulkan-memory-allocator", "glfw")
+        add_files("Source/Vulkan/**.cpp", "Source/Vulkan/**.c")
+        add_packages("volk", "vulkan-memory-allocator", "glfw")
     elseif is_config("rhi_api", "Metal") then
         add_defines("LUNA_RHI_METAL")
     end

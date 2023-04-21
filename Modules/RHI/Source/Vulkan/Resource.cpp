@@ -27,9 +27,9 @@ namespace Luna
 			lutry
 			{
 				m_desc = validate_resource_desc(desc);
-				luexp(create_vk_buffer(m_device->m_device, m_desc, &m_buffer));
+				luset(m_buffer, m_device->create_vk_buffer(m_desc));
 				VkMemoryRequirements memory_requirements;
-				vkGetBufferMemoryRequirements(m_device->m_device, m_buffer, &memory_requirements);
+				m_device->m_funcs.vkGetBufferMemoryRequirements(m_device->m_device, m_buffer, &memory_requirements);
 				VmaAllocationCreateInfo allocation{};
 				encode_allocation_info(allocation, m_desc.heap_type);
 				luset(m_memory, allocate_device_memory(m_device, memory_requirements, allocation));
@@ -43,7 +43,7 @@ namespace Luna
 			lutry
 			{
 				m_desc = validate_resource_desc(desc);
-				luexp(create_vk_buffer(m_device->m_device, m_desc, &m_buffer));
+				luset(m_buffer, m_device->create_vk_buffer(m_desc));
 				m_memory = memory;
 				luexp(post_init());
 			}
@@ -54,7 +54,7 @@ namespace Luna
 		{
 			if (m_buffer != VK_NULL_HANDLE)
 			{
-				vkDestroyBuffer(m_device->m_device, m_buffer, nullptr);
+				m_device->m_funcs.vkDestroyBuffer(m_device->m_device, m_buffer, nullptr);
 				m_buffer = VK_NULL_HANDLE;
 			}
 		}
@@ -72,9 +72,9 @@ namespace Luna
 			lutry
 			{
 				m_desc = validate_resource_desc(desc);
-				luexp(create_vk_image(m_device->m_device, m_desc, &m_image));
+				luset(m_image, m_device->create_vk_image(m_desc));
 				VkMemoryRequirements memory_requirements;
-				vkGetImageMemoryRequirements(m_device->m_device, m_image, &memory_requirements);
+				m_device->m_funcs.vkGetImageMemoryRequirements(m_device->m_device, m_image, &memory_requirements);
 				VmaAllocationCreateInfo allocation{};
 				encode_allocation_info(allocation, m_desc.heap_type);
 				luset(m_memory, allocate_device_memory(m_device, memory_requirements, allocation));
@@ -88,7 +88,7 @@ namespace Luna
 			lutry
 			{
 				m_desc = validate_resource_desc(desc);
-				luexp(create_vk_image(m_device->m_device, m_desc, &m_image));
+				luset(m_image, m_device->create_vk_image(m_desc));
 				m_memory = memory;
 				luexp(post_init());
 			}
@@ -99,7 +99,7 @@ namespace Luna
 		{
 			if (m_image != VK_NULL_HANDLE)
 			{
-				vkDestroyImage(m_device->m_device, m_image, nullptr);
+				m_device->m_funcs.vkDestroyImage(m_device->m_device, m_image, nullptr);
 				m_image = VK_NULL_HANDLE;
 			}
 		}

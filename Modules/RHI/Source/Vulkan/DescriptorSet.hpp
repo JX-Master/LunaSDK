@@ -17,6 +17,7 @@ namespace Luna
 		struct DescriptorSet : IDescriptorSet
 		{
 			lustruct("RHI::DescriptorSet", "{E215C4E0-69C5-4D04-8514-A980E1C6C74B}");
+			luiimpl();
 
 			Ref<Device> m_device;
 			Name m_name;

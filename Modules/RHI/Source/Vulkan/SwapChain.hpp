@@ -17,6 +17,7 @@ namespace Luna
 		struct SwapChain
 		{
 			lustruct("RHI::SwapChain", "{9C0F7754-FA08-4FF3-BF66-B23125FA19F9}");
+			luiimpl();
 
 			SwapChainDesc m_desc;
 			Ref<ICommandQueue> m_presenting_queue;

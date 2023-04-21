@@ -14,6 +14,8 @@
 #include "CommandQueue.hpp"
 #include "RenderTargetView.hpp"
 #include "DepthStencilView.hpp"
+#include "DeviceFence.hpp"
+#include "HostFence.hpp"
 #include "QueryHeap.hpp"
 
 namespace Luna
@@ -205,6 +207,10 @@ namespace Luna
 			virtual R<Ref<IDepthStencilView>> new_depth_stencil_view(IResource* resource, const DepthStencilViewDesc* desc = nullptr) = 0;
 		
 			virtual R<Ref<IQueryHeap>> new_query_heap(const QueryHeapDesc& desc) = 0;
+
+			virtual R<Ref<IDeviceFence>> new_device_fence() = 0;
+
+			virtual R<Ref<IHostFence>> new_host_fence() = 0;
 
 			//! Copies resource data between system memory and resource memory.
 			//! @param[in] copies An array of resource copy operations to be performed. The user should
