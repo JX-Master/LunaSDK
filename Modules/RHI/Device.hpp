@@ -204,6 +204,8 @@ namespace Luna
 			virtual R<Ref<IRenderTargetView>> new_render_target_view(IResource* resource, const RenderTargetViewDesc* desc = nullptr) = 0;
 
 			virtual R<Ref<IDepthStencilView>> new_depth_stencil_view(IResource* resource, const DepthStencilViewDesc* desc = nullptr) = 0;
+
+			virtual R<Ref<IResolveTargetView>> new_resolve_target_view(IResource* resource, const ResolveTargetViewDesc* desc = nullptr) = 0;
 		
 			virtual R<Ref<IQueryHeap>> new_query_heap(const QueryHeapDesc& desc) = 0;
 

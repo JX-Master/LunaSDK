@@ -13,11 +13,16 @@
 #include "../RHI.hpp"
 #include "VulkanRHI.hpp"
 #include "Instance.hpp"
+#include "ShaderInputLayout.hpp"
 #include "DescriptorSetLayout.hpp"
 #include "DescriptorSet.hpp"
 #include "CommandQueue.hpp"
 #include "Resource.hpp"
+#include "RenderTargetView.hpp"
+#include "DepthStencilView.hpp"
+#include "ResolveTargetView.hpp"
 #include "Fence.hpp"
+#include "PipelineState.hpp"
 namespace Luna
 {
 	namespace RHI
@@ -30,6 +35,7 @@ namespace Luna
 
 			m_mtx = new_mutex();
 			m_physical_device = physical_device;
+			vkGetPhysicalDeviceProperties(physical_device, &m_physical_device_properties);
 			// Create queues for every valid queue family.
 			Vector<VkDeviceQueueCreateInfo> queue_create_infos(queue_families.size());
 			for (usize i = 0; i < queue_create_infos.size(); ++i)
@@ -241,7 +247,6 @@ namespace Luna
 		}
 		R<Ref<IResource>> Device::new_resource(const ResourceDesc& desc, const ClearValue* optimized_clear_value)
 		{
-			MutexGuard guard(m_mtx);
 			Ref<IResource> ret;
 			lutry
 			{
@@ -265,7 +270,6 @@ namespace Luna
 		}
 		bool Device::is_resources_aliasing_compatible(Span<const ResourceDesc> descs)
 		{
-			MutexGuard guard(m_mtx);
 			if (descs.size() <= 1) return true;
 			ResourceHeapType heap_type = descs[0].heap_type;
 			for (auto& desc : descs)
@@ -280,7 +284,6 @@ namespace Luna
 		}
 		R<Ref<IResource>> Device::new_aliasing_resource(IResource* existing_resource, const ResourceDesc& desc, const ClearValue* optimized_clear_value)
 		{
-			MutexGuard guard(m_mtx);
 			Ref<IResource> ret;
 			lutry
 			{
@@ -317,7 +320,6 @@ namespace Luna
 		}
 		RV Device::new_aliasing_resources(Span<const ResourceDesc> descs, Span<const ClearValue*> optimized_clear_values, Span<Ref<IResource>> out_resources)
 		{
-			MutexGuard guard(m_mtx);
 			lutry
 			{
 				if (out_resources.size() < descs.size()) return BasicError::insufficient_user_buffer();
@@ -387,9 +389,47 @@ namespace Luna
 			lucatchret;
 			return ok;
 		}
+		R<Ref<IShaderInputLayout>> Device::new_shader_input_layout(const ShaderInputLayoutDesc& desc)
+		{
+			Ref<IShaderInputLayout> ret;
+			lutry
+			{
+				auto layout = new_object<ShaderInputLayout>();
+				layout->m_device = this;
+				luexp(layout->init(desc));
+				ret = layout;
+			}
+			lucatchret;
+			return ret;
+		}
+		R<Ref<IPipelineState>> Device::new_graphics_pipeline_state(const GraphicsPipelineStateDesc& desc)
+		{
+			Ref<IPipelineState> ret;
+			lutry
+			{
+				auto layout = new_object<PipelineState>();
+				layout->m_device = this;
+				luexp(layout->init_as_graphics(desc));
+				ret = layout;
+			}
+			lucatchret;
+			return ret;
+		}
+		R<Ref<IPipelineState>> Device::new_compute_pipeline_state(const ComputePipelineStateDesc& desc)
+		{
+			Ref<IPipelineState> ret;
+			lutry
+			{
+				auto layout = new_object<PipelineState>();
+				layout->m_device = this;
+				luexp(layout->init_as_compute(desc));
+				ret = layout;
+			}
+			lucatchret;
+			return ret;
+		}
 		R<Ref<IDescriptorSetLayout>> Device::new_descriptor_set_layout(const DescriptorSetLayoutDesc& desc)
 		{
-			MutexGuard guard(m_mtx);
 			Ref<IDescriptorSetLayout> ret;
 			lutry
 			{
@@ -403,7 +443,6 @@ namespace Luna
 		}
 		R<Ref<IDescriptorSet>> Device::new_descriptor_set(DescriptorSetDesc& desc)
 		{
-			MutexGuard guard(m_mtx);
 			Ref<IDescriptorSet> ret;
 			lutry
 			{
@@ -417,7 +456,6 @@ namespace Luna
 		}
 		R<Ref<ICommandQueue>> Device::new_command_queue(const CommandQueueDesc& desc)
 		{
-			MutexGuard guard(m_mtx);
 			Ref<ICommandQueue> ret;
 			lutry
 			{
@@ -429,9 +467,47 @@ namespace Luna
 			lucatchret;
 			return ret;
 		}
+		R<Ref<IRenderTargetView>> Device::new_render_target_view(IResource* resource, const RenderTargetViewDesc* desc)
+		{
+			Ref<IRenderTargetView> ret;
+			lutry
+			{
+				auto view = new_object<RenderTargetView>();
+				view->m_device = this;
+				luexp(view->init(resource, desc));
+				ret = view;
+			}
+			lucatchret;
+			return ret;
+		}
+		R<Ref<IDepthStencilView>> Device::new_depth_stencil_view(IResource* resource, const DepthStencilViewDesc* desc)
+		{
+			Ref<IDepthStencilView> ret;
+			lutry
+			{
+				auto view = new_object<DepthStencilView>();
+				view->m_device = this;
+				luexp(view->init(resource, desc));
+				ret = view;
+			}
+			lucatchret;
+			return ret;
+		}
+		R<Ref<IResolveTargetView>> Device::new_resolve_target_view(IResource* resource, const ResolveTargetViewDesc* desc)
+		{
+			Ref<IResolveTargetView> ret;
+			lutry
+			{
+				auto view = new_object<ResolveTargetView>();
+				view->m_device = this;
+				luexp(view->init(resource, desc));
+				ret = view;
+			}
+			lucatchret;
+			return ret;
+		}
 		R<Ref<IFence>> Device::new_fence()
 		{
-			MutexGuard guard(m_mtx);
 			Ref<IFence> ret;
 			lutry
 			{

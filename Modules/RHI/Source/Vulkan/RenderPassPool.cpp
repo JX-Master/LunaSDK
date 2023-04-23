@@ -9,6 +9,9 @@
 */
 #include "RenderPassPool.hpp"
 #include "Device.hpp"
+#include "RenderTargetView.hpp"
+#include "DepthStencilView.hpp"
+#include "ResolveTargetView.hpp"
 
 namespace Luna
 {
@@ -155,8 +158,78 @@ namespace Luna
 			lucatchret;
 			return iter->second;
 		}
+		R<VkFramebuffer> RenderPassPool::get_frame_buffer(const FrameBufferKey& key)
+		{
+			auto iter = m_framebuffers.find(key);
+			if (iter != m_framebuffers.end()) return iter->second;
+			lutry
+			{
+				VkFramebufferCreateInfo info{};
+				info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+				info.flags = 0;
+				info.renderPass = key.render_pass;
+				// Collect attachments.
+				VkImageView attachments[17] = { VK_NULL_HANDLE };
+				u32 num_attachments = 0;
+				u32 width = 0;
+				u32 height = 0;
+				u32 depth = 0;
+				for (usize i = 0; i < 8; ++i)
+				{
+					if (key.rtvs[i])
+					{
+						RenderTargetView* rtv = cast_objct<RenderTargetView>(key.rtvs[i]->get_object());
+						attachments[num_attachments] = rtv->m_view;
+						++num_attachments;
+						auto desc = rtv->m_resource->get_desc();
+						width = (u32)desc.width_or_buffer_size;
+						height = desc.height;
+						depth = desc.depth_or_array_size;
+					}
+					else break;
+				}
+				for (usize i = 0; i < 8; ++i)
+				{
+					if (key.rsvs[i])
+					{
+						ResolveTargetView* rsv = cast_objct<ResolveTargetView>(key.rsvs[i]->get_object());
+						attachments[num_attachments] = rsv->m_view;
+						++num_attachments;
+					}
+				}
+				if (key.dsv)
+				{
+					DepthStencilView* dsv = cast_objct<DepthStencilView>(key.dsv->get_object());
+					attachments[num_attachments] = dsv->m_view;
+					++num_attachments;
+					auto desc = dsv->m_resource->get_desc();
+					width = (u32)desc.width_or_buffer_size;
+					height = desc.height;
+					depth = desc.depth_or_array_size;
+				}
+				info.pAttachments = attachments;
+				info.attachmentCount = num_attachments;
+				info.width = width;
+				info.height = height;
+				info.layers = depth;
+				VkFramebuffer fbo = VK_NULL_HANDLE;
+				luexp(encode_vk_result(m_vkCreateFramebuffer(m_device, &info, nullptr, &fbo)));
+				iter = m_framebuffers.insert(make_pair(key, fbo)).first;
+			}
+			lucatchret;
+			return iter->second;
+		}
 		RenderPassPool::~RenderPassPool()
 		{
+			for (auto& p : m_framebuffers)
+			{
+				if (p.second != VK_NULL_HANDLE)
+				{
+					m_vkDestroyFramebuffer(m_device, p.second, nullptr);
+					p.second = VK_NULL_HANDLE;
+				}
+			}
+			m_framebuffers.clear();
 			for (auto& p : m_render_passes)
 			{
 				if (p.second != VK_NULL_HANDLE)

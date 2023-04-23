@@ -21,7 +21,7 @@ namespace Luna
 			Span<const byte_t> cs;
 		};
 
-		enum class InputClassification : u8
+		enum class InputRate : u8
 		{
 			per_vertex = 1,
 			per_instance = 2
@@ -29,43 +29,66 @@ namespace Luna
 
 		constexpr u32 APPEND_ALIGNED_ELEMENT = 0xffffffff;
 
-		struct InputElementDesc
+		struct InputPropertyDesc
 		{
+			//! The semantic name of this property.
 			const c8* semantic_name;
+			//! The semantic index of this property.
 			u32 semantic_index;
+			//! The index of the instance in `InputLayoutDesc::instances` this property belongs to.
+			u32 instance_index;
+			//! The location of this input property in the shader.
+			u32 location;
+			//! The offset of this property from the beginning of the belonging instance.
+			u32 offset;
+			//! The format of this property.
 			Format format;
-			u32 input_slot;
-			u32 aligned_byte_offset;
-			InputClassification input_slot_class;
-			u32 instance_data_step_rate;
 
-			InputElementDesc() = default;
-			InputElementDesc(
+			InputPropertyDesc(
 				const c8* semantic_name,
 				u32 semantic_index,
-				Format format,
-				u32 input_slot = 0,
-				u32 aligned_byte_offset = APPEND_ALIGNED_ELEMENT,
-				InputClassification input_slot_class = InputClassification::per_vertex,
-				u32 instance_data_step_rate = 0
+				u32 binding_slot,
+				u32 location,
+				u32 offset,
+				Format format
 			) :
 				semantic_name(semantic_name),
 				semantic_index(semantic_index),
-				format(format),
-				input_slot(input_slot),
-				aligned_byte_offset(aligned_byte_offset),
-				input_slot_class(input_slot_class),
-				instance_data_step_rate(instance_data_step_rate) {}
+				instance_index(instance_index),
+				location(location),
+				offset(offset),
+				format(format) {}
+		};
+
+		//! Describes one vertex buffer bound to the pipeline. 
+		struct InputInstanceDesc
+		{
+			u32 binding_slot;
+			u32 instance_size;
+			InputRate input_rate;
+
+			InputInstanceDesc(
+				u32 binding_slot,
+				u32 instance_size,
+				InputRate input_rate
+			) :
+				binding_slot(binding_slot),
+				instance_size(instance_size),
+				input_rate(input_rate) {}
 		};
 
 		struct InputLayoutDesc
 		{
-			Vector<InputElementDesc> input_elements;
+			Span<const InputInstanceDesc> input_instances;
+			Span<const InputPropertyDesc> input_properties;
 
 			InputLayoutDesc() = default;
 			InputLayoutDesc(
-				InitializerList<InputElementDesc> input_elements
-			) : input_elements(input_elements) {}
+				InitializerList<const InputInstanceDesc> input_instances,
+				InitializerList<const InputPropertyDesc> input_properties
+			) : 
+				input_instances(input_instances),
+				input_properties(input_properties) {}
 		};
 
 		struct StreamOutputDeclarationEntry
@@ -94,12 +117,12 @@ namespace Luna
 
 		struct StreamOutputDesc
 		{
-			Vector<StreamOutputDeclarationEntry> entries;
-			Vector<u32> buffer_strides;
+			Span<const StreamOutputDeclarationEntry> entries;
+			Span<const u32> buffer_strides;
 			u32 rasterized_stream;
 
-			StreamOutputDesc(InitializerList<StreamOutputDeclarationEntry> entries = {},
-				InitializerList<u32> buffer_strides = {},
+			StreamOutputDesc(InitializerList<const StreamOutputDeclarationEntry> entries = {},
+				InitializerList<const u32> buffer_strides = {},
 				u32 rasterized_stream = 0) :
 				entries(entries),
 				buffer_strides(buffer_strides),
@@ -114,10 +137,10 @@ namespace Luna
 			inv_src_color,
 			src_alpha,
 			inv_src_alpha,
-			dest_alpha,
-			inv_dest_alpha,
 			dest_color,
 			inv_dest_color,
+			dest_alpha,
+			inv_dest_alpha,
 			src_alpha_sat,
 			blend_factor,
 			inv_blend_factor,
@@ -140,7 +163,6 @@ namespace Luna
 			set,
 			copy,
 			copy_inverted,
-			noop,
 			invert,
 			and,
 			nand,
@@ -166,52 +188,50 @@ namespace Luna
 		struct RenderTargetBlendDesc
 		{
 			bool blend_enable;
-			bool logic_op_enable;
 			BlendFactor src_blend;
 			BlendFactor dest_blend;
 			BlendOp blend_op;
 			BlendFactor src_blend_alpha;
 			BlendFactor dest_blend_alpha;
 			BlendOp blend_op_alpha;
-			LogicOp logic_op;
 			ColorWriteMask render_target_write_mask;
 
 			RenderTargetBlendDesc(
 				bool blend_enable = false,
-				bool logic_op_enable = false,
 				BlendFactor src_blend = BlendFactor::one,
 				BlendFactor dest_blend = BlendFactor::zero,
 				BlendOp blend_op = BlendOp::add,
 				BlendFactor src_blend_alpha = BlendFactor::one,
 				BlendFactor dest_blend_alpha = BlendFactor::zero,
 				BlendOp blend_op_alpha = BlendOp::add,
-				LogicOp logic_op = LogicOp::noop,
 				ColorWriteMask render_target_write_mask = ColorWriteMask::all
 			) :
 				blend_enable(blend_enable),
-				logic_op_enable(logic_op_enable),
 				src_blend(src_blend),
 				dest_blend(dest_blend),
 				blend_op(blend_op),
 				src_blend_alpha(src_blend_alpha),
 				dest_blend_alpha(dest_blend_alpha),
 				blend_op_alpha(blend_op_alpha),
-				logic_op(logic_op),
 				render_target_write_mask(render_target_write_mask) {}
 		};
 
 		struct BlendDesc
 		{
 			bool alpha_to_coverage_enable;
-			bool independent_blend_enable;
+			bool logic_op_enable;
+			LogicOp logic_op;
 			RenderTargetBlendDesc rt[8];
 
 			BlendDesc(
 				bool alpha_to_coverage_enable = false,
-				bool independent_blend_enable = false,
+				bool logic_op_enable = false,
+				LogicOp logic_op = LogicOp::clear,
 				std::initializer_list<RenderTargetBlendDesc> rt = {}) :
 				alpha_to_coverage_enable(alpha_to_coverage_enable),
-				independent_blend_enable(independent_blend_enable)
+				logic_op_enable(logic_op_enable),
+				logic_op(logic_op)
+
 			{
 				u32 i = 0;
 				for (auto& it : rt)
@@ -359,13 +379,18 @@ namespace Luna
 			value_0xffffffff
 		};
 
-		enum class PrimitiveTopologyType : u8
+		enum class PrimitiveTopology : u8
 		{
-			undefined,
-			point,
-			line,
-			triangle,
-			patch
+			point_list,
+			line_list,
+			line_strip,
+			triangle_list,
+			triangle_strip,
+			line_list_adj,
+			line_strip_adj,
+			triangle_list_adj,
+			triangle_strip_adj,
+			patchlist
 		};
 
 		struct GraphicsPipelineStateDesc
@@ -373,17 +398,18 @@ namespace Luna
 			InputLayoutDesc input_layout;
 			IShaderInputLayout* shader_input_layout = nullptr;
 			Span<const byte_t> vs;
-			Span<const byte_t> ps;
-			Span<const byte_t> ds;
 			Span<const byte_t> hs;
+			Span<const byte_t> ds;
 			Span<const byte_t> gs;
+			Span<const byte_t> ps;
 			StreamOutputDesc stream_output;
-			BlendDesc blend_state;
 			RasterizerDesc rasterizer_state;
 			DepthStencilDesc depth_stencil_state;
+			BlendDesc blend_state;
 			IndexBufferStripCutValue ib_strip_cut_value = IndexBufferStripCutValue::disabled;
-			PrimitiveTopologyType primitive_topology_type = PrimitiveTopologyType::triangle;
-			u32 num_render_targets = 0;
+			PrimitiveTopology primitive_topology = PrimitiveTopology::triangle_list;
+			u8 patch_control_points = 0;
+			u8 num_render_targets = 0;
 			//! The pixel format of the render target.
 			Format rtv_formats[8] = { Format::unknown };
 			Format dsv_format = Format::unknown;

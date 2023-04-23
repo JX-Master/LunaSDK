@@ -39,6 +39,7 @@ namespace Luna
 
 			// Features.
 			//VkPhysicalDeviceMemoryProperties m_memory_properties;
+			VkPhysicalDeviceProperties m_physical_device_properties;
 
 			// Descriptor Pools.
 			VkDescriptorPool m_desc_pool = VK_NULL_HANDLE;
@@ -77,6 +78,7 @@ namespace Luna
 			virtual R<Ref<ICommandQueue>> new_command_queue(const CommandQueueDesc& desc) override;
 			virtual R<Ref<IRenderTargetView>> new_render_target_view(IResource* resource, const RenderTargetViewDesc* desc) override;
 			virtual R<Ref<IDepthStencilView>> new_depth_stencil_view(IResource* resource, const DepthStencilViewDesc* desc) override;
+			virtual R<Ref<IResolveTargetView>> new_resolve_target_view(IResource* resource, const ResolveTargetViewDesc* desc) override;
 			virtual R<Ref<IQueryHeap>> new_query_heap(const QueryHeapDesc& desc) override;
 			virtual R<Ref<IFence>> new_fence() override;
 			virtual RV copy_resource(Span<const ResourceCopyDesc> copies) override;

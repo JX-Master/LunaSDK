@@ -38,7 +38,7 @@ namespace Luna
 		//! Describes the shader input layout.
 		struct ShaderInputLayoutDesc
 		{
-			Vector<IDescriptorSetLayout*> descriptor_set_layouts;
+			Span<IDescriptorSetLayout*> descriptor_set_layouts;
 			ShaderInputLayoutFlag flags;
 
 			ShaderInputLayoutDesc() = default;
@@ -56,7 +56,6 @@ namespace Luna
 		{
 			luiid("{347097dc-04e2-44e8-a9a0-3f89e77b4425}");
 
-			//virtual ShaderInputLayoutDesc get_desc() = 0;
 		};
 	}
 }

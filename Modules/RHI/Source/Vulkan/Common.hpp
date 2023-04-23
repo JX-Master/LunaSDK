@@ -139,6 +139,114 @@ namespace Luna
 				return VK_FORMAT_UNDEFINED;
 			}
 		}
+		inline VkPrimitiveTopology encode_primitive_topology(PrimitiveTopology primitive_topology)
+		{
+			switch (primitive_topology)
+			{
+			case PrimitiveTopology::point_list: return VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+			case PrimitiveTopology::line_list: return VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+			case PrimitiveTopology::line_strip: return VK_PRIMITIVE_TOPOLOGY_LINE_STRIP;
+			case PrimitiveTopology::triangle_list: return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+			case PrimitiveTopology::triangle_strip: return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
+			case PrimitiveTopology::line_list_adj: return VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY;
+			case PrimitiveTopology::line_strip_adj: return VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY;
+			case PrimitiveTopology::triangle_list_adj: return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY;
+			case PrimitiveTopology::triangle_strip_adj: return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY;
+			case PrimitiveTopology::patchlist: return VK_PRIMITIVE_TOPOLOGY_PATCH_LIST;
+			}
+		}
+		inline VkCompareOp encode_compare_op(ComparisonFunc func)
+		{
+			switch (func)
+			{
+			case ComparisonFunc::never: return VK_COMPARE_OP_NEVER;
+			case ComparisonFunc::less: return VK_COMPARE_OP_LESS;
+			case ComparisonFunc::equal: return VK_COMPARE_OP_EQUAL;
+			case ComparisonFunc::less_equal: return VK_COMPARE_OP_LESS_OR_EQUAL;
+			case ComparisonFunc::greater: return VK_COMPARE_OP_GREATER;
+			case ComparisonFunc::not_equal: return VK_COMPARE_OP_NOT_EQUAL;
+			case ComparisonFunc::greater_equal: return VK_COMPARE_OP_GREATER_OR_EQUAL;
+			case ComparisonFunc::always: return VK_COMPARE_OP_ALWAYS;
+			}
+		}
+		inline VkStencilOp encode_stencil_op(StencilOp op)
+		{
+			switch (op)
+			{
+			case StencilOp::keep: return VK_STENCIL_OP_KEEP;
+			case StencilOp::zero: return VK_STENCIL_OP_ZERO;
+			case StencilOp::replace: return VK_STENCIL_OP_REPLACE;
+			case StencilOp::incr_sat: return VK_STENCIL_OP_INCREMENT_AND_CLAMP;
+			case StencilOp::decr_sat: return VK_STENCIL_OP_DECREMENT_AND_CLAMP;
+			case StencilOp::invert: return VK_STENCIL_OP_INVERT;
+			case StencilOp::incr: return VK_STENCIL_OP_INCREMENT_AND_WRAP;
+			case StencilOp::decr: return VK_STENCIL_OP_DECREMENT_AND_WRAP;
+			}
+		}
+		inline VkLogicOp encode_logic_op(LogicOp op)
+		{
+			switch (op)
+			{
+			case LogicOp::clear: return VK_LOGIC_OP_CLEAR;
+			case LogicOp::set: return VK_LOGIC_OP_SET;
+			case LogicOp::copy: return VK_LOGIC_OP_COPY;
+			case LogicOp::copy_inverted: return VK_LOGIC_OP_COPY_INVERTED;
+			case LogicOp::invert: return VK_LOGIC_OP_INVERT;
+			case LogicOp::and : return VK_LOGIC_OP_AND;
+			case LogicOp::nand: return VK_LOGIC_OP_NAND;
+			case LogicOp::or: return VK_LOGIC_OP_OR;
+			case LogicOp::nor: return VK_LOGIC_OP_NOR;
+			case LogicOp::xor: return VK_LOGIC_OP_XOR;
+			case LogicOp::equiv: return VK_LOGIC_OP_EQUIVALENT;
+			case LogicOp::and_reverse: return VK_LOGIC_OP_AND_REVERSE;
+			case LogicOp::and_inverted: return VK_LOGIC_OP_AND_INVERTED;
+			case LogicOp::or_reverse: return VK_LOGIC_OP_OR_REVERSE;
+			case LogicOp::or_inverted: return VK_LOGIC_OP_OR_INVERTED;
+			}
+		}
+		inline VkBlendFactor encode_blend_factor(BlendFactor factor)
+		{
+			switch (factor)
+			{
+			case BlendFactor::zero: return VK_BLEND_FACTOR_ZERO;
+			case BlendFactor::one: return VK_BLEND_FACTOR_ONE;
+			case BlendFactor::src_color: return VK_BLEND_FACTOR_SRC_COLOR;
+			case BlendFactor::inv_src_color: return VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR;
+			case BlendFactor::src_alpha: return VK_BLEND_FACTOR_SRC_ALPHA;
+			case BlendFactor::inv_src_alpha: return VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+			case BlendFactor::dest_color: return VK_BLEND_FACTOR_DST_COLOR;
+			case BlendFactor::inv_dest_color: return VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR;
+			case BlendFactor::dest_alpha: return VK_BLEND_FACTOR_DST_ALPHA;
+			case BlendFactor::inv_dest_alpha: return VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA;
+			case BlendFactor::src_alpha_sat: return VK_BLEND_FACTOR_SRC_ALPHA_SATURATE;
+			case BlendFactor::blend_factor: return VK_BLEND_FACTOR_CONSTANT_COLOR;
+			case BlendFactor::inv_blend_factor: return VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR;
+			case BlendFactor::src1_color: return VK_BLEND_FACTOR_SRC1_COLOR;
+			case BlendFactor::inv_src1_color: return VK_BLEND_FACTOR_ONE_MINUS_SRC1_COLOR;
+			case BlendFactor::src1_alpha: return VK_BLEND_FACTOR_SRC1_ALPHA;
+			case BlendFactor::inv_src1_alpha: return VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA;
+			}
+		}
+		inline VkBlendOp encode_blend_op(BlendOp op)
+		{
+			switch (op)
+			{
+			case BlendOp::add: return VK_BLEND_OP_ADD;
+			case BlendOp::subtract: return VK_BLEND_OP_SUBTRACT;
+			case BlendOp::rev_subtract: return VK_BLEND_OP_REVERSE_SUBTRACT;
+			case BlendOp::min: return VK_BLEND_OP_MIN;
+			case BlendOp::max: return VK_BLEND_OP_MAX;
+			}
+		}
+		inline VkColorComponentFlags encode_color_component_flags(ColorWriteMask mask)
+		{
+			VkColorComponentFlags r = 0;
+			if (test_flags(mask, ColorWriteMask::red)) r |= VK_COLOR_COMPONENT_R_BIT;
+			if (test_flags(mask, ColorWriteMask::green)) r |= VK_COLOR_COMPONENT_G_BIT;
+			if (test_flags(mask, ColorWriteMask::blue)) r |= VK_COLOR_COMPONENT_B_BIT;
+			if (test_flags(mask, ColorWriteMask::alpha)) r |= VK_COLOR_COMPONENT_A_BIT;
+			return r;
+		}
 		inline VkAttachmentLoadOp encode_load_op(LoadOp op)
 		{
 			switch (op)
