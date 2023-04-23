@@ -18,6 +18,19 @@ namespace Luna
 {
 	namespace RHI
 	{
+		//! Calculates the subresource index of the specified subresource.
+		inline constexpr u32 calc_subresource_index(u32 mip_slice, u32 array_slice, u32 mip_levels)
+		{
+			return mip_slice + array_slice * mip_levels;
+		}
+
+		//! Calculates the mipmap slice and array slice from subresource index.
+		inline constexpr void calc_mip_array_slice(u32 subresource, u32 mip_levels, u32& mip_slice, u32& array_slice)
+		{
+			mip_slice = subresource % mip_levels;
+			array_slice = subresource / mip_levels;
+		}
+
 		inline D3D12_RESOURCE_STATES encode_resource_state(ResourceState s)
 		{
 			switch (s)

@@ -17,8 +17,7 @@ namespace Luna
 	{
 		struct ResolveTargetViewDesc
 		{
-			u32 mip_slice;
-			u32 array_slice;
+			SubresourceIndex subresource;
 		};
 
 		struct IResolveTargetView : virtual IDeviceChild

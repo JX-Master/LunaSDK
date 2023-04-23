@@ -11,6 +11,7 @@
 #include "VulkanRHI.hpp"
 #include <Runtime/Mutex.hpp>
 #include "Adapter.hpp"
+#include "RenderPassPool.hpp"
 namespace Luna
 {
 	namespace RHI
@@ -45,6 +46,9 @@ namespace Luna
 			// Vulkan memory allocator.
 			VmaAllocator m_allocator = VK_NULL_HANDLE;
 
+			// Render pass pools.
+			RenderPassPool m_render_pass_pool;
+
 			RV init(VkPhysicalDevice physical_device, const Vector<QueueFamily>& queue_families);
 			RV init_descriptor_pools();
 			RV init_vma_allocator();
@@ -55,7 +59,10 @@ namespace Luna
 			R<VkImage> create_vk_image(const ResourceDesc& validated_desc);
 
 			virtual bool check_device_feature(DeviceFeature feature) override;
-			virtual usize get_constant_buffer_data_alignment() override;
+			virtual usize get_constant_buffer_data_alignment() override
+			{
+				return 0; // Vulkan does not have constant buffer data alignment requirement.
+			}
 			virtual void get_texture_data_placement_info(u32 width, u32 height, u32 depth, Format format,
 				u64* size, u64* alignment, u64* row_pitch, u64* slice_pitch) override;
 			virtual R<Ref<IResource>> new_resource(const ResourceDesc& desc, const ClearValue* optimized_clear_value) override;

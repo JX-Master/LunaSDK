@@ -424,6 +424,14 @@ namespace Luna
 			}
 		};
 
+		struct SubresourceIndex
+		{
+			//! The mip index of the subresource.
+			u32 mip;
+			//! The array index of the subresource.
+			u32 array;
+		};
+
 		//! @interface IResource
 		//! Represents a memory region that can be accessed by GPU.
 		struct IResource : virtual IDeviceChild
@@ -434,28 +442,29 @@ namespace Luna
 			virtual ResourceDesc get_desc() = 0;
 
 			//! Maps the resource data to system memory and enables CPU access to the resource data.
-			//! Map/unmap operations are reference counted, for each `map_subresource` operation, you need to call `unmap_subresource` once to finally unmap the memory.
-			//! @param[in] subresource The index of the subresource you want to map. For buffer resources, always specify `0`.
+			//! Map/unmap operations are reference counted, for each `map` operation, you need to call `unmap` once to finally unmap the memory.
+			//! Only buffer resources can be mapped.
 			//! @param[in] read_begin The byte offset of the beginning of the data range that will be read by CPU.
 			//! @param[in] read_end The byte offset of the ending of the data range that will be read by CPU.
 			//! 
 			//! If `read_end <= read_begin`, no data will be read by CPU, which is required if resource heap type is not `ResourceHeapType::readback`.
 			//! 
 			//! If `read_end` is larger than the subresource size (like setting to `USIZE_MAX`), the read range will be clamped to [read_begin, resource_size). 
-			//! @param[out] out_data If not `nullptr`, returns one pointer to the mapped resource data. 
-			//! The returned pointer is not affected by `read_offset` and always points to the beginning of the subresource data.
-			virtual RV map_subresource(u32 subresource, usize read_begin, usize read_end, void** out_data) = 0;
+			//! @return Returns one pointer to the mapped resource data. 
+			//! The returned pointer is not offsetted by `read_begin` and always points to the beginning of the resource data, but 
+			//! only data in [pointer + read_begin, pointer + read_end) range is valid for reading from CPU.
+			virtual R<void*> map(usize read_begin, usize read_end) = 0;
 
-			//! Invalidates the pointer to the mapped data, and synchronizes changed data when needed.
-			//! Map/unmap operations are reference counted, for each `map_subresource` operation, you need to call `unmap_subresource` once to finally unmap the memory.
-			//! @param[in] subresource The index of the subresource you want to unmap. For buffer resources, always specify `0`.
+			//! Invalidates the pointer to the mapped data, and synchronizes changed data with device when needed.
+			//! Map/unmap operations are reference counted, for each `map` operation, you need to call `unmap` once to finally unmap the memory.
+			//! Only buffer resources can be mapped.
 			//! @param[in] write_begin The byte offset of the beginning of the data range that is changed by CPU and should be synchronized. 
 			//! @param[in] write_end The byte offset of the ending of the data range that is changed by CPU and should be synchronized.
 			//! 
 			//! If `write_begin <= write_end`, no data will be synchronized, which is required if resource heap type is not `ResourceHeapType::upload`.
 			//! 
 			//! If `write_end` is larger than the subresource size (like setting to `USIZE_MAX`), the write range will be clamped to [write_begin, resource_size). 
-			virtual void unmap_subresource(u32 subresource, usize write_begin, usize write_end) = 0;
+			virtual void unmap(usize write_begin, usize write_end) = 0;
 		};
 	}
 }

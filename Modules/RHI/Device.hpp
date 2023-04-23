@@ -49,7 +49,7 @@ namespace Luna
 			void* dest;
 			u32 dest_row_pitch;
 			u32 dest_depth_pitch;
-			u32 src_subresource;
+			SubresourceIndex src_subresource;
 			BoxU read_box;
 		};
 		struct ResourceCopyWriteTextureDesc
@@ -57,7 +57,7 @@ namespace Luna
 			const void* src;
 			u32 src_row_pitch;
 			u32 src_depth_pitch;
-			u32 dest_subresource;
+			SubresourceIndex dest_subresource;
 			BoxU write_box;
 		};
 		struct ResourceCopyDesc
@@ -91,7 +91,7 @@ namespace Luna
 				r.write_buffer.dest_offset = dest_offset;
 				return r;
 			}
-			static ResourceCopyDesc as_read_texture(IResource* resource, void* dest, u32 dest_row_pitch, u32 dest_depth_pitch, u32 src_subresource, const BoxU& read_box)
+			static ResourceCopyDesc as_read_texture(IResource* resource, void* dest, u32 dest_row_pitch, u32 dest_depth_pitch, const SubresourceIndex& src_subresource, const BoxU& read_box)
 			{
 				ResourceCopyDesc r;
 				r.op = ResourceCopyOp::read_texture;
@@ -103,7 +103,7 @@ namespace Luna
 				r.read_texture.read_box = read_box;
 				return r;
 			}
-			static ResourceCopyDesc as_write_texture(IResource* resource, const void* src, u32 src_row_pitch, u32 src_depth_pitch, u32 dest_subresource, const BoxU& write_box)
+			static ResourceCopyDesc as_write_texture(IResource* resource, const void* src, u32 src_row_pitch, u32 src_depth_pitch, const SubresourceIndex& dest_subresource, const BoxU& write_box)
 			{
 				ResourceCopyDesc r;
 				r.op = ResourceCopyOp::write_texture;

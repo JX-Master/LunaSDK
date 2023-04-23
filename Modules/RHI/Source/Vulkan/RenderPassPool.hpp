@@ -21,8 +21,6 @@ namespace Luna
 			Format dsv_format;
 			LoadOp rt_load_ops[8];
 			StoreOp rt_store_ops[8];
-			LoadOp resolve_load_ops[8];
-			StoreOp resolve_store_ops[8];
 			LoadOp depth_load_op;
 			StoreOp depth_store_op;
 			LoadOp stencil_load_op;
@@ -41,8 +39,6 @@ namespace Luna
 			h = memhash<usize>(&k.dsv_format, sizeof(RHI::Format), h);
 			h = memhash<usize>(k.rt_load_ops, sizeof(RHI::LoadOp) * 8, h);
 			h = memhash<usize>(k.rt_store_ops, sizeof(RHI::StoreOp) * 8, h);
-			h = memhash<usize>(k.resolve_load_ops, sizeof(RHI::LoadOp) * 8, h);
-			h = memhash<usize>(k.resolve_store_ops, sizeof(RHI::StoreOp) * 8, h);
 			h = memhash<usize>(&k.depth_load_op, sizeof(RHI::LoadOp), h);
 			h = memhash<usize>(&k.depth_store_op, sizeof(RHI::StoreOp), h);
 			h = memhash<usize>(&k.stencil_load_op, sizeof(RHI::LoadOp), h);
@@ -59,6 +55,7 @@ namespace Luna
 		{
 			VkDevice m_device;
 			PFN_vkDestroyRenderPass m_vkDestroyRenderPass;
+			PFN_vkCreateRenderPass m_vkCreateRenderPass;
 
 			HashMap<RenderPassKey, VkRenderPass> m_render_passes;
 

@@ -65,9 +65,8 @@ namespace Luna
 			union
 			{
 				PlacedResourceFootprint placed_footprint;
-				u32 subresource_index;
+				SubresourceIndex subresource_index;
 			};
-
 			static TextureCopyLocation as_placed_foorprint(IResource* _resource, u64 _offset, Format _format, u32 _width, u32 _height, u32 _depth, u32 _row_pitch)
 			{
 				TextureCopyLocation r;
@@ -81,8 +80,7 @@ namespace Luna
 				r.placed_footprint.footprint.row_pitch = _row_pitch;
 				return r;
 			}
-
-			static TextureCopyLocation as_subresource_index(IResource* _resource, u32 _subresource_index)
+			static TextureCopyLocation as_subresource_index(IResource* _resource, const SubresourceIndex& _subresource_index)
 			{
 				TextureCopyLocation r;
 				r.type = TextureCopyType::subresource_index;
@@ -164,13 +162,13 @@ namespace Luna
 			end_only = 0x02,
 		};
 
-		constexpr u32 RESOURCE_BARRIER_ALL_SUBRESOURCES = U32_MAX;
+		constexpr SubresourceIndex RESOURCE_BARRIER_ALL_SUBRESOURCES = {U32_MAX, U32_MAX};
 		struct IResource;
 
 		struct ResourceTransitionBarrierDesc
 		{
 			IResource* resource;
-			u32 subresource;
+			SubresourceIndex subresource;
 			ResourceState after;
 		};
 
@@ -210,7 +208,7 @@ namespace Luna
 				uav(uav),
 				flags(flags) {}
 
-			static ResourceBarrierDesc as_transition(IResource* resource, ResourceState after, u32 subresource = RESOURCE_BARRIER_ALL_SUBRESOURCES, ResourceBarrierFlag flags = ResourceBarrierFlag::none)
+			static ResourceBarrierDesc as_transition(IResource* resource, ResourceState after, const SubresourceIndex& subresource = RESOURCE_BARRIER_ALL_SUBRESOURCES, ResourceBarrierFlag flags = ResourceBarrierFlag::none)
 			{
 				ResourceTransitionBarrierDesc desc;
 				desc.resource = resource;
@@ -232,7 +230,6 @@ namespace Luna
 				desc.resource = resource;
 				return ResourceBarrierDesc(desc, flags);
 			}
-
 		};
 
 		struct VertexBufferViewDesc
@@ -386,12 +383,6 @@ namespace Luna
 			//! The store operation for the render target.
 			//! If the corresponding render target resource is `nullptr`, this operation is ignored.
 			StoreOp rt_store_ops[8] = { StoreOp::store };
-			//! The load operation for the resolve target. 
-			//! If the corresponding resolve target resource is `nullptr`, this operation is ignored.
-			LoadOp resolve_load_ops[8] = { LoadOp::load };
-			//! The store operation for the resolve target.
-			//! If the corresponding resolve target resource is `nullptr`, this operation is ignored.
-			StoreOp resolve_store_ops[8] = { StoreOp::store };
 			//! The load operation for depth component.
 			//! If the depth stencil resource is `nullptr`, this operation is ignored.
 			LoadOp depth_load_op = LoadOp::load;

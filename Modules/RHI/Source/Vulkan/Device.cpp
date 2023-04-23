@@ -92,6 +92,9 @@ namespace Luna
 			{
 				return r.errcode();
 			}
+			m_render_pass_pool.m_device = m_device;
+			m_render_pass_pool.m_vkCreateRenderPass = m_funcs.vkCreateRenderPass;
+			m_render_pass_pool.m_vkDestroyRenderPass = m_funcs.vkDestroyRenderPass;
 			return ok;
 		}
 		RV Device::init_descriptor_pools()
@@ -103,7 +106,6 @@ namespace Luna
 				{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 8192},
 				{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1024}
 			};
-
 			VkDescriptorPoolCreateInfo create_info{};
 			create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 			create_info.poolSizeCount = 5;
@@ -224,6 +226,18 @@ namespace Luna
 				return false;
 			}
 			return false;
+		}
+		void Device::get_texture_data_placement_info(u32 width, u32 height, u32 depth, Format format,
+			u64* size, u64* alignment, u64* row_pitch, u64* slice_pitch)
+		{
+			// Vulkan does not have image data alignment requirement.
+			if (alignment) *alignment = 0;
+			u64 d_row_pitch = (u64)width * (u64)bits_per_pixel(format) / 8;
+			if (row_pitch) *row_pitch = d_row_pitch;
+			u64 d_slice_pitch = d_row_pitch * height;
+			if (slice_pitch) *slice_pitch = d_slice_pitch;
+			u64 d_size = d_slice_pitch * depth;
+			if (size) *size = d_size;
 		}
 		R<Ref<IResource>> Device::new_resource(const ResourceDesc& desc, const ClearValue* optimized_clear_value)
 		{

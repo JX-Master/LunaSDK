@@ -58,6 +58,20 @@ namespace Luna
 				m_buffer = VK_NULL_HANDLE;
 			}
 		}
+		R<void*> BufferResource::map(usize read_begin, usize read_end)
+		{
+			void* ret = nullptr;
+			lutry
+			{
+				luexp(encode_vk_result(vmaMapMemory(m_device->m_allocator, m_memory->m_allocation, &ret)));
+			}
+			lucatchret;
+			return ret;
+		}
+		void BufferResource::unmap(usize write_begin, usize write_end)
+		{
+			vmaUnmapMemory(m_device->m_allocator, m_memory->m_allocation);
+		}
 		RV ImageResource::post_init()
 		{
 			lutry
