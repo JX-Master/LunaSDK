@@ -40,7 +40,7 @@ namespace Luna
 			virtual R<Ref<ICommandBuffer>> new_command_buffer() = 0;
 
 			//! Gets the GPU timestamp frequency of this queue. The timestamp frequency is measured in ticks per second.
-			virtual R<u64> get_timestamp_frequency() = 0;
+			virtual R<f64> get_timestamp_frequency() = 0;
 		};
 	}
 }

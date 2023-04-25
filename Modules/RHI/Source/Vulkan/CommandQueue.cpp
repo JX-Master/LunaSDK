@@ -8,6 +8,7 @@
 * @date 2022/10/29
 */
 #include "CommandQueue.hpp"
+#include "CommandBuffer.hpp"
 namespace Luna
 {
 	namespace RHI
@@ -83,6 +84,24 @@ namespace Luna
 					m_device->m_queue_allocated[i] = false;
 				}
 			}
+		}
+		R<Ref<ICommandBuffer>> CommandQueue::new_command_buffer()
+		{
+			Ref<ICommandBuffer> ret;
+			lutry
+			{
+				auto buf = new_object<CommandBuffer>();
+				luexp(buf->init(this));
+				ret = buf;
+			}
+			lucatchret;
+			return ret;
+		}
+		R<f64> CommandQueue::get_timestamp_frequency()
+		{
+			// nanoseconds per tick.
+			f64 period = m_device->m_physical_device_properties.limits.timestampPeriod;
+			return 1000000000.0 / period;
 		}
 	}
 }

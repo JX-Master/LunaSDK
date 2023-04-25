@@ -32,6 +32,8 @@ namespace Luna
 			virtual IDevice* get_device() override { return m_device.get(); }
 			virtual void set_name(const Name& name) override { m_name = name; }
 			virtual CommandQueueDesc get_desc() override { return m_desc; }
+			virtual R<Ref<ICommandBuffer>> new_command_buffer() override;
+			virtual R<f64> get_timestamp_frequency() override;
 		};
 	}
 }
