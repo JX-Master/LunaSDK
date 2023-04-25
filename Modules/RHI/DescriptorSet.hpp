@@ -480,15 +480,6 @@ namespace Luna
 			}
 		};
 
-		struct StreamOutputBufferView
-		{
-			IResource* soresource;
-			u64 offset_in_bytes;
-			u64 size_in_bytes;
-			IResource* buffer_filled_size_resource;
-			u64 buffer_filled_size_offset;
-		};
-
 		struct DescriptorSetDesc
 		{
 			//! The descriptor layout for this descriptor set.

@@ -23,6 +23,7 @@
 #include "ResolveTargetView.hpp"
 #include "Fence.hpp"
 #include "PipelineState.hpp"
+#include "QueryHeap.hpp"
 namespace Luna
 {
 	namespace RHI
@@ -501,6 +502,19 @@ namespace Luna
 				auto view = new_object<ResolveTargetView>();
 				view->m_device = this;
 				luexp(view->init(resource, desc));
+				ret = view;
+			}
+			lucatchret;
+			return ret;
+		}
+		R<Ref<IQueryHeap>> Device::new_query_heap(const QueryHeapDesc& desc)
+		{
+			Ref<IQueryHeap> ret;
+			lutry
+			{
+				auto view = new_object<QueryHeap>();
+				view->m_device = this;
+				luexp(view->init(desc));
 				ret = view;
 			}
 			lucatchret;

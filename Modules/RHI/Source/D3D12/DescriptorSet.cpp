@@ -74,34 +74,6 @@ namespace Luna
 				m_device->m_device->CreateConstantBufferView(&d, h);
 			}
 		}
-		LUNA_RHI_API ShaderResourceViewDesc get_default_srv_from_resource(IResource* resource)
-		{
-			ResourceDesc d = resource->get_desc();
-			switch (d.type)
-			{
-			case ResourceType::texture_1d:
-				return (d.depth_or_array_size) == 1 ?
-					ShaderResourceViewDesc::as_tex1d(d.pixel_format, 0, d.mip_levels, 0.0f) :
-					ShaderResourceViewDesc::as_tex1darray(d.pixel_format, 0, d.mip_levels, 0, d.depth_or_array_size, 0.0f);
-			case ResourceType::texture_2d:
-				return (d.depth_or_array_size == 1) ?
-					((d.sample_count == 1) ?
-						ShaderResourceViewDesc::as_tex2d(d.pixel_format, 0, d.mip_levels, 0.0f) :
-						ShaderResourceViewDesc::as_tex2dms(d.pixel_format)) :
-					((d.sample_count == 1) ?
-						ShaderResourceViewDesc::as_tex2darray(d.pixel_format, 0, d.mip_levels, 0, d.depth_or_array_size, 0.0f) :
-						ShaderResourceViewDesc::as_tex2dmsarray(d.pixel_format, 0, d.depth_or_array_size)
-						);
-			case ResourceType::texture_3d:
-				return ShaderResourceViewDesc::as_tex3d(d.pixel_format, 0, d.mip_levels, 0.0f);
-			case ResourceType::buffer:
-				return ShaderResourceViewDesc::as_buffer(Format::unknown, 0, (u32)d.width_or_buffer_size, 1, false);
-			default:
-				break;
-			}
-			lupanic();
-			return ShaderResourceViewDesc();
-		}
 		void DescriptorSet::set_srv(u32 binding_slot, IResource* res, const ShaderResourceViewDesc* srv)
 		{
 			set_srv_array(binding_slot, 0, 1, &res, srv ? srv : &get_default_srv_from_resource(res));
@@ -197,30 +169,6 @@ namespace Luna
 				m_device->m_device->CreateShaderResourceView(r->m_res.Get(), &d, h);
 			}
 		}
-		LUNA_RHI_API UnorderedAccessViewDesc get_default_uav_from_resource(IResource* resource)
-		{
-			ResourceDesc d = resource->get_desc();
-			switch (d.type)
-			{
-			case ResourceType::buffer:
-				return UnorderedAccessViewDesc::as_buffer(Format::unknown, 0, (u32)d.width_or_buffer_size, 1, 0, false);
-			case ResourceType::texture_1d:
-				return (d.depth_or_array_size) == 1 ?
-					UnorderedAccessViewDesc::as_tex1d(d.pixel_format, 0) :
-					UnorderedAccessViewDesc::as_tex1darray(d.pixel_format, 0, 0, d.depth_or_array_size);
-			case ResourceType::texture_2d:
-				return (d.depth_or_array_size == 1) ?
-					UnorderedAccessViewDesc::as_tex2d(d.pixel_format, 0) :
-					UnorderedAccessViewDesc::as_tex2darray(d.pixel_format, 0, 0, d.depth_or_array_size);
-			case ResourceType::texture_3d:
-				return UnorderedAccessViewDesc::as_tex3d(d.pixel_format, 0, 0, d.depth_or_array_size);
-			default:
-				break;
-			}
-			lupanic();
-			return UnorderedAccessViewDesc();
-		}
-
 		void DescriptorSet::set_uav(u32 binding_slot, IResource* res, IResource* counter_resource, const UnorderedAccessViewDesc* uav)
 		{
 			set_uav_array(binding_slot, 0, 1, &res, &counter_resource, uav ? uav : &get_default_uav_from_resource(res));

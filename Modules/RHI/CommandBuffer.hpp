@@ -232,45 +232,6 @@ namespace Luna
 			}
 		};
 
-		struct VertexBufferViewDesc
-		{
-			IResource* resource;
-			//! The offset of the buffer from resource start in bytes.
-			u64 offset_in_bytes;
-			//! The size of the resource in bytes.
-			u32 size_in_bytes;
-			//! The size of one element in the buffer in bytes.
-			u32 stride_in_bytes;
-
-			VertexBufferViewDesc() = default;
-			VertexBufferViewDesc(IResource* resource,
-				u64 offset_in_bytes,
-				u32 size_in_bytes,
-				u32 stride_in_bytes) :
-				resource(resource),
-				offset_in_bytes(offset_in_bytes),
-				size_in_bytes(size_in_bytes),
-				stride_in_bytes(stride_in_bytes) {}
-		};
-
-		struct IndexBufferViewDesc
-		{
-			IResource* resource;
-			u32 offset_in_bytes;
-			u32 size_in_bytes;
-			Format index_format;
-
-			IndexBufferViewDesc() = default;
-			IndexBufferViewDesc(IResource* resource,
-				u64 offset_in_bytes,
-				u32 size_in_bytes,
-				Format index_format) :
-				resource(resource),
-				offset_in_bytes(offset_in_bytes),
-				size_in_bytes(size_in_bytes),
-				index_format(index_format) {}
-		};
-
 		struct Viewport
 		{
 			f32 top_left_x;
@@ -368,6 +329,12 @@ namespace Luna
 
 		struct ICommandQueue;
 
+		struct VertexBufferBind
+		{
+			IResource* buffer;
+			usize offset_in_bytes;
+		};
+
 		//! @interface ICommandBuffer
 		//! The command buffer is used to allocate memory for commands, record commands, submitting 
 		//! commands to GPU and tracks the state of the submitted commands.
@@ -432,20 +399,19 @@ namespace Luna
 			virtual void set_graphics_shader_input_layout(IShaderInputLayout* shader_input_layout) = 0;
 
 			//! Sets vertex buffers.
-			virtual void set_vertex_buffers(u32 start_slot, Span<const VertexBufferViewDesc> views) = 0;
+			//! @param[in] start_slot The start slot of the vertex buffer to set.
+			//! @param[in] num_slots The number of vertex buffers to set.
+			//! Vertex buffers in range [start_slot, start_slot + num_slots) will be replaced by new buffer.
+			//! @param[in] buffers An array of vertex buffers to bind.
+			//! @param[in] offsets An array of offsets for reading vertices from each vertex buffer in bytes.
+			virtual void set_vertex_buffers(u32 start_slot, u32 num_slots, IResource** buffers, const usize* offsets) = 0;
 
 			//! Sets index buffer.
-			virtual void set_index_buffer(const IndexBufferViewDesc& desc) = 0;
+			virtual void set_index_buffer(IResource* buffer, usize offset_in_bytes, Format index_format) = 0;
 
 			//! Sets the descriptor set to be used by the graphic pipeline.
-			//! This must be called after `set_pipeline_state`.
-			virtual void set_graphics_descriptor_set(u32 index, IDescriptorSet* descriptor_set) = 0;
-
-			//! Bind information about the primitive type, and data order that describes input data for the input assembler stage.
-			virtual void set_primitive_topology(PrimitiveTopology primitive_topology) = 0;
-
-			//! Sets the stream output buffer views. 
-			virtual void set_stream_output_targets(u32 start_slot, Span<const StreamOutputBufferView> views) = 0;
+			//! This must be called after `set_pipeline_state` and `set_graphics_shader_input_layout`.
+			virtual void set_graphics_descriptor_sets(u32 start_index, Span<IDescriptorSet*> descriptor_sets) = 0;
 
 			//! Bind one viewport to the rasterizer stage of the pipeline.
 			//! This operation behaves the same as calling `set_viewports` with only one viewport.
@@ -513,7 +479,7 @@ namespace Luna
 
 			//! Sets the view set to be used by the compute pipeline.
 			//! This must be called after `set_pipeline_state`.
-			virtual void set_compute_descriptor_set(u32 index, IDescriptorSet* descriptor_set) = 0;
+			virtual void set_compute_descriptor_sets(u32 start_index, Span<IDescriptorSet*> descriptor_sets) = 0;
 
 			//! Issues one resource barrier.
 			virtual void resource_barrier(const ResourceBarrierDesc& barrier) = 0;

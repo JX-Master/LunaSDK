@@ -115,20 +115,6 @@ namespace Luna
 				output_slot(output_slot) {}
 		};
 
-		struct StreamOutputDesc
-		{
-			Span<const StreamOutputDeclarationEntry> entries;
-			Span<const u32> buffer_strides;
-			u32 rasterized_stream;
-
-			StreamOutputDesc(InitializerList<const StreamOutputDeclarationEntry> entries = {},
-				InitializerList<const u32> buffer_strides = {},
-				u32 rasterized_stream = 0) :
-				entries(entries),
-				buffer_strides(buffer_strides),
-				rasterized_stream(rasterized_stream) {}
-		};
-
 		enum class BlendFactor : u8
 		{
 			zero,
@@ -402,7 +388,6 @@ namespace Luna
 			Span<const byte_t> ds;
 			Span<const byte_t> gs;
 			Span<const byte_t> ps;
-			StreamOutputDesc stream_output;
 			RasterizerDesc rasterizer_state;
 			DepthStencilDesc depth_stencil_state;
 			BlendDesc blend_state;

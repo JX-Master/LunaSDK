@@ -9,6 +9,10 @@
 */
 #include "CommandBuffer.hpp"
 #include "PipelineState.hpp"
+#include "Resource.hpp"
+#include "ShaderInputLayout.hpp"
+#include "DescriptorSet.hpp"
+#include "QueryHeap.hpp"
 
 namespace Luna
 {
@@ -90,6 +94,51 @@ namespace Luna
 			{
 				m_num_viewports = ps->m_num_viewports;
 			}
+		}
+		void CommandBuffer::set_graphics_shader_input_layout(IShaderInputLayout* shader_input_layout)
+		{
+			m_graphics_shader_input_layout = shader_input_layout;
+		}
+		void CommandBuffer::set_vertex_buffers(u32 start_slot, u32 num_slots, IResource** buffers, const usize* offsets)
+		{
+			VkBuffer* bufs = (VkBuffer*)alloca(sizeof(VkBuffer) * num_slots);
+			VkDeviceSize* vk_offsets = (VkDeviceSize*)alloca(sizeof(VkDeviceSize) * num_slots);
+			for (u32 i = 0; i < num_slots; ++i)
+			{
+				BufferResource* res = cast_objct<BufferResource>(buffers[i]->get_object());
+				bufs[i] = res->m_buffer;
+				vk_offsets[i] = offsets[i];
+			}
+			m_device->m_funcs.vkCmdBindVertexBuffers(m_command_buffer, start_slot, num_slots, bufs, vk_offsets);
+		}
+		void CommandBuffer::set_index_buffer(IResource* buffer, usize offset_in_bytes, Format index_format)
+		{
+			BufferResource* res = cast_objct<BufferResource>(buffer->get_object());
+			VkIndexType index_type;
+			switch (index_format)
+			{
+			case Format::r16_uint:
+			case Format::r16_sint:
+				index_type = VK_INDEX_TYPE_UINT16; break;
+			case Format::r32_uint:
+			case Format::r32_sint:
+				index_type = VK_INDEX_TYPE_UINT32; break;
+			}
+			m_device->m_funcs.vkCmdBindIndexBuffer(m_command_buffer, res->m_buffer, offset_in_bytes, index_type);
+		}
+		void CommandBuffer::set_graphics_descriptor_sets(u32 start_index, Span<IDescriptorSet*> descriptor_sets)
+		{
+			VkPipelineLayout layout = VK_NULL_HANDLE;
+			ShaderInputLayout* slayout = (ShaderInputLayout*)m_graphics_shader_input_layout->get_object();
+			layout = slayout->m_pipeline_layout;
+			VkDescriptorSet* sets = (VkDescriptorSet*)alloca(sizeof(VkDescriptorSet) * descriptor_sets.size());
+			for (u32 i = 0; i < descriptor_sets.size(); ++i)
+			{
+				auto s = (DescriptorSet*)descriptor_sets[i]->get_object();
+				sets[i] = s->m_desc_set;
+			}
+			m_device->m_funcs.vkCmdBindDescriptorSets(m_command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, layout, 
+				start_index, (u32)descriptor_sets.size(), sets, 0, nullptr);
 		}
 		void CommandBuffer::set_viewport(const Viewport& viewport)
 		{
@@ -175,7 +224,55 @@ namespace Luna
 			m_device->m_funcs.vkCmdDraw(m_command_buffer, vertex_count_per_instance * instance_count, instance_count, 
 				start_vertex_location, start_instance_location);
 		}
-
-
+		void CommandBuffer::set_compute_shader_input_layout(IShaderInputLayout* shader_input_layout)
+		{
+			m_compute_shader_input_layout = shader_input_layout;
+		}
+		void CommandBuffer::set_compute_descriptor_sets(u32 start_index, Span<IDescriptorSet*> descriptor_sets)
+		{
+			VkPipelineLayout layout = VK_NULL_HANDLE;
+			ShaderInputLayout* slayout = (ShaderInputLayout*)m_graphics_shader_input_layout->get_object();
+			layout = slayout->m_pipeline_layout;
+			VkDescriptorSet* sets = (VkDescriptorSet*)alloca(sizeof(VkDescriptorSet) * descriptor_sets.size());
+			for (u32 i = 0; i < descriptor_sets.size(); ++i)
+			{
+				auto s = (DescriptorSet*)descriptor_sets[i]->get_object();
+				sets[i] = s->m_desc_set;
+			}
+			m_device->m_funcs.vkCmdBindDescriptorSets(m_command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, layout,
+				start_index, (u32)descriptor_sets.size(), sets, 0, nullptr);
+		}
+		void CommandBuffer::dispatch(u32 thread_group_count_x, u32 thread_group_count_y, u32 thread_group_count_z)
+		{
+			m_device->m_funcs.vkCmdDispatch(m_command_buffer, thread_group_count_x, thread_group_count_y, thread_group_count_z);
+		}
+		void CommandBuffer::write_timestamp(IQueryHeap* heap, u32 index)
+		{
+			QueryHeap* h = (QueryHeap*)heap->get_object();
+			m_device->m_funcs.vkCmdResetQueryPool(m_command_buffer, h->m_query_pool, index, 1);
+			m_device->m_funcs.vkCmdWriteTimestamp(m_command_buffer, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, h->m_query_pool, index);
+		}
+		void CommandBuffer::begin_pipeline_statistics_query(IQueryHeap* heap, u32 index)
+		{
+			QueryHeap* h = (QueryHeap*)heap->get_object();
+			m_device->m_funcs.vkCmdResetQueryPool(m_command_buffer, h->m_query_pool, index, 1);
+			m_device->m_funcs.vkCmdBeginQuery(m_command_buffer, h->m_query_pool, index, 0);
+		}
+		void CommandBuffer::end_pipeline_statistics_query(IQueryHeap* heap, u32 index)
+		{
+			QueryHeap* h = (QueryHeap*)heap->get_object();
+			m_device->m_funcs.vkCmdEndQuery(m_command_buffer, h->m_query_pool, index);
+		}
+		void CommandBuffer::begin_occlusion_query(IQueryHeap* heap, u32 index)
+		{
+			QueryHeap* h = (QueryHeap*)heap->get_object();
+			m_device->m_funcs.vkCmdResetQueryPool(m_command_buffer, h->m_query_pool, index, 1);
+			m_device->m_funcs.vkCmdBeginQuery(m_command_buffer, h->m_query_pool, index, VK_QUERY_CONTROL_PRECISE_BIT);
+		}
+		void CommandBuffer::end_occlusion_query(IQueryHeap* heap, u32 index)
+		{
+			QueryHeap* h = (QueryHeap*)heap->get_object();
+			m_device->m_funcs.vkCmdEndQuery(m_command_buffer, h->m_query_pool, index);
+		}
 	}
 }

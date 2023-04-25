@@ -37,6 +37,9 @@ namespace Luna
 			// Set by set_pipeline_state.
 			u32 m_num_viewports = 0;
 
+			IShaderInputLayout* m_graphics_shader_input_layout = nullptr;
+			IShaderInputLayout* m_compute_shader_input_layout = nullptr;
+
 			RV init(CommandQueue* queue);
 			~CommandBuffer();
 
@@ -57,11 +60,9 @@ namespace Luna
 			virtual void begin_render_pass(const RenderPassDesc& desc) override;
 			virtual void set_pipeline_state(PipelineStateBindPoint bind_point, IPipelineState* pso) override;
 			virtual void set_graphics_shader_input_layout(IShaderInputLayout* shader_input_layout) override;
-			virtual void set_vertex_buffers(u32 start_slot, Span<const VertexBufferViewDesc> views) override;
-			virtual void set_index_buffer(const IndexBufferViewDesc& desc) override;
-			virtual void set_graphics_descriptor_set(u32 index, IDescriptorSet* descriptor_set) override;
-			virtual void set_primitive_topology(PrimitiveTopology primitive_topology) override;
-			virtual void set_stream_output_targets(u32 start_slot, Span<const StreamOutputBufferView> views) override;
+			virtual void set_vertex_buffers(u32 start_slot, u32 num_slots, IResource** buffers, const usize* offsets) override;
+			virtual void set_index_buffer(IResource* buffer, usize offset_in_bytes, Format index_format) override;
+			virtual void set_graphics_descriptor_sets(u32 start_index, Span<IDescriptorSet*> descriptor_sets) override;
 			virtual void set_viewport(const Viewport& viewport) override;
 			virtual void set_viewports(Span<const Viewport> viewports) override;
 			virtual void set_scissor_rect(const RectI& rect) override;
@@ -82,7 +83,7 @@ namespace Luna
 			virtual void copy_texture_region(const TextureCopyLocation& dst, u32 dst_x, u32 dst_y, u32 dst_z,
 				const TextureCopyLocation& src, const BoxU* src_box = nullptr) override;
 			virtual void set_compute_shader_input_layout(IShaderInputLayout* shader_input_layout) override;
-			virtual void set_compute_descriptor_set(u32 index, IDescriptorSet* descriptor_set) override;
+			virtual void set_compute_descriptor_sets(u32 start_index, Span<IDescriptorSet*> descriptor_sets) override;
 			virtual void resource_barrier(const ResourceBarrierDesc& barrier) override;
 			virtual void resource_barriers(Span<const ResourceBarrierDesc> barriers) override;
 			virtual void dispatch(u32 thread_group_count_x, u32 thread_group_count_y, u32 thread_group_count_z) override;

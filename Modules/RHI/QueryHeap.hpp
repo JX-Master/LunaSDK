@@ -14,45 +14,48 @@ namespace Luna
 {
     namespace RHI
     {
-        enum class QueryHeapType : u8
+        enum class QueryType : u8
         {
             occlusion,
             timestamp,
             pipeline_statistics,
         };
 
+        enum class QueryPipelineStatisticFlag : u32
+        {
+            //! Number of vertices read by input assembler.
+            input_vertices = 0x01,
+            //! Number of primitives read by the input assembler.
+            input_primitives = 0x02,
+            //! Number of vertex shader invocations.
+            vs_invocations = 0x04,
+            //! Number of geometry shader invocations.
+            gs_invocations = 0x08,
+            //! Number of geometry shader output primitives.
+            gs_output_primitives = 0x10,
+            //! Number of primitives that were sent to the rasterizer.
+            rasterizer_input_primitives = 0x20,
+            //! Number of primitives that were rendered.
+            rendered_primitives = 0x40,
+            //! Number of pixel shader invocations.
+            ps_invocations = 0x80,
+            //! Number of hull shader invocations.
+            hs_invocations = 0x100,
+            //! Number of domain shader invocations.
+            ds_invocations = 0x200,
+            //! Number of compute shader invocations.
+            cs_invocations = 0x400
+        };
+
         struct QueryHeapDesc
         {
             //! The type of the query heap.
-            QueryHeapType type;
+            QueryType type;
             //! Number of queries this heap contains.
             u32 count;
-        };
-
-        struct PipelineStatistics
-        {
-            //! Number of vertices read by input assembler.
-            u64 input_vertices;
-            //! Number of primitives read by the input assembler.
-            u64 input_primitives;
-            //! Number of vertex shader invocations.
-            u64 vs_invocations;
-            //! Number of geometry shader invocations.
-            u64 gs_invocations;
-            //! Number of geometry shader output primitives.
-            u64 gs_output_primitives;
-            //! Number of primitives that were sent to the rasterizer.
-            u64 rasterizer_input_primitives;
-            //! Number of primitives that were rendered.
-            u64 rendered_primitives;
-            //! Number of pixel shader invocations.
-            u64 ps_invocations;
-            //! Number of hull shader invocations.
-            u64 hs_invocations;
-            //! Number of domain shader invocations.
-            u64 ds_invocations;
-            //! Number of compute shader invocations.
-            u64 cs_invocations;
+            //! If type is `QueryType::pipeline_statistics`, specify the pipeline statistic entry
+            //! you want to query. Otherwise, this is ignored.
+            QueryPipelineStatisticFlag pipeline_statistics;
         };
 
         struct IQueryHeap : virtual IDeviceChild
@@ -61,29 +64,19 @@ namespace Luna
 
             virtual QueryHeapDesc get_desc() = 0;
 
-            //! Copies timestamp query results from query heap to the user-provided buffer.
+            //! Copies query results from query heap to the user-provided buffer.
             //! @param[in] index The index of the first query to copy.
             //! @param[in] count The number of queries to copy.
-            //! @param[out] values The user-provided buffer used to store the results.
+            //! @param[out] buffer The user-provided buffer used to store the results.
+            //! @param[in] buffer_size The size of `buffer` in bytes.
+            //! @param[in] stride The stride in bytes between results for individual queries within `buffer`
             //! @remark The user must ensure that all queries being copied are initialized, or the behavior is undefined.
-            //! If this query heap is not `QueryHeapType::timestamp`, this function fails with `BasicError::not_supported`.
-            virtual RV get_timestamp_values(u32 index, u32 count, u64* values) = 0;
-
-            //! Copies occlusion query results from query heap to the user-provided buffer.
-            //! @param[in] index The index of the first query to copy.
-            //! @param[in] count The number of queries to copy.
-            //! @param[out] values The user-provided buffer used to store the results.
-            //! @remark The user must ensure that all queries being copied are initialized, or the behavior is undefined.
-            //! If this query heap is not `QueryHeapType::occlusion`, this function fails with `BasicError::not_supported`.
-            virtual RV get_occlusion_values(u32 index, u32 count, u64* values) = 0;
-
-            //! Copies pipeline statistics query results from query heap to the user-provided buffer.
-            //! @param[in] index The index of the first query to copy.
-            //! @param[in] count The number of queries to copy.
-            //! @param[out] values The user-provided buffer used to store the results.
-            //! @remark The user must ensure that all queries being copied are initialized, or the behavior is undefined.
-            //! If this query heap is not `QueryHeapType::pipeline_statistics`, this function fails with `BasicError::not_supported`.
-            virtual RV get_pipeline_statistics_values(u32 index, u32 count, PipelineStatistics* values) = 0;
+            //! 
+            //! For occlusion and timestamp queries, the result is represented by one `u64` value for each query. For pipeline 
+            //! statistics querys, the result is represented by `N` number of `u64` values for each query, where `N` is the number
+            //! of pipeline stages enabled by `QueryPipelineStatisticFlag` when creating the query heap. Pipeline statistics query
+            //! stage results are arranged using the same order as they declared in `QueryPipelineStatisticFlag`.
+            virtual RV get_query_results(u32 start_index, u32 count, void* buffer, usize buffer_size, usize stride) = 0;
         };
     }
 }
