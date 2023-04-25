@@ -360,6 +360,12 @@ namespace Luna
 			u8 stencil_clear_value = 0;
 		};
 
+		enum class PipelineStateBindPoint : u8
+		{
+			graphics = 0,
+			compute = 1
+		};
+
 		struct ICommandQueue;
 
 		//! @interface ICommandBuffer
@@ -420,7 +426,7 @@ namespace Luna
 			virtual void begin_render_pass(const RenderPassDesc& desc) = 0;
 
 			//! Sets the pipeline state.
-			virtual void set_pipeline_state(IPipelineState* pso) = 0;
+			virtual void set_pipeline_state(PipelineStateBindPoint bind_point, IPipelineState* pso) = 0;
 
 			//! Sets the graphic shader input layout.
 			virtual void set_graphics_shader_input_layout(IShaderInputLayout* shader_input_layout) = 0;
@@ -442,19 +448,21 @@ namespace Luna
 			virtual void set_stream_output_targets(u32 start_slot, Span<const StreamOutputBufferView> views) = 0;
 
 			//! Bind one viewport to the rasterizer stage of the pipeline.
+			//! This operation behaves the same as calling `set_viewports` with only one viewport.
 			virtual void set_viewport(const Viewport& viewport) = 0;
 
 			//! Bind an array of viewports to the rasterizer stage of the pipeline.
+			//! All viewports must be set atomically as one operation. Any viewports not defined by the call are disabled.
 			virtual void set_viewports(Span<const Viewport> viewports) = 0;
 
 			//! Binds one scissor rectangle to the rasterizer stage.
-			//! The scissor rectangle points are relative to the bottom-left corner of the render target, 
-			//! with x-axis points to right and y-axis points to up.
+			//! This operation behaves the same as calling `set_scissor_rects` with only one scissor rect.
 			virtual void set_scissor_rect(const RectI& rect) = 0;
 
 			//! Binds an array of scissor rectangles to the rasterizer stage.
 			//! The scissor rectangle points are relative to the bottom-left corner of the render target, 
 			//! with x-axis points to right and y-axis points to up.
+			//! All scissor rectangles must be set atomically as one operation. Any scissor rectangles not defined by the call are disabled.
 			virtual void set_scissor_rects(Span<const RectI> rects) = 0;
 
 			//! Sets the blend factor that modulate values for a pixel shader, render target, or both.

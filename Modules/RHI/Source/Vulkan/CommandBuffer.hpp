@@ -30,6 +30,13 @@ namespace Luna
 			VkCommandBuffer m_command_buffer = VK_NULL_HANDLE;
 			VkFence m_fence = VK_NULL_HANDLE;
 
+			// Set by framebuffer.
+			u32 m_rt_width = 0;
+			u32 m_rt_height = 0;
+
+			// Set by set_pipeline_state.
+			u32 m_num_viewports = 0;
+
 			RV init(CommandQueue* queue);
 			~CommandBuffer();
 
@@ -48,7 +55,7 @@ namespace Luna
 			virtual void begin_event(const Name& event_name) override {}
 			virtual void end_event() override {}
 			virtual void begin_render_pass(const RenderPassDesc& desc) override;
-			virtual void set_pipeline_state(IPipelineState* pso) override;
+			virtual void set_pipeline_state(PipelineStateBindPoint bind_point, IPipelineState* pso) override;
 			virtual void set_graphics_shader_input_layout(IShaderInputLayout* shader_input_layout) override;
 			virtual void set_vertex_buffers(u32 start_slot, Span<const VertexBufferViewDesc> views) override;
 			virtual void set_index_buffer(const IndexBufferViewDesc& desc) override;

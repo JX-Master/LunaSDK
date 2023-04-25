@@ -310,7 +310,8 @@ namespace Luna
 				guard.unlock();
 				create_info.subpass = 0;
 				luexp(encode_vk_result(m_device->m_funcs.vkCreateGraphicsPipelines(m_device->m_device, VK_NULL_HANDLE, 1, &create_info, nullptr, &m_pipeline)));
-			}
+				m_num_viewports = m_device->m_physical_device_properties.limits.maxViewports;
+			}	
 			lucatchret;
 			return ok;
 		}
