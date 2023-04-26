@@ -40,12 +40,9 @@ namespace Luna
 		{
 			none = 0x00,
 			vertex = 0x01,
-			hull = 0x02,
-			domain = 0x04,
-			geometry = 0x08,
-			pixel = 0x10,
-			compute = 0x20,
-			all = vertex | hull | domain | geometry | pixel | compute
+			pixel = 0x02,
+			compute = 0x04,
+			all = vertex | pixel | compute
 		};
 
 		//! Describes one binding in one descriptor set.

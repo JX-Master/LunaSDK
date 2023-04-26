@@ -91,30 +91,6 @@ namespace Luna
 				input_properties(input_properties) {}
 		};
 
-		struct StreamOutputDeclarationEntry
-		{
-			u32 stream;
-			Name semantic_name;
-			u32 semantic_index;
-			u8 start_component;
-			u8 component_count;
-			u8 output_slot;
-
-			StreamOutputDeclarationEntry() = default;
-			StreamOutputDeclarationEntry(u32 stream,
-				const Name& semantic_name,
-				u32 semantic_index,
-				u8 start_component,
-				u8 component_count,
-				u8 output_slot) :
-				stream(stream),
-				semantic_name(semantic_name),
-				semantic_index(semantic_index),
-				start_component(start_component),
-				component_count(component_count),
-				output_slot(output_slot) {}
-		};
-
 		enum class BlendFactor : u8
 		{
 			zero,
@@ -361,7 +337,9 @@ namespace Luna
 		enum class IndexBufferStripCutValue : u8
 		{
 			disabled,
+			//! This should be set if the index type is `Format::r16_uint`.
 			value_0xffff,
+			//! This should be set if the index type is `Format::r32_uint`.
 			value_0xffffffff
 		};
 
@@ -372,11 +350,6 @@ namespace Luna
 			line_strip,
 			triangle_list,
 			triangle_strip,
-			line_list_adj,
-			line_strip_adj,
-			triangle_list_adj,
-			triangle_strip_adj,
-			patchlist
 		};
 
 		struct GraphicsPipelineStateDesc
@@ -384,16 +357,12 @@ namespace Luna
 			InputLayoutDesc input_layout;
 			IShaderInputLayout* shader_input_layout = nullptr;
 			Span<const byte_t> vs;
-			Span<const byte_t> hs;
-			Span<const byte_t> ds;
-			Span<const byte_t> gs;
 			Span<const byte_t> ps;
 			RasterizerDesc rasterizer_state;
 			DepthStencilDesc depth_stencil_state;
 			BlendDesc blend_state;
 			IndexBufferStripCutValue ib_strip_cut_value = IndexBufferStripCutValue::disabled;
 			PrimitiveTopology primitive_topology = PrimitiveTopology::triangle_list;
-			u8 patch_control_points = 0;
 			u8 num_render_targets = 0;
 			//! The pixel format of the render target.
 			Format rtv_formats[8] = { Format::unknown };

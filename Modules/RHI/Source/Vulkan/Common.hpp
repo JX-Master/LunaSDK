@@ -148,11 +148,6 @@ namespace Luna
 			case PrimitiveTopology::line_strip: return VK_PRIMITIVE_TOPOLOGY_LINE_STRIP;
 			case PrimitiveTopology::triangle_list: return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 			case PrimitiveTopology::triangle_strip: return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
-			case PrimitiveTopology::line_list_adj: return VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY;
-			case PrimitiveTopology::line_strip_adj: return VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY;
-			case PrimitiveTopology::triangle_list_adj: return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY;
-			case PrimitiveTopology::triangle_strip_adj: return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY;
-			case PrimitiveTopology::patchlist: return VK_PRIMITIVE_TOPOLOGY_PATCH_LIST;
 			}
 		}
 		inline VkCompareOp encode_compare_op(ComparisonFunc func)

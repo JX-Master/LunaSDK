@@ -68,48 +68,9 @@ namespace Luna
 					dest.pSpecializationInfo = nullptr;
 					++num_stages;
 				}
-				if (!desc.hs.empty())
-				{
-					luexp(hs.init(m_device, desc.vs));
-					shader_modles[num_stages] = hs.shader_module;
-					auto& dest = stages[num_stages];
-					dest.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-					dest.stage = VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
-					dest.module = shader_modles[num_stages];
-					dest.pName = "main";
-					dest.flags = 0;
-					dest.pSpecializationInfo = nullptr;
-					++num_stages;
-				}
-				if (!desc.ds.empty())
-				{
-					luexp(ds.init(m_device, desc.vs));
-					shader_modles[num_stages] = ds.shader_module;
-					auto& dest = stages[num_stages];
-					dest.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-					dest.stage = VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
-					dest.module = shader_modles[num_stages];
-					dest.pName = "main";
-					dest.flags = 0;
-					dest.pSpecializationInfo = nullptr;
-					++num_stages;
-				}
-				if (!desc.gs.empty())
-				{
-					luexp(gs.init(m_device, desc.vs));
-					shader_modles[num_stages] = gs.shader_module;
-					auto& dest = stages[num_stages];
-					dest.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-					dest.stage = VK_SHADER_STAGE_GEOMETRY_BIT;
-					dest.module = shader_modles[num_stages];
-					dest.pName = "main";
-					dest.flags = 0;
-					dest.pSpecializationInfo = nullptr;
-					++num_stages;
-				}
 				if (!desc.ps.empty())
 				{
-					luexp(ps.init(m_device, desc.vs));
+					luexp(ps.init(m_device, desc.ps));
 					shader_modles[num_stages] = ps.shader_module;
 					auto& dest = stages[num_stages];
 					dest.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -182,10 +143,7 @@ namespace Luna
 				input_assembly.primitiveRestartEnable = desc.ib_strip_cut_value == IndexBufferStripCutValue::disabled ? VK_FALSE : VK_TRUE;
 				create_info.pInputAssemblyState = &input_assembly;
 				// tessllation
-				VkPipelineTessellationStateCreateInfo tessllation{};
-				tessllation.sType = VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO;
-				tessllation.patchControlPoints = desc.patch_control_points;
-				create_info.pTessellationState = desc.patch_control_points ? &tessllation : nullptr;
+				create_info.pTessellationState = nullptr;
 				// viewports.
 				VkPipelineViewportStateCreateInfo viewport{};
 				viewport.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;

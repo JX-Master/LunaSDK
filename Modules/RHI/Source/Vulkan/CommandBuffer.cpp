@@ -13,6 +13,7 @@
 #include "ShaderInputLayout.hpp"
 #include "DescriptorSet.hpp"
 #include "QueryHeap.hpp"
+#include "Fence.hpp"
 
 namespace Luna
 {
@@ -38,6 +39,7 @@ namespace Luna
 				fence_create_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 				luexp(encode_vk_result(m_device->m_funcs.vkCreateFence(m_device->m_device, &fence_create_info, nullptr, &m_fence)));
 				luexp(begin_command_buffer());
+				m_recording = true;
 			}
 			lucatchret;
 			return ok;
@@ -273,6 +275,57 @@ namespace Luna
 		{
 			QueryHeap* h = (QueryHeap*)heap->get_object();
 			m_device->m_funcs.vkCmdEndQuery(m_command_buffer, h->m_query_pool, index);
+		}
+		RV CommandBuffer::submit(Span<IFence*> wait_fences, Span<IFence*> signal_fences, bool allow_host_waiting)
+		{
+			if (!m_recording) return BasicError::bad_calling_time();
+			lutry
+			{
+				// Close the command buffer.
+				luexp(encode_vk_result(m_device->m_funcs.vkEndCommandBuffer(m_command_buffer)));
+				m_recording = false;
+				// Submit the command buffer.
+				VkSubmitInfo submit{};
+				submit.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+				submit.waitSemaphoreCount = (u32)wait_fences.size();
+				VkSemaphore* wait_semaphores = nullptr;
+				VkPipelineStageFlags* wait_stages = nullptr;
+				if (!wait_fences.empty())
+				{
+					wait_semaphores = (VkSemaphore*)alloca(sizeof(VkSemaphore) * wait_fences.size());
+					wait_stages = (VkPipelineStageFlags*)alloca(sizeof(VkPipelineStageFlags) * wait_fences.size());
+					for (usize i = 0; i < wait_fences.size(); ++i)
+					{
+						Fence* fence = (Fence*)wait_fences[i]->get_object();
+						wait_semaphores[i] = fence->m_semaphore;
+						wait_stages[i] = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+					}
+				}
+				submit.pWaitSemaphores = wait_semaphores;
+				submit.pWaitDstStageMask = wait_stages;
+				submit.signalSemaphoreCount = (u32)signal_fences.size();
+				VkSemaphore* signal_semaphores = nullptr;
+				if (!signal_fences.empty())
+				{
+					signal_semaphores = (VkSemaphore*)alloca(sizeof(VkSemaphore) * signal_fences.size());
+					for (usize i = 0; i < signal_fences.size(); ++i)
+					{
+						Fence* fence = (Fence*)signal_fences[i]->get_object();
+						signal_semaphores[i] = fence->m_semaphore;
+					}
+				}
+				submit.pSignalSemaphores = signal_semaphores;
+				submit.commandBufferCount = 1;
+				submit.pCommandBuffers = &m_command_buffer;
+				VkFence fence = VK_NULL_HANDLE;
+				if (allow_host_waiting)
+				{
+					fence = m_fence;
+				}
+				luexp(encode_vk_result(m_device->m_funcs.vkQueueSubmit(m_queue->m_queue, 1, &submit, fence)));
+			}
+			lucatchret;
+			return ok;
 		}
 	}
 }

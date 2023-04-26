@@ -40,18 +40,6 @@ namespace Luna
 				{
 					dest.stageFlags |= VK_SHADER_STAGE_VERTEX_BIT;
 				}
-				if (test_flags(src.shader_visibility_flags, ShaderVisibilityFlag::hull))
-				{
-					dest.stageFlags |= VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
-				}
-				if (test_flags(src.shader_visibility_flags, ShaderVisibilityFlag::domain))
-				{
-					dest.stageFlags |= VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
-				}
-				if (test_flags(src.shader_visibility_flags, ShaderVisibilityFlag::geometry))
-				{
-					dest.stageFlags |= VK_SHADER_STAGE_GEOMETRY_BIT;
-				}
 				if (test_flags(src.shader_visibility_flags, ShaderVisibilityFlag::pixel))
 				{
 					dest.stageFlags |= VK_SHADER_STAGE_FRAGMENT_BIT;

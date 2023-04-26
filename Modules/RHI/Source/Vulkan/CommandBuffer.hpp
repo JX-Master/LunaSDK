@@ -40,6 +40,8 @@ namespace Luna
 			IShaderInputLayout* m_graphics_shader_input_layout = nullptr;
 			IShaderInputLayout* m_compute_shader_input_layout = nullptr;
 
+			bool m_recording = true;
+
 			RV init(CommandQueue* queue);
 			~CommandBuffer();
 
