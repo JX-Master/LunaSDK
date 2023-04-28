@@ -277,38 +277,38 @@ namespace Luna
 		//! Parameters passed to `begin_render_pass`.
 		struct RenderPassDesc
 		{
-			//! The render targets views to set.
+			//! The color attachment to set.
 			IRenderTargetView* color_attachments[8] = { nullptr };
-			//! The resolve target views to set.
+			//! The color attachment to set.
 			IResolveTargetView* resolve_attachments[8] = { nullptr };
-			//! The depth stencil view to set.
+			//! The depth stencil attachment to set.
 			IDepthStencilView* depth_stencil_attachment = nullptr;
-			//! The load operation for the render target. 
-			//! If the corresponding render target resource is `nullptr`, this operation is ignored.
-			LoadOp color_load_ops[8] = { LoadOp::load };
-			//! The store operation for the render target.
-			//! If the corresponding render target resource is `nullptr`, this operation is ignored.
-			StoreOp color_store_ops[8] = { StoreOp::store };
+			//! The load operations for color attachments. 
+			//! If the corresponding color attachment resource is `nullptr`, this operation is ignored.
+			LoadOp color_load_ops[8] = { LoadOp::dont_care };
+			//! The store operations for color attachments.
+			//! If the corresponding color attachment resource is `nullptr`, this operation is ignored.
+			StoreOp color_store_ops[8] = { StoreOp::dont_care };
 			//! The load operation for depth component.
-			//! If the depth stencil resource is `nullptr`, this operation is ignored.
-			LoadOp depth_load_op = LoadOp::load;
+			//! If the depth stencil attachment is `nullptr`, this operation is ignored.
+			LoadOp depth_load_op = LoadOp::dont_care;
 			//! The store operation for depth component.
-			//! If the depth stencil resource is `nullptr`, this operation is ignored.
-			StoreOp depth_store_op = StoreOp::store;
+			//! If the depth stencil attachment is `nullptr`, this operation is ignored.
+			StoreOp depth_store_op = StoreOp::dont_care;
 			//! The load operation for stencil component.
-			//! If the depth stencil resource is `nullptr`, this operation is ignored.
-			LoadOp stencil_load_op = LoadOp::load;
+			//! If the depth stencil attachment is `nullptr`, this operation is ignored.
+			LoadOp stencil_load_op = LoadOp::dont_care;
 			//! The store operation for stencil component.
-			//! If the depth stencil resource is `nullptr`, this operation is ignored.
-			StoreOp stencil_store_op = StoreOp::store;
-			//! The clear value for render targets if `color_load_ops` specified for 
-			//! the render target is `RenderTargetLoadOp::clear`.
+			//! If the depth stencil attachment is `nullptr`, this operation is ignored.
+			StoreOp stencil_store_op = StoreOp::dont_care;
+			//! The clear value for color attachments if `color_load_ops` specified for 
+			//! the color attachment is `LoadOp::clear`.
 			Float4U color_clear_values[8] = { Float4U(0.0f, 0.0f, 0.0f, 0.0f) };
 			//! The depth value to use for clear if `depth_load_op` specified in render pass
-			//! is `RenderTargetLoadOp::clear`.
+			//! is `LoadOp::clear`.
 			f32 depth_clear_value = 0.0f;
 			//! The stencil value to use for clear if `stencil_load_op` specified in render pass
-			//! is `RenderTargetLoadOp::clear`.
+			//! is `LoadOp::clear`.
 			u8 stencil_clear_value = 0;
 			//! The sample count of the render pass.
 			u8 sample_count = 1;
