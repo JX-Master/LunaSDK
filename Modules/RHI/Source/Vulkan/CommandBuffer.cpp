@@ -39,7 +39,6 @@ namespace Luna
 				fence_create_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 				luexp(encode_vk_result(m_device->m_funcs.vkCreateFence(m_device->m_device, &fence_create_info, nullptr, &m_fence)));
 				luexp(begin_command_buffer());
-				m_recording = true;
 			}
 			lucatchret;
 			return ok;
@@ -66,6 +65,7 @@ namespace Luna
 				begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 				begin_info.pInheritanceInfo = nullptr;
 				luexp(encode_vk_result(m_device->m_funcs.vkBeginCommandBuffer(m_command_buffer, &begin_info)));
+				m_recording = true;
 			}
 			lucatchret;
 			return ok;
@@ -78,9 +78,141 @@ namespace Luna
 		{
 			return m_device->m_funcs.vkGetFenceStatus(m_device->m_device, m_fence) == VK_SUCCESS;
 		}
+		RV CommandBuffer::reset()
+		{
+			lutry
+			{
+				luexp(encode_vk_result(m_device->m_funcs.vkResetFences(m_device->m_device, 1, &m_fence)));
+				if (m_recording)
+				{
+					// Close the command buffer.
+					luexp(encode_vk_result(m_device->m_funcs.vkEndCommandBuffer(m_command_buffer)));
+					m_recording = false;
+				}
+				luexp(encode_vk_result(m_device->m_funcs.vkResetCommandBuffer(m_command_buffer, 0)));
+				luexp(begin_command_buffer());
+
+				m_objs.clear();
+				m_rt_width = 0;
+				m_rt_height = 0;
+				m_num_viewports = 0;
+				m_graphics_shader_input_layout = nullptr;
+				m_compute_shader_input_layout = nullptr;
+			}
+			lucatchret;
+			return ok;
+		}
 		void CommandBuffer::attach_device_object(IDeviceChild* obj)
 		{
 			m_objs.push_back(obj);
+		}
+		void CommandBuffer::begin_render_pass(const RenderPassDesc& desc)
+		{
+			lutry
+			{
+				RenderPassKey rp;
+				FrameBufferKey fb;
+				u32 width = 0;
+				u32 height = 0;
+				u32 num_render_targets = 0;
+				u32 num_resolve_targets = 0;
+				for (usize i = 0; i < 8; ++i)
+				{
+					fb.color_attachments[i] = desc.color_attachments[i];
+					fb.resolve_attachments[i] = desc.resolve_attachments[i];
+					m_color_attachments[i] = desc.color_attachments[i];
+					m_resolve_attachments[i] = desc.resolve_attachments[i];
+					if (desc.color_attachments[i])
+					{
+						++num_render_targets;
+						auto d = desc.color_attachments[i]->get_desc();
+						rp.color_formats[i] = d.format;
+						rp.color_load_ops[i] = desc.color_load_ops[i];
+						rp.color_store_ops[i] = desc.color_store_ops[i];
+						if (desc.resolve_attachments[i])
+						{
+							rp.resolve_formats[i] = d.format;
+							++num_resolve_targets;
+						}
+						auto rd = desc.color_attachments[i]->get_resource()->get_desc();
+						width = (u32)rd.width_or_buffer_size;
+						height = rd.height;
+					}
+					else break;
+				}
+				fb.depth_stencil_attachment = desc.depth_stencil_attachment;
+				m_dsv = desc.depth_stencil_attachment;
+				bool use_depth_stencil = false;
+				if (desc.depth_stencil_attachment)
+				{
+					use_depth_stencil = true;
+					auto d = desc.depth_stencil_attachment->get_desc();
+					rp.depth_stencil_format = d.format;
+					rp.depth_load_op = desc.depth_load_op;
+					rp.depth_store_op = desc.depth_store_op;
+					rp.stencil_load_op = desc.stencil_load_op;
+					rp.stencil_store_op = desc.stencil_store_op;
+					auto rd = desc.depth_stencil_attachment->get_resource()->get_desc();
+					if (!width) width = (u32)rd.width_or_buffer_size;
+					if (!height) height = rd.height;
+				}
+				rp.sample_count = desc.sample_count;
+				MutexGuard guard(m_device->m_mtx);
+				lulet(render_pass, m_device->m_render_pass_pool.get_render_pass(rp));
+				fb.render_pass = render_pass;
+				lulet(fbo, m_device->m_render_pass_pool.get_frame_buffer(fb));
+				guard.unlock();
+
+				VkRenderPassBeginInfo begin_info{};
+				begin_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+				begin_info.renderPass = render_pass;
+				begin_info.framebuffer = fbo;
+				begin_info.renderArea.offset.x = 0;
+				begin_info.renderArea.offset.y = 0;
+				begin_info.renderArea.extent.width = width;
+				begin_info.renderArea.extent.height = height;
+
+				u32 num_attachments = num_render_targets + num_resolve_targets;
+				if (use_depth_stencil) ++num_attachments;
+				VkClearValue* clear_values = (VkClearValue*)alloca(sizeof(VkClearValue) * num_attachments);
+				u32 attachment_index = 0;
+				for (usize i = 0; i < num_render_targets; ++i)
+				{
+					auto& dest = clear_values[attachment_index];
+					auto& src = desc.color_clear_values[i];
+					dest.color.float32[0] = src.x;
+					dest.color.float32[1] = src.y;
+					dest.color.float32[2] = src.z;
+					dest.color.float32[3] = src.w;
+					++attachment_index;
+				}
+				for (usize i = 0; i < num_resolve_targets; ++i)
+				{
+					auto& dest = clear_values[attachment_index];
+					memzero(&dest, sizeof(VkClearValue));
+					++attachment_index;
+				}
+				if (use_depth_stencil)
+				{
+					auto& dest = clear_values[attachment_index];
+					dest.depthStencil.depth = desc.depth_clear_value;
+					dest.depthStencil.stencil = desc.stencil_clear_value;
+					++attachment_index;
+				}
+				begin_info.clearValueCount = num_attachments;
+				begin_info.pClearValues = clear_values;
+				m_device->m_funcs.vkCmdBeginRenderPass(m_command_buffer, &begin_info, VK_SUBPASS_CONTENTS_INLINE);
+
+				m_rt_width = width;
+				m_rt_height = height;
+				m_num_color_attachments = num_render_targets;
+				m_num_resolve_attachments = num_resolve_targets;
+				m_render_pass_begin = true;
+			}
+			lucatch
+			{
+
+			}
 		}
 		void CommandBuffer::set_pipeline_state(PipelineStateBindPoint bind_point, IPipelineState* pso)
 		{
@@ -214,17 +346,116 @@ namespace Luna
 		{
 			m_device->m_funcs.vkCmdDrawIndexed(m_command_buffer, index_count, 1, start_index_location, base_vertex_location, 0);
 		}
+		void CommandBuffer::draw_instanced(u32 vertex_count_per_instance, u32 instance_count, u32 start_vertex_location,
+			u32 start_instance_location)
+		{
+			m_device->m_funcs.vkCmdDraw(m_command_buffer, vertex_count_per_instance * instance_count, instance_count,
+				start_vertex_location, start_instance_location);
+		}
 		void CommandBuffer::draw_indexed_instanced(u32 index_count_per_instance, u32 instance_count, u32 start_index_location,
 			i32 base_vertex_location, u32 start_instance_location)
 		{
 			m_device->m_funcs.vkCmdDrawIndexed(m_command_buffer, index_count_per_instance * instance_count, instance_count, 
 				start_index_location, base_vertex_location, start_instance_location);
 		}
-		void CommandBuffer::draw_instanced(u32 vertex_count_per_instance, u32 instance_count, u32 start_vertex_location,
-			u32 start_instance_location)
+		void CommandBuffer::clear_depth_stencil_attachment(ClearFlag clear_flags, f32 depth, u8 stencil, Span<const RectI> rects)
 		{
-			m_device->m_funcs.vkCmdDraw(m_command_buffer, vertex_count_per_instance * instance_count, instance_count, 
-				start_vertex_location, start_instance_location);
+			VkClearAttachment attachment{};
+			attachment.aspectMask = 0;
+			if (test_flags(clear_flags, ClearFlag::depth))
+			{
+				attachment.aspectMask |= VK_IMAGE_ASPECT_DEPTH_BIT;
+			}
+			if (test_flags(clear_flags, ClearFlag::stencil))
+			{
+				attachment.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
+			}
+			attachment.clearValue.depthStencil.depth = depth;
+			attachment.clearValue.depthStencil.stencil = stencil;
+			VkClearRect* clear_rects = nullptr;
+			u32 num_clear_rects = 0;
+			if (rects.empty())
+			{
+				clear_rects = (VkClearRect*)alloca(sizeof(VkClearRect));
+				num_clear_rects = 1;
+				clear_rects[0].rect.offset = { 0, 0 };
+				clear_rects[0].rect.extent.width = m_rt_width;
+				clear_rects[0].rect.extent.height = m_rt_height;
+				auto desc = m_dsv->get_desc();
+				clear_rects[0].baseArrayLayer = desc.first_array_slice;
+				clear_rects[0].layerCount = desc.array_size;
+			}
+			else
+			{
+				clear_rects = (VkClearRect*)alloca(sizeof(VkClearRect) * rects.size());
+				num_clear_rects = (u32)rects.size();
+				auto desc = m_dsv->get_desc();
+				for (usize i = 0; i < rects.size(); ++i)
+				{
+					auto& dest = clear_rects[i];
+					auto& src = rects[i];
+					dest.rect.offset.x = src.offset_x;
+					dest.rect.offset.y = m_rt_height - src.offset_y - src.height;
+					dest.rect.extent.width = src.width;
+					dest.rect.extent.height = src.height;
+					dest.baseArrayLayer = desc.first_array_slice;
+					dest.layerCount = desc.array_size;
+				}
+			}
+			m_device->m_funcs.vkCmdClearAttachments(m_command_buffer, 1, &attachment, num_clear_rects, clear_rects);
+		}
+		void CommandBuffer::clear_color_attachment(u32 index, Span<const f32, 4> color_rgba, Span<const RectI> rects)
+		{
+			VkClearAttachment attachment{};
+			attachment.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+			attachment.colorAttachment = index;
+			attachment.clearValue.color.float32[0] = color_rgba[0];
+			attachment.clearValue.color.float32[1] = color_rgba[1];
+			attachment.clearValue.color.float32[2] = color_rgba[2];
+			attachment.clearValue.color.float32[3] = color_rgba[3];
+			VkClearRect* clear_rects = nullptr;
+			u32 num_clear_rects = 0;
+			if (rects.empty())
+			{
+				clear_rects = (VkClearRect*)alloca(sizeof(VkClearRect));
+				num_clear_rects = 1;
+				clear_rects[0].rect.offset = { 0, 0 };
+				clear_rects[0].rect.extent.width = m_rt_width;
+				clear_rects[0].rect.extent.height = m_rt_height;
+				auto desc = m_dsv->get_desc();
+				clear_rects[0].baseArrayLayer = desc.first_array_slice;
+				clear_rects[0].layerCount = desc.array_size;
+			}
+			else
+			{
+				clear_rects = (VkClearRect*)alloca(sizeof(VkClearRect) * rects.size());
+				num_clear_rects = (u32)rects.size();
+				auto desc = m_dsv->get_desc();
+				for (usize i = 0; i < rects.size(); ++i)
+				{
+					auto& dest = clear_rects[i];
+					auto& src = rects[i];
+					dest.rect.offset.x = src.offset_x;
+					dest.rect.offset.y = m_rt_height - src.offset_y - src.height;
+					dest.rect.extent.width = src.width;
+					dest.rect.extent.height = src.height;
+					dest.baseArrayLayer = desc.first_array_slice;
+					dest.layerCount = desc.array_size;
+				}
+			}
+			m_device->m_funcs.vkCmdClearAttachments(m_command_buffer, 1, &attachment, num_clear_rects, clear_rects);
+		}
+		void CommandBuffer::end_render_pass()
+		{
+			m_device->m_funcs.vkCmdEndRenderPass(m_command_buffer);
+			m_render_pass_begin = false;
+			m_rt_width = 0;
+			m_rt_height = 0;
+			m_num_color_attachments = 0;
+			m_num_resolve_attachments = 0;
+			memzero(m_color_attachments, sizeof(IRenderTargetView*) * 8);
+			memzero(m_resolve_attachments, sizeof(IResolveTargetView*) * 8);
+			m_dsv = nullptr;
 		}
 		void CommandBuffer::set_compute_shader_input_layout(IShaderInputLayout* shader_input_layout)
 		{

@@ -28,7 +28,7 @@ namespace Luna
 {
 	namespace RHI
 	{
-		RV Device::init(VkPhysicalDevice physical_device, const Vector<QueueFamily>& queue_families)
+		RV Device::init(VkPhysicalDevice physical_device, u32 queue_family_index, u32 num_queues)
 		{
 			Vector<const c8*> enabled_extensions;
 			// This is required.
@@ -38,20 +38,14 @@ namespace Luna
 			m_physical_device = physical_device;
 			vkGetPhysicalDeviceProperties(physical_device, &m_physical_device_properties);
 			// Create queues for every valid queue family.
-			Vector<VkDeviceQueueCreateInfo> queue_create_infos(queue_families.size());
-			for (usize i = 0; i < queue_create_infos.size(); ++i)
-			{
-				auto& dest = queue_create_infos[i];
-				auto& src = queue_families[i];
-				dest.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-				dest.pNext = nullptr;
-				dest.queueFamilyIndex = src.index;
-				dest.queueCount = src.num_queues;
-				f32* priorities = (f32*)alloca(sizeof(f32) * src.num_queues);
-				for (usize i = 0; i < src.num_queues; ++i) priorities[i] = 1.0f;
-				dest.pQueuePriorities = priorities;
-				dest.flags = 0;
-			}
+			VkDeviceQueueCreateInfo queue_create_info{};
+			queue_create_info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+			queue_create_info.queueFamilyIndex = queue_family_index;
+			queue_create_info.queueCount = num_queues;
+			f32* priorities = (f32*)alloca(sizeof(f32) * num_queues);
+			for (usize i = 0; i < num_queues; ++i) priorities[i] = 1.0f;
+			queue_create_info.pQueuePriorities = priorities;
+			queue_create_info.flags = 0;
 			// Check device features.
 			//vkGetPhysicalDeviceMemoryProperties(physical_device, &m_memory_properties);
 			VkPhysicalDeviceFeatures device_features{};
@@ -61,8 +55,8 @@ namespace Luna
 			VkDeviceCreateInfo create_info{};
 			VkStructureHeader* last = (VkStructureHeader*)&create_info;
 			create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-			create_info.pQueueCreateInfos = queue_create_infos.data();
-			create_info.queueCreateInfoCount = (u32)queue_create_infos.size();
+			create_info.pQueueCreateInfos = &queue_create_info;
+			create_info.queueCreateInfoCount = 1;
 			create_info.pEnabledFeatures = &device_features;	// Enable all supported features.
 			create_info.enabledLayerCount = g_enabled_layers.size();	// Enable all layers specified when creating VkInstance.
 			create_info.ppEnabledLayerNames = g_enabled_layers.data();
@@ -75,19 +69,16 @@ namespace Luna
 				return r.errcode();
 			}
 			// Fetch command queue.
-			for (usize i = 0; i < queue_families.size(); ++i)
+			m_queue_family_index = queue_family_index;
+			VkQueue queue;
+			for (usize j = 0; j < num_queues; ++j)
 			{
-				VkQueue queue;
-				for (usize j = 0; j < queue_families[i].num_queues; ++j)
-				{
-					m_funcs.vkGetDeviceQueue(m_device, queue_families[i].index, j, &queue);
-					QueueInfo info;
-					info.queue = queue;
-					info.desc = queue_families[i].desc;
-					info.queue_family_index = queue_families[i].index;
-					m_queues.push_back(info);
-					m_queue_allocated.push_back(false);
-				}
+				m_funcs.vkGetDeviceQueue(m_device, queue_family_index, j, &queue);
+				QueueInfo info;
+				info.queue = queue;
+				info.desc.type = CommandQueueType::graphics;
+				m_queues.push_back(info);
+				m_queue_allocated.push_back(false);
 			}
 			r = init_descriptor_pools();
 			if (failed(r))
@@ -539,8 +530,21 @@ namespace Luna
 			lutry
 			{
 				if (adapter_index >= g_physical_devices.size()) return set_error(BasicError::not_found(), "The specified adapter is not found.");
+				// Choose queue family.
+				u32 queue_family_index;
+				u32 num_queues;
+				auto queue = g_physical_device_main_queue_families[adapter_index];
+				if (queue.desc.type == CommandQueueType::graphics && test_flags(queue.desc.flags, CommandQueueFlags::presenting))
+				{
+					queue_family_index = queue.index;
+					num_queues = queue.num_queues;
+				}
+				else
+				{
+					return set_error(BasicError::not_supported(), "The specified adapter is not suitable for creating a VkDevice for rendering.");
+				}
 				Ref<Device> dev = new_object<Device>();
-				luexp(dev->init(g_physical_devices[adapter_index], g_physical_device_queue_families[adapter_index]));
+				luexp(dev->init(g_physical_devices[adapter_index], queue_family_index, num_queues));
 				ret = dev;
 			}
 			lucatchret;

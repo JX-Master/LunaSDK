@@ -193,9 +193,9 @@ void draw()
 
 	cb->resource_barrier(ResourceBarrierDesc::as_transition(get_back_buffer(), ResourceState::render_target, 0));
 	RenderPassDesc desc;
-	desc.rtvs[0] = rtv;
-	desc.rt_load_ops[0] = LoadOp::clear;
-	desc.rt_clear_values[0] = Color::black();
+	desc.color_attachments[0] = rtv;
+	desc.color_load_ops[0] = LoadOp::clear;
+	desc.color_clear_values[0] = Color::black();
 	cb->begin_render_pass(desc);
 	cb->set_pipeline_state(pso);
 	cb->set_graphics_shader_input_layout(shader_input_layout);

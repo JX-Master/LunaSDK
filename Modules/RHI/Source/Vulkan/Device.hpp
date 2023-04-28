@@ -20,7 +20,6 @@ namespace Luna
 		{
 			VkQueue queue;
 			CommandQueueDesc desc;
-			u32 queue_family_index;
 		};
 
 		struct Device : IDevice
@@ -32,6 +31,8 @@ namespace Luna
 			VkPhysicalDevice m_physical_device;
 			// All created queues.
 			Vector<QueueInfo> m_queues;
+			// The queue family index for all created queues. We only use 1 queue family here.
+			u32 m_queue_family_index;
 			Vector<bool> m_queue_allocated;
 			Ref<IMutex> m_mtx;
 
@@ -50,7 +51,7 @@ namespace Luna
 			// Render pass pools.
 			RenderPassPool m_render_pass_pool;
 
-			RV init(VkPhysicalDevice physical_device, const Vector<QueueFamily>& queue_families);
+			RV init(VkPhysicalDevice physical_device, u32 queue_family_index, u32 num_queues);
 			RV init_descriptor_pools();
 			RV init_vma_allocator();
 			~Device();

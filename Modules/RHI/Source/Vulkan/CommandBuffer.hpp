@@ -30,9 +30,15 @@ namespace Luna
 			VkCommandBuffer m_command_buffer = VK_NULL_HANDLE;
 			VkFence m_fence = VK_NULL_HANDLE;
 
-			// Set by framebuffer.
+			// Controled by begin_render_pass/end_render_pass.
+			bool m_render_pass_begin = false;
 			u32 m_rt_width = 0;
 			u32 m_rt_height = 0;
+			u32 m_num_color_attachments = 0;
+			u32 m_num_resolve_attachments = 0;
+			IRenderTargetView* m_color_attachments[8] = { nullptr };
+			IResolveTargetView* m_resolve_attachments[8] = { nullptr };
+			IDepthStencilView* m_dsv = nullptr;
 
 			// Set by set_pipeline_state.
 			u32 m_num_viewports = 0;
@@ -73,12 +79,13 @@ namespace Luna
 			virtual void set_stencil_ref(u32 stencil_ref) override;
 			virtual void draw(u32 vertex_count, u32 start_vertex_location) override;
 			virtual void draw_indexed(u32 index_count, u32 start_index_location, i32 base_vertex_location) override;
-			virtual void draw_indexed_instanced(u32 index_count_per_instance, u32 instance_count, u32 start_index_location,
-				i32 base_vertex_location, u32 start_instance_location) override;
 			virtual void draw_instanced(u32 vertex_count_per_instance, u32 instance_count, u32 start_vertex_location,
 				u32 start_instance_location) override;
-			virtual void clear_depth_stencil_view(ClearFlag clear_flags, f32 depth, u8 stencil, Span<const RectI> rects) override;
-			virtual void clear_render_target_view(u32 index, Span<const f32, 4> color_rgba, Span<const RectI> rects) override;
+			virtual void draw_indexed_instanced(u32 index_count_per_instance, u32 instance_count, u32 start_index_location,
+				i32 base_vertex_location, u32 start_instance_location) override;
+
+			virtual void clear_depth_stencil_attachment(ClearFlag clear_flags, f32 depth, u8 stencil, Span<const RectI> rects) override;
+			virtual void clear_color_attachment(u32 index, Span<const f32, 4> color_rgba, Span<const RectI> rects) override;
 			virtual void end_render_pass() override;
 			virtual void copy_resource(IResource* dest, IResource* src) override;
 			virtual void copy_buffer_region(IResource* dest, u64 dest_offset, IResource* src, u64 src_offset, u64 num_bytes) override;

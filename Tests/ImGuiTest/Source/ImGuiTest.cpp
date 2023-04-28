@@ -77,9 +77,9 @@ void run()
 		ImGui::Render();
 		
 		RenderPassDesc desc;
-		desc.rtvs[0] = rt;
-		desc.rt_load_ops[0] = LoadOp::clear;
-		desc.rt_clear_values[0] = { 0.0f, 0.0f, 0.0f, 1.0f };
+		desc.color_attachments[0] = rt;
+		desc.color_load_ops[0] = LoadOp::clear;
+		desc.color_clear_values[0] = { 0.0f, 0.0f, 0.0f, 1.0f };
 		cmdbuf->begin_render_pass(desc);
 		cmdbuf->end_render_pass();
 		ImGuiUtils::render_draw_data(ImGui::GetDrawData(), cmdbuf, back_buffer_rtv);

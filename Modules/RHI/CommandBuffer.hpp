@@ -113,12 +113,15 @@ namespace Luna
 			//! The state used for passing resources between different graphic engine types (graphic/compute/copy).
 			//! This state is also required if you need to read/write data in CPU side.
 			common = 0,
-			//! Used as vertex and constant buffer in 3D pipeline by vertex buffer view and index buffer view.
+			//! Used as vertex buffer in 3D pipeline by vertex buffer view and index buffer view.
 			//! Read-only.
-			vertex_and_constant_buffer,
+			vertex_buffer,
 			//! Used as index buffer in graphic pipeline.
 			//! Read-only.
 			index_buffer,
+			//! Used as constant buffer in 3D pipeline by vertex buffer view and index buffer view.
+			//! Read-only.
+			constant_buffer,
 			//! Used for render target in graphic pipeline via RTV or clear render target.
 			//! Write-only.
 			render_target,
@@ -137,9 +140,6 @@ namespace Luna
 			//! Used as shader resource for pixel shader via SRV.
 			//! Read-only.
 			shader_resource_pixel,
-			//! Used as stream output.
-			//! Write-only.
-			stream_out,
 			//! Used as indirect argument.
 			//! Read-only.
 			indirect_argument,
@@ -153,13 +153,6 @@ namespace Luna
 			resolve_dest,
 			//! Used as source in a resolve operation.
 			resolve_src,
-		};
-
-		enum class ResourceBarrierFlag : u32
-		{
-			none = 0x00,
-			begin_only = 0x01,
-			end_only = 0x02,
 		};
 
 		constexpr SubresourceIndex RESOURCE_BARRIER_ALL_SUBRESOURCES = {U32_MAX, U32_MAX};
@@ -180,12 +173,12 @@ namespace Luna
 		struct ResourceAliasingBarrierDesc
 		{
 			IResource* resource;
+			ResourceState after;
 		};
 
 		struct ResourceBarrierDesc
 		{
 			ResourceBarrierType type;
-			ResourceBarrierFlag flags;
 			ResourceTransitionBarrierDesc transition;
 			ResourceAliasingBarrierDesc aliasing;
 			ResourceUAVBarrierDesc uav;
@@ -195,40 +188,38 @@ namespace Luna
 			ResourceBarrierDesc(ResourceBarrierDesc&&) = default;
 			ResourceBarrierDesc& operator=(const ResourceBarrierDesc&) = default;
 			ResourceBarrierDesc& operator=(ResourceBarrierDesc&&) = default;
-			ResourceBarrierDesc(const ResourceTransitionBarrierDesc& transition, ResourceBarrierFlag flags) :
+			ResourceBarrierDesc(const ResourceTransitionBarrierDesc& transition) :
 				type(ResourceBarrierType::transition),
-				transition(transition),
-				flags(flags) {}
-			ResourceBarrierDesc(const ResourceAliasingBarrierDesc& aliasing, ResourceBarrierFlag flags) :
+				transition(transition) {}
+			ResourceBarrierDesc(const ResourceAliasingBarrierDesc& aliasing) :
 				type(ResourceBarrierType::aliasing),
-				aliasing(aliasing),
-				flags(flags) {}
-			ResourceBarrierDesc(const ResourceUAVBarrierDesc& uav, ResourceBarrierFlag flags) :
+				aliasing(aliasing) {}
+			ResourceBarrierDesc(const ResourceUAVBarrierDesc& uav) :
 				type(ResourceBarrierType::uav),
-				uav(uav),
-				flags(flags) {}
+				uav(uav) {}
 
-			static ResourceBarrierDesc as_transition(IResource* resource, ResourceState after, const SubresourceIndex& subresource = RESOURCE_BARRIER_ALL_SUBRESOURCES, ResourceBarrierFlag flags = ResourceBarrierFlag::none)
+			static ResourceBarrierDesc as_transition(IResource* resource, ResourceState after, const SubresourceIndex& subresource = RESOURCE_BARRIER_ALL_SUBRESOURCES)
 			{
 				ResourceTransitionBarrierDesc desc;
 				desc.resource = resource;
 				desc.subresource = subresource;
 				desc.after = after;
-				return ResourceBarrierDesc(desc, flags);
+				return ResourceBarrierDesc(desc);
 			}
 
-			static ResourceBarrierDesc as_aliasing(IResource* resource, ResourceBarrierFlag flags = ResourceBarrierFlag::none)
+			static ResourceBarrierDesc as_aliasing(IResource* resource, ResourceState after)
 			{
 				ResourceAliasingBarrierDesc desc;
 				desc.resource = resource;
-				return ResourceBarrierDesc(desc, flags);
+				desc.after = after;
+				return ResourceBarrierDesc(desc);
 			}
 
-			static ResourceBarrierDesc as_uav(IResource* resource, ResourceBarrierFlag flags = ResourceBarrierFlag::none)
+			static ResourceBarrierDesc as_uav(IResource* resource)
 			{
 				ResourceUAVBarrierDesc desc;
 				desc.resource = resource;
-				return ResourceBarrierDesc(desc, flags);
+				return ResourceBarrierDesc(desc);
 			}
 		};
 
@@ -287,17 +278,17 @@ namespace Luna
 		struct RenderPassDesc
 		{
 			//! The render targets views to set.
-			IRenderTargetView* rtvs[8] = { nullptr };
+			IRenderTargetView* color_attachments[8] = { nullptr };
 			//! The resolve target views to set.
-			IResolveTargetView* rsvs[8] = { nullptr };
+			IResolveTargetView* resolve_attachments[8] = { nullptr };
 			//! The depth stencil view to set.
-			IDepthStencilView* dsv = nullptr;
+			IDepthStencilView* depth_stencil_attachment = nullptr;
 			//! The load operation for the render target. 
 			//! If the corresponding render target resource is `nullptr`, this operation is ignored.
-			LoadOp rt_load_ops[8] = { LoadOp::load };
+			LoadOp color_load_ops[8] = { LoadOp::load };
 			//! The store operation for the render target.
 			//! If the corresponding render target resource is `nullptr`, this operation is ignored.
-			StoreOp rt_store_ops[8] = { StoreOp::store };
+			StoreOp color_store_ops[8] = { StoreOp::store };
 			//! The load operation for depth component.
 			//! If the depth stencil resource is `nullptr`, this operation is ignored.
 			LoadOp depth_load_op = LoadOp::load;
@@ -310,15 +301,17 @@ namespace Luna
 			//! The store operation for stencil component.
 			//! If the depth stencil resource is `nullptr`, this operation is ignored.
 			StoreOp stencil_store_op = StoreOp::store;
-			//! The clear value for render targets if `rt_load_ops` specified for 
+			//! The clear value for render targets if `color_load_ops` specified for 
 			//! the render target is `RenderTargetLoadOp::clear`.
-			Float4U rt_clear_values[8] = { Float4U(0.0f, 0.0f, 0.0f, 0.0f) };
+			Float4U color_clear_values[8] = { Float4U(0.0f, 0.0f, 0.0f, 0.0f) };
 			//! The depth value to use for clear if `depth_load_op` specified in render pass
 			//! is `RenderTargetLoadOp::clear`.
 			f32 depth_clear_value = 0.0f;
 			//! The stencil value to use for clear if `stencil_load_op` specified in render pass
 			//! is `RenderTargetLoadOp::clear`.
 			u8 stencil_clear_value = 0;
+			//! The sample count of the render pass.
+			u8 sample_count = 1;
 		};
 
 		enum class PipelineStateBindPoint : u8
@@ -385,8 +378,8 @@ namespace Luna
 			//! * draw_indexed
 			//! * draw_instanced
 			//! * draw_indexed_instanced
-			//! * clear_render_target_view
-			//! * clear_depth_stencil_view
+			//! * clear_color_attachment
+			//! * clear_depth_stencil_attachment
 			//! * set_scissor_rects
 			//! The following functions can only be called outside of one render pass range:
 			//! * submit
@@ -443,23 +436,23 @@ namespace Luna
 			//! Draw indexed primitives.
 			virtual void draw_indexed(u32 index_count, u32 start_index_location, i32 base_vertex_location) = 0;
 
-			//! Draws indexed, instanced primitives.
-			virtual void draw_indexed_instanced(u32 index_count_per_instance, u32 instance_count, u32 start_index_location,
-				i32 base_vertex_location, u32 start_instance_location) = 0;
-
 			//! Draws non-indexed, instanced primitives.
 			virtual void draw_instanced(u32 vertex_count_per_instance, u32 instance_count, u32 start_vertex_location,
 				u32 start_instance_location) = 0;
+
+			//! Draws indexed, instanced primitives.
+			virtual void draw_indexed_instanced(u32 index_count_per_instance, u32 instance_count, u32 start_index_location,
+				i32 base_vertex_location, u32 start_instance_location) = 0;
 
 			//! Preforms one indirect draw.
 			//virtual void draw_indexed_indirect(IResource* buffer, usize argment_offset, u32 draw_count, u32 stride) = 0;
 
 			//! Clears the depth stencil view bound to the current render pass.
-			virtual void clear_depth_stencil_view(ClearFlag clear_flags, f32 depth, u8 stencil, Span<const RectI> rects) = 0;
+			virtual void clear_depth_stencil_attachment(ClearFlag clear_flags, f32 depth, u8 stencil, Span<const RectI> rects) = 0;
 
 			//! Clears the render target view bound to the current render pass.
 			//! @param[in] index The index of the render target view to clear in the frame buffers.
-			virtual void clear_render_target_view(u32 index, Span<const f32, 4> color_rgba, Span<const RectI> rects) = 0;
+			virtual void clear_color_attachment(u32 index, Span<const f32, 4> color_rgba, Span<const RectI> rects) = 0;
 
 			//! Finishes the current render pass.
 			virtual void end_render_pass() = 0;

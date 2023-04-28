@@ -177,9 +177,9 @@ void run()
 		lupanic_if_failed(g_shape_draw_list->close());
 
 		RHI::RenderPassDesc desc;
-		desc.rtvs[0] = g_rtv;
-		desc.rt_load_ops[0] = RHI::LoadOp::clear;
-		desc.rt_clear_values[0] = Float4U{ 0.0f };
+		desc.color_attachments[0] = g_rtv;
+		desc.color_load_ops[0] = RHI::LoadOp::clear;
+		desc.color_clear_values[0] = Float4U{ 0.0f };
 		g_command_buffer->begin_render_pass(desc);
 		g_command_buffer->end_render_pass();
 

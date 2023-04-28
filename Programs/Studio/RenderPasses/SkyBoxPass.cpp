@@ -116,10 +116,10 @@ namespace Luna
 				auto lighting_rt = output_tex;
 				RenderPassDesc render_pass;
                 lulet(output_tex_rtv, cmdbuf->get_device()->new_render_target_view(output_tex));
-				render_pass.rtvs[0] = output_tex_rtv;
-				render_pass.rt_load_ops[0] = LoadOp::clear;
-				render_pass.rt_store_ops[0] = StoreOp::store;
-				render_pass.rt_clear_values[0] = { 0.0f, 0.0f, 0.0f, 0.0f };
+				render_pass.color_attachments[0] = output_tex_rtv;
+				render_pass.color_load_ops[0] = LoadOp::clear;
+				render_pass.color_store_ops[0] = StoreOp::store;
+				render_pass.color_clear_values[0] = { 0.0f, 0.0f, 0.0f, 0.0f };
 				cmdbuf->begin_render_pass(render_pass);
 				cmdbuf->end_render_pass();
 			}

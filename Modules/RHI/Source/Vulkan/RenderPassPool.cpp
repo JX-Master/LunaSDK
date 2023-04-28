@@ -30,16 +30,18 @@ namespace Luna
 				u8 num_color_attachments = 0;
 				for (usize i = 0; i < 8; ++i)
 				{
-					if (key.rtv_formats[i] == Format::unknown)
+					if (key.color_formats[i] != Format::unknown)
 					{
-						num_color_attachments = i;
+						++num_color_attachments;
+					}
+					else
+					{
 						break;
 					}
 				}
-				bool depth_stencil_attachment_present = key.dsv_format != Format::unknown;
 				u8 resolve_targets[8];
 				u8 num_resolve_targets = 0;
-				for (usize i = 0; i < 8; ++i)
+				for (usize i = 0; i < num_color_attachments; ++i)
 				{
 					if (key.resolve_formats[i] != Format::unknown)
 					{
@@ -47,16 +49,17 @@ namespace Luna
 						++num_resolve_targets;
 					}
 				}
+				bool depth_stencil_attachment_present = key.depth_stencil_format != Format::unknown;
 				// Encode attachment.
 				u8 attachment_index = 0;
 				for (usize i = 0; i < num_color_attachments; ++i)
 				{
 					VkAttachmentDescription& dest = attachments[attachment_index];
 					dest.flags = 0;
-					dest.format = encode_format(key.rtv_formats[i]);
+					dest.format = encode_format(key.color_formats[i]);
 					dest.samples = encode_sample_count(key.sample_count);
-					dest.loadOp = encode_load_op(key.rt_load_ops[i]);
-					dest.storeOp = encode_store_op(key.rt_store_ops[i]);
+					dest.loadOp = encode_load_op(key.color_load_ops[i]);
+					dest.storeOp = encode_store_op(key.color_store_ops[i]);
 					dest.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 					dest.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 					dest.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
@@ -89,7 +92,7 @@ namespace Luna
 				{
 					VkAttachmentDescription& dest = attachments[attachment_index];
 					dest.flags = 0;
-					dest.format = encode_format(key.dsv_format);
+					dest.format = encode_format(key.depth_stencil_format);
 					dest.samples = encode_sample_count(key.sample_count);
 					dest.loadOp = encode_load_op(key.depth_load_op);
 					dest.storeOp = encode_store_op(key.depth_store_op);
@@ -176,9 +179,9 @@ namespace Luna
 				u32 depth = 0;
 				for (usize i = 0; i < 8; ++i)
 				{
-					if (key.rtvs[i])
+					if (key.color_attachments[i])
 					{
-						RenderTargetView* rtv = cast_objct<RenderTargetView>(key.rtvs[i]->get_object());
+						RenderTargetView* rtv = cast_objct<RenderTargetView>(key.color_attachments[i]->get_object());
 						attachments[num_attachments] = rtv->m_view;
 						++num_attachments;
 						auto desc = rtv->m_resource->get_desc();
@@ -190,19 +193,19 @@ namespace Luna
 				}
 				for (usize i = 0; i < 8; ++i)
 				{
-					if (key.rsvs[i])
+					if (key.resolve_attachments[i])
 					{
-						ResolveTargetView* rsv = cast_objct<ResolveTargetView>(key.rsvs[i]->get_object());
+						ResolveTargetView* rsv = cast_objct<ResolveTargetView>(key.resolve_attachments[i]->get_object());
 						attachments[num_attachments] = rsv->m_view;
 						++num_attachments;
 					}
 				}
-				if (key.dsv)
+				if (key.depth_stencil_attachment)
 				{
-					DepthStencilView* dsv = cast_objct<DepthStencilView>(key.dsv->get_object());
-					attachments[num_attachments] = dsv->m_view;
+					DepthStencilView* depth_stencil_attachment = cast_objct<DepthStencilView>(key.depth_stencil_attachment->get_object());
+					attachments[num_attachments] = depth_stencil_attachment->m_view;
 					++num_attachments;
-					auto desc = dsv->m_resource->get_desc();
+					auto desc = depth_stencil_attachment->m_resource->get_desc();
 					width = (u32)desc.width_or_buffer_size;
 					height = desc.height;
 					depth = desc.depth_or_array_size;

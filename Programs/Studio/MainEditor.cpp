@@ -227,9 +227,9 @@ namespace Luna
 
 			ImGui::Render();
 			RHI::RenderPassDesc render_pass;
-			render_pass.rtvs[0] = m_back_buffer_rtv;
-			render_pass.rt_load_ops[0] = RHI::LoadOp::clear;
-			render_pass.rt_clear_values[0] = { 0.0f, 0.0f, 0.0f, 1.0f };
+			render_pass.color_attachments[0] = m_back_buffer_rtv;
+			render_pass.color_load_ops[0] = RHI::LoadOp::clear;
+			render_pass.color_clear_values[0] = { 0.0f, 0.0f, 0.0f, 1.0f };
 			m_cmdbuf->begin_render_pass(render_pass);
 			m_cmdbuf->end_render_pass();
 			luexp(ImGuiUtils::render_draw_data(ImGui::GetDrawData(), m_cmdbuf, m_back_buffer_rtv));

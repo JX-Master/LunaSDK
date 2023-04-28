@@ -16,12 +16,12 @@ namespace Luna
 	{
 		struct RenderPassKey
 		{
-			Format rtv_formats[8] = { Format::unknown };
+			Format color_formats[8] = { Format::unknown };
 			// Must either be `Format::unknown`, or the same as `rtv_formats[i]`.
 			Format resolve_formats[8] = { Format::unknown };
-			Format dsv_format = Format::unknown;
-			LoadOp rt_load_ops[8] = { LoadOp::dont_care };
-			StoreOp rt_store_ops[8] = { StoreOp::dont_care };
+			Format depth_stencil_format = Format::unknown;
+			LoadOp color_load_ops[8] = { LoadOp::dont_care };
+			StoreOp color_store_ops[8] = { StoreOp::dont_care };
 			LoadOp depth_load_op = LoadOp::dont_care;
 			StoreOp depth_store_op = StoreOp::dont_care;
 			LoadOp stencil_load_op = LoadOp::dont_care;
@@ -32,9 +32,9 @@ namespace Luna
 		struct FrameBufferKey
 		{
 			VkRenderPass render_pass = VK_NULL_HANDLE;
-			IRenderTargetView* rtvs[8] = { nullptr };
-			IResolveTargetView* rsvs[8] = { nullptr };
-			IDepthStencilView* dsv = nullptr;
+			IRenderTargetView* color_attachments[8] = { nullptr };
+			IResolveTargetView* resolve_attachments[8] = { nullptr };
+			IDepthStencilView* depth_stencil_attachment = nullptr;
 		};
 	}
 
@@ -43,11 +43,11 @@ namespace Luna
 	{
 		usize operator()(const RHI::RenderPassKey& k) const
 		{
-			usize h = memhash<usize>(k.rtv_formats, sizeof(RHI::Format) * 8);
+			usize h = memhash<usize>(k.color_formats, sizeof(RHI::Format) * 8);
 			h = memhash<usize>(k.resolve_formats, sizeof(RHI::Format) * 8, h);
-			h = memhash<usize>(&k.dsv_format, sizeof(RHI::Format), h);
-			h = memhash<usize>(k.rt_load_ops, sizeof(RHI::LoadOp) * 8, h);
-			h = memhash<usize>(k.rt_store_ops, sizeof(RHI::StoreOp) * 8, h);
+			h = memhash<usize>(&k.depth_stencil_format, sizeof(RHI::Format), h);
+			h = memhash<usize>(k.color_load_ops, sizeof(RHI::LoadOp) * 8, h);
+			h = memhash<usize>(k.color_store_ops, sizeof(RHI::StoreOp) * 8, h);
 			h = memhash<usize>(&k.depth_load_op, sizeof(RHI::LoadOp), h);
 			h = memhash<usize>(&k.depth_store_op, sizeof(RHI::StoreOp), h);
 			h = memhash<usize>(&k.stencil_load_op, sizeof(RHI::LoadOp), h);
@@ -63,9 +63,9 @@ namespace Luna
 		usize operator()(const RHI::FrameBufferKey& k) const
 		{
 			usize h = memhash<usize>(&k.render_pass, sizeof(VkRenderPass));
-			h = memhash<usize>(k.rtvs, sizeof(RHI::IRenderTargetView*) * 8, h);
-			h = memhash<usize>(k.rsvs, sizeof(RHI::IResolveTargetView*) * 8, h);
-			h = memhash<usize>(&k.dsv, sizeof(RHI::IDepthStencilView*), h);
+			h = memhash<usize>(k.color_attachments, sizeof(RHI::IRenderTargetView*) * 8, h);
+			h = memhash<usize>(k.resolve_attachments, sizeof(RHI::IResolveTargetView*) * 8, h);
+			h = memhash<usize>(&k.depth_stencil_attachment, sizeof(RHI::IDepthStencilView*), h);
 			return h;
 		}
 	};

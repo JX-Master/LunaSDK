@@ -106,10 +106,10 @@ namespace Luna
             lulet(render_rtv, device->new_render_target_view(output_tex));
             // Debug wireframe pass.
 			RenderPassDesc render_pass;
-			render_pass.rtvs[0] = render_rtv;
-			render_pass.rt_load_ops[0] = LoadOp::clear;
-			render_pass.rt_clear_values[0] = Float4U(0.0f);
-			render_pass.rt_store_ops[0] = StoreOp::store;
+			render_pass.color_attachments[0] = render_rtv;
+			render_pass.color_load_ops[0] = LoadOp::clear;
+			render_pass.color_clear_values[0] = Float4U(0.0f);
+			render_pass.color_store_ops[0] = StoreOp::store;
 			auto render_desc = output_tex->get_desc();
 			cmdbuf->resource_barrier(ResourceBarrierDesc::as_transition(output_tex, ResourceState::render_target));
 			cmdbuf->begin_render_pass(render_pass);

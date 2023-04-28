@@ -40,7 +40,7 @@ namespace Luna
 			ComPtr<ID3D12CommandAllocator> m_ca;
 			ComPtr<ID3D12GraphicsCommandList> m_li;
 			ComPtr<ID3D12RootSignature> m_root_signature;
-			ComPtr<ID3D12DescriptorHeap> m_rtvs;
+			ComPtr<ID3D12DescriptorHeap> m_color_attachments;
 			ComPtr<ID3D12DescriptorHeap> m_srv;
 			usize m_rtv_size;
 

@@ -250,7 +250,7 @@ namespace Luna
 				for (usize i = 0; i < desc.num_render_targets; ++i)
 				{
 					render_pass.rtv_formats[i] = desc.rtv_formats[i];
-					render_pass.rt_store_ops[i] = StoreOp::store;
+					render_pass.color_store_ops[i] = StoreOp::store;
 					if (desc.sample_count > 1)
 					{
 						render_pass.resolve_formats[i] = desc.rtv_formats[i];

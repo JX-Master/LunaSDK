@@ -233,10 +233,10 @@ void draw()
         });
 
         RenderPassDesc desc;
-        desc.rtvs[0] = rtv;
-        desc.rt_load_ops[0] = LoadOp::clear;
-        desc.rt_store_ops[0] = StoreOp::store;
-        desc.rt_clear_values[0] = {0, 0, 0, 0};
+        desc.color_attachments[0] = rtv;
+        desc.color_load_ops[0] = LoadOp::clear;
+        desc.color_store_ops[0] = StoreOp::store;
+        desc.color_clear_values[0] = {0, 0, 0, 0};
         desc.dsv = dsv;
         desc.depth_load_op = LoadOp::clear;
         desc.depth_store_op = StoreOp::store;

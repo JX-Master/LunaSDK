@@ -282,9 +282,9 @@ namespace Luna
 				Float4U clear_color = { 0.0f, 0.0f, 0.0f, 1.0f };
 
 				RHI::RenderPassDesc render_pass;
-				render_pass.rtvs[0] = back_buffer_rtv;
+				render_pass.color_attachments[0] = back_buffer_rtv;
 				cmdbuf->begin_render_pass(render_pass);
-				cmdbuf->clear_render_target_view(0, clear_color.m, {});
+				cmdbuf->clear_color_attachment(0, clear_color.m, {});
 				cmdbuf->end_render_pass();
 				luexp(ImGuiUtils::render_draw_data(ImGui::GetDrawData(), cmdbuf, back_buffer_rtv));
 				luexp(cmdbuf->submit());

@@ -94,7 +94,7 @@ namespace Luna
 			cmdbuf->resource_barriers({ 
 				ResourceBarrierDesc::as_transition(depth_tex, ResourceState::depth_stencil_write) });
 			RenderPassDesc render_pass;
-			render_pass.dsv = depth_dsv;
+			render_pass.depth_stencil_attachment = depth_dsv;
 			render_pass.depth_load_op = RHI::LoadOp::clear;
 			render_pass.depth_clear_value = 1.0f;
 			cmdbuf->begin_render_pass(render_pass);

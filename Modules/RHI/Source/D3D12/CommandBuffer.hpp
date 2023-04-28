@@ -151,7 +151,7 @@ namespace Luna
 		{
 			bool m_valid = false;
 			UInt2U m_tex_size;
-			RenderTargetView* m_rtvs[8];
+			RenderTargetView* m_color_attachments[8];
 			DepthStencilView* m_dsv;
 			u8 num_render_targets;
 		};
@@ -296,8 +296,8 @@ namespace Luna
 				i32 base_vertex_location, u32 start_instance_location);
 			void draw_instanced(u32 vertex_count_per_instance, u32 instance_count, u32 start_vertex_location,
 				u32 start_instance_location);
-			void clear_depth_stencil_view(ClearFlag clear_flags, f32 depth, u8 stencil, Span<const RectI> rects);
-			void clear_render_target_view(u32 index, Span<const f32, 4> color_rgba, Span<const RectI> rects);
+			void clear_depth_stencil_attachment(ClearFlag clear_flags, f32 depth, u8 stencil, Span<const RectI> rects);
+			void clear_color_attachment(u32 index, Span<const f32, 4> color_rgba, Span<const RectI> rects);
 			void end_render_pass();
 			void copy_resource(IResource* dest, IResource* src);
 			void copy_buffer_region(IResource* dest, u64 dest_offset, IResource* src, u64 src_offset, u64 num_bytes);

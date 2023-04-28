@@ -622,7 +622,7 @@ float4 main(PS_INPUT input) : SV_Target
                 cmd_buffer->resource_barrier(ResourceBarrierDesc::as_transition(res, ResourceState::render_target, 0));
 
                 RenderPassDesc desc;
-                desc.rtvs[0] = render_target;
+                desc.color_attachments[0] = render_target;
                 cmd_buffer->begin_render_pass(desc);
 
                 cmd_buffer->set_viewport(Viewport(0.0f, 0.0f, draw_data->DisplaySize.x, draw_data->DisplaySize.y, 0.0f, 1.0f));

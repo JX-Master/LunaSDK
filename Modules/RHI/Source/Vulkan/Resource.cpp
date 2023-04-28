@@ -77,6 +77,12 @@ namespace Luna
 			lutry
 			{
 				luexp(encode_vk_result(vmaBindImageMemory(m_device->m_allocator, m_memory->m_allocation, m_image)));
+				u32 num_subresources = m_desc.mip_levels;
+				if (m_desc.type != ResourceType::texture_3d)
+				{
+					num_subresources *= m_desc.depth_or_array_size;
+				}
+				m_states.resize(num_subresources);
 			}
 			lucatchret;
 			return ok;

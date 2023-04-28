@@ -268,9 +268,6 @@ namespace Luna
 			none = 0x00,
 			//! Indicates that this resource represents a cubemap texture.
 			cubemap = 0x01,
-			//! Allow this resource to be used simultaneously from multiple command queues, given that only 
-			//! one queue is writing to the resource.
-			simultaneous_access = 0x02,
 		};
 
 		//! Describe an RHI resource.
@@ -427,9 +424,10 @@ namespace Luna
 		struct SubresourceIndex
 		{
 			//! The mip index of the subresource.
-			u32 mip;
+			u32 mip_slice;
 			//! The array index of the subresource.
-			u32 array;
+			u32 array_slice;
+			bool operator==(const SubresourceIndex& rhs) const { return mip_slice == rhs.mip_slice && array_slice == rhs.array_slice; }
 		};
 
 		//! @interface IResource

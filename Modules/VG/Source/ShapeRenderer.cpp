@@ -198,9 +198,9 @@ namespace Luna
 				}
 				cmdbuf->resource_barriers({ barriers.data(), (u32)barriers.size()});
 				RenderPassDesc desc;
-				desc.rtvs[0] = m_rtv;
-				desc.rt_load_ops[0] = LoadOp::clear;
-				desc.rt_clear_values[0] = Float4U{ 0.0f };
+				desc.color_attachments[0] = m_rtv;
+				desc.color_load_ops[0] = LoadOp::clear;
+				desc.color_clear_values[0] = Float4U{ 0.0f };
 				cmdbuf->begin_render_pass(desc);
 				cmdbuf->set_pipeline_state(g_fill_pso);
 				cmdbuf->set_graphics_shader_input_layout(g_fill_slayout);

@@ -34,11 +34,11 @@ void draw()
 	
 	auto cb = get_command_buffer();
 	RenderPassDesc render_pass;
-	render_pass.rtvs[0] = rtv;
+	render_pass.color_attachments[0] = rtv;
 	cb->begin_render_pass(render_pass);
 	cb->resource_barrier(ResourceBarrierDesc::as_transition(get_back_buffer(), ResourceState::render_target, 0));
 	auto clear_color = Color::blue_violet();
-	cb->clear_render_target_view(0, clear_color.m, {});
+	cb->clear_color_attachment(0, clear_color.m, {});
 	cb->end_render_pass();
 	lupanic_if_failed(cb->submit());
 }

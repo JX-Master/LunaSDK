@@ -250,7 +250,7 @@ namespace Luna
 			heap_desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 			heap_desc.NumDescriptors = 8;	// Hard coded here.
 			heap_desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
-			hr = m_device->m_device->CreateDescriptorHeap(&heap_desc, IID_PPV_ARGS(&m_rtvs));
+			hr = m_device->m_device->CreateDescriptorHeap(&heap_desc, IID_PPV_ARGS(&m_color_attachments));
 			if (FAILED(hr))
 			{
 				return BasicError::bad_platform_call();
@@ -296,7 +296,7 @@ namespace Luna
 			lucheck(desc.buffer_count <= 8);
 			// Fetch resources.
 			m_back_buffers.resize(desc.buffer_count);
-			D3D12_CPU_DESCRIPTOR_HANDLE h = m_rtvs->GetCPUDescriptorHandleForHeapStart();
+			D3D12_CPU_DESCRIPTOR_HANDLE h = m_color_attachments->GetCPUDescriptorHandleForHeapStart();
 			for (u32 i = 0; i < desc.buffer_count; ++i)
 			{
 				HRESULT hr = m_sc->GetBuffer(i, IID_PPV_ARGS(&m_back_buffers[i]));
@@ -434,7 +434,7 @@ namespace Luna
 			m_li->SetGraphicsRootSignature(m_root_signature.Get());
 			m_li->SetDescriptorHeaps(1, m_srv.GetAddressOf());
 			m_li->SetGraphicsRootDescriptorTable(0, m_srv->GetGPUDescriptorHandleForHeapStart());
-			D3D12_CPU_DESCRIPTOR_HANDLE h = m_rtvs->GetCPUDescriptorHandleForHeapStart();
+			D3D12_CPU_DESCRIPTOR_HANDLE h = m_color_attachments->GetCPUDescriptorHandleForHeapStart();
 			h.ptr += m_rtv_size * m_current_back_buffer;
 			m_li->OMSetRenderTargets(1, &h, TRUE, NULL);
 			D3D12_VERTEX_BUFFER_VIEW vbv;

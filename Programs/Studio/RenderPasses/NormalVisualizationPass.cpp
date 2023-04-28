@@ -101,8 +101,8 @@ namespace Luna
 				ResourceBarrierDesc::as_transition(scene_tex, ResourceState::render_target),
 				ResourceBarrierDesc::as_transition(depth_tex, ResourceState::depth_stencil_read) });
 			RenderPassDesc render_pass;
-			render_pass.rtvs[0] = scene_tex_rtv;
-			render_pass.rt_load_ops[0] = LoadOp::load;
+			render_pass.color_attachments[0] = scene_tex_rtv;
+			render_pass.color_load_ops[0] = LoadOp::load;
 			render_pass.dsv = depth_dsv;
 			render_pass.depth_load_op = RHI::LoadOp::load;
 			cmdbuf->begin_render_pass(render_pass);
