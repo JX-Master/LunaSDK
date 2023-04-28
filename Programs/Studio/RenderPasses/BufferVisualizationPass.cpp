@@ -79,11 +79,11 @@ namespace Luna
             auto device = cmdbuf->get_device();
             auto cb_align = device->get_constant_buffer_data_alignment();
             cmdbuf->resource_barriers({
-                ResourceBarrierDesc::as_transition(m_vis_params, ResourceState::vertex_and_constant_buffer),
-				ResourceBarrierDesc::as_transition(scene_tex, ResourceState::unordered_access),
-				ResourceBarrierDesc::as_transition(depth_tex, ResourceState::shader_resource_non_pixel),
-				ResourceBarrierDesc::as_transition(base_color_roughness_tex, ResourceState::shader_resource_non_pixel),
-                ResourceBarrierDesc::as_transition(normal_metallic_tex, ResourceState::shader_resource_non_pixel)});
+                ResourceBarrierDesc::as_transition(m_vis_params, ResourceStateFlag::vertex_and_constant_buffer),
+				ResourceBarrierDesc::as_transition(scene_tex, ResourceStateFlag::unordered_access),
+				ResourceBarrierDesc::as_transition(depth_tex, ResourceStateFlag::shader_resource_non_pixel),
+				ResourceBarrierDesc::as_transition(base_color_roughness_tex, ResourceStateFlag::shader_resource_non_pixel),
+                ResourceBarrierDesc::as_transition(normal_metallic_tex, ResourceStateFlag::shader_resource_non_pixel)});
             
             m_ds->set_cbv(0, m_vis_params, ConstantBufferViewDesc(0, (u32)align_upper(sizeof(u32), cb_align)));
             m_ds->set_srv(1, base_color_roughness_tex);

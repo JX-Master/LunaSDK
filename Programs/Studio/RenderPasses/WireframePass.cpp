@@ -111,7 +111,7 @@ namespace Luna
 			render_pass.color_clear_values[0] = Float4U(0.0f);
 			render_pass.color_store_ops[0] = StoreOp::store;
 			auto render_desc = output_tex->get_desc();
-			cmdbuf->resource_barrier(ResourceBarrierDesc::as_transition(output_tex, ResourceState::render_target));
+			cmdbuf->resource_barrier(ResourceBarrierDesc::as_transition(output_tex, ResourceStateFlag::render_target));
 			cmdbuf->begin_render_pass(render_pass);
 			cmdbuf->set_graphics_shader_input_layout(m_global_data->m_debug_mesh_renderer_slayout);
 			cmdbuf->set_pipeline_state(m_global_data->m_debug_mesh_renderer_pso);

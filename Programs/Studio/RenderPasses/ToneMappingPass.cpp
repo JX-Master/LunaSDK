@@ -170,9 +170,9 @@ namespace Luna
 					mapped->max_brightness = max_brightness;
 					m_histogram_cb->unmap_subresource(0, 0, sizeof(LumHistogramParams));
 					cmdbuf->resource_barriers({ 
-						ResourceBarrierDesc::as_transition(lighting_tex, ResourceState::shader_resource_non_pixel, 0),
-						ResourceBarrierDesc::as_transition(m_histogram_buffer, ResourceState::unordered_access, 0),
-						ResourceBarrierDesc::as_transition(m_histogram_cb, ResourceState::vertex_and_constant_buffer, 0) });
+						ResourceBarrierDesc::as_transition(lighting_tex, ResourceStateFlag::shader_resource_non_pixel, 0),
+						ResourceBarrierDesc::as_transition(m_histogram_buffer, ResourceStateFlag::unordered_access, 0),
+						ResourceBarrierDesc::as_transition(m_histogram_cb, ResourceStateFlag::vertex_and_constant_buffer, 0) });
 					auto vs = m_histogram_ds.get();
                     vs->set_cbv(0, m_histogram_cb, ConstantBufferViewDesc(0, (u32)align_upper(sizeof(LumHistogramParams), cb_align)));
 					vs->set_srv(1, lighting_tex);
@@ -195,7 +195,7 @@ namespace Luna
 					m_histogram_collect_cb->unmap_subresource(0, 0, sizeof(LumHistogramCollectParams));
 					cmdbuf->resource_barriers({
 							ResourceBarrierDesc::as_uav(m_histogram_buffer),
-							ResourceBarrierDesc::as_transition(m_lum_tex, ResourceState::unordered_access, 0) });
+							ResourceBarrierDesc::as_transition(m_lum_tex, ResourceStateFlag::unordered_access, 0) });
 					auto vs = m_histogram_collect_ds.get();
                     vs->set_cbv(0, m_histogram_collect_cb, ConstantBufferViewDesc(0, (u32)align_upper(sizeof(LumHistogramCollectParams), cb_align)));
 					vs->set_uav(1, m_histogram_buffer, nullptr, &UnorderedAccessViewDesc::as_buffer(Format::r32_uint, 0, 256, 0, 0, false));
@@ -216,10 +216,10 @@ namespace Luna
 					cmdbuf->set_compute_shader_input_layout(m_global_data->m_tone_mapping_pass_slayout);
 					cmdbuf->set_pipeline_state(m_global_data->m_tone_mapping_pass_pso);
 					cmdbuf->resource_barriers({
-						ResourceBarrierDesc::as_transition(m_lum_tex, ResourceState::shader_resource_non_pixel),
-						ResourceBarrierDesc::as_transition(lighting_tex, ResourceState::shader_resource_non_pixel),
-						ResourceBarrierDesc::as_transition(output_tex, ResourceState::unordered_access),
-						ResourceBarrierDesc::as_transition(m_tone_mapping_cb, ResourceState::vertex_and_constant_buffer) });
+						ResourceBarrierDesc::as_transition(m_lum_tex, ResourceStateFlag::shader_resource_non_pixel),
+						ResourceBarrierDesc::as_transition(lighting_tex, ResourceStateFlag::shader_resource_non_pixel),
+						ResourceBarrierDesc::as_transition(output_tex, ResourceStateFlag::unordered_access),
+						ResourceBarrierDesc::as_transition(m_tone_mapping_cb, ResourceStateFlag::vertex_and_constant_buffer) });
 					auto vs = m_tone_mapping_pass_ds.get();
                     vs->set_cbv(0, m_tone_mapping_cb, ConstantBufferViewDesc(0, (u32)align_upper(sizeof(ToneMappingParams), cb_align)));
 					vs->set_srv(1, lighting_tex);

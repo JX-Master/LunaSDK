@@ -224,12 +224,12 @@ void draw()
 		auto cmdbuf = get_command_buffer();
 
         cmdbuf->resource_barriers({
-            ResourceBarrierDesc::as_transition(cb, ResourceState::vertex_and_constant_buffer),
-            ResourceBarrierDesc::as_transition(vb, ResourceState::vertex_and_constant_buffer),
-            ResourceBarrierDesc::as_transition(ib, ResourceState::index_buffer),
-            ResourceBarrierDesc::as_transition(file_tex, ResourceState::shader_resource_pixel),
-            ResourceBarrierDesc::as_transition(get_back_buffer(), ResourceState::render_target),
-            ResourceBarrierDesc::as_transition(depth_tex, ResourceState::depth_stencil_write)
+            ResourceBarrierDesc::as_transition(cb, ResourceStateFlag::vertex_and_constant_buffer),
+            ResourceBarrierDesc::as_transition(vb, ResourceStateFlag::vertex_and_constant_buffer),
+            ResourceBarrierDesc::as_transition(ib, ResourceStateFlag::index_buffer),
+            ResourceBarrierDesc::as_transition(file_tex, ResourceStateFlag::shader_resource_pixel),
+            ResourceBarrierDesc::as_transition(get_back_buffer(), ResourceStateFlag::render_target),
+            ResourceBarrierDesc::as_transition(depth_tex, ResourceStateFlag::depth_stencil_write)
         });
 
         RenderPassDesc desc;

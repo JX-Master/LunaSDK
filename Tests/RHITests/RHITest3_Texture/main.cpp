@@ -191,7 +191,7 @@ void draw()
 
 	auto cb = get_command_buffer();
 
-	cb->resource_barrier(ResourceBarrierDesc::as_transition(get_back_buffer(), ResourceState::render_target, 0));
+	cb->resource_barrier(ResourceBarrierDesc::as_transition(get_back_buffer(), ResourceStateFlag::render_target, 0));
 	RenderPassDesc desc;
 	desc.color_attachments[0] = rtv;
 	desc.color_load_ops[0] = LoadOp::clear;

@@ -812,7 +812,7 @@ namespace Luna
 		lutry
 		{
 			lulet(cmdbuf, m_renderer.command_buffer->get_command_queue()->new_command_buffer());
-			cmdbuf->resource_barrier(ResourceBarrierDesc::as_transition(m_renderer.render_texture, ResourceState::copy_source, 0));
+			cmdbuf->resource_barrier(ResourceBarrierDesc::as_transition(m_renderer.render_texture, ResourceStateFlag::copy_source, 0));
 			luexp(cmdbuf->submit());
 			cmdbuf->wait();
 			auto device = cmdbuf->get_device();

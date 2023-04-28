@@ -93,10 +93,10 @@ namespace Luna
 				mapped->height = (u32)desc.height;
 				m_skybox_params_cb->unmap_subresource(0, 0, sizeof(SkyboxParams));
 				cmdbuf->resource_barriers({
-					ResourceBarrierDesc::as_transition(output_tex, ResourceState::unordered_access),
-					ResourceBarrierDesc::as_transition(skybox, ResourceState::shader_resource_non_pixel),
-                    ResourceBarrierDesc::as_transition(depth_tex, ResourceState::shader_resource_non_pixel),
-					ResourceBarrierDesc::as_transition(m_skybox_params_cb, ResourceState::vertex_and_constant_buffer)
+					ResourceBarrierDesc::as_transition(output_tex, ResourceStateFlag::unordered_access),
+					ResourceBarrierDesc::as_transition(skybox, ResourceStateFlag::shader_resource_non_pixel),
+                    ResourceBarrierDesc::as_transition(depth_tex, ResourceStateFlag::shader_resource_non_pixel),
+					ResourceBarrierDesc::as_transition(m_skybox_params_cb, ResourceStateFlag::vertex_and_constant_buffer)
 					});
 				cmdbuf->set_compute_shader_input_layout(m_global_data->m_skybox_pass_slayout);
 				cmdbuf->set_pipeline_state(m_global_data->m_skybox_pass_pso);
@@ -112,7 +112,7 @@ namespace Luna
 			else
 			{
 				// Clears to black.
-				cmdbuf->resource_barrier(ResourceBarrierDesc::as_transition(output_tex, ResourceState::render_target));
+				cmdbuf->resource_barrier(ResourceBarrierDesc::as_transition(output_tex, ResourceStateFlag::render_target));
 				auto lighting_rt = output_tex;
 				RenderPassDesc render_pass;
                 lulet(output_tex_rtv, cmdbuf->get_device()->new_render_target_view(output_tex));

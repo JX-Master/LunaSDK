@@ -36,7 +36,7 @@ void draw()
 	RenderPassDesc render_pass;
 	render_pass.color_attachments[0] = rtv;
 	cb->begin_render_pass(render_pass);
-	cb->resource_barrier(ResourceBarrierDesc::as_transition(get_back_buffer(), ResourceState::render_target, 0));
+	cb->resource_barrier(ResourceBarrierDesc::as_transition(get_back_buffer(), ResourceStateFlag::render_target, 0));
 	auto clear_color = Color::blue_violet();
 	cb->clear_color_attachment(0, clear_color.m, {});
 	cb->end_render_pass();

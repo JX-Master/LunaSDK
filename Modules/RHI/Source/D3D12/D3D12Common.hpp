@@ -31,41 +31,41 @@ namespace Luna
 			array_slice = subresource / mip_levels;
 		}
 
-		inline D3D12_RESOURCE_STATES encode_resource_state(ResourceState s)
+		inline D3D12_RESOURCE_STATES encode_resource_state(ResourceStateFlag s)
 		{
 			switch (s)
 			{
-			case ResourceState::common:
+			case ResourceStateFlag::common:
 				return D3D12_RESOURCE_STATE_COMMON;
-			case ResourceState::vertex_and_constant_buffer:
+			case ResourceStateFlag::vertex_and_constant_buffer:
 				return D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
-			case ResourceState::copy_dest:
+			case ResourceStateFlag::copy_dest:
 				return D3D12_RESOURCE_STATE_COPY_DEST;
-			case ResourceState::copy_source:
+			case ResourceStateFlag::copy_source:
 				return D3D12_RESOURCE_STATE_COPY_SOURCE;
-			case ResourceState::depth_stencil_write:
+			case ResourceStateFlag::depth_stencil_write:
 				return D3D12_RESOURCE_STATE_DEPTH_WRITE; // If depth-writes are disabled, return D3D12_RESOURCE_STATE_DEPTH_WRITE
-			case ResourceState::depth_stencil_read:
+			case ResourceStateFlag::depth_stencil_read:
 				return D3D12_RESOURCE_STATE_DEPTH_READ;
-			case ResourceState::index_buffer:
+			case ResourceStateFlag::index_buffer:
 				return D3D12_RESOURCE_STATE_INDEX_BUFFER;
-			case ResourceState::indirect_argument:
+			case ResourceStateFlag::indirect_argument:
 				return D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT;
-				//case ResourceState::present:
+				//case ResourceStateFlag::present:
 					//return D3D12_RESOURCE_STATE_PRESENT;
-			case ResourceState::render_target:
+			case ResourceStateFlag::render_target:
 				return D3D12_RESOURCE_STATE_RENDER_TARGET;
-			case ResourceState::resolve_dest:
+			case ResourceStateFlag::resolve_dest:
 				return D3D12_RESOURCE_STATE_RESOLVE_DEST;
-			case ResourceState::resolve_src:
+			case ResourceStateFlag::resolve_src:
 				return D3D12_RESOURCE_STATE_RESOLVE_SOURCE;
-			case ResourceState::shader_resource_pixel:
+			case ResourceStateFlag::shader_resource_pixel:
 				return D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE; // Need the shader flags mask in case the SRV is used by non-PS
-			case ResourceState::shader_resource_non_pixel:
+			case ResourceStateFlag::shader_resource_non_pixel:
 				return D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
-			case ResourceState::stream_out:
+			case ResourceStateFlag::stream_out:
 				return D3D12_RESOURCE_STATE_STREAM_OUT;
-			case ResourceState::unordered_access:
+			case ResourceStateFlag::unordered_access:
 				return D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
 			default:
 				lupanic();

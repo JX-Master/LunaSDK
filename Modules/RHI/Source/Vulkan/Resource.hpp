@@ -51,7 +51,7 @@ namespace Luna
 			Ref<DeviceMemory> m_memory;
 
 			// Global state.
-			Vector<VkImageLayout> m_image_layouts;
+			Vector<ResourceStateFlag> m_states;
 
 			RV post_init();
 			RV init_as_committed(const ResourceDesc& desc);

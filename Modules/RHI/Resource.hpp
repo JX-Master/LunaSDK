@@ -242,24 +242,22 @@ namespace Luna
 			copy_source = 0x01,
 			//! Allows this resource to be bound as copy destination.
 			copy_dest = 0x02,
-			//! Allows this resource to be bound as a shader resource.
-			shader_resource = 0x04,
-			//! Allows this resource to be bound as a constant buffer.
-			constant_buffer = 0x08,
-			//! Allows this resource to be bound for unordered access.
+			//! Allows this resource to be bound to a constant buffer view.
+			constant_buffer = 0x04,
+			//! Allows this resource to be bound to a shader resource view.
+			shader_resource = 0x08,
+			//! Allows this resource to be bound to a unordered access view.
 			unordered_access = 0x10,
-			//! Allows this resource to be bound as a render target.
+			//! Allows this resource to be bound to a render target view (IRenderTargetView).
 			render_target = 0x20,
-			//! Allows this resource to be bound as a depth stencil target.
+			//! Allows this resource to be bound to a depth stencil view (IDepthStencilView).
 			depth_stencil = 0x40,
 			//! Allows this resource to be bound as a vertex buffer.
 			vertex_buffer = 0x80,
 			//! Allows this resource to be bound as a index buffer.
 			index_buffer = 0x100,
-			//! Allows this resource to be bound as a streaming output buffer.
-			stream_output = 0x200,
 			//! Allows this resource to be bound as a buffer providing indirect draw arguments.
-			indirect_buffer = 0x400,
+			indirect_buffer = 0x200,
 		};
 
 		//! Additional flags for texture and buffer.

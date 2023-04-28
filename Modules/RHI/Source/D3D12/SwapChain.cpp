@@ -459,8 +459,8 @@ namespace Luna
 
 			if (!res->m_states.empty())
 			{
-				ResourceState state = res->m_states[0];
-				if (state != ResourceState::common && state != ResourceState::shader_resource_pixel)
+				ResourceStateFlag state = res->m_states[0];
+				if (state != ResourceStateFlag::common && state != ResourceStateFlag::shader_resource_pixel)
 				{
 					D3D12_RESOURCE_BARRIER b;
 					b.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
@@ -470,7 +470,7 @@ namespace Luna
 					b.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
 					b.Transition.Subresource = 0;
 					m_li->ResourceBarrier(1, &b);
-					res->m_states[0] = ResourceState::shader_resource_pixel;
+					res->m_states[0] = ResourceStateFlag::shader_resource_pixel;
 				}
 			}
 

@@ -365,14 +365,14 @@ namespace Luna
 					u64 offset = readback_buffer_size;
 					placements.push_back({ offset, 0, 0, Format::unknown });
 					readback_buffer_size += i.read_buffer.size;
-					tracking_system.pack_barrier(ResourceBarrierDesc::as_transition(i.resource, ResourceState::copy_source));
+					tracking_system.pack_barrier(ResourceBarrierDesc::as_transition(i.resource, ResourceStateFlag::copy_source));
 				}
 				else if (i.op == ResourceCopyOp::write_buffer)
 				{
 					u64 offset = upload_buffer_size;
 					placements.push_back({ offset, 0, 0, Format::unknown });
 					upload_buffer_size += i.write_buffer.size;
-					tracking_system.pack_barrier(ResourceBarrierDesc::as_transition(i.resource, ResourceState::copy_dest));
+					tracking_system.pack_barrier(ResourceBarrierDesc::as_transition(i.resource, ResourceStateFlag::copy_dest));
 				}
 				else if (i.op == ResourceCopyOp::read_texture)
 				{
@@ -383,7 +383,7 @@ namespace Luna
 					u64 offset = align_upper(readback_buffer_size, alignment);
 					placements.push_back({ offset, row_pitch, depth_pitch, desc.pixel_format });
 					readback_buffer_size = offset + size;
-					tracking_system.pack_barrier(ResourceBarrierDesc::as_transition(i.resource, ResourceState::copy_source));
+					tracking_system.pack_barrier(ResourceBarrierDesc::as_transition(i.resource, ResourceStateFlag::copy_source));
 				}
 				else if (i.op == ResourceCopyOp::write_texture)
 				{
@@ -394,7 +394,7 @@ namespace Luna
 					u64 offset = align_upper(upload_buffer_size, alignment);
 					placements.push_back({ offset, row_pitch, depth_pitch, desc.pixel_format });
 					upload_buffer_size = offset + size;
-					tracking_system.pack_barrier(ResourceBarrierDesc::as_transition(i.resource, ResourceState::copy_dest));
+					tracking_system.pack_barrier(ResourceBarrierDesc::as_transition(i.resource, ResourceStateFlag::copy_dest));
 				}
 			}
 			lutry

@@ -109,7 +109,7 @@ namespace Luna
 		{
 			if (m_desc.type != ResourceType::buffer && ((m_desc.flags & ResourceFlag::simultaneous_access) == ResourceFlag::none))
 			{
-				m_states.resize(count_subresources(), ResourceState::common);
+				m_states.resize(count_subresources(), ResourceStateFlag::common);
 			}
 			return ok;
 		}

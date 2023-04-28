@@ -92,7 +92,7 @@ namespace Luna
             lulet(depth_dsv, device->new_depth_stencil_view(depth_tex));
             //auto fbo = device->new_frame_buffer(m_global_data->m_lighting_pass_rp, 1, &lighting_rt, nullptr, depth_tex, nullptr).get();
 			cmdbuf->resource_barriers({ 
-				ResourceBarrierDesc::as_transition(depth_tex, ResourceState::depth_stencil_write) });
+				ResourceBarrierDesc::as_transition(depth_tex, ResourceStateFlag::depth_stencil_write) });
 			RenderPassDesc render_pass;
 			render_pass.depth_stencil_attachment = depth_dsv;
 			render_pass.depth_load_op = RHI::LoadOp::clear;

@@ -111,8 +111,8 @@ namespace Luna
 				u32 src_subresource = RHI::calc_subresource_index(j, 0, desc.mip_levels);
 				u32 dest_subresource = RHI::calc_subresource_index(j + 1, 0, desc.mip_levels);
 				ResourceBarrierDesc barriers[] = {
-					ResourceBarrierDesc::as_transition(resource_with_most_detailed_mip, ResourceState::shader_resource_non_pixel, src_subresource),
-					ResourceBarrierDesc::as_transition(resource_with_most_detailed_mip, ResourceState::unordered_access, dest_subresource)
+					ResourceBarrierDesc::as_transition(resource_with_most_detailed_mip, ResourceStateFlag::shader_resource_non_pixel, src_subresource),
+					ResourceBarrierDesc::as_transition(resource_with_most_detailed_mip, ResourceStateFlag::unordered_access, dest_subresource)
 				};
 				compute_cmdbuf->resource_barriers({ barriers, 2 });
 				lulet(vs, device->new_descriptor_set(DescriptorSetDesc(m_mipmapping_dlayout)));
@@ -127,7 +127,7 @@ namespace Luna
 				height = max<u32>(height / 2, 1);
 			}
 
-			compute_cmdbuf->resource_barrier(ResourceBarrierDesc::as_transition(resource_with_most_detailed_mip, ResourceState::common));
+			compute_cmdbuf->resource_barrier(ResourceBarrierDesc::as_transition(resource_with_most_detailed_mip, ResourceStateFlag::common));
 
 			luexp(compute_cmdbuf->submit());
 			compute_cmdbuf->wait();

@@ -619,7 +619,7 @@ float4 main(PS_INPUT input) : SV_Target
                     g_cb->unmap_subresource(0, 0, sizeof(Float4x4));
                 }
 
-                cmd_buffer->resource_barrier(ResourceBarrierDesc::as_transition(res, ResourceState::render_target, 0));
+                cmd_buffer->resource_barrier(ResourceBarrierDesc::as_transition(res, ResourceStateFlag::render_target, 0));
 
                 RenderPassDesc desc;
                 desc.color_attachments[0] = render_target;
@@ -674,7 +674,7 @@ float4 main(PS_INPUT input) : SV_Target
                             vs->set_cbv(0, g_cb, ConstantBufferViewDesc(0, (u32)align_upper(sizeof(Float4x4), cb_align)));
                             vs->set_srv(1, (IResource*)pcmd->TextureId);
                             vs->set_sampler(2, SamplerDesc(FilterMode::min_mag_mip_linear, TextureAddressMode::clamp, TextureAddressMode::clamp, TextureAddressMode::clamp));
-                            cmd_buffer->resource_barrier(ResourceBarrierDesc::as_transition((IResource*)pcmd->TextureId, ResourceState::shader_resource_pixel));
+                            cmd_buffer->resource_barrier(ResourceBarrierDesc::as_transition((IResource*)pcmd->TextureId, ResourceStateFlag::shader_resource_pixel));
                             cmd_buffer->set_graphics_descriptor_set(0, vs);
                             cmd_buffer->set_scissor_rect(r);
                             cmd_buffer->draw_indexed(pcmd->ElemCount, pcmd->IdxOffset + idx_offset, pcmd->VtxOffset + vtx_offset);

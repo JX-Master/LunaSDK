@@ -89,8 +89,8 @@ namespace Luna
                 *mapped = Float2U(1.0f / (f32)INTEGEATE_BRDF_SIZE, 1.0f / (f32)INTEGEATE_BRDF_SIZE);
                 cb->unmap_subresource(0, 0, sizeof(Float2U));
                 ResourceBarrierDesc barriers[] = {
-                    ResourceBarrierDesc::as_transition(cb, ResourceState::vertex_and_constant_buffer),
-                    ResourceBarrierDesc::as_transition(m_integrate_brdf, ResourceState::unordered_access)
+                    ResourceBarrierDesc::as_transition(cb, ResourceStateFlag::vertex_and_constant_buffer),
+                    ResourceBarrierDesc::as_transition(m_integrate_brdf, ResourceStateFlag::unordered_access)
                 };
                 compute_cmdbuf->resource_barriers({ barriers, 2 });
                 lulet(vs, device->new_descriptor_set(DescriptorSetDesc(dlayout)));
@@ -142,16 +142,16 @@ namespace Luna
             auto cb_align = device->get_constant_buffer_data_alignment();
             auto sky_box = skybox ? skybox : m_global_data->m_default_skybox;
             cmdbuf->resource_barriers({
-                ResourceBarrierDesc::as_transition(camera_cb, ResourceState::vertex_and_constant_buffer),
-                ResourceBarrierDesc::as_transition(m_lighting_mode_cb, ResourceState::vertex_and_constant_buffer),
-                ResourceBarrierDesc::as_transition(light_params, ResourceState::shader_resource_non_pixel),
-				ResourceBarrierDesc::as_transition(scene_tex, ResourceState::unordered_access),
-				ResourceBarrierDesc::as_transition(depth_tex, ResourceState::shader_resource_non_pixel),
-				ResourceBarrierDesc::as_transition(base_color_roughness_tex, ResourceState::shader_resource_non_pixel),
-                ResourceBarrierDesc::as_transition(normal_metallic_tex, ResourceState::shader_resource_non_pixel),
-                ResourceBarrierDesc::as_transition(emissive_tex, ResourceState::shader_resource_non_pixel),
-                ResourceBarrierDesc::as_transition(sky_box, ResourceState::shader_resource_non_pixel),
-                ResourceBarrierDesc::as_transition(m_global_data->m_integrate_brdf, ResourceState::shader_resource_non_pixel) });
+                ResourceBarrierDesc::as_transition(camera_cb, ResourceStateFlag::vertex_and_constant_buffer),
+                ResourceBarrierDesc::as_transition(m_lighting_mode_cb, ResourceStateFlag::vertex_and_constant_buffer),
+                ResourceBarrierDesc::as_transition(light_params, ResourceStateFlag::shader_resource_non_pixel),
+				ResourceBarrierDesc::as_transition(scene_tex, ResourceStateFlag::unordered_access),
+				ResourceBarrierDesc::as_transition(depth_tex, ResourceStateFlag::shader_resource_non_pixel),
+				ResourceBarrierDesc::as_transition(base_color_roughness_tex, ResourceStateFlag::shader_resource_non_pixel),
+                ResourceBarrierDesc::as_transition(normal_metallic_tex, ResourceStateFlag::shader_resource_non_pixel),
+                ResourceBarrierDesc::as_transition(emissive_tex, ResourceStateFlag::shader_resource_non_pixel),
+                ResourceBarrierDesc::as_transition(sky_box, ResourceStateFlag::shader_resource_non_pixel),
+                ResourceBarrierDesc::as_transition(m_global_data->m_integrate_brdf, ResourceStateFlag::shader_resource_non_pixel) });
             
             m_ds->set_cbv(0, camera_cb, ConstantBufferViewDesc(0, (u32)align_upper(sizeof(CameraCB), cb_align)));
             m_ds->set_cbv(1, m_lighting_mode_cb, ConstantBufferViewDesc(0, (u32)align_upper(sizeof(u32), cb_align)));

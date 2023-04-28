@@ -187,13 +187,13 @@ namespace Luna
 				}
 				// Build command buffer.
 				Vector<ResourceBarrierDesc> barriers;
-				barriers.push_back(ResourceBarrierDesc::as_transition(m_render_target, ResourceState::render_target));
-				barriers.push_back(ResourceBarrierDesc::as_transition(g_white_tex, ResourceState::shader_resource_pixel));
+				barriers.push_back(ResourceBarrierDesc::as_transition(m_render_target, ResourceStateFlag::render_target));
+				barriers.push_back(ResourceBarrierDesc::as_transition(g_white_tex, ResourceStateFlag::shader_resource_pixel));
 				for (usize i = 0; i < num_draw_calls; ++i)
 				{
 					if (draw_calls[i].texture)
 					{
-						barriers.push_back(ResourceBarrierDesc::as_transition(draw_calls[i].texture, ResourceState::shader_resource_pixel));
+						barriers.push_back(ResourceBarrierDesc::as_transition(draw_calls[i].texture, ResourceStateFlag::shader_resource_pixel));
 					}
 				}
 				cmdbuf->resource_barriers({ barriers.data(), (u32)barriers.size()});

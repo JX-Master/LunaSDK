@@ -62,7 +62,7 @@ namespace Luna
 
 		private:
 			//! Translates one transition into the D3D12 transition barrier, and ignores the implicit promotion and decay.
-			void append_transition(Resource* res, u32 subresource, ResourceState before, ResourceState after, ResourceBarrierFlag flags);
+			void append_transition(Resource* res, u32 subresource, ResourceStateFlag before, ResourceStateFlag after, ResourceBarrierFlag flags);
 
 		public:
 
@@ -99,7 +99,7 @@ namespace Luna
 			//! 2. If the specified subresource has been resolved by previous states, both `begin_only` and `end_only`
 			//!	   calls will be recorded, but the changes will only be applied to the tracking system when `end_only`
 			//!	   is called.
-			void pack_transition(Resource* res, u32 subresource, ResourceState after, ResourceBarrierFlag flags);
+			void pack_transition(Resource* res, u32 subresource, ResourceStateFlag after, ResourceBarrierFlag flags);
 
 			//! Appends any barrier.
 			void pack_barrier(const ResourceBarrierDesc& desc)

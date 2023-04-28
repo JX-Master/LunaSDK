@@ -177,8 +177,8 @@ namespace Luna
 				u32 src_subresource = RHI::calc_subresource_index(j, 0, desc.mip_levels);
 				u32 dest_subresource = RHI::calc_subresource_index(j + 1, 0, desc.mip_levels);
 				ResourceBarrierDesc barriers[] = {
-					ResourceBarrierDesc::as_transition(resource_with_most_detailed_mip, ResourceState::shader_resource_non_pixel, src_subresource),
-					ResourceBarrierDesc::as_transition(resource_with_most_detailed_mip, ResourceState::unordered_access, dest_subresource)
+					ResourceBarrierDesc::as_transition(resource_with_most_detailed_mip, ResourceStateFlag::shader_resource_non_pixel, src_subresource),
+					ResourceBarrierDesc::as_transition(resource_with_most_detailed_mip, ResourceStateFlag::unordered_access, dest_subresource)
 				};
 				compute_cmdbuf->resource_barriers({ barriers, 2 });
 				lulet(vs, device->new_descriptor_set(DescriptorSetDesc(m_mipmapping_dlayout)));
@@ -193,7 +193,7 @@ namespace Luna
 				compute_cmdbuf->dispatch(align_upper(width, 8) / 8, align_upper(height, 8) / 8, 1);
 			}
 
-			compute_cmdbuf->resource_barrier(ResourceBarrierDesc::as_transition(resource_with_most_detailed_mip, ResourceState::common));
+			compute_cmdbuf->resource_barrier(ResourceBarrierDesc::as_transition(resource_with_most_detailed_mip, ResourceStateFlag::common));
 
 			luexp(compute_cmdbuf->submit());
 			compute_cmdbuf->wait();
@@ -256,13 +256,13 @@ namespace Luna
 			cb->unmap_subresource(0, 0, USIZE_MAX);
 
 			compute_cmdbuf->resource_barriers({
-				ResourceBarrierDesc::as_transition(resource_with_most_detailed_mip, ResourceState::copy_source, 0),
-				ResourceBarrierDesc::as_transition(prefiltered, ResourceState::copy_dest, 0) });
+				ResourceBarrierDesc::as_transition(resource_with_most_detailed_mip, ResourceStateFlag::copy_source, 0),
+				ResourceBarrierDesc::as_transition(prefiltered, ResourceStateFlag::copy_dest, 0) });
 			compute_cmdbuf->copy_texture_region(TextureCopyLocation::as_subresource_index(prefiltered, 0), 0, 0, 0, 
 				TextureCopyLocation::as_subresource_index(resource_with_most_detailed_mip, 0), &BoxU(0, 0, 0, (u32)desc.width_or_buffer_size, desc.height, 1));
 
-			compute_cmdbuf->resource_barrier(ResourceBarrierDesc::as_transition(resource_with_most_detailed_mip, ResourceState::shader_resource_non_pixel));
-			compute_cmdbuf->resource_barrier(ResourceBarrierDesc::as_transition(prefiltered, ResourceState::unordered_access));
+			compute_cmdbuf->resource_barrier(ResourceBarrierDesc::as_transition(resource_with_most_detailed_mip, ResourceStateFlag::shader_resource_non_pixel));
+			compute_cmdbuf->resource_barrier(ResourceBarrierDesc::as_transition(prefiltered, ResourceStateFlag::unordered_access));
 
 			for (u32 j = 0; j < (u32)(desc.mip_levels - 1); ++j)
 			{
@@ -278,7 +278,7 @@ namespace Luna
 				u32 height = max<u32>(desc.height >> (j + 1), 1);
 				compute_cmdbuf->dispatch(align_upper(width, 8) / 8, align_upper(height, 8) / 8, 1);
 			}
-			compute_cmdbuf->resource_barrier(ResourceBarrierDesc::as_transition(prefiltered, ResourceState::common));
+			compute_cmdbuf->resource_barrier(ResourceBarrierDesc::as_transition(prefiltered, ResourceStateFlag::common));
 			luexp(compute_cmdbuf->submit());
 			compute_cmdbuf->wait();
 			luexp(compute_cmdbuf->reset());

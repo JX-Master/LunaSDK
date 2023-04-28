@@ -59,21 +59,21 @@ namespace Luna
 				return m_desc;
 			}
 
-			/*static ResourceState global_state(u32 subresource)
+			/*static ResourceStateFlag global_state(u32 subresource)
 			{
 				if (m_states.empty())
 				{
 					switch (m_desc.access_type)
 					{
 					case EAccessType::gpu_local:
-						return ResourceState::common;
+						return ResourceStateFlag::common;
 					case EAccessType::upload:
-						return ResourceState::generic_read;
+						return ResourceStateFlag::generic_read;
 					case EAccessType::readback:
-						return ResourceState::copy_dest;
+						return ResourceStateFlag::copy_dest;
 					default:
 						lupanic();
-						return ResourceState::common;
+						return ResourceStateFlag::common;
 					}
 				}
 				else

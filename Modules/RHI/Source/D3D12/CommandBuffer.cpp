@@ -15,7 +15,7 @@ namespace Luna
 {
 	namespace RHI
 	{
-		void ResourceStateTrackingSystem::append_transition(Resource* res, u32 subresource, ResourceState before, ResourceState after, ResourceBarrierFlag flags)
+		void ResourceStateTrackingSystem::append_transition(Resource* res, u32 subresource, ResourceStateFlag before, ResourceStateFlag after, ResourceBarrierFlag flags)
 		{
 			// Early out for unnecessary calls.
 			if (before == after)
@@ -24,7 +24,7 @@ namespace Luna
 			}
 			// Use implicit transition whenever possible.
 			// Refs: https://docs.microsoft.com/en-us/windows/win32/direct3d12/using-resource-barriers-to-synchronize-resource-states-in-direct3d-12#implicit-state-transitions
-			if (before == ResourceState::common)
+			if (before == ResourceStateFlag::common)
 			{
 				if (res->m_states.empty())
 				{
@@ -32,10 +32,10 @@ namespace Luna
 					return;
 				}
 				else if (
-					(after == ResourceState::shader_resource_non_pixel) ||
-					(after == ResourceState::shader_resource_pixel) ||
-					(after == ResourceState::copy_dest) ||
-					(after == ResourceState::copy_source))
+					(after == ResourceStateFlag::shader_resource_non_pixel) ||
+					(after == ResourceStateFlag::shader_resource_pixel) ||
+					(after == ResourceStateFlag::copy_dest) ||
+					(after == ResourceStateFlag::copy_source))
 				{
 					return;
 				}
@@ -65,7 +65,7 @@ namespace Luna
 			m_barriers.push_back(t);
 		}
 
-		void ResourceStateTrackingSystem::pack_transition(Resource* res, u32 subresource, ResourceState after, ResourceBarrierFlag flags)
+		void ResourceStateTrackingSystem::pack_transition(Resource* res, u32 subresource, ResourceStateFlag after, ResourceBarrierFlag flags)
 		{
 			if (subresource == RESOURCE_BARRIER_ALL_SUBRESOURCES)
 			{
@@ -101,7 +101,7 @@ namespace Luna
 					if (res->m_states.empty())
 					{
 						// If this resource does not have a global state, always proceed as common.
-						append_transition(res, subresource, ResourceState::common, after, flags);
+						append_transition(res, subresource, ResourceStateFlag::common, after, flags);
 					}
 					else
 					{
@@ -148,7 +148,7 @@ namespace Luna
 				// Any read state that can be implicitly promoted from common state can be implicitly decayed to common state.
 				if (type == CommandQueueType::copy /* || is_texture_decayable_to_common(i.second) */)
 				{
-					i.first.m_res->m_states[i.first.m_subres] = ResourceState::common;
+					i.first.m_res->m_states[i.first.m_subres] = ResourceStateFlag::common;
 				}
 				else
 				{

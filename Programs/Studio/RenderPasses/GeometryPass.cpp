@@ -129,10 +129,10 @@ namespace Luna
             lulet(depth_dsv, device->new_depth_stencil_view(depth_tex));
             //auto fbo = device->new_frame_buffer(m_global_data->m_lighting_pass_rp, 1, &lighting_rt, nullptr, depth_tex, nullptr).get();
 			cmdbuf->resource_barriers({ 
-				ResourceBarrierDesc::as_transition(base_color_roughness_tex, ResourceState::render_target),
-				ResourceBarrierDesc::as_transition(normal_metallic_tex, ResourceState::render_target),
-				ResourceBarrierDesc::as_transition(emissive_tex, ResourceState::render_target),
-				ResourceBarrierDesc::as_transition(depth_tex, ResourceState::depth_stencil_read) });
+				ResourceBarrierDesc::as_transition(base_color_roughness_tex, ResourceStateFlag::render_target),
+				ResourceBarrierDesc::as_transition(normal_metallic_tex, ResourceStateFlag::render_target),
+				ResourceBarrierDesc::as_transition(emissive_tex, ResourceStateFlag::render_target),
+				ResourceBarrierDesc::as_transition(depth_tex, ResourceStateFlag::depth_stencil_read) });
 			RenderPassDesc render_pass;
 			render_pass.color_attachments[0] = base_color_rtv;
 			render_pass.color_attachments[1] = normal_rtv;

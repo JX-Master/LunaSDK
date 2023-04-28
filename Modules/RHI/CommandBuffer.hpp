@@ -108,51 +108,58 @@ namespace Luna
 			uav = 3
 		};
 
-		enum class ResourceState : u32
+		enum class ResourceStateFlag : u32
 		{
-			//! The state used for passing resources between different graphic engine types (graphic/compute/copy).
-			//! This state is also required if you need to read/write data in CPU side.
-			common = 0,
-			//! Used as vertex buffer in 3D pipeline by vertex buffer view and index buffer view.
-			//! Read-only.
-			vertex_buffer,
-			//! Used as index buffer in graphic pipeline.
-			//! Read-only.
-			index_buffer,
-			//! Used as constant buffer in 3D pipeline by vertex buffer view and index buffer view.
-			//! Read-only.
-			constant_buffer,
-			//! Used for render target in graphic pipeline via RTV or clear render target.
-			//! Write-only.
-			render_target,
-			//! Used for unordered access in pipeline via UAV.
-			//! Read/Write.
-			unordered_access,
-			//! Used for depth write in graphic pipeline via DSV or clear depth stencil.
-			//! Write-only for depth.
-			depth_stencil_write,
-			//! Used for depth write is disabled.
-			//! Read-only for depth.
-			depth_stencil_read,
-			//! Used as shader resource for non-pixel shader via SRV.
-			//! Read-only.
-			shader_resource_non_pixel,
-			//! Used as shader resource for pixel shader via SRV.
-			//! Read-only.
-			shader_resource_pixel,
-			//! Used as indirect argument.
-			//! Read-only.
-			indirect_argument,
+			//! This resource is not used.
+			none = 0,
+			//! Used as a indirect argument buffer.
+			indirect_argument = 0x01,
+			//! Used as a vertex buffer.
+			vertex_buffer = 0x02,
+			//! Used as a index buffer.
+			index_buffer = 0x04,
+			//! Used as a constant buffer for vertex shader.
+			constant_buffer_vs = 0x08,
+			//! Used as a shader resource for vertex shader.
+			shader_resource_vs = 0x10,
+			//! Used as a constant buffer for pixel shader.
+			constant_buffer_ps = 0x20,
+			//! Used as a shader resource for pixel shader.
+			shader_resource_ps = 0x40,
+			//! Used as a read-only unordered access for pixel shader.
+			unordered_access_read_ps = 0x80,
+			//! Used as a write-only unordered access for pixel shader.
+			unordered_access_write_ps = 0x0100,
+			//! Used as a color attachment with read access.
+			color_attachment_read = 0x0200,
+			//! Used as a color attachment with write access.
+			color_attachment_write = 0x0400,
+			//! Used as a depth stencil attachment with read access.
+			depth_stencil_attachment_read = 0x0800,
+			//! Used as a depth stencil attachment with write access.
+			depth_stencil_attachment_write = 0x1000,
+			//! Used as a resolve attachment with write access.
+			resolve_attachment = 0x2000,
+			//! Used as a constant buffer for compute shader.
+			constant_buffer_cs = 0x4000,
+			//! Used as a shader resource for compute shader.
+			shader_resource_cs = 0x8000,
+			//! Used as a read-only unordered access for compute shader.
+			unordered_access_read_cs = 0x00010000,
+			//! Used as a write-only unordered access for compute shader.
+			unordered_access_write_cs = 0x00020000,
 			//! Used as a copy destination.
-			//! Write-only.
-			copy_dest,
+			copy_dest = 0x00040000,
 			//! Used as a copy source.
-			//! Read-only.
-			copy_source,
-			//! Used as destination in a resolve operation.
-			resolve_dest,
-			//! Used as source in a resolve operation.
-			resolve_src,
+			copy_source = 0x00080000,
+
+			// Combinations.
+
+			constant_buffer = constant_buffer_vs | constant_buffer_ps | constant_buffer_cs,
+			shader_resource = shader_resource_vs | shader_resource_ps | shader_resource_cs,
+			unordered_access_read = unordered_access_read_ps | unordered_access_read_cs,
+			unordered_access_write = unordered_access_write_ps | unordered_access_write_cs,
+			unordered_access = unordered_access_read | unordered_access_write,
 		};
 
 		constexpr SubresourceIndex RESOURCE_BARRIER_ALL_SUBRESOURCES = {U32_MAX, U32_MAX};
@@ -162,7 +169,7 @@ namespace Luna
 		{
 			IResource* resource;
 			SubresourceIndex subresource;
-			ResourceState after;
+			ResourceStateFlag after;
 		};
 
 		struct ResourceUAVBarrierDesc
@@ -173,7 +180,7 @@ namespace Luna
 		struct ResourceAliasingBarrierDesc
 		{
 			IResource* resource;
-			ResourceState after;
+			ResourceStateFlag after;
 		};
 
 		struct ResourceBarrierDesc
@@ -198,7 +205,7 @@ namespace Luna
 				type(ResourceBarrierType::uav),
 				uav(uav) {}
 
-			static ResourceBarrierDesc as_transition(IResource* resource, ResourceState after, const SubresourceIndex& subresource = RESOURCE_BARRIER_ALL_SUBRESOURCES)
+			static ResourceBarrierDesc as_transition(IResource* resource, ResourceStateFlag after, const SubresourceIndex& subresource = RESOURCE_BARRIER_ALL_SUBRESOURCES)
 			{
 				ResourceTransitionBarrierDesc desc;
 				desc.resource = resource;
@@ -207,7 +214,7 @@ namespace Luna
 				return ResourceBarrierDesc(desc);
 			}
 
-			static ResourceBarrierDesc as_aliasing(IResource* resource, ResourceState after)
+			static ResourceBarrierDesc as_aliasing(IResource* resource, ResourceStateFlag after)
 			{
 				ResourceAliasingBarrierDesc desc;
 				desc.resource = resource;
@@ -369,8 +376,8 @@ namespace Luna
 
 			//! Starts a new render pass. The previous render pass should be closed before beginning another one.
 			//! @param[in] desc The render pass descriptor object.
-			//! @remark In order to let LoadOp::clear works, the render textures that need to be cleared must be in
-			//! `ResourceState::render_target` state and the depth stencil texture that needs to be cleared must be in 
+			//! @ResourceStateFlag:: to let LoadOp::clear works, the render textures that need to be cleared must be in
+			//! `ResourceStateFlag::render_target` state and the depth stencil texture that needs to be cleared must be in 
 			//! `ResourceState::depth_write` state.
 			//! 
 			//! The following functions can only be called in between `begin_render_pass` and `end_render_pass`:
