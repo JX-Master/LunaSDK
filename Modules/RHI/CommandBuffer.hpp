@@ -108,50 +108,66 @@ namespace Luna
 			uav = 3
 		};
 
+		//! `ResourceStateFlag` defines how resources are bound to the pipeline. One resource may be bind to multiple stages of the 
+		//! pipeline, which can be expressed by bitwise-OR of `ResourceStateFlag` flags.
+		//! At the beginning of each command buffer, no resources is bound to the pipeline. All resources start with 
+		//! `ResourceBindFlag::none`, and will be reset to `ResourceBindFlag::none` automatically at the end of the command buffer.
+		//! In each command buffer, before the user binds the resource for the first time, she must issue one resource barrier with
+		//! `ResourceBindFlag::none` as the `before` state for the resource to be correctly bind.
 		enum class ResourceStateFlag : u32
 		{
-			//! This resource is not used.
-			none = 0,
+			//! If this is specified as the before state, the system determines the before state automatically using the last state 
+			//! specified in the same command buffer for the resource. If this is the first time the resource is used in the current
+			//! command buffer, the system loads the resource's global state automatically.
+			//! 
+			//! This state cannot be set as the after state of the resource.
+			automatic = 0,
+			//! The content of the resource is undefined.
+			//! This can only be specified as the before state of the resource barrier, which tells the system to discard the old 
+			//! content of the resource. The resource data is undefined and should be overwritten in the following render passes.
+			//! 
+			//! This state flag shall not be combined with other state flags.
+			undefined = 0x01,
 			//! Used as a indirect argument buffer.
-			indirect_argument = 0x01,
+			indirect_argument = 0x02,
 			//! Used as a vertex buffer.
-			vertex_buffer = 0x02,
+			vertex_buffer = 0x04,
 			//! Used as a index buffer.
-			index_buffer = 0x04,
+			index_buffer = 0x08,
 			//! Used as a constant buffer for vertex shader.
-			constant_buffer_vs = 0x08,
+			constant_buffer_vs = 0x10,
 			//! Used as a shader resource for vertex shader.
-			shader_resource_vs = 0x10,
+			shader_resource_vs = 0x20,
 			//! Used as a constant buffer for pixel shader.
-			constant_buffer_ps = 0x20,
+			constant_buffer_ps = 0x40,
 			//! Used as a shader resource for pixel shader.
-			shader_resource_ps = 0x40,
+			shader_resource_ps = 0x80,
 			//! Used as a read-only unordered access for pixel shader.
-			unordered_access_read_ps = 0x80,
+			unordered_access_read_ps = 0x0100,
 			//! Used as a write-only unordered access for pixel shader.
-			unordered_access_write_ps = 0x0100,
+			unordered_access_write_ps = 0x0200,
 			//! Used as a color attachment with read access.
-			color_attachment_read = 0x0200,
+			color_attachment_read = 0x0400,
 			//! Used as a color attachment with write access.
-			color_attachment_write = 0x0400,
+			color_attachment_write = 0x0800,
 			//! Used as a depth stencil attachment with read access.
-			depth_stencil_attachment_read = 0x0800,
+			depth_stencil_attachment_read = 0x1000,
 			//! Used as a depth stencil attachment with write access.
-			depth_stencil_attachment_write = 0x1000,
+			depth_stencil_attachment_write = 0x2000,
 			//! Used as a resolve attachment with write access.
-			resolve_attachment = 0x2000,
+			resolve_attachment = 0x4000,
 			//! Used as a constant buffer for compute shader.
-			constant_buffer_cs = 0x4000,
+			constant_buffer_cs = 0x8000,
 			//! Used as a shader resource for compute shader.
-			shader_resource_cs = 0x8000,
+			shader_resource_cs = 0x00010000,
 			//! Used as a read-only unordered access for compute shader.
-			unordered_access_read_cs = 0x00010000,
+			unordered_access_read_cs = 0x00020000,
 			//! Used as a write-only unordered access for compute shader.
-			unordered_access_write_cs = 0x00020000,
+			unordered_access_write_cs = 0x00040000,
 			//! Used as a copy destination.
-			copy_dest = 0x00040000,
+			copy_dest = 0x00080000,
 			//! Used as a copy source.
-			copy_source = 0x00080000,
+			copy_source = 0x00100000,
 
 			// Combinations.
 
