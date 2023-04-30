@@ -384,6 +384,7 @@ namespace Luna
 		inline VkAccessFlags encode_access_flags(ResourceStateFlag state)
 		{
 			VkAccessFlags f = 0;
+			if (state == ResourceStateFlag::undefined) return 0;
 			if (test_flags(state, ResourceStateFlag::indirect_argument)) f |= VK_ACCESS_INDIRECT_COMMAND_READ_BIT;
 			if (test_flags(state, ResourceStateFlag::vertex_buffer)) f |= VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
 			if (test_flags(state, ResourceStateFlag::index_buffer)) f |= VK_ACCESS_INDEX_READ_BIT;
@@ -408,6 +409,7 @@ namespace Luna
 		}
 		inline VkImageLayout encode_image_layout(ResourceStateFlag state)
 		{
+			if (state == ResourceStateFlag::undefined) return VK_IMAGE_LAYOUT_UNDEFINED;
 			if (test_flags(state, ResourceStateFlag::color_attachment_read) ||
 				test_flags(state, ResourceStateFlag::color_attachment_write) ||
 				test_flags(state, ResourceStateFlag::resolve_attachment))
@@ -441,6 +443,7 @@ namespace Luna
 		}
 		VkPipelineStageFlags determine_pipeline_stage_flags(ResourceStateFlag state, CommandQueueType queue_type)
 		{
+			if (state == ResourceStateFlag::undefined) return 0;
 			VkPipelineStageFlags flags = 0;
 
 			switch (queue_type)
@@ -537,10 +540,6 @@ namespace Luna
 			{
 				flags |= VK_PIPELINE_STAGE_TRANSFER_BIT;
 			}
-
-			if (flags == 0)
-				flags = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-
 			return flags;
 		}
 	}

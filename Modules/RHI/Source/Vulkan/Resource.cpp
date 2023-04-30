@@ -82,7 +82,7 @@ namespace Luna
 				{
 					num_subresources *= m_desc.depth_or_array_size;
 				}
-				m_states.resize(num_subresources);
+				m_image_layouts.resize(num_subresources, VK_IMAGE_LAYOUT_UNDEFINED);
 			}
 			lucatchret;
 			return ok;

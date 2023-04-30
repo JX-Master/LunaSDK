@@ -90,24 +90,6 @@ namespace Luna
 			}
 		};
 
-		enum class ResourceBarrierType : u32
-		{
-			//! Translates the state of the resource to a new state. In most of the time you don't need to call this 
-			//! manually, since the resource state tracking system built in RHI tracks the resource state and inserts
-			//! proper barriers for you, however you can explicitly specify this if you need the resource to be in a 
-			//! specific state that cannot be converted automatically by system, or you can explicitly specify this
-			//! to do some optimizations.
-			transition = 1,
-			//! Issues an aliasing barrier when a new resource whose memory overlaps with the old resource is about
-			//! to be access by the graphic pipeline. This call inserts a memory barrier so that the access to the new
-			//! resource is deferred until all access to the old resource finished to prevent race condition.
-			aliasing = 2,
-			//! Issues an uav barrier that makes the previous dispatch call to access the specified resource finishes 
-			//! before the next dispatch call that access the resource can start. This this to prevent race condition
-			//! between multiple dispatch calls.
-			uav = 3
-		};
-
 		//! `ResourceStateFlag` defines how resources are bound to the pipeline. One resource may be bind to multiple stages of the 
 		//! pipeline, which can be expressed by bitwise-OR of `ResourceStateFlag` flags.
 		//! At the beginning of each command buffer, no resources is bound to the pipeline. All resources start with 
@@ -116,58 +98,57 @@ namespace Luna
 		//! `ResourceBindFlag::none` as the `before` state for the resource to be correctly bind.
 		enum class ResourceStateFlag : u32
 		{
+			//! The content of the resource is undefined.
+			//! This can only be specified as the before state of the resource barrier, which tells the system to discard the old 
+			//! content of the resource. The resource data is then undefined and should be overwritten in the following render passes.
+			undefined = 0x00,
+			//! Used as a indirect argument buffer.
+			indirect_argument = 0x01,
+			//! Used as a vertex buffer.
+			vertex_buffer = 0x02,
+			//! Used as a index buffer.
+			index_buffer = 0x04,
+			//! Used as a constant buffer for vertex shader.
+			constant_buffer_vs = 0x08,
+			//! Used as a shader resource for vertex shader.
+			shader_resource_vs = 0x10,
+			//! Used as a constant buffer for pixel shader.
+			constant_buffer_ps = 0x20,
+			//! Used as a shader resource for pixel shader.
+			shader_resource_ps = 0x40,
+			//! Used as a read-only unordered access for pixel shader.
+			unordered_access_read_ps = 0x80,
+			//! Used as a write-only unordered access for pixel shader.
+			unordered_access_write_ps = 0x0100,
+			//! Used as a color attachment with read access.
+			color_attachment_read = 0x0200,
+			//! Used as a color attachment with write access.
+			color_attachment_write = 0x0400,
+			//! Used as a depth stencil attachment with read access.
+			depth_stencil_attachment_read = 0x0800,
+			//! Used as a depth stencil attachment with write access.
+			depth_stencil_attachment_write = 0x1000,
+			//! Used as a resolve attachment with write access.
+			resolve_attachment = 0x2000,
+			//! Used as a constant buffer for compute shader.
+			constant_buffer_cs = 0x4000,
+			//! Used as a shader resource for compute shader.
+			shader_resource_cs = 0x8000,
+			//! Used as a read-only unordered access for compute shader.
+			unordered_access_read_cs = 0x00010000,
+			//! Used as a write-only unordered access for compute shader.
+			unordered_access_write_cs = 0x00020000,
+			//! Used as a copy destination.
+			copy_dest = 0x00040000,
+			//! Used as a copy source.
+			copy_source = 0x00800000,
+
 			//! If this is specified as the before state, the system determines the before state automatically using the last state 
 			//! specified in the same command buffer for the resource. If this is the first time the resource is used in the current
 			//! command buffer, the system loads the resource's global state automatically.
 			//! 
-			//! This state cannot be set as the after state of the resource.
-			automatic = 0,
-			//! The content of the resource is undefined.
-			//! This can only be specified as the before state of the resource barrier, which tells the system to discard the old 
-			//! content of the resource. The resource data is undefined and should be overwritten in the following render passes.
-			//! 
-			//! This state flag shall not be combined with other state flags.
-			undefined = 0x01,
-			//! Used as a indirect argument buffer.
-			indirect_argument = 0x02,
-			//! Used as a vertex buffer.
-			vertex_buffer = 0x04,
-			//! Used as a index buffer.
-			index_buffer = 0x08,
-			//! Used as a constant buffer for vertex shader.
-			constant_buffer_vs = 0x10,
-			//! Used as a shader resource for vertex shader.
-			shader_resource_vs = 0x20,
-			//! Used as a constant buffer for pixel shader.
-			constant_buffer_ps = 0x40,
-			//! Used as a shader resource for pixel shader.
-			shader_resource_ps = 0x80,
-			//! Used as a read-only unordered access for pixel shader.
-			unordered_access_read_ps = 0x0100,
-			//! Used as a write-only unordered access for pixel shader.
-			unordered_access_write_ps = 0x0200,
-			//! Used as a color attachment with read access.
-			color_attachment_read = 0x0400,
-			//! Used as a color attachment with write access.
-			color_attachment_write = 0x0800,
-			//! Used as a depth stencil attachment with read access.
-			depth_stencil_attachment_read = 0x1000,
-			//! Used as a depth stencil attachment with write access.
-			depth_stencil_attachment_write = 0x2000,
-			//! Used as a resolve attachment with write access.
-			resolve_attachment = 0x4000,
-			//! Used as a constant buffer for compute shader.
-			constant_buffer_cs = 0x8000,
-			//! Used as a shader resource for compute shader.
-			shader_resource_cs = 0x00010000,
-			//! Used as a read-only unordered access for compute shader.
-			unordered_access_read_cs = 0x00020000,
-			//! Used as a write-only unordered access for compute shader.
-			unordered_access_write_cs = 0x00040000,
-			//! Used as a copy destination.
-			copy_dest = 0x00080000,
-			//! Used as a copy source.
-			copy_source = 0x00100000,
+			//! This state cannot be set as the after state of the resource. This state cannot be set along with other state flags.
+			automatic = 0x80000000,
 
 			// Combinations.
 
@@ -181,69 +162,12 @@ namespace Luna
 		constexpr SubresourceIndex RESOURCE_BARRIER_ALL_SUBRESOURCES = {U32_MAX, U32_MAX};
 		struct IResource;
 
-		struct ResourceTransitionBarrierDesc
+		struct ResourceBarrierDesc
 		{
 			IResource* resource;
 			SubresourceIndex subresource;
+			ResourceStateFlag before;
 			ResourceStateFlag after;
-		};
-
-		struct ResourceUAVBarrierDesc
-		{
-			IResource* resource;
-		};
-
-		struct ResourceAliasingBarrierDesc
-		{
-			IResource* resource;
-			ResourceStateFlag after;
-		};
-
-		struct ResourceBarrierDesc
-		{
-			ResourceBarrierType type;
-			ResourceTransitionBarrierDesc transition;
-			ResourceAliasingBarrierDesc aliasing;
-			ResourceUAVBarrierDesc uav;
-
-			ResourceBarrierDesc() = default;
-			ResourceBarrierDesc(const ResourceBarrierDesc&) = default;
-			ResourceBarrierDesc(ResourceBarrierDesc&&) = default;
-			ResourceBarrierDesc& operator=(const ResourceBarrierDesc&) = default;
-			ResourceBarrierDesc& operator=(ResourceBarrierDesc&&) = default;
-			ResourceBarrierDesc(const ResourceTransitionBarrierDesc& transition) :
-				type(ResourceBarrierType::transition),
-				transition(transition) {}
-			ResourceBarrierDesc(const ResourceAliasingBarrierDesc& aliasing) :
-				type(ResourceBarrierType::aliasing),
-				aliasing(aliasing) {}
-			ResourceBarrierDesc(const ResourceUAVBarrierDesc& uav) :
-				type(ResourceBarrierType::uav),
-				uav(uav) {}
-
-			static ResourceBarrierDesc as_transition(IResource* resource, ResourceStateFlag after, const SubresourceIndex& subresource = RESOURCE_BARRIER_ALL_SUBRESOURCES)
-			{
-				ResourceTransitionBarrierDesc desc;
-				desc.resource = resource;
-				desc.subresource = subresource;
-				desc.after = after;
-				return ResourceBarrierDesc(desc);
-			}
-
-			static ResourceBarrierDesc as_aliasing(IResource* resource, ResourceStateFlag after)
-			{
-				ResourceAliasingBarrierDesc desc;
-				desc.resource = resource;
-				desc.after = after;
-				return ResourceBarrierDesc(desc);
-			}
-
-			static ResourceBarrierDesc as_uav(IResource* resource)
-			{
-				ResourceUAVBarrierDesc desc;
-				desc.resource = resource;
-				return ResourceBarrierDesc(desc);
-			}
 		};
 
 		struct Viewport
@@ -498,10 +422,7 @@ namespace Luna
 			virtual void set_compute_descriptor_sets(u32 start_index, Span<IDescriptorSet*> descriptor_sets) = 0;
 
 			//! Issues one resource barrier.
-			virtual void resource_barrier(const ResourceBarrierDesc& barrier) = 0;
-
-			//! Issues resource barriers.
-			virtual void resource_barriers(Span<const ResourceBarrierDesc> barriers) = 0;
+			virtual void resource_barrier(Span<const ResourceBarrierDesc> barriers) = 0;
 
 			//! Executes a command list from a thread group.
 			virtual void dispatch(u32 thread_group_count_x, u32 thread_group_count_y, u32 thread_group_count_z) = 0;
