@@ -12,6 +12,7 @@
 #include "../../CommandBuffer.hpp"
 #include "Device.hpp"
 #include "CommandQueue.hpp"
+#include "ResourceStateTrackingSystem.hpp"
 
 namespace Luna
 {
@@ -25,6 +26,8 @@ namespace Luna
 			Ref<Device> m_device;
 			Ref<CommandQueue> m_queue;
 			Name m_name;
+
+			ResourceStateTrackingSystem m_track_system;
 
 			VkCommandPool m_command_pool = VK_NULL_HANDLE;
 			VkCommandBuffer m_command_buffer = VK_NULL_HANDLE;
@@ -93,8 +96,7 @@ namespace Luna
 				const TextureCopyLocation& src, const BoxU* src_box = nullptr) override;
 			virtual void set_compute_shader_input_layout(IShaderInputLayout* shader_input_layout) override;
 			virtual void set_compute_descriptor_sets(u32 start_index, Span<IDescriptorSet*> descriptor_sets) override;
-			virtual void resource_barrier(const ResourceBarrierDesc& barrier) override;
-			virtual void resource_barriers(Span<const ResourceBarrierDesc> barriers) override;
+			virtual void resource_barrier(Span<const ResourceBarrierDesc> barriers) override;
 			virtual void dispatch(u32 thread_group_count_x, u32 thread_group_count_y, u32 thread_group_count_z) override;
 			virtual void write_timestamp(IQueryHeap* heap, u32 index) override;
 			virtual void begin_pipeline_statistics_query(IQueryHeap* heap, u32 index) override;

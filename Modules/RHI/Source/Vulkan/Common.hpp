@@ -139,6 +139,13 @@ namespace Luna
 				return VK_FORMAT_UNDEFINED;
 			}
 		}
+		inline bool is_depth_stencil_format(Format format)
+		{
+			return (format == Format::d16_unorm ||
+				format == Format::d24_unorm_s8_uint ||
+				format == Format::d32_float ||
+				format == Format::d32_float_s8_uint_x24) ? true : false;
+		}
 		inline VkPrimitiveTopology encode_primitive_topology(PrimitiveTopology primitive_topology)
 		{
 			switch (primitive_topology)

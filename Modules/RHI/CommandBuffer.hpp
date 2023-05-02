@@ -43,19 +43,14 @@ namespace Luna
 			placed_footprint	// When the referencing resource is a buffer.
 		};
 
-		struct SubresourceFootprint
+		struct PlacedResourceFootprint
 		{
+			u64 offset;
 			Format format;
 			u32 width;
 			u32 height;
 			u32 depth;
 			u32 row_pitch;
-		};
-
-		struct PlacedResourceFootprint
-		{
-			u64 offset;
-			SubresourceFootprint footprint;
 		};
 
 		struct TextureCopyLocation
@@ -73,11 +68,11 @@ namespace Luna
 				r.type = TextureCopyType::placed_footprint;
 				r.resource = _resource;
 				r.placed_footprint.offset = _offset;
-				r.placed_footprint.footprint.format = _format;
-				r.placed_footprint.footprint.width = _width;
-				r.placed_footprint.footprint.height = _height;
-				r.placed_footprint.footprint.depth = _depth;
-				r.placed_footprint.footprint.row_pitch = _row_pitch;
+				r.placed_footprint.format = _format;
+				r.placed_footprint.width = _width;
+				r.placed_footprint.height = _height;
+				r.placed_footprint.depth = _depth;
+				r.placed_footprint.row_pitch = _row_pitch;
 				return r;
 			}
 			static TextureCopyLocation as_subresource_index(IResource* _resource, const SubresourceIndex& _subresource_index)
@@ -409,7 +404,7 @@ namespace Luna
 
 			//! Copies a region of a buffer from one resource to another.
 			virtual void copy_buffer_region(IResource* dest, u64 dest_offset, IResource* src, u64 src_offset, u64 num_bytes) = 0;
-
+			 
 			//! This method uses the GPU to copy texture data between two locations. 
 			virtual void copy_texture_region(const TextureCopyLocation& dst, u32 dst_x, u32 dst_y, u32 dst_z,
 				const TextureCopyLocation& src, const BoxU* src_box = nullptr) = 0;

@@ -77,17 +77,7 @@ namespace Luna
 				m_dest_stage_flags = 0;
 			}
 
-			R<ResourceStateFlag> get_buffer_state(BufferResource* res) const
-			{
-				auto iter = m_current_buffer_states.find(res);
-				if (iter == m_current_buffer_states.end())
-				{
-					return BasicError::not_found();
-				}
-				return iter->second;
-			}
-
-			R<ResourceStateFlag> get_image_state(ImageResource* res, const SubresourceIndex& subresource) const
+			VkImageLayout get_image_layout(ImageResource* res, const SubresourceIndex& subresource) const
 			{
 				ImageResourceKey k;
 				k.m_res = res;
@@ -95,9 +85,10 @@ namespace Luna
 				auto iter = m_current_image_states.find(k);
 				if (iter == m_current_image_states.end())
 				{
-					return BasicError::not_found();
+					u32 subresource_index = calc_subresource_state_index(subresource.mip_slice, subresource.array_slice, res->m_desc.mip_levels);
+					return res->m_image_layouts[subresource_index];
 				}
-				return iter->second;
+				return encode_image_layout(iter->second);
 			}
 
 		private:
