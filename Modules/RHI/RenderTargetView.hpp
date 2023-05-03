@@ -35,7 +35,7 @@ namespace Luna
 			u32 first_depth_or_array_slice;
 			u32 depth_or_array_size;
 
-			static RenderTargetViewDesc as_tex1d(Format format, u32 mip_slice)
+			static RenderTargetViewDesc tex1d(Format format, u32 mip_slice)
 			{
 				RenderTargetViewDesc desc;
 				desc.format = format;
@@ -45,7 +45,7 @@ namespace Luna
 				desc.depth_or_array_size = 1;
 				return desc;
 			}
-			static RenderTargetViewDesc as_tex1darray(Format format, u32 mip_slice, u32 first_array_slice, u32 array_size)
+			static RenderTargetViewDesc tex1darray(Format format, u32 mip_slice, u32 first_array_slice, u32 array_size)
 			{
 				RenderTargetViewDesc desc;
 				desc.format = format;
@@ -55,7 +55,7 @@ namespace Luna
 				desc.depth_or_array_size = array_size;
 				return desc;
 			}
-			static RenderTargetViewDesc as_tex2d(Format format, u32 mip_slice)
+			static RenderTargetViewDesc tex2d(Format format, u32 mip_slice)
 			{
 				RenderTargetViewDesc desc;
 				desc.format = format;
@@ -65,7 +65,7 @@ namespace Luna
 				desc.depth_or_array_size = 1;
 				return desc;
 			}
-			static RenderTargetViewDesc as_tex2darray(Format format, u32 mip_slice, u32 first_array_slice, u32 array_size)
+			static RenderTargetViewDesc tex2darray(Format format, u32 mip_slice, u32 first_array_slice, u32 array_size)
 			{
 				RenderTargetViewDesc desc;
 				desc.format = format;
@@ -75,7 +75,7 @@ namespace Luna
 				desc.depth_or_array_size = array_size;
 				return desc;
 			}
-			static RenderTargetViewDesc as_tex2dms(Format format)
+			static RenderTargetViewDesc tex2dms(Format format)
 			{
 				RenderTargetViewDesc desc;
 				desc.format = format;
@@ -85,7 +85,7 @@ namespace Luna
 				desc.depth_or_array_size = 1;
 				return desc;
 			}
-			static RenderTargetViewDesc as_tex2dmsarray(Format format, u32 first_array_slice, u32 array_size)
+			static RenderTargetViewDesc tex2dmsarray(Format format, u32 first_array_slice, u32 array_size)
 			{
 				RenderTargetViewDesc desc;
 				desc.format = format;
@@ -95,7 +95,7 @@ namespace Luna
 				desc.depth_or_array_size = array_size;
 				return desc;
 			}
-			static RenderTargetViewDesc as_tex3d(Format format, u32 mip_slice, u32 first_layer_slice, u32 layer_size)
+			static RenderTargetViewDesc tex3d(Format format, u32 mip_slice, u32 first_layer_slice, u32 layer_size)
 			{
 				RenderTargetViewDesc desc;
 				desc.format = format;

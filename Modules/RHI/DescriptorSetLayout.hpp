@@ -15,7 +15,7 @@ namespace Luna
 	namespace RHI
 	{
 		//! Specify the type of descriptors that can be placed in a descriptor set.
-		enum class DescriptorType : u32
+		enum class DescriptorType : u8
 		{
 			//! Specifies uniform buffer view, which allows reading data from one uniform buffer.
 			//! This descriptor is supported in all shaders.
@@ -41,7 +41,7 @@ namespace Luna
 			sampler,
 		};
 
-		enum class ShaderVisibilityFlag : u32
+		enum class ShaderVisibilityFlag : u8
 		{
 			none = 0x00,
 			vertex = 0x01,
@@ -53,8 +53,6 @@ namespace Luna
 		//! Describes one binding in one descriptor set.
 		struct DescriptorSetLayoutBinding
 		{
-			//! The type of descriptors.
-			DescriptorType type;
 			//! The slot to bind this descriptor.
 			//! If `num_descs` is greater than 1, slots [binding_slot, binding_slot + num_descs)
 			//! will be occupied and cannot be used in another bindings.
@@ -66,6 +64,8 @@ namespace Luna
 			//! If this is a variable-sized descriptors array, this is the maximum number 
 			//! of descriptors that may be bound. This value may be used for hardware validation when needed.
 			u32 num_descs;
+			//! The type of descriptors.
+			DescriptorType type;
 			//! Specify which pipeline shader can access a resource for this binding.
 			ShaderVisibilityFlag shader_visibility_flags;
 

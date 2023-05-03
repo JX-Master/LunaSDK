@@ -403,12 +403,6 @@ namespace Luna
 			{
 				return VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
 			}
-			if (test_flags(state, TextureStateFlag::shader_read_vs) ||
-				test_flags(state, TextureStateFlag::shader_read_ps) ||
-				test_flags(state, TextureStateFlag::shader_read_cs))
-			{
-				return VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			}
 			if (test_flags(state, TextureStateFlag::copy_dest))
 			{
 				return VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
@@ -417,9 +411,18 @@ namespace Luna
 			{
 				return VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
 			}
+			if ((test_flags(state, TextureStateFlag::shader_read_vs) ||
+				 test_flags(state, TextureStateFlag::shader_read_ps) ||
+				 test_flags(state, TextureStateFlag::shader_read_cs)) &&
+				(!test_flags(state, TextureStateFlag::shader_write_cs))
+				)
+			{
+				return VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			}
+			
 			return VK_IMAGE_LAYOUT_GENERAL;
 		}
-		VkPipelineStageFlags determine_pipeline_stage_flags(BufferStateFlag state, CommandQueueType queue_type)
+		inline VkPipelineStageFlags determine_pipeline_stage_flags(BufferStateFlag state, CommandQueueType queue_type)
 		{
 			if (state == BufferStateFlag::undefined) return 0;
 			VkPipelineStageFlags flags = 0;
@@ -566,6 +569,19 @@ namespace Luna
 				flags |= VK_PIPELINE_STAGE_TRANSFER_BIT;
 			}
 			return flags;
+		}
+		VkDescriptorType encode_descriptor_type(DescriptorType type)
+		{
+			switch (type)
+			{
+			case DescriptorType::uniform_buffer_view: return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; break;
+			case DescriptorType::read_buffer_view:
+			case DescriptorType::read_write_buffer_view: return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+			case DescriptorType::sampled_texture_view: return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+			case DescriptorType::read_texture_view:
+			case DescriptorType::read_write_texture_view: return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+			case DescriptorType::sampler: return VK_DESCRIPTOR_TYPE_SAMPLER;
+			}
 		}
 	}
 }

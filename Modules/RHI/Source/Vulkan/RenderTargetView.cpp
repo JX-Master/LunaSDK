@@ -18,21 +18,21 @@ namespace Luna
 			TextureDesc d = res->get_desc();
 			switch (d.type)
 			{
-			case TextureType::texture_1d:
+			case TextureType::tex1d:
 				return (d.array_size) == 1 ?
-					RenderTargetViewDesc::as_tex1d(d.pixel_format, 0) :
-					RenderTargetViewDesc::as_tex1darray(d.pixel_format, 0, 0, d.array_size);
-			case TextureType::texture_2d:
+					RenderTargetViewDesc::tex1d(d.pixel_format, 0) :
+					RenderTargetViewDesc::tex1darray(d.pixel_format, 0, 0, d.array_size);
+			case TextureType::tex2d:
 				return (d.array_size == 1) ?
 					((d.sample_count == 1) ?
-						RenderTargetViewDesc::as_tex2d(d.pixel_format, 0) :
-						RenderTargetViewDesc::as_tex2dms(d.pixel_format)) :
+						RenderTargetViewDesc::tex2d(d.pixel_format, 0) :
+						RenderTargetViewDesc::tex2dms(d.pixel_format)) :
 					((d.sample_count == 1) ?
-						RenderTargetViewDesc::as_tex2darray(d.pixel_format, 0, 0, d.array_size) :
-						RenderTargetViewDesc::as_tex2dmsarray(d.pixel_format, 0, d.array_size)
+						RenderTargetViewDesc::tex2darray(d.pixel_format, 0, 0, d.array_size) :
+						RenderTargetViewDesc::tex2dmsarray(d.pixel_format, 0, d.array_size)
 						);
-			case TextureType::texture_3d:
-				return RenderTargetViewDesc::as_tex3d(d.pixel_format, 0, 0, d.depth);
+			case TextureType::tex3d:
+				return RenderTargetViewDesc::tex3d(d.pixel_format, 0, 0, d.depth);
 			default:
 				lupanic();
 				break;
@@ -108,11 +108,10 @@ namespace Luna
 					info.viewType = VK_IMAGE_VIEW_TYPE_3D; 
 					info.subresourceRange.baseMipLevel = d.mip_slice;
 					info.subresourceRange.levelCount = 1;
-					info.subresourceRange.baseArrayLayer = d.first_depth_or_array_slice;
-					info.subresourceRange.layerCount = d.depth_or_array_size;
+					info.subresourceRange.baseArrayLayer = 0;
+					info.subresourceRange.layerCount = 1;
 					break;
 				}
-				info.viewType = VK_IMAGE_VIEW_TYPE_2D;
 				info.format = encode_format(res->m_desc.pixel_format);
 				info.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
 				info.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
