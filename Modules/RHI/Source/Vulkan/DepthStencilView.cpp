@@ -43,10 +43,9 @@ namespace Luna
 			}
 			return result;
 		}
-
-		static R<DepthStencilViewDesc> get_default_dsv(IResource* res)
+		static R<DepthStencilViewDesc> get_default_dsv(ITexture* res)
 		{
-			ResourceDesc d = res->get_desc();
+			TextureDesc d = res->get_desc();
 			if (d.pixel_format != Format::d16_unorm &&
 				d.pixel_format != Format::d24_unorm_s8_uint &&
 				d.pixel_format != Format::d32_float &&
@@ -56,21 +55,20 @@ namespace Luna
 			}
 			switch (d.type)
 			{
-			case ResourceType::buffer:
-			case ResourceType::texture_3d:
+			case TextureType::texture_3d:
 				return BasicError::bad_arguments();
-			case ResourceType::texture_1d:
-				return (d.depth_or_array_size) == 1 ?
+			case TextureType::texture_1d:
+				return (d.array_size) == 1 ?
 					DepthStencilViewDesc::as_tex1d(d.pixel_format, 0) :
-					DepthStencilViewDesc::as_tex1darray(d.pixel_format, 0, 0, d.depth_or_array_size);
-			case ResourceType::texture_2d:
-				return (d.depth_or_array_size == 1) ?
+					DepthStencilViewDesc::as_tex1darray(d.pixel_format, 0, 0, d.array_size);
+			case TextureType::texture_2d:
+				return (d.array_size == 1) ?
 					((d.sample_count == 1) ?
 						DepthStencilViewDesc::as_tex2d(d.pixel_format, 0) :
 						DepthStencilViewDesc::as_tex2dms(d.pixel_format)) :
 					((d.sample_count == 1) ?
-						DepthStencilViewDesc::as_tex2darray(d.pixel_format, 0, 0, d.depth_or_array_size) :
-						DepthStencilViewDesc::as_tex2dmsarray(d.pixel_format, 0, d.depth_or_array_size)
+						DepthStencilViewDesc::as_tex2darray(d.pixel_format, 0, 0, d.array_size) :
+						DepthStencilViewDesc::as_tex2dmsarray(d.pixel_format, 0, d.array_size)
 						);
 			default:
 				lupanic();
@@ -78,7 +76,7 @@ namespace Luna
 			}
 			return BasicError::failure();
 		}
-		RV DepthStencilView::init(IResource* resource, const DepthStencilViewDesc* desc)
+		RV DepthStencilView::init(ITexture* resource, const DepthStencilViewDesc* desc)
 		{
 			lutry
 			{

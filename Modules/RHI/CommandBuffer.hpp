@@ -43,55 +43,13 @@ namespace Luna
 			placed_footprint	// When the referencing resource is a buffer.
 		};
 
-		struct PlacedResourceFootprint
-		{
-			u64 offset;
-			Format format;
-			u32 width;
-			u32 height;
-			u32 depth;
-			u32 row_pitch;
-		};
-
-		struct TextureCopyLocation
-		{
-			IResource* resource;
-			TextureCopyType type;
-			union
-			{
-				PlacedResourceFootprint placed_footprint;
-				SubresourceIndex subresource_index;
-			};
-			static TextureCopyLocation as_placed_foorprint(IResource* _resource, u64 _offset, Format _format, u32 _width, u32 _height, u32 _depth, u32 _row_pitch)
-			{
-				TextureCopyLocation r;
-				r.type = TextureCopyType::placed_footprint;
-				r.resource = _resource;
-				r.placed_footprint.offset = _offset;
-				r.placed_footprint.format = _format;
-				r.placed_footprint.width = _width;
-				r.placed_footprint.height = _height;
-				r.placed_footprint.depth = _depth;
-				r.placed_footprint.row_pitch = _row_pitch;
-				return r;
-			}
-			static TextureCopyLocation as_subresource_index(IResource* _resource, const SubresourceIndex& _subresource_index)
-			{
-				TextureCopyLocation r;
-				r.type = TextureCopyType::subresource_index;
-				r.resource = _resource;
-				r.subresource_index = _subresource_index;
-				return r;
-			}
-		};
-
-		//! `ResourceStateFlag` defines how resources are bound to the pipeline. One resource may be bind to multiple stages of the 
+		//! `BufferStateFlag` defines how resources are bound to the pipeline. One resource may be bind to multiple stages of the 
 		//! pipeline, which can be expressed by bitwise-OR of `ResourceStateFlag` flags.
 		//! At the beginning of each command buffer, no resources is bound to the pipeline. All resources start with 
 		//! `ResourceBindFlag::none`, and will be reset to `ResourceBindFlag::none` automatically at the end of the command buffer.
 		//! In each command buffer, before the user binds the resource for the first time, she must issue one resource barrier with
 		//! `ResourceBindFlag::none` as the `before` state for the resource to be correctly bind.
-		enum class ResourceStateFlag : u32
+		enum class BufferStateFlag : u32
 		{
 			//! The content of the resource is undefined.
 			//! This can only be specified as the before state of the resource barrier, which tells the system to discard the old 
@@ -103,40 +61,24 @@ namespace Luna
 			vertex_buffer = 0x02,
 			//! Used as a index buffer.
 			index_buffer = 0x04,
-			//! Used as a constant buffer for vertex shader.
-			constant_buffer_vs = 0x08,
-			//! Used as a shader resource for vertex shader.
-			shader_resource_vs = 0x10,
-			//! Used as a constant buffer for pixel shader.
-			constant_buffer_ps = 0x20,
-			//! Used as a shader resource for pixel shader.
-			shader_resource_ps = 0x40,
-			//! Used as a read-only unordered access for pixel shader.
-			unordered_access_read_ps = 0x80,
-			//! Used as a write-only unordered access for pixel shader.
-			unordered_access_write_ps = 0x0100,
-			//! Used as a color attachment with read access.
-			color_attachment_read = 0x0200,
-			//! Used as a color attachment with write access.
-			color_attachment_write = 0x0400,
-			//! Used as a depth stencil attachment with read access.
-			depth_stencil_attachment_read = 0x0800,
-			//! Used as a depth stencil attachment with write access.
-			depth_stencil_attachment_write = 0x1000,
-			//! Used as a resolve attachment with write access.
-			resolve_attachment = 0x2000,
-			//! Used as a constant buffer for compute shader.
-			constant_buffer_cs = 0x4000,
-			//! Used as a shader resource for compute shader.
-			shader_resource_cs = 0x8000,
-			//! Used as a read-only unordered access for compute shader.
-			unordered_access_read_cs = 0x00010000,
-			//! Used as a write-only unordered access for compute shader.
-			unordered_access_write_cs = 0x00020000,
+			//! Used as a uniform buffer for vertex shader.
+			uniform_buffer_vs = 0x08,
+			//! Used as a read-only resource for vertex shader.
+			shader_read_vs = 0x10,
+			//! Used as a uniform buffer for pixel shader.
+			uniform_buffer_ps = 0x20,
+			//! Used as a read-only resource for pixel shader.
+			shader_read_ps = 0x40,
+			//! Used as a uniform buffer for compute shader.
+			uniform_buffer_cs = 0x80,
+			//! Used as a read-only resource for compute shader.
+			shader_read_cs = 0x0100,
+			//! Used as a write-only resource for compute shader.
+			shader_write_cs = 0x0200,
 			//! Used as a copy destination.
-			copy_dest = 0x00040000,
+			copy_dest = 0x0400,
 			//! Used as a copy source.
-			copy_source = 0x00800000,
+			copy_source = 0x0800,
 
 			//! If this is specified as the before state, the system determines the before state automatically using the last state 
 			//! specified in the same command buffer for the resource. If this is the first time the resource is used in the current
@@ -144,25 +86,60 @@ namespace Luna
 			//! 
 			//! This state cannot be set as the after state of the resource. This state cannot be set along with other state flags.
 			automatic = 0x80000000,
+		};
 
-			// Combinations.
+		enum class TextureStateFlag : u32
+		{
+			//! The content of the resource is undefined.
+			//! This can only be specified as the before state of the resource barrier, which tells the system to discard the old 
+			//! content of the resource. The resource data is then undefined and should be overwritten in the following render passes.
+			undefined = 0x00,
+			//! Used as a sampled texture for vertex shader.
+			shader_read_vs = 0x10,
+			//! Used as a shader resource for pixel shader.
+			shader_read_ps = 0x20,
+			//! Used as a color attachment with read access.
+			color_attachment_read = 0x40,
+			//! Used as a color attachment with write access.
+			color_attachment_write = 0x80,
+			//! Used as a depth stencil attachment with read access.
+			depth_stencil_attachment_read = 0x0100,
+			//! Used as a depth stencil attachment with write access.
+			depth_stencil_attachment_write = 0x0200,
+			//! Used as a resolve attachment with write access.
+			resolve_attachment = 0x0400,
+			//! Used as a shader resource for compute shader.
+			shader_read_cs = 0x0800,
+			//! Used as a read-only unordered access for compute shader.
+			shader_write_cs = 0x1000,
+			//! Used as a copy destination.
+			copy_dest = 0x2000,
+			//! Used as a copy source.
+			copy_source = 0x4000,
 
-			constant_buffer = constant_buffer_vs | constant_buffer_ps | constant_buffer_cs,
-			shader_resource = shader_resource_vs | shader_resource_ps | shader_resource_cs,
-			unordered_access_read = unordered_access_read_ps | unordered_access_read_cs,
-			unordered_access_write = unordered_access_write_ps | unordered_access_write_cs,
-			unordered_access = unordered_access_read | unordered_access_write,
+			//! If this is specified as the before state, the system determines the before state automatically using the last state 
+			//! specified in the same command buffer for the resource. If this is the first time the resource is used in the current
+			//! command buffer, the system loads the resource's global state automatically.
+			//! 
+			//! This state cannot be set as the after state of the resource. This state cannot be set along with other state flags.
+			automatic = 0x80000000,
 		};
 
 		constexpr SubresourceIndex RESOURCE_BARRIER_ALL_SUBRESOURCES = {U32_MAX, U32_MAX};
-		struct IResource;
 
-		struct ResourceBarrierDesc
+		struct TextureBarrier
 		{
-			IResource* resource;
+			ITexture* texture;
 			SubresourceIndex subresource;
-			ResourceStateFlag before;
-			ResourceStateFlag after;
+			TextureStateFlag before;
+			TextureStateFlag after;
+		};
+
+		struct BufferBarrier
+		{
+			IBuffer* buffer;
+			BufferStateFlag before;
+			BufferStateFlag after;
 		};
 
 		struct Viewport
@@ -339,10 +316,10 @@ namespace Luna
 			//! Vertex buffers in range [start_slot, start_slot + num_slots) will be replaced by new buffer.
 			//! @param[in] buffers An array of vertex buffers to bind.
 			//! @param[in] offsets An array of offsets for reading vertices from each vertex buffer in bytes.
-			virtual void set_vertex_buffers(u32 start_slot, u32 num_slots, IResource** buffers, const usize* offsets) = 0;
+			virtual void set_vertex_buffers(u32 start_slot, u32 num_slots, IBuffer** buffers, const usize* offsets) = 0;
 
 			//! Sets index buffer.
-			virtual void set_index_buffer(IResource* buffer, usize offset_in_bytes, Format index_format) = 0;
+			virtual void set_index_buffer(IBuffer* buffer, usize offset_in_bytes, Format index_format) = 0;
 
 			//! Sets the descriptor set to be used by the graphic pipeline.
 			//! This must be called after `set_pipeline_state` and `set_graphics_shader_input_layout`.
@@ -400,14 +377,33 @@ namespace Luna
 			virtual void end_render_pass() = 0;
 
 			//! Copies the entire contents of the source resource to the destination resource.
-			virtual void copy_resource(IResource* dest, IResource* src) = 0;
+			//! The source resource and destination resource must be the same `ResourceType`, have the same size for buffers, or 
+			//! the same width, height, depth, mip count and array count for textures.
+			virtual void copy_resource(IResource* dst, IResource* src) = 0;
 
 			//! Copies a region of a buffer from one resource to another.
-			virtual void copy_buffer_region(IResource* dest, u64 dest_offset, IResource* src, u64 src_offset, u64 num_bytes) = 0;
+			virtual void copy_buffer(
+				IBuffer* dst, u64 dst_offset, 
+				IBuffer* src, u64 src_offset,
+				u64 copy_bytes) = 0;
 			 
 			//! This method uses the GPU to copy texture data between two locations. 
-			virtual void copy_texture_region(const TextureCopyLocation& dst, u32 dst_x, u32 dst_y, u32 dst_z,
-				const TextureCopyLocation& src, const BoxU* src_box = nullptr) = 0;
+			virtual void copy_texture(
+				ITexture* dst, SubresourceIndex dst_subresource, u32 dst_x, u32 dst_y, u32 dst_z,
+				ITexture* src, SubresourceIndex src_subresource, u32 src_x, u32 src_y, u32 src_z,
+				u32 copy_width, u32 copy_height, u32 copy_depth) = 0;
+
+			virtual void copy_buffer_to_texture(
+				ITexture* dst, SubresourceIndex dst_subresource, u32 dst_x, u32 dst_y, u32 dst_z,
+				IBuffer* src, u64 src_offset, u32 src_row_pitch, u32 src_depth_pitch,
+				u32 copy_width, u32 copy_height, u32 copy_depth) = 0;
+
+			virtual void copy_texture_to_buffer(
+				IBuffer* dst, u64 dst_offset, u32 dst_row_pitch, u32 dst_slice_pitch,
+				ITexture* src, SubresourceIndex src_subresource, u32 src_x, u32 src_y, u32 src_z,
+				u32 copy_width, u32 copy_height, u32 copy_depth) = 0;
+
+			virtual void copy_texture_to_buffer() = 0;
 
 			//! Sets the compute shader input layout.
 			virtual void set_compute_shader_input_layout(IShaderInputLayout* shader_input_layout) = 0;
@@ -417,7 +413,7 @@ namespace Luna
 			virtual void set_compute_descriptor_sets(u32 start_index, Span<IDescriptorSet*> descriptor_sets) = 0;
 
 			//! Issues one resource barrier.
-			virtual void resource_barrier(Span<const ResourceBarrierDesc> barriers) = 0;
+			virtual void resource_barrier(Span<const BufferBarrier> buffer_barriers, Span<const TextureBarrier> texture_barriers) = 0;
 
 			//! Executes a command list from a thread group.
 			virtual void dispatch(u32 thread_group_count_x, u32 thread_group_count_y, u32 thread_group_count_z) = 0;

@@ -19,367 +19,157 @@ namespace Luna
 {
 	namespace RHI
 	{
-		namespace srv
+		struct BufferViewDesc
 		{
-			struct Buffer
+			//! The offset, in bytes, from the beginning of the buffer to
+			//! the first element to be accessed by the view.
+			u64 offset;
+			//! The buffer to set.
+			IBuffer* buffer;
+			//! The number of elements in this view.
+			u32 element_count;
+			//! The size, in bytes, of each element in the buffer structure when the buffer represents a structured buffer.
+			//! This is ignored if `format` is not `Format::unknown`.
+			u32 element_size;
+			//! The format of the buffer element in this buffer represents one typed buffer.
+			//! If this buffer represents one structured buffer, this must be set to `Format::unknown`.
+			Format format;
+			static BufferViewDesc as_uniform_buffer(IBuffer* buffer, u64 offset = 0, u32 size = U32_MAX)
 			{
-				//! The index of the first element to be accessed by the view.
-				u64 offset;
-				//! The number of elements in the resource.
-				u32 count;
-				//! The size of each element in the buffer structure (in bytes) when the buffer represents a structured buffer.
-				//! This can be ignored for typed 
-				u32 element_size;
-				//! Indicates the buffer is a byte address buffer ( raw view buffer ).
-				bool raw_view;
-			};
-			struct Tex1D
+				BufferViewDesc ret;
+				ret.buffer = buffer;
+				ret.offset = offset;
+				ret.element_count = 1;
+				ret.element_size = size;
+				ret.format = Format::unknown;
+				return ret;
+			}
+			static BufferViewDesc as_typed_buffer(IBuffer* buffer, u64 offset, u32 element_count, Format element_format)
 			{
-				//! The most detailed mip level to use.
-				u32  most_detailed_mip;
-				//! The mip levels to use. Set to -1 to indicate all the mipmap levels from `most_detailed_mip` on down to least detailed. 
-				//! Available mip levels are [most_detailed, most_detailed + mip_levels - 1].
-				u32  mip_levels;
-				//! A value to clamp sample LOD values to. 
-				//! For example, if you specify 2.0f for the clamp value, you ensure that no individual sample accesses a mip level 
-				//! less than 2.0f.
-				f32 resource_min_lod_clamp;
-			};
-			struct Tex1DArray
+				BufferViewDesc ret;
+				ret.buffer = buffer;
+				ret.offset = offset;
+				ret.element_count = element_count;
+				ret.format = element_format;
+				ret.element_size = 0;
+				return ret;
+			}
+			static BufferViewDesc as_structured_buffer(IBuffer* buffer, u64 offset, u32 element_count, u32 element_size)
 			{
-				u32  most_detailed_mip;
-				u32  mip_levels;
-				//! The index of the first texture to use in an array of textures.
-				u32  first_array_slice;
-				//! Number of textures in the array.
-				u32  array_size;
-				f32 resource_min_lod_clamp;
-			};
-			struct Tex2D
-			{
-				u32  most_detailed_mip;
-				u32  mip_levels;
-				f32 resource_min_lod_clamp;
-			};
-			struct Tex2DArray
-			{
-				u32  most_detailed_mip;
-				u32  mip_levels;
-				u32  first_array_slice;
-				u32  array_size;
-				f32 resource_min_lod_clamp;
-			};
-			struct Tex2DMS {};
-			struct Tex2DMSArray
-			{
-				u32  first_array_slice;
-				u32  array_size;
-			};
-			struct Tex3D
-			{
-				u32  most_detailed_mip;
-				u32  mip_levels;
-				f32 resource_min_lod_clamp;
-			};
-			struct TexCube
-			{
-				u32  most_detailed_mip;
-				u32  mip_levels;
-				f32 resource_min_lod_clamp;
-			};
-			struct TexCubeArray
-			{
-				u32  most_detailed_mip;
-				u32  mip_levels;
-				u32  first_2darray_face;
-				u32  num_cubes;
-				f32 resource_min_lod_clamp;
-			};
-		}
+				BufferViewDesc ret;
+				ret.buffer = buffer;
+				ret.offset = offset;
+				ret.element_count = element_count;
+				ret.format = Format::unknown;
+				ret.element_size = element_size;
+				return ret;
+			}
+		};
 
-		enum class ShaderResourceViewType
+		enum class TextureViewType : u8
 		{
-			unknown = 0,
-			buffer,
 			tex1d,
-			tex1darray,
 			tex2d,
-			tex2darray,
-			tex2dms,
-			tex2dmsarray,
 			tex3d,
 			texcube,
+			tex1darray,
+			tex2darray,
 			texcubearray
 		};
 
-		struct ShaderResourceViewDesc
+		struct TextureViewDesc
 		{
+			ITexture* texture;
+			TextureViewType type;
 			Format format;
-			ShaderResourceViewType type;
-			union
+			u32 mip_slice;
+			u32 mip_size;
+			u32 array_slice;
+			u32 array_size;
+			static TextureViewDesc as_tex1d(ITexture* texture, Format format = Format::unknown, u32 mip_slice = 0, u32 mip_size = U32_MAX)
 			{
-				srv::Buffer buffer;
-				srv::Tex1D tex1d;
-				srv::Tex1DArray tex1darray;
-				srv::Tex2D tex2d;
-				srv::Tex2DArray tex2darray;
-				srv::Tex2DMS tex2dms;
-				srv::Tex2DMSArray tex2dmsarray;
-				srv::Tex3D tex3d;
-				srv::TexCube texcube;
-				srv::TexCubeArray texcubearray;
-			};
-
-			static ShaderResourceViewDesc as_buffer(Format format, u64 offset, u32 count, u32 element_size, bool raw_view = false)
-			{
-				ShaderResourceViewDesc desc;
+				TextureViewDesc desc;
+				desc.texture = texture;
+				desc.type = TextureViewType::tex1d;
 				desc.format = format;
-				desc.type = ShaderResourceViewType::buffer;
-				desc.buffer.offset = offset;
-				desc.buffer.count = count;
-				desc.buffer.raw_view = raw_view;
-				desc.buffer.element_size = element_size;
+				desc.mip_slice = mip_slice;
+				desc.mip_size = mip_size;
+				desc.array_slice = 0;
+				desc.array_size = 1;
 				return desc;
 			}
-
-			static ShaderResourceViewDesc as_tex1d(Format format, u32 most_detailed_mip, u32 mip_levels, f32 resource_min_lod_clamp)
+			static TextureViewDesc as_tex1darray(ITexture* texture, Format format = Format::unknown, u32 mip_slice = 0, u32 mip_size = U32_MAX, u32 array_slice = 0, u32 array_size = U32_MAX)
 			{
-				ShaderResourceViewDesc desc;
+				TextureViewDesc desc;
+				desc.texture = texture;
+				desc.type = TextureViewType::tex1darray;
 				desc.format = format;
-				desc.type = ShaderResourceViewType::tex1d;
-				desc.tex1d.mip_levels = mip_levels;
-				desc.tex1d.most_detailed_mip = most_detailed_mip;
-				desc.tex1d.resource_min_lod_clamp = resource_min_lod_clamp;
+				desc.mip_slice = mip_slice;
+				desc.mip_size = mip_size;
+				desc.array_slice = array_slice;
+				desc.array_size = array_size;
 				return desc;
 			}
-
-			static ShaderResourceViewDesc as_tex1darray(Format format, u32 most_detailed_mip, u32 mip_levels, u32 first_array_slice, u32 array_size, f32 resource_min_lod_clamp)
+			static TextureViewDesc as_tex2d(ITexture* texture, Format format = Format::unknown, u32 mip_slice = 0, u32 mip_size = U32_MAX)
 			{
-				ShaderResourceViewDesc desc;
+				TextureViewDesc desc;
+				desc.texture = texture;
 				desc.format = format;
-				desc.type = ShaderResourceViewType::tex1darray;
-				desc.tex1darray.most_detailed_mip = most_detailed_mip;
-				desc.tex1darray.mip_levels = mip_levels;
-				desc.tex1darray.array_size = array_size;
-				desc.tex1darray.first_array_slice = first_array_slice;
-				desc.tex1darray.resource_min_lod_clamp = resource_min_lod_clamp;
+				desc.type = TextureViewType::tex2d;
+				desc.mip_slice = mip_slice;
+				desc.mip_size = mip_size;
+				desc.array_slice = 0;
+				desc.array_size = 1;
 				return desc;
 			}
-
-			static ShaderResourceViewDesc as_tex2d(Format format, u32  most_detailed_mip, u32  mip_levels, f32 resource_min_lod_clamp)
+			static TextureViewDesc as_tex2darray(ITexture* texture, Format format = Format::unknown, u32 mip_slice = 0, u32 mip_size = U32_MAX, u32 array_slice = 0, u32 array_size = U32_MAX)
 			{
-				ShaderResourceViewDesc desc;
+				TextureViewDesc desc;
+				desc.texture = texture;
 				desc.format = format;
-				desc.type = ShaderResourceViewType::tex2d;
-				desc.tex2d.most_detailed_mip = most_detailed_mip;
-				desc.tex2d.mip_levels = mip_levels;
-				desc.tex2d.resource_min_lod_clamp = resource_min_lod_clamp;
+				desc.type = TextureViewType::tex2darray;
+				desc.mip_slice = mip_slice;
+				desc.mip_size = mip_size;
+				desc.array_slice = array_slice;
+				desc.array_size = array_size;
 				return desc;
 			}
-
-			static ShaderResourceViewDesc as_tex2darray(Format format, u32 most_detailed_mip, u32 mip_levels, u32 first_array_slice, u32 array_size, f32 resource_min_lod_clamp)
+			static TextureViewDesc as_tex3d(ITexture* texture, Format format = Format::unknown, u32 mip_slice = 0, u32 mip_size = U32_MAX)
 			{
-				ShaderResourceViewDesc desc;
+				TextureViewDesc desc;
+				desc.texture = texture;
 				desc.format = format;
-				desc.type = ShaderResourceViewType::tex2darray;
-				desc.tex2darray.most_detailed_mip = most_detailed_mip;
-				desc.tex2darray.mip_levels = mip_levels;
-				desc.tex2darray.first_array_slice = first_array_slice;
-				desc.tex2darray.array_size = array_size;
-				desc.tex2darray.resource_min_lod_clamp = resource_min_lod_clamp;
+				desc.type = TextureViewType::tex3d;
+				desc.mip_slice = mip_slice;
+				desc.mip_size = mip_size;
+				desc.array_slice = 0;
+				desc.array_size = 1;
 				return desc;
 			}
-
-			static ShaderResourceViewDesc as_tex2dms(Format format)
+			static TextureViewDesc as_texcube(ITexture* texture, Format format = Format::unknown, u32 mip_slice = 0, u32 mip_size = U32_MAX)
 			{
-				ShaderResourceViewDesc desc;
+				TextureViewDesc desc;
+				desc.texture = texture;
 				desc.format = format;
-				desc.type = ShaderResourceViewType::tex2dms;
+				desc.type = TextureViewType::texcube;
+				desc.mip_slice = mip_slice;
+				desc.mip_size = mip_size;
+				desc.array_slice = 0;
+				desc.array_size = 6;
 				return desc;
 			}
-
-			static ShaderResourceViewDesc as_tex2dmsarray(Format format, u32 first_array_slice, u32 array_size)
+			static TextureViewDesc as_texcubearray(ITexture* texture, Format format = Format::unknown, u32 mip_slice = 0, u32 mip_size = U32_MAX, u32 array_slice = 0, u32 array_size = U32_MAX)
 			{
-				ShaderResourceViewDesc desc;
+				TextureViewDesc desc;
+				desc.texture = texture;
 				desc.format = format;
-				desc.type = ShaderResourceViewType::tex2dmsarray;
-				desc.tex2dmsarray.first_array_slice = first_array_slice;
-				desc.tex2dmsarray.array_size = array_size;
+				desc.type = TextureViewType::texcubearray;
+				desc.mip_slice = mip_slice;
+				desc.mip_size = mip_size;
+				desc.array_slice = array_slice;
+				desc.array_size = array_size;
 				return desc;
 			}
-
-			static ShaderResourceViewDesc as_tex3d(Format format, u32 most_detailed_mip, u32 mip_levels, f32 resource_min_lod_clamp)
-			{
-				ShaderResourceViewDesc desc;
-				desc.format = format;
-				desc.type = ShaderResourceViewType::tex3d;
-				desc.tex3d.most_detailed_mip = most_detailed_mip;
-				desc.tex3d.mip_levels = mip_levels;
-				desc.tex3d.resource_min_lod_clamp = resource_min_lod_clamp;
-				return desc;
-			}
-
-			static ShaderResourceViewDesc as_texcube(Format format, u32 most_detailed_mip, u32 mip_levels, f32 resource_min_lod_clamp)
-			{
-				ShaderResourceViewDesc desc;
-				desc.format = format;
-				desc.type = ShaderResourceViewType::texcube;
-				desc.texcube.mip_levels = mip_levels;
-				desc.texcube.most_detailed_mip = most_detailed_mip;
-				desc.texcube.resource_min_lod_clamp = resource_min_lod_clamp;
-				return desc;
-			}
-
-			static ShaderResourceViewDesc as_texcubearray(Format format, u32 most_detailed_mip, u32 mip_levels, u32 first_2d_array_face, u32 num_cubes, f32 resource_min_lod_clamp)
-			{
-				ShaderResourceViewDesc desc;
-				desc.format = format;
-				desc.type = ShaderResourceViewType::texcubearray;
-				desc.texcubearray.first_2darray_face = first_2d_array_face;
-				desc.texcubearray.mip_levels = mip_levels;
-				desc.texcubearray.most_detailed_mip = most_detailed_mip;
-				desc.texcubearray.num_cubes = num_cubes;
-				desc.texcubearray.resource_min_lod_clamp = resource_min_lod_clamp;
-				return desc;
-			}
-		};
-
-		namespace uav
-		{
-			struct Buffer
-			{
-				u64 offset;
-				u32 count;
-				u32 element_size;
-				u64 counter_offset_in_bytes;
-				bool raw_view;
-			};
-			struct Tex1D
-			{
-				u32 mip_slice;
-			};
-			struct Tex1DArray
-			{
-				u32 mip_slice;
-				u32 first_array_slice;
-				u32 array_size;
-			};
-			struct Tex2D
-			{
-				u32 mip_slice;
-			};
-			struct Tex2DArray
-			{
-				u32 mip_slice;
-				u32 first_array_slice;
-				u32 array_size;
-			};
-			struct Tex3D
-			{
-				u32 mip_slice;
-				u32 first_layer_slice;
-				u32 layer_size;
-			};
-		}
-
-		enum class UnorderedAccessViewType
-		{
-			unknown = 0,
-			buffer,
-			tex1d,
-			tex1darray,
-			tex2d,
-			tex2darray,
-			tex3d
-		};
-
-		struct UnorderedAccessViewDesc
-		{
-			Format format;
-			UnorderedAccessViewType type;
-			union
-			{
-				uav::Buffer buffer;
-				uav::Tex1D tex1d;
-				uav::Tex1DArray tex1darray;
-				uav::Tex2D tex2d;
-				uav::Tex2DArray tex2darray;
-				uav::Tex3D tex3d;
-			};
-
-			static UnorderedAccessViewDesc as_buffer(Format format, u64 offset, u32 count, u32 element_size, u64 counter_offset_in_bytes, bool raw_view)
-			{
-				UnorderedAccessViewDesc desc;
-				desc.format = format;
-				desc.type = UnorderedAccessViewType::buffer;
-				desc.buffer.offset = offset;
-				desc.buffer.count = count;
-				desc.buffer.element_size = element_size;
-				desc.buffer.counter_offset_in_bytes = counter_offset_in_bytes;
-				desc.buffer.raw_view = raw_view;
-				return desc;
-			}
-
-			static UnorderedAccessViewDesc as_tex1d(Format format, u32 mip_slice)
-			{
-				UnorderedAccessViewDesc desc;
-				desc.format = format;
-				desc.type = UnorderedAccessViewType::tex1d;
-				desc.tex1d.mip_slice = mip_slice;
-				return desc;
-			}
-
-			static UnorderedAccessViewDesc as_tex1darray(Format format, u32 mip_slice, u32 first_array_slice, u32 array_size)
-			{
-				UnorderedAccessViewDesc desc;
-				desc.format = format;
-				desc.type = UnorderedAccessViewType::tex1darray;
-				desc.tex1darray.array_size = array_size;
-				desc.tex1darray.first_array_slice = first_array_slice;
-				desc.tex1darray.mip_slice = mip_slice;
-				return desc;
-			}
-
-			static UnorderedAccessViewDesc as_tex2d(Format format, u32 mip_slice)
-			{
-				UnorderedAccessViewDesc desc;
-				desc.format = format;
-				desc.type = UnorderedAccessViewType::tex2d;
-				desc.tex2d.mip_slice = mip_slice;
-				return desc;
-			}
-
-			static UnorderedAccessViewDesc as_tex2darray(Format format, u32 mip_slice, u32 first_array_slice, u32 array_size)
-			{
-				UnorderedAccessViewDesc desc;
-				desc.format = format;
-				desc.type = UnorderedAccessViewType::tex2darray;
-				desc.tex2darray.array_size = array_size;
-				desc.tex2darray.first_array_slice = first_array_slice;
-				desc.tex2darray.mip_slice = mip_slice;
-				return desc;
-			}
-
-			static UnorderedAccessViewDesc as_tex3d(Format format, u32 mip_slice, u32 first_layer_slice, u32 layer_size)
-			{
-				UnorderedAccessViewDesc desc;
-				desc.format = format;
-				desc.type = UnorderedAccessViewType::tex3d;
-				desc.tex3d.first_layer_slice = first_layer_slice;
-				desc.tex3d.layer_size = layer_size;
-				desc.tex3d.mip_slice = mip_slice;
-				return desc;
-			}
-		};
-
-		struct ConstantBufferViewDesc
-		{
-			u64 offset;
-			u32 size;
-
-			ConstantBufferViewDesc() = default;
-			ConstantBufferViewDesc(u64 offset, u32 size) :
-				offset(offset), size(size) {}
 		};
 
 		enum class FilterMode : u32
@@ -495,8 +285,96 @@ namespace Luna
 				num_variable_descriptors(num_variable_descriptors) {}
 		};
 
-		LUNA_RHI_API ShaderResourceViewDesc get_default_srv_from_resource(IResource* resource);
-		LUNA_RHI_API UnorderedAccessViewDesc get_default_uav_from_resource(IResource* resource);
+		struct DescriptorDesc
+		{
+			DescriptorType type;
+			union
+			{
+				//! Used if `type` is `uniform_buffer_view`, `read_buffer_view` or `read_write_buffer_view`. 
+				BufferViewDesc buffer_view;
+				//! Used if `type` is `sampled_texture_view`, `read_texture_view` or `read_write_texture_view`.
+				TextureViewDesc texture_view;
+				//! Used if `type` is `sampler`.
+				SamplerDesc sampler;
+			};
+
+			static DescriptorDesc as_uniform_buffer_view(IBuffer* buffer, u64 offset, u32 size)
+			{
+				DescriptorDesc ret;
+				ret.type = DescriptorType::uniform_buffer_view;
+				ret.buffer_view = BufferViewDesc::as_uniform_buffer(buffer, offset, size);
+				return ret;
+			}
+			static DescriptorDesc as_read_buffer_view(const BufferViewDesc& desc)
+			{
+				DescriptorDesc ret;
+				ret.type = DescriptorType::read_buffer_view;
+				ret.buffer_view = desc;
+				return ret;
+			}
+			static DescriptorDesc as_read_write_buffer_view(const BufferViewDesc& desc)
+			{
+				DescriptorDesc ret;
+				ret.type = DescriptorType::read_write_buffer_view;
+				ret.buffer_view = desc;
+				return ret;
+			}
+			static DescriptorDesc as_sampled_texture_view(const TextureViewDesc& desc)
+			{
+				DescriptorDesc ret;
+				ret.type = DescriptorType::sampled_texture_view;
+				ret.texture_view = desc;
+				return ret;
+			}
+			static DescriptorDesc as_read_texture_view(const TextureViewDesc& desc)
+			{
+				DescriptorDesc ret;
+				ret.type = DescriptorType::read_texture_view;
+				ret.texture_view = desc;
+				return ret;
+			}
+			static DescriptorDesc as_read_write_texture_view(const TextureViewDesc& desc)
+			{
+				DescriptorDesc ret;
+				ret.type = DescriptorType::read_write_texture_view;
+				ret.texture_view = desc;
+				return ret;
+			}
+			static DescriptorDesc as_sampler(const SamplerDesc& desc)
+			{
+				DescriptorDesc ret;
+				ret.type = DescriptorType::sampler;
+				ret.sampler = desc;
+				return ret;
+			}
+		};
+
+		struct DescriptorSetWrite
+		{
+			u32 binding_slot;
+			u32 first_array_index;
+			Span<const DescriptorDesc> descs;
+
+			DescriptorSetWrite() = default;
+			DescriptorSetWrite(u32 binding_slot, const DescriptorDesc& desc) :
+				binding_slot(binding_slot),
+				first_array_index(0),
+				descs(&desc, 1) {}
+			DescriptorSetWrite(u32 binding_slot, u32 first_array_index, InitializerList<const DescriptorDesc> descs) :
+				binding_slot(binding_slot),
+				first_array_index(first_array_index),
+				descs(descs) {}
+		};
+
+		struct DescriptorSetCopy
+		{
+			IDescriptorSet* src;
+			u32 src_binding_slot;
+			u32 src_first_array_index;
+			u32 dst_binding_slot;
+			u32 dst_first_array_index;
+			u32 num_descs;
+		};
 
 		//! @interface IDescriptorSet
 		//! Describes which views and samples are bound to the pipeline.
@@ -506,14 +384,7 @@ namespace Luna
 		{
 			luiid("{f12bc4b0-2aad-42bb-8b8c-237ed0593aa3}");
 
-			virtual void set_cbv(u32 binding_slot, IResource* res, const ConstantBufferViewDesc& cbv) = 0;
-			virtual void set_cbv_array(u32 binding_slot, u32 offset, u32 num_descs, IResource** resources, const ConstantBufferViewDesc* descs) = 0;
-			virtual void set_srv(u32 binding_slot, IResource* res, const ShaderResourceViewDesc* srv = nullptr) = 0;
-			virtual void set_srv_array(u32 binding_slot, u32 offset, u32 num_descs, IResource** resources, const ShaderResourceViewDesc* descs) = 0;
-			virtual void set_uav(u32 binding_slot, IResource* res, IResource* counter_resource = nullptr, const UnorderedAccessViewDesc* uav = nullptr) = 0;
-			virtual void set_uav_array(u32 binding_slot, u32 offset, u32 num_descs, IResource** resources, IResource** counter_resources, const UnorderedAccessViewDesc* descs) = 0;
-			virtual void set_sampler(u32 binding_slot, const SamplerDesc& sampler) = 0;
-			virtual void set_sampler_array(u32 binding_slot, u32 offset, u32 num_samplers, const SamplerDesc* samplers) = 0;
+			virtual void update_descriptors(Span<const DescriptorSetWrite> writes, Span<const DescriptorSetCopy> copies) = 0;
 		};
 	}
 }

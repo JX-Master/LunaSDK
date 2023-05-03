@@ -17,22 +17,27 @@ namespace Luna
 		//! Specify the type of descriptors that can be placed in a descriptor set.
 		enum class DescriptorType : u32
 		{
-			//! Specifies texture shader resource view (SRV).
-			//! Such descriptor allows sampling the specified texture using samplers.
-			texture_srv,
-			//! Specifies buffer shader resource view (SRV).
-			//! Such descriptor allows reading buffer data, but not writing to it.
-			buffer_srv,
-			//! Specifies texture unordered access view (UAV). 
-			//! Such descriptor allows reading, writing and performing atomic operations on the texture pixels.
-			texture_uav,
-			//! Specifies buffer unordered access view (UAV).
-			//! Such descriptor allows reading, writing and performing atomic operations on the buffer data.
-			buffer_uav,
-			//! Specifies constant buffer view (CBV). 
-			//! Such descriptor allows reading data from one uniform buffer.
-			cbv,
+			//! Specifies uniform buffer view, which allows reading data from one uniform buffer.
+			//! This descriptor is supported in all shaders.
+			uniform_buffer_view,
+			//! Specifies read buffer view, which allows reading data from one structured buffer.
+			//! This descriptor is supported in all shaders.
+			read_buffer_view,
+			//! Speciifes read-write buffer view, which allows reading and writing data from one structured buffer.
+			//! This descriptor is supported in compute shader only.
+			read_write_buffer_view,
+			//! Specifies sampled texture view, which allows sampling texture data from the texture
+			//! using samplers.
+			//! This descriptor is supported in all shaders.
+			sampled_texture_view,
+			//! Specifies read texture view, which allows reading texture data using pixel coordinates directly.
+			//! This descriptor is supported in all shaders.
+			read_texture_view,
+			//! Specifies read-write texture view, which allows reading and writing texture data using pixel coordinates directly.
+			//! This descriptor is supported in compute shader only.
+			read_write_texture_view,
 			//! Specifies one sampler.
+			//! This descriptor is supported in all shaders.
 			sampler,
 		};
 

@@ -34,27 +34,31 @@ namespace Luna
 		};
 		struct ResourceCopyReadBufferDesc
 		{
+			IBuffer* src;
 			void* dest;
-			usize size;
 			u64 src_offset;
+			usize size;
 		};
 		struct ResourceCopyWriteBufferDesc
 		{
 			const void* src;
-			usize size;
+			IBuffer* dest;
 			u64 dest_offset;
+			usize size;
 		};
 		struct ResourceCopyReadTextureDesc
 		{
+			ITexture* src;
 			void* dest;
+			SubresourceIndex src_subresource;
 			u32 dest_row_pitch;
 			u32 dest_depth_pitch;
-			SubresourceIndex src_subresource;
 			BoxU read_box;
 		};
 		struct ResourceCopyWriteTextureDesc
 		{
 			const void* src;
+			ITexture* dest;
 			u32 src_row_pitch;
 			u32 src_depth_pitch;
 			SubresourceIndex dest_subresource;
@@ -63,7 +67,6 @@ namespace Luna
 		struct ResourceCopyDesc
 		{
 			ResourceCopyOp op;
-			IResource* resource;
 			union
 			{
 				ResourceCopyReadBufferDesc read_buffer;
@@ -71,31 +74,31 @@ namespace Luna
 				ResourceCopyReadTextureDesc read_texture;
 				ResourceCopyWriteTextureDesc write_texture;
 			};
-			static ResourceCopyDesc as_read_buffer(IResource* resource, void* dest, usize size, u64 src_offset)
+			static ResourceCopyDesc as_read_buffer(IBuffer* resource, void* dest, usize size, u64 src_offset)
 			{
 				ResourceCopyDesc r;
 				r.op = ResourceCopyOp::read_buffer;
-				r.resource = resource;
+				r.read_buffer.src = resource;
 				r.read_buffer.dest = dest;
 				r.read_buffer.size = size;
 				r.read_buffer.src_offset = src_offset;
 				return r;
 			}
-			static ResourceCopyDesc as_write_buffer(IResource* resource, const void* src, usize size, u64 dest_offset)
+			static ResourceCopyDesc as_write_buffer(IBuffer* resource, const void* src, usize size, u64 dest_offset)
 			{
 				ResourceCopyDesc r;
 				r.op = ResourceCopyOp::write_buffer;
-				r.resource = resource;
+				r.write_buffer.dest = resource;
 				r.write_buffer.src = src;
 				r.write_buffer.size = size;
 				r.write_buffer.dest_offset = dest_offset;
 				return r;
 			}
-			static ResourceCopyDesc as_read_texture(IResource* resource, void* dest, u32 dest_row_pitch, u32 dest_depth_pitch, const SubresourceIndex& src_subresource, const BoxU& read_box)
+			static ResourceCopyDesc as_read_texture(ITexture* resource, void* dest, u32 dest_row_pitch, u32 dest_depth_pitch, const SubresourceIndex& src_subresource, const BoxU& read_box)
 			{
 				ResourceCopyDesc r;
 				r.op = ResourceCopyOp::read_texture;
-				r.resource = resource;
+				r.read_texture.src = resource;
 				r.read_texture.dest = dest;
 				r.read_texture.dest_row_pitch = dest_row_pitch;
 				r.read_texture.dest_depth_pitch = dest_depth_pitch;
@@ -103,11 +106,11 @@ namespace Luna
 				r.read_texture.read_box = read_box;
 				return r;
 			}
-			static ResourceCopyDesc as_write_texture(IResource* resource, const void* src, u32 src_row_pitch, u32 src_depth_pitch, const SubresourceIndex& dest_subresource, const BoxU& write_box)
+			static ResourceCopyDesc as_write_texture(ITexture* resource, const void* src, u32 src_row_pitch, u32 src_depth_pitch, const SubresourceIndex& dest_subresource, const BoxU& write_box)
 			{
 				ResourceCopyDesc r;
 				r.op = ResourceCopyOp::write_texture;
-				r.resource = resource;
+				r.write_texture.dest = resource;
 				r.write_texture.src = src;
 				r.write_texture.src_row_pitch = src_row_pitch;
 				r.write_texture.src_depth_pitch = src_depth_pitch;
@@ -147,37 +150,56 @@ namespace Luna
 			virtual void get_texture_data_placement_info(u32 width, u32 height, u32 depth, Format format,
 				u64* size = nullptr, u64* alignment = nullptr, u64* row_pitch = nullptr, u64* slice_pitch = nullptr) = 0;
 
-			//! Creates one new resource and allocates device memory for the resource.
+			//! Creates one new buffer resource and allocates device memory for the resource.
 			//! @param[in] desc The descriptor object.
-			//! @param[in] optimized_clear_value The optional optimized clear value for a texture resource. Specify `nullptr` if this is a buffer
-			//! resource or the resource does not have a optimized clear value.
-			virtual R<Ref<IResource>> new_resource(const ResourceDesc& desc, const ClearValue* optimized_clear_value = nullptr) = 0;
+			virtual R<Ref<IBuffer>> new_buffer(const BufferDesc& desc) = 0;
+
+			//! Creates one new texture resource and allocates device memory for the resource.
+			//! @param[in] desc The descriptor object.
+			//! @param[in] optimized_clear_value The optional optimized clear value for a texture resource. Specify `nullptr` if 
+			//! the resource does not have a optimized clear value.
+			virtual R<Ref<ITexture>> new_texture(const TextureDesc& desc, const ClearValue* optimized_clear_value = nullptr) = 0;
 
 			//! Checks whether the given resources can share the same device memory.
-			//! @param[in] descs The resource descriptors of resources being examined.
+			//! @param[in] buffers The buffer descriptors of resources being examined.
+			//! @param[in] textures The texture descriptors of resources being examined.
 			//! @return Returns `true` if such resources can share the same device memory, returns `false` otherwise.
-			virtual bool is_resources_aliasing_compatible(Span<const ResourceDesc> descs) = 0;
+			virtual bool is_resources_aliasing_compatible(Span<const BufferDesc> buffers, Span<const TextureDesc> textures) = 0;
 
-			//! Creates one aliasing resource that shares the same device memory with the existing resource.
+			//! Creates one aliasing buffer that shares the same device memory with the existing resource.
 			//! The user may create multiple aliasing resources with the same device memory, given that only one of them is active at any given time.
 			//! The user should use aliasing barrier to switch the active resource between aliasing resources sharing the same device memory.
-			virtual R<Ref<IResource>> new_aliasing_resource(IResource* existing_resource, const ResourceDesc& desc, const ClearValue* optimized_clear_value = nullptr) = 0;
+			virtual R<Ref<IBuffer>> new_aliasing_buffer(IResource* existing_resource, const BufferDesc& desc) = 0;
+
+			//! Creates one aliasing texture that shares the same device memory with the existing resource.
+			//! The user may create multiple aliasing resources with the same device memory, given that only one of them is active at any given time.
+			//! The user should use aliasing barrier to switch the active resource between aliasing resources sharing the same device memory.
+			virtual R<Ref<ITexture>> new_aliasing_texture(IResource* existing_resource, const TextureDesc& desc, const ClearValue* optimized_clear_value = nullptr) = 0;
 
 			//! Allocates device memory that is capable of storing multiple resources specified, and creating multiple aliasing resources 
 			//! that shares the same device memory.
-			//! @param[in] descs The resource descriptors of resources that shares the same device memory.
-			//! @param[in] optimized_clear_values The optimized clear values for each resource you want to create.
+			//! @param[in] buffers The buffer descriptors of buffer resources that shares the same device memory.
+			//! @param[in] textures The texture descriptors of texture resources that shares the same device memory.
+			//! @param[in] optimized_clear_values The optimized clear values for each texture you want to create.
 			//! 
 			//! Every entry in the span can be `nullptr`, which indicates that the optimized clear value is not specified for that entry.
 			//! 
-			//! If `optimized_clear_values.size()` is smaller than `descs.size()`, the optimized clear values of first `descs.size()` enties will be specified, other enties 
+			//! If `optimized_clear_values.size()` is smaller than `textures.size()`, the optimized clear values of first `textures.size()` enties will be specified, other enties 
 			//! will have no optimized clear value specified.
-			//! @param[out] out_resources Returns the creates resources. 
+			//! @param[out] out_buffers Returns the created buffer resources, one for each entry in `buffers`.
 			//! 
-			//! `out_resources.size()` must be greater than or equal to `descs.size()`, and the first `descs.size()` of `out_resources` will be filled.
+			//! `out_buffers.size()` must be greater than or equal to `buffers.size()`, and the first `buffers.size()` count of `out_buffers` will be filled.
+			//! @param[out] out_textures Returns the created texture resources, one for each entry in `textures`.
+			//! 
+			//! `out_textures.size()` must be greater than or equal to `textures.size()`, and the first `textures.size()` count of `out_textures` will be filled.
 			//! @remark The user can call `is_resources_aliasing_compatible` before calling `new_aliasing_resources` to check whether the given 
 			//! resources can share the same device memory.
-			virtual RV new_aliasing_resources(Span<const ResourceDesc> descs, Span<const ClearValue*> optimized_clear_values, Span<Ref<IResource>> out_resources) = 0;
+			virtual RV new_aliasing_resources(
+				Span<const BufferDesc> buffers,
+				Span<const TextureDesc> textures,
+				Span<const ClearValue*> optimized_clear_values, 
+				Span<Ref<IBuffer>> out_buffers,
+				Span<Ref<ITexture>> out_textures) = 0;
 
 			//! Creates one new shader input layout.
 			virtual R<Ref<IShaderInputLayout>> new_shader_input_layout(const ShaderInputLayoutDesc& desc) = 0;
@@ -201,11 +223,11 @@ namespace Luna
 			//! Creates one new command queue.
 			virtual R<Ref<ICommandQueue>> new_command_queue(const CommandQueueDesc& desc) = 0;
 
-			virtual R<Ref<IRenderTargetView>> new_render_target_view(IResource* resource, const RenderTargetViewDesc* desc = nullptr) = 0;
+			virtual R<Ref<IRenderTargetView>> new_render_target_view(ITexture* resource, const RenderTargetViewDesc* desc = nullptr) = 0;
 
-			virtual R<Ref<IDepthStencilView>> new_depth_stencil_view(IResource* resource, const DepthStencilViewDesc* desc = nullptr) = 0;
+			virtual R<Ref<IDepthStencilView>> new_depth_stencil_view(ITexture* resource, const DepthStencilViewDesc* desc = nullptr) = 0;
 
-			virtual R<Ref<IResolveTargetView>> new_resolve_target_view(IResource* resource, const ResolveTargetViewDesc* desc = nullptr) = 0;
+			virtual R<Ref<IResolveTargetView>> new_resolve_target_view(ITexture* resource, const ResolveTargetViewDesc* desc = nullptr) = 0;
 		
 			virtual R<Ref<IQueryHeap>> new_query_heap(const QueryHeapDesc& desc) = 0;
 

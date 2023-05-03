@@ -13,35 +13,33 @@ namespace Luna
 {
 	namespace RHI
 	{
-		static R<RenderTargetViewDesc> get_default_rtv(IResource* res)
+		static R<RenderTargetViewDesc> get_default_rtv(ITexture* res)
 		{
-			ResourceDesc d = res->get_desc();
+			TextureDesc d = res->get_desc();
 			switch (d.type)
 			{
-			case ResourceType::buffer:
-				return BasicError::bad_arguments();
-			case ResourceType::texture_1d:
-				return (d.depth_or_array_size) == 1 ?
+			case TextureType::texture_1d:
+				return (d.array_size) == 1 ?
 					RenderTargetViewDesc::as_tex1d(d.pixel_format, 0) :
-					RenderTargetViewDesc::as_tex1darray(d.pixel_format, 0, 0, d.depth_or_array_size);
-			case ResourceType::texture_2d:
-				return (d.depth_or_array_size == 1) ?
+					RenderTargetViewDesc::as_tex1darray(d.pixel_format, 0, 0, d.array_size);
+			case TextureType::texture_2d:
+				return (d.array_size == 1) ?
 					((d.sample_count == 1) ?
 						RenderTargetViewDesc::as_tex2d(d.pixel_format, 0) :
 						RenderTargetViewDesc::as_tex2dms(d.pixel_format)) :
 					((d.sample_count == 1) ?
-						RenderTargetViewDesc::as_tex2darray(d.pixel_format, 0, 0, d.depth_or_array_size) :
-						RenderTargetViewDesc::as_tex2dmsarray(d.pixel_format, 0, d.depth_or_array_size)
+						RenderTargetViewDesc::as_tex2darray(d.pixel_format, 0, 0, d.array_size) :
+						RenderTargetViewDesc::as_tex2dmsarray(d.pixel_format, 0, d.array_size)
 						);
-			case ResourceType::texture_3d:
-				return RenderTargetViewDesc::as_tex3d(d.pixel_format, 0, 0, d.depth_or_array_size);
+			case TextureType::texture_3d:
+				return RenderTargetViewDesc::as_tex3d(d.pixel_format, 0, 0, d.depth);
 			default:
 				lupanic();
 				break;
 			}
 			return BasicError::failure();
 		}
-		RV RenderTargetView::init(IResource* resource, const RenderTargetViewDesc* desc)
+		RV RenderTargetView::init(ITexture* resource, const RenderTargetViewDesc* desc)
 		{
 			lutry
 			{

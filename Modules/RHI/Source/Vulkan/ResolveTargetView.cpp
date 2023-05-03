@@ -13,7 +13,7 @@ namespace Luna
 {
 	namespace RHI
 	{
-		RV ResolveTargetView::init(IResource* resource, const ResolveTargetViewDesc* desc)
+		RV ResolveTargetView::init(ITexture* resource, const ResolveTargetViewDesc* desc)
 		{
 			lutry
 			{

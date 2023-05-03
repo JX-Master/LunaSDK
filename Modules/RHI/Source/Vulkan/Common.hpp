@@ -284,89 +284,51 @@ namespace Luna
 		{
 			return 1 + (u32)floorf(log2f((f32)max(width, max(height, depth))));
 		}
-		inline ResourceDesc validate_resource_desc(const ResourceDesc& desc)
-		{
-			ResourceDesc ret = desc;
-			if (ret.type == ResourceType::buffer)
-			{
-				ret.pixel_format = Format::unknown;
-				ret.height = 1;
-				ret.depth_or_array_size = 1;
-				ret.mip_levels = 1;
-				ret.sample_count = 1;
-				ret.sample_quality = 0;
-			}
-			else if (ret.type == ResourceType::texture_1d)
-			{
-				ret.height = 1;
-				ret.sample_count = 1;
-				ret.sample_quality = 0;
-			}
-			else if (ret.type == ResourceType::texture_3d)
-			{
-				ret.sample_count = 1;
-				ret.sample_quality = 0;
-			}
-			if (!ret.mip_levels)
-			{
-				if (ret.type != ResourceType::texture_3d)
-				{
-					ret.mip_levels = calc_mip_levels((u32)desc.width_or_buffer_size, desc.height, 1);
-				}
-				else
-				{
-					ret.mip_levels = calc_mip_levels((u32)desc.width_or_buffer_size, desc.height, desc.depth_or_array_size);
-				}
-			}
-			return ret;
-		}
-		inline void encode_buffer_create_info(VkBufferCreateInfo& dest, const ResourceDesc& validated_desc)
+		inline void encode_buffer_create_info(VkBufferCreateInfo& dest, const BufferDesc& desc)
 		{
 			dest.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-			dest.size = validated_desc.width_or_buffer_size;
+			dest.size = desc.size;
 			dest.usage = 0;
-			if (test_flags(validated_desc.usages, ResourceUsageFlag::copy_source)) dest.usage |= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-			if (test_flags(validated_desc.usages, ResourceUsageFlag::copy_dest)) dest.usage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-			if (test_flags(validated_desc.usages, ResourceUsageFlag::shader_resource)) dest.usage |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-			if (test_flags(validated_desc.usages, ResourceUsageFlag::constant_buffer)) dest.usage |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-			if (test_flags(validated_desc.usages, ResourceUsageFlag::unordered_access)) dest.usage |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-			if (test_flags(validated_desc.usages, ResourceUsageFlag::index_buffer)) dest.usage |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
-			if (test_flags(validated_desc.usages, ResourceUsageFlag::vertex_buffer)) dest.usage |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-			if (test_flags(validated_desc.usages, ResourceUsageFlag::indirect_buffer)) dest.usage |= VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
+			if (test_flags(desc.usages, BufferUsageFlag::copy_source)) dest.usage |= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+			if (test_flags(desc.usages, BufferUsageFlag::copy_dest)) dest.usage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+			if (test_flags(desc.usages, BufferUsageFlag::read_buffer)) dest.usage |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+			if (test_flags(desc.usages, BufferUsageFlag::uniform_buffer)) dest.usage |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+			if (test_flags(desc.usages, BufferUsageFlag::read_write_buffer)) dest.usage |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+			if (test_flags(desc.usages, BufferUsageFlag::index_buffer)) dest.usage |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+			if (test_flags(desc.usages, BufferUsageFlag::vertex_buffer)) dest.usage |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+			if (test_flags(desc.usages, BufferUsageFlag::indirect_buffer)) dest.usage |= VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
 			dest.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 		}
-		inline void encode_image_create_info(VkImageCreateInfo& dest, const ResourceDesc& validated_desc)
+		inline void encode_image_create_info(VkImageCreateInfo& dest, const TextureDesc& desc)
 		{
 			dest.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-			switch (validated_desc.type)
+			switch (desc.type)
 			{
-			case ResourceType::texture_1d:
+			case TextureType::tex1d:
 				dest.imageType = VK_IMAGE_TYPE_1D; break;
-			case ResourceType::texture_2d:
+			case TextureType::tex2d:
 				dest.imageType = VK_IMAGE_TYPE_2D; break;
-			case ResourceType::texture_3d:
+			case TextureType::tex3d:
 				dest.imageType = VK_IMAGE_TYPE_3D; break;
 			default: lupanic();
 			}
-			dest.extent.width = (u32)validated_desc.width_or_buffer_size;
-			dest.extent.height =
-				(validated_desc.type == ResourceType::texture_2d || validated_desc.type == ResourceType::texture_3d) ? validated_desc.height : 1;
-			dest.extent.depth = validated_desc.type == ResourceType::texture_3d ? validated_desc.depth_or_array_size : 1;
-			dest.mipLevels = validated_desc.mip_levels;
-			dest.arrayLayers =
-				(validated_desc.type == ResourceType::texture_1d || validated_desc.type == ResourceType::texture_2d) ?
-				validated_desc.depth_or_array_size : 1;
-			dest.format = encode_format(validated_desc.pixel_format);
+			dest.extent.width = desc.width;
+			dest.extent.height = desc.height;
+			dest.extent.depth = desc.depth;
+			dest.mipLevels = desc.mip_levels;
+			dest.arrayLayers = desc.array_size;
+			dest.format = encode_format(desc.pixel_format);
 			dest.tiling = VK_IMAGE_TILING_OPTIMAL;
 			dest.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 			dest.usage = 0;
-			if (test_flags(validated_desc.usages, ResourceUsageFlag::copy_source)) dest.usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
-			if (test_flags(validated_desc.usages, ResourceUsageFlag::copy_dest)) dest.usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-			if (test_flags(validated_desc.usages, ResourceUsageFlag::shader_resource)) dest.usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
-			if (test_flags(validated_desc.usages, ResourceUsageFlag::unordered_access)) dest.usage |= VK_IMAGE_USAGE_STORAGE_BIT;
-			if (test_flags(validated_desc.usages, ResourceUsageFlag::render_target)) dest.usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-			if (test_flags(validated_desc.usages, ResourceUsageFlag::depth_stencil)) dest.usage |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-			dest.samples = encode_sample_count(validated_desc.sample_count);
+			if (test_flags(desc.usages, TextureUsageFlag::copy_source)) dest.usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+			if (test_flags(desc.usages, TextureUsageFlag::copy_dest)) dest.usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+			if (test_flags(desc.usages, TextureUsageFlag::sampled_texture)) dest.usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
+			if (test_flags(desc.usages, TextureUsageFlag::read_texture) ||
+				test_flags(desc.usages, TextureUsageFlag::read_write_texture)) dest.usage |= VK_IMAGE_USAGE_STORAGE_BIT;
+			if (test_flags(desc.usages, TextureUsageFlag::render_target)) dest.usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+			if (test_flags(desc.usages, TextureUsageFlag::depth_stencil)) dest.usage |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+			dest.samples = encode_sample_count(desc.sample_count);
 			dest.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 		}
 		inline void encode_allocation_info(VmaAllocationCreateInfo& dest, ResourceHeapType heap_type)
@@ -388,146 +350,127 @@ namespace Luna
 				break;
 			}
 		}
-		inline VkAccessFlags encode_access_flags(ResourceStateFlag state)
+		inline VkAccessFlags encode_access_flags(BufferStateFlag state)
 		{
 			VkAccessFlags f = 0;
-			if (state == ResourceStateFlag::undefined) return 0;
-			if (test_flags(state, ResourceStateFlag::indirect_argument)) f |= VK_ACCESS_INDIRECT_COMMAND_READ_BIT;
-			if (test_flags(state, ResourceStateFlag::vertex_buffer)) f |= VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
-			if (test_flags(state, ResourceStateFlag::index_buffer)) f |= VK_ACCESS_INDEX_READ_BIT;
-			if (test_flags(state, ResourceStateFlag::constant_buffer_vs) ||
-				test_flags(state, ResourceStateFlag::constant_buffer_ps) ||
-				test_flags(state, ResourceStateFlag::constant_buffer_cs)) f |= VK_ACCESS_UNIFORM_READ_BIT;
-			if (test_flags(state, ResourceStateFlag::shader_resource_vs) ||
-				test_flags(state, ResourceStateFlag::shader_resource_ps) ||
-				test_flags(state, ResourceStateFlag::shader_resource_cs) ||
-				test_flags(state, ResourceStateFlag::unordered_access_read_ps) ||
-				test_flags(state, ResourceStateFlag::unordered_access_read_cs)) f |= VK_ACCESS_SHADER_READ_BIT;
-			if (test_flags(state, ResourceStateFlag::unordered_access_write_ps) ||
-				test_flags(state, ResourceStateFlag::unordered_access_write_cs)) f |= VK_ACCESS_SHADER_WRITE_BIT;
-			if (test_flags(state, ResourceStateFlag::color_attachment_read)) f |= VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
-			if (test_flags(state, ResourceStateFlag::color_attachment_write) ||
-				test_flags(state, ResourceStateFlag::resolve_attachment)) f |= VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-			if (test_flags(state, ResourceStateFlag::depth_stencil_attachment_read)) f |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
-			if (test_flags(state, ResourceStateFlag::depth_stencil_attachment_write)) f |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-			if (test_flags(state, ResourceStateFlag::copy_dest)) f |= VK_ACCESS_TRANSFER_WRITE_BIT;
-			if (test_flags(state, ResourceStateFlag::copy_source)) f |= VK_ACCESS_TRANSFER_READ_BIT;
+			if (state == BufferStateFlag::undefined) return 0;
+			if (test_flags(state, BufferStateFlag::indirect_argument)) f |= VK_ACCESS_INDIRECT_COMMAND_READ_BIT;
+			if (test_flags(state, BufferStateFlag::vertex_buffer)) f |= VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
+			if (test_flags(state, BufferStateFlag::index_buffer)) f |= VK_ACCESS_INDEX_READ_BIT;
+			if (test_flags(state, BufferStateFlag::uniform_buffer_vs) ||
+				test_flags(state, BufferStateFlag::uniform_buffer_ps) ||
+				test_flags(state, BufferStateFlag::uniform_buffer_cs)) f |= VK_ACCESS_UNIFORM_READ_BIT;
+			if (test_flags(state, BufferStateFlag::shader_read_vs) ||
+				test_flags(state, BufferStateFlag::shader_read_ps) ||
+				test_flags(state, BufferStateFlag::shader_read_cs)) f |= VK_ACCESS_SHADER_READ_BIT;
+			if (test_flags(state, BufferStateFlag::shader_write_cs)) f |= VK_ACCESS_SHADER_WRITE_BIT;
+			if (test_flags(state, BufferStateFlag::copy_dest)) f |= VK_ACCESS_TRANSFER_WRITE_BIT;
+			if (test_flags(state, BufferStateFlag::copy_source)) f |= VK_ACCESS_TRANSFER_READ_BIT;
 			return f;
 		}
-		inline VkImageLayout encode_image_layout(ResourceStateFlag state)
+		inline VkAccessFlags encode_access_flags(TextureStateFlag state)
 		{
-			if (state == ResourceStateFlag::undefined) return VK_IMAGE_LAYOUT_UNDEFINED;
-			if (test_flags(state, ResourceStateFlag::color_attachment_read) ||
-				test_flags(state, ResourceStateFlag::color_attachment_write) ||
-				test_flags(state, ResourceStateFlag::resolve_attachment))
+			VkAccessFlags f = 0;
+			if (state == TextureStateFlag::undefined) return 0;
+			if (test_flags(state, TextureStateFlag::shader_read_vs) ||
+				test_flags(state, TextureStateFlag::shader_read_ps) ||
+				test_flags(state, TextureStateFlag::shader_read_cs)) f |= VK_ACCESS_SHADER_READ_BIT;
+			if (test_flags(state, TextureStateFlag::shader_write_cs)) f |= VK_ACCESS_SHADER_WRITE_BIT;
+			if (test_flags(state, TextureStateFlag::color_attachment_read)) f |= VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
+			if (test_flags(state, TextureStateFlag::color_attachment_write) ||
+				test_flags(state, TextureStateFlag::resolve_attachment)) f |= VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+			if (test_flags(state, TextureStateFlag::depth_stencil_attachment_read)) f |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+			if (test_flags(state, TextureStateFlag::depth_stencil_attachment_write)) f |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+			if (test_flags(state, TextureStateFlag::copy_dest)) f |= VK_ACCESS_TRANSFER_WRITE_BIT;
+			if (test_flags(state, TextureStateFlag::copy_source)) f |= VK_ACCESS_TRANSFER_READ_BIT;
+			return f;
+		}
+		inline VkImageLayout encode_image_layout(TextureStateFlag state)
+		{
+			if (state == TextureStateFlag::undefined) return VK_IMAGE_LAYOUT_UNDEFINED;
+			if (test_flags(state, TextureStateFlag::color_attachment_read) ||
+				test_flags(state, TextureStateFlag::color_attachment_write) ||
+				test_flags(state, TextureStateFlag::resolve_attachment))
 			{
 				return VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 			}
 			// This must appear before depth_stencil_read case to handle read and write flags.
-			if (test_flags(state, ResourceStateFlag::depth_stencil_attachment_write))
+			if (test_flags(state, TextureStateFlag::depth_stencil_attachment_write))
 			{
 				return VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 			}
-			if (test_flags(state, ResourceStateFlag::depth_stencil_attachment_read))
+			if (test_flags(state, TextureStateFlag::depth_stencil_attachment_read))
 			{
 				return VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
 			}
-			if (test_flags(state, ResourceStateFlag::shader_resource_vs) ||
-				test_flags(state, ResourceStateFlag::shader_resource_ps) ||
-				test_flags(state, ResourceStateFlag::shader_resource_cs))
+			if (test_flags(state, TextureStateFlag::shader_read_vs) ||
+				test_flags(state, TextureStateFlag::shader_read_ps) ||
+				test_flags(state, TextureStateFlag::shader_read_cs))
 			{
 				return VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 			}
-			if (test_flags(state, ResourceStateFlag::copy_dest))
+			if (test_flags(state, TextureStateFlag::copy_dest))
 			{
 				return VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 			}
-			if (test_flags(state, ResourceStateFlag::copy_source))
+			if (test_flags(state, TextureStateFlag::copy_source))
 			{
 				return VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
 			}
 			return VK_IMAGE_LAYOUT_GENERAL;
 		}
-		VkPipelineStageFlags determine_pipeline_stage_flags(ResourceStateFlag state, CommandQueueType queue_type)
+		VkPipelineStageFlags determine_pipeline_stage_flags(BufferStateFlag state, CommandQueueType queue_type)
 		{
-			if (state == ResourceStateFlag::undefined) return 0;
+			if (state == BufferStateFlag::undefined) return 0;
 			VkPipelineStageFlags flags = 0;
 
 			switch (queue_type)
 			{
 			case CommandQueueType::graphics:
 			{
-				if (test_flags(state, ResourceStateFlag::vertex_buffer) ||
-					test_flags(state, ResourceStateFlag::index_buffer))
+				if (test_flags(state, BufferStateFlag::vertex_buffer) ||
+					test_flags(state, BufferStateFlag::index_buffer))
 				{
 					flags |= VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
 				}
-				if (test_flags(state, ResourceStateFlag::constant_buffer_vs) ||
-					test_flags(state, ResourceStateFlag::shader_resource_vs))
+				if (test_flags(state, BufferStateFlag::uniform_buffer_vs) ||
+					test_flags(state, BufferStateFlag::shader_read_vs))
 				{
 					flags |= VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
 				}
-				if (test_flags(state, ResourceStateFlag::constant_buffer_ps) ||
-					test_flags(state, ResourceStateFlag::shader_resource_ps) ||
-					test_flags(state, ResourceStateFlag::unordered_access_read_ps) ||
-					test_flags(state, ResourceStateFlag::unordered_access_write_ps))
+				if (test_flags(state, BufferStateFlag::uniform_buffer_ps) ||
+					test_flags(state, BufferStateFlag::shader_read_ps))
 				{
 					flags |= VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
 				}
-				if (test_flags(state, ResourceStateFlag::constant_buffer_cs) ||
-					test_flags(state, ResourceStateFlag::shader_resource_cs) ||
-					test_flags(state, ResourceStateFlag::unordered_access_read_cs) ||
-					test_flags(state, ResourceStateFlag::unordered_access_write_cs))
+				if (test_flags(state, BufferStateFlag::uniform_buffer_cs) ||
+					test_flags(state, BufferStateFlag::shader_read_cs) ||
+					test_flags(state, BufferStateFlag::shader_write_cs))
 				{
 					flags |= VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
-				}
-				if (test_flags(state, ResourceStateFlag::color_attachment_read) ||
-					test_flags(state, ResourceStateFlag::color_attachment_write) ||
-					test_flags(state, ResourceStateFlag::resolve_attachment))
-				{
-					flags |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-				}
-				if (test_flags(state, ResourceStateFlag::depth_stencil_attachment_read) ||
-					test_flags(state, ResourceStateFlag::depth_stencil_attachment_write))
-				{
-					flags |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
 				}
 				break;
 			}
 			case CommandQueueType::compute:
 			{
-				if (test_flags(state, ResourceStateFlag::vertex_buffer) ||
-					test_flags(state, ResourceStateFlag::index_buffer))
+				if (test_flags(state, BufferStateFlag::vertex_buffer) ||
+					test_flags(state, BufferStateFlag::index_buffer))
 				{
 					flags |= VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
 				}
-				if (test_flags(state, ResourceStateFlag::constant_buffer_vs) ||
-					test_flags(state, ResourceStateFlag::shader_resource_vs))
+				if (test_flags(state, BufferStateFlag::uniform_buffer_vs) ||
+					test_flags(state, BufferStateFlag::shader_read_vs))
 				{
 					flags |= VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
 				}
-				if (test_flags(state, ResourceStateFlag::constant_buffer_ps) ||
-					test_flags(state, ResourceStateFlag::shader_resource_ps) ||
-					test_flags(state, ResourceStateFlag::unordered_access_read_ps) ||
-					test_flags(state, ResourceStateFlag::unordered_access_write_ps))
+				if (test_flags(state, BufferStateFlag::uniform_buffer_ps) ||
+					test_flags(state, BufferStateFlag::shader_read_ps))
 				{
 					flags |= VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
 				}
-				if (test_flags(state, ResourceStateFlag::color_attachment_read) ||
-					test_flags(state, ResourceStateFlag::color_attachment_write) ||
-					test_flags(state, ResourceStateFlag::resolve_attachment))
-				{
-					flags |= VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
-				}
-				if (test_flags(state, ResourceStateFlag::depth_stencil_attachment_read) ||
-					test_flags(state, ResourceStateFlag::depth_stencil_attachment_write))
-				{
-					flags |= VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
-				}
-				if (test_flags(state, ResourceStateFlag::constant_buffer_cs) ||
-					test_flags(state, ResourceStateFlag::shader_resource_cs) ||
-					test_flags(state, ResourceStateFlag::unordered_access_read_cs) ||
-					test_flags(state, ResourceStateFlag::unordered_access_write_cs))
+				if (test_flags(state, BufferStateFlag::uniform_buffer_cs) ||
+					test_flags(state, BufferStateFlag::shader_read_cs) ||
+					test_flags(state, BufferStateFlag::shader_write_cs))
 				{
 					flags |= VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
 				}
@@ -538,12 +481,87 @@ namespace Luna
 			default: break;
 			}
 			// Compatible with both compute and graphics queues
-			if (test_flags(state, ResourceStateFlag::indirect_argument))
+			if (test_flags(state, BufferStateFlag::indirect_argument))
 			{
 				flags |= VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT;
 			}
-			if (test_flags(state, ResourceStateFlag::copy_dest) ||
-				test_flags(state, ResourceStateFlag::copy_source))
+			if (test_flags(state, BufferStateFlag::copy_dest) ||
+				test_flags(state, BufferStateFlag::copy_source))
+			{
+				flags |= VK_PIPELINE_STAGE_TRANSFER_BIT;
+			}
+			return flags;
+		}
+		VkPipelineStageFlags determine_pipeline_stage_flags(TextureStateFlag state, CommandQueueType queue_type)
+		{
+			if (state == TextureStateFlag::undefined) return 0;
+			VkPipelineStageFlags flags = 0;
+
+			switch (queue_type)
+			{
+			case CommandQueueType::graphics:
+			{
+				if (test_flags(state, TextureStateFlag::shader_read_vs))
+				{
+					flags |= VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
+				}
+				if (test_flags(state, TextureStateFlag::shader_read_ps))
+				{
+					flags |= VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+				}
+				if (test_flags(state, TextureStateFlag::shader_read_cs) ||
+					test_flags(state, TextureStateFlag::shader_write_cs))
+				{
+					flags |= VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+				}
+				if (test_flags(state, TextureStateFlag::color_attachment_read) ||
+					test_flags(state, TextureStateFlag::color_attachment_write) ||
+					test_flags(state, TextureStateFlag::resolve_attachment))
+				{
+					flags |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+				}
+				if (test_flags(state, TextureStateFlag::depth_stencil_attachment_read) ||
+					test_flags(state, TextureStateFlag::depth_stencil_attachment_write))
+				{
+					flags |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+				}
+				break;
+			}
+			case CommandQueueType::compute:
+			{
+				if (test_flags(state, TextureStateFlag::shader_read_vs))
+				{
+					flags |= VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+				}
+				if (test_flags(state, TextureStateFlag::shader_read_ps))
+				{
+					flags |= VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+				}
+				if (test_flags(state, TextureStateFlag::color_attachment_read) ||
+					test_flags(state, TextureStateFlag::color_attachment_write) ||
+					test_flags(state, TextureStateFlag::resolve_attachment))
+				{
+					flags |= VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+				}
+				if (test_flags(state, TextureStateFlag::depth_stencil_attachment_read) ||
+					test_flags(state, TextureStateFlag::depth_stencil_attachment_write))
+				{
+					flags |= VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+				}
+				if (test_flags(state, TextureStateFlag::shader_read_cs) ||
+					test_flags(state, TextureStateFlag::shader_write_cs))
+				{
+					flags |= VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+				}
+				break;
+			}
+			case CommandQueueType::copy:
+				return VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+			default: break;
+			}
+			// Compatible with both compute and graphics queues
+			if (test_flags(state, TextureStateFlag::copy_dest) ||
+				test_flags(state, TextureStateFlag::copy_source))
 			{
 				flags |= VK_PIPELINE_STAGE_TRANSFER_BIT;
 			}

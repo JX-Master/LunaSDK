@@ -49,11 +49,11 @@ namespace Luna
 			//! Tables for unresolved resources. Unlike most implementations in other library, because
 			//! we don't know when the list will be submitted to the queue, we defer the resolving of this 
 			//! to the time when the list is actually submitted.
-			HashMap<ImageResourceKey, ResourceStateFlag> m_unresolved_image_states;
+			HashMap<ImageResourceKey, TextureStateFlag> m_unresolved_image_states;
 
 			//! Tables for the current state of resources.
-			HashMap<BufferResource*, ResourceStateFlag> m_current_buffer_states;
-			HashMap<ImageResourceKey, ResourceStateFlag> m_current_image_states;
+			HashMap<BufferResource*, BufferStateFlag> m_current_buffer_states;
+			HashMap<ImageResourceKey, TextureStateFlag> m_current_image_states;
 
 			Vector<VkBufferMemoryBarrier> m_buffer_barriers;
 			Vector<VkImageMemoryBarrier> m_image_barriers;
@@ -98,24 +98,8 @@ namespace Luna
 
 			//! Appends one barrier that transits the specified subresources' state to after
 			//! state, and records the change into the tracking system.
-			void pack_buffer(BufferResource* res, ResourceStateFlag before, ResourceStateFlag after);
-			void pack_image(ImageResource* res, const SubresourceIndex& subresource, ResourceStateFlag before, ResourceStateFlag after);
-
-			//! Appends any barrier.
-			void pack_barrier(const ResourceBarrierDesc& desc)
-			{
-				auto d = desc.resource->get_desc();
-				if (d.type == ResourceType::buffer)
-				{
-					BufferResource* res = cast_objct<BufferResource>(desc.resource->get_object());
-					pack_buffer(res, desc.before, desc.after);
-				}
-				else
-				{
-					ImageResource* res = cast_objct<ImageResource>(desc.resource->get_object());
-					pack_image(res, desc.subresource, desc.before, desc.after);
-				}
-			}
+			void pack_buffer(BufferResource* res, BufferStateFlag before, BufferStateFlag after);
+			void pack_image(ImageResource* res, const SubresourceIndex& subresource, TextureStateFlag before, TextureStateFlag after);
 
 			//! Resolves all unresolved transitions into m_transitions based on their current state.
 			void resolve();

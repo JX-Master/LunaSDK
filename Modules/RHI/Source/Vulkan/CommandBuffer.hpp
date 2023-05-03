@@ -71,8 +71,8 @@ namespace Luna
 			virtual void begin_render_pass(const RenderPassDesc& desc) override;
 			virtual void set_pipeline_state(PipelineStateBindPoint bind_point, IPipelineState* pso) override;
 			virtual void set_graphics_shader_input_layout(IShaderInputLayout* shader_input_layout) override;
-			virtual void set_vertex_buffers(u32 start_slot, u32 num_slots, IResource** buffers, const usize* offsets) override;
-			virtual void set_index_buffer(IResource* buffer, usize offset_in_bytes, Format index_format) override;
+			virtual void set_vertex_buffers(u32 start_slot, u32 num_slots, IBuffer** buffers, const usize* offsets) override;
+			virtual void set_index_buffer(IBuffer* buffer, usize offset_in_bytes, Format index_format) override;
 			virtual void set_graphics_descriptor_sets(u32 start_index, Span<IDescriptorSet*> descriptor_sets) override;
 			virtual void set_viewport(const Viewport& viewport) override;
 			virtual void set_viewports(Span<const Viewport> viewports) override;
@@ -91,12 +91,25 @@ namespace Luna
 			virtual void clear_color_attachment(u32 index, Span<const f32, 4> color_rgba, Span<const RectI> rects) override;
 			virtual void end_render_pass() override;
 			virtual void copy_resource(IResource* dest, IResource* src) override;
-			virtual void copy_buffer_region(IResource* dest, u64 dest_offset, IResource* src, u64 src_offset, u64 num_bytes) override;
-			virtual void copy_texture_region(const TextureCopyLocation& dst, u32 dst_x, u32 dst_y, u32 dst_z,
-				const TextureCopyLocation& src, const BoxU* src_box = nullptr) override;
+			virtual void copy_buffer(
+				IBuffer* dst, u64 dst_offset,
+				IBuffer* src, u64 src_offset,
+				u64 copy_bytes) override;
+			virtual void copy_texture(
+				ITexture* dst, SubresourceIndex dst_subresource, u32 dst_x, u32 dst_y, u32 dst_z,
+				ITexture* src, SubresourceIndex src_subresource, u32 src_x, u32 src_y, u32 src_z,
+				u32 copy_width, u32 copy_height, u32 copy_depth) override;
+			virtual void copy_buffer_to_texture(
+				ITexture* dst, SubresourceIndex dst_subresource, u32 dst_x, u32 dst_y, u32 dst_z,
+				IBuffer* src, u64 src_offset, u32 src_row_pitch, u32 src_depth_pitch,
+				u32 copy_width, u32 copy_height, u32 copy_depth) override;
+			virtual void copy_texture_to_buffer(
+				IBuffer* dst, u64 dst_offset, u32 dst_row_pitch, u32 dst_slice_pitch,
+				ITexture* src, SubresourceIndex src_subresource, u32 src_x, u32 src_y, u32 src_z,
+				u32 copy_width, u32 copy_height, u32 copy_depth) override;
 			virtual void set_compute_shader_input_layout(IShaderInputLayout* shader_input_layout) override;
 			virtual void set_compute_descriptor_sets(u32 start_index, Span<IDescriptorSet*> descriptor_sets) override;
-			virtual void resource_barrier(Span<const ResourceBarrierDesc> barriers) override;
+			virtual void resource_barrier(Span<const BufferBarrier> buffer_barriers, Span<const TextureBarrier> texture_barriers) override;
 			virtual void dispatch(u32 thread_group_count_x, u32 thread_group_count_y, u32 thread_group_count_z) override;
 			virtual void write_timestamp(IQueryHeap* heap, u32 index) override;
 			virtual void begin_pipeline_statistics_query(IQueryHeap* heap, u32 index) override;

@@ -19,13 +19,16 @@ namespace Luna
 			dest.descriptorCount = src.num_descs;
 			switch (src.type)
 			{
-			case DescriptorType::texture_srv:
-				dest.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE; break;
-			case DescriptorType::texture_uav:
-				dest.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE; break;
-			case DescriptorType::buffer_srv:
-			case DescriptorType::buffer_uav:
+			case DescriptorType::uniform_buffer_view:
+				dest.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; break;
+			case DescriptorType::read_buffer_view:
+			case DescriptorType::read_write_buffer_view:
 				dest.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; break;
+			case DescriptorType::sampled_texture_view:
+				dest.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE; break;
+			case DescriptorType::read_texture_view:
+			case DescriptorType::read_write_texture_view:
+				dest.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE; break;
 			case DescriptorType::sampler:
 				dest.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER; break;
 			}

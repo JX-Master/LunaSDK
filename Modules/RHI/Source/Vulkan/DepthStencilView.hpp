@@ -21,16 +21,16 @@ namespace Luna
 
 			Ref<Device> m_device;
 			Name m_name;
-			Ref<IResource> m_resource;
+			Ref<ITexture> m_resource;
 			DepthStencilViewDesc m_desc;
 
 			VkImageView m_view = VK_NULL_HANDLE;
-			RV init(IResource* resource, const DepthStencilViewDesc* desc);
+			RV init(ITexture* resource, const DepthStencilViewDesc* desc);
 			~DepthStencilView();
 
 			virtual IDevice* get_device() override { return m_device.get(); }
 			virtual void set_name(const Name& name) override { m_name = name; }
-			virtual IResource* get_resource() override { return m_resource; }
+			virtual ITexture* get_resource() override { return m_resource; }
 			virtual DepthStencilViewDesc get_desc() override { return m_desc; }
 		};
 	}

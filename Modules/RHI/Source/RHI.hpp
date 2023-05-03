@@ -18,6 +18,6 @@ namespace Luna
 		//! Implemented by the rendering API to initialize the rendering infrastructure.
 		RV render_api_init();
 		//! Implemented by the rendering API to clean up the rendering infrastructure.
-		void render_api_close();	
+		void render_api_close();
 	}
 }

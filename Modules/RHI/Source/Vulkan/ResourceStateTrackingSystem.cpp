@@ -63,7 +63,7 @@ namespace Luna
 			barrier.subresourceRange.levelCount = 1;
 			barrier.subresourceRange.layerCount = 1;
 		}
-		void ResourceStateTrackingSystem::pack_buffer(BufferResource* res, ResourceStateFlag before, ResourceStateFlag after)
+		void ResourceStateTrackingSystem::pack_buffer(BufferResource* res, BufferStateFlag before, BufferStateFlag after)
 		{
 			auto iter = m_current_buffer_states.find(res);
 			VkAccessFlags after_flags = encode_access_flags(after);
@@ -71,7 +71,7 @@ namespace Luna
 			{
 				// The resource is used for the first time.
 				VkAccessFlags before_flags = 0;
-				if (test_flags(before, ResourceStateFlag::automatic))
+				if (test_flags(before, BufferStateFlag::automatic))
 				{
 					before_flags = encode_access_flags(before);
 				}
@@ -81,39 +81,26 @@ namespace Luna
 			}
 			else
 			{
-				ResourceStateFlag before_state = before;
-				if (before_state == ResourceStateFlag::automatic) before_state = iter->second;
+				BufferStateFlag before_state = before;
+				if (before_state == BufferStateFlag::automatic) before_state = iter->second;
 				append_buffer(res, encode_access_flags(before_state), after_flags);
 				iter->second = after;
 				m_src_stage_flags |= determine_pipeline_stage_flags(before_state, m_queue_type);
 				m_dest_stage_flags |= determine_pipeline_stage_flags(after, m_queue_type);
 			}
 		}
-		void ResourceStateTrackingSystem::pack_image(ImageResource* res, const SubresourceIndex& subresource, ResourceStateFlag before, ResourceStateFlag after)
+		void ResourceStateTrackingSystem::pack_image(ImageResource* res, const SubresourceIndex& subresource, TextureStateFlag before, TextureStateFlag after)
 		{
 			if (subresource == RESOURCE_BARRIER_ALL_SUBRESOURCES)
 			{
-				if (res->m_desc.type == ResourceType::texture_3d)
+				for (u32 array_slice = 0; array_slice < res->m_desc.array_size; ++array_slice)
 				{
 					for (u32 mip_slice = 0; mip_slice < res->m_desc.mip_levels; ++mip_slice)
 					{
 						SubresourceIndex index;
-						index.array_slice = 0;
+						index.array_slice = array_slice;
 						index.mip_slice = mip_slice;
 						pack_image(res, index, before, after);
-					}
-				}
-				else
-				{
-					for (u32 array_slice = 0; array_slice < res->m_desc.depth_or_array_size; ++array_slice)
-					{
-						for (u32 mip_slice = 0; mip_slice < res->m_desc.mip_levels; ++mip_slice)
-						{
-							SubresourceIndex index;
-							index.array_slice = array_slice;
-							index.mip_slice = mip_slice;
-							pack_image(res, index, before, after);
-						}
 					}
 				}
 			}
@@ -126,7 +113,7 @@ namespace Luna
 				if (iter == m_current_image_states.end())
 				{
 					// The subresource is used for the first time.
-					if(test_flags(before, ResourceStateFlag::automatic))
+					if(test_flags(before, TextureStateFlag::automatic))
 					{
 						// defer the resolve of this barrier to execution time.
 						m_unresolved_image_states.insert(make_pair(key, after));
@@ -149,8 +136,8 @@ namespace Luna
 				{
 					// The subresource is resolved.
 					// Insert a transition always.
-					ResourceStateFlag before_resolved;
-					if (test_flags(before, ResourceStateFlag::automatic))
+					TextureStateFlag before_resolved;
+					if (test_flags(before, TextureStateFlag::automatic))
 					{
 						before_resolved = iter->second;
 					}

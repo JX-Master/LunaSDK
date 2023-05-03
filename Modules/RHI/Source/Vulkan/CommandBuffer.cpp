@@ -136,7 +136,7 @@ namespace Luna
 							++num_resolve_targets;
 						}
 						auto rd = desc.color_attachments[i]->get_resource()->get_desc();
-						width = (u32)rd.width_or_buffer_size;
+						width = rd.width;
 						height = rd.height;
 					}
 					else break;
@@ -154,7 +154,7 @@ namespace Luna
 					rp.stencil_load_op = desc.stencil_load_op;
 					rp.stencil_store_op = desc.stencil_store_op;
 					auto rd = desc.depth_stencil_attachment->get_resource()->get_desc();
-					if (!width) width = (u32)rd.width_or_buffer_size;
+					if (!width) width = rd.width;
 					if (!height) height = rd.height;
 				}
 				rp.sample_count = desc.sample_count;
@@ -234,7 +234,7 @@ namespace Luna
 		{
 			m_graphics_shader_input_layout = shader_input_layout;
 		}
-		void CommandBuffer::set_vertex_buffers(u32 start_slot, u32 num_slots, IResource** buffers, const usize* offsets)
+		void CommandBuffer::set_vertex_buffers(u32 start_slot, u32 num_slots, IBuffer** buffers, const usize* offsets)
 		{
 			VkBuffer* bufs = (VkBuffer*)alloca(sizeof(VkBuffer) * num_slots);
 			VkDeviceSize* vk_offsets = (VkDeviceSize*)alloca(sizeof(VkDeviceSize) * num_slots);
@@ -246,7 +246,7 @@ namespace Luna
 			}
 			m_device->m_funcs.vkCmdBindVertexBuffers(m_command_buffer, start_slot, num_slots, bufs, vk_offsets);
 		}
-		void CommandBuffer::set_index_buffer(IResource* buffer, usize offset_in_bytes, Format index_format)
+		void CommandBuffer::set_index_buffer(IBuffer* buffer, usize offset_in_bytes, Format index_format)
 		{
 			BufferResource* res = cast_objct<BufferResource>(buffer->get_object());
 			VkIndexType index_type;
@@ -460,32 +460,29 @@ namespace Luna
 		}
 		void CommandBuffer::copy_resource(IResource* dest, IResource* src)
 		{
-			auto d_desc = dest->get_desc();
-			auto s_desc = src->get_desc();
-			lucheck(s_desc == d_desc);
-			if (d_desc.type == ResourceType::buffer)
+			BufferResource* s = cast_objct<BufferResource>(src->get_object());
+			BufferResource* d = cast_objct<BufferResource>(dest->get_object());
+			if (s && d)
 			{
-				BufferResource* s = cast_objct<BufferResource>(src->get_object());
-				BufferResource* d = cast_objct<BufferResource>(dest->get_object());
 				VkBufferCopy copy{};
 				copy.srcOffset = 0;
 				copy.dstOffset = 0;
-				copy.size = d_desc.width_or_buffer_size;
+				copy.size = d->m_desc.size;
 				m_device->m_funcs.vkCmdCopyBuffer(m_command_buffer, s->m_buffer, d->m_buffer, 1, &copy);
 			}
 			else
 			{
-				ImageResource* s = cast_objct<ImageResource>(src->get_object());
-				ImageResource* d = cast_objct<ImageResource>(dest->get_object());
+				ImageResource* ts = cast_objct<ImageResource>(src->get_object());
+				ImageResource* td = cast_objct<ImageResource>(dest->get_object());
 				// The copy is performed one per mips.
-				u32 mip_levels = d_desc.mip_levels;
-				u32 array_count = d_desc.type == ResourceType::texture_3d ? 1 : d_desc.depth_or_array_size;
+				u32 mip_levels = td->m_desc.mip_levels;
+				u32 array_count = td->m_desc.array_size;
 				VkImageCopy* copies = (VkImageCopy*)alloca(sizeof(VkImageCopy) * mip_levels);
 				for (u32 mip = 0; mip < mip_levels; ++mip)
 				{
 					VkImageCopy& copy = copies[mip];
 					copy.srcSubresource.aspectMask =
-						is_depth_stencil_format(d_desc.pixel_format) ?
+						is_depth_stencil_format(td->m_desc.pixel_format) ?
 						VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT :
 						VK_IMAGE_ASPECT_COLOR_BIT;
 					copy.srcSubresource.baseArrayLayer = 0;
@@ -496,105 +493,112 @@ namespace Luna
 					copy.srcOffset.z = 0;
 					copy.dstSubresource = copy.srcSubresource;
 					copy.dstOffset = copy.srcOffset;
-					copy.extent.width = max<u32>((u32)d_desc.width_or_buffer_size >> mip, 1);
-					copy.extent.height = max<u32>(d_desc.height >> mip, 1);
-					copy.extent.depth = (d_desc.type == ResourceType::texture_3d) ? max<u32>(d_desc.depth_or_array_size >> mip, 1) : 1;
+					copy.extent.width = max<u32>(td->m_desc.width >> mip, 1);
+					copy.extent.height = max<u32>(td->m_desc.height >> mip, 1);
+					copy.extent.depth = max<u32>(td->m_desc.depth >> mip, 1);
 				}
 				VkImageLayout src_layout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
 				VkImageLayout dest_layout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-				m_device->m_funcs.vkCmdCopyImage(m_command_buffer, s->m_image, src_layout, d->m_image, dest_layout, mip_levels, copies);
+				m_device->m_funcs.vkCmdCopyImage(m_command_buffer, ts->m_image, src_layout, td->m_image, dest_layout, mip_levels, copies);
 			}
 		}
-		void CommandBuffer::copy_buffer_region(IResource* dest, u64 dest_offset, IResource* src, u64 src_offset, u64 num_bytes)
+		void CommandBuffer::copy_buffer(
+			IBuffer* dst, u64 dst_offset,
+			IBuffer* src, u64 src_offset,
+			u64 copy_bytes)
 		{
 			BufferResource* s = cast_objct<BufferResource>(src->get_object());
-			BufferResource* d = cast_objct<BufferResource>(dest->get_object());
+			BufferResource* d = cast_objct<BufferResource>(dst->get_object());
 			VkBufferCopy copy{};
 			copy.srcOffset = src_offset;
-			copy.dstOffset = dest_offset;
-			copy.size = num_bytes;
+			copy.dstOffset = dst_offset;
+			copy.size = copy_bytes;
 			m_device->m_funcs.vkCmdCopyBuffer(m_command_buffer, s->m_buffer, d->m_buffer, 1, &copy);
 		}
-		void CommandBuffer::copy_texture_region(const TextureCopyLocation& dst, u32 dst_x, u32 dst_y, u32 dst_z,
-			const TextureCopyLocation& src, const BoxU* src_box = nullptr)
+		void CommandBuffer::copy_texture(
+			ITexture* dst, SubresourceIndex dst_subresource, u32 dst_x, u32 dst_y, u32 dst_z,
+			ITexture* src, SubresourceIndex src_subresource, u32 src_x, u32 src_y, u32 src_z,
+			u32 copy_width, u32 copy_height, u32 copy_depth)
 		{
-			BoxU box;
-			if (src_box)
-			{
-				box = *src_box;
-			}
-			else
-			{
-				box.offset_x = 0;
-				box.offset_y = 0;
-				box.offset_z = 0;
-				if (src.type == TextureCopyType::placed_footprint)
-				{
-					box.width = src.placed_footprint.width;
-					box.height = src.placed_footprint.height;
-					box.depth = src.placed_footprint.depth;
-				}
-				else
-				{
-					auto d = src.resource->get_desc();
-					box.width = max<u32>(d.width_or_buffer_size >> src.subresource_index.mip_slice, 1);
-					box.height = max<u32>(d.height >> src.subresource_index.mip_slice, 1);
-					box.depth = d.type == ResourceType::texture_3d ? max<u32>(d.depth_or_array_size >> src.subresource_index.mip_slice, 1) : 1;
-				}
-			}
-			if (src.type == TextureCopyType::subresource_index && dst.type == TextureCopyType::subresource_index)
-			{
-				ImageResource* s = cast_objct<ImageResource>(src.resource->get_object());
-				ImageResource* d = cast_objct<ImageResource>(dst.resource->get_object());
-				// The copy is performed one per mips.
-				VkImageCopy copy{};
-				copy.srcSubresource.aspectMask =
-					is_depth_stencil_format(d->m_desc.pixel_format) ?
-					VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT :
-					VK_IMAGE_ASPECT_COLOR_BIT;
-				copy.srcSubresource.baseArrayLayer = src.subresource_index.array_slice;
-				copy.srcSubresource.layerCount = 1;
-				copy.srcSubresource.mipLevel = src.subresource_index.mip_slice;
-				copy.srcOffset.x = box.offset_x;
-				copy.srcOffset.y = box.offset_y;
-				copy.srcOffset.z = box.offset_z;
-				copy.dstSubresource.aspectMask = copy.srcSubresource.aspectMask;
-				copy.dstSubresource.baseArrayLayer = dst.subresource_index.array_slice;
-				copy.dstSubresource.layerCount = 1;
-				copy.dstSubresource.mipLevel = dst.subresource_index.mip_slice;
-				copy.dstOffset.x = dst_x;
-				copy.dstOffset.y = dst_y;
-				copy.dstOffset.z = dst_z;
-				copy.extent.width = box.width;
-				copy.extent.height = box.height;
-				copy.extent.depth = box.depth;
-				VkImageLayout src_layout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-				VkImageLayout dest_layout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-				m_device->m_funcs.vkCmdCopyImage(m_command_buffer, s->m_image, src_layout, d->m_image, dest_layout, 1, &copy);
-			}
-			else if (src.type == TextureCopyType::placed_footprint && dst.type == TextureCopyType::subresource_index)
-			{
-				BufferResource* s = cast_objct<BufferResource>(src.resource->get_object());
-				ImageResource* d = cast_objct<ImageResource>(dst.resource->get_object());
-				VkBufferImageCopy copy{};
-				copy.bufferOffset = src.placed_footprint.offset;
-				copy.bufferRowLength = src.placed_footprint.row_pitch * 8 / bits_per_pixel(src.placed_footprint.format);
-				copy.bufferImageHeight = copy.bufferRowLength * src.placed_footprint.height;
-				copy.imageSubresource.aspectMask = is_depth_stencil_format(d->m_desc.pixel_format) ?
-					VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT :
-					VK_IMAGE_ASPECT_COLOR_BIT;
-				copy.imageSubresource.baseArrayLayer = dst.subresource_index.array_slice;
-				copy.imageSubresource.layerCount = 1;
-				copy.imageSubresource.mipLevel = dst.subresource_index.mip_slice;
-				copy.imageOffset.x = dst_x;
-				copy.imageOffset.y = dst_y;
-				copy.imageOffset.z = dst_z;
-				copy.imageExtent.width = box.width;
-				copy.imageExtent.height = box.height;
-				copy.imageExtent.depth = box.depth;
-				VkImageLayout dest_layout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-				m_device->m_funcs.vkCmdCopyBufferToImage(m_command_buffer, s->m_buffer, d->m_image, dest_layout, 1, &copy);
-			}
+			ImageResource* s = cast_objct<ImageResource>(src->get_object());
+			ImageResource* d = cast_objct<ImageResource>(dst->get_object());
+			// The copy is performed one per mips.
+			VkImageCopy copy{};
+			copy.srcSubresource.aspectMask =
+				is_depth_stencil_format(d->m_desc.pixel_format) ?
+				VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT :
+				VK_IMAGE_ASPECT_COLOR_BIT;
+			copy.srcSubresource.baseArrayLayer = src_subresource.array_slice;
+			copy.srcSubresource.layerCount = 1;
+			copy.srcSubresource.mipLevel = src_subresource.mip_slice;
+			copy.srcOffset.x = src_x;
+			copy.srcOffset.y = src_y;
+			copy.srcOffset.z = src_z;
+			copy.dstSubresource.aspectMask = copy.srcSubresource.aspectMask;
+			copy.dstSubresource.baseArrayLayer = dst_subresource.array_slice;
+			copy.dstSubresource.layerCount = 1;
+			copy.dstSubresource.mipLevel = dst_subresource.mip_slice;
+			copy.dstOffset.x = dst_x;
+			copy.dstOffset.y = dst_y;
+			copy.dstOffset.z = dst_z;
+			copy.extent.width = copy_width;
+			copy.extent.height = copy_height;
+			copy.extent.depth = copy_depth;
+			VkImageLayout src_layout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+			VkImageLayout dest_layout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+			m_device->m_funcs.vkCmdCopyImage(m_command_buffer, s->m_image, src_layout, d->m_image, dest_layout, 1, &copy);
+		}
+		void CommandBuffer::copy_buffer_to_texture(
+			ITexture* dst, SubresourceIndex dst_subresource, u32 dst_x, u32 dst_y, u32 dst_z,
+			IBuffer* src, u64 src_offset, u32 src_row_pitch, u32 src_depth_pitch,
+			u32 copy_width, u32 copy_height, u32 copy_depth)
+		{
+			BufferResource* s = cast_objct<BufferResource>(src->get_object());
+			ImageResource* d = cast_objct<ImageResource>(dst->get_object());
+			VkBufferImageCopy copy{};
+			copy.bufferOffset = src_offset;
+			copy.bufferRowLength = src_row_pitch * 8 / bits_per_pixel(d->m_desc.pixel_format);
+			copy.bufferImageHeight = src_depth_pitch * 8 / bits_per_pixel(d->m_desc.pixel_format);
+			copy.imageSubresource.aspectMask = is_depth_stencil_format(d->m_desc.pixel_format) ?
+				VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT :
+				VK_IMAGE_ASPECT_COLOR_BIT;
+			copy.imageSubresource.baseArrayLayer = dst_subresource.array_slice;
+			copy.imageSubresource.layerCount = 1;
+			copy.imageSubresource.mipLevel = dst_subresource.mip_slice;
+			copy.imageOffset.x = dst_x;
+			copy.imageOffset.y = dst_y;
+			copy.imageOffset.z = dst_z;
+			copy.imageExtent.width = copy_width;
+			copy.imageExtent.height = copy_height;
+			copy.imageExtent.depth = copy_depth;
+			m_device->m_funcs.vkCmdCopyBufferToImage(m_command_buffer, s->m_buffer, d->m_image, 
+				VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copy);
+		}
+		void CommandBuffer::copy_texture_to_buffer(
+			IBuffer* dst, u64 dst_offset, u32 dst_row_pitch, u32 dst_slice_pitch,
+			ITexture* src, SubresourceIndex src_subresource, u32 src_x, u32 src_y, u32 src_z,
+			u32 copy_width, u32 copy_height, u32 copy_depth)
+		{
+			ImageResource* s = cast_objct<ImageResource>(src->get_object());
+			BufferResource* d = cast_objct<BufferResource>(dst->get_object());
+			VkBufferImageCopy copy{};
+			copy.imageSubresource.aspectMask = is_depth_stencil_format(s->m_desc.pixel_format) ?
+				VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT :
+				VK_IMAGE_ASPECT_COLOR_BIT;
+			copy.imageSubresource.baseArrayLayer = src_subresource.array_slice;
+			copy.imageSubresource.layerCount = 1;
+			copy.imageSubresource.mipLevel = src_subresource.mip_slice;
+			copy.imageOffset.x = src_x;
+			copy.imageOffset.y = src_y;
+			copy.imageOffset.z = src_z;
+			copy.imageExtent.width = copy_width;
+			copy.imageExtent.height = copy_height;
+			copy.imageExtent.depth = copy_depth;
+			copy.bufferOffset = dst_offset;
+			copy.bufferRowLength = dst_row_pitch * 8 / bits_per_pixel(s->m_desc.pixel_format);
+			copy.bufferImageHeight = dst_slice_pitch * 8 / bits_per_pixel(s->m_desc.pixel_format);
+			m_device->m_funcs.vkCmdCopyImageToBuffer(m_command_buffer, s->m_image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+				d->m_buffer, 1, &copy);
 		}
 		void CommandBuffer::set_compute_shader_input_layout(IShaderInputLayout* shader_input_layout)
 		{
@@ -614,12 +618,18 @@ namespace Luna
 			m_device->m_funcs.vkCmdBindDescriptorSets(m_command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, layout,
 				start_index, (u32)descriptor_sets.size(), sets, 0, nullptr);
 		}
-		void CommandBuffer::resource_barrier(Span<const ResourceBarrierDesc> barriers)
+		void CommandBuffer::resource_barrier(Span<const BufferBarrier> buffer_barriers, Span<const TextureBarrier> texture_barriers)
 		{
 			m_track_system.begin_new_barriers_batch();
-			for (auto& barrier : barriers)
+			for (auto& barrier : buffer_barriers)
 			{
-				m_track_system.pack_barrier(barrier);
+				BufferResource* res = cast_objct<BufferResource>(barrier.buffer->get_object());
+				m_track_system.pack_buffer(res, barrier.before, barrier.after);
+			}
+			for (auto& barrier : texture_barriers)
+			{
+				ImageResource* res = cast_objct<ImageResource>(barrier.texture->get_object());
+				m_track_system.pack_image(res, barrier.subresource, barrier.before, barrier.after);
 			}
 			m_device->m_funcs.vkCmdPipelineBarrier(m_command_buffer,
 				m_track_system.m_src_stage_flags, m_track_system.m_dest_stage_flags, 0, 0, nullptr, 

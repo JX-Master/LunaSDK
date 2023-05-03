@@ -8,7 +8,7 @@
 * @date 2023/4/19
 */
 #include "DescriptorSet.hpp"
-
+#include "Resource.hpp"
 namespace Luna
 {
 	namespace RHI
@@ -45,6 +45,10 @@ namespace Luna
 				m_device->m_funcs.vkFreeDescriptorSets(m_device->m_device, m_device->m_desc_pool, 1, &m_desc_set);
 				m_desc_set = VK_NULL_HANDLE;
 			}
+		}
+		void DescriptorSet::update_descriptors(Span<const DescriptorSetWrite> writes, Span<const DescriptorSetCopy> copies)
+		{
+			
 		}
 	}
 }

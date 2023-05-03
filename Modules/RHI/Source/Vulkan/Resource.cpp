@@ -22,11 +22,11 @@ namespace Luna
 			lucatchret;
 			return ok;
 		}
-		RV BufferResource::init_as_committed(const ResourceDesc& desc)
+		RV BufferResource::init_as_committed(const BufferDesc& desc)
 		{
 			lutry
 			{
-				m_desc = validate_resource_desc(desc);
+				m_desc = desc;
 				luset(m_buffer, m_device->create_vk_buffer(m_desc));
 				VkMemoryRequirements memory_requirements;
 				m_device->m_funcs.vkGetBufferMemoryRequirements(m_device->m_device, m_buffer, &memory_requirements);
@@ -38,11 +38,11 @@ namespace Luna
 			lucatchret;
 			return ok;
 		}
-		RV BufferResource::init_as_aliasing(const ResourceDesc& desc, DeviceMemory* memory)
+		RV BufferResource::init_as_aliasing(const BufferDesc& desc, DeviceMemory* memory)
 		{
 			lutry
 			{
-				m_desc = validate_resource_desc(desc);
+				m_desc = desc;
 				luset(m_buffer, m_device->create_vk_buffer(m_desc));
 				m_memory = memory;
 				luexp(post_init());
@@ -77,21 +77,17 @@ namespace Luna
 			lutry
 			{
 				luexp(encode_vk_result(vmaBindImageMemory(m_device->m_allocator, m_memory->m_allocation, m_image)));
-				u32 num_subresources = m_desc.mip_levels;
-				if (m_desc.type != ResourceType::texture_3d)
-				{
-					num_subresources *= m_desc.depth_or_array_size;
-				}
+				u32 num_subresources = m_desc.mip_levels * m_desc.array_size;
 				m_image_layouts.resize(num_subresources, VK_IMAGE_LAYOUT_UNDEFINED);
 			}
 			lucatchret;
 			return ok;
 		}
-		RV ImageResource::init_as_committed(const ResourceDesc& desc)
+		RV ImageResource::init_as_committed(const TextureDesc& desc)
 		{
 			lutry
 			{
-				m_desc = validate_resource_desc(desc);
+				m_desc = desc;
 				luset(m_image, m_device->create_vk_image(m_desc));
 				VkMemoryRequirements memory_requirements;
 				m_device->m_funcs.vkGetImageMemoryRequirements(m_device->m_device, m_image, &memory_requirements);
@@ -103,11 +99,11 @@ namespace Luna
 			lucatchret;
 			return ok;
 		}
-		RV ImageResource::init_as_aliasing(const ResourceDesc& desc, DeviceMemory* memory)
+		RV ImageResource::init_as_aliasing(const TextureDesc& desc, DeviceMemory* memory)
 		{
 			lutry
 			{
-				m_desc = validate_resource_desc(desc);
+				m_desc = desc;
 				luset(m_image, m_device->create_vk_image(m_desc));
 				m_memory = memory;
 				luexp(post_init());

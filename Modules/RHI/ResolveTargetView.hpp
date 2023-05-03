@@ -25,7 +25,7 @@ namespace Luna
 		{
 			luiid("{17AAA0B8-2CAB-40B0-A60E-7D38F28EC7EA}");
 
-			virtual IResource* get_resource() = 0;
+			virtual ITexture* get_resource() = 0;
 			virtual ResolveTargetViewDesc get_desc() = 0;
 		};
 	}

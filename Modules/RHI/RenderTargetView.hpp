@@ -111,7 +111,7 @@ namespace Luna
 		{
 			luiid("{C672876F-C6BB-49CA-BE77-DA112069F0C1}");
 
-			virtual IResource* get_resource() = 0;
+			virtual ITexture* get_resource() = 0;
 			virtual RenderTargetViewDesc get_desc() = 0;
 		};
 	}
