@@ -98,8 +98,8 @@ namespace Luna
 
 			//! Appends one barrier that transits the specified subresources' state to after
 			//! state, and records the change into the tracking system.
-			void pack_buffer(BufferResource* res, BufferStateFlag before, BufferStateFlag after);
-			void pack_image(ImageResource* res, const SubresourceIndex& subresource, TextureStateFlag before, TextureStateFlag after);
+			void pack_buffer(BufferResource* res, BufferStateFlag before, BufferStateFlag after, ResourceBarrierFlag flags);
+			void pack_image(ImageResource* res, const SubresourceIndex& subresource, TextureStateFlag before, TextureStateFlag after, ResourceBarrierFlag flags);
 
 			//! Resolves all unresolved transitions into m_transitions based on their current state.
 			void resolve();

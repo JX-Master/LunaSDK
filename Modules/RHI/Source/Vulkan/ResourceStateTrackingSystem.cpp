@@ -63,33 +63,68 @@ namespace Luna
 			barrier.subresourceRange.levelCount = 1;
 			barrier.subresourceRange.layerCount = 1;
 		}
-		void ResourceStateTrackingSystem::pack_buffer(BufferResource* res, BufferStateFlag before, BufferStateFlag after)
+		void ResourceStateTrackingSystem::pack_buffer(BufferResource* res, BufferStateFlag before, BufferStateFlag after, ResourceBarrierFlag flags)
 		{
 			auto iter = m_current_buffer_states.find(res);
-			VkAccessFlags after_flags = encode_access_flags(after);
-			if (iter == m_current_buffer_states.end())
+			if (test_flags(flags, ResourceBarrierFlag::aliasing))
 			{
-				// The resource is used for the first time.
 				VkAccessFlags before_flags = 0;
-				if (test_flags(before, BufferStateFlag::automatic))
-				{
-					before_flags = encode_access_flags(before);
-				}
+				VkAccessFlags after_flags = encode_access_flags(after);
 				append_buffer(res, before_flags, after_flags);
-				m_current_buffer_states.insert(make_pair(res, after));
+				if (before == BufferStateFlag::automatic)
+				{
+					m_src_stage_flags |= VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+				}
+				else
+				{
+					m_src_stage_flags |= determine_pipeline_stage_flags(before, m_queue_type);
+				}
 				m_dest_stage_flags |= determine_pipeline_stage_flags(after, m_queue_type);
+				if (iter == m_current_buffer_states.end())
+				{
+					m_current_buffer_states.insert(make_pair(res, after));
+				}
+				else
+				{
+					iter->second = after;
+				}
 			}
 			else
 			{
-				BufferStateFlag before_state = before;
-				if (before_state == BufferStateFlag::automatic) before_state = iter->second;
-				append_buffer(res, encode_access_flags(before_state), after_flags);
-				iter->second = after;
-				m_src_stage_flags |= determine_pipeline_stage_flags(before_state, m_queue_type);
-				m_dest_stage_flags |= determine_pipeline_stage_flags(after, m_queue_type);
+				VkAccessFlags after_flags = encode_access_flags(after);
+				if (iter == m_current_buffer_states.end())
+				{
+					// The resource is used for the first time.
+					VkAccessFlags before_flags = 0;
+					if (before != BufferStateFlag::automatic)
+					{
+						before_flags = encode_access_flags(before);
+					}
+					if (test_flags(flags, ResourceBarrierFlag::discard_content))
+					{
+						before_flags = 0;
+					}
+					append_buffer(res, before_flags, after_flags);
+					m_dest_stage_flags |= determine_pipeline_stage_flags(after, m_queue_type);
+					m_current_buffer_states.insert(make_pair(res, after));
+				}
+				else
+				{
+					BufferStateFlag before_state = before;
+					if (before_state == BufferStateFlag::automatic) before_state = iter->second;
+					VkAccessFlags before_flags = encode_access_flags(before_state);
+					if (test_flags(flags, ResourceBarrierFlag::discard_content))
+					{
+						before_flags = 0;
+					}
+					append_buffer(res, before_flags, after_flags);
+					m_src_stage_flags |= determine_pipeline_stage_flags(before_state, m_queue_type);
+					m_dest_stage_flags |= determine_pipeline_stage_flags(after, m_queue_type);
+					iter->second = after;
+				}
 			}
 		}
-		void ResourceStateTrackingSystem::pack_image(ImageResource* res, const SubresourceIndex& subresource, TextureStateFlag before, TextureStateFlag after)
+		void ResourceStateTrackingSystem::pack_image(ImageResource* res, const SubresourceIndex& subresource, TextureStateFlag before, TextureStateFlag after, ResourceBarrierFlag flags)
 		{
 			if (subresource == RESOURCE_BARRIER_ALL_SUBRESOURCES)
 			{
@@ -100,7 +135,7 @@ namespace Luna
 						SubresourceIndex index;
 						index.array_slice = array_slice;
 						index.mip_slice = mip_slice;
-						pack_image(res, index, before, after);
+						pack_image(res, index, before, after, flags);
 					}
 				}
 			}
@@ -110,51 +145,114 @@ namespace Luna
 				key.m_res = res;
 				key.m_subres = subresource;
 				auto iter = m_current_image_states.find(key);
-				if (iter == m_current_image_states.end())
+				if (test_flags(flags, ResourceBarrierFlag::aliasing))
 				{
-					// The subresource is used for the first time.
-					if(test_flags(before, TextureStateFlag::automatic))
-					{
-						// defer the resolve of this barrier to execution time.
-						m_unresolved_image_states.insert(make_pair(key, after));
-					}
-					else
-					{
-						ImageState before_state;
-						before_state.access_flags = encode_access_flags(before);
-						before_state.image_layout = encode_image_layout(before);
-						ImageState after_state;
-						after_state.access_flags = encode_access_flags(after);
-						after_state.image_layout = encode_image_layout(after);
-						append_image(res, subresource, before_state, after_state);
-						m_src_stage_flags |= determine_pipeline_stage_flags(before, m_queue_type);
-						m_dest_stage_flags |= determine_pipeline_stage_flags(after, m_queue_type);
-					}
-					m_current_image_states.insert(make_pair(key, after));
-				}
-				else
-				{
-					// The subresource is resolved.
-					// Insert a transition always.
-					TextureStateFlag before_resolved;
-					if (test_flags(before, TextureStateFlag::automatic))
-					{
-						before_resolved = iter->second;
-					}
-					else
-					{
-						before_resolved = before;
-					}
+					// Aliasing.
 					ImageState before_state;
-					before_state.access_flags = encode_access_flags(before_resolved);
-					before_state.image_layout = encode_image_layout(before_resolved);
+					before_state.access_flags = 0;
+					before_state.image_layout = VK_IMAGE_LAYOUT_UNDEFINED;
 					ImageState after_state;
 					after_state.access_flags = encode_access_flags(after);
 					after_state.image_layout = encode_image_layout(after);
 					append_image(res, subresource, before_state, after_state);
-					m_src_stage_flags |= determine_pipeline_stage_flags(before_resolved, m_queue_type);
+					if (before == TextureStateFlag::automatic)
+					{
+						m_src_stage_flags |= VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+					}
+					else
+					{
+						m_src_stage_flags |= determine_pipeline_stage_flags(before, m_queue_type);
+					}
 					m_dest_stage_flags |= determine_pipeline_stage_flags(after, m_queue_type);
-					iter->second = after;
+					if (iter == m_current_image_states.end())
+					{
+						m_current_image_states.insert(make_pair(key, after));
+					}
+					else
+					{
+						iter->second = after;
+					}
+				}
+				else
+				{
+					// Transition.
+					if (iter == m_current_image_states.end())
+					{
+						// The subresource is used for the first time.
+						if (before == TextureStateFlag::automatic)
+						{
+							if (test_flags(flags, ResourceBarrierFlag::discard_content))
+							{
+								ImageState before_state;
+								before_state.access_flags = 0;
+								before_state.image_layout = VK_IMAGE_LAYOUT_UNDEFINED;
+								ImageState after_state;
+								after_state.access_flags = encode_access_flags(after);
+								after_state.image_layout = encode_image_layout(after);
+								append_image(res, subresource, before_state, after_state);
+								m_dest_stage_flags |= determine_pipeline_stage_flags(after, m_queue_type);
+							}
+							else
+							{
+								// defer the resolve of this barrier to execution time.
+								m_unresolved_image_states.insert(make_pair(key, after));
+							}
+						}
+						else
+						{
+							ImageState before_state;
+							if (test_flags(flags, ResourceBarrierFlag::discard_content))
+							{
+								before_state.access_flags = 0;
+								before_state.image_layout = VK_IMAGE_LAYOUT_UNDEFINED;
+							}
+							else
+							{
+								before_state.access_flags = encode_access_flags(before);
+								before_state.image_layout = encode_image_layout(before);
+							}
+							ImageState after_state;
+							after_state.access_flags = encode_access_flags(after);
+							after_state.image_layout = encode_image_layout(after);
+							append_image(res, subresource, before_state, after_state);
+							m_src_stage_flags |= determine_pipeline_stage_flags(before, m_queue_type);
+							m_dest_stage_flags |= determine_pipeline_stage_flags(after, m_queue_type);
+						}
+						m_current_image_states.insert(make_pair(key, after));
+					}
+					else
+					{
+						// The subresource is resolved.
+						// Insert a transition always.
+						TextureStateFlag before_resolved;
+						if (before == TextureStateFlag::automatic)
+						{
+							before_resolved = iter->second;
+						}
+						else
+						{
+							before_resolved = before;
+						}
+						ImageState before_state;
+						
+						if (test_flags(flags, ResourceBarrierFlag::discard_content))
+						{
+							before_state.access_flags = 0;
+							before_state.image_layout = VK_IMAGE_LAYOUT_UNDEFINED;
+						}
+						else
+						{
+							before_state.access_flags = encode_access_flags(before_resolved);
+							before_state.image_layout = encode_image_layout(before_resolved);
+						}
+						ImageState after_state;
+						after_state.access_flags = encode_access_flags(after);
+						after_state.image_layout = encode_image_layout(after);
+						append_image(res, subresource, before_state, after_state);
+						m_src_stage_flags |= determine_pipeline_stage_flags(before_resolved, m_queue_type);
+						m_dest_stage_flags |= determine_pipeline_stage_flags(after, m_queue_type);
+						iter->second = after;
+					}
 				}
 			}
 		}

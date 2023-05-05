@@ -172,7 +172,7 @@ namespace Luna
 			}
 		};
 
-		enum class FilterMode : u32
+		enum class Filter : u8
 		{
 			min_mag_mip_point,
 			min_mag_point_mip_linear,
@@ -191,58 +191,49 @@ namespace Luna
 			comparison_min_linear_mag_point_mip_linear,
 			comparison_min_mag_linear_mip_point,
 			comparison_min_mag_mip_linear,
-			comparison_anisotropic,
-			minimum_min_mag_mip_point,
-			minimum_min_mag_point_mip_linear,
-			minimum_min_point_mag_linear_mip_point,
-			minimum_min_point_mag_mip_linear,
-			minimum_min_linear_mag_mip_point,
-			minimum_min_linear_mag_point_mip_linear,
-			minimum_min_mag_linear_mip_point,
-			minimum_min_mag_mip_linear,
-			minimum_anisotropic,
-			maximum_min_mag_mip_point,
-			maximum_min_mag_point_mip_linear,
-			maximum_min_point_mag_linear_mip_point,
-			maximum_min_point_mag_mip_linear,
-			maximum_min_linear_mag_mip_point,
-			maximum_min_linear_mag_point_mip_linear,
-			maximum_min_mag_linear_mip_point,
-			maximum_min_mag_mip_linear,
-			maximum_anisotropic
+			comparison_anisotropic
 		};
 
-		enum class TextureAddressMode : u32
+		enum class TextureAddressMode : u8
 		{
 			repeat,
 			mirror,
 			clamp,
-			border,
-			mirror_once
+			border
+		};
+
+		enum class BorderColor : u8
+		{
+			float_0000,
+			int_0000,
+			float_0001,
+			int_0001,
+			float_1111,
+			int_1111,
 		};
 
 		struct SamplerDesc
 		{
-			FilterMode filter;
+			Filter filter;
 			TextureAddressMode address_u;
 			TextureAddressMode address_v;
 			TextureAddressMode address_w;
+			ComparisonFunc comparison_func;
+			BorderColor border_color;
 			f32 mip_lod_bias;
 			u32 max_anisotropy;
-			ComparisonFunc comparison_func;
-			f32 border_color[4];
 			f32 min_lod;
 			f32 max_lod;
 
 			SamplerDesc() = default;
-			SamplerDesc(FilterMode filter,
+			SamplerDesc(Filter filter,
 				TextureAddressMode address_u,
 				TextureAddressMode address_v,
 				TextureAddressMode address_w,
 				f32 mip_lod_bias = 0.0f,
 				u32 max_anisotropy = 1,
 				ComparisonFunc comparison_func = ComparisonFunc::always,
-				const Float4U& border_color = Float4U(0, 0, 0, 0),
+				BorderColor border_color = BorderColor::float_0000,
 				f32 min_lod = 0.0f,
 				f32 max_lod = FLT_MAX) :
 				filter(filter),
@@ -253,13 +244,7 @@ namespace Luna
 				max_anisotropy(max_anisotropy),
 				comparison_func(comparison_func),
 				min_lod(min_lod),
-				max_lod(max_lod)
-			{
-				this->border_color[0] = border_color.x;
-				this->border_color[1] = border_color.y;
-				this->border_color[2] = border_color.z;
-				this->border_color[3] = border_color.w;
-			}
+				max_lod(max_lod) {}
 			bool operator==(const SamplerDesc& rhs)
 			{
 				return !memcmp(this, &rhs, sizeof(SamplerDesc));
@@ -443,7 +428,7 @@ namespace Luna
 		{
 			luiid("{f12bc4b0-2aad-42bb-8b8c-237ed0593aa3}");
 
-			virtual void update_descriptors(Span<const DescriptorSetWrite> writes, Span<const DescriptorSetCopy> copies) = 0;
+			virtual RV update_descriptors(Span<const DescriptorSetWrite> writes, Span<const DescriptorSetCopy> copies) = 0;
 		};
 	}
 }

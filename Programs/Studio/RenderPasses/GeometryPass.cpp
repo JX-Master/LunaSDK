@@ -214,7 +214,7 @@ namespace Luna
 					vs->set_srv(4, normal_tex);
 					vs->set_srv(5, metallic_tex);
 					vs->set_srv(6, emissive_tex);
-					vs->set_sampler(7, SamplerDesc(FilterMode::min_mag_mip_linear, TextureAddressMode::repeat, TextureAddressMode::repeat, TextureAddressMode::repeat));
+					vs->set_sampler(7, SamplerDesc(Filter::min_mag_mip_linear, TextureAddressMode::repeat, TextureAddressMode::repeat, TextureAddressMode::repeat));
 					cmdbuf->set_graphics_descriptor_set(0, vs);
 					cmdbuf->attach_device_object(vs);
 					cmdbuf->draw_indexed(mesh->pieces[j].num_indices, mesh->pieces[j].first_index_offset, 0);

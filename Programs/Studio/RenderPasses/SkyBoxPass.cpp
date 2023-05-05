@@ -105,7 +105,7 @@ namespace Luna
 				m_ds->set_srv(1, skybox);
                 m_ds->set_srv(2, depth_tex, &ShaderResourceViewDesc::as_tex2d(Format::r32_float, 0, 1, 0.0f));
 				m_ds->set_uav(3, output_tex);
-				m_ds->set_sampler(4, SamplerDesc(FilterMode::min_mag_mip_linear, TextureAddressMode::repeat, TextureAddressMode::repeat, TextureAddressMode::repeat));
+				m_ds->set_sampler(4, SamplerDesc(Filter::min_mag_mip_linear, TextureAddressMode::repeat, TextureAddressMode::repeat, TextureAddressMode::repeat));
 				cmdbuf->set_compute_descriptor_set(0, m_ds);
 				cmdbuf->dispatch(align_upper((u32)desc.width_or_buffer_size, 8) / 8, (u32)align_upper(desc.height, 8) / 8, 1);
 			}

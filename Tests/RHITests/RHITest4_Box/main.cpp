@@ -196,7 +196,7 @@ RV start()
 
         desc_set->set_cbv(0, cb, ConstantBufferViewDesc(0, align_upper(sizeof(Float4x4), cb_align)));
         desc_set->set_srv(1, file_tex);
-        desc_set->set_sampler(2, SamplerDesc(FilterMode::min_mag_mip_linear, TextureAddressMode::clamp,
+        desc_set->set_sampler(2, SamplerDesc(Filter::min_mag_mip_linear, TextureAddressMode::clamp,
 				TextureAddressMode::clamp, TextureAddressMode::clamp, 0.0f, 1, ComparisonFunc::always, 
                 Float4U(0, 0, 0, 0), 0.0f, 0.0f));
 		

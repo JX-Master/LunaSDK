@@ -9,6 +9,8 @@
 */
 #pragma once
 #include "DescriptorSetLayout.hpp"
+#include "ImageView.hpp"
+#include "Sampler.hpp"
 
 namespace Luna
 {
@@ -25,18 +27,15 @@ namespace Luna
 
 			VkDescriptorSet m_desc_set = VK_NULL_HANDLE;
 
-			HashMap<u32, VkImageView> m_image_views;
-			HashMap<u32, VkSampler> m_samplers;
+			HashMap<u32, Ref<ImageView>> m_image_views;
+			HashMap<u32, Ref<Sampler>> m_samplers;
 
 			RV init(const DescriptorSetDesc& desc);
 			~DescriptorSet();
 
-			void set_image_view(u32 slot, VkImageView image_view);
-			void set_sampler(u32 slot, VkSampler sampler);
-
 			virtual IDevice* get_device() override { return m_device.get(); }
 			virtual void set_name(const Name& name) override { m_name = name; }
-			virtual void update_descriptors(Span<const DescriptorSetWrite> writes, Span<const DescriptorSetCopy> copies) override;
+			virtual RV update_descriptors(Span<const DescriptorSetWrite> writes, Span<const DescriptorSetCopy> copies) override;
 		};
 	}
 }

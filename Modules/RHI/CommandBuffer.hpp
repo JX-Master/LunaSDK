@@ -37,10 +37,28 @@ namespace Luna
 			stencil = 0x02
 		};
 
-		enum class TextureCopyType : u8
+		enum class ResourceBarrierFlag : u8
 		{
-			subresource_index,	// When the referencing resource is a texture.
-			placed_footprint	// When the referencing resource is a buffer.
+			none = 0,
+			//! Submits an aliasing barrier for this resource.
+			//! 
+			//! One aliasing barrier is required when you want to use one resource that shares part of its memory with other resources,
+			//! and other resources are previously used in the same command buffer. In such state, the device should finish all operations
+			//! on the previous resource before it can process commands on the new resource.
+			//! 
+			//! When submitting aliasing barriers, `resource` should be specified to the new resource being used. The `before` state 
+			//! is a combination of states of all previouly used resources on the command buffer. The `before` state can be 
+			//! `BufferStateFlag::automatic`, which always emits one full pipeline barrier, but specify before states precisely may 
+			//! improve performance by avoiding waiting for pipeline stages that does not use the aliasing resource. The `after` state
+			//! is the initial state of the new resource. The resource content is always unspecified, despite whether `discard_content` 
+			//! is specified.
+			aliasing = 0x01,
+			//! Tells the device that the old content of the specified resource does not need to be preserved. The resource content is 
+			//! uninitialized after this barrier and should be overwritten in the following commands.
+			//! 
+			//! Specify this state may help preventing unnecessary availability operations and image layout transfer operations during
+			//! the resource barrier, thus improve performance.
+			discard_content = 0x02,
 		};
 
 		//! `BufferStateFlag` defines how resources are bound to the pipeline. One resource may be bind to multiple stages of the 
@@ -51,10 +69,13 @@ namespace Luna
 		//! `ResourceBindFlag::none` as the `before` state for the resource to be correctly bind.
 		enum class BufferStateFlag : u32
 		{
-			//! The content of the resource is undefined.
-			//! This can only be specified as the before state of the resource barrier, which tells the system to discard the old 
-			//! content of the resource. The resource data is then undefined and should be overwritten in the following render passes.
-			undefined = 0x00,
+			//! If this is specified as the before state, the system determines the before state automatically using the last state 
+			//! specified in the same command buffer for the resource. If this is the first time the resource is used in the current
+			//! command buffer, the system loads the resource's global state automatically.
+			//! 
+			//! This state cannot be set as the after state of the resource. Any non-zero states are not considered to be automatic 
+			//! state.
+			automatic = 0x00,
 			//! Used as a indirect argument buffer.
 			indirect_argument = 0x01,
 			//! Used as a vertex buffer.
@@ -79,21 +100,16 @@ namespace Luna
 			copy_dest = 0x0400,
 			//! Used as a copy source.
 			copy_source = 0x0800,
+		};
 
+		enum class TextureStateFlag : u32
+		{
 			//! If this is specified as the before state, the system determines the before state automatically using the last state 
 			//! specified in the same command buffer for the resource. If this is the first time the resource is used in the current
 			//! command buffer, the system loads the resource's global state automatically.
 			//! 
 			//! This state cannot be set as the after state of the resource. This state cannot be set along with other state flags.
-			automatic = 0x80000000,
-		};
-
-		enum class TextureStateFlag : u32
-		{
-			//! The content of the resource is undefined.
-			//! This can only be specified as the before state of the resource barrier, which tells the system to discard the old 
-			//! content of the resource. The resource data is then undefined and should be overwritten in the following render passes.
-			undefined = 0x00,
+			automatic = 0x00,
 			//! Used as a sampled texture for vertex shader.
 			shader_read_vs = 0x10,
 			//! Used as a shader resource for pixel shader.
@@ -116,13 +132,6 @@ namespace Luna
 			copy_dest = 0x2000,
 			//! Used as a copy source.
 			copy_source = 0x4000,
-
-			//! If this is specified as the before state, the system determines the before state automatically using the last state 
-			//! specified in the same command buffer for the resource. If this is the first time the resource is used in the current
-			//! command buffer, the system loads the resource's global state automatically.
-			//! 
-			//! This state cannot be set as the after state of the resource. This state cannot be set along with other state flags.
-			automatic = 0x80000000,
 		};
 
 		constexpr SubresourceIndex RESOURCE_BARRIER_ALL_SUBRESOURCES = {U32_MAX, U32_MAX};
@@ -133,6 +142,7 @@ namespace Luna
 			SubresourceIndex subresource;
 			TextureStateFlag before;
 			TextureStateFlag after;
+			ResourceBarrierFlag flags;
 		};
 
 		struct BufferBarrier
@@ -140,6 +150,7 @@ namespace Luna
 			IBuffer* buffer;
 			BufferStateFlag before;
 			BufferStateFlag after;
+			ResourceBarrierFlag flags;
 		};
 
 		struct Viewport

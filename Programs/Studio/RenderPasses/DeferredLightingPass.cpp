@@ -171,7 +171,7 @@ namespace Luna
             m_ds->set_srv(7, sky_box);
             m_ds->set_srv(8, m_global_data->m_integrate_brdf);
             m_ds->set_uav(9, scene_tex);
-            m_ds->set_sampler(10, SamplerDesc(FilterMode::min_mag_mip_linear, TextureAddressMode::clamp, TextureAddressMode::clamp, TextureAddressMode::clamp));
+            m_ds->set_sampler(10, SamplerDesc(Filter::min_mag_mip_linear, TextureAddressMode::clamp, TextureAddressMode::clamp, TextureAddressMode::clamp));
             auto scene_desc = scene_tex->get_desc();
             cmdbuf->set_compute_shader_input_layout(m_global_data->m_deferred_lighting_pass_slayout);
             cmdbuf->set_pipeline_state(m_global_data->m_deferred_lighting_pass_pso);

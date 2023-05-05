@@ -68,7 +68,7 @@ namespace Luna
 			bool state_equal(u32 index);
 			RHI::SamplerDesc get_default_sampler()
 			{
-				return RHI::SamplerDesc(RHI::FilterMode::min_mag_mip_linear,
+				return RHI::SamplerDesc(RHI::Filter::min_mag_mip_linear,
 					RHI::TextureAddressMode::repeat,
 					RHI::TextureAddressMode::repeat,
 					RHI::TextureAddressMode::repeat);

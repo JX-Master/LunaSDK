@@ -371,7 +371,6 @@ namespace Luna
 		inline VkAccessFlags encode_access_flags(TextureStateFlag state)
 		{
 			VkAccessFlags f = 0;
-			if (state == TextureStateFlag::undefined) return 0;
 			if (test_flags(state, TextureStateFlag::shader_read_vs) ||
 				test_flags(state, TextureStateFlag::shader_read_ps) ||
 				test_flags(state, TextureStateFlag::shader_read_cs)) f |= VK_ACCESS_SHADER_READ_BIT;
@@ -387,7 +386,6 @@ namespace Luna
 		}
 		inline VkImageLayout encode_image_layout(TextureStateFlag state)
 		{
-			if (state == TextureStateFlag::undefined) return VK_IMAGE_LAYOUT_UNDEFINED;
 			if (test_flags(state, TextureStateFlag::color_attachment_read) ||
 				test_flags(state, TextureStateFlag::color_attachment_write) ||
 				test_flags(state, TextureStateFlag::resolve_attachment))
@@ -581,6 +579,16 @@ namespace Luna
 			case DescriptorType::read_texture_view:
 			case DescriptorType::read_write_texture_view: return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
 			case DescriptorType::sampler: return VK_DESCRIPTOR_TYPE_SAMPLER;
+			}
+		}
+		VkSamplerAddressMode encode_address_mode(TextureAddressMode mode)
+		{
+			switch (mode)
+			{
+			case TextureAddressMode::repeat: return VK_SAMPLER_ADDRESS_MODE_REPEAT;
+			case TextureAddressMode::mirror: return VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
+			case TextureAddressMode::clamp: return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+			case TextureAddressMode::border: return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
 			}
 		}
 	}

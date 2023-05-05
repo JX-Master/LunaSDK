@@ -158,7 +158,7 @@ RV start()
 
 			desc_set->set_srv(0, tex, nullptr);
 			
-			desc_set->set_sampler(1, SamplerDesc(FilterMode::min_mag_mip_linear, TextureAddressMode::clamp,
+			desc_set->set_sampler(1, SamplerDesc(Filter::min_mag_mip_linear, TextureAddressMode::clamp,
 				TextureAddressMode::clamp, TextureAddressMode::clamp, 0.0f, 1, ComparisonFunc::always, { 0.0f, 0.0f, 0.0f, 1.0f }, 0.0f, 0.0f));
 		}
 	}
