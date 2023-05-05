@@ -30,6 +30,7 @@ namespace Luna
 			ResourceStateTrackingSystem m_track_system;
 
 			VkCommandPool m_command_pool = VK_NULL_HANDLE;
+			VkCommandBuffer m_resolve_buffer = VK_NULL_HANDLE;
 			VkCommandBuffer m_command_buffer = VK_NULL_HANDLE;
 			VkFence m_fence = VK_NULL_HANDLE;
 

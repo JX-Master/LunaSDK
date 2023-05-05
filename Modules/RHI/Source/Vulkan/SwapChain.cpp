@@ -49,21 +49,44 @@ namespace Luna
 			return ret;
 		}
 
-		RV SwapChain::init(ICommandQueue* queue, Window::IWindow* window, const SwapChainDesc& desc)
+		RV SwapChain::init(CommandQueue* queue, Window::IWindow* window, const SwapChainDesc& desc)
+		{
+			lutry
+			{
+				m_presenting_queue = queue;
+				m_window = window;
+				luexp(create_swap_chain(desc));
+				VkFenceCreateInfo fence_create_info{};
+				fence_create_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+				fence_create_info.flags = 0;
+				luexp(encode_vk_result(m_device->m_funcs.vkCreateFence(m_device->m_device, &fence_create_info, nullptr, &m_acqure_fence)));
+			}
+			lucatchret;
+			return ok;
+		}
+		void SwapChain::clean_up_swap_chain()
+		{
+			m_device->m_funcs.vkQueueWaitIdle(m_presenting_queue->m_queue);
+			m_swap_chain_images.clear();
+			if (m_swap_chain != VK_NULL_HANDLE)
+			{
+				m_device->m_funcs.vkDestroySwapchainKHR(m_device->m_device, m_swap_chain, nullptr);
+				m_swap_chain = VK_NULL_HANDLE;
+			}
+		}
+		RV SwapChain::create_swap_chain(const SwapChainDesc& desc)
 		{
 			lutry
 			{
 				m_desc = desc;
-				auto framebuffer_size = window->get_framebuffer_size();
+				auto framebuffer_size = m_window->get_framebuffer_size();
 				m_desc.width = desc.width == 0 ? framebuffer_size.x : desc.width;
 				m_desc.height = desc.height == 0 ? framebuffer_size.y : desc.height;
-				if (!test_flags(queue->get_desc().flags, CommandQueueFlags::presenting))
+				if (!test_flags(m_presenting_queue->get_desc().flags, CommandQueueFlags::presenting))
 				{
 					return set_error(BasicError::not_supported(), "The specified command queue for creating swap chain does not have presenting support");
 				}
-				m_presenting_queue = queue;
-				m_window = window;
-				Window::IGLFWWindow* w = query_interface<Window::IGLFWWindow>(window->get_object());
+				Window::IGLFWWindow* w = query_interface<Window::IGLFWWindow>(m_window->get_object());
 				if (!w) return BasicError::not_supported();
 				luexp(encode_vk_result(glfwCreateWindowSurface(g_vk_instance, w->get_glfw_window_handle(), nullptr, &m_surface)));
 				auto& surface_info = get_physical_device_surface_info(m_device->m_physical_device, m_surface);
@@ -96,47 +119,99 @@ namespace Luna
 				luexp(encode_vk_result(m_device->m_funcs.vkCreateSwapchainKHR(m_device->m_device, &create_info, nullptr, &m_swap_chain)));
 				u32 image_count;
 				luexp(encode_vk_result(m_device->m_funcs.vkGetSwapchainImagesKHR(m_device->m_device, m_swap_chain, &image_count, nullptr)));
-				m_swap_chain_images.resize(image_count);
-				luexp(encode_vk_result(m_device->m_funcs.vkGetSwapchainImagesKHR(m_device->m_device, m_swap_chain, &image_count, m_swap_chain_images.data())));
-				m_swap_chain_image_views.resize(image_count);
-				for (usize i = 0; i < m_swap_chain_image_views.size(); ++i)
+				VkImage* images = (VkImage*)alloca(sizeof(VkImage) * image_count);
+				luexp(encode_vk_result(m_device->m_funcs.vkGetSwapchainImagesKHR(m_device->m_device, m_swap_chain, &image_count, images)));
+				TextureDesc desc;
+				desc.type = TextureType::tex2d;
+				desc.pixel_format = m_desc.pixel_format;
+				desc.width = m_desc.width;
+				desc.height = m_desc.height;
+				desc.depth = 1;
+				desc.array_size = 1;
+				desc.heap_type = ResourceHeapType::local;
+				desc.mip_levels = 1;
+				desc.sample_count = 1;
+				for (u32 i = 0; i < image_count; ++i)
 				{
-					VkImageViewCreateInfo createInfo{};
-					createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-					createInfo.image = m_swap_chain_images[i];
-					createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-					createInfo.format = surface_format.format;
-					createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-					createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-					createInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-					createInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-					createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-					createInfo.subresourceRange.baseMipLevel = 0;
-					createInfo.subresourceRange.levelCount = 1;
-					createInfo.subresourceRange.baseArrayLayer = 0;
-					createInfo.subresourceRange.layerCount = 1;
-					luexp(encode_vk_result(m_device->m_funcs.vkCreateImageView(m_device->m_device, &createInfo, nullptr, &m_swap_chain_image_views[i])));
+					auto res = new_object<ImageResource>();
+					res->m_device = m_device;
+					res->m_desc = desc;
+					res->m_image = images[i];
+					res->m_image_layouts.push_back(VK_IMAGE_LAYOUT_UNDEFINED);
+					m_swap_chain_images.push_back(res);
 				}
+				m_back_buffer_fetched = false;
 			}
 			lucatchret;
 			return ok;
 		}
 		SwapChain::~SwapChain()
 		{
-			for (VkImageView i : m_swap_chain_image_views)
+			if (m_acqure_fence != VK_NULL_HANDLE)
 			{
-				m_device->m_funcs.vkDestroyImageView(m_device->m_device, i, nullptr);
-			}
-			if (m_swap_chain != VK_NULL_HANDLE)
-			{
-				m_device->m_funcs.vkDestroySwapchainKHR(m_device->m_device, m_swap_chain, nullptr);
-				m_swap_chain = nullptr;
+				m_device->m_funcs.vkDestroyFence(m_device->m_device, m_acqure_fence, nullptr);
+				m_acqure_fence = VK_NULL_HANDLE;
 			}
 			if (m_surface != VK_NULL_HANDLE)
 			{
 				vkDestroySurfaceKHR(g_vk_instance, m_surface, nullptr);
 				m_surface = VK_NULL_HANDLE;
 			}
+		}
+		R<Ref<ITexture>> SwapChain::get_current_back_buffer()
+		{
+			lutry
+			{
+				if (!m_back_buffer_fetched)
+				{
+					luexp(encode_vk_result(m_device->m_funcs.vkAcquireNextImageKHR(
+						m_device->m_device,
+						m_swap_chain,
+						UINT64_MAX,
+						VK_NULL_HANDLE,
+						m_acqure_fence,
+						&m_current_back_buffer
+					)));
+					luexp(encode_vk_result(m_device->m_funcs.vkWaitForFences(m_device->m_device, 1,
+						&m_acqure_fence, VK_TRUE, UINT64_MAX)));
+					luexp(encode_vk_result(m_device->m_funcs.vkResetFences(m_device->m_device, 1, &m_acqure_fence)));
+					m_back_buffer_fetched = true;
+				}
+			}
+			lucatchret;
+			return m_swap_chain_images[m_current_back_buffer];
+		}
+		RV SwapChain::present()
+		{
+			lutry
+			{
+				if (!m_back_buffer_fetched)
+				{
+					// To fetch m_current_back_buffer
+					lulet(back_buffer, get_current_back_buffer());
+				}
+				VkPresentInfoKHR present_info{};
+				present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+				present_info.waitSemaphoreCount = 0;
+				present_info.swapchainCount = 1;
+				present_info.pSwapchains = &m_swap_chain;
+				present_info.pImageIndices = &m_current_back_buffer;
+				luexp(encode_vk_result(m_device->m_funcs.vkQueuePresentKHR(m_presenting_queue->m_queue, &present_info)));
+				m_back_buffer_fetched = false;
+			}
+			lucatchret;
+			return ok;
+		}
+		RV SwapChain::reset(const SwapChainDesc& desc)
+		{
+			// Wait for all presenting calls to finish.
+			lutry
+			{
+				clean_up_swap_chain();
+				luexp(create_swap_chain(desc));
+			}
+			lucatchret;
+			return ok;
 		}
 	}
 }

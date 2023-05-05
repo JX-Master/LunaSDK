@@ -333,6 +333,8 @@ namespace Luna
 						memory = image->m_memory;
 					}
 				}
+				// This may happen if the resource memory is externally managed.
+				if (!memory) return BasicError::not_supported();
 				if (heap_type != desc.heap_type) return BasicError::not_supported();
 				auto res = new_object<ImageResource>();
 				res->m_device = this;

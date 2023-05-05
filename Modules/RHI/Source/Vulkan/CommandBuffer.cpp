@@ -33,8 +33,11 @@ namespace Luna
 				alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 				alloc_info.commandPool = m_command_pool;
 				alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-				alloc_info.commandBufferCount = 1;
-				luexp(encode_vk_result(m_device->m_funcs.vkAllocateCommandBuffers(m_device->m_device, &alloc_info, &m_command_buffer)));
+				alloc_info.commandBufferCount = 2;
+				VkCommandBuffer buffers[2] = { VK_NULL_HANDLE };
+				luexp(encode_vk_result(m_device->m_funcs.vkAllocateCommandBuffers(m_device->m_device, &alloc_info, buffers)));
+				m_resolve_buffer = buffers[0];
+				m_command_buffer = buffers[1];
 				VkFenceCreateInfo fence_create_info{};
 				fence_create_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 				luexp(encode_vk_result(m_device->m_funcs.vkCreateFence(m_device->m_device, &fence_create_info, nullptr, &m_fence)));
@@ -90,9 +93,9 @@ namespace Luna
 					luexp(encode_vk_result(m_device->m_funcs.vkEndCommandBuffer(m_command_buffer)));
 					m_recording = false;
 				}
-				luexp(encode_vk_result(m_device->m_funcs.vkResetCommandBuffer(m_command_buffer, 0)));
+				luexp(encode_vk_result(m_device->m_funcs.vkResetCommandPool(m_device->m_device, m_command_pool, 0)));
 				luexp(begin_command_buffer());
-
+				m_track_system.reset();
 				m_objs.clear();
 				m_rt_width = 0;
 				m_rt_height = 0;
@@ -624,12 +627,12 @@ namespace Luna
 			for (auto& barrier : buffer_barriers)
 			{
 				BufferResource* res = cast_objct<BufferResource>(barrier.buffer->get_object());
-				m_track_system.pack_buffer(res, barrier.before, barrier.after);
+				m_track_system.pack_buffer(res, barrier.before, barrier.after, barrier.flags);
 			}
 			for (auto& barrier : texture_barriers)
 			{
 				ImageResource* res = cast_objct<ImageResource>(barrier.texture->get_object());
-				m_track_system.pack_image(res, barrier.subresource, barrier.before, barrier.after);
+				m_track_system.pack_image(res, barrier.subresource, barrier.before, barrier.after, barrier.flags);
 			}
 			m_device->m_funcs.vkCmdPipelineBarrier(m_command_buffer,
 				m_track_system.m_src_stage_flags, m_track_system.m_dest_stage_flags, 0, 0, nullptr, 
@@ -673,9 +676,34 @@ namespace Luna
 			if (!m_recording) return BasicError::bad_calling_time();
 			lutry
 			{
+				// Finish barrier.
+				m_track_system.generate_finish_barriers();
+				m_device->m_funcs.vkCmdPipelineBarrier(m_command_buffer,
+					m_track_system.m_src_stage_flags, m_track_system.m_dest_stage_flags, 0, 0, nullptr,
+					m_track_system.m_buffer_barriers.size(), m_track_system.m_buffer_barriers.data(),
+					m_track_system.m_image_barriers.size(), m_track_system.m_image_barriers.data());
+
 				// Close the command buffer.
 				luexp(encode_vk_result(m_device->m_funcs.vkEndCommandBuffer(m_command_buffer)));
 				m_recording = false;
+
+				bool resolve_enabled = false;
+				if (!m_track_system.m_unresolved_image_states.empty())
+				{
+					resolve_enabled = true;
+					// Resolve image states.
+					m_track_system.resolve();
+					VkCommandBufferBeginInfo begin_info{};
+					begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+					begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+					begin_info.pInheritanceInfo = nullptr;
+					luexp(encode_vk_result(m_device->m_funcs.vkBeginCommandBuffer(m_resolve_buffer, &begin_info)));
+					m_device->m_funcs.vkCmdPipelineBarrier(m_resolve_buffer,
+						m_track_system.m_src_stage_flags, m_track_system.m_dest_stage_flags, 0, 0, nullptr,
+						m_track_system.m_buffer_barriers.size(), m_track_system.m_buffer_barriers.data(),
+						m_track_system.m_image_barriers.size(), m_track_system.m_image_barriers.data());
+					luexp(encode_vk_result(m_device->m_funcs.vkEndCommandBuffer(m_resolve_buffer)));
+				}
 				// Submit the command buffer.
 				VkSubmitInfo submit{};
 				submit.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -707,8 +735,17 @@ namespace Luna
 					}
 				}
 				submit.pSignalSemaphores = signal_semaphores;
-				submit.commandBufferCount = 1;
-				submit.pCommandBuffers = &m_command_buffer;
+				VkCommandBuffer buffers[2] = { m_resolve_buffer , m_command_buffer };
+				if (resolve_enabled)
+				{
+					submit.commandBufferCount = 2;
+					submit.pCommandBuffers = buffers;
+				}
+				else
+				{
+					submit.commandBufferCount = 1;
+					submit.pCommandBuffers = &m_command_buffer;
+				}
 				VkFence fence = VK_NULL_HANDLE;
 				if (allow_host_waiting)
 				{

@@ -10,26 +10,43 @@
 #pragma once
 #include "Common.hpp"
 #include "Device.hpp"
+#include "Resource.hpp"
+#include "CommandQueue.hpp"
 namespace Luna
 {
 	namespace RHI
 	{
-		struct SwapChain
+		struct SwapChain : ISwapChain
 		{
 			lustruct("RHI::SwapChain", "{9C0F7754-FA08-4FF3-BF66-B23125FA19F9}");
 			luiimpl();
 
 			SwapChainDesc m_desc;
-			Ref<ICommandQueue> m_presenting_queue;
+			Ref<CommandQueue> m_presenting_queue;
 			Ref<Window::IWindow> m_window;
 			Ref<Device> m_device;
 			VkSurfaceKHR m_surface = VK_NULL_HANDLE;
-			VkSwapchainKHR m_swap_chain = VK_NULL_HANDLE;
-			Vector<VkImage> m_swap_chain_images;
-			Vector<VkImageView> m_swap_chain_image_views;
 
-			RV init(ICommandQueue* queue, Window::IWindow* window, const SwapChainDesc& desc);
+			VkSwapchainKHR m_swap_chain = VK_NULL_HANDLE;
+			Vector<Ref<ImageResource>> m_swap_chain_images;
+
+			VkFence m_acqure_fence;
+
+			u32 m_current_back_buffer;
+			bool m_back_buffer_fetched = false;
+
+			RV init(CommandQueue* queue, Window::IWindow* window, const SwapChainDesc& desc);
+			
+			void clean_up_swap_chain();
+			RV create_swap_chain(const SwapChainDesc& desc);
+			
 			~SwapChain();
+
+			virtual Window::IWindow* get_window() override { return m_window; }
+			virtual SwapChainDesc get_desc() override { return m_desc; }
+			virtual R<Ref<ITexture>> get_current_back_buffer() override;
+			virtual RV present() override;
+			virtual RV reset(const SwapChainDesc& desc) override;
 		};
 	}
 }

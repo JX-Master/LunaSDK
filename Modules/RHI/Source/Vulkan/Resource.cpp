@@ -113,7 +113,7 @@ namespace Luna
 		}
 		ImageResource::~ImageResource()
 		{
-			if (m_image != VK_NULL_HANDLE)
+			if (m_image != VK_NULL_HANDLE && m_memory)
 			{
 				m_device->m_funcs.vkDestroyImage(m_device->m_device, m_image, nullptr);
 				m_image = VK_NULL_HANDLE;

@@ -132,6 +132,8 @@ namespace Luna
 			copy_dest = 0x2000,
 			//! Used as a copy source.
 			copy_source = 0x4000,
+			//! Used for swap chain presentation.
+			present = 0x8000,
 		};
 
 		constexpr SubresourceIndex RESOURCE_BARRIER_ALL_SUBRESOURCES = {U32_MAX, U32_MAX};

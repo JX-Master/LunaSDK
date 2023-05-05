@@ -48,6 +48,9 @@ namespace Luna
 
 			TextureDesc m_desc;
 			VkImage m_image = VK_NULL_HANDLE;
+			// This may be `nullptr` if the image memory is managed by external entities, 
+			// for example, swap chains. In such case, the image should not be destroyed when
+			// the image resource is freed.
 			Ref<DeviceMemory> m_memory;
 
 			// Global state.
