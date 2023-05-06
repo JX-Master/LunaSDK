@@ -16,19 +16,61 @@ namespace Luna
 		RV CommandQueue::init(const CommandQueueDesc& desc)
 		{
 			m_mtx = new_mutex();
-			MutexGuard guard(m_device->m_mtx);
+			MutexGuard guard(m_device->m_queue_pool_mtx);
 			m_queue = VK_NULL_HANDLE;
-			m_desc = desc;
-			for (usize i = 0; i < m_device->m_queues.size(); ++i)
+			if (desc.type == CommandQueueType::copy)
 			{
-				if (!m_device->m_queue_allocated[i])
+				// Check copy queue.
+				for (auto& pool : m_device->m_queue_pools)
 				{
-					if (!test_flags(desc.flags, CommandQueueFlags::presenting) ||
-						test_flags(m_device->m_queues[i].desc.flags, CommandQueueFlags::presenting))
+					if (pool.desc.type == CommandQueueType::copy && !pool.free_queues.empty())
 					{
-						m_queue = m_device->m_queues[i].queue;
-						m_device->m_queue_allocated[i] = true;
-						return ok;
+						if (!test_flags(desc.flags, CommandQueueFlags::presenting) ||
+							test_flags(pool.desc.flags, CommandQueueFlags::presenting))
+						{
+							m_queue = pool.free_queues.back();
+							pool.free_queues.pop_back();
+							m_desc = pool.desc;
+							m_queue_family_index = pool.queue_family_index;
+							return ok;
+						}
+					}
+				}
+			}
+			if (desc.type == CommandQueueType::copy || desc.type == CommandQueueType::compute)
+			{
+				// Check compute queue.
+				for (auto& pool : m_device->m_queue_pools)
+				{
+					if (pool.desc.type == CommandQueueType::compute && !pool.free_queues.empty())
+					{
+						if (!test_flags(desc.flags, CommandQueueFlags::presenting) ||
+							test_flags(pool.desc.flags, CommandQueueFlags::presenting))
+						{
+							m_queue = pool.free_queues.back();
+							pool.free_queues.pop_back();
+							m_desc = pool.desc;
+							m_queue_family_index = pool.queue_family_index;
+							return ok;
+						}
+					}
+				}
+			}
+			{
+				// Check graphics queue.
+				for (auto& pool : m_device->m_queue_pools)
+				{
+					if (pool.desc.type == CommandQueueType::graphics && !pool.free_queues.empty())
+					{
+						if (!test_flags(desc.flags, CommandQueueFlags::presenting) ||
+							test_flags(pool.desc.flags, CommandQueueFlags::presenting))
+						{
+							m_queue = pool.free_queues.back();
+							pool.free_queues.pop_back();
+							m_desc = pool.desc;
+							m_queue_family_index = pool.queue_family_index;
+							return ok;
+						}
 					}
 				}
 			}
@@ -36,12 +78,13 @@ namespace Luna
 		}
 		CommandQueue::~CommandQueue()
 		{
-			MutexGuard guard(m_device->m_mtx);
-			for (usize i = 0; i < m_device->m_queues.size(); ++i)
+			MutexGuard guard(m_device->m_queue_pool_mtx);
+			for (auto& pool : m_device->m_queue_pools)
 			{
-				if (m_queue == m_device->m_queues[i].queue)
+				if (m_queue_family_index == pool.queue_family_index)
 				{
-					m_device->m_queue_allocated[i] = false;
+					pool.free_queues.push_back(m_queue);
+					break;
 				}
 			}
 		}

@@ -25,6 +25,7 @@ namespace Luna
 			Name m_name;
 			VkQueue m_queue = VK_NULL_HANDLE;
 			CommandQueueDesc m_desc;
+			u32 m_queue_family_index;
 			RV init(const CommandQueueDesc& desc);
 			~CommandQueue();
 

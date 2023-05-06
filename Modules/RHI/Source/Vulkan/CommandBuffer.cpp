@@ -27,7 +27,7 @@ namespace Luna
 				VkCommandPoolCreateInfo pool_info{};
 				pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 				pool_info.flags = 0;
-				pool_info.queueFamilyIndex = queue->m_device->m_queue_family_index;
+				pool_info.queueFamilyIndex = queue->m_queue_family_index;
 				luexp(encode_vk_result(m_device->m_funcs.vkCreateCommandPool(m_device->m_device, &pool_info, nullptr, &m_command_pool)));
 				VkCommandBufferAllocateInfo alloc_info{};
 				alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -161,7 +161,7 @@ namespace Luna
 					if (!height) height = rd.height;
 				}
 				rp.sample_count = desc.sample_count;
-				MutexGuard guard(m_device->m_mtx);
+				MutexGuard guard(m_device->m_render_pass_pool_mtx);
 				lulet(render_pass, m_device->m_render_pass_pool.get_render_pass(rp));
 				fb.render_pass = render_pass;
 				lulet(fbo, m_device->m_render_pass_pool.get_frame_buffer(fb));
@@ -751,7 +751,9 @@ namespace Luna
 				{
 					fence = m_fence;
 				}
+				MutexGuard guard(m_queue->m_mtx);
 				luexp(encode_vk_result(m_device->m_funcs.vkQueueSubmit(m_queue->m_queue, 1, &submit, fence)));
+				m_track_system.apply();
 			}
 			lucatchret;
 			return ok;

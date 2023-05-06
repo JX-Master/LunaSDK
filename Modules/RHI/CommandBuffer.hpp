@@ -449,18 +449,20 @@ namespace Luna
 			//! Submits the recorded content in this command buffer to the attached command queue.
 			//! The command buffer can only be submitted once, and the only operation after the submit is to 
 			//! reset the command buffer after it is executed by command queue.
-			//! @param[in] wait_fences The fence objects to wait before this command buffer can be processed.
+			//! @param[in] wait_fences The fence objects to wait before this command buffer can be processed by the system.
 			//! @param[in] signal_fences The fence objects to signal after this command buffer is completed.
 			//! @param[in] allow_host_waiting Whether `ICommandBuffer::wait` can be used to wait for the command buffer 
 			//! from host side. If this is `false`, the command buffer cannot be waited from host, and the behavior of 
 			//! calling `ICommandBuffer::wait` is undefined. Setting this to `false` may improve queue performance, and 
 			//! the command buffer can still be waited by other command buffers using fences.
 			//! 
-			//! @remark Synchronizations between command buffers are specified explicitly using fences when submitting
-			//! command buffers. For command buffers (A) and (B) submitted to the same command queue in order (A -> B), 
-			//! the system is allowed to execute (B) after (A) is started and before (A) is completed. If you want to
-			//! defer the execution of (B) until (A) is completed, using one fence (F) as the signal fence of (A) and the
-			//! wait fence of (B) to synchronize them explicitly.
+			//! @remark Command buffers submitted to the same command queue are processed by their submission order.
+			//! The system is allowed to merge commands in adjacent submissions as if they are recorded in the same command buffer,
+			//! thus different submissions may execute out of order if they have no memory dependency. To prevent synchronization hazard,
+			//! always insert resource barriers before using resources in command buffers.
+			//! 
+			//! If `signal_fences` is not empty, the system guarantees that all commands in the submission is finished, and all 
+			//! writes to the memory in the submission is made visible before fences are signaled.
 			virtual RV submit(Span<IFence*> wait_fences, Span<IFence*> signal_fences, bool allow_host_waiting) = 0;
 		};
 	}

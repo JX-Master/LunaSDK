@@ -16,10 +16,12 @@ namespace Luna
 {
 	namespace RHI
 	{
-		struct QueueInfo
+		struct QueuePool
 		{
-			VkQueue queue;
 			CommandQueueDesc desc;
+			Vector<VkQueue> free_queues;
+			VkQueue internal_queue;
+			u32 queue_family_index;
 		};
 
 		struct Device : IDevice
@@ -29,12 +31,13 @@ namespace Luna
 
 			VkDevice m_device = VK_NULL_HANDLE;
 			VkPhysicalDevice m_physical_device;
-			// All created queues.
-			Vector<QueueInfo> m_queues;
-			// The queue family index for all created queues. We only use 1 queue family here.
-			u32 m_queue_family_index;
-			Vector<bool> m_queue_allocated;
-			Ref<IMutex> m_mtx;
+			// All created queues
+			Vector<QueuePool> m_queue_pools;
+			// Indices are used for `m_queue_pools`, not queue family index.
+			u32 m_graphics_queue_pool_index;
+			u32 m_compute_queue_pool_index;
+			u32 m_copy_queue_pool_index;
+			Ref<IMutex> m_queue_pool_mtx;
 
 			VolkDeviceTable m_funcs;
 
@@ -50,8 +53,9 @@ namespace Luna
 
 			// Render pass pools.
 			RenderPassPool m_render_pass_pool;
+			Ref<IMutex> m_render_pass_pool_mtx;
 
-			RV init(VkPhysicalDevice physical_device, u32 queue_family_index, u32 num_queues);
+			RV init(VkPhysicalDevice physical_device, const Vector<QueueFamily>& queue_families);
 			RV init_descriptor_pools();
 			RV init_vma_allocator();
 			~Device();

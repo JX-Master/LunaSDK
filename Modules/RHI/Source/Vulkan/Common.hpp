@@ -353,7 +353,6 @@ namespace Luna
 		inline VkAccessFlags encode_access_flags(BufferStateFlag state)
 		{
 			VkAccessFlags f = 0;
-			if (state == BufferStateFlag::undefined) return 0;
 			if (test_flags(state, BufferStateFlag::indirect_argument)) f |= VK_ACCESS_INDIRECT_COMMAND_READ_BIT;
 			if (test_flags(state, BufferStateFlag::vertex_buffer)) f |= VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
 			if (test_flags(state, BufferStateFlag::index_buffer)) f |= VK_ACCESS_INDEX_READ_BIT;
@@ -417,12 +416,14 @@ namespace Luna
 			{
 				return VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 			}
-			
+			if (test_flags(state, TextureStateFlag::present))
+			{
+				return VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+			}
 			return VK_IMAGE_LAYOUT_GENERAL;
 		}
 		inline VkPipelineStageFlags determine_pipeline_stage_flags(BufferStateFlag state, CommandQueueType queue_type)
 		{
-			if (state == BufferStateFlag::undefined) return 0;
 			VkPipelineStageFlags flags = 0;
 
 			switch (queue_type)
@@ -495,7 +496,6 @@ namespace Luna
 		}
 		VkPipelineStageFlags determine_pipeline_stage_flags(TextureStateFlag state, CommandQueueType queue_type)
 		{
-			if (state == TextureStateFlag::undefined) return 0;
 			VkPipelineStageFlags flags = 0;
 
 			switch (queue_type)

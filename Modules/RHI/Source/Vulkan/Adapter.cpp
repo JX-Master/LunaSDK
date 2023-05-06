@@ -67,6 +67,7 @@ namespace Luna
 				bool valid = false;
 				dst.num_queues = queue_families[i].queueCount;
 				dst.index = i;
+				dst.desc.flags = CommandQueueFlags::none;
 				// GRAPHICS and COMPUTE an always implicitly accept TRANSFER workload, so we don't need to explicitly check it.
 				// See Vulkan Specification for VkQueueFlagBits.
 				if (src.queueFlags & (VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT))
@@ -109,40 +110,27 @@ namespace Luna
 			lutry
 			{
 				luset(dummy_window, Window::new_window("Dummy Window", Window::WindowDisplaySettings::as_windowed(), Window::WindowCreationFlag::hidden));
-				// Fetch surface for dummy window.
-				Window::IGLFWWindow* window = query_interface<Window::IGLFWWindow>(dummy_window->get_object());
-				if (!window)
-				{
-					return BasicError::not_supported();
-				}
-				GLFWwindow* glfw_window = window->get_glfw_window_handle();
-				luexp(encode_vk_result(glfwCreateWindowSurface(g_vk_instance, window->get_glfw_window_handle(), nullptr, &dummy_surface)));
-				// Select physical device.
-				for (usize i = 0; i < g_physical_devices.size(); ++i)
-				{
-					lulet(queue_families, get_device_queue_families(g_physical_devices[i], dummy_surface));
-					bool main_queue_family_found = false;
-					for (auto& queue_family : queue_families)
-					{
-						if (queue_family.desc.type == CommandQueueType::graphics && test_flags(queue_family.desc.flags, CommandQueueFlags::presenting))
-						{
-							g_physical_device_main_queue_families.push_back(move(queue_family));
-							main_queue_family_found = true;
-							break;
-						}
-					}
-					if (!main_queue_family_found)
-					{
-						g_physical_device_main_queue_families.push_back(queue_families.front());
-					}
-				}
-				if (dummy_surface != VK_NULL_HANDLE)
-				{
-					vkDestroySurfaceKHR(g_vk_instance, dummy_surface, nullptr);
-					dummy_surface = VK_NULL_HANDLE;
-				}
+			// Fetch surface for dummy window.
+			Window::IGLFWWindow* window = query_interface<Window::IGLFWWindow>(dummy_window->get_object());
+			if (!window)
+			{
+				return BasicError::not_supported();
 			}
-			lucatch
+			GLFWwindow* glfw_window = window->get_glfw_window_handle();
+			luexp(encode_vk_result(glfwCreateWindowSurface(g_vk_instance, window->get_glfw_window_handle(), nullptr, &dummy_surface)));
+			// Select physical device.
+			for (usize i = 0; i < g_physical_devices.size(); ++i)
+			{
+				lulet(queue_families, get_device_queue_families(g_physical_devices[i], dummy_surface));
+				g_physical_device_queue_families.push_back(move(queue_families));
+			}
+			if (dummy_surface != VK_NULL_HANDLE)
+			{
+				vkDestroySurfaceKHR(g_vk_instance, dummy_surface, nullptr);
+				dummy_surface = VK_NULL_HANDLE;
+			}
+			}
+				lucatch
 			{
 				if (dummy_surface != VK_NULL_HANDLE)
 				{
@@ -168,15 +156,15 @@ namespace Luna
 					g_physical_devices.resize(device_count);
 					vkEnumeratePhysicalDevices(g_vk_instance, &device_count, g_physical_devices.data());
 				}
-				
+
 			}
 			lucatchret;
 			return ok;
 		}
 		void clear_physical_devices()
 		{
-			g_physical_device_main_queue_families.clear();
-			g_physical_device_main_queue_families.shrink_to_fit();
+			g_physical_device_queue_families.clear();
+			g_physical_device_queue_families.shrink_to_fit();
 			g_physical_devices.clear();
 			g_physical_devices.shrink_to_fit();
 		}
@@ -199,17 +187,20 @@ namespace Luna
 			}
 			return required_extensions.empty();
 		}
-		inline R<bool> is_device_suitable(VkPhysicalDevice device, const QueueFamily& queue_family)
+		inline R<bool> is_device_suitable(VkPhysicalDevice device, const Vector<QueueFamily>& families)
 		{
 			bool graphic_queue_present = false;
 			bool present_queue_present = false;
-			if (queue_family.desc.type == CommandQueueType::graphics)
+			for (auto& i : families)
 			{
-				graphic_queue_present = true;
-			}
-			if (test_flags(queue_family.desc.flags, CommandQueueFlags::presenting))
-			{
-				present_queue_present = true;
+				if (i.desc.type == CommandQueueType::graphics)
+				{
+					graphic_queue_present = true;
+				}
+				if (test_flags(i.desc.flags, CommandQueueFlags::presenting))
+				{
+					present_queue_present = true;
+				}
 			}
 			bool extensions_supported = check_device_extension_support(device);
 			return graphic_queue_present && present_queue_present && extensions_supported;
@@ -229,7 +220,7 @@ namespace Luna
 				// Select dedicated device if present.
 				for (usize i = 0; i < g_physical_devices.size(); ++i)
 				{
-					lulet(suitable, is_device_suitable(g_physical_devices[i], g_physical_device_main_queue_families[i]));
+					lulet(suitable, is_device_suitable(g_physical_devices[i], g_physical_device_queue_families[i]));
 					if (suitable && device_properties[i].deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
 					{
 						return i;
@@ -238,7 +229,7 @@ namespace Luna
 				// Fallback to intergrated GPU if present.
 				for (usize i = 0; i < g_physical_devices.size(); ++i)
 				{
-					lulet(suitable, is_device_suitable(g_physical_devices[i], g_physical_device_main_queue_families[i]));
+					lulet(suitable, is_device_suitable(g_physical_devices[i], g_physical_device_queue_families[i]));
 					if (suitable && device_properties[i].deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU)
 					{
 						return i;
@@ -247,7 +238,7 @@ namespace Luna
 				// Fallback to Any GPU.
 				for (usize i = 0; i < g_physical_devices.size(); ++i)
 				{
-					lulet(suitable, is_device_suitable(g_physical_devices[i], g_physical_device_main_queue_families[i]));
+					lulet(suitable, is_device_suitable(g_physical_devices[i], g_physical_device_queue_families[i]));
 					if (suitable)
 					{
 						return i;
@@ -293,7 +284,7 @@ namespace Luna
 					ret.type = GraphicAdapterType::virtual_gpu; break;
 				case VK_PHYSICAL_DEVICE_TYPE_CPU:
 					ret.type = GraphicAdapterType::software; break;
-				default: 
+				default:
 					ret.type = GraphicAdapterType::unknwon;
 				}
 			}
