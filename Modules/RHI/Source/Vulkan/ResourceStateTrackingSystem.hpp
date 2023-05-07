@@ -40,16 +40,24 @@ namespace Luna
 			}
 		};
 
+		struct QueueTransferBarriers
+		{
+			Vector<VkBufferMemoryBarrier> buffer_barriers;
+			Vector<VkImageMemoryBarrier> image_barriers;
+		};
+
 		class ResourceStateTrackingSystem
 		{
 		public:
 
 			CommandQueueType m_queue_type = CommandQueueType::graphics;
+			u32 m_queue_family_index;
 
-			//! Tables for unresolved resources. Unlike most implementations in other library, because
+			//! Tables for unresolved resources. Unlike most implementations in other library, because 
 			//! we don't know when the list will be submitted to the queue, we defer the resolving of this 
 			//! to the time when the list is actually submitted.
-			HashMap<ImageResourceKey, TextureStateFlag> m_unresolved_image_states;
+			HashMap<BufferResource*, BufferBarrier> m_unresolved_buffer_states;
+			HashMap<ImageResourceKey, TextureBarrier> m_unresolved_image_states;
 
 			//! Tables for the current state of resources.
 			HashMap<BufferResource*, BufferStateFlag> m_current_buffer_states;
@@ -59,6 +67,7 @@ namespace Luna
 			Vector<VkImageMemoryBarrier> m_image_barriers;
 			VkPipelineStageFlags m_src_stage_flags = 0;
 			VkPipelineStageFlags m_dest_stage_flags = 0;
+			HashMap<u32, QueueTransferBarriers> m_queue_transfer_barriers;
 
 			ResourceStateTrackingSystem() {}
 
@@ -75,6 +84,7 @@ namespace Luna
 				m_image_barriers.clear();
 				m_src_stage_flags = 0;
 				m_dest_stage_flags = 0;
+				m_queue_transfer_barriers.clear();
 			}
 
 			VkImageLayout get_image_layout(ImageResource* res, const SubresourceIndex& subresource) const
@@ -86,20 +96,29 @@ namespace Luna
 				if (iter == m_current_image_states.end())
 				{
 					u32 subresource_index = calc_subresource_state_index(subresource.mip_slice, subresource.array_slice, res->m_desc.mip_levels);
-					return res->m_image_layouts[subresource_index];
+					return res->m_global_states[subresource_index].m_image_layout;
 				}
 				return encode_image_layout(iter->second);
 			}
 
 		private:
-			void append_buffer(BufferResource* res, VkAccessFlags before, VkAccessFlags after);
-			void append_image(ImageResource* res, const SubresourceIndex& subresource, const ImageState& before, const ImageState& after);
+			void append_buffer(BufferResource* res, VkAccessFlags before, VkAccessFlags after, 
+				u32 before_queue_family_index = VK_QUEUE_FAMILY_IGNORED, u32 after_queue_family_index = VK_QUEUE_FAMILY_IGNORED);
+			void append_image(ImageResource* res, const SubresourceIndex& subresource, const ImageState& before, const ImageState& after,
+				u32 before_queue_family_index = VK_QUEUE_FAMILY_IGNORED, u32 after_queue_family_index = VK_QUEUE_FAMILY_IGNORED);
+
+			void pack_buffer_internal(BufferResource* res, const BufferBarrier& barrier, 
+				VkAccessFlags recorded_src_access_flags, VkPipelineStageFlags recorded_src_pipeline_stage_flags, 
+				u32 before_queue_family_index, u32 after_queue_family_index);
+			void pack_image_internal(ImageResource* res, const TextureBarrier& barrier,
+				const ImageState& recorded_before_state, VkPipelineStageFlags recorded_src_pipeline_stage_flags,
+				u32 before_queue_family_index, u32 after_queue_family_index);
 		public:
 
 			//! Appends one barrier that transits the specified subresources' state to after
 			//! state, and records the change into the tracking system.
-			void pack_buffer(BufferResource* res, BufferStateFlag before, BufferStateFlag after, ResourceBarrierFlag flags);
-			void pack_image(ImageResource* res, const SubresourceIndex& subresource, TextureStateFlag before, TextureStateFlag after, ResourceBarrierFlag flags);
+			void pack_buffer(const BufferBarrier& barrier);
+			void pack_image(const TextureBarrier& barrier);
 
 			//! Resolves all unresolved transitions into m_transitions based on their current state.
 			void resolve();

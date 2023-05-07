@@ -425,7 +425,7 @@ namespace Luna
 		inline VkPipelineStageFlags determine_pipeline_stage_flags(BufferStateFlag state, CommandQueueType queue_type)
 		{
 			VkPipelineStageFlags flags = 0;
-
+			if (state == BufferStateFlag::automatic) return flags;
 			switch (queue_type)
 			{
 			case CommandQueueType::graphics:
@@ -497,7 +497,7 @@ namespace Luna
 		VkPipelineStageFlags determine_pipeline_stage_flags(TextureStateFlag state, CommandQueueType queue_type)
 		{
 			VkPipelineStageFlags flags = 0;
-
+			if (state == TextureStateFlag::automatic) return flags;
 			switch (queue_type)
 			{
 			case CommandQueueType::graphics:

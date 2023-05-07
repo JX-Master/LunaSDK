@@ -86,6 +86,7 @@ namespace Luna
 				pool.queue_family_index = queue_families[i].index;
 				pool.internal_queue = VK_NULL_HANDLE;
 				m_funcs.vkGetDeviceQueue(m_device, queue_families[i].index, 0, &pool.internal_queue);
+				pool.internal_queue_mtx = new_mutex();
 				for (usize j = 1; j < queue_families[i].num_queues; ++j)
 				{
 					VkQueue queue = VK_NULL_HANDLE;

@@ -21,6 +21,7 @@ namespace Luna
 			CommandQueueDesc desc;
 			Vector<VkQueue> free_queues;
 			VkQueue internal_queue;
+			Ref<IMutex> internal_queue_mtx;
 			u32 queue_family_index;
 		};
 
@@ -33,10 +34,6 @@ namespace Luna
 			VkPhysicalDevice m_physical_device;
 			// All created queues
 			Vector<QueuePool> m_queue_pools;
-			// Indices are used for `m_queue_pools`, not queue family index.
-			u32 m_graphics_queue_pool_index;
-			u32 m_compute_queue_pool_index;
-			u32 m_copy_queue_pool_index;
 			Ref<IMutex> m_queue_pool_mtx;
 
 			VolkDeviceTable m_funcs;

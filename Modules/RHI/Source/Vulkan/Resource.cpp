@@ -78,7 +78,7 @@ namespace Luna
 			{
 				luexp(encode_vk_result(vmaBindImageMemory(m_device->m_allocator, m_memory->m_allocation, m_image)));
 				u32 num_subresources = m_desc.mip_levels * m_desc.array_size;
-				m_image_layouts.resize(num_subresources, VK_IMAGE_LAYOUT_UNDEFINED);
+				m_global_states.resize(num_subresources);
 			}
 			lucatchret;
 			return ok;

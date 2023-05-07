@@ -26,6 +26,8 @@ namespace Luna
 			VkBuffer m_buffer = VK_NULL_HANDLE;
 			Ref<DeviceMemory> m_memory;
 
+			u32 m_owning_queue_family_index = U32_MAX;
+
 			RV post_init();
 			RV init_as_committed(const BufferDesc& desc);
 			RV init_as_aliasing(const BufferDesc& desc, DeviceMemory* memory);
@@ -36,6 +38,12 @@ namespace Luna
 			virtual BufferDesc get_desc() override { return m_desc; }
 			virtual R<void*> map(usize read_begin, usize read_end) override;
 			virtual void unmap(usize write_begin, usize write_end) override;
+		};
+
+		struct ImageGlobalState
+		{
+			VkImageLayout m_image_layout = VK_IMAGE_LAYOUT_UNDEFINED;
+			u32 m_owning_queue_family_index = U32_MAX;
 		};
 
 		struct ImageResource : ITexture
@@ -54,7 +62,7 @@ namespace Luna
 			Ref<DeviceMemory> m_memory;
 
 			// Global state.
-			Vector<VkImageLayout> m_image_layouts;
+			Vector<ImageGlobalState> m_global_states;
 
 			RV post_init();
 			RV init_as_committed(const TextureDesc& desc);

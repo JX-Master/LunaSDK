@@ -13,36 +13,29 @@ namespace Luna
 {
 	namespace RHI
 	{
-		void ResourceStateTrackingSystem::append_buffer(BufferResource* res, VkAccessFlags before, VkAccessFlags after)
+		void ResourceStateTrackingSystem::append_buffer(BufferResource* res, VkAccessFlags before, VkAccessFlags after,
+			u32 before_queue_family_index, u32 after_queue_family_index)
 		{
-			// Early out for unnecessary calls.
-			if (before == after)
-			{
-				return;
-			}
 			VkBufferMemoryBarrier barrier{};
 			barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
 			barrier.srcAccessMask = before;
 			barrier.dstAccessMask = after;
-			barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-			barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			barrier.srcQueueFamilyIndex = before_queue_family_index;
+			barrier.dstQueueFamilyIndex = after_queue_family_index;
 			barrier.buffer = res->m_buffer;
 			barrier.offset = 0;
 			barrier.size = VK_WHOLE_SIZE;
+			m_buffer_barriers.push_back(barrier);
 		}
-		void ResourceStateTrackingSystem::append_image(ImageResource* res, const SubresourceIndex& subresource, const ImageState& before, const ImageState& after)
+		void ResourceStateTrackingSystem::append_image(ImageResource* res, const SubresourceIndex& subresource, const ImageState& before, const ImageState& after,
+			u32 before_queue_family_index, u32 after_queue_family_index)
 		{
-			// Early out for unnecessary calls.
-			if (before == after)
-			{
-				return;
-			}
 			VkImageMemoryBarrier barrier{};
 			barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
 			barrier.srcAccessMask = before.access_flags;
 			barrier.dstAccessMask = after.access_flags;
-			barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-			barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			barrier.srcQueueFamilyIndex = before_queue_family_index;
+			barrier.dstQueueFamilyIndex = after_queue_family_index;
 			barrier.oldLayout = before.image_layout;
 			barrier.newLayout = after.image_layout;
 			barrier.image = res->m_image;
@@ -62,80 +55,122 @@ namespace Luna
 			barrier.subresourceRange.baseArrayLayer = subresource.array_slice;
 			barrier.subresourceRange.levelCount = 1;
 			barrier.subresourceRange.layerCount = 1;
+			m_image_barriers.push_back(barrier);
 		}
-		void ResourceStateTrackingSystem::pack_buffer(BufferResource* res, BufferStateFlag before, BufferStateFlag after, ResourceBarrierFlag flags)
+		void ResourceStateTrackingSystem::pack_buffer_internal(BufferResource* res, const BufferBarrier& barrier, 
+			VkAccessFlags recorded_src_access_flags, VkPipelineStageFlags recorded_src_pipeline_stage_flags, 
+			u32 before_queue_family_index, u32 after_queue_family_index)
 		{
-			auto iter = m_current_buffer_states.find(res);
-			if (test_flags(flags, ResourceBarrierFlag::aliasing))
+			if (test_flags(barrier.flags, ResourceBarrierFlag::aliasing))
 			{
 				VkAccessFlags before_flags = 0;
-				VkAccessFlags after_flags = encode_access_flags(after);
-				append_buffer(res, before_flags, after_flags);
-				if (before == BufferStateFlag::automatic)
-				{
-					m_src_stage_flags |= VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
-				}
-				else
-				{
-					m_src_stage_flags |= determine_pipeline_stage_flags(before, m_queue_type);
-				}
-				m_dest_stage_flags |= determine_pipeline_stage_flags(after, m_queue_type);
-				if (iter == m_current_buffer_states.end())
-				{
-					m_current_buffer_states.insert(make_pair(res, after));
-				}
-				else
-				{
-					iter->second = after;
-				}
+				VkAccessFlags after_flags = encode_access_flags(barrier.after);
+				append_buffer(res, before_flags, after_flags, before_queue_family_index, after_queue_family_index);
+				m_src_stage_flags |= (barrier.before == BufferStateFlag::automatic) ?
+					VK_PIPELINE_STAGE_ALL_COMMANDS_BIT : determine_pipeline_stage_flags(barrier.before, m_queue_type);
+				m_dest_stage_flags |= determine_pipeline_stage_flags(barrier.after, m_queue_type);
 			}
 			else
 			{
-				VkAccessFlags after_flags = encode_access_flags(after);
-				if (iter == m_current_buffer_states.end())
+				VkAccessFlags after_flags = encode_access_flags(barrier.after);
+				VkAccessFlags before_flags;
+				VkPipelineStageFlags before_stages;
+				if (barrier.before == BufferStateFlag::automatic)
 				{
-					// The resource is used for the first time.
-					VkAccessFlags before_flags = 0;
-					if (before != BufferStateFlag::automatic)
-					{
-						before_flags = encode_access_flags(before);
-					}
-					if (test_flags(flags, ResourceBarrierFlag::discard_content))
-					{
-						before_flags = 0;
-					}
-					append_buffer(res, before_flags, after_flags);
-					m_dest_stage_flags |= determine_pipeline_stage_flags(after, m_queue_type);
-					m_current_buffer_states.insert(make_pair(res, after));
+					before_flags = recorded_src_access_flags;
+					before_stages = recorded_src_pipeline_stage_flags;
 				}
 				else
 				{
-					BufferStateFlag before_state = before;
-					if (before_state == BufferStateFlag::automatic) before_state = iter->second;
-					VkAccessFlags before_flags = encode_access_flags(before_state);
-					if (test_flags(flags, ResourceBarrierFlag::discard_content))
-					{
-						before_flags = 0;
-					}
-					append_buffer(res, before_flags, after_flags);
-					m_src_stage_flags |= determine_pipeline_stage_flags(before_state, m_queue_type);
-					m_dest_stage_flags |= determine_pipeline_stage_flags(after, m_queue_type);
-					iter->second = after;
+					before_flags = encode_access_flags(barrier.before);
+					before_stages = determine_pipeline_stage_flags(barrier.before, m_queue_type);
 				}
+				if (test_flags(barrier.flags, ResourceBarrierFlag::discard_content))
+				{
+					before_flags = 0;
+				}
+				append_buffer(res, before_flags, after_flags, before_queue_family_index, after_queue_family_index);
+				m_src_stage_flags |= before_stages;
+				m_dest_stage_flags |= determine_pipeline_stage_flags(barrier.after, m_queue_type);
 			}
 		}
-		void ResourceStateTrackingSystem::pack_image(ImageResource* res, const SubresourceIndex& subresource, TextureStateFlag before, TextureStateFlag after, ResourceBarrierFlag flags)
+		void ResourceStateTrackingSystem::pack_image_internal(ImageResource* res, const TextureBarrier& barrier,
+			const ImageState& recorded_before_state, VkPipelineStageFlags recorded_src_pipeline_stage_flags,
+			u32 before_queue_family_index, u32 after_queue_family_index)
 		{
-			if (subresource == RESOURCE_BARRIER_ALL_SUBRESOURCES)
+			if (test_flags(barrier.flags, ResourceBarrierFlag::aliasing))
 			{
+				// Aliasing.
+				ImageState before_state;
+				before_state.access_flags = 0;
+				before_state.image_layout = VK_IMAGE_LAYOUT_UNDEFINED;
+				ImageState after_state;
+				after_state.access_flags = encode_access_flags(barrier.after);
+				after_state.image_layout = encode_image_layout(barrier.after);
+				append_image(res, barrier.subresource, before_state, after_state, before_queue_family_index, after_queue_family_index);
+				m_src_stage_flags |= (barrier.before == TextureStateFlag::automatic) ?
+					VK_PIPELINE_STAGE_ALL_COMMANDS_BIT : determine_pipeline_stage_flags(barrier.before, m_queue_type);
+				m_dest_stage_flags |= determine_pipeline_stage_flags(barrier.after, m_queue_type);
+			}
+			else
+			{
+				ImageState after_state;
+				after_state.access_flags = encode_access_flags(barrier.after);
+				after_state.image_layout = encode_image_layout(barrier.after);
+				ImageState before_state;
+				VkPipelineStageFlags before_stages;
+				if (barrier.before == TextureStateFlag::automatic)
+				{
+					before_state = recorded_before_state;
+					before_stages = recorded_src_pipeline_stage_flags;
+				}
+				else
+				{
+					before_state.access_flags = encode_access_flags(barrier.before);
+					before_state.image_layout = encode_image_layout(barrier.before);
+					before_stages = determine_pipeline_stage_flags(barrier.before, m_queue_type);
+				}
+				if (test_flags(barrier.flags, ResourceBarrierFlag::discard_content))
+				{
+					before_state.access_flags = 0;
+					before_state.image_layout = VK_IMAGE_LAYOUT_UNDEFINED;
+				}
+				append_image(res, barrier.subresource, before_state, after_state, before_queue_family_index, after_queue_family_index);
+				m_src_stage_flags |= before_stages;
+				m_dest_stage_flags |= determine_pipeline_stage_flags(barrier.after, m_queue_type);
+			}
+		}
+		void ResourceStateTrackingSystem::pack_buffer(const BufferBarrier& barrier)
+		{
+			BufferResource* res = cast_objct<BufferResource>(barrier.buffer->get_object());
+			auto iter = m_current_buffer_states.find(res);
+			if (iter == m_current_buffer_states.end())
+			{
+				// This resource is used on the current buffer for the first time.
+				m_unresolved_buffer_states.insert(make_pair(res, barrier));
+				m_current_buffer_states.insert(make_pair(res, barrier.after));
+			}
+			else
+			{
+				pack_buffer_internal(res, barrier, 
+					encode_access_flags(iter->second), determine_pipeline_stage_flags(iter->second, m_queue_type), 
+					VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED);
+				iter->second = barrier.after;
+			}
+		}
+		void ResourceStateTrackingSystem::pack_image(const TextureBarrier& barrier)
+		{
+			ImageResource* res = cast_objct<ImageResource>(barrier.texture->get_object());
+			if (barrier.subresource == RESOURCE_BARRIER_ALL_SUBRESOURCES)
+			{
+				TextureBarrier sub_barrier = barrier;
 				for (u32 array_slice = 0; array_slice < res->m_desc.array_size; ++array_slice)
 				{
 					for (u32 mip_slice = 0; mip_slice < res->m_desc.mip_levels; ++mip_slice)
 					{
-						SubresourceIndex index;
-						index.array_slice = array_slice;
-						index.mip_slice = mip_slice;
-						pack_image(res, index, before, after, flags);
+						sub_barrier.subresource.array_slice = array_slice;
+						sub_barrier.subresource.mip_slice = mip_slice;
+						pack_image(sub_barrier);
 					}
 				}
 			}
@@ -143,135 +178,56 @@ namespace Luna
 			{
 				ImageResourceKey key;
 				key.m_res = res;
-				key.m_subres = subresource;
+				key.m_subres = barrier.subresource;
 				auto iter = m_current_image_states.find(key);
-				if (test_flags(flags, ResourceBarrierFlag::aliasing))
+				if (iter == m_current_image_states.end())
 				{
-					// Aliasing.
-					ImageState before_state;
-					before_state.access_flags = 0;
-					before_state.image_layout = VK_IMAGE_LAYOUT_UNDEFINED;
-					ImageState after_state;
-					after_state.access_flags = encode_access_flags(after);
-					after_state.image_layout = encode_image_layout(after);
-					append_image(res, subresource, before_state, after_state);
-					if (before == TextureStateFlag::automatic)
-					{
-						m_src_stage_flags |= VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
-					}
-					else
-					{
-						m_src_stage_flags |= determine_pipeline_stage_flags(before, m_queue_type);
-					}
-					m_dest_stage_flags |= determine_pipeline_stage_flags(after, m_queue_type);
-					if (iter == m_current_image_states.end())
-					{
-						m_current_image_states.insert(make_pair(key, after));
-					}
-					else
-					{
-						iter->second = after;
-					}
+					// This resource is used on the current buffer for the first time.
+					m_unresolved_image_states.insert(make_pair(res, barrier));
+					m_current_image_states.insert(make_pair(res, barrier.after));
 				}
 				else
 				{
-					// Transition.
-					if (iter == m_current_image_states.end())
-					{
-						// The subresource is used for the first time.
-						if (before == TextureStateFlag::automatic)
-						{
-							if (test_flags(flags, ResourceBarrierFlag::discard_content))
-							{
-								ImageState before_state;
-								before_state.access_flags = 0;
-								before_state.image_layout = VK_IMAGE_LAYOUT_UNDEFINED;
-								ImageState after_state;
-								after_state.access_flags = encode_access_flags(after);
-								after_state.image_layout = encode_image_layout(after);
-								append_image(res, subresource, before_state, after_state);
-								m_dest_stage_flags |= determine_pipeline_stage_flags(after, m_queue_type);
-							}
-							else
-							{
-								// defer the resolve of this barrier to execution time.
-								m_unresolved_image_states.insert(make_pair(key, after));
-							}
-						}
-						else
-						{
-							ImageState before_state;
-							if (test_flags(flags, ResourceBarrierFlag::discard_content))
-							{
-								before_state.access_flags = 0;
-								before_state.image_layout = VK_IMAGE_LAYOUT_UNDEFINED;
-							}
-							else
-							{
-								before_state.access_flags = encode_access_flags(before);
-								before_state.image_layout = encode_image_layout(before);
-							}
-							ImageState after_state;
-							after_state.access_flags = encode_access_flags(after);
-							after_state.image_layout = encode_image_layout(after);
-							append_image(res, subresource, before_state, after_state);
-							m_src_stage_flags |= determine_pipeline_stage_flags(before, m_queue_type);
-							m_dest_stage_flags |= determine_pipeline_stage_flags(after, m_queue_type);
-						}
-						m_current_image_states.insert(make_pair(key, after));
-					}
-					else
-					{
-						// The subresource is resolved.
-						// Insert a transition always.
-						TextureStateFlag before_resolved;
-						if (before == TextureStateFlag::automatic)
-						{
-							before_resolved = iter->second;
-						}
-						else
-						{
-							before_resolved = before;
-						}
-						ImageState before_state;
-						
-						if (test_flags(flags, ResourceBarrierFlag::discard_content))
-						{
-							before_state.access_flags = 0;
-							before_state.image_layout = VK_IMAGE_LAYOUT_UNDEFINED;
-						}
-						else
-						{
-							before_state.access_flags = encode_access_flags(before_resolved);
-							before_state.image_layout = encode_image_layout(before_resolved);
-						}
-						ImageState after_state;
-						after_state.access_flags = encode_access_flags(after);
-						after_state.image_layout = encode_image_layout(after);
-						append_image(res, subresource, before_state, after_state);
-						m_src_stage_flags |= determine_pipeline_stage_flags(before_resolved, m_queue_type);
-						m_dest_stage_flags |= determine_pipeline_stage_flags(after, m_queue_type);
-						iter->second = after;
-					}
+					ImageState tracked_state;
+					tracked_state.access_flags = encode_access_flags(iter->second);
+					tracked_state.image_layout = encode_image_layout(iter->second);
+					pack_image_internal(res, barrier, 
+						tracked_state, determine_pipeline_stage_flags(iter->second, m_queue_type),
+						VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED);
+					iter->second = barrier.after;
 				}
 			}
 		}
 		void ResourceStateTrackingSystem::resolve()
 		{
 			begin_new_barriers_batch();
+			for (auto& i : m_unresolved_buffer_states)
+			{
+				u32 before_queue = i.first->m_owning_queue_family_index;
+				if (before_queue == U32_MAX) before_queue = m_queue_family_index;
+				pack_buffer_internal(i.first, i.second, 0, 0, before_queue, m_queue_family_index);
+				if (before_queue != m_queue_family_index)
+				{
+					// queue ownership transfer.
+					auto iter = m_queue_transfer_barriers.insert(make_pair(before_queue, QueueTransferBarriers())).first;
+					iter->second.buffer_barriers.push_back(m_buffer_barriers.back());
+				}
+			}
 			for (auto& i : m_unresolved_image_states)
 			{
-				ImageResource* res = i.first.m_res;
-				luassert(!res->m_states.empty());
-				ImageState before;
-				u32 subresource_index = calc_subresource_state_index(i.first.m_subres.mip_slice, i.first.m_subres.array_slice, res->m_desc.mip_levels);
-				before.access_flags = 0;
-				before.image_layout = res->m_image_layouts[subresource_index];
-				ImageState after;
-				after.access_flags = encode_access_flags(i.second);
-				after.image_layout = encode_image_layout(i.second);
-				append_image(res, i.first.m_subres, before, after);
-				m_dest_stage_flags |= determine_pipeline_stage_flags(i.second, m_queue_type);
+				auto global_state = i.first.m_res->m_global_states[calc_subresource_state_index(i.first.m_subres.mip_slice, i.first.m_subres.array_slice, i.first.m_res->m_desc.mip_levels)];
+				u32 before_queue = global_state.m_owning_queue_family_index;
+				if (before_queue == U32_MAX) before_queue = m_queue_family_index;
+				ImageState before_state;
+				before_state.access_flags = 0;
+				before_state.image_layout = global_state.m_image_layout;
+				pack_image_internal(i.first.m_res, i.second, before_state, 0, before_queue, m_queue_family_index);
+				if (before_queue != m_queue_family_index)
+				{
+					// queue ownership transfer.
+					auto iter = m_queue_transfer_barriers.insert(make_pair(before_queue, QueueTransferBarriers())).first;
+					iter->second.image_barriers.push_back(m_image_barriers.back());
+				}
 			}
 		}
 		void ResourceStateTrackingSystem::generate_finish_barriers()
@@ -297,11 +253,17 @@ namespace Luna
 		}
 		void ResourceStateTrackingSystem::apply()
 		{
+			for (auto& i : m_current_buffer_states)
+			{
+				BufferResource* res = i.first;
+				res->m_owning_queue_family_index = m_queue_family_index;
+			}
 			for (auto& i : m_current_image_states)
 			{
 				ImageResource* res = i.first.m_res;
 				u32 subresource_index = calc_subresource_state_index(i.first.m_subres.mip_slice, i.first.m_subres.array_slice, res->m_desc.mip_levels);
-				res->m_image_layouts[subresource_index] = encode_image_layout(i.second);
+				res->m_global_states[subresource_index].m_image_layout = encode_image_layout(i.second);
+				res->m_global_states[subresource_index].m_owning_queue_family_index = m_queue_family_index;
 			}
 		}
 	}

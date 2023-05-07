@@ -19,6 +19,45 @@ namespace Luna
 {
 	namespace RHI
 	{
+		RV QueueTransferTracker::init(u32 queue_family_index)
+		{
+			lutry
+			{
+				VkCommandPoolCreateInfo pool_info{};
+				pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+				pool_info.flags = 0;
+				pool_info.queueFamilyIndex = queue_family_index;
+				luexp(encode_vk_result(m_device->m_funcs.vkCreateCommandPool(m_device->m_device, &pool_info, nullptr, &m_command_pool)));
+				VkCommandBufferAllocateInfo alloc_info{};
+				alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+				alloc_info.commandPool = m_command_pool;
+				alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+				alloc_info.commandBufferCount = 1;
+				luexp(encode_vk_result(m_device->m_funcs.vkAllocateCommandBuffers(m_device->m_device, &alloc_info, &m_command_buffer)));
+				VkSemaphoreCreateInfo semaphore_info{};
+				semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+				luexp(encode_vk_result(m_device->m_funcs.vkCreateSemaphore(m_device->m_device, &semaphore_info, nullptr, &m_semaphore)));
+			}
+			lucatchret;
+			return ok;
+		}
+		R<VkSemaphore> QueueTransferTracker::submit_barrier(VkQueue queue, IMutex* queue_mtx, Span<const VkBufferMemoryBarrier> buffer_barriers, Span<const VkImageMemoryBarrier> texture_barriers)
+		{
+
+		}
+		QueueTransferTracker::~QueueTransferTracker()
+		{
+			if (m_command_pool != VK_NULL_HANDLE)
+			{
+				m_device->m_funcs.vkDestroyCommandPool(m_device->m_device, m_command_pool, nullptr);
+				m_command_pool == VK_NULL_HANDLE;
+			}
+			if (m_semaphore != VK_NULL_HANDLE)
+			{
+				m_device->m_funcs.vkDestroySemaphore(m_device->m_device, m_semaphore, nullptr);
+				m_semaphore = VK_NULL_HANDLE;
+			}
+		}
 		RV CommandBuffer::init(CommandQueue* queue)
 		{
 			lutry
@@ -43,6 +82,7 @@ namespace Luna
 				luexp(encode_vk_result(m_device->m_funcs.vkCreateFence(m_device->m_device, &fence_create_info, nullptr, &m_fence)));
 				luexp(begin_command_buffer());
 				m_track_system.m_queue_type = queue->m_desc.type;
+				m_track_system.m_queue_family_index = queue->m_queue_family_index;
 			}
 			lucatchret;
 			return ok;
@@ -626,13 +666,11 @@ namespace Luna
 			m_track_system.begin_new_barriers_batch();
 			for (auto& barrier : buffer_barriers)
 			{
-				BufferResource* res = cast_objct<BufferResource>(barrier.buffer->get_object());
-				m_track_system.pack_buffer(res, barrier.before, barrier.after, barrier.flags);
+				m_track_system.pack_buffer(barrier);
 			}
 			for (auto& barrier : texture_barriers)
 			{
-				ImageResource* res = cast_objct<ImageResource>(barrier.texture->get_object());
-				m_track_system.pack_image(res, barrier.subresource, barrier.before, barrier.after, barrier.flags);
+				m_track_system.pack_image(barrier);
 			}
 			m_device->m_funcs.vkCmdPipelineBarrier(m_command_buffer,
 				m_track_system.m_src_stage_flags, m_track_system.m_dest_stage_flags, 0, 0, nullptr, 
@@ -687,8 +725,11 @@ namespace Luna
 				luexp(encode_vk_result(m_device->m_funcs.vkEndCommandBuffer(m_command_buffer)));
 				m_recording = false;
 
+				Vector<VkSemaphore> wait_semaphores;
+				Vector<VkPipelineStageFlags> wait_stages;
+
 				bool resolve_enabled = false;
-				if (!m_track_system.m_unresolved_image_states.empty())
+				if (!m_track_system.m_unresolved_image_states.empty() || !m_track_system.m_unresolved_buffer_states.empty())
 				{
 					resolve_enabled = true;
 					// Resolve image states.
@@ -703,26 +744,42 @@ namespace Luna
 						m_track_system.m_buffer_barriers.size(), m_track_system.m_buffer_barriers.data(),
 						m_track_system.m_image_barriers.size(), m_track_system.m_image_barriers.data());
 					luexp(encode_vk_result(m_device->m_funcs.vkEndCommandBuffer(m_resolve_buffer)));
-				}
-				// Submit the command buffer.
-				VkSubmitInfo submit{};
-				submit.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-				submit.waitSemaphoreCount = (u32)wait_fences.size();
-				VkSemaphore* wait_semaphores = nullptr;
-				VkPipelineStageFlags* wait_stages = nullptr;
-				if (!wait_fences.empty())
-				{
-					wait_semaphores = (VkSemaphore*)alloca(sizeof(VkSemaphore) * wait_fences.size());
-					wait_stages = (VkPipelineStageFlags*)alloca(sizeof(VkPipelineStageFlags) * wait_fences.size());
-					for (usize i = 0; i < wait_fences.size(); ++i)
+
+					for (auto& transfer_barriers : m_track_system.m_queue_transfer_barriers)
 					{
-						Fence* fence = (Fence*)wait_fences[i]->get_object();
-						wait_semaphores[i] = fence->m_semaphore;
-						wait_stages[i] = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+						lulet(transfer_tracker, get_transfer_tracker(transfer_barriers.first));
+						VkQueue queue = VK_NULL_HANDLE;
+						IMutex* queue_mtx = nullptr;
+						for (auto& q : m_device->m_queue_pools)
+						{
+							if (q.queue_family_index == transfer_barriers.first)
+							{
+								queue = q.internal_queue;
+								queue_mtx = q.internal_queue_mtx;
+								break;
+							}
+						}
+						luassert(queue != VK_NULL_HANDLE);
+						lulet(sema, transfer_tracker->submit_barrier(queue, queue_mtx,
+							{ transfer_barriers.second.buffer_barriers.data(), transfer_barriers.second.buffer_barriers.size() },
+							{ transfer_barriers.second.image_barriers.data(), transfer_barriers.second.image_barriers.size() }
+						));
+						wait_semaphores.push_back(sema);
+						wait_stages.push_back(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
 					}
 				}
-				submit.pWaitSemaphores = wait_semaphores;
-				submit.pWaitDstStageMask = wait_stages;
+				// Submit the command buffer.
+				for (usize i = 0; i < wait_fences.size(); ++i)
+				{
+					Fence* fence = (Fence*)wait_fences[i]->get_object();
+					wait_semaphores.push_back(fence->m_semaphore);
+					wait_stages.push_back(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
+				}
+				VkSubmitInfo submit{};
+				submit.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+				submit.waitSemaphoreCount = (u32)wait_semaphores.size();
+				submit.pWaitSemaphores = wait_semaphores.data();
+				submit.pWaitDstStageMask = wait_stages.data();
 				submit.signalSemaphoreCount = (u32)signal_fences.size();
 				VkSemaphore* signal_semaphores = nullptr;
 				if (!signal_fences.empty())

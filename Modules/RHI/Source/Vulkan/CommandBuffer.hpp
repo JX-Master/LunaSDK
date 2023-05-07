@@ -18,6 +18,18 @@ namespace Luna
 {
 	namespace RHI
 	{
+		struct QueueTransferTracker
+		{
+			Device* m_device;
+			VkCommandPool m_command_pool = VK_NULL_HANDLE;
+			VkCommandBuffer m_command_buffer = VK_NULL_HANDLE;
+			VkSemaphore m_semaphore = VK_NULL_HANDLE;
+
+			RV init(u32 queue_family_index);
+			R<VkSemaphore> submit_barrier(VkQueue queue, IMutex* queue_mtx, Span<const VkBufferMemoryBarrier> buffer_barriers, Span<const VkImageMemoryBarrier> texture_barriers);
+			~QueueTransferTracker();
+		};
+
 		struct CommandBuffer : ICommandBuffer
 		{
 			lustruct("RHI::CommandBuffer", "{057DBF2F-5817-490B-9683-18A0D3C4C5CB}");
@@ -28,11 +40,15 @@ namespace Luna
 			Name m_name;
 
 			ResourceStateTrackingSystem m_track_system;
+			HashMap<u32, QueueTransferTracker> m_transfer_trackers;
 
 			VkCommandPool m_command_pool = VK_NULL_HANDLE;
 			VkCommandBuffer m_resolve_buffer = VK_NULL_HANDLE;
 			VkCommandBuffer m_command_buffer = VK_NULL_HANDLE;
 			VkFence m_fence = VK_NULL_HANDLE;
+
+			//! The attached graphic objects.
+			Vector<Ref<IDeviceChild>> m_objs;
 
 			// Controled by begin_render_pass/end_render_pass.
 			bool m_render_pass_begin = false;
@@ -55,10 +71,9 @@ namespace Luna
 			RV init(CommandQueue* queue);
 			~CommandBuffer();
 
-			//! The attached graphic objects.
-			Vector<Ref<IDeviceChild>> m_objs;
-
 			RV begin_command_buffer();
+
+			R<QueueTransferTracker*> get_transfer_tracker(u32 queue_family_index);
 
 			virtual IDevice* get_device() override { return m_device.get(); }
 			virtual void set_name(const Name& name) override { m_name = name; }
