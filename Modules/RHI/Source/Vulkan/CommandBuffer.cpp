@@ -43,10 +43,37 @@ namespace Luna
 		}
 		R<VkSemaphore> QueueTransferTracker::submit_barrier(VkQueue queue, IMutex* queue_mtx, Span<const VkBufferMemoryBarrier> buffer_barriers, Span<const VkImageMemoryBarrier> texture_barriers)
 		{
-
+			lutry
+			{
+				luexp(encode_vk_result(m_device->m_funcs.vkResetCommandPool(m_device->m_device, m_command_pool, 0)));
+				VkCommandBufferBeginInfo begin_info{};
+				begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+				begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+				begin_info.pInheritanceInfo = nullptr;
+				luexp(encode_vk_result(m_device->m_funcs.vkBeginCommandBuffer(m_command_buffer, &begin_info)));
+				m_device->m_funcs.vkCmdPipelineBarrier(m_command_buffer, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 0, 0, nullptr, 
+					(u32)buffer_barriers.size(), buffer_barriers.data(), (u32)texture_barriers.size(), texture_barriers.data());
+				luexp(encode_vk_result(m_device->m_funcs.vkEndCommandBuffer(m_command_buffer)));
+				VkSubmitInfo submit{};
+				submit.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+				submit.waitSemaphoreCount = 0;
+				submit.pWaitSemaphores = nullptr;
+				submit.pWaitDstStageMask = nullptr;
+				submit.signalSemaphoreCount = 1;
+				submit.pSignalSemaphores = &m_semaphore;
+				MutexGuard guard(queue_mtx);
+				luexp(encode_vk_result(m_device->m_funcs.vkQueueSubmit(queue, 1, &submit, VK_NULL_HANDLE)));
+			}
+			lucatchret;
+			return m_semaphore;
 		}
 		QueueTransferTracker::~QueueTransferTracker()
 		{
+			if (m_command_buffer != VK_NULL_HANDLE)
+			{
+				m_device->m_funcs.vkFreeCommandBuffers(m_device->m_device, m_command_pool, 1, &m_command_buffer);
+				m_command_buffer = VK_NULL_HANDLE;
+			}
 			if (m_command_pool != VK_NULL_HANDLE)
 			{
 				m_device->m_funcs.vkDestroyCommandPool(m_device->m_device, m_command_pool, nullptr);
@@ -89,6 +116,16 @@ namespace Luna
 		}
 		CommandBuffer::~CommandBuffer()
 		{
+			if (m_command_buffer != VK_NULL_HANDLE)
+			{
+				m_device->m_funcs.vkFreeCommandBuffers(m_device->m_device, m_command_pool, 1, &m_command_buffer);
+				m_command_buffer = VK_NULL_HANDLE;
+			}
+			if (m_resolve_buffer != VK_NULL_HANDLE)
+			{
+				m_device->m_funcs.vkFreeCommandBuffers(m_device->m_device, m_command_pool, 1, &m_resolve_buffer);
+				m_resolve_buffer = VK_NULL_HANDLE;
+			}
 			if (m_command_pool != VK_NULL_HANDLE)
 			{
 				m_device->m_funcs.vkDestroyCommandPool(m_device->m_device, m_command_pool, nullptr);
@@ -744,7 +781,7 @@ namespace Luna
 						m_track_system.m_buffer_barriers.size(), m_track_system.m_buffer_barriers.data(),
 						m_track_system.m_image_barriers.size(), m_track_system.m_image_barriers.data());
 					luexp(encode_vk_result(m_device->m_funcs.vkEndCommandBuffer(m_resolve_buffer)));
-
+					// Queue ownership transfer.
 					for (auto& transfer_barriers : m_track_system.m_queue_transfer_barriers)
 					{
 						lulet(transfer_tracker, get_transfer_tracker(transfer_barriers.first));
