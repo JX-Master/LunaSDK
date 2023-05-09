@@ -24,6 +24,7 @@
 #include "Fence.hpp"
 #include "PipelineState.hpp"
 #include "QueryHeap.hpp"
+#include "ResourceStateTrackingSystem.hpp"
 namespace Luna
 {
 	namespace RHI
@@ -36,6 +37,7 @@ namespace Luna
 
 			m_queue_pool_mtx = new_mutex();
 			m_render_pass_pool_mtx = new_mutex();
+			m_desc_pool_mtx = new_mutex();
 			m_physical_device = physical_device;
 			vkGetPhysicalDeviceProperties(physical_device, &m_physical_device_properties);
 			// Create queues for every valid queue family.
@@ -584,6 +586,91 @@ namespace Luna
 			}
 			lucatchret;
 			return ret;
+		}
+		struct CopyBufferPlacementInfo
+		{
+			u64 offset;
+			u64 row_pitch;
+			u64 depth_pitch;
+			Format pixel_format;
+		};
+		RV Device::copy_resource(Span<const ResourceCopyDesc> copies)
+		{
+			lutry
+			{
+				// Acquire copy queue.
+				QueuePool* copy_queue = nullptr;
+				for (auto& queue : m_queue_pools)
+				{
+					if (queue.desc.type == CommandQueueType::copy)
+					{
+						copy_queue = &queue;
+						break;
+					}
+				}
+				if (!copy_queue)
+				{
+					for (auto& queue : m_queue_pools)
+					{
+						if (queue.desc.type == CommandQueueType::graphics)
+						{
+							copy_queue = &queue;
+							break;
+						}
+					}
+				}
+				luassert(copy_queue);
+
+				ResourceStateTrackingSystem tracking_system;
+				tracking_system.m_queue_family_index = copy_queue->queue_family_index;
+				
+				// Allocate one upload and one readback heap.
+				u64 upload_buffer_size = 0;
+				u64 readback_buffer_size = 0;
+				Vector<CopyBufferPlacementInfo> placements;
+				placements.reserve(copies.size());
+				for (auto& i : copies)
+				{
+					if (i.op == ResourceCopyOp::read_buffer)
+					{
+						u64 offset = readback_buffer_size;
+						placements.push_back({ offset, 0, 0, Format::unknown });
+						readback_buffer_size += i.read_buffer.size;
+						tracking_system.pack_buffer({ i.read_buffer.src, BufferStateFlag::automatic, BufferStateFlag::copy_source, ResourceBarrierFlag::none });
+					}
+					else if (i.op == ResourceCopyOp::write_buffer)
+					{
+						u64 offset = upload_buffer_size;
+						placements.push_back({ offset, 0, 0, Format::unknown });
+						upload_buffer_size += i.write_buffer.size;
+						tracking_system.pack_buffer({i.write_buffer.dest, BufferStateFlag::automatic, BufferStateFlag::copy_dest, ResourceBarrierFlag::none});
+					}
+					else if (i.op == ResourceCopyOp::read_texture)
+					{
+						u64 size, alignment, row_pitch, depth_pitch;
+						auto desc = i.resource->get_desc();
+						get_texture_data_placement_info(i.read_texture.read_box.width, i.read_texture.read_box.height, i.read_texture.read_box.depth,
+							desc.pixel_format, &size, &alignment, &row_pitch, &depth_pitch);
+						u64 offset = align_upper(readback_buffer_size, alignment);
+						placements.push_back({ offset, row_pitch, depth_pitch, desc.pixel_format });
+						readback_buffer_size = offset + size;
+						tracking_system.pack_barrier(ResourceBarrierDesc::as_transition(i.resource, ResourceStateFlag::copy_source));
+					}
+					else if (i.op == ResourceCopyOp::write_texture)
+					{
+						u64 size, alignment, row_pitch, depth_pitch;
+						auto desc = i.resource->get_desc();
+						get_texture_data_placement_info(i.write_texture.write_box.width, i.write_texture.write_box.height, i.write_texture.write_box.depth,
+							desc.pixel_format, &size, &alignment, &row_pitch, &depth_pitch);
+						u64 offset = align_upper(upload_buffer_size, alignment);
+						placements.push_back({ offset, row_pitch, depth_pitch, desc.pixel_format });
+						upload_buffer_size = offset + size;
+						tracking_system.pack_barrier(ResourceBarrierDesc::as_transition(i.resource, ResourceStateFlag::copy_dest));
+					}
+				}
+			}
+			lucatchret;
+			return ok;
 		}
 		LUNA_RHI_API R<Ref<IDevice>> new_device(u32 adapter_index)
 		{

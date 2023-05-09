@@ -13,68 +13,53 @@ namespace Luna
 {
 	namespace RHI
 	{
+		bool CommandQueue::acquire_queue(CommandQueueType type, CommandQueueFlags flags)
+		{
+			for (auto& pool : m_device->m_queue_pools)
+			{
+				if (pool.desc.type == type && !pool.free_queues.empty())
+				{
+					if (!test_flags(flags, CommandQueueFlags::presenting) ||
+						test_flags(pool.desc.flags, CommandQueueFlags::presenting))
+					{
+						m_queue = pool.free_queues.back();
+						pool.free_queues.pop_back();
+						m_desc = pool.desc;
+						m_queue_family_index = pool.queue_family_index;
+						return true;
+					}
+				}
+			}
+			return false;
+		}
 		RV CommandQueue::init(const CommandQueueDesc& desc)
 		{
 			m_mtx = new_mutex();
 			MutexGuard guard(m_device->m_queue_pool_mtx);
-			m_queue = VK_NULL_HANDLE;
-			if (desc.type == CommandQueueType::copy)
+			bool queue_acquired = acquire_queue(desc.type, desc.flags);
+			if (!queue_acquired)
 			{
-				// Check copy queue.
-				for (auto& pool : m_device->m_queue_pools)
+				if (desc.type == CommandQueueType::compute)
 				{
-					if (pool.desc.type == CommandQueueType::copy && !pool.free_queues.empty())
-					{
-						if (!test_flags(desc.flags, CommandQueueFlags::presenting) ||
-							test_flags(pool.desc.flags, CommandQueueFlags::presenting))
-						{
-							m_queue = pool.free_queues.back();
-							pool.free_queues.pop_back();
-							m_desc = pool.desc;
-							m_queue_family_index = pool.queue_family_index;
-							return ok;
-						}
-					}
+					// fallback to graphics.
+					queue_acquired = acquire_queue(CommandQueueType::graphics, desc.flags);
+				}
+				else if (desc.type == CommandQueueType::copy)
+				{
+					// fallback to graphics and compute.
+					// graphics queue have better copy performance than compute queue, so we choose graphics first.
+					queue_acquired = acquire_queue(CommandQueueType::graphics, desc.flags);
+					if (!queue_acquired) queue_acquired = acquire_queue(CommandQueueType::compute, desc.flags);
 				}
 			}
-			if (desc.type == CommandQueueType::copy || desc.type == CommandQueueType::compute)
-			{
-				// Check compute queue.
-				for (auto& pool : m_device->m_queue_pools)
-				{
-					if (pool.desc.type == CommandQueueType::compute && !pool.free_queues.empty())
-					{
-						if (!test_flags(desc.flags, CommandQueueFlags::presenting) ||
-							test_flags(pool.desc.flags, CommandQueueFlags::presenting))
-						{
-							m_queue = pool.free_queues.back();
-							pool.free_queues.pop_back();
-							m_desc = pool.desc;
-							m_queue_family_index = pool.queue_family_index;
-							return ok;
-						}
-					}
-				}
-			}
-			{
-				// Check graphics queue.
-				for (auto& pool : m_device->m_queue_pools)
-				{
-					if (pool.desc.type == CommandQueueType::graphics && !pool.free_queues.empty())
-					{
-						if (!test_flags(desc.flags, CommandQueueFlags::presenting) ||
-							test_flags(pool.desc.flags, CommandQueueFlags::presenting))
-						{
-							m_queue = pool.free_queues.back();
-							pool.free_queues.pop_back();
-							m_desc = pool.desc;
-							m_queue_family_index = pool.queue_family_index;
-							return ok;
-						}
-					}
-				}
-			}
-			return set_error(BasicError::out_of_resource(), "Command Queue allocation failed because all VkQueues are in use.");
+			return queue_acquired ? ok : set_error(BasicError::out_of_resource(), "Command Queue allocation failed because all VkQueues are in use.");
+		}
+		void CommandQueue::init_as_internal(const QueuePool& queue_pool)
+		{
+			m_mtx = queue_pool.internal_queue_mtx;
+			m_queue = queue_pool.internal_queue;
+			m_queue_family_index = queue_pool.queue_family_index;
+			m_desc = queue_pool.desc;
 		}
 		CommandQueue::~CommandQueue()
 		{

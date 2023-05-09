@@ -77,7 +77,7 @@ namespace Luna
 			if (m_command_pool != VK_NULL_HANDLE)
 			{
 				m_device->m_funcs.vkDestroyCommandPool(m_device->m_device, m_command_pool, nullptr);
-				m_command_pool == VK_NULL_HANDLE;
+				m_command_pool = VK_NULL_HANDLE;
 			}
 			if (m_semaphore != VK_NULL_HANDLE)
 			{
@@ -150,6 +150,24 @@ namespace Luna
 			}
 			lucatchret;
 			return ok;
+		}
+		R<QueueTransferTracker*> CommandBuffer::get_transfer_tracker(u32 queue_family_index)
+		{
+			QueueTransferTracker* ret;
+			lutry
+			{
+				auto iter = m_transfer_trackers.find(queue_family_index);
+				if (iter == m_transfer_trackers.end())
+				{
+					UniquePtr<QueueTransferTracker> tracker(memnew<QueueTransferTracker>());
+					tracker->m_device = m_device;
+					luexp(tracker->init(queue_family_index));
+					iter = m_transfer_trackers.insert(make_pair(queue_family_index, move(tracker))).first;
+				}
+				ret = iter->second.get();
+			}
+			lucatchret;
+			return ret;
 		}
 		void CommandBuffer::wait()
 		{

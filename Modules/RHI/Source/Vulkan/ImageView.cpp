@@ -20,64 +20,67 @@ namespace Luna
 			dst.flags = 0;
 			ImageResource* image = cast_objct<ImageResource>(src.texture->get_object());
 			dst.image = image->m_image;
+			u32 mip_size = src.mip_size == U32_MAX ? (image->m_desc.mip_levels - src.mip_slice) : src.mip_size;
+			u32 array_size = src.array_size == U32_MAX ? (image->m_desc.array_size - src.array_slice) : src.array_size;
 			switch (src.type)
 			{
 			case TextureViewType::tex1d:
 				dst.viewType = VK_IMAGE_VIEW_TYPE_1D;
 				dst.subresourceRange.baseMipLevel = src.mip_slice;
-				dst.subresourceRange.levelCount = src.mip_size;
+				dst.subresourceRange.levelCount = mip_size;
 				dst.subresourceRange.baseArrayLayer = 0;
 				dst.subresourceRange.layerCount = 1;
 				break;
 			case TextureViewType::tex1darray:
 				dst.viewType = VK_IMAGE_VIEW_TYPE_1D_ARRAY;
 				dst.subresourceRange.baseMipLevel = src.mip_slice;
-				dst.subresourceRange.levelCount = src.mip_size;
+				dst.subresourceRange.levelCount = mip_size;
 				dst.subresourceRange.baseArrayLayer = src.array_slice;
-				dst.subresourceRange.layerCount = src.array_size;
+				dst.subresourceRange.layerCount = array_size;
 				break;
 			case TextureViewType::tex2d:
 				dst.viewType = VK_IMAGE_VIEW_TYPE_2D;
 				dst.subresourceRange.baseMipLevel = src.mip_slice;
-				dst.subresourceRange.levelCount = src.mip_size;
+				dst.subresourceRange.levelCount = mip_size;
 				dst.subresourceRange.baseArrayLayer = 0;
 				dst.subresourceRange.layerCount = 1;
 				break;
 			case TextureViewType::tex2darray:
 				dst.viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
 				dst.subresourceRange.baseMipLevel = src.mip_slice;
-				dst.subresourceRange.levelCount = src.mip_size;
+				dst.subresourceRange.levelCount = mip_size;
 				dst.subresourceRange.baseArrayLayer = src.array_slice;
-				dst.subresourceRange.layerCount = src.array_size;
+				dst.subresourceRange.layerCount = array_size;
 				break;
 			case TextureViewType::texcube:
 				dst.viewType = VK_IMAGE_VIEW_TYPE_CUBE;
 				dst.subresourceRange.baseMipLevel = src.mip_slice;
-				dst.subresourceRange.levelCount = src.mip_size;
+				dst.subresourceRange.levelCount = mip_size;
 				dst.subresourceRange.baseArrayLayer = src.array_slice;
-				dst.subresourceRange.layerCount = src.array_size;
+				dst.subresourceRange.layerCount = array_size;
 				break;
 			case TextureViewType::texcubearray:
 				dst.viewType = VK_IMAGE_VIEW_TYPE_CUBE_ARRAY;
 				dst.subresourceRange.baseMipLevel = src.mip_slice;
-				dst.subresourceRange.levelCount = src.mip_size;
+				dst.subresourceRange.levelCount = mip_size;
 				dst.subresourceRange.baseArrayLayer = src.array_slice;
-				dst.subresourceRange.layerCount = src.array_size;
+				dst.subresourceRange.layerCount = array_size;
 				break;
 			case TextureViewType::tex3d:
 				dst.viewType = VK_IMAGE_VIEW_TYPE_3D;
 				dst.subresourceRange.baseMipLevel = src.mip_slice;
-				dst.subresourceRange.levelCount = src.mip_size;
+				dst.subresourceRange.levelCount = mip_size;
 				dst.subresourceRange.baseArrayLayer = 0;
 				dst.subresourceRange.layerCount = 1;
 				break;
 			}
-			dst.format = encode_format(src.format);
+			Format format = src.format == Format::unknown ? image->m_desc.pixel_format : src.format;
+			dst.format = encode_format(format);
 			dst.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
 			dst.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
 			dst.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
 			dst.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-			dst.subresourceRange.aspectMask = is_depth_stencil_format(src.format) ?
+			dst.subresourceRange.aspectMask = is_depth_stencil_format(format) ?
 				VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT :
 				VK_IMAGE_ASPECT_COLOR_BIT;
 		}

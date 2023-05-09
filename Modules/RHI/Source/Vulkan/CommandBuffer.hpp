@@ -13,6 +13,7 @@
 #include "Device.hpp"
 #include "CommandQueue.hpp"
 #include "ResourceStateTrackingSystem.hpp"
+#include <Runtime/UniquePtr.hpp>
 
 namespace Luna
 {
@@ -40,7 +41,7 @@ namespace Luna
 			Name m_name;
 
 			ResourceStateTrackingSystem m_track_system;
-			HashMap<u32, QueueTransferTracker> m_transfer_trackers;
+			HashMap<u32, UniquePtr<QueueTransferTracker>> m_transfer_trackers;
 
 			VkCommandPool m_command_pool = VK_NULL_HANDLE;
 			VkCommandBuffer m_resolve_buffer = VK_NULL_HANDLE;

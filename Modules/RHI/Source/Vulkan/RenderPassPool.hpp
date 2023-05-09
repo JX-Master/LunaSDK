@@ -27,6 +27,20 @@ namespace Luna
 			LoadOp stencil_load_op = LoadOp::dont_care;
 			StoreOp stencil_store_op = StoreOp::dont_care;
 			u8 sample_count = 1;
+
+			bool operator==(const RenderPassKey& rhs) const
+			{
+				return !memcmp(color_formats, rhs.color_formats, sizeof(Format) * 8) &&
+					!memcmp(resolve_formats, rhs.resolve_formats, sizeof(Format) * 8) &&
+					depth_stencil_format == rhs.depth_stencil_format &&
+					!memcmp(color_load_ops, rhs.color_load_ops, sizeof(LoadOp) * 8) &&
+					!memcmp(color_store_ops, rhs.color_store_ops, sizeof(StoreOp) * 8) &&
+					depth_load_op == rhs.depth_load_op &&
+					depth_store_op == rhs.depth_store_op &&
+					stencil_load_op == rhs.stencil_load_op &&
+					stencil_store_op == rhs.stencil_store_op &&
+					sample_count == rhs.sample_count;
+			}
 		};
 
 		struct FrameBufferKey
@@ -35,6 +49,14 @@ namespace Luna
 			IRenderTargetView* color_attachments[8] = { nullptr };
 			IResolveTargetView* resolve_attachments[8] = { nullptr };
 			IDepthStencilView* depth_stencil_attachment = nullptr;
+
+			bool operator==(const FrameBufferKey& rhs) const
+			{
+				return render_pass == rhs.render_pass &&
+					!memcpy((void*)color_attachments, (void*)rhs.color_attachments, sizeof(IRenderTargetView*) * 8) &&
+					!memcpy((void*)resolve_attachments, (void*)rhs.resolve_attachments, sizeof(IResolveTargetView*) * 8) &&
+					depth_stencil_attachment == rhs.depth_stencil_attachment;
+			}
 		};
 	}
 

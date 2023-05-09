@@ -137,7 +137,7 @@ namespace Luna
 					res->m_device = m_device;
 					res->m_desc = desc;
 					res->m_image = images[i];
-					res->m_image_layouts.push_back(VK_IMAGE_LAYOUT_UNDEFINED);
+					res->m_global_states.emplace_back();
 					m_swap_chain_images.push_back(res);
 				}
 				m_back_buffer_fetched = false;

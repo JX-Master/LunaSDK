@@ -36,6 +36,7 @@ namespace Luna
 					variable_info.descriptorSetCount = 1;
 					alloc_info.pNext = &variable_info;
 				}*/
+				MutexGuard guard(m_device->m_desc_pool_mtx);
 				luexp(encode_vk_result(m_device->m_funcs.vkAllocateDescriptorSets(m_device->m_device, &alloc_info, &m_desc_set)));
 			}
 			lucatchret;
@@ -45,7 +46,7 @@ namespace Luna
 		{
 			if (m_desc_set != VK_NULL_HANDLE)
 			{
-				MutexGuard guard(m_device->m_mtx);
+				MutexGuard guard(m_device->m_desc_pool_mtx);
 				m_device->m_funcs.vkFreeDescriptorSets(m_device->m_device, m_device->m_desc_pool, 1, &m_desc_set);
 				m_desc_set = VK_NULL_HANDLE;
 			}

@@ -426,6 +426,17 @@ namespace Luna
 			u32 array_slice;
 			bool operator==(const SubresourceIndex& rhs) const { return mip_slice == rhs.mip_slice && array_slice == rhs.array_slice; }
 		};
+	}
+	template <>
+	struct hash<RHI::SubresourceIndex>
+	{
+		usize operator()(const RHI::SubresourceIndex& value)
+		{
+			return memhash(&value, sizeof(RHI::SubresourceIndex));
+		}
+	};
+	namespace RHI
+	{
 
 		//! @interface IResource
 		//! Represents a memory region that can be accessed by GPU.

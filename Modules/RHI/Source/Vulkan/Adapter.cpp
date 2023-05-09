@@ -19,6 +19,8 @@ namespace Luna
 {
 	namespace RHI
 	{
+		Vector<VkPhysicalDevice> g_physical_devices;
+		Vector<Vector<QueueFamily>> g_physical_device_queue_families;
 		PhysicalDeviceSurfaceInfo get_physical_device_surface_info(VkPhysicalDevice device, VkSurfaceKHR surface)
 		{
 			PhysicalDeviceSurfaceInfo details;

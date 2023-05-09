@@ -19,7 +19,28 @@ namespace Luna
 		{
 			ImageResource* m_res;
 			SubresourceIndex m_subres;
+
+			bool operator==(const ImageResourceKey& rhs) const
+			{
+				return m_res == rhs.m_res && m_subres == rhs.m_subres;
+			}
 		};
+	}
+
+	template<>
+	struct hash<RHI::ImageResourceKey>
+	{
+		usize operator()(const RHI::ImageResourceKey& value)
+		{
+			usize h = (usize)value.m_res;
+			h ^= hash<RHI::SubresourceIndex>()(value.m_subres);
+			return h;
+		}
+	};
+
+	namespace RHI
+	{
+		
 
 		inline constexpr u32 calc_subresource_state_index(u32 mip_slice, u32 array_slice, u32 mip_levels)
 		{

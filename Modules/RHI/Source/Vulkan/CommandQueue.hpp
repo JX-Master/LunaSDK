@@ -26,7 +26,9 @@ namespace Luna
 			VkQueue m_queue = VK_NULL_HANDLE;
 			CommandQueueDesc m_desc;
 			u32 m_queue_family_index;
+			bool acquire_queue(CommandQueueType type, CommandQueueFlags flags);
 			RV init(const CommandQueueDesc& desc);
+			void init_as_internal(const QueuePool& queue_pool);
 			~CommandQueue();
 
 			virtual IDevice* get_device() override { return m_device.get(); }

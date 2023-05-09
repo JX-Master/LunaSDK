@@ -35,7 +35,7 @@ namespace Luna
 
 			ShaderInputLayoutDesc() = default;
 			ShaderInputLayoutDesc(
-				InitializerList<IDescriptorSetLayout*> descriptor_set_layouts,
+				Span<IDescriptorSetLayout*> descriptor_set_layouts,
 				ShaderInputLayoutFlag flags = ShaderInputLayoutFlag::none) :
 				descriptor_set_layouts(descriptor_set_layouts),
 				flags(flags) {}

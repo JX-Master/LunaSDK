@@ -18,6 +18,7 @@
 #include "QueryHeap.hpp"
 #include <Runtime/Span.hpp>
 #include "ResolveTargetView.hpp"
+#include "Fence.hpp"
 
 namespace Luna
 {
@@ -415,8 +416,6 @@ namespace Luna
 				IBuffer* dst, u64 dst_offset, u32 dst_row_pitch, u32 dst_slice_pitch,
 				ITexture* src, SubresourceIndex src_subresource, u32 src_x, u32 src_y, u32 src_z,
 				u32 copy_width, u32 copy_height, u32 copy_depth) = 0;
-
-			virtual void copy_texture_to_buffer() = 0;
 
 			//! Sets the compute shader input layout.
 			virtual void set_compute_shader_input_layout(IShaderInputLayout* shader_input_layout) = 0;

@@ -183,8 +183,8 @@ namespace Luna
 				if (iter == m_current_image_states.end())
 				{
 					// This resource is used on the current buffer for the first time.
-					m_unresolved_image_states.insert(make_pair(res, barrier));
-					m_current_image_states.insert(make_pair(res, barrier.after));
+					m_unresolved_image_states.insert(make_pair(key, barrier));
+					m_current_image_states.insert(make_pair(key, barrier.after));
 				}
 				else
 				{

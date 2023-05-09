@@ -7,6 +7,7 @@
 * @author JXMaster
 * @date 2023/5/4
 */
+#pragma once
 #include "Device.hpp"
 
 namespace Luna

@@ -249,21 +249,21 @@ namespace Luna
 				RenderPassKey render_pass;
 				for (usize i = 0; i < desc.num_render_targets; ++i)
 				{
-					render_pass.rtv_formats[i] = desc.rtv_formats[i];
+					render_pass.color_formats[i] = desc.rtv_formats[i];
 					render_pass.color_store_ops[i] = StoreOp::store;
 					if (desc.sample_count > 1)
 					{
 						render_pass.resolve_formats[i] = desc.rtv_formats[i];
 					}
 				}
-				render_pass.dsv_format = desc.dsv_format;
-				if (render_pass.dsv_format != Format::unknown)
+				render_pass.depth_stencil_format = desc.dsv_format;
+				if (render_pass.depth_stencil_format != Format::unknown)
 				{
 					render_pass.depth_load_op = LoadOp::load;
 					render_pass.depth_store_op = StoreOp::store;
 				}
 				render_pass.sample_count = (u8)desc.sample_count;
-				MutexGuard guard(m_device->m_mtx);
+				MutexGuard guard(m_device->m_render_pass_pool_mtx);
 				luset(create_info.renderPass, m_device->m_render_pass_pool.get_render_pass(render_pass));
 				guard.unlock();
 				create_info.subpass = 0;

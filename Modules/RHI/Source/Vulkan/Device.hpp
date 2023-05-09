@@ -44,6 +44,7 @@ namespace Luna
 
 			// Descriptor Pools.
 			VkDescriptorPool m_desc_pool = VK_NULL_HANDLE;
+			Ref<IMutex> m_desc_pool_mtx;
 
 			// Vulkan memory allocator.
 			VmaAllocator m_allocator = VK_NULL_HANDLE;

@@ -55,13 +55,13 @@ namespace Luna
 			}
 			switch (d.type)
 			{
-			case TextureType::texture_3d:
+			case TextureType::tex3d:
 				return BasicError::bad_arguments();
-			case TextureType::texture_1d:
+			case TextureType::tex1d:
 				return (d.array_size) == 1 ?
 					DepthStencilViewDesc::as_tex1d(d.pixel_format, 0) :
 					DepthStencilViewDesc::as_tex1darray(d.pixel_format, 0, 0, d.array_size);
-			case TextureType::texture_2d:
+			case TextureType::tex2d:
 				return (d.array_size == 1) ?
 					((d.sample_count == 1) ?
 						DepthStencilViewDesc::as_tex2d(d.pixel_format, 0) :

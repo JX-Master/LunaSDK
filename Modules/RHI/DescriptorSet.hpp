@@ -410,6 +410,8 @@ namespace Luna
 			}
 		};
 
+		struct IDescriptorSet;
+
 		struct DescriptorSetCopy
 		{
 			IDescriptorSet* src;

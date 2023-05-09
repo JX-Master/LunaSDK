@@ -494,7 +494,7 @@ namespace Luna
 			}
 			return flags;
 		}
-		VkPipelineStageFlags determine_pipeline_stage_flags(TextureStateFlag state, CommandQueueType queue_type)
+		inline VkPipelineStageFlags determine_pipeline_stage_flags(TextureStateFlag state, CommandQueueType queue_type)
 		{
 			VkPipelineStageFlags flags = 0;
 			if (state == TextureStateFlag::automatic) return flags;
@@ -568,7 +568,7 @@ namespace Luna
 			}
 			return flags;
 		}
-		VkDescriptorType encode_descriptor_type(DescriptorType type)
+		inline VkDescriptorType encode_descriptor_type(DescriptorType type)
 		{
 			switch (type)
 			{
@@ -581,7 +581,7 @@ namespace Luna
 			case DescriptorType::sampler: return VK_DESCRIPTOR_TYPE_SAMPLER;
 			}
 		}
-		VkSamplerAddressMode encode_address_mode(TextureAddressMode mode)
+		inline VkSamplerAddressMode encode_address_mode(TextureAddressMode mode)
 		{
 			switch (mode)
 			{

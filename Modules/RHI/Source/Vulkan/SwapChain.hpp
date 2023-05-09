@@ -20,11 +20,11 @@ namespace Luna
 		{
 			lustruct("RHI::SwapChain", "{9C0F7754-FA08-4FF3-BF66-B23125FA19F9}");
 			luiimpl();
+			Ref<Device> m_device;
 
 			SwapChainDesc m_desc;
 			Ref<CommandQueue> m_presenting_queue;
 			Ref<Window::IWindow> m_window;
-			Ref<Device> m_device;
 			VkSurfaceKHR m_surface = VK_NULL_HANDLE;
 
 			VkSwapchainKHR m_swap_chain = VK_NULL_HANDLE;

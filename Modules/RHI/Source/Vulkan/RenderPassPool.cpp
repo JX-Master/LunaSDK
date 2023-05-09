@@ -185,9 +185,9 @@ namespace Luna
 						attachments[num_attachments] = rtv->m_view;
 						++num_attachments;
 						auto desc = rtv->m_resource->get_desc();
-						width = (u32)desc.width_or_buffer_size;
+						width = (u32)desc.width;
 						height = desc.height;
-						depth = desc.depth_or_array_size;
+						depth = desc.depth;
 					}
 					else break;
 				}
@@ -206,9 +206,9 @@ namespace Luna
 					attachments[num_attachments] = depth_stencil_attachment->m_view;
 					++num_attachments;
 					auto desc = depth_stencil_attachment->m_resource->get_desc();
-					width = (u32)desc.width_or_buffer_size;
+					width = (u32)desc.width;
 					height = desc.height;
-					depth = desc.depth_or_array_size;
+					depth = desc.depth;
 				}
 				info.pAttachments = attachments;
 				info.attachmentCount = num_attachments;
