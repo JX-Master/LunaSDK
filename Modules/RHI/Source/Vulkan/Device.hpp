@@ -12,6 +12,8 @@
 #include <Runtime/Mutex.hpp>
 #include "Adapter.hpp"
 #include "RenderPassPool.hpp"
+#include <Runtime/SpinLock.hpp>
+#include <Runtime/UniquePtr.hpp>
 namespace Luna
 {
 	namespace RHI
@@ -23,6 +25,55 @@ namespace Luna
 			VkQueue internal_queue;
 			Ref<IMutex> internal_queue_mtx;
 			u32 queue_family_index;
+		};
+
+		struct QueueTransferTracker
+		{
+			VkDevice m_device = VK_NULL_HANDLE;
+			VolkDeviceTable* m_funcs = nullptr;
+			VkCommandPool m_command_pool = VK_NULL_HANDLE;
+			VkCommandBuffer m_command_buffer = VK_NULL_HANDLE;
+			VkSemaphore m_semaphore = VK_NULL_HANDLE;
+
+			RV init(u32 queue_family_index);
+			R<VkSemaphore> submit_barrier(VkQueue queue, IMutex* queue_mtx, Span<const VkBufferMemoryBarrier> buffer_barriers, Span<const VkImageMemoryBarrier> texture_barriers);
+			~QueueTransferTracker();
+		};
+
+		struct ResourceCopyContext
+		{
+			VkDevice m_device = VK_NULL_HANDLE;
+			VolkDeviceTable* m_funcs = nullptr;
+			VkCommandPool m_command_pool = VK_NULL_HANDLE;
+			VkCommandBuffer m_command_buffer = VK_NULL_HANDLE;
+			VkFence m_fence = VK_NULL_HANDLE;
+			HashMap<u32, UniquePtr<QueueTransferTracker>> m_transfer_trackers;
+
+			ResourceCopyContext() {}
+			ResourceCopyContext(const ResourceCopyContext&) = delete;
+			ResourceCopyContext(ResourceCopyContext&& rhs) :
+				m_command_pool(rhs.m_command_pool),
+				m_command_buffer(rhs.m_command_buffer),
+				m_fence(rhs.m_fence)
+			{
+				rhs.m_command_pool = VK_NULL_HANDLE;
+				rhs.m_command_buffer = VK_NULL_HANDLE;
+				rhs.m_fence = VK_NULL_HANDLE;
+			}
+			ResourceCopyContext& operator=(const ResourceCopyContext&) = delete;
+			ResourceCopyContext& operator=(ResourceCopyContext&& rhs)
+			{
+				m_command_pool = rhs.m_command_pool;
+				m_command_buffer = rhs.m_command_buffer;
+				m_fence = rhs.m_fence;
+				rhs.m_command_pool = VK_NULL_HANDLE;
+				rhs.m_command_buffer = VK_NULL_HANDLE;
+				rhs.m_fence = VK_NULL_HANDLE;
+				return *this;
+			}
+			~ResourceCopyContext();
+			RV init(const QueuePool& queue_pool);
+			R<QueueTransferTracker*> get_transfer_tracker(u32 queue_family_index);
 		};
 
 		struct Device : IDevice
@@ -51,7 +102,11 @@ namespace Luna
 
 			// Render pass pools.
 			RenderPassPool m_render_pass_pool;
-			Ref<IMutex> m_render_pass_pool_mtx;
+			SpinLock m_render_pass_pool_lock;
+
+			// Used for copy_resource.
+			Vector<ResourceCopyContext> m_copy_contexts;
+			SpinLock m_copy_contexts_lock;
 
 			RV init(VkPhysicalDevice physical_device, const Vector<QueueFamily>& queue_families);
 			RV init_descriptor_pools();

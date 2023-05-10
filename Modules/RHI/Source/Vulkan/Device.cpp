@@ -29,6 +29,131 @@ namespace Luna
 {
 	namespace RHI
 	{
+		RV QueueTransferTracker::init(u32 queue_family_index)
+		{
+			lutry
+			{
+				VkCommandPoolCreateInfo pool_info{};
+				pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+				pool_info.flags = 0;
+				pool_info.queueFamilyIndex = queue_family_index;
+				luexp(encode_vk_result(m_funcs->vkCreateCommandPool(m_device, &pool_info, nullptr, &m_command_pool)));
+				VkCommandBufferAllocateInfo alloc_info{};
+				alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+				alloc_info.commandPool = m_command_pool;
+				alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+				alloc_info.commandBufferCount = 1;
+				luexp(encode_vk_result(m_funcs->vkAllocateCommandBuffers(m_device, &alloc_info, &m_command_buffer)));
+				VkSemaphoreCreateInfo semaphore_info{};
+				semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+				luexp(encode_vk_result(m_funcs->vkCreateSemaphore(m_device, &semaphore_info, nullptr, &m_semaphore)));
+			}
+			lucatchret;
+			return ok;
+		}
+		R<VkSemaphore> QueueTransferTracker::submit_barrier(VkQueue queue, IMutex* queue_mtx, Span<const VkBufferMemoryBarrier> buffer_barriers, Span<const VkImageMemoryBarrier> texture_barriers)
+		{
+			lutry
+			{
+				luexp(encode_vk_result(m_funcs->vkResetCommandPool(m_device, m_command_pool, 0)));
+				VkCommandBufferBeginInfo begin_info{};
+				begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+				begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+				begin_info.pInheritanceInfo = nullptr;
+				luexp(encode_vk_result(m_funcs->vkBeginCommandBuffer(m_command_buffer, &begin_info)));
+				m_funcs->vkCmdPipelineBarrier(m_command_buffer, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 0, 0, nullptr, 
+					(u32)buffer_barriers.size(), buffer_barriers.data(), (u32)texture_barriers.size(), texture_barriers.data());
+				luexp(encode_vk_result(m_funcs->vkEndCommandBuffer(m_command_buffer)));
+				VkSubmitInfo submit{};
+				submit.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+				submit.waitSemaphoreCount = 0;
+				submit.pWaitSemaphores = nullptr;
+				submit.pWaitDstStageMask = nullptr;
+				submit.signalSemaphoreCount = 1;
+				submit.pSignalSemaphores = &m_semaphore;
+				MutexGuard guard(queue_mtx);
+				luexp(encode_vk_result(m_funcs->vkQueueSubmit(queue, 1, &submit, VK_NULL_HANDLE)));
+			}
+			lucatchret;
+			return m_semaphore;
+		}
+		QueueTransferTracker::~QueueTransferTracker()
+		{
+			if (m_command_buffer != VK_NULL_HANDLE)
+			{
+				m_funcs->vkFreeCommandBuffers(m_device, m_command_pool, 1, &m_command_buffer);
+				m_command_buffer = VK_NULL_HANDLE;
+			}
+			if (m_command_pool != VK_NULL_HANDLE)
+			{
+				m_funcs->vkDestroyCommandPool(m_device, m_command_pool, nullptr);
+				m_command_pool = VK_NULL_HANDLE;
+			}
+			if (m_semaphore != VK_NULL_HANDLE)
+			{
+				m_funcs->vkDestroySemaphore(m_device, m_semaphore, nullptr);
+				m_semaphore = VK_NULL_HANDLE;
+			}
+		}
+		ResourceCopyContext::~ResourceCopyContext()
+		{
+			if (m_command_buffer != VK_NULL_HANDLE)
+			{
+				m_funcs->vkFreeCommandBuffers(m_device, m_command_pool, 1, &m_command_buffer);
+				m_command_buffer = VK_NULL_HANDLE;
+			}
+			if (m_command_pool != VK_NULL_HANDLE)
+			{
+				m_funcs->vkDestroyCommandPool(m_device, m_command_pool, nullptr);
+				m_command_pool = VK_NULL_HANDLE;
+			}
+			if (m_fence != VK_NULL_HANDLE)
+			{
+				m_funcs->vkDestroyFence(m_device, m_fence, nullptr);
+				m_fence = VK_NULL_HANDLE;
+			}
+		}
+		RV ResourceCopyContext::init(const QueuePool& queue_pool)
+		{
+			lutry
+			{
+				VkCommandPoolCreateInfo pool_info{};
+				pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+				pool_info.flags = 0;
+				pool_info.queueFamilyIndex = queue_pool.queue_family_index;
+				luexp(encode_vk_result(m_funcs->vkCreateCommandPool(m_device, &pool_info, nullptr, &m_command_pool)));
+				VkCommandBufferAllocateInfo alloc_info{};
+				alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+				alloc_info.commandPool = m_command_pool;
+				alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+				alloc_info.commandBufferCount = 1;
+				luexp(encode_vk_result(m_funcs->vkAllocateCommandBuffers(m_device, &alloc_info, &m_command_buffer)));
+				VkFenceCreateInfo fence_create_info{};
+				fence_create_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+				luexp(encode_vk_result(m_funcs->vkCreateFence(m_device, &fence_create_info, nullptr, &m_fence)));
+			}
+			lucatchret;
+			return ok;
+		}
+		R<QueueTransferTracker*> ResourceCopyContext::get_transfer_tracker(u32 queue_family_index)
+		{
+			QueueTransferTracker* ret;
+			lutry
+			{
+				auto iter = m_transfer_trackers.find(queue_family_index);
+				if (iter == m_transfer_trackers.end())
+				{
+					UniquePtr<QueueTransferTracker> tracker(memnew<QueueTransferTracker>());
+					tracker->m_device = m_device;
+					tracker->m_funcs = m_funcs;
+					luexp(tracker->init(queue_family_index));
+					iter = m_transfer_trackers.insert(make_pair(queue_family_index, move(tracker))).first;
+				}
+				ret = iter->second.get();
+			}
+			lucatchret;
+			return ret;
+		}
 		RV Device::init(VkPhysicalDevice physical_device, const Vector<QueueFamily>& queue_families)
 		{
 			Vector<const c8*> enabled_extensions;
@@ -36,7 +161,6 @@ namespace Luna
 			enabled_extensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 
 			m_queue_pool_mtx = new_mutex();
-			m_render_pass_pool_mtx = new_mutex();
 			m_desc_pool_mtx = new_mutex();
 			m_physical_device = physical_device;
 			vkGetPhysicalDeviceProperties(physical_device, &m_physical_device_properties);
@@ -622,7 +746,6 @@ namespace Luna
 				luassert(copy_queue);
 
 				ResourceStateTrackingSystem tracking_system;
-				tracking_system.m_queue_family_index = copy_queue->queue_family_index;
 				
 				// Allocate one upload and one readback heap.
 				u64 upload_buffer_size = 0;
@@ -643,30 +766,240 @@ namespace Luna
 						u64 offset = upload_buffer_size;
 						placements.push_back({ offset, 0, 0, Format::unknown });
 						upload_buffer_size += i.write_buffer.size;
-						tracking_system.pack_buffer({i.write_buffer.dest, BufferStateFlag::automatic, BufferStateFlag::copy_dest, ResourceBarrierFlag::none});
+						tracking_system.pack_buffer({i.write_buffer.dst, BufferStateFlag::automatic, BufferStateFlag::copy_dest, ResourceBarrierFlag::none});
 					}
 					else if (i.op == ResourceCopyOp::read_texture)
 					{
 						u64 size, alignment, row_pitch, depth_pitch;
-						auto desc = i.resource->get_desc();
+						auto desc = i.read_texture.src->get_desc();
 						get_texture_data_placement_info(i.read_texture.read_box.width, i.read_texture.read_box.height, i.read_texture.read_box.depth,
 							desc.pixel_format, &size, &alignment, &row_pitch, &depth_pitch);
 						u64 offset = align_upper(readback_buffer_size, alignment);
 						placements.push_back({ offset, row_pitch, depth_pitch, desc.pixel_format });
 						readback_buffer_size = offset + size;
-						tracking_system.pack_barrier(ResourceBarrierDesc::as_transition(i.resource, ResourceStateFlag::copy_source));
+						tracking_system.pack_image({ i.read_texture.src, i.read_texture.src_subresource, TextureStateFlag::automatic, TextureStateFlag::copy_source, ResourceBarrierFlag::none });
 					}
 					else if (i.op == ResourceCopyOp::write_texture)
 					{
 						u64 size, alignment, row_pitch, depth_pitch;
-						auto desc = i.resource->get_desc();
+						auto desc = i.write_texture.dst->get_desc();
 						get_texture_data_placement_info(i.write_texture.write_box.width, i.write_texture.write_box.height, i.write_texture.write_box.depth,
 							desc.pixel_format, &size, &alignment, &row_pitch, &depth_pitch);
 						u64 offset = align_upper(upload_buffer_size, alignment);
 						placements.push_back({ offset, row_pitch, depth_pitch, desc.pixel_format });
 						upload_buffer_size = offset + size;
-						tracking_system.pack_barrier(ResourceBarrierDesc::as_transition(i.resource, ResourceStateFlag::copy_dest));
+						tracking_system.pack_image({ i.write_texture.dst, i.write_texture.dst_subresource, TextureStateFlag::automatic, TextureStateFlag::copy_dest, ResourceBarrierFlag::none });
 					}
+				}
+				// Create staging buffer.
+				Ref<IBuffer> upload_buffer;
+				Ref<IBuffer> readback_buffer;
+				void* upload_data = nullptr;
+				void* readback_data = nullptr;
+				if (upload_buffer_size)
+				{
+					luset(upload_buffer, new_buffer(BufferDesc(ResourceHeapType::upload, upload_buffer_size, BufferUsageFlag::copy_source)));
+					luset(upload_data, upload_buffer->map(0, 0));
+					// Fill upload data.
+					for (usize i = 0; i < copies.size(); ++i)
+					{
+						auto& copy = copies[i];
+						if (copy.op == ResourceCopyOp::write_buffer)
+						{
+							memcpy((byte_t*)upload_data + (usize)placements[i].offset, copy.write_buffer.src, copy.write_buffer.size);
+						}
+						else if (copy.op == ResourceCopyOp::write_texture)
+						{
+							usize copy_size_per_row = bits_per_pixel(placements[i].pixel_format) * copy.write_texture.write_box.width / 8;
+							memcpy_bitmap3d((byte_t*)upload_data + (usize)placements[i].offset, copy.write_texture.src,
+								copy_size_per_row, copy.write_texture.write_box.height, copy.write_texture.write_box.depth,
+								(usize)placements[i].row_pitch, copy.write_texture.src_row_pitch, (usize)placements[i].depth_pitch, copy.write_texture.src_depth_pitch);
+						}
+					}
+					upload_buffer->unmap(0, USIZE_MAX);
+					tracking_system.pack_buffer({ upload_buffer, BufferStateFlag::automatic, BufferStateFlag::copy_source, ResourceBarrierFlag::none });
+				}
+				if (readback_buffer_size)
+				{
+					luset(readback_buffer, new_buffer(BufferDesc(ResourceHeapType::readback, readback_buffer_size, BufferUsageFlag::copy_dest)));
+					tracking_system.pack_buffer({ readback_buffer, BufferStateFlag::automatic, BufferStateFlag::copy_dest, ResourceBarrierFlag::none });
+				}
+				
+				// Use GPU to copy data.
+				ResourceCopyContext context;
+				m_copy_contexts_lock.lock();
+				if (m_copy_contexts.empty())
+				{
+					m_copy_contexts_lock.unlock();
+					context.m_device = m_device;
+					context.m_funcs = &m_funcs;
+					luexp(context.init(*copy_queue));
+				}
+				else
+				{
+					context = move(m_copy_contexts.back());
+					m_copy_contexts.pop_back();
+					m_copy_contexts_lock.unlock();
+				}
+				auto buffer_barriers = tracking_system.m_buffer_barriers;
+				auto image_barriers = tracking_system.m_image_barriers;
+				auto src_stages = tracking_system.m_src_stage_flags;
+				auto dst_stages = tracking_system.m_dest_stage_flags;
+				tracking_system.resolve();
+				buffer_barriers.insert(buffer_barriers.end(), tracking_system.m_buffer_barriers.begin(), tracking_system.m_buffer_barriers.end());
+				image_barriers.insert(image_barriers.end(), tracking_system.m_image_barriers.begin(), tracking_system.m_image_barriers.end());
+				src_stages |= tracking_system.m_src_stage_flags;
+				dst_stages |= tracking_system.m_dest_stage_flags;
+				VkCommandBufferBeginInfo begin_info{};
+				begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+				begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+				begin_info.pInheritanceInfo = nullptr;
+				luexp(encode_vk_result(m_funcs.vkBeginCommandBuffer(context.m_command_buffer, &begin_info)));
+				m_funcs.vkCmdPipelineBarrier(context.m_command_buffer, src_stages, dst_stages, 0, 0, nullptr,
+					(u32)buffer_barriers.size(), buffer_barriers.data(), (u32)image_barriers.size(), image_barriers.data());
+				// Queue ownership transfer.
+				Vector<VkSemaphore> wait_semaphores;
+				Vector<VkPipelineStageFlags> wait_stages;
+				for (auto& transfer_barriers : tracking_system.m_queue_transfer_barriers)
+				{
+					lulet(transfer_tracker, context.get_transfer_tracker(transfer_barriers.first));
+					VkQueue queue = VK_NULL_HANDLE;
+					IMutex* queue_mtx = nullptr;
+					for (auto& q : m_queue_pools)
+					{
+						if (q.queue_family_index == transfer_barriers.first)
+						{
+							queue = q.internal_queue;
+							queue_mtx = q.internal_queue_mtx;
+							break;
+						}
+					}
+					luassert(queue != VK_NULL_HANDLE);
+					lulet(sema, transfer_tracker->submit_barrier(queue, queue_mtx,
+						{ transfer_barriers.second.buffer_barriers.data(), transfer_barriers.second.buffer_barriers.size() },
+						{ transfer_barriers.second.image_barriers.data(), transfer_barriers.second.image_barriers.size() }
+					));
+					wait_semaphores.push_back(sema);
+					wait_stages.push_back(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
+				}
+				
+				for (usize i = 0; i < copies.size(); ++i)
+				{
+					auto& copy = copies[i];
+					if (copy.op == ResourceCopyOp::read_buffer)
+					{
+						BufferResource* src = cast_objct<BufferResource>(copy.read_buffer.src->get_object());
+						BufferResource* dst = cast_objct<BufferResource>(readback_buffer->get_object());
+						VkBufferCopy buffer_copy;
+						buffer_copy.srcOffset = copy.read_buffer.src_offset;
+						buffer_copy.dstOffset = placements[i].offset;
+						buffer_copy.size = copy.read_buffer.size;
+						m_funcs.vkCmdCopyBuffer(context.m_command_buffer, src->m_buffer, dst->m_buffer, 1, &buffer_copy);
+					}
+					else if (copy.op == ResourceCopyOp::write_buffer)
+					{
+						BufferResource* src = cast_objct<BufferResource>(upload_buffer->get_object());
+						BufferResource* dst = cast_objct<BufferResource>(copy.write_buffer.dst->get_object());
+						VkBufferCopy buffer_copy;
+						buffer_copy.srcOffset = placements[i].offset;
+						buffer_copy.dstOffset = copy.write_buffer.dst_offset;
+						buffer_copy.size = copy.write_buffer.size;
+						m_funcs.vkCmdCopyBuffer(context.m_command_buffer, src->m_buffer, dst->m_buffer, 1, &buffer_copy);
+					}
+					else if (copy.op == ResourceCopyOp::read_texture)
+					{
+						ImageResource* src = cast_objct<ImageResource>(copy.read_texture.src->get_object());
+						BufferResource* dst = cast_objct<BufferResource>(readback_buffer->get_object());
+						VkBufferImageCopy image_copy{};
+						image_copy.imageSubresource.aspectMask = is_depth_stencil_format(placements[i].pixel_format) ?
+							VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT :
+							VK_IMAGE_ASPECT_COLOR_BIT;
+						image_copy.imageSubresource.baseArrayLayer = copy.read_texture.src_subresource.array_slice;
+						image_copy.imageSubresource.layerCount = 1;
+						image_copy.imageSubresource.mipLevel = copy.read_texture.src_subresource.mip_slice;
+						image_copy.imageOffset.x = copy.read_texture.read_box.offset_x;
+						image_copy.imageOffset.y = copy.read_texture.read_box.offset_y;
+						image_copy.imageOffset.z = copy.read_texture.read_box.offset_z;
+						image_copy.imageExtent.width = copy.read_texture.read_box.width;
+						image_copy.imageExtent.height = copy.read_texture.read_box.height;
+						image_copy.imageExtent.depth = copy.read_texture.read_box.depth;
+						auto& placement = placements[i];
+						image_copy.bufferOffset = placement.offset;
+						image_copy.bufferRowLength = placement.row_pitch * 8 / bits_per_pixel(placement.pixel_format);
+						image_copy.bufferImageHeight = placement.depth_pitch * 8 / bits_per_pixel(placement.pixel_format);
+						m_funcs.vkCmdCopyImageToBuffer(context.m_command_buffer, src->m_image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+							dst->m_buffer, 1, &image_copy);
+					}
+					else if (copy.op == ResourceCopyOp::write_texture)
+					{
+						BufferResource* src = cast_objct<BufferResource>(upload_buffer->get_object());
+						ImageResource* dst = cast_objct<ImageResource>(copy.write_texture.dst->get_object());
+						VkBufferImageCopy image_copy{};
+						auto& placement = placements[i];
+						image_copy.bufferOffset = placement.offset;
+						image_copy.bufferRowLength = placement.row_pitch * 8 / bits_per_pixel(placement.pixel_format);
+						image_copy.bufferImageHeight = placement.depth_pitch * 8 / bits_per_pixel(placement.pixel_format);
+						image_copy.imageSubresource.aspectMask = is_depth_stencil_format(placement.pixel_format) ?
+							VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT :
+							VK_IMAGE_ASPECT_COLOR_BIT;
+						image_copy.imageSubresource.baseArrayLayer = copy.write_texture.dst_subresource.array_slice;
+						image_copy.imageSubresource.layerCount = 1;
+						image_copy.imageSubresource.mipLevel = copy.write_texture.dst_subresource.mip_slice;
+						image_copy.imageOffset.x = copy.write_texture.write_box.offset_x;
+						image_copy.imageOffset.y = copy.write_texture.write_box.offset_y;
+						image_copy.imageOffset.z = copy.write_texture.write_box.offset_z;
+						image_copy.imageExtent.width = copy.write_texture.write_box.width;
+						image_copy.imageExtent.height = copy.write_texture.write_box.height;
+						image_copy.imageExtent.depth = copy.write_texture.write_box.depth;
+						m_funcs.vkCmdCopyBufferToImage(context.m_command_buffer, src->m_buffer, dst->m_image,
+							VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &image_copy);
+					}
+				}
+				tracking_system.generate_finish_barriers();
+				buffer_barriers = tracking_system.m_buffer_barriers;
+				image_barriers = tracking_system.m_image_barriers;
+				src_stages = tracking_system.m_src_stage_flags;
+				dst_stages = tracking_system.m_dest_stage_flags;
+				m_funcs.vkCmdPipelineBarrier(context.m_command_buffer, src_stages, dst_stages, 0, 0, nullptr,
+					(u32)buffer_barriers.size(), buffer_barriers.data(), (u32)image_barriers.size(), image_barriers.data());
+				tracking_system.apply();
+				luexp(encode_vk_result(m_funcs.vkEndCommandBuffer(context.m_command_buffer)));
+				VkSubmitInfo submit{};
+				submit.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+				submit.waitSemaphoreCount = (u32)wait_semaphores.size();
+				submit.pWaitSemaphores = wait_semaphores.data();
+				submit.pWaitDstStageMask = wait_stages.data();
+				submit.signalSemaphoreCount = 0;
+				submit.pSignalSemaphores = nullptr;
+				MutexGuard guard(copy_queue->internal_queue_mtx);
+				luexp(encode_vk_result(m_funcs.vkQueueSubmit(copy_queue->internal_queue, 1, &submit, context.m_fence)));
+				luexp(encode_vk_result(m_funcs.vkWaitForFences(m_device, 1, &context.m_fence, VK_TRUE, U64_MAX)));
+				luexp(encode_vk_result(m_funcs.vkResetFences(m_device, 1, &context.m_fence)));
+				luexp(encode_vk_result(m_funcs.vkResetCommandPool(m_device, context.m_command_pool, 0)));
+				// Give back context.
+				m_copy_contexts_lock.lock();
+				m_copy_contexts.push_back(move(context));
+				m_copy_contexts_lock.unlock();
+				// Read data for read calls.
+				if (readback_buffer)
+				{
+					luset(readback_data, readback_buffer->map(0, USIZE_MAX));
+					for (usize i = 0; i < copies.size(); ++i)
+					{
+						auto& copy = copies[i];
+						if (copy.op == ResourceCopyOp::read_buffer)
+						{
+							memcpy(copy.read_buffer.dst, (byte_t*)readback_data + (usize)placements[i].offset, copy.read_buffer.size);
+						}
+						else if (copy.op == ResourceCopyOp::read_texture)
+						{
+							usize copy_size_per_row = bits_per_pixel(placements[i].pixel_format) * copy.read_texture.read_box.width / 8;
+							memcpy_bitmap3d(copy.read_texture.dst, (byte_t*)readback_data + (usize)placements[i].offset,
+								copy_size_per_row, copy.read_texture.read_box.height, copy.read_texture.read_box.depth,
+								copy.read_texture.dst_row_pitch, (usize)placements[i].row_pitch, copy.read_texture.dst_depth_pitch, (usize)placements[i].depth_pitch);
+						}
+					}
+					readback_buffer->unmap(0, 0);
 				}
 			}
 			lucatchret;

@@ -19,18 +19,6 @@ namespace Luna
 {
 	namespace RHI
 	{
-		struct QueueTransferTracker
-		{
-			Device* m_device;
-			VkCommandPool m_command_pool = VK_NULL_HANDLE;
-			VkCommandBuffer m_command_buffer = VK_NULL_HANDLE;
-			VkSemaphore m_semaphore = VK_NULL_HANDLE;
-
-			RV init(u32 queue_family_index);
-			R<VkSemaphore> submit_barrier(VkQueue queue, IMutex* queue_mtx, Span<const VkBufferMemoryBarrier> buffer_barriers, Span<const VkImageMemoryBarrier> texture_barriers);
-			~QueueTransferTracker();
-		};
-
 		struct CommandBuffer : ICommandBuffer
 		{
 			lustruct("RHI::CommandBuffer", "{057DBF2F-5817-490B-9683-18A0D3C4C5CB}");

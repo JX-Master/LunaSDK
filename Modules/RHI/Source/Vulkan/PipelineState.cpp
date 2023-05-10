@@ -263,7 +263,7 @@ namespace Luna
 					render_pass.depth_store_op = StoreOp::store;
 				}
 				render_pass.sample_count = (u8)desc.sample_count;
-				MutexGuard guard(m_device->m_render_pass_pool_mtx);
+				LockGuard guard(m_device->m_render_pass_pool_lock);
 				luset(create_info.renderPass, m_device->m_render_pass_pool.get_render_pass(render_pass));
 				guard.unlock();
 				create_info.subpass = 0;

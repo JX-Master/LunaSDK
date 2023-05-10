@@ -19,72 +19,6 @@ namespace Luna
 {
 	namespace RHI
 	{
-		RV QueueTransferTracker::init(u32 queue_family_index)
-		{
-			lutry
-			{
-				VkCommandPoolCreateInfo pool_info{};
-				pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-				pool_info.flags = 0;
-				pool_info.queueFamilyIndex = queue_family_index;
-				luexp(encode_vk_result(m_device->m_funcs.vkCreateCommandPool(m_device->m_device, &pool_info, nullptr, &m_command_pool)));
-				VkCommandBufferAllocateInfo alloc_info{};
-				alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-				alloc_info.commandPool = m_command_pool;
-				alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-				alloc_info.commandBufferCount = 1;
-				luexp(encode_vk_result(m_device->m_funcs.vkAllocateCommandBuffers(m_device->m_device, &alloc_info, &m_command_buffer)));
-				VkSemaphoreCreateInfo semaphore_info{};
-				semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-				luexp(encode_vk_result(m_device->m_funcs.vkCreateSemaphore(m_device->m_device, &semaphore_info, nullptr, &m_semaphore)));
-			}
-			lucatchret;
-			return ok;
-		}
-		R<VkSemaphore> QueueTransferTracker::submit_barrier(VkQueue queue, IMutex* queue_mtx, Span<const VkBufferMemoryBarrier> buffer_barriers, Span<const VkImageMemoryBarrier> texture_barriers)
-		{
-			lutry
-			{
-				luexp(encode_vk_result(m_device->m_funcs.vkResetCommandPool(m_device->m_device, m_command_pool, 0)));
-				VkCommandBufferBeginInfo begin_info{};
-				begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-				begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-				begin_info.pInheritanceInfo = nullptr;
-				luexp(encode_vk_result(m_device->m_funcs.vkBeginCommandBuffer(m_command_buffer, &begin_info)));
-				m_device->m_funcs.vkCmdPipelineBarrier(m_command_buffer, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 0, 0, nullptr, 
-					(u32)buffer_barriers.size(), buffer_barriers.data(), (u32)texture_barriers.size(), texture_barriers.data());
-				luexp(encode_vk_result(m_device->m_funcs.vkEndCommandBuffer(m_command_buffer)));
-				VkSubmitInfo submit{};
-				submit.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-				submit.waitSemaphoreCount = 0;
-				submit.pWaitSemaphores = nullptr;
-				submit.pWaitDstStageMask = nullptr;
-				submit.signalSemaphoreCount = 1;
-				submit.pSignalSemaphores = &m_semaphore;
-				MutexGuard guard(queue_mtx);
-				luexp(encode_vk_result(m_device->m_funcs.vkQueueSubmit(queue, 1, &submit, VK_NULL_HANDLE)));
-			}
-			lucatchret;
-			return m_semaphore;
-		}
-		QueueTransferTracker::~QueueTransferTracker()
-		{
-			if (m_command_buffer != VK_NULL_HANDLE)
-			{
-				m_device->m_funcs.vkFreeCommandBuffers(m_device->m_device, m_command_pool, 1, &m_command_buffer);
-				m_command_buffer = VK_NULL_HANDLE;
-			}
-			if (m_command_pool != VK_NULL_HANDLE)
-			{
-				m_device->m_funcs.vkDestroyCommandPool(m_device->m_device, m_command_pool, nullptr);
-				m_command_pool = VK_NULL_HANDLE;
-			}
-			if (m_semaphore != VK_NULL_HANDLE)
-			{
-				m_device->m_funcs.vkDestroySemaphore(m_device->m_device, m_semaphore, nullptr);
-				m_semaphore = VK_NULL_HANDLE;
-			}
-		}
 		RV CommandBuffer::init(CommandQueue* queue)
 		{
 			lutry
@@ -160,7 +94,8 @@ namespace Luna
 				if (iter == m_transfer_trackers.end())
 				{
 					UniquePtr<QueueTransferTracker> tracker(memnew<QueueTransferTracker>());
-					tracker->m_device = m_device;
+					tracker->m_device = m_device->m_device;
+					tracker->m_funcs = &m_device->m_funcs;
 					luexp(tracker->init(queue_family_index));
 					iter = m_transfer_trackers.insert(make_pair(queue_family_index, move(tracker))).first;
 				}
@@ -256,7 +191,7 @@ namespace Luna
 					if (!height) height = rd.height;
 				}
 				rp.sample_count = desc.sample_count;
-				MutexGuard guard(m_device->m_render_pass_pool_mtx);
+				LockGuard guard(m_device->m_render_pass_pool_lock);
 				lulet(render_pass, m_device->m_render_pass_pool.get_render_pass(rp));
 				fb.render_pass = render_pass;
 				lulet(fbo, m_device->m_render_pass_pool.get_frame_buffer(fb));

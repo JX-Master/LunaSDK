@@ -137,7 +137,7 @@ namespace Luna
 			present = 0x8000,
 		};
 
-		constexpr SubresourceIndex RESOURCE_BARRIER_ALL_SUBRESOURCES = {U32_MAX, U32_MAX};
+		constexpr SubresourceIndex TEXTURE_BARRIER_ALL_SUBRESOURCES = {U32_MAX, U32_MAX};
 
 		struct TextureBarrier
 		{

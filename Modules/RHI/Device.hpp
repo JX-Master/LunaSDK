@@ -35,33 +35,33 @@ namespace Luna
 		struct ResourceCopyReadBufferDesc
 		{
 			IBuffer* src;
-			void* dest;
+			void* dst;
 			u64 src_offset;
 			usize size;
 		};
 		struct ResourceCopyWriteBufferDesc
 		{
 			const void* src;
-			IBuffer* dest;
-			u64 dest_offset;
+			IBuffer* dst;
+			u64 dst_offset;
 			usize size;
 		};
 		struct ResourceCopyReadTextureDesc
 		{
 			ITexture* src;
-			void* dest;
+			void* dst;
 			SubresourceIndex src_subresource;
-			u32 dest_row_pitch;
-			u32 dest_depth_pitch;
+			u32 dst_row_pitch;
+			u32 dst_depth_pitch;
 			BoxU read_box;
 		};
 		struct ResourceCopyWriteTextureDesc
 		{
 			const void* src;
-			ITexture* dest;
+			ITexture* dst;
 			u32 src_row_pitch;
 			u32 src_depth_pitch;
-			SubresourceIndex dest_subresource;
+			SubresourceIndex dst_subresource;
 			BoxU write_box;
 		};
 		struct ResourceCopyDesc
@@ -74,47 +74,47 @@ namespace Luna
 				ResourceCopyReadTextureDesc read_texture;
 				ResourceCopyWriteTextureDesc write_texture;
 			};
-			static ResourceCopyDesc as_read_buffer(IBuffer* resource, void* dest, usize size, u64 src_offset)
+			static ResourceCopyDesc as_read_buffer(IBuffer* resource, void* dst, usize size, u64 src_offset)
 			{
 				ResourceCopyDesc r;
 				r.op = ResourceCopyOp::read_buffer;
 				r.read_buffer.src = resource;
-				r.read_buffer.dest = dest;
+				r.read_buffer.dst = dst;
 				r.read_buffer.size = size;
 				r.read_buffer.src_offset = src_offset;
 				return r;
 			}
-			static ResourceCopyDesc as_write_buffer(IBuffer* resource, const void* src, usize size, u64 dest_offset)
+			static ResourceCopyDesc as_write_buffer(IBuffer* resource, const void* src, usize size, u64 dst_offset)
 			{
 				ResourceCopyDesc r;
 				r.op = ResourceCopyOp::write_buffer;
-				r.write_buffer.dest = resource;
+				r.write_buffer.dst = resource;
 				r.write_buffer.src = src;
 				r.write_buffer.size = size;
-				r.write_buffer.dest_offset = dest_offset;
+				r.write_buffer.dst_offset = dst_offset;
 				return r;
 			}
-			static ResourceCopyDesc as_read_texture(ITexture* resource, void* dest, u32 dest_row_pitch, u32 dest_depth_pitch, const SubresourceIndex& src_subresource, const BoxU& read_box)
+			static ResourceCopyDesc as_read_texture(ITexture* resource, void* dst, u32 dst_row_pitch, u32 dst_depth_pitch, const SubresourceIndex& src_subresource, const BoxU& read_box)
 			{
 				ResourceCopyDesc r;
 				r.op = ResourceCopyOp::read_texture;
 				r.read_texture.src = resource;
-				r.read_texture.dest = dest;
-				r.read_texture.dest_row_pitch = dest_row_pitch;
-				r.read_texture.dest_depth_pitch = dest_depth_pitch;
+				r.read_texture.dst = dst;
+				r.read_texture.dst_row_pitch = dst_row_pitch;
+				r.read_texture.dst_depth_pitch = dst_depth_pitch;
 				r.read_texture.src_subresource = src_subresource;
 				r.read_texture.read_box = read_box;
 				return r;
 			}
-			static ResourceCopyDesc as_write_texture(ITexture* resource, const void* src, u32 src_row_pitch, u32 src_depth_pitch, const SubresourceIndex& dest_subresource, const BoxU& write_box)
+			static ResourceCopyDesc as_write_texture(ITexture* resource, const void* src, u32 src_row_pitch, u32 src_depth_pitch, const SubresourceIndex& dst_subresource, const BoxU& write_box)
 			{
 				ResourceCopyDesc r;
 				r.op = ResourceCopyOp::write_texture;
-				r.write_texture.dest = resource;
+				r.write_texture.dst = resource;
 				r.write_texture.src = src;
 				r.write_texture.src_row_pitch = src_row_pitch;
 				r.write_texture.src_depth_pitch = src_depth_pitch;
-				r.write_texture.dest_subresource = dest_subresource;
+				r.write_texture.dst_subresource = dst_subresource;
 				r.write_texture.write_box = write_box;
 				return r;
 			}

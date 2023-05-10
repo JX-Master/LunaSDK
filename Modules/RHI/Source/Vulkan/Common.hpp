@@ -156,6 +156,8 @@ namespace Luna
 			case PrimitiveTopology::triangle_list: return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 			case PrimitiveTopology::triangle_strip: return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
 			}
+			lupanic();
+			return VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
 		}
 		inline VkCompareOp encode_compare_op(ComparisonFunc func)
 		{
@@ -170,6 +172,8 @@ namespace Luna
 			case ComparisonFunc::greater_equal: return VK_COMPARE_OP_GREATER_OR_EQUAL;
 			case ComparisonFunc::always: return VK_COMPARE_OP_ALWAYS;
 			}
+			lupanic();
+			return VK_COMPARE_OP_NEVER;
 		}
 		inline VkStencilOp encode_stencil_op(StencilOp op)
 		{
@@ -184,6 +188,8 @@ namespace Luna
 			case StencilOp::incr: return VK_STENCIL_OP_INCREMENT_AND_WRAP;
 			case StencilOp::decr: return VK_STENCIL_OP_DECREMENT_AND_WRAP;
 			}
+			lupanic();
+			return VK_STENCIL_OP_KEEP;
 		}
 		inline VkLogicOp encode_logic_op(LogicOp op)
 		{
@@ -205,6 +211,8 @@ namespace Luna
 			case LogicOp::or_reverse: return VK_LOGIC_OP_OR_REVERSE;
 			case LogicOp::or_inverted: return VK_LOGIC_OP_OR_INVERTED;
 			}
+			lupanic();
+			return VK_LOGIC_OP_CLEAR;
 		}
 		inline VkBlendFactor encode_blend_factor(BlendFactor factor)
 		{
@@ -228,6 +236,8 @@ namespace Luna
 			case BlendFactor::src1_alpha: return VK_BLEND_FACTOR_SRC1_ALPHA;
 			case BlendFactor::inv_src1_alpha: return VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA;
 			}
+			lupanic();
+			return VK_BLEND_FACTOR_ZERO;
 		}
 		inline VkBlendOp encode_blend_op(BlendOp op)
 		{
@@ -239,6 +249,8 @@ namespace Luna
 			case BlendOp::min: return VK_BLEND_OP_MIN;
 			case BlendOp::max: return VK_BLEND_OP_MAX;
 			}
+			lupanic();
+			return VK_BLEND_OP_ADD;
 		}
 		inline VkColorComponentFlags encode_color_component_flags(ColorWriteMask mask)
 		{
@@ -257,6 +269,8 @@ namespace Luna
 			case LoadOp::load: return VK_ATTACHMENT_LOAD_OP_LOAD;
 			case LoadOp::clear: return VK_ATTACHMENT_LOAD_OP_CLEAR;
 			}
+			lupanic();
+			return VK_ATTACHMENT_LOAD_OP_LOAD;
 		}
 		inline VkAttachmentStoreOp encode_store_op(StoreOp op)
 		{
@@ -265,6 +279,8 @@ namespace Luna
 			case StoreOp::dont_care: return VK_ATTACHMENT_STORE_OP_DONT_CARE;
 			case StoreOp::store: return VK_ATTACHMENT_STORE_OP_STORE;
 			}
+			lupanic();
+			return VK_ATTACHMENT_STORE_OP_STORE;
 		}
 		inline VkSampleCountFlagBits encode_sample_count(u8 num_samples)
 		{
@@ -279,6 +295,8 @@ namespace Luna
 			case 32: return VK_SAMPLE_COUNT_32_BIT;
 			case 64: return VK_SAMPLE_COUNT_64_BIT;
 			}
+			lupanic();
+			return VK_SAMPLE_COUNT_1_BIT;
 		}
 		inline u32 calc_mip_levels(u32 width, u32 height, u32 depth)
 		{
@@ -580,6 +598,8 @@ namespace Luna
 			case DescriptorType::read_write_texture_view: return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
 			case DescriptorType::sampler: return VK_DESCRIPTOR_TYPE_SAMPLER;
 			}
+			lupanic();
+			return VK_DESCRIPTOR_TYPE_SAMPLER;
 		}
 		inline VkSamplerAddressMode encode_address_mode(TextureAddressMode mode)
 		{
@@ -590,6 +610,8 @@ namespace Luna
 			case TextureAddressMode::clamp: return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
 			case TextureAddressMode::border: return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
 			}
+			lupanic();
+			return VK_SAMPLER_ADDRESS_MODE_REPEAT;
 		}
 	}
 }

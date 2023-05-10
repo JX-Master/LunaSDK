@@ -161,7 +161,7 @@ namespace Luna
 		void ResourceStateTrackingSystem::pack_image(const TextureBarrier& barrier)
 		{
 			ImageResource* res = cast_objct<ImageResource>(barrier.texture->get_object());
-			if (barrier.subresource == RESOURCE_BARRIER_ALL_SUBRESOURCES)
+			if (barrier.subresource == TEXTURE_BARRIER_ALL_SUBRESOURCES)
 			{
 				TextureBarrier sub_barrier = barrier;
 				for (u32 array_slice = 0; array_slice < res->m_desc.array_size; ++array_slice)
