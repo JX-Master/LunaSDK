@@ -273,7 +273,7 @@ namespace Luna
 			VkDeviceSize* vk_offsets = (VkDeviceSize*)alloca(sizeof(VkDeviceSize) * num_slots);
 			for (u32 i = 0; i < num_slots; ++i)
 			{
-				BufferResource* res = cast_objct<BufferResource>(buffers[i]->get_object());
+				BufferResource* res = cast_object<BufferResource>(buffers[i]->get_object());
 				bufs[i] = res->m_buffer;
 				vk_offsets[i] = offsets[i];
 			}
@@ -281,7 +281,7 @@ namespace Luna
 		}
 		void CommandBuffer::set_index_buffer(IBuffer* buffer, usize offset_in_bytes, Format index_format)
 		{
-			BufferResource* res = cast_objct<BufferResource>(buffer->get_object());
+			BufferResource* res = cast_object<BufferResource>(buffer->get_object());
 			VkIndexType index_type;
 			switch (index_format)
 			{
@@ -493,8 +493,8 @@ namespace Luna
 		}
 		void CommandBuffer::copy_resource(IResource* dest, IResource* src)
 		{
-			BufferResource* s = cast_objct<BufferResource>(src->get_object());
-			BufferResource* d = cast_objct<BufferResource>(dest->get_object());
+			BufferResource* s = cast_object<BufferResource>(src->get_object());
+			BufferResource* d = cast_object<BufferResource>(dest->get_object());
 			if (s && d)
 			{
 				VkBufferCopy copy{};
@@ -505,8 +505,8 @@ namespace Luna
 			}
 			else
 			{
-				ImageResource* ts = cast_objct<ImageResource>(src->get_object());
-				ImageResource* td = cast_objct<ImageResource>(dest->get_object());
+				ImageResource* ts = cast_object<ImageResource>(src->get_object());
+				ImageResource* td = cast_object<ImageResource>(dest->get_object());
 				// The copy is performed one per mips.
 				u32 mip_levels = td->m_desc.mip_levels;
 				u32 array_count = td->m_desc.array_size;
@@ -540,8 +540,8 @@ namespace Luna
 			IBuffer* src, u64 src_offset,
 			u64 copy_bytes)
 		{
-			BufferResource* s = cast_objct<BufferResource>(src->get_object());
-			BufferResource* d = cast_objct<BufferResource>(dst->get_object());
+			BufferResource* s = cast_object<BufferResource>(src->get_object());
+			BufferResource* d = cast_object<BufferResource>(dst->get_object());
 			VkBufferCopy copy{};
 			copy.srcOffset = src_offset;
 			copy.dstOffset = dst_offset;
@@ -553,8 +553,8 @@ namespace Luna
 			ITexture* src, SubresourceIndex src_subresource, u32 src_x, u32 src_y, u32 src_z,
 			u32 copy_width, u32 copy_height, u32 copy_depth)
 		{
-			ImageResource* s = cast_objct<ImageResource>(src->get_object());
-			ImageResource* d = cast_objct<ImageResource>(dst->get_object());
+			ImageResource* s = cast_object<ImageResource>(src->get_object());
+			ImageResource* d = cast_object<ImageResource>(dst->get_object());
 			// The copy is performed one per mips.
 			VkImageCopy copy{};
 			copy.srcSubresource.aspectMask =
@@ -586,8 +586,8 @@ namespace Luna
 			IBuffer* src, u64 src_offset, u32 src_row_pitch, u32 src_depth_pitch,
 			u32 copy_width, u32 copy_height, u32 copy_depth)
 		{
-			BufferResource* s = cast_objct<BufferResource>(src->get_object());
-			ImageResource* d = cast_objct<ImageResource>(dst->get_object());
+			BufferResource* s = cast_object<BufferResource>(src->get_object());
+			ImageResource* d = cast_object<ImageResource>(dst->get_object());
 			VkBufferImageCopy copy{};
 			copy.bufferOffset = src_offset;
 			copy.bufferRowLength = src_row_pitch * 8 / bits_per_pixel(d->m_desc.pixel_format);
@@ -612,8 +612,8 @@ namespace Luna
 			ITexture* src, SubresourceIndex src_subresource, u32 src_x, u32 src_y, u32 src_z,
 			u32 copy_width, u32 copy_height, u32 copy_depth)
 		{
-			ImageResource* s = cast_objct<ImageResource>(src->get_object());
-			BufferResource* d = cast_objct<BufferResource>(dst->get_object());
+			ImageResource* s = cast_object<ImageResource>(src->get_object());
+			BufferResource* d = cast_object<BufferResource>(dst->get_object());
 			VkBufferImageCopy copy{};
 			copy.imageSubresource.aspectMask = is_depth_stencil_format(s->m_desc.pixel_format) ?
 				VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT :

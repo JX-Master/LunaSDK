@@ -25,6 +25,7 @@
 #include "PipelineState.hpp"
 #include "QueryHeap.hpp"
 #include "ResourceStateTrackingSystem.hpp"
+#include "SwapChain.hpp"
 namespace Luna
 {
 	namespace RHI
@@ -431,7 +432,7 @@ namespace Luna
 				DeviceMemory* memory = nullptr;
 				ResourceHeapType heap_type;
 				{
-					BufferResource* buffer = cast_objct<BufferResource>(existing_resource->get_object());
+					BufferResource* buffer = cast_object<BufferResource>(existing_resource->get_object());
 					if (buffer)
 					{
 						heap_type = buffer->m_desc.heap_type;
@@ -439,7 +440,7 @@ namespace Luna
 					}
 					else
 					{
-						ImageResource* image = cast_objct<ImageResource>(existing_resource->get_object());
+						ImageResource* image = cast_object<ImageResource>(existing_resource->get_object());
 						heap_type = image->m_desc.heap_type;
 						memory = image->m_memory;
 					}
@@ -461,7 +462,7 @@ namespace Luna
 				DeviceMemory* memory = nullptr;
 				ResourceHeapType heap_type;
 				{
-					BufferResource* buffer = cast_objct<BufferResource>(existing_resource->get_object());
+					BufferResource* buffer = cast_object<BufferResource>(existing_resource->get_object());
 					if (buffer)
 					{
 						heap_type = buffer->m_desc.heap_type;
@@ -469,7 +470,7 @@ namespace Luna
 					}
 					else
 					{
-						ImageResource* image = cast_objct<ImageResource>(existing_resource->get_object());
+						ImageResource* image = cast_object<ImageResource>(existing_resource->get_object());
 						heap_type = image->m_desc.heap_type;
 						memory = image->m_memory;
 					}
@@ -711,6 +712,20 @@ namespace Luna
 			lucatchret;
 			return ret;
 		}
+		R<Ref<ISwapChain>> Device::new_swap_chain(ICommandQueue* queue, Window::IWindow* window, const SwapChainDesc& desc)
+		{
+			Ref<ISwapChain> ret;
+			lutry
+			{
+				auto swap_chain = new_object<SwapChain>();
+				swap_chain->m_device = this;
+				CommandQueue* command_queue = cast_object<CommandQueue>(queue->get_object());
+				luexp(swap_chain->init(command_queue, window, desc));
+				ret = swap_chain;
+			}
+			lucatchret;
+			return ret;
+		}
 		struct CopyBufferPlacementInfo
 		{
 			u64 offset;
@@ -888,8 +903,8 @@ namespace Luna
 					auto& copy = copies[i];
 					if (copy.op == ResourceCopyOp::read_buffer)
 					{
-						BufferResource* src = cast_objct<BufferResource>(copy.read_buffer.src->get_object());
-						BufferResource* dst = cast_objct<BufferResource>(readback_buffer->get_object());
+						BufferResource* src = cast_object<BufferResource>(copy.read_buffer.src->get_object());
+						BufferResource* dst = cast_object<BufferResource>(readback_buffer->get_object());
 						VkBufferCopy buffer_copy;
 						buffer_copy.srcOffset = copy.read_buffer.src_offset;
 						buffer_copy.dstOffset = placements[i].offset;
@@ -898,8 +913,8 @@ namespace Luna
 					}
 					else if (copy.op == ResourceCopyOp::write_buffer)
 					{
-						BufferResource* src = cast_objct<BufferResource>(upload_buffer->get_object());
-						BufferResource* dst = cast_objct<BufferResource>(copy.write_buffer.dst->get_object());
+						BufferResource* src = cast_object<BufferResource>(upload_buffer->get_object());
+						BufferResource* dst = cast_object<BufferResource>(copy.write_buffer.dst->get_object());
 						VkBufferCopy buffer_copy;
 						buffer_copy.srcOffset = placements[i].offset;
 						buffer_copy.dstOffset = copy.write_buffer.dst_offset;
@@ -908,8 +923,8 @@ namespace Luna
 					}
 					else if (copy.op == ResourceCopyOp::read_texture)
 					{
-						ImageResource* src = cast_objct<ImageResource>(copy.read_texture.src->get_object());
-						BufferResource* dst = cast_objct<BufferResource>(readback_buffer->get_object());
+						ImageResource* src = cast_object<ImageResource>(copy.read_texture.src->get_object());
+						BufferResource* dst = cast_object<BufferResource>(readback_buffer->get_object());
 						VkBufferImageCopy image_copy{};
 						image_copy.imageSubresource.aspectMask = is_depth_stencil_format(placements[i].pixel_format) ?
 							VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT :
@@ -932,8 +947,8 @@ namespace Luna
 					}
 					else if (copy.op == ResourceCopyOp::write_texture)
 					{
-						BufferResource* src = cast_objct<BufferResource>(upload_buffer->get_object());
-						ImageResource* dst = cast_objct<ImageResource>(copy.write_texture.dst->get_object());
+						BufferResource* src = cast_object<BufferResource>(upload_buffer->get_object());
+						ImageResource* dst = cast_object<ImageResource>(copy.write_texture.dst->get_object());
 						VkBufferImageCopy image_copy{};
 						auto& placement = placements[i];
 						image_copy.bufferOffset = placement.offset;
@@ -1022,6 +1037,10 @@ namespace Luna
 		LUNA_RHI_API IDevice* get_main_device()
 		{
 			return g_main_device.get();
+		}
+		LUNA_RHI_API APIType get_current_platform_api_type()
+		{
+			return APIType::vulkan;
 		}
 	}
 }

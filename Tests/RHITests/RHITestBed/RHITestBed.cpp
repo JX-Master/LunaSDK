@@ -34,8 +34,9 @@ namespace Luna
 		Ref<ICommandQueue> m_queue;
 		Ref<IWindow> m_window;
 		Ref<ISwapChain> m_swap_chain;
-		Ref<IResource> m_back_buffer;
 		Ref<ICommandBuffer> m_command_buffer;
+
+		Ref<ITexture> m_back_buffer;
 
 		LUNA_RHI_TESTBED_API void register_init_func(RV(*init_func)())
 		{
@@ -59,8 +60,6 @@ namespace Luna
 			{
 				// resize back buffer.
 				lupanic_if_failed(m_swap_chain->reset({width, height, 2, Format::rgba8_unorm, true}));
-				m_back_buffer = get_main_device()->new_resource(ResourceDesc::tex2d(ResourceHeapType::local, Format::rgba8_unorm,
-					ResourceUsageFlag::render_target | ResourceUsageFlag::shader_resource, width, height, 1, 1), nullptr).get();
 				if (m_resize_func) m_resize_func(width, height);
 			}
 		}
@@ -73,14 +72,12 @@ namespace Luna
 			lutry
 			{
 				set_log_std_enabled(true);
-				luset(m_queue, get_main_device()->new_command_queue(CommandQueueType::graphics));
+				luset(m_queue, get_main_device()->new_command_queue(CommandQueueDesc(CommandQueueType::graphics, CommandQueueFlags::presenting)));
 				luset(m_window, new_window("RHI Test", WindowDisplaySettings::as_windowed(), WindowCreationFlag::resizable));
 				m_window->get_close_event() += on_window_close;
 				m_window->get_framebuffer_resize_event() += on_window_resize;
-				luset(m_swap_chain, new_swap_chain(m_queue, m_window, SwapChainDesc({0, 0, 2, Format::rgba8_unorm, true})));
+				luset(m_swap_chain, get_main_device()->new_swap_chain(m_queue, m_window, SwapChainDesc({0, 0, 2, Format::rgba8_unorm, true})));
 				auto sz = m_window->get_size();
-				luset(m_back_buffer, get_main_device()->new_resource(ResourceDesc::tex2d(ResourceHeapType::local, Format::rgba8_unorm,
-					ResourceUsageFlag::render_target | ResourceUsageFlag::shader_resource, sz.x, sz.y, 1, 1), nullptr));
 				luset(m_command_buffer, m_queue->new_command_buffer());
 
 				u32 adapter_index = 0;
@@ -92,13 +89,13 @@ namespace Luna
 					log_info("RHITest", "Name: %s", desc.name);
 					log_info("RHITest", "Shared Memory: %.4f MB", (f64)desc.shared_memory / (f64)1_mb);
 					log_info("RHITest", "Dedicated Memory: %.4f MB", (f64)desc.local_memory / (f64)1_mb);
-					if (test_flags(desc.flags, RHI::GraphicAdapterFlag::software))
+					if (desc.type == GraphicAdapterType::software)
 					{
-						log_info("RHITest", "Software simulated.");
+						log_info("RHITest", "Software simulated GPU.");
 					}
-					if (test_flags(desc.flags, RHI::GraphicAdapterFlag::uma))
+					if (desc.type == GraphicAdapterType::integrated_gpu)
 					{
-						log_info("RHITest", "Universal memory architecture.");
+						log_info("RHITest", "Intergrated GPU.");
 					}
 					log_info("RHITest", "====================");
 					++adapter_index;
@@ -128,10 +125,11 @@ namespace Luna
 
 				lupanic_if_failed(m_command_buffer->reset());
 
+				m_back_buffer = m_swap_chain->get_current_back_buffer().get();
+
 				if (m_draw_func) m_draw_func();
 
-				lupanic_if_failed(m_swap_chain->present(m_back_buffer, 0));
-				m_swap_chain->wait();
+				lupanic_if_failed(m_swap_chain->present());
 			}
 			if (m_close_func) m_close_func();
 			m_queue.reset();

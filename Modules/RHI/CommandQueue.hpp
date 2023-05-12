@@ -26,6 +26,11 @@ namespace Luna
 		{
 			CommandQueueType type;
 			CommandQueueFlags flags;
+
+			CommandQueueDesc() = default;
+			CommandQueueDesc(CommandQueueType type, CommandQueueFlags flags) :
+				type(type),
+				flags(flags) {}
 		};
 
 		//! @interface ICommandQueue

@@ -77,12 +77,6 @@ namespace Luna
 			virtual IDevice* get_device() override { return m_device.get(); }
 			virtual void set_name(const Name& name) override { m_name = name; }
 			virtual TextureDesc get_desc() override { return m_desc; }
-			virtual R<void*> map(usize read_begin, usize read_end) override
-			{
-				// Image resources cannot be mapped, since they can only be placed in local heap.
-				return BasicError::not_supported();
-			}
-			virtual void unmap(usize write_begin, usize write_end) override {}
 		};
 	}
 }

@@ -57,7 +57,7 @@ namespace Luna
 				VkImageViewCreateInfo info{};
 				info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 				info.flags = 0;
-				ImageResource* res = cast_objct<ImageResource>(resource->get_object());
+				ImageResource* res = cast_object<ImageResource>(resource->get_object());
 				if (!res) return BasicError::not_supported();
 				info.image = res->m_image;
 				switch (d.type)

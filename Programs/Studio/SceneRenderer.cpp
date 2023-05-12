@@ -342,7 +342,7 @@ namespace Luna
 				// Set parameters.
 				if(m_settings.mode == SceneRendererMode::wireframe)
 				{
-					WireframePass* wireframe = cast_objct<WireframePass>(m_render_graph->get_render_pass(WIREFRAME_PASS)->get_object());
+					WireframePass* wireframe = cast_object<WireframePass>(m_render_graph->get_render_pass(WIREFRAME_PASS)->get_object());
 					wireframe->model_matrices = m_model_matrices;
 					wireframe->camera_cb = m_camera_cb;
 					wireframe->ts = {ts.data(), ts.size()};
@@ -354,9 +354,9 @@ namespace Luna
 						m_settings.mode == SceneRendererMode::metallic ||
 						m_settings.mode == SceneRendererMode::depth)
 				{
-					DepthPass* depth = cast_objct<DepthPass>(m_render_graph->get_render_pass(DEPTH_PASS)->get_object());
-					GeometryPass* geometry = cast_objct<GeometryPass>(m_render_graph->get_render_pass(GEOMETRY_PASS)->get_object());
-					BufferVisualizationPass* buffer_vis = cast_objct<BufferVisualizationPass>(m_render_graph->get_render_pass(BUFFER_VIS_PASS)->get_object());
+					DepthPass* depth = cast_object<DepthPass>(m_render_graph->get_render_pass(DEPTH_PASS)->get_object());
+					GeometryPass* geometry = cast_object<GeometryPass>(m_render_graph->get_render_pass(GEOMETRY_PASS)->get_object());
+					BufferVisualizationPass* buffer_vis = cast_object<BufferVisualizationPass>(m_render_graph->get_render_pass(BUFFER_VIS_PASS)->get_object());
 					depth->ts = {ts.data(), ts.size()};
 					depth->rs = {rs.data(), rs.size()};
 					depth->camera_cb = m_camera_cb;
@@ -376,11 +376,11 @@ namespace Luna
 				}
 				else
 				{
-					SkyBoxPass* skybox = cast_objct<SkyBoxPass>(m_render_graph->get_render_pass(SKYBOX_PASS)->get_object());
-					DepthPass* depth = cast_objct<DepthPass>(m_render_graph->get_render_pass(DEPTH_PASS)->get_object());
-					GeometryPass* geometry = cast_objct<GeometryPass>(m_render_graph->get_render_pass(GEOMETRY_PASS)->get_object());
-					DeferredLightingPass* lighting = cast_objct<DeferredLightingPass>(m_render_graph->get_render_pass(DEFERRED_LIGHTING_PASS)->get_object());
-					ToneMappingPass* tone_mapping = cast_objct<ToneMappingPass>(m_render_graph->get_render_pass(TONE_MAPPING_PASS)->get_object());
+					SkyBoxPass* skybox = cast_object<SkyBoxPass>(m_render_graph->get_render_pass(SKYBOX_PASS)->get_object());
+					DepthPass* depth = cast_object<DepthPass>(m_render_graph->get_render_pass(DEPTH_PASS)->get_object());
+					GeometryPass* geometry = cast_object<GeometryPass>(m_render_graph->get_render_pass(GEOMETRY_PASS)->get_object());
+					DeferredLightingPass* lighting = cast_object<DeferredLightingPass>(m_render_graph->get_render_pass(DEFERRED_LIGHTING_PASS)->get_object());
+					ToneMappingPass* tone_mapping = cast_object<ToneMappingPass>(m_render_graph->get_render_pass(TONE_MAPPING_PASS)->get_object());
 					skybox->camera_fov = camera_component->fov;
 					skybox->camera_type = camera_component->type;
 					skybox->view_to_world = camera_entity->local_to_world_matrix();
@@ -412,7 +412,7 @@ namespace Luna
 
 					if(m_settings.mode == SceneRendererMode::normal_visualization)
 					{
-						NormalVisualizationPass* normal_vis = cast_objct<NormalVisualizationPass>(m_render_graph->get_render_pass(NORMAL_VIS_PASS)->get_object());
+						NormalVisualizationPass* normal_vis = cast_object<NormalVisualizationPass>(m_render_graph->get_render_pass(NORMAL_VIS_PASS)->get_object());
 						normal_vis->ts = {ts.data(), ts.size()};
 						normal_vis->rs = {rs.data(), rs.size()};
 						normal_vis->camera_cb = m_camera_cb;

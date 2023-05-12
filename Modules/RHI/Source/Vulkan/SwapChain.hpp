@@ -18,9 +18,10 @@ namespace Luna
 	{
 		struct SwapChain : ISwapChain
 		{
-			lustruct("RHI::SwapChain", "{9C0F7754-FA08-4FF3-BF66-B23125FA19F9}");
+			lustruct("RHI::SwapChain", "{E62614A8-3AB3-46D1-8DD8-80671C571FBC}");
 			luiimpl();
 			Ref<Device> m_device;
+			Name m_name;
 
 			SwapChainDesc m_desc;
 			Ref<CommandQueue> m_presenting_queue;
@@ -42,6 +43,8 @@ namespace Luna
 			
 			~SwapChain();
 
+			virtual IDevice* get_device() override { return m_device.get(); }
+			virtual void set_name(const Name& name) override { m_name = name; }
 			virtual Window::IWindow* get_window() override { return m_window; }
 			virtual SwapChainDesc get_desc() override { return m_desc; }
 			virtual R<Ref<ITexture>> get_current_back_buffer() override;

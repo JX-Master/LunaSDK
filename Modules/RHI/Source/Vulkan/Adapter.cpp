@@ -112,27 +112,27 @@ namespace Luna
 			lutry
 			{
 				luset(dummy_window, Window::new_window("Dummy Window", Window::WindowDisplaySettings::as_windowed(), Window::WindowCreationFlag::hidden));
-			// Fetch surface for dummy window.
-			Window::IGLFWWindow* window = query_interface<Window::IGLFWWindow>(dummy_window->get_object());
-			if (!window)
-			{
-				return BasicError::not_supported();
+				// Fetch surface for dummy window.
+				Window::IGLFWWindow* window = query_interface<Window::IGLFWWindow>(dummy_window->get_object());
+				if (!window)
+				{
+					return BasicError::not_supported();
+				}
+				GLFWwindow* glfw_window = window->get_glfw_window_handle();
+				luexp(encode_vk_result(glfwCreateWindowSurface(g_vk_instance, window->get_glfw_window_handle(), nullptr, &dummy_surface)));
+				// Select physical device.
+				for (usize i = 0; i < g_physical_devices.size(); ++i)
+				{
+					lulet(queue_families, get_device_queue_families(g_physical_devices[i], dummy_surface));
+					g_physical_device_queue_families.push_back(move(queue_families));
+				}
+				if (dummy_surface != VK_NULL_HANDLE)
+				{
+					vkDestroySurfaceKHR(g_vk_instance, dummy_surface, nullptr);
+					dummy_surface = VK_NULL_HANDLE;
+				}
 			}
-			GLFWwindow* glfw_window = window->get_glfw_window_handle();
-			luexp(encode_vk_result(glfwCreateWindowSurface(g_vk_instance, window->get_glfw_window_handle(), nullptr, &dummy_surface)));
-			// Select physical device.
-			for (usize i = 0; i < g_physical_devices.size(); ++i)
-			{
-				lulet(queue_families, get_device_queue_families(g_physical_devices[i], dummy_surface));
-				g_physical_device_queue_families.push_back(move(queue_families));
-			}
-			if (dummy_surface != VK_NULL_HANDLE)
-			{
-				vkDestroySurfaceKHR(g_vk_instance, dummy_surface, nullptr);
-				dummy_surface = VK_NULL_HANDLE;
-			}
-			}
-				lucatch
+			lucatch
 			{
 				if (dummy_surface != VK_NULL_HANDLE)
 				{
@@ -158,7 +158,7 @@ namespace Luna
 					g_physical_devices.resize(device_count);
 					vkEnumeratePhysicalDevices(g_vk_instance, &device_count, g_physical_devices.data());
 				}
-
+				luexp(init_physical_device_queue_families());
 			}
 			lucatchret;
 			return ok;

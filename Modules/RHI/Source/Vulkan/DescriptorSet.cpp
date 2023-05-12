@@ -84,7 +84,7 @@ namespace Luna
 								{
 									auto& s_buffer = s.buffer_views[j];
 									auto& d_buffer = infos[j];
-									BufferResource* buf = cast_objct<BufferResource>(s_buffer.buffer->get_object());
+									BufferResource* buf = cast_object<BufferResource>(s_buffer.buffer->get_object());
 									d_buffer.buffer = buf->m_buffer;
 									d_buffer.offset = s_buffer.offset;
 									if (s.type == DescriptorType::uniform_buffer_view)
@@ -177,7 +177,7 @@ namespace Luna
 						VkCopyDescriptorSet& d = d_copies[i];
 						const DescriptorSetCopy& s = copies[i];
 						d.sType = VK_STRUCTURE_TYPE_COPY_DESCRIPTOR_SET;
-						DescriptorSet* src = cast_objct<DescriptorSet>(s.src->get_object());
+						DescriptorSet* src = cast_object<DescriptorSet>(s.src->get_object());
 						d.srcSet = src->m_desc_set;
 						d.srcBinding = s.src_binding_slot;
 						d.srcArrayElement = s.src_first_array_index;

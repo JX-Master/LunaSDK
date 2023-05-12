@@ -102,7 +102,7 @@ namespace Luna
 	LUNA_RUNTIME_API bool object_is_type(object_t object_ptr, typeinfo_t type);
 
 	template <typename _Rty>
-	inline _Rty* cast_objct(object_t object)
+	inline _Rty* cast_object(object_t object)
 	{
 		return object_is_type(object, get_type_by_guid(_Rty::__guid)) ? (_Rty*)object : nullptr;
 	}

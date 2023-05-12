@@ -63,13 +63,6 @@ namespace Luna
 		//! Gets the main graphical device.
 		LUNA_RHI_API IDevice* get_main_device();
 
-		//! Creates a swap chain resource and binds it to the specified window.
-		//! @param[in] queue The command queue to push the present commands to.
-		//! @param[in] window The window this swap chain should be outputted to.
-		//! @param[in] desc The descriptor object of the swap chain.
-		//! @return Returns the new created swap chain, or `nullptr` if failed to create.
-		LUNA_RHI_API R<Ref<ISwapChain>> new_swap_chain(ICommandQueue* queue, Window::IWindow* window, const SwapChainDesc& desc);
-
 		enum class APIType : u8
 		{
 			d3d12,

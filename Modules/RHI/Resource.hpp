@@ -444,6 +444,15 @@ namespace Luna
 		{
 			luiid("{D67C47CD-1FF3-4FA4-82FE-773EC5C8AD2A}");
 
+			
+		};
+
+		struct IBuffer : virtual IResource
+		{
+			luiid("{548E82ED-947F-4F4C-95A0-DC0607C96C54}");
+
+			virtual BufferDesc get_desc() = 0;
+
 			//! Maps the resource data to system memory and enables CPU access to the resource data.
 			//! Map/unmap operations are reference counted, for each `map` operation, you need to call `unmap` once to finally unmap the memory.
 			//! Only buffer resources can be mapped.
@@ -468,13 +477,6 @@ namespace Luna
 			//! 
 			//! If `write_end` is larger than the subresource size (like setting to `USIZE_MAX`), the write range will be clamped to [write_begin, resource_size). 
 			virtual void unmap(usize write_begin, usize write_end) = 0;
-		};
-
-		struct IBuffer : virtual IResource
-		{
-			luiid("{548E82ED-947F-4F4C-95A0-DC0607C96C54}");
-
-			virtual BufferDesc get_desc() = 0;
 		};
 
 		struct ITexture : virtual IResource

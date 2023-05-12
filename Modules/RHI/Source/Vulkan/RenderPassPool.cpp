@@ -181,7 +181,7 @@ namespace Luna
 				{
 					if (key.color_attachments[i])
 					{
-						RenderTargetView* rtv = cast_objct<RenderTargetView>(key.color_attachments[i]->get_object());
+						RenderTargetView* rtv = cast_object<RenderTargetView>(key.color_attachments[i]->get_object());
 						attachments[num_attachments] = rtv->m_view;
 						++num_attachments;
 						auto desc = rtv->m_resource->get_desc();
@@ -195,14 +195,14 @@ namespace Luna
 				{
 					if (key.resolve_attachments[i])
 					{
-						ResolveTargetView* rsv = cast_objct<ResolveTargetView>(key.resolve_attachments[i]->get_object());
+						ResolveTargetView* rsv = cast_object<ResolveTargetView>(key.resolve_attachments[i]->get_object());
 						attachments[num_attachments] = rsv->m_view;
 						++num_attachments;
 					}
 				}
 				if (key.depth_stencil_attachment)
 				{
-					DepthStencilView* depth_stencil_attachment = cast_objct<DepthStencilView>(key.depth_stencil_attachment->get_object());
+					DepthStencilView* depth_stencil_attachment = cast_object<DepthStencilView>(key.depth_stencil_attachment->get_object());
 					attachments[num_attachments] = depth_stencil_attachment->m_view;
 					++num_attachments;
 					auto desc = depth_stencil_attachment->m_resource->get_desc();

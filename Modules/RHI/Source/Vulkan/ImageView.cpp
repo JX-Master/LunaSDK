@@ -18,7 +18,7 @@ namespace Luna
 		{
 			dst.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 			dst.flags = 0;
-			ImageResource* image = cast_objct<ImageResource>(src.texture->get_object());
+			ImageResource* image = cast_object<ImageResource>(src.texture->get_object());
 			dst.image = image->m_image;
 			u32 mip_size = src.mip_size == U32_MAX ? (image->m_desc.mip_levels - src.mip_slice) : src.mip_size;
 			u32 array_size = src.array_size == U32_MAX ? (image->m_desc.array_size - src.array_slice) : src.array_size;

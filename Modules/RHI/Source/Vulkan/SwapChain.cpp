@@ -7,6 +7,7 @@
 * @author JXMaster
 * @date 2022/10/29
 */
+#include <Runtime/PlatformDefines.hpp>
 #include "SwapChain.hpp"
 #include <GLFW/glfw3.h>
 #include "VulkanRHI.hpp"

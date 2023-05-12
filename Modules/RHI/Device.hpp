@@ -14,6 +14,7 @@
 #include "CommandQueue.hpp"
 #include "RenderTargetView.hpp"
 #include "DepthStencilView.hpp"
+#include "SwapChain.hpp"
 #include "Fence.hpp"
 #include "QueryHeap.hpp"
 
@@ -232,6 +233,13 @@ namespace Luna
 			virtual R<Ref<IQueryHeap>> new_query_heap(const QueryHeapDesc& desc) = 0;
 
 			virtual R<Ref<IFence>> new_fence() = 0;
+
+			//! Creates a swap chain resource and binds it to the specified window.
+			//! @param[in] queue The command queue to push the present commands to.
+			//! @param[in] window The window this swap chain should be outputted to.
+			//! @param[in] desc The descriptor object of the swap chain.
+			//! @return Returns the new created swap chain, or `nullptr` if failed to create.
+			virtual R<Ref<ISwapChain>> new_swap_chain(ICommandQueue* queue, Window::IWindow* window, const SwapChainDesc& desc) = 0;
 
 			//! Copies resource data between system memory and resource memory.
 			//! @param[in] copies An array of resource copy operations to be performed. The user should

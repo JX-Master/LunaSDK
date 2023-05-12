@@ -146,6 +146,7 @@ namespace Luna
 			virtual R<Ref<IResolveTargetView>> new_resolve_target_view(ITexture* resource, const ResolveTargetViewDesc* desc) override;
 			virtual R<Ref<IQueryHeap>> new_query_heap(const QueryHeapDesc& desc) override;
 			virtual R<Ref<IFence>> new_fence() override;
+			virtual R<Ref<ISwapChain>> new_swap_chain(ICommandQueue* queue, Window::IWindow* window, const SwapChainDesc& desc) override;
 			virtual RV copy_resource(Span<const ResourceCopyDesc> copies) override;
 		};
 

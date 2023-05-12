@@ -142,7 +142,7 @@ namespace Luna
 		}
 		void ResourceStateTrackingSystem::pack_buffer(const BufferBarrier& barrier)
 		{
-			BufferResource* res = cast_objct<BufferResource>(barrier.buffer->get_object());
+			BufferResource* res = cast_object<BufferResource>(barrier.buffer->get_object());
 			auto iter = m_current_buffer_states.find(res);
 			if (iter == m_current_buffer_states.end())
 			{
@@ -160,7 +160,7 @@ namespace Luna
 		}
 		void ResourceStateTrackingSystem::pack_image(const TextureBarrier& barrier)
 		{
-			ImageResource* res = cast_objct<ImageResource>(barrier.texture->get_object());
+			ImageResource* res = cast_object<ImageResource>(barrier.texture->get_object());
 			if (barrier.subresource == TEXTURE_BARRIER_ALL_SUBRESOURCES)
 			{
 				TextureBarrier sub_barrier = barrier;
