@@ -59,7 +59,7 @@ namespace Luna
 			if(width && height)
 			{
 				// resize back buffer.
-				lupanic_if_failed(m_swap_chain->reset({width, height, 2, Format::rgba8_unorm, true}));
+				lupanic_if_failed(m_swap_chain->reset({width, height, 2, Format::bgra8_unorm, true}));
 				if (m_resize_func) m_resize_func(width, height);
 			}
 		}
@@ -88,7 +88,7 @@ namespace Luna
 				luset(m_window, new_window("RHI Test", WindowDisplaySettings::as_windowed(), WindowCreationFlag::resizable));
 				m_window->get_close_event() += on_window_close;
 				m_window->get_framebuffer_resize_event() += on_window_resize;
-				luset(m_swap_chain, device->new_swap_chain(m_command_queue, m_window, SwapChainDesc({0, 0, 2, Format::rgba8_unorm, true})));
+				luset(m_swap_chain, device->new_swap_chain(m_command_queue, m_window, SwapChainDesc({0, 0, 2, Format::bgra8_unorm, true})));
 				auto sz = m_window->get_size();
 				luset(m_command_buffer, device->new_command_buffer(m_command_queue));
 				luset(m_back_buffer, m_swap_chain->get_current_back_buffer());

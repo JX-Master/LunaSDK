@@ -224,6 +224,7 @@ namespace Luna
 		}
 		Device::~Device()
 		{
+			m_render_pass_pool.clean_up();
 			if (m_allocator != VK_NULL_HANDLE)
 			{
 				vmaDestroyAllocator(m_allocator);

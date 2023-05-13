@@ -149,6 +149,7 @@ namespace Luna
 		}
 		SwapChain::~SwapChain()
 		{
+			clean_up_swap_chain();
 			if (m_acqure_fence != VK_NULL_HANDLE)
 			{
 				m_device->m_funcs.vkDestroyFence(m_device->m_device, m_acqure_fence, nullptr);

@@ -222,7 +222,7 @@ namespace Luna
 			lucatchret;
 			return iter->second;
 		}
-		RenderPassPool::~RenderPassPool()
+		void RenderPassPool::clean_up()
 		{
 			for (auto& p : m_framebuffers)
 			{

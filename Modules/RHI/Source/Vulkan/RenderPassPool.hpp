@@ -108,8 +108,8 @@ namespace Luna
 
 			R<VkRenderPass> get_render_pass(const RenderPassKey& key);
 			R<VkFramebuffer> get_frame_buffer(const FrameBufferKey& key);
-			
-			~RenderPassPool();
+
+			void clean_up();
 		};
 	}
 }

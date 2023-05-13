@@ -680,10 +680,21 @@ namespace Luna
 			{
 				m_track_system.pack_image(barrier);
 			}
-			m_device->m_funcs.vkCmdPipelineBarrier(m_command_buffer,
-				m_track_system.m_src_stage_flags, m_track_system.m_dest_stage_flags, 0, 0, nullptr, 
-				m_track_system.m_buffer_barriers.size(), m_track_system.m_buffer_barriers.data(),
-				m_track_system.m_image_barriers.size(), m_track_system.m_image_barriers.data());
+			if (!m_track_system.m_buffer_barriers.empty() || !m_track_system.m_image_barriers.empty())
+			{
+				if (m_track_system.m_src_stage_flags == 0)
+				{
+					m_track_system.m_src_stage_flags = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+				}
+				if (m_track_system.m_dest_stage_flags == 0)
+				{
+					m_track_system.m_dest_stage_flags = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+				}
+				m_device->m_funcs.vkCmdPipelineBarrier(m_command_buffer,
+					m_track_system.m_src_stage_flags, m_track_system.m_dest_stage_flags, 0, 0, nullptr,
+					m_track_system.m_buffer_barriers.size(), m_track_system.m_buffer_barriers.data(),
+					m_track_system.m_image_barriers.size(), m_track_system.m_image_barriers.data());
+			}
 		}
 		void CommandBuffer::dispatch(u32 thread_group_count_x, u32 thread_group_count_y, u32 thread_group_count_z)
 		{
@@ -724,10 +735,13 @@ namespace Luna
 			{
 				// Finish barrier.
 				m_track_system.generate_finish_barriers();
-				m_device->m_funcs.vkCmdPipelineBarrier(m_command_buffer,
-					m_track_system.m_src_stage_flags, m_track_system.m_dest_stage_flags, 0, 0, nullptr,
-					m_track_system.m_buffer_barriers.size(), m_track_system.m_buffer_barriers.data(),
-					m_track_system.m_image_barriers.size(), m_track_system.m_image_barriers.data());
+				if (!m_track_system.m_buffer_barriers.empty() || !m_track_system.m_image_barriers.empty())
+				{
+					m_device->m_funcs.vkCmdPipelineBarrier(m_command_buffer,
+						m_track_system.m_src_stage_flags, m_track_system.m_dest_stage_flags, 0, 0, nullptr,
+						m_track_system.m_buffer_barriers.size(), m_track_system.m_buffer_barriers.data(),
+						m_track_system.m_image_barriers.size(), m_track_system.m_image_barriers.data());
+				}
 
 				// Close the command buffer.
 				luexp(encode_vk_result(m_device->m_funcs.vkEndCommandBuffer(m_command_buffer)));

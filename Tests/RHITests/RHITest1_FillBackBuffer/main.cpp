@@ -17,20 +17,16 @@ using namespace Luna;
 using namespace Luna::RHI;
 using namespace Luna::RHITestBed;
 
-Ref<RHI::IRenderTargetView> rtv;
-
 RV start()
 {
-	lutry
-	{
-		luset(rtv, get_main_device()->new_render_target_view(get_back_buffer()));
-	}
-	lucatchret;
+
 	return ok;
 }
 
 void draw()
 {
+	auto rtv = get_main_device()->new_render_target_view(get_back_buffer()).get();
+
 	auto cb = get_command_buffer();
 	cb->resource_barrier({},
 		{
@@ -48,17 +44,16 @@ void draw()
 		{
 			{get_back_buffer(), TEXTURE_BARRIER_ALL_SUBRESOURCES, TextureStateFlag::color_attachment_write, TextureStateFlag::present, ResourceBarrierFlag::none}
 		});
-	lupanic_if_failed(cb->submit({}, {}, false));
+	lupanic_if_failed(cb->submit({}, {}, true));
+	cb->wait();
 }
 
 void resize(u32 width, u32 height)
 {
-	rtv = get_main_device()->new_render_target_view(get_back_buffer()).get();
 }
 
 void cleanup()
 {
-	rtv.reset();
 }
 
 void run_app()

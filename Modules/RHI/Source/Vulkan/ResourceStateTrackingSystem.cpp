@@ -16,6 +16,10 @@ namespace Luna
 		void ResourceStateTrackingSystem::append_buffer(BufferResource* res, VkAccessFlags before, VkAccessFlags after,
 			u32 before_queue_family_index, u32 after_queue_family_index)
 		{
+			if (before == 0 && after == 0 && before_queue_family_index == after_queue_family_index)
+			{
+				return;
+			}
 			VkBufferMemoryBarrier barrier{};
 			barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
 			barrier.srcAccessMask = before;
@@ -30,6 +34,12 @@ namespace Luna
 		void ResourceStateTrackingSystem::append_image(ImageResource* res, const SubresourceIndex& subresource, const ImageState& before, const ImageState& after,
 			u32 before_queue_family_index, u32 after_queue_family_index)
 		{
+			if (before.access_flags == 0 && after.access_flags == 0
+				&& before.image_layout == after.image_layout
+				&& before_queue_family_index == after_queue_family_index)
+			{
+				return;
+			}
 			VkImageMemoryBarrier barrier{};
 			barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
 			barrier.srcAccessMask = before.access_flags;
@@ -229,6 +239,8 @@ namespace Luna
 					iter->second.image_barriers.push_back(m_image_barriers.back());
 				}
 			}
+			if (m_src_stage_flags == 0) m_src_stage_flags = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+			if (m_dest_stage_flags == 0) m_dest_stage_flags = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
 		}
 		void ResourceStateTrackingSystem::generate_finish_barriers()
 		{
@@ -248,6 +260,10 @@ namespace Luna
 				after.image_layout = encode_image_layout(i.second);
 				append_image(i.first.m_res, i.first.m_subres, before, after);
 				m_src_stage_flags |= determine_pipeline_stage_flags(i.second, m_queue_type);
+			}
+			if (m_src_stage_flags == 0)
+			{
+				m_src_stage_flags = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
 			}
 			m_dest_stage_flags = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
 		}
