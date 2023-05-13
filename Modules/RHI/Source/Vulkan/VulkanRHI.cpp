@@ -15,7 +15,6 @@
 #include "Instance.hpp"
 #include "Adapter.hpp"
 #include "CommandBuffer.hpp"
-#include "CommandQueue.hpp"
 #include "DepthStencilView.hpp"
 #include "DescriptorSet.hpp"
 #include "DescriptorSetLayout.hpp"
@@ -41,8 +40,6 @@ namespace Luna
 			{
 				register_boxed_type<CommandBuffer>();
 				impl_interface_for_type<CommandBuffer, ICommandBuffer, IDeviceChild, IWaitable>();
-				register_boxed_type<CommandQueue>();
-				impl_interface_for_type<CommandQueue, ICommandQueue, IDeviceChild>();
 				register_boxed_type<DepthStencilView>();
 				impl_interface_for_type<DepthStencilView, IDepthStencilView, IDeviceChild>();
 				register_boxed_type<DescriptorSet>();

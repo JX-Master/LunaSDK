@@ -26,7 +26,7 @@ namespace Luna
 		LUNA_RHI_TESTBED_API void register_resize_func(void(*resize_func)(u32 new_width, u32 new_height));
 
 		LUNA_RHI_TESTBED_API RV run();
-		LUNA_RHI_TESTBED_API RHI::IResource* get_back_buffer();
+		LUNA_RHI_TESTBED_API RHI::ITexture* get_back_buffer();
 		LUNA_RHI_TESTBED_API RHI::ICommandBuffer* get_command_buffer();
 		LUNA_RHI_TESTBED_API Window::IWindow* get_window();
 	}

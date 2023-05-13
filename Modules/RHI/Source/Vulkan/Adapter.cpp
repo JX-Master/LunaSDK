@@ -60,6 +60,9 @@ namespace Luna
 			vkGetPhysicalDeviceQueueFamilyProperties(device, &queue_family_count, nullptr);
 			VkQueueFamilyProperties* queue_families = (VkQueueFamilyProperties*)alloca(sizeof(VkQueueFamilyProperties) * queue_family_count);
 			Vector<QueueFamily> ret;
+			bool graphics_queue_family_present = false;
+			bool compute_queue_family_present = false;
+			bool copy_queue_family_present = false;
 			vkGetPhysicalDeviceQueueFamilyProperties(device, &queue_family_count, queue_families);
 			for (u32 i = 0; i < queue_family_count; ++i)
 			{
@@ -77,28 +80,40 @@ namespace Luna
 					// For any device that supports VK_QUEUE_GRAPHICS_BIT, there must be one family that support 
 					// VK_QUEUE_GRAPHICS_BIT and VK_QUEUE_COMPUTE_BIT.
 					// See Vulkan Specification for VkQueueFlagBits.
-					valid = true;
-					dst.desc.type = CommandQueueType::graphics;
+					if (!graphics_queue_family_present)
+					{
+						valid = true;
+						dst.desc.type = CommandQueueType::graphics;
+						graphics_queue_family_present = true;
+					}
 				}
 				else if (src.queueFlags & VK_QUEUE_COMPUTE_BIT)
 				{
-					valid = true;
-					dst.desc.type = CommandQueueType::compute;
+					if (!compute_queue_family_present)
+					{
+						valid = true;
+						dst.desc.type = CommandQueueType::compute;
+						compute_queue_family_present = true;
+					}
 				}
 				else if (src.queueFlags & VK_QUEUE_TRANSFER_BIT)
 				{
-					valid = true;
-					dst.desc.type = CommandQueueType::copy;
-				}
-				VkBool32 present_support = false;
-				auto r = encode_vk_result(vkGetPhysicalDeviceSurfaceSupportKHR(device, i, check_surface, &present_support));
-				if (failed(r)) return r.errcode();
-				if (present_support && device_swap_chain_supported)
-				{
-					set_flags(dst.desc.flags, CommandQueueFlags::presenting);
+					if (!copy_queue_family_present)
+					{
+						valid = true;
+						dst.desc.type = CommandQueueType::copy;
+						copy_queue_family_present = true;
+					}
 				}
 				if (valid)
 				{
+					VkBool32 present_support = false;
+					auto r = encode_vk_result(vkGetPhysicalDeviceSurfaceSupportKHR(device, i, check_surface, &present_support));
+					if (failed(r)) return r.errcode();
+					if (present_support && device_swap_chain_supported)
+					{
+						set_flags(dst.desc.flags, CommandQueueFlags::presenting);
+					}
 					ret.push_back(dst);
 				}
 			}
@@ -250,47 +265,47 @@ namespace Luna
 			lucatchret;
 			return set_error(BasicError::not_supported(), "Failed to find a suitable GPU for Vulkan!");
 		}
-		LUNA_RHI_API R<GraphicAdapterDesc> get_adapter_desc(u32 index)
+		LUNA_RHI_API u32 get_num_adapters()
 		{
-			GraphicAdapterDesc ret;
-			lutry
+			return (u32)g_physical_devices.size();
+		}
+		LUNA_RHI_API AdapterDesc get_adapter_desc(u32 adapter_index)
+		{
+			lucheck(adapter_index < g_physical_devices.size());
+			AdapterDesc ret;
+			VkPhysicalDeviceProperties device_properties;
+			VkPhysicalDeviceMemoryProperties memory_properties;
+			vkGetPhysicalDeviceProperties(g_physical_devices[adapter_index], &device_properties);
+			vkGetPhysicalDeviceMemoryProperties(g_physical_devices[adapter_index], &memory_properties);
+			strncpy(ret.name, device_properties.deviceName, 256);
+			u64 local_memory = 0;
+			u64 shared_memory = 0;
+			for (u32 i = 0; i < memory_properties.memoryHeapCount; ++i)
 			{
-				if (index >= g_physical_devices.size()) return BasicError::not_found();
-				VkPhysicalDeviceProperties device_properties;
-				VkPhysicalDeviceMemoryProperties memory_properties;
-				vkGetPhysicalDeviceProperties(g_physical_devices[index], &device_properties);
-				vkGetPhysicalDeviceMemoryProperties(g_physical_devices[index], &memory_properties);
-				strncpy(ret.name, device_properties.deviceName, 256);
-				u64 local_memory = 0;
-				u64 shared_memory = 0;
-				for (u32 i = 0; i < memory_properties.memoryHeapCount; ++i)
+				if (memory_properties.memoryHeaps[i].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)
 				{
-					if (memory_properties.memoryHeaps[i].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)
-					{
-						local_memory += memory_properties.memoryHeaps[i].size;
-					}
-					else
-					{
-						shared_memory += memory_properties.memoryHeaps[i].size;
-					}
+					local_memory += memory_properties.memoryHeaps[i].size;
 				}
-				ret.local_memory = local_memory;
-				ret.shared_memory = shared_memory;
-				switch (device_properties.deviceType)
+				else
 				{
-				case VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU:
-					ret.type = GraphicAdapterType::integrated_gpu; break;
-				case VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU:
-					ret.type = GraphicAdapterType::discrete_gpu; break;
-				case VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU:
-					ret.type = GraphicAdapterType::virtual_gpu; break;
-				case VK_PHYSICAL_DEVICE_TYPE_CPU:
-					ret.type = GraphicAdapterType::software; break;
-				default:
-					ret.type = GraphicAdapterType::unknwon;
+					shared_memory += memory_properties.memoryHeaps[i].size;
 				}
 			}
-			lucatchret;
+			ret.local_memory = local_memory;
+			ret.shared_memory = shared_memory;
+			switch (device_properties.deviceType)
+			{
+			case VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU:
+				ret.type = AdapterType::integrated_gpu; break;
+			case VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU:
+				ret.type = AdapterType::discrete_gpu; break;
+			case VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU:
+				ret.type = AdapterType::virtual_gpu; break;
+			case VK_PHYSICAL_DEVICE_TYPE_CPU:
+				ret.type = AdapterType::software; break;
+			default:
+				ret.type = AdapterType::unknwon;
+			}
 			return ret;
 		}
 	}

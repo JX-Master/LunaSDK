@@ -31,7 +31,7 @@ namespace Luna
 		void(*m_draw_func)() = nullptr;
 		void(*m_resize_func)(u32 new_width, u32 new_height) = nullptr;
 
-		Ref<ICommandQueue> m_queue;
+		u32 m_command_queue;
 		Ref<IWindow> m_window;
 		Ref<ISwapChain> m_swap_chain;
 		Ref<ICommandBuffer> m_command_buffer;
@@ -72,34 +72,44 @@ namespace Luna
 			lutry
 			{
 				set_log_std_enabled(true);
-				luset(m_queue, get_main_device()->new_command_queue(CommandQueueDesc(CommandQueueType::graphics, CommandQueueFlags::presenting)));
+				m_command_queue = U32_MAX;
+				auto device = get_main_device();
+				u32 num_queues = device->get_num_command_queues();
+				for (u32 i = 0; i < num_queues; ++i)
+				{
+					auto desc = device->get_command_queue_desc(i);
+					if (desc.type == CommandQueueType::graphics && test_flags(desc.flags, CommandQueueFlags::presenting))
+					{
+						m_command_queue = i;
+						break;
+					}
+				}
+				if (m_command_queue == U32_MAX) return set_error(BasicError::not_supported(), "No command queue is suitable.");
 				luset(m_window, new_window("RHI Test", WindowDisplaySettings::as_windowed(), WindowCreationFlag::resizable));
 				m_window->get_close_event() += on_window_close;
 				m_window->get_framebuffer_resize_event() += on_window_resize;
-				luset(m_swap_chain, get_main_device()->new_swap_chain(m_queue, m_window, SwapChainDesc({0, 0, 2, Format::rgba8_unorm, true})));
+				luset(m_swap_chain, device->new_swap_chain(m_command_queue, m_window, SwapChainDesc({0, 0, 2, Format::rgba8_unorm, true})));
 				auto sz = m_window->get_size();
-				luset(m_command_buffer, m_queue->new_command_buffer());
+				luset(m_command_buffer, device->new_command_buffer(m_command_queue));
+				luset(m_back_buffer, m_swap_chain->get_current_back_buffer());
 
-				u32 adapter_index = 0;
-				auto res = RHI::get_adapter_desc(adapter_index);
-				while (succeeded(res))
+				u32 num_adapters = RHI::get_num_adapters();
+				for (u32 i = 0; i < num_adapters; ++i)
 				{
-					log_info("RHITest", "Adapter %u", adapter_index);
-					auto& desc = res.get();
+					auto desc = RHI::get_adapter_desc(i);
+					log_info("RHITest", "Adapter %u", i);
 					log_info("RHITest", "Name: %s", desc.name);
 					log_info("RHITest", "Shared Memory: %.4f MB", (f64)desc.shared_memory / (f64)1_mb);
 					log_info("RHITest", "Dedicated Memory: %.4f MB", (f64)desc.local_memory / (f64)1_mb);
-					if (desc.type == GraphicAdapterType::software)
+					if (desc.type == AdapterType::software)
 					{
 						log_info("RHITest", "Software simulated GPU.");
 					}
-					if (desc.type == GraphicAdapterType::integrated_gpu)
+					if (desc.type == AdapterType::integrated_gpu)
 					{
 						log_info("RHITest", "Intergrated GPU.");
 					}
 					log_info("RHITest", "====================");
-					++adapter_index;
-					res = RHI::get_adapter_desc(adapter_index);
 				}
 			}
 			lucatchret;
@@ -132,14 +142,13 @@ namespace Luna
 				lupanic_if_failed(m_swap_chain->present());
 			}
 			if (m_close_func) m_close_func();
-			m_queue.reset();
 			m_window.reset();
 			m_swap_chain.reset();
 			m_back_buffer.reset();
 			m_command_buffer.reset();
 			return ok;
 		}
-		LUNA_RHI_TESTBED_API RHI::IResource* get_back_buffer()
+		LUNA_RHI_TESTBED_API RHI::ITexture* get_back_buffer()
 		{
 			return m_back_buffer;
 		}

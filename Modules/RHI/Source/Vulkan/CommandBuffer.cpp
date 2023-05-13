@@ -19,15 +19,17 @@ namespace Luna
 {
 	namespace RHI
 	{
-		RV CommandBuffer::init(CommandQueue* queue)
+		RV CommandBuffer::init(u32 command_queue_index)
 		{
 			lutry
 			{
-				m_queue = queue;
+				if (command_queue_index >= m_device->m_queues.size()) return BasicError::bad_arguments();
+				m_queue = m_device->m_queues[command_queue_index];
+				m_queue_index = command_queue_index;
 				VkCommandPoolCreateInfo pool_info{};
 				pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 				pool_info.flags = 0;
-				pool_info.queueFamilyIndex = queue->m_queue_family_index;
+				pool_info.queueFamilyIndex = m_queue.queue_family_index;
 				luexp(encode_vk_result(m_device->m_funcs.vkCreateCommandPool(m_device->m_device, &pool_info, nullptr, &m_command_pool)));
 				VkCommandBufferAllocateInfo alloc_info{};
 				alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -42,8 +44,8 @@ namespace Luna
 				fence_create_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 				luexp(encode_vk_result(m_device->m_funcs.vkCreateFence(m_device->m_device, &fence_create_info, nullptr, &m_fence)));
 				luexp(begin_command_buffer());
-				m_track_system.m_queue_type = queue->m_desc.type;
-				m_track_system.m_queue_family_index = queue->m_queue_family_index;
+				m_track_system.m_queue_type = m_queue.desc.type;
+				m_track_system.m_queue_family_index = m_queue.queue_family_index;
 			}
 			lucatchret;
 			return ok;
@@ -456,15 +458,23 @@ namespace Luna
 				clear_rects[0].rect.offset = { 0, 0 };
 				clear_rects[0].rect.extent.width = m_rt_width;
 				clear_rects[0].rect.extent.height = m_rt_height;
-				auto desc = m_dsv->get_desc();
-				clear_rects[0].baseArrayLayer = desc.first_array_slice;
-				clear_rects[0].layerCount = desc.array_size;
+				auto desc = m_color_attachments[index]->get_desc();
+				if (desc.type != RenderTargetViewType::tex3d)
+				{
+					clear_rects[0].baseArrayLayer = desc.first_depth_or_array_slice;
+					clear_rects[0].layerCount = desc.depth_or_array_size;
+				}
+				else
+				{
+					clear_rects[0].baseArrayLayer = 0;
+					clear_rects[0].layerCount = 1;
+				}
 			}
 			else
 			{
 				clear_rects = (VkClearRect*)alloca(sizeof(VkClearRect) * rects.size());
 				num_clear_rects = (u32)rects.size();
-				auto desc = m_dsv->get_desc();
+				auto desc = m_color_attachments[index]->get_desc();
 				for (usize i = 0; i < rects.size(); ++i)
 				{
 					auto& dest = clear_rects[i];
@@ -473,8 +483,16 @@ namespace Luna
 					dest.rect.offset.y = m_rt_height - src.offset_y - src.height;
 					dest.rect.extent.width = src.width;
 					dest.rect.extent.height = src.height;
-					dest.baseArrayLayer = desc.first_array_slice;
-					dest.layerCount = desc.array_size;
+					if (desc.type != RenderTargetViewType::tex3d)
+					{
+						clear_rects[0].baseArrayLayer = desc.first_depth_or_array_slice;
+						clear_rects[0].layerCount = desc.depth_or_array_size;
+					}
+					else
+					{
+						clear_rects[0].baseArrayLayer = 0;
+						clear_rects[0].layerCount = 1;
+					}
 				}
 			}
 			m_device->m_funcs.vkCmdClearAttachments(m_command_buffer, 1, &attachment, num_clear_rects, clear_rects);
@@ -740,12 +758,12 @@ namespace Luna
 						lulet(transfer_tracker, get_transfer_tracker(transfer_barriers.first));
 						VkQueue queue = VK_NULL_HANDLE;
 						IMutex* queue_mtx = nullptr;
-						for (auto& q : m_device->m_queue_pools)
+						for (auto& q : m_device->m_queues)
 						{
 							if (q.queue_family_index == transfer_barriers.first)
 							{
-								queue = q.internal_queue;
-								queue_mtx = q.internal_queue_mtx;
+								queue = q.queue;
+								queue_mtx = q.queue_mtx;
 								break;
 							}
 						}
@@ -798,8 +816,8 @@ namespace Luna
 				{
 					fence = m_fence;
 				}
-				MutexGuard guard(m_queue->m_mtx);
-				luexp(encode_vk_result(m_device->m_funcs.vkQueueSubmit(m_queue->m_queue, 1, &submit, fence)));
+				MutexGuard guard(m_queue.queue_mtx);
+				luexp(encode_vk_result(m_device->m_funcs.vkQueueSubmit(m_queue.queue, 1, &submit, fence)));
 				m_track_system.apply();
 			}
 			lucatchret;

@@ -11,120 +11,152 @@
 #include "ShaderInputLayout.hpp"
 #include "PipelineState.hpp"
 #include "DescriptorSet.hpp"
-#include "CommandQueue.hpp"
+#include "CommandBuffer.hpp"
 #include "RenderTargetView.hpp"
 #include "DepthStencilView.hpp"
 #include "SwapChain.hpp"
 #include "Fence.hpp"
 #include "QueryHeap.hpp"
 
+#ifndef LUNA_RHI_API
+#define LUNA_RHI_API
+#endif
+
 namespace Luna
 {
 	namespace RHI
 	{
-		enum class ResourceCopyOp : u8
-		{
-			//! Copy data of one buffer resource from resource memory to system memory.
-			read_buffer,
-			//! Copy data of one buffer resource from system memory to resource memory.
-			write_buffer,
-			//! Copy data of one texture resource from resource memory to system memory.
-			read_texture,
-			//! Copy data of one texture resource from system memory to resource memory.
-			write_texture
-		};
-		struct ResourceCopyReadBufferDesc
-		{
-			IBuffer* src;
-			void* dst;
-			u64 src_offset;
-			usize size;
-		};
-		struct ResourceCopyWriteBufferDesc
-		{
-			const void* src;
-			IBuffer* dst;
-			u64 dst_offset;
-			usize size;
-		};
-		struct ResourceCopyReadTextureDesc
-		{
-			ITexture* src;
-			void* dst;
-			SubresourceIndex src_subresource;
-			u32 dst_row_pitch;
-			u32 dst_depth_pitch;
-			BoxU read_box;
-		};
-		struct ResourceCopyWriteTextureDesc
-		{
-			const void* src;
-			ITexture* dst;
-			u32 src_row_pitch;
-			u32 src_depth_pitch;
-			SubresourceIndex dst_subresource;
-			BoxU write_box;
-		};
-		struct ResourceCopyDesc
-		{
-			ResourceCopyOp op;
-			union
-			{
-				ResourceCopyReadBufferDesc read_buffer;
-				ResourceCopyWriteBufferDesc write_buffer;
-				ResourceCopyReadTextureDesc read_texture;
-				ResourceCopyWriteTextureDesc write_texture;
-			};
-			static ResourceCopyDesc as_read_buffer(IBuffer* resource, void* dst, usize size, u64 src_offset)
-			{
-				ResourceCopyDesc r;
-				r.op = ResourceCopyOp::read_buffer;
-				r.read_buffer.src = resource;
-				r.read_buffer.dst = dst;
-				r.read_buffer.size = size;
-				r.read_buffer.src_offset = src_offset;
-				return r;
-			}
-			static ResourceCopyDesc as_write_buffer(IBuffer* resource, const void* src, usize size, u64 dst_offset)
-			{
-				ResourceCopyDesc r;
-				r.op = ResourceCopyOp::write_buffer;
-				r.write_buffer.dst = resource;
-				r.write_buffer.src = src;
-				r.write_buffer.size = size;
-				r.write_buffer.dst_offset = dst_offset;
-				return r;
-			}
-			static ResourceCopyDesc as_read_texture(ITexture* resource, void* dst, u32 dst_row_pitch, u32 dst_depth_pitch, const SubresourceIndex& src_subresource, const BoxU& read_box)
-			{
-				ResourceCopyDesc r;
-				r.op = ResourceCopyOp::read_texture;
-				r.read_texture.src = resource;
-				r.read_texture.dst = dst;
-				r.read_texture.dst_row_pitch = dst_row_pitch;
-				r.read_texture.dst_depth_pitch = dst_depth_pitch;
-				r.read_texture.src_subresource = src_subresource;
-				r.read_texture.read_box = read_box;
-				return r;
-			}
-			static ResourceCopyDesc as_write_texture(ITexture* resource, const void* src, u32 src_row_pitch, u32 src_depth_pitch, const SubresourceIndex& dst_subresource, const BoxU& write_box)
-			{
-				ResourceCopyDesc r;
-				r.op = ResourceCopyOp::write_texture;
-				r.write_texture.dst = resource;
-				r.write_texture.src = src;
-				r.write_texture.src_row_pitch = src_row_pitch;
-				r.write_texture.src_depth_pitch = src_depth_pitch;
-				r.write_texture.dst_subresource = dst_subresource;
-				r.write_texture.write_box = write_box;
-				return r;
-			}
-		};
+		//enum class ResourceCopyOp : u8
+		//{
+		//	//! Copy data of one buffer resource from resource memory to system memory.
+		//	read_buffer,
+		//	//! Copy data of one buffer resource from system memory to resource memory.
+		//	write_buffer,
+		//	//! Copy data of one texture resource from resource memory to system memory.
+		//	read_texture,
+		//	//! Copy data of one texture resource from system memory to resource memory.
+		//	write_texture
+		//};
+		//struct ResourceCopyReadBufferDesc
+		//{
+		//	IBuffer* src;
+		//	void* dst;
+		//	u64 src_offset;
+		//	usize size;
+		//};
+		//struct ResourceCopyWriteBufferDesc
+		//{
+		//	const void* src;
+		//	IBuffer* dst;
+		//	u64 dst_offset;
+		//	usize size;
+		//};
+		//struct ResourceCopyReadTextureDesc
+		//{
+		//	ITexture* src;
+		//	void* dst;
+		//	SubresourceIndex src_subresource;
+		//	u32 dst_row_pitch;
+		//	u32 dst_depth_pitch;
+		//	BoxU read_box;
+		//};
+		//struct ResourceCopyWriteTextureDesc
+		//{
+		//	const void* src;
+		//	ITexture* dst;
+		//	u32 src_row_pitch;
+		//	u32 src_depth_pitch;
+		//	SubresourceIndex dst_subresource;
+		//	BoxU write_box;
+		//};
+		//struct ResourceCopyDesc
+		//{
+		//	ResourceCopyOp op;
+		//	union
+		//	{
+		//		ResourceCopyReadBufferDesc read_buffer;
+		//		ResourceCopyWriteBufferDesc write_buffer;
+		//		ResourceCopyReadTextureDesc read_texture;
+		//		ResourceCopyWriteTextureDesc write_texture;
+		//	};
+		//	static ResourceCopyDesc as_read_buffer(IBuffer* resource, void* dst, usize size, u64 src_offset)
+		//	{
+		//		ResourceCopyDesc r;
+		//		r.op = ResourceCopyOp::read_buffer;
+		//		r.read_buffer.src = resource;
+		//		r.read_buffer.dst = dst;
+		//		r.read_buffer.size = size;
+		//		r.read_buffer.src_offset = src_offset;
+		//		return r;
+		//	}
+		//	static ResourceCopyDesc as_write_buffer(IBuffer* resource, const void* src, usize size, u64 dst_offset)
+		//	{
+		//		ResourceCopyDesc r;
+		//		r.op = ResourceCopyOp::write_buffer;
+		//		r.write_buffer.dst = resource;
+		//		r.write_buffer.src = src;
+		//		r.write_buffer.size = size;
+		//		r.write_buffer.dst_offset = dst_offset;
+		//		return r;
+		//	}
+		//	static ResourceCopyDesc as_read_texture(ITexture* resource, void* dst, u32 dst_row_pitch, u32 dst_depth_pitch, const SubresourceIndex& src_subresource, const BoxU& read_box)
+		//	{
+		//		ResourceCopyDesc r;
+		//		r.op = ResourceCopyOp::read_texture;
+		//		r.read_texture.src = resource;
+		//		r.read_texture.dst = dst;
+		//		r.read_texture.dst_row_pitch = dst_row_pitch;
+		//		r.read_texture.dst_depth_pitch = dst_depth_pitch;
+		//		r.read_texture.src_subresource = src_subresource;
+		//		r.read_texture.read_box = read_box;
+		//		return r;
+		//	}
+		//	static ResourceCopyDesc as_write_texture(ITexture* resource, const void* src, u32 src_row_pitch, u32 src_depth_pitch, const SubresourceIndex& dst_subresource, const BoxU& write_box)
+		//	{
+		//		ResourceCopyDesc r;
+		//		r.op = ResourceCopyOp::write_texture;
+		//		r.write_texture.dst = resource;
+		//		r.write_texture.src = src;
+		//		r.write_texture.src_row_pitch = src_row_pitch;
+		//		r.write_texture.src_depth_pitch = src_depth_pitch;
+		//		r.write_texture.dst_subresource = dst_subresource;
+		//		r.write_texture.write_box = write_box;
+		//		return r;
+		//	}
+		//};
 
 		enum class DeviceFeature : u32
 		{
 			//! `DescriptorSetLayoutFlag::variable_descriptors` is allowed when creating descriptor set layout.
 			unbound_descriptor_array,
+		};
+
+		enum class CommandQueueType : u8
+		{
+			//! This command queue can be used for submitting graphics, compute and copy commands.
+			graphics = 1,
+			//! This command queue can be used for submitting compute and copy commands.
+			compute = 2,
+			//! This command queue can be used for submitting copy commands.
+			copy = 3,
+		};
+
+		enum class CommandQueueFlags : u8
+		{
+			none = 0,
+			//! This command queue supports swap chain presenting commands.
+			presenting = 0x01,
+		};
+
+		struct CommandQueueDesc
+		{
+			CommandQueueType type;
+			CommandQueueFlags flags;
+
+			CommandQueueDesc() = default;
+			CommandQueueDesc(CommandQueueType type, CommandQueueFlags flags) :
+				type(type),
+				flags(flags) {}
 		};
 
 		//! Represents one logical graphic device on the platform.
@@ -221,8 +253,22 @@ namespace Luna
 			//! @param[in] desc The descriptor object.
 			virtual R<Ref<IDescriptorSet>> new_descriptor_set(DescriptorSetDesc& desc) = 0;
 
-			//! Creates one new command queue.
-			virtual R<Ref<ICommandQueue>> new_command_queue(const CommandQueueDesc& desc) = 0;
+			//! Gets the number of command queues of the device.
+			virtual u32 get_num_command_queues() = 0;
+
+			//! Gets the command queue description of the specified command queue.
+			//! @param[in] command_queue_index The index of the command queue to check.
+			//! The index must be in range [0, get_num_command_queues()).
+			virtual CommandQueueDesc get_command_queue_desc(u32 command_queue_index) = 0;
+
+			//! Creates one command buffer.
+			//! @param[in] command_queue_index The index of the command queue that will be attached to the 
+			//! command buffer. The command buffer can only submit commands to its attached command queue.
+			virtual R<Ref<ICommandBuffer>> new_command_buffer(u32 command_queue_index) = 0;
+
+			//! Gets the GPU timestamp frequency of the command queue. 
+			//! The timestamp frequency is measured in ticks per second.
+			virtual R<f64> get_command_queue_timestamp_frequency(u32 command_queue_index) = 0;
 
 			virtual R<Ref<IRenderTargetView>> new_render_target_view(ITexture* resource, const RenderTargetViewDesc* desc = nullptr) = 0;
 
@@ -235,16 +281,12 @@ namespace Luna
 			virtual R<Ref<IFence>> new_fence() = 0;
 
 			//! Creates a swap chain resource and binds it to the specified window.
-			//! @param[in] queue The command queue to push the present commands to.
+			//! @param[in] command_queue_index The command queue attached to the swap chain. Present commands will only be 
+			//! submitted to the command queue attached with the swap chain.
 			//! @param[in] window The window this swap chain should be outputted to.
-			//! @param[in] desc The descriptor object of the swap chain.
+			//! @param[in] desc The swap chain description.
 			//! @return Returns the new created swap chain, or `nullptr` if failed to create.
-			virtual R<Ref<ISwapChain>> new_swap_chain(ICommandQueue* queue, Window::IWindow* window, const SwapChainDesc& desc) = 0;
-
-			//! Copies resource data between system memory and resource memory.
-			//! @param[in] copies An array of resource copy operations to be performed. The user should
-			//! batch resource copy operations as much as possible to improve performance.
-			virtual RV copy_resource(Span<const ResourceCopyDesc> copies) = 0;
+			virtual R<Ref<ISwapChain>> new_swap_chain(u32 command_queue_index, Window::IWindow* window, const SwapChainDesc& desc) = 0;
 		};
 	}
 }

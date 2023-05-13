@@ -50,11 +50,11 @@ namespace Luna
 			return ret;
 		}
 
-		RV SwapChain::init(CommandQueue* queue, Window::IWindow* window, const SwapChainDesc& desc)
+		RV SwapChain::init(const CommandQueue& queue, Window::IWindow* window, const SwapChainDesc& desc)
 		{
 			lutry
 			{
-				m_presenting_queue = queue;
+				m_queue = queue;
 				m_window = window;
 				luexp(create_swap_chain(desc));
 				VkFenceCreateInfo fence_create_info{};
@@ -67,7 +67,8 @@ namespace Luna
 		}
 		void SwapChain::clean_up_swap_chain()
 		{
-			m_device->m_funcs.vkQueueWaitIdle(m_presenting_queue->m_queue);
+			MutexGuard guard(m_queue.queue_mtx);
+			m_device->m_funcs.vkQueueWaitIdle(m_queue.queue);
 			m_swap_chain_images.clear();
 			if (m_swap_chain != VK_NULL_HANDLE)
 			{
@@ -83,7 +84,7 @@ namespace Luna
 				auto framebuffer_size = m_window->get_framebuffer_size();
 				m_desc.width = desc.width == 0 ? framebuffer_size.x : desc.width;
 				m_desc.height = desc.height == 0 ? framebuffer_size.y : desc.height;
-				if (!test_flags(m_presenting_queue->get_desc().flags, CommandQueueFlags::presenting))
+				if (!test_flags(m_queue.desc.flags, CommandQueueFlags::presenting))
 				{
 					return set_error(BasicError::not_supported(), "The specified command queue for creating swap chain does not have presenting support");
 				}
@@ -197,7 +198,8 @@ namespace Luna
 				present_info.swapchainCount = 1;
 				present_info.pSwapchains = &m_swap_chain;
 				present_info.pImageIndices = &m_current_back_buffer;
-				luexp(encode_vk_result(m_device->m_funcs.vkQueuePresentKHR(m_presenting_queue->m_queue, &present_info)));
+				MutexGuard guard(m_queue.queue_mtx);
+				luexp(encode_vk_result(m_device->m_funcs.vkQueuePresentKHR(m_queue.queue, &present_info)));
 				m_back_buffer_fetched = false;
 			}
 			lucatchret;

@@ -24,13 +24,6 @@ namespace Luna
 {
 	namespace RHI
 	{
-		enum class CommandQueueType : u8
-		{
-			graphics = 1,
-			compute = 2,
-			copy = 3,
-		};
-
 		enum class ClearFlag : u8
 		{
 			none = 0x00,
@@ -253,8 +246,6 @@ namespace Luna
 			compute = 1
 		};
 
-		struct ICommandQueue;
-
 		struct VertexBufferBind
 		{
 			IResource* buffer;
@@ -276,7 +267,9 @@ namespace Luna
 		{
 			luiid("{2970a4c8-d905-4e58-9247-46ba6a33b220}");
 
-			virtual ICommandQueue* get_command_queue() = 0;
+			//! Gets the command queue index of the command queue attached to 
+			//! this buffer.
+			virtual u32 get_command_queue_index() = 0;
 
 			//! Resets the command buffer. This call clears all commands in the command buffer, resets the state tracking
 			//! infrastructure and reopens the command buffer for recording new commands.

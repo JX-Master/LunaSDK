@@ -21,7 +21,7 @@ namespace Luna
 		//! The graphic adapter type. The adapter type is used only as a hint when choosing adpaters, it
 		//! does not guarantee any GPU architecture and feature. The user should check feature support
 		//! manually.
-		enum class GraphicAdapterType
+		enum class AdapterType
 		{
 			//! The adapter type cannot be represented by other adapter types.
 			unknwon = 0,
@@ -36,7 +36,7 @@ namespace Luna
 		};
 
 		//! Describes an adapter to system.
-		struct GraphicAdapterDesc
+		struct AdapterDesc
 		{
 			//! The name of the adapter.
 			char name[256];
@@ -50,18 +50,45 @@ namespace Luna
 			//! through PCIes and with cache enabled so it is much slower than accessing local memory.
 			u64 shared_memory;
 			//! The type of the adapter.
-			GraphicAdapterType type;
+			AdapterType type;
 		};
 
-		//! Gets the descriptor object of the specified adapter.
-		//! @param[in] index The index of the adapter.
-		//! @return Returns the descriptor object. Returns `BasicError::not_found` if the adpator at the specified index is not found.
-		LUNA_RHI_API R<GraphicAdapterDesc> get_adapter_desc(u32 index);
+		//! Gets the number of adapters in the current platform.
+		LUNA_RHI_API u32 get_num_adapters();
 
+		//! Gets the description of the specified adapter.
+		//! @param[in] adapter_index The index of the adapter. The adapter index must in range [0, get_num_adapters()).
+		//! @return Returns the descriptor object.
+		LUNA_RHI_API AdapterDesc get_adapter_desc(u32 adapter_index);
+
+		enum class PowerPreference
+		{
+			//! No particular power preference. This may result in an adapter that the 
+			//! highest priority defined by system settings.
+			undefined,
+			//! Prefers a power saving adapter instead of a high-performance one. This 
+			//! may result in an integrated GPU in a multi-GPU system.
+			low_power,
+			//! Prefers a high-performance adapter instead of a power saving one. This 
+			//! may result in an dedicated GPU in a multi-GPU system.
+			high_performance,
+		};
+
+		//! Gets the adapter index of the adapter that is preferred for creating the device on the current platform.
+		//! @param[in] power_preference The power preference of the adapter being chosen.
+		//LUNA_RHI_API u32 get_preferred_adapter(PowerPreference power_preference = PowerPreference::undefined);
+
+		//! Creates one device using the specified adapter.
+		//! @param[in] adapter_index The adapter index chosed for the device.
 		LUNA_RHI_API R<Ref<IDevice>> new_device(u32 adapter_index);
 
-		//! Gets the main graphical device.
+		//! Gets the main device.
+		//! If the main device is not set by `set_main_device`, this will create one device based on the adapters
+		//! returned by `get_preferred_device_adapter`, set the device as the main device and return the device.
 		LUNA_RHI_API IDevice* get_main_device();
+
+		//! Sets the main device. This call replaces the prior main device.
+		//LUNA_RHI_API void set_main_device(IDevice* device);
 
 		enum class APIType : u8
 		{

@@ -11,7 +11,6 @@
 #include "Resource.hpp"
 #include <Runtime/Waitable.hpp>
 #include <Window/Window.hpp>
-#include "CommandQueue.hpp"
 
 namespace Luna
 {

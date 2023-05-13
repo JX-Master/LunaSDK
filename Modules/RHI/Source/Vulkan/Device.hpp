@@ -18,13 +18,13 @@ namespace Luna
 {
 	namespace RHI
 	{
-		struct QueuePool
+		struct CommandQueue
 		{
+			VkQueue queue;
 			CommandQueueDesc desc;
-			Vector<VkQueue> free_queues;
-			VkQueue internal_queue;
-			Ref<IMutex> internal_queue_mtx;
 			u32 queue_family_index;
+			u32 queue_index_in_family;
+			Ref<IMutex> queue_mtx;
 		};
 
 		struct QueueTransferTracker
@@ -40,42 +40,6 @@ namespace Luna
 			~QueueTransferTracker();
 		};
 
-		struct ResourceCopyContext
-		{
-			VkDevice m_device = VK_NULL_HANDLE;
-			VolkDeviceTable* m_funcs = nullptr;
-			VkCommandPool m_command_pool = VK_NULL_HANDLE;
-			VkCommandBuffer m_command_buffer = VK_NULL_HANDLE;
-			VkFence m_fence = VK_NULL_HANDLE;
-			HashMap<u32, UniquePtr<QueueTransferTracker>> m_transfer_trackers;
-
-			ResourceCopyContext() {}
-			ResourceCopyContext(const ResourceCopyContext&) = delete;
-			ResourceCopyContext(ResourceCopyContext&& rhs) :
-				m_command_pool(rhs.m_command_pool),
-				m_command_buffer(rhs.m_command_buffer),
-				m_fence(rhs.m_fence)
-			{
-				rhs.m_command_pool = VK_NULL_HANDLE;
-				rhs.m_command_buffer = VK_NULL_HANDLE;
-				rhs.m_fence = VK_NULL_HANDLE;
-			}
-			ResourceCopyContext& operator=(const ResourceCopyContext&) = delete;
-			ResourceCopyContext& operator=(ResourceCopyContext&& rhs)
-			{
-				m_command_pool = rhs.m_command_pool;
-				m_command_buffer = rhs.m_command_buffer;
-				m_fence = rhs.m_fence;
-				rhs.m_command_pool = VK_NULL_HANDLE;
-				rhs.m_command_buffer = VK_NULL_HANDLE;
-				rhs.m_fence = VK_NULL_HANDLE;
-				return *this;
-			}
-			~ResourceCopyContext();
-			RV init(const QueuePool& queue_pool);
-			R<QueueTransferTracker*> get_transfer_tracker(u32 queue_family_index);
-		};
-
 		struct Device : IDevice
 		{
 			lustruct("RHI::Device", "{9C0F7754-FA08-4FF3-BF66-B23125FA19F9}");
@@ -83,9 +47,8 @@ namespace Luna
 
 			VkDevice m_device = VK_NULL_HANDLE;
 			VkPhysicalDevice m_physical_device;
-			// All created queues
-			Vector<QueuePool> m_queue_pools;
-			Ref<IMutex> m_queue_pool_mtx;
+			// All created command queues.
+			Vector<CommandQueue> m_queues;
 
 			VolkDeviceTable m_funcs;
 
@@ -103,10 +66,6 @@ namespace Luna
 			// Render pass pools.
 			RenderPassPool m_render_pass_pool;
 			SpinLock m_render_pass_pool_lock;
-
-			// Used for copy_resource.
-			Vector<ResourceCopyContext> m_copy_contexts;
-			SpinLock m_copy_contexts_lock;
 
 			RV init(VkPhysicalDevice physical_device, const Vector<QueueFamily>& queue_families);
 			RV init_descriptor_pools();
@@ -140,14 +99,16 @@ namespace Luna
 			virtual R<Ref<IPipelineState>> new_compute_pipeline_state(const ComputePipelineStateDesc& desc) override;
 			virtual R<Ref<IDescriptorSetLayout>> new_descriptor_set_layout(const DescriptorSetLayoutDesc& desc) override;
 			virtual R<Ref<IDescriptorSet>> new_descriptor_set(DescriptorSetDesc& desc) override;
-			virtual R<Ref<ICommandQueue>> new_command_queue(const CommandQueueDesc& desc) override;
+			virtual u32 get_num_command_queues() override;
+			virtual CommandQueueDesc get_command_queue_desc(u32 command_queue_index) override;
+			virtual R<Ref<ICommandBuffer>> new_command_buffer(u32 command_queue_index) override;
+			virtual R<f64> get_command_queue_timestamp_frequency(u32 command_queue_index) override;
 			virtual R<Ref<IRenderTargetView>> new_render_target_view(ITexture* resource, const RenderTargetViewDesc* desc) override;
 			virtual R<Ref<IDepthStencilView>> new_depth_stencil_view(ITexture* resource, const DepthStencilViewDesc* desc) override;
 			virtual R<Ref<IResolveTargetView>> new_resolve_target_view(ITexture* resource, const ResolveTargetViewDesc* desc) override;
 			virtual R<Ref<IQueryHeap>> new_query_heap(const QueryHeapDesc& desc) override;
 			virtual R<Ref<IFence>> new_fence() override;
-			virtual R<Ref<ISwapChain>> new_swap_chain(ICommandQueue* queue, Window::IWindow* window, const SwapChainDesc& desc) override;
-			virtual RV copy_resource(Span<const ResourceCopyDesc> copies) override;
+			virtual R<Ref<ISwapChain>> new_swap_chain(u32 command_queue_index, Window::IWindow* window, const SwapChainDesc& desc) override;
 		};
 
 		extern Ref<IDevice> g_main_device;

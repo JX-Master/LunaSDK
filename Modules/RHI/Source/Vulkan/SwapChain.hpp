@@ -11,7 +11,6 @@
 #include "Common.hpp"
 #include "Device.hpp"
 #include "Resource.hpp"
-#include "CommandQueue.hpp"
 namespace Luna
 {
 	namespace RHI
@@ -23,8 +22,9 @@ namespace Luna
 			Ref<Device> m_device;
 			Name m_name;
 
+			CommandQueue m_queue;
+
 			SwapChainDesc m_desc;
-			Ref<CommandQueue> m_presenting_queue;
 			Ref<Window::IWindow> m_window;
 			VkSurfaceKHR m_surface = VK_NULL_HANDLE;
 
@@ -36,7 +36,7 @@ namespace Luna
 			u32 m_current_back_buffer;
 			bool m_back_buffer_fetched = false;
 
-			RV init(CommandQueue* queue, Window::IWindow* window, const SwapChainDesc& desc);
+			RV init(const CommandQueue& queue, Window::IWindow* window, const SwapChainDesc& desc);
 			
 			void clean_up_swap_chain();
 			RV create_swap_chain(const SwapChainDesc& desc);

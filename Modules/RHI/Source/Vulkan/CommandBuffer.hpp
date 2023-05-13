@@ -11,7 +11,6 @@
 #include "Common.hpp"
 #include "../../CommandBuffer.hpp"
 #include "Device.hpp"
-#include "CommandQueue.hpp"
 #include "ResourceStateTrackingSystem.hpp"
 #include <Runtime/UniquePtr.hpp>
 
@@ -25,7 +24,8 @@ namespace Luna
 			luiimpl();
 
 			Ref<Device> m_device;
-			Ref<CommandQueue> m_queue;
+			u32 m_queue_index;
+			CommandQueue m_queue;
 			Name m_name;
 
 			ResourceStateTrackingSystem m_track_system;
@@ -57,7 +57,7 @@ namespace Luna
 
 			bool m_recording = true;
 
-			RV init(CommandQueue* queue);
+			RV init(u32 command_queue_index);
 			~CommandBuffer();
 
 			RV begin_command_buffer();
@@ -68,7 +68,7 @@ namespace Luna
 			virtual void set_name(const Name& name) override { m_name = name; }
 			virtual void wait() override;
 			virtual bool try_wait() override;
-			virtual ICommandQueue* get_command_queue() override { return m_queue.get(); }
+			virtual u32 get_command_queue_index() override { return m_queue_index; }
 			virtual RV reset() override;
 			virtual void attach_device_object(IDeviceChild* obj) override;
 			virtual void begin_event(const Name& event_name) override {}
