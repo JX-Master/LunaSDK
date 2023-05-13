@@ -30,8 +30,15 @@ namespace Luna
 			return set_error(BasicError::not_supported(), "The specified pixel format for swap chain is not supported.");
 		}
 
-		VkPresentModeKHR choose_present_mode(const Vector<VkPresentModeKHR>& available_presnet_modes)
+		VkPresentModeKHR choose_present_mode(const Vector<VkPresentModeKHR>& available_presnet_modes, bool vertical_synchronized)
 		{
+			if (!vertical_synchronized)
+			{
+				for (auto i : available_presnet_modes)
+				{
+					if (i == VK_PRESENT_MODE_IMMEDIATE_KHR) return VK_PRESENT_MODE_IMMEDIATE_KHR;
+				}
+			}
 			return VK_PRESENT_MODE_FIFO_KHR;
 		}
 
@@ -93,7 +100,7 @@ namespace Luna
 				luexp(encode_vk_result(glfwCreateWindowSurface(g_vk_instance, w->get_glfw_window_handle(), nullptr, &m_surface)));
 				auto& surface_info = get_physical_device_surface_info(m_device->m_physical_device, m_surface);
 				lulet(surface_format, choose_swap_surface_format(surface_info.formats, desc.pixel_format));
-				auto present_mode = choose_present_mode(surface_info.present_modes);
+				auto present_mode = choose_present_mode(surface_info.present_modes, desc.vertical_synchronized);
 				lulet(extent, choose_swap_extent(surface_info.capabilities, m_desc));
 				if (desc.buffer_count < surface_info.capabilities.minImageCount || desc.buffer_count > surface_info.capabilities.maxImageCount)
 				{
