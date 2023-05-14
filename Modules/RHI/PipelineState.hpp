@@ -47,7 +47,7 @@ namespace Luna
 			InputPropertyDesc(
 				const c8* semantic_name,
 				u32 semantic_index,
-				u32 binding_slot,
+				u32 instance_index,
 				u32 location,
 				u32 offset,
 				Format format
@@ -147,7 +147,7 @@ namespace Luna
 			all = red | green | blue | alpha
 		};
 
-		struct RenderTargetBlendDesc
+		struct AttachmentBlendDesc
 		{
 			bool blend_enable;
 			BlendFactor src_blend;
@@ -158,7 +158,7 @@ namespace Luna
 			BlendOp blend_op_alpha;
 			ColorWriteMask render_target_write_mask;
 
-			RenderTargetBlendDesc(
+			AttachmentBlendDesc(
 				bool blend_enable = false,
 				BlendFactor src_blend = BlendFactor::one,
 				BlendFactor dest_blend = BlendFactor::zero,
@@ -183,17 +183,16 @@ namespace Luna
 			bool alpha_to_coverage_enable;
 			bool logic_op_enable;
 			LogicOp logic_op;
-			RenderTargetBlendDesc rt[8];
+			AttachmentBlendDesc rt[8];
 
 			BlendDesc(
+				std::initializer_list<AttachmentBlendDesc> rt = {},
 				bool alpha_to_coverage_enable = false,
 				bool logic_op_enable = false,
-				LogicOp logic_op = LogicOp::clear,
-				std::initializer_list<RenderTargetBlendDesc> rt = {}) :
+				LogicOp logic_op = LogicOp::clear) :
 				alpha_to_coverage_enable(alpha_to_coverage_enable),
 				logic_op_enable(logic_op_enable),
 				logic_op(logic_op)
-
 			{
 				u32 i = 0;
 				for (auto& it : rt)

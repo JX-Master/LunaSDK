@@ -73,9 +73,7 @@ namespace Luna
 				luexp(create_vk_instance());
 				luexp(init_physical_devices());
 				lulet(main_physical_device, select_main_physical_device());
-				Ref<Device> dev = new_object<Device>();
-				luexp(dev->init(g_physical_devices[main_physical_device], g_physical_device_queue_families[main_physical_device]));
-				g_main_device = dev;
+				luset(g_main_device, new_device(main_physical_device));
 			}
 			lucatchret;
 			return ok;

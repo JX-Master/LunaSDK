@@ -29,5 +29,6 @@ namespace Luna
 		LUNA_RHI_TESTBED_API RHI::ITexture* get_back_buffer();
 		LUNA_RHI_TESTBED_API RHI::ICommandBuffer* get_command_buffer();
 		LUNA_RHI_TESTBED_API Window::IWindow* get_window();
+		LUNA_RHI_TESTBED_API u32 get_command_queue_index();
 	}
 }

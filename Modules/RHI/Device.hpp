@@ -168,7 +168,7 @@ namespace Luna
 			virtual bool check_device_feature(DeviceFeature feature) = 0;
 
 			//! Gets the alignment for the buffer data start location and size.
-			virtual usize get_constant_buffer_data_alignment() = 0;
+			virtual usize get_uniform_buffer_data_alignment() = 0;
 
 			//! Gets the texture data placement information when storing texture data in a buffer. 
 			//! The texture data is arranged in row-major order.

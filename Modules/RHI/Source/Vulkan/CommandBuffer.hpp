@@ -18,6 +18,19 @@ namespace Luna
 {
 	namespace RHI
 	{
+		struct QueueTransferTracker
+		{
+			VkDevice m_device = VK_NULL_HANDLE;
+			VolkDeviceTable* m_funcs = nullptr;
+			VkCommandPool m_command_pool = VK_NULL_HANDLE;
+			VkCommandBuffer m_command_buffer = VK_NULL_HANDLE;
+			VkSemaphore m_semaphore = VK_NULL_HANDLE;
+
+			RV init(u32 queue_family_index);
+			R<VkSemaphore> submit_barrier(VkQueue queue, IMutex* queue_mtx, Span<const VkBufferMemoryBarrier> buffer_barriers, Span<const VkImageMemoryBarrier> texture_barriers);
+			~QueueTransferTracker();
+		};
+
 		struct CommandBuffer : ICommandBuffer
 		{
 			lustruct("RHI::CommandBuffer", "{057DBF2F-5817-490B-9683-18A0D3C4C5CB}");
@@ -36,7 +49,7 @@ namespace Luna
 			VkCommandBuffer m_command_buffer = VK_NULL_HANDLE;
 			VkFence m_fence = VK_NULL_HANDLE;
 
-			//! The attached graphic objects.
+			// The attached graphic objects.
 			Vector<Ref<IDeviceChild>> m_objs;
 
 			// Controled by begin_render_pass/end_render_pass.
@@ -48,6 +61,7 @@ namespace Luna
 			IRenderTargetView* m_color_attachments[8] = { nullptr };
 			IResolveTargetView* m_resolve_attachments[8] = { nullptr };
 			IDepthStencilView* m_dsv = nullptr;
+			Vector<VkFramebuffer> m_fbos;
 
 			// Set by set_pipeline_state.
 			u32 m_num_viewports = 0;
@@ -76,8 +90,8 @@ namespace Luna
 			virtual void begin_render_pass(const RenderPassDesc& desc) override;
 			virtual void set_pipeline_state(PipelineStateBindPoint bind_point, IPipelineState* pso) override;
 			virtual void set_graphics_shader_input_layout(IShaderInputLayout* shader_input_layout) override;
-			virtual void set_vertex_buffers(u32 start_slot, u32 num_slots, IBuffer** buffers, const usize* offsets) override;
-			virtual void set_index_buffer(IBuffer* buffer, usize offset_in_bytes, Format index_format) override;
+			virtual void set_vertex_buffers(u32 start_slot, Span<const VertexBufferView> views) override;
+			virtual void set_index_buffer(const IndexBufferView& view) override;
 			virtual void set_graphics_descriptor_sets(u32 start_index, Span<IDescriptorSet*> descriptor_sets) override;
 			virtual void set_viewport(const Viewport& viewport) override;
 			virtual void set_viewports(Span<const Viewport> viewports) override;

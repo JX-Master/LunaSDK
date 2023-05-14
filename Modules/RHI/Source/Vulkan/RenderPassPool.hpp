@@ -42,22 +42,6 @@ namespace Luna
 					sample_count == rhs.sample_count;
 			}
 		};
-
-		struct FrameBufferKey
-		{
-			VkRenderPass render_pass = VK_NULL_HANDLE;
-			IRenderTargetView* color_attachments[8] = { nullptr };
-			IResolveTargetView* resolve_attachments[8] = { nullptr };
-			IDepthStencilView* depth_stencil_attachment = nullptr;
-
-			bool operator==(const FrameBufferKey& rhs) const
-			{
-				return render_pass == rhs.render_pass &&
-					!memcpy((void*)color_attachments, (void*)rhs.color_attachments, sizeof(IRenderTargetView*) * 8) &&
-					!memcpy((void*)resolve_attachments, (void*)rhs.resolve_attachments, sizeof(IResolveTargetView*) * 8) &&
-					depth_stencil_attachment == rhs.depth_stencil_attachment;
-			}
-		};
 	}
 
 	template <>
@@ -79,19 +63,6 @@ namespace Luna
 		}
 	};
 
-	template <>
-	struct hash<RHI::FrameBufferKey>
-	{
-		usize operator()(const RHI::FrameBufferKey& k) const
-		{
-			usize h = memhash<usize>(&k.render_pass, sizeof(VkRenderPass));
-			h = memhash<usize>(k.color_attachments, sizeof(RHI::IRenderTargetView*) * 8, h);
-			h = memhash<usize>(k.resolve_attachments, sizeof(RHI::IResolveTargetView*) * 8, h);
-			h = memhash<usize>(&k.depth_stencil_attachment, sizeof(RHI::IDepthStencilView*), h);
-			return h;
-		}
-	};
-
 	namespace RHI
 	{
 		struct Device;
@@ -100,14 +71,10 @@ namespace Luna
 			VkDevice m_device;
 			PFN_vkCreateRenderPass m_vkCreateRenderPass;
 			PFN_vkDestroyRenderPass m_vkDestroyRenderPass;
-			PFN_vkCreateFramebuffer m_vkCreateFramebuffer;
-			PFN_vkDestroyFramebuffer m_vkDestroyFramebuffer;
 
 			HashMap<RenderPassKey, VkRenderPass> m_render_passes;
-			HashMap<FrameBufferKey, VkFramebuffer> m_framebuffers;
 
 			R<VkRenderPass> get_render_pass(const RenderPassKey& key);
-			R<VkFramebuffer> get_frame_buffer(const FrameBufferKey& key);
 
 			void clean_up();
 		};

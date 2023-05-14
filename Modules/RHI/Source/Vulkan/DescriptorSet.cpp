@@ -89,7 +89,7 @@ namespace Luna
 									d_buffer.offset = s_buffer.offset;
 									if (s.type == DescriptorType::uniform_buffer_view)
 									{
-										d_buffer.range = s_buffer.element_size;
+										d_buffer.range = s_buffer.element_size == U32_MAX ? VK_WHOLE_SIZE : s_buffer.element_size;
 									}
 									else
 									{

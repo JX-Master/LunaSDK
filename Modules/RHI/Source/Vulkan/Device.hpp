@@ -27,19 +27,6 @@ namespace Luna
 			Ref<IMutex> queue_mtx;
 		};
 
-		struct QueueTransferTracker
-		{
-			VkDevice m_device = VK_NULL_HANDLE;
-			VolkDeviceTable* m_funcs = nullptr;
-			VkCommandPool m_command_pool = VK_NULL_HANDLE;
-			VkCommandBuffer m_command_buffer = VK_NULL_HANDLE;
-			VkSemaphore m_semaphore = VK_NULL_HANDLE;
-
-			RV init(u32 queue_family_index);
-			R<VkSemaphore> submit_barrier(VkQueue queue, IMutex* queue_mtx, Span<const VkBufferMemoryBarrier> buffer_barriers, Span<const VkImageMemoryBarrier> texture_barriers);
-			~QueueTransferTracker();
-		};
-
 		struct Device : IDevice
 		{
 			lustruct("RHI::Device", "{9C0F7754-FA08-4FF3-BF66-B23125FA19F9}");
@@ -77,7 +64,7 @@ namespace Luna
 			R<VkImage> create_vk_image(const TextureDesc& desc);
 
 			virtual bool check_device_feature(DeviceFeature feature) override;
-			virtual usize get_constant_buffer_data_alignment() override
+			virtual usize get_uniform_buffer_data_alignment() override
 			{
 				return 0; // Vulkan does not have constant buffer data alignment requirement.
 			}

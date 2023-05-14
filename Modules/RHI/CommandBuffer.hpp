@@ -246,10 +246,40 @@ namespace Luna
 			compute = 1
 		};
 
-		struct VertexBufferBind
+		struct VertexBufferView
 		{
 			IResource* buffer;
-			usize offset_in_bytes;
+			//! The offset, in bytes, of the first vertex from the beginning of the buffer.
+			usize offset;
+			//! The size, in bytes, of the vertex buffer range to bind.
+			u32 size;
+			//! The stride, in bytes, between two vertex elements in the buffer.
+			u32 stride;
+
+			VertexBufferView() = default;
+			VertexBufferView(IResource* buffer, usize offset, u32 size, u32 stride) :
+				buffer(buffer),
+				offset(offset),
+				size(size),
+				stride(stride) {}
+		};
+
+		struct IndexBufferView
+		{
+			IResource* buffer;
+			//! The offset, in bytes, of the first vertex from the beginning of the buffer.
+			usize offset;
+			//! The size, in bytes, of the vertex buffer range to bind.
+			u32 size;
+			//! The index format.
+			Format format;
+
+			IndexBufferView() = default;
+			IndexBufferView(IResource * buffer, usize offset, u32 size, Format format) :
+				buffer(buffer),
+				offset(offset),
+				size(size),
+				format(format) {}
 		};
 
 		//! @interface ICommandBuffer
@@ -319,14 +349,15 @@ namespace Luna
 
 			//! Sets vertex buffers.
 			//! @param[in] start_slot The start slot of the vertex buffer to set.
-			//! @param[in] num_slots The number of vertex buffers to set.
-			//! Vertex buffers in range [start_slot, start_slot + num_slots) will be replaced by new buffer.
-			//! @param[in] buffers An array of vertex buffers to bind.
-			//! @param[in] offsets An array of offsets for reading vertices from each vertex buffer in bytes.
-			virtual void set_vertex_buffers(u32 start_slot, u32 num_slots, IBuffer** buffers, const usize* offsets) = 0;
+			//! @param[in] views An array of vertex buffer views to set, each describes one vertex buffer range to bind.
+			//! The vertex buffer views will be set in slot [start_slot, start_slot + views.size()).
+			virtual void set_vertex_buffers(u32 start_slot, Span<const VertexBufferView> views) = 0;
 
 			//! Sets index buffer.
-			virtual void set_index_buffer(IBuffer* buffer, usize offset_in_bytes, Format index_format) = 0;
+			//! @param[in] buffer The index buffer to set.
+			//! @param[in] offset The offset, in bytes, of the first index from the beginning of the buffer.
+			//! @param[in] size 
+			virtual void set_index_buffer(const IndexBufferView& view) = 0;
 
 			//! Sets the descriptor set to be used by the graphic pipeline.
 			//! This must be called after `set_pipeline_state` and `set_graphics_shader_input_layout`.

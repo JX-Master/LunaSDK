@@ -260,10 +260,10 @@ namespace Luna
 			BufferDesc() = default;
 			BufferDesc(const BufferDesc&) = default;
 			BufferDesc& operator=(const BufferDesc&) = default;
-			BufferDesc(ResourceHeapType heap_type, u64 size, BufferUsageFlag usages) :
-				size(size),
+			BufferDesc(ResourceHeapType heap_type, BufferUsageFlag usages, u64 size) :
 				heap_type(heap_type),
-				usages(usages) {}
+				usages(usages),
+				size(size) {}
 		};
 
 		enum class TextureType : u8
@@ -424,6 +424,11 @@ namespace Luna
 			u32 mip_slice;
 			//! The array index of the subresource.
 			u32 array_slice;
+
+			SubresourceIndex() = default;
+			constexpr SubresourceIndex(u32 mip_slice, u32 array_slice) :
+				mip_slice(mip_slice),
+				array_slice(array_slice) {}
 			bool operator==(const SubresourceIndex& rhs) const { return mip_slice == rhs.mip_slice && array_slice == rhs.array_slice; }
 		};
 	}

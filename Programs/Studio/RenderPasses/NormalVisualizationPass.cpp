@@ -54,7 +54,7 @@ namespace Luna
 			ps_desc.primitive_topology_type = PrimitiveTopologyType::point;
 			ps_desc.sample_mask = U32_MAX;
 			ps_desc.sample_quality = 0;
-			ps_desc.blend_state = BlendDesc(false, false, { RenderTargetBlendDesc(true, false, BlendFactor::src_alpha,
+			ps_desc.blend_state = BlendDesc(false, false, { AttachmentBlendDesc(true, false, BlendFactor::src_alpha,
 				BlendFactor::inv_src_alpha, BlendOp::add, BlendFactor::one, BlendFactor::zero, BlendOp::add, LogicOp::noop, ColorWriteMask::all) });
 			ps_desc.rasterizer_state = RasterizerDesc(FillMode::wireframe, CullMode::back, 0, 0.0f, 0.0f, 0, false, true, false, false, false);
 			ps_desc.depth_stencil_state = DepthStencilDesc(true, false, ComparisonFunc::less_equal, false, 0x00, 0x00, DepthStencilOpDesc(), DepthStencilOpDesc());
@@ -93,7 +93,7 @@ namespace Luna
             auto render_desc = scene_tex->get_desc();
             auto cmdbuf = ctx->get_command_buffer();
             auto device = cmdbuf->get_device();
-            auto cb_align = device->get_constant_buffer_data_alignment();
+            auto cb_align = device->get_uniform_buffer_data_alignment();
             lulet(scene_tex_rtv, device->new_render_target_view(scene_tex));
             lulet(depth_dsv, device->new_depth_stencil_view(depth_tex));
             //auto fbo = device->new_frame_buffer(m_global_data->m_lighting_pass_rp, 1, &lighting_rt, nullptr, depth_tex, nullptr).get();

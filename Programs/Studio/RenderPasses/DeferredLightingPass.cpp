@@ -80,7 +80,7 @@ namespace Luna
                 ps_desc.shader_input_layout = slayout;
                 lulet(pso, device->new_compute_pipeline_state(ps_desc));
                 lulet(compute_cmdbuf, g_env->async_compute_queue->new_command_buffer());
-                u32 cb_align = device->get_constant_buffer_data_alignment();
+                u32 cb_align = device->get_uniform_buffer_data_alignment();
                 u32 cb_size = (u32)align_upper(sizeof(Float2), cb_align);
                 lulet(cb, device->new_resource(
                     ResourceDesc::buffer(ResourceHeapType::upload, ResourceUsageFlag::constant_buffer, cb_size)));
@@ -118,7 +118,7 @@ namespace Luna
                 DescriptorSetDesc(global_data->m_deferred_lighting_pass_dlayout)));
             luset(m_lighting_mode_cb, device->new_resource(
                 ResourceDesc::buffer(ResourceHeapType::upload, ResourceUsageFlag::constant_buffer,
-                    align_upper(sizeof(u32), device->get_constant_buffer_data_alignment()))));
+                    align_upper(sizeof(u32), device->get_uniform_buffer_data_alignment()))));
         }
         lucatchret;
         return ok;
@@ -139,7 +139,7 @@ namespace Luna
 			auto emissive_tex = ctx->get_input("emissive_texture");
             auto cmdbuf = ctx->get_command_buffer();
             auto device = cmdbuf->get_device();
-            auto cb_align = device->get_constant_buffer_data_alignment();
+            auto cb_align = device->get_uniform_buffer_data_alignment();
             auto sky_box = skybox ? skybox : m_global_data->m_default_skybox;
             cmdbuf->resource_barriers({
                 ResourceBarrierDesc::as_transition(camera_cb, ResourceStateFlag::vertex_and_constant_buffer),

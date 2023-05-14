@@ -160,6 +160,10 @@ namespace Luna
 		{
 			return m_window;
 		}
+		LUNA_RHI_TESTBED_API u32 get_command_queue_index()
+		{
+			return m_command_queue;
+		}
 	}
 
 	StaticRegisterModule testbed_module("RHITestBed", "RHI", nullptr, nullptr);

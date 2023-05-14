@@ -20,10 +20,9 @@ using namespace Luna;
 using namespace Luna::RHI;
 using namespace Luna::RHITestBed;
 
-Ref<RHI::IRenderTargetView> rtv;
 Ref<RHI::IShaderInputLayout> shader_input_layout;
 Ref<RHI::IPipelineState> pso;
-Ref<RHI::IResource> vb;
+Ref<RHI::IBuffer> vb;
 
 struct VertexData
 {
@@ -35,33 +34,31 @@ RV start()
 {
 	lutry
 	{
-		luset(rtv, get_main_device()->new_render_target_view(get_back_buffer()));
-
 		// create pso
 		{
 			const char vs_shader_code[] =
-				"\
-							struct VS_INPUT\
-							{\
-							float2 pos : POSITION;\
-							float4 col : COLOR0;\
-							};\
-							\
-							struct PS_INPUT\
-							{\
-							float4 pos : SV_POSITION;\
-							float4 col  : COLOR0;\
-							};\
-							\
-							PS_INPUT main(VS_INPUT input)\
-							{\
-							PS_INPUT output;\
-							output.pos = float4(input.pos.x, input.pos.y, 0.0f, 1.0f);\
-							output.col  = input.col;\
-							return output;\
-							}";
-
-			
+				R"(
+				struct VS_INPUT
+				{
+					[[vk::location(0)]]
+					float2 pos : POSITION;
+					[[vk::location(1)]]
+					float4 col : COLOR0;
+				};
+				struct PS_INPUT
+				{
+					[[vk::location(0)]]
+					float4 pos : SV_POSITION;
+					[[vk::location(1)]]
+					float4 col  : COLOR0;
+				};
+				PS_INPUT main(VS_INPUT input)
+				{
+					PS_INPUT output;
+					output.pos = float4(input.pos.x, input.pos.y, 0.0f, 1.0f);
+					output.col  = input.col;
+					return output;
+				})";
 			auto compiler = ShaderCompiler::new_compiler();
 			compiler->set_source({ vs_shader_code, sizeof(vs_shader_code) });
 			compiler->set_source_name("TestTriangleVS");
@@ -77,17 +74,18 @@ RV start()
 			Blob vs(vs_data.data(), vs_data.size());
 
 			const char ps_shader_code[] =
-				"struct PS_INPUT\
-							{\
-							float4 pos : SV_POSITION;\
-							float4 col : COLOR0;\
-							};\
-							\
-							float4 main(PS_INPUT input) : SV_Target\
-							{\
-							return input.col; \
-							}";
-
+				R"(struct PS_INPUT
+				{
+					[[vk::location(0)]]
+					float4 pos : SV_POSITION;
+					[[vk::location(1)]]
+					float4 col : COLOR0;
+				};
+				[[vk::location(0)]]
+				float4 main(PS_INPUT input) : SV_Target
+				{
+					return input.col;
+				})";
 			compiler->reset();
 			compiler->set_source({ ps_shader_code, sizeof(ps_shader_code) });
 			compiler->set_source_name("TestTrianglePS");
@@ -104,36 +102,48 @@ RV start()
 
 			luset(shader_input_layout, get_main_device()->new_shader_input_layout(ShaderInputLayoutDesc({},
 				ShaderInputLayoutFlag::allow_input_assembler_input_layout |
-				ShaderInputLayoutFlag::deny_domain_shader_access | ShaderInputLayoutFlag::deny_geometry_shader_access |
-				ShaderInputLayoutFlag::deny_hull_shader_access | ShaderInputLayoutFlag::deny_pixel_shader_access |
+				ShaderInputLayoutFlag::deny_pixel_shader_access |
 				ShaderInputLayoutFlag::deny_vertex_shader_access)));
 
 			GraphicsPipelineStateDesc desc;
 			desc.input_layout = InputLayoutDesc({
-				InputElementDesc("POSITION", 0, Format::rg32_float),
-				InputElementDesc("COLOR", 0, Format::rgba32_float) });
+				{
+					InputInstanceDesc(0, sizeof(VertexData), InputRate::per_vertex)
+				},
+				{
+					InputPropertyDesc("POSITION", 0, 0, 0, 0, Format::rg32_float),
+					InputPropertyDesc("COLOR", 0, 0, 1, 8, Format::rgba32_float)
+				}
+			});
 			desc.shader_input_layout = shader_input_layout;
 			desc.vs = { vs.data(), vs.size() };
 			desc.ps = { ps.data(), ps.size() };
 			desc.rasterizer_state.depth_clip_enable = false;
 			desc.depth_stencil_state = DepthStencilDesc(false, false);
 			desc.num_render_targets = 1;
-			desc.rtv_formats[0] = Format::rgba8_unorm;
+			desc.rtv_formats[0] = Format::bgra8_unorm;
 
 			luset(pso, get_main_device()->new_graphics_pipeline_state(desc));
 
 			// prepare draw buffer. POSITION : COLOR
-			VertexData data[3]{
-				{ { 0.0f,  0.7f},{1.0f, 0.0f, 0.0f, 1.0f} },
-				{ { 0.7f, -0.7f},{0.0f, 1.0f, 0.0f, 1.0f} },
-				{ {-0.7f, -0.7f},{0.0f, 0.0f, 1.0f, 1.0f} }
-			};
+			VertexData data[3];
+			if (RHI::get_current_platform_api_type() == APIType::vulkan)
+			{
+				data[0] = { { 0.0f, -0.7f},{1.0f, 0.0f, 0.0f, 1.0f} };
+				data[1] = { { 0.7f, 0.7f},{0.0f, 1.0f, 0.0f, 1.0f} };
+				data[2] = { {-0.7f, 0.7f},{0.0f, 0.0f, 1.0f, 1.0f} };
+			}
+			else
+			{
+				data[0] = { { 0.0f,  0.7f},{1.0f, 0.0f, 0.0f, 1.0f} };
+				data[1] = { { 0.7f, -0.7f},{0.0f, 1.0f, 0.0f, 1.0f} };
+				data[2] = { {-0.7f, -0.7f},{0.0f, 0.0f, 1.0f, 1.0f} };
+			}
 
-			luset(vb, get_main_device()->new_resource(ResourceDesc::buffer(ResourceHeapType::upload, ResourceUsageFlag::vertex_buffer, sizeof(data))));
-			void* mapped_data;
-			luexp(vb->map_subresource(0, 0, 0, &mapped_data));
+			luset(vb, get_main_device()->new_buffer(BufferDesc(ResourceHeapType::upload, BufferUsageFlag::vertex_buffer, sizeof(data))));
+			lulet(mapped_data, vb->map(0, 0));
 			memcpy(mapped_data, data, sizeof(data));
-			vb->unmap_subresource(0, 0, sizeof(data));
+			vb->unmap(0, sizeof(data));
 		}
 	}
 	lucatchret;
@@ -142,33 +152,42 @@ RV start()
 
 void draw()
 {
+	auto rtv = get_main_device()->new_render_target_view(get_back_buffer()).get();
 	auto cb = get_command_buffer();
-	cb->resource_barrier(ResourceBarrierDesc::as_transition(get_back_buffer(), ResourceStateFlag::render_target, 0));
+	cb->resource_barrier({}, {
+			{get_back_buffer(), TEXTURE_BARRIER_ALL_SUBRESOURCES, TextureStateFlag::automatic, TextureStateFlag::color_attachment_write, ResourceBarrierFlag::discard_content}
+		});
+	cb->attach_device_object(rtv);
 	RenderPassDesc desc;
 	desc.color_attachments[0] = rtv;
 	desc.color_load_ops[0] = LoadOp::clear;
 	desc.color_clear_values[0] = Color::yellow();
+	desc.color_store_ops[0] = StoreOp::store;
 	cb->begin_render_pass(desc);
-	cb->set_pipeline_state(pso);
+	cb->set_pipeline_state(PipelineStateBindPoint::graphics, pso);
 	cb->set_graphics_shader_input_layout(shader_input_layout);
-	cb->set_primitive_topology(PrimitiveTopology::triangle_list);
-	cb->set_vertex_buffers(0, { &VertexBufferViewDesc(vb, 0, sizeof(VertexData) * 3, sizeof(VertexData)), 1 });
+	IBuffer* vertex_buffer = vb;
+	usize vb_offset = 0;
+	cb->set_vertex_buffers(0, {VertexBufferView(vb, 0, sizeof(VertexData) * 3, sizeof(VertexData))});
 	auto sz = get_window()->get_size();
 	cb->set_scissor_rect(RectI(0, 0, (i32)sz.x, (i32)sz.y));
 	cb->set_viewport(Viewport(0.0f, 0.0f, (f32)sz.x, (f32)sz.y, 0.0f, 1.0f));
 	cb->draw(3, 0);
 	cb->end_render_pass();
-	lupanic_if_failed(cb->submit());
+	cb->resource_barrier({},
+		{
+			{get_back_buffer(), TEXTURE_BARRIER_ALL_SUBRESOURCES, TextureStateFlag::color_attachment_write, TextureStateFlag::present, ResourceBarrierFlag::none}
+		});
+	lupanic_if_failed(cb->submit({}, {}, true));
+	cb->wait();
 }
 
 void resize(u32 width, u32 height)
 {
-	rtv = get_main_device()->new_render_target_view(get_back_buffer()).get();
 }
 
 void cleanup()
 {
-	rtv.reset();
 	shader_input_layout.reset();
 	pso.reset();
 	vb.reset();

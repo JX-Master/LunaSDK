@@ -103,6 +103,9 @@ namespace Luna
 			case Format::rgba16_uint: return VK_FORMAT_R16G16B16A16_UINT;
 			case Format::rgba16_sint: return VK_FORMAT_R16G16B16A16_SINT;
 			case Format::rgba16_float: return VK_FORMAT_R16G16B16A16_SFLOAT;
+			case Format::rgb32_uint: return VK_FORMAT_R32G32B32_UINT;
+			case Format::rgb32_sint: return VK_FORMAT_R32G32B32_SINT;
+			case Format::rgb32_float: return VK_FORMAT_R32G32B32_SFLOAT;
 			case Format::rgba32_uint: return VK_FORMAT_R32G32B32A32_UINT;
 			case Format::rgba32_sint: return VK_FORMAT_R32G32B32A32_SINT;
 			case Format::rgba32_float: return VK_FORMAT_R32G32B32A32_SFLOAT;
@@ -354,17 +357,17 @@ namespace Luna
 			switch (heap_type)
 			{
 			case ResourceHeapType::local:
-				dest.usage = VMA_MEMORY_USAGE_AUTO;
+				dest.preferredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 				dest.flags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
 				dest.priority = 1.0f;
 				break;
 			case ResourceHeapType::upload:
-				dest.usage = VMA_MEMORY_USAGE_AUTO;
-				dest.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+				dest.requiredFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+				dest.preferredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 				break;
 			case ResourceHeapType::readback:
-				dest.usage = VMA_MEMORY_USAGE_AUTO;
-				dest.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
+				dest.requiredFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+				dest.preferredFlags = VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
 				break;
 			}
 		}

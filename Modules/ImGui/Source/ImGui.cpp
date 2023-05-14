@@ -177,7 +177,7 @@ float4 main(PS_INPUT input) : SV_Target
                 ps_desc.primitive_topology_type = PrimitiveTopologyType::triangle;
                 ps_desc.sample_mask = U32_MAX;
                 ps_desc.sample_quality = 0;
-                ps_desc.blend_state = BlendDesc(false, false, { RenderTargetBlendDesc(true, false, BlendFactor::src_alpha,
+                ps_desc.blend_state = BlendDesc(false, false, { AttachmentBlendDesc(true, false, BlendFactor::src_alpha,
                     BlendFactor::inv_src_alpha, BlendOp::add, BlendFactor::inv_src_alpha, BlendFactor::zero, BlendOp::add, LogicOp::noop, ColorWriteMask::all) });
                 ps_desc.rasterizer_state = RasterizerDesc(FillMode::solid, CullMode::none, 0, 0.0f, 0.0f, 1, false, true, false, false, false);
                 ps_desc.depth_stencil_state = DepthStencilDesc(false, false, ComparisonFunc::always, false, 0x00, 0x00, DepthStencilOpDesc(), DepthStencilOpDesc());
@@ -195,7 +195,7 @@ float4 main(PS_INPUT input) : SV_Target
                 luset(g_pso, dev->new_graphics_pipeline_state(ps_desc));
 
                 // Create constant buffer.
-                usize buffer_size_align = dev->get_constant_buffer_data_alignment();
+                usize buffer_size_align = dev->get_uniform_buffer_data_alignment();
                 luset(g_cb, dev->new_resource(ResourceDesc::buffer(ResourceHeapType::upload, ResourceUsageFlag::constant_buffer, align_upper(sizeof(Float4x4), buffer_size_align))));
             }
             lucatchret;
@@ -670,7 +670,7 @@ float4 main(PS_INPUT input) : SV_Target
                                 g_desc_sets.push_back(new_vs);
                             }
                             IDescriptorSet* vs = g_desc_sets[num_draw_calls];
-                            usize cb_align = dev->get_constant_buffer_data_alignment();
+                            usize cb_align = dev->get_uniform_buffer_data_alignment();
                             vs->set_cbv(0, g_cb, ConstantBufferViewDesc(0, (u32)align_upper(sizeof(Float4x4), cb_align)));
                             vs->set_srv(1, (IResource*)pcmd->TextureId);
                             vs->set_sampler(2, SamplerDesc(Filter::min_mag_mip_linear, TextureAddressMode::clamp, TextureAddressMode::clamp, TextureAddressMode::clamp));

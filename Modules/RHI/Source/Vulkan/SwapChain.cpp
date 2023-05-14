@@ -63,6 +63,9 @@ namespace Luna
 			{
 				m_queue = queue;
 				m_window = window;
+				Window::IGLFWWindow* w = query_interface<Window::IGLFWWindow>(m_window->get_object());
+				if (!w) return BasicError::not_supported();
+				luexp(encode_vk_result(glfwCreateWindowSurface(g_vk_instance, w->get_glfw_window_handle(), nullptr, &m_surface)));
 				luexp(create_swap_chain(desc));
 				VkFenceCreateInfo fence_create_info{};
 				fence_create_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
@@ -95,9 +98,6 @@ namespace Luna
 				{
 					return set_error(BasicError::not_supported(), "The specified command queue for creating swap chain does not have presenting support");
 				}
-				Window::IGLFWWindow* w = query_interface<Window::IGLFWWindow>(m_window->get_object());
-				if (!w) return BasicError::not_supported();
-				luexp(encode_vk_result(glfwCreateWindowSurface(g_vk_instance, w->get_glfw_window_handle(), nullptr, &m_surface)));
 				auto& surface_info = get_physical_device_surface_info(m_device->m_physical_device, m_surface);
 				lulet(surface_format, choose_swap_surface_format(surface_info.formats, desc.pixel_format));
 				auto present_mode = choose_present_mode(surface_info.present_modes, desc.vertical_synchronized);

@@ -155,7 +155,7 @@ namespace Luna
 
 			compute_cmdbuf->set_compute_shader_input_layout(m_mipmapping_slayout);
 			compute_cmdbuf->set_pipeline_state(m_mipmapping_pso);
-			u32 cb_align = device->get_constant_buffer_data_alignment();
+			u32 cb_align = device->get_uniform_buffer_data_alignment();
 			u32 cb_size = (u32)align_upper(sizeof(Float2), cb_align);
 			lulet(cb, device->new_resource(
 				ResourceDesc::buffer(ResourceHeapType::upload, ResourceUsageFlag::constant_buffer, cb_size * (desc.mip_levels - 1))));
@@ -235,7 +235,7 @@ namespace Luna
 				u32 mip_0_height;
 				f32 roughness;
 			};
-			u32 cb_align = device->get_constant_buffer_data_alignment();
+			u32 cb_align = device->get_uniform_buffer_data_alignment();
 			u32 cb_size = (u32)align_upper(sizeof(CB), cb_align);
 			lulet(cb, device->new_resource(
 				ResourceDesc::buffer(ResourceHeapType::upload, ResourceUsageFlag::constant_buffer, cb_size * (desc.mip_levels - 1))));

@@ -64,7 +64,7 @@ namespace Luna
         {
             m_global_data = global_data;
             auto device = m_global_data->m_skybox_pass_pso->get_device();
-            auto cb_align = device->get_constant_buffer_data_alignment();
+            auto cb_align = device->get_uniform_buffer_data_alignment();
             luset(m_skybox_params_cb, device->new_resource(ResourceDesc::buffer(ResourceHeapType::upload, ResourceUsageFlag::constant_buffer, align_upper(sizeof(SkyboxParams), cb_align))));
             luset(m_ds, device->new_descriptor_set(DescriptorSetDesc(m_global_data->m_skybox_pass_dlayout)));
         }
@@ -100,7 +100,7 @@ namespace Luna
 					});
 				cmdbuf->set_compute_shader_input_layout(m_global_data->m_skybox_pass_slayout);
 				cmdbuf->set_pipeline_state(m_global_data->m_skybox_pass_pso);
-                auto cb_align = cmdbuf->get_device()->get_constant_buffer_data_alignment();
+                auto cb_align = cmdbuf->get_device()->get_uniform_buffer_data_alignment();
 				m_ds->set_cbv(0, m_skybox_params_cb, ConstantBufferViewDesc(0, (u32)align_upper(sizeof(SkyboxParams), cb_align)));
 				m_ds->set_srv(1, skybox);
                 m_ds->set_srv(2, depth_tex, &ShaderResourceViewDesc::as_tex2d(Format::r32_float, 0, 1, 0.0f));

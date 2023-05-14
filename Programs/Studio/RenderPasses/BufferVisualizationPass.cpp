@@ -57,7 +57,7 @@ namespace Luna
                 DescriptorSetDesc(global_data->m_buffer_visualization_pass_dlayout)));
             luset(m_vis_params, device->new_resource(
                 ResourceDesc::buffer(ResourceHeapType::upload, ResourceUsageFlag::constant_buffer, 
-                    align_upper(sizeof(u32), device->get_constant_buffer_data_alignment()))));
+                    align_upper(sizeof(u32), device->get_uniform_buffer_data_alignment()))));
         }
         lucatchret;
         return ok;
@@ -77,7 +77,7 @@ namespace Luna
             auto normal_metallic_tex = ctx->get_input("normal_metallic_texture");
             auto cmdbuf = ctx->get_command_buffer();
             auto device = cmdbuf->get_device();
-            auto cb_align = device->get_constant_buffer_data_alignment();
+            auto cb_align = device->get_uniform_buffer_data_alignment();
             cmdbuf->resource_barriers({
                 ResourceBarrierDesc::as_transition(m_vis_params, ResourceStateFlag::vertex_and_constant_buffer),
 				ResourceBarrierDesc::as_transition(scene_tex, ResourceStateFlag::unordered_access),

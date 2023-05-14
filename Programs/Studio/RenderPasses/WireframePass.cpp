@@ -69,7 +69,7 @@ namespace Luna
 			ps_desc.primitive_topology_type = PrimitiveTopologyType::triangle;
 			ps_desc.sample_mask = U32_MAX;
 			ps_desc.sample_quality = 0;
-			ps_desc.blend_state = BlendDesc(false, false, { RenderTargetBlendDesc(true, false, BlendFactor::src_alpha,
+			ps_desc.blend_state = BlendDesc(false, false, { AttachmentBlendDesc(true, false, BlendFactor::src_alpha,
 				BlendFactor::inv_src_alpha, BlendOp::add, BlendFactor::one, BlendFactor::zero, BlendOp::add, LogicOp::noop, ColorWriteMask::all) });
 			ps_desc.rasterizer_state = RasterizerDesc(FillMode::wireframe, CullMode::none, 0, 0.0f, 0.0f, 0, false, true, false, true, false);
 			ps_desc.depth_stencil_state = DepthStencilDesc(false, false, ComparisonFunc::always, false, 0x00, 0x00, DepthStencilOpDesc(), DepthStencilOpDesc());
@@ -101,7 +101,7 @@ namespace Luna
         {
             auto cmdbuf = ctx->get_command_buffer();
             auto device = cmdbuf->get_device();
-            auto cb_align = device->get_constant_buffer_data_alignment();
+            auto cb_align = device->get_uniform_buffer_data_alignment();
             auto output_tex = ctx->get_output("scene_texture");
             lulet(render_rtv, device->new_render_target_view(output_tex));
             // Debug wireframe pass.

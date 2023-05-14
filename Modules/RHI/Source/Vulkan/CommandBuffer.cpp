@@ -14,11 +14,79 @@
 #include "DescriptorSet.hpp"
 #include "QueryHeap.hpp"
 #include "Fence.hpp"
-
+#include "RenderTargetView.hpp"
+#include "DepthStencilView.hpp"
+#include "ResolveTargetView.hpp"
 namespace Luna
 {
 	namespace RHI
 	{
+		RV QueueTransferTracker::init(u32 queue_family_index)
+		{
+			lutry
+			{
+				VkCommandPoolCreateInfo pool_info{};
+				pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+				pool_info.flags = 0;
+				pool_info.queueFamilyIndex = queue_family_index;
+				luexp(encode_vk_result(m_funcs->vkCreateCommandPool(m_device, &pool_info, nullptr, &m_command_pool)));
+				VkCommandBufferAllocateInfo alloc_info{};
+				alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+				alloc_info.commandPool = m_command_pool;
+				alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+				alloc_info.commandBufferCount = 1;
+				luexp(encode_vk_result(m_funcs->vkAllocateCommandBuffers(m_device, &alloc_info, &m_command_buffer)));
+				VkSemaphoreCreateInfo semaphore_info{};
+				semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+				luexp(encode_vk_result(m_funcs->vkCreateSemaphore(m_device, &semaphore_info, nullptr, &m_semaphore)));
+			}
+			lucatchret;
+			return ok;
+		}
+		R<VkSemaphore> QueueTransferTracker::submit_barrier(VkQueue queue, IMutex* queue_mtx, Span<const VkBufferMemoryBarrier> buffer_barriers, Span<const VkImageMemoryBarrier> texture_barriers)
+		{
+			lutry
+			{
+				luexp(encode_vk_result(m_funcs->vkResetCommandPool(m_device, m_command_pool, 0)));
+				VkCommandBufferBeginInfo begin_info{};
+				begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+				begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+				begin_info.pInheritanceInfo = nullptr;
+				luexp(encode_vk_result(m_funcs->vkBeginCommandBuffer(m_command_buffer, &begin_info)));
+				m_funcs->vkCmdPipelineBarrier(m_command_buffer, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0, 0, nullptr,
+					(u32)buffer_barriers.size(), buffer_barriers.data(), (u32)texture_barriers.size(), texture_barriers.data());
+				luexp(encode_vk_result(m_funcs->vkEndCommandBuffer(m_command_buffer)));
+				VkSubmitInfo submit{};
+				submit.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+				submit.waitSemaphoreCount = 0;
+				submit.pWaitSemaphores = nullptr;
+				submit.pWaitDstStageMask = nullptr;
+				submit.signalSemaphoreCount = 1;
+				submit.pSignalSemaphores = &m_semaphore;
+				MutexGuard guard(queue_mtx);
+				luexp(encode_vk_result(m_funcs->vkQueueSubmit(queue, 1, &submit, VK_NULL_HANDLE)));
+			}
+			lucatchret;
+			return m_semaphore;
+		}
+		QueueTransferTracker::~QueueTransferTracker()
+		{
+			if (m_command_buffer != VK_NULL_HANDLE)
+			{
+				m_funcs->vkFreeCommandBuffers(m_device, m_command_pool, 1, &m_command_buffer);
+				m_command_buffer = VK_NULL_HANDLE;
+			}
+			if (m_command_pool != VK_NULL_HANDLE)
+			{
+				m_funcs->vkDestroyCommandPool(m_device, m_command_pool, nullptr);
+				m_command_pool = VK_NULL_HANDLE;
+			}
+			if (m_semaphore != VK_NULL_HANDLE)
+			{
+				m_funcs->vkDestroySemaphore(m_device, m_semaphore, nullptr);
+				m_semaphore = VK_NULL_HANDLE;
+			}
+		}
 		RV CommandBuffer::init(u32 command_queue_index)
 		{
 			lutry
@@ -52,6 +120,11 @@ namespace Luna
 		}
 		CommandBuffer::~CommandBuffer()
 		{
+			for (VkFramebuffer fbo : m_fbos)
+			{
+				m_device->m_funcs.vkDestroyFramebuffer(m_device->m_device, fbo, nullptr);
+			}
+			m_fbos.clear();
 			if (m_command_buffer != VK_NULL_HANDLE)
 			{
 				m_device->m_funcs.vkFreeCommandBuffers(m_device->m_device, m_command_pool, 1, &m_command_buffer);
@@ -134,6 +207,11 @@ namespace Luna
 				m_num_viewports = 0;
 				m_graphics_shader_input_layout = nullptr;
 				m_compute_shader_input_layout = nullptr;
+				for (VkFramebuffer fbo : m_fbos)
+				{
+					m_device->m_funcs.vkDestroyFramebuffer(m_device->m_device, fbo, nullptr);
+				}
+				m_fbos.clear();
 			}
 			lucatchret;
 			return ok;
@@ -142,12 +220,84 @@ namespace Luna
 		{
 			m_objs.push_back(obj);
 		}
+
+		struct FramebufferDesc
+		{
+			VkRenderPass render_pass = VK_NULL_HANDLE;
+			IRenderTargetView* color_attachments[8] = { nullptr };
+			IResolveTargetView* resolve_attachments[8] = { nullptr };
+			IDepthStencilView* depth_stencil_attachment = nullptr;
+
+			bool operator==(const FramebufferDesc& rhs) const
+			{
+				return render_pass == rhs.render_pass &&
+					!memcpy((void*)color_attachments, (void*)rhs.color_attachments, sizeof(IRenderTargetView*) * 8) &&
+					!memcpy((void*)resolve_attachments, (void*)rhs.resolve_attachments, sizeof(IResolveTargetView*) * 8) &&
+					depth_stencil_attachment == rhs.depth_stencil_attachment;
+			}
+		};
+
+		static VkFramebuffer new_frame_buffer(Device* device, const FramebufferDesc& desc)
+		{
+			VkFramebufferCreateInfo info{};
+			info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+			info.flags = 0;
+			info.renderPass = desc.render_pass;
+			// Collect attachments.
+			VkImageView attachments[17] = { VK_NULL_HANDLE };
+			u32 num_attachments = 0;
+			u32 width = 0;
+			u32 height = 0;
+			u32 depth = 0;
+			for (usize i = 0; i < 8; ++i)
+			{
+				if (desc.color_attachments[i])
+				{
+					RenderTargetView* rtv = cast_object<RenderTargetView>(desc.color_attachments[i]->get_object());
+					attachments[num_attachments] = rtv->m_view;
+					++num_attachments;
+					auto desc = rtv->m_resource->get_desc();
+					width = (u32)desc.width;
+					height = desc.height;
+					depth = desc.depth;
+				}
+				else break;
+			}
+			for (usize i = 0; i < 8; ++i)
+			{
+				if (desc.resolve_attachments[i])
+				{
+					ResolveTargetView* rsv = cast_object<ResolveTargetView>(desc.resolve_attachments[i]->get_object());
+					attachments[num_attachments] = rsv->m_view;
+					++num_attachments;
+				}
+			}
+			if (desc.depth_stencil_attachment)
+			{
+				DepthStencilView* depth_stencil_attachment = cast_object<DepthStencilView>(desc.depth_stencil_attachment->get_object());
+				attachments[num_attachments] = depth_stencil_attachment->m_view;
+				++num_attachments;
+				auto desc = depth_stencil_attachment->m_resource->get_desc();
+				width = (u32)desc.width;
+				height = desc.height;
+				depth = desc.depth;
+			}
+			info.pAttachments = attachments;
+			info.attachmentCount = num_attachments;
+			info.width = width;
+			info.height = height;
+			info.layers = depth;
+			VkFramebuffer fbo = VK_NULL_HANDLE;
+			device->m_funcs.vkCreateFramebuffer(device->m_device, &info, nullptr, &fbo);
+			return fbo;
+		}
+
 		void CommandBuffer::begin_render_pass(const RenderPassDesc& desc)
 		{
 			lutry
 			{
 				RenderPassKey rp;
-				FrameBufferKey fb;
+				FramebufferDesc fb;
 				u32 width = 0;
 				u32 height = 0;
 				u32 num_render_targets = 0;
@@ -195,9 +345,10 @@ namespace Luna
 				rp.sample_count = desc.sample_count;
 				LockGuard guard(m_device->m_render_pass_pool_lock);
 				lulet(render_pass, m_device->m_render_pass_pool.get_render_pass(rp));
-				fb.render_pass = render_pass;
-				lulet(fbo, m_device->m_render_pass_pool.get_frame_buffer(fb));
 				guard.unlock();
+				fb.render_pass = render_pass;
+				VkFramebuffer fbo = new_frame_buffer(m_device, fb);
+				m_fbos.push_back(fbo);
 
 				VkRenderPassBeginInfo begin_info{};
 				begin_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -269,23 +420,23 @@ namespace Luna
 		{
 			m_graphics_shader_input_layout = shader_input_layout;
 		}
-		void CommandBuffer::set_vertex_buffers(u32 start_slot, u32 num_slots, IBuffer** buffers, const usize* offsets)
+		void CommandBuffer::set_vertex_buffers(u32 start_slot, Span<const VertexBufferView> views)
 		{
-			VkBuffer* bufs = (VkBuffer*)alloca(sizeof(VkBuffer) * num_slots);
-			VkDeviceSize* vk_offsets = (VkDeviceSize*)alloca(sizeof(VkDeviceSize) * num_slots);
-			for (u32 i = 0; i < num_slots; ++i)
+			VkBuffer* bufs = (VkBuffer*)alloca(sizeof(VkBuffer) * views.size());
+			VkDeviceSize* vk_offsets = (VkDeviceSize*)alloca(sizeof(VkDeviceSize) * views.size());
+			for (u32 i = 0; i < views.size(); ++i)
 			{
-				BufferResource* res = cast_object<BufferResource>(buffers[i]->get_object());
+				BufferResource* res = cast_object<BufferResource>(views[i].buffer->get_object());
 				bufs[i] = res->m_buffer;
-				vk_offsets[i] = offsets[i];
+				vk_offsets[i] = views[i].offset;
 			}
-			m_device->m_funcs.vkCmdBindVertexBuffers(m_command_buffer, start_slot, num_slots, bufs, vk_offsets);
+			m_device->m_funcs.vkCmdBindVertexBuffers(m_command_buffer, start_slot, (u32)views.size(), bufs, vk_offsets);
 		}
-		void CommandBuffer::set_index_buffer(IBuffer* buffer, usize offset_in_bytes, Format index_format)
+		void CommandBuffer::set_index_buffer(const IndexBufferView& view)
 		{
-			BufferResource* res = cast_object<BufferResource>(buffer->get_object());
+			BufferResource* res = cast_object<BufferResource>(view.buffer->get_object());
 			VkIndexType index_type;
-			switch (index_format)
+			switch (view.format)
 			{
 			case Format::r16_uint:
 			case Format::r16_sint:
@@ -294,7 +445,7 @@ namespace Luna
 			case Format::r32_sint:
 				index_type = VK_INDEX_TYPE_UINT32; break;
 			}
-			m_device->m_funcs.vkCmdBindIndexBuffer(m_command_buffer, res->m_buffer, offset_in_bytes, index_type);
+			m_device->m_funcs.vkCmdBindIndexBuffer(m_command_buffer, res->m_buffer, view.offset, index_type);
 		}
 		void CommandBuffer::set_graphics_descriptor_sets(u32 start_index, Span<IDescriptorSet*> descriptor_sets)
 		{
@@ -304,7 +455,7 @@ namespace Luna
 			VkDescriptorSet* sets = (VkDescriptorSet*)alloca(sizeof(VkDescriptorSet) * descriptor_sets.size());
 			for (u32 i = 0; i < descriptor_sets.size(); ++i)
 			{
-				auto s = (DescriptorSet*)descriptor_sets[i]->get_object();
+				auto s = (DescriptorSet*)(descriptor_sets[i]->get_object());
 				sets[i] = s->m_desc_set;
 			}
 			m_device->m_funcs.vkCmdBindDescriptorSets(m_command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, layout, 
@@ -355,7 +506,7 @@ namespace Luna
 				d.offset.x = 0;
 				d.offset.y = 0;
 			}
-			for (usize i = 0; i < m_num_viewports; ++i)
+			for (usize i = 0; i < rects.size(); ++i)
 			{
 				auto& d = r[i];
 				auto& s = rects[i];

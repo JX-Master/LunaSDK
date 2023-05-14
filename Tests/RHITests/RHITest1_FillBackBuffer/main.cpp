@@ -32,6 +32,7 @@ void draw()
 		{
 			{get_back_buffer(), TEXTURE_BARRIER_ALL_SUBRESOURCES, TextureStateFlag::automatic, TextureStateFlag::color_attachment_write, ResourceBarrierFlag::discard_content}
 		});
+	cb->attach_device_object(rtv);
 	RenderPassDesc render_pass;
 	render_pass.color_attachments[0] = rtv;
 	render_pass.color_load_ops[0] = LoadOp::dont_care;

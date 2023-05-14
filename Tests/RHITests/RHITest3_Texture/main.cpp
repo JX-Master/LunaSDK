@@ -20,15 +20,14 @@ using namespace Luna;
 using namespace Luna::RHI;
 using namespace Luna::RHITestBed;
 
-Ref<RHI::IRenderTargetView> rtv;
 Ref<RHI::IDescriptorSetLayout> desc_set_layout;
 Ref<RHI::IShaderInputLayout> shader_input_layout;
 Ref<RHI::IDescriptorSet> desc_set;
 Ref<RHI::IPipelineState> pso;
-Ref<RHI::IResource> tex;
+Ref<RHI::ITexture> tex;
 
-Ref<RHI::IResource> vb;
-Ref<RHI::IResource> ib;
+Ref<RHI::IBuffer> vb;
+Ref<RHI::IBuffer> ib;
 
 struct VertexData
 {
@@ -40,31 +39,34 @@ RV start()
 {
 	lutry
 	{
-		luset(rtv, get_main_device()->new_render_target_view(get_back_buffer()));
-
+		auto device = get_main_device();
 		// create pso
 		{
 			const char vs_shader_code[] =
-				"\
-						struct VS_INPUT\
-						{\
-						float2 pos : POSITION;\
-						float2 uv : TEXCOORD0;\
-						};\
-						\
-						struct PS_INPUT\
-						{\
-						float4 pos : SV_POSITION;\
-						float2 uv  : TEXCOORD0;\
-						};\
-						\
-						PS_INPUT main(VS_INPUT input)\
-						{\
-						PS_INPUT output;\
-						output.pos = float4(input.pos.x, input.pos.y, 0.0f, 1.0f);\
-						output.uv  = input.uv;\
-						return output;\
-						}";
+				R"(
+				struct VS_INPUT
+				{
+					[[vk::location(0)]]
+					float2 pos : POSITION;
+					[[vk::location(1)]]
+					float2 uv : TEXCOORD0;
+				};
+						
+				struct PS_INPUT
+				{
+					[[vk::location(0)]]
+					float4 pos : SV_POSITION;
+					[[vk::location(1)]]
+					float2 uv  : TEXCOORD0;
+				};
+						
+				PS_INPUT main(VS_INPUT input)
+				{
+					PS_INPUT output;
+					output.pos = float4(input.pos.x, input.pos.y, 0.0f, 1.0f);
+					output.uv  = input.uv;
+					return output;
+				})";
 
 			auto compiler = ShaderCompiler::new_compiler();
 			compiler->set_source({ vs_shader_code, sizeof(vs_shader_code) });
@@ -81,19 +83,22 @@ RV start()
 			Blob vs(vs_data.data(), vs_data.size());
 
 			const char ps_shader_code[] =
-				"struct PS_INPUT\
-							{\
-							float4 pos : SV_POSITION;\
-							float2 uv  : TEXCOORD0;\
-							};\
-							SamplerState sampler0 : register(s1);\
-							Texture2D texture0 : register(t0);\
-							\
-							float4 main(PS_INPUT input) : SV_Target\
-							{\
-							float4 out_col = clamp(texture0.Sample(sampler0, input.uv), float4(0.0f, 0.0f, 0.0f, 0.0f), float4(1.0f, 1.0f, 1.0f, 1.0f)); \
-							return out_col; \
-							}";
+				R"(struct PS_INPUT
+				{
+					[[vk::location(0)]]
+					float4 pos : SV_POSITION;
+					[[vk::location(1)]]
+					float2 uv  : TEXCOORD0;
+				};
+				SamplerState sampler0 : register(s1);
+				Texture2D texture0 : register(t0);
+				
+				[[vk::location(0)]]
+				float4 main(PS_INPUT input) : SV_Target
+				{
+					float4 out_col = clamp(texture0.Sample(sampler0, input.uv), float4(0.0f, 0.0f, 0.0f, 0.0f), float4(1.0f, 1.0f, 1.0f, 1.0f)); 
+					return out_col; 
+				})";
 
 			compiler->reset();
 			compiler->set_source({ ps_shader_code, sizeof(ps_shader_code) });
@@ -109,57 +114,82 @@ RV start()
 			auto ps_data = compiler->get_output();
 			Blob ps(ps_data.data(), ps_data.size());
 
-			luset(desc_set_layout, get_main_device()->new_descriptor_set_layout(DescriptorSetLayoutDesc({
-				DescriptorSetLayoutBinding(DescriptorType::srv, 0, 1, ShaderVisibility::pixel),
-				DescriptorSetLayoutBinding(DescriptorType::sampler, 1, 1, ShaderVisibility::pixel)
+			luset(desc_set_layout, device->new_descriptor_set_layout(DescriptorSetLayoutDesc({
+				DescriptorSetLayoutBinding(DescriptorType::sampled_texture_view, 0, 1, ShaderVisibilityFlag::pixel),
+				DescriptorSetLayoutBinding(DescriptorType::sampler, 1, 1, ShaderVisibilityFlag::pixel)
 				})));
 
-			luset(shader_input_layout, get_main_device()->new_shader_input_layout(ShaderInputLayoutDesc(
-				{ desc_set_layout },
-				ShaderInputLayoutFlag::allow_input_assembler_input_layout |
-				ShaderInputLayoutFlag::deny_domain_shader_access | ShaderInputLayoutFlag::deny_geometry_shader_access |
-				ShaderInputLayoutFlag::deny_hull_shader_access)));
+			IDescriptorSetLayout* ds_layout = desc_set_layout;
+
+			luset(shader_input_layout, device->new_shader_input_layout(ShaderInputLayoutDesc(
+				{ &ds_layout, 1 }, ShaderInputLayoutFlag::allow_input_assembler_input_layout)));
 
 			GraphicsPipelineStateDesc desc;
 			desc.input_layout = InputLayoutDesc({
-				InputElementDesc("POSITION", 0, Format::rg32_float),
-				InputElementDesc("TEXCOORD", 0, Format::rg32_float) });
+				{
+					InputInstanceDesc(0, sizeof(VertexData), InputRate::per_vertex)
+				},
+				{
+					InputPropertyDesc("POSITION", 0, 0, 0, 0, Format::rg32_float),
+					InputPropertyDesc("TEXCOORD", 0, 0, 1, 8, Format::rg32_float)
+				}
+			});
 			desc.vs = { vs.data(), vs.size() };
 			desc.ps = { ps.data(), ps.size() };
 			desc.shader_input_layout = shader_input_layout;
 			desc.depth_stencil_state = DepthStencilDesc(false, false);
 			desc.num_render_targets = 1;
-			desc.rtv_formats[0] = Format::rgba8_unorm;
+			desc.rtv_formats[0] = Format::bgra8_unorm;
 
-			luset(pso, get_main_device()->new_graphics_pipeline_state(desc));
+			luset(pso, device->new_graphics_pipeline_state(desc));
 
-			luset(vb, get_main_device()->new_resource(ResourceDesc::buffer(ResourceHeapType::upload, ResourceUsageFlag::vertex_buffer, sizeof(VertexData) * 4)));
+			luset(vb, device->new_buffer(BufferDesc(ResourceHeapType::upload, BufferUsageFlag::vertex_buffer, sizeof(VertexData) * 4)));
 			u32 incides[] = { 0, 1, 2, 1, 3, 2 };
-			luset(ib, get_main_device()->new_resource(ResourceDesc::buffer(ResourceHeapType::upload, ResourceUsageFlag::index_buffer, sizeof(incides))));
-			void* mapped_data;
-			luexp(ib->map_subresource(0, 0, 0, &mapped_data));
+			luset(ib, device->new_buffer(BufferDesc(ResourceHeapType::upload, BufferUsageFlag::index_buffer, sizeof(incides))));
+			lulet(mapped_data, ib->map(0, 0));
 			memcpy(mapped_data, incides, sizeof(incides));
-			ib->unmap_subresource(0, 0, sizeof(incides));
+			ib->unmap(0, sizeof(incides));
 
 			// prepare texture - 128x128 with only 1 mip level.
-			luset(tex, get_main_device()->new_resource(ResourceDesc::tex2d(ResourceHeapType::local, Format::rgba8_unorm, ResourceUsageFlag::shader_resource,
+			luset(tex, device->new_texture(TextureDesc::tex2d(ResourceHeapType::local, Format::rgba8_unorm, 
+				TextureUsageFlag::sampled_texture | TextureUsageFlag::copy_dest,
 				128, 128, 1, 1)));
 
-			BoxU box;
-			box.offset_x = 0;
-			box.offset_y = 0;
-			box.offset_z = 0;
-			box.width = 128;
-			box.height = 128;
-			box.depth = 1;
-			luexp(get_main_device()->copy_resource({ ResourceCopyDesc::as_write_texture(tex, test_image_data_v, 128 * 4, 128 * 128 * 4, 0, box) }));
+			lulet(tex_staging, device->new_buffer(BufferDesc(ResourceHeapType::upload, BufferUsageFlag::copy_source, sizeof(test_image_data_v))));
 
-			luset(desc_set, get_main_device()->new_descriptor_set(DescriptorSetDesc(desc_set_layout)));
+			lulet(tex_staging_data, tex_staging->map(0, 0));
+			memcpy(tex_staging_data, test_image_data_v, sizeof(test_image_data_v));
+			tex_staging->unmap(0, sizeof(test_image_data_v));
 
-			desc_set->set_srv(0, tex, nullptr);
-			
-			desc_set->set_sampler(1, SamplerDesc(Filter::min_mag_mip_linear, TextureAddressMode::clamp,
-				TextureAddressMode::clamp, TextureAddressMode::clamp, 0.0f, 1, ComparisonFunc::always, { 0.0f, 0.0f, 0.0f, 1.0f }, 0.0f, 0.0f));
+			u32 copy_queue_index = get_command_queue_index();
+			{
+				// Prefer a dedicated copy queue if present.
+				u32 num_queues = device->get_num_command_queues();
+				for (u32 i = 0; i < num_queues; ++i)
+				{
+					auto desc = device->get_command_queue_desc(i);
+					if (desc.type == CommandQueueType::copy)
+					{
+						copy_queue_index = i;
+						break;
+					}
+				}
+			}
+			lulet(upload_cmdbuf, device->new_command_buffer(copy_queue_index));
+			upload_cmdbuf->resource_barrier({
+				{ tex_staging, BufferStateFlag::automatic, BufferStateFlag::copy_source, ResourceBarrierFlag::none}}, 
+				{{ tex, TEXTURE_BARRIER_ALL_SUBRESOURCES, TextureStateFlag::automatic, TextureStateFlag::copy_dest, ResourceBarrierFlag::discard_content }});
+			upload_cmdbuf->copy_buffer_to_texture(tex, SubresourceIndex(0, 0), 0, 0, 0, tex_staging, 0, 128 * 4, 128 * 128 * 4, 128, 128, 1);
+			luexp(upload_cmdbuf->submit({}, {}, true));
+			upload_cmdbuf->wait();
+			luset(desc_set, device->new_descriptor_set(DescriptorSetDesc(desc_set_layout)));
+
+			desc_set->update_descriptors(
+				{
+					DescriptorSetWrite::sampled_texture_view(0, TextureViewDesc::as_tex2d(tex)),
+					DescriptorSetWrite::sampler(1, SamplerDesc(Filter::min_mag_mip_linear, TextureAddressMode::clamp,
+							TextureAddressMode::clamp, TextureAddressMode::clamp))
+				}, {});
 		}
 	}
 	lucatchret;
@@ -177,49 +207,64 @@ void draw()
 	auto w = sz.x;
 	auto h = sz.y;
 
-	VertexData data[4]{
-		{ { -128.0f / w,  128.0f / h },{ 0.0f, 0.0f } },
-		{ {  128.0f / w,  128.0f / h },{ 1.0f, 0.0f } },
-		{ { -128.0f / w, -128.0f / h },{ 0.0f, 1.0f } },
-		{ {  128.0f / w, -128.0f / h },{ 1.0f, 1.0f } },
+	VertexData data[4];
+	if (get_current_platform_api_type() == APIType::vulkan)
+	{
+		data[0] = { { -128.0f / w, -128.0f / h },{ 0.0f, 0.0f } };
+		data[1] = { {  128.0f / w, -128.0f / h },{ 1.0f, 0.0f } };
+		data[2] = { { -128.0f / w,  128.0f / h },{ 0.0f, 1.0f } };
+		data[3] = { {  128.0f / w,  128.0f / h },{ 1.0f, 1.0f } };
+	}
+	else
+	{
+		data[0] = { { -128.0f / w,  128.0f / h },{ 0.0f, 0.0f } };
+		data[1] = { {  128.0f / w,  128.0f / h },{ 1.0f, 0.0f } };
+		data[2] = { { -128.0f / w, -128.0f / h },{ 0.0f, 1.0f } };
+		data[3] = { {  128.0f / w, -128.0f / h },{ 1.0f, 1.0f } };
 	};
 
-	void* mapped;
-	lupanic_if_failed(vb->map_subresource(0, 0, 0, &mapped));
+	void* mapped = vb->map(0, 0).get();
 	memcpy(mapped, data, sizeof(data));
-	vb->unmap_subresource(0, 0, sizeof(data));
+	vb->unmap(0, sizeof(data));
 
 	auto cb = get_command_buffer();
 
-	cb->resource_barrier(ResourceBarrierDesc::as_transition(get_back_buffer(), ResourceStateFlag::render_target, 0));
+	cb->resource_barrier({},
+		{
+			{tex, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::shader_read_ps, ResourceBarrierFlag::none},
+			{get_back_buffer(), SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::color_attachment_write, ResourceBarrierFlag::discard_content}
+		});
+	auto rtv = get_main_device()->new_render_target_view(get_back_buffer()).get();
 	RenderPassDesc desc;
 	desc.color_attachments[0] = rtv;
 	desc.color_load_ops[0] = LoadOp::clear;
 	desc.color_clear_values[0] = Color::black();
+	desc.color_store_ops[0] = StoreOp::store;
 	cb->begin_render_pass(desc);
-	cb->set_pipeline_state(pso);
+	cb->set_pipeline_state(PipelineStateBindPoint::graphics, pso);
 	cb->set_graphics_shader_input_layout(shader_input_layout);
-	cb->set_graphics_descriptor_set(0, desc_set);
-	cb->set_primitive_topology(PrimitiveTopology::triangle_list);
-	cb->set_vertex_buffers(0, { &VertexBufferViewDesc(vb, 0, sizeof(VertexData) * 4, sizeof(VertexData)), 1 });
-	cb->set_index_buffer({ib, 0, sizeof(u32) * 6, Format::r32_uint});
+	IDescriptorSet* ds = desc_set.get();
+	cb->set_graphics_descriptor_sets(0, { &ds, 1 });
+	cb->set_vertex_buffers(0, {VertexBufferView(vb, 0, sizeof(VertexData) * 4, sizeof(VertexData))});
+	cb->set_index_buffer({ ib, 0, 24, Format::r32_uint });
 	cb->set_scissor_rect(RectI(0, 0, (i32)w, (i32)h));
 	cb->set_viewport(Viewport(0.0f, 0.0f, (f32)w, (f32)h, 0.0f, 1.0f));
 	cb->draw_indexed(6, 0, 0);
 	cb->end_render_pass();
-
-	lupanic_if_failed(cb->submit());
+	cb->resource_barrier({},
+		{
+			{get_back_buffer(), SubresourceIndex(0, 0), TextureStateFlag::color_attachment_write, TextureStateFlag::present, ResourceBarrierFlag::none}
+		});
+	lupanic_if_failed(cb->submit({}, {}, true));
 	cb->wait();
 }
 
 void resize(u32 width, u32 height)
 {
-	rtv = get_main_device()->new_render_target_view(get_back_buffer()).get();
 }
 
 void cleanup()
 {
-	rtv.reset();
 	desc_set_layout.reset();
 	shader_input_layout.reset();
 	desc_set.reset();

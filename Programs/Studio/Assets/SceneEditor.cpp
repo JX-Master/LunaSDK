@@ -98,7 +98,7 @@ namespace Luna
 		{
 			using namespace RHI;
 			auto device = get_main_device();
-			u32 cb_align = device->get_constant_buffer_data_alignment();
+			u32 cb_align = device->get_uniform_buffer_data_alignment();
 			luset(m_renderer.command_buffer, g_env->graphics_queue->new_command_buffer());
 			SceneRendererSettings settings;
 			settings.frame_profiling = true;
@@ -928,7 +928,7 @@ namespace Luna
 
 				GraphicsPipelineStateDesc ps_desc;
 				ps_desc.primitive_topology_type = PrimitiveTopologyType::line;
-				ps_desc.blend_state = BlendDesc(false, false, { RenderTargetBlendDesc(true, false, BlendFactor::src_alpha,
+				ps_desc.blend_state = BlendDesc(false, false, { AttachmentBlendDesc(true, false, BlendFactor::src_alpha,
 					BlendFactor::inv_src_alpha, BlendOp::add, BlendFactor::inv_src_alpha, BlendFactor::zero, BlendOp::add, LogicOp::noop, ColorWriteMask::all) });
 				ps_desc.rasterizer_state = RasterizerDesc(FillMode::wireframe, CullMode::none, 0, 0.0f, 0.0f, 1, false, true, false, true, false);
 				ps_desc.depth_stencil_state = DepthStencilDesc(false, false, ComparisonFunc::always, false, 0x00, 0x00, DepthStencilOpDesc(), DepthStencilOpDesc());

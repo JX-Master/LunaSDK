@@ -20,7 +20,7 @@ namespace Luna
 			{
 				if (m_buffer_resource_capacity < m_commands.size())
 				{
-					u64 shape_buffer_size = max<u64>(m_commands.size() * sizeof(f32), RHI::get_main_device()->get_constant_buffer_data_alignment());
+					u64 shape_buffer_size = max<u64>(m_commands.size() * sizeof(f32), RHI::get_main_device()->get_uniform_buffer_data_alignment());
 					luset(m_buffer_resource, RHI::get_main_device()->new_resource(RHI::ResourceDesc::buffer(RHI::ResourceHeapType::upload,
 						RHI::ResourceUsageFlag::shader_resource, shape_buffer_size)));
 					m_buffer_resource_capacity = m_commands.size();

@@ -84,7 +84,7 @@ namespace Luna
 					desc.shader_input_layout = g_fill_slayout;
 					desc.vs = { g_fill_shader_vs.data(), g_fill_shader_vs.size() };
 					desc.ps = { g_fill_shader_ps.data(), g_fill_shader_ps.size() };
-					desc.blend_state = BlendDesc(false, false, { RenderTargetBlendDesc(true, false, BlendFactor::src_alpha, BlendFactor::inv_src_alpha, BlendOp::add, BlendFactor::zero,
+					desc.blend_state = BlendDesc(false, false, { AttachmentBlendDesc(true, false, BlendFactor::src_alpha, BlendFactor::inv_src_alpha, BlendOp::add, BlendFactor::zero,
 							BlendFactor::one, BlendOp::add, LogicOp::noop, ColorWriteMask::all) });
 					desc.rasterizer_state = RasterizerDesc(FillMode::solid, CullMode::back, 0, 0.0f, 0.0f, 0, false, false, false, false, false);
 					desc.num_render_targets = 1;
@@ -150,7 +150,7 @@ namespace Luna
 			lutsassert();
 			lutry
 			{
-				u32 cb_element_size = max<u32>((u32)get_main_device()->get_constant_buffer_data_alignment(), (u32)sizeof(Float4x4U));
+				u32 cb_element_size = max<u32>((u32)get_main_device()->get_uniform_buffer_data_alignment(), (u32)sizeof(Float4x4U));
 				u64 cb_size = cb_element_size * num_draw_calls;
 				// Build constant buffer.
 				if (num_draw_calls > m_cbs_capacity)

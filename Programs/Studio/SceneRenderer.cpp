@@ -40,7 +40,7 @@ namespace Luna
         lutry
         { 
             m_settings = settings;
-            u32 cb_align = m_device->get_constant_buffer_data_alignment();
+            u32 cb_align = m_device->get_uniform_buffer_data_alignment();
             luset(m_camera_cb, m_device->new_resource(ResourceDesc::buffer(ResourceHeapType::upload, ResourceUsageFlag::constant_buffer, align_upper(sizeof(CameraCB), cb_align))));
 			
 			// Build render graph.
