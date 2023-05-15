@@ -85,5 +85,13 @@ The following SDKs are not directly used Luna SDK, but part of their design and 
 1. [jsondiffpatch.net](https://github.com/wbish/jsondiffpatch.net) when developing the variant differential library (MIT License).
 2. [DirectXMath](https://github.com/microsoft/DirectXMath) when developing the math library (MIT License).
 
+## Alternatives
+
+Here are some alternative real-time rendering engines/frameworks that have similar design goals to Luna SDK.
+
+* [Sakura Engine](https://github.com/SakuraEngine/SakuraEngine) developed by  SaeruHikari and other contributors (MIT License).
+* [Horizon Engine](https://github.com/harukumo/HorizonEngine) developed by harukumo.
+* [Piccolo Engine](https://github.com/BoomingTech/Piccolo) developed by Booming Tech and GAMES104 community contributors (MIT License).
+
 ## License
 Luna SDK is licensed under the zlib/libpng license, see [LICENSE.txt](./LICENSE.txt) for more information.
