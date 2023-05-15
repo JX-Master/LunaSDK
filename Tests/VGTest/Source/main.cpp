@@ -95,19 +95,22 @@ void init()
 
 	// Window.
 	VG::ShapeBuilder builder;
-	builder.add_rectangle_filled(100, 100, 500, 800);
-	g_shape_atlas->add_shape({ builder.points.data(), builder.points.size() }, nullptr);
+	builder.move_to(10.0f, 50.0f);
+	builder.line_to(40.0f, 50.0f);
+	builder.circle_to(10.0f, 90.0f, 0.0f);
+	builder.line_to(50.0f, 10.0f);
+	builder.circle_to(10.0f, 0.0f, -90.0f);
+	builder.line_to(10.0f, 0.0f);
+	builder.circle_to(10.0f, -90.0f, -180.0f);
+	builder.line_to(0.0f, 40.0f);
+	builder.circle_to(10.0f, 180.0f, 90.0f);
+
+	g_shape_atlas = VG::new_shape_atlas();
+	g_shape_atlas->add_shape({ builder.points.data(), builder.points.size() }, &RectF(0.0f, 0.0f, 50.0f, 50.0f));
 
 	builder.points.clear();
-	builder.add_rectangle_filled(100, 100, 400, 650);
-	g_shape_atlas->add_shape({ builder.points.data(), builder.points.size() }, nullptr);
-
-	builder.points.clear();
-	builder.add_rectangle_bordered(100, 100, 500, 800, 2);
-	g_shape_atlas->add_shape({ builder.points.data(), builder.points.size() }, nullptr);
-
-	builder.points.clear();
-	builder.add_line(0, 0, 400, 0, 2);
+	builder.move_to(10.0f, 20.0f);
+	builder.circle_to(10.0f, 90.0f, -270.0f);
 	g_shape_atlas->add_shape({ builder.points.data(), builder.points.size() }, nullptr);
 }
 
@@ -126,15 +129,13 @@ void run()
 		usize offset, size;
 		RectF rect;
 		
-		usize num_shapes = g_shape_atlas->count_shapes();
-		for(usize i = 0; i < num_shapes; ++i)
-		{
-			g_shape_atlas->get_shape(i, &offset, &size, &rect);
-			g_shape_draw_list->draw_shape(offset, size, 
-				Float2U(rect.offset_x, rect.offset_y), Float2U(rect.offset_x + rect.width, rect.offset_y + rect.height), 
-				Float2U(rect.offset_x, rect.offset_y), Float2U(rect.offset_x + rect.width, rect.offset_y + rect.height));
-			
-		}
+		g_shape_atlas->get_shape(0, &offset, &size, &rect);
+		g_shape_draw_list->draw_shape(offset, size, Float2(100.0f, 100.0f), Float2U(500.0f, 500.0f), Float2U(rect.offset_x, rect.offset_y),
+			Float2U(rect.offset_x + rect.width, rect.offset_y + rect.height));
+
+		g_shape_atlas->get_shape(1, &offset, &size, &rect);
+		g_shape_draw_list->draw_shape(offset, size, Float2(550.0f, 100.0f), Float2U(560.0f, 110.0f), Float2U(rect.offset_x, rect.offset_y),
+			Float2U(rect.offset_x + rect.width, rect.offset_y + rect.height));
 
 		lupanic_if_failed(g_shape_draw_list->close());
 
@@ -149,6 +150,7 @@ void run()
 
 		auto dcs = g_shape_draw_list->get_draw_calls();
 
+		g_shape_renderer->set_render_target(g_swap_chain->get_current_back_buffer().get());
 		g_shape_renderer->render(g_command_buffer, g_shape_atlas->get_shape_resource().get(), g_shape_atlas->get_shape_resource_size(),
 			g_shape_draw_list->get_vertex_buffer(), g_shape_draw_list->get_vertex_buffer_size(),
 			g_shape_draw_list->get_index_buffer(), g_shape_draw_list->get_index_buffer_size(),
