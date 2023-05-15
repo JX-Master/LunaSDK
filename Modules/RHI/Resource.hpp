@@ -235,7 +235,7 @@ namespace Luna
 			copy_dest = 0x02,
 			//! Allows this resource to be bound to a uniform buffer view.
 			uniform_buffer = 0x04,
-			//! Allows this resource to be bound to a read resource view.
+			//! Allows this resource to be bound to a read buffer view.
 			read_buffer = 0x08,
 			//! Allows this resource to be bound to a read-write buffer view.
 			read_write_buffer = 0x10,

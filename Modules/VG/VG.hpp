@@ -347,7 +347,7 @@ namespace Luna
 			virtual void get_shape(usize index, usize* data_offset, usize* data_size, RectF* bounding_rect) = 0;
 
 			//! Gets the shape buffer resource. This call flushes shape commands so that they will be uploaded to GPU before this call returns.
-			virtual R<RHI::IResource*> get_shape_resource() = 0;
+			virtual R<RHI::IBuffer*> get_shape_resource() = 0;
 
 			//! Gets the shape buffer resource size in bytes. Returns 0 if failed to create shape resource.
 			virtual usize get_shape_resource_size() = 0;
@@ -380,7 +380,7 @@ namespace Luna
 			//! The shape atlas bind to this draw call.
 			IShapeAtlas* atlas;
 			//! The texture bind to this draw call. May be `nullptr`.
-			RHI::IResource* texture;
+			RHI::ITexture* texture;
 			//! The attached sampler for this draw call.
 			RHI::SamplerDesc sampler;
 			//! The fist index to draw for this draw call.
@@ -441,10 +441,10 @@ namespace Luna
 			//! its states. It is the user and renderer's responsibility to validate the texture and its state.
 			//! 
 			//! The draw list has texture being set to `nullptr` after reset.
-			virtual void set_texture(RHI::IResource* tex) = 0;
+			virtual void set_texture(RHI::ITexture* tex) = 0;
 
 			//! Gets the currently set texture, returns `nullptr` if no texture is set.
-			virtual RHI::IResource* get_texture() = 0;
+			virtual RHI::ITexture* get_texture() = 0;
 
 			//! Sets the sampler state to be used when sampling bound textures.
 			//! Specify `nullptr` to reset the sampler state to initial settings.
@@ -498,11 +498,11 @@ namespace Luna
 			//! Finishes the shape recording and generates draw calls that can be passed to RHI.
 			virtual RV close() = 0;
 
-			virtual RHI::IResource* get_vertex_buffer() = 0;
+			virtual RHI::IBuffer* get_vertex_buffer() = 0;
 
 			virtual u32 get_vertex_buffer_size() = 0;
 
-			virtual RHI::IResource* get_index_buffer() = 0;
+			virtual RHI::IBuffer* get_index_buffer() = 0;
 
 			virtual u32 get_index_buffer_size() = 0;
 
@@ -651,21 +651,21 @@ namespace Luna
 
 			virtual void reset() = 0;
 
-			virtual RV set_render_target(RHI::IResource* render_target) = 0;
+			virtual RV set_render_target(RHI::ITexture* render_target) = 0;
 
 			virtual RV render(
 				RHI::ICommandBuffer* cmdbuf,
-				RHI::IResource* shape_buffer,
+				RHI::IBuffer* shape_buffer,
 				u32 num_points,
-				RHI::IResource* vertex_buffer,
+				RHI::IBuffer* vertex_buffer,
 				u32 num_vertices,
-				RHI::IResource* index_buffer,
+				RHI::IBuffer* index_buffer,
 				u32 num_indices,
 				const ShapeDrawCall* draw_calls,
 				u32 num_draw_calls
 			) = 0;
 		};
 
-		LUNA_VG_API R<Ref<IShapeRenderer>> new_fill_shape_renderer(RHI::IResource* render_target);
+		LUNA_VG_API R<Ref<IShapeRenderer>> new_fill_shape_renderer(RHI::ITexture* render_target);
 	}
 }

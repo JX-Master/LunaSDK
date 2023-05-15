@@ -29,37 +29,43 @@ namespace Luna
 			luiimpl();
 			lutsassert_lock();
 
-			Ref<RHI::IResource> m_render_target;
+			Ref<RHI::ITexture> m_render_target;
 			Ref<RHI::IRenderTargetView> m_rtv;
 			u32 m_screen_width;
 			u32 m_screen_height;
 
+			Ref<RHI::IPipelineState> m_fill_pso;
+			RHI::Format m_rt_format;
+
 			Vector<Ref<RHI::IDescriptorSet>> m_desc_sets;
-			Ref<RHI::IResource> m_cbs_resource;
+			Ref<RHI::IBuffer> m_cbs_resource;
 			usize m_cbs_capacity;
 
 			FillShapeRenderer() :
 				m_screen_width(0),
 				m_screen_height(0),
-				m_cbs_capacity(0) {}
+				m_cbs_capacity(0),
+				m_rt_format(RHI::Format::unknown) {}
 
-			RV init(RHI::IResource* render_target);
+			RV create_pso(RHI::Format rt_format);
 
-			void reset();
+			RV init(RHI::ITexture* render_target);
 
-			RV set_render_target(RHI::IResource* render_target);
+			virtual void reset() override;
 
-			RV render(
+			virtual RV set_render_target(RHI::ITexture* render_target) override;
+
+			virtual RV render(
 				RHI::ICommandBuffer* cmdbuf,
-				RHI::IResource* shape_buffer,
+				RHI::IBuffer* shape_buffer,
 				u32 num_points,
-				RHI::IResource* vertex_buffer,
+				RHI::IBuffer* vertex_buffer,
 				u32 num_vertices,
-				RHI::IResource* index_buffer,
+				RHI::IBuffer* index_buffer,
 				u32 num_indices,
 				const ShapeDrawCall* draw_calls,
 				u32 num_draw_calls
-			);
+			) override;
 		};
 	}
 }

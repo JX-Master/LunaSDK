@@ -293,7 +293,7 @@ void draw()
         IDescriptorSet* ds = desc_set.get();
         cmdbuf->set_graphics_descriptor_sets(0, { &ds, 1 });
         auto sz = vb->get_desc().size;
-        cmdbuf->set_vertex_buffers(0, {VertexBufferView(vb, 0, sz, sizeof(Vertex))});
+        cmdbuf->set_vertex_buffers(0, {VertexBufferView(vb, 0, sz)});
         sz = ib->get_desc().size;
         cmdbuf->set_index_buffer({ ib, 0, 144, Format::r32_uint });
         cmdbuf->set_scissor_rect(RectI(0, 0, (i32)window_sz.x, (i32)window_sz.y));

@@ -24,8 +24,8 @@ namespace Luna
 			lustruct("VG::ShapeDrawList", "{44732F66-CE52-4493-85C3-6E0164C4EA18}");
 			luiimpl();
 			lutsassert_lock();
-			Ref<RHI::IResource> m_vertex_buffer;
-			Ref<RHI::IResource> m_index_buffer;
+			Ref<RHI::IBuffer> m_vertex_buffer;
+			Ref<RHI::IBuffer> m_index_buffer;
 			u32 m_vertex_buffer_size;
 			u32 m_index_buffer_size;
 			usize m_vertex_buffer_capacity;
@@ -36,7 +36,7 @@ namespace Luna
 
 			// Current draw state.
 			Ref<IShapeAtlas> m_atlas;
-			Ref<RHI::IResource> m_texture;
+			Ref<RHI::ITexture> m_texture;
 			RHI::SamplerDesc m_sampler;
 			Float2U m_origin;
 			f32 m_rotation;
@@ -106,7 +106,7 @@ namespace Luna
 			{
 				return m_atlas;
 			}
-			void set_texture(RHI::IResource* tex)
+			void set_texture(RHI::ITexture* tex)
 			{
 				lutsassert();
 				if (m_texture != tex)
@@ -115,7 +115,7 @@ namespace Luna
 					m_texture = tex;
 				}
 			}
-			RHI::IResource* get_texture()
+			RHI::ITexture* get_texture()
 			{
 				return m_texture;
 			}
@@ -187,7 +187,7 @@ namespace Luna
 				const Float2U& min_shapecoord, const Float2U& max_shapecoord, u32 color,
 				const Float2U& min_texcoord, const Float2U& max_texcoord);
 			RV close();
-			RHI::IResource* get_vertex_buffer()
+			RHI::IBuffer* get_vertex_buffer()
 			{
 				return m_vertex_buffer;
 			}
@@ -195,7 +195,7 @@ namespace Luna
 			{
 				return m_vertex_buffer_size;
 			}
-			RHI::IResource* get_index_buffer()
+			RHI::IBuffer* get_index_buffer()
 			{
 				return m_index_buffer;
 			}

@@ -253,15 +253,12 @@ namespace Luna
 			usize offset;
 			//! The size, in bytes, of the vertex buffer range to bind.
 			u32 size;
-			//! The stride, in bytes, between two vertex elements in the buffer.
-			u32 stride;
 
 			VertexBufferView() = default;
-			VertexBufferView(IResource* buffer, usize offset, u32 size, u32 stride) :
+			VertexBufferView(IResource* buffer, usize offset, u32 size) :
 				buffer(buffer),
 				offset(offset),
-				size(size),
-				stride(stride) {}
+				size(size) {}
 		};
 
 		struct IndexBufferView

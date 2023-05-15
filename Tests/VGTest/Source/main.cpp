@@ -20,12 +20,9 @@ namespace Luna
 {
 	Ref<Window::IWindow> g_window;
 
-	Ref<RHI::ICommandQueue> g_command_queue;
-
 	Ref<RHI::ISwapChain> g_swap_chain;
-	Ref<RHI::IResource> g_screen_tex;
 	Ref<RHI::ICommandBuffer> g_command_buffer;
-	Ref<RHI::IRenderTargetView> g_rtv;
+	u32 g_command_queue;
 
 	Ref<VG::IShapeAtlas> g_shape_atlas;
 	Ref<VG::IShapeDrawList> g_shape_draw_list;
@@ -41,21 +38,13 @@ RV recreate_window_resources()
 	{
 		auto sz = g_window->get_size();
 		{
-			f32 clear_value[] = { 0.0f, 0.0f, 0.0f, 0.0f };
-			ResourceDesc desc = ResourceDesc::tex2d(ResourceHeapType::local, Format::rgba8_unorm, ResourceUsageFlag::render_target,
-				sz.x, sz.y);
-			luset(g_screen_tex, get_main_device()->new_resource(desc, &ClearValue::as_color(Format::rgba8_unorm, clear_value)));
-			
-			luset(g_rtv, get_main_device()->new_render_target_view(g_screen_tex));
-		}
-		{
 			if (!g_swap_chain)
 			{
-				g_swap_chain = new_swap_chain(g_command_queue, g_window, SwapChainDesc({sz.x, sz.y, 2, Format::rgba8_unorm, true})).get();
+				g_swap_chain = get_main_device()->new_swap_chain(g_command_queue, g_window, SwapChainDesc({sz.x, sz.y, 2, Format::bgra8_unorm, true})).get();
 			}
 			else
 			{
-				g_swap_chain->reset({sz.x, sz.y, 2, Format::rgba8_unorm, true});
+				g_swap_chain->reset({sz.x, sz.y, 2, Format::bgra8_unorm, true});
 			}
 		}
 	}
@@ -66,7 +55,7 @@ RV recreate_window_resources()
 void on_window_resize(Window::IWindow* window, u32 width, u32 height)
 {
 	lupanic_if_failed(recreate_window_resources());
-	lupanic_if_failed(g_shape_renderer->set_render_target(g_screen_tex));
+	lupanic_if_failed(g_shape_renderer->set_render_target(g_swap_chain->get_current_back_buffer().get()));
 }
 
 void on_window_close(Window::IWindow* window)
@@ -84,12 +73,24 @@ void init()
 	g_window->get_framebuffer_resize_event() += on_window_resize;
 
 	g_shape_draw_list = VG::new_shape_draw_list();
-	g_command_queue = RHI::get_main_device()->new_command_queue(RHI::CommandQueueType::graphics).get();
-	lupanic_if_failed(recreate_window_resources());
-	g_shape_renderer = VG::new_fill_shape_renderer(g_screen_tex).get();
 
-	g_command_buffer = g_command_queue->new_command_buffer().get();
-	
+	auto dev = RHI::get_main_device();
+
+	g_command_queue = U32_MAX;
+	u32 num_queues = dev->get_num_command_queues();
+	for (u32 i = 0; i < num_queues; ++i)
+	{
+		auto desc = dev->get_command_queue_desc(i);
+		if (desc.type == RHI::CommandQueueType::graphics)
+		{
+			g_command_queue = i;
+			break;
+		}
+	}
+
+	lupanic_if_failed(recreate_window_resources());
+	g_shape_renderer = VG::new_fill_shape_renderer(g_swap_chain->get_current_back_buffer().get()).get();
+	g_command_buffer = dev->new_command_buffer(g_command_queue).get();
 	g_shape_atlas = VG::new_shape_atlas();
 
 	// Window.
@@ -108,8 +109,6 @@ void init()
 	builder.points.clear();
 	builder.add_line(0, 0, 400, 0, 2);
 	g_shape_atlas->add_shape({ builder.points.data(), builder.points.size() }, nullptr);
-
-
 }
 
 void run()
@@ -140,8 +139,10 @@ void run()
 		lupanic_if_failed(g_shape_draw_list->close());
 
 		RHI::RenderPassDesc desc;
-		desc.color_attachments[0] = g_rtv;
+		auto rtv = RHI::get_main_device()->new_render_target_view(g_swap_chain->get_current_back_buffer().get()).get();
+		desc.color_attachments[0] = rtv;
 		desc.color_load_ops[0] = RHI::LoadOp::clear;
+		desc.color_store_ops[0] = RHI::StoreOp::store;
 		desc.color_clear_values[0] = Float4U{ 0.0f };
 		g_command_buffer->begin_render_pass(desc);
 		g_command_buffer->end_render_pass();
@@ -153,11 +154,10 @@ void run()
 			g_shape_draw_list->get_index_buffer(), g_shape_draw_list->get_index_buffer_size(),
 			dcs.data(), (u32)dcs.size());
 		
-		g_command_buffer->submit();
+		g_command_buffer->submit({}, {}, true);
 		g_command_buffer->wait();
 
-		g_swap_chain->present(g_screen_tex, 0);
-		g_swap_chain->wait();
+		g_swap_chain->present();
 		g_command_buffer->reset();
 		g_shape_renderer->reset();
 		g_shape_draw_list->reset();
@@ -167,12 +167,8 @@ void shutdown()
 {
 	g_window = nullptr;
 
-	g_command_queue = nullptr;
-
 	g_swap_chain = nullptr;
-	g_screen_tex = nullptr;
 	g_command_buffer = nullptr;
-	g_rtv = nullptr;
 	g_shape_atlas = nullptr;
 	g_shape_draw_list = nullptr;
 	g_shape_renderer = nullptr;
