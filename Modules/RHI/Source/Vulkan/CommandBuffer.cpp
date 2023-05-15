@@ -472,22 +472,22 @@ namespace Luna
 			{
 				auto& d = vps[i];
 				d.width = (float)m_rt_width;
-				d.height = (float)m_rt_height;
+				d.height = (float)-m_rt_height;
 				d.minDepth = 0.0f;
 				d.maxDepth = 1.0f;
 				d.x = 0.0f;
-				d.y = 0.0f;
+				d.y = m_rt_height;
 			}
 			for (usize i = 0; i < viewports.size(); ++i)
 			{
 				auto& d = vps[i];
 				auto& s = viewports[i];
 				d.width = s.width;
-				d.height = s.height;
+				d.height = -s.height;
 				d.minDepth = s.min_depth;
 				d.maxDepth = s.max_depth;
-				d.x = s.top_left_x;
-				d.y = s.top_left_y;
+				d.x = s.bottom_left_x;
+				d.y = m_rt_height - s.bottom_left_y;
 			}
 			m_device->m_funcs.vkCmdSetViewport(m_command_buffer, 0, m_num_viewports, vps);
 		}

@@ -74,12 +74,12 @@ namespace Luna
 				{
 					GraphicsPipelineStateDesc desc;
 					desc.input_layout = InputLayoutDesc({
-							InputElementDesc("POSITION", 0, Format::rg32_float),
-							InputElementDesc("SHAPECOORD", 0, Format::rg32_float),
-							InputElementDesc("TEXCOORD", 0, Format::rg32_float),
-							InputElementDesc("COLOR", 0, Format::rgba8_unorm),
-							InputElementDesc("COMMAND_OFFSET", 0, Format::r32_uint),
-							InputElementDesc("NUM_COMMANDS", 0, Format::r32_uint),
+							InputAttributeDesc("POSITION", 0, Format::rg32_float),
+							InputAttributeDesc("SHAPECOORD", 0, Format::rg32_float),
+							InputAttributeDesc("TEXCOORD", 0, Format::rg32_float),
+							InputAttributeDesc("COLOR", 0, Format::rgba8_unorm),
+							InputAttributeDesc("COMMAND_OFFSET", 0, Format::r32_uint),
+							InputAttributeDesc("NUM_COMMANDS", 0, Format::r32_uint),
 						});
 					desc.shader_input_layout = g_fill_slayout;
 					desc.vs = { g_fill_shader_vs.data(), g_fill_shader_vs.size() };

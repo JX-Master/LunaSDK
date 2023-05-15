@@ -108,11 +108,11 @@ RV start()
 			GraphicsPipelineStateDesc desc;
 			desc.input_layout = InputLayoutDesc({
 				{
-					InputInstanceDesc(0, sizeof(VertexData), InputRate::per_vertex)
+					InputBindingDesc(0, sizeof(VertexData), InputRate::per_vertex)
 				},
 				{
-					InputPropertyDesc("POSITION", 0, 0, 0, 0, Format::rg32_float),
-					InputPropertyDesc("COLOR", 0, 0, 1, 8, Format::rgba32_float)
+					InputAttributeDesc("POSITION", 0, 0, 0, 0, Format::rg32_float),
+					InputAttributeDesc("COLOR", 0, 1, 0, 8, Format::rgba32_float)
 				}
 			});
 			desc.shader_input_layout = shader_input_layout;
@@ -126,19 +126,11 @@ RV start()
 			luset(pso, get_main_device()->new_graphics_pipeline_state(desc));
 
 			// prepare draw buffer. POSITION : COLOR
-			VertexData data[3];
-			if (RHI::get_current_platform_api_type() == APIType::vulkan)
-			{
-				data[0] = { { 0.0f, -0.7f},{1.0f, 0.0f, 0.0f, 1.0f} };
-				data[1] = { { 0.7f, 0.7f},{0.0f, 1.0f, 0.0f, 1.0f} };
-				data[2] = { {-0.7f, 0.7f},{0.0f, 0.0f, 1.0f, 1.0f} };
-			}
-			else
-			{
-				data[0] = { { 0.0f,  0.7f},{1.0f, 0.0f, 0.0f, 1.0f} };
-				data[1] = { { 0.7f, -0.7f},{0.0f, 1.0f, 0.0f, 1.0f} };
-				data[2] = { {-0.7f, -0.7f},{0.0f, 0.0f, 1.0f, 1.0f} };
-			}
+			VertexData data[3] = {
+				{ { 0.0f,  0.7f},{1.0f, 0.0f, 0.0f, 1.0f} },
+				{ { 0.7f, -0.7f},{0.0f, 1.0f, 0.0f, 1.0f} },
+				{ {-0.7f, -0.7f},{0.0f, 0.0f, 1.0f, 1.0f} }
+			};
 
 			luset(vb, get_main_device()->new_buffer(BufferDesc(ResourceHeapType::upload, BufferUsageFlag::vertex_buffer, sizeof(data))));
 			lulet(mapped_data, vb->map(0, 0));
@@ -171,7 +163,7 @@ void draw()
 	cb->set_vertex_buffers(0, {VertexBufferView(vb, 0, sizeof(VertexData) * 3, sizeof(VertexData))});
 	auto sz = get_window()->get_size();
 	cb->set_scissor_rect(RectI(0, 0, (i32)sz.x, (i32)sz.y));
-	cb->set_viewport(Viewport(0.0f, 0.0f, (f32)sz.x, (f32)sz.y, 0.0f, 1.0f));
+	cb->set_viewport(Viewport(0, 0, (f32)sz.x, (f32)sz.y, 0.0f, 1.0f));
 	cb->draw(3, 0);
 	cb->end_render_pass();
 	cb->resource_barrier({},

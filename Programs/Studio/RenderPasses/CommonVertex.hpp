@@ -16,11 +16,11 @@ namespace Luna
     {
         using namespace RHI;
         return RHI::InputLayoutDesc({
-			InputElementDesc("POSITION", 0, Format::rgb32_float),
-			InputElementDesc("NORMAL", 0, Format::rgb32_float),
-			InputElementDesc("TANGENT", 0, Format::rgb32_float),
-			InputElementDesc("TEXCOORD", 0, Format::rg32_float),
-			InputElementDesc("COLOR", 0, Format::rgba32_float),
+			InputAttributeDesc("POSITION", 0, Format::rgb32_float),
+			InputAttributeDesc("NORMAL", 0, Format::rgb32_float),
+			InputAttributeDesc("TANGENT", 0, Format::rgb32_float),
+			InputAttributeDesc("TEXCOORD", 0, Format::rg32_float),
+			InputAttributeDesc("COLOR", 0, Format::rgba32_float),
 		});
     }
 }

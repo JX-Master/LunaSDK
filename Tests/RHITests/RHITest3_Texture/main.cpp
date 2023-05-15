@@ -127,11 +127,11 @@ RV start()
 			GraphicsPipelineStateDesc desc;
 			desc.input_layout = InputLayoutDesc({
 				{
-					InputInstanceDesc(0, sizeof(VertexData), InputRate::per_vertex)
+					InputBindingDesc(0, sizeof(VertexData), InputRate::per_vertex)
 				},
 				{
-					InputPropertyDesc("POSITION", 0, 0, 0, 0, Format::rg32_float),
-					InputPropertyDesc("TEXCOORD", 0, 0, 1, 8, Format::rg32_float)
+					InputAttributeDesc("POSITION", 0, 0, 0, 0, Format::rg32_float),
+					InputAttributeDesc("TEXCOORD", 0, 1, 0, 8, Format::rg32_float)
 				}
 			});
 			desc.vs = { vs.data(), vs.size() };
@@ -207,20 +207,11 @@ void draw()
 	auto w = sz.x;
 	auto h = sz.y;
 
-	VertexData data[4];
-	if (get_current_platform_api_type() == APIType::vulkan)
-	{
-		data[0] = { { -128.0f / w, -128.0f / h },{ 0.0f, 0.0f } };
-		data[1] = { {  128.0f / w, -128.0f / h },{ 1.0f, 0.0f } };
-		data[2] = { { -128.0f / w,  128.0f / h },{ 0.0f, 1.0f } };
-		data[3] = { {  128.0f / w,  128.0f / h },{ 1.0f, 1.0f } };
-	}
-	else
-	{
-		data[0] = { { -128.0f / w,  128.0f / h },{ 0.0f, 0.0f } };
-		data[1] = { {  128.0f / w,  128.0f / h },{ 1.0f, 0.0f } };
-		data[2] = { { -128.0f / w, -128.0f / h },{ 0.0f, 1.0f } };
-		data[3] = { {  128.0f / w, -128.0f / h },{ 1.0f, 1.0f } };
+	VertexData data[4] = {
+		{ { -128.0f / w,  128.0f / h },{ 0.0f, 0.0f } },
+		{ {  128.0f / w,  128.0f / h },{ 1.0f, 0.0f } },
+		{ { -128.0f / w, -128.0f / h },{ 0.0f, 1.0f } },
+		{ {  128.0f / w, -128.0f / h },{ 1.0f, 1.0f } }
 	};
 
 	void* mapped = vb->map(0, 0).get();

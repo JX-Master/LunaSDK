@@ -934,7 +934,7 @@ namespace Luna
 				ps_desc.depth_stencil_state = DepthStencilDesc(false, false, ComparisonFunc::always, false, 0x00, 0x00, DepthStencilOpDesc(), DepthStencilOpDesc());
 				ps_desc.ib_strip_cut_value = IndexBufferStripCutValue::disabled;
 				ps_desc.input_layout.input_elements = {
-					InputElementDesc("POSITION", 0, Format::rgba32_float)
+					InputAttributeDesc("POSITION", 0, Format::rgba32_float)
 				};
 				ps_desc.shader_input_layout = m_grid_slayout;
 				ps_desc.vs = { vs_blob.data(), vs_blob.size() };

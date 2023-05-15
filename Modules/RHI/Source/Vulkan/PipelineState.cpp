@@ -86,7 +86,7 @@ namespace Luna
 				// Vertex input.
 				VkPipelineVertexInputStateCreateInfo vertex_input{};
 				vertex_input.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-				if (desc.input_layout.input_instances.empty())
+				if (desc.input_layout.bindings.empty())
 				{
 					vertex_input.vertexBindingDescriptionCount = 0;
 					vertex_input.pVertexBindingDescriptions = nullptr;
@@ -94,14 +94,14 @@ namespace Luna
 				else
 				{
 					VkVertexInputBindingDescription* descs = (VkVertexInputBindingDescription*)alloca(
-						sizeof(VkVertexInputBindingDescription) * desc.input_layout.input_instances.size());
-					memzero(descs, sizeof(VkVertexInputBindingDescription) * desc.input_layout.input_instances.size());
-					for (usize i = 0; i < desc.input_layout.input_instances.size(); ++i)
+						sizeof(VkVertexInputBindingDescription) * desc.input_layout.bindings.size());
+					memzero(descs, sizeof(VkVertexInputBindingDescription) * desc.input_layout.bindings.size());
+					for (usize i = 0; i < desc.input_layout.bindings.size(); ++i)
 					{
 						auto& dest = descs[i];
-						auto& src = desc.input_layout.input_instances[i];
+						auto& src = desc.input_layout.bindings[i];
 						dest.binding = src.binding_slot;
-						dest.stride = src.instance_size;
+						dest.stride = src.element_size;
 						switch (src.input_rate)
 						{
 						case InputRate::per_vertex:
@@ -110,10 +110,10 @@ namespace Luna
 							dest.inputRate = VK_VERTEX_INPUT_RATE_INSTANCE; break;
 						}
 					}
-					vertex_input.vertexBindingDescriptionCount = (u32)desc.input_layout.input_instances.size();
+					vertex_input.vertexBindingDescriptionCount = (u32)desc.input_layout.bindings.size();
 					vertex_input.pVertexBindingDescriptions = descs;
 				}
-				if (desc.input_layout.input_properties.empty())
+				if (desc.input_layout.attributes.empty())
 				{
 					vertex_input.vertexAttributeDescriptionCount = 0;
 					vertex_input.pVertexAttributeDescriptions = nullptr;
@@ -121,18 +121,18 @@ namespace Luna
 				else
 				{
 					VkVertexInputAttributeDescription* descs = (VkVertexInputAttributeDescription*)alloca(
-						sizeof(VkVertexInputAttributeDescription) * desc.input_layout.input_properties.size());
-					memzero(descs, sizeof(VkVertexInputAttributeDescription) * desc.input_layout.input_properties.size());
-					for (usize i = 0; i < desc.input_layout.input_properties.size(); ++i)
+						sizeof(VkVertexInputAttributeDescription) * desc.input_layout.attributes.size());
+					memzero(descs, sizeof(VkVertexInputAttributeDescription) * desc.input_layout.attributes.size());
+					for (usize i = 0; i < desc.input_layout.attributes.size(); ++i)
 					{
 						auto& dest = descs[i];
-						auto& src = desc.input_layout.input_properties[i];
-						dest.binding = desc.input_layout.input_instances[src.instance_index].binding_slot;
+						auto& src = desc.input_layout.attributes[i];
 						dest.location = src.location;
+						dest.binding = src.binding_slot;
 						dest.format = encode_format(src.format);
 						dest.offset = src.offset;
 					}
-					vertex_input.vertexAttributeDescriptionCount = (u32)desc.input_layout.input_properties.size();
+					vertex_input.vertexAttributeDescriptionCount = (u32)desc.input_layout.attributes.size();
 					vertex_input.pVertexAttributeDescriptions = descs;
 				}
 				create_info.pVertexInputState = &vertex_input;

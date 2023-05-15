@@ -136,11 +136,11 @@ RV start()
 		ps_desc.ib_strip_cut_value = IndexBufferStripCutValue::disabled;
         ps_desc.input_layout = InputLayoutDesc({
                 {
-                    InputInstanceDesc(0, sizeof(Vertex), InputRate::per_vertex)
+                    InputBindingDesc(0, sizeof(Vertex), InputRate::per_vertex)
                 },
                 {
-                    InputPropertyDesc("POSITION", 0, 0, 0, 0, Format::rgb32_float),
-                    InputPropertyDesc("TEXCOORD", 0, 0, 1, 12, Format::rg32_float),
+                    InputAttributeDesc("POSITION", 0, 0, 0, 0, Format::rgb32_float),
+                    InputAttributeDesc("TEXCOORD", 0, 1, 0, 12, Format::rg32_float),
                 } });
 		ps_desc.vs = vs.cspan();
 		ps_desc.ps = ps.cspan();

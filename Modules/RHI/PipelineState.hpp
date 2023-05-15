@@ -29,66 +29,69 @@ namespace Luna
 
 		constexpr u32 APPEND_ALIGNED_ELEMENT = 0xffffffff;
 
-		struct InputPropertyDesc
+		//! Describes one attribute in the input layout.
+		struct InputAttributeDesc
 		{
-			//! The semantic name of this property.
+			//! The semantic name of this attribute. For exmaple, "COLOR", "TEXCOORD", etc.
 			const c8* semantic_name;
-			//! The semantic index of this property.
+			//! The semantic index of this attribute. Use this to differentiate attributes with the same 
+			//! semantic name.
 			u32 semantic_index;
-			//! The index of the instance in `InputLayoutDesc::instances` this property belongs to.
-			u32 instance_index;
-			//! The location of this input property in the shader.
+			//! The location of this input attribute in the shader.
 			u32 location;
-			//! The offset of this property from the beginning of the belonging instance.
+			//! The belonging binding slot of this attribute.
+			u32 binding_slot;
+			//! The offset of this attribute from the beginning of the element.
 			u32 offset;
-			//! The format of this property.
+			//! The format of this attribute.
 			Format format;
-
-			InputPropertyDesc(
+			InputAttributeDesc() = default;
+			InputAttributeDesc(
 				const c8* semantic_name,
 				u32 semantic_index,
-				u32 instance_index,
 				u32 location,
+				u32 binding_slot,
 				u32 offset,
 				Format format
 			) :
 				semantic_name(semantic_name),
 				semantic_index(semantic_index),
-				instance_index(instance_index),
 				location(location),
+				binding_slot(binding_slot),
 				offset(offset),
 				format(format) {}
 		};
-
-		//! Describes one vertex buffer bound to the pipeline. 
-		struct InputInstanceDesc
+		//! Describes one input buffer binding.
+		struct InputBindingDesc
 		{
+			//! The target binding slot. Every binding will take a different slot.
 			u32 binding_slot;
-			u32 instance_size;
+			//! The size of one element in the buffer.
+			u32 element_size;
+			//! The element input rate of the binding.
 			InputRate input_rate;
-
-			InputInstanceDesc(
+			InputBindingDesc() = default;
+			InputBindingDesc(
 				u32 binding_slot,
-				u32 instance_size,
+				u32 element_size,
 				InputRate input_rate
 			) :
 				binding_slot(binding_slot),
-				instance_size(instance_size),
+				element_size(element_size),
 				input_rate(input_rate) {}
 		};
 
 		struct InputLayoutDesc
 		{
-			Span<const InputInstanceDesc> input_instances;
-			Span<const InputPropertyDesc> input_properties;
-
+			Span<const InputBindingDesc> bindings;
+			Span<const InputAttributeDesc> attributes;
 			InputLayoutDesc() = default;
 			InputLayoutDesc(
-				InitializerList<const InputInstanceDesc> input_instances,
-				InitializerList<const InputPropertyDesc> input_properties
+				InitializerList<const InputBindingDesc> bindings,
+				InitializerList<const InputAttributeDesc> attributes
 			) : 
-				input_instances(input_instances),
-				input_properties(input_properties) {}
+				bindings(bindings),
+				attributes(attributes) {}
 		};
 
 		enum class BlendFactor : u8
