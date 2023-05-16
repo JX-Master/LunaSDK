@@ -155,6 +155,11 @@ void run()
 			g_shape_draw_list->get_vertex_buffer(), g_shape_draw_list->get_vertex_buffer_size(),
 			g_shape_draw_list->get_index_buffer(), g_shape_draw_list->get_index_buffer_size(),
 			dcs.data(), (u32)dcs.size());
+
+		g_command_buffer->resource_barrier({},
+		{
+			{g_swap_chain->get_current_back_buffer().get(), RHI::SubresourceIndex(0, 0), RHI::TextureStateFlag::automatic, RHI::TextureStateFlag::present, RHI::ResourceBarrierFlag::none}
+		});
 		
 		g_command_buffer->submit({}, {}, true);
 		g_command_buffer->wait();

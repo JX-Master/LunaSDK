@@ -22,7 +22,6 @@ namespace Luna
 			Ref<Device> m_device;
 			Name m_name;
 			VkPipeline m_pipeline = VK_NULL_HANDLE;
-			u32 m_num_viewports = 0;
 
 			RV init_as_graphics(const GraphicsPipelineStateDesc& desc);
 			RV init_as_compute(const ComputePipelineStateDesc& desc);

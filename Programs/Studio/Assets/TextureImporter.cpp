@@ -183,8 +183,8 @@ namespace Luna
 				compute_cmdbuf->resource_barriers({ barriers, 2 });
 				lulet(vs, device->new_descriptor_set(DescriptorSetDesc(m_mipmapping_dlayout)));
 				vs->set_cbv(0, cb, ConstantBufferViewDesc(cb_size * j, cb_size));
-				vs->set_srv(1, resource_with_most_detailed_mip, &ShaderResourceViewDesc::as_tex2d(desc.pixel_format, src_subresource, 1, 0.0f));
-				vs->set_uav(2, resource_with_most_detailed_mip, nullptr, &UnorderedAccessViewDesc::as_tex2d(desc.pixel_format, dest_subresource));
+				vs->set_srv(1, resource_with_most_detailed_mip, &ShaderResourceViewDesc::tex2d(desc.pixel_format, src_subresource, 1, 0.0f));
+				vs->set_uav(2, resource_with_most_detailed_mip, nullptr, &UnorderedAccessViewDesc::tex2d(desc.pixel_format, dest_subresource));
 				vs->set_sampler(3, SamplerDesc(Filter::min_mag_mip_linear, TextureAddressMode::clamp, TextureAddressMode::clamp, TextureAddressMode::clamp));
 				compute_cmdbuf->set_compute_descriptor_set(0, vs);
 				compute_cmdbuf->attach_device_object(vs);
@@ -270,7 +270,7 @@ namespace Luna
 				lulet(vs, device->new_descriptor_set(DescriptorSetDesc(m_env_mipmapping_dlayout)));
 				vs->set_cbv(0, cb, ConstantBufferViewDesc(cb_size * j, cb_size));
 				vs->set_srv(1, resource_with_most_detailed_mip);
-				vs->set_uav(2, prefiltered, nullptr, &UnorderedAccessViewDesc::as_tex2d(desc.pixel_format, dest_subresource));
+				vs->set_uav(2, prefiltered, nullptr, &UnorderedAccessViewDesc::tex2d(desc.pixel_format, dest_subresource));
 				vs->set_sampler(3, SamplerDesc(Filter::min_mag_mip_linear, TextureAddressMode::clamp, TextureAddressMode::clamp, TextureAddressMode::clamp));
 				compute_cmdbuf->set_compute_descriptor_set(0, vs);
 				compute_cmdbuf->attach_device_object(vs);

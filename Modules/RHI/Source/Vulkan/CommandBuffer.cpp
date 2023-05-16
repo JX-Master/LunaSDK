@@ -204,7 +204,6 @@ namespace Luna
 				m_objs.clear();
 				m_rt_width = 0;
 				m_rt_height = 0;
-				m_num_viewports = 0;
 				m_graphics_shader_input_layout = nullptr;
 				m_compute_shader_input_layout = nullptr;
 				for (VkFramebuffer fbo : m_fbos)
@@ -411,10 +410,6 @@ namespace Luna
 			}
 			PipelineState* ps = (PipelineState*)pso->get_object();
 			m_device->m_funcs.vkCmdBindPipeline(m_command_buffer, bind, ps->m_pipeline);
-			if (bind_point == PipelineStateBindPoint::graphics)
-			{
-				m_num_viewports = ps->m_num_viewports;
-			}
 		}
 		void CommandBuffer::set_graphics_shader_input_layout(IShaderInputLayout* shader_input_layout)
 		{
@@ -467,16 +462,17 @@ namespace Luna
 		}
 		void CommandBuffer::set_viewports(Span<const Viewport> viewports)
 		{
-			VkViewport* vps = (VkViewport*)alloca(sizeof(VkViewport) * m_num_viewports);
-			for (usize i = 0; i < m_num_viewports; ++i)
+			u32 max_num_viewports = m_device->m_physical_device_properties.limits.maxViewports;
+			VkViewport* vps = (VkViewport*)alloca(sizeof(VkViewport) * max_num_viewports);
+			for (usize i = 0; i < max_num_viewports; ++i)
 			{
 				auto& d = vps[i];
 				d.width = (float)m_rt_width;
-				d.height = (float)-m_rt_height;
+				d.height = -((float)m_rt_height);
 				d.minDepth = 0.0f;
 				d.maxDepth = 1.0f;
 				d.x = 0.0f;
-				d.y = m_rt_height;
+				d.y = (float)m_rt_height;
 			}
 			for (usize i = 0; i < viewports.size(); ++i)
 			{
@@ -487,9 +483,9 @@ namespace Luna
 				d.minDepth = s.min_depth;
 				d.maxDepth = s.max_depth;
 				d.x = s.bottom_left_x;
-				d.y = m_rt_height - s.bottom_left_y;
+				d.y = (float)m_rt_height - s.bottom_left_y;
 			}
-			m_device->m_funcs.vkCmdSetViewport(m_command_buffer, 0, m_num_viewports, vps);
+			m_device->m_funcs.vkCmdSetViewport(m_command_buffer, 0, max_num_viewports, vps);
 		}
 		void CommandBuffer::set_scissor_rect(const RectI& rect)
 		{
@@ -497,8 +493,9 @@ namespace Luna
 		}
 		void CommandBuffer::set_scissor_rects(Span<const RectI> rects)
 		{
-			VkRect2D* r = (VkRect2D*)alloca(sizeof(VkRect2D) * m_num_viewports);
-			for (usize i = 0; i < m_num_viewports; ++i)
+			u32 max_num_viewports = m_device->m_physical_device_properties.limits.maxViewports;
+			VkRect2D* r = (VkRect2D*)alloca(sizeof(VkRect2D) * max_num_viewports);
+			for (usize i = 0; i < max_num_viewports; ++i)
 			{
 				auto& d = r[i];
 				d.extent.width = m_rt_width;
@@ -511,11 +508,11 @@ namespace Luna
 				auto& d = r[i];
 				auto& s = rects[i];
 				d.offset.x = s.offset_x;
-				d.offset.y = m_rt_height - (s.height + s.offset_y);
+				d.offset.y = (i32)m_rt_height - (s.height + s.offset_y);
 				d.extent.width = s.width;
 				d.extent.height = s.height;
 			}
-			m_device->m_funcs.vkCmdSetScissor(m_command_buffer, 0, m_num_viewports, r);
+			m_device->m_funcs.vkCmdSetScissor(m_command_buffer, 0, max_num_viewports, r);
 		}
 		void CommandBuffer::set_blend_factor(Span<const f32, 4> blend_factor)
 		{

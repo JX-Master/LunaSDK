@@ -88,7 +88,7 @@ namespace Luna
             m_ds->set_cbv(0, m_vis_params, ConstantBufferViewDesc(0, (u32)align_upper(sizeof(u32), cb_align)));
             m_ds->set_srv(1, base_color_roughness_tex);
             m_ds->set_srv(2, normal_metallic_tex);
-            m_ds->set_srv(3, depth_tex, &ShaderResourceViewDesc::as_tex2d(Format::r32_float, 0, 1, 0.0f));
+            m_ds->set_srv(3, depth_tex, &ShaderResourceViewDesc::tex2d(Format::r32_float, 0, 1, 0.0f));
             m_ds->set_uav(4, scene_tex);
             auto scene_desc = scene_tex->get_desc();
             cmdbuf->set_compute_shader_input_layout(m_global_data->m_buffer_visualization_pass_slayout);

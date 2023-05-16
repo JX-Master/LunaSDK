@@ -234,8 +234,8 @@ RV start()
 
         desc_set->update_descriptors(
             {
-                DescriptorSetWrite::uniform_buffer_view(0, BufferViewDesc::as_uniform_buffer(cb)),
-                DescriptorSetWrite::sampled_texture_view(1, TextureViewDesc::as_tex2d(file_tex)),
+                DescriptorSetWrite::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(cb)),
+                DescriptorSetWrite::sampled_texture_view(1, TextureViewDesc::tex2d(file_tex)),
                 DescriptorSetWrite::sampler(2, SamplerDesc(Filter::min_mag_mip_linear, TextureAddressMode::clamp,
                         TextureAddressMode::clamp, TextureAddressMode::clamp))
             }, {});
@@ -275,6 +275,7 @@ void draw()
         );
 
         auto rtv = get_main_device()->new_render_target_view(get_back_buffer()).get();
+        cmdbuf->attach_device_object(rtv);
 
         RenderPassDesc desc;
         desc.color_attachments[0] = rtv;

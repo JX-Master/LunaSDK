@@ -19,6 +19,10 @@ namespace Luna
 	{
 		R<VkSurfaceFormatKHR> choose_swap_surface_format(const Vector<VkSurfaceFormatKHR>& available_formats, Format desired_format)
 		{
+			if (desired_format == Format::unknown)
+			{
+				return available_formats.front();
+			}
 			VkFormat desired_vk_format = encode_format(desired_format);
 			for (const auto& format : available_formats)
 			{
@@ -219,7 +223,12 @@ namespace Luna
 			lutry
 			{
 				clean_up_swap_chain();
-				luexp(create_swap_chain(desc));
+				auto new_desc = desc;
+				if (new_desc.pixel_format == Format::unknown)
+				{
+					new_desc.pixel_format = m_desc.pixel_format;
+				}
+				luexp(create_swap_chain(new_desc));
 			}
 			lucatchret;
 			return ok;

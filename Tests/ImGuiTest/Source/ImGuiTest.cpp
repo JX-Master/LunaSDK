@@ -12,6 +12,7 @@
 #include <RHI/RHI.hpp>
 #include <Runtime/Module.hpp>
 #include <Runtime/Debug.hpp>
+#include <Runtime/Log.hpp>
 
 using namespace Luna;
 
@@ -22,6 +23,7 @@ void on_window_close(Window::IWindow* window)
 
 void run()
 {
+	set_log_std_enabled(true);
 	using namespace RHI;
 	using namespace Window;
 	Ref<IWindow> window = new_window("ImGui Demo", WindowDisplaySettings::as_windowed(), WindowCreationFlag::resizable).get();
@@ -29,20 +31,26 @@ void run()
 
 	Ref<IDevice> dev = get_main_device();
 
-	Ref<ICommandQueue> queue = dev->new_command_queue(CommandQueueType::graphics).get();
+	u32 queue = U32_MAX;
+	u32 num_queues = dev->get_num_command_queues();
+	for (u32 i = 0; i < num_queues; ++i)
+	{
+		auto desc = dev->get_command_queue_desc(i);
+		if (desc.type == RHI::CommandQueueType::graphics)
+		{
+			queue = i;
+			break;
+		}
+	}
 
-	Ref<ISwapChain> swap_chain = new_swap_chain(queue, window, SwapChainDesc({0, 0, 2, Format::rgba8_unorm, true})).get();
+	Ref<ISwapChain> swap_chain = dev->new_swap_chain(queue, window, SwapChainDesc({0, 0, 2, Format::bgra8_unorm, true})).get();
 
-	Ref<ICommandBuffer> cmdbuf = queue->new_command_buffer().get();
+	Ref<ICommandBuffer> cmdbuf = dev->new_command_buffer(queue).get();
 
 	// Create back buffer.
-	Ref<IResource> back_buffer;
-	Ref<IRenderTargetView> back_buffer_rtv;
 	u32 w = 0, h = 0;
 
 	ImGuiUtils::set_active_window(window);
-
-	Ref<IRenderTargetView> rt;
 
 	while (true)
 	{
@@ -57,16 +65,12 @@ void run()
 		auto sz = window->get_size();
 		auto ww = sz.x;
 		auto wh = sz.y;
-		if (!back_buffer || ww != w || wh != h)
+		if (ww != w || wh != h)
 		{
-			swap_chain->reset({ww, wh, 2, Format::unknown, true});
+			lupanic_if_failed(swap_chain->reset({ww, wh, 2, Format::unknown, true}));
 			f32 clear_color[] = { 0.0f, 0.0f, 0.0f, 1.0f };
-			back_buffer = dev->new_resource(ResourceDesc::tex2d(ResourceHeapType::local, Format::rgba8_unorm, ResourceUsageFlag::render_target, ww, wh, 1, 1),
-				&ClearValue::as_color(Format::rgba8_unorm, clear_color)).get();
-			back_buffer_rtv = dev->new_render_target_view(back_buffer).get();
 			w = ww;
 			h = wh;
-			rt = dev->new_render_target_view(back_buffer).get();
 		}
 
 		ImGuiUtils::update_io();
@@ -75,19 +79,26 @@ void run()
 		ImGui::ShowDemoWindow();
 
 		ImGui::Render();
+
+		auto rt = dev->new_render_target_view(swap_chain->get_current_back_buffer().get()).get();
+		cmdbuf->attach_device_object(rt);
 		
 		RenderPassDesc desc;
 		desc.color_attachments[0] = rt;
 		desc.color_load_ops[0] = LoadOp::clear;
+		desc.color_store_ops[0] = StoreOp::store;
 		desc.color_clear_values[0] = { 0.0f, 0.0f, 0.0f, 1.0f };
 		cmdbuf->begin_render_pass(desc);
 		cmdbuf->end_render_pass();
-		ImGuiUtils::render_draw_data(ImGui::GetDrawData(), cmdbuf, back_buffer_rtv);
-		cmdbuf->submit();
+		ImGuiUtils::render_draw_data(ImGui::GetDrawData(), cmdbuf, rt);
+		cmdbuf->resource_barrier({},
+		{
+			{swap_chain->get_current_back_buffer().get(), SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::present, ResourceBarrierFlag::none}
+		});
+		cmdbuf->submit({}, {}, true);
 		cmdbuf->wait();
+		swap_chain->present();
 		cmdbuf->reset();
-		swap_chain->present(back_buffer, 0);
-		swap_chain->wait();
 	}
 }
 

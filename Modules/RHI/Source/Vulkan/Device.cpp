@@ -35,6 +35,10 @@ namespace Luna
 			Vector<const c8*> enabled_extensions;
 			// This is required.
 			enabled_extensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+			if (g_vk_version < VK_API_VERSION_1_1)
+			{
+				enabled_extensions.push_back(VK_KHR_MAINTENANCE1_EXTENSION_NAME);
+			}
 
 			m_desc_pool_mtx = new_mutex();
 			m_physical_device = physical_device;
@@ -151,6 +155,36 @@ namespace Luna
 			funcs.vkCreateImage = m_funcs.vkCreateImage;
 			funcs.vkDestroyImage = m_funcs.vkDestroyImage;
 			funcs.vkCmdCopyBuffer = m_funcs.vkCmdCopyBuffer;
+			if (m_funcs.vkGetBufferMemoryRequirements2)
+			{
+				funcs.vkGetBufferMemoryRequirements2KHR = m_funcs.vkGetBufferMemoryRequirements2;
+				funcs.vkGetImageMemoryRequirements2KHR = m_funcs.vkGetImageMemoryRequirements2;
+			}
+			else
+			{
+				funcs.vkGetBufferMemoryRequirements2KHR = m_funcs.vkGetBufferMemoryRequirements2KHR;
+				funcs.vkGetImageMemoryRequirements2KHR = m_funcs.vkGetImageMemoryRequirements2KHR;
+			}
+			if (m_funcs.vkBindBufferMemory2)
+			{
+				funcs.vkBindBufferMemory2KHR = m_funcs.vkBindBufferMemory2;
+				funcs.vkBindImageMemory2KHR = m_funcs.vkBindImageMemory2;
+			}
+			else
+			{
+				funcs.vkBindBufferMemory2KHR = m_funcs.vkBindBufferMemory2KHR;
+				funcs.vkBindImageMemory2KHR = m_funcs.vkBindImageMemory2KHR;
+			}
+			if (vkGetPhysicalDeviceMemoryProperties2)
+			{
+				funcs.vkGetPhysicalDeviceMemoryProperties2KHR = vkGetPhysicalDeviceMemoryProperties2;
+			}
+			else
+			{
+				funcs.vkGetPhysicalDeviceMemoryProperties2KHR = vkGetPhysicalDeviceMemoryProperties2KHR;
+			}
+			funcs.vkGetDeviceBufferMemoryRequirements = m_funcs.vkGetDeviceBufferMemoryRequirements;
+			funcs.vkGetDeviceImageMemoryRequirements = m_funcs.vkGetDeviceImageMemoryRequirements;
 			allocator_create_info.pVulkanFunctions = &funcs;
 			return encode_vk_result(vmaCreateAllocator(&allocator_create_info, &m_allocator));
 		}

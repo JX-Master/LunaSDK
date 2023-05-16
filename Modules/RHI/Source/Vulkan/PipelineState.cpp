@@ -51,9 +51,6 @@ namespace Luna
 				VkShaderModule shader_modles[5] = { VK_NULL_HANDLE };
 				u32 num_stages = 0;
 				ShaderModule vs;
-				ShaderModule hs;
-				ShaderModule ds;
-				ShaderModule gs;
 				ShaderModule ps;
 				if (!desc.vs.empty())
 				{
@@ -268,7 +265,6 @@ namespace Luna
 				guard.unlock();
 				create_info.subpass = 0;
 				luexp(encode_vk_result(m_device->m_funcs.vkCreateGraphicsPipelines(m_device->m_device, VK_NULL_HANDLE, 1, &create_info, nullptr, &m_pipeline)));
-				m_num_viewports = m_device->m_physical_device_properties.limits.maxViewports;
 			}	
 			lucatchret;
 			return ok;

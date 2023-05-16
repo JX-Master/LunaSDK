@@ -103,7 +103,7 @@ namespace Luna
                 auto cb_align = cmdbuf->get_device()->get_uniform_buffer_data_alignment();
 				m_ds->set_cbv(0, m_skybox_params_cb, ConstantBufferViewDesc(0, (u32)align_upper(sizeof(SkyboxParams), cb_align)));
 				m_ds->set_srv(1, skybox);
-                m_ds->set_srv(2, depth_tex, &ShaderResourceViewDesc::as_tex2d(Format::r32_float, 0, 1, 0.0f));
+                m_ds->set_srv(2, depth_tex, &ShaderResourceViewDesc::tex2d(Format::r32_float, 0, 1, 0.0f));
 				m_ds->set_uav(3, output_tex);
 				m_ds->set_sampler(4, SamplerDesc(Filter::min_mag_mip_linear, TextureAddressMode::repeat, TextureAddressMode::repeat, TextureAddressMode::repeat));
 				cmdbuf->set_compute_descriptor_set(0, m_ds);

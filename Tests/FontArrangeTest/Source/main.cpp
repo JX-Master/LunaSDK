@@ -21,12 +21,10 @@ namespace Luna
 {
 	Ref<Window::IWindow> g_window;
 
-	Ref<RHI::ICommandQueue> g_command_queue;
+	u32 g_command_queue;
 
 	Ref<RHI::ISwapChain> g_swap_chain;
-	Ref<RHI::IResource> g_screen_tex;
 	Ref<RHI::ICommandBuffer> g_command_buffer;
-	Ref<RHI::IRenderTargetView> g_rtv;
 
 	Ref<VG::IFontAtlas> g_font_atlas;
 	Ref<VG::ITextArranger> g_time_text_arranger;
@@ -54,21 +52,13 @@ RV recreate_window_resources()
 	{
 		auto sz = g_window->get_size();
 		{
-			f32 clear_value[] = { 0.0f, 0.0f, 0.0f, 0.0f };
-			ResourceDesc desc = ResourceDesc::tex2d(ResourceHeapType::local, Format::rgba8_unorm, ResourceUsageFlag::render_target,
-				sz.x, sz.y);
-			luset(g_screen_tex, get_main_device()->new_resource(desc, &ClearValue::as_color(Format::rgba8_unorm, clear_value)));
-			
-			luset(g_rtv, get_main_device()->new_render_target_view(g_screen_tex));
-		}
-		{
 			if (!g_swap_chain)
 			{
-				g_swap_chain = new_swap_chain(g_command_queue, g_window, SwapChainDesc({sz.x, sz.y, 2, Format::rgba8_unorm, false})).get();
+				g_swap_chain = get_main_device()->new_swap_chain(g_command_queue, g_window, SwapChainDesc({sz.x, sz.y, 2, Format::bgra8_unorm, true})).get();
 			}
 			else
 			{
-				g_swap_chain->reset({sz.x, sz.y, 2, Format::rgba8_unorm, false});
+				g_swap_chain->reset({sz.x, sz.y, 2, Format::bgra8_unorm, true});
 			}
 		}
 	}
@@ -99,7 +89,6 @@ constexpr u32 HEADER_TEXT_HEIGHT = 150;
 void on_window_resize(Window::IWindow* window, u32 width, u32 height)
 {
 	lupanic_if_failed(recreate_window_resources());
-	lupanic_if_failed(g_shape_renderer->set_render_target(g_screen_tex));
 	rearrange_text(RectF(0.0f, 0.0f, (f32)width, max((f32)(height - HEADER_TEXT_HEIGHT), 0.0f)));
 }
 
@@ -123,14 +112,27 @@ void init()
 	auto font = Font::get_default_font();
 
 	g_shape_draw_list = VG::new_shape_draw_list();
-	g_command_queue = RHI::get_main_device()->new_command_queue(RHI::CommandQueueType::graphics).get();
+
+	auto dev = RHI::get_main_device();
+
+	g_command_queue = U32_MAX;
+	u32 num_queues = dev->get_num_command_queues();
+	for (u32 i = 0; i < num_queues; ++i)
+	{
+		auto desc = dev->get_command_queue_desc(i);
+		if (desc.type == RHI::CommandQueueType::graphics)
+		{
+			g_command_queue = i;
+			break;
+		}
+	}
 	lupanic_if_failed(recreate_window_resources());
-	g_shape_renderer = VG::new_fill_shape_renderer(g_screen_tex).get();
+	g_shape_renderer = VG::new_fill_shape_renderer(g_swap_chain->get_current_back_buffer().get()).get();
 
 	g_font_atlas = VG::new_font_atlas(font, 0);
 	g_time_text_arranger = VG::new_text_arranger(g_font_atlas);
 	g_text_arranger = VG::new_text_arranger(g_font_atlas);
-	g_command_buffer = g_command_queue->new_command_buffer().get();
+	g_command_buffer = dev->new_command_buffer(g_command_queue).get();
 	g_font_size = 30.0f;
 	g_font_size_increment = 1;
 
@@ -177,7 +179,8 @@ void run()
 		lupanic_if_failed(g_shape_draw_list->close());
 
 		RHI::RenderPassDesc desc;
-		desc.color_attachments[0] = g_rtv;
+		auto rtv = RHI::get_main_device()->new_render_target_view(g_swap_chain->get_current_back_buffer().get()).get();
+		desc.color_attachments[0] = rtv;
 		desc.color_load_ops[0] = RHI::LoadOp::clear;
 		desc.color_clear_values[0] = Float4U{ 0.0f };
 		g_command_buffer->begin_render_pass(desc);
@@ -185,16 +188,21 @@ void run()
 
 		auto dcs = g_shape_draw_list->get_draw_calls();
 
+		g_shape_renderer->set_render_target(g_swap_chain->get_current_back_buffer().get());
 		g_shape_renderer->render(g_command_buffer, g_font_atlas->get_shape_atlas()->get_shape_resource().get(), g_font_atlas->get_shape_atlas()->get_shape_resource_size(),
 			g_shape_draw_list->get_vertex_buffer(), g_shape_draw_list->get_vertex_buffer_size(),
 			g_shape_draw_list->get_index_buffer(), g_shape_draw_list->get_index_buffer_size(),
 			dcs.data(), (u32)dcs.size());
+
+		g_command_buffer->resource_barrier({},
+		{
+			{g_swap_chain->get_current_back_buffer().get(), RHI::SubresourceIndex(0, 0), RHI::TextureStateFlag::automatic, RHI::TextureStateFlag::present, RHI::ResourceBarrierFlag::none}
+		});
 		
-		g_command_buffer->submit();
+		g_command_buffer->submit({}, {}, true);
 		g_command_buffer->wait();
 
-		g_swap_chain->present(g_screen_tex, 0);
-		g_swap_chain->wait();
+		g_swap_chain->present();
 		g_command_buffer->reset();
 		g_shape_renderer->reset();
 		g_shape_draw_list->reset();
@@ -209,12 +217,8 @@ void shutdown()
 {
 	g_window = nullptr;
 
-	g_command_queue = nullptr;
-
 	g_swap_chain = nullptr;
-	g_screen_tex = nullptr;
 	g_command_buffer = nullptr;
-	g_rtv = nullptr;
 
 	g_font_atlas = nullptr;
 	g_text_arranger = nullptr;

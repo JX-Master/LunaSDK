@@ -228,9 +228,9 @@ namespace Luna
 					auto& ds = m_desc_sets[i];
 
 					luexp(ds->update_descriptors({
-						DescriptorSetWrite::uniform_buffer_view(0, BufferViewDesc::as_uniform_buffer(m_cbs_resource)),
-						DescriptorSetWrite::read_buffer_view(1, BufferViewDesc::as_typed_buffer(shape_buffer, 0, num_points, Format::r32_float)),
-						DescriptorSetWrite::sampled_texture_view(2, TextureViewDesc::as_tex2d(draw_calls[i].texture ? draw_calls[i].texture : g_white_tex)),
+						DescriptorSetWrite::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(m_cbs_resource)),
+						DescriptorSetWrite::read_buffer_view(1, BufferViewDesc::typed_buffer(shape_buffer, 0, num_points, Format::r32_float)),
+						DescriptorSetWrite::sampled_texture_view(2, TextureViewDesc::tex2d(draw_calls[i].texture ? draw_calls[i].texture : g_white_tex)),
 						DescriptorSetWrite::sampler(3, SamplerDesc(Filter::min_mag_mip_linear, TextureAddressMode::clamp, TextureAddressMode::clamp, TextureAddressMode::clamp))
 						}, {}));
 				}

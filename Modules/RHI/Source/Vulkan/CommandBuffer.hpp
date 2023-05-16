@@ -63,9 +63,6 @@ namespace Luna
 			IDepthStencilView* m_dsv = nullptr;
 			Vector<VkFramebuffer> m_fbos;
 
-			// Set by set_pipeline_state.
-			u32 m_num_viewports = 0;
-
 			IShaderInputLayout* m_graphics_shader_input_layout = nullptr;
 			IShaderInputLayout* m_compute_shader_input_layout = nullptr;
 

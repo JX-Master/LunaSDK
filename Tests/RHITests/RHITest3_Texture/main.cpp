@@ -186,7 +186,7 @@ RV start()
 
 			desc_set->update_descriptors(
 				{
-					DescriptorSetWrite::sampled_texture_view(0, TextureViewDesc::as_tex2d(tex)),
+					DescriptorSetWrite::sampled_texture_view(0, TextureViewDesc::tex2d(tex)),
 					DescriptorSetWrite::sampler(1, SamplerDesc(Filter::min_mag_mip_linear, TextureAddressMode::clamp,
 							TextureAddressMode::clamp, TextureAddressMode::clamp))
 				}, {});

@@ -34,7 +34,7 @@ namespace Luna
 			//! The format of the buffer element in this buffer represents one typed buffer.
 			//! If this buffer represents one structured buffer, this must be set to `Format::unknown`.
 			Format format;
-			static BufferViewDesc as_uniform_buffer(IBuffer* buffer, u64 offset = 0, u32 size = U32_MAX)
+			static BufferViewDesc uniform_buffer(IBuffer* buffer, u64 offset = 0, u32 size = U32_MAX)
 			{
 				BufferViewDesc ret;
 				ret.buffer = buffer;
@@ -44,7 +44,7 @@ namespace Luna
 				ret.format = Format::unknown;
 				return ret;
 			}
-			static BufferViewDesc as_typed_buffer(IBuffer* buffer, u64 offset, u32 element_count, Format element_format)
+			static BufferViewDesc typed_buffer(IBuffer* buffer, u64 offset, u32 element_count, Format element_format)
 			{
 				BufferViewDesc ret;
 				ret.buffer = buffer;
@@ -54,7 +54,7 @@ namespace Luna
 				ret.element_size = 0;
 				return ret;
 			}
-			static BufferViewDesc as_structured_buffer(IBuffer* buffer, u64 offset, u32 element_count, u32 element_size)
+			static BufferViewDesc structured_buffer(IBuffer* buffer, u64 offset, u32 element_count, u32 element_size)
 			{
 				BufferViewDesc ret;
 				ret.buffer = buffer;
@@ -86,7 +86,7 @@ namespace Luna
 			u32 mip_size;
 			u32 array_slice;
 			u32 array_size;
-			static TextureViewDesc as_tex1d(ITexture* texture, Format format = Format::unknown, u32 mip_slice = 0, u32 mip_size = U32_MAX)
+			static TextureViewDesc tex1d(ITexture* texture, Format format = Format::unknown, u32 mip_slice = 0, u32 mip_size = U32_MAX)
 			{
 				TextureViewDesc desc;
 				desc.texture = texture;
@@ -98,7 +98,7 @@ namespace Luna
 				desc.array_size = 1;
 				return desc;
 			}
-			static TextureViewDesc as_tex1darray(ITexture* texture, Format format = Format::unknown, u32 mip_slice = 0, u32 mip_size = U32_MAX, u32 array_slice = 0, u32 array_size = U32_MAX)
+			static TextureViewDesc tex1darray(ITexture* texture, Format format = Format::unknown, u32 mip_slice = 0, u32 mip_size = U32_MAX, u32 array_slice = 0, u32 array_size = U32_MAX)
 			{
 				TextureViewDesc desc;
 				desc.texture = texture;
@@ -110,7 +110,7 @@ namespace Luna
 				desc.array_size = array_size;
 				return desc;
 			}
-			static TextureViewDesc as_tex2d(ITexture* texture, Format format = Format::unknown, u32 mip_slice = 0, u32 mip_size = U32_MAX)
+			static TextureViewDesc tex2d(ITexture* texture, Format format = Format::unknown, u32 mip_slice = 0, u32 mip_size = U32_MAX)
 			{
 				TextureViewDesc desc;
 				desc.texture = texture;
@@ -122,7 +122,7 @@ namespace Luna
 				desc.array_size = 1;
 				return desc;
 			}
-			static TextureViewDesc as_tex2darray(ITexture* texture, Format format = Format::unknown, u32 mip_slice = 0, u32 mip_size = U32_MAX, u32 array_slice = 0, u32 array_size = U32_MAX)
+			static TextureViewDesc tex2darray(ITexture* texture, Format format = Format::unknown, u32 mip_slice = 0, u32 mip_size = U32_MAX, u32 array_slice = 0, u32 array_size = U32_MAX)
 			{
 				TextureViewDesc desc;
 				desc.texture = texture;
@@ -134,7 +134,7 @@ namespace Luna
 				desc.array_size = array_size;
 				return desc;
 			}
-			static TextureViewDesc as_tex3d(ITexture* texture, Format format = Format::unknown, u32 mip_slice = 0, u32 mip_size = U32_MAX)
+			static TextureViewDesc tex3d(ITexture* texture, Format format = Format::unknown, u32 mip_slice = 0, u32 mip_size = U32_MAX)
 			{
 				TextureViewDesc desc;
 				desc.texture = texture;
@@ -146,7 +146,7 @@ namespace Luna
 				desc.array_size = 1;
 				return desc;
 			}
-			static TextureViewDesc as_texcube(ITexture* texture, Format format = Format::unknown, u32 mip_slice = 0, u32 mip_size = U32_MAX)
+			static TextureViewDesc texcube(ITexture* texture, Format format = Format::unknown, u32 mip_slice = 0, u32 mip_size = U32_MAX)
 			{
 				TextureViewDesc desc;
 				desc.texture = texture;
@@ -158,7 +158,7 @@ namespace Luna
 				desc.array_size = 6;
 				return desc;
 			}
-			static TextureViewDesc as_texcubearray(ITexture* texture, Format format = Format::unknown, u32 mip_slice = 0, u32 mip_size = U32_MAX, u32 array_slice = 0, u32 array_size = U32_MAX)
+			static TextureViewDesc texcubearray(ITexture* texture, Format format = Format::unknown, u32 mip_slice = 0, u32 mip_size = U32_MAX, u32 array_slice = 0, u32 array_size = U32_MAX)
 			{
 				TextureViewDesc desc;
 				desc.texture = texture;

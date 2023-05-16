@@ -34,7 +34,7 @@ namespace Luna
 			u32 first_array_slice;
 			u32 array_size;
 
-			static DepthStencilViewDesc as_tex1d(Format format, u32 mip_slice)
+			static DepthStencilViewDesc tex1d(Format format, u32 mip_slice)
 			{
 				DepthStencilViewDesc desc;
 				desc.format = format;
@@ -44,7 +44,7 @@ namespace Luna
 				desc.array_size = 1;
 				return desc;
 			}
-			static DepthStencilViewDesc as_tex1darray(Format format, u32 mip_slice, u32 first_array_slice, u32 array_size)
+			static DepthStencilViewDesc tex1darray(Format format, u32 mip_slice, u32 first_array_slice, u32 array_size)
 			{
 				DepthStencilViewDesc desc;
 				desc.format = format;
@@ -54,7 +54,7 @@ namespace Luna
 				desc.first_array_slice = first_array_slice;
 				return desc;
 			}
-			static DepthStencilViewDesc as_tex2d(Format format, u32 mip_slice)
+			static DepthStencilViewDesc tex2d(Format format, u32 mip_slice)
 			{
 				DepthStencilViewDesc desc;
 				desc.format = format;
@@ -64,7 +64,7 @@ namespace Luna
 				desc.array_size = 1;
 				return desc;
 			}
-			static DepthStencilViewDesc as_tex2darray(Format format, u32 mip_slice, u32 first_array_slice, u32 array_size)
+			static DepthStencilViewDesc tex2darray(Format format, u32 mip_slice, u32 first_array_slice, u32 array_size)
 			{
 				DepthStencilViewDesc desc;
 				desc.format = format;

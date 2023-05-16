@@ -167,7 +167,7 @@ namespace Luna
             m_ds->set_srv(3, base_color_roughness_tex);
             m_ds->set_srv(4, normal_metallic_tex);
             m_ds->set_srv(5, emissive_tex);
-            m_ds->set_srv(6, depth_tex, &ShaderResourceViewDesc::as_tex2d(Format::r32_float, 0, 1, 0.0f));
+            m_ds->set_srv(6, depth_tex, &ShaderResourceViewDesc::tex2d(Format::r32_float, 0, 1, 0.0f));
             m_ds->set_srv(7, sky_box);
             m_ds->set_srv(8, m_global_data->m_integrate_brdf);
             m_ds->set_uav(9, scene_tex);

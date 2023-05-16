@@ -8,7 +8,7 @@ Luna SDK is a C++ software development framework for real-time rendering applica
 
 Key features:
 
-* Modern graphics API targeting Direct3D 12, Vulkan (1.1 and newer) and Metal, including window management.
+* Modern graphics API targeting Direct3D 12, Vulkan and Metal, including window management.
 * Full dynamic type reflection, including full support for generic types.
 * Serialization support based on reflection.
 * Fast entity-component-system scene representation.
@@ -25,13 +25,13 @@ Designed target platforms:
 ## Building
 
 ### Prerequisites
+
 * C++ toolchain on your platform:
     * Visual Studio 2019 or later on Windows (C++ desktop development & C++ game development workload).
     * XCode on macOS (not implemented yet).
     * clang or gcc on Linux (not implemented yet).
 * xmake building system, check [here](https://xmake.io/#/guide/installation) for installation instructions.
 * For Visual Studio Code users, install `XMake`(tboox) and `C/C++`(Microsoft) extensions on Visual Studio Code to improve development experience.
-* [Vulkan SDK](https://www.lunarg.com/vulkan-sdk/) should be installed manually if you want to build Luna SDK with Vulkan backend. This is a requirement for Linux users.
 
 ### Visual Studio
 1. Clone or download this project.
@@ -55,7 +55,23 @@ Designed target platforms:
    1. `--rhi_api=XXX` for choosing the rendering backend, including `D3D12` (default on Windows), `Vulkan` (default on Linux) and `Metal` (default on macOS). 
 1. Open terminal and execute `xmake build` for all projects, or `xmake build {target}` for a specific target, like `Studio`. You may also use `Run and Debug` tab to build project if you install the `XMake` extension.
 
-## Docs 
+## System Requirements
+
+he following requirements must be satisfied to build Luna SDK with Direct3D 12 rendering backend:
+
+* Windows 10 operating system, 64-bit.
+
+The following requirements must be satisfied to build Luna SDK with Vulkan rendering backend:
+
+* Vulkan runtime must be present on the system, and must be supported by your GPU and driver.
+  * Vulkan runtime is shipped as part of system components on most modern operations systems, including Windows, Linux and Android.
+  * To check whether your GPU and driver supports Vulkan, consult [this database](https://vulkan.gpuinfo.org/).
+  * Installation of [Vulkan SDK](https://vulkan.lunarg.com/) is **not required** to build Luna SDK with Vulkan rendering backend.
+
+* `VK_KHR_maintenance1 ` extension support, which is mandatory in Vulkan 1.1+.
+* `VK_KHR_swapchain` extension support, which should be supported on all platforms with display screens.
+
+## Docs
 See [Luna SDK Docs](https://www.lunasdk.org).
 
 ## Feedback & Discussion
