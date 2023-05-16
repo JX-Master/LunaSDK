@@ -60,6 +60,8 @@ namespace Luna
 				impl_interface_for_type<RenderTargetView, IRenderTargetView, IDeviceChild>();
 				register_boxed_type<ResolveTargetView>();
 				impl_interface_for_type<ResolveTargetView, IResolveTargetView, IDeviceChild>();
+				register_boxed_type<DeviceMemory>();
+				impl_interface_for_type<DeviceMemory, IDeviceMemory, IDeviceChild>();
 				register_boxed_type<BufferResource>();
 				impl_interface_for_type<BufferResource, IBuffer, IResource, IDeviceChild>();
 				register_boxed_type<ImageResource>();

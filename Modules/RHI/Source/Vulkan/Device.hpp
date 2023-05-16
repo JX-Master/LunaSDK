@@ -73,19 +73,14 @@ namespace Luna
 			virtual R<Ref<IBuffer>> new_buffer(const BufferDesc& desc) override;
 			virtual R<Ref<ITexture>> new_texture(const TextureDesc& desc, const ClearValue* optimized_clear_value) override;
 			virtual bool is_resources_aliasing_compatible(Span<const BufferDesc> buffers, Span<const TextureDesc> textures) override;
-			virtual R<Ref<IBuffer>> new_aliasing_buffer(IResource* existing_resource, const BufferDesc& desc) override;
-			virtual R<Ref<ITexture>> new_aliasing_texture(IResource* existing_resource, const TextureDesc& desc, const ClearValue* optimized_clear_value) override;
-			virtual RV new_aliasing_resources(
-				Span<const BufferDesc> buffers,
-				Span<const TextureDesc> textures,
-				Span<const ClearValue*> optimized_clear_values,
-				Span<Ref<IBuffer>> out_buffers,
-				Span<Ref<ITexture>> out_textures) override;
+			virtual R<Ref<IDeviceMemory>> allocate_memory(Span<const BufferDesc> buffers, Span<const TextureDesc> textures) override;
+			virtual R<Ref<IBuffer>> new_aliasing_buffer(IDeviceMemory* device_memory, const BufferDesc& desc) override;
+			virtual R<Ref<ITexture>> new_aliasing_texture(IDeviceMemory* device_memory, const TextureDesc& desc, const ClearValue* optimized_clear_value) override;
 			virtual R<Ref<IShaderInputLayout>> new_shader_input_layout(const ShaderInputLayoutDesc& desc) override;
 			virtual R<Ref<IPipelineState>> new_graphics_pipeline_state(const GraphicsPipelineStateDesc& desc) override;
 			virtual R<Ref<IPipelineState>> new_compute_pipeline_state(const ComputePipelineStateDesc& desc) override;
 			virtual R<Ref<IDescriptorSetLayout>> new_descriptor_set_layout(const DescriptorSetLayoutDesc& desc) override;
-			virtual R<Ref<IDescriptorSet>> new_descriptor_set(DescriptorSetDesc& desc) override;
+			virtual R<Ref<IDescriptorSet>> new_descriptor_set(const DescriptorSetDesc& desc) override;
 			virtual u32 get_num_command_queues() override;
 			virtual CommandQueueDesc get_command_queue_desc(u32 command_queue_index) override;
 			virtual R<Ref<ICommandBuffer>> new_command_buffer(u32 command_queue_index) override;

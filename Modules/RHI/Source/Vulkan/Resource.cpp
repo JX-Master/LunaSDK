@@ -30,9 +30,10 @@ namespace Luna
 				luset(m_buffer, m_device->create_vk_buffer(m_desc));
 				VkMemoryRequirements memory_requirements;
 				m_device->m_funcs.vkGetBufferMemoryRequirements(m_device->m_device, m_buffer, &memory_requirements);
-				VmaAllocationCreateInfo allocation{};
-				encode_allocation_info(allocation, m_desc.heap_type);
-				luset(m_memory, allocate_device_memory(m_device, memory_requirements, allocation));
+				auto memory = new_object<DeviceMemory>();
+				memory->m_device = m_device;
+				luexp(memory->init(m_desc.heap_type, memory_requirements));
+				m_memory = memory;
 				luexp(post_init());
 			}
 			lucatchret;
@@ -91,9 +92,10 @@ namespace Luna
 				luset(m_image, m_device->create_vk_image(m_desc));
 				VkMemoryRequirements memory_requirements;
 				m_device->m_funcs.vkGetImageMemoryRequirements(m_device->m_device, m_image, &memory_requirements);
-				VmaAllocationCreateInfo allocation{};
-				encode_allocation_info(allocation, m_desc.heap_type);
-				luset(m_memory, allocate_device_memory(m_device, memory_requirements, allocation));
+				auto memory = new_object<DeviceMemory>();
+				memory->m_device = m_device;
+				luexp(memory->init(m_desc.heap_type, memory_requirements));
+				m_memory = memory;
 				luexp(post_init());
 			}
 			lucatchret;

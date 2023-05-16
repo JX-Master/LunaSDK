@@ -329,79 +329,11 @@ namespace Luna
 			if (!memory_requirements.memoryTypeBits) return false;
 			return true;
 		}
-		R<Ref<IBuffer>> Device::new_aliasing_buffer(IResource* existing_resource, const BufferDesc& desc)
+		R<Ref<IDeviceMemory>> Device::allocate_memory(Span<const BufferDesc> buffers, Span<const TextureDesc> textures)
 		{
-			Ref<IResource> ret;
+			Ref<IDeviceMemory> ret;
 			lutry
 			{
-				DeviceMemory* memory = nullptr;
-				ResourceHeapType heap_type;
-				{
-					BufferResource* buffer = cast_object<BufferResource>(existing_resource->get_object());
-					if (buffer)
-					{
-						heap_type = buffer->m_desc.heap_type;
-						memory = buffer->m_memory;
-					}
-					else
-					{
-						ImageResource* image = cast_object<ImageResource>(existing_resource->get_object());
-						heap_type = image->m_desc.heap_type;
-						memory = image->m_memory;
-					}
-				}
-				if (heap_type != desc.heap_type) return BasicError::not_supported();
-				auto res = new_object<BufferResource>();
-				res->m_device = this;
-				luexp(res->init_as_aliasing(desc, memory));
-				ret = res;
-			}
-			lucatchret;
-			return ret;
-		}
-		R<Ref<ITexture>> Device::new_aliasing_texture(IResource* existing_resource, const TextureDesc& desc, const ClearValue* optimized_clear_value)
-		{
-			Ref<IResource> ret;
-			lutry
-			{
-				DeviceMemory* memory = nullptr;
-				ResourceHeapType heap_type;
-				{
-					BufferResource* buffer = cast_object<BufferResource>(existing_resource->get_object());
-					if (buffer)
-					{
-						heap_type = buffer->m_desc.heap_type;
-						memory = buffer->m_memory;
-					}
-					else
-					{
-						ImageResource* image = cast_object<ImageResource>(existing_resource->get_object());
-						heap_type = image->m_desc.heap_type;
-						memory = image->m_memory;
-					}
-				}
-				// This may happen if the resource memory is externally managed.
-				if (!memory) return BasicError::not_supported();
-				if (heap_type != desc.heap_type) return BasicError::not_supported();
-				auto res = new_object<ImageResource>();
-				res->m_device = this;
-				luexp(res->init_as_aliasing(desc, memory));
-				ret = res;
-			}
-			lucatchret;
-			return ret;
-		}
-		RV Device::new_aliasing_resources(
-			Span<const BufferDesc> buffers,
-			Span<const TextureDesc> textures,
-			Span<const ClearValue*> optimized_clear_values,
-			Span<Ref<IBuffer>> out_buffers,
-			Span<Ref<ITexture>> out_textures)
-		{
-			lutry
-			{
-				if (out_buffers.size() < buffers.size()) return BasicError::insufficient_user_buffer();
-				if (out_textures.size() < textures.size()) return BasicError::insufficient_user_buffer();
 				if (buffers.size() + textures.size() < 1) return BasicError::bad_arguments();
 				VkMemoryRequirements memory_requirements;
 				ResourceHeapType heap_type = buffers[0].heap_type;
@@ -419,60 +351,65 @@ namespace Luna
 				for (usize i = 0; i < buffers.size(); ++i)
 				{
 					VkMemoryRequirements desc_memory_requirements;
-					auto buffer = new_object<BufferResource>();
-					buffer->m_device = this;
-					buffer->m_desc = buffers[i];
-					luset(buffer->m_buffer, create_vk_buffer(buffer->m_desc));
-					m_funcs.vkGetBufferMemoryRequirements(m_device, buffer->m_buffer, &desc_memory_requirements);
-					out_buffers[i] = buffer;
+					lulet(buffer, create_vk_buffer(buffers[i]));
+					m_funcs.vkGetBufferMemoryRequirements(m_device, buffer, &desc_memory_requirements);
 					memory_requirements.size = max(memory_requirements.size, desc_memory_requirements.size);
 					memory_requirements.alignment = max(memory_requirements.alignment, desc_memory_requirements.alignment);
 					memory_requirements.memoryTypeBits &= desc_memory_requirements.memoryTypeBits;
+					m_funcs.vkDestroyBuffer(m_device, buffer, nullptr);
 				}
 				for (usize i = 0; i < textures.size(); ++i)
 				{
 					VkMemoryRequirements desc_memory_requirements;
-					auto image = new_object<ImageResource>();
-					image->m_device = this;
-					image->m_desc = textures[i];
-					luset(image->m_image, create_vk_image(image->m_desc));
-					m_funcs.vkGetImageMemoryRequirements(m_device, image->m_image, &desc_memory_requirements);
-					out_textures[i] = image;
+					lulet(image, create_vk_image(textures[i]));
+					m_funcs.vkGetImageMemoryRequirements(m_device, image, &desc_memory_requirements);
 					memory_requirements.size = max(memory_requirements.size, desc_memory_requirements.size);
 					memory_requirements.alignment = max(memory_requirements.alignment, desc_memory_requirements.alignment);
 					memory_requirements.memoryTypeBits &= desc_memory_requirements.memoryTypeBits;
+					m_funcs.vkDestroyImage(m_device, image, nullptr);
 				}
 				memory_requirements.size = align_upper(memory_requirements.size, memory_requirements.alignment);
 				if (!memory_requirements.memoryTypeBits)
 				{
-					for (usize i = 0; i < buffers.size(); ++i)
-					{
-						out_buffers[i].reset();
-					}
-					for (usize i = 0; i < textures.size(); ++i)
-					{
-						out_textures[i].reset();
-					}
 					return BasicError::not_supported();
 				}
-				VmaAllocationCreateInfo allocation{};
-				encode_allocation_info(allocation, heap_type);
-				lulet(memory, allocate_device_memory(this, memory_requirements, allocation));
-				for (usize i = 0; i < buffers.size(); ++i)
-				{
-					BufferResource* buffer = (BufferResource*)(out_buffers[i]->get_object());
-					buffer->m_memory = memory;
-					luexp(buffer->post_init());
-				}
-				for (usize i = 0; i < textures.size(); ++i)
-				{
-					ImageResource* image = (ImageResource*)(out_textures[i]->get_object());
-					image->m_memory = memory;
-					luexp(image->post_init());
-				}
+				auto memory = new_object<DeviceMemory>();
+				memory->m_device = this;
+				luexp(memory->init(heap_type, memory_requirements));
+				ret = memory;
 			}
 			lucatchret;
-			return ok;
+			return ret;
+		}
+		R<Ref<IBuffer>> Device::new_aliasing_buffer(IDeviceMemory* device_memory, const BufferDesc& desc)
+		{
+			Ref<IResource> ret;
+			lutry
+			{
+				DeviceMemory* memory = cast_object<DeviceMemory>(device_memory->get_object());
+				if (memory->m_heap_type != desc.heap_type) return BasicError::not_supported();
+				auto res = new_object<BufferResource>();
+				res->m_device = this;
+				luexp(res->init_as_aliasing(desc, memory));
+				ret = res;
+			}
+			lucatchret;
+			return ret;
+		}
+		R<Ref<ITexture>> Device::new_aliasing_texture(IDeviceMemory* device_memory, const TextureDesc& desc, const ClearValue* optimized_clear_value)
+		{
+			Ref<IResource> ret;
+			lutry
+			{
+				DeviceMemory* memory = cast_object<DeviceMemory>(device_memory->get_object());
+				if (memory->m_heap_type != desc.heap_type) return BasicError::not_supported();
+				auto res = new_object<ImageResource>();
+				res->m_device = this;
+				luexp(res->init_as_aliasing(desc, memory));
+				ret = res;
+			}
+			lucatchret;
+			return ret;
 		}
 		R<Ref<IShaderInputLayout>> Device::new_shader_input_layout(const ShaderInputLayoutDesc& desc)
 		{
@@ -526,7 +463,7 @@ namespace Luna
 			lucatchret;
 			return ret;
 		}
-		R<Ref<IDescriptorSet>> Device::new_descriptor_set(DescriptorSetDesc& desc)
+		R<Ref<IDescriptorSet>> Device::new_descriptor_set(const DescriptorSetDesc& desc)
 		{
 			Ref<IDescriptorSet> ret;
 			lutry

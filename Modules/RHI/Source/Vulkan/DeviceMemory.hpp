@@ -14,18 +14,23 @@ namespace Luna
 {
 	namespace RHI
 	{
-		struct DeviceMemory
+		struct DeviceMemory : IDeviceMemory
 		{
 			lustruct("RHI::DeviceMemory", "{F99F86B6-3339-4C28-A82A-13B63ADAFBBC}");
+			luiimpl();
 
 			Ref<Device> m_device;
+			Name m_name;
+			ResourceHeapType m_heap_type;
 			VmaAllocation m_allocation = VK_NULL_HANDLE;
 			VmaAllocationInfo m_allocation_info;
-			~DeviceMemory();
-		};
 
-		R<Ref<DeviceMemory>> allocate_device_memory(Device* device, 
-			const VkMemoryRequirements& pVkMemoryRequirements, 
-			const VmaAllocationCreateInfo& pCreateInfo);
+			RV init(ResourceHeapType heap_type, const VkMemoryRequirements& pVkMemoryRequirements);
+			~DeviceMemory();
+
+			virtual IDevice* get_device() override { return m_device; }
+			virtual void set_name(const Name& name) override { m_name = name; }
+			virtual u64 get_size() override { return m_allocation_info.size; }
+		};
 	}
 }

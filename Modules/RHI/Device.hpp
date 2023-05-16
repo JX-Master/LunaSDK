@@ -199,40 +199,18 @@ namespace Luna
 			//! @return Returns `true` if such resources can share the same device memory, returns `false` otherwise.
 			virtual bool is_resources_aliasing_compatible(Span<const BufferDesc> buffers, Span<const TextureDesc> textures) = 0;
 
+			//! Allocates device memory that is capable of storing multiple resources specified.
+			virtual R<Ref<IDeviceMemory>> allocate_memory(Span<const BufferDesc> buffers, Span<const TextureDesc> textures) = 0;
+
 			//! Creates one aliasing buffer that shares the same device memory with the existing resource.
 			//! The user may create multiple aliasing resources with the same device memory, given that only one of them is active at any given time.
 			//! The user should use aliasing barrier to switch the active resource between aliasing resources sharing the same device memory.
-			virtual R<Ref<IBuffer>> new_aliasing_buffer(IResource* existing_resource, const BufferDesc& desc) = 0;
+			virtual R<Ref<IBuffer>> new_aliasing_buffer(IDeviceMemory* device_memory, const BufferDesc& desc) = 0;
 
 			//! Creates one aliasing texture that shares the same device memory with the existing resource.
 			//! The user may create multiple aliasing resources with the same device memory, given that only one of them is active at any given time.
 			//! The user should use aliasing barrier to switch the active resource between aliasing resources sharing the same device memory.
-			virtual R<Ref<ITexture>> new_aliasing_texture(IResource* existing_resource, const TextureDesc& desc, const ClearValue* optimized_clear_value = nullptr) = 0;
-
-			//! Allocates device memory that is capable of storing multiple resources specified, and creating multiple aliasing resources 
-			//! that shares the same device memory.
-			//! @param[in] buffers The buffer descriptors of buffer resources that shares the same device memory.
-			//! @param[in] textures The texture descriptors of texture resources that shares the same device memory.
-			//! @param[in] optimized_clear_values The optimized clear values for each texture you want to create.
-			//! 
-			//! Every entry in the span can be `nullptr`, which indicates that the optimized clear value is not specified for that entry.
-			//! 
-			//! If `optimized_clear_values.size()` is smaller than `textures.size()`, the optimized clear values of first `textures.size()` enties will be specified, other enties 
-			//! will have no optimized clear value specified.
-			//! @param[out] out_buffers Returns the created buffer resources, one for each entry in `buffers`.
-			//! 
-			//! `out_buffers.size()` must be greater than or equal to `buffers.size()`, and the first `buffers.size()` count of `out_buffers` will be filled.
-			//! @param[out] out_textures Returns the created texture resources, one for each entry in `textures`.
-			//! 
-			//! `out_textures.size()` must be greater than or equal to `textures.size()`, and the first `textures.size()` count of `out_textures` will be filled.
-			//! @remark The user can call `is_resources_aliasing_compatible` before calling `new_aliasing_resources` to check whether the given 
-			//! resources can share the same device memory.
-			virtual RV new_aliasing_resources(
-				Span<const BufferDesc> buffers,
-				Span<const TextureDesc> textures,
-				Span<const ClearValue*> optimized_clear_values, 
-				Span<Ref<IBuffer>> out_buffers,
-				Span<Ref<ITexture>> out_textures) = 0;
+			virtual R<Ref<ITexture>> new_aliasing_texture(IDeviceMemory* device_memory, const TextureDesc& desc, const ClearValue* optimized_clear_value = nullptr) = 0;
 
 			//! Creates one new shader input layout.
 			virtual R<Ref<IShaderInputLayout>> new_shader_input_layout(const ShaderInputLayoutDesc& desc) = 0;
@@ -251,7 +229,7 @@ namespace Luna
 			//! Creates one new descriptor set object that describes resources that are bound to the pipeline.
 			//! @param[in] target_input_layout The shader input layout object this view set is created for.
 			//! @param[in] desc The descriptor object.
-			virtual R<Ref<IDescriptorSet>> new_descriptor_set(DescriptorSetDesc& desc) = 0;
+			virtual R<Ref<IDescriptorSet>> new_descriptor_set(const DescriptorSetDesc& desc) = 0;
 
 			//! Gets the number of command queues of the device.
 			virtual u32 get_num_command_queues() = 0;

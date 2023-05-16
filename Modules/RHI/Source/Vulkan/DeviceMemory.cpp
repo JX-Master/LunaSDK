@@ -13,6 +13,13 @@ namespace Luna
 {
 	namespace RHI
 	{
+		RV DeviceMemory::init(ResourceHeapType heap_type, const VkMemoryRequirements& pVkMemoryRequirements)
+		{
+			m_heap_type = heap_type;
+			VmaAllocationCreateInfo allocation{};
+			encode_allocation_info(allocation, heap_type);
+			return encode_vk_result(vmaAllocateMemory(m_device->m_allocator, &pVkMemoryRequirements, &allocation, &m_allocation, &m_allocation_info));
+		}
 		DeviceMemory::~DeviceMemory()
 		{
 			if (m_allocation != VK_NULL_HANDLE)
@@ -20,19 +27,6 @@ namespace Luna
 				vmaFreeMemory(m_device->m_allocator, m_allocation);
 				m_allocation = VK_NULL_HANDLE;
 			}
-		}
-		R<Ref<DeviceMemory>> allocate_device_memory(Device* device, 
-			const VkMemoryRequirements& pVkMemoryRequirements, 
-			const VmaAllocationCreateInfo& pCreateInfo)
-		{
-			auto ret = new_object<DeviceMemory>();
-			lutry
-			{
-				ret->m_device = device;
-				luexp(encode_vk_result(vmaAllocateMemory(ret->m_device->m_allocator, &pVkMemoryRequirements, &pCreateInfo, &ret->m_allocation, &ret->m_allocation_info)));
-			}
-			lucatchret;
-			return ret;
 		}
 	}
 }

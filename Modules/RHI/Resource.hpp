@@ -8,10 +8,9 @@
 * @date 2019/7/20
 */
 #pragma once
-#include <Runtime/Object.hpp>
 #include <Runtime/Result.hpp>
 #include <Runtime/Math/Math.hpp>
-#include "DeviceChild.hpp"
+#include "DeviceMemory.hpp"
 namespace Luna
 {
 	namespace RHI
@@ -449,7 +448,8 @@ namespace Luna
 		{
 			luiid("{D67C47CD-1FF3-4FA4-82FE-773EC5C8AD2A}");
 
-			
+			//! Gets the device memory object that holds memory of this resource.
+			virtual IDeviceMemory* get_device_memory() = 0;
 		};
 
 		struct IBuffer : virtual IResource
