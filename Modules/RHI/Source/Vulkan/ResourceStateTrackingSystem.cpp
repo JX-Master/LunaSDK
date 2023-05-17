@@ -77,7 +77,7 @@ namespace Luna
 				VkAccessFlags after_flags = encode_access_flags(barrier.after);
 				append_buffer(res, before_flags, after_flags, before_queue_family_index, after_queue_family_index);
 				m_src_stage_flags |= (barrier.before == BufferStateFlag::automatic) ?
-					VK_PIPELINE_STAGE_ALL_COMMANDS_BIT : determine_pipeline_stage_flags(barrier.before, m_queue_type);
+					VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT : determine_pipeline_stage_flags(barrier.before, m_queue_type);
 				m_dest_stage_flags |= determine_pipeline_stage_flags(barrier.after, m_queue_type);
 			}
 			else
@@ -119,7 +119,7 @@ namespace Luna
 				after_state.image_layout = encode_image_layout(barrier.after);
 				append_image(res, barrier.subresource, before_state, after_state, before_queue_family_index, after_queue_family_index);
 				m_src_stage_flags |= (barrier.before == TextureStateFlag::automatic) ?
-					VK_PIPELINE_STAGE_ALL_COMMANDS_BIT : determine_pipeline_stage_flags(barrier.before, m_queue_type);
+					VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT : determine_pipeline_stage_flags(barrier.before, m_queue_type);
 				m_dest_stage_flags |= determine_pipeline_stage_flags(barrier.after, m_queue_type);
 			}
 			else

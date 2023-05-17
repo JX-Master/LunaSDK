@@ -358,7 +358,6 @@ namespace Luna
 			{
 			case ResourceHeapType::local:
 				dest.preferredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-				dest.flags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
 				dest.priority = 1.0f;
 				break;
 			case ResourceHeapType::upload:

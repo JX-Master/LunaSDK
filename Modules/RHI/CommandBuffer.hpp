@@ -40,11 +40,11 @@ namespace Luna
 			//! and other resources are previously used in the same command buffer. In such state, the device should finish all operations
 			//! on the previous resource before it can process commands on the new resource.
 			//! 
-			//! When submitting aliasing barriers, `resource` should be specified to the new resource being used. The `before` state 
+			//! When submitting aliasing barriers, `buffer` or `texture` should be specified to the new resource being used. The `before` state 
 			//! is a combination of states of all previouly used resources on the command buffer. The `before` state can be 
-			//! `BufferStateFlag::automatic`, which always emits one full pipeline barrier, but specify before states precisely may 
-			//! improve performance by avoiding waiting for pipeline stages that does not use the aliasing resource. The `after` state
-			//! is the initial state of the new resource. The resource content is always unspecified, despite whether `discard_content` 
+			//! `BufferStateFlag::automatic` or `TextureStateFlag::automatic`, which always emits one full pipeline barrier, but specify 
+			//! `before` states precisely may improve performance by avoiding waiting for pipeline stages that does not use the aliasing resource. 
+			//! The `after` state is the initial state of the new resource. The resource content is always unspecified, despite whether `discard_content` 
 			//! is specified.
 			aliasing = 0x01,
 			//! Tells the device that the old content of the specified resource does not need to be preserved. The resource content is 
