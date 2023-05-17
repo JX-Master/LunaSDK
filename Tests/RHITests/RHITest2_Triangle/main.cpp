@@ -160,7 +160,7 @@ void draw()
 	cb->set_graphics_shader_input_layout(shader_input_layout);
 	IBuffer* vertex_buffer = vb;
 	usize vb_offset = 0;
-	cb->set_vertex_buffers(0, {VertexBufferView(vb, 0, sizeof(VertexData) * 3)});
+	cb->set_vertex_buffers(0, {VertexBufferView(vb, 0, sizeof(VertexData) * 3, sizeof(VertexData))});
 	auto sz = get_window()->get_size();
 	cb->set_scissor_rect(RectI(0, 0, (i32)sz.x, (i32)sz.y));
 	cb->set_viewport(Viewport(0, 0, (f32)sz.x, (f32)sz.y, 0.0f, 1.0f));
