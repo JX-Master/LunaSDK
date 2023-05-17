@@ -33,6 +33,8 @@ option_end()
 if is_config("rhi_api", "Vulkan") then 
     add_requires("volk", {configs = {header_only = true}})
     add_requires("vulkan-memory-allocator")
+elseif is_config("rhi_api", "D3D12") then 
+    add_requires("d3d12-memory-allocator")
 end
 
 target("RHI")
@@ -44,6 +46,7 @@ target("RHI")
         add_defines("LUNA_RHI_D3D12")
         add_headerfiles("Source/DXGI/**.hpp", "Source/D3D12/**.hpp")
         add_files("Source/D3D12/**.cpp")
+        add_packages("d3d12-memory-allocator")
     elseif is_config("rhi_api", "Vulkan") then
         add_defines("LUNA_RHI_VULKAN")
         add_headerfiles("Source/Vulkan/**.hpp")
@@ -53,29 +56,5 @@ target("RHI")
         add_defines("LUNA_RHI_METAL")
     end
     add_deps("Runtime", "Window")
-    -- Generate shader file.
-    if is_os("windows") and is_config("rhi_api", "D3D12") then
-        before_build(function (target)
-            os.mkdir("$(buildir)/Shaders")
-            local output_path = vformat("$(buildir)/Shaders")
-            local vs_header_path = vformat("$(scriptdir)/Source/D3D12/SwapChainVS.hpp")
-            local vs_source_path = vformat("$(scriptdir)/Source/D3D12/SwapChainVS.cpp")
-            local ps_header_path = vformat("$(scriptdir)/Source/D3D12/SwapChainPS.hpp")
-            local ps_source_path = vformat("$(scriptdir)/Source/D3D12/SwapChainPS.cpp")
-            local vs_source = vformat("$(scriptdir)/Source/D3D12/SwapChainVS.hlsl")
-            local ps_source = vformat("$(scriptdir)/Source/D3D12/SwapChainPS.hlsl")
-            import("compile_shader")
-            local runenvs = target:toolchain("msvc"):runenvs()
-            compile_shader.compile_shader(vs_source, 
-                {type = "vs", shading_model = "5_0", output_path = output_path, envs = runenvs})
-            compile_shader.compile_shader(ps_source, 
-                {type = "ps", shading_model = "5_0", output_path = output_path, envs = runenvs})
-            local vs_path = output_path .. "/SwapChainVS.cso"
-            local ps_path = output_path .. "/SwapChainPS.cso"
-            import("bin_to_cpp")
-            bin_to_cpp.bin_to_cpp(vs_path, vs_header_path, vs_source_path)
-            bin_to_cpp.bin_to_cpp(ps_path, ps_header_path, ps_source_path)
-        end)
-    end
 target_end()
 

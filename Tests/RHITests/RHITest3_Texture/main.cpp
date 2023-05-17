@@ -74,7 +74,7 @@ RV start()
 			compiler->set_entry_point("main");
 			compiler->set_target_format(RHI::get_current_platform_shader_target_format());
 			compiler->set_shader_type(ShaderCompiler::ShaderType::vertex);
-			compiler->set_shader_model(5, 0);
+			compiler->set_shader_model(6, 0);
 			compiler->set_optimization_level(ShaderCompiler::OptimizationLevel::full);
 
 			luexp(compiler->compile());
@@ -106,7 +106,7 @@ RV start()
 			compiler->set_entry_point("main");
 			compiler->set_target_format(RHI::get_current_platform_shader_target_format());
 			compiler->set_shader_type(ShaderCompiler::ShaderType::pixel);
-			compiler->set_shader_model(5, 0);
+			compiler->set_shader_model(6, 0);
 			compiler->set_optimization_level(ShaderCompiler::OptimizationLevel::full);
 
 			luexp(compiler->compile());
@@ -155,10 +155,12 @@ RV start()
 				TextureUsageFlag::sampled_texture | TextureUsageFlag::copy_dest,
 				128, 128, 1, 1)));
 
-			lulet(tex_staging, device->new_buffer(BufferDesc(ResourceHeapType::upload, BufferUsageFlag::copy_source, sizeof(test_image_data_v))));
+			u64 size, row_pitch, slice_pitch;
+			device->get_texture_data_placement_info(128, 128, 1, Format::rgba8_unorm, &size, nullptr, &row_pitch, &slice_pitch);
+			lulet(tex_staging, device->new_buffer(BufferDesc(ResourceHeapType::upload, BufferUsageFlag::copy_source, size)));
 
 			lulet(tex_staging_data, tex_staging->map(0, 0));
-			memcpy(tex_staging_data, test_image_data_v, sizeof(test_image_data_v));
+			memcpy_bitmap(tex_staging_data, test_image_data_v, 128 * 4, 128, row_pitch, 128 * 4);
 			tex_staging->unmap(0, sizeof(test_image_data_v));
 
 			u32 copy_queue_index = get_command_queue_index();
@@ -189,7 +191,7 @@ RV start()
 					DescriptorSetWrite::sampled_texture_view(0, TextureViewDesc::tex2d(tex)),
 					DescriptorSetWrite::sampler(1, SamplerDesc(Filter::min_mag_mip_linear, TextureAddressMode::clamp,
 							TextureAddressMode::clamp, TextureAddressMode::clamp))
-				}, {});
+				});
 		}
 	}
 	lucatchret;
@@ -232,11 +234,11 @@ void draw()
 	desc.color_clear_values[0] = Color::black();
 	desc.color_store_ops[0] = StoreOp::store;
 	cb->begin_render_pass(desc);
-	cb->set_pipeline_state(PipelineStateBindPoint::graphics, pso);
+	cb->set_pipeline_state(pso);
 	cb->set_graphics_shader_input_layout(shader_input_layout);
 	IDescriptorSet* ds = desc_set.get();
 	cb->set_graphics_descriptor_sets(0, { &ds, 1 });
-	cb->set_vertex_buffers(0, {VertexBufferView(vb, 0, sizeof(VertexData) * 4)});
+	cb->set_vertex_buffers(0, {VertexBufferView(vb, 0, sizeof(VertexData) * 4, sizeof(VertexData))});
 	cb->set_index_buffer({ ib, 0, 24, Format::r32_uint });
 	cb->set_scissor_rect(RectI(0, 0, (i32)w, (i32)h));
 	cb->set_viewport(Viewport(0.0f, 0.0f, (f32)w, (f32)h, 0.0f, 1.0f));

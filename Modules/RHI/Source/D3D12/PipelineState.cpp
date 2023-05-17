@@ -90,8 +90,6 @@ namespace Luna
 				return D3D12_LOGIC_OP_COPY;
 			case LogicOp::copy_inverted:
 				return D3D12_LOGIC_OP_COPY_INVERTED;
-			case LogicOp::noop:
-				return D3D12_LOGIC_OP_NOOP;
 			case LogicOp::invert:
 				return D3D12_LOGIC_OP_INVERT;
 			case LogicOp::and :
@@ -150,6 +148,43 @@ namespace Luna
 			dest.pShaderBytecode = src.data();
 		}
 
+		inline void encode_target_blend_desc(D3D12_RENDER_TARGET_BLEND_DESC& rt, const AttachmentBlendDesc& srt, bool logic_op_enable, LogicOp logic_op)
+		{
+			rt.BlendEnable = srt.blend_enable ? TRUE : FALSE;
+			rt.LogicOpEnable = logic_op_enable ? TRUE : FALSE;
+			rt.SrcBlend = encode_blend_factor(srt.src_blend);
+			rt.DestBlend = encode_blend_factor(srt.dest_blend);
+			rt.BlendOp = encode_blend_op(srt.blend_op);
+			rt.SrcBlendAlpha = encode_blend_factor(srt.src_blend_alpha);
+			rt.DestBlendAlpha = encode_blend_factor(srt.dest_blend_alpha);
+			rt.BlendOpAlpha = encode_blend_op(srt.blend_op_alpha);
+			if (logic_op_enable)
+			{
+				rt.LogicOp = encode_logic_op(logic_op);
+			}
+			else
+			{
+				rt.LogicOp = D3D12_LOGIC_OP_NOOP;
+			}
+			rt.RenderTargetWriteMask = 0;
+			if ((srt.render_target_write_mask & ColorWriteMask::red) != ColorWriteMask::none)
+			{
+				rt.RenderTargetWriteMask = rt.RenderTargetWriteMask | D3D12_COLOR_WRITE_ENABLE_RED;
+			}
+			if ((srt.render_target_write_mask & ColorWriteMask::green) != ColorWriteMask::none)
+			{
+				rt.RenderTargetWriteMask = rt.RenderTargetWriteMask | D3D12_COLOR_WRITE_ENABLE_GREEN;
+			}
+			if ((srt.render_target_write_mask & ColorWriteMask::blue) != ColorWriteMask::none)
+			{
+				rt.RenderTargetWriteMask = rt.RenderTargetWriteMask | D3D12_COLOR_WRITE_ENABLE_BLUE;
+			}
+			if ((srt.render_target_write_mask & ColorWriteMask::alpha) != ColorWriteMask::none)
+			{
+				rt.RenderTargetWriteMask = rt.RenderTargetWriteMask | D3D12_COLOR_WRITE_ENABLE_ALPHA;
+			}
+		}
+
 		bool PipelineState::init_graphic(const GraphicsPipelineStateDesc& desc)
 		{
 			m_is_graphics = true;
@@ -159,74 +194,32 @@ namespace Luna
 
 			fill_shader_data(d.VS, desc.vs);
 			fill_shader_data(d.PS, desc.ps);
-			fill_shader_data(d.DS, desc.ds);
-			fill_shader_data(d.HS, desc.hs);
-			fill_shader_data(d.GS, desc.gs);
+			fill_shader_data(d.DS, {});
+			fill_shader_data(d.HS, {});
+			fill_shader_data(d.GS, {});
 
-			Vector<D3D12_SO_DECLARATION_ENTRY> stream_entries;
-			d.StreamOutput.NumEntries = (UINT)desc.stream_output.entries.size();
-			d.StreamOutput.NumStrides = (UINT)desc.stream_output.buffer_strides.size();
-			d.StreamOutput.pBufferStrides = desc.stream_output.buffer_strides.data();
-			d.StreamOutput.RasterizedStream = desc.stream_output.rasterized_stream;
-
-			if (!desc.stream_output.entries.empty())
-			{
-				stream_entries.resize(desc.stream_output.entries.size());
-				d.StreamOutput.pSODeclaration = stream_entries.data();
-				for (usize i = 0; i < stream_entries.size(); ++i)
-				{
-					D3D12_SO_DECLARATION_ENTRY& dst = stream_entries[i];
-					const StreamOutputDeclarationEntry& src = desc.stream_output.entries[i];
-					dst.ComponentCount = src.component_count;
-					dst.OutputSlot = src.output_slot;
-					dst.SemanticIndex = src.semantic_index;
-					dst.SemanticName = src.semantic_name.c_str();
-					dst.StartComponent = src.start_component;
-					dst.Stream = src.stream;
-				}
-			}
-			else
-			{
-				d.StreamOutput.pSODeclaration = nullptr;
-			}
+			d.StreamOutput.NumEntries = 0;
+			d.StreamOutput.NumStrides = 0;
+			d.StreamOutput.pBufferStrides = nullptr;
+			d.StreamOutput.RasterizedStream = 0;
+			d.StreamOutput.pSODeclaration = nullptr;
 
 			{
 				d.BlendState.AlphaToCoverageEnable = desc.blend_state.alpha_to_coverage_enable ? TRUE : FALSE;
-				d.BlendState.IndependentBlendEnable = desc.blend_state.independent_blend_enable ? TRUE : FALSE;
+				d.BlendState.IndependentBlendEnable = desc.blend_state.logic_op_enable ? FALSE : (desc.blend_state.independent_blend_enable ? TRUE : FALSE);
 				for (u32 i = 0; i < 8; ++i)
 				{
-					D3D12_RENDER_TARGET_BLEND_DESC& rt = d.BlendState.RenderTarget[i];
-					const RenderTargetBlendDesc& srt = desc.blend_state.rt[i];
-					rt.BlendEnable = srt.blend_enable ? TRUE : FALSE;
-					rt.LogicOpEnable = srt.logic_op_enable ? TRUE : FALSE;
-					rt.SrcBlend = encode_blend_factor(srt.src_blend);
-					rt.DestBlend = encode_blend_factor(srt.dest_blend);
-					rt.BlendOp = encode_blend_op(srt.blend_op);
-					rt.SrcBlendAlpha = encode_blend_factor(srt.src_blend_alpha);
-					rt.DestBlendAlpha = encode_blend_factor(srt.dest_blend_alpha);
-					rt.BlendOpAlpha = encode_blend_op(srt.blend_op_alpha);
-					rt.LogicOp = encode_logic_op(srt.logic_op);
-					rt.RenderTargetWriteMask = 0;
-					if ((srt.render_target_write_mask & ColorWriteMask::red) != ColorWriteMask::none)
+					if (d.BlendState.IndependentBlendEnable)
 					{
-						rt.RenderTargetWriteMask = rt.RenderTargetWriteMask | D3D12_COLOR_WRITE_ENABLE_RED;
+						encode_target_blend_desc(d.BlendState.RenderTarget[i], desc.blend_state.rt[i], desc.blend_state.logic_op_enable, desc.blend_state.logic_op);
 					}
-					if ((srt.render_target_write_mask & ColorWriteMask::green) != ColorWriteMask::none)
+					else
 					{
-						rt.RenderTargetWriteMask = rt.RenderTargetWriteMask | D3D12_COLOR_WRITE_ENABLE_GREEN;
-					}
-					if ((srt.render_target_write_mask & ColorWriteMask::blue) != ColorWriteMask::none)
-					{
-						rt.RenderTargetWriteMask = rt.RenderTargetWriteMask | D3D12_COLOR_WRITE_ENABLE_BLUE;
-					}
-					if ((srt.render_target_write_mask & ColorWriteMask::alpha) != ColorWriteMask::none)
-					{
-						rt.RenderTargetWriteMask = rt.RenderTargetWriteMask | D3D12_COLOR_WRITE_ENABLE_ALPHA;
+						encode_target_blend_desc(d.BlendState.RenderTarget[i], desc.blend_state.rt[0], desc.blend_state.logic_op_enable, desc.blend_state.logic_op);
 					}
 				}
 				d.SampleMask = desc.sample_mask;
 			}
-
 			{
 				switch (desc.rasterizer_state.fill_mode)
 				{
@@ -278,31 +271,38 @@ namespace Luna
 			}
 
 			Vector<D3D12_INPUT_ELEMENT_DESC> input_elements;
-			if (desc.input_layout.input_elements.size())
+			if (desc.input_layout.attributes.size())
 			{
-				u32 num_elements = (u32)desc.input_layout.input_elements.size();
+				u32 num_elements = (u32)desc.input_layout.attributes.size();
 				input_elements.resize(num_elements);
 				d.InputLayout.NumElements = num_elements;
 				d.InputLayout.pInputElementDescs = input_elements.data();
 				for (u32 i = 0; i < num_elements; ++i)
 				{
 					D3D12_INPUT_ELEMENT_DESC& e = input_elements[i];
-					const InputElementDesc& se = desc.input_layout.input_elements[i];
+					auto& se = desc.input_layout.attributes[i];
 					e.SemanticName = se.semantic_name;
 					e.SemanticIndex = se.semantic_index;
 					e.Format = encode_pixel_format(se.format);
-					e.InputSlot = se.input_slot;
-					e.AlignedByteOffset = se.aligned_byte_offset;
-					switch (se.input_slot_class)
+					e.InputSlot = se.binding_slot;
+					e.AlignedByteOffset = se.offset;
+					e.InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
+					for (usize i = 0; i < desc.input_layout.bindings.size(); ++i)
 					{
-					case InputClassification::per_vertex:
-						e.InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
-						break;
-					case InputClassification::per_instance:
-						e.InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA;
-						break;
+						if (se.binding_slot == desc.input_layout.bindings[i].binding_slot)
+						{
+							switch (desc.input_layout.bindings[i].input_rate)
+							{
+							case InputRate::per_vertex:
+								e.InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
+								break;
+							case InputRate::per_instance:
+								e.InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA;
+								break;
+							}
+						}
 					}
-					e.InstanceDataStepRate = se.instance_data_step_rate;
+					e.InstanceDataStepRate = (e.InputSlotClass == D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA) ? 0 : 1;
 				}
 			}
 			else
@@ -324,22 +324,19 @@ namespace Luna
 				break;
 			}
 
-			switch (desc.primitive_topology_type)
+			m_primitive_topology = desc.primitive_topology;
+			switch (desc.primitive_topology)
 			{
-			case PrimitiveTopologyType::line:
+			case PrimitiveTopology::line_list:
+			case PrimitiveTopology::line_strip:
 				d.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
 				break;
-			case PrimitiveTopologyType::patch:
-				d.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH;
-				break;
-			case PrimitiveTopologyType::point:
+			case PrimitiveTopology::point_list:
 				d.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
 				break;
-			case PrimitiveTopologyType::triangle:
+			case PrimitiveTopology::triangle_list:
+			case PrimitiveTopology::triangle_strip:
 				d.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-				break;
-			case PrimitiveTopologyType::undefined:
-				d.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_UNDEFINED;
 				break;
 			}
 

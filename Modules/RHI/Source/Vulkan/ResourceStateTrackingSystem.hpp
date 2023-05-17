@@ -40,8 +40,6 @@ namespace Luna
 
 	namespace RHI
 	{
-		
-
 		inline constexpr u32 calc_subresource_state_index(u32 mip_slice, u32 array_slice, u32 mip_levels)
 		{
 			if (mip_slice == U32_MAX && array_slice == U32_MAX)

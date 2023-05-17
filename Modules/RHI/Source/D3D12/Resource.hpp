@@ -11,80 +11,56 @@
 #pragma once
 #include "D3D12Common.hpp"
 #include "Device.hpp"
+#include "DeviceMemory.hpp"
 #include <Runtime/TSAssert.hpp>
-
 namespace Luna
 {
 	namespace RHI
 	{
-		struct Resource : IResource
+		struct BufferResource : IBuffer
 		{
-			lustruct("RHI::Resource", "{dd9486e7-5195-4be3-96a4-b27c2e06bc80}");
+			lustruct("RHI::BufferResource", "{A96361DD-C552-4C1C-8E4B-D50D52828626}");
 			luiimpl();
 			lutsassert_lock();
 
 			Ref<Device> m_device;
-
 			ComPtr<ID3D12Resource> m_res;
+			Ref<DeviceMemory> m_memory;
+			BufferDesc m_desc;
 
-			ResourceDesc m_desc;
+			RV init_as_committed(const BufferDesc& desc);
+			RV init_as_aliasing(const BufferDesc& desc, DeviceMemory* memory);
 
-			//! One for each subresource, 0 if this resource does not have a global state.
-			Vector<ResourceState> m_states;
+			virtual IDevice* get_device() override { return m_device; }
+			virtual void set_name(const Name& name) override { set_object_name(m_res.Get(), name); }
+			virtual IDeviceMemory* get_device_memory() override { return m_memory; }
+			virtual BufferDesc get_desc() override { return m_desc; }
+			virtual R<void*> map(usize read_begin, usize read_end) override;
+			virtual void unmap(usize write_begin, usize write_end) override;
+		};
+		struct TextureResource : ITexture
+		{
+			lustruct("RHI::TextureResource", "{5AC5B94D-5EAE-4672-98F3-7C4C557C9F01}");
+			luiimpl();
 
-			Resource() {}
+			Ref<Device> m_device;
+			ComPtr<ID3D12Resource> m_res;
+			Ref<DeviceMemory> m_memory;
+			TextureDesc m_desc;
+			Vector<D3D12_RESOURCE_STATES> m_states;
 
 			u32 count_subresources() const
 			{
-				if (m_desc.type == ResourceType::texture_3d)
-				{
-					return m_desc.mip_levels;
-				}
-				return m_desc.mip_levels * m_desc.depth_or_array_size;
+				return m_desc.mip_levels * m_desc.array_size;
 			}
-			
-			RV init_as_committed(const ResourceDesc& desc, const ClearValue* optimized_clear_value);
-			RV init_as_placed(ID3D12Heap* heap, UINT64 heap_offset, const ResourceDesc& desc, const ClearValue* optimized_clear_value);
+			RV init_as_committed(const TextureDesc& desc, const ClearValue* optimized_clear_value);
+			RV init_as_aliasing(const TextureDesc& desc, DeviceMemory* memory, const ClearValue* optimized_clear_value);
+			void post_init();
 
-			RV post_init();
-
-			IDevice* get_device()
-			{
-				return m_device.as<IDevice>();
-			}
-			void set_name(const Name& name) { set_object_name(m_res.Get(), name); }
-
-			ResourceDesc get_desc()
-			{
-				return m_desc;
-			}
-
-			/*static ResourceStateFlag global_state(u32 subresource)
-			{
-				if (m_states.empty())
-				{
-					switch (m_desc.access_type)
-					{
-					case EAccessType::gpu_local:
-						return ResourceStateFlag::common;
-					case EAccessType::upload:
-						return ResourceStateFlag::generic_read;
-					case EAccessType::readback:
-						return ResourceStateFlag::copy_dest;
-					default:
-						lupanic();
-						return ResourceStateFlag::common;
-					}
-				}
-				else
-				{
-					lucheck(subresource < m_states.size());
-					return m_states[subresource];
-				}
-			}*/
-
-			RV map_subresource(u32 subresource, usize read_begin, usize read_end, void** out_data);
-			void unmap_subresource(u32 subresource, usize write_begin, usize write_end);
+			virtual IDevice* get_device() override { return m_device; }
+			virtual void set_name(const Name& name) override { set_object_name(m_res.Get(), name); }
+			virtual IDeviceMemory* get_device_memory() override { return m_memory; }
+			virtual TextureDesc get_desc() override { return m_desc; }
 		};
 	}
 }

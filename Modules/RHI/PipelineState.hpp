@@ -184,6 +184,7 @@ namespace Luna
 		struct BlendDesc
 		{
 			bool alpha_to_coverage_enable;
+			bool independent_blend_enable;
 			bool logic_op_enable;
 			LogicOp logic_op;
 			AttachmentBlendDesc rt[8];
@@ -191,9 +192,11 @@ namespace Luna
 			BlendDesc(
 				std::initializer_list<AttachmentBlendDesc> rt = {},
 				bool alpha_to_coverage_enable = false,
+				bool independent_blend_enable = false,
 				bool logic_op_enable = false,
 				LogicOp logic_op = LogicOp::clear) :
 				alpha_to_coverage_enable(alpha_to_coverage_enable),
+				independent_blend_enable(independent_blend_enable),
 				logic_op_enable(logic_op_enable),
 				logic_op(logic_op)
 			{

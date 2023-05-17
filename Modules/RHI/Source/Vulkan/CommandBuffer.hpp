@@ -85,7 +85,7 @@ namespace Luna
 			virtual void begin_event(const Name& event_name) override {}
 			virtual void end_event() override {}
 			virtual void begin_render_pass(const RenderPassDesc& desc) override;
-			virtual void set_pipeline_state(PipelineStateBindPoint bind_point, IPipelineState* pso) override;
+			virtual void set_pipeline_state(IPipelineState* pso) override;
 			virtual void set_graphics_shader_input_layout(IShaderInputLayout* shader_input_layout) override;
 			virtual void set_vertex_buffers(u32 start_slot, Span<const VertexBufferView> views) override;
 			virtual void set_index_buffer(const IndexBufferView& view) override;
@@ -117,7 +117,7 @@ namespace Luna
 				u32 copy_width, u32 copy_height, u32 copy_depth) override;
 			virtual void copy_buffer_to_texture(
 				ITexture* dst, SubresourceIndex dst_subresource, u32 dst_x, u32 dst_y, u32 dst_z,
-				IBuffer* src, u64 src_offset, u32 src_row_pitch, u32 src_depth_pitch,
+				IBuffer* src, u64 src_offset, u32 src_row_pitch, u32 src_slice_pitch,
 				u32 copy_width, u32 copy_height, u32 copy_depth) override;
 			virtual void copy_texture_to_buffer(
 				IBuffer* dst, u64 dst_offset, u32 dst_row_pitch, u32 dst_slice_pitch,

@@ -36,7 +36,7 @@ namespace Luna
 					compiler->set_entry_point("main");
 					compiler->set_target_format(RHI::get_current_platform_shader_target_format());
 					compiler->set_shader_type(ShaderCompiler::ShaderType::vertex);
-					compiler->set_shader_model(5, 0);
+					compiler->set_shader_model(6, 0);
 					compiler->set_optimization_level(ShaderCompiler::OptimizationLevel::full);
 					luexp(compiler->compile());
 					auto data = compiler->get_output();
@@ -48,7 +48,7 @@ namespace Luna
 					compiler->set_entry_point("main");
 					compiler->set_target_format(RHI::get_current_platform_shader_target_format());
 					compiler->set_shader_type(ShaderCompiler::ShaderType::pixel);
-					compiler->set_shader_model(5, 0);
+					compiler->set_shader_model(6, 0);
 					compiler->set_optimization_level(ShaderCompiler::OptimizationLevel::full);
 					luexp(compiler->compile());
 					data = compiler->get_output();
@@ -76,12 +76,12 @@ namespace Luna
 					u32 data = 0xFFFFFFFF;
 
 					{
-						lulet(tex_staging, dev->new_buffer(BufferDesc(ResourceHeapType::upload, BufferUsageFlag::copy_source, sizeof(data))));
-
+						u64 size, row_pitch, slice_pitch;
+						dev->get_texture_data_placement_info(1, 1, 1, Format::rgba8_unorm, &size, nullptr, &row_pitch, &slice_pitch);
+						lulet(tex_staging, dev->new_buffer(BufferDesc(ResourceHeapType::upload, BufferUsageFlag::copy_source, size)));
 						lulet(tex_staging_data, tex_staging->map(0, 0));
 						memcpy(tex_staging_data, &data, sizeof(data));
 						tex_staging->unmap(0, sizeof(data));
-
 						u32 copy_queue_index = U32_MAX;
 						{
 							// Prefer a dedicated copy queue if present.
@@ -105,7 +105,7 @@ namespace Luna
 							{ tex_staging, BufferStateFlag::automatic, BufferStateFlag::copy_source, ResourceBarrierFlag::none} },
 							{ { g_white_tex, TEXTURE_BARRIER_ALL_SUBRESOURCES, TextureStateFlag::automatic, TextureStateFlag::copy_dest, ResourceBarrierFlag::discard_content } });
 						upload_cmdbuf->copy_buffer_to_texture(g_white_tex, SubresourceIndex(0, 0), 0, 0, 0, tex_staging, 0,
-							sizeof(data), sizeof(data), 1, 1, 1);
+							row_pitch, slice_pitch, 1, 1, 1);
 						luexp(upload_cmdbuf->submit({}, {}, true));
 						upload_cmdbuf->wait();
 					}
@@ -146,6 +146,7 @@ namespace Luna
 				desc.blend_state = BlendDesc({ AttachmentBlendDesc(true, BlendFactor::src_alpha, BlendFactor::inv_src_alpha, BlendOp::add, BlendFactor::zero,
 						BlendFactor::one, BlendOp::add, ColorWriteMask::all) });
 				desc.rasterizer_state = RasterizerDesc(FillMode::solid, CullMode::back, 0, 0.0f, 0.0f, 0, false, false, false, false, false);
+				desc.depth_stencil_state = DepthStencilDesc(false, false);
 				desc.num_render_targets = 1;
 				desc.rtv_formats[0] = rt_format;
 				luset(m_fill_pso, get_main_device()->new_graphics_pipeline_state(desc));
@@ -232,7 +233,7 @@ namespace Luna
 						DescriptorSetWrite::read_buffer_view(1, BufferViewDesc::typed_buffer(shape_buffer, 0, num_points, Format::r32_float)),
 						DescriptorSetWrite::sampled_texture_view(2, TextureViewDesc::tex2d(draw_calls[i].texture ? draw_calls[i].texture : g_white_tex)),
 						DescriptorSetWrite::sampler(3, SamplerDesc(Filter::min_mag_mip_linear, TextureAddressMode::clamp, TextureAddressMode::clamp, TextureAddressMode::clamp))
-						}, {}));
+						}));
 				}
 				// Build command buffer.
 				Vector<TextureBarrier> barriers;
@@ -252,9 +253,9 @@ namespace Luna
 				desc.color_store_ops[0] = StoreOp::store;
 				desc.color_clear_values[0] = Float4U{ 0.0f };
 				cmdbuf->begin_render_pass(desc);
-				cmdbuf->set_pipeline_state(PipelineStateBindPoint::graphics, m_fill_pso);
+				cmdbuf->set_pipeline_state(m_fill_pso);
 				cmdbuf->set_graphics_shader_input_layout(g_fill_slayout);
-				cmdbuf->set_vertex_buffers(0, { &VertexBufferView(vertex_buffer, 0, sizeof(Vertex) * num_vertices), 1 });
+				cmdbuf->set_vertex_buffers(0, { &VertexBufferView(vertex_buffer, 0, sizeof(Vertex) * num_vertices, sizeof(Vertex)), 1 });
 				cmdbuf->set_index_buffer({index_buffer, 0, num_indices * sizeof(u32), Format::r32_uint});
 				cmdbuf->set_viewport(Viewport(0.0f, 0.0f, (f32)m_screen_width, (f32)m_screen_height, 0.0f, 1.0f));
 				for (usize i = 0; i < num_draw_calls; ++i)

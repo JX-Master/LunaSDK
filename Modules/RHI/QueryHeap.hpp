@@ -29,22 +29,14 @@ namespace Luna
             input_primitives = 0x02,
             //! Number of vertex shader invocations.
             vs_invocations = 0x04,
-            //! Number of geometry shader invocations.
-            gs_invocations = 0x08,
-            //! Number of geometry shader output primitives.
-            gs_output_primitives = 0x10,
             //! Number of primitives that were sent to the rasterizer.
-            rasterizer_input_primitives = 0x20,
+            rasterizer_input_primitives = 0x08,
             //! Number of primitives that were rendered.
-            rendered_primitives = 0x40,
+            rendered_primitives = 0x10,
             //! Number of pixel shader invocations.
-            ps_invocations = 0x80,
-            //! Number of hull shader invocations.
-            hs_invocations = 0x100,
-            //! Number of domain shader invocations.
-            ds_invocations = 0x200,
+            ps_invocations = 0x20,
             //! Number of compute shader invocations.
-            cs_invocations = 0x400
+            cs_invocations = 0x40
         };
 
         struct QueryHeapDesc

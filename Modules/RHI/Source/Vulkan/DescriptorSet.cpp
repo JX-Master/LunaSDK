@@ -51,7 +51,7 @@ namespace Luna
 				m_desc_set = VK_NULL_HANDLE;
 			}
 		}
-		RV DescriptorSet::update_descriptors(Span<const DescriptorSetWrite> writes, Span<const DescriptorSetCopy> copies)
+		RV DescriptorSet::update_descriptors(Span<const DescriptorSetWrite> writes)
 		{
 			lutry
 			{
@@ -166,37 +166,7 @@ namespace Luna
 						}
 					}
 				}
-				VkCopyDescriptorSet* d_copies = nullptr;
-				u32 num_copies = (u32)copies.size();
-				if (num_copies)
-				{
-					d_copies = (VkCopyDescriptorSet*)alloca(sizeof(VkCopyDescriptorSet) * num_copies);
-					memzero(d_copies, sizeof(VkCopyDescriptorSet)* num_copies);
-					for (u32 i = 0; i < num_copies; ++i)
-					{
-						VkCopyDescriptorSet& d = d_copies[i];
-						const DescriptorSetCopy& s = copies[i];
-						d.sType = VK_STRUCTURE_TYPE_COPY_DESCRIPTOR_SET;
-						DescriptorSet* src = cast_object<DescriptorSet>(s.src->get_object());
-						d.srcSet = src->m_desc_set;
-						d.srcBinding = s.src_binding_slot;
-						d.srcArrayElement = s.src_first_array_index;
-						d.dstSet = m_desc_set;
-						d.dstBinding = s.dst_binding_slot;
-						d.dstArrayElement = s.dst_first_array_index;
-						d.descriptorCount = s.num_descs;
-						for (u32 j = 0; j < s.num_descs; ++j)
-						{
-							u32 dst_slot = s.dst_binding_slot + s.dst_first_array_index + i;
-							u32 src_slot = s.src_binding_slot + s.src_first_array_index + i;
-							auto iter1 = src->m_image_views.find(src_slot);
-							if (iter1 != src->m_image_views.end()) m_image_views.insert_or_assign(dst_slot, iter1->second);
-							auto iter2 = src->m_samplers.find(src_slot);
-							if (iter2 != src->m_samplers.end()) m_samplers.insert_or_assign(dst_slot, iter2->second);
-						}
-					}
-				}
-				m_device->m_funcs.vkUpdateDescriptorSets(m_device->m_device, num_writes, d_writes, num_copies, d_copies);
+				m_device->m_funcs.vkUpdateDescriptorSets(m_device->m_device, num_writes, d_writes, 0, nullptr);
 			}
 			lucatchret;
 			return ok;

@@ -21,11 +21,11 @@ namespace Luna
 			lustruct("RHI::DepthStencilView", "{832DFAB4-A00B-446E-8863-90F68BF161C1}");
 			luiimpl();
 			Ref<Device> m_device;
-			Ref<IResource> m_resource;
+			Ref<ITexture> m_texture;
 			ComPtr<ID3D12DescriptorHeap> m_heap;
 			DepthStencilViewDesc m_desc;
 
-			RV init(IResource* resource, const DepthStencilViewDesc* desc);
+			RV init(ITexture* texture, const DepthStencilViewDesc* desc);
 
 			~DepthStencilView()
 			{
@@ -36,9 +36,9 @@ namespace Luna
 				return m_device.as<IDevice>();
 			}
 			void set_name(const Name& name) {}
-			IResource* get_resource()
+			ITexture* get_texture()
 			{
-				return m_resource;
+				return m_texture;
 			}
 			DepthStencilViewDesc get_desc()
 			{

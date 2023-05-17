@@ -124,7 +124,6 @@ namespace Luna
 			virtual HashMap<Name, Name>& get_definitions() override { return m_definitions; }
 			virtual Variant& get_additional_arguments() override { return m_additional_arguments; }
 			RV compile_none();
-			RV d3d_compile();
 			RV dxc_compile(DxcTargetType output_type);
 			RV spirv_compile(SpirvOutputType output_type);
 			RV compile();

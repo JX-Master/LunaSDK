@@ -27,7 +27,7 @@ namespace Luna
 			unknwon = 0,
 			//! This adapter is a integrated GPU, typically as part of CPU.
 			integrated_gpu = 1,
-			//! This adapter is a dedicated GPU, typically as video card.
+			//! This adapter is a discrete GPU, typically as video card.
 			discrete_gpu = 2,
 			//! This adapter is a virtualized GPU in a virtualization environment.
 			virtual_gpu = 3,

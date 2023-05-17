@@ -46,16 +46,6 @@ namespace Luna
 						create_info.pipelineStatistics |= VK_QUERY_PIPELINE_STATISTIC_VERTEX_SHADER_INVOCATIONS_BIT;
 						++m_num_statistic_items;
 					}
-					if (test_flags(desc.pipeline_statistics, QueryPipelineStatisticFlag::gs_invocations))
-					{
-						create_info.pipelineStatistics |= VK_QUERY_PIPELINE_STATISTIC_GEOMETRY_SHADER_INVOCATIONS_BIT;
-						++m_num_statistic_items;
-					}
-					if (test_flags(desc.pipeline_statistics, QueryPipelineStatisticFlag::gs_output_primitives))
-					{
-						create_info.pipelineStatistics |= VK_QUERY_PIPELINE_STATISTIC_GEOMETRY_SHADER_PRIMITIVES_BIT;
-						++m_num_statistic_items;
-					}
 					if (test_flags(desc.pipeline_statistics, QueryPipelineStatisticFlag::rasterizer_input_primitives))
 					{
 						create_info.pipelineStatistics |= VK_QUERY_PIPELINE_STATISTIC_CLIPPING_INVOCATIONS_BIT;
@@ -69,16 +59,6 @@ namespace Luna
 					if (test_flags(desc.pipeline_statistics, QueryPipelineStatisticFlag::ps_invocations))
 					{
 						create_info.pipelineStatistics |= VK_QUERY_PIPELINE_STATISTIC_FRAGMENT_SHADER_INVOCATIONS_BIT;
-						++m_num_statistic_items;
-					}
-					if (test_flags(desc.pipeline_statistics, QueryPipelineStatisticFlag::hs_invocations))
-					{
-						create_info.pipelineStatistics |= VK_QUERY_PIPELINE_STATISTIC_TESSELLATION_CONTROL_SHADER_PATCHES_BIT;
-						++m_num_statistic_items;
-					}
-					if (test_flags(desc.pipeline_statistics, QueryPipelineStatisticFlag::ds_invocations))
-					{
-						create_info.pipelineStatistics |= VK_QUERY_PIPELINE_STATISTIC_TESSELLATION_EVALUATION_SHADER_INVOCATIONS_BIT;
 						++m_num_statistic_items;
 					}
 					if (test_flags(desc.pipeline_statistics, QueryPipelineStatisticFlag::cs_invocations))

@@ -22,6 +22,7 @@ namespace Luna
 			Ref<Device> m_device;
 			Name m_name;
 			VkPipeline m_pipeline = VK_NULL_HANDLE;
+			bool m_is_graphics = true;
 
 			RV init_as_graphics(const GraphicsPipelineStateDesc& desc);
 			RV init_as_compute(const ComputePipelineStateDesc& desc);

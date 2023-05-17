@@ -319,7 +319,7 @@ namespace Luna
 							rp.resolve_formats[i] = d.format;
 							++num_resolve_targets;
 						}
-						auto rd = desc.color_attachments[i]->get_resource()->get_desc();
+						auto rd = desc.color_attachments[i]->get_texture()->get_desc();
 						width = rd.width;
 						height = rd.height;
 					}
@@ -337,7 +337,7 @@ namespace Luna
 					rp.depth_store_op = desc.depth_store_op;
 					rp.stencil_load_op = desc.stencil_load_op;
 					rp.stencil_store_op = desc.stencil_store_op;
-					auto rd = desc.depth_stencil_attachment->get_resource()->get_desc();
+					auto rd = desc.depth_stencil_attachment->get_texture()->get_desc();
 					if (!width) width = rd.width;
 					if (!height) height = rd.height;
 				}
@@ -400,15 +400,10 @@ namespace Luna
 
 			}
 		}
-		void CommandBuffer::set_pipeline_state(PipelineStateBindPoint bind_point, IPipelineState* pso)
+		void CommandBuffer::set_pipeline_state(IPipelineState* pso)
 		{
-			VkPipelineBindPoint bind{};
-			switch (bind_point)
-			{
-			case PipelineStateBindPoint::graphics: bind = VK_PIPELINE_BIND_POINT_GRAPHICS; break;
-			case PipelineStateBindPoint::compute: bind = VK_PIPELINE_BIND_POINT_COMPUTE; break;
-			}
 			PipelineState* ps = (PipelineState*)pso->get_object();
+			VkPipelineBindPoint bind = ps->m_is_graphics ? VK_PIPELINE_BIND_POINT_GRAPHICS : VK_PIPELINE_BIND_POINT_COMPUTE;
 			m_device->m_funcs.vkCmdBindPipeline(m_command_buffer, bind, ps->m_pipeline);
 		}
 		void CommandBuffer::set_graphics_shader_input_layout(IShaderInputLayout* shader_input_layout)
@@ -467,23 +462,23 @@ namespace Luna
 			for (usize i = 0; i < max_num_viewports; ++i)
 			{
 				auto& d = vps[i];
+				d.x = 0.0f;
+				d.y = (float)m_rt_height;
 				d.width = (float)m_rt_width;
 				d.height = -((float)m_rt_height);
 				d.minDepth = 0.0f;
 				d.maxDepth = 1.0f;
-				d.x = 0.0f;
-				d.y = (float)m_rt_height;
 			}
 			for (usize i = 0; i < viewports.size(); ++i)
 			{
 				auto& d = vps[i];
 				auto& s = viewports[i];
+				d.x = s.top_left_x;
+				d.y = s.top_left_y + s.height;
 				d.width = s.width;
 				d.height = -s.height;
 				d.minDepth = s.min_depth;
 				d.maxDepth = s.max_depth;
-				d.x = s.bottom_left_x;
-				d.y = (float)m_rt_height - s.bottom_left_y;
 			}
 			m_device->m_funcs.vkCmdSetViewport(m_command_buffer, 0, max_num_viewports, vps);
 		}
@@ -498,17 +493,17 @@ namespace Luna
 			for (usize i = 0; i < max_num_viewports; ++i)
 			{
 				auto& d = r[i];
-				d.extent.width = m_rt_width;
-				d.extent.height = m_rt_height;
 				d.offset.x = 0;
 				d.offset.y = 0;
+				d.extent.width = m_rt_width;
+				d.extent.height = m_rt_height;
 			}
 			for (usize i = 0; i < rects.size(); ++i)
 			{
 				auto& d = r[i];
 				auto& s = rects[i];
 				d.offset.x = s.offset_x;
-				d.offset.y = (i32)m_rt_height - (s.height + s.offset_y);
+				d.offset.y = s.offset_y;
 				d.extent.width = s.width;
 				d.extent.height = s.height;
 			}
@@ -749,7 +744,7 @@ namespace Luna
 		}
 		void CommandBuffer::copy_buffer_to_texture(
 			ITexture* dst, SubresourceIndex dst_subresource, u32 dst_x, u32 dst_y, u32 dst_z,
-			IBuffer* src, u64 src_offset, u32 src_row_pitch, u32 src_depth_pitch,
+			IBuffer* src, u64 src_offset, u32 src_row_pitch, u32 src_slice_pitch,
 			u32 copy_width, u32 copy_height, u32 copy_depth)
 		{
 			BufferResource* s = cast_object<BufferResource>(src->get_object());
@@ -757,7 +752,7 @@ namespace Luna
 			VkBufferImageCopy copy{};
 			copy.bufferOffset = src_offset;
 			copy.bufferRowLength = src_row_pitch * 8 / bits_per_pixel(d->m_desc.pixel_format);
-			copy.bufferImageHeight = src_depth_pitch * 8 / bits_per_pixel(d->m_desc.pixel_format);
+			copy.bufferImageHeight = src_slice_pitch * 8 / bits_per_pixel(d->m_desc.pixel_format);
 			copy.imageSubresource.aspectMask = is_depth_stencil_format(d->m_desc.pixel_format) ?
 				VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT :
 				VK_IMAGE_ASPECT_COLOR_BIT;

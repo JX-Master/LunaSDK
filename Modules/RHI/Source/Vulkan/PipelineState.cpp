@@ -265,6 +265,7 @@ namespace Luna
 				guard.unlock();
 				create_info.subpass = 0;
 				luexp(encode_vk_result(m_device->m_funcs.vkCreateGraphicsPipelines(m_device->m_device, VK_NULL_HANDLE, 1, &create_info, nullptr, &m_pipeline)));
+				m_is_graphics = true;
 			}	
 			lucatchret;
 			return ok;
@@ -289,6 +290,7 @@ namespace Luna
 				ShaderInputLayout* slayout = (ShaderInputLayout*)desc.shader_input_layout->get_object();
 				create_info.layout = slayout->m_pipeline_layout;
 				luexp(encode_vk_result(m_device->m_funcs.vkCreateComputePipelines(m_device->m_device, VK_NULL_HANDLE, 1, &create_info, nullptr, &m_pipeline)));
+				m_is_graphics = false;
 			}
 			lucatchret;
 			return ok;

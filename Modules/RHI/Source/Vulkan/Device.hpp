@@ -85,9 +85,9 @@ namespace Luna
 			virtual CommandQueueDesc get_command_queue_desc(u32 command_queue_index) override;
 			virtual R<Ref<ICommandBuffer>> new_command_buffer(u32 command_queue_index) override;
 			virtual R<f64> get_command_queue_timestamp_frequency(u32 command_queue_index) override;
-			virtual R<Ref<IRenderTargetView>> new_render_target_view(ITexture* resource, const RenderTargetViewDesc* desc) override;
-			virtual R<Ref<IDepthStencilView>> new_depth_stencil_view(ITexture* resource, const DepthStencilViewDesc* desc) override;
-			virtual R<Ref<IResolveTargetView>> new_resolve_target_view(ITexture* resource, const ResolveTargetViewDesc* desc) override;
+			virtual R<Ref<IRenderTargetView>> new_render_target_view(ITexture* texture, const RenderTargetViewDesc* desc) override;
+			virtual R<Ref<IDepthStencilView>> new_depth_stencil_view(ITexture* texture, const DepthStencilViewDesc* desc) override;
+			virtual R<Ref<IResolveTargetView>> new_resolve_target_view(ITexture* texture, const ResolveTargetViewDesc* desc) override;
 			virtual R<Ref<IQueryHeap>> new_query_heap(const QueryHeapDesc& desc) override;
 			virtual R<Ref<IFence>> new_fence() override;
 			virtual R<Ref<ISwapChain>> new_swap_chain(u32 command_queue_index, Window::IWindow* window, const SwapChainDesc& desc) override;

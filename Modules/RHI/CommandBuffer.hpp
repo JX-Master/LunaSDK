@@ -151,8 +151,8 @@ namespace Luna
 
 		struct Viewport
 		{
-			f32 bottom_left_x;
-			f32 bottom_left_y;
+			f32 top_left_x;
+			f32 top_left_y;
 			f32 width;
 			f32 height;
 			f32 min_depth;
@@ -160,14 +160,14 @@ namespace Luna
 
 			Viewport() = default;
 			Viewport(
-				f32 bottom_left_x,
-				f32 bottom_left_y,
+				f32 top_left_x,
+				f32 top_left_y,
 				f32 width,
 				f32 height,
 				f32 min_depth,
 				f32 max_depth) :
-				bottom_left_x(bottom_left_x),
-				bottom_left_y(bottom_left_y),
+				top_left_x(top_left_x),
+				top_left_y(top_left_y),
 				width(width),
 				height(height),
 				min_depth(min_depth),
@@ -240,12 +240,6 @@ namespace Luna
 			u8 sample_count = 1;
 		};
 
-		enum class PipelineStateBindPoint : u8
-		{
-			graphics = 0,
-			compute = 1
-		};
-
 		struct VertexBufferView
 		{
 			IResource* buffer;
@@ -253,12 +247,17 @@ namespace Luna
 			usize offset;
 			//! The size, in bytes, of the vertex buffer range to bind.
 			u32 size;
+			//! The size, in butes, of every vertex element in the vertex buffer.
+			//! The element size must be equal to `InputBindingDesc::element_size` of the 
+			//! pipeline state object used to draw this vertex buffer.
+			u32 element_size;
 
 			VertexBufferView() = default;
-			VertexBufferView(IResource* buffer, usize offset, u32 size) :
+			VertexBufferView(IResource* buffer, usize offset, u32 size, u32 element_size) :
 				buffer(buffer),
 				offset(offset),
-				size(size) {}
+				size(size),
+				element_size(element_size) {}
 		};
 
 		struct IndexBufferView
@@ -339,7 +338,7 @@ namespace Luna
 			virtual void begin_render_pass(const RenderPassDesc& desc) = 0;
 
 			//! Sets the pipeline state.
-			virtual void set_pipeline_state(PipelineStateBindPoint bind_point, IPipelineState* pso) = 0;
+			virtual void set_pipeline_state(IPipelineState* pso) = 0;
 
 			//! Sets the graphic shader input layout.
 			virtual void set_graphics_shader_input_layout(IShaderInputLayout* shader_input_layout) = 0;
@@ -373,8 +372,8 @@ namespace Luna
 			virtual void set_scissor_rect(const RectI& rect) = 0;
 
 			//! Binds an array of scissor rectangles to the rasterizer stage.
-			//! The scissor rectangle points are relative to the bottom-left corner of the render target, 
-			//! with x-axis points to right and y-axis points to up.
+			//! The scissor rectangle points are relative to the top-left corner of the render target, 
+			//! with x-axis points to right and y-axis points to down.
 			//! All scissor rectangles must be set atomically as one operation. Any scissor rectangles not defined by the call are disabled.
 			virtual void set_scissor_rects(Span<const RectI> rects) = 0;
 
@@ -430,7 +429,7 @@ namespace Luna
 
 			virtual void copy_buffer_to_texture(
 				ITexture* dst, SubresourceIndex dst_subresource, u32 dst_x, u32 dst_y, u32 dst_z,
-				IBuffer* src, u64 src_offset, u32 src_row_pitch, u32 src_depth_pitch,
+				IBuffer* src, u64 src_offset, u32 src_row_pitch, u32 src_slice_pitch,
 				u32 copy_width, u32 copy_height, u32 copy_depth) = 0;
 
 			virtual void copy_texture_to_buffer(

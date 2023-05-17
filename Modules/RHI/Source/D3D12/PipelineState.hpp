@@ -26,8 +26,11 @@ namespace Luna
 			ComPtr<ID3D12PipelineState> m_pso;
 			bool m_is_graphics;
 
+			PrimitiveTopology m_primitive_topology;
+
 			PipelineState(Device* dev) :
-				m_device(dev) {}
+				m_device(dev),
+				m_primitive_topology(PrimitiveTopology::triangle_list) {}
 
 			IDevice* get_device()
 			{

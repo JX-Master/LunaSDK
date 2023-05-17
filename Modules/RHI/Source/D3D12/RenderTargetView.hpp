@@ -21,11 +21,11 @@ namespace Luna
 			lustruct("RHI::RenderTargetView", "{60DBE49B-B565-424A-B533-82E50FD3472C}");
 			luiimpl();
 			Ref<Device> m_device;
-			Ref<IResource> m_resource;
+			Ref<ITexture> m_texture;
 			ComPtr<ID3D12DescriptorHeap> m_heap;
 			RenderTargetViewDesc m_desc;
 
-			RV init(IResource* resource, const RenderTargetViewDesc* desc);
+			RV init(ITexture* texture, const RenderTargetViewDesc* desc);
 
 			~RenderTargetView()
 			{
@@ -36,9 +36,9 @@ namespace Luna
 				return m_device.as<IDevice>();
 			}
 			void set_name(const Name& name) {}
-			IResource* get_resource()
+			virtual ITexture* get_texture() override
 			{
-				return m_resource;
+				return m_texture;
 			}
 			RenderTargetViewDesc get_desc()
 			{

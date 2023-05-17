@@ -3,35 +3,32 @@
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 *
-* @file DepthStencilView.hpp
+* @file ResolveTargetView.hpp
 * @author JXMaster
-* @date 2023/4/23
+* @date 2023/5/16
 */
-#pragma once
 #include "Device.hpp"
 
 namespace Luna
 {
 	namespace RHI
 	{
-		struct DepthStencilView : IDepthStencilView
+		struct ResolveTargetView : IResolveTargetView
 		{
-			lustruct("RHI::DepthStencilView", "{7ABC70D6-199E-44BE-9D59-197EF94BDCFD}");
+			lustruct("RHI::ResolveTargetView", "{8E373CFD-A971-4F97-9C8D-78B33EF17A37}");
 			luiimpl();
 
 			Ref<Device> m_device;
 			Name m_name;
 			Ref<ITexture> m_resource;
-			DepthStencilViewDesc m_desc;
+			ResolveTargetViewDesc m_desc;
 
-			VkImageView m_view = VK_NULL_HANDLE;
-			RV init(ITexture* resource, const DepthStencilViewDesc* desc);
-			~DepthStencilView();
+			RV init(ITexture* resource, const ResolveTargetViewDesc* desc);
 
 			virtual IDevice* get_device() override { return m_device.get(); }
 			virtual void set_name(const Name& name) override { m_name = name; }
 			virtual ITexture* get_texture() override { return m_resource; }
-			virtual DepthStencilViewDesc get_desc() override { return m_desc; }
+			virtual ResolveTargetViewDesc get_desc() override { return m_desc; }
 		};
 	}
 }

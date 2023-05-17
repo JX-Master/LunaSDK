@@ -103,7 +103,7 @@ RV start()
 		compiler->set_entry_point("main");
 		compiler->set_target_format(RHI::get_current_platform_shader_target_format());
 		compiler->set_shader_type(ShaderCompiler::ShaderType::vertex);
-		compiler->set_shader_model(5, 0);
+		compiler->set_shader_model(6, 0);
 		compiler->set_optimization_level(ShaderCompiler::OptimizationLevel::full);
 		luexp(compiler->compile());
 		auto vs_data = compiler->get_output();
@@ -115,7 +115,7 @@ RV start()
 		compiler->set_entry_point("main");
 		compiler->set_target_format(RHI::get_current_platform_shader_target_format());
 		compiler->set_shader_type(ShaderCompiler::ShaderType::pixel);
-		compiler->set_shader_model(5, 0);
+		compiler->set_shader_model(6, 0);
 		compiler->set_optimization_level(ShaderCompiler::OptimizationLevel::full);
 		luexp(compiler->compile());
 		auto ps_data = compiler->get_output();
@@ -238,7 +238,7 @@ RV start()
                 DescriptorSetWrite::sampled_texture_view(1, TextureViewDesc::tex2d(file_tex)),
                 DescriptorSetWrite::sampler(2, SamplerDesc(Filter::min_mag_mip_linear, TextureAddressMode::clamp,
                         TextureAddressMode::clamp, TextureAddressMode::clamp))
-            }, {});
+            });
 	}
 	lucatchret;
 	return ok;
@@ -290,11 +290,11 @@ void draw()
         desc.stencil_store_op = StoreOp::dont_care;
         cmdbuf->begin_render_pass(desc);
         cmdbuf->set_graphics_shader_input_layout(slayout);
-        cmdbuf->set_pipeline_state(PipelineStateBindPoint::graphics, pso);
+        cmdbuf->set_pipeline_state(pso);
         IDescriptorSet* ds = desc_set.get();
         cmdbuf->set_graphics_descriptor_sets(0, { &ds, 1 });
         auto sz = vb->get_desc().size;
-        cmdbuf->set_vertex_buffers(0, {VertexBufferView(vb, 0, sz)});
+        cmdbuf->set_vertex_buffers(0, {VertexBufferView(vb, 0, sz, sizeof(Vertex))});
         sz = ib->get_desc().size;
         cmdbuf->set_index_buffer({ ib, 0, 144, Format::r32_uint });
         cmdbuf->set_scissor_rect(RectI(0, 0, (i32)window_sz.x, (i32)window_sz.y));

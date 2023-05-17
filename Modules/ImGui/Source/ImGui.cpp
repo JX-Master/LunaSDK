@@ -161,7 +161,7 @@ float4 main(PS_INPUT input) : SV_Target
                 compiler->set_entry_point("main");
                 compiler->set_target_format(get_current_platform_shader_target_format());
                 compiler->set_shader_type(ShaderCompiler::ShaderType::vertex);
-                compiler->set_shader_model(5, 0);
+                compiler->set_shader_model(6, 0);
                 compiler->set_optimization_level(ShaderCompiler::OptimizationLevel::full);
                 luexp(compiler->compile());
                 auto vs_data = compiler->get_output();
@@ -172,7 +172,7 @@ float4 main(PS_INPUT input) : SV_Target
                 compiler->set_entry_point("main");
                 compiler->set_target_format(get_current_platform_shader_target_format());
                 compiler->set_shader_type(ShaderCompiler::ShaderType::pixel);
-                compiler->set_shader_model(5, 0);
+                compiler->set_shader_model(6, 0);
                 compiler->set_optimization_level(ShaderCompiler::OptimizationLevel::full);
                 luexp(compiler->compile());
                 auto ps_data = compiler->get_output();
@@ -221,10 +221,11 @@ float4 main(PS_INPUT input) : SV_Target
                     TextureUsageFlag::sampled_texture | TextureUsageFlag::copy_dest, width, height, 1, 1)));
                 u32 src_row_pitch = (u32)width * 4;
                 {
-                    lulet(tex_staging, dev->new_buffer(BufferDesc(ResourceHeapType::upload, BufferUsageFlag::copy_source, src_row_pitch * height)));
-
+                    u64 size, row_pitch, slice_pitch;
+                    dev->get_texture_data_placement_info(width, height, 1, Format::rgba8_unorm, &size, nullptr, &row_pitch, &slice_pitch);
+                    lulet(tex_staging, dev->new_buffer(BufferDesc(ResourceHeapType::upload, BufferUsageFlag::copy_source, size)));
                     lulet(tex_staging_data, tex_staging->map(0, 0));
-                    memcpy(tex_staging_data, pixels, src_row_pitch * height);
+                    memcpy_bitmap(tex_staging_data, pixels, src_row_pitch, height, row_pitch, src_row_pitch);
                     tex_staging->unmap(0, src_row_pitch * height);
 
                     u32 copy_queue_index = U32_MAX;
@@ -663,7 +664,7 @@ float4 main(PS_INPUT input) : SV_Target
                 g_vb->unmap(0, (usize)vtx_dst - (usize)vtx_resource);
                 g_ib->unmap(0, (usize)idx_dst - (usize)idx_resource);
 
-                auto res = render_target->get_resource();
+                auto res = render_target->get_texture();
                 auto rt_desc = res->get_desc();
 
                 // Setup orthographic projection matrix into our constant buffer
@@ -709,10 +710,10 @@ float4 main(PS_INPUT input) : SV_Target
 
                 cmd_buffer->set_viewport(Viewport(0.0f, 0.0f, draw_data->DisplaySize.x, draw_data->DisplaySize.y, 0.0f, 1.0f));
 
-                cmd_buffer->set_vertex_buffers(0, { &VertexBufferView(g_vb, 0, (u32)(g_vb_size * sizeof(ImDrawVert))), 1 });
+                cmd_buffer->set_vertex_buffers(0, { &VertexBufferView(g_vb, 0, (u32)(g_vb_size * sizeof(ImDrawVert)), sizeof(ImDrawVert)), 1 });
                 cmd_buffer->set_index_buffer({g_ib, 0, (u32)(g_ib_size * sizeof(ImDrawIdx)), sizeof(ImDrawIdx) == 2 ? Format::r16_uint : Format::r32_uint});
                 lulet(pso, get_pso(rt_desc.pixel_format));
-                cmd_buffer->set_pipeline_state(PipelineStateBindPoint::graphics, pso);
+                cmd_buffer->set_pipeline_state(pso);
                 cmd_buffer->set_graphics_shader_input_layout(g_slayout);
                 const f32 blend_factor[4] = { 0.f, 0.f, 0.f, 0.f };
                 cmd_buffer->set_blend_factor(blend_factor);
@@ -743,7 +744,7 @@ float4 main(PS_INPUT input) : SV_Target
                             // Apply Scissor, Bind texture, Draw
                             const RectI r = {
                                 (i32)(clip_min.x),
-                                (i32)(rt_desc.height - clip_max.y),
+                                (i32)(clip_min.y),
                                 (i32)(clip_max.x - clip_min.x),
                                 (i32)(clip_max.y - clip_min.y) };
                             while (g_desc_sets.size() <= num_draw_calls)
@@ -757,7 +758,7 @@ float4 main(PS_INPUT input) : SV_Target
                                 DescriptorSetWrite::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(g_cb)),
                                 DescriptorSetWrite::sampled_texture_view(1, TextureViewDesc::tex2d((ITexture*)pcmd->TextureId)),
                                 DescriptorSetWrite::sampler(2, SamplerDesc(Filter::min_mag_mip_linear, TextureAddressMode::clamp, TextureAddressMode::clamp, TextureAddressMode::clamp))
-                                }, {}));
+                                }));
                             cmd_buffer->set_graphics_descriptor_sets(0, { &vs, 1 });
                             cmd_buffer->set_scissor_rect(r);
                             cmd_buffer->draw_indexed(pcmd->ElemCount, pcmd->IdxOffset + idx_offset, pcmd->VtxOffset + vtx_offset);

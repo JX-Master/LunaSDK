@@ -13,6 +13,7 @@
 #include "../../CommandBuffer.hpp"
 #include <Runtime/Unicode.hpp>
 #include "../RHI.hpp"
+#include <D3D12MemAlloc.h>
 
 namespace Luna
 {
@@ -23,137 +24,94 @@ namespace Luna
 		{
 			return mip_slice + array_slice * mip_levels;
 		}
-
 		//! Calculates the mipmap slice and array slice from subresource index.
 		inline constexpr void calc_mip_array_slice(u32 subresource, u32 mip_levels, u32& mip_slice, u32& array_slice)
 		{
 			mip_slice = subresource % mip_levels;
 			array_slice = subresource / mip_levels;
 		}
-
-		inline D3D12_RESOURCE_STATES encode_resource_state(ResourceStateFlag s)
+		inline D3D12_RESOURCE_STATES encode_buffer_state(BufferStateFlag s)
 		{
-			switch (s)
-			{
-			case ResourceStateFlag::common:
-				return D3D12_RESOURCE_STATE_COMMON;
-			case ResourceStateFlag::vertex_and_constant_buffer:
-				return D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
-			case ResourceStateFlag::copy_dest:
-				return D3D12_RESOURCE_STATE_COPY_DEST;
-			case ResourceStateFlag::copy_source:
-				return D3D12_RESOURCE_STATE_COPY_SOURCE;
-			case ResourceStateFlag::depth_stencil_write:
-				return D3D12_RESOURCE_STATE_DEPTH_WRITE; // If depth-writes are disabled, return D3D12_RESOURCE_STATE_DEPTH_WRITE
-			case ResourceStateFlag::depth_stencil_read:
-				return D3D12_RESOURCE_STATE_DEPTH_READ;
-			case ResourceStateFlag::index_buffer:
-				return D3D12_RESOURCE_STATE_INDEX_BUFFER;
-			case ResourceStateFlag::indirect_argument:
-				return D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT;
-				//case ResourceStateFlag::present:
-					//return D3D12_RESOURCE_STATE_PRESENT;
-			case ResourceStateFlag::render_target:
-				return D3D12_RESOURCE_STATE_RENDER_TARGET;
-			case ResourceStateFlag::resolve_dest:
-				return D3D12_RESOURCE_STATE_RESOLVE_DEST;
-			case ResourceStateFlag::resolve_src:
-				return D3D12_RESOURCE_STATE_RESOLVE_SOURCE;
-			case ResourceStateFlag::shader_resource_pixel:
-				return D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE; // Need the shader flags mask in case the SRV is used by non-PS
-			case ResourceStateFlag::shader_resource_non_pixel:
-				return D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
-			case ResourceStateFlag::stream_out:
-				return D3D12_RESOURCE_STATE_STREAM_OUT;
-			case ResourceStateFlag::unordered_access:
-				return D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-			default:
-				lupanic();
-				return D3D12_RESOURCE_STATE_COMMON;
-			}
+			D3D12_RESOURCE_STATES r = D3D12_RESOURCE_STATE_COMMON;
+			if (test_flags(s, BufferStateFlag::indirect_argument)) r |= D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT;
+			if (test_flags(s, BufferStateFlag::vertex_buffer) || 
+				test_flags(s, BufferStateFlag::uniform_buffer_cs) ||
+				test_flags(s, BufferStateFlag::uniform_buffer_vs) ||
+				test_flags(s, BufferStateFlag::uniform_buffer_ps))  r |= D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
+			if (test_flags(s, BufferStateFlag::index_buffer)) r |= D3D12_RESOURCE_STATE_INDEX_BUFFER;
+			if (test_flags(s, BufferStateFlag::shader_write_cs)) r |= D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+			if (test_flags(s, BufferStateFlag::shader_read_cs) &&
+				!test_flags(s, BufferStateFlag::shader_write_cs)) r |= D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+			if (test_flags(s, BufferStateFlag::shader_read_vs)) r |= D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+			if (test_flags(s, BufferStateFlag::shader_read_ps)) r |= D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+			if (test_flags(s, BufferStateFlag::copy_dest)) r |= D3D12_RESOURCE_STATE_COPY_DEST;
+			if (test_flags(s, BufferStateFlag::copy_source)) r |= D3D12_RESOURCE_STATE_COPY_SOURCE;
+			return r;
 		}
-
-		inline D3D12_FILTER encode_filter(FilterMode f)
+		inline D3D12_RESOURCE_STATES encode_texture_state(TextureStateFlag s)
+		{
+			D3D12_RESOURCE_STATES r = D3D12_RESOURCE_STATE_COMMON;
+			if (test_flags(s, TextureStateFlag::shader_read_vs)) r |= D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+			if (test_flags(s, TextureStateFlag::shader_read_ps)) r |= D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+			if (test_flags(s, TextureStateFlag::color_attachment_read) ||
+				test_flags(s, TextureStateFlag::color_attachment_write)) r |= D3D12_RESOURCE_STATE_RENDER_TARGET;
+			if (test_flags(s, TextureStateFlag::depth_stencil_attachment_write)) r |= D3D12_RESOURCE_STATE_DEPTH_WRITE;
+			if (test_flags(s, TextureStateFlag::depth_stencil_attachment_read) &&
+				!test_flags(s, TextureStateFlag::depth_stencil_attachment_write)) r |= D3D12_RESOURCE_STATE_DEPTH_READ;
+			if (test_flags(s, TextureStateFlag::resolve_attachment)) r |= D3D12_RESOURCE_STATE_RESOLVE_DEST;
+			if (test_flags(s, TextureStateFlag::shader_write_cs)) r |= D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+			if (test_flags(s, TextureStateFlag::shader_read_cs) &&
+				!test_flags(s, TextureStateFlag::shader_write_cs)) r |= D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+			if (test_flags(s, TextureStateFlag::copy_dest)) r |= D3D12_RESOURCE_STATE_COPY_DEST;
+			if (test_flags(s, TextureStateFlag::copy_source)) r |= D3D12_RESOURCE_STATE_COPY_SOURCE;
+			if (test_flags(s, TextureStateFlag::present)) r |= D3D12_RESOURCE_STATE_PRESENT;
+			return r;
+		}
+		inline D3D12_FILTER encode_filter(Filter f)
 		{
 			switch (f)
 			{
-			case FilterMode::min_mag_mip_point:
+			case Filter::min_mag_mip_point:
 				return D3D12_FILTER_MIN_MAG_MIP_POINT;
-			case FilterMode::min_mag_point_mip_linear:
+			case Filter::min_mag_point_mip_linear:
 				return D3D12_FILTER_MIN_MAG_POINT_MIP_LINEAR;
-			case FilterMode::min_point_mag_linear_mip_point:
+			case Filter::min_point_mag_linear_mip_point:
 				return D3D12_FILTER_MIN_POINT_MAG_LINEAR_MIP_POINT;
-			case FilterMode::min_point_mag_mip_linear:
+			case Filter::min_point_mag_mip_linear:
 				return D3D12_FILTER_MIN_POINT_MAG_MIP_LINEAR;
-			case FilterMode::min_linear_mag_mip_point:
+			case Filter::min_linear_mag_mip_point:
 				return D3D12_FILTER_MIN_LINEAR_MAG_MIP_POINT;
-			case FilterMode::min_linear_mag_point_mip_linear:
+			case Filter::min_linear_mag_point_mip_linear:
 				return D3D12_FILTER_MIN_LINEAR_MAG_POINT_MIP_LINEAR;
-			case FilterMode::min_mag_linear_mip_point:
+			case Filter::min_mag_linear_mip_point:
 				return D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT;
-			case FilterMode::min_mag_mip_linear:
+			case Filter::min_mag_mip_linear:
 				return D3D12_FILTER_MIN_MAG_MIP_LINEAR;
-			case FilterMode::anisotropic:
+			case Filter::anisotropic:
 				return D3D12_FILTER_ANISOTROPIC;
-			case FilterMode::comparison_min_mag_mip_point:
+			case Filter::comparison_min_mag_mip_point:
 				return D3D12_FILTER_COMPARISON_MIN_MAG_MIP_POINT;
-			case FilterMode::comparison_min_mag_point_mip_linear:
+			case Filter::comparison_min_mag_point_mip_linear:
 				return D3D12_FILTER_COMPARISON_MIN_MAG_POINT_MIP_LINEAR;
-			case FilterMode::comparison_min_point_mag_linear_mip_point:
+			case Filter::comparison_min_point_mag_linear_mip_point:
 				return D3D12_FILTER_COMPARISON_MIN_POINT_MAG_LINEAR_MIP_POINT;
-			case FilterMode::comparison_min_point_mag_mip_linear:
+			case Filter::comparison_min_point_mag_mip_linear:
 				return D3D12_FILTER_COMPARISON_MIN_POINT_MAG_MIP_LINEAR;
-			case FilterMode::comparison_min_linear_mag_mip_point:
+			case Filter::comparison_min_linear_mag_mip_point:
 				return D3D12_FILTER_COMPARISON_MIN_LINEAR_MAG_MIP_POINT;
-			case FilterMode::comparison_min_linear_mag_point_mip_linear:
+			case Filter::comparison_min_linear_mag_point_mip_linear:
 				return D3D12_FILTER_COMPARISON_MIN_LINEAR_MAG_POINT_MIP_LINEAR;
-			case FilterMode::comparison_min_mag_linear_mip_point:
+			case Filter::comparison_min_mag_linear_mip_point:
 				return D3D12_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT;
-			case FilterMode::comparison_min_mag_mip_linear:
+			case Filter::comparison_min_mag_mip_linear:
 				return D3D12_FILTER_COMPARISON_MIN_MAG_MIP_LINEAR;
-			case FilterMode::comparison_anisotropic:
+			case Filter::comparison_anisotropic:
 				return D3D12_FILTER_COMPARISON_ANISOTROPIC;
-			case FilterMode::minimum_min_mag_mip_point:
-				return D3D12_FILTER_MINIMUM_MIN_MAG_MIP_POINT;
-			case FilterMode::minimum_min_mag_point_mip_linear:
-				return D3D12_FILTER_MINIMUM_MIN_MAG_POINT_MIP_LINEAR;
-			case FilterMode::minimum_min_point_mag_linear_mip_point:
-				return D3D12_FILTER_MINIMUM_MIN_POINT_MAG_LINEAR_MIP_POINT;
-			case FilterMode::minimum_min_point_mag_mip_linear:
-				return D3D12_FILTER_MINIMUM_MIN_POINT_MAG_MIP_LINEAR;
-			case FilterMode::minimum_min_linear_mag_mip_point:
-				return D3D12_FILTER_MINIMUM_MIN_LINEAR_MAG_MIP_POINT;
-			case FilterMode::minimum_min_linear_mag_point_mip_linear:
-				return D3D12_FILTER_MINIMUM_MIN_LINEAR_MAG_POINT_MIP_LINEAR;
-			case FilterMode::minimum_min_mag_linear_mip_point:
-				return D3D12_FILTER_MINIMUM_MIN_MAG_LINEAR_MIP_POINT;
-			case FilterMode::minimum_min_mag_mip_linear:
-				return D3D12_FILTER_MINIMUM_MIN_MAG_MIP_LINEAR;
-			case FilterMode::minimum_anisotropic:
-				return D3D12_FILTER_MINIMUM_ANISOTROPIC;
-			case FilterMode::maximum_min_mag_mip_point:
-				return D3D12_FILTER_MAXIMUM_MIN_MAG_MIP_POINT;
-			case FilterMode::maximum_min_mag_point_mip_linear:
-				return D3D12_FILTER_MAXIMUM_MIN_MAG_POINT_MIP_LINEAR;
-			case FilterMode::maximum_min_point_mag_linear_mip_point:
-				return D3D12_FILTER_MAXIMUM_MIN_POINT_MAG_LINEAR_MIP_POINT;
-			case FilterMode::maximum_min_point_mag_mip_linear:
-				return D3D12_FILTER_MAXIMUM_MIN_POINT_MAG_MIP_LINEAR;
-			case FilterMode::maximum_min_linear_mag_mip_point:
-				return D3D12_FILTER_MAXIMUM_MIN_LINEAR_MAG_MIP_POINT;
-			case FilterMode::maximum_min_linear_mag_point_mip_linear:
-				return D3D12_FILTER_MAXIMUM_MIN_LINEAR_MAG_POINT_MIP_LINEAR;
-			case FilterMode::maximum_min_mag_linear_mip_point:
-				return D3D12_FILTER_MAXIMUM_MIN_MAG_LINEAR_MIP_POINT;
-			case FilterMode::maximum_min_mag_mip_linear:
-				return D3D12_FILTER_MAXIMUM_MIN_MAG_MIP_LINEAR;
-			case FilterMode::maximum_anisotropic:
 			default:
 				lupanic();
 				return D3D12_FILTER_MIN_MAG_MIP_POINT;
 			}
 		}
-
 		inline D3D12_TEXTURE_ADDRESS_MODE encode_address_mode(TextureAddressMode mode)
 		{
 			switch (mode)
@@ -166,12 +124,11 @@ namespace Luna
 				return D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
 			case TextureAddressMode::border:
 				return D3D12_TEXTURE_ADDRESS_MODE_BORDER;
-			case TextureAddressMode::mirror_once:
 			default:
-				return D3D12_TEXTURE_ADDRESS_MODE_MIRROR_ONCE;
+				lupanic();
+				return D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
 			}
 		}
-
 		inline D3D12_COMPARISON_FUNC encode_comparison_func(ComparisonFunc c)
 		{
 			switch (c)
@@ -195,64 +152,42 @@ namespace Luna
 				return D3D12_COMPARISON_FUNC_ALWAYS;
 			}
 		}
-
 		inline u32 calc_mip_levels(u32 width, u32 height, u32 depth)
 		{
 			return 1 + (u32)floorf(log2f((f32)max(width, max(height, depth))));
 		}
-
-		inline ResourceDesc validate_resource_desc(const ResourceDesc& desc)
+		inline D3D12_RESOURCE_DESC encode_buffer_desc(const BufferDesc& desc)
 		{
-			ResourceDesc ret = desc;
-			if (ret.type == ResourceType::buffer)
+			D3D12_RESOURCE_DESC rd {};
+			rd.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+			rd.Alignment = 0;
+			rd.Width = desc.size;
+			rd.Height = 1;
+			rd.DepthOrArraySize = 1;
+			rd.MipLevels = 1;
+			rd.Format = DXGI_FORMAT_UNKNOWN;
+			rd.SampleDesc.Count = 1;
+			rd.SampleDesc.Quality = 0;
+			rd.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+			rd.Flags = D3D12_RESOURCE_FLAG_NONE;
+			if ((desc.usages & BufferUsageFlag::read_write_buffer) != BufferUsageFlag::none)
 			{
-				ret.pixel_format = Format::unknown;
-				ret.height = 1;
-				ret.depth_or_array_size = 1;
-				ret.mip_levels = 1;
-				ret.sample_count = 1;
-				ret.sample_quality = 0;
+				rd.Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 			}
-			else if (ret.type == ResourceType::texture_1d)
-			{
-				ret.height = 1;
-				ret.sample_count = 1;
-				ret.sample_quality = 0;
-			}
-			else if (ret.type == ResourceType::texture_3d)
-			{
-				ret.sample_count = 1;
-				ret.sample_quality = 0;
-			}
-			if (!ret.mip_levels)
-			{
-				if (ret.type != ResourceType::texture_3d)
-				{
-					ret.mip_levels = calc_mip_levels((u32)desc.width_or_buffer_size, desc.height, 1);
-				}
-				else
-				{
-					ret.mip_levels = calc_mip_levels((u32)desc.width_or_buffer_size, desc.height, desc.depth_or_array_size);
-				}
-			}
-			return ret;
+			return rd;
 		}
-
-		inline D3D12_RESOURCE_DESC encode_resource_desc(const ResourceDesc& desc)
+		inline D3D12_RESOURCE_DESC encode_texture_desc(const TextureDesc& desc)
 		{
 			D3D12_RESOURCE_DESC rd;
 			switch (desc.type)
 			{
-			case ResourceType::buffer:
-				rd.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-				break;
-			case ResourceType::texture_1d:
+			case TextureType::tex1d:
 				rd.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE1D;
 				break;
-			case ResourceType::texture_2d:
+			case TextureType::tex2d:
 				rd.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
 				break;
-			case ResourceType::texture_3d:
+			case TextureType::tex3d:
 				rd.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE3D;
 				break;
 			default:
@@ -261,48 +196,58 @@ namespace Luna
 				break;
 			}
 			rd.Alignment = 0;
-			rd.Width = desc.width_or_buffer_size;
+			rd.Width = desc.width;
 			rd.Height = desc.height;
-			rd.DepthOrArraySize = desc.depth_or_array_size;
+			rd.DepthOrArraySize = (desc.type == TextureType::tex3d) ? desc.depth : desc.array_size;
 			rd.MipLevels = desc.mip_levels;
 			rd.Format = encode_pixel_format(desc.pixel_format);
 			rd.SampleDesc.Count = desc.sample_count;
-			rd.SampleDesc.Quality = desc.sample_quality;
-			if (desc.type == ResourceType::buffer)
-			{
-				rd.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-			}
-			else
-			{
-				rd.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-			}
+			rd.SampleDesc.Quality = (desc.sample_count == 1) ? 0 : 1;
+			rd.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
 			rd.Flags = D3D12_RESOURCE_FLAG_NONE;
-			if ((desc.usages & ResourceUsageFlag::render_target) != ResourceUsageFlag::none)
+			if (test_flags(desc.usages, TextureUsageFlag::render_target))
 			{
 				rd.Flags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
 			}
-			if ((desc.usages & ResourceUsageFlag::depth_stencil) != ResourceUsageFlag::none)
+			if (test_flags(desc.usages, TextureUsageFlag::depth_stencil))
 			{
 				rd.Flags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
 			}
-			if ((desc.usages & ResourceUsageFlag::unordered_access) != ResourceUsageFlag::none)
+			if (test_flags(desc.usages, TextureUsageFlag::read_write_texture))
 			{
 				rd.Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 			}
-			if ((desc.flags & ResourceFlag::simultaneous_access) != ResourceFlag::none)
-			{
-				rd.Flags |= D3D12_RESOURCE_FLAG_ALLOW_SIMULTANEOUS_ACCESS;
-			}
-			// The D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE flag will make Visual Studio graphic debug layer to crash.
-#ifndef LUNA_PROFILE
-			if (((desc.usages & ResourceUsageFlag::shader_resource) == ResourceUsageFlag::none) && ((desc.usages & ResourceUsageFlag::depth_stencil) != ResourceUsageFlag::none))
-			{
-				rd.Flags |= D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE;
-			}
-#endif
 			return rd;
 		}
-
+		inline D3D12_HEAP_TYPE encode_heap_type(ResourceHeapType heap_type)
+		{
+			switch (heap_type)
+			{
+			case ResourceHeapType::local: return D3D12_HEAP_TYPE_DEFAULT;
+			case ResourceHeapType::upload: return D3D12_HEAP_TYPE_UPLOAD;
+			case ResourceHeapType::readback: return D3D12_HEAP_TYPE_READBACK;
+			default: lupanic(); return D3D12_HEAP_TYPE_DEFAULT;
+			}
+		}
+		inline D3D12_COMMAND_LIST_TYPE encode_command_queue_type(CommandQueueType t)
+		{
+			switch (t)
+			{
+			case CommandQueueType::graphics:
+				return D3D12_COMMAND_LIST_TYPE_DIRECT;
+				break;
+			case CommandQueueType::compute:
+				return D3D12_COMMAND_LIST_TYPE_COMPUTE;
+				break;
+			case CommandQueueType::copy:
+				return D3D12_COMMAND_LIST_TYPE_COPY;
+				break;
+			default:
+				lupanic();
+				break;
+			}
+			return D3D12_COMMAND_LIST_TYPE_DIRECT;
+		}
 		inline void set_object_name(ID3D12Object* object, const Name& name)
 		{
 			usize len = utf8_to_utf16_len(name.c_str(), name.size());
@@ -310,11 +255,11 @@ namespace Luna
 			utf8_to_utf16((c16*)buf, len + 1, name.c_str(), name.size());
 			object->SetName(buf);
 		}
-
-		inline ErrCode encode_d3d12_error(HRESULT code)
+		inline RV encode_hresult(HRESULT code)
 		{
 			switch(code)
 			{
+			case S_OK: return ok;
 			case D3D12_ERROR_ADAPTER_NOT_FOUND: 
 			case DXGI_ERROR_NOT_FOUND: return BasicError::not_found();
 			case D3D12_ERROR_DRIVER_VERSION_MISMATCH: return BasicError::version_dismatch();

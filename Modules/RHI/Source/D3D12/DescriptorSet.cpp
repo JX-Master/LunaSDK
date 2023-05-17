@@ -52,11 +52,36 @@ namespace Luna
 				m_device->m_sampler_heap.free_descs(m_sampler_heap_offset, m_sampler_heap_size);
 			}
 		}
-		void DescriptorSet::set_cbv(u32 binding_slot, IResource* res, const ConstantBufferViewDesc& cbv)
+		RV DescriptorSet::update_descriptors(Span<const DescriptorSetWrite> writes)
 		{
-			set_cbv_array(binding_slot, 0, 1, &res, &cbv);
+			for (auto& write : writes)
+			{
+				switch (write.type)
+				{
+				case DescriptorType::uniform_buffer_view:
+					set_cbv_array(write.binding_slot, write.first_array_index, write.buffer_views.size(), write.buffer_views.data());
+					break;
+				case DescriptorType::read_buffer_view:
+					set_buffer_srv_array(write.binding_slot, write.first_array_index, write.buffer_views.size(), write.buffer_views.data());
+					break;
+				case DescriptorType::read_write_buffer_view:
+					set_buffer_uav_array(write.binding_slot, write.first_array_index, write.buffer_views.size(), write.buffer_views.data());
+					break;
+				case DescriptorType::sampled_texture_view:
+				case DescriptorType::read_texture_view:
+					set_texture_srv_array(write.binding_slot, write.first_array_index, write.texture_views.size(), write.texture_views.data());
+					break;
+				case DescriptorType::read_write_texture_view:
+					set_texture_uav_array(write.binding_slot, write.first_array_index, write.texture_views.size(), write.texture_views.data());
+					break;
+				case DescriptorType::sampler:
+					set_sampler_array(write.binding_slot, write.first_array_index, write.samplers.size(), write.samplers.data());
+					break;
+				}
+			}
+			return ok;
 		}
-		void DescriptorSet::set_cbv_array(u32 binding_slot, u32 offset, u32 num_descs, IResource** resources, const ConstantBufferViewDesc* descs)
+		void DescriptorSet::set_cbv_array(u32 binding_slot, u32 offset, u32 num_descs, const BufferViewDesc* descs)
 		{
 			lutsassert();
 			auto iter = m_bound_index_to_offset.find(binding_slot);
@@ -64,21 +89,17 @@ namespace Luna
 			u32 index = iter->second;
 			for (usize i = 0; i < num_descs; ++i)
 			{
-				Resource* r = static_cast<Resource*>(resources[i]->get_object());
+				BufferResource* r = cast_object<BufferResource>(descs[i].buffer->get_object());
 				D3D12_CONSTANT_BUFFER_VIEW_DESC d;
 				d.BufferLocation = r->m_res->GetGPUVirtualAddress() + descs[i].offset;
-				d.SizeInBytes = descs[i].size;
+				d.SizeInBytes = descs[i].element_size == U32_MAX ? (u32)(r->m_desc.size - descs[i].offset) : descs[i].element_size;
 				usize addr = m_device->m_cbv_srv_uav_heap.m_cpu_handle.ptr + (m_view_heap_offset + index + offset + i) * m_device->m_cbv_srv_uav_heap.m_descriptor_size;
 				D3D12_CPU_DESCRIPTOR_HANDLE h;
 				h.ptr = addr;
 				m_device->m_device->CreateConstantBufferView(&d, h);
 			}
 		}
-		void DescriptorSet::set_srv(u32 binding_slot, IResource* res, const ShaderResourceViewDesc* srv)
-		{
-			set_srv_array(binding_slot, 0, 1, &res, srv ? srv : &get_default_srv_from_resource(res));
-		}
-		void DescriptorSet::set_srv_array(u32 binding_slot, u32 offset, u32 num_descs, IResource** resources, const ShaderResourceViewDesc* descs)
+		void DescriptorSet::set_buffer_srv_array(u32 binding_slot, u32 offset, u32 num_descs, const BufferViewDesc* descs)
 		{
 			lutsassert();
 			auto iter = m_bound_index_to_offset.find(binding_slot);
@@ -86,81 +107,107 @@ namespace Luna
 			u32 index = iter->second;
 			for (usize i = 0; i < num_descs; ++i)
 			{
-				Resource* r = static_cast<Resource*>(resources[i]->get_object());
+				BufferResource* r = cast_object<BufferResource>(descs[i].buffer->get_object());
 				lucheck(r);
 				usize addr = m_device->m_cbv_srv_uav_heap.m_cpu_handle.ptr + (m_view_heap_offset + index + offset + i) * m_device->m_cbv_srv_uav_heap.m_descriptor_size;
 				D3D12_CPU_DESCRIPTOR_HANDLE h;
 				h.ptr = addr;
-				const ShaderResourceViewDesc* srv = descs + i;
+				const BufferViewDesc* srv = descs + i;
+				D3D12_SHADER_RESOURCE_VIEW_DESC d;
+				d.Format = encode_pixel_format(srv->format);
+				d.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+				d.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+				d.Buffer.FirstElement = srv->offset;
+				d.Buffer.NumElements = srv->element_count;
+				d.Buffer.StructureByteStride = srv->element_size;
+				d.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
+				m_device->m_device->CreateShaderResourceView(r->m_res.Get(), &d, h);
+			}
+		}
+		void DescriptorSet::set_texture_srv_array(u32 binding_slot, u32 offset, u32 num_descs, const TextureViewDesc* descs)
+		{
+			lutsassert();
+			auto iter = m_bound_index_to_offset.find(binding_slot);
+			lucheck_msg(iter != m_bound_index_to_offset.end(), "Invalid binding slot");
+			u32 index = iter->second;
+			for (usize i = 0; i < num_descs; ++i)
+			{
+				TextureResource* r = cast_object<TextureResource>(descs[i].texture->get_object());
+				lucheck(r);
+				usize addr = m_device->m_cbv_srv_uav_heap.m_cpu_handle.ptr + (m_view_heap_offset + index + offset + i) * m_device->m_cbv_srv_uav_heap.m_descriptor_size;
+				D3D12_CPU_DESCRIPTOR_HANDLE h;
+				h.ptr = addr;
+				const TextureViewDesc* srv = descs + i;
 				D3D12_SHADER_RESOURCE_VIEW_DESC d;
 				d.Format = encode_pixel_format(srv->format);
 				d.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 				switch (srv->type)
 				{
-				case ShaderResourceViewType::buffer:
-					d.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
-					d.Buffer.FirstElement = srv->buffer.offset;
-					d.Buffer.NumElements = srv->buffer.count;
-					d.Buffer.StructureByteStride = srv->buffer.element_size;
-					d.Buffer.Flags = srv->buffer.raw_view ? D3D12_BUFFER_SRV_FLAG_RAW : D3D12_BUFFER_SRV_FLAG_NONE;
-					break;
-				case ShaderResourceViewType::tex1d:
+				case TextureViewType::tex1d:
 					d.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE1D;
-					d.Texture1D.MipLevels = srv->tex1d.mip_levels;
-					d.Texture1D.MostDetailedMip = srv->tex1d.most_detailed_mip;
-					d.Texture1D.ResourceMinLODClamp = srv->tex1d.resource_min_lod_clamp;
+					d.Texture1D.MipLevels = srv->mip_size;
+					d.Texture1D.MostDetailedMip = srv->mip_slice;
+					d.Texture1D.ResourceMinLODClamp = 0.0f;
 					break;
-				case ShaderResourceViewType::tex1darray:
+				case TextureViewType::tex1darray:
 					d.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE1DARRAY;
-					d.Texture1DArray.ArraySize = srv->tex1darray.array_size;
-					d.Texture1DArray.FirstArraySlice = srv->tex1darray.first_array_slice;
-					d.Texture1DArray.MipLevels = srv->tex1darray.mip_levels;
-					d.Texture1DArray.MostDetailedMip = srv->tex1darray.most_detailed_mip;
-					d.Texture1DArray.ResourceMinLODClamp = srv->tex1darray.resource_min_lod_clamp;
+					d.Texture1DArray.ArraySize = srv->array_size;
+					d.Texture1DArray.FirstArraySlice = srv->array_slice;
+					d.Texture1DArray.MipLevels = srv->mip_size;
+					d.Texture1DArray.MostDetailedMip = srv->mip_slice;
+					d.Texture1DArray.ResourceMinLODClamp = 0.0f;
 					break;
-				case ShaderResourceViewType::tex2d:
-					d.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-					d.Texture2D.MipLevels = srv->tex2d.mip_levels;
-					d.Texture2D.MostDetailedMip = srv->tex2d.most_detailed_mip;
-					d.Texture2D.PlaneSlice = 0;
-					d.Texture2D.ResourceMinLODClamp = srv->tex2d.resource_min_lod_clamp;
+				case TextureViewType::tex2d:
+					if (r->m_desc.sample_count == 1)
+					{
+						d.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+						d.Texture2D.MipLevels = srv->mip_size;
+						d.Texture2D.MostDetailedMip = srv->mip_slice;
+						d.Texture2D.PlaneSlice = 0;
+						d.Texture2D.ResourceMinLODClamp = 0.0f;
+					}
+					else
+					{
+						d.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DMS;
+					}
 					break;
-				case ShaderResourceViewType::tex2darray:
-					d.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
-					d.Texture2DArray.ArraySize = srv->tex2darray.array_size;
-					d.Texture2DArray.FirstArraySlice = srv->tex2darray.first_array_slice;
-					d.Texture2DArray.MipLevels = srv->tex2darray.mip_levels;
-					d.Texture2DArray.MostDetailedMip = srv->tex2darray.most_detailed_mip;
-					d.Texture2DArray.PlaneSlice = 0;
-					d.Texture2DArray.ResourceMinLODClamp = srv->tex2darray.resource_min_lod_clamp;
+				case TextureViewType::tex2darray:
+					if (r->m_desc.sample_count == 1)
+					{
+						d.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
+						d.Texture2DArray.ArraySize = srv->array_size;
+						d.Texture2DArray.FirstArraySlice = srv->array_slice;
+						d.Texture2DArray.MipLevels = srv->mip_size;
+						d.Texture2DArray.MostDetailedMip = srv->mip_slice;
+						d.Texture2DArray.PlaneSlice = 0;
+						d.Texture2DArray.ResourceMinLODClamp = 0.0f;
+					}
+					else
+					{
+						d.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DMSARRAY;
+						d.Texture2DMSArray.ArraySize = srv->array_size;
+						d.Texture2DMSArray.FirstArraySlice = srv->array_slice;
+					}
 					break;
-				case ShaderResourceViewType::tex2dms:
-					d.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DMS;
-					break;
-				case ShaderResourceViewType::tex2dmsarray:
-					d.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DMSARRAY;
-					d.Texture2DMSArray.ArraySize = srv->tex2dmsarray.array_size;
-					d.Texture2DMSArray.FirstArraySlice = srv->tex2dmsarray.first_array_slice;
-					break;
-				case ShaderResourceViewType::tex3d:
+				case TextureViewType::tex3d:
 					d.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE3D;
-					d.Texture3D.MipLevels = srv->tex3d.mip_levels;
-					d.Texture3D.MostDetailedMip = srv->tex3d.most_detailed_mip;
-					d.Texture3D.ResourceMinLODClamp = srv->tex3d.resource_min_lod_clamp;
+					d.Texture3D.MipLevels = srv->mip_size;
+					d.Texture3D.MostDetailedMip = srv->mip_slice;
+					d.Texture3D.ResourceMinLODClamp = 0.0f;
 					break;
-				case ShaderResourceViewType::texcube:
+				case TextureViewType::texcube:
 					d.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
-					d.TextureCube.MipLevels = srv->texcube.mip_levels;
-					d.TextureCube.MostDetailedMip = srv->texcube.most_detailed_mip;
-					d.TextureCube.ResourceMinLODClamp = srv->texcube.resource_min_lod_clamp;
+					d.TextureCube.MipLevels = srv->mip_size;
+					d.TextureCube.MostDetailedMip = srv->mip_slice;
+					d.TextureCube.ResourceMinLODClamp = 0.0f;
 					break;
-				case ShaderResourceViewType::texcubearray:
+				case TextureViewType::texcubearray:
 					d.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBEARRAY;
-					d.TextureCubeArray.First2DArrayFace = srv->texcubearray.first_2darray_face;
-					d.TextureCubeArray.MipLevels = srv->texcubearray.mip_levels;
-					d.TextureCubeArray.MostDetailedMip = srv->texcubearray.most_detailed_mip;
-					d.TextureCubeArray.NumCubes = srv->texcubearray.num_cubes;
-					d.TextureCubeArray.ResourceMinLODClamp = srv->texcubearray.resource_min_lod_clamp;
+					d.TextureCubeArray.First2DArrayFace = srv->array_slice;
+					d.TextureCubeArray.MipLevels = srv->mip_size;
+					d.TextureCubeArray.MostDetailedMip = srv->mip_slice;
+					d.TextureCubeArray.NumCubes = srv->array_size / 6;
+					d.TextureCubeArray.ResourceMinLODClamp = 0.0f;
 					break;
 				default:
 					lupanic();
@@ -169,11 +216,7 @@ namespace Luna
 				m_device->m_device->CreateShaderResourceView(r->m_res.Get(), &d, h);
 			}
 		}
-		void DescriptorSet::set_uav(u32 binding_slot, IResource* res, IResource* counter_resource, const UnorderedAccessViewDesc* uav)
-		{
-			set_uav_array(binding_slot, 0, 1, &res, &counter_resource, uav ? uav : &get_default_uav_from_resource(res));
-		}
-		void DescriptorSet::set_uav_array(u32 binding_slot, u32 offset, u32 num_descs, IResource** resources, IResource** counter_resources, const UnorderedAccessViewDesc* descs)
+		void DescriptorSet::set_buffer_uav_array(u32 binding_slot, u32 offset, u32 num_descs, const BufferViewDesc* descs)
 		{
 			lutsassert();
 			auto iter = m_bound_index_to_offset.find(binding_slot);
@@ -181,62 +224,84 @@ namespace Luna
 			u32 index = iter->second;
 			for (usize i = 0; i < num_descs; ++i)
 			{
-				ID3D12Resource* r = static_cast<Resource*>(resources[i]->get_object())->m_res.Get();
-				ID3D12Resource* cr = counter_resources[i] ? static_cast<Resource*>(counter_resources[i]->get_object())->m_res.Get() : nullptr;
+				ID3D12Resource* r = cast_object<BufferResource>(descs[i].buffer->get_object())->m_res.Get();
 				usize addr = m_device->m_cbv_srv_uav_heap.m_cpu_handle.ptr + (m_view_heap_offset + index + offset + i) * m_device->m_cbv_srv_uav_heap.m_descriptor_size;
 				D3D12_CPU_DESCRIPTOR_HANDLE h;
 				h.ptr = addr;
-				const UnorderedAccessViewDesc* uav = descs + i;
+				const BufferViewDesc* uav = descs + i;
+				D3D12_UNORDERED_ACCESS_VIEW_DESC d;
+				d.Format = encode_pixel_format(uav->format);
+				d.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
+				d.Buffer.CounterOffsetInBytes = 0;
+				if (uav->format != Format::unknown)
+				{
+					// Typed buffer.
+					u32 bits_per_element = bits_per_pixel(uav->format);
+					d.Buffer.FirstElement = uav->offset * 8 / bits_per_element;
+					d.Buffer.StructureByteStride = 0;
+				}
+				else
+				{
+					// Structured buffer.
+					d.Buffer.FirstElement = uav->offset / uav->element_size;
+					d.Buffer.StructureByteStride = uav->element_size;
+				}
+				d.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_NONE;
+				d.Buffer.NumElements = uav->element_count;
+				m_device->m_device->CreateUnorderedAccessView(r, NULL, &d, h);
+			}
+		}
+		void DescriptorSet::set_texture_uav_array(u32 binding_slot, u32 offset, u32 num_descs, const TextureViewDesc* descs)
+		{
+			lutsassert();
+			auto iter = m_bound_index_to_offset.find(binding_slot);
+			lucheck_msg(iter != m_bound_index_to_offset.end(), "Invalid binding slot");
+			u32 index = iter->second;
+			for (usize i = 0; i < num_descs; ++i)
+			{
+				ID3D12Resource* r = cast_object<TextureResource>(descs[i].texture->get_object())->m_res.Get();
+				usize addr = m_device->m_cbv_srv_uav_heap.m_cpu_handle.ptr + (m_view_heap_offset + index + offset + i) * m_device->m_cbv_srv_uav_heap.m_descriptor_size;
+				D3D12_CPU_DESCRIPTOR_HANDLE h;
+				h.ptr = addr;
+				const TextureViewDesc* uav = descs + i;
 				D3D12_UNORDERED_ACCESS_VIEW_DESC d;
 				d.Format = encode_pixel_format(uav->format);
 				switch (uav->type)
 				{
-				case UnorderedAccessViewType::buffer:
-					d.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
-					d.Buffer.CounterOffsetInBytes = uav->buffer.counter_offset_in_bytes;
-					d.Buffer.FirstElement = uav->buffer.offset;
-					d.Buffer.Flags = uav->buffer.raw_view ? D3D12_BUFFER_UAV_FLAG_RAW : D3D12_BUFFER_UAV_FLAG_NONE;
-					d.Buffer.NumElements = uav->buffer.count;
-					d.Buffer.StructureByteStride = uav->buffer.element_size;
-					break;
-				case UnorderedAccessViewType::tex1d:
+				case TextureViewType::tex1d:
 					d.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE1D;
-					d.Texture1D.MipSlice = uav->tex1d.mip_slice;
+					d.Texture1D.MipSlice = uav->mip_slice;
 					break;
-				case UnorderedAccessViewType::tex1darray:
+				case TextureViewType::tex1darray:
 					d.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE1DARRAY;
-					d.Texture1DArray.ArraySize = uav->tex1darray.array_size;
-					d.Texture1DArray.FirstArraySlice = uav->tex1darray.first_array_slice;
-					d.Texture1DArray.MipSlice = uav->tex1darray.mip_slice;
+					d.Texture1DArray.ArraySize = uav->array_size;
+					d.Texture1DArray.FirstArraySlice = uav->array_slice;
+					d.Texture1DArray.MipSlice = uav->mip_slice;
 					break;
-				case UnorderedAccessViewType::tex2d:
+				case TextureViewType::tex2d:
 					d.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
-					d.Texture2D.MipSlice = uav->tex2d.mip_slice;
+					d.Texture2D.MipSlice = uav->mip_slice;
 					d.Texture2D.PlaneSlice = 0;
 					break;
-				case UnorderedAccessViewType::tex2darray:
+				case TextureViewType::tex2darray:
 					d.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
-					d.Texture2DArray.ArraySize = uav->tex2darray.array_size;
-					d.Texture2DArray.FirstArraySlice = uav->tex2darray.first_array_slice;
-					d.Texture2DArray.MipSlice = uav->tex2darray.mip_slice;
+					d.Texture2DArray.ArraySize = uav->array_size;
+					d.Texture2DArray.FirstArraySlice = uav->array_slice;
+					d.Texture2DArray.MipSlice = uav->mip_slice;
 					d.Texture2DArray.PlaneSlice = 0;
 					break;
-				case UnorderedAccessViewType::tex3d:
+				case TextureViewType::tex3d:
 					d.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE3D;
-					d.Texture3D.FirstWSlice = uav->tex3d.first_layer_slice;
-					d.Texture3D.MipSlice = uav->tex3d.mip_slice;
-					d.Texture3D.WSize = uav->tex3d.layer_size;
+					d.Texture3D.FirstWSlice = 0;
+					d.Texture3D.MipSlice = uav->mip_slice;
+					d.Texture3D.WSize = (UINT)-1;
 					break;
 				default:
 					lupanic();
 					break;
 				}
-				m_device->m_device->CreateUnorderedAccessView(r, cr, &d, h);
+				m_device->m_device->CreateUnorderedAccessView(r, NULL, &d, h);
 			}
-		}
-		void DescriptorSet::set_sampler(u32 binding_slot, const SamplerDesc& sampler)
-		{
-			set_sampler_array(binding_slot, 0, 1, &sampler);
 		}
 		void DescriptorSet::set_sampler_array(u32 binding_slot, u32 offset, u32 num_samplers, const SamplerDesc* samplers)
 		{
@@ -251,10 +316,30 @@ namespace Luna
 				d.AddressU = encode_address_mode(sampler.address_u);
 				d.AddressV = encode_address_mode(sampler.address_v);
 				d.AddressW = encode_address_mode(sampler.address_w);
-				d.BorderColor[0] = sampler.border_color[0];
-				d.BorderColor[1] = sampler.border_color[1];
-				d.BorderColor[2] = sampler.border_color[2];
-				d.BorderColor[3] = sampler.border_color[3];
+				switch (sampler.border_color)
+				{
+				case BorderColor::float_0000:
+				case BorderColor::int_0000:
+					d.BorderColor[0] = 0.0f;
+					d.BorderColor[1] = 0.0f;
+					d.BorderColor[2] = 0.0f;
+					d.BorderColor[3] = 0.0f;
+					break;
+				case BorderColor::float_0001:
+				case BorderColor::int_0001:
+					d.BorderColor[0] = 0.0f;
+					d.BorderColor[1] = 0.0f;
+					d.BorderColor[2] = 0.0f;
+					d.BorderColor[3] = 1.0f;
+					break;
+				case BorderColor::float_1111:
+				case BorderColor::int_1111:
+					d.BorderColor[0] = 1.0f;
+					d.BorderColor[1] = 1.0f;
+					d.BorderColor[2] = 1.0f;
+					d.BorderColor[3] = 1.0f;
+					break;
+				}
 				d.ComparisonFunc = encode_comparison_func(sampler.comparison_func);
 				d.Filter = encode_filter(sampler.filter);
 				d.MaxAnisotropy = sampler.max_anisotropy;

@@ -410,18 +410,6 @@ namespace Luna
 			}
 		};
 
-		struct IDescriptorSet;
-
-		struct DescriptorSetCopy
-		{
-			IDescriptorSet* src;
-			u32 src_binding_slot;
-			u32 src_first_array_index;
-			u32 dst_binding_slot;
-			u32 dst_first_array_index;
-			u32 num_descs;
-		};
-
 		//! @interface IDescriptorSet
 		//! Describes which views and samples are bound to the pipeline.
 		//! This can be set at any time before the draw call or dispatch call
@@ -430,7 +418,7 @@ namespace Luna
 		{
 			luiid("{f12bc4b0-2aad-42bb-8b8c-237ed0593aa3}");
 
-			virtual RV update_descriptors(Span<const DescriptorSetWrite> writes, Span<const DescriptorSetCopy> copies) = 0;
+			virtual RV update_descriptors(Span<const DescriptorSetWrite> writes) = 0;
 		};
 	}
 }

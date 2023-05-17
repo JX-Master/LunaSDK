@@ -16,43 +16,33 @@ namespace Luna
 		{
 			switch (type)
 			{
-			case Luna::RHI::DescriptorType::srv:
+			case DescriptorType::sampled_texture_view:
+			case DescriptorType::read_buffer_view:
+			case DescriptorType::read_texture_view:
 				return D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-			case Luna::RHI::DescriptorType::uav:
+			case DescriptorType::read_write_buffer_view:
+			case DescriptorType::read_write_texture_view:
 				return D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
-			case Luna::RHI::DescriptorType::cbv:
+			case DescriptorType::uniform_buffer_view:
 				return D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
-			case Luna::RHI::DescriptorType::sampler:
+			case DescriptorType::sampler:
 				return D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER;
 			default:
 				lupanic();
 				return D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
 			}
 		}
-		inline D3D12_SHADER_VISIBILITY encode_shader_visibility(ShaderVisibility shader_visibility)
+		inline D3D12_SHADER_VISIBILITY encode_shader_visibility(ShaderVisibilityFlag shader_visibility)
 		{
 			switch (shader_visibility)
 			{
-			case ShaderVisibility::all:
-				return D3D12_SHADER_VISIBILITY_ALL;
-				break;
-			case ShaderVisibility::pixel:
+			case ShaderVisibilityFlag::pixel:
 				return D3D12_SHADER_VISIBILITY_PIXEL;
 				break;
-			case ShaderVisibility::vertex:
+			case ShaderVisibilityFlag::vertex:
 				return D3D12_SHADER_VISIBILITY_VERTEX;
 				break;
-			case ShaderVisibility::domain:
-				return D3D12_SHADER_VISIBILITY_DOMAIN;
-				break;
-			case ShaderVisibility::geometry:
-				return D3D12_SHADER_VISIBILITY_GEOMETRY;
-				break;
-			case ShaderVisibility::hull:
-				return D3D12_SHADER_VISIBILITY_HULL;
-				break;
 			default:
-				lupanic();
 				return D3D12_SHADER_VISIBILITY_ALL;
 			}
 		}
@@ -83,13 +73,17 @@ namespace Luna
 				{
 					switch (binding.desc.type)
 					{
-					case DescriptorType::srv:
-					case DescriptorType::cbv:
-					case DescriptorType::uav:
+					case DescriptorType::sampled_texture_view:
+					case DescriptorType::read_buffer_view:
+					case DescriptorType::read_texture_view:
+					case DescriptorType::read_write_buffer_view:
+					case DescriptorType::read_write_texture_view:
+					case DescriptorType::uniform_buffer_view:
 						binding.target_heap = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV; break;
 					case DescriptorType::sampler:
 						binding.target_heap = D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER; break;
 					default:
+						lupanic();
 						break;
 					}
 					if (binding.desc.num_descs == U32_MAX) continue;
@@ -110,7 +104,7 @@ namespace Luna
 			{
 				for (auto& binding : m_bindings)
 				{
-					binding.root_parameter_index = get_root_parameter_index(binding.desc.type, binding.desc.shader_visibility);
+					binding.root_parameter_index = get_root_parameter_index(binding.desc.type, binding.desc.shader_visibility_flags);
 					auto& root_parameter = m_root_parameters[binding.root_parameter_index];
 					// Check whether we can merge to the last range.
 					if (!root_parameter.m_ranges.empty() && binding.desc.num_descs != U32_MAX)
@@ -155,16 +149,19 @@ namespace Luna
 		inline bool root_parameter_type_compatible(DescriptorType desc_type, D3D12_DESCRIPTOR_HEAP_TYPE root_type)
 		{
 			if ((root_type == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) && (
-				desc_type == DescriptorType::cbv ||
-				desc_type == DescriptorType::srv ||
-				desc_type == DescriptorType::uav)
+				desc_type == DescriptorType::sampled_texture_view ||
+				desc_type == DescriptorType::read_buffer_view ||
+				desc_type == DescriptorType::read_texture_view ||
+				desc_type == DescriptorType::read_write_buffer_view ||
+				desc_type == DescriptorType::read_write_texture_view ||
+				desc_type == DescriptorType::uniform_buffer_view)
 				) return true;
 			if ((root_type == D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER) && (
 				desc_type == DescriptorType::sampler
 				)) return true;
 			return false;
 		}
-		u32 DescriptorSetLayout::get_root_parameter_index(DescriptorType type, ShaderVisibility shader_visibility)
+		u32 DescriptorSetLayout::get_root_parameter_index(DescriptorType type, ShaderVisibilityFlag shader_visibility)
 		{
 			for (u32 i = 0; i < (u32)m_root_parameters.size(); ++i)
 			{
@@ -178,12 +175,15 @@ namespace Luna
 			RootParameterInfo info;
 			switch (type)
 			{
-			case Luna::RHI::DescriptorType::srv:
-			case Luna::RHI::DescriptorType::uav:
-			case Luna::RHI::DescriptorType::cbv:
+			case DescriptorType::sampled_texture_view:
+			case DescriptorType::read_buffer_view:
+			case DescriptorType::read_texture_view:
+			case DescriptorType::read_write_buffer_view:
+			case DescriptorType::read_write_texture_view:
+			case DescriptorType::uniform_buffer_view:
 				info.m_type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 				break;
-			case Luna::RHI::DescriptorType::sampler:
+			case DescriptorType::sampler:
 				info.m_type = D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER;
 				break;
 			default:

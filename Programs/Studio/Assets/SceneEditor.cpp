@@ -818,9 +818,9 @@ namespace Luna
 			auto device = cmdbuf->get_device();
 			auto desc = m_renderer.render_texture->get_desc();
 			usize row_pitch = bits_per_pixel(desc.pixel_format) * (usize)desc.width_or_buffer_size / 8;
-			usize depth_pitch = row_pitch * desc.height;
-			Blob img_data(depth_pitch);
-			luexp(device->copy_resource({ResourceCopyDesc::as_read_texture(m_renderer.render_texture, img_data.data(), row_pitch, depth_pitch, 0, 
+			usize slice_pitch = row_pitch * desc.height;
+			Blob img_data(slice_pitch);
+			luexp(device->copy_resource({ResourceCopyDesc::as_read_texture(m_renderer.render_texture, img_data.data(), row_pitch, slice_pitch, 0, 
 				BoxU(0, 0, 0, (u32)desc.width_or_buffer_size, desc.height, 1))}));
 			Image::ImageDesc img_desc;
 			img_desc.width = (u32)desc.width_or_buffer_size;

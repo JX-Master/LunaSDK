@@ -65,7 +65,7 @@ RV start()
 			compiler->set_entry_point("main");
 			compiler->set_target_format(RHI::get_current_platform_shader_target_format());
 			compiler->set_shader_type(ShaderCompiler::ShaderType::vertex);
-			compiler->set_shader_model(5, 0);
+			compiler->set_shader_model(6, 0);
 			compiler->set_optimization_level(ShaderCompiler::OptimizationLevel::full);
 
 			luexp(compiler->compile());
@@ -92,7 +92,7 @@ RV start()
 			compiler->set_entry_point("main");
 			compiler->set_target_format(RHI::get_current_platform_shader_target_format());
 			compiler->set_shader_type(ShaderCompiler::ShaderType::pixel);
-			compiler->set_shader_model(5, 0);
+			compiler->set_shader_model(6, 0);
 			compiler->set_optimization_level(ShaderCompiler::OptimizationLevel::full);
 
 			luexp(compiler->compile());
@@ -156,7 +156,7 @@ void draw()
 	desc.color_clear_values[0] = Color::yellow();
 	desc.color_store_ops[0] = StoreOp::store;
 	cb->begin_render_pass(desc);
-	cb->set_pipeline_state(PipelineStateBindPoint::graphics, pso);
+	cb->set_pipeline_state(pso);
 	cb->set_graphics_shader_input_layout(shader_input_layout);
 	IBuffer* vertex_buffer = vb;
 	usize vb_offset = 0;

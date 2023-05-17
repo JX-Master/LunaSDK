@@ -30,7 +30,7 @@ namespace Luna
 
 			virtual IDevice* get_device() override { return m_device.get(); }
 			virtual void set_name(const Name& name) override { m_name = name; }
-			virtual ITexture* get_resource() override { return m_resource; }
+			virtual ITexture* get_texture() override { return m_resource; }
 			virtual RenderTargetViewDesc get_desc() override { return m_desc; }
 		};
 	}

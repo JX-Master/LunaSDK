@@ -74,7 +74,7 @@ namespace Luna
 				desc.mip_slice = mip_slice;
 				return desc;
 			}
-			static DepthStencilViewDesc as_tex2dms(Format format)
+			static DepthStencilViewDesc tex2dms(Format format)
 			{
 				DepthStencilViewDesc desc;
 				desc.format = format;
@@ -84,7 +84,7 @@ namespace Luna
 				desc.array_size = 1;
 				return desc;
 			}
-			static DepthStencilViewDesc as_tex2dmsarray(Format format, u32 first_array_slice, u32 array_size)
+			static DepthStencilViewDesc tex2dmsarray(Format format, u32 first_array_slice, u32 array_size)
 			{
 				DepthStencilViewDesc desc;
 				desc.format = format;
@@ -100,7 +100,7 @@ namespace Luna
 		{
 			luiid("{C672876F-C6BB-49CA-BE77-DA112069F0C1}");
 
-			virtual ITexture* get_resource() = 0;
+			virtual ITexture* get_texture() = 0;
 			virtual DepthStencilViewDesc get_desc() = 0;
 		};
 	}
