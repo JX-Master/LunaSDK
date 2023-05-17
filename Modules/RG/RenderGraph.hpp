@@ -49,7 +49,7 @@ namespace Luna
             RenderGraphResourceType type;
             RenderGraphResourceFlag flags;
             Name name; // The name of the resource.
-            RHI::ResourceDesc desc;
+            ResourceDesc desc;
         };
 
         struct RenderGraphConnection
@@ -71,7 +71,6 @@ namespace Luna
         struct RenderGraphCompileConfig
         {
             bool enable_time_profiling = false;
-            bool enable_pipeline_statistics_profiling = false;
         };
 
         struct IRenderGraph : virtual Interface
@@ -97,8 +96,6 @@ namespace Luna
             virtual RHI::IResource* get_persistent_resource(usize index) = 0;
 
             virtual RV get_pass_time_intervals(Vector<u64>& pass_times) = 0;
-
-            virtual RV get_pass_pipeline_statistics(Vector<RHI::PipelineStatistics>& pass_pipeline_statistics) = 0;
         };
 
         LUNA_RG_API Ref<IRenderGraph> new_render_graph(RHI::IDevice* device);

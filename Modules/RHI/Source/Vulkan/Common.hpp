@@ -446,7 +446,7 @@ namespace Luna
 		inline VkPipelineStageFlags determine_pipeline_stage_flags(BufferStateFlag state, CommandQueueType queue_type)
 		{
 			VkPipelineStageFlags flags = 0;
-			if (state == BufferStateFlag::automatic) return flags;
+			if (state == BufferStateFlag::none) return flags;
 			switch (queue_type)
 			{
 			case CommandQueueType::graphics:
@@ -500,8 +500,31 @@ namespace Luna
 				break;
 			}
 			case CommandQueueType::copy: 
-				return VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
-			default: break;
+				if (test_flags(state, BufferStateFlag::vertex_buffer) ||
+					test_flags(state, BufferStateFlag::index_buffer))
+				{
+					flags |= VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+				}
+				if (test_flags(state, BufferStateFlag::uniform_buffer_vs) ||
+					test_flags(state, BufferStateFlag::shader_read_vs))
+				{
+					flags |= VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+				}
+				if (test_flags(state, BufferStateFlag::uniform_buffer_ps) ||
+					test_flags(state, BufferStateFlag::shader_read_ps))
+				{
+					flags |= VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+				}
+				if (test_flags(state, BufferStateFlag::uniform_buffer_cs) ||
+					test_flags(state, BufferStateFlag::shader_read_cs) ||
+					test_flags(state, BufferStateFlag::shader_write_cs))
+				{
+					flags |= VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+				}
+				break;
+			default: 
+				lupanic();
+				break;
 			}
 			// Compatible with both compute and graphics queues
 			if (test_flags(state, BufferStateFlag::indirect_argument))
@@ -518,7 +541,7 @@ namespace Luna
 		inline VkPipelineStageFlags determine_pipeline_stage_flags(TextureStateFlag state, CommandQueueType queue_type)
 		{
 			VkPipelineStageFlags flags = 0;
-			if (state == TextureStateFlag::automatic) return flags;
+			if (state == TextureStateFlag::none) return flags;
 			switch (queue_type)
 			{
 			case CommandQueueType::graphics:
@@ -578,8 +601,34 @@ namespace Luna
 				break;
 			}
 			case CommandQueueType::copy:
-				return VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
-			default: break;
+				if (test_flags(state, TextureStateFlag::shader_read_vs))
+				{
+					flags |= VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+				}
+				if (test_flags(state, TextureStateFlag::shader_read_ps))
+				{
+					flags |= VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+				}
+				if (test_flags(state, TextureStateFlag::color_attachment_read) ||
+					test_flags(state, TextureStateFlag::color_attachment_write) ||
+					test_flags(state, TextureStateFlag::resolve_attachment))
+				{
+					flags |= VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+				}
+				if (test_flags(state, TextureStateFlag::depth_stencil_attachment_read) ||
+					test_flags(state, TextureStateFlag::depth_stencil_attachment_write))
+				{
+					flags |= VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+				}
+				if (test_flags(state, TextureStateFlag::shader_read_cs) ||
+					test_flags(state, TextureStateFlag::shader_write_cs))
+				{
+					flags |= VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+				}
+				break;
+			default: 
+				lupanic();
+				break;
 			}
 			// Compatible with both compute and graphics queues
 			if (test_flags(state, TextureStateFlag::copy_dest) ||

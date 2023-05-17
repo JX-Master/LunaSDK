@@ -63,13 +63,10 @@ namespace Luna
 		//! `ResourceBindFlag::none` as the `before` state for the resource to be correctly bind.
 		enum class BufferStateFlag : u32
 		{
-			//! If this is specified as the before state, the system determines the before state automatically using the last state 
-			//! specified in the same command buffer for the resource. If this is the first time the resource is used in the current
-			//! command buffer, the system loads the resource's global state automatically.
-			//! 
-			//! This state cannot be set as the after state of the resource. Any non-zero states are not considered to be automatic 
-			//! state.
-			automatic = 0x00,
+			//! This resource is not used by the pipeline.
+			//! Resources with no state flag cannot be used by the pipeline, and must be transfered to one valid state 
+			//! before it can be used.
+			none = 0x00,
 			//! Used as a indirect argument buffer.
 			indirect_argument = 0x01,
 			//! Used as a vertex buffer.
@@ -94,16 +91,21 @@ namespace Luna
 			copy_dest = 0x0400,
 			//! Used as a copy source.
 			copy_source = 0x0800,
-		};
-
-		enum class TextureStateFlag : u32
-		{
 			//! If this is specified as the before state, the system determines the before state automatically using the last state 
 			//! specified in the same command buffer for the resource. If this is the first time the resource is used in the current
 			//! command buffer, the system loads the resource's global state automatically.
 			//! 
 			//! This state cannot be set as the after state of the resource. This state cannot be set along with other state flags.
-			automatic = 0x00,
+			//! state.
+			automatic = 0x80000000,
+		};
+
+		enum class TextureStateFlag : u32
+		{
+			//! This resource is not used by the pipeline.
+			//! Resources with no state flag cannot be used by the pipeline, and must be transfered to one valid state 
+			//! before it can be used.
+			none = 0x00,
 			//! Used as a sampled texture for vertex shader.
 			shader_read_vs = 0x10,
 			//! Used as a shader resource for pixel shader.
@@ -128,6 +130,12 @@ namespace Luna
 			copy_source = 0x4000,
 			//! Used for swap chain presentation.
 			present = 0x8000,
+			//! If this is specified as the before state, the system determines the before state automatically using the last state 
+			//! specified in the same command buffer for the resource. If this is the first time the resource is used in the current
+			//! command buffer, the system loads the resource's global state automatically.
+			//! 
+			//! This state cannot be set as the after state of the resource. This state cannot be set along with other state flags.
+			automatic = 0x80000000
 		};
 
 		constexpr SubresourceIndex TEXTURE_BARRIER_ALL_SUBRESOURCES = {U32_MAX, U32_MAX};

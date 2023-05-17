@@ -9,8 +9,6 @@
 */
 #pragma once
 #include "../RenderGraph.hpp"
-#include "../TransientResourceHeap.hpp"
-
 namespace Luna
 {
     namespace RG
@@ -21,7 +19,6 @@ namespace Luna
             luiimpl();
 
             Ref<RHI::IDevice> m_device;
-            Ref<ITransientResourceHeap> m_transient_heap;
             RenderGraphDesc m_desc;
 
             // Produced by compiling the render graph.
@@ -37,18 +34,15 @@ namespace Luna
             };
             struct ResourceData
             {
-                RHI::ResourceDesc m_resource_desc;
+                ResourceDesc m_resource_desc;
                 Ref<RHI::IResource> m_resource;
             };
             Vector<PassData> m_pass_data;
             Vector<ResourceData> m_resource_data;
             bool m_enable_time_profiling;
-            bool m_enable_pipeline_statistics_profiling;
 
             Ref<RHI::IQueryHeap> m_time_query_heap;
-            Ref<RHI::IQueryHeap> m_ps_query_heap;
             u32 m_num_time_queries = 0;
-            u32 m_num_ps_queries = 0;
             u32 m_num_enabled_passes;
 
             // Compile context.
@@ -58,6 +52,59 @@ namespace Luna
             Ref<RHI::ICommandBuffer> m_cmdbuf;
             Vector<Ref<RHI::IResource>> m_temporary_resources;
             usize m_current_pass;
+
+            Vector<Ref<RHI::IDeviceMemory>> m_transient_memory;
+            R<Ref<RHI::IResource>> allocate_transient_resource(const ResourceDesc& desc)
+            {
+                // Try to reuse one memory block.
+                Ref<RHI::IResource> ret;
+                auto iter = m_transient_memory.begin();
+                while (iter != m_transient_memory.end())
+                {
+                    if (desc.type == ResourceType::texture)
+                    {
+                        auto r = m_device->new_aliasing_texture(*iter, desc.texture);
+                        if (succeeded(r))
+                        {
+                            ret = r.get();
+                            m_transient_memory.erase(iter);
+                            break;
+                        }
+                    }
+                    else
+                    {
+                        auto r = m_device->new_aliasing_buffer(*iter, desc.buffer);
+                        if (succeeded(r))
+                        {
+                            ret = r.get();
+                            m_transient_memory.erase(iter);
+                            break;
+                        }
+                    }
+                    ++iter;
+                }
+                if (!ret)
+                {
+                    // Try to allocate one new block.
+                    if (desc.type == ResourceType::texture)
+                    {
+                        auto r = m_device->new_texture(desc.texture);
+                        if (failed(r)) return r.errcode();
+                        ret = r.get();
+                    }
+                    else
+                    {
+                        auto r = m_device->new_buffer(desc.buffer);
+                        if (failed(r)) return r.errcode();
+                        ret = r.get();
+                    }
+                }
+                return ret;
+            }
+            void release_transient_resource(RHI::IResource* resource)
+            {
+                m_transient_memory.push_back(resource->get_device_memory());
+            }
 
             virtual RHI::IDevice* get_device() override { return m_device.get(); }
             virtual const RenderGraphDesc& get_desc() override { return m_desc; }
@@ -85,7 +132,6 @@ namespace Luna
                 return nullptr;
             }
             virtual RV get_pass_time_intervals(Vector<u64>& pass_time_intervals) override;
-            virtual RV get_pass_pipeline_statistics(Vector<RHI::PipelineStatistics>& pass_pipeline_statistics) override;
 
             virtual usize get_input_resource(const Name& parameter) override
             {
@@ -100,13 +146,13 @@ namespace Luna
                 return iter == pass.m_output_resources.end() ? INVALID_RESOURCE : iter->second;
             }
 
-            virtual RHI::ResourceDesc get_resource_desc(usize resource) override
+            virtual ResourceDesc get_resource_desc(usize resource) override
             {
                 lucheck(resource < m_resource_data.size());
                 auto& res = m_resource_data[resource];
                 return res.m_resource_desc;
             }
-            virtual void set_resource_desc(usize resource, const RHI::ResourceDesc& desc) override
+            virtual void set_resource_desc(usize resource, const ResourceDesc& desc) override
             {
                 if(resource >= m_resource_data.size()) return;
                 auto& res = m_resource_data[resource];
@@ -134,7 +180,7 @@ namespace Luna
                 auto h = iter->second;
                 return m_resource_data[h].m_resource;
             }
-            virtual R<Ref<RHI::IResource>> allocate_temporary_resource(const RHI::ResourceDesc& desc) override;
+            virtual R<Ref<RHI::IResource>> allocate_temporary_resource(const ResourceDesc& desc) override;
             virtual void release_temporary_resource(RHI::IResource* res) override;
         };
     }

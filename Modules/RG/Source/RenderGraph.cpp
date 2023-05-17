@@ -37,20 +37,24 @@ namespace Luna
             Vector<usize> write_passes;
         };
 
-        inline bool is_resource_desc_valid(const RHI::ResourceDesc& desc)
+        inline bool is_resource_desc_valid(const ResourceDesc& desc)
         {
             // The resource size cannot be 0, which means unintialized.
-            if(desc.type == RHI::ResourceType::texture_2d)
+            if(desc.type == ResourceType::texture && desc.texture.type == RHI::TextureType::tex2d)
             {
-                if(!desc.width_or_buffer_size || !desc.height) return false; 
+                if(!desc.texture.width || !desc.texture.height) return false; 
             }
-            else if(desc.type == RHI::ResourceType::texture_3d)
+            else if(desc.type == ResourceType::texture && desc.texture.type == RHI::TextureType::tex3d)
             {
-                if(!desc.width_or_buffer_size || !desc.height || !desc.depth_or_array_size) return false;
+                if(!desc.texture.width || !desc.texture.height || !desc.texture.depth) return false;
             }
-            else
+            else if(desc.type == ResourceType::texture && desc.texture.type == RHI::TextureType::tex1d)
             {
-                if(!desc.width_or_buffer_size) return false; 
+                if(!desc.texture.width) return false;
+            }
+            else if (desc.type == ResourceType::buffer)
+            {
+                if (!desc.buffer.size) return false;
             }
             return true;
         }
@@ -64,7 +68,6 @@ namespace Luna
                 m_pass_data.clear();
                 m_pass_data.resize(m_desc.passes.size());
                 m_enable_time_profiling = config.enable_time_profiling;
-                m_enable_pipeline_statistics_profiling = config.enable_pipeline_statistics_profiling;
                 Vector<ResourceTrackData> resource_track_data(m_resource_data.size());
                 // Initialize pass data and resource track data.
                 for (auto& i : m_desc.input_connections)
@@ -163,7 +166,14 @@ namespace Luna
                         auto& res = m_resource_data[i];
                         if(is_resource_desc_valid(res.m_resource_desc))
                         {
-                            luset(res.m_resource, m_device->new_resource(res.m_resource_desc));
+                            if (res.m_resource_desc.type == ResourceType::buffer)
+                            {
+                                luset(res.m_resource, m_device->new_buffer(res.m_resource_desc.buffer));
+                            }
+                            else
+                            {
+                                luset(res.m_resource, m_device->new_texture(res.m_resource_desc.texture));
+                            }
                             if (m_desc.resources[i].name) res.m_resource->set_name(m_desc.resources[i].name);
                         }
                         else
@@ -178,21 +188,10 @@ namespace Luna
                     if (!m_time_query_heap || m_num_time_queries < num_enabled_passes)
                     {
                         RHI::QueryHeapDesc desc;
-                        desc.type = RHI::QueryHeapType::timestamp;
+                        desc.type = RHI::QueryType::timestamp;
                         desc.count = num_enabled_passes * 2;
                         luset(m_time_query_heap, m_device->new_query_heap(desc));
                         m_num_time_queries = num_enabled_passes;
-                    }
-                }
-                if (m_enable_pipeline_statistics_profiling)
-                {
-                    if (!m_ps_query_heap || m_num_ps_queries < num_enabled_passes)
-                    {
-                        RHI::QueryHeapDesc desc;
-                        desc.type = RHI::QueryHeapType::pipeline_statistics;
-                        desc.count = num_enabled_passes;
-                        luset(m_time_query_heap, m_device->new_query_heap(desc));
-                        m_num_ps_queries = num_enabled_passes;
                     }
                 }
                 m_num_enabled_passes = num_enabled_passes;
@@ -222,42 +221,48 @@ namespace Luna
                     auto& data = m_pass_data[i];
                     if(!data.m_enabled) continue;
                     // Allocates resources.
-                    Vector<RHI::ResourceBarrierDesc> barriers;
+                    Vector<RHI::BufferBarrier> buffer_barriers;
+                    Vector<RHI::TextureBarrier> texture_barriers;
                     for(usize h : data.m_create_resources)
                     {
                         auto& res = m_resource_data[h];
                         if(is_resource_desc_valid(res.m_resource_desc))
                         {
-                            luset(res.m_resource, m_transient_heap->allocate(res.m_resource_desc));
+                            luset(res.m_resource, allocate_transient_resource(res.m_resource_desc));
                             if(m_desc.resources[h].name) res.m_resource->set_name(m_desc.resources[h].name);
                         }
                         else
                         {
                             return set_error(BasicError::bad_data(), "Cannot create transient resource %s because the resource layout is not specified.", m_desc.resources[h].name.c_str());
                         }
-                        barriers.push_back(
-                            RHI::ResourceBarrierDesc::as_aliasing(res.m_resource)
-                        );
+                        if (res.m_resource_desc.type == ResourceType::texture)
+                        {
+                            Ref<RHI::ITexture> tex = res.m_resource;
+                            texture_barriers.push_back({ tex, RHI::TEXTURE_BARRIER_ALL_SUBRESOURCES, RHI::TextureStateFlag::automatic, RHI::TextureStateFlag::none, RHI::ResourceBarrierFlag::aliasing });
+                        }
+                        else
+                        {
+                            Ref<RHI::IBuffer> buf = res.m_resource;
+                            buffer_barriers.push_back({ buf, RHI::BufferStateFlag::automatic, RHI::BufferStateFlag::none, RHI::ResourceBarrierFlag::aliasing });
+                        }
                     }
-                    if(!barriers.empty()) cmdbuf->resource_barriers({ barriers.data(), barriers.size() });
+                    if (!buffer_barriers.empty() || !texture_barriers.empty()) cmdbuf->resource_barrier({ buffer_barriers.data(), buffer_barriers.size() }, {texture_barriers.data(), texture_barriers.size()});
                     m_current_pass = i;
                     if (m_desc.passes[i].name) cmdbuf->begin_event(m_desc.passes[i].name);
-                    if (m_enable_pipeline_statistics_profiling) cmdbuf->begin_pipeline_statistics_query(m_ps_query_heap, pass_index);
                     if (m_enable_time_profiling) cmdbuf->write_timestamp(m_time_query_heap, pass_index * 2);
                     luexp(m_pass_data[i].m_render_pass->execute(this));
                     if (m_enable_time_profiling) cmdbuf->write_timestamp(m_time_query_heap, pass_index * 2 + 1);
-                    if (m_enable_pipeline_statistics_profiling) cmdbuf->end_pipeline_statistics_query(m_ps_query_heap, pass_index);
                     if (m_desc.passes[i].name) cmdbuf->end_event();
                     for(auto& res : m_temporary_resources)
                     {
-                        m_transient_heap->release(res);
+                        release_transient_resource(res);
                     }
                     m_temporary_resources.clear();
                     // Release resources.
                     for(usize h : data.m_release_resources)
                     {
                         auto& res = m_resource_data[h];
-                        m_transient_heap->release(res.m_resource);
+                        release_transient_resource(res.m_resource);
                     }
                     ++pass_index;
                 }
@@ -273,7 +278,7 @@ namespace Luna
                 if (m_enable_time_profiling)
                 {
                     Vector<u64> times((usize)m_num_enabled_passes * 2);
-                    luexp(m_time_query_heap->get_timestamp_values(0, m_num_enabled_passes * 2, times.data()));
+                    luexp(m_time_query_heap->get_query_results(0, m_num_enabled_passes * 2, times.data(), times.size() * sizeof(u64), sizeof(u64)));
                     for (usize i = 0; i < m_num_enabled_passes; ++i)
                     {
                         pass_time_intervals.push_back(times[i * 2 + 1] - times[i * 2]);
@@ -283,25 +288,12 @@ namespace Luna
             lucatchret;
             return ok;
         }
-        RV RenderGraph::get_pass_pipeline_statistics(Vector<RHI::PipelineStatistics>& pass_pipeline_statistics)
-        {
-            lutry
-            {
-                pass_pipeline_statistics.resize(m_num_enabled_passes);
-                if (m_enable_pipeline_statistics_profiling)
-                {
-                    luexp(m_ps_query_heap->get_pipeline_statistics_values(0, m_num_enabled_passes, pass_pipeline_statistics.data()));
-                }
-            }
-            lucatchret;
-            return ok;
-        }
-        R<Ref<RHI::IResource>> RenderGraph::allocate_temporary_resource(const RHI::ResourceDesc& desc)
+        R<Ref<RHI::IResource>> RenderGraph::allocate_temporary_resource(const ResourceDesc& desc)
         {
             Ref<RHI::IResource> ret;
             lutry
             {
-                luset(ret, m_transient_heap->allocate(desc));
+                luset(ret, allocate_transient_resource(desc));
                 m_temporary_resources.push_back(ret);
             }
             lucatchret;
@@ -323,7 +315,6 @@ namespace Luna
         {
             auto ret = new_object<RenderGraph>();
             ret->m_device = device;
-            ret->m_transient_heap = new_transient_resource_heap(device);
             return ret;
         }
     }
