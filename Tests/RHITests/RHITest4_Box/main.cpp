@@ -185,7 +185,7 @@ RV start()
         auto cb_align = dev->get_uniform_buffer_data_alignment();
         luset(cb, dev->new_buffer(BufferDesc(ResourceHeapType::upload, BufferUsageFlag::uniform_buffer, align_upper(sizeof(Float4x4), cb_align))));
 
-        lulet(image_file, open_file("Luna.png", FileOpenFlag::read, FileCreationMode::open_existing));
+        lulet(image_file, open_file("luna.png", FileOpenFlag::read, FileCreationMode::open_existing));
         lulet(image_file_data, load_file_data(image_file));
         Image::ImageDesc image_desc;
         lulet(image_data, Image::read_image_file(image_file_data.data(), image_file_data.size(), Image::ImagePixelFormat::rgba8_unorm, image_desc));
@@ -202,11 +202,13 @@ RV start()
         memcpy(mapped, indices, sizeof(indices));
         ib->unmap(0, sizeof(indices));
 
-        lulet(tex_staging, dev->new_buffer(BufferDesc(ResourceHeapType::upload, BufferUsageFlag::copy_source, image_data.size())));
+        u64 size, row_pitch, slice_pitch;
+        dev->get_texture_data_placement_info(image_desc.width, image_desc.height, 1, Format::rgba8_unorm, &size, nullptr, &row_pitch, &slice_pitch);
+        lulet(tex_staging, dev->new_buffer(BufferDesc(ResourceHeapType::upload, BufferUsageFlag::copy_source, size)));
 
         lulet(tex_staging_data, tex_staging->map(0, 0));
-        memcpy(tex_staging_data, image_data.data(), image_data.size());
-        tex_staging->unmap(0, image_data.size());
+        memcpy_bitmap(tex_staging_data, image_data.data(), image_desc.width * 4, image_desc.height, row_pitch, image_desc.width * 4);
+        tex_staging->unmap(0, size);
         
         u32 copy_queue_index = get_command_queue_index();
         {

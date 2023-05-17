@@ -12,9 +12,10 @@
 #include <Runtime/Module.hpp>
 #include <Runtime/Debug.hpp>
 #include <Runtime/Math/Color.hpp>
-#include "ImageData.hpp"
 #include <Runtime/Log.hpp>
 #include <RHI/ShaderCompileHelper.hpp>
+#include <Runtime/File.hpp>
+#include <Image/Image.hpp>
 
 using namespace Luna;
 using namespace Luna::RHI;
@@ -28,6 +29,9 @@ Ref<RHI::ITexture> tex;
 
 Ref<RHI::IBuffer> vb;
 Ref<RHI::IBuffer> ib;
+
+u32 tex_width;
+u32 tex_height;
 
 struct VertexData
 {
@@ -150,18 +154,23 @@ RV start()
 			memcpy(mapped_data, incides, sizeof(incides));
 			ib->unmap(0, sizeof(incides));
 
-			// prepare texture - 128x128 with only 1 mip level.
+			lulet(image_file, open_file("uv_checker.png", FileOpenFlag::read, FileCreationMode::open_existing));
+			lulet(image_file_data, load_file_data(image_file));
+			Image::ImageDesc image_desc;
+			lulet(image_data, Image::read_image_file(image_file_data.data(), image_file_data.size(), Image::ImagePixelFormat::rgba8_unorm, image_desc));
+			tex_width = image_desc.width;
+			tex_height = image_desc.height;
+			
 			luset(tex, device->new_texture(TextureDesc::tex2d(ResourceHeapType::local, Format::rgba8_unorm, 
-				TextureUsageFlag::sampled_texture | TextureUsageFlag::copy_dest,
-				128, 128, 1, 1)));
+				TextureUsageFlag::sampled_texture | TextureUsageFlag::copy_dest, image_desc.width, image_desc.height, 1, 1)));
 
 			u64 size, row_pitch, slice_pitch;
-			device->get_texture_data_placement_info(128, 128, 1, Format::rgba8_unorm, &size, nullptr, &row_pitch, &slice_pitch);
+			device->get_texture_data_placement_info(image_desc.width, image_desc.height, 1, Format::rgba8_unorm, &size, nullptr, &row_pitch, &slice_pitch);
 			lulet(tex_staging, device->new_buffer(BufferDesc(ResourceHeapType::upload, BufferUsageFlag::copy_source, size)));
 
 			lulet(tex_staging_data, tex_staging->map(0, 0));
-			memcpy_bitmap(tex_staging_data, test_image_data_v, 128 * 4, 128, row_pitch, 128 * 4);
-			tex_staging->unmap(0, sizeof(test_image_data_v));
+			memcpy_bitmap(tex_staging_data, image_data.data(), image_desc.width * 4, image_desc.height, row_pitch, image_desc.width * 4);
+			tex_staging->unmap(0, size);
 
 			u32 copy_queue_index = get_command_queue_index();
 			{
@@ -181,7 +190,7 @@ RV start()
 			upload_cmdbuf->resource_barrier({
 				{ tex_staging, BufferStateFlag::automatic, BufferStateFlag::copy_source, ResourceBarrierFlag::none}}, 
 				{{ tex, TEXTURE_BARRIER_ALL_SUBRESOURCES, TextureStateFlag::automatic, TextureStateFlag::copy_dest, ResourceBarrierFlag::discard_content }});
-			upload_cmdbuf->copy_buffer_to_texture(tex, SubresourceIndex(0, 0), 0, 0, 0, tex_staging, 0, 128 * 4, 128 * 128 * 4, 128, 128, 1);
+			upload_cmdbuf->copy_buffer_to_texture(tex, SubresourceIndex(0, 0), 0, 0, 0, tex_staging, 0, row_pitch, slice_pitch, image_desc.width, image_desc.height, 1);
 			luexp(upload_cmdbuf->submit({}, {}, true));
 			upload_cmdbuf->wait();
 			luset(desc_set, device->new_descriptor_set(DescriptorSetDesc(desc_set_layout)));
@@ -209,11 +218,14 @@ void draw()
 	auto w = sz.x;
 	auto h = sz.y;
 
+	f32 width = tex_width;
+	f32 height = tex_height;
+
 	VertexData data[4] = {
-		{ { -128.0f / w,  128.0f / h },{ 0.0f, 0.0f } },
-		{ {  128.0f / w,  128.0f / h },{ 1.0f, 0.0f } },
-		{ { -128.0f / w, -128.0f / h },{ 0.0f, 1.0f } },
-		{ {  128.0f / w, -128.0f / h },{ 1.0f, 1.0f } }
+		{ { -width / w,  height / h },{ 0.0f, 0.0f } },
+		{ {  width / w,  height / h },{ 1.0f, 0.0f } },
+		{ { -width / w, -height / h },{ 0.0f, 1.0f } },
+		{ {  width / w, -height / h },{ 1.0f, 1.0f } }
 	};
 
 	void* mapped = vb->map(0, 0).get();
