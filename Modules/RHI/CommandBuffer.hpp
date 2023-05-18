@@ -13,11 +13,8 @@
 #include "ShaderInputLayout.hpp"
 #include <Runtime/Waitable.hpp>
 #include <Runtime/Math/Vector.hpp>
-#include "RenderTargetView.hpp"
-#include "DepthStencilView.hpp"
 #include "QueryHeap.hpp"
 #include <Runtime/Span.hpp>
-#include "ResolveTargetView.hpp"
 #include "Fence.hpp"
 
 namespace Luna
@@ -30,7 +27,6 @@ namespace Luna
 			depth = 0x01,
 			stencil = 0x02
 		};
-
 		enum class ResourceBarrierFlag : u8
 		{
 			none = 0,
@@ -54,7 +50,6 @@ namespace Luna
 			//! the resource barrier, thus improve performance.
 			discard_content = 0x02,
 		};
-
 		//! `BufferStateFlag` defines how resources are bound to the pipeline. One resource may be bind to multiple stages of the 
 		//! pipeline, which can be expressed by bitwise-OR of `ResourceStateFlag` flags.
 		//! At the beginning of each command buffer, no resources is bound to the pipeline. All resources start with 
@@ -99,7 +94,6 @@ namespace Luna
 			//! state.
 			automatic = 0x80000000,
 		};
-
 		enum class TextureStateFlag : u32
 		{
 			//! This resource is not used by the pipeline.
@@ -137,9 +131,7 @@ namespace Luna
 			//! This state cannot be set as the after state of the resource. This state cannot be set along with other state flags.
 			automatic = 0x80000000
 		};
-
 		constexpr SubresourceIndex TEXTURE_BARRIER_ALL_SUBRESOURCES = {U32_MAX, U32_MAX};
-
 		struct TextureBarrier
 		{
 			ITexture* texture;
@@ -147,16 +139,27 @@ namespace Luna
 			TextureStateFlag before;
 			TextureStateFlag after;
 			ResourceBarrierFlag flags;
+			TextureBarrier() = default;
+			TextureBarrier(ITexture* texture, SubresourceIndex subresource, TextureStateFlag before, TextureStateFlag after, ResourceBarrierFlag flags = ResourceBarrierFlag::none) :
+				texture(texture),
+				subresource(subresource),
+				before(before),
+				after(after),
+				flags(flags) {}
 		};
-
 		struct BufferBarrier
 		{
 			IBuffer* buffer;
 			BufferStateFlag before;
 			BufferStateFlag after;
 			ResourceBarrierFlag flags;
+			BufferBarrier() = default;
+			BufferBarrier(IBuffer* buffer, BufferStateFlag before, BufferStateFlag after, ResourceBarrierFlag flags = ResourceBarrierFlag::none) :
+				buffer(buffer),
+				before(before),
+				after(after),
+				flags(flags) {}
 		};
-
 		struct Viewport
 		{
 			f32 top_left_x;
@@ -181,7 +184,6 @@ namespace Luna
 				min_depth(min_depth),
 				max_depth(max_depth) {}
 		};
-
 		//! The operation to perform when the attachment is loaded to GPU.
 		enum class LoadOp : u8
 		{
@@ -195,7 +197,6 @@ namespace Luna
 			//! The contents within of the attachment will be cleared to a uniform value.
 			clear = 2,
 		};
-
 		//! The operation to perform when the render texture is written back to resource memory.
 		enum class StoreOp : u8
 		{
@@ -207,47 +208,87 @@ namespace Luna
 			//! Stores the content of the attachment to the resource after ending the render pass.
 			store = 1
 		};
-
+		struct ColorAttachment
+		{
+			ITexture* texture = nullptr;
+			LoadOp load_op = LoadOp::dont_care;
+			StoreOp store_op = StoreOp::dont_care;
+			Float4U clear_value = { 0, 0, 0, 0 };
+			TextureViewType view_type = TextureViewType::unspecified;
+			Format format = Format::unknown;
+			u32 mip_slice = 0;
+			u32 array_slice = 0;
+			u32 array_size = 0;
+			ColorAttachment() = default;
+			ColorAttachment(ITexture* texture, 
+				LoadOp load_op = LoadOp::load, StoreOp store_op = StoreOp::store, const Float4U& clear_value = Float4U(0), 
+				TextureViewType view_type = TextureViewType::unspecified, Format format = Format::unknown, u32 mip_slice = 0, u32 array_slice = 0, u32 array_size = 1) :
+				texture(texture),
+				load_op(load_op),
+				store_op(store_op),
+				clear_value(clear_value),
+				view_type(view_type),
+				format(format),
+				mip_slice(mip_slice),
+				array_slice(array_slice),
+				array_size(array_size) {}
+		};
+		struct DepthStencilAttachment
+		{
+			ITexture* texture = nullptr;
+			LoadOp depth_load_op = LoadOp::dont_care;
+			StoreOp depth_store_op = StoreOp::dont_care;
+			LoadOp stencil_load_op = LoadOp::dont_care;
+			StoreOp stencil_store_op = StoreOp::dont_care;
+			f32 depth_clear_value = 0.0f;
+			u8 stencil_clear_value = 0;
+			TextureViewType view_type = TextureViewType::unspecified;
+			Format format = Format::unknown;
+			u32 mip_slice = 0;
+			u32 array_slice = 0;
+			u32 array_size = 0;
+			DepthStencilAttachment() = default;
+			DepthStencilAttachment(ITexture* texture, 
+				LoadOp depth_load_op = LoadOp::load, StoreOp depth_store_op = StoreOp::store, f32 depth_clear_value = 1.0f,
+				LoadOp stencil_load_op = LoadOp::dont_care, StoreOp stencil_store_op = StoreOp::dont_care, u8 stencil_clear_value = 0,
+				TextureViewType view_type = TextureViewType::unspecified, Format format = Format::unknown, u32 mip_slice = 0, u32 array_slice = 0, u32 array_size = 1
+				) :
+				texture(texture),
+				depth_load_op(depth_load_op),
+				depth_store_op(depth_store_op),
+				depth_clear_value(depth_clear_value),
+				stencil_load_op(stencil_load_op),
+				stencil_store_op(stencil_store_op),
+				stencil_clear_value(stencil_clear_value),
+				view_type(view_type),
+				format(format),
+				mip_slice(mip_slice),
+				array_slice(array_slice),
+				array_size(array_size) {}
+		};
+		struct ResolveAttachment
+		{
+			ITexture* texture = nullptr;
+			u32 mip_slice = 0;
+			u32 array_slice = 0;
+			ResolveAttachment() = default;
+			ResolveAttachment(ITexture* texture, u32 mip_slice = 0, u32 array_slice = 0) :
+				texture(texture),
+				mip_slice(mip_slice),
+				array_slice(array_slice) {}
+		};
 		//! Parameters passed to `begin_render_pass`.
 		struct RenderPassDesc
 		{
-			//! The color attachment to set.
-			IRenderTargetView* color_attachments[8] = { nullptr };
-			//! The color attachment to set.
-			IResolveTargetView* resolve_attachments[8] = { nullptr };
+			//! The color attachments to set.
+			ColorAttachment color_attachments[8];
+			//! The resolve attachments to set.
+			ResolveAttachment resolve_attachments[8];
 			//! The depth stencil attachment to set.
-			IDepthStencilView* depth_stencil_attachment = nullptr;
-			//! The load operations for color attachments. 
-			//! If the corresponding color attachment resource is `nullptr`, this operation is ignored.
-			LoadOp color_load_ops[8] = { LoadOp::dont_care };
-			//! The store operations for color attachments.
-			//! If the corresponding color attachment resource is `nullptr`, this operation is ignored.
-			StoreOp color_store_ops[8] = { StoreOp::dont_care };
-			//! The load operation for depth component.
-			//! If the depth stencil attachment is `nullptr`, this operation is ignored.
-			LoadOp depth_load_op = LoadOp::dont_care;
-			//! The store operation for depth component.
-			//! If the depth stencil attachment is `nullptr`, this operation is ignored.
-			StoreOp depth_store_op = StoreOp::dont_care;
-			//! The load operation for stencil component.
-			//! If the depth stencil attachment is `nullptr`, this operation is ignored.
-			LoadOp stencil_load_op = LoadOp::dont_care;
-			//! The store operation for stencil component.
-			//! If the depth stencil attachment is `nullptr`, this operation is ignored.
-			StoreOp stencil_store_op = StoreOp::dont_care;
-			//! The clear value for color attachments if `color_load_ops` specified for 
-			//! the color attachment is `LoadOp::clear`.
-			Float4U color_clear_values[8] = { Float4U(0.0f, 0.0f, 0.0f, 0.0f) };
-			//! The depth value to use for clear if `depth_load_op` specified in render pass
-			//! is `LoadOp::clear`.
-			f32 depth_clear_value = 0.0f;
-			//! The stencil value to use for clear if `stencil_load_op` specified in render pass
-			//! is `LoadOp::clear`.
-			u8 stencil_clear_value = 0;
+			DepthStencilAttachment depth_stencil_attachment;
 			//! The sample count of the render pass.
 			u8 sample_count = 1;
 		};
-
 		struct VertexBufferView
 		{
 			IResource* buffer;
@@ -267,7 +308,6 @@ namespace Luna
 				size(size),
 				element_size(element_size) {}
 		};
-
 		struct IndexBufferView
 		{
 			IResource* buffer;
@@ -285,7 +325,6 @@ namespace Luna
 				size(size),
 				format(format) {}
 		};
-
 		//! @interface ICommandBuffer
 		//! The command buffer is used to allocate memory for commands, record commands, submitting 
 		//! commands to GPU and tracks the state of the submitted commands.

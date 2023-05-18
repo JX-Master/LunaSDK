@@ -15,8 +15,6 @@
 #include "DescriptorSet.hpp"
 #include "PipelineState.hpp"
 #include "ShaderInputLayout.hpp"
-#include "RenderTargetView.hpp"
-#include "DepthStencilView.hpp"
 
 namespace Luna
 {
@@ -109,8 +107,8 @@ namespace Luna
 		{
 			bool m_valid = false;
 			UInt2U m_tex_size;
-			RenderTargetView* m_color_attachments[8];
-			DepthStencilView* m_dsv;
+			ID3D12DescriptorHeap* m_color_attachments[8] = { nullptr };
+			ID3D12DescriptorHeap* m_depth_stencil_attachment = nullptr;
 			u8 num_render_targets;
 		};
 

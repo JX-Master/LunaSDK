@@ -173,7 +173,6 @@ namespace Luna
 					luexp(create_pso(desc.pixel_format));
 					m_rt_format = desc.pixel_format;
 				}
-				luset(m_rtv, render_target->get_device()->new_render_target_view(render_target));
 				m_render_target = render_target;
 				m_screen_width = desc.width;
 				m_screen_height = desc.height;
@@ -248,10 +247,7 @@ namespace Luna
 				}
 				cmdbuf->resource_barrier({}, { barriers.data(), (u32)barriers.size()});
 				RenderPassDesc desc;
-				desc.color_attachments[0] = m_rtv;
-				desc.color_load_ops[0] = LoadOp::clear;
-				desc.color_store_ops[0] = StoreOp::store;
-				desc.color_clear_values[0] = Float4U{ 0.0f };
+				desc.color_attachments[0] = ColorAttachment(m_render_target, LoadOp::clear, StoreOp::store, Float4U{ 0.0f });
 				cmdbuf->begin_render_pass(desc);
 				cmdbuf->set_pipeline_state(m_fill_pso);
 				cmdbuf->set_graphics_shader_input_layout(g_fill_slayout);

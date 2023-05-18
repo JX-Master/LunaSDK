@@ -30,7 +30,6 @@ namespace Luna
 			lutsassert_lock();
 
 			Ref<RHI::ITexture> m_render_target;
-			Ref<RHI::IRenderTargetView> m_rtv;
 			u32 m_screen_width;
 			u32 m_screen_height;
 

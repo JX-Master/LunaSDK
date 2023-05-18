@@ -47,10 +47,6 @@ namespace Luna
 			impl_interface_for_type<DeviceMemory, IDeviceMemory, IDeviceChild>();
 			register_boxed_type<ShaderInputLayout>();
 			impl_interface_for_type<ShaderInputLayout, IShaderInputLayout, IDeviceChild>();
-			register_boxed_type<RenderTargetView>();
-			impl_interface_for_type<RenderTargetView, IRenderTargetView, IDeviceChild>();
-			register_boxed_type<DepthStencilView>();
-			impl_interface_for_type<DepthStencilView, IDepthStencilView, IDeviceChild>();
 			register_boxed_type<PipelineState>();
 			impl_interface_for_type<PipelineState, IPipelineState, IDeviceChild>();
 			register_boxed_type<CommandBuffer>();

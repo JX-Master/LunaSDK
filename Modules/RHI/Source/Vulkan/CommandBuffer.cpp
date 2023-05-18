@@ -14,9 +14,6 @@
 #include "DescriptorSet.hpp"
 #include "QueryHeap.hpp"
 #include "Fence.hpp"
-#include "RenderTargetView.hpp"
-#include "DepthStencilView.hpp"
-#include "ResolveTargetView.hpp"
 namespace Luna
 {
 	namespace RHI
@@ -223,15 +220,15 @@ namespace Luna
 		struct FramebufferDesc
 		{
 			VkRenderPass render_pass = VK_NULL_HANDLE;
-			IRenderTargetView* color_attachments[8] = { nullptr };
-			IResolveTargetView* resolve_attachments[8] = { nullptr };
-			IDepthStencilView* depth_stencil_attachment = nullptr;
+			ImageView* color_attachments[8] = { nullptr };
+			ImageView* resolve_attachments[8] = { nullptr };
+			ImageView* depth_stencil_attachment = nullptr;
 
 			bool operator==(const FramebufferDesc& rhs) const
 			{
 				return render_pass == rhs.render_pass &&
-					!memcpy((void*)color_attachments, (void*)rhs.color_attachments, sizeof(IRenderTargetView*) * 8) &&
-					!memcpy((void*)resolve_attachments, (void*)rhs.resolve_attachments, sizeof(IResolveTargetView*) * 8) &&
+					!memcpy((void*)color_attachments, (void*)rhs.color_attachments, sizeof(ImageView*) * 8) &&
+					!memcpy((void*)resolve_attachments, (void*)rhs.resolve_attachments, sizeof(ImageView*) * 8) &&
 					depth_stencil_attachment == rhs.depth_stencil_attachment;
 			}
 		};
@@ -252,13 +249,12 @@ namespace Luna
 			{
 				if (desc.color_attachments[i])
 				{
-					RenderTargetView* rtv = cast_object<RenderTargetView>(desc.color_attachments[i]->get_object());
-					attachments[num_attachments] = rtv->m_view;
+					attachments[num_attachments] = desc.color_attachments[i]->m_image_view;
 					++num_attachments;
-					auto desc = rtv->m_resource->get_desc();
-					width = (u32)desc.width;
-					height = desc.height;
-					depth = desc.depth;
+					ImageResource* image = cast_object<ImageResource>(desc.color_attachments[i]->m_desc.texture->get_object());
+					width = image->m_desc.width;
+					height = image->m_desc.height;
+					depth = image->m_desc.depth;
 				}
 				else break;
 			}
@@ -266,20 +262,18 @@ namespace Luna
 			{
 				if (desc.resolve_attachments[i])
 				{
-					ResolveTargetView* rsv = cast_object<ResolveTargetView>(desc.resolve_attachments[i]->get_object());
-					attachments[num_attachments] = rsv->m_view;
+					attachments[num_attachments] = desc.resolve_attachments[i]->m_image_view;
 					++num_attachments;
 				}
 			}
 			if (desc.depth_stencil_attachment)
 			{
-				DepthStencilView* depth_stencil_attachment = cast_object<DepthStencilView>(desc.depth_stencil_attachment->get_object());
-				attachments[num_attachments] = depth_stencil_attachment->m_view;
+				attachments[num_attachments] = desc.depth_stencil_attachment->m_image_view;
 				++num_attachments;
-				auto desc = depth_stencil_attachment->m_resource->get_desc();
-				width = (u32)desc.width;
-				height = desc.height;
-				depth = desc.depth;
+				ImageResource* image = cast_object<ImageResource>(desc.depth_stencil_attachment->m_desc.texture->get_object());
+				width = (u32)image->m_desc.width;
+				height = image->m_desc.height;
+				depth = image->m_desc.depth;
 			}
 			info.pAttachments = attachments;
 			info.attachmentCount = num_attachments;
@@ -303,43 +297,80 @@ namespace Luna
 				u32 num_resolve_targets = 0;
 				for (usize i = 0; i < 8; ++i)
 				{
-					fb.color_attachments[i] = desc.color_attachments[i];
-					fb.resolve_attachments[i] = desc.resolve_attachments[i];
-					m_color_attachments[i] = desc.color_attachments[i];
-					m_resolve_attachments[i] = desc.resolve_attachments[i];
-					if (desc.color_attachments[i])
+					if (desc.color_attachments[i].texture)
+					{
+						auto& src = desc.color_attachments[i];
+						TextureViewDesc view;
+						view.texture = src.texture;
+						view.type = src.view_type;
+						view.format = src.format;
+						view.mip_slice = src.mip_slice;
+						view.mip_size = 1;
+						view.array_slice = src.array_slice;
+						view.array_size = src.array_size;
+						lulet(view_object, cast_object<ImageResource>(view.texture->get_object())->get_image_view(view));
+						fb.color_attachments[i] = view_object;
+					}
+					if (desc.resolve_attachments[i].texture)
+					{
+						auto& src = desc.resolve_attachments[i];
+						TextureViewDesc view;
+						view.texture = src.texture;
+						view.type = TextureViewType::unspecified;
+						view.format = fb.color_attachments[i]->m_desc.format;
+						view.mip_slice = src.mip_slice;
+						view.mip_size = 1;
+						view.array_slice = src.array_slice;
+						view.array_size = 1;
+						lulet(view_object, cast_object<ImageResource>(view.texture->get_object())->get_image_view(view));
+						fb.resolve_attachments[i] = view_object;
+					}
+					m_color_attachments[i] = fb.color_attachments[i];
+					m_resolve_attachments[i] = fb.resolve_attachments[i];
+					if (desc.color_attachments[i].texture)
 					{
 						++num_render_targets;
-						auto d = desc.color_attachments[i]->get_desc();
-						rp.color_formats[i] = d.format;
-						rp.color_load_ops[i] = desc.color_load_ops[i];
-						rp.color_store_ops[i] = desc.color_store_ops[i];
-						if (desc.resolve_attachments[i])
+						auto d = desc.color_attachments[i].texture->get_desc();
+						rp.color_formats[i] = d.pixel_format;
+						rp.color_load_ops[i] = desc.color_attachments[i].load_op;
+						rp.color_store_ops[i] = desc.color_attachments[i].store_op;
+						if (desc.resolve_attachments[i].texture)
 						{
-							rp.resolve_formats[i] = d.format;
+							rp.resolve_formats[i] = d.pixel_format;
 							++num_resolve_targets;
 						}
-						auto rd = desc.color_attachments[i]->get_texture()->get_desc();
-						width = rd.width;
-						height = rd.height;
+						width = d.width;
+						height = d.height;
 					}
 					else break;
 				}
-				fb.depth_stencil_attachment = desc.depth_stencil_attachment;
-				m_dsv = desc.depth_stencil_attachment;
+				if (desc.depth_stencil_attachment.texture)
+				{
+					auto& src = desc.depth_stencil_attachment;
+					TextureViewDesc view;
+					view.texture = src.texture;
+					view.type = src.view_type;
+					view.format = src.format;
+					view.mip_slice = src.mip_slice;
+					view.mip_size = 1;
+					view.array_slice = src.array_slice;
+					view.array_size = src.array_size;
+					lulet(view_object, cast_object<ImageResource>(view.texture->get_object())->get_image_view(view));
+					fb.depth_stencil_attachment = view_object;
+				}
+				m_dsv = fb.depth_stencil_attachment;
 				bool use_depth_stencil = false;
-				if (desc.depth_stencil_attachment)
+				if (desc.depth_stencil_attachment.texture)
 				{
 					use_depth_stencil = true;
-					auto d = desc.depth_stencil_attachment->get_desc();
-					rp.depth_stencil_format = d.format;
-					rp.depth_load_op = desc.depth_load_op;
-					rp.depth_store_op = desc.depth_store_op;
-					rp.stencil_load_op = desc.stencil_load_op;
-					rp.stencil_store_op = desc.stencil_store_op;
-					auto rd = desc.depth_stencil_attachment->get_texture()->get_desc();
-					if (!width) width = rd.width;
-					if (!height) height = rd.height;
+					auto d = desc.depth_stencil_attachment.texture->get_desc();
+					rp.depth_stencil_format = d.pixel_format;
+					rp.depth_load_op = desc.depth_stencil_attachment.depth_load_op;
+					rp.depth_store_op = desc.depth_stencil_attachment.depth_store_op;
+					rp.stencil_load_op = desc.depth_stencil_attachment.stencil_load_op;
+					rp.stencil_store_op = desc.depth_stencil_attachment.stencil_store_op;
+					if (!width) width = d.width;
+					if (!height) height = d.height;
 				}
 				rp.sample_count = desc.sample_count;
 				LockGuard guard(m_device->m_render_pass_pool_lock);
@@ -365,7 +396,7 @@ namespace Luna
 				for (usize i = 0; i < num_render_targets; ++i)
 				{
 					auto& dest = clear_values[attachment_index];
-					auto& src = desc.color_clear_values[i];
+					auto& src = desc.color_attachments[i].clear_value;
 					dest.color.float32[0] = src.x;
 					dest.color.float32[1] = src.y;
 					dest.color.float32[2] = src.z;
@@ -381,8 +412,8 @@ namespace Luna
 				if (use_depth_stencil)
 				{
 					auto& dest = clear_values[attachment_index];
-					dest.depthStencil.depth = desc.depth_clear_value;
-					dest.depthStencil.stencil = desc.stencil_clear_value;
+					dest.depthStencil.depth = desc.depth_stencil_attachment.depth_clear_value;
+					dest.depthStencil.stencil = desc.depth_stencil_attachment.stencil_clear_value;
 					++attachment_index;
 				}
 				begin_info.clearValueCount = num_attachments;
@@ -560,15 +591,15 @@ namespace Luna
 				clear_rects[0].rect.offset = { 0, 0 };
 				clear_rects[0].rect.extent.width = m_rt_width;
 				clear_rects[0].rect.extent.height = m_rt_height;
-				auto desc = m_dsv->get_desc();
-				clear_rects[0].baseArrayLayer = desc.first_array_slice;
+				auto& desc = m_dsv->m_desc;
+				clear_rects[0].baseArrayLayer = desc.array_slice;
 				clear_rects[0].layerCount = desc.array_size;
 			}
 			else
 			{
 				clear_rects = (VkClearRect*)alloca(sizeof(VkClearRect) * rects.size());
 				num_clear_rects = (u32)rects.size();
-				auto desc = m_dsv->get_desc();
+				auto& desc = m_dsv->m_desc;
 				for (usize i = 0; i < rects.size(); ++i)
 				{
 					auto& dest = clear_rects[i];
@@ -577,7 +608,7 @@ namespace Luna
 					dest.rect.offset.y = m_rt_height - src.offset_y - src.height;
 					dest.rect.extent.width = src.width;
 					dest.rect.extent.height = src.height;
-					dest.baseArrayLayer = desc.first_array_slice;
+					dest.baseArrayLayer = desc.array_slice;
 					dest.layerCount = desc.array_size;
 				}
 			}
@@ -601,11 +632,11 @@ namespace Luna
 				clear_rects[0].rect.offset = { 0, 0 };
 				clear_rects[0].rect.extent.width = m_rt_width;
 				clear_rects[0].rect.extent.height = m_rt_height;
-				auto desc = m_color_attachments[index]->get_desc();
-				if (desc.type != RenderTargetViewType::tex3d)
+				auto& desc = m_color_attachments[index]->m_desc;
+				if (desc.type != TextureViewType::tex3d)
 				{
-					clear_rects[0].baseArrayLayer = desc.first_depth_or_array_slice;
-					clear_rects[0].layerCount = desc.depth_or_array_size;
+					clear_rects[0].baseArrayLayer = desc.array_slice;
+					clear_rects[0].layerCount = desc.array_size;
 				}
 				else
 				{
@@ -617,7 +648,7 @@ namespace Luna
 			{
 				clear_rects = (VkClearRect*)alloca(sizeof(VkClearRect) * rects.size());
 				num_clear_rects = (u32)rects.size();
-				auto desc = m_color_attachments[index]->get_desc();
+				auto& desc = m_color_attachments[index]->m_desc;
 				for (usize i = 0; i < rects.size(); ++i)
 				{
 					auto& dest = clear_rects[i];
@@ -626,10 +657,10 @@ namespace Luna
 					dest.rect.offset.y = m_rt_height - src.offset_y - src.height;
 					dest.rect.extent.width = src.width;
 					dest.rect.extent.height = src.height;
-					if (desc.type != RenderTargetViewType::tex3d)
+					if (desc.type != TextureViewType::tex3d)
 					{
-						clear_rects[0].baseArrayLayer = desc.first_depth_or_array_slice;
-						clear_rects[0].layerCount = desc.depth_or_array_size;
+						clear_rects[0].baseArrayLayer = desc.array_slice;
+						clear_rects[0].layerCount = desc.array_size;
 					}
 					else
 					{
@@ -648,8 +679,8 @@ namespace Luna
 			m_rt_height = 0;
 			m_num_color_attachments = 0;
 			m_num_resolve_attachments = 0;
-			memzero(m_color_attachments, sizeof(IRenderTargetView*) * 8);
-			memzero(m_resolve_attachments, sizeof(IResolveTargetView*) * 8);
+			memzero(m_color_attachments, sizeof(ImageView*) * 8);
+			memzero(m_resolve_attachments, sizeof(ImageView*) * 8);
 			m_dsv = nullptr;
 		}
 		void CommandBuffer::copy_resource(IResource* dest, IResource* src)

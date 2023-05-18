@@ -79,18 +79,13 @@ void run()
 		ImGui::ShowDemoWindow();
 
 		ImGui::Render();
-
-		auto rt = dev->new_render_target_view(swap_chain->get_current_back_buffer().get()).get();
-		cmdbuf->attach_device_object(rt);
 		
+		auto back_buffer = swap_chain->get_current_back_buffer().get();
 		RenderPassDesc desc;
-		desc.color_attachments[0] = rt;
-		desc.color_load_ops[0] = LoadOp::clear;
-		desc.color_store_ops[0] = StoreOp::store;
-		desc.color_clear_values[0] = { 0.0f, 0.0f, 0.0f, 1.0f };
+		desc.color_attachments[0] = ColorAttachment(back_buffer, LoadOp::clear, StoreOp::store, { 0.0f, 0.0f, 0.0f, 1.0f });
 		cmdbuf->begin_render_pass(desc);
 		cmdbuf->end_render_pass();
-		ImGuiUtils::render_draw_data(ImGui::GetDrawData(), cmdbuf, rt);
+		ImGuiUtils::render_draw_data(ImGui::GetDrawData(), cmdbuf, back_buffer);
 		cmdbuf->resource_barrier({},
 		{
 			{swap_chain->get_current_back_buffer().get(), SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::present, ResourceBarrierFlag::none}

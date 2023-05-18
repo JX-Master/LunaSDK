@@ -24,14 +24,12 @@ namespace Luna
         lutry
         {
             luset(m_debug_mesh_renderer_dlayout, device->new_descriptor_set_layout(DescriptorSetLayoutDesc({
-				DescriptorSetLayoutBinding(DescriptorType::cbv, 0, 1, ShaderVisibility::vertex),
-				DescriptorSetLayoutBinding(DescriptorType::srv, 1, 1, ShaderVisibility::vertex) })));
+				DescriptorSetLayoutBinding(DescriptorType::uniform_buffer_view, 0, 1, ShaderVisibilityFlag::vertex),
+				DescriptorSetLayoutBinding(DescriptorType::read_buffer_view, 1, 1, ShaderVisibilityFlag::vertex) })));
 
-			luset(m_debug_mesh_renderer_slayout, device->new_shader_input_layout(ShaderInputLayoutDesc({ m_debug_mesh_renderer_dlayout },
-				ShaderInputLayoutFlag::allow_input_assembler_input_layout |
-				ShaderInputLayoutFlag::deny_domain_shader_access |
-				ShaderInputLayoutFlag::deny_geometry_shader_access |
-				ShaderInputLayoutFlag::deny_hull_shader_access)));
+			auto dlayout = m_debug_mesh_renderer_dlayout.get();
+			luset(m_debug_mesh_renderer_slayout, device->new_shader_input_layout(ShaderInputLayoutDesc({ &dlayout, 1 },
+				ShaderInputLayoutFlag::allow_input_assembler_input_layout)));
 
 			lulet(vsf, open_file("GeometryVert.cso", FileOpenFlag::read, FileCreationMode::open_existing));
 			auto file_size = vsf->get_size();
@@ -66,11 +64,11 @@ namespace Luna
 			Blob ps_blob = compiler->get_output();
 
 			GraphicsPipelineStateDesc ps_desc;
-			ps_desc.primitive_topology_type = PrimitiveTopologyType::triangle;
+			ps_desc.primitive_topology = PrimitiveTopology::triangle_list;
 			ps_desc.sample_mask = U32_MAX;
 			ps_desc.sample_quality = 0;
-			ps_desc.blend_state = BlendDesc(false, false, { AttachmentBlendDesc(true, false, BlendFactor::src_alpha,
-				BlendFactor::inv_src_alpha, BlendOp::add, BlendFactor::one, BlendFactor::zero, BlendOp::add, LogicOp::noop, ColorWriteMask::all) });
+			ps_desc.blend_state = BlendDesc({ AttachmentBlendDesc(true, BlendFactor::src_alpha,
+				BlendFactor::inv_src_alpha, BlendOp::add, BlendFactor::one, BlendFactor::zero, BlendOp::add, ColorWriteMask::all) });
 			ps_desc.rasterizer_state = RasterizerDesc(FillMode::wireframe, CullMode::none, 0, 0.0f, 0.0f, 0, false, true, false, true, false);
 			ps_desc.depth_stencil_state = DepthStencilDesc(false, false, ComparisonFunc::always, false, 0x00, 0x00, DepthStencilOpDesc(), DepthStencilOpDesc());
 			ps_desc.ib_strip_cut_value = IndexBufferStripCutValue::disabled;
@@ -102,7 +100,7 @@ namespace Luna
             auto cmdbuf = ctx->get_command_buffer();
             auto device = cmdbuf->get_device();
             auto cb_align = device->get_uniform_buffer_data_alignment();
-            auto output_tex = ctx->get_output("scene_texture");
+            Ref<ITexture> output_tex = query_interface<ITexture>(ctx->get_output("scene_texture")->get_object());
             lulet(render_rtv, device->new_render_target_view(output_tex));
             // Debug wireframe pass.
 			RenderPassDesc render_pass;
@@ -111,26 +109,28 @@ namespace Luna
 			render_pass.color_clear_values[0] = Float4U(0.0f);
 			render_pass.color_store_ops[0] = StoreOp::store;
 			auto render_desc = output_tex->get_desc();
-			cmdbuf->resource_barrier(ResourceBarrierDesc::as_transition(output_tex, ResourceStateFlag::render_target));
+			cmdbuf->resource_barrier({}, { {output_tex, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::color_attachment_write, ResourceBarrierFlag::discard_content} });
 			cmdbuf->begin_render_pass(render_pass);
 			cmdbuf->set_graphics_shader_input_layout(m_global_data->m_debug_mesh_renderer_slayout);
 			cmdbuf->set_pipeline_state(m_global_data->m_debug_mesh_renderer_pso);
-			cmdbuf->set_primitive_topology(PrimitiveTopology::triangle_list);
-			cmdbuf->set_viewport(Viewport(0.0f, 0.0f, (f32)render_desc.width_or_buffer_size, (f32)render_desc.height, 0.0f, 1.0f));
-			cmdbuf->set_scissor_rect(RectI(0, 0, (i32)render_desc.width_or_buffer_size, (i32)render_desc.height));
+			cmdbuf->set_viewport(Viewport(0.0f, 0.0f, (f32)render_desc.width, (f32)render_desc.height, 0.0f, 1.0f));
+			cmdbuf->set_scissor_rect(RectI(0, 0, (i32)render_desc.width, (i32)render_desc.height));
 			// Draw Meshes.
 			for (usize i = 0; i < ts.size(); ++i)
 			{
 				auto vs = device->new_descriptor_set(DescriptorSetDesc(m_global_data->m_debug_mesh_renderer_dlayout)).get();
-				vs->set_cbv(0, camera_cb, ConstantBufferViewDesc(0, (u32)align_upper(sizeof(CameraCB), cb_align)));
-				vs->set_srv(1, model_matrices, &ShaderResourceViewDesc::as_buffer(Format::unknown, i, 1, sizeof(Float4x4) * 2, false));
-				cmdbuf->set_graphics_descriptor_set(0, vs);
+				vs->update_descriptors({
+					DescriptorSetWrite::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(camera_cb, 0, (u32)align_upper(sizeof(CameraCB), cb_align))),
+					DescriptorSetWrite::read_buffer_view(1, BufferViewDesc::structured_buffer(model_matrices, i, 1, sizeof(Float4x4) * 2))
+					});
+				IDescriptorSet* vs_d = vs.get();
+				cmdbuf->set_graphics_descriptor_sets(0, { &vs_d, 1 });
 				cmdbuf->attach_device_object(vs);
 
 				// Draw pieces.
 				auto mesh = Asset::get_asset_data<Mesh>(Asset::get_asset_data<Model>(rs[i]->model)->mesh);
 
-				auto vb_view = VertexBufferViewDesc(mesh->vb, 0,
+				auto vb_view = VertexBufferView(mesh->vb, 0,
 					mesh->vb_count * sizeof(Vertex), sizeof(Vertex));
 
 				cmdbuf->set_vertex_buffers(0, { &vb_view, 1 });
@@ -155,8 +155,8 @@ namespace Luna
             WireframePassGlobalData* data = (WireframePassGlobalData*)userdata;
 			auto scene_texture = compiler->get_output_resource("scene_texture");
 			if(scene_texture == RG::INVALID_RESOURCE) return set_error(BasicError::bad_arguments(), "WireframePass: Output \"scene_texture\" is not specified.");
-			RHI::ResourceDesc desc = compiler->get_resource_desc(scene_texture);
-			desc.usages |= RHI::ResourceUsageFlag::render_target;
+			RG::ResourceDesc desc = compiler->get_resource_desc(scene_texture);
+			desc.texture.usages |= RHI::TextureUsageFlag::render_target;
 			compiler->set_resource_desc(scene_texture, desc);
 			Ref<WireframePass> pass = new_object<WireframePass>();
             luexp(pass->init(data));

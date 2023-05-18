@@ -20,24 +20,21 @@ namespace Luna
         lutry
         {
             luset(m_deferred_lighting_pass_dlayout, device->new_descriptor_set_layout(DescriptorSetLayoutDesc({
-						DescriptorSetLayoutBinding(DescriptorType::cbv, 0, 1, ShaderVisibility::all),
-                        DescriptorSetLayoutBinding(DescriptorType::cbv, 1, 1, ShaderVisibility::all),
-                        DescriptorSetLayoutBinding(DescriptorType::srv, 2, 1, ShaderVisibility::all),
-                        DescriptorSetLayoutBinding(DescriptorType::srv, 3, 1, ShaderVisibility::all),
-                        DescriptorSetLayoutBinding(DescriptorType::srv, 4, 1, ShaderVisibility::all),
-                        DescriptorSetLayoutBinding(DescriptorType::srv, 5, 1, ShaderVisibility::all),
-                        DescriptorSetLayoutBinding(DescriptorType::srv, 6, 1, ShaderVisibility::all),
-                        DescriptorSetLayoutBinding(DescriptorType::srv, 7, 1, ShaderVisibility::all),
-                        DescriptorSetLayoutBinding(DescriptorType::srv, 8, 1, ShaderVisibility::all),
-						DescriptorSetLayoutBinding(DescriptorType::uav, 9, 1, ShaderVisibility::all),
-						DescriptorSetLayoutBinding(DescriptorType::sampler, 10, 1, ShaderVisibility::all)
+						DescriptorSetLayoutBinding(DescriptorType::uniform_buffer_view, 0, 1, ShaderVisibilityFlag::all),
+                        DescriptorSetLayoutBinding(DescriptorType::uniform_buffer_view, 1, 1, ShaderVisibilityFlag::all),
+                        DescriptorSetLayoutBinding(DescriptorType::srv, 2, 1, ShaderVisibilityFlag::all),
+                        DescriptorSetLayoutBinding(DescriptorType::srv, 3, 1, ShaderVisibilityFlag::all),
+                        DescriptorSetLayoutBinding(DescriptorType::srv, 4, 1, ShaderVisibilityFlag::all),
+                        DescriptorSetLayoutBinding(DescriptorType::srv, 5, 1, ShaderVisibilityFlag::all),
+                        DescriptorSetLayoutBinding(DescriptorType::srv, 6, 1, ShaderVisibilityFlag::all),
+                        DescriptorSetLayoutBinding(DescriptorType::srv, 7, 1, ShaderVisibilityFlag::all),
+                        DescriptorSetLayoutBinding(DescriptorType::srv, 8, 1, ShaderVisibilityFlag::all),
+						DescriptorSetLayoutBinding(DescriptorType::uav, 9, 1, ShaderVisibilityFlag::all),
+						DescriptorSetLayoutBinding(DescriptorType::sampler, 10, 1, ShaderVisibilityFlag::all)
 						})));
 
 			luset(m_deferred_lighting_pass_slayout, device->new_shader_input_layout(ShaderInputLayoutDesc({ m_deferred_lighting_pass_dlayout },
 				ShaderInputLayoutFlag::deny_vertex_shader_access |
-				ShaderInputLayoutFlag::deny_domain_shader_access |
-				ShaderInputLayoutFlag::deny_geometry_shader_access |
-				ShaderInputLayoutFlag::deny_hull_shader_access |
 				ShaderInputLayoutFlag::deny_pixel_shader_access)));
 
 			lulet(psf, open_file("DeferredLighting.cso", FileOpenFlag::read, FileCreationMode::open_existing));
@@ -62,8 +59,8 @@ namespace Luna
                 luset(m_integrate_brdf, device->new_resource(ResourceDesc::tex2d(ResourceHeapType::local, Format::rgba8_unorm,
                     ResourceUsageFlag::shader_resource | ResourceUsageFlag::unordered_access, INTEGEATE_BRDF_SIZE, INTEGEATE_BRDF_SIZE, 1, 1)));
                 lulet(dlayout, device->new_descriptor_set_layout(DescriptorSetLayoutDesc({
-                        DescriptorSetLayoutBinding(DescriptorType::cbv, 0, 1, ShaderVisibility::all),
-                        DescriptorSetLayoutBinding(DescriptorType::uav, 1, 1, ShaderVisibility::all) })));
+                        DescriptorSetLayoutBinding(DescriptorType::uniform_buffer_view, 0, 1, ShaderVisibilityFlag::all),
+                        DescriptorSetLayoutBinding(DescriptorType::uav, 1, 1, ShaderVisibilityFlag::all) })));
                 lulet(slayout, device->new_shader_input_layout(ShaderInputLayoutDesc({ dlayout },
                     ShaderInputLayoutFlag::deny_vertex_shader_access |
                     ShaderInputLayoutFlag::deny_domain_shader_access |
@@ -83,7 +80,7 @@ namespace Luna
                 u32 cb_align = device->get_uniform_buffer_data_alignment();
                 u32 cb_size = (u32)align_upper(sizeof(Float2), cb_align);
                 lulet(cb, device->new_resource(
-                    ResourceDesc::buffer(ResourceHeapType::upload, ResourceUsageFlag::constant_buffer, cb_size)));
+                    ResourceDesc::buffer(ResourceHeapType::upload, BufferUsageFlag::uniform_buffer, cb_size)));
                 Float2U* mapped = nullptr;
                 luexp(cb->map_subresource(0, 0, 0, (void**)&mapped));
                 *mapped = Float2U(1.0f / (f32)INTEGEATE_BRDF_SIZE, 1.0f / (f32)INTEGEATE_BRDF_SIZE);
@@ -117,7 +114,7 @@ namespace Luna
             luset(m_ds, device->new_descriptor_set(
                 DescriptorSetDesc(global_data->m_deferred_lighting_pass_dlayout)));
             luset(m_lighting_mode_cb, device->new_resource(
-                ResourceDesc::buffer(ResourceHeapType::upload, ResourceUsageFlag::constant_buffer,
+                ResourceDesc::buffer(ResourceHeapType::upload, BufferUsageFlag::uniform_buffer,
                     align_upper(sizeof(u32), device->get_uniform_buffer_data_alignment()))));
         }
         lucatchret;
@@ -198,7 +195,7 @@ namespace Luna
             if(base_color_roughness_texture == RG::INVALID_RESOURCE) return set_error(BasicError::bad_arguments(), "DeferredLightingPass: Input \"base_color_roughness_texture\" is not specified.");
             if(normal_metallic_texture == RG::INVALID_RESOURCE) return set_error(BasicError::bad_arguments(), "DeferredLightingPass: Input \"normal_metallic_texture\" is not specified.");
             if(emissive_texture == RG::INVALID_RESOURCE) return set_error(BasicError::bad_arguments(), "DeferredLightingPass: Input \"emissive_texture\" is not specified.");
-			RHI::ResourceDesc desc = compiler->get_resource_desc(scene_texture);
+			RG::ResourceDesc desc = compiler->get_resource_desc(scene_texture);
 			if (desc.pixel_format != RHI::Format::rgba32_float)
 			{
 				return set_error(BasicError::bad_arguments(), "DeferredLightingPass: Invalid format for \"scene_texture\" is specified. \"scene_texture\" must be Format::rgba32_float.");

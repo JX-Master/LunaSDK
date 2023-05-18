@@ -144,17 +144,12 @@ RV start()
 
 void draw()
 {
-	auto rtv = get_main_device()->new_render_target_view(get_back_buffer()).get();
 	auto cb = get_command_buffer();
 	cb->resource_barrier({}, {
 			{get_back_buffer(), TEXTURE_BARRIER_ALL_SUBRESOURCES, TextureStateFlag::automatic, TextureStateFlag::color_attachment_write, ResourceBarrierFlag::discard_content}
 		});
-	cb->attach_device_object(rtv);
 	RenderPassDesc desc;
-	desc.color_attachments[0] = rtv;
-	desc.color_load_ops[0] = LoadOp::clear;
-	desc.color_clear_values[0] = Color::yellow();
-	desc.color_store_ops[0] = StoreOp::store;
+	desc.color_attachments[0] = ColorAttachment(get_back_buffer(), LoadOp::clear, StoreOp::store, Color::yellow());
 	cb->begin_render_pass(desc);
 	cb->set_pipeline_state(pso);
 	cb->set_graphics_shader_input_layout(shader_input_layout);
@@ -166,12 +161,6 @@ void draw()
 	cb->set_viewport(Viewport(0, 0, (f32)sz.x, (f32)sz.y, 0.0f, 1.0f));
 	cb->draw(3, 0);
 	cb->end_render_pass();
-	cb->resource_barrier({},
-		{
-			{get_back_buffer(), TEXTURE_BARRIER_ALL_SUBRESOURCES, TextureStateFlag::color_attachment_write, TextureStateFlag::present, ResourceBarrierFlag::none}
-		});
-	lupanic_if_failed(cb->submit({}, {}, true));
-	cb->wait();
 }
 
 void resize(u32 width, u32 height)

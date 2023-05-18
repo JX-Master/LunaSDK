@@ -35,7 +35,6 @@ Ref<RHI::IDescriptorSet> desc_set;
 Ref<RHI::IShaderInputLayout> slayout;
 Ref<RHI::IPipelineState> pso;
 Ref<RHI::ITexture> depth_tex;
-Ref<RHI::IDepthStencilView> dsv;
 Ref<RHI::IBuffer> vb;
 Ref<RHI::IBuffer> ib;
 Ref<RHI::IBuffer> cb;
@@ -153,7 +152,6 @@ RV start()
         auto window_size = get_window()->get_framebuffer_size();
         luset(depth_tex, dev->new_texture(TextureDesc::tex2d(ResourceHeapType::local, Format::d32_float, 
             TextureUsageFlag::depth_stencil, window_size.x, window_size.y, 1, 1)));
-        luset(dsv, dev->new_depth_stencil_view(depth_tex));
 
         Vertex vertices[] = {
             {{+0.5, -0.5, -0.5}, {0.0, 1.0}}, {{+0.5, +0.5, -0.5}, {0.0, 0.0}},
@@ -275,21 +273,9 @@ void draw()
                 {depth_tex, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::depth_stencil_attachment_write, ResourceBarrierFlag::none},
             }
         );
-
-        auto rtv = get_main_device()->new_render_target_view(get_back_buffer()).get();
-        cmdbuf->attach_device_object(rtv);
-
         RenderPassDesc desc;
-        desc.color_attachments[0] = rtv;
-        desc.color_load_ops[0] = LoadOp::clear;
-        desc.color_store_ops[0] = StoreOp::store;
-        desc.color_clear_values[0] = {0, 0, 0, 0};
-        desc.depth_stencil_attachment = dsv;
-        desc.depth_load_op = LoadOp::clear;
-        desc.depth_store_op = StoreOp::store;
-        desc.depth_clear_value = 1.0f;
-        desc.stencil_load_op = LoadOp::dont_care;
-        desc.stencil_store_op = StoreOp::dont_care;
+        desc.color_attachments[0] = ColorAttachment(get_back_buffer(), LoadOp::clear, StoreOp::store, { 0, 0, 0, 0 });
+        desc.depth_stencil_attachment = DepthStencilAttachment(depth_tex, LoadOp::clear, StoreOp::store, 1.0f);
         cmdbuf->begin_render_pass(desc);
         cmdbuf->set_graphics_shader_input_layout(slayout);
         cmdbuf->set_pipeline_state(pso);
@@ -303,12 +289,6 @@ void draw()
         cmdbuf->set_viewport(Viewport(0.0f, 0.0f, (f32)window_sz.x, (f32)window_sz.y, 0.0f, 1.0f));
         cmdbuf->draw_indexed(36, 0, 0);
         cmdbuf->end_render_pass();
-        cmdbuf->resource_barrier({},
-        {
-            {get_back_buffer(), SubresourceIndex(0, 0), TextureStateFlag::color_attachment_write, TextureStateFlag::present, ResourceBarrierFlag::none}
-        });
-        luexp(cmdbuf->submit({}, {}, true));
-		cmdbuf->wait();
     }
     lucatch
 	{
@@ -324,7 +304,6 @@ void resize(u32 width, u32 height)
         auto dev = get_main_device();
         luset(depth_tex, dev->new_texture(TextureDesc::tex2d(ResourceHeapType::local, Format::d32_float, 
             TextureUsageFlag::depth_stencil, width, height, 1, 1)));
-        luset(dsv, dev->new_depth_stencil_view(depth_tex));
     }
     lucatch
 	{
@@ -339,7 +318,6 @@ void cleanup()
 	slayout.reset();
 	pso.reset();
 	depth_tex.reset();
-	dsv.reset();
 	vb.reset();
 	ib.reset();
 	cb.reset();

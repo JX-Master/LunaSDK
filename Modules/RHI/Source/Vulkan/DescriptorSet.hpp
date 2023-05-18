@@ -27,7 +27,6 @@ namespace Luna
 
 			VkDescriptorSet m_desc_set = VK_NULL_HANDLE;
 
-			HashMap<u32, Ref<ImageView>> m_image_views;
 			HashMap<u32, Ref<Sampler>> m_samplers;
 
 			RV init(const DescriptorSetDesc& desc);

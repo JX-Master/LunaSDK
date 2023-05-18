@@ -626,7 +626,7 @@ float4 main(PS_INPUT input) : SV_Target
             return iter->second.get();
         }
 
-        LUNA_IMGUI_API RV render_draw_data(ImDrawData* data, RHI::ICommandBuffer* cmd_buffer, RHI::IRenderTargetView* render_target)
+        LUNA_IMGUI_API RV render_draw_data(ImDrawData* data, RHI::ICommandBuffer* cmd_buffer, RHI::ITexture* render_target)
         {
             using namespace RHI;
             lutry
@@ -663,9 +663,7 @@ float4 main(PS_INPUT input) : SV_Target
                 }
                 g_vb->unmap(0, (usize)vtx_dst - (usize)vtx_resource);
                 g_ib->unmap(0, (usize)idx_dst - (usize)idx_resource);
-
-                auto res = render_target->get_texture();
-                auto rt_desc = res->get_desc();
+                auto rt_desc = render_target->get_desc();
 
                 // Setup orthographic projection matrix into our constant buffer
                 // Our visible imgui space lies from draw_data->DisplayPos (top left) to draw_data->DisplayPos+data_data->DisplaySize (bottom right).
@@ -688,7 +686,7 @@ float4 main(PS_INPUT input) : SV_Target
                 }
 
                 Vector<TextureBarrier> barriers;
-                barriers.push_back({ res, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::color_attachment_write, ResourceBarrierFlag::none });
+                barriers.push_back({ render_target, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::color_attachment_write, ResourceBarrierFlag::none });
                 for (i32 n = 0; n < draw_data->CmdListsCount; ++n)
                 {
                     const ImDrawList* cmd_list = draw_data->CmdLists[n];
@@ -703,9 +701,7 @@ float4 main(PS_INPUT input) : SV_Target
                     { barriers.data(), barriers.size() });
 
                 RenderPassDesc desc;
-                desc.color_attachments[0] = render_target;
-                desc.color_load_ops[0] = LoadOp::load;
-                desc.color_store_ops[0] = StoreOp::store;
+                desc.color_attachments[0] = ColorAttachment(render_target, LoadOp::load, StoreOp::store);
                 cmd_buffer->begin_render_pass(desc);
 
                 cmd_buffer->set_viewport(Viewport(0.0f, 0.0f, draw_data->DisplaySize.x, draw_data->DisplaySize.y, 0.0f, 1.0f));

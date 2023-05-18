@@ -174,6 +174,13 @@ namespace Luna
 			internal_addref();
 			return *this;
 		}
+		template <typename _Rty, typename _Enable = enable_if_t<is_base_of_v<Interface, _Rty>>>
+		Ref(_Rty* vtable)
+		{
+			_Ty* v = query_interface<_Ty>(vtable->get_object());
+			m_vtable = v;
+			internal_addref();
+		}
 		Ref(const ObjRef& obj)
 		{
 			if (obj)

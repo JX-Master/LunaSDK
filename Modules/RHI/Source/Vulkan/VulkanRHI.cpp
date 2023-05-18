@@ -15,15 +15,12 @@
 #include "Instance.hpp"
 #include "Adapter.hpp"
 #include "CommandBuffer.hpp"
-#include "DepthStencilView.hpp"
 #include "DescriptorSet.hpp"
 #include "DescriptorSetLayout.hpp"
 #include "Device.hpp"
 #include "Fence.hpp"
 #include "PipelineState.hpp"
 #include "QueryHeap.hpp"
-#include "RenderTargetView.hpp"
-#include "ResolveTargetView.hpp"
 #include "Resource.hpp"
 #include "Sampler.hpp"
 #include "ShaderInputLayout.hpp"
@@ -40,8 +37,6 @@ namespace Luna
 			{
 				register_boxed_type<CommandBuffer>();
 				impl_interface_for_type<CommandBuffer, ICommandBuffer, IDeviceChild, IWaitable>();
-				register_boxed_type<DepthStencilView>();
-				impl_interface_for_type<DepthStencilView, IDepthStencilView, IDeviceChild>();
 				register_boxed_type<DescriptorSet>();
 				impl_interface_for_type<DescriptorSet, IDescriptorSet, IDeviceChild>();
 				register_boxed_type<DescriptorSetLayout>();
@@ -56,10 +51,6 @@ namespace Luna
 				impl_interface_for_type<PipelineState, IPipelineState, IDeviceChild>();
 				register_boxed_type<QueryHeap>();
 				impl_interface_for_type<QueryHeap, IQueryHeap, IDeviceChild>();
-				register_boxed_type<RenderTargetView>();
-				impl_interface_for_type<RenderTargetView, IRenderTargetView, IDeviceChild>();
-				register_boxed_type<ResolveTargetView>();
-				impl_interface_for_type<ResolveTargetView, IResolveTargetView, IDeviceChild>();
 				register_boxed_type<DeviceMemory>();
 				impl_interface_for_type<DeviceMemory, IDeviceMemory, IDeviceChild>();
 				register_boxed_type<BufferResource>();

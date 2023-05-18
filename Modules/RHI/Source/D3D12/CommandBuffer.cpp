@@ -260,95 +260,110 @@ namespace Luna
 		{
 			lutsassert();
 			lucheck_msg(!m_render_pass_context.m_valid, "The last render pass is not correctly closed.");
-			// Create render target and depth stencil view.
-			D3D12_CPU_DESCRIPTOR_HANDLE rtv[8];
-			D3D12_CPU_DESCRIPTOR_HANDLE dsv{ 0 };
-			memzero(rtv, sizeof(rtv));
-			u8 num_render_targets = 0;
-			for (auto& i : desc.color_attachments)
+			lutry
 			{
-				if (!i) break;
-				++num_render_targets;
-			}
-			m_render_pass_context.m_valid = true;
-			for (auto& i : m_render_pass_context.m_color_attachments) i = nullptr;
-			m_render_pass_context.m_dsv = nullptr;
-			m_render_pass_context.num_render_targets = num_render_targets;
-			for (u8 i = 0; i < num_render_targets; ++i)
-			{
-				m_render_pass_context.m_color_attachments[i] = cast_object<RenderTargetView>(desc.color_attachments[i]->get_object());
-				rtv[i] = m_render_pass_context.m_color_attachments[i]->m_heap->GetCPUDescriptorHandleForHeapStart();
-			}
-			if (desc.depth_stencil_attachment)
-			{
-				m_render_pass_context.m_dsv = cast_object<DepthStencilView>(desc.depth_stencil_attachment->get_object());
-				dsv = m_render_pass_context.m_dsv->m_heap->GetCPUDescriptorHandleForHeapStart();
-			}
-			if (m_render_pass_context.m_color_attachments[0])
-			{
-				auto d = m_render_pass_context.m_color_attachments[0]->m_texture->get_desc();
-				m_render_pass_context.m_tex_size.x = (u32)d.width;
-				m_render_pass_context.m_tex_size.y = (u32)d.height;
-			}
-			else if(m_render_pass_context.m_dsv)
-			{
-				auto d = m_render_pass_context.m_dsv->m_texture->get_desc();
-				m_render_pass_context.m_tex_size.x = (u32)d.width;
-				m_render_pass_context.m_tex_size.y = (u32)d.height;
-			}
-			else
-			{
+				// Create render target and depth stencil view.
+				D3D12_CPU_DESCRIPTOR_HANDLE rtv[8];
+				D3D12_CPU_DESCRIPTOR_HANDLE dsv{ 0 };
+				memzero(rtv, sizeof(rtv));
+				u8 num_render_targets = 0;
+				for (auto& i : desc.color_attachments)
+				{
+					if (!i.texture) break;
+					++num_render_targets;
+				}
+				m_render_pass_context.m_valid = true;
+				for (auto& i : m_render_pass_context.m_color_attachments) i = nullptr;
+				m_render_pass_context.m_depth_stencil_attachment = nullptr;
+				m_render_pass_context.num_render_targets = num_render_targets;
 				m_render_pass_context.m_tex_size = UInt2U(0, 0);
-			}
-
-			if (num_render_targets)
-			{
-				if (desc.depth_stencil_attachment)
+				for (u8 i = 0; i < num_render_targets; ++i)
 				{
-					m_li->OMSetRenderTargets(num_render_targets, rtv, FALSE, &dsv);
+					auto& src = desc.color_attachments[i];
+					TextureResource* tex = cast_object<TextureResource>(src.texture->get_object());
+					TextureViewDesc view;
+					view.texture = src.texture;
+					view.type = src.view_type;
+					view.format = src.format;
+					view.mip_slice = src.mip_slice;
+					view.mip_size = 1;
+					view.array_slice = src.array_slice;
+					view.array_size = src.array_size;
+					luset(m_render_pass_context.m_color_attachments[i], tex->get_rtv(view));
+					rtv[i] = m_render_pass_context.m_color_attachments[i]->GetCPUDescriptorHandleForHeapStart();
+					m_render_pass_context.m_tex_size.x = tex->m_desc.width;
+					m_render_pass_context.m_tex_size.y = tex->m_desc.height;
+				}
+				if (desc.depth_stencil_attachment.texture)
+				{
+					auto& src = desc.depth_stencil_attachment;
+					TextureResource* tex = cast_object<TextureResource>(src.texture->get_object());
+					TextureViewDesc view;
+					view.texture = src.texture;
+					view.type = src.view_type;
+					view.format = src.format;
+					view.mip_slice = src.mip_slice;
+					view.mip_size = 1;
+					view.array_slice = src.array_slice;
+					view.array_size = src.array_size;
+					luset(m_render_pass_context.m_depth_stencil_attachment, tex->get_dsv(view));
+					dsv = m_render_pass_context.m_depth_stencil_attachment->GetCPUDescriptorHandleForHeapStart();
+					m_render_pass_context.m_tex_size.x = tex->m_desc.width;
+					m_render_pass_context.m_tex_size.y = tex->m_desc.height;
+				}
+				if (num_render_targets)
+				{
+					if (desc.depth_stencil_attachment.texture)
+					{
+						m_li->OMSetRenderTargets(num_render_targets, rtv, FALSE, &dsv);
+					}
+					else
+					{
+						m_li->OMSetRenderTargets(num_render_targets, rtv, FALSE, NULL);
+					}
 				}
 				else
 				{
-					m_li->OMSetRenderTargets(num_render_targets, rtv, FALSE, NULL);
+					if (desc.depth_stencil_attachment.texture)
+					{
+						m_li->OMSetRenderTargets(0, NULL, FALSE, &dsv);
+					}
+					else
+					{
+						m_li->OMSetRenderTargets(0, NULL, FALSE, NULL);
+					}
 				}
-			}
-			else
-			{
-				if (desc.depth_stencil_attachment)
-				{
-					m_li->OMSetRenderTargets(0, NULL, FALSE, &dsv);
-				}
-				else
-				{
-					m_li->OMSetRenderTargets(0, NULL, FALSE, NULL);
-				}
-			}
 
-			// Clear render target and depth stencil if needed.
-			for (u32 i = 0; i < num_render_targets; ++i)
-			{
-				if ((desc.color_load_ops[i] == LoadOp::clear) && m_render_pass_context.m_color_attachments[i])
+				// Clear render target and depth stencil if needed.
+				for (u32 i = 0; i < num_render_targets; ++i)
 				{
-					m_li->ClearRenderTargetView(m_render_pass_context.m_color_attachments[i]->m_heap->GetCPUDescriptorHandleForHeapStart(),
-						desc.color_clear_values[i].m, 0, NULL);
+					if ((desc.color_attachments[i].load_op == LoadOp::clear) && m_render_pass_context.m_color_attachments[i])
+					{
+						m_li->ClearRenderTargetView(m_render_pass_context.m_color_attachments[i]->GetCPUDescriptorHandleForHeapStart(),
+							desc.color_attachments[i].clear_value.m, 0, NULL);
+					}
+				}
+				if ((desc.depth_stencil_attachment.depth_load_op == LoadOp::clear) || (desc.depth_stencil_attachment.stencil_load_op == LoadOp::clear))
+				{
+					if (m_render_pass_context.m_depth_stencil_attachment)
+					{
+						D3D12_CLEAR_FLAGS flags = (D3D12_CLEAR_FLAGS)0;
+						if (desc.depth_stencil_attachment.depth_load_op == LoadOp::clear)
+						{
+							flags |= D3D12_CLEAR_FLAG_DEPTH;
+						}
+						if (desc.depth_stencil_attachment.stencil_load_op == LoadOp::clear)
+						{
+							flags |= D3D12_CLEAR_FLAG_STENCIL;
+						}
+						m_li->ClearDepthStencilView(m_render_pass_context.m_depth_stencil_attachment->GetCPUDescriptorHandleForHeapStart(),
+							flags, desc.depth_stencil_attachment.depth_clear_value, desc.depth_stencil_attachment.stencil_clear_value, 0, NULL);
+					}
 				}
 			}
-			if ((desc.depth_load_op == LoadOp::clear) || (desc.stencil_load_op == LoadOp::clear))
+			lucatch
 			{
-				if (m_render_pass_context.m_dsv)
-				{
-					D3D12_CLEAR_FLAGS flags = (D3D12_CLEAR_FLAGS)0;
-					if (desc.depth_load_op == LoadOp::clear)
-					{
-						flags |= D3D12_CLEAR_FLAG_DEPTH;
-					}
-					if (desc.stencil_load_op == LoadOp::clear)
-					{
-						flags |= D3D12_CLEAR_FLAG_STENCIL;
-					}
-					m_li->ClearDepthStencilView(m_render_pass_context.m_dsv->m_heap->GetCPUDescriptorHandleForHeapStart(), 
-						flags, desc.depth_clear_value, desc.stencil_clear_value, 0, NULL);
-				}
+
 			}
 		}
 		void CommandBuffer::set_pipeline_state(IPipelineState* pso)
@@ -516,7 +531,7 @@ namespace Luna
 		{
 			lutsassert();
 			lucheck_msg(m_render_pass_context.m_valid, "clear_depth_stencil_attachment must be called between `begin_render_pass` and `end_render_pass`.");
-			D3D12_CPU_DESCRIPTOR_HANDLE h = m_render_pass_context.m_dsv->m_heap->GetCPUDescriptorHandleForHeapStart();
+			D3D12_CPU_DESCRIPTOR_HANDLE h = m_render_pass_context.m_depth_stencil_attachment->GetCPUDescriptorHandleForHeapStart();
 			D3D12_RECT* d3drects = (D3D12_RECT*)alloca(sizeof(D3D12_RECT) * rects.size());
 			auto tex_sz = m_render_pass_context.m_tex_size;
 			for (u32 i = 0; i < rects.size(); ++i)
@@ -552,7 +567,7 @@ namespace Luna
 		{
 			lutsassert();
 			lucheck_msg(m_render_pass_context.m_valid, "clear_color_attachment must be called between `begin_render_pass` and `end_render_pass`.");
-			D3D12_CPU_DESCRIPTOR_HANDLE h = m_render_pass_context.m_color_attachments[index]->m_heap->GetCPUDescriptorHandleForHeapStart();
+			D3D12_CPU_DESCRIPTOR_HANDLE h = m_render_pass_context.m_color_attachments[index]->GetCPUDescriptorHandleForHeapStart();
 			D3D12_RECT* d3drects = (D3D12_RECT*)alloca(sizeof(D3D12_RECT) * rects.size());
 			auto tex_sz = m_render_pass_context.m_tex_size;
 			for (u32 i = 0; i < rects.size(); ++i)

@@ -41,7 +41,7 @@ namespace Luna
         { 
             m_settings = settings;
             u32 cb_align = m_device->get_uniform_buffer_data_alignment();
-            luset(m_camera_cb, m_device->new_resource(ResourceDesc::buffer(ResourceHeapType::upload, ResourceUsageFlag::constant_buffer, align_upper(sizeof(CameraCB), cb_align))));
+            luset(m_camera_cb, m_device->new_buffer(BufferDesc(ResourceHeapType::upload, BufferUsageFlag::uniform_buffer, align_upper(sizeof(CameraCB), cb_align))));
 			
 			// Build render graph.
 			{
@@ -229,7 +229,7 @@ namespace Luna
 			{
 				if (m_num_model_matrices < ts.size())
 				{
-					m_model_matrices = device->new_resource(ResourceDesc::buffer(ResourceHeapType::upload, ResourceUsageFlag::shader_resource, (u64)sizeof(Float4x4) * 2 * (u64)ts.size())).get();
+					m_model_matrices = device->new_buffer(BufferDesc(ResourceHeapType::upload, ResourceUsageFlag::shader_resource, (u64)sizeof(Float4x4) * 2 * (u64)ts.size())).get();
 					m_num_model_matrices = ts.size();
 				}
 				if (!ts.empty())
@@ -273,7 +273,7 @@ namespace Luna
 				usize light_size = max<usize>(light_ts.size(), 1);
 				if (m_num_lights < light_size)
 				{
-					m_lighting_params = device->new_resource(ResourceDesc::buffer(ResourceHeapType::upload, ResourceUsageFlag::shader_resource, sizeof(LightingParams) * light_size)).get();
+					m_lighting_params = device->new_buffer(BufferDesc(ResourceHeapType::upload, ResourceUsageFlag::shader_resource, sizeof(LightingParams) * light_size)).get();
 					m_num_lights = light_size;
 				}
 				void* mapped = nullptr;

@@ -25,28 +25,17 @@ RV start()
 
 void draw()
 {
-	auto rtv = get_main_device()->new_render_target_view(get_back_buffer()).get();
-
 	auto cb = get_command_buffer();
 	cb->resource_barrier({},
 		{
 			{get_back_buffer(), TEXTURE_BARRIER_ALL_SUBRESOURCES, TextureStateFlag::automatic, TextureStateFlag::color_attachment_write, ResourceBarrierFlag::discard_content}
 		});
-	cb->attach_device_object(rtv);
 	RenderPassDesc render_pass;
-	render_pass.color_attachments[0] = rtv;
-	render_pass.color_load_ops[0] = LoadOp::dont_care;
-	render_pass.color_store_ops[0] = StoreOp::store;
+	render_pass.color_attachments[0] = ColorAttachment(get_back_buffer(), LoadOp::dont_care);
 	cb->begin_render_pass(render_pass);
 	auto clear_color = Color::blue_violet();
 	cb->clear_color_attachment(0, clear_color.m, {});
 	cb->end_render_pass();
-	cb->resource_barrier({},
-		{
-			{get_back_buffer(), TEXTURE_BARRIER_ALL_SUBRESOURCES, TextureStateFlag::color_attachment_write, TextureStateFlag::present, ResourceBarrierFlag::none}
-		});
-	lupanic_if_failed(cb->submit({}, {}, true));
-	cb->wait();
 }
 
 void resize(u32 width, u32 height)

@@ -855,10 +855,10 @@ namespace Luna
 			using namespace RHI;
 			auto device = get_main_device();
 			{
-				luset(m_grid_vb, device->new_resource(ResourceDesc::buffer(ResourceHeapType::local, ResourceUsageFlag::vertex_buffer, sizeof(grids))));
+				luset(m_grid_vb, device->new_buffer(BufferDesc(ResourceHeapType::local, ResourceUsageFlag::vertex_buffer, sizeof(grids))));
 
 				DescriptorSetLayoutDesc dlayout({
-					DescriptorSetLayoutBinding(DescriptorType::cbv, 0, 1, ShaderVisibility::vertex)
+					DescriptorSetLayoutBinding(DescriptorType::uniform_buffer_view, 0, 1, ShaderVisibilityFlag::vertex)
 					});
 				luset(m_grid_dlayout, device->new_descriptor_set_layout(dlayout));
 				luset(m_grid_slayout, device->new_shader_input_layout(ShaderInputLayoutDesc({ m_grid_dlayout },
@@ -928,8 +928,8 @@ namespace Luna
 
 				GraphicsPipelineStateDesc ps_desc;
 				ps_desc.primitive_topology_type = PrimitiveTopologyType::line;
-				ps_desc.blend_state = BlendDesc(false, false, { AttachmentBlendDesc(true, false, BlendFactor::src_alpha,
-					BlendFactor::inv_src_alpha, BlendOp::add, BlendFactor::inv_src_alpha, BlendFactor::zero, BlendOp::add, LogicOp::noop, ColorWriteMask::all) });
+				ps_desc.blend_state = BlendDesc({ AttachmentBlendDesc(true, BlendFactor::src_alpha,
+					BlendFactor::inv_src_alpha, BlendOp::add, BlendFactor::inv_src_alpha, BlendFactor::zero, BlendOp::add, ColorWriteMask::all) });
 				ps_desc.rasterizer_state = RasterizerDesc(FillMode::wireframe, CullMode::none, 0, 0.0f, 0.0f, 1, false, true, false, true, false);
 				ps_desc.depth_stencil_state = DepthStencilDesc(false, false, ComparisonFunc::always, false, 0x00, 0x00, DepthStencilOpDesc(), DepthStencilOpDesc());
 				ps_desc.ib_strip_cut_value = IndexBufferStripCutValue::disabled;

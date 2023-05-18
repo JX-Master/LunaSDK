@@ -34,8 +34,8 @@ namespace Luna
         Span<Ref<Entity>> ts;
 		Span<Ref<ModelRenderer>> rs;
 
-        Ref<RHI::IResource> camera_cb;
-        Ref<RHI::IResource> model_matrices;
+        Ref<RHI::IBuffer> camera_cb;
+        Ref<RHI::IBuffer> model_matrices;
 
         RV init(WireframePassGlobalData* global_data);
         RV execute(RG::IRenderPassContext* ctx) override;

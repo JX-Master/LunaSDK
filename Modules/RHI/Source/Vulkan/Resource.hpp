@@ -9,6 +9,7 @@
 */
 #pragma once
 #include "DeviceMemory.hpp"
+#include "ImageView.hpp"
 
 namespace Luna
 {
@@ -64,6 +65,12 @@ namespace Luna
 
 			// Global state.
 			Vector<ImageGlobalState> m_global_states;
+
+			// Image views.
+			Vector<Pair<TextureViewDesc, Ref<ImageView>>> m_image_views;
+			SpinLock m_image_views_lock;
+
+			R<ImageView*> get_image_view(const TextureViewDesc& create_info);
 
 			RV post_init();
 			RV init_as_committed(const TextureDesc& desc);

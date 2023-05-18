@@ -8,7 +8,6 @@
 * @date 2023/4/19
 */
 #include "Resource.hpp"
-
 namespace Luna
 {
 	namespace RHI
@@ -72,6 +71,37 @@ namespace Luna
 		void BufferResource::unmap(usize write_begin, usize write_end)
 		{
 			vmaUnmapMemory(m_device->m_allocator, m_memory->m_allocation);
+		}
+		bool compare_image_view_desc(const TextureViewDesc& lhs, const TextureViewDesc& rhs)
+		{
+			return
+				lhs.texture == rhs.texture &&
+				lhs.type == rhs.type &&
+				lhs.format == rhs.format &&
+				lhs.mip_slice == rhs.mip_slice &&
+				lhs.mip_size == rhs.mip_size &&
+				lhs.array_slice == rhs.array_slice &&
+				lhs.array_size == rhs.array_size;
+		}
+		R<ImageView*> ImageResource::get_image_view(const TextureViewDesc& desc)
+		{
+			auto validated_desc = desc;
+			validate_texture_view_desc(validated_desc);
+			LockGuard guard(m_image_views_lock);
+			for (auto& v : m_image_views)
+			{
+				if (compare_image_view_desc(v.first, validated_desc))
+				{
+					return v.second.get();
+				}
+			}
+			// Create a new one.
+			auto view = new_object<ImageView>();
+			view->m_device = m_device;
+			auto r = view->init(validated_desc);
+			if (failed(r)) return r.errcode();
+			m_image_views.push_back(make_pair(validated_desc, view));
+			return view;
 		}
 		RV ImageResource::post_init()
 		{

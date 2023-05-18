@@ -86,20 +86,22 @@ namespace Luna
 									auto& d_buffer = infos[j];
 									BufferResource* buf = cast_object<BufferResource>(s_buffer.buffer->get_object());
 									d_buffer.buffer = buf->m_buffer;
-									d_buffer.offset = s_buffer.offset;
 									if (s.type == DescriptorType::uniform_buffer_view)
 									{
+										d_buffer.offset = s_buffer.first_element;
 										d_buffer.range = s_buffer.element_size == U32_MAX ? VK_WHOLE_SIZE : s_buffer.element_size;
 									}
 									else
 									{
 										if (s_buffer.format != Format::unknown)
 										{
-											d_buffer.range = bits_per_pixel(s_buffer.format) * s_buffer.element_count / 8;
+											d_buffer.offset = (u64)bits_per_pixel(s_buffer.format) * s_buffer.first_element / 8;
+											d_buffer.range = (u64)bits_per_pixel(s_buffer.format) * s_buffer.element_count / 8;
 										}
 										else
 										{
-											d_buffer.range = s_buffer.element_size * s_buffer.element_count;
+											d_buffer.offset = (u64)s_buffer.element_size * s_buffer.first_element / 8;
+											d_buffer.range = (u64)s_buffer.element_size * (u64)s_buffer.element_count;
 										}
 									}
 								}
@@ -129,11 +131,11 @@ namespace Luna
 									{
 										d_image.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
 									}
-									auto image_view = new_object<ImageView>();
-									image_view->m_device = m_device;
-									luexp(image_view->init(s_image));
-									m_image_views.insert_or_assign(s.binding_slot + s.first_array_index + j, image_view);
-									d_image.imageView = image_view->m_image_view;
+									ImageResource* image = cast_object<ImageResource>(s_image.texture->get_object());
+									auto validated_view = s_image;
+									validate_texture_view_desc(validated_view);
+									lulet(view, image->get_image_view(validated_view));
+									d_image.imageView = view->m_image_view;
 									d_image.sampler = VK_NULL_HANDLE;
 								}
 								d.pImageInfo = infos;

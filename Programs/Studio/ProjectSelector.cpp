@@ -172,7 +172,7 @@ namespace Luna
 				{
 					luexp(swap_chain->reset({sz.x, sz.y, 2, RHI::Format::unknown, true}));
 					f32 clear_color[] = { 0.0f, 0.0f, 0.0f, 1.0f };
-					luset(back_buffer, RHI::get_main_device()->new_resource(RHI::ResourceDesc::tex2d(RHI::ResourceHeapType::local, RHI::Format::rgba8_unorm, RHI::ResourceUsageFlag::render_target, sz.x, sz.y, 1, 1),
+					luset(back_buffer, RHI::get_main_device()->new_resource(RHI::ResourceDesc::tex2d(RHI::ResourceHeapType::local, RHI::Format::rgba8_unorm, RHI::TextureUsageFlag::render_target, sz.x, sz.y, 1, 1),
 						&RHI::ClearValue::as_color(RHI::Format::rgba8_unorm, clear_color)));
 					w = sz.x;
 					h = sz.y;

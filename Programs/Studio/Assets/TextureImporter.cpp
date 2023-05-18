@@ -73,19 +73,17 @@ namespace Luna
 			{
 				DescriptorSetLayoutDesc desc;
 				desc.bindings = {
-					DescriptorSetLayoutBinding(DescriptorType::cbv, 0, 1, ShaderVisibility::all),
-					DescriptorSetLayoutBinding(DescriptorType::srv, 1, 1, ShaderVisibility::all),
-					DescriptorSetLayoutBinding(DescriptorType::uav, 2, 1, ShaderVisibility::all),
-					DescriptorSetLayoutBinding(DescriptorType::sampler, 3, 1, ShaderVisibility::all)
+					DescriptorSetLayoutBinding(DescriptorType::uniform_buffer_view, 0, 1, ShaderVisibilityFlag::all),
+					DescriptorSetLayoutBinding(DescriptorType::srv, 1, 1, ShaderVisibilityFlag::all),
+					DescriptorSetLayoutBinding(DescriptorType::uav, 2, 1, ShaderVisibilityFlag::all),
+					DescriptorSetLayoutBinding(DescriptorType::sampler, 3, 1, ShaderVisibilityFlag::all)
 				};
 				luset(m_mipmapping_dlayout, RHI::get_main_device()->new_descriptor_set_layout(desc));
 
 				luset(m_mipmapping_slayout, RHI::get_main_device()->new_shader_input_layout(ShaderInputLayoutDesc(
 					{ m_mipmapping_dlayout },
 					ShaderInputLayoutFlag::deny_vertex_shader_access |
-					ShaderInputLayoutFlag::deny_domain_shader_access |
-					ShaderInputLayoutFlag::deny_geometry_shader_access |
-					ShaderInputLayoutFlag::deny_hull_shader_access |
+					
 					ShaderInputLayoutFlag::deny_pixel_shader_access)));
 
 				lulet(psf, open_file("MipmapGenerationCS.cso", FileOpenFlag::read, FileCreationMode::open_existing));
@@ -101,19 +99,17 @@ namespace Luna
 			{
 				DescriptorSetLayoutDesc desc;
 				desc.bindings = {
-					DescriptorSetLayoutBinding(DescriptorType::cbv, 0, 1, ShaderVisibility::all),
-					DescriptorSetLayoutBinding(DescriptorType::srv, 1, 1, ShaderVisibility::all),
-					DescriptorSetLayoutBinding(DescriptorType::uav, 2, 1, ShaderVisibility::all),
-					DescriptorSetLayoutBinding(DescriptorType::sampler, 3, 1, ShaderVisibility::all)
+					DescriptorSetLayoutBinding(DescriptorType::uniform_buffer_view, 0, 1, ShaderVisibilityFlag::all),
+					DescriptorSetLayoutBinding(DescriptorType::srv, 1, 1, ShaderVisibilityFlag::all),
+					DescriptorSetLayoutBinding(DescriptorType::uav, 2, 1, ShaderVisibilityFlag::all),
+					DescriptorSetLayoutBinding(DescriptorType::sampler, 3, 1, ShaderVisibilityFlag::all)
 				};
 				luset(m_env_mipmapping_dlayout, RHI::get_main_device()->new_descriptor_set_layout(desc));
 
 				luset(m_env_mipmapping_slayout, RHI::get_main_device()->new_shader_input_layout(ShaderInputLayoutDesc(
 					{ m_env_mipmapping_dlayout },
 					ShaderInputLayoutFlag::deny_vertex_shader_access |
-					ShaderInputLayoutFlag::deny_domain_shader_access |
-					ShaderInputLayoutFlag::deny_geometry_shader_access |
-					ShaderInputLayoutFlag::deny_hull_shader_access |
+					
 					ShaderInputLayoutFlag::deny_pixel_shader_access)));
 
 				lulet(psf, open_file("PrecomputeEnvironmentMapMips.cso", FileOpenFlag::read, FileCreationMode::open_existing));
@@ -158,7 +154,7 @@ namespace Luna
 			u32 cb_align = device->get_uniform_buffer_data_alignment();
 			u32 cb_size = (u32)align_upper(sizeof(Float2), cb_align);
 			lulet(cb, device->new_resource(
-				ResourceDesc::buffer(ResourceHeapType::upload, ResourceUsageFlag::constant_buffer, cb_size * (desc.mip_levels - 1))));
+				ResourceDesc::buffer(ResourceHeapType::upload, BufferUsageFlag::uniform_buffer, cb_size * (desc.mip_levels - 1))));
 
 			void* mapped = nullptr;
 			luexp(cb->map_subresource(0, 0, 0, &mapped));
@@ -238,7 +234,7 @@ namespace Luna
 			u32 cb_align = device->get_uniform_buffer_data_alignment();
 			u32 cb_size = (u32)align_upper(sizeof(CB), cb_align);
 			lulet(cb, device->new_resource(
-				ResourceDesc::buffer(ResourceHeapType::upload, ResourceUsageFlag::constant_buffer, cb_size * (desc.mip_levels - 1))));
+				ResourceDesc::buffer(ResourceHeapType::upload, BufferUsageFlag::uniform_buffer, cb_size * (desc.mip_levels - 1))));
 
 			void* mapped = nullptr;
 			luexp(cb->map_subresource(0, 0, 0, &mapped));

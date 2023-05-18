@@ -20,16 +20,13 @@ namespace Luna
             //First Lum Pass.
 			{
 				luset(m_histogram_pass_dlayout, device->new_descriptor_set_layout(DescriptorSetLayoutDesc({
-					DescriptorSetLayoutBinding(DescriptorType::cbv, 0, 1, ShaderVisibility::all),
-					DescriptorSetLayoutBinding(DescriptorType::srv, 1, 1, ShaderVisibility::all),
-					DescriptorSetLayoutBinding(DescriptorType::uav, 2, 1, ShaderVisibility::all)
+					DescriptorSetLayoutBinding(DescriptorType::uniform_buffer_view, 0, 1, ShaderVisibilityFlag::compute),
+					DescriptorSetLayoutBinding(DescriptorType::read_texture_view, 1, 1, ShaderVisibilityFlag::compute),
+					DescriptorSetLayoutBinding(DescriptorType::read_write_buffer_view, 2, 1, ShaderVisibilityFlag::compute)
 					})));
 
 				luset(m_histogram_pass_slayout, device->new_shader_input_layout(ShaderInputLayoutDesc({ m_histogram_pass_dlayout },
 					ShaderInputLayoutFlag::deny_vertex_shader_access |
-					ShaderInputLayoutFlag::deny_domain_shader_access |
-					ShaderInputLayoutFlag::deny_geometry_shader_access |
-					ShaderInputLayoutFlag::deny_hull_shader_access |
 					ShaderInputLayoutFlag::deny_pixel_shader_access)));
 
 				lulet(psf, open_file("LumHistogram.cso", FileOpenFlag::read, FileCreationMode::open_existing));
@@ -46,15 +43,12 @@ namespace Luna
 			//Lum Pass.
 			{
 				luset(m_histogram_collect_pass_dlayout, device->new_descriptor_set_layout(DescriptorSetLayoutDesc({
-					DescriptorSetLayoutBinding(DescriptorType::cbv, 0, 1, ShaderVisibility::all),
-					DescriptorSetLayoutBinding(DescriptorType::uav, 1, 1, ShaderVisibility::all),
-					DescriptorSetLayoutBinding(DescriptorType::uav, 2, 1, ShaderVisibility::all)
+					DescriptorSetLayoutBinding(DescriptorType::uniform_buffer_view, 0, 1, ShaderVisibilityFlag::compute),
+					DescriptorSetLayoutBinding(DescriptorType::read_write_buffer_view, 1, 1, ShaderVisibilityFlag::compute),
+					DescriptorSetLayoutBinding(DescriptorType::read_write_texture_view, 2, 1, ShaderVisibilityFlag::compute)
 					})));
 				luset(m_histogram_collect_pass_slayout, device->new_shader_input_layout(ShaderInputLayoutDesc({ m_histogram_collect_pass_dlayout },
 					ShaderInputLayoutFlag::deny_vertex_shader_access |
-					ShaderInputLayoutFlag::deny_domain_shader_access |
-					ShaderInputLayoutFlag::deny_geometry_shader_access |
-					ShaderInputLayoutFlag::deny_hull_shader_access |
 					ShaderInputLayoutFlag::deny_pixel_shader_access)));
 
 				lulet(psf, open_file("LumHistogramCollect.cso", FileOpenFlag::read, FileCreationMode::open_existing));
@@ -71,16 +65,13 @@ namespace Luna
 			//Tone Mapping Pass.
 			{
 				luset(m_tone_mapping_pass_dlayout, device->new_descriptor_set_layout(DescriptorSetLayoutDesc({
-					DescriptorSetLayoutBinding(DescriptorType::cbv, 0, 1, ShaderVisibility::all),
-					DescriptorSetLayoutBinding(DescriptorType::srv, 1, 1, ShaderVisibility::all),
-					DescriptorSetLayoutBinding(DescriptorType::srv, 2, 1, ShaderVisibility::all),
-					DescriptorSetLayoutBinding(DescriptorType::uav, 3, 1, ShaderVisibility::all)
+					DescriptorSetLayoutBinding(DescriptorType::uniform_buffer_view, 0, 1, ShaderVisibilityFlag::compute),
+					DescriptorSetLayoutBinding(DescriptorType::read_texture_view, 1, 1, ShaderVisibilityFlag::compute),
+					DescriptorSetLayoutBinding(DescriptorType::read_texture_view, 2, 1, ShaderVisibilityFlag::compute),
+					DescriptorSetLayoutBinding(DescriptorType::read_write_texture_view, 3, 1, ShaderVisibilityFlag::compute)
 					})));
 				luset(m_tone_mapping_pass_slayout, device->new_shader_input_layout(ShaderInputLayoutDesc({ m_tone_mapping_pass_dlayout },
 					ShaderInputLayoutFlag::deny_vertex_shader_access |
-					ShaderInputLayoutFlag::deny_domain_shader_access |
-					ShaderInputLayoutFlag::deny_geometry_shader_access |
-					ShaderInputLayoutFlag::deny_hull_shader_access |
 					ShaderInputLayoutFlag::deny_pixel_shader_access)));
 
 				lulet(psf, open_file("ToneMappingCS.cso", FileOpenFlag::read, FileCreationMode::open_existing));
@@ -127,9 +118,9 @@ namespace Luna
             luset(m_histogram_collect_ds, device->new_descriptor_set(DescriptorSetDesc(m_global_data->m_histogram_collect_pass_dlayout)));
             luset(m_tone_mapping_pass_ds, device->new_descriptor_set(DescriptorSetDesc(m_global_data->m_tone_mapping_pass_dlayout)));
             auto cb_align = device->get_uniform_buffer_data_alignment();
-            luset(m_histogram_cb, device->new_resource(ResourceDesc::buffer(ResourceHeapType::upload, ResourceUsageFlag::constant_buffer, align_upper(sizeof(LumHistogramParams), cb_align))));
-			luset(m_histogram_collect_cb, device->new_resource(ResourceDesc::buffer(ResourceHeapType::upload, ResourceUsageFlag::constant_buffer, align_upper(sizeof(LumHistogramCollectParams), cb_align))));
-			luset(m_tone_mapping_cb, device->new_resource(ResourceDesc::buffer(ResourceHeapType::upload, ResourceUsageFlag::constant_buffer, align_upper(sizeof(ToneMappingParams), cb_align))));
+            luset(m_histogram_cb, device->new_buffer(BufferDesc(ResourceHeapType::upload, BufferUsageFlag::uniform_buffer, align_upper(sizeof(LumHistogramParams), cb_align))));
+			luset(m_histogram_collect_cb, device->new_buffer(BufferDesc(ResourceHeapType::upload, BufferUsageFlag::uniform_buffer, align_upper(sizeof(LumHistogramCollectParams), cb_align))));
+			luset(m_tone_mapping_cb, device->new_buffer(BufferDesc(ResourceHeapType::upload, BufferUsageFlag::uniform_buffer, align_upper(sizeof(ToneMappingParams), cb_align))));
 		}
         lucatchret;
         return ok;
@@ -141,8 +132,8 @@ namespace Luna
         lutry
         {
             auto cmdbuf = ctx->get_command_buffer();
-            auto lighting_tex = ctx->get_input("hdr_texture");
-            auto output_tex = ctx->get_output("ldr_texture");
+			Ref<ITexture> lighting_tex = ctx->get_input("hdr_texture");
+			Ref<ITexture> output_tex = ctx->get_output("ldr_texture");
 			auto lighting_tex_desc = lighting_tex->get_desc();
             auto output_tex_desc = output_tex->get_desc();
             auto cb_align = cmdbuf->get_device()->get_uniform_buffer_data_alignment();
@@ -150,8 +141,10 @@ namespace Luna
 			constexpr f32 max_brightness = 20.0f;
             // Tone mapping pass.
 			{
-				lulet(m_histogram_buffer, ctx->allocate_temporary_resource(ResourceDesc::buffer(ResourceHeapType::local, ResourceUsageFlag::unordered_access, sizeof(u32) * 256)));
-				lulet(m_lum_tex, ctx->allocate_temporary_resource(ResourceDesc::tex2d(ResourceHeapType::local, Format::r32_float, ResourceUsageFlag::unordered_access | ResourceUsageFlag::shader_resource, 1, 1)));
+				Ref<IBuffer> m_histogram_buffer;
+				luset(m_histogram_buffer, ctx->allocate_temporary_resource(RG::ResourceDesc::as_buffer(BufferDesc(ResourceHeapType::local, BufferUsageFlag::read_write_buffer, sizeof(u32) * 256))));
+				Ref<ITexture> m_lum_tex;
+				luset(m_lum_tex, ctx->allocate_temporary_resource(RG::ResourceDesc::as_texture(TextureDesc::tex2d(ResourceHeapType::local, Format::r32_float, TextureUsageFlag::read_write_texture | TextureUsageFlag::read_texture, 1, 1))));
 				f32 v = 0.0f;
 				luexp(m_lum_tex->get_device()->copy_resource({
 					ResourceCopyDesc::as_write_texture(m_lum_tex, &v, 4, 4, 0, BoxU(0, 0, 0, 1, 1, 1))
@@ -162,23 +155,26 @@ namespace Luna
 				{
 					cmdbuf->set_compute_shader_input_layout(m_global_data->m_histogram_pass_slayout);
 					cmdbuf->set_pipeline_state(m_global_data->m_histogram_pass_pso);
-					LumHistogramParams* mapped = nullptr;
-					luexp(m_histogram_cb->map_subresource(0, 0, 0, (void**)&mapped));
-					mapped->src_width = (u32)lighting_tex_desc.width_or_buffer_size;
-					mapped->src_height = lighting_tex_desc.height;
-					mapped->min_brightness = min_brightness;
-					mapped->max_brightness = max_brightness;
-					m_histogram_cb->unmap_subresource(0, 0, sizeof(LumHistogramParams));
-					cmdbuf->resource_barriers({ 
-						ResourceBarrierDesc::as_transition(lighting_tex, ResourceStateFlag::shader_resource_non_pixel, 0),
-						ResourceBarrierDesc::as_transition(m_histogram_buffer, ResourceStateFlag::unordered_access, 0),
-						ResourceBarrierDesc::as_transition(m_histogram_cb, ResourceStateFlag::vertex_and_constant_buffer, 0) });
+					lulet(mapped, m_histogram_cb->map(0, 0));
+					((LumHistogramParams*)mapped)->src_width = (u32)lighting_tex_desc.width;
+					((LumHistogramParams*)mapped)->src_height = lighting_tex_desc.height;
+					((LumHistogramParams*)mapped)->min_brightness = min_brightness;
+					((LumHistogramParams*)mapped)->max_brightness = max_brightness;
+					m_histogram_cb->unmap(0, sizeof(LumHistogramParams));
+					cmdbuf->resource_barrier({
+							BufferBarrier(m_histogram_buffer, BufferStateFlag::automatic, BufferStateFlag::shader_write_cs),
+							BufferBarrier(m_histogram_cb, BufferStateFlag::automatic, BufferStateFlag::uniform_buffer_cs),
+						}, {
+							TextureBarrier(lighting_tex, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::shader_read_cs)
+						});
 					auto vs = m_histogram_ds.get();
-                    vs->set_cbv(0, m_histogram_cb, ConstantBufferViewDesc(0, (u32)align_upper(sizeof(LumHistogramParams), cb_align)));
-					vs->set_srv(1, lighting_tex);
-					vs->set_uav(2, m_histogram_buffer, nullptr, &UnorderedAccessViewDesc::as_buffer(Format::r32_uint, 0, 256, 0, 0, false));
-					cmdbuf->set_compute_descriptor_set(0, vs);
-					cmdbuf->dispatch(align_upper(lighting_tex_desc.width_or_buffer_size, 16) / 16, 
+					vs->update_descriptors({
+						DescriptorSetWrite::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(m_histogram_cb, 0, (u32)align_upper(sizeof(LumHistogramParams), cb_align))),
+						DescriptorSetWrite::read_texture_view(1, TextureViewDesc::tex2d(lighting_tex)),
+						DescriptorSetWrite::read_write_buffer_view(2, BufferViewDesc::typed_buffer(m_histogram_buffer, 0, 256, Format::r32_uint))
+						});
+					cmdbuf->set_compute_descriptor_sets(0, { &vs, 1 });
+					cmdbuf->dispatch(align_upper(lighting_tex_desc.width, 16) / 16, 
 						align_upper(lighting_tex_desc.height, 16) / 16, 1);
 				}
 
@@ -186,47 +182,53 @@ namespace Luna
 				{
 					cmdbuf->set_compute_shader_input_layout(m_global_data->m_histogram_collect_pass_slayout);
 					cmdbuf->set_pipeline_state(m_global_data->m_histogram_collect_pass_pso);
-					LumHistogramCollectParams* mapped = nullptr;
-					luexp(m_histogram_collect_cb->map_subresource(0, 0, 0, (void**)&mapped));
-					mapped->min_brightness = min_brightness;
-					mapped->max_brightness = max_brightness;
-					mapped->time_coeff = 0.5f;
-					mapped->num_pixels = (u32)lighting_tex_desc.width_or_buffer_size * lighting_tex_desc.height;
-					m_histogram_collect_cb->unmap_subresource(0, 0, sizeof(LumHistogramCollectParams));
-					cmdbuf->resource_barriers({
-							ResourceBarrierDesc::as_uav(m_histogram_buffer),
-							ResourceBarrierDesc::as_transition(m_lum_tex, ResourceStateFlag::unordered_access, 0) });
+					lulet(mapped, m_histogram_collect_cb->map(0, 0));
+					((LumHistogramCollectParams*)mapped)->min_brightness = min_brightness;
+					((LumHistogramCollectParams*)mapped)->max_brightness = max_brightness;
+					((LumHistogramCollectParams*)mapped)->time_coeff = 0.5f;
+					((LumHistogramCollectParams*)mapped)->num_pixels = (u32)lighting_tex_desc.width * lighting_tex_desc.height;
+					m_histogram_collect_cb->unmap(0, sizeof(LumHistogramCollectParams));
+					cmdbuf->resource_barrier({
+							BufferBarrier(m_histogram_buffer, BufferStateFlag::shader_write_cs, BufferStateFlag::shader_read_cs | BufferStateFlag::shader_write_cs)
+						}, {
+							TextureBarrier(m_lum_tex, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::shader_read_cs | TextureStateFlag::shader_write_cs)
+						});
 					auto vs = m_histogram_collect_ds.get();
-                    vs->set_cbv(0, m_histogram_collect_cb, ConstantBufferViewDesc(0, (u32)align_upper(sizeof(LumHistogramCollectParams), cb_align)));
-					vs->set_uav(1, m_histogram_buffer, nullptr, &UnorderedAccessViewDesc::as_buffer(Format::r32_uint, 0, 256, 0, 0, false));
-					vs->set_uav(2, m_lum_tex);
-					cmdbuf->set_compute_descriptor_set(0, vs);
+					vs->update_descriptors({
+						DescriptorSetWrite::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(m_histogram_collect_cb, 0, (u32)align_upper(sizeof(LumHistogramCollectParams), cb_align))),
+						DescriptorSetWrite::read_write_buffer_view(1, BufferViewDesc::typed_buffer(m_histogram_buffer, 0, 256, Format::r32_uint)),
+						DescriptorSetWrite::read_write_texture_view(2, TextureViewDesc::tex2d(m_lum_tex))
+						});
+					cmdbuf->set_compute_descriptor_sets(0, { &vs, 1 });
 					cmdbuf->dispatch(1, 1, 1);
 				}
 
 				// Tone Mapping Pass.
 				{
-					void* mapped = nullptr;
-					luexp(m_tone_mapping_cb->map_subresource(0, 0, 0, &mapped));
+					lulet(mapped, m_tone_mapping_cb->map(0, 0));
 					ToneMappingParams params;
 					params.exposure = exposure;
 					params.auto_exposure = auto_exposure ? 1 : 0;
 					memcpy(mapped, &params, sizeof(ToneMappingParams));
-					m_tone_mapping_cb->unmap_subresource(0, 0, sizeof(ToneMappingParams));
+					m_tone_mapping_cb->unmap(0, sizeof(ToneMappingParams));
 					cmdbuf->set_compute_shader_input_layout(m_global_data->m_tone_mapping_pass_slayout);
 					cmdbuf->set_pipeline_state(m_global_data->m_tone_mapping_pass_pso);
-					cmdbuf->resource_barriers({
-						ResourceBarrierDesc::as_transition(m_lum_tex, ResourceStateFlag::shader_resource_non_pixel),
-						ResourceBarrierDesc::as_transition(lighting_tex, ResourceStateFlag::shader_resource_non_pixel),
-						ResourceBarrierDesc::as_transition(output_tex, ResourceStateFlag::unordered_access),
-						ResourceBarrierDesc::as_transition(m_tone_mapping_cb, ResourceStateFlag::vertex_and_constant_buffer) });
+					cmdbuf->resource_barrier({
+						{m_tone_mapping_cb, BufferStateFlag::automatic, BufferStateFlag::uniform_buffer_cs, ResourceBarrierFlag::none}
+						}, {
+						{m_lum_tex, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::shader_read_cs, ResourceBarrierFlag::none},
+						{lighting_tex, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::shader_read_cs, ResourceBarrierFlag::none},
+						{output_tex, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::shader_read_cs | TextureStateFlag::shader_write_cs, ResourceBarrierFlag::none}
+					});
 					auto vs = m_tone_mapping_pass_ds.get();
-                    vs->set_cbv(0, m_tone_mapping_cb, ConstantBufferViewDesc(0, (u32)align_upper(sizeof(ToneMappingParams), cb_align)));
-					vs->set_srv(1, lighting_tex);
-					vs->set_srv(2, m_lum_tex);
-					vs->set_uav(3, output_tex);
-					cmdbuf->set_compute_descriptor_set(0, vs);
-					cmdbuf->dispatch((u32)align_upper(output_tex_desc.width_or_buffer_size, 8) / 8, (u32)align_upper(output_tex_desc.height, 8) / 8, 1);
+					vs->update_descriptors({
+						DescriptorSetWrite::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(m_tone_mapping_cb, 0, (u32)align_upper(sizeof(ToneMappingParams), cb_align))),
+						DescriptorSetWrite::read_texture_view(1, TextureViewDesc::tex2d(lighting_tex)),
+						DescriptorSetWrite::read_texture_view(2, TextureViewDesc::tex2d(m_lum_tex)),
+						DescriptorSetWrite::read_write_texture_view(3, TextureViewDesc::tex2d(output_tex))
+						});
+					cmdbuf->set_compute_descriptor_sets(0, { &vs, 1 });
+					cmdbuf->dispatch((u32)align_upper(output_tex_desc.width, 8) / 8, (u32)align_upper(output_tex_desc.height, 8) / 8, 1);
 				}
 			}
         }
@@ -246,11 +248,11 @@ namespace Luna
 			if(ldr_texture == RG::INVALID_RESOURCE) return set_error(BasicError::bad_arguments(), "ToneMappingPass: Output \"ldr_texture\" is not specified.");
 
 			// Set output texture format if not specified.
-			RHI::ResourceDesc desc = compiler->get_resource_desc(hdr_texture);
-			RHI::ResourceDesc desc2 = compiler->get_resource_desc(ldr_texture);
-			desc2.width_or_buffer_size = desc2.width_or_buffer_size ? desc.width_or_buffer_size : desc.width_or_buffer_size;
-			desc2.height = desc2.height ? desc2.height : desc.height;
-			desc2.usages |= RHI::ResourceUsageFlag::unordered_access;
+			RG::ResourceDesc desc = compiler->get_resource_desc(hdr_texture);
+			RG::ResourceDesc desc2 = compiler->get_resource_desc(ldr_texture);
+			desc2.texture.width = desc.texture.width;
+			desc2.texture.height = desc.texture.height;
+			desc2.texture.usages |= RHI::TextureUsageFlag::read_write_texture;
 			compiler->set_resource_desc(ldr_texture, desc2);
             Ref<ToneMappingPass> pass = new_object<ToneMappingPass>();
             luexp(pass->init(data));

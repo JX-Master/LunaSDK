@@ -19,18 +19,15 @@ namespace Luna
         lutry
         {
             luset(m_buffer_visualization_pass_dlayout, device->new_descriptor_set_layout(DescriptorSetLayoutDesc({
-						DescriptorSetLayoutBinding(DescriptorType::cbv, 0, 1, ShaderVisibility::all),
-						DescriptorSetLayoutBinding(DescriptorType::srv, 1, 1, ShaderVisibility::all),
-                        DescriptorSetLayoutBinding(DescriptorType::srv, 2, 1, ShaderVisibility::all),
-                        DescriptorSetLayoutBinding(DescriptorType::srv, 3, 1, ShaderVisibility::all),
-						DescriptorSetLayoutBinding(DescriptorType::uav, 4, 1, ShaderVisibility::all)
+						DescriptorSetLayoutBinding(DescriptorType::uniform_buffer_view, 0, 1, ShaderVisibilityFlag::all),
+						DescriptorSetLayoutBinding(DescriptorType::srv, 1, 1, ShaderVisibilityFlag::all),
+                        DescriptorSetLayoutBinding(DescriptorType::srv, 2, 1, ShaderVisibilityFlag::all),
+                        DescriptorSetLayoutBinding(DescriptorType::srv, 3, 1, ShaderVisibilityFlag::all),
+						DescriptorSetLayoutBinding(DescriptorType::uav, 4, 1, ShaderVisibilityFlag::all)
 						})));
 
 			luset(m_buffer_visualization_pass_slayout, device->new_shader_input_layout(ShaderInputLayoutDesc({ m_buffer_visualization_pass_dlayout },
 				ShaderInputLayoutFlag::deny_vertex_shader_access |
-				ShaderInputLayoutFlag::deny_domain_shader_access |
-				ShaderInputLayoutFlag::deny_geometry_shader_access |
-				ShaderInputLayoutFlag::deny_hull_shader_access |
 				ShaderInputLayoutFlag::deny_pixel_shader_access)));
 
 			lulet(psf, open_file("BufferVisualization.cso", FileOpenFlag::read, FileCreationMode::open_existing));
@@ -56,7 +53,7 @@ namespace Luna
             luset(m_ds, device->new_descriptor_set(
                 DescriptorSetDesc(global_data->m_buffer_visualization_pass_dlayout)));
             luset(m_vis_params, device->new_resource(
-                ResourceDesc::buffer(ResourceHeapType::upload, ResourceUsageFlag::constant_buffer, 
+                ResourceDesc::buffer(ResourceHeapType::upload, BufferUsageFlag::uniform_buffer, 
                     align_upper(sizeof(u32), device->get_uniform_buffer_data_alignment()))));
         }
         lucatchret;
@@ -114,7 +111,7 @@ namespace Luna
 			if(depth_texture == RG::INVALID_RESOURCE) return set_error(BasicError::bad_arguments(), "BufferVisualizationPass: Input \"depth_texture\" is not specified.");
             if(base_color_roughness_texture == RG::INVALID_RESOURCE) return set_error(BasicError::bad_arguments(), "BufferVisualizationPass: Input \"base_color_roughness_texture\" is not specified.");
             if(normal_metallic_texture == RG::INVALID_RESOURCE) return set_error(BasicError::bad_arguments(), "BufferVisualizationPass: Input \"normal_metallic_texture\" is not specified.");
-            RHI::ResourceDesc desc = compiler->get_resource_desc(scene_texture);
+            RG::ResourceDesc desc = compiler->get_resource_desc(scene_texture);
 			if (desc.pixel_format != RHI::Format::rgba8_unorm)
 			{
 				return set_error(BasicError::bad_arguments(), "BufferVisualizationPass: Invalid format for \"scene_texture\" is specified. \"scene_texture\" must be Format::rgba8_unorm.");

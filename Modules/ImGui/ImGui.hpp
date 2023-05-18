@@ -27,7 +27,7 @@ namespace Luna
 		//! Updates ImGui IO using inputs and times. This should be called before ImGui::NewFrame().
 		LUNA_IMGUI_API void update_io();
 
-		LUNA_IMGUI_API RV render_draw_data(ImDrawData* data, RHI::ICommandBuffer* cmd_buffer, RHI::IRenderTargetView* render_target);
+		LUNA_IMGUI_API RV render_draw_data(ImDrawData* data, RHI::ICommandBuffer* cmd_buffer, RHI::ITexture* render_target);
 	}
 }
 

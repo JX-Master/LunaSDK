@@ -9,9 +9,6 @@
 */
 #include "RenderPassPool.hpp"
 #include "Device.hpp"
-#include "RenderTargetView.hpp"
-#include "DepthStencilView.hpp"
-#include "ResolveTargetView.hpp"
 
 namespace Luna
 {

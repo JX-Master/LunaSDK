@@ -18,9 +18,6 @@
 #include "DescriptorSet.hpp"
 #include "CommandBuffer.hpp"
 #include "Resource.hpp"
-#include "RenderTargetView.hpp"
-#include "DepthStencilView.hpp"
-#include "ResolveTargetView.hpp"
 #include "Fence.hpp"
 #include "PipelineState.hpp"
 #include "QueryHeap.hpp"
@@ -502,45 +499,6 @@ namespace Luna
 		{
 			f64 period = m_physical_device_properties.limits.timestampPeriod;
 			return 1000000000.0 / period;
-		}
-		R<Ref<IRenderTargetView>> Device::new_render_target_view(ITexture* texture, const RenderTargetViewDesc* desc)
-		{
-			Ref<IRenderTargetView> ret;
-			lutry
-			{
-				auto view = new_object<RenderTargetView>();
-				view->m_device = this;
-				luexp(view->init(texture, desc));
-				ret = view;
-			}
-			lucatchret;
-			return ret;
-		}
-		R<Ref<IDepthStencilView>> Device::new_depth_stencil_view(ITexture* texture, const DepthStencilViewDesc* desc)
-		{
-			Ref<IDepthStencilView> ret;
-			lutry
-			{
-				auto view = new_object<DepthStencilView>();
-				view->m_device = this;
-				luexp(view->init(texture, desc));
-				ret = view;
-			}
-			lucatchret;
-			return ret;
-		}
-		R<Ref<IResolveTargetView>> Device::new_resolve_target_view(ITexture* texture, const ResolveTargetViewDesc* desc)
-		{
-			Ref<IResolveTargetView> ret;
-			lutry
-			{
-				auto view = new_object<ResolveTargetView>();
-				view->m_device = this;
-				luexp(view->init(texture, desc));
-				ret = view;
-			}
-			lucatchret;
-			return ret;
 		}
 		R<Ref<IQueryHeap>> Device::new_query_heap(const QueryHeapDesc& desc)
 		{

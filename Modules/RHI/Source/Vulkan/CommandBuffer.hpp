@@ -58,9 +58,9 @@ namespace Luna
 			u32 m_rt_height = 0;
 			u32 m_num_color_attachments = 0;
 			u32 m_num_resolve_attachments = 0;
-			IRenderTargetView* m_color_attachments[8] = { nullptr };
-			IResolveTargetView* m_resolve_attachments[8] = { nullptr };
-			IDepthStencilView* m_dsv = nullptr;
+			ImageView* m_color_attachments[8] = { nullptr };
+			ImageView* m_resolve_attachments[8] = { nullptr };
+			ImageView* m_dsv = nullptr;
 			Vector<VkFramebuffer> m_fbos;
 
 			IShaderInputLayout* m_graphics_shader_input_layout = nullptr;

@@ -139,6 +139,12 @@ namespace Luna
 
 				if (m_draw_func) m_draw_func();
 
+				m_command_buffer->resource_barrier({},
+				{
+					{get_back_buffer(), TEXTURE_BARRIER_ALL_SUBRESOURCES, TextureStateFlag::automatic, TextureStateFlag::present, ResourceBarrierFlag::none}
+				});
+				lupanic_if_failed(m_command_buffer->submit({}, {}, true));
+				m_command_buffer->wait();
 				lupanic_if_failed(m_swap_chain->present());
 			}
 			if (m_close_func) m_close_func();

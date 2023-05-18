@@ -30,7 +30,7 @@ namespace Luna
         lustruct("SkyBoxPass", "{2f57e8a4-1d4b-41b2-8c3c-9a619276e4a7}");
         luiimpl();
 
-        Ref<RHI::IResource> skybox;
+        Ref<RHI::ITexture> skybox;
         CameraType camera_type;
         Float4x4 view_to_world;
         f32 camera_fov;
@@ -40,7 +40,7 @@ namespace Luna
 
         private:
         Ref<SkyBoxPassGlobalData> m_global_data;
-        Ref<RHI::IResource> m_skybox_params_cb;
+        Ref<RHI::IBuffer> m_skybox_params_cb;
         Ref<RHI::IDescriptorSet> m_ds;
     };
 

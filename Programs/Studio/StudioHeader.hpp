@@ -168,9 +168,6 @@ namespace Luna
 
 	struct AppEnv
 	{
-		Ref<RHI::ICommandQueue> graphics_queue;
-		Ref<RHI::ICommandQueue> async_compute_queue;
-
 		HashSet<Name> new_asset_types; // Displayed on the "New" tab of asset browser.
 		HashMap<Name, AssetImporterDesc> importer_types;
 

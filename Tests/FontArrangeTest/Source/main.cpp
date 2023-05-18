@@ -179,10 +179,7 @@ void run()
 		lupanic_if_failed(g_shape_draw_list->close());
 
 		RHI::RenderPassDesc desc;
-		auto rtv = RHI::get_main_device()->new_render_target_view(g_swap_chain->get_current_back_buffer().get()).get();
-		desc.color_attachments[0] = rtv;
-		desc.color_load_ops[0] = RHI::LoadOp::clear;
-		desc.color_clear_values[0] = Float4U{ 0.0f };
+		desc.color_attachments[0] = RHI::ColorAttachment(g_swap_chain->get_current_back_buffer().get(), RHI::LoadOp::clear, RHI::StoreOp::store, Float4U{ 0.0f });
 		g_command_buffer->begin_render_pass(desc);
 		g_command_buffer->end_render_pass();
 

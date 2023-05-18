@@ -10,7 +10,7 @@
 */
 #include "Resource.hpp"
 #include "../../RHI.hpp"
-
+#include "DescriptorSet.hpp"
 namespace Luna
 {
 	namespace RHI
@@ -90,6 +90,171 @@ namespace Luna
 			D3D12_RANGE* pRange = &range;
 			m_res->Unmap(0, pRange);
 		}
+		bool compare_image_view_desc(const TextureViewDesc& lhs, const TextureViewDesc& rhs)
+		{
+			return
+				lhs.texture == rhs.texture &&
+				lhs.type == rhs.type &&
+				lhs.format == rhs.format &&
+				lhs.mip_slice == rhs.mip_slice &&
+				lhs.mip_size == rhs.mip_size &&
+				lhs.array_slice == rhs.array_slice &&
+				lhs.array_size == rhs.array_size;
+		}
+		R<ID3D12DescriptorHeap*> TextureResource::get_rtv(const TextureViewDesc& desc)
+		{
+			auto validated_desc = desc;
+			validate_texture_view_desc(validated_desc);
+			LockGuard guard(m_views_lock);
+			for (auto& v : m_rtvs)
+			{
+				if (compare_image_view_desc(v.first, validated_desc))
+				{
+					return v.second.Get();
+				}
+			}
+			// Create a new one.
+			ComPtr<ID3D12DescriptorHeap> heap;
+			lutry
+			{
+				luset(heap, m_device->m_rtv_heap.allocate_view());
+				TextureResource* reso = cast_object<TextureResource>(desc.texture->get_object());
+				ID3D12Resource* res = reso->m_res.Get();
+				D3D12_RENDER_TARGET_VIEW_DESC rtv;
+				switch (validated_desc.type)
+				{
+				case TextureViewType::tex1d:
+					rtv.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE1D;
+					rtv.Texture1D.MipSlice = validated_desc.mip_slice;
+					break;
+				case TextureViewType::tex1darray:
+					rtv.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE1DARRAY;
+					rtv.Texture1DArray.ArraySize = validated_desc.array_size;
+					rtv.Texture1DArray.FirstArraySlice = validated_desc.array_slice;
+					rtv.Texture1DArray.MipSlice = validated_desc.mip_slice;
+					break;
+				case TextureViewType::tex2d:
+					if (reso->m_desc.sample_count == 1)
+					{
+						rtv.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+						rtv.Texture2D.MipSlice = validated_desc.mip_slice;
+						rtv.Texture2D.PlaneSlice = 0;
+					}
+					else
+					{
+						rtv.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DMS;
+					}
+					break;
+				case TextureViewType::tex2darray:
+					if (reso->m_desc.sample_count == 1)
+					{
+						rtv.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
+						rtv.Texture2D.MipSlice = validated_desc.mip_slice;
+						rtv.Texture2D.PlaneSlice = 0;
+					}
+					else
+					{
+						rtv.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DMSARRAY;
+						rtv.Texture2DMSArray.ArraySize = validated_desc.array_size;
+						rtv.Texture2DMSArray.FirstArraySlice = validated_desc.array_slice;
+					}
+					break;
+				case TextureViewType::tex3d:
+					rtv.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE3D;
+					rtv.Texture3D.FirstWSlice = validated_desc.array_slice;
+					rtv.Texture3D.MipSlice = validated_desc.mip_slice;
+					rtv.Texture3D.WSize = validated_desc.array_size;
+					break;
+				default:
+					lupanic();
+				}
+				rtv.Format = encode_pixel_format(validated_desc.format);
+				m_device->m_device->CreateRenderTargetView(res, &rtv, heap->GetCPUDescriptorHandleForHeapStart());
+				m_rtvs.push_back(make_pair(validated_desc, heap));
+			}
+			lucatchret;
+			return heap.Get();
+		}
+		R<ID3D12DescriptorHeap*> TextureResource::get_dsv(const TextureViewDesc& desc)
+		{
+			auto validated_desc = desc;
+			validate_texture_view_desc(validated_desc);
+			LockGuard guard(m_views_lock);
+			for (auto& v : m_dsvs)
+			{
+				if (compare_image_view_desc(v.first, validated_desc))
+				{
+					return v.second.Get();
+				}
+			}
+			// Create a new one.
+			ComPtr<ID3D12DescriptorHeap> heap;
+			lutry
+			{
+				luset(heap, m_device->m_dsv_heap.allocate_view());
+				TextureResource* reso = cast_object<TextureResource>(desc.texture->get_object());
+				ID3D12Resource* res = reso->m_res.Get();
+				D3D12_DEPTH_STENCIL_VIEW_DESC dsv;
+				dsv.Format = encode_pixel_format(validated_desc.format);
+				dsv.Flags = D3D12_DSV_FLAG_NONE;
+				switch (validated_desc.type)
+				{
+				case TextureViewType::tex1d:
+					dsv.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE1D;
+					dsv.Texture1D.MipSlice = validated_desc.mip_slice;
+					break;
+				case TextureViewType::tex1darray:
+					dsv.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE1DARRAY;
+					dsv.Texture1DArray.ArraySize = validated_desc.array_size;
+					dsv.Texture1DArray.FirstArraySlice = validated_desc.array_slice;
+					dsv.Texture1DArray.MipSlice = validated_desc.mip_slice;
+					break;
+				case TextureViewType::tex2d:
+					if (reso->m_desc.sample_count == 1)
+					{
+						dsv.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+						dsv.Texture2D.MipSlice = validated_desc.mip_slice;
+					}
+					else
+					{
+						dsv.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2DMS;
+					}
+					break;
+				case TextureViewType::tex2darray:
+					if (reso->m_desc.sample_count == 1)
+					{
+						dsv.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2DARRAY;
+						dsv.Texture2DArray.ArraySize = validated_desc.array_size;
+						dsv.Texture2DArray.FirstArraySlice = validated_desc.array_slice;
+						dsv.Texture2DArray.MipSlice = validated_desc.mip_slice;
+					}
+					else
+					{
+						dsv.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2DMSARRAY;
+						dsv.Texture2DMSArray.ArraySize = validated_desc.array_size;
+						dsv.Texture2DMSArray.FirstArraySlice = validated_desc.array_slice;
+					}
+					break;
+				default:
+					lupanic();
+				}
+				m_device->m_device->CreateDepthStencilView(res, &dsv, heap->GetCPUDescriptorHandleForHeapStart());
+				m_dsvs.push_back(make_pair(validated_desc, heap));
+			}
+			lucatchret;
+			return heap.Get();
+		}
+		TextureResource::~TextureResource()
+		{
+			for (auto& rtv : m_rtvs)
+			{
+				m_device->m_rtv_heap.free_view(rtv.second.Get());
+			}
+			for (auto& dsv : m_dsvs)
+			{
+				m_device->m_dsv_heap.free_view(dsv.second.Get());
+			}
+		}
 		RV TextureResource::init_as_committed(const TextureDesc& desc, const ClearValue* optimized_clear_value)
 		{
 			lutry
@@ -132,6 +297,8 @@ namespace Luna
 					&allocation_desc,
 					&rd, state, pcv, &m_memory->m_allocation, IID_PPV_ARGS(&m_res)
 				)));
+				auto created_desc = m_res->GetDesc();
+				m_desc.mip_levels = created_desc.MipLevels;
 				post_init();
 			}
 			lucatchret;
@@ -175,6 +342,8 @@ namespace Luna
 					memory->m_allocation.Get(), 0,
 					&rd, state, NULL, IID_PPV_ARGS(&m_res))));
 				m_memory = memory;
+				auto created_desc = m_res->GetDesc();
+				m_desc.mip_levels = created_desc.MipLevels;
 				post_init();
 			}
 			lucatchret;

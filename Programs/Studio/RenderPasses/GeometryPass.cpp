@@ -22,21 +22,18 @@ namespace Luna
         lutry
         {
             luset(m_geometry_pass_dlayout, device->new_descriptor_set_layout(DescriptorSetLayoutDesc({
-				DescriptorSetLayoutBinding(DescriptorType::cbv, 0, 1, ShaderVisibility::all),
-				DescriptorSetLayoutBinding(DescriptorType::srv, 1, 1, ShaderVisibility::all),
-				DescriptorSetLayoutBinding(DescriptorType::srv, 2, 1, ShaderVisibility::pixel),
-				DescriptorSetLayoutBinding(DescriptorType::srv, 3, 1, ShaderVisibility::pixel),
-				DescriptorSetLayoutBinding(DescriptorType::srv, 4, 1, ShaderVisibility::pixel),
-				DescriptorSetLayoutBinding(DescriptorType::srv, 5, 1, ShaderVisibility::pixel),
-				DescriptorSetLayoutBinding(DescriptorType::srv, 6, 1, ShaderVisibility::pixel),
-				DescriptorSetLayoutBinding(DescriptorType::sampler, 7, 1, ShaderVisibility::pixel)
+				DescriptorSetLayoutBinding(DescriptorType::uniform_buffer_view, 0, 1, ShaderVisibilityFlag::all),
+				DescriptorSetLayoutBinding(DescriptorType::srv, 1, 1, ShaderVisibilityFlag::all),
+				DescriptorSetLayoutBinding(DescriptorType::srv, 2, 1, ShaderVisibilityFlag::pixel),
+				DescriptorSetLayoutBinding(DescriptorType::srv, 3, 1, ShaderVisibilityFlag::pixel),
+				DescriptorSetLayoutBinding(DescriptorType::srv, 4, 1, ShaderVisibilityFlag::pixel),
+				DescriptorSetLayoutBinding(DescriptorType::srv, 5, 1, ShaderVisibilityFlag::pixel),
+				DescriptorSetLayoutBinding(DescriptorType::srv, 6, 1, ShaderVisibilityFlag::pixel),
+				DescriptorSetLayoutBinding(DescriptorType::sampler, 7, 1, ShaderVisibilityFlag::pixel)
 				})));
 
 			luset(m_geometry_pass_slayout, device->new_shader_input_layout(ShaderInputLayoutDesc({ m_geometry_pass_dlayout },
-				ShaderInputLayoutFlag::allow_input_assembler_input_layout |
-				ShaderInputLayoutFlag::deny_domain_shader_access |
-				ShaderInputLayoutFlag::deny_geometry_shader_access |
-				ShaderInputLayoutFlag::deny_hull_shader_access)));
+				ShaderInputLayoutFlag::allow_input_assembler_input_layout)));
 
 			lulet(vsf, open_file("GeometryVert.cso", FileOpenFlag::read, FileCreationMode::open_existing));
 			auto file_size = vsf->get_size();
@@ -51,11 +48,11 @@ namespace Luna
 			psf = nullptr;
 
 			GraphicsPipelineStateDesc ps_desc;
-			ps_desc.primitive_topology_type = PrimitiveTopologyType::triangle;
+			ps_desc.primitive_topology = PrimitiveTopology::triangle_list;
 			ps_desc.sample_mask = U32_MAX;
 			ps_desc.sample_quality = 0;
-			ps_desc.blend_state = BlendDesc(false, false, { AttachmentBlendDesc(false, false, BlendFactor::src_alpha,
-				BlendFactor::inv_src_alpha, BlendOp::add, BlendFactor::inv_src_alpha, BlendFactor::zero, BlendOp::add, LogicOp::noop, ColorWriteMask::all) });
+			ps_desc.blend_state = BlendDesc({ AttachmentBlendDesc(false, false, BlendFactor::src_alpha,
+				BlendFactor::inv_src_alpha, BlendOp::add, BlendFactor::inv_src_alpha, BlendFactor::zero, BlendOp::add, ColorWriteMask::all) });
 			ps_desc.rasterizer_state = RasterizerDesc(FillMode::solid, CullMode::back, 0, 0.0f, 0.0f, 0, false, true, false, false, false);
 			ps_desc.depth_stencil_state = DepthStencilDesc(true, false, ComparisonFunc::less_equal, false, 0x00, 0x00, DepthStencilOpDesc(), DepthStencilOpDesc());
 			ps_desc.ib_strip_cut_value = IndexBufferStripCutValue::disabled;
@@ -148,16 +145,15 @@ namespace Luna
 			cmdbuf->begin_render_pass(render_pass);
 			cmdbuf->set_graphics_shader_input_layout(m_global_data->m_geometry_pass_slayout);
 			cmdbuf->set_pipeline_state(m_global_data->m_geometry_pass_pso);
-			cmdbuf->set_primitive_topology(PrimitiveTopology::triangle_list);
-			cmdbuf->set_viewport(Viewport(0.0f, 0.0f, (f32)render_desc.width_or_buffer_size, (f32)render_desc.height, 0.0f, 1.0f));
-			cmdbuf->set_scissor_rect(RectI(0, 0, (i32)render_desc.width_or_buffer_size, (i32)render_desc.height));
+			cmdbuf->set_viewport(Viewport(0.0f, 0.0f, (f32)render_desc.width, (f32)render_desc.height, 0.0f, 1.0f));
+			cmdbuf->set_scissor_rect(RectI(0, 0, (i32)render_desc.width, (i32)render_desc.height));
 
 			// Draw Meshes.
 			for (usize i = 0; i < ts.size(); ++i)
 			{
 				auto model = Asset::get_asset_data<Model>(rs[i]->model);
 				auto mesh = Asset::get_asset_data<Mesh>(model->mesh);
-				cmdbuf->set_vertex_buffers(0, { VertexBufferViewDesc(mesh->vb, 0,
+				cmdbuf->set_vertex_buffers(0, { VertexBufferView(mesh->vb, 0,
 					mesh->vb_count * sizeof(Vertex), sizeof(Vertex)) });
 				cmdbuf->set_index_buffer({mesh->ib, 0, mesh->ib_count * sizeof(u32), Format::r32_uint});
 
@@ -238,7 +234,7 @@ namespace Luna
 			if(base_color_roughness_tex == RG::INVALID_RESOURCE) return set_error(BasicError::bad_arguments(), "GeometryPass: Output \"base_color_roughness_texture\" is not specified.");
 			if(normal_metallic_tex == RG::INVALID_RESOURCE) return set_error(BasicError::bad_arguments(), "GeometryPass: Output \"normal_metallic_tex\" is not specified.");
 			if(emissive_tex == RG::INVALID_RESOURCE) return set_error(BasicError::bad_arguments(), "GeometryPass: Output \"emissive_tex\" is not specified.");
-			RHI::ResourceDesc desc = compiler->get_resource_desc(depth_texture);
+			RG::ResourceDesc desc = compiler->get_resource_desc(depth_texture);
 			if(desc.type == RHI::ResourceType::texture_2d && desc.pixel_format == RHI::Format::unknown)
 			{
 				desc.pixel_format = RHI::Format::d32_float;
@@ -255,7 +251,7 @@ namespace Luna
 			if(!desc2.width_or_buffer_size) desc2.width_or_buffer_size = desc.width_or_buffer_size;
 			if(!desc2.height) desc2.height = desc.height;
 			if(desc2.pixel_format == RHI::Format::unknown) desc2.pixel_format = RHI::Format::rgba8_unorm;
-			desc2.usages |= RHI::ResourceUsageFlag::render_target;
+			desc2.usages |= RHI::TextureUsageFlag::render_target;
 			compiler->set_resource_desc(base_color_roughness_tex, desc2);
 
 			desc2 = compiler->get_resource_desc(normal_metallic_tex);
@@ -263,7 +259,7 @@ namespace Luna
 			if(!desc2.width_or_buffer_size) desc2.width_or_buffer_size = desc.width_or_buffer_size;
 			if(!desc2.height) desc2.height = desc.height;
 			if(desc2.pixel_format == RHI::Format::unknown) desc2.pixel_format = RHI::Format::rgba8_unorm;
-			desc2.usages |= RHI::ResourceUsageFlag::render_target;
+			desc2.usages |= RHI::TextureUsageFlag::render_target;
 			compiler->set_resource_desc(normal_metallic_tex, desc2);
 
 			desc2 = compiler->get_resource_desc(emissive_tex);
@@ -271,7 +267,7 @@ namespace Luna
 			if(!desc2.width_or_buffer_size) desc2.width_or_buffer_size = desc.width_or_buffer_size;
 			if(!desc2.height) desc2.height = desc.height;
 			if(desc2.pixel_format == RHI::Format::unknown) desc2.pixel_format = RHI::Format::rgba16_float;
-			desc2.usages |= RHI::ResourceUsageFlag::render_target;
+			desc2.usages |= RHI::TextureUsageFlag::render_target;
 			compiler->set_resource_desc(emissive_tex, desc2);
 
 			Ref<GeometryPass> pass = new_object<GeometryPass>();

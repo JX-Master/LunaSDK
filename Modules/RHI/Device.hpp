@@ -12,8 +12,6 @@
 #include "PipelineState.hpp"
 #include "DescriptorSet.hpp"
 #include "CommandBuffer.hpp"
-#include "RenderTargetView.hpp"
-#include "DepthStencilView.hpp"
 #include "SwapChain.hpp"
 #include "Fence.hpp"
 #include "QueryHeap.hpp"
@@ -149,12 +147,6 @@ namespace Luna
 			//! The timestamp frequency is measured in ticks per second.
 			virtual R<f64> get_command_queue_timestamp_frequency(u32 command_queue_index) = 0;
 
-			virtual R<Ref<IRenderTargetView>> new_render_target_view(ITexture* resource, const RenderTargetViewDesc* desc = nullptr) = 0;
-
-			virtual R<Ref<IDepthStencilView>> new_depth_stencil_view(ITexture* resource, const DepthStencilViewDesc* desc = nullptr) = 0;
-
-			virtual R<Ref<IResolveTargetView>> new_resolve_target_view(ITexture* resource, const ResolveTargetViewDesc* desc = nullptr) = 0;
-		
 			virtual R<Ref<IQueryHeap>> new_query_heap(const QueryHeapDesc& desc) = 0;
 
 			virtual R<Ref<IFence>> new_fence() = 0;

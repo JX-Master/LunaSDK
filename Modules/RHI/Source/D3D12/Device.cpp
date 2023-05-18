@@ -13,9 +13,6 @@
 #include "DescriptorSet.hpp"
 #include "ShaderInputLayout.hpp"
 #include "DescriptorSetLayout.hpp"
-#include "RenderTargetView.hpp"
-#include "DepthStencilView.hpp"
-#include "ResolveTargetView.hpp"
 #include "QueryHeap.hpp"
 #include "CommandBuffer.hpp"
 #include "Fence.hpp"
@@ -473,42 +470,6 @@ namespace Luna
 			HRESULT hr = m_command_queues[command_queue_index]->m_command_queue->GetTimestampFrequency(&t);
 			if (FAILED(hr)) return encode_hresult(hr).errcode();
 			return (f64)t;
-		}
-		R<Ref<IRenderTargetView>> Device::new_render_target_view(ITexture* texture, const RenderTargetViewDesc* desc)
-		{
-			lucheck_msg(texture, "\"texture\" was nullptr");
-			Ref<RenderTargetView> view = new_object<RenderTargetView>();
-			view->m_device = this;
-			RV r = view->init(texture, desc);
-			if (!r.valid())
-			{
-				return r.errcode();
-			}
-			return view;
-		}
-		R<Ref<IDepthStencilView>> Device::new_depth_stencil_view(ITexture* texture, const DepthStencilViewDesc* desc)
-		{
-			lucheck_msg(texture, "\"texture\" was nullptr");
-			Ref<DepthStencilView> view = new_object<DepthStencilView>();
-			view->m_device = this;
-			RV r = view->init(texture, desc);
-			if (!r.valid())
-			{
-				return r.errcode();
-			}
-			return view;
-		}
-		R<Ref<IResolveTargetView>> Device::new_resolve_target_view(ITexture* texture, const ResolveTargetViewDesc* desc)
-		{
-			lucheck_msg(texture, "\"texture\" was nullptr");
-			Ref<ResolveTargetView> view = new_object<ResolveTargetView>();
-			view->m_device = this;
-			RV r = view->init(texture, desc);
-			if (!r.valid())
-			{
-				return r.errcode();
-			}
-			return view;
 		}
 		R<Ref<IQueryHeap>> Device::new_query_heap(const QueryHeapDesc& desc)
 		{

@@ -49,6 +49,15 @@ namespace Luna
 			TextureDesc m_desc;
 			Vector<D3D12_RESOURCE_STATES> m_states;
 
+			Vector<Pair<TextureViewDesc, ComPtr<ID3D12DescriptorHeap>>> m_rtvs;
+			Vector<Pair<TextureViewDesc, ComPtr<ID3D12DescriptorHeap>>> m_dsvs;
+			SpinLock m_views_lock;
+
+			R<ID3D12DescriptorHeap*> get_rtv(const TextureViewDesc& desc);
+			R<ID3D12DescriptorHeap*> get_dsv(const TextureViewDesc& desc);
+
+			~TextureResource();
+
 			u32 count_subresources() const
 			{
 				return m_desc.mip_levels * m_desc.array_size;

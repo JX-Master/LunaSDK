@@ -21,20 +21,16 @@ namespace Luna
         lutry
         {
             luset(m_skybox_pass_dlayout, device->new_descriptor_set_layout(DescriptorSetLayoutDesc({
-						DescriptorSetLayoutBinding(DescriptorType::cbv, 0, 1, ShaderVisibility::all),
-						DescriptorSetLayoutBinding(DescriptorType::srv, 1, 1, ShaderVisibility::all),
-                        DescriptorSetLayoutBinding(DescriptorType::srv, 2, 1, ShaderVisibility::all),
-						DescriptorSetLayoutBinding(DescriptorType::uav, 3, 1, ShaderVisibility::all),
-						DescriptorSetLayoutBinding(DescriptorType::sampler, 4, 1, ShaderVisibility::all)
+						DescriptorSetLayoutBinding(DescriptorType::uniform_buffer_view, 0, 1, ShaderVisibilityFlag::compute),
+						DescriptorSetLayoutBinding(DescriptorType::sampled_texture_view, 1, 1, ShaderVisibilityFlag::compute),
+                        DescriptorSetLayoutBinding(DescriptorType::read_texture_view, 2, 1, ShaderVisibilityFlag::compute),
+						DescriptorSetLayoutBinding(DescriptorType::read_write_texture_view, 3, 1, ShaderVisibilityFlag::compute),
+						DescriptorSetLayoutBinding(DescriptorType::sampler, 4, 1, ShaderVisibilityFlag::compute)
 						})));
-
-			luset(m_skybox_pass_slayout, device->new_shader_input_layout(ShaderInputLayoutDesc({ m_skybox_pass_dlayout },
+            auto dl = m_skybox_pass_dlayout.get();
+			luset(m_skybox_pass_slayout, device->new_shader_input_layout(ShaderInputLayoutDesc({ &dl, 1 },
 				ShaderInputLayoutFlag::deny_vertex_shader_access |
-				ShaderInputLayoutFlag::deny_domain_shader_access |
-				ShaderInputLayoutFlag::deny_geometry_shader_access |
-				ShaderInputLayoutFlag::deny_hull_shader_access |
 				ShaderInputLayoutFlag::deny_pixel_shader_access)));
-
 			lulet(psf, open_file("SkyboxCS.cso", FileOpenFlag::read, FileCreationMode::open_existing));
 			auto file_size = psf->get_size();
 			auto cs_blob = Blob((usize)file_size);
@@ -48,7 +44,6 @@ namespace Luna
         lucatchret;
         return ok;
     }
-
     struct SkyboxParams
 	{
 		Float4x4U view_to_world;
@@ -56,7 +51,6 @@ namespace Luna
 		u32 width;
 		u32 height;
 	};
-
     RV SkyBoxPass::init(SkyBoxPassGlobalData* global_data)
     {
         using namespace RHI;
@@ -65,54 +59,60 @@ namespace Luna
             m_global_data = global_data;
             auto device = m_global_data->m_skybox_pass_pso->get_device();
             auto cb_align = device->get_uniform_buffer_data_alignment();
-            luset(m_skybox_params_cb, device->new_resource(ResourceDesc::buffer(ResourceHeapType::upload, ResourceUsageFlag::constant_buffer, align_upper(sizeof(SkyboxParams), cb_align))));
+            luset(m_skybox_params_cb, device->new_buffer(BufferDesc(ResourceHeapType::upload, BufferUsageFlag::uniform_buffer, align_upper(sizeof(SkyboxParams), cb_align))));
             luset(m_ds, device->new_descriptor_set(DescriptorSetDesc(m_global_data->m_skybox_pass_dlayout)));
         }
         lucatchret;
         return ok;
     }
-
     RV SkyBoxPass::execute(RG::IRenderPassContext* ctx)
     {
         using namespace RHI;
         lutry
         {
             auto cmdbuf = ctx->get_command_buffer();
-            auto output_tex = ctx->get_output(m_global_data->m_texture_name);
-            auto depth_tex = ctx->get_input(m_global_data->m_depth_texture_name);
+            Ref<ITexture> output_tex = ctx->get_output(m_global_data->m_texture_name);
+            Ref<ITexture> depth_tex = ctx->get_input(m_global_data->m_depth_texture_name);
 			if (skybox && camera_type == CameraType::perspective)
 			{
 				// Draw skybox.
-				SkyboxParams* mapped = nullptr;
-				luexp(m_skybox_params_cb->map_subresource(0, 0, 0, (void**)&mapped));
+				lulet(mapped, m_skybox_params_cb->map(0, 0));
 				auto camera_forward_dir = mul(Float4(0.0f, 0.0f, 1.0f, 0.0f), view_to_world);
-				memcpy(&mapped->view_to_world, &view_to_world, sizeof(Float4x4));
-				mapped->fov = camera_fov;
+				memcpy(&((SkyboxParams*)mapped)->view_to_world, &view_to_world, sizeof(Float4x4));
+                ((SkyboxParams*)mapped)->fov = camera_fov;
                 auto desc = output_tex->get_desc();
-				mapped->width = (u32)desc.width_or_buffer_size;
-				mapped->height = (u32)desc.height;
-				m_skybox_params_cb->unmap_subresource(0, 0, sizeof(SkyboxParams));
-				cmdbuf->resource_barriers({
-					ResourceBarrierDesc::as_transition(output_tex, ResourceStateFlag::unordered_access),
-					ResourceBarrierDesc::as_transition(skybox, ResourceStateFlag::shader_resource_non_pixel),
-                    ResourceBarrierDesc::as_transition(depth_tex, ResourceStateFlag::shader_resource_non_pixel),
-					ResourceBarrierDesc::as_transition(m_skybox_params_cb, ResourceStateFlag::vertex_and_constant_buffer)
-					});
+                ((SkyboxParams*)mapped)->width = (u32)desc.width;
+                ((SkyboxParams*)mapped)->height = (u32)desc.height;
+				m_skybox_params_cb->unmap(0, sizeof(SkyboxParams));
+				cmdbuf->resource_barrier(
+                    {
+                        BufferBarrier(m_skybox_params_cb, BufferStateFlag::automatic, BufferStateFlag::uniform_buffer_cs)
+                    },
+                    {
+                        TextureBarrier(output_tex, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::shader_write_cs),
+                        TextureBarrier(skybox, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::shader_read_cs),
+                        TextureBarrier(depth_tex, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::shader_read_cs),
+                    });
 				cmdbuf->set_compute_shader_input_layout(m_global_data->m_skybox_pass_slayout);
 				cmdbuf->set_pipeline_state(m_global_data->m_skybox_pass_pso);
                 auto cb_align = cmdbuf->get_device()->get_uniform_buffer_data_alignment();
-				m_ds->set_cbv(0, m_skybox_params_cb, ConstantBufferViewDesc(0, (u32)align_upper(sizeof(SkyboxParams), cb_align)));
-				m_ds->set_srv(1, skybox);
-                m_ds->set_srv(2, depth_tex, &ShaderResourceViewDesc::tex2d(Format::r32_float, 0, 1, 0.0f));
-				m_ds->set_uav(3, output_tex);
-				m_ds->set_sampler(4, SamplerDesc(Filter::min_mag_mip_linear, TextureAddressMode::repeat, TextureAddressMode::repeat, TextureAddressMode::repeat));
-				cmdbuf->set_compute_descriptor_set(0, m_ds);
-				cmdbuf->dispatch(align_upper((u32)desc.width_or_buffer_size, 8) / 8, (u32)align_upper(desc.height, 8) / 8, 1);
+                m_ds->update_descriptors({
+                    DescriptorSetWrite::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(m_skybox_params_cb, 0, (u32)align_upper(sizeof(SkyboxParams), cb_align))),
+                    DescriptorSetWrite::sampled_texture_view(1, TextureViewDesc::tex2d(skybox)),
+                    DescriptorSetWrite::read_texture_view(2, TextureViewDesc::tex2d(depth_tex, Format::r32_float, 0, 1)),
+                    DescriptorSetWrite::read_write_texture_view(3, TextureViewDesc::tex2d(output_tex)),
+                    DescriptorSetWrite::sampler(4, SamplerDesc(Filter::min_mag_mip_linear, TextureAddressMode::repeat, TextureAddressMode::repeat, TextureAddressMode::repeat))
+                    });
+                auto ds = m_ds.get();
+                cmdbuf->set_compute_descriptor_sets(0, {&ds, 1});
+				cmdbuf->dispatch(align_upper((u32)desc.width, 8) / 8, (u32)align_upper(desc.height, 8) / 8, 1);
 			}
 			else
 			{
 				// Clears to black.
-				cmdbuf->resource_barrier(ResourceBarrierDesc::as_transition(output_tex, ResourceStateFlag::render_target));
+                cmdbuf->resource_barrier({}, {
+                    TextureBarrier(output_tex, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::color_attachment_write)
+                    });
 				auto lighting_rt = output_tex;
 				RenderPassDesc render_pass;
                 lulet(output_tex_rtv, cmdbuf->get_device()->new_render_target_view(output_tex));
@@ -127,7 +127,6 @@ namespace Luna
         lucatchret;
         return ok;
     }
-
     RV compile_sky_box_pass(object_t userdata, RG::IRenderGraphCompiler* compiler)
     {
         lutry
@@ -138,19 +137,19 @@ namespace Luna
             if(texture_resource == RG::INVALID_RESOURCE) return set_error(BasicError::bad_arguments(), "SkyBoxPass: Output \"texture\" is not specified.");
             if(depth_texture_resource == RG::INVALID_RESOURCE) return set_error(BasicError::bad_arguments(), "SkyBoxPass: Input \"depth_texture\" is not specified.");
             
-            RHI::ResourceDesc depth_desc = compiler->get_resource_desc(depth_texture_resource);
-            if (depth_desc.type != RHI::ResourceType::texture_2d ||
-                !depth_desc.width_or_buffer_size || !depth_desc.height)
+            RG::ResourceDesc depth_desc = compiler->get_resource_desc(depth_texture_resource);
+            if (depth_desc.type != RG::ResourceType::texture || depth_desc.texture.type != RHI::TextureType::tex2d ||
+                !depth_desc.texture.width || !depth_desc.texture.height)
             {
                 return set_error(BasicError::bad_arguments(), "SkyBoxPass: The resource format for input \"depth_texture\" is not specified or invalid.");
             }
-            depth_desc.usages |= RHI::ResourceUsageFlag::shader_resource;
+            depth_desc.texture.usages |= RHI::TextureUsageFlag::read_texture;
             compiler->set_resource_desc(depth_texture_resource, depth_desc);
 
-            RHI::ResourceDesc desc = compiler->get_resource_desc(texture_resource);
-            desc.width_or_buffer_size = desc.width_or_buffer_size ? desc.width_or_buffer_size : depth_desc.width_or_buffer_size;
-            desc.height = desc.height ? desc.height : depth_desc.height;
-            desc.usages |= RHI::ResourceUsageFlag::unordered_access | RHI::ResourceUsageFlag::render_target;
+            RG::ResourceDesc desc = compiler->get_resource_desc(texture_resource);
+            desc.texture.width = depth_desc.texture.width;
+            desc.texture.height = depth_desc.texture.height;
+            desc.texture.usages |= RHI::TextureUsageFlag::read_write_texture | RHI::TextureUsageFlag::render_target;
             compiler->set_resource_desc(texture_resource, desc);
             Ref<SkyBoxPass> pass = new_object<SkyBoxPass>();
             luexp(pass->init(data));
@@ -159,7 +158,6 @@ namespace Luna
         lucatchret;
         return ok;
     }
-
     RV register_sky_box_pass()
     {
         lutry
