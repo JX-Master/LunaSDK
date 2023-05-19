@@ -101,6 +101,7 @@ namespace Luna
 							}
 						}
 						lulet(upload_cmdbuf, dev->new_command_buffer(copy_queue_index));
+						upload_cmdbuf->set_context(CommandBufferContextType::copy);
 						upload_cmdbuf->resource_barrier({
 							{ tex_staging, BufferStateFlag::automatic, BufferStateFlag::copy_source, ResourceBarrierFlag::none} },
 							{ { g_white_tex, TEXTURE_BARRIER_ALL_SUBRESOURCES, TextureStateFlag::automatic, TextureStateFlag::copy_dest, ResourceBarrierFlag::discard_content } });
@@ -249,7 +250,7 @@ namespace Luna
 				RenderPassDesc desc;
 				desc.color_attachments[0] = ColorAttachment(m_render_target, LoadOp::clear, StoreOp::store, Float4U{ 0.0f });
 				cmdbuf->begin_render_pass(desc);
-				cmdbuf->set_pipeline_state(m_fill_pso);
+				cmdbuf->set_graphics_pipeline_state(m_fill_pso);
 				cmdbuf->set_graphics_shader_input_layout(g_fill_slayout);
 				cmdbuf->set_vertex_buffers(0, { &VertexBufferView(vertex_buffer, 0, sizeof(Vertex) * num_vertices, sizeof(Vertex)), 1 });
 				cmdbuf->set_index_buffer({index_buffer, 0, num_indices * sizeof(u32), Format::r32_uint});

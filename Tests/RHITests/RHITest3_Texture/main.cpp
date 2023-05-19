@@ -187,6 +187,7 @@ RV start()
 				}
 			}
 			lulet(upload_cmdbuf, device->new_command_buffer(copy_queue_index));
+			upload_cmdbuf->set_context(CommandBufferContextType::copy);
 			upload_cmdbuf->resource_barrier({
 				{ tex_staging, BufferStateFlag::automatic, BufferStateFlag::copy_source, ResourceBarrierFlag::none}}, 
 				{{ tex, TEXTURE_BARRIER_ALL_SUBRESOURCES, TextureStateFlag::automatic, TextureStateFlag::copy_dest, ResourceBarrierFlag::discard_content }});
@@ -233,7 +234,7 @@ void draw()
 	vb->unmap(0, sizeof(data));
 
 	auto cb = get_command_buffer();
-
+	cb->set_context(CommandBufferContextType::graphics);
 	cb->resource_barrier({},
 		{
 			{tex, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::shader_read_ps, ResourceBarrierFlag::none},
@@ -242,7 +243,7 @@ void draw()
 	RenderPassDesc desc;
 	desc.color_attachments[0] = ColorAttachment(get_back_buffer(), LoadOp::clear, StoreOp::store, Color::black());
 	cb->begin_render_pass(desc);
-	cb->set_pipeline_state(pso);
+	cb->set_graphics_pipeline_state(pso);
 	cb->set_graphics_shader_input_layout(shader_input_layout);
 	IDescriptorSet* ds = desc_set.get();
 	cb->set_graphics_descriptor_sets(0, { &ds, 1 });

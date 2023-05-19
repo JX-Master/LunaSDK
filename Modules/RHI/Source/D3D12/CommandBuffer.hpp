@@ -108,8 +108,10 @@ namespace Luna
 			bool m_valid = false;
 			UInt2U m_tex_size;
 			ID3D12DescriptorHeap* m_color_attachments[8] = { nullptr };
+			TextureViewDesc m_color_attachment_views[8];
+			ResolveAttachment m_resolve_attachments[8];
 			ID3D12DescriptorHeap* m_depth_stencil_attachment = nullptr;
-			u8 num_render_targets;
+			u8 m_num_render_targets;
 		};
 
 		struct CommandBuffer : ICommandBuffer
@@ -156,6 +158,8 @@ namespace Luna
 			//! The attached graphic objects.
 			Vector<Ref<IDeviceChild>> m_objs;
 
+			CommandBufferContextType m_context = CommandBufferContextType::none;
+
 			bool m_heap_set;
 
 			CommandBuffer() :
@@ -191,6 +195,22 @@ namespace Luna
 				}
 				return false;
 			}
+			void assert_graphcis_context()
+			{
+				lucheck_msg(m_context == CommandBufferContextType::graphics, "A graphics command is submiited in a non-graphics context.");
+			}
+			void assert_compute_context()
+			{
+				lucheck_msg(m_context == CommandBufferContextType::compute, "A compute command is submiited in a non-compute context.");
+			}
+			void assert_copy_context()
+			{
+				lucheck_msg(m_context == CommandBufferContextType::copy, "A copy command is submiited in a non-copy context.");
+			}
+			void assert_non_render_pass()
+			{
+				lucheck_msg(!m_render_pass_context.m_valid, "This command cannot be submitted within a render pass.");
+			}
 			virtual IDevice* get_device() override
 			{
 				return m_device.as<IDevice>();
@@ -216,9 +236,11 @@ namespace Luna
 			{
 				m_li->EndEvent();
 			}
+			virtual CommandBufferContextType get_context_type() override { return m_context; }
+			virtual void set_context(CommandBufferContextType new_context) override { m_context = new_context; }
 			virtual void begin_render_pass(const RenderPassDesc& desc) override;
-			virtual void set_pipeline_state(IPipelineState* pso) override;
 			virtual void set_graphics_shader_input_layout(IShaderInputLayout* shader_input_layout) override;
+			virtual void set_graphics_pipeline_state(IPipelineState* pso) override;
 			virtual void set_vertex_buffers(u32 start_slot, Span<const VertexBufferView> views) override;
 			virtual void set_index_buffer(const IndexBufferView& view) override;
 			virtual void set_graphics_descriptor_sets(u32 start_index, Span<IDescriptorSet*> descriptor_sets) override;
@@ -249,6 +271,10 @@ namespace Luna
 			virtual void clear_depth_stencil_attachment(ClearFlag clear_flags, f32 depth, u8 stencil, Span<const RectI> rects) override;
 			virtual void clear_color_attachment(u32 index, Span<const f32, 4> color_rgba, Span<const RectI> rects) override;
 			virtual void end_render_pass() override;
+			virtual void set_compute_shader_input_layout(IShaderInputLayout* shader_input_layout) override;
+			virtual void set_compute_pipeline_state(IPipelineState* pso) override;
+			virtual void set_compute_descriptor_sets(u32 start_index, Span<IDescriptorSet*> descriptor_sets) override;
+			virtual void dispatch(u32 thread_group_count_x, u32 thread_group_count_y, u32 thread_group_count_z) override;
 			virtual void copy_resource(IResource* dst, IResource* src) override;
 			virtual void copy_buffer(
 				IBuffer* dst, u64 dst_offset,
@@ -266,10 +292,7 @@ namespace Luna
 				IBuffer* dst, u64 dst_offset, u32 dst_row_pitch, u32 dst_slice_pitch,
 				ITexture* src, SubresourceIndex src_subresource, u32 src_x, u32 src_y, u32 src_z,
 				u32 copy_width, u32 copy_height, u32 copy_depth) override;
-			virtual void set_compute_shader_input_layout(IShaderInputLayout* shader_input_layout) override;
-			virtual void set_compute_descriptor_sets(u32 start_index, Span<IDescriptorSet*> descriptor_sets) override;
 			virtual void resource_barrier(Span<const BufferBarrier> buffer_barriers, Span<const TextureBarrier> texture_barriers) override;
-			virtual void dispatch(u32 thread_group_count_x, u32 thread_group_count_y, u32 thread_group_count_z) override;
 			virtual void write_timestamp(IQueryHeap* heap, u32 index) override;
 			virtual void begin_pipeline_statistics_query(IQueryHeap* heap, u32 index) override;
 			virtual void end_pipeline_statistics_query(IQueryHeap* heap, u32 index) override;

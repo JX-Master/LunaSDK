@@ -208,6 +208,7 @@ namespace Luna
 					m_device->m_funcs.vkDestroyFramebuffer(m_device->m_device, fbo, nullptr);
 				}
 				m_fbos.clear();
+				m_context = CommandBufferContextType::none;
 			}
 			lucatchret;
 			return ok;
@@ -216,7 +217,6 @@ namespace Luna
 		{
 			m_objs.push_back(obj);
 		}
-
 		struct FramebufferDesc
 		{
 			VkRenderPass render_pass = VK_NULL_HANDLE;
@@ -232,7 +232,6 @@ namespace Luna
 					depth_stencil_attachment == rhs.depth_stencil_attachment;
 			}
 		};
-
 		static VkFramebuffer new_frame_buffer(Device* device, const FramebufferDesc& desc)
 		{
 			VkFramebufferCreateInfo info{};
@@ -284,9 +283,9 @@ namespace Luna
 			device->m_funcs.vkCreateFramebuffer(device->m_device, &info, nullptr, &fbo);
 			return fbo;
 		}
-
 		void CommandBuffer::begin_render_pass(const RenderPassDesc& desc)
 		{
+			assert_graphcis_context();
 			lutry
 			{
 				RenderPassKey rp;
@@ -431,18 +430,20 @@ namespace Luna
 
 			}
 		}
-		void CommandBuffer::set_pipeline_state(IPipelineState* pso)
-		{
-			PipelineState* ps = (PipelineState*)pso->get_object();
-			VkPipelineBindPoint bind = ps->m_is_graphics ? VK_PIPELINE_BIND_POINT_GRAPHICS : VK_PIPELINE_BIND_POINT_COMPUTE;
-			m_device->m_funcs.vkCmdBindPipeline(m_command_buffer, bind, ps->m_pipeline);
-		}
 		void CommandBuffer::set_graphics_shader_input_layout(IShaderInputLayout* shader_input_layout)
 		{
+			assert_graphcis_context();
 			m_graphics_shader_input_layout = shader_input_layout;
+		}
+		void CommandBuffer::set_graphics_pipeline_state(IPipelineState* pso)
+		{
+			assert_graphcis_context();
+			PipelineState* ps = (PipelineState*)pso->get_object();
+			m_device->m_funcs.vkCmdBindPipeline(m_command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, ps->m_pipeline);
 		}
 		void CommandBuffer::set_vertex_buffers(u32 start_slot, Span<const VertexBufferView> views)
 		{
+			assert_graphcis_context();
 			VkBuffer* bufs = (VkBuffer*)alloca(sizeof(VkBuffer) * views.size());
 			VkDeviceSize* vk_offsets = (VkDeviceSize*)alloca(sizeof(VkDeviceSize) * views.size());
 			for (u32 i = 0; i < views.size(); ++i)
@@ -455,6 +456,7 @@ namespace Luna
 		}
 		void CommandBuffer::set_index_buffer(const IndexBufferView& view)
 		{
+			assert_graphcis_context();
 			BufferResource* res = cast_object<BufferResource>(view.buffer->get_object());
 			VkIndexType index_type;
 			switch (view.format)
@@ -470,6 +472,7 @@ namespace Luna
 		}
 		void CommandBuffer::set_graphics_descriptor_sets(u32 start_index, Span<IDescriptorSet*> descriptor_sets)
 		{
+			assert_graphcis_context();
 			VkPipelineLayout layout = VK_NULL_HANDLE;
 			ShaderInputLayout* slayout = (ShaderInputLayout*)m_graphics_shader_input_layout->get_object();
 			layout = slayout->m_pipeline_layout;
@@ -488,6 +491,7 @@ namespace Luna
 		}
 		void CommandBuffer::set_viewports(Span<const Viewport> viewports)
 		{
+			assert_graphcis_context();
 			u32 max_num_viewports = m_device->m_physical_device_properties.limits.maxViewports;
 			VkViewport* vps = (VkViewport*)alloca(sizeof(VkViewport) * max_num_viewports);
 			for (usize i = 0; i < max_num_viewports; ++i)
@@ -519,6 +523,7 @@ namespace Luna
 		}
 		void CommandBuffer::set_scissor_rects(Span<const RectI> rects)
 		{
+			assert_graphcis_context();
 			u32 max_num_viewports = m_device->m_physical_device_properties.limits.maxViewports;
 			VkRect2D* r = (VkRect2D*)alloca(sizeof(VkRect2D) * max_num_viewports);
 			for (usize i = 0; i < max_num_viewports; ++i)
@@ -542,34 +547,41 @@ namespace Luna
 		}
 		void CommandBuffer::set_blend_factor(Span<const f32, 4> blend_factor)
 		{
+			assert_graphcis_context();
 			m_device->m_funcs.vkCmdSetBlendConstants(m_command_buffer, blend_factor.data());
 		}
 		void CommandBuffer::set_stencil_ref(u32 stencil_ref)
 		{
+			assert_graphcis_context();
 			m_device->m_funcs.vkCmdSetStencilReference(m_command_buffer, VK_STENCIL_FACE_FRONT_AND_BACK, stencil_ref);
 		}
 		void CommandBuffer::draw(u32 vertex_count, u32 start_vertex_location)
 		{
+			assert_graphcis_context();
 			m_device->m_funcs.vkCmdDraw(m_command_buffer, vertex_count, 1, start_vertex_location, 0);
 		}
 		void CommandBuffer::draw_indexed(u32 index_count, u32 start_index_location, i32 base_vertex_location)
 		{
+			assert_graphcis_context();
 			m_device->m_funcs.vkCmdDrawIndexed(m_command_buffer, index_count, 1, start_index_location, base_vertex_location, 0);
 		}
 		void CommandBuffer::draw_instanced(u32 vertex_count_per_instance, u32 instance_count, u32 start_vertex_location,
 			u32 start_instance_location)
 		{
+			assert_graphcis_context();
 			m_device->m_funcs.vkCmdDraw(m_command_buffer, vertex_count_per_instance * instance_count, instance_count,
 				start_vertex_location, start_instance_location);
 		}
 		void CommandBuffer::draw_indexed_instanced(u32 index_count_per_instance, u32 instance_count, u32 start_index_location,
 			i32 base_vertex_location, u32 start_instance_location)
 		{
+			assert_graphcis_context();
 			m_device->m_funcs.vkCmdDrawIndexed(m_command_buffer, index_count_per_instance * instance_count, instance_count, 
 				start_index_location, base_vertex_location, start_instance_location);
 		}
 		void CommandBuffer::clear_depth_stencil_attachment(ClearFlag clear_flags, f32 depth, u8 stencil, Span<const RectI> rects)
 		{
+			assert_graphcis_context();
 			VkClearAttachment attachment{};
 			attachment.aspectMask = 0;
 			if (test_flags(clear_flags, ClearFlag::depth))
@@ -616,6 +628,7 @@ namespace Luna
 		}
 		void CommandBuffer::clear_color_attachment(u32 index, Span<const f32, 4> color_rgba, Span<const RectI> rects)
 		{
+			assert_graphcis_context();
 			VkClearAttachment attachment{};
 			attachment.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 			attachment.colorAttachment = index;
@@ -673,6 +686,7 @@ namespace Luna
 		}
 		void CommandBuffer::end_render_pass()
 		{
+			assert_graphcis_context();
 			m_device->m_funcs.vkCmdEndRenderPass(m_command_buffer);
 			m_render_pass_begin = false;
 			m_rt_width = 0;
@@ -683,8 +697,40 @@ namespace Luna
 			memzero(m_resolve_attachments, sizeof(ImageView*) * 8);
 			m_dsv = nullptr;
 		}
+		void CommandBuffer::set_compute_shader_input_layout(IShaderInputLayout* shader_input_layout)
+		{
+			assert_compute_context();
+			m_compute_shader_input_layout = shader_input_layout;
+		}
+		void CommandBuffer::set_compute_pipeline_state(IPipelineState* pso)
+		{
+			assert_compute_context();
+			PipelineState* ps = (PipelineState*)pso->get_object();
+			m_device->m_funcs.vkCmdBindPipeline(m_command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, ps->m_pipeline);
+		}
+		void CommandBuffer::set_compute_descriptor_sets(u32 start_index, Span<IDescriptorSet*> descriptor_sets)
+		{
+			assert_compute_context();
+			VkPipelineLayout layout = VK_NULL_HANDLE;
+			ShaderInputLayout* slayout = (ShaderInputLayout*)m_graphics_shader_input_layout->get_object();
+			layout = slayout->m_pipeline_layout;
+			VkDescriptorSet* sets = (VkDescriptorSet*)alloca(sizeof(VkDescriptorSet) * descriptor_sets.size());
+			for (u32 i = 0; i < descriptor_sets.size(); ++i)
+			{
+				auto s = (DescriptorSet*)descriptor_sets[i]->get_object();
+				sets[i] = s->m_desc_set;
+			}
+			m_device->m_funcs.vkCmdBindDescriptorSets(m_command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, layout,
+				start_index, (u32)descriptor_sets.size(), sets, 0, nullptr);
+		}
+		void CommandBuffer::dispatch(u32 thread_group_count_x, u32 thread_group_count_y, u32 thread_group_count_z)
+		{
+			assert_compute_context();
+			m_device->m_funcs.vkCmdDispatch(m_command_buffer, thread_group_count_x, thread_group_count_y, thread_group_count_z);
+		}
 		void CommandBuffer::copy_resource(IResource* dest, IResource* src)
 		{
+			assert_copy_context();
 			BufferResource* s = cast_object<BufferResource>(src->get_object());
 			BufferResource* d = cast_object<BufferResource>(dest->get_object());
 			if (s && d)
@@ -732,6 +778,7 @@ namespace Luna
 			IBuffer* src, u64 src_offset,
 			u64 copy_bytes)
 		{
+			assert_copy_context();
 			BufferResource* s = cast_object<BufferResource>(src->get_object());
 			BufferResource* d = cast_object<BufferResource>(dst->get_object());
 			VkBufferCopy copy{};
@@ -745,6 +792,7 @@ namespace Luna
 			ITexture* src, SubresourceIndex src_subresource, u32 src_x, u32 src_y, u32 src_z,
 			u32 copy_width, u32 copy_height, u32 copy_depth)
 		{
+			assert_copy_context();
 			ImageResource* s = cast_object<ImageResource>(src->get_object());
 			ImageResource* d = cast_object<ImageResource>(dst->get_object());
 			// The copy is performed one per mips.
@@ -778,6 +826,7 @@ namespace Luna
 			IBuffer* src, u64 src_offset, u32 src_row_pitch, u32 src_slice_pitch,
 			u32 copy_width, u32 copy_height, u32 copy_depth)
 		{
+			assert_copy_context();
 			BufferResource* s = cast_object<BufferResource>(src->get_object());
 			ImageResource* d = cast_object<ImageResource>(dst->get_object());
 			VkBufferImageCopy copy{};
@@ -796,7 +845,7 @@ namespace Luna
 			copy.imageExtent.width = copy_width;
 			copy.imageExtent.height = copy_height;
 			copy.imageExtent.depth = copy_depth;
-			m_device->m_funcs.vkCmdCopyBufferToImage(m_command_buffer, s->m_buffer, d->m_image, 
+			m_device->m_funcs.vkCmdCopyBufferToImage(m_command_buffer, s->m_buffer, d->m_image,
 				VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copy);
 		}
 		void CommandBuffer::copy_texture_to_buffer(
@@ -804,6 +853,7 @@ namespace Luna
 			ITexture* src, SubresourceIndex src_subresource, u32 src_x, u32 src_y, u32 src_z,
 			u32 copy_width, u32 copy_height, u32 copy_depth)
 		{
+			assert_copy_context();
 			ImageResource* s = cast_object<ImageResource>(src->get_object());
 			BufferResource* d = cast_object<BufferResource>(dst->get_object());
 			VkBufferImageCopy copy{};
@@ -825,26 +875,9 @@ namespace Luna
 			m_device->m_funcs.vkCmdCopyImageToBuffer(m_command_buffer, s->m_image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
 				d->m_buffer, 1, &copy);
 		}
-		void CommandBuffer::set_compute_shader_input_layout(IShaderInputLayout* shader_input_layout)
-		{
-			m_compute_shader_input_layout = shader_input_layout;
-		}
-		void CommandBuffer::set_compute_descriptor_sets(u32 start_index, Span<IDescriptorSet*> descriptor_sets)
-		{
-			VkPipelineLayout layout = VK_NULL_HANDLE;
-			ShaderInputLayout* slayout = (ShaderInputLayout*)m_graphics_shader_input_layout->get_object();
-			layout = slayout->m_pipeline_layout;
-			VkDescriptorSet* sets = (VkDescriptorSet*)alloca(sizeof(VkDescriptorSet) * descriptor_sets.size());
-			for (u32 i = 0; i < descriptor_sets.size(); ++i)
-			{
-				auto s = (DescriptorSet*)descriptor_sets[i]->get_object();
-				sets[i] = s->m_desc_set;
-			}
-			m_device->m_funcs.vkCmdBindDescriptorSets(m_command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, layout,
-				start_index, (u32)descriptor_sets.size(), sets, 0, nullptr);
-		}
 		void CommandBuffer::resource_barrier(Span<const BufferBarrier> buffer_barriers, Span<const TextureBarrier> texture_barriers)
 		{
+			assert_non_render_pass();
 			m_track_system.begin_new_barriers_batch();
 			for (auto& barrier : buffer_barriers)
 			{
@@ -869,10 +902,6 @@ namespace Luna
 					m_track_system.m_buffer_barriers.size(), m_track_system.m_buffer_barriers.data(),
 					m_track_system.m_image_barriers.size(), m_track_system.m_image_barriers.data());
 			}
-		}
-		void CommandBuffer::dispatch(u32 thread_group_count_x, u32 thread_group_count_y, u32 thread_group_count_z)
-		{
-			m_device->m_funcs.vkCmdDispatch(m_command_buffer, thread_group_count_x, thread_group_count_y, thread_group_count_z);
 		}
 		void CommandBuffer::write_timestamp(IQueryHeap* heap, u32 index)
 		{
@@ -904,6 +933,7 @@ namespace Luna
 		}
 		RV CommandBuffer::submit(Span<IFence*> wait_fences, Span<IFence*> signal_fences, bool allow_host_waiting)
 		{
+			assert_non_render_pass();
 			if (!m_recording) return BasicError::bad_calling_time();
 			lutry
 			{

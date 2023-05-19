@@ -145,13 +145,14 @@ RV start()
 void draw()
 {
 	auto cb = get_command_buffer();
+	cb->set_context(CommandBufferContextType::graphics);
 	cb->resource_barrier({}, {
 			{get_back_buffer(), TEXTURE_BARRIER_ALL_SUBRESOURCES, TextureStateFlag::automatic, TextureStateFlag::color_attachment_write, ResourceBarrierFlag::discard_content}
 		});
 	RenderPassDesc desc;
 	desc.color_attachments[0] = ColorAttachment(get_back_buffer(), LoadOp::clear, StoreOp::store, Color::yellow());
 	cb->begin_render_pass(desc);
-	cb->set_pipeline_state(pso);
+	cb->set_graphics_pipeline_state(pso);
 	cb->set_graphics_shader_input_layout(shader_input_layout);
 	IBuffer* vertex_buffer = vb;
 	usize vb_offset = 0;

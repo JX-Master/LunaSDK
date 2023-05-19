@@ -30,7 +30,6 @@ namespace Luna
 			R<VkSemaphore> submit_barrier(VkQueue queue, IMutex* queue_mtx, Span<const VkBufferMemoryBarrier> buffer_barriers, Span<const VkImageMemoryBarrier> texture_barriers);
 			~QueueTransferTracker();
 		};
-
 		struct CommandBuffer : ICommandBuffer
 		{
 			lustruct("RHI::CommandBuffer", "{057DBF2F-5817-490B-9683-18A0D3C4C5CB}");
@@ -51,6 +50,8 @@ namespace Luna
 
 			// The attached graphic objects.
 			Vector<Ref<IDeviceChild>> m_objs;
+
+			CommandBufferContextType m_context = CommandBufferContextType::none;
 
 			// Controled by begin_render_pass/end_render_pass.
 			bool m_render_pass_begin = false;
@@ -75,6 +76,23 @@ namespace Luna
 
 			R<QueueTransferTracker*> get_transfer_tracker(u32 queue_family_index);
 
+			void assert_graphcis_context()
+			{
+				lucheck_msg(m_context == CommandBufferContextType::graphics, "A graphics command is submiited in a non-graphics context.");
+			}
+			void assert_compute_context()
+			{
+				lucheck_msg(m_context == CommandBufferContextType::compute, "A compute command is submiited in a non-compute context.");
+			}
+			void assert_copy_context()
+			{
+				lucheck_msg(m_context == CommandBufferContextType::copy, "A copy command is submiited in a non-copy context.");
+			}
+			void assert_non_render_pass()
+			{
+				lucheck_msg(!m_render_pass_begin, "This command cannot be submitted within a render pass.");
+			}
+
 			virtual IDevice* get_device() override { return m_device.get(); }
 			virtual void set_name(const Name& name) override { m_name = name; }
 			virtual void wait() override;
@@ -84,9 +102,11 @@ namespace Luna
 			virtual void attach_device_object(IDeviceChild* obj) override;
 			virtual void begin_event(const Name& event_name) override {}
 			virtual void end_event() override {}
+			virtual CommandBufferContextType get_context_type() override { return m_context; }
+			virtual void set_context(CommandBufferContextType new_context) override { m_context = new_context; }
 			virtual void begin_render_pass(const RenderPassDesc& desc) override;
-			virtual void set_pipeline_state(IPipelineState* pso) override;
 			virtual void set_graphics_shader_input_layout(IShaderInputLayout* shader_input_layout) override;
+			virtual void set_graphics_pipeline_state(IPipelineState* pso) override;
 			virtual void set_vertex_buffers(u32 start_slot, Span<const VertexBufferView> views) override;
 			virtual void set_index_buffer(const IndexBufferView& view) override;
 			virtual void set_graphics_descriptor_sets(u32 start_index, Span<IDescriptorSet*> descriptor_sets) override;
@@ -102,10 +122,13 @@ namespace Luna
 				u32 start_instance_location) override;
 			virtual void draw_indexed_instanced(u32 index_count_per_instance, u32 instance_count, u32 start_index_location,
 				i32 base_vertex_location, u32 start_instance_location) override;
-
 			virtual void clear_depth_stencil_attachment(ClearFlag clear_flags, f32 depth, u8 stencil, Span<const RectI> rects) override;
 			virtual void clear_color_attachment(u32 index, Span<const f32, 4> color_rgba, Span<const RectI> rects) override;
 			virtual void end_render_pass() override;
+			virtual void set_compute_shader_input_layout(IShaderInputLayout* shader_input_layout) override;
+			virtual void set_compute_pipeline_state(IPipelineState* pso) override;
+			virtual void set_compute_descriptor_sets(u32 start_index, Span<IDescriptorSet*> descriptor_sets) override;
+			virtual void dispatch(u32 thread_group_count_x, u32 thread_group_count_y, u32 thread_group_count_z) override;
 			virtual void copy_resource(IResource* dest, IResource* src) override;
 			virtual void copy_buffer(
 				IBuffer* dst, u64 dst_offset,
@@ -123,10 +146,7 @@ namespace Luna
 				IBuffer* dst, u64 dst_offset, u32 dst_row_pitch, u32 dst_slice_pitch,
 				ITexture* src, SubresourceIndex src_subresource, u32 src_x, u32 src_y, u32 src_z,
 				u32 copy_width, u32 copy_height, u32 copy_depth) override;
-			virtual void set_compute_shader_input_layout(IShaderInputLayout* shader_input_layout) override;
-			virtual void set_compute_descriptor_sets(u32 start_index, Span<IDescriptorSet*> descriptor_sets) override;
 			virtual void resource_barrier(Span<const BufferBarrier> buffer_barriers, Span<const TextureBarrier> texture_barriers) override;
-			virtual void dispatch(u32 thread_group_count_x, u32 thread_group_count_y, u32 thread_group_count_z) override;
 			virtual void write_timestamp(IQueryHeap* heap, u32 index) override;
 			virtual void begin_pipeline_statistics_query(IQueryHeap* heap, u32 index) override;
 			virtual void end_pipeline_statistics_query(IQueryHeap* heap, u32 index) override;

@@ -4,6 +4,14 @@ add_moduledirs("Tools/xmake/modules")
 add_repositories("luna-repo SDKs")
 
 add_rules("mode.debug", "mode.profile", "mode.release")
+add_defines("LUNA_MANUAL_CONFIG_DEBUG_LEVEL")
+if is_mode("debug") then
+    add_defines("LUNA_DEBUG_LEVEL=2")
+elseif is_mode("profile") then
+    add_defines("LUNA_DEBUG_LEVEL=1")
+else 
+    add_defines("LUNA_DEBUG_LEVEL=0")
+end
 
 option("shared")
     set_default(true)
@@ -16,7 +24,6 @@ option("contract_assertion")
     set_default(false)
     set_showmenu(true)
     set_description("Enables contract assertions. This is always enabled in debug build.")
-    add_defines("LUNA_ENABLE_CONTRACT_ASSERTION")
 option_end()
 
 option("thread_safe_assertion")
@@ -34,6 +41,10 @@ option_end()
 
 function add_luna_sdk_options()
     add_options("shared", "contract_assertion", "thread_safe_assertion")
+    -- Contract assertion is always enabled in debug mode.
+    if has_config("contract_assertion") or is_mode("debug") then
+        add_defines("LUNA_ENABLE_CONTRACT_ASSERTION")
+    end
 end
 
 function set_luna_sdk_module()

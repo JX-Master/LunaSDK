@@ -254,11 +254,13 @@ namespace Luna
 			m_heap_set = false;
 			m_graphics_shader_input_layout.reset();
 			m_compute_shader_input_layout.reset();
+			m_context = CommandBufferContextType::none;
 			return ok;
 		}
 		void CommandBuffer::begin_render_pass(const RenderPassDesc& desc)
 		{
 			lutsassert();
+			assert_graphcis_context();
 			lucheck_msg(!m_render_pass_context.m_valid, "The last render pass is not correctly closed.");
 			lutry
 			{
@@ -273,9 +275,11 @@ namespace Luna
 					++num_render_targets;
 				}
 				m_render_pass_context.m_valid = true;
-				for (auto& i : m_render_pass_context.m_color_attachments) i = nullptr;
+				memzero(m_render_pass_context.m_color_attachments, sizeof(ID3D12DescriptorHeap*) * 8);
+				memzero(m_render_pass_context.m_color_attachment_views, sizeof(TextureViewDesc) * 8);
+				memzero(m_render_pass_context.m_resolve_attachments, sizeof(ResolveAttachment) * 8);
 				m_render_pass_context.m_depth_stencil_attachment = nullptr;
-				m_render_pass_context.num_render_targets = num_render_targets;
+				m_render_pass_context.m_num_render_targets = num_render_targets;
 				m_render_pass_context.m_tex_size = UInt2U(0, 0);
 				for (u8 i = 0; i < num_render_targets; ++i)
 				{
@@ -290,6 +294,7 @@ namespace Luna
 					view.array_slice = src.array_slice;
 					view.array_size = src.array_size;
 					luset(m_render_pass_context.m_color_attachments[i], tex->get_rtv(view));
+					m_render_pass_context.m_color_attachment_views[i] = view;
 					rtv[i] = m_render_pass_context.m_color_attachments[i]->GetCPUDescriptorHandleForHeapStart();
 					m_render_pass_context.m_tex_size.x = tex->m_desc.width;
 					m_render_pass_context.m_tex_size.y = tex->m_desc.height;
@@ -333,7 +338,6 @@ namespace Luna
 						m_li->OMSetRenderTargets(0, NULL, FALSE, NULL);
 					}
 				}
-
 				// Clear render target and depth stencil if needed.
 				for (u32 i = 0; i < num_render_targets; ++i)
 				{
@@ -360,55 +364,62 @@ namespace Luna
 							flags, desc.depth_stencil_attachment.depth_clear_value, desc.depth_stencil_attachment.stencil_clear_value, 0, NULL);
 					}
 				}
+				for (u32 i = 0; i < num_render_targets; ++i)
+				{
+					if (desc.resolve_attachments[i].texture)
+					{
+						m_render_pass_context.m_resolve_attachments[i] = desc.resolve_attachments[i];
+					}
+				}
 			}
 			lucatch
 			{
 
 			}
 		}
-		void CommandBuffer::set_pipeline_state(IPipelineState* pso)
-		{
-			PipelineState* p = cast_object<PipelineState>(pso->get_object());
-			lutsassert();
-			m_li->SetPipelineState(p->m_pso.Get());
-			if (p->m_is_graphics)
-			{
-				D3D12_PRIMITIVE_TOPOLOGY t;
-				switch (p->m_primitive_topology)
-				{
-				case PrimitiveTopology::point_list:
-					t = D3D_PRIMITIVE_TOPOLOGY_POINTLIST;
-					break;
-				case PrimitiveTopology::line_list:
-					t = D3D_PRIMITIVE_TOPOLOGY_LINELIST;
-					break;
-				case PrimitiveTopology::line_strip:
-					t = D3D_PRIMITIVE_TOPOLOGY_LINESTRIP;
-					break;
-				case PrimitiveTopology::triangle_list:
-					t = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-					break;
-				case PrimitiveTopology::triangle_strip:
-					t = D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP;
-					break;
-				default:
-					lupanic();
-					break;
-				}
-				m_li->IASetPrimitiveTopology(t);
-			}
-		}
 		void CommandBuffer::set_graphics_shader_input_layout(IShaderInputLayout* shader_input_layout)
 		{
 			lutsassert();
+			assert_graphcis_context();
 			lucheck(shader_input_layout);
 			ShaderInputLayout* o = cast_object<ShaderInputLayout>(shader_input_layout->get_object());
 			m_graphics_shader_input_layout = o;
 			m_li->SetGraphicsRootSignature(o->m_rs.Get());
 		}
+		void CommandBuffer::set_graphics_pipeline_state(IPipelineState* pso)
+		{
+			lutsassert();
+			assert_graphcis_context();
+			PipelineState* p = cast_object<PipelineState>(pso->get_object());
+			m_li->SetPipelineState(p->m_pso.Get());
+			D3D12_PRIMITIVE_TOPOLOGY t;
+			switch (p->m_primitive_topology)
+			{
+			case PrimitiveTopology::point_list:
+				t = D3D_PRIMITIVE_TOPOLOGY_POINTLIST;
+				break;
+			case PrimitiveTopology::line_list:
+				t = D3D_PRIMITIVE_TOPOLOGY_LINELIST;
+				break;
+			case PrimitiveTopology::line_strip:
+				t = D3D_PRIMITIVE_TOPOLOGY_LINESTRIP;
+				break;
+			case PrimitiveTopology::triangle_list:
+				t = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+				break;
+			case PrimitiveTopology::triangle_strip:
+				t = D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP;
+				break;
+			default:
+				lupanic();
+				break;
+			}
+			m_li->IASetPrimitiveTopology(t);
+		}
 		void CommandBuffer::set_vertex_buffers(u32 start_slot, Span<const VertexBufferView> views)
 		{
 			lutsassert();
+			assert_graphcis_context();
 			m_vbs.resize(start_slot + views.size());
 			for (u32 i = start_slot; i < views.size(); ++i)
 			{
@@ -426,6 +437,7 @@ namespace Luna
 		void CommandBuffer::set_index_buffer(const IndexBufferView& desc)
 		{
 			lutsassert();
+			assert_graphcis_context();
 			BufferResource* b = cast_object<BufferResource>(desc.buffer->get_object());
 			m_ib = b;
 			D3D12_INDEX_BUFFER_VIEW v;
@@ -437,6 +449,7 @@ namespace Luna
 		void CommandBuffer::set_graphics_descriptor_sets(u32 start_index, Span<IDescriptorSet*> descriptor_sets)
 		{
 			lutsassert();
+			assert_graphcis_context();
 			lucheck_msg(m_graphics_shader_input_layout, "Graphic Shader Input Layout must be set before Graphic View Set can be bound!");
 			lucheck_msg(m_graphics_shader_input_layout->m_descriptor_set_layouts.size() >= start_index + descriptor_sets.size(), "The binding index out of range specified by the shader input layout.");
 			if (!m_heap_set)
@@ -477,6 +490,7 @@ namespace Luna
 		void CommandBuffer::set_viewports(Span<const Viewport> viewports)
 		{
 			lutsassert();
+			assert_graphcis_context();
 			D3D12_VIEWPORT* vs = (D3D12_VIEWPORT*)alloca(sizeof(D3D12_VIEWPORT) * viewports.size());
 			for (u32 i = 0; i < viewports.size(); ++i)
 			{
@@ -492,6 +506,7 @@ namespace Luna
 		void CommandBuffer::set_scissor_rects(Span<const RectI> rects)
 		{
 			lutsassert();
+			assert_graphcis_context();
 			lucheck_msg(m_render_pass_context.m_valid, "set_scissor_rects must be called between `begin_render_pass` and `end_render_pass`.");
 			D3D12_RECT* rs = (D3D12_RECT*)alloca(sizeof(D3D12_RECT) * rects.size());
 			auto tex_sz = m_render_pass_context.m_tex_size;
@@ -507,16 +522,19 @@ namespace Luna
 		void CommandBuffer::set_blend_factor(Span<const f32, 4> blend_factor)
 		{
 			lutsassert();
+			assert_graphcis_context();
 			m_li->OMSetBlendFactor(blend_factor.data());
 		}
 		void CommandBuffer::set_stencil_ref(u32 stencil_ref)
 		{
 			lutsassert();
+			assert_graphcis_context();
 			m_li->OMSetStencilRef(stencil_ref);
 		}
 		void CommandBuffer::draw_indexed_instanced(u32 index_count_per_instance, u32 instance_count, u32 start_index_location, i32 base_vertex_location, u32 start_instance_location)
 		{
 			lutsassert();
+			assert_graphcis_context();
 			lucheck_msg(m_render_pass_context.m_valid, "draw_indexed_instanced must be called between `begin_render_pass` and `end_render_pass`.");
 			m_li->DrawIndexedInstanced(index_count_per_instance, instance_count, start_index_location, base_vertex_location, start_instance_location);
 		}
@@ -524,12 +542,14 @@ namespace Luna
 			u32 start_instance_location)
 		{
 			lutsassert();
+			assert_graphcis_context();
 			lucheck_msg(m_render_pass_context.m_valid, "draw_instanced must be called between `begin_render_pass` and `end_render_pass`.");
 			m_li->DrawInstanced(vertex_count_per_instance, instance_count, start_vertex_location, start_instance_location);
 		}
 		void CommandBuffer::clear_depth_stencil_attachment(ClearFlag clear_flags, f32 depth, u8 stencil, Span<const RectI> rects)
 		{
 			lutsassert();
+			assert_graphcis_context();
 			lucheck_msg(m_render_pass_context.m_valid, "clear_depth_stencil_attachment must be called between `begin_render_pass` and `end_render_pass`.");
 			D3D12_CPU_DESCRIPTOR_HANDLE h = m_render_pass_context.m_depth_stencil_attachment->GetCPUDescriptorHandleForHeapStart();
 			D3D12_RECT* d3drects = (D3D12_RECT*)alloca(sizeof(D3D12_RECT) * rects.size());
@@ -566,6 +586,7 @@ namespace Luna
 		void CommandBuffer::clear_color_attachment(u32 index, Span<const f32, 4> color_rgba, Span<const RectI> rects)
 		{
 			lutsassert();
+			assert_graphcis_context();
 			lucheck_msg(m_render_pass_context.m_valid, "clear_color_attachment must be called between `begin_render_pass` and `end_render_pass`.");
 			D3D12_CPU_DESCRIPTOR_HANDLE h = m_render_pass_context.m_color_attachments[index]->GetCPUDescriptorHandleForHeapStart();
 			D3D12_RECT* d3drects = (D3D12_RECT*)alloca(sizeof(D3D12_RECT) * rects.size());
@@ -582,12 +603,147 @@ namespace Luna
 		void CommandBuffer::end_render_pass()
 		{
 			lutsassert();
+			assert_graphcis_context();
 			lucheck_msg(m_render_pass_context.m_valid, "`begin_render_pass` must be called before `end_render_pass`.");
+			// Emit barrier.
+			Vector<D3D12_RESOURCE_BARRIER> barriers;
+			for (u32 i = 0; i < m_render_pass_context.m_num_render_targets; ++i)
+			{
+				if (m_render_pass_context.m_resolve_attachments[i].texture)
+				{
+					auto& src = m_render_pass_context.m_color_attachment_views[i];
+					auto& dst = m_render_pass_context.m_resolve_attachments[i];
+					u32 num_slices = min(dst.array_size, src.array_size);
+					for (u32 i = 0; i < num_slices; ++i)
+					{
+						D3D12_RESOURCE_BARRIER barrier{};
+						barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+						barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+						TextureResource* tex = cast_object<TextureResource>(src.texture->get_object());
+						barrier.Transition.pResource = tex->m_res.Get();
+						barrier.Transition.Subresource = calc_subresource_index(src.mip_slice, src.array_slice + i, tex->m_desc.mip_levels);
+						barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
+						barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RESOLVE_SOURCE;
+						barriers.push_back(barrier);
+					}
+				}
+			}
+			if (!barriers.empty())
+			{
+				m_li->ResourceBarrier((UINT)barriers.size(), barriers.data());
+			}
+			barriers.clear();
+			for (u32 i = 0; i < m_render_pass_context.m_num_render_targets; ++i)
+			{
+				if (m_render_pass_context.m_resolve_attachments[i].texture)
+				{
+					auto& src = m_render_pass_context.m_color_attachment_views[i];
+					auto& dst = m_render_pass_context.m_resolve_attachments[i];
+					TextureResource* src_res = cast_object<TextureResource>(src.texture->get_object());
+					TextureResource* dst_res = cast_object<TextureResource>(dst.texture->get_object());
+					u32 num_slices = min(dst.array_size, src.array_size);
+					for (u32 i = 0; i < num_slices; ++i)
+					{
+						m_li->ResolveSubresource(
+							dst_res->m_res.Get(), calc_subresource_index(dst.mip_slice, dst.array_slice + i, dst_res->m_desc.mip_levels),
+							src_res->m_res.Get(), calc_subresource_index(src.mip_slice, src.array_slice + i, src_res->m_desc.mip_levels), encode_pixel_format(dst_res->m_desc.pixel_format));
+					}
+				}
+			}
+			for (u32 i = 0; i < m_render_pass_context.m_num_render_targets; ++i)
+			{
+				if (m_render_pass_context.m_resolve_attachments[i].texture)
+				{
+					auto& src = m_render_pass_context.m_color_attachment_views[i];
+					auto& dst = m_render_pass_context.m_resolve_attachments[i];
+					u32 num_slices = min(dst.array_size, src.array_size);
+					for (u32 i = 0; i < num_slices; ++i)
+					{
+						D3D12_RESOURCE_BARRIER barrier{};
+						barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+						barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+						TextureResource* tex = cast_object<TextureResource>(src.texture->get_object());
+						barrier.Transition.pResource = tex->m_res.Get();
+						barrier.Transition.Subresource = calc_subresource_index(src.mip_slice, src.array_slice + i, tex->m_desc.mip_levels);
+						barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RESOLVE_SOURCE;
+						barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
+						barriers.push_back(barrier);
+					}
+				}
+			}
+			if (!barriers.empty())
+			{
+				m_li->ResourceBarrier((UINT)barriers.size(), barriers.data());
+			}
+			barriers.clear();
 			m_render_pass_context.m_valid = false;
+		}
+		void CommandBuffer::set_compute_shader_input_layout(IShaderInputLayout* shader_input_layout)
+		{
+			lutsassert();
+			assert_compute_context();
+			lucheck(shader_input_layout);
+			ShaderInputLayout* o = cast_object<ShaderInputLayout>(shader_input_layout->get_object());
+			m_compute_shader_input_layout = o;
+			m_li->SetComputeRootSignature(o->m_rs.Get());
+		}
+		void CommandBuffer::set_compute_pipeline_state(IPipelineState* pso)
+		{
+			PipelineState* p = cast_object<PipelineState>(pso->get_object());
+			lutsassert();
+			m_li->SetPipelineState(p->m_pso.Get());
+		}
+		void CommandBuffer::set_compute_descriptor_sets(u32 start_index, Span<IDescriptorSet*> descriptor_sets)
+		{
+			lutsassert();
+			assert_compute_context();
+			lucheck_msg(m_compute_shader_input_layout, "Compute Shader Input Layout must be set before Compute View Set can be attached.");
+			lucheck_msg(m_compute_shader_input_layout->m_descriptor_set_layouts.size() > start_index, "The binding index out of range specified by the shader input layout.");
+			if (!m_heap_set)
+			{
+				ID3D12DescriptorHeap* heaps[2];
+				heaps[0] = m_device->m_cbv_srv_uav_heap.m_heap.Get();
+				heaps[1] = m_device->m_sampler_heap.m_heap.Get();
+				m_li->SetDescriptorHeaps(2, heaps);
+				m_heap_set = true;
+			}
+			for (u32 index = start_index; index < start_index + (u32)descriptor_sets.size(); ++index)
+			{
+				auto& info = m_compute_shader_input_layout->m_descriptor_set_layouts[index];
+				DescriptorSet* set = cast_object<DescriptorSet>(descriptor_sets[index - start_index]->get_object());
+				for (u32 i = 0; i < (u32)info.m_heap_types.size(); ++i)
+				{
+					D3D12_DESCRIPTOR_HEAP_TYPE heap_type = info.m_heap_types[i];
+					D3D12_GPU_DESCRIPTOR_HANDLE handle;
+					if (heap_type == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV)
+					{
+						handle = m_device->m_cbv_srv_uav_heap.m_gpu_handle;
+						// Shift to the set begin.
+						handle.ptr += m_device->m_cbv_srv_uav_heap.m_descriptor_size * (set->m_view_heap_offset);
+					}
+					else if (heap_type == D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER)
+					{
+						handle = m_device->m_sampler_heap.m_gpu_handle;
+						handle.ptr += m_device->m_sampler_heap.m_descriptor_size * (set->m_sampler_heap_offset);
+					}
+					else
+					{
+						lupanic();
+					}
+					m_li->SetComputeRootDescriptorTable(info.m_root_parameter_offset + i, handle);
+				}
+			}
+		}
+		void CommandBuffer::dispatch(u32 thread_group_count_x, u32 thread_group_count_y, u32 thread_group_count_z)
+		{
+			lutsassert();
+			assert_compute_context();
+			m_li->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z);
 		}
 		void CommandBuffer::copy_resource(IResource* dst, IResource* src)
 		{
 			lutsassert();
+			assert_copy_context();
 			lucheck(dst && src);
 			{
 				BufferResource* d = cast_object<BufferResource>(dst->get_object());
@@ -613,6 +769,7 @@ namespace Luna
 			u64 copy_bytes)
 		{
 			lutsassert();
+			assert_copy_context();
 			BufferResource* d = cast_object<BufferResource>(dst->get_object());
 			BufferResource* s = cast_object<BufferResource>(src->get_object());
 			m_li->CopyBufferRegion(d->m_res.Get(), dst_offset, s->m_res.Get(), src_offset, copy_bytes);
@@ -623,6 +780,7 @@ namespace Luna
 			u32 copy_width, u32 copy_height, u32 copy_depth)
 		{
 			lutsassert();
+			assert_copy_context();
 			TextureResource* d = cast_object<TextureResource>(dst->get_object());
 			TextureResource* s = cast_object<TextureResource>(src->get_object());
 			D3D12_TEXTURE_COPY_LOCATION dsttex;
@@ -648,6 +806,7 @@ namespace Luna
 			u32 copy_width, u32 copy_height, u32 copy_depth)
 		{
 			lutsassert();
+			assert_copy_context();
 			TextureResource* d = cast_object<TextureResource>(dst->get_object());
 			BufferResource* s = cast_object<BufferResource>(src->get_object());
 			D3D12_TEXTURE_COPY_LOCATION dsttex;
@@ -679,6 +838,7 @@ namespace Luna
 			u32 copy_width, u32 copy_height, u32 copy_depth)
 		{
 			lutsassert();
+			assert_copy_context();
 			BufferResource* d = cast_object<BufferResource>(dst->get_object());
 			TextureResource* s = cast_object<TextureResource>(src->get_object());
 			D3D12_TEXTURE_COPY_LOCATION dsttex;
@@ -704,58 +864,10 @@ namespace Luna
 			src_box.back = src_z + copy_depth;
 			m_li->CopyTextureRegion(&dsttex, 0, 0, 0, &srctex, &src_box);
 		}
-		void CommandBuffer::set_compute_shader_input_layout(IShaderInputLayout* shader_input_layout)
-		{
-			lutsassert();
-			lucheck(shader_input_layout);
-			ShaderInputLayout* o = cast_object<ShaderInputLayout>(shader_input_layout->get_object());
-			m_compute_shader_input_layout = o;
-			m_li->SetComputeRootSignature(o->m_rs.Get());
-		}
-		void CommandBuffer::set_compute_descriptor_sets(u32 start_index, Span<IDescriptorSet*> descriptor_sets)
-		{
-			lutsassert();
-			lucheck_msg(m_compute_shader_input_layout, "Compute Shader Input Layout must be set before Compute View Set can be attached.");
-			lucheck_msg(m_compute_shader_input_layout->m_descriptor_set_layouts.size() > index, "The binding index out of range specified by the shader input layout.");
-			if (!m_heap_set)
-			{
-				ID3D12DescriptorHeap* heaps[2];
-				heaps[0] = m_device->m_cbv_srv_uav_heap.m_heap.Get();
-				heaps[1] = m_device->m_sampler_heap.m_heap.Get();
-				m_li->SetDescriptorHeaps(2, heaps);
-				m_heap_set = true;
-			}
-			
-			for (u32 index = start_index; index < start_index + (u32)descriptor_sets.size(); ++index)
-			{
-				auto& info = m_compute_shader_input_layout->m_descriptor_set_layouts[index];
-				DescriptorSet* set = cast_object<DescriptorSet>(descriptor_sets[index - start_index]->get_object());
-				for (u32 i = 0; i < (u32)info.m_heap_types.size(); ++i)
-				{
-					D3D12_DESCRIPTOR_HEAP_TYPE heap_type = info.m_heap_types[i];
-					D3D12_GPU_DESCRIPTOR_HANDLE handle;
-					if (heap_type == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV)
-					{
-						handle = m_device->m_cbv_srv_uav_heap.m_gpu_handle;
-						// Shift to the set begin.
-						handle.ptr += m_device->m_cbv_srv_uav_heap.m_descriptor_size * (set->m_view_heap_offset);
-					}
-					else if (heap_type == D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER)
-					{
-						handle = m_device->m_sampler_heap.m_gpu_handle;
-						handle.ptr += m_device->m_sampler_heap.m_descriptor_size * (set->m_sampler_heap_offset);
-					}
-					else
-					{
-						lupanic();
-					}
-					m_li->SetComputeRootDescriptorTable(info.m_root_parameter_offset + i, handle);
-				}
-			}
-		}
 		void CommandBuffer::resource_barrier(Span<const BufferBarrier> buffer_barriers, Span<const TextureBarrier> texture_barriers)
 		{
 			lutsassert();
+			assert_non_render_pass();
 			m_tracking_system.begin_new_barrier_batch();
 			for (auto& barrier : buffer_barriers)
 			{
@@ -769,11 +881,6 @@ namespace Luna
 			{
 				m_li->ResourceBarrier((UINT)m_tracking_system.m_barriers.size(), m_tracking_system.m_barriers.data());
 			}
-		}
-		void CommandBuffer::dispatch(u32 thread_group_count_x, u32 thread_group_count_y, u32 thread_group_count_z)
-		{
-			lutsassert();
-			m_li->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z);
 		}
 		void CommandBuffer::write_timestamp(IQueryHeap* heap, u32 index)
 		{
@@ -814,6 +921,7 @@ namespace Luna
 		RV CommandBuffer::submit(Span<IFence*> wait_fences, Span<IFence*> signal_fences, bool allow_host_waiting)
 		{
 			lutsassert();
+			assert_non_render_pass();
 			HRESULT hr;
 			hr = m_li->Close();
 			if (FAILED(hr)) return encode_hresult(hr);

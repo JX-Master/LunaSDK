@@ -223,6 +223,7 @@ RV start()
             }
         }
         lulet(upload_cmdbuf, dev->new_command_buffer(copy_queue_index));
+        upload_cmdbuf->set_context(CommandBufferContextType::copy);
         upload_cmdbuf->resource_barrier({
             { tex_staging, BufferStateFlag::automatic, BufferStateFlag::copy_source, ResourceBarrierFlag::none} },
             { { file_tex, TEXTURE_BARRIER_ALL_SUBRESOURCES, TextureStateFlag::automatic, TextureStateFlag::copy_dest, ResourceBarrierFlag::discard_content } });
@@ -260,7 +261,7 @@ void draw()
         using namespace RHI;
 
 		auto cmdbuf = get_command_buffer();
-
+        cmdbuf->set_context(CommandBufferContextType::graphics);
         cmdbuf->resource_barrier(
             {
                 {cb, BufferStateFlag::automatic, BufferStateFlag::uniform_buffer_vs, ResourceBarrierFlag::none},
@@ -278,7 +279,7 @@ void draw()
         desc.depth_stencil_attachment = DepthStencilAttachment(depth_tex, LoadOp::clear, StoreOp::store, 1.0f);
         cmdbuf->begin_render_pass(desc);
         cmdbuf->set_graphics_shader_input_layout(slayout);
-        cmdbuf->set_pipeline_state(pso);
+        cmdbuf->set_graphics_pipeline_state(pso);
         IDescriptorSet* ds = desc_set.get();
         cmdbuf->set_graphics_descriptor_sets(0, { &ds, 1 });
         auto sz = vb->get_desc().size;

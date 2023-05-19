@@ -247,6 +247,7 @@ float4 main(PS_INPUT input) : SV_Target
                         }
                     }
                     lulet(upload_cmdbuf, dev->new_command_buffer(copy_queue_index));
+                    upload_cmdbuf->set_context(CommandBufferContextType::copy);
                     upload_cmdbuf->resource_barrier({
                         { tex_staging, BufferStateFlag::automatic, BufferStateFlag::copy_source, ResourceBarrierFlag::none} },
                         { { g_font_tex, TEXTURE_BARRIER_ALL_SUBRESOURCES, TextureStateFlag::automatic, TextureStateFlag::copy_dest, ResourceBarrierFlag::discard_content } });
@@ -709,7 +710,7 @@ float4 main(PS_INPUT input) : SV_Target
                 cmd_buffer->set_vertex_buffers(0, { &VertexBufferView(g_vb, 0, (u32)(g_vb_size * sizeof(ImDrawVert)), sizeof(ImDrawVert)), 1 });
                 cmd_buffer->set_index_buffer({g_ib, 0, (u32)(g_ib_size * sizeof(ImDrawIdx)), sizeof(ImDrawIdx) == 2 ? Format::r16_uint : Format::r32_uint});
                 lulet(pso, get_pso(rt_desc.pixel_format));
-                cmd_buffer->set_pipeline_state(pso);
+                cmd_buffer->set_graphics_pipeline_state(pso);
                 cmd_buffer->set_graphics_shader_input_layout(g_slayout);
                 const f32 blend_factor[4] = { 0.f, 0.f, 0.f, 0.f };
                 cmd_buffer->set_blend_factor(blend_factor);

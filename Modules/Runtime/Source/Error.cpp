@@ -114,7 +114,7 @@ namespace Luna
 
 	static errcat_t interal_get_error_category_by_name(const c8* errcat_name_begin, const c8* errcat_name_end, ErrCategroyRegistry** out_errtype_registry)
 	{
-		lucheck(errcat_name && *errcat_name != '\0');
+		lucheck(errcat_name_begin && *errcat_name_begin != '\0');
 		usize errcat_name_sz = errcat_name_end - errcat_name_begin;
 		usize h = memhash<usize>(errcat_name_begin, errcat_name_sz * sizeof(c8));
 		auto& r = g_errcat_registry.get();

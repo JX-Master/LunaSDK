@@ -26,6 +26,7 @@ RV start()
 void draw()
 {
 	auto cb = get_command_buffer();
+	cb->set_context(CommandBufferContextType::graphics);
 	cb->resource_barrier({},
 		{
 			{get_back_buffer(), TEXTURE_BARRIER_ALL_SUBRESOURCES, TextureStateFlag::automatic, TextureStateFlag::color_attachment_write, ResourceBarrierFlag::discard_content}
