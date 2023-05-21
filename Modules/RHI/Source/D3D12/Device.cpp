@@ -162,7 +162,7 @@ namespace Luna
 		}
 		inline bool is_render_target_or_depth_stencil_texture(const TextureDesc& desc)
 		{
-			return test_flags(desc.usages, TextureUsageFlag::render_target) || test_flags(desc.usages, TextureUsageFlag::depth_stencil);
+			return test_flags(desc.usages, TextureUsageFlag::color_attachment) || test_flags(desc.usages, TextureUsageFlag::depth_stencil_attachment);
 		}
 		R<UniquePtr<CommandQueue>> Device::new_command_queue(const CommandQueueDesc& desc)
 		{

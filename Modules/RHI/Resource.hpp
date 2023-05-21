@@ -239,12 +239,12 @@ namespace Luna
 			read_texture = 0x08,
 			//! Allows this resource to be bound to a read-write texture view.
 			read_write_texture = 0x10,
-			//! Allows this resource to be bound to a render target view.
-			render_target = 0x20,
-			//! Allows this resource to be bound to a depth stencil view .
-			depth_stencil = 0x40,
-			//! Allows this resource to be bound to a resolve target view.
-			resolve_target = 0x80,
+			//! Allows this resource to be bound as color attachment.
+			color_attachment = 0x20,
+			//! Allows this resource to be bound as depth stencil attachment.
+			depth_stencil_attachment = 0x40,
+			//! Allows this resource to be bound to a resolve attachment.
+			resolve_attachment = 0x80,
 		};
 
 		struct TextureDesc

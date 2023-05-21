@@ -251,7 +251,7 @@ namespace Luna
 			if(!desc2.width_or_buffer_size) desc2.width_or_buffer_size = desc.width_or_buffer_size;
 			if(!desc2.height) desc2.height = desc.height;
 			if(desc2.pixel_format == RHI::Format::unknown) desc2.pixel_format = RHI::Format::rgba8_unorm;
-			desc2.usages |= RHI::TextureUsageFlag::render_target;
+			desc2.usages |= RHI::TextureUsageFlag::color_attachment;
 			compiler->set_resource_desc(base_color_roughness_tex, desc2);
 
 			desc2 = compiler->get_resource_desc(normal_metallic_tex);
@@ -259,7 +259,7 @@ namespace Luna
 			if(!desc2.width_or_buffer_size) desc2.width_or_buffer_size = desc.width_or_buffer_size;
 			if(!desc2.height) desc2.height = desc.height;
 			if(desc2.pixel_format == RHI::Format::unknown) desc2.pixel_format = RHI::Format::rgba8_unorm;
-			desc2.usages |= RHI::TextureUsageFlag::render_target;
+			desc2.usages |= RHI::TextureUsageFlag::color_attachment;
 			compiler->set_resource_desc(normal_metallic_tex, desc2);
 
 			desc2 = compiler->get_resource_desc(emissive_tex);
@@ -267,7 +267,7 @@ namespace Luna
 			if(!desc2.width_or_buffer_size) desc2.width_or_buffer_size = desc.width_or_buffer_size;
 			if(!desc2.height) desc2.height = desc.height;
 			if(desc2.pixel_format == RHI::Format::unknown) desc2.pixel_format = RHI::Format::rgba16_float;
-			desc2.usages |= RHI::TextureUsageFlag::render_target;
+			desc2.usages |= RHI::TextureUsageFlag::color_attachment;
 			compiler->set_resource_desc(emissive_tex, desc2);
 
 			Ref<GeometryPass> pass = new_object<GeometryPass>();

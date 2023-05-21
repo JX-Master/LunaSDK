@@ -150,7 +150,7 @@ RV start()
         
         auto window_size = get_window()->get_framebuffer_size();
         luset(depth_tex, dev->new_texture(MemoryType::local, TextureDesc::tex2d(Format::d32_float,
-            TextureUsageFlag::depth_stencil, window_size.x, window_size.y, 1, 1)));
+            TextureUsageFlag::depth_stencil_attachment, window_size.x, window_size.y, 1, 1)));
 
         Vertex vertices[] = {
             {{+0.5, -0.5, -0.5}, {0.0, 1.0}}, {{+0.5, +0.5, -0.5}, {0.0, 0.0}},
@@ -302,7 +302,7 @@ void resize(u32 width, u32 height)
         using namespace RHI;
         auto dev = get_main_device();
         luset(depth_tex, dev->new_texture(MemoryType::local, TextureDesc::tex2d(Format::d32_float,
-            TextureUsageFlag::depth_stencil, width, height, 1, 1)));
+            TextureUsageFlag::depth_stencil_attachment, width, height, 1, 1)));
     }
     lucatch
 	{

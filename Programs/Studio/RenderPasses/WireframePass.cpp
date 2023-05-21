@@ -156,7 +156,7 @@ namespace Luna
 			auto scene_texture = compiler->get_output_resource("scene_texture");
 			if(scene_texture == RG::INVALID_RESOURCE) return set_error(BasicError::bad_arguments(), "WireframePass: Output \"scene_texture\" is not specified.");
 			RG::ResourceDesc desc = compiler->get_resource_desc(scene_texture);
-			desc.texture.usages |= RHI::TextureUsageFlag::render_target;
+			desc.texture.usages |= RHI::TextureUsageFlag::color_attachment;
 			compiler->set_resource_desc(scene_texture, desc);
 			Ref<WireframePass> pass = new_object<WireframePass>();
             luexp(pass->init(data));

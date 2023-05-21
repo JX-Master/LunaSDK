@@ -149,7 +149,7 @@ namespace Luna
             RG::ResourceDesc desc = compiler->get_resource_desc(texture_resource);
             desc.texture.width = depth_desc.texture.width;
             desc.texture.height = depth_desc.texture.height;
-            desc.texture.usages |= RHI::TextureUsageFlag::read_write_texture | RHI::TextureUsageFlag::render_target;
+            desc.texture.usages |= RHI::TextureUsageFlag::read_write_texture | RHI::TextureUsageFlag::color_attachment;
             compiler->set_resource_desc(texture_resource, desc);
             Ref<SkyBoxPass> pass = new_object<SkyBoxPass>();
             luexp(pass->init(data));

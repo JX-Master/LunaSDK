@@ -347,8 +347,8 @@ namespace Luna
 			if (test_flags(desc.usages, TextureUsageFlag::sampled_texture)) dest.usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
 			if (test_flags(desc.usages, TextureUsageFlag::read_texture) ||
 				test_flags(desc.usages, TextureUsageFlag::read_write_texture)) dest.usage |= VK_IMAGE_USAGE_STORAGE_BIT;
-			if (test_flags(desc.usages, TextureUsageFlag::render_target)) dest.usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-			if (test_flags(desc.usages, TextureUsageFlag::depth_stencil)) dest.usage |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+			if (test_flags(desc.usages, TextureUsageFlag::color_attachment)) dest.usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+			if (test_flags(desc.usages, TextureUsageFlag::depth_stencil_attachment)) dest.usage |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
 			dest.samples = encode_sample_count(desc.sample_count);
 			dest.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 		}

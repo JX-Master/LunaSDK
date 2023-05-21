@@ -205,11 +205,11 @@ namespace Luna
 			rd.SampleDesc.Quality = (desc.sample_count == 1) ? 0 : 1;
 			rd.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
 			rd.Flags = D3D12_RESOURCE_FLAG_NONE;
-			if (test_flags(desc.usages, TextureUsageFlag::render_target))
+			if (test_flags(desc.usages, TextureUsageFlag::color_attachment))
 			{
 				rd.Flags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
 			}
-			if (test_flags(desc.usages, TextureUsageFlag::depth_stencil))
+			if (test_flags(desc.usages, TextureUsageFlag::depth_stencil_attachment))
 			{
 				rd.Flags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
 			}

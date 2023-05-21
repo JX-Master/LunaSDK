@@ -35,11 +35,11 @@ namespace Luna
 				TextureUsageFlag usages = TextureUsageFlag::none;
 				if (desc.Flags & D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET)
 				{
-					usages |= TextureUsageFlag::render_target;
+					usages |= TextureUsageFlag::color_attachment;
 				}
 				if (desc.Flags & D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL)
 				{
-					usages |= TextureUsageFlag::depth_stencil;
+					usages |= TextureUsageFlag::depth_stencil_attachment;
 				}
 				if (desc.Flags & D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS)
 				{
