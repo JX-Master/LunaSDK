@@ -63,6 +63,8 @@ namespace Luna
 			Ref<Window::IWindow> m_window;
 			ComPtr<IDXGISwapChain1> m_sc;
 			SwapChainDesc m_desc;
+			BOOL m_allow_tearing = FALSE;
+			UINT m_present_flags = 0;
 
 			Vector<SwapChainResource> m_back_buffers;
 			u32 m_current_back_buffer;
@@ -73,7 +75,7 @@ namespace Luna
 			RV init(u32 queue_index, Window::IWindow* window, const SwapChainDesc& desc);
 
 			//! Called when the back buffer is resized or when the swap chain is initialized.
-			RV reset_back_buffer_resources(const SwapChainDesc& desc);
+			RV reset_back_buffer_resources();
 
 			IDevice* get_device()
 			{

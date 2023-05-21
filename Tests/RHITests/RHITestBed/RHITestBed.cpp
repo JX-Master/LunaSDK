@@ -15,6 +15,7 @@
 #include <Runtime/Debug.hpp>
 #include <Runtime/Log.hpp>
 #include <Window/Window.hpp>
+#include <Runtime/Time.hpp>
 
 namespace Luna
 {
@@ -37,6 +38,9 @@ namespace Luna
 		Ref<ICommandBuffer> m_command_buffer;
 
 		Ref<ITexture> m_back_buffer;
+
+		u64 m_time;
+		u64 m_frame_count;
 
 		LUNA_RHI_TESTBED_API void register_init_func(RV(*init_func)())
 		{
@@ -111,6 +115,8 @@ namespace Luna
 					}
 					log_info("RHITest", "====================");
 				}
+				m_time = get_ticks();
+				m_frame_count = 0;
 			}
 			lucatchret;
 			return ok;
@@ -132,6 +138,17 @@ namespace Luna
 			{
 				Window::poll_events();
 				if (m_window->is_closed()) break;
+
+				++m_frame_count;
+				u64 new_time = get_ticks();
+				if (new_time - m_time >= get_ticks_per_second())
+				{
+					c8 buf[64];
+					snprintf(buf, 64, "RHI Test - FPS: %lld", m_frame_count);
+					m_window->set_title(buf);
+					m_time = new_time;
+					m_frame_count = 0;
+				}
 
 				lupanic_if_failed(m_command_buffer->reset());
 

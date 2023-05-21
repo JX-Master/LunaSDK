@@ -249,6 +249,9 @@ namespace Luna
 			//! Returns `nullptr` if the window is not in full-screen mode.
 			virtual monitor_t get_monitor() = 0;
 
+			//! Sets the window title.
+			virtual RV set_title(const c8* title) = 0;
+
 			//! Sets the window display settings.
 			virtual RV set_display_settings(const WindowDisplaySettings& display_settings) = 0;
 

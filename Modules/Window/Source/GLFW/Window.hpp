@@ -114,6 +114,7 @@ namespace Luna
 			f32 get_dpi_scale_factor();
 			bool is_full_screen() { return get_monitor() != nullptr; }
 			monitor_t get_monitor() {return glfwGetWindowMonitor(m_window); }
+			RV set_title(const c8* title) { glfwSetWindowTitle(m_window, title); return check_glfw_error(); }
 			RV set_display_settings(const WindowDisplaySettings& display_settings);
 			Int2U screen_to_client(const Int2U& point);
 			Int2U client_to_screen(const Int2U& point);

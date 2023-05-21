@@ -13,7 +13,7 @@
 #include <d3d12.h>
 #include "Device.hpp"
 #include "SwapChain.hpp"
-#include <dxgi1_4.h>
+#include <dxgi1_5.h>
 #include <Runtime/Unicode.hpp>
 #pragma comment(lib, "d3d12.lib")
 #pragma comment(lib, "dxgi.lib")
@@ -32,7 +32,7 @@ namespace Luna
 {
 	namespace RHI
 	{
-		ComPtr<IDXGIFactory1> g_dxgi;
+		ComPtr<IDXGIFactory5> g_dxgi;
 		Ref<IDevice> g_device;
 
 		Vector<ComPtr<IDXGIAdapter1>> g_adapters;
@@ -64,17 +64,17 @@ namespace Luna
 			register_boxed_type<Fence>();
 			impl_interface_for_type<Fence, IFence, IDeviceChild>();
 
-
-			if (FAILED(::CreateDXGIFactory1(IID_PPV_ARGS(&g_dxgi))))
+			HRESULT hr = ::CreateDXGIFactory1(IID_PPV_ARGS(&g_dxgi));
+			if (FAILED(hr))
 			{
-				return BasicError::bad_platform_call();
+				return encode_hresult(hr);
 			}
 
 			ComPtr<IDXGIAdapter1> ada;
 			u32 index = 0;
 			while (true)
 			{
-				HRESULT hr = g_dxgi->EnumAdapters1(index, ada.ReleaseAndGetAddressOf());
+				hr = g_dxgi->EnumAdapters1(index, ada.ReleaseAndGetAddressOf());
 				if (FAILED(hr)) break;
 				g_adapters.push_back(move(ada));
 				++index;

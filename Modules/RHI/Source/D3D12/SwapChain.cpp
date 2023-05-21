@@ -11,12 +11,13 @@
 #include "Resource.hpp"
 #include "../../RHI.hpp"
 #include <Window/Windows/Win32Window.hpp>
+#include <dxgi1_5.h>
 
 namespace Luna
 {
 	namespace RHI
 	{ 
-		extern ComPtr<IDXGIFactory1> g_dxgi;
+		extern ComPtr<IDXGIFactory5> g_dxgi;
 		RV SwapChainResource::init(Device* device, ID3D12Resource* resource)
 		{
 			lutry
@@ -90,26 +91,33 @@ namespace Luna
 			HWND hwnd = query_interface<Window::IWin32Window>(window->get_object())->get_hwnd();
 			lutry
 			{
-				luexp(encode_hresult(dxgifac->CreateSwapChainForHwnd(m_device->m_command_queues[queue_index]->m_command_queue.Get(), hwnd, &d, NULL, NULL, &m_sc)));
-				for (u32 i = 0; i < m_desc.buffer_count; ++i)
+				luexp(encode_hresult(g_dxgi->CheckFeatureSupport(DXGI_FEATURE_PRESENT_ALLOW_TEARING, &m_allow_tearing, sizeof(m_allow_tearing))));
+				if (m_allow_tearing)
 				{
-					SwapChainResource res;
-					ComPtr<ID3D12Resource> resource;
-					luexp(encode_hresult(m_sc->GetBuffer(i, IID_PPV_ARGS(&resource))));
-					luexp(res.init(m_device, resource.Get()));
-					m_back_buffers.push_back(move(res));
+					d.Flags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
 				}
+				luexp(encode_hresult(dxgifac->CreateSwapChainForHwnd(m_device->m_command_queues[queue_index]->m_command_queue.Get(), hwnd, &d, NULL, NULL, &m_sc)));
+				luexp(reset_back_buffer_resources());
 			}
 			lucatchret;
 			return ok;
 		}
-		RV SwapChain::reset_back_buffer_resources(const SwapChainDesc& desc)
+		RV SwapChain::reset_back_buffer_resources()
 		{
 			// Fetch resources.
 			lutry
 			{
 				m_current_back_buffer = 0;
-				m_desc = desc;
+				m_present_flags = 0;
+				if (!m_desc.vertical_synchronized && m_allow_tearing)
+				{
+					BOOL state;
+					m_sc->GetFullscreenState(&state, NULL);
+					if (!state)
+					{
+						m_present_flags |= DXGI_PRESENT_ALLOW_TEARING;
+					}
+				}
 				for (u32 i = 0; i < m_desc.buffer_count; ++i)
 				{
 					SwapChainResource res;
@@ -137,7 +145,7 @@ namespace Luna
 			lutry
 			{
 				auto queue = m_device->m_command_queues[m_queue]->m_command_queue.Get();
-				luexp(encode_hresult(m_sc->Present(m_desc.vertical_synchronized ? 1 : 0, 0)));
+				luexp(encode_hresult(m_sc->Present(m_desc.vertical_synchronized ? 1 : 0, m_present_flags)));
 				auto& back_buffer = m_back_buffers[m_current_back_buffer];
 				++back_buffer.m_wait_value;
 				::ResetEvent(back_buffer.m_event);
@@ -160,6 +168,11 @@ namespace Luna
 			{
 				modified_desc.pixel_format = m_desc.pixel_format;
 			}
+			for (auto& back_buffer : m_back_buffers)
+			{
+				WaitForSingleObject(back_buffer.m_event, INFINITE);
+				back_buffer.m_back_buffer->m_res.Reset();
+			}
 			m_back_buffers.clear();
 			if (!modified_desc.width || !modified_desc.height)
 			{
@@ -179,8 +192,14 @@ namespace Luna
 			}
 			lutry
 			{
-				luexp(encode_hresult(m_sc->ResizeBuffers(modified_desc.buffer_count, modified_desc.width, modified_desc.height, encode_pixel_format(modified_desc.pixel_format), DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH)));
-				luexp(reset_back_buffer_resources(modified_desc));
+				DXGI_SWAP_CHAIN_FLAG flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
+				if (m_allow_tearing)
+				{
+					flags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
+				}
+				luexp(encode_hresult(m_sc->ResizeBuffers(modified_desc.buffer_count, modified_desc.width, modified_desc.height, encode_pixel_format(modified_desc.pixel_format), flags)));
+				m_desc = modified_desc;
+				luexp(reset_back_buffer_resources());
 			}
 			lucatchret;
 			return ok;
