@@ -352,19 +352,19 @@ namespace Luna
 			dest.samples = encode_sample_count(desc.sample_count);
 			dest.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 		}
-		inline void encode_allocation_info(VmaAllocationCreateInfo& dest, ResourceHeapType heap_type)
+		inline void encode_allocation_info(VmaAllocationCreateInfo& dest, MemoryType memory_type)
 		{
-			switch (heap_type)
+			switch (memory_type)
 			{
-			case ResourceHeapType::local:
+			case MemoryType::local:
 				dest.preferredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 				dest.priority = 1.0f;
 				break;
-			case ResourceHeapType::upload:
+			case MemoryType::upload:
 				dest.requiredFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
 				dest.preferredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 				break;
-			case ResourceHeapType::readback:
+			case MemoryType::readback:
 				dest.requiredFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
 				dest.preferredFlags = VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
 				break;

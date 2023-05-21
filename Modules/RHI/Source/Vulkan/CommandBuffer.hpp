@@ -109,6 +109,10 @@ namespace Luna
 			virtual void set_graphics_pipeline_state(IPipelineState* pso) override;
 			virtual void set_vertex_buffers(u32 start_slot, Span<const VertexBufferView> views) override;
 			virtual void set_index_buffer(const IndexBufferView& view) override;
+			virtual void set_graphics_descriptor_set(u32 start_index, IDescriptorSet* descriptor_set) override
+			{
+				set_graphics_descriptor_sets(start_index, { &descriptor_set, 1 });
+			}
 			virtual void set_graphics_descriptor_sets(u32 start_index, Span<IDescriptorSet*> descriptor_sets) override;
 			virtual void set_viewport(const Viewport& viewport) override;
 			virtual void set_viewports(Span<const Viewport> viewports) override;
@@ -127,6 +131,10 @@ namespace Luna
 			virtual void end_render_pass() override;
 			virtual void set_compute_shader_input_layout(IShaderInputLayout* shader_input_layout) override;
 			virtual void set_compute_pipeline_state(IPipelineState* pso) override;
+			virtual void set_compute_descriptor_set(u32 start_index, IDescriptorSet* descriptor_set) override
+			{
+				set_compute_descriptor_sets(start_index, { &descriptor_set, 1 });
+			}
 			virtual void set_compute_descriptor_sets(u32 start_index, Span<IDescriptorSet*> descriptor_sets) override;
 			virtual void dispatch(u32 thread_group_count_x, u32 thread_group_count_y, u32 thread_group_count_z) override;
 			virtual void copy_resource(IResource* dest, IResource* src) override;

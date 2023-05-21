@@ -26,9 +26,9 @@ namespace Luna
 			auto device = RHI::get_main_device();
 			// Upload resource.
 			lulet(vert_res, device->new_resource(RHI::ResourceDesc::buffer(
-				RHI::ResourceHeapType::local, RHI::ResourceUsageFlag::vertex_buffer, mesh_asset.vertex_data.size())));
+				RHI::MemoryType::local, RHI::ResourceUsageFlag::vertex_buffer, mesh_asset.vertex_data.size())));
 			lulet(index_res, device->new_resource(RHI::ResourceDesc::buffer(
-				RHI::ResourceHeapType::local, RHI::ResourceUsageFlag::index_buffer, mesh_asset.index_data.size())));
+				RHI::MemoryType::local, RHI::ResourceUsageFlag::index_buffer, mesh_asset.index_data.size())));
 			luexp(device->copy_resource({
 				RHI::ResourceCopyDesc::as_write_buffer(vert_res, mesh_asset.vertex_data.data(), mesh_asset.vertex_data.size(), 0),
 				RHI::ResourceCopyDesc::as_write_buffer(index_res, mesh_asset.index_data.data(), mesh_asset.index_data.size(), 0)

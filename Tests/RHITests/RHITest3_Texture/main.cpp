@@ -142,14 +142,14 @@ RV start()
 			desc.ps = { ps.data(), ps.size() };
 			desc.shader_input_layout = shader_input_layout;
 			desc.depth_stencil_state = DepthStencilDesc(false, false);
-			desc.num_render_targets = 1;
-			desc.rtv_formats[0] = Format::bgra8_unorm;
+			desc.num_color_attachments = 1;
+			desc.color_formats[0] = Format::bgra8_unorm;
 
 			luset(pso, device->new_graphics_pipeline_state(desc));
 
-			luset(vb, device->new_buffer(BufferDesc(ResourceHeapType::upload, BufferUsageFlag::vertex_buffer, sizeof(VertexData) * 4)));
+			luset(vb, device->new_buffer(MemoryType::upload, BufferDesc(BufferUsageFlag::vertex_buffer, sizeof(VertexData) * 4)));
 			u32 incides[] = { 0, 1, 2, 1, 3, 2 };
-			luset(ib, device->new_buffer(BufferDesc(ResourceHeapType::upload, BufferUsageFlag::index_buffer, sizeof(incides))));
+			luset(ib, device->new_buffer(MemoryType::upload, BufferDesc(BufferUsageFlag::index_buffer, sizeof(incides))));
 			lulet(mapped_data, ib->map(0, 0));
 			memcpy(mapped_data, incides, sizeof(incides));
 			ib->unmap(0, sizeof(incides));
@@ -161,12 +161,12 @@ RV start()
 			tex_width = image_desc.width;
 			tex_height = image_desc.height;
 			
-			luset(tex, device->new_texture(TextureDesc::tex2d(ResourceHeapType::local, Format::rgba8_unorm, 
+			luset(tex, device->new_texture(MemoryType::local, TextureDesc::tex2d(Format::rgba8_unorm,
 				TextureUsageFlag::sampled_texture | TextureUsageFlag::copy_dest, image_desc.width, image_desc.height, 1, 1)));
 
 			u64 size, row_pitch, slice_pitch;
 			device->get_texture_data_placement_info(image_desc.width, image_desc.height, 1, Format::rgba8_unorm, &size, nullptr, &row_pitch, &slice_pitch);
-			lulet(tex_staging, device->new_buffer(BufferDesc(ResourceHeapType::upload, BufferUsageFlag::copy_source, size)));
+			lulet(tex_staging, device->new_buffer(MemoryType::upload, BufferDesc(BufferUsageFlag::copy_source, size)));
 
 			lulet(tex_staging_data, tex_staging->map(0, 0));
 			memcpy_bitmap(tex_staging_data, image_data.data(), image_desc.width * 4, image_desc.height, row_pitch, image_desc.width * 4);

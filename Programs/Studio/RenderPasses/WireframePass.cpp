@@ -76,8 +76,8 @@ namespace Luna
 			ps_desc.vs = vs_blob.cspan();
 			ps_desc.ps = ps_blob.cspan();
 			ps_desc.shader_input_layout = m_debug_mesh_renderer_slayout;
-			ps_desc.num_render_targets = 1;
-			ps_desc.rtv_formats[0] = Format::rgba8_unorm;
+			ps_desc.num_color_attachments = 1;
+			ps_desc.color_formats[0] = Format::rgba8_unorm;
 			luset(m_debug_mesh_renderer_pso, device->new_graphics_pipeline_state(ps_desc));
         }
         lucatchret;

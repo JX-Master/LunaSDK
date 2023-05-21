@@ -56,12 +56,12 @@ namespace Luna
 			ps_desc.vs = vs_blob.cspan();
 			ps_desc.ps = ps_blob.cspan();
 			ps_desc.shader_input_layout = m_depth_pass_slayout;
-			ps_desc.num_render_targets = 0;
-			ps_desc.dsv_format = Format::d32_float;
+			ps_desc.num_color_attachments = 0;
+			ps_desc.depth_stencil_format = Format::d32_float;
 			luset(m_depth_pass_pso, device->new_graphics_pipeline_state(ps_desc));
 
 			luset(m_default_base_color, device->new_resource(
-				ResourceDesc::tex2d(ResourceHeapType::local, Format::rgba8_unorm, ResourceUsageFlag::shader_resource, 1, 1, 1, 1)));
+				ResourceDesc::tex2d(MemoryType::local, Format::rgba8_unorm, ResourceUsageFlag::shader_resource, 1, 1, 1, 1)));
 			u8 base_color_data[4] = { 255, 255, 255, 255 };
 			luexp(device->copy_resource({
 				ResourceCopyDesc::as_write_texture(m_default_base_color, base_color_data, 4, 4, 0, BoxU(0, 0, 0, 1, 1, 1))}));

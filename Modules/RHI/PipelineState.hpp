@@ -87,8 +87,8 @@ namespace Luna
 			Span<const InputAttributeDesc> attributes;
 			InputLayoutDesc() = default;
 			InputLayoutDesc(
-				InitializerList<const InputBindingDesc> bindings,
-				InitializerList<const InputAttributeDesc> attributes
+				InitializerList<InputBindingDesc> bindings,
+				InitializerList<InputAttributeDesc> attributes
 			) : 
 				bindings(bindings),
 				attributes(attributes) {}
@@ -368,14 +368,13 @@ namespace Luna
 			BlendDesc blend_state;
 			IndexBufferStripCutValue ib_strip_cut_value = IndexBufferStripCutValue::disabled;
 			PrimitiveTopology primitive_topology = PrimitiveTopology::triangle_list;
-			u8 num_render_targets = 0;
+			u8 num_color_attachments = 0;
 			//! The pixel format of the render target.
-			Format rtv_formats[8] = { Format::unknown };
-			Format dsv_format = Format::unknown;
+			Format color_formats[8] = { Format::unknown };
+			Format depth_stencil_format = Format::unknown;
 			//! Specify the sample count, 1 if MSAA is not used.
 			u32 sample_count = 1;
 			u32 sample_mask = 0xFFFFFFFF;
-			u32 sample_quality = 0;
 		};
 
 		//! @interface IPipelineState

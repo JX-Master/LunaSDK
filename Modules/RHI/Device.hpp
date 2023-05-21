@@ -84,22 +84,22 @@ namespace Luna
 
 			//! Creates one new buffer resource and allocates device memory for the resource.
 			//! @param[in] desc The descriptor object.
-			virtual R<Ref<IBuffer>> new_buffer(const BufferDesc& desc) = 0;
+			virtual R<Ref<IBuffer>> new_buffer(MemoryType memory_type, const BufferDesc& desc) = 0;
 
 			//! Creates one new texture resource and allocates device memory for the resource.
 			//! @param[in] desc The descriptor object.
 			//! @param[in] optimized_clear_value The optional optimized clear value for a texture resource. Specify `nullptr` if 
 			//! the resource does not have a optimized clear value.
-			virtual R<Ref<ITexture>> new_texture(const TextureDesc& desc, const ClearValue* optimized_clear_value = nullptr) = 0;
+			virtual R<Ref<ITexture>> new_texture(MemoryType memory_type, const TextureDesc& desc, const ClearValue* optimized_clear_value = nullptr) = 0;
 
 			//! Checks whether the given resources can share the same device memory.
 			//! @param[in] buffers The buffer descriptors of resources being examined.
 			//! @param[in] textures The texture descriptors of resources being examined.
 			//! @return Returns `true` if such resources can share the same device memory, returns `false` otherwise.
-			virtual bool is_resources_aliasing_compatible(Span<const BufferDesc> buffers, Span<const TextureDesc> textures) = 0;
+			virtual bool is_resources_aliasing_compatible(MemoryType memory_type, Span<const BufferDesc> buffers, Span<const TextureDesc> textures) = 0;
 
 			//! Allocates device memory that is capable of storing multiple resources specified.
-			virtual R<Ref<IDeviceMemory>> allocate_memory(Span<const BufferDesc> buffers, Span<const TextureDesc> textures) = 0;
+			virtual R<Ref<IDeviceMemory>> allocate_memory(MemoryType memory_type, Span<const BufferDesc> buffers, Span<const TextureDesc> textures) = 0;
 
 			//! Creates one aliasing buffer that shares the same device memory with the existing resource.
 			//! The user may create multiple aliasing resources with the same device memory, given that only one of them is active at any given time.

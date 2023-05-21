@@ -154,7 +154,7 @@ namespace Luna
 			u32 cb_align = device->get_uniform_buffer_data_alignment();
 			u32 cb_size = (u32)align_upper(sizeof(Float2), cb_align);
 			lulet(cb, device->new_resource(
-				ResourceDesc::buffer(ResourceHeapType::upload, BufferUsageFlag::uniform_buffer, cb_size * (desc.mip_levels - 1))));
+				ResourceDesc::buffer(MemoryType::upload, BufferUsageFlag::uniform_buffer, cb_size * (desc.mip_levels - 1))));
 
 			void* mapped = nullptr;
 			luexp(cb->map_subresource(0, 0, 0, &mapped));
@@ -234,7 +234,7 @@ namespace Luna
 			u32 cb_align = device->get_uniform_buffer_data_alignment();
 			u32 cb_size = (u32)align_upper(sizeof(CB), cb_align);
 			lulet(cb, device->new_resource(
-				ResourceDesc::buffer(ResourceHeapType::upload, BufferUsageFlag::uniform_buffer, cb_size * (desc.mip_levels - 1))));
+				ResourceDesc::buffer(MemoryType::upload, BufferUsageFlag::uniform_buffer, cb_size * (desc.mip_levels - 1))));
 
 			void* mapped = nullptr;
 			luexp(cb->map_subresource(0, 0, 0, &mapped));
@@ -296,7 +296,7 @@ namespace Luna
 			using namespace RHI;
 			auto device = get_main_device();
 			// Create resource.
-			lulet(tex, device->new_resource(RHI::ResourceDesc::tex2d(RHI::ResourceHeapType::local,
+			lulet(tex, device->new_resource(RHI::ResourceDesc::tex2d(RHI::MemoryType::local,
 				get_pixel_format_from_image_format(file.m_desc.format), 
 				RHI::ResourceUsageFlag::shader_resource | RHI::ResourceUsageFlag::unordered_access, 
 				file.m_desc.width, file.m_desc.height)));

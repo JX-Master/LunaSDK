@@ -120,8 +120,8 @@ RV start()
 			desc.ps = { ps.data(), ps.size() };
 			desc.rasterizer_state.depth_clip_enable = false;
 			desc.depth_stencil_state = DepthStencilDesc(false, false);
-			desc.num_render_targets = 1;
-			desc.rtv_formats[0] = Format::bgra8_unorm;
+			desc.num_color_attachments = 1;
+			desc.color_formats[0] = Format::bgra8_unorm;
 
 			luset(pso, get_main_device()->new_graphics_pipeline_state(desc));
 
@@ -132,7 +132,7 @@ RV start()
 				{ {-0.7f, -0.7f},{0.0f, 0.0f, 1.0f, 1.0f} }
 			};
 
-			luset(vb, get_main_device()->new_buffer(BufferDesc(ResourceHeapType::upload, BufferUsageFlag::vertex_buffer, sizeof(data))));
+			luset(vb, get_main_device()->new_buffer(MemoryType::upload, BufferDesc(BufferUsageFlag::vertex_buffer, sizeof(data))));
 			lulet(mapped_data, vb->map(0, 0));
 			memcpy(mapped_data, data, sizeof(data));
 			vb->unmap(0, sizeof(data));

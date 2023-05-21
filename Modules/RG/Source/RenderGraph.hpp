@@ -103,7 +103,7 @@ namespace Luna
             }
             void release_transient_resource(RHI::IResource* resource)
             {
-                m_transient_memory.push_back(resource->get_device_memory());
+                m_transient_memory.push_back(resource->get_memory());
             }
 
             virtual RHI::IDevice* get_device() override { return m_device.get(); }

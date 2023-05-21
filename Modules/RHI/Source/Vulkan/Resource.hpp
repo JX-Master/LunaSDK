@@ -30,13 +30,13 @@ namespace Luna
 			u32 m_owning_queue_family_index = U32_MAX;
 
 			RV post_init();
-			RV init_as_committed(const BufferDesc& desc);
+			RV init_as_committed(MemoryType memory_type, const BufferDesc& desc);
 			RV init_as_aliasing(const BufferDesc& desc, DeviceMemory* memory);
 			~BufferResource();
 
 			virtual IDevice* get_device() override { return m_device.get(); }
 			virtual void set_name(const Name& name) override { m_name = name; }
-			virtual IDeviceMemory* get_device_memory() override { return m_memory; }
+			virtual IDeviceMemory* get_memory() override { return m_memory; }
 			virtual BufferDesc get_desc() override { return m_desc; }
 			virtual R<void*> map(usize read_begin, usize read_end) override;
 			virtual void unmap(usize write_begin, usize write_end) override;
@@ -73,7 +73,7 @@ namespace Luna
 			R<ImageView*> get_image_view(const TextureViewDesc& create_info);
 
 			RV post_init();
-			RV init_as_committed(const TextureDesc& desc);
+			RV init_as_committed(MemoryType memory_type, const TextureDesc& desc);
 			RV init_as_aliasing(const TextureDesc& desc, DeviceMemory* memory);
 			~ImageResource();
 
@@ -84,7 +84,7 @@ namespace Luna
 
 			virtual IDevice* get_device() override { return m_device.get(); }
 			virtual void set_name(const Name& name) override { m_name = name; }
-			virtual IDeviceMemory* get_device_memory() override { return m_memory; }
+			virtual IDeviceMemory* get_memory() override { return m_memory; }
 			virtual TextureDesc get_desc() override { return m_desc; }
 		};
 	}

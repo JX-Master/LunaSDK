@@ -46,7 +46,7 @@ namespace Luna
 						dest->RegisterSpace = i;
 					}
 					parameters.push_back(param);
-					info.m_heap_types.push_back(root.m_type);
+					info.m_memory_types.push_back(root.m_type);
 				}
 				m_descriptor_set_layouts.push_back(move(info));
 			}

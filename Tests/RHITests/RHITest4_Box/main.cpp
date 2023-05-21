@@ -127,7 +127,6 @@ RV start()
         GraphicsPipelineStateDesc ps_desc;
         ps_desc.primitive_topology = PrimitiveTopology::triangle_list;
 		ps_desc.sample_mask = U32_MAX;
-		ps_desc.sample_quality = 0;
 		ps_desc.blend_state = BlendDesc({ 
             AttachmentBlendDesc(false, BlendFactor::src_alpha, BlendFactor::inv_src_alpha, BlendOp::add, BlendFactor::inv_src_alpha, BlendFactor::zero, BlendOp::add, ColorWriteMask::all) });
 		ps_desc.rasterizer_state = RasterizerDesc(FillMode::solid, CullMode::back, 0, 0.0f, 0.0f, 0, false, true, false, false, false);
@@ -144,13 +143,13 @@ RV start()
 		ps_desc.vs = vs.cspan();
 		ps_desc.ps = ps.cspan();
 		ps_desc.shader_input_layout = slayout;
-		ps_desc.num_render_targets = 1;
-		ps_desc.rtv_formats[0] = Format::bgra8_unorm;
-		ps_desc.dsv_format = Format::d32_float;
+		ps_desc.num_color_attachments = 1;
+		ps_desc.color_formats[0] = Format::bgra8_unorm;
+		ps_desc.depth_stencil_format = Format::d32_float;
         luset(pso, dev->new_graphics_pipeline_state(ps_desc));
         
         auto window_size = get_window()->get_framebuffer_size();
-        luset(depth_tex, dev->new_texture(TextureDesc::tex2d(ResourceHeapType::local, Format::d32_float, 
+        luset(depth_tex, dev->new_texture(MemoryType::local, TextureDesc::tex2d(Format::d32_float,
             TextureUsageFlag::depth_stencil, window_size.x, window_size.y, 1, 1)));
 
         Vertex vertices[] = {
@@ -181,16 +180,16 @@ RV start()
             20, 21, 22, 20, 22, 23
         };
         auto cb_align = dev->get_uniform_buffer_data_alignment();
-        luset(cb, dev->new_buffer(BufferDesc(ResourceHeapType::upload, BufferUsageFlag::uniform_buffer, align_upper(sizeof(Float4x4), cb_align))));
+        luset(cb, dev->new_buffer(MemoryType::upload, BufferDesc(BufferUsageFlag::uniform_buffer, align_upper(sizeof(Float4x4), cb_align))));
 
         lulet(image_file, open_file("luna.png", FileOpenFlag::read, FileCreationMode::open_existing));
         lulet(image_file_data, load_file_data(image_file));
         Image::ImageDesc image_desc;
         lulet(image_data, Image::read_image_file(image_file_data.data(), image_file_data.size(), Image::ImagePixelFormat::rgba8_unorm, image_desc));
 
-        luset(vb, dev->new_buffer(BufferDesc(ResourceHeapType::upload, BufferUsageFlag::vertex_buffer, sizeof(vertices))));
-        luset(ib, dev->new_buffer(BufferDesc(ResourceHeapType::upload, BufferUsageFlag::index_buffer, sizeof(indices))));
-        luset(file_tex, dev->new_texture(TextureDesc::tex2d(ResourceHeapType::local, Format::rgba8_unorm,
+        luset(vb, dev->new_buffer(MemoryType::upload, BufferDesc(BufferUsageFlag::vertex_buffer, sizeof(vertices))));
+        luset(ib, dev->new_buffer(MemoryType::upload, BufferDesc(BufferUsageFlag::index_buffer, sizeof(indices))));
+        luset(file_tex, dev->new_texture(MemoryType::local, TextureDesc::tex2d(Format::rgba8_unorm,
             TextureUsageFlag::sampled_texture | TextureUsageFlag::copy_dest, image_desc.width, image_desc.height, 1, 1)));
 
         lulet(mapped, vb->map(0, 0));
@@ -202,7 +201,7 @@ RV start()
 
         u64 size, row_pitch, slice_pitch;
         dev->get_texture_data_placement_info(image_desc.width, image_desc.height, 1, Format::rgba8_unorm, &size, nullptr, &row_pitch, &slice_pitch);
-        lulet(tex_staging, dev->new_buffer(BufferDesc(ResourceHeapType::upload, BufferUsageFlag::copy_source, size)));
+        lulet(tex_staging, dev->new_buffer(MemoryType::upload, BufferDesc(BufferUsageFlag::copy_source, size)));
 
         lulet(tex_staging_data, tex_staging->map(0, 0));
         memcpy_bitmap(tex_staging_data, image_data.data(), image_desc.width * 4, image_desc.height, row_pitch, image_desc.width * 4);
@@ -303,7 +302,7 @@ void resize(u32 width, u32 height)
     {
         using namespace RHI;
         auto dev = get_main_device();
-        luset(depth_tex, dev->new_texture(TextureDesc::tex2d(ResourceHeapType::local, Format::d32_float, 
+        luset(depth_tex, dev->new_texture(MemoryType::local, TextureDesc::tex2d(Format::d32_float,
             TextureUsageFlag::depth_stencil, width, height, 1, 1)));
     }
     lucatch

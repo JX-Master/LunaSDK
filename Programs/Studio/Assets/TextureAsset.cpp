@@ -87,7 +87,7 @@ namespace Luna
 			u32 cb_align = device->get_uniform_buffer_data_alignment();
 			u32 cb_size = (u32)align_upper(sizeof(Float2), cb_align);
 			lulet(cb, device->new_resource(
-				ResourceDesc::buffer(ResourceHeapType::upload, BufferUsageFlag::uniform_buffer, cb_size * (desc.mip_levels - 1))));
+				ResourceDesc::buffer(MemoryType::upload, BufferUsageFlag::uniform_buffer, cb_size * (desc.mip_levels - 1))));
 
 			void* mapped = nullptr;
 			luexp(cb->map_subresource(0, 0, 0, &mapped));
@@ -163,7 +163,7 @@ namespace Luna
 				lulet(desc, Image::read_image_file_desc(file_data.data() + mip_descs[0].first, mip_descs[0].second));
 				auto desired_format = get_desired_format(desc.format);
 				// Create resource.
-				lulet(tex, RHI::get_main_device()->new_resource(RHI::ResourceDesc::tex2d(RHI::ResourceHeapType::local,
+				lulet(tex, RHI::get_main_device()->new_resource(RHI::ResourceDesc::tex2d(RHI::MemoryType::local,
 					get_pixel_format_from_image_format(desc.format), RHI::ResourceUsageFlag::shader_resource | RHI::ResourceUsageFlag::unordered_access, desc.width, desc.height)));
 				// Upload data
 				Vector<RHI::ResourceCopyDesc> copies;
@@ -189,7 +189,7 @@ namespace Luna
 				auto desired_format = get_desired_format(desc.format);
 				lulet(image_data, Image::read_image_file(file_data.data(), file_data.size(), desired_format, desc));
 				// Create resource.
-				lulet(tex, RHI::get_main_device()->new_resource(RHI::ResourceDesc::tex2d(RHI::ResourceHeapType::local,
+				lulet(tex, RHI::get_main_device()->new_resource(RHI::ResourceDesc::tex2d(RHI::MemoryType::local,
 					get_pixel_format_from_image_format(desc.format), RHI::ResourceUsageFlag::shader_resource | RHI::ResourceUsageFlag::unordered_access, desc.width, desc.height)));
 				// Upload data.
 				luexp(RHI::get_main_device()->copy_resource({

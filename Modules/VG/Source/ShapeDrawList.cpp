@@ -175,7 +175,7 @@ namespace Luna
 				if (m_vertex_buffer_capacity < num_vertices)
 				{
 					// Recreate vertex buffer.
-					luset(m_vertex_buffer, RHI::get_main_device()->new_buffer(RHI::BufferDesc(RHI::ResourceHeapType::upload,
+					luset(m_vertex_buffer, RHI::get_main_device()->new_buffer(RHI::BufferDesc(RHI::MemoryType::upload,
 						RHI::BufferUsageFlag::vertex_buffer, num_vertices * sizeof(Vertex))));
 					m_vertex_buffer_capacity = num_vertices;
 				}
@@ -183,7 +183,7 @@ namespace Luna
 				if (m_index_buffer_capacity < num_indices)
 				{
 					// Recreate index buffer.
-					luset(m_index_buffer, RHI::get_main_device()->new_buffer(RHI::BufferDesc(RHI::ResourceHeapType::upload,
+					luset(m_index_buffer, RHI::get_main_device()->new_buffer(RHI::BufferDesc(RHI::MemoryType::upload,
 						RHI::BufferUsageFlag::index_buffer, num_indices * sizeof(u32))));
 					m_index_buffer_capacity = num_indices;
 				}

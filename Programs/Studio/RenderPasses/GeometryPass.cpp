@@ -60,23 +60,23 @@ namespace Luna
 			ps_desc.vs = vs_blob.cspan();
 			ps_desc.ps = ps_blob.cspan();
 			ps_desc.shader_input_layout = m_geometry_pass_slayout;
-			ps_desc.num_render_targets = 3;
-			ps_desc.rtv_formats[0] = Format::rgba8_unorm;
-            ps_desc.rtv_formats[1] = Format::rgba8_unorm;
-            ps_desc.rtv_formats[2] = Format::rgba16_float;
-			ps_desc.dsv_format = Format::d32_float;
+			ps_desc.num_color_attachments = 3;
+			ps_desc.color_formats[0] = Format::rgba8_unorm;
+            ps_desc.color_formats[1] = Format::rgba8_unorm;
+            ps_desc.color_formats[2] = Format::rgba16_float;
+			ps_desc.depth_stencil_format = Format::d32_float;
 			luset(m_geometry_pass_pso, device->new_graphics_pipeline_state(ps_desc));
 
             luset(m_default_base_color, device->new_resource(
-				ResourceDesc::tex2d(ResourceHeapType::local, Format::rgba8_unorm, ResourceUsageFlag::shader_resource, 1, 1, 1, 1)));
+				ResourceDesc::tex2d(MemoryType::local, Format::rgba8_unorm, ResourceUsageFlag::shader_resource, 1, 1, 1, 1)));
 			luset(m_default_roughness, device->new_resource(
-				ResourceDesc::tex2d(ResourceHeapType::local, Format::r8_unorm, ResourceUsageFlag::shader_resource, 1, 1, 1, 1)));
+				ResourceDesc::tex2d(MemoryType::local, Format::r8_unorm, ResourceUsageFlag::shader_resource, 1, 1, 1, 1)));
 			luset(m_default_normal, device->new_resource(
-				ResourceDesc::tex2d(ResourceHeapType::local, Format::rgba8_unorm, ResourceUsageFlag::shader_resource, 1, 1, 1, 1)));
+				ResourceDesc::tex2d(MemoryType::local, Format::rgba8_unorm, ResourceUsageFlag::shader_resource, 1, 1, 1, 1)));
 			luset(m_default_metallic, device->new_resource(
-				ResourceDesc::tex2d(ResourceHeapType::local, Format::r8_unorm, ResourceUsageFlag::shader_resource, 1, 1, 1, 1)));
+				ResourceDesc::tex2d(MemoryType::local, Format::r8_unorm, ResourceUsageFlag::shader_resource, 1, 1, 1, 1)));
 			luset(m_default_emissive, device->new_resource(
-				ResourceDesc::tex2d(ResourceHeapType::local, Format::rgba8_unorm, ResourceUsageFlag::shader_resource, 1, 1, 1, 1)));
+				ResourceDesc::tex2d(MemoryType::local, Format::rgba8_unorm, ResourceUsageFlag::shader_resource, 1, 1, 1, 1)));
 
 			// Upload default texture data.
 			u8 base_color_data[4] = { 255, 255, 255, 255 };

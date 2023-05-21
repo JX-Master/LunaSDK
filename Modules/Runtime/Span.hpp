@@ -85,7 +85,7 @@ namespace Luna
 		constexpr Span(element_type* arr, usize size) :
 			m_buffer(arr),
 			m_size(size) {}
-		constexpr Span(InitializerList<_Ty> ilist) :
+		constexpr Span(InitializerList<remove_cv_t<_Ty>> ilist) :
 			m_buffer(ilist.begin()),
 			m_size(ilist.size()) {}
 		constexpr Span(const Span& rhs) = default;

@@ -340,16 +340,16 @@ namespace Luna
 				break;
 			}
 
-			d.NumRenderTargets = desc.num_render_targets;
+			d.NumRenderTargets = desc.num_color_attachments;
 			for (u32 i = 0; i < 8; ++i)
 			{
 				d.RTVFormats[i] = DXGI_FORMAT_UNKNOWN;
 			}
 			for (u32 i = 0; i < d.NumRenderTargets; ++i)
 			{
-				d.RTVFormats[i] = encode_pixel_format(desc.rtv_formats[i]);
+				d.RTVFormats[i] = encode_pixel_format(desc.color_formats[i]);
 			}
-			d.DSVFormat = encode_pixel_format(desc.dsv_format);
+			d.DSVFormat = encode_pixel_format(desc.depth_stencil_format);
 			d.SampleDesc.Count = desc.sample_count;
 			d.SampleDesc.Quality = desc.sample_quality;
 			d.NodeMask = 0;

@@ -268,20 +268,20 @@ namespace Luna
 				D3D12_CPU_DESCRIPTOR_HANDLE rtv[8];
 				D3D12_CPU_DESCRIPTOR_HANDLE dsv{ 0 };
 				memzero(rtv, sizeof(rtv));
-				u8 num_render_targets = 0;
+				u8 num_color_attachments = 0;
 				for (auto& i : desc.color_attachments)
 				{
 					if (!i.texture) break;
-					++num_render_targets;
+					++num_color_attachments;
 				}
 				m_render_pass_context.m_valid = true;
 				memzero(m_render_pass_context.m_color_attachments, sizeof(ID3D12DescriptorHeap*) * 8);
 				memzero(m_render_pass_context.m_color_attachment_views, sizeof(TextureViewDesc) * 8);
 				memzero(m_render_pass_context.m_resolve_attachments, sizeof(ResolveAttachment) * 8);
 				m_render_pass_context.m_depth_stencil_attachment = nullptr;
-				m_render_pass_context.m_num_render_targets = num_render_targets;
+				m_render_pass_context.m_num_color_attachments = num_color_attachments;
 				m_render_pass_context.m_tex_size = UInt2U(0, 0);
-				for (u8 i = 0; i < num_render_targets; ++i)
+				for (u8 i = 0; i < num_color_attachments; ++i)
 				{
 					auto& src = desc.color_attachments[i];
 					TextureResource* tex = cast_object<TextureResource>(src.texture->get_object());
@@ -316,15 +316,15 @@ namespace Luna
 					m_render_pass_context.m_tex_size.x = tex->m_desc.width;
 					m_render_pass_context.m_tex_size.y = tex->m_desc.height;
 				}
-				if (num_render_targets)
+				if (num_color_attachments)
 				{
 					if (desc.depth_stencil_attachment.texture)
 					{
-						m_li->OMSetRenderTargets(num_render_targets, rtv, FALSE, &dsv);
+						m_li->OMSetRenderTargets(num_color_attachments, rtv, FALSE, &dsv);
 					}
 					else
 					{
-						m_li->OMSetRenderTargets(num_render_targets, rtv, FALSE, NULL);
+						m_li->OMSetRenderTargets(num_color_attachments, rtv, FALSE, NULL);
 					}
 				}
 				else
@@ -339,7 +339,7 @@ namespace Luna
 					}
 				}
 				// Clear render target and depth stencil if needed.
-				for (u32 i = 0; i < num_render_targets; ++i)
+				for (u32 i = 0; i < num_color_attachments; ++i)
 				{
 					if ((desc.color_attachments[i].load_op == LoadOp::clear) && m_render_pass_context.m_color_attachments[i])
 					{
@@ -364,7 +364,7 @@ namespace Luna
 							flags, desc.depth_stencil_attachment.depth_clear_value, desc.depth_stencil_attachment.stencil_clear_value, 0, NULL);
 					}
 				}
-				for (u32 i = 0; i < num_render_targets; ++i)
+				for (u32 i = 0; i < num_color_attachments; ++i)
 				{
 					if (desc.resolve_attachments[i].texture)
 					{
@@ -464,17 +464,17 @@ namespace Luna
 			{
 				auto& info = m_graphics_shader_input_layout->m_descriptor_set_layouts[index];
 				DescriptorSet* set = cast_object<DescriptorSet>(descriptor_sets[index - start_index]->get_object());
-				for (u32 i = 0; i < (u32)info.m_heap_types.size(); ++i)
+				for (u32 i = 0; i < (u32)info.m_memory_types.size(); ++i)
 				{
-					D3D12_DESCRIPTOR_HEAP_TYPE heap_type = info.m_heap_types[i];
+					D3D12_DESCRIPTOR_HEAP_TYPE memory_type = info.m_memory_types[i];
 					D3D12_GPU_DESCRIPTOR_HANDLE handle;
-					if (heap_type == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV)
+					if (memory_type == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV)
 					{
 						handle = m_device->m_cbv_srv_uav_heap.m_gpu_handle;
 						// Shift to the set begin.
 						handle.ptr += m_device->m_cbv_srv_uav_heap.m_descriptor_size * (set->m_view_heap_offset);
 					}
-					else if (heap_type == D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER)
+					else if (memory_type == D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER)
 					{
 						handle = m_device->m_sampler_heap.m_gpu_handle;
 						handle.ptr += m_device->m_sampler_heap.m_descriptor_size * (set->m_sampler_heap_offset);
@@ -607,7 +607,7 @@ namespace Luna
 			lucheck_msg(m_render_pass_context.m_valid, "`begin_render_pass` must be called before `end_render_pass`.");
 			// Emit barrier.
 			Vector<D3D12_RESOURCE_BARRIER> barriers;
-			for (u32 i = 0; i < m_render_pass_context.m_num_render_targets; ++i)
+			for (u32 i = 0; i < m_render_pass_context.m_num_color_attachments; ++i)
 			{
 				if (m_render_pass_context.m_resolve_attachments[i].texture)
 				{
@@ -633,7 +633,7 @@ namespace Luna
 				m_li->ResourceBarrier((UINT)barriers.size(), barriers.data());
 			}
 			barriers.clear();
-			for (u32 i = 0; i < m_render_pass_context.m_num_render_targets; ++i)
+			for (u32 i = 0; i < m_render_pass_context.m_num_color_attachments; ++i)
 			{
 				if (m_render_pass_context.m_resolve_attachments[i].texture)
 				{
@@ -650,7 +650,7 @@ namespace Luna
 					}
 				}
 			}
-			for (u32 i = 0; i < m_render_pass_context.m_num_render_targets; ++i)
+			for (u32 i = 0; i < m_render_pass_context.m_num_color_attachments; ++i)
 			{
 				if (m_render_pass_context.m_resolve_attachments[i].texture)
 				{
@@ -711,17 +711,17 @@ namespace Luna
 			{
 				auto& info = m_compute_shader_input_layout->m_descriptor_set_layouts[index];
 				DescriptorSet* set = cast_object<DescriptorSet>(descriptor_sets[index - start_index]->get_object());
-				for (u32 i = 0; i < (u32)info.m_heap_types.size(); ++i)
+				for (u32 i = 0; i < (u32)info.m_memory_types.size(); ++i)
 				{
-					D3D12_DESCRIPTOR_HEAP_TYPE heap_type = info.m_heap_types[i];
+					D3D12_DESCRIPTOR_HEAP_TYPE memory_type = info.m_memory_types[i];
 					D3D12_GPU_DESCRIPTOR_HANDLE handle;
-					if (heap_type == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV)
+					if (memory_type == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV)
 					{
 						handle = m_device->m_cbv_srv_uav_heap.m_gpu_handle;
 						// Shift to the set begin.
 						handle.ptr += m_device->m_cbv_srv_uav_heap.m_descriptor_size * (set->m_view_heap_offset);
 					}
-					else if (heap_type == D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER)
+					else if (memory_type == D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER)
 					{
 						handle = m_device->m_sampler_heap.m_gpu_handle;
 						handle.ptr += m_device->m_sampler_heap.m_descriptor_size * (set->m_sampler_heap_offset);

@@ -219,13 +219,13 @@ namespace Luna
 			}
 			return rd;
 		}
-		inline D3D12_HEAP_TYPE encode_heap_type(ResourceHeapType heap_type)
+		inline D3D12_HEAP_TYPE encode_memory_type(MemoryType memory_type)
 		{
-			switch (heap_type)
+			switch (memory_type)
 			{
-			case ResourceHeapType::local: return D3D12_HEAP_TYPE_DEFAULT;
-			case ResourceHeapType::upload: return D3D12_HEAP_TYPE_UPLOAD;
-			case ResourceHeapType::readback: return D3D12_HEAP_TYPE_READBACK;
+			case MemoryType::local: return D3D12_HEAP_TYPE_DEFAULT;
+			case MemoryType::upload: return D3D12_HEAP_TYPE_UPLOAD;
+			case MemoryType::readback: return D3D12_HEAP_TYPE_READBACK;
 			default: lupanic(); return D3D12_HEAP_TYPE_DEFAULT;
 			}
 		}

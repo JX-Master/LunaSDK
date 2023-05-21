@@ -141,7 +141,6 @@ namespace Luna
 				desc.height = m_desc.height;
 				desc.depth = 1;
 				desc.array_size = 1;
-				desc.heap_type = ResourceHeapType::local;
 				desc.mip_levels = 1;
 				desc.sample_count = 1;
 				for (u32 i = 0; i < image_count; ++i)

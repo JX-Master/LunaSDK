@@ -192,7 +192,7 @@ float4 main(PS_INPUT input) : SV_Target
 
                 // Create constant buffer.
                 usize buffer_size_align = dev->get_uniform_buffer_data_alignment();
-                luset(g_cb, dev->new_buffer(BufferDesc(ResourceHeapType::upload, BufferUsageFlag::uniform_buffer, align_upper(sizeof(Float4x4), buffer_size_align))));
+                luset(g_cb, dev->new_buffer(MemoryType::upload, BufferDesc(BufferUsageFlag::uniform_buffer, align_upper(sizeof(Float4x4), buffer_size_align))));
             }
             lucatchret;
 
@@ -217,13 +217,13 @@ float4 main(PS_INPUT input) : SV_Target
                 io.Fonts->AddFontFromMemoryTTF(const_cast<void*>(font_data), (int)font_size, 18.0f * scale);
                 io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
                 auto dev = get_main_device();
-                luset(g_font_tex, dev->new_texture(TextureDesc::tex2d(ResourceHeapType::local, Format::rgba8_unorm, 
+                luset(g_font_tex, dev->new_texture(MemoryType::local, TextureDesc::tex2d(Format::rgba8_unorm,
                     TextureUsageFlag::sampled_texture | TextureUsageFlag::copy_dest, width, height, 1, 1)));
                 u32 src_row_pitch = (u32)width * 4;
                 {
                     u64 size, row_pitch, slice_pitch;
                     dev->get_texture_data_placement_info(width, height, 1, Format::rgba8_unorm, &size, nullptr, &row_pitch, &slice_pitch);
-                    lulet(tex_staging, dev->new_buffer(BufferDesc(ResourceHeapType::upload, BufferUsageFlag::copy_source, size)));
+                    lulet(tex_staging, dev->new_buffer(MemoryType::upload, BufferDesc(BufferUsageFlag::copy_source, size)));
                     lulet(tex_staging_data, tex_staging->map(0, 0));
                     memcpy_bitmap(tex_staging_data, pixels, src_row_pitch, height, row_pitch, src_row_pitch);
                     tex_staging->unmap(0, src_row_pitch * height);
@@ -599,7 +599,6 @@ float4 main(PS_INPUT input) : SV_Target
                 GraphicsPipelineStateDesc ps_desc;
                 ps_desc.primitive_topology = PrimitiveTopology::triangle_list;
                 ps_desc.sample_mask = U32_MAX;
-                ps_desc.sample_quality = 0;
                 ps_desc.blend_state = BlendDesc({ AttachmentBlendDesc(true, BlendFactor::src_alpha,
                     BlendFactor::inv_src_alpha, BlendOp::add, BlendFactor::inv_src_alpha, BlendFactor::zero, BlendOp::add, ColorWriteMask::all) });
                 ps_desc.rasterizer_state = RasterizerDesc(FillMode::solid, CullMode::none, 0, 0.0f, 0.0f, 1, false, true, false, false, false);
@@ -618,8 +617,8 @@ float4 main(PS_INPUT input) : SV_Target
                 ps_desc.vs = { g_vs_blob.data(), g_vs_blob.size() };
                 ps_desc.ps = { g_ps_blob.data(), g_ps_blob.size() };
                 ps_desc.shader_input_layout = g_slayout;
-                ps_desc.num_render_targets = 1;
-                ps_desc.rtv_formats[0] = rt_format;
+                ps_desc.num_color_attachments = 1;
+                ps_desc.color_formats[0] = rt_format;
                 lulet(pso, get_main_device()->new_graphics_pipeline_state(ps_desc));
                 iter = g_pso.insert(make_pair(rt_format, pso)).first;
             }
@@ -641,14 +640,13 @@ float4 main(PS_INPUT input) : SV_Target
                 if (!g_vb || g_vb_size < (u32)draw_data->TotalVtxCount)
                 {
                     g_vb_size = draw_data->TotalVtxCount + 5000;
-                    luset(g_vb, dev->new_buffer(BufferDesc(ResourceHeapType::upload, BufferUsageFlag::vertex_buffer, g_vb_size * sizeof(ImDrawVert))));
+                    luset(g_vb, dev->new_buffer(MemoryType::upload, BufferDesc(BufferUsageFlag::vertex_buffer, g_vb_size * sizeof(ImDrawVert))));
                 }
                 if (!g_ib || g_ib_size < (u32)draw_data->TotalIdxCount)
                 {
                     g_ib_size = draw_data->TotalIdxCount + 10000;
-                    luset(g_ib, dev->new_buffer(BufferDesc(ResourceHeapType::upload, BufferUsageFlag::index_buffer, g_ib_size * sizeof(ImDrawIdx))));
+                    luset(g_ib, dev->new_buffer(MemoryType::upload, BufferDesc(BufferUsageFlag::index_buffer, g_ib_size * sizeof(ImDrawIdx))));
                 }
-
                 // Upload vertex/index data into a single contiguous GPU buffer
                 lulet(vtx_resource, g_vb->map(0, 0));
                 lulet(idx_resource, g_ib->map(0, 0));

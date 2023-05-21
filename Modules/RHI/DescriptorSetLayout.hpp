@@ -87,7 +87,7 @@ namespace Luna
 
 		struct DescriptorSetLayoutDesc
 		{
-			Vector<DescriptorSetLayoutBinding> bindings;
+			Span<const DescriptorSetLayoutBinding> bindings;
 			DescriptorSetLayoutFlag flags = DescriptorSetLayoutFlag::none;
 
 			DescriptorSetLayoutDesc() {}

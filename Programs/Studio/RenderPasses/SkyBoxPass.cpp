@@ -59,7 +59,7 @@ namespace Luna
             m_global_data = global_data;
             auto device = m_global_data->m_skybox_pass_pso->get_device();
             auto cb_align = device->get_uniform_buffer_data_alignment();
-            luset(m_skybox_params_cb, device->new_buffer(BufferDesc(ResourceHeapType::upload, BufferUsageFlag::uniform_buffer, align_upper(sizeof(SkyboxParams), cb_align))));
+            luset(m_skybox_params_cb, device->new_buffer(BufferDesc(MemoryType::upload, BufferUsageFlag::uniform_buffer, align_upper(sizeof(SkyboxParams), cb_align))));
             luset(m_ds, device->new_descriptor_set(DescriptorSetDesc(m_global_data->m_skybox_pass_dlayout)));
         }
         lucatchret;

@@ -21,7 +21,7 @@ namespace Luna
 			lucatchret;
 			return ok;
 		}
-		RV BufferResource::init_as_committed(const BufferDesc& desc)
+		RV BufferResource::init_as_committed(MemoryType memory_type, const BufferDesc& desc)
 		{
 			lutry
 			{
@@ -31,7 +31,7 @@ namespace Luna
 				m_device->m_funcs.vkGetBufferMemoryRequirements(m_device->m_device, m_buffer, &memory_requirements);
 				auto memory = new_object<DeviceMemory>();
 				memory->m_device = m_device;
-				luexp(memory->init(m_desc.heap_type, memory_requirements));
+				luexp(memory->init(memory_type, memory_requirements));
 				m_memory = memory;
 				luexp(post_init());
 			}
@@ -114,7 +114,7 @@ namespace Luna
 			lucatchret;
 			return ok;
 		}
-		RV ImageResource::init_as_committed(const TextureDesc& desc)
+		RV ImageResource::init_as_committed(MemoryType memory_type, const TextureDesc& desc)
 		{
 			lutry
 			{
@@ -124,7 +124,7 @@ namespace Luna
 				m_device->m_funcs.vkGetImageMemoryRequirements(m_device->m_device, m_image, &memory_requirements);
 				auto memory = new_object<DeviceMemory>();
 				memory->m_device = m_device;
-				luexp(memory->init(m_desc.heap_type, memory_requirements));
+				luexp(memory->init(memory_type, memory_requirements));
 				m_memory = memory;
 				luexp(post_init());
 			}

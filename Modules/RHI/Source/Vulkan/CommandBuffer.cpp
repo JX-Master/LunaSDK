@@ -292,7 +292,7 @@ namespace Luna
 				FramebufferDesc fb;
 				u32 width = 0;
 				u32 height = 0;
-				u32 num_render_targets = 0;
+				u32 num_color_attachments = 0;
 				u32 num_resolve_targets = 0;
 				for (usize i = 0; i < 8; ++i)
 				{
@@ -328,7 +328,7 @@ namespace Luna
 					m_resolve_attachments[i] = fb.resolve_attachments[i];
 					if (desc.color_attachments[i].texture)
 					{
-						++num_render_targets;
+						++num_color_attachments;
 						auto d = desc.color_attachments[i].texture->get_desc();
 						rp.color_formats[i] = d.pixel_format;
 						rp.color_load_ops[i] = desc.color_attachments[i].load_op;
@@ -388,11 +388,11 @@ namespace Luna
 				begin_info.renderArea.extent.width = width;
 				begin_info.renderArea.extent.height = height;
 
-				u32 num_attachments = num_render_targets + num_resolve_targets;
+				u32 num_attachments = num_color_attachments + num_resolve_targets;
 				if (use_depth_stencil) ++num_attachments;
 				VkClearValue* clear_values = (VkClearValue*)alloca(sizeof(VkClearValue) * num_attachments);
 				u32 attachment_index = 0;
-				for (usize i = 0; i < num_render_targets; ++i)
+				for (usize i = 0; i < num_color_attachments; ++i)
 				{
 					auto& dest = clear_values[attachment_index];
 					auto& src = desc.color_attachments[i].clear_value;
@@ -421,7 +421,7 @@ namespace Luna
 
 				m_rt_width = width;
 				m_rt_height = height;
-				m_num_color_attachments = num_render_targets;
+				m_num_color_attachments = num_color_attachments;
 				m_num_resolve_attachments = num_resolve_targets;
 				m_render_pass_begin = true;
 			}

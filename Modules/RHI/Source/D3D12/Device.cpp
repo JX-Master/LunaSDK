@@ -290,14 +290,14 @@ namespace Luna
 		{
 			usize num_descs = buffers.size() + textures.size();
 			if (num_descs <= 1) return true;
-			ResourceHeapType heap_type = buffers.empty() ? textures[0].heap_type : buffers[0].heap_type;
+			MemoryType memory_type = buffers.empty() ? textures[0].memory_type : buffers[0].memory_type;
 			for (auto& desc : buffers)
 			{
-				if (desc.heap_type != heap_type) return false;
+				if (desc.memory_type != memory_type) return false;
 			}
 			for (auto& desc : textures)
 			{
-				if (desc.heap_type != heap_type) return false;
+				if (desc.memory_type != memory_type) return false;
 			}
 			if (m_feature_options.ResourceHeapTier >= D3D12_RESOURCE_HEAP_TIER_2)
 			{
@@ -338,7 +338,7 @@ namespace Luna
 				if (buffers.empty() && textures.empty()) return BasicError::bad_arguments();
 				if (!is_resources_aliasing_compatible(buffers, textures)) return BasicError::not_supported();
 				D3D12MA::ALLOCATION_DESC allocation_desc{};
-				allocation_desc.HeapType = encode_heap_type(buffers.empty() ? textures[0].heap_type : buffers[0].heap_type);
+				allocation_desc.HeapType = encode_memory_type(buffers.empty() ? textures[0].memory_type : buffers[0].memory_type);
 				allocation_desc.ExtraHeapFlags = D3D12_HEAP_FLAG_DENY_BUFFERS | D3D12_HEAP_FLAG_DENY_RT_DS_TEXTURES | D3D12_HEAP_FLAG_DENY_NON_RT_DS_TEXTURES;
 				D3D12_RESOURCE_DESC* descs = (D3D12_RESOURCE_DESC*)alloca(sizeof(D3D12_RESOURCE_DESC) * (buffers.size() + textures.size()));
 				u32 i = 0;

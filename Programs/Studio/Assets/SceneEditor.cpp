@@ -855,7 +855,7 @@ namespace Luna
 			using namespace RHI;
 			auto device = get_main_device();
 			{
-				luset(m_grid_vb, device->new_buffer(BufferDesc(ResourceHeapType::local, ResourceUsageFlag::vertex_buffer, sizeof(grids))));
+				luset(m_grid_vb, device->new_buffer(BufferDesc(MemoryType::local, ResourceUsageFlag::vertex_buffer, sizeof(grids))));
 
 				DescriptorSetLayoutDesc dlayout({
 					DescriptorSetLayoutBinding(DescriptorType::uniform_buffer_view, 0, 1, ShaderVisibilityFlag::vertex)
@@ -939,8 +939,8 @@ namespace Luna
 				ps_desc.shader_input_layout = m_grid_slayout;
 				ps_desc.vs = { vs_blob.data(), vs_blob.size() };
 				ps_desc.ps = { ps_blob.data(), ps_blob.size() };
-				ps_desc.num_render_targets = 1;
-				ps_desc.rtv_formats[0] = Format::rgba8_unorm;
+				ps_desc.num_color_attachments = 1;
+				ps_desc.color_formats[0] = Format::rgba8_unorm;
 
 				luset(m_grid_pso, device->new_graphics_pipeline_state(ps_desc));
 			}

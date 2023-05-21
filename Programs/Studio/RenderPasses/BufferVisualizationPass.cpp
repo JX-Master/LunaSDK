@@ -53,7 +53,7 @@ namespace Luna
             luset(m_ds, device->new_descriptor_set(
                 DescriptorSetDesc(global_data->m_buffer_visualization_pass_dlayout)));
             luset(m_vis_params, device->new_resource(
-                ResourceDesc::buffer(ResourceHeapType::upload, BufferUsageFlag::uniform_buffer, 
+                ResourceDesc::buffer(MemoryType::upload, BufferUsageFlag::uniform_buffer, 
                     align_upper(sizeof(u32), device->get_uniform_buffer_data_alignment()))));
         }
         lucatchret;

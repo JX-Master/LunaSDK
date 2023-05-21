@@ -47,7 +47,7 @@ namespace Luna
 			ps_desc.shader_input_layout = m_deferred_lighting_pass_slayout;
 			luset(m_deferred_lighting_pass_pso, device->new_compute_pipeline_state(ps_desc));
 
-            luset(m_default_skybox, device->new_resource(ResourceDesc::tex2d(ResourceHeapType::local, Format::rgba8_unorm, ResourceUsageFlag::shader_resource, 1, 1, 1, 1)));
+            luset(m_default_skybox, device->new_resource(ResourceDesc::tex2d(MemoryType::local, Format::rgba8_unorm, ResourceUsageFlag::shader_resource, 1, 1, 1, 1)));
             u8 skybox_data[] = {0, 0, 0, 0};
             luexp(device->copy_resource({
                 ResourceCopyDesc::as_write_texture(m_default_skybox, skybox_data, 4, 4, 0, BoxU(0, 0, 0, 1, 1, 1))
@@ -56,7 +56,7 @@ namespace Luna
             // Generate integrate brdf.
             constexpr usize INTEGEATE_BRDF_SIZE = 256;
             {
-                luset(m_integrate_brdf, device->new_resource(ResourceDesc::tex2d(ResourceHeapType::local, Format::rgba8_unorm,
+                luset(m_integrate_brdf, device->new_resource(ResourceDesc::tex2d(MemoryType::local, Format::rgba8_unorm,
                     ResourceUsageFlag::shader_resource | ResourceUsageFlag::unordered_access, INTEGEATE_BRDF_SIZE, INTEGEATE_BRDF_SIZE, 1, 1)));
                 lulet(dlayout, device->new_descriptor_set_layout(DescriptorSetLayoutDesc({
                         DescriptorSetLayoutBinding(DescriptorType::uniform_buffer_view, 0, 1, ShaderVisibilityFlag::all),
@@ -80,7 +80,7 @@ namespace Luna
                 u32 cb_align = device->get_uniform_buffer_data_alignment();
                 u32 cb_size = (u32)align_upper(sizeof(Float2), cb_align);
                 lulet(cb, device->new_resource(
-                    ResourceDesc::buffer(ResourceHeapType::upload, BufferUsageFlag::uniform_buffer, cb_size)));
+                    ResourceDesc::buffer(MemoryType::upload, BufferUsageFlag::uniform_buffer, cb_size)));
                 Float2U* mapped = nullptr;
                 luexp(cb->map_subresource(0, 0, 0, (void**)&mapped));
                 *mapped = Float2U(1.0f / (f32)INTEGEATE_BRDF_SIZE, 1.0f / (f32)INTEGEATE_BRDF_SIZE);
@@ -114,7 +114,7 @@ namespace Luna
             luset(m_ds, device->new_descriptor_set(
                 DescriptorSetDesc(global_data->m_deferred_lighting_pass_dlayout)));
             luset(m_lighting_mode_cb, device->new_resource(
-                ResourceDesc::buffer(ResourceHeapType::upload, BufferUsageFlag::uniform_buffer,
+                ResourceDesc::buffer(MemoryType::upload, BufferUsageFlag::uniform_buffer,
                     align_upper(sizeof(u32), device->get_uniform_buffer_data_alignment()))));
         }
         lucatchret;

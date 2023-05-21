@@ -22,13 +22,13 @@ namespace Luna
 				m_desc = desc;
 				D3D12_RESOURCE_DESC rd = encode_buffer_desc(desc);
 				D3D12MA::ALLOCATION_DESC allocation_desc{};
-				allocation_desc.HeapType = encode_heap_type(desc.heap_type);
+				allocation_desc.HeapType = encode_memory_type(desc.memory_type);
 				D3D12_RESOURCE_STATES state = D3D12_RESOURCE_STATE_COMMON;
-				if (desc.heap_type == ResourceHeapType::upload)
+				if (desc.memory_type == MemoryType::upload)
 				{
 					state = D3D12_RESOURCE_STATE_GENERIC_READ;
 				}
-				else if (desc.heap_type == ResourceHeapType::readback)
+				else if (desc.memory_type == MemoryType::readback)
 				{
 					state = D3D12_RESOURCE_STATE_COPY_DEST;
 				}
@@ -49,11 +49,11 @@ namespace Luna
 				m_desc = desc;
 				D3D12_RESOURCE_DESC rd = encode_buffer_desc(desc);
 				D3D12_RESOURCE_STATES state = D3D12_RESOURCE_STATE_COMMON;
-				if (desc.heap_type == ResourceHeapType::upload)
+				if (desc.memory_type == MemoryType::upload)
 				{
 					state = D3D12_RESOURCE_STATE_GENERIC_READ;
 				}
-				else if (desc.heap_type == ResourceHeapType::readback)
+				else if (desc.memory_type == MemoryType::readback)
 				{
 					state = D3D12_RESOURCE_STATE_COPY_DEST;
 				}
@@ -262,7 +262,7 @@ namespace Luna
 				m_desc = desc;
 				D3D12_RESOURCE_DESC rd = encode_texture_desc(desc);
 				D3D12MA::ALLOCATION_DESC allocation_desc{};
-				allocation_desc.HeapType = encode_heap_type(desc.heap_type);
+				allocation_desc.HeapType = encode_memory_type(desc.memory_type);
 				D3D12_RESOURCE_STATES state = D3D12_RESOURCE_STATE_COMMON;
 				D3D12_CLEAR_VALUE* pcv = NULL;
 				D3D12_CLEAR_VALUE cv;
@@ -283,11 +283,11 @@ namespace Luna
 					}
 					pcv = &cv;
 				}
-				if (desc.heap_type == ResourceHeapType::upload)
+				if (desc.memory_type == MemoryType::upload)
 				{
 					state = D3D12_RESOURCE_STATE_GENERIC_READ;
 				}
-				else if (desc.heap_type == ResourceHeapType::readback)
+				else if (desc.memory_type == MemoryType::readback)
 				{
 					state = D3D12_RESOURCE_STATE_COPY_DEST;
 				}
@@ -330,11 +330,11 @@ namespace Luna
 					}
 					pcv = &cv;
 				}
-				if (desc.heap_type == ResourceHeapType::upload)
+				if (desc.memory_type == MemoryType::upload)
 				{
 					state = D3D12_RESOURCE_STATE_GENERIC_READ;
 				}
-				else if (desc.heap_type == ResourceHeapType::readback)
+				else if (desc.memory_type == MemoryType::readback)
 				{
 					state = D3D12_RESOURCE_STATE_COPY_DEST;
 				}

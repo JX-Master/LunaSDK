@@ -13,11 +13,11 @@ namespace Luna
 {
 	namespace RHI
 	{
-		RV DeviceMemory::init(ResourceHeapType heap_type, const VkMemoryRequirements& pVkMemoryRequirements)
+		RV DeviceMemory::init(MemoryType memory_type, const VkMemoryRequirements& pVkMemoryRequirements)
 		{
-			m_heap_type = heap_type;
+			m_memory_type = memory_type;
 			VmaAllocationCreateInfo allocation{};
-			encode_allocation_info(allocation, heap_type);
+			encode_allocation_info(allocation, memory_type);
 			return encode_vk_result(vmaAllocateMemory(m_device->m_allocator, &pVkMemoryRequirements, &allocation, &m_allocation, &m_allocation_info));
 		}
 		DeviceMemory::~DeviceMemory()

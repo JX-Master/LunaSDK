@@ -17,7 +17,7 @@ namespace Luna
 		struct RenderPassKey
 		{
 			Format color_formats[8] = { Format::unknown };
-			// Must either be `Format::unknown`, or the same as `rtv_formats[i]`.
+			// Must either be `Format::unknown`, or the same as `color_formats[i]`.
 			Format resolve_formats[8] = { Format::unknown };
 			Format depth_stencil_format = Format::unknown;
 			LoadOp color_load_ops[8] = { LoadOp::dont_care };

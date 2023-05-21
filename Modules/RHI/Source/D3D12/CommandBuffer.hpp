@@ -111,7 +111,7 @@ namespace Luna
 			TextureViewDesc m_color_attachment_views[8];
 			ResolveAttachment m_resolve_attachments[8];
 			ID3D12DescriptorHeap* m_depth_stencil_attachment = nullptr;
-			u8 m_num_render_targets;
+			u8 m_num_color_attachments;
 		};
 
 		struct CommandBuffer : ICommandBuffer

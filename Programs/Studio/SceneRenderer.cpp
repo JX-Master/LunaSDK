@@ -41,7 +41,7 @@ namespace Luna
         { 
             m_settings = settings;
             u32 cb_align = m_device->get_uniform_buffer_data_alignment();
-            luset(m_camera_cb, m_device->new_buffer(BufferDesc(ResourceHeapType::upload, BufferUsageFlag::uniform_buffer, align_upper(sizeof(CameraCB), cb_align))));
+            luset(m_camera_cb, m_device->new_buffer(BufferDesc(MemoryType::upload, BufferUsageFlag::uniform_buffer, align_upper(sizeof(CameraCB), cb_align))));
 			
 			// Build render graph.
 			{
@@ -61,42 +61,42 @@ namespace Luna
 				desc.resources[LIGHTING_BUFFER] = {RenderGraphResourceType::transient, 
 					RenderGraphResourceFlag::none,
 					"LightingBuffer", 
-					ResourceDesc::tex2d(ResourceHeapType::local, Format::rgba32_float, 
+					ResourceDesc::tex2d(MemoryType::local, Format::rgba32_float, 
 					ResourceUsageFlag::shader_resource, (u32)settings.screen_size.x, (u32)settings.screen_size.y, 1, 1)};
 				desc.resources[DEPTH_BUFFER] = {RenderGraphResourceType::transient, 
 					RenderGraphResourceFlag::none,
 					"DepthBuffer",
-					ResourceDesc::tex2d(ResourceHeapType::local, Format::d32_float, 
+					ResourceDesc::tex2d(MemoryType::local, Format::d32_float, 
 					ResourceUsageFlag::shader_resource, (u32)settings.screen_size.x, (u32)settings.screen_size.y, 1, 1)};
 				desc.resources[BACK_BUFFER] = {RenderGraphResourceType::transient, 
 					RenderGraphResourceFlag::none,
 					"BackBuffer",
-					ResourceDesc::tex2d(ResourceHeapType::local, Format::rgba8_unorm,
+					ResourceDesc::tex2d(MemoryType::local, Format::rgba8_unorm,
 					ResourceUsageFlag::shader_resource | ResourceUsageFlag::render_target, 0, 0, 1, 1)};
 				desc.resources[WIREFRAME_BACK_BUFFER] = {RenderGraphResourceType::transient, 
 					RenderGraphResourceFlag::none,
 					"WireframeBackBuffer",
-					ResourceDesc::tex2d(ResourceHeapType::local, Format::rgba8_unorm, 
+					ResourceDesc::tex2d(MemoryType::local, Format::rgba8_unorm, 
 					ResourceUsageFlag::shader_resource | ResourceUsageFlag::render_target, (u32)settings.screen_size.x, (u32)settings.screen_size.y, 1, 1)};
 				desc.resources[GBUFFER_VIS_BUFFER] = {RenderGraphResourceType::transient, 
 					RenderGraphResourceFlag::none,
 					"GBufferBackBuffer",
-					ResourceDesc::tex2d(ResourceHeapType::local, Format::rgba8_unorm, 
+					ResourceDesc::tex2d(MemoryType::local, Format::rgba8_unorm, 
 					ResourceUsageFlag::shader_resource | ResourceUsageFlag::render_target, (u32)settings.screen_size.x, (u32)settings.screen_size.y, 1, 1)};
 				desc.resources[BASE_COLOR_ROUGHNESS_BUFFER] = {RenderGraphResourceType::transient, 
 					RenderGraphResourceFlag::none,
 					"BaseColorRoughnessBuffer",
-					ResourceDesc::tex2d(ResourceHeapType::local, Format::rgba8_unorm, 
+					ResourceDesc::tex2d(MemoryType::local, Format::rgba8_unorm, 
 					ResourceUsageFlag::shader_resource | ResourceUsageFlag::render_target, 0, 0, 1, 1)};
 				desc.resources[NORMAL_METALLIC_BUFFER] = {RenderGraphResourceType::transient, 
 					RenderGraphResourceFlag::none,
 					"NormalMetallicBuffer",
-					ResourceDesc::tex2d(ResourceHeapType::local, Format::rgba8_unorm, 
+					ResourceDesc::tex2d(MemoryType::local, Format::rgba8_unorm, 
 					ResourceUsageFlag::shader_resource | ResourceUsageFlag::render_target, 0, 0, 1, 1)};
 				desc.resources[EMISSIVE_BUFFER] = {RenderGraphResourceType::transient, 
 					RenderGraphResourceFlag::none,
 					"EmissiveBuffer",
-					ResourceDesc::tex2d(ResourceHeapType::local, Format::rgba16_float, 
+					ResourceDesc::tex2d(MemoryType::local, Format::rgba16_float, 
 					ResourceUsageFlag::shader_resource | ResourceUsageFlag::render_target, 0, 0, 1, 1)};
 
 				switch(settings.mode)
@@ -229,7 +229,7 @@ namespace Luna
 			{
 				if (m_num_model_matrices < ts.size())
 				{
-					m_model_matrices = device->new_buffer(BufferDesc(ResourceHeapType::upload, ResourceUsageFlag::shader_resource, (u64)sizeof(Float4x4) * 2 * (u64)ts.size())).get();
+					m_model_matrices = device->new_buffer(BufferDesc(MemoryType::upload, ResourceUsageFlag::shader_resource, (u64)sizeof(Float4x4) * 2 * (u64)ts.size())).get();
 					m_num_model_matrices = ts.size();
 				}
 				if (!ts.empty())
@@ -273,7 +273,7 @@ namespace Luna
 				usize light_size = max<usize>(light_ts.size(), 1);
 				if (m_num_lights < light_size)
 				{
-					m_lighting_params = device->new_buffer(BufferDesc(ResourceHeapType::upload, ResourceUsageFlag::shader_resource, sizeof(LightingParams) * light_size)).get();
+					m_lighting_params = device->new_buffer(BufferDesc(MemoryType::upload, ResourceUsageFlag::shader_resource, sizeof(LightingParams) * light_size)).get();
 					m_num_lights = light_size;
 				}
 				void* mapped = nullptr;

@@ -50,12 +50,6 @@ namespace Luna
 			//! the resource barrier, thus improve performance.
 			discard_content = 0x02,
 		};
-		//! `BufferStateFlag` defines how resources are bound to the pipeline. One resource may be bind to multiple stages of the 
-		//! pipeline, which can be expressed by bitwise-OR of `ResourceStateFlag` flags.
-		//! At the beginning of each command buffer, no resources is bound to the pipeline. All resources start with 
-		//! `ResourceBindFlag::none`, and will be reset to `ResourceBindFlag::none` automatically at the end of the command buffer.
-		//! In each command buffer, before the user binds the resource for the first time, she must issue one resource barrier with
-		//! `ResourceBindFlag::none` as the `before` state for the resource to be correctly bind.
 		enum class BufferStateFlag : u32
 		{
 			//! This resource is not used by the pipeline.
@@ -427,6 +421,10 @@ namespace Luna
 			virtual void set_index_buffer(const IndexBufferView& view) = 0;
 
 			//! Sets the descriptor set to be used by the graphic pipeline.
+			//! This behaves the same as calling `set_graphics_descriptor_sets` with only one element.
+			virtual void set_graphics_descriptor_set(u32 start_index, IDescriptorSet* descriptor_set) = 0;
+
+			//! Sets descriptor sets to be used by the graphic pipeline.
 			//! This must be called after `set_pipeline_state` and `set_graphics_shader_input_layout`.
 			virtual void set_graphics_descriptor_sets(u32 start_index, Span<IDescriptorSet*> descriptor_sets) = 0;
 
@@ -487,7 +485,11 @@ namespace Luna
 			//! Sets the pipeline state for compute pipeline.
 			virtual void set_compute_pipeline_state(IPipelineState* pso) = 0;
 
-			//! Sets the view set to be used by the compute pipeline.
+			//! Sets the descriptor set to be used by the compute pipeline.
+			//! This behaves the same as calling `set_compute_descriptor_sets` with only one element.
+			virtual void set_compute_descriptor_set(u32 start_index, IDescriptorSet* descriptor_set) = 0;
+
+			//! Sets descriptor sets to be used by the compute pipeline.
 			//! This must be called after `set_pipeline_state`.
 			virtual void set_compute_descriptor_sets(u32 start_index, Span<IDescriptorSet*> descriptor_sets) = 0;
 

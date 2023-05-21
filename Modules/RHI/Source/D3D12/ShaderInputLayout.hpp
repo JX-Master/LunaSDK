@@ -30,7 +30,7 @@ namespace Luna
 				//! The first root parameter.
 				u32 m_root_parameter_offset;
 				//! The heap type to bind for every root parameter.
-				Vector<D3D12_DESCRIPTOR_HEAP_TYPE> m_heap_types;
+				Vector<D3D12_DESCRIPTOR_HEAP_TYPE> m_memory_types;
 			};
 			Vector<DescriptorSetLayoutInfo> m_descriptor_set_layouts;
 

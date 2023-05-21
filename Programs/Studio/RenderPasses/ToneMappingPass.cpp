@@ -118,9 +118,9 @@ namespace Luna
             luset(m_histogram_collect_ds, device->new_descriptor_set(DescriptorSetDesc(m_global_data->m_histogram_collect_pass_dlayout)));
             luset(m_tone_mapping_pass_ds, device->new_descriptor_set(DescriptorSetDesc(m_global_data->m_tone_mapping_pass_dlayout)));
             auto cb_align = device->get_uniform_buffer_data_alignment();
-            luset(m_histogram_cb, device->new_buffer(BufferDesc(ResourceHeapType::upload, BufferUsageFlag::uniform_buffer, align_upper(sizeof(LumHistogramParams), cb_align))));
-			luset(m_histogram_collect_cb, device->new_buffer(BufferDesc(ResourceHeapType::upload, BufferUsageFlag::uniform_buffer, align_upper(sizeof(LumHistogramCollectParams), cb_align))));
-			luset(m_tone_mapping_cb, device->new_buffer(BufferDesc(ResourceHeapType::upload, BufferUsageFlag::uniform_buffer, align_upper(sizeof(ToneMappingParams), cb_align))));
+            luset(m_histogram_cb, device->new_buffer(BufferDesc(MemoryType::upload, BufferUsageFlag::uniform_buffer, align_upper(sizeof(LumHistogramParams), cb_align))));
+			luset(m_histogram_collect_cb, device->new_buffer(BufferDesc(MemoryType::upload, BufferUsageFlag::uniform_buffer, align_upper(sizeof(LumHistogramCollectParams), cb_align))));
+			luset(m_tone_mapping_cb, device->new_buffer(BufferDesc(MemoryType::upload, BufferUsageFlag::uniform_buffer, align_upper(sizeof(ToneMappingParams), cb_align))));
 		}
         lucatchret;
         return ok;
@@ -142,9 +142,9 @@ namespace Luna
             // Tone mapping pass.
 			{
 				Ref<IBuffer> m_histogram_buffer;
-				luset(m_histogram_buffer, ctx->allocate_temporary_resource(RG::ResourceDesc::as_buffer(BufferDesc(ResourceHeapType::local, BufferUsageFlag::read_write_buffer, sizeof(u32) * 256))));
+				luset(m_histogram_buffer, ctx->allocate_temporary_resource(RG::ResourceDesc::as_buffer(BufferDesc(MemoryType::local, BufferUsageFlag::read_write_buffer, sizeof(u32) * 256))));
 				Ref<ITexture> m_lum_tex;
-				luset(m_lum_tex, ctx->allocate_temporary_resource(RG::ResourceDesc::as_texture(TextureDesc::tex2d(ResourceHeapType::local, Format::r32_float, TextureUsageFlag::read_write_texture | TextureUsageFlag::read_texture, 1, 1))));
+				luset(m_lum_tex, ctx->allocate_temporary_resource(RG::ResourceDesc::as_texture(TextureDesc::tex2d(MemoryType::local, Format::r32_float, TextureUsageFlag::read_write_texture | TextureUsageFlag::read_texture, 1, 1))));
 				f32 v = 0.0f;
 				luexp(m_lum_tex->get_device()->copy_resource({
 					ResourceCopyDesc::as_write_texture(m_lum_tex, &v, 4, 4, 0, BoxU(0, 0, 0, 1, 1, 1))

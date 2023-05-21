@@ -209,9 +209,9 @@ namespace Luna
 				blend.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
 				blend.logicOpEnable = desc.blend_state.logic_op_enable ? VK_TRUE : VK_FALSE;
 				blend.logicOp = encode_logic_op(desc.blend_state.logic_op);
-				blend.attachmentCount = desc.num_render_targets;
+				blend.attachmentCount = desc.num_color_attachments;
 				VkPipelineColorBlendAttachmentState attachments[8] = { {} };
-				for (usize i = 0; i < desc.num_render_targets; ++i)
+				for (usize i = 0; i < desc.num_color_attachments; ++i)
 				{
 					auto& dest = attachments[i];
 					auto& src = desc.blend_state.rt[i];
@@ -243,16 +243,16 @@ namespace Luna
 				create_info.layout = slayout->m_pipeline_layout;
 				// render pass.
 				RenderPassKey render_pass;
-				for (usize i = 0; i < desc.num_render_targets; ++i)
+				for (usize i = 0; i < desc.num_color_attachments; ++i)
 				{
-					render_pass.color_formats[i] = desc.rtv_formats[i];
+					render_pass.color_formats[i] = desc.color_formats[i];
 					render_pass.color_store_ops[i] = StoreOp::store;
 					if (desc.sample_count > 1)
 					{
-						render_pass.resolve_formats[i] = desc.rtv_formats[i];
+						render_pass.resolve_formats[i] = desc.color_formats[i];
 					}
 				}
-				render_pass.depth_stencil_format = desc.dsv_format;
+				render_pass.depth_stencil_format = desc.depth_stencil_format;
 				if (render_pass.depth_stencil_format != Format::unknown)
 				{
 					render_pass.depth_load_op = LoadOp::load;
