@@ -45,7 +45,6 @@ namespace Luna
 					usages |= TextureUsageFlag::read_write_texture;
 				}
 				m_back_buffer->m_desc = TextureDesc::tex2d(
-					MemoryType::local,
 					decode_pixel_format(desc.Format),
 					usages,
 					desc.Width, desc.Height,

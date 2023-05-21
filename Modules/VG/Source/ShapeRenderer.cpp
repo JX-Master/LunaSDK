@@ -71,14 +71,14 @@ namespace Luna
 					luset(g_fill_slayout, dev->new_shader_input_layout(desc));
 				}
 				{
-					TextureDesc desc = TextureDesc::tex2d(MemoryType::local, Format::rgba8_unorm, TextureUsageFlag::sampled_texture | TextureUsageFlag::copy_dest, 1, 1);
-					luset(g_white_tex, dev->new_texture(desc));
+					TextureDesc desc = TextureDesc::tex2d(Format::rgba8_unorm, TextureUsageFlag::sampled_texture | TextureUsageFlag::copy_dest, 1, 1);
+					luset(g_white_tex, dev->new_texture(MemoryType::local, desc));
 					u32 data = 0xFFFFFFFF;
 
 					{
 						u64 size, row_pitch, slice_pitch;
 						dev->get_texture_data_placement_info(1, 1, 1, Format::rgba8_unorm, &size, nullptr, &row_pitch, &slice_pitch);
-						lulet(tex_staging, dev->new_buffer(BufferDesc(MemoryType::upload, BufferUsageFlag::copy_source, size)));
+						lulet(tex_staging, dev->new_buffer(MemoryType::upload, BufferDesc(BufferUsageFlag::copy_source, size)));
 						lulet(tex_staging_data, tex_staging->map(0, 0));
 						memcpy(tex_staging_data, &data, sizeof(data));
 						tex_staging->unmap(0, sizeof(data));
@@ -203,7 +203,7 @@ namespace Luna
 				// Build constant buffer.
 				if (num_draw_calls > m_cbs_capacity)
 				{
-					luset(m_cbs_resource, dev->new_buffer(BufferDesc(MemoryType::upload, BufferUsageFlag::uniform_buffer,
+					luset(m_cbs_resource, dev->new_buffer(MemoryType::upload, BufferDesc(BufferUsageFlag::uniform_buffer,
 						cb_size)));
 					m_cbs_capacity = num_draw_calls;
 				}

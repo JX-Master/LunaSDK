@@ -15,20 +15,20 @@ namespace Luna
 {
 	namespace RHI
 	{
-		RV BufferResource::init_as_committed(const BufferDesc& desc)
+		RV BufferResource::init_as_committed(MemoryType memory_type, const BufferDesc& desc)
 		{
 			lutry
 			{
 				m_desc = desc;
 				D3D12_RESOURCE_DESC rd = encode_buffer_desc(desc);
 				D3D12MA::ALLOCATION_DESC allocation_desc{};
-				allocation_desc.HeapType = encode_memory_type(desc.memory_type);
+				allocation_desc.HeapType = encode_memory_type(memory_type);
 				D3D12_RESOURCE_STATES state = D3D12_RESOURCE_STATE_COMMON;
-				if (desc.memory_type == MemoryType::upload)
+				if (memory_type == MemoryType::upload)
 				{
 					state = D3D12_RESOURCE_STATE_GENERIC_READ;
 				}
-				else if (desc.memory_type == MemoryType::readback)
+				else if (memory_type == MemoryType::readback)
 				{
 					state = D3D12_RESOURCE_STATE_COPY_DEST;
 				}
@@ -49,11 +49,11 @@ namespace Luna
 				m_desc = desc;
 				D3D12_RESOURCE_DESC rd = encode_buffer_desc(desc);
 				D3D12_RESOURCE_STATES state = D3D12_RESOURCE_STATE_COMMON;
-				if (desc.memory_type == MemoryType::upload)
+				if (memory->m_memory_type == MemoryType::upload)
 				{
 					state = D3D12_RESOURCE_STATE_GENERIC_READ;
 				}
-				else if (desc.memory_type == MemoryType::readback)
+				else if (memory->m_memory_type == MemoryType::readback)
 				{
 					state = D3D12_RESOURCE_STATE_COPY_DEST;
 				}
@@ -255,14 +255,14 @@ namespace Luna
 				m_device->m_dsv_heap.free_view(dsv.second.Get());
 			}
 		}
-		RV TextureResource::init_as_committed(const TextureDesc& desc, const ClearValue* optimized_clear_value)
+		RV TextureResource::init_as_committed(MemoryType memory_type, const TextureDesc& desc, const ClearValue* optimized_clear_value)
 		{
 			lutry
 			{
 				m_desc = desc;
 				D3D12_RESOURCE_DESC rd = encode_texture_desc(desc);
 				D3D12MA::ALLOCATION_DESC allocation_desc{};
-				allocation_desc.HeapType = encode_memory_type(desc.memory_type);
+				allocation_desc.HeapType = encode_memory_type(memory_type);
 				D3D12_RESOURCE_STATES state = D3D12_RESOURCE_STATE_COMMON;
 				D3D12_CLEAR_VALUE* pcv = NULL;
 				D3D12_CLEAR_VALUE cv;
@@ -283,11 +283,11 @@ namespace Luna
 					}
 					pcv = &cv;
 				}
-				if (desc.memory_type == MemoryType::upload)
+				if (memory_type == MemoryType::upload)
 				{
 					state = D3D12_RESOURCE_STATE_GENERIC_READ;
 				}
-				else if (desc.memory_type == MemoryType::readback)
+				else if (memory_type == MemoryType::readback)
 				{
 					state = D3D12_RESOURCE_STATE_COPY_DEST;
 				}
@@ -330,11 +330,11 @@ namespace Luna
 					}
 					pcv = &cv;
 				}
-				if (desc.memory_type == MemoryType::upload)
+				if (memory->m_memory_type == MemoryType::upload)
 				{
 					state = D3D12_RESOURCE_STATE_GENERIC_READ;
 				}
-				else if (desc.memory_type == MemoryType::readback)
+				else if (memory->m_memory_type == MemoryType::readback)
 				{
 					state = D3D12_RESOURCE_STATE_COPY_DEST;
 				}

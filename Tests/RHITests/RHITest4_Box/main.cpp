@@ -279,8 +279,7 @@ void draw()
         cmdbuf->begin_render_pass(desc);
         cmdbuf->set_graphics_shader_input_layout(slayout);
         cmdbuf->set_graphics_pipeline_state(pso);
-        IDescriptorSet* ds = desc_set.get();
-        cmdbuf->set_graphics_descriptor_sets(0, { &ds, 1 });
+        cmdbuf->set_graphics_descriptor_set(0, desc_set);
         auto sz = vb->get_desc().size;
         cmdbuf->set_vertex_buffers(0, {VertexBufferView(vb, 0, sz, sizeof(Vertex))});
         sz = ib->get_desc().size;

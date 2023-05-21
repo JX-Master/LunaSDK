@@ -28,7 +28,7 @@ namespace Luna
 			Ref<DeviceMemory> m_memory;
 			BufferDesc m_desc;
 
-			RV init_as_committed(const BufferDesc& desc);
+			RV init_as_committed(MemoryType memory_type, const BufferDesc& desc);
 			RV init_as_aliasing(const BufferDesc& desc, DeviceMemory* memory);
 
 			virtual IDevice* get_device() override { return m_device; }
@@ -62,7 +62,7 @@ namespace Luna
 			{
 				return m_desc.mip_levels * m_desc.array_size;
 			}
-			RV init_as_committed(const TextureDesc& desc, const ClearValue* optimized_clear_value);
+			RV init_as_committed(MemoryType memory_type, const TextureDesc& desc, const ClearValue* optimized_clear_value);
 			RV init_as_aliasing(const TextureDesc& desc, DeviceMemory* memory, const ClearValue* optimized_clear_value);
 			void post_init();
 

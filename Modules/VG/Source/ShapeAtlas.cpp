@@ -22,7 +22,7 @@ namespace Luna
 				if (m_buffer_resource_capacity < m_commands.size())
 				{
 					u64 shape_buffer_size = max<u64>(m_commands.size() * sizeof(f32), get_main_device()->get_uniform_buffer_data_alignment());
-					luset(m_buffer_resource, get_main_device()->new_buffer(BufferDesc(MemoryType::upload,
+					luset(m_buffer_resource, get_main_device()->new_buffer(MemoryType::upload, BufferDesc(
 						BufferUsageFlag::read_buffer, shape_buffer_size)));
 					m_buffer_resource_capacity = m_commands.size();
 				}

@@ -22,8 +22,9 @@ namespace Luna
 
 			Ref<Device> m_device;
 			ComPtr<D3D12MA::Allocation> m_allocation;
+			MemoryType m_memory_type;
 
-			RV init(const D3D12MA::ALLOCATION_DESC& allocation_desc, const D3D12_RESOURCE_ALLOCATION_INFO& allocation_info);
+			RV init(MemoryType memory_type, const D3D12MA::ALLOCATION_DESC& allocation_desc, const D3D12_RESOURCE_ALLOCATION_INFO& allocation_info);
 		
 			virtual IDevice* get_device() override { return m_device; }
 			virtual void set_name(const Name& name)
@@ -32,6 +33,10 @@ namespace Luna
 				wchar_t* buf = (wchar_t*)alloca(sizeof(wchar_t) * (len + 1));
 				utf8_to_utf16((c16*)buf, len + 1, name.c_str(), name.size());
 				m_allocation->SetName(buf);
+			}
+			virtual MemoryType get_memory_type() override
+			{
+				return m_memory_type;
 			}
 			virtual u64 get_size() override
 			{

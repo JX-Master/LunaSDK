@@ -245,8 +245,7 @@ void draw()
 	cb->begin_render_pass(desc);
 	cb->set_graphics_pipeline_state(pso);
 	cb->set_graphics_shader_input_layout(shader_input_layout);
-	IDescriptorSet* ds = desc_set.get();
-	cb->set_graphics_descriptor_sets(0, { &ds, 1 });
+	cb->set_graphics_descriptor_set(0, desc_set);
 	cb->set_vertex_buffers(0, {VertexBufferView(vb, 0, sizeof(VertexData) * 4, sizeof(VertexData))});
 	cb->set_index_buffer({ ib, 0, 24, Format::r32_uint });
 	cb->set_scissor_rect(RectI(0, 0, (i32)w, (i32)h));

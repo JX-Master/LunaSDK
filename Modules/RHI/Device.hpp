@@ -83,10 +83,12 @@ namespace Luna
 				u64* size = nullptr, u64* alignment = nullptr, u64* row_pitch = nullptr, u64* slice_pitch = nullptr) = 0;
 
 			//! Creates one new buffer resource and allocates device memory for the resource.
+			//! @param[in] memory_type The memory type selected for allocating resource memory.
 			//! @param[in] desc The descriptor object.
 			virtual R<Ref<IBuffer>> new_buffer(MemoryType memory_type, const BufferDesc& desc) = 0;
 
 			//! Creates one new texture resource and allocates device memory for the resource.
+			//! @param[in] memory_type The memory type selected for allocating resource memory.
 			//! @param[in] desc The descriptor object.
 			//! @param[in] optimized_clear_value The optional optimized clear value for a texture resource. Specify `nullptr` if 
 			//! the resource does not have a optimized clear value.

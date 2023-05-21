@@ -43,7 +43,7 @@ namespace Luna
             case QueryType::pipeline_statistics: query_size = sizeof(D3D12_QUERY_DATA_PIPELINE_STATISTICS); break;
             default: lupanic(); break;
             }
-            auto result_buffer = m_device->new_buffer(BufferDesc(MemoryType::readback, BufferUsageFlag::copy_dest, query_size * desc.count));
+            auto result_buffer = m_device->new_buffer(MemoryType::readback, BufferDesc(BufferUsageFlag::copy_dest, query_size * desc.count));
             if (failed(result_buffer)) return result_buffer.errcode();
             m_result_buffer = result_buffer.get();
             return ok;

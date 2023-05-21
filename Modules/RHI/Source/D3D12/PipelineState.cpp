@@ -351,7 +351,7 @@ namespace Luna
 			}
 			d.DSVFormat = encode_pixel_format(desc.depth_stencil_format);
 			d.SampleDesc.Count = desc.sample_count;
-			d.SampleDesc.Quality = desc.sample_quality;
+			d.SampleDesc.Quality = desc.sample_count == 1 ? 0 : 1;
 			d.NodeMask = 0;
 			d.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
 			d.CachedPSO.CachedBlobSizeInBytes = 0;

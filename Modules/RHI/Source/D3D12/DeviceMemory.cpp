@@ -13,8 +13,9 @@ namespace Luna
 {
 	namespace RHI
 	{
-		RV DeviceMemory::init(const D3D12MA::ALLOCATION_DESC& allocation_desc, const D3D12_RESOURCE_ALLOCATION_INFO& allocation_info)
+		RV DeviceMemory::init(MemoryType memory_type, const D3D12MA::ALLOCATION_DESC& allocation_desc, const D3D12_RESOURCE_ALLOCATION_INFO& allocation_info)
 		{
+			m_memory_type = memory_type;
 			return encode_hresult(m_device->m_allocator->AllocateMemory(&allocation_desc, &allocation_info, &m_allocation));
 		}
 	}

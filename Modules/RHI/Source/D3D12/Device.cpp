@@ -264,41 +264,32 @@ namespace Luna
 			if(size) *size = sz;
 			if(alignment) *alignment = D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT;
 		}
-		R<Ref<IBuffer>> Device::new_buffer(const BufferDesc& desc)
+		R<Ref<IBuffer>> Device::new_buffer(MemoryType memory_type, const BufferDesc& desc)
 		{
 			Ref<BufferResource> res = new_object<BufferResource>();
 			res->m_device = this;
-			RV r = res->init_as_committed(desc);
+			RV r = res->init_as_committed(memory_type, desc);
 			if (!r.valid())
 			{
 				return r.errcode();
 			}
 			return res;
 		}
-		R<Ref<ITexture>> Device::new_texture(const TextureDesc& desc, const ClearValue* optimized_clear_value)
+		R<Ref<ITexture>> Device::new_texture(MemoryType memory_type, const TextureDesc& desc, const ClearValue* optimized_clear_value)
 		{
 			Ref<TextureResource> res = new_object<TextureResource>();
 			res->m_device = this;
-			RV r = res->init_as_committed(desc, optimized_clear_value);
+			RV r = res->init_as_committed(memory_type, desc, optimized_clear_value);
 			if (!r.valid())
 			{
 				return r.errcode();
 			}
 			return res;
 		}
-		bool Device::is_resources_aliasing_compatible(Span<const BufferDesc> buffers, Span<const TextureDesc> textures)
+		bool Device::is_resources_aliasing_compatible(MemoryType memory_type, Span<const BufferDesc> buffers, Span<const TextureDesc> textures)
 		{
 			usize num_descs = buffers.size() + textures.size();
 			if (num_descs <= 1) return true;
-			MemoryType memory_type = buffers.empty() ? textures[0].memory_type : buffers[0].memory_type;
-			for (auto& desc : buffers)
-			{
-				if (desc.memory_type != memory_type) return false;
-			}
-			for (auto& desc : textures)
-			{
-				if (desc.memory_type != memory_type) return false;
-			}
 			if (m_feature_options.ResourceHeapTier >= D3D12_RESOURCE_HEAP_TIER_2)
 			{
 				// heaps can support resources from all three categories 
@@ -330,15 +321,15 @@ namespace Luna
 				return !(rt_texture_present && non_rt_texture_present);
 			}
 		}
-		R<Ref<IDeviceMemory>> Device::allocate_memory(Span<const BufferDesc> buffers, Span<const TextureDesc> textures)
+		R<Ref<IDeviceMemory>> Device::allocate_memory(MemoryType memory_type, Span<const BufferDesc> buffers, Span<const TextureDesc> textures)
 		{
 			Ref<IDeviceMemory> ret;
 			lutry
 			{
 				if (buffers.empty() && textures.empty()) return BasicError::bad_arguments();
-				if (!is_resources_aliasing_compatible(buffers, textures)) return BasicError::not_supported();
+				if (!is_resources_aliasing_compatible(memory_type, buffers, textures)) return BasicError::not_supported();
 				D3D12MA::ALLOCATION_DESC allocation_desc{};
-				allocation_desc.HeapType = encode_memory_type(buffers.empty() ? textures[0].memory_type : buffers[0].memory_type);
+				allocation_desc.HeapType = encode_memory_type(memory_type);
 				allocation_desc.ExtraHeapFlags = D3D12_HEAP_FLAG_DENY_BUFFERS | D3D12_HEAP_FLAG_DENY_RT_DS_TEXTURES | D3D12_HEAP_FLAG_DENY_NON_RT_DS_TEXTURES;
 				D3D12_RESOURCE_DESC* descs = (D3D12_RESOURCE_DESC*)alloca(sizeof(D3D12_RESOURCE_DESC) * (buffers.size() + textures.size()));
 				u32 i = 0;
@@ -364,7 +355,7 @@ namespace Luna
 				D3D12_RESOURCE_ALLOCATION_INFO allocation_info = m_device->GetResourceAllocationInfo(0, i, descs);
 				auto memory = new_object<DeviceMemory>();
 				memory->m_device = this;
-				luexp(memory->init(allocation_desc, allocation_info));
+				luexp(memory->init(memory_type, allocation_desc, allocation_info));
 			}
 			lucatchret;
 			return ret;
