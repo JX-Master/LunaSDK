@@ -103,7 +103,7 @@ namespace Luna
 					return set_error(BasicError::not_supported(), "The specified command queue for creating swap chain does not have presenting support");
 				}
 				auto& surface_info = get_physical_device_surface_info(m_device->m_physical_device, m_surface);
-				lulet(surface_format, choose_swap_surface_format(surface_info.formats, desc.pixel_format));
+				lulet(surface_format, choose_swap_surface_format(surface_info.formats, desc.format));
 				auto present_mode = choose_present_mode(surface_info.present_modes, desc.vertical_synchronized);
 				lulet(extent, choose_swap_extent(surface_info.capabilities, m_desc));
 				if (desc.buffer_count < surface_info.capabilities.minImageCount || desc.buffer_count > surface_info.capabilities.maxImageCount)
@@ -136,7 +136,7 @@ namespace Luna
 				luexp(encode_vk_result(m_device->m_funcs.vkGetSwapchainImagesKHR(m_device->m_device, m_swap_chain, &image_count, images)));
 				TextureDesc desc;
 				desc.type = TextureType::tex2d;
-				desc.pixel_format = m_desc.pixel_format;
+				desc.format = m_desc.format;
 				desc.width = m_desc.width;
 				desc.height = m_desc.height;
 				desc.depth = 1;
@@ -223,9 +223,9 @@ namespace Luna
 			{
 				clean_up_swap_chain();
 				auto new_desc = desc;
-				if (new_desc.pixel_format == Format::unknown)
+				if (new_desc.format == Format::unknown)
 				{
-					new_desc.pixel_format = m_desc.pixel_format;
+					new_desc.format = m_desc.format;
 				}
 				luexp(create_swap_chain(new_desc));
 			}

@@ -46,6 +46,7 @@ namespace Luna
         Ref<RHI::IBuffer> m_histogram_cb;
         Ref<RHI::IBuffer> m_histogram_collect_cb;
         Ref<RHI::IBuffer> m_tone_mapping_cb;
+        Ref<RHI::ITexture> m_lum_tex;
         Ref<RHI::IDescriptorSet> m_histogram_ds;
         Ref<RHI::IDescriptorSet> m_histogram_collect_ds;
         Ref<RHI::IDescriptorSet> m_tone_mapping_pass_ds;

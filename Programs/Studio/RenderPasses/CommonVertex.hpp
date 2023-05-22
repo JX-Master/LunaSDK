@@ -12,15 +12,14 @@
 
 namespace Luna
 {
-    inline RHI::InputLayoutDesc get_vertex_input_layout_desc()
+    inline void get_vertex_input_layout_desc(Vector<RHI::InputAttributeDesc>& attributes)
     {
         using namespace RHI;
-        return RHI::InputLayoutDesc({
-			InputAttributeDesc("POSITION", 0, Format::rgb32_float),
-			InputAttributeDesc("NORMAL", 0, Format::rgb32_float),
-			InputAttributeDesc("TANGENT", 0, Format::rgb32_float),
-			InputAttributeDesc("TEXCOORD", 0, Format::rg32_float),
-			InputAttributeDesc("COLOR", 0, Format::rgba32_float),
-		});
+		attributes.clear();
+		attributes.push_back(InputAttributeDesc("POSITION", 0, 0, 0, 0, Format::rgb32_float));
+		attributes.push_back(InputAttributeDesc("NORMAL", 0, 1, 0, 12, Format::rgb32_float));
+		attributes.push_back(InputAttributeDesc("TANGENT", 0, 2, 0, 24, Format::rgb32_float));
+		attributes.push_back(InputAttributeDesc("TEXCOORD", 0, 3, 0, 36, Format::rg32_float));
+		attributes.push_back(InputAttributeDesc("COLOR", 0, 4, 0, 44, Format::rgba32_float));
     }
 }

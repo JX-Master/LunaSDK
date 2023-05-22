@@ -13,6 +13,7 @@
 #include "../Model.hpp"
 #include "../Material.hpp"
 #include "../SceneRenderer.hpp"
+#include "../StudioHeader.hpp"
 
 namespace Luna
 {
@@ -22,17 +23,17 @@ namespace Luna
         lutry
         {
             luset(m_geometry_pass_dlayout, device->new_descriptor_set_layout(DescriptorSetLayoutDesc({
-				DescriptorSetLayoutBinding(DescriptorType::uniform_buffer_view, 0, 1, ShaderVisibilityFlag::all),
-				DescriptorSetLayoutBinding(DescriptorType::srv, 1, 1, ShaderVisibilityFlag::all),
-				DescriptorSetLayoutBinding(DescriptorType::srv, 2, 1, ShaderVisibilityFlag::pixel),
-				DescriptorSetLayoutBinding(DescriptorType::srv, 3, 1, ShaderVisibilityFlag::pixel),
-				DescriptorSetLayoutBinding(DescriptorType::srv, 4, 1, ShaderVisibilityFlag::pixel),
-				DescriptorSetLayoutBinding(DescriptorType::srv, 5, 1, ShaderVisibilityFlag::pixel),
-				DescriptorSetLayoutBinding(DescriptorType::srv, 6, 1, ShaderVisibilityFlag::pixel),
+				DescriptorSetLayoutBinding(DescriptorType::uniform_buffer_view, 0, 1, ShaderVisibilityFlag::vertex | ShaderVisibilityFlag::pixel),
+				DescriptorSetLayoutBinding(DescriptorType::read_buffer_view, 1, 1, ShaderVisibilityFlag::vertex | ShaderVisibilityFlag::pixel),
+				DescriptorSetLayoutBinding(DescriptorType::sampled_texture_view, 2, 1, ShaderVisibilityFlag::pixel),
+				DescriptorSetLayoutBinding(DescriptorType::sampled_texture_view, 3, 1, ShaderVisibilityFlag::pixel),
+				DescriptorSetLayoutBinding(DescriptorType::sampled_texture_view, 4, 1, ShaderVisibilityFlag::pixel),
+				DescriptorSetLayoutBinding(DescriptorType::sampled_texture_view, 5, 1, ShaderVisibilityFlag::pixel),
+				DescriptorSetLayoutBinding(DescriptorType::sampled_texture_view, 6, 1, ShaderVisibilityFlag::pixel),
 				DescriptorSetLayoutBinding(DescriptorType::sampler, 7, 1, ShaderVisibilityFlag::pixel)
 				})));
-
-			luset(m_geometry_pass_slayout, device->new_shader_input_layout(ShaderInputLayoutDesc({ m_geometry_pass_dlayout },
+			auto dl = m_geometry_pass_dlayout.get();
+			luset(m_geometry_pass_slayout, device->new_shader_input_layout(ShaderInputLayoutDesc({ &dl, 1 },
 				ShaderInputLayoutFlag::allow_input_assembler_input_layout)));
 
 			lulet(vsf, open_file("GeometryVert.cso", FileOpenFlag::read, FileCreationMode::open_existing));
@@ -50,13 +51,16 @@ namespace Luna
 			GraphicsPipelineStateDesc ps_desc;
 			ps_desc.primitive_topology = PrimitiveTopology::triangle_list;
 			ps_desc.sample_mask = U32_MAX;
-			ps_desc.sample_quality = 0;
-			ps_desc.blend_state = BlendDesc({ AttachmentBlendDesc(false, false, BlendFactor::src_alpha,
+			ps_desc.blend_state = BlendDesc({ AttachmentBlendDesc(false, BlendFactor::src_alpha,
 				BlendFactor::inv_src_alpha, BlendOp::add, BlendFactor::inv_src_alpha, BlendFactor::zero, BlendOp::add, ColorWriteMask::all) });
 			ps_desc.rasterizer_state = RasterizerDesc(FillMode::solid, CullMode::back, 0, 0.0f, 0.0f, 0, false, true, false, false, false);
 			ps_desc.depth_stencil_state = DepthStencilDesc(true, false, ComparisonFunc::less_equal, false, 0x00, 0x00, DepthStencilOpDesc(), DepthStencilOpDesc());
 			ps_desc.ib_strip_cut_value = IndexBufferStripCutValue::disabled;
-			ps_desc.input_layout = get_vertex_input_layout_desc();
+			Vector<InputAttributeDesc> attributes;
+			get_vertex_input_layout_desc(attributes);
+			InputBindingDesc binding(0, sizeof(Vertex), InputRate::per_vertex);
+			ps_desc.input_layout.attributes = { attributes.data(), attributes.size() };
+			ps_desc.input_layout.bindings = { &binding, 1 };
 			ps_desc.vs = vs_blob.cspan();
 			ps_desc.ps = ps_blob.cspan();
 			ps_desc.shader_input_layout = m_geometry_pass_slayout;
@@ -67,16 +71,16 @@ namespace Luna
 			ps_desc.depth_stencil_format = Format::d32_float;
 			luset(m_geometry_pass_pso, device->new_graphics_pipeline_state(ps_desc));
 
-            luset(m_default_base_color, device->new_resource(
-				ResourceDesc::tex2d(MemoryType::local, Format::rgba8_unorm, ResourceUsageFlag::shader_resource, 1, 1, 1, 1)));
-			luset(m_default_roughness, device->new_resource(
-				ResourceDesc::tex2d(MemoryType::local, Format::r8_unorm, ResourceUsageFlag::shader_resource, 1, 1, 1, 1)));
-			luset(m_default_normal, device->new_resource(
-				ResourceDesc::tex2d(MemoryType::local, Format::rgba8_unorm, ResourceUsageFlag::shader_resource, 1, 1, 1, 1)));
-			luset(m_default_metallic, device->new_resource(
-				ResourceDesc::tex2d(MemoryType::local, Format::r8_unorm, ResourceUsageFlag::shader_resource, 1, 1, 1, 1)));
-			luset(m_default_emissive, device->new_resource(
-				ResourceDesc::tex2d(MemoryType::local, Format::rgba8_unorm, ResourceUsageFlag::shader_resource, 1, 1, 1, 1)));
+            luset(m_default_base_color, device->new_texture(MemoryType::local,
+				TextureDesc::tex2d(Format::rgba8_unorm, TextureUsageFlag::sampled_texture | TextureUsageFlag::copy_dest, 1, 1, 1, 1)));
+			luset(m_default_roughness, device->new_texture(MemoryType::local,
+				TextureDesc::tex2d(Format::r8_unorm, TextureUsageFlag::sampled_texture | TextureUsageFlag::copy_dest, 1, 1, 1, 1)));
+			luset(m_default_normal, device->new_texture(MemoryType::local,
+				TextureDesc::tex2d(Format::rgba8_unorm, TextureUsageFlag::sampled_texture | TextureUsageFlag::copy_dest, 1, 1, 1, 1)));
+			luset(m_default_metallic, device->new_texture(MemoryType::local,
+				TextureDesc::tex2d(Format::r8_unorm, TextureUsageFlag::sampled_texture | TextureUsageFlag::copy_dest, 1, 1, 1, 1)));
+			luset(m_default_emissive, device->new_texture(MemoryType::local,
+				TextureDesc::tex2d(Format::rgba8_unorm, TextureUsageFlag::sampled_texture | TextureUsageFlag::copy_dest, 1, 1, 1, 1)));
 
 			// Upload default texture data.
 			u8 base_color_data[4] = { 255, 255, 255, 255 };
@@ -85,13 +89,11 @@ namespace Luna
 			u8 metallic_data = 0;
 			u8 emissive_data[4] = { 0, 0, 0, 0 };
 
-			luexp(device->copy_resource({
-				ResourceCopyDesc::as_write_texture(m_default_base_color, base_color_data, 4, 4, 0, BoxU(0, 0, 0, 1, 1, 1)),
-				ResourceCopyDesc::as_write_texture(m_default_roughness, &roughness_data, 1, 1, 0, BoxU(0, 0, 0, 1, 1, 1)),
-				ResourceCopyDesc::as_write_texture(m_default_normal, normal_data, 4, 4, 0, BoxU(0, 0, 0, 1, 1, 1)),
-				ResourceCopyDesc::as_write_texture(m_default_metallic, &metallic_data, 1, 1, 0, BoxU(0, 0, 0, 1, 1, 1)),
-				ResourceCopyDesc::as_write_texture(m_default_emissive, emissive_data, 4, 4, 0, BoxU(0, 0, 0, 1, 1, 1)),
-				}));
+			luexp(upload_texture_data(m_default_base_color, SubresourceIndex(0, 0), 0, 0, 0, base_color_data, 4, 4, 1, 1, 1));
+			luexp(upload_texture_data(m_default_roughness, SubresourceIndex(0, 0), 0, 0, 0, &roughness_data, 1, 1, 1, 1, 1));
+			luexp(upload_texture_data(m_default_normal, SubresourceIndex(0, 0), 0, 0, 0, normal_data, 4, 4, 1, 1, 1));
+			luexp(upload_texture_data(m_default_metallic, SubresourceIndex(0, 0), 0, 0, 0, &metallic_data, 1, 1, 1, 1, 1));
+			luexp(upload_texture_data(m_default_emissive, SubresourceIndex(0, 0), 0, 0, 0, emissive_data, 4, 4, 1, 1, 1));
         }
         lucatchret;
         return ok;
@@ -112,39 +114,29 @@ namespace Luna
         using namespace RHI;
         lutry
         {
-            auto base_color_roughness_tex = ctx->get_output("base_color_roughness_texture");
-            auto normal_metallic_tex = ctx->get_output("normal_metallic_texture");
-			auto emissive_tex = ctx->get_output("emissive_texture");
-			auto depth_tex = ctx->get_input("depth_texture");
+            Ref<ITexture> base_color_roughness_tex = ctx->get_output("base_color_roughness_texture");
+			Ref<ITexture> normal_metallic_tex = ctx->get_output("normal_metallic_texture");
+			Ref<ITexture> emissive_tex = ctx->get_output("emissive_texture");
+			Ref<ITexture> depth_tex = ctx->get_input("depth_texture");
             auto render_desc = base_color_roughness_tex->get_desc();
             auto cmdbuf = ctx->get_command_buffer();
             auto device = cmdbuf->get_device();
             auto cb_align = device->get_uniform_buffer_data_alignment();
-            lulet(base_color_rtv, device->new_render_target_view(base_color_roughness_tex));
-			lulet(normal_rtv, device->new_render_target_view(normal_metallic_tex));
-			lulet(emissive_rtv, device->new_render_target_view(emissive_tex));
-            lulet(depth_dsv, device->new_depth_stencil_view(depth_tex));
             //auto fbo = device->new_frame_buffer(m_global_data->m_lighting_pass_rp, 1, &lighting_rt, nullptr, depth_tex, nullptr).get();
-			cmdbuf->resource_barriers({ 
-				ResourceBarrierDesc::as_transition(base_color_roughness_tex, ResourceStateFlag::render_target),
-				ResourceBarrierDesc::as_transition(normal_metallic_tex, ResourceStateFlag::render_target),
-				ResourceBarrierDesc::as_transition(emissive_tex, ResourceStateFlag::render_target),
-				ResourceBarrierDesc::as_transition(depth_tex, ResourceStateFlag::depth_stencil_read) });
+			cmdbuf->resource_barrier(
+				{}, {
+					{base_color_roughness_tex, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::color_attachment_write, ResourceBarrierFlag::discard_content},
+					{normal_metallic_tex, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::color_attachment_write, ResourceBarrierFlag::discard_content},
+					{emissive_tex, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::color_attachment_write, ResourceBarrierFlag::discard_content},
+					{depth_tex, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::depth_stencil_attachment_read, ResourceBarrierFlag::discard_content} });
 			RenderPassDesc render_pass;
-			render_pass.color_attachments[0] = base_color_rtv;
-			render_pass.color_attachments[1] = normal_rtv;
-			render_pass.color_attachments[2] = emissive_rtv;
-			render_pass.color_load_ops[0] = LoadOp::clear;
-			render_pass.color_clear_values[0] = Float4U(0.0f);
-			render_pass.color_load_ops[1] = LoadOp::clear;
-			render_pass.color_clear_values[1] = Float4U(0.0f);
-			render_pass.color_load_ops[2] = LoadOp::clear;
-			render_pass.color_clear_values[2] = Float4U(0.0f);
-			render_pass.dsv = depth_dsv;
-			render_pass.depth_load_op = RHI::LoadOp::load;
+			render_pass.color_attachments[0] = ColorAttachment(base_color_roughness_tex, LoadOp::clear, StoreOp::store, Float4U(0.0f));
+			render_pass.color_attachments[1] = ColorAttachment(normal_metallic_tex, LoadOp::clear, StoreOp::store, Float4U(0.0f));
+			render_pass.color_attachments[2] = ColorAttachment(emissive_tex, LoadOp::clear, StoreOp::store, Float4U(0.0f));
+			render_pass.depth_stencil_attachment = DepthStencilAttachment(depth_tex, LoadOp::load, StoreOp::store);
 			cmdbuf->begin_render_pass(render_pass);
 			cmdbuf->set_graphics_shader_input_layout(m_global_data->m_geometry_pass_slayout);
-			cmdbuf->set_pipeline_state(m_global_data->m_geometry_pass_pso);
+			cmdbuf->set_graphics_pipeline_state(m_global_data->m_geometry_pass_pso);
 			cmdbuf->set_viewport(Viewport(0.0f, 0.0f, (f32)render_desc.width, (f32)render_desc.height, 0.0f, 1.0f));
 			cmdbuf->set_scissor_rect(RectI(0, 0, (i32)render_desc.width, (i32)render_desc.height));
 
@@ -161,12 +153,12 @@ namespace Luna
 
 				for (u32 j = 0; j < num_pieces; ++j)
 				{
-					Ref<RHI::IResource> base_color_tex = m_global_data->m_default_base_color;
-					Ref<RHI::IResource> roughness_tex = m_global_data->m_default_roughness;
-					Ref<RHI::IResource> normal_tex = m_global_data->m_default_normal;
-					Ref<RHI::IResource> metallic_tex = m_global_data->m_default_metallic;
-					Ref<RHI::IResource> emissive_tex = m_global_data->m_default_emissive;
-					Ref<RHI::IResource> sky_tex = m_global_data->m_default_emissive;
+					Ref<ITexture> base_color_tex = m_global_data->m_default_base_color;
+					Ref<ITexture> roughness_tex = m_global_data->m_default_roughness;
+					Ref<ITexture> normal_tex = m_global_data->m_default_normal;
+					Ref<ITexture> metallic_tex = m_global_data->m_default_metallic;
+					Ref<ITexture> emissive_tex = m_global_data->m_default_emissive;
+					Ref<ITexture> sky_tex = m_global_data->m_default_emissive;
 
 					if (j < model->materials.size())
 					{
@@ -174,11 +166,11 @@ namespace Luna
 						if (mat)
 						{
 							// Set material for this piece.
-							Ref<RHI::IResource> mat_base_color_tex = Asset::get_asset_data<RHI::IResource>(mat->base_color);
-							Ref<RHI::IResource> mat_roughness_tex = Asset::get_asset_data<RHI::IResource>(mat->roughness);
-							Ref<RHI::IResource> mat_normal_tex = Asset::get_asset_data<RHI::IResource>(mat->normal);
-							Ref<RHI::IResource> mat_metallic_tex = Asset::get_asset_data<RHI::IResource>(mat->metallic);
-							Ref<RHI::IResource> mat_emissive_tex = Asset::get_asset_data<RHI::IResource>(mat->emissive);
+							Ref<ITexture> mat_base_color_tex = Asset::get_asset_data<ITexture>(mat->base_color);
+							Ref<ITexture> mat_roughness_tex = Asset::get_asset_data<ITexture>(mat->roughness);
+							Ref<ITexture> mat_normal_tex = Asset::get_asset_data<ITexture>(mat->normal);
+							Ref<ITexture> mat_metallic_tex = Asset::get_asset_data<ITexture>(mat->metallic);
+							Ref<ITexture> mat_emissive_tex = Asset::get_asset_data<ITexture>(mat->emissive);
 							if (mat_base_color_tex)
 							{
 								base_color_tex = mat_base_color_tex;
@@ -202,15 +194,16 @@ namespace Luna
 						}
 					}
 					lulet(vs, device->new_descriptor_set(DescriptorSetDesc(m_global_data->m_geometry_pass_dlayout)));
-					vs->set_cbv(0, camera_cb, ConstantBufferViewDesc(0, (u32)align_upper(sizeof(CameraCB), cb_align)));
-					vs->set_srv(1, model_matrices, &ShaderResourceViewDesc::as_buffer(Format::unknown, i, 1, sizeof(Float4x4) * 2, false));
-					// Set material texture: base_color(t2), roughness(t3), normal(t4), metallic(t5), emissive(t6).
-					vs->set_srv(2, base_color_tex);
-					vs->set_srv(3, roughness_tex);
-					vs->set_srv(4, normal_tex);
-					vs->set_srv(5, metallic_tex);
-					vs->set_srv(6, emissive_tex);
-					vs->set_sampler(7, SamplerDesc(Filter::min_mag_mip_linear, TextureAddressMode::repeat, TextureAddressMode::repeat, TextureAddressMode::repeat));
+					vs->update_descriptors({
+						WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(camera_cb, 0, (u32)align_upper(sizeof(CameraCB), cb_align))),
+						WriteDescriptorSet::read_buffer_view(1, BufferViewDesc::structured_buffer(model_matrices, i, 1, sizeof(Float4x4) * 2)),
+						WriteDescriptorSet::sampled_texture_view(2, TextureViewDesc::tex2d(base_color_tex)),
+						WriteDescriptorSet::sampled_texture_view(3, TextureViewDesc::tex2d(roughness_tex)),
+						WriteDescriptorSet::sampled_texture_view(4, TextureViewDesc::tex2d(normal_tex)),
+						WriteDescriptorSet::sampled_texture_view(5, TextureViewDesc::tex2d(metallic_tex)),
+						WriteDescriptorSet::sampled_texture_view(6, TextureViewDesc::tex2d(emissive_tex)),
+						WriteDescriptorSet::sampler(7, SamplerDesc(Filter::min_mag_mip_linear, TextureAddressMode::repeat, TextureAddressMode::repeat, TextureAddressMode::repeat))
+						});
 					cmdbuf->set_graphics_descriptor_set(0, vs);
 					cmdbuf->attach_device_object(vs);
 					cmdbuf->draw_indexed(mesh->pieces[j].num_indices, mesh->pieces[j].first_index_offset, 0);
@@ -235,39 +228,39 @@ namespace Luna
 			if(normal_metallic_tex == RG::INVALID_RESOURCE) return set_error(BasicError::bad_arguments(), "GeometryPass: Output \"normal_metallic_tex\" is not specified.");
 			if(emissive_tex == RG::INVALID_RESOURCE) return set_error(BasicError::bad_arguments(), "GeometryPass: Output \"emissive_tex\" is not specified.");
 			RG::ResourceDesc desc = compiler->get_resource_desc(depth_texture);
-			if(desc.type == RHI::ResourceType::texture_2d && desc.pixel_format == RHI::Format::unknown)
+			if(desc.type == RG::ResourceType::texture && desc.texture.type == RHI::TextureType::tex2d && desc.texture.format == RHI::Format::unknown)
 			{
-				desc.pixel_format = RHI::Format::d32_float;
+				desc.texture.format = RHI::Format::d32_float;
 			}
-			if (desc.type != RHI::ResourceType::texture_2d || desc.pixel_format != RHI::Format::d32_float)
+			if (desc.type != RG::ResourceType::texture || desc.texture.type != RHI::TextureType::tex2d || desc.texture.format != RHI::Format::d32_float)
 			{
 				return set_error(BasicError::bad_arguments(), "DepthPass: Invalid format for \"depth_texture\" is specified. \"depth_texture\" must be 2D texture with Format::d32_float.");
 			}
-			desc.usages |= RHI::ResourceUsageFlag::depth_stencil;
+			desc.texture.usages |= RHI::TextureUsageFlag::depth_stencil_attachment;
 			compiler->set_resource_desc(depth_texture, desc);
 
 			auto desc2 = compiler->get_resource_desc(base_color_roughness_tex);
-			desc2.type = RHI::ResourceType::texture_2d;
-			if(!desc2.width_or_buffer_size) desc2.width_or_buffer_size = desc.width_or_buffer_size;
-			if(!desc2.height) desc2.height = desc.height;
-			if(desc2.pixel_format == RHI::Format::unknown) desc2.pixel_format = RHI::Format::rgba8_unorm;
-			desc2.usages |= RHI::TextureUsageFlag::color_attachment;
+			desc2.texture.type = RHI::TextureType::tex2d;
+			if(!desc2.texture.width) desc2.texture.width = desc.texture.width;
+			if(!desc2.texture.height) desc2.texture.height = desc.texture.height;
+			if(desc2.texture.format == RHI::Format::unknown) desc2.texture.format = RHI::Format::rgba8_unorm;
+			desc2.texture.usages |= RHI::TextureUsageFlag::color_attachment;
 			compiler->set_resource_desc(base_color_roughness_tex, desc2);
 
 			desc2 = compiler->get_resource_desc(normal_metallic_tex);
-			desc2.type = RHI::ResourceType::texture_2d;
-			if(!desc2.width_or_buffer_size) desc2.width_or_buffer_size = desc.width_or_buffer_size;
-			if(!desc2.height) desc2.height = desc.height;
-			if(desc2.pixel_format == RHI::Format::unknown) desc2.pixel_format = RHI::Format::rgba8_unorm;
-			desc2.usages |= RHI::TextureUsageFlag::color_attachment;
+			desc2.texture.type = RHI::TextureType::tex2d;
+			if(!desc2.texture.width) desc2.texture.width = desc.texture.width;
+			if(!desc2.texture.height) desc2.texture.height = desc.texture.height;
+			if(desc2.texture.format == RHI::Format::unknown) desc2.texture.format = RHI::Format::rgba8_unorm;
+			desc2.texture.usages |= RHI::TextureUsageFlag::color_attachment;
 			compiler->set_resource_desc(normal_metallic_tex, desc2);
 
 			desc2 = compiler->get_resource_desc(emissive_tex);
-			desc2.type = RHI::ResourceType::texture_2d;
-			if(!desc2.width_or_buffer_size) desc2.width_or_buffer_size = desc.width_or_buffer_size;
-			if(!desc2.height) desc2.height = desc.height;
-			if(desc2.pixel_format == RHI::Format::unknown) desc2.pixel_format = RHI::Format::rgba16_float;
-			desc2.usages |= RHI::TextureUsageFlag::color_attachment;
+			desc2.texture.type = RHI::TextureType::tex2d;
+			if(!desc2.texture.width) desc2.texture.width = desc.texture.width;
+			if(!desc2.texture.height) desc2.texture.height = desc.texture.height;
+			if(desc2.texture.format == RHI::Format::unknown) desc2.texture.format = RHI::Format::rgba16_float;
+			desc2.texture.usages |= RHI::TextureUsageFlag::color_attachment;
 			compiler->set_resource_desc(emissive_tex, desc2);
 
 			Ref<GeometryPass> pass = new_object<GeometryPass>();

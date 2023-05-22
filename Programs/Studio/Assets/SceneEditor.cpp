@@ -99,7 +99,7 @@ namespace Luna
 			using namespace RHI;
 			auto device = get_main_device();
 			u32 cb_align = device->get_uniform_buffer_data_alignment();
-			luset(m_renderer.command_buffer, g_env->graphics_queue->new_command_buffer());
+			luset(m_renderer.command_buffer, g_env->device->new_command_buffer(g_env->graphics_queue));
 			SceneRendererSettings settings;
 			settings.frame_profiling = true;
 			settings.mode = SceneRendererMode::lit;
@@ -449,7 +449,7 @@ namespace Luna
 			settings.screen_size = UInt2U((u32)scene_sz.x, (u32)scene_sz.y);
 
 			// Draw Overlays.
-			luexp(m_renderer.command_buffer->submit());
+			luexp(m_renderer.command_buffer->submit({}, {}, true));
 
 			ImGui::Image(m_renderer.render_texture, scene_sz);
 
@@ -811,13 +811,14 @@ namespace Luna
 		using namespace RHI;
 		lutry
 		{
-			lulet(cmdbuf, m_renderer.command_buffer->get_command_queue()->new_command_buffer());
+			lulet(cmdbuf, g_env->device->new_command_buffer(g_env->async_copy_queue));
+			cmdbuf->set_context(CommandBufferContextType::copy);
 			cmdbuf->resource_barrier(ResourceBarrierDesc::as_transition(m_renderer.render_texture, ResourceStateFlag::copy_source, 0));
 			luexp(cmdbuf->submit());
 			cmdbuf->wait();
 			auto device = cmdbuf->get_device();
 			auto desc = m_renderer.render_texture->get_desc();
-			usize row_pitch = bits_per_pixel(desc.pixel_format) * (usize)desc.width_or_buffer_size / 8;
+			usize row_pitch = bits_per_pixel(desc.format) * (usize)desc.width_or_buffer_size / 8;
 			usize slice_pitch = row_pitch * desc.height;
 			Blob img_data(slice_pitch);
 			luexp(device->copy_resource({ResourceCopyDesc::as_read_texture(m_renderer.render_texture, img_data.data(), row_pitch, slice_pitch, 0, 
@@ -825,7 +826,7 @@ namespace Luna
 			Image::ImageDesc img_desc;
 			img_desc.width = (u32)desc.width_or_buffer_size;
 			img_desc.height = desc.height;
-			luset(img_desc.format, get_image_format_from_pixel_format(desc.pixel_format));
+			luset(img_desc.format, get_image_format_from_format(desc.format));
 			lulet(f, open_file(path.encode().c_str(), FileOpenFlag::write | FileOpenFlag::user_buffering, FileCreationMode::create_always));
 			luexp(Image::write_bmp_file(f, img_desc, img_data));
 		}

@@ -136,19 +136,16 @@ namespace Luna
 		lutry
 		{
 			lulet(window, Window::new_window("Luna Studio - Open Project", Window::WindowDisplaySettings::as_windowed(Window::DEFAULT_POS, Window::DEFAULT_POS, 1000, 500)));
-			lulet(swap_chain, RHI::new_swap_chain(g_env->graphics_queue, window, RHI::SwapChainDesc({0, 0, 2, RHI::Format::rgba8_unorm, true})));
-			lulet(cmdbuf, g_env->graphics_queue->new_command_buffer());
+			lulet(swap_chain, g_env->device->new_swap_chain(g_env->graphics_queue, window, RHI::SwapChainDesc({0, 0, 2, RHI::Format::rgba8_unorm, true})));
+			lulet(cmdbuf, g_env->device->new_command_buffer(g_env->graphics_queue));
 
 			window->get_close_event() += [](Window::IWindow* window) { window->close(); };
 
 			// Create back buffer.
-			Ref<RHI::IResource> back_buffer;
 			u32 w = 0, h = 0;
 
 			// Create ImGui context.
 			ImGuiUtils::set_active_window(window);
-
-			Ref<RHI::IRenderTargetView> back_buffer_rtv;
 
 			auto new_solution_name = String();
 
@@ -168,15 +165,12 @@ namespace Luna
 
 				// Recreate the back buffer if needed.
 				auto sz = window->get_size();
-				if (sz.x && sz.y && (!back_buffer || sz.x != w || sz.y != h))
+				if (sz.x && sz.y && (sz.x != w || sz.y != h))
 				{
 					luexp(swap_chain->reset({sz.x, sz.y, 2, RHI::Format::unknown, true}));
 					f32 clear_color[] = { 0.0f, 0.0f, 0.0f, 1.0f };
-					luset(back_buffer, RHI::get_main_device()->new_resource(RHI::ResourceDesc::tex2d(RHI::MemoryType::local, RHI::Format::rgba8_unorm, RHI::TextureUsageFlag::color_attachment, sz.x, sz.y, 1, 1),
-						&RHI::ClearValue::as_color(RHI::Format::rgba8_unorm, clear_color)));
 					w = sz.x;
 					h = sz.y;
-					luset(back_buffer_rtv, RHI::get_main_device()->new_render_target_view(back_buffer));
 				}
 
 				ImGuiUtils::update_io();
@@ -282,16 +276,18 @@ namespace Luna
 				Float4U clear_color = { 0.0f, 0.0f, 0.0f, 1.0f };
 
 				RHI::RenderPassDesc render_pass;
-				render_pass.color_attachments[0] = back_buffer_rtv;
+				lulet(back_buffer, swap_chain->get_current_back_buffer());
+				render_pass.color_attachments[0] = RHI::ColorAttachment(back_buffer, RHI::LoadOp::clear, RHI::StoreOp::store, clear_color);
 				cmdbuf->begin_render_pass(render_pass);
-				cmdbuf->clear_color_attachment(0, clear_color.m, {});
 				cmdbuf->end_render_pass();
-				luexp(ImGuiUtils::render_draw_data(ImGui::GetDrawData(), cmdbuf, back_buffer_rtv));
-				luexp(cmdbuf->submit());
+				luexp(ImGuiUtils::render_draw_data(ImGui::GetDrawData(), cmdbuf, back_buffer));
+				cmdbuf->resource_barrier({}, {
+					{back_buffer, RHI::TEXTURE_BARRIER_ALL_SUBRESOURCES, RHI::TextureStateFlag::automatic, RHI::TextureStateFlag::present, RHI::ResourceBarrierFlag::none}
+					});
+				luexp(cmdbuf->submit({}, {}, true));
 				cmdbuf->wait();
 				luexp(cmdbuf->reset());
-				luexp(swap_chain->present(back_buffer, 0));
-				swap_chain->wait();
+				luexp(swap_chain->present());
 			}
 			if (path.empty())
 			{

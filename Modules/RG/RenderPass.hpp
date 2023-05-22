@@ -27,22 +27,25 @@ namespace Luna
         struct ResourceDesc
         {
             ResourceType type;
+            RHI::MemoryType memory_type;
             union
             {
                 RHI::BufferDesc buffer;
                 RHI::TextureDesc texture;
             };
-            static ResourceDesc as_buffer(const RHI::BufferDesc& desc)
+            static ResourceDesc as_buffer(RHI::MemoryType memory_type, const RHI::BufferDesc& desc)
             {
                 ResourceDesc ret;
                 ret.type = ResourceType::buffer;
+                ret.memory_type = memory_type;
                 ret.buffer = desc;
                 return ret;
             }
-            static ResourceDesc as_texture(const RHI::TextureDesc& desc)
+            static ResourceDesc as_texture(RHI::MemoryType memory_type, const RHI::TextureDesc& desc)
             {
                 ResourceDesc ret;
                 ret.type = ResourceType::texture;
+                ret.memory_type = memory_type;
                 ret.texture = desc;
                 return ret;
             }

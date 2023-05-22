@@ -198,8 +198,8 @@ RV start()
 
 			desc_set->update_descriptors(
 				{
-					DescriptorSetWrite::sampled_texture_view(0, TextureViewDesc::tex2d(tex)),
-					DescriptorSetWrite::sampler(1, SamplerDesc(Filter::min_mag_mip_linear, TextureAddressMode::clamp,
+					WriteDescriptorSet::sampled_texture_view(0, TextureViewDesc::tex2d(tex)),
+					WriteDescriptorSet::sampler(1, SamplerDesc(Filter::min_mag_mip_linear, TextureAddressMode::clamp,
 							TextureAddressMode::clamp, TextureAddressMode::clamp))
 				});
 		}

@@ -31,7 +31,7 @@ namespace Luna
 
 	void TextureEditor::on_render()
 	{
-		Ref<RHI::IResource> tex = Asset::get_asset_data(m_tex);
+		Ref<RHI::ITexture> tex = Asset::get_asset_data(m_tex);
 		if (!tex)
 		{
 			m_open = false;
@@ -46,7 +46,7 @@ namespace Luna
 		lutry
 		{
 			auto desc = tex->get_desc();
-			ImGui::Image(tex.get(), { (f32)desc.width_or_buffer_size, (f32)desc.height });
+			ImGui::Image(tex.get(), { (f32)desc.width, (f32)desc.height });
 		}
 		lucatch
 		{

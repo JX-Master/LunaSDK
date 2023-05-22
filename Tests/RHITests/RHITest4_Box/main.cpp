@@ -234,9 +234,9 @@ RV start()
 
         desc_set->update_descriptors(
             {
-                DescriptorSetWrite::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(cb)),
-                DescriptorSetWrite::sampled_texture_view(1, TextureViewDesc::tex2d(file_tex)),
-                DescriptorSetWrite::sampler(2, SamplerDesc(Filter::min_mag_mip_linear, TextureAddressMode::clamp,
+                WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(cb)),
+                WriteDescriptorSet::sampled_texture_view(1, TextureViewDesc::tex2d(file_tex)),
+                WriteDescriptorSet::sampler(2, SamplerDesc(Filter::min_mag_mip_linear, TextureAddressMode::clamp,
                         TextureAddressMode::clamp, TextureAddressMode::clamp))
             });
 	}

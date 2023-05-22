@@ -59,7 +59,7 @@ namespace Luna
             m_global_data = global_data;
             auto device = m_global_data->m_skybox_pass_pso->get_device();
             auto cb_align = device->get_uniform_buffer_data_alignment();
-            luset(m_skybox_params_cb, device->new_buffer(BufferDesc(MemoryType::upload, BufferUsageFlag::uniform_buffer, align_upper(sizeof(SkyboxParams), cb_align))));
+            luset(m_skybox_params_cb, device->new_buffer(MemoryType::upload, BufferDesc(BufferUsageFlag::uniform_buffer, align_upper(sizeof(SkyboxParams), cb_align))));
             luset(m_ds, device->new_descriptor_set(DescriptorSetDesc(m_global_data->m_skybox_pass_dlayout)));
         }
         lucatchret;
@@ -94,14 +94,14 @@ namespace Luna
                         TextureBarrier(depth_tex, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::shader_read_cs),
                     });
 				cmdbuf->set_compute_shader_input_layout(m_global_data->m_skybox_pass_slayout);
-				cmdbuf->set_pipeline_state(m_global_data->m_skybox_pass_pso);
+				cmdbuf->set_compute_pipeline_state(m_global_data->m_skybox_pass_pso);
                 auto cb_align = cmdbuf->get_device()->get_uniform_buffer_data_alignment();
                 m_ds->update_descriptors({
-                    DescriptorSetWrite::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(m_skybox_params_cb, 0, (u32)align_upper(sizeof(SkyboxParams), cb_align))),
-                    DescriptorSetWrite::sampled_texture_view(1, TextureViewDesc::tex2d(skybox)),
-                    DescriptorSetWrite::read_texture_view(2, TextureViewDesc::tex2d(depth_tex, Format::r32_float, 0, 1)),
-                    DescriptorSetWrite::read_write_texture_view(3, TextureViewDesc::tex2d(output_tex)),
-                    DescriptorSetWrite::sampler(4, SamplerDesc(Filter::min_mag_mip_linear, TextureAddressMode::repeat, TextureAddressMode::repeat, TextureAddressMode::repeat))
+                    WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(m_skybox_params_cb, 0, (u32)align_upper(sizeof(SkyboxParams), cb_align))),
+                    WriteDescriptorSet::sampled_texture_view(1, TextureViewDesc::tex2d(skybox)),
+                    WriteDescriptorSet::read_texture_view(2, TextureViewDesc::tex2d(depth_tex, Format::r32_float, 0, 1)),
+                    WriteDescriptorSet::read_write_texture_view(3, TextureViewDesc::tex2d(output_tex)),
+                    WriteDescriptorSet::sampler(4, SamplerDesc(Filter::min_mag_mip_linear, TextureAddressMode::repeat, TextureAddressMode::repeat, TextureAddressMode::repeat))
                     });
                 auto ds = m_ds.get();
                 cmdbuf->set_compute_descriptor_sets(0, {&ds, 1});
@@ -115,11 +115,7 @@ namespace Luna
                     });
 				auto lighting_rt = output_tex;
 				RenderPassDesc render_pass;
-                lulet(output_tex_rtv, cmdbuf->get_device()->new_render_target_view(output_tex));
-				render_pass.color_attachments[0] = output_tex_rtv;
-				render_pass.color_load_ops[0] = LoadOp::clear;
-				render_pass.color_store_ops[0] = StoreOp::store;
-				render_pass.color_clear_values[0] = { 0.0f, 0.0f, 0.0f, 0.0f };
+				render_pass.color_attachments[0] = ColorAttachment(output_tex, LoadOp::clear, StoreOp::store, Float4U(0.0f));
 				cmdbuf->begin_render_pass(render_pass);
 				cmdbuf->end_render_pass();
 			}

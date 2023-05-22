@@ -46,7 +46,7 @@ namespace Luna
 					usages |= TextureUsageFlag::read_write_texture;
 				}
 				m_back_buffer->m_desc = TextureDesc::tex2d(
-					decode_pixel_format(desc.Format),
+					decode_format(desc.Format),
 					usages,
 					desc.Width, desc.Height,
 					desc.DepthOrArraySize, desc.MipLevels, desc.SampleDesc.Count
@@ -78,7 +78,7 @@ namespace Luna
 			DXGI_SWAP_CHAIN_DESC1 d;
 			d.Width = m_desc.width;
 			d.Height = m_desc.height;
-			d.Format = encode_pixel_format(m_desc.pixel_format);
+			d.Format = encode_format(m_desc.format);
 			d.Stereo = FALSE;
 			d.SampleDesc.Count = 1;
 			d.SampleDesc.Quality = 0;
@@ -164,9 +164,9 @@ namespace Luna
 			{
 				modified_desc.buffer_count = m_desc.buffer_count;
 			}
-			if (modified_desc.pixel_format == Format::unknown)
+			if (modified_desc.format == Format::unknown)
 			{
-				modified_desc.pixel_format = m_desc.pixel_format;
+				modified_desc.format = m_desc.format;
 			}
 			for (auto& back_buffer : m_back_buffers)
 			{
@@ -186,9 +186,9 @@ namespace Luna
 					modified_desc.height = sz.y;
 				}
 			}
-			if (modified_desc.pixel_format == Format::unknown)
+			if (modified_desc.format == Format::unknown)
 			{
-				modified_desc.pixel_format = m_desc.pixel_format;
+				modified_desc.format = m_desc.format;
 			}
 			lutry
 			{
@@ -197,7 +197,7 @@ namespace Luna
 				{
 					flags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
 				}
-				luexp(encode_hresult(m_sc->ResizeBuffers(modified_desc.buffer_count, modified_desc.width, modified_desc.height, encode_pixel_format(modified_desc.pixel_format), flags)));
+				luexp(encode_hresult(m_sc->ResizeBuffers(modified_desc.buffer_count, modified_desc.width, modified_desc.height, encode_format(modified_desc.format), flags)));
 				m_desc = modified_desc;
 				luexp(reset_back_buffer_resources());
 			}

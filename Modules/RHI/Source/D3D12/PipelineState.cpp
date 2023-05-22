@@ -283,7 +283,7 @@ namespace Luna
 					auto& se = desc.input_layout.attributes[i];
 					e.SemanticName = se.semantic_name;
 					e.SemanticIndex = se.semantic_index;
-					e.Format = encode_pixel_format(se.format);
+					e.Format = encode_format(se.format);
 					e.InputSlot = se.binding_slot;
 					e.AlignedByteOffset = se.offset;
 					e.InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
@@ -347,9 +347,9 @@ namespace Luna
 			}
 			for (u32 i = 0; i < d.NumRenderTargets; ++i)
 			{
-				d.RTVFormats[i] = encode_pixel_format(desc.color_formats[i]);
+				d.RTVFormats[i] = encode_format(desc.color_formats[i]);
 			}
-			d.DSVFormat = encode_pixel_format(desc.depth_stencil_format);
+			d.DSVFormat = encode_format(desc.depth_stencil_format);
 			d.SampleDesc.Count = desc.sample_count;
 			d.SampleDesc.Quality = desc.sample_count == 1 ? 0 : 1;
 			d.NodeMask = 0;

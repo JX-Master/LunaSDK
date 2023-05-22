@@ -330,12 +330,12 @@ namespace Luna
 					{
 						++num_color_attachments;
 						auto d = desc.color_attachments[i].texture->get_desc();
-						rp.color_formats[i] = d.pixel_format;
+						rp.color_formats[i] = d.format;
 						rp.color_load_ops[i] = desc.color_attachments[i].load_op;
 						rp.color_store_ops[i] = desc.color_attachments[i].store_op;
 						if (desc.resolve_attachments[i].texture)
 						{
-							rp.resolve_formats[i] = d.pixel_format;
+							rp.resolve_formats[i] = d.format;
 							++num_resolve_targets;
 						}
 						width = d.width;
@@ -363,7 +363,7 @@ namespace Luna
 				{
 					use_depth_stencil = true;
 					auto d = desc.depth_stencil_attachment.texture->get_desc();
-					rp.depth_stencil_format = d.pixel_format;
+					rp.depth_stencil_format = d.format;
 					rp.depth_load_op = desc.depth_stencil_attachment.depth_load_op;
 					rp.depth_store_op = desc.depth_stencil_attachment.depth_store_op;
 					rp.stencil_load_op = desc.depth_stencil_attachment.stencil_load_op;
@@ -753,7 +753,7 @@ namespace Luna
 				{
 					VkImageCopy& copy = copies[mip];
 					copy.srcSubresource.aspectMask =
-						is_depth_stencil_format(td->m_desc.pixel_format) ?
+						is_depth_stencil_format(td->m_desc.format) ?
 						VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT :
 						VK_IMAGE_ASPECT_COLOR_BIT;
 					copy.srcSubresource.baseArrayLayer = 0;
@@ -798,7 +798,7 @@ namespace Luna
 			// The copy is performed one per mips.
 			VkImageCopy copy{};
 			copy.srcSubresource.aspectMask =
-				is_depth_stencil_format(d->m_desc.pixel_format) ?
+				is_depth_stencil_format(d->m_desc.format) ?
 				VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT :
 				VK_IMAGE_ASPECT_COLOR_BIT;
 			copy.srcSubresource.baseArrayLayer = src_subresource.array_slice;
@@ -831,9 +831,9 @@ namespace Luna
 			ImageResource* d = cast_object<ImageResource>(dst->get_object());
 			VkBufferImageCopy copy{};
 			copy.bufferOffset = src_offset;
-			copy.bufferRowLength = src_row_pitch * 8 / bits_per_pixel(d->m_desc.pixel_format);
-			copy.bufferImageHeight = src_slice_pitch * 8 / bits_per_pixel(d->m_desc.pixel_format);
-			copy.imageSubresource.aspectMask = is_depth_stencil_format(d->m_desc.pixel_format) ?
+			copy.bufferRowLength = src_row_pitch * 8 / bits_per_pixel(d->m_desc.format);
+			copy.bufferImageHeight = src_slice_pitch * 8 / bits_per_pixel(d->m_desc.format);
+			copy.imageSubresource.aspectMask = is_depth_stencil_format(d->m_desc.format) ?
 				VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT :
 				VK_IMAGE_ASPECT_COLOR_BIT;
 			copy.imageSubresource.baseArrayLayer = dst_subresource.array_slice;
@@ -857,7 +857,7 @@ namespace Luna
 			ImageResource* s = cast_object<ImageResource>(src->get_object());
 			BufferResource* d = cast_object<BufferResource>(dst->get_object());
 			VkBufferImageCopy copy{};
-			copy.imageSubresource.aspectMask = is_depth_stencil_format(s->m_desc.pixel_format) ?
+			copy.imageSubresource.aspectMask = is_depth_stencil_format(s->m_desc.format) ?
 				VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT :
 				VK_IMAGE_ASPECT_COLOR_BIT;
 			copy.imageSubresource.baseArrayLayer = src_subresource.array_slice;
@@ -870,8 +870,8 @@ namespace Luna
 			copy.imageExtent.height = copy_height;
 			copy.imageExtent.depth = copy_depth;
 			copy.bufferOffset = dst_offset;
-			copy.bufferRowLength = dst_row_pitch * 8 / bits_per_pixel(s->m_desc.pixel_format);
-			copy.bufferImageHeight = dst_slice_pitch * 8 / bits_per_pixel(s->m_desc.pixel_format);
+			copy.bufferRowLength = dst_row_pitch * 8 / bits_per_pixel(s->m_desc.format);
+			copy.bufferImageHeight = dst_slice_pitch * 8 / bits_per_pixel(s->m_desc.format);
 			m_device->m_funcs.vkCmdCopyImageToBuffer(m_command_buffer, s->m_image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
 				d->m_buffer, 1, &copy);
 		}

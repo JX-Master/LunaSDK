@@ -179,34 +179,34 @@ namespace Luna
 			return ret;
 		}
 
-		inline bool check_png_format(ImagePixelFormat pixel_format)
+		inline bool check_png_format(ImagePixelFormat format)
 		{
 			return (
-				(pixel_format == ImagePixelFormat::r8_unorm) ||
-				(pixel_format == ImagePixelFormat::rg8_unorm) ||
-				(pixel_format == ImagePixelFormat::rgba8_unorm) ||
-				(pixel_format == ImagePixelFormat::r16_unorm) ||
-				(pixel_format == ImagePixelFormat::rg16_unorm) ||
-				(pixel_format == ImagePixelFormat::rgba16_unorm)
+				(format == ImagePixelFormat::r8_unorm) ||
+				(format == ImagePixelFormat::rg8_unorm) ||
+				(format == ImagePixelFormat::rgba8_unorm) ||
+				(format == ImagePixelFormat::r16_unorm) ||
+				(format == ImagePixelFormat::rg16_unorm) ||
+				(format == ImagePixelFormat::rgba16_unorm)
 				) ? true : false;
 		}
 
-		inline bool check_bmp_tga_jpg_format(ImagePixelFormat pixel_format)
+		inline bool check_bmp_tga_jpg_format(ImagePixelFormat format)
 		{
 			return (
-				(pixel_format == ImagePixelFormat::r8_unorm) ||
-				(pixel_format == ImagePixelFormat::rg8_unorm) ||
-				(pixel_format == ImagePixelFormat::rgba8_unorm)
+				(format == ImagePixelFormat::r8_unorm) ||
+				(format == ImagePixelFormat::rg8_unorm) ||
+				(format == ImagePixelFormat::rgba8_unorm)
 				) ? true : false;
 		}
 
-		inline bool check_hdr_format(ImagePixelFormat pixel_format)
+		inline bool check_hdr_format(ImagePixelFormat format)
 		{
 			return (
-				(pixel_format == ImagePixelFormat::r32_float) ||
-				(pixel_format == ImagePixelFormat::rg32_float) ||
-				(pixel_format == ImagePixelFormat::rgb32_float) ||
-				(pixel_format == ImagePixelFormat::rgba32_float)
+				(format == ImagePixelFormat::r32_float) ||
+				(format == ImagePixelFormat::rg32_float) ||
+				(format == ImagePixelFormat::rgb32_float) ||
+				(format == ImagePixelFormat::rgba32_float)
 				) ? true : false;
 		}
 		LUNA_IMAGE_API RV write_png_file(ISeekableStream* stream, const ImageDesc& desc, const Blob& image_data)

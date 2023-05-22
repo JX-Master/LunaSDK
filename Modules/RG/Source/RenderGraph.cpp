@@ -168,11 +168,11 @@ namespace Luna
                         {
                             if (res.m_resource_desc.type == ResourceType::buffer)
                             {
-                                luset(res.m_resource, m_device->new_buffer(res.m_resource_desc.buffer));
+                                luset(res.m_resource, m_device->new_buffer(res.m_resource_desc.memory_type, res.m_resource_desc.buffer));
                             }
                             else
                             {
-                                luset(res.m_resource, m_device->new_texture(res.m_resource_desc.texture));
+                                luset(res.m_resource, m_device->new_texture(res.m_resource_desc.memory_type, res.m_resource_desc.texture));
                             }
                             if (m_desc.resources[i].name) res.m_resource->set_name(m_desc.resources[i].name);
                         }

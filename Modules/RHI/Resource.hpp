@@ -252,7 +252,7 @@ namespace Luna
 			//! The type of the texture.
 			TextureType type;
 			//! The pixel format of the texture.
-			Format pixel_format;
+			Format format;
 			//! The width of the texture.
 			u32 width;
 			//! The height of the texture.
@@ -275,11 +275,11 @@ namespace Luna
 			//! usages of this texture.
 			TextureUsageFlag usages;
 
-			static inline TextureDesc tex1d(Format pixel_format, TextureUsageFlag usages, u64 width, u32 array_size = 1, u32 mip_levels = 0)
+			static inline TextureDesc tex1d(Format format, TextureUsageFlag usages, u64 width, u32 array_size = 1, u32 mip_levels = 0)
 			{
 				TextureDesc d;
 				d.type = TextureType::tex1d;
-				d.pixel_format = pixel_format;
+				d.format = format;
 				d.width = width;
 				d.height = 1;
 				d.depth = 1;
@@ -289,12 +289,12 @@ namespace Luna
 				d.usages = usages;
 				return d;
 			}
-			static inline TextureDesc tex2d(Format pixel_format, TextureUsageFlag usages, u64 width, u32 height, u32 array_size = 1, u32 mip_levels = 0,
+			static inline TextureDesc tex2d(Format format, TextureUsageFlag usages, u64 width, u32 height, u32 array_size = 1, u32 mip_levels = 0,
 				u32 sample_count = 1)
 			{
 				TextureDesc d;
 				d.type = TextureType::tex2d;
-				d.pixel_format = pixel_format;
+				d.format = format;
 				d.width = width;
 				d.height = height;
 				d.depth = 1;
@@ -304,11 +304,11 @@ namespace Luna
 				d.usages = usages;
 				return d;
 			}
-			static inline TextureDesc tex3d(Format pixel_format, TextureUsageFlag usages, u64 width, u32 height, u32 depth, u32 mip_levels = 0)
+			static inline TextureDesc tex3d(Format format, TextureUsageFlag usages, u64 width, u32 height, u32 depth, u32 mip_levels = 0)
 			{
 				TextureDesc d;
 				d.type = TextureType::tex3d;
-				d.pixel_format = pixel_format;
+				d.format = format;
 				d.width = width;
 				d.height = height;
 				d.depth = depth;
@@ -334,17 +334,17 @@ namespace Luna
 
 		struct ClearValue
 		{
-			Format pixel_format;
+			Format format;
 			ClearValueType type;
 			union
 			{
 				f32 color[4];
 				DepthStencilValue depth_stencil;
 			};
-			static ClearValue as_color(Format pixel_format, f32 color[4])
+			static ClearValue as_color(Format format, f32 color[4])
 			{
 				ClearValue r;
-				r.pixel_format = pixel_format;
+				r.format = format;
 				r.type = ClearValueType::color;
 				r.color[0] = color[0];
 				r.color[1] = color[1];
@@ -352,11 +352,11 @@ namespace Luna
 				r.color[3] = color[3];
 				return r;
 			}
-			static ClearValue as_depth_stencil(Format pixel_format, f32 depth, u8 stencil)
+			static ClearValue as_depth_stencil(Format format, f32 depth, u8 stencil)
 			{
 				ClearValue r;
 				r.type = ClearValueType::depth_stencil;
-				r.pixel_format = pixel_format;
+				r.format = format;
 				r.depth_stencil.depth = depth;
 				r.depth_stencil.stencil = stencil;
 				return r;

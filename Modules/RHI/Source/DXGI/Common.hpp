@@ -22,7 +22,7 @@ namespace Luna
 {
 	namespace RHI
 	{
-		inline DXGI_FORMAT encode_pixel_format(Format f)
+		inline DXGI_FORMAT encode_format(Format f)
 		{
 			switch (f)
 			{
@@ -172,7 +172,7 @@ namespace Luna
 			}
 		}
 
-		inline Format decode_pixel_format(DXGI_FORMAT f)
+		inline Format decode_format(DXGI_FORMAT f)
 		{
 			switch (f)
 			{

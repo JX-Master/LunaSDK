@@ -707,7 +707,7 @@ float4 main(PS_INPUT input) : SV_Target
 
                 cmd_buffer->set_vertex_buffers(0, { &VertexBufferView(g_vb, 0, (u32)(g_vb_size * sizeof(ImDrawVert)), sizeof(ImDrawVert)), 1 });
                 cmd_buffer->set_index_buffer({g_ib, 0, (u32)(g_ib_size * sizeof(ImDrawIdx)), sizeof(ImDrawIdx) == 2 ? Format::r16_uint : Format::r32_uint});
-                lulet(pso, get_pso(rt_desc.pixel_format));
+                lulet(pso, get_pso(rt_desc.format));
                 cmd_buffer->set_graphics_pipeline_state(pso);
                 cmd_buffer->set_graphics_shader_input_layout(g_slayout);
                 const f32 blend_factor[4] = { 0.f, 0.f, 0.f, 0.f };
@@ -750,9 +750,9 @@ float4 main(PS_INPUT input) : SV_Target
                             IDescriptorSet* vs = g_desc_sets[num_draw_calls];
                             usize cb_align = dev->get_uniform_buffer_data_alignment();
                             luexp(vs->update_descriptors({
-                                DescriptorSetWrite::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(g_cb)),
-                                DescriptorSetWrite::sampled_texture_view(1, TextureViewDesc::tex2d((ITexture*)pcmd->TextureId)),
-                                DescriptorSetWrite::sampler(2, SamplerDesc(Filter::min_mag_mip_linear, TextureAddressMode::clamp, TextureAddressMode::clamp, TextureAddressMode::clamp))
+                                WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(g_cb)),
+                                WriteDescriptorSet::sampled_texture_view(1, TextureViewDesc::tex2d((ITexture*)pcmd->TextureId)),
+                                WriteDescriptorSet::sampler(2, SamplerDesc(Filter::min_mag_mip_linear, TextureAddressMode::clamp, TextureAddressMode::clamp, TextureAddressMode::clamp))
                                 }));
                             cmd_buffer->set_graphics_descriptor_sets(0, { &vs, 1 });
                             cmd_buffer->set_scissor_rect(r);

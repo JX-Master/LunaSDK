@@ -442,7 +442,7 @@ namespace Luna
 			m_ib = b;
 			D3D12_INDEX_BUFFER_VIEW v;
 			v.BufferLocation = b->m_res->GetGPUVirtualAddress() + desc.offset;
-			v.Format = encode_pixel_format(desc.format);
+			v.Format = encode_format(desc.format);
 			v.SizeInBytes = desc.size;
 			m_li->IASetIndexBuffer(&v);
 		}
@@ -646,7 +646,7 @@ namespace Luna
 					{
 						m_li->ResolveSubresource(
 							dst_res->m_res.Get(), calc_subresource_index(dst.mip_slice, dst.array_slice + i, dst_res->m_desc.mip_levels),
-							src_res->m_res.Get(), calc_subresource_index(src.mip_slice, src.array_slice + i, src_res->m_desc.mip_levels), encode_pixel_format(dst_res->m_desc.pixel_format));
+							src_res->m_res.Get(), calc_subresource_index(src.mip_slice, src.array_slice + i, src_res->m_desc.mip_levels), encode_format(dst_res->m_desc.format));
 					}
 				}
 			}
@@ -816,8 +816,8 @@ namespace Luna
 			dsttex.pResource = d->m_res.Get();
 			srctex.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
 			srctex.PlacedFootprint.Offset = src_offset;
-			Format format = d->m_desc.pixel_format;
-			srctex.PlacedFootprint.Footprint.Format = encode_pixel_format(format);
+			Format format = d->m_desc.format;
+			srctex.PlacedFootprint.Footprint.Format = encode_format(format);
 			srctex.PlacedFootprint.Footprint.Width = src_row_pitch * 8 / bits_per_pixel(format);
 			srctex.PlacedFootprint.Footprint.Height = src_slice_pitch / src_row_pitch;
 			srctex.PlacedFootprint.Footprint.Depth = copy_depth;
@@ -845,8 +845,8 @@ namespace Luna
 			D3D12_TEXTURE_COPY_LOCATION srctex;
 			dsttex.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
 			dsttex.PlacedFootprint.Offset = dst_offset;
-			Format format = s->m_desc.pixel_format;
-			dsttex.PlacedFootprint.Footprint.Format = encode_pixel_format(format);
+			Format format = s->m_desc.format;
+			dsttex.PlacedFootprint.Footprint.Format = encode_format(format);
 			dsttex.PlacedFootprint.Footprint.Width = dst_row_pitch * 8 / bits_per_pixel(format);
 			dsttex.PlacedFootprint.Footprint.Height = dst_slice_pitch / dst_row_pitch;
 			dsttex.PlacedFootprint.Footprint.Depth = copy_depth;

@@ -200,7 +200,7 @@ namespace Luna
 			rd.Height = desc.height;
 			rd.DepthOrArraySize = (desc.type == TextureType::tex3d) ? desc.depth : desc.array_size;
 			rd.MipLevels = desc.mip_levels;
-			rd.Format = encode_pixel_format(desc.pixel_format);
+			rd.Format = encode_format(desc.format);
 			rd.SampleDesc.Count = desc.sample_count;
 			rd.SampleDesc.Quality = (desc.sample_count == 1) ? 0 : 1;
 			rd.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;

@@ -51,7 +51,7 @@ namespace Luna
 				m_desc_set = VK_NULL_HANDLE;
 			}
 		}
-		RV DescriptorSet::update_descriptors(Span<const DescriptorSetWrite> writes)
+		RV DescriptorSet::update_descriptors(Span<const WriteDescriptorSet> writes)
 		{
 			lutry
 			{

@@ -46,8 +46,7 @@ namespace Luna
         diffuse_lighting,
         specular_lighting,
         ambient_diffuse_lighting,
-        ambient_specular_lighting,
-        normal_visualization
+        ambient_specular_lighting
     };
 
     luenum(SceneRendererMode, "SceneRendererMode", "e66271d7-cbe7-4f0b-8de3-de0cc7b06982");
@@ -114,15 +113,14 @@ namespace Luna
 		static constexpr usize SKYBOX_PASS = 4;
 		static constexpr usize DEFERRED_LIGHTING_PASS = 5;
 		static constexpr usize TONE_MAPPING_PASS = 6;
-        static constexpr usize NORMAL_VIS_PASS = 7;
         Ref<RHI::IDevice> m_device;
         SceneRendererSettings m_settings;
         Ref<RG::IRenderGraph> m_render_graph;
-        Ref<RHI::IResource> m_camera_cb;
+        Ref<RHI::IBuffer> m_camera_cb;
         usize m_num_model_matrices = 0;
-        Ref<RHI::IResource> m_model_matrices;
+        Ref<RHI::IBuffer> m_model_matrices;
         usize m_num_lights = 0;
-        Ref<RHI::IResource> m_lighting_params;
+        Ref<RHI::IBuffer> m_lighting_params;
         f64 m_queue_freq = 1000000.0f;
     };
 }

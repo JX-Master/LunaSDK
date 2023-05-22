@@ -32,7 +32,6 @@
 #include "RenderPasses/GeometryPass.hpp"
 #include "RenderPasses/DeferredLightingPass.hpp"
 #include "RenderPasses/BufferVisualizationPass.hpp"
-#include "RenderPasses/NormalVisualizationPass.hpp"
 
 #include "SceneRenderer.hpp"
 #include <Runtime/Log.hpp>
@@ -64,8 +63,8 @@ namespace Luna
 
 			m_window->get_close_event() += [](Window::IWindow* window) {window->close(); };
 
-			luset(m_swap_chain, RHI::new_swap_chain(g_env->graphics_queue, m_window, RHI::SwapChainDesc({0, 0, 2, RHI::Format::rgba8_unorm, true})));
-			luset(m_cmdbuf, g_env->graphics_queue->new_command_buffer());
+			luset(m_swap_chain, g_env->device->new_swap_chain(g_env->graphics_queue, m_window, RHI::SwapChainDesc({0, 0, 2, RHI::Format::rgba8_unorm, true})));
+			luset(m_cmdbuf, g_env->device->new_command_buffer(g_env->graphics_queue));
 
 			// Create back buffer.
 			//Ref<RHI::IResource> back_buffer;
@@ -116,7 +115,6 @@ namespace Luna
 			luexp(register_deferred_lighting_pass());
 			luexp(register_tone_mapping_pass());
 			luexp(register_buffer_visualization_pass());
-			luexp(register_normal_visualization_pass());
 
 			register_enum_type<SceneRendererMode>({
 				luoption(SceneRendererMode, lit),
@@ -130,8 +128,7 @@ namespace Luna
 				luoption(SceneRendererMode, diffuse_lighting),
 				luoption(SceneRendererMode, specular_lighting),
 				luoption(SceneRendererMode, ambient_diffuse_lighting),
-				luoption(SceneRendererMode, ambient_specular_lighting),
-				luoption(SceneRendererMode, normal_visualization)
+				luoption(SceneRendererMode, ambient_specular_lighting)
 			});
 		}
 		lucatchret;
@@ -152,16 +149,11 @@ namespace Luna
 		{
 			// Recreate the back buffer if needed.
 			auto sz = m_window->get_size();
-			if (sz.x && sz.y && (!m_back_buffer || sz.x != m_main_window_width || sz.y != m_main_window_height))
+			if (sz.x && sz.y && (sz.x != m_main_window_width || sz.y != m_main_window_height))
 			{
 				luexp(m_swap_chain->reset({sz.x, sz.y, 2, RHI::Format::unknown, true}));
-				f32 clear_color[] = { 0.0f, 0.0f, 0.0f, 1.0f };
-				luset(m_back_buffer, RHI::get_main_device()->new_resource(RHI::ResourceDesc::tex2d(RHI::MemoryType::local, RHI::Format::rgba8_unorm, 
-					RHI::TextureUsageFlag::color_attachment, sz.x, sz.y, 1, 1),
-					&RHI::ClearValue::as_color(RHI::Format::rgba8_unorm, clear_color)));
 				m_main_window_width = sz.x;
 				m_main_window_height = sz.y;
-				luset(m_back_buffer_rtv, RHI::get_main_device()->new_render_target_view(m_back_buffer));
 			}
 
 			ImGuiUtils::update_io();
@@ -227,17 +219,19 @@ namespace Luna
 
 			ImGui::Render();
 			RHI::RenderPassDesc render_pass;
-			render_pass.color_attachments[0] = m_back_buffer_rtv;
-			render_pass.color_load_ops[0] = RHI::LoadOp::clear;
-			render_pass.color_clear_values[0] = { 0.0f, 0.0f, 0.0f, 1.0f };
+			lulet(back_buffer, m_swap_chain->get_current_back_buffer());
+			render_pass.color_attachments[0] = RHI::ColorAttachment(back_buffer, RHI::LoadOp::clear, RHI::StoreOp::store,
+				{ 0.0f, 0.0f, 0.0f, 1.0f });
 			m_cmdbuf->begin_render_pass(render_pass);
 			m_cmdbuf->end_render_pass();
-			luexp(ImGuiUtils::render_draw_data(ImGui::GetDrawData(), m_cmdbuf, m_back_buffer_rtv));
-			luexp(m_cmdbuf->submit());
+			luexp(ImGuiUtils::render_draw_data(ImGui::GetDrawData(), m_cmdbuf, back_buffer));
+			m_cmdbuf->resource_barrier({}, {
+					{back_buffer, RHI::TEXTURE_BARRIER_ALL_SUBRESOURCES, RHI::TextureStateFlag::automatic, RHI::TextureStateFlag::present, RHI::ResourceBarrierFlag::none}
+				});
+			luexp(m_cmdbuf->submit({}, {}, true));
 			m_cmdbuf->wait();
 			luexp(m_cmdbuf->reset());
-			luexp(m_swap_chain->present(m_back_buffer, 0));
-			m_swap_chain->wait();
+			luexp(m_swap_chain->present());
 		}
 		lucatchret;
 		return ok;

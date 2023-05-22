@@ -27,7 +27,7 @@ namespace Luna
 			//! The number of back buffers in the swap chain.
 			u32 buffer_count;
 			//! The pixel format of the back buffer.
-			Format pixel_format;
+			Format format;
 			//! Whether to synchronize frame image presentation to vertical blanks of the monitor.
 			bool vertical_synchronized;
 
@@ -36,13 +36,13 @@ namespace Luna
 				u32 width,
 				u32 height,
 				u32 buffer_count,
-				Format pixel_format,
+				Format format,
 				bool vertical_synchronized
 			) :
 				width(width),
 				height(height),
 				buffer_count(buffer_count),
-				pixel_format(pixel_format),
+				format(format),
 				vertical_synchronized(vertical_synchronized) {}
 		};
 

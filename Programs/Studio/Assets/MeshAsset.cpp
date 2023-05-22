@@ -12,6 +12,7 @@
 #include "../Mesh.hpp"
 #include <Runtime/VariantJSON.hpp>
 #include <Runtime/Serialization.hpp>
+#include "../StudioHeader.hpp"
 namespace Luna
 {
 	Name get_static_mesh_asset_type()
@@ -25,14 +26,12 @@ namespace Luna
 		{
 			auto device = RHI::get_main_device();
 			// Upload resource.
-			lulet(vert_res, device->new_resource(RHI::ResourceDesc::buffer(
-				RHI::MemoryType::local, RHI::ResourceUsageFlag::vertex_buffer, mesh_asset.vertex_data.size())));
-			lulet(index_res, device->new_resource(RHI::ResourceDesc::buffer(
-				RHI::MemoryType::local, RHI::ResourceUsageFlag::index_buffer, mesh_asset.index_data.size())));
-			luexp(device->copy_resource({
-				RHI::ResourceCopyDesc::as_write_buffer(vert_res, mesh_asset.vertex_data.data(), mesh_asset.vertex_data.size(), 0),
-				RHI::ResourceCopyDesc::as_write_buffer(index_res, mesh_asset.index_data.data(), mesh_asset.index_data.size(), 0)
-				}));
+			lulet(vert_res, device->new_buffer(RHI::MemoryType::local, RHI::BufferDesc(
+				RHI::BufferUsageFlag::vertex_buffer, mesh_asset.vertex_data.size())));
+			lulet(index_res, device->new_buffer(RHI::MemoryType::local, RHI::BufferDesc(
+				RHI::BufferUsageFlag::index_buffer, mesh_asset.index_data.size())));
+			luexp(upload_buffer_data(vert_res, 0, mesh_asset.vertex_data.data(), mesh_asset.vertex_data.size()));
+			luexp(upload_buffer_data(index_res, 0, mesh_asset.index_data.data(), mesh_asset.index_data.size()));
 			mesh.pieces = mesh_asset.pieces;
 			mesh.vb = vert_res;
 			mesh.ib = index_res;

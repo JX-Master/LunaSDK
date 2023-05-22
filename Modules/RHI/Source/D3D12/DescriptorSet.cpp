@@ -26,7 +26,7 @@ namespace Luna
 				else if (texture->m_desc.type == TextureType::tex1d) desc.type = texture->m_desc.array_size == 1 ? TextureViewType::tex1d : TextureViewType::tex1darray;
 				else { lupanic(); }
 			}
-			if (desc.format == Format::unknown) desc.format = texture->m_desc.pixel_format;
+			if (desc.format == Format::unknown) desc.format = texture->m_desc.format;
 			if (desc.mip_size == U32_MAX) desc.mip_size = texture->m_desc.mip_levels - desc.mip_slice;
 			if (desc.array_size == U32_MAX) desc.array_size = texture->m_desc.array_size - desc.array_slice;
 			if (desc.type == TextureViewType::tex1d ||
@@ -68,7 +68,7 @@ namespace Luna
 				m_device->m_sampler_heap.free_descs(m_sampler_heap_offset, m_sampler_heap_size);
 			}
 		}
-		RV DescriptorSet::update_descriptors(Span<const DescriptorSetWrite> writes)
+		RV DescriptorSet::update_descriptors(Span<const WriteDescriptorSet> writes)
 		{
 			for (auto& write : writes)
 			{
@@ -130,7 +130,7 @@ namespace Luna
 				h.ptr = addr;
 				const BufferViewDesc* srv = descs + i;
 				D3D12_SHADER_RESOURCE_VIEW_DESC d;
-				d.Format = encode_pixel_format(srv->format);
+				d.Format = encode_format(srv->format);
 				d.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 				d.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
 				d.Buffer.FirstElement = srv->first_element;
@@ -156,7 +156,7 @@ namespace Luna
 				D3D12_CPU_DESCRIPTOR_HANDLE h;
 				h.ptr = addr;
 				D3D12_SHADER_RESOURCE_VIEW_DESC d;
-				d.Format = encode_pixel_format(srv.format);
+				d.Format = encode_format(srv.format);
 				d.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 				switch (srv.type)
 				{
@@ -247,7 +247,7 @@ namespace Luna
 				h.ptr = addr;
 				const BufferViewDesc* uav = descs + i;
 				D3D12_UNORDERED_ACCESS_VIEW_DESC d;
-				d.Format = encode_pixel_format(uav->format);
+				d.Format = encode_format(uav->format);
 				d.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
 				d.Buffer.CounterOffsetInBytes = 0;
 				d.Buffer.FirstElement = uav->first_element;
@@ -272,7 +272,7 @@ namespace Luna
 				TextureViewDesc uav = descs[i];
 				validate_texture_view_desc(uav);
 				D3D12_UNORDERED_ACCESS_VIEW_DESC d;
-				d.Format = encode_pixel_format(uav.format);
+				d.Format = encode_format(uav.format);
 				switch (uav.type)
 				{
 				case TextureViewType::tex1d:

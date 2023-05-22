@@ -42,7 +42,7 @@ namespace Luna
 				return m_device.as<IDevice>();
 			}
 			virtual void set_name(const Name& name) override {}
-			virtual RV update_descriptors(Span<const DescriptorSetWrite> writes) override;
+			virtual RV update_descriptors(Span<const WriteDescriptorSet> writes) override;
 			
 			void set_cbv_array(u32 binding_slot, u32 offset, u32 num_descs, const BufferViewDesc* descs);
 			void set_buffer_srv_array(u32 binding_slot, u32 offset, u32 num_descs, const BufferViewDesc* descs);

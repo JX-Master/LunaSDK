@@ -168,7 +168,7 @@ namespace Luna
 				default:
 					lupanic();
 				}
-				rtv.Format = encode_pixel_format(validated_desc.format);
+				rtv.Format = encode_format(validated_desc.format);
 				m_device->m_device->CreateRenderTargetView(res, &rtv, heap->GetCPUDescriptorHandleForHeapStart());
 				m_rtvs.push_back(make_pair(validated_desc, heap));
 			}
@@ -195,7 +195,7 @@ namespace Luna
 				TextureResource* reso = cast_object<TextureResource>(desc.texture->get_object());
 				ID3D12Resource* res = reso->m_res.Get();
 				D3D12_DEPTH_STENCIL_VIEW_DESC dsv;
-				dsv.Format = encode_pixel_format(validated_desc.format);
+				dsv.Format = encode_format(validated_desc.format);
 				dsv.Flags = D3D12_DSV_FLAG_NONE;
 				switch (validated_desc.type)
 				{
@@ -268,7 +268,7 @@ namespace Luna
 				D3D12_CLEAR_VALUE cv;
 				if (optimized_clear_value)
 				{
-					cv.Format = encode_pixel_format(optimized_clear_value->pixel_format);
+					cv.Format = encode_format(optimized_clear_value->format);
 					if (optimized_clear_value->type == ClearValueType::color)
 					{
 						cv.Color[0] = optimized_clear_value->color[0];
@@ -315,7 +315,7 @@ namespace Luna
 				D3D12_CLEAR_VALUE cv;
 				if (optimized_clear_value)
 				{
-					cv.Format = encode_pixel_format(optimized_clear_value->pixel_format);
+					cv.Format = encode_format(optimized_clear_value->format);
 					if (optimized_clear_value->type == ClearValueType::color)
 					{
 						cv.Color[0] = optimized_clear_value->color[0];

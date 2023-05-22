@@ -338,7 +338,7 @@ namespace Luna
 			dest.extent.depth = desc.depth;
 			dest.mipLevels = desc.mip_levels;
 			dest.arrayLayers = desc.array_size;
-			dest.format = encode_format(desc.pixel_format);
+			dest.format = encode_format(desc.format);
 			dest.tiling = VK_IMAGE_TILING_OPTIMAL;
 			dest.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 			dest.usage = 0;

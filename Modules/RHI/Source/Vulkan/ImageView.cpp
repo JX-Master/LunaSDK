@@ -52,7 +52,7 @@ namespace Luna
 				else if (image->m_desc.type == TextureType::tex1d) desc.type = image->m_desc.array_size == 1 ? TextureViewType::tex1d : TextureViewType::tex1darray;
 				else { lupanic(); }
 			}
-			if (desc.format == Format::unknown) desc.format = image->m_desc.pixel_format;
+			if (desc.format == Format::unknown) desc.format = image->m_desc.format;
 			if (desc.mip_size == U32_MAX) desc.mip_size = image->m_desc.mip_levels - desc.mip_slice;
 			if (desc.array_size == U32_MAX) desc.array_size = image->m_desc.array_size - desc.array_slice;
 			if (desc.type == TextureViewType::tex1d ||

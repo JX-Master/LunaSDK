@@ -49,11 +49,11 @@ namespace Luna
 			barrier.oldLayout = before.image_layout;
 			barrier.newLayout = after.image_layout;
 			barrier.image = res->m_image;
-			if (res->m_desc.pixel_format == Format::d16_unorm || res->m_desc.pixel_format == Format::d32_float)
+			if (res->m_desc.format == Format::d16_unorm || res->m_desc.format == Format::d32_float)
 			{
 				barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
 			}
-			else if (res->m_desc.pixel_format == Format::d24_unorm_s8_uint || res->m_desc.pixel_format == Format::d32_float_s8_uint_x24)
+			else if (res->m_desc.format == Format::d24_unorm_s8_uint || res->m_desc.format == Format::d32_float_s8_uint_x24)
 			{
 				barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
 			}

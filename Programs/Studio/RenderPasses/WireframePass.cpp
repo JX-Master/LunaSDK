@@ -38,20 +38,26 @@ namespace Luna
 			vsf = nullptr;
 
 			static const char* pixelShader =
-				"struct PS_INPUT\
-				{\
-					float4 position : SV_POSITION;	\
-					float3 normal : NORMAL;	\
-					float3 tangent : TANGENT;	\
-					float2 texcoord : TEXCOORD;	\
-					float4 color : COLOR;	\
-					float3 world_position : POSITION;	\
-				}; \
-				\
-				float4 main(PS_INPUT input) : SV_Target\
-				{\
-				  return float4(1.0f, 1.0f, 1.0f, 1.0f); \
-				}";
+				R"(struct PS_INPUT
+				{
+					[[vk::location(0)]]
+					float4 position : SV_POSITION;
+					[[vk::location(1)]]
+					float3 normal : NORMAL;
+					[[vk::location(2)]]
+					float3 tangent : TANGENT;
+					[[vk::location(3)]]
+					float2 texcoord : TEXCOORD;
+					[[vk::location(4)]]
+					float4 color : COLOR;
+					[[vk::location(5)]]
+					float3 world_position : POSITION;
+				};
+				
+				float4 main(PS_INPUT input) : SV_Target
+				{
+				  return float4(1.0f, 1.0f, 1.0f, 1.0f);
+				})";
             auto compiler = ShaderCompiler::new_compiler();
 			compiler->set_source({ pixelShader, strlen(pixelShader) });
 			compiler->set_source_name("MeshDebugPS");
@@ -66,13 +72,16 @@ namespace Luna
 			GraphicsPipelineStateDesc ps_desc;
 			ps_desc.primitive_topology = PrimitiveTopology::triangle_list;
 			ps_desc.sample_mask = U32_MAX;
-			ps_desc.sample_quality = 0;
 			ps_desc.blend_state = BlendDesc({ AttachmentBlendDesc(true, BlendFactor::src_alpha,
 				BlendFactor::inv_src_alpha, BlendOp::add, BlendFactor::one, BlendFactor::zero, BlendOp::add, ColorWriteMask::all) });
 			ps_desc.rasterizer_state = RasterizerDesc(FillMode::wireframe, CullMode::none, 0, 0.0f, 0.0f, 0, false, true, false, true, false);
 			ps_desc.depth_stencil_state = DepthStencilDesc(false, false, ComparisonFunc::always, false, 0x00, 0x00, DepthStencilOpDesc(), DepthStencilOpDesc());
 			ps_desc.ib_strip_cut_value = IndexBufferStripCutValue::disabled;
-			ps_desc.input_layout = get_vertex_input_layout_desc();
+			Vector<InputAttributeDesc> attributes;
+			get_vertex_input_layout_desc(attributes);
+			InputBindingDesc binding(0, sizeof(Vertex), InputRate::per_vertex);
+			ps_desc.input_layout.bindings = { &binding, 1 };
+			ps_desc.input_layout.attributes = { attributes.data(), attributes.size() };
 			ps_desc.vs = vs_blob.cspan();
 			ps_desc.ps = ps_blob.cspan();
 			ps_desc.shader_input_layout = m_debug_mesh_renderer_slayout;
@@ -101,28 +110,24 @@ namespace Luna
             auto device = cmdbuf->get_device();
             auto cb_align = device->get_uniform_buffer_data_alignment();
             Ref<ITexture> output_tex = query_interface<ITexture>(ctx->get_output("scene_texture")->get_object());
-            lulet(render_rtv, device->new_render_target_view(output_tex));
             // Debug wireframe pass.
 			RenderPassDesc render_pass;
-			render_pass.color_attachments[0] = render_rtv;
-			render_pass.color_load_ops[0] = LoadOp::clear;
-			render_pass.color_clear_values[0] = Float4U(0.0f);
-			render_pass.color_store_ops[0] = StoreOp::store;
+			render_pass.color_attachments[0] = ColorAttachment(output_tex, LoadOp::clear, StoreOp::store, Float4U(0.0f));
 			auto render_desc = output_tex->get_desc();
 			cmdbuf->resource_barrier({}, { {output_tex, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::color_attachment_write, ResourceBarrierFlag::discard_content} });
 			cmdbuf->begin_render_pass(render_pass);
 			cmdbuf->set_graphics_shader_input_layout(m_global_data->m_debug_mesh_renderer_slayout);
-			cmdbuf->set_pipeline_state(m_global_data->m_debug_mesh_renderer_pso);
+			cmdbuf->set_graphics_pipeline_state(m_global_data->m_debug_mesh_renderer_pso);
 			cmdbuf->set_viewport(Viewport(0.0f, 0.0f, (f32)render_desc.width, (f32)render_desc.height, 0.0f, 1.0f));
 			cmdbuf->set_scissor_rect(RectI(0, 0, (i32)render_desc.width, (i32)render_desc.height));
 			// Draw Meshes.
 			for (usize i = 0; i < ts.size(); ++i)
 			{
 				auto vs = device->new_descriptor_set(DescriptorSetDesc(m_global_data->m_debug_mesh_renderer_dlayout)).get();
-				vs->update_descriptors({
-					DescriptorSetWrite::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(camera_cb, 0, (u32)align_upper(sizeof(CameraCB), cb_align))),
-					DescriptorSetWrite::read_buffer_view(1, BufferViewDesc::structured_buffer(model_matrices, i, 1, sizeof(Float4x4) * 2))
-					});
+				luexp(vs->update_descriptors({
+					WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(camera_cb, 0, (u32)align_upper(sizeof(CameraCB), cb_align))),
+					WriteDescriptorSet::read_buffer_view(1, BufferViewDesc::structured_buffer(model_matrices, i, 1, sizeof(Float4x4) * 2))
+					}));
 				IDescriptorSet* vs_d = vs.get();
 				cmdbuf->set_graphics_descriptor_sets(0, { &vs_d, 1 });
 				cmdbuf->attach_device_object(vs);

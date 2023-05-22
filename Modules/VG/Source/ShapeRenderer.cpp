@@ -169,10 +169,10 @@ namespace Luna
 			auto desc = render_target->get_desc();
 			lutry
 			{
-				if (m_rt_format != desc.pixel_format)
+				if (m_rt_format != desc.format)
 				{
-					luexp(create_pso(desc.pixel_format));
-					m_rt_format = desc.pixel_format;
+					luexp(create_pso(desc.format));
+					m_rt_format = desc.format;
 				}
 				m_render_target = render_target;
 				m_screen_width = desc.width;
@@ -229,10 +229,10 @@ namespace Luna
 					auto& ds = m_desc_sets[i];
 
 					luexp(ds->update_descriptors({
-						DescriptorSetWrite::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(m_cbs_resource)),
-						DescriptorSetWrite::read_buffer_view(1, BufferViewDesc::typed_buffer(shape_buffer, 0, num_points, Format::r32_float)),
-						DescriptorSetWrite::sampled_texture_view(2, TextureViewDesc::tex2d(draw_calls[i].texture ? draw_calls[i].texture : g_white_tex)),
-						DescriptorSetWrite::sampler(3, SamplerDesc(Filter::min_mag_mip_linear, TextureAddressMode::clamp, TextureAddressMode::clamp, TextureAddressMode::clamp))
+						WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(m_cbs_resource)),
+						WriteDescriptorSet::read_buffer_view(1, BufferViewDesc::typed_buffer(shape_buffer, 0, num_points, Format::r32_float)),
+						WriteDescriptorSet::sampled_texture_view(2, TextureViewDesc::tex2d(draw_calls[i].texture ? draw_calls[i].texture : g_white_tex)),
+						WriteDescriptorSet::sampler(3, SamplerDesc(Filter::min_mag_mip_linear, TextureAddressMode::clamp, TextureAddressMode::clamp, TextureAddressMode::clamp))
 						}));
 				}
 				// Build command buffer.
