@@ -93,6 +93,8 @@ Luna SDK uses the following third party SDKs:
 1. [STB](https://github.com/nothings/stb) for image file reading/writing and ttf font file processing (public domain).
 1. [zlib](https://github.com/madler/zlib) for compression/decompression (zlib License).
 1. [minizip-ng](https://github.com/zlib-ng/minizip-ng) for zip archive file reading/writing (zlib License).
+1. [Vulkan Memory Allocator](https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator) for allocating device memory on Vulkan backend (MIT License).
+1. [D3D12 Memory Allocator](https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator) for allocating device memory on D3D12 backend (MIT License).
 
 All SDKs are either embedded in the project, or can be fetched automatically by xmake scripts, the user does not need to install them manually.
 
