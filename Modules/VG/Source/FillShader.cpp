@@ -25,21 +25,33 @@ TransformParams g_cbuffer : register(b0);
 
 struct VSIn
 {
+	[[vk::location(0)]]
 	float2 position	  : POSITION;
+	[[vk::location(1)]]
 	float2 shapecoord : SHAPECOORD;
+	[[vk::location(2)]]
 	float2 texcoord   : TEXCOORD;
+	[[vk::location(3)]]
 	float4 color	  : COLOR;
+	[[vk::location(4)]]
 	uint begin_command_offset : COMMAND_OFFSET;
+	[[vk::location(5)]]
 	uint num_commands : NUM_COMMANDS;
 };
 
 struct VSOut
 {
+	[[vk::location(0)]]
 	float4 position		: SV_POSITION;
+	[[vk::location(1)]]
 	float2 shapecoord	: SHAPECOORD;
+	[[vk::location(2)]]
 	float2 texcoord		: TEXCOORD;
+	[[vk::location(3)]]
 	float4 color		: COLOR;
+	[[vk::location(4)]]
 	uint begin_command_offset : COMMAND_OFFSET;
+	[[vk::location(5)]]
 	uint num_commands	: NUM_COMMANDS;
 };
 
@@ -66,11 +78,17 @@ SamplerState g_sampler : register(s3);
 
 struct PSIn
 {
+	[[vk::location(0)]]
 	float4 position		: SV_POSITION;
+	[[vk::location(1)]]
 	float2 shapecoord	: SHAPECOORD;
+	[[vk::location(2)]]
 	float2 texcoord		: TEXCOORD;
+	[[vk::location(3)]]
 	float4 color		: COLOR;
+	[[vk::location(4)]]
 	uint begin_command_offset : COMMAND_OFFSET;
+	[[vk::location(5)]]
 	uint num_commands	: NUM_COMMANDS;
 };
 
@@ -226,6 +244,7 @@ static const float COMMAND_CIRCLE_Q2 = 5.0f;
 static const float COMMAND_CIRCLE_Q3 = 6.0f;
 static const float COMMAND_CIRCLE_Q4 = 7.0f;
 
+[[vk::location(0)]]
 float4 main(PSIn v) : SV_Target
 {
 	float2 units_per_pixel = fwidth(v.shapecoord);

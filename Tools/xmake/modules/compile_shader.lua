@@ -5,6 +5,7 @@ function compile_shader(hlsl_file, options)
     options.output_path = options.output_path or vformat("$(projectdir)/$(buildir)")
     options.entry_point = options.entry_point or "main"
     options.optimization_level = options.optimization_level or 3
+    options.rhi_api = options.rhi_api or "D3D12"
 
     if not os.exists(hlsl_file) then
         raise("Shader file " .. hlsl_file .. " does not exist.")
@@ -22,15 +23,11 @@ function compile_shader(hlsl_file, options)
         if not program then
            raise("dxc not found on the current platform.") 
         end
-        print("Compile Shader: " .. program .. " /T " .. (options.type .. "_" .. options.shading_model) .. " " .. hlsl_file .. " /Fo " .. (options.output_path .. "/" .. filename .. ".cso") .. " /E " .. options.entry_point .. " /O " .. tostring(options.optimization_level))
-        os.execv(program, {"/T", (options.type .. "_" .. options.shading_model), hlsl_file, "/Fo", (options.output_path .. "/" .. filename .. ".cso"), "/E", options.entry_point, ("/O" .. tostring(options.optimization_level))})
+        local spirv = ""
+        if options.rhi_api == "Vulkan" then spirv = "-spirv" end
+        print("Compile Shader: " .. program .. " -T " .. (options.type .. "_" .. options.shading_model) .. " " .. hlsl_file .. " -Fo " .. (options.output_path .. "/" .. filename .. ".cso") .. " -E " .. options.entry_point .. " -O" .. tostring(options.optimization_level) .. " " .. spirv)
+        os.execv(program, {"-T", (options.type .. "_" .. options.shading_model), hlsl_file, "-Fo", (options.output_path .. "/" .. filename .. ".cso"), "-E", options.entry_point, ("-O" .. tostring(options.optimization_level)), spirv})
     else
-        opt.check = function(program) end -- bypass --version checking, since fxc does not implement this.
-        program = find_program("fxc", opt)
-        if not program then
-            raise("fxc not found on the current platform.") 
-        end
-        print("Compile Shader: " .. program .. " -T " .. (options.type .. "_" .. options.shading_model) .. " -Fo " .. (options.output_path .. "/" .. filename .. ".cso") .. " -E " .. options.entry_point .. " -O " .. tostring(options.optimization_level) .. " " .. hlsl_file)
-        os.execv(program, {"-T", (options.type .. "_" .. options.shading_model), "-Fo", (options.output_path .. "/" .. filename .. ".cso"), "-E", options.entry_point, ("-O" .. tostring(options.optimization_level)), hlsl_file})
+        raise("Support for shader model 5.1 and older is deprecated.")
     end
 end

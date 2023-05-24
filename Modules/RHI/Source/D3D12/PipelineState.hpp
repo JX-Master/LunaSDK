@@ -8,8 +8,6 @@
 * @date 2019/8/15
 */
 #pragma once
-#ifdef LUNA_RHI_D3D12
-
 #include "Device.hpp"
 #include "ShaderInputLayout.hpp"
 #include "../../PipelineState.hpp"
@@ -28,8 +26,11 @@ namespace Luna
 			ComPtr<ID3D12PipelineState> m_pso;
 			bool m_is_graphics;
 
+			PrimitiveTopology m_primitive_topology;
+
 			PipelineState(Device* dev) :
-				m_device(dev) {}
+				m_device(dev),
+				m_primitive_topology(PrimitiveTopology::triangle_list) {}
 
 			IDevice* get_device()
 			{
@@ -42,5 +43,3 @@ namespace Luna
 		};
 	}
 }
-
-#endif

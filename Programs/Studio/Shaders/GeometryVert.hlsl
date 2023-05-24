@@ -14,12 +14,18 @@ cbuffer CBParam : register(b0)
 StructuredBuffer<MeshBuffer> g_MeshBuffer : register(t1);
 struct PS_INPUT
 {
-	float4 position : SV_POSITION;	
-	float3 normal : NORMAL;	
-	float3 tangent : TANGENT;	
-	float2 texcoord : TEXCOORD;	
-	float4 color : COLOR;	
-	float3 world_position : POSITION;	
+	[[vk::location(0)]]
+    float4 position : SV_POSITION;
+    [[vk::location(1)]]
+    float3 normal   : NORMAL;
+    [[vk::location(2)]]
+    float3 tangent  : TANGENT;
+    [[vk::location(3)]]
+    float2 texcoord : TEXCOORD;
+    [[vk::location(4)]]
+    float4 color    : COLOR;
+    [[vk::location(5)]]
+    float3 world_position : POSITION;
 };
 
 PS_INPUT main(MeshVertex input)

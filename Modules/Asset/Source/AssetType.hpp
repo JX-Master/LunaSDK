@@ -9,6 +9,7 @@
 */
 #pragma once
 #include "../Asset.hpp"
+#include <Runtime/Mutex.hpp>
 
 namespace Luna
 {
@@ -17,5 +18,6 @@ namespace Luna
 		R<AssetTypeDesc> get_asset_type_desc(const Name& name);
 		void init_asset_type();
 		void close_asset_type();
+		extern Ref<IMutex> g_asset_types_mutex;
 	}
 }

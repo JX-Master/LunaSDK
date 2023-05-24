@@ -130,82 +130,6 @@ namespace Luna
 			clear_output();
 			return r;
 		}
-		RV Compiler::d3d_compile()
-		{
-#ifdef LUNA_PLATFORM_WINDOWS
-			c8 shader_type[16];
-			const c8* sm = nullptr;
-			switch (m_shader_type)
-			{
-			case ShaderType::vertex: sm = "vs"; break;
-			case ShaderType::pixel: sm = "ps"; break;
-			case ShaderType::compute: sm = "cs"; break;
-			case ShaderType::geometry: sm = "gs"; break;
-			case ShaderType::hull: sm = "hs"; break;
-			case ShaderType::domain: sm = "ds"; break;
-			}
-			snprintf(shader_type, 16, "%s_%u_%u", sm, m_shader_model_major, m_shader_model_minor);
-			u32 flags = 0;
-			switch (m_optimization_level)
-			{
-			case OptimizationLevel::none:
-				flags |= D3DCOMPILE_SKIP_OPTIMIZATION; break;
-			case OptimizationLevel::speed:
-				flags |= D3DCOMPILE_OPTIMIZATION_LEVEL1; break;
-			case OptimizationLevel::full:
-				flags |= D3DCOMPILE_OPTIMIZATION_LEVEL3; break;
-			default:
-				lupanic();
-				break;
-			}
-			if (m_debug)
-			{
-				flags |= D3DCOMPILE_DEBUG;
-			}
-			if (m_skip_validation)
-			{
-				flags |= D3DCOMPILE_SKIP_VALIDATION;
-			}
-			// Matrix pack mode.
-			if (m_matrix_pack_mode == MatrixPackMode::row_major)
-			{
-				flags |= D3DCOMPILE_PACK_MATRIX_ROW_MAJOR;
-			}
-			else if (m_matrix_pack_mode == MatrixPackMode::column_major)
-			{
-				flags |= D3DCOMPILE_PACK_MATRIX_COLUMN_MAJOR;
-			}
-			ComPtr<ID3DBlob> err;
-			Vector<D3D_SHADER_MACRO> macros;
-			for (auto& kv : m_definitions)
-			{
-				D3D_SHADER_MACRO macro;
-				macro.Name = kv.first.c_str();
-				macro.Definition = kv.second.empty() ? NULL : kv.second.c_str();
-				macros.push_back(macro);
-			}
-			macros.push_back({ NULL, NULL });
-			D3DInclude inc;
-			inc.m_compiler = this;
-			if (!m_source_file_path.empty())
-			{
-				inc.m_local_search_list.push_back(m_source_file_path);
-				inc.m_local_search_list.back().pop_back();
-			}
-			if (FAILED(::D3DCompile(m_source.data(), m_source.size(), m_source_name.c_str(), macros.data(), &inc,
-				m_entry_point.c_str(), shader_type, flags, 0, m_d3d_blob.GetAddressOf(), err.GetAddressOf())))
-			{
-				return set_error(BasicError::failure(), "Failed to compile shader %s: %s", m_source_name.c_str(), (const char*)err->GetBufferPointer());
-			}
-			m_out_data = (const byte_t*)m_d3d_blob->GetBufferPointer();
-			m_out_size = m_d3d_blob->GetBufferSize();
-			luassert(m_out_data && m_out_size);
-			return ok;
-#else		
-			return set_error(BasicError::not_supported(),
-				"Compiling DXBC is only supportted on Windows platform.");
-#endif
-		}
 		inline WString utf8_to_wstring(const c8* src, usize size = USIZE_MAX)
 		{
 			size = (size == USIZE_MAX) ? strlen(src) : size;
@@ -431,14 +355,7 @@ namespace Luna
 			case TargetFormat::none:
 				return compile_none();
 			case TargetFormat::dxil:
-				if (m_shader_model_major >= 6)
-				{
-					return dxc_compile(DxcTargetType::dxil);
-				}
-				else
-				{
-					return d3d_compile();
-				}
+				return dxc_compile(DxcTargetType::dxil);
 			case TargetFormat::spir_v:
 				return dxc_compile(DxcTargetType::spir_v);
 			case TargetFormat::glsl:

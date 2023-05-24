@@ -8,22 +8,20 @@
 * @date 2019/7/17
 */
 #pragma once
-
-#ifdef LUNA_RHI_D3D12
-
 #include "../DXGI/Common.hpp"
+#include "D3D12Common.hpp"
 #include "d3d12.h"
 #include "../../Device.hpp"
 #include <Runtime/Mutex.hpp>
 #include <Runtime/RingDeque.hpp>
 #include <Runtime/List.hpp>
 #include <Runtime/SpinLock.hpp>
+#include <Runtime/UniquePtr.hpp>
 
 namespace Luna
 {
 	namespace RHI
 	{
-		class ResourceHeap;
 		class ViewTableHeap;
 		struct ViewTableHeapDesc;
 		class PipelineState;
@@ -73,81 +71,21 @@ namespace Luna
 			void free_view(ID3D12DescriptorHeap* view);
 		};
 
-		struct ResourceCopyContext
+		struct CommandQueue
 		{
-			ComPtr<ID3D12CommandAllocator> m_ca;
-			ComPtr<ID3D12GraphicsCommandList> m_li;
-			ComPtr<ID3D12Fence> m_fence;
-			HANDLE m_event;
-			u64 m_event_value;
-
-			ResourceCopyContext() :
-				m_event(NULL),
-				m_event_value(0) {}
-			ResourceCopyContext(const ResourceCopyContext&) = delete;
-			ResourceCopyContext(ResourceCopyContext&& rhs) :
-				m_ca(move(rhs.m_ca)),
-				m_li(move(rhs.m_li)),
-				m_fence(move(rhs.m_fence)),
-				m_event(rhs.m_event),
-				m_event_value(rhs.m_event_value)
-			{
-				rhs.m_event = NULL;
-			}
-			ResourceCopyContext& operator=(const ResourceCopyContext&) = delete;
-			ResourceCopyContext& operator=(ResourceCopyContext&& rhs)
-			{
-				m_ca = move(rhs.m_ca);
-				m_li = move(rhs.m_li);
-				m_fence = move(rhs.m_fence);
-				m_event = rhs.m_event;
-				rhs.m_event = NULL;
-				m_event_value = rhs.m_event_value;
-				return *this;
-			}
-			~ResourceCopyContext()
-			{
-				if (m_event)
-				{
-					::CloseHandle(m_event);
-					m_event = NULL;
-				}
-			}
-			RV init(ID3D12Device* device)
-			{
-				if (FAILED(device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_COPY, IID_PPV_ARGS(&m_ca))))
-				{
-					return BasicError::bad_platform_call();
-				}
-				if (FAILED(device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_COPY, m_ca.Get(), NULL, IID_PPV_ARGS(&m_li))))
-				{
-					return BasicError::bad_platform_call();
-				}
-				if (FAILED(device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_fence))))
-				{
-					return BasicError::bad_platform_call();
-				}
-				m_event = ::CreateEventA(NULL, TRUE, FALSE, NULL);
-				if (m_event == NULL)
-				{
-					return BasicError::bad_platform_call();
-				}
-				return ok;
-			}
+			CommandQueueDesc m_desc;
+			ComPtr<ID3D12CommandQueue> m_command_queue;
+			SpinLock m_lock;
 		};
 
 		//! @class Device
 		struct Device : IDevice
 		{
 			lustruct("RHI::Device", "{038b4cb4-5e16-41a1-ad6f-7e2a49e2241e}");
-			luiimpl()
+			luiimpl();
 
+			ComPtr<IDXGIAdapter> m_adapter;
 			ComPtr<ID3D12Device> m_device;
-
-			//! The resources for data upload/readback for copy_resources.
-			ComPtr<ID3D12CommandQueue> m_internal_copy_queue;
-			Vector<ResourceCopyContext> m_copy_contexts;
-			SpinLock m_copy_contexts_lock;
 
 			D3D12_FEATURE_DATA_D3D12_OPTIONS m_feature_options;
 			D3D12_FEATURE_DATA_ARCHITECTURE m_architecture;
@@ -158,60 +96,38 @@ namespace Luna
 			RenderTargetDescriptorHeap m_rtv_heap;
 			RenderTargetDescriptorHeap m_dsv_heap;
 
-			SpinLock m_swap_chain_shared_resource_lock;
-			bool m_swap_chain_shared_resource_initialized;
-			ComPtr<ID3D12Resource> m_swap_chain_vert_buf;
-			ComPtr<ID3DBlob> m_swap_chain_root_signature_data;
+			Vector<UniquePtr<CommandQueue>> m_command_queues;
 
-			Device() :
-				m_swap_chain_shared_resource_initialized(false) {}
+			// Memory Allocator.
+			ComPtr<D3D12MA::Allocator> m_allocator;
+
 			~Device();
 
-			RV init(ID3D12Device* dev);
+			R<UniquePtr<CommandQueue>> new_command_queue(const CommandQueueDesc& desc);
+			RV init(IDXGIAdapter* adapter);
 			
-			usize get_constant_buffer_data_alignment();
-			void  get_texture_data_placement_info(u32 width, u32 height, u32 depth, Format format,
-				u64* size, u64* alignment, u64* row_pitch, u64* slice_pitch);
-			usize get_resource_size(const ResourceDesc& desc, usize* out_alignment);
-			R<Ref<IResource>> new_resource(const ResourceDesc& desc, const ClearValue* optimized_clear_value);
-			R<Ref<IResourceHeap>> new_resource_heap(const ResourceHeapDesc& desc);
-			R<Ref<IShaderInputLayout>> new_shader_input_layout(const ShaderInputLayoutDesc& desc);
-			R<Ref<IPipelineState>> new_graphics_pipeline_state(const GraphicsPipelineStateDesc& desc);
-			R<Ref<IPipelineState>> new_compute_pipeline_state(const ComputePipelineStateDesc& desc);
-			R<Ref<IDescriptorSetLayout>> new_descriptor_set_layout(const DescriptorSetLayoutDesc& desc);
-			R<Ref<IDescriptorSet>> new_descriptor_set(DescriptorSetDesc& desc);
-			R<Ref<ICommandQueue>> new_command_queue(CommandQueueType type);
-			R<Ref<IRenderTargetView>> new_render_target_view(IResource* resource, const RenderTargetViewDesc* desc);
-			R<Ref<IDepthStencilView>> new_depth_stencil_view(IResource* resource, const DepthStencilViewDesc* desc);
-			R<Ref<IQueryHeap>> new_query_heap(const QueryHeapDesc& desc);
-			RV copy_resource(Span<const ResourceCopyDesc> copies);
+			virtual bool check_device_feature(DeviceFeature feature) override;
+			virtual usize get_uniform_buffer_data_alignment() override;
+			virtual void get_texture_data_placement_info(u32 width, u32 height, u32 depth, Format format,
+				u64* size, u64* alignment, u64* row_pitch, u64* slice_pitch) override;
+			virtual R<Ref<IBuffer>> new_buffer(MemoryType memory_type, const BufferDesc& desc) override;
+			virtual R<Ref<ITexture>> new_texture(MemoryType memory_type, const TextureDesc& desc, const ClearValue* optimized_clear_value) override;
+			virtual bool is_resources_aliasing_compatible(MemoryType memory_type, Span<const BufferDesc> buffers, Span<const TextureDesc> textures) override;
+			virtual R<Ref<IDeviceMemory>> allocate_memory(MemoryType memory_type, Span<const BufferDesc> buffers, Span<const TextureDesc> textures) override;
+			virtual R<Ref<IBuffer>> new_aliasing_buffer(IDeviceMemory* device_memory, const BufferDesc& desc) override;
+			virtual R<Ref<ITexture>> new_aliasing_texture(IDeviceMemory* device_memory, const TextureDesc& desc, const ClearValue* optimized_clear_value) override;
+			virtual R<Ref<IShaderInputLayout>> new_shader_input_layout(const ShaderInputLayoutDesc& desc) override;
+			virtual R<Ref<IPipelineState>> new_graphics_pipeline_state(const GraphicsPipelineStateDesc& desc) override;
+			virtual R<Ref<IPipelineState>> new_compute_pipeline_state(const ComputePipelineStateDesc& desc) override;
+			virtual R<Ref<IDescriptorSetLayout>> new_descriptor_set_layout(const DescriptorSetLayoutDesc& desc) override;
+			virtual R<Ref<IDescriptorSet>> new_descriptor_set(const DescriptorSetDesc& desc) override;
+			virtual u32 get_num_command_queues() override;
+			virtual CommandQueueDesc get_command_queue_desc(u32 command_queue_index) override;
+			virtual R<Ref<ICommandBuffer>> new_command_buffer(u32 command_queue_index) override;
+			virtual R<f64> get_command_queue_timestamp_frequency(u32 command_queue_index) override;
+			virtual R<Ref<IQueryHeap>> new_query_heap(const QueryHeapDesc& desc) override;
+			virtual R<Ref<IFence>> new_fence() override;
+			virtual R<Ref<ISwapChain>> new_swap_chain(u32 command_queue_index, Window::IWindow* window, const SwapChainDesc& desc) override;
 		};
-
-		inline D3D12_HEAP_PROPERTIES encode_heap_properties(Device* device, ResourceHeapType heap_type)
-		{
-			D3D12_HEAP_PROPERTIES hp;
-			hp.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-			hp.CreationNodeMask = 0;
-			hp.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
-			switch (heap_type)
-			{
-			case ResourceHeapType::local:
-				hp.Type = D3D12_HEAP_TYPE_DEFAULT;
-				break;
-			case ResourceHeapType::readback:
-				hp.Type = D3D12_HEAP_TYPE_READBACK;
-				break;
-			case ResourceHeapType::upload:
-				hp.Type = D3D12_HEAP_TYPE_UPLOAD;
-				break;
-			default:
-				lupanic();
-				break;
-			}
-			hp.VisibleNodeMask = 0;
-			return hp;
-		}
 	}
 }
-
-#endif

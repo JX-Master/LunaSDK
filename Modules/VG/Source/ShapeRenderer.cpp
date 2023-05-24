@@ -21,12 +21,12 @@ namespace Luna
 		Blob g_fill_shader_ps;
 		Ref<RHI::IDescriptorSetLayout> g_fill_desc_layout;
 		Ref<RHI::IShaderInputLayout> g_fill_slayout;
-		Ref<RHI::IPipelineState> g_fill_pso;
-		Ref<RHI::IResource> g_white_tex;
+		Ref<RHI::ITexture> g_white_tex;
 
 		RV init_render_resources()
 		{
 			using namespace RHI;
+			auto dev = get_main_device();
 			lutry
 			{
 				{
@@ -36,7 +36,7 @@ namespace Luna
 					compiler->set_entry_point("main");
 					compiler->set_target_format(RHI::get_current_platform_shader_target_format());
 					compiler->set_shader_type(ShaderCompiler::ShaderType::vertex);
-					compiler->set_shader_model(5, 0);
+					compiler->set_shader_model(6, 0);
 					compiler->set_optimization_level(ShaderCompiler::OptimizationLevel::full);
 					luexp(compiler->compile());
 					auto data = compiler->get_output();
@@ -48,7 +48,7 @@ namespace Luna
 					compiler->set_entry_point("main");
 					compiler->set_target_format(RHI::get_current_platform_shader_target_format());
 					compiler->set_shader_type(ShaderCompiler::ShaderType::pixel);
-					compiler->set_shader_model(5, 0);
+					compiler->set_shader_model(6, 0);
 					compiler->set_optimization_level(ShaderCompiler::OptimizationLevel::full);
 					luexp(compiler->compile());
 					data = compiler->get_output();
@@ -56,48 +56,60 @@ namespace Luna
 				}
 				{
 					DescriptorSetLayoutDesc desc({
-						DescriptorSetLayoutBinding(DescriptorType::cbv, 0, 1, ShaderVisibility::vertex),
-						DescriptorSetLayoutBinding(DescriptorType::srv, 1, 1, ShaderVisibility::all),
-						DescriptorSetLayoutBinding(DescriptorType::srv, 2, 1, ShaderVisibility::pixel),
-						DescriptorSetLayoutBinding(DescriptorType::sampler, 3, 1, ShaderVisibility::pixel),
+						DescriptorSetLayoutBinding(DescriptorType::uniform_buffer_view, 0, 1, ShaderVisibilityFlag::vertex),
+						DescriptorSetLayoutBinding(DescriptorType::read_buffer_view, 1, 1, ShaderVisibilityFlag::all),
+						DescriptorSetLayoutBinding(DescriptorType::read_texture_view, 2, 1, ShaderVisibilityFlag::pixel),
+						DescriptorSetLayoutBinding(DescriptorType::sampler, 3, 1, ShaderVisibilityFlag::pixel),
 					});
-					luset(g_fill_desc_layout, get_main_device()->new_descriptor_set_layout(desc));
+					luset(g_fill_desc_layout, dev->new_descriptor_set_layout(desc));
 				}
 				{
-					
-					ShaderInputLayoutDesc desc;
-					desc.descriptor_set_layouts.push_back(g_fill_desc_layout);
-					desc.flags = ShaderInputLayoutFlag::allow_input_assembler_input_layout | ShaderInputLayoutFlag::deny_domain_shader_access |
-						ShaderInputLayoutFlag::deny_geometry_shader_access | ShaderInputLayoutFlag::deny_hull_shader_access;
-					luset(g_fill_slayout, get_main_device()->new_shader_input_layout(desc));
+					IDescriptorSetLayout* dl = g_fill_desc_layout;
+					ShaderInputLayoutDesc desc ({&dl, 1},
+						ShaderInputLayoutFlag::allow_input_assembler_input_layout
+					);
+					luset(g_fill_slayout, dev->new_shader_input_layout(desc));
 				}
 				{
-					GraphicsPipelineStateDesc desc;
-					desc.input_layout = InputLayoutDesc({
-							InputElementDesc("POSITION", 0, Format::rg32_float),
-							InputElementDesc("SHAPECOORD", 0, Format::rg32_float),
-							InputElementDesc("TEXCOORD", 0, Format::rg32_float),
-							InputElementDesc("COLOR", 0, Format::rgba8_unorm),
-							InputElementDesc("COMMAND_OFFSET", 0, Format::r32_uint),
-							InputElementDesc("NUM_COMMANDS", 0, Format::r32_uint),
-						});
-					desc.shader_input_layout = g_fill_slayout;
-					desc.vs = { g_fill_shader_vs.data(), g_fill_shader_vs.size() };
-					desc.ps = { g_fill_shader_ps.data(), g_fill_shader_ps.size() };
-					desc.blend_state = BlendDesc(false, false, { RenderTargetBlendDesc(true, false, BlendFactor::src_alpha, BlendFactor::inv_src_alpha, BlendOp::add, BlendFactor::zero,
-							BlendFactor::one, BlendOp::add, LogicOp::noop, ColorWriteMask::all) });
-					desc.rasterizer_state = RasterizerDesc(FillMode::solid, CullMode::back, 0, 0.0f, 0.0f, 0, false, false, false, false, false);
-					desc.num_render_targets = 1;
-					desc.rtv_formats[0] = Format::rgba8_unorm;
-					luset(g_fill_pso, get_main_device()->new_graphics_pipeline_state(desc));
-				}
-				{
-					ResourceDesc desc = ResourceDesc::tex2d(ResourceHeapType::local, Format::rgba8_unorm, ResourceUsageFlag::shader_resource, 1, 1);
-					luset(g_white_tex, get_main_device()->new_resource(desc));
+					TextureDesc desc = TextureDesc::tex2d(Format::rgba8_unorm, TextureUsageFlag::read_texture | TextureUsageFlag::copy_dest, 1, 1);
+					luset(g_white_tex, dev->new_texture(MemoryType::local, desc));
 					u32 data = 0xFFFFFFFF;
-					luexp(get_main_device()->copy_resource({
-						ResourceCopyDesc::as_write_texture(g_white_tex, &data, sizeof(u32), sizeof(u32), 0, BoxU(0, 0, 0, 1, 1, 1))
-						}));
+
+					{
+						u64 size, row_pitch, slice_pitch;
+						dev->get_texture_data_placement_info(1, 1, 1, Format::rgba8_unorm, &size, nullptr, &row_pitch, &slice_pitch);
+						lulet(tex_staging, dev->new_buffer(MemoryType::upload, BufferDesc(BufferUsageFlag::copy_source, size)));
+						lulet(tex_staging_data, tex_staging->map(0, 0));
+						memcpy(tex_staging_data, &data, sizeof(data));
+						tex_staging->unmap(0, sizeof(data));
+						u32 copy_queue_index = U32_MAX;
+						{
+							// Prefer a dedicated copy queue if present.
+							u32 num_queues = dev->get_num_command_queues();
+							for (u32 i = 0; i < num_queues; ++i)
+							{
+								auto desc = dev->get_command_queue_desc(i);
+								if (desc.type == CommandQueueType::graphics && copy_queue_index == U32_MAX)
+								{
+									copy_queue_index = i;
+								}
+								else if (desc.type == CommandQueueType::copy)
+								{
+									copy_queue_index = i;
+									break;
+								}
+							}
+						}
+						lulet(upload_cmdbuf, dev->new_command_buffer(copy_queue_index));
+						upload_cmdbuf->set_context(CommandBufferContextType::copy);
+						upload_cmdbuf->resource_barrier({
+							{ tex_staging, BufferStateFlag::automatic, BufferStateFlag::copy_source, ResourceBarrierFlag::none} },
+							{ { g_white_tex, TEXTURE_BARRIER_ALL_SUBRESOURCES, TextureStateFlag::automatic, TextureStateFlag::copy_dest, ResourceBarrierFlag::discard_content } });
+						upload_cmdbuf->copy_buffer_to_texture(g_white_tex, SubresourceIndex(0, 0), 0, 0, 0, tex_staging, 0,
+							row_pitch, slice_pitch, 1, 1, 1);
+						luexp(upload_cmdbuf->submit({}, {}, true));
+						upload_cmdbuf->wait();
+					}
 				}
 			}
 			lucatchret;
@@ -109,10 +121,41 @@ namespace Luna
 			g_fill_shader_ps.clear();
 			g_fill_desc_layout = nullptr;
 			g_fill_slayout = nullptr;
-			g_fill_pso = nullptr;
 			g_white_tex = nullptr;
 		}
-		RV FillShapeRenderer::init(RHI::IResource* render_target)
+		RV FillShapeRenderer::create_pso(RHI::Format rt_format)
+		{
+			using namespace RHI;
+			lutry
+			{
+				GraphicsPipelineStateDesc desc;
+				desc.input_layout = InputLayoutDesc(
+					{
+						InputBindingDesc(0, sizeof(Vertex), InputRate::per_vertex)
+					},
+						{
+							InputAttributeDesc("POSITION", 0, 0, 0, offsetof(Vertex, position), Format::rg32_float),
+							InputAttributeDesc("SHAPECOORD", 0, 1, 0, offsetof(Vertex, shapecoord), Format::rg32_float),
+							InputAttributeDesc("TEXCOORD", 0, 2, 0, offsetof(Vertex, texcoord), Format::rg32_float),
+							InputAttributeDesc("COLOR", 0, 3, 0, offsetof(Vertex, color), Format::rgba8_unorm),
+							InputAttributeDesc("COMMAND_OFFSET", 0, 4, 0, offsetof(Vertex, begin_command), Format::r32_uint),
+							InputAttributeDesc("NUM_COMMANDS", 0, 5, 0, offsetof(Vertex, num_commands), Format::r32_uint),
+						});
+				desc.shader_input_layout = g_fill_slayout;
+				desc.vs = { g_fill_shader_vs.data(), g_fill_shader_vs.size() };
+				desc.ps = { g_fill_shader_ps.data(), g_fill_shader_ps.size() };
+				desc.blend_state = BlendDesc({ AttachmentBlendDesc(true, BlendFactor::src_alpha, BlendFactor::inv_src_alpha, BlendOp::add, BlendFactor::zero,
+						BlendFactor::one, BlendOp::add, ColorWriteMask::all) });
+				desc.rasterizer_state = RasterizerDesc(FillMode::solid, CullMode::back, 0, 0.0f, 0.0f, 0, false, false, false, false, false);
+				desc.depth_stencil_state = DepthStencilDesc(false, false);
+				desc.num_color_attachments = 1;
+				desc.color_formats[0] = rt_format;
+				luset(m_fill_pso, get_main_device()->new_graphics_pipeline_state(desc));
+			}
+			lucatchret;
+			return ok;
+		}
+		RV FillShapeRenderer::init(RHI::ITexture* render_target)
 		{
 			return set_render_target(render_target);
 		}
@@ -120,27 +163,31 @@ namespace Luna
 		{
 			lutsassert();
 		}
-		RV FillShapeRenderer::set_render_target(RHI::IResource* render_target)
+		RV FillShapeRenderer::set_render_target(RHI::ITexture* render_target)
 		{
 			lutsassert();
-			m_render_target = render_target;
+			auto desc = render_target->get_desc();
 			lutry
 			{
-				luset(m_rtv, render_target->get_device()->new_render_target_view(render_target));
-				auto res_desc = render_target->get_desc();
-				m_screen_width = (u32)res_desc.width_or_buffer_size;
-				m_screen_height = (u32)res_desc.height;
+				if (m_rt_format != desc.format)
+				{
+					luexp(create_pso(desc.format));
+					m_rt_format = desc.format;
+				}
+				m_render_target = render_target;
+				m_screen_width = desc.width;
+				m_screen_height = desc.height;
 			}
 			lucatchret;
 			return ok;
 		}
 		RV FillShapeRenderer::render(
 			RHI::ICommandBuffer* cmdbuf,
-			RHI::IResource* shape_buffer,
+			RHI::IBuffer* shape_buffer,
 			u32 num_points,
-			RHI::IResource* vertex_buffer,
+			RHI::IBuffer* vertex_buffer,
 			u32 num_vertices,
-			RHI::IResource* index_buffer,
+			RHI::IBuffer* index_buffer,
 			u32 num_indices,
 			const ShapeDrawCall* draw_calls,
 			u32 num_draw_calls
@@ -148,19 +195,19 @@ namespace Luna
 		{
 			using namespace RHI;
 			lutsassert();
+			auto dev = get_main_device();
 			lutry
 			{
-				u32 cb_element_size = max<u32>((u32)get_main_device()->get_constant_buffer_data_alignment(), (u32)sizeof(Float4x4U));
+				u32 cb_element_size = max<u32>((u32)dev->get_uniform_buffer_data_alignment(), (u32)sizeof(Float4x4U));
 				u64 cb_size = cb_element_size * num_draw_calls;
 				// Build constant buffer.
 				if (num_draw_calls > m_cbs_capacity)
 				{
-					luset(m_cbs_resource, get_main_device()->new_resource(ResourceDesc::buffer(ResourceHeapType::upload, ResourceUsageFlag::constant_buffer,
+					luset(m_cbs_resource, dev->new_buffer(MemoryType::upload, BufferDesc(BufferUsageFlag::uniform_buffer,
 						cb_size)));
 					m_cbs_capacity = num_draw_calls;
 				}
-				void* cb_data;
-				luexp(m_cbs_resource->map_subresource(0, 0, 0, &cb_data));
+				lulet(cb_data, m_cbs_resource->map(0, 0));
 				for (usize i = 0; i < num_draw_calls; ++i)
 				{
 					Float4x4U* dest = (Float4x4U*)(((usize)cb_data) + i * cb_element_size);
@@ -170,47 +217,48 @@ namespace Luna
 					mat = mul(transform, mat);
 					*dest = mat;
 				}
-				m_cbs_resource->unmap_subresource(0, 0, num_draw_calls * sizeof(Float4x4U));
+				m_cbs_resource->unmap(0, cb_size);
 				// Build view sets.
 				for (usize i = 0; i < num_draw_calls; ++i)
 				{
 					while (m_desc_sets.size() <= i)
 					{
-						lulet(desc_set, get_main_device()->new_descriptor_set(DescriptorSetDesc(g_fill_desc_layout)));
+						lulet(desc_set, dev->new_descriptor_set(DescriptorSetDesc(g_fill_desc_layout)));
 						m_desc_sets.push_back(desc_set);
 					}
 					auto& ds = m_desc_sets[i];
-					ds->set_cbv(0, m_cbs_resource, ConstantBufferViewDesc(cb_element_size * i, cb_element_size));
-					ds->set_srv(1, shape_buffer, &ShaderResourceViewDesc::as_buffer(RHI::Format::r32_float, 0, num_points, 0));
-					ds->set_srv(2, draw_calls[i].texture ? draw_calls[i].texture : g_white_tex);
-					ds->set_sampler(3, SamplerDesc(FilterMode::min_mag_mip_linear, TextureAddressMode::clamp, TextureAddressMode::clamp, TextureAddressMode::clamp));
+
+					luexp(ds->update_descriptors({
+						WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(m_cbs_resource)),
+						WriteDescriptorSet::read_buffer_view(1, BufferViewDesc::typed_buffer(shape_buffer, 0, num_points, Format::r32_float)),
+						WriteDescriptorSet::read_texture_view(2, TextureViewDesc::tex2d(draw_calls[i].texture ? draw_calls[i].texture : g_white_tex)),
+						WriteDescriptorSet::sampler(3, SamplerDesc(Filter::min_mag_mip_linear, TextureAddressMode::clamp, TextureAddressMode::clamp, TextureAddressMode::clamp))
+						}));
 				}
 				// Build command buffer.
-				Vector<ResourceBarrierDesc> barriers;
-				barriers.push_back(ResourceBarrierDesc::as_transition(m_render_target, ResourceState::render_target));
-				barriers.push_back(ResourceBarrierDesc::as_transition(g_white_tex, ResourceState::shader_resource_pixel));
+				Vector<TextureBarrier> barriers;
+				barriers.push_back({ m_render_target, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::color_attachment_write, ResourceBarrierFlag::discard_content });
+				barriers.push_back({ g_white_tex, TEXTURE_BARRIER_ALL_SUBRESOURCES, TextureStateFlag::automatic, TextureStateFlag::shader_read_ps, ResourceBarrierFlag::none });
 				for (usize i = 0; i < num_draw_calls; ++i)
 				{
 					if (draw_calls[i].texture)
 					{
-						barriers.push_back(ResourceBarrierDesc::as_transition(draw_calls[i].texture, ResourceState::shader_resource_pixel));
+						barriers.push_back({ draw_calls[i].texture, TEXTURE_BARRIER_ALL_SUBRESOURCES, TextureStateFlag::automatic, TextureStateFlag::shader_read_ps, ResourceBarrierFlag::none });
 					}
 				}
-				cmdbuf->resource_barriers({ barriers.data(), (u32)barriers.size()});
+				cmdbuf->resource_barrier({}, { barriers.data(), (u32)barriers.size()});
 				RenderPassDesc desc;
-				desc.rtvs[0] = m_rtv;
-				desc.rt_load_ops[0] = LoadOp::clear;
-				desc.rt_clear_values[0] = Float4U{ 0.0f };
+				desc.color_attachments[0] = ColorAttachment(m_render_target, LoadOp::clear, StoreOp::store, Float4U{ 0.0f });
 				cmdbuf->begin_render_pass(desc);
-				cmdbuf->set_pipeline_state(g_fill_pso);
+				cmdbuf->set_graphics_pipeline_state(m_fill_pso);
 				cmdbuf->set_graphics_shader_input_layout(g_fill_slayout);
-				cmdbuf->set_primitive_topology(PrimitiveTopology::triangle_list);
-				cmdbuf->set_vertex_buffers(0, { &VertexBufferViewDesc(vertex_buffer, 0, sizeof(Vertex) * num_vertices, sizeof(Vertex)), 1 });
+				cmdbuf->set_vertex_buffers(0, { &VertexBufferView(vertex_buffer, 0, sizeof(Vertex) * num_vertices, sizeof(Vertex)), 1 });
 				cmdbuf->set_index_buffer({index_buffer, 0, num_indices * sizeof(u32), Format::r32_uint});
 				cmdbuf->set_viewport(Viewport(0.0f, 0.0f, (f32)m_screen_width, (f32)m_screen_height, 0.0f, 1.0f));
 				for (usize i = 0; i < num_draw_calls; ++i)
 				{
-					cmdbuf->set_graphics_descriptor_set(0, m_desc_sets[i]);
+					IDescriptorSet* ds = m_desc_sets[i];
+					cmdbuf->set_graphics_descriptor_sets(0, { &ds, 1 });
 					if (draw_calls[i].clip_rect != RectI(0, 0, 0, 0))
 					{
 						cmdbuf->set_scissor_rect(draw_calls[i].clip_rect);
@@ -226,7 +274,7 @@ namespace Luna
 			lucatchret;
 			return ok;
 		}
-		LUNA_VG_API R<Ref<IShapeRenderer>> new_fill_shape_renderer(RHI::IResource* render_target)
+		LUNA_VG_API R<Ref<IShapeRenderer>> new_fill_shape_renderer(RHI::ITexture* render_target)
 		{
 			Ref<FillShapeRenderer> renderer = new_object<FillShapeRenderer>();
 			lutry

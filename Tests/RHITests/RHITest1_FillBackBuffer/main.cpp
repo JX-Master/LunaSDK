@@ -17,40 +17,34 @@ using namespace Luna;
 using namespace Luna::RHI;
 using namespace Luna::RHITestBed;
 
-Ref<RHI::IRenderTargetView> rtv;
-
 RV start()
 {
-	lutry
-	{
-		luset(rtv, get_main_device()->new_render_target_view(get_back_buffer()));
-	}
-	lucatchret;
+
 	return ok;
 }
 
 void draw()
 {
-	
 	auto cb = get_command_buffer();
+	cb->set_context(CommandBufferContextType::graphics);
+	cb->resource_barrier({},
+		{
+			{get_back_buffer(), TEXTURE_BARRIER_ALL_SUBRESOURCES, TextureStateFlag::automatic, TextureStateFlag::color_attachment_write, ResourceBarrierFlag::discard_content}
+		});
 	RenderPassDesc render_pass;
-	render_pass.rtvs[0] = rtv;
+	render_pass.color_attachments[0] = ColorAttachment(get_back_buffer(), LoadOp::dont_care);
 	cb->begin_render_pass(render_pass);
-	cb->resource_barrier(ResourceBarrierDesc::as_transition(get_back_buffer(), ResourceState::render_target, 0));
 	auto clear_color = Color::blue_violet();
-	cb->clear_render_target_view(0, clear_color.m, {});
+	cb->clear_color_attachment(0, clear_color.m, {});
 	cb->end_render_pass();
-	lupanic_if_failed(cb->submit());
 }
 
 void resize(u32 width, u32 height)
 {
-	rtv = get_main_device()->new_render_target_view(get_back_buffer()).get();
 }
 
 void cleanup()
 {
-	rtv.reset();
 }
 
 void run_app()

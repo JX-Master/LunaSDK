@@ -114,7 +114,7 @@ namespace Luna
 
 	static errcat_t interal_get_error_category_by_name(const c8* errcat_name_begin, const c8* errcat_name_end, ErrCategroyRegistry** out_errtype_registry)
 	{
-		lucheck(errcat_name && *errcat_name != '\0');
+		lucheck(errcat_name_begin && *errcat_name_begin != '\0');
 		usize errcat_name_sz = errcat_name_end - errcat_name_begin;
 		usize h = memhash<usize>(errcat_name_begin, errcat_name_sz * sizeof(c8));
 		auto& r = g_errcat_registry.get();
@@ -332,9 +332,9 @@ namespace Luna
 			static ErrCode e = get_error_code_by_name("BasicError", "insufficient_buffer");
 			return e;
 		}
-		LUNA_RUNTIME_API ErrCode not_currently_available()
+		LUNA_RUNTIME_API ErrCode not_ready()
 		{
-			static ErrCode e = get_error_code_by_name("BasicError", "not_currently_available");
+			static ErrCode e = get_error_code_by_name("BasicError", "not_ready");
 			return e;
 		}
 		LUNA_RUNTIME_API ErrCode out_of_range()

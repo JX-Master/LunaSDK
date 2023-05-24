@@ -23,11 +23,11 @@ namespace Luna
 		Ref<RHI::IDescriptorSetLayout> m_geometry_pass_dlayout;
 		Ref<RHI::IShaderInputLayout> m_geometry_pass_slayout;
 
-        Ref<RHI::IResource> m_default_base_color;	// 1.0f, 1.0f, 1.0f, 1.0f
-		Ref<RHI::IResource> m_default_roughness;	// 0.5f
-		Ref<RHI::IResource> m_default_normal;		// 0.5f, 0.5f, 1.0f, 1.0f
-		Ref<RHI::IResource> m_default_metallic;	// 0.0f
-		Ref<RHI::IResource> m_default_emissive;	// 0.0f, 0.0f, 0.0f, 0.0f
+        Ref<RHI::ITexture> m_default_base_color;	// 1.0f, 1.0f, 1.0f, 1.0f
+		Ref<RHI::ITexture> m_default_roughness;	// 0.5f
+		Ref<RHI::ITexture> m_default_normal;		// 0.5f, 0.5f, 1.0f, 1.0f
+		Ref<RHI::ITexture> m_default_metallic;	// 0.0f
+		Ref<RHI::ITexture> m_default_emissive;	// 0.0f, 0.0f, 0.0f, 0.0f
     
         RV init(RHI::IDevice* device);
     };
@@ -39,8 +39,8 @@ namespace Luna
 
         Span<Ref<Entity>> ts;
 		Span<Ref<ModelRenderer>> rs;
-        Ref<RHI::IResource> camera_cb;
-        Ref<RHI::IResource> model_matrices;
+        Ref<RHI::IBuffer> camera_cb;
+        Ref<RHI::IBuffer> model_matrices;
 
         RV init(GeometryPassGlobalData* global_data);
         RV execute(RG::IRenderPassContext* ctx) override;

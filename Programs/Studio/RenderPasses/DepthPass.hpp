@@ -23,7 +23,7 @@ namespace Luna
 		Ref<RHI::IDescriptorSetLayout> m_depth_pass_dlayout;
 		Ref<RHI::IShaderInputLayout> m_depth_pass_slayout;
 
-        Ref<RHI::IResource> m_default_base_color;	// 1.0f, 1.0f, 1.0f, 1.0f
+        Ref<RHI::ITexture> m_default_base_color;	// 1.0f, 1.0f, 1.0f, 1.0f
     
         RV init(RHI::IDevice* device);
     };
@@ -35,15 +35,14 @@ namespace Luna
 
         Span<Ref<Entity>> ts;
 		Span<Ref<ModelRenderer>> rs;
-        Ref<RHI::IResource> camera_cb;
-        Ref<RHI::IResource> model_matrices;
+        Ref<RHI::IBuffer> camera_cb;
+        Ref<RHI::IBuffer> model_matrices;
 
         RV init(DepthPassGlobalData* global_data);
         RV execute(RG::IRenderPassContext* ctx) override;
 
         private:
         Ref<DepthPassGlobalData> m_global_data;
-
     };
 
     RV register_depth_pass();

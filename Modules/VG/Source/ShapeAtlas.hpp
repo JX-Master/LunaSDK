@@ -22,7 +22,7 @@ namespace Luna
 			Vector<f32> m_commands;
 			Vector<ShapeDesc> m_shapes;
 
-			Ref<RHI::IResource> m_buffer_resource;
+			Ref<RHI::IBuffer> m_buffer_resource;
 			usize m_buffer_resource_capacity;
 			bool m_buffer_resource_dirty;
 
@@ -67,7 +67,7 @@ namespace Luna
 				if (data_size) *data_size = desc.num_commands;
 				if (bounding_rect) *bounding_rect = desc.bounding_rect;
 			}
-			R<RHI::IResource*> get_shape_resource();
+			R<RHI::IBuffer*> get_shape_resource();
 			usize get_shape_resource_size()
 			{
 				lutsassert();

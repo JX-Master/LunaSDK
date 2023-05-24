@@ -78,7 +78,7 @@ namespace Luna
 			case WSAEPROTOTYPE: return NetworkError::protocol_not_supported();
 			case WSAESOCKTNOSUPPORT: return BasicError::bad_arguments();
 			case WSAEPROTONOSUPPORT: return NetworkError::protocol_not_supported();
-			case WSATRY_AGAIN: return BasicError::not_currently_available();
+			case WSATRY_AGAIN: return BasicError::not_ready();
 			case WSANO_RECOVERY: return BasicError::bad_arguments();
 			case WSA_NOT_ENOUGH_MEMORY: return BasicError::out_of_memory();
 			case WSAHOST_NOT_FOUND: return NetworkError::host_not_found();

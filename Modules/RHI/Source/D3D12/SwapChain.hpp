@@ -8,14 +8,12 @@
 * @date 2019/9/20
 */
 #pragma once
-#ifdef LUNA_RHI_D3D12
-
 #include "D3D12Common.hpp"
 #include <dxgi1_2.h>
 #include "Device.hpp"
-#include "CommandQueue.hpp"
 #include "../../SwapChain.hpp"
 #include <Runtime/TSAssert.hpp>
+#include "Resource.hpp"
 
 #pragma comment( lib, "dxguid.lib")
 
@@ -25,6 +23,35 @@ namespace Luna
 	{
 		class Device;
 		class BackBufferResource;
+
+		struct SwapChainResource
+		{
+			Ref<TextureResource> m_back_buffer;
+			ComPtr<ID3D12Fence> m_fence;
+			u64 m_wait_value = 0;
+			HANDLE m_event = NULL;
+
+			RV init(Device* device, ID3D12Resource* resource);
+			SwapChainResource() = default;
+			SwapChainResource(const SwapChainResource&) = delete;
+			SwapChainResource(SwapChainResource&& rhs) :
+				m_back_buffer(move(rhs.m_back_buffer)),
+				m_fence(move(rhs.m_fence)),
+				m_wait_value(rhs.m_wait_value),
+				m_event(rhs.m_event)
+			{
+				rhs.m_event = NULL;
+			}
+			~SwapChainResource()
+			{
+				if (m_event != NULL)
+				{
+					CloseHandle(m_event);
+					m_event = NULL;
+				}
+			}
+		};
+
 		struct SwapChain : ISwapChain
 		{
 			lustruct("RHI::SwapChain", "{067d14fa-59c7-4f66-8fb0-1981d90a5a45}");
@@ -32,49 +59,27 @@ namespace Luna
 			lutsassert_lock();
 
 			Ref<Device> m_device;
-			Ref<CommandQueue> m_queue;
+			u32 m_queue;
 			Ref<Window::IWindow> m_window;
 			ComPtr<IDXGISwapChain1> m_sc;
 			SwapChainDesc m_desc;
+			BOOL m_allow_tearing = FALSE;
+			UINT m_present_flags = 0;
 
-			ComPtr<ID3D12Fence> m_fence;
-			HANDLE m_event;
-			ComPtr<ID3D12CommandAllocator> m_ca;
-			ComPtr<ID3D12GraphicsCommandList> m_li;
-			ComPtr<ID3D12RootSignature> m_root_signature;
-			ComPtr<ID3D12DescriptorHeap> m_rtvs;
-			ComPtr<ID3D12DescriptorHeap> m_srv;
-			usize m_rtv_size;
-
-			// Present resources, need to be reset when the swap chain is resized.
-			ComPtr<ID3D12PipelineState> m_pso;
-			Vector<ComPtr<ID3D12Resource>> m_back_buffers;
+			Vector<SwapChainResource> m_back_buffers;
 			u32 m_current_back_buffer;
 
 			SwapChain() :
-				m_event(NULL),
 				m_current_back_buffer(0) {}
 
-			~SwapChain()
-			{
-				if (m_event)
-				{
-					::CloseHandle(m_event);
-					m_event = NULL;
-				}
-			}
-
-			//! Initializes all resources stored in device, which is shared between all swap chains for the same device.
-			RV init_shared_res();
-
-			RV init(Window::IWindow* window, CommandQueue* queue, const SwapChainDesc& desc);
+			RV init(u32 queue_index, Window::IWindow* window, const SwapChainDesc& desc);
 
 			//! Called when the back buffer is resized or when the swap chain is initialized.
-			RV reset_back_buffer_resources(const SwapChainDesc& desc);
+			RV reset_back_buffer_resources();
 
 			IDevice* get_device()
 			{
-				return m_device.as<IDevice>();
+				return m_device;
 			}
 			void set_name(const Name& name) 
 			{
@@ -83,38 +88,17 @@ namespace Luna
 				utf8_to_utf16((c16*)buf, len + 1, name.c_str(), name.size());
 				m_sc->SetPrivateData(WKPDID_D3DDebugObjectNameW, sizeof(wchar_t) * (len + 1), buf);
 			}
-
-			void wait()
-			{
-				DWORD res = ::WaitForSingleObject(m_event, INFINITE);
-				if (res != WAIT_OBJECT_0)
-				{
-					lupanic_msg_always("WaitForSingleObject failed.");
-				}
-			}
-			bool try_wait()
-			{
-				DWORD res = ::WaitForSingleObject(m_event, 0);
-				if (res == WAIT_OBJECT_0)
-				{
-					return true;
-				}
-				return false;
-			}
-
-			Window::IWindow* get_bounding_window()
+			virtual Window::IWindow* get_window() override
 			{
 				return m_window;
 			}
-
-			SwapChainDesc get_desc()
+			virtual SwapChainDesc get_desc() override
 			{
 				return m_desc;
 			}
-			RV present(IResource* resource, u32 subresource);
-			RV reset(const SwapChainDesc& desc);
+			virtual R<Ref<ITexture>> get_current_back_buffer() override;
+			virtual RV present() override;
+			virtual RV reset(const SwapChainDesc& desc) override;
 		};
 	}
 }
-
-#endif

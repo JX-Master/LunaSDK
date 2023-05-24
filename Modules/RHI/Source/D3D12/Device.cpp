@@ -8,20 +8,15 @@
 * @date 2019/7/17
 */
 #include "Device.hpp"
-
-#ifdef LUNA_RHI_D3D12
-
-#include "ResourceHeap.hpp"
 #include "PipelineState.hpp"
-#include "CommandQueue.hpp"
 #include "Resource.hpp"
 #include "DescriptorSet.hpp"
 #include "ShaderInputLayout.hpp"
 #include "DescriptorSetLayout.hpp"
-#include "RenderTargetView.hpp"
-#include "DepthStencilView.hpp"
 #include "QueryHeap.hpp"
 #include "CommandBuffer.hpp"
+#include "Fence.hpp"
+#include "SwapChain.hpp"
 
 namespace Luna
 {
@@ -45,7 +40,6 @@ namespace Luna
 			m_free_ranges.push_back(range);
 			return ok;
 		}
-
 		void ShaderSourceDescriptorHeap::internal_free_descs(u32 offset, u32 count)
 		{
 			// Insert before this iterator. May be `end`.
@@ -85,7 +79,6 @@ namespace Luna
 			range.size = count;
 			m_free_ranges.insert(after, range);
 		}
-
 		u32 ShaderSourceDescriptorHeap::allocate_descs(u32 count)
 		{
 			luassert(count);
@@ -115,7 +108,6 @@ namespace Luna
 			MutexGuard guard(m_mutex);
 			internal_free_descs(offset, count);
 		}
-
 		void RenderTargetDescriptorHeap::init(ID3D12Device* device, D3D12_DESCRIPTOR_HEAP_TYPE type)
 		{
 			m_device = device;
@@ -168,48 +160,95 @@ namespace Luna
 			}
 #endif
 		}
-
-		RV Device::init(ID3D12Device* dev)
+		inline bool is_render_target_or_depth_stencil_texture(const TextureDesc& desc)
 		{
-			m_device = dev;
-			HRESULT hr = m_device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &m_feature_options, sizeof(D3D12_FEATURE_DATA_D3D12_OPTIONS));
-			if (FAILED(hr)) return BasicError::bad_platform_call();
-			m_architecture.NodeIndex = 0;
-			hr = m_device->CheckFeatureSupport(D3D12_FEATURE_ARCHITECTURE, &m_architecture, sizeof(D3D12_FEATURE_DATA_ARCHITECTURE));
-			if (FAILED(hr)) return BasicError::bad_platform_call();
-			D3D12_COMMAND_QUEUE_DESC desc;
-			desc.Type = D3D12_COMMAND_LIST_TYPE_COPY;
-			desc.Priority = D3D12_COMMAND_QUEUE_PRIORITY_NORMAL;
-			desc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
-			desc.NodeMask = 0;
-			if (FAILED(m_device->CreateCommandQueue(&desc, IID_PPV_ARGS(&m_internal_copy_queue))))
+			return test_flags(desc.usages, TextureUsageFlag::color_attachment) || test_flags(desc.usages, TextureUsageFlag::depth_stencil_attachment);
+		}
+		R<UniquePtr<CommandQueue>> Device::new_command_queue(const CommandQueueDesc& desc)
+		{
+			UniquePtr<CommandQueue> ret(memnew<CommandQueue>());
+			lutry
 			{
-				return BasicError::bad_platform_call();
+				ret->m_desc = desc;
+				D3D12_COMMAND_QUEUE_DESC d{};
+				d.Type = encode_command_queue_type(desc.type);
+				d.Priority = D3D12_COMMAND_QUEUE_PRIORITY_NORMAL;
+				d.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
+				d.NodeMask = 0;
+				luexp(encode_hresult(m_device->CreateCommandQueue(&d, IID_PPV_ARGS(&ret->m_command_queue))));
 			}
+			lucatchret;
+			return ret;
+		}
+		RV Device::init(IDXGIAdapter* adapter)
+		{
+			lutry
 			{
-				D3D12_DESCRIPTOR_HEAP_DESC desc;
-				desc.NodeMask = 0;
-				desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-				desc.NumDescriptors = D3D12_MAX_SHADER_VISIBLE_DESCRIPTOR_HEAP_SIZE_TIER_1;
-				desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-				auto r = m_cbv_srv_uav_heap.init(m_device.Get(), desc);
-				if (failed(r))
+				m_adapter = adapter;
+				luexp(encode_hresult(::D3D12CreateDevice(adapter, D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&m_device))));
+				D3D12MA::ALLOCATOR_DESC allocator_desc{};
+				allocator_desc.pDevice = m_device.Get();
+				allocator_desc.pAdapter = adapter;
+				luexp(encode_hresult(D3D12MA::CreateAllocator(&allocator_desc, &m_allocator)));
+
+				luexp(encode_hresult(m_device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &m_feature_options, sizeof(D3D12_FEATURE_DATA_D3D12_OPTIONS))));
+				m_architecture.NodeIndex = 0;
+				luexp(encode_hresult(m_device->CheckFeatureSupport(D3D12_FEATURE_ARCHITECTURE, &m_architecture, sizeof(D3D12_FEATURE_DATA_ARCHITECTURE))));
 				{
-					return r.errcode();
+					// Create 1 direct queue, 2 compute queues and 2 copy queues.
+					CommandQueueDesc desc;
+					desc.type = CommandQueueType::graphics;
+					desc.flags = CommandQueueFlags::presenting;
+					UniquePtr<CommandQueue> queue;
+					luset(queue, new_command_queue(desc));
+					m_command_queues.push_back(move(queue));
+					desc.type = CommandQueueType::compute;
+					desc.flags = CommandQueueFlags::none;
+					luset(queue, new_command_queue(desc));
+					m_command_queues.push_back(move(queue));
+					luset(queue, new_command_queue(desc));
+					m_command_queues.push_back(move(queue));
+					desc.type = CommandQueueType::copy;
+					luset(queue, new_command_queue(desc));
+					m_command_queues.push_back(move(queue));
+					luset(queue, new_command_queue(desc));
+					m_command_queues.push_back(move(queue));
 				}
-				desc.NumDescriptors = D3D12_MAX_SHADER_VISIBLE_SAMPLER_HEAP_SIZE;
-				desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER;
-				r = m_sampler_heap.init(m_device.Get(), desc);
-				if (failed(r))
 				{
-					return r.errcode();
+					D3D12_DESCRIPTOR_HEAP_DESC desc;
+					desc.NodeMask = 0;
+					desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+					desc.NumDescriptors = D3D12_MAX_SHADER_VISIBLE_DESCRIPTOR_HEAP_SIZE_TIER_1;
+					desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+					auto r = m_cbv_srv_uav_heap.init(m_device.Get(), desc);
+					if (failed(r))
+					{
+						return r.errcode();
+					}
+					desc.NumDescriptors = D3D12_MAX_SHADER_VISIBLE_SAMPLER_HEAP_SIZE;
+					desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER;
+					r = m_sampler_heap.init(m_device.Get(), desc);
+					if (failed(r))
+					{
+						return r.errcode();
+					}
+					m_rtv_heap.init(m_device.Get(), D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+					m_dsv_heap.init(m_device.Get(), D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
 				}
-				m_rtv_heap.init(m_device.Get(), D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-				m_dsv_heap.init(m_device.Get(), D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
+
 			}
+			lucatchret;
 			return ok;
 		}
-		usize Device::get_constant_buffer_data_alignment()
+		bool Device::check_device_feature(DeviceFeature feature)
+		{
+			switch (feature)
+			{
+			case DeviceFeature::unbound_descriptor_array: return true;
+			}
+			return false;
+		}
+		usize Device::get_uniform_buffer_data_alignment()
 		{
 			return 256;
 		}
@@ -225,34 +264,129 @@ namespace Luna
 			if(size) *size = sz;
 			if(alignment) *alignment = D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT;
 		}
-		u64 Device::get_resource_size(const ResourceDesc& desc, u64* out_alignment)
+		R<Ref<IBuffer>> Device::new_buffer(MemoryType memory_type, const BufferDesc& desc)
 		{
-			D3D12_RESOURCE_DESC res_desc = encode_resource_desc(validate_resource_desc(desc));
-			D3D12_RESOURCE_ALLOCATION_INFO info = m_device->GetResourceAllocationInfo(0, 1, &res_desc);
-			if (out_alignment) *out_alignment = info.Alignment;
-			return info.SizeInBytes;
-		}
-		R<Ref<IResource>> Device::new_resource(const ResourceDesc& desc, const ClearValue* optimized_clear_value)
-		{
-			Ref<Resource> res = new_object<Resource>();
+			Ref<BufferResource> res = new_object<BufferResource>();
 			res->m_device = this;
-			RV r = res->init_as_committed(desc, optimized_clear_value);
+			RV r = res->init_as_committed(memory_type, desc);
 			if (!r.valid())
 			{
 				return r.errcode();
 			}
 			return res;
 		}
-		R<Ref<IResourceHeap>> Device::new_resource_heap(const ResourceHeapDesc& desc)
+		R<Ref<ITexture>> Device::new_texture(MemoryType memory_type, const TextureDesc& desc, const ClearValue* optimized_clear_value)
 		{
-			Ref<ResourceHeap> heap = new_object<ResourceHeap>();
-			heap->m_device = this;
-			RV r = heap->init(desc);
+			Ref<TextureResource> res = new_object<TextureResource>();
+			res->m_device = this;
+			RV r = res->init_as_committed(memory_type, desc, optimized_clear_value);
 			if (!r.valid())
 			{
 				return r.errcode();
 			}
-			return heap;
+			return res;
+		}
+		bool Device::is_resources_aliasing_compatible(MemoryType memory_type, Span<const BufferDesc> buffers, Span<const TextureDesc> textures)
+		{
+			usize num_descs = buffers.size() + textures.size();
+			if (num_descs <= 1) return true;
+			if (m_feature_options.ResourceHeapTier >= D3D12_RESOURCE_HEAP_TIER_2)
+			{
+				// heaps can support resources from all three categories 
+				// (Buffers, Non-render target & non-depth stencil textures, Non-render target & non-depth stencil textures).
+				return true;
+			}
+			else
+			{
+				// heaps can only support resources from a single resource category.
+				if (!buffers.empty() && !textures.empty())
+				{
+					return false;
+				}
+				// Buffers can be created in the same heap.
+				if (!buffers.empty()) return true;
+				bool non_rt_texture_present = false;
+				bool rt_texture_present = false;
+				for (auto& desc : textures)
+				{
+					if (is_render_target_or_depth_stencil_texture(desc))
+					{
+						rt_texture_present = true;
+					}
+					else
+					{
+						non_rt_texture_present = true;
+					}
+				}
+				return !(rt_texture_present && non_rt_texture_present);
+			}
+		}
+		R<Ref<IDeviceMemory>> Device::allocate_memory(MemoryType memory_type, Span<const BufferDesc> buffers, Span<const TextureDesc> textures)
+		{
+			Ref<IDeviceMemory> ret;
+			lutry
+			{
+				if (buffers.empty() && textures.empty()) return BasicError::bad_arguments();
+				if (!is_resources_aliasing_compatible(memory_type, buffers, textures)) return BasicError::not_supported();
+				D3D12MA::ALLOCATION_DESC allocation_desc{};
+				allocation_desc.HeapType = encode_memory_type(memory_type);
+				allocation_desc.ExtraHeapFlags = D3D12_HEAP_FLAG_DENY_BUFFERS | D3D12_HEAP_FLAG_DENY_RT_DS_TEXTURES | D3D12_HEAP_FLAG_DENY_NON_RT_DS_TEXTURES;
+				D3D12_RESOURCE_DESC* descs = (D3D12_RESOURCE_DESC*)alloca(sizeof(D3D12_RESOURCE_DESC) * (buffers.size() + textures.size()));
+				u32 i = 0;
+				for (auto& buffer : buffers)
+				{
+					descs[i] = encode_buffer_desc(buffer);
+					allocation_desc.ExtraHeapFlags &= ~D3D12_HEAP_FLAG_DENY_BUFFERS;
+					++i;
+				}
+				for (auto& texture : textures)
+				{
+					descs[i] = encode_texture_desc(texture);
+					if (is_render_target_or_depth_stencil_texture(texture))
+					{
+						allocation_desc.ExtraHeapFlags &= ~D3D12_HEAP_FLAG_DENY_RT_DS_TEXTURES;
+					}
+					else
+					{
+						allocation_desc.ExtraHeapFlags &= ~D3D12_HEAP_FLAG_DENY_NON_RT_DS_TEXTURES;
+					}
+					++i;
+				}
+				D3D12_RESOURCE_ALLOCATION_INFO allocation_info = m_device->GetResourceAllocationInfo(0, i, descs);
+				auto memory = new_object<DeviceMemory>();
+				memory->m_device = this;
+				luexp(memory->init(memory_type, allocation_desc, allocation_info));
+			}
+			lucatchret;
+			return ret;
+		}
+		R<Ref<IBuffer>> Device::new_aliasing_buffer(IDeviceMemory* device_memory, const BufferDesc& desc)
+		{
+			Ref<IBuffer> ret;
+			lutry
+			{
+				DeviceMemory* memory = cast_object<DeviceMemory>(device_memory->get_object());
+				Ref<BufferResource> res = new_object<BufferResource>();
+				res->m_device = this;
+				luexp(res->init_as_aliasing(desc, memory));
+				ret = res;
+			}
+			lucatchret;
+			return ret;
+		}
+		R<Ref<ITexture>> Device::new_aliasing_texture(IDeviceMemory* device_memory, const TextureDesc& desc, const ClearValue* optimized_clear_value)
+		{
+			Ref<ITexture> ret;
+			lutry
+			{
+				DeviceMemory * memory = cast_object<DeviceMemory>(device_memory->get_object());
+				Ref<TextureResource> res = new_object<TextureResource>();
+				res->m_device = this;
+				luexp(res->init_as_aliasing(desc, memory, optimized_clear_value));
+				ret = res;
+			}
+			lucatchret;
+			return ret;
 		}
 		R<Ref<IShaderInputLayout>> Device::new_shader_input_layout(const ShaderInputLayoutDesc& desc)
 		{
@@ -290,7 +424,7 @@ namespace Luna
 			ret->init(desc);
 			return ret;
 		}
-		R<Ref<IDescriptorSet>> Device::new_descriptor_set(DescriptorSetDesc& desc)
+		R<Ref<IDescriptorSet>> Device::new_descriptor_set(const DescriptorSetDesc& desc)
 		{
 			Ref<DescriptorSet> ds = new_object<DescriptorSet>();
 			ds->m_device = this;
@@ -301,39 +435,32 @@ namespace Luna
 			}
 			return ds;
 		}
-		R<Ref<ICommandQueue>> Device::new_command_queue(CommandQueueType type)
+		u32 Device::get_num_command_queues()
 		{
-			Ref<CommandQueue> q = new_object<CommandQueue>(this);
-			RV r = q->init(type);
-			if (!r.valid())
-			{
-				return r.errcode();
-			}
-			return q;
+			return (u32)m_command_queues.size();
 		}
-		R<Ref<IRenderTargetView>> Device::new_render_target_view(IResource* res, const RenderTargetViewDesc* desc)
+		CommandQueueDesc Device::get_command_queue_desc(u32 command_queue_index)
 		{
-			lucheck_msg(res, "\"res\" was nullptr");
-			Ref<RenderTargetView> view = new_object<RenderTargetView>();
-			view->m_device = this;
-			RV r = view->init(res, desc);
-			if (!r.valid())
-			{
-				return r.errcode();
-			}
-			return view;
+			return m_command_queues[command_queue_index]->m_desc;
 		}
-		R<Ref<IDepthStencilView>> Device::new_depth_stencil_view(IResource* res, const DepthStencilViewDesc* desc)
+		R<Ref<ICommandBuffer>> Device::new_command_buffer(u32 command_queue_index)
 		{
-			lucheck_msg(res, "\"res\" was nullptr");
-			Ref<DepthStencilView> view = new_object<DepthStencilView>();
-			view->m_device = this;
-			RV r = view->init(res, desc);
-			if (!r.valid())
+			Ref<CommandBuffer> buffer = new_object<CommandBuffer>();
+			lutry
 			{
-				return r.errcode();
+				buffer->m_device = this;
+				buffer->m_queue = command_queue_index;
+				luexp(buffer->init());
 			}
-			return view;
+			lucatchret;
+			return buffer;
+		}
+		R<f64> Device::get_command_queue_timestamp_frequency(u32 command_queue_index)
+		{
+			UINT64 t;
+			HRESULT hr = m_command_queues[command_queue_index]->m_command_queue->GetTimestampFrequency(&t);
+			if (FAILED(hr)) return encode_hresult(hr).errcode();
+			return (f64)t;
 		}
 		R<Ref<IQueryHeap>> Device::new_query_heap(const QueryHeapDesc& desc)
 		{
@@ -346,230 +473,27 @@ namespace Luna
 			}
 			return heap;
 		}
-		struct CopyBufferPlacementInfo
+		R<Ref<IFence>> Device::new_fence()
 		{
-			u64 offset;
-			u64 row_pitch;
-			u64 depth_pitch;
-			Format pixel_format;
-		};
-		RV Device::copy_resource(Span<const ResourceCopyDesc> copies)
-		{
-			ResourceStateTrackingSystem tracking_system;
-			// Allocate one upload and one readback heap.
-			u64 upload_buffer_size = 0;
-			u64 readback_buffer_size = 0;
-			Vector<CopyBufferPlacementInfo> placements;
-			placements.reserve(copies.size());
-			for (auto& i : copies)
+			Ref<Fence> fence = new_object<Fence>();
+			fence->m_device = this;
+			RV r = fence->init();
+			if (!r.valid())
 			{
-				if (i.op == ResourceCopyOp::read_buffer)
-				{
-					u64 offset = readback_buffer_size;
-					placements.push_back({ offset, 0, 0, Format::unknown });
-					readback_buffer_size += i.read_buffer.size;
-					tracking_system.pack_barrier(ResourceBarrierDesc::as_transition(i.resource, ResourceState::copy_source));
-				}
-				else if (i.op == ResourceCopyOp::write_buffer)
-				{
-					u64 offset = upload_buffer_size;
-					placements.push_back({ offset, 0, 0, Format::unknown });
-					upload_buffer_size += i.write_buffer.size;
-					tracking_system.pack_barrier(ResourceBarrierDesc::as_transition(i.resource, ResourceState::copy_dest));
-				}
-				else if (i.op == ResourceCopyOp::read_texture)
-				{
-					u64 size, alignment, row_pitch, depth_pitch;
-					auto desc = i.resource->get_desc();
-					get_texture_data_placement_info(i.read_texture.read_box.width, i.read_texture.read_box.height, i.read_texture.read_box.depth,
-						desc.pixel_format, &size, &alignment, &row_pitch, &depth_pitch);
-					u64 offset = align_upper(readback_buffer_size, alignment);
-					placements.push_back({ offset, row_pitch, depth_pitch, desc.pixel_format });
-					readback_buffer_size = offset + size;
-					tracking_system.pack_barrier(ResourceBarrierDesc::as_transition(i.resource, ResourceState::copy_source));
-				}
-				else if (i.op == ResourceCopyOp::write_texture)
-				{
-					u64 size, alignment, row_pitch, depth_pitch;
-					auto desc = i.resource->get_desc();
-					get_texture_data_placement_info(i.write_texture.write_box.width, i.write_texture.write_box.height, i.write_texture.write_box.depth,
-						desc.pixel_format, &size, &alignment, &row_pitch, &depth_pitch);
-					u64 offset = align_upper(upload_buffer_size, alignment);
-					placements.push_back({ offset, row_pitch, depth_pitch, desc.pixel_format });
-					upload_buffer_size = offset + size;
-					tracking_system.pack_barrier(ResourceBarrierDesc::as_transition(i.resource, ResourceState::copy_dest));
-				}
+				return r.errcode();
 			}
+			return fence;
+		}
+		R<Ref<ISwapChain>> Device::new_swap_chain(u32 command_queue_index, Window::IWindow* window, const SwapChainDesc& desc)
+		{
+			Ref<SwapChain> r = new_object<SwapChain>();
 			lutry
 			{
-				Ref<IResource> upload_buffer;
-				Ref<IResource> readback_buffer;
-				byte_t* upload_data = nullptr;
-				byte_t* readback_data = nullptr;
-				if (upload_buffer_size)
-				{
-					luset(upload_buffer, new_resource(ResourceDesc::buffer(ResourceHeapType::upload, ResourceUsageFlag::none, upload_buffer_size), nullptr));
-					luexp(upload_buffer->map_subresource(0, 0, 0, (void**)&upload_data));
-					// Fill upload data.
-					for (usize i = 0; i < copies.size(); ++i)
-					{
-						auto& copy = copies[i];
-						if (copy.op == ResourceCopyOp::write_buffer)
-						{
-							memcpy(upload_data + (usize)placements[i].offset, copy.write_buffer.src, copy.write_buffer.size);
-						}
-						else if (copy.op == ResourceCopyOp::write_texture)
-						{
-							usize copy_size_per_row = bits_per_pixel(placements[i].pixel_format) * copy.write_texture.write_box.width / 8;
-							memcpy_bitmap3d(upload_data + (usize)placements[i].offset, copy.write_texture.src,
-								copy_size_per_row, copy.write_texture.write_box.height, copy.write_texture.write_box.depth,
-								(usize)placements[i].row_pitch, copy.write_texture.src_row_pitch, (usize)placements[i].depth_pitch, copy.write_texture.src_depth_pitch);
-						}
-					}
-					upload_buffer->unmap_subresource(0, 0, USIZE_MAX);
-				}
-				if (readback_buffer_size)
-				{
-					luset(readback_buffer, new_resource(ResourceDesc::buffer(ResourceHeapType::readback, ResourceUsageFlag::none, readback_buffer_size), nullptr));
-				}
-				// Use GPU to copy data.
-				ResourceCopyContext context;
-				m_copy_contexts_lock.lock();
-				if (m_copy_contexts.empty())
-				{
-					m_copy_contexts_lock.unlock();
-					luexp(context.init(m_device.Get()));
-				}
-				else
-				{
-					context = move(m_copy_contexts.back());
-					m_copy_contexts.pop_back();
-					m_copy_contexts_lock.unlock();
-				}
-				auto barriers = tracking_system.m_barriers;
-				tracking_system.resolve();
-				barriers.insert(barriers.end(), tracking_system.m_barriers.begin(), tracking_system.m_barriers.end());
-				if (!barriers.empty())
-				{
-					context.m_li->ResourceBarrier((UINT)barriers.size(), barriers.data());
-				}
-				tracking_system.apply(CommandQueueType::copy);
-				for (usize i = 0; i < copies.size(); ++i)
-				{
-					auto& copy = copies[i];
-					if (copy.op == ResourceCopyOp::read_buffer)
-					{
-						context.m_li->CopyBufferRegion(((Resource*)readback_buffer.object())->m_res.Get(), placements[i].offset,
-							((Resource*)copy.resource->get_object())->m_res.Get(), copy.read_buffer.src_offset, copy.read_buffer.size);
-					}
-					else if (copy.op == ResourceCopyOp::write_buffer)
-					{
-						context.m_li->CopyBufferRegion(((Resource*)copy.resource->get_object())->m_res.Get(), copy.write_buffer.dest_offset,
-							((Resource*)upload_buffer.object())->m_res.Get(), placements[i].offset, copy.write_buffer.size);
-					}
-					else if (copy.op == ResourceCopyOp::read_texture)
-					{
-						D3D12_TEXTURE_COPY_LOCATION dest, src;
-						dest.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
-						dest.pResource = ((Resource*)readback_buffer.object())->m_res.Get();
-						dest.PlacedFootprint.Offset = placements[i].offset;
-						dest.PlacedFootprint.Footprint.Width = copy.read_texture.read_box.width;
-						dest.PlacedFootprint.Footprint.Height = copy.read_texture.read_box.height;
-						dest.PlacedFootprint.Footprint.Depth = copy.read_texture.read_box.depth;
-						dest.PlacedFootprint.Footprint.Format = encode_pixel_format(placements[i].pixel_format);
-						dest.PlacedFootprint.Footprint.RowPitch = placements[i].row_pitch;
-						src.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
-						src.pResource = ((Resource*)copy.resource->get_object())->m_res.Get();
-						src.SubresourceIndex = copy.read_texture.src_subresource;
-						D3D12_BOX src_box;
-						src_box.left = copy.read_texture.read_box.offset_x;
-						src_box.right = copy.read_texture.read_box.offset_x + copy.read_texture.read_box.width;
-						src_box.top = copy.read_texture.read_box.offset_y;
-						src_box.bottom = copy.read_texture.read_box.offset_y + copy.read_texture.read_box.height;
-						src_box.front = copy.read_texture.read_box.offset_z;
-						src_box.back = copy.read_texture.read_box.offset_z + copy.read_texture.read_box.depth;
-						context.m_li->CopyTextureRegion(&dest, 0, 0, 0, &src, &src_box);
-					}
-					else if (copy.op == ResourceCopyOp::write_texture)
-					{
-						D3D12_TEXTURE_COPY_LOCATION dest, src;
-						dest.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
-						dest.pResource = ((Resource*)copy.resource->get_object())->m_res.Get();
-						dest.SubresourceIndex = copy.write_texture.dest_subresource;
-						src.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
-						src.pResource = ((Resource*)upload_buffer.object())->m_res.Get();
-						src.PlacedFootprint.Offset = placements[i].offset;
-						src.PlacedFootprint.Footprint.Width = copy.write_texture.write_box.width;
-						src.PlacedFootprint.Footprint.Height = copy.write_texture.write_box.height;
-						src.PlacedFootprint.Footprint.Depth = copy.write_texture.write_box.depth;
-						src.PlacedFootprint.Footprint.Format = encode_pixel_format(placements[i].pixel_format);
-						src.PlacedFootprint.Footprint.RowPitch = placements[i].row_pitch;
-						D3D12_BOX src_box;
-						src_box.left = 0;
-						src_box.right = copy.write_texture.write_box.width;
-						src_box.top = 0;
-						src_box.bottom = copy.write_texture.write_box.height;
-						src_box.front = 0;
-						src_box.back = copy.write_texture.write_box.depth;
-						context.m_li->CopyTextureRegion(&dest,
-							copy.write_texture.write_box.offset_x, copy.write_texture.write_box.offset_y, copy.write_texture.write_box.offset_z,
-							&src, &src_box);
-					}
-				}
-				// Submit copy command to GPU and wait for completion.
-				HRESULT hr = context.m_li->Close();
-				if (FAILED(hr)) return encode_d3d12_error(hr);
-				ID3D12CommandList* list = context.m_li.Get();
-				m_internal_copy_queue->ExecuteCommandLists(1, &list);
-				++context.m_event_value;
-				hr = context.m_fence->SetEventOnCompletion(context.m_event_value, context.m_event);
-				if (FAILED(hr)) return encode_d3d12_error(hr);
-				hr = m_internal_copy_queue->Signal(context.m_fence.Get(), context.m_event_value);
-				if (FAILED(hr)) return encode_d3d12_error(hr);
-				DWORD res = ::WaitForSingleObject(context.m_event, INFINITE);
-				if (res != WAIT_OBJECT_0)
-				{
-					return BasicError::bad_platform_call();
-				}
-				BOOL b = ::ResetEvent(context.m_event);
-				if (!b)
-				{
-					return BasicError::bad_platform_call();
-				}
-				hr = context.m_ca->Reset();
-				if (FAILED(hr)) return encode_d3d12_error(hr);
-				hr = context.m_li->Reset(context.m_ca.Get(), NULL);
-				if (FAILED(hr)) return encode_d3d12_error(hr);
-				// Give back context.
-				m_copy_contexts_lock.lock();
-				m_copy_contexts.push_back(move(context));
-				m_copy_contexts_lock.unlock();
-				// Read data for read calls.
-				if (readback_buffer)
-				{
-					luexp(readback_buffer->map_subresource(0, 0, USIZE_MAX, (void**)&readback_data));
-					for (usize i = 0; i < copies.size(); ++i)
-					{
-						auto& copy = copies[i];
-						if (copy.op == ResourceCopyOp::read_buffer)
-						{
-							memcpy(copy.read_buffer.dest, readback_data + (usize)placements[i].offset, copy.read_buffer.size);
-						}
-						else if (copy.op == ResourceCopyOp::read_texture)
-						{
-							usize copy_size_per_row = bits_per_pixel(placements[i].pixel_format) * copy.read_texture.read_box.width / 8;
-							memcpy_bitmap3d(copy.read_texture.dest, readback_data + (usize)placements[i].offset,
-								copy_size_per_row, copy.read_texture.read_box.height, copy.read_texture.read_box.depth,
-								copy.read_texture.dest_row_pitch, (usize)placements[i].row_pitch, copy.read_texture.dest_depth_pitch, (usize)placements[i].depth_pitch);
-						}
-					}
-					readback_buffer->unmap_subresource(0, 0, 0);
-				}
+				r->m_device = this;
+				luexp(r->init(command_queue_index, window, desc));
 			}
 			lucatchret;
-			return ok;
+			return r;
 		}
 	}
 }
-
-#endif

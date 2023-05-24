@@ -8,8 +8,6 @@
 * @date 2022/8/3
 */
 #pragma once
-
-#ifdef LUNA_RHI_D3D12
 #include "D3D12Common.hpp"
 #include "Device.hpp"
 
@@ -71,7 +69,7 @@ namespace Luna
 
 			HeapInfo* get_heap_by_type(D3D12_DESCRIPTOR_HEAP_TYPE heap);
 
-			u32 get_root_parameter_index(DescriptorType type, ShaderVisibility shader_visibility);
+			u32 get_root_parameter_index(DescriptorType type, ShaderVisibilityFlag shader_visibility);
 
 			IDevice* get_device()
 			{
@@ -81,5 +79,3 @@ namespace Luna
 		};
 	}
 }
-
-#endif

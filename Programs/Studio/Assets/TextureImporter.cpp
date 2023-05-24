@@ -50,8 +50,8 @@ namespace Luna
 
 		RV init();
 		void import_texture_asset(const Path& create_dir, const TextureFile& file);
-		RV generate_mipmaps(RHI::IResource* resource_with_most_detailed_mip, RHI::ICommandBuffer* compute_cmdbuf);
-		R<Ref<RHI::IResource>> generate_environment_mipmaps(RHI::IResource* resource_with_most_detailed_mip, RHI::ICommandBuffer* compute_cmdbuf);
+		RV generate_mipmaps(RHI::ITexture* resource_with_most_detailed_mip, RHI::ICommandBuffer* compute_cmdbuf);
+		R<Ref<RHI::ITexture>> generate_environment_mipmaps(RHI::ITexture* resource_with_most_detailed_mip, RHI::ICommandBuffer* compute_cmdbuf);
 
 		bool m_open;
 
@@ -71,21 +71,17 @@ namespace Luna
 		lutry
 		{
 			{
-				DescriptorSetLayoutDesc desc;
-				desc.bindings = {
-					DescriptorSetLayoutBinding(DescriptorType::cbv, 0, 1, ShaderVisibility::all),
-					DescriptorSetLayoutBinding(DescriptorType::srv, 1, 1, ShaderVisibility::all),
-					DescriptorSetLayoutBinding(DescriptorType::uav, 2, 1, ShaderVisibility::all),
-					DescriptorSetLayoutBinding(DescriptorType::sampler, 3, 1, ShaderVisibility::all)
-				};
-				luset(m_mipmapping_dlayout, RHI::get_main_device()->new_descriptor_set_layout(desc));
-
+				luset(m_mipmapping_dlayout, RHI::get_main_device()->new_descriptor_set_layout(DescriptorSetLayoutDesc({
+					DescriptorSetLayoutBinding(DescriptorType::uniform_buffer_view, 0, 1, ShaderVisibilityFlag::all),
+					DescriptorSetLayoutBinding(DescriptorType::read_texture_view, 1, 1, ShaderVisibilityFlag::all),
+					DescriptorSetLayoutBinding(DescriptorType::read_write_texture_view, 2, 1, ShaderVisibilityFlag::all),
+					DescriptorSetLayoutBinding(DescriptorType::sampler, 3, 1, ShaderVisibilityFlag::all)
+					})));
+				auto dlayout = m_mipmapping_dlayout.get();
 				luset(m_mipmapping_slayout, RHI::get_main_device()->new_shader_input_layout(ShaderInputLayoutDesc(
-					{ m_mipmapping_dlayout },
+					{ &dlayout, 1 },
 					ShaderInputLayoutFlag::deny_vertex_shader_access |
-					ShaderInputLayoutFlag::deny_domain_shader_access |
-					ShaderInputLayoutFlag::deny_geometry_shader_access |
-					ShaderInputLayoutFlag::deny_hull_shader_access |
+					
 					ShaderInputLayoutFlag::deny_pixel_shader_access)));
 
 				lulet(psf, open_file("MipmapGenerationCS.cso", FileOpenFlag::read, FileCreationMode::open_existing));
@@ -99,21 +95,17 @@ namespace Luna
 				luset(m_mipmapping_pso, RHI::get_main_device()->new_compute_pipeline_state(ps_desc));
 			}
 			{
-				DescriptorSetLayoutDesc desc;
-				desc.bindings = {
-					DescriptorSetLayoutBinding(DescriptorType::cbv, 0, 1, ShaderVisibility::all),
-					DescriptorSetLayoutBinding(DescriptorType::srv, 1, 1, ShaderVisibility::all),
-					DescriptorSetLayoutBinding(DescriptorType::uav, 2, 1, ShaderVisibility::all),
-					DescriptorSetLayoutBinding(DescriptorType::sampler, 3, 1, ShaderVisibility::all)
-				};
-				luset(m_env_mipmapping_dlayout, RHI::get_main_device()->new_descriptor_set_layout(desc));
-
+				luset(m_env_mipmapping_dlayout, RHI::get_main_device()->new_descriptor_set_layout(DescriptorSetLayoutDesc({
+					DescriptorSetLayoutBinding(DescriptorType::uniform_buffer_view, 0, 1, ShaderVisibilityFlag::all),
+					DescriptorSetLayoutBinding(DescriptorType::read_texture_view, 1, 1, ShaderVisibilityFlag::all),
+					DescriptorSetLayoutBinding(DescriptorType::read_write_texture_view, 2, 1, ShaderVisibilityFlag::all),
+					DescriptorSetLayoutBinding(DescriptorType::sampler, 3, 1, ShaderVisibilityFlag::all)
+					})));
+				auto dlayout = m_env_mipmapping_dlayout.get();
 				luset(m_env_mipmapping_slayout, RHI::get_main_device()->new_shader_input_layout(ShaderInputLayoutDesc(
-					{ m_env_mipmapping_dlayout },
+					{ &dlayout, 1 },
 					ShaderInputLayoutFlag::deny_vertex_shader_access |
-					ShaderInputLayoutFlag::deny_domain_shader_access |
-					ShaderInputLayoutFlag::deny_geometry_shader_access |
-					ShaderInputLayoutFlag::deny_hull_shader_access |
+					
 					ShaderInputLayoutFlag::deny_pixel_shader_access)));
 
 				lulet(psf, open_file("PrecomputeEnvironmentMapMips.cso", FileOpenFlag::read, FileCreationMode::open_existing));
@@ -131,22 +123,22 @@ namespace Luna
 		return ok;
 	}
 
-	RV TextureImporter::generate_mipmaps(RHI::IResource* resource_with_most_detailed_mip, RHI::ICommandBuffer* compute_cmdbuf)
+	RV TextureImporter::generate_mipmaps(RHI::ITexture* resource_with_most_detailed_mip, RHI::ICommandBuffer* compute_cmdbuf)
 	{
 		using namespace RHI;
 		lutry
 		{
 			auto desc = resource_with_most_detailed_mip->get_desc();
 			lucheck(desc.mip_levels);
-			lucheck(desc.type == ResourceType::texture_2d);
-			lucheck(desc.depth_or_array_size == 1);
+			lucheck(desc.type == TextureType::tex2d);
+			lucheck(desc.depth == 1);
 
 			if (desc.mip_levels == 1)
 			{
 				return ok;
 			}
 
-			auto device = RHI::get_main_device();
+			auto device = g_env->device;
 
 			if (!m_mipmapping_slayout)
 			{
@@ -154,48 +146,48 @@ namespace Luna
 			}
 
 			compute_cmdbuf->set_compute_shader_input_layout(m_mipmapping_slayout);
-			compute_cmdbuf->set_pipeline_state(m_mipmapping_pso);
-			u32 cb_align = device->get_constant_buffer_data_alignment();
+			compute_cmdbuf->set_compute_pipeline_state(m_mipmapping_pso);
+			u32 cb_align = device->get_uniform_buffer_data_alignment();
 			u32 cb_size = (u32)align_upper(sizeof(Float2), cb_align);
-			lulet(cb, device->new_resource(
-				ResourceDesc::buffer(ResourceHeapType::upload, ResourceUsageFlag::constant_buffer, cb_size * (desc.mip_levels - 1))));
+			lulet(cb, device->new_buffer(MemoryType::upload,
+				BufferDesc(BufferUsageFlag::uniform_buffer, cb_size * (desc.mip_levels - 1))));
 
-			void* mapped = nullptr;
-			luexp(cb->map_subresource(0, 0, 0, &mapped));
+			lulet(mapped, cb->map(0, 0));
 			for (u32 j = 0; j < (u32)(desc.mip_levels - 1); ++j)
 			{
-				u32 width = max<u32>((u32)desc.width_or_buffer_size >> (j + 1), 1);
+				u32 width = max<u32>((u32)desc.width >> (j + 1), 1);
 				u32 height = max<u32>(desc.height >> (j + 1), 1);
 				Float2U* dest = (Float2U*)((usize)mapped + cb_size * j);
 				dest->x = 1.0f / (f32)width;
 				dest->y = 1.0f / (f32)height;
 			}
-			cb->unmap_subresource(0, 0, USIZE_MAX);
+			cb->unmap(0, USIZE_MAX);
+
+			u32 width = desc.width / 2;
+			u32 height = desc.height / 2;
 
 			for (u32 j = 0; j < (u32)(desc.mip_levels - 1); ++j)
 			{
-				u32 src_subresource = RHI::calc_subresource_index(j, 0, desc.mip_levels);
-				u32 dest_subresource = RHI::calc_subresource_index(j + 1, 0, desc.mip_levels);
-				ResourceBarrierDesc barriers[] = {
-					ResourceBarrierDesc::as_transition(resource_with_most_detailed_mip, ResourceState::shader_resource_non_pixel, src_subresource),
-					ResourceBarrierDesc::as_transition(resource_with_most_detailed_mip, ResourceState::unordered_access, dest_subresource)
+				TextureBarrier barriers[] = {
+					{resource_with_most_detailed_mip, SubresourceIndex(j, 0), TextureStateFlag::automatic, TextureStateFlag::shader_read_cs, ResourceBarrierFlag::none},
+					{resource_with_most_detailed_mip, SubresourceIndex(j + 1, 0),TextureStateFlag::automatic, TextureStateFlag::shader_write_cs, ResourceBarrierFlag::none}
 				};
-				compute_cmdbuf->resource_barriers({ barriers, 2 });
+				compute_cmdbuf->resource_barrier({}, { barriers, 2 });
 				lulet(vs, device->new_descriptor_set(DescriptorSetDesc(m_mipmapping_dlayout)));
-				vs->set_cbv(0, cb, ConstantBufferViewDesc(cb_size * j, cb_size));
-				vs->set_srv(1, resource_with_most_detailed_mip, &ShaderResourceViewDesc::as_tex2d(desc.pixel_format, src_subresource, 1, 0.0f));
-				vs->set_uav(2, resource_with_most_detailed_mip, nullptr, &UnorderedAccessViewDesc::as_tex2d(desc.pixel_format, dest_subresource));
-				vs->set_sampler(3, SamplerDesc(FilterMode::min_mag_mip_linear, TextureAddressMode::clamp, TextureAddressMode::clamp, TextureAddressMode::clamp));
+				vs->update_descriptors({
+					WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(cb, cb_size * j, cb_size)),
+					WriteDescriptorSet::read_texture_view(1, TextureViewDesc::tex2d(resource_with_most_detailed_mip, Format::unknown, j, 1)),
+					WriteDescriptorSet::read_write_texture_view(2, TextureViewDesc::tex2d(resource_with_most_detailed_mip, Format::unknown, j + 1, 1)),
+					WriteDescriptorSet::sampler(3, SamplerDesc(Filter::min_mag_mip_linear, TextureAddressMode::clamp, TextureAddressMode::clamp, TextureAddressMode::clamp))
+					});
 				compute_cmdbuf->set_compute_descriptor_set(0, vs);
 				compute_cmdbuf->attach_device_object(vs);
-				u32 width = max<u32>((u32)desc.width_or_buffer_size >> (j + 1), 1);
-				u32 height = max<u32>(desc.height >> (j + 1), 1);
 				compute_cmdbuf->dispatch(align_upper(width, 8) / 8, align_upper(height, 8) / 8, 1);
+				width = max<u32>(width / 2, 1);
+				height = max<u32>(height / 2, 1);
 			}
 
-			compute_cmdbuf->resource_barrier(ResourceBarrierDesc::as_transition(resource_with_most_detailed_mip, ResourceState::common));
-
-			luexp(compute_cmdbuf->submit());
+			luexp(compute_cmdbuf->submit({}, {}, true));
 			compute_cmdbuf->wait();
 			luexp(compute_cmdbuf->reset());
 		}
@@ -203,18 +195,18 @@ namespace Luna
 		return ok;
 	}
 
-	R<Ref<RHI::IResource>> TextureImporter::generate_environment_mipmaps(RHI::IResource* resource_with_most_detailed_mip, RHI::ICommandBuffer* compute_cmdbuf)
+	R<Ref<RHI::ITexture>> TextureImporter::generate_environment_mipmaps(RHI::ITexture* resource_with_most_detailed_mip, RHI::ICommandBuffer* compute_cmdbuf)
 	{
 		using namespace RHI;
-		Ref<RHI::IResource> prefiltered;
+		Ref<RHI::ITexture> prefiltered;
 		lutry
 		{
 			auto desc = resource_with_most_detailed_mip->get_desc();
 			lucheck(desc.mip_levels);
-			lucheck(desc.type == ResourceType::texture_2d);
-			lucheck(desc.depth_or_array_size == 1);
+			lucheck(desc.type == TextureType::tex2d);
+			lucheck(desc.depth == 1);
 
-			auto device = RHI::get_main_device();
+			auto device = g_env->device;
 
 			if (!m_mipmapping_slayout)
 			{
@@ -222,11 +214,11 @@ namespace Luna
 			}
 
 			desc.mip_levels = ENV_MAP_MIPS;
-			luset(prefiltered, device->new_resource(desc));
+			luset(prefiltered, device->new_texture(MemoryType::local, desc));
 			desc = prefiltered->get_desc();
 
 			compute_cmdbuf->set_compute_shader_input_layout(m_env_mipmapping_slayout);
-			compute_cmdbuf->set_pipeline_state(m_env_mipmapping_pso);
+			compute_cmdbuf->set_compute_pipeline_state(m_env_mipmapping_pso);
 			struct CB
 			{
 				u32 tex_width;
@@ -235,51 +227,55 @@ namespace Luna
 				u32 mip_0_height;
 				f32 roughness;
 			};
-			u32 cb_align = device->get_constant_buffer_data_alignment();
+			u32 cb_align = device->get_uniform_buffer_data_alignment();
 			u32 cb_size = (u32)align_upper(sizeof(CB), cb_align);
-			lulet(cb, device->new_resource(
-				ResourceDesc::buffer(ResourceHeapType::upload, ResourceUsageFlag::constant_buffer, cb_size * (desc.mip_levels - 1))));
+			lulet(cb, device->new_buffer(MemoryType::upload,
+				BufferDesc(BufferUsageFlag::uniform_buffer, cb_size * (desc.mip_levels - 1))));
 
-			void* mapped = nullptr;
-			luexp(cb->map_subresource(0, 0, 0, &mapped));
+			lulet(mapped, cb->map(0, 0));
 			for (u32 j = 0; j < (u32)(desc.mip_levels - 1); ++j)
 			{
-				u32 width = max<u32>((u32)desc.width_or_buffer_size >> (j + 1), 1);
+				u32 width = max<u32>((u32)desc.width >> (j + 1), 1);
 				u32 height = max<u32>(desc.height >> (j + 1), 1);
 				CB* dest = (CB*)((usize)mapped + cb_size * j);
 				dest->tex_width = width;
 				dest->tex_height = height;
-				dest->mip_0_width = (u32)desc.width_or_buffer_size;
+				dest->mip_0_width = (u32)desc.width;
 				dest->mip_0_height = desc.height;
 				dest->roughness = 1.0f / (desc.mip_levels - 1) * (j + 1);
 			}
-			cb->unmap_subresource(0, 0, USIZE_MAX);
+			cb->unmap(0, USIZE_MAX);
 
-			compute_cmdbuf->resource_barriers({
-				ResourceBarrierDesc::as_transition(resource_with_most_detailed_mip, ResourceState::copy_source, 0),
-				ResourceBarrierDesc::as_transition(prefiltered, ResourceState::copy_dest, 0) });
-			compute_cmdbuf->copy_texture_region(TextureCopyLocation::as_subresource_index(prefiltered, 0), 0, 0, 0, 
-				TextureCopyLocation::as_subresource_index(resource_with_most_detailed_mip, 0), &BoxU(0, 0, 0, (u32)desc.width_or_buffer_size, desc.height, 1));
+			compute_cmdbuf->resource_barrier({},
+				{
+					{resource_with_most_detailed_mip, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::copy_source, ResourceBarrierFlag::none},
+					{prefiltered, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::copy_dest, ResourceBarrierFlag::discard_content}
+				});
+			compute_cmdbuf->copy_texture(prefiltered, SubresourceIndex(0, 0), 0, 0, 0, resource_with_most_detailed_mip, SubresourceIndex(0, 0), 0, 0, 0, desc.width, desc.height, 1);
 
-			compute_cmdbuf->resource_barrier(ResourceBarrierDesc::as_transition(resource_with_most_detailed_mip, ResourceState::shader_resource_non_pixel));
-			compute_cmdbuf->resource_barrier(ResourceBarrierDesc::as_transition(prefiltered, ResourceState::unordered_access));
+			compute_cmdbuf->resource_barrier({},
+				{
+					{resource_with_most_detailed_mip, TEXTURE_BARRIER_ALL_SUBRESOURCES, TextureStateFlag::automatic, TextureStateFlag::shader_read_cs, ResourceBarrierFlag::none},
+					{prefiltered, TEXTURE_BARRIER_ALL_SUBRESOURCES, TextureStateFlag::automatic,  TextureStateFlag::shader_read_cs | TextureStateFlag::shader_write_cs, ResourceBarrierFlag::none}
+				});
 
 			for (u32 j = 0; j < (u32)(desc.mip_levels - 1); ++j)
 			{
-				u32 dest_subresource = RHI::calc_subresource_index(j + 1, 0, desc.mip_levels);
+				u32 dest_mip = j + 1;
 				lulet(vs, device->new_descriptor_set(DescriptorSetDesc(m_env_mipmapping_dlayout)));
-				vs->set_cbv(0, cb, ConstantBufferViewDesc(cb_size * j, cb_size));
-				vs->set_srv(1, resource_with_most_detailed_mip);
-				vs->set_uav(2, prefiltered, nullptr, &UnorderedAccessViewDesc::as_tex2d(desc.pixel_format, dest_subresource));
-				vs->set_sampler(3, SamplerDesc(FilterMode::min_mag_mip_linear, TextureAddressMode::clamp, TextureAddressMode::clamp, TextureAddressMode::clamp));
+				vs->update_descriptors({
+					WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(cb, cb_size * j, cb_size)),
+					WriteDescriptorSet::read_texture_view(1, TextureViewDesc::tex2d(resource_with_most_detailed_mip)),
+					WriteDescriptorSet::read_write_texture_view(2, TextureViewDesc::tex2d(prefiltered, desc.format, dest_mip, 1)),
+					WriteDescriptorSet::sampler(3, SamplerDesc(Filter::min_mag_mip_linear, TextureAddressMode::clamp, TextureAddressMode::clamp, TextureAddressMode::clamp))
+					});
 				compute_cmdbuf->set_compute_descriptor_set(0, vs);
 				compute_cmdbuf->attach_device_object(vs);
-				u32 width = max<u32>((u32)desc.width_or_buffer_size >> (j + 1), 1);
+				u32 width = max<u32>((u32)desc.width >> (j + 1), 1);
 				u32 height = max<u32>(desc.height >> (j + 1), 1);
 				compute_cmdbuf->dispatch(align_upper(width, 8) / 8, align_upper(height, 8) / 8, 1);
 			}
-			compute_cmdbuf->resource_barrier(ResourceBarrierDesc::as_transition(prefiltered, ResourceState::common));
-			luexp(compute_cmdbuf->submit());
+			luexp(compute_cmdbuf->submit({}, {}, true));
 			compute_cmdbuf->wait();
 			luexp(compute_cmdbuf->reset());
 		}
@@ -300,24 +296,20 @@ namespace Luna
 			using namespace RHI;
 			auto device = get_main_device();
 			// Create resource.
-			lulet(tex, device->new_resource(RHI::ResourceDesc::tex2d(RHI::ResourceHeapType::local,
-				get_pixel_format_from_image_format(file.m_desc.format), 
-				RHI::ResourceUsageFlag::shader_resource | RHI::ResourceUsageFlag::unordered_access, 
+			lulet(tex, device->new_texture(RHI::MemoryType::local, RHI::TextureDesc::tex2d(
+				get_format_from_image_format(file.m_desc.format), 
+				RHI::TextureUsageFlag::read_texture | RHI::TextureUsageFlag::read_write_texture | RHI::TextureUsageFlag::copy_source | RHI::TextureUsageFlag::copy_dest,
 				file.m_desc.width, file.m_desc.height)));
 			// Upload data.
 			{
 				Image::ImageDesc image_desc;
 				lulet(img_data, Image::read_image_file(file.m_file_data.data(), file.m_file_data.size(), get_desired_format(file.m_desc.format), image_desc));
-				luexp(device->copy_resource({
-					RHI::ResourceCopyDesc::as_write_texture(tex, img_data.data(),
-						pixel_size(image_desc.format) * image_desc.width,
-						pixel_size(image_desc.format) * image_desc.width * image_desc.height,
-						0, BoxU(0, 0, 0, image_desc.width, image_desc.height, 1))
-					}));
+				luexp(upload_texture_data(tex, SubresourceIndex(0, 0), 0, 0, 0, img_data.data(), pixel_size(image_desc.format) * image_desc.width,
+					pixel_size(image_desc.format) * image_desc.width * image_desc.height, image_desc.width, image_desc.height, 1));
 			}
 			// Generate mipmaps.
 			{
-				lulet(cmd, g_env->async_compute_queue->new_command_buffer());
+				lulet(cmd, g_env->device->new_command_buffer(g_env->async_compute_queue));
 				luexp(generate_mipmaps(tex, cmd));
 				if (file.m_prefiler_type == TexturePrefilerType::environment_map)
 				{
@@ -328,20 +320,17 @@ namespace Luna
 			auto desc = tex->get_desc();
 			Vector<Image::ImageDesc> descs;
 			Vector<Blob> img_data;
-			Vector<ResourceCopyDesc> copies;
 			Vector<Pair<u64, u64>> offsets;
 			for (u32 i = 0; i < desc.mip_levels; ++i)
 			{
-				u32 mip_width = max<u32>((u32)desc.width_or_buffer_size >> i, 1);
+				u32 mip_width = max<u32>((u32)desc.width >> i, 1);
 				u32 mip_height = max<u32>(desc.height >> i, 1);
-				usize row_pitch = (usize)mip_width * bits_per_pixel(desc.pixel_format) / 8;
+				usize row_pitch = (usize)mip_width * bits_per_pixel(desc.format) / 8;
 				usize data_sz = row_pitch * (usize)mip_height;
 				Blob data(data_sz);
+				luexp(readback_texture_data(data.data(), row_pitch, data_sz, tex, SubresourceIndex(i, 0), 0, 0, 0, mip_width, mip_height, 1));
 				img_data.push_back(move(data));
-				ResourceCopyDesc copy = ResourceCopyDesc::as_read_texture(tex, img_data.back().data(), (u32)row_pitch, (u32)data_sz, i, BoxU(0, 0, 0, mip_width, mip_height, 1));
-				copies.push_back(copy);
 			}
-			luexp(device->copy_resource({ copies.data(), copies.size() }));
 			u64 file_offset = 0;
 			Path file_path = create_dir;
 			file_path.push_back(file.m_asset_name);
@@ -355,13 +344,13 @@ namespace Luna
 			// Convert data to file.
 			for (u32 i = 0; i < desc.mip_levels; ++i)
 			{
-				u32 mip_width = max<u32>((u32)desc.width_or_buffer_size >> i, 1);
+				u32 mip_width = max<u32>((u32)desc.width >> i, 1);
 				u32 mip_height = max<u32>(desc.height >> i, 1);
 
 				Image::ImageDesc img_desc;
 				img_desc.width = mip_width;
 				img_desc.height = mip_height;
-				luset(img_desc.format, get_image_format_from_pixel_format(desc.pixel_format));
+				luset(img_desc.format, get_image_format_from_format(desc.format));
 
 				Pair<u64, u64> offset;
 				luset(offset.first, f->tell());
@@ -398,7 +387,7 @@ namespace Luna
 				u32 mip_height = max<u32>(desc.height >> i, 1);
 				img_desc.width = mip_width;
 				img_desc.height = mip_height;
-				luset(img_desc.format, get_image_format_from_pixel_format(desc.pixel_format));
+				luset(img_desc.format, get_image_format_from_format(desc.format));
 				lulet(df, VFS::open_file(file_path, FileOpenFlag::write | FileOpenFlag::user_buffering, FileCreationMode::create_always));
 				luexp(Image::write_hdr_file(df, img_desc, img_data[i]));
 				file_path.pop_back();

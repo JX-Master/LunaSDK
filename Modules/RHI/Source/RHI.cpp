@@ -9,6 +9,7 @@
 */
 #include "RHI.hpp"
 #include <Runtime/Module.hpp>
+#include "../DescriptorSet.hpp"
 namespace Luna
 {
 	namespace RHI
@@ -62,6 +63,11 @@ namespace Luna
 		LUNA_RHI_API ErrCode frame_statistics_disjoint()
 		{
 			static ErrCode e = get_error_code_by_name("RHIError", "frame_statistics_disjoint");
+			return e;
+		}
+		LUNA_RHI_API ErrCode swap_chain_out_of_date()
+		{
+			static ErrCode e = get_error_code_by_name("RHIError", "swap_chain_out_of_date");
 			return e;
 		}
 	}

@@ -31,7 +31,7 @@ namespace Luna
                 case ERROR_OUTOFMEMORY: return BasicError::out_of_memory();
                 case ERROR_INVALID_DATA: 
                 case ERROR_CRC: return BasicError::bad_data();
-                case ERROR_NOT_READY: return BasicError::not_currently_available();
+                case ERROR_NOT_READY: return BasicError::not_ready();
                 default: return BasicError::bad_platform_call();
             }
         }

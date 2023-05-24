@@ -13,312 +13,147 @@
 #include "ShaderInputLayout.hpp"
 #include <Runtime/Waitable.hpp>
 #include <Runtime/Math/Vector.hpp>
-#include "RenderTargetView.hpp"
-#include "DepthStencilView.hpp"
 #include "QueryHeap.hpp"
 #include <Runtime/Span.hpp>
+#include "Fence.hpp"
 
 namespace Luna
 {
 	namespace RHI
 	{
-		enum class CommandQueueType : u32
-		{
-			graphics = 1,
-			compute = 2,
-			copy = 3,
-		};
-
-		enum class ClearFlag : u32
+		enum class ClearFlag : u8
 		{
 			none = 0x00,
 			depth = 0x01,
 			stencil = 0x02
 		};
-
-		enum class TextureCopyType : u32
+		enum class ResourceBarrierFlag : u8
 		{
-			subresource_index,	// When the referencing resource is a texture.
-			placed_footprint	// When the referencing resource is a buffer.
+			none = 0,
+			//! Submits an aliasing barrier for this resource.
+			//! 
+			//! One aliasing barrier is required when you want to use one resource that shares part of its memory with other resources,
+			//! and other resources are previously used in the same command buffer. In such state, the device should finish all operations
+			//! on the previous resource before it can process commands on the new resource.
+			//! 
+			//! When submitting aliasing barriers, `buffer` or `texture` should be specified to the new resource being used. The `before` state 
+			//! is a combination of states of all previouly used resources on the command buffer. The `before` state can be 
+			//! `BufferStateFlag::automatic` or `TextureStateFlag::automatic`, which always emits one full pipeline barrier, but specify 
+			//! `before` states precisely may improve performance by avoiding waiting for pipeline stages that does not use the aliasing resource. 
+			//! The `after` state is the initial state of the new resource. The resource content is always unspecified, despite whether `discard_content` 
+			//! is specified.
+			aliasing = 0x01,
+			//! Tells the device that the old content of the specified resource does not need to be preserved. The resource content is 
+			//! uninitialized after this barrier and should be overwritten in the following commands.
+			//! 
+			//! Specify this state may help preventing unnecessary availability operations and image layout transfer operations during
+			//! the resource barrier, thus improve performance.
+			discard_content = 0x02,
 		};
-
-		struct SubresourceFootprint
+		enum class BufferStateFlag : u32
 		{
-			Format format;
-			u32 width;
-			u32 height;
-			u32 depth;
-			u32 row_pitch;
-		};
-
-		struct PlacedResourceFootprint
-		{
-			u64 offset;
-			SubresourceFootprint footprint;
-		};
-
-		struct TextureCopyLocation
-		{
-			IResource* resource;
-			TextureCopyType type;
-			union
-			{
-				PlacedResourceFootprint placed_footprint;
-				u32 subresource_index;
-			};
-
-			static TextureCopyLocation as_placed_foorprint(IResource* _resource, u64 _offset, Format _format, u32 _width, u32 _height, u32 _depth, u32 _row_pitch)
-			{
-				TextureCopyLocation r;
-				r.type = TextureCopyType::placed_footprint;
-				r.resource = _resource;
-				r.placed_footprint.offset = _offset;
-				r.placed_footprint.footprint.format = _format;
-				r.placed_footprint.footprint.width = _width;
-				r.placed_footprint.footprint.height = _height;
-				r.placed_footprint.footprint.depth = _depth;
-				r.placed_footprint.footprint.row_pitch = _row_pitch;
-				return r;
-			}
-
-			static TextureCopyLocation as_subresource_index(IResource* _resource, u32 _subresource_index)
-			{
-				TextureCopyLocation r;
-				r.type = TextureCopyType::subresource_index;
-				r.resource = _resource;
-				r.subresource_index = _subresource_index;
-				return r;
-			}
-		};
-
-		enum class ResourceBarrierType : u32
-		{
-			//! Translates the state of the resource to a new state. In most of the time you don't need to call this 
-			//! manually, since the resource state tracking system built in RHI tracks the resource state and inserts
-			//! proper barriers for you, however you can explicitly specify this if you need the resource to be in a 
-			//! specific state that cannot be converted automatically by system, or you can explicitly specify this
-			//! to do some optimizations.
-			transition = 1,
-			//! Issues an aliasing barrier when a new resource whose memory overlaps with the old resource is about
-			//! to be access by the graphic pipeline. This call inserts a memory barrier so that the access to the new
-			//! resource is deferred until all access to the old resource finished to prevent race condition.
-			aliasing = 2,
-			//! Issues an uav barrier that makes the previous dispatch call to access the specified resource finishes 
-			//! before the next dispatch call that access the resource can start. This this to prevent race condition
-			//! between multiple dispatch calls.
-			uav = 3
-		};
-
-		enum class ResourceState : u32
-		{
-			//! The state used for passing resources between different graphic engine types (graphic/compute/copy).
-			//! This state is also required if you need to read/write data in CPU side.
-			common = 0,
-			//! Used as vertex and constant buffer in 3D pipeline by vertex buffer view and index buffer view.
-			//! Read-only.
-			vertex_and_constant_buffer,
-			//! Used as index buffer in graphic pipeline.
-			//! Read-only.
-			index_buffer,
-			//! Used for render target in graphic pipeline via RTV or clear render target.
-			//! Write-only.
-			render_target,
-			//! Used for unordered access in pipeline via UAV.
-			//! Read/Write.
-			unordered_access,
-			//! Used for depth write in graphic pipeline via DSV or clear depth stencil.
-			//! Write-only for depth.
-			depth_stencil_write,
-			//! Used for depth write is disabled.
-			//! Read-only for depth.
-			depth_stencil_read,
-			//! Used as shader resource for non-pixel shader via SRV.
-			//! Read-only.
-			shader_resource_non_pixel,
-			//! Used as shader resource for pixel shader via SRV.
-			//! Read-only.
-			shader_resource_pixel,
-			//! Used as stream output.
-			//! Write-only.
-			stream_out,
-			//! Used as indirect argument.
-			//! Read-only.
-			indirect_argument,
-			//! Used as a copy destination.
-			//! Write-only.
-			copy_dest,
-			//! Used as a copy source.
-			//! Read-only.
-			copy_source,
-			//! Used as destination in a resolve operation.
-			resolve_dest,
-			//! Used as source in a resolve operation.
-			resolve_src,
-		};
-
-		enum class ResourceBarrierFlag : u32
-		{
+			//! This resource is not used by the pipeline.
+			//! Resources with no state flag cannot be used by the pipeline, and must be transfered to one valid state 
+			//! before it can be used.
 			none = 0x00,
-			begin_only = 0x01,
-			end_only = 0x02,
+			//! Used as a indirect argument buffer.
+			indirect_argument = 0x01,
+			//! Used as a vertex buffer.
+			vertex_buffer = 0x02,
+			//! Used as a index buffer.
+			index_buffer = 0x04,
+			//! Used as a uniform buffer for vertex shader.
+			uniform_buffer_vs = 0x08,
+			//! Used as a read-only resource for vertex shader.
+			shader_read_vs = 0x10,
+			//! Used as a uniform buffer for pixel shader.
+			uniform_buffer_ps = 0x20,
+			//! Used as a read-only resource for pixel shader.
+			shader_read_ps = 0x40,
+			//! Used as a uniform buffer for compute shader.
+			uniform_buffer_cs = 0x80,
+			//! Used as a read-only resource for compute shader.
+			shader_read_cs = 0x0100,
+			//! Used as a write-only resource for compute shader.
+			shader_write_cs = 0x0200,
+			//! Used as a copy destination.
+			copy_dest = 0x0400,
+			//! Used as a copy source.
+			copy_source = 0x0800,
+			//! If this is specified as the before state, the system determines the before state automatically using the last state 
+			//! specified in the same command buffer for the resource. If this is the first time the resource is used in the current
+			//! command buffer, the system loads the resource's global state automatically.
+			//! 
+			//! This state cannot be set as the after state of the resource. This state cannot be set along with other state flags.
+			//! state.
+			automatic = 0x80000000,
 		};
-
-		constexpr u32 RESOURCE_BARRIER_ALL_SUBRESOURCES = U32_MAX;
-		struct IResource;
-
-		struct ResourceTransitionBarrierDesc
+		enum class TextureStateFlag : u32
 		{
-			IResource* resource;
-			u32 subresource;
-			ResourceState after;
+			//! This resource is not used by the pipeline.
+			//! Resources with no state flag cannot be used by the pipeline, and must be transfered to one valid state 
+			//! before it can be used.
+			none = 0x00,
+			//! Used as a sampled texture for vertex shader.
+			shader_read_vs = 0x10,
+			//! Used as a shader resource for pixel shader.
+			shader_read_ps = 0x20,
+			//! Used as a color attachment with read access.
+			color_attachment_read = 0x40,
+			//! Used as a color attachment with write access.
+			color_attachment_write = 0x80,
+			//! Used as a depth stencil attachment with read access.
+			depth_stencil_attachment_read = 0x0100,
+			//! Used as a depth stencil attachment with write access.
+			depth_stencil_attachment_write = 0x0200,
+			//! Used as a resolve attachment with write access.
+			resolve_attachment = 0x0400,
+			//! Used as a shader resource for compute shader.
+			shader_read_cs = 0x0800,
+			//! Used as a read-only unordered access for compute shader.
+			shader_write_cs = 0x1000,
+			//! Used as a copy destination.
+			copy_dest = 0x2000,
+			//! Used as a copy source.
+			copy_source = 0x4000,
+			//! Used for swap chain presentation.
+			present = 0x8000,
+			//! If this is specified as the before state, the system determines the before state automatically using the last state 
+			//! specified in the same command buffer for the resource. If this is the first time the resource is used in the current
+			//! command buffer, the system loads the resource's global state automatically.
+			//! 
+			//! This state cannot be set as the after state of the resource. This state cannot be set along with other state flags.
+			automatic = 0x80000000
 		};
-
-		struct ResourceUAVBarrierDesc
+		constexpr SubresourceIndex TEXTURE_BARRIER_ALL_SUBRESOURCES = {U32_MAX, U32_MAX};
+		struct TextureBarrier
 		{
-			IResource* resource;
-		};
-
-		struct ResourceAliasingBarrierDesc
-		{
-			IResource* resource;
-		};
-
-		struct ResourceBarrierDesc
-		{
-			ResourceBarrierType type;
+			ITexture* texture;
+			SubresourceIndex subresource;
+			TextureStateFlag before;
+			TextureStateFlag after;
 			ResourceBarrierFlag flags;
-			ResourceTransitionBarrierDesc transition;
-			ResourceAliasingBarrierDesc aliasing;
-			ResourceUAVBarrierDesc uav;
-
-			ResourceBarrierDesc() = default;
-			ResourceBarrierDesc(const ResourceBarrierDesc&) = default;
-			ResourceBarrierDesc(ResourceBarrierDesc&&) = default;
-			ResourceBarrierDesc& operator=(const ResourceBarrierDesc&) = default;
-			ResourceBarrierDesc& operator=(ResourceBarrierDesc&&) = default;
-			ResourceBarrierDesc(const ResourceTransitionBarrierDesc& transition, ResourceBarrierFlag flags) :
-				type(ResourceBarrierType::transition),
-				transition(transition),
+			TextureBarrier() = default;
+			TextureBarrier(ITexture* texture, SubresourceIndex subresource, TextureStateFlag before, TextureStateFlag after, ResourceBarrierFlag flags = ResourceBarrierFlag::none) :
+				texture(texture),
+				subresource(subresource),
+				before(before),
+				after(after),
 				flags(flags) {}
-			ResourceBarrierDesc(const ResourceAliasingBarrierDesc& aliasing, ResourceBarrierFlag flags) :
-				type(ResourceBarrierType::aliasing),
-				aliasing(aliasing),
+		};
+		struct BufferBarrier
+		{
+			IBuffer* buffer;
+			BufferStateFlag before;
+			BufferStateFlag after;
+			ResourceBarrierFlag flags;
+			BufferBarrier() = default;
+			BufferBarrier(IBuffer* buffer, BufferStateFlag before, BufferStateFlag after, ResourceBarrierFlag flags = ResourceBarrierFlag::none) :
+				buffer(buffer),
+				before(before),
+				after(after),
 				flags(flags) {}
-			ResourceBarrierDesc(const ResourceUAVBarrierDesc& uav, ResourceBarrierFlag flags) :
-				type(ResourceBarrierType::uav),
-				uav(uav),
-				flags(flags) {}
-
-			static ResourceBarrierDesc as_transition(IResource* resource, ResourceState after, u32 subresource = RESOURCE_BARRIER_ALL_SUBRESOURCES, ResourceBarrierFlag flags = ResourceBarrierFlag::none)
-			{
-				ResourceTransitionBarrierDesc desc;
-				desc.resource = resource;
-				desc.subresource = subresource;
-				desc.after = after;
-				return ResourceBarrierDesc(desc, flags);
-			}
-
-			static ResourceBarrierDesc as_aliasing(IResource* resource, ResourceBarrierFlag flags = ResourceBarrierFlag::none)
-			{
-				ResourceAliasingBarrierDesc desc;
-				desc.resource = resource;
-				return ResourceBarrierDesc(desc, flags);
-			}
-
-			static ResourceBarrierDesc as_uav(IResource* resource, ResourceBarrierFlag flags = ResourceBarrierFlag::none)
-			{
-				ResourceUAVBarrierDesc desc;
-				desc.resource = resource;
-				return ResourceBarrierDesc(desc, flags);
-			}
-
 		};
-
-		struct VertexBufferViewDesc
-		{
-			IResource* resource;
-			//! The offset of the buffer from resource start in bytes.
-			u64 offset_in_bytes;
-			//! The size of the resource in bytes.
-			u32 size_in_bytes;
-			//! The size of one element in the buffer in bytes.
-			u32 stride_in_bytes;
-
-			VertexBufferViewDesc() = default;
-			VertexBufferViewDesc(IResource* resource,
-				u64 offset_in_bytes,
-				u32 size_in_bytes,
-				u32 stride_in_bytes) :
-				resource(resource),
-				offset_in_bytes(offset_in_bytes),
-				size_in_bytes(size_in_bytes),
-				stride_in_bytes(stride_in_bytes) {}
-		};
-
-		struct IndexBufferViewDesc
-		{
-			IResource* resource;
-			u32 offset_in_bytes;
-			u32 size_in_bytes;
-			Format index_format;
-
-			IndexBufferViewDesc() = default;
-			IndexBufferViewDesc(IResource* resource,
-				u64 offset_in_bytes,
-				u32 size_in_bytes,
-				Format index_format) :
-				resource(resource),
-				offset_in_bytes(offset_in_bytes),
-				size_in_bytes(size_in_bytes),
-				index_format(index_format) {}
-		};
-
-		enum class PrimitiveTopology : u32
-		{
-			undefined,
-			point_list,
-			line_list,
-			line_strip,
-			triangle_list,
-			triangle_strip,
-			line_list_adj,
-			line_strip_adj,
-			triangle_list_adj,
-			triangle_strip_adj,
-			patchlist_1_control_point,
-			patchlist_2_control_point,
-			patchlist_3_control_point,
-			patchlist_4_control_point,
-			patchlist_5_control_point,
-			patchlist_6_control_point,
-			patchlist_7_control_point,
-			patchlist_8_control_point,
-			patchlist_9_control_point,
-			patchlist_10_control_point,
-			patchlist_11_control_point,
-			patchlist_12_control_point,
-			patchlist_13_control_point,
-			patchlist_14_control_point,
-			patchlist_15_control_point,
-			patchlist_16_control_point,
-			patchlist_17_control_point,
-			patchlist_18_control_point,
-			patchlist_19_control_point,
-			patchlist_20_control_point,
-			patchlist_21_control_point,
-			patchlist_22_control_point,
-			patchlist_23_control_point,
-			patchlist_24_control_point,
-			patchlist_25_control_point,
-			patchlist_26_control_point,
-			patchlist_27_control_point,
-			patchlist_28_control_point,
-			patchlist_29_control_point,
-			patchlist_30_control_point,
-			patchlist_31_control_point,
-			patchlist_32_control_point,
-		};
-
 		struct Viewport
 		{
 			f32 top_left_x;
@@ -343,68 +178,162 @@ namespace Luna
 				min_depth(min_depth),
 				max_depth(max_depth) {}
 		};
-
-		//! The operation to perform when the render texture is loaded to GPU.
+		//! The operation to perform when the attachment is loaded to GPU.
 		enum class LoadOp : u8
 		{
-			//! The previous contents of the texture within the render area will be preserved.
-			load = 0,
-			//! The contents within the render area will be cleared to a uniform value
-			clear = 1,
-			//! The previous contents within the area need not be preserved, and we don't clear 
-			//! the content before using it.
-			dont_care = 2,
+			//! The previous contents of the attachment does not need to be preserved. 
+			//! If this is specified, your application should not have any assumptions on 
+			//! the initial data of the attachment, and should overwrite the data in render
+			//! pass.
+			dont_care = 0,
+			//! The previous contents of the attachment shall be preserved.
+			load = 1,
+			//! The contents within of the attachment will be cleared to a uniform value.
+			clear = 2,
 		};
-
 		//! The operation to perform when the render texture is written back to resource memory.
 		enum class StoreOp : u8
 		{
-			//! Preserves the content of the texture after ending the render pass.
-			store = 0,
-			//! The content of the texture will not be preserved after ending the render pass.
+			//! The content of the attachment will be discarded and not stored back to the resource 
+			//! after ending the render pass.
 			//! This is used for attachments like depth buffer that is only used for the current 
 			//! render pass.
-			dont_care = 1
+			dont_care = 0,
+			//! Stores the content of the attachment to the resource after ending the render pass.
+			store = 1
 		};
-
+		struct ColorAttachment
+		{
+			ITexture* texture = nullptr;
+			LoadOp load_op = LoadOp::dont_care;
+			StoreOp store_op = StoreOp::dont_care;
+			Float4U clear_value = { 0, 0, 0, 0 };
+			TextureViewType view_type = TextureViewType::unspecified;
+			Format format = Format::unknown;
+			u32 mip_slice = 0;
+			u32 array_slice = 0;
+			u32 array_size = 0;
+			ColorAttachment() = default;
+			ColorAttachment(ITexture* texture, 
+				LoadOp load_op = LoadOp::load, StoreOp store_op = StoreOp::store, const Float4U& clear_value = Float4U(0), 
+				TextureViewType view_type = TextureViewType::unspecified, Format format = Format::unknown, u32 mip_slice = 0, u32 array_slice = 0, u32 array_size = 1) :
+				texture(texture),
+				load_op(load_op),
+				store_op(store_op),
+				clear_value(clear_value),
+				view_type(view_type),
+				format(format),
+				mip_slice(mip_slice),
+				array_slice(array_slice),
+				array_size(array_size) {}
+		};
+		struct DepthStencilAttachment
+		{
+			ITexture* texture = nullptr;
+			LoadOp depth_load_op = LoadOp::dont_care;
+			StoreOp depth_store_op = StoreOp::dont_care;
+			LoadOp stencil_load_op = LoadOp::dont_care;
+			StoreOp stencil_store_op = StoreOp::dont_care;
+			f32 depth_clear_value = 0.0f;
+			u8 stencil_clear_value = 0;
+			bool read_only = false;
+			TextureViewType view_type = TextureViewType::unspecified;
+			Format format = Format::unknown;
+			u32 mip_slice = 0;
+			u32 array_slice = 0;
+			u32 array_size = 0;
+			DepthStencilAttachment() = default;
+			DepthStencilAttachment(ITexture* texture, bool read_only,
+				LoadOp depth_load_op = LoadOp::load, StoreOp depth_store_op = StoreOp::store, f32 depth_clear_value = 1.0f,
+				LoadOp stencil_load_op = LoadOp::dont_care, StoreOp stencil_store_op = StoreOp::dont_care, u8 stencil_clear_value = 0,
+				TextureViewType view_type = TextureViewType::unspecified, Format format = Format::unknown, u32 mip_slice = 0, u32 array_slice = 0, u32 array_size = 1
+				) :
+				texture(texture),
+				read_only(read_only),
+				depth_load_op(depth_load_op),
+				depth_store_op(depth_store_op),
+				depth_clear_value(depth_clear_value),
+				stencil_load_op(stencil_load_op),
+				stencil_store_op(stencil_store_op),
+				stencil_clear_value(stencil_clear_value),
+				view_type(view_type),
+				format(format),
+				mip_slice(mip_slice),
+				array_slice(array_slice),
+				array_size(array_size) {}
+		};
+		struct ResolveAttachment
+		{
+			ITexture* texture = nullptr;
+			u32 mip_slice = 0;
+			u32 array_slice = 0;
+			u32 array_size = 0;
+			ResolveAttachment() = default;
+			ResolveAttachment(ITexture* texture, u32 mip_slice = 0, u32 array_slice = 0, u32 array_size = 1) :
+				texture(texture),
+				mip_slice(mip_slice),
+				array_slice(array_slice),
+				array_size(array_size) {}
+		};
 		//! Parameters passed to `begin_render_pass`.
 		struct RenderPassDesc
 		{
-			//! The render targets views to set.
-			IRenderTargetView* rtvs[8] = { nullptr };
-			//! The depth stencil view to set.
-			IDepthStencilView* dsv = nullptr;
-			//! The load operation for the render target. 
-			//! If the corresponding render target resource is `nullptr`, this operation is ignored.
-			LoadOp rt_load_ops[8] = { LoadOp::load };
-			//! The store operation for the render target.
-			//! If the corresponding render target resource is `nullptr`, this operation is ignored.
-			StoreOp rt_store_ops[8] = { StoreOp::store };
-			//! The load operation for depth component.
-			//! If the depth stencil resource is `nullptr`, this operation is ignored.
-			LoadOp depth_load_op = LoadOp::load;
-			//! The store operation for depth component.
-			//! If the depth stencil resource is `nullptr`, this operation is ignored.
-			StoreOp depth_store_op = StoreOp::store;
-			//! The load operation for stencil component.
-			//! If the depth stencil resource is `nullptr`, this operation is ignored.
-			LoadOp stencil_load_op = LoadOp::load;
-			//! The store operation for stencil component.
-			//! If the depth stencil resource is `nullptr`, this operation is ignored.
-			StoreOp stencil_store_op = StoreOp::store;
-			//! The clear value for render targets if `rt_load_ops` specified for 
-			//! the render target is `RenderTargetLoadOp::clear`.
-			Float4U rt_clear_values[8] = { Float4U(0.0f, 0.0f, 0.0f, 0.0f) };
-			//! The depth value to use for clear if `depth_load_op` specified in render pass
-			//! is `RenderTargetLoadOp::clear`.
-			f32 depth_clear_value = 0.0f;
-			//! The stencil value to use for clear if `stencil_load_op` specified in render pass
-			//! is `RenderTargetLoadOp::clear`.
-			u8 stencil_clear_value = 0;
+			//! The color attachments to set.
+			ColorAttachment color_attachments[8];
+			//! The resolve attachments to set.
+			ResolveAttachment resolve_attachments[8];
+			//! The depth stencil attachment to set.
+			DepthStencilAttachment depth_stencil_attachment;
+			//! The sample count of the render pass.
+			u8 sample_count = 1;
 		};
+		struct VertexBufferView
+		{
+			IResource* buffer;
+			//! The offset, in bytes, of the first vertex from the beginning of the buffer.
+			usize offset;
+			//! The size, in bytes, of the vertex buffer range to bind.
+			u32 size;
+			//! The size, in butes, of every vertex element in the vertex buffer.
+			//! The element size must be equal to `InputBindingDesc::element_size` of the 
+			//! pipeline state object used to draw this vertex buffer.
+			u32 element_size;
 
-		struct ICommandQueue;
+			VertexBufferView() = default;
+			VertexBufferView(IResource* buffer, usize offset, u32 size, u32 element_size) :
+				buffer(buffer),
+				offset(offset),
+				size(size),
+				element_size(element_size) {}
+		};
+		struct IndexBufferView
+		{
+			IResource* buffer;
+			//! The offset, in bytes, of the first vertex from the beginning of the buffer.
+			usize offset;
+			//! The size, in bytes, of the vertex buffer range to bind.
+			u32 size;
+			//! The index format.
+			Format format;
 
+			IndexBufferView() = default;
+			IndexBufferView(IResource * buffer, usize offset, u32 size, Format format) :
+				buffer(buffer),
+				offset(offset),
+				size(size),
+				format(format) {}
+		};
+		enum class CommandBufferContextType : u8
+		{
+			//! Specifies no context for the command buffer.
+			none,
+			//! Specifies the graphics context for the command buffer.
+			graphics,
+			//! Specifies compute context for the command buffer.
+			compute,
+			//! Specifies copy context for the command buffer.
+			copy
+		};
 		//! @interface ICommandBuffer
 		//! The command buffer is used to allocate memory for commands, record commands, submitting 
 		//! commands to GPU and tracks the state of the submitted commands.
@@ -413,16 +342,16 @@ namespace Luna
 		//! should create multiple command buffers, one per thread. 
 		//! 
 		//! All synchroizations for command buffers are performed explicitly, for instance:
-		//! 1. To waits for one command buffer from CPU side, call `ICommandBuffer::wait`.
-		//! 2. To waits for one command buffer from another command queue, call `ICommandQueue::wait_command_buffer`.
+		//! 1. Use `ICommandBuffer::wait` to wait for one command buffer from host side, 
+		//! 2. Use fence objects to wait for one command buffer from another command buffer.
 		//! 3. Only call `ICommandBuffer::reset` after the command buffer is not submitted, or is finished by GPU.
 		struct ICommandBuffer : virtual IDeviceChild, virtual IWaitable
 		{
 			luiid("{2970a4c8-d905-4e58-9247-46ba6a33b220}");
 
-			virtual CommandQueueType get_type() = 0;
-
-			virtual ICommandQueue* get_command_queue() = 0;
+			//! Gets the command queue index of the command queue attached to 
+			//! this buffer.
+			virtual u32 get_command_queue_index() = 0;
 
 			//! Resets the command buffer. This call clears all commands in the command buffer, resets the state tracking
 			//! infrastructure and reopens the command buffer for recording new commands.
@@ -446,10 +375,19 @@ namespace Luna
 			//! Ends the latest event begun with `begin_event` that has not benn ended.
 			virtual void end_event() = 0;
 
+			//! Gets the current command buffer context type.
+			virtual CommandBufferContextType get_context_type() = 0;
+
+			//! Sets the command buffer context. Commands can only be submitted in their compatible contexts.
+			//! A context change will clear all pipeline states of the previous context, including binding resources, 
+			//! descriptor heaps, pipeline states and so on. The initial state of one context is unspecified.
+			//! The context change happens only when `new_context != get_context_type()`.
+			virtual void set_context(CommandBufferContextType new_context) = 0;
+
 			//! Starts a new render pass. The previous render pass should be closed before beginning another one.
 			//! @param[in] desc The render pass descriptor object.
-			//! @remark In order to let LoadOp::clear works, the render textures that need to be cleared must be in
-			//! `ResourceState::render_target` state and the depth stencil texture that needs to be cleared must be in 
+			//! @ResourceStateFlag:: to let LoadOp::clear works, the render textures that need to be cleared must be in
+			//! `ResourceStateFlag::render_target` state and the depth stencil texture that needs to be cleared must be in 
 			//! `ResourceState::depth_write` state.
 			//! 
 			//! The following functions can only be called in between `begin_render_pass` and `end_render_pass`:
@@ -457,49 +395,57 @@ namespace Luna
 			//! * draw_indexed
 			//! * draw_instanced
 			//! * draw_indexed_instanced
-			//! * clear_render_target_view
-			//! * clear_depth_stencil_view
+			//! * clear_color_attachment
+			//! * clear_depth_stencil_attachment
 			//! * set_scissor_rects
 			//! The following functions can only be called outside of one render pass range:
 			//! * submit
+			//! * set_context
+			//! * resource_barrier
 			virtual void begin_render_pass(const RenderPassDesc& desc) = 0;
-
-			//! Sets the pipeline state.
-			virtual void set_pipeline_state(IPipelineState* pso) = 0;
 
 			//! Sets the graphic shader input layout.
 			virtual void set_graphics_shader_input_layout(IShaderInputLayout* shader_input_layout) = 0;
 
+			//! Sets the pipeline state for graphics pipeline.
+			virtual void set_graphics_pipeline_state(IPipelineState* pso) = 0;
+
 			//! Sets vertex buffers.
-			virtual void set_vertex_buffers(u32 start_slot, Span<const VertexBufferViewDesc> views) = 0;
+			//! @param[in] start_slot The start slot of the vertex buffer to set.
+			//! @param[in] views An array of vertex buffer views to set, each describes one vertex buffer range to bind.
+			//! The vertex buffer views will be set in slot [start_slot, start_slot + views.size()).
+			virtual void set_vertex_buffers(u32 start_slot, Span<const VertexBufferView> views) = 0;
 
 			//! Sets index buffer.
-			virtual void set_index_buffer(const IndexBufferViewDesc& desc) = 0;
+			//! @param[in] buffer The index buffer to set.
+			//! @param[in] offset The offset, in bytes, of the first index from the beginning of the buffer.
+			//! @param[in] size 
+			virtual void set_index_buffer(const IndexBufferView& view) = 0;
 
 			//! Sets the descriptor set to be used by the graphic pipeline.
-			//! This must be called after `set_pipeline_state`.
-			virtual void set_graphics_descriptor_set(u32 index, IDescriptorSet* descriptor_set) = 0;
+			//! This behaves the same as calling `set_graphics_descriptor_sets` with only one element.
+			virtual void set_graphics_descriptor_set(u32 start_index, IDescriptorSet* descriptor_set) = 0;
 
-			//! Bind information about the primitive type, and data order that describes input data for the input assembler stage.
-			virtual void set_primitive_topology(PrimitiveTopology primitive_topology) = 0;
-
-			//! Sets the stream output buffer views. 
-			virtual void set_stream_output_targets(u32 start_slot, Span<const StreamOutputBufferView> views) = 0;
+			//! Sets descriptor sets to be used by the graphic pipeline.
+			//! This must be called after `set_pipeline_state` and `set_graphics_shader_input_layout`.
+			virtual void set_graphics_descriptor_sets(u32 start_index, Span<IDescriptorSet*> descriptor_sets) = 0;
 
 			//! Bind one viewport to the rasterizer stage of the pipeline.
+			//! This operation behaves the same as calling `set_viewports` with only one viewport.
 			virtual void set_viewport(const Viewport& viewport) = 0;
 
 			//! Bind an array of viewports to the rasterizer stage of the pipeline.
+			//! All viewports must be set atomically as one operation. Any viewports not defined by the call are disabled.
 			virtual void set_viewports(Span<const Viewport> viewports) = 0;
 
 			//! Binds one scissor rectangle to the rasterizer stage.
-			//! The scissor rectangle points are relative to the bottom-left corner of the render target, 
-			//! with x-axis points to right and y-axis points to up.
+			//! This operation behaves the same as calling `set_scissor_rects` with only one scissor rect.
 			virtual void set_scissor_rect(const RectI& rect) = 0;
 
 			//! Binds an array of scissor rectangles to the rasterizer stage.
-			//! The scissor rectangle points are relative to the bottom-left corner of the render target, 
-			//! with x-axis points to right and y-axis points to up.
+			//! The scissor rectangle points are relative to the top-left corner of the render target, 
+			//! with x-axis points to right and y-axis points to down.
+			//! All scissor rectangles must be set atomically as one operation. Any scissor rectangles not defined by the call are disabled.
 			virtual void set_scissor_rects(Span<const RectI> rects) = 0;
 
 			//! Sets the blend factor that modulate values for a pixel shader, render target, or both.
@@ -514,52 +460,73 @@ namespace Luna
 			//! Draw indexed primitives.
 			virtual void draw_indexed(u32 index_count, u32 start_index_location, i32 base_vertex_location) = 0;
 
-			//! Draws indexed, instanced primitives.
-			virtual void draw_indexed_instanced(u32 index_count_per_instance, u32 instance_count, u32 start_index_location,
-				i32 base_vertex_location, u32 start_instance_location) = 0;
-
 			//! Draws non-indexed, instanced primitives.
 			virtual void draw_instanced(u32 vertex_count_per_instance, u32 instance_count, u32 start_vertex_location,
 				u32 start_instance_location) = 0;
+
+			//! Draws indexed, instanced primitives.
+			virtual void draw_indexed_instanced(u32 index_count_per_instance, u32 instance_count, u32 start_index_location,
+				i32 base_vertex_location, u32 start_instance_location) = 0;
 
 			//! Preforms one indirect draw.
 			//virtual void draw_indexed_indirect(IResource* buffer, usize argment_offset, u32 draw_count, u32 stride) = 0;
 
 			//! Clears the depth stencil view bound to the current render pass.
-			virtual void clear_depth_stencil_view(ClearFlag clear_flags, f32 depth, u8 stencil, Span<const RectI> rects) = 0;
+			virtual void clear_depth_stencil_attachment(ClearFlag clear_flags, f32 depth, u8 stencil, Span<const RectI> rects) = 0;
 
 			//! Clears the render target view bound to the current render pass.
 			//! @param[in] index The index of the render target view to clear in the frame buffers.
-			virtual void clear_render_target_view(u32 index, Span<const f32, 4> color_rgba, Span<const RectI> rects) = 0;
+			virtual void clear_color_attachment(u32 index, Span<const f32, 4> color_rgba, Span<const RectI> rects) = 0;
 
 			//! Finishes the current render pass.
 			virtual void end_render_pass() = 0;
 
-			//! Copies the entire contents of the source resource to the destination resource.
-			virtual void copy_resource(IResource* dest, IResource* src) = 0;
-
-			//! Copies a region of a buffer from one resource to another.
-			virtual void copy_buffer_region(IResource* dest, u64 dest_offset, IResource* src, u64 src_offset, u64 num_bytes) = 0;
-
-			//! This method uses the GPU to copy texture data between two locations. 
-			virtual void copy_texture_region(const TextureCopyLocation& dst, u32 dst_x, u32 dst_y, u32 dst_z,
-				const TextureCopyLocation& src, const BoxU* src_box = nullptr) = 0;
-
 			//! Sets the compute shader input layout.
 			virtual void set_compute_shader_input_layout(IShaderInputLayout* shader_input_layout) = 0;
 
-			//! Sets the view set to be used by the compute pipeline.
+			//! Sets the pipeline state for compute pipeline.
+			virtual void set_compute_pipeline_state(IPipelineState* pso) = 0;
+
+			//! Sets the descriptor set to be used by the compute pipeline.
+			//! This behaves the same as calling `set_compute_descriptor_sets` with only one element.
+			virtual void set_compute_descriptor_set(u32 start_index, IDescriptorSet* descriptor_set) = 0;
+
+			//! Sets descriptor sets to be used by the compute pipeline.
 			//! This must be called after `set_pipeline_state`.
-			virtual void set_compute_descriptor_set(u32 index, IDescriptorSet* descriptor_set) = 0;
-
-			//! Issues one resource barrier.
-			virtual void resource_barrier(const ResourceBarrierDesc& barrier) = 0;
-
-			//! Issues resource barriers.
-			virtual void resource_barriers(Span<const ResourceBarrierDesc> barriers) = 0;
+			virtual void set_compute_descriptor_sets(u32 start_index, Span<IDescriptorSet*> descriptor_sets) = 0;
 
 			//! Executes a command list from a thread group.
 			virtual void dispatch(u32 thread_group_count_x, u32 thread_group_count_y, u32 thread_group_count_z) = 0;
+
+			//! Copies the entire contents of the source resource to the destination resource.
+			//! The source resource and destination resource must be the same `ResourceType`, have the same size for buffers, or 
+			//! the same width, height, depth, mip count and array count for textures.
+			virtual void copy_resource(IResource* dst, IResource* src) = 0;
+
+			//! Copies a region of a buffer from one resource to another.
+			virtual void copy_buffer(
+				IBuffer* dst, u64 dst_offset,
+				IBuffer* src, u64 src_offset,
+				u64 copy_bytes) = 0;
+
+			//! This method uses the GPU to copy texture data between two locations. 
+			virtual void copy_texture(
+				ITexture* dst, SubresourceIndex dst_subresource, u32 dst_x, u32 dst_y, u32 dst_z,
+				ITexture* src, SubresourceIndex src_subresource, u32 src_x, u32 src_y, u32 src_z,
+				u32 copy_width, u32 copy_height, u32 copy_depth) = 0;
+
+			virtual void copy_buffer_to_texture(
+				ITexture* dst, SubresourceIndex dst_subresource, u32 dst_x, u32 dst_y, u32 dst_z,
+				IBuffer* src, u64 src_offset, u32 src_row_pitch, u32 src_slice_pitch,
+				u32 copy_width, u32 copy_height, u32 copy_depth) = 0;
+
+			virtual void copy_texture_to_buffer(
+				IBuffer* dst, u64 dst_offset, u32 dst_row_pitch, u32 dst_slice_pitch,
+				ITexture* src, SubresourceIndex src_subresource, u32 src_x, u32 src_y, u32 src_z,
+				u32 copy_width, u32 copy_height, u32 copy_depth) = 0;
+
+			//! Issues one resource barrier.
+			virtual void resource_barrier(Span<const BufferBarrier> buffer_barriers, Span<const TextureBarrier> texture_barriers) = 0;
 
 			//! Writes the current GPU queue timestamp to the specified query heap.
 			//! @param[in] heap The query heap to write to.
@@ -574,12 +541,24 @@ namespace Luna
 
 			virtual void end_occlusion_query(IQueryHeap* heap, u32 index) = 0;
 
-			//virtual void dispatch_indirect(IResource* buffer, usize offset) = 0;
-
-			//! Submits the recorded content in this command buffer to the target command queue.
+			//! Submits the recorded content in this command buffer to the attached command queue.
 			//! The command buffer can only be submitted once, and the only operation after the submit is to 
 			//! reset the command buffer after it is executed by command queue.
-			virtual RV submit() = 0;
+			//! @param[in] wait_fences The fence objects to wait before this command buffer can be processed by the system.
+			//! @param[in] signal_fences The fence objects to signal after this command buffer is completed.
+			//! @param[in] allow_host_waiting Whether `ICommandBuffer::wait` can be used to wait for the command buffer 
+			//! from host side. If this is `false`, the command buffer cannot be waited from host, and the behavior of 
+			//! calling `ICommandBuffer::wait` is undefined. Setting this to `false` may improve queue performance, and 
+			//! the command buffer can still be waited by other command buffers using fences.
+			//! 
+			//! @remark Command buffers submitted to the same command queue are processed by their submission order.
+			//! The system is allowed to merge commands in adjacent submissions as if they are recorded in the same command buffer,
+			//! thus different submissions may execute out of order if they have no memory dependency. To prevent synchronization hazard,
+			//! always insert resource barriers before using resources in command buffers.
+			//! 
+			//! If `signal_fences` is not empty, the system guarantees that all commands in the submission is finished, and all 
+			//! writes to the memory in the submission is made visible before fences are signaled.
+			virtual RV submit(Span<IFence*> wait_fences, Span<IFence*> signal_fences, bool allow_host_waiting) = 0;
 		};
 	}
 }

@@ -8,9 +8,6 @@
 * @date 2020/3/14
 */
 #include "ShaderInputLayout.hpp"
-
-#ifdef LUNA_RHI_D3D12
-
 #include "DescriptorSetLayout.hpp"
 
 namespace Luna
@@ -49,32 +46,18 @@ namespace Luna
 						dest->RegisterSpace = i;
 					}
 					parameters.push_back(param);
-					info.m_heap_types.push_back(root.m_type);
+					info.m_memory_types.push_back(root.m_type);
 				}
 				m_descriptor_set_layouts.push_back(move(info));
 			}
 			d.NumParameters = (UINT)parameters.size();
 			d.pParameters = parameters.data();
-			d.Flags = D3D12_ROOT_SIGNATURE_FLAG_NONE;
+			d.Flags = D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS |
+				D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS |
+				D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS;
 			if ((desc.flags & ShaderInputLayoutFlag::allow_input_assembler_input_layout) != ShaderInputLayoutFlag::none)
 			{
 				d.Flags |= D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
-			}
-			if ((desc.flags & ShaderInputLayoutFlag::allow_stream_output) != ShaderInputLayoutFlag::none)
-			{
-				d.Flags |= D3D12_ROOT_SIGNATURE_FLAG_ALLOW_STREAM_OUTPUT;
-			}
-			if ((desc.flags & ShaderInputLayoutFlag::deny_domain_shader_access) != ShaderInputLayoutFlag::none)
-			{
-				d.Flags |= D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS;
-			}
-			if ((desc.flags & ShaderInputLayoutFlag::deny_geometry_shader_access) != ShaderInputLayoutFlag::none)
-			{
-				d.Flags |= D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS;
-			}
-			if ((desc.flags & ShaderInputLayoutFlag::deny_hull_shader_access) != ShaderInputLayoutFlag::none)
-			{
-				d.Flags |= D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS;
 			}
 			if ((desc.flags & ShaderInputLayoutFlag::deny_pixel_shader_access) != ShaderInputLayoutFlag::none)
 			{
@@ -86,17 +69,17 @@ namespace Luna
 			}
 			ComPtr<ID3DBlob> b;
 			ComPtr<ID3DBlob> err;
-			if (FAILED(D3D12SerializeRootSignature(&d, D3D_ROOT_SIGNATURE_VERSION_1_0, b.GetAddressOf(), err.GetAddressOf())))
+			HRESULT hr = D3D12SerializeRootSignature(&d, D3D_ROOT_SIGNATURE_VERSION_1_0, b.GetAddressOf(), err.GetAddressOf());
+			if (FAILED(hr))
 			{
-				return set_error(BasicError::bad_platform_call(), "Failed to create D3D12 root signature: %s", err->GetBufferPointer());
+				return set_error(encode_hresult(hr).errcode(), "Failed to create D3D12 root signature: %s", err->GetBufferPointer());
 			}
-			if (FAILED(m_device->m_device->CreateRootSignature(0, b->GetBufferPointer(), b->GetBufferSize(), IID_PPV_ARGS(&m_rs))))
+			hr = m_device->m_device->CreateRootSignature(0, b->GetBufferPointer(), b->GetBufferSize(), IID_PPV_ARGS(&m_rs));
+			if (FAILED(hr))
 			{
-				return set_error(BasicError::bad_platform_call(), "Failed to create D3D12 root signature.");
+				return encode_hresult(hr).errcode();
 			}
 			return ok;
 		}
 	}
 }
-
-#endif

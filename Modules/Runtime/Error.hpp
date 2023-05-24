@@ -202,9 +202,9 @@ namespace Luna
 		LUNA_RUNTIME_API ErrCode data_too_long();
 		//! The buffer provided by the user is not large enough to contain all returned data.
 		LUNA_RUNTIME_API ErrCode insufficient_user_buffer();
-		//! The service provider is not capable of handling this call at this moment.
+		//! The service provider is not ready to handle this call at this moment.
 		//! The user should try again later.
-		LUNA_RUNTIME_API ErrCode not_currently_available();
+		LUNA_RUNTIME_API ErrCode not_ready();
 		//! The value specified by the user is out of the valid range from the value.
 		LUNA_RUNTIME_API ErrCode out_of_range();
 		//! The system has run out of intenal resources (usually handles or resources with a fixed count limit) to finish the operation.

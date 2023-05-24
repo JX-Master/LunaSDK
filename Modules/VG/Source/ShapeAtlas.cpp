@@ -18,17 +18,17 @@ namespace Luna
 		{
 			lutry
 			{
+				using namespace RHI;
 				if (m_buffer_resource_capacity < m_commands.size())
 				{
-					u64 shape_buffer_size = max<u64>(m_commands.size() * sizeof(f32), RHI::get_main_device()->get_constant_buffer_data_alignment());
-					luset(m_buffer_resource, RHI::get_main_device()->new_resource(RHI::ResourceDesc::buffer(RHI::ResourceHeapType::upload,
-						RHI::ResourceUsageFlag::shader_resource, shape_buffer_size)));
+					u64 shape_buffer_size = max<u64>(m_commands.size() * sizeof(f32), get_main_device()->get_uniform_buffer_data_alignment());
+					luset(m_buffer_resource, get_main_device()->new_buffer(MemoryType::upload, BufferDesc(
+						BufferUsageFlag::read_buffer, shape_buffer_size)));
 					m_buffer_resource_capacity = m_commands.size();
 				}
-				void* shape_data;
-				luexp(m_buffer_resource->map_subresource(0, 0, 0, &shape_data));
+				lulet(shape_data, m_buffer_resource->map(0, 0));
 				memcpy(shape_data, m_commands.data(), m_commands.size() * sizeof(f32));
-				m_buffer_resource->unmap_subresource(0, 0, m_commands.size() * sizeof(f32));
+				m_buffer_resource->unmap(0, m_commands.size() * sizeof(f32));
 				m_buffer_resource_dirty = false;
 			}
 			lucatchret;
@@ -182,7 +182,7 @@ namespace Luna
 			}
 			m_buffer_resource_dirty = true;
 		}
-		R<RHI::IResource*> ShapeAtlas::get_shape_resource()
+		R<RHI::IBuffer*> ShapeAtlas::get_shape_resource()
 		{
 			lutsassert();
 			lutry

@@ -8,11 +8,17 @@ struct MeshParams
 
 struct PSInput
 {
+    [[vk::location(0)]]
     float4 position : SV_POSITION;
+    [[vk::location(1)]]
     float3 normal   : NORMAL;
+    [[vk::location(2)]]
     float3 tangent  : TANGENT;
+    [[vk::location(3)]]
     float2 texcoord : TEXCOORD;
+    [[vk::location(4)]]
     float4 color    : COLOR;
+    [[vk::location(5)]]
     float3 world_position : POSITION;
 };
 
@@ -27,10 +33,13 @@ SamplerState g_sampler : register(s7);
 struct PSOutput
 {
     // RGB: base color, A: roughness
+    [[vk::location(0)]]
     float4 base_color_roughness : SV_Target0;
     // RGB: normal, A: metallic
+    [[vk::location(1)]]
     float4 normal_metallic : SV_Target1;
     // RGB: emissive, A: unused.
+    [[vk::location(2)]]
     float4 emissive : SV_Target2;
 };
 

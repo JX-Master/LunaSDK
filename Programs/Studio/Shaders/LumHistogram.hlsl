@@ -10,7 +10,7 @@ uint color_to_bin(float3 hdr_color, float min_brightness, float max_brightness)
     float lum = color_to_lum(hdr_color);
 
     // Avoid taking the log of zero
-    if (lum < 0.005) 
+    if (lum < min_brightness) 
     {
         return 0;
     }
@@ -35,7 +35,7 @@ cbuffer LumHistogramCB : register(b0)
 }
 
 Texture2D g_src_tex : register(t1);
-RWBuffer<uint> g_dest_buffer : register(u2);
+RWStructuredBuffer<uint> g_dest_buffer : register(u2);
 
 groupshared uint histogram_shared[256];
 

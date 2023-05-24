@@ -7,7 +7,6 @@
 * @author JXMaster
 * @date 2023/3/6
 */
-#include "TransientResourceHeap.hpp"
 #include "RenderPass.hpp"
 #include <Runtime/Module.hpp>
 #include "RenderGraph.hpp"
@@ -19,8 +18,6 @@ namespace Luna
         {
             register_boxed_type<RenderGraph>();
             impl_interface_for_type<RenderGraph, IRenderGraph, IRenderPassContext, IRenderGraphCompiler>();
-            register_boxed_type<TransientResourceHeap>();
-            impl_interface_for_type<TransientResourceHeap, ITransientResourceHeap>();
             g_render_pass_types_mtx = new_mutex();
             return ok;
         }

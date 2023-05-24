@@ -24,8 +24,29 @@ namespace Luna
 		lutry
 		{
 			g_env = memnew<AppEnv>();
-			luset(g_env->graphics_queue, RHI::get_main_device()->new_command_queue(RHI::CommandQueueType::graphics));
-			luset(g_env->async_compute_queue, RHI::get_main_device()->new_command_queue(RHI::CommandQueueType::compute));
+			g_env->device = RHI::get_main_device();
+			u32 num_queues = g_env->device->get_num_command_queues();
+			g_env->graphics_queue = U32_MAX;
+			g_env->async_compute_queue = U32_MAX;
+			g_env->async_copy_queue = U32_MAX;
+			for (u32 i = 0; i < num_queues; ++i)
+			{
+				auto desc = g_env->device->get_command_queue_desc(i);
+				if (desc.type == RHI::CommandQueueType::graphics && g_env->graphics_queue == U32_MAX)
+				{
+					g_env->graphics_queue = i;
+				}
+				if (desc.type == RHI::CommandQueueType::compute && g_env->async_compute_queue == U32_MAX)
+				{
+					g_env->async_compute_queue = i;
+				}
+				if (desc.type == RHI::CommandQueueType::copy && g_env->async_copy_queue == U32_MAX)
+				{
+					g_env->async_copy_queue = i;
+				}
+			}
+			if (g_env->async_compute_queue == U32_MAX) g_env->async_compute_queue = g_env->graphics_queue;
+			if(g_env->async_copy_queue == U32_MAX) g_env->async_copy_queue = g_env->graphics_queue;
 		}
 		lucatchret;
 		return ok;
@@ -34,6 +55,7 @@ namespace Luna
 	void run_editor()
 	{
 		set_log_std_enabled(true);
+		set_log_std_verbosity(LogVerbosity::error);
 		auto r = init_modules();
 		if (failed(r))
 		{
@@ -46,6 +68,8 @@ namespace Luna
 		auto project = select_project();
 		if (failed(project))
 		{
+			memdelete(g_env);
+			g_env = nullptr;
 			return;
 		}
 

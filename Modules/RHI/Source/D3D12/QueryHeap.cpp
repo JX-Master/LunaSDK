@@ -8,9 +8,6 @@
 * @date 2023/3/8
 */
 #include "QueryHeap.hpp"
-
-#ifdef LUNA_RHI_D3D12
-
 namespace Luna
 {
     namespace RHI
@@ -21,11 +18,11 @@ namespace Luna
             D3D12_QUERY_HEAP_DESC d;
             switch(desc.type)
             {
-            case QueryHeapType::occlusion:
+            case QueryType::occlusion:
                 d.Type = D3D12_QUERY_HEAP_TYPE_OCCLUSION; break;
-            case QueryHeapType::timestamp:
+            case QueryType::timestamp:
                 d.Type = D3D12_QUERY_HEAP_TYPE_TIMESTAMP; break;
-            case QueryHeapType::pipeline_statistics:
+            case QueryType::pipeline_statistics:
                 d.Type = D3D12_QUERY_HEAP_TYPE_PIPELINE_STATISTICS; break;
             default: lupanic(); break;
             }
@@ -35,80 +32,118 @@ namespace Luna
                 IID_PPV_ARGS(&m_heap));
             if(FAILED(hr))
             {
-                return encode_d3d12_error(hr);
+                return encode_hresult(hr);
             }
             // Create resource buffer.
             usize query_size = 0;
             switch (desc.type)
             {
-            case QueryHeapType::occlusion: query_size = 8; break;
-            case QueryHeapType::timestamp: query_size = 8; break;
-            case QueryHeapType::pipeline_statistics: query_size = sizeof(D3D12_QUERY_DATA_PIPELINE_STATISTICS); break;
+            case QueryType::occlusion: query_size = 8; break;
+            case QueryType::timestamp: query_size = 8; break;
+            case QueryType::pipeline_statistics: query_size = sizeof(D3D12_QUERY_DATA_PIPELINE_STATISTICS); break;
             default: lupanic(); break;
             }
-            auto result_buffer = m_device->new_resource(ResourceDesc::buffer(ResourceHeapType::readback, ResourceUsageFlag::none,
-                query_size * desc.count), nullptr);
+            auto result_buffer = m_device->new_buffer(MemoryType::readback, BufferDesc(BufferUsageFlag::copy_dest, query_size * desc.count));
             if (failed(result_buffer)) return result_buffer.errcode();
             m_result_buffer = result_buffer.get();
             return ok;
         }
-        RV QueryHeap::get_timestamp_values(u32 index, u32 count, u64* values)
+        RV QueryHeap::get_timestamp_values(u32 index, u32 count, void* buffer, usize stride)
         {
-            lutsassert();
-            if (m_desc.type != QueryHeapType::timestamp) return BasicError::not_supported();
             lutry
             {
-                u64* mapped = nullptr;
-                luexp(m_result_buffer->map_subresource(0, index * sizeof(u64), (index + count) * sizeof(u64), (void**)&mapped));
-                memcpy(values, mapped + index, count * sizeof(u64));
-                m_result_buffer->unmap_subresource(0, 0, 0);
-            }
-            lucatchret;
-            return ok;
-        }
-        RV QueryHeap::get_occlusion_values(u32 index, u32 count, u64* values)
-        {
-            lutsassert();
-            if (m_desc.type != QueryHeapType::occlusion) return BasicError::not_supported();
-            lutry
-            {
-                u64* mapped = nullptr;
-                luexp(m_result_buffer->map_subresource(0, index * sizeof(u64), (index + count) * sizeof(u64), (void**)&mapped));
-                memcpy(values, mapped + index, count * sizeof(u64));
-                m_result_buffer->unmap_subresource(0, 0, 0);
-            }
-            lucatchret;
-            return ok;
-        }
-        RV QueryHeap::get_pipeline_statistics_values(u32 index, u32 count, PipelineStatistics* values)
-        {
-            lutsassert();
-            if (m_desc.type != QueryHeapType::occlusion) return BasicError::not_supported();
-            lutry
-            {
-                D3D12_QUERY_DATA_PIPELINE_STATISTICS* mapped = nullptr;
-                luexp(m_result_buffer->map_subresource(0, index * sizeof(D3D12_QUERY_DATA_PIPELINE_STATISTICS), 
-                    (index + count) * sizeof(D3D12_QUERY_DATA_PIPELINE_STATISTICS), (void**)&mapped));
-                for (usize i = 0; i < count; ++i)
+                if (stride < sizeof(u64)) return BasicError::bad_arguments();
+                usize dst_addr = (usize)buffer;
+                lulet(mapped, m_result_buffer->map(index * sizeof(u64), (index + count) * sizeof(u64)));
+                for (u32 i = 0; i < count; ++i)
                 {
-                    values[i].input_vertices = mapped[index + i].IAVertices;
-                    values[i].input_primitives = mapped[index + i].IAPrimitives;
-                    values[i].vs_invocations = mapped[index + i].VSInvocations;
-                    values[i].gs_invocations = mapped[index + i].GSInvocations;
-                    values[i].gs_output_primitives = mapped[index + i].GSPrimitives;
-                    values[i].rasterizer_input_primitives = mapped[index + i].CInvocations;
-                    values[i].rendered_primitives = mapped[index + i].CPrimitives;
-                    values[i].ps_invocations = mapped[index + i].PSInvocations;
-                    values[i].hs_invocations = mapped[index + i].HSInvocations;
-                    values[i].ds_invocations = mapped[index + i].DSInvocations;
-                    values[i].cs_invocations = mapped[index + i].CSInvocations;
+                    u64* src = ((u64*)mapped) + index + i;
+                    u64* dst = (u64*)dst_addr;
+                    *dst = *src;
+                    dst_addr += stride;
                 }
-                m_result_buffer->unmap_subresource(0, 0, 0);
+                m_result_buffer->unmap(0, 0);
+            }
+            lucatchret;
+            return ok;
+        }
+        RV QueryHeap::get_occlusion_values(u32 index, u32 count, void* buffer, usize stride)
+        {
+            lutry
+            {
+                if (stride < sizeof(u64)) return BasicError::bad_arguments();
+                usize dst_addr = (usize)buffer;
+                lulet(mapped, m_result_buffer->map(index * sizeof(u64), (index + count) * sizeof(u64)));
+                for (u32 i = 0; i < count; ++i)
+                {
+                    u64* src = ((u64*)mapped) + index + i;
+                    u64* dst = (u64*)dst_addr;
+                    *dst = *src;
+                    dst_addr += stride;
+                }
+                m_result_buffer->unmap(0, 0);
+            }
+            lucatchret;
+            return ok;
+        }
+        RV QueryHeap::get_pipeline_statistics_values(u32 index, u32 count, void* buffer, usize stride)
+        {
+            lutry
+            {
+                // Count statistics items.
+                u32 num_items = 0;
+                {
+                    u32 flags = static_cast<u32>(m_desc.pipeline_statistics);
+                    while (flags)
+                    {
+                        if (flags & 1) ++num_items;
+                        flags >>= 1;
+                    }
+                }
+                if (stride < sizeof(u64) * num_items) return BasicError::bad_arguments();
+                usize dst_addr = (usize)buffer;
+                lulet(mapped, m_result_buffer->map(index * sizeof(D3D12_QUERY_DATA_PIPELINE_STATISTICS),
+                    (index + count) * sizeof(D3D12_QUERY_DATA_PIPELINE_STATISTICS)));
+                auto flags = m_desc.pipeline_statistics;
+                for (u32 i = 0; i < count; ++i)
+                {
+                    D3D12_QUERY_DATA_PIPELINE_STATISTICS* src = ((D3D12_QUERY_DATA_PIPELINE_STATISTICS*)mapped) + index + i;
+                    u64* dst = (u64*)dst_addr;
+                    if (test_flags(flags, QueryPipelineStatisticFlag::input_vertices)) { *dst = src->IAVertices; ++dst; }
+                    if (test_flags(flags, QueryPipelineStatisticFlag::input_primitives)) { *dst = src->IAPrimitives; ++dst; }
+                    if (test_flags(flags, QueryPipelineStatisticFlag::vs_invocations)) { *dst = src->VSInvocations; ++dst; }
+                    if (test_flags(flags, QueryPipelineStatisticFlag::rasterizer_input_primitives)) { *dst = src->CInvocations; ++dst; }
+                    if (test_flags(flags, QueryPipelineStatisticFlag::rendered_primitives)) { *dst = src->CPrimitives; ++dst; }
+                    if (test_flags(flags, QueryPipelineStatisticFlag::ps_invocations)) { *dst = src->PSInvocations; ++dst; }
+                    if (test_flags(flags, QueryPipelineStatisticFlag::cs_invocations)) { *dst = src->CSInvocations; ++dst; }
+                    dst_addr += stride;
+                }
+                m_result_buffer->unmap(0, 0);
+            }
+            lucatchret;
+            return ok;
+        }
+        RV QueryHeap::get_query_results(u32 start_index, u32 count, void* buffer, usize buffer_size, usize stride)
+        {
+            lutsassert();
+            lutry
+            {
+                if (buffer_size < stride * count) return BasicError::insufficient_user_buffer();
+                switch (m_desc.type)
+                {
+                case QueryType::occlusion:
+                    luexp(get_occlusion_values(start_index, count, buffer, stride));
+                    break;
+                case QueryType::timestamp:
+                    luexp(get_timestamp_values(start_index, count, buffer, stride));
+                    break;
+                case QueryType::pipeline_statistics:
+                    luexp(get_pipeline_statistics_values(start_index, count, buffer, stride));
+                    break;
+                }
             }
             lucatchret;
             return ok;
         }
     }
 }
-
-#endif

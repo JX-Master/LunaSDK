@@ -806,7 +806,7 @@ namespace Luna
 	}
 	inline Variant& Variant::at(usize i)
 	{
-		lucheck(type() == Type::array);
+		lucheck(type() == VariantType::array);
 		lucheck(i < size());
 		if (test_flags(m_array_flag, ArrayFlag::big_array)) return m_big_arr->at(i);
 		return m_arr[i];

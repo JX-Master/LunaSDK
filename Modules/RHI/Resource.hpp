@@ -8,68 +8,13 @@
 * @date 2019/7/20
 */
 #pragma once
-#include <Runtime/Object.hpp>
 #include <Runtime/Result.hpp>
 #include <Runtime/Math/Math.hpp>
-#include "DeviceChild.hpp"
+#include "DeviceMemory.hpp"
 namespace Luna
 {
 	namespace RHI
 	{
-		enum class ResourceType : u8
-		{
-			buffer,
-			texture_1d,
-			texture_2d,
-			texture_3d
-		};
-
-		//! Specify the resource heaps types. See remarks for details.
-		//! @remark The resource heap type determines the memory location and access policy for the heap.
-		//! The system will choose the most suitable memory location to allocate the resource heap or resource
-		//! based on the target platform and the target resource heap type.
-		//! 
-		//! The local heap type is allocated on memory that is visible only to GPU. Such memory gains maximum 
-		//! GPU bandwidth, but cannot be accessed by CPU. On platforms with non-uniform memory architecture (NUMA),
-		//! the local heap will be allocated on video memory, which cannot be accessed by CPU; in a platform with 
-		//! uniform memory architecture (UMA), the local heap will be allocated on system memory. While it is 
-		//! technically possible for CPU to access local heap on UMA, preventing such access gives the hardware and
-		//! driver more rooms for optimizing GPU access efficiency.
-		//!
-		//! The upload heap type is allocated on system memory that is optimized for CPU writing. GPU cannot write to this heap and
-		//! GPU reading from upload heap is slow. On NUMA platfroms, reading data from upload heap from GPU requires data transmission 
-		//! through PCI-Express bus, which is much slower than reading data in local heap from GPU. We recommend using upload heap only 
-		//! for uploading data to local heap or reading the data only once per CPU write.
-		//! 
-		//! The readback heap type is allocated on system memory that is optimized for CPU reading. GPU writing to read back heap 
-		//! is slow, and the only operation allowed for GPU is to copy data to the heap. On NUMA platfroms, writing data to readback heap 
-		//! from GPU requires data transmission through PCI-Express bus, which is a slow operation.
-		//! 
-		//! The user should choose the suitable heap type based on the use situation. Here are some basic principles:
-		//! 1. If you need to create texture resources, use local heap. If you need to upload texture data from CPU side, use one upload heap 
-		//! to copy data to the local heap.
-		//! 2. If you don't need to access resource data from CPU, use local heap.
-		//! 3. If you only need to upload data from CPU side once, like setting the initial data for static vertex and index buffers, use 
-		//! one local heap to store the data, then use one temporary upload heap to copy data to the local heap.
-		//! 4. If you need to upload data from CPU side multiple times, but the data is read by GPU only once per CPU update, use upload heap.
-		//! 5. If you need to upload data from CPU side multiple times, and the data will be read by GPU multiple times per CPU update, use one 
-		//! local heap resource for GPU access and one upload heap resource for CPU access, and copy data between two resources when needed.
-		//! 6. If you need to read resource data from CPU side, use readback heap.
-		enum class ResourceHeapType : u8
-		{
-			//! The resource heap can only be read and written by GPU. CPU access is not allowed.
-			local = 0,
-
-			//! The resource heap can only be written by CPU and read by GPU.
-			//! Only buffer resources can be created on upload heap.
-			upload = 1,
-
-			//! The resource heap can only be read by CPU and written by GPU.
-			//! Only buffer resources can be created on readback heap.
-			//! The buffer resource can only be used as the copy destination for GPU copy commands.
-			readback = 2,
-		};
-
 		enum class Format : u16
 		{
 			unknown = 0,
@@ -234,144 +179,152 @@ namespace Luna
 			}
 		}
 
-		//! Specify how the resource will be used.
-		enum class ResourceUsageFlag : u32
+		enum class BufferUsageFlag : u16
 		{
 			none = 0x00,
-			//! Allows this resource to be bound as a shader resource by graphic pipeline.
-			shader_resource = 0x01,
-			//! Allows this resource to be bound as a constant buffer by graphic pipeline.
-			constant_buffer = 0x02,
-			//! Allows this resource to be bound for unordered access by compute pipeline.
-			unordered_access = 0x04,
-			//! Allows this resource to be bound as a render target by graphic pipeline.
-			render_target = 0x08,
-			//! Allows this resource to be bound as a depth stencil target by graphic pipeline.
-			depth_stencil = 0x10,
-			//! Allows this resource to be bound as a vertex buffer by graphic pipeline.
+			//! Allows this resource to be bound as copy source.
+			copy_source = 0x01,
+			//! Allows this resource to be bound as copy destination.
+			copy_dest = 0x02,
+			//! Allows this resource to be bound to a uniform buffer view.
+			uniform_buffer = 0x04,
+			//! Allows this resource to be bound to a read buffer view.
+			read_buffer = 0x08,
+			//! Allows this resource to be bound to a read-write buffer view.
+			read_write_buffer = 0x10,
+			//! Allows this resource to be bound as a vertex buffer.
 			vertex_buffer = 0x20,
-			//! Allows this resource to be bound as a index buffer by graphic pipeline.
+			//! Allows this resource to be bound as a index buffer.
 			index_buffer = 0x40,
-			//! Allows this resource to be bound as a streaming output buffer by graphic pipeline.
-			stream_output = 0x80,
 			//! Allows this resource to be bound as a buffer providing indirect draw arguments.
-			indirect_buffer = 0x100,
+			indirect_buffer = 0x80,
 		};
 
-		//! Additional flags for texture and buffer.
-		enum class ResourceFlag : u32
+		struct BufferDesc
+		{
+			//! The size of the buffer in bytes.
+			u64 size;
+			//! A combination of `BufferUsageFlag` flags to indicate all possible 
+			//! usages of this buffer.
+			BufferUsageFlag usages;
+
+			BufferDesc() = default;
+			BufferDesc(const BufferDesc&) = default;
+			BufferDesc& operator=(const BufferDesc&) = default;
+			BufferDesc(BufferUsageFlag usages, u64 size) :
+				usages(usages),
+				size(size) {}
+		};
+
+		enum class TextureType : u8
+		{
+			//! Specify one-dimensional texture.
+			tex1d,
+			//! Specify two-dimensional texture.
+			tex2d,
+			//! Specify three-dimensional texture.
+			tex3d,
+		};
+
+		enum class TextureUsageFlag : u16
 		{
 			none = 0x00,
-			//! Indicates that this resource represents a cubemap texture.
-			cubemap = 0x01,
-			//! Allow this resource to be used simultaneously from multiple command queues, given that only 
-			//! one queue is writing to the resource.
-			simultaneous_access = 0x02,
+			//! Allows this resource to be bound as copy source.
+			copy_source = 0x01,
+			//! Allows this resource to be bound as copy destination.
+			copy_dest = 0x02,
+			//! Allows this resource to be bound to a read texture view.
+			read_texture = 0x04,
+			//! Allows this resource to be bound to a read-write texture view.
+			read_write_texture = 0x08,
+			//! Allows this resource to be bound as color attachment.
+			color_attachment = 0x10,
+			//! Allows this resource to be bound as depth stencil attachment.
+			depth_stencil_attachment = 0x20,
+			//! Allows this resource to be bound to a resolve attachment.
+			resolve_attachment = 0x40,
 		};
 
-		//! Describe an RHI resource.
-		struct ResourceDesc
+		enum class TextureFlag : u16
 		{
-			//! The type of the resource.
-			ResourceType type;
-			//! The heap type of the resource. See `ResourceHeapType` for details.
-			ResourceHeapType heap_type;
-			//! If the resource is a texture, specify the pixel format of the resource.
-			//! If the resource is a buffer, this is ignored when creating resources, and
-			//! will be set to `unknown` in its descriptor object.
-			Format pixel_format;
-			//! A combination of `ResourceUsageFlag` flags to indicate all possible 
-			//! usages of this resource.
-			ResourceUsageFlag usages;
-			//! If the resource is a texture, specify the width of the texture in pixels.
-			//! If the resource is a buffer, specify the size of the buffer in bytes.
-			u64 width_or_buffer_size;
-			//! The height of the texture in pixels.
-			//! If the resource is a buffer or 1D texture, this is ignored when creating resources, and
-			//! will be set to 1 in its descriptor object.
+			none = 0x00,
+			//! Specifies that this texture can be used to create a texture cube view.
+			cube = 0x01,
+		};
+
+		struct TextureDesc
+		{
+			//! The type of the texture.
+			TextureType type;
+			//! The pixel format of the texture.
+			Format format;
+			//! The width of the texture.
+			u32 width;
+			//! The height of the texture.
+			//! This should always be 1 for 1D textures.
 			u32 height;
-			//! If the resource is a 3D texture, specifty the depth of the resource in pixels 
-			//! If the resources is a 1D and 2D texture, specify the number of array slices 
-			//! If the resource is a buffer, this is ignored when creating resources, and
-			//! will be set to 1 in its descriptor object.
-			u32 depth_or_array_size;
-			//! If the resource is a texture, specify the number of mip-map slices.
-			//! If the resource is a buffer, this is ignored when creating resources, and
-			//! will be set to 1 in its descriptor object.
+			//! The depth of the texture.
+			//! This should always be 1 for 1D, 2D and cube textures.
+			u32 depth;
+			//! The texture array size, specify 1 if this is not a texture array.
+			//! This should always be 1 for 3D textures.
+			u32 array_size;
+			//! The number of mip-map slices. 
 			//! Specify 0 tells the system to create full mip-map chain for the resource.
 			u32 mip_levels;
 			//! The sample count per pixel for multi-sample texture resource, specify 1 if the 
 			//! multi-sample is disabled for this texture.
-			//! If the resource is a buffer, 1D or 3D texture, this is ignored when creating resources, and
-			//! will be set to 1 in its descriptor object.
+			//! This should always be 1 for 1D and 3D textures.
 			u32 sample_count;
-			//! The sample quality level for multi-sample texture resource, specify 0 if the 
-			//! multi-sample is disabled for this texture. Only specify non-zero values when 
-			//! `sample_count` is not 1.
-			//! If the resource is a buffer, 1D or 3D texture, this is ignored when creating resources, and
-			//! will be set to 0 in its descriptor object.
-			u32 sample_quality;
-			//! Additional flags for the resource.
-			ResourceFlag flags;
+			//! A combination of `TextureUsageFlag` flags to indicate all possible 
+			//! usages of this texture.
+			TextureUsageFlag usages;
+			//! A combination of `TextureFlag` flags to indicate additional flags for the texture.
+			TextureFlag flags;
 
-			static inline ResourceDesc buffer(ResourceHeapType heap_type, ResourceUsageFlag usages, u64 size, ResourceFlag flags = ResourceFlag::none)
+			static inline TextureDesc tex1d(Format format, TextureUsageFlag usages, u64 width, u32 array_size = 1, u32 mip_levels = 0, TextureFlag flags = TextureFlag::none)
 			{
-				ResourceDesc d;
-				d.type = ResourceType::buffer;
-				d.heap_type = heap_type;
-				d.usages = usages;
-				d.width_or_buffer_size = size;
-				d.flags = flags;
-				return d;
-			}
-
-			static inline ResourceDesc tex1d(ResourceHeapType heap_type, Format pixel_format, ResourceUsageFlag usages, u64 width, u32 array_size = 1, u32 mip_levels = 0, ResourceFlag flags = ResourceFlag::none)
-			{
-				ResourceDesc d;
-				d.type = ResourceType::texture_1d;
-				d.heap_type = heap_type;
-				d.pixel_format = pixel_format;
-				d.usages = usages;
-				d.width_or_buffer_size = width;
-				d.sample_count = 1;
-				d.sample_quality = 0;
-				d.depth_or_array_size = array_size;
+				TextureDesc d;
+				d.type = TextureType::tex1d;
+				d.format = format;
+				d.width = width;
+				d.height = 1;
+				d.depth = 1;
+				d.array_size = array_size;
 				d.mip_levels = mip_levels;
+				d.sample_count = 1;
+				d.usages = usages;
 				d.flags = flags;
 				return d;
 			}
-
-			static inline ResourceDesc tex2d(ResourceHeapType heap_type, Format pixel_format, ResourceUsageFlag usages, u64 width, u32 height, u32 array_size = 1, u32 mip_levels = 0,
-				u32 sample_count = 1, u32 sample_quality = 0, ResourceFlag flags = ResourceFlag::none)
+			static inline TextureDesc tex2d(Format format, TextureUsageFlag usages, u64 width, u32 height, u32 array_size = 1, u32 mip_levels = 0,
+				u32 sample_count = 1, TextureFlag flags = TextureFlag::none)
 			{
-				ResourceDesc d;
-				d.type = ResourceType::texture_2d;
-				d.heap_type = heap_type;
-				d.pixel_format = pixel_format;
-				d.usages = usages;
-				d.width_or_buffer_size = width;
+				TextureDesc d;
+				d.type = TextureType::tex2d;
+				d.format = format;
+				d.width = width;
 				d.height = height;
+				d.depth = 1;
+				d.array_size = array_size;
+				d.mip_levels = mip_levels;
 				d.sample_count = sample_count;
-				d.sample_quality = sample_quality;
-				d.depth_or_array_size = array_size;
-				d.mip_levels = mip_levels;
+				d.usages = usages;
 				d.flags = flags;
 				return d;
 			}
-
-			static inline ResourceDesc tex3d(ResourceHeapType heap_type, Format pixel_format, ResourceUsageFlag usages, u64 width, u32 height, u32 depth, u32 mip_levels = 0, ResourceFlag flags = ResourceFlag::none)
+			static inline TextureDesc tex3d(Format format, TextureUsageFlag usages, u64 width, u32 height, u32 depth, u32 mip_levels = 0, TextureFlag flags = TextureFlag::none)
 			{
-				ResourceDesc d;
-				d.type = ResourceType::texture_3d;
-				d.heap_type = heap_type;
-				d.pixel_format = pixel_format;
-				d.usages = usages;
-				d.width_or_buffer_size = width;
+				TextureDesc d;
+				d.type = TextureType::tex3d;
+				d.format = format;
+				d.width = width;
 				d.height = height;
-				d.sample_count = 1;
-				d.sample_quality = 0;
-				d.depth_or_array_size = depth;
+				d.depth = depth;
+				d.array_size = 1;
 				d.mip_levels = mip_levels;
+				d.sample_count = 1;
+				d.usages = usages;
 				d.flags = flags;
 				return d;
 			}
@@ -391,17 +344,17 @@ namespace Luna
 
 		struct ClearValue
 		{
-			Format pixel_format;
+			Format format;
 			ClearValueType type;
 			union
 			{
 				f32 color[4];
 				DepthStencilValue depth_stencil;
 			};
-			static ClearValue as_color(Format pixel_format, f32 color[4])
+			static ClearValue as_color(Format format, f32 color[4])
 			{
 				ClearValue r;
-				r.pixel_format = pixel_format;
+				r.format = format;
 				r.type = ClearValueType::color;
 				r.color[0] = color[0];
 				r.color[1] = color[1];
@@ -409,16 +362,41 @@ namespace Luna
 				r.color[3] = color[3];
 				return r;
 			}
-			static ClearValue as_depth_stencil(Format pixel_format, f32 depth, u8 stencil)
+			static ClearValue as_depth_stencil(Format format, f32 depth, u8 stencil)
 			{
 				ClearValue r;
 				r.type = ClearValueType::depth_stencil;
-				r.pixel_format = pixel_format;
+				r.format = format;
 				r.depth_stencil.depth = depth;
 				r.depth_stencil.stencil = stencil;
 				return r;
 			}
 		};
+
+		struct SubresourceIndex
+		{
+			//! The mip index of the subresource.
+			u32 mip_slice;
+			//! The array index of the subresource.
+			u32 array_slice;
+
+			SubresourceIndex() = default;
+			constexpr SubresourceIndex(u32 mip_slice, u32 array_slice) :
+				mip_slice(mip_slice),
+				array_slice(array_slice) {}
+			bool operator==(const SubresourceIndex& rhs) const { return mip_slice == rhs.mip_slice && array_slice == rhs.array_slice; }
+		};
+	}
+	template <>
+	struct hash<RHI::SubresourceIndex>
+	{
+		usize operator()(const RHI::SubresourceIndex& value)
+		{
+			return memhash(&value, sizeof(RHI::SubresourceIndex));
+		}
+	};
+	namespace RHI
+	{
 
 		//! @interface IResource
 		//! Represents a memory region that can be accessed by GPU.
@@ -426,32 +404,47 @@ namespace Luna
 		{
 			luiid("{D67C47CD-1FF3-4FA4-82FE-773EC5C8AD2A}");
 
-			//! Gets the descriptor of the resource.
-			virtual ResourceDesc get_desc() = 0;
+			//! Gets the device memory object that holds memory of this resource.
+			virtual IDeviceMemory* get_memory() = 0;
+		};
+
+		struct IBuffer : virtual IResource
+		{
+			luiid("{548E82ED-947F-4F4C-95A0-DC0607C96C54}");
+
+			virtual BufferDesc get_desc() = 0;
 
 			//! Maps the resource data to system memory and enables CPU access to the resource data.
-			//! Map/unmap operations are reference counted, for each `map_subresource` operation, you need to call `unmap_subresource` once to finally unmap the memory.
-			//! @param[in] subresource The index of the subresource you want to map. For buffer resources, always specify `0`.
+			//! Map/unmap operations are reference counted, for each `map` operation, you need to call `unmap` once to finally unmap the memory.
+			//! Only buffer resources can be mapped.
 			//! @param[in] read_begin The byte offset of the beginning of the data range that will be read by CPU.
 			//! @param[in] read_end The byte offset of the ending of the data range that will be read by CPU.
 			//! 
-			//! If `read_end <= read_begin`, no data will be read by CPU, which is required if resource heap type is not `ResourceHeapType::readback`.
+			//! If `read_end <= read_begin`, no data will be read by CPU, which is required if resource heap type is not `MemoryType::readback`.
 			//! 
 			//! If `read_end` is larger than the subresource size (like setting to `USIZE_MAX`), the read range will be clamped to [read_begin, resource_size). 
-			//! @param[out] out_data If not `nullptr`, returns one pointer to the mapped resource data. 
-			//! The returned pointer is not affected by `read_offset` and always points to the beginning of the subresource data.
-			virtual RV map_subresource(u32 subresource, usize read_begin, usize read_end, void** out_data) = 0;
+			//! @return Returns one pointer to the mapped resource data. 
+			//! The returned pointer is not offsetted by `read_begin` and always points to the beginning of the resource data, but 
+			//! only data in [pointer + read_begin, pointer + read_end) range is valid for reading from CPU.
+			virtual R<void*> map(usize read_begin, usize read_end) = 0;
 
-			//! Invalidates the pointer to the mapped data, and synchronizes changed data when needed.
-			//! Map/unmap operations are reference counted, for each `map_subresource` operation, you need to call `unmap_subresource` once to finally unmap the memory.
-			//! @param[in] subresource The index of the subresource you want to unmap. For buffer resources, always specify `0`.
+			//! Invalidates the pointer to the mapped data, and synchronizes changed data with device when needed.
+			//! Map/unmap operations are reference counted, for each `map` operation, you need to call `unmap` once to finally unmap the memory.
+			//! Only buffer resources can be mapped.
 			//! @param[in] write_begin The byte offset of the beginning of the data range that is changed by CPU and should be synchronized. 
 			//! @param[in] write_end The byte offset of the ending of the data range that is changed by CPU and should be synchronized.
 			//! 
-			//! If `write_begin <= write_end`, no data will be synchronized, which is required if resource heap type is not `ResourceHeapType::upload`.
+			//! If `write_begin <= write_end`, no data will be synchronized, which is required if resource heap type is not `MemoryType::upload`.
 			//! 
 			//! If `write_end` is larger than the subresource size (like setting to `USIZE_MAX`), the write range will be clamped to [write_begin, resource_size). 
-			virtual void unmap_subresource(u32 subresource, usize write_begin, usize write_end) = 0;
+			virtual void unmap(usize write_begin, usize write_end) = 0;
+		};
+
+		struct ITexture : virtual IResource
+		{
+			luiid("{66189448-3914-4055-A4B3-AE3D6EF57F1A}");
+
+			virtual TextureDesc get_desc() = 0;
 		};
 	}
 }

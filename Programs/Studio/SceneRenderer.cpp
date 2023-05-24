@@ -21,7 +21,7 @@
 #include "RenderPasses/GeometryPass.hpp"
 #include "RenderPasses/DeferredLightingPass.hpp"
 #include "RenderPasses/BufferVisualizationPass.hpp"
-#include "RenderPasses/NormalVisualizationPass.hpp"
+#include "StudioHeader.hpp"
 
 namespace Luna
 {
@@ -40,8 +40,8 @@ namespace Luna
         lutry
         { 
             m_settings = settings;
-            u32 cb_align = m_device->get_constant_buffer_data_alignment();
-            luset(m_camera_cb, m_device->new_resource(ResourceDesc::buffer(ResourceHeapType::upload, ResourceUsageFlag::constant_buffer, align_upper(sizeof(CameraCB), cb_align))));
+            u32 cb_align = m_device->get_uniform_buffer_data_alignment();
+            luset(m_camera_cb, m_device->new_buffer(MemoryType::upload, BufferDesc(BufferUsageFlag::uniform_buffer, align_upper(sizeof(CameraCB), cb_align))));
 			
 			// Build render graph.
 			{
@@ -56,48 +56,51 @@ namespace Luna
 				desc.passes[SKYBOX_PASS] = {"SkyBoxPass", "SkyBox"};
 				desc.passes[DEFERRED_LIGHTING_PASS] = {"DeferredLightingPass", "DeferredLighting"};
 				desc.passes[TONE_MAPPING_PASS] = {"ToneMappingPass", "ToneMapping"};
-				desc.passes[NORMAL_VIS_PASS] = {"NormalVisualizationPass", "NormalVisualization"};
 				desc.resources.resize(9);
-				desc.resources[LIGHTING_BUFFER] = {RenderGraphResourceType::transient, 
+				desc.resources[LIGHTING_BUFFER] = { RenderGraphResourceType::transient,
 					RenderGraphResourceFlag::none,
-					"LightingBuffer", 
-					ResourceDesc::tex2d(ResourceHeapType::local, Format::rgba32_float, 
-					ResourceUsageFlag::shader_resource, (u32)settings.screen_size.x, (u32)settings.screen_size.y, 1, 1)};
+					"LightingBuffer",
+					ResourceDesc::as_texture(MemoryType::local,
+						TextureDesc::tex2d(Format::rgba32_float, TextureUsageFlag::read_texture | TextureUsageFlag::read_write_texture,
+							(u32)settings.screen_size.x, (u32)settings.screen_size.y, 1, 1)) };
 				desc.resources[DEPTH_BUFFER] = {RenderGraphResourceType::transient, 
 					RenderGraphResourceFlag::none,
 					"DepthBuffer",
-					ResourceDesc::tex2d(ResourceHeapType::local, Format::d32_float, 
-					ResourceUsageFlag::shader_resource, (u32)settings.screen_size.x, (u32)settings.screen_size.y, 1, 1)};
+					ResourceDesc::as_texture(MemoryType::local,
+						TextureDesc::tex2d(Format::d32_float, TextureUsageFlag::depth_stencil_attachment | TextureUsageFlag::read_texture, 
+							(u32)settings.screen_size.x, (u32)settings.screen_size.y, 1, 1)) };
 				desc.resources[BACK_BUFFER] = {RenderGraphResourceType::transient, 
 					RenderGraphResourceFlag::none,
 					"BackBuffer",
-					ResourceDesc::tex2d(ResourceHeapType::local, Format::rgba8_unorm,
-					ResourceUsageFlag::shader_resource | ResourceUsageFlag::render_target, 0, 0, 1, 1)};
+					ResourceDesc::as_texture(MemoryType::local,
+						TextureDesc::tex2d(Format::rgba8_unorm, TextureUsageFlag::read_texture | TextureUsageFlag::color_attachment | TextureUsageFlag::copy_source, 0, 0, 1, 1))};
 				desc.resources[WIREFRAME_BACK_BUFFER] = {RenderGraphResourceType::transient, 
 					RenderGraphResourceFlag::none,
 					"WireframeBackBuffer",
-					ResourceDesc::tex2d(ResourceHeapType::local, Format::rgba8_unorm, 
-					ResourceUsageFlag::shader_resource | ResourceUsageFlag::render_target, (u32)settings.screen_size.x, (u32)settings.screen_size.y, 1, 1)};
+					ResourceDesc::as_texture(MemoryType::local,
+						TextureDesc::tex2d(Format::rgba8_unorm, TextureUsageFlag::read_texture | TextureUsageFlag::color_attachment | TextureUsageFlag::copy_source,
+							(u32)settings.screen_size.x, (u32)settings.screen_size.y, 1, 1))};
 				desc.resources[GBUFFER_VIS_BUFFER] = {RenderGraphResourceType::transient, 
 					RenderGraphResourceFlag::none,
 					"GBufferBackBuffer",
-					ResourceDesc::tex2d(ResourceHeapType::local, Format::rgba8_unorm, 
-					ResourceUsageFlag::shader_resource | ResourceUsageFlag::render_target, (u32)settings.screen_size.x, (u32)settings.screen_size.y, 1, 1)};
+					ResourceDesc::as_texture(MemoryType::local,
+						TextureDesc::tex2d(Format::rgba8_unorm, TextureUsageFlag::read_texture | TextureUsageFlag::color_attachment | TextureUsageFlag::copy_source,
+							(u32)settings.screen_size.x, (u32)settings.screen_size.y, 1, 1))};
 				desc.resources[BASE_COLOR_ROUGHNESS_BUFFER] = {RenderGraphResourceType::transient, 
 					RenderGraphResourceFlag::none,
 					"BaseColorRoughnessBuffer",
-					ResourceDesc::tex2d(ResourceHeapType::local, Format::rgba8_unorm, 
-					ResourceUsageFlag::shader_resource | ResourceUsageFlag::render_target, 0, 0, 1, 1)};
+					ResourceDesc::as_texture(MemoryType::local,
+						TextureDesc::tex2d(Format::rgba8_unorm, TextureUsageFlag::read_texture | TextureUsageFlag::color_attachment, 0, 0, 1, 1))};
 				desc.resources[NORMAL_METALLIC_BUFFER] = {RenderGraphResourceType::transient, 
 					RenderGraphResourceFlag::none,
 					"NormalMetallicBuffer",
-					ResourceDesc::tex2d(ResourceHeapType::local, Format::rgba8_unorm, 
-					ResourceUsageFlag::shader_resource | ResourceUsageFlag::render_target, 0, 0, 1, 1)};
+					ResourceDesc::as_texture(MemoryType::local,
+						TextureDesc::tex2d(Format::rgba8_unorm, TextureUsageFlag::read_texture | TextureUsageFlag::color_attachment, 0, 0, 1, 1))};
 				desc.resources[EMISSIVE_BUFFER] = {RenderGraphResourceType::transient, 
 					RenderGraphResourceFlag::none,
 					"EmissiveBuffer",
-					ResourceDesc::tex2d(ResourceHeapType::local, Format::rgba16_float, 
-					ResourceUsageFlag::shader_resource | ResourceUsageFlag::render_target, 0, 0, 1, 1)};
+					ResourceDesc::as_texture(MemoryType::local,
+						TextureDesc::tex2d(Format::rgba16_float, TextureUsageFlag::read_texture | TextureUsageFlag::color_attachment, 0, 0, 1, 1))};
 
 				switch(settings.mode)
 				{
@@ -137,11 +140,6 @@ namespace Luna
 				desc.output_connections.push_back({BUFFER_VIS_PASS, "scene_texture", GBUFFER_VIS_BUFFER});
 				desc.input_connections.push_back({TONE_MAPPING_PASS, "hdr_texture", LIGHTING_BUFFER});
 				desc.output_connections.push_back({TONE_MAPPING_PASS, "ldr_texture", BACK_BUFFER});
-				if(m_settings.mode == SceneRendererMode::normal_visualization)
-				{
-					desc.input_connections.push_back({NORMAL_VIS_PASS, "depth_texture", DEPTH_BUFFER});
-					desc.output_connections.push_back({NORMAL_VIS_PASS, "scene_texture", BACK_BUFFER});
-				}
 
 				m_render_graph->set_desc(desc);
 				RG::RenderGraphCompileConfig config;
@@ -156,8 +154,6 @@ namespace Luna
     {
         lutry
         {
-            luset(m_queue_freq, command_buffer->get_command_queue()->get_timestamp_frequency());
-
             Scene* s = scene.get();
             if(!s) return set_error(BasicError::null_value(), "`scene` is `nullptr`.");
 
@@ -192,10 +188,9 @@ namespace Luna
 			Float3 env_color = scene_renderer->environment_color;
 			camera_cb_data.screen_width = m_settings.screen_size.x;
 			camera_cb_data.screen_height = m_settings.screen_size.y;
-			void* mapped = nullptr;
-			luexp(m_camera_cb->map_subresource(0, 0, 0, &mapped));
+			lulet(mapped, m_camera_cb->map(0, 0));
 			memcpy(mapped, &camera_cb_data, sizeof(CameraCB));
-			m_camera_cb->unmap_subresource(0, 0, sizeof(CameraCB));
+			m_camera_cb->unmap(0, sizeof(CameraCB));
 
             using namespace RHI;
 
@@ -229,13 +224,12 @@ namespace Luna
 			{
 				if (m_num_model_matrices < ts.size())
 				{
-					m_model_matrices = device->new_resource(ResourceDesc::buffer(ResourceHeapType::upload, ResourceUsageFlag::shader_resource, (u64)sizeof(Float4x4) * 2 * (u64)ts.size())).get();
+					luset(m_model_matrices, device->new_buffer(MemoryType::upload, BufferDesc(BufferUsageFlag::read_buffer, (u64)sizeof(Float4x4) * 2 * (u64)ts.size())));
 					m_num_model_matrices = ts.size();
 				}
 				if (!ts.empty())
 				{
-					void* mapped = nullptr;
-					luexp(m_model_matrices->map_subresource(0, 0, 0, &mapped));
+					lulet(mapped, m_model_matrices->map(0, 0));
 					for (usize i = 0; i < ts.size(); ++i)
 					{
 						Float4x4 m2w = ts[i]->local_to_world_matrix();
@@ -243,7 +237,7 @@ namespace Luna
 						memcpy((Float4x4*)mapped + i * 2, m2w.r[0].m, sizeof(Float4x4));
 						memcpy((Float4x4*)mapped + (i * 2 + 1), w2m.r[0].m, sizeof(Float4x4));
 					}
-					m_model_matrices->unmap_subresource(0, 0, 2 * ts.size() * sizeof(Float4x4));
+					m_model_matrices->unmap(0, 2 * ts.size() * sizeof(Float4x4));
 				}
 			}
 
@@ -273,11 +267,10 @@ namespace Luna
 				usize light_size = max<usize>(light_ts.size(), 1);
 				if (m_num_lights < light_size)
 				{
-					m_lighting_params = device->new_resource(ResourceDesc::buffer(ResourceHeapType::upload, ResourceUsageFlag::shader_resource, sizeof(LightingParams) * light_size)).get();
+					luset(m_lighting_params, device->new_buffer(MemoryType::upload, BufferDesc(BufferUsageFlag::read_buffer, sizeof(LightingParams) * light_size)));
 					m_num_lights = light_size;
 				}
-				void* mapped = nullptr;
-				luexp(m_lighting_params->map_subresource(0, 0, 0, &mapped));
+				lulet(mapped, m_lighting_params->map(0, 0));
 				for (usize i = 0; i < light_ts.size(); ++i)
 				{
 					LightingParams p;
@@ -335,14 +328,14 @@ namespace Luna
 					p.spot_attenuation_power = 0.0f;
 					memcpy((LightingParams*)mapped, &p, sizeof(LightingParams));
 				}
-				m_lighting_params->unmap_subresource(0, 0, light_size * sizeof(LightingParams));
+				m_lighting_params->unmap(0, light_size * sizeof(LightingParams));
 			}
 
             {
 				// Set parameters.
 				if(m_settings.mode == SceneRendererMode::wireframe)
 				{
-					WireframePass* wireframe = cast_objct<WireframePass>(m_render_graph->get_render_pass(WIREFRAME_PASS)->get_object());
+					WireframePass* wireframe = cast_object<WireframePass>(m_render_graph->get_render_pass(WIREFRAME_PASS)->get_object());
 					wireframe->model_matrices = m_model_matrices;
 					wireframe->camera_cb = m_camera_cb;
 					wireframe->ts = {ts.data(), ts.size()};
@@ -354,9 +347,9 @@ namespace Luna
 						m_settings.mode == SceneRendererMode::metallic ||
 						m_settings.mode == SceneRendererMode::depth)
 				{
-					DepthPass* depth = cast_objct<DepthPass>(m_render_graph->get_render_pass(DEPTH_PASS)->get_object());
-					GeometryPass* geometry = cast_objct<GeometryPass>(m_render_graph->get_render_pass(GEOMETRY_PASS)->get_object());
-					BufferVisualizationPass* buffer_vis = cast_objct<BufferVisualizationPass>(m_render_graph->get_render_pass(BUFFER_VIS_PASS)->get_object());
+					DepthPass* depth = cast_object<DepthPass>(m_render_graph->get_render_pass(DEPTH_PASS)->get_object());
+					GeometryPass* geometry = cast_object<GeometryPass>(m_render_graph->get_render_pass(GEOMETRY_PASS)->get_object());
+					BufferVisualizationPass* buffer_vis = cast_object<BufferVisualizationPass>(m_render_graph->get_render_pass(BUFFER_VIS_PASS)->get_object());
 					depth->ts = {ts.data(), ts.size()};
 					depth->rs = {rs.data(), rs.size()};
 					depth->camera_cb = m_camera_cb;
@@ -376,11 +369,11 @@ namespace Luna
 				}
 				else
 				{
-					SkyBoxPass* skybox = cast_objct<SkyBoxPass>(m_render_graph->get_render_pass(SKYBOX_PASS)->get_object());
-					DepthPass* depth = cast_objct<DepthPass>(m_render_graph->get_render_pass(DEPTH_PASS)->get_object());
-					GeometryPass* geometry = cast_objct<GeometryPass>(m_render_graph->get_render_pass(GEOMETRY_PASS)->get_object());
-					DeferredLightingPass* lighting = cast_objct<DeferredLightingPass>(m_render_graph->get_render_pass(DEFERRED_LIGHTING_PASS)->get_object());
-					ToneMappingPass* tone_mapping = cast_objct<ToneMappingPass>(m_render_graph->get_render_pass(TONE_MAPPING_PASS)->get_object());
+					SkyBoxPass* skybox = cast_object<SkyBoxPass>(m_render_graph->get_render_pass(SKYBOX_PASS)->get_object());
+					DepthPass* depth = cast_object<DepthPass>(m_render_graph->get_render_pass(DEPTH_PASS)->get_object());
+					GeometryPass* geometry = cast_object<GeometryPass>(m_render_graph->get_render_pass(GEOMETRY_PASS)->get_object());
+					DeferredLightingPass* lighting = cast_object<DeferredLightingPass>(m_render_graph->get_render_pass(DEFERRED_LIGHTING_PASS)->get_object());
+					ToneMappingPass* tone_mapping = cast_object<ToneMappingPass>(m_render_graph->get_render_pass(TONE_MAPPING_PASS)->get_object());
 					skybox->camera_fov = camera_component->fov;
 					skybox->camera_type = camera_component->type;
 					skybox->view_to_world = camera_entity->local_to_world_matrix();
@@ -409,15 +402,6 @@ namespace Luna
 					}
 					tone_mapping->exposure = scene_renderer->exposure;
 					tone_mapping->auto_exposure = scene_renderer->auto_exposure;
-
-					if(m_settings.mode == SceneRendererMode::normal_visualization)
-					{
-						NormalVisualizationPass* normal_vis = cast_objct<NormalVisualizationPass>(m_render_graph->get_render_pass(NORMAL_VIS_PASS)->get_object());
-						normal_vis->ts = {ts.data(), ts.size()};
-						normal_vis->rs = {rs.data(), rs.size()};
-						normal_vis->camera_cb = m_camera_cb;
-						normal_vis->model_matrices = m_model_matrices;
-					}
 				}
 			}
             luexp(m_render_graph->execute(command_buffer));
@@ -443,34 +427,33 @@ namespace Luna
         lucatchret;
         return ok;
     }
-    RV SceneRenderer::collect_frame_profiling_data()
+    void SceneRenderer::collect_frame_profiling_data()
     {
-        lutry
-        {
-            // Collect last frame profiling data.
-			if(m_settings.frame_profiling)
+        // Collect last frame profiling data.
+		if(m_settings.frame_profiling)
+		{
+			auto queue_freq = m_device->get_command_queue_timestamp_frequency(g_env->graphics_queue).get();
+			Vector<usize> render_passes;
+			m_render_graph->get_enabled_render_passes(render_passes);
+			if (!render_passes.empty())
 			{
-				Vector<usize> render_passes;
-				m_render_graph->get_enabled_render_passes(render_passes);
-				if (!render_passes.empty())
+				enabled_passes.clear();
+				auto& desc = m_render_graph->get_desc();
+				for (usize i : render_passes)
 				{
-					enabled_passes.clear();
-					auto& desc = m_render_graph->get_desc();
-					for (usize i : render_passes)
-					{
-						enabled_passes.push_back(desc.passes[i].name);
-					}
-					Vector<u64> times;
-					luexp(m_render_graph->get_pass_time_intervals(times));
-					pass_time_intervals.clear();
+					enabled_passes.push_back(desc.passes[i].name);
+				}
+				Vector<u64> times;
+				auto r = m_render_graph->get_pass_time_intervals(times);
+				pass_time_intervals.clear();
+				if (succeeded(r))
+				{
 					for (u64 t : times)
 					{
-						pass_time_intervals.push_back((f64)t / (f64)m_queue_freq);
+						pass_time_intervals.push_back((f64)t / queue_freq);
 					}
 				}
 			}
-        }
-        lucatchret;
-        return ok;
+		}
     }
 }

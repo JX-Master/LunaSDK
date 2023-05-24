@@ -175,23 +175,21 @@ namespace Luna
 				if (m_vertex_buffer_capacity < num_vertices)
 				{
 					// Recreate vertex buffer.
-					luset(m_vertex_buffer, RHI::get_main_device()->new_resource(RHI::ResourceDesc::buffer(RHI::ResourceHeapType::upload,
-						RHI::ResourceUsageFlag::vertex_buffer, num_vertices * sizeof(Vertex))));
+					luset(m_vertex_buffer, RHI::get_main_device()->new_buffer(RHI::MemoryType::upload, RHI::BufferDesc(
+						RHI::BufferUsageFlag::vertex_buffer, num_vertices * sizeof(Vertex))));
 					m_vertex_buffer_capacity = num_vertices;
 				}
 				m_vertex_buffer_size = num_vertices;
 				if (m_index_buffer_capacity < num_indices)
 				{
 					// Recreate index buffer.
-					luset(m_index_buffer, RHI::get_main_device()->new_resource(RHI::ResourceDesc::buffer(RHI::ResourceHeapType::upload,
-						RHI::ResourceUsageFlag::index_buffer, num_indices * sizeof(u32))));
+					luset(m_index_buffer, RHI::get_main_device()->new_buffer(RHI::MemoryType::upload, RHI::BufferDesc(
+						RHI::BufferUsageFlag::index_buffer, num_indices * sizeof(u32))));
 					m_index_buffer_capacity = num_indices;
 				}
 				m_index_buffer_size = num_indices;
-				void* vertex_data;
-				void* index_data;
-				luexp(m_vertex_buffer->map_subresource(0, 0, 0, &vertex_data));
-				luexp(m_index_buffer->map_subresource(0, 0, 0, &index_data));
+				lulet(vertex_data, m_vertex_buffer->map(0, 0));
+				lulet(index_data, m_index_buffer->map(0, 0));
 				u32 vertex_offset = 0;
 				u32 index_offset = 0;
 				for (usize i = 0; i < m_draw_calls.size(); ++i)
@@ -211,8 +209,8 @@ namespace Luna
 					vertex_offset += (u32)dc.vertices.size();
 					index_offset += (u32)dc.indices.size();
 				}
-				m_vertex_buffer->unmap_subresource(0, 0, sizeof(Vertex) * vertex_offset);
-				m_index_buffer->unmap_subresource(0, 0, sizeof(u32) * index_offset);
+				m_vertex_buffer->unmap(0, sizeof(Vertex) * vertex_offset);
+				m_index_buffer->unmap(0, sizeof(u32) * index_offset);
 			}
 			lucatchret;
 			return ok;

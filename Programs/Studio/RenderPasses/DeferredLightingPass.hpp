@@ -21,9 +21,9 @@ namespace Luna
 		Ref<RHI::IDescriptorSetLayout> m_deferred_lighting_pass_dlayout;
 		Ref<RHI::IShaderInputLayout> m_deferred_lighting_pass_slayout;
 
-        Ref<RHI::IResource> m_default_skybox;
+        Ref<RHI::ITexture> m_default_skybox;
 
-        Ref<RHI::IResource> m_integrate_brdf;
+        Ref<RHI::ITexture> m_integrate_brdf;
 
         RV init(RHI::IDevice* device);
     };
@@ -33,18 +33,18 @@ namespace Luna
         lustruct("DeferredLightingPass", "{baae11d9-29ed-46ab-b369-cc80b9c5c073}");
         luiimpl();
 
-        Ref<RHI::IResource> skybox;
+        Ref<RHI::ITexture> skybox;
         u32 lighting_mode;
 
         Span<Ref<Entity>> light_ts;
-        Ref<RHI::IResource> camera_cb;
-        Ref<RHI::IResource> light_params;
+        Ref<RHI::IBuffer> camera_cb;
+        Ref<RHI::IBuffer> light_params;
 
         RV init(DeferredLightingPassGlobalData* global_data);
         RV execute(RG::IRenderPassContext* ctx) override;
 
         private:
-        Ref<RHI::IResource> m_lighting_mode_cb;
+        Ref<RHI::IBuffer> m_lighting_mode_cb;
         Ref<DeferredLightingPassGlobalData> m_global_data;
         Ref<RHI::IDescriptorSet> m_ds;
     };

@@ -39,8 +39,8 @@ namespace Luna
 	{
 		lustruct("Mesh", "{1552A9F4-6DDD-4CC5-919F-48E1DEFF5A5B}");
 
-		Ref<RHI::IResource> vb;
-		Ref<RHI::IResource> ib;
+		Ref<RHI::IBuffer> vb;
+		Ref<RHI::IBuffer> ib;
 		//! The number of vertices in vertex buffer.
 		u32 vb_count;
 		//! The number of indices in index buffer.

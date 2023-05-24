@@ -20,24 +20,21 @@ namespace Luna
         lutry
         {
             luset(m_deferred_lighting_pass_dlayout, device->new_descriptor_set_layout(DescriptorSetLayoutDesc({
-						DescriptorSetLayoutBinding(DescriptorType::cbv, 0, 1, ShaderVisibility::all),
-                        DescriptorSetLayoutBinding(DescriptorType::cbv, 1, 1, ShaderVisibility::all),
-                        DescriptorSetLayoutBinding(DescriptorType::srv, 2, 1, ShaderVisibility::all),
-                        DescriptorSetLayoutBinding(DescriptorType::srv, 3, 1, ShaderVisibility::all),
-                        DescriptorSetLayoutBinding(DescriptorType::srv, 4, 1, ShaderVisibility::all),
-                        DescriptorSetLayoutBinding(DescriptorType::srv, 5, 1, ShaderVisibility::all),
-                        DescriptorSetLayoutBinding(DescriptorType::srv, 6, 1, ShaderVisibility::all),
-                        DescriptorSetLayoutBinding(DescriptorType::srv, 7, 1, ShaderVisibility::all),
-                        DescriptorSetLayoutBinding(DescriptorType::srv, 8, 1, ShaderVisibility::all),
-						DescriptorSetLayoutBinding(DescriptorType::uav, 9, 1, ShaderVisibility::all),
-						DescriptorSetLayoutBinding(DescriptorType::sampler, 10, 1, ShaderVisibility::all)
+						DescriptorSetLayoutBinding(DescriptorType::uniform_buffer_view, 0, 1, ShaderVisibilityFlag::compute),
+                        DescriptorSetLayoutBinding(DescriptorType::uniform_buffer_view, 1, 1, ShaderVisibilityFlag::compute),
+                        DescriptorSetLayoutBinding(DescriptorType::read_buffer_view, 2, 1, ShaderVisibilityFlag::compute),
+                        DescriptorSetLayoutBinding(DescriptorType::read_texture_view, 3, 1, ShaderVisibilityFlag::compute),
+                        DescriptorSetLayoutBinding(DescriptorType::read_texture_view, 4, 1, ShaderVisibilityFlag::compute),
+                        DescriptorSetLayoutBinding(DescriptorType::read_texture_view, 5, 1, ShaderVisibilityFlag::compute),
+                        DescriptorSetLayoutBinding(DescriptorType::read_texture_view, 6, 1, ShaderVisibilityFlag::compute),
+                        DescriptorSetLayoutBinding(DescriptorType::read_texture_view, 7, 1, ShaderVisibilityFlag::compute),
+                        DescriptorSetLayoutBinding(DescriptorType::read_texture_view, 8, 1, ShaderVisibilityFlag::compute),
+						DescriptorSetLayoutBinding(DescriptorType::read_write_texture_view, 9, 1, ShaderVisibilityFlag::compute),
+						DescriptorSetLayoutBinding(DescriptorType::sampler, 10, 1, ShaderVisibilityFlag::compute)
 						})));
-
-			luset(m_deferred_lighting_pass_slayout, device->new_shader_input_layout(ShaderInputLayoutDesc({ m_deferred_lighting_pass_dlayout },
+            auto dlayout = m_deferred_lighting_pass_dlayout.get();
+			luset(m_deferred_lighting_pass_slayout, device->new_shader_input_layout(ShaderInputLayoutDesc({ &dlayout, 1 },
 				ShaderInputLayoutFlag::deny_vertex_shader_access |
-				ShaderInputLayoutFlag::deny_domain_shader_access |
-				ShaderInputLayoutFlag::deny_geometry_shader_access |
-				ShaderInputLayoutFlag::deny_hull_shader_access |
 				ShaderInputLayoutFlag::deny_pixel_shader_access)));
 
 			lulet(psf, open_file("DeferredLighting.cso", FileOpenFlag::read, FileCreationMode::open_existing));
@@ -50,25 +47,22 @@ namespace Luna
 			ps_desc.shader_input_layout = m_deferred_lighting_pass_slayout;
 			luset(m_deferred_lighting_pass_pso, device->new_compute_pipeline_state(ps_desc));
 
-            luset(m_default_skybox, device->new_resource(ResourceDesc::tex2d(ResourceHeapType::local, Format::rgba8_unorm, ResourceUsageFlag::shader_resource, 1, 1, 1, 1)));
+            luset(m_default_skybox, device->new_texture(MemoryType::local, TextureDesc::tex2d(Format::rgba8_unorm, 
+                TextureUsageFlag::read_texture | TextureUsageFlag::copy_dest, 1, 1, 1, 1)));
             u8 skybox_data[] = {0, 0, 0, 0};
-            luexp(device->copy_resource({
-                ResourceCopyDesc::as_write_texture(m_default_skybox, skybox_data, 4, 4, 0, BoxU(0, 0, 0, 1, 1, 1))
-            }));
+            luexp(upload_texture_data(m_default_skybox, SubresourceIndex(0, 0), 0, 0, 0, skybox_data, 4, 4, 1, 1, 1));
 
             // Generate integrate brdf.
             constexpr usize INTEGEATE_BRDF_SIZE = 256;
             {
-                luset(m_integrate_brdf, device->new_resource(ResourceDesc::tex2d(ResourceHeapType::local, Format::rgba8_unorm,
-                    ResourceUsageFlag::shader_resource | ResourceUsageFlag::unordered_access, INTEGEATE_BRDF_SIZE, INTEGEATE_BRDF_SIZE, 1, 1)));
+                luset(m_integrate_brdf, device->new_texture(MemoryType::local, TextureDesc::tex2d(Format::rgba8_unorm,
+                    TextureUsageFlag::read_texture | TextureUsageFlag::read_write_texture, INTEGEATE_BRDF_SIZE, INTEGEATE_BRDF_SIZE, 1, 1)));
                 lulet(dlayout, device->new_descriptor_set_layout(DescriptorSetLayoutDesc({
-                        DescriptorSetLayoutBinding(DescriptorType::cbv, 0, 1, ShaderVisibility::all),
-                        DescriptorSetLayoutBinding(DescriptorType::uav, 1, 1, ShaderVisibility::all) })));
-                lulet(slayout, device->new_shader_input_layout(ShaderInputLayoutDesc({ dlayout },
+                        DescriptorSetLayoutBinding(DescriptorType::uniform_buffer_view, 0, 1, ShaderVisibilityFlag::compute),
+                        DescriptorSetLayoutBinding(DescriptorType::read_write_texture_view, 1, 1, ShaderVisibilityFlag::compute) })));
+                auto dl = dlayout.get();
+                lulet(slayout, device->new_shader_input_layout(ShaderInputLayoutDesc({ &dl, 1 },
                     ShaderInputLayoutFlag::deny_vertex_shader_access |
-                    ShaderInputLayoutFlag::deny_domain_shader_access |
-                    ShaderInputLayoutFlag::deny_geometry_shader_access |
-                    ShaderInputLayoutFlag::deny_hull_shader_access |
                     ShaderInputLayoutFlag::deny_pixel_shader_access)));
                 lulet(psf, open_file("PrecomputeIntegrateBRDF.cso", FileOpenFlag::read, FileCreationMode::open_existing));
                 auto file_size = psf->get_size();
@@ -79,28 +73,27 @@ namespace Luna
                 ps_desc.cs = cs_blob.cspan();
                 ps_desc.shader_input_layout = slayout;
                 lulet(pso, device->new_compute_pipeline_state(ps_desc));
-                lulet(compute_cmdbuf, g_env->async_compute_queue->new_command_buffer());
-                u32 cb_align = device->get_constant_buffer_data_alignment();
+                lulet(compute_cmdbuf, device->new_command_buffer(g_env->async_compute_queue));
+                u32 cb_align = device->get_uniform_buffer_data_alignment();
                 u32 cb_size = (u32)align_upper(sizeof(Float2), cb_align);
-                lulet(cb, device->new_resource(
-                    ResourceDesc::buffer(ResourceHeapType::upload, ResourceUsageFlag::constant_buffer, cb_size)));
-                Float2U* mapped = nullptr;
-                luexp(cb->map_subresource(0, 0, 0, (void**)&mapped));
-                *mapped = Float2U(1.0f / (f32)INTEGEATE_BRDF_SIZE, 1.0f / (f32)INTEGEATE_BRDF_SIZE);
-                cb->unmap_subresource(0, 0, sizeof(Float2U));
-                ResourceBarrierDesc barriers[] = {
-                    ResourceBarrierDesc::as_transition(cb, ResourceState::vertex_and_constant_buffer),
-                    ResourceBarrierDesc::as_transition(m_integrate_brdf, ResourceState::unordered_access)
-                };
-                compute_cmdbuf->resource_barriers({ barriers, 2 });
+                lulet(cb, device->new_buffer(MemoryType::upload, BufferDesc(BufferUsageFlag::uniform_buffer, cb_size)));
+                lulet(mapped, cb->map(0, 0));
+                *(Float2U*)mapped = Float2U(1.0f / (f32)INTEGEATE_BRDF_SIZE, 1.0f / (f32)INTEGEATE_BRDF_SIZE);
+                cb->unmap(0, sizeof(Float2U));
+                compute_cmdbuf->resource_barrier(
+                    { {cb, BufferStateFlag::automatic, BufferStateFlag::uniform_buffer_cs, ResourceBarrierFlag::none} },
+                    {{m_integrate_brdf, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::shader_write_cs, ResourceBarrierFlag::discard_content}});
                 lulet(vs, device->new_descriptor_set(DescriptorSetDesc(dlayout)));
-                vs->set_cbv(0, cb, ConstantBufferViewDesc(0, cb_size));
-                vs->set_uav(1, m_integrate_brdf);
+                vs->update_descriptors({
+                    WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(cb, 0, cb_size)),
+                    WriteDescriptorSet::read_write_texture_view(1, TextureViewDesc::tex2d(m_integrate_brdf))
+                    });
+                compute_cmdbuf->set_context(CommandBufferContextType::compute);
                 compute_cmdbuf->set_compute_shader_input_layout(slayout);
-                compute_cmdbuf->set_pipeline_state(pso);
+                compute_cmdbuf->set_compute_pipeline_state(pso);
                 compute_cmdbuf->set_compute_descriptor_set(0, vs);
                 compute_cmdbuf->dispatch(align_upper(INTEGEATE_BRDF_SIZE, 8) / 8, align_upper(INTEGEATE_BRDF_SIZE, 8) / 8, 1);
-                luexp(compute_cmdbuf->submit());
+                luexp(compute_cmdbuf->submit({}, {}, true));
                 compute_cmdbuf->wait();
             }
         }
@@ -116,9 +109,9 @@ namespace Luna
             auto device = m_global_data->m_deferred_lighting_pass_dlayout->get_device();
             luset(m_ds, device->new_descriptor_set(
                 DescriptorSetDesc(global_data->m_deferred_lighting_pass_dlayout)));
-            luset(m_lighting_mode_cb, device->new_resource(
-                ResourceDesc::buffer(ResourceHeapType::upload, ResourceUsageFlag::constant_buffer,
-                    align_upper(sizeof(u32), device->get_constant_buffer_data_alignment()))));
+            luset(m_lighting_mode_cb, device->new_buffer(MemoryType::upload,
+                BufferDesc(BufferUsageFlag::uniform_buffer,
+                    align_upper(sizeof(u32), device->get_uniform_buffer_data_alignment()))));
         }
         lucatchret;
         return ok;
@@ -128,56 +121,55 @@ namespace Luna
         using namespace RHI;
         lutry
         {
-            u32* mapped;
-            luexp(m_lighting_mode_cb->map_subresource(0, 0, 0, (void**)&mapped));
-            *mapped = lighting_mode;
-            m_lighting_mode_cb->unmap_subresource(0, 0, sizeof(u32));
-            auto scene_tex = ctx->get_output("scene_texture");
-            auto depth_tex = ctx->get_input("depth_texture");
-            auto base_color_roughness_tex = ctx->get_input("base_color_roughness_texture");
-            auto normal_metallic_tex = ctx->get_input("normal_metallic_texture");
-			auto emissive_tex = ctx->get_input("emissive_texture");
+            lulet(mapped, m_lighting_mode_cb->map(0, 0));
+            *(u32*)mapped = lighting_mode;
+            m_lighting_mode_cb->unmap(0, sizeof(u32));
+            Ref<ITexture> scene_tex = ctx->get_output("scene_texture");
+            Ref<ITexture> depth_tex = ctx->get_input("depth_texture");
+            Ref<ITexture> base_color_roughness_tex = ctx->get_input("base_color_roughness_texture");
+            Ref<ITexture> normal_metallic_tex = ctx->get_input("normal_metallic_texture");
+            Ref<ITexture> emissive_tex = ctx->get_input("emissive_texture");
             auto cmdbuf = ctx->get_command_buffer();
             auto device = cmdbuf->get_device();
-            auto cb_align = device->get_constant_buffer_data_alignment();
+            auto cb_align = device->get_uniform_buffer_data_alignment();
             auto sky_box = skybox ? skybox : m_global_data->m_default_skybox;
-            cmdbuf->resource_barriers({
-                ResourceBarrierDesc::as_transition(camera_cb, ResourceState::vertex_and_constant_buffer),
-                ResourceBarrierDesc::as_transition(m_lighting_mode_cb, ResourceState::vertex_and_constant_buffer),
-                ResourceBarrierDesc::as_transition(light_params, ResourceState::shader_resource_non_pixel),
-				ResourceBarrierDesc::as_transition(scene_tex, ResourceState::unordered_access),
-				ResourceBarrierDesc::as_transition(depth_tex, ResourceState::shader_resource_non_pixel),
-				ResourceBarrierDesc::as_transition(base_color_roughness_tex, ResourceState::shader_resource_non_pixel),
-                ResourceBarrierDesc::as_transition(normal_metallic_tex, ResourceState::shader_resource_non_pixel),
-                ResourceBarrierDesc::as_transition(emissive_tex, ResourceState::shader_resource_non_pixel),
-                ResourceBarrierDesc::as_transition(sky_box, ResourceState::shader_resource_non_pixel),
-                ResourceBarrierDesc::as_transition(m_global_data->m_integrate_brdf, ResourceState::shader_resource_non_pixel) });
+            cmdbuf->set_context(CommandBufferContextType::compute);
+            cmdbuf->resource_barrier(
+                { 
+                    {camera_cb, BufferStateFlag::automatic, BufferStateFlag::uniform_buffer_cs, ResourceBarrierFlag::none},
+                    {m_lighting_mode_cb, BufferStateFlag::automatic, BufferStateFlag::uniform_buffer_cs, ResourceBarrierFlag::none},
+                    {light_params, BufferStateFlag::automatic, BufferStateFlag::shader_read_cs, ResourceBarrierFlag::none}
+                },
+                {
+                    {scene_tex, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::shader_read_cs | TextureStateFlag::shader_write_cs, ResourceBarrierFlag::none},
+                    {depth_tex, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::shader_read_cs, ResourceBarrierFlag::none},
+                    {base_color_roughness_tex, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::shader_read_cs, ResourceBarrierFlag::none},
+                    {normal_metallic_tex, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::shader_read_cs, ResourceBarrierFlag::none},
+                    {emissive_tex, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::shader_read_cs, ResourceBarrierFlag::none},
+                    {sky_box, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::shader_read_cs, ResourceBarrierFlag::none},
+                    {m_global_data->m_integrate_brdf, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::shader_read_cs, ResourceBarrierFlag::none},
+                });
             
-            m_ds->set_cbv(0, camera_cb, ConstantBufferViewDesc(0, (u32)align_upper(sizeof(CameraCB), cb_align)));
-            m_ds->set_cbv(1, m_lighting_mode_cb, ConstantBufferViewDesc(0, (u32)align_upper(sizeof(u32), cb_align)));
-            if (light_ts.empty())
-			{
-				// Adds one fake light.
-				m_ds->set_srv(2, light_params, &ShaderResourceViewDesc::as_buffer(Format::unknown, 0, 1, sizeof(LightingParams)));
-			}
-			else
-			{
-				m_ds->set_srv(2, light_params, &ShaderResourceViewDesc::as_buffer(Format::unknown, 0, (u32)light_ts.size(), sizeof(LightingParams)));
-			}
-            m_ds->set_srv(3, base_color_roughness_tex);
-            m_ds->set_srv(4, normal_metallic_tex);
-            m_ds->set_srv(5, emissive_tex);
-            m_ds->set_srv(6, depth_tex, &ShaderResourceViewDesc::as_tex2d(Format::r32_float, 0, 1, 0.0f));
-            m_ds->set_srv(7, sky_box);
-            m_ds->set_srv(8, m_global_data->m_integrate_brdf);
-            m_ds->set_uav(9, scene_tex);
-            m_ds->set_sampler(10, SamplerDesc(FilterMode::min_mag_mip_linear, TextureAddressMode::clamp, TextureAddressMode::clamp, TextureAddressMode::clamp));
+            u32 num_lights = light_ts.empty() ? 1 : (u32)light_ts.size();
+            m_ds->update_descriptors({
+                WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(camera_cb, 0, (u32)align_upper(sizeof(CameraCB), cb_align))),
+                WriteDescriptorSet::uniform_buffer_view(1, BufferViewDesc::uniform_buffer(m_lighting_mode_cb, 0, (u32)align_upper(sizeof(u32), cb_align))),
+                WriteDescriptorSet::read_buffer_view(2, BufferViewDesc::structured_buffer(light_params, 0, num_lights, sizeof(LightingParams))),
+                WriteDescriptorSet::read_texture_view(3, TextureViewDesc::tex2d(base_color_roughness_tex)),
+                WriteDescriptorSet::read_texture_view(4, TextureViewDesc::tex2d(normal_metallic_tex)),
+                WriteDescriptorSet::read_texture_view(5, TextureViewDesc::tex2d(emissive_tex)),
+                WriteDescriptorSet::read_texture_view(6, TextureViewDesc::tex2d(depth_tex, Format::d32_float, 0, 1)),
+                WriteDescriptorSet::read_texture_view(7, TextureViewDesc::tex2d(sky_box)),
+                WriteDescriptorSet::read_texture_view(8, TextureViewDesc::tex2d(m_global_data->m_integrate_brdf)),
+                WriteDescriptorSet::read_write_texture_view(9, TextureViewDesc::tex2d(scene_tex)),
+                WriteDescriptorSet::sampler(10, SamplerDesc(Filter::min_mag_mip_linear, TextureAddressMode::clamp, TextureAddressMode::clamp, TextureAddressMode::clamp)),
+                });
             auto scene_desc = scene_tex->get_desc();
             cmdbuf->set_compute_shader_input_layout(m_global_data->m_deferred_lighting_pass_slayout);
-            cmdbuf->set_pipeline_state(m_global_data->m_deferred_lighting_pass_pso);
+            cmdbuf->set_compute_pipeline_state(m_global_data->m_deferred_lighting_pass_pso);
             cmdbuf->set_compute_descriptor_set(0, m_ds);
-            cmdbuf->dispatch((u32)align_upper(scene_desc.width_or_buffer_size, 8) / 8,
-                align_upper(scene_desc.height, 8) / 8, 1);
+            cmdbuf->dispatch((u32)align_upper(scene_desc.width, 8) / 8,
+                (u32)align_upper(scene_desc.height, 8) / 8, 1);
         }
         lucatchret;
         return ok;
@@ -198,32 +190,32 @@ namespace Luna
             if(base_color_roughness_texture == RG::INVALID_RESOURCE) return set_error(BasicError::bad_arguments(), "DeferredLightingPass: Input \"base_color_roughness_texture\" is not specified.");
             if(normal_metallic_texture == RG::INVALID_RESOURCE) return set_error(BasicError::bad_arguments(), "DeferredLightingPass: Input \"normal_metallic_texture\" is not specified.");
             if(emissive_texture == RG::INVALID_RESOURCE) return set_error(BasicError::bad_arguments(), "DeferredLightingPass: Input \"emissive_texture\" is not specified.");
-			RHI::ResourceDesc desc = compiler->get_resource_desc(scene_texture);
-			if (desc.pixel_format != RHI::Format::rgba32_float)
+			RG::ResourceDesc desc = compiler->get_resource_desc(scene_texture);
+			if (desc.texture.format != RHI::Format::rgba32_float)
 			{
 				return set_error(BasicError::bad_arguments(), "DeferredLightingPass: Invalid format for \"scene_texture\" is specified. \"scene_texture\" must be Format::rgba32_float.");
 			}
-			desc.usages |= RHI::ResourceUsageFlag::unordered_access;
+			desc.texture.usages |= RHI::TextureUsageFlag::read_write_texture;
 			compiler->set_resource_desc(scene_texture, desc);
 
 			desc = compiler->get_resource_desc(depth_texture);
-			if (desc.pixel_format != RHI::Format::d32_float)
+			if (desc.texture.format != RHI::Format::d32_float)
 			{
 				return set_error(BasicError::bad_arguments(), "DeferredLightingPass: Invalid format for \"depth_texture\" is specified. \"depth_texture\" must be Format::d32_float.");
 			}
-			desc.usages |= RHI::ResourceUsageFlag::depth_stencil;
+			desc.texture.usages |= RHI::TextureUsageFlag::read_texture;
 			compiler->set_resource_desc(depth_texture, desc);
 
             desc = compiler->get_resource_desc(base_color_roughness_texture);
-			desc.usages |= RHI::ResourceUsageFlag::shader_resource;
+			desc.texture.usages |= RHI::TextureUsageFlag::read_texture;
 			compiler->set_resource_desc(base_color_roughness_texture, desc);
 
             desc = compiler->get_resource_desc(normal_metallic_texture);
-			desc.usages |= RHI::ResourceUsageFlag::shader_resource;
+			desc.texture.usages |= RHI::TextureUsageFlag::read_texture;
 			compiler->set_resource_desc(normal_metallic_texture, desc);
 
             desc = compiler->get_resource_desc(emissive_texture);
-			desc.usages |= RHI::ResourceUsageFlag::shader_resource;
+			desc.texture.usages |= RHI::TextureUsageFlag::read_texture;
 			compiler->set_resource_desc(emissive_texture, desc);
 
 			Ref<DeferredLightingPass> pass = new_object<DeferredLightingPass>();

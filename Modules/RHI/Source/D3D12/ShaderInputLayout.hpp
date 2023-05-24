@@ -8,9 +8,6 @@
 * @date 2020/3/14
 */
 #pragma once
-
-#ifdef LUNA_RHI_D3D12
-
 #include "../../ShaderInputLayout.hpp"
 #include "Device.hpp"
 #include <Runtime/Ref.hpp>
@@ -33,7 +30,7 @@ namespace Luna
 				//! The first root parameter.
 				u32 m_root_parameter_offset;
 				//! The heap type to bind for every root parameter.
-				Vector<D3D12_DESCRIPTOR_HEAP_TYPE> m_heap_types;
+				Vector<D3D12_DESCRIPTOR_HEAP_TYPE> m_memory_types;
 			};
 			Vector<DescriptorSetLayoutInfo> m_descriptor_set_layouts;
 
@@ -49,5 +46,3 @@ namespace Luna
 		};
 	}
 }
-
-#endif

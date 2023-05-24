@@ -8,8 +8,6 @@
 * @date 2022/8/3
 */
 #pragma once
-
-#ifdef LUNA_RHI_D3D12
 #include "D3D12Common.hpp"
 #include "Device.hpp"
 #include "Resource.hpp"
@@ -19,6 +17,7 @@ namespace Luna
 {
 	namespace RHI
 	{
+		void validate_texture_view_desc(TextureViewDesc& desc);
 		struct DescriptorSet : IDescriptorSet
 		{
 			lustruct("RHI::DescriptorSet", "{6937b6b1-ce6d-4211-a5d5-5af9a6eba60a}");
@@ -38,21 +37,19 @@ namespace Luna
 			RV init(const DescriptorSetDesc& desc);
 			~DescriptorSet();
 
-			IDevice* get_device()
+			virtual IDevice* get_device() override
 			{
 				return m_device.as<IDevice>();
 			}
-			void set_name(const Name& name) {}
-			void set_cbv(u32 binding_slot, IResource* res, const ConstantBufferViewDesc& cbv);
-			void set_cbv_array(u32 binding_slot, u32 offset, u32 num_descs, IResource** resources, const ConstantBufferViewDesc* descs);
-			void set_srv(u32 binding_slot, IResource* res, const ShaderResourceViewDesc* srv = nullptr);
-			void set_srv_array(u32 binding_slot, u32 offset, u32 num_descs, IResource** resources, const ShaderResourceViewDesc* descs);
-			void set_uav(u32 binding_slot, IResource* res, IResource* counter_resource = nullptr, const UnorderedAccessViewDesc* uav = nullptr);
-			void set_uav_array(u32 binding_slot, u32 offset, u32 num_descs, IResource** resources, IResource** counter_resources, const UnorderedAccessViewDesc* descs);
-			void set_sampler(u32 binding_slot, const SamplerDesc& sampler);
+			virtual void set_name(const Name& name) override {}
+			virtual RV update_descriptors(Span<const WriteDescriptorSet> writes) override;
+			
+			void set_cbv_array(u32 binding_slot, u32 offset, u32 num_descs, const BufferViewDesc* descs);
+			void set_buffer_srv_array(u32 binding_slot, u32 offset, u32 num_descs, const BufferViewDesc* descs);
+			void set_texture_srv_array(u32 binding_slot, u32 offset, u32 num_descs, const TextureViewDesc* descs);
+			void set_buffer_uav_array(u32 binding_slot, u32 offset, u32 num_descs, const BufferViewDesc* descs);
+			void set_texture_uav_array(u32 binding_slot, u32 offset, u32 num_descs, const TextureViewDesc* descs);
 			void set_sampler_array(u32 binding_slot, u32 offset, u32 num_samplers, const SamplerDesc* samplers);
 		};
 	}
 }
-
-#endif

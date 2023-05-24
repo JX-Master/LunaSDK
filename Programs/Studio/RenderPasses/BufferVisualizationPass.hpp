@@ -36,7 +36,7 @@ namespace Luna
 
         private:
         Ref<BufferVisualizationPassGlobalData> m_global_data;
-        Ref<RHI::IResource> m_vis_params;
+        Ref<RHI::IBuffer> m_vis_params;
         Ref<RHI::IDescriptorSet> m_ds;
     };
 

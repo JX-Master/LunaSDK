@@ -9,138 +9,349 @@
 * @brief D3D12 implementation of Resource Object
 */
 #include "Resource.hpp"
-
-#ifdef LUNA_RHI_D3D12
-
 #include "../../RHI.hpp"
-
+#include "DescriptorSet.hpp"
 namespace Luna
 {
 	namespace RHI
 	{
-		RV Resource::init_as_committed(const ResourceDesc& desc, const ClearValue* optimized_clear_value)
+		RV BufferResource::init_as_committed(MemoryType memory_type, const BufferDesc& desc)
 		{
-			m_desc = validate_resource_desc(desc);
-			D3D12_HEAP_PROPERTIES hp = encode_heap_properties(m_device.as<Device>(), m_desc.heap_type);
-			D3D12_HEAP_FLAGS flags = D3D12_HEAP_FLAG_NONE;
-			D3D12_RESOURCE_DESC rd = encode_resource_desc(m_desc);
-
-			D3D12_CLEAR_VALUE* pcv = nullptr;
-			D3D12_CLEAR_VALUE cv;
-			if (optimized_clear_value)
+			lutry
 			{
-				cv.Format = encode_pixel_format(optimized_clear_value->pixel_format);
-				if (optimized_clear_value->type == ClearValueType::color)
+				m_desc = desc;
+				D3D12_RESOURCE_DESC rd = encode_buffer_desc(desc);
+				D3D12MA::ALLOCATION_DESC allocation_desc{};
+				allocation_desc.HeapType = encode_memory_type(memory_type);
+				D3D12_RESOURCE_STATES state = D3D12_RESOURCE_STATE_COMMON;
+				if (memory_type == MemoryType::upload)
 				{
-					cv.Color[0] = optimized_clear_value->color[0];
-					cv.Color[1] = optimized_clear_value->color[1];
-					cv.Color[2] = optimized_clear_value->color[2];
-					cv.Color[3] = optimized_clear_value->color[3];
+					state = D3D12_RESOURCE_STATE_GENERIC_READ;
 				}
-				else
+				else if (memory_type == MemoryType::readback)
 				{
-					cv.DepthStencil.Depth = optimized_clear_value->depth_stencil.depth;
-					cv.DepthStencil.Stencil = optimized_clear_value->depth_stencil.stencil;
+					state = D3D12_RESOURCE_STATE_COPY_DEST;
 				}
-				pcv = &cv;
+				m_memory = new_object<DeviceMemory>();
+				m_memory->m_device = m_device;
+				luexp(encode_hresult(m_device->m_allocator->CreateResource(
+					&allocation_desc,
+					&rd, state, NULL, &m_memory->m_allocation, IID_PPV_ARGS(&m_res)
+				)));
 			}
-			D3D12_RESOURCE_STATES s;
-			if (desc.heap_type == ResourceHeapType::upload)
-			{
-				s = D3D12_RESOURCE_STATE_GENERIC_READ;
-			}
-			else if (desc.heap_type == ResourceHeapType::readback)
-			{
-				s = D3D12_RESOURCE_STATE_COPY_DEST;
-			}
-			else
-			{
-				s = D3D12_RESOURCE_STATE_COMMON;
-			}
-			if (FAILED(m_device->m_device->CreateCommittedResource(&hp, flags, &rd, s,
-				pcv, IID_PPV_ARGS(&m_res))))
-			{
-				return BasicError::bad_platform_call();
-			}
-			return post_init();
-		}
-
-		RV Resource::init_as_placed(ID3D12Heap* heap, UINT64 heap_offset, const ResourceDesc& desc, const ClearValue* optimized_clear_value)
-		{
-			m_desc = validate_resource_desc(desc);
-			D3D12_RESOURCE_DESC rd = encode_resource_desc(m_desc);
-			D3D12_CLEAR_VALUE* pcv = nullptr;
-			D3D12_CLEAR_VALUE cv;
-			if (optimized_clear_value)
-			{
-				cv.Format = encode_pixel_format(optimized_clear_value->pixel_format);
-				if (optimized_clear_value->type == ClearValueType::color)
-				{
-					cv.Color[0] = optimized_clear_value->color[0];
-					cv.Color[1] = optimized_clear_value->color[1];
-					cv.Color[2] = optimized_clear_value->color[2];
-					cv.Color[3] = optimized_clear_value->color[3];
-				}
-				else
-				{
-					cv.DepthStencil.Depth = optimized_clear_value->depth_stencil.depth;
-					cv.DepthStencil.Stencil = optimized_clear_value->depth_stencil.stencil;
-				}
-				pcv = &cv;
-			}
-			D3D12_RESOURCE_STATES s;
-			if (desc.heap_type == ResourceHeapType::upload)
-			{
-				s = D3D12_RESOURCE_STATE_GENERIC_READ;
-			}
-			else if (desc.heap_type == ResourceHeapType::readback)
-			{
-				s = D3D12_RESOURCE_STATE_COPY_DEST;
-			}
-			else
-			{
-				s = D3D12_RESOURCE_STATE_COMMON;
-			}
-			if (FAILED(m_device->m_device->CreatePlacedResource(heap, heap_offset, &rd, s, pcv, IID_PPV_ARGS(&m_res))))
-			{
-				return BasicError::bad_platform_call();
-			}
-			return post_init();
-		}
-
-		RV Resource::post_init()
-		{
-			if (m_desc.type != ResourceType::buffer && ((m_desc.flags & ResourceFlag::simultaneous_access) == ResourceFlag::none))
-			{
-				m_states.resize(count_subresources(), ResourceState::common);
-			}
+			lucatchret;
 			return ok;
 		}
-
-		RV Resource::map_subresource(u32 subresource, usize read_begin, usize read_end, void** out_data)
+		RV BufferResource::init_as_aliasing(const BufferDesc& desc, DeviceMemory* memory)
+		{
+			lutry
+			{
+				m_desc = desc;
+				D3D12_RESOURCE_DESC rd = encode_buffer_desc(desc);
+				D3D12_RESOURCE_STATES state = D3D12_RESOURCE_STATE_COMMON;
+				if (memory->m_memory_type == MemoryType::upload)
+				{
+					state = D3D12_RESOURCE_STATE_GENERIC_READ;
+				}
+				else if (memory->m_memory_type == MemoryType::readback)
+				{
+					state = D3D12_RESOURCE_STATE_COPY_DEST;
+				}
+				luexp(encode_hresult(m_device->m_allocator->CreateAliasingResource(
+					memory->m_allocation.Get(), 0,
+					&rd, state, NULL, IID_PPV_ARGS(&m_res))));
+				m_memory = memory;
+			}
+			lucatchret;
+			return ok;
+		}
+		R<void*> BufferResource::map(usize read_begin, usize read_end)
 		{
 			lutsassert();
-			D3D12_RANGE range;
-			range.Begin = read_begin;
-			// Only buffers can be mapped, so we can read the resource size directly.
-			range.End = min(read_end, (usize)m_desc.width_or_buffer_size);
-			if (FAILED(m_res->Map(subresource, &range, out_data)))
+			void* out_data = nullptr;
+			lutry
 			{
-				return BasicError::bad_platform_call();
+				D3D12_RANGE range;
+				range.Begin = read_begin;
+				// Only buffers can be mapped, so we can read the resource size directly.
+				range.End = min(read_end, (usize)m_desc.size);
+				luexp(encode_hresult(m_res->Map(0, &range, &out_data)));
 			}
-			return ok;
+			lucatchret;
+			return out_data;
 		}
-		void Resource::unmap_subresource(u32 subresource, usize write_begin, usize write_end)
+		void BufferResource::unmap(usize write_begin, usize write_end)
 		{
 			lutsassert();
 			D3D12_RANGE range;
 			range.Begin = write_begin;
 			// Only buffers can be mapped, so we can read the resource size directly.
-			range.End = min(write_end, (usize)m_desc.width_or_buffer_size);
+			range.End = min(write_end, (usize)m_desc.size);
 			D3D12_RANGE* pRange = &range;
-			m_res->Unmap(subresource, pRange);
+			m_res->Unmap(0, pRange);
+		}
+		bool compare_image_view_desc(const TextureViewDesc& lhs, const TextureViewDesc& rhs)
+		{
+			return
+				lhs.texture == rhs.texture &&
+				lhs.type == rhs.type &&
+				lhs.format == rhs.format &&
+				lhs.mip_slice == rhs.mip_slice &&
+				lhs.mip_size == rhs.mip_size &&
+				lhs.array_slice == rhs.array_slice &&
+				lhs.array_size == rhs.array_size;
+		}
+		R<ID3D12DescriptorHeap*> TextureResource::get_rtv(const TextureViewDesc& desc)
+		{
+			auto validated_desc = desc;
+			validate_texture_view_desc(validated_desc);
+			LockGuard guard(m_views_lock);
+			for (auto& v : m_rtvs)
+			{
+				if (compare_image_view_desc(v.first, validated_desc))
+				{
+					return v.second.Get();
+				}
+			}
+			// Create a new one.
+			ComPtr<ID3D12DescriptorHeap> heap;
+			lutry
+			{
+				luset(heap, m_device->m_rtv_heap.allocate_view());
+				TextureResource* reso = cast_object<TextureResource>(desc.texture->get_object());
+				ID3D12Resource* res = reso->m_res.Get();
+				D3D12_RENDER_TARGET_VIEW_DESC rtv;
+				switch (validated_desc.type)
+				{
+				case TextureViewType::tex1d:
+					rtv.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE1D;
+					rtv.Texture1D.MipSlice = validated_desc.mip_slice;
+					break;
+				case TextureViewType::tex1darray:
+					rtv.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE1DARRAY;
+					rtv.Texture1DArray.ArraySize = validated_desc.array_size;
+					rtv.Texture1DArray.FirstArraySlice = validated_desc.array_slice;
+					rtv.Texture1DArray.MipSlice = validated_desc.mip_slice;
+					break;
+				case TextureViewType::tex2d:
+					if (reso->m_desc.sample_count == 1)
+					{
+						rtv.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+						rtv.Texture2D.MipSlice = validated_desc.mip_slice;
+						rtv.Texture2D.PlaneSlice = 0;
+					}
+					else
+					{
+						rtv.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DMS;
+					}
+					break;
+				case TextureViewType::tex2darray:
+					if (reso->m_desc.sample_count == 1)
+					{
+						rtv.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
+						rtv.Texture2D.MipSlice = validated_desc.mip_slice;
+						rtv.Texture2D.PlaneSlice = 0;
+					}
+					else
+					{
+						rtv.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DMSARRAY;
+						rtv.Texture2DMSArray.ArraySize = validated_desc.array_size;
+						rtv.Texture2DMSArray.FirstArraySlice = validated_desc.array_slice;
+					}
+					break;
+				case TextureViewType::tex3d:
+					rtv.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE3D;
+					rtv.Texture3D.FirstWSlice = validated_desc.array_slice;
+					rtv.Texture3D.MipSlice = validated_desc.mip_slice;
+					rtv.Texture3D.WSize = validated_desc.array_size;
+					break;
+				default:
+					lupanic();
+				}
+				rtv.Format = encode_format(validated_desc.format);
+				m_device->m_device->CreateRenderTargetView(res, &rtv, heap->GetCPUDescriptorHandleForHeapStart());
+				m_rtvs.push_back(make_pair(validated_desc, heap));
+			}
+			lucatchret;
+			return heap.Get();
+		}
+		R<ID3D12DescriptorHeap*> TextureResource::get_dsv(const TextureViewDesc& desc)
+		{
+			auto validated_desc = desc;
+			validate_texture_view_desc(validated_desc);
+			LockGuard guard(m_views_lock);
+			for (auto& v : m_dsvs)
+			{
+				if (compare_image_view_desc(v.first, validated_desc))
+				{
+					return v.second.Get();
+				}
+			}
+			// Create a new one.
+			ComPtr<ID3D12DescriptorHeap> heap;
+			lutry
+			{
+				luset(heap, m_device->m_dsv_heap.allocate_view());
+				TextureResource* reso = cast_object<TextureResource>(desc.texture->get_object());
+				ID3D12Resource* res = reso->m_res.Get();
+				D3D12_DEPTH_STENCIL_VIEW_DESC dsv;
+				dsv.Format = encode_format(validated_desc.format);
+				dsv.Flags = D3D12_DSV_FLAG_NONE;
+				switch (validated_desc.type)
+				{
+				case TextureViewType::tex1d:
+					dsv.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE1D;
+					dsv.Texture1D.MipSlice = validated_desc.mip_slice;
+					break;
+				case TextureViewType::tex1darray:
+					dsv.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE1DARRAY;
+					dsv.Texture1DArray.ArraySize = validated_desc.array_size;
+					dsv.Texture1DArray.FirstArraySlice = validated_desc.array_slice;
+					dsv.Texture1DArray.MipSlice = validated_desc.mip_slice;
+					break;
+				case TextureViewType::tex2d:
+					if (reso->m_desc.sample_count == 1)
+					{
+						dsv.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+						dsv.Texture2D.MipSlice = validated_desc.mip_slice;
+					}
+					else
+					{
+						dsv.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2DMS;
+					}
+					break;
+				case TextureViewType::tex2darray:
+					if (reso->m_desc.sample_count == 1)
+					{
+						dsv.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2DARRAY;
+						dsv.Texture2DArray.ArraySize = validated_desc.array_size;
+						dsv.Texture2DArray.FirstArraySlice = validated_desc.array_slice;
+						dsv.Texture2DArray.MipSlice = validated_desc.mip_slice;
+					}
+					else
+					{
+						dsv.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2DMSARRAY;
+						dsv.Texture2DMSArray.ArraySize = validated_desc.array_size;
+						dsv.Texture2DMSArray.FirstArraySlice = validated_desc.array_slice;
+					}
+					break;
+				default:
+					lupanic();
+				}
+				m_device->m_device->CreateDepthStencilView(res, &dsv, heap->GetCPUDescriptorHandleForHeapStart());
+				m_dsvs.push_back(make_pair(validated_desc, heap));
+			}
+			lucatchret;
+			return heap.Get();
+		}
+		TextureResource::~TextureResource()
+		{
+			for (auto& rtv : m_rtvs)
+			{
+				m_device->m_rtv_heap.free_view(rtv.second.Get());
+			}
+			for (auto& dsv : m_dsvs)
+			{
+				m_device->m_dsv_heap.free_view(dsv.second.Get());
+			}
+		}
+		RV TextureResource::init_as_committed(MemoryType memory_type, const TextureDesc& desc, const ClearValue* optimized_clear_value)
+		{
+			lutry
+			{
+				m_desc = desc;
+				D3D12_RESOURCE_DESC rd = encode_texture_desc(desc);
+				D3D12MA::ALLOCATION_DESC allocation_desc{};
+				allocation_desc.HeapType = encode_memory_type(memory_type);
+				D3D12_RESOURCE_STATES state = D3D12_RESOURCE_STATE_COMMON;
+				D3D12_CLEAR_VALUE* pcv = NULL;
+				D3D12_CLEAR_VALUE cv;
+				if (optimized_clear_value)
+				{
+					cv.Format = encode_format(optimized_clear_value->format);
+					if (optimized_clear_value->type == ClearValueType::color)
+					{
+						cv.Color[0] = optimized_clear_value->color[0];
+						cv.Color[1] = optimized_clear_value->color[1];
+						cv.Color[2] = optimized_clear_value->color[2];
+						cv.Color[3] = optimized_clear_value->color[3];
+					}
+					else
+					{
+						cv.DepthStencil.Depth = optimized_clear_value->depth_stencil.depth;
+						cv.DepthStencil.Stencil = optimized_clear_value->depth_stencil.stencil;
+					}
+					pcv = &cv;
+				}
+				if (memory_type == MemoryType::upload)
+				{
+					state = D3D12_RESOURCE_STATE_GENERIC_READ;
+				}
+				else if (memory_type == MemoryType::readback)
+				{
+					state = D3D12_RESOURCE_STATE_COPY_DEST;
+				}
+				m_memory = new_object<DeviceMemory>();
+				m_memory->m_device = m_device;
+				luexp(encode_hresult(m_device->m_allocator->CreateResource(
+					&allocation_desc,
+					&rd, state, pcv, &m_memory->m_allocation, IID_PPV_ARGS(&m_res)
+				)));
+				auto created_desc = m_res->GetDesc();
+				m_desc.mip_levels = created_desc.MipLevels;
+				post_init();
+			}
+			lucatchret;
+			return ok;
+		}
+		RV TextureResource::init_as_aliasing(const TextureDesc& desc, DeviceMemory* memory, const ClearValue* optimized_clear_value)
+		{
+			lutry
+			{
+				m_desc = desc;
+				D3D12_RESOURCE_DESC rd = encode_texture_desc(desc);
+				D3D12_RESOURCE_STATES state = D3D12_RESOURCE_STATE_COMMON;
+				D3D12_CLEAR_VALUE* pcv = NULL;
+				D3D12_CLEAR_VALUE cv;
+				if (optimized_clear_value)
+				{
+					cv.Format = encode_format(optimized_clear_value->format);
+					if (optimized_clear_value->type == ClearValueType::color)
+					{
+						cv.Color[0] = optimized_clear_value->color[0];
+						cv.Color[1] = optimized_clear_value->color[1];
+						cv.Color[2] = optimized_clear_value->color[2];
+						cv.Color[3] = optimized_clear_value->color[3];
+					}
+					else
+					{
+						cv.DepthStencil.Depth = optimized_clear_value->depth_stencil.depth;
+						cv.DepthStencil.Stencil = optimized_clear_value->depth_stencil.stencil;
+					}
+					pcv = &cv;
+				}
+				if (memory->m_memory_type == MemoryType::upload)
+				{
+					state = D3D12_RESOURCE_STATE_GENERIC_READ;
+				}
+				else if (memory->m_memory_type == MemoryType::readback)
+				{
+					state = D3D12_RESOURCE_STATE_COPY_DEST;
+				}
+				luexp(encode_hresult(m_device->m_allocator->CreateAliasingResource(
+					memory->m_allocation.Get(), 0,
+					&rd, state, NULL, IID_PPV_ARGS(&m_res))));
+				m_memory = memory;
+				auto created_desc = m_res->GetDesc();
+				m_desc.mip_levels = created_desc.MipLevels;
+				post_init();
+			}
+			lucatchret;
+			return ok;
+		}
+		void TextureResource::post_init()
+		{
+			m_states.resize(count_subresources(), D3D12_RESOURCE_STATE_COMMON);
 		}
 	}
 }
-
-#endif

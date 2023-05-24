@@ -8,69 +8,78 @@
 * @date 2019/7/10
 */
 #include <Runtime/PlatformDefines.hpp>
-#ifdef LUNA_RHI_D3D12
 #define LUNA_RHI_API LUNA_EXPORT
 #include "../../RHI.hpp"
 #include <d3d12.h>
 #include "Device.hpp"
 #include "SwapChain.hpp"
-#include <dxgi1_4.h>
+#include <dxgi1_5.h>
 #include <Runtime/Unicode.hpp>
 #pragma comment(lib, "d3d12.lib")
 #pragma comment(lib, "dxgi.lib")
 #include "../RHI.hpp"
 
-#include "ResourceHeap.hpp"
 #include "ShaderInputLayout.hpp"
 #include "PipelineState.hpp"
 #include "CommandBuffer.hpp"
-#include "CommandQueue.hpp"
 #include "SwapChain.hpp"
 #include "DescriptorSet.hpp"
 #include "DescriptorSetLayout.hpp"
 #include "QueryHeap.hpp"
+#include "Fence.hpp"
 
 namespace Luna
 {
 	namespace RHI
 	{
-		ComPtr<IDXGIFactory1> g_dxgi;
+		ComPtr<IDXGIFactory5> g_dxgi;
 		Ref<IDevice> g_device;
+
+		Vector<ComPtr<IDXGIAdapter1>> g_adapters;
 
 		RV render_api_init()
 		{
-			register_boxed_type<Resource>();
-			impl_interface_for_type<Resource, IDeviceChild, IResource>();
-			register_boxed_type<ResourceHeap>();
-			impl_interface_for_type<ResourceHeap, IDeviceChild, IResourceHeap>();
+			register_boxed_type<BufferResource>();
+			impl_interface_for_type<BufferResource, IBuffer, IResource, IDeviceChild>();
+			register_boxed_type<TextureResource>();
+			impl_interface_for_type<TextureResource, ITexture, IResource, IDeviceChild>();
+			register_boxed_type<DeviceMemory>();
+			impl_interface_for_type<DeviceMemory, IDeviceMemory, IDeviceChild>();
 			register_boxed_type<ShaderInputLayout>();
 			impl_interface_for_type<ShaderInputLayout, IShaderInputLayout, IDeviceChild>();
-			register_boxed_type<RenderTargetView>();
-			impl_interface_for_type<RenderTargetView, IRenderTargetView, IDeviceChild>();
-			register_boxed_type<DepthStencilView>();
-			impl_interface_for_type<DepthStencilView, IDepthStencilView, IDeviceChild>();
 			register_boxed_type<PipelineState>();
 			impl_interface_for_type<PipelineState, IPipelineState, IDeviceChild>();
 			register_boxed_type<CommandBuffer>();
 			impl_interface_for_type<CommandBuffer, ICommandBuffer, IDeviceChild, IWaitable>();
-			register_boxed_type<CommandQueue>();
-			impl_interface_for_type<CommandQueue, ICommandQueue, IDeviceChild>();
 			register_boxed_type<Device>();
 			impl_interface_for_type<Device, IDevice>();
 			register_boxed_type<SwapChain>();
-			impl_interface_for_type<SwapChain, ISwapChain, IDeviceChild, IWaitable>();
+			impl_interface_for_type<SwapChain, ISwapChain, IDeviceChild>();
 			register_boxed_type<DescriptorSetLayout>();
 			impl_interface_for_type<DescriptorSetLayout, IDescriptorSetLayout, IDeviceChild>();
 			register_boxed_type<DescriptorSet>();
 			impl_interface_for_type<DescriptorSet, IDescriptorSet, IDeviceChild>();
 			register_boxed_type<QueryHeap>();
 			impl_interface_for_type<QueryHeap, IQueryHeap, IDeviceChild>();
+			register_boxed_type<Fence>();
+			impl_interface_for_type<Fence, IFence, IDeviceChild>();
 
-
-			if (FAILED(::CreateDXGIFactory1(IID_PPV_ARGS(&g_dxgi))))
+			HRESULT hr = ::CreateDXGIFactory1(IID_PPV_ARGS(&g_dxgi));
+			if (FAILED(hr))
 			{
-				return BasicError::bad_platform_call();
+				return encode_hresult(hr);
 			}
+
+			ComPtr<IDXGIAdapter1> ada;
+			u32 index = 0;
+			while (true)
+			{
+				hr = g_dxgi->EnumAdapters1(index, ada.ReleaseAndGetAddressOf());
+				if (FAILED(hr)) break;
+				g_adapters.push_back(move(ada));
+				++index;
+			}
+
 #if defined(LUNA_RHI_DEBUG) && (LUNA_PLATFORM_VERSION >= LUNA_PLATFORM_VERSION_WIN10)
 			ComPtr<ID3D12Debug> debug;
 			D3D12GetDebugInterface(IID_PPV_ARGS(&debug));
@@ -81,86 +90,51 @@ namespace Luna
 			g_device = dev.get();
 			return ok;
 		}
-
 		void render_api_close()
 		{
 			g_device = nullptr;
 			g_dxgi = nullptr;
+			g_adapters.clear();
+			g_adapters.shrink_to_fit();
 		}
-
-		LUNA_RHI_API R<GraphicAdapterDesc> get_adapter_desc(u32 index)
+		LUNA_RHI_API u32 get_num_adapters()
 		{
-			ComPtr<IDXGIAdapter1> ada;
-			if (FAILED(g_dxgi->EnumAdapters1(index, ada.GetAddressOf())))
-			{
-				return BasicError::not_found();
-			}
+			return (u32)g_adapters.size();
+		}
+		LUNA_RHI_API AdapterDesc get_adapter_desc(u32 index)
+		{
 			DXGI_ADAPTER_DESC1 desc;
-			ada->GetDesc1(&desc);
-			GraphicAdapterDesc dst;
+			g_adapters[index]->GetDesc1(&desc);
+			AdapterDesc dst;
 			utf16_to_utf8(dst.name, 256, (char16_t*)desc.Description);
 			dst.local_memory = desc.DedicatedSystemMemory + desc.DedicatedVideoMemory;
 			dst.shared_memory = desc.SharedSystemMemory;
-			dst.flags = GraphicAdapterFlag::none;
+			dst.type = AdapterType::discrete_gpu;
 			if (!desc.DedicatedVideoMemory)
 			{
-				dst.flags |= GraphicAdapterFlag::uma;
+				dst.type = AdapterType::integrated_gpu;
 			}
 			if (desc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE)
 			{
-				dst.flags |= GraphicAdapterFlag::software;
+				dst.type = AdapterType::software;
 			}
 			return dst;
 		}
-
 		LUNA_RHI_API R<Ref<IDevice>> new_device(u32 adapter_index)
 		{
 			ComPtr<ID3D12Device> dev;
-			ComPtr<IDXGIAdapter> ada;
-			if (FAILED(g_dxgi->EnumAdapters(adapter_index, ada.GetAddressOf())))
-			{
-				return BasicError::not_found();
-			}
-			if (FAILED(::D3D12CreateDevice(ada.Get(), D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&dev))))
-			{
-				// try warp device.
-				ComPtr<IDXGIAdapter> warp;
-				ComPtr<IDXGIFactory4> fac;
-				g_dxgi.As(&fac);
-				fac->EnumWarpAdapter(IID_PPV_ARGS(&warp));
-
-				if (FAILED(D3D12CreateDevice(warp.Get(), D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&dev))))
-				{
-					return set_error(BasicError::bad_platform_call(), "IGraphicSystem::new_device - Failed to create D3D12 Device.");
-				}
-			}
 			Ref<Device> device = new_object<Device>();
-			auto res = device->init(dev.Get());
+			auto res = device->init(g_adapters[adapter_index].Get());
 			if (failed(res)) return res.errcode();
 			return device;
 		}
-
 		LUNA_RHI_API IDevice* get_main_device()
 		{
 			return g_device;
 		}
-
-		LUNA_RHI_API R<Ref<ISwapChain>> new_swap_chain(ICommandQueue* queue, Window::IWindow* window, const SwapChainDesc& desc)
-		{
-			Ref<SwapChain> r = new_object<SwapChain>();
-			lutry
-			{
-				luexp(r->init(window, static_cast<CommandQueue*>(queue->get_object()), desc));
-			}
-			lucatchret;
-			return r;
-		}
-
 		LUNA_RHI_API APIType get_current_platform_api_type()
 		{
 			return APIType::d3d12;
 		}
 	}
 }
-
-#endif

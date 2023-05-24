@@ -103,7 +103,7 @@ namespace Luna
 		default: lupanic(); return format;
 		}
 	}
-	inline RHI::Format get_pixel_format_from_image_format(Image::ImagePixelFormat format)
+	inline RHI::Format get_format_from_image_format(Image::ImagePixelFormat format)
 	{
 		using namespace Image;
 		switch (format)
@@ -123,7 +123,7 @@ namespace Luna
 		default: lupanic(); return RHI::Format::unknown;
 		}
 	}
-	inline R<Image::ImagePixelFormat> get_image_format_from_pixel_format(RHI::Format format)
+	inline R<Image::ImagePixelFormat> get_image_format_from_format(RHI::Format format)
 	{
 		using namespace Image;
 		switch (format)
@@ -168,9 +168,6 @@ namespace Luna
 
 	struct AppEnv
 	{
-		Ref<RHI::ICommandQueue> graphics_queue;
-		Ref<RHI::ICommandQueue> async_compute_queue;
-
 		HashSet<Name> new_asset_types; // Displayed on the "New" tab of asset browser.
 		HashMap<Name, AssetImporterDesc> importer_types;
 
@@ -178,6 +175,12 @@ namespace Luna
 
 		HashSet<typeinfo_t> component_types;
 		HashSet<typeinfo_t> scene_component_types;
+
+		Ref<RHI::IDevice> device;
+
+		u32 graphics_queue;
+		u32 async_compute_queue;
+		u32 async_copy_queue;
 
 		void register_asset_importer_type(const Name& name, const AssetImporterDesc& desc)
 		{
@@ -191,4 +194,91 @@ namespace Luna
 	};
 
 	extern AppEnv* g_env;
+
+	inline RV upload_texture_data(RHI::ITexture* dst, RHI::SubresourceIndex dst_subresource, u32 dst_x, u32 dst_y, u32 dst_z,
+		const void* src, u32 src_row_pitch, u32 src_slice_pitch,
+		u32 copy_width, u32 copy_height, u32 copy_depth)
+	{
+		using namespace RHI;
+		lutry
+		{
+			auto dev = dst->get_device();
+			auto desc = dst->get_desc();
+			u64 size, row_pitch, slice_pitch;
+			dev->get_texture_data_placement_info(desc.width, desc.height, desc.depth, desc.format, &size, nullptr, &row_pitch, &slice_pitch);
+			lulet(tex_staging, dev->new_buffer(MemoryType::upload, BufferDesc(BufferUsageFlag::copy_source, size)));
+
+			lulet(tex_staging_data, tex_staging->map(0, 0));
+			memcpy_bitmap3d(tex_staging_data, src, copy_width * bits_per_pixel(desc.format) / 8, copy_height, copy_depth, row_pitch, src_row_pitch, slice_pitch, src_slice_pitch);
+			tex_staging->unmap(0, size);
+
+			lulet(upload_cmdbuf, dev->new_command_buffer(g_env->async_copy_queue));
+			upload_cmdbuf->set_context(CommandBufferContextType::copy);
+			upload_cmdbuf->resource_barrier({
+				{ tex_staging, BufferStateFlag::automatic, BufferStateFlag::copy_source, ResourceBarrierFlag::none} },
+				{ { dst, dst_subresource, TextureStateFlag::automatic, TextureStateFlag::copy_dest, ResourceBarrierFlag::discard_content } });
+			upload_cmdbuf->copy_buffer_to_texture(dst, dst_subresource, dst_x, dst_y, dst_z, tex_staging, 0,
+				row_pitch, slice_pitch, copy_width, copy_height, copy_depth);
+			luexp(upload_cmdbuf->submit({}, {}, true));
+			upload_cmdbuf->wait();
+		}
+		lucatchret;
+		return ok;
+	}
+	inline RV readback_texture_data(void* dst, u32 dst_row_pitch, u32 dst_slice_pitch,
+		RHI::ITexture* src, RHI::SubresourceIndex src_subresource, u32 src_x, u32 src_y, u32 src_z,
+		u32 copy_width, u32 copy_height, u32 copy_depth)
+	{
+		using namespace RHI;
+		lutry
+		{
+			auto dev = src->get_device();
+			auto desc = src->get_desc();
+			u64 size, row_pitch, slice_pitch;
+			dev->get_texture_data_placement_info(desc.width, desc.height, desc.depth, desc.format, &size, nullptr, &row_pitch, &slice_pitch);
+			lulet(tex_staging, dev->new_buffer(MemoryType::readback, BufferDesc(BufferUsageFlag::copy_dest, size)));
+
+			lulet(readback_cmdbuf, dev->new_command_buffer(g_env->async_copy_queue));
+			readback_cmdbuf->set_context(CommandBufferContextType::copy);
+			readback_cmdbuf->resource_barrier({
+				{ tex_staging, BufferStateFlag::automatic, BufferStateFlag::copy_dest, ResourceBarrierFlag::none} },
+				{ { src, src_subresource, TextureStateFlag::automatic, TextureStateFlag::copy_source, ResourceBarrierFlag::none } });
+			readback_cmdbuf->copy_texture_to_buffer(tex_staging, 0, row_pitch, slice_pitch, src, src_subresource, src_x, src_y, src_z, 
+				copy_width, copy_height, copy_depth);
+			luexp(readback_cmdbuf->submit({}, {}, true));
+			readback_cmdbuf->wait();
+
+			lulet(tex_staging_data, tex_staging->map(0, 0));
+			memcpy_bitmap3d(dst, tex_staging_data, copy_width * bits_per_pixel(desc.format) / 8, copy_height, copy_depth, dst_row_pitch, row_pitch, dst_slice_pitch, slice_pitch);
+			tex_staging->unmap(0, size);
+		}
+		lucatchret;
+		return ok;
+	}
+	inline RV upload_buffer_data(RHI::IBuffer* dst, u64 dst_offset, const void* src, usize copy_size)
+	{
+		using namespace RHI;
+		lutry
+		{
+			auto dev = dst->get_device();
+			auto desc = dst->get_desc();
+			lulet(buf_staging, dev->new_buffer(MemoryType::upload, BufferDesc(BufferUsageFlag::copy_source, copy_size)));
+
+			lulet(buf_staging_data, buf_staging->map(0, 0));
+			memcpy(buf_staging_data, src, copy_size);
+			buf_staging->unmap(0, copy_size);
+
+			lulet(upload_cmdbuf, dev->new_command_buffer(g_env->async_copy_queue));
+			upload_cmdbuf->set_context(CommandBufferContextType::copy);
+			upload_cmdbuf->resource_barrier({
+				{ buf_staging, BufferStateFlag::automatic, BufferStateFlag::copy_source, ResourceBarrierFlag::none},
+				{ dst, BufferStateFlag::automatic, BufferStateFlag::copy_dest, ResourceBarrierFlag::none},
+				}, {});
+			upload_cmdbuf->copy_buffer(dst, dst_offset, buf_staging, 0, copy_size);
+			luexp(upload_cmdbuf->submit({}, {}, true));
+			upload_cmdbuf->wait();
+		}
+		lucatchret;
+		return ok;
+	}
 }

@@ -11,7 +11,6 @@
 #include "StudioHeader.hpp"
 #include "AssetBrowser.hpp"
 #include <Runtime/HashMap.hpp>
-#include "StudioHeader.hpp"
 
 namespace Luna
 {
@@ -24,8 +23,6 @@ namespace Luna
 		Ref<Window::IWindow> m_window;
 		Ref<RHI::ISwapChain> m_swap_chain;
 		Ref<RHI::ICommandBuffer> m_cmdbuf;
-		Ref<RHI::IResource> m_back_buffer;
-		Ref<RHI::IRenderTargetView> m_back_buffer_rtv;
 
 		Ref<AssetBrowser> m_asset_browsers[4];
 		bool m_asset_browsers_enabled[4] = { true, false, false, false };

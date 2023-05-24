@@ -19,18 +19,15 @@ namespace Luna
         lutry
         {
             luset(m_buffer_visualization_pass_dlayout, device->new_descriptor_set_layout(DescriptorSetLayoutDesc({
-						DescriptorSetLayoutBinding(DescriptorType::cbv, 0, 1, ShaderVisibility::all),
-						DescriptorSetLayoutBinding(DescriptorType::srv, 1, 1, ShaderVisibility::all),
-                        DescriptorSetLayoutBinding(DescriptorType::srv, 2, 1, ShaderVisibility::all),
-                        DescriptorSetLayoutBinding(DescriptorType::srv, 3, 1, ShaderVisibility::all),
-						DescriptorSetLayoutBinding(DescriptorType::uav, 4, 1, ShaderVisibility::all)
+						DescriptorSetLayoutBinding(DescriptorType::uniform_buffer_view, 0, 1, ShaderVisibilityFlag::compute),
+						DescriptorSetLayoutBinding(DescriptorType::read_texture_view, 1, 1, ShaderVisibilityFlag::compute),
+                        DescriptorSetLayoutBinding(DescriptorType::read_texture_view, 2, 1, ShaderVisibilityFlag::compute),
+                        DescriptorSetLayoutBinding(DescriptorType::read_texture_view, 3, 1, ShaderVisibilityFlag::compute),
+						DescriptorSetLayoutBinding(DescriptorType::read_write_texture_view, 4, 1, ShaderVisibilityFlag::compute)
 						})));
-
-			luset(m_buffer_visualization_pass_slayout, device->new_shader_input_layout(ShaderInputLayoutDesc({ m_buffer_visualization_pass_dlayout },
+            auto dlayout = m_buffer_visualization_pass_dlayout.get();
+			luset(m_buffer_visualization_pass_slayout, device->new_shader_input_layout(ShaderInputLayoutDesc({ &dlayout, 1 },
 				ShaderInputLayoutFlag::deny_vertex_shader_access |
-				ShaderInputLayoutFlag::deny_domain_shader_access |
-				ShaderInputLayoutFlag::deny_geometry_shader_access |
-				ShaderInputLayoutFlag::deny_hull_shader_access |
 				ShaderInputLayoutFlag::deny_pixel_shader_access)));
 
 			lulet(psf, open_file("BufferVisualization.cso", FileOpenFlag::read, FileCreationMode::open_existing));
@@ -55,9 +52,9 @@ namespace Luna
             auto device = m_global_data->m_buffer_visualization_pass_dlayout->get_device();
             luset(m_ds, device->new_descriptor_set(
                 DescriptorSetDesc(global_data->m_buffer_visualization_pass_dlayout)));
-            luset(m_vis_params, device->new_resource(
-                ResourceDesc::buffer(ResourceHeapType::upload, ResourceUsageFlag::constant_buffer, 
-                    align_upper(sizeof(u32), device->get_constant_buffer_data_alignment()))));
+            luset(m_vis_params, device->new_buffer(MemoryType::upload,
+                BufferDesc(BufferUsageFlag::uniform_buffer, 
+                    align_upper(sizeof(u32), device->get_uniform_buffer_data_alignment()))));
         }
         lucatchret;
         return ok;
@@ -67,35 +64,38 @@ namespace Luna
         using namespace RHI;
         lutry
         {
-            u32* mapped;
-            luexp(m_vis_params->map_subresource(0, 0, 0, (void**)&mapped));
-            *mapped = vis_type;
-            m_vis_params->unmap_subresource(0, 0, sizeof(u32));
-            auto scene_tex = ctx->get_output("scene_texture");
-            auto depth_tex = ctx->get_input("depth_texture");
-            auto base_color_roughness_tex = ctx->get_input("base_color_roughness_texture");
-            auto normal_metallic_tex = ctx->get_input("normal_metallic_texture");
+            lulet(mapped, m_vis_params->map(0, 0));
+            *(u32*)mapped = vis_type;
+            m_vis_params->unmap(0, sizeof(u32));
+            Ref<ITexture> scene_tex = ctx->get_output("scene_texture");
+            Ref<ITexture> depth_tex = ctx->get_input("depth_texture");
+            Ref<ITexture> base_color_roughness_tex = ctx->get_input("base_color_roughness_texture");
+            Ref<ITexture> normal_metallic_tex = ctx->get_input("normal_metallic_texture");
             auto cmdbuf = ctx->get_command_buffer();
+            cmdbuf->set_context(CommandBufferContextType::compute);
             auto device = cmdbuf->get_device();
-            auto cb_align = device->get_constant_buffer_data_alignment();
-            cmdbuf->resource_barriers({
-                ResourceBarrierDesc::as_transition(m_vis_params, ResourceState::vertex_and_constant_buffer),
-				ResourceBarrierDesc::as_transition(scene_tex, ResourceState::unordered_access),
-				ResourceBarrierDesc::as_transition(depth_tex, ResourceState::shader_resource_non_pixel),
-				ResourceBarrierDesc::as_transition(base_color_roughness_tex, ResourceState::shader_resource_non_pixel),
-                ResourceBarrierDesc::as_transition(normal_metallic_tex, ResourceState::shader_resource_non_pixel)});
-            
-            m_ds->set_cbv(0, m_vis_params, ConstantBufferViewDesc(0, (u32)align_upper(sizeof(u32), cb_align)));
-            m_ds->set_srv(1, base_color_roughness_tex);
-            m_ds->set_srv(2, normal_metallic_tex);
-            m_ds->set_srv(3, depth_tex, &ShaderResourceViewDesc::as_tex2d(Format::r32_float, 0, 1, 0.0f));
-            m_ds->set_uav(4, scene_tex);
+            auto cb_align = device->get_uniform_buffer_data_alignment();
+            cmdbuf->resource_barrier(
+                { {m_vis_params, BufferStateFlag::automatic, BufferStateFlag::uniform_buffer_cs, ResourceBarrierFlag::none} },
+                {
+                    {scene_tex, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::shader_read_cs | TextureStateFlag::shader_write_cs, ResourceBarrierFlag::discard_content},
+                    {depth_tex, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::shader_read_cs, ResourceBarrierFlag::none},
+                    {base_color_roughness_tex, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::shader_read_cs, ResourceBarrierFlag::none},
+                    {normal_metallic_tex, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::shader_read_cs, ResourceBarrierFlag::none},
+                });
+            m_ds->update_descriptors({
+                WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(m_vis_params, 0, (u32)align_upper(sizeof(u32), cb_align))),
+                WriteDescriptorSet::read_texture_view(1, TextureViewDesc::tex2d(base_color_roughness_tex)),
+                WriteDescriptorSet::read_texture_view(2, TextureViewDesc::tex2d(normal_metallic_tex)),
+                WriteDescriptorSet::read_texture_view(3, TextureViewDesc::tex2d(depth_tex)),
+                WriteDescriptorSet::read_write_texture_view(4, TextureViewDesc::tex2d(scene_tex))
+                });
             auto scene_desc = scene_tex->get_desc();
             cmdbuf->set_compute_shader_input_layout(m_global_data->m_buffer_visualization_pass_slayout);
-            cmdbuf->set_pipeline_state(m_global_data->m_buffer_visualization_pass_pso);
+            cmdbuf->set_compute_pipeline_state(m_global_data->m_buffer_visualization_pass_pso);
             cmdbuf->set_compute_descriptor_set(0, m_ds);
-            cmdbuf->dispatch((u32)align_upper(scene_desc.width_or_buffer_size, 8) / 8,
-                align_upper(scene_desc.height, 8) / 8, 1);
+            cmdbuf->dispatch((u32)align_upper(scene_desc.width, 8) / 8,
+                (u32)align_upper(scene_desc.height, 8) / 8, 1);
         }
         lucatchret;
         return ok;
@@ -114,28 +114,28 @@ namespace Luna
 			if(depth_texture == RG::INVALID_RESOURCE) return set_error(BasicError::bad_arguments(), "BufferVisualizationPass: Input \"depth_texture\" is not specified.");
             if(base_color_roughness_texture == RG::INVALID_RESOURCE) return set_error(BasicError::bad_arguments(), "BufferVisualizationPass: Input \"base_color_roughness_texture\" is not specified.");
             if(normal_metallic_texture == RG::INVALID_RESOURCE) return set_error(BasicError::bad_arguments(), "BufferVisualizationPass: Input \"normal_metallic_texture\" is not specified.");
-            RHI::ResourceDesc desc = compiler->get_resource_desc(scene_texture);
-			if (desc.pixel_format != RHI::Format::rgba8_unorm)
+            RG::ResourceDesc desc = compiler->get_resource_desc(scene_texture);
+			if (desc.texture.format != RHI::Format::rgba8_unorm)
 			{
 				return set_error(BasicError::bad_arguments(), "BufferVisualizationPass: Invalid format for \"scene_texture\" is specified. \"scene_texture\" must be Format::rgba8_unorm.");
 			}
-			desc.usages |= RHI::ResourceUsageFlag::unordered_access;
+			desc.texture.usages |= RHI::TextureUsageFlag::read_write_texture;
 			compiler->set_resource_desc(scene_texture, desc);
 
 			desc = compiler->get_resource_desc(depth_texture);
-			if (desc.pixel_format != RHI::Format::d32_float)
+			if (desc.texture.format != RHI::Format::d32_float)
 			{
 				return set_error(BasicError::bad_arguments(), "BufferVisualizationPass: Invalid format for \"depth_texture\" is specified. \"depth_texture\" must be Format::d32_float.");
 			}
-			desc.usages |= RHI::ResourceUsageFlag::depth_stencil;
+			desc.texture.usages |= RHI::TextureUsageFlag::read_texture;
 			compiler->set_resource_desc(depth_texture, desc);
 
             desc = compiler->get_resource_desc(base_color_roughness_texture);
-			desc.usages |= RHI::ResourceUsageFlag::shader_resource;
+			desc.texture.usages |= RHI::TextureUsageFlag::read_texture;
 			compiler->set_resource_desc(base_color_roughness_texture, desc);
 
             desc = compiler->get_resource_desc(normal_metallic_texture);
-			desc.usages |= RHI::ResourceUsageFlag::shader_resource;
+			desc.texture.usages |= RHI::TextureUsageFlag::read_texture;
 			compiler->set_resource_desc(normal_metallic_texture, desc);
 
 			Ref<BufferVisualizationPass> pass = new_object<BufferVisualizationPass>();

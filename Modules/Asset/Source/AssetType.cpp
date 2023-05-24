@@ -36,7 +36,6 @@ namespace Luna
 		{
 			g_asset_types.clear();
 			g_asset_types.shrink_to_fit();
-			g_asset_types_mutex.reset();
 		}
 		LUNA_ASSET_API void register_asset_type(const AssetTypeDesc& desc)
 		{

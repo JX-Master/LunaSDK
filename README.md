@@ -16,7 +16,7 @@ Key features:
 
 Designed target platforms:
 
-* Windows (Direct3D 12/Vulkan) (Vulkan binding not implemented yet.)
+* Windows (Direct3D 12/Vulkan)
 * macOS (Metal) (Not implemented yet.)
 * Linux (Vulkan) (Not implemented yet.)
 * Android (Vulkan) (Not implemented yet.)
@@ -25,6 +25,7 @@ Designed target platforms:
 ## Building
 
 ### Prerequisites
+
 * C++ toolchain on your platform:
     * Visual Studio 2019 or later on Windows (C++ desktop development & C++ game development workload).
     * XCode on macOS (not implemented yet).
@@ -46,13 +47,31 @@ Designed target platforms:
 ### Visual Studio Code
 1. Clone or download this project.
 1. Open Code editor on the project root directory, then choose xmake toolchain in Code editor.
-1. Configure the building option by executing `xmake f -p [platform] -a [arch] -m [mode]`. Possible options include:
+1. Configure the building option by executing `xmake f {options}`. Possible options include:
    1. `-p` for target platform, including `windows` and `macosx`. This can be set automatically for most of the time.
    1. `-a` for architecture, including `x64` and `arm64`. 
    1. `-m` for mode, including `debug`, `profile`and `release`.
+   1. `--rhi_debug=y` if you want to enable the debug layer of the rendering backend (D3D12 debug layer or Vulkan validation layer).
+   1. `--rhi_api=XXX` for choosing the rendering backend, including `D3D12` (default on Windows), `Vulkan` (default on Linux) and `Metal` (default on macOS). 
 1. Open terminal and execute `xmake build` for all projects, or `xmake build {target}` for a specific target, like `Studio`. You may also use `Run and Debug` tab to build project if you install the `XMake` extension.
 
-## Docs 
+## System Requirements
+
+he following requirements must be satisfied to build Luna SDK with Direct3D 12 rendering backend:
+
+* Windows 10 operating system, 64-bit.
+
+The following requirements must be satisfied to build Luna SDK with Vulkan rendering backend:
+
+* Vulkan runtime must be present on the system, and must be supported by your GPU and driver.
+  * Vulkan runtime is shipped as part of system components on most modern operations systems, including Windows, Linux and Android.
+  * To check whether your GPU and driver supports Vulkan, consult [this database](https://vulkan.gpuinfo.org/).
+  * Installation of [Vulkan SDK](https://vulkan.lunarg.com/) is **not required** to build Luna SDK with Vulkan rendering backend.
+
+* `VK_KHR_maintenance1 ` extension support, which is mandatory in Vulkan 1.1+.
+* `VK_KHR_swapchain` extension support, which should be supported on all platforms with display screens.
+
+## Docs
 See [Luna SDK Docs](https://www.lunasdk.org).
 
 ## Feedback & Discussion
@@ -81,6 +100,14 @@ The following SDKs are not directly used Luna SDK, but part of their design and 
 
 1. [jsondiffpatch.net](https://github.com/wbish/jsondiffpatch.net) when developing the variant differential library (MIT License).
 2. [DirectXMath](https://github.com/microsoft/DirectXMath) when developing the math library (MIT License).
+
+## Alternatives
+
+Here are some alternative real-time rendering engines/frameworks that have similar design goals to Luna SDK.
+
+* [Sakura Engine](https://github.com/SakuraEngine/SakuraEngine) developed by  SaeruHikari and other contributors (MIT License).
+* [Horizon Engine](https://github.com/harukumo/HorizonEngine) developed by harukumo.
+* [Piccolo Engine](https://github.com/BoomingTech/Piccolo) developed by Booming Tech and GAMES104 community contributors (MIT License).
 
 ## License
 Luna SDK is licensed under the zlib/libpng license, see [LICENSE.txt](./LICENSE.txt) for more information.

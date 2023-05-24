@@ -20,11 +20,8 @@ namespace Luna
 {
     namespace Window
     {
-        Ref<IWindow> g_main_window;
-
         void Window::close()
         {
-            g_main_window.reset();
             GLFWwindow* ptr = (GLFWwindow*)atom_exchange_pointer((void**)&(m_window), nullptr);
             if (ptr)
             {
@@ -409,17 +406,6 @@ namespace Luna
         LUNA_WINDOW_API void set_startup_params(const StartupParams& params)
         {
             g_startup_params = params;
-        }
-
-        LUNA_WINDOW_API IWindow* get_main_window()
-        {
-            return g_main_window;
-        }
-
-        LUNA_WINDOW_API RV set_main_window(IWindow* window)
-        {
-            g_main_window = window;
-            return ok;
         }
     }
 }

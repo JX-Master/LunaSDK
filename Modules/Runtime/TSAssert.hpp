@@ -47,10 +47,14 @@ namespace Luna
 
 #define lutsassert() Luna::TSGuard _tsguard(this->m_tsassert_lock);
 
+#define lutsassert_obj(self) Luna::TSGuard _tsguard(self->m_tsassert_lock);
+
 #else
 
 #define lutsassert_lock() 
 
 #define lutsassert() 
+
+#define lutsassert_obj(self) 
 
 #endif

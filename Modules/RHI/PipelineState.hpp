@@ -21,7 +21,7 @@ namespace Luna
 			Span<const byte_t> cs;
 		};
 
-		enum class InputClassification : u8
+		enum class InputRate : u8
 		{
 			per_vertex = 1,
 			per_instance = 2
@@ -29,81 +29,69 @@ namespace Luna
 
 		constexpr u32 APPEND_ALIGNED_ELEMENT = 0xffffffff;
 
-		struct InputElementDesc
+		//! Describes one attribute in the input layout.
+		struct InputAttributeDesc
 		{
+			//! The semantic name of this attribute. For exmaple, "COLOR", "TEXCOORD", etc.
 			const c8* semantic_name;
+			//! The semantic index of this attribute. Use this to differentiate attributes with the same 
+			//! semantic name.
 			u32 semantic_index;
+			//! The location of this input attribute in the shader.
+			u32 location;
+			//! The belonging binding slot of this attribute.
+			u32 binding_slot;
+			//! The offset of this attribute from the beginning of the element.
+			u32 offset;
+			//! The format of this attribute.
 			Format format;
-			u32 input_slot;
-			u32 aligned_byte_offset;
-			InputClassification input_slot_class;
-			u32 instance_data_step_rate;
-
-			InputElementDesc() = default;
-			InputElementDesc(
+			InputAttributeDesc() = default;
+			InputAttributeDesc(
 				const c8* semantic_name,
 				u32 semantic_index,
-				Format format,
-				u32 input_slot = 0,
-				u32 aligned_byte_offset = APPEND_ALIGNED_ELEMENT,
-				InputClassification input_slot_class = InputClassification::per_vertex,
-				u32 instance_data_step_rate = 0
+				u32 location,
+				u32 binding_slot,
+				u32 offset,
+				Format format
 			) :
 				semantic_name(semantic_name),
 				semantic_index(semantic_index),
-				format(format),
-				input_slot(input_slot),
-				aligned_byte_offset(aligned_byte_offset),
-				input_slot_class(input_slot_class),
-				instance_data_step_rate(instance_data_step_rate) {}
+				location(location),
+				binding_slot(binding_slot),
+				offset(offset),
+				format(format) {}
+		};
+		//! Describes one input buffer binding.
+		struct InputBindingDesc
+		{
+			//! The target binding slot. Every binding will take a different slot.
+			u32 binding_slot;
+			//! The size of one element in the buffer.
+			u32 element_size;
+			//! The element input rate of the binding.
+			InputRate input_rate;
+			InputBindingDesc() = default;
+			InputBindingDesc(
+				u32 binding_slot,
+				u32 element_size,
+				InputRate input_rate
+			) :
+				binding_slot(binding_slot),
+				element_size(element_size),
+				input_rate(input_rate) {}
 		};
 
 		struct InputLayoutDesc
 		{
-			Vector<InputElementDesc> input_elements;
-
+			Span<const InputBindingDesc> bindings;
+			Span<const InputAttributeDesc> attributes;
 			InputLayoutDesc() = default;
 			InputLayoutDesc(
-				InitializerList<InputElementDesc> input_elements
-			) : input_elements(input_elements) {}
-		};
-
-		struct StreamOutputDeclarationEntry
-		{
-			u32 stream;
-			Name semantic_name;
-			u32 semantic_index;
-			u8 start_component;
-			u8 component_count;
-			u8 output_slot;
-
-			StreamOutputDeclarationEntry() = default;
-			StreamOutputDeclarationEntry(u32 stream,
-				const Name& semantic_name,
-				u32 semantic_index,
-				u8 start_component,
-				u8 component_count,
-				u8 output_slot) :
-				stream(stream),
-				semantic_name(semantic_name),
-				semantic_index(semantic_index),
-				start_component(start_component),
-				component_count(component_count),
-				output_slot(output_slot) {}
-		};
-
-		struct StreamOutputDesc
-		{
-			Vector<StreamOutputDeclarationEntry> entries;
-			Vector<u32> buffer_strides;
-			u32 rasterized_stream;
-
-			StreamOutputDesc(InitializerList<StreamOutputDeclarationEntry> entries = {},
-				InitializerList<u32> buffer_strides = {},
-				u32 rasterized_stream = 0) :
-				entries(entries),
-				buffer_strides(buffer_strides),
-				rasterized_stream(rasterized_stream) {}
+				InitializerList<InputBindingDesc> bindings,
+				InitializerList<InputAttributeDesc> attributes
+			) : 
+				bindings(bindings),
+				attributes(attributes) {}
 		};
 
 		enum class BlendFactor : u8
@@ -114,10 +102,10 @@ namespace Luna
 			inv_src_color,
 			src_alpha,
 			inv_src_alpha,
-			dest_alpha,
-			inv_dest_alpha,
 			dest_color,
 			inv_dest_color,
+			dest_alpha,
+			inv_dest_alpha,
 			src_alpha_sat,
 			blend_factor,
 			inv_blend_factor,
@@ -140,7 +128,6 @@ namespace Luna
 			set,
 			copy,
 			copy_inverted,
-			noop,
 			invert,
 			and,
 			nand,
@@ -163,40 +150,34 @@ namespace Luna
 			all = red | green | blue | alpha
 		};
 
-		struct RenderTargetBlendDesc
+		struct AttachmentBlendDesc
 		{
 			bool blend_enable;
-			bool logic_op_enable;
 			BlendFactor src_blend;
 			BlendFactor dest_blend;
 			BlendOp blend_op;
 			BlendFactor src_blend_alpha;
 			BlendFactor dest_blend_alpha;
 			BlendOp blend_op_alpha;
-			LogicOp logic_op;
 			ColorWriteMask render_target_write_mask;
 
-			RenderTargetBlendDesc(
+			AttachmentBlendDesc(
 				bool blend_enable = false,
-				bool logic_op_enable = false,
 				BlendFactor src_blend = BlendFactor::one,
 				BlendFactor dest_blend = BlendFactor::zero,
 				BlendOp blend_op = BlendOp::add,
 				BlendFactor src_blend_alpha = BlendFactor::one,
 				BlendFactor dest_blend_alpha = BlendFactor::zero,
 				BlendOp blend_op_alpha = BlendOp::add,
-				LogicOp logic_op = LogicOp::noop,
 				ColorWriteMask render_target_write_mask = ColorWriteMask::all
 			) :
 				blend_enable(blend_enable),
-				logic_op_enable(logic_op_enable),
 				src_blend(src_blend),
 				dest_blend(dest_blend),
 				blend_op(blend_op),
 				src_blend_alpha(src_blend_alpha),
 				dest_blend_alpha(dest_blend_alpha),
 				blend_op_alpha(blend_op_alpha),
-				logic_op(logic_op),
 				render_target_write_mask(render_target_write_mask) {}
 		};
 
@@ -204,14 +185,20 @@ namespace Luna
 		{
 			bool alpha_to_coverage_enable;
 			bool independent_blend_enable;
-			RenderTargetBlendDesc rt[8];
+			bool logic_op_enable;
+			LogicOp logic_op;
+			AttachmentBlendDesc rt[8];
 
 			BlendDesc(
+				std::initializer_list<AttachmentBlendDesc> rt = {},
 				bool alpha_to_coverage_enable = false,
 				bool independent_blend_enable = false,
-				std::initializer_list<RenderTargetBlendDesc> rt = {}) :
+				bool logic_op_enable = false,
+				LogicOp logic_op = LogicOp::clear) :
 				alpha_to_coverage_enable(alpha_to_coverage_enable),
-				independent_blend_enable(independent_blend_enable)
+				independent_blend_enable(independent_blend_enable),
+				logic_op_enable(logic_op_enable),
+				logic_op(logic_op)
 			{
 				u32 i = 0;
 				for (auto& it : rt)
@@ -355,17 +342,19 @@ namespace Luna
 		enum class IndexBufferStripCutValue : u8
 		{
 			disabled,
+			//! This should be set if the index type is `Format::r16_uint`.
 			value_0xffff,
+			//! This should be set if the index type is `Format::r32_uint`.
 			value_0xffffffff
 		};
 
-		enum class PrimitiveTopologyType : u8
+		enum class PrimitiveTopology : u8
 		{
-			undefined,
-			point,
-			line,
-			triangle,
-			patch
+			point_list,
+			line_list,
+			line_strip,
+			triangle_list,
+			triangle_strip,
 		};
 
 		struct GraphicsPipelineStateDesc
@@ -374,23 +363,18 @@ namespace Luna
 			IShaderInputLayout* shader_input_layout = nullptr;
 			Span<const byte_t> vs;
 			Span<const byte_t> ps;
-			Span<const byte_t> ds;
-			Span<const byte_t> hs;
-			Span<const byte_t> gs;
-			StreamOutputDesc stream_output;
-			BlendDesc blend_state;
 			RasterizerDesc rasterizer_state;
 			DepthStencilDesc depth_stencil_state;
+			BlendDesc blend_state;
 			IndexBufferStripCutValue ib_strip_cut_value = IndexBufferStripCutValue::disabled;
-			PrimitiveTopologyType primitive_topology_type = PrimitiveTopologyType::triangle;
-			u32 num_render_targets = 0;
+			PrimitiveTopology primitive_topology = PrimitiveTopology::triangle_list;
+			u8 num_color_attachments = 0;
 			//! The pixel format of the render target.
-			Format rtv_formats[8] = { Format::unknown };
-			Format dsv_format = Format::unknown;
+			Format color_formats[8] = { Format::unknown };
+			Format depth_stencil_format = Format::unknown;
 			//! Specify the sample count, 1 if MSAA is not used.
 			u32 sample_count = 1;
 			u32 sample_mask = 0xFFFFFFFF;
-			u32 sample_quality = 0;
 		};
 
 		//! @interface IPipelineState
