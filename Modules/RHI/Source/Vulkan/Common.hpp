@@ -35,7 +35,8 @@ namespace Luna
 		{
 			switch (result)
 			{
-			case VK_SUCCESS: return ok;
+			case VK_SUCCESS:
+			case VK_SUBOPTIMAL_KHR: return ok;
 			case VK_NOT_READY: return BasicError::not_ready();
 			case VK_TIMEOUT: return BasicError::timeout();
 			case VK_INCOMPLETE: return BasicError::not_ready();
@@ -55,6 +56,8 @@ namespace Luna
 				return BasicError::out_of_resource();
 			case VK_ERROR_FORMAT_NOT_SUPPORTED:
 				return BasicError::not_supported();
+			case VK_ERROR_OUT_OF_DATE_KHR:
+				return RHIError::swap_chain_out_of_date();
 			default:
 				return BasicError::bad_platform_call();
 			}
@@ -344,13 +347,14 @@ namespace Luna
 			dest.usage = 0;
 			if (test_flags(desc.usages, TextureUsageFlag::copy_source)) dest.usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
 			if (test_flags(desc.usages, TextureUsageFlag::copy_dest)) dest.usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-			if (test_flags(desc.usages, TextureUsageFlag::sampled_texture)) dest.usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
-			if (test_flags(desc.usages, TextureUsageFlag::read_texture) ||
-				test_flags(desc.usages, TextureUsageFlag::read_write_texture)) dest.usage |= VK_IMAGE_USAGE_STORAGE_BIT;
+			if (test_flags(desc.usages, TextureUsageFlag::read_texture)) dest.usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
+			if (test_flags(desc.usages, TextureUsageFlag::read_write_texture)) dest.usage |= VK_IMAGE_USAGE_STORAGE_BIT;
 			if (test_flags(desc.usages, TextureUsageFlag::color_attachment)) dest.usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 			if (test_flags(desc.usages, TextureUsageFlag::depth_stencil_attachment)) dest.usage |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
 			dest.samples = encode_sample_count(desc.sample_count);
 			dest.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+			dest.flags = 0;
+			if (test_flags(desc.flags, TextureFlag::cube)) dest.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
 		}
 		inline void encode_allocation_info(VmaAllocationCreateInfo& dest, MemoryType memory_type)
 		{
@@ -644,8 +648,7 @@ namespace Luna
 			case DescriptorType::uniform_buffer_view: return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; break;
 			case DescriptorType::read_buffer_view:
 			case DescriptorType::read_write_buffer_view: return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-			case DescriptorType::sampled_texture_view: return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-			case DescriptorType::read_texture_view:
+			case DescriptorType::read_texture_view: return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 			case DescriptorType::read_write_texture_view: return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
 			case DescriptorType::sampler: return VK_DESCRIPTOR_TYPE_SAMPLER;
 			}

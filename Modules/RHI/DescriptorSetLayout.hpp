@@ -19,22 +19,37 @@ namespace Luna
 		{
 			//! Specifies uniform buffer view, which allows reading data from one uniform buffer.
 			//! This descriptor is supported in all shaders.
+			//! 
+			//! To represent one uniform buffer view, use the following parameter types in shader source code with register type `b`:
+			//! * cbuffer
+			//! * ConstantBuffer
 			uniform_buffer_view,
 			//! Specifies read buffer view, which allows reading data from one structured buffer.
 			//! This descriptor is supported in all shaders.
+			//! 
+			//! To specify one read buffer view, use the following parameter types in shader source code with register type `t`:
+			//! * StructuredBuffer
 			read_buffer_view,
 			//! Speciifes read-write buffer view, which allows reading and writing data from one structured buffer.
 			//! This descriptor is supported in compute shader only.
+			//! 
+			//! To specify one read write buffer view, use the following parameter types in shader source code with register type `u`:
+			//! * RWStructuredBuffer
 			read_write_buffer_view,
-			//! Specifies sampled texture view, which allows sampling texture data from the texture
-			//! using samplers.
+			//! Specifies read texture view, which allows reading texture data using pixel coordinates directly 
+			//! or sampling texture data from the texture using samplers.
 			//! This descriptor is supported in all shaders.
-			sampled_texture_view,
-			//! Specifies read texture view, which allows reading texture data using pixel coordinates directly.
-			//! This descriptor is supported in all shaders.
+			//! 
+			//! To represent one read texture view, use the following parameter types in shader source code with register type `t`:
+			//! * Texture1D/Texture2D/Texture3D/TextureCube
+			//! * Texture1DArray/Texture2DArray/Texture2DMS/Texture2DMSArray/TextureCubeArray
 			read_texture_view,
 			//! Specifies read-write texture view, which allows reading and writing texture data using pixel coordinates directly.
 			//! This descriptor is supported in compute shader only.
+			//! 
+			//! To represent one read write texture view, use the following parameter types in shader source code with register type `u`:
+			//! * RWTexture1D/RWTexture2D/RWTexture3D
+			//! * RWTexture1DArray/RWTexture2DArray
 			read_write_texture_view,
 			//! Specifies one sampler.
 			//! This descriptor is supported in all shaders.

@@ -18,7 +18,27 @@ namespace Luna
         using namespace RHI;
         lutry
         {
-            //First Lum Pass.
+			// Histogram Clear Pass.
+			{
+				luset(m_histogram_clear_pass_dlayout, device->new_descriptor_set_layout(DescriptorSetLayoutDesc({
+					DescriptorSetLayoutBinding(DescriptorType::read_write_buffer_view, 0, 1, ShaderVisibilityFlag::compute)
+					})));
+				auto dlayout = m_histogram_clear_pass_dlayout.get();
+				luset(m_histogram_clear_pass_slayout, device->new_shader_input_layout(ShaderInputLayoutDesc({ &dlayout, 1 },
+					ShaderInputLayoutFlag::deny_vertex_shader_access |
+					ShaderInputLayoutFlag::deny_pixel_shader_access)));
+
+				lulet(psf, open_file("LumHistogramClear.cso", FileOpenFlag::read, FileCreationMode::open_existing));
+				auto file_size = psf->get_size();
+				auto cs_blob = Blob((usize)file_size);
+				luexp(psf->read(cs_blob.span()));
+				psf = nullptr;
+				ComputePipelineStateDesc ps_desc;
+				ps_desc.cs = cs_blob.cspan();
+				ps_desc.shader_input_layout = m_histogram_clear_pass_slayout;
+				luset(m_histogram_clear_pass_pso, device->new_compute_pipeline_state(ps_desc));
+			}
+			// Histogram Lum Pass.
 			{
 				luset(m_histogram_pass_dlayout, device->new_descriptor_set_layout(DescriptorSetLayoutDesc({
 					DescriptorSetLayoutBinding(DescriptorType::uniform_buffer_view, 0, 1, ShaderVisibilityFlag::compute),
@@ -40,8 +60,7 @@ namespace Luna
 				ps_desc.shader_input_layout = m_histogram_pass_slayout;
 				luset(m_histogram_pass_pso, device->new_compute_pipeline_state(ps_desc));
 			}
-
-			//Lum Pass.
+			// Histogram Collect Pass.
 			{
 				luset(m_histogram_collect_pass_dlayout, device->new_descriptor_set_layout(DescriptorSetLayoutDesc({
 					DescriptorSetLayoutBinding(DescriptorType::uniform_buffer_view, 0, 1, ShaderVisibilityFlag::compute),
@@ -63,7 +82,6 @@ namespace Luna
 				ps_desc.shader_input_layout = m_histogram_collect_pass_slayout;
 				luset(m_histogram_collect_pass_pso, device->new_compute_pipeline_state(ps_desc));
 			}
-
 			//Tone Mapping Pass.
 			{
 				luset(m_tone_mapping_pass_dlayout, device->new_descriptor_set_layout(DescriptorSetLayoutDesc({
@@ -117,6 +135,7 @@ namespace Luna
         {
             m_global_data = global_data;
             auto device = global_data->m_histogram_pass_pso->get_device();
+			luset(m_histogram_clear_ds, device->new_descriptor_set(DescriptorSetDesc(m_global_data->m_histogram_clear_pass_dlayout)));
             luset(m_histogram_ds, device->new_descriptor_set(DescriptorSetDesc(m_global_data->m_histogram_pass_dlayout)));
             luset(m_histogram_collect_ds, device->new_descriptor_set(DescriptorSetDesc(m_global_data->m_histogram_collect_pass_dlayout)));
             luset(m_tone_mapping_pass_ds, device->new_descriptor_set(DescriptorSetDesc(m_global_data->m_tone_mapping_pass_dlayout)));
@@ -148,24 +167,36 @@ namespace Luna
 			constexpr f32 max_brightness = 20.0f;
             // Tone mapping pass.
 			{
+				cmdbuf->set_context(CommandBufferContextType::compute);
 				Ref<IBuffer> m_histogram_buffer;
 				luset(m_histogram_buffer, ctx->allocate_temporary_resource(RG::ResourceDesc::as_buffer(MemoryType::local, BufferDesc(BufferUsageFlag::read_write_buffer, sizeof(u32) * 256))));
-				Ref<ITexture> m_lum_tex;
-				
 				cmdbuf->attach_device_object(m_histogram_buffer);
-				cmdbuf->attach_device_object(m_lum_tex);
+				// Histogram Clear Pass.
+				{
+					cmdbuf->set_compute_shader_input_layout(m_global_data->m_histogram_clear_pass_slayout);
+					cmdbuf->set_compute_pipeline_state(m_global_data->m_histogram_clear_pass_pso);
+					cmdbuf->resource_barrier({
+							BufferBarrier(m_histogram_buffer, BufferStateFlag::automatic, BufferStateFlag::shader_write_cs)
+						}, {});
+					auto vs = m_histogram_clear_ds.get();
+					vs->update_descriptors({
+						WriteDescriptorSet::read_write_buffer_view(0, BufferViewDesc::typed_buffer(m_histogram_buffer, 0, 256, Format::r32_uint))
+						});
+					cmdbuf->set_compute_descriptor_sets(0, { &vs, 1 });
+					cmdbuf->dispatch(1, 1, 1);
+				}
 				// Histogram Lum Pass.
 				{
 					cmdbuf->set_compute_shader_input_layout(m_global_data->m_histogram_pass_slayout);
 					cmdbuf->set_compute_pipeline_state(m_global_data->m_histogram_pass_pso);
 					lulet(mapped, m_histogram_cb->map(0, 0));
-					((LumHistogramParams*)mapped)->src_width = (u32)lighting_tex_desc.width;
+					((LumHistogramParams*)mapped)->src_width = lighting_tex_desc.width;
 					((LumHistogramParams*)mapped)->src_height = lighting_tex_desc.height;
 					((LumHistogramParams*)mapped)->min_brightness = min_brightness;
 					((LumHistogramParams*)mapped)->max_brightness = max_brightness;
 					m_histogram_cb->unmap(0, sizeof(LumHistogramParams));
 					cmdbuf->resource_barrier({
-							BufferBarrier(m_histogram_buffer, BufferStateFlag::automatic, BufferStateFlag::shader_write_cs),
+							BufferBarrier(m_histogram_buffer, BufferStateFlag::shader_write_cs, BufferStateFlag::shader_read_cs | BufferStateFlag::shader_write_cs),
 							BufferBarrier(m_histogram_cb, BufferStateFlag::automatic, BufferStateFlag::uniform_buffer_cs),
 						}, {
 							TextureBarrier(lighting_tex, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::shader_read_cs)
@@ -188,10 +219,11 @@ namespace Luna
 					lulet(mapped, m_histogram_collect_cb->map(0, 0));
 					((LumHistogramCollectParams*)mapped)->min_brightness = min_brightness;
 					((LumHistogramCollectParams*)mapped)->max_brightness = max_brightness;
-					((LumHistogramCollectParams*)mapped)->time_coeff = 0.5f;
+					((LumHistogramCollectParams*)mapped)->time_coeff = 0.05f;
 					((LumHistogramCollectParams*)mapped)->num_pixels = (u32)lighting_tex_desc.width * lighting_tex_desc.height;
 					m_histogram_collect_cb->unmap(0, sizeof(LumHistogramCollectParams));
 					cmdbuf->resource_barrier({
+							BufferBarrier(m_histogram_collect_cb, BufferStateFlag::automatic, BufferStateFlag::uniform_buffer_cs),
 							BufferBarrier(m_histogram_buffer, BufferStateFlag::shader_write_cs, BufferStateFlag::shader_read_cs | BufferStateFlag::shader_write_cs)
 						}, {
 							TextureBarrier(m_lum_tex, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::shader_read_cs | TextureStateFlag::shader_write_cs)

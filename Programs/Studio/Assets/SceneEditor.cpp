@@ -29,7 +29,7 @@ namespace Luna
 		lustruct("SceneEditorUserData", "{5b4aea33-e61a-4042-ba91-1f4ec84f8194}");
 
 		// Resources for rendering grids.
-		Ref<RHI::IResource> m_grid_vb;
+		Ref<RHI::IBuffer> m_grid_vb;
 		Ref<RHI::IDescriptorSetLayout> m_grid_dlayout;
 		Ref<RHI::IShaderInputLayout> m_grid_slayout;
 		Ref<RHI::IPipelineState> m_grid_pso;
@@ -308,7 +308,7 @@ namespace Luna
 			// Collect last frame profiling data.
 			if(m_renderer.get_settings().frame_profiling)
 			{
-				luexp(m_renderer.collect_frame_profiling_data());
+				m_renderer.collect_frame_profiling_data();
 			}
 
 			ImGui::Text("Scene");
@@ -481,7 +481,7 @@ namespace Luna
 				{
 					ImGui::Text("Frame Size: %ux%u", (u32)scene_sz.x, (u32)scene_sz.y);
 					ImGui::Text("FPS: %f", ImGui::GetIO().Framerate);
-					for (usize i = 0; i < m_renderer.enabled_passes.size(); ++i)
+					for (usize i = 0; i < m_renderer.pass_time_intervals.size(); ++i)
 					{
 						ImGui::Text("%s: %fms", m_renderer.enabled_passes[i].c_str(), m_renderer.pass_time_intervals[i] * 1000.0);
 					}
@@ -811,20 +811,15 @@ namespace Luna
 		using namespace RHI;
 		lutry
 		{
-			lulet(cmdbuf, g_env->device->new_command_buffer(g_env->async_copy_queue));
-			cmdbuf->set_context(CommandBufferContextType::copy);
-			cmdbuf->resource_barrier(ResourceBarrierDesc::as_transition(m_renderer.render_texture, ResourceStateFlag::copy_source, 0));
-			luexp(cmdbuf->submit());
-			cmdbuf->wait();
-			auto device = cmdbuf->get_device();
+			auto device = g_env->device;
 			auto desc = m_renderer.render_texture->get_desc();
-			usize row_pitch = bits_per_pixel(desc.format) * (usize)desc.width_or_buffer_size / 8;
+			usize row_pitch = bits_per_pixel(desc.format) * (usize)desc.width / 8;
 			usize slice_pitch = row_pitch * desc.height;
 			Blob img_data(slice_pitch);
-			luexp(device->copy_resource({ResourceCopyDesc::as_read_texture(m_renderer.render_texture, img_data.data(), row_pitch, slice_pitch, 0, 
-				BoxU(0, 0, 0, (u32)desc.width_or_buffer_size, desc.height, 1))}));
+			luexp(readback_texture_data(img_data.data(), row_pitch, slice_pitch, m_renderer.render_texture, SubresourceIndex(0, 0), 0, 0, 0,
+				desc.width, desc.height, 1));
 			Image::ImageDesc img_desc;
-			img_desc.width = (u32)desc.width_or_buffer_size;
+			img_desc.width = (u32)desc.width;
 			img_desc.height = desc.height;
 			luset(img_desc.format, get_image_format_from_format(desc.format));
 			lulet(f, open_file(path.encode().c_str(), FileOpenFlag::write | FileOpenFlag::user_buffering, FileCreationMode::create_always));
@@ -839,16 +834,16 @@ namespace Luna
 	RV SceneEditorUserData::init()
 	{
 		//! Initialize Grid data.
-		Float4 grids[44];
+		Float4U grids[44];
 		for (i32 i = -5; i <= 5; ++i) // 0 - 21
 		{
-			grids[(i + 5) * 2] = Float4((f32)i, 0.0f, 5.0f, 1.0f);
-			grids[(i + 5) * 2 + 1] = Float4((f32)i, 0.0f, -5.0f, 1.0f);
+			grids[(i + 5) * 2] = Float4U((f32)i, 0.0f, 5.0f, 1.0f);
+			grids[(i + 5) * 2 + 1] = Float4U((f32)i, 0.0f, -5.0f, 1.0f);
 		}
 		for (i32 i = -5; i <= 5; ++i) // 22 - 43
 		{
-			grids[(i + 5) * 2 + 22] = Float4(-5.0f, 0.0f, (f32)i, 1.0f);
-			grids[(i + 5) * 2 + 23] = Float4(5.0f, 0.0f, (f32)i, 1.0f);
+			grids[(i + 5) * 2 + 22] = Float4U(-5.0f, 0.0f, (f32)i, 1.0f);
+			grids[(i + 5) * 2 + 23] = Float4U(5.0f, 0.0f, (f32)i, 1.0f);
 		}
 
 		lutry
@@ -856,41 +851,41 @@ namespace Luna
 			using namespace RHI;
 			auto device = get_main_device();
 			{
-				luset(m_grid_vb, device->new_buffer(BufferDesc(MemoryType::local, ResourceUsageFlag::vertex_buffer, sizeof(grids))));
+				luset(m_grid_vb, device->new_buffer(MemoryType::local, BufferDesc(BufferUsageFlag::copy_dest | BufferUsageFlag::vertex_buffer, sizeof(grids))));
 
 				DescriptorSetLayoutDesc dlayout({
 					DescriptorSetLayoutBinding(DescriptorType::uniform_buffer_view, 0, 1, ShaderVisibilityFlag::vertex)
 					});
 				luset(m_grid_dlayout, device->new_descriptor_set_layout(dlayout));
-				luset(m_grid_slayout, device->new_shader_input_layout(ShaderInputLayoutDesc({ m_grid_dlayout },
-					ShaderInputLayoutFlag::allow_input_assembler_input_layout |
-					ShaderInputLayoutFlag::deny_domain_shader_access |
-					ShaderInputLayoutFlag::deny_geometry_shader_access |
-					ShaderInputLayoutFlag::deny_hull_shader_access)));
+				auto dl = m_grid_dlayout.get();
+				luset(m_grid_slayout, device->new_shader_input_layout(ShaderInputLayoutDesc({ &dl, 1 },
+					ShaderInputLayoutFlag::allow_input_assembler_input_layout)));
 				static const char* vertexShader =
-					"cbuffer vertexBuffer : register(b0) \
-						{\
-							float4x4 world_to_view; \
-							float4x4 view_to_proj; \
-							float4x4 world_to_proj; \
-							float4x4 view_to_world; \
-						};\
-						struct VS_INPUT\
-						{\
-						  float4 pos : POSITION;\
-						};\
-						\
-						struct PS_INPUT\
-						{\
-						  float4 pos : SV_POSITION;\
-						};\
-						\
-						PS_INPUT main(VS_INPUT input)\
-						{\
-						  PS_INPUT output;\
-						  output.pos = mul(world_to_proj, input.pos);\
-						  return output;\
-						}";
+					R"(cbuffer vertexBuffer : register(b0)
+						{
+							float4x4 world_to_view;
+							float4x4 view_to_proj;
+							float4x4 world_to_proj;
+							float4x4 view_to_world;
+						};
+						struct VS_INPUT
+						{
+						  [[vk::location(0)]]
+						  float4 pos : POSITION;
+						};
+						
+						struct PS_INPUT
+						{
+						  [[vk::location(0)]]
+						  float4 pos : SV_POSITION;
+						};
+						
+						PS_INPUT main(VS_INPUT input)
+						{
+						  PS_INPUT output;
+						  output.pos = mul(world_to_proj, input.pos);
+						  return output;
+						})";
 				auto compiler = ShaderCompiler::new_compiler();
 				compiler->set_source({ vertexShader, strlen(vertexShader) });
 				compiler->set_source_name("GridVS");
@@ -906,15 +901,16 @@ namespace Luna
 					vs_blob = Blob(output.data(), output.size());
 				}
 				static const char* pixelShader =
-					"struct PS_INPUT\
-					{\
-						float4 pos : SV_POSITION;\
-					};\
-					\
-					float4 main(PS_INPUT input) : SV_Target\
-					{\
-						return float4(1.0f, 1.0f, 1.0f, 1.0f); \
-					}";
+					R"(struct PS_INPUT
+					{
+						[[vk::location(0)]]
+						float4 pos : SV_POSITION;
+					};
+					[[vk::location(0)]]
+					float4 main(PS_INPUT input) : SV_Target
+					{
+						return float4(1.0f, 1.0f, 1.0f, 1.0f);
+					})";
 
 				compiler->reset();
 				compiler->set_source({ pixelShader, strlen(pixelShader) });
@@ -928,15 +924,16 @@ namespace Luna
 				Blob ps_blob = compiler->get_output();
 
 				GraphicsPipelineStateDesc ps_desc;
-				ps_desc.primitive_topology_type = PrimitiveTopologyType::line;
+				ps_desc.primitive_topology = PrimitiveTopology::line_list;
 				ps_desc.blend_state = BlendDesc({ AttachmentBlendDesc(true, BlendFactor::src_alpha,
 					BlendFactor::inv_src_alpha, BlendOp::add, BlendFactor::inv_src_alpha, BlendFactor::zero, BlendOp::add, ColorWriteMask::all) });
 				ps_desc.rasterizer_state = RasterizerDesc(FillMode::wireframe, CullMode::none, 0, 0.0f, 0.0f, 1, false, true, false, true, false);
 				ps_desc.depth_stencil_state = DepthStencilDesc(false, false, ComparisonFunc::always, false, 0x00, 0x00, DepthStencilOpDesc(), DepthStencilOpDesc());
 				ps_desc.ib_strip_cut_value = IndexBufferStripCutValue::disabled;
-				ps_desc.input_layout.input_elements = {
-					InputAttributeDesc("POSITION", 0, Format::rgba32_float)
-				};
+				auto attribute = InputAttributeDesc("POSITION", 0, 0, 0, 0, Format::rgba32_float);
+				auto binding = InputBindingDesc(0, sizeof(Float4U), InputRate::per_vertex);
+				ps_desc.input_layout.attributes = { &attribute, 1 };
+				ps_desc.input_layout.bindings = { &binding, 1 };
 				ps_desc.shader_input_layout = m_grid_slayout;
 				ps_desc.vs = { vs_blob.data(), vs_blob.size() };
 				ps_desc.ps = { ps_blob.data(), ps_blob.size() };
@@ -947,9 +944,7 @@ namespace Luna
 			}
 
 			// Upload grid vertex data.
-			luexp(device->copy_resource({
-				ResourceCopyDesc::as_write_buffer(m_grid_vb, grids, sizeof(grids), 0)
-				}));
+			luexp(upload_buffer_data(m_grid_vb, 0, grids, sizeof(grids)));
 		}
 		lucatchret;
 		return ok;

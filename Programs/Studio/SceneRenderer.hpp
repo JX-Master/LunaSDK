@@ -81,7 +81,7 @@ namespace Luna
         Ref<RHI::ICommandBuffer> command_buffer;
 
         // The result texture.
-        Ref<RHI::IResource> render_texture;
+        Ref<RHI::ITexture> render_texture;
 
         // The name of enabled passes if frame_profiling is enabled.
         Vector<Name> enabled_passes;
@@ -92,7 +92,7 @@ namespace Luna
         const SceneRendererSettings& get_settings();
         RV reset(const SceneRendererSettings& settings);
         RV render();
-        RV collect_frame_profiling_data();
+        void collect_frame_profiling_data();
         
     private:
         // Resources.
@@ -121,6 +121,5 @@ namespace Luna
         Ref<RHI::IBuffer> m_model_matrices;
         usize m_num_lights = 0;
         Ref<RHI::IBuffer> m_lighting_params;
-        f64 m_queue_freq = 1000000.0f;
     };
 }

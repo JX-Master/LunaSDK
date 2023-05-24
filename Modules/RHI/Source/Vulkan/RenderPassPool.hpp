@@ -26,6 +26,7 @@ namespace Luna
 			StoreOp depth_store_op = StoreOp::dont_care;
 			LoadOp stencil_load_op = LoadOp::dont_care;
 			StoreOp stencil_store_op = StoreOp::dont_care;
+			bool depth_stencil_read_only = true;
 			u8 sample_count = 1;
 
 			bool operator==(const RenderPassKey& rhs) const
@@ -39,6 +40,7 @@ namespace Luna
 					depth_store_op == rhs.depth_store_op &&
 					stencil_load_op == rhs.stencil_load_op &&
 					stencil_store_op == rhs.stencil_store_op &&
+					depth_stencil_read_only == rhs.depth_stencil_read_only &&
 					sample_count == rhs.sample_count;
 			}
 		};

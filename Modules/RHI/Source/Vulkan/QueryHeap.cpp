@@ -84,7 +84,7 @@ namespace Luna
 		{
 			return encode_vk_result(m_device->m_funcs.vkGetQueryPoolResults(
 				m_device->m_device, m_query_pool, start_index, count, buffer_size, buffer,
-				stride, VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WAIT_BIT));
+				stride, VK_QUERY_RESULT_64_BIT));
 		}
 	}
 }

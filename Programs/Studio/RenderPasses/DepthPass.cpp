@@ -25,7 +25,7 @@ namespace Luna
             luset(m_depth_pass_dlayout, device->new_descriptor_set_layout(DescriptorSetLayoutDesc({
 				DescriptorSetLayoutBinding(DescriptorType::uniform_buffer_view, 0, 1, ShaderVisibilityFlag::vertex),
 				DescriptorSetLayoutBinding(DescriptorType::read_buffer_view, 1, 1, ShaderVisibilityFlag::vertex),
-				DescriptorSetLayoutBinding(DescriptorType::sampled_texture_view, 2, 1, ShaderVisibilityFlag::pixel),
+				DescriptorSetLayoutBinding(DescriptorType::read_texture_view, 2, 1, ShaderVisibilityFlag::pixel),
 				DescriptorSetLayoutBinding(DescriptorType::sampler, 3, 1, ShaderVisibilityFlag::pixel),
 				})));
 			auto dl = m_depth_pass_dlayout.get();
@@ -92,7 +92,39 @@ namespace Luna
 			cmdbuf->resource_barrier({}, {
 				{depth_tex, SubresourceIndex(0, 0), TextureStateFlag::none, TextureStateFlag::depth_stencil_attachment_write, ResourceBarrierFlag::discard_content } });
 			RenderPassDesc render_pass;
-			render_pass.depth_stencil_attachment = DepthStencilAttachment(depth_tex, LoadOp::clear, StoreOp::store, 1.0f);
+			render_pass.depth_stencil_attachment = DepthStencilAttachment(depth_tex, false, LoadOp::clear, StoreOp::store, 1.0f);
+			cmdbuf->set_context(CommandBufferContextType::graphics);
+			for (usize i = 0; i < ts.size(); ++i)
+			{
+				auto model = Asset::get_asset_data<Model>(rs[i]->model);
+				auto mesh = Asset::get_asset_data<Mesh>(model->mesh);
+				cmdbuf->set_vertex_buffers(0, { VertexBufferView(mesh->vb, 0,
+					mesh->vb_count * sizeof(Vertex), sizeof(Vertex)) });
+				cmdbuf->set_index_buffer({ mesh->ib, 0, mesh->ib_count * sizeof(u32), Format::r32_uint });
+
+				u32 num_pieces = (u32)mesh->pieces.size();
+
+				for (u32 j = 0; j < num_pieces; ++j)
+				{
+					Ref<RHI::ITexture> base_color_tex = m_global_data->m_default_base_color;
+					if (j < model->materials.size())
+					{
+						auto mat = Asset::get_asset_data<Material>(model->materials[j]);
+						if (mat)
+						{
+							// Set material for this piece.
+							Ref<RHI::ITexture> mat_base_color_tex = Asset::get_asset_data<RHI::ITexture>(mat->base_color);
+							if (mat_base_color_tex)
+							{
+								base_color_tex = mat_base_color_tex;
+							}
+						}
+					}
+					cmdbuf->resource_barrier({}, {
+							TextureBarrier(base_color_tex, TEXTURE_BARRIER_ALL_SUBRESOURCES, TextureStateFlag::automatic, TextureStateFlag::shader_read_ps)
+						});
+				}
+			}
 			cmdbuf->begin_render_pass(render_pass);
 			cmdbuf->set_graphics_shader_input_layout(m_global_data->m_depth_pass_slayout);
 			cmdbuf->set_graphics_pipeline_state(m_global_data->m_depth_pass_pso);
@@ -132,7 +164,7 @@ namespace Luna
 					vs->update_descriptors({
 						WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(camera_cb, 0, (u32)align_upper(sizeof(CameraCB), cb_align))),
 						WriteDescriptorSet::read_buffer_view(1, BufferViewDesc::structured_buffer(model_matrices, i, 1, sizeof(Float4x4) * 2)),
-						WriteDescriptorSet::sampled_texture_view(2, TextureViewDesc::tex2d(base_color_tex)),
+						WriteDescriptorSet::read_texture_view(2, TextureViewDesc::tex2d(base_color_tex)),
 						WriteDescriptorSet::sampler(3, SamplerDesc(Filter::min_mag_mip_linear, TextureAddressMode::repeat, TextureAddressMode::repeat, TextureAddressMode::repeat))
 						});
 					cmdbuf->set_graphics_descriptor_set(0, vs);

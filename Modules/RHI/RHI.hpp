@@ -109,5 +109,7 @@ namespace Luna
 		LUNA_RHI_API ErrCode device_removed();
 		LUNA_RHI_API ErrCode driver_internal_error();
 		LUNA_RHI_API ErrCode frame_statistics_disjoint();
+		//! The swap chain is no longer compatible with the surface and should be reset.
+		LUNA_RHI_API ErrCode swap_chain_out_of_date();
 	}
 }

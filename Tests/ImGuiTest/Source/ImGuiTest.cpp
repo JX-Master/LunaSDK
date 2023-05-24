@@ -13,6 +13,7 @@
 #include <Runtime/Module.hpp>
 #include <Runtime/Debug.hpp>
 #include <Runtime/Log.hpp>
+#include <Runtime/Thread.hpp>
 
 using namespace Luna;
 
@@ -60,7 +61,11 @@ void run()
 		{
 			break;
 		}
-
+		if (window->is_minimized())
+		{
+			sleep(100);
+			continue;
+		}
 		// Recreate the back buffer if needed.
 		auto sz = window->get_size();
 		auto ww = sz.x;

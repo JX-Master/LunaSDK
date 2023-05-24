@@ -61,13 +61,15 @@ namespace Luna
 			//! The userdata object. The object will be kept by the asset system and provided to every callback function.
 			ObjRef userdata;
 			//! Called when the asset data is being loaded.
-			R<ObjRef>(*on_load_asset)(object_t userdata, asset_t asset, const Path& path);
+			R<ObjRef>(*on_load_asset)(object_t userdata, asset_t asset, const Path& path) = nullptr;
 			//! Called when the default asset data is requested. The system should create one default asset for the asset.
-			R<ObjRef>(*on_load_asset_default_data)(object_t userdata, asset_t asset);
+			R<ObjRef>(*on_load_asset_default_data)(object_t userdata, asset_t asset) = nullptr;
 			//! Called when the asset data is being saved.
-			RV(*on_save_asset)(object_t userdata, asset_t asset, const Path& path, object_t data);
+			RV(*on_save_asset)(object_t userdata, asset_t asset, const Path& path, object_t data) = nullptr;
 			//! Called when the asset data is being set.
-			RV(*on_set_asset_data)(object_t userdata, asset_t asset, object_t data);
+			RV(*on_set_asset_data)(object_t userdata, asset_t asset, object_t data) = nullptr;
+			//! Called when the asset data is being unloaded.
+			void(*on_unload_asset_data)(object_t userdata, asset_t asset) = nullptr;
 		};
 
 		//! Registers one asset type so the asset system can handle the asset.
@@ -168,6 +170,9 @@ namespace Luna
 
 		//! Saves the asset synchronously.
 		LUNA_ASSET_API RV save_asset(asset_t asset);
+
+		//! Removes all registered assets and asset types.
+		LUNA_ASSET_API void close();
 	}
 
 	namespace AssetError

@@ -22,7 +22,7 @@ namespace Luna
         {
             luset(m_skybox_pass_dlayout, device->new_descriptor_set_layout(DescriptorSetLayoutDesc({
 						DescriptorSetLayoutBinding(DescriptorType::uniform_buffer_view, 0, 1, ShaderVisibilityFlag::compute),
-						DescriptorSetLayoutBinding(DescriptorType::sampled_texture_view, 1, 1, ShaderVisibilityFlag::compute),
+						DescriptorSetLayoutBinding(DescriptorType::read_texture_view, 1, 1, ShaderVisibilityFlag::compute),
                         DescriptorSetLayoutBinding(DescriptorType::read_texture_view, 2, 1, ShaderVisibilityFlag::compute),
 						DescriptorSetLayoutBinding(DescriptorType::read_write_texture_view, 3, 1, ShaderVisibilityFlag::compute),
 						DescriptorSetLayoutBinding(DescriptorType::sampler, 4, 1, ShaderVisibilityFlag::compute)
@@ -84,6 +84,7 @@ namespace Luna
                 ((SkyboxParams*)mapped)->width = (u32)desc.width;
                 ((SkyboxParams*)mapped)->height = (u32)desc.height;
 				m_skybox_params_cb->unmap(0, sizeof(SkyboxParams));
+                cmdbuf->set_context(CommandBufferContextType::compute);
 				cmdbuf->resource_barrier(
                     {
                         BufferBarrier(m_skybox_params_cb, BufferStateFlag::automatic, BufferStateFlag::uniform_buffer_cs)
@@ -98,8 +99,8 @@ namespace Luna
                 auto cb_align = cmdbuf->get_device()->get_uniform_buffer_data_alignment();
                 m_ds->update_descriptors({
                     WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(m_skybox_params_cb, 0, (u32)align_upper(sizeof(SkyboxParams), cb_align))),
-                    WriteDescriptorSet::sampled_texture_view(1, TextureViewDesc::tex2d(skybox)),
-                    WriteDescriptorSet::read_texture_view(2, TextureViewDesc::tex2d(depth_tex, Format::r32_float, 0, 1)),
+                    WriteDescriptorSet::read_texture_view(1, TextureViewDesc::tex2d(skybox)),
+                    WriteDescriptorSet::read_texture_view(2, TextureViewDesc::tex2d(depth_tex)),
                     WriteDescriptorSet::read_write_texture_view(3, TextureViewDesc::tex2d(output_tex)),
                     WriteDescriptorSet::sampler(4, SamplerDesc(Filter::min_mag_mip_linear, TextureAddressMode::repeat, TextureAddressMode::repeat, TextureAddressMode::repeat))
                     });

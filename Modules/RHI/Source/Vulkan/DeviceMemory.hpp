@@ -24,6 +24,7 @@ namespace Luna
 			MemoryType m_memory_type;
 			VmaAllocation m_allocation = VK_NULL_HANDLE;
 			VmaAllocationInfo m_allocation_info;
+			u32 m_alignment;
 
 			RV init(MemoryType memory_type, const VkMemoryRequirements& pVkMemoryRequirements);
 			~DeviceMemory();

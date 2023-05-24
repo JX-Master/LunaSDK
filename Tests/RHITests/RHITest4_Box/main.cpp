@@ -50,7 +50,7 @@ RV start()
 		using namespace RHI;
         luset(dlayout, dev->new_descriptor_set_layout(DescriptorSetLayoutDesc({
             {DescriptorType::uniform_buffer_view, 0, 1, ShaderVisibilityFlag::vertex},
-            {DescriptorType::sampled_texture_view, 1, 1, ShaderVisibilityFlag::pixel},
+            {DescriptorType::read_texture_view, 1, 1, ShaderVisibilityFlag::pixel},
             {DescriptorType::sampler, 2, 1, ShaderVisibilityFlag::pixel}
         })));
         luset(desc_set, dev->new_descriptor_set(DescriptorSetDesc(dlayout)));
@@ -190,7 +190,7 @@ RV start()
         luset(vb, dev->new_buffer(MemoryType::upload, BufferDesc(BufferUsageFlag::vertex_buffer, sizeof(vertices))));
         luset(ib, dev->new_buffer(MemoryType::upload, BufferDesc(BufferUsageFlag::index_buffer, sizeof(indices))));
         luset(file_tex, dev->new_texture(MemoryType::local, TextureDesc::tex2d(Format::rgba8_unorm,
-            TextureUsageFlag::sampled_texture | TextureUsageFlag::copy_dest, image_desc.width, image_desc.height, 1, 1)));
+            TextureUsageFlag::read_texture | TextureUsageFlag::copy_dest, image_desc.width, image_desc.height, 1, 1)));
 
         lulet(mapped, vb->map(0, 0));
         memcpy(mapped, vertices, sizeof(vertices));
@@ -235,7 +235,7 @@ RV start()
         desc_set->update_descriptors(
             {
                 WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(cb)),
-                WriteDescriptorSet::sampled_texture_view(1, TextureViewDesc::tex2d(file_tex)),
+                WriteDescriptorSet::read_texture_view(1, TextureViewDesc::tex2d(file_tex)),
                 WriteDescriptorSet::sampler(2, SamplerDesc(Filter::min_mag_mip_linear, TextureAddressMode::clamp,
                         TextureAddressMode::clamp, TextureAddressMode::clamp))
             });
@@ -275,7 +275,7 @@ void draw()
         );
         RenderPassDesc desc;
         desc.color_attachments[0] = ColorAttachment(get_back_buffer(), LoadOp::clear, StoreOp::store, { 0, 0, 0, 0 });
-        desc.depth_stencil_attachment = DepthStencilAttachment(depth_tex, LoadOp::clear, StoreOp::store, 1.0f);
+        desc.depth_stencil_attachment = DepthStencilAttachment(depth_tex, false, LoadOp::clear, StoreOp::store, 1.0f);
         cmdbuf->begin_render_pass(desc);
         cmdbuf->set_graphics_shader_input_layout(slayout);
         cmdbuf->set_graphics_pipeline_state(pso);

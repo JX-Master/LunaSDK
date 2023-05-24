@@ -15,6 +15,7 @@
 #include <Runtime/VariantJSON.hpp>
 #include <Window/FileDialog.hpp>
 #include <Window/MessageBox.hpp>
+#include <Runtime/Thread.hpp>
 
 namespace Luna
 {
@@ -136,7 +137,7 @@ namespace Luna
 		lutry
 		{
 			lulet(window, Window::new_window("Luna Studio - Open Project", Window::WindowDisplaySettings::as_windowed(Window::DEFAULT_POS, Window::DEFAULT_POS, 1000, 500)));
-			lulet(swap_chain, g_env->device->new_swap_chain(g_env->graphics_queue, window, RHI::SwapChainDesc({0, 0, 2, RHI::Format::rgba8_unorm, true})));
+			lulet(swap_chain, g_env->device->new_swap_chain(g_env->graphics_queue, window, RHI::SwapChainDesc({0, 0, 2, RHI::Format::bgra8_unorm, true})));
 			lulet(cmdbuf, g_env->device->new_command_buffer(g_env->graphics_queue));
 
 			window->get_close_event() += [](Window::IWindow* window) { window->close(); };
@@ -161,6 +162,11 @@ namespace Luna
 				if (window->is_closed())
 				{
 					break;
+				}
+				if (window->is_minimized())
+				{
+					sleep(100);
+					continue;
 				}
 
 				// Recreate the back buffer if needed.
@@ -252,7 +258,7 @@ namespace Luna
 									path = iter->m_path;
 								}
 								NextColumn();
-								if (Button("Delete"))
+								if (Button("Remove"))
 								{
 									iter = recents.erase(iter);
 									write_recents(recents, Path());
@@ -278,6 +284,7 @@ namespace Luna
 				RHI::RenderPassDesc render_pass;
 				lulet(back_buffer, swap_chain->get_current_back_buffer());
 				render_pass.color_attachments[0] = RHI::ColorAttachment(back_buffer, RHI::LoadOp::clear, RHI::StoreOp::store, clear_color);
+				cmdbuf->set_context(RHI::CommandBufferContextType::graphics);
 				cmdbuf->begin_render_pass(render_pass);
 				cmdbuf->end_render_pass();
 				luexp(ImGuiUtils::render_draw_data(ImGui::GetDrawData(), cmdbuf, back_buffer));

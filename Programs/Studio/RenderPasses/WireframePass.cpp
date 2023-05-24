@@ -114,6 +114,7 @@ namespace Luna
 			RenderPassDesc render_pass;
 			render_pass.color_attachments[0] = ColorAttachment(output_tex, LoadOp::clear, StoreOp::store, Float4U(0.0f));
 			auto render_desc = output_tex->get_desc();
+			cmdbuf->set_context(CommandBufferContextType::graphics);
 			cmdbuf->resource_barrier({}, { {output_tex, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::color_attachment_write, ResourceBarrierFlag::discard_content} });
 			cmdbuf->begin_render_pass(render_pass);
 			cmdbuf->set_graphics_shader_input_layout(m_global_data->m_debug_mesh_renderer_slayout);

@@ -236,18 +236,20 @@ namespace Luna
 			StoreOp stencil_store_op = StoreOp::dont_care;
 			f32 depth_clear_value = 0.0f;
 			u8 stencil_clear_value = 0;
+			bool read_only = false;
 			TextureViewType view_type = TextureViewType::unspecified;
 			Format format = Format::unknown;
 			u32 mip_slice = 0;
 			u32 array_slice = 0;
 			u32 array_size = 0;
 			DepthStencilAttachment() = default;
-			DepthStencilAttachment(ITexture* texture, 
+			DepthStencilAttachment(ITexture* texture, bool read_only,
 				LoadOp depth_load_op = LoadOp::load, StoreOp depth_store_op = StoreOp::store, f32 depth_clear_value = 1.0f,
 				LoadOp stencil_load_op = LoadOp::dont_care, StoreOp stencil_store_op = StoreOp::dont_care, u8 stencil_clear_value = 0,
 				TextureViewType view_type = TextureViewType::unspecified, Format format = Format::unknown, u32 mip_slice = 0, u32 array_slice = 0, u32 array_size = 1
 				) :
 				texture(texture),
+				read_only(read_only),
 				depth_load_op(depth_load_op),
 				depth_store_op(depth_store_op),
 				depth_clear_value(depth_clear_value),

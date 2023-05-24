@@ -87,7 +87,7 @@ namespace Luna
                 WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(m_vis_params, 0, (u32)align_upper(sizeof(u32), cb_align))),
                 WriteDescriptorSet::read_texture_view(1, TextureViewDesc::tex2d(base_color_roughness_tex)),
                 WriteDescriptorSet::read_texture_view(2, TextureViewDesc::tex2d(normal_metallic_tex)),
-                WriteDescriptorSet::read_texture_view(3, TextureViewDesc::tex2d(depth_tex, Format::r32_float, 0, 1)),
+                WriteDescriptorSet::read_texture_view(3, TextureViewDesc::tex2d(depth_tex)),
                 WriteDescriptorSet::read_write_texture_view(4, TextureViewDesc::tex2d(scene_tex))
                 });
             auto scene_desc = scene_tex->get_desc();

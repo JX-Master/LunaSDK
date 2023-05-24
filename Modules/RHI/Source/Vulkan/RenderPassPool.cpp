@@ -95,8 +95,16 @@ namespace Luna
 					dest.storeOp = encode_store_op(key.depth_store_op);
 					dest.stencilLoadOp = encode_load_op(key.stencil_load_op);
 					dest.stencilStoreOp = encode_store_op(key.stencil_store_op);
-					dest.initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-					dest.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+					if (key.depth_stencil_read_only)
+					{
+						dest.initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+						dest.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+					}
+					else
+					{
+						dest.initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+						dest.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+					}
 					depth_stencil_attachment_ref.attachment = attachment_index;
 					depth_stencil_attachment_ref.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 					++attachment_index;

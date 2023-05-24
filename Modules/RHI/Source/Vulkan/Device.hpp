@@ -66,7 +66,7 @@ namespace Luna
 			virtual bool check_device_feature(DeviceFeature feature) override;
 			virtual usize get_uniform_buffer_data_alignment() override
 			{
-				return 0; // Vulkan does not have constant buffer data alignment requirement.
+				return m_physical_device_properties.limits.minUniformBufferOffsetAlignment;
 			}
 			virtual void get_texture_data_placement_info(u32 width, u32 height, u32 depth, Format format,
 				u64* size, u64* alignment, u64* row_pitch, u64* slice_pitch) override;

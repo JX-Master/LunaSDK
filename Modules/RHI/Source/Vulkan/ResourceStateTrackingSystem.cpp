@@ -225,6 +225,7 @@ namespace Luna
 			}
 			for (auto& i : m_unresolved_image_states)
 			{
+				LockGuard guard(i.first.m_res->m_image_views_lock);
 				auto global_state = i.first.m_res->m_global_states[calc_subresource_state_index(i.first.m_subres.mip_slice, i.first.m_subres.array_slice, i.first.m_res->m_desc.mip_levels)];
 				u32 before_queue = global_state.m_owning_queue_family_index;
 				if (before_queue == U32_MAX) before_queue = m_queue_family_index;

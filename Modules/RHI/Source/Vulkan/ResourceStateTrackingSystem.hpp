@@ -92,6 +92,7 @@ namespace Luna
 
 			void reset()
 			{
+				m_unresolved_buffer_states.clear();
 				m_unresolved_image_states.clear();
 				m_current_buffer_states.clear();
 				m_current_image_states.clear();

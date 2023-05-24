@@ -180,7 +180,7 @@ float4 main(PS_INPUT input) : SV_Target
                 luset(g_desc_layout, dev->new_descriptor_set_layout(DescriptorSetLayoutDesc(
                     {
                         DescriptorSetLayoutBinding(DescriptorType::uniform_buffer_view, 0, 1, ShaderVisibilityFlag::vertex),
-                        DescriptorSetLayoutBinding(DescriptorType::sampled_texture_view, 1, 1, ShaderVisibilityFlag::pixel),
+                        DescriptorSetLayoutBinding(DescriptorType::read_texture_view, 1, 1, ShaderVisibilityFlag::pixel),
                         DescriptorSetLayoutBinding(DescriptorType::sampler, 2, 1, ShaderVisibilityFlag::pixel),
                     }
                 )));
@@ -218,7 +218,7 @@ float4 main(PS_INPUT input) : SV_Target
                 io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
                 auto dev = get_main_device();
                 luset(g_font_tex, dev->new_texture(MemoryType::local, TextureDesc::tex2d(Format::rgba8_unorm,
-                    TextureUsageFlag::sampled_texture | TextureUsageFlag::copy_dest, width, height, 1, 1)));
+                    TextureUsageFlag::read_texture | TextureUsageFlag::copy_dest, width, height, 1, 1)));
                 u32 src_row_pitch = (u32)width * 4;
                 {
                     u64 size, row_pitch, slice_pitch;
@@ -695,7 +695,7 @@ float4 main(PS_INPUT input) : SV_Target
                         barriers.push_back({ (ITexture*)pcmd->TextureId, TEXTURE_BARRIER_ALL_SUBRESOURCES, TextureStateFlag::automatic, TextureStateFlag::shader_read_ps, ResourceBarrierFlag::none });
                     }
                 }
-
+                cmd_buffer->begin_event("ImGui");
                 cmd_buffer->resource_barrier({},
                     { barriers.data(), barriers.size() });
 
@@ -751,7 +751,7 @@ float4 main(PS_INPUT input) : SV_Target
                             usize cb_align = dev->get_uniform_buffer_data_alignment();
                             luexp(vs->update_descriptors({
                                 WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(g_cb)),
-                                WriteDescriptorSet::sampled_texture_view(1, TextureViewDesc::tex2d((ITexture*)pcmd->TextureId)),
+                                WriteDescriptorSet::read_texture_view(1, TextureViewDesc::tex2d((ITexture*)pcmd->TextureId)),
                                 WriteDescriptorSet::sampler(2, SamplerDesc(Filter::min_mag_mip_linear, TextureAddressMode::clamp, TextureAddressMode::clamp, TextureAddressMode::clamp))
                                 }));
                             cmd_buffer->set_graphics_descriptor_sets(0, { &vs, 1 });
@@ -765,6 +765,7 @@ float4 main(PS_INPUT input) : SV_Target
                 }
 
                 cmd_buffer->end_render_pass();
+                cmd_buffer->end_event();
             }
             lucatchret;
             return ok;

@@ -109,7 +109,6 @@ namespace Luna
 							}
 						}
 						break;
-						case DescriptorType::sampled_texture_view:
 						case DescriptorType::read_texture_view:
 						case DescriptorType::read_write_texture_view:
 						{
@@ -122,8 +121,7 @@ namespace Luna
 								{
 									auto& s_image = s.texture_views[j];
 									auto& d_image = infos[j];
-									if (s.type == DescriptorType::sampled_texture_view ||
-										s.type == DescriptorType::read_texture_view)
+									if (s.type == DescriptorType::read_texture_view)
 									{
 										d_image.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 									}

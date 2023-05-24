@@ -27,8 +27,8 @@ namespace Luna
                         DescriptorSetLayoutBinding(DescriptorType::read_texture_view, 4, 1, ShaderVisibilityFlag::compute),
                         DescriptorSetLayoutBinding(DescriptorType::read_texture_view, 5, 1, ShaderVisibilityFlag::compute),
                         DescriptorSetLayoutBinding(DescriptorType::read_texture_view, 6, 1, ShaderVisibilityFlag::compute),
-                        DescriptorSetLayoutBinding(DescriptorType::sampled_texture_view, 7, 1, ShaderVisibilityFlag::compute),
-                        DescriptorSetLayoutBinding(DescriptorType::sampled_texture_view, 8, 1, ShaderVisibilityFlag::compute),
+                        DescriptorSetLayoutBinding(DescriptorType::read_texture_view, 7, 1, ShaderVisibilityFlag::compute),
+                        DescriptorSetLayoutBinding(DescriptorType::read_texture_view, 8, 1, ShaderVisibilityFlag::compute),
 						DescriptorSetLayoutBinding(DescriptorType::read_write_texture_view, 9, 1, ShaderVisibilityFlag::compute),
 						DescriptorSetLayoutBinding(DescriptorType::sampler, 10, 1, ShaderVisibilityFlag::compute)
 						})));
@@ -56,7 +56,7 @@ namespace Luna
             constexpr usize INTEGEATE_BRDF_SIZE = 256;
             {
                 luset(m_integrate_brdf, device->new_texture(MemoryType::local, TextureDesc::tex2d(Format::rgba8_unorm,
-                    TextureUsageFlag::sampled_texture | TextureUsageFlag::read_write_texture, INTEGEATE_BRDF_SIZE, INTEGEATE_BRDF_SIZE, 1, 1)));
+                    TextureUsageFlag::read_texture | TextureUsageFlag::read_write_texture, INTEGEATE_BRDF_SIZE, INTEGEATE_BRDF_SIZE, 1, 1)));
                 lulet(dlayout, device->new_descriptor_set_layout(DescriptorSetLayoutDesc({
                         DescriptorSetLayoutBinding(DescriptorType::uniform_buffer_view, 0, 1, ShaderVisibilityFlag::compute),
                         DescriptorSetLayoutBinding(DescriptorType::read_write_texture_view, 1, 1, ShaderVisibilityFlag::compute) })));
@@ -88,6 +88,7 @@ namespace Luna
                     WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(cb, 0, cb_size)),
                     WriteDescriptorSet::read_write_texture_view(1, TextureViewDesc::tex2d(m_integrate_brdf))
                     });
+                compute_cmdbuf->set_context(CommandBufferContextType::compute);
                 compute_cmdbuf->set_compute_shader_input_layout(slayout);
                 compute_cmdbuf->set_compute_pipeline_state(pso);
                 compute_cmdbuf->set_compute_descriptor_set(0, vs);
@@ -132,6 +133,7 @@ namespace Luna
             auto device = cmdbuf->get_device();
             auto cb_align = device->get_uniform_buffer_data_alignment();
             auto sky_box = skybox ? skybox : m_global_data->m_default_skybox;
+            cmdbuf->set_context(CommandBufferContextType::compute);
             cmdbuf->resource_barrier(
                 { 
                     {camera_cb, BufferStateFlag::automatic, BufferStateFlag::uniform_buffer_cs, ResourceBarrierFlag::none},
@@ -139,7 +141,7 @@ namespace Luna
                     {light_params, BufferStateFlag::automatic, BufferStateFlag::shader_read_cs, ResourceBarrierFlag::none}
                 },
                 {
-                    {scene_tex, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::shader_write_cs, ResourceBarrierFlag::discard_content},
+                    {scene_tex, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::shader_read_cs | TextureStateFlag::shader_write_cs, ResourceBarrierFlag::none},
                     {depth_tex, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::shader_read_cs, ResourceBarrierFlag::none},
                     {base_color_roughness_tex, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::shader_read_cs, ResourceBarrierFlag::none},
                     {normal_metallic_tex, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::shader_read_cs, ResourceBarrierFlag::none},
@@ -156,9 +158,9 @@ namespace Luna
                 WriteDescriptorSet::read_texture_view(3, TextureViewDesc::tex2d(base_color_roughness_tex)),
                 WriteDescriptorSet::read_texture_view(4, TextureViewDesc::tex2d(normal_metallic_tex)),
                 WriteDescriptorSet::read_texture_view(5, TextureViewDesc::tex2d(emissive_tex)),
-                WriteDescriptorSet::read_texture_view(6, TextureViewDesc::tex2d(depth_tex, Format::r32_float, 0, 1)),
-                WriteDescriptorSet::sampled_texture_view(7, TextureViewDesc::tex2d(sky_box)),
-                WriteDescriptorSet::sampled_texture_view(8, TextureViewDesc::tex2d(m_global_data->m_integrate_brdf)),
+                WriteDescriptorSet::read_texture_view(6, TextureViewDesc::tex2d(depth_tex, Format::d32_float, 0, 1)),
+                WriteDescriptorSet::read_texture_view(7, TextureViewDesc::tex2d(sky_box)),
+                WriteDescriptorSet::read_texture_view(8, TextureViewDesc::tex2d(m_global_data->m_integrate_brdf)),
                 WriteDescriptorSet::read_write_texture_view(9, TextureViewDesc::tex2d(scene_tex)),
                 WriteDescriptorSet::sampler(10, SamplerDesc(Filter::min_mag_mip_linear, TextureAddressMode::clamp, TextureAddressMode::clamp, TextureAddressMode::clamp)),
                 });

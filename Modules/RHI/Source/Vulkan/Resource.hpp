@@ -21,7 +21,6 @@ namespace Luna
 			luiimpl();
 
 			Ref<Device> m_device;
-			Name m_name;
 
 			BufferDesc m_desc;
 			VkBuffer m_buffer = VK_NULL_HANDLE;
@@ -35,7 +34,7 @@ namespace Luna
 			~BufferResource();
 
 			virtual IDevice* get_device() override { return m_device.get(); }
-			virtual void set_name(const Name& name) override { m_name = name; }
+			virtual void set_name(const Name& name) override;
 			virtual IDeviceMemory* get_memory() override { return m_memory; }
 			virtual BufferDesc get_desc() override { return m_desc; }
 			virtual R<void*> map(usize read_begin, usize read_end) override;
@@ -54,13 +53,11 @@ namespace Luna
 			luiimpl();
 		
 			Ref<Device> m_device;
-			Name m_name;
 
 			TextureDesc m_desc;
 			VkImage m_image = VK_NULL_HANDLE;
 			// This may be `nullptr` if the image memory is managed by external entities, 
-			// for example, swap chains. In such case, the image should not be destroyed when
-			// the image resource is freed.
+			// for example, swap chains.
 			Ref<DeviceMemory> m_memory;
 
 			// Global state.
@@ -69,6 +66,9 @@ namespace Luna
 			// Image views.
 			Vector<Pair<TextureViewDesc, Ref<ImageView>>> m_image_views;
 			SpinLock m_image_views_lock;
+
+			// true if this is a swap chain resource.
+			bool m_is_image_externally_managed = false;
 
 			R<ImageView*> get_image_view(const TextureViewDesc& create_info);
 
@@ -83,7 +83,7 @@ namespace Luna
 			}
 
 			virtual IDevice* get_device() override { return m_device.get(); }
-			virtual void set_name(const Name& name) override { m_name = name; }
+			virtual void set_name(const Name& name) override;
 			virtual IDeviceMemory* get_memory() override { return m_memory; }
 			virtual TextureDesc get_desc() override { return m_desc; }
 		};

@@ -55,6 +55,7 @@ namespace Luna
 	void run_editor()
 	{
 		set_log_std_enabled(true);
+		set_log_std_verbosity(LogVerbosity::error);
 		auto r = init_modules();
 		if (failed(r))
 		{
@@ -67,6 +68,8 @@ namespace Luna
 		auto project = select_project();
 		if (failed(project))
 		{
+			memdelete(g_env);
+			g_env = nullptr;
 			return;
 		}
 

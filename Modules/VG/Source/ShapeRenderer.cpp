@@ -58,7 +58,7 @@ namespace Luna
 					DescriptorSetLayoutDesc desc({
 						DescriptorSetLayoutBinding(DescriptorType::uniform_buffer_view, 0, 1, ShaderVisibilityFlag::vertex),
 						DescriptorSetLayoutBinding(DescriptorType::read_buffer_view, 1, 1, ShaderVisibilityFlag::all),
-						DescriptorSetLayoutBinding(DescriptorType::sampled_texture_view, 2, 1, ShaderVisibilityFlag::pixel),
+						DescriptorSetLayoutBinding(DescriptorType::read_texture_view, 2, 1, ShaderVisibilityFlag::pixel),
 						DescriptorSetLayoutBinding(DescriptorType::sampler, 3, 1, ShaderVisibilityFlag::pixel),
 					});
 					luset(g_fill_desc_layout, dev->new_descriptor_set_layout(desc));
@@ -71,7 +71,7 @@ namespace Luna
 					luset(g_fill_slayout, dev->new_shader_input_layout(desc));
 				}
 				{
-					TextureDesc desc = TextureDesc::tex2d(Format::rgba8_unorm, TextureUsageFlag::sampled_texture | TextureUsageFlag::copy_dest, 1, 1);
+					TextureDesc desc = TextureDesc::tex2d(Format::rgba8_unorm, TextureUsageFlag::read_texture | TextureUsageFlag::copy_dest, 1, 1);
 					luset(g_white_tex, dev->new_texture(MemoryType::local, desc));
 					u32 data = 0xFFFFFFFF;
 
@@ -231,7 +231,7 @@ namespace Luna
 					luexp(ds->update_descriptors({
 						WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(m_cbs_resource)),
 						WriteDescriptorSet::read_buffer_view(1, BufferViewDesc::typed_buffer(shape_buffer, 0, num_points, Format::r32_float)),
-						WriteDescriptorSet::sampled_texture_view(2, TextureViewDesc::tex2d(draw_calls[i].texture ? draw_calls[i].texture : g_white_tex)),
+						WriteDescriptorSet::read_texture_view(2, TextureViewDesc::tex2d(draw_calls[i].texture ? draw_calls[i].texture : g_white_tex)),
 						WriteDescriptorSet::sampler(3, SamplerDesc(Filter::min_mag_mip_linear, TextureAddressMode::clamp, TextureAddressMode::clamp, TextureAddressMode::clamp))
 						}));
 				}

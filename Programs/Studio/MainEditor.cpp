@@ -35,6 +35,7 @@
 
 #include "SceneRenderer.hpp"
 #include <Runtime/Log.hpp>
+#include <Runtime/Thread.hpp>
 
 namespace Luna
 {
@@ -63,12 +64,8 @@ namespace Luna
 
 			m_window->get_close_event() += [](Window::IWindow* window) {window->close(); };
 
-			luset(m_swap_chain, g_env->device->new_swap_chain(g_env->graphics_queue, m_window, RHI::SwapChainDesc({0, 0, 2, RHI::Format::rgba8_unorm, true})));
+			luset(m_swap_chain, g_env->device->new_swap_chain(g_env->graphics_queue, m_window, RHI::SwapChainDesc({0, 0, 2, RHI::Format::bgra8_unorm, true})));
 			luset(m_cmdbuf, g_env->device->new_command_buffer(g_env->graphics_queue));
-
-			// Create back buffer.
-			//Ref<RHI::IResource> back_buffer;
-			//u32 w = 0, h = 0;
 
 			// Create ImGui context.
 			ImGuiUtils::set_active_window(m_window);
@@ -142,6 +139,11 @@ namespace Luna
 		if (m_window->is_closed())
 		{
 			m_exiting = true;
+			return ok;
+		}
+		if (m_window->is_minimized())
+		{
+			sleep(100);
 			return ok;
 		}
 
@@ -222,6 +224,7 @@ namespace Luna
 			lulet(back_buffer, m_swap_chain->get_current_back_buffer());
 			render_pass.color_attachments[0] = RHI::ColorAttachment(back_buffer, RHI::LoadOp::clear, RHI::StoreOp::store,
 				{ 0.0f, 0.0f, 0.0f, 1.0f });
+			m_cmdbuf->set_context(RHI::CommandBufferContextType::graphics);
 			m_cmdbuf->begin_render_pass(render_pass);
 			m_cmdbuf->end_render_pass();
 			luexp(ImGuiUtils::render_draw_data(ImGui::GetDrawData(), m_cmdbuf, back_buffer));
@@ -333,6 +336,7 @@ namespace Luna
 			auto _ = Window::message_box(explain(lures), "Editor Crashed.", Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
 			return;
 		}
+		Asset::close();
 	}
 
 	void draw_asset_tile(Asset::asset_t asset, const RectF& draw_rect)

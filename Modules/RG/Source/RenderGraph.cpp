@@ -214,6 +214,7 @@ namespace Luna
         {
             lutry
             {
+                m_temporary_resources.clear();
                 m_cmdbuf = cmdbuf;
                 usize pass_index = 0;
                 for(usize i = 0; i < m_pass_data.size(); ++i)
@@ -229,6 +230,7 @@ namespace Luna
                         if(is_resource_desc_valid(res.m_resource_desc))
                         {
                             luset(res.m_resource, allocate_transient_resource(res.m_resource_desc));
+                            cmdbuf->attach_device_object(res.m_resource);
                             if(m_desc.resources[h].name) res.m_resource->set_name(m_desc.resources[h].name);
                         }
                         else
@@ -310,7 +312,6 @@ namespace Luna
                 }
             }
         }
-
         LUNA_RG_API Ref<IRenderGraph> new_render_graph(RHI::IDevice* device)
         {
             auto ret = new_object<RenderGraph>();

@@ -350,24 +350,6 @@ namespace Luna
 				ret.buffer_views = descs;
 				return ret;
 			}
-			static WriteDescriptorSet sampled_texture_view(u32 binding_slot, const TextureViewDesc& desc)
-			{
-				WriteDescriptorSet ret;
-				ret.binding_slot = binding_slot;
-				ret.first_array_index = 0;
-				ret.type = DescriptorType::sampled_texture_view;
-				ret.texture_views = { &desc, 1 };
-				return ret;
-			}
-			static WriteDescriptorSet sampled_texture_view_array(u32 binding_slot, u32 first_array_index, Span<const TextureViewDesc> descs)
-			{
-				WriteDescriptorSet ret;
-				ret.binding_slot = binding_slot;
-				ret.first_array_index = first_array_index;
-				ret.type = DescriptorType::sampled_texture_view;
-				ret.texture_views = descs;
-				return ret;
-			}
 			static WriteDescriptorSet read_texture_view(u32 binding_slot, const TextureViewDesc& desc)
 			{
 				WriteDescriptorSet ret;

@@ -119,7 +119,7 @@ RV start()
 			Blob ps(ps_data.data(), ps_data.size());
 
 			luset(desc_set_layout, device->new_descriptor_set_layout(DescriptorSetLayoutDesc({
-				DescriptorSetLayoutBinding(DescriptorType::sampled_texture_view, 0, 1, ShaderVisibilityFlag::pixel),
+				DescriptorSetLayoutBinding(DescriptorType::read_texture_view, 0, 1, ShaderVisibilityFlag::pixel),
 				DescriptorSetLayoutBinding(DescriptorType::sampler, 1, 1, ShaderVisibilityFlag::pixel)
 				})));
 
@@ -162,7 +162,7 @@ RV start()
 			tex_height = image_desc.height;
 			
 			luset(tex, device->new_texture(MemoryType::local, TextureDesc::tex2d(Format::rgba8_unorm,
-				TextureUsageFlag::sampled_texture | TextureUsageFlag::copy_dest, image_desc.width, image_desc.height, 1, 1)));
+				TextureUsageFlag::read_texture | TextureUsageFlag::copy_dest, image_desc.width, image_desc.height, 1, 1)));
 
 			u64 size, row_pitch, slice_pitch;
 			device->get_texture_data_placement_info(image_desc.width, image_desc.height, 1, Format::rgba8_unorm, &size, nullptr, &row_pitch, &slice_pitch);
@@ -198,7 +198,7 @@ RV start()
 
 			desc_set->update_descriptors(
 				{
-					WriteDescriptorSet::sampled_texture_view(0, TextureViewDesc::tex2d(tex)),
+					WriteDescriptorSet::read_texture_view(0, TextureViewDesc::tex2d(tex)),
 					WriteDescriptorSet::sampler(1, SamplerDesc(Filter::min_mag_mip_linear, TextureAddressMode::clamp,
 							TextureAddressMode::clamp, TextureAddressMode::clamp))
 				});

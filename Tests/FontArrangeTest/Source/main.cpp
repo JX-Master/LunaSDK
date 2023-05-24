@@ -16,6 +16,7 @@
 #include <Runtime/Time.hpp>
 #include <Runtime/File.hpp>
 #include <Runtime/Debug.hpp>
+#include <Runtime/Thread.hpp>
 
 namespace Luna
 {
@@ -45,20 +46,20 @@ namespace Luna
 
 using namespace Luna;
 
-RV recreate_window_resources()
+RV recreate_window_resources(u32 width, u32 height)
 {
 	using namespace RHI;
 	lutry
 	{
-		auto sz = g_window->get_size();
+		if(width && height)
 		{
 			if (!g_swap_chain)
 			{
-				g_swap_chain = get_main_device()->new_swap_chain(g_command_queue, g_window, SwapChainDesc({sz.x, sz.y, 2, Format::bgra8_unorm, true})).get();
+				g_swap_chain = get_main_device()->new_swap_chain(g_command_queue, g_window, SwapChainDesc({ width, height, 2, Format::bgra8_unorm, true})).get();
 			}
 			else
 			{
-				g_swap_chain->reset({sz.x, sz.y, 2, Format::bgra8_unorm, true});
+				g_swap_chain->reset({width, height, 2, Format::bgra8_unorm, true});
 			}
 		}
 	}
@@ -88,7 +89,7 @@ constexpr u32 HEADER_TEXT_HEIGHT = 150;
 
 void on_window_resize(Window::IWindow* window, u32 width, u32 height)
 {
-	lupanic_if_failed(recreate_window_resources());
+	lupanic_if_failed(recreate_window_resources(width, height));
 	rearrange_text(RectF(0.0f, 0.0f, (f32)width, max((f32)(height - HEADER_TEXT_HEIGHT), 0.0f)));
 }
 
@@ -105,6 +106,7 @@ void init()
 
 	// register event.
 	g_window = Window::new_window("Luna Vector Graphics Test", Window::WindowDisplaySettings::as_windowed(), Window::WindowCreationFlag::resizable).get();
+	auto sz = g_window->get_size();
 
 	g_window->get_close_event() += on_window_close;
 	g_window->get_framebuffer_resize_event() += on_window_resize;
@@ -126,7 +128,7 @@ void init()
 			break;
 		}
 	}
-	lupanic_if_failed(recreate_window_resources());
+	lupanic_if_failed(recreate_window_resources(sz.x, sz.y));
 	g_shape_renderer = VG::new_fill_shape_renderer(g_swap_chain->get_current_back_buffer().get()).get();
 
 	g_font_atlas = VG::new_font_atlas(font, 0);
@@ -151,12 +153,15 @@ void run()
 		//new_frame();
 		Window::poll_events();
 		if (g_window->is_closed()) break;
-
+		if (g_window->is_minimized())
+		{
+			sleep(100);
+			continue;
+		}
 		auto sz = g_window->get_size();
-
 		f64 time1 = ((f64)get_ticks() / get_ticks_per_second()) * 1000;
 		c8 buf[64];
-		
+
 		g_time_text_arranger->set_font_size(50.0f);
 		g_time_text_arranger->set_font_color(0xCCFFCCFF);
 		g_time_text_arranger->add_text("FPS: ");
@@ -171,11 +176,11 @@ void run()
 			g_time_text_arranger->clear_text_buffer();
 		}
 
-		if(!g_text_arrange_result.get().lines.empty())
+		if (!g_text_arrange_result.get().lines.empty())
 		{
 			g_text_arranger->commit(g_text_arrange_result.get(), g_shape_draw_list);
 		}
-		
+
 		lupanic_if_failed(g_shape_draw_list->close());
 
 		RHI::RenderPassDesc desc;
@@ -193,10 +198,10 @@ void run()
 			dcs.data(), (u32)dcs.size());
 
 		g_command_buffer->resource_barrier({},
-		{
-			{g_swap_chain->get_current_back_buffer().get(), RHI::SubresourceIndex(0, 0), RHI::TextureStateFlag::automatic, RHI::TextureStateFlag::present, RHI::ResourceBarrierFlag::none}
-		});
-		
+			{
+				{g_swap_chain->get_current_back_buffer().get(), RHI::SubresourceIndex(0, 0), RHI::TextureStateFlag::automatic, RHI::TextureStateFlag::present, RHI::ResourceBarrierFlag::none}
+			});
+
 		g_command_buffer->submit({}, {}, true);
 		g_command_buffer->wait();
 

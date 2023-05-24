@@ -48,7 +48,6 @@ namespace Luna
 		{
 			g_assets.clear();
 			g_assets.shrink_to_fit();
-			g_assets_mutex.reset();
 			g_asset_path_mapping.clear();
 			g_asset_path_mapping.shrink_to_fit();
 		}
@@ -456,9 +455,19 @@ namespace Luna
 			lutry
 			{
 				lulet(desc, get_asset_type_desc(entry->type));
-				if (desc.on_set_asset_data)
+				if (data)
 				{
-					luexp(desc.on_set_asset_data(desc.userdata.get(), asset, data));
+					if (desc.on_set_asset_data)
+					{
+						luexp(desc.on_set_asset_data(desc.userdata.get(), asset, data));
+					}
+				}
+				else
+				{
+					if (desc.on_unload_asset_data)
+					{
+						desc.on_unload_asset_data(desc.userdata.get(), asset);
+					}
 				}
 			}
 			lucatchret;
@@ -541,6 +550,13 @@ namespace Luna
 			lucatchret;
 			return ok;
 		}
+		LUNA_ASSET_API void close()
+		{
+			MutexGuard guard(g_assets_mutex);
+			MutexGuard guard2(g_asset_types_mutex);
+			close_asset_registry();
+			close_asset_type();
+		}
 		RV module_init()
 		{
 			init_asset_type();
@@ -574,6 +590,8 @@ namespace Luna
 		{
 			close_asset_registry();
 			close_asset_type();
+			g_assets_mutex.reset();
+			g_asset_types_mutex.reset();
 		}
 		StaticRegisterModule m("Asset", "VFS;JobSystem", module_init, module_close);
 	}

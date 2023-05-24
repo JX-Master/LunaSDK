@@ -179,7 +179,7 @@ namespace Luna
 			}
 		}
 
-		enum class BufferUsageFlag : u32
+		enum class BufferUsageFlag : u16
 		{
 			none = 0x00,
 			//! Allows this resource to be bound as copy source.
@@ -226,25 +226,30 @@ namespace Luna
 			tex3d,
 		};
 
-		enum class TextureUsageFlag : u32
+		enum class TextureUsageFlag : u16
 		{
 			none = 0x00,
 			//! Allows this resource to be bound as copy source.
 			copy_source = 0x01,
 			//! Allows this resource to be bound as copy destination.
 			copy_dest = 0x02,
-			//! Allows this resource to be bound to a sampled texture view.
-			sampled_texture = 0x04,
 			//! Allows this resource to be bound to a read texture view.
-			read_texture = 0x08,
+			read_texture = 0x04,
 			//! Allows this resource to be bound to a read-write texture view.
-			read_write_texture = 0x10,
+			read_write_texture = 0x08,
 			//! Allows this resource to be bound as color attachment.
-			color_attachment = 0x20,
+			color_attachment = 0x10,
 			//! Allows this resource to be bound as depth stencil attachment.
-			depth_stencil_attachment = 0x40,
+			depth_stencil_attachment = 0x20,
 			//! Allows this resource to be bound to a resolve attachment.
-			resolve_attachment = 0x80,
+			resolve_attachment = 0x40,
+		};
+
+		enum class TextureFlag : u16
+		{
+			none = 0x00,
+			//! Specifies that this texture can be used to create a texture cube view.
+			cube = 0x01,
 		};
 
 		struct TextureDesc
@@ -274,8 +279,10 @@ namespace Luna
 			//! A combination of `TextureUsageFlag` flags to indicate all possible 
 			//! usages of this texture.
 			TextureUsageFlag usages;
+			//! A combination of `TextureFlag` flags to indicate additional flags for the texture.
+			TextureFlag flags;
 
-			static inline TextureDesc tex1d(Format format, TextureUsageFlag usages, u64 width, u32 array_size = 1, u32 mip_levels = 0)
+			static inline TextureDesc tex1d(Format format, TextureUsageFlag usages, u64 width, u32 array_size = 1, u32 mip_levels = 0, TextureFlag flags = TextureFlag::none)
 			{
 				TextureDesc d;
 				d.type = TextureType::tex1d;
@@ -287,10 +294,11 @@ namespace Luna
 				d.mip_levels = mip_levels;
 				d.sample_count = 1;
 				d.usages = usages;
+				d.flags = flags;
 				return d;
 			}
 			static inline TextureDesc tex2d(Format format, TextureUsageFlag usages, u64 width, u32 height, u32 array_size = 1, u32 mip_levels = 0,
-				u32 sample_count = 1)
+				u32 sample_count = 1, TextureFlag flags = TextureFlag::none)
 			{
 				TextureDesc d;
 				d.type = TextureType::tex2d;
@@ -302,9 +310,10 @@ namespace Luna
 				d.mip_levels = mip_levels;
 				d.sample_count = sample_count;
 				d.usages = usages;
+				d.flags = flags;
 				return d;
 			}
-			static inline TextureDesc tex3d(Format format, TextureUsageFlag usages, u64 width, u32 height, u32 depth, u32 mip_levels = 0)
+			static inline TextureDesc tex3d(Format format, TextureUsageFlag usages, u64 width, u32 height, u32 depth, u32 mip_levels = 0, TextureFlag flags = TextureFlag::none)
 			{
 				TextureDesc d;
 				d.type = TextureType::tex3d;
@@ -316,6 +325,7 @@ namespace Luna
 				d.mip_levels = mip_levels;
 				d.sample_count = 1;
 				d.usages = usages;
+				d.flags = flags;
 				return d;
 			}
 		};

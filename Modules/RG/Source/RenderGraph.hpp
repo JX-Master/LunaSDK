@@ -105,7 +105,6 @@ namespace Luna
             {
                 m_transient_memory.push_back(resource->get_memory());
             }
-
             virtual RHI::IDevice* get_device() override { return m_device.get(); }
             virtual const RenderGraphDesc& get_desc() override { return m_desc; }
             virtual void set_desc(const RenderGraphDesc& desc) override { m_desc = desc; }

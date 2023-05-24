@@ -25,11 +25,11 @@ namespace Luna
             luset(m_geometry_pass_dlayout, device->new_descriptor_set_layout(DescriptorSetLayoutDesc({
 				DescriptorSetLayoutBinding(DescriptorType::uniform_buffer_view, 0, 1, ShaderVisibilityFlag::vertex | ShaderVisibilityFlag::pixel),
 				DescriptorSetLayoutBinding(DescriptorType::read_buffer_view, 1, 1, ShaderVisibilityFlag::vertex | ShaderVisibilityFlag::pixel),
-				DescriptorSetLayoutBinding(DescriptorType::sampled_texture_view, 2, 1, ShaderVisibilityFlag::pixel),
-				DescriptorSetLayoutBinding(DescriptorType::sampled_texture_view, 3, 1, ShaderVisibilityFlag::pixel),
-				DescriptorSetLayoutBinding(DescriptorType::sampled_texture_view, 4, 1, ShaderVisibilityFlag::pixel),
-				DescriptorSetLayoutBinding(DescriptorType::sampled_texture_view, 5, 1, ShaderVisibilityFlag::pixel),
-				DescriptorSetLayoutBinding(DescriptorType::sampled_texture_view, 6, 1, ShaderVisibilityFlag::pixel),
+				DescriptorSetLayoutBinding(DescriptorType::read_texture_view, 2, 1, ShaderVisibilityFlag::pixel),
+				DescriptorSetLayoutBinding(DescriptorType::read_texture_view, 3, 1, ShaderVisibilityFlag::pixel),
+				DescriptorSetLayoutBinding(DescriptorType::read_texture_view, 4, 1, ShaderVisibilityFlag::pixel),
+				DescriptorSetLayoutBinding(DescriptorType::read_texture_view, 5, 1, ShaderVisibilityFlag::pixel),
+				DescriptorSetLayoutBinding(DescriptorType::read_texture_view, 6, 1, ShaderVisibilityFlag::pixel),
 				DescriptorSetLayoutBinding(DescriptorType::sampler, 7, 1, ShaderVisibilityFlag::pixel)
 				})));
 			auto dl = m_geometry_pass_dlayout.get();
@@ -72,15 +72,15 @@ namespace Luna
 			luset(m_geometry_pass_pso, device->new_graphics_pipeline_state(ps_desc));
 
             luset(m_default_base_color, device->new_texture(MemoryType::local,
-				TextureDesc::tex2d(Format::rgba8_unorm, TextureUsageFlag::sampled_texture | TextureUsageFlag::copy_dest, 1, 1, 1, 1)));
+				TextureDesc::tex2d(Format::rgba8_unorm, TextureUsageFlag::read_texture | TextureUsageFlag::copy_dest, 1, 1, 1, 1)));
 			luset(m_default_roughness, device->new_texture(MemoryType::local,
-				TextureDesc::tex2d(Format::r8_unorm, TextureUsageFlag::sampled_texture | TextureUsageFlag::copy_dest, 1, 1, 1, 1)));
+				TextureDesc::tex2d(Format::r8_unorm, TextureUsageFlag::read_texture | TextureUsageFlag::copy_dest, 1, 1, 1, 1)));
 			luset(m_default_normal, device->new_texture(MemoryType::local,
-				TextureDesc::tex2d(Format::rgba8_unorm, TextureUsageFlag::sampled_texture | TextureUsageFlag::copy_dest, 1, 1, 1, 1)));
+				TextureDesc::tex2d(Format::rgba8_unorm, TextureUsageFlag::read_texture | TextureUsageFlag::copy_dest, 1, 1, 1, 1)));
 			luset(m_default_metallic, device->new_texture(MemoryType::local,
-				TextureDesc::tex2d(Format::r8_unorm, TextureUsageFlag::sampled_texture | TextureUsageFlag::copy_dest, 1, 1, 1, 1)));
+				TextureDesc::tex2d(Format::r8_unorm, TextureUsageFlag::read_texture | TextureUsageFlag::copy_dest, 1, 1, 1, 1)));
 			luset(m_default_emissive, device->new_texture(MemoryType::local,
-				TextureDesc::tex2d(Format::rgba8_unorm, TextureUsageFlag::sampled_texture | TextureUsageFlag::copy_dest, 1, 1, 1, 1)));
+				TextureDesc::tex2d(Format::rgba8_unorm, TextureUsageFlag::read_texture | TextureUsageFlag::copy_dest, 1, 1, 1, 1)));
 
 			// Upload default texture data.
 			u8 base_color_data[4] = { 255, 255, 255, 255 };
@@ -122,18 +122,80 @@ namespace Luna
             auto cmdbuf = ctx->get_command_buffer();
             auto device = cmdbuf->get_device();
             auto cb_align = device->get_uniform_buffer_data_alignment();
-            //auto fbo = device->new_frame_buffer(m_global_data->m_lighting_pass_rp, 1, &lighting_rt, nullptr, depth_tex, nullptr).get();
+			cmdbuf->set_context(CommandBufferContextType::graphics);
 			cmdbuf->resource_barrier(
 				{}, {
 					{base_color_roughness_tex, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::color_attachment_write, ResourceBarrierFlag::discard_content},
 					{normal_metallic_tex, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::color_attachment_write, ResourceBarrierFlag::discard_content},
 					{emissive_tex, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::color_attachment_write, ResourceBarrierFlag::discard_content},
-					{depth_tex, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::depth_stencil_attachment_read, ResourceBarrierFlag::discard_content} });
+					{depth_tex, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::depth_stencil_attachment_read, ResourceBarrierFlag::none} });
+			
+			for (usize i = 0; i < ts.size(); ++i)
+			{
+				auto model = Asset::get_asset_data<Model>(rs[i]->model);
+				auto mesh = Asset::get_asset_data<Mesh>(model->mesh);
+				cmdbuf->set_vertex_buffers(0, { VertexBufferView(mesh->vb, 0,
+					mesh->vb_count * sizeof(Vertex), sizeof(Vertex)) });
+				cmdbuf->set_index_buffer({ mesh->ib, 0, mesh->ib_count * sizeof(u32), Format::r32_uint });
+
+				u32 num_pieces = (u32)mesh->pieces.size();
+
+				for (u32 j = 0; j < num_pieces; ++j)
+				{
+					Ref<ITexture> base_color_tex = m_global_data->m_default_base_color;
+					Ref<ITexture> roughness_tex = m_global_data->m_default_roughness;
+					Ref<ITexture> normal_tex = m_global_data->m_default_normal;
+					Ref<ITexture> metallic_tex = m_global_data->m_default_metallic;
+					Ref<ITexture> emissive_tex = m_global_data->m_default_emissive;
+
+					if (j < model->materials.size())
+					{
+						auto mat = Asset::get_asset_data<Material>(model->materials[j]);
+						if (mat)
+						{
+							// Set material for this piece.
+							Ref<ITexture> mat_base_color_tex = Asset::get_asset_data<ITexture>(mat->base_color);
+							Ref<ITexture> mat_roughness_tex = Asset::get_asset_data<ITexture>(mat->roughness);
+							Ref<ITexture> mat_normal_tex = Asset::get_asset_data<ITexture>(mat->normal);
+							Ref<ITexture> mat_metallic_tex = Asset::get_asset_data<ITexture>(mat->metallic);
+							Ref<ITexture> mat_emissive_tex = Asset::get_asset_data<ITexture>(mat->emissive);
+							if (mat_base_color_tex)
+							{
+								base_color_tex = mat_base_color_tex;
+							}
+							if (mat_roughness_tex)
+							{
+								roughness_tex = mat_roughness_tex;
+							}
+							if (mat_normal_tex)
+							{
+								normal_tex = mat_normal_tex;
+							}
+							if (mat_metallic_tex)
+							{
+								metallic_tex = mat_metallic_tex;
+							}
+							if (mat_emissive_tex)
+							{
+								emissive_tex = mat_emissive_tex;
+							}
+							cmdbuf->resource_barrier(
+							{}, {
+								{base_color_tex, TEXTURE_BARRIER_ALL_SUBRESOURCES, TextureStateFlag::automatic, TextureStateFlag::shader_read_cs, ResourceBarrierFlag::none},
+								{roughness_tex, TEXTURE_BARRIER_ALL_SUBRESOURCES, TextureStateFlag::automatic, TextureStateFlag::shader_read_cs, ResourceBarrierFlag::none},
+								{normal_tex, TEXTURE_BARRIER_ALL_SUBRESOURCES, TextureStateFlag::automatic, TextureStateFlag::shader_read_cs, ResourceBarrierFlag::none},
+								{metallic_tex, TEXTURE_BARRIER_ALL_SUBRESOURCES, TextureStateFlag::automatic, TextureStateFlag::shader_read_cs, ResourceBarrierFlag::none},
+								{emissive_tex, TEXTURE_BARRIER_ALL_SUBRESOURCES, TextureStateFlag::automatic, TextureStateFlag::shader_read_cs, ResourceBarrierFlag::none}});
+						}
+					}
+				}
+			}
+			
 			RenderPassDesc render_pass;
 			render_pass.color_attachments[0] = ColorAttachment(base_color_roughness_tex, LoadOp::clear, StoreOp::store, Float4U(0.0f));
 			render_pass.color_attachments[1] = ColorAttachment(normal_metallic_tex, LoadOp::clear, StoreOp::store, Float4U(0.0f));
 			render_pass.color_attachments[2] = ColorAttachment(emissive_tex, LoadOp::clear, StoreOp::store, Float4U(0.0f));
-			render_pass.depth_stencil_attachment = DepthStencilAttachment(depth_tex, LoadOp::load, StoreOp::store);
+			render_pass.depth_stencil_attachment = DepthStencilAttachment(depth_tex, true, LoadOp::load, StoreOp::store, 1.0F);
 			cmdbuf->begin_render_pass(render_pass);
 			cmdbuf->set_graphics_shader_input_layout(m_global_data->m_geometry_pass_slayout);
 			cmdbuf->set_graphics_pipeline_state(m_global_data->m_geometry_pass_pso);
@@ -158,7 +220,6 @@ namespace Luna
 					Ref<ITexture> normal_tex = m_global_data->m_default_normal;
 					Ref<ITexture> metallic_tex = m_global_data->m_default_metallic;
 					Ref<ITexture> emissive_tex = m_global_data->m_default_emissive;
-					Ref<ITexture> sky_tex = m_global_data->m_default_emissive;
 
 					if (j < model->materials.size())
 					{
@@ -197,11 +258,11 @@ namespace Luna
 					vs->update_descriptors({
 						WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(camera_cb, 0, (u32)align_upper(sizeof(CameraCB), cb_align))),
 						WriteDescriptorSet::read_buffer_view(1, BufferViewDesc::structured_buffer(model_matrices, i, 1, sizeof(Float4x4) * 2)),
-						WriteDescriptorSet::sampled_texture_view(2, TextureViewDesc::tex2d(base_color_tex)),
-						WriteDescriptorSet::sampled_texture_view(3, TextureViewDesc::tex2d(roughness_tex)),
-						WriteDescriptorSet::sampled_texture_view(4, TextureViewDesc::tex2d(normal_tex)),
-						WriteDescriptorSet::sampled_texture_view(5, TextureViewDesc::tex2d(metallic_tex)),
-						WriteDescriptorSet::sampled_texture_view(6, TextureViewDesc::tex2d(emissive_tex)),
+						WriteDescriptorSet::read_texture_view(2, TextureViewDesc::tex2d(base_color_tex)),
+						WriteDescriptorSet::read_texture_view(3, TextureViewDesc::tex2d(roughness_tex)),
+						WriteDescriptorSet::read_texture_view(4, TextureViewDesc::tex2d(normal_tex)),
+						WriteDescriptorSet::read_texture_view(5, TextureViewDesc::tex2d(metallic_tex)),
+						WriteDescriptorSet::read_texture_view(6, TextureViewDesc::tex2d(emissive_tex)),
 						WriteDescriptorSet::sampler(7, SamplerDesc(Filter::min_mag_mip_linear, TextureAddressMode::repeat, TextureAddressMode::repeat, TextureAddressMode::repeat))
 						});
 					cmdbuf->set_graphics_descriptor_set(0, vs);

@@ -8,10 +8,25 @@
 * @date 2023/4/19
 */
 #include "Resource.hpp"
+#include "Instance.hpp"
 namespace Luna
 {
 	namespace RHI
 	{
+		inline void validate_texture_desc(TextureDesc& desc)
+		{
+			if (desc.mip_levels == 0)
+			{
+				if (is_depth_stencil_format(desc.format))
+				{
+					desc.mip_levels = 1;
+				}
+				else
+				{
+					desc.mip_levels = calc_mip_levels(desc.width, desc.height, desc.depth);
+				}
+			}
+		}
 		RV BufferResource::post_init()
 		{
 			lutry
@@ -44,8 +59,19 @@ namespace Luna
 			{
 				m_desc = desc;
 				luset(m_buffer, m_device->create_vk_buffer(m_desc));
-				m_memory = memory;
-				luexp(post_init());
+				VkMemoryRequirements memory_requirements;
+				m_device->m_funcs.vkGetBufferMemoryRequirements(m_device->m_device, m_buffer, &memory_requirements);
+				if (memory->m_allocation_info.size >= memory_requirements.size &&
+					memory->m_alignment >= memory_requirements.alignment &&
+					memory->m_allocation_info.memoryType & memory_requirements.memoryTypeBits)
+				{
+					m_memory = memory;
+					luexp(post_init());
+				}
+				else
+				{
+					return BasicError::not_supported();
+				}
 			}
 			lucatchret;
 			return ok;
@@ -56,6 +82,18 @@ namespace Luna
 			{
 				m_device->m_funcs.vkDestroyBuffer(m_device->m_device, m_buffer, nullptr);
 				m_buffer = VK_NULL_HANDLE;
+			}
+		}
+		void BufferResource::set_name(const Name& name)
+		{
+			if (g_enable_validation_layer)
+			{
+				VkDebugUtilsObjectNameInfoEXT nameInfo = {};
+				nameInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
+				nameInfo.objectType = VK_OBJECT_TYPE_BUFFER;
+				nameInfo.objectHandle = (uint64_t)m_buffer;
+				nameInfo.pObjectName = name.c_str();
+				vkSetDebugUtilsObjectNameEXT(m_device->m_device, &nameInfo);
 			}
 		}
 		R<void*> BufferResource::map(usize read_begin, usize read_end)
@@ -119,6 +157,7 @@ namespace Luna
 			lutry
 			{
 				m_desc = desc;
+				validate_texture_desc(m_desc);
 				luset(m_image, m_device->create_vk_image(m_desc));
 				VkMemoryRequirements memory_requirements;
 				m_device->m_funcs.vkGetImageMemoryRequirements(m_device->m_device, m_image, &memory_requirements);
@@ -136,19 +175,43 @@ namespace Luna
 			lutry
 			{
 				m_desc = desc;
+				validate_texture_desc(m_desc);
 				luset(m_image, m_device->create_vk_image(m_desc));
-				m_memory = memory;
-				luexp(post_init());
+				VkMemoryRequirements memory_requirements;
+				m_device->m_funcs.vkGetImageMemoryRequirements(m_device->m_device, m_image, &memory_requirements);
+				if (memory->m_allocation_info.size >= memory_requirements.size &&
+					memory->m_alignment >= memory_requirements.alignment &&
+					memory->m_allocation_info.memoryType & memory_requirements.memoryTypeBits)
+				{
+					m_memory = memory;
+					luexp(post_init());
+				}
+				else
+				{
+					return BasicError::not_supported();
+				}
 			}
 			lucatchret;
 			return ok;
 		}
 		ImageResource::~ImageResource()
 		{
-			if (m_image != VK_NULL_HANDLE && m_memory)
+			if (m_image != VK_NULL_HANDLE && !m_is_image_externally_managed)
 			{
 				m_device->m_funcs.vkDestroyImage(m_device->m_device, m_image, nullptr);
 				m_image = VK_NULL_HANDLE;
+			}
+		}
+		void ImageResource::set_name(const Name& name)
+		{
+			if (g_enable_validation_layer)
+			{
+				VkDebugUtilsObjectNameInfoEXT nameInfo = {};
+				nameInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
+				nameInfo.objectType = VK_OBJECT_TYPE_IMAGE;
+				nameInfo.objectHandle = (uint64_t)m_image;
+				nameInfo.pObjectName = name.c_str();
+				vkSetDebugUtilsObjectNameEXT(m_device->m_device, &nameInfo);
 			}
 		}
 	}

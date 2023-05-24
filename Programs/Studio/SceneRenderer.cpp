@@ -21,6 +21,7 @@
 #include "RenderPasses/GeometryPass.hpp"
 #include "RenderPasses/DeferredLightingPass.hpp"
 #include "RenderPasses/BufferVisualizationPass.hpp"
+#include "StudioHeader.hpp"
 
 namespace Luna
 {
@@ -72,18 +73,18 @@ namespace Luna
 					RenderGraphResourceFlag::none,
 					"BackBuffer",
 					ResourceDesc::as_texture(MemoryType::local,
-						TextureDesc::tex2d(Format::rgba8_unorm, TextureUsageFlag::read_texture | TextureUsageFlag::color_attachment, 0, 0, 1, 1))};
+						TextureDesc::tex2d(Format::rgba8_unorm, TextureUsageFlag::read_texture | TextureUsageFlag::color_attachment | TextureUsageFlag::copy_source, 0, 0, 1, 1))};
 				desc.resources[WIREFRAME_BACK_BUFFER] = {RenderGraphResourceType::transient, 
 					RenderGraphResourceFlag::none,
 					"WireframeBackBuffer",
 					ResourceDesc::as_texture(MemoryType::local,
-						TextureDesc::tex2d(Format::rgba8_unorm, TextureUsageFlag::read_texture | TextureUsageFlag::color_attachment, 
+						TextureDesc::tex2d(Format::rgba8_unorm, TextureUsageFlag::read_texture | TextureUsageFlag::color_attachment | TextureUsageFlag::copy_source,
 							(u32)settings.screen_size.x, (u32)settings.screen_size.y, 1, 1))};
 				desc.resources[GBUFFER_VIS_BUFFER] = {RenderGraphResourceType::transient, 
 					RenderGraphResourceFlag::none,
 					"GBufferBackBuffer",
 					ResourceDesc::as_texture(MemoryType::local,
-						TextureDesc::tex2d(Format::rgba8_unorm, TextureUsageFlag::read_texture | TextureUsageFlag::color_attachment, 
+						TextureDesc::tex2d(Format::rgba8_unorm, TextureUsageFlag::read_texture | TextureUsageFlag::color_attachment | TextureUsageFlag::copy_source,
 							(u32)settings.screen_size.x, (u32)settings.screen_size.y, 1, 1))};
 				desc.resources[BASE_COLOR_ROUGHNESS_BUFFER] = {RenderGraphResourceType::transient, 
 					RenderGraphResourceFlag::none,
@@ -426,34 +427,33 @@ namespace Luna
         lucatchret;
         return ok;
     }
-    RV SceneRenderer::collect_frame_profiling_data()
+    void SceneRenderer::collect_frame_profiling_data()
     {
-        lutry
-        {
-            // Collect last frame profiling data.
-			if(m_settings.frame_profiling)
+        // Collect last frame profiling data.
+		if(m_settings.frame_profiling)
+		{
+			auto queue_freq = m_device->get_command_queue_timestamp_frequency(g_env->graphics_queue).get();
+			Vector<usize> render_passes;
+			m_render_graph->get_enabled_render_passes(render_passes);
+			if (!render_passes.empty())
 			{
-				Vector<usize> render_passes;
-				m_render_graph->get_enabled_render_passes(render_passes);
-				if (!render_passes.empty())
+				enabled_passes.clear();
+				auto& desc = m_render_graph->get_desc();
+				for (usize i : render_passes)
 				{
-					enabled_passes.clear();
-					auto& desc = m_render_graph->get_desc();
-					for (usize i : render_passes)
-					{
-						enabled_passes.push_back(desc.passes[i].name);
-					}
-					Vector<u64> times;
-					luexp(m_render_graph->get_pass_time_intervals(times));
-					pass_time_intervals.clear();
+					enabled_passes.push_back(desc.passes[i].name);
+				}
+				Vector<u64> times;
+				auto r = m_render_graph->get_pass_time_intervals(times);
+				pass_time_intervals.clear();
+				if (succeeded(r))
+				{
 					for (u64 t : times)
 					{
-						pass_time_intervals.push_back((f64)t / (f64)m_queue_freq);
+						pass_time_intervals.push_back((f64)t / queue_freq);
 					}
 				}
 			}
-        }
-        lucatchret;
-        return ok;
+		}
     }
 }

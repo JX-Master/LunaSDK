@@ -150,6 +150,7 @@ namespace Luna
 					res->m_desc = desc;
 					res->m_image = images[i];
 					res->m_global_states.emplace_back();
+					res->m_is_image_externally_managed = true;
 					m_swap_chain_images.push_back(res);
 				}
 				m_back_buffer_fetched = false;

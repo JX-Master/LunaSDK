@@ -100,8 +100,8 @@ namespace Luna
 			virtual u32 get_command_queue_index() override { return m_queue_index; }
 			virtual RV reset() override;
 			virtual void attach_device_object(IDeviceChild* obj) override;
-			virtual void begin_event(const Name& event_name) override {}
-			virtual void end_event() override {}
+			virtual void begin_event(const Name& event_name) override;
+			virtual void end_event() override;
 			virtual CommandBufferContextType get_context_type() override { return m_context; }
 			virtual void set_context(CommandBufferContextType new_context) override { m_context = new_context; }
 			virtual void begin_render_pass(const RenderPassDesc& desc) override;

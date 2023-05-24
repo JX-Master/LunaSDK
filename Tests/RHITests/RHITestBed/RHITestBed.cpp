@@ -16,6 +16,7 @@
 #include <Runtime/Log.hpp>
 #include <Window/Window.hpp>
 #include <Runtime/Time.hpp>
+#include <Runtime/Thread.hpp>
 
 namespace Luna
 {
@@ -63,7 +64,7 @@ namespace Luna
 			if(width && height)
 			{
 				// resize back buffer.
-				lupanic_if_failed(m_swap_chain->reset({width, height, 2, Format::bgra8_unorm, true}));
+				lupanic_if_failed(m_swap_chain->reset({ width, height, 2, Format::bgra8_unorm, true }));
 				if (m_resize_func) m_resize_func(width, height);
 			}
 		}
@@ -138,7 +139,11 @@ namespace Luna
 			{
 				Window::poll_events();
 				if (m_window->is_closed()) break;
-
+				if (m_window->is_minimized())
+				{
+					sleep(100);
+					continue;
+				}
 				++m_frame_count;
 				u64 new_time = get_ticks();
 				if (new_time - m_time >= get_ticks_per_second())
@@ -157,9 +162,9 @@ namespace Luna
 				if (m_draw_func) m_draw_func();
 
 				m_command_buffer->resource_barrier({},
-				{
-					{get_back_buffer(), TEXTURE_BARRIER_ALL_SUBRESOURCES, TextureStateFlag::automatic, TextureStateFlag::present, ResourceBarrierFlag::none}
-				});
+					{
+						{get_back_buffer(), TEXTURE_BARRIER_ALL_SUBRESOURCES, TextureStateFlag::automatic, TextureStateFlag::present, ResourceBarrierFlag::none}
+					});
 				lupanic_if_failed(m_command_buffer->submit({}, {}, true));
 				m_command_buffer->wait();
 				lupanic_if_failed(m_swap_chain->present());

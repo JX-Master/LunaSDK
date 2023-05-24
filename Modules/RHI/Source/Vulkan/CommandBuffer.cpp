@@ -14,6 +14,7 @@
 #include "DescriptorSet.hpp"
 #include "QueryHeap.hpp"
 #include "Fence.hpp"
+#include "Instance.hpp"
 namespace Luna
 {
 	namespace RHI
@@ -36,6 +37,8 @@ namespace Luna
 				VkSemaphoreCreateInfo semaphore_info{};
 				semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 				luexp(encode_vk_result(m_funcs->vkCreateSemaphore(m_device, &semaphore_info, nullptr, &m_semaphore)));
+				VkFenceCreateInfo fence_info{};
+				fence_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 			}
 			lucatchret;
 			return ok;
@@ -60,6 +63,8 @@ namespace Luna
 				submit.pWaitDstStageMask = nullptr;
 				submit.signalSemaphoreCount = 1;
 				submit.pSignalSemaphores = &m_semaphore;
+				submit.commandBufferCount = 1;
+				submit.pCommandBuffers = &m_command_buffer;
 				MutexGuard guard(queue_mtx);
 				luexp(encode_vk_result(m_funcs->vkQueueSubmit(queue, 1, &submit, VK_NULL_HANDLE)));
 			}
@@ -217,6 +222,23 @@ namespace Luna
 		{
 			m_objs.push_back(obj);
 		}
+		void CommandBuffer::begin_event(const Name& event_name)
+		{
+			if (g_enable_validation_layer)
+			{
+				VkDebugUtilsLabelEXT markerInfo = {};
+				markerInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
+				markerInfo.pLabelName = event_name.c_str();
+				vkCmdBeginDebugUtilsLabelEXT(m_command_buffer, &markerInfo);
+			}
+		}
+		void CommandBuffer::end_event()
+		{
+			if (g_enable_validation_layer)
+			{
+				vkCmdEndDebugUtilsLabelEXT(m_command_buffer);
+			}
+		}
 		struct FramebufferDesc
 		{
 			VkRenderPass render_pass = VK_NULL_HANDLE;
@@ -372,6 +394,7 @@ namespace Luna
 					if (!height) height = d.height;
 				}
 				rp.sample_count = desc.sample_count;
+				rp.depth_stencil_read_only = desc.depth_stencil_attachment.read_only;
 				LockGuard guard(m_device->m_render_pass_pool_lock);
 				lulet(render_pass, m_device->m_render_pass_pool.get_render_pass(rp));
 				guard.unlock();
@@ -712,7 +735,7 @@ namespace Luna
 		{
 			assert_compute_context();
 			VkPipelineLayout layout = VK_NULL_HANDLE;
-			ShaderInputLayout* slayout = (ShaderInputLayout*)m_graphics_shader_input_layout->get_object();
+			ShaderInputLayout* slayout = (ShaderInputLayout*)m_compute_shader_input_layout->get_object();
 			layout = slayout->m_pipeline_layout;
 			VkDescriptorSet* sets = (VkDescriptorSet*)alloca(sizeof(VkDescriptorSet) * descriptor_sets.size());
 			for (u32 i = 0; i < descriptor_sets.size(); ++i)
@@ -957,41 +980,44 @@ namespace Luna
 				bool resolve_enabled = false;
 				if (!m_track_system.m_unresolved_image_states.empty() || !m_track_system.m_unresolved_buffer_states.empty())
 				{
-					resolve_enabled = true;
 					// Resolve image states.
 					m_track_system.resolve();
-					VkCommandBufferBeginInfo begin_info{};
-					begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-					begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-					begin_info.pInheritanceInfo = nullptr;
-					luexp(encode_vk_result(m_device->m_funcs.vkBeginCommandBuffer(m_resolve_buffer, &begin_info)));
-					m_device->m_funcs.vkCmdPipelineBarrier(m_resolve_buffer,
-						m_track_system.m_src_stage_flags, m_track_system.m_dest_stage_flags, 0, 0, nullptr,
-						m_track_system.m_buffer_barriers.size(), m_track_system.m_buffer_barriers.data(),
-						m_track_system.m_image_barriers.size(), m_track_system.m_image_barriers.data());
-					luexp(encode_vk_result(m_device->m_funcs.vkEndCommandBuffer(m_resolve_buffer)));
-					// Queue ownership transfer.
-					for (auto& transfer_barriers : m_track_system.m_queue_transfer_barriers)
+					if (!m_track_system.m_buffer_barriers.empty() || !m_track_system.m_image_barriers.empty())
 					{
-						lulet(transfer_tracker, get_transfer_tracker(transfer_barriers.first));
-						VkQueue queue = VK_NULL_HANDLE;
-						IMutex* queue_mtx = nullptr;
-						for (auto& q : m_device->m_queues)
+						resolve_enabled = true;
+						VkCommandBufferBeginInfo begin_info{};
+						begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+						begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+						begin_info.pInheritanceInfo = nullptr;
+						luexp(encode_vk_result(m_device->m_funcs.vkBeginCommandBuffer(m_resolve_buffer, &begin_info)));
+						m_device->m_funcs.vkCmdPipelineBarrier(m_resolve_buffer,
+							m_track_system.m_src_stage_flags, m_track_system.m_dest_stage_flags, 0, 0, nullptr,
+							m_track_system.m_buffer_barriers.size(), m_track_system.m_buffer_barriers.data(),
+							m_track_system.m_image_barriers.size(), m_track_system.m_image_barriers.data());
+						luexp(encode_vk_result(m_device->m_funcs.vkEndCommandBuffer(m_resolve_buffer)));
+						// Queue ownership transfer.
+						for (auto& transfer_barriers : m_track_system.m_queue_transfer_barriers)
 						{
-							if (q.queue_family_index == transfer_barriers.first)
+							lulet(transfer_tracker, get_transfer_tracker(transfer_barriers.first));
+							VkQueue queue = VK_NULL_HANDLE;
+							IMutex* queue_mtx = nullptr;
+							for (auto& q : m_device->m_queues)
 							{
-								queue = q.queue;
-								queue_mtx = q.queue_mtx;
-								break;
+								if (q.queue_family_index == transfer_barriers.first)
+								{
+									queue = q.queue;
+									queue_mtx = q.queue_mtx;
+									break;
+								}
 							}
+							luassert(queue != VK_NULL_HANDLE);
+							lulet(sema, transfer_tracker->submit_barrier(queue, queue_mtx,
+								{ transfer_barriers.second.buffer_barriers.data(), transfer_barriers.second.buffer_barriers.size() },
+								{ transfer_barriers.second.image_barriers.data(), transfer_barriers.second.image_barriers.size() }
+							));
+							wait_semaphores.push_back(sema);
+							wait_stages.push_back(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
 						}
-						luassert(queue != VK_NULL_HANDLE);
-						lulet(sema, transfer_tracker->submit_barrier(queue, queue_mtx,
-							{ transfer_barriers.second.buffer_barriers.data(), transfer_barriers.second.buffer_barriers.size() },
-							{ transfer_barriers.second.image_barriers.data(), transfer_barriers.second.image_barriers.size() }
-						));
-						wait_semaphores.push_back(sema);
-						wait_stages.push_back(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
 					}
 				}
 				// Submit the command buffer.
