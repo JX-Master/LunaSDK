@@ -170,6 +170,7 @@ namespace Luna
 					luexp(upload_texture_data(tex, RHI::SubresourceIndex(i, 0), 0, 0, 0, image_data.data(), pixel_size(desc.format) * desc.width, pixel_size(desc.format) * desc.width * desc.height,
 						desc.width, desc.height, 1));
 				}
+				tex->set_name(path.encode().c_str());
 				ret = tex;
 			}
 			else
@@ -190,6 +191,7 @@ namespace Luna
 				Ref<TextureAssetUserdata> ctx = ObjRef(userdata);
 				lulet(cmdbuf, g_env->device->new_command_buffer(g_env->async_compute_queue));
 				luexp(ctx->generate_mipmaps(tex, cmdbuf));
+				tex->set_name(path.encode().c_str());
 				ret = tex;
 			}
 		}

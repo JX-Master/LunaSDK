@@ -27,12 +27,13 @@ namespace Luna
 			ComPtr<ID3D12Resource> m_res;
 			Ref<DeviceMemory> m_memory;
 			BufferDesc m_desc;
+			Name m_name;
 
 			RV init_as_committed(MemoryType memory_type, const BufferDesc& desc);
 			RV init_as_aliasing(const BufferDesc& desc, DeviceMemory* memory);
 
 			virtual IDevice* get_device() override { return m_device; }
-			virtual void set_name(const Name& name) override { set_object_name(m_res.Get(), name); }
+			virtual void set_name(const Name& name) override { m_name = name; set_object_name(m_res.Get(), name); }
 			virtual IDeviceMemory* get_memory() override { return m_memory; }
 			virtual BufferDesc get_desc() override { return m_desc; }
 			virtual R<void*> map(usize read_begin, usize read_end) override;
@@ -48,6 +49,7 @@ namespace Luna
 			Ref<DeviceMemory> m_memory;
 			TextureDesc m_desc;
 			Vector<D3D12_RESOURCE_STATES> m_states;
+			Name m_name;
 
 			Vector<Pair<TextureViewDesc, ComPtr<ID3D12DescriptorHeap>>> m_rtvs;
 			Vector<Pair<TextureViewDesc, ComPtr<ID3D12DescriptorHeap>>> m_dsvs;
@@ -67,7 +69,7 @@ namespace Luna
 			void post_init();
 
 			virtual IDevice* get_device() override { return m_device; }
-			virtual void set_name(const Name& name) override { set_object_name(m_res.Get(), name); }
+			virtual void set_name(const Name& name) override { m_name = name; set_object_name(m_res.Get(), name); }
 			virtual IDeviceMemory* get_memory() override { return m_memory; }
 			virtual TextureDesc get_desc() override { return m_desc; }
 		};

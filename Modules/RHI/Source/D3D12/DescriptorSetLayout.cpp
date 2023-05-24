@@ -16,7 +16,6 @@ namespace Luna
 		{
 			switch (type)
 			{
-			case DescriptorType::sampled_texture_view:
 			case DescriptorType::read_buffer_view:
 			case DescriptorType::read_texture_view:
 				return D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
@@ -73,7 +72,6 @@ namespace Luna
 				{
 					switch (binding.desc.type)
 					{
-					case DescriptorType::sampled_texture_view:
 					case DescriptorType::read_buffer_view:
 					case DescriptorType::read_texture_view:
 					case DescriptorType::read_write_buffer_view:
@@ -149,7 +147,6 @@ namespace Luna
 		inline bool root_parameter_type_compatible(DescriptorType desc_type, D3D12_DESCRIPTOR_HEAP_TYPE root_type)
 		{
 			if ((root_type == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) && (
-				desc_type == DescriptorType::sampled_texture_view ||
 				desc_type == DescriptorType::read_buffer_view ||
 				desc_type == DescriptorType::read_texture_view ||
 				desc_type == DescriptorType::read_write_buffer_view ||
@@ -175,7 +172,6 @@ namespace Luna
 			RootParameterInfo info;
 			switch (type)
 			{
-			case DescriptorType::sampled_texture_view:
 			case DescriptorType::read_buffer_view:
 			case DescriptorType::read_texture_view:
 			case DescriptorType::read_write_buffer_view:

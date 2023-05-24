@@ -64,7 +64,7 @@ namespace Luna
 			compiler->set_entry_point("main");
 			compiler->set_target_format(get_current_platform_shader_target_format());
 			compiler->set_shader_type(ShaderCompiler::ShaderType::pixel);
-			compiler->set_shader_model(5, 0);
+			compiler->set_shader_model(6, 0);
 			compiler->set_optimization_level(ShaderCompiler::OptimizationLevel::full);
 			luexp(compiler->compile());
 			Blob ps_blob = compiler->get_output();

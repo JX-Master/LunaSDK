@@ -205,7 +205,7 @@ namespace Luna
 				}
 				// Any resources accessed by Copy queue can be implicitly decayed to common state.
 				// Any read state that can be implicitly promoted from common state can be implicitly decayed to common state.
-				if (type == CommandQueueType::copy || is_texture_implicit_promotable(encode_texture_state(i.second)))
+				if (type == CommandQueueType::copy/* || is_texture_implicit_promotable(encode_texture_state(i.second))*/)
 				{
 					i.first.m_res->m_states[i.first.m_subres] = D3D12_RESOURCE_STATE_COMMON;
 				}

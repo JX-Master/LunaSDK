@@ -83,7 +83,6 @@ namespace Luna
 				case DescriptorType::read_write_buffer_view:
 					set_buffer_uav_array(write.binding_slot, write.first_array_index, write.buffer_views.size(), write.buffer_views.data());
 					break;
-				case DescriptorType::sampled_texture_view:
 				case DescriptorType::read_texture_view:
 					set_texture_srv_array(write.binding_slot, write.first_array_index, write.texture_views.size(), write.texture_views.data());
 					break;
@@ -131,6 +130,8 @@ namespace Luna
 				const BufferViewDesc* srv = descs + i;
 				D3D12_SHADER_RESOURCE_VIEW_DESC d;
 				d.Format = encode_format(srv->format);
+				if (d.Format == DXGI_FORMAT_D16_UNORM) d.Format = DXGI_FORMAT_R16_UNORM;
+				if (d.Format == DXGI_FORMAT_D32_FLOAT) d.Format = DXGI_FORMAT_R32_FLOAT;
 				d.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 				d.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
 				d.Buffer.FirstElement = srv->first_element;
@@ -157,6 +158,8 @@ namespace Luna
 				h.ptr = addr;
 				D3D12_SHADER_RESOURCE_VIEW_DESC d;
 				d.Format = encode_format(srv.format);
+				if (d.Format == DXGI_FORMAT_D16_UNORM) d.Format = DXGI_FORMAT_R16_UNORM;
+				if (d.Format == DXGI_FORMAT_D32_FLOAT) d.Format = DXGI_FORMAT_R32_FLOAT;
 				d.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 				switch (srv.type)
 				{
@@ -248,6 +251,8 @@ namespace Luna
 				const BufferViewDesc* uav = descs + i;
 				D3D12_UNORDERED_ACCESS_VIEW_DESC d;
 				d.Format = encode_format(uav->format);
+				if (d.Format == DXGI_FORMAT_D16_UNORM) d.Format = DXGI_FORMAT_R16_UNORM;
+				if (d.Format == DXGI_FORMAT_D32_FLOAT) d.Format = DXGI_FORMAT_R32_FLOAT;
 				d.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
 				d.Buffer.CounterOffsetInBytes = 0;
 				d.Buffer.FirstElement = uav->first_element;
@@ -273,6 +278,8 @@ namespace Luna
 				validate_texture_view_desc(uav);
 				D3D12_UNORDERED_ACCESS_VIEW_DESC d;
 				d.Format = encode_format(uav.format);
+				if (d.Format == DXGI_FORMAT_D16_UNORM) d.Format = DXGI_FORMAT_R16_UNORM;
+				if (d.Format == DXGI_FORMAT_D32_FLOAT) d.Format = DXGI_FORMAT_R32_FLOAT;
 				switch (uav.type)
 				{
 				case TextureViewType::tex1d:
