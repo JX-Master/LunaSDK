@@ -29,43 +29,15 @@ namespace Luna
 				create_info.queryCount = desc.count;
 				if (desc.type == QueryType::pipeline_statistics)
 				{
-					create_info.pipelineStatistics = 0;
-					m_num_statistic_items = 0;
-					if (test_flags(desc.pipeline_statistics, QueryPipelineStatisticFlag::input_vertices))
-					{
-						create_info.pipelineStatistics |= VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_VERTICES_BIT;
-						++m_num_statistic_items;
-					}
-					if (test_flags(desc.pipeline_statistics, QueryPipelineStatisticFlag::input_primitives))
-					{
-						create_info.pipelineStatistics |= VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_PRIMITIVES_BIT;
-						++m_num_statistic_items;
-					}
-					if (test_flags(desc.pipeline_statistics, QueryPipelineStatisticFlag::vs_invocations))
-					{
-						create_info.pipelineStatistics |= VK_QUERY_PIPELINE_STATISTIC_VERTEX_SHADER_INVOCATIONS_BIT;
-						++m_num_statistic_items;
-					}
-					if (test_flags(desc.pipeline_statistics, QueryPipelineStatisticFlag::rasterizer_input_primitives))
-					{
-						create_info.pipelineStatistics |= VK_QUERY_PIPELINE_STATISTIC_CLIPPING_INVOCATIONS_BIT;
-						++m_num_statistic_items;
-					}
-					if (test_flags(desc.pipeline_statistics, QueryPipelineStatisticFlag::rendered_primitives))
-					{
-						create_info.pipelineStatistics |= VK_QUERY_PIPELINE_STATISTIC_CLIPPING_PRIMITIVES_BIT;
-						++m_num_statistic_items;
-					}
-					if (test_flags(desc.pipeline_statistics, QueryPipelineStatisticFlag::ps_invocations))
-					{
-						create_info.pipelineStatistics |= VK_QUERY_PIPELINE_STATISTIC_FRAGMENT_SHADER_INVOCATIONS_BIT;
-						++m_num_statistic_items;
-					}
-					if (test_flags(desc.pipeline_statistics, QueryPipelineStatisticFlag::cs_invocations))
-					{
-						create_info.pipelineStatistics |= VK_QUERY_PIPELINE_STATISTIC_COMPUTE_SHADER_INVOCATIONS_BIT;
-						++m_num_statistic_items;
-					}
+					create_info.pipelineStatistics =
+						VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_VERTICES_BIT |
+						VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_PRIMITIVES_BIT |
+						VK_QUERY_PIPELINE_STATISTIC_VERTEX_SHADER_INVOCATIONS_BIT |
+						VK_QUERY_PIPELINE_STATISTIC_CLIPPING_INVOCATIONS_BIT |
+						VK_QUERY_PIPELINE_STATISTIC_CLIPPING_PRIMITIVES_BIT |
+						VK_QUERY_PIPELINE_STATISTIC_FRAGMENT_SHADER_INVOCATIONS_BIT |
+						VK_QUERY_PIPELINE_STATISTIC_COMPUTE_SHADER_INVOCATIONS_BIT;
+					m_num_statistic_items = 7;
 				}
 				luexp(encode_vk_result(m_device->m_funcs.vkCreateQueryPool(m_device->m_device, &create_info, nullptr, &m_query_pool)));
 			}
@@ -80,11 +52,26 @@ namespace Luna
 				m_query_pool = VK_NULL_HANDLE;
 			}
 		}
-		RV QueryHeap::get_query_results(u32 start_index, u32 count, void* buffer, usize buffer_size, usize stride)
+		RV QueryHeap::get_timestamp_values(u32 index, u32 count, u64* values)
 		{
+			if (m_desc.type != QueryType::timestamp) return BasicError::not_supported();
 			return encode_vk_result(m_device->m_funcs.vkGetQueryPoolResults(
-				m_device->m_device, m_query_pool, start_index, count, buffer_size, buffer,
-				stride, VK_QUERY_RESULT_64_BIT));
+				m_device->m_device, m_query_pool, index, count, sizeof(u64) * count, values,
+				sizeof(u64), VK_QUERY_RESULT_64_BIT));
+		}
+		RV QueryHeap::get_occlusion_values(u32 index, u32 count, u64* values)
+		{
+			if (m_desc.type != QueryType::occlusion) return BasicError::not_supported();
+			return encode_vk_result(m_device->m_funcs.vkGetQueryPoolResults(
+				m_device->m_device, m_query_pool, index, count, sizeof(u64) * count, values,
+				sizeof(u64), VK_QUERY_RESULT_64_BIT));
+		}
+		RV QueryHeap::get_pipeline_statistics_values(u32 index, u32 count, PipelineStatistics* values)
+		{
+			if (m_desc.type != QueryType::pipeline_statistics) return BasicError::not_supported();
+			return encode_vk_result(m_device->m_funcs.vkGetQueryPoolResults(
+				m_device->m_device, m_query_pool, index, count, sizeof(PipelineStatistics) * count, values,
+				sizeof(PipelineStatistics), VK_QUERY_RESULT_64_BIT));
 		}
 	}
 }

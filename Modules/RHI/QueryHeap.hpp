@@ -21,22 +21,22 @@ namespace Luna
             pipeline_statistics,
         };
 
-        enum class QueryPipelineStatisticFlag : u32
+        struct PipelineStatistics
         {
             //! Number of vertices read by input assembler.
-            input_vertices = 0x01,
+            u64 input_vertices;
             //! Number of primitives read by the input assembler.
-            input_primitives = 0x02,
+            u64 input_primitives;
             //! Number of vertex shader invocations.
-            vs_invocations = 0x04,
+            u64 vs_invocations;
             //! Number of primitives that were sent to the rasterizer.
-            rasterizer_input_primitives = 0x08,
+            u64 rasterizer_input_primitives;
             //! Number of primitives that were rendered.
-            rendered_primitives = 0x10,
+            u64 rendered_primitives;
             //! Number of pixel shader invocations.
-            ps_invocations = 0x20,
+            u64 ps_invocations;
             //! Number of compute shader invocations.
-            cs_invocations = 0x40
+            u64 cs_invocations;
         };
 
         struct QueryHeapDesc
@@ -45,9 +45,6 @@ namespace Luna
             QueryType type;
             //! Number of queries this heap contains.
             u32 count;
-            //! If type is `QueryType::pipeline_statistics`, specify the pipeline statistic entry
-            //! you want to query. Otherwise, this is ignored.
-            QueryPipelineStatisticFlag pipeline_statistics;
         };
 
         struct IQueryHeap : virtual IDeviceChild
@@ -56,19 +53,29 @@ namespace Luna
 
             virtual QueryHeapDesc get_desc() = 0;
 
-            //! Copies query results from query heap to the user-provided buffer.
+            //! Copies timestamp query results from query heap to the user-provided buffer.
             //! @param[in] index The index of the first query to copy.
             //! @param[in] count The number of queries to copy.
-            //! @param[out] buffer The user-provided buffer used to store the results.
-            //! @param[in] buffer_size The size of `buffer` in bytes.
-            //! @param[in] stride The stride in bytes between results for individual queries within `buffer`
+            //! @param[out] values The user-provided buffer used to store the results.
             //! @remark The user must ensure that all queries being copied are initialized, or the behavior is undefined.
-            //! 
-            //! For occlusion and timestamp queries, the result is represented by one `u64` value for each query. For pipeline 
-            //! statistics querys, the result is represented by `N` number of `u64` values for each query, where `N` is the number
-            //! of pipeline stages enabled by `QueryPipelineStatisticFlag` when creating the query heap. Pipeline statistics query
-            //! stage results are arranged using the same order as they declared in `QueryPipelineStatisticFlag`.
-            virtual RV get_query_results(u32 start_index, u32 count, void* buffer, usize buffer_size, usize stride) = 0;
+            //! If this query heap is not `QueryHeapType::timestamp`, this function fails with `BasicError::not_supported`.
+            virtual RV get_timestamp_values(u32 index, u32 count, u64* values) = 0;
+
+            //! Copies occlusion query results from query heap to the user-provided buffer.
+            //! @param[in] index The index of the first query to copy.
+            //! @param[in] count The number of queries to copy.
+            //! @param[out] values The user-provided buffer used to store the results.
+            //! @remark The user must ensure that all queries being copied are initialized, or the behavior is undefined.
+            //! If this query heap is not `QueryHeapType::occlusion`, this function fails with `BasicError::not_supported`.
+            virtual RV get_occlusion_values(u32 index, u32 count, u64* values) = 0;
+
+            //! Copies pipeline statistics query results from query heap to the user-provided buffer.
+            //! @param[in] index The index of the first query to copy.
+            //! @param[in] count The number of queries to copy.
+            //! @param[out] values The user-provided buffer used to store the results.
+            //! @remark The user must ensure that all queries being copied are initialized, or the behavior is undefined.
+            //! If this query heap is not `QueryHeapType::pipeline_statistics`, this function fails with `BasicError::not_supported`.
+            virtual RV get_pipeline_statistics_values(u32 index, u32 count, PipelineStatistics* values) = 0;
         };
     }
 }

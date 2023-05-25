@@ -280,7 +280,7 @@ namespace Luna
                 if (m_enable_time_profiling)
                 {
                     Vector<u64> times((usize)m_num_enabled_passes * 2);
-                    luexp(m_time_query_heap->get_query_results(0, m_num_enabled_passes * 2, times.data(), times.size() * sizeof(u64), sizeof(u64)));
+                    luexp(m_time_query_heap->get_timestamp_values(0, m_num_enabled_passes * 2, times.data()));
                     for (usize i = 0; i < m_num_enabled_passes; ++i)
                     {
                         pass_time_intervals.push_back(times[i * 2 + 1] - times[i * 2]);

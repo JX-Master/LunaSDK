@@ -31,7 +31,9 @@ namespace Luna
 			virtual IDevice* get_device() override { return m_device.get(); }
 			virtual void set_name(const Name& name) override { m_name = name; }
 			virtual QueryHeapDesc get_desc() override { return m_desc; }
-			virtual RV get_query_results(u32 start_index, u32 count, void* buffer, usize buffer_size, usize stride) override;
+			virtual RV get_timestamp_values(u32 index, u32 count, u64* values) override;
+			virtual RV get_occlusion_values(u32 index, u32 count, u64* values) override;
+			virtual RV get_pipeline_statistics_values(u32 index, u32 count, PipelineStatistics* values) override;
 		};
 	}
 }
