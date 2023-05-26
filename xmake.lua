@@ -47,7 +47,8 @@ function add_luna_sdk_options()
     end
 end
 
-function set_luna_sdk_module()
+function luna_sdk_module_target(target_name)
+    target(target_name)
     add_luna_sdk_options()
     set_group("Modules")
     if has_config("shared") then
@@ -55,6 +56,7 @@ function set_luna_sdk_module()
     else
         set_kind("static")
     end
+    set_basename("Luna" .. target_name)
 end
 
 function set_luna_sdk_test()

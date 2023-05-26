@@ -1,5 +1,4 @@
-target("HID")
-    set_luna_sdk_module()
+luna_sdk_module_target("HID")
     add_headerfiles("*.hpp")
     add_headerfiles("Source/*.hpp")
     add_files("Source/*.cpp")

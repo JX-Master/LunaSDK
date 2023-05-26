@@ -1,5 +1,4 @@
-target("RG")
-    set_luna_sdk_module()
+luna_sdk_module_target("RG")
     add_headerfiles("**.hpp")
     add_files("Source/**.cpp")
     add_deps("Runtime", "RHI")

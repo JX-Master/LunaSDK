@@ -1,5 +1,4 @@
-target("Network")
-    set_luna_sdk_module()
+luna_sdk_module_target("Network")
     add_headerfiles("*.hpp")
     add_files("Source/*.cpp")
     if is_os("windows") then

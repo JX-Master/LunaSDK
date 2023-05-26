@@ -1,7 +1,6 @@
 add_requires("stb")
 
-target("Font")
-    set_luna_sdk_module()
+luna_sdk_module_target("Font")
     add_headerfiles("**.hpp")
     add_files("Source/**.cpp")
     add_deps("Runtime")

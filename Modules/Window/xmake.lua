@@ -9,8 +9,7 @@ if has_config("window_glfw") then
     add_requires("glfw", {configs = {shared = has_config("shared")}})
 end
 
-target("Window")
-    set_luna_sdk_module()
+luna_sdk_module_target("Window")
     add_options("window_glfw")
     add_headerfiles("*.hpp", "Source/*.hpp")
     add_files("Source/*.cpp")

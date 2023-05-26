@@ -1,7 +1,6 @@
 add_requires("stb")
 
-target("Image")
-    set_luna_sdk_module()
+luna_sdk_module_target("Image")
     add_headerfiles("**.hpp")
     add_files("Source/**.cpp")
     add_deps("Runtime")

@@ -37,8 +37,7 @@ elseif is_config("rhi_api", "D3D12") then
     add_requires("d3d12-memory-allocator")
 end
 
-target("RHI")
-    set_luna_sdk_module()
+luna_sdk_module_target("RHI")
     add_options("rhi_api", "rhi_debug")
     add_headerfiles("*.hpp", "Source/*.hpp")
     add_files("Source/*.cpp")

@@ -1,5 +1,4 @@
-target("ObjLoader")
-    set_luna_sdk_module()
+luna_sdk_module_target("ObjLoader")
     add_headerfiles("**.hpp")
     add_files("Source/**.cpp")
     add_deps("Runtime")
