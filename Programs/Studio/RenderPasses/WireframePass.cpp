@@ -15,6 +15,7 @@
 #include <Asset/Asset.hpp>
 #include "../SceneRenderer.hpp"
 #include <Runtime/File.hpp>
+#include "../StudioHeader.hpp"
 
 namespace Luna
 {
@@ -31,11 +32,7 @@ namespace Luna
 			luset(m_debug_mesh_renderer_slayout, device->new_shader_input_layout(ShaderInputLayoutDesc({ &dlayout, 1 },
 				ShaderInputLayoutFlag::allow_input_assembler_input_layout)));
 
-			lulet(vsf, open_file("GeometryVert.cso", FileOpenFlag::read, FileCreationMode::open_existing));
-			auto file_size = vsf->get_size();
-			auto vs_blob = Blob((usize)file_size);
-			luexp(vsf->read(vs_blob.span()));
-			vsf = nullptr;
+			lulet(vs_blob, compile_shader("Shaders/GeometryVert.hlsl", ShaderCompiler::ShaderType::vertex));
 
 			static const char* pixelShader =
 				R"(struct PS_INPUT

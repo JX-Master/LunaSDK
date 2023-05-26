@@ -28,11 +28,7 @@ namespace Luna
 					ShaderInputLayoutFlag::deny_vertex_shader_access |
 					ShaderInputLayoutFlag::deny_pixel_shader_access)));
 
-				lulet(psf, open_file("LumHistogramClear.cso", FileOpenFlag::read, FileCreationMode::open_existing));
-				auto file_size = psf->get_size();
-				auto cs_blob = Blob((usize)file_size);
-				luexp(psf->read(cs_blob.span()));
-				psf = nullptr;
+				lulet(cs_blob, compile_shader("Shaders/LumHistogramClear.hlsl", ShaderCompiler::ShaderType::compute));
 				ComputePipelineStateDesc ps_desc;
 				ps_desc.cs = cs_blob.cspan();
 				ps_desc.shader_input_layout = m_histogram_clear_pass_slayout;
@@ -50,11 +46,7 @@ namespace Luna
 					ShaderInputLayoutFlag::deny_vertex_shader_access |
 					ShaderInputLayoutFlag::deny_pixel_shader_access)));
 
-				lulet(psf, open_file("LumHistogram.cso", FileOpenFlag::read, FileCreationMode::open_existing));
-				auto file_size = psf->get_size();
-				auto cs_blob = Blob((usize)file_size);
-				luexp(psf->read(cs_blob.span()));
-				psf = nullptr;
+				lulet(cs_blob, compile_shader("Shaders/LumHistogram.hlsl", ShaderCompiler::ShaderType::compute));
 				ComputePipelineStateDesc ps_desc;
 				ps_desc.cs = cs_blob.cspan();
 				ps_desc.shader_input_layout = m_histogram_pass_slayout;
@@ -72,11 +64,7 @@ namespace Luna
 					ShaderInputLayoutFlag::deny_vertex_shader_access |
 					ShaderInputLayoutFlag::deny_pixel_shader_access)));
 
-				lulet(psf, open_file("LumHistogramCollect.cso", FileOpenFlag::read, FileCreationMode::open_existing));
-				auto file_size = psf->get_size();
-				auto cs_blob = Blob((usize)file_size);
-				luexp(psf->read(cs_blob.span()));
-				psf = nullptr;
+				lulet(cs_blob, compile_shader("Shaders/LumHistogramCollect.hlsl", ShaderCompiler::ShaderType::compute));
 				ComputePipelineStateDesc ps_desc;
 				ps_desc.cs = cs_blob.cspan();
 				ps_desc.shader_input_layout = m_histogram_collect_pass_slayout;
@@ -95,11 +83,7 @@ namespace Luna
 					ShaderInputLayoutFlag::deny_vertex_shader_access |
 					ShaderInputLayoutFlag::deny_pixel_shader_access)));
 
-				lulet(psf, open_file("ToneMappingCS.cso", FileOpenFlag::read, FileCreationMode::open_existing));
-				auto file_size = psf->get_size();
-				auto cs_blob = Blob((usize)file_size);
-				luexp(psf->read(cs_blob.span()));
-				psf = nullptr;
+				lulet(cs_blob, compile_shader("Shaders/ToneMappingCS.hlsl", ShaderCompiler::ShaderType::compute));
 				ComputePipelineStateDesc ps_desc;
 				ps_desc.cs = cs_blob.cspan();
 				ps_desc.shader_input_layout = m_tone_mapping_pass_slayout;

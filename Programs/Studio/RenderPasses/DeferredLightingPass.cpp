@@ -37,11 +37,8 @@ namespace Luna
 				ShaderInputLayoutFlag::deny_vertex_shader_access |
 				ShaderInputLayoutFlag::deny_pixel_shader_access)));
 
-			lulet(psf, open_file("DeferredLighting.cso", FileOpenFlag::read, FileCreationMode::open_existing));
-			auto file_size = psf->get_size();
-			auto cs_blob = Blob((usize)file_size);
-			luexp(psf->read(cs_blob.span()));
-			psf = nullptr;
+            lulet(cs_blob, compile_shader("Shaders/DeferredLighting.hlsl", ShaderCompiler::ShaderType::compute));
+
 			ComputePipelineStateDesc ps_desc;
 			ps_desc.cs = cs_blob.cspan();
 			ps_desc.shader_input_layout = m_deferred_lighting_pass_slayout;
@@ -64,11 +61,7 @@ namespace Luna
                 lulet(slayout, device->new_shader_input_layout(ShaderInputLayoutDesc({ &dl, 1 },
                     ShaderInputLayoutFlag::deny_vertex_shader_access |
                     ShaderInputLayoutFlag::deny_pixel_shader_access)));
-                lulet(psf, open_file("PrecomputeIntegrateBRDF.cso", FileOpenFlag::read, FileCreationMode::open_existing));
-                auto file_size = psf->get_size();
-                auto cs_blob = Blob((usize)file_size);
-                luexp(psf->read(cs_blob.span()));
-                psf = nullptr;
+                lulet(cs_blob, compile_shader("Shaders/PrecomputeIntegrateBRDF.hlsl", ShaderCompiler::ShaderType::compute));
                 ComputePipelineStateDesc ps_desc;
                 ps_desc.cs = cs_blob.cspan();
                 ps_desc.shader_input_layout = slayout;

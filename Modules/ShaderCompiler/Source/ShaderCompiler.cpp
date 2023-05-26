@@ -161,7 +161,7 @@ namespace Luna
 					ComPtr<IDxcBlobEncoding> pEncoding;
 					if (m_included_files.find(path) == m_included_files.end())
 					{
-						lulet(f, VFS::open_file(path, FileOpenFlag::read, FileCreationMode::open_existing));
+						lulet(f, open_file(path.encode().c_str(), FileOpenFlag::read, FileCreationMode::open_existing));
 						lulet(data, load_file_data(f));
 						m_compiler->m_dxc_utils->CreateBlob(data.data(), (UINT32)data.size(), CP_UTF8, pEncoding.GetAddressOf());
 						*ppIncludeSource = pEncoding.Detach();
@@ -181,8 +181,9 @@ namespace Luna
 			}
 			HRESULT STDMETHODCALLTYPE LoadSource(_In_ LPCWSTR pFilename, _COM_Outptr_result_maybenull_ IDxcBlob** ppIncludeSource) override
 			{
-				ComPtr<IDxcBlobEncoding> pEncoding;
-				Path path = wstring_to_utf8(pFilename);
+				Path path = m_compiler->m_source_file_path;
+				path.pop_back(); // remove source filename.
+				path.append(wstring_to_utf8(pFilename));
 				RV r = load_shader(path, ppIncludeSource);
 				if (failed(r))
 				{
@@ -226,9 +227,6 @@ namespace Luna
 			case ShaderType::vertex: sm = "vs"; break;
 			case ShaderType::pixel: sm = "ps"; break;
 			case ShaderType::compute: sm = "cs"; break;
-			case ShaderType::geometry: sm = "gs"; break;
-			case ShaderType::hull: sm = "hs"; break;
-			case ShaderType::domain: sm = "ds"; break;
 			}
 			snprintf(shader_type, 16, "%s_%u_%u", sm, m_shader_model_major, m_shader_model_minor);
 			arguments.push_back(utf8_to_wstring(shader_type));

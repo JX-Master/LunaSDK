@@ -13,6 +13,7 @@
 #include <Runtime/File.hpp>
 #include <Asset/Asset.hpp>
 #include <Runtime/Math/Matrix.hpp>
+#include "../StudioHeader.hpp"
 namespace Luna
 {
     RV SkyBoxPassGlobalData::init(RHI::IDevice* device)
@@ -31,11 +32,7 @@ namespace Luna
 			luset(m_skybox_pass_slayout, device->new_shader_input_layout(ShaderInputLayoutDesc({ &dl, 1 },
 				ShaderInputLayoutFlag::deny_vertex_shader_access |
 				ShaderInputLayoutFlag::deny_pixel_shader_access)));
-			lulet(psf, open_file("SkyboxCS.cso", FileOpenFlag::read, FileCreationMode::open_existing));
-			auto file_size = psf->get_size();
-			auto cs_blob = Blob((usize)file_size);
-			luexp(psf->read(cs_blob.span()));
-			psf = nullptr;
+            lulet(cs_blob, compile_shader("Shaders/SkyboxCS.hlsl", ShaderCompiler::ShaderType::compute));
 			ComputePipelineStateDesc ps_desc;
 			ps_desc.cs = cs_blob.cspan();
 			ps_desc.shader_input_layout = m_skybox_pass_slayout;

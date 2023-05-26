@@ -36,17 +36,8 @@ namespace Luna
 			luset(m_geometry_pass_slayout, device->new_shader_input_layout(ShaderInputLayoutDesc({ &dl, 1 },
 				ShaderInputLayoutFlag::allow_input_assembler_input_layout)));
 
-			lulet(vsf, open_file("GeometryVert.cso", FileOpenFlag::read, FileCreationMode::open_existing));
-			auto file_size = vsf->get_size();
-			auto vs_blob = Blob((usize)file_size);
-			luexp(vsf->read(vs_blob.span()));
-			vsf = nullptr;
-
-			lulet(psf, open_file("GeometryPixel.cso", FileOpenFlag::read, FileCreationMode::open_existing));
-			file_size = psf->get_size();
-			auto ps_blob = Blob((usize)file_size);
-			luexp(psf->read(ps_blob.span()));
-			psf = nullptr;
+			lulet(vs_blob, compile_shader("Shaders/GeometryVert.hlsl", ShaderCompiler::ShaderType::vertex));
+			lulet(ps_blob, compile_shader("Shaders/GeometryPixel.hlsl", ShaderCompiler::ShaderType::pixel));
 
 			GraphicsPipelineStateDesc ps_desc;
 			ps_desc.primitive_topology = PrimitiveTopology::triangle_list;

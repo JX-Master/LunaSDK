@@ -49,11 +49,7 @@ namespace Luna
 					
 					ShaderInputLayoutFlag::deny_pixel_shader_access)));
 
-				lulet(psf, open_file("MipmapGenerationCS.cso", FileOpenFlag::read, FileCreationMode::open_existing));
-				auto file_size = psf->get_size();
-				auto cs_blob = Blob((usize)file_size);
-				luexp(psf->read(cs_blob.span()));
-				psf = nullptr;
+				lulet(cs_blob, compile_shader("Shaders/MipmapGenerationCS.hlsl", ShaderCompiler::ShaderType::compute));
 				ComputePipelineStateDesc ps_desc;
 				ps_desc.shader_input_layout = m_mipmapping_slayout;
 				ps_desc.cs = cs_blob.cspan();

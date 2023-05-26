@@ -51,10 +51,7 @@ namespace Luna
 		{
 			vertex = 1,
 			pixel = 2,
-			compute = 3,
-			hull = 4,
-			domain = 5,
-			geometry = 6
+			compute = 3
 		};
 
 		enum class OptimizationLevel : u8

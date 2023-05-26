@@ -17,6 +17,8 @@
 #include <ObjLoader/ObjLoader.hpp>
 #include <VFS/VFS.hpp>
 #include <Runtime/HashSet.hpp>
+#include <ShaderCompiler/ShaderCompiler.hpp>
+#include <RHI/ShaderCompileHelper.hpp>
 
 namespace Luna
 {
@@ -139,6 +141,38 @@ namespace Luna
 		case RHI::Format::rgba32_float: return ImagePixelFormat::rgba32_float;
 		default: return BasicError::not_supported();
 		}
+	}
+	inline R<Blob> compile_shader(const Path& shader_file, ShaderCompiler::ShaderType shader_type)
+	{
+		Blob ret;
+		lutry
+		{
+			lulet(f, open_file(shader_file.encode().c_str(), FileOpenFlag::read, FileCreationMode::open_existing));
+			auto file_size = f->get_size();
+			auto file_blob = Blob((usize)file_size);
+			luexp(f->read(file_blob.span()));
+			f.reset();
+			auto compiler = ShaderCompiler::new_compiler();
+			compiler->set_source({ (const c8*)file_blob.data(), file_blob.size()});
+			compiler->set_source_name(shader_file.filename());
+			compiler->set_source_file_path(shader_file);
+			compiler->set_entry_point("main");
+			compiler->set_target_format(RHI::get_current_platform_shader_target_format());
+			compiler->set_shader_type(shader_type);
+			compiler->set_shader_model(6, 0);
+#ifdef LUNA_DEBUG
+			compiler->set_optimization_level(ShaderCompiler::OptimizationLevel::none);
+			compiler->set_debug(true);
+#else
+			compiler->set_optimization_level(ShaderCompiler::OptimizationLevel::full);
+			compiler->set_debug(false);
+#endif
+			luexp(compiler->compile());
+			auto shader_data = compiler->get_output();
+			ret = Blob(shader_data.data(), shader_data.size());
+		}
+		lucatchret;
+		return ret;
 	}
 
 	//! @interface IAssetEditor

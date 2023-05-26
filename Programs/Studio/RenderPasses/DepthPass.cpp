@@ -32,17 +32,8 @@ namespace Luna
 			luset(m_depth_pass_slayout, device->new_shader_input_layout(ShaderInputLayoutDesc({ &dl, 1 },
 				ShaderInputLayoutFlag::allow_input_assembler_input_layout)));
 
-			lulet(vsf, open_file("DepthVert.cso", FileOpenFlag::read, FileCreationMode::open_existing));
-			auto file_size = vsf->get_size();
-			auto vs_blob = Blob((usize)file_size);
-			luexp(vsf->read(vs_blob.span()));
-			vsf = nullptr;
-
-			lulet(psf, open_file("DepthPixel.cso", FileOpenFlag::read, FileCreationMode::open_existing));
-			file_size = psf->get_size();
-			auto ps_blob = Blob((usize)file_size);
-			luexp(psf->read(ps_blob.span()));
-			psf = nullptr;
+			lulet(vs_blob, compile_shader("Shaders/DepthVert.hlsl", ShaderCompiler::ShaderType::vertex));
+			lulet(ps_blob, compile_shader("Shaders/DepthPixel.hlsl", ShaderCompiler::ShaderType::pixel));
 
 			GraphicsPipelineStateDesc ps_desc;
 			ps_desc.primitive_topology = PrimitiveTopology::triangle_list;
