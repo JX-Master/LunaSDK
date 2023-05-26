@@ -214,7 +214,7 @@ namespace Luna
         {
             lutry
             {
-                m_temporary_resources.clear();
+                m_transient_memory.clear();
                 m_cmdbuf = cmdbuf;
                 usize pass_index = 0;
                 for(usize i = 0; i < m_pass_data.size(); ++i)
