@@ -13,9 +13,6 @@
 #include <dxc/dxcapi.h>
 #include <wrl/client.h>
 #include <Runtime/TSAssert.hpp>
-#ifdef LUNA_PLATFORM_WINDOWS
-#include <d3dcompiler.h>
-#endif
 #include "../ShaderCompiler.hpp"
 
 using Microsoft::WRL::ComPtr;
@@ -63,9 +60,6 @@ namespace Luna
 			ComPtr<IDxcIncludeHandler> m_default_include_handler;
 
 			// Compiled data.
-#ifdef LUNA_PLATFORM_WINDOWS
-			ComPtr<ID3DBlob> m_d3d_blob; // For old DXBC.
-#endif
 			ComPtr<IDxcResult> m_dxc_result;
 			ComPtr<IDxcBlob> m_dxc_blob;
 			// Pointer to the final output data.
@@ -79,9 +73,6 @@ namespace Luna
 
 			void clear_output()
 			{
-#ifdef LUNA_PLATFORM_WINDOWS
-				m_d3d_blob.Reset();
-#endif
 				m_dxc_result.Reset();
 				m_dxc_blob.Reset();
 				m_out_data = nullptr;
@@ -97,8 +88,8 @@ namespace Luna
 				m_entry_point = "main";
 				m_target_format = TargetFormat::none;
 				m_shader_type = ShaderType::vertex;
-				m_shader_model_major = 5;
-				m_shader_model_minor = 1;
+				m_shader_model_major = 6;
+				m_shader_model_minor = 0;
 				m_optimization_level = OptimizationLevel::none;
 				m_include_paths.clear();
 				m_definitions.clear();

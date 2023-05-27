@@ -15,115 +15,17 @@
 #endif
 
 #include "ShaderCompiler.hpp"
-#include "VFS/VFS.hpp"
 #include <Runtime/VariantJSON.hpp>
 #include <locale>
 #include <codecvt>
 #include <Runtime/HashSet.hpp>
 #include <Runtime/Module.hpp>
-
-#ifdef LUNA_PLATFORM_WINDOWS
-#pragma comment(lib, "D3DCompiler.lib")
-#endif
+#include <Runtime/File.hpp>
 
 namespace Luna
 {
 	namespace ShaderCompiler
 	{
-#ifdef LUNA_PLATFORM_WINDOWS
-		static const c8 NULL_STRING[] = "";
-		class D3DInclude : public ID3DInclude
-		{
-		public:
-			Vector<Path> m_local_search_list;
-			HashSet<Path> m_included_files;
-			Compiler* m_compiler;
-			R<Blob> load_shader(const Path& path)
-			{
-				lutry
-				{
-					if (m_included_files.find(path) == m_included_files.end())
-					{
-						lulet(f, VFS::open_file(path, FileOpenFlag::read, FileCreationMode::open_existing));
-						lulet(r, load_file_data(f));
-						m_included_files.insert(path);
-						return r;
-					}
-				}
-				lucatchret;
-				// One file can be included only once.
-				return Blob((const byte_t*)NULL_STRING, 1);
-			}
-			HRESULT STDMETHODCALLTYPE Open(
-				D3D_INCLUDE_TYPE IncludeType,
-				LPCSTR           pFileName,
-				LPCVOID          pParentData,
-				LPCVOID* ppData,
-				UINT* pBytes
-			) override
-			{
-				Path file_path = pFileName;
-				Path path;
-				Blob ret;
-				if (IncludeType == D3D_INCLUDE_LOCAL)
-				{
-					// Try to find the shader in local search list.
-					for (auto iter = m_local_search_list.rbegin(); iter != m_local_search_list.rend(); ++iter)
-					{
-						path = *iter;
-						path.append(file_path);
-						auto r = load_shader(path);
-						if (succeeded(r))
-						{
-							ret = move(r.get());
-							break;
-						}
-					}
-				}
-				if (ret.empty())
-				{
-					// Find the shader in system paths.
-					for (auto& p : m_compiler->m_include_paths)
-					{
-						path = p;
-						path.append(file_path);
-						auto r = load_shader(path);
-						if (succeeded(r))
-						{
-							ret = move(r.get());
-							break;
-						}
-					}
-				}
-				if (ret.empty())
-				{
-					set_error(BasicError::not_found(), "Failed to find shader header %s", file_path.encode().c_str());
-					return E_FAIL;
-				}
-				path.pop_back();
-				if (*(const c8*)ret.data() != '\0')
-				{
-					m_local_search_list.push_back(path);
-				}
-				*pBytes = (UINT)ret.size();
-				*ppData = ret.detach();
-				return S_OK;
-			}
-
-			HRESULT STDMETHODCALLTYPE Close(
-				LPCVOID pData
-			) override
-			{
-				if (*(const c8*)pData != '\0')
-				{
-					m_local_search_list.pop_back();
-				}
-				memfree((void*)pData);
-				return S_OK;
-			}
-		};
-#endif
-
 		RV Compiler::compile_none()
 		{
 			RV r = dxc_compile(DxcTargetType::dxil);
@@ -195,6 +97,7 @@ namespace Luna
 		};
 		RV Compiler::dxc_compile(DxcTargetType target_type)
 		{
+			if (m_shader_model_major < 6) return set_error(BasicError::not_supported(), "Shader model 5.1 and olders are not supported.");
 			HRESULT hr;
 			if (!m_dxc_compiler)
 			{
@@ -338,8 +241,8 @@ namespace Luna
 		{
 			lutry
 			{
-				luexp(dxc_compile(DxcTargetType::spir_v));
-				
+				//luexp(dxc_compile(DxcTargetType::spir_v));
+				return BasicError::not_supported();
 			}
 			lucatchret;
 			return ok;
@@ -385,6 +288,6 @@ namespace Luna
 			return ok;
 		}
 
-		StaticRegisterModule mod("ShaderCompiler", "VFS", init, nullptr);
+		StaticRegisterModule mod("ShaderCompiler", "", init, nullptr);
 	}
 }

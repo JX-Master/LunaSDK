@@ -28,7 +28,6 @@ namespace Luna
 			//! Outputs nothing. This can be used if you only want to validate the input source code.
 			none = 0,
 			//! [Windows Only] Outputs DirectX Intermediate Language for shader model 6.0 and newer.
-			//! Outputs DirectX Bytecode for shader model 5.1 and older.
 			dxil,
 			//! Outputs SPIR-V for Vulkan and OpenGL.
 			spir_v,
