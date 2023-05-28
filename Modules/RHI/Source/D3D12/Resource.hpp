@@ -36,7 +36,7 @@ namespace Luna
 			virtual void set_name(const Name& name) override { m_name = name; set_object_name(m_res.Get(), name); }
 			virtual IDeviceMemory* get_memory() override { return m_memory; }
 			virtual BufferDesc get_desc() override { return m_desc; }
-			virtual R<void*> map(usize read_begin, usize read_end) override;
+			virtual RV map(usize read_begin, usize read_end, void** data) override;
 			virtual void unmap(usize write_begin, usize write_end) override;
 		};
 		struct TextureResource : ITexture

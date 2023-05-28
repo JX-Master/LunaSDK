@@ -133,7 +133,8 @@ RV start()
 			};
 
 			luset(vb, get_main_device()->new_buffer(MemoryType::upload, BufferDesc(BufferUsageFlag::vertex_buffer, sizeof(data))));
-			lulet(mapped_data, vb->map(0, 0));
+			void* mapped_data = nullptr;
+			luexp(vb->map(0, 0, &mapped_data));
 			memcpy(mapped_data, data, sizeof(data));
 			vb->unmap(0, sizeof(data));
 		}

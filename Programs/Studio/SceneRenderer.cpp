@@ -188,7 +188,8 @@ namespace Luna
 			Float3 env_color = scene_renderer->environment_color;
 			camera_cb_data.screen_width = m_settings.screen_size.x;
 			camera_cb_data.screen_height = m_settings.screen_size.y;
-			lulet(mapped, m_camera_cb->map(0, 0));
+			void* mapped = nullptr;
+			luexp(m_camera_cb->map(0, 0, &mapped));
 			memcpy(mapped, &camera_cb_data, sizeof(CameraCB));
 			m_camera_cb->unmap(0, sizeof(CameraCB));
 
@@ -229,7 +230,8 @@ namespace Luna
 				}
 				if (!ts.empty())
 				{
-					lulet(mapped, m_model_matrices->map(0, 0));
+					void* mapped = nullptr;
+					luexp(m_model_matrices->map(0, 0, &mapped));
 					for (usize i = 0; i < ts.size(); ++i)
 					{
 						Float4x4 m2w = ts[i]->local_to_world_matrix();
@@ -270,7 +272,8 @@ namespace Luna
 					luset(m_lighting_params, device->new_buffer(MemoryType::upload, BufferDesc(BufferUsageFlag::read_buffer, sizeof(LightingParams) * light_size)));
 					m_num_lights = light_size;
 				}
-				lulet(mapped, m_lighting_params->map(0, 0));
+				void* mapped = nullptr;
+				luexp(m_lighting_params->map(0, 0, &mapped));
 				for (usize i = 0; i < light_ts.size(); ++i)
 				{
 					LightingParams p;

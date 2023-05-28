@@ -192,10 +192,11 @@ RV start()
         luset(file_tex, dev->new_texture(MemoryType::local, TextureDesc::tex2d(Format::rgba8_unorm,
             TextureUsageFlag::read_texture | TextureUsageFlag::copy_dest, image_desc.width, image_desc.height, 1, 1)));
 
-        lulet(mapped, vb->map(0, 0));
+        void* mapped = nullptr;
+        luexp(vb->map(0, 0, &mapped));
         memcpy(mapped, vertices, sizeof(vertices));
         vb->unmap(0, sizeof(vertices));
-        luset(mapped, ib->map(0, 0));
+        luexp(ib->map(0, 0, &mapped));
         memcpy(mapped, indices, sizeof(indices));
         ib->unmap(0, sizeof(indices));
 
@@ -203,7 +204,8 @@ RV start()
         dev->get_texture_data_placement_info(image_desc.width, image_desc.height, 1, Format::rgba8_unorm, &size, nullptr, &row_pitch, &slice_pitch);
         lulet(tex_staging, dev->new_buffer(MemoryType::upload, BufferDesc(BufferUsageFlag::copy_source, size)));
 
-        lulet(tex_staging_data, tex_staging->map(0, 0));
+        void* tex_staging_data = nullptr;
+        luexp(tex_staging->map(0, 0, &tex_staging_data));
         memcpy_bitmap(tex_staging_data, image_data.data(), image_desc.width * 4, image_desc.height, row_pitch, image_desc.width * 4);
         tex_staging->unmap(0, size);
         
@@ -253,7 +255,8 @@ void draw()
         Float4x4 camera_mat = AffineMatrix::make_look_at(camera_pos, Float3(0, 0, 0), Float3(0, 1, 0));
         auto window_sz = get_window()->get_framebuffer_size();
         camera_mat = mul(camera_mat, ProjectionMatrix::make_perspective_fov(PI / 3.0f, (f32)window_sz.x / (f32)window_sz.y, 0.001f, 100.0f));
-        lulet(camera_mapped, cb->map(0, 0));
+        void* camera_mapped = nullptr;
+        luexp(cb->map(0, 0, &camera_mapped));
         memcpy(camera_mapped, &camera_mat, sizeof(Float4x4));
         cb->unmap(0, sizeof(Float4x4));
 

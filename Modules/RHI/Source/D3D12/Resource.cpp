@@ -65,20 +65,19 @@ namespace Luna
 			lucatchret;
 			return ok;
 		}
-		R<void*> BufferResource::map(usize read_begin, usize read_end)
+		RV BufferResource::map(usize read_begin, usize read_end, void** data)
 		{
 			lutsassert();
-			void* out_data = nullptr;
 			lutry
 			{
 				D3D12_RANGE range;
 				range.Begin = read_begin;
 				// Only buffers can be mapped, so we can read the resource size directly.
 				range.End = min(read_end, (usize)m_desc.size);
-				luexp(encode_hresult(m_res->Map(0, &range, &out_data)));
+				luexp(encode_hresult(m_res->Map(0, &range, data)));
 			}
 			lucatchret;
-			return out_data;
+			return ok;
 		}
 		void BufferResource::unmap(usize write_begin, usize write_end)
 		{

@@ -150,7 +150,8 @@ RV start()
 			luset(vb, device->new_buffer(MemoryType::upload, BufferDesc(BufferUsageFlag::vertex_buffer, sizeof(VertexData) * 4)));
 			u32 incides[] = { 0, 1, 2, 1, 3, 2 };
 			luset(ib, device->new_buffer(MemoryType::upload, BufferDesc(BufferUsageFlag::index_buffer, sizeof(incides))));
-			lulet(mapped_data, ib->map(0, 0));
+			void* mapped_data = nullptr;
+			luexp(ib->map(0, 0, &mapped_data));
 			memcpy(mapped_data, incides, sizeof(incides));
 			ib->unmap(0, sizeof(incides));
 
@@ -168,7 +169,8 @@ RV start()
 			device->get_texture_data_placement_info(image_desc.width, image_desc.height, 1, Format::rgba8_unorm, &size, nullptr, &row_pitch, &slice_pitch);
 			lulet(tex_staging, device->new_buffer(MemoryType::upload, BufferDesc(BufferUsageFlag::copy_source, size)));
 
-			lulet(tex_staging_data, tex_staging->map(0, 0));
+			void* tex_staging_data = nullptr;
+			luexp(tex_staging->map(0, 0, &tex_staging_data));
 			memcpy_bitmap(tex_staging_data, image_data.data(), image_desc.width * 4, image_desc.height, row_pitch, image_desc.width * 4);
 			tex_staging->unmap(0, size);
 
@@ -229,7 +231,8 @@ void draw()
 		{ {  width / w, -height / h },{ 1.0f, 1.0f } }
 	};
 
-	void* mapped = vb->map(0, 0).get();
+	void* mapped = nullptr;
+	vb->map(0, 0, &mapped);
 	memcpy(mapped, data, sizeof(data));
 	vb->unmap(0, sizeof(data));
 

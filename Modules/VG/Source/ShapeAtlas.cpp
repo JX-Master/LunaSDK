@@ -26,7 +26,8 @@ namespace Luna
 						BufferUsageFlag::read_buffer, shape_buffer_size)));
 					m_buffer_resource_capacity = m_commands.size();
 				}
-				lulet(shape_data, m_buffer_resource->map(0, 0));
+				void* shape_data = nullptr;
+				luexp(m_buffer_resource->map(0, 0, &shape_data));
 				memcpy(shape_data, m_commands.data(), m_commands.size() * sizeof(f32));
 				m_buffer_resource->unmap(0, m_commands.size() * sizeof(f32));
 				m_buffer_resource_dirty = false;

@@ -54,8 +54,9 @@ namespace Luna
             if (m_desc.type != QueryType::timestamp) return BasicError::not_supported();
             lutry
             {
-                lulet(mapped, m_result_buffer->map(index * sizeof(u64), (index + count) * sizeof(u64)));
-                memcpy(values, (u64*)mapped + index, count * sizeof(u64));
+                u64* mapped = nullptr;
+                luexp(m_result_buffer->map(index * sizeof(u64), (index + count) * sizeof(u64), (void**)&mapped));
+                memcpy(values, mapped + index, count * sizeof(u64));
                 m_result_buffer->unmap(0, 0);
             }
             lucatchret;
@@ -67,8 +68,9 @@ namespace Luna
             if (m_desc.type != QueryType::occlusion) return BasicError::not_supported();
             lutry
             {
-                lulet(mapped, m_result_buffer->map(index * sizeof(u64), (index + count) * sizeof(u64)));
-                memcpy(values, (u64*)mapped + index, count * sizeof(u64));
+                u64* mapped = nullptr;
+                luexp(m_result_buffer->map(index * sizeof(u64), (index + count) * sizeof(u64), (void**)&mapped));
+                memcpy(values, mapped + index, count * sizeof(u64));
                 m_result_buffer->unmap(0, 0);
             }
             lucatchret;
@@ -80,17 +82,20 @@ namespace Luna
             if (m_desc.type != QueryType::pipeline_statistics) return BasicError::not_supported();
             lutry
             {
-                lulet(mapped, m_result_buffer->map(index * sizeof(D3D12_QUERY_DATA_PIPELINE_STATISTICS),
-                    (index + count) * sizeof(D3D12_QUERY_DATA_PIPELINE_STATISTICS)));
+                D3D12_QUERY_DATA_PIPELINE_STATISTICS* mapped = nullptr;
+                luexp(m_result_buffer->map(index * sizeof(D3D12_QUERY_DATA_PIPELINE_STATISTICS),
+                    (index + count) * sizeof(D3D12_QUERY_DATA_PIPELINE_STATISTICS), (void**)&mapped));
                 for (usize i = 0; i < count; ++i)
                 {
-                    values[i].input_vertices = ((D3D12_QUERY_DATA_PIPELINE_STATISTICS*)mapped)[index + i].IAVertices;
-                    values[i].input_primitives = ((D3D12_QUERY_DATA_PIPELINE_STATISTICS*)mapped)[index + i].IAPrimitives;
-                    values[i].vs_invocations = ((D3D12_QUERY_DATA_PIPELINE_STATISTICS*)mapped)[index + i].VSInvocations;
-                    values[i].rasterizer_input_primitives = ((D3D12_QUERY_DATA_PIPELINE_STATISTICS*)mapped)[index + i].CInvocations;
-                    values[i].rendered_primitives = ((D3D12_QUERY_DATA_PIPELINE_STATISTICS*)mapped)[index + i].CPrimitives;
-                    values[i].ps_invocations = ((D3D12_QUERY_DATA_PIPELINE_STATISTICS*)mapped)[index + i].PSInvocations;
-                    values[i].cs_invocations = ((D3D12_QUERY_DATA_PIPELINE_STATISTICS*)mapped)[index + i].CSInvocations;
+                    auto& dest = values[i];
+                    auto& src = mapped[index + i];
+                    dest.input_vertices = src.IAVertices;
+                    dest.input_primitives = src.IAPrimitives;
+                    dest.vs_invocations = src.VSInvocations;
+                    dest.rasterizer_input_primitives = src.CInvocations;
+                    dest.rendered_primitives = src.CPrimitives;
+                    dest.ps_invocations = src.PSInvocations;
+                    dest.cs_invocations = src.CSInvocations;
                 }
                 m_result_buffer->unmap(0, 0);
             }

@@ -224,7 +224,8 @@ float4 main(PS_INPUT input) : SV_Target
                     u64 size, row_pitch, slice_pitch;
                     dev->get_texture_data_placement_info(width, height, 1, Format::rgba8_unorm, &size, nullptr, &row_pitch, &slice_pitch);
                     lulet(tex_staging, dev->new_buffer(MemoryType::upload, BufferDesc(BufferUsageFlag::copy_source, size)));
-                    lulet(tex_staging_data, tex_staging->map(0, 0));
+                    void* tex_staging_data = nullptr;
+                    luexp(tex_staging->map(0, 0, &tex_staging_data));
                     memcpy_bitmap(tex_staging_data, pixels, src_row_pitch, height, row_pitch, src_row_pitch);
                     tex_staging->unmap(0, src_row_pitch * height);
 
@@ -648,10 +649,12 @@ float4 main(PS_INPUT input) : SV_Target
                     luset(g_ib, dev->new_buffer(MemoryType::upload, BufferDesc(BufferUsageFlag::index_buffer, g_ib_size * sizeof(ImDrawIdx))));
                 }
                 // Upload vertex/index data into a single contiguous GPU buffer
-                lulet(vtx_resource, g_vb->map(0, 0));
-                lulet(idx_resource, g_ib->map(0, 0));
-                ImDrawVert* vtx_dst = (ImDrawVert*)vtx_resource;
-                ImDrawIdx* idx_dst = (ImDrawIdx*)idx_resource;
+                ImDrawVert* vtx_resource = nullptr;
+                ImDrawIdx* idx_resource = nullptr;
+                luexp(g_vb->map(0, 0, (void**)&vtx_resource));
+                luexp(g_ib->map(0, 0, (void**)&idx_resource));
+                ImDrawVert* vtx_dst = vtx_resource;
+                ImDrawIdx* idx_dst = idx_resource;
                 for (i32 n = 0; n < draw_data->CmdListsCount; ++n)
                 {
                     const ImDrawList* cmd_list = draw_data->CmdLists[n];
@@ -679,7 +682,8 @@ float4 main(PS_INPUT input) : SV_Target
                         { 0.0f,					0.0f,				0.5f,       0.0f },
                         { (R + L) / (L - R),	(T + B) / (B - T),  0.5f,       1.0f },
                     };
-                    lulet(cb_resource, g_cb->map(0, 0));
+                    void* cb_resource = nullptr;
+                    luexp(g_cb->map(0, 0, &cb_resource));
                     memcpy(cb_resource, &mvp, sizeof(Float4x4));
                     g_cb->unmap(0, sizeof(Float4x4));
                 }

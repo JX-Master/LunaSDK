@@ -73,13 +73,14 @@ namespace Luna
 			if (skybox && camera_type == CameraType::perspective)
 			{
 				// Draw skybox.
-				lulet(mapped, m_skybox_params_cb->map(0, 0));
+                SkyboxParams* mapped = nullptr;
+				luexp(m_skybox_params_cb->map(0, 0, (void**)&mapped));
 				auto camera_forward_dir = mul(Float4(0.0f, 0.0f, 1.0f, 0.0f), view_to_world);
-				memcpy(&((SkyboxParams*)mapped)->view_to_world, &view_to_world, sizeof(Float4x4));
-                ((SkyboxParams*)mapped)->fov = camera_fov;
+				memcpy(&mapped->view_to_world, &view_to_world, sizeof(Float4x4));
+                mapped->fov = camera_fov;
                 auto desc = output_tex->get_desc();
-                ((SkyboxParams*)mapped)->width = (u32)desc.width;
-                ((SkyboxParams*)mapped)->height = (u32)desc.height;
+                mapped->width = (u32)desc.width;
+                mapped->height = (u32)desc.height;
 				m_skybox_params_cb->unmap(0, sizeof(SkyboxParams));
                 cmdbuf->set_context(CommandBufferContextType::compute);
 				cmdbuf->resource_barrier(

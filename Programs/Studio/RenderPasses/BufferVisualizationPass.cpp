@@ -62,8 +62,9 @@ namespace Luna
         using namespace RHI;
         lutry
         {
-            lulet(mapped, m_vis_params->map(0, 0));
-            *(u32*)mapped = vis_type;
+            u32* mapped = nullptr;
+            luexp(m_vis_params->map(0, 0, (void**)&mapped));
+            *mapped = vis_type;
             m_vis_params->unmap(0, sizeof(u32));
             Ref<ITexture> scene_tex = ctx->get_output("scene_texture");
             Ref<ITexture> depth_tex = ctx->get_input("depth_texture");

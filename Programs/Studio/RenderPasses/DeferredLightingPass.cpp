@@ -70,8 +70,9 @@ namespace Luna
                 u32 cb_align = device->get_uniform_buffer_data_alignment();
                 u32 cb_size = (u32)align_upper(sizeof(Float2), cb_align);
                 lulet(cb, device->new_buffer(MemoryType::upload, BufferDesc(BufferUsageFlag::uniform_buffer, cb_size)));
-                lulet(mapped, cb->map(0, 0));
-                *(Float2U*)mapped = Float2U(1.0f / (f32)INTEGEATE_BRDF_SIZE, 1.0f / (f32)INTEGEATE_BRDF_SIZE);
+                Float2U* mapped = nullptr;
+                luexp(cb->map(0, 0, (void**)&mapped));
+                *mapped = Float2U(1.0f / (f32)INTEGEATE_BRDF_SIZE, 1.0f / (f32)INTEGEATE_BRDF_SIZE);
                 cb->unmap(0, sizeof(Float2U));
                 compute_cmdbuf->resource_barrier(
                     { {cb, BufferStateFlag::automatic, BufferStateFlag::uniform_buffer_cs, ResourceBarrierFlag::none} },
@@ -114,8 +115,9 @@ namespace Luna
         using namespace RHI;
         lutry
         {
-            lulet(mapped, m_lighting_mode_cb->map(0, 0));
-            *(u32*)mapped = lighting_mode;
+            u32* mapped = nullptr;
+            luexp(m_lighting_mode_cb->map(0, 0, (void**)&mapped));
+            *mapped = lighting_mode;
             m_lighting_mode_cb->unmap(0, sizeof(u32));
             Ref<ITexture> scene_tex = ctx->get_output("scene_texture");
             Ref<ITexture> depth_tex = ctx->get_input("depth_texture");

@@ -416,23 +416,21 @@ namespace Luna
 
 			//! Maps the resource data to system memory and enables CPU access to the resource data.
 			//! Map/unmap operations are reference counted, for each `map` operation, you need to call `unmap` once to finally unmap the memory.
-			//! Only buffer resources can be mapped.
-			//! @param[in] read_begin The byte offset of the beginning of the data range that will be read by CPU.
-			//! @param[in] read_end The byte offset of the ending of the data range that will be read by CPU.
+			//! @param[in] read_begin The offset, in bytes, of the beginning of the data range that will be read by CPU.
+			//! @param[in] read_end The offset, in bytes, of the ending of the data range that will be read by CPU.
+			//! @param[out] data Returns the pointer to the mapped memory. The returned pointer is not offsetted by `read_begin` and always points 
+			//! to the beginning of the resource data, but only data in [pointer + read_begin, pointer + read_end) range is valid for reading from CPU.
 			//! 
 			//! If `read_end <= read_begin`, no data will be read by CPU, which is required if resource heap type is not `MemoryType::readback`.
 			//! 
 			//! If `read_end` is larger than the subresource size (like setting to `USIZE_MAX`), the read range will be clamped to [read_begin, resource_size). 
-			//! @return Returns one pointer to the mapped resource data. 
-			//! The returned pointer is not offsetted by `read_begin` and always points to the beginning of the resource data, but 
-			//! only data in [pointer + read_begin, pointer + read_end) range is valid for reading from CPU.
-			virtual R<void*> map(usize read_begin, usize read_end) = 0;
+			//! 
+			virtual RV map(usize read_begin, usize read_end, void** data) = 0;
 
 			//! Invalidates the pointer to the mapped data, and synchronizes changed data with device when needed.
 			//! Map/unmap operations are reference counted, for each `map` operation, you need to call `unmap` once to finally unmap the memory.
-			//! Only buffer resources can be mapped.
-			//! @param[in] write_begin The byte offset of the beginning of the data range that is changed by CPU and should be synchronized. 
-			//! @param[in] write_end The byte offset of the ending of the data range that is changed by CPU and should be synchronized.
+			//! @param[in] write_begin The offset, in bytes, of the beginning of the data range that is changed by CPU and should be synchronized. 
+			//! @param[in] write_end The offset, in bytes, of the ending of the data range that is changed by CPU and should be synchronized.
 			//! 
 			//! If `write_begin <= write_end`, no data will be synchronized, which is required if resource heap type is not `MemoryType::upload`.
 			//! 

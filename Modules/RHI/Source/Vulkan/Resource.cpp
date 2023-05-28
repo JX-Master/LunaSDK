@@ -96,15 +96,14 @@ namespace Luna
 				vkSetDebugUtilsObjectNameEXT(m_device->m_device, &nameInfo);
 			}
 		}
-		R<void*> BufferResource::map(usize read_begin, usize read_end)
+		RV BufferResource::map(usize read_begin, usize read_end, void** data)
 		{
-			void* ret = nullptr;
 			lutry
 			{
-				luexp(encode_vk_result(vmaMapMemory(m_device->m_allocator, m_memory->m_allocation, &ret)));
+				luexp(encode_vk_result(vmaMapMemory(m_device->m_allocator, m_memory->m_allocation, data)));
 			}
 			lucatchret;
-			return ret;
+			return ok;
 		}
 		void BufferResource::unmap(usize write_begin, usize write_end)
 		{

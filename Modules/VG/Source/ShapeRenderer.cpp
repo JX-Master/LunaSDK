@@ -79,7 +79,8 @@ namespace Luna
 						u64 size, row_pitch, slice_pitch;
 						dev->get_texture_data_placement_info(1, 1, 1, Format::rgba8_unorm, &size, nullptr, &row_pitch, &slice_pitch);
 						lulet(tex_staging, dev->new_buffer(MemoryType::upload, BufferDesc(BufferUsageFlag::copy_source, size)));
-						lulet(tex_staging_data, tex_staging->map(0, 0));
+						void* tex_staging_data = nullptr;
+						luexp(tex_staging->map(0, 0, &tex_staging_data));
 						memcpy(tex_staging_data, &data, sizeof(data));
 						tex_staging->unmap(0, sizeof(data));
 						u32 copy_queue_index = U32_MAX;
@@ -207,7 +208,8 @@ namespace Luna
 						cb_size)));
 					m_cbs_capacity = num_draw_calls;
 				}
-				lulet(cb_data, m_cbs_resource->map(0, 0));
+				void* cb_data = nullptr;
+				luexp(m_cbs_resource->map(0, 0, &cb_data));
 				for (usize i = 0; i < num_draw_calls; ++i)
 				{
 					Float4x4U* dest = (Float4x4U*)(((usize)cb_data) + i * cb_element_size);

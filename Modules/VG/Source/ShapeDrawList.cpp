@@ -188,16 +188,18 @@ namespace Luna
 					m_index_buffer_capacity = num_indices;
 				}
 				m_index_buffer_size = num_indices;
-				lulet(vertex_data, m_vertex_buffer->map(0, 0));
-				lulet(index_data, m_index_buffer->map(0, 0));
+				Vertex* vertex_data = nullptr;
+				luexp(m_vertex_buffer->map(0, 0, (void**)&vertex_data));
+				u32* index_data = nullptr;
+				luexp(m_index_buffer->map(0, 0, (void**)&index_data));
 				u32 vertex_offset = 0;
 				u32 index_offset = 0;
 				for (usize i = 0; i < m_draw_calls.size(); ++i)
 				{
 					auto& dc = m_draw_call_resources[i];
-					Vertex* dest = ((Vertex*)vertex_data) + vertex_offset;
+					Vertex* dest = vertex_data + vertex_offset;
 					memcpy(dest, dc.vertices.data(), dc.vertices.size() * sizeof(Vertex));
-					u32* index_dest = ((u32*)index_data) + index_offset;
+					u32* index_dest = index_data + index_offset;
 					u32 base_vertex_offset = (u32)vertex_offset;
 					for (u32 index : dc.indices)
 					{

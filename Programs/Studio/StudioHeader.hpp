@@ -242,7 +242,8 @@ namespace Luna
 			dev->get_texture_data_placement_info(desc.width, desc.height, desc.depth, desc.format, &size, nullptr, &row_pitch, &slice_pitch);
 			lulet(tex_staging, dev->new_buffer(MemoryType::upload, BufferDesc(BufferUsageFlag::copy_source, size)));
 
-			lulet(tex_staging_data, tex_staging->map(0, 0));
+			void* tex_staging_data = nullptr;
+			luexp(tex_staging->map(0, 0, &tex_staging_data));
 			memcpy_bitmap3d(tex_staging_data, src, copy_width * bits_per_pixel(desc.format) / 8, copy_height, copy_depth, row_pitch, src_row_pitch, slice_pitch, src_slice_pitch);
 			tex_staging->unmap(0, size);
 
@@ -281,8 +282,8 @@ namespace Luna
 				copy_width, copy_height, copy_depth);
 			luexp(readback_cmdbuf->submit({}, {}, true));
 			readback_cmdbuf->wait();
-
-			lulet(tex_staging_data, tex_staging->map(0, 0));
+			void* tex_staging_data = nullptr;
+			luexp(tex_staging->map(0, 0, &tex_staging_data));
 			memcpy_bitmap3d(dst, tex_staging_data, copy_width * bits_per_pixel(desc.format) / 8, copy_height, copy_depth, dst_row_pitch, row_pitch, dst_slice_pitch, slice_pitch);
 			tex_staging->unmap(0, size);
 		}
@@ -298,7 +299,8 @@ namespace Luna
 			auto desc = dst->get_desc();
 			lulet(buf_staging, dev->new_buffer(MemoryType::upload, BufferDesc(BufferUsageFlag::copy_source, copy_size)));
 
-			lulet(buf_staging_data, buf_staging->map(0, 0));
+			void* buf_staging_data = nullptr;
+			luexp(buf_staging->map(0, 0, &buf_staging_data));
 			memcpy(buf_staging_data, src, copy_size);
 			buf_staging->unmap(0, copy_size);
 

@@ -144,7 +144,8 @@ namespace Luna
 			lulet(cb, device->new_buffer(MemoryType::upload,
 				BufferDesc(BufferUsageFlag::uniform_buffer, cb_size * (desc.mip_levels - 1))));
 
-			lulet(mapped, cb->map(0, 0));
+			void* mapped = nullptr;
+			luexp(cb->map(0, 0, &mapped));
 			for (u32 j = 0; j < (u32)(desc.mip_levels - 1); ++j)
 			{
 				u32 width = max<u32>((u32)desc.width >> (j + 1), 1);
@@ -224,7 +225,8 @@ namespace Luna
 			lulet(cb, device->new_buffer(MemoryType::upload,
 				BufferDesc(BufferUsageFlag::uniform_buffer, cb_size * (desc.mip_levels - 1))));
 
-			lulet(mapped, cb->map(0, 0));
+			void* mapped = nullptr;
+			luexp(cb->map(0, 0, &mapped));
 			for (u32 j = 0; j < (u32)(desc.mip_levels - 1); ++j)
 			{
 				u32 width = max<u32>((u32)desc.width >> (j + 1), 1);
