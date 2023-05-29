@@ -1,6 +1,7 @@
 luna_sdk_module_target("Runtime")
     add_headerfiles("*.hpp")
     add_headerfiles("Math/**.hpp")
+    add_headerfiles("Source/*.hpp")
     add_headerfiles("Source/Math/**.inl")
     add_files("Source/*.cpp")
     if is_os("windows") then

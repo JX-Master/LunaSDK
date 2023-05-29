@@ -65,7 +65,7 @@ namespace Luna
 			lulet(file, VFS::open_file(path, FileOpenFlag::write, FileCreationMode::create_always));
 			lulet(file_data, serialize(src));
 			auto file_data_json = json_write(file_data);
-			luexp(file->write({(byte_t*)file_data_json.data(), file_data_json.size()}));
+			luexp(file->write(file_data_json.data(), file_data_json.size()));
 		}
 		lucatchret;
 		return ok;
@@ -150,7 +150,7 @@ namespace Luna
 			lulet(f, open_file(shader_file.encode().c_str(), FileOpenFlag::read, FileCreationMode::open_existing));
 			auto file_size = f->get_size();
 			auto file_blob = Blob((usize)file_size);
-			luexp(f->read(file_blob.span()));
+			luexp(f->read(file_blob.data(), file_blob.size()));
 			f.reset();
 			auto compiler = ShaderCompiler::new_compiler();
 			compiler->set_source({ (const c8*)file_blob.data(), file_blob.size()});

@@ -30,19 +30,19 @@ namespace Luna
 		lutry
 		{
 			lulet(iter, VFS::open_dir(folder_path));
-			while (iter->valid())
+			while (iter->is_valid())
 			{
-				if ((iter->attribute() & FileAttributeFlag::directory) != FileAttributeFlag::none)
+				if ((iter->get_attribute() & FileAttributeFlag::directory) != FileAttributeFlag::none)
 				{
 					AssetThumbnail t;
-					t.m_filename = Name(iter->filename());
+					t.m_filename = Name(iter->get_filename());
 					t.m_is_dir = true;
 					assets.push_back(t);
 				}
 				else
 				{
 					// Ends with ".meta.la" or ".meta.lb"
-					const char* name = iter->filename();
+					const char* name = iter->get_filename();
 					usize name_len = strlen(name);
 					if (name_len > 5)
 					{

@@ -197,9 +197,9 @@ namespace Luna
 					{
 						usize bytes_to_read = (usize)min(16_mb, file_sz - i);
 						usize bytes_read;
-						luexp2(from_file->read({(byte_t*)buf, bytes_to_read}, &bytes_read));
+						luexp2(from_file->read(buf, bytes_to_read, &bytes_read));
 						luassert(bytes_to_read == bytes_read);
-						luexp2(to_file->write({(byte_t*)buf, bytes_to_read}, &bytes_read));
+						luexp2(to_file->write(buf, bytes_to_read, &bytes_read));
 						luassert(bytes_to_read == bytes_read);
 					}
 				}
@@ -207,9 +207,9 @@ namespace Luna
 				{
 					usize bytes_to_read = (usize)file_sz;
 					usize bytes_read;
-					luexp2(from_file->read({(byte_t*)buf, bytes_to_read}, &bytes_read));
+					luexp2(from_file->read(buf, bytes_to_read, &bytes_read));
 					luassert(bytes_to_read == bytes_read);
-					luexp2(to_file->write({(byte_t*)buf, bytes_to_read}, &bytes_read));
+					luexp2(to_file->write(buf, bytes_to_read, &bytes_read));
 					luassert(bytes_to_read == bytes_read);
 				}
 			}

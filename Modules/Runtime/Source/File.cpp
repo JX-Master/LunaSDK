@@ -41,7 +41,7 @@ namespace Luna
 			lulet(cursor, file->tell());
 			luexp(file->seek(0, SeekMode::begin));
 			ret.resize((usize)file->get_size());
-			luexp(file->read(ret.span()));
+			luexp(file->read(ret.data(), ret.size()));
 			luexp(file->seek((i64)cursor, SeekMode::begin));
 		}
 		lucatchret;

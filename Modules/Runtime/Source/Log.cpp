@@ -46,13 +46,13 @@ namespace Luna
 			auto io = get_std_io_stream();
 			lutry
 			{
-				luexp(io->write({(const byte_t*)"[", 1}));
-				luexp(io->write({(const byte_t*)message.sender.c_str(), message.sender.size()}));
-				luexp(io->write({(const byte_t*)"]", 1}));
-				luexp(io->write({(const byte_t*)print_verbosity(message.verbosity), 128}));
-				luexp(io->write({(const byte_t*)": ", 2}));
-				luexp(io->write({(const byte_t*)message.message.c_str(), message.message.size()}));
-				luexp(io->write({(const byte_t*)"\n", 1}));
+				luexp(io->write("[", 1));
+				luexp(io->write(message.sender.c_str(), message.sender.size()));
+				luexp(io->write("]", 1));
+				luexp(io->write(print_verbosity(message.verbosity), 128));
+				luexp(io->write(": ", 2));
+				luexp(io->write(message.message.c_str(), message.message.size()));
+				luexp(io->write("\n", 1));
 			}
 			lucatch {}
 		}
@@ -76,7 +76,7 @@ namespace Luna
 			{
 				lulet(f, open_file(g_filelog->filename.c_str(), FileOpenFlag::write, FileCreationMode::open_always));
 				luexp(f->seek(0, SeekMode::end));
-				luexp(f->write({(byte_t*)g_filelog->log_buffer.data(), g_filelog->log_buffer.size()}));
+				luexp(f->write(g_filelog->log_buffer.data(), g_filelog->log_buffer.size()));
 				g_filelog->log_buffer.clear();
 			}
 			lucatch

@@ -119,10 +119,10 @@ namespace Luna
 			{
 				lulet(iter, VFS::open_dir(directory));
 				Path path = directory;
-				for(; iter->valid(); iter->move_next())
+				for(; iter->is_valid(); iter->move_next())
 				{
-					path.push_back(iter->filename());
-					if(test_flags(iter->attribute(), FileAttributeFlag::directory))
+					path.push_back(iter->get_filename());
+					if(test_flags(iter->get_attribute(), FileAttributeFlag::directory))
 					{
 						luexp(recursive_load_asset_meta(path, assets));
 					}
@@ -287,11 +287,11 @@ namespace Luna
 			lutry
 			{
 				lulet(iter, VFS::open_dir(path));
-				while (iter->valid())
+				while (iter->is_valid())
 				{
-					if (!test_flags(iter->attribute(), FileAttributeFlag::directory))
+					if (!test_flags(iter->get_attribute(), FileAttributeFlag::directory))
 					{
-						auto name = iter->filename();
+						auto name = iter->get_filename();
 						auto name_size = strlen(name);
 						if (!memcmp(name, filename.c_str(), filename.size()))
 						{

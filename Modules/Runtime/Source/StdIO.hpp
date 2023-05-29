@@ -16,14 +16,14 @@ namespace Luna
         lustruct("StdIOStream", "4cbc48b8-b15b-423f-9535-d3435bef3055");
         luiimpl();
         
-        virtual RV read(Span<byte_t> buffer, usize* read_bytes)
+        virtual RV read(void* buffer, usize size, usize* read_bytes) override
         {
-            return OS::std_input({(c8*)buffer.data(), buffer.size()}, read_bytes);
+            return OS::std_input((c8*)buffer, size / sizeof(c8), read_bytes);
         }
 
-        virtual RV write(Span<const byte_t> buffer, usize* write_bytes)
+        virtual RV write(const void* buffer, usize size, usize* write_bytes) override
         {
-            return OS::std_output({(const c8*)buffer.data(), buffer.size()}, write_bytes);
+            return OS::std_output((const c8*)buffer, size / sizeof(c8), write_bytes);
         }
     };
 

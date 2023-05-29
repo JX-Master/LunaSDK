@@ -31,31 +31,31 @@ namespace Luna
 				OS::close_file(m_file);
 			}
 		}
-		RV read(Span<byte_t> buffer, usize* read_bytes)
+		virtual RV read(void* buffer, usize size, usize* read_bytes) override
 		{
-			return OS::read_file(m_file, buffer, read_bytes);
+			return OS::read_file(m_file, buffer, size, read_bytes);
 		}
-		RV write(Span<const byte_t> buffer, usize* write_bytes)
+		virtual RV write(const void* buffer, usize size, usize* write_bytes) override
 		{
-			return OS::write_file(m_file, buffer, write_bytes);
+			return OS::write_file(m_file, buffer, size, write_bytes);
 		}
-		u64 get_size()
+		virtual u64 get_size() override
 		{
 			return OS::get_file_size(m_file);
 		}
-		RV set_size(u64 sz)
+		virtual RV set_size(u64 sz) override
 		{
 			return OS::set_file_size(m_file, sz);
 		}
-		R<u64> tell()
+		virtual R<u64> tell() override
 		{
 			return OS::get_file_cursor(m_file);
 		}
-		RV seek(i64 offset, SeekMode mode)
+		virtual RV seek(i64 offset, SeekMode mode) override
 		{
 			return OS::set_file_cursor(m_file, offset, mode);
 		}
-		void flush()
+		virtual void flush() override
 		{
 			OS::flush_file(m_file);
 		}
@@ -77,19 +77,19 @@ namespace Luna
 				OS::close_dir(m_handle);
 			}
 		}
-		bool valid()
+		virtual bool is_valid() override
 		{
-			return OS::dir_iterator_valid(m_handle);
+			return OS::dir_iterator_is_valid(m_handle);
 		}
-		const char* filename()
+		virtual const char* get_filename() override
 		{
-			return OS::dir_iterator_filename(m_handle);
+			return OS::dir_iterator_get_filename(m_handle);
 		}
-		FileAttributeFlag attribute()
+		virtual FileAttributeFlag get_attribute() override
 		{
-			return OS::dir_iterator_attribute(m_handle);
+			return OS::dir_iterator_get_attribute(m_handle);
 		}
-		bool move_next()
+		virtual bool move_next() override
 		{
 			return OS::dir_iterator_move_next(m_handle);
 		}

@@ -87,6 +87,8 @@ namespace Luna
 			//! This state cannot be set as the after state of the resource. This state cannot be set along with other state flags.
 			//! state.
 			automatic = 0x80000000,
+
+			shader_read_write_cs = shader_read_cs | shader_write_cs
 		};
 		enum class TextureStateFlag : u32
 		{
@@ -123,7 +125,9 @@ namespace Luna
 			//! command buffer, the system loads the resource's global state automatically.
 			//! 
 			//! This state cannot be set as the after state of the resource. This state cannot be set along with other state flags.
-			automatic = 0x80000000
+			automatic = 0x80000000,
+
+			shader_read_write_cs = shader_read_cs | shader_write_cs
 		};
 		constexpr SubresourceIndex TEXTURE_BARRIER_ALL_SUBRESOURCES = {U32_MAX, U32_MAX};
 		struct TextureBarrier

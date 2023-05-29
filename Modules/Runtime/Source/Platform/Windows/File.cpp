@@ -470,17 +470,17 @@ namespace Luna
 			else close_unbuffered_file(f->handle);
 			Luna::memdelete(f);
 		}
-		RV read_file(opaque_t file, Span<byte_t> buffer, usize* read_bytes)
+		RV read_file(opaque_t file, void* buffer, usize size, usize* read_bytes)
 		{
 			File* f = (File*)file;
-			return f->buffered ? read_buffered_file(f->handle, buffer.data(), buffer.size(), read_bytes) :
-				read_unbuffered_file(f->handle, buffer.data(), buffer.size(), read_bytes);
+			return f->buffered ? read_buffered_file(f->handle, buffer, size, read_bytes) :
+				read_unbuffered_file(f->handle, buffer, size, read_bytes);
 		}
-		RV write_file(opaque_t file, Span<const byte_t> buffer, usize* write_bytes)
+		RV write_file(opaque_t file, const void* buffer, usize size, usize* write_bytes)
 		{
 			File* f = (File*)file;
-			return f->buffered ? write_buffered_file(f->handle, buffer.data(), buffer.size(), write_bytes) :
-				write_unbuffered_file(f->handle, buffer.data(), buffer.size(), write_bytes);
+			return f->buffered ? write_buffered_file(f->handle, buffer, size, write_bytes) :
+				write_unbuffered_file(f->handle, buffer, size, write_bytes);
 		}
 		u64 get_file_size(opaque_t file)
 		{
@@ -611,9 +611,9 @@ namespace Luna
 					// Remove all files in directory.
 					Vector<String> files;
 					lulet(iter, open_dir(path));
-					for(;dir_iterator_valid(iter); dir_iterator_move_next(iter))
+					for(;dir_iterator_is_valid(iter); dir_iterator_move_next(iter))
 					{
-						const c8* filename = dir_iterator_filename(iter);
+						const c8* filename = dir_iterator_get_filename(iter);
 						files.push_back(filename);
 					}
 					close_dir(iter);
@@ -696,9 +696,9 @@ namespace Luna
 			}
 			utf16_to_utf8(data->m_file_name, 512, (char16_t*)data->m_data.cFileName);
 			// Skip "." and "..".
-			while(dir_iterator_valid(data))
+			while(dir_iterator_is_valid(data))
 			{
-				const c8* filename = dir_iterator_filename(data);
+				const c8* filename = dir_iterator_get_filename(data);
 				if(strcmp(filename, ".") && strcmp(filename, "..")) break;
 				dir_iterator_move_next(data);
 			}
@@ -708,11 +708,11 @@ namespace Luna
 		{
 			Luna::memdelete((FileData*)dir_iter);
 		}
-		bool dir_iterator_valid(opaque_t dir_iter)
+		bool dir_iterator_is_valid(opaque_t dir_iter)
 		{
 			return ((FileData*)dir_iter)->m_allocated;
 		}
-		const c8* dir_iterator_filename(opaque_t dir_iter)
+		const c8* dir_iterator_get_filename(opaque_t dir_iter)
 		{
 			if (((FileData*)dir_iter)->m_allocated)
 			{
@@ -723,10 +723,10 @@ namespace Luna
 				return nullptr;
 			}
 		}
-		FileAttributeFlag dir_iterator_attribute(opaque_t dir_iter)
+		FileAttributeFlag dir_iterator_get_attribute(opaque_t dir_iter)
 		{
 			FileData* f = (FileData*)dir_iter;
-			if (!dir_iterator_valid(dir_iter))
+			if (!dir_iterator_is_valid(dir_iter))
 			{
 				return FileAttributeFlag::none;
 			}
@@ -749,7 +749,7 @@ namespace Luna
 		bool internal_dir_iterator_move_next(opaque_t dir_iter)
 		{
 			FileData* f = (FileData*)dir_iter;
-			if (!dir_iterator_valid(dir_iter))
+			if (!dir_iterator_is_valid(dir_iter))
 			{
 				return false;
 			}
@@ -768,7 +768,7 @@ namespace Luna
 			// Skip . and ..
 			while(r)
 			{
-				const c8* filename = dir_iterator_filename(dir_iter);
+				const c8* filename = dir_iterator_get_filename(dir_iter);
 				if(strcmp(filename, ".") && strcmp(filename, "..")) break;
 				r = internal_dir_iterator_move_next(dir_iter);
 			}

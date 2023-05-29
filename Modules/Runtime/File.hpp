@@ -83,15 +83,15 @@ namespace Luna
 		luiid("{97643c3c-4681-4b24-9aee-320f88379edc}");
 
 		//! Checks if this iterator points to a valid file item in the directory stream.
-		virtual bool valid() = 0;
+		virtual bool is_valid() = 0;
 
 		//! Returns the name of the file the iterator currently points to.
 		//! Returns `nullptr` if the file iterator is invalid.
-		virtual const c8* filename() = 0;
+		virtual const c8* get_filename() = 0;
 
 		//! Returns the file attribute of the file the iterator currently points to.
 		//! Returns EFileAttributeFlag::none if the file iterator is invalid.
-		virtual FileAttributeFlag attribute() = 0;
+		virtual FileAttributeFlag get_attribute() = 0;
 
 		//! Moves to the next file in the directory.
 		//! @return Returns `true` if the file iterator is valid after this call, 

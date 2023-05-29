@@ -335,7 +335,8 @@ namespace Luna
 		//! Reads data from the current position the cursor is pointing to and offsets the cursor back. If the data to be
 		//! read is not ready, the platform suspends this thread until the data is ready.
 		//! @param[in] file The file handle opened by `open_file`.
-		//! @param[in] buffer The buffer range used to store the read data.
+		//! @param[in] buffer The buffer used to store the read data.
+		//! @param[in] size The size, in bytes, of the data to read.
 		//! @param[out] read_bytes If this is not `nullptr`, the system sets the actual size of bytes being read to the buffer
 		//! to this parameter.
 		//! The actual size of bytes being read may be smaller than the size of bytes required to be read if the cursor
@@ -344,19 +345,20 @@ namespace Luna
 		//! can be considered as an EOF symbol in stdlib.
 		//! @return Returns success on success, returns the following error code on failure:
 		//! * BasicError::not_supported
-		RV read_file(opaque_t file, Span<byte_t> buffer, usize* read_bytes = nullptr);
+		RV read_file(opaque_t file, void* buffer, usize size, usize* read_bytes = nullptr);
 
 		//! Writes data to the current position the cursor is pointing to and offsets the cursor back. This call returns after
 		//! all data have been written.
 		//! @param[in] file The file handle opened by `open_file`.
-		//! @param[in] buffer The buffer range that holds the data to be written.
+		//! @param[in] buffer The buffer that holds the data to be written.
+		//! @param[in] size The size, in bytes, of the data to write.
 		//! @param[out] write_bytes If not `nullptr`, the system sets the actual size of bytes being written to this parameter.
 		//! Mostly, if the cursor goes beyond the end of the stream buffer while writing data, the stream will be expanded so
 		//! the succeeding data can be written, so unless an error occurs, the size of bytes written will always equal to the 
 		//! size of bytes required by the user to write. However, if an error occurs while writing data, some of the data may have 
 		//! already be written while others are not, in such case the `write_bytes` reported by system may not be equal to `size` 
 		//! specified by the user.
-		RV write_file(opaque_t file, Span<const byte_t> buffer, usize* write_bytes = nullptr);
+		RV write_file(opaque_t file, const void* buffer, usize size, usize* write_bytes = nullptr);
 
 		//! Gets the size of the file in bytes.
 		//! @param[in] file The file handle opened by `open_file`.
@@ -427,17 +429,17 @@ namespace Luna
 
 		//! Checks if this iterator points to a valid file item in the directory stream.
 		//! @param[in] dir_iter The directory iterator handle.
-		bool dir_iterator_valid(opaque_t dir_iter);
+		bool dir_iterator_is_valid(opaque_t dir_iter);
 
 		//! Returns the name of the file the iterator currently points to.
 		//! Returns `nullptr` if the file iterator is invalid.
 		//! @param[in] dir_iter The directory iterator handle.
-		const c8* dir_iterator_filename(opaque_t dir_iter);
+		const c8* dir_iterator_get_filename(opaque_t dir_iter);
 
 		//! Returns the file attribute of the file the iterator currently points to.
 		//! Returns EFileAttributeFlag::none if the file iterator is invalid.
 		//! @param[in] dir_iter The directory iterator handle.
-		FileAttributeFlag dir_iterator_attribute(opaque_t dir_iter);
+		FileAttributeFlag dir_iterator_get_attribute(opaque_t dir_iter);
 
 		//! Moves the file iterator to the next file in the directory.
 		//! @param[in] dir_iter The directory iterator handle.
@@ -479,6 +481,7 @@ namespace Luna
 
 		//! Reads one string from the standard input.
 		//! @param[in] buffer The buffer used to accept the input stream.
+		//! @param[in] size The number of `c8` characters to read from the input stream.
 		//! @remark The stream shall be encoded in UTF-8 format. The input process shall be terminated when
 		//! the buffer is full, or one new line (`\n`) or EOF is reached. The string stored in `buffer` shall
 		//! be null-terminated, so that at most `buffer.size() - 1` characters can be accepted. If the last 
@@ -488,10 +491,11 @@ namespace Luna
 		//! and not written to the buffer.
 		//! 
 		//! This function must be thread-safe.
- 		RV std_input(Span<c8> buffer, usize* read_bytes);
+ 		RV std_input(c8* buffer, usize size, usize* read_bytes);
 
 		//! Writes one string to the standard output.
 		//! @param[in] buffer The buffer that contains the string to be written.
+		//! @param[in] size The size of `c8` characters to write.
 		//! @remark The stream is assumed to be encoded in UTF-8 format. The output process shall be terminated when
 		//! one null terminator is reached, or the buffer size limit is reached. The input string is not guaranteed to
 		//! be null-terminated. If one character in the buffer is a multi-bytes character in UTF-8, it should either be fully
@@ -499,7 +503,7 @@ namespace Luna
 		//! The the output process is terminated by one null terminator, the null terminator should not be outputted.
 		//! 
 		//! This function must be thread-safe.
-		RV std_output(Span<const c8> buffer, usize* write_bytes);
+		RV std_output(const c8* buffer, usize size, usize* write_bytes);
 	}
 
 	//! The allocator that allocates memory from OS directly.

@@ -38,13 +38,13 @@ namespace Luna
 					m_socket = INVALID_SOCKET;
 				}
 			}
-			opaque_t get_native_handle() { return (opaque_t)m_socket; }
-			RV read(Span<byte_t> buffer, usize* read_bytes);
-			RV write(Span<const byte_t> buffer, usize* write_bytes);
-			RV bind(const SocketAddress& address);
-			RV listen(i32 len);
-			RV connect(const SocketAddress& address);
-			R<Ref<ISocket>> accept(SocketAddress& address);
+			virtual opaque_t get_native_handle() override { return (opaque_t)m_socket; }
+			virtual RV read(void* buffer, usize size, usize* read_bytes) override;
+			virtual RV write(const void* buffer, usize size, usize* write_bytes) override;
+			virtual RV bind(const SocketAddress& address) override;
+			virtual RV listen(i32 len) override;
+			virtual RV connect(const SocketAddress& address) override;
+			virtual R<Ref<ISocket>> accept(SocketAddress& address) override;
 		};
 		inline ErrCode translate_error(int err)
 		{
@@ -88,9 +88,9 @@ namespace Luna
 			}
 		}
 
-		RV Socket::read(Span<byte_t> buffer, usize* read_bytes)
+		RV Socket::read(void* buffer, usize size, usize* read_bytes)
 		{
-			int r = ::recv(m_socket, (char*)buffer.data(), (int)buffer.size(), 0);
+			int r = ::recv(m_socket, (char*)buffer, (int)size, 0);
 			if (r == SOCKET_ERROR)
 			{
 				if(read_bytes) *read_bytes = 0;
@@ -100,9 +100,9 @@ namespace Luna
 			if (read_bytes) *read_bytes = r;
 			return ok;
 		}
-		RV Socket::write(Span<const byte_t> buffer, usize* write_bytes)
+		RV Socket::write(const void* buffer, usize size, usize* write_bytes)
 		{
-			int r = ::send(m_socket, (const char*)buffer.data(), (int)buffer.size(), 0);
+			int r = ::send(m_socket, (const char*)buffer, (int)size, 0);
 			if (r == SOCKET_ERROR)
 			{
 				if(write_bytes) *write_bytes = 0;

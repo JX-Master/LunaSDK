@@ -331,9 +331,9 @@ namespace Luna
 			lulet(asset, Asset::new_asset(file_path, get_static_texture_asset_type()));
 			file_path.append_extension("tex");
 			lulet(f, VFS::open_file(file_path, FileOpenFlag::write | FileOpenFlag::user_buffering, FileCreationMode::create_always));
-			luexp(f->write({ (const byte_t*)"LUNAMIPS", 8 }));
+			luexp(f->write("LUNAMIPS", 8));
 			u64 num_mips = desc.mip_levels;
-			luexp(f->write({ (const byte_t*)&num_mips, sizeof(u64) }));
+			luexp(f->write(&num_mips, sizeof(u64)));
 			luexp(f->seek(sizeof(u64) * (2 * img_data.size() + 1), SeekMode::current));
 			// Convert data to file.
 			for (u32 i = 0; i < desc.mip_levels; ++i)
@@ -365,7 +365,7 @@ namespace Luna
 			}
 			// Write header.
 			luexp(f->seek(16, SeekMode::begin));
-			luexp(f->write({ (const byte_t*)offsets.data(), offsets.size() * sizeof(Pair<u64, u64>) }));
+			luexp(f->write(offsets.data(), offsets.size() * sizeof(Pair<u64, u64>)));
 			f.reset();
 			Asset::load_asset(asset);
 

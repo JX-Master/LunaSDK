@@ -666,12 +666,12 @@ namespace Luna
 			closedir(data->m_dir);
 			memdelete(data);
 		}
-		bool dir_iterator_valid(opaque_t dir_iter)
+		bool dir_iterator_is_valid(opaque_t dir_iter)
 		{
 			FileData* data = (FileData*)dir_iter;
 			return data->m_dirent != nullptr;
 		}
-		const c8* dir_iterator_filename(opaque_t dir_iter)
+		const c8* dir_iterator_get_filename(opaque_t dir_iter)
 		{
 			FileData* data = (FileData*)dir_iter;
 			if (data->m_dirent)
@@ -680,7 +680,7 @@ namespace Luna
 			}
 			return nullptr;
 		}
-		FileAttributeFlag dir_iterator_attribute(opaque_t dir_iter)
+		FileAttributeFlag dir_iterator_get_attribute(opaque_t dir_iter)
 		{
 			FileData* data = (FileData*)dir_iter;
 			FileAttributeFlag flags = FileAttributeFlag::none;

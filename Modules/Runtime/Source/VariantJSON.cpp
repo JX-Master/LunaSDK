@@ -174,12 +174,12 @@ namespace Luna
 				{
 					c8 buf[6];
 					usize read_bytes;
-					luexp(stream->read({(byte_t*)buf, sizeof(c8)}, &read_bytes));
+					luexp(stream->read(buf, sizeof(c8), &read_bytes));
 					if (read_bytes != sizeof(c8)) return 0;
 					usize charspan = utf8_charlen(buf[0]);
 					if (charspan > 1)
 					{
-						luexp(stream->read({(byte_t*)(buf + 1), sizeof(c8) * (charspan - 1)}, &read_bytes));
+						luexp(stream->read((buf + 1), sizeof(c8) * (charspan - 1), &read_bytes));
 						if (read_bytes != sizeof(c8) * (charspan - 1)) return 0;
 					}
 					ret = utf8_decode_char(buf);
@@ -868,6 +868,6 @@ namespace Luna
 	LUNA_RUNTIME_API RV json_write(IStream* stream, const Variant& v, bool indent)
 	{
 		String data = json_write(v, indent);
-		return stream->write({(byte_t*)data.data(), data.size()});
+		return stream->write(data.data(), data.size());
 	}
 }
