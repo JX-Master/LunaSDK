@@ -48,7 +48,6 @@ namespace Luna
 		ref_count_t ref_count;
 		ref_count_t weak_ref_count;
 		u32 expired;
-		SpinLock lock;
 		ObjectHeader() :
 			ref_count(1)
 			, weak_ref_count(0)
