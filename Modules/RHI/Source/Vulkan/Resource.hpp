@@ -28,7 +28,6 @@ namespace Luna
 
 			u32 m_owning_queue_family_index = U32_MAX;
 
-			RV post_init();
 			RV init_as_committed(MemoryType memory_type, const BufferDesc& desc);
 			RV init_as_aliasing(const BufferDesc& desc, DeviceMemory* memory);
 			~BufferResource();
@@ -72,7 +71,7 @@ namespace Luna
 
 			R<ImageView*> get_image_view(const TextureViewDesc& create_info);
 
-			RV post_init();
+			void post_init();
 			RV init_as_committed(MemoryType memory_type, const TextureDesc& desc);
 			RV init_as_aliasing(const TextureDesc& desc, DeviceMemory* memory);
 			~ImageResource();

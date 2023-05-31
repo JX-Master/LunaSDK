@@ -27,28 +27,19 @@ namespace Luna
 				}
 			}
 		}
-		RV BufferResource::post_init()
-		{
-			lutry
-			{
-				luexp(encode_vk_result(vmaBindBufferMemory(m_device->m_allocator, m_memory->m_allocation, m_buffer)));
-			}
-			lucatchret;
-			return ok;
-		}
 		RV BufferResource::init_as_committed(MemoryType memory_type, const BufferDesc& desc)
 		{
 			lutry
 			{
 				m_desc = desc;
-				luset(m_buffer, m_device->create_vk_buffer(m_desc));
-				VkMemoryRequirements memory_requirements;
-				m_device->m_funcs.vkGetBufferMemoryRequirements(m_device->m_device, m_buffer, &memory_requirements);
+				VkBufferCreateInfo create_info{};
+				encode_buffer_create_info(create_info, m_desc);
+				VmaAllocationCreateInfo allocation{};
+				encode_allocation_info(allocation, memory_type, test_flags(m_desc.flags, ResourceFlag::allow_aliasing));
 				auto memory = new_object<DeviceMemory>();
 				memory->m_device = m_device;
-				luexp(memory->init(memory_type, test_flags(desc.flags, ResourceFlag::allow_aliasing), memory_requirements));
 				m_memory = memory;
-				luexp(post_init());
+				luexp(encode_vk_result(vmaCreateBuffer(m_device->m_allocator, &create_info, &allocation, &m_buffer, &m_memory->m_allocation, &m_memory->m_allocation_info)));
 			}
 			lucatchret;
 			return ok;
@@ -67,7 +58,7 @@ namespace Luna
 					memory->m_allocation_info.memoryType & memory_requirements.memoryTypeBits)
 				{
 					m_memory = memory;
-					luexp(post_init());
+					luexp(encode_vk_result(vmaBindBufferMemory(m_device->m_allocator, m_memory->m_allocation, m_buffer)));
 				}
 				else
 				{
@@ -141,32 +132,26 @@ namespace Luna
 			m_image_views.push_back(make_pair(validated_desc, view));
 			return view;
 		}
-		RV ImageResource::post_init()
+		void ImageResource::post_init()
 		{
-			lutry
-			{
-				luexp(encode_vk_result(vmaBindImageMemory(m_device->m_allocator, m_memory->m_allocation, m_image)));
-				u32 num_subresources = m_desc.mip_levels * m_desc.array_size;
-				m_global_states.resize(num_subresources);
-			}
-			lucatchret;
-			return ok;
+			u32 num_subresources = m_desc.mip_levels * m_desc.array_size;
+			m_global_states.resize(num_subresources);
 		}
 		RV ImageResource::init_as_committed(MemoryType memory_type, const TextureDesc& desc)
 		{
 			lutry
 			{
 				m_desc = desc;
-				m_desc.flags |= ResourceFlag::allow_aliasing;
 				validate_texture_desc(m_desc);
-				luset(m_image, m_device->create_vk_image(m_desc));
-				VkMemoryRequirements memory_requirements;
-				m_device->m_funcs.vkGetImageMemoryRequirements(m_device->m_device, m_image, &memory_requirements);
+				VkImageCreateInfo create_info{};
+				encode_image_create_info(create_info, m_desc);
+				VmaAllocationCreateInfo allocation{};
+				encode_allocation_info(allocation, memory_type, test_flags(desc.flags, ResourceFlag::allow_aliasing));
 				auto memory = new_object<DeviceMemory>();
 				memory->m_device = m_device;
-				luexp(memory->init(memory_type, test_flags(desc.flags, ResourceFlag::allow_aliasing), memory_requirements));
 				m_memory = memory;
-				luexp(post_init());
+				luexp(encode_vk_result(vmaCreateImage(m_device->m_allocator, &create_info, &allocation, &m_image, &m_memory->m_allocation, &m_memory->m_allocation_info)));
+				post_init();
 			}
 			lucatchret;
 			return ok;
@@ -176,6 +161,7 @@ namespace Luna
 			lutry
 			{
 				m_desc = desc;
+				m_desc.flags |= ResourceFlag::allow_aliasing;
 				validate_texture_desc(m_desc);
 				luset(m_image, m_device->create_vk_image(m_desc));
 				VkMemoryRequirements memory_requirements;
@@ -185,7 +171,8 @@ namespace Luna
 					memory->m_allocation_info.memoryType & memory_requirements.memoryTypeBits)
 				{
 					m_memory = memory;
-					luexp(post_init());
+					luexp(encode_vk_result(vmaBindImageMemory(m_device->m_allocator, m_memory->m_allocation, m_image)));
+					post_init();
 				}
 				else
 				{
