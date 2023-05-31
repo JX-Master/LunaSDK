@@ -22,6 +22,10 @@ namespace Luna
 				m_desc = desc;
 				D3D12_RESOURCE_DESC rd = encode_buffer_desc(desc);
 				D3D12MA::ALLOCATION_DESC allocation_desc{};
+				if (test_flags(desc.flags, ResourceFlag::allow_aliasing))
+				{
+					allocation_desc.Flags |= D3D12MA::ALLOCATION_FLAG_CAN_ALIAS;
+				}
 				allocation_desc.HeapType = encode_memory_type(memory_type);
 				D3D12_RESOURCE_STATES state = D3D12_RESOURCE_STATE_COMMON;
 				if (memory_type == MemoryType::upload)
@@ -48,6 +52,7 @@ namespace Luna
 			{
 				m_desc = desc;
 				D3D12_RESOURCE_DESC rd = encode_buffer_desc(desc);
+				m_desc.flags |= ResourceFlag::allow_aliasing;
 				D3D12_RESOURCE_STATES state = D3D12_RESOURCE_STATE_COMMON;
 				if (memory->m_memory_type == MemoryType::upload)
 				{
@@ -261,6 +266,10 @@ namespace Luna
 				m_desc = desc;
 				D3D12_RESOURCE_DESC rd = encode_texture_desc(desc);
 				D3D12MA::ALLOCATION_DESC allocation_desc{};
+				if (test_flags(desc.flags, ResourceFlag::allow_aliasing))
+				{
+					allocation_desc.Flags |= D3D12MA::ALLOCATION_FLAG_CAN_ALIAS;
+				}
 				allocation_desc.HeapType = encode_memory_type(memory_type);
 				D3D12_RESOURCE_STATES state = D3D12_RESOURCE_STATE_COMMON;
 				D3D12_CLEAR_VALUE* pcv = NULL;
@@ -308,6 +317,7 @@ namespace Luna
 			lutry
 			{
 				m_desc = desc;
+				m_desc.flags |= ResourceFlag::allow_aliasing;
 				D3D12_RESOURCE_DESC rd = encode_texture_desc(desc);
 				D3D12_RESOURCE_STATES state = D3D12_RESOURCE_STATE_COMMON;
 				D3D12_CLEAR_VALUE* pcv = NULL;

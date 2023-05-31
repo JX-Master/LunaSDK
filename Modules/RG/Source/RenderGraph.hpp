@@ -88,13 +88,17 @@ namespace Luna
                     // Try to allocate one new block.
                     if (desc.type == ResourceType::texture)
                     {
-                        auto r = m_device->new_texture(desc.memory_type, desc.texture);
+                        auto tex = desc.texture;
+                        tex.flags |= RHI::ResourceFlag::allow_aliasing;
+                        auto r = m_device->new_texture(desc.memory_type, tex);
                         if (failed(r)) return r.errcode();
                         ret = r.get();
                     }
                     else
                     {
-                        auto r = m_device->new_buffer(desc.memory_type, desc.buffer);
+                        auto buffer = desc.buffer;
+                        buffer.flags |= RHI::ResourceFlag::allow_aliasing;
+                        auto r = m_device->new_buffer(desc.memory_type, buffer);
                         if (failed(r)) return r.errcode();
                         ret = r.get();
                     }

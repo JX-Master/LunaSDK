@@ -46,7 +46,7 @@ namespace Luna
 				m_device->m_funcs.vkGetBufferMemoryRequirements(m_device->m_device, m_buffer, &memory_requirements);
 				auto memory = new_object<DeviceMemory>();
 				memory->m_device = m_device;
-				luexp(memory->init(memory_type, memory_requirements));
+				luexp(memory->init(memory_type, test_flags(desc.flags, ResourceFlag::allow_aliasing), memory_requirements));
 				m_memory = memory;
 				luexp(post_init());
 			}
@@ -58,6 +58,7 @@ namespace Luna
 			lutry
 			{
 				m_desc = desc;
+				m_desc.flags |= ResourceFlag::allow_aliasing;
 				luset(m_buffer, m_device->create_vk_buffer(m_desc));
 				VkMemoryRequirements memory_requirements;
 				m_device->m_funcs.vkGetBufferMemoryRequirements(m_device->m_device, m_buffer, &memory_requirements);
@@ -156,13 +157,14 @@ namespace Luna
 			lutry
 			{
 				m_desc = desc;
+				m_desc.flags |= ResourceFlag::allow_aliasing;
 				validate_texture_desc(m_desc);
 				luset(m_image, m_device->create_vk_image(m_desc));
 				VkMemoryRequirements memory_requirements;
 				m_device->m_funcs.vkGetImageMemoryRequirements(m_device->m_device, m_image, &memory_requirements);
 				auto memory = new_object<DeviceMemory>();
 				memory->m_device = m_device;
-				luexp(memory->init(memory_type, memory_requirements));
+				luexp(memory->init(memory_type, test_flags(desc.flags, ResourceFlag::allow_aliasing), memory_requirements));
 				m_memory = memory;
 				luexp(post_init());
 			}

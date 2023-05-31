@@ -354,7 +354,7 @@ namespace Luna
 				}
 				auto memory = new_object<DeviceMemory>();
 				memory->m_device = this;
-				luexp(memory->init(memory_type, memory_requirements));
+				luexp(memory->init(memory_type, true, memory_requirements));
 				ret = memory;
 			}
 			lucatchret;

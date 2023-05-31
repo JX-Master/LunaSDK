@@ -190,7 +190,7 @@ namespace Luna
 			AttachmentBlendDesc rt[8];
 
 			BlendDesc(
-				std::initializer_list<AttachmentBlendDesc> rt = {},
+				InitializerList<AttachmentBlendDesc> rt = {},
 				bool alpha_to_coverage_enable = false,
 				bool independent_blend_enable = false,
 				bool logic_op_enable = false,

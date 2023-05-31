@@ -26,7 +26,7 @@ namespace Luna
 			VmaAllocationInfo m_allocation_info;
 			u32 m_alignment;
 
-			RV init(MemoryType memory_type, const VkMemoryRequirements& pVkMemoryRequirements);
+			RV init(MemoryType memory_type, bool allow_aliasing, const VkMemoryRequirements& pVkMemoryRequirements);
 			~DeviceMemory();
 
 			virtual IDevice* get_device() override { return m_device; }

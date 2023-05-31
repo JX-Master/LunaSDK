@@ -24,7 +24,7 @@ namespace Luna
 			//! Vertex shader cannot access the shader input.
 			deny_vertex_shader_access = 0x02,
 			//! Pixel shader cannot access the shader input.
-			deny_pixel_shader_access = 0x20,
+			deny_pixel_shader_access = 0x04,
 		};
 
 		//! Describes the shader input layout.

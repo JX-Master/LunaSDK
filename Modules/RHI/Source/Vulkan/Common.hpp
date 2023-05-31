@@ -354,9 +354,9 @@ namespace Luna
 			dest.samples = encode_sample_count(desc.sample_count);
 			dest.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 			dest.flags = 0;
-			if (test_flags(desc.flags, TextureFlag::cube)) dest.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+			if (test_flags(desc.usages, TextureUsageFlag::cube)) dest.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
 		}
-		inline void encode_allocation_info(VmaAllocationCreateInfo& dest, MemoryType memory_type)
+		inline void encode_allocation_info(VmaAllocationCreateInfo& dest, MemoryType memory_type, bool allow_aliasing)
 		{
 			switch (memory_type)
 			{
@@ -372,6 +372,10 @@ namespace Luna
 				dest.requiredFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
 				dest.preferredFlags = VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
 				break;
+			}
+			if (allow_aliasing)
+			{
+				dest.flags |= VMA_ALLOCATION_CREATE_CAN_ALIAS_BIT;
 			}
 		}
 		inline VkAccessFlags encode_access_flags(BufferStateFlag state)
