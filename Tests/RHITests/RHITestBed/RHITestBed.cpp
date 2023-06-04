@@ -83,7 +83,7 @@ namespace Luna
 				for (u32 i = 0; i < num_queues; ++i)
 				{
 					auto desc = device->get_command_queue_desc(i);
-					if (desc.type == CommandQueueType::graphics && test_flags(desc.flags, CommandQueueFlags::presenting))
+					if (desc.type == CommandQueueType::graphics && test_flags(desc.flags, CommandQueueFlag::presenting))
 					{
 						m_command_queue = i;
 						break;

@@ -73,7 +73,7 @@ namespace Luna
 			void expand_buffer();
 			usize allocate_entry();
 			void free_entry(World* world, usize index);
-			void relocate_entity(usize dest, usize src);
+			void relocate_entity(usize dst, usize src);
 			void free_all_entities();
 		};
 	}

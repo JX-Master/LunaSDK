@@ -417,25 +417,25 @@ namespace Luna
 				u32 attachment_index = 0;
 				for (usize i = 0; i < num_color_attachments; ++i)
 				{
-					auto& dest = clear_values[attachment_index];
+					auto& dst = clear_values[attachment_index];
 					auto& src = desc.color_attachments[i].clear_value;
-					dest.color.float32[0] = src.x;
-					dest.color.float32[1] = src.y;
-					dest.color.float32[2] = src.z;
-					dest.color.float32[3] = src.w;
+					dst.color.float32[0] = src.x;
+					dst.color.float32[1] = src.y;
+					dst.color.float32[2] = src.z;
+					dst.color.float32[3] = src.w;
 					++attachment_index;
 				}
 				for (usize i = 0; i < num_resolve_targets; ++i)
 				{
-					auto& dest = clear_values[attachment_index];
-					memzero(&dest, sizeof(VkClearValue));
+					auto& dst = clear_values[attachment_index];
+					memzero(&dst, sizeof(VkClearValue));
 					++attachment_index;
 				}
 				if (use_depth_stencil)
 				{
-					auto& dest = clear_values[attachment_index];
-					dest.depthStencil.depth = desc.depth_stencil_attachment.depth_clear_value;
-					dest.depthStencil.stencil = desc.depth_stencil_attachment.stencil_clear_value;
+					auto& dst = clear_values[attachment_index];
+					dst.depthStencil.depth = desc.depth_stencil_attachment.depth_clear_value;
+					dst.depthStencil.stencil = desc.depth_stencil_attachment.stencil_clear_value;
 					++attachment_index;
 				}
 				begin_info.clearValueCount = num_attachments;
@@ -637,14 +637,14 @@ namespace Luna
 				auto& desc = m_dsv->m_desc;
 				for (usize i = 0; i < rects.size(); ++i)
 				{
-					auto& dest = clear_rects[i];
+					auto& dst = clear_rects[i];
 					auto& src = rects[i];
-					dest.rect.offset.x = src.offset_x;
-					dest.rect.offset.y = m_rt_height - src.offset_y - src.height;
-					dest.rect.extent.width = src.width;
-					dest.rect.extent.height = src.height;
-					dest.baseArrayLayer = desc.array_slice;
-					dest.layerCount = desc.array_size;
+					dst.rect.offset.x = src.offset_x;
+					dst.rect.offset.y = m_rt_height - src.offset_y - src.height;
+					dst.rect.extent.width = src.width;
+					dst.rect.extent.height = src.height;
+					dst.baseArrayLayer = desc.array_slice;
+					dst.layerCount = desc.array_size;
 				}
 			}
 			m_device->m_funcs.vkCmdClearAttachments(m_command_buffer, 1, &attachment, num_clear_rects, clear_rects);
@@ -687,12 +687,12 @@ namespace Luna
 				auto& desc = m_color_attachments[index]->m_desc;
 				for (usize i = 0; i < rects.size(); ++i)
 				{
-					auto& dest = clear_rects[i];
+					auto& dst = clear_rects[i];
 					auto& src = rects[i];
-					dest.rect.offset.x = src.offset_x;
-					dest.rect.offset.y = m_rt_height - src.offset_y - src.height;
-					dest.rect.extent.width = src.width;
-					dest.rect.extent.height = src.height;
+					dst.rect.offset.x = src.offset_x;
+					dst.rect.offset.y = m_rt_height - src.offset_y - src.height;
+					dst.rect.extent.width = src.width;
+					dst.rect.extent.height = src.height;
 					if (desc.type != TextureViewType::tex3d)
 					{
 						clear_rects[0].baseArrayLayer = desc.array_slice;
@@ -751,11 +751,11 @@ namespace Luna
 			assert_compute_context();
 			m_device->m_funcs.vkCmdDispatch(m_command_buffer, thread_group_count_x, thread_group_count_y, thread_group_count_z);
 		}
-		void CommandBuffer::copy_resource(IResource* dest, IResource* src)
+		void CommandBuffer::copy_resource(IResource* dst, IResource* src)
 		{
 			assert_copy_context();
 			BufferResource* s = cast_object<BufferResource>(src->get_object());
-			BufferResource* d = cast_object<BufferResource>(dest->get_object());
+			BufferResource* d = cast_object<BufferResource>(dst->get_object());
 			if (s && d)
 			{
 				VkBufferCopy copy{};
@@ -767,7 +767,7 @@ namespace Luna
 			else
 			{
 				ImageResource* ts = cast_object<ImageResource>(src->get_object());
-				ImageResource* td = cast_object<ImageResource>(dest->get_object());
+				ImageResource* td = cast_object<ImageResource>(dst->get_object());
 				// The copy is performed one per mips.
 				u32 mip_levels = td->m_desc.mip_levels;
 				u32 array_count = td->m_desc.array_size;
@@ -792,8 +792,8 @@ namespace Luna
 					copy.extent.depth = max<u32>(td->m_desc.depth >> mip, 1);
 				}
 				VkImageLayout src_layout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-				VkImageLayout dest_layout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-				m_device->m_funcs.vkCmdCopyImage(m_command_buffer, ts->m_image, src_layout, td->m_image, dest_layout, mip_levels, copies);
+				VkImageLayout dst_layout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+				m_device->m_funcs.vkCmdCopyImage(m_command_buffer, ts->m_image, src_layout, td->m_image, dst_layout, mip_levels, copies);
 			}
 		}
 		void CommandBuffer::copy_buffer(
@@ -841,8 +841,8 @@ namespace Luna
 			copy.extent.height = copy_height;
 			copy.extent.depth = copy_depth;
 			VkImageLayout src_layout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-			VkImageLayout dest_layout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-			m_device->m_funcs.vkCmdCopyImage(m_command_buffer, s->m_image, src_layout, d->m_image, dest_layout, 1, &copy);
+			VkImageLayout dst_layout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+			m_device->m_funcs.vkCmdCopyImage(m_command_buffer, s->m_image, src_layout, d->m_image, dst_layout, 1, &copy);
 		}
 		void CommandBuffer::copy_buffer_to_texture(
 			ITexture* dst, SubresourceIndex dst_subresource, u32 dst_x, u32 dst_y, u32 dst_z,
@@ -916,12 +916,12 @@ namespace Luna
 				{
 					m_track_system.m_src_stage_flags = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
 				}
-				if (m_track_system.m_dest_stage_flags == 0)
+				if (m_track_system.m_dst_stage_flags == 0)
 				{
-					m_track_system.m_dest_stage_flags = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+					m_track_system.m_dst_stage_flags = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
 				}
 				m_device->m_funcs.vkCmdPipelineBarrier(m_command_buffer,
-					m_track_system.m_src_stage_flags, m_track_system.m_dest_stage_flags, 0, 0, nullptr,
+					m_track_system.m_src_stage_flags, m_track_system.m_dst_stage_flags, 0, 0, nullptr,
 					m_track_system.m_buffer_barriers.size(), m_track_system.m_buffer_barriers.data(),
 					m_track_system.m_image_barriers.size(), m_track_system.m_image_barriers.data());
 			}
@@ -965,7 +965,7 @@ namespace Luna
 				if (!m_track_system.m_buffer_barriers.empty() || !m_track_system.m_image_barriers.empty())
 				{
 					m_device->m_funcs.vkCmdPipelineBarrier(m_command_buffer,
-						m_track_system.m_src_stage_flags, m_track_system.m_dest_stage_flags, 0, 0, nullptr,
+						m_track_system.m_src_stage_flags, m_track_system.m_dst_stage_flags, 0, 0, nullptr,
 						m_track_system.m_buffer_barriers.size(), m_track_system.m_buffer_barriers.data(),
 						m_track_system.m_image_barriers.size(), m_track_system.m_image_barriers.data());
 				}
@@ -991,7 +991,7 @@ namespace Luna
 						begin_info.pInheritanceInfo = nullptr;
 						luexp(encode_vk_result(m_device->m_funcs.vkBeginCommandBuffer(m_resolve_buffer, &begin_info)));
 						m_device->m_funcs.vkCmdPipelineBarrier(m_resolve_buffer,
-							m_track_system.m_src_stage_flags, m_track_system.m_dest_stage_flags, 0, 0, nullptr,
+							m_track_system.m_src_stage_flags, m_track_system.m_dst_stage_flags, 0, 0, nullptr,
 							m_track_system.m_buffer_barriers.size(), m_track_system.m_buffer_barriers.data(),
 							m_track_system.m_image_barriers.size(), m_track_system.m_image_barriers.data());
 						luexp(encode_vk_result(m_device->m_funcs.vkEndCommandBuffer(m_resolve_buffer)));

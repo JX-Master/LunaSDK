@@ -44,16 +44,16 @@ namespace Luna
 	LUNA_RUNTIME_API void construct_type_range(typeinfo_t type, void* data, usize count);
 	LUNA_RUNTIME_API void destruct_type(typeinfo_t type, void* data);
 	LUNA_RUNTIME_API void destruct_type_range(typeinfo_t type, void* data, usize count);
-	LUNA_RUNTIME_API void copy_construct_type(typeinfo_t type, void* dest, void* src);
-	LUNA_RUNTIME_API void copy_construct_type_range(typeinfo_t type, void* dest, void* src, usize count);
-	LUNA_RUNTIME_API void move_construct_type(typeinfo_t type, void* dest, void* src);
-	LUNA_RUNTIME_API void move_construct_type_range(typeinfo_t type, void* dest, void* src, usize count);
-	LUNA_RUNTIME_API void copy_assign_type(typeinfo_t type, void* dest, void* src);
-	LUNA_RUNTIME_API void copy_assign_type_range(typeinfo_t type, void* dest, void* src, usize count);
-	LUNA_RUNTIME_API void move_assign_type(typeinfo_t type, void* dest, void* src);
-	LUNA_RUNTIME_API void move_assign_type_range(typeinfo_t type, void* dest, void* src, usize count);
-	LUNA_RUNTIME_API void relocate_type(typeinfo_t type, void* dest, void* src);
-	LUNA_RUNTIME_API void relocate_type_range(typeinfo_t type, void* dest, void* src, usize count);
+	LUNA_RUNTIME_API void copy_construct_type(typeinfo_t type, void* dst, void* src);
+	LUNA_RUNTIME_API void copy_construct_type_range(typeinfo_t type, void* dst, void* src, usize count);
+	LUNA_RUNTIME_API void move_construct_type(typeinfo_t type, void* dst, void* src);
+	LUNA_RUNTIME_API void move_construct_type_range(typeinfo_t type, void* dst, void* src, usize count);
+	LUNA_RUNTIME_API void copy_assign_type(typeinfo_t type, void* dst, void* src);
+	LUNA_RUNTIME_API void copy_assign_type_range(typeinfo_t type, void* dst, void* src, usize count);
+	LUNA_RUNTIME_API void move_assign_type(typeinfo_t type, void* dst, void* src);
+	LUNA_RUNTIME_API void move_assign_type_range(typeinfo_t type, void* dst, void* src, usize count);
+	LUNA_RUNTIME_API void relocate_type(typeinfo_t type, void* dst, void* src);
+	LUNA_RUNTIME_API void relocate_type_range(typeinfo_t type, void* dst, void* src, usize count);
 
 	// Equal to 
 
@@ -110,10 +110,10 @@ namespace Luna
 
 	using structure_ctor_t = void(typeinfo_t type, void* inst);
 	using structure_dtor_t = void(typeinfo_t type, void* inst);
-	using structure_copy_ctor_t = void(typeinfo_t type, void* dest, void* src);
-	using structure_move_ctor_t = void(typeinfo_t type, void* dest, void* src);
-	using structure_copy_assign_t = void(typeinfo_t type, void* dest, void* src);
-	using structure_move_assign_t = void(typeinfo_t type, void* dest, void* src);
+	using structure_copy_ctor_t = void(typeinfo_t type, void* dst, void* src);
+	using structure_move_ctor_t = void(typeinfo_t type, void* dst, void* src);
+	using structure_copy_assign_t = void(typeinfo_t type, void* dst, void* src);
+	using structure_move_assign_t = void(typeinfo_t type, void* dst, void* src);
 
 	struct StructureTypeDesc
 	{
@@ -247,24 +247,24 @@ namespace Luna
 		((_Ty*)inst)->~_Ty();
 	}
 	template <typename _Ty>
-	inline void default_copy_ctor(typeinfo_t type, void* dest, void* src)
+	inline void default_copy_ctor(typeinfo_t type, void* dst, void* src)
 	{
-		copy_construct((_Ty*)dest, (_Ty*)src);
+		copy_construct((_Ty*)dst, (_Ty*)src);
 	}
 	template <typename _Ty>
-	inline void default_move_ctor(typeinfo_t type, void* dest, void* src)
+	inline void default_move_ctor(typeinfo_t type, void* dst, void* src)
 	{
-		move_construct((_Ty*)dest, (_Ty*)src);
+		move_construct((_Ty*)dst, (_Ty*)src);
 	}
 	template <typename _Ty>
-	inline void default_copy_assign(typeinfo_t type, void* dest, void* src)
+	inline void default_copy_assign(typeinfo_t type, void* dst, void* src)
 	{
-		copy_assign((_Ty*)dest, (_Ty*)src);
+		copy_assign((_Ty*)dst, (_Ty*)src);
 	}
 	template <typename _Ty>
-	inline void default_move_assign(typeinfo_t type, void* dest, void* src)
+	inline void default_move_assign(typeinfo_t type, void* dst, void* src)
 	{
-		move_assign((_Ty*)dest, (_Ty*)src);
+		move_assign((_Ty*)dst, (_Ty*)src);
 	}
 	struct MemoryLayoutMember
 	{

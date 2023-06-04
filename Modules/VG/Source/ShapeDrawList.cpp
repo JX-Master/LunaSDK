@@ -91,18 +91,18 @@ namespace Luna
 			for (usize i = 0; i < rhs->m_draw_calls.size(); ++i)
 			{
 				m_draw_calls.emplace_back();
-				auto& dest = m_draw_calls.back();
-				auto& dest_res = get_draw_call_resource(m_draw_calls.size() - 1);
+				auto& dst = m_draw_calls.back();
+				auto& dst_res = get_draw_call_resource(m_draw_calls.size() - 1);
 				auto& src = rhs->m_draw_calls[i];
 				auto& src_res = rhs->get_draw_call_resource(i);
-				dest.atlas = src.atlas;
-				dest.texture = src.texture;
-				dest.sampler = src.sampler;
-				dest.origin_point = src.origin_point;
-				dest.rotation = src.rotation;
-				dest.clip_rect = src.clip_rect;
-				dest_res.vertices = src_res.vertices;
-				dest_res.indices = src_res.indices;
+				dst.atlas = src.atlas;
+				dst.texture = src.texture;
+				dst.sampler = src.sampler;
+				dst.origin_point = src.origin_point;
+				dst.rotation = src.rotation;
+				dst.clip_rect = src.clip_rect;
+				dst_res.vertices = src_res.vertices;
+				dst_res.indices = src_res.indices;
 			}
 			drawcall_barrier();
 		}
@@ -197,14 +197,14 @@ namespace Luna
 				for (usize i = 0; i < m_draw_calls.size(); ++i)
 				{
 					auto& dc = m_draw_call_resources[i];
-					Vertex* dest = vertex_data + vertex_offset;
-					memcpy(dest, dc.vertices.data(), dc.vertices.size() * sizeof(Vertex));
-					u32* index_dest = index_data + index_offset;
+					Vertex* dst = vertex_data + vertex_offset;
+					memcpy(dst, dc.vertices.data(), dc.vertices.size() * sizeof(Vertex));
+					u32* index_dst = index_data + index_offset;
 					u32 base_vertex_offset = (u32)vertex_offset;
 					for (u32 index : dc.indices)
 					{
-						*index_dest = index + base_vertex_offset;
-						++index_dest;
+						*index_dst = index + base_vertex_offset;
+						++index_dst;
 					}
 					m_draw_calls[i].base_index = index_offset;
 					m_draw_calls[i].num_indices = (u32)dc.indices.size();

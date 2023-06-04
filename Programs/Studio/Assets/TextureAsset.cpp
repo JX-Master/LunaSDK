@@ -89,9 +89,9 @@ namespace Luna
 			{
 				u32 width = max<u32>((u32)desc.width >> (j + 1), 1);
 				u32 height = max<u32>(desc.height >> (j + 1), 1);
-				Float2U* dest = (Float2U*)((usize)mapped + cb_size * j);
-				dest->x = 1.0f / (f32)width;
-				dest->y = 1.0f / (f32)height;
+				Float2U* dst = (Float2U*)((usize)mapped + cb_size * j);
+				dst->x = 1.0f / (f32)width;
+				dst->y = 1.0f / (f32)height;
 			}
 			cb->unmap(0, USIZE_MAX);
 

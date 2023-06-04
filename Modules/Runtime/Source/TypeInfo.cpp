@@ -121,8 +121,8 @@ namespace Luna
 		// construct every field of the structure.
 		for (auto& i : t->properties)
 		{
-			void* dest = (void*)((usize)data + i.desc.offset);
-			construct_type(i.desc.type, dest);
+			void* dst = (void*)((usize)data + i.desc.offset);
+			construct_type(i.desc.type, dst);
 		}
 	}
 	static void structure_default_destruct(typeinfo_t type, void* data)
@@ -131,52 +131,52 @@ namespace Luna
 		// construct every field of the structure.
 		for (auto& i : t->properties)
 		{
-			void* dest = (void*)((usize)data + i.desc.offset);
-			destruct_type(i.desc.type, dest);
+			void* dst = (void*)((usize)data + i.desc.offset);
+			destruct_type(i.desc.type, dst);
 		}
 	}
-	static void structure_default_copy_construct(typeinfo_t type, void* dest, void* src)
+	static void structure_default_copy_construct(typeinfo_t type, void* dst, void* src)
 	{
 		StructureTypeInfo* t = (StructureTypeInfo*)type;
 		// construct every field of the structure.
 		for (auto& i : t->properties)
 		{
-			void* dest_property = (void*)((usize)dest + i.desc.offset);
+			void* dst_property = (void*)((usize)dst + i.desc.offset);
 			void* src_property = (void*)((usize)src + i.desc.offset);
-			copy_construct_type(i.desc.type, dest_property, src_property);
+			copy_construct_type(i.desc.type, dst_property, src_property);
 		}
 	}
-	static void structure_default_move_construct(typeinfo_t type, void* dest, void* src)
+	static void structure_default_move_construct(typeinfo_t type, void* dst, void* src)
 	{
 		StructureTypeInfo* t = (StructureTypeInfo*)type;
 		// construct every field of the structure.
 		for (auto& i : t->properties)
 		{
-			void* dest_property = (void*)((usize)dest + i.desc.offset);
+			void* dst_property = (void*)((usize)dst + i.desc.offset);
 			void* src_property = (void*)((usize)src + i.desc.offset);
-			move_construct_type(i.desc.type, dest_property, src_property);
+			move_construct_type(i.desc.type, dst_property, src_property);
 		}
 	}
-	static void structure_default_copy_assign(typeinfo_t type, void* dest, void* src)
+	static void structure_default_copy_assign(typeinfo_t type, void* dst, void* src)
 	{
 		StructureTypeInfo* t = (StructureTypeInfo*)type;
 		// construct every field of the structure.
 		for (auto& i : t->properties)
 		{
-			void* dest_property = (void*)((usize)dest + i.desc.offset);
+			void* dst_property = (void*)((usize)dst + i.desc.offset);
 			void* src_property = (void*)((usize)src + i.desc.offset);
-			copy_assign_type(i.desc.type, dest_property, src_property);
+			copy_assign_type(i.desc.type, dst_property, src_property);
 		}
 	}
-	static void structure_default_move_assign(typeinfo_t type, void* dest, void* src)
+	static void structure_default_move_assign(typeinfo_t type, void* dst, void* src)
 	{
 		StructureTypeInfo* t = (StructureTypeInfo*)type;
 		// construct every field of the structure.
 		for (auto& i : t->properties)
 		{
-			void* dest_property = (void*)((usize)dest + i.desc.offset);
+			void* dst_property = (void*)((usize)dst + i.desc.offset);
 			void* src_property = (void*)((usize)src + i.desc.offset);
-			move_assign_type(i.desc.type, dest_property, src_property);
+			move_assign_type(i.desc.type, dst_property, src_property);
 		}
 	}
 	LUNA_RUNTIME_API bool is_primitive_type(typeinfo_t type)
@@ -228,9 +228,9 @@ namespace Luna
 		st->trivially_relocatable = desc.trivially_relocatable;
 		for (auto& p : desc.properties)
 		{
-			StructureProperty dest;
-			dest.desc = p;
-			st->properties.push_back(dest);
+			StructureProperty dst;
+			dst.desc = p;
+			st->properties.push_back(dst);
 		}
 		bool use_default_ctor = false;
 		bool use_default_dtor = false;
@@ -329,9 +329,9 @@ namespace Luna
 		gt->base_type = (TypeInfo*)info.base_type;
 		for (auto& p : info.properties)
 		{
-			StructureProperty dest;
-			dest.desc = p;
-			gt->properties.push_back(dest);
+			StructureProperty dst;
+			dst.desc = p;
+			gt->properties.push_back(dst);
 		}
 		gt->ctor = info.ctor;
 		gt->dtor = info.dtor;
@@ -791,37 +791,37 @@ namespace Luna
 		default: lupanic();
 		}
 	}
-	LUNA_RUNTIME_API void copy_construct_type(typeinfo_t type, void* dest, void* src)
+	LUNA_RUNTIME_API void copy_construct_type(typeinfo_t type, void* dst, void* src)
 	{
 		TypeInfo* t = (TypeInfo*)type;
 		switch (t->kind)
 		{
-		case TypeKind::primitive: memcpy(dest, src, ((PrimitiveTypeInfo*)t)->size); break;
+		case TypeKind::primitive: memcpy(dst, src, ((PrimitiveTypeInfo*)t)->size); break;
 		case TypeKind::structure:
 		{
 			auto func = ((StructureTypeInfo*)t)->copy_ctor;
-			if (func) func(type, dest, src);
-			else memcpy(dest, src, ((StructureTypeInfo*)t)->size);
+			if (func) func(type, dst, src);
+			else memcpy(dst, src, ((StructureTypeInfo*)t)->size);
 			break;
 		}
-		case TypeKind::enumeration: memcpy(dest, src, ((EnumerationTypeInfo*)t)->underlying_type->size); break;
+		case TypeKind::enumeration: memcpy(dst, src, ((EnumerationTypeInfo*)t)->underlying_type->size); break;
 		case TypeKind::generic_structure_instanced:
 		{
 			auto func = ((GenericStructureInstancedTypeInfo*)t)->copy_ctor;
-			if (func) func(type, dest, src);
-			else memcpy(dest, src, ((GenericStructureInstancedTypeInfo*)t)->size);
+			if (func) func(type, dst, src);
+			else memcpy(dst, src, ((GenericStructureInstancedTypeInfo*)t)->size);
 			break;
 		}
 		case TypeKind::generic_structure: lupanic_msg("Cannot copy-construct a generic type."); break;
 		default: lupanic();
 		}
 	}
-	LUNA_RUNTIME_API void copy_construct_type_range(typeinfo_t type, void* dest, void* src, usize count)
+	LUNA_RUNTIME_API void copy_construct_type_range(typeinfo_t type, void* dst, void* src, usize count)
 	{
 		TypeInfo* t = (TypeInfo*)type;
 		switch (t->kind)
 		{
-		case TypeKind::primitive: memcpy(dest, src, ((PrimitiveTypeInfo*)t)->size * count); break;
+		case TypeKind::primitive: memcpy(dst, src, ((PrimitiveTypeInfo*)t)->size * count); break;
 		case TypeKind::structure:
 		{
 			auto func = ((StructureTypeInfo*)t)->copy_ctor;
@@ -830,13 +830,13 @@ namespace Luna
 			{
 				for (usize i = 0; i < count; ++i)
 				{
-					func(type, (void*)((usize)dest + i * size), (void*)((usize)src + i * size));
+					func(type, (void*)((usize)dst + i * size), (void*)((usize)src + i * size));
 				}
 			}
-			else memcpy(dest, src, size * count);
+			else memcpy(dst, src, size * count);
 			break;
 		}
-		case TypeKind::enumeration: memcpy(dest, src, ((EnumerationTypeInfo*)t)->underlying_type->size * count); break;
+		case TypeKind::enumeration: memcpy(dst, src, ((EnumerationTypeInfo*)t)->underlying_type->size * count); break;
 		case TypeKind::generic_structure_instanced:
 		{
 			auto func = ((GenericStructureInstancedTypeInfo*)t)->copy_ctor;
@@ -845,47 +845,47 @@ namespace Luna
 			{
 				for (usize i = 0; i < count; ++i)
 				{
-					func(type, (void*)((usize)dest + i * size), (void*)((usize)src + i * size));
+					func(type, (void*)((usize)dst + i * size), (void*)((usize)src + i * size));
 				}
 			}
-			else memcpy(dest, src, size * count);
+			else memcpy(dst, src, size * count);
 			break;
 		}
 		case TypeKind::generic_structure: lupanic_msg("Cannot copy-construct a generic type."); break;
 		default: lupanic();
 		}
 	}
-	LUNA_RUNTIME_API void move_construct_type(typeinfo_t type, void* dest, void* src)
+	LUNA_RUNTIME_API void move_construct_type(typeinfo_t type, void* dst, void* src)
 	{
 		TypeInfo* t = (TypeInfo*)type;
 		switch (t->kind)
 		{
-		case TypeKind::primitive: memcpy(dest, src, ((PrimitiveTypeInfo*)t)->size); break;
+		case TypeKind::primitive: memcpy(dst, src, ((PrimitiveTypeInfo*)t)->size); break;
 		case TypeKind::structure:
 		{
 			auto func = ((StructureTypeInfo*)t)->move_ctor;
-			if (func) func(type, dest, src);
-			else memcpy(dest, src, ((StructureTypeInfo*)t)->size);
+			if (func) func(type, dst, src);
+			else memcpy(dst, src, ((StructureTypeInfo*)t)->size);
 			break;
 		}
-		case TypeKind::enumeration: memcpy(dest, src, ((EnumerationTypeInfo*)t)->underlying_type->size); break;
+		case TypeKind::enumeration: memcpy(dst, src, ((EnumerationTypeInfo*)t)->underlying_type->size); break;
 		case TypeKind::generic_structure_instanced:
 		{
 			auto func = ((GenericStructureInstancedTypeInfo*)t)->move_ctor;
-			if (func) func(type, dest, src);
-			else memcpy(dest, src, ((GenericStructureInstancedTypeInfo*)t)->size);
+			if (func) func(type, dst, src);
+			else memcpy(dst, src, ((GenericStructureInstancedTypeInfo*)t)->size);
 			break;
 		}
 		case TypeKind::generic_structure: lupanic_msg("Cannot move-construct a generic type."); break;
 		default: lupanic();
 		}
 	}
-	LUNA_RUNTIME_API void move_construct_type_range(typeinfo_t type, void* dest, void* src, usize count)
+	LUNA_RUNTIME_API void move_construct_type_range(typeinfo_t type, void* dst, void* src, usize count)
 	{
 		TypeInfo* t = (TypeInfo*)type;
 		switch (t->kind)
 		{
-		case TypeKind::primitive: memcpy(dest, src, ((PrimitiveTypeInfo*)t)->size * count); break;
+		case TypeKind::primitive: memcpy(dst, src, ((PrimitiveTypeInfo*)t)->size * count); break;
 		case TypeKind::structure:
 		{
 			auto func = ((StructureTypeInfo*)t)->move_ctor;
@@ -894,13 +894,13 @@ namespace Luna
 			{
 				for (usize i = 0; i < count; ++i)
 				{
-					func(type, (void*)((usize)dest + i * size), (void*)((usize)src + i * size));
+					func(type, (void*)((usize)dst + i * size), (void*)((usize)src + i * size));
 				}
 			}
-			else memcpy(dest, src, size * count);
+			else memcpy(dst, src, size * count);
 			break;
 		}
-		case TypeKind::enumeration: memcpy(dest, src, ((EnumerationTypeInfo*)t)->underlying_type->size * count); break;
+		case TypeKind::enumeration: memcpy(dst, src, ((EnumerationTypeInfo*)t)->underlying_type->size * count); break;
 		case TypeKind::generic_structure_instanced:
 		{
 			auto func = ((GenericStructureInstancedTypeInfo*)t)->move_ctor;
@@ -909,47 +909,47 @@ namespace Luna
 			{
 				for (usize i = 0; i < count; ++i)
 				{
-					func(type, (void*)((usize)dest + i * size), (void*)((usize)src + i * size));
+					func(type, (void*)((usize)dst + i * size), (void*)((usize)src + i * size));
 				}
 			}
-			else memcpy(dest, src, size * count);
+			else memcpy(dst, src, size * count);
 			break;
 		}
 		case TypeKind::generic_structure: lupanic_msg("Cannot move-construct a generic type."); break;
 		default: lupanic();
 		}
 	}
-	LUNA_RUNTIME_API void copy_assign_type(typeinfo_t type, void* dest, void* src)
+	LUNA_RUNTIME_API void copy_assign_type(typeinfo_t type, void* dst, void* src)
 	{
 		TypeInfo* t = (TypeInfo*)type;
 		switch (t->kind)
 		{
-		case TypeKind::primitive: memcpy(dest, src, ((PrimitiveTypeInfo*)t)->size); break;
+		case TypeKind::primitive: memcpy(dst, src, ((PrimitiveTypeInfo*)t)->size); break;
 		case TypeKind::structure:
 		{
 			auto func = ((StructureTypeInfo*)t)->copy_assign;
-			if (func) func(type, dest, src);
-			else memcpy(dest, src, ((StructureTypeInfo*)t)->size);
+			if (func) func(type, dst, src);
+			else memcpy(dst, src, ((StructureTypeInfo*)t)->size);
 			break;
 		}
-		case TypeKind::enumeration: memcpy(dest, src, ((EnumerationTypeInfo*)t)->underlying_type->size); break;
+		case TypeKind::enumeration: memcpy(dst, src, ((EnumerationTypeInfo*)t)->underlying_type->size); break;
 		case TypeKind::generic_structure_instanced:
 		{
 			auto func = ((GenericStructureInstancedTypeInfo*)t)->copy_assign;
-			if (func) func(type, dest, src);
-			else memcpy(dest, src, ((GenericStructureInstancedTypeInfo*)t)->size);
+			if (func) func(type, dst, src);
+			else memcpy(dst, src, ((GenericStructureInstancedTypeInfo*)t)->size);
 			break;
 		}
 		case TypeKind::generic_structure: lupanic_msg("Cannot copy-assign a generic type."); break;
 		default: lupanic();
 		}
 	}
-	LUNA_RUNTIME_API void copy_assign_type_range(typeinfo_t type, void* dest, void* src, usize count)
+	LUNA_RUNTIME_API void copy_assign_type_range(typeinfo_t type, void* dst, void* src, usize count)
 	{
 		TypeInfo* t = (TypeInfo*)type;
 		switch (t->kind)
 		{
-		case TypeKind::primitive: memcpy(dest, src, ((PrimitiveTypeInfo*)t)->size * count); break;
+		case TypeKind::primitive: memcpy(dst, src, ((PrimitiveTypeInfo*)t)->size * count); break;
 		case TypeKind::structure:
 		{
 			auto func = ((StructureTypeInfo*)t)->copy_assign;
@@ -958,13 +958,13 @@ namespace Luna
 			{
 				for (usize i = 0; i < count; ++i)
 				{
-					func(type, (void*)((usize)dest + i * size), (void*)((usize)src + i * size));
+					func(type, (void*)((usize)dst + i * size), (void*)((usize)src + i * size));
 				}
 			}
-			else memcpy(dest, src, size * count);
+			else memcpy(dst, src, size * count);
 			break;
 		}
-		case TypeKind::enumeration: memcpy(dest, src, ((EnumerationTypeInfo*)t)->underlying_type->size * count); break;
+		case TypeKind::enumeration: memcpy(dst, src, ((EnumerationTypeInfo*)t)->underlying_type->size * count); break;
 		case TypeKind::generic_structure_instanced:
 		{
 			auto func = ((GenericStructureInstancedTypeInfo*)t)->copy_assign;
@@ -973,47 +973,47 @@ namespace Luna
 			{
 				for (usize i = 0; i < count; ++i)
 				{
-					func(type, (void*)((usize)dest + i * size), (void*)((usize)src + i * size));
+					func(type, (void*)((usize)dst + i * size), (void*)((usize)src + i * size));
 				}
 			}
-			else memcpy(dest, src, size * count);
+			else memcpy(dst, src, size * count);
 			break;
 		}
 		case TypeKind::generic_structure: lupanic_msg("Cannot copy-assign a generic type."); break;
 		default: lupanic();
 		}
 	}
-	LUNA_RUNTIME_API void move_assign_type(typeinfo_t type, void* dest, void* src)
+	LUNA_RUNTIME_API void move_assign_type(typeinfo_t type, void* dst, void* src)
 	{
 		TypeInfo* t = (TypeInfo*)type;
 		switch (t->kind)
 		{
-		case TypeKind::primitive: memcpy(dest, src, ((PrimitiveTypeInfo*)t)->size); break;
+		case TypeKind::primitive: memcpy(dst, src, ((PrimitiveTypeInfo*)t)->size); break;
 		case TypeKind::structure:
 		{
 			auto func = ((StructureTypeInfo*)t)->move_assign;
-			if (func) func(type, dest, src);
-			else memcpy(dest, src, ((StructureTypeInfo*)t)->size);
+			if (func) func(type, dst, src);
+			else memcpy(dst, src, ((StructureTypeInfo*)t)->size);
 			break;
 		}
-		case TypeKind::enumeration: memcpy(dest, src, ((EnumerationTypeInfo*)t)->underlying_type->size); break;
+		case TypeKind::enumeration: memcpy(dst, src, ((EnumerationTypeInfo*)t)->underlying_type->size); break;
 		case TypeKind::generic_structure_instanced:
 		{
 			auto func = ((GenericStructureInstancedTypeInfo*)t)->move_assign;
-			if (func) func(type, dest, src);
-			else memcpy(dest, src, ((GenericStructureInstancedTypeInfo*)t)->size);
+			if (func) func(type, dst, src);
+			else memcpy(dst, src, ((GenericStructureInstancedTypeInfo*)t)->size);
 			break;
 		}
 		case TypeKind::generic_structure: lupanic_msg("Cannot move-assign a generic type."); break;
 		default: lupanic();
 		}
 	}
-	LUNA_RUNTIME_API void move_assign_type_range(typeinfo_t type, void* dest, void* src, usize count)
+	LUNA_RUNTIME_API void move_assign_type_range(typeinfo_t type, void* dst, void* src, usize count)
 	{
 		TypeInfo* t = (TypeInfo*)type;
 		switch (t->kind)
 		{
-		case TypeKind::primitive: memcpy(dest, src, ((PrimitiveTypeInfo*)t)->size * count); break;
+		case TypeKind::primitive: memcpy(dst, src, ((PrimitiveTypeInfo*)t)->size * count); break;
 		case TypeKind::structure:
 		{
 			auto func = ((StructureTypeInfo*)t)->move_assign;
@@ -1022,13 +1022,13 @@ namespace Luna
 			{
 				for (usize i = 0; i < count; ++i)
 				{
-					func(type, (void*)((usize)dest + i * size), (void*)((usize)src + i * size));
+					func(type, (void*)((usize)dst + i * size), (void*)((usize)src + i * size));
 				}
 			}
-			else memcpy(dest, src, size * count);
+			else memcpy(dst, src, size * count);
 			break;
 		}
-		case TypeKind::enumeration: memcpy(dest, src, ((EnumerationTypeInfo*)t)->underlying_type->size * count); break;
+		case TypeKind::enumeration: memcpy(dst, src, ((EnumerationTypeInfo*)t)->underlying_type->size * count); break;
 		case TypeKind::generic_structure_instanced:
 		{
 			auto func = ((GenericStructureInstancedTypeInfo*)t)->move_assign;
@@ -1037,37 +1037,37 @@ namespace Luna
 			{
 				for (usize i = 0; i < count; ++i)
 				{
-					func(type, (void*)((usize)dest + i * size), (void*)((usize)src + i * size));
+					func(type, (void*)((usize)dst + i * size), (void*)((usize)src + i * size));
 				}
 			}
-			else memcpy(dest, src, size * count);
+			else memcpy(dst, src, size * count);
 			break;
 		}
 		case TypeKind::generic_structure: lupanic_msg("Cannot move-assign a generic type."); break;
 		default: lupanic();
 		}
 	}
-	LUNA_RUNTIME_API void relocate_type(typeinfo_t type, void* dest, void* src)
+	LUNA_RUNTIME_API void relocate_type(typeinfo_t type, void* dst, void* src)
 	{
 		if (is_type_trivially_relocatable(type))
 		{
-			memcpy(dest, src, get_type_size(type));
+			memcpy(dst, src, get_type_size(type));
 		}
 		else
 		{
-			move_construct_type(type, dest, src);
+			move_construct_type(type, dst, src);
 			destruct_type(type, src);
 		}
 	}
-	LUNA_RUNTIME_API void relocate_type_range(typeinfo_t type, void* dest, void* src, usize count)
+	LUNA_RUNTIME_API void relocate_type_range(typeinfo_t type, void* dst, void* src, usize count)
 	{
 		if (is_type_trivially_relocatable(type))
 		{
-			memcpy(dest, src, get_type_size(type) * count);
+			memcpy(dst, src, get_type_size(type) * count);
 		}
 		else
 		{
-			move_construct_type_range(type, dest, src, count);
+			move_construct_type_range(type, dst, src, count);
 			destruct_type_range(type, src, count);
 		}
 	}

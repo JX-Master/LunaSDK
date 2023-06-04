@@ -403,7 +403,7 @@ namespace Luna
 		n: [old_value, new_value] - modified.
 		n: {...} - modified with inner changes.
 		_n: [old_value, 0, 0] - removed.
-		_n: ['', new_dest, 3] - moved.
+		_n: ['', new_dst, 3] - moved.
 	*/
 
 	static void patch_array(Variant& before, const Variant& patch)

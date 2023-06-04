@@ -13,7 +13,7 @@ Texture2D<float4> g_base_color_roughness : register(t1);
 Texture2D<float4> g_normal_metallic : register(t2);
 Texture2D<float> g_depth : register(t3);
 
-RWTexture2D<float4> g_dest : register(u4);
+RWTexture2D<float4> g_dst : register(u4);
 
 [numthreads(8, 8, 1)]
 void main(int3 dispatch_thread_id: SV_DispatchThreadID)
@@ -28,22 +28,22 @@ void main(int3 dispatch_thread_id: SV_DispatchThreadID)
 
     if (vis_type == VIS_BASE_COLOR)
     {
-        g_dest[dispatch_thread_id.xy] = float4(base_color, 1.0f);
+        g_dst[dispatch_thread_id.xy] = float4(base_color, 1.0f);
     }
     else if (vis_type == VIS_NORMAL)
     {
-        g_dest[dispatch_thread_id.xy] = float4(normal_metallic.xyz, 1.0f);
+        g_dst[dispatch_thread_id.xy] = float4(normal_metallic.xyz, 1.0f);
     }
     else if (vis_type == VIS_ROUGHNESS)
     {
-        g_dest[dispatch_thread_id.xy] = float4(roughness, roughness, roughness, 1.0f);
+        g_dst[dispatch_thread_id.xy] = float4(roughness, roughness, roughness, 1.0f);
     }
     else if (vis_type == VIS_METALLIC)
     {
-        g_dest[dispatch_thread_id.xy] = float4(metallic, metallic, metallic, 1.0f);
+        g_dst[dispatch_thread_id.xy] = float4(metallic, metallic, metallic, 1.0f);
     }
     else if (vis_type == VIS_DEPTH)
     {
-        g_dest[dispatch_thread_id.xy] = float4(depth, depth, depth, 1.0f);
+        g_dst[dispatch_thread_id.xy] = float4(depth, depth, depth, 1.0f);
     }
 }

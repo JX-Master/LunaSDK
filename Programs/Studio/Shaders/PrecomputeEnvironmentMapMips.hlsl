@@ -9,7 +9,7 @@ cbuffer CB : register(b0)
 	float roughness;
 }
 Texture2D<float4> g_src_mip : register(t1);
-RWTexture2D<float4> g_dest_mip : register(u2);
+RWTexture2D<float4> g_dst_mip : register(u2);
 SamplerState g_sampler : register(s3);
 
 [numthreads(8, 8, 1)]
@@ -54,5 +54,5 @@ void main(uint3 dispatch_thread_id : SV_DispatchThreadID)
 	}
 	prefilter_color /= total_weight;
 	//Write the final color into the destination texture.
-	g_dest_mip[dispatch_thread_id.xy] = float4(prefilter_color, 1.0f);
+	g_dst_mip[dispatch_thread_id.xy] = float4(prefilter_color, 1.0f);
 }

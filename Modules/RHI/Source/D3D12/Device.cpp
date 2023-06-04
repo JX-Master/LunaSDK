@@ -198,12 +198,12 @@ namespace Luna
 					// Create 1 direct queue, 2 compute queues and 2 copy queues.
 					CommandQueueDesc desc;
 					desc.type = CommandQueueType::graphics;
-					desc.flags = CommandQueueFlags::presenting;
+					desc.flags = CommandQueueFlag::presenting;
 					UniquePtr<CommandQueue> queue;
 					luset(queue, new_command_queue(desc));
 					m_command_queues.push_back(move(queue));
 					desc.type = CommandQueueType::compute;
-					desc.flags = CommandQueueFlags::none;
+					desc.flags = CommandQueueFlag::none;
 					luset(queue, new_command_queue(desc));
 					m_command_queues.push_back(move(queue));
 					luset(queue, new_command_queue(desc));

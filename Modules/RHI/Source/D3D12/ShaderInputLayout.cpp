@@ -37,13 +37,13 @@ namespace Luna
 					param.DescriptorTable.pDescriptorRanges = ranges;
 					for (usize j = 0; j < root.m_ranges.size(); ++j)
 					{
-						D3D12_DESCRIPTOR_RANGE* dest = ranges + j;
+						D3D12_DESCRIPTOR_RANGE* dst = ranges + j;
 						const D3D12_DESCRIPTOR_RANGE* src = &root.m_ranges[j];
-						dest->NumDescriptors = src->NumDescriptors;
-						dest->BaseShaderRegister = src->BaseShaderRegister;
-						dest->OffsetInDescriptorsFromTableStart = src->OffsetInDescriptorsFromTableStart;
-						dest->RangeType = src->RangeType;
-						dest->RegisterSpace = i;
+						dst->NumDescriptors = src->NumDescriptors;
+						dst->BaseShaderRegister = src->BaseShaderRegister;
+						dst->OffsetInDescriptorsFromTableStart = src->OffsetInDescriptorsFromTableStart;
+						dst->RangeType = src->RangeType;
+						dst->RegisterSpace = i;
 					}
 					parameters.push_back(param);
 					info.m_memory_types.push_back(root.m_type);

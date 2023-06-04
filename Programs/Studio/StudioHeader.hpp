@@ -23,13 +23,13 @@
 namespace Luna
 {
 	template <typename _Ty>
-	inline RV load_object_from_json_file(_Ty& dest, const Path& path)
+	inline RV load_object_from_json_file(_Ty& dst, const Path& path)
 	{
 		lutry
 		{
 			lulet(file, VFS::open_file(path, FileOpenFlag::read, FileCreationMode::open_existing));
 			lulet(file_data, json_read(file));
-			luexp(deserialize(dest, file_data));
+			luexp(deserialize(dst, file_data));
 		}
 		lucatchret;
 		return ok;

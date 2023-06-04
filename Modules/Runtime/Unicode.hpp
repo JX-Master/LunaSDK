@@ -132,9 +132,9 @@ namespace Luna
 		return p;
 	}
 
-	//! Encodes the Unicode character `ch` into 1~6 `char` bytes in the `dest` UTF-8 string.
-	//! Returns the number of `char` characters printed to the `dest` buffer.
-	LUNA_RUNTIME_API usize utf8_encode_char(c8* dest, c32 ch);
+	//! Encodes the Unicode character `ch` into 1~6 `char` bytes in the `dst` UTF-8 string.
+	//! Returns the number of `char` characters printed to the `dst` buffer.
+	LUNA_RUNTIME_API usize utf8_encode_char(c8* dst, c32 ch);
 
 	//! Returns the Unicode character in the UTF-8 string `str`.
 	LUNA_RUNTIME_API c32 utf8_decode_char(const c8* str);
@@ -191,43 +191,43 @@ namespace Luna
 		return p;
 	}
 
-	//! Encodes the Unicode character `ch` into 1~2 `c16` bytes in the `dest` UTF-16 string.
-	//!  Returns the number of `c16` characters printed to the `dest` buffer.
+	//! Encodes the Unicode character `ch` into 1~2 `c16` bytes in the `dst` UTF-16 string.
+	//!  Returns the number of `c16` characters printed to the `dst` buffer.
 	//! @param[in] le If `true`, then the character is encoded using Little Endian, else the character
 	//! is encoded using Big Endian.
-	LUNA_RUNTIME_API usize utf16_encode_char(c16* dest, c32 ch, bool le = true);
+	LUNA_RUNTIME_API usize utf16_encode_char(c16* dst, c32 ch, bool le = true);
 
 	//! Returns the Unicode character in the UTF-16 string `str`. LE and BE are automatic detected.
 	LUNA_RUNTIME_API c32 utf16_decode_char(const c16* str);
 
 	//! Convert a utf-16 string to utf-8 string in destination buffer. LE and BE are automatic detected.
-	//! @param[in] dest The buffer to hold the output string.
-	//! @param[in] dest_max_chars The maximum characters the `dest` buffer can hold, 
+	//! @param[in] dst The buffer to hold the output string.
+	//! @param[in] dst_max_chars The maximum characters the `dst` buffer can hold, 
 	//! including the null-terminator.
 	//! @param[in] src The null-terminated buffer holding the source string.
 	//! @param[in] src_chars The maximum characters to read. Specify `USIZE_MAX` to read till the end of the 
 	//! string.
-	//! @return Returns the number of characters outputted to the `dest` buffer, 
+	//! @return Returns the number of characters outputted to the `dst` buffer, 
 	//! not including the null-terminator.
-	LUNA_RUNTIME_API usize utf16_to_utf8(c8* dest, usize dest_max_chars, const c16* src, usize src_chars = USIZE_MAX);
+	LUNA_RUNTIME_API usize utf16_to_utf8(c8* dst, usize dst_max_chars, const c16* src, usize src_chars = USIZE_MAX);
 
 	//! Determines the length of the corresponding utf-8 string for a utf-16 input string,
 	//! not include the null-terminator.
 	LUNA_RUNTIME_API usize utf16_to_utf8_len(const c16* src, usize src_chars = USIZE_MAX);
 
 	//! Convert a utf-8 string to utf-16 string in destination buffer.
-	//! @param[in] dest The buffer to hold the output string.
-	//! @param[in] dest_max_chars The maximum characters the `dest` buffer can hold, 
+	//! @param[in] dst The buffer to hold the output string.
+	//! @param[in] dst_max_chars The maximum characters the `dst` buffer can hold, 
 	//! including the null-terminator.
 	//! @param[in] src The null-terminated buffer holding the source string.
 	//! @param[in] le If `true`, then the characters are encoded using Little Endian, else the characters
 	//! are encoded using Big Endian.
 	//! @param[in] src_chars The maximum characters to read. Specify `USIZE_MAX` to read till the end of the 
 	//! string.
-	//! @return Returns the number of characters outputted to the `dest` buffer, 
+	//! @return Returns the number of characters outputted to the `dst` buffer, 
 	//! not including the null-terminator. Returns (usize)-1 if the input string is not
 	//! in utf-8 format.
-	LUNA_RUNTIME_API usize utf8_to_utf16(c16* dest, usize dest_max_chars, const c8* src, usize src_chars = USIZE_MAX, bool le = true);
+	LUNA_RUNTIME_API usize utf8_to_utf16(c16* dst, usize dst_max_chars, const c8* src, usize src_chars = USIZE_MAX, bool le = true);
 
 	//! Determines the length of the corresponding utf-16 string for a utf-8 input string,
 	//! not include the null-terminator.

@@ -98,7 +98,7 @@ namespace Luna
 				auto framebuffer_size = m_window->get_framebuffer_size();
 				m_desc.width = desc.width == 0 ? framebuffer_size.x : desc.width;
 				m_desc.height = desc.height == 0 ? framebuffer_size.y : desc.height;
-				if (!test_flags(m_queue.desc.flags, CommandQueueFlags::presenting))
+				if (!test_flags(m_queue.desc.flags, CommandQueueFlag::presenting))
 				{
 					return set_error(BasicError::not_supported(), "The specified command queue for creating swap chain does not have presenting support");
 				}

@@ -1,6 +1,6 @@
-RWStructuredBuffer<uint> g_dest_buffer : register(u0);
+RWStructuredBuffer<uint> g_dst_buffer : register(u0);
 [numthreads(256, 1, 1)]
 void main(uint group_index : SV_GroupIndex)
 {
-    g_dest_buffer[group_index] = 0;
+    g_dst_buffer[group_index] = 0;
 }

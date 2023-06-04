@@ -61,17 +61,17 @@ namespace Luna
 			m_entities.clear();
 			m_size = 0;
 		}
-		void Cluster::relocate_entity(usize dest, usize src)
+		void Cluster::relocate_entity(usize dst, usize src)
 		{
-			m_entities[dest] = move(m_entities[src]);
+			m_entities[dst] = move(m_entities[src]);
 			for (usize i = 0; i < m_component_types.size(); ++i)
 			{
 				typeinfo_t type = m_component_types[i];
 				usize strip = get_type_size(type);
 				void* data = m_components[i];
-				void* dest_ptr = (void*)((usize)(data) + strip * dest);
+				void* dst_ptr = (void*)((usize)(data) + strip * dst);
 				void* src_ptr = (void*)((usize)(data) + strip * src);
-				relocate_type(type, dest_ptr, src_ptr);
+				relocate_type(type, dst_ptr, src_ptr);
 			}
 		}
 		void Cluster::expand_buffer()

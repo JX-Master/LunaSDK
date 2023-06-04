@@ -230,10 +230,10 @@ namespace Luna
 			case BlendFactor::inv_src_color: return VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR;
 			case BlendFactor::src_alpha: return VK_BLEND_FACTOR_SRC_ALPHA;
 			case BlendFactor::inv_src_alpha: return VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-			case BlendFactor::dest_color: return VK_BLEND_FACTOR_DST_COLOR;
-			case BlendFactor::inv_dest_color: return VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR;
-			case BlendFactor::dest_alpha: return VK_BLEND_FACTOR_DST_ALPHA;
-			case BlendFactor::inv_dest_alpha: return VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA;
+			case BlendFactor::dst_color: return VK_BLEND_FACTOR_DST_COLOR;
+			case BlendFactor::inv_dst_color: return VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR;
+			case BlendFactor::dst_alpha: return VK_BLEND_FACTOR_DST_ALPHA;
+			case BlendFactor::inv_dst_alpha: return VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA;
 			case BlendFactor::src_alpha_sat: return VK_BLEND_FACTOR_SRC_ALPHA_SATURATE;
 			case BlendFactor::blend_factor: return VK_BLEND_FACTOR_CONSTANT_COLOR;
 			case BlendFactor::inv_blend_factor: return VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR;
@@ -308,74 +308,74 @@ namespace Luna
 		{
 			return 1 + (u32)floorf(log2f((f32)max(width, max(height, depth))));
 		}
-		inline void encode_buffer_create_info(VkBufferCreateInfo& dest, const BufferDesc& desc)
+		inline void encode_buffer_create_info(VkBufferCreateInfo& dst, const BufferDesc& desc)
 		{
-			dest.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-			dest.size = desc.size;
-			dest.usage = 0;
-			if (test_flags(desc.usages, BufferUsageFlag::copy_source)) dest.usage |= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-			if (test_flags(desc.usages, BufferUsageFlag::copy_dest)) dest.usage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-			if (test_flags(desc.usages, BufferUsageFlag::read_buffer)) dest.usage |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-			if (test_flags(desc.usages, BufferUsageFlag::uniform_buffer)) dest.usage |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-			if (test_flags(desc.usages, BufferUsageFlag::read_write_buffer)) dest.usage |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-			if (test_flags(desc.usages, BufferUsageFlag::index_buffer)) dest.usage |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
-			if (test_flags(desc.usages, BufferUsageFlag::vertex_buffer)) dest.usage |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-			if (test_flags(desc.usages, BufferUsageFlag::indirect_buffer)) dest.usage |= VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
-			dest.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+			dst.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+			dst.size = desc.size;
+			dst.usage = 0;
+			if (test_flags(desc.usages, BufferUsageFlag::copy_source)) dst.usage |= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+			if (test_flags(desc.usages, BufferUsageFlag::copy_dest)) dst.usage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+			if (test_flags(desc.usages, BufferUsageFlag::read_buffer)) dst.usage |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+			if (test_flags(desc.usages, BufferUsageFlag::uniform_buffer)) dst.usage |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+			if (test_flags(desc.usages, BufferUsageFlag::read_write_buffer)) dst.usage |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+			if (test_flags(desc.usages, BufferUsageFlag::index_buffer)) dst.usage |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+			if (test_flags(desc.usages, BufferUsageFlag::vertex_buffer)) dst.usage |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+			if (test_flags(desc.usages, BufferUsageFlag::indirect_buffer)) dst.usage |= VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
+			dst.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 		}
-		inline void encode_image_create_info(VkImageCreateInfo& dest, const TextureDesc& desc)
+		inline void encode_image_create_info(VkImageCreateInfo& dst, const TextureDesc& desc)
 		{
-			dest.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+			dst.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 			switch (desc.type)
 			{
 			case TextureType::tex1d:
-				dest.imageType = VK_IMAGE_TYPE_1D; break;
+				dst.imageType = VK_IMAGE_TYPE_1D; break;
 			case TextureType::tex2d:
-				dest.imageType = VK_IMAGE_TYPE_2D; break;
+				dst.imageType = VK_IMAGE_TYPE_2D; break;
 			case TextureType::tex3d:
-				dest.imageType = VK_IMAGE_TYPE_3D; break;
+				dst.imageType = VK_IMAGE_TYPE_3D; break;
 			default: lupanic();
 			}
-			dest.extent.width = desc.width;
-			dest.extent.height = desc.height;
-			dest.extent.depth = desc.depth;
-			dest.mipLevels = desc.mip_levels;
-			dest.arrayLayers = desc.array_size;
-			dest.format = encode_format(desc.format);
-			dest.tiling = VK_IMAGE_TILING_OPTIMAL;
-			dest.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-			dest.usage = 0;
-			if (test_flags(desc.usages, TextureUsageFlag::copy_source)) dest.usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
-			if (test_flags(desc.usages, TextureUsageFlag::copy_dest)) dest.usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-			if (test_flags(desc.usages, TextureUsageFlag::read_texture)) dest.usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
-			if (test_flags(desc.usages, TextureUsageFlag::read_write_texture)) dest.usage |= VK_IMAGE_USAGE_STORAGE_BIT;
-			if (test_flags(desc.usages, TextureUsageFlag::color_attachment)) dest.usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-			if (test_flags(desc.usages, TextureUsageFlag::depth_stencil_attachment)) dest.usage |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-			dest.samples = encode_sample_count(desc.sample_count);
-			dest.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-			dest.flags = 0;
-			if (test_flags(desc.usages, TextureUsageFlag::cube)) dest.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+			dst.extent.width = desc.width;
+			dst.extent.height = desc.height;
+			dst.extent.depth = desc.depth;
+			dst.mipLevels = desc.mip_levels;
+			dst.arrayLayers = desc.array_size;
+			dst.format = encode_format(desc.format);
+			dst.tiling = VK_IMAGE_TILING_OPTIMAL;
+			dst.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+			dst.usage = 0;
+			if (test_flags(desc.usages, TextureUsageFlag::copy_source)) dst.usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+			if (test_flags(desc.usages, TextureUsageFlag::copy_dest)) dst.usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+			if (test_flags(desc.usages, TextureUsageFlag::read_texture)) dst.usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
+			if (test_flags(desc.usages, TextureUsageFlag::read_write_texture)) dst.usage |= VK_IMAGE_USAGE_STORAGE_BIT;
+			if (test_flags(desc.usages, TextureUsageFlag::color_attachment)) dst.usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+			if (test_flags(desc.usages, TextureUsageFlag::depth_stencil_attachment)) dst.usage |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+			dst.samples = encode_sample_count(desc.sample_count);
+			dst.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+			dst.flags = 0;
+			if (test_flags(desc.usages, TextureUsageFlag::cube)) dst.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
 		}
-		inline void encode_allocation_info(VmaAllocationCreateInfo& dest, MemoryType memory_type, bool allow_aliasing)
+		inline void encode_allocation_info(VmaAllocationCreateInfo& dst, MemoryType memory_type, bool allow_aliasing)
 		{
 			switch (memory_type)
 			{
 			case MemoryType::local:
-				dest.preferredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-				dest.priority = 1.0f;
+				dst.preferredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+				dst.priority = 1.0f;
 				break;
 			case MemoryType::upload:
-				dest.requiredFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
-				dest.preferredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+				dst.requiredFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+				dst.preferredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 				break;
 			case MemoryType::readback:
-				dest.requiredFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
-				dest.preferredFlags = VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
+				dst.requiredFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+				dst.preferredFlags = VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
 				break;
 			}
 			if (allow_aliasing)
 			{
-				dest.flags |= VMA_ALLOCATION_CREATE_CAN_ALIAS_BIT;
+				dst.flags |= VMA_ALLOCATION_CREATE_CAN_ALIAS_BIT;
 			}
 		}
 		inline VkAccessFlags encode_access_flags(BufferStateFlag state)

@@ -55,26 +55,26 @@ namespace Luna
 				{
 					luexp(vs.init(m_device, desc.vs));
 					shader_modles[num_stages] = vs.shader_module;
-					auto& dest = stages[num_stages];
-					dest.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-					dest.stage = VK_SHADER_STAGE_VERTEX_BIT;
-					dest.module = shader_modles[num_stages];
-					dest.pName = "main";
-					dest.flags = 0;
-					dest.pSpecializationInfo = nullptr;
+					auto& dst = stages[num_stages];
+					dst.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+					dst.stage = VK_SHADER_STAGE_VERTEX_BIT;
+					dst.module = shader_modles[num_stages];
+					dst.pName = "main";
+					dst.flags = 0;
+					dst.pSpecializationInfo = nullptr;
 					++num_stages;
 				}
 				if (!desc.ps.empty())
 				{
 					luexp(ps.init(m_device, desc.ps));
 					shader_modles[num_stages] = ps.shader_module;
-					auto& dest = stages[num_stages];
-					dest.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-					dest.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-					dest.module = shader_modles[num_stages];
-					dest.pName = "main";
-					dest.flags = 0;
-					dest.pSpecializationInfo = nullptr;
+					auto& dst = stages[num_stages];
+					dst.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+					dst.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+					dst.module = shader_modles[num_stages];
+					dst.pName = "main";
+					dst.flags = 0;
+					dst.pSpecializationInfo = nullptr;
 					++num_stages;
 				}
 				create_info.pStages = stages;
@@ -94,16 +94,16 @@ namespace Luna
 					memzero(descs, sizeof(VkVertexInputBindingDescription) * desc.input_layout.bindings.size());
 					for (usize i = 0; i < desc.input_layout.bindings.size(); ++i)
 					{
-						auto& dest = descs[i];
+						auto& dst = descs[i];
 						auto& src = desc.input_layout.bindings[i];
-						dest.binding = src.binding_slot;
-						dest.stride = src.element_size;
+						dst.binding = src.binding_slot;
+						dst.stride = src.element_size;
 						switch (src.input_rate)
 						{
 						case InputRate::per_vertex:
-							dest.inputRate = VK_VERTEX_INPUT_RATE_VERTEX; break;
+							dst.inputRate = VK_VERTEX_INPUT_RATE_VERTEX; break;
 						case InputRate::per_instance:
-							dest.inputRate = VK_VERTEX_INPUT_RATE_INSTANCE; break;
+							dst.inputRate = VK_VERTEX_INPUT_RATE_INSTANCE; break;
 						}
 					}
 					vertex_input.vertexBindingDescriptionCount = (u32)desc.input_layout.bindings.size();
@@ -121,12 +121,12 @@ namespace Luna
 					memzero(descs, sizeof(VkVertexInputAttributeDescription) * desc.input_layout.attributes.size());
 					for (usize i = 0; i < desc.input_layout.attributes.size(); ++i)
 					{
-						auto& dest = descs[i];
+						auto& dst = descs[i];
 						auto& src = desc.input_layout.attributes[i];
-						dest.location = src.location;
-						dest.binding = src.binding_slot;
-						dest.format = encode_format(src.format);
-						dest.offset = src.offset;
+						dst.location = src.location;
+						dst.binding = src.binding_slot;
+						dst.format = encode_format(src.format);
+						dst.offset = src.offset;
 					}
 					vertex_input.vertexAttributeDescriptionCount = (u32)desc.input_layout.attributes.size();
 					vertex_input.pVertexAttributeDescriptions = descs;
@@ -213,16 +213,16 @@ namespace Luna
 				VkPipelineColorBlendAttachmentState attachments[8] = { {} };
 				for (usize i = 0; i < desc.num_color_attachments; ++i)
 				{
-					auto& dest = attachments[i];
+					auto& dst = attachments[i];
 					auto& src = desc.blend_state.rt[i];
-					dest.blendEnable = src.blend_enable ? VK_TRUE : VK_FALSE;
-					dest.srcColorBlendFactor = encode_blend_factor(src.src_blend);
-					dest.dstColorBlendFactor = encode_blend_factor(src.dest_blend);
-					dest.colorBlendOp = encode_blend_op(src.blend_op);
-					dest.srcAlphaBlendFactor = encode_blend_factor(src.src_blend_alpha);
-					dest.dstAlphaBlendFactor = encode_blend_factor(src.dest_blend_alpha);
-					dest.alphaBlendOp = encode_blend_op(src.blend_op_alpha);
-					dest.colorWriteMask = encode_color_component_flags(src.render_target_write_mask);
+					dst.blendEnable = src.blend_enable ? VK_TRUE : VK_FALSE;
+					dst.srcColorBlendFactor = encode_blend_factor(src.src_blend);
+					dst.dstColorBlendFactor = encode_blend_factor(src.dst_blend);
+					dst.colorBlendOp = encode_blend_op(src.blend_op);
+					dst.srcAlphaBlendFactor = encode_blend_factor(src.src_blend_alpha);
+					dst.dstAlphaBlendFactor = encode_blend_factor(src.dst_blend_alpha);
+					dst.alphaBlendOp = encode_blend_op(src.blend_op_alpha);
+					dst.colorWriteMask = encode_color_component_flags(src.render_target_write_mask);
 				}
 				blend.pAttachments = attachments;
 				create_info.pColorBlendState = &blend;

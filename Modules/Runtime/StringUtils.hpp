@@ -51,9 +51,9 @@ namespace Luna
 	}
 
 	template <typename _CharT>
-	inline _CharT* strcpy(_CharT* dest, const _CharT* src)
+	inline _CharT* strcpy(_CharT* dst, const _CharT* src)
 	{
-		_CharT* t = dest;
+		_CharT* t = dst;
 		while (*src)
 		{
 			*t = *src;
@@ -61,7 +61,7 @@ namespace Luna
 			++src;
 		}
 		*t = (_CharT)0;
-		return dest;
+		return dst;
 	}
 
 	template <typename _CharT>

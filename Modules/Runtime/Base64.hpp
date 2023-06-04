@@ -38,19 +38,19 @@ namespace Luna
 	}
 
 	//! Encode a binary data to a base64 string.
-	//! @param[in] dest The character buffer used to hold the encoded base64 string.
-	//! @param[in] dest_max_chars The maximum characters the `dest` buffer can hold, including the null-terminator.
+	//! @param[in] dst The character buffer used to hold the encoded base64 string.
+	//! @param[in] dst_max_chars The maximum characters the `dst` buffer can hold, including the null-terminator.
 	//! @param[in] src The source binary data.
 	//! @param[in] src_size_bytes The size of the source binary data in bytes.
-	//! @return Returned the number of characters outputted into `dest` buffer.
-	LUNA_RUNTIME_API usize base64_encode(c8* dest, usize dest_max_chars, const void* src, usize src_size_bytes);
+	//! @return Returned the number of characters outputted into `dst` buffer.
+	LUNA_RUNTIME_API usize base64_encode(c8* dst, usize dst_max_chars, const void* src, usize src_size_bytes);
 
 	//! Decode a base64 string to binary data. The system assumes the string passed in is a valid base64 string.
-	//! @param[in] dest The binary buffer used to hold the decoded data.
-	//! @param[in] dest_max_bytes The maximum bytes the `dest` buffer can hold.
+	//! @param[in] dst The binary buffer used to hold the decoded data.
+	//! @param[in] dst_max_bytes The maximum bytes the `dst` buffer can hold.
 	//! @param[in] src The null-terminated base64 source string.
 	//! @param[in] src_size_chars The maximum characters to read in the `src` string. Specify `usize_max` to read
 	//! the full string.
-	//! @return Returns the number of bytes decoded into the `dest` buffer.
-	LUNA_RUNTIME_API usize base64_decode(void* dest, usize dest_max_bytes, const c8* src, usize src_size_chars = USIZE_MAX);
+	//! @return Returns the number of bytes decoded into the `dst` buffer.
+	LUNA_RUNTIME_API usize base64_decode(void* dst, usize dst_max_bytes, const c8* src, usize src_size_chars = USIZE_MAX);
 }

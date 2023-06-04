@@ -13,51 +13,51 @@
 
 namespace Luna
 {
-	LUNA_RUNTIME_API usize utf8_encode_char(c8* dest, c32 ch)
+	LUNA_RUNTIME_API usize utf8_encode_char(c8* dst, c32 ch)
 	{
 		if (ch <= UnicodeImpl::UTF8_ONE_END)
 		{
-			dest[0] = (c8)ch;
+			dst[0] = (c8)ch;
 			return 1;
 		}
 		if (ch <= UnicodeImpl::UTF8_TWO_END)
 		{
-			dest[0] = (c8)(ch >> 6) + 0xC0;
-			dest[1] = (c8)(ch & 0x3F) + 0x80;
+			dst[0] = (c8)(ch >> 6) + 0xC0;
+			dst[1] = (c8)(ch & 0x3F) + 0x80;
 			return 2;
 		}
 		if (ch <= UnicodeImpl::UTF8_THREE_END)
 		{
-			dest[0] = (c8)(ch >> 12) + 0xE0;
-			dest[1] = ((c8)(ch >> 6) & 0x3F) + 0x80;
-			dest[2] = (c8)(ch & 0x3F) + 0x80;
+			dst[0] = (c8)(ch >> 12) + 0xE0;
+			dst[1] = ((c8)(ch >> 6) & 0x3F) + 0x80;
+			dst[2] = (c8)(ch & 0x3F) + 0x80;
 			return 3;
 		}
 		if (ch <= UnicodeImpl::UTF8_FOUR_END)
 		{
-			dest[0] = (c8)(ch >> 18) + 0xF0;
-			dest[1] = ((c8)(ch >> 12) & 0x3F) + 0x80;
-			dest[2] = ((c8)(ch >> 6) & 0x3F) + 0x80;
-			dest[3] = (c8)(ch & 0x3F) + 0x80;
+			dst[0] = (c8)(ch >> 18) + 0xF0;
+			dst[1] = ((c8)(ch >> 12) & 0x3F) + 0x80;
+			dst[2] = ((c8)(ch >> 6) & 0x3F) + 0x80;
+			dst[3] = (c8)(ch & 0x3F) + 0x80;
 			return 4;
 		}
 		if (ch <= UnicodeImpl::UTF8_FIVE_END)
 		{
-			dest[0] = (c8)(ch >> 24) + 0xF8;
-			dest[1] = ((c8)(ch >> 18) & 0x3F) + 0x80;
-			dest[2] = ((c8)(ch >> 12) & 0x3F) + 0x80;
-			dest[3] = ((c8)(ch >> 6) & 0x3F) + 0x80;
-			dest[4] = (c8)(ch & 0x3F) + 0x80;
+			dst[0] = (c8)(ch >> 24) + 0xF8;
+			dst[1] = ((c8)(ch >> 18) & 0x3F) + 0x80;
+			dst[2] = ((c8)(ch >> 12) & 0x3F) + 0x80;
+			dst[3] = ((c8)(ch >> 6) & 0x3F) + 0x80;
+			dst[4] = (c8)(ch & 0x3F) + 0x80;
 			return 5;
 		}
 		// if (ch <= l_utf8_six_end)
 		{
-			dest[0] = (c8)(ch >> 30) + 0xFC;
-			dest[1] = ((c8)(ch >> 24) & 0x3F) + 0x80;
-			dest[2] = ((c8)(ch >> 18) & 0x3F) + 0x80;
-			dest[3] = ((c8)(ch >> 12) & 0x3F) + 0x80;
-			dest[4] = ((c8)(ch >> 6) & 0x3F) + 0x80;
-			dest[5] = (c8)(ch & 0x3F) + 0x80;
+			dst[0] = (c8)(ch >> 30) + 0xFC;
+			dst[1] = ((c8)(ch >> 24) & 0x3F) + 0x80;
+			dst[2] = ((c8)(ch >> 18) & 0x3F) + 0x80;
+			dst[3] = ((c8)(ch >> 12) & 0x3F) + 0x80;
+			dst[4] = ((c8)(ch >> 6) & 0x3F) + 0x80;
+			dst[5] = (c8)(ch & 0x3F) + 0x80;
 			return 6;
 		}
 	}
@@ -89,25 +89,25 @@ namespace Luna
 		}
 	}
 
-	LUNA_RUNTIME_API usize utf16_encode_char(c16* dest, c32 ch, bool le)
+	LUNA_RUNTIME_API usize utf16_encode_char(c16* dst, c32 ch, bool le)
 	{
 		if (ch >= 0xFFFF)
 		{
 			if (le)
 			{
-				dest[0] = 0xDC00 + (c16)ch & 0x03FF;
-				dest[1] = 0xD800 + (c16)(ch >> 10) & 0x03FF;
+				dst[0] = 0xDC00 + (c16)ch & 0x03FF;
+				dst[1] = 0xD800 + (c16)(ch >> 10) & 0x03FF;
 			}
 			else
 			{
-				dest[0] = 0xD800 + (c16)(ch >> 10) & 0x03FF;
-				dest[1] = 0xDC00 + (c16)ch & 0x03FF;
+				dst[0] = 0xD800 + (c16)(ch >> 10) & 0x03FF;
+				dst[1] = 0xDC00 + (c16)ch & 0x03FF;
 			}
 			return 2;
 		}
 		else
 		{
-			dest[0] = (c16)ch;
+			dst[0] = (c16)ch;
 			return 1;
 		}
 	}
@@ -129,7 +129,7 @@ namespace Luna
 		return (c32)fc;
 	}
 
-	LUNA_RUNTIME_API usize utf16_to_utf8(c8* dest, usize dest_max_chars, const c16* src, usize src_chars)
+	LUNA_RUNTIME_API usize utf16_to_utf8(c8* dst, usize dst_max_chars, const c16* src, usize src_chars)
 	{
 		usize ri{ 0 };
 		usize wi{ 0 };
@@ -137,14 +137,14 @@ namespace Luna
 		{
 			c32 ch = utf16_decode_char(src + ri);
 			usize num_chars = utf8_charspan(ch);
-			if (wi + num_chars > dest_max_chars - 1)
+			if (wi + num_chars > dst_max_chars - 1)
 			{
 				break;
 			}
 			ri += utf16_charspan(ch);
-			wi += utf8_encode_char(dest + wi, ch);
+			wi += utf8_encode_char(dst + wi, ch);
 		}
-		dest[wi] = '\0';
+		dst[wi] = '\0';
 		return wi;
 	}
 
@@ -161,7 +161,7 @@ namespace Luna
 		return wi;
 	}
 
-	LUNA_RUNTIME_API usize utf8_to_utf16(c16* dest, usize dest_max_chars, const c8* src, usize src_chars, bool le)
+	LUNA_RUNTIME_API usize utf8_to_utf16(c16* dst, usize dst_max_chars, const c8* src, usize src_chars, bool le)
 	{
 		usize ri{ 0 };
 		usize wi{ 0 };
@@ -169,14 +169,14 @@ namespace Luna
 		{
 			c32 ch = utf8_decode_char(src + ri);
 			usize num_chars = utf16_charspan(ch);
-			if (wi + num_chars >= dest_max_chars)
+			if (wi + num_chars >= dst_max_chars)
 			{
 				break;
 			}
 			ri += utf8_charspan(ch);
-			wi += utf16_encode_char(dest + wi, ch, le);
+			wi += utf16_encode_char(dst + wi, ch, le);
 		}
-		dest[wi] = '\0';
+		dst[wi] = '\0';
 		return wi;
 	}
 

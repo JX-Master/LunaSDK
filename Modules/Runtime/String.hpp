@@ -171,7 +171,7 @@ namespace Luna
 		void replace(const_iterator first, const_iterator last, usize count2, value_type ch);
 		void replace(const_iterator first, const_iterator last, InitializerList<value_type> ilist);
 		BasicString substr(usize pos = 0, usize count = npos) const;
-		usize copy(value_type* dest, usize count, usize pos = 0) const;
+		usize copy(value_type* dst, usize count, usize pos = 0) const;
 		allocator_type get_allocator() const;
 
 		usize find(const BasicString& str, usize pos = 0) const;
@@ -1216,11 +1216,11 @@ namespace Luna
 		return BasicString(m_allocator_and_buffer.second() + pos, count, m_allocator_and_buffer.first());
 	}
 	template <typename _Char, typename _Alloc>
-	inline usize BasicString<_Char, _Alloc>::copy(value_type* dest, usize count, usize pos) const
+	inline usize BasicString<_Char, _Alloc>::copy(value_type* dst, usize count, usize pos) const
 	{
 		luassert(pos <= m_size);
 		count = min(count, m_size - pos);
-		memcpy(dest, m_allocator_and_buffer.second() + pos, sizeof(value_type) * count);
+		memcpy(dst, m_allocator_and_buffer.second() + pos, sizeof(value_type) * count);
 		return count;
 	}
 	template <typename _Char, typename _Alloc>

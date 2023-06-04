@@ -137,7 +137,7 @@ namespace Luna
 			}
 			virtual void set_compute_descriptor_sets(u32 start_index, Span<IDescriptorSet*> descriptor_sets) override;
 			virtual void dispatch(u32 thread_group_count_x, u32 thread_group_count_y, u32 thread_group_count_z) override;
-			virtual void copy_resource(IResource* dest, IResource* src) override;
+			virtual void copy_resource(IResource* dst, IResource* src) override;
 			virtual void copy_buffer(
 				IBuffer* dst, u64 dst_offset,
 				IBuffer* src, u64 src_offset,

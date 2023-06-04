@@ -150,9 +150,9 @@ namespace Luna
 			{
 				u32 width = max<u32>((u32)desc.width >> (j + 1), 1);
 				u32 height = max<u32>(desc.height >> (j + 1), 1);
-				Float2U* dest = (Float2U*)((usize)mapped + cb_size * j);
-				dest->x = 1.0f / (f32)width;
-				dest->y = 1.0f / (f32)height;
+				Float2U* dst = (Float2U*)((usize)mapped + cb_size * j);
+				dst->x = 1.0f / (f32)width;
+				dst->y = 1.0f / (f32)height;
 			}
 			cb->unmap(0, USIZE_MAX);
 
@@ -231,12 +231,12 @@ namespace Luna
 			{
 				u32 width = max<u32>((u32)desc.width >> (j + 1), 1);
 				u32 height = max<u32>(desc.height >> (j + 1), 1);
-				CB* dest = (CB*)((usize)mapped + cb_size * j);
-				dest->tex_width = width;
-				dest->tex_height = height;
-				dest->mip_0_width = (u32)desc.width;
-				dest->mip_0_height = desc.height;
-				dest->roughness = 1.0f / (desc.mip_levels - 1) * (j + 1);
+				CB* dst = (CB*)((usize)mapped + cb_size * j);
+				dst->tex_width = width;
+				dst->tex_height = height;
+				dst->mip_0_width = (u32)desc.width;
+				dst->mip_0_height = desc.height;
+				dst->roughness = 1.0f / (desc.mip_levels - 1) * (j + 1);
 			}
 			cb->unmap(0, USIZE_MAX);
 
@@ -255,12 +255,12 @@ namespace Luna
 
 			for (u32 j = 0; j < (u32)(desc.mip_levels - 1); ++j)
 			{
-				u32 dest_mip = j + 1;
+				u32 dst_mip = j + 1;
 				lulet(vs, device->new_descriptor_set(DescriptorSetDesc(m_env_mipmapping_dlayout)));
 				vs->update_descriptors({
 					WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(cb, cb_size * j, cb_size)),
 					WriteDescriptorSet::read_texture_view(1, TextureViewDesc::tex2d(resource_with_most_detailed_mip)),
-					WriteDescriptorSet::read_write_texture_view(2, TextureViewDesc::tex2d(prefiltered, desc.format, dest_mip, 1)),
+					WriteDescriptorSet::read_write_texture_view(2, TextureViewDesc::tex2d(prefiltered, desc.format, dst_mip, 1)),
 					WriteDescriptorSet::sampler(3, SamplerDesc(Filter::min_mag_mip_linear, TextureAddressMode::clamp, TextureAddressMode::clamp, TextureAddressMode::clamp))
 					});
 				compute_cmdbuf->set_compute_descriptor_set(0, vs);

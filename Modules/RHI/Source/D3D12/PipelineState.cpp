@@ -32,13 +32,13 @@ namespace Luna
 				return D3D12_BLEND_SRC_ALPHA;
 			case BlendFactor::inv_src_alpha:
 				return D3D12_BLEND_INV_SRC_ALPHA;
-			case BlendFactor::dest_alpha:
+			case BlendFactor::dst_alpha:
 				return D3D12_BLEND_DEST_ALPHA;
-			case BlendFactor::inv_dest_alpha:
+			case BlendFactor::inv_dst_alpha:
 				return D3D12_BLEND_INV_DEST_ALPHA;
-			case BlendFactor::dest_color:
+			case BlendFactor::dst_color:
 				return D3D12_BLEND_DEST_COLOR;
-			case BlendFactor::inv_dest_color:
+			case BlendFactor::inv_dst_color:
 				return D3D12_BLEND_INV_DEST_COLOR;
 			case BlendFactor::src_alpha_sat:
 				return D3D12_BLEND_SRC_ALPHA_SAT;
@@ -142,10 +142,10 @@ namespace Luna
 			}
 		}
 
-		inline void fill_shader_data(D3D12_SHADER_BYTECODE& dest, const Span<const byte_t>& src)
+		inline void fill_shader_data(D3D12_SHADER_BYTECODE& dst, const Span<const byte_t>& src)
 		{
-			dest.BytecodeLength = src.size();
-			dest.pShaderBytecode = src.data();
+			dst.BytecodeLength = src.size();
+			dst.pShaderBytecode = src.data();
 		}
 
 		inline void encode_target_blend_desc(D3D12_RENDER_TARGET_BLEND_DESC& rt, const AttachmentBlendDesc& srt, bool logic_op_enable, LogicOp logic_op)
@@ -153,10 +153,10 @@ namespace Luna
 			rt.BlendEnable = srt.blend_enable ? TRUE : FALSE;
 			rt.LogicOpEnable = logic_op_enable ? TRUE : FALSE;
 			rt.SrcBlend = encode_blend_factor(srt.src_blend);
-			rt.DestBlend = encode_blend_factor(srt.dest_blend);
+			rt.DestBlend = encode_blend_factor(srt.dst_blend);
 			rt.BlendOp = encode_blend_op(srt.blend_op);
 			rt.SrcBlendAlpha = encode_blend_factor(srt.src_blend_alpha);
-			rt.DestBlendAlpha = encode_blend_factor(srt.dest_blend_alpha);
+			rt.DestBlendAlpha = encode_blend_factor(srt.dst_blend_alpha);
 			rt.BlendOpAlpha = encode_blend_op(srt.blend_op_alpha);
 			if (logic_op_enable)
 			{

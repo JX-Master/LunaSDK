@@ -85,7 +85,7 @@ namespace Luna
 			Vector<VkBufferMemoryBarrier> m_buffer_barriers;
 			Vector<VkImageMemoryBarrier> m_image_barriers;
 			VkPipelineStageFlags m_src_stage_flags = 0;
-			VkPipelineStageFlags m_dest_stage_flags = 0;
+			VkPipelineStageFlags m_dst_stage_flags = 0;
 			HashMap<u32, QueueTransferBarriers> m_queue_transfer_barriers;
 
 			ResourceStateTrackingSystem() {}
@@ -103,7 +103,7 @@ namespace Luna
 				m_buffer_barriers.clear();
 				m_image_barriers.clear();
 				m_src_stage_flags = 0;
-				m_dest_stage_flags = 0;
+				m_dst_stage_flags = 0;
 				m_queue_transfer_barriers.clear();
 			}
 

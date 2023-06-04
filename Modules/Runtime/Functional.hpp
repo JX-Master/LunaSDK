@@ -379,8 +379,8 @@ namespace Luna
 
 	//	struct ObjectWitnessTable
 	//	{
-	//		void (*copy_ctor)(void* dest, const void* src);
-	//		void (*move_ctor)(void* dest, void* src);
+	//		void (*copy_ctor)(void* dst, const void* src);
+	//		void (*move_ctor)(void* dst, void* src);
 	//		void (*dtor)(void* obj);
 	//	};
 

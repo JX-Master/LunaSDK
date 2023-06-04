@@ -144,8 +144,6 @@ namespace Luna
 				Float3 tangent = (e2 * v1 - e1 * v2) * r;
 				Float3 binormal = (e1 * u2 - e2 * u1) * r;
 
-				auto& dest_tan = 
-
 				tangents[i1] = tangents[i1] + tangent;
 				tangents[i2] = tangents[i2] + tangent;
 				tangents[i3] = tangents[i3] + tangent;

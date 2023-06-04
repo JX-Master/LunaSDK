@@ -1,6 +1,6 @@
 Texture2D<float4> g_scene_tex : register(t1);
 Texture2D<float> g_lum_tex : register(t2);
-RWTexture2D<float4> g_dest_tex : register(u3);
+RWTexture2D<float4> g_dst_tex : register(u3);
 
 cbuffer g_cb : register(b0)
 {
@@ -47,5 +47,5 @@ void main(int3 dispatch_thread_id : SV_DispatchThreadID)
 	float3 ldr_color = tonemap(hdr_color, exposure);
 	float3 final = gamma_correction(ldr_color, 2.2);
 
-	g_dest_tex[dispatch_thread_id.xy] = float4(saturate(final.xyz), 1.0);
+	g_dst_tex[dispatch_thread_id.xy] = float4(saturate(final.xyz), 1.0);
 }

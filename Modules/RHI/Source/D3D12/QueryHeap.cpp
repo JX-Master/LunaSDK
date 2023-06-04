@@ -87,15 +87,15 @@ namespace Luna
                     (index + count) * sizeof(D3D12_QUERY_DATA_PIPELINE_STATISTICS), (void**)&mapped));
                 for (usize i = 0; i < count; ++i)
                 {
-                    auto& dest = values[i];
+                    auto& dst = values[i];
                     auto& src = mapped[index + i];
-                    dest.input_vertices = src.IAVertices;
-                    dest.input_primitives = src.IAPrimitives;
-                    dest.vs_invocations = src.VSInvocations;
-                    dest.rasterizer_input_primitives = src.CInvocations;
-                    dest.rendered_primitives = src.CPrimitives;
-                    dest.ps_invocations = src.PSInvocations;
-                    dest.cs_invocations = src.CSInvocations;
+                    dst.input_vertices = src.IAVertices;
+                    dst.input_primitives = src.IAPrimitives;
+                    dst.vs_invocations = src.VSInvocations;
+                    dst.rasterizer_input_primitives = src.CInvocations;
+                    dst.rendered_primitives = src.CPrimitives;
+                    dst.ps_invocations = src.PSInvocations;
+                    dst.cs_invocations = src.CSInvocations;
                 }
                 m_result_buffer->unmap(0, 0);
             }

@@ -72,7 +72,7 @@ namespace Luna
 				bool valid = false;
 				dst.num_queues = queue_families[i].queueCount;
 				dst.index = i;
-				dst.desc.flags = CommandQueueFlags::none;
+				dst.desc.flags = CommandQueueFlag::none;
 				// GRAPHICS and COMPUTE an always implicitly accept TRANSFER workload, so we don't need to explicitly check it.
 				// See Vulkan Specification for VkQueueFlagBits.
 				if (src.queueFlags & (VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT))
@@ -112,7 +112,7 @@ namespace Luna
 					if (failed(r)) return r.errcode();
 					if (present_support && device_swap_chain_supported)
 					{
-						set_flags(dst.desc.flags, CommandQueueFlags::presenting);
+						set_flags(dst.desc.flags, CommandQueueFlag::presenting);
 					}
 					ret.push_back(dst);
 				}
@@ -214,7 +214,7 @@ namespace Luna
 				{
 					graphic_queue_present = true;
 				}
-				if (test_flags(i.desc.flags, CommandQueueFlags::presenting))
+				if (test_flags(i.desc.flags, CommandQueueFlag::presenting))
 				{
 					present_queue_present = true;
 				}

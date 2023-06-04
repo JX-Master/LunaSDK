@@ -19,60 +19,60 @@ namespace Luna
 	using std::memmove;
 
 	//! clear the specified memory region to 0.
-	//! @param[in] dest The start address of memory region to clear.
-	//! @param[in] byteCount The size, in bytes, of the memory region to clear.
-	//! @return Returns the `dest` pointer.
-	inline void* memzero(void* dest, usize byte_count)
+	//! @param[in] dst The start address of memory region to clear.
+	//! @param[in] byte_count The size, in bytes, of the memory region to clear.
+	//! @return Returns the `dst` pointer.
+	inline void* memzero(void* dst, usize byte_count)
 	{
-		return memset(dest, 0, byte_count);
+		return memset(dst, 0, byte_count);
 	}
 	template <typename _Ty>
-	inline _Ty* memzero(_Ty* dest)
+	inline _Ty* memzero(_Ty* dst)
 	{
-		return (_Ty*)memzero(dest, sizeof(_Ty));
+		return (_Ty*)memzero(dst, sizeof(_Ty));
 	}
 
 	//! Copies the data for a 2D bitmap.
-	//! @param[in] dest A pointer to the first pixel to be copied in destination bitmap.
+	//! @param[in] dst A pointer to the first pixel to be copied in destination bitmap.
 	//! @param[in] src A pointer to the first pixel to be copied in source bitmap.
 	//! @param[in] copy_size_per_row The size of the data to be copied for every row, in bytes.
 	//! @param[in] num_rows The number of rows to copy.
-	//! @param[in] dest_row_pitch The size to advance for one row in destination bitmap in bytes.
+	//! @param[in] dst_row_pitch The size to advance for one row in destination bitmap in bytes.
 	//! @param[in] src_row_pitch The size to advance for one row in destination bitmap in bytes.
-	//! @return Returns the `dest` pointer.
-	inline void* memcpy_bitmap(void* dest, const void* src, usize copy_size_per_row, usize num_rows, usize dest_row_pitch, usize src_row_pitch)
+	//! @return Returns the `dst` pointer.
+	inline void* memcpy_bitmap(void* dst, const void* src, usize copy_size_per_row, usize num_rows, usize dst_row_pitch, usize src_row_pitch)
 	{
 		for (usize r = 0; r < num_rows; ++r)
 		{
-			memcpy((void*)((usize)dest + r * dest_row_pitch), (const void*)((usize)src + r * src_row_pitch), copy_size_per_row);
+			memcpy((void*)((usize)dst + r * dst_row_pitch), (const void*)((usize)src + r * src_row_pitch), copy_size_per_row);
 		}
-		return dest;
+		return dst;
 	}
 
 	//! Copies the data for a 3D bitmap.
-	//! @param[in] dest A pointer to the first pixel to be copied in destination bitmap.
+	//! @param[in] dst A pointer to the first pixel to be copied in destination bitmap.
 	//! @param[in] src A pointer to the first pixel to be copied in source bitmap.
 	//! @param[in] copy_size_per_row The size of the data to be copied for every row, in bytes.
 	//! @param[in] num_rows The number of rows to copy.
 	//! @param[in] num_slices The number of slices (layers) to copy.
-	//! @param[in] dest_row_pitch The size to advance for one row in destination bitmap in bytes.
+	//! @param[in] dst_row_pitch The size to advance for one row in destination bitmap in bytes.
 	//! @param[in] src_row_pitch The size to advance for one row in destination bitmap in bytes.
-	//! @param[in] dest_slice_pitch The size to advance for one slice (layer) in destination bitmap in bytes.
+	//! @param[in] dst_slice_pitch The size to advance for one slice (layer) in destination bitmap in bytes.
 	//! @param[in] src_slice_pitch The size to advance for one slice (layer) in destination bitmap in bytes.
-	//! @return Returns the `dest` pointer.
+	//! @return Returns the `dst` pointer.
 	inline void* memcpy_bitmap3d(
-		void* dest, const void* src,
+		void* dst, const void* src,
 		usize copy_size_per_row,
 		usize num_rows, usize num_slices,
-		usize dest_row_pitch, usize src_row_pitch,
-		usize dest_slice_pitch, usize src_slice_pitch)
+		usize dst_row_pitch, usize src_row_pitch,
+		usize dst_slice_pitch, usize src_slice_pitch)
 	{
 		for (usize r = 0; r < num_slices; ++r)
 		{
-			memcpy_bitmap((void*)((usize)dest + r * dest_slice_pitch), (const void*)((usize)src + r * src_slice_pitch), copy_size_per_row,
-				num_rows, dest_row_pitch, src_row_pitch);
+			memcpy_bitmap((void*)((usize)dst + r * dst_slice_pitch), (const void*)((usize)src + r * src_slice_pitch), copy_size_per_row,
+				num_rows, dst_row_pitch, src_row_pitch);
 		}
-		return dest;
+		return dst;
 	}
 
 	//! Returns a pointer that offsets the specified pixels in the texture.
@@ -257,66 +257,66 @@ namespace Luna
 
 	//! Calls the default constructor for the object pointed by iterator.
 	template <typename _Iter>
-	inline void default_construct(_Iter dest)
+	inline void default_construct(_Iter dst)
 	{
-		new (static_cast<void*>(addressof(*dest)))
+		new (static_cast<void*>(addressof(*dst)))
 			typename iterator_traits<_Iter>::value_type;
 	}
 
 	//! Calls the value constructor for the object pointed by iterator.
 	template <typename _Iter>
-	inline void value_construct(_Iter dest)
+	inline void value_construct(_Iter dst)
 	{
-		new (static_cast<void*>(addressof(*dest)))
+		new (static_cast<void*>(addressof(*dst)))
 			typename iterator_traits<_Iter>::value_type();
 	}
 
 	//! Calls the copy constructor for the object pointed by iterator.
 	template <typename _Iter1, typename _Iter2>
-	inline void copy_construct(_Iter1 dest, _Iter2 src)
+	inline void copy_construct(_Iter1 dst, _Iter2 src)
 	{
-		new (static_cast<void*>(addressof(*dest)))
+		new (static_cast<void*>(addressof(*dst)))
 			typename iterator_traits<_Iter1>::value_type(*src);
 	}
 
 	//! Calls the move constructor for the object pointed by iterator.
 	template <typename _Iter1, typename _Iter2>
-	inline void move_construct(_Iter1 dest, _Iter2 src)
+	inline void move_construct(_Iter1 dst, _Iter2 src)
 	{
-		new (static_cast<void*>(addressof(*dest)))
+		new (static_cast<void*>(addressof(*dst)))
 			typename iterator_traits<_Iter1>::value_type(move(*src));
 	}
 
 	//! Calls the direct constructor for the object pointed by iterator.
 	template <typename _Iter, typename... _Args>
-	inline void direct_construct(_Iter dest, _Args&&... args)
+	inline void direct_construct(_Iter dst, _Args&&... args)
 	{
-		new (static_cast<void*>(addressof(*dest)))
+		new (static_cast<void*>(addressof(*dst)))
 			typename iterator_traits<_Iter>::value_type(forward<_Args>(args)...);
 	}
 
 	//! Calls the destructor of the object pointed by iterator.
 	template <typename _Iter>
-	inline void destruct(_Iter dest)
+	inline void destruct(_Iter dst)
 	{
 		using value_type = typename iterator_traits<_Iter>::value_type;
-		static_cast<value_type*>(addressof(*dest))->~value_type();
+		static_cast<value_type*>(addressof(*dst))->~value_type();
 	}
 
-	//! Calls the copy assignment operator of the object `dest` iterator
+	//! Calls the copy assignment operator of the object `dst` iterator
 	//! is pointing to,
 	template <typename _Iter1, typename _Iter2>
-	inline void copy_assign(_Iter1 dest, _Iter2 src)
+	inline void copy_assign(_Iter1 dst, _Iter2 src)
 	{
-		(*dest) = (*src);
+		(*dst) = (*src);
 	}
 
-	//! Calls the move assignment operator of the object `dest` iterator
+	//! Calls the move assignment operator of the object `dst` iterator
 	//! is pointing to,
 	template <typename _Iter1, typename _Iter2>
-	inline void move_assign(_Iter1 dest, _Iter2 src)
+	inline void move_assign(_Iter1 dst, _Iter2 src)
 	{
-		(*dest) = move(*src);
+		(*dst) = move(*src);
 	}
 
 	namespace Impl
@@ -631,10 +631,10 @@ namespace Luna
 			typename is_trivially_relocatable<typename iterator_traits<_Iter2>::value_type>::type>::type;
 
 		template <typename _Iter1, typename _Iter2>
-		inline _Iter1 copy_relocate_trivial(_Iter1 dest, _Iter2 src)
+		inline _Iter1 copy_relocate_trivial(_Iter1 dst, _Iter2 src)
 		{
-			memcpy(static_cast<void*>(addressof(*dest)), static_cast<const void*>(addressof(*src)), sizeof(typename iterator_traits<_Iter1>::value_type));
-			return dest;
+			memcpy(static_cast<void*>(addressof(*dst)), static_cast<const void*>(addressof(*src)), sizeof(typename iterator_traits<_Iter1>::value_type));
+			return dst;
 		}
 	}
 
@@ -672,16 +672,16 @@ namespace Luna
 		return d_first;
 	}
 	template <typename _Iter1, typename _Iter2>
-	inline auto copy_relocate(_Iter1 dest, _Iter2 src) -> enable_if_t<Impl::copy_relocate_is_value_type_trivial<_Iter1, _Iter2>::value, _Iter1>	// is_trivially_relocatable
+	inline auto copy_relocate(_Iter1 dst, _Iter2 src) -> enable_if_t<Impl::copy_relocate_is_value_type_trivial<_Iter1, _Iter2>::value, _Iter1>	// is_trivially_relocatable
 	{
-		return Impl::copy_relocate_trivial(dest, src);
+		return Impl::copy_relocate_trivial(dst, src);
 	}
 	template <typename _Iter1, typename _Iter2>
-	inline auto copy_relocate(_Iter1 dest, _Iter2 src) -> enable_if_t<!Impl::copy_relocate_is_value_type_trivial<_Iter1, _Iter2>::value, _Iter1>// not is_trivially_relocatable
+	inline auto copy_relocate(_Iter1 dst, _Iter2 src) -> enable_if_t<!Impl::copy_relocate_is_value_type_trivial<_Iter1, _Iter2>::value, _Iter1>// not is_trivially_relocatable
 	{
-		move_construct(dest, src);
+		move_construct(dst, src);
 		destruct(src);
-		return dest;
+		return dst;
 	}
 
 	namespace Impl

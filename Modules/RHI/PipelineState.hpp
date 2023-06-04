@@ -102,10 +102,10 @@ namespace Luna
 			inv_src_color,
 			src_alpha,
 			inv_src_alpha,
-			dest_color,
-			inv_dest_color,
-			dest_alpha,
-			inv_dest_alpha,
+			dst_color,
+			inv_dst_color,
+			dst_alpha,
+			inv_dst_alpha,
 			src_alpha_sat,
 			blend_factor,
 			inv_blend_factor,
@@ -154,29 +154,29 @@ namespace Luna
 		{
 			bool blend_enable;
 			BlendFactor src_blend;
-			BlendFactor dest_blend;
+			BlendFactor dst_blend;
 			BlendOp blend_op;
 			BlendFactor src_blend_alpha;
-			BlendFactor dest_blend_alpha;
+			BlendFactor dst_blend_alpha;
 			BlendOp blend_op_alpha;
 			ColorWriteMask render_target_write_mask;
 
 			AttachmentBlendDesc(
 				bool blend_enable = false,
 				BlendFactor src_blend = BlendFactor::one,
-				BlendFactor dest_blend = BlendFactor::zero,
+				BlendFactor dst_blend = BlendFactor::zero,
 				BlendOp blend_op = BlendOp::add,
 				BlendFactor src_blend_alpha = BlendFactor::one,
-				BlendFactor dest_blend_alpha = BlendFactor::zero,
+				BlendFactor dst_blend_alpha = BlendFactor::zero,
 				BlendOp blend_op_alpha = BlendOp::add,
 				ColorWriteMask render_target_write_mask = ColorWriteMask::all
 			) :
 				blend_enable(blend_enable),
 				src_blend(src_blend),
-				dest_blend(dest_blend),
+				dst_blend(dst_blend),
 				blend_op(blend_op),
 				src_blend_alpha(src_blend_alpha),
-				dest_blend_alpha(dest_blend_alpha),
+				dst_blend_alpha(dst_blend_alpha),
 				blend_op_alpha(blend_op_alpha),
 				render_target_write_mask(render_target_write_mask) {}
 		};

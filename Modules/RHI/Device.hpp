@@ -40,7 +40,7 @@ namespace Luna
 			copy = 3,
 		};
 
-		enum class CommandQueueFlags : u8
+		enum class CommandQueueFlag : u8
 		{
 			none = 0,
 			//! This command queue supports swap chain presenting commands.
@@ -50,10 +50,10 @@ namespace Luna
 		struct CommandQueueDesc
 		{
 			CommandQueueType type;
-			CommandQueueFlags flags;
+			CommandQueueFlag flags;
 
 			CommandQueueDesc() = default;
-			CommandQueueDesc(CommandQueueType type, CommandQueueFlags flags) :
+			CommandQueueDesc(CommandQueueType type, CommandQueueFlag flags) :
 				type(type),
 				flags(flags) {}
 		};

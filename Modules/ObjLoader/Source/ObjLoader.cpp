@@ -25,49 +25,49 @@ namespace Luna
 
 		StaticRegisterModule m("ObjLoader", "", nullptr, nullptr);
 
-		void copy_shape(Shape& dest, const tinyobj::shape_t& src)
+		void copy_shape(Shape& dst, const tinyobj::shape_t& src)
 		{
-			dest.name = Name(src.name.c_str());
+			dst.name = Name(src.name.c_str());
 			
 			// Copy mesh.
-			dest.mesh.indices.resize(src.mesh.indices.size());
-			if (dest.mesh.indices.size())
+			dst.mesh.indices.resize(src.mesh.indices.size());
+			if (dst.mesh.indices.size())
 			{
-				memcpy(&dest.mesh.indices[0], &src.mesh.indices[0], dest.mesh.indices.size() * sizeof(Index));
+				memcpy(&dst.mesh.indices[0], &src.mesh.indices[0], dst.mesh.indices.size() * sizeof(Index));
 			}
-			dest.mesh.num_face_vertices.resize(src.mesh.num_face_vertices.size());
-			if (dest.mesh.num_face_vertices.size())
+			dst.mesh.num_face_vertices.resize(src.mesh.num_face_vertices.size());
+			if (dst.mesh.num_face_vertices.size())
 			{
-				memcpy(&dest.mesh.num_face_vertices[0], &src.mesh.num_face_vertices[0], dest.mesh.num_face_vertices.size() * sizeof(u8));
+				memcpy(&dst.mesh.num_face_vertices[0], &src.mesh.num_face_vertices[0], dst.mesh.num_face_vertices.size() * sizeof(u8));
 			}
-			dest.mesh.material_ids.resize(src.mesh.material_ids.size());
-			if (dest.mesh.material_ids.size())
+			dst.mesh.material_ids.resize(src.mesh.material_ids.size());
+			if (dst.mesh.material_ids.size())
 			{
-				memcpy(&dest.mesh.material_ids[0], &src.mesh.material_ids[0], dest.mesh.material_ids.size() * sizeof(i32));
+				memcpy(&dst.mesh.material_ids[0], &src.mesh.material_ids[0], dst.mesh.material_ids.size() * sizeof(i32));
 			}
-			dest.mesh.smoothing_group_ids.resize(src.mesh.smoothing_group_ids.size());
-			if (dest.mesh.smoothing_group_ids.size())
+			dst.mesh.smoothing_group_ids.resize(src.mesh.smoothing_group_ids.size());
+			if (dst.mesh.smoothing_group_ids.size())
 			{
-				memcpy(&dest.mesh.smoothing_group_ids[0], &src.mesh.smoothing_group_ids[0], dest.mesh.smoothing_group_ids.size() * sizeof(i32));
+				memcpy(&dst.mesh.smoothing_group_ids[0], &src.mesh.smoothing_group_ids[0], dst.mesh.smoothing_group_ids.size() * sizeof(i32));
 			}
 
 			// Copy lines.
-			dest.lines.indices.resize(src.lines.indices.size());
-			if (dest.lines.indices.size())
+			dst.lines.indices.resize(src.lines.indices.size());
+			if (dst.lines.indices.size())
 			{
-				memcpy(&dest.lines.indices[0], &src.lines.indices[0], dest.lines.indices.size() * sizeof(Index));
+				memcpy(&dst.lines.indices[0], &src.lines.indices[0], dst.lines.indices.size() * sizeof(Index));
 			}
-			dest.lines.num_line_vertices.resize(src.lines.num_line_vertices.size());
-			if (dest.lines.num_line_vertices.size())
+			dst.lines.num_line_vertices.resize(src.lines.num_line_vertices.size());
+			if (dst.lines.num_line_vertices.size())
 			{
-				memcpy(&dest.lines.num_line_vertices[0], &src.lines.num_line_vertices[0], dest.lines.num_line_vertices.size() * sizeof(i32));
+				memcpy(&dst.lines.num_line_vertices[0], &src.lines.num_line_vertices[0], dst.lines.num_line_vertices.size() * sizeof(i32));
 			}
 
 			// Copy points.
-			dest.points.indices.resize(src.points.indices.size());
-			if (dest.points.indices.size())
+			dst.points.indices.resize(src.points.indices.size());
+			if (dst.points.indices.size())
 			{
-				memcpy(&dest.points.indices[0], &src.points.indices[0], dest.points.indices.size() * sizeof(Index));
+				memcpy(&dst.points.indices[0], &src.points.indices[0], dst.points.indices.size() * sizeof(Index));
 			}
 		}
 

@@ -78,7 +78,7 @@ namespace Luna
 				append_buffer(res, before_flags, after_flags, before_queue_family_index, after_queue_family_index);
 				m_src_stage_flags |= (barrier.before == BufferStateFlag::automatic) ?
 					VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT : determine_pipeline_stage_flags(barrier.before, m_queue_type);
-				m_dest_stage_flags |= determine_pipeline_stage_flags(barrier.after, m_queue_type);
+				m_dst_stage_flags |= determine_pipeline_stage_flags(barrier.after, m_queue_type);
 			}
 			else
 			{
@@ -101,7 +101,7 @@ namespace Luna
 				}
 				append_buffer(res, before_flags, after_flags, before_queue_family_index, after_queue_family_index);
 				m_src_stage_flags |= before_stages;
-				m_dest_stage_flags |= determine_pipeline_stage_flags(barrier.after, m_queue_type);
+				m_dst_stage_flags |= determine_pipeline_stage_flags(barrier.after, m_queue_type);
 			}
 		}
 		void ResourceStateTrackingSystem::pack_image_internal(ImageResource* res, const TextureBarrier& barrier,
@@ -120,7 +120,7 @@ namespace Luna
 				append_image(res, barrier.subresource, before_state, after_state, before_queue_family_index, after_queue_family_index);
 				m_src_stage_flags |= (barrier.before == TextureStateFlag::automatic) ?
 					VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT : determine_pipeline_stage_flags(barrier.before, m_queue_type);
-				m_dest_stage_flags |= determine_pipeline_stage_flags(barrier.after, m_queue_type);
+				m_dst_stage_flags |= determine_pipeline_stage_flags(barrier.after, m_queue_type);
 			}
 			else
 			{
@@ -147,7 +147,7 @@ namespace Luna
 				}
 				append_image(res, barrier.subresource, before_state, after_state, before_queue_family_index, after_queue_family_index);
 				m_src_stage_flags |= before_stages;
-				m_dest_stage_flags |= determine_pipeline_stage_flags(barrier.after, m_queue_type);
+				m_dst_stage_flags |= determine_pipeline_stage_flags(barrier.after, m_queue_type);
 			}
 		}
 		void ResourceStateTrackingSystem::pack_buffer(const BufferBarrier& barrier)
@@ -241,7 +241,7 @@ namespace Luna
 				}
 			}
 			if (m_src_stage_flags == 0) m_src_stage_flags = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-			if (m_dest_stage_flags == 0) m_dest_stage_flags = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+			if (m_dst_stage_flags == 0) m_dst_stage_flags = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
 		}
 		void ResourceStateTrackingSystem::generate_finish_barriers()
 		{
@@ -266,7 +266,7 @@ namespace Luna
 			{
 				m_src_stage_flags = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
 			}
-			m_dest_stage_flags = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+			m_dst_stage_flags = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
 		}
 		void ResourceStateTrackingSystem::apply()
 		{

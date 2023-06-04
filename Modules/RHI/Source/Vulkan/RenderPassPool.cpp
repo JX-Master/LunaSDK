@@ -51,16 +51,16 @@ namespace Luna
 				u8 attachment_index = 0;
 				for (usize i = 0; i < num_color_attachments; ++i)
 				{
-					VkAttachmentDescription& dest = attachments[attachment_index];
-					dest.flags = 0;
-					dest.format = encode_format(key.color_formats[i]);
-					dest.samples = encode_sample_count(key.sample_count);
-					dest.loadOp = encode_load_op(key.color_load_ops[i]);
-					dest.storeOp = encode_store_op(key.color_store_ops[i]);
-					dest.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-					dest.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-					dest.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-					dest.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+					VkAttachmentDescription& dst = attachments[attachment_index];
+					dst.flags = 0;
+					dst.format = encode_format(key.color_formats[i]);
+					dst.samples = encode_sample_count(key.sample_count);
+					dst.loadOp = encode_load_op(key.color_load_ops[i]);
+					dst.storeOp = encode_store_op(key.color_store_ops[i]);
+					dst.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+					dst.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+					dst.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+					dst.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 					color_attachment_refs[i].attachment = attachment_index;
 					color_attachment_refs[i].layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 					resolve_attachment_refs[i].attachment = VK_ATTACHMENT_UNUSED;
@@ -70,16 +70,16 @@ namespace Luna
 				// Encode resolve if needed.
 				for (usize i = 0; i < num_resolve_targets; ++i)
 				{
-					VkAttachmentDescription& dest = attachments[attachment_index];
-					dest.flags = 0;
-					dest.format = encode_format(key.resolve_formats[resolve_targets[i]]);
-					dest.samples = VK_SAMPLE_COUNT_1_BIT;
-					dest.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-					dest.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-					dest.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-					dest.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-					dest.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-					dest.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+					VkAttachmentDescription& dst = attachments[attachment_index];
+					dst.flags = 0;
+					dst.format = encode_format(key.resolve_formats[resolve_targets[i]]);
+					dst.samples = VK_SAMPLE_COUNT_1_BIT;
+					dst.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+					dst.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+					dst.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+					dst.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+					dst.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+					dst.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 					resolve_attachment_refs[resolve_targets[i]].attachment = attachment_index;
 					resolve_attachment_refs[resolve_targets[i]].layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 					++attachment_index;
@@ -87,23 +87,23 @@ namespace Luna
 				// Encode depth stencil if needed.
 				if (depth_stencil_attachment_present)
 				{
-					VkAttachmentDescription& dest = attachments[attachment_index];
-					dest.flags = 0;
-					dest.format = encode_format(key.depth_stencil_format);
-					dest.samples = encode_sample_count(key.sample_count);
-					dest.loadOp = encode_load_op(key.depth_load_op);
-					dest.storeOp = encode_store_op(key.depth_store_op);
-					dest.stencilLoadOp = encode_load_op(key.stencil_load_op);
-					dest.stencilStoreOp = encode_store_op(key.stencil_store_op);
+					VkAttachmentDescription& dst = attachments[attachment_index];
+					dst.flags = 0;
+					dst.format = encode_format(key.depth_stencil_format);
+					dst.samples = encode_sample_count(key.sample_count);
+					dst.loadOp = encode_load_op(key.depth_load_op);
+					dst.storeOp = encode_store_op(key.depth_store_op);
+					dst.stencilLoadOp = encode_load_op(key.stencil_load_op);
+					dst.stencilStoreOp = encode_store_op(key.stencil_store_op);
 					if (key.depth_stencil_read_only)
 					{
-						dest.initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
-						dest.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+						dst.initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+						dst.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
 					}
 					else
 					{
-						dest.initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-						dest.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+						dst.initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+						dst.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 					}
 					depth_stencil_attachment_ref.attachment = attachment_index;
 					depth_stencil_attachment_ref.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;

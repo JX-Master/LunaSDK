@@ -35,7 +35,7 @@ cbuffer LumHistogramCB : register(b0)
 }
 
 Texture2D g_src_tex : register(t1);
-RWStructuredBuffer<uint> g_dest_buffer : register(u2);
+RWStructuredBuffer<uint> g_dst_buffer : register(u2);
 
 groupshared uint histogram_shared[256];
 
@@ -53,5 +53,5 @@ void main(int3 dispatch_thread_id : SV_DispatchThreadID, uint group_index : SV_G
     }
 
     GroupMemoryBarrierWithGroupSync();
-    InterlockedAdd(g_dest_buffer[group_index], histogram_shared[group_index]);
+    InterlockedAdd(g_dst_buffer[group_index], histogram_shared[group_index]);
 }

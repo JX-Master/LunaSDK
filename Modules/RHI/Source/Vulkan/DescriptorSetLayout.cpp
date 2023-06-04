@@ -13,32 +13,32 @@ namespace Luna
 {
 	namespace RHI
 	{
-		inline void encode_descriptor_set_binding(VkDescriptorSetLayoutBinding& dest, const DescriptorSetLayoutBinding& src)
+		inline void encode_descriptor_set_binding(VkDescriptorSetLayoutBinding& dst, const DescriptorSetLayoutBinding& src)
 		{
-			dest.binding = src.binding_slot;
-			dest.descriptorCount = src.num_descs;
-			dest.descriptorType = encode_descriptor_type(src.type);
+			dst.binding = src.binding_slot;
+			dst.descriptorCount = src.num_descs;
+			dst.descriptorType = encode_descriptor_type(src.type);
 			if (src.shader_visibility_flags == ShaderVisibilityFlag::all)
 			{
-				dest.stageFlags = VK_SHADER_STAGE_ALL;
+				dst.stageFlags = VK_SHADER_STAGE_ALL;
 			}
 			else
 			{
-				dest.stageFlags = 0;
+				dst.stageFlags = 0;
 				if (test_flags(src.shader_visibility_flags, ShaderVisibilityFlag::vertex))
 				{
-					dest.stageFlags |= VK_SHADER_STAGE_VERTEX_BIT;
+					dst.stageFlags |= VK_SHADER_STAGE_VERTEX_BIT;
 				}
 				if (test_flags(src.shader_visibility_flags, ShaderVisibilityFlag::pixel))
 				{
-					dest.stageFlags |= VK_SHADER_STAGE_FRAGMENT_BIT;
+					dst.stageFlags |= VK_SHADER_STAGE_FRAGMENT_BIT;
 				}
 				if (test_flags(src.shader_visibility_flags, ShaderVisibilityFlag::compute))
 				{
-					dest.stageFlags |= VK_SHADER_STAGE_COMPUTE_BIT;
+					dst.stageFlags |= VK_SHADER_STAGE_COMPUTE_BIT;
 				}
 			}
-			dest.pImmutableSamplers = nullptr;
+			dst.pImmutableSamplers = nullptr;
 		}
 		RV DescriptorSetLayout::init(const DescriptorSetLayoutDesc& desc)
 		{

@@ -50,7 +50,7 @@ namespace Luna
 	}
 
 
-	LUNA_RUNTIME_API usize base64_encode(c8* dest, usize dest_max_chars, const void* src, usize src_size_bytes)
+	LUNA_RUNTIME_API usize base64_encode(c8* dst, usize dst_max_chars, const void* src, usize src_size_bytes)
 	{
 		u8 data_tuple[3];
 		u8 str_tuple[4];
@@ -71,44 +71,44 @@ namespace Luna
 			str_tuple[2] = ((data_tuple[1] & 0x0f) << 2) + ((data_tuple[2] & 0xc0) >> 6);
 			str_tuple[3] = data_tuple[2] & 0x3f;
 			// encode
-			if (str_cur < dest_max_chars)
+			if (str_cur < dst_max_chars)
 			{
-				dest[str_cur] = Impl::base64_encode_chars[str_tuple[0]];
+				dst[str_cur] = Impl::base64_encode_chars[str_tuple[0]];
 				str_cur++;
 			}
-			if (str_cur < dest_max_chars)
+			if (str_cur < dst_max_chars)
 			{
-				dest[str_cur] = Impl::base64_encode_chars[str_tuple[1]];
+				dst[str_cur] = Impl::base64_encode_chars[str_tuple[1]];
 				str_cur++;
 			}
-			if (str_cur < dest_max_chars)
+			if (str_cur < dst_max_chars)
 			{
-				dest[str_cur] = (padding == 2) ? '=' : Impl::base64_encode_chars[str_tuple[2]];
+				dst[str_cur] = (padding == 2) ? '=' : Impl::base64_encode_chars[str_tuple[2]];
 				str_cur++;
 			}
-			if (str_cur < dest_max_chars)
+			if (str_cur < dst_max_chars)
 			{
-				dest[str_cur] = (padding > 0) ? '=' : Impl::base64_encode_chars[str_tuple[3]];
+				dst[str_cur] = (padding > 0) ? '=' : Impl::base64_encode_chars[str_tuple[3]];
 				str_cur++;
 			}
 			data_cur += 3;
-			if (str_cur >= dest_max_chars)
+			if (str_cur >= dst_max_chars)
 			{
 				break;
 			}
 		}
-		dest[str_cur] = 0;
+		dst[str_cur] = 0;
 		return str_cur;
 	}
 
-	LUNA_RUNTIME_API usize base64_decode(void* dest, usize dest_max_bytes, const c8* src, usize src_size_chars)
+	LUNA_RUNTIME_API usize base64_decode(void* dst, usize dst_max_bytes, const c8* src, usize src_size_chars)
 	{
 		u8 str_tuple[4];
 		u8 padding;
 		usize data_cur{ 0 };
 		usize str_cur{ 0 };
-		u8* data_t = reinterpret_cast<u8*>(dest);
-		while ((data_cur < dest_max_bytes) && src[str_cur] && (str_cur < src_size_chars))
+		u8* data_t = reinterpret_cast<u8*>(dst);
+		while ((data_cur < dst_max_bytes) && src[str_cur] && (str_cur < src_size_chars))
 		{
 			// decode
 			padding = src[str_cur + 2] == '=' ? 2 : (src[str_cur + 3] == '=' ? 1 : 0);
@@ -119,12 +119,12 @@ namespace Luna
 			// construct data.
 			data_t[data_cur] = (str_tuple[0] << 2) + ((str_tuple[1] & 0x30) >> 4);
 			data_cur++;
-			if (data_cur < dest_max_bytes && padding != 2)
+			if (data_cur < dst_max_bytes && padding != 2)
 			{
 				data_t[data_cur] = ((str_tuple[1] & 0x0f) << 4) + ((str_tuple[2] & 0x3c) >> 2);
 				data_cur++;
 			}
-			if (data_cur < dest_max_bytes && !padding)
+			if (data_cur < dst_max_bytes && !padding)
 			{
 				data_t[data_cur] = ((str_tuple[2] & 0x03) << 6) + str_tuple[3];
 				data_cur++;
