@@ -14,6 +14,7 @@
 #include "../Algorithm.hpp"
 #include "../Allocator.hpp"
 #include "HashTableBase.hpp"
+#include <cmath>
 
 namespace Luna
 {

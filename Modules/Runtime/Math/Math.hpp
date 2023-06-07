@@ -35,8 +35,8 @@ namespace Luna
 
 	constexpr f32 F32_INFINITY = (f32)HUGE_VALF;
 	constexpr f64 F64_INFINITY = (f64)HUGE_VAL;
-	constexpr f32 F32_NAN = (f32)NAN;
-	constexpr f64 F64_NAN = F64_INFINITY * 0.0;
+	constexpr f32 F32_NAN = std::numeric_limits<f32>::quiet_NaN();
+	constexpr f64 F64_NAN = std::numeric_limits<f64>::quiet_NaN();
 
 	//! Convert degree angle to radius angle.
 	inline constexpr f32 deg_to_rad(f32 degrees)

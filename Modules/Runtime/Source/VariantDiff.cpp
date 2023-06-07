@@ -7,7 +7,6 @@
 * @author JXMaster
 * @date 2022/6/26
 */
-#pragma once
 #include "../PlatformDefines.hpp"
 #define LUNA_RUNTIME_API LUNA_EXPORT
 #include "../VariantDiff.hpp"

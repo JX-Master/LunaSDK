@@ -28,15 +28,15 @@ namespace Luna
 		{
 			OS::delete_mutex(m_handle);
 		}
-		void wait()
+		virtual void wait() override
 		{
 			OS::lock_mutex(m_handle);
 		}
-		bool try_wait()
+		virtual bool try_wait() override
 		{
 			return OS::try_lock_mutex(m_handle);
 		}
-		void unlock()
+		virtual void unlock() override
 		{
 			OS::unlock_mutex(m_handle);
 		}

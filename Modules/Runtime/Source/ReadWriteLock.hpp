@@ -28,27 +28,27 @@ namespace Luna
 		{
 			OS::delete_read_write_lock(m_handle);
 		}
-		void acquire_read()
+		virtual void acquire_read() override
 		{
 			OS::acquire_read_lock(m_handle);
 		}
-		void acquire_write()
+		virtual void acquire_write() override
 		{
 			OS::acquire_write_lock(m_handle);
 		}
-		bool try_acquire_read()
+		virtual bool try_acquire_read() override
 		{
 			return OS::try_acquire_read_lock(m_handle);
 		}
-		bool try_acquire_write()
+		virtual bool try_acquire_write() override
 		{
 			return OS::try_acquire_write_lock(m_handle);
 		}
-		void release_read()
+		virtual void release_read() override
 		{
 			OS::release_read_lock(m_handle);
 		}
-		void release_write()
+		virtual void release_write() override
 		{
 			OS::release_write_lock(m_handle);
 		}

@@ -29,15 +29,15 @@ namespace Luna
 		{
 			OS::delete_semaphore(m_handle);
 		}
-		void wait()
+		virtual void wait() override
 		{
 			OS::acquire_semaphore(m_handle);
 		}
-		bool try_wait()
+		virtual bool try_wait() override
 		{
 			return OS::try_acquire_semaphore(m_handle);
 		}
-		void release()
+		virtual void release() override
 		{
 			OS::release_semaphore(m_handle);
 		}

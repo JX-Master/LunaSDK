@@ -29,19 +29,19 @@ namespace Luna
 		{
 			OS::delete_signal(m_handle);
 		}
-		void wait()
+		virtual void wait() override
 		{
 			OS::wait_signal(m_handle);
 		}
-		bool try_wait()
+		virtual bool try_wait() override
 		{
 			return OS::try_wait_signal(m_handle);
 		}
-		void trigger()
+		virtual void trigger() override
 		{
 			OS::trigger_signal(m_handle);
 		}
-		void reset()
+		virtual void reset() override
 		{
 			OS::reset_signal(m_handle);
 		}

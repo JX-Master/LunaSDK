@@ -24,15 +24,15 @@ namespace Luna
 		Thread() :
 			m_handle(nullptr) {}
 
-		void wait()
+		virtual void wait() override
 		{
 			OS::wait_thread(m_handle);
 		}
-		bool try_wait()
+		virtual bool try_wait() override
 		{
 			return OS::try_wait_thread(m_handle);
 		}
-		void set_priority(ThreadPriority priority)
+		virtual void set_priority(ThreadPriority priority)  override
 		{
 			OS::set_thread_priority(m_handle, priority);
 		}
@@ -54,16 +54,16 @@ namespace Luna
 		MainThread() :
 			m_handle(nullptr) {}
 
-		void wait()
+		virtual void wait() override
 		{
 			lupanic_msg_always("The main thread cannot be waited, since it never returns.");
 		}
-		bool try_wait()
+		virtual bool try_wait() override
 		{
 			// The main thread cannot be waited.
 			return false;
 		}
-		void set_priority(ThreadPriority priority)
+		virtual void set_priority(ThreadPriority priority) override
 		{
 			OS::set_thread_priority(m_handle, priority);
 		}

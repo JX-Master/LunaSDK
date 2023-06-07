@@ -114,10 +114,10 @@ namespace Luna
 			int fd = (int)(usize)file;
 			::close(fd);
 		}
-		RV read_unbuffered_file(opaque_t file, Span<byte_t> buffer, usize* read_bytes)
+		RV read_unbuffered_file(opaque_t file, void* buffer, usize size, usize* read_bytes)
 		{
 			int fd = (int)(usize)file;
-			isize sz = ::read(fd, buffer.data(), buffer.size());
+			isize sz = ::read(fd, buffer, size);
 			if (sz == -1)
 			{
 				if (read_bytes)
@@ -132,10 +132,10 @@ namespace Luna
 			}
 			return ok;
 		}
-		RV write_unbuffered_file(opaque_t file, Span<const byte_t> buffer, usize* write_bytes)
+		RV write_unbuffered_file(opaque_t file, const void* buffer, usize size, usize* write_bytes)
 		{
 			int fd = (int)(usize)file;
-			isize sz = ::write(fd, buffer.data(), buffer.size());
+			isize sz = ::write(fd, buffer, size);
 			if (sz == -1)
 			{
 				if (write_bytes)
@@ -349,15 +349,15 @@ namespace Luna
 			FILE* f = (FILE*)file;
 			fclose(f);
 		}
-		RV read_buffered_file(opaque_t file, Span<byte_t> buffer, usize* read_bytes)
+		RV read_buffered_file(opaque_t file, void* buffer, usize size, usize* read_bytes)
 		{
 			FILE* f = (FILE*)file;
-			usize sz = fread(buffer.data(), 1, buffer.size(), f);
+			usize sz = fread(buffer, 1, size, f);
 			if (read_bytes)
 			{
 				*read_bytes = sz;
 			}
-			if (sz != buffer.size())
+			if (sz != size)
 			{
 				if (feof(f))
 				{
@@ -369,15 +369,15 @@ namespace Luna
 			}
 			return ok;
 		}
-		RV write_buffered_file(opaque_t file, Span<const byte_t> buffer, usize* write_bytes)
+		RV write_buffered_file(opaque_t file, const void* buffer, usize size, usize* write_bytes)
 		{
 			FILE* f = (FILE*)file;
-			usize sz = fwrite(buffer.data(), 1, buffer.size(), f);
+			usize sz = fwrite(buffer, 1, size, f);
 			if (write_bytes)
 			{
 				*write_bytes = sz;
 			}
-			if (sz != buffer.size())
+			if (sz != size)
 			{
 				clearerr(f);
 				return BasicError::bad_platform_call();
@@ -472,17 +472,17 @@ namespace Luna
 			else close_unbuffered_file(f->handle);
 			Luna::memdelete(f);
 		}
-		RV read_file(opaque_t file, Span<byte_t> buffer, usize* read_bytes)
+		RV read_file(opaque_t file, void* buffer, usize size, usize* read_bytes)
 		{
 			File* f = (File*)file;
-			return f->buffered ? read_buffered_file(f->handle, buffer, read_bytes) :
-				read_unbuffered_file(f->handle, buffer, read_bytes);
+			return f->buffered ? read_buffered_file(f->handle, buffer, size, read_bytes) :
+				read_unbuffered_file(f->handle, buffer, size, read_bytes);
 		}
-		RV write_file(opaque_t file, Span<const byte_t> buffer, usize* write_bytes)
+		RV write_file(opaque_t file, const void* buffer, usize size, usize* write_bytes)
 		{
 			File* f = (File*)file;
-			return f->buffered ? write_buffered_file(f->handle, buffer, write_bytes) :
-				write_unbuffered_file(f->handle, buffer, write_bytes);
+			return f->buffered ? write_buffered_file(f->handle, buffer, size, write_bytes) :
+				write_unbuffered_file(f->handle, buffer, size, write_bytes);
 		}
 		u64 get_file_size(opaque_t file)
 		{
@@ -565,8 +565,8 @@ namespace Luna
 				while (sz)
 				{
 					usize copy_size_onetime = min<usize>(sz, max_buffer_sz);
-					luexp(read_file(from_file, {buf, copy_size_onetime}, nullptr));
-					luexp(write_file(to_file, {buf, copy_size_onetime}, nullptr));
+					luexp(read_file(from_file, buf, copy_size_onetime, nullptr));
+					luexp(write_file(to_file, buf, copy_size_onetime, nullptr));
 					sz -= copy_size_onetime;
 				}
 			}
@@ -644,7 +644,7 @@ namespace Luna
 					return BasicError::access_denied();
 				case EMFILE:
 				case ENFILE:
-					return BasicError::busy();
+					return BasicError::out_of_resource();
 				case ENOENT:
 					return BasicError::not_found();
 				case ENOMEM:
@@ -745,7 +745,7 @@ namespace Luna
 				case EACCES:
 					return BasicError::access_denied();
 				case EBUSY:
-					return BasicError::busy();
+					return BasicError::not_ready();
 				case ENAMETOOLONG:
 					return BasicError::data_too_long();
 				case ENOENT:

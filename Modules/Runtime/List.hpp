@@ -291,12 +291,20 @@ namespace Luna
 
 	template <typename _Ty, typename _Alloc>
 	inline List<_Ty, _Alloc>::List() :
-		m_allocator_and_nodebase(allocator_type(), ListImpl::NodeBase(&m_allocator_and_nodebase.second(), &m_allocator_and_nodebase.second())),
-		m_size(0) {}
+		m_allocator_and_nodebase(allocator_type(), ListImpl::NodeBase()),
+		m_size(0)
+	{
+		m_allocator_and_nodebase.second().m_next = &m_allocator_and_nodebase.second();
+		m_allocator_and_nodebase.second().m_prev = &m_allocator_and_nodebase.second();
+	}
 	template <typename _Ty, typename _Alloc>
 	inline List<_Ty, _Alloc>::List(const allocator_type& alloc) :
-		m_allocator_and_nodebase(alloc, ListImpl::NodeBase(&m_allocator_and_nodebase.second(), &m_allocator_and_nodebase.second())),
-		m_size(0) {}
+		m_allocator_and_nodebase(alloc, ListImpl::NodeBase()),
+		m_size(0) 
+	{
+		m_allocator_and_nodebase.second().m_next = &m_allocator_and_nodebase.second();
+		m_allocator_and_nodebase.second().m_prev = &m_allocator_and_nodebase.second();
+	}
 	template <typename _Ty, typename _Alloc>
 	inline List<_Ty, _Alloc>::List(usize count, const_reference value, const allocator_type& alloc) :
 		m_allocator_and_nodebase(alloc, ListImpl::NodeBase())

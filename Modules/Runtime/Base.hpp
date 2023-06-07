@@ -171,9 +171,9 @@ namespace Luna
 
 	// 1-bit sign, 11-bits exponent, 52-bits fraction.
 
-	constexpr u64 F64_SIGN_MASK 	= 0x8000000000000000Ui64;
-	constexpr u64 F64_EXPONENT_MASK = 0x7FF0000000000000Ui64;
-	constexpr u64 F64_FRACTION_MASK = 0x000FFFFFFFFFFFFFUi64;
+	constexpr u64 F64_SIGN_MASK 	= 0x8000000000000000ULL;
+	constexpr u64 F64_EXPONENT_MASK = 0x7FF0000000000000ULL;
+	constexpr u64 F64_FRACTION_MASK = 0x000FFFFFFFFFFFFFULL;
 
 	//------------------------------------------------------------------------------------------------------
 	//  Type Traits
