@@ -120,7 +120,7 @@ namespace Luna
 				create_info.imageColorSpace = surface_format.colorSpace;
 				create_info.imageExtent = extent;
 				create_info.imageArrayLayers = 1;
-				create_info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+				create_info.imageUsage = surface_info.capabilities.supportedUsageFlags;
 				create_info.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
 				create_info.queueFamilyIndexCount = 0;
 				create_info.pQueueFamilyIndices = nullptr;
