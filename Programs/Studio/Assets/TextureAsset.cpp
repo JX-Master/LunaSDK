@@ -13,6 +13,7 @@
 #include <Runtime/File.hpp>
 #include <Image/Image.hpp>
 #include <VFS/VFS.hpp>
+#include <RHI/Utility.hpp>
 
 namespace Luna
 {
@@ -155,18 +156,25 @@ namespace Luna
 				lulet(desc, Image::read_image_file_desc(file_data.data() + mip_descs[0].first, mip_descs[0].second));
 				auto desired_format = get_desired_format(desc.format);
 				// Create resource.
-				lulet(tex, RHI::get_main_device()->new_texture(RHI::MemoryType::local, RHI::TextureDesc::tex2d(
+				lulet(tex, g_env->device->new_texture(RHI::MemoryType::local, RHI::TextureDesc::tex2d(
 					get_format_from_image_format(desc.format), 
 					RHI::TextureUsageFlag::read_texture | RHI::TextureUsageFlag::read_write_texture | RHI::TextureUsageFlag::copy_source | RHI::TextureUsageFlag::copy_dest, 
 					desc.width, desc.height)));
 				// Upload data
+				Vector<Blob> image_data_array;
+				Vector<RHI::CopyResourceData> copies;
+				image_data_array.reserve(num_mips);
+				copies.reserve(num_mips);
 				for (u64 i = 0; i < num_mips; ++i)
 				{
 					Image::ImageDesc desc;
 					lulet(image_data, Image::read_image_file(file_data.data() + mip_descs[i].first, mip_descs[i].second, desired_format, desc));
-					luexp(upload_texture_data(tex, RHI::SubresourceIndex(i, 0), 0, 0, 0, image_data.data(), pixel_size(desc.format) * desc.width, pixel_size(desc.format) * desc.width * desc.height,
-						desc.width, desc.height, 1));
+					copies.push_back(RHI::CopyResourceData::write_texture(tex, RHI::SubresourceIndex(i, 0), 0, 0, 0, 
+						image_data.data(), pixel_size(desc.format) * desc.width, pixel_size(desc.format) * desc.width * desc.height, desc.width, desc.height, 1));
+					image_data_array.push_back(move(image_data));
 				}
+				lulet(upload_cmdbuf, g_env->device->new_command_buffer(g_env->async_copy_queue));
+				luexp(RHI::copy_resource_data(upload_cmdbuf, {copies.data(), copies.size()}));
 				tex->set_name(path.encode().c_str());
 				ret = tex;
 			}
@@ -182,8 +190,10 @@ namespace Luna
 					RHI::TextureUsageFlag::read_texture | RHI::TextureUsageFlag::read_write_texture | RHI::TextureUsageFlag::copy_source | RHI::TextureUsageFlag::copy_dest,
 					desc.width, desc.height)));
 				// Upload data.
-				luexp(upload_texture_data(tex, RHI::SubresourceIndex(0, 0), 0, 0, 0, image_data.data(), pixel_size(desc.format) * desc.width, pixel_size(desc.format) * desc.width * desc.height,
-					desc.width, desc.height, 1));
+				lulet(upload_cmdbuf, g_env->device->new_command_buffer(g_env->async_copy_queue));
+				luexp(RHI::copy_resource_data(upload_cmdbuf, {RHI::CopyResourceData::write_texture(tex, RHI::SubresourceIndex(0, 0), 0, 0, 0,
+					image_data.data(), pixel_size(desc.format) * desc.width, pixel_size(desc.format) * desc.width * desc.height,
+					desc.width, desc.height, 1)}));
 				// Generate mipmaps.
 				Ref<TextureAssetUserdata> ctx = ObjRef(userdata);
 				lulet(cmdbuf, g_env->device->new_command_buffer(g_env->async_compute_queue));

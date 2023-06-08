@@ -22,6 +22,7 @@
 #include "../Camera.hpp"
 #include <Window/FileDialog.hpp>
 #include <Window/MessageBox.hpp>
+#include <RHI/Utility.hpp>
 namespace Luna
 {
 	struct SceneEditorUserData
@@ -816,8 +817,9 @@ namespace Luna
 			usize row_pitch = bits_per_pixel(desc.format) * (usize)desc.width / 8;
 			usize slice_pitch = row_pitch * desc.height;
 			Blob img_data(slice_pitch);
-			luexp(readback_texture_data(img_data.data(), row_pitch, slice_pitch, m_renderer.render_texture, SubresourceIndex(0, 0), 0, 0, 0,
-				desc.width, desc.height, 1));
+			lulet(readback_cmdbuf, device->new_command_buffer(g_env->async_copy_queue));
+			luexp(copy_resource_data(readback_cmdbuf, {CopyResourceData::read_texture(img_data.data(), row_pitch, slice_pitch, m_renderer.render_texture, SubresourceIndex(0, 0), 0, 0, 0,
+				desc.width, desc.height, 1)}));
 			Image::ImageDesc img_desc;
 			img_desc.width = (u32)desc.width;
 			img_desc.height = desc.height;
@@ -944,7 +946,8 @@ namespace Luna
 			}
 
 			// Upload grid vertex data.
-			luexp(upload_buffer_data(m_grid_vb, 0, grids, sizeof(grids)));
+			lulet(upload_cmdbuf, device->new_command_buffer(g_env->async_copy_queue));
+			luexp(copy_resource_data(upload_cmdbuf, {CopyResourceData::write_buffer(m_grid_vb, 0, grids, sizeof(grids))}));
 		}
 		lucatchret;
 		return ok;

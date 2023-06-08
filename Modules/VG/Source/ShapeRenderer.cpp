@@ -12,6 +12,7 @@
 #include "ShapeRenderer.hpp"
 #include <Runtime/Math/Transform.hpp>
 #include <RHI/ShaderCompileHelper.hpp>
+#include <RHI/Utility.hpp>
 
 namespace Luna
 {
@@ -74,15 +75,7 @@ namespace Luna
 					TextureDesc desc = TextureDesc::tex2d(Format::rgba8_unorm, TextureUsageFlag::read_texture | TextureUsageFlag::copy_dest, 1, 1);
 					luset(g_white_tex, dev->new_texture(MemoryType::local, desc));
 					u32 data = 0xFFFFFFFF;
-
 					{
-						u64 size, row_pitch, slice_pitch;
-						dev->get_texture_data_placement_info(1, 1, 1, Format::rgba8_unorm, &size, nullptr, &row_pitch, &slice_pitch);
-						lulet(tex_staging, dev->new_buffer(MemoryType::upload, BufferDesc(BufferUsageFlag::copy_source, size)));
-						void* tex_staging_data = nullptr;
-						luexp(tex_staging->map(0, 0, &tex_staging_data));
-						memcpy(tex_staging_data, &data, sizeof(data));
-						tex_staging->unmap(0, sizeof(data));
 						u32 copy_queue_index = U32_MAX;
 						{
 							// Prefer a dedicated copy queue if present.
@@ -102,14 +95,10 @@ namespace Luna
 							}
 						}
 						lulet(upload_cmdbuf, dev->new_command_buffer(copy_queue_index));
-						upload_cmdbuf->set_context(CommandBufferContextType::copy);
-						upload_cmdbuf->resource_barrier({
-							{ tex_staging, BufferStateFlag::automatic, BufferStateFlag::copy_source, ResourceBarrierFlag::none} },
-							{ { g_white_tex, TEXTURE_BARRIER_ALL_SUBRESOURCES, TextureStateFlag::automatic, TextureStateFlag::copy_dest, ResourceBarrierFlag::discard_content } });
-						upload_cmdbuf->copy_buffer_to_texture(g_white_tex, SubresourceIndex(0, 0), 0, 0, 0, tex_staging, 0,
-							row_pitch, slice_pitch, 1, 1, 1);
-						luexp(upload_cmdbuf->submit({}, {}, true));
-						upload_cmdbuf->wait();
+						luexp(copy_resource_data(upload_cmdbuf, {
+							CopyResourceData::write_texture(g_white_tex, SubresourceIndex(0, 0), 0, 0, 0, 
+							&data, sizeof(data), sizeof(data), 1, 1, 1)
+						}));
 					}
 				}
 			}

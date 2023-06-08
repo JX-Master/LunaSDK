@@ -14,6 +14,7 @@
 #include "../Material.hpp"
 #include "../SceneRenderer.hpp"
 #include "../StudioHeader.hpp"
+#include <RHI/Utility.hpp>
 
 namespace Luna
 {
@@ -79,12 +80,13 @@ namespace Luna
 			u8 normal_data[4] = { 127, 127, 255, 255 };
 			u8 metallic_data = 0;
 			u8 emissive_data[4] = { 0, 0, 0, 0 };
-
-			luexp(upload_texture_data(m_default_base_color, SubresourceIndex(0, 0), 0, 0, 0, base_color_data, 4, 4, 1, 1, 1));
-			luexp(upload_texture_data(m_default_roughness, SubresourceIndex(0, 0), 0, 0, 0, &roughness_data, 1, 1, 1, 1, 1));
-			luexp(upload_texture_data(m_default_normal, SubresourceIndex(0, 0), 0, 0, 0, normal_data, 4, 4, 1, 1, 1));
-			luexp(upload_texture_data(m_default_metallic, SubresourceIndex(0, 0), 0, 0, 0, &metallic_data, 1, 1, 1, 1, 1));
-			luexp(upload_texture_data(m_default_emissive, SubresourceIndex(0, 0), 0, 0, 0, emissive_data, 4, 4, 1, 1, 1));
+			lulet(upload_cmdbuf, device->new_command_buffer(g_env->async_copy_queue));
+			luexp(copy_resource_data(upload_cmdbuf, {
+				CopyResourceData::write_texture(m_default_base_color, SubresourceIndex(0, 0), 0, 0, 0, base_color_data, 4, 4, 1, 1, 1),
+				CopyResourceData::write_texture(m_default_roughness, SubresourceIndex(0, 0), 0, 0, 0, &roughness_data, 1, 1, 1, 1, 1),
+				CopyResourceData::write_texture(m_default_normal, SubresourceIndex(0, 0), 0, 0, 0, normal_data, 4, 4, 1, 1, 1),
+				CopyResourceData::write_texture(m_default_metallic, SubresourceIndex(0, 0), 0, 0, 0, &metallic_data, 1, 1, 1, 1, 1),
+				CopyResourceData::write_texture(m_default_emissive, SubresourceIndex(0, 0), 0, 0, 0, emissive_data, 4, 4, 1, 1, 1)}));
         }
         lucatchret;
         return ok;

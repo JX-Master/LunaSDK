@@ -11,7 +11,7 @@
 #include <Runtime/File.hpp>
 #include "../SceneRenderer.hpp"
 #include "../StudioHeader.hpp"
-
+#include <RHI/Utility.hpp>
 namespace Luna
 {
     RV DeferredLightingPassGlobalData::init(RHI::IDevice* device)
@@ -47,7 +47,8 @@ namespace Luna
             luset(m_default_skybox, device->new_texture(MemoryType::local, TextureDesc::tex2d(Format::rgba8_unorm, 
                 TextureUsageFlag::read_texture | TextureUsageFlag::copy_dest, 1, 1, 1, 1)));
             u8 skybox_data[] = {0, 0, 0, 0};
-            luexp(upload_texture_data(m_default_skybox, SubresourceIndex(0, 0), 0, 0, 0, skybox_data, 4, 4, 1, 1, 1));
+            lulet(upload_cmdbuf, device->new_command_buffer(g_env->async_copy_queue));
+            luexp(copy_resource_data(upload_cmdbuf, {CopyResourceData::write_texture(m_default_skybox, SubresourceIndex(0, 0), 0, 0, 0, skybox_data, 4, 4, 1, 1, 1)}));
 
             // Generate integrate brdf.
             constexpr usize INTEGEATE_BRDF_SIZE = 256;

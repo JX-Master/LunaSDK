@@ -13,6 +13,7 @@
 #include <Runtime/VariantJSON.hpp>
 #include <Runtime/Serialization.hpp>
 #include "../StudioHeader.hpp"
+#include <RHI/Utility.hpp>
 namespace Luna
 {
 	Name get_static_mesh_asset_type()
@@ -30,8 +31,10 @@ namespace Luna
 				RHI::BufferUsageFlag::vertex_buffer | RHI::BufferUsageFlag::copy_dest, mesh_asset.vertex_data.size())));
 			lulet(index_res, device->new_buffer(RHI::MemoryType::local, RHI::BufferDesc(
 				RHI::BufferUsageFlag::index_buffer | RHI::BufferUsageFlag::copy_dest, mesh_asset.index_data.size())));
-			luexp(upload_buffer_data(vert_res, 0, mesh_asset.vertex_data.data(), mesh_asset.vertex_data.size()));
-			luexp(upload_buffer_data(index_res, 0, mesh_asset.index_data.data(), mesh_asset.index_data.size()));
+			lulet(upload_cmdbuf, device->new_command_buffer(g_env->async_copy_queue));
+			luexp(RHI::copy_resource_data(upload_cmdbuf, {
+				RHI::CopyResourceData::write_buffer(vert_res, 0, mesh_asset.vertex_data.data(), mesh_asset.vertex_data.size()),
+				RHI::CopyResourceData::write_buffer(index_res, 0, mesh_asset.index_data.data(), mesh_asset.index_data.size())}));
 			mesh.pieces = mesh_asset.pieces;
 			mesh.vb = vert_res;
 			mesh.ib = index_res;

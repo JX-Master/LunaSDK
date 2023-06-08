@@ -10,6 +10,7 @@
 #include "ToneMappingPass.hpp"
 #include <Runtime/File.hpp>
 #include "../StudioHeader.hpp"
+#include <RHI/Utility.hpp>
 
 namespace Luna
 {
@@ -130,7 +131,8 @@ namespace Luna
 			luset(m_lum_tex, device->new_texture(MemoryType::local, TextureDesc::tex2d(Format::r32_float,
 				TextureUsageFlag::read_write_texture | TextureUsageFlag::read_texture | TextureUsageFlag::copy_dest, 1, 1)));
 			f32 value = 0.0f;
-			luexp(upload_texture_data(m_lum_tex, SubresourceIndex(0, 0), 0, 0, 0, &value, 4, 4, 1, 1, 1));
+			lulet(upload_cmdbuf, device->new_command_buffer(g_env->async_copy_queue));
+			luexp(copy_resource_data(upload_cmdbuf, {CopyResourceData::write_texture(m_lum_tex, SubresourceIndex(0, 0), 0, 0, 0, &value, 4, 4, 1, 1, 1)}));
 		}
         lucatchret;
         return ok;

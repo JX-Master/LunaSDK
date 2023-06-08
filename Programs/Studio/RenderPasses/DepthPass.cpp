@@ -14,6 +14,7 @@
 #include "../SceneRenderer.hpp"
 #include "../Material.hpp"
 #include "../StudioHeader.hpp"
+#include <RHI/Utility.hpp>
 
 namespace Luna
 {
@@ -58,7 +59,8 @@ namespace Luna
 			luset(m_default_base_color, device->new_texture(MemoryType::local,
 				TextureDesc::tex2d(Format::rgba8_unorm, TextureUsageFlag::read_texture | TextureUsageFlag::copy_dest, 1, 1, 1, 1)));
 			u8 base_color_data[4] = { 255, 255, 255, 255 };
-			luexp(upload_texture_data(m_default_base_color, SubresourceIndex(0, 0), 0, 0, 0, base_color_data, 4, 4, 1, 1, 1));
+			lulet(upload_cmdbuf, device->new_command_buffer(g_env->async_copy_queue));
+			luexp(copy_resource_data(upload_cmdbuf, {CopyResourceData::write_texture(m_default_base_color, SubresourceIndex(0, 0), 0, 0, 0, base_color_data, 4, 4, 1, 1, 1)}));
         }
         lucatchret;
         return ok;

@@ -16,6 +16,7 @@
 #include <RHI/ShaderCompileHelper.hpp>
 #include <Runtime/File.hpp>
 #include <Image/Image.hpp>
+#include <RHI/Utility.hpp>
 
 using namespace Luna;
 using namespace Luna::RHI;
@@ -165,37 +166,12 @@ RV start()
 			luset(tex, device->new_texture(MemoryType::local, TextureDesc::tex2d(Format::rgba8_unorm,
 				TextureUsageFlag::read_texture | TextureUsageFlag::copy_dest, image_desc.width, image_desc.height, 1, 1)));
 
-			u64 size, row_pitch, slice_pitch;
-			device->get_texture_data_placement_info(image_desc.width, image_desc.height, 1, Format::rgba8_unorm, &size, nullptr, &row_pitch, &slice_pitch);
-			lulet(tex_staging, device->new_buffer(MemoryType::upload, BufferDesc(BufferUsageFlag::copy_source, size)));
-
-			void* tex_staging_data = nullptr;
-			luexp(tex_staging->map(0, 0, &tex_staging_data));
-			memcpy_bitmap(tex_staging_data, image_data.data(), image_desc.width * 4, image_desc.height, row_pitch, image_desc.width * 4);
-			tex_staging->unmap(0, size);
-
 			u32 copy_queue_index = get_command_queue_index();
-			{
-				// Prefer a dedicated copy queue if present.
-				u32 num_queues = device->get_num_command_queues();
-				for (u32 i = 0; i < num_queues; ++i)
-				{
-					auto desc = device->get_command_queue_desc(i);
-					if (desc.type == CommandQueueType::copy)
-					{
-						copy_queue_index = i;
-						break;
-					}
-				}
-			}
 			lulet(upload_cmdbuf, device->new_command_buffer(copy_queue_index));
-			upload_cmdbuf->set_context(CommandBufferContextType::copy);
-			upload_cmdbuf->resource_barrier({
-				{ tex_staging, BufferStateFlag::automatic, BufferStateFlag::copy_source, ResourceBarrierFlag::none}}, 
-				{{ tex, TEXTURE_BARRIER_ALL_SUBRESOURCES, TextureStateFlag::automatic, TextureStateFlag::copy_dest, ResourceBarrierFlag::discard_content }});
-			upload_cmdbuf->copy_buffer_to_texture(tex, SubresourceIndex(0, 0), 0, 0, 0, tex_staging, 0, row_pitch, slice_pitch, image_desc.width, image_desc.height, 1);
-			luexp(upload_cmdbuf->submit({}, {}, true));
-			upload_cmdbuf->wait();
+			luexp(copy_resource_data(upload_cmdbuf, {
+				CopyResourceData::write_texture(tex, SubresourceIndex(0, 0), 0, 0, 0, 
+					image_data.data(), image_desc.width * 4, image_desc.width * image_desc.height * 4, 
+					image_desc.width, image_desc.height, 1)}));
 			luset(desc_set, device->new_descriptor_set(DescriptorSetDesc(desc_set_layout)));
 
 			desc_set->update_descriptors(

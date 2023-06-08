@@ -20,6 +20,7 @@
 #include <Runtime/Math/Matrix.hpp>
 #include <Font/Font.hpp>
 #include <RHI/ShaderCompileHelper.hpp>
+#include <RHI/Utility.hpp>
 namespace Luna
 {
     template<>
@@ -221,14 +222,6 @@ float4 main(PS_INPUT input) : SV_Target
                     TextureUsageFlag::read_texture | TextureUsageFlag::copy_dest, width, height, 1, 1)));
                 u32 src_row_pitch = (u32)width * 4;
                 {
-                    u64 size, row_pitch, slice_pitch;
-                    dev->get_texture_data_placement_info(width, height, 1, Format::rgba8_unorm, &size, nullptr, &row_pitch, &slice_pitch);
-                    lulet(tex_staging, dev->new_buffer(MemoryType::upload, BufferDesc(BufferUsageFlag::copy_source, size)));
-                    void* tex_staging_data = nullptr;
-                    luexp(tex_staging->map(0, 0, &tex_staging_data));
-                    memcpy_bitmap(tex_staging_data, pixels, src_row_pitch, height, row_pitch, src_row_pitch);
-                    tex_staging->unmap(0, src_row_pitch * height);
-
                     u32 copy_queue_index = U32_MAX;
                     {
                         // Prefer a dedicated copy queue if present.
@@ -248,14 +241,8 @@ float4 main(PS_INPUT input) : SV_Target
                         }
                     }
                     lulet(upload_cmdbuf, dev->new_command_buffer(copy_queue_index));
-                    upload_cmdbuf->set_context(CommandBufferContextType::copy);
-                    upload_cmdbuf->resource_barrier({
-                        { tex_staging, BufferStateFlag::automatic, BufferStateFlag::copy_source, ResourceBarrierFlag::none} },
-                        { { g_font_tex, TEXTURE_BARRIER_ALL_SUBRESOURCES, TextureStateFlag::automatic, TextureStateFlag::copy_dest, ResourceBarrierFlag::discard_content } });
-                    upload_cmdbuf->copy_buffer_to_texture(g_font_tex, SubresourceIndex(0, 0), 0, 0, 0, tex_staging, 0,
-                        src_row_pitch, src_row_pitch * height, width, height, 1);
-                    luexp(upload_cmdbuf->submit({}, {}, true));
-                    upload_cmdbuf->wait();
+                    luexp(copy_resource_data(upload_cmdbuf, {CopyResourceData::write_texture(g_font_tex, SubresourceIndex(0, 0), 0, 0, 0, 
+                        pixels, src_row_pitch, src_row_pitch * height, width, height, 1)}));
                 }
                 io.Fonts->TexID = (ITexture*)(g_font_tex);
             }

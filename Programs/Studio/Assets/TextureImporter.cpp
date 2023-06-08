@@ -12,6 +12,7 @@
 #include <Window/MessageBox.hpp>
 #include <Runtime/File.hpp>
 #include <VFS/VFS.hpp>
+#include <RHI/Utility.hpp>
 namespace Luna
 {
 	enum class TexturePrefilerType : u8
@@ -288,7 +289,7 @@ namespace Luna
 		lutry
 		{
 			using namespace RHI;
-			auto device = get_main_device();
+			auto device = g_env->device;
 			// Create resource.
 			lulet(tex, device->new_texture(RHI::MemoryType::local, RHI::TextureDesc::tex2d(
 				get_format_from_image_format(file.m_desc.format), 
@@ -298,12 +299,13 @@ namespace Luna
 			{
 				Image::ImageDesc image_desc;
 				lulet(img_data, Image::read_image_file(file.m_file_data.data(), file.m_file_data.size(), get_desired_format(file.m_desc.format), image_desc));
-				luexp(upload_texture_data(tex, SubresourceIndex(0, 0), 0, 0, 0, img_data.data(), pixel_size(image_desc.format) * image_desc.width,
-					pixel_size(image_desc.format) * image_desc.width * image_desc.height, image_desc.width, image_desc.height, 1));
+				lulet(upload_cmdbuf, device->new_command_buffer(g_env->async_copy_queue));
+				luexp(copy_resource_data(upload_cmdbuf, {CopyResourceData::write_texture(tex, SubresourceIndex(0, 0), 0, 0, 0, img_data.data(), pixel_size(image_desc.format) * image_desc.width,
+					pixel_size(image_desc.format) * image_desc.width * image_desc.height, image_desc.width, image_desc.height, 1)}));
 			}
 			// Generate mipmaps.
 			{
-				lulet(cmd, g_env->device->new_command_buffer(g_env->async_compute_queue));
+				lulet(cmd, device->new_command_buffer(g_env->async_compute_queue));
 				luexp(generate_mipmaps(tex, cmd));
 				if (file.m_prefiler_type == TexturePrefilerType::environment_map)
 				{
@@ -322,7 +324,8 @@ namespace Luna
 				usize row_pitch = (usize)mip_width * bits_per_pixel(desc.format) / 8;
 				usize data_sz = row_pitch * (usize)mip_height;
 				Blob data(data_sz);
-				luexp(readback_texture_data(data.data(), row_pitch, data_sz, tex, SubresourceIndex(i, 0), 0, 0, 0, mip_width, mip_height, 1));
+				lulet(readback_cmdbuf, device->new_command_buffer(g_env->async_copy_queue));
+				luexp(copy_resource_data(readback_cmdbuf, {CopyResourceData::read_texture(data.data(), row_pitch, data_sz, tex, SubresourceIndex(i, 0), 0, 0, 0, mip_width, mip_height, 1)}));
 				img_data.push_back(move(data));
 			}
 			u64 file_offset = 0;

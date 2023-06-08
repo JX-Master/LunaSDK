@@ -19,6 +19,7 @@
 #include <Image/Image.hpp>
 #include <Runtime/File.hpp>
 #include <Runtime/Math/Transform.hpp>
+#include <RHI/Utility.hpp>
 
 using namespace Luna;
 using namespace Luna::RHI;
@@ -187,53 +188,19 @@ RV start()
         Image::ImageDesc image_desc;
         lulet(image_data, Image::read_image_file(image_file_data.data(), image_file_data.size(), Image::ImagePixelFormat::rgba8_unorm, image_desc));
 
-        luset(vb, dev->new_buffer(MemoryType::upload, BufferDesc(BufferUsageFlag::vertex_buffer, sizeof(vertices))));
-        luset(ib, dev->new_buffer(MemoryType::upload, BufferDesc(BufferUsageFlag::index_buffer, sizeof(indices))));
+        luset(vb, dev->new_buffer(MemoryType::local, BufferDesc(BufferUsageFlag::vertex_buffer | BufferUsageFlag::copy_dest, sizeof(vertices))));
+        luset(ib, dev->new_buffer(MemoryType::local, BufferDesc(BufferUsageFlag::index_buffer | BufferUsageFlag::copy_dest, sizeof(indices))));
         luset(file_tex, dev->new_texture(MemoryType::local, TextureDesc::tex2d(Format::rgba8_unorm,
             TextureUsageFlag::read_texture | TextureUsageFlag::copy_dest, image_desc.width, image_desc.height, 1, 1)));
-
-        void* mapped = nullptr;
-        luexp(vb->map(0, 0, &mapped));
-        memcpy(mapped, vertices, sizeof(vertices));
-        vb->unmap(0, sizeof(vertices));
-        luexp(ib->map(0, 0, &mapped));
-        memcpy(mapped, indices, sizeof(indices));
-        ib->unmap(0, sizeof(indices));
-
-        u64 size, row_pitch, slice_pitch;
-        dev->get_texture_data_placement_info(image_desc.width, image_desc.height, 1, Format::rgba8_unorm, &size, nullptr, &row_pitch, &slice_pitch);
-        lulet(tex_staging, dev->new_buffer(MemoryType::upload, BufferDesc(BufferUsageFlag::copy_source, size)));
-
-        void* tex_staging_data = nullptr;
-        luexp(tex_staging->map(0, 0, &tex_staging_data));
-        memcpy_bitmap(tex_staging_data, image_data.data(), image_desc.width * 4, image_desc.height, row_pitch, image_desc.width * 4);
-        tex_staging->unmap(0, size);
         
         u32 copy_queue_index = get_command_queue_index();
-        {
-            // Prefer a dedicated copy queue if present.
-            u32 num_queues = dev->get_num_command_queues();
-            for (u32 i = 0; i < num_queues; ++i)
-            {
-                auto desc = dev->get_command_queue_desc(i);
-                if (desc.type == CommandQueueType::copy)
-                {
-                    copy_queue_index = i;
-                    break;
-                }
-            }
-        }
         lulet(upload_cmdbuf, dev->new_command_buffer(copy_queue_index));
-        upload_cmdbuf->set_context(CommandBufferContextType::copy);
-        upload_cmdbuf->resource_barrier({
-            { tex_staging, BufferStateFlag::automatic, BufferStateFlag::copy_source, ResourceBarrierFlag::none} },
-            { { file_tex, TEXTURE_BARRIER_ALL_SUBRESOURCES, TextureStateFlag::automatic, TextureStateFlag::copy_dest, ResourceBarrierFlag::discard_content } });
-        upload_cmdbuf->copy_buffer_to_texture(file_tex, SubresourceIndex(0, 0), 0, 0, 0, tex_staging, 0, 
-            image_desc.width* Image::pixel_size(image_desc.format), image_desc.width* image_desc.height* Image::pixel_size(image_desc.format),
-            image_desc.width, image_desc.height, 1);
-        luexp(upload_cmdbuf->submit({}, {}, true));
-        upload_cmdbuf->wait();
-
+        luexp(copy_resource_data(upload_cmdbuf, {
+                CopyResourceData::write_buffer(vb, 0, vertices, sizeof(vertices)),
+                CopyResourceData::write_buffer(ib, 0, indices, sizeof(indices)),
+				CopyResourceData::write_texture(file_tex, SubresourceIndex(0, 0), 0, 0, 0, 
+					image_data.data(), image_desc.width * 4, image_desc.width * image_desc.height * 4, 
+					image_desc.width, image_desc.height, 1)}));
         desc_set->update_descriptors(
             {
                 WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(cb)),
