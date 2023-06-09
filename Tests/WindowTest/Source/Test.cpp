@@ -40,8 +40,8 @@ namespace Luna
         using namespace Window;
         auto main_window = new_window("Window Test", WindowDisplaySettings::as_windowed(), 
             WindowCreationFlag::resizable).get();
-        main_window->get_close_event() += on_window_close;
-        main_window->get_key_down_event() += on_window_key_pressed;
+        main_window->get_close_event().add_handler(on_window_close);
+        main_window->get_key_down_event().add_handler(on_window_key_pressed);
 
         while (!main_window->is_closed())
         {

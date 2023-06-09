@@ -33,6 +33,7 @@ void run()
 	serialize_test();
 	variant_diff_test();
 	invoke_test();
+	function_test();
 }
 
 int main()

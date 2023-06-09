@@ -489,36 +489,47 @@ float4 main(PS_INPUT input) : SV_Target
             auto _ = rebuild_font(dpi_scale);
         }
 
+        usize g_handle_mouse_move;
+        usize g_handle_mouse_down;
+        usize g_handle_mouse_up;
+        usize g_handle_mouse_wheel;
+        usize g_handle_key_down;
+        usize g_handle_key_up;
+        usize g_handle_focus;
+        usize g_handle_lose_focus;
+        usize g_handle_input_character;
+        usize g_handle_dpi_changed;
+
         LUNA_IMGUI_API void set_active_window(Window::IWindow* window)
         {
             if (g_active_window)
             {
                 // Unregister old callbacks.
-                g_active_window->get_mouse_move_event() -= handle_mouse_move;
-                g_active_window->get_mouse_down_event() -= handle_mouse_down;
-                g_active_window->get_mouse_up_event() -= handle_mouse_up;
-                g_active_window->get_mouse_wheel_event() -= handle_mouse_wheel;
-                g_active_window->get_key_down_event() -= handle_key_down;
-                g_active_window->get_key_up_event() -= handle_key_up;
-                g_active_window->get_focus_event() -= handle_focus;
-                g_active_window->get_lose_focus_event() -= handle_lose_focus;
-                g_active_window->get_input_character_event() -= handle_input_character;
-                g_active_window->get_dpi_changed_event() -= handle_dpi_changed;
+                g_active_window->get_mouse_move_event().remove_handler(g_handle_mouse_move);
+                g_active_window->get_mouse_down_event().remove_handler(g_handle_mouse_down);
+                g_active_window->get_mouse_up_event().remove_handler(g_handle_mouse_up);
+                g_active_window->get_mouse_wheel_event().remove_handler(g_handle_mouse_wheel);
+                g_active_window->get_key_down_event().remove_handler(g_handle_key_down);
+                g_active_window->get_key_up_event().remove_handler(g_handle_key_up);
+                g_active_window->get_focus_event().remove_handler(g_handle_focus);
+                g_active_window->get_lose_focus_event().remove_handler(g_handle_lose_focus);
+                g_active_window->get_input_character_event().remove_handler(g_handle_input_character);
+                g_active_window->get_dpi_changed_event().remove_handler(g_handle_dpi_changed);
             }
             g_active_window = window;
             if (g_active_window)
             {
                 // Register new callbacks.
-                g_active_window->get_mouse_move_event() += handle_mouse_move;
-                g_active_window->get_mouse_down_event() += handle_mouse_down;
-                g_active_window->get_mouse_up_event() += handle_mouse_up;
-                g_active_window->get_mouse_wheel_event() += handle_mouse_wheel;
-                g_active_window->get_key_down_event() += handle_key_down;
-                g_active_window->get_key_up_event() += handle_key_up;
-                g_active_window->get_focus_event() += handle_focus;
-                g_active_window->get_lose_focus_event() += handle_lose_focus;
-                g_active_window->get_input_character_event() += handle_input_character;
-                g_active_window->get_dpi_changed_event() += handle_dpi_changed;
+                g_handle_mouse_move = g_active_window->get_mouse_move_event().add_handler(handle_mouse_move);
+                g_handle_mouse_down = g_active_window->get_mouse_down_event().add_handler(handle_mouse_down);
+                g_handle_mouse_up = g_active_window->get_mouse_up_event().add_handler(handle_mouse_up);
+                g_handle_mouse_wheel = g_active_window->get_mouse_wheel_event().add_handler(handle_mouse_wheel);
+                g_handle_key_down = g_active_window->get_key_down_event().add_handler(handle_key_down);
+                g_handle_key_up = g_active_window->get_key_up_event().add_handler(handle_key_up);
+                g_handle_focus = g_active_window->get_focus_event().add_handler(handle_focus);
+                g_handle_lose_focus = g_active_window->get_lose_focus_event().add_handler(handle_lose_focus);
+                g_handle_input_character = g_active_window->get_input_character_event().add_handler(handle_input_character);
+                g_handle_dpi_changed = g_active_window->get_dpi_changed_event().add_handler(handle_dpi_changed);
             }
         }
 

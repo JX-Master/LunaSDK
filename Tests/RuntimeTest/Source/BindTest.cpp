@@ -66,15 +66,4 @@ namespace Luna
         ret = invoke(func, 5, 6);
         lutest(ret == 21);
     }
-
-	//void bind_test()
-	//{
- //       // Binds one global function.
- //       auto f1 = bind(test_func1, 3, 4, 5, Placeholders::_2, Placeholders::_1);
-
- //       i32 ret = f1(6, 7, 1001);
-
- //       //lutest(ret == 90);
-
-	//}
 }

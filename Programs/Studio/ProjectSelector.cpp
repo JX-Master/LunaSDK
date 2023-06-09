@@ -140,7 +140,7 @@ namespace Luna
 			lulet(swap_chain, g_env->device->new_swap_chain(g_env->graphics_queue, window, RHI::SwapChainDesc({0, 0, 2, RHI::Format::bgra8_unorm, true})));
 			lulet(cmdbuf, g_env->device->new_command_buffer(g_env->graphics_queue));
 
-			window->get_close_event() += [](Window::IWindow* window) { window->close(); };
+			window->get_close_event().add_handler([](Window::IWindow* window) { window->close(); });
 
 			// Create back buffer.
 			u32 w = 0, h = 0;

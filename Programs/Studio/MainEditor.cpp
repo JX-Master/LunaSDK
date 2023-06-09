@@ -62,7 +62,7 @@ namespace Luna
 			snprintf(title, 256, "%s - Luna Studio", name.c_str());
 			luset(m_window, Window::new_window(title, Window::WindowDisplaySettings::as_windowed(), Window::WindowCreationFlag::resizable));
 
-			m_window->get_close_event() += [](Window::IWindow* window) {window->close(); };
+			m_window->get_close_event().add_handler([](Window::IWindow* window) {window->close(); });
 
 			luset(m_swap_chain, g_env->device->new_swap_chain(g_env->graphics_queue, m_window, RHI::SwapChainDesc({0, 0, 2, RHI::Format::bgra8_unorm, true})));
 			luset(m_cmdbuf, g_env->device->new_command_buffer(g_env->graphics_queue));

@@ -108,8 +108,8 @@ void init()
 	g_window = Window::new_window("Luna Vector Graphics Test", Window::WindowDisplaySettings::as_windowed(), Window::WindowCreationFlag::resizable).get();
 	auto sz = g_window->get_size();
 
-	g_window->get_close_event() += on_window_close;
-	g_window->get_framebuffer_resize_event() += on_window_resize;
+	g_window->get_close_event().add_handler(on_window_close);
+	g_window->get_framebuffer_resize_event().add_handler(on_window_resize);
 
 	auto font = Font::get_default_font();
 
