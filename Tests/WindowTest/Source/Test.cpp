@@ -7,8 +7,8 @@
 * @author JXMaster
 * @date 2022/4/12
 */
-#include <Window/Window.hpp>
-#include <Runtime/Thread.hpp>
+#include <Luna/Window/Window.hpp>
+#include <Luna/Runtime/Thread.hpp>
 namespace Luna
 {
     void on_window_close(Window::IWindow* window)

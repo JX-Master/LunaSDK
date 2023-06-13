@@ -8,7 +8,7 @@
 * @date 2020/2/16
 */
 #include "TestCommon.hpp"
-#include <Runtime/Memory.hpp>
+#include <Luna/Runtime/Memory.hpp>
 
 using namespace Luna;
 

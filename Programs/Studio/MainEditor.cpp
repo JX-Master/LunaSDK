@@ -15,14 +15,14 @@
 #include "Assets/Model.hpp"
 #include "Assets/Material.hpp"
 
-#include <VFS/VFS.hpp>
-#include <Window/MessageBox.hpp>
+#include <Luna/VFS/VFS.hpp>
+#include <Luna/Window/MessageBox.hpp>
 
 #include "Camera.hpp"
 #include "Light.hpp"
 #include "SceneSettings.hpp"
 #include "ModelRenderer.hpp"
-#include <Runtime/Serialization.hpp>
+#include <Luna/Runtime/Serialization.hpp>
 #include "Scene.hpp"
 
 #include "RenderPasses/SkyBoxPass.hpp"
@@ -34,8 +34,8 @@
 #include "RenderPasses/BufferVisualizationPass.hpp"
 
 #include "SceneRenderer.hpp"
-#include <Runtime/Log.hpp>
-#include <Runtime/Thread.hpp>
+#include <Luna/Runtime/Log.hpp>
+#include <Luna/Runtime/Thread.hpp>
 
 namespace Luna
 {

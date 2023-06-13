@@ -8,7 +8,7 @@
 * @date 2023/3/7
 */
 #pragma once
-#include <RHI/RHI.hpp>
+#include <Luna/RHI/RHI.hpp>
 
 namespace Luna
 {

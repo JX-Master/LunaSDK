@@ -8,8 +8,8 @@
 * @date 2022/6/27
 */
 #include "TestCommon.hpp"
-#include <Runtime/VariantDiff.hpp>
-#include <Runtime/VariantJSON.hpp>
+#include <Luna/Runtime/VariantDiff.hpp>
+#include <Luna/Runtime/VariantJSON.hpp>
 namespace Luna
 {
 	void variant_diff_test()

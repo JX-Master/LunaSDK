@@ -9,8 +9,8 @@
 */
 #pragma once
 
-#include <RHI/RHI.hpp>
-#include <ShaderCompiler/ShaderCompiler.hpp>
+#include <Luna/RHI/RHI.hpp>
+#include <Luna/ShaderCompiler/ShaderCompiler.hpp>
 
 #ifndef LUNA_RHI_TESTBED_API
 #define LUNA_RHI_TESTBED_API

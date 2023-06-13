@@ -9,11 +9,11 @@
 */
 #pragma once
 #include "Texture.hpp"
-#include <RHI/RHI.hpp>
-#include <Runtime/File.hpp>
-#include <Image/Image.hpp>
-#include <VFS/VFS.hpp>
-#include <RHI/Utility.hpp>
+#include <Luna/RHI/RHI.hpp>
+#include <Luna/Runtime/File.hpp>
+#include <Luna/Image/Image.hpp>
+#include <Luna/VFS/VFS.hpp>
+#include <Luna/RHI/Utility.hpp>
 
 namespace Luna
 {

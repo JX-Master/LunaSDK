@@ -8,7 +8,7 @@
 * @date 2020/2/20
 */
 #include "TestCommon.hpp"
-#include <Runtime/Name.hpp>
+#include <Luna/Runtime/Name.hpp>
 
 namespace Luna
 {

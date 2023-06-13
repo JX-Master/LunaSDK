@@ -11,9 +11,9 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
-#include <Runtime/Runtime.hpp>
-#include <Runtime/Module.hpp>
-#include <Runtime/Object.hpp>
+#include <Luna/Runtime/Runtime.hpp>
+#include <Luna/Runtime/Module.hpp>
+#include <Luna/Runtime/Object.hpp>
 
 namespace Luna
 {

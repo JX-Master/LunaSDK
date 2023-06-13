@@ -8,8 +8,8 @@
 * @date 2020/5/29
 */
 #pragma once
-#include <Runtime/TypeInfo.hpp>
-#include <Asset/Asset.hpp>
+#include <Luna/Runtime/TypeInfo.hpp>
+#include <Luna/Asset/Asset.hpp>
 
 namespace Luna
 {

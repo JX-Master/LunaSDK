@@ -8,7 +8,7 @@
 * @date 2023/3/18
 */
 #pragma once
-#include <RG/RenderPass.hpp>
+#include <Luna/RG/RenderPass.hpp>
 #include "../Scene.hpp"
 
 namespace Luna

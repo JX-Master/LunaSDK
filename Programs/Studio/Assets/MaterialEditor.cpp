@@ -9,7 +9,7 @@
 */
 #include "Material.hpp"
 #include "../StudioHeader.hpp"
-#include <Window/MessageBox.hpp>
+#include <Luna/Window/MessageBox.hpp>
 #include "../EditObject.hpp"
 namespace Luna
 {

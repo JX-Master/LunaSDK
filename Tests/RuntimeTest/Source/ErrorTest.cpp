@@ -8,8 +8,8 @@
 * @date 2020/2/23
 */
 #include "TestCommon.hpp"
-#include <Runtime/Error.hpp>
-#include <Runtime/HashSet.hpp>
+#include <Luna/Runtime/Error.hpp>
+#include <Luna/Runtime/HashSet.hpp>
 
 namespace Luna
 {

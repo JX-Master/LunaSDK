@@ -8,9 +8,9 @@
 * @date 2022/12/17
 */
 #include "Model.hpp"
-#include <VFS/VFS.hpp>
-#include <Runtime/Serialization.hpp>
-#include <Runtime/VariantJSON.hpp>
+#include <Luna/VFS/VFS.hpp>
+#include <Luna/Runtime/Serialization.hpp>
+#include <Luna/Runtime/VariantJSON.hpp>
 #include "../StudioHeader.hpp"
 
 namespace Luna

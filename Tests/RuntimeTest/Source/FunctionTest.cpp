@@ -8,7 +8,7 @@
 * @date 2023/6/9
 */
 #include "TestCommon.hpp"
-#include <Runtime/Functional.hpp>
+#include <Luna/Runtime/Functional.hpp>
 
 namespace Luna
 {

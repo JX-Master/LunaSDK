@@ -8,7 +8,7 @@
 * @date 2020/5/25
 */
 #pragma once
-#include "Asset/Asset.hpp"
+#include <Luna/Asset/Asset.hpp>
 
 namespace Luna
 {

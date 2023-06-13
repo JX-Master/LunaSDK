@@ -8,7 +8,7 @@
 * @date 2022/9/27
 */
 #include "TestCommon.hpp"
-#include <Runtime/Array.hpp>
+#include <Luna/Runtime/Array.hpp>
 
 namespace Luna
 {
