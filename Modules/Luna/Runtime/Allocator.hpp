@@ -14,9 +14,17 @@
 namespace Luna
 {
 	//! @class Allocator
+	//! @ingroup Runtime
+	//! The default allocator implementation that can be used for allocating memory for containers defined in @ref Runtime module.
+	//! The default allocator allocates memory by calling `memalloc`, and deallocates memory by calling `memfree`.
 	class Allocator
 	{
 	public:
+		//! @brief Allocates memory for the specified number of elements.
+		//! @param[in] n The number of elements to allocate memory for. 
+		//! @return Returns the allocated memory. The size of the allocated memory is at least `sizeof(_Ty) * n` bytes, and the 
+		//! alignment of the allocated memory is at least `alignof(_Ty)` bytes. The returned memory is uninitialized.
+		//! If the allocation fails, returns `nullptr`.
 		template <typename _Ty>
 		_Ty* allocate(usize n = 1)
 		{
@@ -29,25 +37,13 @@ namespace Luna
 #endif
 			
 		}
+		//! @brief Deallocates memory allocated from @ref allocate
+		//! @param[in] ptr The memory pointer returned by @ref allocate.
+		//! @param[in] n The number of elements earler passed to @ref allocate.
 		template <typename _Ty>
 		void deallocate(_Ty* ptr, usize n = 1)
 		{
 			memfree(ptr, alignof(_Ty));
-		}
-		void* allocate_bytes(usize sz, usize alignment)
-		{
-#ifdef LUNA_PROFILE
-			void* r = memalloc(sz, alignment);
-			luassert_msg_always(r, "Bad memory allocation");
-			return r;
-#else
-			return memalloc(sz, alignment);
-#endif
-			
-		}
-		void deallocate_bytes(void* ptr, usize sz, usize alignment)
-		{
-			memfree(ptr, alignment);
 		}
 		bool operator==(const Allocator&)
 		{

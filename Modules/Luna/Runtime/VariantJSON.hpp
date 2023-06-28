@@ -13,8 +13,18 @@
 #include "Stream.hpp"
 namespace Luna
 {
+//! @addtogroup Runtime
+//! @{
+
+//! @name JSON reading and writing 
+//! @{
+	//! @brief Reads one JSON string.
+	//! 
 	LUNA_RUNTIME_API R<Variant> json_read(const c8* src, usize src_size = USIZE_MAX);
 	LUNA_RUNTIME_API R<Variant> json_read(IStream* stream);
 	LUNA_RUNTIME_API String json_write(const Variant& v, bool indent = true);
 	LUNA_RUNTIME_API RV json_write(IStream* stream, const Variant& v, bool indent = true);
+//! @}
+
+//! @}
 }

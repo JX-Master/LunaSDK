@@ -720,7 +720,6 @@ namespace Luna
 			switch (v.type())
 			{
 			case VariantType::null:
-			case VariantType::pointer:
 				s.append("null");
 				break;
 			case VariantType::object:

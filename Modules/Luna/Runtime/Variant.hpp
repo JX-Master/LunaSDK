@@ -16,16 +16,26 @@
 
 namespace Luna
 {
+//! @addtogroup Runtime
+//! @{
+
+	//! @brief Defines all possible types of one @ref Variant instance.
 	enum class VariantType : u8
 	{
+		//! This variant contains no data.
 		null = 0,
+		//! This variant is an object, which stores child variant instances that can be indexed by @ref Name strings.
 		object = 1,
+		//! This variant is an array, which stores a sequence of child variant instances that can be indexed by index numbers.
 		array = 2,
+		//! This variant stores a number.
 		number = 3,
+		//! This variant stores a @ref Name string.
 		string = 4,
+		//! This variant stores a Boolean value.
 		boolean = 5,
-		blob = 6,
-		pointer = 7,	// Used only to pass data in the runtime, will not be serialized.
+		//! This variant stores a @ref Blob instance.
+		blob = 6
 	};
 
 	enum class VariantNumberType : u8
@@ -268,8 +278,6 @@ namespace Luna
 		//! Initializes one BLOB-typed value and sets its data to the specified value.
 		Variant(const Blob& blob_data);
 		Variant(Blob&& blob_data);
-		//! Initializes one pointer-typed value and sets its data to the specified value.
-		Variant(void* v);
 		//! Destructs the value.
 		~Variant();
 		Variant& operator=(const Variant& rhs);
@@ -287,7 +295,6 @@ namespace Luna
 		Variant& operator=(bool v);
 		Variant& operator=(const Blob& blob_data);
 		Variant& operator=(Blob&& blob_data);
-		Variant& operator=(void* v);
 		bool operator==(const Variant& rhs) const;
 		bool operator!=(const Variant& rhs) const;
 		//! Returns the type of the value.
@@ -387,8 +394,6 @@ namespace Luna
 		//! Detaches the internal blob if the value is a blob, the value contains one empty blob after this operation.
 		//! Returns one empty blob if the value is not a blob.
 		Blob blob_detach();
-		//! Returns the stored pointer. Returns `nullptr` if the variant type is not pointer.
-		void* pointer() const;
 		
 	private:
 		friend class ObjectEnumerator;
@@ -448,7 +453,6 @@ namespace Luna
 			u64 m_ui;
 			f64 m_fi;
 			bool m_b;
-			void* m_ptr;
 			byte_t* m_blob;
 			Blob* m_big_blob;
 			Name m_str;
@@ -473,7 +477,6 @@ namespace Luna
 		void do_construct(u64 v);
 		void do_construct(f64 v);
 		void do_construct(bool v);
-		void do_construct(void* v);
 
 		bool do_small_arr_reserve(usize new_cap);
 		bool do_small_obj_reserve(usize new_cap);
@@ -494,6 +497,8 @@ namespace Luna
 
 	//! The default null value returned if the accessor fails.
 	LUNA_RUNTIME_API const Variant& npos();
+
+//! @}
 
 	static_assert(sizeof(Variant) == 16, "Wrong Variant size.");
 	static_assert(alignof(Variant) == 8, "Wrong Variant alignment.");
@@ -634,10 +639,6 @@ namespace Luna
 	{
 		do_construct(move(blob_data));
 	}
-	inline Variant::Variant(void* v)
-	{
-		do_construct(v);
-	}
 	inline Variant::~Variant()
 	{
 		do_destruct();
@@ -732,12 +733,6 @@ namespace Luna
 		do_construct(move(blob_data));
 		return *this;
 	}
-	inline Variant& Variant::operator=(void* v)
-	{
-		do_destruct();
-		do_construct(v);
-		return *this;
-	}
 	inline bool Variant::operator==(const Variant& rhs) const
 	{
 		if (m_type != rhs.m_type) return false;
@@ -769,8 +764,6 @@ namespace Luna
 			return m_b == rhs.m_b;
 		case VariantType::blob:
 			return memcmp(blob_data(), rhs.blob_data(), blob_size()) == 0;
-		case VariantType::pointer:
-			return m_ptr == rhs.m_ptr;
 		default:
 			lupanic();
 			return false;
@@ -1214,14 +1207,6 @@ namespace Luna
 		}
 		return Blob();
 	}
-	inline void* Variant::pointer() const
-	{
-		if (type() == VariantType::pointer)
-		{
-			return m_ptr;
-		}
-		return nullptr;
-	}
 	inline void Variant::do_destruct()
 	{
 		switch (m_type)
@@ -1305,9 +1290,6 @@ namespace Luna
 			m_blob_size = 0;
 			m_blob = nullptr;
 			break;
-		case VariantType::pointer:
-			m_ptr = nullptr;
-			break;
 		case VariantType::null:
 			break;
 		}
@@ -1368,9 +1350,6 @@ namespace Luna
 				m_blob = (byte_t*)memalloc(m_blob_size);
 				memcpy(m_blob, rhs.m_blob, m_blob_size);
 			}
-			break;
-		case VariantType::pointer:
-			m_ptr = rhs.m_ptr;
 			break;
 		case VariantType::null:
 			break;
@@ -1440,9 +1419,6 @@ namespace Luna
 				rhs.m_blob = nullptr;
 				rhs.m_blob_size = 0;
 			}
-			break;
-		case VariantType::pointer:
-			m_ptr = rhs.m_ptr;
 			break;
 		case VariantType::null:
 			break;
@@ -1589,11 +1565,6 @@ namespace Luna
 	{
 		m_type = VariantType::boolean;
 		m_b = v;
-	}
-	inline void Variant::do_construct(void* v)
-	{
-		m_type = VariantType::pointer;
-		m_ptr = v;
 	}
 	inline bool Variant::do_small_arr_reserve(usize new_cap)
 	{
