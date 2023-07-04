@@ -13,7 +13,11 @@
 #include "TypeInfo.hpp"
 namespace Luna
 {
-	//! @class Blob
+	//! @addtogroup Runtime
+	//! @{
+
+	//! @brief Represents one binary large object (BLOB).
+	//! @details Blob is used to pass arbitrary binary data.
 	class Blob
 	{
 		byte_t* m_buffer;
@@ -22,16 +26,29 @@ namespace Luna
 
 		void do_destruct();
 	public:
-		//! Creates the blob object without allocating any data.
+		//! @name Constructors
+		//! @{
+
+		//! @brief Constructs one empty blob. One empty blob will not allocate any memory. 
 		Blob();
-		//! Creates the blob object and allocated the specified size of bytes.
+		//! @brief Constructs one blob object and allocate memory for it.
+		//! @param[in] sz The size, in bytes, of the memory to allocate.
+		//! @param[in] alignment The optional alignment, in bytes, of the memory to allocate.
 		Blob(usize sz, usize alignment = 0);
-		//! Creates the blob object with initial data.
+		//! @brief Constructs the blob object with initial data. 
+		//! @param[in] blob_data A pointer to the data to initialize the blob.
+		//! @param[in] data_sz The size, in bytes, of the data pointed by `blob_data`.
+		//! @param[in] alignment The optional alignment, in bytes, of the memory to allocate.
+		//! @details The blob object will allocate memory for the data and copies the data into the blob memory.
 		Blob(const byte_t* blob_data, usize data_sz, usize alignment = 0);
+		//! @brief 
 		template <usize _Size>
 		Blob(Span<const byte_t, _Size> blob_data, usize alignment = 0);
 		Blob(const Blob& rhs);
 		Blob(Blob&& rhs);
+
+		//! @}
+
 		Blob& operator=(const Blob& rhs);
 		Blob& operator=(Blob&& rhs);
 		~Blob();
@@ -48,6 +65,8 @@ namespace Luna
 		void attach(byte_t* data, usize size, usize alignment);
 		byte_t* detach();
 	};
+
+	//! @}
 
 	inline void Blob::do_destruct()
 	{
