@@ -113,3 +113,10 @@ Here are some alternative real-time rendering engines/frameworks that have simil
 
 ## License
 Luna SDK is licensed under the zlib/libpng license, see [LICENSE.txt](./LICENSE.txt) for more information.
+
+## Mascot
+
+![](https://www.lunasdk.org/luna-robot.png)
+
+Say Hi to our mascot, a Luna SDK LOGO with two ellipses that look like eyes of one spherical robot.
+
