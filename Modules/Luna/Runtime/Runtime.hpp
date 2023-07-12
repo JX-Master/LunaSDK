@@ -21,7 +21,11 @@ namespace Luna
 	//! The Runtime module provides the runtime environment of Luna SDK and defines core functionalities that will be used by almost all modules.
 	//! @{
 
-	//! @name SDK initialization and shutdown
+	//! @defgroup RuntimeInit SDK initialization and shutdown
+
+	//! @}
+
+	//! @addtogroup RuntimeInit
 	//! @{
 
 	//! @brief Initializes Luna SDK.
@@ -44,8 +48,6 @@ namespace Luna
 	//! and containers like @ref Vector, @ref HashMap, etc.). Remember to clear such resources before calling @ref close. For some containers, you should call 
 	//! `clear` then `shrink_to_fit` to eventually frees the internal memory buffer used by containers.
 	LUNA_RUNTIME_API void close();
-
-	//! @}
 
 	//! @}
 }

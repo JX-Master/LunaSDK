@@ -23,8 +23,10 @@ namespace Luna
 {
 	//! @addtogroup Runtime
 	//! @{
+	//! @defgroup RuntimeMemory Memory allocation and deallocation
+	//! @}
 
-	//! @name Memory allocation and deallocation
+	//! @addtogroup RuntimeMemory
 	//! @{
 
 	//! @brief Allocates heap memory.
@@ -81,8 +83,6 @@ namespace Luna
 	//! @return Returns the total memory allocated by @ref memalloc or @ref memrealloc in bytes.
 	LUNA_RUNTIME_API usize get_allocated_memory();
 
-	//! @}
-
 	//! @name Memory leaking detection
 	//! @{
 #ifdef LUNA_RUNTIME_CHECK_MEMORY_LEAK
@@ -97,7 +97,7 @@ namespace Luna
 	//! @remark This function is available only if `LUNA_RUNTIME_CHECK_MEMORY_LEAK` macro is present.
 	LUNA_RUNTIME_API void register_memory_block(void* blk, const c8* debug_name);
 
-	//! Unregisters one memory block from the leak detection system.
+	//! @brief Unregisters one memory block from the leak detection system.
 	//! @param[in] blk The allocated memory block.
 	//! @par Valid Usage
 	//! * `blk` must be registered by a prior call to @ref register_memory_block.
@@ -107,11 +107,8 @@ namespace Luna
 #endif
 	//! @}
 
-	//! @name Memory allocation and deallocation
-	//! @{
-
-	//! @brief Allocates heap memory for one instance and constructs the instance.
-	//! @return Returns one pointer to the allocated instance.
+	//! @brief Allocates heap memory for one object and constructs the object.
+	//! @return Returns one pointer to the allocated object.
 	//! Returns `nullptr` if memory allocation failed.
 	template <typename _Ty, typename... _Args>
 	_Ty* memnew(_Args&&... args)
@@ -128,10 +125,10 @@ namespace Luna
 		return nullptr;
 	}
 
-	//! @brief Destructs one instance and frees its memory.
-	//! @param[in] o The pointer to the instance to be deleted.
+	//! @brief Destructs one object and frees its memory.
+	//! @param[in] o The pointer to the object to be deleted.
 	//! @par Valid Usage
-	//! * `o` must point to a instance created by `memnew`.
+	//! * `o` must point to a object created by `memnew`.
 	template <typename _Ty>
 	void memdelete(_Ty* o)
 	{
@@ -144,5 +141,4 @@ namespace Luna
 
 	//! @}
 
-	//! @}
 }
