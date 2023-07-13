@@ -25,14 +25,14 @@ namespace Luna
 					DescriptorSetLayoutBinding(DescriptorType::read_write_buffer_view, 0, 1, ShaderVisibilityFlag::compute)
 					})));
 				auto dlayout = m_histogram_clear_pass_dlayout.get();
-				luset(m_histogram_clear_pass_slayout, device->new_shader_input_layout(ShaderInputLayoutDesc({ &dlayout, 1 },
-					ShaderInputLayoutFlag::deny_vertex_shader_access |
-					ShaderInputLayoutFlag::deny_pixel_shader_access)));
+				luset(m_histogram_clear_pass_playout, device->new_pipeline_layout(PipelineLayoutDesc({ &dlayout, 1 },
+					PipelineLayoutFlag::deny_vertex_shader_access |
+					PipelineLayoutFlag::deny_pixel_shader_access)));
 
 				lulet(cs_blob, compile_shader("Shaders/LumHistogramClear.hlsl", ShaderCompiler::ShaderType::compute));
 				ComputePipelineStateDesc ps_desc;
 				ps_desc.cs = cs_blob.cspan();
-				ps_desc.shader_input_layout = m_histogram_clear_pass_slayout;
+				ps_desc.pipeline_layout = m_histogram_clear_pass_playout;
 				luset(m_histogram_clear_pass_pso, device->new_compute_pipeline_state(ps_desc));
 			}
 			// Histogram Lum Pass.
@@ -43,14 +43,14 @@ namespace Luna
 					DescriptorSetLayoutBinding(DescriptorType::read_write_buffer_view, 2, 1, ShaderVisibilityFlag::compute)
 					})));
 				auto dlayout = m_histogram_pass_dlayout.get();
-				luset(m_histogram_pass_slayout, device->new_shader_input_layout(ShaderInputLayoutDesc({ &dlayout, 1 },
-					ShaderInputLayoutFlag::deny_vertex_shader_access |
-					ShaderInputLayoutFlag::deny_pixel_shader_access)));
+				luset(m_histogram_pass_playout, device->new_pipeline_layout(PipelineLayoutDesc({ &dlayout, 1 },
+					PipelineLayoutFlag::deny_vertex_shader_access |
+					PipelineLayoutFlag::deny_pixel_shader_access)));
 
 				lulet(cs_blob, compile_shader("Shaders/LumHistogram.hlsl", ShaderCompiler::ShaderType::compute));
 				ComputePipelineStateDesc ps_desc;
 				ps_desc.cs = cs_blob.cspan();
-				ps_desc.shader_input_layout = m_histogram_pass_slayout;
+				ps_desc.pipeline_layout = m_histogram_pass_playout;
 				luset(m_histogram_pass_pso, device->new_compute_pipeline_state(ps_desc));
 			}
 			// Histogram Collect Pass.
@@ -61,14 +61,14 @@ namespace Luna
 					DescriptorSetLayoutBinding(DescriptorType::read_write_texture_view, 2, 1, ShaderVisibilityFlag::compute)
 					})));
 				auto dlayout = m_histogram_collect_pass_dlayout.get();
-				luset(m_histogram_collect_pass_slayout, device->new_shader_input_layout(ShaderInputLayoutDesc({ &dlayout, 1 },
-					ShaderInputLayoutFlag::deny_vertex_shader_access |
-					ShaderInputLayoutFlag::deny_pixel_shader_access)));
+				luset(m_histogram_collect_pass_playout, device->new_pipeline_layout(PipelineLayoutDesc({ &dlayout, 1 },
+					PipelineLayoutFlag::deny_vertex_shader_access |
+					PipelineLayoutFlag::deny_pixel_shader_access)));
 
 				lulet(cs_blob, compile_shader("Shaders/LumHistogramCollect.hlsl", ShaderCompiler::ShaderType::compute));
 				ComputePipelineStateDesc ps_desc;
 				ps_desc.cs = cs_blob.cspan();
-				ps_desc.shader_input_layout = m_histogram_collect_pass_slayout;
+				ps_desc.pipeline_layout = m_histogram_collect_pass_playout;
 				luset(m_histogram_collect_pass_pso, device->new_compute_pipeline_state(ps_desc));
 			}
 			//Tone Mapping Pass.
@@ -80,14 +80,14 @@ namespace Luna
 					DescriptorSetLayoutBinding(DescriptorType::read_write_texture_view, 3, 1, ShaderVisibilityFlag::compute)
 					})));
 				auto dlayout = m_tone_mapping_pass_dlayout.get();
-				luset(m_tone_mapping_pass_slayout, device->new_shader_input_layout(ShaderInputLayoutDesc({ &dlayout, 1 },
-					ShaderInputLayoutFlag::deny_vertex_shader_access |
-					ShaderInputLayoutFlag::deny_pixel_shader_access)));
+				luset(m_tone_mapping_pass_playout, device->new_pipeline_layout(PipelineLayoutDesc({ &dlayout, 1 },
+					PipelineLayoutFlag::deny_vertex_shader_access |
+					PipelineLayoutFlag::deny_pixel_shader_access)));
 
 				lulet(cs_blob, compile_shader("Shaders/ToneMappingCS.hlsl", ShaderCompiler::ShaderType::compute));
 				ComputePipelineStateDesc ps_desc;
 				ps_desc.cs = cs_blob.cspan();
-				ps_desc.shader_input_layout = m_tone_mapping_pass_slayout;
+				ps_desc.pipeline_layout = m_tone_mapping_pass_playout;
 				luset(m_tone_mapping_pass_pso, device->new_compute_pipeline_state(ps_desc));
 			}
         }
@@ -159,7 +159,7 @@ namespace Luna
 				cmdbuf->attach_device_object(m_histogram_buffer);
 				// Histogram Clear Pass.
 				{
-					cmdbuf->set_compute_shader_input_layout(m_global_data->m_histogram_clear_pass_slayout);
+					cmdbuf->set_compute_pipeline_layout(m_global_data->m_histogram_clear_pass_playout);
 					cmdbuf->set_compute_pipeline_state(m_global_data->m_histogram_clear_pass_pso);
 					cmdbuf->resource_barrier({
 							BufferBarrier(m_histogram_buffer, BufferStateFlag::automatic, BufferStateFlag::shader_write_cs)
@@ -173,7 +173,7 @@ namespace Luna
 				}
 				// Histogram Lum Pass.
 				{
-					cmdbuf->set_compute_shader_input_layout(m_global_data->m_histogram_pass_slayout);
+					cmdbuf->set_compute_pipeline_layout(m_global_data->m_histogram_pass_playout);
 					cmdbuf->set_compute_pipeline_state(m_global_data->m_histogram_pass_pso);
 					LumHistogramParams* mapped = nullptr;
 					luexp(m_histogram_cb->map(0, 0, (void**)&mapped));
@@ -201,7 +201,7 @@ namespace Luna
 
 				// Histogram Collect Lum passes.
 				{
-					cmdbuf->set_compute_shader_input_layout(m_global_data->m_histogram_collect_pass_slayout);
+					cmdbuf->set_compute_pipeline_layout(m_global_data->m_histogram_collect_pass_playout);
 					cmdbuf->set_compute_pipeline_state(m_global_data->m_histogram_collect_pass_pso);
 					LumHistogramCollectParams* mapped = nullptr;
 					luexp(m_histogram_collect_cb->map(0, 0, (void**)&mapped));
@@ -233,7 +233,7 @@ namespace Luna
 					mapped->exposure = exposure;
 					mapped->auto_exposure = auto_exposure ? 1 : 0;
 					m_tone_mapping_cb->unmap(0, sizeof(ToneMappingParams));
-					cmdbuf->set_compute_shader_input_layout(m_global_data->m_tone_mapping_pass_slayout);
+					cmdbuf->set_compute_pipeline_layout(m_global_data->m_tone_mapping_pass_playout);
 					cmdbuf->set_compute_pipeline_state(m_global_data->m_tone_mapping_pass_pso);
 					cmdbuf->resource_barrier({
 						{m_tone_mapping_cb, BufferStateFlag::automatic, BufferStateFlag::uniform_buffer_cs, ResourceBarrierFlag::none}

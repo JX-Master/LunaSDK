@@ -10,7 +10,7 @@
 #include "CommandBuffer.hpp"
 #include "PipelineState.hpp"
 #include "Resource.hpp"
-#include "ShaderInputLayout.hpp"
+#include "PipelineLayout.hpp"
 #include "DescriptorSet.hpp"
 #include "QueryHeap.hpp"
 #include "Fence.hpp"
@@ -206,8 +206,8 @@ namespace Luna
 				m_objs.clear();
 				m_rt_width = 0;
 				m_rt_height = 0;
-				m_graphics_shader_input_layout = nullptr;
-				m_compute_shader_input_layout = nullptr;
+				m_graphics_pipeline_layout = nullptr;
+				m_compute_pipeline_layout = nullptr;
 				for (VkFramebuffer fbo : m_fbos)
 				{
 					m_device->m_funcs.vkDestroyFramebuffer(m_device->m_device, fbo, nullptr);
@@ -307,7 +307,7 @@ namespace Luna
 		}
 		void CommandBuffer::begin_render_pass(const RenderPassDesc& desc)
 		{
-			assert_graphcis_context();
+			lucheck_msg(!m_render_pass_begin && !m_copy_pass_begin && !m_compute_pass_begin, "begin_render_pass can only be called when no other pass is open.");
 			lutry
 			{
 				RenderPassKey rp;
@@ -453,10 +453,10 @@ namespace Luna
 
 			}
 		}
-		void CommandBuffer::set_graphics_shader_input_layout(IShaderInputLayout* shader_input_layout)
+		void CommandBuffer::set_graphics_pipeline_layout(IPipelineLayout* pipeline_layout)
 		{
 			assert_graphcis_context();
-			m_graphics_shader_input_layout = shader_input_layout;
+			m_graphics_pipeline_layout = pipeline_layout;
 		}
 		void CommandBuffer::set_graphics_pipeline_state(IPipelineState* pso)
 		{
@@ -497,8 +497,8 @@ namespace Luna
 		{
 			assert_graphcis_context();
 			VkPipelineLayout layout = VK_NULL_HANDLE;
-			ShaderInputLayout* slayout = (ShaderInputLayout*)m_graphics_shader_input_layout->get_object();
-			layout = slayout->m_pipeline_layout;
+			PipelineLayout* playout = (PipelineLayout*)m_graphics_pipeline_layout->get_object();
+			layout = playout->m_pipeline_layout;
 			VkDescriptorSet* sets = (VkDescriptorSet*)alloca(sizeof(VkDescriptorSet) * descriptor_sets.size());
 			for (u32 i = 0; i < descriptor_sets.size(); ++i)
 			{
@@ -720,10 +720,10 @@ namespace Luna
 			memzero(m_resolve_attachments, sizeof(ImageView*) * 8);
 			m_dsv = nullptr;
 		}
-		void CommandBuffer::set_compute_shader_input_layout(IShaderInputLayout* shader_input_layout)
+		void CommandBuffer::set_compute_pipeline_layout(IPipelineLayout* pipeline_layout)
 		{
 			assert_compute_context();
-			m_compute_shader_input_layout = shader_input_layout;
+			m_compute_pipeline_layout = pipeline_layout;
 		}
 		void CommandBuffer::set_compute_pipeline_state(IPipelineState* pso)
 		{
@@ -735,8 +735,8 @@ namespace Luna
 		{
 			assert_compute_context();
 			VkPipelineLayout layout = VK_NULL_HANDLE;
-			ShaderInputLayout* slayout = (ShaderInputLayout*)m_compute_shader_input_layout->get_object();
-			layout = slayout->m_pipeline_layout;
+			PipelineLayout* playout = (PipelineLayout*)m_compute_pipeline_layout->get_object();
+			layout = playout->m_pipeline_layout;
 			VkDescriptorSet* sets = (VkDescriptorSet*)alloca(sizeof(VkDescriptorSet) * descriptor_sets.size());
 			for (u32 i = 0; i < descriptor_sets.size(); ++i)
 			{

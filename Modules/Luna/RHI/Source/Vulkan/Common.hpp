@@ -145,13 +145,6 @@ namespace Luna
 				return VK_FORMAT_UNDEFINED;
 			}
 		}
-		inline bool is_depth_stencil_format(Format format)
-		{
-			return (format == Format::d16_unorm ||
-				format == Format::d24_unorm_s8_uint ||
-				format == Format::d32_float ||
-				format == Format::d32_float_s8_uint_x24) ? true : false;
-		}
 		inline VkPrimitiveTopology encode_primitive_topology(PrimitiveTopology primitive_topology)
 		{
 			switch (primitive_topology)
@@ -303,10 +296,6 @@ namespace Luna
 			}
 			lupanic();
 			return VK_SAMPLE_COUNT_1_BIT;
-		}
-		inline u32 calc_mip_levels(u32 width, u32 height, u32 depth)
-		{
-			return 1 + (u32)floorf(log2f((f32)max(width, max(height, depth))));
 		}
 		inline void encode_buffer_create_info(VkBufferCreateInfo& dst, const BufferDesc& desc)
 		{

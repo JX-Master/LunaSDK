@@ -8,7 +8,7 @@
 * @date 2019/7/17
 */
 #pragma once
-#include "ShaderInputLayout.hpp"
+#include "PipelineLayout.hpp"
 #include "PipelineState.hpp"
 #include "DescriptorSet.hpp"
 #include "CommandBuffer.hpp"
@@ -113,8 +113,8 @@ namespace Luna
 			//! The user should use aliasing barrier to switch the active resource between aliasing resources sharing the same device memory.
 			virtual R<Ref<ITexture>> new_aliasing_texture(IDeviceMemory* device_memory, const TextureDesc& desc, const ClearValue* optimized_clear_value = nullptr) = 0;
 
-			//! Creates one new shader input layout.
-			virtual R<Ref<IShaderInputLayout>> new_shader_input_layout(const ShaderInputLayoutDesc& desc) = 0;
+			//! Creates one new pipeline layout.
+			virtual R<Ref<IPipelineLayout>> new_pipeline_layout(const PipelineLayoutDesc& desc) = 0;
 
 			//! Creates one new graphic pipeline state.
 			//! @param[in] desc The descriptor object.
@@ -128,7 +128,7 @@ namespace Luna
 			virtual R<Ref<IDescriptorSetLayout>> new_descriptor_set_layout(const DescriptorSetLayoutDesc& desc) = 0;
 
 			//! Creates one new descriptor set object that describes resources that are bound to the pipeline.
-			//! @param[in] target_input_layout The shader input layout object this view set is created for.
+			//! @param[in] target_input_layout The pipeline layout object this view set is created for.
 			//! @param[in] desc The descriptor object.
 			virtual R<Ref<IDescriptorSet>> new_descriptor_set(const DescriptorSetDesc& desc) = 0;
 

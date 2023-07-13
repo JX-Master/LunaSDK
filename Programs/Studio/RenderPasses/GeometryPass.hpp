@@ -21,7 +21,7 @@ namespace Luna
 
         Ref<RHI::IPipelineState> m_geometry_pass_pso;
 		Ref<RHI::IDescriptorSetLayout> m_geometry_pass_dlayout;
-		Ref<RHI::IShaderInputLayout> m_geometry_pass_slayout;
+		Ref<RHI::IPipelineLayout> m_geometry_pass_playout;
 
         Ref<RHI::ITexture> m_default_base_color;	// 1.0f, 1.0f, 1.0f, 1.0f
 		Ref<RHI::ITexture> m_default_roughness;	// 0.5f

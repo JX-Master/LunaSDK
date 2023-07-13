@@ -33,7 +33,7 @@ struct Vertex
 
 Ref<RHI::IDescriptorSetLayout> dlayout;
 Ref<RHI::IDescriptorSet> desc_set;
-Ref<RHI::IShaderInputLayout> slayout;
+Ref<RHI::IPipelineLayout> playout;
 Ref<RHI::IPipelineState> pso;
 Ref<RHI::ITexture> depth_tex;
 Ref<RHI::IBuffer> vb;
@@ -123,8 +123,8 @@ RV start()
 
         IDescriptorSetLayout* dl = dlayout;
 
-        luset(slayout, dev->new_shader_input_layout(ShaderInputLayoutDesc({&dl, 1}, 
-            ShaderInputLayoutFlag::allow_input_assembler_input_layout)));
+        luset(playout, dev->new_pipeline_layout(PipelineLayoutDesc({&dl, 1}, 
+            PipelineLayoutFlag::allow_input_assembler_input_layout)));
         GraphicsPipelineStateDesc ps_desc;
         ps_desc.primitive_topology = PrimitiveTopology::triangle_list;
 		ps_desc.sample_mask = U32_MAX;
@@ -143,7 +143,7 @@ RV start()
                 } });
 		ps_desc.vs = vs.cspan();
 		ps_desc.ps = ps.cspan();
-		ps_desc.shader_input_layout = slayout;
+		ps_desc.pipeline_layout = playout;
 		ps_desc.num_color_attachments = 1;
 		ps_desc.color_formats[0] = Format::bgra8_unorm;
 		ps_desc.depth_stencil_format = Format::d32_float;
@@ -247,7 +247,7 @@ void draw()
         desc.color_attachments[0] = ColorAttachment(get_back_buffer(), LoadOp::clear, StoreOp::store, { 0, 0, 0, 0 });
         desc.depth_stencil_attachment = DepthStencilAttachment(depth_tex, false, LoadOp::clear, StoreOp::store, 1.0f);
         cmdbuf->begin_render_pass(desc);
-        cmdbuf->set_graphics_shader_input_layout(slayout);
+        cmdbuf->set_graphics_pipeline_layout(playout);
         cmdbuf->set_graphics_pipeline_state(pso);
         cmdbuf->set_graphics_descriptor_set(0, desc_set);
         auto sz = vb->get_desc().size;
@@ -284,7 +284,7 @@ void cleanup()
 {
 	dlayout.reset();
 	desc_set.reset();
-	slayout.reset();
+	playout.reset();
 	pso.reset();
 	depth_tex.reset();
 	vb.reset();

@@ -23,7 +23,7 @@ using namespace Luna::RHI;
 using namespace Luna::RHITestBed;
 
 Ref<RHI::IDescriptorSetLayout> desc_set_layout;
-Ref<RHI::IShaderInputLayout> shader_input_layout;
+Ref<RHI::IPipelineLayout> pipeline_layout;
 Ref<RHI::IDescriptorSet> desc_set;
 Ref<RHI::IPipelineState> pso;
 Ref<RHI::ITexture> tex;
@@ -126,8 +126,8 @@ RV start()
 
 			IDescriptorSetLayout* ds_layout = desc_set_layout;
 
-			luset(shader_input_layout, device->new_shader_input_layout(ShaderInputLayoutDesc(
-				{ &ds_layout, 1 }, ShaderInputLayoutFlag::allow_input_assembler_input_layout)));
+			luset(pipeline_layout, device->new_pipeline_layout(PipelineLayoutDesc(
+				{ &ds_layout, 1 }, PipelineLayoutFlag::allow_input_assembler_input_layout)));
 
 			GraphicsPipelineStateDesc desc;
 			desc.input_layout = InputLayoutDesc({
@@ -141,7 +141,7 @@ RV start()
 			});
 			desc.vs = { vs.data(), vs.size() };
 			desc.ps = { ps.data(), ps.size() };
-			desc.shader_input_layout = shader_input_layout;
+			desc.pipeline_layout = pipeline_layout;
 			desc.depth_stencil_state = DepthStencilDesc(false, false);
 			desc.num_color_attachments = 1;
 			desc.color_formats[0] = Format::bgra8_unorm;
@@ -223,7 +223,7 @@ void draw()
 	desc.color_attachments[0] = ColorAttachment(get_back_buffer(), LoadOp::clear, StoreOp::store, Color::black());
 	cb->begin_render_pass(desc);
 	cb->set_graphics_pipeline_state(pso);
-	cb->set_graphics_shader_input_layout(shader_input_layout);
+	cb->set_graphics_pipeline_layout(pipeline_layout);
 	cb->set_graphics_descriptor_set(0, desc_set);
 	cb->set_vertex_buffers(0, {VertexBufferView(vb, 0, sizeof(VertexData) * 4, sizeof(VertexData))});
 	cb->set_index_buffer({ ib, 0, 24, Format::r32_uint });
@@ -240,7 +240,7 @@ void resize(u32 width, u32 height)
 void cleanup()
 {
 	desc_set_layout.reset();
-	shader_input_layout.reset();
+	pipeline_layout.reset();
 	desc_set.reset();
 	pso.reset();
 	tex.reset();

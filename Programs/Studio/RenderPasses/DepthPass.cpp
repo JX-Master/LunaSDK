@@ -30,8 +30,8 @@ namespace Luna
 				DescriptorSetLayoutBinding(DescriptorType::sampler, 3, 1, ShaderVisibilityFlag::pixel),
 				})));
 			auto dl = m_depth_pass_dlayout.get();
-			luset(m_depth_pass_slayout, device->new_shader_input_layout(ShaderInputLayoutDesc({ &dl, 1 },
-				ShaderInputLayoutFlag::allow_input_assembler_input_layout)));
+			luset(m_depth_pass_playout, device->new_pipeline_layout(PipelineLayoutDesc({ &dl, 1 },
+				PipelineLayoutFlag::allow_input_assembler_input_layout)));
 
 			lulet(vs_blob, compile_shader("Shaders/DepthVert.hlsl", ShaderCompiler::ShaderType::vertex));
 			lulet(ps_blob, compile_shader("Shaders/DepthPixel.hlsl", ShaderCompiler::ShaderType::pixel));
@@ -51,7 +51,7 @@ namespace Luna
 			ps_desc.input_layout.bindings = { &binding, 1 };
 			ps_desc.vs = vs_blob.cspan();
 			ps_desc.ps = ps_blob.cspan();
-			ps_desc.shader_input_layout = m_depth_pass_slayout;
+			ps_desc.pipeline_layout = m_depth_pass_playout;
 			ps_desc.num_color_attachments = 0;
 			ps_desc.depth_stencil_format = Format::d32_float;
 			luset(m_depth_pass_pso, device->new_graphics_pipeline_state(ps_desc));
@@ -119,7 +119,7 @@ namespace Luna
 				}
 			}
 			cmdbuf->begin_render_pass(render_pass);
-			cmdbuf->set_graphics_shader_input_layout(m_global_data->m_depth_pass_slayout);
+			cmdbuf->set_graphics_pipeline_layout(m_global_data->m_depth_pass_playout);
 			cmdbuf->set_graphics_pipeline_state(m_global_data->m_depth_pass_pso);
 			cmdbuf->set_viewport(Viewport(0.0f, 0.0f, (f32)render_desc.width, (f32)render_desc.height, 0.0f, 1.0f));
 			cmdbuf->set_scissor_rect(RectI(0, 0, (i32)render_desc.width, (i32)render_desc.height));

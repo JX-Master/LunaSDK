@@ -252,16 +252,15 @@ namespace Luna
 			m_vbs.clear();
 			m_ib.reset();
 			m_heap_set = false;
-			m_graphics_shader_input_layout.reset();
-			m_compute_shader_input_layout.reset();
+			m_graphics_pipeline_layout.reset();
+			m_compute_pipeline_layout.reset();
 			m_context = CommandBufferContextType::none;
 			return ok;
 		}
 		void CommandBuffer::begin_render_pass(const RenderPassDesc& desc)
 		{
 			lutsassert();
-			assert_graphcis_context();
-			lucheck_msg(!m_render_pass_context.m_valid, "The last render pass is not correctly closed.");
+			lucheck_msg(!m_render_pass_context.m_valid && !m_copy_pass_begin && !m_compute_pass_begin, "begin_render_pass can only be called when no other pass is open.");
 			lutry
 			{
 				// Create render target and depth stencil view.
@@ -377,13 +376,13 @@ namespace Luna
 
 			}
 		}
-		void CommandBuffer::set_graphics_shader_input_layout(IShaderInputLayout* shader_input_layout)
+		void CommandBuffer::set_graphics_pipeline_layout(IPipelineLayout* pipeline_layout)
 		{
 			lutsassert();
 			assert_graphcis_context();
-			lucheck(shader_input_layout);
-			ShaderInputLayout* o = cast_object<ShaderInputLayout>(shader_input_layout->get_object());
-			m_graphics_shader_input_layout = o;
+			lucheck(pipeline_layout);
+			PipelineLayout* o = cast_object<PipelineLayout>(pipeline_layout->get_object());
+			m_graphics_pipeline_layout = o;
 			m_li->SetGraphicsRootSignature(o->m_rs.Get());
 		}
 		void CommandBuffer::set_graphics_pipeline_state(IPipelineState* pso)
@@ -450,8 +449,8 @@ namespace Luna
 		{
 			lutsassert();
 			assert_graphcis_context();
-			lucheck_msg(m_graphics_shader_input_layout, "Graphic Shader Input Layout must be set before Graphic View Set can be bound!");
-			lucheck_msg(m_graphics_shader_input_layout->m_descriptor_set_layouts.size() >= start_index + descriptor_sets.size(), "The binding index out of range specified by the shader input layout.");
+			lucheck_msg(m_graphics_pipeline_layout, "Graphic pipeline layout must be set before Graphic View Set can be bound!");
+			lucheck_msg(m_graphics_pipeline_layout->m_descriptor_set_layouts.size() >= start_index + descriptor_sets.size(), "The binding index out of range specified by the pipeline layout.");
 			if (!m_heap_set)
 			{
 				ID3D12DescriptorHeap* heaps[2];
@@ -462,7 +461,7 @@ namespace Luna
 			}
 			for (u32 index = start_index; index < start_index + (u32)descriptor_sets.size(); ++index)
 			{
-				auto& info = m_graphics_shader_input_layout->m_descriptor_set_layouts[index];
+				auto& info = m_graphics_pipeline_layout->m_descriptor_set_layouts[index];
 				DescriptorSet* set = cast_object<DescriptorSet>(descriptor_sets[index - start_index]->get_object());
 				for (u32 i = 0; i < (u32)info.m_memory_types.size(); ++i)
 				{
@@ -678,13 +677,13 @@ namespace Luna
 			barriers.clear();
 			m_render_pass_context.m_valid = false;
 		}
-		void CommandBuffer::set_compute_shader_input_layout(IShaderInputLayout* shader_input_layout)
+		void CommandBuffer::set_compute_pipeline_layout(IPipelineLayout* pipeline_layout)
 		{
 			lutsassert();
 			assert_compute_context();
-			lucheck(shader_input_layout);
-			ShaderInputLayout* o = cast_object<ShaderInputLayout>(shader_input_layout->get_object());
-			m_compute_shader_input_layout = o;
+			lucheck(pipeline_layout);
+			PipelineLayout* o = cast_object<PipelineLayout>(pipeline_layout->get_object());
+			m_compute_pipeline_layout = o;
 			m_li->SetComputeRootSignature(o->m_rs.Get());
 		}
 		void CommandBuffer::set_compute_pipeline_state(IPipelineState* pso)
@@ -697,8 +696,8 @@ namespace Luna
 		{
 			lutsassert();
 			assert_compute_context();
-			lucheck_msg(m_compute_shader_input_layout, "Compute Shader Input Layout must be set before Compute View Set can be attached.");
-			lucheck_msg(m_compute_shader_input_layout->m_descriptor_set_layouts.size() > start_index, "The binding index out of range specified by the shader input layout.");
+			lucheck_msg(m_compute_pipeline_layout, "Compute pipeline layout must be set before Compute View Set can be attached.");
+			lucheck_msg(m_compute_pipeline_layout->m_descriptor_set_layouts.size() > start_index, "The binding index out of range specified by the pipeline layout.");
 			if (!m_heap_set)
 			{
 				ID3D12DescriptorHeap* heaps[2];
@@ -709,7 +708,7 @@ namespace Luna
 			}
 			for (u32 index = start_index; index < start_index + (u32)descriptor_sets.size(); ++index)
 			{
-				auto& info = m_compute_shader_input_layout->m_descriptor_set_layouts[index];
+				auto& info = m_compute_pipeline_layout->m_descriptor_set_layouts[index];
 				DescriptorSet* set = cast_object<DescriptorSet>(descriptor_sets[index - start_index]->get_object());
 				for (u32 i = 0; i < (u32)info.m_memory_types.size(); ++i)
 				{

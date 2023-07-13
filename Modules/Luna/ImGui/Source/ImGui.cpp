@@ -48,7 +48,7 @@ namespace Luna
         Blob g_ps_blob;
 
         Ref<RHI::IDescriptorSetLayout> g_desc_layout;
-        Ref<RHI::IShaderInputLayout> g_slayout;
+        Ref<RHI::IPipelineLayout> g_playout;
         HashMap<RHI::Format, Ref<RHI::IPipelineState>> g_pso;
 
         //! Expand when not enough.
@@ -186,10 +186,10 @@ float4 main(PS_INPUT input) : SV_Target
                     }
                 )));
                 IDescriptorSetLayout* dl = g_desc_layout;
-                luset(g_slayout, dev->new_shader_input_layout(ShaderInputLayoutDesc({
+                luset(g_playout, dev->new_pipeline_layout(PipelineLayoutDesc({
                     &dl, 1
                     },
-                    ShaderInputLayoutFlag::allow_input_assembler_input_layout)));
+                    PipelineLayoutFlag::allow_input_assembler_input_layout)));
 
                 // Create constant buffer.
                 usize buffer_size_align = dev->get_uniform_buffer_data_alignment();
@@ -258,7 +258,7 @@ float4 main(PS_INPUT input) : SV_Target
             g_vs_blob.clear();
             g_ps_blob.clear();
             g_active_window = nullptr;
-            g_slayout = nullptr;
+            g_playout = nullptr;
             g_pso.clear();
             g_pso.shrink_to_fit();
             g_cb = nullptr;
@@ -615,7 +615,7 @@ float4 main(PS_INPUT input) : SV_Target
                 ps_desc.input_layout.attributes = { input_attributes , 3 };
                 ps_desc.vs = { g_vs_blob.data(), g_vs_blob.size() };
                 ps_desc.ps = { g_ps_blob.data(), g_ps_blob.size() };
-                ps_desc.shader_input_layout = g_slayout;
+                ps_desc.pipeline_layout = g_playout;
                 ps_desc.num_color_attachments = 1;
                 ps_desc.color_formats[0] = rt_format;
                 lulet(pso, get_main_device()->new_graphics_pipeline_state(ps_desc));
@@ -711,7 +711,7 @@ float4 main(PS_INPUT input) : SV_Target
                 cmd_buffer->set_index_buffer({g_ib, 0, (u32)(g_ib_size * sizeof(ImDrawIdx)), sizeof(ImDrawIdx) == 2 ? Format::r16_uint : Format::r32_uint});
                 lulet(pso, get_pso(rt_desc.format));
                 cmd_buffer->set_graphics_pipeline_state(pso);
-                cmd_buffer->set_graphics_shader_input_layout(g_slayout);
+                cmd_buffer->set_graphics_pipeline_layout(g_playout);
                 const f32 blend_factor[4] = { 0.f, 0.f, 0.f, 0.f };
                 cmd_buffer->set_blend_factor(blend_factor);
 

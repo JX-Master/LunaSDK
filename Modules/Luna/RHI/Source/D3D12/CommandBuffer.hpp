@@ -14,7 +14,7 @@
 #include "Resource.hpp"
 #include "DescriptorSet.hpp"
 #include "PipelineState.hpp"
-#include "ShaderInputLayout.hpp"
+#include "PipelineLayout.hpp"
 
 namespace Luna
 {
@@ -150,15 +150,16 @@ namespace Luna
 			//Ref<GraphicPipelineState> m_graphics_pipeline_state;
 			//! The current bound compute pipeline state.
 			//Ref<ComputePipelineState> m_compute_pipeline_state;
-			//! The current bound graphic shader input layout.
-			Ref<ShaderInputLayout> m_graphics_shader_input_layout;
-			//! The current bound compute shader input layout.
-			Ref<ShaderInputLayout> m_compute_shader_input_layout;
+			//! The current bound graphic pipeline layout.
+			Ref<PipelineLayout> m_graphics_pipeline_layout;
+			//! The current bound compute pipeline layout.
+			Ref<PipelineLayout> m_compute_pipeline_layout;
 
 			//! The attached graphic objects.
 			Vector<Ref<IDeviceChild>> m_objs;
 
-			CommandBufferContextType m_context = CommandBufferContextType::none;
+			bool m_compute_pass_begin = false;
+			bool m_copy_pass_begin = false;
 
 			bool m_heap_set;
 
@@ -197,15 +198,15 @@ namespace Luna
 			}
 			void assert_graphcis_context()
 			{
-				lucheck_msg(m_context == CommandBufferContextType::graphics, "A graphics command is submiited in a non-graphics context.");
+				lucheck_msg(m_render_pass_context.m_valid, "A graphics command can only be submitted between begin_render_pass and end_render_pass.");
 			}
 			void assert_compute_context()
 			{
-				lucheck_msg(m_context == CommandBufferContextType::compute, "A compute command is submiited in a non-compute context.");
+				lucheck_msg(m_compute_pass_begin, "A compute command can only be submitted between begin_compute_pass and end_compute_pass.");
 			}
 			void assert_copy_context()
 			{
-				lucheck_msg(m_context == CommandBufferContextType::copy, "A copy command is submiited in a non-copy context.");
+				lucheck_msg(m_copy_pass_begin, "A copy command can only be submitted between begin_copy_pass and end_copy_pass.");
 			}
 			void assert_non_render_pass()
 			{
@@ -236,10 +237,8 @@ namespace Luna
 			{
 				m_li->EndEvent();
 			}
-			virtual CommandBufferContextType get_context_type() override { return m_context; }
-			virtual void set_context(CommandBufferContextType new_context) override { m_context = new_context; }
 			virtual void begin_render_pass(const RenderPassDesc& desc) override;
-			virtual void set_graphics_shader_input_layout(IShaderInputLayout* shader_input_layout) override;
+			virtual void set_graphics_pipeline_layout(IPipelineLayout* pipeline_layout) override;
 			virtual void set_graphics_pipeline_state(IPipelineState* pso) override;
 			virtual void set_vertex_buffers(u32 start_slot, Span<const VertexBufferView> views) override;
 			virtual void set_index_buffer(const IndexBufferView& view) override;
@@ -275,7 +274,12 @@ namespace Luna
 			virtual void clear_depth_stencil_attachment(ClearFlag clear_flags, f32 depth, u8 stencil, Span<const RectI> rects) override;
 			virtual void clear_color_attachment(u32 index, Span<const f32, 4> color_rgba, Span<const RectI> rects) override;
 			virtual void end_render_pass() override;
-			virtual void set_compute_shader_input_layout(IShaderInputLayout* shader_input_layout) override;
+			virtual void begin_compute_pass() override
+			{
+				lucheck_msg(!m_render_pass_context.m_valid && !m_copy_pass_begin && !m_compute_pass_begin, "begin_compute_pass can only be called when no other pass is open.");
+				m_compute_pass_begin = true;
+			}
+			virtual void set_compute_pipeline_layout(IPipelineLayout* pipeline_layout) override;
 			virtual void set_compute_pipeline_state(IPipelineState* pso) override;
 			virtual void set_compute_descriptor_set(u32 start_index, IDescriptorSet* descriptor_set) override
 			{
@@ -283,6 +287,16 @@ namespace Luna
 			}
 			virtual void set_compute_descriptor_sets(u32 start_index, Span<IDescriptorSet*> descriptor_sets) override;
 			virtual void dispatch(u32 thread_group_count_x, u32 thread_group_count_y, u32 thread_group_count_z) override;
+			virtual void end_compute_pass() override
+			{
+				lucheck_msg(m_compute_pass_begin, "Calling end_compute_pass without prior call to begin_compute_pass.");
+				m_compute_pass_begin = false;
+			}
+			virtual void begin_copy_pass() override
+			{
+				lucheck_msg(!m_render_pass_context.m_valid && !m_copy_pass_begin && !m_compute_pass_begin, "begin_copy_pass can only be called when no other pass is open.");
+				m_copy_pass_begin = true;
+			}
 			virtual void copy_resource(IResource* dst, IResource* src) override;
 			virtual void copy_buffer(
 				IBuffer* dst, u64 dst_offset,
@@ -300,6 +314,11 @@ namespace Luna
 				IBuffer* dst, u64 dst_offset, u32 dst_row_pitch, u32 dst_slice_pitch,
 				ITexture* src, SubresourceIndex src_subresource, u32 src_x, u32 src_y, u32 src_z,
 				u32 copy_width, u32 copy_height, u32 copy_depth) override;
+			virtual void end_copy_pass() override
+			{
+				lucheck_msg(m_copy_pass_begin, "Calling end_copy_pass without prior call to begin_copy_pass.");
+				m_copy_pass_begin = false;
+			}
 			virtual void resource_barrier(Span<const BufferBarrier> buffer_barriers, Span<const TextureBarrier> texture_barriers) override;
 			virtual void write_timestamp(IQueryHeap* heap, u32 index) override;
 			virtual void begin_pipeline_statistics_query(IQueryHeap* heap, u32 index) override;

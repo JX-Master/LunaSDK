@@ -9,7 +9,7 @@
 */
 #pragma once
 #include "Resource.hpp"
-#include "ShaderInputLayout.hpp"
+#include "PipelineLayout.hpp"
 #include <Luna/Runtime/Span.hpp>
 namespace Luna
 {
@@ -17,7 +17,7 @@ namespace Luna
 	{
 		struct ComputePipelineStateDesc
 		{
-			IShaderInputLayout* shader_input_layout = nullptr;
+			IPipelineLayout* pipeline_layout = nullptr;
 			Span<const byte_t> cs;
 		};
 
@@ -122,24 +122,6 @@ namespace Luna
 			min,
 			max
 		};
-		enum class LogicOp : u8
-		{
-			clear,
-			set,
-			copy,
-			copy_inverted,
-			invert,
-			and,
-			nand,
-			or ,
-			nor,
-			xor,
-			equiv,
-			and_reverse,
-			and_inverted,
-			or_reverse,
-			or_inverted
-		};
 		enum class ColorWriteMask : u8
 		{
 			none = 0x00,
@@ -186,19 +168,16 @@ namespace Luna
 			bool alpha_to_coverage_enable;
 			bool independent_blend_enable;
 			bool logic_op_enable;
-			LogicOp logic_op;
 			AttachmentBlendDesc rt[8];
 
 			BlendDesc(
 				InitializerList<AttachmentBlendDesc> rt = {},
 				bool alpha_to_coverage_enable = false,
 				bool independent_blend_enable = false,
-				bool logic_op_enable = false,
-				LogicOp logic_op = LogicOp::clear) :
+				bool logic_op_enable = false) :
 				alpha_to_coverage_enable(alpha_to_coverage_enable),
 				independent_blend_enable(independent_blend_enable),
-				logic_op_enable(logic_op_enable),
-				logic_op(logic_op)
+				logic_op_enable(logic_op_enable)
 			{
 				u32 i = 0;
 				for (auto& it : rt)
@@ -360,7 +339,7 @@ namespace Luna
 		struct GraphicsPipelineStateDesc
 		{
 			InputLayoutDesc input_layout;
-			IShaderInputLayout* shader_input_layout = nullptr;
+			IPipelineLayout* pipeline_layout = nullptr;
 			Span<const byte_t> vs;
 			Span<const byte_t> ps;
 			RasterizerDesc rasterizer_state;

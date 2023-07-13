@@ -20,7 +20,7 @@ using namespace Luna;
 using namespace Luna::RHI;
 using namespace Luna::RHITestBed;
 
-Ref<RHI::IShaderInputLayout> shader_input_layout;
+Ref<RHI::IPipelineLayout> pipeline_layout;
 Ref<RHI::IPipelineState> pso;
 Ref<RHI::IBuffer> vb;
 
@@ -100,10 +100,10 @@ RV start()
 			auto ps_data = compiler->get_output();
 			Blob ps(ps_data.data(), ps_data.size());
 
-			luset(shader_input_layout, get_main_device()->new_shader_input_layout(ShaderInputLayoutDesc({},
-				ShaderInputLayoutFlag::allow_input_assembler_input_layout |
-				ShaderInputLayoutFlag::deny_pixel_shader_access |
-				ShaderInputLayoutFlag::deny_vertex_shader_access)));
+			luset(pipeline_layout, get_main_device()->new_pipeline_layout(PipelineLayoutDesc({},
+				PipelineLayoutFlag::allow_input_assembler_input_layout |
+				PipelineLayoutFlag::deny_pixel_shader_access |
+				PipelineLayoutFlag::deny_vertex_shader_access)));
 
 			GraphicsPipelineStateDesc desc;
 			desc.input_layout = InputLayoutDesc({
@@ -115,7 +115,7 @@ RV start()
 					InputAttributeDesc("COLOR", 0, 1, 0, 8, Format::rgba32_float)
 				}
 			});
-			desc.shader_input_layout = shader_input_layout;
+			desc.pipeline_layout = pipeline_layout;
 			desc.vs = { vs.data(), vs.size() };
 			desc.ps = { ps.data(), ps.size() };
 			desc.rasterizer_state.depth_clip_enable = false;
@@ -154,7 +154,7 @@ void draw()
 	desc.color_attachments[0] = ColorAttachment(get_back_buffer(), LoadOp::clear, StoreOp::store, Color::yellow());
 	cb->begin_render_pass(desc);
 	cb->set_graphics_pipeline_state(pso);
-	cb->set_graphics_shader_input_layout(shader_input_layout);
+	cb->set_graphics_pipeline_layout(pipeline_layout);
 	IBuffer* vertex_buffer = vb;
 	usize vb_offset = 0;
 	cb->set_vertex_buffers(0, {VertexBufferView(vb, 0, sizeof(VertexData) * 3, sizeof(VertexData))});
@@ -171,7 +171,7 @@ void resize(u32 width, u32 height)
 
 void cleanup()
 {
-	shader_input_layout.reset();
+	pipeline_layout.reset();
 	pso.reset();
 	vb.reset();
 }

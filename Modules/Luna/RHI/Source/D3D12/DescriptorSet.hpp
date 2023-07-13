@@ -11,7 +11,7 @@
 #include "D3D12Common.hpp"
 #include "Device.hpp"
 #include "Resource.hpp"
-#include "ShaderInputLayout.hpp"
+#include "PipelineLayout.hpp"
 
 namespace Luna
 {

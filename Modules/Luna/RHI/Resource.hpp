@@ -274,10 +274,11 @@ namespace Luna
 			//! This should always be 1 for 1D textures.
 			u32 height;
 			//! The depth of the texture.
-			//! This should always be 1 for 1D, 2D and cube textures.
+			//! This should always be 1 for 1D and 2D textures.
 			u32 depth;
 			//! The texture array size, specify 1 if this is not a texture array.
 			//! This should always be 1 for 3D textures.
+			//! This should be times of 6 of `usages` contains `TextureUsageFlag::cube`.
 			u32 array_size;
 			//! The number of mip-map slices. 
 			//! Specify 0 tells the system to create full mip-map chain for the resource.
@@ -320,6 +321,23 @@ namespace Luna
 				d.mip_levels = mip_levels;
 				d.sample_count = sample_count;
 				d.usages = usages;
+				d.flags = flags;
+				return d;
+			}
+			static inline TextureDesc texcube(Format format, TextureUsageFlag usages, u64 width, u32 height, u32 num_cubes = 1, u32 mip_levels = 0,
+				u32 sample_count = 1, ResourceFlag flags = ResourceFlag::none)
+			{
+				TextureDesc d;
+				d.type = TextureType::tex2d;
+				d.format = format;
+				d.width = width;
+				d.height = height;
+				d.depth = 1;
+				d.array_size = num_cubes * 6;
+				d.mip_levels = mip_levels;
+				d.sample_count = sample_count;
+				d.usages = usages;
+				d.usages |= TextureUsageFlag::cube;
 				d.flags = flags;
 				return d;
 			}

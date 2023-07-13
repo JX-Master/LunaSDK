@@ -10,7 +10,7 @@
 #pragma once
 #include "PipelineState.hpp"
 #include "DescriptorSet.hpp"
-#include "ShaderInputLayout.hpp"
+#include "PipelineLayout.hpp"
 #include <Luna/Runtime/Waitable.hpp>
 #include <Luna/Runtime/Math/Vector.hpp>
 #include "QueryHeap.hpp"
@@ -327,17 +327,6 @@ namespace Luna
 				size(size),
 				format(format) {}
 		};
-		enum class CommandBufferContextType : u8
-		{
-			//! Specifies no context for the command buffer.
-			none,
-			//! Specifies the graphics context for the command buffer.
-			graphics,
-			//! Specifies compute context for the command buffer.
-			compute,
-			//! Specifies copy context for the command buffer.
-			copy
-		};
 		//! @interface ICommandBuffer
 		//! The command buffer is used to allocate memory for commands, record commands, submitting 
 		//! commands to GPU and tracks the state of the submitted commands.
@@ -376,17 +365,8 @@ namespace Luna
 			//! sections.
 			virtual void begin_event(const Name& event_name) = 0;
 
-			//! Ends the latest event begun with `begin_event` that has not benn ended.
+			//! Ends the latest event opened with `begin_event` that has not been ended.
 			virtual void end_event() = 0;
-
-			//! Gets the current command buffer context type.
-			virtual CommandBufferContextType get_context_type() = 0;
-
-			//! Sets the command buffer context. Commands can only be submitted in their compatible contexts.
-			//! A context change will clear all pipeline states of the previous context, including binding resources, 
-			//! descriptor heaps, pipeline states and so on. The initial state of one context is unspecified.
-			//! The context change happens only when `new_context != get_context_type()`.
-			virtual void set_context(CommandBufferContextType new_context) = 0;
 
 			//! Starts a new render pass. The previous render pass should be closed before beginning another one.
 			//! @param[in] desc The render pass descriptor object.
@@ -395,21 +375,32 @@ namespace Luna
 			//! `ResourceState::depth_write` state.
 			//! 
 			//! The following functions can only be called in between `begin_render_pass` and `end_render_pass`:
+			//! * set_graphics_pipeline_layout
+			//! * set_graphics_pipeline_state
+			//! * set_vertex_buffers
+			//! * set_index_buffer
+			//! * set_graphics_descriptor_set
+			//! * set_graphics_descriptor_sets
+			//! * set_viewport
+			//! * set_viewports
+			//! * set_scissor_rect
+			//! * set_scissor_rects
+			//! * set_blend_factor
+			//! * set_stencil_ref
 			//! * draw
 			//! * draw_indexed
 			//! * draw_instanced
 			//! * draw_indexed_instanced
 			//! * clear_color_attachment
 			//! * clear_depth_stencil_attachment
-			//! * set_scissor_rects
 			//! The following functions can only be called outside of one render pass range:
 			//! * submit
 			//! * set_context
 			//! * resource_barrier
 			virtual void begin_render_pass(const RenderPassDesc& desc) = 0;
 
-			//! Sets the graphic shader input layout.
-			virtual void set_graphics_shader_input_layout(IShaderInputLayout* shader_input_layout) = 0;
+			//! Sets the graphic pipeline layout.
+			virtual void set_graphics_pipeline_layout(IPipelineLayout* pipeline_layout) = 0;
 
 			//! Sets the pipeline state for graphics pipeline.
 			virtual void set_graphics_pipeline_state(IPipelineState* pso) = 0;
@@ -431,7 +422,7 @@ namespace Luna
 			virtual void set_graphics_descriptor_set(u32 start_index, IDescriptorSet* descriptor_set) = 0;
 
 			//! Sets descriptor sets to be used by the graphic pipeline.
-			//! This must be called after `set_pipeline_state` and `set_graphics_shader_input_layout`.
+			//! This must be called after `set_pipeline_state` and `set_graphics_pipeline_layout`.
 			virtual void set_graphics_descriptor_sets(u32 start_index, Span<IDescriptorSet*> descriptor_sets) = 0;
 
 			//! Bind one viewport to the rasterizer stage of the pipeline.
@@ -485,8 +476,17 @@ namespace Luna
 			//! Finishes the current render pass.
 			virtual void end_render_pass() = 0;
 
-			//! Sets the compute shader input layout.
-			virtual void set_compute_shader_input_layout(IShaderInputLayout* shader_input_layout) = 0;
+			//! Begins a compute pass.
+			//! The following functions can only be called in between `begin_compute_pass` and `end_compute_pass`:
+			//! * set_compute_pipeline_layout
+			//! * set_compute_pipeline_state
+			//! * set_compute_descriptor_set
+			//! * set_compute_descriptor_sets
+			//! * dispatch
+			virtual void begin_compute_pass() = 0;
+
+			//! Sets the compute pipeline layout.
+			virtual void set_compute_pipeline_layout(IPipelineLayout* pipeline_layout) = 0;
 
 			//! Sets the pipeline state for compute pipeline.
 			virtual void set_compute_pipeline_state(IPipelineState* pso) = 0;
@@ -501,6 +501,18 @@ namespace Luna
 
 			//! Executes a command list from a thread group.
 			virtual void dispatch(u32 thread_group_count_x, u32 thread_group_count_y, u32 thread_group_count_z) = 0;
+
+			//! Ends a compute pass.
+			virtual void end_compute_pass() = 0;
+
+			//! Begins a copy pass.
+			//! The following functions can only be called in between `begin_copy_pass` and `end_copy_pass`:
+			//! * copy_resource
+			//! * copy_buffer
+			//! * copy_texture
+			//! * copy_buffer_to_texture
+			//! * copy_texture_to_buffer
+			virtual void begin_copy_pass() = 0;
 
 			//! Copies the entire contents of the source resource to the destination resource.
 			//! The source resource and destination resource must be the same `ResourceType`, have the same size for buffers, or 
@@ -528,6 +540,9 @@ namespace Luna
 				IBuffer* dst, u64 dst_offset, u32 dst_row_pitch, u32 dst_slice_pitch,
 				ITexture* src, SubresourceIndex src_subresource, u32 src_x, u32 src_y, u32 src_z,
 				u32 copy_width, u32 copy_height, u32 copy_depth) = 0;
+
+			//! Ends a copy pass.
+			virtual void end_copy_pass() = 0;
 
 			//! Issues one resource barrier.
 			virtual void resource_barrier(Span<const BufferBarrier> buffer_barriers, Span<const TextureBarrier> texture_barriers) = 0;

@@ -152,10 +152,6 @@ namespace Luna
 				return D3D12_COMPARISON_FUNC_ALWAYS;
 			}
 		}
-		inline u32 calc_mip_levels(u32 width, u32 height, u32 depth)
-		{
-			return 1 + (u32)floorf(log2f((f32)max(width, max(height, depth))));
-		}
 		inline D3D12_RESOURCE_DESC encode_buffer_desc(const BufferDesc& desc)
 		{
 			D3D12_RESOURCE_DESC rd {};

@@ -19,7 +19,7 @@
 #pragma comment(lib, "dxgi.lib")
 #include "../RHI.hpp"
 
-#include "ShaderInputLayout.hpp"
+#include "PipelineLayout.hpp"
 #include "PipelineState.hpp"
 #include "CommandBuffer.hpp"
 #include "SwapChain.hpp"
@@ -45,8 +45,8 @@ namespace Luna
 			impl_interface_for_type<TextureResource, ITexture, IResource, IDeviceChild>();
 			register_boxed_type<DeviceMemory>();
 			impl_interface_for_type<DeviceMemory, IDeviceMemory, IDeviceChild>();
-			register_boxed_type<ShaderInputLayout>();
-			impl_interface_for_type<ShaderInputLayout, IShaderInputLayout, IDeviceChild>();
+			register_boxed_type<PipelineLayout>();
+			impl_interface_for_type<PipelineLayout, IPipelineLayout, IDeviceChild>();
 			register_boxed_type<PipelineState>();
 			impl_interface_for_type<PipelineState, IPipelineState, IDeviceChild>();
 			register_boxed_type<CommandBuffer>();

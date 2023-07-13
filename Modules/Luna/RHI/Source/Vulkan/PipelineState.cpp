@@ -8,7 +8,7 @@
 * @date 2023/4/23
 */
 #include "PipelineState.hpp"
-#include "ShaderInputLayout.hpp"
+#include "PipelineLayout.hpp"
 
 namespace Luna
 {
@@ -239,8 +239,8 @@ namespace Luna
 				synamic_state_create_info.dynamicStateCount = 4;
 				create_info.pDynamicState = &synamic_state_create_info;
 				// pipeline layout.
-				ShaderInputLayout* slayout = (ShaderInputLayout*)desc.shader_input_layout->get_object();
-				create_info.layout = slayout->m_pipeline_layout;
+				PipelineLayout* playout = (PipelineLayout*)desc.pipeline_layout->get_object();
+				create_info.layout = playout->m_pipeline_layout;
 				// render pass.
 				RenderPassKey render_pass;
 				for (usize i = 0; i < desc.num_color_attachments; ++i)
@@ -286,8 +286,8 @@ namespace Luna
 				create_info.stage.flags = 0;
 				create_info.stage.pSpecializationInfo = nullptr;
 				// pipeline layout.
-				ShaderInputLayout* slayout = (ShaderInputLayout*)desc.shader_input_layout->get_object();
-				create_info.layout = slayout->m_pipeline_layout;
+				PipelineLayout* playout = (PipelineLayout*)desc.pipeline_layout->get_object();
+				create_info.layout = playout->m_pipeline_layout;
 				luexp(encode_vk_result(m_device->m_funcs.vkCreateComputePipelines(m_device->m_device, VK_NULL_HANDLE, 1, &create_info, nullptr, &m_pipeline)));
 			}
 			lucatchret;

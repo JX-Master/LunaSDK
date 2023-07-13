@@ -21,7 +21,7 @@ namespace Luna
 		Blob g_fill_shader_vs;
 		Blob g_fill_shader_ps;
 		Ref<RHI::IDescriptorSetLayout> g_fill_desc_layout;
-		Ref<RHI::IShaderInputLayout> g_fill_slayout;
+		Ref<RHI::IPipelineLayout> g_fill_playout;
 		Ref<RHI::ITexture> g_white_tex;
 
 		RV init_render_resources()
@@ -66,10 +66,10 @@ namespace Luna
 				}
 				{
 					IDescriptorSetLayout* dl = g_fill_desc_layout;
-					ShaderInputLayoutDesc desc ({&dl, 1},
-						ShaderInputLayoutFlag::allow_input_assembler_input_layout
+					PipelineLayoutDesc desc ({&dl, 1},
+						PipelineLayoutFlag::allow_input_assembler_input_layout
 					);
-					luset(g_fill_slayout, dev->new_shader_input_layout(desc));
+					luset(g_fill_playout, dev->new_pipeline_layout(desc));
 				}
 				{
 					TextureDesc desc = TextureDesc::tex2d(Format::rgba8_unorm, TextureUsageFlag::read_texture | TextureUsageFlag::copy_dest, 1, 1);
@@ -110,7 +110,7 @@ namespace Luna
 			g_fill_shader_vs.clear();
 			g_fill_shader_ps.clear();
 			g_fill_desc_layout = nullptr;
-			g_fill_slayout = nullptr;
+			g_fill_playout = nullptr;
 			g_white_tex = nullptr;
 		}
 		RV FillShapeRenderer::create_pso(RHI::Format rt_format)
@@ -131,7 +131,7 @@ namespace Luna
 							InputAttributeDesc("COMMAND_OFFSET", 0, 4, 0, offsetof(Vertex, begin_command), Format::r32_uint),
 							InputAttributeDesc("NUM_COMMANDS", 0, 5, 0, offsetof(Vertex, num_commands), Format::r32_uint),
 						});
-				desc.shader_input_layout = g_fill_slayout;
+				desc.pipeline_layout = g_fill_playout;
 				desc.vs = { g_fill_shader_vs.data(), g_fill_shader_vs.size() };
 				desc.ps = { g_fill_shader_ps.data(), g_fill_shader_ps.size() };
 				desc.blend_state = BlendDesc({ AttachmentBlendDesc(true, BlendFactor::src_alpha, BlendFactor::inv_src_alpha, BlendOp::add, BlendFactor::zero,
@@ -242,7 +242,7 @@ namespace Luna
 				desc.color_attachments[0] = ColorAttachment(m_render_target, LoadOp::clear, StoreOp::store, Float4U{ 0.0f });
 				cmdbuf->begin_render_pass(desc);
 				cmdbuf->set_graphics_pipeline_state(m_fill_pso);
-				cmdbuf->set_graphics_shader_input_layout(g_fill_slayout);
+				cmdbuf->set_graphics_pipeline_layout(g_fill_playout);
 				cmdbuf->set_vertex_buffers(0, { &VertexBufferView(vertex_buffer, 0, sizeof(Vertex) * num_vertices, sizeof(Vertex)), 1 });
 				cmdbuf->set_index_buffer({index_buffer, 0, num_indices * sizeof(u32), Format::r32_uint});
 				cmdbuf->set_viewport(Viewport(0.0f, 0.0f, (f32)m_screen_width, (f32)m_screen_height, 0.0f, 1.0f));

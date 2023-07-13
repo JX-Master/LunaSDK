@@ -9,7 +9,7 @@
 */
 #pragma once
 #include "Device.hpp"
-#include "ShaderInputLayout.hpp"
+#include "PipelineLayout.hpp"
 #include "../../PipelineState.hpp"
 #include "D3D12Common.hpp"
 

@@ -29,8 +29,8 @@ namespace Luna
 				DescriptorSetLayoutBinding(DescriptorType::read_buffer_view, 1, 1, ShaderVisibilityFlag::vertex) })));
 
 			auto dlayout = m_debug_mesh_renderer_dlayout.get();
-			luset(m_debug_mesh_renderer_slayout, device->new_shader_input_layout(ShaderInputLayoutDesc({ &dlayout, 1 },
-				ShaderInputLayoutFlag::allow_input_assembler_input_layout)));
+			luset(m_debug_mesh_renderer_playout, device->new_pipeline_layout(PipelineLayoutDesc({ &dlayout, 1 },
+				PipelineLayoutFlag::allow_input_assembler_input_layout)));
 
 			lulet(vs_blob, compile_shader("Shaders/GeometryVert.hlsl", ShaderCompiler::ShaderType::vertex));
 
@@ -81,7 +81,7 @@ namespace Luna
 			ps_desc.input_layout.attributes = { attributes.data(), attributes.size() };
 			ps_desc.vs = vs_blob.cspan();
 			ps_desc.ps = ps_blob.cspan();
-			ps_desc.shader_input_layout = m_debug_mesh_renderer_slayout;
+			ps_desc.pipeline_layout = m_debug_mesh_renderer_playout;
 			ps_desc.num_color_attachments = 1;
 			ps_desc.color_formats[0] = Format::rgba8_unorm;
 			luset(m_debug_mesh_renderer_pso, device->new_graphics_pipeline_state(ps_desc));
@@ -114,7 +114,7 @@ namespace Luna
 			cmdbuf->set_context(CommandBufferContextType::graphics);
 			cmdbuf->resource_barrier({}, { {output_tex, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::color_attachment_write, ResourceBarrierFlag::discard_content} });
 			cmdbuf->begin_render_pass(render_pass);
-			cmdbuf->set_graphics_shader_input_layout(m_global_data->m_debug_mesh_renderer_slayout);
+			cmdbuf->set_graphics_pipeline_layout(m_global_data->m_debug_mesh_renderer_playout);
 			cmdbuf->set_graphics_pipeline_state(m_global_data->m_debug_mesh_renderer_pso);
 			cmdbuf->set_viewport(Viewport(0.0f, 0.0f, (f32)render_desc.width, (f32)render_desc.height, 0.0f, 1.0f));
 			cmdbuf->set_scissor_rect(RectI(0, 0, (i32)render_desc.width, (i32)render_desc.height));

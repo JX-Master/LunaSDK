@@ -29,13 +29,13 @@ namespace Luna
 						DescriptorSetLayoutBinding(DescriptorType::sampler, 4, 1, ShaderVisibilityFlag::compute)
 						})));
             auto dl = m_skybox_pass_dlayout.get();
-			luset(m_skybox_pass_slayout, device->new_shader_input_layout(ShaderInputLayoutDesc({ &dl, 1 },
-				ShaderInputLayoutFlag::deny_vertex_shader_access |
-				ShaderInputLayoutFlag::deny_pixel_shader_access)));
+			luset(m_skybox_pass_playout, device->new_pipeline_layout(PipelineLayoutDesc({ &dl, 1 },
+				PipelineLayoutFlag::deny_vertex_shader_access |
+				PipelineLayoutFlag::deny_pixel_shader_access)));
             lulet(cs_blob, compile_shader("Shaders/SkyboxCS.hlsl", ShaderCompiler::ShaderType::compute));
 			ComputePipelineStateDesc ps_desc;
 			ps_desc.cs = cs_blob.cspan();
-			ps_desc.shader_input_layout = m_skybox_pass_slayout;
+			ps_desc.pipeline_layout = m_skybox_pass_playout;
 			luset(m_skybox_pass_pso, device->new_compute_pipeline_state(ps_desc));
         }
         lucatchret;
@@ -92,7 +92,7 @@ namespace Luna
                         TextureBarrier(skybox, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::shader_read_cs),
                         TextureBarrier(depth_tex, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::shader_read_cs),
                     });
-				cmdbuf->set_compute_shader_input_layout(m_global_data->m_skybox_pass_slayout);
+				cmdbuf->set_compute_pipeline_layout(m_global_data->m_skybox_pass_playout);
 				cmdbuf->set_compute_pipeline_state(m_global_data->m_skybox_pass_pso);
                 auto cb_align = cmdbuf->get_device()->get_uniform_buffer_data_alignment();
                 m_ds->update_descriptors({

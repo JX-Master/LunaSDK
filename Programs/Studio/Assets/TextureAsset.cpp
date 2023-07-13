@@ -22,7 +22,7 @@ namespace Luna
 		lustruct("TextureAssetUserdata", "{816CDA20-AB1C-4E24-A7CE-59E2EFE9BE1E}");
 
 		Ref<RHI::IDescriptorSetLayout> m_mipmapping_dlayout;
-		Ref<RHI::IShaderInputLayout> m_mipmapping_slayout;
+		Ref<RHI::IPipelineLayout> m_mipmapping_playout;
 		Ref<RHI::IPipelineState> m_mipmapping_pso;
 
 		static constexpr u32 ENV_MAP_MIPS_COUNT = 5;
@@ -44,15 +44,15 @@ namespace Luna
 					DescriptorSetLayoutBinding(DescriptorType::sampler, 3, 1, ShaderVisibilityFlag::all)
 					})));
 				auto dlayout = m_mipmapping_dlayout.get();
-				luset(m_mipmapping_slayout, RHI::get_main_device()->new_shader_input_layout(ShaderInputLayoutDesc(
+				luset(m_mipmapping_playout, RHI::get_main_device()->new_pipeline_layout(PipelineLayoutDesc(
 					{ &dlayout, 1 },
-					ShaderInputLayoutFlag::deny_vertex_shader_access |
+					PipelineLayoutFlag::deny_vertex_shader_access |
 					
-					ShaderInputLayoutFlag::deny_pixel_shader_access)));
+					PipelineLayoutFlag::deny_pixel_shader_access)));
 
 				lulet(cs_blob, compile_shader("Shaders/MipmapGenerationCS.hlsl", ShaderCompiler::ShaderType::compute));
 				ComputePipelineStateDesc ps_desc;
-				ps_desc.shader_input_layout = m_mipmapping_slayout;
+				ps_desc.pipeline_layout = m_mipmapping_playout;
 				ps_desc.cs = cs_blob.cspan();
 				luset(m_mipmapping_pso, RHI::get_main_device()->new_compute_pipeline_state(ps_desc));
 			}
@@ -77,7 +77,7 @@ namespace Luna
 
 			auto device = g_env->device;
 			compute_cmdbuf->set_context(CommandBufferContextType::compute);
-			compute_cmdbuf->set_compute_shader_input_layout(m_mipmapping_slayout);
+			compute_cmdbuf->set_compute_pipeline_layout(m_mipmapping_playout);
 			compute_cmdbuf->set_compute_pipeline_state(m_mipmapping_pso);
 			u32 cb_align = device->get_uniform_buffer_data_alignment();
 			u32 cb_size = (u32)align_upper(sizeof(Float2), cb_align);

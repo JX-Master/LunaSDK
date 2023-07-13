@@ -21,7 +21,7 @@ namespace Luna
 
         Ref<RHI::IPipelineState> m_debug_mesh_renderer_pso;
 		Ref<RHI::IDescriptorSetLayout> m_debug_mesh_renderer_dlayout;
-		Ref<RHI::IShaderInputLayout> m_debug_mesh_renderer_slayout;
+		Ref<RHI::IPipelineLayout> m_debug_mesh_renderer_playout;
 
         RV init(RHI::IDevice* device);
     };

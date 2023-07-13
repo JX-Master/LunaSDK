@@ -18,7 +18,7 @@ namespace Luna
 
         Ref<RHI::IPipelineState> m_skybox_pass_pso;
 		Ref<RHI::IDescriptorSetLayout> m_skybox_pass_dlayout;
-		Ref<RHI::IShaderInputLayout> m_skybox_pass_slayout;
+		Ref<RHI::IPipelineLayout> m_skybox_pass_playout;
         Name m_texture_name = "texture";
         Name m_depth_texture_name = "depth_texture";
 

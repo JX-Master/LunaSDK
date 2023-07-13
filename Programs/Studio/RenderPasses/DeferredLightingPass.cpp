@@ -33,15 +33,15 @@ namespace Luna
 						DescriptorSetLayoutBinding(DescriptorType::sampler, 10, 1, ShaderVisibilityFlag::compute)
 						})));
             auto dlayout = m_deferred_lighting_pass_dlayout.get();
-			luset(m_deferred_lighting_pass_slayout, device->new_shader_input_layout(ShaderInputLayoutDesc({ &dlayout, 1 },
-				ShaderInputLayoutFlag::deny_vertex_shader_access |
-				ShaderInputLayoutFlag::deny_pixel_shader_access)));
+			luset(m_deferred_lighting_pass_playout, device->new_pipeline_layout(PipelineLayoutDesc({ &dlayout, 1 },
+				PipelineLayoutFlag::deny_vertex_shader_access |
+				PipelineLayoutFlag::deny_pixel_shader_access)));
 
             lulet(cs_blob, compile_shader("Shaders/DeferredLighting.hlsl", ShaderCompiler::ShaderType::compute));
 
 			ComputePipelineStateDesc ps_desc;
 			ps_desc.cs = cs_blob.cspan();
-			ps_desc.shader_input_layout = m_deferred_lighting_pass_slayout;
+			ps_desc.pipeline_layout = m_deferred_lighting_pass_playout;
 			luset(m_deferred_lighting_pass_pso, device->new_compute_pipeline_state(ps_desc));
 
             luset(m_default_skybox, device->new_texture(MemoryType::local, TextureDesc::tex2d(Format::rgba8_unorm, 
@@ -59,13 +59,13 @@ namespace Luna
                         DescriptorSetLayoutBinding(DescriptorType::uniform_buffer_view, 0, 1, ShaderVisibilityFlag::compute),
                         DescriptorSetLayoutBinding(DescriptorType::read_write_texture_view, 1, 1, ShaderVisibilityFlag::compute) })));
                 auto dl = dlayout.get();
-                lulet(slayout, device->new_shader_input_layout(ShaderInputLayoutDesc({ &dl, 1 },
-                    ShaderInputLayoutFlag::deny_vertex_shader_access |
-                    ShaderInputLayoutFlag::deny_pixel_shader_access)));
+                lulet(playout, device->new_pipeline_layout(PipelineLayoutDesc({ &dl, 1 },
+                    PipelineLayoutFlag::deny_vertex_shader_access |
+                    PipelineLayoutFlag::deny_pixel_shader_access)));
                 lulet(cs_blob, compile_shader("Shaders/PrecomputeIntegrateBRDF.hlsl", ShaderCompiler::ShaderType::compute));
                 ComputePipelineStateDesc ps_desc;
                 ps_desc.cs = cs_blob.cspan();
-                ps_desc.shader_input_layout = slayout;
+                ps_desc.pipeline_layout = playout;
                 lulet(pso, device->new_compute_pipeline_state(ps_desc));
                 lulet(compute_cmdbuf, device->new_command_buffer(g_env->async_compute_queue));
                 u32 cb_align = device->get_uniform_buffer_data_alignment();
@@ -84,7 +84,7 @@ namespace Luna
                     WriteDescriptorSet::read_write_texture_view(1, TextureViewDesc::tex2d(m_integrate_brdf))
                     });
                 compute_cmdbuf->set_context(CommandBufferContextType::compute);
-                compute_cmdbuf->set_compute_shader_input_layout(slayout);
+                compute_cmdbuf->set_compute_pipeline_layout(playout);
                 compute_cmdbuf->set_compute_pipeline_state(pso);
                 compute_cmdbuf->set_compute_descriptor_set(0, vs);
                 compute_cmdbuf->dispatch(align_upper(INTEGEATE_BRDF_SIZE, 8) / 8, align_upper(INTEGEATE_BRDF_SIZE, 8) / 8, 1);
@@ -161,7 +161,7 @@ namespace Luna
                 WriteDescriptorSet::sampler(10, SamplerDesc(Filter::min_mag_mip_linear, TextureAddressMode::clamp, TextureAddressMode::clamp, TextureAddressMode::clamp)),
                 });
             auto scene_desc = scene_tex->get_desc();
-            cmdbuf->set_compute_shader_input_layout(m_global_data->m_deferred_lighting_pass_slayout);
+            cmdbuf->set_compute_pipeline_layout(m_global_data->m_deferred_lighting_pass_playout);
             cmdbuf->set_compute_pipeline_state(m_global_data->m_deferred_lighting_pass_pso);
             cmdbuf->set_compute_descriptor_set(0, m_ds);
             cmdbuf->dispatch((u32)align_upper(scene_desc.width, 8) / 8,

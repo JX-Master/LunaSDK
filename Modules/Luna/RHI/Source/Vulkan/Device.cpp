@@ -13,7 +13,7 @@
 #include "../RHI.hpp"
 #include "VulkanRHI.hpp"
 #include "Instance.hpp"
-#include "ShaderInputLayout.hpp"
+#include "PipelineLayout.hpp"
 #include "DescriptorSetLayout.hpp"
 #include "DescriptorSet.hpp"
 #include "CommandBuffer.hpp"
@@ -388,12 +388,12 @@ namespace Luna
 			lucatchret;
 			return ret;
 		}
-		R<Ref<IShaderInputLayout>> Device::new_shader_input_layout(const ShaderInputLayoutDesc& desc)
+		R<Ref<IPipelineLayout>> Device::new_pipeline_layout(const PipelineLayoutDesc& desc)
 		{
-			Ref<IShaderInputLayout> ret;
+			Ref<IPipelineLayout> ret;
 			lutry
 			{
-				auto layout = new_object<ShaderInputLayout>();
+				auto layout = new_object<PipelineLayout>();
 				layout->m_device = this;
 				luexp(layout->init(desc));
 				ret = layout;

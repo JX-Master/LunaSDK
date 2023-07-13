@@ -2012,7 +2012,7 @@ inline UINT64 UpdateSubresources(
 }
 
 //------------------------------------------------------------------------------------------------
-inline bool D3D12IsLayoutOpaque( D3D12_TEXTURE_LAYOUT Layout )
+inline bool D3D12IplayoutOpaque( D3D12_TEXTURE_LAYOUT Layout )
 { return Layout == D3D12_TEXTURE_LAYOUT_UNKNOWN || Layout == D3D12_TEXTURE_LAYOUT_64KB_UNDEFINED_SWIZZLE; }
 
 //------------------------------------------------------------------------------------------------

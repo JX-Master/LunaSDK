@@ -94,6 +94,7 @@ namespace Luna
 		{
 			d3d12,
 			vulkan,
+			metal,
 		};
 
 		//! Gets the underlying graphic API type.

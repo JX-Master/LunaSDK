@@ -32,7 +32,7 @@ namespace Luna
 		// Resources for rendering grids.
 		Ref<RHI::IBuffer> m_grid_vb;
 		Ref<RHI::IDescriptorSetLayout> m_grid_dlayout;
-		Ref<RHI::IShaderInputLayout> m_grid_slayout;
+		Ref<RHI::IPipelineLayout> m_grid_playout;
 		Ref<RHI::IPipelineState> m_grid_pso;
 
 		SceneEditorUserData() {}
@@ -860,8 +860,8 @@ namespace Luna
 					});
 				luset(m_grid_dlayout, device->new_descriptor_set_layout(dlayout));
 				auto dl = m_grid_dlayout.get();
-				luset(m_grid_slayout, device->new_shader_input_layout(ShaderInputLayoutDesc({ &dl, 1 },
-					ShaderInputLayoutFlag::allow_input_assembler_input_layout)));
+				luset(m_grid_playout, device->new_pipeline_layout(PipelineLayoutDesc({ &dl, 1 },
+					PipelineLayoutFlag::allow_input_assembler_input_layout)));
 				static const char* vertexShader =
 					R"(cbuffer vertexBuffer : register(b0)
 						{
@@ -936,7 +936,7 @@ namespace Luna
 				auto binding = InputBindingDesc(0, sizeof(Float4U), InputRate::per_vertex);
 				ps_desc.input_layout.attributes = { &attribute, 1 };
 				ps_desc.input_layout.bindings = { &binding, 1 };
-				ps_desc.shader_input_layout = m_grid_slayout;
+				ps_desc.pipeline_layout = m_grid_playout;
 				ps_desc.vs = { vs_blob.data(), vs_blob.size() };
 				ps_desc.ps = { ps_blob.data(), ps_blob.size() };
 				ps_desc.num_color_attachments = 1;

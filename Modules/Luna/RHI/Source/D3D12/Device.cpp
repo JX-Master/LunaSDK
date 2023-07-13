@@ -11,7 +11,7 @@
 #include "PipelineState.hpp"
 #include "Resource.hpp"
 #include "DescriptorSet.hpp"
-#include "ShaderInputLayout.hpp"
+#include "PipelineLayout.hpp"
 #include "DescriptorSetLayout.hpp"
 #include "QueryHeap.hpp"
 #include "CommandBuffer.hpp"
@@ -388,16 +388,16 @@ namespace Luna
 			lucatchret;
 			return ret;
 		}
-		R<Ref<IShaderInputLayout>> Device::new_shader_input_layout(const ShaderInputLayoutDesc& desc)
+		R<Ref<IPipelineLayout>> Device::new_pipeline_layout(const PipelineLayoutDesc& desc)
 		{
-			Ref<ShaderInputLayout> slayout = new_object<ShaderInputLayout>();
-			slayout->m_device = this;
+			Ref<PipelineLayout> playout = new_object<PipelineLayout>();
+			playout->m_device = this;
 			lutry
 			{
-				luexp(slayout->init(desc));
+				luexp(playout->init(desc));
 			}
 			lucatchret;
-			return slayout;
+			return playout;
 		}
 		R<Ref<IPipelineState>> Device::new_graphics_pipeline_state(const GraphicsPipelineStateDesc& desc)
 		{

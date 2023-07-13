@@ -3,17 +3,17 @@
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 *
-* @file ShaderInputLayout.cpp
+* @file PipelineLayout.cpp
 * @author JXMaster
 * @date 2023/4/23
 */
-#include "ShaderInputLayout.hpp"
+#include "PipelineLayout.hpp"
 #include "DescriptorSetLayout.hpp"
 namespace Luna
 {
 	namespace RHI
 	{
-		RV ShaderInputLayout::init(const ShaderInputLayoutDesc& desc)
+		RV PipelineLayout::init(const PipelineLayoutDesc& desc)
 		{
 			lutry
 			{
@@ -43,7 +43,7 @@ namespace Luna
 			lucatchret;
 			return ok;
 		}
-		ShaderInputLayout::~ShaderInputLayout()
+		PipelineLayout::~PipelineLayout()
 		{
 			if (m_pipeline_layout != VK_NULL_HANDLE)
 			{

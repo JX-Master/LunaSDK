@@ -23,7 +23,7 @@
 #include "QueryHeap.hpp"
 #include "Resource.hpp"
 #include "Sampler.hpp"
-#include "ShaderInputLayout.hpp"
+#include "PipelineLayout.hpp"
 #include "SwapChain.hpp"
 namespace Luna
 {
@@ -58,8 +58,8 @@ namespace Luna
 				register_boxed_type<ImageResource>();
 				impl_interface_for_type<ImageResource, ITexture, IResource, IDeviceChild>();
 				register_boxed_type<Sampler>();
-				register_boxed_type<ShaderInputLayout>();
-				impl_interface_for_type<ShaderInputLayout, IShaderInputLayout, IDeviceChild>();
+				register_boxed_type<PipelineLayout>();
+				impl_interface_for_type<PipelineLayout, IPipelineLayout, IDeviceChild>();
 				register_boxed_type<SwapChain>();
 				impl_interface_for_type<SwapChain, ISwapChain, IDeviceChild>();
 

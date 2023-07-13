@@ -188,9 +188,9 @@ namespace Luna
 		bool PipelineState::init_graphic(const GraphicsPipelineStateDesc& desc)
 		{
 			m_is_graphics = true;
-			ShaderInputLayout* slayout = static_cast<ShaderInputLayout*>(desc.shader_input_layout->get_object());
+			PipelineLayout* playout = static_cast<PipelineLayout*>(desc.pipeline_layout->get_object());
 			D3D12_GRAPHICS_PIPELINE_STATE_DESC d;
-			d.pRootSignature = slayout->m_rs.Get();
+			d.pRootSignature = playout->m_rs.Get();
 
 			fill_shader_data(d.VS, desc.vs);
 			fill_shader_data(d.PS, desc.ps);
@@ -366,9 +366,9 @@ namespace Luna
 		bool PipelineState::init_compute(const ComputePipelineStateDesc& desc)
 		{
 			m_is_graphics = false;
-			ShaderInputLayout* slayout = static_cast<ShaderInputLayout*>(desc.shader_input_layout->get_object());
+			PipelineLayout* playout = static_cast<PipelineLayout*>(desc.pipeline_layout->get_object());
 			D3D12_COMPUTE_PIPELINE_STATE_DESC d;
-			d.pRootSignature = slayout->m_rs.Get();
+			d.pRootSignature = playout->m_rs.Get();
 			d.CachedPSO.CachedBlobSizeInBytes = 0;
 			d.CachedPSO.pCachedBlob = nullptr;
 			fill_shader_data(d.CS, desc.cs);
