@@ -76,7 +76,7 @@ namespace Luna
 			}
 
 			auto device = g_env->device;
-			compute_cmdbuf->set_context(CommandBufferContextType::compute);
+			compute_cmdbuf->begin_compute_pass();
 			compute_cmdbuf->set_compute_pipeline_layout(m_mipmapping_playout);
 			compute_cmdbuf->set_compute_pipeline_state(m_mipmapping_pso);
 			u32 cb_align = device->get_uniform_buffer_data_alignment();
@@ -119,6 +119,7 @@ namespace Luna
 				width = max<u32>(width / 2, 1);
 				height = max<u32>(height / 2, 1);
 			}
+			compute_cmdbuf->end_compute_pass();
 
 			luexp(compute_cmdbuf->submit({}, {}, true));
 			compute_cmdbuf->wait();

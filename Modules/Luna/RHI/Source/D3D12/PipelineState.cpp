@@ -78,45 +78,6 @@ namespace Luna
 			}
 		}
 
-		D3D12_LOGIC_OP encode_logic_op(LogicOp o)
-		{
-			switch (o)
-			{
-			case LogicOp::clear:
-				return D3D12_LOGIC_OP_CLEAR;
-			case LogicOp::set:
-				return D3D12_LOGIC_OP_SET;
-			case LogicOp::copy:
-				return D3D12_LOGIC_OP_COPY;
-			case LogicOp::copy_inverted:
-				return D3D12_LOGIC_OP_COPY_INVERTED;
-			case LogicOp::invert:
-				return D3D12_LOGIC_OP_INVERT;
-			case LogicOp::and :
-				return D3D12_LOGIC_OP_AND;
-			case LogicOp::nand:
-				return D3D12_LOGIC_OP_NAND;
-			case LogicOp:: or :
-				return D3D12_LOGIC_OP_OR;
-			case LogicOp::nor:
-				return D3D12_LOGIC_OP_NOR;
-			case LogicOp::xor :
-				return D3D12_LOGIC_OP_XOR;
-			case LogicOp::equiv:
-				return D3D12_LOGIC_OP_EQUIV;
-			case LogicOp::and_reverse:
-				return D3D12_LOGIC_OP_AND_REVERSE;
-			case LogicOp::and_inverted:
-				return D3D12_LOGIC_OP_AND_INVERTED;
-			case LogicOp::or_reverse:
-				return D3D12_LOGIC_OP_OR_REVERSE;
-			case LogicOp::or_inverted:
-			default:
-				lupanic();
-				return D3D12_LOGIC_OP_OR_INVERTED;
-			}
-		}
-
 		D3D12_STENCIL_OP encode_stencil_op(StencilOp op)
 		{
 			switch (op)
@@ -148,24 +109,17 @@ namespace Luna
 			dst.pShaderBytecode = src.data();
 		}
 
-		inline void encode_target_blend_desc(D3D12_RENDER_TARGET_BLEND_DESC& rt, const AttachmentBlendDesc& srt, bool logic_op_enable, LogicOp logic_op)
+		inline void encode_target_blend_desc(D3D12_RENDER_TARGET_BLEND_DESC& rt, const AttachmentBlendDesc& srt)
 		{
 			rt.BlendEnable = srt.blend_enable ? TRUE : FALSE;
-			rt.LogicOpEnable = logic_op_enable ? TRUE : FALSE;
+			rt.LogicOpEnable = FALSE;
 			rt.SrcBlend = encode_blend_factor(srt.src_blend);
 			rt.DestBlend = encode_blend_factor(srt.dst_blend);
 			rt.BlendOp = encode_blend_op(srt.blend_op);
 			rt.SrcBlendAlpha = encode_blend_factor(srt.src_blend_alpha);
 			rt.DestBlendAlpha = encode_blend_factor(srt.dst_blend_alpha);
 			rt.BlendOpAlpha = encode_blend_op(srt.blend_op_alpha);
-			if (logic_op_enable)
-			{
-				rt.LogicOp = encode_logic_op(logic_op);
-			}
-			else
-			{
-				rt.LogicOp = D3D12_LOGIC_OP_NOOP;
-			}
+			rt.LogicOp = D3D12_LOGIC_OP_NOOP;
 			rt.RenderTargetWriteMask = 0;
 			if ((srt.render_target_write_mask & ColorWriteMask::red) != ColorWriteMask::none)
 			{
@@ -206,16 +160,16 @@ namespace Luna
 
 			{
 				d.BlendState.AlphaToCoverageEnable = desc.blend_state.alpha_to_coverage_enable ? TRUE : FALSE;
-				d.BlendState.IndependentBlendEnable = desc.blend_state.logic_op_enable ? FALSE : (desc.blend_state.independent_blend_enable ? TRUE : FALSE);
+				d.BlendState.IndependentBlendEnable = desc.blend_state.independent_blend_enable ? TRUE : FALSE;
 				for (u32 i = 0; i < 8; ++i)
 				{
 					if (d.BlendState.IndependentBlendEnable)
 					{
-						encode_target_blend_desc(d.BlendState.RenderTarget[i], desc.blend_state.rt[i], desc.blend_state.logic_op_enable, desc.blend_state.logic_op);
+						encode_target_blend_desc(d.BlendState.RenderTarget[i], desc.blend_state.rt[i]);
 					}
 					else
 					{
-						encode_target_blend_desc(d.BlendState.RenderTarget[i], desc.blend_state.rt[0], desc.blend_state.logic_op_enable, desc.blend_state.logic_op);
+						encode_target_blend_desc(d.BlendState.RenderTarget[i], desc.blend_state.rt[0]);
 					}
 				}
 				d.SampleMask = desc.sample_mask;

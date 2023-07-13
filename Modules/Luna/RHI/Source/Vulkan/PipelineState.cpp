@@ -207,8 +207,8 @@ namespace Luna
 				// blend state.
 				VkPipelineColorBlendStateCreateInfo blend{};
 				blend.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-				blend.logicOpEnable = desc.blend_state.logic_op_enable ? VK_TRUE : VK_FALSE;
-				blend.logicOp = encode_logic_op(desc.blend_state.logic_op);
+				blend.logicOpEnable = VK_FALSE;
+				blend.logicOp = VK_LOGIC_OP_CLEAR;
 				blend.attachmentCount = desc.num_color_attachments;
 				VkPipelineColorBlendAttachmentState attachments[8] = { {} };
 				for (usize i = 0; i < desc.num_color_attachments; ++i)

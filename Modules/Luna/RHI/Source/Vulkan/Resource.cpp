@@ -9,6 +9,7 @@
 */
 #include "Resource.hpp"
 #include "Instance.hpp"
+#include "../RHI.hpp"
 namespace Luna
 {
 	namespace RHI

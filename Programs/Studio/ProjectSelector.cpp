@@ -284,7 +284,6 @@ namespace Luna
 				RHI::RenderPassDesc render_pass;
 				lulet(back_buffer, swap_chain->get_current_back_buffer());
 				render_pass.color_attachments[0] = RHI::ColorAttachment(back_buffer, RHI::LoadOp::clear, RHI::StoreOp::store, clear_color);
-				cmdbuf->set_context(RHI::CommandBufferContextType::graphics);
 				cmdbuf->begin_render_pass(render_pass);
 				cmdbuf->end_render_pass();
 				luexp(ImGuiUtils::render_draw_data(ImGui::GetDrawData(), cmdbuf, back_buffer));

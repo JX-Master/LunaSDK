@@ -167,17 +167,14 @@ namespace Luna
 		{
 			bool alpha_to_coverage_enable;
 			bool independent_blend_enable;
-			bool logic_op_enable;
 			AttachmentBlendDesc rt[8];
 
 			BlendDesc(
 				InitializerList<AttachmentBlendDesc> rt = {},
 				bool alpha_to_coverage_enable = false,
-				bool independent_blend_enable = false,
-				bool logic_op_enable = false) :
+				bool independent_blend_enable = false) :
 				alpha_to_coverage_enable(alpha_to_coverage_enable),
-				independent_blend_enable(independent_blend_enable),
-				logic_op_enable(logic_op_enable)
+				independent_blend_enable(independent_blend_enable)
 			{
 				u32 i = 0;
 				for (auto& it : rt)

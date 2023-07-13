@@ -15,6 +15,7 @@
 #include "QueryHeap.hpp"
 #include "Fence.hpp"
 #include "Instance.hpp"
+#include "../RHI.hpp"
 namespace Luna
 {
 	namespace RHI
@@ -213,7 +214,6 @@ namespace Luna
 					m_device->m_funcs.vkDestroyFramebuffer(m_device->m_device, fbo, nullptr);
 				}
 				m_fbos.clear();
-				m_context = CommandBufferContextType::none;
 			}
 			lucatchret;
 			return ok;
@@ -956,7 +956,7 @@ namespace Luna
 		}
 		RV CommandBuffer::submit(Span<IFence*> wait_fences, Span<IFence*> signal_fences, bool allow_host_waiting)
 		{
-			assert_non_render_pass();
+			lucheck_msg(!m_render_pass_begin && !m_copy_pass_begin && !m_compute_pass_begin, "submit can only be called when no render, compute or copy pass is open.");
 			if (!m_recording) return BasicError::bad_calling_time();
 			lutry
 			{

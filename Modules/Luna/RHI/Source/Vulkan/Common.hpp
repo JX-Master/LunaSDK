@@ -190,29 +190,6 @@ namespace Luna
 			lupanic();
 			return VK_STENCIL_OP_KEEP;
 		}
-		inline VkLogicOp encode_logic_op(LogicOp op)
-		{
-			switch (op)
-			{
-			case LogicOp::clear: return VK_LOGIC_OP_CLEAR;
-			case LogicOp::set: return VK_LOGIC_OP_SET;
-			case LogicOp::copy: return VK_LOGIC_OP_COPY;
-			case LogicOp::copy_inverted: return VK_LOGIC_OP_COPY_INVERTED;
-			case LogicOp::invert: return VK_LOGIC_OP_INVERT;
-			case LogicOp::and : return VK_LOGIC_OP_AND;
-			case LogicOp::nand: return VK_LOGIC_OP_NAND;
-			case LogicOp::or: return VK_LOGIC_OP_OR;
-			case LogicOp::nor: return VK_LOGIC_OP_NOR;
-			case LogicOp::xor: return VK_LOGIC_OP_XOR;
-			case LogicOp::equiv: return VK_LOGIC_OP_EQUIVALENT;
-			case LogicOp::and_reverse: return VK_LOGIC_OP_AND_REVERSE;
-			case LogicOp::and_inverted: return VK_LOGIC_OP_AND_INVERTED;
-			case LogicOp::or_reverse: return VK_LOGIC_OP_OR_REVERSE;
-			case LogicOp::or_inverted: return VK_LOGIC_OP_OR_INVERTED;
-			}
-			lupanic();
-			return VK_LOGIC_OP_CLEAR;
-		}
 		inline VkBlendFactor encode_blend_factor(BlendFactor factor)
 		{
 			switch (factor)

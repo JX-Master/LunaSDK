@@ -8,7 +8,7 @@
 * @date 2022/10/27
 */
 #pragma once
-#include "VulkanRHI.hpp"
+#include "Common.hpp"
 #include <Luna/Runtime/Mutex.hpp>
 #include "Adapter.hpp"
 #include "RenderPassPool.hpp"

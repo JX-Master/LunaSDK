@@ -82,7 +82,7 @@ namespace Luna
                 mapped->width = (u32)desc.width;
                 mapped->height = (u32)desc.height;
 				m_skybox_params_cb->unmap(0, sizeof(SkyboxParams));
-                cmdbuf->set_context(CommandBufferContextType::compute);
+                cmdbuf->begin_compute_pass();
 				cmdbuf->resource_barrier(
                     {
                         BufferBarrier(m_skybox_params_cb, BufferStateFlag::automatic, BufferStateFlag::uniform_buffer_cs)
@@ -105,6 +105,7 @@ namespace Luna
                 auto ds = m_ds.get();
                 cmdbuf->set_compute_descriptor_sets(0, {&ds, 1});
 				cmdbuf->dispatch(align_upper((u32)desc.width, 8) / 8, (u32)align_upper(desc.height, 8) / 8, 1);
+                cmdbuf->end_compute_pass();
 			}
 			else
 			{

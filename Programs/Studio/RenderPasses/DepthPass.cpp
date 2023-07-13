@@ -86,14 +86,10 @@ namespace Luna
 				{depth_tex, SubresourceIndex(0, 0), TextureStateFlag::none, TextureStateFlag::depth_stencil_attachment_write, ResourceBarrierFlag::discard_content } });
 			RenderPassDesc render_pass;
 			render_pass.depth_stencil_attachment = DepthStencilAttachment(depth_tex, false, LoadOp::clear, StoreOp::store, 1.0f);
-			cmdbuf->set_context(CommandBufferContextType::graphics);
 			for (usize i = 0; i < ts.size(); ++i)
 			{
 				auto model = Asset::get_asset_data<Model>(rs[i]->model);
 				auto mesh = Asset::get_asset_data<Mesh>(model->mesh);
-				cmdbuf->set_vertex_buffers(0, { VertexBufferView(mesh->vb, 0,
-					mesh->vb_count * sizeof(Vertex), sizeof(Vertex)) });
-				cmdbuf->set_index_buffer({ mesh->ib, 0, mesh->ib_count * sizeof(u32), Format::r32_uint });
 
 				u32 num_pieces = (u32)mesh->pieces.size();
 

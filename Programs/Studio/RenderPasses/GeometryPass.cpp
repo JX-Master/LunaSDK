@@ -115,7 +115,6 @@ namespace Luna
             auto cmdbuf = ctx->get_command_buffer();
             auto device = cmdbuf->get_device();
             auto cb_align = device->get_uniform_buffer_data_alignment();
-			cmdbuf->set_context(CommandBufferContextType::graphics);
 			cmdbuf->resource_barrier(
 				{}, {
 					{base_color_roughness_tex, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::color_attachment_write, ResourceBarrierFlag::discard_content},
@@ -127,9 +126,6 @@ namespace Luna
 			{
 				auto model = Asset::get_asset_data<Model>(rs[i]->model);
 				auto mesh = Asset::get_asset_data<Mesh>(model->mesh);
-				cmdbuf->set_vertex_buffers(0, { VertexBufferView(mesh->vb, 0,
-					mesh->vb_count * sizeof(Vertex), sizeof(Vertex)) });
-				cmdbuf->set_index_buffer({ mesh->ib, 0, mesh->ib_count * sizeof(u32), Format::r32_uint });
 
 				u32 num_pieces = (u32)mesh->pieces.size();
 

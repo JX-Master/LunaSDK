@@ -213,7 +213,6 @@ void draw()
 	vb->unmap(0, sizeof(data));
 
 	auto cb = get_command_buffer();
-	cb->set_context(CommandBufferContextType::graphics);
 	cb->resource_barrier({},
 		{
 			{tex, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::shader_read_ps, ResourceBarrierFlag::none},

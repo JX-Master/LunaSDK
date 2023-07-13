@@ -254,7 +254,6 @@ namespace Luna
 			m_heap_set = false;
 			m_graphics_pipeline_layout.reset();
 			m_compute_pipeline_layout.reset();
-			m_context = CommandBufferContextType::none;
 			return ok;
 		}
 		void CommandBuffer::begin_render_pass(const RenderPassDesc& desc)
@@ -920,7 +919,7 @@ namespace Luna
 		RV CommandBuffer::submit(Span<IFence*> wait_fences, Span<IFence*> signal_fences, bool allow_host_waiting)
 		{
 			lutsassert();
-			assert_non_render_pass();
+			lucheck_msg(!m_render_pass_context.m_valid && !m_copy_pass_begin && !m_compute_pass_begin, "submit can only be called when no render, compute or copy pass is open.");
 			HRESULT hr;
 			hr = m_li->Close();
 			if (FAILED(hr)) return encode_hresult(hr);

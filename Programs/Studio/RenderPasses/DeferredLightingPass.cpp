@@ -79,15 +79,16 @@ namespace Luna
                     { {cb, BufferStateFlag::automatic, BufferStateFlag::uniform_buffer_cs, ResourceBarrierFlag::none} },
                     {{m_integrate_brdf, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::shader_write_cs, ResourceBarrierFlag::discard_content}});
                 lulet(vs, device->new_descriptor_set(DescriptorSetDesc(dlayout)));
-                vs->update_descriptors({
+                luexp(vs->update_descriptors({
                     WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(cb, 0, cb_size)),
                     WriteDescriptorSet::read_write_texture_view(1, TextureViewDesc::tex2d(m_integrate_brdf))
-                    });
-                compute_cmdbuf->set_context(CommandBufferContextType::compute);
+                    }));
+                compute_cmdbuf->begin_compute_pass();
                 compute_cmdbuf->set_compute_pipeline_layout(playout);
                 compute_cmdbuf->set_compute_pipeline_state(pso);
                 compute_cmdbuf->set_compute_descriptor_set(0, vs);
                 compute_cmdbuf->dispatch(align_upper(INTEGEATE_BRDF_SIZE, 8) / 8, align_upper(INTEGEATE_BRDF_SIZE, 8) / 8, 1);
+                compute_cmdbuf->end_compute_pass();
                 luexp(compute_cmdbuf->submit({}, {}, true));
                 compute_cmdbuf->wait();
             }
@@ -129,7 +130,7 @@ namespace Luna
             auto device = cmdbuf->get_device();
             auto cb_align = device->get_uniform_buffer_data_alignment();
             auto sky_box = skybox ? skybox : m_global_data->m_default_skybox;
-            cmdbuf->set_context(CommandBufferContextType::compute);
+            cmdbuf->begin_compute_pass();
             cmdbuf->resource_barrier(
                 { 
                     {camera_cb, BufferStateFlag::automatic, BufferStateFlag::uniform_buffer_cs, ResourceBarrierFlag::none},
@@ -166,6 +167,7 @@ namespace Luna
             cmdbuf->set_compute_descriptor_set(0, m_ds);
             cmdbuf->dispatch((u32)align_upper(scene_desc.width, 8) / 8,
                 (u32)align_upper(scene_desc.height, 8) / 8, 1);
+            cmdbuf->end_compute_pass();
         }
         lucatchret;
         return ok;

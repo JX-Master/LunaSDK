@@ -88,7 +88,6 @@ void run()
 		auto back_buffer = swap_chain->get_current_back_buffer().get();
 		RenderPassDesc desc;
 		desc.color_attachments[0] = ColorAttachment(back_buffer, LoadOp::clear, StoreOp::store, { 0.0f, 0.0f, 0.0f, 1.0f });
-		cmdbuf->set_context(CommandBufferContextType::graphics);
 		cmdbuf->begin_render_pass(desc);
 		cmdbuf->end_render_pass();
 		ImGuiUtils::render_draw_data(ImGui::GetDrawData(), cmdbuf, back_buffer);

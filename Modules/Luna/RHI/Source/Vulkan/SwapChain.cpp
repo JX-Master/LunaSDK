@@ -10,7 +10,6 @@
 #include <Luna/Runtime/PlatformDefines.hpp>
 #include "SwapChain.hpp"
 #include <GLFW/glfw3.h>
-#include "VulkanRHI.hpp"
 #include <Luna/Window/GLFW/GLFWWindow.hpp>
 #include "Instance.hpp"
 namespace Luna

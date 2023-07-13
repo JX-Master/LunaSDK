@@ -71,7 +71,7 @@ namespace Luna
             Ref<ITexture> base_color_roughness_tex = ctx->get_input("base_color_roughness_texture");
             Ref<ITexture> normal_metallic_tex = ctx->get_input("normal_metallic_texture");
             auto cmdbuf = ctx->get_command_buffer();
-            cmdbuf->set_context(CommandBufferContextType::compute);
+            cmdbuf->begin_compute_pass();
             auto device = cmdbuf->get_device();
             auto cb_align = device->get_uniform_buffer_data_alignment();
             cmdbuf->resource_barrier(
@@ -95,6 +95,7 @@ namespace Luna
             cmdbuf->set_compute_descriptor_set(0, m_ds);
             cmdbuf->dispatch((u32)align_upper(scene_desc.width, 8) / 8,
                 (u32)align_upper(scene_desc.height, 8) / 8, 1);
+            cmdbuf->end_compute_pass();
         }
         lucatchret;
         return ok;

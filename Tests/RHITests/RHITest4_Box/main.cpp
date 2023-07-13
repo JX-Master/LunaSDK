@@ -230,7 +230,6 @@ void draw()
         using namespace RHI;
 
 		auto cmdbuf = get_command_buffer();
-        cmdbuf->set_context(CommandBufferContextType::graphics);
         cmdbuf->resource_barrier(
             {
                 {cb, BufferStateFlag::automatic, BufferStateFlag::uniform_buffer_vs, ResourceBarrierFlag::none},

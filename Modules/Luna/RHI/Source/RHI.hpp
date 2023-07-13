@@ -56,6 +56,7 @@ namespace Luna
 					desc.mip_levels = calc_mip_levels(desc.width, desc.height, desc.depth);
 				}
 			}
+			return ok;
 		}
 	}
 }

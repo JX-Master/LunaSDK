@@ -153,7 +153,7 @@ namespace Luna
 			constexpr f32 max_brightness = 20.0f;
             // Tone mapping pass.
 			{
-				cmdbuf->set_context(CommandBufferContextType::compute);
+				cmdbuf->begin_compute_pass();
 				Ref<IBuffer> m_histogram_buffer;
 				luset(m_histogram_buffer, ctx->allocate_temporary_resource(RG::ResourceDesc::as_buffer(MemoryType::local, BufferDesc(BufferUsageFlag::read_write_buffer, sizeof(u32) * 256))));
 				cmdbuf->attach_device_object(m_histogram_buffer);
@@ -252,6 +252,7 @@ namespace Luna
 					cmdbuf->set_compute_descriptor_sets(0, { &vs, 1 });
 					cmdbuf->dispatch((u32)align_upper(output_tex_desc.width, 8) / 8, (u32)align_upper(output_tex_desc.height, 8) / 8, 1);
 				}
+				cmdbuf->end_compute_pass();
 			}
         }
         lucatchret;

@@ -146,7 +146,6 @@ void run()
 		RHI::RenderPassDesc desc;
 		auto texture = g_swap_chain->get_current_back_buffer().get();
 		desc.color_attachments[0] = RHI::ColorAttachment(texture, RHI::LoadOp::clear, RHI::StoreOp::store, Float4U{ 0.0f });
-		g_command_buffer->set_context(RHI::CommandBufferContextType::graphics);
 		g_command_buffer->begin_render_pass(desc);
 		g_command_buffer->end_render_pass();
 
