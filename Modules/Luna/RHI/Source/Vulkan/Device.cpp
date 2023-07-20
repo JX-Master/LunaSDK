@@ -271,7 +271,7 @@ namespace Luna
 		void Device::get_texture_data_placement_info(u32 width, u32 height, u32 depth, Format format,
 			u64* size, u64* alignment, u64* row_pitch, u64* slice_pitch)
 		{
-			if (alignment) *alignment = (u64)bits_per_pixel(format) / 8;
+			if (alignment) *alignment = (u64)get_texel_block_size(format);
 			u64 d_row_pitch = (u64)width * (u64)bits_per_pixel(format) / 8;
 			if (row_pitch) *row_pitch = d_row_pitch;
 			u64 d_slice_pitch = d_row_pitch * height;

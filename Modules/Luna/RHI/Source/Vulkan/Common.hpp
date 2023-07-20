@@ -637,5 +637,88 @@ namespace Luna
 			lupanic();
 			return VK_SAMPLER_ADDRESS_MODE_REPEAT;
 		}
+		inline usize get_texel_block_size(Format format)
+		{
+			switch (format)
+			{
+			case Format::r8_unorm:
+			case Format::r8_snorm:
+			case Format::r8_uint:
+			case Format::r8_sint:
+				return 1;
+			case Format::r16_unorm:
+			case Format::r16_snorm:
+			case Format::r16_uint:
+			case Format::r16_sint:
+			case Format::r16_float:
+			case Format::rg8_unorm:
+			case Format::rg8_snorm:
+			case Format::rg8_uint:
+			case Format::rg8_sint:
+			case Format::b5g6r5_unorm:
+			case Format::bgr5a1_unorm:
+			case Format::d16_unorm:
+				return 2;
+			case Format::r32_uint:
+			case Format::r32_sint:
+			case Format::r32_float:
+			case Format::rg16_uint:
+			case Format::rg16_sint:
+			case Format::rg16_unorm:
+			case Format::rg16_snorm:
+			case Format::rg16_float:
+			case Format::rgba8_unorm:
+			case Format::rgba8_unorm_srgb:
+			case Format::rgba8_snorm:
+			case Format::rgba8_uint:
+			case Format::rgba8_sint:
+			case Format::bgra8_unorm:
+			case Format::bgra8_unorm_srgb:
+			case Format::rgb10a2_unorm:
+			case Format::rgb10a2_uint:
+			case Format::rg11b10_float:
+			case Format::rgb9e5_float:
+			case Format::d32_float:
+			case Format::d24_unorm_s8_uint:
+				return 4;
+			case Format::rg32_uint:
+			case Format::rg32_sint:
+			case Format::rg32_float:
+			case Format::rgba16_unorm:
+			case Format::rgba16_snorm:
+			case Format::rgba16_uint:
+			case Format::rgba16_sint:
+			case Format::rgba16_float:
+			case Format::d32_float_s8_uint_x24:
+				return 8;
+			case Format::rgb32_uint:
+			case Format::rgb32_sint:
+			case Format::rgb32_float:
+				return 12;
+			case Format::rgba32_uint:
+			case Format::rgba32_sint:
+			case Format::rgba32_float:
+				return 16;
+			case Format::bc1_rgba_unorm:
+			case Format::bc1_rgba_unorm_srgb:
+			case Format::bc4_r_snorm:
+			case Format::bc4_r_unorm:
+				return 8;
+			case Format::bc2_rgba_unorm:
+			case Format::bc2_rgba_unorm_srgb:
+			case Format::bc3_rgba_unorm:
+			case Format::bc3_rgba_unorm_srgb:
+			case Format::bc5_rg_snorm:
+			case Format::bc5_rg_unorm:
+			case Format::bc6h_rgb_sfloat:
+			case Format::bc6h_rgb_ufloat:
+			case Format::bc7_rgba_unorm:
+			case Format::bc7_rgba_unorm_srgb:
+				return 16;
+			default:
+				lupanic();
+				return 0;
+			}
+		}
 	}
 }

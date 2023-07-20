@@ -153,6 +153,10 @@ namespace Luna
 			case Format::rgba16_float:
 			case Format::d32_float_s8_uint_x24:
 				return 64;
+			case Format::rgb32_uint:
+			case Format::rgb32_sint:
+			case Format::rgb32_float:
+				return 96;
 			case Format::rgba32_uint:
 			case Format::rgba32_sint:
 			case Format::rgba32_float:

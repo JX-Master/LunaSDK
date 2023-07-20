@@ -166,6 +166,20 @@ namespace Luna
 			rhs.m_size = 0;
 			return *this;
 		}
+		Array(usize count, const _Ty& value = _Ty())
+		{
+			if(count)
+			{
+				m_elements = (_Ty*)memalloc(sizeof(_Ty) * count, alignof(_Ty));
+				m_size = count;
+				fill_construct_range(m_elements, m_elements + count, value);
+			}
+			else
+			{
+				m_elements = nullptr;
+				m_size = 0;
+			}
+		}
 		template <typename _InputIt>
 		Array(_InputIt first, usize count)
 		{
@@ -224,7 +238,7 @@ namespace Luna
 		{
 			internal_free();
 		}
-		void assign(usize count, const _Ty& value)
+		void assign(usize count, const _Ty& value = _Ty())
 		{
 			internal_free();
 			if (count)
