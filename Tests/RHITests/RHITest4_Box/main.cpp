@@ -129,9 +129,9 @@ RV start()
         ps_desc.primitive_topology = PrimitiveTopology::triangle_list;
 		ps_desc.sample_mask = U32_MAX;
 		ps_desc.blend_state = BlendDesc({ 
-            AttachmentBlendDesc(false, BlendFactor::src_alpha, BlendFactor::inv_src_alpha, BlendOp::add, BlendFactor::inv_src_alpha, BlendFactor::zero, BlendOp::add, ColorWriteMask::all) });
+            AttachmentBlendDesc(false, BlendFactor::src_alpha, BlendFactor::one_minus_src_alpha, BlendOp::add, BlendFactor::one_minus_src_alpha, BlendFactor::zero, BlendOp::add, ColorWriteMask::all) });
 		ps_desc.rasterizer_state = RasterizerDesc(FillMode::solid, CullMode::back, 0, 0.0f, 0.0f, 0, false, true, false, false, false);
-		ps_desc.depth_stencil_state = DepthStencilDesc(true, true, ComparisonFunc::less_equal, false, 0x00, 0x00, DepthStencilOpDesc(), DepthStencilOpDesc());
+		ps_desc.depth_stencil_state = DepthStencilDesc(true, true, CompareFunction::less_equal, false, 0x00, 0x00, DepthStencilOpDesc(), DepthStencilOpDesc());
 		ps_desc.ib_strip_cut_value = IndexBufferStripCutValue::disabled;
         ps_desc.input_layout = InputLayoutDesc({
                 {

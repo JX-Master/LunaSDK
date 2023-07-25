@@ -335,7 +335,7 @@ namespace Luna
 					d.BorderColor[3] = 1.0f;
 					break;
 				}
-				d.ComparisonFunc = encode_comparison_func(sampler.comparison_func);
+				d.CompareFunction = encode_compare_function(sampler.compare_function);
 				d.Filter = encode_filter(sampler.filter);
 				d.MaxAnisotropy = sampler.max_anisotropy;
 				d.MaxLOD = sampler.max_lod;

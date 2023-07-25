@@ -599,9 +599,9 @@ float4 main(PS_INPUT input) : SV_Target
                 ps_desc.primitive_topology = PrimitiveTopology::triangle_list;
                 ps_desc.sample_mask = U32_MAX;
                 ps_desc.blend_state = BlendDesc({ AttachmentBlendDesc(true, BlendFactor::src_alpha,
-                    BlendFactor::inv_src_alpha, BlendOp::add, BlendFactor::inv_src_alpha, BlendFactor::zero, BlendOp::add, ColorWriteMask::all) });
+                    BlendFactor::one_minus_src_alpha, BlendOp::add, BlendFactor::one_minus_src_alpha, BlendFactor::zero, BlendOp::add, ColorWriteMask::all) });
                 ps_desc.rasterizer_state = RasterizerDesc(FillMode::solid, CullMode::none, 0, 0.0f, 0.0f, 1, false, true, false, false, false);
-                ps_desc.depth_stencil_state = DepthStencilDesc(false, false, ComparisonFunc::always, false, 0x00, 0x00, DepthStencilOpDesc(), DepthStencilOpDesc());
+                ps_desc.depth_stencil_state = DepthStencilDesc(false, false, CompareFunction::always, false, 0x00, 0x00, DepthStencilOpDesc(), DepthStencilOpDesc());
                 ps_desc.ib_strip_cut_value = IndexBufferStripCutValue::disabled;
                 InputBindingDesc input_bindings[] = {
                     InputBindingDesc(0, sizeof(ImDrawVert), InputRate::per_vertex)

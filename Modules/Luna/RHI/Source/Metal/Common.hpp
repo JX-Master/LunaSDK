@@ -192,7 +192,7 @@ namespace Luna
 				case TextureViewType::tex3d: return MTL::TextureType3D;
 				case TextureViewType::texcube: return MTL::TextureTypeCube;
 				case TextureViewType::tex1darray: return MTL::TextureType1DArray;
-				case TextureViewType::tex2darray: return multisample ? MTL::TextureType2DMultisampleArray MTL::TextureType2DArray;
+				case TextureViewType::tex2darray: return multisample ? MTL::TextureType2DMultisampleArray : MTL::TextureType2DArray;
 				case TextureViewType::texcubearray: return MTL::TextureTypeCubeArray;
 				default: lupanic(); return MTL::TextureType2D;
 			}
@@ -365,6 +365,105 @@ namespace Luna
 			ret->setStorageMode(encode_storage_mode(memory_type));
 			ret->setUsage(encode_texture_usage(desc.usages));
 			return ret;
+		}
+		inline MTL::CompareFunction encode_compare_function(CompareFunction func)
+		{
+			switch(func)
+			{
+				case CompareFunction::never: return MTL::CompareFunctionNever;
+				case CompareFunction::less: return MTL::CompareFunctionLess;
+				case CompareFunction::equal: return MTL::CompareFunctionEqual;
+				case CompareFunction::less_equal: return MTL::CompareFunctionLessEqual;
+				case CompareFunction::greater: return MTL::CompareFunctionGreater;
+				case CompareFunction::not_equal: return MTL::CompareFunctionNotEqual;
+				case CompareFunction::greater_equal: return MTL::CompareFunctionGreaterEqual;
+				case CompareFunction::always: return MTL::CompareFunctionAlways;
+			}
+			lupanic();
+			return MTL::CompareFunctionNever;
+		}
+		inline MTL::SamplerMinMagFilter encode_min_mag_filter(Filter filter)
+		{
+			switch(filter)
+			{
+				case Filter::nearest: return MTL::SamplerMinMagFilterNearest;
+				case Filter::linear: return MTL::SamplerMinMagFilterLinear;
+			}
+			lupanic();
+			return MTL::SamplerMinMagFilterNearest;
+		}
+		inline MTL::SamplerMipFilter encode_mip_filter(Filter filter)
+		{
+			switch(filter)
+			{
+				case Filter::nearest: return MTL::SamplerMipFilterNearest;
+				case Filter::linear: return MTL::SamplerMipFilterLinear;
+			}
+			lupanic();
+			return MTL::SamplerMipFilterNearest;
+		}
+		inline MTL::SamplerAddressMode encode_address_mode(TextureAddressMode mode)
+		{
+			switch(mode)
+			{
+				case TextureAddressMode::repeat: return MTL::SamplerAddressModeRepeat;
+				case TextureAddressMode::mirror: return MTL::SamplerAddressModeMirrorRepeat;
+				case TextureAddressMode::clamp: return MTL::SamplerAddressModeClampToEdge;
+				case TextureAddressMode::border: return MTL::SamplerAddressModeClampToBorderColor;
+			}
+			lupanic();
+			return MTL::SamplerAddressModeRepeat;
+		}
+		inline MTL::BlendOperation encode_blend_op(BlendOp op)
+		{
+			switch(op)
+			{
+				case BlendOp::add: return MTL::BlendOperationAdd;
+				case BlendOp::subtract: return MTL::BlendOperationSubtract;
+				case BlendOp::rev_subtract: return MTL::BlendOperationReverseSubtract;
+				case BlendOp::min: return MTL::BlendOperationMin;
+				case BlendOp::max: return MTL::BlendOperationMax;
+			}
+			lupanic();
+			return MTL::BlendOperationAdd;
+		}
+		inline MTL::BlendFactor encode_blend_factor(BlendFactor factor, bool is_rgb)
+		{
+			switch(factor)
+			{
+				case BlendFactor::zero: return MTL::BlendFactorZero;
+				case BlendFactor::one: return MTL::BlendFactorOne;
+				case BlendFactor::src_color: return MTL::BlendFactorSourceColor;
+				case BlendFactor::one_minus_src_color: return MTL::BlendFactorOneMinusSourceColor;
+				case BlendFactor::src_alpha: return MTL::BlendFactorSourceAlpha;
+				case BlendFactor::one_minus_src_alpha: return MTL::BlendFactorOneMinusSourceAlpha;
+				case BlendFactor::dst_color: return MTL::BlendFactorDestinationColor;
+				case BlendFactor::one_minus_dst_color: return MTL::BlendFactorOneMinusDestinationColor;
+				case BlendFactor::dst_alpha: return MTL::BlendFactorDestinationAlpha;
+				case BlendFactor::one_minus_dst_alpha: return MTL::BlendFactorOneMinusDestinationAlpha;
+				case BlendFactor::src_alpha_saturated: return MTL::BlendFactorSourceAlphaSaturated;
+				case BlendFactor::blend_factor: return is_rgb ? MTL::BlendFactorBlendColor : MTL::BlendFactorBlendAlpha;
+				case BlendFactor::one_minus_blend_factor: return is_rgb ? MTL::BlendFactorOneMinusBlendColor : MTL::BlendFactorOneMinusBlendAlpha;
+				case BlendFactor::src1_color: return MTL::BlendFactorSource1Color;
+				case BlendFactor::one_minus_src1_color: return MTL::BlendFactorOneMinusSource1Color;
+				case BlendFactor::src1_alpha: return MTL::BlendFactorSource1Alpha;
+				case BlendFactor::one_minus_src1_alpha: return MTL::BlendFactorOneMinusSource1Alpha;
+			}
+			lupanic();
+			return MTL::BlendFactorZero;
+		}
+		inline MTL::PrimitiveTopologyClass encode_primitive_topology(PrimitiveTopology topology)
+		{
+			switch(topology)
+			{
+				case PrimitiveTopology::point_list: return MTL::PrimitiveTopologyClassPoint;
+				case PrimitiveTopology::line_list:
+				case PrimitiveTopology::line_strip: return MTL::PrimitiveTopologyClassLine;
+				case PrimitiveTopology::triangle_list:
+				case PrimitiveTopology::triangle_strip: return MTL::PrimitiveTopologyClassTriangle;
+			}
+			lupanic();
+			return MTL::PrimitiveTopologyClassUnspecified;
 		}
     }
 }

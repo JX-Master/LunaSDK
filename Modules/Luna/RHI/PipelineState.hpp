@@ -99,20 +99,20 @@ namespace Luna
 			zero,
 			one,
 			src_color,
-			inv_src_color,
+			one_minus_src_color,
 			src_alpha,
-			inv_src_alpha,
+			one_minus_src_alpha,
 			dst_color,
-			inv_dst_color,
+			one_minus_dst_color,
 			dst_alpha,
-			inv_dst_alpha,
-			src_alpha_sat,
+			one_minus_dst_alpha,
+			src_alpha_saturated,
 			blend_factor,
-			inv_blend_factor,
+			one_minus_blend_factor,
 			src1_color,
-			inv_src1_color,
+			one_minus_src1_color,
 			src1_alpha,
-			inv_src1_alpha
+			one_minus_src1_alpha
 		};
 		enum class BlendOp : u8
 		{
@@ -135,9 +135,9 @@ namespace Luna
 		struct AttachmentBlendDesc
 		{
 			bool blend_enable;
-			BlendFactor src_blend;
-			BlendFactor dst_blend;
-			BlendOp blend_op;
+			BlendFactor src_blend_color;
+			BlendFactor dst_blend_color;
+			BlendOp blend_op_color;
 			BlendFactor src_blend_alpha;
 			BlendFactor dst_blend_alpha;
 			BlendOp blend_op_alpha;
@@ -154,9 +154,9 @@ namespace Luna
 				ColorWriteMask render_target_write_mask = ColorWriteMask::all
 			) :
 				blend_enable(blend_enable),
-				src_blend(src_blend),
-				dst_blend(dst_blend),
-				blend_op(blend_op),
+				src_blend_color(src_blend_color),
+				dst_blend_color(dst_blend_color),
+				blend_op_color(blend_op_color),
 				src_blend_alpha(src_blend_alpha),
 				dst_blend_alpha(dst_blend_alpha),
 				blend_op_alpha(blend_op_alpha),
@@ -167,19 +167,19 @@ namespace Luna
 		{
 			bool alpha_to_coverage_enable;
 			bool independent_blend_enable;
-			AttachmentBlendDesc rt[8];
+			AttachmentBlendDesc attachments[8];
 
 			BlendDesc(
-				InitializerList<AttachmentBlendDesc> rt = {},
+				InitializerList<AttachmentBlendDesc> attachments = {},
 				bool alpha_to_coverage_enable = false,
 				bool independent_blend_enable = false) :
 				alpha_to_coverage_enable(alpha_to_coverage_enable),
 				independent_blend_enable(independent_blend_enable)
 			{
 				u32 i = 0;
-				for (auto& it : rt)
+				for (auto& it : attachments)
 				{
-					this->rt[i] = it;
+					this->attachments[i] = it;
 					++i;
 				}
 			}
@@ -250,7 +250,7 @@ namespace Luna
 			decr
 		};
 
-		enum class ComparisonFunc : u8
+		enum class CompareFunction : u8
 		{
 			never,	// Never pass comparison
 			less,
@@ -267,13 +267,13 @@ namespace Luna
 			StencilOp stencil_fail_op;
 			StencilOp stencil_depth_fail_op;
 			StencilOp stencil_pass_op;
-			ComparisonFunc stencil_func;
+			CompareFunction stencil_func;
 
 			DepthStencilOpDesc(
 				StencilOp stencil_fail_op = StencilOp::keep,
 				StencilOp stencil_depth_fail_op = StencilOp::keep,
 				StencilOp stencil_pass_op = StencilOp::keep,
-				ComparisonFunc stencil_func = ComparisonFunc::always
+				CompareFunction stencil_func = CompareFunction::always
 			) :
 				stencil_fail_op(stencil_fail_op),
 				stencil_depth_fail_op(stencil_depth_fail_op),
@@ -288,7 +288,7 @@ namespace Luna
 		{
 			bool depth_test_enable;
 			bool depth_write_enable;
-			ComparisonFunc depth_func;
+			CompareFunction depth_func;
 			bool stencil_enable;
 			u8 stencil_read_mask;
 			u8 stencil_write_mask;
@@ -298,7 +298,7 @@ namespace Luna
 			DepthStencilDesc(
 				bool depth_test_enable = true,
 				bool depth_write_enable = true,
-				ComparisonFunc depth_func = ComparisonFunc::less,
+				CompareFunction depth_func = CompareFunction::less,
 				bool stencil_enable = false,
 				u8 stencil_read_mask = DEFAULT_STENCIL_READ_MASK,
 				u8 stencil_write_mask = DEFAULT_STENCIL_WRITE_MASK,

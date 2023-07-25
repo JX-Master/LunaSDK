@@ -75,11 +75,60 @@ namespace Luna
                         case DescriptorType::sampler:
                         for(usize i = 0; i < write.samplers.size(); ++i)
                         {
-                            
+                            const SamplerDesc& view = write.samplers[i];
+                            NSPtr<MTL::SamplerDescriptor> sampler_desc = box(MTL::SamplerDescriptor::alloc()->init());
+                            sampler_desc->setMinFilter(encode_min_mag_filter(view.min_filter));
+                            sampler_desc->setMagFilter(encode_min_mag_filter(view.mag_filter));
+                            sampler_desc->setMipFilter(encode_mip_filter(view.mip_filter));
+                            if(view.anisotropy_enable)
+                            {
+                                sampler_desc->setMaxAnisotropy(view.max_anisotropy);
+                            }
+                            else
+                            {
+                                sampler_desc->setMaxAnisotropy(1);
+                            }
+                            if(view.compare_enable)
+                            {
+                                sampler_desc->setCompareFunction(encode_compare_function(view.compare_function));
+                            }
+                            else
+                            {
+                                sampler_desc->setCompareFunction(MTL::CompareFunctionNever);
+                            }
+                            sampler_desc->setLodMinClamp(view.min_lod);
+                            sampler_desc->setLodMaxClamp(view.max_lod);
+                            sampler_desc->setLodAverage(false);
+                            switch(view.border_color)
+                            {
+                                case BorderColor::float_0000:
+                                case BorderColor::int_0000:
+                                sampler_desc->setBorderColor(MTL::SamplerBorderColorTransparentBlack);
+                                break;
+                                case BorderColor::float_0001:
+                                case BorderColor::int_0001:
+                                sampler_desc->setBorderColor(MTL::SamplerBorderColorOpaqueBlack);
+                                break;
+                                case BorderColor::float_1111:
+                                case BorderColor::int_1111:
+                                sampler_desc->setBorderColor(MTL::SamplerBorderColorOpaqueWhite);
+                                break;
+                            }
+                            sampler_desc->setNormalizedCoordinates(true);
+                            sampler_desc->setSAddressMode(encode_address_mode(view.address_u));
+                            sampler_desc->setTAddressMode(encode_address_mode(view.address_v));
+                            sampler_desc->setRAddressMode(encode_address_mode(view.address_w));
+                            sampler_desc->setSupportArgumentBuffers(true);
+                            NSPtr<MTL::SamplerState> sampler = box(m_device->m_device->newSamplerState(sampler_desc.get()));
+                            if(!sampler)
+                            {
+                                return BasicError::bad_platform_call();
+                            }
+                            m_samplers.insert_or_assign(write.binding_slot + write.first_array_index + i, sampler);
+                            ((MTL::ResourceID*)data)[offset + i] = sampler->gpuResourceID();
                         }
                         break;
                     }
-
                 }
             }
             lucatchret;

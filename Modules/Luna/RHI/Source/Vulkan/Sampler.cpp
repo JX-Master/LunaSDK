@@ -151,7 +151,7 @@ namespace Luna
 			dst.addressModeW = encode_address_mode(src.address_w);
 			dst.mipLodBias = src.mip_lod_bias;
 			dst.maxAnisotropy = src.max_anisotropy;
-			dst.compareOp = encode_compare_op(src.comparison_func);
+			dst.compareOp = encode_compare_op(src.compare_function);
 			dst.minLod = src.min_lod;
 			dst.maxLod = src.max_lod;
 			switch (src.border_color)

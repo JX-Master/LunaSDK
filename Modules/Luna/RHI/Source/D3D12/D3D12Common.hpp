@@ -129,27 +129,27 @@ namespace Luna
 				return D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
 			}
 		}
-		inline D3D12_COMPARISON_FUNC encode_comparison_func(ComparisonFunc c)
+		inline D3D12_compare_function encode_compare_function(CompareFunction c)
 		{
 			switch (c)
 			{
-			case ComparisonFunc::never:
-				return D3D12_COMPARISON_FUNC_NEVER;
-			case ComparisonFunc::less:
-				return D3D12_COMPARISON_FUNC_LESS;
-			case ComparisonFunc::equal:
-				return D3D12_COMPARISON_FUNC_EQUAL;
-			case ComparisonFunc::less_equal:
-				return D3D12_COMPARISON_FUNC_LESS_EQUAL;
-			case ComparisonFunc::greater:
-				return D3D12_COMPARISON_FUNC_GREATER;
-			case ComparisonFunc::not_equal:
-				return D3D12_COMPARISON_FUNC_NOT_EQUAL;
-			case ComparisonFunc::greater_equal:
-				return D3D12_COMPARISON_FUNC_GREATER_EQUAL;
-			case ComparisonFunc::always:
+			case CompareFunction::never:
+				return D3D12_compare_function_NEVER;
+			case CompareFunction::less:
+				return D3D12_compare_function_LESS;
+			case CompareFunction::equal:
+				return D3D12_compare_function_EQUAL;
+			case CompareFunction::less_equal:
+				return D3D12_compare_function_LESS_EQUAL;
+			case CompareFunction::greater:
+				return D3D12_compare_function_GREATER;
+			case CompareFunction::not_equal:
+				return D3D12_compare_function_NOT_EQUAL;
+			case CompareFunction::greater_equal:
+				return D3D12_compare_function_GREATER_EQUAL;
+			case CompareFunction::always:
 			default:
-				return D3D12_COMPARISON_FUNC_ALWAYS;
+				return D3D12_compare_function_ALWAYS;
 			}
 		}
 		inline D3D12_RESOURCE_DESC encode_buffer_desc(const BufferDesc& desc)

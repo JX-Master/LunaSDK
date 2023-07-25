@@ -928,9 +928,9 @@ namespace Luna
 				GraphicsPipelineStateDesc ps_desc;
 				ps_desc.primitive_topology = PrimitiveTopology::line_list;
 				ps_desc.blend_state = BlendDesc({ AttachmentBlendDesc(true, BlendFactor::src_alpha,
-					BlendFactor::inv_src_alpha, BlendOp::add, BlendFactor::inv_src_alpha, BlendFactor::zero, BlendOp::add, ColorWriteMask::all) });
+					BlendFactor::one_minus_src_alpha, BlendOp::add, BlendFactor::one_minus_src_alpha, BlendFactor::zero, BlendOp::add, ColorWriteMask::all) });
 				ps_desc.rasterizer_state = RasterizerDesc(FillMode::wireframe, CullMode::none, 0, 0.0f, 0.0f, 1, false, true, false, true, false);
-				ps_desc.depth_stencil_state = DepthStencilDesc(false, false, ComparisonFunc::always, false, 0x00, 0x00, DepthStencilOpDesc(), DepthStencilOpDesc());
+				ps_desc.depth_stencil_state = DepthStencilDesc(false, false, CompareFunction::always, false, 0x00, 0x00, DepthStencilOpDesc(), DepthStencilOpDesc());
 				ps_desc.ib_strip_cut_value = IndexBufferStripCutValue::disabled;
 				auto attribute = InputAttributeDesc("POSITION", 0, 0, 0, 0, Format::rgba32_float);
 				auto binding = InputBindingDesc(0, sizeof(Float4U), InputRate::per_vertex);

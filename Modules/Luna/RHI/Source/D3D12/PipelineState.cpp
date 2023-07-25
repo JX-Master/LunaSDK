@@ -26,33 +26,34 @@ namespace Luna
 				return D3D12_BLEND_ONE;
 			case BlendFactor::src_color:
 				return D3D12_BLEND_SRC_COLOR;
-			case BlendFactor::inv_src_color:
-				return D3D12_BLEND_INV_SRC1_COLOR;
+			case BlendFactor::one_minus_src_color:
+				return D3D12_BLEND_INV_SRC_COLOR;
 			case BlendFactor::src_alpha:
 				return D3D12_BLEND_SRC_ALPHA;
-			case BlendFactor::inv_src_alpha:
+			case BlendFactor::one_minus_src_alpha:
 				return D3D12_BLEND_INV_SRC_ALPHA;
 			case BlendFactor::dst_alpha:
 				return D3D12_BLEND_DEST_ALPHA;
-			case BlendFactor::inv_dst_alpha:
+			case BlendFactor::one_minus_dst_alpha:
 				return D3D12_BLEND_INV_DEST_ALPHA;
 			case BlendFactor::dst_color:
 				return D3D12_BLEND_DEST_COLOR;
-			case BlendFactor::inv_dst_color:
+			case BlendFactor::one_minus_dst_color:
 				return D3D12_BLEND_INV_DEST_COLOR;
-			case BlendFactor::src_alpha_sat:
+			case BlendFactor::src_alpha_saturated:
 				return D3D12_BLEND_SRC_ALPHA_SAT;
 			case BlendFactor::blend_factor:
 				return D3D12_BLEND_BLEND_FACTOR;
-			case BlendFactor::inv_blend_factor:
+			case BlendFactor::one_minus_blend_factor:
 				return D3D12_BLEND_INV_BLEND_FACTOR;
 			case BlendFactor::src1_color:
 				return D3D12_BLEND_SRC1_COLOR;
-			case BlendFactor::inv_src1_color:
+			case BlendFactor::one_minus_src1_color:
 				return D3D12_BLEND_INV_SRC1_COLOR;
 			case BlendFactor::src1_alpha:
 				return D3D12_BLEND_SRC1_ALPHA;
-			case BlendFactor::inv_src1_alpha:
+			case BlendFactor::one_minus_src1_alpha:
+				return D3D12_BLEND_INV_SRC1_ALPHA;
 			default:
 				lupanic();
 				return D3D12_BLEND_ONE;
@@ -210,18 +211,18 @@ namespace Luna
 			{
 				d.DepthStencilState.DepthEnable = desc.depth_stencil_state.depth_test_enable ? TRUE : FALSE;
 				d.DepthStencilState.DepthWriteMask = desc.depth_stencil_state.depth_write_enable ? D3D12_DEPTH_WRITE_MASK_ALL : D3D12_DEPTH_WRITE_MASK_ZERO;
-				d.DepthStencilState.DepthFunc = encode_comparison_func(desc.depth_stencil_state.depth_func);
+				d.DepthStencilState.DepthFunc = encode_compare_function(desc.depth_stencil_state.depth_func);
 				d.DepthStencilState.StencilEnable = desc.depth_stencil_state.stencil_enable ? TRUE : FALSE;
 				d.DepthStencilState.StencilReadMask = desc.depth_stencil_state.stencil_read_mask;
 				d.DepthStencilState.StencilWriteMask = desc.depth_stencil_state.stencil_write_mask;
 				d.DepthStencilState.FrontFace.StencilFailOp = encode_stencil_op(desc.depth_stencil_state.front_face.stencil_fail_op);
 				d.DepthStencilState.FrontFace.StencilDepthFailOp = encode_stencil_op(desc.depth_stencil_state.front_face.stencil_depth_fail_op);
 				d.DepthStencilState.FrontFace.StencilPassOp = encode_stencil_op(desc.depth_stencil_state.front_face.stencil_pass_op);
-				d.DepthStencilState.FrontFace.StencilFunc = encode_comparison_func(desc.depth_stencil_state.front_face.stencil_func);
+				d.DepthStencilState.FrontFace.StencilFunc = encode_compare_function(desc.depth_stencil_state.front_face.stencil_func);
 				d.DepthStencilState.BackFace.StencilFailOp = encode_stencil_op(desc.depth_stencil_state.back_face.stencil_fail_op);
 				d.DepthStencilState.BackFace.StencilDepthFailOp = encode_stencil_op(desc.depth_stencil_state.back_face.stencil_depth_fail_op);
 				d.DepthStencilState.BackFace.StencilPassOp = encode_stencil_op(desc.depth_stencil_state.back_face.stencil_pass_op);
-				d.DepthStencilState.BackFace.StencilFunc = encode_comparison_func(desc.depth_stencil_state.back_face.stencil_func);
+				d.DepthStencilState.BackFace.StencilFunc = encode_compare_function(desc.depth_stencil_state.back_face.stencil_func);
 			}
 
 			Vector<D3D12_INPUT_ELEMENT_DESC> input_elements;

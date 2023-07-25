@@ -188,24 +188,8 @@ namespace Luna
 
 		enum class Filter : u8
 		{
-			min_mag_mip_point,
-			min_mag_point_mip_linear,
-			min_point_mag_linear_mip_point,
-			min_point_mag_mip_linear,
-			min_linear_mag_mip_point,
-			min_linear_mag_point_mip_linear,
-			min_mag_linear_mip_point,
-			min_mag_mip_linear,
-			anisotropic,
-			comparison_min_mag_mip_point,
-			comparison_min_mag_point_mip_linear,
-			comparison_min_point_mag_linear_mip_point,
-			comparison_min_point_mag_mip_linear,
-			comparison_min_linear_mag_mip_point,
-			comparison_min_linear_mag_point_mip_linear,
-			comparison_min_mag_linear_mip_point,
-			comparison_min_mag_mip_linear,
-			comparison_anisotropic
+			nearest,
+			linear,
 		};
 
 		enum class TextureAddressMode : u8
@@ -228,35 +212,45 @@ namespace Luna
 
 		struct SamplerDesc
 		{
-			Filter filter;
+			Filter min_filter;
+			Filter mag_filter;
+			Filter mip_filter;
 			TextureAddressMode address_u;
 			TextureAddressMode address_v;
 			TextureAddressMode address_w;
-			ComparisonFunc comparison_func;
+			bool anisotropy_enable;
+			bool compare_enable;
+			CompareFunction compare_function;
 			BorderColor border_color;
-			f32 mip_lod_bias;
 			u32 max_anisotropy;
 			f32 min_lod;
 			f32 max_lod;
 
 			SamplerDesc() = default;
-			SamplerDesc(Filter filter,
+			SamplerDesc(Filter min_filter,
+				Filter mag_filter,
+				Filter mip_filter,
 				TextureAddressMode address_u,
 				TextureAddressMode address_v,
 				TextureAddressMode address_w,
-				f32 mip_lod_bias = 0.0f,
+				bool anisotropy_enable = false,
 				u32 max_anisotropy = 1,
-				ComparisonFunc comparison_func = ComparisonFunc::always,
 				BorderColor border_color = BorderColor::float_0000,
 				f32 min_lod = 0.0f,
-				f32 max_lod = FLT_MAX) :
-				filter(filter),
+				f32 max_lod = FLT_MAX,
+				bool compare_enable = false,
+				CompareFunction compare_function = CompareFunction::always
+				) :
+				min_filter(min_filter),
+				mag_filter(mag_filter),
+				mip_filter(mip_filter),
 				address_u(address_u),
 				address_v(address_v),
 				address_w(address_w),
-				mip_lod_bias(mip_lod_bias),
+				anisotropy_enable(anisotropy_enable),
+				compare_enable(compare_enable),
 				max_anisotropy(max_anisotropy),
-				comparison_func(comparison_func),
+				compare_function(compare_function),
 				min_lod(min_lod),
 				max_lod(max_lod) {}
 			bool operator==(const SamplerDesc& rhs)
