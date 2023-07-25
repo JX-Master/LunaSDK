@@ -94,5 +94,33 @@ namespace Luna
             lucatchret;
             return ok;
         }
+        bool compare_texture_view_desc(const TextureViewDesc& lhs, const TextureViewDesc& rhs)
+		{
+			return
+				lhs.texture == rhs.texture &&
+				lhs.type == rhs.type &&
+				lhs.format == rhs.format &&
+				lhs.mip_slice == rhs.mip_slice &&
+				lhs.mip_size == rhs.mip_size &&
+				lhs.array_slice == rhs.array_slice &&
+				lhs.array_size == rhs.array_size;
+		}
+        R<Ref<TextureView>> Texture::get_texture_view(const TextureViewDesc& validated_desc)
+        {
+			LockGuard guard(m_texture_views_lock);
+			for (auto& v : m_texture_views)
+			{
+				if (compare_texture_view_desc(v.first, validated_desc))
+				{
+					return v.second.get();
+				}
+			}
+			// Create a new one.
+			auto view = new_object<TextureView>();
+			auto r = view->init(validated_desc);
+			if (failed(r)) return r.errcode();
+			m_texture_views.push_back(make_pair(validated_desc, view));
+			return view;
+        }
     }
 }

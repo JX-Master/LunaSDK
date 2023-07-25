@@ -291,7 +291,7 @@ namespace Luna
 			DescriptorType type;
 			//! Used if `type` is `uniform_buffer_view`, `read_buffer_view` or `read_write_buffer_view`. 
 			Span<const BufferViewDesc> buffer_views;
-			//! Used if `type` is `sampled_texture_view`, `read_texture_view` or `read_write_texture_view`.
+			//! Used if `type` is `read_texture_view` or `read_write_texture_view`.
 			Span<const TextureViewDesc> texture_views;
 			//! Used if `type` is `sampler`.
 			Span<const SamplerDesc> samplers;

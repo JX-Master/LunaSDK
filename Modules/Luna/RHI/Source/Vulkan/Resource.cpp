@@ -102,7 +102,7 @@ namespace Luna
 		R<ImageView*> ImageResource::get_image_view(const TextureViewDesc& desc)
 		{
 			auto validated_desc = desc;
-			validate_texture_view_desc(validated_desc);
+			validate_texture_view_desc(m_desc, validated_desc);
 			LockGuard guard(m_image_views_lock);
 			for (auto& v : m_image_views)
 			{

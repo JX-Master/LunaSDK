@@ -58,5 +58,24 @@ namespace Luna
 			}
 			return ok;
 		}
+		void validate_texture_view_desc(const TextureDesc& texture_desc, TextureViewDesc& desc)
+		{
+			if (desc.type == TextureViewType::unspecified)
+			{
+				if (texture_desc.type == TextureType::tex2d) desc.type = texture_desc.array_size == 1 ? TextureViewType::tex2d : TextureViewType::tex2darray;
+				else if (texture_desc.type == TextureType::tex3d) desc.type = TextureViewType::tex3d;
+				else if (texture_desc.type == TextureType::tex1d) desc.type = texture_desc.array_size == 1 ? TextureViewType::tex1d : TextureViewType::tex1darray;
+				else { lupanic(); }
+			}
+			if (desc.format == Format::unknown) desc.format = texture_desc.format;
+			if (desc.mip_size == U32_MAX) desc.mip_size = texture_desc.mip_levels - desc.mip_slice;
+			if (desc.array_size == U32_MAX) desc.array_size = texture_desc.array_size - desc.array_slice;
+			if (desc.type == TextureViewType::tex1d ||
+				desc.type == TextureViewType::tex2d ||
+				desc.type == TextureViewType::tex3d)
+			{
+				desc.array_size = 1;
+			}
+		}
 	}
 }

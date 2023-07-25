@@ -10,6 +10,7 @@
 #pragma once
 #include "DeviceMemory.hpp"
 #include "Device.hpp"
+#include "TextureView.hpp"
 namespace Luna
 {
     namespace RHI
@@ -46,6 +47,10 @@ namespace Luna
             NSPtr<MTL::Texture> m_texture;
             Ref<DeviceMemory> m_memory;
 
+            // Texture views.
+			Vector<Pair<TextureViewDesc, Ref<TextureView>>> m_texture_views;
+			SpinLock m_texture_views_lock;
+
             RV init_as_committed(MemoryType memory_type, const TextureDesc& desc);
             RV init_as_aliasing(IDeviceMemory* memory, const TextureDesc& desc);
 
@@ -53,6 +58,8 @@ namespace Luna
             virtual void set_name(const Name& name) override  { set_object_name(m_texture.get(), name); }
             virtual IDeviceMemory* get_memory() override { return m_memory; }
             virtual TextureDesc get_desc() override { return m_desc; }
+
+            virtual R<Ref<TextureView>> get_texture_view(const TextureViewDesc& validated_desc);
         };
     }
 }

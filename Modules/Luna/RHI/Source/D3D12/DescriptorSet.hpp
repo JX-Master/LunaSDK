@@ -17,7 +17,6 @@ namespace Luna
 {
 	namespace RHI
 	{
-		void validate_texture_view_desc(TextureViewDesc& desc);
 		struct DescriptorSet : IDescriptorSet
 		{
 			lustruct("RHI::DescriptorSet", "{6937b6b1-ce6d-4211-a5d5-5af9a6eba60a}");
