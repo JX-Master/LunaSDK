@@ -224,9 +224,9 @@ namespace Luna
 		{
 			for (usize i = 0; i < data.size(); ++i)
 			{
-				void* dest = (void*)((usize)vec->m_buffer + i * element_size);
-				construct_type(element_type, dest);
-				luexp(deserialize(element_type, dest, data[i]));
+				void* dst = (void*)((usize)vec->m_buffer + i * element_size);
+				construct_type(element_type, dst);
+				luexp(deserialize(element_type, dst, data[i]));
 			}
 		}
 		lucatchret;
@@ -378,8 +378,8 @@ namespace Luna
 			if (cb_buf[pos].m_hash == RobinHoodHashing::EMPTY_SLOT)
 			{
 				cb_buf[pos].m_hash = h;
-				void* dest = (void*)((usize)value_buf + pos * value_size);
-				relocate_type(value_type, dest, src_buf);
+				void* dst = (void*)((usize)value_buf + pos * value_size);
+				relocate_type(value_type, dst, src_buf);
 				if (ret_pos == USIZE_MAX) ret_pos = pos;
 				break;
 			}
@@ -387,8 +387,8 @@ namespace Luna
 			if ((existing_dist <= dist) && RobinHoodHashing::is_tombstone(cb_buf[pos].m_hash))
 			{
 				cb_buf[pos].m_hash = h;
-				void* dest = (void*)((usize)value_buf + pos * value_size);
-				relocate_type(value_type, dest, src_buf);
+				void* dst = (void*)((usize)value_buf + pos * value_size);
+				relocate_type(value_type, dst, src_buf);
 				if (ret_pos == USIZE_MAX) ret_pos = pos;
 				break;
 			}
@@ -397,9 +397,9 @@ namespace Luna
 				usize temp_h = cb_buf[pos].m_hash;
 				cb_buf[pos].m_hash = h;
 				h = temp_h;
-				void* dest = (void*)((usize)value_buf + pos * value_size);
-				relocate_type(value_type, temp_v, dest);
-				relocate_type(value_type, dest, src_buf);
+				void* dst = (void*)((usize)value_buf + pos * value_size);
+				relocate_type(value_type, temp_v, dst);
+				relocate_type(value_type, dst, src_buf);
 				relocate_type(value_type, src_buf, temp_v);
 				dist = existing_dist;
 				if (ret_pos == USIZE_MAX) ret_pos = pos;

@@ -84,8 +84,8 @@ namespace Luna
                     NSPtr<MTL::VertexAttributeDescriptor> dst = box(MTL::VertexAttributeDescriptor::alloc()->init());
                     dst->setFormat(encode_vertex_format(src.format));
                     dst->setOffset(src.offset);
-                    dst->setBufferIndex(src.binding_slot);
-                    attributes->setObject(dst.get(), i);
+                    dst->setBufferIndex(src.binding_slot + VERTEX_BUFFER_SLOT_OFFSET);
+                    attributes->setObject(dst.get(), src.location);
                 }
                 for(u32 i = 0; i < (u32)desc.input_layout.bindings.size(); ++i)
                 {
@@ -100,7 +100,7 @@ namespace Luna
                         dst->setStepFunction(MTL::VertexStepFunctionPerInstance); break;
                     }
                     dst->setStepRate(1);
-                    layouts->setObject(dst.get(), src.binding_slot);
+                    layouts->setObject(dst.get(), src.binding_slot + VERTEX_BUFFER_SLOT_OFFSET);
                 }
             }
             d->setVertexDescriptor(vertex_desc.get());
@@ -136,6 +136,40 @@ namespace Luna
             {
                 NS::String* err_desc = err->description();
                 return set_error(BasicError::bad_platform_call(), "%s", err_desc->cString(NS::UTF8StringEncoding));
+            }
+            switch(desc.rasterizer_state.cull_mode)
+            {
+                case CullMode::none: m_cull_mode = MTL::CullModeNone; break;
+                case CullMode::front: m_cull_mode = MTL::CullModeFront; break;
+                case CullMode::back: m_cull_mode = MTL::CullModeBack; break;
+            }
+            m_primitive_type = encode_primitive_type(desc.primitive_topology);
+            // Depth stencil state.
+            {
+                NSPtr<MTL::DepthStencilDescriptor> ds_desc = box(MTL::DepthStencilDescriptor::alloc()->init());
+                ds_desc->setDepthWriteEnabled(desc.depth_stencil_state.depth_write_enable);
+                ds_desc->setDepthCompareFunction(encode_compare_function(desc.depth_stencil_state.depth_func));
+                NSPtr<MTL::StencilDescriptor> front_face = box(MTL::StencilDescriptor::alloc()->init());
+                NSPtr<MTL::StencilDescriptor> back_face = box(MTL::StencilDescriptor::alloc()->init());
+                front_face->setStencilFailureOperation(encode_stencil_operation(desc.depth_stencil_state.front_face.stencil_fail_op));
+                front_face->setDepthFailureOperation(encode_stencil_operation(desc.depth_stencil_state.front_face.stencil_depth_fail_op));
+                front_face->setDepthStencilPassOperation(encode_stencil_operation(desc.depth_stencil_state.front_face.stencil_pass_op));
+                front_face->setStencilCompareFunction(encode_compare_function(desc.depth_stencil_state.front_face.stencil_func));
+                front_face->setReadMask(desc.depth_stencil_state.stencil_read_mask);
+                front_face->setWriteMask(desc.depth_stencil_state.stencil_write_mask);
+                back_face->setStencilFailureOperation(encode_stencil_operation(desc.depth_stencil_state.back_face.stencil_fail_op));
+                back_face->setDepthFailureOperation(encode_stencil_operation(desc.depth_stencil_state.back_face.stencil_depth_fail_op));
+                back_face->setDepthStencilPassOperation(encode_stencil_operation(desc.depth_stencil_state.back_face.stencil_pass_op));
+                back_face->setStencilCompareFunction(encode_compare_function(desc.depth_stencil_state.back_face.stencil_func));
+                back_face->setReadMask(desc.depth_stencil_state.stencil_read_mask);
+                back_face->setWriteMask(desc.depth_stencil_state.stencil_write_mask);
+                ds_desc->setFrontFaceStencil(front_face.get());
+                ds_desc->setBackFaceStencil(back_face.get());
+                m_dss = box(m_device->m_device->newDepthStencilState(ds_desc.get()));
+                if(!m_dss)
+                {
+                    return BasicError::bad_platform_call();
+                }
             }
             return ok;
         }

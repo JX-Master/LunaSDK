@@ -216,11 +216,10 @@ namespace Luna
 			Format format = Format::unknown;
 			u32 mip_slice = 0;
 			u32 array_slice = 0;
-			u32 array_size = 0;
 			ColorAttachment() = default;
 			ColorAttachment(ITexture* texture, 
 				LoadOp load_op = LoadOp::load, StoreOp store_op = StoreOp::store, const Float4U& clear_value = Float4U(0), 
-				TextureViewType view_type = TextureViewType::unspecified, Format format = Format::unknown, u32 mip_slice = 0, u32 array_slice = 0, u32 array_size = 1) :
+				TextureViewType view_type = TextureViewType::unspecified, Format format = Format::unknown, u32 mip_slice = 0, u32 array_slice = 0) :
 				texture(texture),
 				load_op(load_op),
 				store_op(store_op),
@@ -228,8 +227,7 @@ namespace Luna
 				view_type(view_type),
 				format(format),
 				mip_slice(mip_slice),
-				array_slice(array_slice),
-				array_size(array_size) {}
+				array_slice(array_slice) {}
 		};
 		struct DepthStencilAttachment
 		{
@@ -245,12 +243,11 @@ namespace Luna
 			Format format = Format::unknown;
 			u32 mip_slice = 0;
 			u32 array_slice = 0;
-			u32 array_size = 0;
 			DepthStencilAttachment() = default;
 			DepthStencilAttachment(ITexture* texture, bool read_only,
 				LoadOp depth_load_op = LoadOp::load, StoreOp depth_store_op = StoreOp::store, f32 depth_clear_value = 1.0f,
 				LoadOp stencil_load_op = LoadOp::dont_care, StoreOp stencil_store_op = StoreOp::dont_care, u8 stencil_clear_value = 0,
-				TextureViewType view_type = TextureViewType::unspecified, Format format = Format::unknown, u32 mip_slice = 0, u32 array_slice = 0, u32 array_size = 1
+				TextureViewType view_type = TextureViewType::unspecified, Format format = Format::unknown, u32 mip_slice = 0, u32 array_slice = 0
 				) :
 				texture(texture),
 				read_only(read_only),
@@ -263,8 +260,7 @@ namespace Luna
 				view_type(view_type),
 				format(format),
 				mip_slice(mip_slice),
-				array_slice(array_slice),
-				array_size(array_size) {}
+				array_slice(array_slice) {}
 		};
 		struct ResolveAttachment
 		{
@@ -273,11 +269,10 @@ namespace Luna
 			u32 array_slice = 0;
 			u32 array_size = 0;
 			ResolveAttachment() = default;
-			ResolveAttachment(ITexture* texture, u32 mip_slice = 0, u32 array_slice = 0, u32 array_size = 1) :
+			ResolveAttachment(ITexture* texture, u32 mip_slice = 0, u32 array_slice = 0) :
 				texture(texture),
 				mip_slice(mip_slice),
-				array_slice(array_slice),
-				array_size(array_size) {}
+				array_slice(array_slice) {}
 		};
 		//! Parameters passed to `begin_render_pass`.
 		struct RenderPassDesc
@@ -288,6 +283,8 @@ namespace Luna
 			ResolveAttachment resolve_attachments[8];
 			//! The depth stencil attachment to set.
 			DepthStencilAttachment depth_stencil_attachment;
+			//! The number of array slices that will be bound for all attachments.
+			u32 array_size = 1;
 			//! The sample count of the render pass.
 			u8 sample_count = 1;
 		};
@@ -419,7 +416,7 @@ namespace Luna
 
 			//! Sets the descriptor set to be used by the graphic pipeline.
 			//! This behaves the same as calling `set_graphics_descriptor_sets` with only one element.
-			virtual void set_graphics_descriptor_set(u32 start_index, IDescriptorSet* descriptor_set) = 0;
+			virtual void set_graphics_descriptor_set(u32 index, IDescriptorSet* descriptor_set) = 0;
 
 			//! Sets descriptor sets to be used by the graphic pipeline.
 			//! This must be called after `set_pipeline_state` and `set_graphics_pipeline_layout`.
@@ -444,7 +441,7 @@ namespace Luna
 			virtual void set_scissor_rects(Span<const RectI> rects) = 0;
 
 			//! Sets the blend factor that modulate values for a pixel shader, render target, or both.
-			virtual void set_blend_factor(Span<const f32, 4> blend_factor) = 0;
+			virtual void set_blend_factor(const Float4U& blend_factor) = 0;
 
 			//! Sets the reference value for depth stencil tests.
 			virtual void set_stencil_ref(u32 stencil_ref) = 0;
@@ -471,7 +468,7 @@ namespace Luna
 
 			//! Clears the render target view bound to the current render pass.
 			//! @param[in] index The index of the render target view to clear in the frame buffers.
-			virtual void clear_color_attachment(u32 index, Span<const f32, 4> color_rgba, Span<const RectI> rects) = 0;
+			virtual void clear_color_attachment(u32 index, const Float4U& color_rgba, Span<const RectI> rects) = 0;
 
 			//! Finishes the current render pass.
 			virtual void end_render_pass() = 0;

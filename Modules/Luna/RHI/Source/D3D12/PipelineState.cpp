@@ -89,15 +89,15 @@ namespace Luna
 				return D3D12_STENCIL_OP_ZERO;
 			case StencilOp::replace:
 				return D3D12_STENCIL_OP_REPLACE;
-			case StencilOp::incr_sat:
+			case StencilOp::increment_saturated:
 				return D3D12_STENCIL_OP_INCR_SAT;
-			case StencilOp::decr_sat:
+			case StencilOp::decrement_saturated:
 				return D3D12_STENCIL_OP_DECR;
 			case StencilOp::invert:
 				return D3D12_STENCIL_OP_INVERT;
-			case StencilOp::incr:
+			case StencilOp::increment:
 				return D3D12_STENCIL_OP_INCR;
-			case StencilOp::decr:
+			case StencilOp::decrement:
 			default:
 				lupanic();
 				return D3D12_STENCIL_OP_KEEP;

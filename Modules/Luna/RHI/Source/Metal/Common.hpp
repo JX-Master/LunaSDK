@@ -465,5 +465,67 @@ namespace Luna
 			lupanic();
 			return MTL::PrimitiveTopologyClassUnspecified;
 		}
+		inline MTL::LoadAction encode_load_action(LoadOp op)
+		{
+			switch(op)
+			{
+				case LoadOp::dont_care: return MTL::LoadActionDontCare;
+				case LoadOp::load: return MTL::LoadActionLoad;
+				case LoadOp::clear: return MTL::LoadActionClear;
+			}
+			lupanic();
+			return MTL::LoadActionDontCare;
+		}
+		inline MTL::StoreAction encode_store_action(StoreOp op, bool resolve)
+		{
+			switch(op)
+			{
+				case StoreOp::dont_care: return resolve ? MTL::StoreActionMultisampleResolve : MTL::StoreActionDontCare;
+				case StoreOp::store: return resolve ? MTL::StoreActionStoreAndMultisampleResolve : MTL::StoreActionStore;
+			}
+			lupanic();
+			return MTL::StoreActionDontCare;
+		}
+		inline MTL::StencilOperation encode_stencil_operation(StencilOp op)
+		{
+			switch(op)
+			{
+				case StencilOp::keep: return MTL::StencilOperationKeep;
+				case StencilOp::zero: return MTL::StencilOperationZero;
+				case StencilOp::replace: return MTL::StencilOperationReplace;
+				case StencilOp::increment_saturated: return MTL::StencilOperationIncrementClamp;
+				case StencilOp::decrement_saturated: return MTL::StencilOperationDecrementClamp;
+				case StencilOp::invert: return MTL::StencilOperationInvert;
+				case StencilOp::increment: return MTL::StencilOperationIncrementWrap;
+				case StencilOp::decrement: return MTL::StencilOperationDecrementWrap;
+			}
+			lupanic();
+			return MTL::StencilOperationKeep;
+		}
+		inline MTL::PrimitiveType encode_primitive_type(PrimitiveTopology pt)
+		{
+			switch(pt)
+			{
+				case PrimitiveTopology::point_list: return MTL::PrimitiveType::PrimitiveTypePoint;
+				case PrimitiveTopology::line_list: return MTL::PrimitiveTypeLine;
+				case PrimitiveTopology::line_strip: return MTL::PrimitiveTypeLineStrip;
+				case PrimitiveTopology::triangle_list: return MTL::PrimitiveTypeTriangle;
+				case PrimitiveTopology::triangle_strip: return MTL::PrimitiveTypeTriangleStrip;
+			}
+			lupanic();
+			return MTL::PrimitiveType::PrimitiveTypePoint;
+		}
+		inline MTL::IndexType encode_index_type(Format format)
+		{
+			switch(format)
+			{
+				case Format::r16_uint:
+				case Format::r16_sint: return MTL::IndexTypeUInt16;
+				case Format::r32_uint:
+				case Format::r32_sint: return MTL::IndexTypeUInt32;
+			}
+			lupanic();
+			return MTL::IndexTypeUInt32;
+		}
     }
 }

@@ -181,11 +181,11 @@ namespace Luna
 			case StencilOp::keep: return VK_STENCIL_OP_KEEP;
 			case StencilOp::zero: return VK_STENCIL_OP_ZERO;
 			case StencilOp::replace: return VK_STENCIL_OP_REPLACE;
-			case StencilOp::incr_sat: return VK_STENCIL_OP_INCREMENT_AND_CLAMP;
-			case StencilOp::decr_sat: return VK_STENCIL_OP_DECREMENT_AND_CLAMP;
+			case StencilOp::increment_saturated: return VK_STENCIL_OP_INCREMENT_AND_CLAMP;
+			case StencilOp::decrement_saturated: return VK_STENCIL_OP_DECREMENT_AND_CLAMP;
 			case StencilOp::invert: return VK_STENCIL_OP_INVERT;
-			case StencilOp::incr: return VK_STENCIL_OP_INCREMENT_AND_WRAP;
-			case StencilOp::decr: return VK_STENCIL_OP_DECREMENT_AND_WRAP;
+			case StencilOp::increment: return VK_STENCIL_OP_INCREMENT_AND_WRAP;
+			case StencilOp::decrement: return VK_STENCIL_OP_DECREMENT_AND_WRAP;
 			}
 			lupanic();
 			return VK_STENCIL_OP_KEEP;

@@ -13,6 +13,7 @@ namespace Luna
 {
     namespace RHI
     {
+        constexpr usize VERTEX_BUFFER_SLOT_OFFSET = 16;
         struct RenderPipelineState : IPipelineState
         {
             lustruct("RHI::RenderPipelineState", "{78f9f67e-c86f-4c84-bba5-9bf05dac905b}");
@@ -20,6 +21,9 @@ namespace Luna
 
             Ref<Device> m_device;
             NSPtr<MTL::RenderPipelineState> m_pso;
+            NSPtr<MTL::DepthStencilState> m_dss;
+            MTL::CullMode m_cull_mode = MTL::CullModeNone;
+            MTL::PrimitiveType m_primitive_type = MTL::PrimitiveTypeTriangle;
 
             RV init(const GraphicsPipelineStateDesc& desc);
 

@@ -243,11 +243,11 @@ namespace Luna
 			keep,
 			zero,
 			replace,
-			incr_sat,
-			decr_sat,
+			increment_saturated,
+			decrement_saturated,
 			invert,
-			incr,
-			decr
+			increment,
+			decrement
 		};
 
 		enum class CompareFunction : u8
