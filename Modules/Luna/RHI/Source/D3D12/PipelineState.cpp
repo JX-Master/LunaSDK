@@ -114,9 +114,9 @@ namespace Luna
 		{
 			rt.BlendEnable = srt.blend_enable ? TRUE : FALSE;
 			rt.LogicOpEnable = FALSE;
-			rt.SrcBlend = encode_blend_factor(srt.src_blend);
-			rt.DestBlend = encode_blend_factor(srt.dst_blend);
-			rt.BlendOp = encode_blend_op(srt.blend_op);
+			rt.SrcBlend = encode_blend_factor(srt.src_blend_color);
+			rt.DestBlend = encode_blend_factor(srt.dst_blend_color);
+			rt.BlendOp = encode_blend_op(srt.blend_op_color);
 			rt.SrcBlendAlpha = encode_blend_factor(srt.src_blend_alpha);
 			rt.DestBlendAlpha = encode_blend_factor(srt.dst_blend_alpha);
 			rt.BlendOpAlpha = encode_blend_op(srt.blend_op_alpha);
@@ -166,11 +166,11 @@ namespace Luna
 				{
 					if (d.BlendState.IndependentBlendEnable)
 					{
-						encode_target_blend_desc(d.BlendState.RenderTarget[i], desc.blend_state.rt[i]);
+						encode_target_blend_desc(d.BlendState.RenderTarget[i], desc.blend_state.attachments[i]);
 					}
 					else
 					{
-						encode_target_blend_desc(d.BlendState.RenderTarget[i], desc.blend_state.rt[0]);
+						encode_target_blend_desc(d.BlendState.RenderTarget[i], desc.blend_state.attachments[0]);
 					}
 				}
 				d.SampleMask = desc.sample_mask;

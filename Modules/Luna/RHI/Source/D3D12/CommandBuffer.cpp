@@ -290,7 +290,7 @@ namespace Luna
 					view.mip_slice = src.mip_slice;
 					view.mip_size = 1;
 					view.array_slice = src.array_slice;
-					view.array_size = src.array_size;
+					view.array_size = desc.array_size;
 					luset(m_render_pass_context.m_color_attachments[i], tex->get_rtv(view));
 					m_render_pass_context.m_color_attachment_views[i] = view;
 					rtv[i] = m_render_pass_context.m_color_attachments[i]->GetCPUDescriptorHandleForHeapStart();
@@ -308,7 +308,7 @@ namespace Luna
 					view.mip_slice = src.mip_slice;
 					view.mip_size = 1;
 					view.array_slice = src.array_slice;
-					view.array_size = src.array_size;
+					view.array_size = desc.array_size;
 					luset(m_render_pass_context.m_depth_stencil_attachment, tex->get_dsv(view));
 					dsv = m_render_pass_context.m_depth_stencil_attachment->GetCPUDescriptorHandleForHeapStart();
 					m_render_pass_context.m_tex_size.x = tex->m_desc.width;
@@ -517,11 +517,12 @@ namespace Luna
 			}
 			m_li->RSSetScissorRects((UINT)rects.size(), rs);
 		}
-		void CommandBuffer::set_blend_factor(Span<const f32, 4> blend_factor)
+		void CommandBuffer::set_blend_factor(const Float4U& blend_factor)
 		{
 			lutsassert();
 			assert_graphcis_context();
-			m_li->OMSetBlendFactor(blend_factor.data());
+			f32 factor[] = {blend_factor.x, blend_factor.y, blend_factor.z, blend_factor.w};
+			m_li->OMSetBlendFactor(factor);
 		}
 		void CommandBuffer::set_stencil_ref(u32 stencil_ref)
 		{
@@ -543,60 +544,6 @@ namespace Luna
 			assert_graphcis_context();
 			lucheck_msg(m_render_pass_context.m_valid, "draw_instanced must be called between `begin_render_pass` and `end_render_pass`.");
 			m_li->DrawInstanced(vertex_count_per_instance, instance_count, start_vertex_location, start_instance_location);
-		}
-		void CommandBuffer::clear_depth_stencil_attachment(ClearFlag clear_flags, f32 depth, u8 stencil, Span<const RectI> rects)
-		{
-			lutsassert();
-			assert_graphcis_context();
-			lucheck_msg(m_render_pass_context.m_valid, "clear_depth_stencil_attachment must be called between `begin_render_pass` and `end_render_pass`.");
-			D3D12_CPU_DESCRIPTOR_HANDLE h = m_render_pass_context.m_depth_stencil_attachment->GetCPUDescriptorHandleForHeapStart();
-			D3D12_RECT* d3drects = (D3D12_RECT*)alloca(sizeof(D3D12_RECT) * rects.size());
-			auto tex_sz = m_render_pass_context.m_tex_size;
-			for (u32 i = 0; i < rects.size(); ++i)
-			{
-				d3drects[i].bottom = tex_sz.y - rects[i].offset_y;
-				d3drects[i].left = rects[i].offset_x;
-				d3drects[i].right = rects[i].offset_x + rects[i].width;
-				d3drects[i].top = tex_sz.y - (rects[i].offset_y + rects[i].height);
-			}
-			D3D12_CLEAR_FLAGS f;
-			if ((clear_flags & ClearFlag::depth) != ClearFlag::none)
-			{
-				if ((clear_flags & ClearFlag::stencil) != ClearFlag::none)
-				{
-					f = D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL;
-				}
-				else
-				{
-					f = D3D12_CLEAR_FLAG_DEPTH;
-				}
-			}
-			else if ((clear_flags & ClearFlag::stencil) != ClearFlag::none)
-			{
-				f = D3D12_CLEAR_FLAG_STENCIL;
-			}
-			else
-			{
-				return;
-			}
-			m_li->ClearDepthStencilView(h, f, depth, stencil, (UINT)rects.size(), d3drects);
-		}
-		void CommandBuffer::clear_color_attachment(u32 index, Span<const f32, 4> color_rgba, Span<const RectI> rects)
-		{
-			lutsassert();
-			assert_graphcis_context();
-			lucheck_msg(m_render_pass_context.m_valid, "clear_color_attachment must be called between `begin_render_pass` and `end_render_pass`.");
-			D3D12_CPU_DESCRIPTOR_HANDLE h = m_render_pass_context.m_color_attachments[index]->GetCPUDescriptorHandleForHeapStart();
-			D3D12_RECT* d3drects = (D3D12_RECT*)alloca(sizeof(D3D12_RECT) * rects.size());
-			auto tex_sz = m_render_pass_context.m_tex_size;
-			for (u32 i = 0; i < rects.size(); ++i)
-			{
-				d3drects[i].bottom = tex_sz.y - rects[i].offset_y;
-				d3drects[i].left = rects[i].offset_x;
-				d3drects[i].right = rects[i].offset_x + rects[i].width;
-				d3drects[i].top = tex_sz.y - (rects[i].offset_y + rects[i].height);
-			}
-			m_li->ClearRenderTargetView(h, color_rgba.data(), (UINT)rects.size(), d3drects);
 		}
 		void CommandBuffer::end_render_pass()
 		{

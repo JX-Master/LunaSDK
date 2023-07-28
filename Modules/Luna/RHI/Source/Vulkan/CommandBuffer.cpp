@@ -328,7 +328,7 @@ namespace Luna
 						view.mip_slice = src.mip_slice;
 						view.mip_size = 1;
 						view.array_slice = src.array_slice;
-						view.array_size = src.array_size;
+						view.array_size = desc.array_size;
 						lulet(view_object, cast_object<ImageResource>(view.texture->get_object())->get_image_view(view));
 						fb.color_attachments[i] = view_object;
 					}
@@ -375,7 +375,7 @@ namespace Luna
 					view.mip_slice = src.mip_slice;
 					view.mip_size = 1;
 					view.array_slice = src.array_slice;
-					view.array_size = src.array_size;
+					view.array_size = desc.array_size;
 					lulet(view_object, cast_object<ImageResource>(view.texture->get_object())->get_image_view(view));
 					fb.depth_stencil_attachment = view_object;
 				}
@@ -568,10 +568,11 @@ namespace Luna
 			}
 			m_device->m_funcs.vkCmdSetScissor(m_command_buffer, 0, max_num_viewports, r);
 		}
-		void CommandBuffer::set_blend_factor(Span<const f32, 4> blend_factor)
+		void CommandBuffer::set_blend_factor(const Float4U& blend_factor)
 		{
 			assert_graphcis_context();
-			m_device->m_funcs.vkCmdSetBlendConstants(m_command_buffer, blend_factor.data());
+			f32 factor[] = {blend_factor.x, blend_factor.y, blend_factor.z, blend_factor.w};
+			m_device->m_funcs.vkCmdSetBlendConstants(m_command_buffer, factor);
 		}
 		void CommandBuffer::set_stencil_ref(u32 stencil_ref)
 		{
@@ -601,111 +602,6 @@ namespace Luna
 			assert_graphcis_context();
 			m_device->m_funcs.vkCmdDrawIndexed(m_command_buffer, index_count_per_instance * instance_count, instance_count, 
 				start_index_location, base_vertex_location, start_instance_location);
-		}
-		void CommandBuffer::clear_depth_stencil_attachment(ClearFlag clear_flags, f32 depth, u8 stencil, Span<const RectI> rects)
-		{
-			assert_graphcis_context();
-			VkClearAttachment attachment{};
-			attachment.aspectMask = 0;
-			if (test_flags(clear_flags, ClearFlag::depth))
-			{
-				attachment.aspectMask |= VK_IMAGE_ASPECT_DEPTH_BIT;
-			}
-			if (test_flags(clear_flags, ClearFlag::stencil))
-			{
-				attachment.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
-			}
-			attachment.clearValue.depthStencil.depth = depth;
-			attachment.clearValue.depthStencil.stencil = stencil;
-			VkClearRect* clear_rects = nullptr;
-			u32 num_clear_rects = 0;
-			if (rects.empty())
-			{
-				clear_rects = (VkClearRect*)alloca(sizeof(VkClearRect));
-				num_clear_rects = 1;
-				clear_rects[0].rect.offset = { 0, 0 };
-				clear_rects[0].rect.extent.width = m_rt_width;
-				clear_rects[0].rect.extent.height = m_rt_height;
-				auto& desc = m_dsv->m_desc;
-				clear_rects[0].baseArrayLayer = desc.array_slice;
-				clear_rects[0].layerCount = desc.array_size;
-			}
-			else
-			{
-				clear_rects = (VkClearRect*)alloca(sizeof(VkClearRect) * rects.size());
-				num_clear_rects = (u32)rects.size();
-				auto& desc = m_dsv->m_desc;
-				for (usize i = 0; i < rects.size(); ++i)
-				{
-					auto& dst = clear_rects[i];
-					auto& src = rects[i];
-					dst.rect.offset.x = src.offset_x;
-					dst.rect.offset.y = m_rt_height - src.offset_y - src.height;
-					dst.rect.extent.width = src.width;
-					dst.rect.extent.height = src.height;
-					dst.baseArrayLayer = desc.array_slice;
-					dst.layerCount = desc.array_size;
-				}
-			}
-			m_device->m_funcs.vkCmdClearAttachments(m_command_buffer, 1, &attachment, num_clear_rects, clear_rects);
-		}
-		void CommandBuffer::clear_color_attachment(u32 index, Span<const f32, 4> color_rgba, Span<const RectI> rects)
-		{
-			assert_graphcis_context();
-			VkClearAttachment attachment{};
-			attachment.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-			attachment.colorAttachment = index;
-			attachment.clearValue.color.float32[0] = color_rgba[0];
-			attachment.clearValue.color.float32[1] = color_rgba[1];
-			attachment.clearValue.color.float32[2] = color_rgba[2];
-			attachment.clearValue.color.float32[3] = color_rgba[3];
-			VkClearRect* clear_rects = nullptr;
-			u32 num_clear_rects = 0;
-			if (rects.empty())
-			{
-				clear_rects = (VkClearRect*)alloca(sizeof(VkClearRect));
-				num_clear_rects = 1;
-				clear_rects[0].rect.offset = { 0, 0 };
-				clear_rects[0].rect.extent.width = m_rt_width;
-				clear_rects[0].rect.extent.height = m_rt_height;
-				auto& desc = m_color_attachments[index]->m_desc;
-				if (desc.type != TextureViewType::tex3d)
-				{
-					clear_rects[0].baseArrayLayer = desc.array_slice;
-					clear_rects[0].layerCount = desc.array_size;
-				}
-				else
-				{
-					clear_rects[0].baseArrayLayer = 0;
-					clear_rects[0].layerCount = 1;
-				}
-			}
-			else
-			{
-				clear_rects = (VkClearRect*)alloca(sizeof(VkClearRect) * rects.size());
-				num_clear_rects = (u32)rects.size();
-				auto& desc = m_color_attachments[index]->m_desc;
-				for (usize i = 0; i < rects.size(); ++i)
-				{
-					auto& dst = clear_rects[i];
-					auto& src = rects[i];
-					dst.rect.offset.x = src.offset_x;
-					dst.rect.offset.y = m_rt_height - src.offset_y - src.height;
-					dst.rect.extent.width = src.width;
-					dst.rect.extent.height = src.height;
-					if (desc.type != TextureViewType::tex3d)
-					{
-						clear_rects[0].baseArrayLayer = desc.array_slice;
-						clear_rects[0].layerCount = desc.array_size;
-					}
-					else
-					{
-						clear_rects[0].baseArrayLayer = 0;
-						clear_rects[0].layerCount = 1;
-					}
-				}
-			}
-			m_device->m_funcs.vkCmdClearAttachments(m_command_buffer, 1, &attachment, num_clear_rects, clear_rects);
 		}
 		void CommandBuffer::end_render_pass()
 		{

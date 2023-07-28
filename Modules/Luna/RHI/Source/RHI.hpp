@@ -58,7 +58,7 @@ namespace Luna
 			}
 			return ok;
 		}
-		void validate_texture_view_desc(const TextureDesc& texture_desc, TextureViewDesc& desc)
+		inline void validate_texture_view_desc(const TextureDesc& texture_desc, TextureViewDesc& desc)
 		{
 			if (desc.type == TextureViewType::unspecified)
 			{

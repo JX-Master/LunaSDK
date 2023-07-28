@@ -252,7 +252,7 @@ namespace Luna
 						WriteDescriptorSet::read_texture_view(4, TextureViewDesc::tex2d(normal_tex)),
 						WriteDescriptorSet::read_texture_view(5, TextureViewDesc::tex2d(metallic_tex)),
 						WriteDescriptorSet::read_texture_view(6, TextureViewDesc::tex2d(emissive_tex)),
-						WriteDescriptorSet::sampler(7, SamplerDesc(Filter::min_mag_mip_linear, TextureAddressMode::repeat, TextureAddressMode::repeat, TextureAddressMode::repeat))
+						WriteDescriptorSet::sampler(7, SamplerDesc(Filter::linear, Filter::linear, Filter::linear, TextureAddressMode::repeat, TextureAddressMode::repeat, TextureAddressMode::repeat))
 						});
 					cmdbuf->set_graphics_descriptor_set(0, vs);
 					cmdbuf->attach_device_object(vs);

@@ -11,6 +11,7 @@
 #include "Resource.hpp"
 #include "PipelineLayout.hpp"
 #include <Luna/Runtime/Span.hpp>
+#include <Luna/Runtime/Math/Vector.hpp>
 namespace Luna
 {
 	namespace RHI
@@ -146,9 +147,9 @@ namespace Luna
 
 			AttachmentBlendDesc(
 				bool blend_enable = false,
-				BlendFactor src_blend = BlendFactor::one,
-				BlendFactor dst_blend = BlendFactor::zero,
-				BlendOp blend_op = BlendOp::add,
+				BlendFactor src_blend_color = BlendFactor::one,
+				BlendFactor dst_blend_color = BlendFactor::zero,
+				BlendOp blend_op_color = BlendOp::add,
 				BlendFactor src_blend_alpha = BlendFactor::one,
 				BlendFactor dst_blend_alpha = BlendFactor::zero,
 				BlendOp blend_op_alpha = BlendOp::add,

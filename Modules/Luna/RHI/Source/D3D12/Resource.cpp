@@ -108,7 +108,6 @@ namespace Luna
 		R<ID3D12DescriptorHeap*> TextureResource::get_rtv(const TextureViewDesc& desc)
 		{
 			auto validated_desc = desc;
-			auto 
 			validate_texture_view_desc(m_desc, validated_desc);
 			LockGuard guard(m_views_lock);
 			for (auto& v : m_rtvs)

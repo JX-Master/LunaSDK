@@ -158,7 +158,7 @@ namespace Luna
 					d.Texture1DArray.ResourceMinLODClamp = 0.0f;
 					break;
 				case TextureViewType::tex2d:
-					if (r->m_desc.sample_count == 1)
+					if (res->m_desc.sample_count == 1)
 					{
 						d.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
 						d.Texture2D.MipLevels = srv.mip_size;
@@ -172,7 +172,7 @@ namespace Luna
 					}
 					break;
 				case TextureViewType::tex2darray:
-					if (r->m_desc.sample_count == 1)
+					if (res->m_desc.sample_count == 1)
 					{
 						d.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
 						d.Texture2DArray.ArraySize = srv.array_size;
@@ -335,12 +335,12 @@ namespace Luna
 					d.BorderColor[3] = 1.0f;
 					break;
 				}
-				d.CompareFunction = encode_compare_function(sampler.compare_function);
-				d.Filter = encode_filter(sampler.filter);
+				d.ComparisonFunc = encode_compare_function(sampler.compare_function);
+				d.Filter = encode_filter(sampler.min_filter, sampler.mag_filter, sampler.mip_filter, sampler.anisotropy_enable, sampler.compare_enable);
 				d.MaxAnisotropy = sampler.max_anisotropy;
 				d.MaxLOD = sampler.max_lod;
 				d.MinLOD = sampler.min_lod;
-				d.MipLODBias = sampler.mip_lod_bias;
+				d.MipLODBias = 0;
 				usize addr = m_device->m_sampler_heap.m_cpu_handle.ptr + (m_sampler_heap_offset + index + offset + i) * m_device->m_sampler_heap.m_descriptor_size;
 				D3D12_CPU_DESCRIPTOR_HANDLE h;
 				h.ptr = addr;

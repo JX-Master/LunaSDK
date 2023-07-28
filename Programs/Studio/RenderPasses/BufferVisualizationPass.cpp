@@ -36,6 +36,7 @@ namespace Luna
 			ComputePipelineStateDesc ps_desc;
 			ps_desc.cs = cs_blob.cspan();
 			ps_desc.pipeline_layout = m_buffer_visualization_pass_playout;
+            ps_desc.num_threads_per_group = {8, 8, 1};
 			luset(m_buffer_visualization_pass_pso, device->new_compute_pipeline_state(ps_desc));
         }
         lucatchret;

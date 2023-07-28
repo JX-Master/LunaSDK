@@ -42,6 +42,7 @@ namespace Luna
 			ComputePipelineStateDesc ps_desc;
 			ps_desc.cs = cs_blob.cspan();
 			ps_desc.pipeline_layout = m_deferred_lighting_pass_playout;
+            ps_desc.num_threads_per_group = {8, 8, 1};
 			luset(m_deferred_lighting_pass_pso, device->new_compute_pipeline_state(ps_desc));
 
             luset(m_default_skybox, device->new_texture(MemoryType::local, TextureDesc::tex2d(Format::rgba8_unorm, 
@@ -66,6 +67,7 @@ namespace Luna
                 ComputePipelineStateDesc ps_desc;
                 ps_desc.cs = cs_blob.cspan();
                 ps_desc.pipeline_layout = playout;
+                ps_desc.num_threads_per_group = {8, 8, 1};
                 lulet(pso, device->new_compute_pipeline_state(ps_desc));
                 lulet(compute_cmdbuf, device->new_command_buffer(g_env->async_compute_queue));
                 u32 cb_align = device->get_uniform_buffer_data_alignment();
@@ -159,7 +161,7 @@ namespace Luna
                 WriteDescriptorSet::read_texture_view(7, TextureViewDesc::tex2d(sky_box)),
                 WriteDescriptorSet::read_texture_view(8, TextureViewDesc::tex2d(m_global_data->m_integrate_brdf)),
                 WriteDescriptorSet::read_write_texture_view(9, TextureViewDesc::tex2d(scene_tex)),
-                WriteDescriptorSet::sampler(10, SamplerDesc(Filter::min_mag_mip_linear, TextureAddressMode::clamp, TextureAddressMode::clamp, TextureAddressMode::clamp)),
+                WriteDescriptorSet::sampler(10, SamplerDesc(Filter::linear, Filter::linear, Filter::linear, TextureAddressMode::clamp, TextureAddressMode::clamp, TextureAddressMode::clamp)),
                 });
             auto scene_desc = scene_tex->get_desc();
             cmdbuf->set_compute_pipeline_layout(m_global_data->m_deferred_lighting_pass_playout);

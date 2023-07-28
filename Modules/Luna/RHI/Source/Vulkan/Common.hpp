@@ -637,6 +637,26 @@ namespace Luna
 			lupanic();
 			return VK_SAMPLER_ADDRESS_MODE_REPEAT;
 		}
+		inline VkFilter encode_filter(Filter filter)
+		{
+			switch(filter)
+			{
+				case Filter::nearest: return VK_FILTER_NEAREST;
+				case Filter::linear: return VK_FILTER_LINEAR;
+			}
+			lupanic();
+			return VK_FILTER_NEAREST;
+		}
+		inline VkSamplerMipmapMode encode_mipmap_mode(Filter filter)
+		{
+			switch(filter)
+			{
+				case Filter::nearest: return VK_SAMPLER_MIPMAP_MODE_NEAREST;
+				case Filter::linear: return VK_SAMPLER_MIPMAP_MODE_LINEAR;
+			}
+			lupanic();
+			return VK_SAMPLER_MIPMAP_MODE_NEAREST;
+		}
 		inline usize get_texel_block_size(Format format)
 		{
 			switch (format)

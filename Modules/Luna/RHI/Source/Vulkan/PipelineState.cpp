@@ -214,11 +214,11 @@ namespace Luna
 				for (usize i = 0; i < desc.num_color_attachments; ++i)
 				{
 					auto& dst = attachments[i];
-					auto& src = desc.blend_state.rt[i];
+					auto& src = desc.blend_state.attachments[i];
 					dst.blendEnable = src.blend_enable ? VK_TRUE : VK_FALSE;
-					dst.srcColorBlendFactor = encode_blend_factor(src.src_blend);
-					dst.dstColorBlendFactor = encode_blend_factor(src.dst_blend);
-					dst.colorBlendOp = encode_blend_op(src.blend_op);
+					dst.srcColorBlendFactor = encode_blend_factor(src.src_blend_color);
+					dst.dstColorBlendFactor = encode_blend_factor(src.dst_blend_color);
+					dst.colorBlendOp = encode_blend_op(src.blend_op_color);
 					dst.srcAlphaBlendFactor = encode_blend_factor(src.src_blend_alpha);
 					dst.dstAlphaBlendFactor = encode_blend_factor(src.dst_blend_alpha);
 					dst.alphaBlendOp = encode_blend_op(src.blend_op_alpha);

@@ -33,6 +33,7 @@ namespace Luna
 				ComputePipelineStateDesc ps_desc;
 				ps_desc.cs = cs_blob.cspan();
 				ps_desc.pipeline_layout = m_histogram_clear_pass_playout;
+				ps_desc.num_threads_per_group = {256, 1, 1};
 				luset(m_histogram_clear_pass_pso, device->new_compute_pipeline_state(ps_desc));
 			}
 			// Histogram Lum Pass.
@@ -51,6 +52,7 @@ namespace Luna
 				ComputePipelineStateDesc ps_desc;
 				ps_desc.cs = cs_blob.cspan();
 				ps_desc.pipeline_layout = m_histogram_pass_playout;
+				ps_desc.num_threads_per_group = {16, 16, 1};
 				luset(m_histogram_pass_pso, device->new_compute_pipeline_state(ps_desc));
 			}
 			// Histogram Collect Pass.
@@ -69,6 +71,7 @@ namespace Luna
 				ComputePipelineStateDesc ps_desc;
 				ps_desc.cs = cs_blob.cspan();
 				ps_desc.pipeline_layout = m_histogram_collect_pass_playout;
+				ps_desc.num_threads_per_group = {256, 1, 1};
 				luset(m_histogram_collect_pass_pso, device->new_compute_pipeline_state(ps_desc));
 			}
 			//Tone Mapping Pass.
@@ -88,6 +91,7 @@ namespace Luna
 				ComputePipelineStateDesc ps_desc;
 				ps_desc.cs = cs_blob.cspan();
 				ps_desc.pipeline_layout = m_tone_mapping_pass_playout;
+				ps_desc.num_threads_per_group = {8, 8, 1};
 				luset(m_tone_mapping_pass_pso, device->new_compute_pipeline_state(ps_desc));
 			}
         }

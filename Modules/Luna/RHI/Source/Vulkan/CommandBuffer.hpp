@@ -117,7 +117,7 @@ namespace Luna
 			virtual void set_viewports(Span<const Viewport> viewports) override;
 			virtual void set_scissor_rect(const RectI& rect) override;
 			virtual void set_scissor_rects(Span<const RectI> rects) override;
-			virtual void set_blend_factor(Span<const f32, 4> blend_factor) override;
+			virtual void set_blend_factor(const Float4U& blend_factor) override;
 			virtual void set_stencil_ref(u32 stencil_ref) override;
 			virtual void draw(u32 vertex_count, u32 start_vertex_location) override;
 			virtual void draw_indexed(u32 index_count, u32 start_index_location, i32 base_vertex_location) override;
@@ -125,8 +125,6 @@ namespace Luna
 				u32 start_instance_location) override;
 			virtual void draw_indexed_instanced(u32 index_count_per_instance, u32 instance_count, u32 start_index_location,
 				i32 base_vertex_location, u32 start_instance_location) override;
-			virtual void clear_depth_stencil_attachment(ClearFlag clear_flags, f32 depth, u8 stencil, Span<const RectI> rects) override;
-			virtual void clear_color_attachment(u32 index, Span<const f32, 4> color_rgba, Span<const RectI> rects) override;
 			virtual void end_render_pass() override;
 			virtual void begin_compute_pass() override
 			{

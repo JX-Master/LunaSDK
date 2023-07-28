@@ -36,6 +36,7 @@ namespace Luna
 			ComputePipelineStateDesc ps_desc;
 			ps_desc.cs = cs_blob.cspan();
 			ps_desc.pipeline_layout = m_skybox_pass_playout;
+            ps_desc.num_threads_per_group = {8, 8, 1};
 			luset(m_skybox_pass_pso, device->new_compute_pipeline_state(ps_desc));
         }
         lucatchret;
@@ -100,7 +101,7 @@ namespace Luna
                     WriteDescriptorSet::read_texture_view(1, TextureViewDesc::tex2d(skybox)),
                     WriteDescriptorSet::read_texture_view(2, TextureViewDesc::tex2d(depth_tex)),
                     WriteDescriptorSet::read_write_texture_view(3, TextureViewDesc::tex2d(output_tex)),
-                    WriteDescriptorSet::sampler(4, SamplerDesc(Filter::min_mag_mip_linear, TextureAddressMode::repeat, TextureAddressMode::repeat, TextureAddressMode::repeat))
+                    WriteDescriptorSet::sampler(4, SamplerDesc(Filter::linear, Filter::linear, Filter::linear, TextureAddressMode::repeat, TextureAddressMode::repeat, TextureAddressMode::repeat))
                     });
                 auto ds = m_ds.get();
                 cmdbuf->set_compute_descriptor_sets(0, {&ds, 1});

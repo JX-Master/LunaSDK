@@ -712,8 +712,7 @@ float4 main(PS_INPUT input) : SV_Target
                 lulet(pso, get_pso(rt_desc.format));
                 cmd_buffer->set_graphics_pipeline_state(pso);
                 cmd_buffer->set_graphics_pipeline_layout(g_playout);
-                const f32 blend_factor[4] = { 0.f, 0.f, 0.f, 0.f };
-                cmd_buffer->set_blend_factor(blend_factor);
+                cmd_buffer->set_blend_factor({ 0.f, 0.f, 0.f, 0.f });
 
                 // Render command lists.
                 i32 vtx_offset = 0;
@@ -754,7 +753,7 @@ float4 main(PS_INPUT input) : SV_Target
                             luexp(vs->update_descriptors({
                                 WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(g_cb)),
                                 WriteDescriptorSet::read_texture_view(1, TextureViewDesc::tex2d((ITexture*)pcmd->TextureId)),
-                                WriteDescriptorSet::sampler(2, SamplerDesc(Filter::min_mag_mip_linear, TextureAddressMode::clamp, TextureAddressMode::clamp, TextureAddressMode::clamp))
+                                WriteDescriptorSet::sampler(2, SamplerDesc(Filter::linear, Filter::linear, Filter::linear, TextureAddressMode::clamp, TextureAddressMode::clamp, TextureAddressMode::clamp))
                                 }));
                             cmd_buffer->set_graphics_descriptor_sets(0, { &vs, 1 });
                             cmd_buffer->set_scissor_rect(r);
