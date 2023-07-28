@@ -33,6 +33,8 @@ namespace Luna
             IndexBufferView m_index_buffer_view;
             MTL::PrimitiveType m_primitive_type;
 
+            UInt3U m_num_threads_per_group;
+
             RV init(u32 command_queue_index);
 
             void assert_graphcis_context()
@@ -86,10 +88,7 @@ namespace Luna
 			virtual void begin_compute_pass() override;
 			virtual void set_compute_pipeline_layout(IPipelineLayout* pipeline_layout) override;
 			virtual void set_compute_pipeline_state(IPipelineState* pso) override;
-			virtual void set_compute_descriptor_set(u32 start_index, IDescriptorSet* descriptor_set) override
-			{
-				set_compute_descriptor_sets(start_index, { &descriptor_set, 1 });
-			}
+			virtual void set_compute_descriptor_set(u32 index, IDescriptorSet* descriptor_set) override;
 			virtual void set_compute_descriptor_sets(u32 start_index, Span<IDescriptorSet*> descriptor_sets) override;
 			virtual void dispatch(u32 thread_group_count_x, u32 thread_group_count_y, u32 thread_group_count_z) override;
 			virtual void end_compute_pass() override;

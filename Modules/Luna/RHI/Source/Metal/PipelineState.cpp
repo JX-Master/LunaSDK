@@ -206,6 +206,7 @@ namespace Luna
                 NS::String* err_desc = err->description();
                 return set_error(BasicError::bad_platform_call(), "%s", err_desc->cString(NS::UTF8StringEncoding));
             }
+            m_num_threads_per_group = desc.num_threads_per_group;
             return ok;
         }
     }

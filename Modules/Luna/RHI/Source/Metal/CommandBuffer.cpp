@@ -276,5 +276,125 @@ namespace Luna
             m_render->drawIndexedPrimitives(m_primitive_type, (NS::UInteger)index_count_per_instance, type, 
                 buffer->m_buffer.get(), (NS::UInteger)start_index_location, instance_count, (NS::Integer)base_vertex_location, start_instance_location);
         }
+        void CommandBuffer::end_render_pass()
+        {
+            assert_graphcis_context();
+            m_render->endEncoding();
+            m_render.reset();
+        }
+        void CommandBuffer::begin_compute_pass()
+        {
+            lucheck_msg(!m_render && !m_compute && !m_blit, "begin_compute_pass can only be called when no other pass is open.");
+            AutoreleasePool pool;
+            m_compute = retain(m_buffer->computeCommandEncoder(MTL::DispatchTypeConcurrent));
+        }
+        void CommandBuffer::set_compute_pipeline_layout(IPipelineLayout* pipeline_layout)
+        {
+            assert_compute_context();
+        }
+        void CommandBuffer::set_compute_pipeline_state(IPipelineState* pso)
+        {
+            assert_compute_context();
+            ComputePipelineState* p = cast_object<ComputePipelineState>(pso->get_object());
+            m_compute->setComputePipelineState(p->m_pso.get());
+            m_num_threads_per_group = p->m_num_threads_per_group;
+        }
+        void CommandBuffer::set_compute_descriptor_set(u32 index, IDescriptorSet* descriptor_set)
+        {
+            assert_compute_context();
+            DescriptorSet* set = cast_object<DescriptorSet>(descriptor_set->get_object());
+            m_compute->setBuffer(set->m_buffer.get(), 0, index);
+        }
+        void CommandBuffer::dispatch(u32 thread_group_count_x, u32 thread_group_count_y, u32 thread_group_count_z)
+        {
+            assert_compute_context();
+            m_compute->dispatchThreadgroups(MTL::Size::Make(thread_group_count_x, thread_group_count_y, thread_group_count_z), 
+                MTL::Size::Make(m_num_threads_per_group.x, m_num_threads_per_group.y, m_num_threads_per_group.z));
+        }
+        void CommandBuffer::end_compute_pass()
+        {
+            assert_compute_context();
+            m_compute->endEncoding();
+            m_compute.reset();
+        }
+        void CommandBuffer::begin_copy_pass()
+        {
+            lucheck_msg(!m_render && !m_compute && !m_blit, "begin_copy_pass can only be called when no other pass is open.");
+            AutoreleasePool pool;
+            m_blit = retain(m_buffer->blitCommandEncoder());
+        }
+        void CommandBuffer::copy_resource(IResource* dst, IResource* src)
+        {
+            assert_copy_context();
+            {
+                Buffer* d = cast_object<Buffer>(dst->get_object());
+                Buffer* s = cast_object<Buffer>(src->get_object());
+                if(d && s)
+                {
+                    m_blit->copyFromBuffer(s->m_buffer.get(), 0, d->m_buffer.get(), 0, min(d->m_desc.size, s->m_desc.size));
+                    return;
+                }
+            }
+            {
+                Texture* d = cast_object<Texture>(dst->get_object());
+                Texture* s = cast_object<Texture>(src->get_object());
+                if(d && s)
+                {
+                    m_blit->copyFromTexture(s->m_texture.get(), d->m_texture.get());
+                }
+            }
+        }
+        void CommandBuffer::copy_buffer(
+			IBuffer* dst, u64 dst_offset,
+			IBuffer* src, u64 src_offset,
+			u64 copy_bytes)
+        {
+            assert_copy_context();
+            Buffer* d = cast_object<Buffer>(dst->get_object());
+            Buffer* s = cast_object<Buffer>(src->get_object());
+            m_blit->copyFromBuffer(s->m_buffer.get(), src_offset, d->m_buffer.get(), dst_offset, copy_bytes);
+        }
+        void CommandBuffer::copy_texture(
+			ITexture* dst, SubresourceIndex dst_subresource, u32 dst_x, u32 dst_y, u32 dst_z,
+			ITexture* src, SubresourceIndex src_subresource, u32 src_x, u32 src_y, u32 src_z,
+			u32 copy_width, u32 copy_height, u32 copy_depth)
+        {
+            assert_copy_context();
+            Texture* d = cast_object<Texture>(dst->get_object());
+            Texture* s = cast_object<Texture>(src->get_object());
+            m_blit->copyFromTexture(s->m_texture.get(), src_subresource.array_slice, src_subresource.mip_slice, 
+                MTL::Origin::Make(src_x, src_y, src_z), MTL::Size::Make(copy_width, copy_height, copy_depth),
+                d->m_texture.get(), dst_subresource.array_slice, dst_subresource.mip_slice, MTL::Origin::Make(dst_x, dst_y, dst_z));
+        }
+        void CommandBuffer::copy_buffer_to_texture(
+			ITexture* dst, SubresourceIndex dst_subresource, u32 dst_x, u32 dst_y, u32 dst_z,
+			IBuffer* src, u64 src_offset, u32 src_row_pitch, u32 src_slice_pitch,
+			u32 copy_width, u32 copy_height, u32 copy_depth)
+        {
+            assert_copy_context();
+            Texture* d = cast_object<Texture>(dst->get_object());
+            Buffer* s = cast_object<Buffer>(src->get_object());
+            m_blit->copyFromBuffer(s->m_buffer.get(), src_offset, src_row_pitch, src_slice_pitch, 
+                MTL::Size::Make(copy_width, copy_height, copy_depth), 
+                d->m_texture.get(), dst_subresource.array_slice, dst_subresource.mip_slice, MTL::Origin::Make(dst_x, dst_y, dst_z));
+        }
+        void CommandBuffer::copy_texture_to_buffer(
+			IBuffer* dst, u64 dst_offset, u32 dst_row_pitch, u32 dst_slice_pitch,
+			ITexture* src, SubresourceIndex src_subresource, u32 src_x, u32 src_y, u32 src_z,
+			u32 copy_width, u32 copy_height, u32 copy_depth)
+        {
+            assert_copy_context();
+            Buffer* d = cast_object<Buffer>(dst->get_object());
+            Texture* s = cast_object<Texture>(src->get_object());
+            m_blit->copyFromTexture(s->m_texture.get(), src_subresource.array_slice, src_subresource.mip_slice, MTL::Origin::Make(src_x, src_y, src_z),
+                MTL::Size::Make(copy_width, copy_height, copy_depth), d->m_buffer.get(), dst_offset, dst_row_pitch, dst_slice_pitch);
+        }
+        void CommandBuffer::end_copy_pass()
+        {
+            assert_copy_context();
+            m_blit->endEncoding();
+            m_blit.reset();
+        }
+        
     }
 }

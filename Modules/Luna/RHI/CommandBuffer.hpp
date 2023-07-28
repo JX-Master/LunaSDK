@@ -419,7 +419,7 @@ namespace Luna
 			virtual void set_graphics_descriptor_set(u32 index, IDescriptorSet* descriptor_set) = 0;
 
 			//! Sets descriptor sets to be used by the graphic pipeline.
-			//! This must be called after `set_pipeline_state` and `set_graphics_pipeline_layout`.
+			//! This must be called after `set_graphics_pipeline_state` and `set_graphics_pipeline_layout`.
 			virtual void set_graphics_descriptor_sets(u32 start_index, Span<IDescriptorSet*> descriptor_sets) = 0;
 
 			//! Bind one viewport to the rasterizer stage of the pipeline.
@@ -460,16 +460,6 @@ namespace Luna
 			virtual void draw_indexed_instanced(u32 index_count_per_instance, u32 instance_count, u32 start_index_location,
 				i32 base_vertex_location, u32 start_instance_location) = 0;
 
-			//! Preforms one indirect draw.
-			//virtual void draw_indexed_indirect(IResource* buffer, usize argment_offset, u32 draw_count, u32 stride) = 0;
-
-			//! Clears the depth stencil view bound to the current render pass.
-			virtual void clear_depth_stencil_attachment(ClearFlag clear_flags, f32 depth, u8 stencil, Span<const RectI> rects) = 0;
-
-			//! Clears the render target view bound to the current render pass.
-			//! @param[in] index The index of the render target view to clear in the frame buffers.
-			virtual void clear_color_attachment(u32 index, const Float4U& color_rgba, Span<const RectI> rects) = 0;
-
 			//! Finishes the current render pass.
 			virtual void end_render_pass() = 0;
 
@@ -490,10 +480,10 @@ namespace Luna
 
 			//! Sets the descriptor set to be used by the compute pipeline.
 			//! This behaves the same as calling `set_compute_descriptor_sets` with only one element.
-			virtual void set_compute_descriptor_set(u32 start_index, IDescriptorSet* descriptor_set) = 0;
+			virtual void set_compute_descriptor_set(u32 index, IDescriptorSet* descriptor_set) = 0;
 
 			//! Sets descriptor sets to be used by the compute pipeline.
-			//! This must be called after `set_pipeline_state`.
+			//! This must be called after `set_compute_pipeline_state` and `set_compute_pipeline_layout`.
 			virtual void set_compute_descriptor_sets(u32 start_index, Span<IDescriptorSet*> descriptor_sets) = 0;
 
 			//! Executes a command list from a thread group.

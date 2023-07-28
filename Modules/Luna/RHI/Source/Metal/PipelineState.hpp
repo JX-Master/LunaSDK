@@ -38,6 +38,7 @@ namespace Luna
 
             Ref<Device> m_device;
             NSPtr<MTL::ComputePipelineState> m_pso;
+            UInt3U m_num_threads_per_group;
 
             RV init(const ComputePipelineStateDesc& desc);
 

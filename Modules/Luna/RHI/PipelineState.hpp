@@ -19,6 +19,7 @@ namespace Luna
 		{
 			IPipelineLayout* pipeline_layout = nullptr;
 			Span<const byte_t> cs;
+			UInt3U num_threads_per_group;
 		};
 
 		enum class InputRate : u8
