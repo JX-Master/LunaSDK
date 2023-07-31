@@ -8,15 +8,17 @@
 * @date 2022/10/15
 */
 #pragma once
-#include <dxc/dxcapi.h>
 #ifdef LUNA_PLATFORM_WINDOWS
 #include <dxc/Support/WinAdapter.h>
 #include <dxc/Support/WinIncludes.h>
+#include <dxc/dxcapi.h>
 #else
+#include <dxc/dxcapi.h>
 #include <dxc/WinAdapter.h>
 #endif
 #include <Luna/Runtime/TSAssert.hpp>
 #include "../ShaderCompiler.hpp"
+#include <string>
 
 namespace Luna
 {
@@ -105,6 +107,9 @@ namespace Luna
 			bool m_debug;
 			bool m_skip_validation;
 
+			// MSL specific.
+			MSLPlatform m_msl_platform;
+
 			// Context.
 			ComPtr<IDxcCompiler3> m_dxc_compiler;
 			ComPtr<IDxcUtils> m_dxc_utils;
@@ -113,6 +118,7 @@ namespace Luna
 			// Compiled data.
 			ComPtr<IDxcResult> m_dxc_result;
 			ComPtr<IDxcBlob> m_dxc_blob;
+			std::string m_spirv_cross_compiled_data;
 			// Pointer to the final output data.
 			const byte_t* m_out_data;
 			usize m_out_size;
@@ -126,6 +132,7 @@ namespace Luna
 			{
 				m_dxc_result.reset();
 				m_dxc_blob.reset();
+				m_spirv_cross_compiled_data.clear();
 				m_out_data = nullptr;
 				m_out_size = 0;
 			}
@@ -148,6 +155,7 @@ namespace Luna
 				m_matrix_pack_mode = MatrixPackMode::dont_care;
 				m_debug = false;
 				m_skip_validation = false;
+				m_msl_platform = MSLPlatform::macos;
 
 				clear_output();
 			}
@@ -165,6 +173,7 @@ namespace Luna
 			virtual Vector<Path>& get_include_paths() override { return m_include_paths; }
 			virtual HashMap<Name, Name>& get_definitions() override { return m_definitions; }
 			virtual Variant& get_additional_arguments() override { return m_additional_arguments; }
+			virtual void set_msl_platform(MSLPlatform platform) override { m_msl_platform = platform; }
 			RV compile_none();
 			RV dxc_compile(DxcTargetType output_type);
 			RV spirv_compile(SpirvOutputType output_type);

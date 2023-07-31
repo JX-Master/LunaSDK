@@ -248,8 +248,19 @@ namespace Luna
 					spirv_cross::CompilerMSL msl((const uint32_t*)m_out_data, m_out_size / 4);
 					auto options = msl.get_msl_options();
 					options.argument_buffers = true;
-					options.argument_buffers_tier = spirv_cross::CompilerMSL::Options::ArgumentBuffersTier::Tier2;
-					msl.compile();
+					switch (m_msl_platform)
+					{
+					case MSLPlatform::macos:
+						options.platform = spirv_cross::CompilerMSL::Options::Platform::macOS;
+						break;
+					case MSLPlatform::ios:
+						options.platform = spirv_cross::CompilerMSL::Options::Platform::iOS;
+						break;
+					}
+					msl.set_msl_options(options);
+					m_spirv_cross_compiled_data = msl.compile();
+					m_out_data = (const byte_t*)m_spirv_cross_compiled_data.data();
+					m_out_size = m_spirv_cross_compiled_data.size();
 				}
 			}
 			lucatchret;

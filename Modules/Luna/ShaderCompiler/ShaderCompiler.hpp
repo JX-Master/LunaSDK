@@ -56,6 +56,12 @@ namespace Luna
 			full
 		};
 
+		enum class MSLPlatform : u8
+		{
+			macos = 0,
+			ios = 1
+		};
+
 		//! The compiler that compiles one shader source code into one target form.
 		struct ICompiler : virtual Interface
 		{
@@ -77,6 +83,7 @@ namespace Luna
 			//! * include paths: <Null>
 			//! * definitions : <Null>
 			//! * additional arguments : <Null>
+			//! * MSL platform: macos
 			virtual void reset() = 0;
 
 			//! Sets the source code of the compiler to be compiled.
@@ -128,6 +135,11 @@ namespace Luna
 			//! Gets additional arguments for the compilation.
 			virtual Variant& get_additional_arguments() = 0;
 
+			// MSL target specifc settings.
+
+			//! Sets the target platform for generated MSL output.
+			virtual void set_msl_platform(MSLPlatform platform) = 0;
+
 			//! Triggers compile for the source code.
 			virtual RV compile() = 0;
 
@@ -136,6 +148,8 @@ namespace Luna
 			//! The blob object is valid until `reset` is called, or until another `compile` is called.
 			//! The returned span is empty if `compile` throws errors, or if no valid compiled data exists in the compiler.
 			virtual Span<const byte_t> get_output() = 0;
+
+
 		};
 
 		LUNA_SHADER_COMPILER_API Ref<ICompiler> new_compiler();
