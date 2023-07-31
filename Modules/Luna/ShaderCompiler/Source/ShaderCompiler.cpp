@@ -21,6 +21,7 @@
 #include <Luna/Runtime/HashSet.hpp>
 #include <Luna/Runtime/Module.hpp>
 #include <Luna/Runtime/File.hpp>
+#include <spirv_cross/spirv_msl.hpp>
 
 namespace Luna
 {
@@ -50,7 +51,7 @@ namespace Luna
 		public:
 			HashSet<Path> m_included_files;
 			Compiler* m_compiler;
-			HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, _COM_Outptr_ void __RPC_FAR* __RPC_FAR* ppvObject) override
+			HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void **ppvObject) override
 			{
 				return m_compiler->m_default_include_handler->QueryInterface(riid, ppvObject);
 			}
@@ -65,16 +66,16 @@ namespace Luna
 					{
 						lulet(f, open_file(path.encode().c_str(), FileOpenFlag::read, FileCreationMode::open_existing));
 						lulet(data, load_file_data(f));
-						m_compiler->m_dxc_utils->CreateBlob(data.data(), (UINT32)data.size(), CP_UTF8, pEncoding.GetAddressOf());
-						*ppIncludeSource = pEncoding.Detach();
+						m_compiler->m_dxc_utils->CreateBlob(data.data(), (UINT32)data.size(), CP_UTF8, pEncoding.get_address_of());
+						*ppIncludeSource = pEncoding.detach();
 						m_included_files.insert(path);
 					}
 					else
 					{
 						// Return empty string blob if this file has been included before
 						static const char nullStr[] = " ";
-						m_compiler->m_dxc_utils->CreateBlob(nullStr, 2, CP_UTF8, pEncoding.GetAddressOf());
-						*ppIncludeSource = pEncoding.Detach();
+						m_compiler->m_dxc_utils->CreateBlob(nullStr, 2, CP_UTF8, pEncoding.get_address_of());
+						*ppIncludeSource = pEncoding.detach();
 					}
 				}
 				lucatchret;
@@ -241,8 +242,15 @@ namespace Luna
 		{
 			lutry
 			{
-				//luexp(dxc_compile(DxcTargetType::spir_v));
-				return BasicError::not_supported();
+				luexp(dxc_compile(DxcTargetType::spir_v));
+				if(output_type == SpirvOutputType::msl)
+				{
+					spirv_cross::CompilerMSL msl((const uint32_t*)m_out_data, m_out_size / 4);
+					auto options = msl.get_msl_options();
+					options.argument_buffers = true;
+					options.argument_buffers_tier = spirv_cross::CompilerMSL::Options::ArgumentBuffersTier::Tier2;
+					msl.compile();
+				}
 			}
 			lucatchret;
 			return ok;
@@ -259,10 +267,6 @@ namespace Luna
 				return dxc_compile(DxcTargetType::dxil);
 			case TargetFormat::spir_v:
 				return dxc_compile(DxcTargetType::spir_v);
-			case TargetFormat::glsl:
-				return spirv_compile(SpirvOutputType::glsl);
-			case TargetFormat::essl:
-				return spirv_compile(SpirvOutputType::essl);
 			case TargetFormat::msl:
 				return spirv_compile(SpirvOutputType::msl);
 			default:

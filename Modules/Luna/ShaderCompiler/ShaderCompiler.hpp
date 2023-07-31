@@ -31,12 +31,8 @@ namespace Luna
 			dxil,
 			//! Outputs SPIR-V for Vulkan and OpenGL.
 			spir_v,
-			//! Outputs OpenGL Shading Language.
-			glsl,
-			//! Outputs OpenGL ES Shading Language.
-			essl,
 			//! Outputs Metal Shading Lauguage.
-			msl,
+			msl
 		};
 
 		enum class MatrixPackMode : u8
