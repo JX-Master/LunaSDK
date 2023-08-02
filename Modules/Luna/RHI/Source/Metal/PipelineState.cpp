@@ -144,6 +144,7 @@ namespace Luna
                 case CullMode::back: m_cull_mode = MTL::CullModeBack; break;
             }
             m_primitive_type = encode_primitive_type(desc.primitive_topology);
+            m_front_counter_clockwise = desc.rasterizer_state.front_counter_clockwise;
             // Depth stencil state.
             {
                 NSPtr<MTL::DepthStencilDescriptor> ds_desc = box(MTL::DepthStencilDescriptor::alloc()->init());

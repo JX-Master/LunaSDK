@@ -35,6 +35,8 @@ namespace Luna
 
             UInt3U m_num_threads_per_group;
 
+			u32 m_occlusion_query_write_index;
+
             RV init(u32 command_queue_index);
 
             void assert_graphcis_context()
@@ -82,8 +84,6 @@ namespace Luna
 				u32 start_instance_location) override;
 			virtual void draw_indexed_instanced(u32 index_count_per_instance, u32 instance_count, u32 start_index_location,
 				i32 base_vertex_location, u32 start_instance_location) override;
-			virtual void clear_depth_stencil_attachment(ClearFlag clear_flags, f32 depth, u8 stencil, Span<const RectI> rects) override;
-			virtual void clear_color_attachment(u32 index, const Float4U& color_rgba, Span<const RectI> rects) override;
 			virtual void end_render_pass() override;
 			virtual void begin_compute_pass() override;
 			virtual void set_compute_pipeline_layout(IPipelineLayout* pipeline_layout) override;
@@ -115,8 +115,8 @@ namespace Luna
 			virtual void write_timestamp(IQueryHeap* heap, u32 index) override;
 			virtual void begin_pipeline_statistics_query(IQueryHeap* heap, u32 index) override;
 			virtual void end_pipeline_statistics_query(IQueryHeap* heap, u32 index) override;
-			virtual void begin_occlusion_query(IQueryHeap* heap, u32 index) override;
-			virtual void end_occlusion_query(IQueryHeap* heap, u32 index) override;
+			virtual void begin_occlusion_query(OcclusionQueryMode mode) override;
+			virtual void end_occlusion_query() override;
 			virtual RV submit(Span<IFence*> wait_fences, Span<IFence*> signal_fences, bool allow_host_waiting) override;
         };
     }

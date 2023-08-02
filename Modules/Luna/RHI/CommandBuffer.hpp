@@ -274,6 +274,16 @@ namespace Luna
 				mip_slice(mip_slice),
 				array_slice(array_slice) {}
 		};
+		enum class OcclusionQueryMode : u8
+		{
+			//! Begins a binary occlusion query. In this query mode, the stored value will be 0 if no pixel passes the depth/stencil test, 
+			//! and will be non-zero if any pixel passes the depth/stencil test. Note that the stored value is platform-dependent if it is not 0, 
+			//! and may not always be 1.
+			binary = 0,
+			//! Begins a counting occlusion query. In this query mode, the exact number of pixels that pass the depth/stencil test will
+			//! be stored.
+			counting = 1,
+		};
 		//! Parameters passed to `begin_render_pass`.
 		struct RenderPassDesc
 		{
@@ -285,8 +295,8 @@ namespace Luna
 			DepthStencilAttachment depth_stencil_attachment;
 			//! The occlustion query heap that accepts the query data if not `nullptr`.
 			IQueryHeap* occlusion_query_heap = nullptr;
-			//! The occlusion write index if `occlusion_query_heap` is not `nullptr`.
-			u32 occlusion_write_index = 0;
+			//! The occlusion query writing index.
+			u32 occlusion_query_write_index = 0;
 			//! The number of array slices that will be bound for all attachments.
 			u32 array_size = 1;
 			//! The sample count of the render pass.
@@ -546,6 +556,10 @@ namespace Luna
 			virtual void begin_pipeline_statistics_query(IQueryHeap* heap, u32 index) = 0;
 
 			virtual void end_pipeline_statistics_query(IQueryHeap* heap, u32 index) = 0;
+
+			virtual void begin_occlusion_query(OcclusionQueryMode mode) = 0;
+
+			virtual void end_occlusion_query() = 0;
 
 			//! Submits the recorded content in this command buffer to the attached command queue.
 			//! The command buffer can only be submitted once, and the only operation after the submit is to 

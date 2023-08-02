@@ -24,6 +24,7 @@ namespace Luna
             NSPtr<MTL::DepthStencilState> m_dss;
             MTL::CullMode m_cull_mode = MTL::CullModeNone;
             MTL::PrimitiveType m_primitive_type = MTL::PrimitiveTypeTriangle;
+            bool m_front_counter_clockwise = false;
 
             RV init(const GraphicsPipelineStateDesc& desc);
 

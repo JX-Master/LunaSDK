@@ -11,6 +11,7 @@
 #include "Resource.hpp"
 #include "PipelineState.hpp"
 #include "DescriptorSet.hpp"
+#include "QueryHeap.hpp"
 
 namespace Luna
 {
@@ -123,7 +124,9 @@ namespace Luna
             }
             if(desc.occlusion_query_heap)
             {
-                
+                BufferQueryHeap* query_heap = cast_object<BufferQueryHeap>(desc.occlusion_query_heap->get_object());
+                d->setVisibilityResultBuffer(query_heap->m_buffer.get());
+                m_occlusion_query_write_index = desc.occlusion_query_write_index;
             }
             d->setRenderTargetWidth(width);
             d->setRenderTargetHeight(height);
@@ -141,6 +144,7 @@ namespace Luna
             m_render->setRenderPipelineState(p->m_pso.get());
             m_render->setCullMode(p->m_cull_mode);
             m_render->setDepthStencilState(p->m_dss.get());
+            m_render->setFrontFacingWinding(p->m_front_counter_clockwise ? MTL::WindingCounterClockwise : MTL::WindingClockwise);
             m_primitive_type = p->m_primitive_type;
         }
         void CommandBuffer::set_vertex_buffers(u32 start_slot, Span<const VertexBufferView> views)
@@ -423,8 +427,91 @@ namespace Luna
         }
         void CommandBuffer::write_timestamp(IQueryHeap* heap, u32 index)
         {
-
+            CounterSampleQueryHeap* sample_heap = cast_object<CounterSampleQueryHeap>(heap->get_object());
+            lucheck(sample_heap && sample_heap->m_desc.type == QueryType::timestamp);
+            if(m_render)
+            {
+                m_render->sampleCountersInBuffer(sample_heap->m_buffer.get(), index, true);
+            }
+            else if(m_compute)
+            {
+                m_compute->sampleCountersInBuffer(sample_heap->m_buffer.get(), index, true);
+            }
+            else if(m_blit)
+            {
+                m_blit->sampleCountersInBuffer(sample_heap->m_buffer.get(), index, true);
+            }
+            else
+            {
+                begin_copy_pass();
+                m_blit->sampleCountersInBuffer(sample_heap->m_buffer.get(), index, true);
+                end_copy_pass();
+            }
         }
-
+        void CommandBuffer::begin_pipeline_statistics_query(IQueryHeap* heap, u32 index) 
+        {
+            CounterSampleQueryHeap* sample_heap = cast_object<CounterSampleQueryHeap>(heap->get_object());
+            lucheck(sample_heap && sample_heap->m_desc.type == QueryType::pipeline_statistics);
+            if(m_render)
+            {
+                m_render->sampleCountersInBuffer(sample_heap->m_buffer.get(), index * 2, true);
+            }
+            else if(m_compute)
+            {
+                m_compute->sampleCountersInBuffer(sample_heap->m_buffer.get(), index * 2, true);
+            }
+            else if(m_blit)
+            {
+                m_blit->sampleCountersInBuffer(sample_heap->m_buffer.get(), index * 2, true);
+            }
+            else
+            {
+                begin_copy_pass();
+                m_blit->sampleCountersInBuffer(sample_heap->m_buffer.get(), index * 2, true);
+                end_copy_pass();
+            }
+        }
+        void CommandBuffer::end_pipeline_statistics_query(IQueryHeap* heap, u32 index)
+        {
+            CounterSampleQueryHeap* sample_heap = cast_object<CounterSampleQueryHeap>(heap->get_object());
+            lucheck(sample_heap && sample_heap->m_desc.type == QueryType::pipeline_statistics);
+            if(m_render)
+            {
+                m_render->sampleCountersInBuffer(sample_heap->m_buffer.get(), index * 2 + 1, true);
+            }
+            else if(m_compute)
+            {
+                m_compute->sampleCountersInBuffer(sample_heap->m_buffer.get(), index * 2 + 1, true);
+            }
+            else if(m_blit)
+            {
+                m_blit->sampleCountersInBuffer(sample_heap->m_buffer.get(), index * 2 + 1, true);
+            }
+            else
+            {
+                begin_copy_pass();
+                m_blit->sampleCountersInBuffer(sample_heap->m_buffer.get(), index * 2 + 1, true);
+                end_copy_pass();
+            }
+        }
+        void CommandBuffer::begin_occlusion_query(OcclusionQueryMode mode)
+        {
+            assert_graphcis_context();
+            MTL::VisibilityResultMode m;
+            switch(mode)
+            {
+                case OcclusionQueryMode::binary: m = MTL::VisibilityResultModeBoolean; break;
+                case OcclusionQueryMode::counting: m = MTL::VisibilityResultModeCounting; break;
+            }
+            m_render->setVisibilityResultMode(m, m_occlusion_query_write_index * 8);
+        }
+        void CommandBuffer::end_occlusion_query()
+        {
+            m_render->setVisibilityResultMode(MTL::VisibilityResultModeDisabled, m_occlusion_query_write_index * 8);
+        }
+        RV CommandBuffer::submit(Span<IFence*> wait_fences, Span<IFence*> signal_fences, bool allow_host_waiting)
+        {
+            
+        }
     }
 }
