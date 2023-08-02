@@ -283,6 +283,10 @@ namespace Luna
 			ResolveAttachment resolve_attachments[8];
 			//! The depth stencil attachment to set.
 			DepthStencilAttachment depth_stencil_attachment;
+			//! The occlustion query heap that accepts the query data if not `nullptr`.
+			IQueryHeap* occlusion_query_heap = nullptr;
+			//! The occlusion write index if `occlusion_query_heap` is not `nullptr`.
+			u32 occlusion_write_index = 0;
 			//! The number of array slices that will be bound for all attachments.
 			u32 array_size = 1;
 			//! The sample count of the render pass.
@@ -542,10 +546,6 @@ namespace Luna
 			virtual void begin_pipeline_statistics_query(IQueryHeap* heap, u32 index) = 0;
 
 			virtual void end_pipeline_statistics_query(IQueryHeap* heap, u32 index) = 0;
-
-			virtual void begin_occlusion_query(IQueryHeap* heap, u32 index) = 0;
-
-			virtual void end_occlusion_query(IQueryHeap* heap, u32 index) = 0;
 
 			//! Submits the recorded content in this command buffer to the attached command queue.
 			//! The command buffer can only be submitted once, and the only operation after the submit is to 

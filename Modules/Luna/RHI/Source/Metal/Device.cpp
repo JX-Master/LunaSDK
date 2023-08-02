@@ -14,6 +14,9 @@
 #include "DeviceMemory.hpp"
 #include "Resource.hpp"
 #include "CommandBuffer.hpp"
+#include "PipelineLayout.hpp"
+#include "PipelineState.hpp"
+#include "DescriptorSet.hpp"
 namespace Luna
 {
     namespace RHI
@@ -179,6 +182,71 @@ namespace Luna
             lucatchret;
             return ret;
         }
+        R<Ref<IPipelineLayout>> Device::new_pipeline_layout(const PipelineLayoutDesc& desc)
+        {
+            Ref<IPipelineLayout> ret;
+            lutry
+            {
+                Ref<PipelineLayout> o = new_object<PipelineLayout>();
+                o->m_device = this;
+                luexp(o->init(desc));
+                ret = o;
+            }
+            lucatchret;
+            return ret;
+        }
+        R<Ref<IPipelineState>> Device::new_graphics_pipeline_state(const GraphicsPipelineStateDesc& desc)
+        {
+            Ref<IPipelineState> ret;
+            lutry
+            {
+                Ref<RenderPipelineState> o = new_object<RenderPipelineState>();
+                o->m_device = this;
+                luexp(o->init(desc));
+                ret = o;
+            }
+            lucatchret;
+            return ret;
+        }
+        R<Ref<IPipelineState>> Device::new_compute_pipeline_state(const ComputePipelineStateDesc& desc)
+        {
+            Ref<IPipelineState> ret;
+            lutry
+            {
+                Ref<ComputePipelineState> o = new_object<ComputePipelineState>();
+                o->m_device = this;
+                luexp(o->init(desc));
+                ret = o;
+            }
+            lucatchret;
+            return ret;
+        }
+        R<Ref<IDescriptorSetLayout>> Device::new_descriptor_set_layout(const DescriptorSetLayoutDesc& desc)
+        {
+            Ref<IDescriptorSetLayout> ret;
+            lutry
+            {
+                Ref<DescriptorSetLayout> o = new_object<DescriptorSetLayout>();
+                o->m_device = this;
+                luexp(o->init(desc));
+                ret = o;
+            }
+            lucatchret;
+            return ret;
+        }
+        R<Ref<IDescriptorSet>> Device::new_descriptor_set(const DescriptorSetDesc& desc)
+        {
+            Ref<IDescriptorSet> ret;
+            lutry
+            {
+                Ref<DescriptorSet> o = new_object<DescriptorSet>();
+                o->m_device = this;
+                luexp(o->init(desc));
+                ret = o;
+            }
+            lucatchret;
+            return ret;
+        }
         u32 Device::get_num_command_queues()
         {
             return (u32)m_queues.size();
@@ -199,6 +267,10 @@ namespace Luna
             }
             lucatchret;
             return ret;
+        }
+        R<f64> Device::get_command_queue_timestamp_frequency(u32 command_queue_index)
+        {
+
         }
         LUNA_RHI_API R<Ref<IDevice>> new_device(u32 adapter_index)
         {

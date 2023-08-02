@@ -46,9 +46,19 @@ namespace Luna
 			virtual R<Ref<IDeviceMemory>> allocate_memory(MemoryType memory_type, Span<const BufferDesc> buffers, Span<const TextureDesc> textures) override;
 			virtual R<Ref<IBuffer>> new_aliasing_buffer(IDeviceMemory* device_memory, const BufferDesc& desc) override;
 			virtual R<Ref<ITexture>> new_aliasing_texture(IDeviceMemory* device_memory, const TextureDesc& desc, const ClearValue* optimized_clear_value) override;
+            virtual R<Ref<IPipelineLayout>> new_pipeline_layout(const PipelineLayoutDesc& desc) override;
+            virtual R<Ref<IPipelineState>> new_graphics_pipeline_state(const GraphicsPipelineStateDesc& desc) override;
+            virtual R<Ref<IPipelineState>> new_compute_pipeline_state(const ComputePipelineStateDesc& desc) override;
+            virtual R<Ref<IDescriptorSetLayout>> new_descriptor_set_layout(const DescriptorSetLayoutDesc& desc) override;
+            virtual R<Ref<IDescriptorSet>> new_descriptor_set(const DescriptorSetDesc& desc) override;
             virtual u32 get_num_command_queues() override;
 			virtual CommandQueueDesc get_command_queue_desc(u32 command_queue_index) override;
 			virtual R<Ref<ICommandBuffer>> new_command_buffer(u32 command_queue_index) override;
+
+            virtual R<f64> get_command_queue_timestamp_frequency(u32 command_queue_index) override;
+            virtual R<Ref<IQueryHeap>> new_query_heap(const QueryHeapDesc& desc) override;
+            virtual R<Ref<IFence>> new_fence() override;
+            virtual R<Ref<ISwapChain>> new_swap_chain(u32 command_queue_index, Window::IWindow* window, const SwapChainDesc& desc) override;
         };
 
         extern Ref<IDevice> g_main_device;

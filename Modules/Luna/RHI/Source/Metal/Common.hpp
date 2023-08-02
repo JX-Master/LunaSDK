@@ -287,6 +287,7 @@ namespace Luna
 			{
 				options |= MTL::ResourceCPUCacheModeWriteCombined;
 			}
+			options |= MTL::ResourceHazardTrackingModeTracked;
 			return options;
 		}
 
@@ -364,6 +365,7 @@ namespace Luna
 			ret->setCpuCacheMode(encode_cpu_cache_mode(memory_type));
 			ret->setStorageMode(encode_storage_mode(memory_type));
 			ret->setUsage(encode_texture_usage(desc.usages));
+			ret->setHazardTrackingMode(MTL::HazardTrackingModeTracked);
 			return ret;
 		}
 		inline MTL::CompareFunction encode_compare_function(CompareFunction func)
@@ -526,6 +528,32 @@ namespace Luna
 			}
 			lupanic();
 			return MTL::IndexTypeUInt32;
+		}
+		inline MTL::RenderStages encode_render_stage(BufferStateFlag flags)
+		{
+			MTL::RenderStages r = 0;
+			if(test_flags(flags, BufferStateFlag::shader_read_vs) || test_flags(flags, BufferStateFlag::uniform_buffer_vs))
+			{
+				r |= MTL::RenderStageVertex;
+			}
+			if(test_flags(flags, BufferStateFlag::shader_read_ps) || test_flags(flags, BufferStateFlag::uniform_buffer_ps))
+			{
+				r |= MTL::RenderStageFragment;
+			}
+			return r;
+		}
+		inline MTL::RenderStages encode_render_stage(TextureStateFlag flags)
+		{
+			MTL::RenderStages r = 0;
+			if(test_flags(flags, TextureStateFlag::shader_read_vs))
+			{
+				r |= MTL::RenderStageVertex;
+			}
+			if(test_flags(flags, TextureStateFlag::shader_read_ps))
+			{
+				r |= MTL::RenderStageFragment;
+			}
+			return r;
 		}
     }
 }

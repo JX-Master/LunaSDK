@@ -121,6 +121,10 @@ namespace Luna
             {
                 d->setRenderTargetArrayLength(desc.array_size);
             }
+            if(desc.occlusion_query_heap)
+            {
+                
+            }
             d->setRenderTargetWidth(width);
             d->setRenderTargetHeight(height);
             d->setDefaultRasterSampleCount(desc.sample_count);
@@ -395,6 +399,32 @@ namespace Luna
             m_blit->endEncoding();
             m_blit.reset();
         }
-        
+        void CommandBuffer::resource_barrier(Span<const BufferBarrier> buffer_barriers, Span<const TextureBarrier> texture_barriers)
+        {
+            // if(m_compute)
+            // {
+            //     usize num_resources = buffer_barriers.size() + texture_barriers.size();
+            //     MTL::Resource** resources = (MTL::Resource**)alloca(sizeof(MTL::Resource*) * num_resources);
+            //     usize i = 0;
+            //     for(const BufferBarrier& barrier : buffer_barriers)
+            //     {
+            //         Buffer* res = cast_object<Buffer>(barrier.buffer->get_object());
+            //         resources[i] = res->m_buffer.get();
+            //         ++i;
+            //     }
+            //     for(const TextureBarrier& barrier : texture_barriers)
+            //     {
+            //         Texture* res = cast_object<Texture>(barrier.texture->get_object());
+            //         resources[i] = res->m_texture.get();
+            //         ++i;
+            //     }
+            //     m_compute->memoryBarrier(resources, i);
+            // }
+        }
+        void CommandBuffer::write_timestamp(IQueryHeap* heap, u32 index)
+        {
+
+        }
+
     }
 }
