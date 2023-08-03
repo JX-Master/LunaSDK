@@ -5,13 +5,14 @@
 * 
 * @file CommandBuffer.cpp
 * @author JXMaster
-* @date 2022/7/13
+* @date 2023/7/13
 */
 #include "CommandBuffer.hpp"
 #include "Resource.hpp"
 #include "PipelineState.hpp"
 #include "DescriptorSet.hpp"
 #include "QueryHeap.hpp"
+#include "Fence.hpp"
 
 namespace Luna
 {
@@ -511,7 +512,30 @@ namespace Luna
         }
         RV CommandBuffer::submit(Span<IFence*> wait_fences, Span<IFence*> signal_fences, bool allow_host_waiting)
         {
-            
+            AutoreleasePool pool;
+            if(!wait_fences.empty())
+            {
+                MTL::CommandBuffer* wait_buffer = m_device->m_queues[m_command_queue_index].queue->commandBuffer();
+                MTL::BlitCommandEncoder* encoder = wait_buffer->blitCommandEncoder();
+                for(IFence* fence : wait_fences)
+                {
+                    Fence* f = cast_object<Fence>(fence->get_object());
+                    encoder->waitForFence(f->m_fence.get());
+                }
+                encoder->endEncoding();
+                wait_buffer->commit();
+            }
+            if(!signal_fences.empty())
+            {
+                MTL::BlitCommandEncoder* encoder = m_buffer->blitCommandEncoder();
+                for(IFence* fence : signal_fences)
+                {
+                    Fence* f = cast_object<Fence>(fence->get_object());
+                    encoder->updateFence(f->m_fence.get());
+                }
+                encoder->endEncoding();
+            }
+            m_buffer->commit();
         }
     }
 }

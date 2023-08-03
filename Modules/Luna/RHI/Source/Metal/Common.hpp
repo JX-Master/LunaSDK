@@ -108,81 +108,159 @@ namespace Luna
         {
             switch(f)
             {
-            case Format::unknown: return MTL::PixelFormat::PixelFormatInvalid;
-			case Format::r8_unorm: return MTL::PixelFormat::PixelFormatR8Unorm;
-			case Format::r8_snorm: return MTL::PixelFormat::PixelFormatR8Snorm;
-			case Format::r8_uint: return MTL::PixelFormat::PixelFormatR8Uint;
-			case Format::r8_sint: return MTL::PixelFormat::PixelFormatR8Sint;
+            case Format::unknown: 	return MTL::PixelFormat::PixelFormatInvalid;
+			case Format::r8_unorm: 	return MTL::PixelFormat::PixelFormatR8Unorm;
+			case Format::r8_snorm: 	return MTL::PixelFormat::PixelFormatR8Snorm;
+			case Format::r8_uint: 	return MTL::PixelFormat::PixelFormatR8Uint;
+			case Format::r8_sint: 	return MTL::PixelFormat::PixelFormatR8Sint;
 
 			case Format::r16_unorm: return MTL::PixelFormat::PixelFormatR16Unorm;
 			case Format::r16_snorm: return MTL::PixelFormat::PixelFormatR16Snorm;
-			case Format::r16_uint: return MTL::PixelFormat::PixelFormatR16Uint;
-			case Format::r16_sint: return MTL::PixelFormat::PixelFormatR16Sint;
+			case Format::r16_uint: 	return MTL::PixelFormat::PixelFormatR16Uint;
+			case Format::r16_sint: 	return MTL::PixelFormat::PixelFormatR16Sint;
 			case Format::r16_float: return MTL::PixelFormat::PixelFormatR16Float;
 			case Format::rg8_unorm: return MTL::PixelFormat::PixelFormatRG8Unorm;
 			case Format::rg8_snorm: return MTL::PixelFormat::PixelFormatRG8Snorm;
-			case Format::rg8_uint: return MTL::PixelFormat::PixelFormatRG8Uint;
-			case Format::rg8_sint: return MTL::PixelFormat::PixelFormatRG8Sint;
+			case Format::rg8_uint: 	return MTL::PixelFormat::PixelFormatRG8Uint;
+			case Format::rg8_sint: 	return MTL::PixelFormat::PixelFormatRG8Sint;
 
-			case Format::r32_uint: return MTL::PixelFormat::PixelFormatR32Uint;
-			case Format::r32_sint: return MTL::PixelFormat::PixelFormatR32Sint;
+			case Format::r32_uint: 	return MTL::PixelFormat::PixelFormatR32Uint;
+			case Format::r32_sint: 	return MTL::PixelFormat::PixelFormatR32Sint;
 			case Format::r32_float: return MTL::PixelFormat::PixelFormatR32Float;
 
-			case Format::rg16_unorm: return MTL::PixelFormat::PixelFormatRG16Unorm;
-			case Format::rg16_snorm: return MTL::PixelFormat::PixelFormatRG16Snorm;
-			case Format::rg16_uint: return MTL::PixelFormat::PixelFormatRG16Uint;
-			case Format::rg16_sint: return MTL::PixelFormat::PixelFormatRG16Sint;
-			case Format::rg16_float: return MTL::PixelFormat::PixelFormatRG16Float;
-			case Format::rgba8_unorm: return MTL::PixelFormat::PixelFormatRGBA8Unorm;
-			case Format::rgba8_unorm_srgb: return MTL::PixelFormat::PixelFormatRGBA8Unorm_sRGB;
-			case Format::rgba8_snorm: return MTL::PixelFormat::PixelFormatRGBA8Snorm;
-			case Format::rgba8_uint: return MTL::PixelFormat::PixelFormatRGBA8Uint;
-			case Format::rgba8_sint: return MTL::PixelFormat::PixelFormatRGBA8Sint;
-			case Format::bgra8_unorm: return MTL::PixelFormat::PixelFormatBGRA8Unorm;
-			case Format::bgra8_unorm_srgb: return MTL::PixelFormat::PixelFormatBGRA8Unorm_sRGB;
-			case Format::rg32_uint: return MTL::PixelFormat::PixelFormatRG32Uint;
-			case Format::rg32_sint: return MTL::PixelFormat::PixelFormatRG32Sint;
-			case Format::rg32_float: return MTL::PixelFormat::PixelFormatRG32Float;
-			case Format::rgba16_unorm: return MTL::PixelFormat::PixelFormatRGBA16Unorm;
-			case Format::rgba16_snorm: return MTL::PixelFormat::PixelFormatRGBA16Snorm;
-			case Format::rgba16_uint: return MTL::PixelFormat::PixelFormatRGBA16Uint;
-			case Format::rgba16_sint: return MTL::PixelFormat::PixelFormatRGBA16Sint;
-			case Format::rgba16_float: return MTL::PixelFormat::PixelFormatRGBA16Float;
-			case Format::rgba32_uint: return MTL::PixelFormat::PixelFormatRGBA32Uint;
-			case Format::rgba32_sint: return MTL::PixelFormat::PixelFormatRGBA32Sint;
-			case Format::rgba32_float: return MTL::PixelFormat::PixelFormatRGBA32Float;
+			case Format::rg16_unorm:		return MTL::PixelFormat::PixelFormatRG16Unorm;
+			case Format::rg16_snorm: 		return MTL::PixelFormat::PixelFormatRG16Snorm;
+			case Format::rg16_uint: 		return MTL::PixelFormat::PixelFormatRG16Uint;
+			case Format::rg16_sint: 		return MTL::PixelFormat::PixelFormatRG16Sint;
+			case Format::rg16_float: 		return MTL::PixelFormat::PixelFormatRG16Float;
+			case Format::rgba8_unorm: 		return MTL::PixelFormat::PixelFormatRGBA8Unorm;
+			case Format::rgba8_unorm_srgb: 	return MTL::PixelFormat::PixelFormatRGBA8Unorm_sRGB;
+			case Format::rgba8_snorm: 		return MTL::PixelFormat::PixelFormatRGBA8Snorm;
+			case Format::rgba8_uint: 		return MTL::PixelFormat::PixelFormatRGBA8Uint;
+			case Format::rgba8_sint: 		return MTL::PixelFormat::PixelFormatRGBA8Sint;
+			case Format::bgra8_unorm: 		return MTL::PixelFormat::PixelFormatBGRA8Unorm;
+			case Format::bgra8_unorm_srgb: 	return MTL::PixelFormat::PixelFormatBGRA8Unorm_sRGB;
+			case Format::rg32_uint: 		return MTL::PixelFormat::PixelFormatRG32Uint;
+			case Format::rg32_sint: 		return MTL::PixelFormat::PixelFormatRG32Sint;
+			case Format::rg32_float: 		return MTL::PixelFormat::PixelFormatRG32Float;
+			case Format::rgba16_unorm: 		return MTL::PixelFormat::PixelFormatRGBA16Unorm;
+			case Format::rgba16_snorm: 		return MTL::PixelFormat::PixelFormatRGBA16Snorm;
+			case Format::rgba16_uint: 		return MTL::PixelFormat::PixelFormatRGBA16Uint;
+			case Format::rgba16_sint: 		return MTL::PixelFormat::PixelFormatRGBA16Sint;
+			case Format::rgba16_float: 		return MTL::PixelFormat::PixelFormatRGBA16Float;
+			case Format::rgba32_uint: 		return MTL::PixelFormat::PixelFormatRGBA32Uint;
+			case Format::rgba32_sint: 		return MTL::PixelFormat::PixelFormatRGBA32Sint;
+			case Format::rgba32_float: 		return MTL::PixelFormat::PixelFormatRGBA32Float;
 
-			case Format::b5g6r5_unorm: return MTL::PixelFormat::PixelFormatB5G6R5Unorm;
-			case Format::bgr5a1_unorm: return MTL::PixelFormat::PixelFormatBGR5A1Unorm;
+			case Format::b5g6r5_unorm: 		return MTL::PixelFormat::PixelFormatB5G6R5Unorm;
+			case Format::bgr5a1_unorm: 		return MTL::PixelFormat::PixelFormatBGR5A1Unorm;
 
-			case Format::rgb10a2_unorm: return MTL::PixelFormat::PixelFormatRGB10A2Unorm;
-			case Format::rgb10a2_uint: return MTL::PixelFormat::PixelFormatRGB10A2Uint;
-			case Format::rg11b10_float: return MTL::PixelFormat::PixelFormatRG11B10Float;
-			case Format::rgb9e5_float: return MTL::PixelFormat::PixelFormatRGB9E5Float;
+			case Format::rgb10a2_unorm: 	return MTL::PixelFormat::PixelFormatRGB10A2Unorm;
+			case Format::rgb10a2_uint: 		return MTL::PixelFormat::PixelFormatRGB10A2Uint;
+			case Format::rg11b10_float: 	return MTL::PixelFormat::PixelFormatRG11B10Float;
+			case Format::rgb9e5_float: 		return MTL::PixelFormat::PixelFormatRGB9E5Float;
 
-			case Format::d16_unorm: return MTL::PixelFormat::PixelFormatDepth16Unorm;
-			case Format::d32_float: return MTL::PixelFormat::PixelFormatDepth32Float;
-			case Format::d24_unorm_s8_uint: return MTL::PixelFormat::PixelFormatDepth24Unorm_Stencil8;
+			case Format::d16_unorm: 			return MTL::PixelFormat::PixelFormatDepth16Unorm;
+			case Format::d32_float: 			return MTL::PixelFormat::PixelFormatDepth32Float;
+			case Format::d24_unorm_s8_uint: 	return MTL::PixelFormat::PixelFormatDepth24Unorm_Stencil8;
 			case Format::d32_float_s8_uint_x24: return MTL::PixelFormat::PixelFormatDepth32Float_Stencil8;
 
-			case Format::bc1_rgba_unorm: return MTL::PixelFormat::PixelFormatBC1_RGBA;
-			case Format::bc1_rgba_unorm_srgb: return MTL::PixelFormat::PixelFormatBC1_RGBA_sRGB;
-			case Format::bc2_rgba_unorm: return MTL::PixelFormat::PixelFormatBC2_RGBA;
-			case Format::bc2_rgba_unorm_srgb: return MTL::PixelFormat::PixelFormatBC2_RGBA_sRGB;
-			case Format::bc3_rgba_unorm: return MTL::PixelFormat::PixelFormatBC3_RGBA;
-			case Format::bc3_rgba_unorm_srgb: return MTL::PixelFormat::PixelFormatBC3_RGBA_sRGB;
-			case Format::bc4_r_unorm: return MTL::PixelFormat::PixelFormatBC4_RUnorm;
-			case Format::bc4_r_snorm: return MTL::PixelFormat::PixelFormatBC4_RSnorm;
-			case Format::bc5_rg_unorm: return MTL::PixelFormat::PixelFormatBC5_RGUnorm;
-			case Format::bc5_rg_snorm: return MTL::PixelFormat::PixelFormatBC5_RGSnorm;
-			case Format::bc6h_rgb_sfloat: return MTL::PixelFormat::PixelFormatBC6H_RGBFloat;
-			case Format::bc6h_rgb_ufloat: return MTL::PixelFormat::PixelFormatBC6H_RGBUfloat;
-			case Format::bc7_rgba_unorm: return MTL::PixelFormat::PixelFormatBC7_RGBAUnorm;
-			case Format::bc7_rgba_unorm_srgb: return MTL::PixelFormat::PixelFormatBC7_RGBAUnorm_sRGB;
+			case Format::bc1_rgba_unorm: 		return MTL::PixelFormat::PixelFormatBC1_RGBA;
+			case Format::bc1_rgba_unorm_srgb: 	return MTL::PixelFormat::PixelFormatBC1_RGBA_sRGB;
+			case Format::bc2_rgba_unorm: 		return MTL::PixelFormat::PixelFormatBC2_RGBA;
+			case Format::bc2_rgba_unorm_srgb: 	return MTL::PixelFormat::PixelFormatBC2_RGBA_sRGB;
+			case Format::bc3_rgba_unorm: 		return MTL::PixelFormat::PixelFormatBC3_RGBA;
+			case Format::bc3_rgba_unorm_srgb: 	return MTL::PixelFormat::PixelFormatBC3_RGBA_sRGB;
+			case Format::bc4_r_unorm: 			return MTL::PixelFormat::PixelFormatBC4_RUnorm;
+			case Format::bc4_r_snorm: 			return MTL::PixelFormat::PixelFormatBC4_RSnorm;
+			case Format::bc5_rg_unorm: 			return MTL::PixelFormat::PixelFormatBC5_RGUnorm;
+			case Format::bc5_rg_snorm: 			return MTL::PixelFormat::PixelFormatBC5_RGSnorm;
+			case Format::bc6h_rgb_sfloat: 		return MTL::PixelFormat::PixelFormatBC6H_RGBFloat;
+			case Format::bc6h_rgb_ufloat: 		return MTL::PixelFormat::PixelFormatBC6H_RGBUfloat;
+			case Format::bc7_rgba_unorm: 		return MTL::PixelFormat::PixelFormatBC7_RGBAUnorm;
+			case Format::bc7_rgba_unorm_srgb: 	return MTL::PixelFormat::PixelFormatBC7_RGBAUnorm_sRGB;
 			default:
 				return MTL::PixelFormat::PixelFormatInvalid;
             }
         }
+		inline Format decode_pixel_format(MTL::PixelFormat format)
+		{
+			switch(format)
+			{
+			case MTL::PixelFormat::PixelFormatInvalid: return Format::unknown;
+			case MTL::PixelFormat::PixelFormatR8Unorm: return Format::r8_unorm;
+			case MTL::PixelFormat::PixelFormatR8Snorm: return Format::r8_snorm;
+			case MTL::PixelFormat::PixelFormatR8Uint: return Format::r8_uint;
+			case MTL::PixelFormat::PixelFormatR8Sint: return Format::r8_sint;
+
+			case MTL::PixelFormat::PixelFormatR16Unorm: return Format::r16_unorm; 	
+			case MTL::PixelFormat::PixelFormatR16Snorm: return Format::r16_snorm; 	
+			case MTL::PixelFormat::PixelFormatR16Uint: return Format::r16_uint; 	
+			case MTL::PixelFormat::PixelFormatR16Sint: return Format::r16_sint; 	
+			case MTL::PixelFormat::PixelFormatR16Float: return Format::r16_float; 	
+			case MTL::PixelFormat::PixelFormatRG8Unorm: return Format::rg8_unorm; 	
+			case MTL::PixelFormat::PixelFormatRG8Snorm: return Format::rg8_snorm; 	
+			case MTL::PixelFormat::PixelFormatRG8Uint: return Format::rg8_uint; 	
+			case MTL::PixelFormat::PixelFormatRG8Sint: return Format::rg8_sint; 	
+
+			case MTL::PixelFormat::PixelFormatR32Uint: return Format::r32_uint;
+			case MTL::PixelFormat::PixelFormatR32Sint: return Format::r32_sint;
+			case MTL::PixelFormat::PixelFormatR32Float: return Format::r32_float;
+
+			case MTL::PixelFormat::PixelFormatRG16Unorm: return Format::rg16_unorm;
+			case MTL::PixelFormat::PixelFormatRG16Snorm: return Format::rg16_snorm;
+			case MTL::PixelFormat::PixelFormatRG16Uint: return Format::rg16_uint;
+			case MTL::PixelFormat::PixelFormatRG16Sint: return Format::rg16_sint;
+			case MTL::PixelFormat::PixelFormatRG16Float: return Format::rg16_float;
+			case MTL::PixelFormat::PixelFormatRGBA8Unorm: return Format::rgba8_unorm;
+			case MTL::PixelFormat::PixelFormatRGBA8Unorm_sRGB: return Format::rgba8_unorm_srgb;
+			case MTL::PixelFormat::PixelFormatRGBA8Snorm: return Format::rgba8_snorm;
+			case MTL::PixelFormat::PixelFormatRGBA8Uint: return Format::rgba8_uint;
+			case MTL::PixelFormat::PixelFormatRGBA8Sint: return Format::rgba8_sint;
+			case MTL::PixelFormat::PixelFormatBGRA8Unorm: return Format::bgra8_unorm;
+			case MTL::PixelFormat::PixelFormatBGRA8Unorm_sRGB: return Format::bgra8_unorm_srgb;
+			case MTL::PixelFormat::PixelFormatRG32Uint: return Format::rg32_uint;
+			case MTL::PixelFormat::PixelFormatRG32Sint: return Format::rg32_sint;
+			case MTL::PixelFormat::PixelFormatRG32Float: return Format::rg32_float;
+			case MTL::PixelFormat::PixelFormatRGBA16Unorm: return Format::rgba16_unorm;
+			case MTL::PixelFormat::PixelFormatRGBA16Snorm: return Format::rgba16_snorm;
+			case MTL::PixelFormat::PixelFormatRGBA16Uint: return Format::rgba16_uint;
+			case MTL::PixelFormat::PixelFormatRGBA16Sint: return Format::rgba16_sint;
+			case MTL::PixelFormat::PixelFormatRGBA16Float: return Format::rgba16_float;
+			case MTL::PixelFormat::PixelFormatRGBA32Uint: return Format::rgba32_uint;
+			case MTL::PixelFormat::PixelFormatRGBA32Sint: return Format::rgba32_sint;
+			case MTL::PixelFormat::PixelFormatRGBA32Float: return Format::rgba32_float;
+
+			case MTL::PixelFormat::PixelFormatB5G6R5Unorm: return Format::b5g6r5_unorm;
+			case MTL::PixelFormat::PixelFormatBGR5A1Unorm: return Format::bgr5a1_unorm;
+
+			case MTL::PixelFormat::PixelFormatRGB10A2Unorm: return Format::rgb10a2_unorm;
+			case MTL::PixelFormat::PixelFormatRGB10A2Uint: return Format::rgb10a2_uint;
+			case MTL::PixelFormat::PixelFormatRG11B10Float: return Format::rg11b10_float;
+			case MTL::PixelFormat::PixelFormatRGB9E5Float: return Format::rgb9e5_float;
+
+			case MTL::PixelFormat::PixelFormatDepth16Unorm: return Format::d16_unorm;
+			case MTL::PixelFormat::PixelFormatDepth32Float: return Format::d32_float;
+			case MTL::PixelFormat::PixelFormatDepth24Unorm_Stencil8: return Format::d24_unorm_s8_uint;
+			case MTL::PixelFormat::PixelFormatDepth32Float_Stencil8: return Format::d32_float_s8_uint_x24;
+
+			case MTL::PixelFormat::PixelFormatBC1_RGBA: return Format::bc1_rgba_unorm;
+			case MTL::PixelFormat::PixelFormatBC1_RGBA_sRGB: return Format::bc1_rgba_unorm_srgb;
+			case MTL::PixelFormat::PixelFormatBC2_RGBA: return Format::bc2_rgba_unorm;
+			case MTL::PixelFormat::PixelFormatBC2_RGBA_sRGB: return Format::bc2_rgba_unorm_srgb;
+			case MTL::PixelFormat::PixelFormatBC3_RGBA: return Format::bc3_rgba_unorm;
+			case MTL::PixelFormat::PixelFormatBC3_RGBA_sRGB: return Format::bc3_rgba_unorm_srgb;
+			case MTL::PixelFormat::PixelFormatBC4_RUnorm: return Format::bc4_r_unorm;
+			case MTL::PixelFormat::PixelFormatBC4_RSnorm: return Format::bc4_r_snorm;
+			case MTL::PixelFormat::PixelFormatBC5_RGUnorm: return Format::bc5_rg_unorm;
+			case MTL::PixelFormat::PixelFormatBC5_RGSnorm: return Format::bc5_rg_snorm;
+			case MTL::PixelFormat::PixelFormatBC6H_RGBFloat: return Format::bc6h_rgb_sfloat;
+			case MTL::PixelFormat::PixelFormatBC6H_RGBUfloat: return Format::bc6h_rgb_ufloat;
+			case MTL::PixelFormat::PixelFormatBC7_RGBAUnorm: return Format::bc7_rgba_unorm;
+			case MTL::PixelFormat::PixelFormatBC7_RGBAUnorm_sRGB: return Format::bc7_rgba_unorm_srgb;
+			default: return Format::unknown;
+			}
+		}
 		inline MTL::TextureType encode_texture_view_type(TextureViewType type, bool multisample)
 		{
 			switch(type)
@@ -306,6 +384,31 @@ namespace Luna
 				test_flags(usages, TextureUsageFlag::depth_stencil_attachment))
 			{
 				ret |= MTL::TextureUsageRenderTarget;
+			}
+			return ret;
+		}
+
+		inline TextureUsageFlag decode_texture_usage(MTL::TextureUsage usages, bool is_depth_stencil_format)
+		{
+			TextureUsageFlag ret = TextureUsageFlag::none;
+			if(usages & MTL::TextureUsageShaderRead)
+			{
+				ret |= TextureUsageFlag::read_texture;
+			}
+			if(usages & MTL::TextureUsageShaderWrite)
+			{
+				ret |= TextureUsageFlag::read_write_texture;
+			}
+			if(usages & MTL::TextureUsageRenderTarget)
+			{
+				if(is_depth_stencil_format)
+				{
+					ret |= TextureUsageFlag::depth_stencil_attachment;
+				}
+				else
+				{
+					ret |= TextureUsageFlag::color_attachment;
+				}
 			}
 			return ret;
 		}

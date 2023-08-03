@@ -65,7 +65,7 @@ namespace Luna
 			//! return the same back buffer until another `present` call is issued. Every `present` call evicts the user access to the 
 			//! current back buffer, and next `get_current_back_buffer` call will wait for another back buffer available for rendering.
 			//! The returned back buffer resource should be released immediately after `present` is called.
-			virtual R<Ref<ITexture>> get_current_back_buffer() = 0;
+			virtual R<ITexture*> get_current_back_buffer() = 0;
 
 			//! Submits the current back buffer to the bounding queue for presenting.
 			//! @remark This function only enqueues the presentation command to the command queue and 

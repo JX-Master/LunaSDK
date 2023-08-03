@@ -5,7 +5,7 @@
 * 
 * @file Device.hpp
 * @author JXMaster
-* @date 2022/7/12
+* @date 2023/7/12
 */
 #pragma once
 #include "Common.hpp"
@@ -28,6 +28,10 @@ namespace Luna
 
             NSPtr<MTL::Device> m_device;
             Vector<CommandQueue> m_queues;
+
+            MTL::Timestamp m_start_cpu_time;
+            MTL::Timestamp m_start_gpu_time;
+            f64 m_timestamp_frequency = 0.0;
 
             RV init();
 
@@ -54,7 +58,6 @@ namespace Luna
             virtual u32 get_num_command_queues() override;
 			virtual CommandQueueDesc get_command_queue_desc(u32 command_queue_index) override;
 			virtual R<Ref<ICommandBuffer>> new_command_buffer(u32 command_queue_index) override;
-
             virtual R<f64> get_command_queue_timestamp_frequency(u32 command_queue_index) override;
             virtual R<Ref<IQueryHeap>> new_query_heap(const QueryHeapDesc& desc) override;
             virtual R<Ref<IFence>> new_fence() override;

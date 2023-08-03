@@ -5,7 +5,7 @@
 * 
 * @file Device.cpp
 * @author JXMaster
-* @date 2022/7/12
+* @date 2023/7/12
 */
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_RHI_API LUNA_EXPORT
@@ -17,6 +17,9 @@
 #include "PipelineLayout.hpp"
 #include "PipelineState.hpp"
 #include "DescriptorSet.hpp"
+#include "QueryHeap.hpp"
+#include "Fence.hpp"
+#include "SwapChain.hpp"
 namespace Luna
 {
     namespace RHI
@@ -32,6 +35,7 @@ namespace Luna
         {
             lutry
             {
+                m_device->sampleTimestamps(&m_start_cpu_time, &m_start_gpu_time);
                 CommandQueueDesc desc;
                 desc.type = CommandQueueType::graphics;
                 desc.flags = CommandQueueFlag::presenting;
@@ -270,7 +274,70 @@ namespace Luna
         }
         R<f64> Device::get_command_queue_timestamp_frequency(u32 command_queue_index)
         {
-
+            if(m_timestamp_frequency == 0.0)
+            {
+                MTL::Timestamp cpu_time;
+                MTL::Timestamp gpu_time;
+                m_device->sampleTimestamps(&cpu_time, &gpu_time);
+                u64 cpu_span = cpu_time - m_start_cpu_time;
+                u64 gpu_span = gpu_time - m_start_gpu_time;
+                f64 ret = 1000000000.0 / (f64)cpu_span * (f64)gpu_span;
+                if(cpu_span >= 1000000000.0)
+                {
+                    m_timestamp_frequency = ret;
+                }
+                return ret;
+            }
+            return m_timestamp_frequency;
+        }
+        R<Ref<IQueryHeap>> Device::new_query_heap(const QueryHeapDesc& desc)
+        {
+            Ref<IQueryHeap> ret;
+            lutry
+            {
+                if(desc.type == QueryType::occlusion)
+                {
+                    Ref<BufferQueryHeap> heap = new_object<BufferQueryHeap>();
+                    heap->m_device = this;
+                    luexp(heap->init(desc));
+                    ret = heap;
+                }
+                else
+                {
+                    Ref<CounterSampleQueryHeap> heap = new_object<CounterSampleQueryHeap>();
+                    heap->m_device = this;
+                    luexp(heap->init(desc));
+                    ret = heap;
+                }
+            }
+            lucatchret;
+            return ret;
+        }
+        R<Ref<IFence>> Device::new_fence()
+        {
+            Ref<IFence> ret;
+            lutry
+            {
+                Ref<Fence> fence = new_object<Fence>();
+                fence->m_device = this;
+                luexp(fence->init());
+                ret = fence;
+            }
+            lucatchret;
+            return ret;
+        }
+        R<Ref<ISwapChain>> Device::new_swap_chain(u32 command_queue_index, Window::IWindow* window, const SwapChainDesc& desc)
+        {
+            Ref<ISwapChain> ret;
+            lutry
+            {
+                Ref<SwapChain> swap_chain = new_object<SwapChain>();
+                swap_chain->m_device = this;
+                luexp(swap_chain->init(command_queue_index, window, desc));
+                ret = swap_chain;
+            }
+            lucatchret;
+            return ret;
         }
         LUNA_RHI_API R<Ref<IDevice>> new_device(u32 adapter_index)
         {
