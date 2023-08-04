@@ -27,8 +27,8 @@ namespace Luna
         RV TextureView::init(const TextureViewDesc& validated_desc)
         {
             Texture* texture = cast_object<Texture>(validated_desc.texture);
-            m_texture = box(texture->m_texture->newTextureView(encode_pixel_format(validated_desc.format, 
-                encode_texture_view_type(validated_desc.type, texture->m_desc.sample_count != 1)), 
+            m_texture = box(texture->m_texture->newTextureView(encode_pixel_format(validated_desc.format), 
+                encode_texture_view_type(validated_desc.type, texture->m_desc.sample_count != 1), 
                 NS::Range(validated_desc.mip_slice, validated_desc.mip_size),
                 NS::Range(validated_desc.array_slice, validated_desc.array_size)));
             if(!m_texture) return BasicError::bad_platform_call();

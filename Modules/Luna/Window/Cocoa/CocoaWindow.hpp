@@ -12,7 +12,7 @@
 
 #include "../Window.hpp"
 
-#include <Cocoa/CocoaWindow.hpp>
+#include <objc/objc.h>
 
 namespace Luna
 {
@@ -22,7 +22,7 @@ namespace Luna
         {
             luiid("{f9ac2644-eb2d-4394-b653-611bed104bb9}");
 
-            virtual NSWindow* get_nswindow() = 0;
+            virtual id get_nswindow() = 0;
         };
     }
 }

@@ -9,6 +9,7 @@
 */
 #pragma once
 #include "Device.hpp"
+#include <Luna/Runtime/Array.hpp>
 namespace Luna
 {
     namespace RHI
@@ -18,6 +19,7 @@ namespace Luna
             lustruct("RHI::DescriptorSetLayout", "{14d4d247-2ff3-4361-bd29-8a6b83241ead}");
             luiimpl();
 
+            Ref<Device> m_device;
             Array<DescriptorSetLayoutBinding> m_bindings;
             DescriptorSetLayoutFlag m_flags;
             // Map from binding number to argument index.

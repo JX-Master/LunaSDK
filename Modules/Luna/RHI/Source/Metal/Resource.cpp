@@ -112,7 +112,7 @@ namespace Luna
 			{
 				if (compare_texture_view_desc(v.first, validated_desc))
 				{
-					return v.second.get();
+					return v.second;
 				}
 			}
 			// Create a new one.

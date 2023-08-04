@@ -26,7 +26,7 @@ namespace Luna
 
             virtual IDevice* get_device() override { return m_device; }
             virtual void set_name(const Name& name) override  { set_object_name(m_buffer.get(), name); }
-
+            virtual QueryHeapDesc get_desc() override { return m_desc; }
             virtual RV get_timestamp_values(u32 index, u32 count, u64* values) override { return BasicError::not_supported(); }
             virtual RV get_occlusion_values(u32 index, u32 count, u64* values) override;
             virtual RV get_pipeline_statistics_values(u32 index, u32 count, PipelineStatistics* values) override { return BasicError::not_supported(); }
@@ -44,7 +44,8 @@ namespace Luna
             RV init(const QueryHeapDesc& desc);
 
             virtual IDevice* get_device() override { return m_device; }
-            virtual void set_name(const Name& name) override  { set_object_name(m_buffer.get(), name); }
+            virtual void set_name(const Name& name) override  { }
+            virtual QueryHeapDesc get_desc() override { return m_desc; }
             virtual RV get_timestamp_values(u32 index, u32 count, u64* values) override;
             virtual RV get_occlusion_values(u32 index, u32 count, u64* values) override { return BasicError::not_supported(); }
             virtual RV get_pipeline_statistics_values(u32 index, u32 count, PipelineStatistics* values) override;

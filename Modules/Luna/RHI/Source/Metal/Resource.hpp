@@ -11,6 +11,7 @@
 #include "DeviceMemory.hpp"
 #include "Device.hpp"
 #include "TextureView.hpp"
+#include <Luna/Runtime/SpinLock.hpp>
 namespace Luna
 {
     namespace RHI

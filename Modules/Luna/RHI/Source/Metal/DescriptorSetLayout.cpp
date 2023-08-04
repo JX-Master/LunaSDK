@@ -15,7 +15,7 @@ namespace Luna
     {
         RV DescriptorSetLayout::init(const DescriptorSetLayoutDesc& desc)
         {
-            m_bindings.assign(desc.bindings.data(), desc.bindings.size());
+            m_bindings.assign_n(desc.bindings.data(), desc.bindings.size());
             m_flags = desc.flags;
             Vector<Pair<u64, u64>> argument_offsets;
             argument_offsets.reserve(m_bindings.size());
@@ -31,7 +31,7 @@ namespace Luna
                     m_num_arguments += m_bindings[i].num_descs;
                 }
             }
-            m_argument_offsets.assign(argument_offsets.data(), argument_offsets.size());
+            m_argument_offsets.assign_n(argument_offsets.data(), argument_offsets.size());
             return ok;
         }
     }

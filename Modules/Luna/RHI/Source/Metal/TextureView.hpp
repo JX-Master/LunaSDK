@@ -24,6 +24,6 @@ namespace Luna
             NSPtr<MTL::Texture> m_texture;
 
             RV init(const TextureViewDesc& validated_desc);
-        }
+        };
     }
 }

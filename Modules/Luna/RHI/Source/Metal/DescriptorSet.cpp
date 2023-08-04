@@ -8,6 +8,7 @@
 * @date 2023/7/17
 */
 #include "DescriptorSet.hpp"
+#include "Resource.hpp"
 namespace Luna
 {
     namespace RHI
@@ -33,13 +34,18 @@ namespace Luna
                 u64* data = (u64*)m_buffer->contents();
                 for(auto& write : writes)
                 {
-                    auto iter = m_layout->m_argument_offsets.find(write.binding_slot);
+                    auto iter = m_layout->m_argument_offsets.begin();
+                    while(iter != m_layout->m_argument_offsets.end())
+                    {
+                        if(iter->first == write.binding_slot) break;
+                        ++iter;
+                    }
                     if(iter == m_layout->m_argument_offsets.end())
                     {
                         return set_error(BasicError::bad_arguments(), "The specified binding number %d is not specified in the descriptor set layout.", write.binding_slot);
                     }
                     u64 offset = iter->second + write.first_array_index;
-                    switch(type)
+                    switch(write.type)
                     {
                         case DescriptorType::uniform_buffer_view:
                         case DescriptorType::read_buffer_view:
@@ -61,7 +67,7 @@ namespace Luna
                             validate_texture_view_desc(tex->m_desc, view);
                             if(require_view_object(tex->m_desc, view))
                             {
-                                Ref<TextureView> tex_view = tex->get_texture_view(view);
+                                lulet(tex_view, tex->get_texture_view(view));
                                 MTL::ResourceID id = tex_view->m_texture->gpuResourceID();
                                 ((MTL::ResourceID*)data)[offset + i] = id;
                             }

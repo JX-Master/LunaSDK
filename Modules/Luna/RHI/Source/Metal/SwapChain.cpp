@@ -60,7 +60,7 @@ namespace Luna
                 tex->m_desc.flags = ResourceFlag::none;
                 m_current_back_buffer = move(tex);
             }
-            return m_current_back_buffer;
+            return m_current_back_buffer.get();
         }
         RV SwapChain::present()
         {

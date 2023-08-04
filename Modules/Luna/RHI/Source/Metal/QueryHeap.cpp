@@ -80,10 +80,6 @@ namespace Luna
             }
             return ok;
         }
-        RV CounterSampleQueryHeap::get_occlusion_values(u32 index, u32 count, u64* values)
-        {
-            return BasicError::not_supported();
-        }
         RV CounterSampleQueryHeap::get_pipeline_statistics_values(u32 index, u32 count, PipelineStatistics* values)
         {
             if(m_desc.type != QueryType::pipeline_statistics) return BasicError::not_supported();

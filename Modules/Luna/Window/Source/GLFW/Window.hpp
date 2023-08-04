@@ -133,7 +133,7 @@ namespace Luna
 			}
 #endif
 #ifdef LUNA_PLATFORM_MACOS
-			virtual NSWindow* get_nswindow() override
+			virtual id get_nswindow() override
 			{
 				return glfwGetCocoaWindow(m_window);
 			}

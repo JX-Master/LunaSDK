@@ -314,6 +314,19 @@ namespace Luna
             DescriptorSet* set = cast_object<DescriptorSet>(descriptor_set->get_object());
             m_compute->setBuffer(set->m_buffer.get(), 0, index);
         }
+        void CommandBuffer::set_compute_descriptor_sets(u32 start_index, Span<IDescriptorSet*> descriptor_sets)
+        {
+            assert_compute_context();
+            MTL::Buffer** buffers = (MTL::Buffer**)alloca(sizeof(MTL::Buffer*) * descriptor_sets.size());
+            NS::UInteger* offsets = (NS::UInteger*)alloca(sizeof(NS::UInteger) * descriptor_sets.size());
+            for(usize i = 0; i < descriptor_sets.size(); ++i)
+            {
+                DescriptorSet* set = cast_object<DescriptorSet>(descriptor_sets[i]->get_object());
+                buffers[i] = set->m_buffer.get();
+                offsets[i] = 0;
+            }
+            m_compute->setBuffers(buffers, offsets, NS::Range::Make(start_index, (NS::UInteger)descriptor_sets.size()));
+        }
         void CommandBuffer::dispatch(u32 thread_group_count_x, u32 thread_group_count_y, u32 thread_group_count_z)
         {
             assert_compute_context();

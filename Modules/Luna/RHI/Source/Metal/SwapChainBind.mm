@@ -8,6 +8,9 @@
 * @date 2023/8/3
 */
 #include "SwapChain.hpp"
+#include <Luna/Window/Cocoa/CocoaWindow.hpp>
+#include <Cocoa/Cocoa.h>
+#include <QuartzCore/CAMetalLayer.h>
 
 namespace Luna
 {
@@ -15,7 +18,7 @@ namespace Luna
     {
         void bind_layer_to_window(Window::IWindow* window, CA::MetalLayer* layer, u32 buffer_count)
         {
-            ICocoaWindow* cocoa_window = query_interface<ICocoaWindow>(window->get_object());
+            Window::ICocoaWindow* cocoa_window = query_interface<Window::ICocoaWindow>(window->get_object());
             NSWindow* ns_window = cocoa_window->get_nswindow();
             CAMetalLayer* native_layer = (__bridge CAMetalLayer*)layer;
             [[ns_window contentView] setLayer:native_layer];

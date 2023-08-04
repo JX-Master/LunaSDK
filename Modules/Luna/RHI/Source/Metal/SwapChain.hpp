@@ -36,7 +36,7 @@ namespace Luna
             RV init(u32 command_queue_index, Window::IWindow* window, const SwapChainDesc& desc);
 
             virtual IDevice* get_device() override { return m_device; }
-            virtual void set_name(const Name& name) override  { set_object_name(m_metal_layer.get(), name); }
+            virtual void set_name(const Name& name) override  { }
             virtual Window::IWindow* get_window() override { return m_window; }
             virtual SwapChainDesc get_desc() override { return m_desc; }
             virtual R<ITexture*> get_current_back_buffer() override;
