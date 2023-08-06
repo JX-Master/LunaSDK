@@ -124,7 +124,7 @@ namespace Luna
                     const c8* filename = iter->get_filename();
                     if(!strcmp(filename, ".") || !strcmp(filename, "..")) continue;
 					path.push_back(filename);
-					if(test_flags(iter->get_attribute(), FileAttributeFlag::directory))
+					if(test_flags(iter->get_attributes(), FileAttributeFlag::directory))
 					{
 						luexp(recursive_load_asset_meta(path, assets));
 					}
@@ -291,7 +291,7 @@ namespace Luna
 				lulet(iter, VFS::open_dir(path));
 				while (iter->is_valid())
 				{
-					if (!test_flags(iter->get_attribute(), FileAttributeFlag::directory))
+					if (!test_flags(iter->get_attributes(), FileAttributeFlag::directory))
 					{
 						auto name = iter->get_filename();
 						auto name_size = strlen(name);

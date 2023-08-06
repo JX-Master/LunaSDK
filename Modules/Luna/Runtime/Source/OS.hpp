@@ -439,7 +439,7 @@ namespace Luna
 		//! Returns the file attribute of the file the iterator currently points to.
 		//! Returns EFileAttributeFlag::none if the file iterator is invalid.
 		//! @param[in] dir_iter The directory iterator handle.
-		FileAttributeFlag dir_iterator_get_attribute(opaque_t dir_iter);
+		FileAttributeFlag dir_iterator_get_attributes(opaque_t dir_iter);
 
 		//! Moves the file iterator to the next file in the directory.
 		//! @param[in] dir_iter The directory iterator handle.

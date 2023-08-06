@@ -35,7 +35,7 @@ namespace Luna
                 const c8* name = iter->get_filename();
                 if(strcmp(name, ".") && strcmp(name, ".."))
                 {
-                    if ((iter->get_attribute() & FileAttributeFlag::directory) != FileAttributeFlag::none)
+                    if ((iter->get_attributes() & FileAttributeFlag::directory) != FileAttributeFlag::none)
                     {
                         AssetThumbnail t;
                         t.m_filename = Name(iter->get_filename());

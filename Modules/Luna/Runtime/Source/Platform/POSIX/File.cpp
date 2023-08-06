@@ -680,7 +680,7 @@ namespace Luna
 			}
 			return nullptr;
 		}
-		FileAttributeFlag dir_iterator_get_attribute(opaque_t dir_iter)
+		FileAttributeFlag dir_iterator_get_attributes(opaque_t dir_iter)
 		{
 			FileData* data = (FileData*)dir_iter;
 			FileAttributeFlag flags = FileAttributeFlag::none;

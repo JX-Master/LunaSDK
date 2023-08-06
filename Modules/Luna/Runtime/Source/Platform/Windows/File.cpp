@@ -723,7 +723,7 @@ namespace Luna
 				return nullptr;
 			}
 		}
-		FileAttributeFlag dir_iterator_get_attribute(opaque_t dir_iter)
+		FileAttributeFlag dir_iterator_get_attributes(opaque_t dir_iter)
 		{
 			FileData* f = (FileData*)dir_iter;
 			if (!dir_iterator_is_valid(dir_iter))

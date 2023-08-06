@@ -85,9 +85,9 @@ namespace Luna
 		{
 			return OS::dir_iterator_get_filename(m_handle);
 		}
-		virtual FileAttributeFlag get_attribute() override
+		virtual FileAttributeFlag get_attributes() override
 		{
-			return OS::dir_iterator_get_attribute(m_handle);
+			return OS::dir_iterator_get_attributes(m_handle);
 		}
 		virtual bool move_next() override
 		{
