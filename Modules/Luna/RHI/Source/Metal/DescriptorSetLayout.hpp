@@ -22,8 +22,8 @@ namespace Luna
             Ref<Device> m_device;
             Array<DescriptorSetLayoutBinding> m_bindings;
             DescriptorSetLayoutFlag m_flags;
-            // Map from binding number to argument index.
-            Array<Pair<u64, u64>> m_argument_offsets;
+            // The argument offfset for every binding.
+            Array<u64> m_argument_offsets;
             usize m_num_arguments;
 
             RV init(const DescriptorSetLayoutDesc& desc);

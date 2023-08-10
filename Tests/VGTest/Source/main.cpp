@@ -108,7 +108,8 @@ void init()
 	builder.circle_to(10.0f, 180.0f, 90.0f);
 
 	g_shape_atlas = VG::new_shape_atlas();
-	g_shape_atlas->add_shape({ builder.points.data(), builder.points.size() }, &RectF(0.0f, 0.0f, 50.0f, 50.0f));
+    RectF rect = RectF(0.0f, 0.0f, 50.0f, 50.0f);
+	g_shape_atlas->add_shape({ builder.points.data(), builder.points.size() }, &rect);
 
 	builder.points.clear();
 	builder.move_to(10.0f, 20.0f);

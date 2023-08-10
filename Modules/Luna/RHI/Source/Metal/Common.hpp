@@ -628,6 +628,7 @@ namespace Luna
 				case Format::r16_sint: return MTL::IndexTypeUInt16;
 				case Format::r32_uint:
 				case Format::r32_sint: return MTL::IndexTypeUInt32;
+                default: break;
 			}
 			lupanic();
 			return MTL::IndexTypeUInt32;
@@ -658,5 +659,29 @@ namespace Luna
 			}
 			return r;
 		}
+        inline bool is_depth_format(Format format)
+        {
+            switch(format)
+            {
+                case Format::d16_unorm:
+                case Format::d32_float:
+                case Format::d24_unorm_s8_uint:
+                case Format::d32_float_s8_uint_x24:
+                    return true;
+                default:
+                    return false;
+            }
+        }
+        inline bool is_stencil_format(Format format)
+        {
+            switch(format)
+            {
+                case Format::d24_unorm_s8_uint:
+                case Format::d32_float_s8_uint_x24:
+                    return true;
+                default:
+                    return false;
+            }
+        }
     }
 }

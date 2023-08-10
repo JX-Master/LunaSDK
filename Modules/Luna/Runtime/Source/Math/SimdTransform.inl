@@ -91,8 +91,8 @@ namespace Luna
 			return ret;
 #elif defined(LUNA_NEON_INTRINSICS)
 			float3x4 ret;
-			ret.r[0] = vreinterpretq_f32_u32(vandq_u32(vreinterpretq_u32_f32(scaling), vreinterpretq_u32_s32(set_i4(0xFFFFFFFF, 0, 0, 0)));
-			ret.r[1] = vreinterpretq_f32_u32(vandq_u32(vreinterpretq_u32_f32(scaling), vreinterpretq_u32_s32(set_i4(0, 0xFFFFFFFF, 0, 0)));
+			ret.r[0] = vreinterpretq_f32_u32(vandq_u32(vreinterpretq_u32_f32(scaling), vreinterpretq_u32_s32(set_i4(0xFFFFFFFF, 0, 0, 0))));
+			ret.r[1] = vreinterpretq_f32_u32(vandq_u32(vreinterpretq_u32_f32(scaling), vreinterpretq_u32_s32(set_i4(0, 0xFFFFFFFF, 0, 0))));
 			ret.r[2] = set_f4(0.0f, 0.0f, 1.0f, 0.0f);
 			return ret;
 #else 
@@ -301,9 +301,9 @@ namespace Luna
 			ret.r[1] = _mm256_or_ps(ret.r[1], _mm256_set_ps(1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f));
 #else
 			ret.r[0] = casti_f4(and_i4(castf_i4(scaling), set_i4(0xFFFFFFFF, 0, 0, 0)));
-			ret.r[2] = casti_f4(and_i4(castf_i4(scaling), set_i4(0, 0xFFFFFFFF, 0, 0)));
-			ret.r[3] = casti_f4(and_i4(castf_i4(scaling), set_i4(0, 0, 0xFFFFFFFF, 0)));
-			ret.r[4] = set_f4(0.0f, 0.0f, 0.0f, 1.0f);
+			ret.r[1] = casti_f4(and_i4(castf_i4(scaling), set_i4(0, 0xFFFFFFFF, 0, 0)));
+			ret.r[2] = casti_f4(and_i4(castf_i4(scaling), set_i4(0, 0, 0xFFFFFFFF, 0)));
+			ret.r[3] = set_f4(0.0f, 0.0f, 0.0f, 1.0f);
 #endif
 			return ret;
 		}

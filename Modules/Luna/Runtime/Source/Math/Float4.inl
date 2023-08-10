@@ -369,10 +369,10 @@ namespace Luna
 		// All in bounds?
 		return ((maskint_i4(t1) == 0x0f) != 0);
 #else
-		return (vec.x <= max_bound.x && vec.x >= min_bound.x) &&
-			(vec.y <= max_bound.y && vec.y >= min_bound.y) &&
-			(vec.z <= max_bound.z && vec.z >= min_bound.z) &&
-			(vec.w <= max_bound.w && vec.w >= min_bound.w);
+		return (point.x <= max_bound.x && point.x >= min_bound.x) &&
+			(point.y <= max_bound.y && point.y >= min_bound.y) &&
+			(point.z <= max_bound.z && point.z >= min_bound.z) &&
+			(point.w <= max_bound.w && point.w >= min_bound.w);
 #endif
 	}
 	inline f32 length(const Float4& vec)

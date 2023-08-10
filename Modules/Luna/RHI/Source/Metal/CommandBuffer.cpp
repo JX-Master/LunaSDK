@@ -105,17 +105,20 @@ namespace Luna
                 auto& src = desc.depth_stencil_attachment;
                 Texture* tex = cast_object<Texture>(src.texture->get_object());
                 depth_attachment->setTexture(tex->m_texture.get());
-                stencil_attachment->setTexture(tex->m_texture.get());
                 depth_attachment->setLevel(src.mip_slice);
-                stencil_attachment->setLevel(src.mip_slice);
                 depth_attachment->setSlice(src.array_slice);
-                stencil_attachment->setSlice(src.array_slice);
                 depth_attachment->setLoadAction(encode_load_action(src.depth_load_op));
                 depth_attachment->setStoreAction(encode_store_action(src.depth_store_op, false));
                 depth_attachment->setClearDepth(src.depth_clear_value);
-                stencil_attachment->setLoadAction(encode_load_action(src.stencil_load_op));
-                stencil_attachment->setStoreAction(encode_store_action(src.stencil_store_op, false));
-                stencil_attachment->setClearStencil(src.stencil_clear_value);
+                if(is_stencil_format(src.format))
+                {
+                    stencil_attachment->setTexture(tex->m_texture.get());
+                    stencil_attachment->setLevel(src.mip_slice);
+                    stencil_attachment->setSlice(src.array_slice);
+                    stencil_attachment->setLoadAction(encode_load_action(src.stencil_load_op));
+                    stencil_attachment->setStoreAction(encode_store_action(src.stencil_store_op, false));
+                    stencil_attachment->setClearStencil(src.stencil_clear_value);
+                }
                 width = tex->m_desc.width;
                 height = tex->m_desc.height;
             }
@@ -172,6 +175,20 @@ namespace Luna
             lucheck_msg(index < 16, "Invalid descriptor set index range. Descriptor set index range must be in [0, 16) on Metal.");
             assert_graphcis_context();
             DescriptorSet* set = cast_object<DescriptorSet>(descriptor_set->get_object());
+            Vector<MTL::Resource*> resources;
+            for(auto& binding : set->m_bindings)
+            {
+                if(binding.m_resources.empty()) continue;
+                resources.clear();
+                for(usize i = 0; i < binding.m_resources.size(); ++i)
+                {
+                    if(binding.m_resources[i])
+                    {
+                        resources.push_back(binding.m_resources[i]);
+                    }
+                }
+                m_render->useResources(resources.data(), resources.size(), binding.m_usages, binding.m_render_stages);
+            }
             m_render->setVertexBuffer(set->m_buffer.get(), 0, index);
             m_render->setFragmentBuffer(set->m_buffer.get(), 0, index);
         }
@@ -312,6 +329,20 @@ namespace Luna
         {
             assert_compute_context();
             DescriptorSet* set = cast_object<DescriptorSet>(descriptor_set->get_object());
+            Vector<MTL::Resource*> resources;
+            for(auto& binding : set->m_bindings)
+            {
+                if(binding.m_resources.empty()) continue;
+                resources.clear();
+                for(usize i = 0; i < binding.m_resources.size(); ++i)
+                {
+                    if(binding.m_resources[i])
+                    {
+                        resources.push_back(binding.m_resources[i]);
+                    }
+                }
+                m_compute->useResources(resources.data(), resources.size(), binding.m_usages);
+            }
             m_compute->setBuffer(set->m_buffer.get(), 0, index);
         }
         void CommandBuffer::set_compute_descriptor_sets(u32 start_index, Span<IDescriptorSet*> descriptor_sets)
@@ -549,6 +580,7 @@ namespace Luna
                 encoder->endEncoding();
             }
             m_buffer->commit();
+            return ok;
         }
     }
 }

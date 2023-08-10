@@ -25,7 +25,40 @@ namespace Luna
             if(!m_buffer)
             {
                 return BasicError::bad_platform_call();
-            }   
+            }
+            m_bindings.assign(m_layout->m_bindings.size());
+            for(usize i = 0; i < m_bindings.size(); ++i)
+            {
+                auto& dst = m_bindings[i];
+                auto& src = m_layout->m_bindings[i];
+                if(src.type != DescriptorType::sampler)
+                {
+                    dst.m_resources.assign(src.num_descs, nullptr);
+                    switch(src.type)
+                    {
+                        case DescriptorType::uniform_buffer_view:
+                        case DescriptorType::read_buffer_view:
+                        case DescriptorType::read_texture_view:
+                            dst.m_usages = MTL::ResourceUsageRead;
+                            break;
+                        case DescriptorType::read_write_buffer_view:
+                        case DescriptorType::read_write_texture_view:
+                            dst.m_usages = MTL::ResourceUsageRead | MTL::ResourceUsageWrite;
+                            break;
+                        default:
+                            break;
+                    }
+                    if(test_flags(src.shader_visibility_flags, ShaderVisibilityFlag::vertex))
+                    {
+                        dst.m_render_stages |= MTL::RenderStageVertex;
+                    }
+                    if(test_flags(src.shader_visibility_flags, ShaderVisibilityFlag::pixel))
+                    {
+                        dst.m_render_stages |= MTL::RenderStageFragment;
+                    }
+                }
+            }
+            return ok;
         }
         RV DescriptorSet::update_descriptors(Span<const WriteDescriptorSet> writes)
         {
@@ -34,17 +67,20 @@ namespace Luna
                 u64* data = (u64*)m_buffer->contents();
                 for(auto& write : writes)
                 {
-                    auto iter = m_layout->m_argument_offsets.begin();
-                    while(iter != m_layout->m_argument_offsets.end())
+                    // Find the binding record index for this write.
+                    usize binding_index = 0;
+                    for(; binding_index < m_layout->m_bindings.size(); ++binding_index)
                     {
-                        if(iter->first == write.binding_slot) break;
-                        ++iter;
+                        if(write.binding_slot == m_layout->m_bindings[binding_index].binding_slot)
+                        {
+                            break;
+                        }
                     }
-                    if(iter == m_layout->m_argument_offsets.end())
+                    if(binding_index == m_layout->m_bindings.size())
                     {
                         return set_error(BasicError::bad_arguments(), "The specified binding number %d is not specified in the descriptor set layout.", write.binding_slot);
                     }
-                    u64 offset = iter->second + write.first_array_index;
+                    u64 argument_offset = m_layout->m_argument_offsets[binding_index] + write.first_array_index;
                     switch(write.type)
                     {
                         case DescriptorType::uniform_buffer_view:
@@ -55,7 +91,8 @@ namespace Luna
                             auto& view = write.buffer_views[i];
                             Buffer* buffer = cast_object<Buffer>(view.buffer->get_object());
                             u64 data_offset = view.format == Format::unknown ? view.element_size * view.first_element : bits_per_pixel(view.format) * view.first_element / 8;
-                            data[offset + i] = buffer->m_buffer->gpuAddress() + data_offset;
+                            data[argument_offset + i] = buffer->m_buffer->gpuAddress() + data_offset;
+                            m_bindings[binding_index].m_resources[write.first_array_index + i] = buffer->m_buffer.get();
                         }
                         break;
                         case DescriptorType::read_texture_view:
@@ -69,13 +106,14 @@ namespace Luna
                             {
                                 lulet(tex_view, tex->get_texture_view(view));
                                 MTL::ResourceID id = tex_view->m_texture->gpuResourceID();
-                                ((MTL::ResourceID*)data)[offset + i] = id;
+                                ((MTL::ResourceID*)data)[argument_offset + i] = id;
                             }
                             else
                             {
                                 MTL::ResourceID id = tex->m_texture->gpuResourceID();
-                                ((MTL::ResourceID*)data)[offset + i] = id;
+                                ((MTL::ResourceID*)data)[argument_offset + i] = id;
                             }
+                            m_bindings[binding_index].m_resources[write.first_array_index + i] = tex->m_texture.get();
                         }
                         break;
                         case DescriptorType::sampler:
@@ -130,8 +168,8 @@ namespace Luna
                             {
                                 return BasicError::bad_platform_call();
                             }
-                            m_samplers.insert_or_assign(write.binding_slot + write.first_array_index + i, sampler);
-                            ((MTL::ResourceID*)data)[offset + i] = sampler->gpuResourceID();
+                            m_samplers.insert_or_assign(write.binding_slot + write.first_array_index + (u32)i, sampler);
+                            ((MTL::ResourceID*)data)[argument_offset + i] = sampler->gpuResourceID();
                         }
                         break;
                     }

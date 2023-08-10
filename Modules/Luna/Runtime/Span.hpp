@@ -88,8 +88,15 @@ namespace Luna
 		constexpr Span(InitializerList<remove_cv_t<_Ty>> ilist) :
 			m_buffer((_Ty*)ilist.begin()),
 			m_size(ilist.size()) {}
-		constexpr Span(const Span& rhs) = default;
-		constexpr Span& operator=(const Span& rhs) = default;
+		constexpr Span(const Span& rhs) :
+            m_buffer(rhs.m_buffer),
+            m_size(rhs.m_size) {}
+		constexpr Span& operator=(const Span& rhs)
+        {
+            m_buffer = rhs.m_buffer;
+            m_size = rhs.m_size;
+            return *this;
+        }
 
 		constexpr iterator begin() const { return m_buffer; }
 		constexpr iterator end() const { return m_buffer + m_size; }

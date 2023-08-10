@@ -20,6 +20,7 @@ namespace Luna
         RV init_devices()
         {
             g_devices = box(MTL::CopyAllDevices());
+            return ok;
         }
         void clear_devices()
         {

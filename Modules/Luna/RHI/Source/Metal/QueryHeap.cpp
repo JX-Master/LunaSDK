@@ -35,6 +35,7 @@ namespace Luna
             {
                 case QueryType::timestamp: target_set = MTL::CommonCounterSetTimestamp; break;
                 case QueryType::pipeline_statistics: target_set = MTL::CommonCounterSetStatistic; break;
+                default: break;
             }
             for(u32 i = 0; i < counter_sets->count(); ++i)
             {

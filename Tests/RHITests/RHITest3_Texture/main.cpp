@@ -44,6 +44,9 @@ RV start()
 {
 	lutry
 	{
+        Path p = get_process_path();
+        p.pop_back();
+        luexp(set_current_dir(p.encode().c_str()));
 		auto device = get_main_device();
 		// create pso
 		{
@@ -95,8 +98,8 @@ RV start()
 					[[vk::location(1)]]
 					float2 uv  : TEXCOORD0;
 				};
+                Texture2D texture0 : register(t0);
 				SamplerState sampler0 : register(s1);
-				Texture2D texture0 : register(t0);
 				
 				[[vk::location(0)]]
 				float4 main(PS_INPUT input) : SV_Target
@@ -130,15 +133,14 @@ RV start()
 				{ &ds_layout, 1 }, PipelineLayoutFlag::allow_input_assembler_input_layout)));
 
 			GraphicsPipelineStateDesc desc;
-			desc.input_layout = InputLayoutDesc({
-				{
-					InputBindingDesc(0, sizeof(VertexData), InputRate::per_vertex)
-				},
-				{
-					InputAttributeDesc("POSITION", 0, 0, 0, 0, Format::rg32_float),
-					InputAttributeDesc("TEXCOORD", 0, 1, 0, 8, Format::rg32_float)
-				}
-			});
+            InputBindingDesc input_bindings[] = {
+                InputBindingDesc(0, sizeof(VertexData), InputRate::per_vertex)
+            };
+            InputAttributeDesc input_attributes[] = {
+                InputAttributeDesc("POSITION", 0, 0, 0, 0, Format::rg32_float),
+                InputAttributeDesc("TEXCOORD", 0, 1, 0, 8, Format::rg32_float)
+            };
+            desc.input_layout = InputLayoutDesc({input_bindings, 1}, {input_attributes, 2});
 			desc.vs = { vs.data(), vs.size() };
 			desc.ps = { ps.data(), ps.size() };
 			desc.pipeline_layout = pipeline_layout;
@@ -177,7 +179,7 @@ RV start()
 			desc_set->update_descriptors(
 				{
 					WriteDescriptorSet::read_texture_view(0, TextureViewDesc::tex2d(tex)),
-					WriteDescriptorSet::sampler(1, SamplerDesc(Filter::min_mag_mip_linear, TextureAddressMode::clamp,
+					WriteDescriptorSet::sampler(1, SamplerDesc(Filter::linear, Filter::linear, Filter::linear, TextureAddressMode::clamp,
 							TextureAddressMode::clamp, TextureAddressMode::clamp))
 				});
 		}
@@ -193,7 +195,7 @@ void draw()
 		// |    |
 		// 2----3
 
-	auto sz = get_window()->get_size();
+	auto sz = get_window()->get_framebuffer_size();
 	auto w = sz.x;
 	auto h = sz.y;
 

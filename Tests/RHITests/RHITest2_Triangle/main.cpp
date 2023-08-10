@@ -106,15 +106,14 @@ RV start()
 				PipelineLayoutFlag::deny_vertex_shader_access)));
 
 			GraphicsPipelineStateDesc desc;
-			desc.input_layout = InputLayoutDesc({
-				{
-					InputBindingDesc(0, sizeof(VertexData), InputRate::per_vertex)
-				},
-				{
-					InputAttributeDesc("POSITION", 0, 0, 0, 0, Format::rg32_float),
-					InputAttributeDesc("COLOR", 0, 1, 0, 8, Format::rgba32_float)
-				}
-			});
+            const InputBindingDesc bindings[] = {
+                InputBindingDesc(0, sizeof(VertexData), InputRate::per_vertex)
+            };
+            const InputAttributeDesc attributes[] = {
+                InputAttributeDesc("POSITION", 0, 0, 0, 0, Format::rg32_float),
+                InputAttributeDesc("COLOR", 0, 1, 0, 8, Format::rgba32_float)
+            };
+            desc.input_layout = InputLayoutDesc({bindings, 1}, {attributes, 2});
 			desc.pipeline_layout = pipeline_layout;
 			desc.vs = { vs.data(), vs.size() };
 			desc.ps = { ps.data(), ps.size() };
@@ -157,7 +156,7 @@ void draw()
 	IBuffer* vertex_buffer = vb;
 	usize vb_offset = 0;
 	cb->set_vertex_buffers(0, {VertexBufferView(vb, 0, sizeof(VertexData) * 3, sizeof(VertexData))});
-	auto sz = get_window()->get_size();
+	auto sz = get_window()->get_framebuffer_size();
 	cb->set_scissor_rect(RectI(0, 0, (i32)sz.x, (i32)sz.y));
 	cb->set_viewport(Viewport(0, 0, (f32)sz.x, (f32)sz.y, 0.0f, 1.0f));
 	cb->draw(3, 0);

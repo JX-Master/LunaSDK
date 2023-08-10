@@ -222,8 +222,8 @@ namespace Luna
 					luexp(ds->update_descriptors({
 						WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(m_cbs_resource)),
 						WriteDescriptorSet::read_buffer_view(1, BufferViewDesc::typed_buffer(shape_buffer, 0, num_points, Format::r32_float)),
-						WriteDescriptorSet::read_texture_view(2, TextureViewDesc::tex2d(draw_calls[i].texture ? draw_calls[i].texture : g_white_tex)),
-						WriteDescriptorSet::sampler(3, SamplerDesc(Filter::min_mag_mip_linear, TextureAddressMode::clamp, TextureAddressMode::clamp, TextureAddressMode::clamp))
+						WriteDescriptorSet::read_texture_view(2, TextureViewDesc::tex2d(draw_calls[i].texture ? draw_calls[i].texture : g_white_tex.get())),
+						WriteDescriptorSet::sampler(3, SamplerDesc(Filter::linear, Filter::linear, Filter::linear, TextureAddressMode::clamp, TextureAddressMode::clamp, TextureAddressMode::clamp))
 						}));
 				}
 				// Build command buffer.
@@ -243,8 +243,9 @@ namespace Luna
 				cmdbuf->begin_render_pass(desc);
 				cmdbuf->set_graphics_pipeline_state(m_fill_pso);
 				cmdbuf->set_graphics_pipeline_layout(g_fill_playout);
-				cmdbuf->set_vertex_buffers(0, { &VertexBufferView(vertex_buffer, 0, sizeof(Vertex) * num_vertices, sizeof(Vertex)), 1 });
-				cmdbuf->set_index_buffer({index_buffer, 0, num_indices * sizeof(u32), Format::r32_uint});
+                auto view = VertexBufferView(vertex_buffer, 0, sizeof(Vertex) * num_vertices, sizeof(Vertex));
+				cmdbuf->set_vertex_buffers(0, { &view, 1 });
+				cmdbuf->set_index_buffer({index_buffer, 0, (u32)num_indices * (u32)sizeof(u32), Format::r32_uint});
 				cmdbuf->set_viewport(Viewport(0.0f, 0.0f, (f32)m_screen_width, (f32)m_screen_height, 0.0f, 1.0f));
 				for (usize i = 0; i < num_draw_calls; ++i)
 				{
@@ -267,13 +268,15 @@ namespace Luna
 		}
 		LUNA_VG_API R<Ref<IShapeRenderer>> new_fill_shape_renderer(RHI::ITexture* render_target)
 		{
+            Ref<IShapeRenderer> ret;
 			Ref<FillShapeRenderer> renderer = new_object<FillShapeRenderer>();
 			lutry
 			{
 				luexp(renderer->init(render_target));
 			}
 			lucatchret;
-			return renderer;
+            ret = renderer;
+			return ret;
 		}
 	}
 }

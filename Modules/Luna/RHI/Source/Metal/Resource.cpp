@@ -65,7 +65,7 @@ namespace Luna
                 {
                     m_desc = desc;
                     luexp(validate_texture_desc(m_desc));
-                    auto d = encode_texture_desc(memory_type, desc);
+                    auto d = encode_texture_desc(memory_type, m_desc);
                     m_texture = box(m_device->m_device->newTexture(d.get()));
                     if(!m_texture) return BasicError::bad_platform_call();
                     m_memory = new_object<DeviceMemory>();
@@ -85,7 +85,7 @@ namespace Luna
                 if(!m->m_heap) return BasicError::not_supported();
                 m_desc = desc;
                 luexp(validate_texture_desc(m_desc));
-                auto d = encode_texture_desc(m->m_memory_type, desc);
+                auto d = encode_texture_desc(m->m_memory_type, m_desc);
                 m_texture = box(m->m_heap->newTexture(d.get()));
                 if(!m_texture) return BasicError::bad_platform_call();
                 m_memory = m;

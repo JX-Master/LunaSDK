@@ -44,6 +44,7 @@ namespace Luna
 				register_boxed_type<Device>();
 				impl_interface_for_type<Device, IDevice>();
 				register_boxed_type<DeviceMemory>();
+				impl_interface_for_type<DeviceMemory, IDeviceMemory, IDeviceChild>();
 				register_boxed_type<Fence>();
 				impl_interface_for_type<Fence, IFence, IDeviceChild>();
 				register_boxed_type<ImageView>();
@@ -51,8 +52,6 @@ namespace Luna
 				impl_interface_for_type<PipelineState, IPipelineState, IDeviceChild>();
 				register_boxed_type<QueryHeap>();
 				impl_interface_for_type<QueryHeap, IQueryHeap, IDeviceChild>();
-				register_boxed_type<DeviceMemory>();
-				impl_interface_for_type<DeviceMemory, IDeviceMemory, IDeviceChild>();
 				register_boxed_type<BufferResource>();
 				impl_interface_for_type<BufferResource, IBuffer, IResource, IDeviceChild>();
 				register_boxed_type<ImageResource>();

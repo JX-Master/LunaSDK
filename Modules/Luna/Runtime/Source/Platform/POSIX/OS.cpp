@@ -24,13 +24,21 @@ namespace Luna
     namespace OS
     {
 		void time_init();
+        void file_init();
+        void std_io_init();
+        void std_io_close();
 
 		void init()
 		{
 			time_init();
+            file_init();
+            std_io_init();
 		}
 
-		void close() {}
+		void close()
+        {
+            std_io_close();
+        }
 
 		u32 get_num_processors()
 		{

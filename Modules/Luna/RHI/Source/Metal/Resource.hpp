@@ -39,7 +39,7 @@ namespace Luna
         };
         struct Texture : ITexture
         {
-            lustruct("RHI::Buffer", "{ff44d364-6802-4cd9-8916-04cd5e2439e8}");
+            lustruct("RHI::Texture", "{ff44d364-6802-4cd9-8916-04cd5e2439e8}");
             luiimpl();
 
             Ref<Device> m_device;

@@ -297,7 +297,7 @@ namespace Luna
 			//! The resource flags.
 			ResourceFlag flags;
 
-			static inline TextureDesc tex1d(Format format, TextureUsageFlag usages, u64 width, u32 array_size = 1, u32 mip_levels = 0, ResourceFlag flags = ResourceFlag::none)
+			static inline TextureDesc tex1d(Format format, TextureUsageFlag usages, u32 width, u32 array_size = 1, u32 mip_levels = 0, ResourceFlag flags = ResourceFlag::none)
 			{
 				TextureDesc d;
 				d.type = TextureType::tex1d;
@@ -312,7 +312,7 @@ namespace Luna
 				d.flags = flags;
 				return d;
 			}
-			static inline TextureDesc tex2d(Format format, TextureUsageFlag usages, u64 width, u32 height, u32 array_size = 1, u32 mip_levels = 0,
+			static inline TextureDesc tex2d(Format format, TextureUsageFlag usages, u32 width, u32 height, u32 array_size = 1, u32 mip_levels = 0,
 				u32 sample_count = 1, ResourceFlag flags = ResourceFlag::none)
 			{
 				TextureDesc d;
@@ -328,7 +328,7 @@ namespace Luna
 				d.flags = flags;
 				return d;
 			}
-			static inline TextureDesc texcube(Format format, TextureUsageFlag usages, u64 width, u32 height, u32 num_cubes = 1, u32 mip_levels = 0,
+			static inline TextureDesc texcube(Format format, TextureUsageFlag usages, u32 width, u32 height, u32 num_cubes = 1, u32 mip_levels = 0,
 				u32 sample_count = 1, ResourceFlag flags = ResourceFlag::none)
 			{
 				TextureDesc d;
@@ -345,7 +345,7 @@ namespace Luna
 				d.flags = flags;
 				return d;
 			}
-			static inline TextureDesc tex3d(Format format, TextureUsageFlag usages, u64 width, u32 height, u32 depth, u32 mip_levels = 0, ResourceFlag flags = ResourceFlag::none)
+			static inline TextureDesc tex3d(Format format, TextureUsageFlag usages, u32 width, u32 height, u32 depth, u32 mip_levels = 0, ResourceFlag flags = ResourceFlag::none)
 			{
 				TextureDesc d;
 				d.type = TextureType::tex3d;

@@ -68,7 +68,7 @@ namespace Luna
 			bool state_equal(u32 index);
 			RHI::SamplerDesc get_default_sampler()
 			{
-				return RHI::SamplerDesc(RHI::Filter::min_mag_mip_linear,
+				return RHI::SamplerDesc(RHI::Filter::linear, RHI::Filter::linear, RHI::Filter::linear,
 					RHI::TextureAddressMode::repeat,
 					RHI::TextureAddressMode::repeat,
 					RHI::TextureAddressMode::repeat);
@@ -87,13 +87,13 @@ namespace Luna
 				m_target_dc_index(0)
 			{}
 
-			void reset();
-			void drawcall_barrier()
+			virtual void reset() override;
+            virtual void drawcall_barrier() override
 			{
 				lutsassert();
 				m_dc_barrier_index = (u32)m_draw_calls.size();
 			}
-			void set_shape_atlas(IShapeAtlas* atlas)
+            virtual void set_shape_atlas(IShapeAtlas* atlas) override
 			{
 				lutsassert();
 				if (m_atlas != atlas)
@@ -102,11 +102,11 @@ namespace Luna
 					m_atlas = atlas;
 				}
 			}
-			IShapeAtlas* get_shape_atlas()
+            virtual IShapeAtlas* get_shape_atlas() override
 			{
 				return m_atlas;
 			}
-			void set_texture(RHI::ITexture* tex)
+            virtual void set_texture(RHI::ITexture* tex) override
 			{
 				lutsassert();
 				if (m_texture != tex)
@@ -115,11 +115,11 @@ namespace Luna
 					m_texture = tex;
 				}
 			}
-			RHI::ITexture* get_texture()
+            virtual RHI::ITexture* get_texture() override
 			{
 				return m_texture;
 			}
-			void set_sampler(const RHI::SamplerDesc* desc)
+            virtual void set_sampler(const RHI::SamplerDesc* desc) override
 			{
 				lutsassert();
 				RHI::SamplerDesc d;
@@ -137,11 +137,11 @@ namespace Luna
 					m_sampler = d;
 				}
 			}
-			RHI::SamplerDesc get_sampler()
+            virtual RHI::SamplerDesc get_sampler() override
 			{
 				return m_sampler;
 			}
-			void set_origin(const Float2& origin)
+            virtual void set_origin(const Float2& origin) override
 			{
 				lutsassert();
 				if (m_origin != origin)
@@ -150,11 +150,11 @@ namespace Luna
 					m_origin = origin;
 				}
 			}
-			Float2 get_origin()
+            virtual Float2 get_origin() override
 			{
 				return m_origin;
 			}
-			void set_rotation(f32 degrees)
+            virtual void set_rotation(f32 degrees) override
 			{
 				lutsassert();
 				if (m_rotation != degrees)
@@ -163,11 +163,11 @@ namespace Luna
 					m_rotation = degrees;
 				}
 			}
-			f32 get_rotation()
+            virtual f32 get_rotation() override
 			{
 				return m_rotation;
 			}
-			void set_clip_rect(const RectI& clip_rect)
+            virtual void set_clip_rect(const RectI& clip_rect) override
 			{
 				lutsassert();
 				if (m_clip_rect != clip_rect)
@@ -176,34 +176,34 @@ namespace Luna
 					m_clip_rect = clip_rect;
 				}
 			}
-			RectI get_clip_rect()
+            virtual RectI get_clip_rect() override
 			{
 				return m_clip_rect;
 			}
-			void append_draw_list(IShapeDrawList* draw_list);
-			void draw_shape_raw(Span<const Vertex> vertices, Span<const u32> indices);
-			void draw_shape(u32 begin_command, u32 num_commands,
+            virtual void append_draw_list(IShapeDrawList* draw_list) override;
+            virtual void draw_shape_raw(Span<const Vertex> vertices, Span<const u32> indices) override;
+            virtual void draw_shape(u32 begin_command, u32 num_commands,
 				const Float2U& min_position, const Float2U& max_position,
 				const Float2U& min_shapecoord, const Float2U& max_shapecoord, u32 color,
-				const Float2U& min_texcoord, const Float2U& max_texcoord);
-			RV close();
-			RHI::IBuffer* get_vertex_buffer()
+				const Float2U& min_texcoord, const Float2U& max_texcoord) override;
+            virtual RV close() override;
+            virtual RHI::IBuffer* get_vertex_buffer() override
 			{
 				return m_vertex_buffer;
 			}
-			u32 get_vertex_buffer_size()
+            virtual u32 get_vertex_buffer_size() override
 			{
 				return m_vertex_buffer_size;
 			}
-			RHI::IBuffer* get_index_buffer()
+            virtual RHI::IBuffer* get_index_buffer() override
 			{
 				return m_index_buffer;
 			}
-			u32 get_index_buffer_size()
+            virtual u32 get_index_buffer_size() override
 			{
 				return m_index_buffer_size;
 			}
-			Vector<ShapeDrawCall> get_draw_calls()
+            virtual Vector<ShapeDrawCall> get_draw_calls() override
 			{
 				return m_draw_calls;
 			}

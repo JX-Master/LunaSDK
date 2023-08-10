@@ -16,6 +16,14 @@ namespace Luna
 {
     namespace RHI
     {
+        struct DescriptorSetBinding
+        {
+            // The resource being used in this binding.
+            Array<MTL::Resource*> m_resources;
+            MTL::ResourceUsage m_usages = 0;
+            // Used if this is a descriptor set for render pipeline.
+            MTL::RenderStages m_render_stages = 0;
+        };
         struct DescriptorSet : IDescriptorSet
         {
             lustruct("RHI::DescriptorSet", "{ff931d6c-44db-459b-b36b-786a7848613a}");
@@ -24,6 +32,9 @@ namespace Luna
             Ref<Device> m_device;
             Ref<DescriptorSetLayout> m_layout;
             NSPtr<MTL::Buffer> m_buffer;
+            
+            Array<DescriptorSetBinding> m_bindings;
+            
             RV init(const DescriptorSetDesc& desc);
 
             HashMap<u32, NSPtr<MTL::SamplerState>> m_samplers;

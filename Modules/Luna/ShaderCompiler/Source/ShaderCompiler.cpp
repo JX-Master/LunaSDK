@@ -242,12 +242,17 @@ namespace Luna
 		{
 			lutry
 			{
+                // Skip optimization if we are generating msl/glsl from spir-v.
+                m_debug = true;
+                m_optimization_level = OptimizationLevel::none;
 				luexp(dxc_compile(DxcTargetType::spir_v));
 				if(output_type == SpirvOutputType::msl)
 				{
 					spirv_cross::CompilerMSL msl((const uint32_t*)m_out_data, m_out_size / 4);
 					auto options = msl.get_msl_options();
 					options.argument_buffers = true;
+                    options.set_msl_version(3, 0, 0);
+                    options.force_active_argument_buffer_resources = true;
 					switch (m_msl_platform)
 					{
 					case MSLPlatform::macos:
@@ -258,9 +263,31 @@ namespace Luna
 						break;
 					}
 					msl.set_msl_options(options);
-					m_spirv_cross_compiled_data = msl.compile();
-					m_out_data = (const byte_t*)m_spirv_cross_compiled_data.data();
-					m_out_size = m_spirv_cross_compiled_data.size();
+					auto compiled_data = msl.compile();
+                    Variant out_data(VariantType::object);
+                    out_data["source"] = compiled_data.data();
+                    auto entry_point_and_stage = msl.get_entry_points_and_stages()[0];
+                    auto entry_point = msl.get_entry_point(entry_point_and_stage.name, entry_point_and_stage.execution_model);
+                    if(m_shader_type == ShaderType::compute)
+                    {
+                        spirv_cross::SpecializationConstant x, y, z;
+                        msl.get_work_group_size_specialization_constants(x, y, z);
+                        spirv_cross::SPIRConstant& constant_x = msl.get_constant(x.id);
+                        spirv_cross::SPIRConstant& constant_y = msl.get_constant(y.id);
+                        spirv_cross::SPIRConstant& constant_z = msl.get_constant(z.id);
+                        u64 x_size = constant_x.scalar_u64();
+                        u64 y_size = constant_y.scalar_u64();
+                        u64 z_size = constant_z.scalar_u64();
+                        Variant numthreads (VariantType::array);
+                        numthreads.push_back(x_size);
+                        numthreads.push_back(y_size);
+                        numthreads.push_back(z_size);
+                        out_data["numthreads"] = move(numthreads);
+                    }
+                    out_data["entry_point"] = entry_point.name.c_str();
+                    m_msl_compiled_data = json_write(out_data);
+					m_out_data = (const byte_t*)m_msl_compiled_data.data();
+					m_out_size = m_msl_compiled_data.size();
 				}
 			}
 			lucatchret;
@@ -288,7 +315,8 @@ namespace Luna
 		Span<const byte_t> Compiler::get_output()
 		{
 			lutsassert();
-			return Span<const byte_t>(m_out_data, m_out_size);
+            Span<const byte_t> ret(m_out_data, m_out_size);
+            return ret;
 		}
 
 		LUNA_SHADER_COMPILER_API Ref<ICompiler> new_compiler()

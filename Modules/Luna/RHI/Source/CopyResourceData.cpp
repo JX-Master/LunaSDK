@@ -126,14 +126,14 @@ namespace Luna
 					{
                         auto& desc = copy.read_texture_desc;
                         
-                        command_buffer->copy_texture_to_buffer(readback_buffer, placement.offset, placement.row_pitch, placement.slice_pitch, 
+                        command_buffer->copy_texture_to_buffer(readback_buffer, placement.offset, (u32)placement.row_pitch, (u32)placement.slice_pitch,
                             desc.src, desc.src_subresource, desc.src_x, desc.src_y, desc.src_z, desc.copy_width, desc.copy_height, desc.copy_depth);
 					}
 					else if (copy.op == ResourceDataCopyOp::write_texture)
 					{
                         auto& desc = copy.write_texture_desc;
                         command_buffer->copy_buffer_to_texture(desc.dst, desc.dst_subresource, desc.dst_x, desc.dst_y, desc.dst_z, 
-                            upload_buffer, placement.offset, placement.row_pitch, placement.slice_pitch, desc.copy_width, desc.copy_height, desc.copy_depth);
+                            upload_buffer, placement.offset, (u32)placement.row_pitch, (u32)placement.slice_pitch, desc.copy_width, desc.copy_height, desc.copy_depth);
 					}
 				}
 				command_buffer->end_copy_pass();

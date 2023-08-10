@@ -50,12 +50,12 @@ namespace Luna
                 tex->m_texture = retain(texture);
                 tex->m_desc.type = TextureType::tex2d;
                 tex->m_desc.format = decode_pixel_format(texture->pixelFormat());
-                tex->m_desc.width = texture->width();
-                tex->m_desc.height = texture->height();
-                tex->m_desc.depth = texture->depth();
-                tex->m_desc.array_size = texture->arrayLength();
-                tex->m_desc.mip_levels = texture->mipmapLevelCount();
-                tex->m_desc.sample_count = texture->sampleCount();
+                tex->m_desc.width = (u32)texture->width();
+                tex->m_desc.height = (u32)texture->height();
+                tex->m_desc.depth = (u32)texture->depth();
+                tex->m_desc.array_size = (u32)texture->arrayLength();
+                tex->m_desc.mip_levels = (u32)texture->mipmapLevelCount();
+                tex->m_desc.sample_count = (u32)texture->sampleCount();
                 tex->m_desc.usages = decode_texture_usage(texture->usage(), false);
                 tex->m_desc.flags = ResourceFlag::none;
                 m_current_back_buffer = move(tex);
@@ -64,17 +64,22 @@ namespace Luna
         }
         RV SwapChain::present()
         {
-            if(!m_current_back_buffer)
+            lutry
             {
-                get_current_back_buffer();
+                if(!m_current_back_buffer)
+                {
+                    luexp(get_current_back_buffer());
+                }
+                AutoreleasePool pool;
+                MTL::CommandQueue* queue = m_device->m_queues[m_command_queue_index].queue.get();
+                MTL::CommandBuffer* buffer = queue->commandBuffer();
+                buffer->presentDrawable(m_current_drawable.get());
+                buffer->commit();
+                m_current_back_buffer.reset();
+                m_current_drawable.reset();
             }
-            AutoreleasePool pool;
-            MTL::CommandQueue* queue = m_device->m_queues[m_command_queue_index].queue.get();
-            MTL::CommandBuffer* buffer = queue->commandBuffer();
-            buffer->presentDrawable(m_current_drawable.get());
-            buffer->commit();
-            m_current_back_buffer.reset();
-            m_current_drawable.reset();
+            lucatchret;
+            return ok;
         }
         RV SwapChain::reset(const SwapChainDesc& desc)
         {

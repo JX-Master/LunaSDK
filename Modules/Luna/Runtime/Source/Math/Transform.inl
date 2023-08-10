@@ -181,9 +181,9 @@ namespace Luna
 			return ret;
 #else
 			return Float3(
-				sqrtf(r[0].x * r[0].x + r[0].y * r[0].y + r[0].z * r[0].z),
-				sqrtf(r[1].x * r[1].x + r[1].y * r[1].y + r[1].z * r[1].z),
-				sqrtf(r[2].x * r[2].x + r[2].y * r[2].y + r[2].z * r[2].z)
+				sqrtf(affine_matrix.r[0].x * affine_matrix.r[0].x + affine_matrix.r[0].y * affine_matrix.r[0].y + affine_matrix.r[0].z * affine_matrix.r[0].z),
+				sqrtf(affine_matrix.r[1].x * affine_matrix.r[1].x + affine_matrix.r[1].y * affine_matrix.r[1].y + affine_matrix.r[1].z * affine_matrix.r[1].z),
+				sqrtf(affine_matrix.r[2].x * affine_matrix.r[2].x + affine_matrix.r[2].y * affine_matrix.r[2].y + affine_matrix.r[2].z * affine_matrix.r[2].z)
 			);
 #endif
 		}
@@ -322,22 +322,22 @@ namespace Luna
 			f32 qzz = qz * qz;
 			f32 qw = rotation.w;
 			Float4x4& mat = ret;
-			mat.m[0][0] = 1.f - 2.f * qyy - 2.f * qzz;
-			mat.m[0][1] = 2.f * qx * qy + 2.f * qz * qw;
-			mat.m[0][2] = 2.f * qx * qz - 2.f * qy * qw;
-			mat.m[0][3] = 0.f;
-			mat.m[1][0] = 2.f * qx * qy - 2.f * qz * qw;
-			mat.m[1][1] = 1.f - 2.f * qxx - 2.f * qzz;
-			mat.m[1][2] = 2.f * qy * qz + 2.f * qx * qw;
-			mat.m[1][3] = 0.f;
-			mat.m[2][0] = 2.f * qx * qz + 2.f * qy * qw;
-			mat.m[2][1] = 2.f * qy * qz - 2.f * qx * qw;
-			mat.m[2][2] = 1.f - 2.f * qxx - 2.f * qyy;
-			mat.m[2][3] = 0.f;
-			mat.m[3][0] = 0.f;
-			mat.m[3][1] = 0.f;
-			mat.m[3][2] = 0.f;
-			mat.m[3][3] = 1.0f;
+			mat.r[0].x = 1.f - 2.f * qyy - 2.f * qzz;
+			mat.r[0].y = 2.f * qx * qy + 2.f * qz * qw;
+			mat.r[0].z = 2.f * qx * qz - 2.f * qy * qw;
+			mat.r[0].w = 0.f;
+			mat.r[1].x = 2.f * qx * qy - 2.f * qz * qw;
+			mat.r[1].y = 1.f - 2.f * qxx - 2.f * qzz;
+			mat.r[1].z = 2.f * qy * qz + 2.f * qx * qw;
+			mat.r[1].w = 0.f;
+			mat.r[2].x = 2.f * qx * qz + 2.f * qy * qw;
+			mat.r[2].y = 2.f * qy * qz - 2.f * qx * qw;
+			mat.r[2].z = 1.f - 2.f * qxx - 2.f * qyy;
+			mat.r[2].w = 0.f;
+			mat.r[3].x = 0.f;
+			mat.r[3].y = 0.f;
+			mat.r[3].z = 0.f;
+			mat.r[3].w = 1.0f;
 #endif
 			return ret;
 		}
@@ -352,22 +352,22 @@ namespace Luna
 			f32 sine = sinf(angle);
 			f32 cosine = cosf(angle);
 			Float4x4& mat = ret;
-			mat.m[0][0] = 1.0f;
-			mat.m[0][1] = 0.0f;
-			mat.m[0][2] = 0.0f;
-			mat.m[0][3] = 0.0f;
-			mat.m[1][0] = 0.0f;
-			mat.m[1][1] = cosine;
-			mat.m[1][2] = sine;
-			mat.m[1][3] = 0.0f;
-			mat.m[2][0] = 0.0f;
-			mat.m[2][1] = -sine;
-			mat.m[2][2] = cosine;
-			mat.m[2][3] = 0.0f;
-			mat.m[3][0] = 0.0f;
-			mat.m[3][1] = 0.0f;
-			mat.m[3][2] = 0.0f;
-			mat.m[3][3] = 1.0f;
+			mat.r[0].x = 1.0f;
+			mat.r[0].y = 0.0f;
+			mat.r[0].z = 0.0f;
+			mat.r[0].w = 0.0f;
+			mat.r[1].x = 0.0f;
+			mat.r[1].y = cosine;
+			mat.r[1].z = sine;
+			mat.r[1].w = 0.0f;
+			mat.r[2].x = 0.0f;
+			mat.r[2].y = -sine;
+			mat.r[2].z = cosine;
+			mat.r[2].w = 0.0f;
+			mat.r[3].x = 0.0f;
+			mat.r[3].y = 0.0f;
+			mat.r[3].z = 0.0f;
+			mat.r[3].w = 1.0f;
 #endif
 			return ret;
 		}
@@ -382,22 +382,22 @@ namespace Luna
 			f32 sine = sinf(angle);
 			f32 cosine = cosf(angle);
 			Float4x4& mat = ret;
-			mat.m[0][0] = cosine;
-			mat.m[0][1] = 0.0f;
-			mat.m[0][2] = -sine;
-			mat.m[0][3] = 0.0f;
-			mat.m[1][0] = 0.0f;
-			mat.m[1][1] = 1.0f;
-			mat.m[1][2] = 0.0f;
-			mat.m[1][3] = 0.0f;
-			mat.m[2][0] = sine;
-			mat.m[2][1] = 0.0f;
-			mat.m[2][2] = cosine;
-			mat.m[2][3] = 0.0f;
-			mat.m[3][0] = 0.0f;
-			mat.m[3][1] = 0.0f;
-			mat.m[3][2] = 0.0f;
-			mat.m[3][3] = 1.0f;
+			mat.r[0].x = cosine;
+			mat.r[0].y = 0.0f;
+			mat.r[0].z = -sine;
+			mat.r[0].w = 0.0f;
+			mat.r[1].x = 0.0f;
+			mat.r[1].y = 1.0f;
+			mat.r[1].z = 0.0f;
+			mat.r[1].w = 0.0f;
+			mat.r[2].x = sine;
+			mat.r[2].y = 0.0f;
+			mat.r[2].z = cosine;
+			mat.r[2].w = 0.0f;
+			mat.r[3].x = 0.0f;
+			mat.r[3].y = 0.0f;
+			mat.r[3].z = 0.0f;
+			mat.r[3].w = 1.0f;
 #endif
 			return ret;
 		}
@@ -412,22 +412,22 @@ namespace Luna
 			f32 sine = sinf(angle);
 			f32 cosine = cosf(angle);
 			Float4x4& mat = ret;
-			mat.m[0][0] = cosine;
-			mat.m[0][1] = sine;
-			mat.m[0][2] = 0.0f;
-			mat.m[0][3] = 0.0f;
-			mat.m[1][0] = -sine;
-			mat.m[1][1] = cosine;
-			mat.m[1][2] = 0.0f;
-			mat.m[1][3] = 0.0f;
-			mat.m[2][0] = 0.0f;
-			mat.m[2][1] = 0.0f;
-			mat.m[2][2] = 1.0f;
-			mat.m[2][3] = 0.0f;
-			mat.m[3][0] = 0.0f;
-			mat.m[3][1] = 0.0f;
-			mat.m[3][2] = 0.0f;
-			mat.m[3][3] = 1.0f;
+			mat.r[0].x = cosine;
+			mat.r[0].y = sine;
+			mat.r[0].z = 0.0f;
+			mat.r[0].w = 0.0f;
+			mat.r[1].x = -sine;
+			mat.r[1].y = cosine;
+			mat.r[1].z = 0.0f;
+			mat.r[1].w = 0.0f;
+			mat.r[2].x = 0.0f;
+			mat.r[2].y = 0.0f;
+			mat.r[2].z = 1.0f;
+			mat.r[2].w = 0.0f;
+			mat.r[3].x = 0.0f;
+			mat.r[3].y = 0.0f;
+			mat.r[3].z = 0.0f;
+			mat.r[3].w = 1.0f;
 #endif
 			return ret;
 		}
@@ -459,7 +459,7 @@ namespace Luna
 			V0 = Float4(R0.x, R0.y, R0.z, A.w);
 			Float4 V1(R1.z, R2.y, R2.z, R1.x);
 			Float4 V2(R1.y, R2.x, R1.y, R2.x);
-			ret.affine_matrix = Float4x4(
+			ret = Float4x4(
 				V0.x, V1.x, V1.y, V0.w,
 				V1.z, V0.y, V1.w, V0.w,
 				V2.x, V2.y, V0.z, V0.w,
@@ -529,23 +529,22 @@ namespace Luna
 			float4x4 m = transform3d_scaling_f4x4(a);
 			store_f4x4(ret.r[0].m, m);
 #else
-			Float4x4& M = ret;
-			M.m[0][0] = scaling.x;
-			M.m[0][1] = 0.0f;
-			M.m[0][2] = 0.0f;
-			M.m[0][3] = 0.0f;
-			M.m[1][0] = 0.0f;
-			M.m[1][1] = scaling.y;
-			M.m[1][2] = 0.0f;
-			M.m[1][3] = 0.0f;
-			M.m[2][0] = 0.0f;
-			M.m[2][1] = 0.0f;
-			M.m[2][2] = scaling.z;
-			M.m[2][3] = 0.0f;
-			M.m[3][0] = 0.0f;
-			M.m[3][1] = 0.0f;
-			M.m[3][2] = 0.0f;
-			M.m[3][3] = 1.0f;
+			ret.r[0].x = scaling.x;
+			ret.r[0].y = 0.0f;
+			ret.r[0].z = 0.0f;
+			ret.r[0].w = 0.0f;
+			ret.r[1].x = 0.0f;
+			ret.r[1].y = scaling.y;
+			ret.r[1].z = 0.0f;
+			ret.r[1].w = 0.0f;
+			ret.r[2].x = 0.0f;
+			ret.r[2].y = 0.0f;
+			ret.r[2].z = scaling.z;
+			ret.r[2].w = 0.0f;
+			ret.r[3].x = 0.0f;
+			ret.r[3].y = 0.0f;
+			ret.r[3].z = 0.0f;
+			ret.r[3].w = 1.0f;
 #endif
 			return ret;
 		}
@@ -558,23 +557,22 @@ namespace Luna
 			float4x4 m = transform3d_scaling_f4x4(a);
 			store_f4x4(ret.r[0].m, m);
 #else
-			Float4x4& M = ret;
-			M.m[0][0] = scale_x;
-			M.m[0][1] = 0.0f;
-			M.m[0][2] = 0.0f;
-			M.m[0][3] = 0.0f;
-			M.m[1][0] = 0.0f;
-			M.m[1][1] = scale_y;
-			M.m[1][2] = 0.0f;
-			M.m[1][3] = 0.0f;
-			M.m[2][0] = 0.0f;
-			M.m[2][1] = 0.0f;
-			M.m[2][2] = scale_z;
-			M.m[2][3] = 0.0f;
-			M.m[3][0] = 0.0f;
-			M.m[3][1] = 0.0f;
-			M.m[3][2] = 0.0f;
-			M.m[3][3] = 1.0f;
+			ret.r[0].x = scale_x;
+			ret.r[0].y = 0.0f;
+			ret.r[0].z = 0.0f;
+			ret.r[0].w = 0.0f;
+			ret.r[1].x = 0.0f;
+			ret.r[1].y = scale_y;
+			ret.r[1].z = 0.0f;
+			ret.r[1].w = 0.0f;
+			ret.r[2].x = 0.0f;
+			ret.r[2].y = 0.0f;
+			ret.r[2].z = scale_z;
+			ret.r[2].w = 0.0f;
+			ret.r[3].x = 0.0f;
+			ret.r[3].y = 0.0f;
+			ret.r[3].z = 0.0f;
+			ret.r[3].w = 1.0f;
 #endif
 			return ret;
 		}

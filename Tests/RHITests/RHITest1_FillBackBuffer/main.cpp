@@ -31,10 +31,8 @@ void draw()
 			{get_back_buffer(), TEXTURE_BARRIER_ALL_SUBRESOURCES, TextureStateFlag::automatic, TextureStateFlag::color_attachment_write, ResourceBarrierFlag::discard_content}
 		});
 	RenderPassDesc render_pass;
-	render_pass.color_attachments[0] = ColorAttachment(get_back_buffer(), LoadOp::dont_care);
+	render_pass.color_attachments[0] = ColorAttachment(get_back_buffer(), LoadOp::clear, StoreOp::store, Color::blue_violet());
 	cb->begin_render_pass(render_pass);
-	auto clear_color = Color::blue_violet();
-	cb->clear_color_attachment(0, clear_color.m, {});
 	cb->end_render_pass();
 }
 

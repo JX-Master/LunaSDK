@@ -132,7 +132,7 @@ namespace Luna
 				if (failed(r))
 				{
 					log_error("%s", explain(r.errcode()));
-					debug_break();
+                    return r.errcode();
 				}
 			}
 			while (true)

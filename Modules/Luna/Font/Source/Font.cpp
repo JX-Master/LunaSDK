@@ -38,13 +38,15 @@ namespace Luna
 			{
 			case FontFileFormat::ttf:
 			{
+                Ref<IFontFile> ret;
 				Ref<FontFileTTF> f = new_object<FontFileTTF>();
 				lutry
 				{
 					luexp(f->init(data, data_size));
 				}
 				lucatchret;
-				return f;
+                ret = f;
+				return ret;
 			}
 			default:
 				lupanic();

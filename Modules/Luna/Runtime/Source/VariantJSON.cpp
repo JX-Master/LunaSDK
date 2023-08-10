@@ -673,25 +673,25 @@ namespace Luna
 					s.append("\\/");
 					break;
 				case '\b':
-					s.append("\\\b");
+					s.append("\\b");
 					break;
 				case '\f':
-					s.append("\\\f");
+					s.append("\\f");
 					break;
 				case '\n':
-					s.append("\\\n");
+					s.append("\\n");
 					break;
 				case '\r':
-					s.append("\\\r");
+					s.append("\\r");
 					break;
 				case '\t':
-					s.append("\\\t");
+					s.append("\\t");
 					break;
 				case '\a':
-					s.append("\\\a");
+					s.append("\\a");
 					break;
 				case '\v':
-					s.append("\\\v");
+					s.append("\\v");
 					break;
 				default:
 					s.append(cur, utf8_charspan(ch));

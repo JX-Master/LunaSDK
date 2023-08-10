@@ -7,6 +7,7 @@
 * @author JXMaster
 * @date 2023/2/24
 */
+//#define LUNA_DISABLE_SIMD
 #include "../RHITestBed/RHITestBed.hpp"
 #include <Luna/Runtime/Runtime.hpp>
 #include <Luna/Runtime/Module.hpp>
@@ -61,6 +62,8 @@ RV start()
             {
                 float4x4 world_to_proj;
             };
+            Texture2D tex : register(t1);
+            SamplerState tex_sampler : register(s2);
             struct VS_INPUT
             {
                 [[vk::location(0)]]
@@ -83,6 +86,10 @@ RV start()
                 return output;
             })";
         const char ps_shader_code[] = R"(
+            cbuffer vertexBuffer : register(b0)
+            {
+                float4x4 world_to_proj;
+            };
             Texture2D tex : register(t1);
             SamplerState tex_sampler : register(s2);
             struct PS_INPUT
@@ -133,14 +140,12 @@ RV start()
 		ps_desc.rasterizer_state = RasterizerDesc(FillMode::solid, CullMode::back, 0, 0.0f, 0.0f, 0, false, true, false, false, false);
 		ps_desc.depth_stencil_state = DepthStencilDesc(true, true, CompareFunction::less_equal, false, 0x00, 0x00, DepthStencilOpDesc(), DepthStencilOpDesc());
 		ps_desc.ib_strip_cut_value = IndexBufferStripCutValue::disabled;
-        ps_desc.input_layout = InputLayoutDesc({
-                {
-                    InputBindingDesc(0, sizeof(Vertex), InputRate::per_vertex)
-                },
-                {
-                    InputAttributeDesc("POSITION", 0, 0, 0, 0, Format::rgb32_float),
-                    InputAttributeDesc("TEXCOORD", 0, 1, 0, 12, Format::rg32_float),
-                } });
+        InputBindingDesc bindings[] = {InputBindingDesc(0, sizeof(Vertex), InputRate::per_vertex)};
+        InputAttributeDesc attributes[] = {
+            InputAttributeDesc("POSITION", 0, 0, 0, 0, Format::rgb32_float),
+            InputAttributeDesc("TEXCOORD", 0, 1, 0, 12, Format::rg32_float)
+        };
+        ps_desc.input_layout = InputLayoutDesc({bindings, 1}, {attributes, 2});
 		ps_desc.vs = vs.cspan();
 		ps_desc.ps = ps.cspan();
 		ps_desc.pipeline_layout = playout;
@@ -205,7 +210,7 @@ RV start()
             {
                 WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(cb)),
                 WriteDescriptorSet::read_texture_view(1, TextureViewDesc::tex2d(file_tex)),
-                WriteDescriptorSet::sampler(2, SamplerDesc(Filter::min_mag_mip_linear, TextureAddressMode::clamp,
+                WriteDescriptorSet::sampler(2, SamplerDesc(Filter::linear, Filter::linear, Filter::linear, TextureAddressMode::clamp,
                         TextureAddressMode::clamp, TextureAddressMode::clamp))
             });
 	}

@@ -70,17 +70,17 @@ namespace Luna
 		store_f3x4(r.r[0].m, mat);
 		return r;
 #else
-		Float3x3 r;
-		r.r[0].x = -r[0].x;
-		r.r[0].y = -r[0].y;
-		r.r[0].z = -r[0].z;
-		r.r[1].x = -r[1].x;
-		r.r[1].y = -r[1].y;
-		r.r[1].z = -r[1].z;
-		r.r[2].x = -r[2].x;
-		r.r[2].y = -r[2].y;
-		r.r[2].z = -r[2].z;
-		return r;
+		Float3x3 ret;
+        ret.r[0].x = -r[0].x;
+        ret.r[0].y = -r[0].y;
+        ret.r[0].z = -r[0].z;
+        ret.r[1].x = -r[1].x;
+        ret.r[1].y = -r[1].y;
+        ret.r[1].z = -r[1].z;
+        ret.r[2].x = -r[2].x;
+        ret.r[2].y = -r[2].y;
+        ret.r[2].z = -r[2].z;
+		return ret;
 #endif
 	}
 	inline Float3x3& Float3x3::operator+=(const Float3x3& rhs)

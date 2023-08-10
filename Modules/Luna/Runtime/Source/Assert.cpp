@@ -18,7 +18,7 @@ namespace Luna
 	{
 		OS::assert_fail(msg, file, line);
 	}
-	LUNA_RUNTIME_API inline void debug_break()
+	LUNA_RUNTIME_API void debug_break()
 	{
 		OS::debug_break();
 	}

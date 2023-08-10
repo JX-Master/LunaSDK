@@ -20,7 +20,6 @@ namespace Luna
 		{
 			IPipelineLayout* pipeline_layout = nullptr;
 			Span<const byte_t> cs;
-			UInt3U num_threads_per_group;
 		};
 
 		enum class InputRate : u8
@@ -89,8 +88,8 @@ namespace Luna
 			Span<const InputAttributeDesc> attributes;
 			InputLayoutDesc() = default;
 			InputLayoutDesc(
-				InitializerList<InputBindingDesc> bindings,
-				InitializerList<InputAttributeDesc> attributes
+                Span<const InputBindingDesc> bindings,
+                Span<const InputAttributeDesc> attributes
 			) : 
 				bindings(bindings),
 				attributes(attributes) {}

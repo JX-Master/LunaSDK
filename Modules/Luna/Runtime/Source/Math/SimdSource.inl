@@ -995,12 +995,10 @@ namespace Luna
 				_SelectW ? 0xFFFFFFFF : 0));
 			return _mm_or_ps(_mm_andnot_ps(control, a), _mm_and_ps(b, control));
 #elif defined(LUNA_NEON_INTRINSICS)
-			int4 control = set_i4(
-				_SelectX ? 0xFFFFFFFF : 0,
-				_SelectY ? 0xFFFFFFFF : 0,
-				_SelectZ ? 0xFFFFFFFF : 0,
-				_SelectW ? 0xFFFFFFFF : 0);
-			return vbslq_f32(vreinterpretq_u32_s32(control), b, a);
+            uint32x2_t t0 = vcreate_u32(static_cast<u64>(_SelectX ? 0xFFFFFFFF : 0) | (static_cast<u64>(_SelectY ? 0xFFFFFFFF : 0) << 32));
+            uint32x2_t t1 = vcreate_u32(static_cast<u64>(_SelectZ ? 0xFFFFFFFF : 0) | (static_cast<u64>(_SelectW ? 0xFFFFFFFF : 0) << 32));
+            uint32x4_t control = vcombine_u32(t0, t1);
+			return vbslq_f32(control, b, a);
 #else 
 #error "Not implemented."
 #endif

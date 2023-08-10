@@ -194,7 +194,7 @@ namespace Luna
 				}
 			}
 			lucatchret;
-			return m_buffer_resource;
+			return m_buffer_resource.get();
 		}
 		LUNA_VG_API Ref<IShapeAtlas> new_shape_atlas()
 		{

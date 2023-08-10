@@ -24,6 +24,8 @@ namespace Luna
 				return ShaderCompiler::TargetFormat::dxil;
 			case APIType::vulkan:
 				return ShaderCompiler::TargetFormat::spir_v;
+            case APIType::metal:
+                return ShaderCompiler::TargetFormat::msl;
 			}
 			lupanic();
 			return ShaderCompiler::TargetFormat::none;

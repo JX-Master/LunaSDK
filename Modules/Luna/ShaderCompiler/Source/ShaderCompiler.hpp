@@ -118,7 +118,9 @@ namespace Luna
 			// Compiled data.
 			ComPtr<IDxcResult> m_dxc_result;
 			ComPtr<IDxcBlob> m_dxc_blob;
-			std::string m_spirv_cross_compiled_data;
+			
+            String m_msl_compiled_data;
+            
 			// Pointer to the final output data.
 			const byte_t* m_out_data;
 			usize m_out_size;
@@ -132,12 +134,12 @@ namespace Luna
 			{
 				m_dxc_result.reset();
 				m_dxc_blob.reset();
-				m_spirv_cross_compiled_data.clear();
+                m_msl_compiled_data.clear();
 				m_out_data = nullptr;
 				m_out_size = 0;
 			}
 
-			void reset()
+            virtual void reset() override
 			{
 				lutsassert();
 				m_source = {};
@@ -177,8 +179,8 @@ namespace Luna
 			RV compile_none();
 			RV dxc_compile(DxcTargetType output_type);
 			RV spirv_compile(SpirvOutputType output_type);
-			RV compile();
-			Span<const byte_t> get_output();
+            virtual RV compile() override;
+            virtual Span<const byte_t> get_output() override;
 		};
 	}
 }
