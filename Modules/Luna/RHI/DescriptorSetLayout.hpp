@@ -106,7 +106,7 @@ namespace Luna
 			DescriptorSetLayoutFlag flags = DescriptorSetLayoutFlag::none;
 
 			DescriptorSetLayoutDesc() {}
-			DescriptorSetLayoutDesc(InitializerList<DescriptorSetLayoutBinding> bindings, 
+			DescriptorSetLayoutDesc(Span<const DescriptorSetLayoutBinding> bindings,
 				DescriptorSetLayoutFlag flags = DescriptorSetLayoutFlag::none) :
 				bindings(bindings),
 				flags(flags) {}

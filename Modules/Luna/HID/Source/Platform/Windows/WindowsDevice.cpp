@@ -10,6 +10,7 @@
 #pragma once
 #include <Luna/Runtime/PlatformDefines.hpp>
 #ifdef LUNA_PLATFORM_WINDOWS
+#include "../HID.hpp"
 #include "../../../HID.hpp"
 #include "../../../Mouse.hpp"
 #include "../../../Keyboard.hpp"

@@ -106,7 +106,7 @@ void init()
 
 	// register event.
 	g_window = Window::new_window("Luna Vector Graphics Test", Window::WindowDisplaySettings::as_windowed(), Window::WindowCreationFlag::resizable).get();
-	auto sz = g_window->get_size();
+	auto sz = g_window->get_framebuffer_size();
 
 	g_window->get_close_event().add_handler(on_window_close);
 	g_window->get_framebuffer_resize_event().add_handler(on_window_resize);
@@ -141,7 +141,7 @@ void init()
 	g_render_time = 0;
 	g_frame_time = 0;
 
-	auto size = g_window->get_size();
+	auto size = g_window->get_framebuffer_size();
 
 	rearrange_text(RectF(0.0f, 0.0f, (f32)size.x, max((f32)(size.y - HEADER_TEXT_HEIGHT), 0.0f)));
 }
@@ -158,7 +158,7 @@ void run()
 			sleep(100);
 			continue;
 		}
-		auto sz = g_window->get_size();
+		auto sz = g_window->get_framebuffer_size();
 		f64 time1 = ((f64)get_ticks() / get_ticks_per_second()) * 1000;
 		c8 buf[64];
 

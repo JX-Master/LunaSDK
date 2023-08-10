@@ -56,12 +56,13 @@ namespace Luna
 					g_fill_shader_ps = Blob(data.data(), data.size());
 				}
 				{
-					DescriptorSetLayoutDesc desc({
-						DescriptorSetLayoutBinding(DescriptorType::uniform_buffer_view, 0, 1, ShaderVisibilityFlag::vertex),
-						DescriptorSetLayoutBinding(DescriptorType::read_buffer_view, 1, 1, ShaderVisibilityFlag::all),
-						DescriptorSetLayoutBinding(DescriptorType::read_texture_view, 2, 1, ShaderVisibilityFlag::pixel),
-						DescriptorSetLayoutBinding(DescriptorType::sampler, 3, 1, ShaderVisibilityFlag::pixel),
-					});
+                    DescriptorSetLayoutBinding bindings[] = {
+                        DescriptorSetLayoutBinding(DescriptorType::uniform_buffer_view, 0, 1, ShaderVisibilityFlag::vertex),
+                        DescriptorSetLayoutBinding(DescriptorType::read_buffer_view, 1, 1, ShaderVisibilityFlag::all),
+                        DescriptorSetLayoutBinding(DescriptorType::read_texture_view, 2, 1, ShaderVisibilityFlag::pixel),
+                        DescriptorSetLayoutBinding(DescriptorType::sampler, 3, 1, ShaderVisibilityFlag::pixel)
+                    };
+					DescriptorSetLayoutDesc desc({bindings, 4});
 					luset(g_fill_desc_layout, dev->new_descriptor_set_layout(desc));
 				}
 				{
@@ -119,18 +120,18 @@ namespace Luna
 			lutry
 			{
 				GraphicsPipelineStateDesc desc;
-				desc.input_layout = InputLayoutDesc(
-					{
-						InputBindingDesc(0, sizeof(Vertex), InputRate::per_vertex)
-					},
-						{
-							InputAttributeDesc("POSITION", 0, 0, 0, offsetof(Vertex, position), Format::rg32_float),
-							InputAttributeDesc("SHAPECOORD", 0, 1, 0, offsetof(Vertex, shapecoord), Format::rg32_float),
-							InputAttributeDesc("TEXCOORD", 0, 2, 0, offsetof(Vertex, texcoord), Format::rg32_float),
-							InputAttributeDesc("COLOR", 0, 3, 0, offsetof(Vertex, color), Format::rgba8_unorm),
-							InputAttributeDesc("COMMAND_OFFSET", 0, 4, 0, offsetof(Vertex, begin_command), Format::r32_uint),
-							InputAttributeDesc("NUM_COMMANDS", 0, 5, 0, offsetof(Vertex, num_commands), Format::r32_uint),
-						});
+                InputBindingDesc bindings[] = {
+                    InputBindingDesc(0, sizeof(Vertex), InputRate::per_vertex)
+                };
+                InputAttributeDesc attributes[] = {
+                    InputAttributeDesc("POSITION", 0, 0, 0, offsetof(Vertex, position), Format::rg32_float),
+                    InputAttributeDesc("SHAPECOORD", 0, 1, 0, offsetof(Vertex, shapecoord), Format::rg32_float),
+                    InputAttributeDesc("TEXCOORD", 0, 2, 0, offsetof(Vertex, texcoord), Format::rg32_float),
+                    InputAttributeDesc("COLOR", 0, 3, 0, offsetof(Vertex, color), Format::rgba8_unorm),
+                    InputAttributeDesc("COMMAND_OFFSET", 0, 4, 0, offsetof(Vertex, begin_command), Format::r32_uint),
+                    InputAttributeDesc("NUM_COMMANDS", 0, 5, 0, offsetof(Vertex, num_commands), Format::r32_uint)
+                };
+                desc.input_layout = InputLayoutDesc({bindings, 1}, {attributes, 6});
 				desc.pipeline_layout = g_fill_playout;
 				desc.vs = { g_fill_shader_vs.data(), g_fill_shader_vs.size() };
 				desc.ps = { g_fill_shader_ps.data(), g_fill_shader_ps.size() };
