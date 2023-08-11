@@ -11,6 +11,7 @@ end
 
 luna_sdk_module_target("HID")
     add_headerfiles("*.hpp")
+    add_options("hid_sdl")
     add_files("Source/*.cpp")
     if has_config("hid_sdl") then
         add_files("Source/Platform/SDL/*.cpp")
