@@ -129,7 +129,7 @@ namespace Luna
 		m_deleting_assets.clear();
 
 		char title[64];
-		sprintf_s(title, "Asset Browser##%llu", (u64)this);
+		snprintf(title, 64, "Asset Browser##%llu", (u64)this);
 
 		ImGui::SetNextWindowSize({ 1000.0f, 500.0f }, ImGuiCond_FirstUseEver);
 		ImGui::Begin(title, nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_MenuBar);

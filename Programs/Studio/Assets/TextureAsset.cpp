@@ -54,7 +54,6 @@ namespace Luna
 				ComputePipelineStateDesc ps_desc;
 				ps_desc.pipeline_layout = m_mipmapping_playout;
 				ps_desc.cs = cs_blob.cspan();
-				ps_desc.num_threads_per_group = UInt3U(8, 8, 1);
 				luset(m_mipmapping_pso, RHI::get_main_device()->new_compute_pipeline_state(ps_desc));
 			}
 		}

@@ -89,7 +89,6 @@ namespace Luna
 				ComputePipelineStateDesc ps_desc;
 				ps_desc.pipeline_layout = m_mipmapping_playout;
 				ps_desc.cs = cs_blob.cspan();
-				ps_desc.num_threads_per_group = {8, 8, 1};
 				luset(m_mipmapping_pso, RHI::get_main_device()->new_compute_pipeline_state(ps_desc));
 			}
 			{
@@ -110,7 +109,6 @@ namespace Luna
 				ComputePipelineStateDesc ps_desc;
 				ps_desc.pipeline_layout = m_env_mipmapping_playout;
 				ps_desc.cs = cs_blob.cspan();
-				ps_desc.num_threads_per_group = {8, 8, 1};
 				luset(m_env_mipmapping_pso, RHI::get_main_device()->new_compute_pipeline_state(ps_desc));
 			}
 		}
@@ -402,7 +400,7 @@ namespace Luna
 	void TextureImporter::on_render()
 	{
 		char title[32];
-		sprintf_s(title, "Texture Importer###%d", (u32)(usize)this);
+		snprintf(title, 32, "Texture Importer###%d", (u32)(usize)this);
 
 		ImGui::Begin(title, &m_open, ImGuiWindowFlags_NoCollapse);
 
@@ -423,7 +421,7 @@ namespace Luna
 					luset(file.m_desc, Image::read_image_file_desc(file.m_file_data.data(), file.m_file_data.size()));
 					file.m_path = img_path;
 					img_path.remove_extension();
-					file.m_asset_name = img_path.back();
+					file.m_asset_name = img_path.back().c_str();
 					file.m_prefiler_type = TexturePrefilerType::normal;
 					m_files.push_back(move(file));
 				}

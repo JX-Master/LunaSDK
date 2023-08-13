@@ -36,7 +36,6 @@ namespace Luna
 			ComputePipelineStateDesc ps_desc;
 			ps_desc.cs = cs_blob.cspan();
 			ps_desc.pipeline_layout = m_buffer_visualization_pass_playout;
-            ps_desc.num_threads_per_group = {8, 8, 1};
 			luset(m_buffer_visualization_pass_pso, device->new_compute_pipeline_state(ps_desc));
         }
         lucatchret;
@@ -83,13 +82,13 @@ namespace Luna
                     {base_color_roughness_tex, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::shader_read_cs, ResourceBarrierFlag::none},
                     {normal_metallic_tex, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::shader_read_cs, ResourceBarrierFlag::none},
                 });
-            m_ds->update_descriptors({
+            luexp(m_ds->update_descriptors({
                 WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(m_vis_params, 0, (u32)align_upper(sizeof(u32), cb_align))),
                 WriteDescriptorSet::read_texture_view(1, TextureViewDesc::tex2d(base_color_roughness_tex)),
                 WriteDescriptorSet::read_texture_view(2, TextureViewDesc::tex2d(normal_metallic_tex)),
                 WriteDescriptorSet::read_texture_view(3, TextureViewDesc::tex2d(depth_tex)),
                 WriteDescriptorSet::read_write_texture_view(4, TextureViewDesc::tex2d(scene_tex))
-                });
+                }));
             auto scene_desc = scene_tex->get_desc();
             cmdbuf->set_compute_pipeline_layout(m_global_data->m_buffer_visualization_pass_playout);
             cmdbuf->set_compute_pipeline_state(m_global_data->m_buffer_visualization_pass_pso);

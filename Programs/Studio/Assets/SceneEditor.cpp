@@ -123,7 +123,7 @@ namespace Luna
 		if (ImGui::Button("New Entity"))
 		{
 			char name[64];
-			strcpy_s(name, "New_Entity");
+			strncpy(name, "New_Entity", 64);
 			auto entity = s->add_entity(Name(name));
 			if (entity.errcode() == BasicError::already_exists())
 			{
@@ -131,7 +131,7 @@ namespace Luna
 				// Append index.
 				while (failed(entity))
 				{
-					sprintf_s(name, "New_Entity_%u", index);
+					snprintf(name, 64, "New_Entity_%u", index);
 					entity = s->add_entity(Name(name));
 					++index;
 				}
@@ -189,7 +189,7 @@ namespace Luna
 						dl->AddRectFilled(sel_pos, sel_pos + sel_size,
 							Color(ImGui::GetStyle().Colors[(u32)ImGuiCol_Button]).abgr8());
 					}
-					ImGui::Text(entities[i]->name.c_str());
+					ImGui::Text("%s", entities[i]->name.c_str());
 				}
 
 				if (ImGui::IsWindowFocused() && in_bounds(ImGui::GetIO().MousePos, sel_pos, sel_pos + sel_size) && ImGui::IsMouseClicked(ImGuiMouseButton_Right))
@@ -328,7 +328,7 @@ namespace Luna
 			ImGui::BeginChild("Scene Viewport", Float2(0.0f, 0.0f), false, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar);
 
 			ImGui::SetNextItemWidth(100.0f);
-			ImGui::SliderFloat("Camera Speed", &m_camera_speed, 0.1f, 10.0f, "%.3f", 3.3f);
+			ImGui::SliderFloat("Camera Speed", &m_camera_speed, 0.1f, 10.0f, "%.3f");
 			ImGui::SameLine();
 			{
 				// Draw gizmo mode combo.
@@ -596,7 +596,7 @@ namespace Luna
 			luassert_always(succeeded(m_renderer.command_buffer->reset()));
 			if(settings != m_renderer.get_settings())
 			{
-				m_renderer.reset(settings);
+				luexp(m_renderer.reset(settings));
 			}
 			ImGui::EndChild();
 		}
@@ -721,7 +721,7 @@ namespace Luna
 	void SceneEditor::on_render()
 	{
 		char title[32];
-		sprintf_s(title, "Scene Editor###%d", (u32)(usize)this);
+		snprintf(title, 32, "Scene Editor###%d", (u32)(usize)this);
 		ImGui::SetNextWindowSize(Float2(1000, 500), ImGuiCond_FirstUseEver);
 		ImGui::Begin(title, &m_open, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_MenuBar);
 		auto s = Asset::get_asset_data<Scene>(m_scene);

@@ -1,6 +1,5 @@
 luna_sdk_module_target("HID")
     add_headerfiles("*.hpp")
-    add_options("hid_sdl")
     add_files("Source/*.cpp")
     if is_os("windows") then
         add_files("Source/Platform/Windows/*.cpp")

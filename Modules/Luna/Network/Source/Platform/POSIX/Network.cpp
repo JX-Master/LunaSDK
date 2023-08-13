@@ -11,6 +11,7 @@
 #define LUNA_NETWORK_API LUNA_EXPORT
 #include "../../../Network.hpp"
 #include <Luna/Runtime/Module.hpp>
+#include <Luna/Runtime/Interface.hpp>
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdio.h>
@@ -30,6 +31,7 @@ namespace Luna
             lustruct("Net::Socket", "{35d804cf-4249-491f-a3e0-c95944ad5339}");
 			luiimpl();
 
+			AddressFamily m_af;
             int m_socket;
 
             Socket() :
@@ -42,13 +44,13 @@ namespace Luna
                     m_socket = -1;
                 }
             }
-			opaque_t get_native_handle() { return (opaque_t)m_socket; }
-            RV read(Span<byte_t> buffer, usize* read_bytes);
-            RV write(Span<const byte_t> buffer, usize* write_bytes);
-            RV bind_ipv4(const SocketAddressIPv4& address);
-            RV listen(i32 len);
-            RV connect_ipv4(const SocketAddressIPv4& address);
-            R<Ref<ISocket>> accept_ipv4(SocketAddressIPv4& address);
+			virtual opaque_t get_native_handle() override { return (opaque_t)m_socket; }
+            virtual RV read(void* buffer, usize size, usize* read_bytes) override;
+            virtual RV write(const void* buffer, usize size, usize* write_bytes) override;
+            virtual RV bind(const SocketAddress& address) override;
+            virtual RV listen(i32 len) override;
+            virtual RV connect(const SocketAddress& address) override;
+            virtual R<Ref<ISocket>> accept(SocketAddress& address) override;
         };
 
         inline ErrCode translate_error(int err)
@@ -67,7 +69,7 @@ namespace Luna
             case EADDRINUSE: return NetworkError::address_in_use();
             case EADDRNOTAVAIL: return NetworkError::address_not_available();
             case EOPNOTSUPP: return BasicError::not_supported();
-            case EALREADY: return BasicError::busy();
+            case EALREADY: return BasicError::not_ready();
             case ECONNREFUSED: return NetworkError::connection_refused();
             case EINPROGRESS: return BasicError::in_progress();
             case EISCONN: return NetworkError::already_connected();
@@ -78,9 +80,9 @@ namespace Luna
             }
         }
 
-        RV Socket::read(Span<byte_t> buffer, usize* read_bytes)
+        RV Socket::read(void* buffer, usize size, usize* read_bytes)
 		{
-            isize read_sz = ::read(m_socket, buffer.data(), buffer.size());
+            isize read_sz = ::read(m_socket, buffer, size);
             if(read_sz == -1)
             {
                 if (read_bytes) *read_bytes = 0;
@@ -90,9 +92,9 @@ namespace Luna
             return ok;
 		}
 
-        RV Socket::write(Span<const byte_t> buffer, usize* write_bytes)
+        RV Socket::write(const void* buffer, usize size, usize* write_bytes)
         {
-            isize write_sz = ::write(m_socket, buffer.data(), buffer.size());
+            isize write_sz = ::write(m_socket, buffer, size);
             if(write_sz == -1)
             {
                 if (write_bytes) *write_bytes = 0;
@@ -101,18 +103,22 @@ namespace Luna
             if (write_bytes) *write_bytes = (usize)write_sz;
             return ok;
         }
-        RV Socket::bind_ipv4(const SocketAddressIPv4& address)
+        RV Socket::bind(const SocketAddress& address)
 		{
-			sockaddr_in addr;
-			addr.sin_family = AF_INET;
-			addr.sin_port = address.port;
-			memcpy(&addr.sin_addr.s_addr, &address.address, 4);
-			auto r = ::bind(m_socket, (sockaddr*)&addr, sizeof(addr));
-			if (r == -1)
+			if(address.family == AddressFamily::ipv4)
 			{
-				return translate_error(errno);
+				sockaddr_in addr;
+				addr.sin_family = AF_INET;
+				addr.sin_port = address.ipv4.port;
+				memcpy(&addr.sin_addr.s_addr, &address.ipv4.address, 4);
+				auto r = ::bind(m_socket, (sockaddr*)&addr, sizeof(addr));
+				if (r == -1)
+				{
+					return translate_error(errno);
+				}
+				return ok;
 			}
-			return ok;
+			return NetworkError::address_not_supported();
 		}
         RV Socket::listen(i32 len)
 		{
@@ -123,38 +129,47 @@ namespace Luna
 			}
 			return ok;
 		}
-        RV Socket::connect_ipv4(const SocketAddressIPv4& address)
+        RV Socket::connect(const SocketAddress& address)
 		{
-			sockaddr_in addr;
-			addr.sin_family = AF_INET;
-			addr.sin_port = address.port;
-			memcpy(&addr.sin_addr.s_addr, &address.address, 4);
-			int r = ::connect(m_socket, (sockaddr*)&addr, sizeof(addr));
-			if (r == -1)
+			if(address.family == AddressFamily::ipv4)
 			{
-				return translate_error(errno);
+				sockaddr_in addr;
+				addr.sin_family = AF_INET;
+				addr.sin_port = address.ipv4.port;
+				memcpy(&addr.sin_addr.s_addr, &address.ipv4.address, 4);
+				int r = ::connect(m_socket, (sockaddr*)&addr, sizeof(addr));
+				if (r == -1)
+				{
+					return translate_error(errno);
+				}
+				return ok;
 			}
-			return ok;
+			return NetworkError::address_not_supported();
 		}
-        R<Ref<ISocket>> Socket::accept_ipv4(SocketAddressIPv4& address)
+        R<Ref<ISocket>> Socket::accept(SocketAddress& address)
 		{
-			sockaddr_in addr;
-			socklen_t size = sizeof(addr);
-			auto r = ::accept(m_socket, (sockaddr*)&addr, &size);
-			if (r == -1)
+			memzero(&address, sizeof(SocketAddress));
+			if(m_af == AddressFamily::ipv4)
 			{
-				return translate_error(errno);
+				sockaddr_in addr;
+				socklen_t size = sizeof(addr);
+				auto r = ::accept(m_socket, (sockaddr*)&addr, &size);
+				if (r == -1)
+				{
+					return translate_error(errno);
+				}
+				address.ipv4.port = addr.sin_port;
+				memcpy(&address.ipv4.address, & addr.sin_addr.s_addr, 4);
+				Ref<Socket> s = new_object<Socket>();
+				s->m_socket = r;
+				return Ref<ISocket>(s);
 			}
-			address.port = addr.sin_port;
-			memcpy(&address.address, & addr.sin_addr.s_addr, 4);
-			Ref<Socket> s = new_object<Socket>();
-			s->m_socket = r;
-			return Ref<ISocket>(s);
+			return NetworkError::address_not_supported();
 		}
         RV init()
 		{
-			register_interface<ISocket>();
-			Socket::reg();
+			register_boxed_type<Socket>();
+			impl_interface_for_type<Socket, ISocket>();
 			return ok;
 		}
 
@@ -208,6 +223,7 @@ namespace Luna
                 return translate_error(errno);
             }
             Ref<Socket> s = new_object<Socket>();
+			s->m_af = af;
 			s->m_socket = r;
 			return Ref<ISocket>(s);
         }

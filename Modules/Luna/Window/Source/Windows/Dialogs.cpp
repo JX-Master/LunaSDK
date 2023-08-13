@@ -8,8 +8,6 @@
 * @date 2022/6/6
 */
 #include <Luna/Runtime/PlatformDefines.hpp>
-
-#ifdef LUNA_PLATFORM_WINDOWS
 #define LUNA_WINDOW_API LUNA_EXPORT
 #include "../../MessageBox.hpp"
 #include "../../FileDialog.hpp"
@@ -367,5 +365,3 @@ namespace Luna
 		}
 	}
 }
-
-#endif

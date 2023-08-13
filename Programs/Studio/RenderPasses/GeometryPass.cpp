@@ -198,7 +198,7 @@ namespace Luna
 				auto mesh = Asset::get_asset_data<Mesh>(model->mesh);
 				cmdbuf->set_vertex_buffers(0, { VertexBufferView(mesh->vb, 0,
 					mesh->vb_count * sizeof(Vertex), sizeof(Vertex)) });
-				cmdbuf->set_index_buffer({mesh->ib, 0, mesh->ib_count * sizeof(u32), Format::r32_uint});
+				cmdbuf->set_index_buffer({mesh->ib, 0, (u32)(mesh->ib_count * sizeof(u32)), Format::r32_uint});
 
 				u32 num_pieces = (u32)mesh->pieces.size();
 
@@ -244,7 +244,7 @@ namespace Luna
 						}
 					}
 					lulet(vs, device->new_descriptor_set(DescriptorSetDesc(m_global_data->m_geometry_pass_dlayout)));
-					vs->update_descriptors({
+					luexp(vs->update_descriptors({
 						WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(camera_cb, 0, (u32)align_upper(sizeof(CameraCB), cb_align))),
 						WriteDescriptorSet::read_buffer_view(1, BufferViewDesc::structured_buffer(model_matrices, i, 1, sizeof(Float4x4) * 2)),
 						WriteDescriptorSet::read_texture_view(2, TextureViewDesc::tex2d(base_color_tex)),
@@ -253,7 +253,7 @@ namespace Luna
 						WriteDescriptorSet::read_texture_view(5, TextureViewDesc::tex2d(metallic_tex)),
 						WriteDescriptorSet::read_texture_view(6, TextureViewDesc::tex2d(emissive_tex)),
 						WriteDescriptorSet::sampler(7, SamplerDesc(Filter::linear, Filter::linear, Filter::linear, TextureAddressMode::repeat, TextureAddressMode::repeat, TextureAddressMode::repeat))
-						});
+						}));
 					cmdbuf->set_graphics_descriptor_set(0, vs);
 					cmdbuf->attach_device_object(vs);
 					cmdbuf->draw_indexed(mesh->pieces[j].num_indices, mesh->pieces[j].first_index_offset, 0);

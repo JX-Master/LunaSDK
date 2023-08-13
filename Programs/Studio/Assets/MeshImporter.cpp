@@ -228,7 +228,7 @@ namespace Luna
 	void MeshImporter::on_render()
 	{
 		char title[32];
-		sprintf_s(title, "Obj Mesh Importer###%d", (u32)(usize)this);
+		snprintf(title, 32, "Obj Mesh Importer###%d", (u32)(usize)this);
 
 		ImGui::Begin(title, &m_open, ImGuiWindowFlags_NoCollapse);
 

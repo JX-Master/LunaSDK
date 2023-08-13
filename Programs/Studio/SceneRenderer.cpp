@@ -323,11 +323,11 @@ namespace Luna
 				if (light_ts.empty())
 				{
 					LightingParams p;
-					p.strength = { 0.0f, 0.0f, 0.0f };
+					p.strength = Float3U{ 0.0f, 0.0f, 0.0f };
 					p.attenuation_power = 1.0f;
-					p.direction = { 0.0f, 0.0f, 1.0f };
+					p.direction = Float3U{ 0.0f, 0.0f, 1.0f };
 					p.type = 0;
-					p.position = { 0.0f, 0.0f, 0.0f };
+					p.position = Float3U{ 0.0f, 0.0f, 0.0f };
 					p.spot_attenuation_power = 0.0f;
 					memcpy((LightingParams*)mapped, &p, sizeof(LightingParams));
 				}

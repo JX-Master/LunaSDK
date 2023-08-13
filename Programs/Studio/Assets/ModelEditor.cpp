@@ -40,7 +40,7 @@ namespace Luna
 	void ModelEditor::on_render()
 	{
 		char title[32];
-		sprintf_s(title, "Model Editor###%d", (u32)(usize)this);
+		snprintf(title, 32, "Model Editor###%d", (u32)(usize)this);
 		ImGui::Begin(title, &m_open, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_MenuBar);
 
 		Ref<Model> model = Asset::get_asset_data(m_model);
@@ -88,7 +88,7 @@ namespace Luna
 			{
 				auto pos = ImGui::GetCursorPos();
 				char mat_name[32];
-				sprintf_s(mat_name, "Material slot %u", i);
+				snprintf(mat_name, 32, "Material slot %u", i);
 				edit_asset(mat_name, model->materials[i]);
 				ImGui::SameLine();
 				ImGui::PushID(i);

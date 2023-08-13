@@ -136,7 +136,7 @@ namespace Luna
 					mesh->vb_count * sizeof(Vertex), sizeof(Vertex));
 
 				cmdbuf->set_vertex_buffers(0, { &vb_view, 1 });
-				cmdbuf->set_index_buffer({mesh->ib, 0, mesh->ib_count * sizeof(u32), Format::r32_uint});
+				cmdbuf->set_index_buffer({mesh->ib, 0, (u32)(mesh->ib_count * sizeof(u32)), Format::r32_uint});
 
 				u32 num_pieces = (u32)mesh->pieces.size();
 				for (u32 j = 0; j < num_pieces; ++j)

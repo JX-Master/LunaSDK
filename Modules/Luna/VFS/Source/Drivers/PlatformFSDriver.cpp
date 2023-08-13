@@ -95,7 +95,7 @@ namespace Luna
 		{
 			auto data = (PlatformFileSystemMountData*)mount_data;
 			auto native_path = data->make_native_path_str(path);
-			return native_path;
+			return Name(native_path);
 		}
 		void register_platform_filesystem_driver()
 		{
