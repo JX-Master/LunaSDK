@@ -7,7 +7,6 @@
 * @author JXMaster
 * @date 2022/6/14
 */
-#pragma once
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_IMGUI_API LUNA_EXPORT
 #include "../ImGui.hpp"
@@ -63,6 +62,8 @@ cbuffer vertexBuffer : register(b0)
 {
     float4x4 ProjectionMatrix; 
 };
+Texture2D texture0 : register(t1);
+SamplerState sampler0 : register(s2);
 struct VS_INPUT
 {
     [[vk::location(0)]]
@@ -99,8 +100,12 @@ struct PS_INPUT
     [[vk::location(2)]]
     float4 col : COLOR0;
 };
-SamplerState sampler0 : register(s2);
+cbuffer vertexBuffer : register(b0)
+{
+    float4x4 ProjectionMatrix;
+};
 Texture2D texture0 : register(t1);
+SamplerState sampler0 : register(s2);
 [[vk::location(0)]]
 float4 main(PS_INPUT input) : SV_Target
 {
@@ -200,7 +205,7 @@ float4 main(PS_INPUT input) : SV_Target
             return ok;
         }
 
-        static RV rebuild_font(f32 scale)
+        static RV rebuild_font(f32 render_scale, f32 display_scale)
         {
             using namespace RHI;
             lutry
@@ -215,8 +220,9 @@ float4 main(PS_INPUT input) : SV_Target
                 usize font_size = default_font->data().size();
                 void* font_data = ImGui::MemAlloc(font_size);
                 memcpy(font_data, default_font->data().data(), font_size);
-                io.Fonts->AddFontFromMemoryTTF(const_cast<void*>(font_data), (int)font_size, 18.0f * scale);
+                io.Fonts->AddFontFromMemoryTTF(const_cast<void*>(font_data), (int)font_size, 18.0f * render_scale);
                 io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
+                io.FontGlobalScale = display_scale;
                 auto dev = get_main_device();
                 luset(g_font_tex, dev->new_texture(MemoryType::local, TextureDesc::tex2d(Format::rgba8_unorm,
                     TextureUsageFlag::read_texture | TextureUsageFlag::copy_dest, width, height, 1, 1)));
@@ -486,7 +492,10 @@ float4 main(PS_INPUT input) : SV_Target
 
         static void handle_dpi_changed(Window::IWindow* window, f32 dpi_scale)
         {
-            auto _ = rebuild_font(dpi_scale);
+            auto sz = window->get_size();
+            auto fb_sz = window->get_framebuffer_size();
+            f32 display_scale = (f32)sz.x / (f32)fb_sz.x;
+            auto _ = rebuild_font(dpi_scale, display_scale);
         }
 
         usize g_handle_mouse_move;
@@ -569,7 +578,9 @@ float4 main(PS_INPUT input) : SV_Target
             if (g_active_window)
             {
                 auto sz = g_active_window->get_size();
+                auto framebuffer_sz = g_active_window->get_framebuffer_size();
                 io.DisplaySize = ImVec2((f32)sz.x, (f32)sz.y);
+                io.DisplayFramebufferScale = ImVec2((f32)framebuffer_sz.x / (f32)sz.x, (f32)framebuffer_sz.y / (f32)sz.y);
             }
             
             // Update OS mouse position
@@ -579,11 +590,14 @@ float4 main(PS_INPUT input) : SV_Target
             {
                 if (g_active_window)
                 {
-                    auto _ = rebuild_font(g_active_window->get_dpi_scale_factor());
+                    auto sz = g_active_window->get_size();
+                    auto fb_sz = g_active_window->get_framebuffer_size();
+                    f32 display_scale = (f32)sz.x / (f32)fb_sz.x;
+                    auto _ = rebuild_font(g_active_window->get_dpi_scale_factor(), display_scale);
                 }
                 else
                 {
-                    auto _ = rebuild_font(1.0f);
+                    auto _ = rebuild_font(1.0f, 1.0f);
                 }
             }
         }
@@ -625,15 +639,19 @@ float4 main(PS_INPUT input) : SV_Target
             return iter->second.get();
         }
 
-        LUNA_IMGUI_API RV render_draw_data(ImDrawData* data, RHI::ICommandBuffer* cmd_buffer, RHI::ITexture* render_target)
+        LUNA_IMGUI_API RV render_draw_data(ImDrawData* draw_data, RHI::ICommandBuffer* cmd_buffer, RHI::ITexture* render_target)
         {
             using namespace RHI;
             lutry
             {
-                ImDrawData* draw_data = ::ImGui::GetDrawData();
-                // Avoid rendering when minimized
-                if (draw_data->DisplaySize.x <= 0.0f || draw_data->DisplaySize.y <= 0.0f)
+                // Avoid rendering when minimized, scale coordinates for retina displays (screen coordinates != framebuffer coordinates)
+                ImGuiIO& io = ImGui::GetIO();
+                int fb_width = (int)(io.DisplaySize.x * io.DisplayFramebufferScale.x);
+                int fb_height = (int)(io.DisplaySize.y * io.DisplayFramebufferScale.y);
+                if (fb_width == 0 || fb_height == 0)
                     return ok;
+                draw_data->ScaleClipRects(io.DisplayFramebufferScale);
+                
                 // Create and grow vertex/index buffers if needed
                 auto dev = cmd_buffer->get_device();
                 if (!g_vb || g_vb_size < (u32)draw_data->TotalVtxCount)
@@ -705,9 +723,9 @@ float4 main(PS_INPUT input) : SV_Target
                 desc.color_attachments[0] = ColorAttachment(render_target, LoadOp::load, StoreOp::store);
                 cmd_buffer->begin_render_pass(desc);
 
-                cmd_buffer->set_viewport(Viewport(0.0f, 0.0f, draw_data->DisplaySize.x, draw_data->DisplaySize.y, 0.0f, 1.0f));
-
-                cmd_buffer->set_vertex_buffers(0, { &VertexBufferView(g_vb, 0, (u32)(g_vb_size * sizeof(ImDrawVert)), sizeof(ImDrawVert)), 1 });
+                cmd_buffer->set_viewport(Viewport(0.0f, 0.0f, fb_width, fb_height, 0.0f, 1.0f));
+                VertexBufferView vbv = VertexBufferView(g_vb, 0, (u32)(g_vb_size * sizeof(ImDrawVert)), sizeof(ImDrawVert));
+                cmd_buffer->set_vertex_buffers(0, { &vbv, 1 });
                 cmd_buffer->set_index_buffer({g_ib, 0, (u32)(g_ib_size * sizeof(ImDrawIdx)), sizeof(ImDrawIdx) == 2 ? Format::r16_uint : Format::r32_uint});
                 lulet(pso, get_pso(rt_desc.format));
                 cmd_buffer->set_graphics_pipeline_state(pso);
@@ -718,7 +736,6 @@ float4 main(PS_INPUT input) : SV_Target
                 i32 vtx_offset = 0;
                 i32 idx_offset = 0;
                 Float2 clip_off = { draw_data->DisplayPos.x, draw_data->DisplayPos.y };
-                Float2 clip_scale = { draw_data->FramebufferScale.x, draw_data->FramebufferScale.y };
 
                 u32 num_draw_calls = 0;
 
@@ -735,8 +752,8 @@ float4 main(PS_INPUT input) : SV_Target
                         else
                         {
                             // Project scissor/clipping rectangles into framebuffer space
-                            Float2 clip_min = Float2((pcmd->ClipRect.x - clip_off.x), (pcmd->ClipRect.y - clip_off.y)) * clip_scale;
-                            Float2 clip_max = Float2((pcmd->ClipRect.z - clip_off.x), (pcmd->ClipRect.w - clip_off.y)) * clip_scale;
+                            Float2 clip_min = Float2((pcmd->ClipRect.x - clip_off.x), (pcmd->ClipRect.y - clip_off.y));
+                            Float2 clip_max = Float2((pcmd->ClipRect.z - clip_off.x), (pcmd->ClipRect.w - clip_off.y));
                             // Apply Scissor, Bind texture, Draw
                             const RectI r = {
                                 (i32)(clip_min.x),

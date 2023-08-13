@@ -158,7 +158,7 @@ namespace Luna
 			WorkerThreadContext* ctx = (WorkerThreadContext*)params;
 			ctx->m_thread_dead = true;
 		}
-		void worker_thread_run(void* params);
+		static void worker_thread_run(void* params);
 		RV job_system_init()
 		{
 			init_job_state_map();

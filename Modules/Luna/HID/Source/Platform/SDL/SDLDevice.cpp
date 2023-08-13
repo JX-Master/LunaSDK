@@ -7,7 +7,6 @@
 * @author JXMaster
 * @date 2022/4/1
 */
-#pragma once
 #ifdef LUNA_HID_SDL
 #include "../../HID.hpp"
 #include "../../../HID.hpp"
@@ -61,6 +60,7 @@ namespace Luna
                 return (buttons & SDL_BUTTON_X1MASK) != 0;
             case MouseButton::function2:
                 return (buttons & SDL_BUTTON_X2MASK) != 0;
+            default: break;
             }
             return false;
         }

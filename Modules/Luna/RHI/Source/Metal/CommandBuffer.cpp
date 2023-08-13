@@ -198,11 +198,25 @@ namespace Luna
             assert_graphcis_context();
             MTL::Buffer** buffers = (MTL::Buffer**)alloca(sizeof(MTL::Buffer*) * descriptor_sets.size());
             NS::UInteger* offsets = (NS::UInteger*)alloca(sizeof(NS::UInteger) * descriptor_sets.size());
+            Vector<MTL::Resource*> resources;
             for(usize i = 0; i < descriptor_sets.size(); ++i)
             {
                 DescriptorSet* set = cast_object<DescriptorSet>(descriptor_sets[i]->get_object());
                 buffers[i] = set->m_buffer.get();
                 offsets[i] = 0;
+                for(auto& binding : set->m_bindings)
+                {
+                    if(binding.m_resources.empty()) continue;
+                    resources.clear();
+                    for(usize i = 0; i < binding.m_resources.size(); ++i)
+                    {
+                        if(binding.m_resources[i])
+                        {
+                            resources.push_back(binding.m_resources[i]);
+                        }
+                    }
+                    m_render->useResources(resources.data(), resources.size(), binding.m_usages, binding.m_render_stages);
+                }
             }
             m_render->setVertexBuffers(buffers, offsets, NS::Range::Make(start_index, (NS::UInteger)descriptor_sets.size()));
             m_render->setFragmentBuffers(buffers, offsets, NS::Range::Make(start_index, (NS::UInteger)descriptor_sets.size()));
@@ -350,11 +364,25 @@ namespace Luna
             assert_compute_context();
             MTL::Buffer** buffers = (MTL::Buffer**)alloca(sizeof(MTL::Buffer*) * descriptor_sets.size());
             NS::UInteger* offsets = (NS::UInteger*)alloca(sizeof(NS::UInteger) * descriptor_sets.size());
+            Vector<MTL::Resource*> resources;
             for(usize i = 0; i < descriptor_sets.size(); ++i)
             {
                 DescriptorSet* set = cast_object<DescriptorSet>(descriptor_sets[i]->get_object());
                 buffers[i] = set->m_buffer.get();
                 offsets[i] = 0;
+                for(auto& binding : set->m_bindings)
+                {
+                    if(binding.m_resources.empty()) continue;
+                    resources.clear();
+                    for(usize i = 0; i < binding.m_resources.size(); ++i)
+                    {
+                        if(binding.m_resources[i])
+                        {
+                            resources.push_back(binding.m_resources[i]);
+                        }
+                    }
+                    m_compute->useResources(resources.data(), resources.size(), binding.m_usages);
+                }
             }
             m_compute->setBuffers(buffers, offsets, NS::Range::Make(start_index, (NS::UInteger)descriptor_sets.size()));
         }

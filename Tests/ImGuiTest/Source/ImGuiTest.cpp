@@ -67,7 +67,7 @@ void run()
 			continue;
 		}
 		// Recreate the back buffer if needed.
-		auto sz = window->get_size();
+		auto sz = window->get_framebuffer_size();
 		auto ww = sz.x;
 		auto wh = sz.y;
 		if (ww != w || wh != h)
@@ -82,6 +82,11 @@ void run()
 		ImGui::NewFrame();
 
 		ImGui::ShowDemoWindow();
+        
+        auto window_size = window->get_size();
+        ImGui::Text("Window Size: %ux%u", window_size.x, window_size.y);
+        ImGui::Text("Framebuffer Size: %ux%u", sz.x, sz.y);
+        ImGui::Text("DPI Scale: %f", window->get_dpi_scale_factor());
 
 		ImGui::Render();
 		
