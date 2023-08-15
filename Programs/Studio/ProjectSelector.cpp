@@ -170,7 +170,7 @@ namespace Luna
 				}
 
 				// Recreate the back buffer if needed.
-				auto sz = window->get_size();
+				auto sz = window->get_framebuffer_size();
 				if (sz.x && sz.y && (sz.x != w || sz.y != h))
 				{
 					luexp(swap_chain->reset({sz.x, sz.y, 2, RHI::Format::unknown, true}));
@@ -213,7 +213,11 @@ namespace Luna
 					{
 						if (Button("Browse Project File"))
 						{
-							auto rpath = Window::open_file_dialog("Luna Project File\0*.lunaproj\0\0", "Select Project File");
+							Window::FileDialogFilter filter;
+							filter.name = "Luna Project File";
+							const c8* extension = "lunaproj";
+							filter.extensions = {&extension, 1};
+							auto rpath = Window::open_file_dialog("Select Project File", {&filter, 1});
 							if (succeeded(rpath) && !rpath.get().empty())
 							{
 								path = rpath.get()[0];

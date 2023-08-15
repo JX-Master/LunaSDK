@@ -23,7 +23,7 @@ luna_sdk_module_target("Window")
     end
     if is_os("macosx") then
         add_files("Source/Cocoa/*.mm")
-        add_frameworks("AppKit")
+        add_frameworks("AppKit", "UniformTypeIdentifiers")
     end
     add_deps("Runtime")
     if has_config("window_glfw") then

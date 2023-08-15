@@ -766,7 +766,11 @@ namespace Luna
 			{
 				if(ImGui::MenuItem("Capture scene"))
 				{
-					auto r = Window::save_file_dialog("BMP File\0*.bmp\0\0", "Save Capture File");
+					Window::FileDialogFilter filter;
+					filter.name = "BMP File";
+					const c8* ext = "bmp";
+					filter.extensions = {&ext, 1};
+					auto r = Window::save_file_dialog("Save Capture File", {&filter, 1});
 					if(succeeded(r))
 					{
 						capture_scene = true;

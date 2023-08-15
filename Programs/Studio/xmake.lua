@@ -7,14 +7,7 @@ target("Studio")
     add_packages("imgui")
 
     after_build(function (target)
-        local runenvs = target:toolchain("msvc"):runenvs()
         local target_dir = target:targetdir()
-        local rhi = "D3D12"
-        if is_config("rhi_api", "D3D12") then
-            rhi = "D3D12"
-        elseif is_config("rhi_api", "Vulkan") then
-            rhi = "Vulkan"
-        end
         local shader_files = {
             "Common.hlsl",
             "BRDF.hlsl",

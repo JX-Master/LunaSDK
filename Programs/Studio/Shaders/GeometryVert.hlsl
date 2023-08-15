@@ -12,6 +12,12 @@ cbuffer CBParam : register(b0)
 	uint screen_height;
 };
 StructuredBuffer<MeshBuffer> g_MeshBuffer : register(t1);
+Texture2D g_base_color : register(t2);
+Texture2D g_roughness : register(t3);
+Texture2D g_normal : register(t4);
+Texture2D g_metallic : register(t5);
+Texture2D g_emissive : register(t6);
+SamplerState g_sampler : register(s7);
 struct PS_INPUT
 {
 	[[vk::location(0)]]

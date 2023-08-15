@@ -409,8 +409,11 @@ namespace Luna
 			lutry
 			{
 				m_files.clear();
-				lulet(img_paths, Window::open_file_dialog("Image File\0*.jpg;*.jpeg;*.png;*.png;*.tga;*.bmp;*.psd;*.gif;*.hdr;*.pic\0\0",
-					"Select Source File", Path(), Window::FileOpenDialogFlag::multi_select));
+				Window::FileDialogFilter filter;
+				filter.name = "Image File";
+				const c8* exts[] = {"jpg", "jpeg", "png", "tga", "bmp", "psd", "gif", "hdr", "pic"};
+				filter.extensions = {exts, 9};
+				lulet(img_paths, Window::open_file_dialog("Select Source File", {&filter, 1}, Path(), Window::FileDialogFlag::multi_select));
 				for(auto& img_path : img_paths)
 				{
 					// Open file.

@@ -236,8 +236,11 @@ namespace Luna
 		{
 			lutry
 			{
-				lulet(file_path, Window::open_file_dialog("Obj File\0*.obj\0\0",
-					"Select Source File"));
+				Window::FileDialogFilter filter;
+				filter.name = "Obj File";
+				const c8* extension = "obj";
+				filter.extensions = {&extension, 1};
+				lulet(file_path, Window::open_file_dialog("Select Source File", {&filter, 1}));
 				// Open file.
 				auto path = file_path[0];
 
