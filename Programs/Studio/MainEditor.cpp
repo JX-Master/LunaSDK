@@ -150,7 +150,7 @@ namespace Luna
 		lutry
 		{
 			// Recreate the back buffer if needed.
-			auto sz = m_window->get_size();
+			auto sz = m_window->get_framebuffer_size();
 			if (sz.x && sz.y && (sz.x != m_main_window_width || sz.y != m_main_window_height))
 			{
 				luexp(m_swap_chain->reset({sz.x, sz.y, 2, RHI::Format::unknown, true}));

@@ -270,14 +270,9 @@ namespace Luna
                     auto entry_point = msl.get_entry_point(entry_point_and_stage.name, entry_point_and_stage.execution_model);
                     if(m_shader_type == ShaderType::compute)
                     {
-                        spirv_cross::SpecializationConstant x, y, z;
-                        msl.get_work_group_size_specialization_constants(x, y, z);
-                        spirv_cross::SPIRConstant& constant_x = msl.get_constant(x.id);
-                        spirv_cross::SPIRConstant& constant_y = msl.get_constant(y.id);
-                        spirv_cross::SPIRConstant& constant_z = msl.get_constant(z.id);
-                        u64 x_size = constant_x.scalar_u64();
-                        u64 y_size = constant_y.scalar_u64();
-                        u64 z_size = constant_z.scalar_u64();
+                        u64 x_size = entry_point.workgroup_size.x;
+                        u64 y_size = entry_point.workgroup_size.y;
+                        u64 z_size = entry_point.workgroup_size.z;
                         Variant numthreads (VariantType::array);
                         numthreads.push_back(x_size);
                         numthreads.push_back(y_size);
