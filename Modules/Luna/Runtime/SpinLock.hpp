@@ -12,6 +12,10 @@
 #include "Atomic.hpp"
 #include "Thread.hpp"
 
+#if defined(LUNA_PLATFORM_X86) || defined(LUNA_PLATFORM_X86_64)
+#include <emmintrin.h>
+#endif
+
 namespace Luna
 {
 	//! @class SpinLock
