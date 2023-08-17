@@ -32,29 +32,33 @@ namespace Luna
 			lulet(iter, VFS::open_dir(folder_path));
 			while (iter->is_valid())
 			{
-				if ((iter->get_attribute() & FileAttributeFlag::directory) != FileAttributeFlag::none)
-				{
-					AssetThumbnail t;
-					t.m_filename = Name(iter->get_filename());
-					t.m_is_dir = true;
-					assets.push_back(t);
-				}
-				else
-				{
-					// Ends with ".meta.la" or ".meta.lb"
-					const char* name = iter->get_filename();
-					usize name_len = strlen(name);
-					if (name_len > 5)
-					{
-						if (!strcmp(name + name_len - 5, ".meta"))
-						{
-							AssetThumbnail t;
-							t.m_filename = Name(name, name_len - 5);
-							t.m_is_dir = false;
-							assets.push_back(t);
-						}
-					}
-				}
+                const c8* name = iter->get_filename();
+                if(strcmp(name, ".") && strcmp(name, ".."))
+                {
+                    if ((iter->get_attribute() & FileAttributeFlag::directory) != FileAttributeFlag::none)
+                    {
+                        AssetThumbnail t;
+                        t.m_filename = Name(iter->get_filename());
+                        t.m_is_dir = true;
+                        assets.push_back(t);
+                    }
+                    else
+                    {
+                        // Ends with ".meta.la" or ".meta.lb"
+                        const char* name = iter->get_filename();
+                        usize name_len = strlen(name);
+                        if (name_len > 5)
+                        {
+                            if (!strcmp(name + name_len - 5, ".meta"))
+                            {
+                                AssetThumbnail t;
+                                t.m_filename = Name(name, name_len - 5);
+                                t.m_is_dir = false;
+                                assets.push_back(t);
+                            }
+                        }
+                    }
+                }
 				iter->move_next();
 			}
 		}

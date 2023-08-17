@@ -170,14 +170,15 @@ namespace Luna
 				}
 
 				// Recreate the back buffer if needed.
-				auto sz = window->get_framebuffer_size();
-				if (sz.x && sz.y && (sz.x != w || sz.y != h))
+				auto fb_sz = window->get_framebuffer_size();
+				if (fb_sz.x && fb_sz.y && (fb_sz.x != w || fb_sz.y != h))
 				{
-					luexp(swap_chain->reset({sz.x, sz.y, 2, RHI::Format::unknown, true}));
+					luexp(swap_chain->reset({fb_sz.x, fb_sz.y, 2, RHI::Format::unknown, true}));
 					f32 clear_color[] = { 0.0f, 0.0f, 0.0f, 1.0f };
-					w = sz.x;
-					h = sz.y;
+					w = fb_sz.x;
+					h = fb_sz.y;
 				}
+                auto sz = window->get_size();
 
 				ImGuiUtils::update_io();
 				ImGui::NewFrame();
