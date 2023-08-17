@@ -439,15 +439,15 @@ namespace Luna
 		return r;
 #else
 		Float4 result;
-		f32 fLength = length(v);
-		if (fLength > 0)
+		f32 len = length(v);
+		if (len > 0)
 		{
-			fLength = 1.0f / fLength;
+            len = 1.0f / len;
 		}
-		result.x = v.x * fLength;
-		result.y = v.y * fLength;
-		result.z = v.z * fLength;
-		result.w = v.w * fLength;
+		result.x = v.x * len;
+		result.y = v.y * len;
+		result.z = v.z * len;
+		result.w = v.w * len;
 		return result;
 #endif
 	}

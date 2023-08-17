@@ -176,4 +176,5 @@ namespace Luna
 
 #define lutest luassert_always
 
-#define luasset_eq_float(_x, _y) lutest(fabs((_x) - (_y)) <= 0.000001f)
+// 2^-14
+#define luasset_eq_float(_x, _y) lutest(fabs((_x) - (_y)) <= 0.00006103515625f)

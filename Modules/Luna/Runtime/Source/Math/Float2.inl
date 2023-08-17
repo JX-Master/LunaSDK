@@ -406,6 +406,10 @@ namespace Luna
 		return result;
 #else
 		f32 len = length(v);
+        if (len > 0)
+        {
+            len = 1.0f / len;
+        }
 		Float2 result;
 		result.x = v.x * len;
 		result.y = v.y * len;
