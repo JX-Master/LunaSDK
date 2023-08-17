@@ -96,6 +96,11 @@ namespace Luna
         lucatchret;
         return ok;
     }
+    struct LightingParamsCB
+    {
+        u32 lighting_mode;
+        u32 num_lights;
+    };
     RV DeferredLightingPass::init(DeferredLightingPassGlobalData* global_data)
     {
         using namespace RHI;
@@ -105,9 +110,9 @@ namespace Luna
             auto device = m_global_data->m_deferred_lighting_pass_dlayout->get_device();
             luset(m_ds, device->new_descriptor_set(
                 DescriptorSetDesc(global_data->m_deferred_lighting_pass_dlayout)));
-            luset(m_lighting_mode_cb, device->new_buffer(MemoryType::upload,
+            luset(m_lighting_params_cb, device->new_buffer(MemoryType::upload,
                 BufferDesc(BufferUsageFlag::uniform_buffer,
-                    align_upper(sizeof(u32), device->get_uniform_buffer_data_alignment()))));
+                    align_upper(sizeof(LightingParamsCB), device->get_uniform_buffer_data_alignment()))));
         }
         lucatchret;
         return ok;
@@ -117,10 +122,12 @@ namespace Luna
         using namespace RHI;
         lutry
         {
-            u32* mapped = nullptr;
-            luexp(m_lighting_mode_cb->map(0, 0, (void**)&mapped));
-            *mapped = lighting_mode;
-            m_lighting_mode_cb->unmap(0, sizeof(u32));
+            u32 num_lights = light_ts.empty() ? 1 : (u32)light_ts.size();
+            LightingParamsCB* mapped = nullptr;
+            luexp(m_lighting_params_cb->map(0, 0, (void**)&mapped));
+            mapped->lighting_mode = lighting_mode;
+            mapped->num_lights = num_lights;
+            m_lighting_params_cb->unmap(0, sizeof(LightingParamsCB));
             Ref<ITexture> scene_tex = ctx->get_output("scene_texture");
             Ref<ITexture> depth_tex = ctx->get_input("depth_texture");
             Ref<ITexture> base_color_roughness_tex = ctx->get_input("base_color_roughness_texture");
@@ -134,7 +141,7 @@ namespace Luna
             cmdbuf->resource_barrier(
                 { 
                     {camera_cb, BufferStateFlag::automatic, BufferStateFlag::uniform_buffer_cs, ResourceBarrierFlag::none},
-                    {m_lighting_mode_cb, BufferStateFlag::automatic, BufferStateFlag::uniform_buffer_cs, ResourceBarrierFlag::none},
+                    {m_lighting_params_cb, BufferStateFlag::automatic, BufferStateFlag::uniform_buffer_cs, ResourceBarrierFlag::none},
                     {light_params, BufferStateFlag::automatic, BufferStateFlag::shader_read_cs, ResourceBarrierFlag::none}
                 },
                 {
@@ -146,11 +153,9 @@ namespace Luna
                     {sky_box, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::shader_read_cs, ResourceBarrierFlag::none},
                     {m_global_data->m_integrate_brdf, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::shader_read_cs, ResourceBarrierFlag::none},
                 });
-            
-            u32 num_lights = light_ts.empty() ? 1 : (u32)light_ts.size();
             luexp(m_ds->update_descriptors({
                 WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(camera_cb, 0, (u32)align_upper(sizeof(CameraCB), cb_align))),
-                WriteDescriptorSet::uniform_buffer_view(1, BufferViewDesc::uniform_buffer(m_lighting_mode_cb, 0, (u32)align_upper(sizeof(u32), cb_align))),
+                WriteDescriptorSet::uniform_buffer_view(1, BufferViewDesc::uniform_buffer(m_lighting_params_cb, 0, (u32)align_upper(sizeof(LightingParamsCB), cb_align))),
                 WriteDescriptorSet::read_buffer_view(2, BufferViewDesc::structured_buffer(light_params, 0, num_lights, sizeof(LightingParams))),
                 WriteDescriptorSet::read_texture_view(3, TextureViewDesc::tex2d(base_color_roughness_tex)),
                 WriteDescriptorSet::read_texture_view(4, TextureViewDesc::tex2d(normal_metallic_tex)),
