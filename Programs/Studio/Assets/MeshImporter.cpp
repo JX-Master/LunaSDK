@@ -32,7 +32,7 @@ namespace Luna
 
 		MeshImporter() {}
 
-		bool m_open;
+		bool m_open = true;
 
 		virtual void on_render() override;
 		virtual bool closed() override

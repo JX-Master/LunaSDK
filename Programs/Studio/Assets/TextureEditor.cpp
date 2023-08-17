@@ -18,7 +18,7 @@ namespace Luna
 
 		Asset::asset_t m_tex;
 
-		bool m_open;
+		bool m_open = true;
 
 		TextureEditor() {}
 

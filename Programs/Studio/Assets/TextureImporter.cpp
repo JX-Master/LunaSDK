@@ -54,10 +54,9 @@ namespace Luna
 		RV generate_mipmaps(RHI::ITexture* resource_with_most_detailed_mip, RHI::ICommandBuffer* compute_cmdbuf);
 		R<Ref<RHI::ITexture>> generate_environment_mipmaps(RHI::ITexture* resource_with_most_detailed_mip, RHI::ICommandBuffer* compute_cmdbuf);
 
-		bool m_open;
+		bool m_open = true;
 
-		TextureImporter() :
-			m_open(true) {}
+		TextureImporter() {}
 
 		virtual void on_render() override;
 		virtual bool closed() override

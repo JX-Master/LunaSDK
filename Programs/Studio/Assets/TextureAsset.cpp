@@ -115,7 +115,7 @@ namespace Luna
 					}));
 				compute_cmdbuf->set_compute_descriptor_set(0, vs);
 				compute_cmdbuf->attach_device_object(vs);
-				compute_cmdbuf->dispatch(align_upper(width, 8) / 8, align_upper(height, 8) / 8, 1);
+				compute_cmdbuf->dispatch((u32)align_upper(width, 8) / 8, (u32)align_upper(height, 8) / 8, 1);
 				width = max<u32>(width / 2, 1);
 				height = max<u32>(height / 2, 1);
 			}
@@ -142,7 +142,7 @@ namespace Luna
 			if (file_data.size() >= 8 && !memcmp((const c8*)file_data.data(), "LUNAMIPS", 8))
 			{
 				u64* dp = (u64*)(file_data.data() + 8);
-				u64 num_mips = *dp;
+				u32 num_mips = (u32)*dp;
 				++dp;
 				Vector<Pair<u64, u64>> mip_descs;
 				mip_descs.reserve(num_mips);
@@ -166,7 +166,7 @@ namespace Luna
 				Vector<RHI::CopyResourceData> copies;
 				image_data_array.reserve(num_mips);
 				copies.reserve(num_mips);
-				for (u64 i = 0; i < num_mips; ++i)
+				for (u32 i = 0; i < num_mips; ++i)
 				{
 					Image::ImageDesc desc;
 					lulet(image_data, Image::read_image_file(file_data.data() + mip_descs[i].first, mip_descs[i].second, desired_format, desc));
