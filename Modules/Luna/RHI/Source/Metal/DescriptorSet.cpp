@@ -84,6 +84,15 @@ namespace Luna
                     switch(write.type)
                     {
                         case DescriptorType::uniform_buffer_view:
+                        for(usize i = 0; i < write.buffer_views.size(); ++i)
+                        {
+                            auto& view = write.buffer_views[i];
+                            Buffer* buffer = cast_object<Buffer>(view.buffer->get_object());
+                            u64 data_offset = view.first_element;
+                            data[argument_offset + i] = buffer->m_buffer->gpuAddress() + data_offset;
+                            m_bindings[binding_index].m_resources[write.first_array_index + i] = buffer->m_buffer.get();
+                        }
+                        break;
                         case DescriptorType::read_buffer_view:
                         case DescriptorType::read_write_buffer_view:
                         for(usize i = 0; i < write.buffer_views.size(); ++i)

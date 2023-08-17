@@ -20,9 +20,9 @@ namespace Luna
             validated_desc.array_slice == 0 && validated_desc.array_size == texture_desc.array_size &&
             validated_desc.format == texture_desc.format)
             {
-                return true;
+                return false;
             }
-            return false;
+            return true;
         }
         RV TextureView::init(const TextureViewDesc& validated_desc)
         {
