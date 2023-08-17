@@ -274,6 +274,7 @@ namespace Luna
 				mip_slice(mip_slice),
 				array_slice(array_slice) {}
 		};
+        constexpr u32 DONT_QUERY = U32_MAX;
 		enum class OcclusionQueryMode : u8
 		{
 			//! Begins a binary occlusion query. In this query mode, the stored value will be 0 if no pixel passes the depth/stencil test, 
@@ -295,13 +296,35 @@ namespace Luna
 			DepthStencilAttachment depth_stencil_attachment;
 			//! The occlustion query heap that accepts the query data if not `nullptr`.
 			IQueryHeap* occlusion_query_heap = nullptr;
+            IQueryHeap* timestamp_query_heap = nullptr;
+            IQueryHeap* pipeline_statistics_query_heap = nullptr;
 			//! The occlusion query writing index.
-			u32 occlusion_query_write_index = 0;
+			u32 occlusion_query_write_index = DONT_QUERY;
+            u32 timestamp_query_begin_pass_write_index = DONT_QUERY;
+            u32 timestamp_query_end_pass_write_index = DONT_QUERY;
+            u32 pipeline_statistics_query_write_index = DONT_QUERY;
 			//! The number of array slices that will be bound for all attachments.
 			u32 array_size = 1;
 			//! The sample count of the render pass.
 			u8 sample_count = 1;
 		};
+    
+        struct ComputePassDesc
+        {
+            IQueryHeap* timestamp_query_heap = nullptr;
+            IQueryHeap* pipeline_statistics_query_heap = nullptr;
+            u32 timestamp_query_begin_pass_write_index = DONT_QUERY;
+            u32 timestamp_query_end_pass_write_index = DONT_QUERY;
+            u32 pipeline_statistics_query_write_index = DONT_QUERY;
+        };
+    
+        struct CopyPassDesc
+        {
+            IQueryHeap* timestamp_query_heap = nullptr;
+            u32 timestamp_query_begin_pass_write_index = DONT_QUERY;
+            u32 timestamp_query_end_pass_write_index = DONT_QUERY;
+        };
+    
 		struct VertexBufferView
 		{
 			IResource* buffer;
@@ -374,7 +397,7 @@ namespace Luna
 
 			//! Begins a new event. This is for use in diagnostic tools like RenderDoc, PIX, etc to group commands into hierarchical
 			//! sections.
-			virtual void begin_event(const Name& event_name) = 0;
+			virtual void begin_event(const c8* event_name) = 0;
 
 			//! Ends the latest event opened with `begin_event` that has not been ended.
 			virtual void end_event() = 0;
@@ -484,7 +507,7 @@ namespace Luna
 			//! * set_compute_descriptor_set
 			//! * set_compute_descriptor_sets
 			//! * dispatch
-			virtual void begin_compute_pass() = 0;
+			virtual void begin_compute_pass(const ComputePassDesc& desc = ComputePassDesc()) = 0;
 
 			//! Sets the compute pipeline layout.
 			virtual void set_compute_pipeline_layout(IPipelineLayout* pipeline_layout) = 0;
@@ -513,7 +536,7 @@ namespace Luna
 			//! * copy_texture
 			//! * copy_buffer_to_texture
 			//! * copy_texture_to_buffer
-			virtual void begin_copy_pass() = 0;
+			virtual void begin_copy_pass(const CopyPassDesc& desc = CopyPassDesc()) = 0;
 
 			//! Copies the entire contents of the source resource to the destination resource.
 			//! The source resource and destination resource must be the same `ResourceType`, have the same size for buffers, or 
@@ -548,18 +571,14 @@ namespace Luna
 			//! Issues one resource barrier.
 			virtual void resource_barrier(Span<const BufferBarrier> buffer_barriers, Span<const TextureBarrier> texture_barriers) = 0;
 
-			//! Writes the current GPU queue timestamp to the specified query heap.
-			//! @param[in] heap The query heap to write to.
-			//! @param[in] index The index of the query entry to write in the heap.
-			virtual void write_timestamp(IQueryHeap* heap, u32 index) = 0;
-
-			virtual void begin_pipeline_statistics_query(IQueryHeap* heap, u32 index) = 0;
-
-			virtual void end_pipeline_statistics_query(IQueryHeap* heap, u32 index) = 0;
-
 			virtual void begin_occlusion_query(OcclusionQueryMode mode) = 0;
 
 			virtual void end_occlusion_query() = 0;
+            
+            //! Writes the current GPU queue timestamp to the specified query heap. This must be called outside of any pass context.
+            //! @param[in] heap The query heap to write to.
+            //! @param[in] index The index of the query entry to write in the heap.
+            virtual void write_timestamp(IQueryHeap* heap, u32 index) = 0;
 
 			//! Submits the recorded content in this command buffer to the attached command queue.
 			//! The command buffer can only be submitted once, and the only operation after the submit is to 

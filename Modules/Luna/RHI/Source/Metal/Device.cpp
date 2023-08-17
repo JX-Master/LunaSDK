@@ -53,6 +53,22 @@ namespace Luna
                 m_queues.push_back(move(queue));
                 luexp(queue.init(m_device.get(), desc));
                 m_queues.push_back(move(queue));
+                if(m_device->supportsCounterSampling(MTL::CounterSamplingPointAtStageBoundary))
+                {
+                    m_counter_sampling_support_flags |= CounterSamplingSupportFlag::stage;
+                }
+                if(m_device->supportsCounterSampling(MTL::CounterSamplingPointAtDrawBoundary))
+                {
+                    m_counter_sampling_support_flags |= CounterSamplingSupportFlag::draw;
+                }
+                if(m_device->supportsCounterSampling(MTL::CounterSamplingPointAtBlitBoundary))
+                {
+                    m_counter_sampling_support_flags |= CounterSamplingSupportFlag::blit;
+                }
+                if(m_device->supportsCounterSampling(MTL::CounterSamplingPointAtDispatchBoundary))
+                {
+                    m_counter_sampling_support_flags |= CounterSamplingSupportFlag::dispatch;
+                }
             }
             lucatchret;
             return ok;

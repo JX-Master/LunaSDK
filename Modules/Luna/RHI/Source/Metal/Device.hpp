@@ -21,6 +21,14 @@ namespace Luna
 
             RV init(MTL::Device* dev, const CommandQueueDesc& desc);
         };
+        enum class CounterSamplingSupportFlag : u8
+        {
+            none = 0x00,
+            stage = 0x01,
+            draw = 0x02,
+            blit = 0x04,
+            dispatch = 0x08,
+        };
         struct Device : IDevice
         {
             lustruct("RHI::Device", "{89ffffe6-a1d6-413e-bb30-3e0562dacddd}");
@@ -32,6 +40,8 @@ namespace Luna
             MTL::Timestamp m_start_cpu_time;
             MTL::Timestamp m_start_gpu_time;
             f64 m_timestamp_frequency = 0.0;
+            
+            CounterSamplingSupportFlag m_counter_sampling_support_flags = CounterSamplingSupportFlag::none;
 
             RV init();
 

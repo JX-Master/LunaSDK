@@ -216,7 +216,7 @@ namespace Luna
             {
                 m_transient_memory.clear();
                 m_cmdbuf = cmdbuf;
-                usize pass_index = 0;
+                u32 pass_index = 0;
                 for(usize i = 0; i < m_pass_data.size(); ++i)
                 {
                     auto& data = m_pass_data[i];
@@ -250,7 +250,7 @@ namespace Luna
                     }
                     if (!buffer_barriers.empty() || !texture_barriers.empty()) cmdbuf->resource_barrier({ buffer_barriers.data(), buffer_barriers.size() }, {texture_barriers.data(), texture_barriers.size()});
                     m_current_pass = i;
-                    if (m_desc.passes[i].name) cmdbuf->begin_event(m_desc.passes[i].name);
+                    if (m_desc.passes[i].name) cmdbuf->begin_event(m_desc.passes[i].name.c_str());
                     if (m_enable_time_profiling) cmdbuf->write_timestamp(m_time_query_heap, pass_index * 2);
                     luexp(m_pass_data[i].m_render_pass->execute(this));
                     if (m_enable_time_profiling) cmdbuf->write_timestamp(m_time_query_heap, pass_index * 2 + 1);

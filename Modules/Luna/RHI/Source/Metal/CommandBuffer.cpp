@@ -18,6 +18,7 @@ namespace Luna
 {
     namespace RHI
     {
+        constexpr NS::UInteger MTLCounterDontSample = ((NS::UInteger)-1);
         RV CommandBuffer::init(u32 command_queue_index)
         {
             AutoreleasePool pool;
@@ -47,10 +48,10 @@ namespace Luna
         {
             m_objs.push_back(obj);
         }
-        void CommandBuffer::begin_event(const Name& event_name)
+        void CommandBuffer::begin_event(const c8* event_name)
         {
             AutoreleasePool pool;
-            NS::String* string = NS::String::string(event_name.c_str(), NS::StringEncoding::UTF8StringEncoding);
+            NS::String* string = NS::String::string(event_name, NS::StringEncoding::UTF8StringEncoding);
             m_buffer->pushDebugGroup(string);
         }
         void CommandBuffer::end_event()
@@ -132,10 +133,64 @@ namespace Luna
                 d->setVisibilityResultBuffer(query_heap->m_buffer.get());
                 m_occlusion_query_write_index = desc.occlusion_query_write_index;
             }
+            u32 num_query_heaps = 0;
+            if(desc.timestamp_query_heap)
+            {
+                CounterSampleQueryHeap* heap = cast_object<CounterSampleQueryHeap>(desc.timestamp_query_heap->get_object());
+                lucheck_msg(heap, "RenderPassDesc::timestamp_query_heap must be set to a valid timestamp query heap.");
+                if(test_flags(m_device->m_counter_sampling_support_flags, CounterSamplingSupportFlag::stage))
+                {
+                    MTL::RenderPassSampleBufferAttachmentDescriptorArray* sample_buffer_attachments = d->sampleBufferAttachments();
+                    NSPtr<MTL::RenderPassSampleBufferAttachmentDescriptor> sample_buffer_attachment = box(MTL::RenderPassSampleBufferAttachmentDescriptor::alloc()->init());
+                    sample_buffer_attachment->setSampleBuffer(heap->m_buffer.get());
+                    sample_buffer_attachment->setStartOfVertexSampleIndex(desc.timestamp_query_begin_pass_write_index == DONT_QUERY ? MTLCounterDontSample : desc.timestamp_query_begin_pass_write_index);
+                    sample_buffer_attachment->setEndOfVertexSampleIndex(MTLCounterDontSample);
+                    sample_buffer_attachment->setStartOfFragmentSampleIndex(MTLCounterDontSample);
+                    sample_buffer_attachment->setEndOfFragmentSampleIndex(desc.timestamp_query_end_pass_write_index == DONT_QUERY ? MTLCounterDontSample : desc.timestamp_query_end_pass_write_index);
+                    sample_buffer_attachments->setObject(sample_buffer_attachment.get(), (NS::UInteger)num_query_heaps);
+                }
+                else
+                {
+                    m_timestamp_query_heap = heap;
+                    m_timestamp_begin_query_index = desc.timestamp_query_begin_pass_write_index;
+                    m_timestamp_end_query_index = desc.timestamp_query_end_pass_write_index;
+                }
+                ++num_query_heaps;
+            }
+            if(desc.pipeline_statistics_query_heap)
+            {
+                CounterSampleQueryHeap* heap = cast_object<CounterSampleQueryHeap>(desc.pipeline_statistics_query_heap->get_object());
+                lucheck_msg(heap, "RenderPassDesc::pipeline_statistics_query_heap must be set to a valid pipeline statistics query heap.");
+                if(test_flags(m_device->m_counter_sampling_support_flags, CounterSamplingSupportFlag::stage))
+                {
+                    MTL::RenderPassSampleBufferAttachmentDescriptorArray* sample_buffer_attachments = d->sampleBufferAttachments();
+                    NSPtr<MTL::RenderPassSampleBufferAttachmentDescriptor> sample_buffer_attachment = box(MTL::RenderPassSampleBufferAttachmentDescriptor::alloc()->init());
+                    sample_buffer_attachment->setSampleBuffer(heap->m_buffer.get());
+                    sample_buffer_attachment->setStartOfVertexSampleIndex(desc.pipeline_statistics_query_write_index == DONT_QUERY ? MTLCounterDontSample : desc.pipeline_statistics_query_write_index * 2);
+                    sample_buffer_attachment->setEndOfVertexSampleIndex(MTLCounterDontSample);
+                    sample_buffer_attachment->setStartOfFragmentSampleIndex(MTLCounterDontSample);
+                    sample_buffer_attachment->setEndOfFragmentSampleIndex(desc.pipeline_statistics_query_write_index == DONT_QUERY ? MTLCounterDontSample : desc.pipeline_statistics_query_write_index * 2 + 1);
+                    sample_buffer_attachments->setObject(sample_buffer_attachment.get(), (NS::UInteger)num_query_heaps);
+                }
+                else
+                {
+                    m_pipeline_statistics_query_heap = heap;
+                    m_pipeline_statistics_query_index = desc.pipeline_statistics_query_write_index;
+                }
+                ++num_query_heaps;
+            }
             d->setRenderTargetWidth(width);
             d->setRenderTargetHeight(height);
             d->setDefaultRasterSampleCount(desc.sample_count);
             m_render = retain(m_buffer->renderCommandEncoder(d.get()));
+            if(m_pipeline_statistics_query_heap && test_flags(m_device->m_counter_sampling_support_flags, CounterSamplingSupportFlag::draw))
+            {
+                m_render->sampleCountersInBuffer(m_pipeline_statistics_query_heap->m_buffer.get(), m_pipeline_statistics_query_index * 2, true);
+            }
+            if(m_timestamp_query_heap && test_flags(m_device->m_counter_sampling_support_flags, CounterSamplingSupportFlag::draw))
+            {
+                m_render->sampleCountersInBuffer(m_timestamp_query_heap->m_buffer.get(), m_timestamp_begin_query_index, true);
+            }
         }
         void CommandBuffer::set_graphics_pipeline_layout(IPipelineLayout* pipeline_layout)
         {
@@ -319,14 +374,85 @@ namespace Luna
         void CommandBuffer::end_render_pass()
         {
             assert_graphcis_context();
+            if(m_timestamp_query_heap && test_flags(m_device->m_counter_sampling_support_flags, CounterSamplingSupportFlag::draw))
+            {
+                if(m_timestamp_end_query_index != DONT_QUERY)
+                {
+                    m_render->sampleCountersInBuffer(m_timestamp_query_heap->m_buffer.get(), m_timestamp_end_query_index, true);
+                }
+                m_timestamp_query_heap = nullptr;
+                m_timestamp_begin_query_index = DONT_QUERY;
+                m_timestamp_end_query_index = DONT_QUERY;
+            }
+            if(m_pipeline_statistics_query_heap && test_flags(m_device->m_counter_sampling_support_flags, CounterSamplingSupportFlag::draw))
+            {
+                if(m_pipeline_statistics_query_index != DONT_QUERY)
+                {
+                    m_render->sampleCountersInBuffer(m_pipeline_statistics_query_heap->m_buffer.get(), m_pipeline_statistics_query_index * 2 + 1, true);
+                }
+                m_pipeline_statistics_query_heap = nullptr;
+                m_pipeline_statistics_query_index = DONT_QUERY;
+            }
             m_render->endEncoding();
             m_render.reset();
         }
-        void CommandBuffer::begin_compute_pass()
+        void CommandBuffer::begin_compute_pass(const ComputePassDesc& desc)
         {
             lucheck_msg(!m_render && !m_compute && !m_blit, "begin_compute_pass can only be called when no other pass is open.");
             AutoreleasePool pool;
-            m_compute = retain(m_buffer->computeCommandEncoder(MTL::DispatchTypeConcurrent));
+            NSPtr<MTL::ComputePassDescriptor> d = box(MTL::ComputePassDescriptor::alloc()->init());
+            d->setDispatchType(MTL::DispatchTypeConcurrent);
+            u32 num_query_heaps = 0;
+            if(desc.timestamp_query_heap)
+            {
+                CounterSampleQueryHeap* heap = cast_object<CounterSampleQueryHeap>(desc.timestamp_query_heap->get_object());
+                lucheck_msg(heap, "ComputePassDesc::timestamp_query_heap must be set to a valid timestamp query heap.");
+                if(test_flags(m_device->m_counter_sampling_support_flags, CounterSamplingSupportFlag::stage))
+                {
+                    MTL::ComputePassSampleBufferAttachmentDescriptorArray* sample_buffer_attachments = d->sampleBufferAttachments();
+                    NSPtr<MTL::ComputePassSampleBufferAttachmentDescriptor> sample_buffer_attachment = box(MTL::ComputePassSampleBufferAttachmentDescriptor::alloc()->init());
+                    sample_buffer_attachment->setSampleBuffer(heap->m_buffer.get());
+                    sample_buffer_attachment->setStartOfEncoderSampleIndex(desc.timestamp_query_begin_pass_write_index == DONT_QUERY ? MTLCounterDontSample : desc.timestamp_query_begin_pass_write_index);
+                    sample_buffer_attachment->setEndOfEncoderSampleIndex(desc.timestamp_query_end_pass_write_index == DONT_QUERY ? MTLCounterDontSample : desc.timestamp_query_end_pass_write_index);
+                    sample_buffer_attachments->setObject(sample_buffer_attachment.get(), (NS::UInteger)num_query_heaps);
+                }
+                else
+                {
+                    m_timestamp_query_heap = heap;
+                    m_timestamp_begin_query_index = desc.timestamp_query_begin_pass_write_index;
+                    m_timestamp_end_query_index = desc.timestamp_query_end_pass_write_index;
+                }
+                ++num_query_heaps;
+            }
+            if(desc.pipeline_statistics_query_heap)
+            {
+                CounterSampleQueryHeap* heap = cast_object<CounterSampleQueryHeap>(desc.pipeline_statistics_query_heap->get_object());
+                lucheck_msg(heap, "ComputePassDesc::pipeline_statistics_query_heap must be set to a valid pipeline statistics query heap.");
+                if(test_flags(m_device->m_counter_sampling_support_flags, CounterSamplingSupportFlag::stage))
+                {
+                    MTL::ComputePassSampleBufferAttachmentDescriptorArray* sample_buffer_attachments = d->sampleBufferAttachments();
+                    NSPtr<MTL::ComputePassSampleBufferAttachmentDescriptor> sample_buffer_attachment = box(MTL::ComputePassSampleBufferAttachmentDescriptor::alloc()->init());
+                    sample_buffer_attachment->setSampleBuffer(heap->m_buffer.get());
+                    sample_buffer_attachment->setStartOfEncoderSampleIndex(desc.pipeline_statistics_query_write_index == DONT_QUERY ? MTLCounterDontSample : desc.pipeline_statistics_query_write_index * 2);
+                    sample_buffer_attachment->setEndOfEncoderSampleIndex(desc.pipeline_statistics_query_write_index == DONT_QUERY ? MTLCounterDontSample : desc.pipeline_statistics_query_write_index * 2 + 1);
+                    sample_buffer_attachments->setObject(sample_buffer_attachment.get(), (NS::UInteger)num_query_heaps);
+                }
+                else
+                {
+                    m_pipeline_statistics_query_heap = heap;
+                    m_pipeline_statistics_query_index = desc.pipeline_statistics_query_write_index;
+                }
+                ++num_query_heaps;
+            }
+            m_compute = retain(m_buffer->computeCommandEncoder(d.get()));
+            if(m_pipeline_statistics_query_heap && test_flags(m_device->m_counter_sampling_support_flags, CounterSamplingSupportFlag::dispatch))
+            {
+                m_compute->sampleCountersInBuffer(m_pipeline_statistics_query_heap->m_buffer.get(), m_pipeline_statistics_query_index * 2, true);
+            }
+            if(m_timestamp_query_heap && test_flags(m_device->m_counter_sampling_support_flags, CounterSamplingSupportFlag::dispatch))
+            {
+                m_compute->sampleCountersInBuffer(m_timestamp_query_heap->m_buffer.get(), m_timestamp_begin_query_index, true);
+            }
         }
         void CommandBuffer::set_compute_pipeline_layout(IPipelineLayout* pipeline_layout)
         {
@@ -395,14 +521,60 @@ namespace Luna
         void CommandBuffer::end_compute_pass()
         {
             assert_compute_context();
+            if(m_timestamp_query_heap && test_flags(m_device->m_counter_sampling_support_flags, CounterSamplingSupportFlag::dispatch))
+            {
+                if(m_timestamp_end_query_index != DONT_QUERY)
+                {
+                    m_compute->sampleCountersInBuffer(m_timestamp_query_heap->m_buffer.get(), m_timestamp_end_query_index, true);
+                }
+                m_timestamp_query_heap = nullptr;
+                m_timestamp_begin_query_index = DONT_QUERY;
+                m_timestamp_end_query_index = DONT_QUERY;
+            }
+            if(m_pipeline_statistics_query_heap && test_flags(m_device->m_counter_sampling_support_flags, CounterSamplingSupportFlag::dispatch))
+            {
+                if(m_pipeline_statistics_query_index != DONT_QUERY)
+                {
+                    m_compute->sampleCountersInBuffer(m_pipeline_statistics_query_heap->m_buffer.get(), m_pipeline_statistics_query_index * 2 + 1, true);
+                }
+                m_pipeline_statistics_query_heap = nullptr;
+                m_pipeline_statistics_query_index = DONT_QUERY;
+            }
             m_compute->endEncoding();
             m_compute.reset();
         }
-        void CommandBuffer::begin_copy_pass()
+        void CommandBuffer::begin_copy_pass(const CopyPassDesc& desc)
         {
             lucheck_msg(!m_render && !m_compute && !m_blit, "begin_copy_pass can only be called when no other pass is open.");
             AutoreleasePool pool;
-            m_blit = retain(m_buffer->blitCommandEncoder());
+            NSPtr<MTL::BlitPassDescriptor> d = box(MTL::BlitPassDescriptor::alloc()->init());
+            u32 num_query_heaps = 0;
+            if(desc.timestamp_query_heap)
+            {
+                CounterSampleQueryHeap* heap = cast_object<CounterSampleQueryHeap>(desc.timestamp_query_heap->get_object());
+                lucheck_msg(heap, "CopyPassDesc::timestamp_query_heap must be set to a valid timestamp query heap.");
+                if(test_flags(m_device->m_counter_sampling_support_flags, CounterSamplingSupportFlag::stage))
+                {
+                    MTL::BlitPassSampleBufferAttachmentDescriptorArray* sample_buffer_attachments = d->sampleBufferAttachments();
+                    NSPtr<MTL::BlitPassSampleBufferAttachmentDescriptor> sample_buffer_attachment = box(MTL::BlitPassSampleBufferAttachmentDescriptor::alloc()->init());
+                    sample_buffer_attachment->setSampleBuffer(heap->m_buffer.get());
+                    sample_buffer_attachment->setStartOfEncoderSampleIndex(desc.timestamp_query_begin_pass_write_index == DONT_QUERY ? MTLCounterDontSample : desc.timestamp_query_begin_pass_write_index);
+                    sample_buffer_attachment->setEndOfEncoderSampleIndex(desc.timestamp_query_end_pass_write_index == DONT_QUERY ? MTLCounterDontSample : desc.timestamp_query_end_pass_write_index);
+                    sample_buffer_attachments->setObject(sample_buffer_attachment.get(), (NS::UInteger)num_query_heaps);
+                }
+                else
+                {
+                    m_timestamp_query_heap = heap;
+                    m_timestamp_begin_query_index = desc.timestamp_query_begin_pass_write_index;
+                    m_timestamp_end_query_index = desc.timestamp_query_end_pass_write_index;
+                }
+                ++num_query_heaps;
+            }
+            m_blit = retain(m_buffer->blitCommandEncoder(d.get()));
+            if(m_timestamp_query_heap && test_flags(m_device->m_counter_sampling_support_flags, CounterSamplingSupportFlag::blit))
+            {
+                m_blit->sampleCountersInBuffer(m_timestamp_query_heap->m_buffer.get(), m_timestamp_begin_query_index, true);
+            }
         }
         void CommandBuffer::copy_resource(IResource* dst, IResource* src)
         {
@@ -473,6 +645,16 @@ namespace Luna
         void CommandBuffer::end_copy_pass()
         {
             assert_copy_context();
+            if(m_timestamp_query_heap && test_flags(m_device->m_counter_sampling_support_flags, CounterSamplingSupportFlag::dispatch))
+            {
+                if(m_timestamp_end_query_index != DONT_QUERY)
+                {
+                    m_blit->sampleCountersInBuffer(m_timestamp_query_heap->m_buffer.get(), m_timestamp_end_query_index, true);
+                }
+                m_timestamp_query_heap = nullptr;
+                m_timestamp_begin_query_index = DONT_QUERY;
+                m_timestamp_end_query_index = DONT_QUERY;
+            }
             m_blit->endEncoding();
             m_blit.reset();
         }
@@ -498,75 +680,7 @@ namespace Luna
             //     m_compute->memoryBarrier(resources, i);
             // }
         }
-        void CommandBuffer::write_timestamp(IQueryHeap* heap, u32 index)
-        {
-            CounterSampleQueryHeap* sample_heap = cast_object<CounterSampleQueryHeap>(heap->get_object());
-            lucheck(sample_heap && sample_heap->m_desc.type == QueryType::timestamp);
-            if(m_render)
-            {
-                m_render->sampleCountersInBuffer(sample_heap->m_buffer.get(), index, true);
-            }
-            else if(m_compute)
-            {
-                m_compute->sampleCountersInBuffer(sample_heap->m_buffer.get(), index, true);
-            }
-            else if(m_blit)
-            {
-                m_blit->sampleCountersInBuffer(sample_heap->m_buffer.get(), index, true);
-            }
-            else
-            {
-                begin_copy_pass();
-                m_blit->sampleCountersInBuffer(sample_heap->m_buffer.get(), index, true);
-                end_copy_pass();
-            }
-        }
-        void CommandBuffer::begin_pipeline_statistics_query(IQueryHeap* heap, u32 index) 
-        {
-            CounterSampleQueryHeap* sample_heap = cast_object<CounterSampleQueryHeap>(heap->get_object());
-            lucheck(sample_heap && sample_heap->m_desc.type == QueryType::pipeline_statistics);
-            if(m_render)
-            {
-                m_render->sampleCountersInBuffer(sample_heap->m_buffer.get(), index * 2, true);
-            }
-            else if(m_compute)
-            {
-                m_compute->sampleCountersInBuffer(sample_heap->m_buffer.get(), index * 2, true);
-            }
-            else if(m_blit)
-            {
-                m_blit->sampleCountersInBuffer(sample_heap->m_buffer.get(), index * 2, true);
-            }
-            else
-            {
-                begin_copy_pass();
-                m_blit->sampleCountersInBuffer(sample_heap->m_buffer.get(), index * 2, true);
-                end_copy_pass();
-            }
-        }
-        void CommandBuffer::end_pipeline_statistics_query(IQueryHeap* heap, u32 index)
-        {
-            CounterSampleQueryHeap* sample_heap = cast_object<CounterSampleQueryHeap>(heap->get_object());
-            lucheck(sample_heap && sample_heap->m_desc.type == QueryType::pipeline_statistics);
-            if(m_render)
-            {
-                m_render->sampleCountersInBuffer(sample_heap->m_buffer.get(), index * 2 + 1, true);
-            }
-            else if(m_compute)
-            {
-                m_compute->sampleCountersInBuffer(sample_heap->m_buffer.get(), index * 2 + 1, true);
-            }
-            else if(m_blit)
-            {
-                m_blit->sampleCountersInBuffer(sample_heap->m_buffer.get(), index * 2 + 1, true);
-            }
-            else
-            {
-                begin_copy_pass();
-                m_blit->sampleCountersInBuffer(sample_heap->m_buffer.get(), index * 2 + 1, true);
-                end_copy_pass();
-            }
-        }
+
         void CommandBuffer::begin_occlusion_query(OcclusionQueryMode mode)
         {
             assert_graphcis_context();
@@ -581,6 +695,16 @@ namespace Luna
         void CommandBuffer::end_occlusion_query()
         {
             m_render->setVisibilityResultMode(MTL::VisibilityResultModeDisabled, m_occlusion_query_write_index * 8);
+        }
+        void CommandBuffer::write_timestamp(IQueryHeap* heap, u32 index)
+        {
+            assert_no_context();
+            CopyPassDesc desc;
+            desc.timestamp_query_heap = heap;
+            desc.timestamp_query_begin_pass_write_index = index;
+            desc.timestamp_query_end_pass_write_index = DONT_QUERY;
+            begin_copy_pass(desc);
+            end_copy_pass();
         }
         RV CommandBuffer::submit(Span<IFence*> wait_fences, Span<IFence*> signal_fences, bool allow_host_waiting)
         {

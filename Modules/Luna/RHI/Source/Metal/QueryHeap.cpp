@@ -33,7 +33,9 @@ namespace Luna
             MTL::CommonCounterSet target_set;
             switch(desc.type)
             {
-                case QueryType::timestamp: target_set = MTL::CommonCounterSetTimestamp; break;
+                case QueryType::timestamp:
+                case QueryType::timestamp_copy_queue:
+                    target_set = MTL::CommonCounterSetTimestamp; break;
                 case QueryType::pipeline_statistics: target_set = MTL::CommonCounterSetStatistic; break;
                 default: break;
             }
@@ -69,7 +71,7 @@ namespace Luna
         }
         RV CounterSampleQueryHeap::get_timestamp_values(u32 index, u32 count, u64* values)
         {
-            if(m_desc.type != QueryType::timestamp) return BasicError::not_supported();
+            if(m_desc.type != QueryType::timestamp && m_desc.type != QueryType::timestamp_copy_queue) return BasicError::not_supported();
             AutoreleasePool pool;
             NS::Data* data = m_buffer->resolveCounterRange(NS::Range::Make(index, count));
             NS::UInteger resolved_samples = data->length() / sizeof(MTL::CounterResultTimestamp);

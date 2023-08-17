@@ -18,6 +18,7 @@ namespace Luna
         {
             occlusion,
             timestamp,
+            timestamp_copy_queue,
             pipeline_statistics,
         };
 

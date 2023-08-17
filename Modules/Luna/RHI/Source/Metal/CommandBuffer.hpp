@@ -9,6 +9,7 @@
 */
 #pragma once
 #include "Device.hpp"
+#include "QueryHeap.hpp"
 
 namespace Luna
 {
@@ -36,6 +37,14 @@ namespace Luna
             UInt3U m_num_threads_per_group;
 
 			u32 m_occlusion_query_write_index;
+            
+            // Used if stage boundary counter sample is not supported.
+            CounterSampleQueryHeap* m_timestamp_query_heap = nullptr;
+            CounterSampleQueryHeap* m_pipeline_statistics_query_heap = nullptr;
+            u32 m_timestamp_begin_query_index = DONT_QUERY;
+            u32 m_timestamp_end_query_index = DONT_QUERY;
+            u32 m_pipeline_statistics_query_index = DONT_QUERY;
+            
 
             RV init(u32 command_queue_index);
 
@@ -55,6 +64,10 @@ namespace Luna
 			{
 				lucheck_msg(!m_render, "This command cannot be submitted between begin_render_pass and end_render_pass.");
 			}
+            void assert_no_context()
+            {
+                lucheck_msg(!m_render && !m_compute && !m_blit, "This command cannot be called in a pass context.");
+            }
 
             virtual IDevice* get_device() override { return m_device; }
             virtual void set_name(const Name& name) override  { set_object_name(m_buffer.get(), name); }
@@ -63,7 +76,7 @@ namespace Luna
 			virtual u32 get_command_queue_index() override { return m_command_queue_index; }
             virtual RV reset() override;
 			virtual void attach_device_object(IDeviceChild* obj) override;
-			virtual void begin_event(const Name& event_name) override;
+			virtual void begin_event(const c8* event_name) override;
 			virtual void end_event() override;
             virtual void begin_render_pass(const RenderPassDesc& desc) override;
 			virtual void set_graphics_pipeline_layout(IPipelineLayout* pipeline_layout) override;
@@ -85,14 +98,14 @@ namespace Luna
 			virtual void draw_indexed_instanced(u32 index_count_per_instance, u32 instance_count, u32 start_index_location,
 				i32 base_vertex_location, u32 start_instance_location) override;
 			virtual void end_render_pass() override;
-			virtual void begin_compute_pass() override;
+			virtual void begin_compute_pass(const ComputePassDesc& desc) override;
 			virtual void set_compute_pipeline_layout(IPipelineLayout* pipeline_layout) override;
 			virtual void set_compute_pipeline_state(IPipelineState* pso) override;
 			virtual void set_compute_descriptor_set(u32 index, IDescriptorSet* descriptor_set) override;
 			virtual void set_compute_descriptor_sets(u32 start_index, Span<IDescriptorSet*> descriptor_sets) override;
 			virtual void dispatch(u32 thread_group_count_x, u32 thread_group_count_y, u32 thread_group_count_z) override;
 			virtual void end_compute_pass() override;
-			virtual void begin_copy_pass() override;
+			virtual void begin_copy_pass(const CopyPassDesc& desc) override;
 			virtual void copy_resource(IResource* dst, IResource* src) override;
 			virtual void copy_buffer(
 				IBuffer* dst, u64 dst_offset,
@@ -112,11 +125,9 @@ namespace Luna
 				u32 copy_width, u32 copy_height, u32 copy_depth) override;
 			virtual void end_copy_pass() override;
 			virtual void resource_barrier(Span<const BufferBarrier> buffer_barriers, Span<const TextureBarrier> texture_barriers) override;
-			virtual void write_timestamp(IQueryHeap* heap, u32 index) override;
-			virtual void begin_pipeline_statistics_query(IQueryHeap* heap, u32 index) override;
-			virtual void end_pipeline_statistics_query(IQueryHeap* heap, u32 index) override;
 			virtual void begin_occlusion_query(OcclusionQueryMode mode) override;
 			virtual void end_occlusion_query() override;
+            virtual void write_timestamp(IQueryHeap* heap, u32 index) override;
 			virtual RV submit(Span<IFence*> wait_fences, Span<IFence*> signal_fences, bool allow_host_waiting) override;
         };
     }
