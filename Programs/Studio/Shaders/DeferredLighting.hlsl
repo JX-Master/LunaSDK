@@ -1,9 +1,10 @@
 #include "BRDF.hlsl"
 #include "CameraParams.hlsl"
 
-cbuffer LightingModeParams : register(b1)
+cbuffer LightingParams : register(b1)
 {
     uint lighting_mode;
+    uint num_lights;
 };
 
 static const uint LIGHTING_MODE_LIT = 0;
@@ -69,10 +70,6 @@ void main(int3 dispatch_thread_id : SV_DispatchThreadID)
 
     float4 camera_pos_world = mul(view_to_world, float4(0.0f, 0.0f, 0.0f, 1.0f));
     float3 view_dir = normalize(camera_pos_world.xyz - world_position);   // From frag to camera.
-
-    uint num_lights;
-    uint light_stride;
-    g_light_params.GetDimensions(num_lights, light_stride);
 
     float3 specular_color = lerp(float3(0.04f, 0.08f, 0.08f), base_color.xyz, metallic);
     float3 diffuse_color = base_color.xyz * (1.0f - metallic);

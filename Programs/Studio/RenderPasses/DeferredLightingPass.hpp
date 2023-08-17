@@ -44,7 +44,7 @@ namespace Luna
         RV execute(RG::IRenderPassContext* ctx) override;
 
         private:
-        Ref<RHI::IBuffer> m_lighting_mode_cb;
+        Ref<RHI::IBuffer> m_lighting_params_cb;
         Ref<DeferredLightingPassGlobalData> m_global_data;
         Ref<RHI::IDescriptorSet> m_ds;
     };
