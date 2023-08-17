@@ -70,7 +70,7 @@ namespace Luna
             }
 
             virtual IDevice* get_device() override { return m_device; }
-            virtual void set_name(const Name& name) override  { set_object_name(m_buffer.get(), name); }
+            virtual void set_name(const c8* name) override  { set_object_name(m_buffer.get(), name); }
             virtual void wait() override;
 			virtual bool try_wait() override;
 			virtual u32 get_command_queue_index() override { return m_command_queue_index; }

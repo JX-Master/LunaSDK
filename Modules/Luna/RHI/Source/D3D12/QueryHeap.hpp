@@ -35,7 +35,7 @@ namespace Luna
             {
                 return m_device.as<IDevice>();
             }
-            void set_name(const Name& name) { set_object_name(m_heap.Get(), name); }
+            void set_name(const c8* name) { set_object_name(m_heap.Get(), name); }
             QueryHeapDesc get_desc() { return m_desc; }
             RV get_timestamp_values(u32 index, u32 count, u64* values);
             RV get_occlusion_values(u32 index, u32 count, u64* values);

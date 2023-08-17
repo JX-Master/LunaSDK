@@ -31,7 +31,7 @@ namespace Luna
             RV init_as_aliasing(IDeviceMemory* memory, const BufferDesc& desc);
 
             virtual IDevice* get_device() override { return m_device; }
-            virtual void set_name(const Name& name) override  { set_object_name(m_buffer.get(), name); }
+            virtual void set_name(const c8* name) override  { set_object_name(m_buffer.get(), name); }
             virtual IDeviceMemory* get_memory() override { return m_memory; }
             virtual BufferDesc get_desc() override { return m_desc; }
 			virtual RV map(usize read_begin, usize read_end, void** data) override;
@@ -56,7 +56,7 @@ namespace Luna
             RV init_as_aliasing(IDeviceMemory* memory, const TextureDesc& desc);
 
             virtual IDevice* get_device() override { return m_device; }
-            virtual void set_name(const Name& name) override  { set_object_name(m_texture.get(), name); }
+            virtual void set_name(const c8* name) override  { set_object_name(m_texture.get(), name); }
             virtual IDeviceMemory* get_memory() override { return m_memory; }
             virtual TextureDesc get_desc() override { return m_desc; }
 

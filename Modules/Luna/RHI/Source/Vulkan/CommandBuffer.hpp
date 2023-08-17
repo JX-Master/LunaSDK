@@ -95,13 +95,13 @@ namespace Luna
 			}
 
 			virtual IDevice* get_device() override { return m_device.get(); }
-			virtual void set_name(const Name& name) override { m_name = name; }
+			virtual void set_name(const c8* name) override { m_name = name; }
 			virtual void wait() override;
 			virtual bool try_wait() override;
 			virtual u32 get_command_queue_index() override { return m_queue_index; }
 			virtual RV reset() override;
 			virtual void attach_device_object(IDeviceChild* obj) override;
-			virtual void begin_event(const Name& event_name) override;
+			virtual void begin_event(const c8* event_name) override;
 			virtual void end_event() override;
 			virtual void begin_render_pass(const RenderPassDesc& desc) override;
 			virtual void set_graphics_pipeline_layout(IPipelineLayout* pipeline_layout) override;

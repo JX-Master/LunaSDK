@@ -26,7 +26,7 @@ namespace Luna
 			~PipelineLayout();
 
 			virtual IDevice* get_device() override { return m_device.get(); }
-			virtual void set_name(const Name& name) override { m_name = name; }
+			virtual void set_name(const c8* name) override { m_name = name; }
 		};
 	}
 }

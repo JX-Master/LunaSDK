@@ -27,7 +27,7 @@ namespace Luna
             }
 
             virtual IDevice* get_device() override { return m_device; }
-            virtual void set_name(const Name& name) override  {}
+            virtual void set_name(const c8* name) override  {}
 
             // Metal does not have pipeline layout object, so we left this object empty.
         };

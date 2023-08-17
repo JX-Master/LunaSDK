@@ -25,7 +25,7 @@ namespace Luna
             RV init();
 
             virtual IDevice* get_device() override { return m_device; }
-            virtual void set_name(const Name& name) override  { set_object_name(m_fence.get(), name); }
+            virtual void set_name(const c8* name) override  { set_object_name(m_fence.get(), name); }
         };
     }
 }

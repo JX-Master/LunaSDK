@@ -40,7 +40,7 @@ namespace Luna
             HashMap<u32, NSPtr<MTL::SamplerState>> m_samplers;
 
             virtual IDevice* get_device() override { return m_device; }
-            virtual void set_name(const Name& name) override  { set_object_name(m_buffer.get(), name); }
+            virtual void set_name(const c8* name) override  { set_object_name(m_buffer.get(), name); }
             virtual RV update_descriptors(Span<const WriteDescriptorSet> writes) override;
         };
     }

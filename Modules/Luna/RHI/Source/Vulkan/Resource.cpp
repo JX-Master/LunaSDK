@@ -63,7 +63,7 @@ namespace Luna
 				m_buffer = VK_NULL_HANDLE;
 			}
 		}
-		void BufferResource::set_name(const Name& name)
+		void BufferResource::set_name(const c8* name)
 		{
 			if (g_enable_validation_layer)
 			{
@@ -71,7 +71,7 @@ namespace Luna
 				nameInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
 				nameInfo.objectType = VK_OBJECT_TYPE_BUFFER;
 				nameInfo.objectHandle = (uint64_t)m_buffer;
-				nameInfo.pObjectName = name.c_str();
+				nameInfo.pObjectName = name;
 				vkSetDebugUtilsObjectNameEXT(m_device->m_device, &nameInfo);
 			}
 		}
@@ -177,7 +177,7 @@ namespace Luna
 				m_image = VK_NULL_HANDLE;
 			}
 		}
-		void ImageResource::set_name(const Name& name)
+		void ImageResource::set_name(const c8* name)
 		{
 			if (g_enable_validation_layer)
 			{
@@ -185,7 +185,7 @@ namespace Luna
 				nameInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
 				nameInfo.objectType = VK_OBJECT_TYPE_IMAGE;
 				nameInfo.objectHandle = (uint64_t)m_image;
-				nameInfo.pObjectName = name.c_str();
+				nameInfo.pObjectName = name;
 				vkSetDebugUtilsObjectNameEXT(m_device->m_device, &nameInfo);
 			}
 		}

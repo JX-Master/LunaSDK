@@ -29,7 +29,7 @@ namespace Luna
 			~QueryHeap();
 
 			virtual IDevice* get_device() override { return m_device.get(); }
-			virtual void set_name(const Name& name) override { m_name = name; }
+			virtual void set_name(const c8* name) override { m_name = name; }
 			virtual QueryHeapDesc get_desc() override { return m_desc; }
 			virtual RV get_timestamp_values(u32 index, u32 count, u64* values) override;
 			virtual RV get_occlusion_values(u32 index, u32 count, u64* values) override;

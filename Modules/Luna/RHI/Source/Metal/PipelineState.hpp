@@ -29,7 +29,7 @@ namespace Luna
             RV init(const GraphicsPipelineStateDesc& desc);
 
             virtual IDevice* get_device() override { return m_device; }
-            virtual void set_name(const Name& name) override  { }
+            virtual void set_name(const c8* name) override  { }
         };
 
         struct ComputePipelineState : IPipelineState
@@ -44,7 +44,7 @@ namespace Luna
             RV init(const ComputePipelineStateDesc& desc);
 
             virtual IDevice* get_device() override { return m_device; }
-            virtual void set_name(const Name& name) override  { }
+            virtual void set_name(const c8* name) override  { }
         };
     }
 }

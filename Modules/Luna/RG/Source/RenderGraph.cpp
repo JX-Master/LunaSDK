@@ -174,7 +174,7 @@ namespace Luna
                             {
                                 luset(res.m_resource, m_device->new_texture(res.m_resource_desc.memory_type, res.m_resource_desc.texture));
                             }
-                            if (m_desc.resources[i].name) res.m_resource->set_name(m_desc.resources[i].name);
+                            if (m_desc.resources[i].name) res.m_resource->set_name(m_desc.resources[i].name.c_str());
                         }
                         else
                         {
@@ -231,7 +231,7 @@ namespace Luna
                         {
                             luset(res.m_resource, allocate_transient_resource(res.m_resource_desc));
                             cmdbuf->attach_device_object(res.m_resource);
-                            if(m_desc.resources[h].name) res.m_resource->set_name(m_desc.resources[h].name);
+                            if(m_desc.resources[h].name) res.m_resource->set_name(m_desc.resources[h].name.c_str());
                         }
                         else
                         {

@@ -35,23 +35,29 @@ namespace Luna
         {
             lutry
             {
+                AutoreleasePool pool;
                 m_device->sampleTimestamps(&m_start_cpu_time, &m_start_gpu_time);
                 CommandQueueDesc desc;
                 desc.type = CommandQueueType::graphics;
                 desc.flags = CommandQueueFlag::presenting;
                 CommandQueue queue;
                 luexp(queue.init(m_device.get(), desc));
+                set_object_name(queue.queue.get(), "Render Queue");
                 m_queues.push_back(move(queue));
                 desc.type = CommandQueueType::compute;
                 desc.flags = CommandQueueFlag::none;
                 luexp(queue.init(m_device.get(), desc));
+                set_object_name(queue.queue.get(), "Compute Queue");
                 m_queues.push_back(move(queue));
                 luexp(queue.init(m_device.get(), desc));
+                set_object_name(queue.queue.get(), "Compute Queue");
                 m_queues.push_back(move(queue));
                 desc.type = CommandQueueType::copy;
                 luexp(queue.init(m_device.get(), desc));
+                set_object_name(queue.queue.get(), "Blit Queue");
                 m_queues.push_back(move(queue));
                 luexp(queue.init(m_device.get(), desc));
+                set_object_name(queue.queue.get(), "Blit Queue");
                 m_queues.push_back(move(queue));
                 if(m_device->supportsCounterSampling(MTL::CounterSamplingPointAtStageBoundary))
                 {

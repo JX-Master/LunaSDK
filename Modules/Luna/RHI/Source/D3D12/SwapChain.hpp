@@ -81,7 +81,7 @@ namespace Luna
 			{
 				return m_device;
 			}
-			void set_name(const Name& name) 
+			void set_name(const c8* name) 
 			{
 				usize len = utf8_to_utf16_len(name.c_str(), name.size());
 				wchar_t* buf = (wchar_t*)alloca(sizeof(wchar_t) * (len + 1));

@@ -29,7 +29,7 @@ namespace Luna
             RV init(const DescriptorSetLayoutDesc& desc);
 
             virtual IDevice* get_device() override { return m_device; }
-            virtual void set_name(const Name& name) override  { }
+            virtual void set_name(const c8* name) override  { }
         };
     }
 }

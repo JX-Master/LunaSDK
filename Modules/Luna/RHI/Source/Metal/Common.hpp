@@ -97,10 +97,10 @@ namespace Luna
 		}
 
 		template <typename _Ty>
-		inline void set_object_name(_Ty* obj, const Name& name)
+		inline void set_object_name(_Ty* obj, const c8* name)
 		{
 			AutoreleasePool pool;
-            NS::String* label = NS::String::string(name.c_str(), NS::StringEncoding::UTF8StringEncoding);
+            NS::String* label = NS::String::string(name, NS::StringEncoding::UTF8StringEncoding);
             obj->setLabel(label);
 		}
 

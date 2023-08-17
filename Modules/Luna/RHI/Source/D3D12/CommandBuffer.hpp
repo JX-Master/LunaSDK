@@ -216,7 +216,7 @@ namespace Luna
 			{
 				return m_device.as<IDevice>();
 			}
-			virtual void set_name(const Name& name) override { set_object_name(m_ca.Get(), name); set_object_name(m_li.Get(), name); }
+			virtual void set_name(const c8* name) override { set_object_name(m_ca.Get(), name); set_object_name(m_li.Get(), name); }
 			virtual u32 get_command_queue_index() override
 			{
 				return m_queue;
@@ -226,11 +226,11 @@ namespace Luna
 			{
 				m_objs.push_back(obj);
 			}
-			virtual void begin_event(const Name& event_name) override
+			virtual void begin_event(const c8* event_name) override
 			{
-				usize len = utf8_to_utf16_len(event_name.c_str(), event_name.size());
+				usize len = utf8_to_utf16_len(event_name);
 				wchar_t* buf = (wchar_t*)alloca(sizeof(wchar_t) * (len + 1));
-				utf8_to_utf16((c16*)buf, len + 1, event_name.c_str(), event_name.size());
+				utf8_to_utf16((c16*)buf, len + 1, event_name);
 				m_li->BeginEvent(0, buf, sizeof(wchar_t) * (len + 1));
 			}
 			virtual void end_event() override

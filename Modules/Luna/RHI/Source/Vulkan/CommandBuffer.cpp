@@ -222,13 +222,13 @@ namespace Luna
 		{
 			m_objs.push_back(obj);
 		}
-		void CommandBuffer::begin_event(const Name& event_name)
+		void CommandBuffer::begin_event(const c8* event_name)
 		{
 			if (g_enable_validation_layer)
 			{
 				VkDebugUtilsLabelEXT markerInfo = {};
 				markerInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
-				markerInfo.pLabelName = event_name.c_str();
+				markerInfo.pLabelName = event_name;
 				vkCmdBeginDebugUtilsLabelEXT(m_command_buffer, &markerInfo);
 			}
 		}
