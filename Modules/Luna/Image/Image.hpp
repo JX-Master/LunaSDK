@@ -42,7 +42,7 @@ namespace Luna
 			rgba32_float,
 		};
 
-		inline constexpr usize pixel_size(ImagePixelFormat format)
+		inline constexpr u32 pixel_size(ImagePixelFormat format)
 		{
 			switch (format)
 			{
