@@ -99,11 +99,11 @@ namespace Luna
 		{
 			using namespace RHI;
 			auto device = get_main_device();
-			u32 cb_align = device->get_uniform_buffer_data_alignment();
+			auto cb_align = device->get_uniform_buffer_data_alignment();
 			luset(m_renderer.command_buffer, g_env->device->new_command_buffer(g_env->graphics_queue));
 			SceneRendererSettings settings;
 			settings.frame_profiling = true;
-			settings.mode = SceneRendererMode::lit;
+			settings.mode = SceneRendererMode::base_color;
 			settings.screen_size = UInt2U(1024, 768);
 			luexp(m_renderer.reset(settings));
 		}
@@ -794,7 +794,7 @@ namespace Luna
 		RV r = draw_scene();
 		if(failed(r))
 		{
-			Window::message_box(explain(r.errcode()), "Scene Editor Error", Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
+			auto _ = Window::message_box(explain(r.errcode()), "Scene Editor Error", Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
 		}
 
 		ImGui::NextColumn();
@@ -822,7 +822,7 @@ namespace Luna
 			usize slice_pitch = row_pitch * desc.height;
 			Blob img_data(slice_pitch);
 			lulet(readback_cmdbuf, device->new_command_buffer(g_env->async_copy_queue));
-			luexp(copy_resource_data(readback_cmdbuf, {CopyResourceData::read_texture(img_data.data(), row_pitch, slice_pitch, m_renderer.render_texture, SubresourceIndex(0, 0), 0, 0, 0,
+			luexp(copy_resource_data(readback_cmdbuf, {CopyResourceData::read_texture(img_data.data(), (u32)row_pitch, (u32)slice_pitch, m_renderer.render_texture, SubresourceIndex(0, 0), 0, 0, 0,
 				desc.width, desc.height, 1)}));
 			Image::ImageDesc img_desc;
 			img_desc.width = (u32)desc.width;
@@ -833,7 +833,7 @@ namespace Luna
 		}
 		lucatch
 		{
-			Window::message_box(explain(lures), "Failed to capture image", Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
+			auto _ = Window::message_box(explain(lures), "Failed to capture image", Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
 		}
 	}
 

@@ -356,14 +356,14 @@ namespace Luna
 					auto text_sz = ImGui::CalcTextSize(asset_type.c_str());
 					Float2 center = Float2(draw_rect.offset_x + draw_rect.width / 2.0f, draw_rect.offset_y + draw_rect.height / 2.0f);
 					ImGui::SetCursorPos({ center.x - text_sz.x / 2.0f, center.y - text_sz.y / 2.0f });
-					ImGui::Text(asset_type.c_str());
+					ImGui::Text("%s", asset_type.c_str());
 				}
 				return;
 			}
 			auto text_sz = ImGui::CalcTextSize(asset_type.c_str());
 			Float2 center = Float2(draw_rect.offset_x + draw_rect.width / 2.0f, draw_rect.offset_y + draw_rect.height / 2.0f);
 			ImGui::SetCursorPos(center - text_sz / 2.0f);
-			ImGui::Text(asset_type.c_str());
+			ImGui::Text("%s", asset_type.c_str());
 		}
 	}
 }

@@ -139,7 +139,7 @@ namespace Luna
 
 			compute_cmdbuf->set_compute_pipeline_layout(m_mipmapping_playout);
 			compute_cmdbuf->set_compute_pipeline_state(m_mipmapping_pso);
-			u32 cb_align = device->get_uniform_buffer_data_alignment();
+			u32 cb_align = (u32)device->get_uniform_buffer_data_alignment();
 			u32 cb_size = (u32)align_upper(sizeof(Float2), cb_align);
 			lulet(cb, device->new_buffer(MemoryType::upload,
 				BufferDesc(BufferUsageFlag::uniform_buffer, cb_size * (desc.mip_levels - 1))));
@@ -167,12 +167,12 @@ namespace Luna
 				};
 				compute_cmdbuf->resource_barrier({}, { barriers, 2 });
 				lulet(vs, device->new_descriptor_set(DescriptorSetDesc(m_mipmapping_dlayout)));
-				vs->update_descriptors({
+				luexp(vs->update_descriptors({
 					WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(cb, cb_size * j, cb_size)),
 					WriteDescriptorSet::read_texture_view(1, TextureViewDesc::tex2d(resource_with_most_detailed_mip, Format::unknown, j, 1)),
 					WriteDescriptorSet::read_write_texture_view(2, TextureViewDesc::tex2d(resource_with_most_detailed_mip, Format::unknown, j + 1, 1)),
 					WriteDescriptorSet::sampler(3, SamplerDesc(Filter::linear, Filter::linear, Filter::linear, TextureAddressMode::clamp, TextureAddressMode::clamp, TextureAddressMode::clamp))
-					});
+					}));
 				compute_cmdbuf->set_compute_descriptor_set(0, vs);
 				compute_cmdbuf->attach_device_object(vs);
 				compute_cmdbuf->dispatch(align_upper(width, 8) / 8, align_upper(height, 8) / 8, 1);
@@ -220,7 +220,7 @@ namespace Luna
 				u32 mip_0_height;
 				f32 roughness;
 			};
-			u32 cb_align = device->get_uniform_buffer_data_alignment();
+			usize cb_align = device->get_uniform_buffer_data_alignment();
 			u32 cb_size = (u32)align_upper(sizeof(CB), cb_align);
 			lulet(cb, device->new_buffer(MemoryType::upload,
 				BufferDesc(BufferUsageFlag::uniform_buffer, cb_size * (desc.mip_levels - 1))));
@@ -257,12 +257,12 @@ namespace Luna
 			{
 				u32 dst_mip = j + 1;
 				lulet(vs, device->new_descriptor_set(DescriptorSetDesc(m_env_mipmapping_dlayout)));
-				vs->update_descriptors({
+                luexp(vs->update_descriptors({
 					WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(cb, cb_size * j, cb_size)),
 					WriteDescriptorSet::read_texture_view(1, TextureViewDesc::tex2d(resource_with_most_detailed_mip)),
 					WriteDescriptorSet::read_write_texture_view(2, TextureViewDesc::tex2d(prefiltered, desc.format, dst_mip, 1)),
 					WriteDescriptorSet::sampler(3, SamplerDesc(Filter::linear, Filter::linear, Filter::linear, TextureAddressMode::clamp, TextureAddressMode::clamp, TextureAddressMode::clamp))
-					});
+					}));
 				compute_cmdbuf->set_compute_descriptor_set(0, vs);
 				compute_cmdbuf->attach_device_object(vs);
 				u32 width = max<u32>((u32)desc.width >> (j + 1), 1);
@@ -324,7 +324,7 @@ namespace Luna
 				usize data_sz = row_pitch * (usize)mip_height;
 				Blob data(data_sz);
 				lulet(readback_cmdbuf, device->new_command_buffer(g_env->async_copy_queue));
-				luexp(copy_resource_data(readback_cmdbuf, {CopyResourceData::read_texture(data.data(), row_pitch, data_sz, tex, SubresourceIndex(i, 0), 0, 0, 0, mip_width, mip_height, 1)}));
+				luexp(copy_resource_data(readback_cmdbuf, {CopyResourceData::read_texture(data.data(), (u32)row_pitch, (u32)data_sz, tex, SubresourceIndex(i, 0), 0, 0, 0, mip_width, mip_height, 1)}));
 				img_data.push_back(move(data));
 			}
 			u64 file_offset = 0;
@@ -457,7 +457,7 @@ namespace Luna
 			}
 			for(auto& file : m_files)
 			{
-				ImGui::Text(file.m_path.encode().c_str());
+				ImGui::Text("%s", file.m_path.encode().c_str());
 				ImGui::Text("Texture Information:");
 				ImGui::Text("Width: %u", file.m_desc.width);
 				ImGui::Text("Height: %u", file.m_desc.height);

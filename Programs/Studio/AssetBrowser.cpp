@@ -127,7 +127,7 @@ namespace Luna
 			auto r = Asset::delete_asset(asset);
 			if (failed(r))
 			{
-				Window::message_box(explain(r.errcode()), "Delete asset failed", Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
+				auto _ = Window::message_box(explain(r.errcode()), "Delete asset failed", Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
 			}
 		}
 		m_deleting_assets.clear();
@@ -163,7 +163,7 @@ namespace Luna
 						{                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  
 							if(succeeded(Asset::load_asset_default_data(asset.get())))
 							{
-								Asset::save_asset(asset.get());
+                                auto _ = Asset::save_asset(asset.get());
 							}
 							m_asset_name_editing_buf = new_asset_path.back().c_str();
 							m_editing_asset_name = new_asset_path.back();
@@ -372,7 +372,7 @@ namespace Luna
 				const char* text = "Empty Directory";
 				auto text_size = ImGui::CalcTextSize(text);
 				ImGui::SetCursorPos(region_center - Float2(text_size.x / 2, text_size.y / 2));
-				ImGui::Text(text);
+				ImGui::Text("%s", text);
 			}
 			else
 			{
@@ -464,7 +464,7 @@ namespace Luna
 							{
 								Asset::asset_t payload = asset.get();
 								ImGui::SetDragDropPayload("Asset Ref", &payload, sizeof(payload));
-								ImGui::Text(meta_path.encode().c_str());
+								ImGui::Text("%s", meta_path.encode().c_str());
 								ImGui::EndDragDropSource();
 							}
 
@@ -484,7 +484,7 @@ namespace Luna
 									auto text_sz = ImGui::CalcTextSize(asset_type.c_str());
 									Float2 center = Float2(draw_rect.offset_x + draw_rect.width / 2.0f, draw_rect.offset_y + draw_rect.height / 2.0f);
 									ImGui::SetCursorScreenPos({ center.x - text_sz.x / 2.0f, center.y - text_sz.y / 2.0f });
-									ImGui::Text(asset_type.c_str());
+									ImGui::Text("%s", asset_type.c_str());
 								}
 
 								if (mouse_pos.x > tile_min.x && mouse_pos.y > tile_min.y && mouse_pos.x < tile_max.x && mouse_pos.y < tile_max.y)
@@ -502,7 +502,7 @@ namespace Luna
 								auto text_sz = ImGui::CalcTextSize(asset_type.c_str());
 								Float2 center = Float2(draw_rect.offset_x + draw_rect.width / 2.0f, draw_rect.offset_y + draw_rect.height / 2.0f);
 								ImGui::SetCursorScreenPos(center - text_sz / 2.0f);
-								ImGui::Text(asset_type.c_str());
+								ImGui::Text("%s", asset_type.c_str());
 							}
 
 							// Load the data if not loaded.
@@ -555,7 +555,7 @@ namespace Luna
 								if(ch == '\\' || ch == '/' || ch == ':' || ch == '*' || ch == '?' || ch == '\"' || ch == '<' ||
 									ch == '>' || ch == '|')
 								{
-									Window::message_box("File or directory name cannot contain the following characters: \\ / : * ? \" < > |", "Rename directory failed", Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
+                                    auto _ = Window::message_box("File or directory name cannot contain the following characters: \\ / : * ? \" < > |", "Rename directory failed", Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
 									valid_filename = false;
 									break;
 								}
@@ -575,7 +575,7 @@ namespace Luna
 									}
 									if(failed(r))
 									{
-										Window::message_box(explain(r.errcode()), "Rename directory failed", Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
+                                        auto _ = Window::message_box(explain(r.errcode()), "Rename directory failed", Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
 									}
 								}
 								else
@@ -586,7 +586,7 @@ namespace Luna
 										auto r = Asset::move_asset(asset.get(), to_path);
 										if(failed(r))
 										{
-											Window::message_box(explain(r.errcode()), "Rename asset failed", Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
+                                            auto _ = Window::message_box(explain(r.errcode()), "Rename asset failed", Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
 										}
 									}
 								}
@@ -619,7 +619,7 @@ namespace Luna
 						}
 						else
 						{
-							ImGui::Text(assets.get()[i].m_filename.c_str());
+							ImGui::Text("%s", assets.get()[i].m_filename.c_str());
 						}
 					}
 					
@@ -670,12 +670,12 @@ namespace Luna
 							auto r = remove_assets_in_folder(path);
 							if(failed(r))
 							{
-								Window::message_box(explain(r.errcode()), "Delete directory failed", Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
+                                auto _ = Window::message_box(explain(r.errcode()), "Delete directory failed", Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
 							}
 							r = VFS::delete_file(path);
 							if(failed(r))
 							{
-								Window::message_box(explain(r.errcode()), "Delete directory failed", Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
+                                auto _ = Window::message_box(explain(r.errcode()), "Delete directory failed", Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
 							}
 						}
 						else
@@ -683,7 +683,7 @@ namespace Luna
 							auto asset = Asset::get_asset_by_path(path);
 							if(failed(asset))
 							{
-								Window::message_box(explain(asset.errcode()), "Delete asset failed", Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
+                                auto _ = Window::message_box(explain(asset.errcode()), "Delete asset failed", Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
 							}
 							else
 							{
@@ -705,9 +705,9 @@ namespace Luna
 			auto text_fail_size = ImGui::CalcTextSize(text_fail);
 			auto text_reason_size = ImGui::CalcTextSize(text_reason);
 			ImGui::SetCursorPos(region_center - Float2(text_fail_size.x / 2, text_fail_size.y));
-			ImGui::Text(text_fail);
+			ImGui::Text("%s", text_fail);
 			ImGui::SetCursorPos(region_center - Float2(text_reason_size.x / 2, 0.0f));
-			ImGui::Text(text_reason);
+			ImGui::Text("%s", text_reason);
 		}
 
 		auto tile_ctx_min = ImGui::GetWindowPos();
