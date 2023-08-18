@@ -228,9 +228,10 @@ namespace Luna
 	//! @param[in] origin The unaligned address/size.
 	//! @param[in] alignment The alignment boundary. If alignment is 0, `origin` will be returned as-is.
 	//! @return Returns the aligned address/size.
-	inline constexpr usize align_upper(usize origin, usize alignment)
+    template <typename _Ty1, typename _Ty2>
+	inline constexpr _Ty1 align_upper(_Ty1 origin, _Ty2 alignment)
 	{
-		return alignment ? ((origin + alignment - 1) / alignment * alignment) : origin;
+		return alignment ? ((origin + (_Ty1)alignment - 1) / (_Ty1)alignment * (_Ty1)alignment) : origin;
 	}
 
 	//! @brief Represents one object that supports manual construction and destruction.
