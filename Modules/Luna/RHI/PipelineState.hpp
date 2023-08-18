@@ -203,10 +203,6 @@ namespace Luna
 		{
 			FillMode fill_mode;
 			CullMode cull_mode;
-			i32 depth_bias;
-			f32 depth_bias_clamp;
-			f32 slope_scaled_depth_bias;
-			u32 forced_sample_count;
 			bool front_counter_clockwise;
 			bool depth_clip_enable;
 			bool multisample_enable;
@@ -216,10 +212,6 @@ namespace Luna
 			RasterizerDesc(
 				FillMode fill_mode = FillMode::solid,
 				CullMode cull_mode = CullMode::back,
-				i32 depth_bias = 0,
-				f32 depth_bias_clamp = 0.0f,
-				f32 slope_scaled_depth_bias = 0.0f,
-				u32 forced_sample_count = 0,
 				bool front_counter_clockwise = false,
 				bool depth_clip_enable = true,
 				bool multisample_enable = false,
@@ -228,10 +220,6 @@ namespace Luna
 			) :
 				fill_mode(fill_mode),
 				cull_mode(cull_mode),
-				depth_bias(depth_bias),
-				depth_bias_clamp(depth_bias_clamp),
-				slope_scaled_depth_bias(slope_scaled_depth_bias),
-				forced_sample_count(forced_sample_count),
 				front_counter_clockwise(front_counter_clockwise),
 				depth_clip_enable(depth_clip_enable),
 				multisample_enable(multisample_enable),
@@ -287,6 +275,9 @@ namespace Luna
 
 		struct DepthStencilDesc
 		{
+            i32 depth_bias;
+            f32 slope_scaled_depth_bias;
+            f32 depth_bias_clamp;
 			bool depth_test_enable;
 			bool depth_write_enable;
 			CompareFunction depth_func;
@@ -300,12 +291,18 @@ namespace Luna
 				bool depth_test_enable = true,
 				bool depth_write_enable = true,
 				CompareFunction depth_func = CompareFunction::less,
+                i32 depth_bias = 0,
+                f32 slope_scaled_depth_bias = 0.0f,
+                f32 depth_bias_clamp = 0.0f,
 				bool stencil_enable = false,
 				u8 stencil_read_mask = DEFAULT_STENCIL_READ_MASK,
 				u8 stencil_write_mask = DEFAULT_STENCIL_WRITE_MASK,
 				const DepthStencilOpDesc& front_face = DepthStencilOpDesc(),
 				const DepthStencilOpDesc& back_face = DepthStencilOpDesc()
 			) :
+                depth_bias(depth_bias),
+                slope_scaled_depth_bias(slope_scaled_depth_bias),
+                depth_bias_clamp(depth_bias_clamp),
 				depth_test_enable(depth_test_enable),
 				depth_write_enable(depth_write_enable),
 				depth_func(depth_func),

@@ -137,7 +137,7 @@ namespace Luna
 				desc.ps = { g_fill_shader_ps.data(), g_fill_shader_ps.size() };
 				desc.blend_state = BlendDesc({ AttachmentBlendDesc(true, BlendFactor::src_alpha, BlendFactor::one_minus_src_alpha, BlendOp::add, BlendFactor::zero,
 						BlendFactor::one, BlendOp::add, ColorWriteMask::all) });
-				desc.rasterizer_state = RasterizerDesc(FillMode::solid, CullMode::back, 0, 0.0f, 0.0f, 0, false, false, false, false, false);
+				desc.rasterizer_state = RasterizerDesc(FillMode::solid, CullMode::back, false, false, false, false, false);
 				desc.depth_stencil_state = DepthStencilDesc(false, false);
 				desc.num_color_attachments = 1;
 				desc.color_formats[0] = rt_format;

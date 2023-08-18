@@ -137,8 +137,8 @@ RV start()
 		ps_desc.sample_mask = U32_MAX;
 		ps_desc.blend_state = BlendDesc({ 
             AttachmentBlendDesc(false, BlendFactor::src_alpha, BlendFactor::one_minus_src_alpha, BlendOp::add, BlendFactor::one_minus_src_alpha, BlendFactor::zero, BlendOp::add, ColorWriteMask::all) });
-		ps_desc.rasterizer_state = RasterizerDesc(FillMode::solid, CullMode::back, 0, 0.0f, 0.0f, 0, false, true, false, false, false);
-		ps_desc.depth_stencil_state = DepthStencilDesc(true, true, CompareFunction::less_equal, false, 0x00, 0x00, DepthStencilOpDesc(), DepthStencilOpDesc());
+		ps_desc.rasterizer_state = RasterizerDesc(FillMode::solid, CullMode::back, false, true, false, false, false);
+		ps_desc.depth_stencil_state = DepthStencilDesc(true, true, CompareFunction::less_equal, 0, 0.0f, 0.0f, false, 0x00, 0x00, DepthStencilOpDesc(), DepthStencilOpDesc());
 		ps_desc.ib_strip_cut_value = IndexBufferStripCutValue::disabled;
         InputBindingDesc bindings[] = {InputBindingDesc(0, sizeof(Vertex), InputRate::per_vertex)};
         InputAttributeDesc attributes[] = {
@@ -206,13 +206,13 @@ RV start()
 				CopyResourceData::write_texture(file_tex, SubresourceIndex(0, 0), 0, 0, 0, 
 					image_data.data(), image_desc.width * 4, image_desc.width * image_desc.height * 4, 
 					image_desc.width, image_desc.height, 1)}));
-        desc_set->update_descriptors(
+        luexp(desc_set->update_descriptors(
             {
                 WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(cb)),
                 WriteDescriptorSet::read_texture_view(1, TextureViewDesc::tex2d(file_tex)),
                 WriteDescriptorSet::sampler(2, SamplerDesc(Filter::linear, Filter::linear, Filter::linear, TextureAddressMode::clamp,
                         TextureAddressMode::clamp, TextureAddressMode::clamp))
-            });
+            }));
 	}
 	lucatchret;
 	return ok;
@@ -226,7 +226,7 @@ void draw()
         Float3 camera_pos(cosf(camera_rotation / 180.0f * PI) * 3.0f, 1.0f, sinf(camera_rotation / 180.0f * PI) * 3.0f);
         Float4x4 camera_mat = AffineMatrix::make_look_at(camera_pos, Float3(0, 0, 0), Float3(0, 1, 0));
         auto window_sz = get_window()->get_framebuffer_size();
-        camera_mat = mul(camera_mat, ProjectionMatrix::make_perspective_fov(PI / 3.0f, (f32)window_sz.x / (f32)window_sz.y, 0.001f, 100.0f));
+        camera_mat = mul(camera_mat, ProjectionMatrix::make_perspective_fov(PI / 3.0f, (f32)window_sz.x / (f32)window_sz.y, 1.0f, 4.0f));
         void* camera_mapped = nullptr;
         luexp(cb->map(0, 0, &camera_mapped));
         memcpy(camera_mapped, &camera_mat, sizeof(Float4x4));
@@ -254,9 +254,9 @@ void draw()
         cmdbuf->set_graphics_pipeline_layout(playout);
         cmdbuf->set_graphics_pipeline_state(pso);
         cmdbuf->set_graphics_descriptor_set(0, desc_set);
-        auto sz = vb->get_desc().size;
+        u32 sz = (u32)vb->get_desc().size;
         cmdbuf->set_vertex_buffers(0, {VertexBufferView(vb, 0, sz, sizeof(Vertex))});
-        sz = ib->get_desc().size;
+        sz = (u32)ib->get_desc().size;
         cmdbuf->set_index_buffer({ ib, 0, 144, Format::r32_uint });
         cmdbuf->set_scissor_rect(RectI(0, 0, (i32)window_sz.x, (i32)window_sz.y));
         cmdbuf->set_viewport(Viewport(0.0f, 0.0f, (f32)window_sz.x, (f32)window_sz.y, 0.0f, 1.0f));
