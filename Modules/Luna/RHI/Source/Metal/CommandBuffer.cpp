@@ -661,25 +661,25 @@ namespace Luna
         }
         void CommandBuffer::resource_barrier(Span<const BufferBarrier> buffer_barriers, Span<const TextureBarrier> texture_barriers)
         {
-            // if(m_compute)
-            // {
-            //     usize num_resources = buffer_barriers.size() + texture_barriers.size();
-            //     MTL::Resource** resources = (MTL::Resource**)alloca(sizeof(MTL::Resource*) * num_resources);
-            //     usize i = 0;
-            //     for(const BufferBarrier& barrier : buffer_barriers)
-            //     {
-            //         Buffer* res = cast_object<Buffer>(barrier.buffer->get_object());
-            //         resources[i] = res->m_buffer.get();
-            //         ++i;
-            //     }
-            //     for(const TextureBarrier& barrier : texture_barriers)
-            //     {
-            //         Texture* res = cast_object<Texture>(barrier.texture->get_object());
-            //         resources[i] = res->m_texture.get();
-            //         ++i;
-            //     }
-            //     m_compute->memoryBarrier(resources, i);
-            // }
+             if(m_compute)
+             {
+                 usize num_resources = buffer_barriers.size() + texture_barriers.size();
+                 MTL::Resource** resources = (MTL::Resource**)alloca(sizeof(MTL::Resource*) * num_resources);
+                 usize i = 0;
+                 for(const BufferBarrier& barrier : buffer_barriers)
+                 {
+                     Buffer* res = cast_object<Buffer>(barrier.buffer->get_object());
+                     resources[i] = res->m_buffer.get();
+                     ++i;
+                 }
+                 for(const TextureBarrier& barrier : texture_barriers)
+                 {
+                     Texture* res = cast_object<Texture>(barrier.texture->get_object());
+                     resources[i] = res->m_texture.get();
+                     ++i;
+                 }
+                 m_compute->memoryBarrier(resources, i);
+             }
         }
 
         void CommandBuffer::begin_occlusion_query(OcclusionQueryMode mode)
