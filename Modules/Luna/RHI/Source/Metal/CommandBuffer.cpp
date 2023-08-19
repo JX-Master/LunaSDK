@@ -131,7 +131,6 @@ namespace Luna
             {
                 BufferQueryHeap* query_heap = cast_object<BufferQueryHeap>(desc.occlusion_query_heap->get_object());
                 d->setVisibilityResultBuffer(query_heap->m_buffer.get());
-                m_occlusion_query_write_index = desc.occlusion_query_write_index;
             }
             u32 num_query_heaps = 0;
             if(desc.timestamp_query_heap)
@@ -201,6 +200,7 @@ namespace Luna
             assert_graphcis_context();
             RenderPipelineState* p = cast_object<RenderPipelineState>(pso->get_object());
             m_render->setRenderPipelineState(p->m_pso.get());
+            m_render->setTriangleFillMode(p->m_fill_mode);
             m_render->setCullMode(p->m_cull_mode);
             m_render->setDepthStencilState(p->m_dss.get());
             m_render->setFrontFacingWinding(p->m_front_counter_clockwise ? MTL::WindingCounterClockwise : MTL::WindingClockwise);
@@ -646,7 +646,7 @@ namespace Luna
         void CommandBuffer::end_copy_pass()
         {
             assert_copy_context();
-            if(m_timestamp_query_heap && test_flags(m_device->m_counter_sampling_support_flags, CounterSamplingSupportFlag::dispatch))
+            if(m_timestamp_query_heap && test_flags(m_device->m_counter_sampling_support_flags, CounterSamplingSupportFlag::blit))
             {
                 if(m_timestamp_end_query_index != DONT_QUERY)
                 {
@@ -682,7 +682,7 @@ namespace Luna
              }
         }
 
-        void CommandBuffer::begin_occlusion_query(OcclusionQueryMode mode)
+        void CommandBuffer::begin_occlusion_query(OcclusionQueryMode mode, u32 index)
         {
             assert_graphcis_context();
             MTL::VisibilityResultMode m;
@@ -691,11 +691,11 @@ namespace Luna
                 case OcclusionQueryMode::binary: m = MTL::VisibilityResultModeBoolean; break;
                 case OcclusionQueryMode::counting: m = MTL::VisibilityResultModeCounting; break;
             }
-            m_render->setVisibilityResultMode(m, m_occlusion_query_write_index * 8);
+            m_render->setVisibilityResultMode(m, (NS::UInteger)index * 8);
         }
-        void CommandBuffer::end_occlusion_query()
+        void CommandBuffer::end_occlusion_query(u32 index)
         {
-            m_render->setVisibilityResultMode(MTL::VisibilityResultModeDisabled, m_occlusion_query_write_index * 8);
+            m_render->setVisibilityResultMode(MTL::VisibilityResultModeDisabled, index * 8);
         }
         void CommandBuffer::write_timestamp(IQueryHeap* heap, u32 index)
         {

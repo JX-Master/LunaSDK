@@ -167,8 +167,9 @@ namespace Luna
 			//m_ctx->show_demo_window();
 
 			// Dock space.
+            sz = m_window->get_size();
 			ImGui::SetNextWindowPos({ 0.0f, 0.0f });
-			ImGui::SetNextWindowSize({ (f32)m_main_window_width, (f32)m_main_window_height });
+			ImGui::SetNextWindowSize({ (f32)sz.x, (f32)sz.y });
 			ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
 			ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
 			ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, { 0.0f, 0.0f });

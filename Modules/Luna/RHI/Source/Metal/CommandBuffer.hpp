@@ -35,8 +35,6 @@ namespace Luna
             MTL::PrimitiveType m_primitive_type;
 
             UInt3U m_num_threads_per_group;
-
-			u32 m_occlusion_query_write_index;
             
             // Used if stage boundary counter sample is not supported.
             CounterSampleQueryHeap* m_timestamp_query_heap = nullptr;
@@ -125,8 +123,8 @@ namespace Luna
 				u32 copy_width, u32 copy_height, u32 copy_depth) override;
 			virtual void end_copy_pass() override;
 			virtual void resource_barrier(Span<const BufferBarrier> buffer_barriers, Span<const TextureBarrier> texture_barriers) override;
-			virtual void begin_occlusion_query(OcclusionQueryMode mode) override;
-			virtual void end_occlusion_query() override;
+			virtual void begin_occlusion_query(OcclusionQueryMode mode, u32 index) override;
+			virtual void end_occlusion_query(u32 index) override;
             virtual void write_timestamp(IQueryHeap* heap, u32 index) override;
 			virtual RV submit(Span<IFence*> wait_fences, Span<IFence*> signal_fences, bool allow_host_waiting) override;
         };

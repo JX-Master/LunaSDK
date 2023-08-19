@@ -95,13 +95,13 @@ namespace Luna
 				cmdbuf->set_compute_pipeline_layout(m_global_data->m_skybox_pass_playout);
 				cmdbuf->set_compute_pipeline_state(m_global_data->m_skybox_pass_pso);
                 auto cb_align = cmdbuf->get_device()->get_uniform_buffer_data_alignment();
-                m_ds->update_descriptors({
+                luexp(m_ds->update_descriptors({
                     WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(m_skybox_params_cb, 0, (u32)align_upper(sizeof(SkyboxParams), cb_align))),
                     WriteDescriptorSet::read_texture_view(1, TextureViewDesc::tex2d(skybox)),
                     WriteDescriptorSet::read_texture_view(2, TextureViewDesc::tex2d(depth_tex)),
                     WriteDescriptorSet::read_write_texture_view(3, TextureViewDesc::tex2d(output_tex)),
                     WriteDescriptorSet::sampler(4, SamplerDesc(Filter::linear, Filter::linear, Filter::linear, TextureAddressMode::repeat, TextureAddressMode::repeat, TextureAddressMode::repeat))
-                    });
+                    }));
                 auto ds = m_ds.get();
                 cmdbuf->set_compute_descriptor_sets(0, {&ds, 1});
 				cmdbuf->dispatch(align_upper((u32)desc.width, 8) / 8, (u32)align_upper(desc.height, 8) / 8, 1);

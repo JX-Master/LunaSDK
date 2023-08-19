@@ -144,6 +144,11 @@ namespace Luna
                     NS::String* err_desc = err->description();
                     return set_error(BasicError::bad_platform_call(), "%s", err_desc->cString(NS::UTF8StringEncoding));
                 }
+                switch(desc.rasterizer_state.fill_mode)
+                {
+                    case FillMode::solid: m_fill_mode = MTL::TriangleFillModeFill; break;
+                    case FillMode::wireframe: m_fill_mode = MTL::TriangleFillModeLines; break;
+                }
                 switch(desc.rasterizer_state.cull_mode)
                 {
                     case CullMode::none: m_cull_mode = MTL::CullModeNone; break;

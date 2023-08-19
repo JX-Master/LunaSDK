@@ -25,6 +25,7 @@ namespace Luna
             f32 m_depth_bias;
             f32 m_slope_scaled_depth_bias;
             f32 m_depth_bias_clamp;
+            MTL::TriangleFillMode m_fill_mode = MTL::TriangleFillModeFill;
             MTL::CullMode m_cull_mode = MTL::CullModeNone;
             MTL::PrimitiveType m_primitive_type = MTL::PrimitiveTypeTriangle;
             bool m_front_counter_clockwise = false;

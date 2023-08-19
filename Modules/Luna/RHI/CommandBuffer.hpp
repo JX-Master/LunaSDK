@@ -299,7 +299,6 @@ namespace Luna
             IQueryHeap* timestamp_query_heap = nullptr;
             IQueryHeap* pipeline_statistics_query_heap = nullptr;
 			//! The occlusion query writing index.
-			u32 occlusion_query_write_index = DONT_QUERY;
             u32 timestamp_query_begin_pass_write_index = DONT_QUERY;
             u32 timestamp_query_end_pass_write_index = DONT_QUERY;
             u32 pipeline_statistics_query_write_index = DONT_QUERY;
@@ -571,9 +570,9 @@ namespace Luna
 			//! Issues one resource barrier.
 			virtual void resource_barrier(Span<const BufferBarrier> buffer_barriers, Span<const TextureBarrier> texture_barriers) = 0;
 
-			virtual void begin_occlusion_query(OcclusionQueryMode mode) = 0;
+			virtual void begin_occlusion_query(OcclusionQueryMode mode, u32 index) = 0;
 
-			virtual void end_occlusion_query() = 0;
+			virtual void end_occlusion_query(u32 index) = 0;
             
             //! Writes the current GPU queue timestamp to the specified query heap. This must be called outside of any pass context.
             //! @param[in] heap The query heap to write to.

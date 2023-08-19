@@ -28,7 +28,8 @@ target("Studio")
             "DeferredLighting.hlsl",
             "BufferVisualization.hlsl",
             "PrecomputeIntegrateBRDF.hlsl",
-            "PrecomputeEnvironmentMapMips.hlsl"
+            "PrecomputeEnvironmentMapMips.hlsl",
+            "WireframeVert.hlsl"
         }
 
     after_build(function (target)

@@ -103,7 +103,7 @@ namespace Luna
 			luset(m_renderer.command_buffer, g_env->device->new_command_buffer(g_env->graphics_queue));
 			SceneRendererSettings settings;
 			settings.frame_profiling = true;
-			settings.mode = SceneRendererMode::base_color;
+			settings.mode = SceneRendererMode::lit;
 			settings.screen_size = UInt2U(1024, 768);
 			luexp(m_renderer.reset(settings));
 		}
@@ -546,7 +546,7 @@ namespace Luna
 				auto mouse = HID::get_device<HID::IMouse>().get();
 				auto mouse_pos = mouse->get_cursor_pos();
 				auto mouse_delta = mouse_pos - m_scene_click_pos;
-				auto _ = mouse->set_cursor_pos(m_scene_click_pos.x, m_scene_click_pos.y);
+                m_scene_click_pos = mouse_pos;
 				// Rotate camera based on mouse delta.
 				auto rot = camera_entity->rotation;
 				auto rot_mat = AffineMatrix::make_rotation(rot);

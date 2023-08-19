@@ -189,13 +189,13 @@ namespace Luna
 							TextureBarrier(lighting_tex, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::shader_read_cs)
 						});
 					auto vs = m_histogram_ds.get();
-					vs->update_descriptors({
+					luexp(vs->update_descriptors({
 						WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(m_histogram_cb, 0, (u32)align_upper(sizeof(LumHistogramParams), cb_align))),
 						WriteDescriptorSet::read_texture_view(1, TextureViewDesc::tex2d(lighting_tex)),
 						WriteDescriptorSet::read_write_buffer_view(2, BufferViewDesc::typed_buffer(m_histogram_buffer, 0, 256, Format::r32_uint))
-						});
+						}));
 					cmdbuf->set_compute_descriptor_sets(0, { &vs, 1 });
-					cmdbuf->dispatch(align_upper(lighting_tex_desc.width, 16) / 16, 
+					cmdbuf->dispatch(align_upper(lighting_tex_desc.width, 16) / 16,
 						align_upper(lighting_tex_desc.height, 16) / 16, 1);
 				}
 
@@ -217,11 +217,11 @@ namespace Luna
 							TextureBarrier(m_lum_tex, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::shader_read_cs | TextureStateFlag::shader_write_cs)
 						});
 					auto vs = m_histogram_collect_ds.get();
-					vs->update_descriptors({
+                    luexp(vs->update_descriptors({
 						WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(m_histogram_collect_cb, 0, (u32)align_upper(sizeof(LumHistogramCollectParams), cb_align))),
 						WriteDescriptorSet::read_write_buffer_view(1, BufferViewDesc::typed_buffer(m_histogram_buffer, 0, 256, Format::r32_uint)),
 						WriteDescriptorSet::read_write_texture_view(2, TextureViewDesc::tex2d(m_lum_tex))
-						});
+						}));
 					cmdbuf->set_compute_descriptor_sets(0, { &vs, 1 });
 					cmdbuf->dispatch(1, 1, 1);
 				}
@@ -243,12 +243,12 @@ namespace Luna
 						{output_tex, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::shader_read_cs | TextureStateFlag::shader_write_cs, ResourceBarrierFlag::none}
 					});
 					auto vs = m_tone_mapping_pass_ds.get();
-					vs->update_descriptors({
+					luexp(vs->update_descriptors({
 						WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(m_tone_mapping_cb, 0, (u32)align_upper(sizeof(ToneMappingParams), cb_align))),
 						WriteDescriptorSet::read_texture_view(1, TextureViewDesc::tex2d(lighting_tex)),
 						WriteDescriptorSet::read_texture_view(2, TextureViewDesc::tex2d(m_lum_tex)),
 						WriteDescriptorSet::read_write_texture_view(3, TextureViewDesc::tex2d(output_tex))
-						});
+						}));
 					cmdbuf->set_compute_descriptor_sets(0, { &vs, 1 });
 					cmdbuf->dispatch((u32)align_upper(output_tex_desc.width, 8) / 8, (u32)align_upper(output_tex_desc.height, 8) / 8, 1);
 				}

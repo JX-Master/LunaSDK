@@ -32,7 +32,7 @@ namespace Luna
 			luset(m_debug_mesh_renderer_playout, device->new_pipeline_layout(PipelineLayoutDesc({ &dlayout, 1 },
 				PipelineLayoutFlag::allow_input_assembler_input_layout)));
 
-			lulet(vs_blob, compile_shader("Shaders/GeometryVert.hlsl", ShaderCompiler::ShaderType::vertex));
+			lulet(vs_blob, compile_shader("Shaders/WireframeVert.hlsl", ShaderCompiler::ShaderType::vertex));
 
 			static const char* pixelShader =
 				R"(struct PS_INPUT
