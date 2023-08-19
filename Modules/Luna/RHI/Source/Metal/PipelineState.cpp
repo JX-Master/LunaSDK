@@ -183,9 +183,9 @@ namespace Luna
                     {
                         return BasicError::bad_platform_call();
                     }
-                    m_depth_bias = desc.depth_stencil_state.depth_bias;
-                    m_slope_scaled_depth_bias = desc.depth_stencil_state.slope_scaled_depth_bias;
-                    m_depth_bias_clamp = desc.depth_stencil_state.depth_bias_clamp;
+                    m_depth_bias = desc.rasterizer_state.depth_bias;
+                    m_slope_scaled_depth_bias = desc.rasterizer_state.slope_scaled_depth_bias;
+                    m_depth_bias_clamp = desc.rasterizer_state.depth_bias_clamp;
                 }
             }
             lucatchret;
