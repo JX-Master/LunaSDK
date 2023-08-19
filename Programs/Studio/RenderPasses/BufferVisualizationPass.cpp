@@ -71,7 +71,16 @@ namespace Luna
             Ref<ITexture> base_color_roughness_tex = ctx->get_input("base_color_roughness_texture");
             Ref<ITexture> normal_metallic_tex = ctx->get_input("normal_metallic_texture");
             auto cmdbuf = ctx->get_command_buffer();
-            cmdbuf->begin_compute_pass();
+            ComputePassDesc compute_pass;
+            u32 time_query_begin, time_query_end;
+            auto query_heap = ctx->get_timestamp_query_heap(&time_query_begin, &time_query_end);
+            if(query_heap)
+            {
+                compute_pass.timestamp_query_heap = query_heap;
+                compute_pass.timestamp_query_begin_pass_write_index = time_query_begin;
+                compute_pass.timestamp_query_end_pass_write_index = time_query_end;
+            }
+            cmdbuf->begin_compute_pass(compute_pass);
             auto device = cmdbuf->get_device();
             auto cb_align = device->get_uniform_buffer_data_alignment();
             cmdbuf->resource_barrier(

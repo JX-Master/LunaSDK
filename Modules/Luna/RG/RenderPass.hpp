@@ -60,6 +60,8 @@ namespace Luna
             virtual RHI::IResource* get_input(const Name& name) = 0;
 
             virtual RHI::IResource* get_output(const Name& name) = 0;
+            
+            virtual RHI::IQueryHeap* get_timestamp_query_heap(u32* begin_index, u32* end_index) = 0;
 
             //! Allocates new temporary resource that exists only in the current pass.
             //! The resource will be released when the pass is finished, or the user can 

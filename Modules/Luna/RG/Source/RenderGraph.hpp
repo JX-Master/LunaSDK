@@ -42,7 +42,8 @@ namespace Luna
             bool m_enable_time_profiling;
 
             Ref<RHI::IQueryHeap> m_time_query_heap;
-            u32 m_num_time_queries = 0;
+            u32 m_time_query_heap_capacity = 0;
+            u32 m_current_time_query_index = 0;
             u32 m_num_enabled_passes;
 
             // Compile context.
@@ -182,6 +183,18 @@ namespace Luna
                 if(iter == data.m_output_resources.end()) return nullptr;
                 auto h = iter->second;
                 return m_resource_data[h].m_resource;
+            }
+            virtual RHI::IQueryHeap* get_timestamp_query_heap(u32* begin_index, u32* end_index) override
+            {
+                if(m_enable_time_profiling)
+                {
+                    if(begin_index) *begin_index = m_current_time_query_index * 2;
+                    if(end_index) *end_index = m_current_time_query_index * 2 + 1;
+                    return m_time_query_heap;
+                }
+                if(begin_index) *begin_index = 0;
+                if(end_index) *end_index = 0;
+                return nullptr;
             }
             virtual R<Ref<RHI::IResource>> allocate_temporary_resource(const ResourceDesc& desc) override;
             virtual void release_temporary_resource(RHI::IResource* res) override;

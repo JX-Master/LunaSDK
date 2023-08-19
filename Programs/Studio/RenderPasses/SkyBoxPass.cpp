@@ -70,6 +70,8 @@ namespace Luna
             auto cmdbuf = ctx->get_command_buffer();
             Ref<ITexture> output_tex = ctx->get_output(m_global_data->m_texture_name);
             Ref<ITexture> depth_tex = ctx->get_input(m_global_data->m_depth_texture_name);
+            u32 time_query_begin, time_query_end;
+            auto query_heap = ctx->get_timestamp_query_heap(&time_query_begin, &time_query_end);
 			if (skybox && camera_type == CameraType::perspective)
 			{
 				// Draw skybox.
@@ -82,7 +84,14 @@ namespace Luna
                 mapped->width = (u32)desc.width;
                 mapped->height = (u32)desc.height;
 				m_skybox_params_cb->unmap(0, sizeof(SkyboxParams));
-                cmdbuf->begin_compute_pass();
+                ComputePassDesc compute_pass;
+                if(query_heap)
+                {
+                    compute_pass.timestamp_query_heap = query_heap;
+                    compute_pass.timestamp_query_begin_pass_write_index = time_query_begin;
+                    compute_pass.timestamp_query_end_pass_write_index = time_query_end;
+                }
+                cmdbuf->begin_compute_pass(compute_pass);
 				cmdbuf->resource_barrier(
                     {
                         BufferBarrier(m_skybox_params_cb, BufferStateFlag::automatic, BufferStateFlag::uniform_buffer_cs)
@@ -116,6 +125,12 @@ namespace Luna
 				auto lighting_rt = output_tex;
 				RenderPassDesc render_pass;
 				render_pass.color_attachments[0] = ColorAttachment(output_tex, LoadOp::clear, StoreOp::store, Float4U(0.0f));
+                if(query_heap)
+                {
+                    render_pass.timestamp_query_heap = query_heap;
+                    render_pass.timestamp_query_begin_pass_write_index = time_query_begin;
+                    render_pass.timestamp_query_end_pass_write_index = time_query_end;
+                }
 				cmdbuf->begin_render_pass(render_pass);
 				cmdbuf->end_render_pass();
 			}

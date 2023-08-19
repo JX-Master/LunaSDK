@@ -484,7 +484,15 @@ namespace Luna
 					ImGui::Text("FPS: %f", ImGui::GetIO().Framerate);
 					for (usize i = 0; i < m_renderer.pass_time_intervals.size(); ++i)
 					{
-						ImGui::Text("%s: %fms", m_renderer.enabled_passes[i].c_str(), m_renderer.pass_time_intervals[i] * 1000.0);
+                        f64 interval = m_renderer.pass_time_intervals[i];
+                        if(interval < 0.001)
+                        {
+                            ImGui::Text("%s: %fus", m_renderer.enabled_passes[i].c_str(), m_renderer.pass_time_intervals[i] * 1000000.0);
+                        }
+                        else
+                        {
+                            ImGui::Text("%s: %fms", m_renderer.enabled_passes[i].c_str(), m_renderer.pass_time_intervals[i] * 1000.0);
+                        }
 					}
 				}
 				ImGui::SetCursorPos(backup_pos);

@@ -372,6 +372,21 @@ namespace Luna
             m_render->drawIndexedPrimitives(m_primitive_type, (NS::UInteger)index_count_per_instance, type, 
                 buffer->m_buffer.get(), (NS::UInteger)start_index_location, instance_count, (NS::Integer)base_vertex_location, start_instance_location);
         }
+        void CommandBuffer::begin_occlusion_query(OcclusionQueryMode mode, u32 index)
+        {
+            assert_graphcis_context();
+            MTL::VisibilityResultMode m;
+            switch(mode)
+            {
+                case OcclusionQueryMode::binary: m = MTL::VisibilityResultModeBoolean; break;
+                case OcclusionQueryMode::counting: m = MTL::VisibilityResultModeCounting; break;
+            }
+            m_render->setVisibilityResultMode(m, (NS::UInteger)index * 8);
+        }
+        void CommandBuffer::end_occlusion_query(u32 index)
+        {
+            m_render->setVisibilityResultMode(MTL::VisibilityResultModeDisabled, index * 8);
+        }
         void CommandBuffer::end_render_pass()
         {
             assert_graphcis_context();
@@ -680,32 +695,6 @@ namespace Luna
                  }
                  m_compute->memoryBarrier(resources, i);
              }
-        }
-
-        void CommandBuffer::begin_occlusion_query(OcclusionQueryMode mode, u32 index)
-        {
-            assert_graphcis_context();
-            MTL::VisibilityResultMode m;
-            switch(mode)
-            {
-                case OcclusionQueryMode::binary: m = MTL::VisibilityResultModeBoolean; break;
-                case OcclusionQueryMode::counting: m = MTL::VisibilityResultModeCounting; break;
-            }
-            m_render->setVisibilityResultMode(m, (NS::UInteger)index * 8);
-        }
-        void CommandBuffer::end_occlusion_query(u32 index)
-        {
-            m_render->setVisibilityResultMode(MTL::VisibilityResultModeDisabled, index * 8);
-        }
-        void CommandBuffer::write_timestamp(IQueryHeap* heap, u32 index)
-        {
-            assert_no_context();
-            CopyPassDesc desc;
-            desc.timestamp_query_heap = heap;
-            desc.timestamp_query_begin_pass_write_index = index;
-            desc.timestamp_query_end_pass_write_index = DONT_QUERY;
-            begin_copy_pass(desc);
-            end_copy_pass();
         }
         RV CommandBuffer::submit(Span<IFence*> wait_fences, Span<IFence*> signal_fences, bool allow_host_waiting)
         {

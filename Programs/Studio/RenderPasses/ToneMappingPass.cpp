@@ -153,7 +153,16 @@ namespace Luna
 			constexpr f32 max_brightness = 20.0f;
             // Tone mapping pass.
 			{
-				cmdbuf->begin_compute_pass();
+                ComputePassDesc compute_pass;
+                u32 time_query_begin, time_query_end;
+                auto query_heap = ctx->get_timestamp_query_heap(&time_query_begin, &time_query_end);
+                if(query_heap)
+                {
+                    compute_pass.timestamp_query_heap = query_heap;
+                    compute_pass.timestamp_query_begin_pass_write_index = time_query_begin;
+                    compute_pass.timestamp_query_end_pass_write_index = time_query_end;
+                }
+				cmdbuf->begin_compute_pass(compute_pass);
 				Ref<IBuffer> m_histogram_buffer;
 				luset(m_histogram_buffer, ctx->allocate_temporary_resource(RG::ResourceDesc::as_buffer(MemoryType::local, BufferDesc(BufferUsageFlag::read_write_buffer, sizeof(u32) * 256))));
 				cmdbuf->attach_device_object(m_histogram_buffer);

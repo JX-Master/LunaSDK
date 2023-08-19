@@ -184,6 +184,14 @@ namespace Luna
 			render_pass.color_attachments[1] = ColorAttachment(normal_metallic_tex, LoadOp::clear, StoreOp::store, Float4U(0.0f));
 			render_pass.color_attachments[2] = ColorAttachment(emissive_tex, LoadOp::clear, StoreOp::store, Float4U(0.0f));
 			render_pass.depth_stencil_attachment = DepthStencilAttachment(depth_tex, true, LoadOp::load, StoreOp::store, 1.0F);
+            u32 time_query_begin, time_query_end;
+            auto query_heap = ctx->get_timestamp_query_heap(&time_query_begin, &time_query_end);
+            if(query_heap)
+            {
+                render_pass.timestamp_query_heap = query_heap;
+                render_pass.timestamp_query_begin_pass_write_index = time_query_begin;
+                render_pass.timestamp_query_end_pass_write_index = time_query_end;
+            }
 			cmdbuf->begin_render_pass(render_pass);
 			cmdbuf->set_graphics_pipeline_layout(m_global_data->m_geometry_pass_playout);
 			cmdbuf->set_graphics_pipeline_state(m_global_data->m_geometry_pass_pso);

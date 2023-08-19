@@ -137,7 +137,16 @@ namespace Luna
             auto device = cmdbuf->get_device();
             auto cb_align = device->get_uniform_buffer_data_alignment();
             auto sky_box = skybox ? skybox : m_global_data->m_default_skybox;
-            cmdbuf->begin_compute_pass();
+            ComputePassDesc compute_pass;
+            u32 time_query_begin, time_query_end;
+            auto query_heap = ctx->get_timestamp_query_heap(&time_query_begin, &time_query_end);
+            if(query_heap)
+            {
+                compute_pass.timestamp_query_heap = query_heap;
+                compute_pass.timestamp_query_begin_pass_write_index = time_query_begin;
+                compute_pass.timestamp_query_end_pass_write_index = time_query_end;
+            }
+            cmdbuf->begin_compute_pass(compute_pass);
             cmdbuf->resource_barrier(
                 { 
                     {camera_cb, BufferStateFlag::automatic, BufferStateFlag::uniform_buffer_cs, ResourceBarrierFlag::none},

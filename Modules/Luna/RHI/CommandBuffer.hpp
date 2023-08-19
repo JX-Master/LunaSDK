@@ -495,6 +495,10 @@ namespace Luna
 			//! Draws indexed, instanced primitives.
 			virtual void draw_indexed_instanced(u32 index_count_per_instance, u32 instance_count, u32 start_index_location,
 				i32 base_vertex_location, u32 start_instance_location) = 0;
+            
+            virtual void begin_occlusion_query(OcclusionQueryMode mode, u32 index) = 0;
+
+            virtual void end_occlusion_query(u32 index) = 0;
 
 			//! Finishes the current render pass.
 			virtual void end_render_pass() = 0;
@@ -569,15 +573,6 @@ namespace Luna
 
 			//! Issues one resource barrier.
 			virtual void resource_barrier(Span<const BufferBarrier> buffer_barriers, Span<const TextureBarrier> texture_barriers) = 0;
-
-			virtual void begin_occlusion_query(OcclusionQueryMode mode, u32 index) = 0;
-
-			virtual void end_occlusion_query(u32 index) = 0;
-            
-            //! Writes the current GPU queue timestamp to the specified query heap. This must be called outside of any pass context.
-            //! @param[in] heap The query heap to write to.
-            //! @param[in] index The index of the query entry to write in the heap.
-            virtual void write_timestamp(IQueryHeap* heap, u32 index) = 0;
 
 			//! Submits the recorded content in this command buffer to the attached command queue.
 			//! The command buffer can only be submitted once, and the only operation after the submit is to 

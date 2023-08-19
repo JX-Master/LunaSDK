@@ -132,7 +132,7 @@ namespace Luna
                     m_resource_data[i].m_resource_desc = m_desc.resources[i].desc;
                 }
                 // Compile every node in execution order.
-                usize num_enabled_passes = 0;
+                u32 num_enabled_passes = 0;
                 for(usize i = 0; i < m_desc.passes.size(); ++i)
                 {
                     m_current_compile_pass = i;
@@ -185,13 +185,13 @@ namespace Luna
                 // Recreate time query heap.
                 if (m_enable_time_profiling)
                 {
-                    if (!m_time_query_heap || m_num_time_queries < num_enabled_passes)
+                    if (!m_time_query_heap || m_time_query_heap_capacity < num_enabled_passes)
                     {
                         RHI::QueryHeapDesc desc;
                         desc.type = RHI::QueryType::timestamp;
                         desc.count = num_enabled_passes * 2;
                         luset(m_time_query_heap, m_device->new_query_heap(desc));
-                        m_num_time_queries = num_enabled_passes;
+                        m_time_query_heap_capacity = num_enabled_passes;
                     }
                 }
                 m_num_enabled_passes = num_enabled_passes;
@@ -216,7 +216,7 @@ namespace Luna
             {
                 m_transient_memory.clear();
                 m_cmdbuf = cmdbuf;
-                u32 pass_index = 0;
+                m_current_time_query_index = 0;
                 for(usize i = 0; i < m_pass_data.size(); ++i)
                 {
                     auto& data = m_pass_data[i];
@@ -251,9 +251,7 @@ namespace Luna
                     if (!buffer_barriers.empty() || !texture_barriers.empty()) cmdbuf->resource_barrier({ buffer_barriers.data(), buffer_barriers.size() }, {texture_barriers.data(), texture_barriers.size()});
                     m_current_pass = i;
                     if (m_desc.passes[i].name) cmdbuf->begin_event(m_desc.passes[i].name.c_str());
-                    if (m_enable_time_profiling) cmdbuf->write_timestamp(m_time_query_heap, pass_index * 2);
                     luexp(m_pass_data[i].m_render_pass->execute(this));
-                    if (m_enable_time_profiling) cmdbuf->write_timestamp(m_time_query_heap, pass_index * 2 + 1);
                     if (m_desc.passes[i].name) cmdbuf->end_event();
                     for(auto& res : m_temporary_resources)
                     {
@@ -266,7 +264,7 @@ namespace Luna
                         auto& res = m_resource_data[h];
                         release_transient_resource(res.m_resource);
                     }
-                    ++pass_index;
+                    ++m_current_time_query_index;
                 }
             }
             lucatchret;

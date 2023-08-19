@@ -110,6 +110,14 @@ namespace Luna
             // Debug wireframe pass.
 			RenderPassDesc render_pass;
 			render_pass.color_attachments[0] = ColorAttachment(output_tex, LoadOp::clear, StoreOp::store, Float4U(0.0f));
+            u32 time_query_begin, time_query_end;
+            auto query_heap = ctx->get_timestamp_query_heap(&time_query_begin, &time_query_end);
+            if(query_heap)
+            {
+                render_pass.timestamp_query_heap = query_heap;
+                render_pass.timestamp_query_begin_pass_write_index = time_query_begin;
+                render_pass.timestamp_query_end_pass_write_index = time_query_end;
+            }
 			auto render_desc = output_tex->get_desc();
 			cmdbuf->resource_barrier({}, { {output_tex, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::color_attachment_write, ResourceBarrierFlag::discard_content} });
 			cmdbuf->begin_render_pass(render_pass);

@@ -42,6 +42,11 @@ namespace Luna
             QueryType type;
             //! Number of queries this heap contains.
             u32 count;
+            
+            QueryHeapDesc() = default;
+            QueryHeapDesc(QueryType type, u32 count) :
+                type(type),
+                count(count) {}
         };
 
         struct IQueryHeap : virtual IDeviceChild

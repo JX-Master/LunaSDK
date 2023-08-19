@@ -86,6 +86,14 @@ namespace Luna
 				{depth_tex, SubresourceIndex(0, 0), TextureStateFlag::none, TextureStateFlag::depth_stencil_attachment_write, ResourceBarrierFlag::discard_content } });
 			RenderPassDesc render_pass;
 			render_pass.depth_stencil_attachment = DepthStencilAttachment(depth_tex, false, LoadOp::clear, StoreOp::store, 1.0f);
+            u32 time_query_begin, time_query_end;
+            auto query_heap = ctx->get_timestamp_query_heap(&time_query_begin, &time_query_end);
+            if(query_heap)
+            {
+                render_pass.timestamp_query_heap = query_heap;
+                render_pass.timestamp_query_begin_pass_write_index = time_query_begin;
+                render_pass.timestamp_query_end_pass_write_index = time_query_end;
+            }
 			for (usize i = 0; i < ts.size(); ++i)
 			{
 				auto model = Asset::get_asset_data<Model>(rs[i]->model);
