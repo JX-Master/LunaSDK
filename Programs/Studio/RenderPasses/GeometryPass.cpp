@@ -44,8 +44,8 @@ namespace Luna
 			ps_desc.primitive_topology = PrimitiveTopology::triangle_list;
 			ps_desc.sample_mask = U32_MAX;
 			ps_desc.blend_state = BlendDesc({ AttachmentBlendDesc(true, BlendFactor::one, BlendFactor::zero, BlendOp::add, BlendFactor::one, BlendFactor::zero, BlendOp::add, ColorWriteMask::all) });
-			ps_desc.rasterizer_state = RasterizerDesc(FillMode::solid, CullMode::back, false, true, false, false, false);
-			ps_desc.depth_stencil_state = DepthStencilDesc(true, false, CompareFunction::less_equal, -10, 0.0f, 0.0f, false, 0x00, 0x00, DepthStencilOpDesc(), DepthStencilOpDesc());
+			ps_desc.rasterizer_state = RasterizerDesc(FillMode::solid, CullMode::back, -10, 0.0f, 0.0f, false, true, false, false, false);
+			ps_desc.depth_stencil_state = DepthStencilDesc(true, false, CompareFunction::less_equal, false, 0x00, 0x00, DepthStencilOpDesc(), DepthStencilOpDesc());
 			ps_desc.ib_strip_cut_value = IndexBufferStripCutValue::disabled;
 			Vector<InputAttributeDesc> attributes;
 			get_vertex_input_layout_desc(attributes);

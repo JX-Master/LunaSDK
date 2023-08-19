@@ -155,6 +155,13 @@ namespace Luna
 			//! The current bound compute pipeline layout.
 			Ref<PipelineLayout> m_compute_pipeline_layout;
 
+			IQueryHeap* m_occlusion_query_heap_attachment = nullptr;
+			IQueryHeap* m_timestamp_query_heap_attachment = nullptr;
+			IQueryHeap* m_pipeline_statistics_query_heap_attachment = nullptr;
+			u32 m_timestamp_query_begin_index = DONT_QUERY;
+			u32 m_timestamp_query_end_index = DONT_QUERY;
+			u32 m_pipeline_statistics_query_index = DONT_QUERY;
+
 			//! The attached graphic objects.
 			Vector<Ref<IDeviceChild>> m_objs;
 
@@ -179,23 +186,6 @@ namespace Luna
 
 			RV init();
 
-			void wait()
-			{
-				DWORD res = ::WaitForSingleObject(m_event, INFINITE);
-				if (res != WAIT_OBJECT_0)
-				{
-					lupanic_msg_always("WaitForSingleObject failed.");
-				}
-			}
-			bool try_wait()
-			{
-				DWORD res = ::WaitForSingleObject(m_event, 0);
-				if (res == WAIT_OBJECT_0)
-				{
-					return true;
-				}
-				return false;
-			}
 			void assert_graphcis_context()
 			{
 				lucheck_msg(m_render_pass_context.m_valid, "A graphics command can only be submitted between begin_render_pass and end_render_pass.");
@@ -211,6 +201,26 @@ namespace Luna
 			void assert_non_render_pass()
 			{
 				lucheck_msg(!m_render_pass_context.m_valid, "This command cannot be submitted within a render pass.");
+			}
+			void write_timestamp(IQueryHeap* heap, u32 index);
+			void begin_pipeline_statistics_query(IQueryHeap* heap, u32 index);
+			void end_pipeline_statistics_query(IQueryHeap* heap, u32 index);
+			virtual void wait() override
+			{
+				DWORD res = ::WaitForSingleObject(m_event, INFINITE);
+				if (res != WAIT_OBJECT_0)
+				{
+					lupanic_msg_always("WaitForSingleObject failed.");
+				}
+			}
+			virtual bool try_wait() override
+			{
+				DWORD res = ::WaitForSingleObject(m_event, 0);
+				if (res == WAIT_OBJECT_0)
+				{
+					return true;
+				}
+				return false;
 			}
 			virtual IDevice* get_device() override
 			{
@@ -271,12 +281,10 @@ namespace Luna
 				i32 base_vertex_location, u32 start_instance_location) override;
 			virtual void draw_instanced(u32 vertex_count_per_instance, u32 instance_count, u32 start_vertex_location,
 				u32 start_instance_location) override;
+			virtual void begin_occlusion_query(OcclusionQueryMode mode, u32 index) override;
+			virtual void end_occlusion_query(u32 index) override;
 			virtual void end_render_pass() override;
-			virtual void begin_compute_pass() override
-			{
-				lucheck_msg(!m_render_pass_context.m_valid && !m_copy_pass_begin && !m_compute_pass_begin, "begin_compute_pass can only be called when no other pass is open.");
-				m_compute_pass_begin = true;
-			}
+			virtual void begin_compute_pass(const ComputePassDesc& desc) override;
 			virtual void set_compute_pipeline_layout(IPipelineLayout* pipeline_layout) override;
 			virtual void set_compute_pipeline_state(IPipelineState* pso) override;
 			virtual void set_compute_descriptor_set(u32 start_index, IDescriptorSet* descriptor_set) override
@@ -285,16 +293,8 @@ namespace Luna
 			}
 			virtual void set_compute_descriptor_sets(u32 start_index, Span<IDescriptorSet*> descriptor_sets) override;
 			virtual void dispatch(u32 thread_group_count_x, u32 thread_group_count_y, u32 thread_group_count_z) override;
-			virtual void end_compute_pass() override
-			{
-				lucheck_msg(m_compute_pass_begin, "Calling end_compute_pass without prior call to begin_compute_pass.");
-				m_compute_pass_begin = false;
-			}
-			virtual void begin_copy_pass() override
-			{
-				lucheck_msg(!m_render_pass_context.m_valid && !m_copy_pass_begin && !m_compute_pass_begin, "begin_copy_pass can only be called when no other pass is open.");
-				m_copy_pass_begin = true;
-			}
+			virtual void end_compute_pass() override;
+			virtual void begin_copy_pass(const CopyPassDesc& desc) override;
 			virtual void copy_resource(IResource* dst, IResource* src) override;
 			virtual void copy_buffer(
 				IBuffer* dst, u64 dst_offset,
@@ -312,17 +312,8 @@ namespace Luna
 				IBuffer* dst, u64 dst_offset, u32 dst_row_pitch, u32 dst_slice_pitch,
 				ITexture* src, SubresourceIndex src_subresource, u32 src_x, u32 src_y, u32 src_z,
 				u32 copy_width, u32 copy_height, u32 copy_depth) override;
-			virtual void end_copy_pass() override
-			{
-				lucheck_msg(m_copy_pass_begin, "Calling end_copy_pass without prior call to begin_copy_pass.");
-				m_copy_pass_begin = false;
-			}
+			virtual void end_copy_pass() override;
 			virtual void resource_barrier(Span<const BufferBarrier> buffer_barriers, Span<const TextureBarrier> texture_barriers) override;
-			virtual void write_timestamp(IQueryHeap* heap, u32 index) override;
-			virtual void begin_pipeline_statistics_query(IQueryHeap* heap, u32 index) override;
-			virtual void end_pipeline_statistics_query(IQueryHeap* heap, u32 index) override;
-			virtual void begin_occlusion_query(IQueryHeap* heap, u32 index) override;
-			virtual void end_occlusion_query(IQueryHeap* heap, u32 index) override;
 			virtual RV submit(Span<IFence*> wait_fences, Span<IFence*> signal_fences, bool allow_host_waiting) override;
 		};
 	}

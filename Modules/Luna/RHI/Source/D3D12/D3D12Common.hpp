@@ -231,7 +231,7 @@ namespace Luna
 			}
 			return D3D12_COMMAND_LIST_TYPE_DIRECT;
 		}
-		inline void set_object_name(ID3D12Object* object, const const c8* name)
+		inline void set_object_name(ID3D12Object* object, const c8* name)
 		{
 			usize len = utf8_to_utf16_len(name);
 			wchar_t* buf = (wchar_t*)alloca(sizeof(wchar_t) * (len + 1));

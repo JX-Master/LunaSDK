@@ -47,7 +47,7 @@ namespace Luna
 			virtual void set_name(const c8* name) override { m_name = name; }
 			virtual Window::IWindow* get_window() override { return m_window; }
 			virtual SwapChainDesc get_desc() override { return m_desc; }
-			virtual R<Ref<ITexture>> get_current_back_buffer() override;
+			virtual R<ITexture*> get_current_back_buffer() override;
 			virtual RV present() override;
 			virtual RV reset(const SwapChainDesc& desc) override;
 		};

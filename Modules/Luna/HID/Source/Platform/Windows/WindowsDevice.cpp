@@ -8,7 +8,7 @@
 * @date 2022/4/1
 */
 #pragma once
-#include "../HID.hpp"
+#include "../../HID.hpp"
 #include "../../../HID.hpp"
 #include "../../../Mouse.hpp"
 #include "../../../Keyboard.hpp"
@@ -142,7 +142,6 @@ namespace Luna
 			case KeyCode::numpad_subtract:	return VK_SUBTRACT;
 			case KeyCode::numpad_multiply:	return VK_MULTIPLY;
 			case KeyCode::numpad_divide:	return VK_DIVIDE;
-			case KeyCode::clear:			return VK_CLEAR;
 			default: lupanic(); return 0;
 			}
 		}

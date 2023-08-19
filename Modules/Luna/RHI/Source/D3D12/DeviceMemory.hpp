@@ -29,9 +29,9 @@ namespace Luna
 			virtual IDevice* get_device() override { return m_device; }
 			virtual void set_name(const c8* name)
 			{
-				usize len = utf8_to_utf16_len(name.c_str(), name.size());
+				usize len = utf8_to_utf16_len(name);
 				wchar_t* buf = (wchar_t*)alloca(sizeof(wchar_t) * (len + 1));
-				utf8_to_utf16((c16*)buf, len + 1, name.c_str(), name.size());
+				utf8_to_utf16((c16*)buf, len + 1, name);
 				m_allocation->SetName(buf);
 			}
 			virtual MemoryType get_memory_type() override

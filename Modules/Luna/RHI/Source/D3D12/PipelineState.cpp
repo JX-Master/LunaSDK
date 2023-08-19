@@ -197,7 +197,7 @@ namespace Luna
 					d.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
 					break;
 				}
-				d.RasterizerState.ForcedSampleCount = desc.rasterizer_state.forced_sample_count;
+				d.RasterizerState.ForcedSampleCount = 0;
 				d.RasterizerState.FrontCounterClockwise = desc.rasterizer_state.front_counter_clockwise ? TRUE : FALSE;
 				d.RasterizerState.DepthBias = desc.rasterizer_state.depth_bias;
 				d.RasterizerState.DepthBiasClamp = desc.rasterizer_state.depth_bias_clamp;

@@ -83,9 +83,9 @@ namespace Luna
 			}
 			void set_name(const c8* name) 
 			{
-				usize len = utf8_to_utf16_len(name.c_str(), name.size());
+				usize len = utf8_to_utf16_len(name);
 				wchar_t* buf = (wchar_t*)alloca(sizeof(wchar_t) * (len + 1));
-				utf8_to_utf16((c16*)buf, len + 1, name.c_str(), name.size());
+				utf8_to_utf16((c16*)buf, len + 1, name);
 				m_sc->SetPrivateData(WKPDID_D3DDebugObjectNameW, sizeof(wchar_t) * (len + 1), buf);
 			}
 			virtual Window::IWindow* get_window() override
@@ -96,7 +96,7 @@ namespace Luna
 			{
 				return m_desc;
 			}
-			virtual R<Ref<ITexture>> get_current_back_buffer() override;
+			virtual R<ITexture*> get_current_back_buffer() override;
 			virtual RV present() override;
 			virtual RV reset(const SwapChainDesc& desc) override;
 		};

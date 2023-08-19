@@ -182,6 +182,23 @@ namespace Luna
 			lucatchret;
 			return ret;
 		}
+		void CommandBuffer::write_timestamp(IQueryHeap* heap, u32 index)
+		{
+			QueryHeap* h = (QueryHeap*)heap->get_object();
+			m_device->m_funcs.vkCmdResetQueryPool(m_command_buffer, h->m_query_pool, index, 1);
+			m_device->m_funcs.vkCmdWriteTimestamp(m_command_buffer, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, h->m_query_pool, index);
+		}
+		void CommandBuffer::begin_pipeline_statistics_query(IQueryHeap* heap, u32 index)
+		{
+			QueryHeap* h = (QueryHeap*)heap->get_object();
+			m_device->m_funcs.vkCmdResetQueryPool(m_command_buffer, h->m_query_pool, index, 1);
+			m_device->m_funcs.vkCmdBeginQuery(m_command_buffer, h->m_query_pool, index, 0);
+		}
+		void CommandBuffer::end_pipeline_statistics_query(IQueryHeap* heap, u32 index)
+		{
+			QueryHeap* h = (QueryHeap*)heap->get_object();
+			m_device->m_funcs.vkCmdEndQuery(m_command_buffer, h->m_query_pool, index);
+		}
 		void CommandBuffer::wait()
 		{
 			auto r = m_device->m_funcs.vkWaitForFences(m_device->m_device, 1, &m_fence, VK_TRUE, U64_MAX);
@@ -440,8 +457,21 @@ namespace Luna
 				}
 				begin_info.clearValueCount = num_attachments;
 				begin_info.pClearValues = clear_values;
+				m_occlusion_query_heap_attachment = desc.occlusion_query_heap;
+				m_timestamp_query_heap_attachment = desc.timestamp_query_heap;
+				m_timestamp_query_begin_index = desc.timestamp_query_begin_pass_write_index;
+				m_timestamp_query_end_index = desc.timestamp_query_end_pass_write_index;
+				m_pipeline_statistics_query_heap_attachment = desc.pipeline_statistics_query_heap;
+				m_pipeline_statistics_query_index = desc.pipeline_statistics_query_write_index;
+				if (m_timestamp_query_heap_attachment && m_timestamp_query_begin_index != DONT_QUERY)
+				{
+					write_timestamp(m_timestamp_query_heap_attachment, m_timestamp_query_begin_index);
+				}
+				if (m_pipeline_statistics_query_heap_attachment && m_pipeline_statistics_query_index != DONT_QUERY)
+				{
+					begin_pipeline_statistics_query(m_pipeline_statistics_query_heap_attachment, m_pipeline_statistics_query_index);
+				}
 				m_device->m_funcs.vkCmdBeginRenderPass(m_command_buffer, &begin_info, VK_SUBPASS_CONTENTS_INLINE);
-
 				m_rt_width = width;
 				m_rt_height = height;
 				m_num_color_attachments = num_color_attachments;
@@ -603,10 +633,37 @@ namespace Luna
 			m_device->m_funcs.vkCmdDrawIndexed(m_command_buffer, index_count_per_instance * instance_count, instance_count, 
 				start_index_location, base_vertex_location, start_instance_location);
 		}
+		void CommandBuffer::begin_occlusion_query(OcclusionQueryMode mode, u32 index)
+		{
+			assert_graphcis_context();
+			QueryHeap* h = (QueryHeap*)m_occlusion_query_heap_attachment->get_object();
+			m_device->m_funcs.vkCmdResetQueryPool(m_command_buffer, h->m_query_pool, index, 1);
+			m_device->m_funcs.vkCmdBeginQuery(m_command_buffer, h->m_query_pool, index, mode == OcclusionQueryMode::counting ? VK_QUERY_CONTROL_PRECISE_BIT : 0);
+		}
+		void CommandBuffer::end_occlusion_query(u32 index)
+		{
+			assert_graphcis_context();
+			QueryHeap* h = (QueryHeap*)m_occlusion_query_heap_attachment->get_object();
+			m_device->m_funcs.vkCmdEndQuery(m_command_buffer, h->m_query_pool, index);
+		}
 		void CommandBuffer::end_render_pass()
 		{
 			assert_graphcis_context();
 			m_device->m_funcs.vkCmdEndRenderPass(m_command_buffer);
+			if (m_timestamp_query_heap_attachment && m_timestamp_query_end_index != DONT_QUERY)
+			{
+				write_timestamp(m_timestamp_query_heap_attachment, m_timestamp_query_end_index);
+			}
+			if (m_pipeline_statistics_query_heap_attachment && m_pipeline_statistics_query_index != DONT_QUERY)
+			{
+				end_pipeline_statistics_query(m_pipeline_statistics_query_heap_attachment, m_pipeline_statistics_query_index);
+			}
+			m_occlusion_query_heap_attachment = nullptr;
+			m_timestamp_query_heap_attachment = nullptr;
+			m_timestamp_query_begin_index = DONT_QUERY;
+			m_timestamp_query_end_index = DONT_QUERY;
+			m_pipeline_statistics_query_heap_attachment = nullptr;
+			m_pipeline_statistics_query_index = DONT_QUERY;
 			m_render_pass_begin = false;
 			m_rt_width = 0;
 			m_rt_height = 0;
@@ -615,6 +672,24 @@ namespace Luna
 			memzero(m_color_attachments, sizeof(ImageView*) * 8);
 			memzero(m_resolve_attachments, sizeof(ImageView*) * 8);
 			m_dsv = nullptr;
+		}
+		void CommandBuffer::begin_compute_pass(const ComputePassDesc& desc)
+		{
+			lucheck_msg(!m_render_pass_begin && !m_copy_pass_begin && !m_compute_pass_begin, "begin_compute_pass can only be called when no other pass is open.");
+			m_compute_pass_begin = true;
+			m_timestamp_query_heap_attachment = desc.timestamp_query_heap;
+			m_timestamp_query_begin_index = desc.timestamp_query_begin_pass_write_index;
+			m_timestamp_query_end_index = desc.timestamp_query_end_pass_write_index;
+			m_pipeline_statistics_query_heap_attachment = desc.pipeline_statistics_query_heap;
+			m_pipeline_statistics_query_index = desc.pipeline_statistics_query_write_index;
+			if (m_timestamp_query_heap_attachment && m_timestamp_query_begin_index != DONT_QUERY)
+			{
+				write_timestamp(m_timestamp_query_heap_attachment, m_timestamp_query_begin_index);
+			}
+			if (m_pipeline_statistics_query_heap_attachment && m_pipeline_statistics_query_index != DONT_QUERY)
+			{
+				begin_pipeline_statistics_query(m_pipeline_statistics_query_heap_attachment, m_pipeline_statistics_query_index);
+			}
 		}
 		void CommandBuffer::set_compute_pipeline_layout(IPipelineLayout* pipeline_layout)
 		{
@@ -646,6 +721,36 @@ namespace Luna
 		{
 			assert_compute_context();
 			m_device->m_funcs.vkCmdDispatch(m_command_buffer, thread_group_count_x, thread_group_count_y, thread_group_count_z);
+		}
+		void CommandBuffer::end_compute_pass()
+		{
+			lucheck_msg(m_compute_pass_begin, "Calling end_compute_pass without prior call to begin_compute_pass.");
+			if (m_timestamp_query_heap_attachment && m_timestamp_query_end_index != DONT_QUERY)
+			{
+				write_timestamp(m_timestamp_query_heap_attachment, m_timestamp_query_end_index);
+			}
+			if (m_pipeline_statistics_query_heap_attachment && m_pipeline_statistics_query_index != DONT_QUERY)
+			{
+				end_pipeline_statistics_query(m_pipeline_statistics_query_heap_attachment, m_pipeline_statistics_query_index);
+			}
+			m_timestamp_query_heap_attachment = nullptr;
+			m_timestamp_query_begin_index = DONT_QUERY;
+			m_timestamp_query_end_index = DONT_QUERY;
+			m_pipeline_statistics_query_heap_attachment = nullptr;
+			m_pipeline_statistics_query_index = DONT_QUERY;
+			m_compute_pass_begin = false;
+		}
+		void CommandBuffer::begin_copy_pass(const CopyPassDesc& desc)
+		{
+			lucheck_msg(!m_render_pass_begin && !m_copy_pass_begin && !m_compute_pass_begin, "begin_copy_pass can only be called when no other pass is open.");
+			m_copy_pass_begin = true;
+			m_timestamp_query_heap_attachment = desc.timestamp_query_heap;
+			m_timestamp_query_begin_index = desc.timestamp_query_begin_pass_write_index;
+			m_timestamp_query_end_index = desc.timestamp_query_end_pass_write_index;
+			if (m_timestamp_query_heap_attachment && m_timestamp_query_begin_index != DONT_QUERY)
+			{
+				write_timestamp(m_timestamp_query_heap_attachment, m_timestamp_query_begin_index);
+			}
 		}
 		void CommandBuffer::copy_resource(IResource* dst, IResource* src)
 		{
@@ -794,6 +899,18 @@ namespace Luna
 			m_device->m_funcs.vkCmdCopyImageToBuffer(m_command_buffer, s->m_image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
 				d->m_buffer, 1, &copy);
 		}
+		void CommandBuffer::end_copy_pass()
+		{
+			lucheck_msg(m_copy_pass_begin, "Calling end_copy_pass without prior call to begin_copy_pass.");
+			if (m_timestamp_query_heap_attachment && m_timestamp_query_end_index != DONT_QUERY)
+			{
+				write_timestamp(m_timestamp_query_heap_attachment, m_timestamp_query_end_index);
+			}
+			m_timestamp_query_heap_attachment = nullptr;
+			m_timestamp_query_begin_index = DONT_QUERY;
+			m_timestamp_query_end_index = DONT_QUERY;
+			m_copy_pass_begin = false;
+		}
 		void CommandBuffer::resource_barrier(Span<const BufferBarrier> buffer_barriers, Span<const TextureBarrier> texture_barriers)
 		{
 			assert_non_render_pass();
@@ -821,34 +938,6 @@ namespace Luna
 					m_track_system.m_buffer_barriers.size(), m_track_system.m_buffer_barriers.data(),
 					m_track_system.m_image_barriers.size(), m_track_system.m_image_barriers.data());
 			}
-		}
-		void CommandBuffer::write_timestamp(IQueryHeap* heap, u32 index)
-		{
-			QueryHeap* h = (QueryHeap*)heap->get_object();
-			m_device->m_funcs.vkCmdResetQueryPool(m_command_buffer, h->m_query_pool, index, 1);
-			m_device->m_funcs.vkCmdWriteTimestamp(m_command_buffer, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, h->m_query_pool, index);
-		}
-		void CommandBuffer::begin_pipeline_statistics_query(IQueryHeap* heap, u32 index)
-		{
-			QueryHeap* h = (QueryHeap*)heap->get_object();
-			m_device->m_funcs.vkCmdResetQueryPool(m_command_buffer, h->m_query_pool, index, 1);
-			m_device->m_funcs.vkCmdBeginQuery(m_command_buffer, h->m_query_pool, index, 0);
-		}
-		void CommandBuffer::end_pipeline_statistics_query(IQueryHeap* heap, u32 index)
-		{
-			QueryHeap* h = (QueryHeap*)heap->get_object();
-			m_device->m_funcs.vkCmdEndQuery(m_command_buffer, h->m_query_pool, index);
-		}
-		void CommandBuffer::begin_occlusion_query(IQueryHeap* heap, u32 index)
-		{
-			QueryHeap* h = (QueryHeap*)heap->get_object();
-			m_device->m_funcs.vkCmdResetQueryPool(m_command_buffer, h->m_query_pool, index, 1);
-			m_device->m_funcs.vkCmdBeginQuery(m_command_buffer, h->m_query_pool, index, VK_QUERY_CONTROL_PRECISE_BIT);
-		}
-		void CommandBuffer::end_occlusion_query(IQueryHeap* heap, u32 index)
-		{
-			QueryHeap* h = (QueryHeap*)heap->get_object();
-			m_device->m_funcs.vkCmdEndQuery(m_command_buffer, h->m_query_pool, index);
 		}
 		RV CommandBuffer::submit(Span<IFence*> wait_fences, Span<IFence*> signal_fences, bool allow_host_waiting)
 		{

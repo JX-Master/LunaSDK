@@ -171,7 +171,7 @@ namespace Luna
 				m_surface = VK_NULL_HANDLE;
 			}
 		}
-		R<Ref<ITexture>> SwapChain::get_current_back_buffer()
+		R<ITexture*> SwapChain::get_current_back_buffer()
 		{
 			lutry
 			{
