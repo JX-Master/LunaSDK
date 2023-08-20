@@ -1,12 +1,12 @@
-Texture2D<float4> g_scene_tex : register(t1);
-Texture2D<float> g_lum_tex : register(t2);
-RWTexture2D<float4> g_dst_tex : register(u3);
 
 cbuffer g_cb : register(b0)
 {
 	float g_exposure;
     uint g_auto_exposure;
 }
+Texture2D<float4> g_scene_tex : register(t1);
+Texture2D<float> g_lum_tex : register(t2);
+RWTexture2D<float4> g_dst_tex : register(u3);
 
 // @see: https://knarkowicz.wordpress.com/2016/01/06/aces-filmic-tone-mapping-curve/
 float3 aces_film(float3 x)

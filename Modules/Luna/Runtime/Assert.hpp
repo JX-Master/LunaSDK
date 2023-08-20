@@ -28,7 +28,7 @@ namespace Luna
 
 	//! Triggers a debug break, pauses the program and attaches the debugger to the program.
 	//! This only works in debug build.
-	LUNA_RUNTIME_API inline void debug_break();
+	LUNA_RUNTIME_API void debug_break();
 }
 
 #define luna_u8_string_(s) u8 ## s

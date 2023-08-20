@@ -6,19 +6,27 @@
 * @file MemoryUtils.hpp
 * @author JXMaster
 * @date 2020/2/16
+* @brief Memory utility library
 */
 #pragma once
 #include "Iterator.hpp"
 
 namespace Luna
 {
+	//! @addtogroup Runtime
+	//! @{
+	//! @defgroup RuntimeMemoryUtils Memory utility library
+	//! @}
+
+	//! @addtogroup RuntimeMemoryUtils
+	//! @{
 	using std::memchr;
 	using std::memcmp;
 	using std::memset;
 	using std::memcpy;
 	using std::memmove;
 
-	//! clear the specified memory region to 0.
+	//! @brief Clears the specified memory region to 0.
 	//! @param[in] dst The start address of memory region to clear.
 	//! @param[in] byte_count The size, in bytes, of the memory region to clear.
 	//! @return Returns the `dst` pointer.
@@ -26,19 +34,23 @@ namespace Luna
 	{
 		return memset(dst, 0, byte_count);
 	}
+
+	//! @brief Clears the memory of the specified object to 0.
+	//! @param[in] dst The object to clear. The size of the memory region to clear will be `sizeof(_Ty)`.
+	//! @return Returns the `dst` pointer.
 	template <typename _Ty>
 	inline _Ty* memzero(_Ty* dst)
 	{
 		return (_Ty*)memzero(dst, sizeof(_Ty));
 	}
 
-	//! Copies the data for a 2D bitmap.
+	//! @brief Copies the data for a 2D bitmap.
 	//! @param[in] dst A pointer to the first pixel to be copied in destination bitmap.
 	//! @param[in] src A pointer to the first pixel to be copied in source bitmap.
 	//! @param[in] copy_size_per_row The size of the data to be copied for every row, in bytes.
 	//! @param[in] num_rows The number of rows to copy.
-	//! @param[in] dst_row_pitch The size to advance for one row in destination bitmap in bytes.
-	//! @param[in] src_row_pitch The size to advance for one row in destination bitmap in bytes.
+	//! @param[in] dst_row_pitch The pitch to advance for one row in destination bitmap in bytes.
+	//! @param[in] src_row_pitch The pitch to advance for one row in destination bitmap in bytes.
 	//! @return Returns the `dst` pointer.
 	inline void* memcpy_bitmap(void* dst, const void* src, usize copy_size_per_row, usize num_rows, usize dst_row_pitch, usize src_row_pitch)
 	{
@@ -49,16 +61,16 @@ namespace Luna
 		return dst;
 	}
 
-	//! Copies the data for a 3D bitmap.
+	//! @brief Copies the data for a 3D bitmap.
 	//! @param[in] dst A pointer to the first pixel to be copied in destination bitmap.
 	//! @param[in] src A pointer to the first pixel to be copied in source bitmap.
 	//! @param[in] copy_size_per_row The size of the data to be copied for every row, in bytes.
 	//! @param[in] num_rows The number of rows to copy.
 	//! @param[in] num_slices The number of slices (layers) to copy.
-	//! @param[in] dst_row_pitch The size to advance for one row in destination bitmap in bytes.
-	//! @param[in] src_row_pitch The size to advance for one row in destination bitmap in bytes.
-	//! @param[in] dst_slice_pitch The size to advance for one slice (layer) in destination bitmap in bytes.
-	//! @param[in] src_slice_pitch The size to advance for one slice (layer) in destination bitmap in bytes.
+	//! @param[in] dst_row_pitch The pitch to advance for one row in destination bitmap in bytes.
+	//! @param[in] src_row_pitch The pitch to advance for one row in destination bitmap in bytes.
+	//! @param[in] dst_slice_pitch The pitch to advance for one slice (layer) in destination bitmap in bytes.
+	//! @param[in] src_slice_pitch The pitch to advance for one slice (layer) in destination bitmap in bytes.
 	//! @return Returns the `dst` pointer.
 	inline void* memcpy_bitmap3d(
 		void* dst, const void* src,
@@ -75,13 +87,30 @@ namespace Luna
 		return dst;
 	}
 
-	//! Returns a pointer that offsets the specified pixels in the texture.
+	//! @brief Returns a pointer that offsets the specified pixels in the bitmap.
+	//! @param[in] base The pointer to the first pixel in the bitmap.
+	//! @param[in] x The x offset in pixels.
+	//! @param[in] y The y offset in pixels.
+	//! @param[in] z The z offset in pixels.
+	//! @param[in] bytes_per_pixel The number of bytes per pixel.
+	//! @param[in] row_pitch The pitch to advance for one row in bytes.
+	//! @param[in] slice_pitch The pitch to advance for one slice in bytes.
+	//! @return Returns the offseted pointer.
 	inline void* pixel_offset(void* base, usize x, usize y, usize z, usize bytes_per_pixel, usize row_pitch, usize slice_pitch)
 	{
 		usize r = (usize)base;
 		r += z * slice_pitch + y * row_pitch + x * bytes_per_pixel;
 		return (void*)r;
 	}
+	//! @brief Returns a pointer that offsets the specified pixels in the bitmap.
+	//! @param[in] base The pointer to the first pixel in the bitmap.
+	//! @param[in] x The x offset in pixels.
+	//! @param[in] y The y offset in pixels.
+	//! @param[in] z The z offset in pixels.
+	//! @param[in] bytes_per_pixel The number of bytes per pixel.
+	//! @param[in] row_pitch The pitch to advance for one row in bytes.
+	//! @param[in] slice_pitch The pitch to advance for one slice in bytes.
+	//! @return Returns the offseted pointer.
 	inline const void* pixel_offset(const void* base, usize x, usize y, usize z, usize bytes_per_pixel, usize row_pitch, usize slice_pitch)
 	{
 		usize r = (usize)base;
@@ -99,7 +128,7 @@ namespace Luna
 			0x10,	// 00010000
 			0x20,	// 00100000
 			0x40,	// 01000000
-			0x80		// 10000000
+			0x80	// 10000000
 		};
 
 		constexpr const u8 BIT_MASK_REVERSE[] = {
@@ -114,27 +143,28 @@ namespace Luna
 		};
 	}
 
+	//! @brief A integer literal suffix that multiples one number with 1024. Use it like `3_kb`.
 	inline constexpr unsigned long long operator"" _kb(unsigned long long v)
 	{
 		return v * 1024;
 	}
-
+	//! @brief A integer literal suffix that multiples one number with 1024 * 1024. Use it like `3_mb`.
 	inline constexpr unsigned long long operator"" _mb(unsigned long long v)
 	{
 		return v * 1024 * 1024;
 	}
-
+	//! @brief A integer literal suffix that multiples one number with 1024 * 1024 * 1024. Use it like `3_gb`.
 	inline constexpr unsigned long long operator"" _gb(unsigned long long v)
 	{
 		return v * 1024 * 1024 * 1024;
 	}
-
+	//! @brief A integer literal suffix that multiples one number with 1024 * 1024 * 1024 * 1024. Use it like `3_tb`.
 	inline constexpr unsigned long long operator"" _tb(unsigned long long v)
 	{
 		return v * 1024 * 1024 * 1024 * 1024;
 	}
 
-	//! Tests if specified bit is 1.
+	//! @brief Tests if specified bit is 1.
 	//! @param[in] base_addr The address of the bit to offset from.
 	//! @param[in] bit_offset The number of bits shifted from the `base_addr`.
 	//! @return Returns `true` if the bit is 1, `false` if the bit is 0.
@@ -164,43 +194,48 @@ namespace Luna
 		return (*(const u8*)((usize)base_addr + bit_offset / 8)) & Impl::BIT_MASK[bit_offset % 8] ? true : false;;
 	}
 
-	//! Sets the specified bit to 1.
+	//! @brief Sets the specified bit to 1.
 	//! @param[in] base_addr The address of the bit to offset from.
 	//! @param[in] bit_offset The number of bits shifted from the `base_addr`.
-	//! @remark See remarks of `bit_test` for details.
+	//! @remark See remarks of @ref bit_test for details.
 	inline void bit_set(void* addr, usize bit_offset)
 	{
 		*(u8*)((usize)addr + bit_offset / 8) |= Impl::BIT_MASK[bit_offset % 8];
 	}
 
-	//! Sets the specified bit to 0.
+	//! @brief Sets the specified bit to 0.
 	//! @param[in] base_addr The address of the bit to offset from.
 	//! @param[in] bit_offset The number of bits shifted from the `base_addr`.
-	//! @remark See remarks of `bit_test` for details.
+	//! @remark See remarks of @ref bit_test for details.
 	inline void bit_reset(void* addr, usize bit_offset)
 	{
 		*(u8*)((usize)addr + bit_offset / 8) &= Impl::BIT_MASK_REVERSE[bit_offset % 8];
 	}
 
-	//! Sets the specified bit to 1 if `value` is `true`, or to 0 if `value` is `false`.
+	//! @brief Sets the specified bit to 1 if `value` is `true`, or to 0 if `value` is `false`.
+	//! @param[in] base_addr The address of the bit to offset from.
+	//! @param[in] bit_offset The number of bits shifted from the `base_addr`.
+	//! @param[in] value The value to set for the bit.
+	//! @remark See remarks of @ref bit_test for details.
 	inline void bit_set(void* addr, usize bit_offset, bool value)
 	{
 		if (value) bit_set(addr, bit_offset);
 		else bit_reset(addr, bit_offset);
 	}
 
-	//! Returns the address/size that aligns the origin address/size to the nearest matched aligned 
+	//! @brief Returns the address/size that aligns the origin address/size to the nearest matched aligned 
 	//! address/size that is greater than or equal to the the origin address/size.
 	//! @param[in] origin The unaligned address/size.
 	//! @param[in] alignment The alignment boundary. If alignment is 0, `origin` will be returned as-is.
 	//! @return Returns the aligned address/size.
-	inline constexpr usize align_upper(usize origin, usize alignment)
+    template <typename _Ty1, typename _Ty2>
+	inline constexpr _Ty1 align_upper(_Ty1 origin, _Ty2 alignment)
 	{
-		return alignment ? ((origin + alignment - 1) / alignment * alignment) : origin;
+		return alignment ? ((origin + (_Ty1)alignment - 1) / (_Ty1)alignment * (_Ty1)alignment) : origin;
 	}
 
-	//! @class Unconstructed
-	//! `Unconstructed` provides a way to allocate the memory for a C++ object without their constructor/destructor
+	//! @brief Represents one object that supports manual construction and destruction.
+	//! @details `Unconstructed` provides a way to allocate the memory for a C++ object without their constructor/destructor
 	//! being called by system. You have the ability to call their constructor/destructor manually.
 	//! Such feature is useful when you need to declare some static constructed objects and want to control their construction/
 	//! destruction orders.
@@ -219,32 +254,38 @@ namespace Luna
 		Unconstructed& operator=(const Unconstructed&) = delete;
 		Unconstructed& operator=(Unconstructed&&) = delete;
 
-		//! Get a reference to the object.
+		//! @brief Get a reference to the object.
+		//! @return Returns a reference to the object.
 		_Ty& get()
 		{
 			return *reinterpret_cast<_Ty*>(&m_buffer);
 		}
+		//! @brief Get a const reference to the object.
+		//! @return Returns a const reference to the object.
 		const _Ty& get() const
 		{
 			return *reinterpret_cast<const _Ty*>(&m_buffer);
 		}
 
-		//! Manually construct object.
+		//! @brief Constructs the object.
+		//! @param[in] args Arguments that will be passed to the constructor of the object.
 		template< typename... Args>
 		void construct(Args&&... args)
 		{
 			new (m_buffer) _Ty(forward<Args>(args)...);
 		}
 
-		//! Manually destruct object.
+		//! @brief Destructs the object.
 		void destruct()
 		{
 			get().~_Ty();
 		}
 	};
 
-	//! Gets the real address for object or function `value`, even if the `operator&` of the object
+	//! @brief Gets the real address for object or function `value`, even if the `operator&` of the object
 	//! has been overloaded.
+	//! @param[in] value The object to fetch address.
+	//! @return Returns one pointer to the object.
 	template<typename _Ty>
 	_Ty* addressof(_Ty& value)
 	{
@@ -255,7 +296,8 @@ namespace Luna
 #endif
 	}
 
-	//! Calls the default constructor for the object pointed by iterator.
+	//! @brief Calls the default constructor for the object.
+	//! @param[in] dst An iterator pointing to the object to be constructed.
 	template <typename _Iter>
 	inline void default_construct(_Iter dst)
 	{
@@ -263,7 +305,8 @@ namespace Luna
 			typename iterator_traits<_Iter>::value_type;
 	}
 
-	//! Calls the value constructor for the object pointed by iterator.
+	//! @brief Calls the value constructor for the object.
+	//! @param[in] dst An iterator pointing to the object to be constructed.
 	template <typename _Iter>
 	inline void value_construct(_Iter dst)
 	{
@@ -271,7 +314,9 @@ namespace Luna
 			typename iterator_traits<_Iter>::value_type();
 	}
 
-	//! Calls the copy constructor for the object pointed by iterator.
+	//! @brief Calls the copy constructor for the object.
+	//! @param[in] dst An iterator pointing to the object to be constructed.
+	//! @param[in] src An iterator pointing to the object to copy from.
 	template <typename _Iter1, typename _Iter2>
 	inline void copy_construct(_Iter1 dst, _Iter2 src)
 	{
@@ -279,7 +324,9 @@ namespace Luna
 			typename iterator_traits<_Iter1>::value_type(*src);
 	}
 
-	//! Calls the move constructor for the object pointed by iterator.
+	//! @brief Calls the move constructor for the object.
+	//! @param[in] dst An iterator pointing to the object to be constructed.
+	//! @param[in] src An iterator pointing to the object to move from.
 	template <typename _Iter1, typename _Iter2>
 	inline void move_construct(_Iter1 dst, _Iter2 src)
 	{
@@ -287,7 +334,9 @@ namespace Luna
 			typename iterator_traits<_Iter1>::value_type(move(*src));
 	}
 
-	//! Calls the direct constructor for the object pointed by iterator.
+	//! @brief Calls the direct constructor for the object.
+	//! @param[in] dst An iterator pointing to the object to be constructed.
+	//! @param[in] args Arguments that will be passed to the constructor.
 	template <typename _Iter, typename... _Args>
 	inline void direct_construct(_Iter dst, _Args&&... args)
 	{
@@ -295,7 +344,8 @@ namespace Luna
 			typename iterator_traits<_Iter>::value_type(forward<_Args>(args)...);
 	}
 
-	//! Calls the destructor of the object pointed by iterator.
+	//! @brief Calls the destructor of the object.
+	//! @param[in] dst An iterator pointing to the object to be destructed.
 	template <typename _Iter>
 	inline void destruct(_Iter dst)
 	{
@@ -303,16 +353,18 @@ namespace Luna
 		static_cast<value_type*>(addressof(*dst))->~value_type();
 	}
 
-	//! Calls the copy assignment operator of the object `dst` iterator
-	//! is pointing to,
+	//! @brief Calls the copy assignment operator of the object.
+	//! @param[in] dst An iterator pointing to the object to be assigned.
+	//! @param[in] src An iterator pointing to the object to copy from.
 	template <typename _Iter1, typename _Iter2>
 	inline void copy_assign(_Iter1 dst, _Iter2 src)
 	{
 		(*dst) = (*src);
 	}
 
-	//! Calls the move assignment operator of the object `dst` iterator
-	//! is pointing to,
+	//! @brief Calls the move assignment operator of the object.
+	//! @param[in] dst An iterator pointing to the object to be assigned.
+	//! @param[in] src An iterator pointing to the object to move from.
 	template <typename _Iter1, typename _Iter2>
 	inline void move_assign(_Iter1 dst, _Iter2 src)
 	{
@@ -325,8 +377,11 @@ namespace Luna
 		using default_construct_range_is_value_type_class = typename is_class<typename iterator_traits<_Iter>::value_type>::type;
 	}
 
-	//! Default-constructs a range of objects, that is, performs default initialization on each object in the range.
-	//! If _Ty is a class type (`is_class<_Ty>::value` is `true_type`), this function calls the default constructor for each
+	//! @brief Default-constructs a range of objects.
+	//! @param[in] first An iterator to the first object to be constructed.
+	//! @param[in] last An iterator to one-past-last object to be constructed.
+	//! @details This function performs default initialization on each object in the range [`first`, `last`).
+	//! @remark If _Ty is a class type (`is_class<_Ty>::value` is `true_type`), this function calls the default constructor for each
 	//! object. Otherwise, this call does nothing, as described by C++ standard.
 	//! ref: https://en.cppreference.com/w/cpp/language/default_initialization
 	template <typename _Iter>
@@ -348,17 +403,20 @@ namespace Luna
 		template <typename _Iter>
 		using value_construct_range_is_value_type_trivial = typename conjunction<
 			is_pointer<_Iter>,												// `_Iter` is a pointer type.
-			negation<is_class<typename iterator_traits<_Iter>::value_type>>	// `ValueType` of `_Iter` is not a class type.
+			negation<is_class<typename iterator_traits<_Iter>::value_type>>	// `value_type` of `_Iter` is not a class type.
 		>::type;
 	}
 
-	//! Value-constructs a range of objects, that is, performs value initialization on each object in the range.
-	//! This call uses `memzero` to clear all bytes in the storage to 0 if all of the following conditions are matched:
+	//! @brief Value-constructs a range of objects.
+	//! @param[in] first An iterator to the first object to be constructed.
+	//! @param[in] last An iterator to one-past-last object to be constructed.
+	//! @details This function performs value initialization on each object in the range [`first`, `last`).
+	//! @remark This call uses `memzero` to clear all bytes in the storage to 0 if all of the following conditions are matched:
 	//! 1. `_Iter` is a pointer type.
-	//! 2. `ValueType` of `_Iter` is not a class type.
+	//! 2. `value_type` of `_Iter` is not a class type.
 	//! Otherwise, this function calls the value constructor of each object.
 	//! ref: https://en.cppreference.com/w/cpp/language/value_initialization
-	//! Todo: For types that satisfy `is_trivially_constructible<typename iterator_traits<_Iter>::value_type>`, when 
+	//! @todo For types that satisfy `is_trivially_constructible<typename iterator_traits<_Iter>::value_type>`, when 
 	//! the iterator is a pointer, memzero can also be applied.
 	template <typename _Iter>
 	inline auto value_construct_range(_Iter* first, _Iter* last) -> enable_if_t<Impl::value_construct_range_is_value_type_trivial<_Iter>::value, void> // is a trivial type.
@@ -385,20 +443,19 @@ namespace Luna
 		>::type;
 	}
 
-	//! Copy-constructs a range of objects.
-	//! `memcpy` is used to copy the data directly if:
+	//! @brief Copy-constructs a range of objects.
+	//! @param[in] first An iterator to the first object to be copied from.
+	//! @param[in] last An iterator to one-past-last object to be copied from.
+	//! @param[in] d_first An iterator to the first object to be constructed.
+	//! @return Returns an iterator to the one-past-last object to be constructed.
+	//! @details This function uses each object in the range [`first`, `last`) to performs copy initialization on corresponding objects beginning with `d_first`.
+	//! @par Valid Usage
+	//! * The source range and the destination range must not overlap.
+	//! @remark `memcpy` is used to copy the data directly if:
 	//! 1. Both `_Iter1` and `_Iter2` are pointer types.
-	//! 2. `ValueType` of `_Iter1` and `_Iter2` is same.
-	//! 3. `ValueType` is trivially copy constructible.
+	//! 2. `value_type` of `_Iter1` and `_Iter2` is same.
+	//! 3. `value_type` is trivially copy constructible.
 	//! Otherwise, the copy constructor is called for every object to construct objects in destination range.
-	//! 
-	//! The source range and the destination range must not overlap.
-	template<typename _Ty1, typename _Ty2>
-	inline auto copy_construct_range(_Ty1* first, _Ty1* last, _Ty2* d_first) -> enable_if_t<Impl::copy_construct_range_is_value_type_trivial<_Ty1*, _Ty2*>::value, _Ty2*>
-	{
-		memcpy(static_cast<void*>(d_first), static_cast<const void*>(first), (size_t)(last - first) * sizeof(_Ty2));
-		return d_first + (last - first);
-	}
 	template<typename _Iter1, typename _Iter2>
 	inline auto copy_construct_range(_Iter1 first, _Iter1 last, _Iter2 d_first) -> enable_if_t<!Impl::copy_construct_range_is_value_type_trivial<_Iter1, _Iter2>::value, _Iter2>
 	{
@@ -408,14 +465,26 @@ namespace Luna
 		}
 		return d_first;
 	}
-
 	template<typename _Ty1, typename _Ty2>
-	inline auto copy_construct_range_n(_Ty1* first, usize count, _Ty2* d_first) -> enable_if_t<Impl::copy_construct_range_is_value_type_trivial<_Ty1*, _Ty2*>::value, _Ty2*>
+	inline auto copy_construct_range(_Ty1* first, _Ty1* last, _Ty2* d_first) -> enable_if_t<Impl::copy_construct_range_is_value_type_trivial<_Ty1*, _Ty2*>::value, _Ty2*>
 	{
-		_Ty1* last = first + count;
 		memcpy(static_cast<void*>(d_first), static_cast<const void*>(first), (size_t)(last - first) * sizeof(_Ty2));
 		return d_first + (last - first);
 	}
+
+	//! @brief Copy-constructs a range of objects. The range is provided by first object and object count.
+	//! @param[in] first An iterator to the first object to be copied from.
+	//! @param[in] count The number of objects to copy-construct.
+	//! @param[in] d_first An iterator to the first object to be constructed.
+	//! @return Returns an iterator to the one-past-last object to be constructed.
+	//! @details This function uses each object in the range [`first`, `first + count`) to performs copy initialization on corresponding objects beginning with `d_first`.
+	//! @par Valid Usage
+	//! * The source range and the destination range must not overlap.
+	//! @remark `memcpy` is used to copy the data directly if:
+	//! 1. Both `_Iter1` and `_Iter2` are pointer types.
+	//! 2. `value_type` of `_Iter1` and `_Iter2` is same.
+	//! 3. `value_type` is trivially copy constructible.
+	//! Otherwise, the copy constructor is called for every object to construct objects in destination range.
 	template<typename _Iter1, typename _Iter2>
 	inline auto copy_construct_range_n(_Iter1 first, usize count, _Iter2 d_first) -> enable_if_t<!Impl::copy_construct_range_is_value_type_trivial<_Iter1, _Iter2>::value, _Iter2>
 	{
@@ -427,6 +496,13 @@ namespace Luna
 		}
 		return d_first;
 	}
+	template<typename _Ty1, typename _Ty2>
+	inline auto copy_construct_range_n(_Ty1* first, usize count, _Ty2* d_first) -> enable_if_t<Impl::copy_construct_range_is_value_type_trivial<_Ty1*, _Ty2*>::value, _Ty2*>
+	{
+		_Ty1* last = first + count;
+		memcpy(static_cast<void*>(d_first), static_cast<const void*>(first), (size_t)(last - first) * sizeof(_Ty2));
+		return d_first + (last - first);
+	}
 
 	namespace Impl
 	{
@@ -434,12 +510,17 @@ namespace Luna
 		using move_construct_range_is_value_type_trivial = typename is_trivially_move_constructible<typename iterator_traits<_Iter1>::value_type>::type;
 	}
 
-	//! Move-constructs a range of objects.
-	//! If `ValueType` of `_Iter2` is trivially move constructible, calls `copy_construct_range` to do the move
+	//! @brief Move-constructs a range of objects.
+	//! @param[in] first An iterator to the first object to be moved from.
+	//! @param[in] last An iterator to one-past-last object to be moved from.
+	//! @param[in] d_first An iterator to the first object to be constructed.
+	//! @return Returns an iterator to the one-past-last object to be constructed.
+	//! @details This function uses each object in the range [`first`, `last`) to performs move initialization on corresponding objects beginning with `d_first`.
+	//! @par Valid Usage
+	//! * The source range and the destination range must not overlap.
+	//! @remark If `value_type` of `_Iter2` is trivially move constructible, calls `copy_construct_range` to do the move
 	//! construct.
 	//! Otherwise, the move constructor is called for every object to construct objects in destination range.
-	//! 
-	//! The source range and the destination range must not overlap.
 	template<typename _Iter1, typename _Iter2>
 	inline auto move_construct_range(_Iter1 first, _Iter1 last, _Iter2 d_first) -> enable_if_t<Impl::move_construct_range_is_value_type_trivial<_Iter1, _Iter2>::value, _Iter2>	// is trivially move constructible
 	{
@@ -461,8 +542,10 @@ namespace Luna
 		using destruct_range_is_value_type_trivial = typename is_trivially_destructible <typename iterator_traits<_Iter>::value_type>::type;
 	}
 
-	//! Destructs every object in the range.
-	//! If `ValueType` is trivially destructible, do nothing.
+	//! @brief Destructs every object in the range.
+	//! @param[in] first An iterator to the first object to be destructed.
+	//! @param[in] last An iterator to one-past-last object to be destructed.
+	//! @remark If `value_type` is trivially destructible, do nothing.
 	//! Else, calls the destructor for each object in the range.
 	template <typename _Iter>
 	inline auto destruct_range(_Iter first, _Iter last) -> enable_if_t<Impl::destruct_range_is_value_type_trivial<_Iter>::value, void>	// is_trivially_destructible
@@ -489,20 +572,18 @@ namespace Luna
 		>::type;
 	}
 
-	//! Performs copy assignment operation on every object in the destination range, using the corresponding object in the source range.
-	//! `memcpy` is used to copy the data directly if:
+	//! @brief Performs copy assignment operation on every object in the destination range using the corresponding object in the source range.
+	//! @param[in] first An iterator to the first object to be copied from.
+	//! @param[in] last An iterator to one-past-last object to be copied from.
+	//! @param[in] d_first An iterator to the first object to be assigned.
+	//! @return Returns an iterator to the one-past-last object to be assigned.
+	//! @par Valid Usage
+	//! * The source range and the destination range must not overlap.
+	//! @remark `memcpy` is used to copy the data directly if:
 	//! 1. Both `_Iter1` and `_Iter2` are pointer types.
-	//! 2. `ValueType` of `_Iter1` and `_Iter2` is same.
-	//! 3. `ValueType` is trivially copy assignable.
+	//! 2. `value_type` of `_Iter1` and `_Iter2` is same.
+	//! 3. `value_type` is trivially copy assignable.
 	//! Otherwise, the copy assignment operator is called for every object to copy assign objects in destination range.
-	//! 
-	//! The source range and the destination range must not overlap.
-	template<typename _Ty1, typename _Ty2>
-	inline auto copy_assign_range(_Ty1* first, _Ty1* last, _Ty2* d_first) -> enable_if_t<Impl::copy_assign_range_is_value_type_trivial<_Ty1*, _Ty2*>::value, _Ty2*>
-	{
-		memcpy(static_cast<void*>(d_first), static_cast<const void*>(first), (size_t)(last - first) * sizeof(_Ty2));
-		return d_first + (last - first);
-	}
 	template<typename _Iter1, typename _Iter2>
 	inline auto copy_assign_range(_Iter1 first, _Iter1 last, _Iter2 d_first) -> enable_if_t<!Impl::copy_assign_range_is_value_type_trivial<_Iter1, _Iter2>::value, _Iter2>
 	{
@@ -511,6 +592,12 @@ namespace Luna
 			copy_assign(d_first, first);
 		}
 		return d_first;
+	}
+	template<typename _Ty1, typename _Ty2>
+	inline auto copy_assign_range(_Ty1* first, _Ty1* last, _Ty2* d_first) -> enable_if_t<Impl::copy_assign_range_is_value_type_trivial<_Ty1*, _Ty2*>::value, _Ty2*>
+	{
+		memcpy(static_cast<void*>(d_first), static_cast<const void*>(first), (size_t)(last - first) * sizeof(_Ty2));
+		return d_first + (last - first);
 	}
 
 	namespace Impl
@@ -534,20 +621,18 @@ namespace Luna
 		>::type;
 	}
 
-	//! Performs move assignment operation on every object in the destination range, using the corresponding object in the source range.
-	//! The move operation is performed from first to last, the first element in destination range must not in the source range.
+	//! @brief Performs move assignment operation on every object in the destination range using the corresponding object in the source range.
+	//! @param[in] first An iterator to the first object to be moved from.
+	//! @param[in] last An iterator to one-past-last object to be moved from.
+	//! @param[in] d_first An iterator to the first object to be assigned.
+	//! @return Returns an iterator to the one-past-last object to be assigned.
+	//! @remark The move operation is performed from first to last, the first element in destination range must not in the source range.
 	//! `memmove` is used to move the data directly if:
 	//! 1. Both `_Iter1` and `_Iter2` are pointer types.
-	//! 2. `ValueType` of `_Iter1` and `_Iter2` is same.
-	//! 3. `ValueType` is trivially copy assignable and trivially move assignable. (If the type is trivially move assignable but not trivially copy assignable, the move assignment operator
+	//! 2. `value_type` of `_Iter1` and `_Iter2` is same.
+	//! 3. `value_type` is trivially copy assignable and trivially move assignable. (If the type is trivially move assignable but not trivially copy assignable, the move assignment operator
 	//! behaves the same as the copy assignment operator.)
 	//! Otherwise, the move assignment operator is called for every object to move assign objects in destination range.
-	template<typename _Ty1, typename _Ty2>
-	inline auto move_assign_range(_Ty1* first, _Ty1* last, _Ty2* d_first) -> enable_if_t<Impl::move_assign_range_is_value_type_trivial<_Ty1*, _Ty2*>::value, _Ty2*>
-	{
-		memmove(static_cast<void*>(d_first), static_cast<const void*>(first), (size_t)(last - first) * sizeof(_Ty2));
-		return d_first + (last - first);
-	}
 	template<typename _Iter1, typename _Iter2>
 	inline auto move_assign_range(_Iter1 first, _Iter1 last, _Iter2 d_first) -> enable_if_t<!Impl::move_assign_range_is_value_type_trivial<_Iter1, _Iter2>::value, _Iter2>
 	{
@@ -557,16 +642,19 @@ namespace Luna
 		}
 		return d_first;
 	}
-
-	//! Same as `move_assign_range`, but performs the move assign from back to front.
-	//! The last element in destination range must not in the source range.
 	template<typename _Ty1, typename _Ty2>
-	inline auto move_assign_range_backward(_Ty1* first, _Ty1* last, _Ty2* d_last) -> enable_if_t<Impl::move_assign_range_backward_is_value_type_trivial<_Ty1*, _Ty2*>::value, _Ty2*>
+	inline auto move_assign_range(_Ty1* first, _Ty1* last, _Ty2* d_first) -> enable_if_t<Impl::move_assign_range_is_value_type_trivial<_Ty1*, _Ty2*>::value, _Ty2*>
 	{
-		ptrdiff_t sz = (last - first);
-		memmove(static_cast<void*>(d_last - sz), static_cast<const void*>(first), (size_t)(sz) * sizeof(_Ty2));
-		return d_last - sz;
+		memmove(static_cast<void*>(d_first), static_cast<const void*>(first), (size_t)(last - first) * sizeof(_Ty2));
+		return d_first + (last - first);
 	}
+
+	//! @brief Same as @ref move_assign_range, but performs the move assign from back to front.
+	//! @param[in] first An iterator to the first object to be moved from.
+	//! @param[in] last An iterator to one-past-last object to be moved from.
+	//! @param[in] d_last An iterator to the one-past-back object in the range to be assigned.
+	//! @return Returns an iterator to the front object in the range to be assigned.
+	//! @details The last element in destination range must not in the source range.
 	template<typename _Iter1, typename _Iter2>
 	inline auto move_assign_range_backward(_Iter1 first, _Iter1 last, _Iter2 d_last) -> enable_if_t<!Impl::move_assign_range_backward_is_value_type_trivial<_Iter1, _Iter2>::value, _Iter2>
 	{
@@ -578,8 +666,19 @@ namespace Luna
 		}
 		return d_last;
 	}
+	template<typename _Ty1, typename _Ty2>
+	inline auto move_assign_range_backward(_Ty1* first, _Ty1* last, _Ty2* d_last) -> enable_if_t<Impl::move_assign_range_backward_is_value_type_trivial<_Ty1*, _Ty2*>::value, _Ty2*>
+	{
+		ptrdiff_t sz = (last - first);
+		memmove(static_cast<void*>(d_last - sz), static_cast<const void*>(first), (size_t)(sz) * sizeof(_Ty2));
+		return d_last - sz;
+	}
 
-	//! Performs copy construct on each of the object in the range by taking a copy of the provided object.
+	//! @brief Performs copy construct on each of the object in the range by taking a copy of the provided object.
+	//! @param[in] first An iterator to the first object to be constructed.
+	//! @param[in] last An iterator to one-past-last object to be constructed.
+	//! @param[in] value The object to copy from for each object to be constructed.
+	//! @return Returns an iterator to one-past-last object to be constructed.
 	template <typename _Iter1, typename _Ty>
 	inline _Iter1 fill_construct_range(_Iter1 first, _Iter1 last, const _Ty& value)
 	{
@@ -591,7 +690,11 @@ namespace Luna
 		return first;
 	}
 
-	//! Performs copy assignment on each of the object in the range by taking a copy of the provided object.
+	//! @brief Performs copy assignment on each of the object in the range by taking a copy of the provided object.
+	//! @param[in] first An iterator to the first object to be assigned.
+	//! @param[in] last An iterator to one-past-last object to be assigned.
+	//! @param[in] value The object to copy from for each object to be assigned.
+	//! @return Returns an iterator to one-past-last object to be assigned.
 	template <typename _Iter1, typename _Ty>
 	inline _Iter1 fill_assign_range(_Iter1 first, _Iter1 last, const _Ty& value)
 	{
@@ -638,22 +741,27 @@ namespace Luna
 		}
 	}
 
-	//! Relocates objects in the source range to a new range that is not overlap with the source range.
-	//! After this call, the objects in the destination range behaves the same as the corresponding objects 
-	//! formerly in the source range, except that the place(memory address) for the object is changed.
-	//! 
-	//! The iterator for the source range and destination range must have the same `ValueType`.
+	//! @brief Relocates objects in the source range to a new range that is not overlap with the source range.
+	//! @details After this call, the objects in the destination range behaves the same as the corresponding objects 
+	//! formerly in the source range, except that the places(memory addresses) for objects are changed.
+	//! @param[in] first An iterator to the first object to be relocated from.
+	//! @param[in] last An iterator to one-past-last object to be relocated from.
+	//! @param[in] d_first An iterator to the first object to be relocated to.
+	//! @return Returns an iterator to the one-past-last object to be relocated to.
+	//! @par Valid Usage
+	//! * The iterator for the source range and destination range must have the same `value_type`.
+	//! @remark 
 	//! All objects in the destination range must in uninitialized state before this call. And after this call,
 	//! all objects in the source range is in uninitialized state.
 	//! 
 	//! This call behaves differently in the following different conditions:
 	//! 
-	//! 1. If `ValueType` of `_Iter1` is trivially relocatable (which is always true unless the user explicitly
+	//! 1. If `value_type` of `_Iter1` is trivially relocatable (which is always true unless the user explicitly
 	//! demonstrates), `memcpy` is used to copy the data from source place to destination place. If `_Iter` and 
 	//! `_Iter2` is both pointer types, the full range will be copied by `memcpy` in one call, otherwise, `memcpy`
 	//! will be called once per object. No constructors and destructors are called in this period.
 	//! 
-	//! 2. If `ValueType` of `_Iter1` is not trivially relocatable, for every object in the destination range, 
+	//! 2. If `value_type` of `_Iter1` is not trivially relocatable, for every object in the destination range, 
 	//! the move constructor will be called with the corresponding object in the source range passed in, then 
 	//! the destructor of the corresponding object in the source range will be called.
 	template <typename _Iter1, typename _Iter2>
@@ -671,6 +779,12 @@ namespace Luna
 		}
 		return d_first;
 	}
+	//! @brief Relocates one object.
+	//! @details After this call, the object in the destination memory behaves the same as the object 
+	//! formerly in the source memory, except that the place(memory address) for the object is changed.
+	//! @param[in] dst An iterator to relocation destination.
+	//! @param[in] src An iterator to the object to be relocated.
+	//! @return Returns `dst`.
 	template <typename _Iter1, typename _Iter2>
 	inline auto copy_relocate(_Iter1 dst, _Iter2 src) -> enable_if_t<Impl::copy_relocate_is_value_type_trivial<_Iter1, _Iter2>::value, _Iter1>	// is_trivially_relocatable
 	{
@@ -713,9 +827,14 @@ namespace Luna
 			typename is_trivially_relocatable<typename iterator_traits<_Iter2>::value_type>::type>::type;
 	}
 
-	//! This function behaves the same as `copy_relocate_range`, except that it allows the destination range 
+	//! @brief Relocates objects in the source range to a new range.
+	//! @details This function behaves the same as @ref copy_relocate_range, except that it allows the destination range 
 	//! overlaps with the source range, proved that the first object in the destination range does not in the source range.
-	//! `memmove` is used instead of `memcpy` if the whole range can be relocated in one call.
+	//! @ref memmove is used instead of @ref memcpy if the whole range can be relocated in one call.
+	//! @param[in] first An iterator to the first object to be relocated from.
+	//! @param[in] last An iterator to one-past-last object to be relocated from.
+	//! @param[in] d_first An iterator to the first object to be relocated to.
+	//! @return Returns an iterator to the one-past-last object to be relocated to.
 	template <typename _Iter1, typename _Iter2>
 	inline auto move_relocate_range(_Iter1 first, _Iter1 last, _Iter2 d_first) -> enable_if_t<Impl::move_relocate_is_value_type_trivial<_Iter1, _Iter2>::value, _Iter2>	// is_trivially_relocatable
 	{
@@ -764,9 +883,14 @@ namespace Luna
 			typename is_trivially_relocatable<typename iterator_traits<_Iter2>::value_type>::type>::type;
 	}
 
-	//! This function behaves the same as `move_relocate_range`, except that it relocates object from last to first, so
+	//! @brief Relocates objects in the source range to a new range.
+	//! @details This function behaves the same as @ref move_relocate_range, except that it relocates object from last to first, so
 	//! the last object in the destination range should not in the source range.
-	//! `memmove` is used instead of `memcpy` if the whole range can be relocated in one call.
+	//! @ref memmove is used instead of @ref memcpy if the whole range can be relocated in one call.
+	//! @param[in] first An iterator to the first object to be relocated from.
+	//! @param[in] last An iterator to one-past-last object to be relocated from.
+	//! @param[in] d_last An iterator to the one-past-last object to be relocated to.
+	//! @return Returns an iterator to the front object to be relocated to in the destination range.
 	template <typename _Iter1, typename _Iter2>
 	inline auto move_relocate_range_backward(_Iter1 first, _Iter1 last, _Iter2 d_last) -> enable_if_t<Impl::move_relocate_backward_is_value_type_trivial<_Iter1, _Iter2>::value, _Iter2>	// is_trivially_relocatable
 	{
@@ -784,4 +908,6 @@ namespace Luna
 		}
 		return d_last;
 	}
+
+	//! @}
 }

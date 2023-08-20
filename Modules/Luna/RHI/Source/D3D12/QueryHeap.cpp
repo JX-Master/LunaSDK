@@ -22,6 +22,8 @@ namespace Luna
                 d.Type = D3D12_QUERY_HEAP_TYPE_OCCLUSION; break;
             case QueryType::timestamp:
                 d.Type = D3D12_QUERY_HEAP_TYPE_TIMESTAMP; break;
+            case QueryType::timestamp_copy_queue:
+                d.Type = D3D12_QUERY_HEAP_TYPE_COPY_QUEUE_TIMESTAMP; break;
             case QueryType::pipeline_statistics:
                 d.Type = D3D12_QUERY_HEAP_TYPE_PIPELINE_STATISTICS; break;
             default: lupanic(); break;
@@ -89,8 +91,6 @@ namespace Luna
                 {
                     auto& dst = values[i];
                     auto& src = mapped[index + i];
-                    dst.input_vertices = src.IAVertices;
-                    dst.input_primitives = src.IAPrimitives;
                     dst.vs_invocations = src.VSInvocations;
                     dst.rasterizer_input_primitives = src.CInvocations;
                     dst.rendered_primitives = src.CPrimitives;

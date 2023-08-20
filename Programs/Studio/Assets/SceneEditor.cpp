@@ -32,7 +32,7 @@ namespace Luna
 		// Resources for rendering grids.
 		Ref<RHI::IBuffer> m_grid_vb;
 		Ref<RHI::IDescriptorSetLayout> m_grid_dlayout;
-		Ref<RHI::IShaderInputLayout> m_grid_slayout;
+		Ref<RHI::IPipelineLayout> m_grid_playout;
 		Ref<RHI::IPipelineState> m_grid_pso;
 
 		SceneEditorUserData() {}
@@ -99,7 +99,7 @@ namespace Luna
 		{
 			using namespace RHI;
 			auto device = get_main_device();
-			u32 cb_align = device->get_uniform_buffer_data_alignment();
+			auto cb_align = device->get_uniform_buffer_data_alignment();
 			luset(m_renderer.command_buffer, g_env->device->new_command_buffer(g_env->graphics_queue));
 			SceneRendererSettings settings;
 			settings.frame_profiling = true;
@@ -123,7 +123,7 @@ namespace Luna
 		if (ImGui::Button("New Entity"))
 		{
 			char name[64];
-			strcpy_s(name, "New_Entity");
+			strncpy(name, "New_Entity", 64);
 			auto entity = s->add_entity(Name(name));
 			if (entity.errcode() == BasicError::already_exists())
 			{
@@ -131,7 +131,7 @@ namespace Luna
 				// Append index.
 				while (failed(entity))
 				{
-					sprintf_s(name, "New_Entity_%u", index);
+					snprintf(name, 64, "New_Entity_%u", index);
 					entity = s->add_entity(Name(name));
 					++index;
 				}
@@ -189,7 +189,7 @@ namespace Luna
 						dl->AddRectFilled(sel_pos, sel_pos + sel_size,
 							Color(ImGui::GetStyle().Colors[(u32)ImGuiCol_Button]).abgr8());
 					}
-					ImGui::Text(entities[i]->name.c_str());
+					ImGui::Text("%s", entities[i]->name.c_str());
 				}
 
 				if (ImGui::IsWindowFocused() && in_bounds(ImGui::GetIO().MousePos, sel_pos, sel_pos + sel_size) && ImGui::IsMouseClicked(ImGuiMouseButton_Right))
@@ -328,7 +328,7 @@ namespace Luna
 			ImGui::BeginChild("Scene Viewport", Float2(0.0f, 0.0f), false, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar);
 
 			ImGui::SetNextItemWidth(100.0f);
-			ImGui::SliderFloat("Camera Speed", &m_camera_speed, 0.1f, 10.0f, "%.3f", 3.3f);
+			ImGui::SliderFloat("Camera Speed", &m_camera_speed, 0.1f, 10.0f, "%.3f");
 			ImGui::SameLine();
 			{
 				// Draw gizmo mode combo.
@@ -484,7 +484,15 @@ namespace Luna
 					ImGui::Text("FPS: %f", ImGui::GetIO().Framerate);
 					for (usize i = 0; i < m_renderer.pass_time_intervals.size(); ++i)
 					{
-						ImGui::Text("%s: %fms", m_renderer.enabled_passes[i].c_str(), m_renderer.pass_time_intervals[i] * 1000.0);
+                        f64 interval = m_renderer.pass_time_intervals[i];
+                        if(interval < 0.001)
+                        {
+                            ImGui::Text("%s: %fus", m_renderer.enabled_passes[i].c_str(), m_renderer.pass_time_intervals[i] * 1000000.0);
+                        }
+                        else
+                        {
+                            ImGui::Text("%s: %fms", m_renderer.enabled_passes[i].c_str(), m_renderer.pass_time_intervals[i] * 1000.0);
+                        }
 					}
 				}
 				ImGui::SetCursorPos(backup_pos);
@@ -546,7 +554,7 @@ namespace Luna
 				auto mouse = HID::get_device<HID::IMouse>().get();
 				auto mouse_pos = mouse->get_cursor_pos();
 				auto mouse_delta = mouse_pos - m_scene_click_pos;
-				auto _ = mouse->set_cursor_pos(m_scene_click_pos.x, m_scene_click_pos.y);
+                m_scene_click_pos = mouse_pos;
 				// Rotate camera based on mouse delta.
 				auto rot = camera_entity->rotation;
 				auto rot_mat = AffineMatrix::make_rotation(rot);
@@ -596,7 +604,7 @@ namespace Luna
 			luassert_always(succeeded(m_renderer.command_buffer->reset()));
 			if(settings != m_renderer.get_settings())
 			{
-				m_renderer.reset(settings);
+				luexp(m_renderer.reset(settings));
 			}
 			ImGui::EndChild();
 		}
@@ -721,7 +729,7 @@ namespace Luna
 	void SceneEditor::on_render()
 	{
 		char title[32];
-		sprintf_s(title, "Scene Editor###%d", (u32)(usize)this);
+		snprintf(title, 32, "Scene Editor###%d", (u32)(usize)this);
 		ImGui::SetNextWindowSize(Float2(1000, 500), ImGuiCond_FirstUseEver);
 		ImGui::Begin(title, &m_open, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_MenuBar);
 		auto s = Asset::get_asset_data<Scene>(m_scene);
@@ -766,7 +774,11 @@ namespace Luna
 			{
 				if(ImGui::MenuItem("Capture scene"))
 				{
-					auto r = Window::save_file_dialog("BMP File\0*.bmp\0\0", "Save Capture File");
+					Window::FileDialogFilter filter;
+					filter.name = "BMP File";
+					const c8* ext = "bmp";
+					filter.extensions = {&ext, 1};
+					auto r = Window::save_file_dialog("Save Capture File", {&filter, 1});
 					if(succeeded(r))
 					{
 						capture_scene = true;
@@ -790,7 +802,7 @@ namespace Luna
 		RV r = draw_scene();
 		if(failed(r))
 		{
-			Window::message_box(explain(r.errcode()), "Scene Editor Error", Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
+			auto _ = Window::message_box(explain(r.errcode()), "Scene Editor Error", Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
 		}
 
 		ImGui::NextColumn();
@@ -818,7 +830,7 @@ namespace Luna
 			usize slice_pitch = row_pitch * desc.height;
 			Blob img_data(slice_pitch);
 			lulet(readback_cmdbuf, device->new_command_buffer(g_env->async_copy_queue));
-			luexp(copy_resource_data(readback_cmdbuf, {CopyResourceData::read_texture(img_data.data(), row_pitch, slice_pitch, m_renderer.render_texture, SubresourceIndex(0, 0), 0, 0, 0,
+			luexp(copy_resource_data(readback_cmdbuf, {CopyResourceData::read_texture(img_data.data(), (u32)row_pitch, (u32)slice_pitch, m_renderer.render_texture, SubresourceIndex(0, 0), 0, 0, 0,
 				desc.width, desc.height, 1)}));
 			Image::ImageDesc img_desc;
 			img_desc.width = (u32)desc.width;
@@ -829,7 +841,7 @@ namespace Luna
 		}
 		lucatch
 		{
-			Window::message_box(explain(lures), "Failed to capture image", Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
+			auto _ = Window::message_box(explain(lures), "Failed to capture image", Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
 		}
 	}
 
@@ -860,8 +872,8 @@ namespace Luna
 					});
 				luset(m_grid_dlayout, device->new_descriptor_set_layout(dlayout));
 				auto dl = m_grid_dlayout.get();
-				luset(m_grid_slayout, device->new_shader_input_layout(ShaderInputLayoutDesc({ &dl, 1 },
-					ShaderInputLayoutFlag::allow_input_assembler_input_layout)));
+				luset(m_grid_playout, device->new_pipeline_layout(PipelineLayoutDesc({ &dl, 1 },
+					PipelineLayoutFlag::allow_input_assembler_input_layout)));
 				static const char* vertexShader =
 					R"(cbuffer vertexBuffer : register(b0)
 						{
@@ -928,15 +940,15 @@ namespace Luna
 				GraphicsPipelineStateDesc ps_desc;
 				ps_desc.primitive_topology = PrimitiveTopology::line_list;
 				ps_desc.blend_state = BlendDesc({ AttachmentBlendDesc(true, BlendFactor::src_alpha,
-					BlendFactor::inv_src_alpha, BlendOp::add, BlendFactor::inv_src_alpha, BlendFactor::zero, BlendOp::add, ColorWriteMask::all) });
-				ps_desc.rasterizer_state = RasterizerDesc(FillMode::wireframe, CullMode::none, 0, 0.0f, 0.0f, 1, false, true, false, true, false);
-				ps_desc.depth_stencil_state = DepthStencilDesc(false, false, ComparisonFunc::always, false, 0x00, 0x00, DepthStencilOpDesc(), DepthStencilOpDesc());
+					BlendFactor::one_minus_src_alpha, BlendOp::add, BlendFactor::one_minus_src_alpha, BlendFactor::zero, BlendOp::add, ColorWriteMask::all) });
+				ps_desc.rasterizer_state = RasterizerDesc(FillMode::wireframe, CullMode::none, 0.0f, 0.0f, 0.0f, false, true, false, true, false);
+				ps_desc.depth_stencil_state = DepthStencilDesc(false, false, CompareFunction::always, false, 0x00, 0x00, DepthStencilOpDesc(), DepthStencilOpDesc());
 				ps_desc.ib_strip_cut_value = IndexBufferStripCutValue::disabled;
 				auto attribute = InputAttributeDesc("POSITION", 0, 0, 0, 0, Format::rgba32_float);
 				auto binding = InputBindingDesc(0, sizeof(Float4U), InputRate::per_vertex);
 				ps_desc.input_layout.attributes = { &attribute, 1 };
 				ps_desc.input_layout.bindings = { &binding, 1 };
-				ps_desc.shader_input_layout = m_grid_slayout;
+				ps_desc.pipeline_layout = m_grid_playout;
 				ps_desc.vs = { vs_blob.data(), vs_blob.size() };
 				ps_desc.ps = { ps_blob.data(), ps_blob.size() };
 				ps_desc.num_color_attachments = 1;

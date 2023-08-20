@@ -10,11 +10,12 @@
 #include "CommandBuffer.hpp"
 #include "PipelineState.hpp"
 #include "Resource.hpp"
-#include "ShaderInputLayout.hpp"
+#include "PipelineLayout.hpp"
 #include "DescriptorSet.hpp"
 #include "QueryHeap.hpp"
 #include "Fence.hpp"
 #include "Instance.hpp"
+#include "../RHI.hpp"
 namespace Luna
 {
 	namespace RHI
@@ -181,6 +182,23 @@ namespace Luna
 			lucatchret;
 			return ret;
 		}
+		void CommandBuffer::write_timestamp(IQueryHeap* heap, u32 index)
+		{
+			QueryHeap* h = (QueryHeap*)heap->get_object();
+			m_device->m_funcs.vkCmdResetQueryPool(m_command_buffer, h->m_query_pool, index, 1);
+			m_device->m_funcs.vkCmdWriteTimestamp(m_command_buffer, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, h->m_query_pool, index);
+		}
+		void CommandBuffer::begin_pipeline_statistics_query(IQueryHeap* heap, u32 index)
+		{
+			QueryHeap* h = (QueryHeap*)heap->get_object();
+			m_device->m_funcs.vkCmdResetQueryPool(m_command_buffer, h->m_query_pool, index, 1);
+			m_device->m_funcs.vkCmdBeginQuery(m_command_buffer, h->m_query_pool, index, 0);
+		}
+		void CommandBuffer::end_pipeline_statistics_query(IQueryHeap* heap, u32 index)
+		{
+			QueryHeap* h = (QueryHeap*)heap->get_object();
+			m_device->m_funcs.vkCmdEndQuery(m_command_buffer, h->m_query_pool, index);
+		}
 		void CommandBuffer::wait()
 		{
 			auto r = m_device->m_funcs.vkWaitForFences(m_device->m_device, 1, &m_fence, VK_TRUE, U64_MAX);
@@ -206,14 +224,13 @@ namespace Luna
 				m_objs.clear();
 				m_rt_width = 0;
 				m_rt_height = 0;
-				m_graphics_shader_input_layout = nullptr;
-				m_compute_shader_input_layout = nullptr;
+				m_graphics_pipeline_layout = nullptr;
+				m_compute_pipeline_layout = nullptr;
 				for (VkFramebuffer fbo : m_fbos)
 				{
 					m_device->m_funcs.vkDestroyFramebuffer(m_device->m_device, fbo, nullptr);
 				}
 				m_fbos.clear();
-				m_context = CommandBufferContextType::none;
 			}
 			lucatchret;
 			return ok;
@@ -222,13 +239,13 @@ namespace Luna
 		{
 			m_objs.push_back(obj);
 		}
-		void CommandBuffer::begin_event(const Name& event_name)
+		void CommandBuffer::begin_event(const c8* event_name)
 		{
 			if (g_enable_validation_layer)
 			{
 				VkDebugUtilsLabelEXT markerInfo = {};
 				markerInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
-				markerInfo.pLabelName = event_name.c_str();
+				markerInfo.pLabelName = event_name;
 				vkCmdBeginDebugUtilsLabelEXT(m_command_buffer, &markerInfo);
 			}
 		}
@@ -307,7 +324,7 @@ namespace Luna
 		}
 		void CommandBuffer::begin_render_pass(const RenderPassDesc& desc)
 		{
-			assert_graphcis_context();
+			lucheck_msg(!m_render_pass_begin && !m_copy_pass_begin && !m_compute_pass_begin, "begin_render_pass can only be called when no other pass is open.");
 			lutry
 			{
 				RenderPassKey rp;
@@ -328,7 +345,7 @@ namespace Luna
 						view.mip_slice = src.mip_slice;
 						view.mip_size = 1;
 						view.array_slice = src.array_slice;
-						view.array_size = src.array_size;
+						view.array_size = desc.array_size;
 						lulet(view_object, cast_object<ImageResource>(view.texture->get_object())->get_image_view(view));
 						fb.color_attachments[i] = view_object;
 					}
@@ -375,7 +392,7 @@ namespace Luna
 					view.mip_slice = src.mip_slice;
 					view.mip_size = 1;
 					view.array_slice = src.array_slice;
-					view.array_size = src.array_size;
+					view.array_size = desc.array_size;
 					lulet(view_object, cast_object<ImageResource>(view.texture->get_object())->get_image_view(view));
 					fb.depth_stencil_attachment = view_object;
 				}
@@ -440,8 +457,21 @@ namespace Luna
 				}
 				begin_info.clearValueCount = num_attachments;
 				begin_info.pClearValues = clear_values;
+				m_occlusion_query_heap_attachment = desc.occlusion_query_heap;
+				m_timestamp_query_heap_attachment = desc.timestamp_query_heap;
+				m_timestamp_query_begin_index = desc.timestamp_query_begin_pass_write_index;
+				m_timestamp_query_end_index = desc.timestamp_query_end_pass_write_index;
+				m_pipeline_statistics_query_heap_attachment = desc.pipeline_statistics_query_heap;
+				m_pipeline_statistics_query_index = desc.pipeline_statistics_query_write_index;
+				if (m_timestamp_query_heap_attachment && m_timestamp_query_begin_index != DONT_QUERY)
+				{
+					write_timestamp(m_timestamp_query_heap_attachment, m_timestamp_query_begin_index);
+				}
+				if (m_pipeline_statistics_query_heap_attachment && m_pipeline_statistics_query_index != DONT_QUERY)
+				{
+					begin_pipeline_statistics_query(m_pipeline_statistics_query_heap_attachment, m_pipeline_statistics_query_index);
+				}
 				m_device->m_funcs.vkCmdBeginRenderPass(m_command_buffer, &begin_info, VK_SUBPASS_CONTENTS_INLINE);
-
 				m_rt_width = width;
 				m_rt_height = height;
 				m_num_color_attachments = num_color_attachments;
@@ -453,10 +483,10 @@ namespace Luna
 
 			}
 		}
-		void CommandBuffer::set_graphics_shader_input_layout(IShaderInputLayout* shader_input_layout)
+		void CommandBuffer::set_graphics_pipeline_layout(IPipelineLayout* pipeline_layout)
 		{
 			assert_graphcis_context();
-			m_graphics_shader_input_layout = shader_input_layout;
+			m_graphics_pipeline_layout = pipeline_layout;
 		}
 		void CommandBuffer::set_graphics_pipeline_state(IPipelineState* pso)
 		{
@@ -497,8 +527,8 @@ namespace Luna
 		{
 			assert_graphcis_context();
 			VkPipelineLayout layout = VK_NULL_HANDLE;
-			ShaderInputLayout* slayout = (ShaderInputLayout*)m_graphics_shader_input_layout->get_object();
-			layout = slayout->m_pipeline_layout;
+			PipelineLayout* playout = (PipelineLayout*)m_graphics_pipeline_layout->get_object();
+			layout = playout->m_pipeline_layout;
 			VkDescriptorSet* sets = (VkDescriptorSet*)alloca(sizeof(VkDescriptorSet) * descriptor_sets.size());
 			for (u32 i = 0; i < descriptor_sets.size(); ++i)
 			{
@@ -568,10 +598,11 @@ namespace Luna
 			}
 			m_device->m_funcs.vkCmdSetScissor(m_command_buffer, 0, max_num_viewports, r);
 		}
-		void CommandBuffer::set_blend_factor(Span<const f32, 4> blend_factor)
+		void CommandBuffer::set_blend_factor(const Float4U& blend_factor)
 		{
 			assert_graphcis_context();
-			m_device->m_funcs.vkCmdSetBlendConstants(m_command_buffer, blend_factor.data());
+			f32 factor[] = {blend_factor.x, blend_factor.y, blend_factor.z, blend_factor.w};
+			m_device->m_funcs.vkCmdSetBlendConstants(m_command_buffer, factor);
 		}
 		void CommandBuffer::set_stencil_ref(u32 stencil_ref)
 		{
@@ -602,115 +633,37 @@ namespace Luna
 			m_device->m_funcs.vkCmdDrawIndexed(m_command_buffer, index_count_per_instance * instance_count, instance_count, 
 				start_index_location, base_vertex_location, start_instance_location);
 		}
-		void CommandBuffer::clear_depth_stencil_attachment(ClearFlag clear_flags, f32 depth, u8 stencil, Span<const RectI> rects)
+		void CommandBuffer::begin_occlusion_query(OcclusionQueryMode mode, u32 index)
 		{
 			assert_graphcis_context();
-			VkClearAttachment attachment{};
-			attachment.aspectMask = 0;
-			if (test_flags(clear_flags, ClearFlag::depth))
-			{
-				attachment.aspectMask |= VK_IMAGE_ASPECT_DEPTH_BIT;
-			}
-			if (test_flags(clear_flags, ClearFlag::stencil))
-			{
-				attachment.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
-			}
-			attachment.clearValue.depthStencil.depth = depth;
-			attachment.clearValue.depthStencil.stencil = stencil;
-			VkClearRect* clear_rects = nullptr;
-			u32 num_clear_rects = 0;
-			if (rects.empty())
-			{
-				clear_rects = (VkClearRect*)alloca(sizeof(VkClearRect));
-				num_clear_rects = 1;
-				clear_rects[0].rect.offset = { 0, 0 };
-				clear_rects[0].rect.extent.width = m_rt_width;
-				clear_rects[0].rect.extent.height = m_rt_height;
-				auto& desc = m_dsv->m_desc;
-				clear_rects[0].baseArrayLayer = desc.array_slice;
-				clear_rects[0].layerCount = desc.array_size;
-			}
-			else
-			{
-				clear_rects = (VkClearRect*)alloca(sizeof(VkClearRect) * rects.size());
-				num_clear_rects = (u32)rects.size();
-				auto& desc = m_dsv->m_desc;
-				for (usize i = 0; i < rects.size(); ++i)
-				{
-					auto& dst = clear_rects[i];
-					auto& src = rects[i];
-					dst.rect.offset.x = src.offset_x;
-					dst.rect.offset.y = m_rt_height - src.offset_y - src.height;
-					dst.rect.extent.width = src.width;
-					dst.rect.extent.height = src.height;
-					dst.baseArrayLayer = desc.array_slice;
-					dst.layerCount = desc.array_size;
-				}
-			}
-			m_device->m_funcs.vkCmdClearAttachments(m_command_buffer, 1, &attachment, num_clear_rects, clear_rects);
+			QueryHeap* h = (QueryHeap*)m_occlusion_query_heap_attachment->get_object();
+			m_device->m_funcs.vkCmdResetQueryPool(m_command_buffer, h->m_query_pool, index, 1);
+			m_device->m_funcs.vkCmdBeginQuery(m_command_buffer, h->m_query_pool, index, mode == OcclusionQueryMode::counting ? VK_QUERY_CONTROL_PRECISE_BIT : 0);
 		}
-		void CommandBuffer::clear_color_attachment(u32 index, Span<const f32, 4> color_rgba, Span<const RectI> rects)
+		void CommandBuffer::end_occlusion_query(u32 index)
 		{
 			assert_graphcis_context();
-			VkClearAttachment attachment{};
-			attachment.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-			attachment.colorAttachment = index;
-			attachment.clearValue.color.float32[0] = color_rgba[0];
-			attachment.clearValue.color.float32[1] = color_rgba[1];
-			attachment.clearValue.color.float32[2] = color_rgba[2];
-			attachment.clearValue.color.float32[3] = color_rgba[3];
-			VkClearRect* clear_rects = nullptr;
-			u32 num_clear_rects = 0;
-			if (rects.empty())
-			{
-				clear_rects = (VkClearRect*)alloca(sizeof(VkClearRect));
-				num_clear_rects = 1;
-				clear_rects[0].rect.offset = { 0, 0 };
-				clear_rects[0].rect.extent.width = m_rt_width;
-				clear_rects[0].rect.extent.height = m_rt_height;
-				auto& desc = m_color_attachments[index]->m_desc;
-				if (desc.type != TextureViewType::tex3d)
-				{
-					clear_rects[0].baseArrayLayer = desc.array_slice;
-					clear_rects[0].layerCount = desc.array_size;
-				}
-				else
-				{
-					clear_rects[0].baseArrayLayer = 0;
-					clear_rects[0].layerCount = 1;
-				}
-			}
-			else
-			{
-				clear_rects = (VkClearRect*)alloca(sizeof(VkClearRect) * rects.size());
-				num_clear_rects = (u32)rects.size();
-				auto& desc = m_color_attachments[index]->m_desc;
-				for (usize i = 0; i < rects.size(); ++i)
-				{
-					auto& dst = clear_rects[i];
-					auto& src = rects[i];
-					dst.rect.offset.x = src.offset_x;
-					dst.rect.offset.y = m_rt_height - src.offset_y - src.height;
-					dst.rect.extent.width = src.width;
-					dst.rect.extent.height = src.height;
-					if (desc.type != TextureViewType::tex3d)
-					{
-						clear_rects[0].baseArrayLayer = desc.array_slice;
-						clear_rects[0].layerCount = desc.array_size;
-					}
-					else
-					{
-						clear_rects[0].baseArrayLayer = 0;
-						clear_rects[0].layerCount = 1;
-					}
-				}
-			}
-			m_device->m_funcs.vkCmdClearAttachments(m_command_buffer, 1, &attachment, num_clear_rects, clear_rects);
+			QueryHeap* h = (QueryHeap*)m_occlusion_query_heap_attachment->get_object();
+			m_device->m_funcs.vkCmdEndQuery(m_command_buffer, h->m_query_pool, index);
 		}
 		void CommandBuffer::end_render_pass()
 		{
 			assert_graphcis_context();
 			m_device->m_funcs.vkCmdEndRenderPass(m_command_buffer);
+			if (m_timestamp_query_heap_attachment && m_timestamp_query_end_index != DONT_QUERY)
+			{
+				write_timestamp(m_timestamp_query_heap_attachment, m_timestamp_query_end_index);
+			}
+			if (m_pipeline_statistics_query_heap_attachment && m_pipeline_statistics_query_index != DONT_QUERY)
+			{
+				end_pipeline_statistics_query(m_pipeline_statistics_query_heap_attachment, m_pipeline_statistics_query_index);
+			}
+			m_occlusion_query_heap_attachment = nullptr;
+			m_timestamp_query_heap_attachment = nullptr;
+			m_timestamp_query_begin_index = DONT_QUERY;
+			m_timestamp_query_end_index = DONT_QUERY;
+			m_pipeline_statistics_query_heap_attachment = nullptr;
+			m_pipeline_statistics_query_index = DONT_QUERY;
 			m_render_pass_begin = false;
 			m_rt_width = 0;
 			m_rt_height = 0;
@@ -720,10 +673,28 @@ namespace Luna
 			memzero(m_resolve_attachments, sizeof(ImageView*) * 8);
 			m_dsv = nullptr;
 		}
-		void CommandBuffer::set_compute_shader_input_layout(IShaderInputLayout* shader_input_layout)
+		void CommandBuffer::begin_compute_pass(const ComputePassDesc& desc)
+		{
+			lucheck_msg(!m_render_pass_begin && !m_copy_pass_begin && !m_compute_pass_begin, "begin_compute_pass can only be called when no other pass is open.");
+			m_compute_pass_begin = true;
+			m_timestamp_query_heap_attachment = desc.timestamp_query_heap;
+			m_timestamp_query_begin_index = desc.timestamp_query_begin_pass_write_index;
+			m_timestamp_query_end_index = desc.timestamp_query_end_pass_write_index;
+			m_pipeline_statistics_query_heap_attachment = desc.pipeline_statistics_query_heap;
+			m_pipeline_statistics_query_index = desc.pipeline_statistics_query_write_index;
+			if (m_timestamp_query_heap_attachment && m_timestamp_query_begin_index != DONT_QUERY)
+			{
+				write_timestamp(m_timestamp_query_heap_attachment, m_timestamp_query_begin_index);
+			}
+			if (m_pipeline_statistics_query_heap_attachment && m_pipeline_statistics_query_index != DONT_QUERY)
+			{
+				begin_pipeline_statistics_query(m_pipeline_statistics_query_heap_attachment, m_pipeline_statistics_query_index);
+			}
+		}
+		void CommandBuffer::set_compute_pipeline_layout(IPipelineLayout* pipeline_layout)
 		{
 			assert_compute_context();
-			m_compute_shader_input_layout = shader_input_layout;
+			m_compute_pipeline_layout = pipeline_layout;
 		}
 		void CommandBuffer::set_compute_pipeline_state(IPipelineState* pso)
 		{
@@ -735,8 +706,8 @@ namespace Luna
 		{
 			assert_compute_context();
 			VkPipelineLayout layout = VK_NULL_HANDLE;
-			ShaderInputLayout* slayout = (ShaderInputLayout*)m_compute_shader_input_layout->get_object();
-			layout = slayout->m_pipeline_layout;
+			PipelineLayout* playout = (PipelineLayout*)m_compute_pipeline_layout->get_object();
+			layout = playout->m_pipeline_layout;
 			VkDescriptorSet* sets = (VkDescriptorSet*)alloca(sizeof(VkDescriptorSet) * descriptor_sets.size());
 			for (u32 i = 0; i < descriptor_sets.size(); ++i)
 			{
@@ -750,6 +721,36 @@ namespace Luna
 		{
 			assert_compute_context();
 			m_device->m_funcs.vkCmdDispatch(m_command_buffer, thread_group_count_x, thread_group_count_y, thread_group_count_z);
+		}
+		void CommandBuffer::end_compute_pass()
+		{
+			lucheck_msg(m_compute_pass_begin, "Calling end_compute_pass without prior call to begin_compute_pass.");
+			if (m_timestamp_query_heap_attachment && m_timestamp_query_end_index != DONT_QUERY)
+			{
+				write_timestamp(m_timestamp_query_heap_attachment, m_timestamp_query_end_index);
+			}
+			if (m_pipeline_statistics_query_heap_attachment && m_pipeline_statistics_query_index != DONT_QUERY)
+			{
+				end_pipeline_statistics_query(m_pipeline_statistics_query_heap_attachment, m_pipeline_statistics_query_index);
+			}
+			m_timestamp_query_heap_attachment = nullptr;
+			m_timestamp_query_begin_index = DONT_QUERY;
+			m_timestamp_query_end_index = DONT_QUERY;
+			m_pipeline_statistics_query_heap_attachment = nullptr;
+			m_pipeline_statistics_query_index = DONT_QUERY;
+			m_compute_pass_begin = false;
+		}
+		void CommandBuffer::begin_copy_pass(const CopyPassDesc& desc)
+		{
+			lucheck_msg(!m_render_pass_begin && !m_copy_pass_begin && !m_compute_pass_begin, "begin_copy_pass can only be called when no other pass is open.");
+			m_copy_pass_begin = true;
+			m_timestamp_query_heap_attachment = desc.timestamp_query_heap;
+			m_timestamp_query_begin_index = desc.timestamp_query_begin_pass_write_index;
+			m_timestamp_query_end_index = desc.timestamp_query_end_pass_write_index;
+			if (m_timestamp_query_heap_attachment && m_timestamp_query_begin_index != DONT_QUERY)
+			{
+				write_timestamp(m_timestamp_query_heap_attachment, m_timestamp_query_begin_index);
+			}
 		}
 		void CommandBuffer::copy_resource(IResource* dst, IResource* src)
 		{
@@ -898,6 +899,18 @@ namespace Luna
 			m_device->m_funcs.vkCmdCopyImageToBuffer(m_command_buffer, s->m_image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
 				d->m_buffer, 1, &copy);
 		}
+		void CommandBuffer::end_copy_pass()
+		{
+			lucheck_msg(m_copy_pass_begin, "Calling end_copy_pass without prior call to begin_copy_pass.");
+			if (m_timestamp_query_heap_attachment && m_timestamp_query_end_index != DONT_QUERY)
+			{
+				write_timestamp(m_timestamp_query_heap_attachment, m_timestamp_query_end_index);
+			}
+			m_timestamp_query_heap_attachment = nullptr;
+			m_timestamp_query_begin_index = DONT_QUERY;
+			m_timestamp_query_end_index = DONT_QUERY;
+			m_copy_pass_begin = false;
+		}
 		void CommandBuffer::resource_barrier(Span<const BufferBarrier> buffer_barriers, Span<const TextureBarrier> texture_barriers)
 		{
 			assert_non_render_pass();
@@ -926,37 +939,9 @@ namespace Luna
 					m_track_system.m_image_barriers.size(), m_track_system.m_image_barriers.data());
 			}
 		}
-		void CommandBuffer::write_timestamp(IQueryHeap* heap, u32 index)
-		{
-			QueryHeap* h = (QueryHeap*)heap->get_object();
-			m_device->m_funcs.vkCmdResetQueryPool(m_command_buffer, h->m_query_pool, index, 1);
-			m_device->m_funcs.vkCmdWriteTimestamp(m_command_buffer, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, h->m_query_pool, index);
-		}
-		void CommandBuffer::begin_pipeline_statistics_query(IQueryHeap* heap, u32 index)
-		{
-			QueryHeap* h = (QueryHeap*)heap->get_object();
-			m_device->m_funcs.vkCmdResetQueryPool(m_command_buffer, h->m_query_pool, index, 1);
-			m_device->m_funcs.vkCmdBeginQuery(m_command_buffer, h->m_query_pool, index, 0);
-		}
-		void CommandBuffer::end_pipeline_statistics_query(IQueryHeap* heap, u32 index)
-		{
-			QueryHeap* h = (QueryHeap*)heap->get_object();
-			m_device->m_funcs.vkCmdEndQuery(m_command_buffer, h->m_query_pool, index);
-		}
-		void CommandBuffer::begin_occlusion_query(IQueryHeap* heap, u32 index)
-		{
-			QueryHeap* h = (QueryHeap*)heap->get_object();
-			m_device->m_funcs.vkCmdResetQueryPool(m_command_buffer, h->m_query_pool, index, 1);
-			m_device->m_funcs.vkCmdBeginQuery(m_command_buffer, h->m_query_pool, index, VK_QUERY_CONTROL_PRECISE_BIT);
-		}
-		void CommandBuffer::end_occlusion_query(IQueryHeap* heap, u32 index)
-		{
-			QueryHeap* h = (QueryHeap*)heap->get_object();
-			m_device->m_funcs.vkCmdEndQuery(m_command_buffer, h->m_query_pool, index);
-		}
 		RV CommandBuffer::submit(Span<IFence*> wait_fences, Span<IFence*> signal_fences, bool allow_host_waiting)
 		{
-			assert_non_render_pass();
+			lucheck_msg(!m_render_pass_begin && !m_copy_pass_begin && !m_compute_pass_begin, "submit can only be called when no render, compute or copy pass is open.");
 			if (!m_recording) return BasicError::bad_calling_time();
 			lutry
 			{

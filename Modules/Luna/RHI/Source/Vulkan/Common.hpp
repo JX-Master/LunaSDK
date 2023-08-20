@@ -145,13 +145,6 @@ namespace Luna
 				return VK_FORMAT_UNDEFINED;
 			}
 		}
-		inline bool is_depth_stencil_format(Format format)
-		{
-			return (format == Format::d16_unorm ||
-				format == Format::d24_unorm_s8_uint ||
-				format == Format::d32_float ||
-				format == Format::d32_float_s8_uint_x24) ? true : false;
-		}
 		inline VkPrimitiveTopology encode_primitive_topology(PrimitiveTopology primitive_topology)
 		{
 			switch (primitive_topology)
@@ -165,18 +158,18 @@ namespace Luna
 			lupanic();
 			return VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
 		}
-		inline VkCompareOp encode_compare_op(ComparisonFunc func)
+		inline VkCompareOp encode_compare_op(CompareFunction func)
 		{
 			switch (func)
 			{
-			case ComparisonFunc::never: return VK_COMPARE_OP_NEVER;
-			case ComparisonFunc::less: return VK_COMPARE_OP_LESS;
-			case ComparisonFunc::equal: return VK_COMPARE_OP_EQUAL;
-			case ComparisonFunc::less_equal: return VK_COMPARE_OP_LESS_OR_EQUAL;
-			case ComparisonFunc::greater: return VK_COMPARE_OP_GREATER;
-			case ComparisonFunc::not_equal: return VK_COMPARE_OP_NOT_EQUAL;
-			case ComparisonFunc::greater_equal: return VK_COMPARE_OP_GREATER_OR_EQUAL;
-			case ComparisonFunc::always: return VK_COMPARE_OP_ALWAYS;
+			case CompareFunction::never: return VK_COMPARE_OP_NEVER;
+			case CompareFunction::less: return VK_COMPARE_OP_LESS;
+			case CompareFunction::equal: return VK_COMPARE_OP_EQUAL;
+			case CompareFunction::less_equal: return VK_COMPARE_OP_LESS_OR_EQUAL;
+			case CompareFunction::greater: return VK_COMPARE_OP_GREATER;
+			case CompareFunction::not_equal: return VK_COMPARE_OP_NOT_EQUAL;
+			case CompareFunction::greater_equal: return VK_COMPARE_OP_GREATER_OR_EQUAL;
+			case CompareFunction::always: return VK_COMPARE_OP_ALWAYS;
 			}
 			lupanic();
 			return VK_COMPARE_OP_NEVER;
@@ -188,37 +181,14 @@ namespace Luna
 			case StencilOp::keep: return VK_STENCIL_OP_KEEP;
 			case StencilOp::zero: return VK_STENCIL_OP_ZERO;
 			case StencilOp::replace: return VK_STENCIL_OP_REPLACE;
-			case StencilOp::incr_sat: return VK_STENCIL_OP_INCREMENT_AND_CLAMP;
-			case StencilOp::decr_sat: return VK_STENCIL_OP_DECREMENT_AND_CLAMP;
+			case StencilOp::increment_saturated: return VK_STENCIL_OP_INCREMENT_AND_CLAMP;
+			case StencilOp::decrement_saturated: return VK_STENCIL_OP_DECREMENT_AND_CLAMP;
 			case StencilOp::invert: return VK_STENCIL_OP_INVERT;
-			case StencilOp::incr: return VK_STENCIL_OP_INCREMENT_AND_WRAP;
-			case StencilOp::decr: return VK_STENCIL_OP_DECREMENT_AND_WRAP;
+			case StencilOp::increment: return VK_STENCIL_OP_INCREMENT_AND_WRAP;
+			case StencilOp::decrement: return VK_STENCIL_OP_DECREMENT_AND_WRAP;
 			}
 			lupanic();
 			return VK_STENCIL_OP_KEEP;
-		}
-		inline VkLogicOp encode_logic_op(LogicOp op)
-		{
-			switch (op)
-			{
-			case LogicOp::clear: return VK_LOGIC_OP_CLEAR;
-			case LogicOp::set: return VK_LOGIC_OP_SET;
-			case LogicOp::copy: return VK_LOGIC_OP_COPY;
-			case LogicOp::copy_inverted: return VK_LOGIC_OP_COPY_INVERTED;
-			case LogicOp::invert: return VK_LOGIC_OP_INVERT;
-			case LogicOp::and : return VK_LOGIC_OP_AND;
-			case LogicOp::nand: return VK_LOGIC_OP_NAND;
-			case LogicOp::or: return VK_LOGIC_OP_OR;
-			case LogicOp::nor: return VK_LOGIC_OP_NOR;
-			case LogicOp::xor: return VK_LOGIC_OP_XOR;
-			case LogicOp::equiv: return VK_LOGIC_OP_EQUIVALENT;
-			case LogicOp::and_reverse: return VK_LOGIC_OP_AND_REVERSE;
-			case LogicOp::and_inverted: return VK_LOGIC_OP_AND_INVERTED;
-			case LogicOp::or_reverse: return VK_LOGIC_OP_OR_REVERSE;
-			case LogicOp::or_inverted: return VK_LOGIC_OP_OR_INVERTED;
-			}
-			lupanic();
-			return VK_LOGIC_OP_CLEAR;
 		}
 		inline VkBlendFactor encode_blend_factor(BlendFactor factor)
 		{
@@ -227,20 +197,20 @@ namespace Luna
 			case BlendFactor::zero: return VK_BLEND_FACTOR_ZERO;
 			case BlendFactor::one: return VK_BLEND_FACTOR_ONE;
 			case BlendFactor::src_color: return VK_BLEND_FACTOR_SRC_COLOR;
-			case BlendFactor::inv_src_color: return VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR;
+			case BlendFactor::one_minus_src_color: return VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR;
 			case BlendFactor::src_alpha: return VK_BLEND_FACTOR_SRC_ALPHA;
-			case BlendFactor::inv_src_alpha: return VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+			case BlendFactor::one_minus_src_alpha: return VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
 			case BlendFactor::dst_color: return VK_BLEND_FACTOR_DST_COLOR;
-			case BlendFactor::inv_dst_color: return VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR;
+			case BlendFactor::one_minus_dst_color: return VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR;
 			case BlendFactor::dst_alpha: return VK_BLEND_FACTOR_DST_ALPHA;
-			case BlendFactor::inv_dst_alpha: return VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA;
-			case BlendFactor::src_alpha_sat: return VK_BLEND_FACTOR_SRC_ALPHA_SATURATE;
+			case BlendFactor::one_minus_dst_alpha: return VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA;
+			case BlendFactor::src_alpha_saturated: return VK_BLEND_FACTOR_SRC_ALPHA_SATURATE;
 			case BlendFactor::blend_factor: return VK_BLEND_FACTOR_CONSTANT_COLOR;
-			case BlendFactor::inv_blend_factor: return VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR;
+			case BlendFactor::one_minus_blend_factor: return VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR;
 			case BlendFactor::src1_color: return VK_BLEND_FACTOR_SRC1_COLOR;
-			case BlendFactor::inv_src1_color: return VK_BLEND_FACTOR_ONE_MINUS_SRC1_COLOR;
+			case BlendFactor::one_minus_src1_color: return VK_BLEND_FACTOR_ONE_MINUS_SRC1_COLOR;
 			case BlendFactor::src1_alpha: return VK_BLEND_FACTOR_SRC1_ALPHA;
-			case BlendFactor::inv_src1_alpha: return VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA;
+			case BlendFactor::one_minus_src1_alpha: return VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA;
 			}
 			lupanic();
 			return VK_BLEND_FACTOR_ZERO;
@@ -303,10 +273,6 @@ namespace Luna
 			}
 			lupanic();
 			return VK_SAMPLE_COUNT_1_BIT;
-		}
-		inline u32 calc_mip_levels(u32 width, u32 height, u32 depth)
-		{
-			return 1 + (u32)floorf(log2f((f32)max(width, max(height, depth))));
 		}
 		inline void encode_buffer_create_info(VkBufferCreateInfo& dst, const BufferDesc& desc)
 		{
@@ -670,6 +636,109 @@ namespace Luna
 			}
 			lupanic();
 			return VK_SAMPLER_ADDRESS_MODE_REPEAT;
+		}
+		inline VkFilter encode_filter(Filter filter)
+		{
+			switch(filter)
+			{
+				case Filter::nearest: return VK_FILTER_NEAREST;
+				case Filter::linear: return VK_FILTER_LINEAR;
+			}
+			lupanic();
+			return VK_FILTER_NEAREST;
+		}
+		inline VkSamplerMipmapMode encode_mipmap_mode(Filter filter)
+		{
+			switch(filter)
+			{
+				case Filter::nearest: return VK_SAMPLER_MIPMAP_MODE_NEAREST;
+				case Filter::linear: return VK_SAMPLER_MIPMAP_MODE_LINEAR;
+			}
+			lupanic();
+			return VK_SAMPLER_MIPMAP_MODE_NEAREST;
+		}
+		inline usize get_texel_block_size(Format format)
+		{
+			switch (format)
+			{
+			case Format::r8_unorm:
+			case Format::r8_snorm:
+			case Format::r8_uint:
+			case Format::r8_sint:
+				return 1;
+			case Format::r16_unorm:
+			case Format::r16_snorm:
+			case Format::r16_uint:
+			case Format::r16_sint:
+			case Format::r16_float:
+			case Format::rg8_unorm:
+			case Format::rg8_snorm:
+			case Format::rg8_uint:
+			case Format::rg8_sint:
+			case Format::b5g6r5_unorm:
+			case Format::bgr5a1_unorm:
+			case Format::d16_unorm:
+				return 2;
+			case Format::r32_uint:
+			case Format::r32_sint:
+			case Format::r32_float:
+			case Format::rg16_uint:
+			case Format::rg16_sint:
+			case Format::rg16_unorm:
+			case Format::rg16_snorm:
+			case Format::rg16_float:
+			case Format::rgba8_unorm:
+			case Format::rgba8_unorm_srgb:
+			case Format::rgba8_snorm:
+			case Format::rgba8_uint:
+			case Format::rgba8_sint:
+			case Format::bgra8_unorm:
+			case Format::bgra8_unorm_srgb:
+			case Format::rgb10a2_unorm:
+			case Format::rgb10a2_uint:
+			case Format::rg11b10_float:
+			case Format::rgb9e5_float:
+			case Format::d32_float:
+			case Format::d24_unorm_s8_uint:
+				return 4;
+			case Format::rg32_uint:
+			case Format::rg32_sint:
+			case Format::rg32_float:
+			case Format::rgba16_unorm:
+			case Format::rgba16_snorm:
+			case Format::rgba16_uint:
+			case Format::rgba16_sint:
+			case Format::rgba16_float:
+			case Format::d32_float_s8_uint_x24:
+				return 8;
+			case Format::rgb32_uint:
+			case Format::rgb32_sint:
+			case Format::rgb32_float:
+				return 12;
+			case Format::rgba32_uint:
+			case Format::rgba32_sint:
+			case Format::rgba32_float:
+				return 16;
+			case Format::bc1_rgba_unorm:
+			case Format::bc1_rgba_unorm_srgb:
+			case Format::bc4_r_snorm:
+			case Format::bc4_r_unorm:
+				return 8;
+			case Format::bc2_rgba_unorm:
+			case Format::bc2_rgba_unorm_srgb:
+			case Format::bc3_rgba_unorm:
+			case Format::bc3_rgba_unorm_srgb:
+			case Format::bc5_rg_snorm:
+			case Format::bc5_rg_unorm:
+			case Format::bc6h_rgb_sfloat:
+			case Format::bc6h_rgb_ufloat:
+			case Format::bc7_rgba_unorm:
+			case Format::bc7_rgba_unorm_srgb:
+				return 16;
+			default:
+				lupanic();
+				return 0;
+			}
 		}
 	}
 }

@@ -27,15 +27,15 @@ namespace Luna
 						DescriptorSetLayoutBinding(DescriptorType::read_write_texture_view, 4, 1, ShaderVisibilityFlag::compute)
 						})));
             auto dlayout = m_buffer_visualization_pass_dlayout.get();
-			luset(m_buffer_visualization_pass_slayout, device->new_shader_input_layout(ShaderInputLayoutDesc({ &dlayout, 1 },
-				ShaderInputLayoutFlag::deny_vertex_shader_access |
-				ShaderInputLayoutFlag::deny_pixel_shader_access)));
+			luset(m_buffer_visualization_pass_playout, device->new_pipeline_layout(PipelineLayoutDesc({ &dlayout, 1 },
+				PipelineLayoutFlag::deny_vertex_shader_access |
+				PipelineLayoutFlag::deny_pixel_shader_access)));
 
             lulet(cs_blob, compile_shader("Shaders/BufferVisualization.hlsl", ShaderCompiler::ShaderType::compute));
 
 			ComputePipelineStateDesc ps_desc;
 			ps_desc.cs = cs_blob.cspan();
-			ps_desc.shader_input_layout = m_buffer_visualization_pass_slayout;
+			ps_desc.pipeline_layout = m_buffer_visualization_pass_playout;
 			luset(m_buffer_visualization_pass_pso, device->new_compute_pipeline_state(ps_desc));
         }
         lucatchret;
@@ -71,7 +71,16 @@ namespace Luna
             Ref<ITexture> base_color_roughness_tex = ctx->get_input("base_color_roughness_texture");
             Ref<ITexture> normal_metallic_tex = ctx->get_input("normal_metallic_texture");
             auto cmdbuf = ctx->get_command_buffer();
-            cmdbuf->set_context(CommandBufferContextType::compute);
+            ComputePassDesc compute_pass;
+            u32 time_query_begin, time_query_end;
+            auto query_heap = ctx->get_timestamp_query_heap(&time_query_begin, &time_query_end);
+            if(query_heap)
+            {
+                compute_pass.timestamp_query_heap = query_heap;
+                compute_pass.timestamp_query_begin_pass_write_index = time_query_begin;
+                compute_pass.timestamp_query_end_pass_write_index = time_query_end;
+            }
+            cmdbuf->begin_compute_pass(compute_pass);
             auto device = cmdbuf->get_device();
             auto cb_align = device->get_uniform_buffer_data_alignment();
             cmdbuf->resource_barrier(
@@ -82,19 +91,20 @@ namespace Luna
                     {base_color_roughness_tex, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::shader_read_cs, ResourceBarrierFlag::none},
                     {normal_metallic_tex, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::shader_read_cs, ResourceBarrierFlag::none},
                 });
-            m_ds->update_descriptors({
+            luexp(m_ds->update_descriptors({
                 WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(m_vis_params, 0, (u32)align_upper(sizeof(u32), cb_align))),
                 WriteDescriptorSet::read_texture_view(1, TextureViewDesc::tex2d(base_color_roughness_tex)),
                 WriteDescriptorSet::read_texture_view(2, TextureViewDesc::tex2d(normal_metallic_tex)),
                 WriteDescriptorSet::read_texture_view(3, TextureViewDesc::tex2d(depth_tex)),
                 WriteDescriptorSet::read_write_texture_view(4, TextureViewDesc::tex2d(scene_tex))
-                });
+                }));
             auto scene_desc = scene_tex->get_desc();
-            cmdbuf->set_compute_shader_input_layout(m_global_data->m_buffer_visualization_pass_slayout);
+            cmdbuf->set_compute_pipeline_layout(m_global_data->m_buffer_visualization_pass_playout);
             cmdbuf->set_compute_pipeline_state(m_global_data->m_buffer_visualization_pass_pso);
             cmdbuf->set_compute_descriptor_set(0, m_ds);
             cmdbuf->dispatch((u32)align_upper(scene_desc.width, 8) / 8,
                 (u32)align_upper(scene_desc.height, 8) / 8, 1);
+            cmdbuf->end_compute_pass();
         }
         lucatchret;
         return ok;

@@ -14,7 +14,6 @@ namespace Luna
 {
 	namespace RHI
 	{
-		void validate_texture_view_desc(TextureViewDesc& desc);
 		struct ImageView
 		{
 			lustruct("RHI::ImageView", "{088541B4-3F57-4E31-AE0E-0AF6A08A8F21}");

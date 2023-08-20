@@ -40,7 +40,7 @@ namespace Luna
         lutry
         { 
             m_settings = settings;
-            u32 cb_align = m_device->get_uniform_buffer_data_alignment();
+            usize cb_align = m_device->get_uniform_buffer_data_alignment();
             luset(m_camera_cb, m_device->new_buffer(MemoryType::upload, BufferDesc(BufferUsageFlag::uniform_buffer, align_upper(sizeof(CameraCB), cb_align))));
 			
 			// Build render graph.
@@ -179,11 +179,14 @@ namespace Luna
             camera_component->aspect_ratio = (f32)m_settings.screen_size.x / (f32)m_settings.screen_size.y;
 
 			// Update and upload camera data.
+            auto world_to_view = camera_entity->world_to_local_matrix();
+            auto view_to_proj = camera_component->get_projection_matrix();
+            auto world_to_proj = mul(world_to_view, view_to_proj);
             CameraCB camera_cb_data;
-			camera_cb_data.world_to_view = camera_entity->world_to_local_matrix();
-			camera_cb_data.view_to_proj = camera_component->get_projection_matrix();
-			camera_cb_data.world_to_proj = mul(camera_cb_data.world_to_view, camera_cb_data.view_to_proj);
-			camera_cb_data.proj_to_world = inverse(camera_cb_data.world_to_proj);
+			camera_cb_data.world_to_view = world_to_view;
+			camera_cb_data.view_to_proj = view_to_proj;
+            camera_cb_data.world_to_proj = world_to_proj;
+			camera_cb_data.proj_to_world = inverse(world_to_proj);
 			camera_cb_data.view_to_world = camera_entity->local_to_world_matrix();
 			Float3 env_color = scene_renderer->environment_color;
 			camera_cb_data.screen_width = m_settings.screen_size.x;
@@ -323,11 +326,11 @@ namespace Luna
 				if (light_ts.empty())
 				{
 					LightingParams p;
-					p.strength = { 0.0f, 0.0f, 0.0f };
+					p.strength = Float3U{ 0.0f, 0.0f, 0.0f };
 					p.attenuation_power = 1.0f;
-					p.direction = { 0.0f, 0.0f, 1.0f };
+					p.direction = Float3U{ 0.0f, 0.0f, 1.0f };
 					p.type = 0;
-					p.position = { 0.0f, 0.0f, 0.0f };
+					p.position = Float3U{ 0.0f, 0.0f, 0.0f };
 					p.spot_attenuation_power = 0.0f;
 					memcpy((LightingParams*)mapped, &p, sizeof(LightingParams));
 				}
@@ -368,6 +371,7 @@ namespace Luna
 						case SceneRendererMode::roughness: buffer_vis->vis_type = 2; break;
 						case SceneRendererMode::metallic: buffer_vis->vis_type = 3; break;
 						case SceneRendererMode::depth: buffer_vis->vis_type = 4; break;
+                        default: break;
 					}
 				}
 				else
@@ -396,12 +400,13 @@ namespace Luna
 					lighting->light_ts = {light_ts.data(), light_ts.size()};
 					switch (m_settings.mode)
 					{
-					case SceneRendererMode::lit: lighting->lighting_mode = 0; break;
-					case SceneRendererMode::emissive: lighting->lighting_mode = 1; break;
-					case SceneRendererMode::diffuse_lighting: lighting->lighting_mode = 2; break;
-					case SceneRendererMode::specular_lighting: lighting->lighting_mode = 3; break;
-					case SceneRendererMode::ambient_diffuse_lighting: lighting->lighting_mode = 4; break;
-					case SceneRendererMode::ambient_specular_lighting: lighting->lighting_mode = 5; break;
+                        case SceneRendererMode::lit: lighting->lighting_mode = 0; break;
+                        case SceneRendererMode::emissive: lighting->lighting_mode = 1; break;
+                        case SceneRendererMode::diffuse_lighting: lighting->lighting_mode = 2; break;
+                        case SceneRendererMode::specular_lighting: lighting->lighting_mode = 3; break;
+                        case SceneRendererMode::ambient_diffuse_lighting: lighting->lighting_mode = 4; break;
+                        case SceneRendererMode::ambient_specular_lighting: lighting->lighting_mode = 5; break;
+                        default: break;
 					}
 					tone_mapping->exposure = scene_renderer->exposure;
 					tone_mapping->auto_exposure = scene_renderer->auto_exposure;

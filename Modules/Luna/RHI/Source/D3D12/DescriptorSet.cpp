@@ -16,26 +16,6 @@ namespace Luna
 {
 	namespace RHI
 	{
-		void validate_texture_view_desc(TextureViewDesc& desc)
-		{
-			TextureResource* texture = cast_object<TextureResource>(desc.texture->get_object());
-			if (desc.type == TextureViewType::unspecified)
-			{
-				if (texture->m_desc.type == TextureType::tex2d) desc.type = texture->m_desc.array_size == 1 ? TextureViewType::tex2d : TextureViewType::tex2darray;
-				else if (texture->m_desc.type == TextureType::tex3d) desc.type = TextureViewType::tex3d;
-				else if (texture->m_desc.type == TextureType::tex1d) desc.type = texture->m_desc.array_size == 1 ? TextureViewType::tex1d : TextureViewType::tex1darray;
-				else { lupanic(); }
-			}
-			if (desc.format == Format::unknown) desc.format = texture->m_desc.format;
-			if (desc.mip_size == U32_MAX) desc.mip_size = texture->m_desc.mip_levels - desc.mip_slice;
-			if (desc.array_size == U32_MAX) desc.array_size = texture->m_desc.array_size - desc.array_slice;
-			if (desc.type == TextureViewType::tex1d ||
-				desc.type == TextureViewType::tex2d ||
-				desc.type == TextureViewType::tex3d)
-			{
-				desc.array_size = 1;
-			}
-		}
 		RV DescriptorSet::init(const DescriptorSetDesc& desc)
 		{
 			DescriptorSetLayout* layout = static_cast<DescriptorSetLayout*>(desc.layout->get_object());
@@ -149,13 +129,13 @@ namespace Luna
 			u32 index = iter->second;
 			for (usize i = 0; i < num_descs; ++i)
 			{
-				TextureResource* r = cast_object<TextureResource>(descs[i].texture->get_object());
-				lucheck(r);
-				auto srv = descs[i];
-				validate_texture_view_desc(srv);
+				TextureResource* res = cast_object<TextureResource>(descs[i].texture->get_object());
+				lucheck(res);
 				usize addr = m_device->m_cbv_srv_uav_heap.m_cpu_handle.ptr + (m_view_heap_offset + index + offset + i) * m_device->m_cbv_srv_uav_heap.m_descriptor_size;
 				D3D12_CPU_DESCRIPTOR_HANDLE h;
 				h.ptr = addr;
+				TextureViewDesc srv = descs[i];
+				validate_texture_view_desc(res->m_desc, srv);
 				D3D12_SHADER_RESOURCE_VIEW_DESC d;
 				d.Format = encode_format(srv.format);
 				if (d.Format == DXGI_FORMAT_D16_UNORM) d.Format = DXGI_FORMAT_R16_UNORM;
@@ -178,7 +158,7 @@ namespace Luna
 					d.Texture1DArray.ResourceMinLODClamp = 0.0f;
 					break;
 				case TextureViewType::tex2d:
-					if (r->m_desc.sample_count == 1)
+					if (res->m_desc.sample_count == 1)
 					{
 						d.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
 						d.Texture2D.MipLevels = srv.mip_size;
@@ -192,7 +172,7 @@ namespace Luna
 					}
 					break;
 				case TextureViewType::tex2darray:
-					if (r->m_desc.sample_count == 1)
+					if (res->m_desc.sample_count == 1)
 					{
 						d.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
 						d.Texture2DArray.ArraySize = srv.array_size;
@@ -233,7 +213,7 @@ namespace Luna
 					lupanic();
 					break;
 				}
-				m_device->m_device->CreateShaderResourceView(r->m_res.Get(), &d, h);
+				m_device->m_device->CreateShaderResourceView(res->m_res.Get(), &d, h);
 			}
 		}
 		void DescriptorSet::set_buffer_uav_array(u32 binding_slot, u32 offset, u32 num_descs, const BufferViewDesc* descs)
@@ -270,12 +250,13 @@ namespace Luna
 			u32 index = iter->second;
 			for (usize i = 0; i < num_descs; ++i)
 			{
-				ID3D12Resource* r = cast_object<TextureResource>(descs[i].texture->get_object())->m_res.Get();
+				TextureResource* res = cast_object<TextureResource>(descs[i].texture->get_object());
+				lucheck(res);
 				usize addr = m_device->m_cbv_srv_uav_heap.m_cpu_handle.ptr + (m_view_heap_offset + index + offset + i) * m_device->m_cbv_srv_uav_heap.m_descriptor_size;
 				D3D12_CPU_DESCRIPTOR_HANDLE h;
 				h.ptr = addr;
 				TextureViewDesc uav = descs[i];
-				validate_texture_view_desc(uav);
+				validate_texture_view_desc(res->m_desc, uav);
 				D3D12_UNORDERED_ACCESS_VIEW_DESC d;
 				d.Format = encode_format(uav.format);
 				if (d.Format == DXGI_FORMAT_D16_UNORM) d.Format = DXGI_FORMAT_R16_UNORM;
@@ -314,7 +295,7 @@ namespace Luna
 					lupanic();
 					break;
 				}
-				m_device->m_device->CreateUnorderedAccessView(r, NULL, &d, h);
+				m_device->m_device->CreateUnorderedAccessView(res->m_res.Get(), NULL, &d, h);
 			}
 		}
 		void DescriptorSet::set_sampler_array(u32 binding_slot, u32 offset, u32 num_samplers, const SamplerDesc* samplers)
@@ -354,12 +335,12 @@ namespace Luna
 					d.BorderColor[3] = 1.0f;
 					break;
 				}
-				d.ComparisonFunc = encode_comparison_func(sampler.comparison_func);
-				d.Filter = encode_filter(sampler.filter);
+				d.ComparisonFunc = encode_compare_function(sampler.compare_function);
+				d.Filter = encode_filter(sampler.min_filter, sampler.mag_filter, sampler.mip_filter, sampler.anisotropy_enable, sampler.compare_enable);
 				d.MaxAnisotropy = sampler.max_anisotropy;
 				d.MaxLOD = sampler.max_lod;
 				d.MinLOD = sampler.min_lod;
-				d.MipLODBias = sampler.mip_lod_bias;
+				d.MipLODBias = 0;
 				usize addr = m_device->m_sampler_heap.m_cpu_handle.ptr + (m_sampler_heap_offset + index + offset + i) * m_device->m_sampler_heap.m_descriptor_size;
 				D3D12_CPU_DESCRIPTOR_HANDLE h;
 				h.ptr = addr;

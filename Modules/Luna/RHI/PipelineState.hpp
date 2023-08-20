@@ -9,15 +9,16 @@
 */
 #pragma once
 #include "Resource.hpp"
-#include "ShaderInputLayout.hpp"
+#include "PipelineLayout.hpp"
 #include <Luna/Runtime/Span.hpp>
+#include <Luna/Runtime/Math/Vector.hpp>
 namespace Luna
 {
 	namespace RHI
 	{
 		struct ComputePipelineStateDesc
 		{
-			IShaderInputLayout* shader_input_layout = nullptr;
+			IPipelineLayout* pipeline_layout = nullptr;
 			Span<const byte_t> cs;
 		};
 
@@ -87,8 +88,8 @@ namespace Luna
 			Span<const InputAttributeDesc> attributes;
 			InputLayoutDesc() = default;
 			InputLayoutDesc(
-				InitializerList<InputBindingDesc> bindings,
-				InitializerList<InputAttributeDesc> attributes
+                Span<const InputBindingDesc> bindings,
+                Span<const InputAttributeDesc> attributes
 			) : 
 				bindings(bindings),
 				attributes(attributes) {}
@@ -99,20 +100,20 @@ namespace Luna
 			zero,
 			one,
 			src_color,
-			inv_src_color,
+			one_minus_src_color,
 			src_alpha,
-			inv_src_alpha,
+			one_minus_src_alpha,
 			dst_color,
-			inv_dst_color,
+			one_minus_dst_color,
 			dst_alpha,
-			inv_dst_alpha,
-			src_alpha_sat,
+			one_minus_dst_alpha,
+			src_alpha_saturated,
 			blend_factor,
-			inv_blend_factor,
+			one_minus_blend_factor,
 			src1_color,
-			inv_src1_color,
+			one_minus_src1_color,
 			src1_alpha,
-			inv_src1_alpha
+			one_minus_src1_alpha
 		};
 		enum class BlendOp : u8
 		{
@@ -121,24 +122,6 @@ namespace Luna
 			rev_subtract,
 			min,
 			max
-		};
-		enum class LogicOp : u8
-		{
-			clear,
-			set,
-			copy,
-			copy_inverted,
-			invert,
-			and,
-			nand,
-			or ,
-			nor,
-			xor,
-			equiv,
-			and_reverse,
-			and_inverted,
-			or_reverse,
-			or_inverted
 		};
 		enum class ColorWriteMask : u8
 		{
@@ -153,9 +136,9 @@ namespace Luna
 		struct AttachmentBlendDesc
 		{
 			bool blend_enable;
-			BlendFactor src_blend;
-			BlendFactor dst_blend;
-			BlendOp blend_op;
+			BlendFactor src_blend_color;
+			BlendFactor dst_blend_color;
+			BlendOp blend_op_color;
 			BlendFactor src_blend_alpha;
 			BlendFactor dst_blend_alpha;
 			BlendOp blend_op_alpha;
@@ -163,18 +146,18 @@ namespace Luna
 
 			AttachmentBlendDesc(
 				bool blend_enable = false,
-				BlendFactor src_blend = BlendFactor::one,
-				BlendFactor dst_blend = BlendFactor::zero,
-				BlendOp blend_op = BlendOp::add,
+				BlendFactor src_blend_color = BlendFactor::one,
+				BlendFactor dst_blend_color = BlendFactor::zero,
+				BlendOp blend_op_color = BlendOp::add,
 				BlendFactor src_blend_alpha = BlendFactor::one,
 				BlendFactor dst_blend_alpha = BlendFactor::zero,
 				BlendOp blend_op_alpha = BlendOp::add,
 				ColorWriteMask render_target_write_mask = ColorWriteMask::all
 			) :
 				blend_enable(blend_enable),
-				src_blend(src_blend),
-				dst_blend(dst_blend),
-				blend_op(blend_op),
+				src_blend_color(src_blend_color),
+				dst_blend_color(dst_blend_color),
+				blend_op_color(blend_op_color),
 				src_blend_alpha(src_blend_alpha),
 				dst_blend_alpha(dst_blend_alpha),
 				blend_op_alpha(blend_op_alpha),
@@ -185,25 +168,19 @@ namespace Luna
 		{
 			bool alpha_to_coverage_enable;
 			bool independent_blend_enable;
-			bool logic_op_enable;
-			LogicOp logic_op;
-			AttachmentBlendDesc rt[8];
+			AttachmentBlendDesc attachments[8];
 
 			BlendDesc(
-				InitializerList<AttachmentBlendDesc> rt = {},
+				InitializerList<AttachmentBlendDesc> attachments = {},
 				bool alpha_to_coverage_enable = false,
-				bool independent_blend_enable = false,
-				bool logic_op_enable = false,
-				LogicOp logic_op = LogicOp::clear) :
+				bool independent_blend_enable = false) :
 				alpha_to_coverage_enable(alpha_to_coverage_enable),
-				independent_blend_enable(independent_blend_enable),
-				logic_op_enable(logic_op_enable),
-				logic_op(logic_op)
+				independent_blend_enable(independent_blend_enable)
 			{
 				u32 i = 0;
-				for (auto& it : rt)
+				for (auto& it : attachments)
 				{
-					this->rt[i] = it;
+					this->attachments[i] = it;
 					++i;
 				}
 			}
@@ -224,12 +201,11 @@ namespace Luna
 
 		struct RasterizerDesc
 		{
+			i32 depth_bias;
+            f32 slope_scaled_depth_bias;
+            f32 depth_bias_clamp;
 			FillMode fill_mode;
 			CullMode cull_mode;
-			i32 depth_bias;
-			f32 depth_bias_clamp;
-			f32 slope_scaled_depth_bias;
-			u32 forced_sample_count;
 			bool front_counter_clockwise;
 			bool depth_clip_enable;
 			bool multisample_enable;
@@ -240,21 +216,19 @@ namespace Luna
 				FillMode fill_mode = FillMode::solid,
 				CullMode cull_mode = CullMode::back,
 				i32 depth_bias = 0,
-				f32 depth_bias_clamp = 0.0f,
-				f32 slope_scaled_depth_bias = 0.0f,
-				u32 forced_sample_count = 0,
+                f32 slope_scaled_depth_bias = 0.0f,
+                f32 depth_bias_clamp = 0.0f,
 				bool front_counter_clockwise = false,
 				bool depth_clip_enable = true,
 				bool multisample_enable = false,
 				bool antialiased_line_enable = false,
 				bool conservative_raster_enabled = false
 			) :
+			 	depth_bias(depth_bias),
+                slope_scaled_depth_bias(slope_scaled_depth_bias),
+                depth_bias_clamp(depth_bias_clamp),
 				fill_mode(fill_mode),
 				cull_mode(cull_mode),
-				depth_bias(depth_bias),
-				depth_bias_clamp(depth_bias_clamp),
-				slope_scaled_depth_bias(slope_scaled_depth_bias),
-				forced_sample_count(forced_sample_count),
 				front_counter_clockwise(front_counter_clockwise),
 				depth_clip_enable(depth_clip_enable),
 				multisample_enable(multisample_enable),
@@ -267,14 +241,14 @@ namespace Luna
 			keep,
 			zero,
 			replace,
-			incr_sat,
-			decr_sat,
+			increment_saturated,
+			decrement_saturated,
 			invert,
-			incr,
-			decr
+			increment,
+			decrement
 		};
 
-		enum class ComparisonFunc : u8
+		enum class CompareFunction : u8
 		{
 			never,	// Never pass comparison
 			less,
@@ -291,13 +265,13 @@ namespace Luna
 			StencilOp stencil_fail_op;
 			StencilOp stencil_depth_fail_op;
 			StencilOp stencil_pass_op;
-			ComparisonFunc stencil_func;
+			CompareFunction stencil_func;
 
 			DepthStencilOpDesc(
 				StencilOp stencil_fail_op = StencilOp::keep,
 				StencilOp stencil_depth_fail_op = StencilOp::keep,
 				StencilOp stencil_pass_op = StencilOp::keep,
-				ComparisonFunc stencil_func = ComparisonFunc::always
+				CompareFunction stencil_func = CompareFunction::always
 			) :
 				stencil_fail_op(stencil_fail_op),
 				stencil_depth_fail_op(stencil_depth_fail_op),
@@ -312,7 +286,7 @@ namespace Luna
 		{
 			bool depth_test_enable;
 			bool depth_write_enable;
-			ComparisonFunc depth_func;
+			CompareFunction depth_func;
 			bool stencil_enable;
 			u8 stencil_read_mask;
 			u8 stencil_write_mask;
@@ -322,7 +296,7 @@ namespace Luna
 			DepthStencilDesc(
 				bool depth_test_enable = true,
 				bool depth_write_enable = true,
-				ComparisonFunc depth_func = ComparisonFunc::less,
+				CompareFunction depth_func = CompareFunction::less,
 				bool stencil_enable = false,
 				u8 stencil_read_mask = DEFAULT_STENCIL_READ_MASK,
 				u8 stencil_write_mask = DEFAULT_STENCIL_WRITE_MASK,
@@ -360,7 +334,7 @@ namespace Luna
 		struct GraphicsPipelineStateDesc
 		{
 			InputLayoutDesc input_layout;
-			IShaderInputLayout* shader_input_layout = nullptr;
+			IPipelineLayout* pipeline_layout = nullptr;
 			Span<const byte_t> vs;
 			Span<const byte_t> ps;
 			RasterizerDesc rasterizer_state;

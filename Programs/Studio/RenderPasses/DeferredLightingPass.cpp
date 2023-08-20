@@ -33,15 +33,15 @@ namespace Luna
 						DescriptorSetLayoutBinding(DescriptorType::sampler, 10, 1, ShaderVisibilityFlag::compute)
 						})));
             auto dlayout = m_deferred_lighting_pass_dlayout.get();
-			luset(m_deferred_lighting_pass_slayout, device->new_shader_input_layout(ShaderInputLayoutDesc({ &dlayout, 1 },
-				ShaderInputLayoutFlag::deny_vertex_shader_access |
-				ShaderInputLayoutFlag::deny_pixel_shader_access)));
+			luset(m_deferred_lighting_pass_playout, device->new_pipeline_layout(PipelineLayoutDesc({ &dlayout, 1 },
+				PipelineLayoutFlag::deny_vertex_shader_access |
+				PipelineLayoutFlag::deny_pixel_shader_access)));
 
             lulet(cs_blob, compile_shader("Shaders/DeferredLighting.hlsl", ShaderCompiler::ShaderType::compute));
 
 			ComputePipelineStateDesc ps_desc;
 			ps_desc.cs = cs_blob.cspan();
-			ps_desc.shader_input_layout = m_deferred_lighting_pass_slayout;
+			ps_desc.pipeline_layout = m_deferred_lighting_pass_playout;
 			luset(m_deferred_lighting_pass_pso, device->new_compute_pipeline_state(ps_desc));
 
             luset(m_default_skybox, device->new_texture(MemoryType::local, TextureDesc::tex2d(Format::rgba8_unorm, 
@@ -59,13 +59,13 @@ namespace Luna
                         DescriptorSetLayoutBinding(DescriptorType::uniform_buffer_view, 0, 1, ShaderVisibilityFlag::compute),
                         DescriptorSetLayoutBinding(DescriptorType::read_write_texture_view, 1, 1, ShaderVisibilityFlag::compute) })));
                 auto dl = dlayout.get();
-                lulet(slayout, device->new_shader_input_layout(ShaderInputLayoutDesc({ &dl, 1 },
-                    ShaderInputLayoutFlag::deny_vertex_shader_access |
-                    ShaderInputLayoutFlag::deny_pixel_shader_access)));
+                lulet(playout, device->new_pipeline_layout(PipelineLayoutDesc({ &dl, 1 },
+                    PipelineLayoutFlag::deny_vertex_shader_access |
+                    PipelineLayoutFlag::deny_pixel_shader_access)));
                 lulet(cs_blob, compile_shader("Shaders/PrecomputeIntegrateBRDF.hlsl", ShaderCompiler::ShaderType::compute));
                 ComputePipelineStateDesc ps_desc;
                 ps_desc.cs = cs_blob.cspan();
-                ps_desc.shader_input_layout = slayout;
+                ps_desc.pipeline_layout = playout;
                 lulet(pso, device->new_compute_pipeline_state(ps_desc));
                 lulet(compute_cmdbuf, device->new_command_buffer(g_env->async_compute_queue));
                 u32 cb_align = device->get_uniform_buffer_data_alignment();
@@ -79,15 +79,16 @@ namespace Luna
                     { {cb, BufferStateFlag::automatic, BufferStateFlag::uniform_buffer_cs, ResourceBarrierFlag::none} },
                     {{m_integrate_brdf, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::shader_write_cs, ResourceBarrierFlag::discard_content}});
                 lulet(vs, device->new_descriptor_set(DescriptorSetDesc(dlayout)));
-                vs->update_descriptors({
+                luexp(vs->update_descriptors({
                     WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(cb, 0, cb_size)),
                     WriteDescriptorSet::read_write_texture_view(1, TextureViewDesc::tex2d(m_integrate_brdf))
-                    });
-                compute_cmdbuf->set_context(CommandBufferContextType::compute);
-                compute_cmdbuf->set_compute_shader_input_layout(slayout);
+                    }));
+                compute_cmdbuf->begin_compute_pass();
+                compute_cmdbuf->set_compute_pipeline_layout(playout);
                 compute_cmdbuf->set_compute_pipeline_state(pso);
                 compute_cmdbuf->set_compute_descriptor_set(0, vs);
                 compute_cmdbuf->dispatch(align_upper(INTEGEATE_BRDF_SIZE, 8) / 8, align_upper(INTEGEATE_BRDF_SIZE, 8) / 8, 1);
+                compute_cmdbuf->end_compute_pass();
                 luexp(compute_cmdbuf->submit({}, {}, true));
                 compute_cmdbuf->wait();
             }
@@ -95,6 +96,11 @@ namespace Luna
         lucatchret;
         return ok;
     }
+    struct LightingParamsCB
+    {
+        u32 lighting_mode;
+        u32 num_lights;
+    };
     RV DeferredLightingPass::init(DeferredLightingPassGlobalData* global_data)
     {
         using namespace RHI;
@@ -104,9 +110,9 @@ namespace Luna
             auto device = m_global_data->m_deferred_lighting_pass_dlayout->get_device();
             luset(m_ds, device->new_descriptor_set(
                 DescriptorSetDesc(global_data->m_deferred_lighting_pass_dlayout)));
-            luset(m_lighting_mode_cb, device->new_buffer(MemoryType::upload,
+            luset(m_lighting_params_cb, device->new_buffer(MemoryType::upload,
                 BufferDesc(BufferUsageFlag::uniform_buffer,
-                    align_upper(sizeof(u32), device->get_uniform_buffer_data_alignment()))));
+                    align_upper(sizeof(LightingParamsCB), device->get_uniform_buffer_data_alignment()))));
         }
         lucatchret;
         return ok;
@@ -116,10 +122,12 @@ namespace Luna
         using namespace RHI;
         lutry
         {
-            u32* mapped = nullptr;
-            luexp(m_lighting_mode_cb->map(0, 0, (void**)&mapped));
-            *mapped = lighting_mode;
-            m_lighting_mode_cb->unmap(0, sizeof(u32));
+            u32 num_lights = light_ts.empty() ? 1 : (u32)light_ts.size();
+            LightingParamsCB* mapped = nullptr;
+            luexp(m_lighting_params_cb->map(0, 0, (void**)&mapped));
+            mapped->lighting_mode = lighting_mode;
+            mapped->num_lights = num_lights;
+            m_lighting_params_cb->unmap(0, sizeof(LightingParamsCB));
             Ref<ITexture> scene_tex = ctx->get_output("scene_texture");
             Ref<ITexture> depth_tex = ctx->get_input("depth_texture");
             Ref<ITexture> base_color_roughness_tex = ctx->get_input("base_color_roughness_texture");
@@ -129,11 +137,20 @@ namespace Luna
             auto device = cmdbuf->get_device();
             auto cb_align = device->get_uniform_buffer_data_alignment();
             auto sky_box = skybox ? skybox : m_global_data->m_default_skybox;
-            cmdbuf->set_context(CommandBufferContextType::compute);
+            ComputePassDesc compute_pass;
+            u32 time_query_begin, time_query_end;
+            auto query_heap = ctx->get_timestamp_query_heap(&time_query_begin, &time_query_end);
+            if(query_heap)
+            {
+                compute_pass.timestamp_query_heap = query_heap;
+                compute_pass.timestamp_query_begin_pass_write_index = time_query_begin;
+                compute_pass.timestamp_query_end_pass_write_index = time_query_end;
+            }
+            cmdbuf->begin_compute_pass(compute_pass);
             cmdbuf->resource_barrier(
                 { 
                     {camera_cb, BufferStateFlag::automatic, BufferStateFlag::uniform_buffer_cs, ResourceBarrierFlag::none},
-                    {m_lighting_mode_cb, BufferStateFlag::automatic, BufferStateFlag::uniform_buffer_cs, ResourceBarrierFlag::none},
+                    {m_lighting_params_cb, BufferStateFlag::automatic, BufferStateFlag::uniform_buffer_cs, ResourceBarrierFlag::none},
                     {light_params, BufferStateFlag::automatic, BufferStateFlag::shader_read_cs, ResourceBarrierFlag::none}
                 },
                 {
@@ -145,11 +162,9 @@ namespace Luna
                     {sky_box, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::shader_read_cs, ResourceBarrierFlag::none},
                     {m_global_data->m_integrate_brdf, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::shader_read_cs, ResourceBarrierFlag::none},
                 });
-            
-            u32 num_lights = light_ts.empty() ? 1 : (u32)light_ts.size();
-            m_ds->update_descriptors({
+            luexp(m_ds->update_descriptors({
                 WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(camera_cb, 0, (u32)align_upper(sizeof(CameraCB), cb_align))),
-                WriteDescriptorSet::uniform_buffer_view(1, BufferViewDesc::uniform_buffer(m_lighting_mode_cb, 0, (u32)align_upper(sizeof(u32), cb_align))),
+                WriteDescriptorSet::uniform_buffer_view(1, BufferViewDesc::uniform_buffer(m_lighting_params_cb, 0, (u32)align_upper(sizeof(LightingParamsCB), cb_align))),
                 WriteDescriptorSet::read_buffer_view(2, BufferViewDesc::structured_buffer(light_params, 0, num_lights, sizeof(LightingParams))),
                 WriteDescriptorSet::read_texture_view(3, TextureViewDesc::tex2d(base_color_roughness_tex)),
                 WriteDescriptorSet::read_texture_view(4, TextureViewDesc::tex2d(normal_metallic_tex)),
@@ -158,14 +173,15 @@ namespace Luna
                 WriteDescriptorSet::read_texture_view(7, TextureViewDesc::tex2d(sky_box)),
                 WriteDescriptorSet::read_texture_view(8, TextureViewDesc::tex2d(m_global_data->m_integrate_brdf)),
                 WriteDescriptorSet::read_write_texture_view(9, TextureViewDesc::tex2d(scene_tex)),
-                WriteDescriptorSet::sampler(10, SamplerDesc(Filter::min_mag_mip_linear, TextureAddressMode::clamp, TextureAddressMode::clamp, TextureAddressMode::clamp)),
-                });
+                WriteDescriptorSet::sampler(10, SamplerDesc(Filter::linear, Filter::linear, Filter::linear, TextureAddressMode::clamp, TextureAddressMode::clamp, TextureAddressMode::clamp)),
+                }));
             auto scene_desc = scene_tex->get_desc();
-            cmdbuf->set_compute_shader_input_layout(m_global_data->m_deferred_lighting_pass_slayout);
+            cmdbuf->set_compute_pipeline_layout(m_global_data->m_deferred_lighting_pass_playout);
             cmdbuf->set_compute_pipeline_state(m_global_data->m_deferred_lighting_pass_pso);
             cmdbuf->set_compute_descriptor_set(0, m_ds);
             cmdbuf->dispatch((u32)align_upper(scene_desc.width, 8) / 8,
                 (u32)align_upper(scene_desc.height, 8) / 8, 1);
+            cmdbuf->end_compute_pass();
         }
         lucatchret;
         return ok;

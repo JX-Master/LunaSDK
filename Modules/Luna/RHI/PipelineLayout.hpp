@@ -3,7 +3,7 @@
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
-* @file ShaderInputLayout.hpp
+* @file PipelineLayout.hpp
 * @author JXMaster
 * @date 2019/7/20
 */
@@ -16,7 +16,7 @@ namespace Luna
 {
 	namespace RHI
 	{
-		enum class ShaderInputLayoutFlag : u32
+		enum class PipelineLayoutFlag : u32
 		{
 			none = 0,
 			//! Input assembler and input layout is used.
@@ -27,24 +27,24 @@ namespace Luna
 			deny_pixel_shader_access = 0x04,
 		};
 
-		//! Describes the shader input layout.
-		struct ShaderInputLayoutDesc
+		//! Describes the pipeline layout.
+		struct PipelineLayoutDesc
 		{
 			Span<IDescriptorSetLayout*> descriptor_set_layouts;
-			ShaderInputLayoutFlag flags;
+			PipelineLayoutFlag flags;
 
-			ShaderInputLayoutDesc() = default;
-			ShaderInputLayoutDesc(
+			PipelineLayoutDesc() = default;
+			PipelineLayoutDesc(
 				Span<IDescriptorSetLayout*> descriptor_set_layouts,
-				ShaderInputLayoutFlag flags = ShaderInputLayoutFlag::none) :
+				PipelineLayoutFlag flags = PipelineLayoutFlag::none) :
 				descriptor_set_layouts(descriptor_set_layouts),
 				flags(flags) {}
 		};
 
-		//! @interface IShaderInputLayout
-		//! Describes how shader inputs are accessed by every shader
+		//! @interface IPipelineLayout
+		//! Describes how shader parameters are accessed by every shader
 		//! in the pipeline.
-		struct IShaderInputLayout : virtual IDeviceChild
+		struct IPipelineLayout : virtual IDeviceChild
 		{
 			luiid("{347097dc-04e2-44e8-a9a0-3f89e77b4425}");
 

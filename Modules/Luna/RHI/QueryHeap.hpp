@@ -18,15 +18,12 @@ namespace Luna
         {
             occlusion,
             timestamp,
+            timestamp_copy_queue,
             pipeline_statistics,
         };
 
         struct PipelineStatistics
         {
-            //! Number of vertices read by input assembler.
-            u64 input_vertices;
-            //! Number of primitives read by the input assembler.
-            u64 input_primitives;
             //! Number of vertex shader invocations.
             u64 vs_invocations;
             //! Number of primitives that were sent to the rasterizer.
@@ -45,6 +42,11 @@ namespace Luna
             QueryType type;
             //! Number of queries this heap contains.
             u32 count;
+            
+            QueryHeapDesc() = default;
+            QueryHeapDesc(QueryType type, u32 count) :
+                type(type),
+                count(count) {}
         };
 
         struct IQueryHeap : virtual IDeviceChild

@@ -150,7 +150,7 @@ namespace Luna
 		lutry
 		{
 			// Recreate the back buffer if needed.
-			auto sz = m_window->get_size();
+			auto sz = m_window->get_framebuffer_size();
 			if (sz.x && sz.y && (sz.x != m_main_window_width || sz.y != m_main_window_height))
 			{
 				luexp(m_swap_chain->reset({sz.x, sz.y, 2, RHI::Format::unknown, true}));
@@ -167,8 +167,9 @@ namespace Luna
 			//m_ctx->show_demo_window();
 
 			// Dock space.
+            sz = m_window->get_size();
 			ImGui::SetNextWindowPos({ 0.0f, 0.0f });
-			ImGui::SetNextWindowSize({ (f32)m_main_window_width, (f32)m_main_window_height });
+			ImGui::SetNextWindowSize({ (f32)sz.x, (f32)sz.y });
 			ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
 			ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
 			ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, { 0.0f, 0.0f });
@@ -224,7 +225,6 @@ namespace Luna
 			lulet(back_buffer, m_swap_chain->get_current_back_buffer());
 			render_pass.color_attachments[0] = RHI::ColorAttachment(back_buffer, RHI::LoadOp::clear, RHI::StoreOp::store,
 				{ 0.0f, 0.0f, 0.0f, 1.0f });
-			m_cmdbuf->set_context(RHI::CommandBufferContextType::graphics);
 			m_cmdbuf->begin_render_pass(render_pass);
 			m_cmdbuf->end_render_pass();
 			luexp(ImGuiUtils::render_draw_data(ImGui::GetDrawData(), m_cmdbuf, back_buffer));
@@ -357,14 +357,14 @@ namespace Luna
 					auto text_sz = ImGui::CalcTextSize(asset_type.c_str());
 					Float2 center = Float2(draw_rect.offset_x + draw_rect.width / 2.0f, draw_rect.offset_y + draw_rect.height / 2.0f);
 					ImGui::SetCursorPos({ center.x - text_sz.x / 2.0f, center.y - text_sz.y / 2.0f });
-					ImGui::Text(asset_type.c_str());
+					ImGui::Text("%s", asset_type.c_str());
 				}
 				return;
 			}
 			auto text_sz = ImGui::CalcTextSize(asset_type.c_str());
 			Float2 center = Float2(draw_rect.offset_x + draw_rect.width / 2.0f, draw_rect.offset_y + draw_rect.height / 2.0f);
 			ImGui::SetCursorPos(center - text_sz / 2.0f);
-			ImGui::Text(asset_type.c_str());
+			ImGui::Text("%s", asset_type.c_str());
 		}
 	}
 }

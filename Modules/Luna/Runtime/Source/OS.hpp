@@ -520,14 +520,6 @@ namespace Luna
 		{
 			OS::memfree(ptr, alignof(_Ty));
 		}
-		void* allocate_bytes(usize sz, usize alignment)
-		{
-			return OS::memalloc(sz, alignment);
-		}
-		void deallocate_bytes(void* ptr, usize sz, usize alignment)
-		{
-			OS::memfree(ptr, alignment);
-		}
 		bool operator==(const OSAllocator&)
 		{
 			return true;

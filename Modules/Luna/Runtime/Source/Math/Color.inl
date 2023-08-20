@@ -488,14 +488,14 @@ namespace Luna
 		return r;
 #else
 		Float4 result;
-		result.r = v.r > vmin.r ? v.r : vmin.r;
-		result.r = result.r < vmax.r ? result.r : vmax.r;
-		result.g = v.g > vmin.g ? v.g : vmin.g;
-		result.g = result.g < vmax.g ? result.g : vmax.g;
-		result.b = v.b > vmin.b ? v.b : vmin.b;
-		result.b = result.b < vmax.b ? result.b : vmax.b;
-		result.a = v.a > vmin.a ? v.a : vmin.a;
-		result.a = result.a < vmax.a ? result.a : vmax.a;
+		result.x = v.r > vmin.r ? v.r : vmin.r;
+		result.x = result.x < vmax.r ? result.x : vmax.r;
+		result.y = v.g > vmin.g ? v.g : vmin.g;
+		result.y = result.y < vmax.g ? result.y : vmax.g;
+		result.z = v.b > vmin.b ? v.b : vmin.b;
+		result.z = result.z < vmax.b ? result.z : vmax.b;
+		result.w = v.a > vmin.a ? v.a : vmin.a;
+		result.w = result.w < vmax.a ? result.w : vmax.a;
 		return result;
 #endif
 	}
@@ -511,10 +511,10 @@ namespace Luna
 		return r;
 #else
 		Float4 result;
-		result.r = v1.r < v2.r ? v1.r : v2.r;
-		result.g = v1.g < v2.g ? v1.g : v2.g;
-		result.b = v1.b < v2.b ? v1.b : v2.b;
-		result.a = v1.a < v2.a ? v1.a : v2.a;
+		result.x = v1.r < v2.r ? v1.r : v2.r;
+		result.y = v1.g < v2.g ? v1.g : v2.g;
+		result.z = v1.b < v2.b ? v1.b : v2.b;
+		result.w = v1.a < v2.a ? v1.a : v2.a;
 		return result;
 #endif
 	}
@@ -530,10 +530,10 @@ namespace Luna
 		return r;
 #else
 		Float4 result;
-		result.r = v1.r > v2.r ? v1.r : v2.r;
-		result.g = v1.g > v2.g ? v1.g : v2.g;
-		result.b = v1.b > v2.b ? v1.b : v2.b;
-		result.a = v1.a > v2.a ? v1.a : v2.a;
+		result.x = v1.r > v2.r ? v1.r : v2.r;
+		result.y = v1.g > v2.g ? v1.g : v2.g;
+		result.z = v1.b > v2.b ? v1.b : v2.b;
+		result.w = v1.a > v2.a ? v1.a : v2.a;
 		return result;
 #endif
 	}
@@ -549,10 +549,10 @@ namespace Luna
 		return r;
 #else
 		Float4 result;
-		result.r = v1.r + t * (v2.r - v1.r);
-		result.g = v1.g + t * (v2.g - v1.g);
-		result.b = v1.b + t * (v2.b - v1.b);
-		result.a = v1.a + t * (v2.a - v1.a);
+		result.x = v1.r + t * (v2.r - v1.r);
+		result.y = v1.g + t * (v2.g - v1.g);
+		result.z = v1.b + t * (v2.b - v1.b);
+		result.w = v1.a + t * (v2.a - v1.a);
 		return result;
 #endif
 	}
@@ -585,10 +585,10 @@ namespace Luna
 		return r;
 #else
 		Float4 result;
-		result.r = v1.r + (v2.r - v1.r) * f + (v3.r - v1.r) * g;
-		result.g = v1.g + (v2.g - v1.g) * f + (v3.g - v1.g) * g;
-		result.b = v1.b + (v2.b - v1.b) * f + (v3.b - v1.b) * g;
-		result.a = v1.a + (v2.a - v1.a) * f + (v3.a - v1.a) * g;
+		result.x = v1.r + (v2.r - v1.r) * f + (v3.r - v1.r) * g;
+		result.y = v1.g + (v2.g - v1.g) * f + (v3.g - v1.g) * g;
+		result.z = v1.b + (v2.b - v1.b) * f + (v3.b - v1.b) * g;
+		result.w = v1.a + (v2.a - v1.a) * f + (v3.a - v1.a) * g;
 		return result;
 #endif
 	}

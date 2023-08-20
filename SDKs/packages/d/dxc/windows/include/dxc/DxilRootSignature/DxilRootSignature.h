@@ -54,7 +54,7 @@ static const uint32_t DxilMipLodFractionalBitCount = 8;
 static const uint32_t DxilMapAnisotropy = 16;
 
 // Enumerations and flags.
-enum class DxilComparisonFunc : unsigned{
+enum class DxilCompareFunction : unsigned{
   Never = 1,
   Less = 2,
   Equal = 3,
@@ -305,7 +305,7 @@ struct DxilStaticSamplerDesc {
   DxilTextureAddressMode AddressW;
   float MipLODBias;
   uint32_t MaxAnisotropy;
-  DxilComparisonFunc ComparisonFunc;
+  DxilCompareFunction CompareFunction;
   DxilStaticBorderColor BorderColor;
   float MinLOD;
   float MaxLOD;

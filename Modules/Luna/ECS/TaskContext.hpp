@@ -15,6 +15,13 @@
 
 namespace Luna
 {
+	namespace ECSError
+	{
+		LUNA_ECS_API errcat_t errtype();
+		LUNA_ECS_API ErrCode entity_not_found();
+		LUNA_ECS_API ErrCode component_not_found();
+	}
+
     namespace ECS
     {
         enum class TaskExecutionMode : u8

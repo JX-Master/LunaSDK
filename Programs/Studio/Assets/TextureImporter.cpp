@@ -40,11 +40,11 @@ namespace Luna
 		Vector<TextureFile> m_files;
 
 		Ref<RHI::IDescriptorSetLayout> m_mipmapping_dlayout;
-		Ref<RHI::IShaderInputLayout> m_mipmapping_slayout;
+		Ref<RHI::IPipelineLayout> m_mipmapping_playout;
 		Ref<RHI::IPipelineState> m_mipmapping_pso;
 
 		Ref<RHI::IDescriptorSetLayout> m_env_mipmapping_dlayout;
-		Ref<RHI::IShaderInputLayout> m_env_mipmapping_slayout;
+		Ref<RHI::IPipelineLayout> m_env_mipmapping_playout;
 		Ref<RHI::IPipelineState> m_env_mipmapping_pso;
 
 		static constexpr u32 ENV_MAP_MIPS = 5;
@@ -54,10 +54,9 @@ namespace Luna
 		RV generate_mipmaps(RHI::ITexture* resource_with_most_detailed_mip, RHI::ICommandBuffer* compute_cmdbuf);
 		R<Ref<RHI::ITexture>> generate_environment_mipmaps(RHI::ITexture* resource_with_most_detailed_mip, RHI::ICommandBuffer* compute_cmdbuf);
 
-		bool m_open;
+		bool m_open = true;
 
-		TextureImporter() :
-			m_open(true) {}
+		TextureImporter() {}
 
 		virtual void on_render() override;
 		virtual bool closed() override
@@ -79,15 +78,15 @@ namespace Luna
 					DescriptorSetLayoutBinding(DescriptorType::sampler, 3, 1, ShaderVisibilityFlag::all)
 					})));
 				auto dlayout = m_mipmapping_dlayout.get();
-				luset(m_mipmapping_slayout, RHI::get_main_device()->new_shader_input_layout(ShaderInputLayoutDesc(
+				luset(m_mipmapping_playout, RHI::get_main_device()->new_pipeline_layout(PipelineLayoutDesc(
 					{ &dlayout, 1 },
-					ShaderInputLayoutFlag::deny_vertex_shader_access |
+					PipelineLayoutFlag::deny_vertex_shader_access |
 					
-					ShaderInputLayoutFlag::deny_pixel_shader_access)));
+					PipelineLayoutFlag::deny_pixel_shader_access)));
 
 				lulet(cs_blob, compile_shader("Shaders/MipmapGenerationCS.hlsl", ShaderCompiler::ShaderType::compute));
 				ComputePipelineStateDesc ps_desc;
-				ps_desc.shader_input_layout = m_mipmapping_slayout;
+				ps_desc.pipeline_layout = m_mipmapping_playout;
 				ps_desc.cs = cs_blob.cspan();
 				luset(m_mipmapping_pso, RHI::get_main_device()->new_compute_pipeline_state(ps_desc));
 			}
@@ -99,15 +98,15 @@ namespace Luna
 					DescriptorSetLayoutBinding(DescriptorType::sampler, 3, 1, ShaderVisibilityFlag::all)
 					})));
 				auto dlayout = m_env_mipmapping_dlayout.get();
-				luset(m_env_mipmapping_slayout, RHI::get_main_device()->new_shader_input_layout(ShaderInputLayoutDesc(
+				luset(m_env_mipmapping_playout, RHI::get_main_device()->new_pipeline_layout(PipelineLayoutDesc(
 					{ &dlayout, 1 },
-					ShaderInputLayoutFlag::deny_vertex_shader_access |
+					PipelineLayoutFlag::deny_vertex_shader_access |
 					
-					ShaderInputLayoutFlag::deny_pixel_shader_access)));
+					PipelineLayoutFlag::deny_pixel_shader_access)));
 
 				lulet(cs_blob, compile_shader("Shaders/PrecomputeEnvironmentMapMips.hlsl", ShaderCompiler::ShaderType::compute));
 				ComputePipelineStateDesc ps_desc;
-				ps_desc.shader_input_layout = m_env_mipmapping_slayout;
+				ps_desc.pipeline_layout = m_env_mipmapping_playout;
 				ps_desc.cs = cs_blob.cspan();
 				luset(m_env_mipmapping_pso, RHI::get_main_device()->new_compute_pipeline_state(ps_desc));
 			}
@@ -133,14 +132,14 @@ namespace Luna
 
 			auto device = g_env->device;
 
-			if (!m_mipmapping_slayout)
+			if (!m_mipmapping_playout)
 			{
 				luexp(init());
 			}
 
-			compute_cmdbuf->set_compute_shader_input_layout(m_mipmapping_slayout);
+			compute_cmdbuf->set_compute_pipeline_layout(m_mipmapping_playout);
 			compute_cmdbuf->set_compute_pipeline_state(m_mipmapping_pso);
-			u32 cb_align = device->get_uniform_buffer_data_alignment();
+			u32 cb_align = (u32)device->get_uniform_buffer_data_alignment();
 			u32 cb_size = (u32)align_upper(sizeof(Float2), cb_align);
 			lulet(cb, device->new_buffer(MemoryType::upload,
 				BufferDesc(BufferUsageFlag::uniform_buffer, cb_size * (desc.mip_levels - 1))));
@@ -168,12 +167,12 @@ namespace Luna
 				};
 				compute_cmdbuf->resource_barrier({}, { barriers, 2 });
 				lulet(vs, device->new_descriptor_set(DescriptorSetDesc(m_mipmapping_dlayout)));
-				vs->update_descriptors({
+				luexp(vs->update_descriptors({
 					WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(cb, cb_size * j, cb_size)),
 					WriteDescriptorSet::read_texture_view(1, TextureViewDesc::tex2d(resource_with_most_detailed_mip, Format::unknown, j, 1)),
 					WriteDescriptorSet::read_write_texture_view(2, TextureViewDesc::tex2d(resource_with_most_detailed_mip, Format::unknown, j + 1, 1)),
-					WriteDescriptorSet::sampler(3, SamplerDesc(Filter::min_mag_mip_linear, TextureAddressMode::clamp, TextureAddressMode::clamp, TextureAddressMode::clamp))
-					});
+					WriteDescriptorSet::sampler(3, SamplerDesc(Filter::linear, Filter::linear, Filter::linear, TextureAddressMode::clamp, TextureAddressMode::clamp, TextureAddressMode::clamp))
+					}));
 				compute_cmdbuf->set_compute_descriptor_set(0, vs);
 				compute_cmdbuf->attach_device_object(vs);
 				compute_cmdbuf->dispatch(align_upper(width, 8) / 8, align_upper(height, 8) / 8, 1);
@@ -202,7 +201,7 @@ namespace Luna
 
 			auto device = g_env->device;
 
-			if (!m_mipmapping_slayout)
+			if (!m_mipmapping_playout)
 			{
 				luexp(init());
 			}
@@ -211,7 +210,7 @@ namespace Luna
 			luset(prefiltered, device->new_texture(MemoryType::local, desc));
 			desc = prefiltered->get_desc();
 
-			compute_cmdbuf->set_compute_shader_input_layout(m_env_mipmapping_slayout);
+			compute_cmdbuf->set_compute_pipeline_layout(m_env_mipmapping_playout);
 			compute_cmdbuf->set_compute_pipeline_state(m_env_mipmapping_pso);
 			struct CB
 			{
@@ -221,7 +220,7 @@ namespace Luna
 				u32 mip_0_height;
 				f32 roughness;
 			};
-			u32 cb_align = device->get_uniform_buffer_data_alignment();
+			usize cb_align = device->get_uniform_buffer_data_alignment();
 			u32 cb_size = (u32)align_upper(sizeof(CB), cb_align);
 			lulet(cb, device->new_buffer(MemoryType::upload,
 				BufferDesc(BufferUsageFlag::uniform_buffer, cb_size * (desc.mip_levels - 1))));
@@ -258,12 +257,12 @@ namespace Luna
 			{
 				u32 dst_mip = j + 1;
 				lulet(vs, device->new_descriptor_set(DescriptorSetDesc(m_env_mipmapping_dlayout)));
-				vs->update_descriptors({
+                luexp(vs->update_descriptors({
 					WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(cb, cb_size * j, cb_size)),
 					WriteDescriptorSet::read_texture_view(1, TextureViewDesc::tex2d(resource_with_most_detailed_mip)),
 					WriteDescriptorSet::read_write_texture_view(2, TextureViewDesc::tex2d(prefiltered, desc.format, dst_mip, 1)),
-					WriteDescriptorSet::sampler(3, SamplerDesc(Filter::min_mag_mip_linear, TextureAddressMode::clamp, TextureAddressMode::clamp, TextureAddressMode::clamp))
-					});
+					WriteDescriptorSet::sampler(3, SamplerDesc(Filter::linear, Filter::linear, Filter::linear, TextureAddressMode::clamp, TextureAddressMode::clamp, TextureAddressMode::clamp))
+					}));
 				compute_cmdbuf->set_compute_descriptor_set(0, vs);
 				compute_cmdbuf->attach_device_object(vs);
 				u32 width = max<u32>((u32)desc.width >> (j + 1), 1);
@@ -325,7 +324,7 @@ namespace Luna
 				usize data_sz = row_pitch * (usize)mip_height;
 				Blob data(data_sz);
 				lulet(readback_cmdbuf, device->new_command_buffer(g_env->async_copy_queue));
-				luexp(copy_resource_data(readback_cmdbuf, {CopyResourceData::read_texture(data.data(), row_pitch, data_sz, tex, SubresourceIndex(i, 0), 0, 0, 0, mip_width, mip_height, 1)}));
+				luexp(copy_resource_data(readback_cmdbuf, {CopyResourceData::read_texture(data.data(), (u32)row_pitch, (u32)data_sz, tex, SubresourceIndex(i, 0), 0, 0, 0, mip_width, mip_height, 1)}));
 				img_data.push_back(move(data));
 			}
 			u64 file_offset = 0;
@@ -400,7 +399,7 @@ namespace Luna
 	void TextureImporter::on_render()
 	{
 		char title[32];
-		sprintf_s(title, "Texture Importer###%d", (u32)(usize)this);
+		snprintf(title, 32, "Texture Importer###%d", (u32)(usize)this);
 
 		ImGui::Begin(title, &m_open, ImGuiWindowFlags_NoCollapse);
 
@@ -409,8 +408,11 @@ namespace Luna
 			lutry
 			{
 				m_files.clear();
-				lulet(img_paths, Window::open_file_dialog("Image File\0*.jpg;*.jpeg;*.png;*.png;*.tga;*.bmp;*.psd;*.gif;*.hdr;*.pic\0\0",
-					"Select Source File", Path(), Window::FileOpenDialogFlag::multi_select));
+				Window::FileDialogFilter filter;
+				filter.name = "Image File";
+				const c8* exts[] = {"jpg", "jpeg", "png", "tga", "bmp", "psd", "gif", "hdr", "pic"};
+				filter.extensions = {exts, 9};
+				lulet(img_paths, Window::open_file_dialog("Select Source File", {&filter, 1}, Path(), Window::FileDialogFlag::multi_select));
 				for(auto& img_path : img_paths)
 				{
 					// Open file.
@@ -421,7 +423,7 @@ namespace Luna
 					luset(file.m_desc, Image::read_image_file_desc(file.m_file_data.data(), file.m_file_data.size()));
 					file.m_path = img_path;
 					img_path.remove_extension();
-					file.m_asset_name = img_path.back();
+					file.m_asset_name = img_path.back().c_str();
 					file.m_prefiler_type = TexturePrefilerType::normal;
 					m_files.push_back(move(file));
 				}
@@ -455,7 +457,7 @@ namespace Luna
 			}
 			for(auto& file : m_files)
 			{
-				ImGui::Text(file.m_path.encode().c_str());
+				ImGui::Text("%s", file.m_path.encode().c_str());
 				ImGui::Text("Texture Information:");
 				ImGui::Text("Width: %u", file.m_desc.width);
 				ImGui::Text("Height: %u", file.m_desc.height);

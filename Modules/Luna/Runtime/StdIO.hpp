@@ -15,8 +15,14 @@
 
 namespace Luna
 {
-    //! Gets the stream object that is connected to the system standard input/output device.
-    //! All read operation from the stream reads input from the standard input device; 
+    //! @addtogroup Runtime
+	//! @{
+
+    //! @name Standard input/output
+    //! @{
+
+    //! @brief Gets the stream object that is connected to the system standard input/output device.
+    //! @details All read operation from the stream reads input from the standard input device; 
     //! all write operations to the stream outputs data to the standard output device.
     //! 
     //! @remark The `read` method of the standard IO stream reads data from the standard input until the 
@@ -30,4 +36,8 @@ namespace Luna
     //! (array of `c8`) string. If `write_bytes` is not `nullptr`, it stores the numbder of `c8` characters outputted
     //! to the stream.
     LUNA_RUNTIME_API IStream* get_std_io_stream();
+
+    //! @}
+
+	//! @}
 }

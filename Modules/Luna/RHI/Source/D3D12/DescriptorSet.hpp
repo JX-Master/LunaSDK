@@ -11,13 +11,12 @@
 #include "D3D12Common.hpp"
 #include "Device.hpp"
 #include "Resource.hpp"
-#include "ShaderInputLayout.hpp"
+#include "PipelineLayout.hpp"
 
 namespace Luna
 {
 	namespace RHI
 	{
-		void validate_texture_view_desc(TextureViewDesc& desc);
 		struct DescriptorSet : IDescriptorSet
 		{
 			lustruct("RHI::DescriptorSet", "{6937b6b1-ce6d-4211-a5d5-5af9a6eba60a}");
@@ -41,7 +40,7 @@ namespace Luna
 			{
 				return m_device.as<IDevice>();
 			}
-			virtual void set_name(const Name& name) override {}
+			virtual void set_name(const c8* name) override {}
 			virtual RV update_descriptors(Span<const WriteDescriptorSet> writes) override;
 			
 			void set_cbv_array(u32 binding_slot, u32 offset, u32 num_descs, const BufferViewDesc* descs);

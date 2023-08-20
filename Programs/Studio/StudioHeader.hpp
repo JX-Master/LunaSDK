@@ -19,6 +19,7 @@
 #include <Luna/Runtime/HashSet.hpp>
 #include <Luna/ShaderCompiler/ShaderCompiler.hpp>
 #include <Luna/RHI/ShaderCompileHelper.hpp>
+#include <Luna/Runtime/VariantJSON.hpp>
 
 namespace Luna
 {

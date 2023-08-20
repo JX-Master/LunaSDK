@@ -53,6 +53,9 @@ luna_sdk_module_target("RHI")
         add_packages("volk", "vulkan-memory-allocator", "glfw")
     elseif is_config("rhi_api", "Metal") then
         add_defines("LUNA_RHI_METAL")
+        add_headerfiles("Source/Metal/**.hpp")
+        add_files("Source/Metal/**.cpp", "Source/Metal/**.mm")
+        add_frameworks("Foundation", "QuartzCore", "Metal")
     end
     add_deps("Runtime", "Window")
 target_end()

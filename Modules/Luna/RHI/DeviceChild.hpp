@@ -24,7 +24,7 @@ namespace Luna
 			virtual IDevice* get_device() = 0;
 
 			//! Sets the name of the device object. This name is for use in debug diagnostics and tools.
-			virtual void set_name(const Name& name) = 0;
+			virtual void set_name(const c8* name) = 0;
 		};
 	}
 }

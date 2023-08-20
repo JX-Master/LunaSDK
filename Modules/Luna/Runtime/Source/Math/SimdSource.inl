@@ -97,8 +97,8 @@ namespace Luna
 #if defined(LUNA_SSE2_INTRINSICS)
 			return _mm_set_epi32(e3, e2, e1, e0);
 #elif defined(LUNA_NEON_INTRINSICS)
-			int32x2_t t0 = vcreate_s32(static_cast<u64>(e0) | (static_cast<u64>(e1) << 32));
-			int32x2_t t1 = vcreate_s32(static_cast<u64>(e2) | (static_cast<u64>(e3) << 32));
+			int32x2_t t0 = vcreate_s32((u64)((u32)e0) | (((u64)((u32)e1)) << 32));
+			int32x2_t t1 = vcreate_s32((u64)((u32)e2) | (((u64)((u32)e3)) << 32));
 			return vcombine_s32(t0, t1);
 #else 
 #error "Not implemented."
@@ -995,12 +995,10 @@ namespace Luna
 				_SelectW ? 0xFFFFFFFF : 0));
 			return _mm_or_ps(_mm_andnot_ps(control, a), _mm_and_ps(b, control));
 #elif defined(LUNA_NEON_INTRINSICS)
-			int4 control = set_i4(
-				_SelectX ? 0xFFFFFFFF : 0,
-				_SelectY ? 0xFFFFFFFF : 0,
-				_SelectZ ? 0xFFFFFFFF : 0,
-				_SelectW ? 0xFFFFFFFF : 0);
-			return vbslq_f32(vreinterpretq_u32_s32(control), b, a);
+            uint32x2_t t0 = vcreate_u32(static_cast<u64>(_SelectX ? 0xFFFFFFFF : 0) | (static_cast<u64>(_SelectY ? 0xFFFFFFFF : 0) << 32));
+            uint32x2_t t1 = vcreate_u32(static_cast<u64>(_SelectZ ? 0xFFFFFFFF : 0) | (static_cast<u64>(_SelectW ? 0xFFFFFFFF : 0) << 32));
+            uint32x4_t control = vcombine_u32(t0, t1);
+			return vbslq_f32(control, b, a);
 #else 
 #error "Not implemented."
 #endif
@@ -2032,7 +2030,7 @@ namespace Luna
 			V3 = muladd_f4(R2zzyy, temp, V3);
 			temp = mul_f4(R0zzyy, R1wwwz);
 			temp = negmuladd_f4(R0wwwz, R1zzyy, temp);
-			V3 = muladd_f4(R2yxxx, temp, V2);
+			V3 = muladd_f4(R2yxxx, temp, V3);
 			V3 = mul_f4(set_f4(-1.0f, 1.0f, -1.0f, 1.0f), V3);
 			deter = div_f4(dup_f4(1.0f), deter);
 			V0 = mul_f4(deter, V0);

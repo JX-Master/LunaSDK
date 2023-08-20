@@ -19,7 +19,7 @@ namespace Luna
 
         Ref<RHI::IPipelineState> m_deferred_lighting_pass_pso;
 		Ref<RHI::IDescriptorSetLayout> m_deferred_lighting_pass_dlayout;
-		Ref<RHI::IShaderInputLayout> m_deferred_lighting_pass_slayout;
+		Ref<RHI::IPipelineLayout> m_deferred_lighting_pass_playout;
 
         Ref<RHI::ITexture> m_default_skybox;
 
@@ -44,7 +44,7 @@ namespace Luna
         RV execute(RG::IRenderPassContext* ctx) override;
 
         private:
-        Ref<RHI::IBuffer> m_lighting_mode_cb;
+        Ref<RHI::IBuffer> m_lighting_params_cb;
         Ref<DeferredLightingPassGlobalData> m_global_data;
         Ref<RHI::IDescriptorSet> m_ds;
     };

@@ -1,11 +1,4 @@
-#include "CameraParams.hlsl"
-
-struct MeshParams
-{
-    float4x4 model_to_world;
-    float4x4 world_to_model;
-};
-
+#include "GeometryCommon.hlsl"
 struct PSInput
 {
     [[vk::location(0)]]
@@ -21,14 +14,6 @@ struct PSInput
     [[vk::location(5)]]
     float3 world_position : POSITION;
 };
-
-StructuredBuffer<MeshParams> g_mesh_params : register(t1);
-Texture2D g_base_color : register(t2);
-Texture2D g_roughness : register(t3);
-Texture2D g_normal : register(t4);
-Texture2D g_metallic : register(t5);
-Texture2D g_emissive : register(t6);
-SamplerState g_sampler : register(s7);
 
 struct PSOutput
 {

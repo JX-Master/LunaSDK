@@ -178,30 +178,30 @@ struct CD3DX12_DEPTH_STENCIL_DESC : public D3D12_DEPTH_STENCIL_DESC
     {
         DepthEnable = TRUE;
         DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
-        DepthFunc = D3D12_COMPARISON_FUNC_LESS;
+        DepthFunc = D3D12_compare_function_LESS;
         StencilEnable = FALSE;
         StencilReadMask = D3D12_DEFAULT_STENCIL_READ_MASK;
         StencilWriteMask = D3D12_DEFAULT_STENCIL_WRITE_MASK;
         const D3D12_DEPTH_STENCILOP_DESC defaultStencilOp =
-        { D3D12_STENCIL_OP_KEEP, D3D12_STENCIL_OP_KEEP, D3D12_STENCIL_OP_KEEP, D3D12_COMPARISON_FUNC_ALWAYS };
+        { D3D12_STENCIL_OP_KEEP, D3D12_STENCIL_OP_KEEP, D3D12_STENCIL_OP_KEEP, D3D12_compare_function_ALWAYS };
         FrontFace = defaultStencilOp;
         BackFace = defaultStencilOp;
     }
     explicit CD3DX12_DEPTH_STENCIL_DESC(
         BOOL depthEnable,
         D3D12_DEPTH_WRITE_MASK depthWriteMask,
-        D3D12_COMPARISON_FUNC depthFunc,
+        D3D12_compare_function depthFunc,
         BOOL stencilEnable,
         UINT8 stencilReadMask,
         UINT8 stencilWriteMask,
         D3D12_STENCIL_OP frontStencilFailOp,
         D3D12_STENCIL_OP frontStencilDepthFailOp,
         D3D12_STENCIL_OP frontStencilPassOp,
-        D3D12_COMPARISON_FUNC frontStencilFunc,
+        D3D12_compare_function frontStencilFunc,
         D3D12_STENCIL_OP backStencilFailOp,
         D3D12_STENCIL_OP backStencilDepthFailOp,
         D3D12_STENCIL_OP backStencilPassOp,
-        D3D12_COMPARISON_FUNC backStencilFunc )
+        D3D12_compare_function backStencilFunc )
     {
         DepthEnable = depthEnable;
         DepthWriteMask = depthWriteMask;
@@ -249,12 +249,12 @@ struct CD3DX12_DEPTH_STENCIL_DESC1 : public D3D12_DEPTH_STENCIL_DESC1
     {
         DepthEnable = TRUE;
         DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
-        DepthFunc = D3D12_COMPARISON_FUNC_LESS;
+        DepthFunc = D3D12_compare_function_LESS;
         StencilEnable = FALSE;
         StencilReadMask = D3D12_DEFAULT_STENCIL_READ_MASK;
         StencilWriteMask = D3D12_DEFAULT_STENCIL_WRITE_MASK;
         const D3D12_DEPTH_STENCILOP_DESC defaultStencilOp =
-        { D3D12_STENCIL_OP_KEEP, D3D12_STENCIL_OP_KEEP, D3D12_STENCIL_OP_KEEP, D3D12_COMPARISON_FUNC_ALWAYS };
+        { D3D12_STENCIL_OP_KEEP, D3D12_STENCIL_OP_KEEP, D3D12_STENCIL_OP_KEEP, D3D12_compare_function_ALWAYS };
         FrontFace = defaultStencilOp;
         BackFace = defaultStencilOp;
         DepthBoundsTestEnable = FALSE;
@@ -262,18 +262,18 @@ struct CD3DX12_DEPTH_STENCIL_DESC1 : public D3D12_DEPTH_STENCIL_DESC1
     explicit CD3DX12_DEPTH_STENCIL_DESC1(
         BOOL depthEnable,
         D3D12_DEPTH_WRITE_MASK depthWriteMask,
-        D3D12_COMPARISON_FUNC depthFunc,
+        D3D12_compare_function depthFunc,
         BOOL stencilEnable,
         UINT8 stencilReadMask,
         UINT8 stencilWriteMask,
         D3D12_STENCIL_OP frontStencilFailOp,
         D3D12_STENCIL_OP frontStencilDepthFailOp,
         D3D12_STENCIL_OP frontStencilPassOp,
-        D3D12_COMPARISON_FUNC frontStencilFunc,
+        D3D12_compare_function frontStencilFunc,
         D3D12_STENCIL_OP backStencilFailOp,
         D3D12_STENCIL_OP backStencilDepthFailOp,
         D3D12_STENCIL_OP backStencilPassOp,
-        D3D12_COMPARISON_FUNC backStencilFunc,
+        D3D12_compare_function backStencilFunc,
         BOOL depthBoundsTestEnable )
     {
         DepthEnable = depthEnable;
@@ -1105,7 +1105,7 @@ struct CD3DX12_STATIC_SAMPLER_DESC : public D3D12_STATIC_SAMPLER_DESC
          D3D12_TEXTURE_ADDRESS_MODE addressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP,
          FLOAT mipLODBias = 0,
          UINT maxAnisotropy = 16,
-         D3D12_COMPARISON_FUNC comparisonFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL,
+         D3D12_compare_function CompareFunction = D3D12_compare_function_LESS_EQUAL,
          D3D12_STATIC_BORDER_COLOR borderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE,
          FLOAT minLOD = 0.f,
          FLOAT maxLOD = D3D12_FLOAT32_MAX,
@@ -1120,7 +1120,7 @@ struct CD3DX12_STATIC_SAMPLER_DESC : public D3D12_STATIC_SAMPLER_DESC
             addressW,
             mipLODBias,
             maxAnisotropy,
-            comparisonFunc,
+            CompareFunction,
             borderColor,
             minLOD,
             maxLOD,
@@ -1137,7 +1137,7 @@ struct CD3DX12_STATIC_SAMPLER_DESC : public D3D12_STATIC_SAMPLER_DESC
          D3D12_TEXTURE_ADDRESS_MODE addressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP,
          FLOAT mipLODBias = 0,
          UINT maxAnisotropy = 16,
-         D3D12_COMPARISON_FUNC comparisonFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL,
+         D3D12_compare_function CompareFunction = D3D12_compare_function_LESS_EQUAL,
          D3D12_STATIC_BORDER_COLOR borderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE,
          FLOAT minLOD = 0.f,
          FLOAT maxLOD = D3D12_FLOAT32_MAX,
@@ -1151,7 +1151,7 @@ struct CD3DX12_STATIC_SAMPLER_DESC : public D3D12_STATIC_SAMPLER_DESC
         samplerDesc.AddressW = addressW;
         samplerDesc.MipLODBias = mipLODBias;
         samplerDesc.MaxAnisotropy = maxAnisotropy;
-        samplerDesc.ComparisonFunc = comparisonFunc;
+        samplerDesc.CompareFunction = CompareFunction;
         samplerDesc.BorderColor = borderColor;
         samplerDesc.MinLOD = minLOD;
         samplerDesc.MaxLOD = maxLOD;
@@ -1166,7 +1166,7 @@ struct CD3DX12_STATIC_SAMPLER_DESC : public D3D12_STATIC_SAMPLER_DESC
          D3D12_TEXTURE_ADDRESS_MODE addressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP,
          FLOAT mipLODBias = 0,
          UINT maxAnisotropy = 16,
-         D3D12_COMPARISON_FUNC comparisonFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL,
+         D3D12_compare_function CompareFunction = D3D12_compare_function_LESS_EQUAL,
          D3D12_STATIC_BORDER_COLOR borderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE,
          FLOAT minLOD = 0.f,
          FLOAT maxLOD = D3D12_FLOAT32_MAX,
@@ -1182,7 +1182,7 @@ struct CD3DX12_STATIC_SAMPLER_DESC : public D3D12_STATIC_SAMPLER_DESC
             addressW,
             mipLODBias,
             maxAnisotropy,
-            comparisonFunc,
+            CompareFunction,
             borderColor,
             minLOD,
             maxLOD,
@@ -2012,7 +2012,7 @@ inline UINT64 UpdateSubresources(
 }
 
 //------------------------------------------------------------------------------------------------
-inline bool D3D12IsLayoutOpaque( D3D12_TEXTURE_LAYOUT Layout )
+inline bool D3D12IplayoutOpaque( D3D12_TEXTURE_LAYOUT Layout )
 { return Layout == D3D12_TEXTURE_LAYOUT_UNKNOWN || Layout == D3D12_TEXTURE_LAYOUT_64KB_UNDEFINED_SWIZZLE; }
 
 //------------------------------------------------------------------------------------------------

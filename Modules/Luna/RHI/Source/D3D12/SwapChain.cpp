@@ -130,7 +130,7 @@ namespace Luna
 			lucatchret;
 			return ok;
 		}
-		R<Ref<ITexture>> SwapChain::get_current_back_buffer()
+		R<ITexture*> SwapChain::get_current_back_buffer()
 		{
 			lutsassert();
 			lutry

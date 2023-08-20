@@ -7,6 +7,7 @@
 * @author JXMaster
 * @date 2023/2/24
 */
+//#define LUNA_DISABLE_SIMD
 #include "../RHITestBed/RHITestBed.hpp"
 #include <Luna/Runtime/Runtime.hpp>
 #include <Luna/Runtime/Module.hpp>
@@ -33,7 +34,7 @@ struct Vertex
 
 Ref<RHI::IDescriptorSetLayout> dlayout;
 Ref<RHI::IDescriptorSet> desc_set;
-Ref<RHI::IShaderInputLayout> slayout;
+Ref<RHI::IPipelineLayout> playout;
 Ref<RHI::IPipelineState> pso;
 Ref<RHI::ITexture> depth_tex;
 Ref<RHI::IBuffer> vb;
@@ -61,6 +62,8 @@ RV start()
             {
                 float4x4 world_to_proj;
             };
+            Texture2D tex : register(t1);
+            SamplerState tex_sampler : register(s2);
             struct VS_INPUT
             {
                 [[vk::location(0)]]
@@ -83,6 +86,10 @@ RV start()
                 return output;
             })";
         const char ps_shader_code[] = R"(
+            cbuffer vertexBuffer : register(b0)
+            {
+                float4x4 world_to_proj;
+            };
             Texture2D tex : register(t1);
             SamplerState tex_sampler : register(s2);
             struct PS_INPUT
@@ -123,27 +130,25 @@ RV start()
 
         IDescriptorSetLayout* dl = dlayout;
 
-        luset(slayout, dev->new_shader_input_layout(ShaderInputLayoutDesc({&dl, 1}, 
-            ShaderInputLayoutFlag::allow_input_assembler_input_layout)));
+        luset(playout, dev->new_pipeline_layout(PipelineLayoutDesc({&dl, 1}, 
+            PipelineLayoutFlag::allow_input_assembler_input_layout)));
         GraphicsPipelineStateDesc ps_desc;
         ps_desc.primitive_topology = PrimitiveTopology::triangle_list;
 		ps_desc.sample_mask = U32_MAX;
 		ps_desc.blend_state = BlendDesc({ 
-            AttachmentBlendDesc(false, BlendFactor::src_alpha, BlendFactor::inv_src_alpha, BlendOp::add, BlendFactor::inv_src_alpha, BlendFactor::zero, BlendOp::add, ColorWriteMask::all) });
-		ps_desc.rasterizer_state = RasterizerDesc(FillMode::solid, CullMode::back, 0, 0.0f, 0.0f, 0, false, true, false, false, false);
-		ps_desc.depth_stencil_state = DepthStencilDesc(true, true, ComparisonFunc::less_equal, false, 0x00, 0x00, DepthStencilOpDesc(), DepthStencilOpDesc());
+            AttachmentBlendDesc(false, BlendFactor::src_alpha, BlendFactor::one_minus_src_alpha, BlendOp::add, BlendFactor::one_minus_src_alpha, BlendFactor::zero, BlendOp::add, ColorWriteMask::all) });
+		ps_desc.rasterizer_state = RasterizerDesc(FillMode::solid, CullMode::back, 0, 0.0f, 0.0f, false, true, false, false, false);
+		ps_desc.depth_stencil_state = DepthStencilDesc(true, true, CompareFunction::less_equal, false, 0x00, 0x00, DepthStencilOpDesc(), DepthStencilOpDesc());
 		ps_desc.ib_strip_cut_value = IndexBufferStripCutValue::disabled;
-        ps_desc.input_layout = InputLayoutDesc({
-                {
-                    InputBindingDesc(0, sizeof(Vertex), InputRate::per_vertex)
-                },
-                {
-                    InputAttributeDesc("POSITION", 0, 0, 0, 0, Format::rgb32_float),
-                    InputAttributeDesc("TEXCOORD", 0, 1, 0, 12, Format::rg32_float),
-                } });
+        InputBindingDesc bindings[] = {InputBindingDesc(0, sizeof(Vertex), InputRate::per_vertex)};
+        InputAttributeDesc attributes[] = {
+            InputAttributeDesc("POSITION", 0, 0, 0, 0, Format::rgb32_float),
+            InputAttributeDesc("TEXCOORD", 0, 1, 0, 12, Format::rg32_float)
+        };
+        ps_desc.input_layout = InputLayoutDesc({bindings, 1}, {attributes, 2});
 		ps_desc.vs = vs.cspan();
 		ps_desc.ps = ps.cspan();
-		ps_desc.shader_input_layout = slayout;
+		ps_desc.pipeline_layout = playout;
 		ps_desc.num_color_attachments = 1;
 		ps_desc.color_formats[0] = Format::bgra8_unorm;
 		ps_desc.depth_stencil_format = Format::d32_float;
@@ -201,13 +206,13 @@ RV start()
 				CopyResourceData::write_texture(file_tex, SubresourceIndex(0, 0), 0, 0, 0, 
 					image_data.data(), image_desc.width * 4, image_desc.width * image_desc.height * 4, 
 					image_desc.width, image_desc.height, 1)}));
-        desc_set->update_descriptors(
+        luexp(desc_set->update_descriptors(
             {
                 WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(cb)),
                 WriteDescriptorSet::read_texture_view(1, TextureViewDesc::tex2d(file_tex)),
-                WriteDescriptorSet::sampler(2, SamplerDesc(Filter::min_mag_mip_linear, TextureAddressMode::clamp,
+                WriteDescriptorSet::sampler(2, SamplerDesc(Filter::linear, Filter::linear, Filter::linear, TextureAddressMode::clamp,
                         TextureAddressMode::clamp, TextureAddressMode::clamp))
-            });
+            }));
 	}
 	lucatchret;
 	return ok;
@@ -221,7 +226,7 @@ void draw()
         Float3 camera_pos(cosf(camera_rotation / 180.0f * PI) * 3.0f, 1.0f, sinf(camera_rotation / 180.0f * PI) * 3.0f);
         Float4x4 camera_mat = AffineMatrix::make_look_at(camera_pos, Float3(0, 0, 0), Float3(0, 1, 0));
         auto window_sz = get_window()->get_framebuffer_size();
-        camera_mat = mul(camera_mat, ProjectionMatrix::make_perspective_fov(PI / 3.0f, (f32)window_sz.x / (f32)window_sz.y, 0.001f, 100.0f));
+        camera_mat = mul(camera_mat, ProjectionMatrix::make_perspective_fov(PI / 3.0f, (f32)window_sz.x / (f32)window_sz.y, 1.0f, 4.0f));
         void* camera_mapped = nullptr;
         luexp(cb->map(0, 0, &camera_mapped));
         memcpy(camera_mapped, &camera_mat, sizeof(Float4x4));
@@ -230,7 +235,6 @@ void draw()
         using namespace RHI;
 
 		auto cmdbuf = get_command_buffer();
-        cmdbuf->set_context(CommandBufferContextType::graphics);
         cmdbuf->resource_barrier(
             {
                 {cb, BufferStateFlag::automatic, BufferStateFlag::uniform_buffer_vs, ResourceBarrierFlag::none},
@@ -247,12 +251,12 @@ void draw()
         desc.color_attachments[0] = ColorAttachment(get_back_buffer(), LoadOp::clear, StoreOp::store, { 0, 0, 0, 0 });
         desc.depth_stencil_attachment = DepthStencilAttachment(depth_tex, false, LoadOp::clear, StoreOp::store, 1.0f);
         cmdbuf->begin_render_pass(desc);
-        cmdbuf->set_graphics_shader_input_layout(slayout);
+        cmdbuf->set_graphics_pipeline_layout(playout);
         cmdbuf->set_graphics_pipeline_state(pso);
         cmdbuf->set_graphics_descriptor_set(0, desc_set);
-        auto sz = vb->get_desc().size;
+        u32 sz = (u32)vb->get_desc().size;
         cmdbuf->set_vertex_buffers(0, {VertexBufferView(vb, 0, sz, sizeof(Vertex))});
-        sz = ib->get_desc().size;
+        sz = (u32)ib->get_desc().size;
         cmdbuf->set_index_buffer({ ib, 0, 144, Format::r32_uint });
         cmdbuf->set_scissor_rect(RectI(0, 0, (i32)window_sz.x, (i32)window_sz.y));
         cmdbuf->set_viewport(Viewport(0.0f, 0.0f, (f32)window_sz.x, (f32)window_sz.y, 0.0f, 1.0f));
@@ -284,7 +288,7 @@ void cleanup()
 {
 	dlayout.reset();
 	desc_set.reset();
-	slayout.reset();
+	playout.reset();
 	pso.reset();
 	depth_tex.reset();
 	vb.reset();

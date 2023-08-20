@@ -1,3 +1,4 @@
+#include "DepthCommon.hlsl"
 struct PS_INPUT
 {
     [[vk::location(0)]]
@@ -5,9 +6,6 @@ struct PS_INPUT
     [[vk::location(1)]]
     float2 texcoord : TEXCOORD;
 };
-
-Texture2D g_base_color : register(t2);
-SamplerState g_sampler : register(s3);
 
 void main(PS_INPUT i)
 {

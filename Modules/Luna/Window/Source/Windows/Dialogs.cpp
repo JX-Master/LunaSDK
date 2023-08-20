@@ -8,8 +8,6 @@
 * @date 2022/6/6
 */
 #include <Luna/Runtime/PlatformDefines.hpp>
-
-#ifdef LUNA_PLATFORM_WINDOWS
 #define LUNA_WINDOW_API LUNA_EXPORT
 #include "../../MessageBox.hpp"
 #include "../../FileDialog.hpp"
@@ -108,7 +106,7 @@ namespace Luna
 			return MessageBoxButton::ok;
 		}
 
-		LUNA_WINDOW_API R<Vector<Path>> open_file_dialog(const c8* filter, const c8* title, const Path& initial_dir, FileOpenDialogFlag flags)
+		LUNA_WINDOW_API R<Vector<Path>> open_file_dialog(const c8* title, Span<const FileDialogFilter> filters, const Path& initial_dir, FileDialogFlag flags)
 		{
 			Vector<Path> paths;
 			OPENFILENAMEW ofn;
@@ -133,37 +131,57 @@ namespace Luna
 				wtitle = (wchar_t*)alloca(sizeof(wchar_t) * (wt_size + 1));
 				utf8_to_utf16((char16_t*)wtitle, wt_size + 1, title);
 			}
+			Vector<wchar_t> wfilter;
+			for (const FileDialogFilter& f : filters)
+			{
+				const c8* cur = f.name;
+				while (*cur)
+				{
+					c32 ch = utf8_decode_char(cur);
+					wchar_t wch[2];
+					usize wsz = utf16_encode_char((c16*)wch, ch);
+					wfilter.insert_n(wfilter.end(), wch, wsz);
+					cur += utf8_charspan(ch);
+				}
+				wfilter.push_back('\0');
 
-			const char* cur_filter = filter;
-			usize filter_wsize = 0;
-			while (*cur_filter)
-			{
-				usize len = strlen(cur_filter);
-				usize wlen = utf8_to_utf16_len(cur_filter);
-				filter_wsize += wlen + 1;
-				cur_filter += len + 1;
+				for (const c8* ext : f.extensions)
+				{
+					cur = ext;
+					wfilter.push_back('*');
+					wfilter.push_back('.');
+					while (*cur)
+					{
+						c32 ch = utf8_decode_char(cur);
+						wchar_t wch[2];
+						usize wsz = utf16_encode_char((c16*)wch, ch);
+						wfilter.insert_n(wfilter.end(), wch, wsz);
+						cur += utf8_charspan(ch);
+					}
+					wfilter.push_back(';');
+				}
+				if (wfilter.back() == ';')
+				{
+					wfilter.pop_back();
+					wfilter.push_back('\0');
+				}
 			}
-			wchar_t* wfilter = (wchar_t*)alloca((filter_wsize + 1) * sizeof(wchar_t));
-			cur_filter = filter;
-			usize wfilter_cur = 0;
-			while (*cur_filter)
+			if (test_flags(flags, FileDialogFlag::any_file))
 			{
-				usize len = strlen(cur_filter);
-				usize outputted = utf8_to_utf16((char16_t*)wfilter + wfilter_cur, filter_wsize - wfilter_cur + 1, cur_filter);
-				cur_filter += len + 1;
-				wfilter_cur += outputted + 1;
+				const wchar_t f[] = L"All Files\0*.*\0";
+				wfilter.insert_n(wfilter.end(), f, 14);
 			}
-			wfilter[filter_wsize] = '\0';
+			wfilter.push_back('\0');
 			ofn.lpstrFile = out;
 			ofn.nMaxFile = 2048 * sizeof(wchar_t);
-			ofn.lpstrFilter = wfilter;
+			ofn.lpstrFilter = wfilter.data();
 			ofn.nFilterIndex = 1;
 			ofn.lpstrFileTitle = NULL;
 			ofn.nMaxFileTitle = 0;
 			ofn.lpstrInitialDir = nullptr;
 			ofn.lpstrTitle = wtitle;
 			ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_NOCHANGEDIR | OFN_NONETWORKBUTTON;
-			if ((flags & FileOpenDialogFlag::multi_select) != FileOpenDialogFlag::none)
+			if ((flags & FileDialogFlag::multi_select) != FileDialogFlag::none)
 			{
 				ofn.Flags |= OFN_ALLOWMULTISELECT | OFN_EXPLORER;
 			}
@@ -219,20 +237,10 @@ namespace Luna
 			return paths;
 		}
 
-		LUNA_WINDOW_API R<Path> save_file_dialog(const c8* filter, const c8* title, const Path& initial_file_path)
+		LUNA_WINDOW_API R<Path> save_file_dialog(const c8* title, Span<const FileDialogFilter> filters, const Path& initial_file_path, FileDialogFlag flags)
 		{
 			Path ret_path;
 			// Translate filter.
-			const char* cur_filter = filter;
-			usize filter_wsize = 0;
-			while (*cur_filter)
-			{
-				usize len = strlen(cur_filter);
-				usize wlen = utf8_to_utf16_len(cur_filter);
-				filter_wsize += wlen + 1;
-				cur_filter += len + 1;
-			}
-
 			wchar_t* wtitle = nullptr;
 			if (title)
 			{
@@ -240,18 +248,47 @@ namespace Luna
 				wtitle = (wchar_t*)alloca(sizeof(wchar_t) * (wt_size + 1));
 				utf8_to_utf16((char16_t*)wtitle, wt_size + 1, title);
 			}
-
-			wchar_t* wfilter = (wchar_t*)alloca((filter_wsize + 1) * sizeof(wchar_t));
-			cur_filter = filter;
-			usize wfilter_cur = 0;
-			while (*cur_filter)
+			Vector<wchar_t> wfilter;
+			for (const FileDialogFilter& f : filters)
 			{
-				usize len = strlen(cur_filter);
-				usize outputted = utf8_to_utf16((char16_t*)wfilter + wfilter_cur, filter_wsize - wfilter_cur + 1, cur_filter);
-				cur_filter += len + 1;
-				wfilter_cur += outputted + 1;
+				const c8* cur = f.name;
+				while (*cur)
+				{
+					c32 ch = utf8_decode_char(cur);
+					wchar_t wch[2];
+					usize wsz = utf16_encode_char((c16*)wch, ch);
+					wfilter.insert_n(wfilter.end(), wch, wsz);
+					cur += utf8_charspan(ch);
+				}
+				wfilter.push_back('\0');
+
+				for (const c8* ext : f.extensions)
+				{
+					cur = ext;
+					wfilter.push_back('*');
+					wfilter.push_back('.');
+					while (*cur)
+					{
+						c32 ch = utf8_decode_char(cur);
+						wchar_t wch[2];
+						usize wsz = utf16_encode_char((c16*)wch, ch);
+						wfilter.insert_n(wfilter.end(), wch, wsz);
+						cur += utf8_charspan(ch);
+					}
+					wfilter.push_back(';');
+				}
+				if (wfilter.back() == ';')
+				{
+					wfilter.pop_back();
+					wfilter.push_back('\0');
+				}
 			}
-			wfilter[filter_wsize] = '\0';
+			if (test_flags(flags, FileDialogFlag::any_file))
+			{
+				const wchar_t f[] = L"All Files\0*.*\0";
+				wfilter.insert_n(wfilter.end(), f, 14);
+			}
+			wfilter.push_back('\0');
 			// Translate initial path if have.
 			wchar_t out[1024];
 			if (initial_file_path != Path())
@@ -269,7 +306,7 @@ namespace Luna
 			ofn.hwndOwner = NULL;
 			ofn.lpstrFile = out;
 			ofn.nMaxFile = 1024;
-			ofn.lpstrFilter = wfilter;
+			ofn.lpstrFilter = wfilter.data();
 			ofn.nFilterIndex = 1;
 			ofn.lpstrDefExt = NULL;
 			ofn.lpstrFileTitle = NULL;
@@ -367,5 +404,3 @@ namespace Luna
 		}
 	}
 }
-
-#endif

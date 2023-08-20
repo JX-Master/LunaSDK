@@ -29,10 +29,10 @@ namespace Luna
 				DescriptorSetLayoutBinding(DescriptorType::read_buffer_view, 1, 1, ShaderVisibilityFlag::vertex) })));
 
 			auto dlayout = m_debug_mesh_renderer_dlayout.get();
-			luset(m_debug_mesh_renderer_slayout, device->new_shader_input_layout(ShaderInputLayoutDesc({ &dlayout, 1 },
-				ShaderInputLayoutFlag::allow_input_assembler_input_layout)));
+			luset(m_debug_mesh_renderer_playout, device->new_pipeline_layout(PipelineLayoutDesc({ &dlayout, 1 },
+				PipelineLayoutFlag::allow_input_assembler_input_layout)));
 
-			lulet(vs_blob, compile_shader("Shaders/GeometryVert.hlsl", ShaderCompiler::ShaderType::vertex));
+			lulet(vs_blob, compile_shader("Shaders/WireframeVert.hlsl", ShaderCompiler::ShaderType::vertex));
 
 			static const char* pixelShader =
 				R"(struct PS_INPUT
@@ -70,9 +70,9 @@ namespace Luna
 			ps_desc.primitive_topology = PrimitiveTopology::triangle_list;
 			ps_desc.sample_mask = U32_MAX;
 			ps_desc.blend_state = BlendDesc({ AttachmentBlendDesc(true, BlendFactor::src_alpha,
-				BlendFactor::inv_src_alpha, BlendOp::add, BlendFactor::one, BlendFactor::zero, BlendOp::add, ColorWriteMask::all) });
-			ps_desc.rasterizer_state = RasterizerDesc(FillMode::wireframe, CullMode::none, 0, 0.0f, 0.0f, 0, false, true, false, true, false);
-			ps_desc.depth_stencil_state = DepthStencilDesc(false, false, ComparisonFunc::always, false, 0x00, 0x00, DepthStencilOpDesc(), DepthStencilOpDesc());
+				BlendFactor::one_minus_src_alpha, BlendOp::add, BlendFactor::one, BlendFactor::zero, BlendOp::add, ColorWriteMask::all) });
+			ps_desc.rasterizer_state = RasterizerDesc(FillMode::wireframe, CullMode::none, 0.0f, 0.0f, 0.0f, false, true, false, true, false);
+			ps_desc.depth_stencil_state = DepthStencilDesc(false, false, CompareFunction::always, false, 0x00, 0x00, DepthStencilOpDesc(), DepthStencilOpDesc());
 			ps_desc.ib_strip_cut_value = IndexBufferStripCutValue::disabled;
 			Vector<InputAttributeDesc> attributes;
 			get_vertex_input_layout_desc(attributes);
@@ -81,7 +81,7 @@ namespace Luna
 			ps_desc.input_layout.attributes = { attributes.data(), attributes.size() };
 			ps_desc.vs = vs_blob.cspan();
 			ps_desc.ps = ps_blob.cspan();
-			ps_desc.shader_input_layout = m_debug_mesh_renderer_slayout;
+			ps_desc.pipeline_layout = m_debug_mesh_renderer_playout;
 			ps_desc.num_color_attachments = 1;
 			ps_desc.color_formats[0] = Format::rgba8_unorm;
 			luset(m_debug_mesh_renderer_pso, device->new_graphics_pipeline_state(ps_desc));
@@ -110,11 +110,18 @@ namespace Luna
             // Debug wireframe pass.
 			RenderPassDesc render_pass;
 			render_pass.color_attachments[0] = ColorAttachment(output_tex, LoadOp::clear, StoreOp::store, Float4U(0.0f));
+            u32 time_query_begin, time_query_end;
+            auto query_heap = ctx->get_timestamp_query_heap(&time_query_begin, &time_query_end);
+            if(query_heap)
+            {
+                render_pass.timestamp_query_heap = query_heap;
+                render_pass.timestamp_query_begin_pass_write_index = time_query_begin;
+                render_pass.timestamp_query_end_pass_write_index = time_query_end;
+            }
 			auto render_desc = output_tex->get_desc();
-			cmdbuf->set_context(CommandBufferContextType::graphics);
 			cmdbuf->resource_barrier({}, { {output_tex, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::color_attachment_write, ResourceBarrierFlag::discard_content} });
 			cmdbuf->begin_render_pass(render_pass);
-			cmdbuf->set_graphics_shader_input_layout(m_global_data->m_debug_mesh_renderer_slayout);
+			cmdbuf->set_graphics_pipeline_layout(m_global_data->m_debug_mesh_renderer_playout);
 			cmdbuf->set_graphics_pipeline_state(m_global_data->m_debug_mesh_renderer_pso);
 			cmdbuf->set_viewport(Viewport(0.0f, 0.0f, (f32)render_desc.width, (f32)render_desc.height, 0.0f, 1.0f));
 			cmdbuf->set_scissor_rect(RectI(0, 0, (i32)render_desc.width, (i32)render_desc.height));
@@ -137,7 +144,7 @@ namespace Luna
 					mesh->vb_count * sizeof(Vertex), sizeof(Vertex));
 
 				cmdbuf->set_vertex_buffers(0, { &vb_view, 1 });
-				cmdbuf->set_index_buffer({mesh->ib, 0, mesh->ib_count * sizeof(u32), Format::r32_uint});
+				cmdbuf->set_index_buffer({mesh->ib, 0, (u32)(mesh->ib_count * sizeof(u32)), Format::r32_uint});
 
 				u32 num_pieces = (u32)mesh->pieces.size();
 				for (u32 j = 0; j < num_pieces; ++j)

@@ -32,7 +32,7 @@ namespace Luna
 
 		MeshImporter() {}
 
-		bool m_open;
+		bool m_open = true;
 
 		virtual void on_render() override;
 		virtual bool closed() override
@@ -228,7 +228,7 @@ namespace Luna
 	void MeshImporter::on_render()
 	{
 		char title[32];
-		sprintf_s(title, "Obj Mesh Importer###%d", (u32)(usize)this);
+		snprintf(title, 32, "Obj Mesh Importer###%d", (u32)(usize)this);
 
 		ImGui::Begin(title, &m_open, ImGuiWindowFlags_NoCollapse);
 
@@ -236,8 +236,11 @@ namespace Luna
 		{
 			lutry
 			{
-				lulet(file_path, Window::open_file_dialog("Obj File\0*.obj\0\0",
-					"Select Source File"));
+				Window::FileDialogFilter filter;
+				filter.name = "Obj File";
+				const c8* extension = "obj";
+				filter.extensions = {&extension, 1};
+				lulet(file_path, Window::open_file_dialog("Select Source File", {&filter, 1}));
 				// Open file.
 				auto path = file_path[0];
 

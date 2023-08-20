@@ -25,14 +25,14 @@ namespace Luna
 					DescriptorSetLayoutBinding(DescriptorType::read_write_buffer_view, 0, 1, ShaderVisibilityFlag::compute)
 					})));
 				auto dlayout = m_histogram_clear_pass_dlayout.get();
-				luset(m_histogram_clear_pass_slayout, device->new_shader_input_layout(ShaderInputLayoutDesc({ &dlayout, 1 },
-					ShaderInputLayoutFlag::deny_vertex_shader_access |
-					ShaderInputLayoutFlag::deny_pixel_shader_access)));
+				luset(m_histogram_clear_pass_playout, device->new_pipeline_layout(PipelineLayoutDesc({ &dlayout, 1 },
+					PipelineLayoutFlag::deny_vertex_shader_access |
+					PipelineLayoutFlag::deny_pixel_shader_access)));
 
 				lulet(cs_blob, compile_shader("Shaders/LumHistogramClear.hlsl", ShaderCompiler::ShaderType::compute));
 				ComputePipelineStateDesc ps_desc;
 				ps_desc.cs = cs_blob.cspan();
-				ps_desc.shader_input_layout = m_histogram_clear_pass_slayout;
+				ps_desc.pipeline_layout = m_histogram_clear_pass_playout;
 				luset(m_histogram_clear_pass_pso, device->new_compute_pipeline_state(ps_desc));
 			}
 			// Histogram Lum Pass.
@@ -43,14 +43,14 @@ namespace Luna
 					DescriptorSetLayoutBinding(DescriptorType::read_write_buffer_view, 2, 1, ShaderVisibilityFlag::compute)
 					})));
 				auto dlayout = m_histogram_pass_dlayout.get();
-				luset(m_histogram_pass_slayout, device->new_shader_input_layout(ShaderInputLayoutDesc({ &dlayout, 1 },
-					ShaderInputLayoutFlag::deny_vertex_shader_access |
-					ShaderInputLayoutFlag::deny_pixel_shader_access)));
+				luset(m_histogram_pass_playout, device->new_pipeline_layout(PipelineLayoutDesc({ &dlayout, 1 },
+					PipelineLayoutFlag::deny_vertex_shader_access |
+					PipelineLayoutFlag::deny_pixel_shader_access)));
 
 				lulet(cs_blob, compile_shader("Shaders/LumHistogram.hlsl", ShaderCompiler::ShaderType::compute));
 				ComputePipelineStateDesc ps_desc;
 				ps_desc.cs = cs_blob.cspan();
-				ps_desc.shader_input_layout = m_histogram_pass_slayout;
+				ps_desc.pipeline_layout = m_histogram_pass_playout;
 				luset(m_histogram_pass_pso, device->new_compute_pipeline_state(ps_desc));
 			}
 			// Histogram Collect Pass.
@@ -61,14 +61,14 @@ namespace Luna
 					DescriptorSetLayoutBinding(DescriptorType::read_write_texture_view, 2, 1, ShaderVisibilityFlag::compute)
 					})));
 				auto dlayout = m_histogram_collect_pass_dlayout.get();
-				luset(m_histogram_collect_pass_slayout, device->new_shader_input_layout(ShaderInputLayoutDesc({ &dlayout, 1 },
-					ShaderInputLayoutFlag::deny_vertex_shader_access |
-					ShaderInputLayoutFlag::deny_pixel_shader_access)));
+				luset(m_histogram_collect_pass_playout, device->new_pipeline_layout(PipelineLayoutDesc({ &dlayout, 1 },
+					PipelineLayoutFlag::deny_vertex_shader_access |
+					PipelineLayoutFlag::deny_pixel_shader_access)));
 
 				lulet(cs_blob, compile_shader("Shaders/LumHistogramCollect.hlsl", ShaderCompiler::ShaderType::compute));
 				ComputePipelineStateDesc ps_desc;
 				ps_desc.cs = cs_blob.cspan();
-				ps_desc.shader_input_layout = m_histogram_collect_pass_slayout;
+				ps_desc.pipeline_layout = m_histogram_collect_pass_playout;
 				luset(m_histogram_collect_pass_pso, device->new_compute_pipeline_state(ps_desc));
 			}
 			//Tone Mapping Pass.
@@ -80,14 +80,14 @@ namespace Luna
 					DescriptorSetLayoutBinding(DescriptorType::read_write_texture_view, 3, 1, ShaderVisibilityFlag::compute)
 					})));
 				auto dlayout = m_tone_mapping_pass_dlayout.get();
-				luset(m_tone_mapping_pass_slayout, device->new_shader_input_layout(ShaderInputLayoutDesc({ &dlayout, 1 },
-					ShaderInputLayoutFlag::deny_vertex_shader_access |
-					ShaderInputLayoutFlag::deny_pixel_shader_access)));
+				luset(m_tone_mapping_pass_playout, device->new_pipeline_layout(PipelineLayoutDesc({ &dlayout, 1 },
+					PipelineLayoutFlag::deny_vertex_shader_access |
+					PipelineLayoutFlag::deny_pixel_shader_access)));
 
 				lulet(cs_blob, compile_shader("Shaders/ToneMappingCS.hlsl", ShaderCompiler::ShaderType::compute));
 				ComputePipelineStateDesc ps_desc;
 				ps_desc.cs = cs_blob.cspan();
-				ps_desc.shader_input_layout = m_tone_mapping_pass_slayout;
+				ps_desc.pipeline_layout = m_tone_mapping_pass_playout;
 				luset(m_tone_mapping_pass_pso, device->new_compute_pipeline_state(ps_desc));
 			}
         }
@@ -153,27 +153,36 @@ namespace Luna
 			constexpr f32 max_brightness = 20.0f;
             // Tone mapping pass.
 			{
-				cmdbuf->set_context(CommandBufferContextType::compute);
+                ComputePassDesc compute_pass;
+                u32 time_query_begin, time_query_end;
+                auto query_heap = ctx->get_timestamp_query_heap(&time_query_begin, &time_query_end);
+                if(query_heap)
+                {
+                    compute_pass.timestamp_query_heap = query_heap;
+                    compute_pass.timestamp_query_begin_pass_write_index = time_query_begin;
+                    compute_pass.timestamp_query_end_pass_write_index = time_query_end;
+                }
+				cmdbuf->begin_compute_pass(compute_pass);
 				Ref<IBuffer> m_histogram_buffer;
 				luset(m_histogram_buffer, ctx->allocate_temporary_resource(RG::ResourceDesc::as_buffer(MemoryType::local, BufferDesc(BufferUsageFlag::read_write_buffer, sizeof(u32) * 256))));
 				cmdbuf->attach_device_object(m_histogram_buffer);
 				// Histogram Clear Pass.
 				{
-					cmdbuf->set_compute_shader_input_layout(m_global_data->m_histogram_clear_pass_slayout);
+					cmdbuf->set_compute_pipeline_layout(m_global_data->m_histogram_clear_pass_playout);
 					cmdbuf->set_compute_pipeline_state(m_global_data->m_histogram_clear_pass_pso);
 					cmdbuf->resource_barrier({
 							BufferBarrier(m_histogram_buffer, BufferStateFlag::automatic, BufferStateFlag::shader_write_cs)
 						}, {});
 					auto vs = m_histogram_clear_ds.get();
-					vs->update_descriptors({
+					luexp(vs->update_descriptors({
 						WriteDescriptorSet::read_write_buffer_view(0, BufferViewDesc::typed_buffer(m_histogram_buffer, 0, 256, Format::r32_uint))
-						});
+						}));
 					cmdbuf->set_compute_descriptor_sets(0, { &vs, 1 });
 					cmdbuf->dispatch(1, 1, 1);
 				}
 				// Histogram Lum Pass.
 				{
-					cmdbuf->set_compute_shader_input_layout(m_global_data->m_histogram_pass_slayout);
+					cmdbuf->set_compute_pipeline_layout(m_global_data->m_histogram_pass_playout);
 					cmdbuf->set_compute_pipeline_state(m_global_data->m_histogram_pass_pso);
 					LumHistogramParams* mapped = nullptr;
 					luexp(m_histogram_cb->map(0, 0, (void**)&mapped));
@@ -189,19 +198,19 @@ namespace Luna
 							TextureBarrier(lighting_tex, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::shader_read_cs)
 						});
 					auto vs = m_histogram_ds.get();
-					vs->update_descriptors({
+					luexp(vs->update_descriptors({
 						WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(m_histogram_cb, 0, (u32)align_upper(sizeof(LumHistogramParams), cb_align))),
 						WriteDescriptorSet::read_texture_view(1, TextureViewDesc::tex2d(lighting_tex)),
 						WriteDescriptorSet::read_write_buffer_view(2, BufferViewDesc::typed_buffer(m_histogram_buffer, 0, 256, Format::r32_uint))
-						});
+						}));
 					cmdbuf->set_compute_descriptor_sets(0, { &vs, 1 });
-					cmdbuf->dispatch(align_upper(lighting_tex_desc.width, 16) / 16, 
+					cmdbuf->dispatch(align_upper(lighting_tex_desc.width, 16) / 16,
 						align_upper(lighting_tex_desc.height, 16) / 16, 1);
 				}
 
 				// Histogram Collect Lum passes.
 				{
-					cmdbuf->set_compute_shader_input_layout(m_global_data->m_histogram_collect_pass_slayout);
+					cmdbuf->set_compute_pipeline_layout(m_global_data->m_histogram_collect_pass_playout);
 					cmdbuf->set_compute_pipeline_state(m_global_data->m_histogram_collect_pass_pso);
 					LumHistogramCollectParams* mapped = nullptr;
 					luexp(m_histogram_collect_cb->map(0, 0, (void**)&mapped));
@@ -217,11 +226,11 @@ namespace Luna
 							TextureBarrier(m_lum_tex, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::shader_read_cs | TextureStateFlag::shader_write_cs)
 						});
 					auto vs = m_histogram_collect_ds.get();
-					vs->update_descriptors({
+                    luexp(vs->update_descriptors({
 						WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(m_histogram_collect_cb, 0, (u32)align_upper(sizeof(LumHistogramCollectParams), cb_align))),
 						WriteDescriptorSet::read_write_buffer_view(1, BufferViewDesc::typed_buffer(m_histogram_buffer, 0, 256, Format::r32_uint)),
 						WriteDescriptorSet::read_write_texture_view(2, TextureViewDesc::tex2d(m_lum_tex))
-						});
+						}));
 					cmdbuf->set_compute_descriptor_sets(0, { &vs, 1 });
 					cmdbuf->dispatch(1, 1, 1);
 				}
@@ -233,7 +242,7 @@ namespace Luna
 					mapped->exposure = exposure;
 					mapped->auto_exposure = auto_exposure ? 1 : 0;
 					m_tone_mapping_cb->unmap(0, sizeof(ToneMappingParams));
-					cmdbuf->set_compute_shader_input_layout(m_global_data->m_tone_mapping_pass_slayout);
+					cmdbuf->set_compute_pipeline_layout(m_global_data->m_tone_mapping_pass_playout);
 					cmdbuf->set_compute_pipeline_state(m_global_data->m_tone_mapping_pass_pso);
 					cmdbuf->resource_barrier({
 						{m_tone_mapping_cb, BufferStateFlag::automatic, BufferStateFlag::uniform_buffer_cs, ResourceBarrierFlag::none}
@@ -243,15 +252,16 @@ namespace Luna
 						{output_tex, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::shader_read_cs | TextureStateFlag::shader_write_cs, ResourceBarrierFlag::none}
 					});
 					auto vs = m_tone_mapping_pass_ds.get();
-					vs->update_descriptors({
+					luexp(vs->update_descriptors({
 						WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(m_tone_mapping_cb, 0, (u32)align_upper(sizeof(ToneMappingParams), cb_align))),
 						WriteDescriptorSet::read_texture_view(1, TextureViewDesc::tex2d(lighting_tex)),
 						WriteDescriptorSet::read_texture_view(2, TextureViewDesc::tex2d(m_lum_tex)),
 						WriteDescriptorSet::read_write_texture_view(3, TextureViewDesc::tex2d(output_tex))
-						});
+						}));
 					cmdbuf->set_compute_descriptor_sets(0, { &vs, 1 });
 					cmdbuf->dispatch((u32)align_upper(output_tex_desc.width, 8) / 8, (u32)align_upper(output_tex_desc.height, 8) / 8, 1);
 				}
+				cmdbuf->end_compute_pass();
 			}
         }
         lucatchret;

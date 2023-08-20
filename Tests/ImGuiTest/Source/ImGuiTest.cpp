@@ -67,7 +67,7 @@ void run()
 			continue;
 		}
 		// Recreate the back buffer if needed.
-		auto sz = window->get_size();
+		auto sz = window->get_framebuffer_size();
 		auto ww = sz.x;
 		auto wh = sz.y;
 		if (ww != w || wh != h)
@@ -82,13 +82,17 @@ void run()
 		ImGui::NewFrame();
 
 		ImGui::ShowDemoWindow();
+        
+        auto window_size = window->get_size();
+        ImGui::Text("Window Size: %ux%u", window_size.x, window_size.y);
+        ImGui::Text("Framebuffer Size: %ux%u", sz.x, sz.y);
+        ImGui::Text("DPI Scale: %f", window->get_dpi_scale_factor());
 
 		ImGui::Render();
 		
 		auto back_buffer = swap_chain->get_current_back_buffer().get();
 		RenderPassDesc desc;
 		desc.color_attachments[0] = ColorAttachment(back_buffer, LoadOp::clear, StoreOp::store, { 0.0f, 0.0f, 0.0f, 1.0f });
-		cmdbuf->set_context(CommandBufferContextType::graphics);
 		cmdbuf->begin_render_pass(desc);
 		cmdbuf->end_render_pass();
 		ImGuiUtils::render_draw_data(ImGui::GetDrawData(), cmdbuf, back_buffer);

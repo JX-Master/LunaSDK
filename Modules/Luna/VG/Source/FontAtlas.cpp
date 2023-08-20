@@ -24,7 +24,8 @@ namespace Luna
 				COMMAND_LINE_TO, 5.0f, 0.0f,
 				COMMAND_LINE_TO, 0.0f, 0.0f,
 			};
-			usize index = m_shape_atlas->add_shape({ points, 15 }, &RectF(0.0f, 0.0f, 5.0f, 10.0f));
+            RectF rect = RectF(0.0f, 0.0f, 5.0f, 10.0f);
+			usize index = m_shape_atlas->add_shape({ points, 15 }, &rect);
 			GlyphData data;
 			data.m_glyph = Font::INVALID_GLYPH;
 			data.m_shape_index = index;
@@ -80,7 +81,8 @@ namespace Luna
 				}
 			}
 			RectI rect = m_font->get_glyph_bounding_box(m_font_index, glyph);
-			usize shape_index = m_shape_atlas->add_shape({ font_data.data(), font_data.size() }, &RectF((f32)rect.offset_x, (f32)rect.offset_y, (f32)rect.width, (f32)rect.height));
+            RectF rectf = RectF((f32)rect.offset_x, (f32)rect.offset_y, (f32)rect.width, (f32)rect.height);
+			usize shape_index = m_shape_atlas->add_shape({ font_data.data(), font_data.size() }, &rectf);
 			GlyphData data;
 			data.m_shape_index = shape_index;
 			data.m_glyph = glyph;

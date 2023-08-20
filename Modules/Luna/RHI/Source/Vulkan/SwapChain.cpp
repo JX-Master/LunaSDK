@@ -10,7 +10,6 @@
 #include <Luna/Runtime/PlatformDefines.hpp>
 #include "SwapChain.hpp"
 #include <GLFW/glfw3.h>
-#include "VulkanRHI.hpp"
 #include <Luna/Window/GLFW/GLFWWindow.hpp>
 #include "Instance.hpp"
 namespace Luna
@@ -172,7 +171,7 @@ namespace Luna
 				m_surface = VK_NULL_HANDLE;
 			}
 		}
-		R<Ref<ITexture>> SwapChain::get_current_back_buffer()
+		R<ITexture*> SwapChain::get_current_back_buffer()
 		{
 			lutry
 			{

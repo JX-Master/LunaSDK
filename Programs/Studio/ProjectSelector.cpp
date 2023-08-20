@@ -170,14 +170,15 @@ namespace Luna
 				}
 
 				// Recreate the back buffer if needed.
-				auto sz = window->get_size();
-				if (sz.x && sz.y && (sz.x != w || sz.y != h))
+				auto fb_sz = window->get_framebuffer_size();
+				if (fb_sz.x && fb_sz.y && (fb_sz.x != w || fb_sz.y != h))
 				{
-					luexp(swap_chain->reset({sz.x, sz.y, 2, RHI::Format::unknown, true}));
+					luexp(swap_chain->reset({fb_sz.x, fb_sz.y, 2, RHI::Format::unknown, true}));
 					f32 clear_color[] = { 0.0f, 0.0f, 0.0f, 1.0f };
-					w = sz.x;
-					h = sz.y;
+					w = fb_sz.x;
+					h = fb_sz.y;
 				}
+                auto sz = window->get_size();
 
 				ImGuiUtils::update_io();
 				ImGui::NewFrame();
@@ -213,7 +214,11 @@ namespace Luna
 					{
 						if (Button("Browse Project File"))
 						{
-							auto rpath = Window::open_file_dialog("Luna Project File\0*.lunaproj\0\0", "Select Project File");
+							Window::FileDialogFilter filter;
+							filter.name = "Luna Project File";
+							const c8* extension = "lunaproj";
+							filter.extensions = {&extension, 1};
+							auto rpath = Window::open_file_dialog("Select Project File", {&filter, 1});
 							if (succeeded(rpath) && !rpath.get().empty())
 							{
 								path = rpath.get()[0];
@@ -284,7 +289,6 @@ namespace Luna
 				RHI::RenderPassDesc render_pass;
 				lulet(back_buffer, swap_chain->get_current_back_buffer());
 				render_pass.color_attachments[0] = RHI::ColorAttachment(back_buffer, RHI::LoadOp::clear, RHI::StoreOp::store, clear_color);
-				cmdbuf->set_context(RHI::CommandBufferContextType::graphics);
 				cmdbuf->begin_render_pass(render_pass);
 				cmdbuf->end_render_pass();
 				luexp(ImGuiUtils::render_draw_data(ImGui::GetDrawData(), cmdbuf, back_buffer));

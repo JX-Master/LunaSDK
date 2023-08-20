@@ -108,7 +108,7 @@ namespace Luna
 		R<ID3D12DescriptorHeap*> TextureResource::get_rtv(const TextureViewDesc& desc)
 		{
 			auto validated_desc = desc;
-			validate_texture_view_desc(validated_desc);
+			validate_texture_view_desc(m_desc, validated_desc);
 			LockGuard guard(m_views_lock);
 			for (auto& v : m_rtvs)
 			{
@@ -182,7 +182,7 @@ namespace Luna
 		R<ID3D12DescriptorHeap*> TextureResource::get_dsv(const TextureViewDesc& desc)
 		{
 			auto validated_desc = desc;
-			validate_texture_view_desc(validated_desc);
+			validate_texture_view_desc(m_desc, validated_desc);
 			LockGuard guard(m_views_lock);
 			for (auto& v : m_dsvs)
 			{
@@ -264,9 +264,10 @@ namespace Luna
 			lutry
 			{
 				m_desc = desc;
-				D3D12_RESOURCE_DESC rd = encode_texture_desc(desc);
+				luexp(validate_texture_desc(m_desc));
+				D3D12_RESOURCE_DESC rd = encode_texture_desc(m_desc);
 				D3D12MA::ALLOCATION_DESC allocation_desc{};
-				if (test_flags(desc.flags, ResourceFlag::allow_aliasing))
+				if (test_flags(m_desc.flags, ResourceFlag::allow_aliasing))
 				{
 					allocation_desc.Flags |= D3D12MA::ALLOCATION_FLAG_CAN_ALIAS;
 				}
@@ -317,8 +318,9 @@ namespace Luna
 			lutry
 			{
 				m_desc = desc;
+				luexp(validate_texture_desc(m_desc));
 				m_desc.flags |= ResourceFlag::allow_aliasing;
-				D3D12_RESOURCE_DESC rd = encode_texture_desc(desc);
+				D3D12_RESOURCE_DESC rd = encode_texture_desc(m_desc);
 				D3D12_RESOURCE_STATES state = D3D12_RESOURCE_STATE_COMMON;
 				D3D12_CLEAR_VALUE* pcv = NULL;
 				D3D12_CLEAR_VALUE cv;

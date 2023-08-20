@@ -7,7 +7,7 @@
 * @author JXMaster
 * @date 2022/10/27
 */
-#include "VulkanRHI.hpp"
+#include "Common.hpp"
 #include <Luna/Runtime/HashSet.hpp>
 #include "../RHI.hpp"
 #include "Device.hpp"
@@ -23,7 +23,7 @@
 #include "QueryHeap.hpp"
 #include "Resource.hpp"
 #include "Sampler.hpp"
-#include "ShaderInputLayout.hpp"
+#include "PipelineLayout.hpp"
 #include "SwapChain.hpp"
 namespace Luna
 {
@@ -44,6 +44,7 @@ namespace Luna
 				register_boxed_type<Device>();
 				impl_interface_for_type<Device, IDevice>();
 				register_boxed_type<DeviceMemory>();
+				impl_interface_for_type<DeviceMemory, IDeviceMemory, IDeviceChild>();
 				register_boxed_type<Fence>();
 				impl_interface_for_type<Fence, IFence, IDeviceChild>();
 				register_boxed_type<ImageView>();
@@ -51,15 +52,13 @@ namespace Luna
 				impl_interface_for_type<PipelineState, IPipelineState, IDeviceChild>();
 				register_boxed_type<QueryHeap>();
 				impl_interface_for_type<QueryHeap, IQueryHeap, IDeviceChild>();
-				register_boxed_type<DeviceMemory>();
-				impl_interface_for_type<DeviceMemory, IDeviceMemory, IDeviceChild>();
 				register_boxed_type<BufferResource>();
 				impl_interface_for_type<BufferResource, IBuffer, IResource, IDeviceChild>();
 				register_boxed_type<ImageResource>();
 				impl_interface_for_type<ImageResource, ITexture, IResource, IDeviceChild>();
 				register_boxed_type<Sampler>();
-				register_boxed_type<ShaderInputLayout>();
-				impl_interface_for_type<ShaderInputLayout, IShaderInputLayout, IDeviceChild>();
+				register_boxed_type<PipelineLayout>();
+				impl_interface_for_type<PipelineLayout, IPipelineLayout, IDeviceChild>();
 				register_boxed_type<SwapChain>();
 				impl_interface_for_type<SwapChain, ISwapChain, IDeviceChild>();
 

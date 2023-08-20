@@ -146,24 +146,24 @@ namespace Luna
 		store_f4x4(r.r[0].m, mat);
 		return r;
 #else
-		Float4x4 r;
-		r.r[0].x = -r[0].x;
-		r.r[0].y = -r[0].y;
-		r.r[0].z = -r[0].z;
-		r.r[0].w = -r[0].w;
-		r.r[1].x = -r[1].x;
-		r.r[1].y = -r[1].y;
-		r.r[1].z = -r[1].z;
-		r.r[1].w = -r[1].w;
-		r.r[2].x = -r[2].x;
-		r.r[2].y = -r[2].y;
-		r.r[2].z = -r[2].z;
-		r.r[2].w = -r[2].w;
-		r.r[3].x = -r[3].x;
-		r.r[3].y = -r[3].y;
-		r.r[3].z = -r[3].z;
-		r.r[3].w = -r[3].w;
-		return r;
+		Float4x4 ret;
+        ret.r[0].x = -r[0].x;
+        ret.r[0].y = -r[0].y;
+        ret.r[0].z = -r[0].z;
+        ret.r[0].w = -r[0].w;
+        ret.r[1].x = -r[1].x;
+        ret.r[1].y = -r[1].y;
+		ret.r[1].z = -r[1].z;
+		ret.r[1].w = -r[1].w;
+		ret.r[2].x = -r[2].x;
+        ret.r[2].y = -r[2].y;
+        ret.r[2].z = -r[2].z;
+        ret.r[2].w = -r[2].w;
+        ret.r[3].x = -r[3].x;
+        ret.r[3].y = -r[3].y;
+        ret.r[3].z = -r[3].z;
+        ret.r[3].w = -r[3].w;
+		return ret;
 #endif
 	}
 	inline Float4x4& Float4x4::operator+=(const Float4x4& rhs)
@@ -730,10 +730,10 @@ namespace Luna
 		return result;
 #else
 		return Float4(
-			vec.x * m.r[0].x + vec.y * m.r[1].x + vec.z * m.r[2].x + vec.w * m.r[3].x,
-			vec.x * m.r[0].y + vec.y * m.r[1].y + vec.z * m.r[2].y + vec.w * m.r[3].y,
-			vec.x * m.r[0].z + vec.y * m.r[1].z + vec.z * m.r[2].z + vec.w * m.r[3].z,
-			vec.x * m.r[0].w + vec.y * m.r[1].w + vec.z * m.r[2].w + vec.w * m.r[3].w);
+			vec.x * mat.r[0].x + vec.y * mat.r[1].x + vec.z * mat.r[2].x + vec.w * mat.r[3].x,
+			vec.x * mat.r[0].y + vec.y * mat.r[1].y + vec.z * mat.r[2].y + vec.w * mat.r[3].y,
+			vec.x * mat.r[0].z + vec.y * mat.r[1].z + vec.z * mat.r[2].z + vec.w * mat.r[3].z,
+			vec.x * mat.r[0].w + vec.y * mat.r[1].w + vec.z * mat.r[2].w + vec.w * mat.r[3].w);
 #endif
 	}
 	inline Float4 mul(const Float4x4& mat, const Float4& vec)
@@ -762,10 +762,10 @@ namespace Luna
 		return result;
 #else
 		return Float4(
-			vec.x * m.r[0].x + vec.y * m.r[0].y + vec.z * m.r[0].z + vec.w * m.r[0].w,
-			vec.x * m.r[1].x + vec.y * m.r[1].y + vec.z * m.r[1].z + vec.w * m.r[1].w,
-			vec.x * m.r[2].x + vec.y * m.r[2].y + vec.z * m.r[2].z + vec.w * m.r[2].w,
-			vec.x * m.r[3].x + vec.y * m.r[3].y + vec.z * m.r[3].z + vec.w * m.r[3].w);
+			vec.x * mat.r[0].x + vec.y * mat.r[0].y + vec.z * mat.r[0].z + vec.w * mat.r[0].w,
+			vec.x * mat.r[1].x + vec.y * mat.r[1].y + vec.z * mat.r[1].z + vec.w * mat.r[1].w,
+			vec.x * mat.r[2].x + vec.y * mat.r[2].y + vec.z * mat.r[2].z + vec.w * mat.r[2].w,
+			vec.x * mat.r[3].x + vec.y * mat.r[3].y + vec.z * mat.r[3].z + vec.w * mat.r[3].w);
 #endif
 	}
 	inline Float4x4 mul(const Float4x4& m1, const Float4x4& m2)
@@ -870,7 +870,7 @@ namespace Luna
 		r.r[1].w =  det_inv * (m.r[2].w * (m.r[0].x * m.r[1].z - m.r[0].z * m.r[1].x) + m.r[2].z * (m.r[0].w * m.r[1].x - m.r[0].x * m.r[1].w) + m.r[2].x * (m.r[0].z * m.r[1].w - m.r[0].w * m.r[1].z));
 		r.r[2].w = -det_inv * (m.r[2].w * (m.r[0].x * m.r[1].y - m.r[0].y * m.r[1].x) + m.r[2].y * (m.r[0].w * m.r[1].x - m.r[0].x * m.r[1].w) + m.r[2].x * (m.r[0].y * m.r[1].w - m.r[0].w * m.r[1].y));
 		r.r[3].w =  det_inv * (m.r[2].z * (m.r[0].x * m.r[1].y - m.r[0].y * m.r[1].x) + m.r[2].y * (m.r[0].z * m.r[1].x - m.r[0].x * m.r[1].z) + m.r[2].x * (m.r[0].y * m.r[1].z - m.r[0].z * m.r[1].y));
-		return r;)
+		return r;
 #endif
 	}
 //	inline Float4x4 Float4x4::make_billboard(const Float3& object_pos, const Float3& camera_pos,

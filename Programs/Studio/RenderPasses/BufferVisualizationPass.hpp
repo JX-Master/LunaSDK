@@ -19,7 +19,7 @@ namespace Luna
 
         Ref<RHI::IPipelineState> m_buffer_visualization_pass_pso;
 		Ref<RHI::IDescriptorSetLayout> m_buffer_visualization_pass_dlayout;
-		Ref<RHI::IShaderInputLayout> m_buffer_visualization_pass_slayout;
+		Ref<RHI::IPipelineLayout> m_buffer_visualization_pass_playout;
 
         RV init(RHI::IDevice* device);
     };

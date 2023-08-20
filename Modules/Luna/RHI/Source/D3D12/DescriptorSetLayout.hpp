@@ -75,7 +75,7 @@ namespace Luna
 			{
 				return m_device.as<IDevice>();
 			}
-			void set_name(const Name& name) {}
+			void set_name(const c8* name) {}
 		};
 	}
 }

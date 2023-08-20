@@ -10,6 +10,7 @@
 #include "TestCommon.hpp"
 #include <Luna/Runtime/Math/Vector.hpp>
 #include <Luna/Runtime/Math/Matrix.hpp>
+#include <Luna/Runtime/Math/Transform.hpp>
 
 namespace Luna
 {
@@ -205,5 +206,86 @@ namespace Luna
 				4, 34, 1, 56
 			));
 		}
+        
+        // Transform test
+        {
+            {
+                Float4x4 mat = AffineMatrix::make_scaling(0.5f, 0.75f, 1.0f);
+                lutest(mat == Float4x4(
+                    0.5f, 0.0f, 0.0f, 0.0f,
+                    0.0f, 0.75f, 0.0f, 0.0f,
+                    0.0f, 0.0f, 1.0f, 0.0f,
+                    0.0f, 0.0f, 0.0f, 1.0f));
+            }
+            {
+                Float4x4 mat = AffineMatrix::make_translation(50.0f, 100.0f, 200.0f);
+                lutest(mat == Float4x4(
+                    1.0f, 0.0f, 0.0f, 0.0f,
+                    0.0f, 1.0f, 0.0f, 0.0f,
+                    0.0f, 0.0f, 1.0f, 0.0f,
+                    50.0f, 100.0f, 200.0f, 1.0f));
+            }
+            {
+                Float4x4 mat = AffineMatrix::make_rotation_euler_angles(PI / 2.0f, PI / 3.0f, PI / 5.0f);
+                luasset_eq_float(mat.r[0].x, 0.913545f);
+                luasset_eq_float(mat.r[0].y, 0.000000f);
+                luasset_eq_float(mat.r[0].z, -0.406737f);
+                luasset_eq_float(mat.r[0].w, 0.000000f);
+                luasset_eq_float(mat.r[1].x, 0.406737f);
+                luasset_eq_float(mat.r[1].y, 0.000000f);
+                luasset_eq_float(mat.r[1].z, 0.913545f);
+                luasset_eq_float(mat.r[1].w, 0.000000f);
+                luasset_eq_float(mat.r[2].x, 0.000000f);
+                luasset_eq_float(mat.r[2].y, -1.000000f);
+                luasset_eq_float(mat.r[2].z, 0.000000f);
+                luasset_eq_float(mat.r[2].w, 0.000000f);
+                luasset_eq_float(mat.r[3].x, 0.000000f);
+                luasset_eq_float(mat.r[3].y, 0.000000f);
+                luasset_eq_float(mat.r[3].z, 0.000000f);
+                luasset_eq_float(mat.r[3].w, 1.000000f);
+
+            }
+            {
+                Quaternion quat = Quaternion::from_euler_angles(PI / 2.0f, PI / 3.0f, PI / 5.0f);
+                Float4x4 mat = AffineMatrix::make(Float3(50.0f, 100.0f, 200.0f), quat, Float3(0.5f, 0.75f, 1.0f));
+                luasset_eq_float(mat.r[0].x, 0.456773f);
+                luasset_eq_float(mat.r[0].y, 0.000000f);
+                luasset_eq_float(mat.r[0].z, -0.203368f);
+                luasset_eq_float(mat.r[0].w, 0.000000f);
+                luasset_eq_float(mat.r[1].x, 0.305052f);
+                luasset_eq_float(mat.r[1].y, 0.000000f);
+                luasset_eq_float(mat.r[1].z, 0.685159f);
+                luasset_eq_float(mat.r[1].w, 0.000000f);
+                luasset_eq_float(mat.r[2].x, 0.000000f);
+                luasset_eq_float(mat.r[2].y, -1.000000f);
+                luasset_eq_float(mat.r[2].z, 0.000000f);
+                luasset_eq_float(mat.r[2].w, 0.000000f);
+                luasset_eq_float(mat.r[3].x, 50.000000f);
+                luasset_eq_float(mat.r[3].y, 100.000000f);
+                luasset_eq_float(mat.r[3].z, 200.000000f);
+                luasset_eq_float(mat.r[3].w, 1.000000f);
+            }
+            {
+                Quaternion quat = Quaternion::from_euler_angles(PI / 2.0f, PI / 3.0f, PI / 5.0f);
+                Float4x4 mat = AffineMatrix::make(Float3(50.0f, 100.0f, 200.0f), quat, Float3(0.5f, 0.75f, 1.0f));
+                mat = inverse(mat);
+                luasset_eq_float(mat.r[0].x, 1.827091f);
+                luasset_eq_float(mat.r[0].y, 0.542316f);
+                luasset_eq_float(mat.r[0].z, 0.000000f);
+                luasset_eq_float(mat.r[0].w, 0.000000f);
+                luasset_eq_float(mat.r[1].x, 0.000000f);
+                luasset_eq_float(mat.r[1].y, 0.000000f);
+                luasset_eq_float(mat.r[1].z, -1.000000f);
+                luasset_eq_float(mat.r[1].w, 0.000000f);
+                luasset_eq_float(mat.r[2].x, -0.813473f);
+                luasset_eq_float(mat.r[2].y, 1.218061f);
+                luasset_eq_float(mat.r[2].z, 0.000000f);
+                luasset_eq_float(mat.r[2].w, 0.000000f);
+                luasset_eq_float(mat.r[3].x, 71.340118f);
+                luasset_eq_float(mat.r[3].y, -270.727905f);
+                luasset_eq_float(mat.r[3].z, 100.000000f);
+                luasset_eq_float(mat.r[3].w, 1.000000f);
+            }
+        }
 	}
 }

@@ -113,7 +113,7 @@ namespace Luna
 			right,
 			down,
 			
-			num_lock,
+			num_lock, // clear on Mac.
 			numpad0,
 			numpad1,
 			numpad2,
@@ -124,12 +124,13 @@ namespace Luna
 			numpad7,
 			numpad8,
 			numpad9,
-			numpad_decimal,
-			numpad_add,
-			numpad_subtract,
-			numpad_multiply,
-			numpad_divide,
-			clear,	// numpad 5 when number lock is off.
+			numpad_decimal, // . on numpad.
+			numpad_add,     // + on numpad.
+			numpad_subtract,// - on numpad.
+			numpad_multiply,// * on numpad.
+			numpad_divide,  // / on numpad.
+            numpad_equal,   // = on numpad (Mac only)
+            numpad_enter,   // enter on numpad (Mac only, Windows will always return normal "enter").
 		};
 
 		enum class MouseButton : u8

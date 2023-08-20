@@ -8,19 +8,74 @@
 * @date 2022/10/15
 */
 #pragma once
+#ifdef LUNA_PLATFORM_WINDOWS
 #include <dxc/Support/WinAdapter.h>
 #include <dxc/Support/WinIncludes.h>
 #include <dxc/dxcapi.h>
-#include <wrl/client.h>
+#else
+#include <dxc/dxcapi.h>
+#include <dxc/WinAdapter.h>
+#endif
 #include <Luna/Runtime/TSAssert.hpp>
 #include "../ShaderCompiler.hpp"
-
-using Microsoft::WRL::ComPtr;
+#include <string>
 
 namespace Luna
 {
 	namespace ShaderCompiler
 	{
+		template <typename _Ty>
+		class ComPtr
+		{
+			_Ty* obj;
+
+			void internal_addref()
+			{
+				if(obj) obj->AddRef();
+			}
+			void internal_clear()
+			{
+				if(obj) obj->Release();
+			}
+		public:
+			ComPtr() : obj(nullptr) {}
+			ComPtr(const ComPtr& rhs) : obj(rhs.obj) { internal_addref(); }
+			ComPtr(ComPtr&& rhs) : obj(rhs.obj) { rhs.obj = nullptr; }
+			ComPtr& operator=(const ComPtr& rhs)
+			{
+				internal_clear();
+				obj = rhs.obj;
+				internal_addref();
+				return *this;
+			}
+			ComPtr& operator=(ComPtr&& rhs)
+			{
+				internal_clear();
+				obj = rhs.obj;
+				rhs.obj = nullptr;
+				return *this;
+			}
+			~ComPtr() { internal_clear(); }
+			_Ty* get() const { return obj; }
+			_Ty* operator->() const { return get(); }
+			_Ty** get_address_of() {return &obj;}
+			_Ty** operator&() { return get_address_of(); }
+			void attach(_Ty* ptr)
+			{
+				internal_clear();
+				obj = ptr;
+			}
+			_Ty* detach()
+			{
+				_Ty* r = obj;
+				obj = nullptr;
+				return r;
+			}
+			bool valid() const { return obj != nullptr; }
+			operator bool() const { return valid(); }
+			void reset() { internal_clear(); obj = nullptr; }
+		};
+
 		enum class DxcTargetType : u8
 		{
 			dxil = 0,
@@ -28,9 +83,7 @@ namespace Luna
 		};
 		enum class SpirvOutputType : u8
 		{
-			glsl = 0,
-			essl = 1,
-			msl = 2
+			msl = 0
 		};
 		struct Compiler : public ICompiler
 		{
@@ -54,6 +107,9 @@ namespace Luna
 			bool m_debug;
 			bool m_skip_validation;
 
+			// MSL specific.
+			MSLPlatform m_msl_platform;
+
 			// Context.
 			ComPtr<IDxcCompiler3> m_dxc_compiler;
 			ComPtr<IDxcUtils> m_dxc_utils;
@@ -62,6 +118,9 @@ namespace Luna
 			// Compiled data.
 			ComPtr<IDxcResult> m_dxc_result;
 			ComPtr<IDxcBlob> m_dxc_blob;
+			
+            String m_msl_compiled_data;
+            
 			// Pointer to the final output data.
 			const byte_t* m_out_data;
 			usize m_out_size;
@@ -73,13 +132,14 @@ namespace Luna
 
 			void clear_output()
 			{
-				m_dxc_result.Reset();
-				m_dxc_blob.Reset();
+				m_dxc_result.reset();
+				m_dxc_blob.reset();
+                m_msl_compiled_data.clear();
 				m_out_data = nullptr;
 				m_out_size = 0;
 			}
 
-			void reset()
+            virtual void reset() override
 			{
 				lutsassert();
 				m_source = {};
@@ -97,6 +157,7 @@ namespace Luna
 				m_matrix_pack_mode = MatrixPackMode::dont_care;
 				m_debug = false;
 				m_skip_validation = false;
+				m_msl_platform = MSLPlatform::macos;
 
 				clear_output();
 			}
@@ -114,11 +175,12 @@ namespace Luna
 			virtual Vector<Path>& get_include_paths() override { return m_include_paths; }
 			virtual HashMap<Name, Name>& get_definitions() override { return m_definitions; }
 			virtual Variant& get_additional_arguments() override { return m_additional_arguments; }
+			virtual void set_msl_platform(MSLPlatform platform) override { m_msl_platform = platform; }
 			RV compile_none();
 			RV dxc_compile(DxcTargetType output_type);
 			RV spirv_compile(SpirvOutputType output_type);
-			RV compile();
-			Span<const byte_t> get_output();
+            virtual RV compile() override;
+            virtual Span<const byte_t> get_output() override;
 		};
 	}
 }

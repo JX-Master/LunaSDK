@@ -21,7 +21,7 @@ namespace Luna
 		Blob g_fill_shader_vs;
 		Blob g_fill_shader_ps;
 		Ref<RHI::IDescriptorSetLayout> g_fill_desc_layout;
-		Ref<RHI::IShaderInputLayout> g_fill_slayout;
+		Ref<RHI::IPipelineLayout> g_fill_playout;
 		Ref<RHI::ITexture> g_white_tex;
 
 		RV init_render_resources()
@@ -56,20 +56,21 @@ namespace Luna
 					g_fill_shader_ps = Blob(data.data(), data.size());
 				}
 				{
-					DescriptorSetLayoutDesc desc({
-						DescriptorSetLayoutBinding(DescriptorType::uniform_buffer_view, 0, 1, ShaderVisibilityFlag::vertex),
-						DescriptorSetLayoutBinding(DescriptorType::read_buffer_view, 1, 1, ShaderVisibilityFlag::all),
-						DescriptorSetLayoutBinding(DescriptorType::read_texture_view, 2, 1, ShaderVisibilityFlag::pixel),
-						DescriptorSetLayoutBinding(DescriptorType::sampler, 3, 1, ShaderVisibilityFlag::pixel),
-					});
+                    DescriptorSetLayoutBinding bindings[] = {
+                        DescriptorSetLayoutBinding(DescriptorType::uniform_buffer_view, 0, 1, ShaderVisibilityFlag::vertex),
+                        DescriptorSetLayoutBinding(DescriptorType::read_buffer_view, 1, 1, ShaderVisibilityFlag::all),
+                        DescriptorSetLayoutBinding(DescriptorType::read_texture_view, 2, 1, ShaderVisibilityFlag::pixel),
+                        DescriptorSetLayoutBinding(DescriptorType::sampler, 3, 1, ShaderVisibilityFlag::pixel)
+                    };
+					DescriptorSetLayoutDesc desc({bindings, 4});
 					luset(g_fill_desc_layout, dev->new_descriptor_set_layout(desc));
 				}
 				{
 					IDescriptorSetLayout* dl = g_fill_desc_layout;
-					ShaderInputLayoutDesc desc ({&dl, 1},
-						ShaderInputLayoutFlag::allow_input_assembler_input_layout
+					PipelineLayoutDesc desc ({&dl, 1},
+						PipelineLayoutFlag::allow_input_assembler_input_layout
 					);
-					luset(g_fill_slayout, dev->new_shader_input_layout(desc));
+					luset(g_fill_playout, dev->new_pipeline_layout(desc));
 				}
 				{
 					TextureDesc desc = TextureDesc::tex2d(Format::rgba8_unorm, TextureUsageFlag::read_texture | TextureUsageFlag::copy_dest, 1, 1);
@@ -110,7 +111,7 @@ namespace Luna
 			g_fill_shader_vs.clear();
 			g_fill_shader_ps.clear();
 			g_fill_desc_layout = nullptr;
-			g_fill_slayout = nullptr;
+			g_fill_playout = nullptr;
 			g_white_tex = nullptr;
 		}
 		RV FillShapeRenderer::create_pso(RHI::Format rt_format)
@@ -119,24 +120,24 @@ namespace Luna
 			lutry
 			{
 				GraphicsPipelineStateDesc desc;
-				desc.input_layout = InputLayoutDesc(
-					{
-						InputBindingDesc(0, sizeof(Vertex), InputRate::per_vertex)
-					},
-						{
-							InputAttributeDesc("POSITION", 0, 0, 0, offsetof(Vertex, position), Format::rg32_float),
-							InputAttributeDesc("SHAPECOORD", 0, 1, 0, offsetof(Vertex, shapecoord), Format::rg32_float),
-							InputAttributeDesc("TEXCOORD", 0, 2, 0, offsetof(Vertex, texcoord), Format::rg32_float),
-							InputAttributeDesc("COLOR", 0, 3, 0, offsetof(Vertex, color), Format::rgba8_unorm),
-							InputAttributeDesc("COMMAND_OFFSET", 0, 4, 0, offsetof(Vertex, begin_command), Format::r32_uint),
-							InputAttributeDesc("NUM_COMMANDS", 0, 5, 0, offsetof(Vertex, num_commands), Format::r32_uint),
-						});
-				desc.shader_input_layout = g_fill_slayout;
+                InputBindingDesc bindings[] = {
+                    InputBindingDesc(0, sizeof(Vertex), InputRate::per_vertex)
+                };
+                InputAttributeDesc attributes[] = {
+                    InputAttributeDesc("POSITION", 0, 0, 0, offsetof(Vertex, position), Format::rg32_float),
+                    InputAttributeDesc("SHAPECOORD", 0, 1, 0, offsetof(Vertex, shapecoord), Format::rg32_float),
+                    InputAttributeDesc("TEXCOORD", 0, 2, 0, offsetof(Vertex, texcoord), Format::rg32_float),
+                    InputAttributeDesc("COLOR", 0, 3, 0, offsetof(Vertex, color), Format::rgba8_unorm),
+                    InputAttributeDesc("COMMAND_OFFSET", 0, 4, 0, offsetof(Vertex, begin_command), Format::r32_uint),
+                    InputAttributeDesc("NUM_COMMANDS", 0, 5, 0, offsetof(Vertex, num_commands), Format::r32_uint)
+                };
+                desc.input_layout = InputLayoutDesc({bindings, 1}, {attributes, 6});
+				desc.pipeline_layout = g_fill_playout;
 				desc.vs = { g_fill_shader_vs.data(), g_fill_shader_vs.size() };
 				desc.ps = { g_fill_shader_ps.data(), g_fill_shader_ps.size() };
-				desc.blend_state = BlendDesc({ AttachmentBlendDesc(true, BlendFactor::src_alpha, BlendFactor::inv_src_alpha, BlendOp::add, BlendFactor::zero,
+				desc.blend_state = BlendDesc({ AttachmentBlendDesc(true, BlendFactor::src_alpha, BlendFactor::one_minus_src_alpha, BlendOp::add, BlendFactor::zero,
 						BlendFactor::one, BlendOp::add, ColorWriteMask::all) });
-				desc.rasterizer_state = RasterizerDesc(FillMode::solid, CullMode::back, 0, 0.0f, 0.0f, 0, false, false, false, false, false);
+				desc.rasterizer_state = RasterizerDesc(FillMode::solid, CullMode::back, false, false, false, false, false);
 				desc.depth_stencil_state = DepthStencilDesc(false, false);
 				desc.num_color_attachments = 1;
 				desc.color_formats[0] = rt_format;
@@ -222,8 +223,8 @@ namespace Luna
 					luexp(ds->update_descriptors({
 						WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(m_cbs_resource)),
 						WriteDescriptorSet::read_buffer_view(1, BufferViewDesc::typed_buffer(shape_buffer, 0, num_points, Format::r32_float)),
-						WriteDescriptorSet::read_texture_view(2, TextureViewDesc::tex2d(draw_calls[i].texture ? draw_calls[i].texture : g_white_tex)),
-						WriteDescriptorSet::sampler(3, SamplerDesc(Filter::min_mag_mip_linear, TextureAddressMode::clamp, TextureAddressMode::clamp, TextureAddressMode::clamp))
+						WriteDescriptorSet::read_texture_view(2, TextureViewDesc::tex2d(draw_calls[i].texture ? draw_calls[i].texture : g_white_tex.get())),
+						WriteDescriptorSet::sampler(3, SamplerDesc(Filter::linear, Filter::linear, Filter::linear, TextureAddressMode::clamp, TextureAddressMode::clamp, TextureAddressMode::clamp))
 						}));
 				}
 				// Build command buffer.
@@ -242,9 +243,10 @@ namespace Luna
 				desc.color_attachments[0] = ColorAttachment(m_render_target, LoadOp::clear, StoreOp::store, Float4U{ 0.0f });
 				cmdbuf->begin_render_pass(desc);
 				cmdbuf->set_graphics_pipeline_state(m_fill_pso);
-				cmdbuf->set_graphics_shader_input_layout(g_fill_slayout);
-				cmdbuf->set_vertex_buffers(0, { &VertexBufferView(vertex_buffer, 0, sizeof(Vertex) * num_vertices, sizeof(Vertex)), 1 });
-				cmdbuf->set_index_buffer({index_buffer, 0, num_indices * sizeof(u32), Format::r32_uint});
+				cmdbuf->set_graphics_pipeline_layout(g_fill_playout);
+                auto view = VertexBufferView(vertex_buffer, 0, sizeof(Vertex) * num_vertices, sizeof(Vertex));
+				cmdbuf->set_vertex_buffers(0, { &view, 1 });
+				cmdbuf->set_index_buffer({index_buffer, 0, (u32)num_indices * (u32)sizeof(u32), Format::r32_uint});
 				cmdbuf->set_viewport(Viewport(0.0f, 0.0f, (f32)m_screen_width, (f32)m_screen_height, 0.0f, 1.0f));
 				for (usize i = 0; i < num_draw_calls; ++i)
 				{
@@ -267,13 +269,15 @@ namespace Luna
 		}
 		LUNA_VG_API R<Ref<IShapeRenderer>> new_fill_shape_renderer(RHI::ITexture* render_target)
 		{
+            Ref<IShapeRenderer> ret;
 			Ref<FillShapeRenderer> renderer = new_object<FillShapeRenderer>();
 			lutry
 			{
 				luexp(renderer->init(render_target));
 			}
 			lucatchret;
-			return renderer;
+            ret = renderer;
+			return ret;
 		}
 	}
 }

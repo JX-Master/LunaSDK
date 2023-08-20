@@ -42,26 +42,6 @@ namespace Luna
 			}
 			return result;
 		}
-		void validate_texture_view_desc(TextureViewDesc& desc)
-		{
-			ImageResource* image = cast_object<ImageResource>(desc.texture->get_object());
-			if (desc.type == TextureViewType::unspecified)
-			{
-				if (image->m_desc.type == TextureType::tex2d) desc.type = image->m_desc.array_size == 1 ? TextureViewType::tex2d : TextureViewType::tex2darray;
-				else if (image->m_desc.type == TextureType::tex3d) desc.type = TextureViewType::tex3d;
-				else if (image->m_desc.type == TextureType::tex1d) desc.type = image->m_desc.array_size == 1 ? TextureViewType::tex1d : TextureViewType::tex1darray;
-				else { lupanic(); }
-			}
-			if (desc.format == Format::unknown) desc.format = image->m_desc.format;
-			if (desc.mip_size == U32_MAX) desc.mip_size = image->m_desc.mip_levels - desc.mip_slice;
-			if (desc.array_size == U32_MAX) desc.array_size = image->m_desc.array_size - desc.array_slice;
-			if (desc.type == TextureViewType::tex1d ||
-				desc.type == TextureViewType::tex2d ||
-				desc.type == TextureViewType::tex3d)
-			{
-				desc.array_size = 1;
-			}
-		}
 		void encode_image_view_create_info(VkImageViewCreateInfo& dst, const TextureViewDesc& src)
 		{
 			dst.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;

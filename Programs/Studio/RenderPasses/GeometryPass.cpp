@@ -34,8 +34,8 @@ namespace Luna
 				DescriptorSetLayoutBinding(DescriptorType::sampler, 7, 1, ShaderVisibilityFlag::pixel)
 				})));
 			auto dl = m_geometry_pass_dlayout.get();
-			luset(m_geometry_pass_slayout, device->new_shader_input_layout(ShaderInputLayoutDesc({ &dl, 1 },
-				ShaderInputLayoutFlag::allow_input_assembler_input_layout)));
+			luset(m_geometry_pass_playout, device->new_pipeline_layout(PipelineLayoutDesc({ &dl, 1 },
+				PipelineLayoutFlag::allow_input_assembler_input_layout)));
 
 			lulet(vs_blob, compile_shader("Shaders/GeometryVert.hlsl", ShaderCompiler::ShaderType::vertex));
 			lulet(ps_blob, compile_shader("Shaders/GeometryPixel.hlsl", ShaderCompiler::ShaderType::pixel));
@@ -43,10 +43,9 @@ namespace Luna
 			GraphicsPipelineStateDesc ps_desc;
 			ps_desc.primitive_topology = PrimitiveTopology::triangle_list;
 			ps_desc.sample_mask = U32_MAX;
-			ps_desc.blend_state = BlendDesc({ AttachmentBlendDesc(false, BlendFactor::src_alpha,
-				BlendFactor::inv_src_alpha, BlendOp::add, BlendFactor::inv_src_alpha, BlendFactor::zero, BlendOp::add, ColorWriteMask::all) });
-			ps_desc.rasterizer_state = RasterizerDesc(FillMode::solid, CullMode::back, 0, 0.0f, 0.0f, 0, false, true, false, false, false);
-			ps_desc.depth_stencil_state = DepthStencilDesc(true, false, ComparisonFunc::less_equal, false, 0x00, 0x00, DepthStencilOpDesc(), DepthStencilOpDesc());
+			ps_desc.blend_state = BlendDesc({ AttachmentBlendDesc(true, BlendFactor::one, BlendFactor::zero, BlendOp::add, BlendFactor::one, BlendFactor::zero, BlendOp::add, ColorWriteMask::all) });
+			ps_desc.rasterizer_state = RasterizerDesc(FillMode::solid, CullMode::back, -10, 0.0f, 0.0f, false, true, false, false, false);
+			ps_desc.depth_stencil_state = DepthStencilDesc(true, false, CompareFunction::less_equal, false, 0x00, 0x00, DepthStencilOpDesc(), DepthStencilOpDesc());
 			ps_desc.ib_strip_cut_value = IndexBufferStripCutValue::disabled;
 			Vector<InputAttributeDesc> attributes;
 			get_vertex_input_layout_desc(attributes);
@@ -55,7 +54,7 @@ namespace Luna
 			ps_desc.input_layout.bindings = { &binding, 1 };
 			ps_desc.vs = vs_blob.cspan();
 			ps_desc.ps = ps_blob.cspan();
-			ps_desc.shader_input_layout = m_geometry_pass_slayout;
+			ps_desc.pipeline_layout = m_geometry_pass_playout;
 			ps_desc.num_color_attachments = 3;
 			ps_desc.color_formats[0] = Format::rgba8_unorm;
             ps_desc.color_formats[1] = Format::rgba8_unorm;
@@ -115,7 +114,6 @@ namespace Luna
             auto cmdbuf = ctx->get_command_buffer();
             auto device = cmdbuf->get_device();
             auto cb_align = device->get_uniform_buffer_data_alignment();
-			cmdbuf->set_context(CommandBufferContextType::graphics);
 			cmdbuf->resource_barrier(
 				{}, {
 					{base_color_roughness_tex, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::color_attachment_write, ResourceBarrierFlag::discard_content},
@@ -127,9 +125,6 @@ namespace Luna
 			{
 				auto model = Asset::get_asset_data<Model>(rs[i]->model);
 				auto mesh = Asset::get_asset_data<Mesh>(model->mesh);
-				cmdbuf->set_vertex_buffers(0, { VertexBufferView(mesh->vb, 0,
-					mesh->vb_count * sizeof(Vertex), sizeof(Vertex)) });
-				cmdbuf->set_index_buffer({ mesh->ib, 0, mesh->ib_count * sizeof(u32), Format::r32_uint });
 
 				u32 num_pieces = (u32)mesh->pieces.size();
 
@@ -189,8 +184,16 @@ namespace Luna
 			render_pass.color_attachments[1] = ColorAttachment(normal_metallic_tex, LoadOp::clear, StoreOp::store, Float4U(0.0f));
 			render_pass.color_attachments[2] = ColorAttachment(emissive_tex, LoadOp::clear, StoreOp::store, Float4U(0.0f));
 			render_pass.depth_stencil_attachment = DepthStencilAttachment(depth_tex, true, LoadOp::load, StoreOp::store, 1.0F);
+            u32 time_query_begin, time_query_end;
+            auto query_heap = ctx->get_timestamp_query_heap(&time_query_begin, &time_query_end);
+            if(query_heap)
+            {
+                render_pass.timestamp_query_heap = query_heap;
+                render_pass.timestamp_query_begin_pass_write_index = time_query_begin;
+                render_pass.timestamp_query_end_pass_write_index = time_query_end;
+            }
 			cmdbuf->begin_render_pass(render_pass);
-			cmdbuf->set_graphics_shader_input_layout(m_global_data->m_geometry_pass_slayout);
+			cmdbuf->set_graphics_pipeline_layout(m_global_data->m_geometry_pass_playout);
 			cmdbuf->set_graphics_pipeline_state(m_global_data->m_geometry_pass_pso);
 			cmdbuf->set_viewport(Viewport(0.0f, 0.0f, (f32)render_desc.width, (f32)render_desc.height, 0.0f, 1.0f));
 			cmdbuf->set_scissor_rect(RectI(0, 0, (i32)render_desc.width, (i32)render_desc.height));
@@ -202,7 +205,7 @@ namespace Luna
 				auto mesh = Asset::get_asset_data<Mesh>(model->mesh);
 				cmdbuf->set_vertex_buffers(0, { VertexBufferView(mesh->vb, 0,
 					mesh->vb_count * sizeof(Vertex), sizeof(Vertex)) });
-				cmdbuf->set_index_buffer({mesh->ib, 0, mesh->ib_count * sizeof(u32), Format::r32_uint});
+				cmdbuf->set_index_buffer({mesh->ib, 0, (u32)(mesh->ib_count * sizeof(u32)), Format::r32_uint});
 
 				u32 num_pieces = (u32)mesh->pieces.size();
 
@@ -248,7 +251,7 @@ namespace Luna
 						}
 					}
 					lulet(vs, device->new_descriptor_set(DescriptorSetDesc(m_global_data->m_geometry_pass_dlayout)));
-					vs->update_descriptors({
+					luexp(vs->update_descriptors({
 						WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(camera_cb, 0, (u32)align_upper(sizeof(CameraCB), cb_align))),
 						WriteDescriptorSet::read_buffer_view(1, BufferViewDesc::structured_buffer(model_matrices, i, 1, sizeof(Float4x4) * 2)),
 						WriteDescriptorSet::read_texture_view(2, TextureViewDesc::tex2d(base_color_tex)),
@@ -256,8 +259,8 @@ namespace Luna
 						WriteDescriptorSet::read_texture_view(4, TextureViewDesc::tex2d(normal_tex)),
 						WriteDescriptorSet::read_texture_view(5, TextureViewDesc::tex2d(metallic_tex)),
 						WriteDescriptorSet::read_texture_view(6, TextureViewDesc::tex2d(emissive_tex)),
-						WriteDescriptorSet::sampler(7, SamplerDesc(Filter::min_mag_mip_linear, TextureAddressMode::repeat, TextureAddressMode::repeat, TextureAddressMode::repeat))
-						});
+						WriteDescriptorSet::sampler(7, SamplerDesc(Filter::linear, Filter::linear, Filter::linear, TextureAddressMode::repeat, TextureAddressMode::repeat, TextureAddressMode::repeat))
+						}));
 					cmdbuf->set_graphics_descriptor_set(0, vs);
 					cmdbuf->attach_device_object(vs);
 					cmdbuf->draw_indexed(mesh->pieces[j].num_indices, mesh->pieces[j].first_index_offset, 0);
@@ -288,7 +291,7 @@ namespace Luna
 			}
 			if (desc.type != RG::ResourceType::texture || desc.texture.type != RHI::TextureType::tex2d || desc.texture.format != RHI::Format::d32_float)
 			{
-				return set_error(BasicError::bad_arguments(), "DepthPass: Invalid format for \"depth_texture\" is specified. \"depth_texture\" must be 2D texture with Format::d32_float.");
+				return set_error(BasicError::bad_arguments(), "GeometryPass: Invalid format for \"depth_texture\" is specified. \"depth_texture\" must be 2D texture with Format::d32_float.");
 			}
 			desc.texture.usages |= RHI::TextureUsageFlag::depth_stencil_attachment;
 			compiler->set_resource_desc(depth_texture, desc);

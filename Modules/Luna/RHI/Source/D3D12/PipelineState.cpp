@@ -26,33 +26,34 @@ namespace Luna
 				return D3D12_BLEND_ONE;
 			case BlendFactor::src_color:
 				return D3D12_BLEND_SRC_COLOR;
-			case BlendFactor::inv_src_color:
-				return D3D12_BLEND_INV_SRC1_COLOR;
+			case BlendFactor::one_minus_src_color:
+				return D3D12_BLEND_INV_SRC_COLOR;
 			case BlendFactor::src_alpha:
 				return D3D12_BLEND_SRC_ALPHA;
-			case BlendFactor::inv_src_alpha:
+			case BlendFactor::one_minus_src_alpha:
 				return D3D12_BLEND_INV_SRC_ALPHA;
 			case BlendFactor::dst_alpha:
 				return D3D12_BLEND_DEST_ALPHA;
-			case BlendFactor::inv_dst_alpha:
+			case BlendFactor::one_minus_dst_alpha:
 				return D3D12_BLEND_INV_DEST_ALPHA;
 			case BlendFactor::dst_color:
 				return D3D12_BLEND_DEST_COLOR;
-			case BlendFactor::inv_dst_color:
+			case BlendFactor::one_minus_dst_color:
 				return D3D12_BLEND_INV_DEST_COLOR;
-			case BlendFactor::src_alpha_sat:
+			case BlendFactor::src_alpha_saturated:
 				return D3D12_BLEND_SRC_ALPHA_SAT;
 			case BlendFactor::blend_factor:
 				return D3D12_BLEND_BLEND_FACTOR;
-			case BlendFactor::inv_blend_factor:
+			case BlendFactor::one_minus_blend_factor:
 				return D3D12_BLEND_INV_BLEND_FACTOR;
 			case BlendFactor::src1_color:
 				return D3D12_BLEND_SRC1_COLOR;
-			case BlendFactor::inv_src1_color:
+			case BlendFactor::one_minus_src1_color:
 				return D3D12_BLEND_INV_SRC1_COLOR;
 			case BlendFactor::src1_alpha:
 				return D3D12_BLEND_SRC1_ALPHA;
-			case BlendFactor::inv_src1_alpha:
+			case BlendFactor::one_minus_src1_alpha:
+				return D3D12_BLEND_INV_SRC1_ALPHA;
 			default:
 				lupanic();
 				return D3D12_BLEND_ONE;
@@ -78,45 +79,6 @@ namespace Luna
 			}
 		}
 
-		D3D12_LOGIC_OP encode_logic_op(LogicOp o)
-		{
-			switch (o)
-			{
-			case LogicOp::clear:
-				return D3D12_LOGIC_OP_CLEAR;
-			case LogicOp::set:
-				return D3D12_LOGIC_OP_SET;
-			case LogicOp::copy:
-				return D3D12_LOGIC_OP_COPY;
-			case LogicOp::copy_inverted:
-				return D3D12_LOGIC_OP_COPY_INVERTED;
-			case LogicOp::invert:
-				return D3D12_LOGIC_OP_INVERT;
-			case LogicOp::and :
-				return D3D12_LOGIC_OP_AND;
-			case LogicOp::nand:
-				return D3D12_LOGIC_OP_NAND;
-			case LogicOp:: or :
-				return D3D12_LOGIC_OP_OR;
-			case LogicOp::nor:
-				return D3D12_LOGIC_OP_NOR;
-			case LogicOp::xor :
-				return D3D12_LOGIC_OP_XOR;
-			case LogicOp::equiv:
-				return D3D12_LOGIC_OP_EQUIV;
-			case LogicOp::and_reverse:
-				return D3D12_LOGIC_OP_AND_REVERSE;
-			case LogicOp::and_inverted:
-				return D3D12_LOGIC_OP_AND_INVERTED;
-			case LogicOp::or_reverse:
-				return D3D12_LOGIC_OP_OR_REVERSE;
-			case LogicOp::or_inverted:
-			default:
-				lupanic();
-				return D3D12_LOGIC_OP_OR_INVERTED;
-			}
-		}
-
 		D3D12_STENCIL_OP encode_stencil_op(StencilOp op)
 		{
 			switch (op)
@@ -127,15 +89,15 @@ namespace Luna
 				return D3D12_STENCIL_OP_ZERO;
 			case StencilOp::replace:
 				return D3D12_STENCIL_OP_REPLACE;
-			case StencilOp::incr_sat:
+			case StencilOp::increment_saturated:
 				return D3D12_STENCIL_OP_INCR_SAT;
-			case StencilOp::decr_sat:
+			case StencilOp::decrement_saturated:
 				return D3D12_STENCIL_OP_DECR;
 			case StencilOp::invert:
 				return D3D12_STENCIL_OP_INVERT;
-			case StencilOp::incr:
+			case StencilOp::increment:
 				return D3D12_STENCIL_OP_INCR;
-			case StencilOp::decr:
+			case StencilOp::decrement:
 			default:
 				lupanic();
 				return D3D12_STENCIL_OP_KEEP;
@@ -148,24 +110,17 @@ namespace Luna
 			dst.pShaderBytecode = src.data();
 		}
 
-		inline void encode_target_blend_desc(D3D12_RENDER_TARGET_BLEND_DESC& rt, const AttachmentBlendDesc& srt, bool logic_op_enable, LogicOp logic_op)
+		inline void encode_target_blend_desc(D3D12_RENDER_TARGET_BLEND_DESC& rt, const AttachmentBlendDesc& srt)
 		{
 			rt.BlendEnable = srt.blend_enable ? TRUE : FALSE;
-			rt.LogicOpEnable = logic_op_enable ? TRUE : FALSE;
-			rt.SrcBlend = encode_blend_factor(srt.src_blend);
-			rt.DestBlend = encode_blend_factor(srt.dst_blend);
-			rt.BlendOp = encode_blend_op(srt.blend_op);
+			rt.LogicOpEnable = FALSE;
+			rt.SrcBlend = encode_blend_factor(srt.src_blend_color);
+			rt.DestBlend = encode_blend_factor(srt.dst_blend_color);
+			rt.BlendOp = encode_blend_op(srt.blend_op_color);
 			rt.SrcBlendAlpha = encode_blend_factor(srt.src_blend_alpha);
 			rt.DestBlendAlpha = encode_blend_factor(srt.dst_blend_alpha);
 			rt.BlendOpAlpha = encode_blend_op(srt.blend_op_alpha);
-			if (logic_op_enable)
-			{
-				rt.LogicOp = encode_logic_op(logic_op);
-			}
-			else
-			{
-				rt.LogicOp = D3D12_LOGIC_OP_NOOP;
-			}
+			rt.LogicOp = D3D12_LOGIC_OP_NOOP;
 			rt.RenderTargetWriteMask = 0;
 			if ((srt.render_target_write_mask & ColorWriteMask::red) != ColorWriteMask::none)
 			{
@@ -188,9 +143,9 @@ namespace Luna
 		bool PipelineState::init_graphic(const GraphicsPipelineStateDesc& desc)
 		{
 			m_is_graphics = true;
-			ShaderInputLayout* slayout = static_cast<ShaderInputLayout*>(desc.shader_input_layout->get_object());
+			PipelineLayout* playout = static_cast<PipelineLayout*>(desc.pipeline_layout->get_object());
 			D3D12_GRAPHICS_PIPELINE_STATE_DESC d;
-			d.pRootSignature = slayout->m_rs.Get();
+			d.pRootSignature = playout->m_rs.Get();
 
 			fill_shader_data(d.VS, desc.vs);
 			fill_shader_data(d.PS, desc.ps);
@@ -206,16 +161,16 @@ namespace Luna
 
 			{
 				d.BlendState.AlphaToCoverageEnable = desc.blend_state.alpha_to_coverage_enable ? TRUE : FALSE;
-				d.BlendState.IndependentBlendEnable = desc.blend_state.logic_op_enable ? FALSE : (desc.blend_state.independent_blend_enable ? TRUE : FALSE);
+				d.BlendState.IndependentBlendEnable = desc.blend_state.independent_blend_enable ? TRUE : FALSE;
 				for (u32 i = 0; i < 8; ++i)
 				{
 					if (d.BlendState.IndependentBlendEnable)
 					{
-						encode_target_blend_desc(d.BlendState.RenderTarget[i], desc.blend_state.rt[i], desc.blend_state.logic_op_enable, desc.blend_state.logic_op);
+						encode_target_blend_desc(d.BlendState.RenderTarget[i], desc.blend_state.attachments[i]);
 					}
 					else
 					{
-						encode_target_blend_desc(d.BlendState.RenderTarget[i], desc.blend_state.rt[0], desc.blend_state.logic_op_enable, desc.blend_state.logic_op);
+						encode_target_blend_desc(d.BlendState.RenderTarget[i], desc.blend_state.attachments[0]);
 					}
 				}
 				d.SampleMask = desc.sample_mask;
@@ -242,7 +197,7 @@ namespace Luna
 					d.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
 					break;
 				}
-				d.RasterizerState.ForcedSampleCount = desc.rasterizer_state.forced_sample_count;
+				d.RasterizerState.ForcedSampleCount = 0;
 				d.RasterizerState.FrontCounterClockwise = desc.rasterizer_state.front_counter_clockwise ? TRUE : FALSE;
 				d.RasterizerState.DepthBias = desc.rasterizer_state.depth_bias;
 				d.RasterizerState.DepthBiasClamp = desc.rasterizer_state.depth_bias_clamp;
@@ -256,18 +211,18 @@ namespace Luna
 			{
 				d.DepthStencilState.DepthEnable = desc.depth_stencil_state.depth_test_enable ? TRUE : FALSE;
 				d.DepthStencilState.DepthWriteMask = desc.depth_stencil_state.depth_write_enable ? D3D12_DEPTH_WRITE_MASK_ALL : D3D12_DEPTH_WRITE_MASK_ZERO;
-				d.DepthStencilState.DepthFunc = encode_comparison_func(desc.depth_stencil_state.depth_func);
+				d.DepthStencilState.DepthFunc = encode_compare_function(desc.depth_stencil_state.depth_func);
 				d.DepthStencilState.StencilEnable = desc.depth_stencil_state.stencil_enable ? TRUE : FALSE;
 				d.DepthStencilState.StencilReadMask = desc.depth_stencil_state.stencil_read_mask;
 				d.DepthStencilState.StencilWriteMask = desc.depth_stencil_state.stencil_write_mask;
 				d.DepthStencilState.FrontFace.StencilFailOp = encode_stencil_op(desc.depth_stencil_state.front_face.stencil_fail_op);
 				d.DepthStencilState.FrontFace.StencilDepthFailOp = encode_stencil_op(desc.depth_stencil_state.front_face.stencil_depth_fail_op);
 				d.DepthStencilState.FrontFace.StencilPassOp = encode_stencil_op(desc.depth_stencil_state.front_face.stencil_pass_op);
-				d.DepthStencilState.FrontFace.StencilFunc = encode_comparison_func(desc.depth_stencil_state.front_face.stencil_func);
+				d.DepthStencilState.FrontFace.StencilFunc = encode_compare_function(desc.depth_stencil_state.front_face.stencil_func);
 				d.DepthStencilState.BackFace.StencilFailOp = encode_stencil_op(desc.depth_stencil_state.back_face.stencil_fail_op);
 				d.DepthStencilState.BackFace.StencilDepthFailOp = encode_stencil_op(desc.depth_stencil_state.back_face.stencil_depth_fail_op);
 				d.DepthStencilState.BackFace.StencilPassOp = encode_stencil_op(desc.depth_stencil_state.back_face.stencil_pass_op);
-				d.DepthStencilState.BackFace.StencilFunc = encode_comparison_func(desc.depth_stencil_state.back_face.stencil_func);
+				d.DepthStencilState.BackFace.StencilFunc = encode_compare_function(desc.depth_stencil_state.back_face.stencil_func);
 			}
 
 			Vector<D3D12_INPUT_ELEMENT_DESC> input_elements;
@@ -366,9 +321,9 @@ namespace Luna
 		bool PipelineState::init_compute(const ComputePipelineStateDesc& desc)
 		{
 			m_is_graphics = false;
-			ShaderInputLayout* slayout = static_cast<ShaderInputLayout*>(desc.shader_input_layout->get_object());
+			PipelineLayout* playout = static_cast<PipelineLayout*>(desc.pipeline_layout->get_object());
 			D3D12_COMPUTE_PIPELINE_STATE_DESC d;
-			d.pRootSignature = slayout->m_rs.Get();
+			d.pRootSignature = playout->m_rs.Get();
 			d.CachedPSO.CachedBlobSizeInBytes = 0;
 			d.CachedPSO.pCachedBlob = nullptr;
 			fill_shader_data(d.CS, desc.cs);

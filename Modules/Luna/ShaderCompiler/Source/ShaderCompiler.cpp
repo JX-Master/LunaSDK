@@ -21,6 +21,7 @@
 #include <Luna/Runtime/HashSet.hpp>
 #include <Luna/Runtime/Module.hpp>
 #include <Luna/Runtime/File.hpp>
+#include <spirv_cross/spirv_msl.hpp>
 
 namespace Luna
 {
@@ -50,7 +51,7 @@ namespace Luna
 		public:
 			HashSet<Path> m_included_files;
 			Compiler* m_compiler;
-			HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, _COM_Outptr_ void __RPC_FAR* __RPC_FAR* ppvObject) override
+			HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void **ppvObject) override
 			{
 				return m_compiler->m_default_include_handler->QueryInterface(riid, ppvObject);
 			}
@@ -65,16 +66,16 @@ namespace Luna
 					{
 						lulet(f, open_file(path.encode().c_str(), FileOpenFlag::read, FileCreationMode::open_existing));
 						lulet(data, load_file_data(f));
-						m_compiler->m_dxc_utils->CreateBlob(data.data(), (UINT32)data.size(), CP_UTF8, pEncoding.GetAddressOf());
-						*ppIncludeSource = pEncoding.Detach();
+						m_compiler->m_dxc_utils->CreateBlob(data.data(), (UINT32)data.size(), CP_UTF8, pEncoding.get_address_of());
+						*ppIncludeSource = pEncoding.detach();
 						m_included_files.insert(path);
 					}
 					else
 					{
 						// Return empty string blob if this file has been included before
 						static const char nullStr[] = " ";
-						m_compiler->m_dxc_utils->CreateBlob(nullStr, 2, CP_UTF8, pEncoding.GetAddressOf());
-						*ppIncludeSource = pEncoding.Detach();
+						m_compiler->m_dxc_utils->CreateBlob(nullStr, 2, CP_UTF8, pEncoding.get_address_of());
+						*ppIncludeSource = pEncoding.detach();
 					}
 				}
 				lucatchret;
@@ -241,8 +242,48 @@ namespace Luna
 		{
 			lutry
 			{
-				//luexp(dxc_compile(DxcTargetType::spir_v));
-				return BasicError::not_supported();
+                // Skip optimization if we are generating msl/glsl from spir-v.
+                m_debug = true;
+                m_optimization_level = OptimizationLevel::none;
+				luexp(dxc_compile(DxcTargetType::spir_v));
+				if(output_type == SpirvOutputType::msl)
+				{
+					spirv_cross::CompilerMSL msl((const uint32_t*)m_out_data, m_out_size / 4);
+					auto options = msl.get_msl_options();
+					options.argument_buffers = true;
+                    options.set_msl_version(3, 0, 0);
+                    options.force_active_argument_buffer_resources = true;
+					switch (m_msl_platform)
+					{
+					case MSLPlatform::macos:
+						options.platform = spirv_cross::CompilerMSL::Options::Platform::macOS;
+						break;
+					case MSLPlatform::ios:
+						options.platform = spirv_cross::CompilerMSL::Options::Platform::iOS;
+						break;
+					}
+					msl.set_msl_options(options);
+					auto compiled_data = msl.compile();
+                    Variant out_data(VariantType::object);
+                    out_data["source"] = compiled_data.data();
+                    auto entry_point_and_stage = msl.get_entry_points_and_stages()[0];
+                    auto entry_point = msl.get_entry_point(entry_point_and_stage.name, entry_point_and_stage.execution_model);
+                    if(m_shader_type == ShaderType::compute)
+                    {
+                        u64 x_size = entry_point.workgroup_size.x;
+                        u64 y_size = entry_point.workgroup_size.y;
+                        u64 z_size = entry_point.workgroup_size.z;
+                        Variant numthreads (VariantType::array);
+                        numthreads.push_back(x_size);
+                        numthreads.push_back(y_size);
+                        numthreads.push_back(z_size);
+                        out_data["numthreads"] = move(numthreads);
+                    }
+                    out_data["entry_point"] = entry_point.name.c_str();
+                    m_msl_compiled_data = json_write(out_data);
+					m_out_data = (const byte_t*)m_msl_compiled_data.data();
+					m_out_size = m_msl_compiled_data.size();
+				}
 			}
 			lucatchret;
 			return ok;
@@ -259,10 +300,6 @@ namespace Luna
 				return dxc_compile(DxcTargetType::dxil);
 			case TargetFormat::spir_v:
 				return dxc_compile(DxcTargetType::spir_v);
-			case TargetFormat::glsl:
-				return spirv_compile(SpirvOutputType::glsl);
-			case TargetFormat::essl:
-				return spirv_compile(SpirvOutputType::essl);
 			case TargetFormat::msl:
 				return spirv_compile(SpirvOutputType::msl);
 			default:
@@ -273,7 +310,8 @@ namespace Luna
 		Span<const byte_t> Compiler::get_output()
 		{
 			lutsassert();
-			return Span<const byte_t>(m_out_data, m_out_size);
+            Span<const byte_t> ret(m_out_data, m_out_size);
+            return ret;
 		}
 
 		LUNA_SHADER_COMPILER_API Ref<ICompiler> new_compiler()

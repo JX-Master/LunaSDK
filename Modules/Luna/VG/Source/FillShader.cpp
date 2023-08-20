@@ -14,14 +14,14 @@ namespace Luna
 	namespace VG
 	{
 		const c8 FILL_SHADER_SOURCE_VS[] = R"(
-StructuredBuffer<float> g_commands : register(t1);
-
 struct TransformParams
 {
-	float4x4 transform;
+    float4x4 transform;
 };
-
 TransformParams g_cbuffer : register(b0);
+StructuredBuffer<float> g_commands : register(t1);
+Texture2D g_tex : register(t2);
+SamplerState g_sampler : register(s3);
 
 struct VSIn
 {
@@ -72,6 +72,11 @@ VSOut main(VSIn v)
 		usize FILL_SHADER_SOURCE_VS_SIZE = sizeof(FILL_SHADER_SOURCE_VS);
 
 		const c8 FILL_SHADER_SOURCE_PS[] = R"(
+struct TransformParams
+{
+    float4x4 transform;
+};
+TransformParams g_cbuffer : register(b0);
 StructuredBuffer<float> g_commands : register(t1);
 Texture2D g_tex : register(t2);
 SamplerState g_sampler : register(s3);

@@ -121,7 +121,9 @@ namespace Luna
 				Path path = directory;
 				for(; iter->is_valid(); iter->move_next())
 				{
-					path.push_back(iter->get_filename());
+                    const c8* filename = iter->get_filename();
+                    if(!strcmp(filename, ".") || !strcmp(filename, "..")) continue;
+					path.push_back(filename);
 					if(test_flags(iter->get_attribute(), FileAttributeFlag::directory))
 					{
 						luexp(recursive_load_asset_meta(path, assets));
@@ -566,7 +568,7 @@ namespace Luna
 			desc.serialize_func = [](typeinfo_t type, const void* inst) -> R<Variant>
 			{
 				const asset_t* obj = (const asset_t*)inst;
-				if (!obj->handle) return VariantType::null;
+				if (!obj->handle) return Variant();
 				auto guid = Asset::get_asset_guid(*obj);
 				return serialize(guid);
 			};

@@ -3,3 +3,10 @@
 Solution
 build
 .DS_Store
+Tools/doxygen/xml
+Tools/doxygen/html
+CMakeFiles
+CMakeScripts
+Luna.xcodeproj
+cmake_install.cmake
+CMakeCache.txt

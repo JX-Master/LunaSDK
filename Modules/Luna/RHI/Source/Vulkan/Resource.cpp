@@ -9,24 +9,11 @@
 */
 #include "Resource.hpp"
 #include "Instance.hpp"
+#include "../RHI.hpp"
 namespace Luna
 {
 	namespace RHI
 	{
-		inline void validate_texture_desc(TextureDesc& desc)
-		{
-			if (desc.mip_levels == 0)
-			{
-				if (is_depth_stencil_format(desc.format))
-				{
-					desc.mip_levels = 1;
-				}
-				else
-				{
-					desc.mip_levels = calc_mip_levels(desc.width, desc.height, desc.depth);
-				}
-			}
-		}
 		RV BufferResource::init_as_committed(MemoryType memory_type, const BufferDesc& desc)
 		{
 			lutry
@@ -76,7 +63,7 @@ namespace Luna
 				m_buffer = VK_NULL_HANDLE;
 			}
 		}
-		void BufferResource::set_name(const Name& name)
+		void BufferResource::set_name(const c8* name)
 		{
 			if (g_enable_validation_layer)
 			{
@@ -84,7 +71,7 @@ namespace Luna
 				nameInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
 				nameInfo.objectType = VK_OBJECT_TYPE_BUFFER;
 				nameInfo.objectHandle = (uint64_t)m_buffer;
-				nameInfo.pObjectName = name.c_str();
+				nameInfo.pObjectName = name;
 				vkSetDebugUtilsObjectNameEXT(m_device->m_device, &nameInfo);
 			}
 		}
@@ -115,7 +102,7 @@ namespace Luna
 		R<ImageView*> ImageResource::get_image_view(const TextureViewDesc& desc)
 		{
 			auto validated_desc = desc;
-			validate_texture_view_desc(validated_desc);
+			validate_texture_view_desc(m_desc, validated_desc);
 			LockGuard guard(m_image_views_lock);
 			for (auto& v : m_image_views)
 			{
@@ -142,7 +129,7 @@ namespace Luna
 			lutry
 			{
 				m_desc = desc;
-				validate_texture_desc(m_desc);
+				luexp(validate_texture_desc(m_desc));
 				VkImageCreateInfo create_info{};
 				encode_image_create_info(create_info, m_desc);
 				VmaAllocationCreateInfo allocation{};
@@ -162,7 +149,7 @@ namespace Luna
 			{
 				m_desc = desc;
 				m_desc.flags |= ResourceFlag::allow_aliasing;
-				validate_texture_desc(m_desc);
+				luexp(validate_texture_desc(m_desc));
 				luset(m_image, m_device->create_vk_image(m_desc));
 				VkMemoryRequirements memory_requirements;
 				m_device->m_funcs.vkGetImageMemoryRequirements(m_device->m_device, m_image, &memory_requirements);
@@ -190,7 +177,7 @@ namespace Luna
 				m_image = VK_NULL_HANDLE;
 			}
 		}
-		void ImageResource::set_name(const Name& name)
+		void ImageResource::set_name(const c8* name)
 		{
 			if (g_enable_validation_layer)
 			{
@@ -198,7 +185,7 @@ namespace Luna
 				nameInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
 				nameInfo.objectType = VK_OBJECT_TYPE_IMAGE;
 				nameInfo.objectHandle = (uint64_t)m_image;
-				nameInfo.pObjectName = name.c_str();
+				nameInfo.pObjectName = name;
 				vkSetDebugUtilsObjectNameEXT(m_device->m_device, &nameInfo);
 			}
 		}

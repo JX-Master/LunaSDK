@@ -22,6 +22,12 @@
 #include <GLFW/glfw3native.h>
 #endif
 
+#ifdef LUNA_PLATFORM_MACOS
+#include "../../Cocoa/CocoaWindow.hpp"
+#define GLFW_EXPOSE_NATIVE_COCOA
+#include <GLFW/glfw3native.h>
+#endif
+
 namespace Luna
 {
     namespace Window
@@ -72,8 +78,10 @@ namespace Luna
 			return glfwGetError(NULL) == GLFW_NO_ERROR;
 		}
 
-#ifdef LUNA_PLATFORM_WINDOWS
+#if defined(LUNA_PLATFORM_WINDOWS)
 		struct Window : public IWin32Window, public IGLFWWindow
+#elif defined(LUNA_PLATFORM_MACOS)
+		struct Window : public ICocoaWindow, public IGLFWWindow
 #else
 		struct Window : public IGLFWWindow
 #endif
@@ -122,6 +130,12 @@ namespace Luna
 			virtual HWND get_hwnd() override
 			{
 				return glfwGetWin32Window(m_window);
+			}
+#endif
+#ifdef LUNA_PLATFORM_MACOS
+			virtual id get_nswindow() override
+			{
+				return glfwGetCocoaWindow(m_window);
 			}
 #endif
 			virtual GLFWwindow* get_glfw_window_handle() override

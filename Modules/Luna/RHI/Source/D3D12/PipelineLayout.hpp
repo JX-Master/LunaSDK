@@ -3,12 +3,12 @@
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
-* @file ShaderInputLayout.hpp
+* @file PipelineLayout.hpp
 * @author JXMaster
 * @date 2020/3/14
 */
 #pragma once
-#include "../../ShaderInputLayout.hpp"
+#include "../../PipelineLayout.hpp"
 #include "Device.hpp"
 #include <Luna/Runtime/Ref.hpp>
 #include "D3D12Common.hpp"
@@ -17,9 +17,9 @@ namespace Luna
 {
 	namespace RHI
 	{
-		struct ShaderInputLayout : IShaderInputLayout
+		struct PipelineLayout : IPipelineLayout
 		{
-			lustruct("RHI::ShaderInputLayout", "{0a7ccb6d-bcf0-433a-af5b-ee454c37e5e2}");
+			lustruct("RHI::PipelineLayout", "{0a7ccb6d-bcf0-433a-af5b-ee454c37e5e2}");
 			luiimpl();
 
 			Ref<Device> m_device;
@@ -34,15 +34,15 @@ namespace Luna
 			};
 			Vector<DescriptorSetLayoutInfo> m_descriptor_set_layouts;
 
-			ShaderInputLayout() {}
+			PipelineLayout() {}
 
-			RV init(const ShaderInputLayoutDesc& desc);
+			RV init(const PipelineLayoutDesc& desc);
 
 			IDevice* get_device()
 			{
 				return m_device.as<IDevice>();
 			}
-			void set_name(const Name& name) { set_object_name(m_rs.Get(), name); }
+			void set_name(const c8* name) { set_object_name(m_rs.Get(), name); }
 		};
 	}
 }

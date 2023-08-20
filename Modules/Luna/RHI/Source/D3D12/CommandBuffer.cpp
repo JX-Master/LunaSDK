@@ -233,6 +233,28 @@ namespace Luna
 			m_wait_value = 1;	// The fist wait value.
 			return ok;
 		}
+		void CommandBuffer::write_timestamp(IQueryHeap* heap, u32 index)
+		{
+			lutsassert();
+			QueryHeap* query_heap = (QueryHeap*)heap->get_object();
+			m_li->EndQuery(query_heap->m_heap.Get(), D3D12_QUERY_TYPE_TIMESTAMP, index);
+			BufferResource* res = query_heap->m_result_buffer;
+			m_li->ResolveQueryData(query_heap->m_heap.Get(), D3D12_QUERY_TYPE_TIMESTAMP, index, 1, res->m_res.Get(), index * 8);
+		}
+		void CommandBuffer::begin_pipeline_statistics_query(IQueryHeap* heap, u32 index)
+		{
+			lutsassert();
+			QueryHeap* query_heap = (QueryHeap*)heap->get_object();
+			m_li->BeginQuery(query_heap->m_heap.Get(), D3D12_QUERY_TYPE_PIPELINE_STATISTICS, index);
+		}
+		void CommandBuffer::end_pipeline_statistics_query(IQueryHeap* heap, u32 index)
+		{
+			lutsassert();
+			QueryHeap* query_heap = (QueryHeap*)heap->get_object();
+			m_li->EndQuery(query_heap->m_heap.Get(), D3D12_QUERY_TYPE_PIPELINE_STATISTICS, index);
+			BufferResource* res = query_heap->m_result_buffer;
+			m_li->ResolveQueryData(query_heap->m_heap.Get(), D3D12_QUERY_TYPE_PIPELINE_STATISTICS, index, 1, res->m_res.Get(), index * sizeof(D3D12_QUERY_DATA_PIPELINE_STATISTICS));
+		}
 		RV CommandBuffer::reset()
 		{
 			lutsassert();
@@ -252,18 +274,30 @@ namespace Luna
 			m_vbs.clear();
 			m_ib.reset();
 			m_heap_set = false;
-			m_graphics_shader_input_layout.reset();
-			m_compute_shader_input_layout.reset();
-			m_context = CommandBufferContextType::none;
+			m_graphics_pipeline_layout.reset();
+			m_compute_pipeline_layout.reset();
 			return ok;
 		}
 		void CommandBuffer::begin_render_pass(const RenderPassDesc& desc)
 		{
 			lutsassert();
-			assert_graphcis_context();
-			lucheck_msg(!m_render_pass_context.m_valid, "The last render pass is not correctly closed.");
+			lucheck_msg(!m_render_pass_context.m_valid && !m_copy_pass_begin && !m_compute_pass_begin, "begin_render_pass can only be called when no other pass is open.");
 			lutry
 			{
+				m_occlusion_query_heap_attachment = desc.occlusion_query_heap;
+				m_timestamp_query_heap_attachment = desc.timestamp_query_heap;
+				m_timestamp_query_begin_index = desc.timestamp_query_begin_pass_write_index;
+				m_timestamp_query_end_index = desc.timestamp_query_end_pass_write_index;
+				m_pipeline_statistics_query_heap_attachment = desc.pipeline_statistics_query_heap;
+				m_pipeline_statistics_query_index = desc.pipeline_statistics_query_write_index;
+				if (m_timestamp_query_heap_attachment && m_timestamp_query_begin_index != DONT_QUERY)
+				{
+					write_timestamp(m_timestamp_query_heap_attachment, m_timestamp_query_begin_index);
+				}
+				if (m_pipeline_statistics_query_heap_attachment && m_pipeline_statistics_query_index != DONT_QUERY)
+				{
+					begin_pipeline_statistics_query(m_pipeline_statistics_query_heap_attachment, m_pipeline_statistics_query_index);
+				}
 				// Create render target and depth stencil view.
 				D3D12_CPU_DESCRIPTOR_HANDLE rtv[8];
 				D3D12_CPU_DESCRIPTOR_HANDLE dsv{ 0 };
@@ -292,7 +326,7 @@ namespace Luna
 					view.mip_slice = src.mip_slice;
 					view.mip_size = 1;
 					view.array_slice = src.array_slice;
-					view.array_size = src.array_size;
+					view.array_size = desc.array_size;
 					luset(m_render_pass_context.m_color_attachments[i], tex->get_rtv(view));
 					m_render_pass_context.m_color_attachment_views[i] = view;
 					rtv[i] = m_render_pass_context.m_color_attachments[i]->GetCPUDescriptorHandleForHeapStart();
@@ -310,7 +344,7 @@ namespace Luna
 					view.mip_slice = src.mip_slice;
 					view.mip_size = 1;
 					view.array_slice = src.array_slice;
-					view.array_size = src.array_size;
+					view.array_size = desc.array_size;
 					luset(m_render_pass_context.m_depth_stencil_attachment, tex->get_dsv(view));
 					dsv = m_render_pass_context.m_depth_stencil_attachment->GetCPUDescriptorHandleForHeapStart();
 					m_render_pass_context.m_tex_size.x = tex->m_desc.width;
@@ -377,13 +411,13 @@ namespace Luna
 
 			}
 		}
-		void CommandBuffer::set_graphics_shader_input_layout(IShaderInputLayout* shader_input_layout)
+		void CommandBuffer::set_graphics_pipeline_layout(IPipelineLayout* pipeline_layout)
 		{
 			lutsassert();
 			assert_graphcis_context();
-			lucheck(shader_input_layout);
-			ShaderInputLayout* o = cast_object<ShaderInputLayout>(shader_input_layout->get_object());
-			m_graphics_shader_input_layout = o;
+			lucheck(pipeline_layout);
+			PipelineLayout* o = cast_object<PipelineLayout>(pipeline_layout->get_object());
+			m_graphics_pipeline_layout = o;
 			m_li->SetGraphicsRootSignature(o->m_rs.Get());
 		}
 		void CommandBuffer::set_graphics_pipeline_state(IPipelineState* pso)
@@ -450,8 +484,8 @@ namespace Luna
 		{
 			lutsassert();
 			assert_graphcis_context();
-			lucheck_msg(m_graphics_shader_input_layout, "Graphic Shader Input Layout must be set before Graphic View Set can be bound!");
-			lucheck_msg(m_graphics_shader_input_layout->m_descriptor_set_layouts.size() >= start_index + descriptor_sets.size(), "The binding index out of range specified by the shader input layout.");
+			lucheck_msg(m_graphics_pipeline_layout, "Graphic pipeline layout must be set before Graphic View Set can be bound!");
+			lucheck_msg(m_graphics_pipeline_layout->m_descriptor_set_layouts.size() >= start_index + descriptor_sets.size(), "The binding index out of range specified by the pipeline layout.");
 			if (!m_heap_set)
 			{
 				ID3D12DescriptorHeap* heaps[2];
@@ -462,7 +496,7 @@ namespace Luna
 			}
 			for (u32 index = start_index; index < start_index + (u32)descriptor_sets.size(); ++index)
 			{
-				auto& info = m_graphics_shader_input_layout->m_descriptor_set_layouts[index];
+				auto& info = m_graphics_pipeline_layout->m_descriptor_set_layouts[index];
 				DescriptorSet* set = cast_object<DescriptorSet>(descriptor_sets[index - start_index]->get_object());
 				for (u32 i = 0; i < (u32)info.m_memory_types.size(); ++i)
 				{
@@ -519,11 +553,12 @@ namespace Luna
 			}
 			m_li->RSSetScissorRects((UINT)rects.size(), rs);
 		}
-		void CommandBuffer::set_blend_factor(Span<const f32, 4> blend_factor)
+		void CommandBuffer::set_blend_factor(const Float4U& blend_factor)
 		{
 			lutsassert();
 			assert_graphcis_context();
-			m_li->OMSetBlendFactor(blend_factor.data());
+			f32 factor[] = {blend_factor.x, blend_factor.y, blend_factor.z, blend_factor.w};
+			m_li->OMSetBlendFactor(factor);
 		}
 		void CommandBuffer::set_stencil_ref(u32 stencil_ref)
 		{
@@ -546,59 +581,19 @@ namespace Luna
 			lucheck_msg(m_render_pass_context.m_valid, "draw_instanced must be called between `begin_render_pass` and `end_render_pass`.");
 			m_li->DrawInstanced(vertex_count_per_instance, instance_count, start_vertex_location, start_instance_location);
 		}
-		void CommandBuffer::clear_depth_stencil_attachment(ClearFlag clear_flags, f32 depth, u8 stencil, Span<const RectI> rects)
+		void CommandBuffer::begin_occlusion_query(OcclusionQueryMode mode, u32 index)
 		{
 			lutsassert();
-			assert_graphcis_context();
-			lucheck_msg(m_render_pass_context.m_valid, "clear_depth_stencil_attachment must be called between `begin_render_pass` and `end_render_pass`.");
-			D3D12_CPU_DESCRIPTOR_HANDLE h = m_render_pass_context.m_depth_stencil_attachment->GetCPUDescriptorHandleForHeapStart();
-			D3D12_RECT* d3drects = (D3D12_RECT*)alloca(sizeof(D3D12_RECT) * rects.size());
-			auto tex_sz = m_render_pass_context.m_tex_size;
-			for (u32 i = 0; i < rects.size(); ++i)
-			{
-				d3drects[i].bottom = tex_sz.y - rects[i].offset_y;
-				d3drects[i].left = rects[i].offset_x;
-				d3drects[i].right = rects[i].offset_x + rects[i].width;
-				d3drects[i].top = tex_sz.y - (rects[i].offset_y + rects[i].height);
-			}
-			D3D12_CLEAR_FLAGS f;
-			if ((clear_flags & ClearFlag::depth) != ClearFlag::none)
-			{
-				if ((clear_flags & ClearFlag::stencil) != ClearFlag::none)
-				{
-					f = D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL;
-				}
-				else
-				{
-					f = D3D12_CLEAR_FLAG_DEPTH;
-				}
-			}
-			else if ((clear_flags & ClearFlag::stencil) != ClearFlag::none)
-			{
-				f = D3D12_CLEAR_FLAG_STENCIL;
-			}
-			else
-			{
-				return;
-			}
-			m_li->ClearDepthStencilView(h, f, depth, stencil, (UINT)rects.size(), d3drects);
+			QueryHeap* query_heap = (QueryHeap*)m_occlusion_query_heap_attachment->get_object();
+			m_li->BeginQuery(query_heap->m_heap.Get(), D3D12_QUERY_TYPE_OCCLUSION, index);
 		}
-		void CommandBuffer::clear_color_attachment(u32 index, Span<const f32, 4> color_rgba, Span<const RectI> rects)
+		void CommandBuffer::end_occlusion_query(u32 index)
 		{
 			lutsassert();
-			assert_graphcis_context();
-			lucheck_msg(m_render_pass_context.m_valid, "clear_color_attachment must be called between `begin_render_pass` and `end_render_pass`.");
-			D3D12_CPU_DESCRIPTOR_HANDLE h = m_render_pass_context.m_color_attachments[index]->GetCPUDescriptorHandleForHeapStart();
-			D3D12_RECT* d3drects = (D3D12_RECT*)alloca(sizeof(D3D12_RECT) * rects.size());
-			auto tex_sz = m_render_pass_context.m_tex_size;
-			for (u32 i = 0; i < rects.size(); ++i)
-			{
-				d3drects[i].bottom = tex_sz.y - rects[i].offset_y;
-				d3drects[i].left = rects[i].offset_x;
-				d3drects[i].right = rects[i].offset_x + rects[i].width;
-				d3drects[i].top = tex_sz.y - (rects[i].offset_y + rects[i].height);
-			}
-			m_li->ClearRenderTargetView(h, color_rgba.data(), (UINT)rects.size(), d3drects);
+			QueryHeap* query_heap = (QueryHeap*)m_occlusion_query_heap_attachment->get_object();
+			m_li->EndQuery(query_heap->m_heap.Get(), D3D12_QUERY_TYPE_OCCLUSION, index);
+			BufferResource* res = query_heap->m_result_buffer;
+			m_li->ResolveQueryData(query_heap->m_heap.Get(), D3D12_QUERY_TYPE_TIMESTAMP, index, 1, res->m_res.Get(), index * 8);
 		}
 		void CommandBuffer::end_render_pass()
 		{
@@ -676,15 +671,47 @@ namespace Luna
 				m_li->ResourceBarrier((UINT)barriers.size(), barriers.data());
 			}
 			barriers.clear();
+			if (m_timestamp_query_heap_attachment && m_timestamp_query_end_index != DONT_QUERY)
+			{
+				write_timestamp(m_timestamp_query_heap_attachment, m_timestamp_query_end_index);
+			}
+			if (m_pipeline_statistics_query_heap_attachment && m_pipeline_statistics_query_index != DONT_QUERY)
+			{
+				end_pipeline_statistics_query(m_pipeline_statistics_query_heap_attachment, m_pipeline_statistics_query_index);
+			}
+			m_occlusion_query_heap_attachment = nullptr;
+			m_timestamp_query_heap_attachment = nullptr;
+			m_timestamp_query_begin_index = DONT_QUERY;
+			m_timestamp_query_end_index = DONT_QUERY;
+			m_pipeline_statistics_query_heap_attachment = nullptr;
+			m_pipeline_statistics_query_index = DONT_QUERY;
 			m_render_pass_context.m_valid = false;
 		}
-		void CommandBuffer::set_compute_shader_input_layout(IShaderInputLayout* shader_input_layout)
+		void CommandBuffer::begin_compute_pass(const ComputePassDesc& desc)
+		{
+			lucheck_msg(!m_render_pass_context.m_valid && !m_copy_pass_begin && !m_compute_pass_begin, "begin_compute_pass can only be called when no other pass is open.");
+			m_compute_pass_begin = true;
+			m_timestamp_query_heap_attachment = desc.timestamp_query_heap;
+			m_timestamp_query_begin_index = desc.timestamp_query_begin_pass_write_index;
+			m_timestamp_query_end_index = desc.timestamp_query_end_pass_write_index;
+			m_pipeline_statistics_query_heap_attachment = desc.pipeline_statistics_query_heap;
+			m_pipeline_statistics_query_index = desc.pipeline_statistics_query_write_index;
+			if (m_timestamp_query_heap_attachment && m_timestamp_query_begin_index != DONT_QUERY)
+			{
+				write_timestamp(m_timestamp_query_heap_attachment, m_timestamp_query_begin_index);
+			}
+			if (m_pipeline_statistics_query_heap_attachment && m_pipeline_statistics_query_index != DONT_QUERY)
+			{
+				begin_pipeline_statistics_query(m_pipeline_statistics_query_heap_attachment, m_pipeline_statistics_query_index);
+			}
+		}
+		void CommandBuffer::set_compute_pipeline_layout(IPipelineLayout* pipeline_layout)
 		{
 			lutsassert();
 			assert_compute_context();
-			lucheck(shader_input_layout);
-			ShaderInputLayout* o = cast_object<ShaderInputLayout>(shader_input_layout->get_object());
-			m_compute_shader_input_layout = o;
+			lucheck(pipeline_layout);
+			PipelineLayout* o = cast_object<PipelineLayout>(pipeline_layout->get_object());
+			m_compute_pipeline_layout = o;
 			m_li->SetComputeRootSignature(o->m_rs.Get());
 		}
 		void CommandBuffer::set_compute_pipeline_state(IPipelineState* pso)
@@ -697,8 +724,8 @@ namespace Luna
 		{
 			lutsassert();
 			assert_compute_context();
-			lucheck_msg(m_compute_shader_input_layout, "Compute Shader Input Layout must be set before Compute View Set can be attached.");
-			lucheck_msg(m_compute_shader_input_layout->m_descriptor_set_layouts.size() > start_index, "The binding index out of range specified by the shader input layout.");
+			lucheck_msg(m_compute_pipeline_layout, "Compute pipeline layout must be set before Compute View Set can be attached.");
+			lucheck_msg(m_compute_pipeline_layout->m_descriptor_set_layouts.size() > start_index, "The binding index out of range specified by the pipeline layout.");
 			if (!m_heap_set)
 			{
 				ID3D12DescriptorHeap* heaps[2];
@@ -709,7 +736,7 @@ namespace Luna
 			}
 			for (u32 index = start_index; index < start_index + (u32)descriptor_sets.size(); ++index)
 			{
-				auto& info = m_compute_shader_input_layout->m_descriptor_set_layouts[index];
+				auto& info = m_compute_pipeline_layout->m_descriptor_set_layouts[index];
 				DescriptorSet* set = cast_object<DescriptorSet>(descriptor_sets[index - start_index]->get_object());
 				for (u32 i = 0; i < (u32)info.m_memory_types.size(); ++i)
 				{
@@ -739,6 +766,36 @@ namespace Luna
 			lutsassert();
 			assert_compute_context();
 			m_li->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z);
+		}
+		void CommandBuffer::end_compute_pass()
+		{
+			lucheck_msg(m_compute_pass_begin, "Calling end_compute_pass without prior call to begin_compute_pass.");
+			if (m_timestamp_query_heap_attachment && m_timestamp_query_end_index != DONT_QUERY)
+			{
+				write_timestamp(m_timestamp_query_heap_attachment, m_timestamp_query_end_index);
+			}
+			if (m_pipeline_statistics_query_heap_attachment && m_pipeline_statistics_query_index != DONT_QUERY)
+			{
+				end_pipeline_statistics_query(m_pipeline_statistics_query_heap_attachment, m_pipeline_statistics_query_index);
+			}
+			m_timestamp_query_heap_attachment = nullptr;
+			m_timestamp_query_begin_index = DONT_QUERY;
+			m_timestamp_query_end_index = DONT_QUERY;
+			m_pipeline_statistics_query_heap_attachment = nullptr;
+			m_pipeline_statistics_query_index = DONT_QUERY;
+			m_compute_pass_begin = false;
+		}
+		void CommandBuffer::begin_copy_pass(const CopyPassDesc& desc)
+		{
+			lucheck_msg(!m_render_pass_context.m_valid && !m_copy_pass_begin && !m_compute_pass_begin, "begin_copy_pass can only be called when no other pass is open.");
+			m_copy_pass_begin = true;
+			m_timestamp_query_heap_attachment = desc.timestamp_query_heap;
+			m_timestamp_query_begin_index = desc.timestamp_query_begin_pass_write_index;
+			m_timestamp_query_end_index = desc.timestamp_query_end_pass_write_index;
+			if (m_timestamp_query_heap_attachment && m_timestamp_query_begin_index != DONT_QUERY)
+			{
+				write_timestamp(m_timestamp_query_heap_attachment, m_timestamp_query_begin_index);
+			}
 		}
 		void CommandBuffer::copy_resource(IResource* dst, IResource* src)
 		{
@@ -864,6 +921,18 @@ namespace Luna
 			src_box.back = src_z + copy_depth;
 			m_li->CopyTextureRegion(&dsttex, 0, 0, 0, &srctex, &src_box);
 		}
+		void CommandBuffer::end_copy_pass()
+		{
+			lucheck_msg(m_copy_pass_begin, "Calling end_copy_pass without prior call to begin_copy_pass.");
+			if (m_timestamp_query_heap_attachment && m_timestamp_query_end_index != DONT_QUERY)
+			{
+				write_timestamp(m_timestamp_query_heap_attachment, m_timestamp_query_end_index);
+			}
+			m_timestamp_query_heap_attachment = nullptr;
+			m_timestamp_query_begin_index = DONT_QUERY;
+			m_timestamp_query_end_index = DONT_QUERY;
+			m_copy_pass_begin = false;
+		}
 		void CommandBuffer::resource_barrier(Span<const BufferBarrier> buffer_barriers, Span<const TextureBarrier> texture_barriers)
 		{
 			lutsassert();
@@ -882,46 +951,10 @@ namespace Luna
 				m_li->ResourceBarrier((UINT)m_tracking_system.m_barriers.size(), m_tracking_system.m_barriers.data());
 			}
 		}
-		void CommandBuffer::write_timestamp(IQueryHeap* heap, u32 index)
-		{
-			lutsassert();
-			QueryHeap* query_heap = (QueryHeap*)heap->get_object();
-			m_li->EndQuery(query_heap->m_heap.Get(), D3D12_QUERY_TYPE_TIMESTAMP, index);
-			BufferResource* res = query_heap->m_result_buffer;
-			m_li->ResolveQueryData(query_heap->m_heap.Get(), D3D12_QUERY_TYPE_TIMESTAMP, index, 1, res->m_res.Get(), index * 8);
-		}
-		void CommandBuffer::begin_pipeline_statistics_query(IQueryHeap* heap, u32 index)
-		{
-			lutsassert();
-			QueryHeap* query_heap = (QueryHeap*)heap->get_object();
-			m_li->BeginQuery(query_heap->m_heap.Get(), D3D12_QUERY_TYPE_PIPELINE_STATISTICS, index);
-		}
-		void CommandBuffer::end_pipeline_statistics_query(IQueryHeap* heap, u32 index)
-		{
-			lutsassert();
-			QueryHeap* query_heap = (QueryHeap*)heap->get_object();
-			m_li->EndQuery(query_heap->m_heap.Get(), D3D12_QUERY_TYPE_PIPELINE_STATISTICS, index);
-			BufferResource* res = query_heap->m_result_buffer;
-			m_li->ResolveQueryData(query_heap->m_heap.Get(), D3D12_QUERY_TYPE_PIPELINE_STATISTICS, index, 1, res->m_res.Get(), index * sizeof(D3D12_QUERY_DATA_PIPELINE_STATISTICS));
-		}
-		void CommandBuffer::begin_occlusion_query(IQueryHeap* heap, u32 index)
-		{
-			lutsassert();
-			QueryHeap* query_heap = (QueryHeap*)heap->get_object();
-			m_li->BeginQuery(query_heap->m_heap.Get(), D3D12_QUERY_TYPE_OCCLUSION, index);
-		}
-		void CommandBuffer::end_occlusion_query(IQueryHeap* heap, u32 index)
-		{
-			lutsassert();
-			QueryHeap* query_heap = (QueryHeap*)heap->get_object();
-			m_li->EndQuery(query_heap->m_heap.Get(), D3D12_QUERY_TYPE_OCCLUSION, index);
-			BufferResource* res = query_heap->m_result_buffer;
-			m_li->ResolveQueryData(query_heap->m_heap.Get(), D3D12_QUERY_TYPE_TIMESTAMP, index, 1, res->m_res.Get(), index * 8);
-		}
 		RV CommandBuffer::submit(Span<IFence*> wait_fences, Span<IFence*> signal_fences, bool allow_host_waiting)
 		{
 			lutsassert();
-			assert_non_render_pass();
+			lucheck_msg(!m_render_pass_context.m_valid && !m_copy_pass_begin && !m_compute_pass_begin, "submit can only be called when no render, compute or copy pass is open.");
 			HRESULT hr;
 			hr = m_li->Close();
 			if (FAILED(hr)) return encode_hresult(hr);

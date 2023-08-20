@@ -30,7 +30,7 @@ namespace Luna
 			~DeviceMemory();
 
 			virtual IDevice* get_device() override { return m_device; }
-			virtual void set_name(const Name& name) override { m_name = name; }
+			virtual void set_name(const c8* name) override { m_name = name; }
 			virtual MemoryType get_memory_type() override { return m_memory_type; }
 			virtual u64 get_size() override { return m_allocation_info.size; }
 		};

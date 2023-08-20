@@ -8,7 +8,7 @@
 * @date 2023/4/23
 */
 #include "PipelineState.hpp"
-#include "ShaderInputLayout.hpp"
+#include "PipelineLayout.hpp"
 
 namespace Luna
 {
@@ -207,18 +207,18 @@ namespace Luna
 				// blend state.
 				VkPipelineColorBlendStateCreateInfo blend{};
 				blend.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-				blend.logicOpEnable = desc.blend_state.logic_op_enable ? VK_TRUE : VK_FALSE;
-				blend.logicOp = encode_logic_op(desc.blend_state.logic_op);
+				blend.logicOpEnable = VK_FALSE;
+				blend.logicOp = VK_LOGIC_OP_CLEAR;
 				blend.attachmentCount = desc.num_color_attachments;
 				VkPipelineColorBlendAttachmentState attachments[8] = { {} };
 				for (usize i = 0; i < desc.num_color_attachments; ++i)
 				{
 					auto& dst = attachments[i];
-					auto& src = desc.blend_state.rt[i];
+					auto& src = desc.blend_state.attachments[i];
 					dst.blendEnable = src.blend_enable ? VK_TRUE : VK_FALSE;
-					dst.srcColorBlendFactor = encode_blend_factor(src.src_blend);
-					dst.dstColorBlendFactor = encode_blend_factor(src.dst_blend);
-					dst.colorBlendOp = encode_blend_op(src.blend_op);
+					dst.srcColorBlendFactor = encode_blend_factor(src.src_blend_color);
+					dst.dstColorBlendFactor = encode_blend_factor(src.dst_blend_color);
+					dst.colorBlendOp = encode_blend_op(src.blend_op_color);
 					dst.srcAlphaBlendFactor = encode_blend_factor(src.src_blend_alpha);
 					dst.dstAlphaBlendFactor = encode_blend_factor(src.dst_blend_alpha);
 					dst.alphaBlendOp = encode_blend_op(src.blend_op_alpha);
@@ -239,8 +239,8 @@ namespace Luna
 				synamic_state_create_info.dynamicStateCount = 4;
 				create_info.pDynamicState = &synamic_state_create_info;
 				// pipeline layout.
-				ShaderInputLayout* slayout = (ShaderInputLayout*)desc.shader_input_layout->get_object();
-				create_info.layout = slayout->m_pipeline_layout;
+				PipelineLayout* playout = (PipelineLayout*)desc.pipeline_layout->get_object();
+				create_info.layout = playout->m_pipeline_layout;
 				// render pass.
 				RenderPassKey render_pass;
 				for (usize i = 0; i < desc.num_color_attachments; ++i)
@@ -286,8 +286,8 @@ namespace Luna
 				create_info.stage.flags = 0;
 				create_info.stage.pSpecializationInfo = nullptr;
 				// pipeline layout.
-				ShaderInputLayout* slayout = (ShaderInputLayout*)desc.shader_input_layout->get_object();
-				create_info.layout = slayout->m_pipeline_layout;
+				PipelineLayout* playout = (PipelineLayout*)desc.pipeline_layout->get_object();
+				create_info.layout = playout->m_pipeline_layout;
 				luexp(encode_vk_result(m_device->m_funcs.vkCreateComputePipelines(m_device->m_device, VK_NULL_HANDLE, 1, &create_info, nullptr, &m_pipeline)));
 			}
 			lucatchret;

@@ -1,11 +1,5 @@
 #include "Common.hlsl"
 
-Texture2D<float4> g_skybox : register(t1);
-Texture2D<float> g_depth : register(t2);
-RWTexture2D<float4> g_lighting_tex : register(u3);
-SamplerState g_sampler : register(s4);
-
-
 cbuffer SkyboxParams : register(b0)
 {
 	float4x4 g_view_to_world;
@@ -13,6 +7,10 @@ cbuffer SkyboxParams : register(b0)
 	uint g_width;
 	uint g_height;
 }
+Texture2D<float4> g_skybox : register(t1);
+Texture2D<float> g_depth : register(t2);
+RWTexture2D<float4> g_lighting_tex : register(u3);
+SamplerState g_sampler : register(s4);
 
 
 // asin [-1,1] -> [-PI/2, PI/2]

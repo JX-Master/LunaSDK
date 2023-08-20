@@ -33,7 +33,7 @@ namespace Luna
 			~BufferResource();
 
 			virtual IDevice* get_device() override { return m_device.get(); }
-			virtual void set_name(const Name& name) override;
+			virtual void set_name(const c8* name) override;
 			virtual IDeviceMemory* get_memory() override { return m_memory; }
 			virtual BufferDesc get_desc() override { return m_desc; }
 			virtual RV map(usize read_begin, usize read_end, void** data) override;
@@ -82,7 +82,7 @@ namespace Luna
 			}
 
 			virtual IDevice* get_device() override { return m_device.get(); }
-			virtual void set_name(const Name& name) override;
+			virtual void set_name(const c8* name) override;
 			virtual IDeviceMemory* get_memory() override { return m_memory; }
 			virtual TextureDesc get_desc() override { return m_desc; }
 		};

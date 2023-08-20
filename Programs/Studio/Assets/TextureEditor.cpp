@@ -18,7 +18,7 @@ namespace Luna
 
 		Asset::asset_t m_tex;
 
-		bool m_open;
+		bool m_open = true;
 
 		TextureEditor() {}
 
@@ -39,7 +39,7 @@ namespace Luna
 		}
 
 		char name[32];
-		sprintf_s(name, "Texture###%d", (u32)(usize)this);
+		snprintf(name, 32, "Texture###%d", (u32)(usize)this);
 
 		ImGui::Begin(name, &m_open, ImGuiWindowFlags_NoCollapse);
 

@@ -67,50 +67,37 @@ namespace Luna
 			if (test_flags(s, TextureStateFlag::present)) r |= D3D12_RESOURCE_STATE_PRESENT;
 			return r;
 		}
-		inline D3D12_FILTER encode_filter(Filter f)
+		inline D3D12_FILTER encode_filter(Filter min_filter, Filter mag_filter, Filter mip_filter, bool anisotropic, bool comparison)
 		{
-			switch (f)
+			if(anisotropic) return comparison ? D3D12_FILTER_COMPARISON_ANISOTROPIC : D3D12_FILTER_ANISOTROPIC;
+			if(min_filter == Filter::nearest)
 			{
-			case Filter::min_mag_mip_point:
-				return D3D12_FILTER_MIN_MAG_MIP_POINT;
-			case Filter::min_mag_point_mip_linear:
-				return D3D12_FILTER_MIN_MAG_POINT_MIP_LINEAR;
-			case Filter::min_point_mag_linear_mip_point:
-				return D3D12_FILTER_MIN_POINT_MAG_LINEAR_MIP_POINT;
-			case Filter::min_point_mag_mip_linear:
-				return D3D12_FILTER_MIN_POINT_MAG_MIP_LINEAR;
-			case Filter::min_linear_mag_mip_point:
-				return D3D12_FILTER_MIN_LINEAR_MAG_MIP_POINT;
-			case Filter::min_linear_mag_point_mip_linear:
-				return D3D12_FILTER_MIN_LINEAR_MAG_POINT_MIP_LINEAR;
-			case Filter::min_mag_linear_mip_point:
-				return D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT;
-			case Filter::min_mag_mip_linear:
-				return D3D12_FILTER_MIN_MAG_MIP_LINEAR;
-			case Filter::anisotropic:
-				return D3D12_FILTER_ANISOTROPIC;
-			case Filter::comparison_min_mag_mip_point:
-				return D3D12_FILTER_COMPARISON_MIN_MAG_MIP_POINT;
-			case Filter::comparison_min_mag_point_mip_linear:
-				return D3D12_FILTER_COMPARISON_MIN_MAG_POINT_MIP_LINEAR;
-			case Filter::comparison_min_point_mag_linear_mip_point:
-				return D3D12_FILTER_COMPARISON_MIN_POINT_MAG_LINEAR_MIP_POINT;
-			case Filter::comparison_min_point_mag_mip_linear:
-				return D3D12_FILTER_COMPARISON_MIN_POINT_MAG_MIP_LINEAR;
-			case Filter::comparison_min_linear_mag_mip_point:
-				return D3D12_FILTER_COMPARISON_MIN_LINEAR_MAG_MIP_POINT;
-			case Filter::comparison_min_linear_mag_point_mip_linear:
-				return D3D12_FILTER_COMPARISON_MIN_LINEAR_MAG_POINT_MIP_LINEAR;
-			case Filter::comparison_min_mag_linear_mip_point:
-				return D3D12_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT;
-			case Filter::comparison_min_mag_mip_linear:
-				return D3D12_FILTER_COMPARISON_MIN_MAG_MIP_LINEAR;
-			case Filter::comparison_anisotropic:
-				return D3D12_FILTER_COMPARISON_ANISOTROPIC;
-			default:
-				lupanic();
-				return D3D12_FILTER_MIN_MAG_MIP_POINT;
+				if(mag_filter == Filter::nearest)
+				{
+					if(mip_filter == Filter::nearest) return comparison ? D3D12_FILTER_COMPARISON_MIN_MAG_MIP_POINT : D3D12_FILTER_MIN_MAG_MIP_POINT;
+					else if(mip_filter == Filter::linear) return comparison ? D3D12_FILTER_COMPARISON_MIN_MAG_POINT_MIP_LINEAR : D3D12_FILTER_MIN_MAG_POINT_MIP_LINEAR;
+				}
+				else if(mag_filter == Filter::linear)
+				{
+					if(mip_filter == Filter::nearest) return comparison ? D3D12_FILTER_COMPARISON_MIN_POINT_MAG_LINEAR_MIP_POINT : D3D12_FILTER_MIN_POINT_MAG_LINEAR_MIP_POINT;
+					else if(mip_filter == Filter::linear) return comparison ? D3D12_FILTER_COMPARISON_MIN_POINT_MAG_MIP_LINEAR : D3D12_FILTER_MIN_POINT_MAG_MIP_LINEAR;
+				}
 			}
+			else if(min_filter == Filter::linear)
+			{
+				if(mag_filter == Filter::nearest)
+				{
+					if(mip_filter == Filter::nearest) return comparison ? D3D12_FILTER_COMPARISON_MIN_LINEAR_MAG_MIP_POINT : D3D12_FILTER_MIN_LINEAR_MAG_MIP_POINT;
+					else if(mip_filter == Filter::linear) return comparison ? D3D12_FILTER_COMPARISON_MIN_LINEAR_MAG_POINT_MIP_LINEAR : D3D12_FILTER_MIN_LINEAR_MAG_POINT_MIP_LINEAR;
+				}
+				else if(mag_filter == Filter::linear)
+				{
+					if(mip_filter == Filter::nearest) return comparison ? D3D12_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT : D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT;
+					else if(mip_filter == Filter::linear) return comparison ? D3D12_FILTER_COMPARISON_MIN_MAG_MIP_LINEAR : D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+				}
+			}
+			lupanic();
+			return D3D12_FILTER_MIN_MAG_MIP_POINT;
 		}
 		inline D3D12_TEXTURE_ADDRESS_MODE encode_address_mode(TextureAddressMode mode)
 		{
@@ -129,32 +116,28 @@ namespace Luna
 				return D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
 			}
 		}
-		inline D3D12_COMPARISON_FUNC encode_comparison_func(ComparisonFunc c)
+		inline D3D12_COMPARISON_FUNC encode_compare_function(CompareFunction c)
 		{
 			switch (c)
 			{
-			case ComparisonFunc::never:
+			case CompareFunction::never:
 				return D3D12_COMPARISON_FUNC_NEVER;
-			case ComparisonFunc::less:
+			case CompareFunction::less:
 				return D3D12_COMPARISON_FUNC_LESS;
-			case ComparisonFunc::equal:
+			case CompareFunction::equal:
 				return D3D12_COMPARISON_FUNC_EQUAL;
-			case ComparisonFunc::less_equal:
+			case CompareFunction::less_equal:
 				return D3D12_COMPARISON_FUNC_LESS_EQUAL;
-			case ComparisonFunc::greater:
+			case CompareFunction::greater:
 				return D3D12_COMPARISON_FUNC_GREATER;
-			case ComparisonFunc::not_equal:
+			case CompareFunction::not_equal:
 				return D3D12_COMPARISON_FUNC_NOT_EQUAL;
-			case ComparisonFunc::greater_equal:
+			case CompareFunction::greater_equal:
 				return D3D12_COMPARISON_FUNC_GREATER_EQUAL;
-			case ComparisonFunc::always:
+			case CompareFunction::always:
 			default:
 				return D3D12_COMPARISON_FUNC_ALWAYS;
 			}
-		}
-		inline u32 calc_mip_levels(u32 width, u32 height, u32 depth)
-		{
-			return 1 + (u32)floorf(log2f((f32)max(width, max(height, depth))));
 		}
 		inline D3D12_RESOURCE_DESC encode_buffer_desc(const BufferDesc& desc)
 		{
@@ -248,11 +231,11 @@ namespace Luna
 			}
 			return D3D12_COMMAND_LIST_TYPE_DIRECT;
 		}
-		inline void set_object_name(ID3D12Object* object, const Name& name)
+		inline void set_object_name(ID3D12Object* object, const c8* name)
 		{
-			usize len = utf8_to_utf16_len(name.c_str(), name.size());
+			usize len = utf8_to_utf16_len(name);
 			wchar_t* buf = (wchar_t*)alloca(sizeof(wchar_t) * (len + 1));
-			utf8_to_utf16((c16*)buf, len + 1, name.c_str(), name.size());
+			utf8_to_utf16((c16*)buf, len + 1, name);
 			object->SetName(buf);
 		}
 		inline RV encode_hresult(HRESULT code)

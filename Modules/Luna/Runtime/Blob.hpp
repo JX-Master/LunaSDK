@@ -13,7 +13,14 @@
 #include "TypeInfo.hpp"
 namespace Luna
 {
-	//! @class Blob
+	//! @addtogroup Runtime
+	//! @{
+
+	//! @brief Represents one binary large object (BLOB).
+	//! @details Blob can be used as a RAII wrapper for arbitrary memory allocation. One blob object allocates and manages one memory block that 
+	//! stores the blob data, which we call the "managed memory" of the blob object. The managed memory is always allocated from @ref memalloc or @ref memrealloc.
+	//! The user can also allocate the memory manually then attach it to one blob object by calling @ref Blob::attach, or call @ref Blob::detach to take ownership
+	//! of the managed memory from one blob object.
 	class Blob
 	{
 		byte_t* m_buffer;
@@ -22,32 +29,104 @@ namespace Luna
 
 		void do_destruct();
 	public:
-		//! Creates the blob object without allocating any data.
+		//! @name Constructors
+		//! @{
+
+		//! @brief Constructs one empty blob. One empty blob will not allocate any memory. 
 		Blob();
-		//! Creates the blob object and allocated the specified size of bytes.
+		//! @brief Constructs one blob object and allocate memory for it.
+		//! @param[in] sz The size, in bytes, of the memory to allocate.
+		//! @param[in] alignment The optional alignment, in bytes, of the memory to allocate.
 		Blob(usize sz, usize alignment = 0);
-		//! Creates the blob object with initial data.
+		//! @brief Constructs the blob object with initial data. 
+		//! @param[in] blob_data A pointer to the data to initialize the blob.
+		//! @param[in] data_sz The size, in bytes, of the data pointed by `blob_data`.
+		//! @param[in] alignment The optional alignment, in bytes, of the memory to allocate.
+		//! @details The blob object will allocate memory for the data and copies the data into the blob memory.
 		Blob(const byte_t* blob_data, usize data_sz, usize alignment = 0);
+		//! @brief Constructs one blob object with a list of elements.
+		//! @param[in] blob_data The @ref Span that represents the list. The blob allocates enough memory to hold all elements in the list. 
+		//! Every element in the list will be copied as if by @ref memcpy.
+		//! @param[in] alignment The optional alignment, in bytes, of the memory to allocate.
 		template <usize _Size>
 		Blob(Span<const byte_t, _Size> blob_data, usize alignment = 0);
+		//! @brief Constructs one blob object by coping data from another blob object.
+		//! @param[in] rhs The blob object to copy data from.
 		Blob(const Blob& rhs);
+		//! @brief Constructs one blob object by moving data from another blob object.
+		//! @param[in] rhs The blob object to move data from. This blob object will be empty after this operation.
 		Blob(Blob&& rhs);
+
+		//! @}
+
+		//! @name Assignments
+		//! @{
+
+		//! @brief Assigns the data of the blob object by coping data from another blob object.
+		//! @param[in] rhs The blob object to copy data from.
 		Blob& operator=(const Blob& rhs);
+		//! @brief Assigns the data of the blob object by moving data from another blob object.
+		//! @param[in] rhs The blob object to move data from. This blob object will be empty after this operation.
 		Blob& operator=(Blob&& rhs);
+
+		//! @}
+
 		~Blob();
+
+		//! @name Accessors
+		//! @{
+		
+		//! @brief Gets one pointer to the data of the blob object.
+		//! @return Returns the pointer to the data of the blob object. Returns `nullptr` if @ref empty returns `true`.
 		const byte_t* data() const;
+		//! @brief Gets one pointer to the data of the blob object.
+		//! @return Returns the pointer to the data of the blob object. Returns `nullptr` if @ref empty returns `true`.
 		byte_t* data();
+		//! @brief Gets the size of the memory managed by this blob object.
+		//! @return Returns the size, in bytes, of the memory managed by this blob object.
 		usize size() const;
+		//! @brief Gets the managed memory of this blob object as a @ref Span of @ref byte_t.
+		//! @return Returns the span that represents the managed memory of this blob object.
 		Span<const byte_t> span() const;
+		//! @brief Gets the managed memory of this blob object as a const @ref Span of @ref byte_t.
+		//! @return Returns the const span that represents the managed memory of this blob object.
 		Span<const byte_t> cspan() const;
+		//! @brief Gets the managed memory of this blob object as a @ref Span of @ref byte_t.
+		//! @return Returns the span that represents the managed memory of this blob object.
 		Span<byte_t> span();
+		//! @brief Gets the alignment of the memory managed by this blob object.
+		//! @return Returns the alignment, in bytes, of the memory managed by this blob object.
 		usize alignment() const;
+		//! @brief Checks whether this blob object is empty, that is, contains no allocated memory. 
+		//! One blob object is empty if and only if its @ref size equals to `0`.
+		//! @return Returns `true` if the blob object is empty, returns `false` otherwise.
 		bool empty() const;
+
+		//! @}
+
+		//! @name Operations
+		//! @{
+
+		//! @brief Resizes the underlying memory.
+		//! @param[in] sz The new size, in bytes, of the new managed memory for the blob object. If this is `0`, this function bahaves the
+		//! same as @ref clear.
 		void resize(usize sz);
+		//! @brief Frees managed memory of this blob object. This blob object is empty after this operation.
 		void clear();
+		//! @brief Attaches a user-allocated memory to the blob object as the managed memory of this blob object.
+		//! @param[in] data The pointer to the memory to attach. This memory must be allocated by @ref memalloc or @ref memrealloc.
+		//! @param[in] size The size, in bytes, of the memory to attach. This must be equal to the size passed to @ref memalloc or @ref memrealloc when allocating the memory.
+		//! @param[in] alignment The alignment, in bytes, of the memory to attach. This must be equal to the alignment passed to @ref memalloc or @ref memrealloc when allocating the memory.
+		//! This can be `0` if `0` is also passed to @ref memalloc or @ref memrealloc when allocating the memory.
 		void attach(byte_t* data, usize size, usize alignment);
+		//! @brief Detaches the managed memory of one blob object. The blob object is empty after this operation.
+		//! @return Returns the pointer to the detached managed memory of the blob object. Returns `nullptr` is this blob object is already empty.
 		byte_t* detach();
+		
+		//! @}
 	};
+
+	//! @}
 
 	inline void Blob::do_destruct()
 	{

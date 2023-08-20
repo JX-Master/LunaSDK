@@ -7,7 +7,6 @@
 * @author JXMaster
 * @date 2022/6/14
 */
-#pragma once
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_IMGUI_API LUNA_EXPORT
 #include "../ImGui.hpp"
@@ -48,7 +47,7 @@ namespace Luna
         Blob g_ps_blob;
 
         Ref<RHI::IDescriptorSetLayout> g_desc_layout;
-        Ref<RHI::IShaderInputLayout> g_slayout;
+        Ref<RHI::IPipelineLayout> g_playout;
         HashMap<RHI::Format, Ref<RHI::IPipelineState>> g_pso;
 
         //! Expand when not enough.
@@ -63,6 +62,8 @@ cbuffer vertexBuffer : register(b0)
 {
     float4x4 ProjectionMatrix; 
 };
+Texture2D texture0 : register(t1);
+SamplerState sampler0 : register(s2);
 struct VS_INPUT
 {
     [[vk::location(0)]]
@@ -99,8 +100,12 @@ struct PS_INPUT
     [[vk::location(2)]]
     float4 col : COLOR0;
 };
-SamplerState sampler0 : register(s2);
+cbuffer vertexBuffer : register(b0)
+{
+    float4x4 ProjectionMatrix;
+};
 Texture2D texture0 : register(t1);
+SamplerState sampler0 : register(s2);
 [[vk::location(0)]]
 float4 main(PS_INPUT input) : SV_Target
 {
@@ -186,10 +191,10 @@ float4 main(PS_INPUT input) : SV_Target
                     }
                 )));
                 IDescriptorSetLayout* dl = g_desc_layout;
-                luset(g_slayout, dev->new_shader_input_layout(ShaderInputLayoutDesc({
+                luset(g_playout, dev->new_pipeline_layout(PipelineLayoutDesc({
                     &dl, 1
                     },
-                    ShaderInputLayoutFlag::allow_input_assembler_input_layout)));
+                    PipelineLayoutFlag::allow_input_assembler_input_layout)));
 
                 // Create constant buffer.
                 usize buffer_size_align = dev->get_uniform_buffer_data_alignment();
@@ -200,7 +205,7 @@ float4 main(PS_INPUT input) : SV_Target
             return ok;
         }
 
-        static RV rebuild_font(f32 scale)
+        static RV rebuild_font(f32 render_scale, f32 display_scale)
         {
             using namespace RHI;
             lutry
@@ -215,8 +220,9 @@ float4 main(PS_INPUT input) : SV_Target
                 usize font_size = default_font->data().size();
                 void* font_data = ImGui::MemAlloc(font_size);
                 memcpy(font_data, default_font->data().data(), font_size);
-                io.Fonts->AddFontFromMemoryTTF(const_cast<void*>(font_data), (int)font_size, 18.0f * scale);
+                io.Fonts->AddFontFromMemoryTTF(const_cast<void*>(font_data), (int)font_size, 18.0f * render_scale);
                 io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
+                io.FontGlobalScale = display_scale;
                 auto dev = get_main_device();
                 luset(g_font_tex, dev->new_texture(MemoryType::local, TextureDesc::tex2d(Format::rgba8_unorm,
                     TextureUsageFlag::read_texture | TextureUsageFlag::copy_dest, width, height, 1, 1)));
@@ -258,7 +264,7 @@ float4 main(PS_INPUT input) : SV_Target
             g_vs_blob.clear();
             g_ps_blob.clear();
             g_active_window = nullptr;
-            g_slayout = nullptr;
+            g_playout = nullptr;
             g_pso.clear();
             g_pso.shrink_to_fit();
             g_cb = nullptr;
@@ -486,7 +492,10 @@ float4 main(PS_INPUT input) : SV_Target
 
         static void handle_dpi_changed(Window::IWindow* window, f32 dpi_scale)
         {
-            auto _ = rebuild_font(dpi_scale);
+            auto sz = window->get_size();
+            auto fb_sz = window->get_framebuffer_size();
+            f32 display_scale = (f32)sz.x / (f32)fb_sz.x;
+            auto _ = rebuild_font(dpi_scale, display_scale);
         }
 
         usize g_handle_mouse_move;
@@ -569,7 +578,9 @@ float4 main(PS_INPUT input) : SV_Target
             if (g_active_window)
             {
                 auto sz = g_active_window->get_size();
+                auto framebuffer_sz = g_active_window->get_framebuffer_size();
                 io.DisplaySize = ImVec2((f32)sz.x, (f32)sz.y);
+                io.DisplayFramebufferScale = ImVec2((f32)framebuffer_sz.x / (f32)sz.x, (f32)framebuffer_sz.y / (f32)sz.y);
             }
             
             // Update OS mouse position
@@ -579,11 +590,14 @@ float4 main(PS_INPUT input) : SV_Target
             {
                 if (g_active_window)
                 {
-                    auto _ = rebuild_font(g_active_window->get_dpi_scale_factor());
+                    auto sz = g_active_window->get_size();
+                    auto fb_sz = g_active_window->get_framebuffer_size();
+                    f32 display_scale = (f32)sz.x / (f32)fb_sz.x;
+                    auto _ = rebuild_font(g_active_window->get_dpi_scale_factor(), display_scale);
                 }
                 else
                 {
-                    auto _ = rebuild_font(1.0f);
+                    auto _ = rebuild_font(1.0f, 1.0f);
                 }
             }
         }
@@ -599,9 +613,9 @@ float4 main(PS_INPUT input) : SV_Target
                 ps_desc.primitive_topology = PrimitiveTopology::triangle_list;
                 ps_desc.sample_mask = U32_MAX;
                 ps_desc.blend_state = BlendDesc({ AttachmentBlendDesc(true, BlendFactor::src_alpha,
-                    BlendFactor::inv_src_alpha, BlendOp::add, BlendFactor::inv_src_alpha, BlendFactor::zero, BlendOp::add, ColorWriteMask::all) });
-                ps_desc.rasterizer_state = RasterizerDesc(FillMode::solid, CullMode::none, 0, 0.0f, 0.0f, 1, false, true, false, false, false);
-                ps_desc.depth_stencil_state = DepthStencilDesc(false, false, ComparisonFunc::always, false, 0x00, 0x00, DepthStencilOpDesc(), DepthStencilOpDesc());
+                    BlendFactor::one_minus_src_alpha, BlendOp::add, BlendFactor::one_minus_src_alpha, BlendFactor::zero, BlendOp::add, ColorWriteMask::all) });
+                ps_desc.rasterizer_state = RasterizerDesc(FillMode::solid, CullMode::none, 0, 0.0f, 0.0f, false, true, false, false, false);
+                ps_desc.depth_stencil_state = DepthStencilDesc(false, false, CompareFunction::always, false, 0x00, 0x00, DepthStencilOpDesc(), DepthStencilOpDesc());
                 ps_desc.ib_strip_cut_value = IndexBufferStripCutValue::disabled;
                 InputBindingDesc input_bindings[] = {
                     InputBindingDesc(0, sizeof(ImDrawVert), InputRate::per_vertex)
@@ -615,7 +629,7 @@ float4 main(PS_INPUT input) : SV_Target
                 ps_desc.input_layout.attributes = { input_attributes , 3 };
                 ps_desc.vs = { g_vs_blob.data(), g_vs_blob.size() };
                 ps_desc.ps = { g_ps_blob.data(), g_ps_blob.size() };
-                ps_desc.shader_input_layout = g_slayout;
+                ps_desc.pipeline_layout = g_playout;
                 ps_desc.num_color_attachments = 1;
                 ps_desc.color_formats[0] = rt_format;
                 lulet(pso, get_main_device()->new_graphics_pipeline_state(ps_desc));
@@ -625,15 +639,19 @@ float4 main(PS_INPUT input) : SV_Target
             return iter->second.get();
         }
 
-        LUNA_IMGUI_API RV render_draw_data(ImDrawData* data, RHI::ICommandBuffer* cmd_buffer, RHI::ITexture* render_target)
+        LUNA_IMGUI_API RV render_draw_data(ImDrawData* draw_data, RHI::ICommandBuffer* cmd_buffer, RHI::ITexture* render_target)
         {
             using namespace RHI;
             lutry
             {
-                ImDrawData* draw_data = ::ImGui::GetDrawData();
-                // Avoid rendering when minimized
-                if (draw_data->DisplaySize.x <= 0.0f || draw_data->DisplaySize.y <= 0.0f)
+                // Avoid rendering when minimized, scale coordinates for retina displays (screen coordinates != framebuffer coordinates)
+                ImGuiIO& io = ImGui::GetIO();
+                int fb_width = (int)(io.DisplaySize.x * io.DisplayFramebufferScale.x);
+                int fb_height = (int)(io.DisplaySize.y * io.DisplayFramebufferScale.y);
+                if (fb_width == 0 || fb_height == 0)
                     return ok;
+                draw_data->ScaleClipRects(io.DisplayFramebufferScale);
+                
                 // Create and grow vertex/index buffers if needed
                 auto dev = cmd_buffer->get_device();
                 if (!g_vb || g_vb_size < (u32)draw_data->TotalVtxCount)
@@ -705,21 +723,19 @@ float4 main(PS_INPUT input) : SV_Target
                 desc.color_attachments[0] = ColorAttachment(render_target, LoadOp::load, StoreOp::store);
                 cmd_buffer->begin_render_pass(desc);
 
-                cmd_buffer->set_viewport(Viewport(0.0f, 0.0f, draw_data->DisplaySize.x, draw_data->DisplaySize.y, 0.0f, 1.0f));
-
-                cmd_buffer->set_vertex_buffers(0, { &VertexBufferView(g_vb, 0, (u32)(g_vb_size * sizeof(ImDrawVert)), sizeof(ImDrawVert)), 1 });
+                cmd_buffer->set_viewport(Viewport(0.0f, 0.0f, fb_width, fb_height, 0.0f, 1.0f));
+                VertexBufferView vbv = VertexBufferView(g_vb, 0, (u32)(g_vb_size * sizeof(ImDrawVert)), sizeof(ImDrawVert));
+                cmd_buffer->set_vertex_buffers(0, { &vbv, 1 });
                 cmd_buffer->set_index_buffer({g_ib, 0, (u32)(g_ib_size * sizeof(ImDrawIdx)), sizeof(ImDrawIdx) == 2 ? Format::r16_uint : Format::r32_uint});
                 lulet(pso, get_pso(rt_desc.format));
                 cmd_buffer->set_graphics_pipeline_state(pso);
-                cmd_buffer->set_graphics_shader_input_layout(g_slayout);
-                const f32 blend_factor[4] = { 0.f, 0.f, 0.f, 0.f };
-                cmd_buffer->set_blend_factor(blend_factor);
+                cmd_buffer->set_graphics_pipeline_layout(g_playout);
+                cmd_buffer->set_blend_factor({ 0.f, 0.f, 0.f, 0.f });
 
                 // Render command lists.
                 i32 vtx_offset = 0;
                 i32 idx_offset = 0;
                 Float2 clip_off = { draw_data->DisplayPos.x, draw_data->DisplayPos.y };
-                Float2 clip_scale = { draw_data->FramebufferScale.x, draw_data->FramebufferScale.y };
 
                 u32 num_draw_calls = 0;
 
@@ -736,8 +752,8 @@ float4 main(PS_INPUT input) : SV_Target
                         else
                         {
                             // Project scissor/clipping rectangles into framebuffer space
-                            Float2 clip_min = Float2((pcmd->ClipRect.x - clip_off.x), (pcmd->ClipRect.y - clip_off.y)) * clip_scale;
-                            Float2 clip_max = Float2((pcmd->ClipRect.z - clip_off.x), (pcmd->ClipRect.w - clip_off.y)) * clip_scale;
+                            Float2 clip_min = Float2((pcmd->ClipRect.x - clip_off.x), (pcmd->ClipRect.y - clip_off.y));
+                            Float2 clip_max = Float2((pcmd->ClipRect.z - clip_off.x), (pcmd->ClipRect.w - clip_off.y));
                             // Apply Scissor, Bind texture, Draw
                             const RectI r = {
                                 (i32)(clip_min.x),
@@ -754,7 +770,7 @@ float4 main(PS_INPUT input) : SV_Target
                             luexp(vs->update_descriptors({
                                 WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(g_cb)),
                                 WriteDescriptorSet::read_texture_view(1, TextureViewDesc::tex2d((ITexture*)pcmd->TextureId)),
-                                WriteDescriptorSet::sampler(2, SamplerDesc(Filter::min_mag_mip_linear, TextureAddressMode::clamp, TextureAddressMode::clamp, TextureAddressMode::clamp))
+                                WriteDescriptorSet::sampler(2, SamplerDesc(Filter::linear, Filter::linear, Filter::linear, TextureAddressMode::clamp, TextureAddressMode::clamp, TextureAddressMode::clamp))
                                 }));
                             cmd_buffer->set_graphics_descriptor_sets(0, { &vs, 1 });
                             cmd_buffer->set_scissor_rect(r);

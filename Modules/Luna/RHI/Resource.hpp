@@ -153,6 +153,10 @@ namespace Luna
 			case Format::rgba16_float:
 			case Format::d32_float_s8_uint_x24:
 				return 64;
+			case Format::rgb32_uint:
+			case Format::rgb32_sint:
+			case Format::rgb32_float:
+				return 96;
 			case Format::rgba32_uint:
 			case Format::rgba32_sint:
 			case Format::rgba32_float:
@@ -274,10 +278,11 @@ namespace Luna
 			//! This should always be 1 for 1D textures.
 			u32 height;
 			//! The depth of the texture.
-			//! This should always be 1 for 1D, 2D and cube textures.
+			//! This should always be 1 for 1D and 2D textures.
 			u32 depth;
 			//! The texture array size, specify 1 if this is not a texture array.
 			//! This should always be 1 for 3D textures.
+			//! This should be times of 6 of `usages` contains `TextureUsageFlag::cube`.
 			u32 array_size;
 			//! The number of mip-map slices. 
 			//! Specify 0 tells the system to create full mip-map chain for the resource.
@@ -292,7 +297,7 @@ namespace Luna
 			//! The resource flags.
 			ResourceFlag flags;
 
-			static inline TextureDesc tex1d(Format format, TextureUsageFlag usages, u64 width, u32 array_size = 1, u32 mip_levels = 0, ResourceFlag flags = ResourceFlag::none)
+			static inline TextureDesc tex1d(Format format, TextureUsageFlag usages, u32 width, u32 array_size = 1, u32 mip_levels = 0, ResourceFlag flags = ResourceFlag::none)
 			{
 				TextureDesc d;
 				d.type = TextureType::tex1d;
@@ -307,7 +312,7 @@ namespace Luna
 				d.flags = flags;
 				return d;
 			}
-			static inline TextureDesc tex2d(Format format, TextureUsageFlag usages, u64 width, u32 height, u32 array_size = 1, u32 mip_levels = 0,
+			static inline TextureDesc tex2d(Format format, TextureUsageFlag usages, u32 width, u32 height, u32 array_size = 1, u32 mip_levels = 0,
 				u32 sample_count = 1, ResourceFlag flags = ResourceFlag::none)
 			{
 				TextureDesc d;
@@ -323,7 +328,24 @@ namespace Luna
 				d.flags = flags;
 				return d;
 			}
-			static inline TextureDesc tex3d(Format format, TextureUsageFlag usages, u64 width, u32 height, u32 depth, u32 mip_levels = 0, ResourceFlag flags = ResourceFlag::none)
+			static inline TextureDesc texcube(Format format, TextureUsageFlag usages, u32 width, u32 height, u32 num_cubes = 1, u32 mip_levels = 0,
+				u32 sample_count = 1, ResourceFlag flags = ResourceFlag::none)
+			{
+				TextureDesc d;
+				d.type = TextureType::tex2d;
+				d.format = format;
+				d.width = width;
+				d.height = height;
+				d.depth = 1;
+				d.array_size = num_cubes * 6;
+				d.mip_levels = mip_levels;
+				d.sample_count = sample_count;
+				d.usages = usages;
+				d.usages |= TextureUsageFlag::cube;
+				d.flags = flags;
+				return d;
+			}
+			static inline TextureDesc tex3d(Format format, TextureUsageFlag usages, u32 width, u32 height, u32 depth, u32 mip_levels = 0, ResourceFlag flags = ResourceFlag::none)
 			{
 				TextureDesc d;
 				d.type = TextureType::tex3d;

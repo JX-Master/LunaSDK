@@ -13,10 +13,12 @@
 #include "../Mutex.hpp"
 #include "../File.hpp"
 #include "../StdIO.hpp"
+#include "../Event.hpp"
 
 namespace Luna
-{
-	static Vector<Pair<log_callback_t*, void*>> g_log_callbacks;
+{	
+	static Event<log_callback_t> g_log_callbacks;
+
 	static Ref<IMutex> g_log_mutex;
 
 	inline const c8* print_verbosity(LogVerbosity verbosity)
@@ -38,9 +40,9 @@ namespace Luna
 		LogVerbosity verbosity = LogVerbosity::info;
 	};
 	static StdLog g_stdlog;
-	void std_log(const LogMessage& message, void* userdata)
+	void std_log(const LogMessage& message)
 	{
-		StdLog* data = (StdLog*)userdata;
+		StdLog* data = &g_stdlog;
 		if (data->enabled && (u8)message.verbosity <= (u8)data->verbosity)
 		{
 			auto io = get_std_io_stream();
@@ -86,9 +88,9 @@ namespace Luna
 		}
 	}
 
-	void file_log(const LogMessage& message, void* userdata)
+	void file_log(const LogMessage& message)
 	{
-		FileLog* data = (FileLog*)userdata;
+		FileLog* data = g_filelog;
 		if (data->enabled && (u8)message.verbosity <= (u8)data->verbosity)
 		{
 			data->log_buffer.push_back('[');
@@ -109,43 +111,32 @@ namespace Luna
 	void log_init()
 	{
 		g_log_mutex = new_mutex();
-		register_log_callback(std_log, &g_stdlog);
+		register_log_handler(std_log);
 		g_filelog = memnew<FileLog>();
 		g_filelog->filename = "./Log.txt";
-		register_log_callback(file_log, g_filelog);
+		register_log_handler(file_log);
 	}
 	void log_close()
 	{
 		flush_log_file();
 		memdelete(g_filelog);
 		g_log_callbacks.clear();
-		g_log_callbacks.shrink_to_fit();
 		g_log_mutex = nullptr;
 	}
 	LUNA_RUNTIME_API void log(const LogMessage& message)
 	{
 		MutexGuard guard(g_log_mutex);
-		for (auto& i : g_log_callbacks)
-		{
-			i.first(message, i.second);
-		}
+		g_log_callbacks(message);
 	}
-	LUNA_RUNTIME_API void register_log_callback(log_callback_t* callback, void* userdata)
+	LUNA_RUNTIME_API usize register_log_handler(const Function<log_callback_t>& handler)
 	{
 		MutexGuard guard(g_log_mutex);
-		g_log_callbacks.push_back(make_pair(callback, userdata));
+		return g_log_callbacks.add_handler(handler);
 	}
-	LUNA_RUNTIME_API void unregister_log_callback(log_callback_t* callback)
+	LUNA_RUNTIME_API void unregister_log_handler(usize handler_id)
 	{
 		MutexGuard guard(g_log_mutex);
-		for (auto iter = g_log_callbacks.begin(); iter != g_log_callbacks.end(); ++iter)
-		{
-			if (iter->first == callback)
-			{
-				g_log_callbacks.erase(iter);
-				return;
-			}
-		}
+		g_log_callbacks.remove_handler(handler_id);
 	}
 	LUNA_RUNTIME_API void log_verbose(const Name& sender, const c8* format, ...)
 	{

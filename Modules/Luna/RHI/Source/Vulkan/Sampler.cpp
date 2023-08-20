@@ -17,141 +17,17 @@ namespace Luna
 		{
 			dst.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
 			dst.flags = 0;
-			switch (src.filter)
-			{
-			case Filter::min_mag_mip_point:
-				dst.minFilter = VK_FILTER_NEAREST;
-				dst.magFilter = VK_FILTER_NEAREST;
-				dst.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
-				dst.anisotropyEnable = VK_FALSE;
-				dst.compareEnable = VK_FALSE;
-				break;
-			case Filter::min_mag_point_mip_linear:
-				dst.minFilter = VK_FILTER_NEAREST;
-				dst.magFilter = VK_FILTER_NEAREST;
-				dst.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-				dst.anisotropyEnable = VK_FALSE;
-				dst.compareEnable = VK_FALSE;
-				break;
-			case Filter::min_point_mag_linear_mip_point:
-				dst.minFilter = VK_FILTER_NEAREST;
-				dst.magFilter = VK_FILTER_LINEAR;
-				dst.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
-				dst.anisotropyEnable = VK_FALSE;
-				dst.compareEnable = VK_FALSE;
-				break;
-			case Filter::min_point_mag_mip_linear:
-				dst.minFilter = VK_FILTER_NEAREST;
-				dst.magFilter = VK_FILTER_LINEAR;
-				dst.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-				dst.anisotropyEnable = VK_FALSE;
-				dst.compareEnable = VK_FALSE;
-				break;
-			case Filter::min_linear_mag_mip_point:
-				dst.minFilter = VK_FILTER_LINEAR;
-				dst.magFilter = VK_FILTER_NEAREST;
-				dst.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
-				dst.anisotropyEnable = VK_FALSE;
-				dst.compareEnable = VK_FALSE;
-				break;
-			case Filter::min_linear_mag_point_mip_linear:
-				dst.minFilter = VK_FILTER_LINEAR;
-				dst.magFilter = VK_FILTER_NEAREST;
-				dst.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-				dst.anisotropyEnable = VK_FALSE;
-				dst.compareEnable = VK_FALSE;
-				break;
-			case Filter::min_mag_linear_mip_point:
-				dst.minFilter = VK_FILTER_LINEAR;
-				dst.magFilter = VK_FILTER_LINEAR;
-				dst.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
-				dst.anisotropyEnable = VK_FALSE;
-				dst.compareEnable = VK_FALSE;
-				break;
-			case Filter::min_mag_mip_linear:
-				dst.minFilter = VK_FILTER_LINEAR;
-				dst.magFilter = VK_FILTER_LINEAR;
-				dst.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-				dst.anisotropyEnable = VK_FALSE;
-				dst.compareEnable = VK_FALSE;
-				break;
-			case Filter::anisotropic:
-				dst.minFilter = VK_FILTER_LINEAR;
-				dst.magFilter = VK_FILTER_LINEAR;
-				dst.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-				dst.anisotropyEnable = VK_TRUE;
-				dst.compareEnable = VK_FALSE;
-				break;
-			case Filter::comparison_min_mag_mip_point:
-				dst.minFilter = VK_FILTER_NEAREST;
-				dst.magFilter = VK_FILTER_NEAREST;
-				dst.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
-				dst.anisotropyEnable = VK_FALSE;
-				dst.compareEnable = VK_TRUE;
-				break;
-			case Filter::comparison_min_mag_point_mip_linear:
-				dst.minFilter = VK_FILTER_NEAREST;
-				dst.magFilter = VK_FILTER_NEAREST;
-				dst.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-				dst.anisotropyEnable = VK_FALSE;
-				dst.compareEnable = VK_TRUE;
-				break;
-			case Filter::comparison_min_point_mag_linear_mip_point:
-				dst.minFilter = VK_FILTER_NEAREST;
-				dst.magFilter = VK_FILTER_LINEAR;
-				dst.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
-				dst.anisotropyEnable = VK_FALSE;
-				dst.compareEnable = VK_TRUE;
-				break;
-			case Filter::comparison_min_point_mag_mip_linear:
-				dst.minFilter = VK_FILTER_NEAREST;
-				dst.magFilter = VK_FILTER_LINEAR;
-				dst.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-				dst.anisotropyEnable = VK_FALSE;
-				dst.compareEnable = VK_TRUE;
-				break;
-			case Filter::comparison_min_linear_mag_mip_point:
-				dst.minFilter = VK_FILTER_LINEAR;
-				dst.magFilter = VK_FILTER_NEAREST;
-				dst.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
-				dst.anisotropyEnable = VK_FALSE;
-				dst.compareEnable = VK_TRUE;
-				break;
-			case Filter::comparison_min_linear_mag_point_mip_linear:
-				dst.minFilter = VK_FILTER_LINEAR;
-				dst.magFilter = VK_FILTER_NEAREST;
-				dst.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-				dst.anisotropyEnable = VK_FALSE;
-				dst.compareEnable = VK_TRUE;
-				break;
-			case Filter::comparison_min_mag_linear_mip_point:
-				dst.minFilter = VK_FILTER_LINEAR;
-				dst.magFilter = VK_FILTER_LINEAR;
-				dst.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
-				dst.anisotropyEnable = VK_FALSE;
-				dst.compareEnable = VK_TRUE;
-				break;
-			case Filter::comparison_min_mag_mip_linear:
-				dst.minFilter = VK_FILTER_LINEAR;
-				dst.magFilter = VK_FILTER_LINEAR;
-				dst.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-				dst.anisotropyEnable = VK_FALSE;
-				dst.compareEnable = VK_TRUE;
-				break;
-			case Filter::comparison_anisotropic:
-				dst.minFilter = VK_FILTER_LINEAR;
-				dst.magFilter = VK_FILTER_LINEAR;
-				dst.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-				dst.anisotropyEnable = VK_TRUE;
-				dst.compareEnable = VK_TRUE;
-				break;
-			}
+			dst.minFilter = encode_filter(src.min_filter);
+			dst.magFilter = encode_filter(src.mag_filter);
+			dst.mipmapMode = encode_mipmap_mode(src.mip_filter);
+			dst.anisotropyEnable = src.anisotropy_enable ? VK_TRUE : VK_FALSE;
+			dst.compareEnable = src.compare_enable ? VK_TRUE : VK_FALSE;
 			dst.addressModeU = encode_address_mode(src.address_u);
 			dst.addressModeV = encode_address_mode(src.address_v);
 			dst.addressModeW = encode_address_mode(src.address_w);
-			dst.mipLodBias = src.mip_lod_bias;
+			dst.mipLodBias = 0;
 			dst.maxAnisotropy = src.max_anisotropy;
-			dst.compareOp = encode_compare_op(src.comparison_func);
+			dst.compareOp = encode_compare_op(src.compare_function);
 			dst.minLod = src.min_lod;
 			dst.maxLod = src.max_lod;
 			switch (src.border_color)

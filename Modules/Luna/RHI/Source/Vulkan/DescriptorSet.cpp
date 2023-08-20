@@ -100,8 +100,8 @@ namespace Luna
 										}
 										else
 										{
-											d_buffer.offset = (u64)s_buffer.element_size * s_buffer.first_element / 8;
-											d_buffer.range = (u64)s_buffer.element_size * (u64)s_buffer.element_count;
+											d_buffer.offset = (u64)s_buffer.first_element * (u64)s_buffer.element_size;
+											d_buffer.range = (u64)s_buffer.element_count * (u64)s_buffer.element_size;
 										}
 									}
 								}
@@ -130,9 +130,7 @@ namespace Luna
 										d_image.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
 									}
 									ImageResource* image = cast_object<ImageResource>(s_image.texture->get_object());
-									auto validated_view = s_image;
-									validate_texture_view_desc(validated_view);
-									lulet(view, image->get_image_view(validated_view));
+									lulet(view, image->get_image_view(s_image));
 									d_image.imageView = view->m_image_view;
 									d_image.sampler = VK_NULL_HANDLE;
 								}

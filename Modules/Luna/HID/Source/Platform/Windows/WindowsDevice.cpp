@@ -8,8 +8,7 @@
 * @date 2022/4/1
 */
 #pragma once
-#include <Luna/Runtime/PlatformDefines.hpp>
-#ifdef LUNA_PLATFORM_WINDOWS
+#include "../../HID.hpp"
 #include "../../../HID.hpp"
 #include "../../../Mouse.hpp"
 #include "../../../Keyboard.hpp"
@@ -29,12 +28,12 @@ namespace Luna
 			lustruct("HID::WindowsDevice", "{BCC4DFB6-7E68-4E45-A1D1-560EE393E5F4}");
 			luiimpl();
 
-			Int2U get_cursor_pos();
-			bool get_button_state(MouseButton mouse_button);
-			RV set_cursor_pos(i32 x, i32 y);
-			bool get_key_state(KeyCode key);
-			ControllerInputState get_state(u32 index);
-			RV set_state(u32 index, const ControllerOutputState& state);
+			virtual Int2U get_cursor_pos() override;
+			virtual bool get_button_state(MouseButton mouse_button) override;
+			virtual RV set_cursor_pos(i32 x, i32 y) override;
+			virtual bool get_key_state(KeyCode key) override;
+			virtual ControllerInputState get_state(u32 index) override;
+			virtual RV set_state(u32 index, const ControllerOutputState& state) override;
 		};
 
 		Ref<WindowsDevice> g_device;
@@ -143,7 +142,6 @@ namespace Luna
 			case KeyCode::numpad_subtract:	return VK_SUBTRACT;
 			case KeyCode::numpad_multiply:	return VK_MULTIPLY;
 			case KeyCode::numpad_divide:	return VK_DIVIDE;
-			case KeyCode::clear:			return VK_CLEAR;
 			default: lupanic(); return 0;
 			}
 		}
@@ -264,5 +262,3 @@ namespace Luna
 		}
 	}
 }
-
-#endif

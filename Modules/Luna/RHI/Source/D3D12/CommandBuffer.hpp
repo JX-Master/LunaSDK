@@ -14,7 +14,7 @@
 #include "Resource.hpp"
 #include "DescriptorSet.hpp"
 #include "PipelineState.hpp"
-#include "ShaderInputLayout.hpp"
+#include "PipelineLayout.hpp"
 
 namespace Luna
 {
@@ -150,15 +150,23 @@ namespace Luna
 			//Ref<GraphicPipelineState> m_graphics_pipeline_state;
 			//! The current bound compute pipeline state.
 			//Ref<ComputePipelineState> m_compute_pipeline_state;
-			//! The current bound graphic shader input layout.
-			Ref<ShaderInputLayout> m_graphics_shader_input_layout;
-			//! The current bound compute shader input layout.
-			Ref<ShaderInputLayout> m_compute_shader_input_layout;
+			//! The current bound graphic pipeline layout.
+			Ref<PipelineLayout> m_graphics_pipeline_layout;
+			//! The current bound compute pipeline layout.
+			Ref<PipelineLayout> m_compute_pipeline_layout;
+
+			IQueryHeap* m_occlusion_query_heap_attachment = nullptr;
+			IQueryHeap* m_timestamp_query_heap_attachment = nullptr;
+			IQueryHeap* m_pipeline_statistics_query_heap_attachment = nullptr;
+			u32 m_timestamp_query_begin_index = DONT_QUERY;
+			u32 m_timestamp_query_end_index = DONT_QUERY;
+			u32 m_pipeline_statistics_query_index = DONT_QUERY;
 
 			//! The attached graphic objects.
 			Vector<Ref<IDeviceChild>> m_objs;
 
-			CommandBufferContextType m_context = CommandBufferContextType::none;
+			bool m_compute_pass_begin = false;
+			bool m_copy_pass_begin = false;
 
 			bool m_heap_set;
 
@@ -178,7 +186,26 @@ namespace Luna
 
 			RV init();
 
-			void wait()
+			void assert_graphcis_context()
+			{
+				lucheck_msg(m_render_pass_context.m_valid, "A graphics command can only be submitted between begin_render_pass and end_render_pass.");
+			}
+			void assert_compute_context()
+			{
+				lucheck_msg(m_compute_pass_begin, "A compute command can only be submitted between begin_compute_pass and end_compute_pass.");
+			}
+			void assert_copy_context()
+			{
+				lucheck_msg(m_copy_pass_begin, "A copy command can only be submitted between begin_copy_pass and end_copy_pass.");
+			}
+			void assert_non_render_pass()
+			{
+				lucheck_msg(!m_render_pass_context.m_valid, "This command cannot be submitted within a render pass.");
+			}
+			void write_timestamp(IQueryHeap* heap, u32 index);
+			void begin_pipeline_statistics_query(IQueryHeap* heap, u32 index);
+			void end_pipeline_statistics_query(IQueryHeap* heap, u32 index);
+			virtual void wait() override
 			{
 				DWORD res = ::WaitForSingleObject(m_event, INFINITE);
 				if (res != WAIT_OBJECT_0)
@@ -186,7 +213,7 @@ namespace Luna
 					lupanic_msg_always("WaitForSingleObject failed.");
 				}
 			}
-			bool try_wait()
+			virtual bool try_wait() override
 			{
 				DWORD res = ::WaitForSingleObject(m_event, 0);
 				if (res == WAIT_OBJECT_0)
@@ -195,27 +222,11 @@ namespace Luna
 				}
 				return false;
 			}
-			void assert_graphcis_context()
-			{
-				lucheck_msg(m_context == CommandBufferContextType::graphics, "A graphics command is submiited in a non-graphics context.");
-			}
-			void assert_compute_context()
-			{
-				lucheck_msg(m_context == CommandBufferContextType::compute, "A compute command is submiited in a non-compute context.");
-			}
-			void assert_copy_context()
-			{
-				lucheck_msg(m_context == CommandBufferContextType::copy, "A copy command is submiited in a non-copy context.");
-			}
-			void assert_non_render_pass()
-			{
-				lucheck_msg(!m_render_pass_context.m_valid, "This command cannot be submitted within a render pass.");
-			}
 			virtual IDevice* get_device() override
 			{
 				return m_device.as<IDevice>();
 			}
-			virtual void set_name(const Name& name) override { set_object_name(m_ca.Get(), name); set_object_name(m_li.Get(), name); }
+			virtual void set_name(const c8* name) override { set_object_name(m_ca.Get(), name); set_object_name(m_li.Get(), name); }
 			virtual u32 get_command_queue_index() override
 			{
 				return m_queue;
@@ -225,21 +236,19 @@ namespace Luna
 			{
 				m_objs.push_back(obj);
 			}
-			virtual void begin_event(const Name& event_name) override
+			virtual void begin_event(const c8* event_name) override
 			{
-				usize len = utf8_to_utf16_len(event_name.c_str(), event_name.size());
+				usize len = utf8_to_utf16_len(event_name);
 				wchar_t* buf = (wchar_t*)alloca(sizeof(wchar_t) * (len + 1));
-				utf8_to_utf16((c16*)buf, len + 1, event_name.c_str(), event_name.size());
+				utf8_to_utf16((c16*)buf, len + 1, event_name);
 				m_li->BeginEvent(0, buf, sizeof(wchar_t) * (len + 1));
 			}
 			virtual void end_event() override
 			{
 				m_li->EndEvent();
 			}
-			virtual CommandBufferContextType get_context_type() override { return m_context; }
-			virtual void set_context(CommandBufferContextType new_context) override { m_context = new_context; }
 			virtual void begin_render_pass(const RenderPassDesc& desc) override;
-			virtual void set_graphics_shader_input_layout(IShaderInputLayout* shader_input_layout) override;
+			virtual void set_graphics_pipeline_layout(IPipelineLayout* pipeline_layout) override;
 			virtual void set_graphics_pipeline_state(IPipelineState* pso) override;
 			virtual void set_vertex_buffers(u32 start_slot, Span<const VertexBufferView> views) override;
 			virtual void set_index_buffer(const IndexBufferView& view) override;
@@ -258,7 +267,7 @@ namespace Luna
 				return set_scissor_rects({ &rects, 1 });
 			}
 			virtual void set_scissor_rects(Span<const RectI> rects) override;
-			virtual void set_blend_factor(Span<const f32, 4> blend_factor) override;
+			virtual void set_blend_factor(const Float4U& blend_factor) override;
 			virtual void set_stencil_ref(u32 stencil_ref) override;
 			virtual void draw(u32 vertex_count, u32 start_vertex_location) override
 			{
@@ -272,10 +281,11 @@ namespace Luna
 				i32 base_vertex_location, u32 start_instance_location) override;
 			virtual void draw_instanced(u32 vertex_count_per_instance, u32 instance_count, u32 start_vertex_location,
 				u32 start_instance_location) override;
-			virtual void clear_depth_stencil_attachment(ClearFlag clear_flags, f32 depth, u8 stencil, Span<const RectI> rects) override;
-			virtual void clear_color_attachment(u32 index, Span<const f32, 4> color_rgba, Span<const RectI> rects) override;
+			virtual void begin_occlusion_query(OcclusionQueryMode mode, u32 index) override;
+			virtual void end_occlusion_query(u32 index) override;
 			virtual void end_render_pass() override;
-			virtual void set_compute_shader_input_layout(IShaderInputLayout* shader_input_layout) override;
+			virtual void begin_compute_pass(const ComputePassDesc& desc) override;
+			virtual void set_compute_pipeline_layout(IPipelineLayout* pipeline_layout) override;
 			virtual void set_compute_pipeline_state(IPipelineState* pso) override;
 			virtual void set_compute_descriptor_set(u32 start_index, IDescriptorSet* descriptor_set) override
 			{
@@ -283,6 +293,8 @@ namespace Luna
 			}
 			virtual void set_compute_descriptor_sets(u32 start_index, Span<IDescriptorSet*> descriptor_sets) override;
 			virtual void dispatch(u32 thread_group_count_x, u32 thread_group_count_y, u32 thread_group_count_z) override;
+			virtual void end_compute_pass() override;
+			virtual void begin_copy_pass(const CopyPassDesc& desc) override;
 			virtual void copy_resource(IResource* dst, IResource* src) override;
 			virtual void copy_buffer(
 				IBuffer* dst, u64 dst_offset,
@@ -300,12 +312,8 @@ namespace Luna
 				IBuffer* dst, u64 dst_offset, u32 dst_row_pitch, u32 dst_slice_pitch,
 				ITexture* src, SubresourceIndex src_subresource, u32 src_x, u32 src_y, u32 src_z,
 				u32 copy_width, u32 copy_height, u32 copy_depth) override;
+			virtual void end_copy_pass() override;
 			virtual void resource_barrier(Span<const BufferBarrier> buffer_barriers, Span<const TextureBarrier> texture_barriers) override;
-			virtual void write_timestamp(IQueryHeap* heap, u32 index) override;
-			virtual void begin_pipeline_statistics_query(IQueryHeap* heap, u32 index) override;
-			virtual void end_pipeline_statistics_query(IQueryHeap* heap, u32 index) override;
-			virtual void begin_occlusion_query(IQueryHeap* heap, u32 index) override;
-			virtual void end_occlusion_query(IQueryHeap* heap, u32 index) override;
 			virtual RV submit(Span<IFence*> wait_fences, Span<IFence*> signal_fences, bool allow_host_waiting) override;
 		};
 	}

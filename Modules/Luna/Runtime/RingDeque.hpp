@@ -11,6 +11,7 @@
 #include "Allocator.hpp"
 #include "Algorithm.hpp"
 #include "Iterator.hpp"
+#include "MemoryUtils.hpp"
 
 namespace Luna
 {
@@ -168,6 +169,68 @@ namespace Luna
 		isize m_end;		// Last element.
 		// --------------------  End of ABI compatible part  --------------------
 
+	public:
+		iterator begin()
+		{
+			return iterator(m_allocator_and_buffer.second(), m_capacity, m_begin);
+		}
+		iterator end()
+		{
+			return iterator(m_allocator_and_buffer.second(), m_capacity, m_end);
+		}
+		const_iterator begin() const
+		{
+			return const_iterator(m_allocator_and_buffer.second(), m_capacity, m_begin);
+		}
+		const_iterator end() const
+		{
+			return const_iterator(m_allocator_and_buffer.second(), m_capacity, m_end);
+		}
+		const_iterator cbegin() const
+		{
+			return const_iterator(m_allocator_and_buffer.second(), m_capacity, m_begin);
+		}
+		const_iterator cend() const
+		{
+			return const_iterator(m_allocator_and_buffer.second(), m_capacity, m_end);
+		}
+		reverse_iterator rbegin()
+		{
+			return reverse_iterator(end());
+		}
+		reverse_iterator rend()
+		{
+			return reverse_iterator(begin());
+		}
+		const_reverse_iterator rbegin() const
+		{
+			return reverse_iterator(end());
+		}
+		const_reverse_iterator rend() const
+		{
+			return reverse_iterator(begin());
+		}
+		const_reverse_iterator crbegin() const
+		{
+			return reverse_iterator(cend());
+		}
+		const_reverse_iterator crend() const
+		{
+			return reverse_iterator(cbegin());
+		}
+		usize size() const
+		{
+			return (usize)(m_end - m_begin);
+		}
+		usize capacity() const
+		{
+			return m_capacity;
+		}
+		bool empty() const
+		{
+			return (size() == 0);
+		}
+	private:
 		value_type* allocate(usize n)
 		{
             return m_allocator_and_buffer.first().template allocate<value_type>(n);
@@ -357,67 +420,6 @@ namespace Luna
 		{
 			free_buffer();
 		}
-		iterator begin()
-		{
-			return iterator(m_allocator_and_buffer.second(), m_capacity, m_begin);
-		}
-		iterator end()
-		{
-			return iterator(m_allocator_and_buffer.second(), m_capacity, m_end);
-		}
-		const_iterator begin() const
-		{
-			return const_iterator(m_allocator_and_buffer.second(), m_capacity, m_begin);
-		}
-		const_iterator end() const
-		{
-			return const_iterator(m_allocator_and_buffer.second(), m_capacity, m_end);
-		}
-		const_iterator cbegin() const
-		{
-			return const_iterator(m_allocator_and_buffer.second(), m_capacity, m_begin);
-		}
-		const_iterator cend() const
-		{
-			return const_iterator(m_allocator_and_buffer.second(), m_capacity, m_end);
-		}
-		reverse_iterator rbegin()
-		{
-			return reverse_iterator(end());
-		}
-		reverse_iterator rend()
-		{
-			return reverse_iterator(begin());
-		}
-		const_reverse_iterator rbegin() const
-		{
-			return reverse_iterator(end());
-		}
-		const_reverse_iterator rend() const
-		{
-			return reverse_iterator(begin());
-		}
-		const_reverse_iterator crbegin() const
-		{
-			return reverse_iterator(cend());
-		}
-		const_reverse_iterator crend() const
-		{
-			return reverse_iterator(cbegin());
-		}
-		usize size() const
-		{
-			return (usize)(m_end - m_begin);
-		}
-		usize capacity() const
-		{
-			return m_capacity;
-		}
-		bool empty() const
-		{
-			return (size() == 0);
-		}
-
 	private:
 		// reallocates memory without touching the stored content. `new_cap` must be large enough to 
 		// hold all elements.

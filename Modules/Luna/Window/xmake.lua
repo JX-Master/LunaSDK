@@ -21,6 +21,10 @@ luna_sdk_module_target("Window")
         add_headerfiles("Windows/*.hpp")
         add_files("Source/Windows/*.cpp")
     end
+    if is_os("macosx") then
+        add_files("Source/Cocoa/*.mm")
+        add_frameworks("AppKit", "UniformTypeIdentifiers")
+    end
     add_deps("Runtime")
     if has_config("window_glfw") then
         add_packages("glfw")

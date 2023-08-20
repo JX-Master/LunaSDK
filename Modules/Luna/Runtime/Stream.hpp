@@ -13,6 +13,10 @@
 
 namespace Luna
 {
+	//! @addtogroup Runtime
+	//! @{
+	
+	//! @brief Specify the seek mode for one seekable stream.
 	enum class SeekMode : u32
 	{
 		//! The offset is relative to the beginning of the stream.
@@ -24,8 +28,8 @@ namespace Luna
 	};
 
 	//! @interface IStream
-	//! Represents a serial stream sequence of bytes and supports read/write operations on them.
-	//! Common implementations of streams include file, memory buffer, web socket and so on.
+	//! @brief Represents a serial stream sequence of bytes and supports read/write operations on them.
+	//! @details Common implementations of streams include file, memory buffer, web socket and so on.
 	//! 
 	//! This object is not thread safe and the I/O operations on this object is not asynchronous (will suspend
 	//! the current thread until the operation is done or failed).
@@ -59,16 +63,16 @@ namespace Luna
 	};
 
 	//! @interface ISeekableStream
-	//! Represents one stream object that supports setting the cursor position.
+	//! @brief Represents one stream object that supports setting the cursor position.
 	struct ISeekableStream : virtual IStream
 	{
 		luiid("{42F66080-C388-4EE0-9C4D-1EEC1B82F692}");
 
-		//! Gets the current position of the stream cursor. The position is number of bytes relative to the beginning of the 
-		//! stream.
+		//! @brief Gets the current position of the stream cursor. 
+		//! @return Returns the current position of the stream cursor. The position is number of bytes relative to the beginning of the stream.
 		virtual R<u64> tell() = 0;
 
-		//! Moves the read/write cursor to a new position.
+		//! @brief Moves the read/write cursor to a new position.
 		//! @param[in] offset Number of bytes to move relative to the position specified by `mode`.
 		//! @param[in] mode The seek mode to use.
 		//! @remark The cursor position is not bound to the size of the stream. If you move the cursor beyond the end of the stream, the cursor
@@ -79,15 +83,18 @@ namespace Luna
 		//! The cursor value cannot be negative, if the new cursor position goes below 0, the seek operation fails.
 		virtual RV seek(i64 offset, SeekMode mode) = 0;
 
-		//! Gets the size of the stream buffer in bytes. Returns 0 if the underlying stream is invalid or does not have a particular size.
+		//! @brief Gets the size of the stream buffer in bytes.
+		//! @return Returns the of the stream buffer in bytes. Returns `0` if the underlying stream is invalid or does not have a specific size.
 		virtual u64 get_size() = 0;
 
-		//! Sets the size of the stream buffer.
-		//! If the current stream buffer size is smaller than the size to set and this call succeeded, the stream buffer will be extended to the 
+		//! @brief Sets the size of the stream buffer.
+		//! @details If the current stream buffer size is smaller than the size to set and this call succeeded, the stream buffer will be extended to the 
 		//! size specified, with data between the last size and current size be uninitialized. 
 		//! If the current stream buffer size is greater than the size to set and this call succeeded, the stream buffer will be truncated and 
 		//! the data between the last size and current size will be discarded.
 		//! @param[in] size The size to set, in bytes.
 		virtual RV set_size(u64 size) = 0;
 	};
+
+	//! @}
 }

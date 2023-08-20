@@ -10,7 +10,7 @@
 #pragma once
 #include "PipelineState.hpp"
 #include "DescriptorSet.hpp"
-#include "ShaderInputLayout.hpp"
+#include "PipelineLayout.hpp"
 #include <Luna/Runtime/Waitable.hpp>
 #include <Luna/Runtime/Math/Vector.hpp>
 #include "QueryHeap.hpp"
@@ -216,11 +216,10 @@ namespace Luna
 			Format format = Format::unknown;
 			u32 mip_slice = 0;
 			u32 array_slice = 0;
-			u32 array_size = 0;
 			ColorAttachment() = default;
 			ColorAttachment(ITexture* texture, 
 				LoadOp load_op = LoadOp::load, StoreOp store_op = StoreOp::store, const Float4U& clear_value = Float4U(0), 
-				TextureViewType view_type = TextureViewType::unspecified, Format format = Format::unknown, u32 mip_slice = 0, u32 array_slice = 0, u32 array_size = 1) :
+				TextureViewType view_type = TextureViewType::unspecified, Format format = Format::unknown, u32 mip_slice = 0, u32 array_slice = 0) :
 				texture(texture),
 				load_op(load_op),
 				store_op(store_op),
@@ -228,8 +227,7 @@ namespace Luna
 				view_type(view_type),
 				format(format),
 				mip_slice(mip_slice),
-				array_slice(array_slice),
-				array_size(array_size) {}
+				array_slice(array_slice) {}
 		};
 		struct DepthStencilAttachment
 		{
@@ -245,12 +243,11 @@ namespace Luna
 			Format format = Format::unknown;
 			u32 mip_slice = 0;
 			u32 array_slice = 0;
-			u32 array_size = 0;
 			DepthStencilAttachment() = default;
 			DepthStencilAttachment(ITexture* texture, bool read_only,
 				LoadOp depth_load_op = LoadOp::load, StoreOp depth_store_op = StoreOp::store, f32 depth_clear_value = 1.0f,
 				LoadOp stencil_load_op = LoadOp::dont_care, StoreOp stencil_store_op = StoreOp::dont_care, u8 stencil_clear_value = 0,
-				TextureViewType view_type = TextureViewType::unspecified, Format format = Format::unknown, u32 mip_slice = 0, u32 array_slice = 0, u32 array_size = 1
+				TextureViewType view_type = TextureViewType::unspecified, Format format = Format::unknown, u32 mip_slice = 0, u32 array_slice = 0
 				) :
 				texture(texture),
 				read_only(read_only),
@@ -263,8 +260,7 @@ namespace Luna
 				view_type(view_type),
 				format(format),
 				mip_slice(mip_slice),
-				array_slice(array_slice),
-				array_size(array_size) {}
+				array_slice(array_slice) {}
 		};
 		struct ResolveAttachment
 		{
@@ -273,11 +269,21 @@ namespace Luna
 			u32 array_slice = 0;
 			u32 array_size = 0;
 			ResolveAttachment() = default;
-			ResolveAttachment(ITexture* texture, u32 mip_slice = 0, u32 array_slice = 0, u32 array_size = 1) :
+			ResolveAttachment(ITexture* texture, u32 mip_slice = 0, u32 array_slice = 0) :
 				texture(texture),
 				mip_slice(mip_slice),
-				array_slice(array_slice),
-				array_size(array_size) {}
+				array_slice(array_slice) {}
+		};
+        constexpr u32 DONT_QUERY = U32_MAX;
+		enum class OcclusionQueryMode : u8
+		{
+			//! Begins a binary occlusion query. In this query mode, the stored value will be 0 if no pixel passes the depth/stencil test, 
+			//! and will be non-zero if any pixel passes the depth/stencil test. Note that the stored value is platform-dependent if it is not 0, 
+			//! and may not always be 1.
+			binary = 0,
+			//! Begins a counting occlusion query. In this query mode, the exact number of pixels that pass the depth/stencil test will
+			//! be stored.
+			counting = 1,
 		};
 		//! Parameters passed to `begin_render_pass`.
 		struct RenderPassDesc
@@ -288,9 +294,36 @@ namespace Luna
 			ResolveAttachment resolve_attachments[8];
 			//! The depth stencil attachment to set.
 			DepthStencilAttachment depth_stencil_attachment;
+			//! The occlustion query heap that accepts the query data if not `nullptr`.
+			IQueryHeap* occlusion_query_heap = nullptr;
+            IQueryHeap* timestamp_query_heap = nullptr;
+            IQueryHeap* pipeline_statistics_query_heap = nullptr;
+			//! The occlusion query writing index.
+            u32 timestamp_query_begin_pass_write_index = DONT_QUERY;
+            u32 timestamp_query_end_pass_write_index = DONT_QUERY;
+            u32 pipeline_statistics_query_write_index = DONT_QUERY;
+			//! The number of array slices that will be bound for all attachments.
+			u32 array_size = 1;
 			//! The sample count of the render pass.
 			u8 sample_count = 1;
 		};
+    
+        struct ComputePassDesc
+        {
+            IQueryHeap* timestamp_query_heap = nullptr;
+            IQueryHeap* pipeline_statistics_query_heap = nullptr;
+            u32 timestamp_query_begin_pass_write_index = DONT_QUERY;
+            u32 timestamp_query_end_pass_write_index = DONT_QUERY;
+            u32 pipeline_statistics_query_write_index = DONT_QUERY;
+        };
+    
+        struct CopyPassDesc
+        {
+            IQueryHeap* timestamp_query_heap = nullptr;
+            u32 timestamp_query_begin_pass_write_index = DONT_QUERY;
+            u32 timestamp_query_end_pass_write_index = DONT_QUERY;
+        };
+    
 		struct VertexBufferView
 		{
 			IResource* buffer;
@@ -326,17 +359,6 @@ namespace Luna
 				offset(offset),
 				size(size),
 				format(format) {}
-		};
-		enum class CommandBufferContextType : u8
-		{
-			//! Specifies no context for the command buffer.
-			none,
-			//! Specifies the graphics context for the command buffer.
-			graphics,
-			//! Specifies compute context for the command buffer.
-			compute,
-			//! Specifies copy context for the command buffer.
-			copy
 		};
 		//! @interface ICommandBuffer
 		//! The command buffer is used to allocate memory for commands, record commands, submitting 
@@ -374,19 +396,10 @@ namespace Luna
 
 			//! Begins a new event. This is for use in diagnostic tools like RenderDoc, PIX, etc to group commands into hierarchical
 			//! sections.
-			virtual void begin_event(const Name& event_name) = 0;
+			virtual void begin_event(const c8* event_name) = 0;
 
-			//! Ends the latest event begun with `begin_event` that has not benn ended.
+			//! Ends the latest event opened with `begin_event` that has not been ended.
 			virtual void end_event() = 0;
-
-			//! Gets the current command buffer context type.
-			virtual CommandBufferContextType get_context_type() = 0;
-
-			//! Sets the command buffer context. Commands can only be submitted in their compatible contexts.
-			//! A context change will clear all pipeline states of the previous context, including binding resources, 
-			//! descriptor heaps, pipeline states and so on. The initial state of one context is unspecified.
-			//! The context change happens only when `new_context != get_context_type()`.
-			virtual void set_context(CommandBufferContextType new_context) = 0;
 
 			//! Starts a new render pass. The previous render pass should be closed before beginning another one.
 			//! @param[in] desc The render pass descriptor object.
@@ -395,21 +408,32 @@ namespace Luna
 			//! `ResourceState::depth_write` state.
 			//! 
 			//! The following functions can only be called in between `begin_render_pass` and `end_render_pass`:
+			//! * set_graphics_pipeline_layout
+			//! * set_graphics_pipeline_state
+			//! * set_vertex_buffers
+			//! * set_index_buffer
+			//! * set_graphics_descriptor_set
+			//! * set_graphics_descriptor_sets
+			//! * set_viewport
+			//! * set_viewports
+			//! * set_scissor_rect
+			//! * set_scissor_rects
+			//! * set_blend_factor
+			//! * set_stencil_ref
 			//! * draw
 			//! * draw_indexed
 			//! * draw_instanced
 			//! * draw_indexed_instanced
 			//! * clear_color_attachment
 			//! * clear_depth_stencil_attachment
-			//! * set_scissor_rects
 			//! The following functions can only be called outside of one render pass range:
 			//! * submit
 			//! * set_context
 			//! * resource_barrier
 			virtual void begin_render_pass(const RenderPassDesc& desc) = 0;
 
-			//! Sets the graphic shader input layout.
-			virtual void set_graphics_shader_input_layout(IShaderInputLayout* shader_input_layout) = 0;
+			//! Sets the graphic pipeline layout.
+			virtual void set_graphics_pipeline_layout(IPipelineLayout* pipeline_layout) = 0;
 
 			//! Sets the pipeline state for graphics pipeline.
 			virtual void set_graphics_pipeline_state(IPipelineState* pso) = 0;
@@ -428,10 +452,10 @@ namespace Luna
 
 			//! Sets the descriptor set to be used by the graphic pipeline.
 			//! This behaves the same as calling `set_graphics_descriptor_sets` with only one element.
-			virtual void set_graphics_descriptor_set(u32 start_index, IDescriptorSet* descriptor_set) = 0;
+			virtual void set_graphics_descriptor_set(u32 index, IDescriptorSet* descriptor_set) = 0;
 
 			//! Sets descriptor sets to be used by the graphic pipeline.
-			//! This must be called after `set_pipeline_state` and `set_graphics_shader_input_layout`.
+			//! This must be called after `set_graphics_pipeline_state` and `set_graphics_pipeline_layout`.
 			virtual void set_graphics_descriptor_sets(u32 start_index, Span<IDescriptorSet*> descriptor_sets) = 0;
 
 			//! Bind one viewport to the rasterizer stage of the pipeline.
@@ -453,7 +477,7 @@ namespace Luna
 			virtual void set_scissor_rects(Span<const RectI> rects) = 0;
 
 			//! Sets the blend factor that modulate values for a pixel shader, render target, or both.
-			virtual void set_blend_factor(Span<const f32, 4> blend_factor) = 0;
+			virtual void set_blend_factor(const Float4U& blend_factor) = 0;
 
 			//! Sets the reference value for depth stencil tests.
 			virtual void set_stencil_ref(u32 stencil_ref) = 0;
@@ -471,36 +495,51 @@ namespace Luna
 			//! Draws indexed, instanced primitives.
 			virtual void draw_indexed_instanced(u32 index_count_per_instance, u32 instance_count, u32 start_index_location,
 				i32 base_vertex_location, u32 start_instance_location) = 0;
+            
+            virtual void begin_occlusion_query(OcclusionQueryMode mode, u32 index) = 0;
 
-			//! Preforms one indirect draw.
-			//virtual void draw_indexed_indirect(IResource* buffer, usize argment_offset, u32 draw_count, u32 stride) = 0;
-
-			//! Clears the depth stencil view bound to the current render pass.
-			virtual void clear_depth_stencil_attachment(ClearFlag clear_flags, f32 depth, u8 stencil, Span<const RectI> rects) = 0;
-
-			//! Clears the render target view bound to the current render pass.
-			//! @param[in] index The index of the render target view to clear in the frame buffers.
-			virtual void clear_color_attachment(u32 index, Span<const f32, 4> color_rgba, Span<const RectI> rects) = 0;
+            virtual void end_occlusion_query(u32 index) = 0;
 
 			//! Finishes the current render pass.
 			virtual void end_render_pass() = 0;
 
-			//! Sets the compute shader input layout.
-			virtual void set_compute_shader_input_layout(IShaderInputLayout* shader_input_layout) = 0;
+			//! Begins a compute pass.
+			//! The following functions can only be called in between `begin_compute_pass` and `end_compute_pass`:
+			//! * set_compute_pipeline_layout
+			//! * set_compute_pipeline_state
+			//! * set_compute_descriptor_set
+			//! * set_compute_descriptor_sets
+			//! * dispatch
+			virtual void begin_compute_pass(const ComputePassDesc& desc = ComputePassDesc()) = 0;
+
+			//! Sets the compute pipeline layout.
+			virtual void set_compute_pipeline_layout(IPipelineLayout* pipeline_layout) = 0;
 
 			//! Sets the pipeline state for compute pipeline.
 			virtual void set_compute_pipeline_state(IPipelineState* pso) = 0;
 
 			//! Sets the descriptor set to be used by the compute pipeline.
 			//! This behaves the same as calling `set_compute_descriptor_sets` with only one element.
-			virtual void set_compute_descriptor_set(u32 start_index, IDescriptorSet* descriptor_set) = 0;
+			virtual void set_compute_descriptor_set(u32 index, IDescriptorSet* descriptor_set) = 0;
 
 			//! Sets descriptor sets to be used by the compute pipeline.
-			//! This must be called after `set_pipeline_state`.
+			//! This must be called after `set_compute_pipeline_state` and `set_compute_pipeline_layout`.
 			virtual void set_compute_descriptor_sets(u32 start_index, Span<IDescriptorSet*> descriptor_sets) = 0;
 
 			//! Executes a command list from a thread group.
 			virtual void dispatch(u32 thread_group_count_x, u32 thread_group_count_y, u32 thread_group_count_z) = 0;
+
+			//! Ends a compute pass.
+			virtual void end_compute_pass() = 0;
+
+			//! Begins a copy pass.
+			//! The following functions can only be called in between `begin_copy_pass` and `end_copy_pass`:
+			//! * copy_resource
+			//! * copy_buffer
+			//! * copy_texture
+			//! * copy_buffer_to_texture
+			//! * copy_texture_to_buffer
+			virtual void begin_copy_pass(const CopyPassDesc& desc = CopyPassDesc()) = 0;
 
 			//! Copies the entire contents of the source resource to the destination resource.
 			//! The source resource and destination resource must be the same `ResourceType`, have the same size for buffers, or 
@@ -529,21 +568,11 @@ namespace Luna
 				ITexture* src, SubresourceIndex src_subresource, u32 src_x, u32 src_y, u32 src_z,
 				u32 copy_width, u32 copy_height, u32 copy_depth) = 0;
 
+			//! Ends a copy pass.
+			virtual void end_copy_pass() = 0;
+
 			//! Issues one resource barrier.
 			virtual void resource_barrier(Span<const BufferBarrier> buffer_barriers, Span<const TextureBarrier> texture_barriers) = 0;
-
-			//! Writes the current GPU queue timestamp to the specified query heap.
-			//! @param[in] heap The query heap to write to.
-			//! @param[in] index The index of the query entry to write in the heap.
-			virtual void write_timestamp(IQueryHeap* heap, u32 index) = 0;
-
-			virtual void begin_pipeline_statistics_query(IQueryHeap* heap, u32 index) = 0;
-
-			virtual void end_pipeline_statistics_query(IQueryHeap* heap, u32 index) = 0;
-
-			virtual void begin_occlusion_query(IQueryHeap* heap, u32 index) = 0;
-
-			virtual void end_occlusion_query(IQueryHeap* heap, u32 index) = 0;
 
 			//! Submits the recorded content in this command buffer to the attached command queue.
 			//! The command buffer can only be submitted once, and the only operation after the submit is to 

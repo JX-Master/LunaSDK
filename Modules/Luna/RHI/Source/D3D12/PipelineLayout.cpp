@@ -3,18 +3,18 @@
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
-* @file ShaderInputLayout.cpp
+* @file PipelineLayout.cpp
 * @author JXMaster
 * @date 2020/3/14
 */
-#include "ShaderInputLayout.hpp"
+#include "PipelineLayout.hpp"
 #include "DescriptorSetLayout.hpp"
 
 namespace Luna
 {
 	namespace RHI
 	{
-		RV ShaderInputLayout::init(const ShaderInputLayoutDesc& desc)
+		RV PipelineLayout::init(const PipelineLayoutDesc& desc)
 		{
 			D3D12_ROOT_SIGNATURE_DESC d;
 			d.NumStaticSamplers = 0;
@@ -55,15 +55,15 @@ namespace Luna
 			d.Flags = D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS |
 				D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS |
 				D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS;
-			if ((desc.flags & ShaderInputLayoutFlag::allow_input_assembler_input_layout) != ShaderInputLayoutFlag::none)
+			if ((desc.flags & PipelineLayoutFlag::allow_input_assembler_input_layout) != PipelineLayoutFlag::none)
 			{
 				d.Flags |= D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
 			}
-			if ((desc.flags & ShaderInputLayoutFlag::deny_pixel_shader_access) != ShaderInputLayoutFlag::none)
+			if ((desc.flags & PipelineLayoutFlag::deny_pixel_shader_access) != PipelineLayoutFlag::none)
 			{
 				d.Flags |= D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS;
 			}
-			if ((desc.flags & ShaderInputLayoutFlag::deny_vertex_shader_access) != ShaderInputLayoutFlag::none)
+			if ((desc.flags & PipelineLayoutFlag::deny_vertex_shader_access) != PipelineLayoutFlag::none)
 			{
 				d.Flags |= D3D12_ROOT_SIGNATURE_FLAG_DENY_VERTEX_SHADER_ROOT_ACCESS;
 			}

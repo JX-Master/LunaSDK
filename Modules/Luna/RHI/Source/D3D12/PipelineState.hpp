@@ -9,7 +9,7 @@
 */
 #pragma once
 #include "Device.hpp"
-#include "ShaderInputLayout.hpp"
+#include "PipelineLayout.hpp"
 #include "../../PipelineState.hpp"
 #include "D3D12Common.hpp"
 
@@ -36,7 +36,7 @@ namespace Luna
 			{
 				return m_device.as<IDevice>();
 			}
-			void set_name(const Name& name) { set_object_name(m_pso.Get(), name); }
+			void set_name(const c8* name) { set_object_name(m_pso.Get(), name); }
 
 			bool init_graphic(const GraphicsPipelineStateDesc& desc);
 			bool init_compute(const ComputePipelineStateDesc& desc);

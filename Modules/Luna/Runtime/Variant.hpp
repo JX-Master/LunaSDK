@@ -16,29 +16,57 @@
 
 namespace Luna
 {
+//! @addtogroup Runtime
+//! @{
+
+	//! @brief Defines all possible types of one @ref Variant object.
+	//! @remark To fetch the type of one variant, call @ref Variant::type
 	enum class VariantType : u8
 	{
+		//! Indicates a null variant. 
+		//! A null variant represents the absence of value for the variant object.
 		null = 0,
+		//! Indicates an object variant.
+		//! An object variant contains one set of @ref Variant objects, which acts as children of the current variant. 
+		//! Children in object variant are indexed by @ref Name strings, and do not have a particular order.
 		object = 1,
+		//! Indicates an array variant.
+		//! An array variant contains one array of @ref Variant objects, which acts as children of the current variant.
 		array = 2,
+		//! Indicates a number variant.
+		//! A number variant stores a number of integer or floating-point type. The number type of one number variant is represented by @ref VariantNumberType 
+		//! and can be fetched by calling @ref Variant::number_type method. The number value of the variant can be fetched by calling @ref Variant::unum, 
+		//! @ref Variant::inum and @ref Variant::fnum methods, each of them returns the underlying number in specified format with implicit number type conversion when needed.	
 		number = 3,
+		//! Indicates a string variant.
+		//! A string variant contains one string represented by a @ref Name object. You can fetch the underlying string by calling @ref Variant::str or @ref Variant::c_str, 
+		//! the former one returns one @ref Name object while the later one returns one C-style string (`const c8*`).
 		string = 4,
+		//! Indicates a Boolean variant.
+		//! A Boolean variant stores a Boolean value with only two possible values: `true` and `false`. 
+		//! The Boolean value of one Boolean variant can be fetched by calling @ref Variant::boolean method.
 		boolean = 5,
-		blob = 6,
-		pointer = 7,	// Used only to pass data in the runtime, will not be serialized.
+		//! Indicates a BLOB (binary large object) variant.
+		//! A BLOB variant can store arbitrary binary data. The data pointer, size and alignment of the data can be fetched by calling @ref Variant::blob_data, @ref Variant::blob_size 
+		//! and @ref Variant::blob_alignment methods.
+		blob = 6
 	};
 
+	//! @brief Defines all possible number types of one number variant.
+	//! @remark To fetch the number type of one number variant, call @ref Variant::number_type.
 	enum class VariantNumberType : u8
 	{
+		//! This variant is not a number variant.
 		not_number = 0,
+		//! The number is stored in signed 64-bit integer format.
 		number_i64 = 1,
+		//! The number is stored in unsigned 64-bit integer format.
 		number_u64 = 2,
+		//! The number is stored in 64-bit floating-point format.
 		number_f64 = 3,
 	};
 
-	//! @class Variant
-	//! Represents one variant value. One variant value may hold any kind of primitive values, or other variants as subobjects.
-	//! Variants are the standard way in Luna to transfer arbitrary data between subsystems and between computers in networks.
+	//! @brief Represents a dynamic typed object that stores data in a schema-less (self-described) manner. 
 	class Variant
 	{
 	public:
@@ -241,16 +269,20 @@ namespace Luna
 		using const_value_enumerator = ConstArrayEnumerator;
 		using key_value_enumerator = ObjectEnumerator;
 		using const_key_value_enumerator = ConstObjectEnumerator;
+
+		//! @name Constructors
+		//! @{
+
 		//! Initializes one empty value with the specified value type.
 		Variant(VariantType type = VariantType::null);
 		//! Initializes the value with one copy of another value.
 		Variant(const Variant& rhs);
 		//! Initializes the value by moving the data of another value to this value.
 		Variant(Variant&& rhs);
-		//! Initializes one object-typed value and sets the children using the values provided.
+		//! Initializes one object variant and sets the children using the values provided.
 		Variant(const Vector<Pair<const Name, Variant>>& values);
 		Variant(Vector<Pair<const Name, Variant>>&& values);
-		//! Initializes one array-typed value and sets the children using the values provided.
+		//! Initializes one array variant and sets the children using the values provided.
 		Variant(const Vector<Variant>& values);
 		Variant(Vector<Variant>&& values);
 		//! Initializes one signed-integer-typed value and sets its data to the specified value.
@@ -259,18 +291,20 @@ namespace Luna
 		Variant(u64 v);
 		//! Initializes one floating-point-number-typed value and sets its data to the specified value.
 		Variant(f64 v);
-		//! Initializes one string-typed value and sets its data to the specified value.
+		//! Initializes one string variant and sets its data to the specified value.
 		Variant(const Name& v);
+		//! Initializes one string variant and sets its data to the specified value.
 		Variant(Name&& v);
+		//! Initializes one string variant and sets its data to the specified value.
 		Variant(const c8* v);
-		//! Initializes one Boolean-typed value and sets its data to the specified value.
+		//! Initializes one Boolean variant and sets its data to the specified value.
 		Variant(bool v);
-		//! Initializes one BLOB-typed value and sets its data to the specified value.
+		//! Initializes one BLOB variant and sets its data to the specified value.
 		Variant(const Blob& blob_data);
 		Variant(Blob&& blob_data);
-		//! Initializes one pointer-typed value and sets its data to the specified value.
-		Variant(void* v);
-		//! Destructs the value.
+
+		//! @}
+
 		~Variant();
 		Variant& operator=(const Variant& rhs);
 		Variant& operator=(Variant&& rhs);
@@ -287,108 +321,255 @@ namespace Luna
 		Variant& operator=(bool v);
 		Variant& operator=(const Blob& blob_data);
 		Variant& operator=(Blob&& blob_data);
-		Variant& operator=(void* v);
 		bool operator==(const Variant& rhs) const;
 		bool operator!=(const Variant& rhs) const;
-		//! Returns the type of the value.
+
+		//! @name Accessors
+		//! @{
+
+		//! @brief Gets the type of the variant.
+		//! @return Returns the type of the variant.
 		VariantType type() const;
-		//! Returns the number type of the value.
+		//! @brief Gets the number type of the variant.
+		//! @return Returns the number type of the variant. 
+		//! Returns @ref VariantType::not_number if @ref type of the variant is not @ref VariantType::number, 
 		VariantNumberType number_type() const;
-		//! Returns `true` if the value type is not `null`.
+		//! @brief Checks whether the variant is valid.
+		//! @return Returns `true` if @ref type of the variant is not @ref VariantType::null. Returns `false` otherwise.
 		bool valid() const;
-		//! Returns `true` if `size() == 0`.
+		//! @brief Checks whether the variant contains no child variant.
+		//! @return Returns `true` if @ref size of the variant is `0`. Returns `false` otherwise.
 		bool empty() const;
-		//! Returns the child value at the specified index.
-		//! Returns `npos` if the current value is not an array, or if the index is invalid.
+
+		//! @}
+
+		//! @name Accessing child variants
+		//! @{
+		
+		//! @brief Gets the child variant when this is an array variant.
+		//! @param[in] i The index of the child variant to fetch.
+		//! @return Returns one reference to the child variant at the specified index.
+		//! Returns @ref npos if the current variant is not an array variant, or if the index is invalid.
 		const Variant& at(usize i) const;
-		//! Returns the child value at the specified index.
-		//! The current value must be of an array type.
+		//! @brief Gets the child variant when this is an array variant.
+		//! @param[in] i The index of the child variant to fetch.
+		//! @return Returns one reference to the child variant at the specified index.
+		//! @par Valid Usage
+		//! * The current variant must be an array variant.
+		//! * `i` must be smaller than @ref size of the variant.
 		Variant& at(usize i);
-		//! Returns the child value with the specified key.
-		//! Returns `npos` if the current value is not an object, or if the key is invalid.
+		//! @brief Gets the child variant when this is an object variant.
+		//! @param[in] k The key string of the child variant to fetch.
+		//! @return Returns the child variant with the specified key.
+		//! Returns @ref npos if the current variant is not an object variant, or if the key is not found.
 		const Variant& find(const Name& k) const;
-		//! Returns the reference to the child value with the specified key, or constructs one new null value 
-		//! with that key if not exists.
-		//! The value must be an object type or a null type. If the value is a null type, it will
-		//! be transformed into one object type automatically before the new key-value pair is inserted.
+		//! @brief Gets the child variant with the specified key, or inserts one new child variant with that key if not exists.
+		//! @param[in] k The key string of the child variant to fetch or insert.
+		//! @return Returns one reference to the found or inserted child variant.
+		//! @remark The variant inserted by this function will have @ref VariantType::null type.
+		//! @par Valid Usage
+		//! * The current variant must be an object variant or a null variant. If the variant is a null variant, it will
+		//! be transformed into one object variant before the new key-variant pair is inserted.
 		Variant& find_or_insert(const Name& k);
-		//! Shortcut for `at`.
+		//! @brief Shortcut for @ref at.
 		const Variant& operator[](usize i) const;
+		//! @brief Shortcut for @ref at.
 		Variant& operator[](usize i);
-		//! Shortcut for `find`.
+		//! @brief Shortcut for @ref find.
 		const Variant& operator[](const Name& k) const;
-		//! Shortcut for `find_or_insert`.
+		//! @brief Shortcut for @ref find_or_insert.
 		Variant& operator[](const Name& k);
-		//! Gets the size of the child values of this value.
-		//! Returns 0 if this value is not an array or object type.
+		//! @brief Gets the number of the child variants of this variant.
+		//! @return Returns the number of the child variants of this variant.
+		//! Returns `0` if this variant is not an array or object variant.
 		usize size() const;
-		//! Checks whether one child value with the specified key exists in the current value.
-		//! Returns `false` if the current value is not an object type.
+		//! @brief Checks whether one child variant with the specified key exists.
+		//! @return Returns `true` if the current variant is a object variant, and the child variant with the specified key exists.
+		//! Returns `false` otherwise.
 		bool contains(const Name& k) const;
-		//! Returns one enumerator to enumerate all child values of the value.
-		//! The current value must be of an array type, or the returned enumerator will contain an empty range.
+		//! @brief Gets one enumerator that can be used to enumerate all child variants of one array variant.
+		//! @return Returns one enumerator that can be used to enumerate all child variants.
+		//! Returns one enumerator with an empty range if @ref type of the variant is not @ref VariantType::array.
+		//! @remark The returned enumerator will have `begin` and `end` methods that can be used like all other containers in Luna SDK. You can
+		//! also use the enumerator in a range-based for loop like so:
+		//! ```
+		//! for (auto i : variant.values())
+		//! {
+		//! 	//...
+		//! }
+		//! ```
 		value_enumerator values();
+		//! @brief Gets one enumerator that can be used to enumerate all child variants of one array variant.
+		//! @return Returns one enumerator that can be used to enumerate all child variants.
+		//! Returns one enumerator with an empty range if @ref type of the variant is not @ref VariantType::array.
+		//! @remark The returned enumerator will have `begin` and `end` methods that can be used like all other containers in Luna SDK. You can
+		//! also use the enumerator in a range-based for loop like so:
+		//! ```
+		//! for (auto& i : variant.values())
+		//! {
+		//! 	//...
+		//! }
+		//! ```
 		const_value_enumerator values() const;
-		//! Returns one enumerator to enumerate all child key-value pairs of the value.
-		//! The current value must be of an object type, or the returned enumerator will contain an empty range.
+		//! @brief Gets one enumerator to enumerate all child key-variant pairs of one object variant.
+		//! @return Returns one enumerator to enumerate all child key-variant pairs.
+		//! Returns one enumerator with an empty range if @ref type of the variant is not @ref VariantType::object.
+		//! @remark The returned enumerator will have `begin` and `end` methods that can be used like all other containers in Luna SDK. You can
+		//! also use the enumerator in a range-based for loop like so:
+		//! ```
+		//! for (auto& i : variant.key_values())
+		//! {
+		//! 	i.first; // key.
+		//!		i.second; // value.
+		//! }s
+		//! ```
 		key_value_enumerator key_values();
+		//! @brief Gets one enumerator to enumerate all child key-variant pairs of one object variant.
+		//! @return Returns one enumerator to enumerate all child key-variant pairs.
+		//! Returns one enumerator with an empty range if @ref type of the variant is not @ref VariantType::object.
+		//! @remark The returned enumerator will have `begin` and `end` methods that can be used like all other containers in Luna SDK. You can
+		//! also use the enumerator in a range-based for loop like so:
+		//! ```
+		//! for (auto& i : variant.key_values())
+		//! {
+		//! 	i.first; // key.
+		//!		i.second; // value.
+		//! }s
+		//! ```
 		const_key_value_enumerator key_values() const;
-		//! Inserts one value to the specified index.
-		//! The current value must be of an array type.
+
+		//! @}
+
+		//! @name Adding and removing child variants.
+		//! @{
+
+		//! @brief Copy-inserts one variant to the specified index.
+		//! @param[in] i The index to insert the variant to.
+		//! @param[in] val The variant to insert.
+		//! @par Valid Usage
+		//! * The current variant must be an array variant or a null variant. 
+		//! If the current variant is a null variant, it will be converted to an empty array variant before the insertion is performed.
+		//! * `i` must be smaller to equal to @ref size.
 		void insert(usize i, const Variant& val);
+		//! @brief Move-inserts one variant to the specified index.
+		//! @param[in] i The index to insert the variant to.
+		//! @param[in] val The variant to insert.
+		//! @par Valid Usage
+		//! * The current variant must be an array variant or a null variant.
+		//! If the current variant is a null variant, it will be converted to an empty array variant before the insertion is performed.
+		//! * `i` must not be greater than @ref size.
 		void insert(usize i, Variant&& val);
-		//! Pushes one value to the child values array of the current value.
-		//! The current value must be of an array type.
+		//! @brief Copy-inserts one variant to the end of the variant array.
+		//! @param[in] val The variant to insert.
+		//! @par Valid Usage
+		//! * The current variant must be an array variant or a null variant.
+		//! If the current variant is a null variant, it will be converted to an empty array variant before the insertion is performed.
 		void push_back(const Variant& val);
+		//! @brief Move-inserts one variant to the end of the variant array.
+		//! @param[in] val The variant to insert.
+		//! @par Valid Usage
+		//! * The current variant must be an array variant or a null variant.
+		//! If the current variant is a null variant, it will be converted to an empty array variant before the insertion is performed.
 		void push_back(Variant&& val);
-		//! Erases one child value from the current value.
-		//! The current value must be of an array type.
+		//! @brief Removes one child variant from the current variant.
+		//! @param[in] i The index of the child variant to remove.
+		//! @par Valid Usage
+		//! * The current variant must be an array variant.
+		//! * `i` must be smaller than @ref size.
 		void erase(usize i);
-		//! Erases one range of child values from the current value.
-		//! The current value must be of an array type.
+		//! @brief Erases one range [begin, end) of child variants from the current variant.
+		//! @param[in] begin The index of first child variant to remove.
+		//! @param[in] end The index of one-past-last child variant to remove.
+		//! @par Valid Usage
+		//! * The current variant must be an array variant.
+		//! * `begin` must not be greater than `end`.
+		//! * `end` must not be greater than @ref size.
 		void erase(usize begin, usize end);
-		//! Erases the last child value from the child values array of the current value.
-		//! The current value must be of an array type.
+		//! @brief Erases the last child variant from the child variants array of the current variant.
+		//! @par Valid Usage
+		//! * The current variant must be an array variant.
+		//! * This variant must not be @ref empty.
 		void pop_back();
-		//! Inserts the value with the specified key as the child value of the current value.
-		//! The current value must be of an object type.
+		//! @brief Copy-inserts the variant with the specified key as the child variant of the current variant.
+		//! @param[in] k The key string of the variant to insert.
+		//! @param[in] val The variant to insert.
+		//! @return Returns `true` if the variant is successfully inserted. Returns `false` if one variant with the 
+		//! specified key already exists, in such case, the existing variant is not modified.
+		//! @par Valid Usage
+		//! * The current variant must be an object variant or a null variant.
+		//! If the current variant is a null variant, it will be converted to an empty object variant before the insertion is performed.
 		bool insert(const Name& k, const Variant& val);
+		//! @brief Move-inserts the variant with the specified key as the child variant of the current variant.
+		//! @param[in] k The key string of the variant to insert.
+		//! @param[in] val The variant to insert.
+		//! @return Returns `true` if the variant is successfully inserted. Returns `false` if one variant with the 
+		//! specified key already exists, in such case, the existing variant is not modified.
+		//! @par Valid Usage
+		//! * The current variant must be an object variant or a null variant.
+		//! If the current variant is a null variant, it will be converted to an empty object variant before the insertion is performed.
 		bool insert(const Name& k, Variant&& val);
-		//! Erases the child value with the specified key from the current value.
-		//! The current value must be of an object type.
+		//! @brief Removes the child variant with the specified key from the current variant.
+		//! @param[in] k The key string of the variant to remove.
+		//! @return Returns `true` if one child variant with the specified key is successfully removed. Returns `false` otherwise.
+		//! @par Valid Usage
+		//! * The current variant must be an object variant.
 		bool erase(const Name& k);
-		//! Returns the value as one string. 
-		//! Returns `default_value` if the value type of the current value is not a string.
+
+		//! @}
+
+		//! @name Fetching variant data
+		//! @{
+
+		//! @brief Gets the string of one string variant.
+		//! @param[in] default_value The optional default string to return.
+		//! @return Returns the string data of one variant if @ref type is @ref VariantType::string.
+		//! Returns `default_value` otherwise.
 		Name str(const Name& default_value = Name()) const;
-		//! Returns the value as one C string.
-		//! Returns `default_value` if the value type of the current value is not a string.
+		//! @brief Gets the C string of one string variant.
+		//! @param[in] default_value The optional default string to return.
+		//! @return Returns the string data of one variant if @ref type is @ref VariantType::string.
+		//! Returns `default_value` otherwise.
 		const c8* c_str(const c8* default_value = "") const;
-		//! Returns the value as one 64-bit integer. If the value is in another number format, it will be 
-		//! converted automatically.
-		//! Returns `default_value` if the value is not in a number format.
+		//! @brief Gets the data of one number variant as one signed 64-bit integer.
+		//! @param[in] default_value The optional default number to return.
+		//! @return Returns the value as one signed 64-bit integer. If the value is in another number format, it will be 
+		//! converted automatically. Returns `default_value` if the variant is not a number variant.
 		i64 inum(i64 default_value = 0) const;
-		//! Returns the value as one 64-bit unsigned integer. If the value is in another number format, it will be 
-		//! converted automatically.
-		//! Returns `default_value` if the value is not in a number format.
+		//! @brief Gets the data of one number variant as one unsigned 64-bit integer.
+		//! @param[in] default_value The optional default number to return.
+		//! @return Returns the value as one unsigned 64-bit integer. If the value is in another number format, it will be 
+		//! converted automatically. Returns `default_value` if the variant is not a number variant.
 		u64 unum(u64 default_value = 0) const;
-		//! Returns the value as one 64-bit floating-point number. If the value is in another number format, it will be 
-		//! converted automatically.
-		//! Returns `default_value` if the value is not in a number format.
+		//! @brief Gets the data of one number variant as one 64-bit floating-point number.
+		//! @param[in] default_value The optional default number to return.
+		//! @return Returns the value as one 64-bit floating-point number. If the value is in another number format, it will be 
+		//! converted automatically. Returns `default_value` if the variant is not a number variant.
 		f64 fnum(f64 default_value = 0) const;
-		//! Returns the value as one Boolean. Returns `default_value` if the value type of the current value is not a Boolean.
+		//! @brief Gets the data of one Boolean variant.
+		//! @param[in] default_value The optional default Boolean value to return.
+		//! @return Returns the data of one Boolean variant. Returns `default_value` if the variant is not a Boolean variant.
 		bool boolean(bool default_value = false) const;
-		//! Returns the data buffer if the value is a blob. Returns `nullptr` otherwise.
+		//! @brief Gets the data pointer of one BLOB variant.
+		//! @return Returns the data pointer if the variant is a BLOB variant with @ref blob_size greater than `0`. 
+		//! Returns `nullptr` otherwise.
 		byte_t* blob_data();
+		//! @brief Gets the data pointer of one BLOB variant.
+		//! @return Returns the data pointer if the variant is a BLOB variant with @ref blob_size greater than `0`. 
+		//! Returns `nullptr` otherwise.
 		const byte_t* blob_data() const;
-		//! Returns the size of the data buffer if the value is a blob. Returns 0 otherwise.
+		//! @brief Gets the data size, in bytes, of one BLOB variant.
+		//! @return Returns the size of the data if the variant is a BLOB variant. Returns 0 otherwise.
 		usize blob_size() const;
-		//! Returns the alignment of the data buffer if the value is a blob. Returns 0 otherwise.
+		//! @brief Gets the data alignment, in bytes, of one BLOB variant.
+		//! @return Returns the alignment of the data if the variant is a BLOB variant. Returns 0 otherwise.
 		usize blob_alignment() const;
-		//! Detaches the internal blob if the value is a blob, the value contains one empty blob after this operation.
-		//! Returns one empty blob if the value is not a blob.
+		//! @brief Detaches and gets the data of one BLOB variant as a @ref Blob object. 
+		//! @details After this operation, this variant is still a BLOB variant, but contains no binary data ( @ref blob_data returns
+		//! `nullptr`, and @ref blob_size returns `0`).
+		//! @return Returns the detached blob data if the variant is a BLOB variant. Returns one empty @ref Blob object otherwise.
 		Blob blob_detach();
-		//! Returns the stored pointer. Returns `nullptr` if the variant type is not pointer.
-		void* pointer() const;
+
+		//! @}
 		
 	private:
 		friend class ObjectEnumerator;
@@ -448,7 +629,6 @@ namespace Luna
 			u64 m_ui;
 			f64 m_fi;
 			bool m_b;
-			void* m_ptr;
 			byte_t* m_blob;
 			Blob* m_big_blob;
 			Name m_str;
@@ -473,7 +653,6 @@ namespace Luna
 		void do_construct(u64 v);
 		void do_construct(f64 v);
 		void do_construct(bool v);
-		void do_construct(void* v);
 
 		bool do_small_arr_reserve(usize new_cap);
 		bool do_small_obj_reserve(usize new_cap);
@@ -492,8 +671,12 @@ namespace Luna
 		bool do_small_obj_erase(const Name& k);
 	};
 
-	//! The default null value returned if the accessor fails.
+	//! @brief Returns one reference to one global constant variant that contains no data.
+	//! @details This is used as the default return value if one query operation fails, so that the user can chain multiple `[]` operations
+	//! like data["persons"][0]["name"] without the need to handle null variant explicitly (query child variants of one null variant also returns `npos`).
 	LUNA_RUNTIME_API const Variant& npos();
+
+//! @}
 
 	static_assert(sizeof(Variant) == 16, "Wrong Variant size.");
 	static_assert(alignof(Variant) == 8, "Wrong Variant alignment.");
@@ -634,10 +817,6 @@ namespace Luna
 	{
 		do_construct(move(blob_data));
 	}
-	inline Variant::Variant(void* v)
-	{
-		do_construct(v);
-	}
 	inline Variant::~Variant()
 	{
 		do_destruct();
@@ -732,12 +911,6 @@ namespace Luna
 		do_construct(move(blob_data));
 		return *this;
 	}
-	inline Variant& Variant::operator=(void* v)
-	{
-		do_destruct();
-		do_construct(v);
-		return *this;
-	}
 	inline bool Variant::operator==(const Variant& rhs) const
 	{
 		if (m_type != rhs.m_type) return false;
@@ -769,8 +942,6 @@ namespace Luna
 			return m_b == rhs.m_b;
 		case VariantType::blob:
 			return memcmp(blob_data(), rhs.blob_data(), blob_size()) == 0;
-		case VariantType::pointer:
-			return m_ptr == rhs.m_ptr;
 		default:
 			lupanic();
 			return false;
@@ -1214,14 +1385,6 @@ namespace Luna
 		}
 		return Blob();
 	}
-	inline void* Variant::pointer() const
-	{
-		if (type() == VariantType::pointer)
-		{
-			return m_ptr;
-		}
-		return nullptr;
-	}
 	inline void Variant::do_destruct()
 	{
 		switch (m_type)
@@ -1305,9 +1468,6 @@ namespace Luna
 			m_blob_size = 0;
 			m_blob = nullptr;
 			break;
-		case VariantType::pointer:
-			m_ptr = nullptr;
-			break;
 		case VariantType::null:
 			break;
 		}
@@ -1368,9 +1528,6 @@ namespace Luna
 				m_blob = (byte_t*)memalloc(m_blob_size);
 				memcpy(m_blob, rhs.m_blob, m_blob_size);
 			}
-			break;
-		case VariantType::pointer:
-			m_ptr = rhs.m_ptr;
 			break;
 		case VariantType::null:
 			break;
@@ -1440,9 +1597,6 @@ namespace Luna
 				rhs.m_blob = nullptr;
 				rhs.m_blob_size = 0;
 			}
-			break;
-		case VariantType::pointer:
-			m_ptr = rhs.m_ptr;
 			break;
 		case VariantType::null:
 			break;
@@ -1589,11 +1743,6 @@ namespace Luna
 	{
 		m_type = VariantType::boolean;
 		m_b = v;
-	}
-	inline void Variant::do_construct(void* v)
-	{
-		m_type = VariantType::pointer;
-		m_ptr = v;
 	}
 	inline bool Variant::do_small_arr_reserve(usize new_cap)
 	{

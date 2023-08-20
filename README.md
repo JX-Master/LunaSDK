@@ -16,8 +16,8 @@ Key features:
 
 Designed target platforms:
 
-* Windows (Direct3D 12/Vulkan)
-* macOS (Metal) (Not implemented yet.)
+* Windows (Direct3D 12/Vulkan 1.0)
+* macOS (Metal 3)
 * Linux (Vulkan) (Not implemented yet.)
 * Android (Vulkan) (Not implemented yet.)
 * iOS (Metal) (Not implemented yet.)
@@ -28,7 +28,7 @@ Designed target platforms:
 
 * C++ toolchain on your platform:
     * Visual Studio 2019 or later on Windows (C++ desktop development & C++ game development workload).
-    * XCode on macOS (not implemented yet).
+    * XCode and command line tools on macOS.
     * clang or gcc on Linux (not implemented yet).
 * xmake building system, check [here](https://xmake.io/#/guide/installation) for installation instructions.
 * For Visual Studio Code users, install `XMake`(tboox) and `C/C++`(Microsoft) extensions on Visual Studio Code to improve development experience.
@@ -55,13 +55,24 @@ Designed target platforms:
    1. `--rhi_api=XXX` for choosing the rendering backend, including `D3D12` (default on Windows), `Vulkan` (default on Linux) and `Metal` (default on macOS). 
 1. Open terminal and execute `xmake build` for all projects, or `xmake build {target}` for a specific target, like `Studio`. You may also use `Run and Debug` tab to build project if you install the `XMake` extension.
 
+### XCode
+1. Clone or download this project.
+1. Run `gen_xcode.sh` on terminal:
+    ```
+    chmod +x ./gen_xcode.sh
+    ./gen_xcode.sh
+    ```
+1. Since the current version of xmake does not support running custom post-build scripts in XCode, you may need to copy images, shaders and other files to `build/macosx/{arch}/release/Debug` directory if the program failed to find them.
+1. Open `Luna.xcodeproj` on the root directory of Luna SDK.
+1. Build products in XCode. 
+
 ## System Requirements
 
-he following requirements must be satisfied to build Luna SDK with Direct3D 12 rendering backend:
+he following requirements must be satisfied to run Luna SDK with Direct3D 12 rendering backend:
 
 * Windows 10 operating system, 64-bit.
 
-The following requirements must be satisfied to build Luna SDK with Vulkan rendering backend:
+The following requirements must be satisfied to run Luna SDK with Vulkan rendering backend:
 
 * Vulkan runtime must be present on the system, and must be supported by your GPU and driver.
   * Vulkan runtime is shipped as part of system components on most modern operations systems, including Windows, Linux and Android.
@@ -70,6 +81,10 @@ The following requirements must be satisfied to build Luna SDK with Vulkan rende
 
 * `VK_KHR_maintenance1 ` extension support, which is mandatory in Vulkan 1.1+.
 * `VK_KHR_swapchain` extension support, which should be supported on all platforms with display screens.
+
+The following requirements must be satisfied to run Luna SDK with Metal rendering backend:
+
+* macOS 13.0 (Ventura) and later.
 
 ## Docs
 See [Luna SDK Docs](https://www.lunasdk.org).

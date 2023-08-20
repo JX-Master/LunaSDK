@@ -130,8 +130,10 @@ namespace Luna
         RV platform_init()
         {
             register_boxed_type<Window>();
-#ifdef LUNA_PLATFORM_WINDOWS
+#if defined(LUNA_PLATFORM_WINDOWS)
             impl_interface_for_type<Window, IGLFWWindow, IWin32Window, IWindow>();
+#elif defined(LUNA_PLATFORM_MACOS)
+            impl_interface_for_type<Window, IGLFWWindow, ICocoaWindow, IWindow>();
 #else
             impl_interface_for_type<Window, IGLFWWindow, IWindow>();
 #endif
