@@ -1,5 +1,5 @@
 luna_sdk_module_target("Asset")
     add_headerfiles("**.hpp")
     add_files("Source/**.cpp")
-    add_deps("Runtime", "VFS", "JobSystem")
+    add_deps("Runtime", "VariantUtils", "VFS", "JobSystem")
 target_end()

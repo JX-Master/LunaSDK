@@ -18,7 +18,7 @@
 #include <Luna/Runtime/Module.hpp>
 #include <Luna/VFS/VFS.hpp>
 #include <Luna/Runtime/Serialization.hpp>
-#include <Luna/Runtime/VariantJSON.hpp>
+#include <Luna/VariantUtils/JSON.hpp>
 #include <Luna/Runtime/Reflection.hpp>
 
 namespace Luna
@@ -59,7 +59,7 @@ namespace Luna
 			{
 				lulet(f, VFS::open_file(meta_path, FileOpenFlag::write | FileOpenFlag::user_buffering, FileCreationMode::create_always));
 				lulet(data, serialize(file));
-				luexp(json_write(f, data));
+				luexp(VariantUtils::json_write(f, data));
 			}
 			lucatchret;
 			return ok;
@@ -99,7 +99,7 @@ namespace Luna
 			lutry
 			{
 				lulet(f, VFS::open_file(meta_path, FileOpenFlag::read | FileOpenFlag::user_buffering, FileCreationMode::open_existing));
-				lulet(var, json_read(f));
+				lulet(var, VariantUtils::json_read(f));
 				luexp(deserialize(file, var));
 			}
 			lucatch
@@ -595,7 +595,7 @@ namespace Luna
 			g_assets_mutex.reset();
 			g_asset_types_mutex.reset();
 		}
-		StaticRegisterModule m("Asset", "VFS;JobSystem", module_init, module_close);
+		StaticRegisterModule m("Asset", "VariantUtils;VFS;JobSystem", module_init, module_close);
 	}
 
 	namespace AssetError

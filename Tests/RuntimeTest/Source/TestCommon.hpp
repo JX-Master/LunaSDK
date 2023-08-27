@@ -23,14 +23,12 @@ namespace Luna
 	void path_test();
 	void list_test();
 	void error_test();
-	void json_test();
 	void tuple_test();
 	void variant_test();
 	void time_test();
 	void file_test();
 	void math_test();
 	void serialize_test();
-	void variant_diff_test();
 	void array_test();
 	void invoke_test();
 	void function_test();

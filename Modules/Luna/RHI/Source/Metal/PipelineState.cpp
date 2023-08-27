@@ -8,7 +8,7 @@
 * @date 2023/7/25
 */
 #include "PipelineState.hpp"
-#include <Luna/Runtime/VariantJSON.hpp>
+#include <Luna/VariantUtils/JSON.hpp>
 
 namespace Luna
 {
@@ -26,7 +26,7 @@ namespace Luna
                 NSPtr<MTL::Function> ps_func;
                 if(!desc.vs.empty())
                 {
-                    lulet(vs_obj, json_read((const c8*)desc.vs.data(), desc.vs.size()));
+                    lulet(vs_obj, VariantUtils::json_read((const c8*)desc.vs.data(), desc.vs.size()));
                     auto& source_obj = vs_obj["source"];
                     auto& entry_point_obj = vs_obj["entry_point"];
                     NSPtr<MTL::CompileOptions> options = box(MTL::CompileOptions::alloc()->init());
@@ -48,7 +48,7 @@ namespace Luna
                 }
                 if(!desc.ps.empty())
                 {
-                    lulet(ps_obj, json_read((const c8*)desc.ps.data(), desc.ps.size()));
+                    lulet(ps_obj, VariantUtils::json_read((const c8*)desc.ps.data(), desc.ps.size()));
                     auto& source_obj = ps_obj["source"];
                     auto& entry_point_obj = ps_obj["entry_point"];
                     NSPtr<MTL::CompileOptions> options = box(MTL::CompileOptions::alloc()->init());
@@ -201,7 +201,7 @@ namespace Luna
                 NSPtr<MTL::Library> cs;
                 NSPtr<MTL::Function> cs_func;
                 NSPtr<MTL::CompileOptions> options = box(MTL::CompileOptions::alloc()->init());
-                lulet(cs_obj, json_read((const c8*)desc.cs.data(), desc.cs.size()));
+                lulet(cs_obj, VariantUtils::json_read((const c8*)desc.cs.data(), desc.cs.size()));
                 auto& source_obj = cs_obj["source"];
                 auto& entry_point_obj = cs_obj["entry_point"];
                 NS::String* source = NS::String::string(source_obj.c_str(), NS::UTF8StringEncoding);

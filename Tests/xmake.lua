@@ -1,4 +1,5 @@
 includes("RuntimeTest")
+includes("VariantUtilsTest")
 includes("WindowTest")
 includes("RHITests")
 includes("VGTest")

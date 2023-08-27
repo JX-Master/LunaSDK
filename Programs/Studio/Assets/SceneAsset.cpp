@@ -9,7 +9,6 @@
 */
 #include "Scene.hpp"
 #include <Luna/VFS/VFS.hpp>
-#include <Luna/Runtime/VariantJSON.hpp>
 #include <Luna/Runtime/Serialization.hpp>
 #include "../StudioHeader.hpp"
 

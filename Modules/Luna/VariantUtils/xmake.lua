@@ -1,0 +1,5 @@
+luna_sdk_module_target("VariantUtils")
+    add_headerfiles("**.hpp")
+    add_files("Source/**.cpp")
+    add_deps("Runtime")
+target_end()

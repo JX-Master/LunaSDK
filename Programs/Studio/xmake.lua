@@ -3,7 +3,7 @@ target("Studio")
     add_options("rhi_api")
     add_headerfiles("**.hpp")
     add_files("**.cpp")
-    add_deps("Runtime", "HID", "Window", "RHI", "Image", "Font", "ImGui", "Asset", "ObjLoader", "RG")
+    add_deps("Runtime", "VariantUtils", "HID", "Window", "RHI", "Image", "Font", "ImGui", "Asset", "ObjLoader", "RG")
     add_packages("imgui")
 
     local shader_files = {

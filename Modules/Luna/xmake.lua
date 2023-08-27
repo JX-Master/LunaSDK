@@ -1,4 +1,5 @@
 includes("Runtime")
+includes("VariantUtils")
 includes("HID")
 includes("Window")
 includes("VFS")

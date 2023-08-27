@@ -8,7 +8,7 @@
 * @date 2021/8/3
 */
 #include "TestCommon.hpp"
-#include <Luna/Runtime/VariantJSON.hpp>
+#include <Luna/VariantUtils/JSON.hpp>
 
 namespace Luna
 {
@@ -39,14 +39,14 @@ namespace Luna
 		\"meta\": null \n\
 	} \n\
 }";
-			R<Variant> v = json_read(src);
-			lutest(succeeded(v));
+			R<Variant> v = VariantUtils::json_read(src);
+			luassert_always(succeeded(v));
 
-			String s = json_write(v.get());
-			R<Variant> v2 = json_read(s.c_str());
-			lutest(succeeded(v2));
+			String s = VariantUtils::json_write(v.get());
+			R<Variant> v2 = VariantUtils::json_read(s.c_str());
+			luassert_always(succeeded(v2));
 
-			lutest(v.get() == v2.get());
+			luassert_always(v.get() == v2.get());
 		}
 		
 		{
@@ -55,10 +55,10 @@ namespace Luna
 			Blob blob((const byte_t*)d, 17, 0);
 			Variant blob_var(move(blob));
 
-			String s2 = json_write(blob_var);
-			R<Variant> blob_var2 = json_read(s2.c_str());
-			lutest(succeeded(blob_var2));
-			lutest(blob_var == blob_var2.get());
+			String s2 = VariantUtils::json_write(blob_var);
+			R<Variant> blob_var2 = VariantUtils::json_read(s2.c_str());
+			luassert_always(succeeded(blob_var2));
+			luassert_always(blob_var == blob_var2.get());
 		}
 	}
 }

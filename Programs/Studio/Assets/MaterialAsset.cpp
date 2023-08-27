@@ -10,7 +10,6 @@
 #include "Material.hpp"
 #include <Luna/VFS/VFS.hpp>
 #include <Luna/Runtime/Serialization.hpp>
-#include <Luna/Runtime/VariantJSON.hpp>
 #include "../StudioHeader.hpp"
 
 namespace Luna

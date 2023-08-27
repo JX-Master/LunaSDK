@@ -56,6 +56,7 @@ luna_sdk_module_target("RHI")
         add_headerfiles("Source/Metal/**.hpp")
         add_files("Source/Metal/**.cpp", "Source/Metal/**.mm")
         add_frameworks("Foundation", "QuartzCore", "Metal")
+        add_deps("VariantUtils")
     end
     add_deps("Runtime", "Window")
 target_end()

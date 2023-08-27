@@ -7,16 +7,16 @@
 * @author JXMaster
 * @date 2021/8/3
 */
-#include "../PlatformDefines.hpp"
-#define LUNA_RUNTIME_API LUNA_EXPORT
-#include "../VariantJSON.hpp"
-#include "../Unicode.hpp"
-#include "../Base64.hpp"
-#include "../RingDeque.hpp"
+#include <Luna/Runtime/PlatformDefines.hpp>
+#define LUNA_VARIANT_UTILS_API LUNA_EXPORT
+#include "../JSON.hpp"
+#include <Luna/Runtime/Unicode.hpp>
+#include <Luna/Runtime/Base64.hpp>
+#include <Luna/Runtime/RingDeque.hpp>
 
 namespace Luna
 {
-	namespace JSON
+	namespace VariantUtils
 	{
 		inline bool is_whitespace(c32 ch)
 		{
@@ -834,39 +834,36 @@ namespace Luna
 				break;
 			}
 		}
-	}
-
-	LUNA_RUNTIME_API R<Variant> json_read(const c8* src, usize src_size)
-	{
-		lucheck(src);
-		JSON::BufferReadContext ctx;
-		ctx.src = src;
-		ctx.cur = src;
-		ctx.src_length = src_size;
-		ctx.line = 1;
-		ctx.pos = 1;
-		return read_value(ctx);
-	}
-	LUNA_RUNTIME_API R<Variant> json_read(IStream* stream)
-	{
-		lucheck(stream);
-		JSON::StreamReadContext ctx;
-		ctx.stream = stream;
-		ctx.line = 1;
-		ctx.pos = 1;
-		return read_value(ctx);
-	}
-
-	LUNA_RUNTIME_API String json_write(const Variant& v, bool indent)
-	{
-		String r;
-		JSON::write_value(v, r, indent, 0);
-		return r;
-	}
-
-	LUNA_RUNTIME_API RV json_write(IStream* stream, const Variant& v, bool indent)
-	{
-		String data = json_write(v, indent);
-		return stream->write(data.data(), data.size());
+		LUNA_VARIANT_UTILS_API R<Variant> json_read(const c8* src, usize src_size)
+		{
+			lucheck(src);
+			BufferReadContext ctx;
+			ctx.src = src;
+			ctx.cur = src;
+			ctx.src_length = src_size;
+			ctx.line = 1;
+			ctx.pos = 1;
+			return read_value(ctx);
+		}
+		LUNA_VARIANT_UTILS_API R<Variant> json_read(IStream* stream)
+		{
+			lucheck(stream);
+			StreamReadContext ctx;
+			ctx.stream = stream;
+			ctx.line = 1;
+			ctx.pos = 1;
+			return read_value(ctx);
+		}
+		LUNA_VARIANT_UTILS_API String json_write(const Variant& v, bool indent)
+		{
+			String r;
+			write_value(v, r, indent, 0);
+			return r;
+		}
+		LUNA_VARIANT_UTILS_API RV json_write(IStream* stream, const Variant& v, bool indent)
+		{
+			String data = json_write(v, indent);
+			return stream->write(data.data(), data.size());
+		}
 	}
 }

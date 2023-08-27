@@ -10,7 +10,7 @@
 #include "Mesh.hpp"
 #include <Luna/VFS/VFS.hpp>
 #include "../Mesh.hpp"
-#include <Luna/Runtime/VariantJSON.hpp>
+#include <Luna/VariantUtils/JSON.hpp>
 #include <Luna/Runtime/Serialization.hpp>
 #include "../StudioHeader.hpp"
 #include <Luna/RHI/Utility.hpp>
@@ -54,7 +54,7 @@ namespace Luna
 			file_path.append_extension("mesh");
 			lulet(file, VFS::open_file(file_path, FileOpenFlag::read | FileOpenFlag::user_buffering, FileCreationMode::open_existing));
 			lulet(data, load_file_data(file));
-			lulet(file_data, json_read((const c8*)data.data(), data.size()));
+			lulet(file_data, VariantUtils::json_read((const c8*)data.data(), data.size()));
 			MeshAsset mesh_asset;
 			luexp(deserialize(mesh_asset, file_data));
 			Ref<Mesh> mesh = new_object<Mesh>();

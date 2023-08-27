@@ -12,7 +12,7 @@
 #include <Luna/Runtime/Time.hpp>
 #include <Luna/Runtime/Debug.hpp>
 #include <Luna/Runtime/File.hpp>
-#include <Luna/Runtime/VariantJSON.hpp>
+#include <Luna/VariantUtils/JSON.hpp>
 #include <Luna/Window/FileDialog.hpp>
 #include <Luna/Window/MessageBox.hpp>
 #include <Luna/Runtime/Thread.hpp>
@@ -64,7 +64,7 @@ namespace Luna
 		{
 			lulet(f, open_file("RecentProjects.json", FileOpenFlag::read | FileOpenFlag::user_buffering, FileCreationMode::open_existing));
 			lulet(blob, load_file_data(f));
-			lulet(data, json_read((c8*)blob.data(), blob.size()));
+			lulet(data, VariantUtils::json_read((c8*)blob.data(), blob.size()));
 			for (auto& item : data.values())
 			{
 				RecentFileRecord rec;
@@ -121,7 +121,7 @@ namespace Luna
 				item["last_use_time"] = i.m_last_use_time;
 				var.push_back(move(item));
 			}
-			String data = json_write(var);
+			String data = VariantUtils::json_write(var);
 			lulet(f, open_file("RecentProjects.json", FileOpenFlag::write | FileOpenFlag::user_buffering, FileCreationMode::create_always));
 			luexp(f->write(data.data(), data.size()));
 		}

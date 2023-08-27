@@ -25,13 +25,11 @@ void run()
 	name_test();
 	path_test();
 	error_test();
-	json_test();
 	variant_test();
 	time_test();
 	file_test();
 	math_test();
 	serialize_test();
-	variant_diff_test();
 	invoke_test();
 	function_test();
 }
