@@ -25,10 +25,9 @@ namespace Luna
     //! @{
 
 	//! @brief Get the encoded base64 string size from the raw data size.
-	//! @details The string size does not include the null-terminator.
 	//! @param[in] raw_size The size of the raw binary data in bytes.
-	//! @return The size of the encoded string in bytes.
-	constexpr usize base64_get_encoded_size(usize raw_size)
+	//! @return The size of the encoded string in bytes. The string size does not include the null-terminator.
+	inline constexpr usize base64_get_encoded_size(usize raw_size)
 	{
 		return (raw_size + 2) / 3 * 4;
 	}
@@ -40,7 +39,7 @@ namespace Luna
 	//! @param[in] encoded_size The size of the encoded string, in bytes, and not including the null
 	//! terminator.
 	//! @return The size of the decoded raw data, in bytes.
-	constexpr usize base64_get_decoded_size(usize encoded_size)
+	inline constexpr usize base64_get_decoded_size(usize encoded_size)
 	{
 		return encoded_size / 4 * 3;
 	}
@@ -57,7 +56,7 @@ namespace Luna
 	//! @param[in] dst The binary buffer used to hold the decoded data.
 	//! @param[in] dst_max_bytes The maximum bytes the `dst` buffer can hold.
 	//! @param[in] src The null-terminated base64 source string.
-	//! @param[in] src_size_chars The maximum characters to read in the `src` string. Specify `usize_max` to read
+	//! @param[in] src_size_chars The maximum characters to read in the `src` string. Specify `USIZE_MAX` to read
 	//! the full string.
 	//! @return Returns the number of bytes decoded into the `dst` buffer.
 	LUNA_RUNTIME_API usize base64_decode(void* dst, usize dst_max_bytes, const c8* src, usize src_size_chars = USIZE_MAX);

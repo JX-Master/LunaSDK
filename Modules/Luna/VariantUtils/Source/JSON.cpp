@@ -13,6 +13,7 @@
 #include <Luna/Runtime/Unicode.hpp>
 #include <Luna/Runtime/Base64.hpp>
 #include <Luna/Runtime/RingDeque.hpp>
+#include <Luna/Runtime/Base85.hpp>
 
 namespace Luna
 {
@@ -429,15 +430,28 @@ namespace Luna
 		static R<Variant> read_blob(const String& str)
 		{
 			// Check if this is a blob.
-			if (!memcmp(str.c_str(), "@blob@", 6 * sizeof(c8)))
+			if (!memcmp(str.c_str(), "@base85@", 8 * sizeof(c8)))
 			{
 				c8* end_chr;
-				u64 size = strtoll(str.c_str() + 6, &end_chr, 10);
+				u64 size = strtoll(str.c_str() + 8, &end_chr, 10);
 				if (*end_chr != '@') return BasicError::failure();
 				u64 alignment = strtoll(end_chr + 1, &end_chr, 10);
 				if (*end_chr != '@') return BasicError::failure();
 				Blob data(size, alignment);
-				base64_decode(data.data(), data.size(), end_chr + 1);
+				++end_chr;
+				base85_decode(data.data(), data.size(), end_chr, (str.c_str() + str.size()) - end_chr);
+				return Variant(move(data));
+			}
+			else if (!memcmp(str.c_str(), "@base64@", 8 * sizeof(c8)))
+			{
+				c8* end_chr;
+				u64 size = strtoll(str.c_str() + 8, &end_chr, 10);
+				if (*end_chr != '@') return BasicError::failure();
+				u64 alignment = strtoll(end_chr + 1, &end_chr, 10);
+				if (*end_chr != '@') return BasicError::failure();
+				Blob data(size, alignment);
+				++end_chr;
+				base64_decode(data.data(), data.size(), end_chr, (str.c_str() + str.size()) - end_chr);
 				return Variant(move(data));
 			}
 			return BasicError::failure();
@@ -653,12 +667,12 @@ namespace Luna
 			}
 		}
 
-		static void write_string_value(String& s, const Name& v)
+		static void write_string_value(String& s, const c8* v, usize len)
 		{
 			s.push_back('"');
-
-			const c8* cur = v.c_str();
-			while (cur < (v.c_str() + strlen(v.c_str())))
+			const c8* cur = v;
+			const c8* end = v + len;
+			while (cur < end)
 			{
 				c32 ch = utf8_decode_char(cur);
 				switch (ch)
@@ -704,15 +718,29 @@ namespace Luna
 
 		static void write_blob_value(String& s, const void* data, usize data_size, usize data_alignment)
 		{
-			s.push_back('"');
-			c8 buf[128];
-			snprintf(buf, 128, "@blob@%llu@%llu@", (long long unsigned int)data_size, (long long unsigned int)data_alignment);
-			s.append(buf);
-			usize encoded_size = base64_get_encoded_size(data_size);
-			usize offset = s.size();
-			s.resize(s.size() + encoded_size, '0');
-			base64_encode(s.data() + offset, encoded_size, data, data_size);
-			s.push_back('"');
+			if (data_size % 4 == 0)
+			{
+				c8 buf[128];
+				snprintf(buf, 128, "@base85@%llu@%llu@", (long long unsigned int)data_size, (long long unsigned int)data_alignment);
+				String raw(buf);
+				usize encoded_size = base85_get_encoded_size(data_size);
+				usize begin = raw.size();
+				raw.resize(raw.size() + encoded_size + 1, '\0');
+				base85_encode(raw.data() + begin, raw.size() - begin, data, data_size);
+				write_string_value(s, raw.c_str(), raw.size());
+			}
+			else
+			{
+				s.push_back('"');
+				c8 buf[128];
+				snprintf(buf, 128, "@base64@%llu@%llu@", (long long unsigned int)data_size, (long long unsigned int)data_alignment);
+				s.append(buf);
+				usize encoded_size = base64_get_encoded_size(data_size);
+				usize offset = s.size();
+				s.resize(s.size() + encoded_size + 1, '\0');
+				base64_encode(s.data() + offset, encoded_size + 1, data, data_size);
+				s.push_back('"');
+			}
 		}
 
 		static void write_value(const Variant& v, String& s, bool indent, u32 base_indent)
@@ -743,7 +771,7 @@ namespace Luna
 						{
 							write_indents(s, base_indent);
 						}
-						write_string_value(s, i.first);
+						write_string_value(s, i.first.c_str(), i.first.size());
 						s.push_back(':');
 						//if (indent && (i.second.type() == VariantType::array || i.second.type() == VariantType::object) && !i.second.empty())
 						//{
@@ -824,7 +852,7 @@ namespace Luna
 			}
 			break;
 			case VariantType::string:
-				write_string_value(s, v.str());
+				write_string_value(s, v.str().c_str(), v.str().size());
 				break;
 			case VariantType::boolean:
 				s.append(v.boolean() ? "true" : "false");

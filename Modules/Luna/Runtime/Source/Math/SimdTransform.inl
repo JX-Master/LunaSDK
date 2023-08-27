@@ -116,6 +116,7 @@ namespace Luna
 		{
 			float4x4 ret;
 #if defined(LUNA_AVX_INTRINSICS)
+			translation = setw_f4(translation, 1.0f);
 			ret.r[0] = _mm256_set_ps(0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f);
 			// x, y, z, 0, 0, 0, 0, 0
 			ret.r[1] = _mm256_insertf128_ps(_mm256_set_ps(1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f), translation, 1);

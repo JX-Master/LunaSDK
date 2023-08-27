@@ -58,44 +58,27 @@ namespace Luna
 		usize data_cur{ 0 };
 		usize str_cur{ 0 };
 		const u8* data_buf = reinterpret_cast<const u8*>(src);
-		while (data_cur < src_size_bytes)
+		while (data_cur < src_size_bytes && str_cur + 4 < dst_max_chars)
 		{
 			// fetch data.
-			data_tuple[0] = data_buf[data_cur];
+			const u8* data_begin = data_buf + data_cur;
+			data_tuple[0] = data_begin[0];
 			padding = (src_size_bytes - data_cur) > 2 ? 0 : (u8)(3 + data_cur - src_size_bytes);
-			data_tuple[1] = (padding == 2) ? 0 : data_buf[data_cur + 1];
-			data_tuple[2] = (padding > 0) ? 0 : data_buf[data_cur + 2];
+			data_tuple[1] = (padding == 2) ? 0 : data_begin[1];
+			data_tuple[2] = (padding > 0) ? 0 : data_begin[2];
 			// calculate
 			str_tuple[0] = (data_tuple[0] & 0xfc) >> 2;
 			str_tuple[1] = ((data_tuple[0] & 0x03) << 4) + ((data_tuple[1] & 0xf0) >> 4);
 			str_tuple[2] = ((data_tuple[1] & 0x0f) << 2) + ((data_tuple[2] & 0xc0) >> 6);
 			str_tuple[3] = data_tuple[2] & 0x3f;
 			// encode
-			if (str_cur < dst_max_chars)
-			{
-				dst[str_cur] = Impl::base64_encode_chars[str_tuple[0]];
-				str_cur++;
-			}
-			if (str_cur < dst_max_chars)
-			{
-				dst[str_cur] = Impl::base64_encode_chars[str_tuple[1]];
-				str_cur++;
-			}
-			if (str_cur < dst_max_chars)
-			{
-				dst[str_cur] = (padding == 2) ? '=' : Impl::base64_encode_chars[str_tuple[2]];
-				str_cur++;
-			}
-			if (str_cur < dst_max_chars)
-			{
-				dst[str_cur] = (padding > 0) ? '=' : Impl::base64_encode_chars[str_tuple[3]];
-				str_cur++;
-			}
+			c8* dst_begin = dst + str_cur;
+			dst_begin[0] = Impl::base64_encode_chars[str_tuple[0]];
+			dst_begin[1] = Impl::base64_encode_chars[str_tuple[1]];
+			dst_begin[2] = (padding == 2) ? '=' : Impl::base64_encode_chars[str_tuple[2]];
+			dst_begin[3] = (padding > 0) ? '=' : Impl::base64_encode_chars[str_tuple[3]];
+			str_cur += 4;
 			data_cur += 3;
-			if (str_cur >= dst_max_chars)
-			{
-				break;
-			}
 		}
 		dst[str_cur] = 0;
 		return str_cur;

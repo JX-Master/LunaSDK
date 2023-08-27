@@ -56,9 +56,23 @@ namespace Luna
 			Variant blob_var(move(blob));
 
 			String s2 = VariantUtils::json_write(blob_var);
-			R<Variant> blob_var2 = VariantUtils::json_read(s2.c_str());
-			luassert_always(succeeded(blob_var2));
-			luassert_always(blob_var == blob_var2.get());
+			R<Variant> blob_var2_r = VariantUtils::json_read(s2.c_str());
+			luassert_always(succeeded(blob_var2_r));
+			Variant& blob_var2 = blob_var2_r.get();
+			luassert_always(blob_var == blob_var2);
+		}
+
+		{
+			// Base85 Blob test.
+			const c8 d[20] = "<Sample BLOB Data >";
+			Blob blob((const byte_t*)d, 20, 0);
+			Variant blob_var(move(blob));
+
+			String s2 = VariantUtils::json_write(blob_var);
+			R<Variant> blob_var2_r = VariantUtils::json_read(s2.c_str());
+			luassert_always(succeeded(blob_var2_r));
+			Variant& blob_var2 = blob_var2_r.get();
+			luassert_always(blob_var == blob_var2);
 		}
 	}
 }
