@@ -280,7 +280,7 @@ namespace Luna
                         out_data["numthreads"] = move(numthreads);
                     }
                     out_data["entry_point"] = entry_point.name.c_str();
-                    m_msl_compiled_data = VariantUtils::json_write(out_data);
+                    m_msl_compiled_data = VariantUtils::write_json(out_data);
 					m_out_data = (const byte_t*)m_msl_compiled_data.data();
 					m_out_size = m_msl_compiled_data.size();
 				}

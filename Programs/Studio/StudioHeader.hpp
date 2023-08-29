@@ -29,7 +29,7 @@ namespace Luna
 		lutry
 		{
 			lulet(file, VFS::open_file(path, FileOpenFlag::read, FileCreationMode::open_existing));
-			lulet(file_data, VariantUtils::json_read(file));
+			lulet(file_data, VariantUtils::read_json(file));
 			luexp(deserialize(dst, file_data));
 		}
 		lucatchret;
@@ -65,7 +65,7 @@ namespace Luna
 		{
 			lulet(file, VFS::open_file(path, FileOpenFlag::write, FileCreationMode::create_always));
 			lulet(file_data, serialize(src));
-			auto file_data_json = VariantUtils::json_write(file_data);
+			auto file_data_json = VariantUtils::write_json(file_data);
 			luexp(file->write(file_data_json.data(), file_data_json.size()));
 		}
 		lucatchret;

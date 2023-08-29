@@ -59,7 +59,7 @@ namespace Luna
 			{
 				lulet(f, VFS::open_file(meta_path, FileOpenFlag::write | FileOpenFlag::user_buffering, FileCreationMode::create_always));
 				lulet(data, serialize(file));
-				luexp(VariantUtils::json_write(f, data));
+				luexp(VariantUtils::write_json(f, data));
 			}
 			lucatchret;
 			return ok;
@@ -99,7 +99,7 @@ namespace Luna
 			lutry
 			{
 				lulet(f, VFS::open_file(meta_path, FileOpenFlag::read | FileOpenFlag::user_buffering, FileCreationMode::open_existing));
-				lulet(var, VariantUtils::json_read(f));
+				lulet(var, VariantUtils::read_json(f));
 				luexp(deserialize(file, var));
 			}
 			lucatch

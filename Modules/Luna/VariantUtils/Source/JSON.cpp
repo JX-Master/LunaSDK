@@ -10,272 +10,85 @@
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_VARIANT_UTILS_API LUNA_EXPORT
 #include "../JSON.hpp"
-#include <Luna/Runtime/Unicode.hpp>
 #include <Luna/Runtime/Base64.hpp>
-#include <Luna/Runtime/RingDeque.hpp>
 #include <Luna/Runtime/Base85.hpp>
+#include "StringParser.hpp"
 
 namespace Luna
 {
 	namespace VariantUtils
 	{
-		inline bool is_whitespace(c32 ch)
+		static void skip_single_line_comment(IReadContext& ctx)
 		{
-			return (ch == 0x20) || (ch == 0xA0) || (ch == 0x0A) || (ch == 0x0D) || (ch == 0x09);
+			lucheck(ctx.next_char() == '/' && ctx.next_char(1) == '/');
+			ctx.consume('/');
+			ctx.consume('/');
+			c32 ch = ctx.next_char();
+			if (!ch) return;
+			while (ch != '\n')
+			{
+				ctx.consume(ch);
+				ch = ctx.next_char();
+				if (!ch) return;
+			}
+			ctx.consume(ch);// for \n.
 		}
-
-		struct IReadContext
+		static void skip_multi_line_comment(IReadContext& ctx)
 		{
-			virtual void consume(c32 ch) = 0;
-			virtual c32 next_char(usize index = 0) = 0;
-			virtual void skip_whitespaces_and_comments() = 0;
-			virtual u32 get_line() = 0;
-			virtual u32 get_pos() = 0;
-		};
-
-		struct BufferReadContext : public IReadContext
+			lucheck(ctx.next_char() == '/' && ctx.next_char(1) == '*');
+			ctx.consume('/');
+			ctx.consume('*');
+			c32 ch = ctx.next_char();
+			if (!ch) return;
+		entry:
+			while (ch != '*')
+			{
+				ctx.consume(ch);
+				ch = ctx.next_char();
+				if (!ch) return;
+			}
+			ctx.consume(ch); // for *.
+			ch = ctx.next_char();
+			if (!ch) return;
+			if (ch == '/')
+			{
+				ctx.consume(ch); // for /.
+				return;
+			}
+			else
+			{
+				goto entry;
+			}
+		}
+		static void skip_whitespaces_and_comments(IReadContext& ctx)
 		{
-			const c8* src;
-			const c8* cur;
-			usize src_length;
-			u32 line;
-			u32 pos;
-
-			void consume(c32 ch)
+			c32 ch = ctx.next_char();
+			while (ch)
 			{
-				if (ch == 0) return;
-				cur += utf8_charspan(ch);
-				if (ch == '\n')
+				if (is_whitespace(ch))
 				{
-					pos = 1;
-					++line;
+					ctx.consume(ch);
 				}
-				else
+				else if (ch == '/')
 				{
-					++pos;
-				}
-			}
-			c32 next_char(usize index = 0)
-			{
-				const c8* next_cur = cur;
-				while (index)
-				{
-					// advance characters.
-					c32 ch = utf8_decode_char(next_cur);
-					if (!ch) return 0;
-					next_cur += utf8_charspan(ch);
-					if ((usize)(next_cur - src) >= src_length) return 0;
-					--index;
-				}
-				if ((usize)(next_cur - src) >= src_length) return 0;
-				return utf8_decode_char(next_cur);
-			}
-			virtual u32 get_line() { return line; }
-			virtual u32 get_pos() { return pos; }
-		private:
-			void skip_single_line_comment()
-			{
-				lucheck(next_char() == '/' && next_char(1) == '/');
-				consume('/');
-				consume('/');
-				c32 ch = next_char();
-				if (!ch) return;
-				while (ch != '\n')
-				{
-					consume(ch);
-					ch = next_char();
-					if (!ch) return;
-				}
-				consume(ch);// for \n.
-			}
-			void skip_multi_line_comment()
-			{
-				lucheck(next_char() == '/' && next_char(1) == '*');
-				consume('/');
-				consume('*');
-				c32 ch = next_char();
-				if (!ch) return;
-			entry:
-				while (ch != '*')
-				{
-					consume(ch);
-					ch = next_char();
-					if (!ch) return;
-				}
-				consume(ch); // for *.
-				ch = next_char();
-				if (!ch) return;
-				if (ch == '/')
-				{
-					consume(ch); // for /.
-					return;
-				}
-				else
-				{
-					goto entry;
-				}
-			}
-		public:
-			void skip_whitespaces_and_comments()
-			{
-				c32 ch = next_char();
-				while (ch)
-				{
-					if (is_whitespace(ch))
+					c32 ch2 = ctx.next_char(1);
+					if (ch2 == '/')
 					{
-						consume(ch);
+						skip_single_line_comment(ctx);
 					}
-					else if (ch == '/')
+					else if (ch2 == '*')
 					{
-						c32 ch2 = next_char(1);
-						if (ch2 == '/')
-						{
-							skip_single_line_comment();
-						}
-						else if (ch2 == '*')
-						{
-							skip_multi_line_comment();
-						}
-						else
-						{
-							break;
-						}
+						skip_multi_line_comment(ctx);
 					}
-					else break;
-					ch = next_char();
-				}
-			}
-		};
-
-		struct StreamReadContext : public IReadContext
-		{
-			IStream* stream;
-			RingDeque<c32> buffer;
-			u32 line;
-			u32 pos;
-			void consume(c32 ch)
-			{
-				if (ch == 0) return;
-				buffer.pop_front();
-				if (ch == '\n')
-				{
-					pos = 1;
-					++line;
-				}
-				else
-				{
-					++pos;
-				}
-			}
-		private:
-			R<c32> read_one_char_from_stream()
-			{
-				c32 ret;
-				lutry
-				{
-					c8 buf[6];
-					usize read_bytes;
-					luexp(stream->read(buf, sizeof(c8), &read_bytes));
-					if (read_bytes != sizeof(c8)) return 0;
-					usize charspan = utf8_charlen(buf[0]);
-					if (charspan > 1)
+					else
 					{
-						luexp(stream->read((buf + 1), sizeof(c8) * (charspan - 1), &read_bytes));
-						if (read_bytes != sizeof(c8) * (charspan - 1)) return 0;
+						break;
 					}
-					ret = utf8_decode_char(buf);
 				}
-				lucatchret;
-				return ret;
+				else break;
+				ch = ctx.next_char();
 			}
-		public:
-			c32 next_char(usize index = 0)
-			{
-				while (index >= buffer.size())
-				{
-					auto ch = read_one_char_from_stream();
-					if (failed(ch) || !ch.get()) return 0;
-					buffer.push_back(ch.get());
-				}
-				return buffer[index];
-			}
-			virtual u32 get_line() { return line; }
-			virtual u32 get_pos() { return pos; }
-		private:
-			void skip_single_line_comment()
-			{
-				lucheck(next_char() == '/' && next_char(1) == '/');
-				consume('/');
-				consume('/');
-				c32 ch = next_char();
-				if (!ch) return;
-				while (ch != '\n')
-				{
-					consume(ch);
-					ch = next_char();
-					if (!ch) return;
-				}
-				consume(ch);// for \n.
-			}
-			void skip_multi_line_comment()
-			{
-				lucheck(next_char() == '/' && next_char(1) == '*');
-				consume('/');
-				consume('*');
-				c32 ch = next_char();
-				if (!ch) return;
-			entry:
-				while (ch != '*')
-				{
-					consume(ch);
-					ch = next_char();
-					if (!ch) return;
-				}
-				consume(ch); // for *.
-				ch = next_char();
-				if (!ch) return;
-				if (ch == '/')
-				{
-					consume(ch); // for /.
-					return;
-				}
-				else
-				{
-					goto entry;
-				}
-			}
-		public:
-			void skip_whitespaces_and_comments()
-			{
-				c32 ch = next_char();
-				while (ch)
-				{
-					if (is_whitespace(ch))
-					{
-						consume(ch);
-					}
-					else if (ch == '/')
-					{
-						c32 ch2 = next_char(1);
-						if (ch2 == '/')
-						{
-							skip_single_line_comment();
-						}
-						else if (ch2 == '*')
-						{
-							skip_multi_line_comment();
-						}
-						else
-						{
-							break;
-						}
-					}
-					else break;
-					ch = next_char();
-				}
-			}
-		};
-
+		}
 		static R<String> read_string_literal(IReadContext& ctx)
 		{
 			lucheck(ctx.next_char() == '"');
@@ -374,7 +187,7 @@ namespace Luna
 		{
 			lucheck(ctx.next_char() == '{');
 			ctx.consume('{');
-			ctx.skip_whitespaces_and_comments();
+			skip_whitespaces_and_comments(ctx);
 			Variant v(VariantType::object);
 			c32 ch = ctx.next_char();
 			while (ch && ch != '}')
@@ -382,19 +195,19 @@ namespace Luna
 				if (ch != '"') return set_error(BasicError::format_error(), "The object field must start with a string name (line %d pos %d).", ctx.get_line(), ctx.get_pos());
 				R<String> name_str = read_string_literal(ctx);
 				if (failed(name_str)) return name_str.errcode();
-				ctx.skip_whitespaces_and_comments();
+				skip_whitespaces_and_comments(ctx);
 				ch = ctx.next_char();
 				if (ch != ':') return set_error(BasicError::format_error(), "':' expected at the end of the field name (line %d pos %d).", ctx.get_line(), ctx.get_pos());
 				ctx.consume(ch);
 				R<Variant> val = read_value(ctx);
 				if (failed(val)) return val.errcode();
 				v.insert(Name(name_str.get()), move(val.get()));
-				ctx.skip_whitespaces_and_comments();
+				skip_whitespaces_and_comments(ctx);
 				ch = ctx.next_char();
 				if (ch == '}') break;
 				if (ch != ',') set_error(BasicError::format_error(), "',' expected at the end of the field (line %d pos %d).", ctx.get_line(), ctx.get_pos());
 				ctx.consume(ch);
-				ctx.skip_whitespaces_and_comments();
+				skip_whitespaces_and_comments(ctx);
 				ch = ctx.next_char();
 			}
 			if (!ch) return set_error(BasicError::format_error(), "Unexpected EOF occurred at line %d, pos %d.", ctx.get_line(), ctx.get_pos());
@@ -406,7 +219,7 @@ namespace Luna
 		{
 			lucheck(ctx.next_char() == '[');
 			ctx.consume('[');
-			ctx.skip_whitespaces_and_comments();
+			skip_whitespaces_and_comments(ctx);
 			Variant v(VariantType::array);
 			c32 ch = ctx.next_char();
 			while (ch && ch != ']')
@@ -414,12 +227,12 @@ namespace Luna
 				R<Variant> val = read_value(ctx);
 				if (failed(val)) return val.errcode();
 				v.push_back(move(val.get()));
-				ctx.skip_whitespaces_and_comments();
+				skip_whitespaces_and_comments(ctx);
 				ch = ctx.next_char();
 				if (ch == ']') break;
 				if (ch != ',') set_error(BasicError::format_error(), "',' expected at the end of every array item (line %d pos %d).", ctx.get_line(), ctx.get_pos());
 				ctx.consume(ch);
-				ctx.skip_whitespaces_and_comments();
+				skip_whitespaces_and_comments(ctx);
 				ch = ctx.next_char();
 			}
 			if (!ch) return set_error(BasicError::format_error(), "Unexpected EOF occurred at line %d, pos %d.", ctx.get_line(), ctx.get_pos());
@@ -604,7 +417,7 @@ namespace Luna
 
 		static R<Variant> read_value(IReadContext& ctx)
 		{
-			ctx.skip_whitespaces_and_comments();
+			skip_whitespaces_and_comments(ctx);
 			c32 ch = ctx.next_char();
 			if (ch == '\0')
 			{
@@ -862,7 +675,7 @@ namespace Luna
 				break;
 			}
 		}
-		LUNA_VARIANT_UTILS_API R<Variant> json_read(const c8* src, usize src_size)
+		LUNA_VARIANT_UTILS_API R<Variant> read_json(const c8* src, usize src_size)
 		{
 			lucheck(src);
 			BufferReadContext ctx;
@@ -873,7 +686,7 @@ namespace Luna
 			ctx.pos = 1;
 			return read_value(ctx);
 		}
-		LUNA_VARIANT_UTILS_API R<Variant> json_read(IStream* stream)
+		LUNA_VARIANT_UTILS_API R<Variant> read_json(IStream* stream)
 		{
 			lucheck(stream);
 			StreamReadContext ctx;
@@ -882,15 +695,15 @@ namespace Luna
 			ctx.pos = 1;
 			return read_value(ctx);
 		}
-		LUNA_VARIANT_UTILS_API String json_write(const Variant& v, bool indent)
+		LUNA_VARIANT_UTILS_API String write_json(const Variant& v, bool indent)
 		{
 			String r;
 			write_value(v, r, indent, 0);
 			return r;
 		}
-		LUNA_VARIANT_UTILS_API RV json_write(IStream* stream, const Variant& v, bool indent)
+		LUNA_VARIANT_UTILS_API RV write_json(IStream* stream, const Variant& v, bool indent)
 		{
-			String data = json_write(v, indent);
+			String data = write_json(v, indent);
 			return stream->write(data.data(), data.size());
 		}
 	}

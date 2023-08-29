@@ -23,15 +23,15 @@ namespace Luna
 		}
 		//Diff_EqualBooleanProperty_NoDiff
 		{
-			Variant before = json_read("{\"p\": true }").get();
-			Variant after = json_read("{\"p\": true }").get();
+			Variant before = read_json("{\"p\": true }").get();
+			Variant after = read_json("{\"p\": true }").get();
 			Variant result = diff(before, after);
 			luassert_always(result.type() == VariantType::null);
 		}
 		//Diff_DiffBooleanProperty_ValidPatch
 		{
-			Variant before = json_read("{\"p\": true }").get();
-			Variant after = json_read("{\"p\": false }").get();
+			Variant before = read_json("{\"p\": true }").get();
+			Variant after = read_json("{\"p\": false }").get();
 			Variant result = diff(before, after);
 			luassert_always(result.type() == VariantType::object);
 			Variant& p = result["p"];
@@ -43,8 +43,8 @@ namespace Luna
 		}
 		//Diff_BooleanPropertyDeleted_ValidPatch
 		{
-			Variant before = json_read("{\"p\": true }").get();
-			Variant after = json_read("{ }").get();
+			Variant before = read_json("{\"p\": true }").get();
+			Variant after = read_json("{ }").get();
 			Variant result = diff(before, after);
 			luassert_always(result.type() == VariantType::object);
 			Variant& p = result["p"];
@@ -57,8 +57,8 @@ namespace Luna
 		}
 		//Diff_BooleanPropertyAdded_ValidPatch
 		{
-			Variant before = json_read("{ }").get();
-			Variant after = json_read("{\"p\": true}").get();
+			Variant before = read_json("{ }").get();
+			Variant after = read_json("{\"p\": true}").get();
 			Variant result = diff(before, after);
 			luassert_always(result.type() == VariantType::object);
 			Variant& p = result["p"];
@@ -69,14 +69,14 @@ namespace Luna
 		}
 		//Diff_EfficientArrayDiffSame_NullDiff
 		{
-			Variant array = json_read("[1,2,3]").get();
+			Variant array = read_json("[1,2,3]").get();
 			const Variant delta = diff(array, array);
 			luassert_always(delta.type() == VariantType::null);
 		}
 		//Diff_EfficientArrayDiffDifferentHeadRemoved_ValidDiff
 		{
-			Variant before = json_read("[1,2,3,4]").get();
-			Variant after = json_read("[2,3,4]").get();
+			Variant before = read_json("[1,2,3,4]").get();
+			Variant after = read_json("[2,3,4]").get();
 			const Variant delta = diff(before, after);
 			luassert_always(delta.valid());
 			luassert_always(delta.size() == 2);
@@ -84,8 +84,8 @@ namespace Luna
 		}
 		//Diff_EfficientArrayDiffDifferentTailRemoved_ValidDiff
 		{
-			Variant before = json_read("[1,2,3,4]").get();
-			Variant after = json_read("[1,2,3]").get();
+			Variant before = read_json("[1,2,3,4]").get();
+			Variant after = read_json("[1,2,3]").get();
 			const Variant delta = diff(before, after);
 			luassert_always(delta.valid());
 			luassert_always(delta.size() == 2);
@@ -93,8 +93,8 @@ namespace Luna
 		}
 		//Diff_EfficientArrayDiffDifferentHeadAdded_ValidDiff
 		{
-			Variant before = json_read("[1,2,3,4]").get();
-			Variant after = json_read("[0,1,2,3,4]").get();
+			Variant before = read_json("[1,2,3,4]").get();
+			Variant after = read_json("[0,1,2,3,4]").get();
 			const Variant delta = diff(before, after);
 			luassert_always(delta.valid());
 			luassert_always(delta.size() == 2);
@@ -102,8 +102,8 @@ namespace Luna
 		}
 		//Diff_EfficientArrayDiffDifferentTailAdded_ValidDiff
 		{
-			Variant before = json_read("[1,2,3,4]").get();
-			Variant after = json_read("[1,2,3,4,5]").get();
+			Variant before = read_json("[1,2,3,4]").get();
+			Variant after = read_json("[1,2,3,4,5]").get();
 			const Variant delta = diff(before, after);
 			luassert_always(delta.valid());
 			luassert_always(delta.size() == 2);
@@ -111,8 +111,8 @@ namespace Luna
 		}
 		//Diff_EfficientArrayDiffDifferentHeadTailAdded_ValidDiff
 		{
-			Variant before = json_read("[1,2,3,4]").get();
-			Variant after = json_read("[0,1,2,3,4,5]").get();
+			Variant before = read_json("[1,2,3,4]").get();
+			Variant after = read_json("[0,1,2,3,4,5]").get();
 			const Variant delta = diff(before, after);
 			luassert_always(delta.valid());
 			luassert_always(delta.size() == 3);
@@ -121,8 +121,8 @@ namespace Luna
 		}
 		//Diff_EfficientArrayDiffSameLengthNested_ValidDiff
 		{
-			Variant before = json_read("[1,2,{\"p\":false},4]").get();
-			Variant after = json_read("[1,2,{\"p\":true},4]").get();
+			Variant before = read_json("[1,2,{\"p\":false},4]").get();
+			Variant after = read_json("[1,2,{\"p\":true},4]").get();
 			const Variant delta = diff(before, after);
 			luassert_always(delta.valid());
 			luassert_always(delta.size() == 2);
@@ -140,7 +140,7 @@ namespace Luna
 		}
 	]
 })";
-			Variant before = json_read(json_source).get();
+			Variant before = read_json(json_source).get();
 			Variant after = before;
 			Variant delta = diff(before, after);
 			luassert_always(!delta.valid());
@@ -182,8 +182,8 @@ namespace Luna
 		}
 		//Diff_IntStringDiff_ValidPatch
 		{
-			Variant before = json_read("1").get();
-			Variant after = json_read("\"hello\"").get();
+			Variant before = read_json("1").get();
+			Variant after = read_json("\"hello\"").get();
 			Variant delta = diff(before, after);
 			luassert_always(delta.type() == VariantType::array);
 			luassert_always(delta.size() == 2);
@@ -192,8 +192,8 @@ namespace Luna
 		}
 		//Patch_ObjectApplyDelete_Success
 		{
-			Variant before = json_read("{ \"p\" : true }").get();
-			Variant after = json_read("{ }").get();
+			Variant before = read_json("{ \"p\" : true }").get();
+			Variant after = read_json("{ }").get();
 			Variant delta = diff(before, after);
 			Variant patched = before;
 			patch(patched, delta);
@@ -201,8 +201,8 @@ namespace Luna
 		}
 		//Patch_ObjectApplyAdd_Success
 		{
-			Variant before = json_read("{ }").get();
-			Variant after = json_read("{ \"p\" : true }").get();
+			Variant before = read_json("{ }").get();
+			Variant after = read_json("{ \"p\" : true }").get();
 			Variant delta = diff(before, after);
 			Variant patched = before;
 			patch(patched, delta);
@@ -212,8 +212,8 @@ namespace Luna
 		}
 		//Patch_ObjectApplyEdit_Success
 		{
-			Variant before = json_read("{ \"p\" : false  }").get();
-			Variant after = json_read("{ \"p\" : true }").get();
+			Variant before = read_json("{ \"p\" : false  }").get();
+			Variant after = read_json("{ \"p\" : true }").get();
 			Variant delta = diff(before, after);
 			Variant patched = before;
 			patch(patched, delta);
@@ -223,8 +223,8 @@ namespace Luna
 		}
 		//Patch_ObjectApplyEditText_Success
 		{
-			Variant before = json_read("{ \"p\" : \"bla1h111111111111112312weldjidjoijfoiewjfoiefjefijfoejoijfiwoejfiewjfiwejfowjwifewjfejdewdwdewqwertyqwertifwiejifoiwfei\"  }").get();
-			Variant after = json_read("{ \"p\" : \"blah1\" }").get();
+			Variant before = read_json("{ \"p\" : \"bla1h111111111111112312weldjidjoijfoiewjfoiefjefijfoejoijfiwoejfiewjfiwejfowjwifewjfejdewdwdewqwertyqwertifwiejifoiwfei\"  }").get();
+			Variant after = read_json("{ \"p\" : \"blah1\" }").get();
 			Variant delta = diff(before, after);
 			Variant patched = before;
 			patch(patched, delta);
@@ -234,8 +234,8 @@ namespace Luna
 		}
 		//Patch_NestedObjectApplyEdit_Success
 		{
-			Variant before = json_read("{ \"i\": { \"p\" : false } }").get();
-			Variant after = json_read("{ \"i\": { \"p\" : true } }").get();
+			Variant before = read_json("{ \"i\": { \"p\" : false } }").get();
+			Variant after = read_json("{ \"i\": { \"p\" : true } }").get();
 			Variant delta = diff(before, after);
 			Variant patched = before;
 			patch(patched, delta);
@@ -243,8 +243,8 @@ namespace Luna
 		}
 		//Patch_NestedComplexEdit_Success
 		{
-			Variant before = json_read("{ \"i\": { \"1\" : 1, \"2\": 2 }, \"j\": [0, 2, 4], \"k\": [1] }").get();
-			Variant after = json_read("{ \"i\": { \"1\" : 1, \"2\": 3 }, \"j\": [0, 2, 3], \"k\": null }").get();
+			Variant before = read_json("{ \"i\": { \"1\" : 1, \"2\": 2 }, \"j\": [0, 2, 4], \"k\": [1] }").get();
+			Variant after = read_json("{ \"i\": { \"1\" : 1, \"2\": 3 }, \"j\": [0, 2, 3], \"k\": null }").get();
 			Variant delta = diff(before, after);
 			Variant patched = before;
 			patch(patched, delta);
@@ -252,17 +252,17 @@ namespace Luna
 		}
 		//Patch_NestedComplexEditDifferentLeft_Success
 		{
-			Variant before = json_read("{ \"i\": { \"1\" : 1, \"2\": 2 }, \"j\": [0, 2, 4], \"k\": [1] }").get();
-			Variant after = json_read("{ \"i\": { \"1\" : 1, \"2\": 3 }, \"j\": [0, 2, 3], \"k\": null }").get();
-			Variant delta = diff(json_read("{ \"k\": { \"i\": [1] } }").get(), after);
+			Variant before = read_json("{ \"i\": { \"1\" : 1, \"2\": 2 }, \"j\": [0, 2, 4], \"k\": [1] }").get();
+			Variant after = read_json("{ \"i\": { \"1\" : 1, \"2\": 3 }, \"j\": [0, 2, 3], \"k\": null }").get();
+			Variant delta = diff(read_json("{ \"k\": { \"i\": [1] } }").get(), after);
 			Variant patched = before;
 			patch(patched, delta);
 			luassert_always(patched == after);
 		}
 		//Patch_ArrayPatchAdd_Success
 		{
-			Variant before = json_read("[1,2,3]").get();
-			Variant after = json_read("[1,2,3,4]").get();
+			Variant before = read_json("[1,2,3]").get();
+			Variant after = read_json("[1,2,3,4]").get();
 			Variant delta = diff(before, after);
 			Variant patched = before;
 			patch(patched, delta);
@@ -270,8 +270,8 @@ namespace Luna
 		}
 		//Patch_ArrayPatchRemove_Success
 		{
-			Variant before = json_read("[1,2,3]").get();
-			Variant after = json_read("[1,2]").get();
+			Variant before = read_json("[1,2,3]").get();
+			Variant after = read_json("[1,2]").get();
 			Variant delta = diff(before, after);
 			Variant patched = before;
 			patch(patched, delta);
@@ -279,8 +279,8 @@ namespace Luna
 		}
 		//Patch_ArrayPatchModify_Success
 		{
-			Variant before = json_read("[1,3,{\"p\":false}]").get();
-			Variant after = json_read("[1,4,{\"p\": [1] }]").get();
+			Variant before = read_json("[1,3,{\"p\":false}]").get();
+			Variant after = read_json("[1,4,{\"p\": [1] }]").get();
 			Variant delta = diff(before, after);
 			Variant patched = before;
 			patch(patched, delta);
@@ -288,8 +288,8 @@ namespace Luna
 		}
 		//Patch_ArrayPatchComplex_Success
 		{
-			Variant before = json_read("{\"p\": [1,2,[1],false,\"11111\",3,{\"p\":false},10,10] }").get();
-			Variant after = json_read("{\"p\": [1,2,[1,3],false,\"11112\",3,{\"p\":true},10,10] }").get();
+			Variant before = read_json("{\"p\": [1,2,[1],false,\"11111\",3,{\"p\":false},10,10] }").get();
+			Variant after = read_json("{\"p\": [1,2,[1,3],false,\"11112\",3,{\"p\":true},10,10] }").get();
 			Variant delta = diff(before, after);
 			Variant patched = before;
 			patch(patched, delta);
@@ -297,35 +297,35 @@ namespace Luna
 		}
 		//Patch_ArrayPatchMoving_Success
 		{
-			Variant before = json_read("[0,1,2,3,4,5,6,7,8,9,10]").get();
-			Variant after = json_read("[10,0,1,7,2,4,5,6,88,9,3]").get();
-			Variant delta = json_read("{ \"8\": [88], \"_t\": \"a\", \"_3\": [\"\", 10, 3], \"_7\": [\"\", 3, 3], \"_8\": [8, 0, 0], \"_10\": [\"\", 0, 3] }").get();
+			Variant before = read_json("[0,1,2,3,4,5,6,7,8,9,10]").get();
+			Variant after = read_json("[10,0,1,7,2,4,5,6,88,9,3]").get();
+			Variant delta = read_json("{ \"8\": [88], \"_t\": \"a\", \"_3\": [\"\", 10, 3], \"_7\": [\"\", 3, 3], \"_8\": [8, 0, 0], \"_10\": [\"\", 0, 3] }").get();
 			Variant patched = before;
 			patch(patched, delta);
 			luassert_always(patched == after);
 		}
 		//Patch_ArrayPatchMovingNonConsecutive_Success
 		{
-			Variant before = json_read("[0,1,3,4,5]").get();
-			Variant after = json_read("[0,4,3,1,5]").get();
-			Variant delta = json_read("{\"_t\": \"a\", \"_2\": [\"\", 2, 3],\"_3\": [\"\", 1, 3]}").get();
+			Variant before = read_json("[0,1,3,4,5]").get();
+			Variant after = read_json("[0,4,3,1,5]").get();
+			Variant delta = read_json("{\"_t\": \"a\", \"_2\": [\"\", 2, 3],\"_3\": [\"\", 1, 3]}").get();
 			Variant patched = before;
 			patch(patched, delta);
 			luassert_always(patched == after);
 		}
 		//Patch_ArrayPatchMoveDeletingNonConsecutive_Success
 		{
-			Variant before = json_read("[0,1,3,4,5]").get();
-			Variant after = json_read("[0,5,3]").get();
-			Variant delta = json_read("{\"_t\": \"a\", \"_1\": [ 1, 0, 0], \"_3\": [4,0, 0],\"_4\": [ \"\", 1, 3 ]}").get();
+			Variant before = read_json("[0,1,3,4,5]").get();
+			Variant after = read_json("[0,5,3]").get();
+			Variant delta = read_json("{\"_t\": \"a\", \"_1\": [ 1, 0, 0], \"_3\": [4,0, 0],\"_4\": [ \"\", 1, 3 ]}").get();
 			Variant patched = before;
 			patch(patched, delta);
 			luassert_always(patched == after);
 		}
 		//Patch_Bug16Exception_Success
 		{
-			Variant before = json_read("{\r\n  \"rootRegion\": {\r\n    \"rows\": [\r\n      \"auto\"\r\n    ],\r\n    \"members\": [\r\n      {\r\n        \"row\": 2\r\n      }\r\n    ]\r\n  }\r\n}").get();
-			Variant after = json_read("{\r\n  \"rootRegion\": {\r\n    \"rows\": [\r\n      \"auto\",\r\n      \"auto\"\r\n    ],\r\n    \"members\": [\r\n      {\r\n        \"row\": 3\r\n      },\r\n      {\r\n        \"name\": \"label-header\"\r\n      }\r\n    ]\r\n  }\r\n}").get();
+			Variant before = read_json("{\r\n  \"rootRegion\": {\r\n    \"rows\": [\r\n      \"auto\"\r\n    ],\r\n    \"members\": [\r\n      {\r\n        \"row\": 2\r\n      }\r\n    ]\r\n  }\r\n}").get();
+			Variant after = read_json("{\r\n  \"rootRegion\": {\r\n    \"rows\": [\r\n      \"auto\",\r\n      \"auto\"\r\n    ],\r\n    \"members\": [\r\n      {\r\n        \"row\": 3\r\n      },\r\n      {\r\n        \"name\": \"label-header\"\r\n      }\r\n    ]\r\n  }\r\n}").get();
 			Variant delta = diff(before, after);
 			Variant patched = before;
 			patch(patched, delta);
@@ -333,8 +333,8 @@ namespace Luna
 		}
 		//Patch_Bug16SilentFail_Success
 		{
-			Variant before = json_read("{\r\n    \"members\": [\r\n      {\r\n        \"name\": \"text-box\",\r\n        \"version\": \"1.0.0\",\r\n        \"required\": false,\r\n        \"isArray\": false,\r\n        \"row\": 2,\r\n        \"rowSpan\": 1,\r\n        \"column\": 0,\r\n        \"columnSpan\": 1,\r\n        \"readOnly\": false,\r\n        \"properties\": [\r\n          {\r\n            \"destPath\": \"ng-model\",\r\n            \"srcPath\": \"cmt\"\r\n          }\r\n        ],\r\n        \"parent\": \"Acknowledge Unit (111)\"\r\n      },\r\n      {\r\n        \"name\": \"component-label\",\r\n        \"version\": \"1.0.0\",\r\n        \"label\": \"COMMAND_DIALOG_COMMENT\",\r\n        \"required\": false,\r\n        \"isArray\": false,\r\n        \"row\": 1,\r\n        \"rowSpan\": 1,\r\n        \"column\": 0,\r\n        \"columnSpan\": 1,\r\n        \"readOnly\": false,\r\n        \"properties\": [],\r\n        \"parent\": \"Acknowledge Unit (111)\"\r\n      }\r\n    ]\r\n  \r\n}").get();
-			Variant after = json_read("{\r\n    \"members\": [\r\n      {\r\n        \"name\": \"text-box\",\r\n        \"version\": \"1.0.0\",\r\n        \"required\": false,\r\n        \"isArray\": false,\r\n        \"row\": 3,\r\n        \"rowSpan\": 1,\r\n        \"column\": 0,\r\n        \"columnSpan\": 1,\r\n        \"readOnly\": false,\r\n        \"properties\": [\r\n          {\r\n            \"destPath\": \"ng-model\",\r\n            \"srcPath\": \"cmt\"\r\n          }\r\n        ],\r\n        \"parent\": \"Acknowledge Unit (111)\"\r\n      },\r\n      {\r\n        \"name\": \"component-label\",\r\n        \"version\": \"1.0.0\",\r\n        \"label\": \"COMMAND_DIALOG_COMMENT\",\r\n        \"required\": false,\r\n        \"isArray\": false,\r\n        \"row\": 2,\r\n        \"rowSpan\": 1,\r\n        \"column\": 0,\r\n        \"columnSpan\": 1,\r\n        \"readOnly\": false,\r\n        \"properties\": [],\r\n        \"parent\": \"Acknowledge Unit (111)\"\r\n      },\r\n      {\r\n        \"name\": \"label-header\",\r\n        \"version\": \"1.0.0\",\r\n        \"column\": 0,\r\n        \"row\": 0,\r\n        \"columnSpan\": 1,\r\n        \"rowSpan\": 1,\r\n        \"properties\": [],\r\n        \"addedArgs\": {},\r\n        \"parent\": \"Acknowledge Unit (111)\",\r\n        \"label\": \"test\"\r\n      }\r\n    ]\r\n  }").get();
+			Variant before = read_json("{\r\n    \"members\": [\r\n      {\r\n        \"name\": \"text-box\",\r\n        \"version\": \"1.0.0\",\r\n        \"required\": false,\r\n        \"isArray\": false,\r\n        \"row\": 2,\r\n        \"rowSpan\": 1,\r\n        \"column\": 0,\r\n        \"columnSpan\": 1,\r\n        \"readOnly\": false,\r\n        \"properties\": [\r\n          {\r\n            \"destPath\": \"ng-model\",\r\n            \"srcPath\": \"cmt\"\r\n          }\r\n        ],\r\n        \"parent\": \"Acknowledge Unit (111)\"\r\n      },\r\n      {\r\n        \"name\": \"component-label\",\r\n        \"version\": \"1.0.0\",\r\n        \"label\": \"COMMAND_DIALOG_COMMENT\",\r\n        \"required\": false,\r\n        \"isArray\": false,\r\n        \"row\": 1,\r\n        \"rowSpan\": 1,\r\n        \"column\": 0,\r\n        \"columnSpan\": 1,\r\n        \"readOnly\": false,\r\n        \"properties\": [],\r\n        \"parent\": \"Acknowledge Unit (111)\"\r\n      }\r\n    ]\r\n  \r\n}").get();
+			Variant after = read_json("{\r\n    \"members\": [\r\n      {\r\n        \"name\": \"text-box\",\r\n        \"version\": \"1.0.0\",\r\n        \"required\": false,\r\n        \"isArray\": false,\r\n        \"row\": 3,\r\n        \"rowSpan\": 1,\r\n        \"column\": 0,\r\n        \"columnSpan\": 1,\r\n        \"readOnly\": false,\r\n        \"properties\": [\r\n          {\r\n            \"destPath\": \"ng-model\",\r\n            \"srcPath\": \"cmt\"\r\n          }\r\n        ],\r\n        \"parent\": \"Acknowledge Unit (111)\"\r\n      },\r\n      {\r\n        \"name\": \"component-label\",\r\n        \"version\": \"1.0.0\",\r\n        \"label\": \"COMMAND_DIALOG_COMMENT\",\r\n        \"required\": false,\r\n        \"isArray\": false,\r\n        \"row\": 2,\r\n        \"rowSpan\": 1,\r\n        \"column\": 0,\r\n        \"columnSpan\": 1,\r\n        \"readOnly\": false,\r\n        \"properties\": [],\r\n        \"parent\": \"Acknowledge Unit (111)\"\r\n      },\r\n      {\r\n        \"name\": \"label-header\",\r\n        \"version\": \"1.0.0\",\r\n        \"column\": 0,\r\n        \"row\": 0,\r\n        \"columnSpan\": 1,\r\n        \"rowSpan\": 1,\r\n        \"properties\": [],\r\n        \"addedArgs\": {},\r\n        \"parent\": \"Acknowledge Unit (111)\",\r\n        \"label\": \"test\"\r\n      }\r\n    ]\r\n  }").get();
 			Variant delta = diff(before, after);
 			Variant patched = before;
 			patch(patched, delta);
@@ -342,8 +342,8 @@ namespace Luna
 		}
 		//Unpatch_ObjectApplyDelete_Success
 		{
-			Variant before = json_read("{ \"p\" : true }").get();
-			Variant after = json_read("{ }").get();
+			Variant before = read_json("{ \"p\" : true }").get();
+			Variant after = read_json("{ }").get();
 			Variant delta = diff(before, after);
 			Variant unpatched = after;
 			reverse(unpatched, delta);
@@ -351,8 +351,8 @@ namespace Luna
 		}
 		//Unpatch_ObjectApplyEdit_Success
 		{
-			Variant before = json_read("{ \"p\" : false }").get();
-			Variant after = json_read("{ \"p\" : true }").get();
+			Variant before = read_json("{ \"p\" : false }").get();
+			Variant after = read_json("{ \"p\" : true }").get();
 			Variant delta = diff(before, after);
 			Variant unpatched = after;
 			reverse(unpatched, delta);
@@ -360,8 +360,8 @@ namespace Luna
 		}
 		//Unpatch_ObjectApplyEditText_Success
 		{
-			Variant before = json_read("{ \"p\" : \"bla1h111111111111112312weldjidjoijfoiewjfoiefjefijfoejoijfiwoejfiewjfiwejfowjwifewjfejdewdwdewqwertyqwertifwiejifoiwfei\" }").get();
-			Variant after = json_read("{ \"p\" : \"blah1\" }").get();
+			Variant before = read_json("{ \"p\" : \"bla1h111111111111112312weldjidjoijfoiewjfoiefjefijfoejoijfiwoejfiewjfiwejfowjwifewjfejdewdwdewqwertyqwertifwiejifoiwfei\" }").get();
+			Variant after = read_json("{ \"p\" : \"blah1\" }").get();
 			Variant delta = diff(before, after);
 			Variant unpatched = after;
 			reverse(unpatched, delta);
@@ -369,8 +369,8 @@ namespace Luna
 		}
 		//Unpatch_NestedObjectApplyEdit_Success
 		{
-			Variant before = json_read("{ \"i\": { \"p\" : false } }").get();
-			Variant after = json_read("{ \"i\": { \"p\" : true } }").get();
+			Variant before = read_json("{ \"i\": { \"p\" : false } }").get();
+			Variant after = read_json("{ \"i\": { \"p\" : true } }").get();
 			Variant delta = diff(before, after);
 			Variant unpatched = after;
 			reverse(unpatched, delta);
@@ -378,8 +378,8 @@ namespace Luna
 		}
 		//Unpatch_ArrayUnpatchAdd_Success
 		{
-			Variant before = json_read("[1,2,3]").get();
-			Variant after = json_read("[1,2,3,4]").get();
+			Variant before = read_json("[1,2,3]").get();
+			Variant after = read_json("[1,2,3,4]").get();
 			Variant delta = diff(before, after);
 			Variant unpatched = after;
 			reverse(unpatched, delta);
@@ -387,8 +387,8 @@ namespace Luna
 		}
 		//Unpatch_ArrayUnpatchRemove_Success
 		{
-			Variant before = json_read("[1,2,3]").get();
-			Variant after = json_read("[1,2]").get();
+			Variant before = read_json("[1,2,3]").get();
+			Variant after = read_json("[1,2]").get();
 			Variant delta = diff(before, after);
 			Variant unpatched = after;
 			reverse(unpatched, delta);
@@ -396,8 +396,8 @@ namespace Luna
 		}
 		//Unpatch_ArrayUnpatchModify_Success
 		{
-			Variant before = json_read("[1,3,{\"p\":false}]").get();
-			Variant after = json_read("[1,4,{\"p\": [1] }]").get();
+			Variant before = read_json("[1,3,{\"p\":false}]").get();
+			Variant after = read_json("[1,4,{\"p\": [1] }]").get();
 			Variant delta = diff(before, after);
 			Variant unpatched = after;
 			reverse(unpatched, delta);
@@ -405,8 +405,8 @@ namespace Luna
 		}
 		//Unpatch_ArrayUnpatchComplex_Success
 		{
-			Variant before = json_read("{\"p\": [1,2,[1],false,\"11111\",3,{\"p\":false},10,10] }").get();
-			Variant after = json_read("{\"p\": [1,2,[1,3],false,\"11112\",3,{\"p\":true},10,10] }").get();
+			Variant before = read_json("{\"p\": [1,2,[1],false,\"11111\",3,{\"p\":false},10,10] }").get();
+			Variant after = read_json("{\"p\": [1,2,[1,3],false,\"11112\",3,{\"p\":true},10,10] }").get();
 			Variant delta = diff(before, after);
 			Variant unpatched = after;
 			reverse(unpatched, delta);
@@ -414,35 +414,35 @@ namespace Luna
 		}
 		//Unpatch_ArrayUnpatchMoving_Success
 		{
-			Variant before = json_read("[0,1,2,3,4,5,6,7,8,9,10]").get();
-			Variant after = json_read("[10,0,1,7,2,4,5,6,88,9,3]").get();
-			Variant delta = json_read("{ \"8\": [88], \"_t\": \"a\", \"_3\": [\"\", 10, 3], \"_7\": [\"\", 3, 3], \"_8\": [8, 0, 0], \"_10\": [\"\", 0, 3] }").get();
+			Variant before = read_json("[0,1,2,3,4,5,6,7,8,9,10]").get();
+			Variant after = read_json("[10,0,1,7,2,4,5,6,88,9,3]").get();
+			Variant delta = read_json("{ \"8\": [88], \"_t\": \"a\", \"_3\": [\"\", 10, 3], \"_7\": [\"\", 3, 3], \"_8\": [8, 0, 0], \"_10\": [\"\", 0, 3] }").get();
 			Variant unpatched = after;
 			reverse(unpatched, delta);
 			luassert_always(unpatched == before);
 		}
 		//Unpatch_ArrayPatchMovingNonConsecutive_Success
 		{
-			Variant before = json_read("[0,1,3,4,5]").get();
-			Variant after = json_read("[0,4,3,1,5]").get();
-			Variant delta = json_read("{\"_t\": \"a\", \"_2\": [\"\", 2, 3],\"_3\": [\"\", 1, 3]}").get();
+			Variant before = read_json("[0,1,3,4,5]").get();
+			Variant after = read_json("[0,4,3,1,5]").get();
+			Variant delta = read_json("{\"_t\": \"a\", \"_2\": [\"\", 2, 3],\"_3\": [\"\", 1, 3]}").get();
 			Variant unpatched = after;
 			reverse(unpatched, delta);
 			luassert_always(unpatched == before);
 		}
 		//Unpatch_ArrayPatchMoveDeletingNonConsecutive_Success
 		{
-			Variant before = json_read("[0,1,3,4,5]").get();
-			Variant after = json_read("[0,5,3]").get();
-			Variant delta = json_read("{\"_t\": \"a\", \"_1\": [ 1, 0, 0], \"_3\": [4,0, 0],\"_4\": [ \"\", 1, 3 ]}").get();
+			Variant before = read_json("[0,1,3,4,5]").get();
+			Variant after = read_json("[0,5,3]").get();
+			Variant delta = read_json("{\"_t\": \"a\", \"_1\": [ 1, 0, 0], \"_3\": [4,0, 0],\"_4\": [ \"\", 1, 3 ]}").get();
 			Variant unpatched = after;
 			reverse(unpatched, delta);
 			luassert_always(unpatched == before);
 		}
 		//Unpatch_Bug16Exception_Success
 		{
-			Variant before = json_read("{\r\n  \"rootRegion\": {\r\n    \"rows\": [\r\n      \"auto\"\r\n    ],\r\n    \"members\": [\r\n      {\r\n        \"row\": 2\r\n      }\r\n    ]\r\n  }\r\n}").get();
-			Variant after = json_read("{\r\n  \"rootRegion\": {\r\n    \"rows\": [\r\n      \"auto\",\r\n      \"auto\"\r\n    ],\r\n    \"members\": [\r\n      {\r\n        \"row\": 3\r\n      },\r\n      {\r\n        \"name\": \"label-header\"\r\n      }\r\n    ]\r\n  }\r\n}").get();
+			Variant before = read_json("{\r\n  \"rootRegion\": {\r\n    \"rows\": [\r\n      \"auto\"\r\n    ],\r\n    \"members\": [\r\n      {\r\n        \"row\": 2\r\n      }\r\n    ]\r\n  }\r\n}").get();
+			Variant after = read_json("{\r\n  \"rootRegion\": {\r\n    \"rows\": [\r\n      \"auto\",\r\n      \"auto\"\r\n    ],\r\n    \"members\": [\r\n      {\r\n        \"row\": 3\r\n      },\r\n      {\r\n        \"name\": \"label-header\"\r\n      }\r\n    ]\r\n  }\r\n}").get();
 			Variant delta = diff(before, after);
 			Variant unpatched = after;
 			reverse(unpatched, delta);
@@ -450,8 +450,8 @@ namespace Luna
 		}
 		//Unpatch_Bug16SilentFail_Success
 		{
-			Variant before = json_read("{\r\n    \"members\": [\r\n      {\r\n        \"name\": \"text-box\",\r\n        \"version\": \"1.0.0\",\r\n        \"required\": false,\r\n        \"isArray\": false,\r\n        \"row\": 2,\r\n        \"rowSpan\": 1,\r\n        \"column\": 0,\r\n        \"columnSpan\": 1,\r\n        \"readOnly\": false,\r\n        \"properties\": [\r\n          {\r\n            \"destPath\": \"ng-model\",\r\n            \"srcPath\": \"cmt\"\r\n          }\r\n        ],\r\n        \"parent\": \"Acknowledge Unit (111)\"\r\n      },\r\n      {\r\n        \"name\": \"component-label\",\r\n        \"version\": \"1.0.0\",\r\n        \"label\": \"COMMAND_DIALOG_COMMENT\",\r\n        \"required\": false,\r\n        \"isArray\": false,\r\n        \"row\": 1,\r\n        \"rowSpan\": 1,\r\n        \"column\": 0,\r\n        \"columnSpan\": 1,\r\n        \"readOnly\": false,\r\n        \"properties\": [],\r\n        \"parent\": \"Acknowledge Unit (111)\"\r\n      }\r\n    ]\r\n  \r\n}").get();
-			Variant after = json_read("{\r\n    \"members\": [\r\n      {\r\n        \"name\": \"text-box\",\r\n        \"version\": \"1.0.0\",\r\n        \"required\": false,\r\n        \"isArray\": false,\r\n        \"row\": 3,\r\n        \"rowSpan\": 1,\r\n        \"column\": 0,\r\n        \"columnSpan\": 1,\r\n        \"readOnly\": false,\r\n        \"properties\": [\r\n          {\r\n            \"destPath\": \"ng-model\",\r\n            \"srcPath\": \"cmt\"\r\n          }\r\n        ],\r\n        \"parent\": \"Acknowledge Unit (111)\"\r\n      },\r\n      {\r\n        \"name\": \"component-label\",\r\n        \"version\": \"1.0.0\",\r\n        \"label\": \"COMMAND_DIALOG_COMMENT\",\r\n        \"required\": false,\r\n        \"isArray\": false,\r\n        \"row\": 2,\r\n        \"rowSpan\": 1,\r\n        \"column\": 0,\r\n        \"columnSpan\": 1,\r\n        \"readOnly\": false,\r\n        \"properties\": [],\r\n        \"parent\": \"Acknowledge Unit (111)\"\r\n      },\r\n      {\r\n        \"name\": \"label-header\",\r\n        \"version\": \"1.0.0\",\r\n        \"column\": 0,\r\n        \"row\": 0,\r\n        \"columnSpan\": 1,\r\n        \"rowSpan\": 1,\r\n        \"properties\": [],\r\n        \"addedArgs\": {},\r\n        \"parent\": \"Acknowledge Unit (111)\",\r\n        \"label\": \"test\"\r\n      }\r\n    ]\r\n  }").get();
+			Variant before = read_json("{\r\n    \"members\": [\r\n      {\r\n        \"name\": \"text-box\",\r\n        \"version\": \"1.0.0\",\r\n        \"required\": false,\r\n        \"isArray\": false,\r\n        \"row\": 2,\r\n        \"rowSpan\": 1,\r\n        \"column\": 0,\r\n        \"columnSpan\": 1,\r\n        \"readOnly\": false,\r\n        \"properties\": [\r\n          {\r\n            \"destPath\": \"ng-model\",\r\n            \"srcPath\": \"cmt\"\r\n          }\r\n        ],\r\n        \"parent\": \"Acknowledge Unit (111)\"\r\n      },\r\n      {\r\n        \"name\": \"component-label\",\r\n        \"version\": \"1.0.0\",\r\n        \"label\": \"COMMAND_DIALOG_COMMENT\",\r\n        \"required\": false,\r\n        \"isArray\": false,\r\n        \"row\": 1,\r\n        \"rowSpan\": 1,\r\n        \"column\": 0,\r\n        \"columnSpan\": 1,\r\n        \"readOnly\": false,\r\n        \"properties\": [],\r\n        \"parent\": \"Acknowledge Unit (111)\"\r\n      }\r\n    ]\r\n  \r\n}").get();
+			Variant after = read_json("{\r\n    \"members\": [\r\n      {\r\n        \"name\": \"text-box\",\r\n        \"version\": \"1.0.0\",\r\n        \"required\": false,\r\n        \"isArray\": false,\r\n        \"row\": 3,\r\n        \"rowSpan\": 1,\r\n        \"column\": 0,\r\n        \"columnSpan\": 1,\r\n        \"readOnly\": false,\r\n        \"properties\": [\r\n          {\r\n            \"destPath\": \"ng-model\",\r\n            \"srcPath\": \"cmt\"\r\n          }\r\n        ],\r\n        \"parent\": \"Acknowledge Unit (111)\"\r\n      },\r\n      {\r\n        \"name\": \"component-label\",\r\n        \"version\": \"1.0.0\",\r\n        \"label\": \"COMMAND_DIALOG_COMMENT\",\r\n        \"required\": false,\r\n        \"isArray\": false,\r\n        \"row\": 2,\r\n        \"rowSpan\": 1,\r\n        \"column\": 0,\r\n        \"columnSpan\": 1,\r\n        \"readOnly\": false,\r\n        \"properties\": [],\r\n        \"parent\": \"Acknowledge Unit (111)\"\r\n      },\r\n      {\r\n        \"name\": \"label-header\",\r\n        \"version\": \"1.0.0\",\r\n        \"column\": 0,\r\n        \"row\": 0,\r\n        \"columnSpan\": 1,\r\n        \"rowSpan\": 1,\r\n        \"properties\": [],\r\n        \"addedArgs\": {},\r\n        \"parent\": \"Acknowledge Unit (111)\",\r\n        \"label\": \"test\"\r\n      }\r\n    ]\r\n  }").get();
 			Variant delta = diff(before, after);
 			Variant unpatched = after;
 			reverse(unpatched, delta);
@@ -485,8 +485,8 @@ namespace Luna
         }
 }
 )";
-			Variant before = json_read(before_json).get();
-			Variant after = json_read(after_json).get();
+			Variant before = read_json(before_json).get();
+			Variant after = read_json(after_json).get();
 			Variant delta = diff(before, after);
 
 			Variant before2 = VariantType::object;

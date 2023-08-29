@@ -20,12 +20,12 @@ namespace Luna
 	namespace VariantUtils
 	{
 		//! @brief Reads one JSON string.
-		LUNA_VARIANT_UTILS_API R<Variant> json_read(const c8* src, usize src_size = USIZE_MAX);
+		LUNA_VARIANT_UTILS_API R<Variant> read_json(const c8* src, usize src_size = USIZE_MAX);
 
-		LUNA_VARIANT_UTILS_API R<Variant> json_read(IStream* stream);
+		LUNA_VARIANT_UTILS_API R<Variant> read_json(IStream* stream);
 
-		LUNA_VARIANT_UTILS_API String json_write(const Variant& v, bool indent = true);
+		LUNA_VARIANT_UTILS_API String write_json(const Variant& v, bool indent = true);
 		
-		LUNA_VARIANT_UTILS_API RV json_write(IStream* stream, const Variant& v, bool indent = true);
+		LUNA_VARIANT_UTILS_API RV write_json(IStream* stream, const Variant& v, bool indent = true);
 	}
 }

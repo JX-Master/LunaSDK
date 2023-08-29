@@ -213,7 +213,7 @@ namespace Luna
 			luexp(create_mesh_asset_from_obj(mesh_asset, mesh, shape_index));
 			lulet(f, VFS::open_file(file_path, FileOpenFlag::write | FileOpenFlag::user_buffering, FileCreationMode::create_always));
 			lulet(data, serialize(mesh_asset));
-			auto json_data = VariantUtils::json_write(data);
+			auto json_data = VariantUtils::write_json(data);
 			luexp(f->write(json_data.data(), json_data.size()));
 			f.reset();
 			Asset::load_asset(asset);

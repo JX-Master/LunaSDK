@@ -39,11 +39,11 @@ namespace Luna
 		\"meta\": null \n\
 	} \n\
 }";
-			R<Variant> v = VariantUtils::json_read(src);
+			R<Variant> v = VariantUtils::read_json(src);
 			luassert_always(succeeded(v));
 
-			String s = VariantUtils::json_write(v.get());
-			R<Variant> v2 = VariantUtils::json_read(s.c_str());
+			String s = VariantUtils::write_json(v.get());
+			R<Variant> v2 = VariantUtils::read_json(s.c_str());
 			luassert_always(succeeded(v2));
 
 			luassert_always(v.get() == v2.get());
@@ -55,8 +55,8 @@ namespace Luna
 			Blob blob((const byte_t*)d, 17, 0);
 			Variant blob_var(move(blob));
 
-			String s2 = VariantUtils::json_write(blob_var);
-			R<Variant> blob_var2_r = VariantUtils::json_read(s2.c_str());
+			String s2 = VariantUtils::write_json(blob_var);
+			R<Variant> blob_var2_r = VariantUtils::read_json(s2.c_str());
 			luassert_always(succeeded(blob_var2_r));
 			Variant& blob_var2 = blob_var2_r.get();
 			luassert_always(blob_var == blob_var2);
@@ -68,8 +68,8 @@ namespace Luna
 			Blob blob((const byte_t*)d, 20, 0);
 			Variant blob_var(move(blob));
 
-			String s2 = VariantUtils::json_write(blob_var);
-			R<Variant> blob_var2_r = VariantUtils::json_read(s2.c_str());
+			String s2 = VariantUtils::write_json(blob_var);
+			R<Variant> blob_var2_r = VariantUtils::read_json(s2.c_str());
 			luassert_always(succeeded(blob_var2_r));
 			Variant& blob_var2 = blob_var2_r.get();
 			luassert_always(blob_var == blob_var2);
