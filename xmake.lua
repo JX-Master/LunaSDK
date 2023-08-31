@@ -71,8 +71,6 @@ function set_luna_sdk_program()
 end
 
 add_requires("imgui", {configs = {shared = has_config("shared")}})
-add_requires("zlib-ng", {configs = {shared = has_config("shared")}})
-add_requires("minizip-ng", {configs = {shared = has_config("shared")}})
 
 add_includedirs("Modules")
 set_languages("c99", "cxx17")
