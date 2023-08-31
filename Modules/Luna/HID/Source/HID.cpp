@@ -90,6 +90,6 @@ namespace Luna
 			g_devices.shrink_to_fit();
 			g_mutex.reset();
 		}
-		StaticRegisterModule hid("HID", "", hid_init, hid_close);
+		LUNA_STATIC_REGISTER_MODULE(HID, "", hid_init, hid_close);
 	}
 }

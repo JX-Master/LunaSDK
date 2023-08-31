@@ -31,7 +31,7 @@ namespace Luna
 			g_default_font = r.get();
 			return ok;
 		}
-		StaticRegisterModule m("Font", "", init, deinit);
+		LUNA_STATIC_REGISTER_MODULE(Font, "", init, deinit);
 		LUNA_FONT_API R<Ref<IFontFile>> load_font_file(const byte_t* data, usize data_size, FontFileFormat format)
 		{
 			switch (format)

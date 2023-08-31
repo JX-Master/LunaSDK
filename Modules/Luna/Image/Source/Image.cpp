@@ -288,7 +288,7 @@ namespace Luna
 			return ok;
 		}
 
-		StaticRegisterModule m("Image", "", init, deinit);
+		LUNA_STATIC_REGISTER_MODULE(Image, "", init, deinit);
 	}
 
 	namespace ImageError

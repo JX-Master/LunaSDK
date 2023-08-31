@@ -13,6 +13,6 @@ namespace Luna
 {
     namespace VariantUtils
     {
-        StaticRegisterModule mod("VariantUtils", "", nullptr, nullptr);
+        LUNA_STATIC_REGISTER_MODULE(VariantUtils, "", nullptr, nullptr);
     }
 }

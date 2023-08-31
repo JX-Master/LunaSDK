@@ -789,7 +789,7 @@ float4 main(PS_INPUT input) : SV_Target
             return ok;
         }
 
-        StaticRegisterModule imgui_module("ImGui", "RHI;HID;Font;ShaderCompiler", init, close);
+        LUNA_STATIC_REGISTER_MODULE(ImGui, "RHI;HID;Font;ShaderCompiler", init, close);
     }
 }
 

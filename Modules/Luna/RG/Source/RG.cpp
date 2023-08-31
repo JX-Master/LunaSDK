@@ -27,6 +27,6 @@ namespace Luna
             g_render_pass_types.shrink_to_fit();
             g_render_pass_types_mtx.reset();
         }
-        StaticRegisterModule mod("RG", "RHI", init, close);
+        LUNA_STATIC_REGISTER_MODULE(RG, "RHI", init, close);
     }
 }

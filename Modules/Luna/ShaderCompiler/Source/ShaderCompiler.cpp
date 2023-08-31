@@ -326,6 +326,6 @@ namespace Luna
 			return ok;
 		}
 
-		StaticRegisterModule mod("ShaderCompiler", "", init, nullptr);
+		LUNA_STATIC_REGISTER_MODULE(ShaderCompiler, "", init, nullptr);
 	}
 }

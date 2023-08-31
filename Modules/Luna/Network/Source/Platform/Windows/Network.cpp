@@ -316,7 +316,7 @@ namespace Luna
 			return s;
 		}
 
-		StaticRegisterModule network_module("Network", "", init, close);
+		LUNA_STATIC_REGISTER_MODULE(Network, "", init, close);
 
 		LUNA_NETWORK_API R<Vector<AddressInfo>> getaddrinfo(const c8* node, const c8* service, const AddressInfo* hints)
 		{

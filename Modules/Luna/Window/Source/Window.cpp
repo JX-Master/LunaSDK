@@ -35,7 +35,7 @@ namespace Luna
 			platform_close();
 		}
 
-		StaticRegisterModule mod("Window", "", init, close);
+		LUNA_STATIC_REGISTER_MODULE(Window, "", init, close);
 
 		LUNA_WINDOW_API const c8* get_name()
 		{

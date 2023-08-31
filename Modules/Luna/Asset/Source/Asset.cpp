@@ -595,7 +595,7 @@ namespace Luna
 			g_assets_mutex.reset();
 			g_asset_types_mutex.reset();
 		}
-		StaticRegisterModule m("Asset", "VariantUtils;VFS;JobSystem", module_init, module_close);
+		LUNA_STATIC_REGISTER_MODULE(Asset, "VariantUtils;VFS;JobSystem", module_init, module_close);
 	}
 
 	namespace AssetError

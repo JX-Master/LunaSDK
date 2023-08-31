@@ -29,7 +29,7 @@ namespace Luna
 			render_api_close();
 		}
 
-		StaticRegisterModule m("RHI", "Window", init, close);
+		LUNA_STATIC_REGISTER_MODULE(RHI, "Window", init, close);
 	}
 
 	namespace RHIError

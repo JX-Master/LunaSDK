@@ -194,5 +194,5 @@ namespace Luna
 		}
 	}
 
-	StaticRegisterModule testbed_module("RHITestBed", "RHI", nullptr, nullptr);
+	LUNA_STATIC_REGISTER_MODULE(RHITestBed, "RHI", nullptr, nullptr);
 }

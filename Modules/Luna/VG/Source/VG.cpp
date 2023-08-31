@@ -41,6 +41,6 @@ namespace Luna
 			deinit_render_resources();
 		}
 
-		StaticRegisterModule vg_module("VG", "RHI;ShaderCompiler", init, close);
+		LUNA_STATIC_REGISTER_MODULE(VG, "RHI;ShaderCompiler", init, close);
 	}
 }

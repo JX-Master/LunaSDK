@@ -341,7 +341,7 @@ namespace Luna
 			return ret;
 		}
 
-		StaticRegisterModule vfs("VFS", "", init, close);
+		LUNA_STATIC_REGISTER_MODULE(VFS, "", init, close);
 	}
 
 	namespace VFSError

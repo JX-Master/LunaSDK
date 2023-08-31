@@ -228,6 +228,6 @@ namespace Luna
 			return Ref<ISocket>(s);
         }
 
-        StaticRegisterModule network_module("Network", "", init, close);
+        LUNA_STATIC_REGISTER_MODULE(Network, "", init, close);
     }
 }

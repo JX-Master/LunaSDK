@@ -29,7 +29,7 @@ namespace Luna
 		{
 		}
 
-		StaticRegisterModule mod("ECS", "JobSystem", init, close);
+		LUNA_STATIC_REGISTER_MODULE(ECS, "JobSystem", init, close);
 	}
 	namespace ECSError
 	{

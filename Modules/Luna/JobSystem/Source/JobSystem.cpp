@@ -359,6 +359,6 @@ namespace Luna
 				}
 			}
 		}
-		StaticRegisterModule module("JobSystem", "", job_system_init, job_system_close);
+		LUNA_STATIC_REGISTER_MODULE(JobSystem, "", job_system_init, job_system_close);
 	}
 }
