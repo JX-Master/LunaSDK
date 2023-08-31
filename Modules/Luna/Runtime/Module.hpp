@@ -101,4 +101,4 @@ namespace Luna
 }
 
 #define LUNA_STATIC_REGISTER_MODULE(_name, _dependencies, _init_func, _close_func) Luna::StaticRegisterModule luna_module_register_##_name(#_name, _dependencies, _init_func, _close_func); \
-	extern "C" void luna_static_register_module_##_name() {}
+	extern "C" LUNA_EXPORT void luna_static_register_module_##_name() {}

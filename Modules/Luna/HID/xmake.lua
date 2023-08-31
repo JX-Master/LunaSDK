@@ -7,5 +7,5 @@ luna_sdk_module_target("HID")
         add_files("Source/Platform/MacOS/*.mm")
         add_frameworks("ApplicationServices", "AppKit")
     end
-    add_deps("Runtime")
+    add_luna_modules("Runtime")
 target_end()

@@ -10,5 +10,5 @@ target("WindowTest")
     elseif is_os("macosx") then
         add_files("Source/Cocoa/*.cpp")
     end
-    add_deps("Runtime", "Window")
+    add_luna_modules("Runtime", "Window")
 target_end()

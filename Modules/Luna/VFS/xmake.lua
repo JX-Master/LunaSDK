@@ -1,5 +1,5 @@
 luna_sdk_module_target("VFS")
     add_headerfiles("*.hpp", "Source/**.hpp")
     add_files("Source/**.cpp")
-    add_deps("Runtime")
+    add_luna_modules("Runtime")
 target_end()

@@ -1,5 +1,5 @@
 luna_sdk_module_target("VG")
     add_headerfiles("**.hpp")
     add_files("Source/**.cpp")
-    add_deps("Runtime", "RHI", "ShaderCompiler")
+    add_luna_modules("Runtime", "RHI", "ShaderCompiler")
 target_end()

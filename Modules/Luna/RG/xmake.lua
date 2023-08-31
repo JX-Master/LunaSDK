@@ -1,5 +1,5 @@
 luna_sdk_module_target("RG")
     add_headerfiles("**.hpp")
     add_files("Source/**.cpp")
-    add_deps("Runtime", "RHI")
+    add_luna_modules("Runtime", "RHI")
 target_end()

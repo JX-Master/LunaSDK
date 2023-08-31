@@ -25,7 +25,7 @@ luna_sdk_module_target("Window")
         add_files("Source/Cocoa/*.mm")
         add_frameworks("AppKit", "UniformTypeIdentifiers")
     end
-    add_deps("Runtime")
+    add_luna_modules("Runtime")
     if has_config("window_glfw") then
         add_packages("glfw")
     end

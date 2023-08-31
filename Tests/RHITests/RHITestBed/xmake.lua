@@ -8,5 +8,5 @@ target("RHITestBed")
     end
     add_headerfiles("*.hpp")
     add_files("*.cpp")
-    add_deps("Runtime", "RHI", "Window")
+    add_luna_modules("Runtime", "RHI", "Window")
 target_end()

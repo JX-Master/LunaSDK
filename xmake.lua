@@ -70,6 +70,20 @@ function set_luna_sdk_program()
     set_kind("binary")
 end
 
+function add_luna_modules(...)
+    local args = {...}
+    for i, mod in ipairs(args) do
+        add_deps(mod)
+        if mod ~= "Runtime" then
+            if is_plat("windows") then 
+                add_ldflags("/INCLUDE:luna_static_register_module_" .. mod, {force = true, public = false})
+            else
+                add_ldflags("-u luna_static_register_module_" .. mod, {force = true, public = false})
+            end
+        end
+    end
+end
+
 add_requires("imgui", {configs = {shared = has_config("shared")}})
 
 add_includedirs("Modules")

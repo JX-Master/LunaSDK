@@ -1,5 +1,5 @@
 luna_sdk_module_target("ECS")
     add_headerfiles("**.hpp")
     add_files("Source/**.cpp")
-    add_deps("Runtime", "JobSystem")
+    add_luna_modules("Runtime", "JobSystem")
 target_end()
