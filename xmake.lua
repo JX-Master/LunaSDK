@@ -78,7 +78,7 @@ function add_luna_modules(...)
             if is_plat("windows") then 
                 add_ldflags("/INCLUDE:luna_static_register_module_" .. mod, {force = true, public = false})
             else
-                add_ldflags("-u luna_static_register_module_" .. mod, {force = true, public = false})
+                add_ldflags("-u _luna_static_register_module_" .. mod, {force = true, public = false})
             end
         end
     end
