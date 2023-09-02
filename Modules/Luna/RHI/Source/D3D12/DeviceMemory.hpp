@@ -27,7 +27,7 @@ namespace Luna
 			RV init(MemoryType memory_type, const D3D12MA::ALLOCATION_DESC& allocation_desc, const D3D12_RESOURCE_ALLOCATION_INFO& allocation_info);
 		
 			virtual IDevice* get_device() override { return m_device; }
-			virtual void set_name(const c8* name)
+			virtual void set_name(const c8* name) override
 			{
 				usize len = utf8_to_utf16_len(name);
 				wchar_t* buf = (wchar_t*)alloca(sizeof(wchar_t) * (len + 1));

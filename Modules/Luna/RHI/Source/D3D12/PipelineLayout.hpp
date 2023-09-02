@@ -38,11 +38,11 @@ namespace Luna
 
 			RV init(const PipelineLayoutDesc& desc);
 
-			IDevice* get_device()
+			virtual IDevice* get_device() override
 			{
 				return m_device.as<IDevice>();
 			}
-			void set_name(const c8* name) { set_object_name(m_rs.Get(), name); }
+			virtual void set_name(const c8* name) override { set_object_name(m_rs.Get(), name); }
 		};
 	}
 }

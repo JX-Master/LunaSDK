@@ -273,7 +273,7 @@ namespace Luna
 			{
 				return r.errcode();
 			}
-			return res;
+			return Ref<IBuffer>(res);
 		}
 		R<Ref<ITexture>> Device::new_texture(MemoryType memory_type, const TextureDesc& desc, const ClearValue* optimized_clear_value)
 		{
@@ -284,7 +284,7 @@ namespace Luna
 			{
 				return r.errcode();
 			}
-			return res;
+			return Ref<ITexture>(res);
 		}
 		bool Device::is_resources_aliasing_compatible(MemoryType memory_type, Span<const BufferDesc> buffers, Span<const TextureDesc> textures)
 		{
@@ -397,7 +397,7 @@ namespace Luna
 				luexp(playout->init(desc));
 			}
 			lucatchret;
-			return playout;
+			return Ref<IPipelineLayout>(playout);
 		}
 		R<Ref<IPipelineState>> Device::new_graphics_pipeline_state(const GraphicsPipelineStateDesc& desc)
 		{
@@ -406,7 +406,7 @@ namespace Luna
 			{
 				return BasicError::failure();
 			}
-			return s;
+			return Ref<IPipelineState>(s);
 		}
 		R<Ref<IPipelineState>> Device::new_compute_pipeline_state(const ComputePipelineStateDesc& desc)
 		{
@@ -415,14 +415,14 @@ namespace Luna
 			{
 				return BasicError::failure();
 			}
-			return s;
+			return Ref<IPipelineState>(s);
 		}
 		R<Ref<IDescriptorSetLayout>> Device::new_descriptor_set_layout(const DescriptorSetLayoutDesc& desc)
 		{
 			Ref<DescriptorSetLayout> ret = new_object<DescriptorSetLayout>();
 			ret->m_device = this;
 			ret->init(desc);
-			return ret;
+			return Ref<IDescriptorSetLayout>(ret);
 		}
 		R<Ref<IDescriptorSet>> Device::new_descriptor_set(const DescriptorSetDesc& desc)
 		{
@@ -433,7 +433,7 @@ namespace Luna
 			{
 				return r.errcode();
 			}
-			return ds;
+			return Ref<IDescriptorSet>(ds);
 		}
 		u32 Device::get_num_command_queues()
 		{
@@ -453,7 +453,7 @@ namespace Luna
 				luexp(buffer->init());
 			}
 			lucatchret;
-			return buffer;
+			return Ref<ICommandBuffer>(buffer);
 		}
 		R<f64> Device::get_command_queue_timestamp_frequency(u32 command_queue_index)
 		{
@@ -471,7 +471,7 @@ namespace Luna
 			{
 				return r.errcode();
 			}
-			return heap;
+			return Ref<IQueryHeap>(heap);
 		}
 		R<Ref<IFence>> Device::new_fence()
 		{
@@ -482,7 +482,7 @@ namespace Luna
 			{
 				return r.errcode();
 			}
-			return fence;
+			return Ref<IFence>(fence);
 		}
 		R<Ref<ISwapChain>> Device::new_swap_chain(u32 command_queue_index, Window::IWindow* window, const SwapChainDesc& desc)
 		{
@@ -493,7 +493,7 @@ namespace Luna
 				luexp(r->init(command_queue_index, window, desc));
 			}
 			lucatchret;
-			return r;
+			return Ref<ISwapChain>(r);
 		}
 	}
 }

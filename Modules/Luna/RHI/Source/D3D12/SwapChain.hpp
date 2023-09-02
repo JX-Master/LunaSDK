@@ -77,11 +77,11 @@ namespace Luna
 			//! Called when the back buffer is resized or when the swap chain is initialized.
 			RV reset_back_buffer_resources();
 
-			IDevice* get_device()
+			virtual IDevice* get_device() override
 			{
 				return m_device;
 			}
-			void set_name(const c8* name) 
+			virtual void set_name(const c8* name)  override
 			{
 				usize len = utf8_to_utf16_len(name);
 				wchar_t* buf = (wchar_t*)alloca(sizeof(wchar_t) * (len + 1));

@@ -101,7 +101,7 @@ namespace Luna
 				{
 					return set_error(BasicError::not_supported(), "The specified command queue for creating swap chain does not have presenting support");
 				}
-				auto& surface_info = get_physical_device_surface_info(m_device->m_physical_device, m_surface);
+				auto surface_info = get_physical_device_surface_info(m_device->m_physical_device, m_surface);
 				lulet(surface_format, choose_swap_surface_format(surface_info.formats, desc.format));
 				auto present_mode = choose_present_mode(surface_info.present_modes, desc.vertical_synchronized);
 				lulet(extent, choose_swap_extent(surface_info.capabilities, m_desc));
@@ -192,7 +192,7 @@ namespace Luna
 				}
 			}
 			lucatchret;
-			return m_swap_chain_images[m_current_back_buffer];
+			return (ITexture*)(m_swap_chain_images[m_current_back_buffer].get());
 		}
 		RV SwapChain::present()
 		{

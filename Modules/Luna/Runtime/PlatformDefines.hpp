@@ -166,7 +166,7 @@
 #endif
 
 // Compiler Defines
-#if defined(LUNA_COMPILER_MSVC)
+#if defined(LUNA_PLATFORM_WINDOWS) // PE/COFF requires __declspec(dllexport) even for clang toolchain.
     #define LUNA_DLL_EXPORT __declspec(dllexport)
 #else
     #define LUNA_DLL_EXPORT __attribute__ ((visibility("default")))
@@ -176,10 +176,6 @@
     #define LUNA_FORCEINLINE __forceinline
 #else
     #define LUNA_FORCEINLINE __inline__ __attribute__((always_inline))
-#endif
-
-#ifdef LUNA_COMPILER_MSVC
-#define LUNA_FUNCTION __FUNCTION__
 #endif
 
 // define LUNA_BUILD_SHARED_LIB in module's project config or API's source file, not in public domain.

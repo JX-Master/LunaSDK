@@ -281,7 +281,7 @@ namespace Luna
 		}
 		R<Ref<IBuffer>> Device::new_buffer(MemoryType memory_type, const BufferDesc& desc)
 		{
-			Ref<IResource> ret;
+			Ref<IBuffer> ret;
 			lutry
 			{
 				auto res = new_object<BufferResource>();
@@ -294,7 +294,7 @@ namespace Luna
 		}
 		R<Ref<ITexture>> Device::new_texture(MemoryType memory_type, const TextureDesc& desc, const ClearValue* optimized_clear_value)
 		{
-			Ref<IResource> ret;
+			Ref<ITexture> ret;
 			lutry
 			{
 				auto res = new_object<ImageResource>();
@@ -360,7 +360,7 @@ namespace Luna
 		}
 		R<Ref<IBuffer>> Device::new_aliasing_buffer(IDeviceMemory* device_memory, const BufferDesc& desc)
 		{
-			Ref<IResource> ret;
+			Ref<IBuffer> ret;
 			lutry
 			{
 				DeviceMemory* memory = cast_object<DeviceMemory>(device_memory->get_object());
@@ -374,7 +374,7 @@ namespace Luna
 		}
 		R<Ref<ITexture>> Device::new_aliasing_texture(IDeviceMemory* device_memory, const TextureDesc& desc, const ClearValue* optimized_clear_value)
 		{
-			Ref<IResource> ret;
+			Ref<ITexture> ret;
 			lutry
 			{
 				DeviceMemory* memory = cast_object<DeviceMemory>(device_memory->get_object());

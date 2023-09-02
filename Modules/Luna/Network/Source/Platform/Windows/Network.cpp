@@ -180,7 +180,7 @@ namespace Luna
 				memcpy(&address.ipv4.address, &addr.sin_addr.S_un.S_un_b.s_b1, 4);
 				Ref<Socket> s = new_object<Socket>();
 				s->m_socket = r;
-				return s;
+				return Ref<ISocket>(s);
 			}
 			return NetworkError::address_not_supported();
 		}
@@ -313,7 +313,7 @@ namespace Luna
 			Ref<Socket> s = new_object<Socket>();
 			s->m_af = af;
 			s->m_socket = r;
-			return s;
+			return Ref<ISocket>(s);
 		}
 
 		LUNA_STATIC_REGISTER_MODULE(Network, "", init, close);

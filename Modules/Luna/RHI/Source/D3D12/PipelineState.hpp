@@ -32,11 +32,11 @@ namespace Luna
 				m_device(dev),
 				m_primitive_topology(PrimitiveTopology::triangle_list) {}
 
-			IDevice* get_device()
+			virtual IDevice* get_device() override
 			{
 				return m_device.as<IDevice>();
 			}
-			void set_name(const c8* name) { set_object_name(m_pso.Get(), name); }
+			virtual void set_name(const c8* name) override { set_object_name(m_pso.Get(), name); }
 
 			bool init_graphic(const GraphicsPipelineStateDesc& desc);
 			bool init_compute(const ComputePipelineStateDesc& desc);

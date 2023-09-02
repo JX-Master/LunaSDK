@@ -136,7 +136,7 @@ namespace Luna
 			lutry
 			{
 				WaitForSingleObject(m_back_buffers[m_current_back_buffer].m_event, INFINITE);
-				return m_back_buffers[m_current_back_buffer].m_back_buffer;
+				return (ITexture*)m_back_buffers[m_current_back_buffer].m_back_buffer.get();
 			}
 		}
 		RV SwapChain::present()

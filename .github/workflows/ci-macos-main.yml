@@ -1,0 +1,87 @@
+name: macos-build
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build_macos:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ macos-latest ]
+        arch: [ x86_64, arm64 ]
+        shared : [shared, static]
+    name: ${{ matrix.arch }}-${{ matrix.shared }}
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout code
+        uses: nschloe/action-cached-lfs-checkout@v1
+
+      - name: Get current date as package key
+        id: cache_key
+        run: echo "key=$(date +'%W')" >> $GITHUB_OUTPUT
+
+      # For referring this directory in cache.
+      - name: Set xmake directory
+        run: echo "XMAKE_GLOBALDIR=${{ runner.workspace }}/xmake-global" >> $GITHUB_ENV
+        
+      - name: Install xmake
+        uses: xmake-io/github-action-setup-xmake@v1
+        with:
+          xmake-version: latest
+          actions-cache-folder: .xmake-cache-W${{ steps.cache_key.outputs.key }}
+
+      - name: Setup project
+        run: |
+          chmod +x ./setup.sh
+          ./setup.sh
+
+      - name: Update xmake repositories
+        run: xmake repo --update
+
+      # Fetch xmake dephash
+      - name: Calculate xmake dependencies hash
+        id: dep_hash
+        run: echo "hash=$(xmake l utils.ci.packageskey)" >> $GITHUB_OUTPUT
+
+      # Cache xmake dependencies
+      - name: Retrieve cached xmake dependencies
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.XMAKE_GLOBALDIR }}\.xmake\packages
+          key: ${{ matrix.os }}-${{ matrix.arch }}-${{ steps.dep_hash.outputs.hash }}-W${{ steps.cache_key.outputs.key }}
+          
+      - name: Configure xmake debug
+        run: xmake f --mode=debug --contract_assertion=y --thread_safe_assertion=y --check_memory_leak=y --arch=${{ matrix.arch }} -c -y -v --rhi_debug=y --shared=${{ matrix.shared == 'shared' && 'y' || 'n'}}
+        
+      - name: Build debug
+        run: xmake build -y -v
+
+      - name: Install debug
+        run: xmake install -o ./install/${{ matrix.arch }}-debug
+
+      - name: Configure xmake release
+        run: xmake f --mode=release --contract_assertion=n --thread_safe_assertion=n --check_memory_leak=n --arch=${{ matrix.arch }} -c -y -v --rhi_debug=n --shared=${{ matrix.shared == 'shared' && 'y' || 'n'}}
+
+      - name: Build release
+        run: xmake build -y -v
+
+      - name: Install release
+        run: xmake install -o ./install/${{ matrix.arch }}-release
+
+      - name: Collect artifacts debug
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.shared }}-debug
+          path: ./install/${{ matrix.arch }}-debug
+          
+      - name: Collect artifacts release
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.shared }}-release
+          path: ./install/${{ matrix.arch }}-release

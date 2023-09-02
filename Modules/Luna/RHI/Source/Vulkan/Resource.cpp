@@ -117,7 +117,7 @@ namespace Luna
 			auto r = view->init(validated_desc);
 			if (failed(r)) return r.errcode();
 			m_image_views.push_back(make_pair(validated_desc, view));
-			return view;
+			return view.get();
 		}
 		void ImageResource::post_init()
 		{

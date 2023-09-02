@@ -31,15 +31,15 @@ namespace Luna
 
             RV init(const QueryHeapDesc& desc);
 
-            IDevice* get_device()
+            virtual IDevice* get_device() override
             {
                 return m_device.as<IDevice>();
             }
-            void set_name(const c8* name) { set_object_name(m_heap.Get(), name); }
-            QueryHeapDesc get_desc() { return m_desc; }
-            RV get_timestamp_values(u32 index, u32 count, u64* values);
-            RV get_occlusion_values(u32 index, u32 count, u64* values);
-            RV get_pipeline_statistics_values(u32 index, u32 count, PipelineStatistics* values);
+            virtual void set_name(const c8* name) override { set_object_name(m_heap.Get(), name); }
+            virtual QueryHeapDesc get_desc() override { return m_desc; }
+            virtual RV get_timestamp_values(u32 index, u32 count, u64* values) override;
+            virtual RV get_occlusion_values(u32 index, u32 count, u64* values) override;
+            virtual RV get_pipeline_statistics_values(u32 index, u32 count, PipelineStatistics* values) override;
         };
     }
 }

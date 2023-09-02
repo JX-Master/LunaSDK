@@ -71,11 +71,11 @@ namespace Luna
 
 			u32 get_root_parameter_index(DescriptorType type, ShaderVisibilityFlag shader_visibility);
 
-			IDevice* get_device()
+			virtual IDevice* get_device() override
 			{
 				return m_device.as<IDevice>();
 			}
-			void set_name(const c8* name) {}
+			virtual void set_name(const c8* name) override {}
 		};
 	}
 }

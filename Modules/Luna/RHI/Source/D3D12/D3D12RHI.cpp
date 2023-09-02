@@ -126,7 +126,7 @@ namespace Luna
 			Ref<Device> device = new_object<Device>();
 			auto res = device->init(g_adapters[adapter_index].Get());
 			if (failed(res)) return res.errcode();
-			return device;
+			return Ref<IDevice>(device);
 		}
 		LUNA_RHI_API IDevice* get_main_device()
 		{
