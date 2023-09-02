@@ -35,6 +35,7 @@ Designed target platforms:
 
 ### Visual Studio
 1. Clone or download this project.
+1. Double click `setup.bat` to perform project setup.
 1. Double click `gen_vs2019.bat` or execute the following commands:
 
     ``` xmake project  -y -k vsxmake2019 -m "debug;profile;release" Solution ```
@@ -46,6 +47,7 @@ Designed target platforms:
 
 ### Visual Studio Code
 1. Clone or download this project.
+1. Run `setup.bat` (on Windows) or `setup.sh` (on macOS) to perform project setup.
 1. Open Code editor on the project root directory, then choose xmake toolchain in Code editor.
 1. Configure the building option by executing `xmake f {options}`. Possible options include:
    1. `-p` for target platform, including `windows` and `macosx`. This can be set automatically for most of the time.
@@ -57,6 +59,7 @@ Designed target platforms:
 
 ### XCode
 1. Clone or download this project.
+1. Run `setup.sh` to perform project setup.
 1. Run `gen_xcode.sh` on terminal:
     ```
     chmod +x ./gen_xcode.sh
