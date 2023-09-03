@@ -24,6 +24,9 @@ Designed target platforms:
 
 ## Building
 
+[![windows-build](https://github.com/JX-Master/LunaSDK/actions/workflows/ci-windows-main.yml/badge.svg?branch=main)](https://github.com/JX-Master/LunaSDK/actions/workflows/ci-windows-main.yml)
+[![macos-build](https://github.com/JX-Master/LunaSDK/actions/workflows/ci-macos-main.yml/badge.svg?branch=main)](https://github.com/JX-Master/LunaSDK/actions/workflows/ci-macos-main.yml)
+
 ### Prerequisites
 
 * C++ toolchain on your platform:
@@ -106,11 +109,10 @@ See [Luna SDK Docs](https://www.lunasdk.org).
 ## Third Party SDKs and References
 Luna SDK uses the following third party SDKs:
 1. [Dear ImGui](https://github.com/ocornut/imgui) for GUI rendering (MIT License).
+1. [ImGuizmo](https://github.com/CedricGuillemet/ImGuizmo) for rendering gizmos using ImGui (MIT License).
 1. [DirectX Shader Compiler](https://github.com/microsoft/DirectXShaderCompiler) for compiling HLSL shaders (University of Illinois Open Source License).
 1. [GLFW](https://github.com/glfw/glfw) for window management on Windows, macOS and Linux (zlib License).
 1. [STB](https://github.com/nothings/stb) for image file reading/writing and ttf font file processing (public domain).
-1. [zlib](https://github.com/madler/zlib) for compression/decompression (zlib License).
-1. [minizip-ng](https://github.com/zlib-ng/minizip-ng) for zip archive file reading/writing (zlib License).
 1. [Vulkan Memory Allocator](https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator) for allocating device memory on Vulkan backend (MIT License).
 1. [D3D12 Memory Allocator](https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator) for allocating device memory on D3D12 backend (MIT License).
 
@@ -125,9 +127,10 @@ The following SDKs are not directly used Luna SDK, but part of their design and 
 
 Here are some alternative real-time rendering engines/frameworks that have similar design goals to Luna SDK.
 
-* [Sakura Engine](https://github.com/SakuraEngine/SakuraEngine) developed by  SaeruHikari and other contributors (MIT License).
+* [Sakura Engine](https://github.com/SakuraEngine/SakuraEngine) developed by SaeruHikari and other contributors (MIT License).
 * [Horizon Engine](https://github.com/harukumo/HorizonEngine) developed by harukumo.
 * [Piccolo Engine](https://github.com/BoomingTech/Piccolo) developed by Booming Tech and GAMES104 community contributors (MIT License).
+* [CatDogEngine](https://github.com/CatDogEngine/CatDogEngine) developed by T-rvw, Hinageshi01 and other contributors (GPL-2.0 License).
 
 ## License
 Luna SDK is licensed under the zlib/libpng license, see [LICENSE.txt](./LICENSE.txt) for more information.
