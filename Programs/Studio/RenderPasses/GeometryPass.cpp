@@ -44,8 +44,8 @@ namespace Luna
 			ps_desc.primitive_topology = PrimitiveTopology::triangle_list;
 			ps_desc.sample_mask = U32_MAX;
 			ps_desc.blend_state = BlendDesc({ AttachmentBlendDesc(true, BlendFactor::one, BlendFactor::zero, BlendOp::add, BlendFactor::one, BlendFactor::zero, BlendOp::add, ColorWriteMask::all) });
-			ps_desc.rasterizer_state = RasterizerDesc(FillMode::solid, CullMode::back, -10, 0.0f, 0.0f, false, true, false, false, false);
-			ps_desc.depth_stencil_state = DepthStencilDesc(true, false, CompareFunction::less_equal, false, 0x00, 0x00, DepthStencilOpDesc(), DepthStencilOpDesc());
+			ps_desc.rasterizer_state = RasterizerDesc(FillMode::solid, CullMode::back, 0, 0.0f, 0.0f, false, true, false, false, false);
+			ps_desc.depth_stencil_state = DepthStencilDesc(true, true, CompareFunction::less_equal, false, 0x00, 0x00, DepthStencilOpDesc(), DepthStencilOpDesc());
 			ps_desc.ib_strip_cut_value = IndexBufferStripCutValue::disabled;
 			Vector<InputAttributeDesc> attributes;
 			get_vertex_input_layout_desc(attributes);
@@ -109,7 +109,7 @@ namespace Luna
             Ref<ITexture> base_color_roughness_tex = ctx->get_output("base_color_roughness_texture");
 			Ref<ITexture> normal_metallic_tex = ctx->get_output("normal_metallic_texture");
 			Ref<ITexture> emissive_tex = ctx->get_output("emissive_texture");
-			Ref<ITexture> depth_tex = ctx->get_input("depth_texture");
+			Ref<ITexture> depth_tex = ctx->get_output("depth_texture");
             auto render_desc = base_color_roughness_tex->get_desc();
             auto cmdbuf = ctx->get_command_buffer();
             auto device = cmdbuf->get_device();
@@ -119,7 +119,7 @@ namespace Luna
 					{base_color_roughness_tex, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::color_attachment_write, ResourceBarrierFlag::discard_content},
 					{normal_metallic_tex, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::color_attachment_write, ResourceBarrierFlag::discard_content},
 					{emissive_tex, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::color_attachment_write, ResourceBarrierFlag::discard_content},
-					{depth_tex, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::depth_stencil_attachment_read, ResourceBarrierFlag::none} });
+					{depth_tex, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::depth_stencil_attachment_read, ResourceBarrierFlag::discard_content} });
 			
 			for (usize i = 0; i < ts.size(); ++i)
 			{
@@ -183,7 +183,7 @@ namespace Luna
 			render_pass.color_attachments[0] = ColorAttachment(base_color_roughness_tex, LoadOp::clear, StoreOp::store, Float4U(0.0f));
 			render_pass.color_attachments[1] = ColorAttachment(normal_metallic_tex, LoadOp::clear, StoreOp::store, Float4U(0.0f));
 			render_pass.color_attachments[2] = ColorAttachment(emissive_tex, LoadOp::clear, StoreOp::store, Float4U(0.0f));
-			render_pass.depth_stencil_attachment = DepthStencilAttachment(depth_tex, true, LoadOp::load, StoreOp::store, 1.0F);
+			render_pass.depth_stencil_attachment = DepthStencilAttachment(depth_tex, true, LoadOp::clear, StoreOp::store, 1.0F);
             u32 time_query_begin, time_query_end;
             auto query_heap = ctx->get_timestamp_query_heap(&time_query_begin, &time_query_end);
             if(query_heap)
@@ -276,8 +276,8 @@ namespace Luna
         lutry
         {
             GeometryPassGlobalData* data = (GeometryPassGlobalData*)userdata;
-			auto depth_texture = compiler->get_input_resource("depth_texture");
-			if(depth_texture == RG::INVALID_RESOURCE) return set_error(BasicError::bad_arguments(), "GeometryPass: Input \"depth_texture\" is not specified.");
+			auto depth_texture = compiler->get_output_resource("depth_texture");
+			if(depth_texture == RG::INVALID_RESOURCE) return set_error(BasicError::bad_arguments(), "GeometryPass: Output \"depth_texture\" is not specified.");
 			auto base_color_roughness_tex = compiler->get_output_resource("base_color_roughness_texture");
             auto normal_metallic_tex = compiler->get_output_resource("normal_metallic_texture");
 			auto emissive_tex = compiler->get_output_resource("emissive_texture");

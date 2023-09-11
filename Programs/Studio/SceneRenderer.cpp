@@ -17,7 +17,6 @@
 #include "RenderPasses/SkyBoxPass.hpp"
 #include "RenderPasses/ToneMappingPass.hpp"
 #include "RenderPasses/WireframePass.hpp"
-#include "RenderPasses/DepthPass.hpp"
 #include "RenderPasses/GeometryPass.hpp"
 #include "RenderPasses/DeferredLightingPass.hpp"
 #include "RenderPasses/BufferVisualizationPass.hpp"
@@ -50,7 +49,6 @@ namespace Luna
 				RenderGraphDesc desc;
 				desc.passes.resize(8);
 				desc.passes[WIREFRAME_PASS] = {"WireframePass", "Wireframe"};
-				desc.passes[DEPTH_PASS] = {"DepthPass", "Depth"};
 				desc.passes[GEOMETRY_PASS] = {"GeometryPass", "Geometry"};
 				desc.passes[BUFFER_VIS_PASS] = {"BufferVisualizationPass", "BufferVisualization"};
 				desc.passes[SKYBOX_PASS] = {"SkyBoxPass", "SkyBox"};
@@ -122,8 +120,7 @@ namespace Luna
 				}
 				
 				desc.output_connections.push_back({WIREFRAME_PASS, "scene_texture", WIREFRAME_BACK_BUFFER});
-				desc.output_connections.push_back({DEPTH_PASS, "depth_texture", DEPTH_BUFFER});
-				desc.input_connections.push_back({GEOMETRY_PASS, "depth_texture", DEPTH_BUFFER});
+				desc.output_connections.push_back({GEOMETRY_PASS, "depth_texture", DEPTH_BUFFER});
 				desc.output_connections.push_back({GEOMETRY_PASS, "base_color_roughness_texture", BASE_COLOR_ROUGHNESS_BUFFER});
 				desc.output_connections.push_back({GEOMETRY_PASS, "normal_metallic_texture", NORMAL_METALLIC_BUFFER});
 				desc.output_connections.push_back({GEOMETRY_PASS, "emissive_texture", EMISSIVE_BUFFER});
@@ -353,13 +350,8 @@ namespace Luna
 						m_settings.mode == SceneRendererMode::metallic ||
 						m_settings.mode == SceneRendererMode::depth)
 				{
-					DepthPass* depth = cast_object<DepthPass>(m_render_graph->get_render_pass(DEPTH_PASS)->get_object());
 					GeometryPass* geometry = cast_object<GeometryPass>(m_render_graph->get_render_pass(GEOMETRY_PASS)->get_object());
 					BufferVisualizationPass* buffer_vis = cast_object<BufferVisualizationPass>(m_render_graph->get_render_pass(BUFFER_VIS_PASS)->get_object());
-					depth->ts = {ts.data(), ts.size()};
-					depth->rs = {rs.data(), rs.size()};
-					depth->camera_cb = m_camera_cb;
-					depth->model_matrices = m_model_matrices;
 					geometry->camera_cb = m_camera_cb;
 					geometry->ts = {ts.data(), ts.size()};
 					geometry->rs = {rs.data(), rs.size()};
@@ -377,7 +369,6 @@ namespace Luna
 				else
 				{
 					SkyBoxPass* skybox = cast_object<SkyBoxPass>(m_render_graph->get_render_pass(SKYBOX_PASS)->get_object());
-					DepthPass* depth = cast_object<DepthPass>(m_render_graph->get_render_pass(DEPTH_PASS)->get_object());
 					GeometryPass* geometry = cast_object<GeometryPass>(m_render_graph->get_render_pass(GEOMETRY_PASS)->get_object());
 					DeferredLightingPass* lighting = cast_object<DeferredLightingPass>(m_render_graph->get_render_pass(DEFERRED_LIGHTING_PASS)->get_object());
 					ToneMappingPass* tone_mapping = cast_object<ToneMappingPass>(m_render_graph->get_render_pass(TONE_MAPPING_PASS)->get_object());
@@ -386,10 +377,6 @@ namespace Luna
 					skybox->view_to_world = camera_entity->local_to_world_matrix();
 					auto skybox_tex = Asset::get_asset_data<RHI::IResource>(scene_renderer->skybox);
 					skybox->skybox = skybox_tex;
-					depth->ts = {ts.data(), ts.size()};
-					depth->rs = {rs.data(), rs.size()};
-					depth->camera_cb = m_camera_cb;
-					depth->model_matrices = m_model_matrices;
 					geometry->camera_cb = m_camera_cb;
 					geometry->ts = {ts.data(), ts.size()};
 					geometry->rs = {rs.data(), rs.size()};
