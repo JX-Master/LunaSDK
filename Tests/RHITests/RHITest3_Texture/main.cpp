@@ -10,7 +10,6 @@
 #include "../RHITestBed/RHITestBed.hpp"
 #include <Luna/Runtime/Runtime.hpp>
 #include <Luna/Runtime/Module.hpp>
-#include <Luna/Runtime/Debug.hpp>
 #include <Luna/Runtime/Math/Color.hpp>
 #include <Luna/Runtime/Log.hpp>
 #include <Luna/RHI/ShaderCompileHelper.hpp>

@@ -94,6 +94,7 @@
     #endif
     #if defined(LUNA_PLATFORM_ANDROID)
         #define LUNA_PLATFORM_MOBILE	1
+        #define LUNA_PLATFORM_POSIX     1
     #endif
     #if defined(LUNA_PLATFORM_IOS)
         #define LUNA_PLATFORM_MOBILE	1

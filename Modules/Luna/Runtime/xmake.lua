@@ -4,14 +4,16 @@ luna_sdk_module_target("Runtime")
     add_headerfiles("Source/*.hpp")
     add_headerfiles("Source/Math/**.inl")
     add_files("Source/*.cpp")
-    if is_os("windows") then
+    if is_plat("windows") then
         add_headerfiles("Platform/Windows/**.hpp")
         add_headerfiles("Source/Platform/Windows/*.hpp")
         add_files("Source/Platform/Windows/*.cpp")
-    elseif is_os("linux", "macosx") then
+    elseif is_plat("linux", "macosx", "android") then
         add_headerfiles("Source/Platform/POSIX/*.hpp")
         add_files("Source/Platform/POSIX/*.cpp")
-        add_syslinks("pthread")
+        if is_plat("linux", "macosx") then
+            add_syslinks("pthread")
+        end
     end
 
     option("check_memory_leak")

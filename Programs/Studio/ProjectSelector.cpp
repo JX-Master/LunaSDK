@@ -10,7 +10,6 @@
 #include "ProjectSelector.hpp"
 #include "StudioHeader.hpp"
 #include <Luna/Runtime/Time.hpp>
-#include <Luna/Runtime/Debug.hpp>
 #include <Luna/Runtime/File.hpp>
 #include <Luna/VariantUtils/JSON.hpp>
 #include <Luna/Window/FileDialog.hpp>

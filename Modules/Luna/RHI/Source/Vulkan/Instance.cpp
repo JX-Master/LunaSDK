@@ -30,31 +30,31 @@ namespace Luna
 			void* pUserData
 		)
 		{
-			LogMessage msg;
+			const c8* tag = "";
 			switch (messageType)
 			{
 			case VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT:
-				msg.sender = "Vulkan::General"; break;
+				tag = "Vulkan::General"; break;
 			case VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT:
-				msg.sender = "Vulkan::Validation"; break;
+				tag = "Vulkan::Validation"; break;
 			case VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT:
-				msg.sender = "Vulkan::Performance"; break;
+				tag = "Vulkan::Performance"; break;
 			}
+			LogVerbosity verbosity;
 			switch (messageSeverity)
 			{
 			case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT:
-				msg.verbosity = LogVerbosity::verbose; break;
+				verbosity = LogVerbosity::verbose; break;
 			case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT:
-				msg.verbosity = LogVerbosity::info; break;
+				verbosity = LogVerbosity::info; break;
 			case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT:
-				msg.verbosity = LogVerbosity::warning; break;
+				verbosity = LogVerbosity::warning; break;
 			case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:
-				msg.verbosity = LogVerbosity::error; break;
+				verbosity = LogVerbosity::error; break;
 			default:
 				lupanic(); break;
 			}
-			msg.message = pCallbackData->pMessage;
-			log(msg);
+			log(verbosity, tag, "%s", pCallbackData->pMessage);
 			return VK_FALSE;
 		}
 

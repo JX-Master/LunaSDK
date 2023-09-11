@@ -17,6 +17,7 @@
 #include "../Time.hpp"
 #include "../Thread.hpp"
 #include "../File.hpp"
+#include "../Log.hpp"
 namespace Luna
 {
 	namespace OS
@@ -46,17 +47,14 @@ namespace Luna
 		//! platform does not support debug break, this function is skipped and returned directly.
 		void debug_break();
 
-		//! Prints a message to the debug console attached to this process.
-		//! If the debug console is not available on the current build, this function does nothing.
-		//! @param[in] fmt The formatting rules for the message.
-		//! @param[in] args The arguments passed to the formatting string.
-		void debug_printf(const c8* fmt, ...);
-
-		//! Prints a message to the debug console attached to this process with `VarList` as arguments.
-		//! If the debug console is not available on the current build, this function does nothing.
-		//! @param[in] fmt The formatting rules for the message.
-		//! @param[in] args The arguments passed to the formatting string.
-		void debug_vprintf(const c8* fmt, VarList args);
+		//! Logs one message to the platform.
+		//! If logging is not available on the current build, this function does nothing.
+		//! @param[in] verbosity The log verbosity.
+		//! @param[in] tag The log tag. Used by the implementation to filter logs.
+		//! @param[in] tag_len The log tag length, not including the null terminator.
+		//! @param[in] message The log message encoded in UTF-8. The implementation should insert newline character (`\n`) in its implementation.
+		//! @param[in] message_len The log message length, not including the null terminator.
+		void log(LogVerbosity verbosity, const c8* tag, usize tag_len, const c8* message, usize message_len);
 
 		//! Allocates memory blocks from system heap.
 		//! @param[in] size The number of bytes to allocate. If this is 0, no memory will be allocated and the return value will be `nullptr`.

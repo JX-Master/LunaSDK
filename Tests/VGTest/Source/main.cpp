@@ -14,7 +14,6 @@
 #include <Luna/Runtime/Math/Color.hpp>
 #include <Luna/Runtime/Time.hpp>
 #include <Luna/Runtime/File.hpp>
-#include <Luna/Runtime/Debug.hpp>
 #include <Luna/Runtime/Thread.hpp>
 
 namespace Luna

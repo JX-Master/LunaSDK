@@ -12,7 +12,6 @@
 #include "RHITestBed.hpp"
 #include <Luna/Runtime/Runtime.hpp>
 #include <Luna/Runtime/Module.hpp>
-#include <Luna/Runtime/Debug.hpp>
 #include <Luna/Runtime/Log.hpp>
 #include <Luna/Window/Window.hpp>
 #include <Luna/Runtime/Time.hpp>
@@ -76,7 +75,7 @@ namespace Luna
 		{
 			lutry
 			{
-				set_log_std_enabled(true);
+				set_log_to_platform_enabled(true);
 				m_command_queue = U32_MAX;
 				auto device = get_main_device();
 				u32 num_queues = device->get_num_command_queues();

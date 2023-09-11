@@ -54,8 +54,8 @@ namespace Luna
 
 	void run_editor()
 	{
-		set_log_std_enabled(true);
-		set_log_std_verbosity(LogVerbosity::error);
+		set_log_to_platform_enabled(true);
+		set_log_to_platform_verbosity(LogVerbosity::error);
 		auto r = init_modules();
 		if (failed(r))
 		{

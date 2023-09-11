@@ -11,7 +11,6 @@
 #include <Luna/Runtime/Runtime.hpp>
 #include <Luna/RHI/RHI.hpp>
 #include <Luna/Runtime/Module.hpp>
-#include <Luna/Runtime/Debug.hpp>
 #include <Luna/Runtime/Log.hpp>
 #include <Luna/Runtime/Thread.hpp>
 
@@ -24,7 +23,7 @@ void on_window_close(Window::IWindow* window)
 
 void run()
 {
-	set_log_std_enabled(true);
+	set_log_to_platform_enabled(true);
 	using namespace RHI;
 	using namespace Window;
 	Ref<IWindow> window = new_window("ImGui Demo", WindowDisplaySettings::as_windowed(), WindowCreationFlag::resizable).get();
@@ -114,7 +113,7 @@ int main()
 	auto res = Luna::init_modules();
 	if (failed(res))
 	{
-		debug_printf("Module init error: %s\n", explain(res.errcode()));
+		log_error("ImGuiTest", "Module init error: %s\n", explain(res.errcode()));
 		lupanic();
 		Luna::close();
 		return 0;

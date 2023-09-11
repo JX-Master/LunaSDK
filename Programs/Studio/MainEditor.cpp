@@ -45,7 +45,7 @@ namespace Luna
 	{
 		lutry
 		{
-			set_log_std_enabled(true);
+			set_log_to_platform_enabled(true);
 
 			char title[256];
 			auto name = project_path.filename();

@@ -10,8 +10,8 @@
 #include "../RHITestBed/RHITestBed.hpp"
 #include <Luna/Runtime/Runtime.hpp>
 #include <Luna/Runtime/Module.hpp>
-#include <Luna/Runtime/Debug.hpp>
 #include <Luna/Runtime/Math/Color.hpp>
+#include <Luna/Runtime/Log.hpp>
 
 using namespace Luna;
 using namespace Luna::RHI;
@@ -59,7 +59,7 @@ int main()
 	auto r = init_modules();
 	if (failed(r))
 	{
-		debug_printf("%s", explain(r.errcode()));
+		log_error("RHITest1_FillBackBuffer", "%s", explain(r.errcode()));
 	}
 	else run_app();
 	Luna::close();

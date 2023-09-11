@@ -35,12 +35,17 @@ namespace Luna
         RV std_input(c8* buffer, usize size, usize* read_bytes)
         {
             luassert_msg_always(pthread_mutex_lock(&g_std_io_mtx) == 0, "pthread_mutex_lock failed.");
+            if (size == 0)
+            {
+                if (read_bytes) *read_bytes = 0;
+                return ok;
+            }
             c8* cur = buffer;
             if(g_input_buffer)
             {
                 c8 buf[6];
                 usize len = utf8_encode_char(buf, g_input_buffer);
-                if(cur + len <= buffer + size)
+                if(cur + len < buffer + size)
                 {
                     memcpy(cur, buf, len);
                     cur += len;
@@ -54,17 +59,21 @@ namespace Luna
                 }
             }
             c8 ch[6];
+            int input_ch = EOF;
             while(cur < buffer + size - 1)
             {
-                ch[0] = getchar();
-                if(ch[0] == '\n' || ch[0] == EOF)
+                input_ch = getchar();
+                if (input_ch == '\n' || input_ch == EOF)
                 {
                     break;
                 }
+                ch[0] = (c8)input_ch;
                 usize len = utf8_charlen(ch[0]);
                 for(usize i = 1; i < len; ++i)
                 {
-                    ch[i] = getchar();
+                    input_ch = getchar();
+                    if (input_ch == '\n' || input_ch == EOF) break;
+                    ch[i] = (c8)input_ch;
                 }
                 // Encode this character.
                 if(cur + len < buffer + size)
@@ -81,7 +90,7 @@ namespace Luna
             luassert_msg_always(pthread_mutex_unlock(&g_std_io_mtx) == 0, "pthread_mutex_unlock failed.");
             *cur = 0;
             if(read_bytes) *read_bytes = cur - buffer;
-            if(ch[0] == EOF) return feof(stdin) ? ok : BasicError::bad_platform_call();
+            if(input_ch == EOF) return feof(stdin) ? ok : BasicError::bad_platform_call();
             return ok;
         }
 

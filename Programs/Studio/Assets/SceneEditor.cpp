@@ -10,7 +10,6 @@
 #include "Scene.hpp"
 #include "../SceneRenderer.hpp"
 #include "../MainEditor.hpp"
-#include <Luna/Runtime/Debug.hpp>
 #include "../Scene.hpp"
 #include <Luna/ShaderCompiler/ShaderCompiler.hpp>
 #include <Luna/RHI/ShaderCompileHelper.hpp>
