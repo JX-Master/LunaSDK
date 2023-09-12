@@ -38,10 +38,10 @@ namespace Luna
 		{
 			{
 				luset(m_mipmapping_dlayout, RHI::get_main_device()->new_descriptor_set_layout(DescriptorSetLayoutDesc({
-					DescriptorSetLayoutBinding(DescriptorType::uniform_buffer_view, 0, 1, ShaderVisibilityFlag::all),
-					DescriptorSetLayoutBinding(DescriptorType::read_texture_view, 1, 1, ShaderVisibilityFlag::all),
-					DescriptorSetLayoutBinding(DescriptorType::read_write_texture_view, 2, 1, ShaderVisibilityFlag::all),
-					DescriptorSetLayoutBinding(DescriptorType::sampler, 3, 1, ShaderVisibilityFlag::all)
+					DescriptorSetLayoutBinding::uniform_buffer_view(0, 1, ShaderVisibilityFlag::all),
+					DescriptorSetLayoutBinding::read_texture_view(TextureViewType::tex2d, 1, 1, ShaderVisibilityFlag::all),
+					DescriptorSetLayoutBinding::read_write_texture_view(TextureViewType::tex2d, 2, 1, ShaderVisibilityFlag::all),
+					DescriptorSetLayoutBinding::sampler(3, 1, ShaderVisibilityFlag::all)
 					})));
 				auto dlayout = m_mipmapping_dlayout.get();
 				luset(m_mipmapping_playout, RHI::get_main_device()->new_pipeline_layout(PipelineLayoutDesc(

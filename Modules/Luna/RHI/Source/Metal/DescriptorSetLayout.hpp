@@ -22,9 +22,11 @@ namespace Luna
             Ref<Device> m_device;
             Array<DescriptorSetLayoutBinding> m_bindings;
             DescriptorSetLayoutFlag m_flags;
-            // The argument offfset for every binding.
+            // The argument offfset for every binding. Used for metal 3.
             Array<u64> m_argument_offsets;
             usize m_num_arguments;
+            // The argument descriptors. Used for metal 2.
+            NSPtr<NS::Array> m_argument_descriptors;
 
             RV init(const DescriptorSetLayoutDesc& desc);
 

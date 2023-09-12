@@ -15,17 +15,9 @@ namespace Luna
     {
         RV DescriptorSet::init(const DescriptorSetDesc& desc)
         {
+            AutoreleasePool pool;
             m_layout = cast_object<DescriptorSetLayout>(desc.layout);
-            usize num_arguments = m_layout->m_num_arguments;
-            if(test_flags(m_layout->m_flags, DescriptorSetLayoutFlag::variable_descriptors))
-            {
-                num_arguments += desc.num_variable_descriptors;
-            }
-            m_buffer = box(m_device->m_device->newBuffer(sizeof(u64) * num_arguments, encode_resource_options(MemoryType::upload)));
-            if(!m_buffer)
-            {
-                return BasicError::bad_platform_call();
-            }
+            // Construct bindings.
             m_bindings.assign(m_layout->m_bindings.size());
             for(usize i = 0; i < m_bindings.size(); ++i)
             {
@@ -58,129 +50,291 @@ namespace Luna
                     }
                 }
             }
+            // Create buffer.
+            if (m_device->m_support_metal_3_family)
+            {
+                usize num_arguments = m_layout->m_num_arguments;
+                if(test_flags(m_layout->m_flags, DescriptorSetLayoutFlag::variable_descriptors))
+                {
+                    num_arguments += desc.num_variable_descriptors;
+                }
+                m_buffer = box(m_device->m_device->newBuffer(sizeof(u64) * num_arguments, encode_resource_options(MemoryType::upload)));
+                if(!m_buffer)
+                {
+                    return BasicError::bad_platform_call();
+                }
+            }
+            else
+            {
+                m_encoder = box(m_device->m_device->newArgumentEncoder(m_layout->m_argument_descriptors.get()));
+                if(!m_encoder)
+                {
+                    return BasicError::bad_platform_call();
+                }
+                NS::UInteger length = m_encoder->encodedLength();
+                m_buffer = box(m_device->m_device->newBuffer(length, encode_resource_options(MemoryType::upload)));
+                if(!m_buffer)
+                {
+                    return BasicError::bad_platform_call();
+                }
+                m_encoder->setArgumentBuffer(m_buffer.get(), 0);
+            }
             return ok;
+        }
+        inline NSPtr<MTL::SamplerState> new_sampler_state(MTL::Device* device, const SamplerDesc& view)
+        {
+            NSPtr<MTL::SamplerDescriptor> sampler_desc = box(MTL::SamplerDescriptor::alloc()->init());
+            sampler_desc->setMinFilter(encode_min_mag_filter(view.min_filter));
+            sampler_desc->setMagFilter(encode_min_mag_filter(view.mag_filter));
+            sampler_desc->setMipFilter(encode_mip_filter(view.mip_filter));
+            if(view.anisotropy_enable)
+            {
+                sampler_desc->setMaxAnisotropy(view.max_anisotropy);
+            }
+            else
+            {
+                sampler_desc->setMaxAnisotropy(1);
+            }
+            if(view.compare_enable)
+            {
+                sampler_desc->setCompareFunction(encode_compare_function(view.compare_function));
+            }
+            else
+            {
+                sampler_desc->setCompareFunction(MTL::CompareFunctionNever);
+            }
+            sampler_desc->setLodMinClamp(view.min_lod);
+            sampler_desc->setLodMaxClamp(view.max_lod);
+            sampler_desc->setLodAverage(false);
+            switch(view.border_color)
+            {
+                case BorderColor::float_0000:
+                case BorderColor::int_0000:
+                sampler_desc->setBorderColor(MTL::SamplerBorderColorTransparentBlack);
+                break;
+                case BorderColor::float_0001:
+                case BorderColor::int_0001:
+                sampler_desc->setBorderColor(MTL::SamplerBorderColorOpaqueBlack);
+                break;
+                case BorderColor::float_1111:
+                case BorderColor::int_1111:
+                sampler_desc->setBorderColor(MTL::SamplerBorderColorOpaqueWhite);
+                break;
+            }
+            sampler_desc->setNormalizedCoordinates(true);
+            sampler_desc->setSAddressMode(encode_address_mode(view.address_u));
+            sampler_desc->setTAddressMode(encode_address_mode(view.address_v));
+            sampler_desc->setRAddressMode(encode_address_mode(view.address_w));
+            sampler_desc->setSupportArgumentBuffers(true);
+            NSPtr<MTL::SamplerState> sampler = box(device->newSamplerState(sampler_desc.get()));
+            return sampler;
+        }
+        usize DescriptorSet::calc_binding_index(u32 binding_slot) const
+        {
+            usize binding_index = 0;
+            for(; binding_index < m_layout->m_bindings.size(); ++binding_index)
+            {
+                if(binding_slot == m_layout->m_bindings[binding_index].binding_slot)
+                {
+                    break;
+                }
+            }
+            return binding_index;
         }
         RV DescriptorSet::update_descriptors(Span<const WriteDescriptorSet> writes)
         {
             lutry
             {
-                u64* data = (u64*)m_buffer->contents();
+                u64* data = nullptr;
+                if (m_device->m_support_metal_3_family)
+                {
+                    data = (u64*)m_buffer->contents();
+                }
                 for(auto& write : writes)
                 {
                     // Find the binding record index for this write.
-                    usize binding_index = 0;
-                    for(; binding_index < m_layout->m_bindings.size(); ++binding_index)
-                    {
-                        if(write.binding_slot == m_layout->m_bindings[binding_index].binding_slot)
-                        {
-                            break;
-                        }
-                    }
+                    usize binding_index = calc_binding_index(write.binding_slot);
                     if(binding_index == m_layout->m_bindings.size())
                     {
                         return set_error(BasicError::bad_arguments(), "The specified binding number %d is not specified in the descriptor set layout.", write.binding_slot);
                     }
-                    u64 argument_offset = m_layout->m_argument_offsets[binding_index] + write.first_array_index;
-                    switch(write.type)
+                    auto& binding = m_bindings[binding_index];
+                    if (m_device->m_support_metal_3_family)
                     {
-                        case DescriptorType::uniform_buffer_view:
-                        for(usize i = 0; i < write.buffer_views.size(); ++i)
+                        u64 argument_offset = m_layout->m_argument_offsets[binding_index] + write.first_array_index;
+                        switch(write.type)
                         {
-                            auto& view = write.buffer_views[i];
-                            Buffer* buffer = cast_object<Buffer>(view.buffer->get_object());
-                            u64 data_offset = view.first_element;
-                            data[argument_offset + i] = buffer->m_buffer->gpuAddress() + data_offset;
-                            m_bindings[binding_index].m_resources[write.first_array_index + i] = buffer->m_buffer.get();
-                        }
-                        break;
-                        case DescriptorType::read_buffer_view:
-                        case DescriptorType::read_write_buffer_view:
-                        for(usize i = 0; i < write.buffer_views.size(); ++i)
-                        {
-                            auto& view = write.buffer_views[i];
-                            Buffer* buffer = cast_object<Buffer>(view.buffer->get_object());
-                            u64 data_offset = view.format == Format::unknown ? view.element_size * view.first_element : bits_per_pixel(view.format) * view.first_element / 8;
-                            data[argument_offset + i] = buffer->m_buffer->gpuAddress() + data_offset;
-                            m_bindings[binding_index].m_resources[write.first_array_index + i] = buffer->m_buffer.get();
-                        }
-                        break;
-                        case DescriptorType::read_texture_view:
-                        case DescriptorType::read_write_texture_view:
-                        for(usize i = 0; i < write.texture_views.size(); ++i)
-                        {
-                            auto view = write.texture_views[i];
-                            Texture* tex = cast_object<Texture>(view.texture->get_object());
-                            validate_texture_view_desc(tex->m_desc, view);
-                            if(require_view_object(tex->m_desc, view))
+                            case DescriptorType::uniform_buffer_view:
+                            for(usize i = 0; i < write.buffer_views.size(); ++i)
                             {
-                                lulet(tex_view, tex->get_texture_view(view));
-                                MTL::ResourceID id = tex_view->m_texture->gpuResourceID();
-                                ((MTL::ResourceID*)data)[argument_offset + i] = id;
+                                auto& view = write.buffer_views[i];
+                                Buffer* buffer = cast_object<Buffer>(view.buffer->get_object());
+                                u64 data_offset = view.first_element;
+                                data[argument_offset + i] = buffer->m_buffer->gpuAddress() + data_offset;
+                                binding.m_resources[write.first_array_index + i] = buffer->m_buffer.get();
+                            }
+                            break;
+                            case DescriptorType::read_buffer_view:
+                            case DescriptorType::read_write_buffer_view:
+                            for(usize i = 0; i < write.buffer_views.size(); ++i)
+                            {
+                                auto& view = write.buffer_views[i];
+                                Buffer* buffer = cast_object<Buffer>(view.buffer->get_object());
+                                u64 data_offset = view.format == Format::unknown ? view.element_size * view.first_element : bits_per_pixel(view.format) * view.first_element / 8;
+                                data[argument_offset + i] = buffer->m_buffer->gpuAddress() + data_offset;
+                                binding.m_resources[write.first_array_index + i] = buffer->m_buffer.get();
+                            }
+                            break;
+                            case DescriptorType::read_texture_view:
+                            case DescriptorType::read_write_texture_view:
+                            for(usize i = 0; i < write.texture_views.size(); ++i)
+                            {
+                                auto view = write.texture_views[i];
+                                Texture* tex = cast_object<Texture>(view.texture->get_object());
+                                validate_texture_view_desc(tex->m_desc, view);
+                                if(require_view_object(tex->m_desc, view))
+                                {
+                                    lulet(tex_view, tex->get_texture_view(view));
+                                    MTL::ResourceID id = tex_view->m_texture->gpuResourceID();
+                                    ((MTL::ResourceID*)data)[argument_offset + i] = id;
+                                }
+                                else
+                                {
+                                    MTL::ResourceID id = tex->m_texture->gpuResourceID();
+                                    ((MTL::ResourceID*)data)[argument_offset + i] = id;
+                                }
+                                binding.m_resources[write.first_array_index + i] = tex->m_texture.get();
+                            }
+                            break;
+                            case DescriptorType::sampler:
+                            for(usize i = 0; i < write.samplers.size(); ++i)
+                            {
+                                const SamplerDesc& view = write.samplers[i];
+                                NSPtr<MTL::SamplerState> sampler = new_sampler_state(m_device->m_device.get(), view);
+                                if(!sampler) return BasicError::bad_platform_call();
+                                m_samplers.insert_or_assign(write.binding_slot + write.first_array_index + (u32)i, sampler);
+                                ((MTL::ResourceID*)data)[argument_offset + i] = sampler->gpuResourceID();
+                            }
+                            break;
+                        }
+                    }
+                    else
+                    {
+                        switch(write.type)
+                        {
+                            case DescriptorType::uniform_buffer_view:
+                            if(write.buffer_views.size() == 1)
+                            {
+                                auto& view = write.buffer_views[0];
+                                Buffer* buffer = cast_object<Buffer>(view.buffer->get_object());
+                                m_encoder->setBuffer(buffer->m_buffer.get(), view.first_element, write.binding_slot + write.first_array_index);
+                                binding.m_resources[write.first_array_index] = buffer->m_buffer.get();
                             }
                             else
                             {
-                                MTL::ResourceID id = tex->m_texture->gpuResourceID();
-                                ((MTL::ResourceID*)data)[argument_offset + i] = id;
+                                MTL::Buffer** buffers = (MTL::Buffer**)alloca(sizeof(MTL::Buffer*) * write.buffer_views.size());
+                                NS::UInteger* offsets = (NS::UInteger*)alloca(sizeof(NS::UInteger) * write.buffer_views.size());
+                                for(usize i = 0; i < write.buffer_views.size(); ++i)
+                                {
+                                    auto& view = write.buffer_views[i];
+                                    Buffer* buffer = cast_object<Buffer>(view.buffer->get_object());
+                                    buffers[i] = buffer->m_buffer.get();
+                                    offsets[i] = view.first_element;
+                                    binding.m_resources[write.first_array_index + i] = buffer->m_buffer.get();
+                                }
+                                m_encoder->setBuffers(buffers, offsets, NS::Range::Make(write.binding_slot + write.first_array_index, write.buffer_views.size()));
                             }
-                            m_bindings[binding_index].m_resources[write.first_array_index + i] = tex->m_texture.get();
-                        }
-                        break;
-                        case DescriptorType::sampler:
-                        for(usize i = 0; i < write.samplers.size(); ++i)
-                        {
-                            const SamplerDesc& view = write.samplers[i];
-                            NSPtr<MTL::SamplerDescriptor> sampler_desc = box(MTL::SamplerDescriptor::alloc()->init());
-                            sampler_desc->setMinFilter(encode_min_mag_filter(view.min_filter));
-                            sampler_desc->setMagFilter(encode_min_mag_filter(view.mag_filter));
-                            sampler_desc->setMipFilter(encode_mip_filter(view.mip_filter));
-                            if(view.anisotropy_enable)
+                            break;
+                            case DescriptorType::read_buffer_view:
+                            case DescriptorType::read_write_buffer_view:
+                            if(write.buffer_views.size() == 1)
                             {
-                                sampler_desc->setMaxAnisotropy(view.max_anisotropy);
+                                auto& view = write.buffer_views[0];
+                                Buffer* buffer = cast_object<Buffer>(view.buffer->get_object());
+                                u64 data_offset = view.format == Format::unknown ? view.element_size * view.first_element : bits_per_pixel(view.format) * view.first_element / 8;
+                                m_encoder->setBuffer(buffer->m_buffer.get(), data_offset, write.binding_slot + write.first_array_index);
+                                binding.m_resources[write.first_array_index] = buffer->m_buffer.get();
                             }
                             else
                             {
-                                sampler_desc->setMaxAnisotropy(1);
+                                MTL::Buffer** buffers = (MTL::Buffer**)alloca(sizeof(MTL::Buffer*) * write.buffer_views.size());
+                                NS::UInteger* offsets = (NS::UInteger*)alloca(sizeof(NS::UInteger) * write.buffer_views.size());
+                                for(usize i = 0; i < write.buffer_views.size(); ++i)
+                                {
+                                    auto& view = write.buffer_views[i];
+                                    Buffer* buffer = cast_object<Buffer>(view.buffer->get_object());
+                                    u64 data_offset = view.format == Format::unknown ? view.element_size * view.first_element : bits_per_pixel(view.format) * view.first_element / 8;
+                                    buffers[i] = buffer->m_buffer.get();
+                                    offsets[i] = data_offset;
+                                    binding.m_resources[write.first_array_index + i] = buffer->m_buffer.get();
+                                }
+                                m_encoder->setBuffers(buffers, offsets, NS::Range::Make(write.binding_slot + write.first_array_index, write.buffer_views.size()));
                             }
-                            if(view.compare_enable)
+                            break;
+                            case DescriptorType::read_texture_view:
+                            case DescriptorType::read_write_texture_view:
+                            if(write.texture_views.size() == 1)
                             {
-                                sampler_desc->setCompareFunction(encode_compare_function(view.compare_function));
+                                auto view = write.texture_views[0];
+                                Texture* tex = cast_object<Texture>(view.texture->get_object());
+                                validate_texture_view_desc(tex->m_desc, view);
+                                if(require_view_object(tex->m_desc, view))
+                                {
+                                    lulet(tex_view, tex->get_texture_view(view));
+                                    m_encoder->setTexture(tex_view->m_texture.get(), write.binding_slot + write.first_array_index);
+                                }
+                                else
+                                {
+                                    m_encoder->setTexture(tex->m_texture.get(), write.binding_slot + write.first_array_index);
+                                }
+                                binding.m_resources[write.first_array_index] = tex->m_texture.get();
                             }
                             else
                             {
-                                sampler_desc->setCompareFunction(MTL::CompareFunctionNever);
+                                MTL::Texture** textures = (MTL::Texture**)alloca(sizeof(MTL::Texture*) * write.texture_views.size());
+                                for(usize i = 0; i < write.texture_views.size(); ++i)
+                                {
+                                    auto view = write.texture_views[i];
+                                    Texture* tex = cast_object<Texture>(view.texture->get_object());
+                                    validate_texture_view_desc(tex->m_desc, view);
+                                    if(require_view_object(tex->m_desc, view))
+                                    {
+                                        lulet(tex_view, tex->get_texture_view(view));
+                                        textures[i] = tex_view->m_texture.get();
+                                    }
+                                    else
+                                    {
+                                        textures[i] = tex->m_texture.get();
+                                    }
+                                    binding.m_resources[write.first_array_index + i] = tex->m_texture.get();
+                                }
+                                m_encoder->setTextures(textures, NS::Range::Make(write.binding_slot + write.first_array_index, write.texture_views.size()));
                             }
-                            sampler_desc->setLodMinClamp(view.min_lod);
-                            sampler_desc->setLodMaxClamp(view.max_lod);
-                            sampler_desc->setLodAverage(false);
-                            switch(view.border_color)
+                            break;
+                            case DescriptorType::sampler:
+                            if(write.samplers.size() == 1)
                             {
-                                case BorderColor::float_0000:
-                                case BorderColor::int_0000:
-                                sampler_desc->setBorderColor(MTL::SamplerBorderColorTransparentBlack);
-                                break;
-                                case BorderColor::float_0001:
-                                case BorderColor::int_0001:
-                                sampler_desc->setBorderColor(MTL::SamplerBorderColorOpaqueBlack);
-                                break;
-                                case BorderColor::float_1111:
-                                case BorderColor::int_1111:
-                                sampler_desc->setBorderColor(MTL::SamplerBorderColorOpaqueWhite);
-                                break;
+                                const SamplerDesc& view = write.samplers[0];
+                                NSPtr<MTL::SamplerState> sampler = new_sampler_state(m_device->m_device.get(), view);
+                                if(!sampler) return BasicError::bad_platform_call();
+                                m_samplers.insert_or_assign(write.binding_slot + write.first_array_index, sampler);
+                                m_encoder->setSamplerState(sampler.get(), write.binding_slot + write.first_array_index);
                             }
-                            sampler_desc->setNormalizedCoordinates(true);
-                            sampler_desc->setSAddressMode(encode_address_mode(view.address_u));
-                            sampler_desc->setTAddressMode(encode_address_mode(view.address_v));
-                            sampler_desc->setRAddressMode(encode_address_mode(view.address_w));
-                            sampler_desc->setSupportArgumentBuffers(true);
-                            NSPtr<MTL::SamplerState> sampler = box(m_device->m_device->newSamplerState(sampler_desc.get()));
-                            if(!sampler)
+                            else
                             {
-                                return BasicError::bad_platform_call();
+                                MTL::SamplerState** samplers = (MTL::SamplerState**)alloca(sizeof(MTL::SamplerState*) * write.samplers.size());
+                                for(usize i = 0; i < write.samplers.size(); ++i)
+                                {
+                                    const SamplerDesc& view = write.samplers[i];
+                                    NSPtr<MTL::SamplerState> sampler = new_sampler_state(m_device->m_device.get(), view);
+                                    if(!sampler) return BasicError::bad_platform_call();
+                                    m_samplers.insert_or_assign(write.binding_slot + write.first_array_index + (u32)i, sampler);
+                                    samplers[i] = sampler.get();
+                                }
+                                m_encoder->setSamplerStates(samplers, NS::Range::Make(write.binding_slot + write.first_array_index, write.samplers.size()));
                             }
-                            m_samplers.insert_or_assign(write.binding_slot + write.first_array_index + (u32)i, sampler);
-                            ((MTL::ResourceID*)data)[argument_offset + i] = sampler->gpuResourceID();
+                            break;
                         }
-                        break;
                     }
                 }
             }

@@ -62,7 +62,21 @@ namespace Luna
 		{
 			if (desc.type == TextureViewType::unspecified)
 			{
-				if (texture_desc.type == TextureType::tex2d) desc.type = texture_desc.array_size == 1 ? TextureViewType::tex2d : TextureViewType::tex2darray;
+				if (texture_desc.type == TextureType::tex2d)
+				{
+					if(texture_desc.sample_count != 1)
+					{
+						desc.type = texture_desc.array_size == 1 ? TextureViewType::tex2dms : TextureViewType::tex2dmsarray;
+					}
+					else if(test_flags(texture_desc.usages, TextureUsageFlag::cube))
+					{
+						desc.type = texture_desc.array_size <= 6 ? TextureViewType::texcube : TextureViewType::texcubearray;
+					}
+					else
+					{
+						desc.type = texture_desc.array_size == 1 ? TextureViewType::tex2d : TextureViewType::tex2darray;
+					}
+				} 
 				else if (texture_desc.type == TextureType::tex3d) desc.type = TextureViewType::tex3d;
 				else if (texture_desc.type == TextureType::tex1d) desc.type = texture_desc.array_size == 1 ? TextureViewType::tex1d : TextureViewType::tex1darray;
 				else { lupanic(); }

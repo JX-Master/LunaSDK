@@ -20,11 +20,11 @@ namespace Luna
         lutry
         {
             luset(m_buffer_visualization_pass_dlayout, device->new_descriptor_set_layout(DescriptorSetLayoutDesc({
-						DescriptorSetLayoutBinding(DescriptorType::uniform_buffer_view, 0, 1, ShaderVisibilityFlag::compute),
-						DescriptorSetLayoutBinding(DescriptorType::read_texture_view, 1, 1, ShaderVisibilityFlag::compute),
-                        DescriptorSetLayoutBinding(DescriptorType::read_texture_view, 2, 1, ShaderVisibilityFlag::compute),
-                        DescriptorSetLayoutBinding(DescriptorType::read_texture_view, 3, 1, ShaderVisibilityFlag::compute),
-						DescriptorSetLayoutBinding(DescriptorType::read_write_texture_view, 4, 1, ShaderVisibilityFlag::compute)
+						DescriptorSetLayoutBinding::uniform_buffer_view(0, 1, ShaderVisibilityFlag::compute),
+						DescriptorSetLayoutBinding::read_texture_view(TextureViewType::tex2d, 1, 1, ShaderVisibilityFlag::compute),
+                        DescriptorSetLayoutBinding::read_texture_view(TextureViewType::tex2d, 2, 1, ShaderVisibilityFlag::compute),
+                        DescriptorSetLayoutBinding::read_texture_view(TextureViewType::tex2d, 3, 1, ShaderVisibilityFlag::compute),
+						DescriptorSetLayoutBinding::read_write_texture_view(TextureViewType::tex2d, 4, 1, ShaderVisibilityFlag::compute)
 						})));
             auto dlayout = m_buffer_visualization_pass_dlayout.get();
 			luset(m_buffer_visualization_pass_playout, device->new_pipeline_layout(PipelineLayoutDesc({ &dlayout, 1 },

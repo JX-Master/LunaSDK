@@ -16,6 +16,7 @@ namespace Luna
 {
     namespace RHI
     {
+        // Used to track resources when binding this set to the heap.
         struct DescriptorSetBinding
         {
             // The resource being used in this binding.
@@ -32,6 +33,7 @@ namespace Luna
             Ref<Device> m_device;
             Ref<DescriptorSetLayout> m_layout;
             NSPtr<MTL::Buffer> m_buffer;
+            NSPtr<MTL::ArgumentEncoder> m_encoder; // Used only if the platform does not support metal 3.
             
             Array<DescriptorSetBinding> m_bindings;
             
@@ -39,6 +41,8 @@ namespace Luna
 
             HashMap<u32, NSPtr<MTL::SamplerState>> m_samplers;
 
+            usize calc_binding_index(u32 binding_slot) const;
+            
             virtual IDevice* get_device() override { return m_device; }
             virtual void set_name(const c8* name) override  { set_object_name(m_buffer.get(), name); }
             virtual RV update_descriptors(Span<const WriteDescriptorSet> writes) override;

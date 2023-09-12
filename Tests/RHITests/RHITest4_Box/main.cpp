@@ -50,9 +50,9 @@ RV start()
 
 		using namespace RHI;
         luset(dlayout, dev->new_descriptor_set_layout(DescriptorSetLayoutDesc({
-            {DescriptorType::uniform_buffer_view, 0, 1, ShaderVisibilityFlag::vertex},
-            {DescriptorType::read_texture_view, 1, 1, ShaderVisibilityFlag::pixel},
-            {DescriptorType::sampler, 2, 1, ShaderVisibilityFlag::pixel}
+            DescriptorSetLayoutBinding::uniform_buffer_view(0, 1, ShaderVisibilityFlag::vertex),
+            DescriptorSetLayoutBinding::read_texture_view(TextureViewType::tex2d, 1, 1, ShaderVisibilityFlag::pixel),
+            DescriptorSetLayoutBinding::sampler(2, 1, ShaderVisibilityFlag::pixel)
         })));
         luset(desc_set, dev->new_descriptor_set(DescriptorSetDesc(dlayout)));
 

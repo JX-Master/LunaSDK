@@ -20,17 +20,17 @@ namespace Luna
         lutry
         {
             luset(m_deferred_lighting_pass_dlayout, device->new_descriptor_set_layout(DescriptorSetLayoutDesc({
-						DescriptorSetLayoutBinding(DescriptorType::uniform_buffer_view, 0, 1, ShaderVisibilityFlag::compute),
-                        DescriptorSetLayoutBinding(DescriptorType::uniform_buffer_view, 1, 1, ShaderVisibilityFlag::compute),
-                        DescriptorSetLayoutBinding(DescriptorType::read_buffer_view, 2, 1, ShaderVisibilityFlag::compute),
-                        DescriptorSetLayoutBinding(DescriptorType::read_texture_view, 3, 1, ShaderVisibilityFlag::compute),
-                        DescriptorSetLayoutBinding(DescriptorType::read_texture_view, 4, 1, ShaderVisibilityFlag::compute),
-                        DescriptorSetLayoutBinding(DescriptorType::read_texture_view, 5, 1, ShaderVisibilityFlag::compute),
-                        DescriptorSetLayoutBinding(DescriptorType::read_texture_view, 6, 1, ShaderVisibilityFlag::compute),
-                        DescriptorSetLayoutBinding(DescriptorType::read_texture_view, 7, 1, ShaderVisibilityFlag::compute),
-                        DescriptorSetLayoutBinding(DescriptorType::read_texture_view, 8, 1, ShaderVisibilityFlag::compute),
-						DescriptorSetLayoutBinding(DescriptorType::read_write_texture_view, 9, 1, ShaderVisibilityFlag::compute),
-						DescriptorSetLayoutBinding(DescriptorType::sampler, 10, 1, ShaderVisibilityFlag::compute)
+						DescriptorSetLayoutBinding::uniform_buffer_view(0, 1, ShaderVisibilityFlag::compute),
+                        DescriptorSetLayoutBinding::uniform_buffer_view(1, 1, ShaderVisibilityFlag::compute),
+                        DescriptorSetLayoutBinding::read_buffer_view(2, 1, ShaderVisibilityFlag::compute),
+                        DescriptorSetLayoutBinding::read_texture_view(TextureViewType::tex2d, 3, 1, ShaderVisibilityFlag::compute),
+                        DescriptorSetLayoutBinding::read_texture_view(TextureViewType::tex2d, 4, 1, ShaderVisibilityFlag::compute),
+                        DescriptorSetLayoutBinding::read_texture_view(TextureViewType::tex2d, 5, 1, ShaderVisibilityFlag::compute),
+                        DescriptorSetLayoutBinding::read_texture_view(TextureViewType::tex2d, 6, 1, ShaderVisibilityFlag::compute),
+                        DescriptorSetLayoutBinding::read_texture_view(TextureViewType::tex2d, 7, 1, ShaderVisibilityFlag::compute),
+                        DescriptorSetLayoutBinding::read_texture_view(TextureViewType::tex2d, 8, 1, ShaderVisibilityFlag::compute),
+						DescriptorSetLayoutBinding::read_write_texture_view(TextureViewType::tex2d, 9, 1, ShaderVisibilityFlag::compute),
+						DescriptorSetLayoutBinding::sampler(10, 1, ShaderVisibilityFlag::compute)
 						})));
             auto dlayout = m_deferred_lighting_pass_dlayout.get();
 			luset(m_deferred_lighting_pass_playout, device->new_pipeline_layout(PipelineLayoutDesc({ &dlayout, 1 },
@@ -56,8 +56,8 @@ namespace Luna
                 luset(m_integrate_brdf, device->new_texture(MemoryType::local, TextureDesc::tex2d(Format::rgba8_unorm,
                     TextureUsageFlag::read_texture | TextureUsageFlag::read_write_texture, INTEGEATE_BRDF_SIZE, INTEGEATE_BRDF_SIZE, 1, 1)));
                 lulet(dlayout, device->new_descriptor_set_layout(DescriptorSetLayoutDesc({
-                        DescriptorSetLayoutBinding(DescriptorType::uniform_buffer_view, 0, 1, ShaderVisibilityFlag::compute),
-                        DescriptorSetLayoutBinding(DescriptorType::read_write_texture_view, 1, 1, ShaderVisibilityFlag::compute) })));
+                        DescriptorSetLayoutBinding::uniform_buffer_view(0, 1, ShaderVisibilityFlag::compute),
+                        DescriptorSetLayoutBinding::read_write_texture_view(TextureViewType::tex2d, 1, 1, ShaderVisibilityFlag::compute) })));
                 auto dl = dlayout.get();
                 lulet(playout, device->new_pipeline_layout(PipelineLayoutDesc({ &dl, 1 },
                     PipelineLayoutFlag::deny_vertex_shader_access |

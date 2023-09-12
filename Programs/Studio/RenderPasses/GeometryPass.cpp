@@ -24,14 +24,14 @@ namespace Luna
         lutry
         {
             luset(m_geometry_pass_dlayout, device->new_descriptor_set_layout(DescriptorSetLayoutDesc({
-				DescriptorSetLayoutBinding(DescriptorType::uniform_buffer_view, 0, 1, ShaderVisibilityFlag::vertex | ShaderVisibilityFlag::pixel),
-				DescriptorSetLayoutBinding(DescriptorType::read_buffer_view, 1, 1, ShaderVisibilityFlag::vertex | ShaderVisibilityFlag::pixel),
-				DescriptorSetLayoutBinding(DescriptorType::read_texture_view, 2, 1, ShaderVisibilityFlag::pixel),
-				DescriptorSetLayoutBinding(DescriptorType::read_texture_view, 3, 1, ShaderVisibilityFlag::pixel),
-				DescriptorSetLayoutBinding(DescriptorType::read_texture_view, 4, 1, ShaderVisibilityFlag::pixel),
-				DescriptorSetLayoutBinding(DescriptorType::read_texture_view, 5, 1, ShaderVisibilityFlag::pixel),
-				DescriptorSetLayoutBinding(DescriptorType::read_texture_view, 6, 1, ShaderVisibilityFlag::pixel),
-				DescriptorSetLayoutBinding(DescriptorType::sampler, 7, 1, ShaderVisibilityFlag::pixel)
+				DescriptorSetLayoutBinding::uniform_buffer_view(0, 1, ShaderVisibilityFlag::vertex | ShaderVisibilityFlag::pixel),
+				DescriptorSetLayoutBinding::read_buffer_view(1, 1, ShaderVisibilityFlag::vertex | ShaderVisibilityFlag::pixel),
+				DescriptorSetLayoutBinding::read_texture_view(TextureViewType::tex2d, 2, 1, ShaderVisibilityFlag::pixel),
+				DescriptorSetLayoutBinding::read_texture_view(TextureViewType::tex2d, 3, 1, ShaderVisibilityFlag::pixel),
+				DescriptorSetLayoutBinding::read_texture_view(TextureViewType::tex2d, 4, 1, ShaderVisibilityFlag::pixel),
+				DescriptorSetLayoutBinding::read_texture_view(TextureViewType::tex2d, 5, 1, ShaderVisibilityFlag::pixel),
+				DescriptorSetLayoutBinding::read_texture_view(TextureViewType::tex2d, 6, 1, ShaderVisibilityFlag::pixel),
+				DescriptorSetLayoutBinding::sampler(7, 1, ShaderVisibilityFlag::pixel)
 				})));
 			auto dl = m_geometry_pass_dlayout.get();
 			luset(m_geometry_pass_playout, device->new_pipeline_layout(PipelineLayoutDesc({ &dl, 1 },

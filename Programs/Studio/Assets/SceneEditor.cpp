@@ -867,7 +867,7 @@ namespace Luna
 				luset(m_grid_vb, device->new_buffer(MemoryType::local, BufferDesc(BufferUsageFlag::copy_dest | BufferUsageFlag::vertex_buffer, sizeof(grids))));
 
 				DescriptorSetLayoutDesc dlayout({
-					DescriptorSetLayoutBinding(DescriptorType::uniform_buffer_view, 0, 1, ShaderVisibilityFlag::vertex)
+					DescriptorSetLayoutBinding::uniform_buffer_view(0, 1, ShaderVisibilityFlag::vertex)
 					});
 				luset(m_grid_dlayout, device->new_descriptor_set_layout(dlayout));
 				auto dl = m_grid_dlayout.get();

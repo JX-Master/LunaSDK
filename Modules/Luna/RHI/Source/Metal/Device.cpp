@@ -75,6 +75,7 @@ namespace Luna
                 {
                     m_counter_sampling_support_flags |= CounterSamplingSupportFlag::dispatch;
                 }
+                m_support_metal_3_family = m_device->supportsFamily(MTL::GPUFamilyMetal3);
             }
             lucatchret;
             return ok;
@@ -117,7 +118,7 @@ namespace Luna
         {
             switch (feature)
             {
-            case DeviceFeature::unbound_descriptor_array: return false;
+            case DeviceFeature::unbound_descriptor_array: return m_support_metal_3_family;
             default: return false;
             }
         }

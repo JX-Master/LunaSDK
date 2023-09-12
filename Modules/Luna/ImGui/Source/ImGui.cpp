@@ -185,9 +185,9 @@ float4 main(PS_INPUT input) : SV_Target
                 g_ps_blob = Blob(ps_data.data(), ps_data.size());
                 luset(g_desc_layout, dev->new_descriptor_set_layout(DescriptorSetLayoutDesc(
                     {
-                        DescriptorSetLayoutBinding(DescriptorType::uniform_buffer_view, 0, 1, ShaderVisibilityFlag::vertex),
-                        DescriptorSetLayoutBinding(DescriptorType::read_texture_view, 1, 1, ShaderVisibilityFlag::pixel),
-                        DescriptorSetLayoutBinding(DescriptorType::sampler, 2, 1, ShaderVisibilityFlag::pixel),
+                        DescriptorSetLayoutBinding::uniform_buffer_view(0, 1, ShaderVisibilityFlag::vertex),
+                        DescriptorSetLayoutBinding::read_texture_view(TextureViewType::tex2d, 1, 1, ShaderVisibilityFlag::pixel),
+                        DescriptorSetLayoutBinding::sampler(2, 1, ShaderVisibilityFlag::pixel),
                     }
                 )));
                 IDescriptorSetLayout* dl = g_desc_layout;

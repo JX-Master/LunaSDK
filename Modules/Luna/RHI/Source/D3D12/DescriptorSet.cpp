@@ -158,36 +158,28 @@ namespace Luna
 					d.Texture1DArray.ResourceMinLODClamp = 0.0f;
 					break;
 				case TextureViewType::tex2d:
-					if (res->m_desc.sample_count == 1)
-					{
-						d.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-						d.Texture2D.MipLevels = srv.mip_size;
-						d.Texture2D.MostDetailedMip = srv.mip_slice;
-						d.Texture2D.PlaneSlice = 0;
-						d.Texture2D.ResourceMinLODClamp = 0.0f;
-					}
-					else
-					{
-						d.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DMS;
-					}
+					d.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+					d.Texture2D.MipLevels = srv.mip_size;
+					d.Texture2D.MostDetailedMip = srv.mip_slice;
+					d.Texture2D.PlaneSlice = 0;
+					d.Texture2D.ResourceMinLODClamp = 0.0f;
+					break;
+				case TextureViewType::tex2dms:
+					d.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DMS;
 					break;
 				case TextureViewType::tex2darray:
-					if (res->m_desc.sample_count == 1)
-					{
-						d.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
-						d.Texture2DArray.ArraySize = srv.array_size;
-						d.Texture2DArray.FirstArraySlice = srv.array_slice;
-						d.Texture2DArray.MipLevels = srv.mip_size;
-						d.Texture2DArray.MostDetailedMip = srv.mip_slice;
-						d.Texture2DArray.PlaneSlice = 0;
-						d.Texture2DArray.ResourceMinLODClamp = 0.0f;
-					}
-					else
-					{
-						d.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DMSARRAY;
-						d.Texture2DMSArray.ArraySize = srv.array_size;
-						d.Texture2DMSArray.FirstArraySlice = srv.array_slice;
-					}
+					d.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
+					d.Texture2DArray.ArraySize = srv.array_size;
+					d.Texture2DArray.FirstArraySlice = srv.array_slice;
+					d.Texture2DArray.MipLevels = srv.mip_size;
+					d.Texture2DArray.MostDetailedMip = srv.mip_slice;
+					d.Texture2DArray.PlaneSlice = 0;
+					d.Texture2DArray.ResourceMinLODClamp = 0.0f;
+					break;
+				case TextureViewType::tex2dmsarray:
+					d.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DMSARRAY;
+					d.Texture2DMSArray.ArraySize = srv.array_size;
+					d.Texture2DMSArray.FirstArraySlice = srv.array_slice;
 					break;
 				case TextureViewType::tex3d:
 					d.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE3D;

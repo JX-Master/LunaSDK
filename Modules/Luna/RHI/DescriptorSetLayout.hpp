@@ -56,6 +56,21 @@ namespace Luna
 			sampler,
 		};
 
+		enum class TextureViewType : u8
+		{
+			//! Use the image type as the image view type.
+			unspecified = 0,
+			tex1d,
+			tex2d,
+			tex2dms,
+			tex3d,
+			texcube,
+			tex1darray,
+			tex2darray,
+			tex2dmsarray,
+			texcubearray
+		};
+
 		enum class ShaderVisibilityFlag : u8
 		{
 			none = 0x00,
@@ -81,15 +96,79 @@ namespace Luna
 			u32 num_descs;
 			//! The type of descriptors.
 			DescriptorType type;
+			//! The type of the texture view if this binding represents one texture, otherwise @ref TextureViewType::unspecified.
+			TextureViewType texture_view_type;
 			//! Specify which pipeline shader can access a resource for this binding.
 			ShaderVisibilityFlag shader_visibility_flags;
 
 			DescriptorSetLayoutBinding() = default;
-			DescriptorSetLayoutBinding(DescriptorType type, u32 binding_slot, u32 num_descs, ShaderVisibilityFlag shader_visibility_flags) :
+			DescriptorSetLayoutBinding(DescriptorType type, TextureViewType texture_view_type, u32 binding_slot, u32 num_descs, ShaderVisibilityFlag shader_visibility_flags) :
 				type(type),
+				texture_view_type(texture_view_type),
 				binding_slot(binding_slot),
 				num_descs(num_descs),
 				shader_visibility_flags(shader_visibility_flags) {}
+
+			static DescriptorSetLayoutBinding uniform_buffer_view(u32 binding_slot, u32 num_descs, ShaderVisibilityFlag shader_visibility_flags)
+			{
+				DescriptorSetLayoutBinding r;
+				r.binding_slot = binding_slot;
+				r.num_descs = num_descs;
+				r.type = DescriptorType::uniform_buffer_view;
+				r.texture_view_type = TextureViewType::unspecified;
+				r.shader_visibility_flags = shader_visibility_flags;
+				return r;
+			}
+			static DescriptorSetLayoutBinding read_buffer_view(u32 binding_slot, u32 num_descs, ShaderVisibilityFlag shader_visibility_flags)
+			{
+				DescriptorSetLayoutBinding r;
+				r.binding_slot = binding_slot;
+				r.num_descs = num_descs;
+				r.type = DescriptorType::read_buffer_view;
+				r.texture_view_type = TextureViewType::unspecified;
+				r.shader_visibility_flags = shader_visibility_flags;
+				return r;
+			}
+			static DescriptorSetLayoutBinding read_write_buffer_view(u32 binding_slot, u32 num_descs, ShaderVisibilityFlag shader_visibility_flags)
+			{
+				DescriptorSetLayoutBinding r;
+				r.binding_slot = binding_slot;
+				r.num_descs = num_descs;
+				r.type = DescriptorType::read_write_buffer_view;
+				r.texture_view_type = TextureViewType::unspecified;
+				r.shader_visibility_flags = shader_visibility_flags;
+				return r;
+			}
+			static DescriptorSetLayoutBinding read_texture_view(TextureViewType texture_view_type, u32 binding_slot, u32 num_descs, ShaderVisibilityFlag shader_visibility_flags)
+			{
+				DescriptorSetLayoutBinding r;
+				r.binding_slot = binding_slot;
+				r.num_descs = num_descs;
+				r.type = DescriptorType::read_texture_view;
+				r.texture_view_type = texture_view_type;
+				r.shader_visibility_flags = shader_visibility_flags;
+				return r;
+			}
+			static DescriptorSetLayoutBinding read_write_texture_view(TextureViewType texture_view_type, u32 binding_slot, u32 num_descs, ShaderVisibilityFlag shader_visibility_flags)
+			{
+				DescriptorSetLayoutBinding r;
+				r.binding_slot = binding_slot;
+				r.num_descs = num_descs;
+				r.type = DescriptorType::read_write_texture_view;
+				r.texture_view_type = texture_view_type;
+				r.shader_visibility_flags = shader_visibility_flags;
+				return r;
+			}
+			static DescriptorSetLayoutBinding sampler(u32 binding_slot, u32 num_descs, ShaderVisibilityFlag shader_visibility_flags)
+			{
+				DescriptorSetLayoutBinding r;
+				r.binding_slot = binding_slot;
+				r.num_descs = num_descs;
+				r.type = DescriptorType::sampler;
+				r.texture_view_type = TextureViewType::unspecified;
+				r.shader_visibility_flags = shader_visibility_flags;
+				return r;
+			}
 		};
 
 		enum class DescriptorSetLayoutFlag : u32

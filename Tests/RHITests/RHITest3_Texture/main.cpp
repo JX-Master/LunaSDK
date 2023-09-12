@@ -122,8 +122,8 @@ RV start()
 			Blob ps(ps_data.data(), ps_data.size());
 
 			luset(desc_set_layout, device->new_descriptor_set_layout(DescriptorSetLayoutDesc({
-				DescriptorSetLayoutBinding(DescriptorType::read_texture_view, 0, 1, ShaderVisibilityFlag::pixel),
-				DescriptorSetLayoutBinding(DescriptorType::sampler, 1, 1, ShaderVisibilityFlag::pixel)
+				DescriptorSetLayoutBinding::read_texture_view(TextureViewType::tex2d, 0, 1, ShaderVisibilityFlag::pixel),
+				DescriptorSetLayoutBinding::sampler(1, 1, ShaderVisibilityFlag::pixel)
 				})));
 
 			IDescriptorSetLayout* ds_layout = desc_set_layout;

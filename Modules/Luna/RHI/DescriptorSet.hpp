@@ -68,19 +68,6 @@ namespace Luna
 			}
 		};
 
-		enum class TextureViewType : u8
-		{
-			//! Use the image type as the image view type.
-			unspecified = 0,
-			tex1d,
-			tex2d,
-			tex3d,
-			texcube,
-			tex1darray,
-			tex2darray,
-			texcubearray
-		};
-
 		struct TextureViewDesc
 		{
 			ITexture* texture;
@@ -144,6 +131,30 @@ namespace Luna
 				desc.type = TextureViewType::tex2darray;
 				desc.mip_slice = mip_slice;
 				desc.mip_size = mip_size;
+				desc.array_slice = array_slice;
+				desc.array_size = array_size;
+				return desc;
+			}
+			static TextureViewDesc tex2dms(ITexture* texture, Format format = Format::unknown)
+			{
+				TextureViewDesc desc;
+				desc.texture = texture;
+				desc.format = format;
+				desc.type = TextureViewType::tex2dms;
+				desc.mip_slice = 0;
+				desc.mip_size = 1;
+				desc.array_slice = 0;
+				desc.array_size = 1;
+				return desc;
+			}
+			static TextureViewDesc tex2dmsarray(ITexture* texture, Format format = Format::unknown, u32 array_slice = 0, u32 array_size = U32_MAX)
+			{
+				TextureViewDesc desc;
+				desc.texture = texture;
+				desc.format = format;
+				desc.type = TextureViewType::tex2dmsarray;
+				desc.mip_slice = 0;
+				desc.mip_size = 1;
 				desc.array_slice = array_slice;
 				desc.array_size = array_size;
 				return desc;

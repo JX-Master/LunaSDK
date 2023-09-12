@@ -25,8 +25,8 @@ namespace Luna
         lutry
         {
             luset(m_debug_mesh_renderer_dlayout, device->new_descriptor_set_layout(DescriptorSetLayoutDesc({
-				DescriptorSetLayoutBinding(DescriptorType::uniform_buffer_view, 0, 1, ShaderVisibilityFlag::vertex),
-				DescriptorSetLayoutBinding(DescriptorType::read_buffer_view, 1, 1, ShaderVisibilityFlag::vertex) })));
+				DescriptorSetLayoutBinding::uniform_buffer_view(0, 1, ShaderVisibilityFlag::vertex),
+				DescriptorSetLayoutBinding::read_buffer_view(1, 1, ShaderVisibilityFlag::vertex) })));
 
 			auto dlayout = m_debug_mesh_renderer_dlayout.get();
 			luset(m_debug_mesh_renderer_playout, device->new_pipeline_layout(PipelineLayoutDesc({ &dlayout, 1 },

@@ -57,9 +57,11 @@ namespace Luna
 				dst.viewType = VK_IMAGE_VIEW_TYPE_1D_ARRAY;
 				break;
 			case TextureViewType::tex2d:
+			case TextureViewType::tex2dms:
 				dst.viewType = VK_IMAGE_VIEW_TYPE_2D;
 				break;
 			case TextureViewType::tex2darray:
+			case TextureViewType::tex2dmsarray:
 				dst.viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
 				break;
 			case TextureViewType::texcube:

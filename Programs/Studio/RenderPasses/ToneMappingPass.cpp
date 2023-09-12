@@ -22,7 +22,7 @@ namespace Luna
 			// Histogram Clear Pass.
 			{
 				luset(m_histogram_clear_pass_dlayout, device->new_descriptor_set_layout(DescriptorSetLayoutDesc({
-					DescriptorSetLayoutBinding(DescriptorType::read_write_buffer_view, 0, 1, ShaderVisibilityFlag::compute)
+					DescriptorSetLayoutBinding::read_write_buffer_view(0, 1, ShaderVisibilityFlag::compute)
 					})));
 				auto dlayout = m_histogram_clear_pass_dlayout.get();
 				luset(m_histogram_clear_pass_playout, device->new_pipeline_layout(PipelineLayoutDesc({ &dlayout, 1 },
@@ -38,9 +38,9 @@ namespace Luna
 			// Histogram Lum Pass.
 			{
 				luset(m_histogram_pass_dlayout, device->new_descriptor_set_layout(DescriptorSetLayoutDesc({
-					DescriptorSetLayoutBinding(DescriptorType::uniform_buffer_view, 0, 1, ShaderVisibilityFlag::compute),
-					DescriptorSetLayoutBinding(DescriptorType::read_texture_view, 1, 1, ShaderVisibilityFlag::compute),
-					DescriptorSetLayoutBinding(DescriptorType::read_write_buffer_view, 2, 1, ShaderVisibilityFlag::compute)
+					DescriptorSetLayoutBinding::uniform_buffer_view(0, 1, ShaderVisibilityFlag::compute),
+					DescriptorSetLayoutBinding::read_texture_view(TextureViewType::tex2d, 1, 1, ShaderVisibilityFlag::compute),
+					DescriptorSetLayoutBinding::read_write_buffer_view(2, 1, ShaderVisibilityFlag::compute)
 					})));
 				auto dlayout = m_histogram_pass_dlayout.get();
 				luset(m_histogram_pass_playout, device->new_pipeline_layout(PipelineLayoutDesc({ &dlayout, 1 },
@@ -56,9 +56,9 @@ namespace Luna
 			// Histogram Collect Pass.
 			{
 				luset(m_histogram_collect_pass_dlayout, device->new_descriptor_set_layout(DescriptorSetLayoutDesc({
-					DescriptorSetLayoutBinding(DescriptorType::uniform_buffer_view, 0, 1, ShaderVisibilityFlag::compute),
-					DescriptorSetLayoutBinding(DescriptorType::read_write_buffer_view, 1, 1, ShaderVisibilityFlag::compute),
-					DescriptorSetLayoutBinding(DescriptorType::read_write_texture_view, 2, 1, ShaderVisibilityFlag::compute)
+					DescriptorSetLayoutBinding::uniform_buffer_view(0, 1, ShaderVisibilityFlag::compute),
+					DescriptorSetLayoutBinding::read_write_buffer_view(1, 1, ShaderVisibilityFlag::compute),
+					DescriptorSetLayoutBinding::read_write_texture_view(TextureViewType::tex2d, 2, 1, ShaderVisibilityFlag::compute)
 					})));
 				auto dlayout = m_histogram_collect_pass_dlayout.get();
 				luset(m_histogram_collect_pass_playout, device->new_pipeline_layout(PipelineLayoutDesc({ &dlayout, 1 },
@@ -74,10 +74,10 @@ namespace Luna
 			//Tone Mapping Pass.
 			{
 				luset(m_tone_mapping_pass_dlayout, device->new_descriptor_set_layout(DescriptorSetLayoutDesc({
-					DescriptorSetLayoutBinding(DescriptorType::uniform_buffer_view, 0, 1, ShaderVisibilityFlag::compute),
-					DescriptorSetLayoutBinding(DescriptorType::read_texture_view, 1, 1, ShaderVisibilityFlag::compute),
-					DescriptorSetLayoutBinding(DescriptorType::read_texture_view, 2, 1, ShaderVisibilityFlag::compute),
-					DescriptorSetLayoutBinding(DescriptorType::read_write_texture_view, 3, 1, ShaderVisibilityFlag::compute)
+					DescriptorSetLayoutBinding::uniform_buffer_view(0, 1, ShaderVisibilityFlag::compute),
+					DescriptorSetLayoutBinding::read_texture_view(TextureViewType::tex2d, 1, 1, ShaderVisibilityFlag::compute),
+					DescriptorSetLayoutBinding::read_texture_view(TextureViewType::tex2d, 2, 1, ShaderVisibilityFlag::compute),
+					DescriptorSetLayoutBinding::read_write_texture_view(TextureViewType::tex2d, 3, 1, ShaderVisibilityFlag::compute)
 					})));
 				auto dlayout = m_tone_mapping_pass_dlayout.get();
 				luset(m_tone_mapping_pass_playout, device->new_pipeline_layout(PipelineLayoutDesc({ &dlayout, 1 },

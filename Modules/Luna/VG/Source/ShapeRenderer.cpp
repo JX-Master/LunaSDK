@@ -57,10 +57,10 @@ namespace Luna
 				}
 				{
                     DescriptorSetLayoutBinding bindings[] = {
-                        DescriptorSetLayoutBinding(DescriptorType::uniform_buffer_view, 0, 1, ShaderVisibilityFlag::vertex),
-                        DescriptorSetLayoutBinding(DescriptorType::read_buffer_view, 1, 1, ShaderVisibilityFlag::all),
-                        DescriptorSetLayoutBinding(DescriptorType::read_texture_view, 2, 1, ShaderVisibilityFlag::pixel),
-                        DescriptorSetLayoutBinding(DescriptorType::sampler, 3, 1, ShaderVisibilityFlag::pixel)
+                        DescriptorSetLayoutBinding::uniform_buffer_view(0, 1, ShaderVisibilityFlag::vertex),
+                        DescriptorSetLayoutBinding::read_buffer_view(1, 1, ShaderVisibilityFlag::all),
+                        DescriptorSetLayoutBinding::read_texture_view(TextureViewType::tex2d, 2, 1, ShaderVisibilityFlag::pixel),
+                        DescriptorSetLayoutBinding::sampler(3, 1, ShaderVisibilityFlag::pixel)
                     };
 					DescriptorSetLayoutDesc desc({bindings, 4});
 					luset(g_fill_desc_layout, dev->new_descriptor_set_layout(desc));

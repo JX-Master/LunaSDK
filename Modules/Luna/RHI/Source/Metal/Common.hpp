@@ -261,16 +261,18 @@ namespace Luna
 			default: return Format::unknown;
 			}
 		}
-		inline MTL::TextureType encode_texture_view_type(TextureViewType type, bool multisample)
+		inline MTL::TextureType encode_texture_view_type(TextureViewType type)
 		{
 			switch(type)
 			{
 				case TextureViewType::tex1d: return MTL::TextureType1D;
-				case TextureViewType::tex2d: return multisample ? MTL::TextureType2DMultisample : MTL::TextureType2D;
+				case TextureViewType::tex2d: return MTL::TextureType2D;
+				case TextureViewType::tex2dms: return MTL::TextureType2DMultisample;
 				case TextureViewType::tex3d: return MTL::TextureType3D;
 				case TextureViewType::texcube: return MTL::TextureTypeCube;
 				case TextureViewType::tex1darray: return MTL::TextureType1DArray;
-				case TextureViewType::tex2darray: return multisample ? MTL::TextureType2DMultisampleArray : MTL::TextureType2DArray;
+				case TextureViewType::tex2darray: return MTL::TextureType2DArray;
+				case TextureViewType::tex2dmsarray: return MTL::TextureType2DMultisampleArray;
 				case TextureViewType::texcubearray: return MTL::TextureTypeCubeArray;
 				default: lupanic(); return MTL::TextureType2D;
 			}

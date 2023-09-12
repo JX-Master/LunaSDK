@@ -42,6 +42,7 @@ namespace Luna
             f64 m_timestamp_frequency = 0.0;
             
             CounterSamplingSupportFlag m_counter_sampling_support_flags = CounterSamplingSupportFlag::none;
+            bool m_support_metal_3_family;
 
             RV init();
 
