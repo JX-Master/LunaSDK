@@ -16,8 +16,8 @@ Key features:
 
 Designed target platforms:
 
-* Windows (Direct3D 12/Vulkan 1.0)
-* macOS (Metal 3)
+* Windows (Direct3D 12+/Vulkan 1.0+)
+* macOS (Metal 2+)
 * Linux (Vulkan) (Not implemented yet.)
 * Android (Vulkan) (Not implemented yet.)
 * iOS (Metal) (Not implemented yet.)
@@ -90,7 +90,7 @@ The following requirements must be satisfied to run Luna SDK with Vulkan renderi
 
 The following requirements must be satisfied to run Luna SDK with Metal rendering backend:
 
-* macOS 13.0 (Ventura) and later.
+* macOS 10.15 (Catalina) and later.
 
 ## Docs
 See [Luna SDK Docs](https://www.lunasdk.org).
