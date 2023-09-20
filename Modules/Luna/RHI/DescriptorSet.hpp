@@ -8,8 +8,8 @@
 * @date 2019/7/17
 */
 #pragma once
-#include "Resource.hpp"
 #include "PipelineState.hpp"
+#include "Buffer.hpp"
 #include <Luna/Runtime/Math/Vector.hpp>
 #ifndef LUNA_RHI_API
 #define LUNA_RHI_API

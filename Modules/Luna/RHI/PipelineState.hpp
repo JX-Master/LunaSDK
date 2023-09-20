@@ -8,7 +8,7 @@
 * @date 2019/7/20
 */
 #pragma once
-#include "Resource.hpp"
+#include "Texture.hpp"
 #include "PipelineLayout.hpp"
 #include <Luna/Runtime/Span.hpp>
 #include <Luna/Runtime/Math/Vector.hpp>
@@ -27,8 +27,6 @@ namespace Luna
 			per_vertex = 1,
 			per_instance = 2
 		};
-
-		constexpr u32 APPEND_ALIGNED_ELEMENT = 0xffffffff;
 
 		//! Describes one attribute in the input layout.
 		struct InputAttributeDesc

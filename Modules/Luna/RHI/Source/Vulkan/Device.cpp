@@ -259,7 +259,7 @@ namespace Luna
 			lucatchret;
 			return ret;
 		}
-		bool Device::check_device_feature(DeviceFeature feature)
+		bool Device::check_feature_support(DeviceFeature feature)
 		{
 			switch (feature)
 			{

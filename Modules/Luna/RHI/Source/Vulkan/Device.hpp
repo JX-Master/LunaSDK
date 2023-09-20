@@ -63,7 +63,7 @@ namespace Luna
 			R<VkBuffer> create_vk_buffer(const BufferDesc& desc);
 			R<VkImage> create_vk_image(const TextureDesc& desc);
 
-			virtual bool check_device_feature(DeviceFeature feature) override;
+			virtual bool check_feature_support(DeviceFeature feature) override;
 			virtual usize get_uniform_buffer_data_alignment() override
 			{
 				return m_physical_device_properties.limits.minUniformBufferOffsetAlignment;

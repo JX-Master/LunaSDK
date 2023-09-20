@@ -12,7 +12,7 @@
 
 #ifdef LUNA_PLATFORM_WINDOWS
 
-#include "../../Resource.hpp"
+#include "../../Texture.hpp"
 
 #include <wrl/client.h>
 #include <dxgi.h>

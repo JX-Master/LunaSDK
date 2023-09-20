@@ -10,7 +10,6 @@
 */
 #pragma once
 #include "Device.hpp"
-#include "SwapChain.hpp"
 #ifndef LUNA_RHI_API
 #define LUNA_RHI_API
 #endif
