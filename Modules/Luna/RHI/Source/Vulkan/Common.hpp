@@ -356,7 +356,8 @@ namespace Luna
 			if (test_flags(state, BufferStateFlag::shader_read_vs) ||
 				test_flags(state, BufferStateFlag::shader_read_ps) ||
 				test_flags(state, BufferStateFlag::shader_read_cs)) f |= VK_ACCESS_SHADER_READ_BIT;
-			if (test_flags(state, BufferStateFlag::shader_write_cs)) f |= VK_ACCESS_SHADER_WRITE_BIT;
+			if (test_flags(state, BufferStateFlag::shader_write_ps) ||
+				test_flags(state, BufferStateFlag::shader_write_cs)) f |= VK_ACCESS_SHADER_WRITE_BIT;
 			if (test_flags(state, BufferStateFlag::copy_dest)) f |= VK_ACCESS_TRANSFER_WRITE_BIT;
 			if (test_flags(state, BufferStateFlag::copy_source)) f |= VK_ACCESS_TRANSFER_READ_BIT;
 			return f;
@@ -367,7 +368,8 @@ namespace Luna
 			if (test_flags(state, TextureStateFlag::shader_read_vs) ||
 				test_flags(state, TextureStateFlag::shader_read_ps) ||
 				test_flags(state, TextureStateFlag::shader_read_cs)) f |= VK_ACCESS_SHADER_READ_BIT;
-			if (test_flags(state, TextureStateFlag::shader_write_cs)) f |= VK_ACCESS_SHADER_WRITE_BIT;
+			if (test_flags(state, TextureStateFlag::shader_write_ps) ||
+				test_flags(state, TextureStateFlag::shader_write_cs)) f |= VK_ACCESS_SHADER_WRITE_BIT;
 			if (test_flags(state, TextureStateFlag::color_attachment_read)) f |= VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
 			if (test_flags(state, TextureStateFlag::color_attachment_write) ||
 				test_flags(state, TextureStateFlag::resolve_attachment)) f |= VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
@@ -405,7 +407,8 @@ namespace Luna
 			if ((test_flags(state, TextureStateFlag::shader_read_vs) ||
 				 test_flags(state, TextureStateFlag::shader_read_ps) ||
 				 test_flags(state, TextureStateFlag::shader_read_cs)) &&
-				(!test_flags(state, TextureStateFlag::shader_write_cs))
+				(!test_flags(state, TextureStateFlag::shader_write_ps) &&
+				 !test_flags(state, TextureStateFlag::shader_write_cs))
 				)
 			{
 				return VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -435,7 +438,8 @@ namespace Luna
 					flags |= VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
 				}
 				if (test_flags(state, BufferStateFlag::uniform_buffer_ps) ||
-					test_flags(state, BufferStateFlag::shader_read_ps))
+					test_flags(state, BufferStateFlag::shader_read_ps) ||
+					test_flags(state, BufferStateFlag::shader_write_ps))
 				{
 					flags |= VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
 				}
@@ -460,7 +464,8 @@ namespace Luna
 					flags |= VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
 				}
 				if (test_flags(state, BufferStateFlag::uniform_buffer_ps) ||
-					test_flags(state, BufferStateFlag::shader_read_ps))
+					test_flags(state, BufferStateFlag::shader_read_ps) ||
+					test_flags(state, BufferStateFlag::shader_write_ps))
 				{
 					flags |= VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
 				}
@@ -484,7 +489,8 @@ namespace Luna
 					flags |= VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
 				}
 				if (test_flags(state, BufferStateFlag::uniform_buffer_ps) ||
-					test_flags(state, BufferStateFlag::shader_read_ps))
+					test_flags(state, BufferStateFlag::shader_read_ps) ||
+					test_flags(state, BufferStateFlag::shader_write_ps))
 				{
 					flags |= VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
 				}
@@ -523,7 +529,8 @@ namespace Luna
 				{
 					flags |= VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
 				}
-				if (test_flags(state, TextureStateFlag::shader_read_ps))
+				if (test_flags(state, TextureStateFlag::shader_read_ps) ||
+					test_flags(state, TextureStateFlag::shader_write_ps))
 				{
 					flags |= VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
 				}
@@ -551,7 +558,8 @@ namespace Luna
 				{
 					flags |= VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
 				}
-				if (test_flags(state, TextureStateFlag::shader_read_ps))
+				if (test_flags(state, TextureStateFlag::shader_read_ps) ||
+					test_flags(state, TextureStateFlag::shader_write_ps))
 				{
 					flags |= VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
 				}
@@ -578,7 +586,8 @@ namespace Luna
 				{
 					flags |= VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
 				}
-				if (test_flags(state, TextureStateFlag::shader_read_ps))
+				if (test_flags(state, TextureStateFlag::shader_read_ps) ||
+					test_flags(state, TextureStateFlag::shader_write_ps))
 				{
 					flags |= VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
 				}

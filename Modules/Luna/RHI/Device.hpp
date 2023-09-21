@@ -28,6 +28,8 @@ namespace Luna
 		{
 			//! `DescriptorSetLayoutFlag::variable_descriptors` is allowed when creating descriptor set layout.
 			unbound_descriptor_array,
+			//! Allow pixel shaders to write and perform atomic operations on buffer and texture data.
+			pixel_shader_write,
 		};
 
 		enum class CommandQueueType : u8

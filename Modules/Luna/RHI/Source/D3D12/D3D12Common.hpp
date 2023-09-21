@@ -39,11 +39,14 @@ namespace Luna
 				test_flags(s, BufferStateFlag::uniform_buffer_vs) ||
 				test_flags(s, BufferStateFlag::uniform_buffer_ps))  r |= D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
 			if (test_flags(s, BufferStateFlag::index_buffer)) r |= D3D12_RESOURCE_STATE_INDEX_BUFFER;
-			if (test_flags(s, BufferStateFlag::shader_write_cs)) r |= D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-			if (test_flags(s, BufferStateFlag::shader_read_cs) &&
-				!test_flags(s, BufferStateFlag::shader_write_cs)) r |= D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
-			if (test_flags(s, BufferStateFlag::shader_read_vs)) r |= D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
-			if (test_flags(s, BufferStateFlag::shader_read_ps)) r |= D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+			if (test_flags(s, BufferStateFlag::shader_write_ps) ||
+				test_flags(s, BufferStateFlag::shader_write_cs)) r |= D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+			if((r & D3D12_RESOURCE_STATE_UNORDERED_ACCESS) == 0)
+			{
+				if (test_flags(s, BufferStateFlag::shader_read_vs) ||
+					test_flags(s, BufferStateFlag::shader_read_cs)) r |= D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+				if (test_flags(s, BufferStateFlag::shader_read_ps)) r |= D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+			}
 			if (test_flags(s, BufferStateFlag::copy_dest)) r |= D3D12_RESOURCE_STATE_COPY_DEST;
 			if (test_flags(s, BufferStateFlag::copy_source)) r |= D3D12_RESOURCE_STATE_COPY_SOURCE;
 			return r;
@@ -51,17 +54,20 @@ namespace Luna
 		inline D3D12_RESOURCE_STATES encode_texture_state(TextureStateFlag s)
 		{
 			D3D12_RESOURCE_STATES r = D3D12_RESOURCE_STATE_COMMON;
-			if (test_flags(s, TextureStateFlag::shader_read_vs)) r |= D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
-			if (test_flags(s, TextureStateFlag::shader_read_ps)) r |= D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
 			if (test_flags(s, TextureStateFlag::color_attachment_read) ||
 				test_flags(s, TextureStateFlag::color_attachment_write)) r |= D3D12_RESOURCE_STATE_RENDER_TARGET;
 			if (test_flags(s, TextureStateFlag::depth_stencil_attachment_write)) r |= D3D12_RESOURCE_STATE_DEPTH_WRITE;
 			if (test_flags(s, TextureStateFlag::depth_stencil_attachment_read) &&
 				!test_flags(s, TextureStateFlag::depth_stencil_attachment_write)) r |= D3D12_RESOURCE_STATE_DEPTH_READ;
 			if (test_flags(s, TextureStateFlag::resolve_attachment)) r |= D3D12_RESOURCE_STATE_RESOLVE_DEST;
-			if (test_flags(s, TextureStateFlag::shader_write_cs)) r |= D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-			if (test_flags(s, TextureStateFlag::shader_read_cs) &&
-				!test_flags(s, TextureStateFlag::shader_write_cs)) r |= D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+			if (test_flags(s, TextureStateFlag::shader_write_ps) ||
+				test_flags(s, TextureStateFlag::shader_write_cs)) r |= D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+			if((r & D3D12_RESOURCE_STATE_UNORDERED_ACCESS) == 0)
+			{
+				if (test_flags(s, TextureStateFlag::shader_read_vs) ||
+					test_flags(s, TextureStateFlag::shader_read_cs)) r |= D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+				if (test_flags(s, TextureStateFlag::shader_read_ps)) r |= D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+			}
 			if (test_flags(s, TextureStateFlag::copy_dest)) r |= D3D12_RESOURCE_STATE_COPY_DEST;
 			if (test_flags(s, TextureStateFlag::copy_source)) r |= D3D12_RESOURCE_STATE_COPY_SOURCE;
 			if (test_flags(s, TextureStateFlag::present)) r |= D3D12_RESOURCE_STATE_PRESENT;
