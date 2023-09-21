@@ -119,6 +119,7 @@ namespace Luna
             switch (feature)
             {
             case DeviceFeature::unbound_descriptor_array: return m_support_metal_3_family;
+            case DeviceFeature::pixel_shader_write: return true;
             default: return false;
             }
         }

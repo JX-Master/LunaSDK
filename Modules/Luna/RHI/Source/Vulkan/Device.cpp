@@ -39,6 +39,8 @@ namespace Luna
 			m_desc_pool_mtx = new_mutex();
 			m_physical_device = physical_device;
 			vkGetPhysicalDeviceProperties(physical_device, &m_physical_device_properties);
+			// Check device features.
+			vkGetPhysicalDeviceFeatures(physical_device, &m_physical_device_features);
 			// Create queues for every valid queue family.
 			Vector<VkDeviceQueueCreateInfo> queue_create_infos;
 			for (usize i = 0; i < queue_families.size(); ++i)
@@ -55,10 +57,6 @@ namespace Luna
 				create_info.flags = 0;
 				queue_create_infos.push_back(create_info);
 			}
-			// Check device features.
-			//vkGetPhysicalDeviceMemoryProperties(physical_device, &m_memory_properties);
-			VkPhysicalDeviceFeatures device_features{};
-			vkGetPhysicalDeviceFeatures(physical_device, &device_features);
 			
 			// Create device.
 			VkDeviceCreateInfo create_info{};
@@ -66,7 +64,7 @@ namespace Luna
 			create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 			create_info.pQueueCreateInfos = queue_create_infos.data();
 			create_info.queueCreateInfoCount = (u32)queue_create_infos.size();
-			create_info.pEnabledFeatures = &device_features;	// Enable all supported features.
+			create_info.pEnabledFeatures = &m_physical_device_features;	// Enable all supported features.
 			create_info.enabledLayerCount = g_enabled_layers.size();	// Enable all layers specified when creating VkInstance.
 			create_info.ppEnabledLayerNames = g_enabled_layers.data();
 			create_info.enabledExtensionCount = (u32)enabled_extensions.size();
@@ -263,8 +261,8 @@ namespace Luna
 		{
 			switch (feature)
 			{
-			case DeviceFeature::unbound_descriptor_array:
-				return false;
+			case DeviceFeature::unbound_descriptor_array: return false;
+			case DeviceFeature::pixel_shader_write: return m_physical_device_features.fragmentStoresAndAtomics == VK_TRUE;
 			}
 			return false;
 		}

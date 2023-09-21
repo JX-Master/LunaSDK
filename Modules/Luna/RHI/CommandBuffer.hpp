@@ -70,16 +70,18 @@ namespace Luna
 			uniform_buffer_ps = 0x20,
 			//! Used as a read-only resource for pixel shader.
 			shader_read_ps = 0x40,
+			//！Used as a write-only resource for pixel shader. Enabled only if pixel shader write feature is supported.
+			shader_write_ps = 0x80,
 			//! Used as a uniform buffer for compute shader.
-			uniform_buffer_cs = 0x80,
+			uniform_buffer_cs = 0x0100,
 			//! Used as a read-only resource for compute shader.
-			shader_read_cs = 0x0100,
+			shader_read_cs = 0x0200,
 			//! Used as a write-only resource for compute shader.
-			shader_write_cs = 0x0200,
+			shader_write_cs = 0x0400,
 			//! Used as a copy destination.
-			copy_dest = 0x0400,
+			copy_dest = 0x0800,
 			//! Used as a copy source.
-			copy_source = 0x0800,
+			copy_source = 0x1000,
 			//! If this is specified as the before state, the system determines the before state automatically using the last state 
 			//! specified in the same command buffer for the resource. If this is the first time the resource is used in the current
 			//! command buffer, the system loads the resource's global state automatically.
@@ -88,7 +90,8 @@ namespace Luna
 			//! state.
 			automatic = 0x80000000,
 
-			shader_read_write_cs = shader_read_cs | shader_write_cs
+			shader_read_write_ps = shader_read_ps | shader_write_ps,
+			shader_read_write_cs = shader_read_cs | shader_write_cs,
 		};
 		enum class TextureStateFlag : u32
 		{
@@ -97,29 +100,31 @@ namespace Luna
 			//! before it can be used.
 			none = 0x00,
 			//! Used as a sampled texture for vertex shader.
-			shader_read_vs = 0x10,
-			//! Used as a shader resource for pixel shader.
-			shader_read_ps = 0x20,
+			shader_read_vs = 0x01,
+			//! Used as a read-only resource for pixel shader.
+			shader_read_ps = 0x02,
+			//！Used as a write-only resource for pixel shader. Enabled only if pixel shader write feature is supported.
+			shader_write_ps = 0x04,
 			//! Used as a color attachment with read access.
-			color_attachment_read = 0x40,
+			color_attachment_read = 0x08,
 			//! Used as a color attachment with write access.
-			color_attachment_write = 0x80,
+			color_attachment_write = 0x10,
 			//! Used as a depth stencil attachment with read access.
-			depth_stencil_attachment_read = 0x0100,
+			depth_stencil_attachment_read = 0x20,
 			//! Used as a depth stencil attachment with write access.
-			depth_stencil_attachment_write = 0x0200,
+			depth_stencil_attachment_write = 0x40,
 			//! Used as a resolve attachment with write access.
-			resolve_attachment = 0x0400,
+			resolve_attachment = 0x80,
 			//! Used as a shader resource for compute shader.
-			shader_read_cs = 0x0800,
+			shader_read_cs = 0x0100,
 			//! Used as a read-only unordered access for compute shader.
-			shader_write_cs = 0x1000,
+			shader_write_cs = 0x0200,
 			//! Used as a copy destination.
-			copy_dest = 0x2000,
+			copy_dest = 0x0400,
 			//! Used as a copy source.
-			copy_source = 0x4000,
+			copy_source = 0x0800,
 			//! Used for swap chain presentation.
-			present = 0x8000,
+			present = 0x1000,
 			//! If this is specified as the before state, the system determines the before state automatically using the last state 
 			//! specified in the same command buffer for the resource. If this is the first time the resource is used in the current
 			//! command buffer, the system loads the resource's global state automatically.
@@ -127,7 +132,8 @@ namespace Luna
 			//! This state cannot be set as the after state of the resource. This state cannot be set along with other state flags.
 			automatic = 0x80000000,
 
-			shader_read_write_cs = shader_read_cs | shader_write_cs
+			shader_read_write_ps = shader_read_ps | shader_write_ps,
+			shader_read_write_cs = shader_read_cs | shader_write_cs,
 		};
 		constexpr SubresourceIndex TEXTURE_BARRIER_ALL_SUBRESOURCES = {U32_MAX, U32_MAX};
 		struct TextureBarrier

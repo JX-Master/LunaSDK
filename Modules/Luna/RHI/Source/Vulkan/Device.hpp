@@ -41,6 +41,7 @@ namespace Luna
 
 			// Features.
 			//VkPhysicalDeviceMemoryProperties m_memory_properties;
+			VkPhysicalDeviceFeatures m_physical_device_features;
 			VkPhysicalDeviceProperties m_physical_device_properties;
 
 			// Descriptor Pools.

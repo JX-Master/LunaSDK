@@ -245,6 +245,7 @@ namespace Luna
 			switch (feature)
 			{
 			case DeviceFeature::unbound_descriptor_array: return true;
+			case DeviceFeature::pixel_shader_write: return true;
 			}
 			return false;
 		}
