@@ -155,6 +155,14 @@ namespace Luna
                     case CullMode::front: m_cull_mode = MTL::CullModeFront; break;
                     case CullMode::back: m_cull_mode = MTL::CullModeBack; break;
                 }
+                if(desc.rasterizer_state.depth_clip_enable)
+                {
+                    m_depth_clip_mode = MTL::DepthClipModeClip;
+                }
+                else
+                {
+                    m_depth_clip_mode = MTL::DepthClipModeClamp;
+                }
                 m_primitive_type = encode_primitive_type(desc.primitive_topology);
                 m_front_counter_clockwise = desc.rasterizer_state.front_counter_clockwise;
                 // Depth stencil state.

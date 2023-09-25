@@ -163,7 +163,7 @@ namespace Luna
 				case CullMode::back: rasterizer.cullMode = VK_CULL_MODE_BACK_BIT; break;
 				}
 				rasterizer.frontFace = desc.rasterizer_state.front_counter_clockwise ? VK_FRONT_FACE_COUNTER_CLOCKWISE : VK_FRONT_FACE_CLOCKWISE;
-				rasterizer.depthBiasEnable = desc.rasterizer_state.depth_bias == 0 ? VK_FALSE : VK_TRUE;
+				rasterizer.depthBiasEnable = (desc.rasterizer_state.depth_bias == 0 && desc.rasterizer_state.slope_scaled_depth_bias == 0.0f) ? VK_FALSE : VK_TRUE;
 				rasterizer.depthBiasConstantFactor = (float)desc.rasterizer_state.depth_bias;
 				rasterizer.depthBiasClamp = desc.rasterizer_state.depth_bias_clamp;
 				rasterizer.depthBiasSlopeFactor = desc.rasterizer_state.slope_scaled_depth_bias;

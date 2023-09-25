@@ -205,6 +205,7 @@ namespace Luna
             m_render->setDepthStencilState(p->m_dss.get());
             m_render->setFrontFacingWinding(p->m_front_counter_clockwise ? MTL::WindingCounterClockwise : MTL::WindingClockwise);
             m_render->setDepthBias(p->m_depth_bias, p->m_slope_scaled_depth_bias, p->m_depth_bias_clamp);
+            m_render->setDepthClipMode(p->m_depth_clip_mode);
             m_primitive_type = p->m_primitive_type;
         }
         void CommandBuffer::set_vertex_buffers(u32 start_slot, Span<const VertexBufferView> views)
