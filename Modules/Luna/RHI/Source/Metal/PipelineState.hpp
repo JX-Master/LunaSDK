@@ -28,6 +28,7 @@ namespace Luna
             MTL::TriangleFillMode m_fill_mode = MTL::TriangleFillModeFill;
             MTL::CullMode m_cull_mode = MTL::CullModeNone;
             MTL::PrimitiveType m_primitive_type = MTL::PrimitiveTypeTriangle;
+            MTL::DepthClipMode m_depth_clip_mode = MTL::DepthClipModeClip;
             bool m_front_counter_clockwise = false;
 
             RV init(const GraphicsPipelineStateDesc& desc);

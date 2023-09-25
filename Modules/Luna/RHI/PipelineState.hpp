@@ -206,9 +206,6 @@ namespace Luna
 			CullMode cull_mode;
 			bool front_counter_clockwise;
 			bool depth_clip_enable;
-			bool multisample_enable;
-			bool antialiased_line_enable;
-			bool conservative_raster_enabled;
 
 			RasterizerDesc(
 				FillMode fill_mode = FillMode::solid,
@@ -217,10 +214,7 @@ namespace Luna
                 f32 slope_scaled_depth_bias = 0.0f,
                 f32 depth_bias_clamp = 0.0f,
 				bool front_counter_clockwise = false,
-				bool depth_clip_enable = true,
-				bool multisample_enable = false,
-				bool antialiased_line_enable = false,
-				bool conservative_raster_enabled = false
+				bool depth_clip_enable = true
 			) :
 			 	depth_bias(depth_bias),
                 slope_scaled_depth_bias(slope_scaled_depth_bias),
@@ -228,10 +222,7 @@ namespace Luna
 				fill_mode(fill_mode),
 				cull_mode(cull_mode),
 				front_counter_clockwise(front_counter_clockwise),
-				depth_clip_enable(depth_clip_enable),
-				multisample_enable(multisample_enable),
-				antialiased_line_enable(antialiased_line_enable),
-				conservative_raster_enabled(conservative_raster_enabled) {}
+				depth_clip_enable(depth_clip_enable) {}
 		};
 
 		enum class StencilOp : u8
