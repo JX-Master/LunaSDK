@@ -44,7 +44,7 @@ RV recreate_window_resources(u32 width, u32 height)
 			}
 			else
 			{
-				g_swap_chain->reset({width, height, 2, Format::bgra8_unorm, true});
+				luexp(g_swap_chain->reset({width, height, 2, Format::bgra8_unorm, true}));
 			}
 		}
 	}
@@ -95,25 +95,31 @@ void init()
 	g_shape_atlas = VG::new_shape_atlas();
 
 	// Window.
-	VG::ShapeBuilder builder;
-	builder.move_to(10.0f, 50.0f);
-	builder.line_to(40.0f, 50.0f);
-	builder.circle_to(10.0f, 90.0f, 0.0f);
-	builder.line_to(50.0f, 10.0f);
-	builder.circle_to(10.0f, 0.0f, -90.0f);
-	builder.line_to(10.0f, 0.0f);
-	builder.circle_to(10.0f, -90.0f, -180.0f);
-	builder.line_to(0.0f, 40.0f);
-	builder.circle_to(10.0f, 180.0f, 90.0f);
+	Vector<f32> points;
+	{
+		using namespace VG::ShapeBuilder;
+		move_to(points, 10.0f, 50.0f);
+		line_to(points, 40.0f, 50.0f);
+		circle_to(points, 10.0f, 90.0f, 0.0f);
+		line_to(points, 50.0f, 10.0f);
+		circle_to(points, 10.0f, 0.0f, -90.0f);
+		line_to(points, 10.0f, 0.0f);
+		circle_to(points, 10.0f, -90.0f, -180.0f);
+		line_to(points, 0.0f, 40.0f);
+		circle_to(points, 10.0f, 180.0f, 90.0f);
+	}
 
 	g_shape_atlas = VG::new_shape_atlas();
     RectF rect = RectF(0.0f, 0.0f, 50.0f, 50.0f);
-	g_shape_atlas->add_shape({ builder.points.data(), builder.points.size() }, &rect);
+	g_shape_atlas->add_shape({ points.data(), points.size() }, &rect);
 
-	builder.points.clear();
-	builder.move_to(10.0f, 20.0f);
-	builder.circle_to(10.0f, 90.0f, -270.0f);
-	g_shape_atlas->add_shape({ builder.points.data(), builder.points.size() }, nullptr);
+	points.clear();
+	{
+		using namespace VG::ShapeBuilder;
+		move_to(points, 10.0f, 20.0f);
+		circle_to(points, 10.0f, 90.0f, -270.0f);
+	}
+	g_shape_atlas->add_shape({ points.data(), points.size() }, nullptr);
 }
 
 void run()
