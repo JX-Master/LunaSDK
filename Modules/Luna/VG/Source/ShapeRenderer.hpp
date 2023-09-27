@@ -8,7 +8,7 @@
 * @date 2022/4/25
 */
 #pragma once
-#include "../VG.hpp"
+#include "../ShapeRenderer.hpp"
 #include <Luna/Runtime/TSAssert.hpp>
 
 namespace Luna
@@ -56,14 +56,9 @@ namespace Luna
 
 			virtual RV render(
 				RHI::ICommandBuffer* cmdbuf,
-				RHI::IBuffer* shape_buffer,
-				u32 num_points,
-				RHI::IBuffer* vertex_buffer,
-				u32 num_vertices,
-				RHI::IBuffer* index_buffer,
-				u32 num_indices,
-				const ShapeDrawCall* draw_calls,
-				u32 num_draw_calls
+                RHI::IBuffer* vertex_buffer,
+                RHI::IBuffer* index_buffer,
+				Span<const ShapeDrawCall> draw_calls
 			) override;
 		};
 	}

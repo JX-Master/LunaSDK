@@ -9,7 +9,11 @@
 */
 #include <Luna/Runtime/Runtime.hpp>
 #include <Luna/Runtime/Module.hpp>
-#include <Luna/VG/VG.hpp>
+#include <Luna/Window/Window.hpp>
+#include <Luna/RHI/SwapChain.hpp>
+#include <Luna/VG/TextArranger.hpp>
+#include <Luna/VG/ShapeRenderer.hpp>
+#include <Luna/RHI/RHI.hpp>
 #include <Luna/Font/Font.hpp>
 #include <Luna/Runtime/Math/Transform.hpp>
 #include <Luna/Runtime/Math/Color.hpp>
@@ -177,7 +181,7 @@ void run()
 
 		if (!g_text_arrange_result.get().lines.empty())
 		{
-			g_text_arranger->commit(g_text_arrange_result.get(), g_shape_draw_list);
+			lupanic_if_failed(g_text_arranger->commit(g_text_arrange_result.get(), g_shape_draw_list));
 		}
 
 		lupanic_if_failed(g_shape_draw_list->close());
@@ -190,10 +194,7 @@ void run()
 		auto dcs = g_shape_draw_list->get_draw_calls();
 
 		g_shape_renderer->set_render_target(g_swap_chain->get_current_back_buffer().get());
-		g_shape_renderer->render(g_command_buffer, g_font_atlas->get_shape_atlas()->get_shape_resource().get(), g_font_atlas->get_shape_atlas()->get_shape_resource_size(),
-			g_shape_draw_list->get_vertex_buffer(), g_shape_draw_list->get_vertex_buffer_size(),
-			g_shape_draw_list->get_index_buffer(), g_shape_draw_list->get_index_buffer_size(),
-			dcs.data(), (u32)dcs.size());
+		g_shape_renderer->render(g_command_buffer, g_shape_draw_list->get_vertex_buffer(), g_shape_draw_list->get_index_buffer(),  { dcs.data(), (u32)dcs.size() });
 
 		g_command_buffer->resource_barrier({},
 			{

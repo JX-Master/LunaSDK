@@ -9,7 +9,11 @@
 */
 #include <Luna/Runtime/Runtime.hpp>
 #include <Luna/Runtime/Module.hpp>
-#include <Luna/VG/VG.hpp>
+#include <Luna/Window/Window.hpp>
+#include <Luna/RHI/SwapChain.hpp>
+#include <Luna/VG/ShapeRenderer.hpp>
+#include <Luna/RHI/RHI.hpp>
+#include <Luna/VG/Shapes.hpp>
 #include <Luna/Runtime/Math/Transform.hpp>
 #include <Luna/Runtime/Math/Color.hpp>
 #include <Luna/Runtime/Time.hpp>
@@ -24,7 +28,6 @@ namespace Luna
 	Ref<RHI::ICommandBuffer> g_command_buffer;
 	u32 g_command_queue;
 
-	Ref<VG::IShapeAtlas> g_shape_atlas;
 	Ref<VG::IShapeDrawList> g_shape_draw_list;
 	Ref<VG::IShapeRenderer> g_shape_renderer;
 }
@@ -92,24 +95,8 @@ void init()
 	lupanic_if_failed(recreate_window_resources(sz.x, sz.y));
 	g_shape_renderer = VG::new_fill_shape_renderer(g_swap_chain->get_current_back_buffer().get()).get();
 	g_command_buffer = dev->new_command_buffer(g_command_queue).get();
-	g_shape_atlas = VG::new_shape_atlas();
 
-	// Window.
-	Vector<f32> points;
-	{
-		using namespace VG::ShapeBuilder;
-		move_to(points, 10.0f, 50.0f);
-		line_to(points, 40.0f, 50.0f);
-		circle_to(points, 10.0f, 90.0f, 0.0f);
-		line_to(points, 50.0f, 10.0f);
-		circle_to(points, 10.0f, 0.0f, -90.0f);
-		line_to(points, 10.0f, 0.0f);
-		circle_to(points, 10.0f, -90.0f, -180.0f);
-		line_to(points, 0.0f, 40.0f);
-		circle_to(points, 10.0f, 180.0f, 90.0f);
-	}
-
-	g_shape_atlas = VG::new_shape_atlas();
+	/*g_shape_atlas = VG::new_shape_atlas();
     RectF rect = RectF(0.0f, 0.0f, 50.0f, 50.0f);
 	g_shape_atlas->add_shape({ points.data(), points.size() }, &rect);
 
@@ -119,7 +106,7 @@ void init()
 		move_to(points, 10.0f, 20.0f);
 		circle_to(points, 10.0f, 90.0f, -270.0f);
 	}
-	g_shape_atlas->add_shape({ points.data(), points.size() }, nullptr);
+	g_shape_atlas->add_shape({ points.data(), points.size() }, nullptr);*/
 }
 
 void run()
@@ -135,16 +122,41 @@ void run()
 			sleep(100);
 			continue;
 		}
-		g_shape_draw_list->set_shape_atlas(g_shape_atlas);
-		usize offset, size;
-		RectF rect;
 
-		g_shape_atlas->get_shape(0, &offset, &size, &rect);
-		g_shape_draw_list->draw_shape(offset, size, Float2(100.0f, 100.0f), Float2U(500.0f, 500.0f), Float2U(rect.offset_x, rect.offset_y),
+		Vector<f32> points;
+		{
+			using namespace VG::ShapeBuilder;
+			move_to(points, 10.0f, 50.0f);
+			line_to(points, 40.0f, 50.0f);
+			circle_to(points, 10.0f, 90.0f, 0.0f);
+			line_to(points, 50.0f, 10.0f);
+			circle_to(points, 10.0f, 0.0f, -90.0f);
+			line_to(points, 10.0f, 0.0f);
+			circle_to(points, 10.0f, -90.0f, -180.0f);
+			line_to(points, 0.0f, 40.0f);
+			circle_to(points, 10.0f, 180.0f, 90.0f);
+		}
+		u32 offset1, size1;
+		offset1 = g_shape_draw_list->add_shape_points({ points.data(), points.size() });
+		size1 = (u32)points.size();
+		points.clear();
+		{
+			using namespace VG::ShapeBuilder;
+			move_to(points, 10.0f, 20.0f);
+			circle_to(points, 10.0f, 90.0f, -270.0f);
+		}
+		u32 offset2, size2;
+		offset2 = g_shape_draw_list->add_shape_points({ points.data(), points.size() });
+		size2 = (u32)points.size();
+
+		RectF rect = RectF(0.0f, 0.0f, 50.0f, 50.0f);
+
+		g_shape_draw_list->draw_shape(offset1, size1, Float2(100.0f, 100.0f), Float2U(500.0f, 500.0f), Float2U(rect.offset_x, rect.offset_y),
 			Float2U(rect.offset_x + rect.width, rect.offset_y + rect.height));
 
-		g_shape_atlas->get_shape(1, &offset, &size, &rect);
-		g_shape_draw_list->draw_shape(offset, size, Float2(550.0f, 100.0f), Float2U(560.0f, 110.0f), Float2U(rect.offset_x, rect.offset_y),
+		rect = RectF(0.0f, 0.0f, 20.0f, 20.0f);
+
+		g_shape_draw_list->draw_shape(offset2, size2, Float2(550.0f, 100.0f), Float2U(560.0f, 110.0f), Float2U(rect.offset_x, rect.offset_y),
 			Float2U(rect.offset_x + rect.width, rect.offset_y + rect.height));
 
 		lupanic_if_failed(g_shape_draw_list->close());
@@ -158,10 +170,7 @@ void run()
 		auto dcs = g_shape_draw_list->get_draw_calls();
 
 		g_shape_renderer->set_render_target(g_swap_chain->get_current_back_buffer().get());
-		g_shape_renderer->render(g_command_buffer, g_shape_atlas->get_shape_resource().get(), g_shape_atlas->get_shape_resource_size(),
-			g_shape_draw_list->get_vertex_buffer(), g_shape_draw_list->get_vertex_buffer_size(),
-			g_shape_draw_list->get_index_buffer(), g_shape_draw_list->get_index_buffer_size(),
-			dcs.data(), (u32)dcs.size());
+		g_shape_renderer->render(g_command_buffer, g_shape_draw_list->get_vertex_buffer(), g_shape_draw_list->get_index_buffer(),  { dcs.data(), (u32)dcs.size() });
 
 		g_command_buffer->resource_barrier({},
 			{
@@ -183,7 +192,6 @@ void shutdown()
 
 	g_swap_chain = nullptr;
 	g_command_buffer = nullptr;
-	g_shape_atlas = nullptr;
 	g_shape_draw_list = nullptr;
 	g_shape_renderer = nullptr;
 }

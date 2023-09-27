@@ -8,7 +8,7 @@
 * @date 2019/9/20
 */
 #pragma once
-#include "Resource.hpp"
+#include "Texture.hpp"
 #include <Luna/Runtime/Waitable.hpp>
 #include <Luna/Window/Window.hpp>
 
