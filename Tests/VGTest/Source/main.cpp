@@ -9,12 +9,21 @@
 */
 #include <Luna/Runtime/Runtime.hpp>
 #include <Luna/Runtime/Module.hpp>
-#include <Luna/VG/VG.hpp>
+#include <Luna/Window/Window.hpp>
+#include <Luna/RHI/SwapChain.hpp>
+#include <Luna/VG/ShapeRenderer.hpp>
+#include <Luna/RHI/RHI.hpp>
+#include <Luna/VG/Shapes.hpp>
 #include <Luna/Runtime/Math/Transform.hpp>
 #include <Luna/Runtime/Math/Color.hpp>
 #include <Luna/Runtime/Time.hpp>
 #include <Luna/Runtime/File.hpp>
 #include <Luna/Runtime/Thread.hpp>
+#include <Luna/VG/TextArranger.hpp>
+#include <Luna/Font/Font.hpp>
+#include <Luna/HID/HID.hpp>
+#include <Luna/HID/Mouse.hpp>
+#include <Luna/HID/Keyboard.hpp>
 
 namespace Luna
 {
@@ -24,9 +33,17 @@ namespace Luna
 	Ref<RHI::ICommandBuffer> g_command_buffer;
 	u32 g_command_queue;
 
-	Ref<VG::IShapeAtlas> g_shape_atlas;
 	Ref<VG::IShapeDrawList> g_shape_draw_list;
 	Ref<VG::IShapeRenderer> g_shape_renderer;
+
+	Ref<VG::IFontAtlas> g_font_atlas;
+	Ref<VG::ITextArranger> g_text_arranger;
+
+	Float3 g_camera_position;
+	Quaternion g_camera_rotation = Quaternion::identity();
+	f32 g_camera_speed = 10.0f;
+	bool g_camera_navigating = false;
+	Float2 g_scene_click_pos;
 }
 
 using namespace Luna;
@@ -44,7 +61,7 @@ RV recreate_window_resources(u32 width, u32 height)
 			}
 			else
 			{
-				g_swap_chain->reset({width, height, 2, Format::bgra8_unorm, true});
+				luexp(g_swap_chain->reset({width, height, 2, Format::bgra8_unorm, true}));
 			}
 		}
 	}
@@ -63,12 +80,33 @@ void on_window_close(Window::IWindow* window)
 	window->close();
 }
 
+void on_mouse_down(Window::IWindow* window, Window::ModifierKeyFlag modifier_flags, HID::MouseButton button)
+{
+	if (button == HID::MouseButton::right)
+	{
+		g_camera_navigating = true;
+		g_scene_click_pos = HID::get_device<HID::IMouse>().get()->get_cursor_pos();
+	}
+}
+
+void on_mouse_up(Window::IWindow* window, Window::ModifierKeyFlag modifier_flags, HID::MouseButton button)
+{
+	if (button == HID::MouseButton::right)
+	{
+		g_camera_navigating = false;
+	}
+}
+
 void init()
 {
 	lupanic_if_failed(init_modules());
 	// register event.
 	g_window = Window::new_window("Luna Vector Graphics Test", Window::WindowDisplaySettings::as_windowed(), Window::WindowCreationFlag::resizable).get();
+	g_window->get_mouse_down_event().add_handler(on_mouse_down);
+	g_window->get_mouse_up_event().add_handler(on_mouse_up);
 	auto sz = g_window->get_size();
+
+	g_camera_position = Float3(sz.x / 2.0f, sz.y / 2.0f, -3000.0f);
 
 	g_window->get_close_event().add_handler(on_window_close);
 	g_window->get_framebuffer_resize_event().add_handler(on_window_resize);
@@ -92,28 +130,10 @@ void init()
 	lupanic_if_failed(recreate_window_resources(sz.x, sz.y));
 	g_shape_renderer = VG::new_fill_shape_renderer(g_swap_chain->get_current_back_buffer().get()).get();
 	g_command_buffer = dev->new_command_buffer(g_command_queue).get();
-	g_shape_atlas = VG::new_shape_atlas();
 
-	// Window.
-	VG::ShapeBuilder builder;
-	builder.move_to(10.0f, 50.0f);
-	builder.line_to(40.0f, 50.0f);
-	builder.circle_to(10.0f, 90.0f, 0.0f);
-	builder.line_to(50.0f, 10.0f);
-	builder.circle_to(10.0f, 0.0f, -90.0f);
-	builder.line_to(10.0f, 0.0f);
-	builder.circle_to(10.0f, -90.0f, -180.0f);
-	builder.line_to(0.0f, 40.0f);
-	builder.circle_to(10.0f, 180.0f, 90.0f);
-
-	g_shape_atlas = VG::new_shape_atlas();
-    RectF rect = RectF(0.0f, 0.0f, 50.0f, 50.0f);
-	g_shape_atlas->add_shape({ builder.points.data(), builder.points.size() }, &rect);
-
-	builder.points.clear();
-	builder.move_to(10.0f, 20.0f);
-	builder.circle_to(10.0f, 90.0f, -270.0f);
-	g_shape_atlas->add_shape({ builder.points.data(), builder.points.size() }, nullptr);
+	auto font = Font::get_default_font();
+	g_font_atlas = VG::new_font_atlas(font, 0);
+	g_text_arranger = VG::new_text_arranger(g_font_atlas);
 }
 
 void run()
@@ -129,17 +149,111 @@ void run()
 			sleep(100);
 			continue;
 		}
-		g_shape_draw_list->set_shape_atlas(g_shape_atlas);
-		usize offset, size;
-		RectF rect;
 
-		g_shape_atlas->get_shape(0, &offset, &size, &rect);
-		g_shape_draw_list->draw_shape(offset, size, Float2(100.0f, 100.0f), Float2U(500.0f, 500.0f), Float2U(rect.offset_x, rect.offset_y),
-			Float2U(rect.offset_x + rect.width, rect.offset_y + rect.height));
+		if (g_camera_navigating)
+		{
+			auto mouse = HID::get_device<HID::IMouse>().get();
+			auto mouse_pos = mouse->get_cursor_pos();
+			auto mouse_delta = mouse_pos - g_scene_click_pos;
+			g_scene_click_pos = mouse_pos;
+			// Rotate camera based on mouse delta.
+			auto rot = g_camera_rotation;
+			auto rot_mat = AffineMatrix::make_rotation(rot);
 
-		g_shape_atlas->get_shape(1, &offset, &size, &rect);
-		g_shape_draw_list->draw_shape(offset, size, Float2(550.0f, 100.0f), Float2U(560.0f, 110.0f), Float2U(rect.offset_x, rect.offset_y),
-			Float2U(rect.offset_x + rect.width, rect.offset_y + rect.height));
+			// Key control.
+			auto left = AffineMatrix::left(rot_mat);
+			auto forward = AffineMatrix::forward(rot_mat);
+			auto up = AffineMatrix::up(rot_mat);
+
+			f32 camera_speed = g_camera_speed;
+			auto keyboard = HID::get_device<HID::IKeyboard>().get();
+			if (keyboard->get_key_state(HID::KeyCode::l_shift))
+			{
+				camera_speed *= 2.0f;
+			}
+
+			if (keyboard->get_key_state(HID::KeyCode::w))
+			{
+				g_camera_position += forward * camera_speed;
+			}
+			if (keyboard->get_key_state(HID::KeyCode::a))
+			{
+				g_camera_position += +left * camera_speed;
+			}
+			if (keyboard->get_key_state(HID::KeyCode::s))
+			{
+				g_camera_position += -forward * camera_speed;
+			}
+			if (keyboard->get_key_state(HID::KeyCode::d))
+			{
+				g_camera_position += -left * camera_speed;
+			}
+			if (keyboard->get_key_state(HID::KeyCode::q))
+			{
+				g_camera_position += -up * camera_speed;
+			}
+			if (keyboard->get_key_state(HID::KeyCode::e))
+			{
+				g_camera_position += +up * camera_speed;
+			}
+			auto eular = rot_mat.euler_angles();
+			eular += {deg_to_rad((f32)mouse_delta.y / 10.0f), deg_to_rad((f32)mouse_delta.x / 10.0f), 0.0f};
+			eular.x = clamp(eular.x, deg_to_rad(-85.0f), deg_to_rad(85.0f));
+			g_camera_rotation = Quaternion::from_euler_angles(eular);
+		}
+
+		auto window_sz = g_window->get_size();
+		{
+			const c8* text = "Vector Graphics";
+			g_text_arranger->set_font(g_font_atlas);
+			g_text_arranger->set_font_size(128);
+			g_text_arranger->add_text(text);
+			RectF bounding_rect = RectF(0, 0, window_sz.x, window_sz.y - 100.0f);
+			auto arrange_result = g_text_arranger->arrange(bounding_rect, VG::TextAlignment::begin, VG::TextAlignment::center);
+			g_text_arranger->commit(arrange_result, g_shape_draw_list);
+		}
+
+		constexpr f32 shape_scale = 2.0f;
+
+		g_shape_draw_list->set_shape_buffer(nullptr);
+		auto& points = g_shape_draw_list->get_shape_points();
+		u32 offset = (u32)points.size();
+		VG::ShapeBuilder::add_rectangle_filled(points, 0, 0, 100, 100);
+		u32 end_offset = (u32)points.size();
+		Float2 draw_pos = { window_sz.x / 2.0f - 200.0f * shape_scale, window_sz.y - 500.0f * shape_scale };
+		g_shape_draw_list->draw_shape(offset, end_offset - offset, draw_pos, draw_pos + 100.0f * shape_scale, { 0.0f, 0.0f }, { 100.0f, 100.0f }, Color::light_pink().abgr8());
+
+		offset = end_offset;
+		VG::ShapeBuilder::add_rectangle_bordered(points, 0, 0, 100, 100, 5, -2.5f);
+		end_offset = (u32)points.size();
+		draw_pos.y += 150.0f * shape_scale;
+		g_shape_draw_list->draw_shape(offset, end_offset - offset, draw_pos, draw_pos + 100.0f * shape_scale, { 0.0f, 0.0f }, { 100.0f, 100.0f }, Color::light_pink().abgr8());
+
+		offset = end_offset;
+		VG::ShapeBuilder::add_rounded_rectangle_filled(points, 0, 0, 100, 100, 10);
+		end_offset = (u32)points.size();
+		draw_pos.x += 150.0f * shape_scale;
+		draw_pos.y -= 150.0f * shape_scale;
+		g_shape_draw_list->draw_shape(offset, end_offset - offset, draw_pos, draw_pos + 100.0f * shape_scale, { 0.0f, 0.0f }, { 100.0f, 100.0f }, Color::light_green().abgr8());
+
+		offset = end_offset;
+		VG::ShapeBuilder::add_rounded_rectangle_bordered(points, 0, 0, 100, 100, 10, 5, -2.5f);
+		end_offset = (u32)points.size();
+		draw_pos.y += 150.0f * shape_scale;
+		g_shape_draw_list->draw_shape(offset, end_offset - offset, draw_pos, draw_pos + 100.0f * shape_scale, { 0.0f, 0.0f }, { 100.0f, 100.0f }, Color::light_green().abgr8());
+
+		offset = end_offset;
+		VG::ShapeBuilder::add_circle_filled(points, 50, 50, 50);
+		end_offset = (u32)points.size();
+		draw_pos.x += 150.0f * shape_scale;
+		draw_pos.y -= 150.0f * shape_scale;
+		g_shape_draw_list->draw_shape(offset, end_offset - offset, draw_pos, draw_pos + 100.0f * shape_scale, { 0.0f, 0.0f }, { 100.0f, 100.0f }, Color::light_blue().abgr8());
+
+		offset = end_offset;
+		VG::ShapeBuilder::add_circle_bordered(points, 50, 50, 50, 5, -2.5f);
+		end_offset = (u32)points.size();
+		draw_pos.y += 150.0f * shape_scale;
+		g_shape_draw_list->draw_shape(offset, end_offset - offset, draw_pos, draw_pos + 100.0f * shape_scale, { 0.0f, 0.0f }, { 100.0f, 100.0f }, Color::light_blue().abgr8());
 
 		lupanic_if_failed(g_shape_draw_list->close());
 
@@ -152,10 +266,12 @@ void run()
 		auto dcs = g_shape_draw_list->get_draw_calls();
 
 		g_shape_renderer->set_render_target(g_swap_chain->get_current_back_buffer().get());
-		g_shape_renderer->render(g_command_buffer, g_shape_atlas->get_shape_resource().get(), g_shape_atlas->get_shape_resource_size(),
-			g_shape_draw_list->get_vertex_buffer(), g_shape_draw_list->get_vertex_buffer_size(),
-			g_shape_draw_list->get_index_buffer(), g_shape_draw_list->get_index_buffer_size(),
-			dcs.data(), (u32)dcs.size());
+
+		Float4x4 proj_matrix = ProjectionMatrix::make_perspective_fov(PI / 3.0f, (f32)window_sz.x / (f32)window_sz.y, 0.3f, 10000.0f);
+		Float4x4 view_matrix = inverse(AffineMatrix::make(g_camera_position, g_camera_rotation, Float3(1.0f)));
+		Float4x4U mat = Float4x4U(mul(view_matrix, proj_matrix));
+
+		g_shape_renderer->render(g_command_buffer, g_shape_draw_list->get_vertex_buffer(), g_shape_draw_list->get_index_buffer(),  { dcs.data(), (u32)dcs.size() }, &mat);
 
 		g_command_buffer->resource_barrier({},
 			{
@@ -169,6 +285,7 @@ void run()
 		g_command_buffer->reset();
 		g_shape_renderer->reset();
 		g_shape_draw_list->reset();
+		g_text_arranger->reset();
 	}
 }
 void shutdown()
@@ -177,9 +294,10 @@ void shutdown()
 
 	g_swap_chain = nullptr;
 	g_command_buffer = nullptr;
-	g_shape_atlas = nullptr;
 	g_shape_draw_list = nullptr;
 	g_shape_renderer = nullptr;
+	g_font_atlas = nullptr;
+	g_text_arranger = nullptr;
 }
 int main()
 {

@@ -7,66 +7,59 @@
 * @author JXMaster
 * @date 2022/4/17
 */
-#include "../VG.hpp"
+#include "../ShapeDrawList.hpp"
 #include <Luna/Runtime/TSAssert.hpp>
+#include <Luna/RHI/Device.hpp>
 namespace Luna
 {
 	namespace VG
 	{
-		struct ShapeDrawCallResource
-		{
-			Vector<Vertex> vertices;
-			Vector<u32> indices;
-		};
-
 		struct ShapeDrawList : IShapeDrawList
 		{
 			lustruct("VG::ShapeDrawList", "{44732F66-CE52-4493-85C3-6E0164C4EA18}");
 			luiimpl();
 			lutsassert_lock();
+			Ref<RHI::IDevice> m_device;
+
 			Ref<RHI::IBuffer> m_vertex_buffer;
 			Ref<RHI::IBuffer> m_index_buffer;
-			u32 m_vertex_buffer_size;
-			u32 m_index_buffer_size;
-			usize m_vertex_buffer_capacity;
-			usize m_index_buffer_capacity;
+			Ref<RHI::IBuffer> m_internal_shape_buffer;
+			u64 m_vertex_buffer_size;
+			u64 m_index_buffer_size;
+			u64 m_internal_shape_buffer_size;
+			u64 m_vertex_buffer_capacity;
+			u64 m_index_buffer_capacity;
+			u64 m_internal_shape_buffer_capacity;
 
 			Vector<ShapeDrawCall> m_draw_calls;
-			Vector<ShapeDrawCallResource> m_draw_call_resources;
+			Vector<Vertex> m_vertices;
+			Vector<u32> m_indices;
+			Vector<f32> m_internal_shape_points;
 
 			// Current draw state.
-			Ref<IShapeAtlas> m_atlas;
+			Ref<RHI::IBuffer> m_shape_buffer;
 			Ref<RHI::ITexture> m_texture;
 			RHI::SamplerDesc m_sampler;
 			Float2U m_origin;
 			f32 m_rotation;
-			RectI m_clip_rect;
 
 			// If `true`, then the draw call should be re-targeted.
 			bool m_state_dirty;
-			// There is a range of draw calls that can accept new elements, which starts from m_dc_barrier_index,
-			// and end with m_draw_calls.size().
-			// The draw calls after this index can accept new elements.
-			u32 m_dc_barrier_index;
-			// The target draw call index for the current pipeline state.
-			i32 m_target_dc_index;
 
 			void new_draw_call()
 			{
 				m_draw_calls.emplace_back();
 				ShapeDrawCall& dc = m_draw_calls.back();
-				dc.atlas = m_atlas;
+				dc.shape_buffer = m_shape_buffer;
 				dc.texture = m_texture;
 				dc.sampler = m_sampler;
 				dc.origin_point = m_origin;
 				dc.rotation = m_rotation;
-				dc.clip_rect = m_clip_rect;
+				dc.base_index = (u32)m_indices.size();
+				dc.num_indices = 0;
 			}
 			ShapeDrawCall& get_current_draw_call();
-			ShapeDrawCallResource& get_draw_call_resource(usize index);
-			// Tests if the specified state is equal with the current set state.
-			bool state_equal(u32 index);
-			RHI::SamplerDesc get_default_sampler()
+			static RHI::SamplerDesc get_default_sampler()
 			{
 				return RHI::SamplerDesc(RHI::Filter::linear, RHI::Filter::linear, RHI::Filter::linear,
 					RHI::TextureAddressMode::repeat,
@@ -79,32 +72,32 @@ namespace Luna
 				m_vertex_buffer_capacity(0),
 				m_index_buffer_size(0),
 				m_index_buffer_capacity(0),
-				m_texture(nullptr),
+				m_internal_shape_buffer_size(0),
+				m_internal_shape_buffer_capacity(0),
 				m_sampler(get_default_sampler()),
-				m_clip_rect(0, 0, 0, 0),
-				m_state_dirty(false),
-				m_dc_barrier_index(0),
-				m_target_dc_index(0)
+				m_origin(0.0f),
+				m_rotation(0.0f),
+				m_state_dirty(false)
 			{}
 
 			virtual void reset() override;
-            virtual void drawcall_barrier() override
+			virtual Vector<f32>& get_shape_points() override
 			{
 				lutsassert();
-				m_dc_barrier_index = (u32)m_draw_calls.size();
+				return m_internal_shape_points;
 			}
-            virtual void set_shape_atlas(IShapeAtlas* atlas) override
+            virtual void set_shape_buffer(RHI::IBuffer* shape_buffer) override
 			{
 				lutsassert();
-				if (m_atlas != atlas)
+				if (m_shape_buffer != shape_buffer)
 				{
 					m_state_dirty = true;
-					m_atlas = atlas;
+					m_shape_buffer = shape_buffer;
 				}
 			}
-            virtual IShapeAtlas* get_shape_atlas() override
+            virtual RHI::IBuffer* get_shape_buffer() override
 			{
-				return m_atlas;
+				return m_shape_buffer;
 			}
             virtual void set_texture(RHI::ITexture* tex) override
 			{
@@ -167,20 +160,6 @@ namespace Luna
 			{
 				return m_rotation;
 			}
-            virtual void set_clip_rect(const RectI& clip_rect) override
-			{
-				lutsassert();
-				if (m_clip_rect != clip_rect)
-				{
-					m_state_dirty = true;
-					m_clip_rect = clip_rect;
-				}
-			}
-            virtual RectI get_clip_rect() override
-			{
-				return m_clip_rect;
-			}
-            virtual void append_draw_list(IShapeDrawList* draw_list) override;
             virtual void draw_shape_raw(Span<const Vertex> vertices, Span<const u32> indices) override;
             virtual void draw_shape(u32 begin_command, u32 num_commands,
 				const Float2U& min_position, const Float2U& max_position,

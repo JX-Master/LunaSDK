@@ -8,7 +8,7 @@
 * @date 2022/4/27
 */
 #pragma once
-#include "../VG.hpp"
+#include "../TextArranger.hpp"
 #include <Luna/Font/Font.hpp>
 #include <Luna/Runtime/TSAssert.hpp>
 namespace Luna
@@ -154,7 +154,7 @@ namespace Luna
 			TextArrangeResult arrange(const RectF& bounding_rect, 
 				TextAlignment line_alignment, TextAlignment glyph_alignment);
 
-			void commit(const TextArrangeResult& result, IShapeDrawList* draw_list);
+			RV commit(const TextArrangeResult& result, IShapeDrawList* draw_list);
 		};
 	}
 }

@@ -130,8 +130,7 @@ namespace Luna
 				m_char_advance_length = (f32)advance_width * m_font_scale;
 				m_char_left_side_bearing = (f32)left_side_bearing * m_font_scale;
 				RectF rect;
-				usize index = m_font_atlas->get_glyph_shape_index(m_char);
-				m_font_atlas->get_shape_atlas()->get_shape(index, nullptr, nullptr, &rect);
+				m_font_atlas->get_glyph(m_char, nullptr, nullptr, &rect);
 				m_char_bounding_rect = RectF(rect.offset_x * m_font_scale, rect.offset_y * m_font_scale,
 					rect.width * m_font_scale, rect.height * m_font_scale);
 			}
@@ -348,37 +347,42 @@ namespace Luna
 			return res;
 		}
 
-		void TextArranger::commit(const TextArrangeResult& result, IShapeDrawList* draw_list)
+		RV TextArranger::commit(const TextArrangeResult& result, IShapeDrawList* draw_list)
 		{
-			usize state_index = 0;
-			for (auto& line : result.lines)
+			lutry
 			{
-				for (auto& glyph : line.glyphs)
+				usize state_index = 0;
+				for (auto& line : result.lines)
 				{
-					usize cursor = glyph.index;
-					while ((state_index < m_states.size() - 1) && (m_states[state_index + 1].first <= cursor))
+					for (auto& glyph : line.glyphs)
 					{
-						++state_index;
-					}
-					// Draw this glyph.
-					usize size;
-					RectF shape_coord;
-					usize offset;
-					usize index = m_states[state_index].second.m_font->get_glyph_shape_index(glyph.character);
-					m_states[state_index].second.m_font->get_shape_atlas()->get_shape(index, &offset, &size, &shape_coord);
-					if (glyph.bounding_rect.width != 0.0f && glyph.bounding_rect.height != 0.0f)
-					{
-						draw_list->set_shape_atlas(m_states[state_index].second.m_font->get_shape_atlas());
-						draw_list->draw_shape((u32)offset, (u32)size,
-							Float2U(glyph.bounding_rect.offset_x, glyph.bounding_rect.offset_y),
-							Float2U(glyph.bounding_rect.offset_x + glyph.bounding_rect.width, glyph.bounding_rect.offset_y + glyph.bounding_rect.height),
-							Float2U(shape_coord.offset_x, shape_coord.offset_y),
-							Float2U(shape_coord.offset_x + shape_coord.width, shape_coord.offset_y + shape_coord.height),
-							m_states[state_index].second.m_color
-						);
+						usize cursor = glyph.index;
+						while ((state_index < m_states.size() - 1) && (m_states[state_index + 1].first <= cursor))
+						{
+							++state_index;
+						}
+						// Draw this glyph.
+						usize size;
+						RectF shape_coord;
+						usize offset;
+						m_states[state_index].second.m_font->get_glyph(glyph.character, &offset, &size, &shape_coord);
+						if (glyph.bounding_rect.width != 0.0f && glyph.bounding_rect.height != 0.0f)
+						{
+							lulet(shape_buffer, m_states[state_index].second.m_font->get_shape_buffer());
+							draw_list->set_shape_buffer(shape_buffer);
+							draw_list->draw_shape((u32)offset, (u32)size,
+								Float2U(glyph.bounding_rect.offset_x, glyph.bounding_rect.offset_y),
+								Float2U(glyph.bounding_rect.offset_x + glyph.bounding_rect.width, glyph.bounding_rect.offset_y + glyph.bounding_rect.height),
+								Float2U(shape_coord.offset_x, shape_coord.offset_y),
+								Float2U(shape_coord.offset_x + shape_coord.width, shape_coord.offset_y + shape_coord.height),
+								m_states[state_index].second.m_color
+							);
+						}
 					}
 				}
 			}
+			lucatchret;
+			return ok;
 		}
 
 		LUNA_VG_API Ref<ITextArranger> new_text_arranger(IFontAtlas* initial_font)

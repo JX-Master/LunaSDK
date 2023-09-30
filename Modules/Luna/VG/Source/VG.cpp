@@ -9,8 +9,6 @@
 */
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_VG_API LUNA_EXPORT
-#include "../VG.hpp"
-#include "ShapeAtlas.hpp"
 #include "FontAtlas.hpp"
 #include "ShapeDrawList.hpp"
 #include "ShapeRenderer.hpp"
@@ -23,8 +21,6 @@ namespace Luna
 	{
 		RV init()
 		{
-			register_boxed_type<ShapeAtlas>();
-			impl_interface_for_type<ShapeAtlas, IShapeAtlas>();
 			register_boxed_type<FontAtlas>();
 			impl_interface_for_type<FontAtlas, IFontAtlas>();
 			register_boxed_type<ShapeDrawList>();

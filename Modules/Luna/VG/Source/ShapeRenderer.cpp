@@ -174,14 +174,10 @@ namespace Luna
 		}
 		RV FillShapeRenderer::render(
 			RHI::ICommandBuffer* cmdbuf,
-			RHI::IBuffer* shape_buffer,
-			u32 num_points,
-			RHI::IBuffer* vertex_buffer,
-			u32 num_vertices,
-			RHI::IBuffer* index_buffer,
-			u32 num_indices,
-			const ShapeDrawCall* draw_calls,
-			u32 num_draw_calls
+            RHI::IBuffer* vertex_buffer,
+            RHI::IBuffer* index_buffer,
+			Span<const ShapeDrawCall> draw_calls,
+			Float4x4U* transform_matrix
 		)
 		{
 			using namespace RHI;
@@ -189,7 +185,8 @@ namespace Luna
 			auto dev = get_main_device();
 			lutry
 			{
-				u32 cb_element_size = max<u32>((u32)dev->get_uniform_buffer_data_alignment(), (u32)sizeof(Float4x4U));
+				u32 cb_element_size = (u32)align_upper(sizeof(Float4x4U), dev->get_uniform_buffer_data_alignment());
+				usize num_draw_calls = draw_calls.size();
 				u64 cb_size = cb_element_size * num_draw_calls;
 				// Build constant buffer.
 				if (num_draw_calls > m_cbs_capacity)
@@ -205,9 +202,16 @@ namespace Luna
 					Float4x4U* dst = (Float4x4U*)(((usize)cb_data) + i * cb_element_size);
 					Float4x4 transform = AffineMatrix::make_rotation_z(draw_calls[i].rotation / 180.0f * PI);
 					transform = mul(transform, AffineMatrix::make_translation(Float3(draw_calls[i].origin_point.x, draw_calls[i].origin_point.y, 0.0f)));
-					Float4x4 mat = ProjectionMatrix::make_orthographic_off_center(0.0f, (f32)m_screen_width, 0.0f, (f32)m_screen_height, 0.0f, 1.0f);
-					mat = mul(transform, mat);
-					*dst = mat;
+					if (transform_matrix)
+					{
+						transform = mul(transform, *transform_matrix);
+					}
+					else
+					{
+						Float4x4 mat = ProjectionMatrix::make_orthographic_off_center(0.0f, (f32)m_screen_width, 0.0f, (f32)m_screen_height, 0.0f, 1.0f);
+						transform = mul(transform, mat);
+					}
+					*dst = transform;
 				}
 				m_cbs_resource->unmap(0, cb_size);
 				// Build view sets.
@@ -219,12 +223,13 @@ namespace Luna
 						m_desc_sets.push_back(desc_set);
 					}
 					auto& ds = m_desc_sets[i];
-
+					auto& dc = draw_calls[i];
+					auto num_points = dc.shape_buffer->get_desc().size / sizeof(f32);
 					luexp(ds->update_descriptors({
-						WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(m_cbs_resource)),
-						WriteDescriptorSet::read_buffer_view(1, BufferViewDesc::typed_buffer(shape_buffer, 0, num_points, Format::r32_float)),
-						WriteDescriptorSet::read_texture_view(2, TextureViewDesc::tex2d(draw_calls[i].texture ? draw_calls[i].texture : g_white_tex.get())),
-						WriteDescriptorSet::sampler(3, SamplerDesc(Filter::linear, Filter::linear, Filter::linear, TextureAddressMode::clamp, TextureAddressMode::clamp, TextureAddressMode::clamp))
+						WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(m_cbs_resource, i * cb_element_size)),
+						WriteDescriptorSet::read_buffer_view(1, BufferViewDesc::typed_buffer(dc.shape_buffer, 0, num_points, Format::r32_float)),
+						WriteDescriptorSet::read_texture_view(2, TextureViewDesc::tex2d(dc.texture ? dc.texture : g_white_tex.get())),
+						WriteDescriptorSet::sampler(3, dc.sampler)
 						}));
 				}
 				// Build command buffer.
@@ -244,22 +249,17 @@ namespace Luna
 				cmdbuf->begin_render_pass(desc);
 				cmdbuf->set_graphics_pipeline_state(m_fill_pso);
 				cmdbuf->set_graphics_pipeline_layout(g_fill_playout);
+				auto num_vertices = vertex_buffer->get_desc().size / sizeof(Vertex);
                 auto view = VertexBufferView(vertex_buffer, 0, sizeof(Vertex) * num_vertices, sizeof(Vertex));
 				cmdbuf->set_vertex_buffers(0, { &view, 1 });
+				auto num_indices = index_buffer->get_desc().size / sizeof(u32);
 				cmdbuf->set_index_buffer({index_buffer, 0, (u32)num_indices * (u32)sizeof(u32), Format::r32_uint});
 				cmdbuf->set_viewport(Viewport(0.0f, 0.0f, (f32)m_screen_width, (f32)m_screen_height, 0.0f, 1.0f));
 				for (usize i = 0; i < num_draw_calls; ++i)
 				{
 					IDescriptorSet* ds = m_desc_sets[i];
 					cmdbuf->set_graphics_descriptor_sets(0, { &ds, 1 });
-					if (draw_calls[i].clip_rect != RectI(0, 0, 0, 0))
-					{
-						cmdbuf->set_scissor_rect(draw_calls[i].clip_rect);
-					}
-					else
-					{
-						cmdbuf->set_scissor_rect(RectI(0, 0, m_screen_width, m_screen_height));
-					}
+					cmdbuf->set_scissor_rect(RectI(0, 0, m_screen_width, m_screen_height));
 					cmdbuf->draw_indexed(draw_calls[i].num_indices, draw_calls[i].base_index, 0);
 				}
 				cmdbuf->end_render_pass();
