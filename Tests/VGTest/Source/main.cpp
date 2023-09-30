@@ -269,9 +269,9 @@ void run()
 
 		Float4x4 proj_matrix = ProjectionMatrix::make_perspective_fov(PI / 3.0f, (f32)window_sz.x / (f32)window_sz.y, 0.3f, 10000.0f);
 		Float4x4 view_matrix = inverse(AffineMatrix::make(g_camera_position, g_camera_rotation, Float3(1.0f)));
-		Float4x4 mat = mul(view_matrix, proj_matrix);
+		Float4x4U mat = Float4x4U(mul(view_matrix, proj_matrix));
 
-		g_shape_renderer->render(g_command_buffer, g_shape_draw_list->get_vertex_buffer(), g_shape_draw_list->get_index_buffer(),  { dcs.data(), (u32)dcs.size() }, &Float4x4U(mat));
+		g_shape_renderer->render(g_command_buffer, g_shape_draw_list->get_vertex_buffer(), g_shape_draw_list->get_index_buffer(),  { dcs.data(), (u32)dcs.size() }, &mat);
 
 		g_command_buffer->resource_barrier({},
 			{
