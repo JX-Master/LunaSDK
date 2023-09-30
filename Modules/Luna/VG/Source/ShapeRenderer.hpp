@@ -58,7 +58,8 @@ namespace Luna
 				RHI::ICommandBuffer* cmdbuf,
                 RHI::IBuffer* vertex_buffer,
                 RHI::IBuffer* index_buffer,
-				Span<const ShapeDrawCall> draw_calls
+				Span<const ShapeDrawCall> draw_calls,
+				Float4x4U* transform_matrix
 			) override;
 		};
 	}

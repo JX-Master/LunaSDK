@@ -90,13 +90,13 @@ namespace Luna
 			inline void line_to(Vector<f32>& points, f32 x, f32 y) { points.insert(points.end(), { COMMAND_LINE_TO, x, y }); }
 			inline void curve_to(Vector<f32>& points, f32 cx, f32 cy, f32 x, f32 y) { points.insert(points.end(), { COMMAND_CURVE_TO, cx, cy, x, y }); }
             LUNA_VG_API void circle_to(Vector<f32>& points, f32 radius, f32 begin, f32 end);
-            LUNA_VG_API void add_rectangle_filled(f32 min_x, f32 min_y, f32 max_x, f32 max_y);
-            LUNA_VG_API void add_rectangle_bordered(f32 min_x, f32 min_y, f32 max_x, f32 max_y, f32 border_width, f32 border_offset = 0.0f);
-            LUNA_VG_API void add_line(f32 p1_x, f32 p1_y, f32 p2_x, f32 p2_y, f32 border_width, f32 border_offset = 0.0f);
-            LUNA_VG_API void add_rounded_rectangle_filled(f32 min_x, f32 min_y, f32 max_x, f32 max_y, f32 radius);
-            LUNA_VG_API void add_rounded_rectangle_bordered(f32 min_x, f32 min_y, f32 max_x, f32 max_y, f32 radius, f32 border_width, f32 border_offset = 0.0f);
-			LUNA_VG_API void add_circle_filled(f32 center_x, f32 center_y, f32 radius);
-			LUNA_VG_API void add_circle_bordered(f32 center_x, f32 center_y, f32 radius, f32 border_width, f32 border_offset = 0.0f);
+            LUNA_VG_API void add_rectangle_filled(Vector<f32>& points, f32 min_x, f32 min_y, f32 max_x, f32 max_y);
+            LUNA_VG_API void add_rectangle_bordered(Vector<f32>& points, f32 min_x, f32 min_y, f32 max_x, f32 max_y, f32 border_width, f32 border_offset = 0.0f);
+            LUNA_VG_API void add_line(Vector<f32>& points, f32 p1_x, f32 p1_y, f32 p2_x, f32 p2_y, f32 border_width, f32 border_offset = 0.0f);
+            LUNA_VG_API void add_rounded_rectangle_filled(Vector<f32>& points, f32 min_x, f32 min_y, f32 max_x, f32 max_y, f32 radius);
+            LUNA_VG_API void add_rounded_rectangle_bordered(Vector<f32>& points, f32 min_x, f32 min_y, f32 max_x, f32 max_y, f32 radius, f32 border_width, f32 border_offset = 0.0f);
+			LUNA_VG_API void add_circle_filled(Vector<f32>& points, f32 center_x, f32 center_y, f32 radius);
+			LUNA_VG_API void add_circle_bordered(Vector<f32>& points, f32 center_x, f32 center_y, f32 radius, f32 border_width, f32 border_offset = 0.0f);
         }
     }
 }

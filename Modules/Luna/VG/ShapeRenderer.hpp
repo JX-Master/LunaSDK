@@ -10,6 +10,7 @@
 #pragma once
 #include "ShapeDrawList.hpp"
 #include <Luna/RHI/CommandBuffer.hpp>
+#include <Luna/Runtime/Math/Matrix.hpp>
 
 namespace Luna
 {
@@ -28,7 +29,8 @@ namespace Luna
 				RHI::ICommandBuffer* cmdbuf,
                 RHI::IBuffer* vertex_buffer,
                 RHI::IBuffer* index_buffer,
-				Span<const ShapeDrawCall> draw_calls
+				Span<const ShapeDrawCall> draw_calls,
+				Float4x4U* transform_matrix = nullptr
 			) = 0;
 		};
 

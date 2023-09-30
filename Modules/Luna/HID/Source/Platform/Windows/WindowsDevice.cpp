@@ -148,7 +148,7 @@ namespace Luna
 
 		bool WindowsDevice::get_key_state(KeyCode key)
 		{
-			return (GetAsyncKeyState(map_virtual_key(key) & 0x8000)) ? true : false;
+			return (GetAsyncKeyState(map_virtual_key(key)) & 0x8000) ? true : false;
 		}
 		inline void normalize_thumb(f32 x, f32 y, f32 deadzone, f32& outx, f32& outy)
 		{

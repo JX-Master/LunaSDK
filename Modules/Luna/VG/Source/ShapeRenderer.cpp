@@ -176,7 +176,8 @@ namespace Luna
 			RHI::ICommandBuffer* cmdbuf,
             RHI::IBuffer* vertex_buffer,
             RHI::IBuffer* index_buffer,
-			Span<const ShapeDrawCall> draw_calls
+			Span<const ShapeDrawCall> draw_calls,
+			Float4x4U* transform_matrix
 		)
 		{
 			using namespace RHI;
@@ -201,9 +202,16 @@ namespace Luna
 					Float4x4U* dst = (Float4x4U*)(((usize)cb_data) + i * cb_element_size);
 					Float4x4 transform = AffineMatrix::make_rotation_z(draw_calls[i].rotation / 180.0f * PI);
 					transform = mul(transform, AffineMatrix::make_translation(Float3(draw_calls[i].origin_point.x, draw_calls[i].origin_point.y, 0.0f)));
-					Float4x4 mat = ProjectionMatrix::make_orthographic_off_center(0.0f, (f32)m_screen_width, 0.0f, (f32)m_screen_height, 0.0f, 1.0f);
-					mat = mul(transform, mat);
-					*dst = mat;
+					if (transform_matrix)
+					{
+						transform = mul(transform, *transform_matrix);
+					}
+					else
+					{
+						Float4x4 mat = ProjectionMatrix::make_orthographic_off_center(0.0f, (f32)m_screen_width, 0.0f, (f32)m_screen_height, 0.0f, 1.0f);
+						transform = mul(transform, mat);
+					}
+					*dst = transform;
 				}
 				m_cbs_resource->unmap(0, cb_size);
 				// Build view sets.
@@ -251,14 +259,7 @@ namespace Luna
 				{
 					IDescriptorSet* ds = m_desc_sets[i];
 					cmdbuf->set_graphics_descriptor_sets(0, { &ds, 1 });
-					if (draw_calls[i].clip_rect != RectI(0, 0, 0, 0))
-					{
-						cmdbuf->set_scissor_rect(draw_calls[i].clip_rect);
-					}
-					else
-					{
-						cmdbuf->set_scissor_rect(RectI(0, 0, m_screen_width, m_screen_height));
-					}
+					cmdbuf->set_scissor_rect(RectI(0, 0, m_screen_width, m_screen_height));
 					cmdbuf->draw_indexed(draw_calls[i].num_indices, draw_calls[i].base_index, 0);
 				}
 				cmdbuf->end_render_pass();

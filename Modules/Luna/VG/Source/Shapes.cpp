@@ -117,7 +117,7 @@ namespace Luna
 				line_to(points, min_x + radius, min_y);
 				circle_to(points, radius, -90.0f, -180.0f);
 			}
-			LUNA_VG_API void add_rounded_rectangle_bordered(Vector<f32>& points, f32 min_x, f32 min_y, f32 max_x, f32 max_y, f32 radius, f32 border_width, f32 border_offset = 0.0f)
+			LUNA_VG_API void add_rounded_rectangle_bordered(Vector<f32>& points, f32 min_x, f32 min_y, f32 max_x, f32 max_y, f32 radius, f32 border_width, f32 border_offset)
 			{
 				f32 border_width_div_2 = border_width / 2.0f;
 				f32 border_offset_outer = border_width_div_2 + border_offset;
@@ -178,7 +178,7 @@ namespace Luna
 				move_to(points, center_x, center_y + radius);
 				circle_to(points, radius, 90.0f, -270.0f);
 			}
-			LUNA_VG_API void add_circle_bordered(Vector<f32>& points, f32 center_x, f32 center_y, f32 radius, f32 border_width, f32 border_offset = 0.0f)
+			LUNA_VG_API void add_circle_bordered(Vector<f32>& points, f32 center_x, f32 center_y, f32 radius, f32 border_width, f32 border_offset)
 			{
 				f32 border_width_div_2 = border_width / 2.0f;
 				f32 border_offset_outer = border_width_div_2 + border_offset;
@@ -188,12 +188,12 @@ namespace Luna
 				if(outer_radius > 0.0f)
 				{
 					move_to(points, center_x, center_y + outer_radius);
-					circle_to(points, radius, 90.0f, -270.0f);
+					circle_to(points, outer_radius, 90.0f, -270.0f);
 				}
 				if(inner_radius > 0.0f)
 				{
 					move_to(points, center_x, center_y + inner_radius);
-					circle_to(points, radius, -270.0f, 90.0f);
+					circle_to(points, inner_radius, -270.0f, 90.0f);
 				}
 			}
         }

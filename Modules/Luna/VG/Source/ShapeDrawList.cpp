@@ -38,7 +38,6 @@ namespace Luna
 			m_sampler = get_default_sampler();
 			m_origin = Float2U(0.0f);
 			m_rotation = 0.0f;
-			m_clip_rect = RectI(0, 0, 0, 0);
 			m_state_dirty = false;
 		}
 		void ShapeDrawList::draw_shape_raw(Span<const Vertex> vertices, Span<const u32> indices)

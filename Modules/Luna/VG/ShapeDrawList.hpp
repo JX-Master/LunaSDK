@@ -55,8 +55,6 @@ namespace Luna
 			Float2U origin_point;
 			//! The rotation for this draw call.
 			f32 rotation;
-			//! The clip rect for this draw call.
-			RectI clip_rect;
 		};
 
 		//! Represents a draw list that contains shapes to be drawn.
@@ -68,9 +66,7 @@ namespace Luna
 			//! and resources, so they can be reused for new shapes.
 			virtual void reset() = 0;
 
-			virtual u32 add_shape_point(f32 point) = 0;
-
-			virtual u32 add_shape_points(Span<f32> points) = 0;
+			virtual Vector<f32>& get_shape_points() = 0;
 
 			//! Sets the shape buffer used for the following draw calls.
 			virtual void set_shape_buffer(RHI::IBuffer* shape_buffer) = 0;
@@ -115,16 +111,6 @@ namespace Luna
 
 			//! Gets the rotation for the following draw calls.
 			virtual f32 get_rotation() = 0;
-
-			//! Sets the clip rect for the following calls, any draw call that goes out of clip region will be clipped.
-			//! @param[in] clip_rect The clip rect to set. The rect position is relative to the point set by `set_origin`.
-			//! Default clip rect is (0,0,0,0) and it should mean no clip for the renderer.
-			//! 
-			//! The clip rect will not be rotated by `set_rotation`.
-			virtual void set_clip_rect(const RectI& clip_rect = RectI(0, 0, 0, 0)) = 0;
-
-			//! Gets the clip rect for the following calls.
-			virtual RectI get_clip_rect() = 0;
 
 			//! Draws one shape by submitting vertices and indices directly.
 			virtual void draw_shape_raw(Span<const Vertex> vertices, Span<const u32> indices) = 0;
