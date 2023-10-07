@@ -133,7 +133,6 @@ RV start()
             PipelineLayoutFlag::allow_input_assembler_input_layout)));
         GraphicsPipelineStateDesc ps_desc;
         ps_desc.primitive_topology = PrimitiveTopology::triangle_list;
-		ps_desc.sample_mask = U32_MAX;
 		ps_desc.blend_state = BlendDesc({ 
             AttachmentBlendDesc(false, BlendFactor::src_alpha, BlendFactor::one_minus_src_alpha, BlendOp::add, BlendFactor::one_minus_src_alpha, BlendFactor::zero, BlendOp::add, ColorWriteMask::all) });
 		ps_desc.rasterizer_state = RasterizerDesc(FillMode::solid, CullMode::back, 0, 0.0f, 0.0f, false, true);

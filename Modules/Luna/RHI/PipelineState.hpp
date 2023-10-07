@@ -140,7 +140,7 @@ namespace Luna
 			BlendFactor src_blend_alpha;
 			BlendFactor dst_blend_alpha;
 			BlendOp blend_op_alpha;
-			ColorWriteMask render_target_write_mask;
+			ColorWriteMask color_write_mask;
 
 			AttachmentBlendDesc(
 				bool blend_enable = false,
@@ -150,7 +150,7 @@ namespace Luna
 				BlendFactor src_blend_alpha = BlendFactor::one,
 				BlendFactor dst_blend_alpha = BlendFactor::zero,
 				BlendOp blend_op_alpha = BlendOp::add,
-				ColorWriteMask render_target_write_mask = ColorWriteMask::all
+				ColorWriteMask color_write_mask = ColorWriteMask::all
 			) :
 				blend_enable(blend_enable),
 				src_blend_color(src_blend_color),
@@ -159,7 +159,7 @@ namespace Luna
 				src_blend_alpha(src_blend_alpha),
 				dst_blend_alpha(dst_blend_alpha),
 				blend_op_alpha(blend_op_alpha),
-				render_target_write_mask(render_target_write_mask) {}
+				color_write_mask(color_write_mask) {}
 		};
 
 		struct BlendDesc
@@ -304,6 +304,7 @@ namespace Luna
 
 		enum class IndexBufferStripCutValue : u8
 		{
+			//! This should be set if primitive topology is not strip.
 			disabled,
 			//! This should be set if the index type is `Format::r16_uint`.
 			value_0xffff,
@@ -337,7 +338,6 @@ namespace Luna
 			Format depth_stencil_format = Format::unknown;
 			//! Specify the sample count, 1 if MSAA is not used.
 			u32 sample_count = 1;
-			u32 sample_mask = 0xFFFFFFFF;
 		};
 
 		//! @interface IPipelineState

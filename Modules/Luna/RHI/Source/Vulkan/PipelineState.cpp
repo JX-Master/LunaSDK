@@ -175,7 +175,8 @@ namespace Luna
 				multisampling.rasterizationSamples = encode_sample_count((u8)desc.sample_count);
 				multisampling.sampleShadingEnable = VK_FALSE;
 				multisampling.minSampleShading = 0.0f;
-				multisampling.pSampleMask = &desc.sample_mask;
+				u32 sample_mask = 0xFFFFFFFF;
+				multisampling.pSampleMask = &sample_mask;
 				multisampling.alphaToCoverageEnable = desc.blend_state.alpha_to_coverage_enable ? VK_TRUE : VK_FALSE;
 				multisampling.alphaToOneEnable = VK_FALSE;
 				create_info.pMultisampleState = &multisampling;
@@ -214,15 +215,19 @@ namespace Luna
 				for (usize i = 0; i < desc.num_color_attachments; ++i)
 				{
 					auto& dst = attachments[i];
-					auto& src = desc.blend_state.attachments[i];
-					dst.blendEnable = src.blend_enable ? VK_TRUE : VK_FALSE;
-					dst.srcColorBlendFactor = encode_blend_factor(src.src_blend_color);
-					dst.dstColorBlendFactor = encode_blend_factor(src.dst_blend_color);
-					dst.colorBlendOp = encode_blend_op(src.blend_op_color);
-					dst.srcAlphaBlendFactor = encode_blend_factor(src.src_blend_alpha);
-					dst.dstAlphaBlendFactor = encode_blend_factor(src.dst_blend_alpha);
-					dst.alphaBlendOp = encode_blend_op(src.blend_op_alpha);
-					dst.colorWriteMask = encode_color_component_flags(src.render_target_write_mask);
+					auto src = &desc.blend_state.attachments[i];
+					if(!desc.blend_state.independent_blend_enable)
+					{
+						src = &desc.blend_state.attachments[0];
+					}
+					dst.blendEnable = src->blend_enable ? VK_TRUE : VK_FALSE;
+					dst.srcColorBlendFactor = encode_blend_factor(src->src_blend_color);
+					dst.dstColorBlendFactor = encode_blend_factor(src->dst_blend_color);
+					dst.colorBlendOp = encode_blend_op(src->blend_op_color);
+					dst.srcAlphaBlendFactor = encode_blend_factor(src->src_blend_alpha);
+					dst.dstAlphaBlendFactor = encode_blend_factor(src->dst_blend_alpha);
+					dst.alphaBlendOp = encode_blend_op(src->blend_op_alpha);
+					dst.colorWriteMask = encode_color_component_flags(src->color_write_mask);
 				}
 				blend.pAttachments = attachments;
 				create_info.pColorBlendState = &blend;
