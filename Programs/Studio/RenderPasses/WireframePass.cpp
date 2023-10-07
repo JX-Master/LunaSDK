@@ -68,7 +68,6 @@ namespace Luna
 
 			GraphicsPipelineStateDesc ps_desc;
 			ps_desc.primitive_topology = PrimitiveTopology::triangle_list;
-			ps_desc.sample_mask = U32_MAX;
 			ps_desc.blend_state = BlendDesc({ AttachmentBlendDesc(true, BlendFactor::src_alpha,
 				BlendFactor::one_minus_src_alpha, BlendOp::add, BlendFactor::one, BlendFactor::zero, BlendOp::add, ColorWriteMask::all) });
 			ps_desc.rasterizer_state = RasterizerDesc(FillMode::wireframe, CullMode::none, 0.0f, 0.0f, 0.0f, false, true);

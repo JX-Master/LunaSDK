@@ -110,31 +110,31 @@ namespace Luna
 			dst.pShaderBytecode = src.data();
 		}
 
-		inline void encode_target_blend_desc(D3D12_RENDER_TARGET_BLEND_DESC& rt, const AttachmentBlendDesc& srt)
+		inline void encode_target_blend_desc(D3D12_RENDER_TARGET_BLEND_DESC& rt, const AttachmentBlendDesc& src)
 		{
-			rt.BlendEnable = srt.blend_enable ? TRUE : FALSE;
+			rt.BlendEnable = src.blend_enable ? TRUE : FALSE;
 			rt.LogicOpEnable = FALSE;
-			rt.SrcBlend = encode_blend_factor(srt.src_blend_color);
-			rt.DestBlend = encode_blend_factor(srt.dst_blend_color);
-			rt.BlendOp = encode_blend_op(srt.blend_op_color);
-			rt.SrcBlendAlpha = encode_blend_factor(srt.src_blend_alpha);
-			rt.DestBlendAlpha = encode_blend_factor(srt.dst_blend_alpha);
-			rt.BlendOpAlpha = encode_blend_op(srt.blend_op_alpha);
+			rt.SrcBlend = encode_blend_factor(src.src_blend_color);
+			rt.DestBlend = encode_blend_factor(src.dst_blend_color);
+			rt.BlendOp = encode_blend_op(src.blend_op_color);
+			rt.SrcBlendAlpha = encode_blend_factor(src.src_blend_alpha);
+			rt.DestBlendAlpha = encode_blend_factor(src.dst_blend_alpha);
+			rt.BlendOpAlpha = encode_blend_op(src.blend_op_alpha);
 			rt.LogicOp = D3D12_LOGIC_OP_NOOP;
 			rt.RenderTargetWriteMask = 0;
-			if ((srt.render_target_write_mask & ColorWriteMask::red) != ColorWriteMask::none)
+			if ((src.color_write_mask & ColorWriteMask::red) != ColorWriteMask::none)
 			{
 				rt.RenderTargetWriteMask = rt.RenderTargetWriteMask | D3D12_COLOR_WRITE_ENABLE_RED;
 			}
-			if ((srt.render_target_write_mask & ColorWriteMask::green) != ColorWriteMask::none)
+			if ((src.color_write_mask & ColorWriteMask::green) != ColorWriteMask::none)
 			{
 				rt.RenderTargetWriteMask = rt.RenderTargetWriteMask | D3D12_COLOR_WRITE_ENABLE_GREEN;
 			}
-			if ((srt.render_target_write_mask & ColorWriteMask::blue) != ColorWriteMask::none)
+			if ((src.color_write_mask & ColorWriteMask::blue) != ColorWriteMask::none)
 			{
 				rt.RenderTargetWriteMask = rt.RenderTargetWriteMask | D3D12_COLOR_WRITE_ENABLE_BLUE;
 			}
-			if ((srt.render_target_write_mask & ColorWriteMask::alpha) != ColorWriteMask::none)
+			if ((src.color_write_mask & ColorWriteMask::alpha) != ColorWriteMask::none)
 			{
 				rt.RenderTargetWriteMask = rt.RenderTargetWriteMask | D3D12_COLOR_WRITE_ENABLE_ALPHA;
 			}
@@ -173,7 +173,7 @@ namespace Luna
 						encode_target_blend_desc(d.BlendState.RenderTarget[i], desc.blend_state.attachments[0]);
 					}
 				}
-				d.SampleMask = desc.sample_mask;
+				d.SampleMask = 0xFFFFFFFF;
 			}
 			{
 				switch (desc.rasterizer_state.fill_mode)

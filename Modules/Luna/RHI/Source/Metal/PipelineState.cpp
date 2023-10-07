@@ -119,14 +119,24 @@ namespace Luna
                         NSPtr<MTL::RenderPipelineColorAttachmentDescriptor> attachment = box(MTL::RenderPipelineColorAttachmentDescriptor::alloc()->init());
                         attachment->setPixelFormat(encode_pixel_format(desc.color_formats[i]));
                         attachment->setWriteMask(MTL::ColorWriteMaskAll);
-                        auto& blend = desc.blend_state.attachments[i];
-                        attachment->setBlendingEnabled(blend.blend_enable);
-                        attachment->setRgbBlendOperation(encode_blend_op(blend.blend_op_color));
-                        attachment->setAlphaBlendOperation(encode_blend_op(blend.blend_op_alpha));
-                        attachment->setSourceRGBBlendFactor(encode_blend_factor(blend.src_blend_color, true));
-                        attachment->setSourceAlphaBlendFactor(encode_blend_factor(blend.src_blend_alpha, false));
-                        attachment->setDestinationRGBBlendFactor(encode_blend_factor(blend.dst_blend_color, true));
-                        attachment->setDestinationAlphaBlendFactor(encode_blend_factor(blend.dst_blend_alpha, false));
+                        auto blend = &desc.blend_state.attachments[i];
+                        if(!desc.blend_state.independent_blend_enable)
+                        {
+                            blend = &desc.blend_state.attachments[0];
+                        }
+                        attachment->setBlendingEnabled(blend->blend_enable);
+                        attachment->setRgbBlendOperation(encode_blend_op(blend->blend_op_color));
+                        attachment->setAlphaBlendOperation(encode_blend_op(blend->blend_op_alpha));
+                        attachment->setSourceRGBBlendFactor(encode_blend_factor(blend->src_blend_color, true));
+                        attachment->setSourceAlphaBlendFactor(encode_blend_factor(blend->src_blend_alpha, false));
+                        attachment->setDestinationRGBBlendFactor(encode_blend_factor(blend->dst_blend_color, true));
+                        attachment->setDestinationAlphaBlendFactor(encode_blend_factor(blend->dst_blend_alpha, false));
+                        MTL::ColorWriteMask mask = 0;
+                        if(test_flags(blend->color_write_mask, ColorWriteMask::red)) mask |= MTL::ColorWriteMaskRed;
+                        if(test_flags(blend->color_write_mask, ColorWriteMask::green)) mask |= MTL::ColorWriteMaskGreen;
+                        if(test_flags(blend->color_write_mask, ColorWriteMask::blue)) mask |= MTL::ColorWriteMaskBlue;
+                        if(test_flags(blend->color_write_mask, ColorWriteMask::alpha)) mask |= MTL::ColorWriteMaskAlpha;
+                        attachment->setWriteMask(mask);
                         color_attachments->setObject(attachment.get(), i);
                     }
                 }
@@ -175,13 +185,13 @@ namespace Luna
                     front_face->setStencilFailureOperation(encode_stencil_operation(desc.depth_stencil_state.front_face.stencil_fail_op));
                     front_face->setDepthFailureOperation(encode_stencil_operation(desc.depth_stencil_state.front_face.stencil_depth_fail_op));
                     front_face->setDepthStencilPassOperation(encode_stencil_operation(desc.depth_stencil_state.front_face.stencil_pass_op));
-                    front_face->setStencilCompareFunction(encode_compare_function(desc.depth_stencil_state.front_face.stencil_func));
+                    front_face->setStencilCompareFunction(desc.depth_stencil_state.stencil_enable ? encode_compare_function(desc.depth_stencil_state.front_face.stencil_func) : MTL::CompareFunctionAlways);
                     front_face->setReadMask(desc.depth_stencil_state.stencil_read_mask);
                     front_face->setWriteMask(desc.depth_stencil_state.stencil_write_mask);
                     back_face->setStencilFailureOperation(encode_stencil_operation(desc.depth_stencil_state.back_face.stencil_fail_op));
                     back_face->setDepthFailureOperation(encode_stencil_operation(desc.depth_stencil_state.back_face.stencil_depth_fail_op));
                     back_face->setDepthStencilPassOperation(encode_stencil_operation(desc.depth_stencil_state.back_face.stencil_pass_op));
-                    back_face->setStencilCompareFunction(encode_compare_function(desc.depth_stencil_state.back_face.stencil_func));
+                    back_face->setStencilCompareFunction(desc.depth_stencil_state.stencil_enable ? encode_compare_function(desc.depth_stencil_state.back_face.stencil_func) : MTL::CompareFunctionAlways);
                     back_face->setReadMask(desc.depth_stencil_state.stencil_read_mask);
                     back_face->setWriteMask(desc.depth_stencil_state.stencil_write_mask);
                     ds_desc->setFrontFaceStencil(front_face.get());
