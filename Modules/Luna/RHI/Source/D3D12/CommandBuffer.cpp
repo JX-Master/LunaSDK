@@ -281,7 +281,7 @@ namespace Luna
 		void CommandBuffer::begin_render_pass(const RenderPassDesc& desc)
 		{
 			lutsassert();
-			lucheck_msg(!m_render_pass_context.m_valid && !m_copy_pass_begin && !m_compute_pass_begin, "begin_render_pass can only be called when no other pass is open.");
+			assert_no_context();
 			lutry
 			{
 				m_occlusion_query_heap_attachment = desc.occlusion_query_heap;
@@ -484,7 +484,7 @@ namespace Luna
 		{
 			lutsassert();
 			assert_graphcis_context();
-			lucheck_msg(m_graphics_pipeline_layout, "Graphic pipeline layout must be set before Graphic View Set can be bound!");
+			lucheck_msg(m_graphics_pipeline_layout, "Graphics pipeline layout must be set before Graphic Descriptor Set can be bound!");
 			lucheck_msg(m_graphics_pipeline_layout->m_descriptor_set_layouts.size() >= start_index + descriptor_sets.size(), "The binding index out of range specified by the pipeline layout.");
 			if (!m_heap_set)
 			{
@@ -541,7 +541,6 @@ namespace Luna
 		{
 			lutsassert();
 			assert_graphcis_context();
-			lucheck_msg(m_render_pass_context.m_valid, "set_scissor_rects must be called between `begin_render_pass` and `end_render_pass`.");
 			D3D12_RECT* rs = (D3D12_RECT*)alloca(sizeof(D3D12_RECT) * rects.size());
 			auto tex_sz = m_render_pass_context.m_tex_size;
 			for (u32 i = 0; i < rects.size(); ++i)
@@ -570,7 +569,6 @@ namespace Luna
 		{
 			lutsassert();
 			assert_graphcis_context();
-			lucheck_msg(m_render_pass_context.m_valid, "draw_indexed_instanced must be called between `begin_render_pass` and `end_render_pass`.");
 			m_li->DrawIndexedInstanced(index_count_per_instance, instance_count, start_index_location, base_vertex_location, start_instance_location);
 		}
 		void CommandBuffer::draw_instanced(u32 vertex_count_per_instance, u32 instance_count, u32 start_vertex_location,
@@ -578,18 +576,19 @@ namespace Luna
 		{
 			lutsassert();
 			assert_graphcis_context();
-			lucheck_msg(m_render_pass_context.m_valid, "draw_instanced must be called between `begin_render_pass` and `end_render_pass`.");
 			m_li->DrawInstanced(vertex_count_per_instance, instance_count, start_vertex_location, start_instance_location);
 		}
 		void CommandBuffer::begin_occlusion_query(OcclusionQueryMode mode, u32 index)
 		{
 			lutsassert();
+			assert_graphcis_context();
 			QueryHeap* query_heap = (QueryHeap*)m_occlusion_query_heap_attachment->get_object();
 			m_li->BeginQuery(query_heap->m_heap.Get(), D3D12_QUERY_TYPE_OCCLUSION, index);
 		}
 		void CommandBuffer::end_occlusion_query(u32 index)
 		{
 			lutsassert();
+			assert_graphcis_context();
 			QueryHeap* query_heap = (QueryHeap*)m_occlusion_query_heap_attachment->get_object();
 			m_li->EndQuery(query_heap->m_heap.Get(), D3D12_QUERY_TYPE_OCCLUSION, index);
 			BufferResource* res = query_heap->m_result_buffer;
@@ -599,7 +598,6 @@ namespace Luna
 		{
 			lutsassert();
 			assert_graphcis_context();
-			lucheck_msg(m_render_pass_context.m_valid, "`begin_render_pass` must be called before `end_render_pass`.");
 			// Emit barrier.
 			Vector<D3D12_RESOURCE_BARRIER> barriers;
 			for (u32 i = 0; i < m_render_pass_context.m_num_color_attachments; ++i)
@@ -689,7 +687,8 @@ namespace Luna
 		}
 		void CommandBuffer::begin_compute_pass(const ComputePassDesc& desc)
 		{
-			lucheck_msg(!m_render_pass_context.m_valid && !m_copy_pass_begin && !m_compute_pass_begin, "begin_compute_pass can only be called when no other pass is open.");
+			lutsassert();
+			assert_no_context();
 			m_compute_pass_begin = true;
 			m_timestamp_query_heap_attachment = desc.timestamp_query_heap;
 			m_timestamp_query_begin_index = desc.timestamp_query_begin_pass_write_index;
@@ -718,13 +717,14 @@ namespace Luna
 		{
 			PipelineState* p = cast_object<PipelineState>(pso->get_object());
 			lutsassert();
+			assert_compute_context();
 			m_li->SetPipelineState(p->m_pso.Get());
 		}
 		void CommandBuffer::set_compute_descriptor_sets(u32 start_index, Span<IDescriptorSet*> descriptor_sets)
 		{
 			lutsassert();
 			assert_compute_context();
-			lucheck_msg(m_compute_pipeline_layout, "Compute pipeline layout must be set before Compute View Set can be attached.");
+			lucheck_msg(m_compute_pipeline_layout, "Compute pipeline layout must be set before Compute Descriptor Set can be attached.");
 			lucheck_msg(m_compute_pipeline_layout->m_descriptor_set_layouts.size() > start_index, "The binding index out of range specified by the pipeline layout.");
 			if (!m_heap_set)
 			{
@@ -769,7 +769,8 @@ namespace Luna
 		}
 		void CommandBuffer::end_compute_pass()
 		{
-			lucheck_msg(m_compute_pass_begin, "Calling end_compute_pass without prior call to begin_compute_pass.");
+			lutsassert();
+			assert_compute_context();
 			if (m_timestamp_query_heap_attachment && m_timestamp_query_end_index != DONT_QUERY)
 			{
 				write_timestamp(m_timestamp_query_heap_attachment, m_timestamp_query_end_index);
@@ -787,7 +788,8 @@ namespace Luna
 		}
 		void CommandBuffer::begin_copy_pass(const CopyPassDesc& desc)
 		{
-			lucheck_msg(!m_render_pass_context.m_valid && !m_copy_pass_begin && !m_compute_pass_begin, "begin_copy_pass can only be called when no other pass is open.");
+			lutsassert();
+			assert_no_context();
 			m_copy_pass_begin = true;
 			m_timestamp_query_heap_attachment = desc.timestamp_query_heap;
 			m_timestamp_query_begin_index = desc.timestamp_query_begin_pass_write_index;
@@ -923,7 +925,8 @@ namespace Luna
 		}
 		void CommandBuffer::end_copy_pass()
 		{
-			lucheck_msg(m_copy_pass_begin, "Calling end_copy_pass without prior call to begin_copy_pass.");
+			lutsassert();
+			assert_copy_context();
 			if (m_timestamp_query_heap_attachment && m_timestamp_query_end_index != DONT_QUERY)
 			{
 				write_timestamp(m_timestamp_query_heap_attachment, m_timestamp_query_end_index);
@@ -954,7 +957,7 @@ namespace Luna
 		RV CommandBuffer::submit(Span<IFence*> wait_fences, Span<IFence*> signal_fences, bool allow_host_waiting)
 		{
 			lutsassert();
-			lucheck_msg(!m_render_pass_context.m_valid && !m_copy_pass_begin && !m_compute_pass_begin, "submit can only be called when no render, compute or copy pass is open.");
+			assert_no_context();
 			HRESULT hr;
 			hr = m_li->Close();
 			if (FAILED(hr)) return encode_hresult(hr);

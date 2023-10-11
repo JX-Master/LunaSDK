@@ -202,6 +202,10 @@ namespace Luna
 			{
 				lucheck_msg(!m_render_pass_context.m_valid, "This command cannot be submitted within a render pass.");
 			}
+			void assert_no_context()
+			{
+				lucheck_msg(!m_render_pass_context.m_valid && !m_copy_pass_begin && !m_compute_pass_begin, "This command cannot be only be submitted when no pass is open");
+			}
 			void write_timestamp(IQueryHeap* heap, u32 index);
 			void begin_pipeline_statistics_query(IQueryHeap* heap, u32 index);
 			void end_pipeline_statistics_query(IQueryHeap* heap, u32 index);
