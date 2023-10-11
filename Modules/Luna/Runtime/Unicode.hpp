@@ -192,15 +192,13 @@ namespace Luna
 	}
 
 	//! Encodes the Unicode character `ch` into 1~2 `c16` bytes in the `dst` UTF-16 string.
-	//!  Returns the number of `c16` characters printed to the `dst` buffer.
-	//! @param[in] le If `true`, then the character is encoded using Little Endian, else the character
-	//! is encoded using Big Endian.
-	LUNA_RUNTIME_API usize utf16_encode_char(c16* dst, c32 ch, bool le = true);
+	//! Returns the number of `c16` characters printed to the `dst` buffer.
+	LUNA_RUNTIME_API usize utf16_encode_char(c16* dst, c32 ch);
 
-	//! Returns the Unicode character in the UTF-16 string `str`. LE and BE are automatic detected.
+	//! Returns the Unicode character in the UTF-16 string `str`.
 	LUNA_RUNTIME_API c32 utf16_decode_char(const c16* str);
 
-	//! Convert a utf-16 string to utf-8 string in destination buffer. LE and BE are automatic detected.
+	//! Convert a utf-16 string to utf-8 string in destination buffer.
 	//! @param[in] dst The buffer to hold the output string.
 	//! @param[in] dst_max_chars The maximum characters the `dst` buffer can hold, 
 	//! including the null-terminator.
@@ -220,14 +218,12 @@ namespace Luna
 	//! @param[in] dst_max_chars The maximum characters the `dst` buffer can hold, 
 	//! including the null-terminator.
 	//! @param[in] src The null-terminated buffer holding the source string.
-	//! @param[in] le If `true`, then the characters are encoded using Little Endian, else the characters
-	//! are encoded using Big Endian.
 	//! @param[in] src_chars The maximum characters to read. Specify `USIZE_MAX` to read till the end of the 
 	//! string.
 	//! @return Returns the number of characters outputted to the `dst` buffer, 
 	//! not including the null-terminator. Returns (usize)-1 if the input string is not
 	//! in utf-8 format.
-	LUNA_RUNTIME_API usize utf8_to_utf16(c16* dst, usize dst_max_chars, const c8* src, usize src_chars = USIZE_MAX, bool le = true);
+	LUNA_RUNTIME_API usize utf8_to_utf16(c16* dst, usize dst_max_chars, const c8* src, usize src_chars = USIZE_MAX);
 
 	//! Determines the length of the corresponding utf-16 string for a utf-8 input string,
 	//! not include the null-terminator.

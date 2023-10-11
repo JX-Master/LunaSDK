@@ -89,42 +89,29 @@ namespace Luna
 		}
 	}
 
-	LUNA_RUNTIME_API usize utf16_encode_char(c16* dst, c32 ch, bool le)
+	LUNA_RUNTIME_API usize utf16_encode_char(c16* dst, c32 ch)
 	{
-		if (ch >= 0xFFFF)
+		u32 code = (u32)ch;
+		if (code >= 0xFFFF)
 		{
-			if (le)
-			{
-				dst[0] = 0xDC00 + (c16)ch & 0x03FF;
-				dst[1] = 0xD800 + (c16)(ch >> 10) & 0x03FF;
-			}
-			else
-			{
-				dst[0] = 0xD800 + (c16)(ch >> 10) & 0x03FF;
-				dst[1] = 0xDC00 + (c16)ch & 0x03FF;
-			}
+			code -= 0x10000;
+			dst[0] = (c16)(0xD800 + ((u16)(code >> 10) & 0x03FF));
+			dst[1] = (c16)(0xDC00 + ((u16)code & 0x03FF));
 			return 2;
 		}
 		else
 		{
-			dst[0] = (c16)ch;
+			dst[0] = (c16)code;
 			return 1;
 		}
 	}
 
 	LUNA_RUNTIME_API c32 utf16_decode_char(const c16* str)
 	{
-		// Auto detect LE or BE.
-		c16 fc = *str;
-		if (fc >= 0xDC00 && fc <= 0xDFFF)
-		{
-			// LE
-			return (fc - 0xDC00) + (c32)((str[1] - 0xD800) << 10);
-		}
+		u16 fc = (u16)*str;
 		if (fc >= 0xD800 && fc <= 0xDBFF)
 		{
-			// BE
-			return (str[1] - 0xDC00) + (c32)((fc - 0xD800) << 10);
+			return (c32)(((u32)(fc - 0xD800) << 10) + (str[1] - 0xDC00) + 0x10000);
 		}
 		return (c32)fc;
 	}
@@ -161,7 +148,7 @@ namespace Luna
 		return wi;
 	}
 
-	LUNA_RUNTIME_API usize utf8_to_utf16(c16* dst, usize dst_max_chars, const c8* src, usize src_chars, bool le)
+	LUNA_RUNTIME_API usize utf8_to_utf16(c16* dst, usize dst_max_chars, const c8* src, usize src_chars)
 	{
 		usize ri{ 0 };
 		usize wi{ 0 };
@@ -174,7 +161,7 @@ namespace Luna
 				break;
 			}
 			ri += utf8_charspan(ch);
-			wi += utf16_encode_char(dst + wi, ch, le);
+			wi += utf16_encode_char(dst + wi, ch);
 		}
 		dst[wi] = '\0';
 		return wi;

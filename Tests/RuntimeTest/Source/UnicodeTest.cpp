@@ -25,9 +25,9 @@ namespace Luna
             lucheck(ch_len == 3);
             c8 ch_utf8_out[3] = {};
             utf8_encode_char(ch_utf8_out, ch);
-            lucheck(ch_utf8_out[0] == 0xE4);
-            lucheck(ch_utf8_out[1] == 0xB8);
-            lucheck(ch_utf8_out[2] == 0xAD);
+            lucheck((u8)ch_utf8_out[0] == 0xE4);
+            lucheck((u8)ch_utf8_out[1] == 0xB8);
+            lucheck((u8)ch_utf8_out[2] == 0xAD);
         }
         // UTF-16: system-default endian.
         {
@@ -53,10 +53,6 @@ namespace Luna
             utf16_encode_char(ch_utf16_2_out, ch);
             lucheck(ch_utf16_2_out[0] == 0xD802);
             lucheck(ch_utf16_2_out[1] == 0xDE6F);
-        }
-        // UTF-16: LE
-        {
-            
         }
     }
 }
