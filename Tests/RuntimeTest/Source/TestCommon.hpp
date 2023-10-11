@@ -32,6 +32,7 @@ namespace Luna
 	void array_test();
 	void invoke_test();
 	void function_test();
+	void unicode_test();
 
 	// STL test framework modified from EASTL.
 

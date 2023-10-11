@@ -32,6 +32,7 @@ void run()
 	serialize_test();
 	invoke_test();
 	function_test();
+	unicode_test();
 }
 
 int main()
