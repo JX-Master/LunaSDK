@@ -16,7 +16,7 @@ namespace Luna
     {
         // UTF-8
         {
-            c8 ch_utf8[] = {0xE4, 0xB8, 0xAD};
+            c8 ch_utf8[] = {(c8)0xE4, (c8)0xB8, (c8)0xAD};
             usize ch_len = utf8_charlen(ch_utf8);
             lucheck(ch_len == 3);
             c32 ch = utf8_decode_char(ch_utf8);
