@@ -8,11 +8,12 @@ Luna SDK is a C++ software development framework for real-time rendering applica
 
 Key features:
 
+* Everything is built from scratch, including os abstraction layer, container library, math library and much more.
 * Modern graphics API targeting Direct3D 12, Vulkan and Metal, including window management.
 * Full dynamic type reflection, including full support for generic types.
 * Serialization support based on reflection.
-* Fast entity-component-system scene representation.
-* Built-in asset system and virtual file system for locating files.
+* Built-in asset system and virtual file system for managing assets in runtime.
+* Well documented and CI tested.
 
 Designed target platforms:
 
