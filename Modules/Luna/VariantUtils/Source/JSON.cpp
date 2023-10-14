@@ -173,10 +173,7 @@ namespace Luna
 				}
 				c8 buf[6];
 				usize buf_count = utf8_encode_char(buf, ch);
-				for (usize i = 0; i < buf_count; ++i)
-				{
-					s.push_back(buf[i]);
-				}
+				s.append(buf, buf_count);
 				ctx.consume(ch);
 				ch = ctx.next_char();
 			}
@@ -586,11 +583,6 @@ namespace Luna
 						}
 						write_string_value(s, i.first.c_str(), i.first.size());
 						s.push_back(':');
-						//if (indent && (i.second.type() == VariantType::array || i.second.type() == VariantType::object) && !i.second.empty())
-						//{
-						//	s.push_back('\n');
-						//	write_indents(s, base_indent);
-						//}
 						if (indent)
 						{
 							s.push_back(' ');
@@ -621,29 +613,11 @@ namespace Luna
 				else
 				{
 					s.push_back('[');
-					//if (indent)
-					//{
-					//	++base_indent;
-					//	s.push_back('\n');
-					//}
 					for (usize i = 0; i < v.size(); ++i)
 					{
-						/*if (indent)
-						{
-							write_indents(s, base_indent);
-						}*/
 						write_value(v[i], s, indent, base_indent);
 						if (i != v.size() - 1) s.push_back(',');
-						/*if (indent)
-						{
-							s.push_back('\n');
-						}*/
 					}
-					//if (indent)
-					//{
-					//	--base_indent;
-					//	write_indents(s, base_indent);
-					//}
 					s.push_back(']');
 				}
 			}
@@ -679,11 +653,13 @@ namespace Luna
 		{
 			lucheck(src);
 			BufferReadContext ctx;
-			ctx.src = src;
+            ctx.src = src;
 			ctx.cur = src;
-			ctx.src_length = src_size;
+			ctx.src_size = src_size;
 			ctx.line = 1;
 			ctx.pos = 1;
+            ctx.encoding = Encoding::utf_8;
+			ctx.skip_utf16_bom();
 			return read_value(ctx);
 		}
 		LUNA_VARIANT_UTILS_API R<Variant> read_json(IStream* stream)

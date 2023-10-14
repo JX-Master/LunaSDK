@@ -12,4 +12,5 @@ namespace Luna
 {
     void json_test();
     void diff_test();
+    void xml_test();
 }

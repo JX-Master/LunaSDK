@@ -51,7 +51,7 @@ namespace Luna
 			Encoding encoding = Encoding::utf_8;
 			const void* src;
 			const void* cur;
-			usize src_length;
+			usize src_size;
 			u32 line;
 			u32 pos;
 
@@ -59,6 +59,8 @@ namespace Luna
 			virtual c32 next_char(usize index = 0) override;
 			virtual u32 get_line() override { return line; }
 			virtual u32 get_pos() override { return pos; }
+
+			void skip_utf16_bom();
 		};
 
         // A stream read context
@@ -66,6 +68,7 @@ namespace Luna
 		{
 			Encoding encoding = Encoding::utf_8;
 			IStream* stream;
+			RingDeque<u8> stream_buffer;
 			RingDeque<c32> buffer;
 			u32 line;
 			u32 pos;
@@ -76,6 +79,10 @@ namespace Luna
 			virtual c32 next_char(usize index = 0) override;
 			virtual u32 get_line() override { return line; }
 			virtual u32 get_pos() override { return pos; }
+
+			RV stream_read(void* buf, usize read_size, usize* read_bytes);
+
+			void skip_utf16_bom();
 		};
     }
 }

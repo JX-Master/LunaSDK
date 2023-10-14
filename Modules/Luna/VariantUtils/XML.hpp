@@ -19,21 +19,18 @@ namespace Luna
 {
 	namespace VariantUtils
 	{
+        LUNA_VARIANT_UTILS_API Variant new_xml_element(const Name& name);
+		LUNA_VARIANT_UTILS_API Name get_xml_name(const Variant& xml_element);
+		LUNA_VARIANT_UTILS_API void set_xml_name(Variant& xml_element, const Name& name);
+		LUNA_VARIANT_UTILS_API const Variant& get_xml_attributes(const Variant& xml_element);
+		LUNA_VARIANT_UTILS_API Variant& get_xml_attributes(Variant& xml_element);
+		LUNA_VARIANT_UTILS_API const Variant& get_xml_content(const Variant& xml_element);
+		LUNA_VARIANT_UTILS_API Variant& get_xml_content(Variant& xml_element);
+
 		//! @brief Reads one XML string.
-		LUNA_VARIANT_UTILS_API R<Variant> read_xml(const c8* src, usize src_size = USIZE_MAX);
-
+		LUNA_VARIANT_UTILS_API R<Variant> read_xml(const void* src, usize src_size = USIZE_MAX);
 		LUNA_VARIANT_UTILS_API R<Variant> read_xml(IStream* stream);
-
 		LUNA_VARIANT_UTILS_API String write_xml(const Variant& v, bool indent = true);
-		
 		LUNA_VARIANT_UTILS_API RV write_xml(IStream* stream, const Variant& v, bool indent = true);
-
-        LUNA_VARIANT_UTILS_API Variant new_xml_document(const c8* version = "1.0", const c8* encoding = "UTF-8");
-
-
-        LUNA_VARIANT_UTILS_API const Name& get_xml_version(const Variant& xml_document);
-        LUNA_VARIANT_UTILS_API void set_xml_version(Variant& xml_document);
-
-        LUNA_VARIANT_UTILS_API Name& get_xml_name(Variant& xml_node);
 	}
 }
