@@ -9,13 +9,16 @@
 */
 #include "TestCommon.hpp"
 #include <Luna/Runtime/Runtime.hpp>
+#include <Luna/Runtime/Module.hpp>
 using namespace Luna;
 
 int main()
 {
     Luna::init();
+    lupanic_if_failed(init_modules());
     json_test();
     diff_test();
+    xml_test();
     Luna::close();
     return 0;
 }

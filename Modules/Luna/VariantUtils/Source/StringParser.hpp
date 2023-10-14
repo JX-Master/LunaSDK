@@ -18,6 +18,12 @@ namespace Luna
     namespace VariantUtils
     {
         // The common function for parsing string content (JSON, XML, etc).
+		enum class Encoding : u8
+		{
+			utf_8 = 0,
+			utf_16_le = 1,
+			utf_16_be = 2,
+		};
 
         inline bool is_whitespace(c32 ch)
 		{
@@ -42,9 +48,10 @@ namespace Luna
         // A buffer read context
         struct BufferReadContext : public IReadContext
 		{
-			const c8* src;
-			const c8* cur;
-			usize src_length;
+			Encoding encoding = Encoding::utf_8;
+			const void* src;
+			const void* cur;
+			usize src_size;
 			u32 line;
 			u32 pos;
 
@@ -52,12 +59,16 @@ namespace Luna
 			virtual c32 next_char(usize index = 0) override;
 			virtual u32 get_line() override { return line; }
 			virtual u32 get_pos() override { return pos; }
+
+			void skip_utf16_bom();
 		};
 
         // A stream read context
         struct StreamReadContext : public IReadContext
 		{
+			Encoding encoding = Encoding::utf_8;
 			IStream* stream;
+			RingDeque<u8> stream_buffer;
 			RingDeque<c32> buffer;
 			u32 line;
 			u32 pos;
@@ -68,6 +79,10 @@ namespace Luna
 			virtual c32 next_char(usize index = 0) override;
 			virtual u32 get_line() override { return line; }
 			virtual u32 get_pos() override { return pos; }
+
+			RV stream_read(void* buf, usize read_size, usize* read_bytes);
+
+			void skip_utf16_bom();
 		};
     }
 }
