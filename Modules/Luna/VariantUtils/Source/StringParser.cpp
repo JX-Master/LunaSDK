@@ -79,10 +79,10 @@ namespace Luna
 					c32 ch = utf8_decode_char(next_cur);
 					if (!ch) return 0;
 					next_cur += utf8_charspan(ch);
-					if ((usize)(next_cur - src) >= src_size) return 0;
+					if ((usize)(next_cur - (const c8*)src) >= src_size) return 0;
 					--index;
 				}
-				if ((usize)(next_cur - src) >= src_size) return 0;
+				if ((usize)(next_cur - (const c8*)src) >= src_size) return 0;
 				return utf8_decode_char(next_cur);
 			}
 			else if(encoding == Encoding::utf_16_le || encoding == Encoding::utf_16_be)
@@ -95,10 +95,10 @@ namespace Luna
 					c32 ch = utf16_decode_char_encoding(next_cur, encoding);
 					if (!ch) return 0;
 					next_cur += utf16_charspan(ch);
-					if ((usize)(next_cur - src) * 2 >= src_size) return 0;
+					if ((usize)(next_cur - (const c16*)src) * 2 >= src_size) return 0;
 					--index;
 				}
-				if ((usize)(next_cur - src) * 2 >= src_size) return 0;
+				if ((usize)(next_cur - (const c16*)src) * 2 >= src_size) return 0;
 				return utf16_decode_char_encoding(next_cur, encoding);
 			}
 		}
