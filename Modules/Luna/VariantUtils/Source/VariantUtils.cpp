@@ -15,18 +15,15 @@ namespace Luna
     {
         void xml_init();
         void xml_close();
-    }
-    RV init()
-    {
-        VariantUtils::xml_init();
-        return ok;
-    }
-    void close()
-    {
-        VariantUtils::xml_close();
-    }
-    namespace VariantUtils
-    {
+        RV init()
+        {
+            VariantUtils::xml_init();
+            return ok;
+        }
+        void close()
+        {
+            VariantUtils::xml_close();
+        }
         LUNA_STATIC_REGISTER_MODULE(VariantUtils, "", init, close);
     }
 }
