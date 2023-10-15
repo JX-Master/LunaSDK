@@ -10,12 +10,15 @@
 #include "TestCommon.hpp"
 #include <Luna/Runtime/Runtime.hpp>
 #include <Luna/Runtime/Module.hpp>
+#include <Luna/Runtime/Log.hpp>
 using namespace Luna;
 
 int main()
 {
     Luna::init();
     lupanic_if_failed(init_modules());
+    set_log_to_platform_enabled(true);
+    set_log_to_platform_verbosity(LogVerbosity::warning);
     json_test();
     diff_test();
     xml_test();

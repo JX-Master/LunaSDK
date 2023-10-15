@@ -388,12 +388,14 @@ namespace Luna
                     if(ch == '&')
                     {
                         luexp(read_reference(ctx, s));
-                        ch = ctx.next_char();
                     }
-                    c8 buf[6];
-                    usize buf_count = utf8_encode_char(buf, ch);
-                    s.append(buf, buf_count);
-                    ctx.consume(ch);
+                    else
+                    {
+                        c8 buf[6];
+                        usize buf_count = utf8_encode_char(buf, ch);
+                        s.append(buf, buf_count);
+                        ctx.consume(ch);
+                    }
                     ch = ctx.next_char();
                 }
             }
@@ -466,6 +468,62 @@ namespace Luna
             lucatchret;
             return ok;
         }
+        static R<String> read_xml_cdata(IReadContext& ctx)
+        {
+            c32 ch[9];
+            ch[0] = ctx.next_char(0);
+            ch[1] = ctx.next_char(1);
+            ch[2] = ctx.next_char(2);
+            ch[3] = ctx.next_char(3);
+            ch[4] = ctx.next_char(4);
+            ch[5] = ctx.next_char(5);
+            ch[6] = ctx.next_char(6);
+            ch[7] = ctx.next_char(7);
+            ch[8] = ctx.next_char(8);
+            luassert(
+                ch[0] == '<' &&
+                ch[1] == '!' &&
+                ch[2] == '[' &&
+                ch[3] == 'C' &&
+                ch[4] == 'D' &&
+                ch[5] == 'A' &&
+                ch[6] == 'T' &&
+                ch[7] == 'A' &&
+                ch[8] == '[');
+            ctx.consume(ch[0]);
+            ctx.consume(ch[1]);
+            ctx.consume(ch[2]);
+            ctx.consume(ch[3]);
+            ctx.consume(ch[4]);
+            ctx.consume(ch[5]);
+            ctx.consume(ch[6]);
+            ctx.consume(ch[7]);
+            ctx.consume(ch[8]);
+            ch[0] = ctx.next_char(0);
+            String r;
+            while (true)
+            {
+                if(!ch[0]) return set_error(BasicError::format_error(), "Unexpected EOF occurred at line %d, pos %d.", ctx.get_line(), ctx.get_pos());
+                if (ch[0] == ']')
+                {
+                    ch[1] = ctx.next_char(1);
+                    ch[2] = ctx.next_char(2);
+                    if (ch[1] == ']' && ch[2] == '>')
+                    {
+                        ctx.consume(ch[0]);
+                        ctx.consume(ch[1]);
+                        ctx.consume(ch[2]);
+                        break;
+                    }
+                }
+                c8 buf[6];
+                usize buf_sz = utf8_encode_char(buf, ch[0]);
+                r.append(buf, buf_sz);
+                ctx.consume(ch[0]);
+                ch[0] = ctx.next_char(0);
+            }
+            return r;
+        }
         static R<Variant> read_xml_element(IReadContext& ctx);
         static RV read_xml_content(IReadContext& ctx, Variant& element)
         {
@@ -485,8 +543,24 @@ namespace Luna
                             // end tag.
                             break;
                         }
-                        lulet(child, read_xml_element(ctx));
-                        content.push_back(move(child));
+                        else if (ch2 == '!' && 
+                            ctx.next_char(2) == '[' &&
+                            ctx.next_char(3) == 'C'&&
+                            ctx.next_char(4) == 'D'&&
+                            ctx.next_char(5) == 'A'&&
+                            ctx.next_char(6) == 'T'&&
+                            ctx.next_char(7) == 'A'&&
+                            ctx.next_char(8) == '[')
+                        {
+                            // read CDATA.
+                            lulet(cdata, read_xml_cdata(ctx));
+                            content.push_back(Variant(Name(cdata)));
+                        }
+                        else
+                        {
+                            lulet(child, read_xml_element(ctx));
+                            content.push_back(move(child));
+                        }
                     }
                     else
                     {
@@ -514,7 +588,8 @@ namespace Luna
             ctx.consume(ch2);
             String name;
             read_xml_name(ctx, name);
-            if(Name(name) != element_name) return set_error(BasicError::format_error(), "The name of the end tag (%s) does not match the name of the start tag (%s). (line %d pos %d)", name.c_str(), element_name.c_str(), ctx.get_line(), ctx.get_pos());
+            if(Name(name) != element_name) 
+                return set_error(BasicError::format_error(), "The name of the end tag (%s) does not match the name of the start tag (%s). (line %d pos %d)", name.c_str(), element_name.c_str(), ctx.get_line(), ctx.get_pos());
             skip_whitespaces_and_comments(ctx);
             ch = ctx.next_char();
             if(ch != '>') return set_error(BasicError::format_error(), "'>' expected at the end of one one tag (line %d pos %d).", ctx.get_line(), ctx.get_pos());

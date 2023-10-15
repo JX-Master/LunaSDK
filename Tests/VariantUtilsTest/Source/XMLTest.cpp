@@ -9,6 +9,7 @@
 */
 #include "TestCommon.hpp"
 #include <Luna/VariantUtils/XML.hpp>
+#include <Luna/Runtime/Log.hpp>
 
 namespace Luna
 {
@@ -34,14 +35,17 @@ namespace Luna
         <author>Erik T. Ray</author>
         <year>2003</year>
         <price>39.95</price>
+        <display><![CDATA[<p>Learning XML</p>]]></display>
     </book>
 </bookstore>
         )";
         R<Variant> v = VariantUtils::read_xml(src);
+        if (failed(v)) log_error("xml_test", "%s", explain(v.errcode()));
 		luassert_always(succeeded(v));
         String s = VariantUtils::write_xml(v.get());
-        printf("%s", s.c_str());
+        log_debug("xml_test", "%s", s.c_str());
 		R<Variant> v2 = VariantUtils::read_xml(s.c_str());
+        if (failed(v2)) log_error("xml_test", "%s", explain(v2.errcode()));
 		luassert_always(succeeded(v2));
 		luassert_always(v.get() == v2.get());
     }
