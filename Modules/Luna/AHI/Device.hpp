@@ -9,7 +9,6 @@
 */
 #pragma once
 #include "Adapter.hpp"
-#include "AudioSource.hpp"
 #include <Luna/Runtime/Ref.hpp>
 #include <Luna/Runtime/Result.hpp>
 
@@ -45,7 +44,15 @@ namespace Luna
             DeviceFlag flags;
         };
 
-        using on_process_capture_data = void(const void* src_buffer, const WaveFormat& format, u32 num_frames);
+        //! @param[in] dst_buffer The buffer to write audio to. The write data must not exceed 
+        //! `num_frames * get_frame_size(format.bit_depth, format.num_channels)` bytes.
+        //! @param[in] format The required wave format.
+        //! @param[in] num_frames The required number of frames to write. If the actual number of frames
+        //! written is smaller than required, frames that is not written will be muted (filled with 0).
+        //! @return Returns the number of frames actually written.
+        using playback_callback_t = u32(void* dst_buffer, const WaveFormat& format, u32 num_frames);
+
+        using capture_callback_t = void(const void* src_buffer, const WaveFormat& format, u32 num_frames);
 
         //! Represents one audio device that can playback sounds.
         struct IDevice : virtual Interface
@@ -58,11 +65,12 @@ namespace Luna
             virtual BitDepth get_playback_bit_depth() = 0;
             virtual u32 get_capture_num_channels() = 0;
             virtual BitDepth get_capture_bit_depth() = 0;
-            virtual void add_audio_source(IAudioSource* audio_source) = 0;
-            virtual void remove_audio_source(IAudioSource* audio_source) = 0;
-            virtual usize add_process_capture_data_callback(const Function<on_process_capture_data>& callback) = 0;
-            virtual usize add_process_capture_data_callback(Function<on_process_capture_data>&& callback) = 0;
-            virtual void remove_process_capture_data_callback(usize handle) = 0;
+            virtual usize add_playback_data_callback(const Function<playback_callback_t>& callback) = 0;
+            virtual usize add_playback_data_callback(Function<playback_callback_t>&& callback) = 0;
+            virtual void remove_playback_data_callback(usize handle) = 0;
+            virtual usize add_capture_data_callback(const Function<capture_callback_t>& callback) = 0;
+            virtual usize add_capture_data_callback(Function<capture_callback_t>&& callback) = 0;
+            virtual void remove_capture_data_callback(usize handle) = 0;
         };
 
         LUNA_AUDIO_API R<Ref<IDevice>> new_device(const DeviceDesc& desc);

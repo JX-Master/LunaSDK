@@ -176,9 +176,9 @@ namespace Luna
                 for(usize i = 0; i < device->m_audio_sources.size(); ++i)
                 {
                     auto& dst = device->m_audio_sources[i];
-                    dst->read_source_data(format, frameCount, buffer_size);
-                    mix_buffers[i].data = dst->m_buffer.data();
-                    mix_buffers[i].num_frames = dst->m_valid_frames;
+                    dst.second.read_source_data(format, frameCount, buffer_size);
+                    mix_buffers[i].data = dst.second.m_buffer.data();
+                    mix_buffers[i].num_frames = dst.second.m_valid_frames;
                 }
                 // Mix data.
                 switch(format.bit_depth)
@@ -203,18 +203,18 @@ namespace Luna
             }
             if(test_flags(device->m_flags, DeviceFlag::capture))
             {
-                MutexGuard guard(device->m_audio_capture_callbacks_mutex);
+                MutexGuard guard(device->m_capture_event_mutex);
                 WaveFormat format;
                 format.sample_rate = device->get_sample_rate();
                 format.num_channels = device->get_capture_num_channels();
                 format.bit_depth = device->get_capture_bit_depth();
-                device->m_on_process_capture_data(pInput, format, frameCount);
+                device->m_capture_event(pInput, format, frameCount);
             }
         }
         RV Device::init(const DeviceDesc& desc)
         {
             m_audio_sources_mutex = new_mutex();
-            m_audio_capture_callbacks_mutex = new_mutex();
+            m_capture_event_mutex = new_mutex();
             m_flags = desc.flags;
             ma_device_type type;
             if(test_flags(desc.flags, DeviceFlag::playback | DeviceFlag::capture)) type = ma_device_type_duplex;
@@ -260,25 +260,6 @@ namespace Luna
         Device::~Device()
         {
             ma_device_uninit(&m_device);
-        }
-        void Device::add_audio_source(IAudioSource* audio_source)
-        {
-            MutexGuard guard(m_audio_sources_mutex);
-            AudioSource* source = cast_object<AudioSource>(audio_source->get_object());
-            m_audio_sources.push_back(Ref<AudioSource>(source));
-        }
-        void Device::remove_audio_source(IAudioSource* audio_source)
-        {
-            MutexGuard guard(m_audio_sources_mutex);
-            AudioSource* source = cast_object<AudioSource>(audio_source->get_object());
-            for(auto iter = m_audio_sources.begin(); iter != m_audio_sources.end(); ++iter)
-            {
-                if(iter->get() == source)
-                {
-                    m_audio_sources.erase(iter);
-                    break;
-                }
-            }
         }
         LUNA_AUDIO_API R<Ref<IDevice>> new_device(const DeviceDesc& desc)
         {

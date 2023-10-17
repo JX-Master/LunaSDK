@@ -117,7 +117,7 @@ struct AudioSourceCallback
 
 struct AudioSource
 {
-    Ref<AHI::IAudioSource> audio_source;
+    usize audio_source = USIZE_MAX;
     f32 frequency = 261.626;
     f32 volume = 0.1f;
 };
@@ -247,15 +247,12 @@ RV run()
                         }
                         if(Button("Add Audio Source"))
                         {
-                            Ref<AHI::IAudioSource> audio_source = AHI::new_audio_source();
-                            device->add_audio_source(audio_source);
                             AudioSource source;
-                            source.audio_source = audio_source;
                             audio_sources.push_back(source);
                         }
                         for (auto& source : audio_sources)
                         {
-                            PushID(source.audio_source.get());
+                            PushID(&source);
                             Text("Audio Source");
                             SameLine();
                             SetNextItemWidth(100.0f);
@@ -270,7 +267,11 @@ RV run()
                                 callback.time = 0.0f;
                                 callback.freq = source.frequency;
                                 callback.amp = source.volume;
-                                source.audio_source->set_data_callback(callback);
+                                if(source.audio_source != USIZE_MAX)
+                                {
+                                    device->remove_playback_data_callback(source.audio_source);
+                                }
+                                source.audio_source = device->add_playback_data_callback(callback);
                             }
                             PopID();
                         }

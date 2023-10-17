@@ -11,7 +11,6 @@
 #include "Common.hpp"
 #include "Adapter.hpp"
 #include "Device.hpp"
-#include "AudioSource.hpp"
 
 namespace Luna
 {
@@ -25,8 +24,6 @@ namespace Luna
             impl_interface_for_type<Adapter, IAdapter>();
             register_boxed_type<Device>();
             impl_interface_for_type<Device, IDevice>();
-            register_boxed_type<AudioSource>();
-            impl_interface_for_type<AudioSource, IAudioSource>();
             auto r = ma_context_init(NULL, 0, NULL, &g_context);
             if(r != MA_SUCCESS)
             {
