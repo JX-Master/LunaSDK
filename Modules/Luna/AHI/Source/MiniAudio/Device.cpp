@@ -12,6 +12,7 @@
 #include "Adapter.hpp"
 #include "Device.hpp"
 #include <Luna/Runtime/Array.hpp>
+#include <Luna/Runtime/Math/Math.hpp>
 
 namespace Luna
 {
@@ -22,6 +23,133 @@ namespace Luna
             void* data;
             u32 num_frames;
         };
+        static void mix_u8(u8* dst, u32 num_channels, u32 num_frames, Span<MixBuffer> src_buffers)
+        {
+            for(u32 f = 0; f < num_frames; ++f)
+            {
+                for(u32 c = 0; c < num_channels; ++c)
+                {
+                    u32 sample = 0;
+                    for(auto& src : src_buffers)
+                    {
+                        if(f < src.num_frames)
+                        {
+                            u8* src_data = (u8*)src.data;
+                            sample += (u32)(*src_data);
+                            src.data = src_data + 1;
+                        }
+                    }
+                    sample = min<u32>(sample, 255);
+                    *dst = (u8)sample;
+                    ++dst;
+                }
+            }
+        }
+        static void mix_s16(i16* dst, u32 num_channels, u32 num_frames, Span<MixBuffer> src_buffers)
+        {
+            for(u32 f = 0; f < num_frames; ++f)
+            {
+                for(u32 c = 0; c < num_channels; ++c)
+                {
+                    i32 sample = 0;
+                    for(auto& src : src_buffers)
+                    {
+                        if(f < src.num_frames)
+                        {
+                            i16* src_data = (i16*)src.data;
+                            sample += (i32)(*src_data);
+                            src.data = src_data + 1;
+                        }
+                    }
+                    sample = clamp(sample, -32768, 32767);
+                    *dst = (i16)sample;
+                    ++dst;
+                }
+            }
+        }
+        static void mix_s24(u8* dst, u32 num_channels, u32 num_frames, Span<MixBuffer> src_buffers)
+        {
+            for(u32 f = 0; f < num_frames; ++f)
+            {
+                for(u32 c = 0; c < num_channels; ++c)
+                {
+                    i32 sample = 0;
+                    for(auto& src : src_buffers)
+                    {
+                        if(f < src.num_frames)
+                        {
+                            i32 data = 0;
+                            // read 3 bytes and compose s24.
+                            u8* src_data_ptr = (u8*)src.data;
+#ifdef LUNA_PLATFORM_LITTLE_ENDIAN
+                            data = ((i32)(src_data_ptr[0])) + (((i32)src_data_ptr[1]) << 8) + (((i32)(src_data_ptr[2] & 0x7F)) << 16);
+                            data = (src_data_ptr[2] & 0x80) ? -data : data;
+#else
+                            data = ((i32)(src_data_ptr[2])) + ((i32)src_data_ptr[1] << 8) + (((i32)(src_data_ptr[0] & 0x7F)) << 16);
+                            data = (src_data_ptr[0] & 0x80) ? -data : data;
+#endif
+                            sample += data;
+                            src.data = src_data_ptr + 3;
+                        }
+                    }
+                    sample = clamp(sample, -8388608, 8388607);
+#ifdef LUNA_PLATFORM_LITTLE_ENDIAN
+                    dst[0] = (u8)(sample);
+                    dst[1] = (u8)(sample >> 8);
+                    dst[2] = (u8)((sample >> 16) & 0x7F) + (u8)(sample < 0 ? 0x80 : 0);
+#else
+                    dst[0] = (u8)((sample >> 16) & 0x7F) + (u8)(sample < 0 ? 0x80 : 0);
+                    dst[1] = (u8)(sample >> 8);
+                    dst[2] = (u8)(sample);
+#endif
+                    dst += 3;
+                }
+            }
+        }
+        static void mix_s32(i32* dst, u32 num_channels, u32 num_frames, Span<MixBuffer> src_buffers)
+        {
+            for(u32 f = 0; f < num_frames; ++f)
+            {
+                for(u32 c = 0; c < num_channels; ++c)
+                {
+                    i64 sample = 0;
+                    for(auto& src : src_buffers)
+                    {
+                        if(f < src.num_frames)
+                        {
+                            i32* src_data = (i32*)src.data;
+                            sample += (i64)(*src_data);
+                            src.data = src_data + 1;
+                        }
+                    }
+                    sample = clamp(sample, -2147483648, 2147483647);
+                    *dst = (i32)sample;
+                    ++dst;
+                }
+            }
+        }
+        static void mix_f32(f32* dst, u32 num_channels, u32 num_frames, Span<MixBuffer> src_buffers)
+        {
+            for(u32 f = 0; f < num_frames; ++f)
+            {
+                for(u32 c = 0; c < num_channels; ++c)
+                {
+                    f32 sample = 0;
+                    for(auto& src : src_buffers)
+                    {
+                        if(f < src.num_frames)
+                        {
+                            f32* src_data = (f32*)src.data;
+                            sample += (f32)(*src_data);
+                            src.data = src_data + 1;
+                        }
+                    }
+                    sample = clamp(sample, -1.0, 1.0);
+                    *dst = (f32)sample;
+                    ++dst;
+                }
+            }
+        }
         void data_callback(ma_device* pDevice, void* pOutput, const void* pInput, ma_uint32 frameCount)
         {
             Device* device = (Device*)pDevice->pUserData;
@@ -33,7 +161,18 @@ namespace Luna
                 format.num_channels = device->get_playback_num_channels();
                 format.bit_depth = device->get_playback_bit_depth();
                 usize buffer_size = get_frame_size(format.bit_depth, format.num_channels) * (usize)frameCount;
-                Array<MixBuffer> mix_buffers(device->m_audio_sources.size());
+                usize num_mix_buffers = device->m_audio_sources.size();
+                Array<MixBuffer> mix_buffer_array;
+                MixBuffer* mix_buffers;
+                if(num_mix_buffers > 32)
+                {
+                    mix_buffer_array = Array<MixBuffer>(num_mix_buffers);
+                    mix_buffers = mix_buffer_array.data();
+                }
+                else
+                {
+                    mix_buffers = (MixBuffer*)alloca(sizeof(MixBuffer) * num_mix_buffers);
+                }
                 for(usize i = 0; i < device->m_audio_sources.size(); ++i)
                 {
                     auto& dst = device->m_audio_sources[i];
@@ -42,7 +181,25 @@ namespace Luna
                     mix_buffers[i].num_frames = dst->m_valid_frames;
                 }
                 // Mix data.
-                
+                switch(format.bit_depth)
+                {
+                case BitDepth::u8:
+                    mix_u8((u8*)pOutput, format.num_channels, frameCount, {mix_buffers, num_mix_buffers});
+                    break;
+                case BitDepth::s16:
+                    mix_s16((i16*)pOutput, format.num_channels, frameCount, {mix_buffers, num_mix_buffers});
+                    break;
+                case BitDepth::s24:
+                    mix_s24((u8*)pOutput, format.num_channels, frameCount, {mix_buffers, num_mix_buffers});
+                    break;
+                case BitDepth::s32:
+                    mix_s32((i32*)pOutput, format.num_channels, frameCount, {mix_buffers, num_mix_buffers});
+                    break;
+                case BitDepth::f32:
+                    mix_f32((f32*)pOutput, format.num_channels, frameCount, {mix_buffers, num_mix_buffers});
+                    break;
+                default: lupanic();
+                }
             }
         }
         RV Device::init(const DeviceDesc& desc)
@@ -121,7 +278,7 @@ namespace Luna
                 luexp(dev->init(desc));
             }
             lucatchret;
-            return dev;
+            return Ref<IDevice>(dev);
         }
     }
 }

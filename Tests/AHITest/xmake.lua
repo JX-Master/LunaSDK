@@ -1,0 +1,7 @@
+target("AHITest")
+    set_luna_sdk_test()
+    set_kind("binary")
+    add_files("*.cpp")
+    add_luna_modules("Runtime", "AHI", "RHI", "Window", "ImGui")
+    add_packages("imgui")
+target_end()

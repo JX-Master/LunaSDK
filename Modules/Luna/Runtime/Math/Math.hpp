@@ -192,11 +192,12 @@ namespace Luna
 	using OffsetBoxU = OffsetBox<u32>;
 	using OffsetBoxF = OffsetBox<f32>;
 
-	inline f32 lerp(f32 f1, f32 f2, f32 t)
+	template <typename _Ty>
+	inline _Ty lerp(_Ty f1, _Ty f2, _Ty t)
 	{
 		return f1 + t * (f2 - f1);
 	}
-
+	
 	inline f32 smoothstep(f32 f1, f32 f2, f32 t)
 	{
 		t = (t > 1.0f) ? 1.0f : ((t < 0.0f) ? 0.0f : t);  // Clamp value to 0 to 1
@@ -204,10 +205,11 @@ namespace Luna
 		return lerp(f1, f2, t);
 	}
 
-	inline f32 clamp(f32 v, f32 min_v, f32 max_v)
+	template <typename _Ty1, typename _Ty2, typename _Ty3>
+	inline _Ty1 clamp(_Ty1 v, _Ty2 min_v, _Ty3 max_v)
 	{
-		v = v > min_v ? v : min_v;
-		v = v < max_v ? v : max_v;
+		v = v > (_Ty1)min_v ? v : (_Ty1)min_v;
+		v = v < (_Ty1)max_v ? v : (_Ty1)max_v;
 		return v;
 	}
 
