@@ -195,6 +195,8 @@ namespace Luna
 		LUNA_RUNTIME_API ErrCode not_found();
 		//! @brief The specified item already exists.
 		LUNA_RUNTIME_API ErrCode already_exists();
+		//! @brief The specified item is not unique.
+		LUNA_RUNTIME_API ErrCode not_unique();
 		//! @brief Invalid arguments are specified. This is caused by a programming error and must be fixed before the application is released.
 		LUNA_RUNTIME_API ErrCode bad_arguments();
 		//! @brief The function calling time is not valid, like using one resource before it is initialized, or 
@@ -211,6 +213,14 @@ namespace Luna
 		LUNA_RUNTIME_API ErrCode access_denied();
 		//! @brief The specified path is not a directory, or one component of the path prefix of the specified path is not a directory.
 		LUNA_RUNTIME_API ErrCode not_directory();
+		//! @brief The specified path is a directory.
+		LUNA_RUNTIME_API ErrCode is_directory();
+		//! @brief The directory is not empty.
+		LUNA_RUNTIME_API ErrCode directory_not_empty();
+		//! @brief The file format is not valid or not supported.
+		LUNA_RUNTIME_API ErrCode bad_file();
+		//! @brief System IO error.
+		LUNA_RUNTIME_API ErrCode io_error();
 		//! @brief The time limit is reached before this operation succeeds.
 		LUNA_RUNTIME_API ErrCode timeout();
 		//! @brief The provided data or string is too long.
@@ -242,8 +252,14 @@ namespace Luna
 		LUNA_RUNTIME_API ErrCode in_progress();
 		//! @brief The library/platform version is not matched.
 		LUNA_RUNTIME_API ErrCode version_dismatch();
+		//! @brief No data is available.
+		LUNA_RUNTIME_API ErrCode no_data();
 		//! @brief The data validation is failed.
 		LUNA_RUNTIME_API ErrCode bad_data();
+		//! @brief The address is not valid.
+		LUNA_RUNTIME_API ErrCode bad_address();
+		//! @brief One deadlock is detected.
+		LUNA_RUNTIME_API ErrCode deadlock();
 
 		//! @}
 
