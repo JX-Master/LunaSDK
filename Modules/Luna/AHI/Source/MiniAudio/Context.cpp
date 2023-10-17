@@ -34,7 +34,6 @@ namespace Luna
             }
             return ok;
         }
-
         void platform_close()
         {
             ma_context_uninit(&g_context);

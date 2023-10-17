@@ -45,6 +45,8 @@ namespace Luna
             DeviceFlag flags;
         };
 
+        using on_process_capture_data = void(const void* src_buffer, const WaveFormat& format, u32 num_frames);
+
         //! Represents one audio device that can playback sounds.
         struct IDevice : virtual Interface
         {
@@ -58,6 +60,9 @@ namespace Luna
             virtual BitDepth get_capture_bit_depth() = 0;
             virtual void add_audio_source(IAudioSource* audio_source) = 0;
             virtual void remove_audio_source(IAudioSource* audio_source) = 0;
+            virtual usize add_process_capture_data_callback(const Function<on_process_capture_data>& callback) = 0;
+            virtual usize add_process_capture_data_callback(Function<on_process_capture_data>&& callback) = 0;
+            virtual void remove_process_capture_data_callback(usize handle) = 0;
         };
 
         LUNA_AUDIO_API R<Ref<IDevice>> new_device(const DeviceDesc& desc);

@@ -146,9 +146,10 @@ RV run()
 		lulet(cmdbuf, dev->new_command_buffer(graphics_queue));
         window->get_close_event().add_handler([](Window::IWindow* window) { window->close(); });
 
-        Vector<Ref<AHI::IAdapter>> audio_adapters;
+        Vector<Ref<AHI::IAdapter>> playback_adapters;
+        Vector<Ref<AHI::IAdapter>> capture_adapters;
         Ref<AHI::IDevice> device;
-        luexp(AHI::get_adapters(&audio_adapters, nullptr));
+        luexp(AHI::get_adapters(&playback_adapters, &capture_adapters));
 
         Vector<AudioSource> audio_sources;
 
@@ -188,67 +189,34 @@ RV run()
 
                 if(CollapsingHeader("Adapters and formats"))
                 {
-                    Vector<const c8*> adapter_names;
-                    adapter_names.reserve(audio_adapters.size());
-                    for(auto& adapter : audio_adapters)
+                    Vector<const c8*> playback_adapter_names;
+                    Vector<const c8*> capture_adapter_names;
+                    playback_adapter_names.reserve(playback_adapters.size());
+                    for(auto& adapter : playback_adapters)
                     {
-                        adapter_names.push_back(adapter->get_name());
+                        playback_adapter_names.push_back(adapter->get_name());
                     }
-                    static int current_adapter;
-                    Combo("Adapters", &current_adapter, adapter_names.data(), (int)adapter_names.size());
-                    if(current_adapter < audio_adapters.size())
+                    for(auto& adapter : capture_adapters)
                     {
-                        usize num_formats;
-                        luexp(audio_adapters[current_adapter]->get_native_wave_formats(nullptr, &num_formats));
-                        Vector<AHI::WaveFormat> formats;
-                        static int current_format;
-                        if(num_formats)
-                        {
-                            Vector<Name> format_names;
-                            Vector<const c8*> format_strs;
-                            formats.resize(num_formats);
-                            format_names.reserve(num_formats);
-                            format_strs.reserve(num_formats);
-                            luexp(audio_adapters[current_adapter]->get_native_wave_formats(formats.data(), &num_formats));
-                            for(auto& format : formats)
-                            {
-                                const c8* bit_depth;
-                                switch(format.bit_depth)
-                                {
-                                    case AHI::BitDepth::u8: bit_depth = "8bit"; break;
-                                    case AHI::BitDepth::s16: bit_depth = "16bit"; break;
-                                    case AHI::BitDepth::s24: bit_depth = "24bit"; break;
-                                    case AHI::BitDepth::s32: bit_depth = "32bit"; break;
-                                    case AHI::BitDepth::f32: bit_depth = "32bit(float)"; break;
-                                }
-                                c8 buf[128];
-                                snprintf(buf, 128, "%s, %uHz, %u channels", bit_depth, format.sample_rate, format.num_channels);
-                                format_names.push_back(buf);
-                                format_strs.push_back(format_names.back().c_str());
-                            }
-                            Combo("Formats", &current_format, format_strs.data(), (int)format_strs.size());
-                        }
-                        else
-                        {
-                            Text("No native audio formats.");
-                        }
+                        capture_adapter_names.push_back(adapter->get_name());
+                    }
+                    static int current_playback_adapter;
+                    static int current_capture_adapter;
+                    Combo("Playback Adapters", &current_playback_adapter, playback_adapter_names.data(), (int)playback_adapter_names.size());
+                    Combo("Capture Adapters", &current_capture_adapter, capture_adapter_names.data(), (int)capture_adapter_names.size());
+                    if(current_playback_adapter < playback_adapters.size() && current_capture_adapter < capture_adapters.size())
+                    {
                         if(!device && Button("Create Device"))
                         {
                             AHI::DeviceDesc desc;
-                            desc.flags = AHI::DeviceFlag::playback;
-                            desc.playback.adapter = audio_adapters[current_adapter];
-                            if(num_formats)
-                            {
-                                desc.sample_rate = formats[current_format].sample_rate;
-                                desc.playback.bit_depth = formats[current_format].bit_depth;
-                                desc.playback.num_channels = 2;
-                            }
-                            else
-                            {
-                                desc.sample_rate = 0;
-                                desc.playback.bit_depth = AHI::BitDepth::unspecified;
-                                desc.playback.num_channels = 2;
-                            }
+                            desc.flags = AHI::DeviceFlag::playback | AHI::DeviceFlag::capture;
+                            desc.sample_rate = 0;
+                            desc.playback.adapter = playback_adapters[current_playback_adapter];
+                            desc.playback.bit_depth = AHI::BitDepth::unspecified;
+                            desc.playback.num_channels = 2;
+                            desc.capture.adapter = capture_adapters[current_capture_adapter];
+                            desc.capture.bit_depth = AHI::BitDepth::unspecified;
+                            desc.capture.num_channels = 1;
                             luset(device, AHI::new_device(desc));
                         }
                     }
@@ -265,7 +233,17 @@ RV run()
                                 case AHI::BitDepth::s32: bit_depth = "32bit"; break;
                                 case AHI::BitDepth::f32: bit_depth = "32bit(float)"; break;
                             }
-                            Text("%s, %uHz, %u channels", bit_depth, device->get_sample_rate(), device->get_playback_num_channels());
+                            Text("Playback: %s, %uHz, %u channels", bit_depth, device->get_sample_rate(), device->get_playback_num_channels());
+                            bd = device->get_capture_bit_depth();
+                            switch(bd)
+                            {
+                                case AHI::BitDepth::u8: bit_depth = "8bit"; break;
+                                case AHI::BitDepth::s16: bit_depth = "16bit"; break;
+                                case AHI::BitDepth::s24: bit_depth = "24bit"; break;
+                                case AHI::BitDepth::s32: bit_depth = "32bit"; break;
+                                case AHI::BitDepth::f32: bit_depth = "32bit(float)"; break;
+                            }
+                            Text("Capture: %s, %uHz, %u channels", bit_depth, device->get_sample_rate(), device->get_capture_num_channels());
                         }
                         if(Button("Add Audio Source"))
                         {

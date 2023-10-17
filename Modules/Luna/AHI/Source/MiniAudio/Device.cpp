@@ -201,10 +201,20 @@ namespace Luna
                 default: lupanic();
                 }
             }
+            if(test_flags(device->m_flags, DeviceFlag::capture))
+            {
+                MutexGuard guard(device->m_audio_capture_callbacks_mutex);
+                WaveFormat format;
+                format.sample_rate = device->get_sample_rate();
+                format.num_channels = device->get_capture_num_channels();
+                format.bit_depth = device->get_capture_bit_depth();
+                device->m_on_process_capture_data(pInput, format, frameCount);
+            }
         }
         RV Device::init(const DeviceDesc& desc)
         {
             m_audio_sources_mutex = new_mutex();
+            m_audio_capture_callbacks_mutex = new_mutex();
             m_flags = desc.flags;
             ma_device_type type;
             if(test_flags(desc.flags, DeviceFlag::playback | DeviceFlag::capture)) type = ma_device_type_duplex;
