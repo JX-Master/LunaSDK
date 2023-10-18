@@ -110,7 +110,7 @@ namespace Luna
 		//! @brief Resizes the underlying memory.
 		//! @param[in] sz The new size, in bytes, of the new managed memory for the blob object. If this is `0`, this function bahaves the
 		//! same as @ref clear.
-		void resize(usize sz);
+		void resize(usize sz, bool keep_content = true);
 		//! @brief Frees managed memory of this blob object. This blob object is empty after this operation.
 		void clear();
 		//! @brief Attaches a user-allocated memory to the blob object as the managed memory of this blob object.
@@ -241,9 +241,18 @@ namespace Luna
 	{
 		return m_buffer == nullptr;
 	}
-	inline void Blob::resize(usize sz)
+	inline void Blob::resize(usize sz, bool keep_content)
 	{
-		m_buffer = (byte_t*)memrealloc(m_buffer, sz, m_alignment);
+		if(keep_content)
+		{
+			m_buffer = (byte_t*)memrealloc(m_buffer, sz, m_alignment);
+		}
+		else
+		{
+			byte_t* old_buffer = m_buffer;
+			m_buffer = (byte_t*)memalloc(sz, m_alignment);
+			if(old_buffer) memfree(old_buffer, m_alignment);
+		}
 		m_size = sz;
 	}
 	inline void Blob::clear()

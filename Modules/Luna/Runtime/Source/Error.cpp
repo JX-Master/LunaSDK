@@ -277,6 +277,11 @@ namespace Luna
 			static ErrCode e = get_error_code_by_name("BasicError", "already_exists");
 			return e;
 		}
+		LUNA_RUNTIME_API ErrCode not_unique()
+		{
+			static ErrCode e = get_error_code_by_name("BasicError", "not_unique");
+			return e;
+		}
 		LUNA_RUNTIME_API ErrCode bad_arguments()
 		{
 			static ErrCode e = get_error_code_by_name("BasicError", "bad_arguments");
@@ -310,6 +315,26 @@ namespace Luna
 		LUNA_RUNTIME_API ErrCode not_directory()
 		{
 			static ErrCode e = get_error_code_by_name("BasicError", "not_directory");
+			return e;
+		}
+		LUNA_RUNTIME_API ErrCode is_directory()
+		{
+			static ErrCode e = get_error_code_by_name("BasicError", "is_directory");
+			return e;
+		}
+		LUNA_RUNTIME_API ErrCode directory_not_empty()
+		{
+			static ErrCode e = get_error_code_by_name("BasicError", "directory_not_empty");
+			return e;
+		}
+		LUNA_RUNTIME_API ErrCode bad_file()
+		{
+			static ErrCode e = get_error_code_by_name("BasicError", "bad_file");
+			return e;
+		}
+		LUNA_RUNTIME_API ErrCode io_error()
+		{
+			static ErrCode e = get_error_code_by_name("BasicError", "io_error");
 			return e;
 		}
 		LUNA_RUNTIME_API ErrCode timeout()
@@ -392,9 +417,24 @@ namespace Luna
 			static ErrCode e = get_error_code_by_name("BasicError", "version_dismatch");
 			return e;
 		}
+		LUNA_RUNTIME_API ErrCode no_data()
+		{
+			static ErrCode e = get_error_code_by_name("BasicError", "no_data");
+			return e;
+		}
 		LUNA_RUNTIME_API ErrCode bad_data()
 		{
 			static ErrCode e = get_error_code_by_name("BasicError", "bad_data");
+			return e;
+		}
+		LUNA_RUNTIME_API ErrCode bad_address()
+		{
+			static ErrCode e = get_error_code_by_name("BasicError", "bad_address");
+			return e;
+		}
+		LUNA_RUNTIME_API ErrCode deadlock()
+		{
+			static ErrCode e = get_error_code_by_name("BasicError", "deadlock");
 			return e;
 		}
 	}

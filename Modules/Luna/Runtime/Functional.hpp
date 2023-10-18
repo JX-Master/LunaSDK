@@ -11,6 +11,7 @@
 #include "Hash.hpp"
 #include "MemoryUtils.hpp"
 #include "Tuple.hpp"
+#include "Assert.hpp"
 namespace Luna
 {
 	template <typename _Ty>
