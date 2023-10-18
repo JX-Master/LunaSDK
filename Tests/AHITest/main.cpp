@@ -122,6 +122,84 @@ struct AudioSource
     f32 volume = 0.1f;
 };
 
+f32 input_audio_level = 0.0f;
+
+void on_capture_data(const void* src_buffer, const AHI::WaveFormat& format, u32 num_frames)
+{
+    f32 sample = 0;
+    for(u32 i = 0; i < num_frames; ++i)
+    {
+        switch(format.bit_depth)
+        {
+        case AHI::BitDepth::u8:
+        {
+            const u8* src = (const u8*)src_buffer;
+            for(u32 c = 0; c < format.num_channels; ++c)
+            {
+                sample = max(sample, (f32)src[c] / 255.0f);
+            }
+            src += format.num_channels;
+            src_buffer = src;
+        }
+        break;
+        case AHI::BitDepth::s16:
+        {
+            const i16* src = (const i16*)src_buffer;
+            for(u32 c = 0; c < format.num_channels; ++c)
+            {
+                sample = max(sample, (f32)src[c] / 32767.0f);
+            }
+            src += format.num_channels;
+            src_buffer = src;
+        }
+        break;
+        case AHI::BitDepth::s24:
+        {
+            const u8* src = (const u8*)src_buffer;
+            for(u32 c = 0; c < format.num_channels; ++c)
+            {
+                i32 data;
+#ifdef LUNA_PLATFORM_LITTLE_ENDIAN
+                data = ((i32)(src[0])) + (((i32)src[1]) << 8) + (((i32)(src[2] & 0x7F)) << 16);
+                data = (src[2] & 0x80) ? -data : data;
+#else
+                data = ((i32)(src[2])) + ((i32)src[1] << 8) + (((i32)(src[0] & 0x7F)) << 16);
+                data = (src[0] & 0x80) ? -data : data;
+#endif
+                sample = max(sample, (f32)data / 8388607.0f);
+                src += 3;
+            }
+            src_buffer = src;
+        }
+        break;
+        case AHI::BitDepth::s32:
+        {
+            const i32* src = (const i32*)src_buffer;
+            for(u32 c = 0; c < format.num_channels; ++c)
+            {
+                sample = max(sample, (f32)src[c] / 2147483647.0f);
+            }
+            src += format.num_channels;
+            src_buffer = src;
+        }
+        break;
+        case AHI::BitDepth::f32:
+        {
+            const f32* src = (const f32*)src_buffer;
+            for(u32 c = 0; c < format.num_channels; ++c)
+            {
+                sample = max(sample, src[c]);
+            }
+            src += format.num_channels;
+            src_buffer = src;
+        }
+        break;
+        default: break;
+        }
+    }
+    input_audio_level = sample;
+}
+
 RV run()
 {
     lutry
@@ -218,6 +296,7 @@ RV run()
                             desc.capture.bit_depth = AHI::BitDepth::unspecified;
                             desc.capture.num_channels = 1;
                             luset(device, AHI::new_device(desc));
+                            device->add_capture_data_callback(on_capture_data);
                         }
                     }
                     if(device && CollapsingHeader("Device"))
@@ -245,6 +324,8 @@ RV run()
                             }
                             Text("Capture: %s, %uHz, %u channels", bit_depth, device->get_sample_rate(), device->get_capture_num_channels());
                         }
+                        SetNextItemWidth(200.0f);
+                        SliderFloat("Input Audio Level", &input_audio_level, 0.0f, 1.0f);
                         if(Button("Add Audio Source"))
                         {
                             AudioSource source;
