@@ -817,7 +817,7 @@ namespace Luna
 			{
 				utf16_to_utf8(buffer, buffer_length, (char16_t*)path);
 			}
-			return (u32)utf16_to_utf8_len((char16_t*)path);
+			return (u32)utf16_to_utf8_len((char16_t*)path) + 1;
 		}
 		RV set_current_dir(const c8* path)
 		{
