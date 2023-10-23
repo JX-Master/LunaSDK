@@ -180,7 +180,7 @@ namespace Luna
                             {
                                 auto& view = write.buffer_views[i];
                                 Buffer* buffer = cast_object<Buffer>(view.buffer->get_object());
-                                u64 data_offset = view.format == Format::unknown ? view.element_size * view.first_element : bits_per_pixel(view.format) * view.first_element / 8;
+                                u64 data_offset = view.element_size * view.first_element;
                                 data[argument_offset + i] = buffer->m_buffer->gpuAddress() + data_offset;
                                 binding.m_resources[write.first_array_index + i] = buffer->m_buffer.get();
                             }
@@ -251,7 +251,7 @@ namespace Luna
                             {
                                 auto& view = write.buffer_views[0];
                                 Buffer* buffer = cast_object<Buffer>(view.buffer->get_object());
-                                u64 data_offset = view.format == Format::unknown ? view.element_size * view.first_element : bits_per_pixel(view.format) * view.first_element / 8;
+                                u64 data_offset = view.element_size * view.first_element;
                                 m_encoder->setBuffer(buffer->m_buffer.get(), data_offset, write.binding_slot + write.first_array_index);
                                 binding.m_resources[write.first_array_index] = buffer->m_buffer.get();
                             }
@@ -263,7 +263,7 @@ namespace Luna
                                 {
                                     auto& view = write.buffer_views[i];
                                     Buffer* buffer = cast_object<Buffer>(view.buffer->get_object());
-                                    u64 data_offset = view.format == Format::unknown ? view.element_size * view.first_element : bits_per_pixel(view.format) * view.first_element / 8;
+                                    u64 data_offset = view.element_size * view.first_element;
                                     buffers[i] = buffer->m_buffer.get();
                                     offsets[i] = data_offset;
                                     binding.m_resources[write.first_array_index + i] = buffer->m_buffer.get();

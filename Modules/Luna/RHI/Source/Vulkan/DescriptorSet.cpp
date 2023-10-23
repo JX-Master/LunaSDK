@@ -93,16 +93,8 @@ namespace Luna
 									}
 									else
 									{
-										if (s_buffer.format != Format::unknown)
-										{
-											d_buffer.offset = (u64)bits_per_pixel(s_buffer.format) * s_buffer.first_element / 8;
-											d_buffer.range = (u64)bits_per_pixel(s_buffer.format) * s_buffer.element_count / 8;
-										}
-										else
-										{
-											d_buffer.offset = (u64)s_buffer.first_element * (u64)s_buffer.element_size;
-											d_buffer.range = (u64)s_buffer.element_count * (u64)s_buffer.element_size;
-										}
+										d_buffer.offset = (u64)s_buffer.first_element * (u64)s_buffer.element_size;
+										d_buffer.range = (u64)s_buffer.element_count * (u64)s_buffer.element_size;
 									}
 								}
 								d.pBufferInfo = infos;

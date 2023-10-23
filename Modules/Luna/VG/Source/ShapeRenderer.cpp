@@ -227,7 +227,7 @@ namespace Luna
 					auto num_points = dc.shape_buffer->get_desc().size / sizeof(f32);
 					luexp(ds->update_descriptors({
 						WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(m_cbs_resource, i * cb_element_size)),
-						WriteDescriptorSet::read_buffer_view(1, BufferViewDesc::typed_buffer(dc.shape_buffer, 0, num_points, Format::r32_float)),
+						WriteDescriptorSet::read_buffer_view(1, BufferViewDesc::structured_buffer(dc.shape_buffer, 0, num_points, 4)),
 						WriteDescriptorSet::read_texture_view(2, TextureViewDesc::tex2d(dc.texture ? dc.texture : g_white_tex.get())),
 						WriteDescriptorSet::sampler(3, dc.sampler)
 						}));

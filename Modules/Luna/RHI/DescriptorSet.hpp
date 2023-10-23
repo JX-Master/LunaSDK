@@ -22,7 +22,7 @@ namespace Luna
 		struct BufferViewDesc
 		{
 			//! If this is a uniform buffer, specify the offset, in bytes, of the data to be viewed.
-			//! If this is a typed buffer or structured buffer, specify the index of the first element to be accessed by the view.
+			//! If this is a structured buffer, specify the index of the first element to be accessed by the view.
 			u64 first_element;
 			//! The buffer to set.
 			IBuffer* buffer;
@@ -31,11 +31,7 @@ namespace Luna
 			u32 element_count;
 			//! If this is a uniform buffer, specify the size, in bytes, of the uniform buffer.
 			//! If this is a structured buffer, specify the size, in bytes, of each element in the buffer structure.
-			//! This must be set to 0 if this is a typed buffer (`format` is not `Format::unknown`).
 			u32 element_size;
-			//! If this is a typed buffer, specify the format of the buffer element.
-			//! This must be set to `Format::unknown` if the buffer is a uniform or structured buffer.
-			Format format;
 			static BufferViewDesc uniform_buffer(IBuffer* buffer, u64 offset = 0, u32 size = U32_MAX)
 			{
 				BufferViewDesc ret;
@@ -43,17 +39,6 @@ namespace Luna
 				ret.first_element = offset;
 				ret.element_count = 1;
 				ret.element_size = size;
-				ret.format = Format::unknown;
-				return ret;
-			}
-			static BufferViewDesc typed_buffer(IBuffer* buffer, u64 first_element, u32 element_count, Format element_format)
-			{
-				BufferViewDesc ret;
-				ret.buffer = buffer;
-				ret.first_element = first_element;
-				ret.element_count = element_count;
-				ret.format = element_format;
-				ret.element_size = 0;
 				return ret;
 			}
 			static BufferViewDesc structured_buffer(IBuffer* buffer, u64 first_element, u32 element_count, u32 element_size)
@@ -62,7 +47,6 @@ namespace Luna
 				ret.buffer = buffer;
 				ret.first_element = first_element;
 				ret.element_count = element_count;
-				ret.format = Format::unknown;
 				ret.element_size = element_size;
 				return ret;
 			}
