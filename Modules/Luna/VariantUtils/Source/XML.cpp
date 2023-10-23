@@ -39,10 +39,6 @@ namespace Luna
             element[_content] = Variant(VariantType::array);
             return element;
         }
-        LUNA_VARIANT_UTILS_API const Variant& get_xml_content(const Variant& xml_element)
-        {
-            return xml_element[_content];
-        }
         LUNA_VARIANT_UTILS_API Name get_xml_name(const Variant& xml_element)
         {
             return xml_element[_name].str();
@@ -59,9 +55,27 @@ namespace Luna
         {
             return xml_element[_attributes];
         }
+        LUNA_VARIANT_UTILS_API const Variant& get_xml_content(const Variant& xml_element)
+        {
+            return xml_element[_content];
+        }
         LUNA_VARIANT_UTILS_API Variant& get_xml_content(Variant& xml_element)
         {
             return xml_element[_content];
+        }
+        LUNA_VARIANT_UTILS_API const Variant& find_first_xml_child_element(const Variant& xml_element, const Name& name, usize start_index, usize* out_index)
+        {
+            auto& content = get_xml_content(xml_element);
+            for(usize i = start_index; i < content.size(); ++i)
+            {
+                if(content[i].type() == VariantType::object && get_xml_name(content[i]) == name)
+                {
+                    if(out_index) *out_index = i;
+                    return content[i];
+                }
+            }
+            if(out_index) *out_index = USIZE_MAX;
+            return Variant::npos();
         }
         static void skip_single_line_comment(IReadContext& ctx)
         {

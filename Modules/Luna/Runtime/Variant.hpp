@@ -569,6 +569,11 @@ namespace Luna
 		//! @return Returns the detached blob data if the variant is a BLOB variant. Returns one empty @ref Blob object otherwise.
 		Blob blob_detach();
 
+		//! @brief Returns one reference to one global constant variant that contains no data.
+		//! @details This is used as the default return value if one query operation fails, so that the user can chain multiple `[]` operations
+		//! like data["persons"][0]["name"] without the need to handle null variant explicitly (query child variants of one null variant also returns `npos`).
+		static LUNA_RUNTIME_API const Variant& npos();
+
 		//! @}
 		
 	private:
@@ -670,11 +675,6 @@ namespace Luna
 		bool do_small_obj_insert(const Name& k, Variant&& v);
 		bool do_small_obj_erase(const Name& k);
 	};
-
-	//! @brief Returns one reference to one global constant variant that contains no data.
-	//! @details This is used as the default return value if one query operation fails, so that the user can chain multiple `[]` operations
-	//! like data["persons"][0]["name"] without the need to handle null variant explicitly (query child variants of one null variant also returns `npos`).
-	LUNA_RUNTIME_API const Variant& npos();
 
 //! @}
 
@@ -970,8 +970,8 @@ namespace Luna
 	}
 	inline const Variant& Variant::at(usize i) const
 	{
-		if (type() != VariantType::array) return npos();
-		if (i >= size()) return npos();
+		if (type() != VariantType::array) return Variant::npos();
+		if (i >= size()) return Variant::npos();
 		if(test_flags(m_array_flag, ArrayFlag::big_array)) return m_big_arr->at(i);
 		return m_arr[i];
 	}
@@ -984,7 +984,7 @@ namespace Luna
 	}
 	inline const Variant& Variant::find(const Name& k) const
 	{
-		if (type() != VariantType::object) return npos();
+		if (type() != VariantType::object) return Variant::npos();
 		if (test_flags(m_object_flag, ObjectFlag::big_object))
 		{
 			auto iter = m_big_obj->find(k);
@@ -992,7 +992,7 @@ namespace Luna
 			{
 				return iter->second;
 			}
-			return npos();
+			return Variant::npos();
 		}
 		for (usize i = 0; i < m_array_or_object_header.m_size; ++i)
 		{
@@ -1001,7 +1001,7 @@ namespace Luna
 				return m_obj[i].second;
 			}
 		}
-		return npos();
+		return Variant::npos();
 	}
 	inline Variant& Variant::find_or_insert(const Name& k)
 	{

@@ -1,0 +1,6 @@
+target("LunaDoc")
+    set_luna_sdk_program()
+    --add_headerfiles("**.hpp")
+    add_files("**.cpp")
+    add_luna_modules("Runtime", "VariantUtils")
+target_end()
