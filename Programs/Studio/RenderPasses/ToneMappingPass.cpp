@@ -175,7 +175,7 @@ namespace Luna
 						}, {});
 					auto vs = m_histogram_clear_ds.get();
 					luexp(vs->update_descriptors({
-						WriteDescriptorSet::read_write_buffer_view(0, BufferViewDesc::typed_buffer(m_histogram_buffer, 0, 256, Format::r32_uint))
+						WriteDescriptorSet::read_write_buffer_view(0, BufferViewDesc::structured_buffer(m_histogram_buffer, 0, 256, 4))
 						}));
 					cmdbuf->set_compute_descriptor_sets(0, { &vs, 1 });
 					cmdbuf->dispatch(1, 1, 1);
@@ -201,7 +201,7 @@ namespace Luna
 					luexp(vs->update_descriptors({
 						WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(m_histogram_cb, 0, (u32)align_upper(sizeof(LumHistogramParams), cb_align))),
 						WriteDescriptorSet::read_texture_view(1, TextureViewDesc::tex2d(lighting_tex)),
-						WriteDescriptorSet::read_write_buffer_view(2, BufferViewDesc::typed_buffer(m_histogram_buffer, 0, 256, Format::r32_uint))
+						WriteDescriptorSet::read_write_buffer_view(2, BufferViewDesc::structured_buffer(m_histogram_buffer, 0, 256, 4))
 						}));
 					cmdbuf->set_compute_descriptor_sets(0, { &vs, 1 });
 					cmdbuf->dispatch(align_upper(lighting_tex_desc.width, 16) / 16,
@@ -228,7 +228,7 @@ namespace Luna
 					auto vs = m_histogram_collect_ds.get();
                     luexp(vs->update_descriptors({
 						WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(m_histogram_collect_cb, 0, (u32)align_upper(sizeof(LumHistogramCollectParams), cb_align))),
-						WriteDescriptorSet::read_write_buffer_view(1, BufferViewDesc::typed_buffer(m_histogram_buffer, 0, 256, Format::r32_uint)),
+						WriteDescriptorSet::read_write_buffer_view(1, BufferViewDesc::structured_buffer(m_histogram_buffer, 0, 256, 4)),
 						WriteDescriptorSet::read_write_texture_view(2, TextureViewDesc::tex2d(m_lum_tex))
 						}));
 					cmdbuf->set_compute_descriptor_sets(0, { &vs, 1 });

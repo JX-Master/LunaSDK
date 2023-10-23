@@ -165,7 +165,7 @@ namespace Luna
                         switch(write.type)
                         {
                             case DescriptorType::uniform_buffer_view:
-                            for(usize i = 0; i < write.buffer_views.size(); ++i)
+                            for(usize i = 0; i < write.num_descs; ++i)
                             {
                                 auto& view = write.buffer_views[i];
                                 Buffer* buffer = cast_object<Buffer>(view.buffer->get_object());
@@ -176,18 +176,18 @@ namespace Luna
                             break;
                             case DescriptorType::read_buffer_view:
                             case DescriptorType::read_write_buffer_view:
-                            for(usize i = 0; i < write.buffer_views.size(); ++i)
+                            for(usize i = 0; i < write.num_descs; ++i)
                             {
                                 auto& view = write.buffer_views[i];
                                 Buffer* buffer = cast_object<Buffer>(view.buffer->get_object());
-                                u64 data_offset = view.format == Format::unknown ? view.element_size * view.first_element : bits_per_pixel(view.format) * view.first_element / 8;
+                                u64 data_offset = view.element_size * view.first_element;
                                 data[argument_offset + i] = buffer->m_buffer->gpuAddress() + data_offset;
                                 binding.m_resources[write.first_array_index + i] = buffer->m_buffer.get();
                             }
                             break;
                             case DescriptorType::read_texture_view:
                             case DescriptorType::read_write_texture_view:
-                            for(usize i = 0; i < write.texture_views.size(); ++i)
+                            for(usize i = 0; i < write.num_descs; ++i)
                             {
                                 auto view = write.texture_views[i];
                                 Texture* tex = cast_object<Texture>(view.texture->get_object());
@@ -207,7 +207,7 @@ namespace Luna
                             }
                             break;
                             case DescriptorType::sampler:
-                            for(usize i = 0; i < write.samplers.size(); ++i)
+                            for(usize i = 0; i < write.num_descs; ++i)
                             {
                                 const SamplerDesc& view = write.samplers[i];
                                 NSPtr<MTL::SamplerState> sampler = new_sampler_state(m_device->m_device.get(), view);
@@ -223,7 +223,7 @@ namespace Luna
                         switch(write.type)
                         {
                             case DescriptorType::uniform_buffer_view:
-                            if(write.buffer_views.size() == 1)
+                            if(write.num_descs == 1)
                             {
                                 auto& view = write.buffer_views[0];
                                 Buffer* buffer = cast_object<Buffer>(view.buffer->get_object());
@@ -232,9 +232,9 @@ namespace Luna
                             }
                             else
                             {
-                                MTL::Buffer** buffers = (MTL::Buffer**)alloca(sizeof(MTL::Buffer*) * write.buffer_views.size());
-                                NS::UInteger* offsets = (NS::UInteger*)alloca(sizeof(NS::UInteger) * write.buffer_views.size());
-                                for(usize i = 0; i < write.buffer_views.size(); ++i)
+                                MTL::Buffer** buffers = (MTL::Buffer**)alloca(sizeof(MTL::Buffer*) * write.num_descs);
+                                NS::UInteger* offsets = (NS::UInteger*)alloca(sizeof(NS::UInteger) * write.num_descs);
+                                for(usize i = 0; i < write.num_descs; ++i)
                                 {
                                     auto& view = write.buffer_views[i];
                                     Buffer* buffer = cast_object<Buffer>(view.buffer->get_object());
@@ -242,38 +242,38 @@ namespace Luna
                                     offsets[i] = view.first_element;
                                     binding.m_resources[write.first_array_index + i] = buffer->m_buffer.get();
                                 }
-                                m_encoder->setBuffers(buffers, offsets, NS::Range::Make(write.binding_slot + write.first_array_index, write.buffer_views.size()));
+                                m_encoder->setBuffers(buffers, offsets, NS::Range::Make(write.binding_slot + write.first_array_index, write.num_descs));
                             }
                             break;
                             case DescriptorType::read_buffer_view:
                             case DescriptorType::read_write_buffer_view:
-                            if(write.buffer_views.size() == 1)
+                            if(write.num_descs == 1)
                             {
                                 auto& view = write.buffer_views[0];
                                 Buffer* buffer = cast_object<Buffer>(view.buffer->get_object());
-                                u64 data_offset = view.format == Format::unknown ? view.element_size * view.first_element : bits_per_pixel(view.format) * view.first_element / 8;
+                                u64 data_offset = view.element_size * view.first_element;
                                 m_encoder->setBuffer(buffer->m_buffer.get(), data_offset, write.binding_slot + write.first_array_index);
                                 binding.m_resources[write.first_array_index] = buffer->m_buffer.get();
                             }
                             else
                             {
-                                MTL::Buffer** buffers = (MTL::Buffer**)alloca(sizeof(MTL::Buffer*) * write.buffer_views.size());
-                                NS::UInteger* offsets = (NS::UInteger*)alloca(sizeof(NS::UInteger) * write.buffer_views.size());
-                                for(usize i = 0; i < write.buffer_views.size(); ++i)
+                                MTL::Buffer** buffers = (MTL::Buffer**)alloca(sizeof(MTL::Buffer*) * write.num_descs);
+                                NS::UInteger* offsets = (NS::UInteger*)alloca(sizeof(NS::UInteger) * write.num_descs);
+                                for(usize i = 0; i < write.num_descs; ++i)
                                 {
                                     auto& view = write.buffer_views[i];
                                     Buffer* buffer = cast_object<Buffer>(view.buffer->get_object());
-                                    u64 data_offset = view.format == Format::unknown ? view.element_size * view.first_element : bits_per_pixel(view.format) * view.first_element / 8;
+                                    u64 data_offset = view.element_size * view.first_element;
                                     buffers[i] = buffer->m_buffer.get();
                                     offsets[i] = data_offset;
                                     binding.m_resources[write.first_array_index + i] = buffer->m_buffer.get();
                                 }
-                                m_encoder->setBuffers(buffers, offsets, NS::Range::Make(write.binding_slot + write.first_array_index, write.buffer_views.size()));
+                                m_encoder->setBuffers(buffers, offsets, NS::Range::Make(write.binding_slot + write.first_array_index, write.num_descs));
                             }
                             break;
                             case DescriptorType::read_texture_view:
                             case DescriptorType::read_write_texture_view:
-                            if(write.texture_views.size() == 1)
+                            if(write.num_descs == 1)
                             {
                                 auto view = write.texture_views[0];
                                 Texture* tex = cast_object<Texture>(view.texture->get_object());
@@ -291,8 +291,8 @@ namespace Luna
                             }
                             else
                             {
-                                MTL::Texture** textures = (MTL::Texture**)alloca(sizeof(MTL::Texture*) * write.texture_views.size());
-                                for(usize i = 0; i < write.texture_views.size(); ++i)
+                                MTL::Texture** textures = (MTL::Texture**)alloca(sizeof(MTL::Texture*) * write.num_descs);
+                                for(usize i = 0; i < write.num_descs; ++i)
                                 {
                                     auto view = write.texture_views[i];
                                     Texture* tex = cast_object<Texture>(view.texture->get_object());
@@ -308,11 +308,11 @@ namespace Luna
                                     }
                                     binding.m_resources[write.first_array_index + i] = tex->m_texture.get();
                                 }
-                                m_encoder->setTextures(textures, NS::Range::Make(write.binding_slot + write.first_array_index, write.texture_views.size()));
+                                m_encoder->setTextures(textures, NS::Range::Make(write.binding_slot + write.first_array_index, write.num_descs));
                             }
                             break;
                             case DescriptorType::sampler:
-                            if(write.samplers.size() == 1)
+                            if(write.num_descs == 1)
                             {
                                 const SamplerDesc& view = write.samplers[0];
                                 NSPtr<MTL::SamplerState> sampler = new_sampler_state(m_device->m_device.get(), view);
@@ -322,8 +322,8 @@ namespace Luna
                             }
                             else
                             {
-                                MTL::SamplerState** samplers = (MTL::SamplerState**)alloca(sizeof(MTL::SamplerState*) * write.samplers.size());
-                                for(usize i = 0; i < write.samplers.size(); ++i)
+                                MTL::SamplerState** samplers = (MTL::SamplerState**)alloca(sizeof(MTL::SamplerState*) * write.num_descs);
+                                for(usize i = 0; i < write.num_descs; ++i)
                                 {
                                     const SamplerDesc& view = write.samplers[i];
                                     NSPtr<MTL::SamplerState> sampler = new_sampler_state(m_device->m_device.get(), view);
@@ -331,7 +331,7 @@ namespace Luna
                                     m_samplers.insert_or_assign(write.binding_slot + write.first_array_index + (u32)i, sampler);
                                     samplers[i] = sampler.get();
                                 }
-                                m_encoder->setSamplerStates(samplers, NS::Range::Make(write.binding_slot + write.first_array_index, write.samplers.size()));
+                                m_encoder->setSamplerStates(samplers, NS::Range::Make(write.binding_slot + write.first_array_index, write.num_descs));
                             }
                             break;
                         }

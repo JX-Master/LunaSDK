@@ -55,22 +55,22 @@ namespace Luna
 				switch (write.type)
 				{
 				case DescriptorType::uniform_buffer_view:
-					set_cbv_array(write.binding_slot, write.first_array_index, write.buffer_views.size(), write.buffer_views.data());
+					set_cbv_array(write.binding_slot, write.first_array_index, write.num_descs, write.buffer_views);
 					break;
 				case DescriptorType::read_buffer_view:
-					set_buffer_srv_array(write.binding_slot, write.first_array_index, write.buffer_views.size(), write.buffer_views.data());
+					set_buffer_srv_array(write.binding_slot, write.first_array_index, write.num_descs, write.buffer_views);
 					break;
 				case DescriptorType::read_write_buffer_view:
-					set_buffer_uav_array(write.binding_slot, write.first_array_index, write.buffer_views.size(), write.buffer_views.data());
+					set_buffer_uav_array(write.binding_slot, write.first_array_index, write.num_descs, write.buffer_views);
 					break;
 				case DescriptorType::read_texture_view:
-					set_texture_srv_array(write.binding_slot, write.first_array_index, write.texture_views.size(), write.texture_views.data());
+					set_texture_srv_array(write.binding_slot, write.first_array_index, write.num_descs, write.texture_views);
 					break;
 				case DescriptorType::read_write_texture_view:
-					set_texture_uav_array(write.binding_slot, write.first_array_index, write.texture_views.size(), write.texture_views.data());
+					set_texture_uav_array(write.binding_slot, write.first_array_index, write.num_descs, write.texture_views);
 					break;
 				case DescriptorType::sampler:
-					set_sampler_array(write.binding_slot, write.first_array_index, write.samplers.size(), write.samplers.data());
+					set_sampler_array(write.binding_slot, write.first_array_index, write.num_descs, write.samplers);
 					break;
 				}
 			}
@@ -109,9 +109,7 @@ namespace Luna
 				h.ptr = addr;
 				const BufferViewDesc* srv = descs + i;
 				D3D12_SHADER_RESOURCE_VIEW_DESC d;
-				d.Format = encode_format(srv->format);
-				if (d.Format == DXGI_FORMAT_D16_UNORM) d.Format = DXGI_FORMAT_R16_UNORM;
-				if (d.Format == DXGI_FORMAT_D32_FLOAT) d.Format = DXGI_FORMAT_R32_FLOAT;
+				d.Format = DXGI_FORMAT_UNKNOWN;
 				d.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 				d.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
 				d.Buffer.FirstElement = srv->first_element;
@@ -222,9 +220,7 @@ namespace Luna
 				h.ptr = addr;
 				const BufferViewDesc* uav = descs + i;
 				D3D12_UNORDERED_ACCESS_VIEW_DESC d;
-				d.Format = encode_format(uav->format);
-				if (d.Format == DXGI_FORMAT_D16_UNORM) d.Format = DXGI_FORMAT_R16_UNORM;
-				if (d.Format == DXGI_FORMAT_D32_FLOAT) d.Format = DXGI_FORMAT_R32_FLOAT;
+				d.Format = DXGI_FORMAT_UNKNOWN;
 				d.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
 				d.Buffer.CounterOffsetInBytes = 0;
 				d.Buffer.FirstElement = uav->first_element;
