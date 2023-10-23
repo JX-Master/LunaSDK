@@ -70,13 +70,13 @@ namespace Luna
 						d.dstBinding = s.binding_slot;
 						d.dstArrayElement = s.first_array_index;
 						d.descriptorType = encode_descriptor_type(s.type);
+						d.descriptorCount = s.num_descs;
 						switch (s.type)
 						{
 						case DescriptorType::uniform_buffer_view:
 						case DescriptorType::read_buffer_view:
 						case DescriptorType::read_write_buffer_view:
 						{
-							d.descriptorCount = (u32)s.buffer_views.size();
 							if (d.descriptorCount)
 							{
 								VkDescriptorBufferInfo* infos = (VkDescriptorBufferInfo*)alloca(sizeof(VkDescriptorBufferInfo) * d.descriptorCount);
@@ -104,7 +104,6 @@ namespace Luna
 						case DescriptorType::read_texture_view:
 						case DescriptorType::read_write_texture_view:
 						{
-							d.descriptorCount = (u32)s.texture_views.size();
 							if (d.descriptorCount)
 							{
 								VkDescriptorImageInfo* infos = (VkDescriptorImageInfo*)alloca(sizeof(VkDescriptorImageInfo) * d.descriptorCount);
@@ -132,7 +131,6 @@ namespace Luna
 						break;
 						case DescriptorType::sampler:
 						{
-							d.descriptorCount = (u32)s.samplers.size();
 							if (d.descriptorCount)
 							{
 								VkDescriptorImageInfo* infos = (VkDescriptorImageInfo*)alloca(sizeof(VkDescriptorImageInfo) * d.descriptorCount);

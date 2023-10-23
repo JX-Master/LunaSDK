@@ -277,21 +277,23 @@ namespace Luna
 		{
 			u32 binding_slot;
 			u32 first_array_index;
+			u32 num_descs;
 			DescriptorType type;
-			//! Used if `type` is `uniform_buffer_view`, `read_buffer_view` or `read_write_buffer_view`. 
-			Span<const BufferViewDesc> buffer_views;
-			//! Used if `type` is `read_texture_view` or `read_write_texture_view`.
-			Span<const TextureViewDesc> texture_views;
-			//! Used if `type` is `sampler`.
-			Span<const SamplerDesc> samplers;
-
+			union
+			{
+				const BufferViewDesc* buffer_views;
+				const TextureViewDesc* texture_views;
+				const SamplerDesc* samplers;
+			};
+			
 			static WriteDescriptorSet uniform_buffer_view(u32 binding_slot, const BufferViewDesc& desc)
 			{
 				WriteDescriptorSet ret;
 				ret.binding_slot = binding_slot;
 				ret.first_array_index = 0;
 				ret.type = DescriptorType::uniform_buffer_view;
-				ret.buffer_views = { &desc, 1 };
+				ret.num_descs = 1;
+				ret.buffer_views = &desc;
 				return ret;
 			}
 			static WriteDescriptorSet uniform_buffer_view_array(u32 binding_slot, u32 first_array_index, Span<const BufferViewDesc> descs)
@@ -300,7 +302,8 @@ namespace Luna
 				ret.binding_slot = binding_slot;
 				ret.first_array_index = first_array_index;
 				ret.type = DescriptorType::uniform_buffer_view;
-				ret.buffer_views = descs;
+				ret.num_descs = (u32)descs.size();
+				ret.buffer_views = descs.data();
 				return ret;
 			}
 			static WriteDescriptorSet read_buffer_view(u32 binding_slot, const BufferViewDesc& desc)
@@ -309,7 +312,8 @@ namespace Luna
 				ret.binding_slot = binding_slot;
 				ret.first_array_index = 0;
 				ret.type = DescriptorType::read_buffer_view;
-				ret.buffer_views = { &desc, 1 };
+				ret.num_descs = 1;
+				ret.buffer_views = &desc;
 				return ret;
 			}
 			static WriteDescriptorSet read_buffer_view_array(u32 binding_slot, u32 first_array_index, Span<const BufferViewDesc> descs)
@@ -318,7 +322,8 @@ namespace Luna
 				ret.binding_slot = binding_slot;
 				ret.first_array_index = first_array_index;
 				ret.type = DescriptorType::read_buffer_view;
-				ret.buffer_views = descs;
+				ret.num_descs = (u32)descs.size();
+				ret.buffer_views = descs.data();
 				return ret;
 			}
 			static WriteDescriptorSet read_write_buffer_view(u32 binding_slot, const BufferViewDesc& desc)
@@ -327,7 +332,8 @@ namespace Luna
 				ret.binding_slot = binding_slot;
 				ret.first_array_index = 0;
 				ret.type = DescriptorType::read_write_buffer_view;
-				ret.buffer_views = { &desc, 1 };
+				ret.num_descs = 1;
+				ret.buffer_views = &desc;
 				return ret;
 			}
 			static WriteDescriptorSet read_write_buffer_view_array(u32 binding_slot, u32 first_array_index, Span<const BufferViewDesc> descs)
@@ -336,7 +342,8 @@ namespace Luna
 				ret.binding_slot = binding_slot;
 				ret.first_array_index = first_array_index;
 				ret.type = DescriptorType::read_write_buffer_view;
-				ret.buffer_views = descs;
+				ret.num_descs = (u32)descs.size();
+				ret.buffer_views = descs.data();
 				return ret;
 			}
 			static WriteDescriptorSet read_texture_view(u32 binding_slot, const TextureViewDesc& desc)
@@ -345,7 +352,8 @@ namespace Luna
 				ret.binding_slot = binding_slot;
 				ret.first_array_index = 0;
 				ret.type = DescriptorType::read_texture_view;
-				ret.texture_views = { &desc, 1 };
+				ret.num_descs = 1;
+				ret.texture_views = &desc;
 				return ret;
 			}
 			static WriteDescriptorSet read_texture_view_array(u32 binding_slot, u32 first_array_index, Span<const TextureViewDesc> descs)
@@ -354,7 +362,8 @@ namespace Luna
 				ret.binding_slot = binding_slot;
 				ret.first_array_index = first_array_index;
 				ret.type = DescriptorType::read_texture_view;
-				ret.texture_views = descs;
+				ret.num_descs = (u32)descs.size();
+				ret.texture_views = descs.data();
 				return ret;
 			}
 			static WriteDescriptorSet read_write_texture_view(u32 binding_slot, const TextureViewDesc& desc)
@@ -363,7 +372,8 @@ namespace Luna
 				ret.binding_slot = binding_slot;
 				ret.first_array_index = 0;
 				ret.type = DescriptorType::read_write_texture_view;
-				ret.texture_views = { &desc, 1 };
+				ret.num_descs = 1;
+				ret.texture_views = &desc;
 				return ret;
 			}
 			static WriteDescriptorSet read_write_texture_view_array(u32 binding_slot, u32 first_array_index, Span<const TextureViewDesc> descs)
@@ -372,7 +382,8 @@ namespace Luna
 				ret.binding_slot = binding_slot;
 				ret.first_array_index = first_array_index;
 				ret.type = DescriptorType::read_write_texture_view;
-				ret.texture_views = descs;
+				ret.num_descs = (u32)descs.size();
+				ret.texture_views = descs.data();
 				return ret;
 			}
 			static WriteDescriptorSet sampler(u32 binding_slot, const SamplerDesc& desc)
@@ -381,7 +392,8 @@ namespace Luna
 				ret.binding_slot = binding_slot;
 				ret.first_array_index = 0;
 				ret.type = DescriptorType::sampler;
-				ret.samplers = { &desc, 1 };
+				ret.num_descs = 1;
+				ret.samplers = &desc;
 				return ret;
 			}
 			static WriteDescriptorSet sampler_array(u32 binding_slot, u32 first_array_index, Span<const SamplerDesc> descs)
@@ -390,7 +402,8 @@ namespace Luna
 				ret.binding_slot = binding_slot;
 				ret.first_array_index = first_array_index;
 				ret.type = DescriptorType::sampler;
-				ret.samplers = descs;
+				ret.num_descs = (u32)descs.size();
+				ret.samplers = descs.data();
 				return ret;
 			}
 		};
