@@ -37,7 +37,7 @@ namespace Luna
 			luiid("{989fe385-6d98-480d-89ab-6b7dd3ec5624}");
 
 			//! Gets the data of the font file.
-			virtual const Blob& data() = 0;
+			virtual const Blob& get_data() = 0;
 
 			//! Gets the number of fonts in the font file.
 			virtual u32 count_fonts() = 0;

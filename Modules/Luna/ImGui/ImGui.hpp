@@ -12,6 +12,7 @@
 #include <imgui.h>
 #include <ImGuizmo.h>
 #include <Luna/RHI/RHI.hpp>
+#include <Luna/Font/Font.hpp>
 
 #ifndef LUNA_IMGUI_API
 #define LUNA_IMGUI_API
@@ -28,6 +29,18 @@ namespace Luna
 		LUNA_IMGUI_API void update_io();
 
 		LUNA_IMGUI_API RV render_draw_data(ImDrawData* data, RHI::ICommandBuffer* cmd_buffer, RHI::ITexture* render_target);
+
+		LUNA_IMGUI_API RV set_font(Font::IFontFile* font = nullptr, f32 font_size = 18.0f, Span<Pair<c16, c16>> ranges = {});
+
+		LUNA_IMGUI_API Vector<Pair<c16, c16>> get_glyph_ranges_default();
+		LUNA_IMGUI_API Vector<Pair<c16, c16>> get_glyph_ranges_greek();
+		LUNA_IMGUI_API Vector<Pair<c16, c16>> get_glyph_ranges_korean();
+		LUNA_IMGUI_API Vector<Pair<c16, c16>> get_glyph_ranges_japanese();
+		LUNA_IMGUI_API Vector<Pair<c16, c16>> get_glyph_ranges_chinese_full();
+		LUNA_IMGUI_API Vector<Pair<c16, c16>> get_glyph_ranges_chinese_simplified_common();
+		LUNA_IMGUI_API Vector<Pair<c16, c16>> get_glyph_ranges_cyrillic();
+		LUNA_IMGUI_API Vector<Pair<c16, c16>> get_glyph_ranges_thai();
+		LUNA_IMGUI_API Vector<Pair<c16, c16>> get_glyph_ranges_vietnamese();
 	}
 }
 

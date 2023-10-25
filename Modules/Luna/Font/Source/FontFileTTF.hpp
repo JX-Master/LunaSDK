@@ -27,7 +27,7 @@ namespace Luna
 			FontFileTTF() {}
 
 			RV init(const byte_t* data, usize data_size);
-			virtual const Blob& data() override
+			virtual const Blob& get_data() override
 			{
 				return m_data;
 			}
