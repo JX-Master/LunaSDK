@@ -205,7 +205,7 @@ float4 main(PS_INPUT input) : SV_Target
             return ok;
         }
 
-        static RV rebuild_font(f32 render_scale, f32 display_scale)
+        static RV rebuild_font(Font::IFontFile* font, f32 render_scale, f32 display_scale, Span<Pair<c16, c16>> ranges = {})
         {
             using namespace RHI;
             lutry
@@ -213,14 +213,26 @@ float4 main(PS_INPUT input) : SV_Target
                 ImGuiIO& io = ::ImGui::GetIO();
                 unsigned char* pixels;
                 int width, height;
-
                 io.Fonts->Clear();
-
-                auto default_font = Font::get_default_font();
-                usize font_size = default_font->data().size();
+                if(!font)
+                {
+                    font = Font::get_default_font();
+                }
+                ImVector<ImWchar> build_ranges;
+                if(!ranges.empty())
+                {
+                    ImFontGlyphRangesBuilder builder;
+                    for(auto& range : ranges)
+                    {
+                        ImWchar r[4] = {(ImWchar)range.first, (ImWchar)range.second, 0, 0};
+                        builder.AddRanges(r);
+                    }
+                    builder.BuildRanges(&build_ranges);
+                }
+                usize font_size = font->get_data().size();
                 void* font_data = ImGui::MemAlloc(font_size);
-                memcpy(font_data, default_font->data().data(), font_size);
-                io.Fonts->AddFontFromMemoryTTF(const_cast<void*>(font_data), (int)font_size, 18.0f * render_scale);
+                memcpy(font_data, font->get_data().data(), font_size);
+                io.Fonts->AddFontFromMemoryTTF(const_cast<void*>(font_data), (int)font_size, 18.0f * render_scale, NULL, build_ranges.empty() ? NULL : build_ranges.Data);
                 io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
                 io.FontGlobalScale = display_scale;
                 auto dev = get_main_device();
@@ -256,9 +268,135 @@ float4 main(PS_INPUT input) : SV_Target
             return ok;
         }
 
+        Ref<Font::IFontFile> g_font_file;
+
+        LUNA_IMGUI_API RV set_font(Font::IFontFile* font, f32 font_size, Span<Pair<c16, c16>> ranges)
+        {
+            g_font_file = font;
+            if(!g_active_window)
+            {
+                return rebuild_font(g_font_file, 1.0f, 1.0f, ranges);
+            }
+            else
+            {
+                auto sz = g_active_window->get_size();
+                auto fb_sz = g_active_window->get_framebuffer_size();
+                f32 display_scale = (f32)sz.x / (f32)fb_sz.x;
+                return rebuild_font(g_font_file, g_active_window->get_dpi_scale_factor(), display_scale, ranges);
+            }
+        }
+        LUNA_IMGUI_API Vector<Pair<c16, c16>> get_glyph_ranges_default()
+        {
+            ImGuiIO& io = ::ImGui::GetIO();
+            const ImWchar* range = io.Fonts->GetGlyphRangesDefault();
+            Vector<Pair<c16, c16>> r;
+            while(*range)
+            {
+                r.push_back(make_pair(range[0], range[1]));
+                range += 2;
+            }
+            return r;
+        }
+		LUNA_IMGUI_API Vector<Pair<c16, c16>> get_glyph_ranges_greek()
+        {
+            ImGuiIO& io = ::ImGui::GetIO();
+            const ImWchar* range = io.Fonts->GetGlyphRangesGreek();
+            Vector<Pair<c16, c16>> r;
+            while(*range)
+            {
+                r.push_back(make_pair(range[0], range[1]));
+                range += 2;
+            }
+            return r;
+        }
+		LUNA_IMGUI_API Vector<Pair<c16, c16>> get_glyph_ranges_korean()
+        {
+            ImGuiIO& io = ::ImGui::GetIO();
+            const ImWchar* range = io.Fonts->GetGlyphRangesKorean();
+            Vector<Pair<c16, c16>> r;
+            while(*range)
+            {
+                r.push_back(make_pair(range[0], range[1]));
+                range += 2;
+            }
+            return r;
+        }
+		LUNA_IMGUI_API Vector<Pair<c16, c16>> get_glyph_ranges_japanese()
+        {
+            ImGuiIO& io = ::ImGui::GetIO();
+            const ImWchar* range = io.Fonts->GetGlyphRangesJapanese();
+            Vector<Pair<c16, c16>> r;
+            while(*range)
+            {
+                r.push_back(make_pair(range[0], range[1]));
+                range += 2;
+            }
+            return r;
+        }
+		LUNA_IMGUI_API Vector<Pair<c16, c16>> get_glyph_ranges_chinese_full()
+        {
+            ImGuiIO& io = ::ImGui::GetIO();
+            const ImWchar* range = io.Fonts->GetGlyphRangesChineseFull();
+            Vector<Pair<c16, c16>> r;
+            while(*range)
+            {
+                r.push_back(make_pair(range[0], range[1]));
+                range += 2;
+            }
+            return r;
+        }
+		LUNA_IMGUI_API Vector<Pair<c16, c16>> get_glyph_ranges_chinese_simplified_common()
+        {
+            ImGuiIO& io = ::ImGui::GetIO();
+            const ImWchar* range = io.Fonts->GetGlyphRangesChineseSimplifiedCommon();
+            Vector<Pair<c16, c16>> r;
+            while(*range)
+            {
+                r.push_back(make_pair(range[0], range[1]));
+                range += 2;
+            }
+            return r;
+        }
+		LUNA_IMGUI_API Vector<Pair<c16, c16>> get_glyph_ranges_cyrillic()
+        {
+            ImGuiIO& io = ::ImGui::GetIO();
+            const ImWchar* range = io.Fonts->GetGlyphRangesCyrillic();
+            Vector<Pair<c16, c16>> r;
+            while(*range)
+            {
+                r.push_back(make_pair(range[0], range[1]));
+                range += 2;
+            }
+            return r;
+        }
+		LUNA_IMGUI_API Vector<Pair<c16, c16>> get_glyph_ranges_thai()
+        {
+            ImGuiIO& io = ::ImGui::GetIO();
+            const ImWchar* range = io.Fonts->GetGlyphRangesThai();
+            Vector<Pair<c16, c16>> r;
+            while(*range)
+            {
+                r.push_back(make_pair(range[0], range[1]));
+                range += 2;
+            }
+            return r;
+        }
+		LUNA_IMGUI_API Vector<Pair<c16, c16>> get_glyph_ranges_vietnamese()
+        {
+            ImGuiIO& io = ::ImGui::GetIO();
+            const ImWchar* range = io.Fonts->GetGlyphRangesVietnamese();
+            Vector<Pair<c16, c16>> r;
+            while(*range)
+            {
+                r.push_back(make_pair(range[0], range[1]));
+                range += 2;
+            }
+            return r;
+        }
         static void close()
         {
             ImGui::DestroyContext();
+            g_font_file = nullptr;
             g_vb = nullptr;
             g_ib = nullptr;
             g_vs_blob.clear();
@@ -495,7 +633,7 @@ float4 main(PS_INPUT input) : SV_Target
             auto sz = window->get_size();
             auto fb_sz = window->get_framebuffer_size();
             f32 display_scale = (f32)sz.x / (f32)fb_sz.x;
-            auto _ = rebuild_font(dpi_scale, display_scale);
+            auto _ = rebuild_font(g_font_file, dpi_scale, display_scale);
         }
 
         usize g_handle_mouse_move;
@@ -593,11 +731,11 @@ float4 main(PS_INPUT input) : SV_Target
                     auto sz = g_active_window->get_size();
                     auto fb_sz = g_active_window->get_framebuffer_size();
                     f32 display_scale = (f32)sz.x / (f32)fb_sz.x;
-                    auto _ = rebuild_font(g_active_window->get_dpi_scale_factor(), display_scale);
+                    auto _ = rebuild_font(g_font_file, g_active_window->get_dpi_scale_factor(), display_scale);
                 }
                 else
                 {
-                    auto _ = rebuild_font(1.0f, 1.0f);
+                    auto _ = rebuild_font(g_font_file, 1.0f, 1.0f);
                 }
             }
         }
