@@ -45,6 +45,7 @@ namespace Luna
 	NameEntry* g_name_cache_list_tail;
 	usize g_name_retain_list_size;
 	SpinLock g_name_mtx;
+	bool g_name_inited = false;
 	static void add_name_to_cache_list(NameEntry* entry)
 	{
 		// Add to head.
@@ -122,6 +123,7 @@ namespace Luna
 		g_name_cache_list_head = nullptr;
 		g_name_cache_list_tail = nullptr;
 		g_name_retain_list_size = 0;
+		g_name_inited = true;
 	}
 	void name_close()
 	{
@@ -131,14 +133,17 @@ namespace Luna
 			memfree(((NameEntry**)(i.m_str)) - 1);
 		}
 		g_name_map.destruct();
+		g_name_inited = false;
 	}
 	LUNA_RUNTIME_API const c8* intern_name(const c8* name)
 	{
+		lucheck_msg(g_name_inited, "intern_name must be called after Luna::init()!");
 		if (!name || (*name == '\0')) return nullptr;
 		return intern_name(name, strlen(name));
 	}
 	LUNA_RUNTIME_API const c8* intern_name(const c8* name, usize count)
 	{
+		lucheck_msg(g_name_inited, "intern_name must be called after Luna::init()!");
 		if (!name || (*name == '\0')) return nullptr;
 		name_id_t h = memhash<name_id_t>(name, count);
 		LockGuard guard(g_name_mtx);
@@ -191,6 +196,7 @@ namespace Luna
 	}
 	LUNA_RUNTIME_API void release_name(const c8* name)
 	{
+		if(!g_name_inited) return;
 		if (!name) return;
 		LockGuard guard(g_name_mtx);
 		NameEntry* entry = get_name_entry(name);
@@ -210,6 +216,7 @@ namespace Luna
 	}
 	LUNA_RUNTIME_API usize get_name_size(const c8* name)
 	{
+		if (!name) return 0;
 		return get_name_entry(name)->m_str_size;
 	}
 }

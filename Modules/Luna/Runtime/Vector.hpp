@@ -9,8 +9,7 @@
 */
 #pragma once
 #include "Allocator.hpp"
-#include "Iterator.hpp"
-#include "Assert.hpp"
+#include "Span.hpp"
 #include "Algorithm.hpp"
 #include "TypeInfo.hpp"
 #include "MemoryUtils.hpp"
@@ -177,6 +176,10 @@ namespace Luna
 		template <typename... _Args>
 		iterator emplace_back(_Args&&... args);
 		allocator_type get_allocator() const;
+
+		Span<value_type> span();
+		Span<const value_type> span() const;
+		Span<const value_type> cspan() const;
 
 	private:
 		// ---------------------------------------- Begin of ABI compatible part ----------------------------------------
@@ -798,6 +801,22 @@ namespace Luna
 	{
 		return m_allocator_buffer.first();
 	}
+	template <typename _Ty, typename _Alloc>
+	inline Span<_Ty> Vector<_Ty, _Alloc>::span()
+	{
+		return Span<_Ty>(data(), size());
+	}
+	template <typename _Ty, typename _Alloc>
+	inline Span<const _Ty> Vector<_Ty, _Alloc>::span() const
+	{
+		return Span<const _Ty>(data(), size());
+	}
+	template <typename _Ty, typename _Alloc>
+	inline Span<const _Ty> Vector<_Ty, _Alloc>::cspan() const
+	{
+		return Span<const _Ty>(data(), size());
+	}
+
 	template <typename _Ty, typename _Alloc>
 	inline void Vector<_Ty, _Alloc>::free_buffer()
 	{
