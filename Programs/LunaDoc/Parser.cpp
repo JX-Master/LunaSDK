@@ -118,7 +118,7 @@ static R<Variant> parse_func_section(const Variant& section)
                         {
                             param[_type] = get_xml_content(param_m).at(0).str();
                         }
-                        else if(param_m_name = _declname)
+                        else if(param_m_name == _declname)
                         {
                             param[_declname] = get_xml_content(param_m).at(0).str();
                         }
