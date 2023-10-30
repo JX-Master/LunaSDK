@@ -15,7 +15,8 @@ namespace Luna
 {
     void xml_test()
     {
-        const c8* src = R"(
+        {
+            const c8* src = R"(
 <?xml version="1.0" encoding="UTF-8"?>
 <bookstore>
     <book category="COOKING">
@@ -39,14 +40,27 @@ namespace Luna
     </book>
 </bookstore>
         )";
-        R<Variant> v = VariantUtils::read_xml(src);
-        if (failed(v)) log_error("xml_test", "%s", explain(v.errcode()));
-		luassert_always(succeeded(v));
-        String s = VariantUtils::write_xml(v.get());
-        log_debug("xml_test", "%s", s.c_str());
-		R<Variant> v2 = VariantUtils::read_xml(s.c_str());
-        if (failed(v2)) log_error("xml_test", "%s", explain(v2.errcode()));
-		luassert_always(succeeded(v2));
-		luassert_always(v.get() == v2.get());
+            R<Variant> v = VariantUtils::read_xml(src);
+            if (failed(v)) log_error("xml_test", "%s", explain(v.errcode()));
+            luassert_always(succeeded(v));
+            String s = VariantUtils::write_xml(v.get());
+            log_debug("xml_test", "%s", s.c_str());
+            R<Variant> v2 = VariantUtils::read_xml(s.c_str());
+            if (failed(v2)) log_error("xml_test", "%s", explain(v2.errcode()));
+            luassert_always(succeeded(v2));
+            luassert_always(v.get() == v2.get());
+        }
+        {
+            const c8* src = R"(
+<?xml version="1.0" encoding="UTF-8"?>
+<p>This is a <a>hinted</a> paragraph.</p>
+            )";
+            R<Variant> v = VariantUtils::read_xml(src);
+            if (failed(v)) log_error("xml_test", "%s", explain(v.errcode()));
+            luassert_always(succeeded(v));
+            auto& elements = VariantUtils::get_xml_content(v.get());
+            luassert_always(elements.at(0).str() == "This is a ");
+            luassert_always(elements.at(2).str() == " paragraph.");
+        }
     }
 }

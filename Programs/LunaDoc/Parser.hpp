@@ -43,6 +43,17 @@ extern Name _argsstring;
 extern Name _qualifiedname;
 extern Name _param;
 extern Name _declname;
+extern Name _para;
+extern Name _parameterlist;
+extern Name _simplesect;
+extern Name _return;
+extern Name _parameternamelist;
+extern Name _parameterdescription;
+extern Name _parametername;
+extern Name _parameteritem;
+extern Name _computeroutput;
 
-R<Vector<Variant>> parse_groups(Span<const Variant> group_files);
-RV write_group_to_file(const Variant& group, const c8* filepath);
+
+// Generate AST from XML documents for groups.
+
+RV parse_group(const Variant& group, String& out_group_content, Name& out_group_filename);

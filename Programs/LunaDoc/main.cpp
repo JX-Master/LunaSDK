@@ -116,7 +116,14 @@ RV gen_markdown(int argc, const char* argv[])
             {
                 log_info("LunaDoc", "No group found in %s", input_dir.encode().c_str());
             }
-            lulet(groups, parse_groups(group_files.cspan()));
+            Vector<Pair<Name, String>> groups;
+            for(auto& g : group_files)
+            {
+                String group_md_text;
+                Name group_filename;
+                luexp(parse_group(g, group_md_text, group_filename));
+                groups.push_back(make_pair(move(group_filename), move(group_md_text)));
+            }
             // Create directory if not exist
             {
                 auto dir = get_file_attribute(output_dir.encode().c_str());
@@ -128,9 +135,10 @@ RV gen_markdown(int argc, const char* argv[])
             for(auto& g : groups)
             {
                 Path path = output_dir;
-                path.push_back(g[_name].str());
+                path.push_back(g.first);
                 path.append_extension("md");
-                luexp(write_group_to_file(g, path.encode().c_str()));
+                lulet(f, open_file(path.encode().c_str(), FileOpenFlag::write, FileCreationMode::create_always));
+                luexp(f->write(g.second.c_str(), g.second.size()));
             }
         }
     }
@@ -170,6 +178,16 @@ RV run(int argc, const char* argv[])
         _qualifiedname = "qualifiedname";
         _param = "param";
         _declname = "declname";
+        _para = "para";
+        _parameterlist = "parameterlist";
+        _simplesect = "simplesect";
+        _return = "return";
+        _parameternamelist = "parameternamelist";
+        _parameterdescription = "parameterdescription";
+        _parametername = "parametername";
+        _parameteritem = "parameteritem";
+        _computeroutput = "computeroutput";
+
         set_log_to_platform_enabled(true);
         set_log_to_platform_verbosity(LogVerbosity::info);
         auto io = get_std_io_stream();

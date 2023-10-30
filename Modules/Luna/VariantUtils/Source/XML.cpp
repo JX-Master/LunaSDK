@@ -132,6 +132,30 @@ namespace Luna
 				ch = ctx.next_char();
 			}
         }
+        static void skip_comments(IReadContext& ctx)
+        {
+            c32 ch = ctx.next_char();
+			while (ch)
+			{
+				if (ch == '<')
+				{
+					c32 chs[3];
+                    chs[0] = ctx.next_char(1);
+                    chs[1] = ctx.next_char(2);
+                    chs[2] = ctx.next_char(3);
+                    if(chs[0] == '!' && chs[1] == '-' && chs[2] == '-')
+                    {
+                        skip_single_line_comment(ctx);
+                    }
+					else
+					{
+						break;
+					}
+				}
+				else break;
+				ch = ctx.next_char();
+			}
+        }
         static RV skip_xml_header(IReadContext& ctx)
         {
             // <?xml version="1.0" encoding="UTF-8"?>
@@ -397,7 +421,12 @@ namespace Luna
                 {
                     if(ch == '<')
                     {
-                        break;
+                        skip_comments(ctx);
+                        ch = ctx.next_char();
+                        if(ch == '<')
+                        {
+                            break;
+                        }
                     }
                     if(ch == '&')
                     {
@@ -544,11 +573,15 @@ namespace Luna
             lutry
             {
                 Variant& content = get_xml_content(element);
-                skip_whitespaces_and_comments(ctx);
                 c32 ch = ctx.next_char();
                 while(true)
                 {
                     if(!ch) return set_error(BasicError::format_error(), "Unexpected EOF occurred at line %d, pos %d.", ctx.get_line(), ctx.get_pos());
+                    if(ch == '<')
+                    {
+                        skip_comments(ctx);
+                        ch = ctx.next_char();
+                    }
                     if(ch == '<')
                     {
                         c32 ch2 = ctx.next_char(1);
@@ -579,14 +612,25 @@ namespace Luna
                     else
                     {
                         lulet(chardata, read_xml_character_data(ctx));
-                        // discard trailing whitespaces.
-                        while (!chardata.empty() && is_whitespace((c32)chardata.back()))
+                        bool is_blank = false;
+                        // Discard indent strings (strings begin with '\n' and contain whitespaces only).
+                        if(!chardata.empty() && (chardata[0] == '\n' || chardata[0] == '\r'))
                         {
-                            chardata.pop_back();
+                            is_blank = true;
+                            for(auto& c : chardata)
+                            {
+                                if(!is_whitespace(c))
+                                {
+                                    is_blank = false;
+                                    break;
+                                }
+                            }
                         }
-                        content.push_back(Variant(Name(chardata)));
+                        if(!is_blank)
+                        {
+                            content.push_back(Variant(Name(chardata)));
+                        }
                     }
-                    skip_whitespaces_and_comments(ctx);
                     ch = ctx.next_char();
                 }
             }
