@@ -51,7 +51,7 @@ Name _parametername;
 Name _parameteritem;
 Name _computeroutput;
 
-void encode_markdown_text(String& out_text, const Variant& element);
+static void encode_markdown_text(String& out_text, const Variant& element);
 
 static void encode_parameter_list(String& out_text, const Variant& parameterlist)
 {
