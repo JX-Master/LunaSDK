@@ -140,7 +140,7 @@ namespace Luna
 			}
 		}
 
-		bool PipelineState::init_graphic(const GraphicsPipelineStateDesc& desc)
+		RV PipelineState::init_graphic(const GraphicsPipelineStateDesc& desc)
 		{
 			m_is_graphics = true;
 			PipelineLayout* playout = static_cast<PipelineLayout*>(desc.pipeline_layout->get_object());
@@ -311,14 +311,14 @@ namespace Luna
 			d.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
 			d.CachedPSO.CachedBlobSizeInBytes = 0;
 			d.CachedPSO.pCachedBlob = nullptr;
-
-			if (FAILED(m_device->m_device->CreateGraphicsPipelineState(&d, IID_PPV_ARGS(&m_pso))))
+			HRESULT hr = m_device->m_device->CreateGraphicsPipelineState(&d, IID_PPV_ARGS(&m_pso));
+			if (FAILED(hr))
 			{
-				return false;
+				return encode_hresult(hr);
 			}
-			return true;
+			return ok;
 		}
-		bool PipelineState::init_compute(const ComputePipelineStateDesc& desc)
+		RV PipelineState::init_compute(const ComputePipelineStateDesc& desc)
 		{
 			m_is_graphics = false;
 			PipelineLayout* playout = static_cast<PipelineLayout*>(desc.pipeline_layout->get_object());
@@ -329,11 +329,12 @@ namespace Luna
 			fill_shader_data(d.CS, desc.cs);
 			d.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
 			d.NodeMask = 0;
-			if (FAILED(m_device->m_device->CreateComputePipelineState(&d, IID_PPV_ARGS(&m_pso))))
+			HRESULT hr = m_device->m_device->CreateComputePipelineState(&d, IID_PPV_ARGS(&m_pso));
+			if (FAILED(hr))
 			{
-				return false;
+				return encode_hresult(hr);
 			}
-			return true;
+			return ok;
 		}
 	}
 }

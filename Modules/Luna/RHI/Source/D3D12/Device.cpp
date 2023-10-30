@@ -403,19 +403,15 @@ namespace Luna
 		R<Ref<IPipelineState>> Device::new_graphics_pipeline_state(const GraphicsPipelineStateDesc& desc)
 		{
 			Ref<PipelineState> s = new_object<PipelineState>(this);
-			if (!s->init_graphic(desc))
-			{
-				return BasicError::failure();
-			}
+			auto r = s->init_graphic(desc);
+			if(failed(r)) return r.errcode();
 			return Ref<IPipelineState>(s);
 		}
 		R<Ref<IPipelineState>> Device::new_compute_pipeline_state(const ComputePipelineStateDesc& desc)
 		{
 			Ref<PipelineState> s = new_object<PipelineState>(this);
-			if (!s->init_compute(desc))
-			{
-				return BasicError::failure();
-			}
+			auto r = s->init_compute(desc);
+			if(failed(r)) return r.errcode();
 			return Ref<IPipelineState>(s);
 		}
 		R<Ref<IDescriptorSetLayout>> Device::new_descriptor_set_layout(const DescriptorSetLayoutDesc& desc)

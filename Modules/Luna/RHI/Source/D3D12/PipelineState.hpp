@@ -38,8 +38,8 @@ namespace Luna
 			}
 			virtual void set_name(const c8* name) override { set_object_name(m_pso.Get(), name); }
 
-			bool init_graphic(const GraphicsPipelineStateDesc& desc);
-			bool init_compute(const ComputePipelineStateDesc& desc);
+			RV init_graphic(const GraphicsPipelineStateDesc& desc);
+			RV init_compute(const ComputePipelineStateDesc& desc);
 		};
 	}
 }
