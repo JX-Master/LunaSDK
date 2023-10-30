@@ -253,7 +253,7 @@ RV parse_group(const Variant& group, String& out_group_content, Name& out_group_
             }
             else if(name == _sectiondef)
             {
-                auto& kind = get_xml_attributes(c)[_kind].str();
+                auto kind = get_xml_attributes(c)[_kind].str();
                 if(kind == _func)
                 {
                     String section;
