@@ -50,6 +50,8 @@ Name _parameterdescription;
 Name _parametername;
 Name _parameteritem;
 Name _computeroutput;
+Name _innergroup;
+Name _refid;
 
 static void encode_markdown_text(String& out_text, const Variant& element);
 
@@ -224,20 +226,25 @@ RV parse_group(const Variant& group, String& out_group_content, Name& out_group_
         if(get_xml_name(group) != _doxygen) return set_error(BasicError::format_error(), "One doxygen XML file must begin with <doxygen>, got %s", get_xml_name(group).c_str());
         auto& compounddef = find_first_xml_child_element(group, _compounddef);
         if(compounddef.type() != VariantType::object) return set_error(BasicError::format_error(), "<compounddef> not found");
+        auto& compounddef_attribtues = get_xml_attributes(compounddef);
+        Name group_id = compounddef_attribtues[_id].str();
+        luassert(group_id.size() > 8);
+        out_group_filename = group_id.c_str() + 8;
         auto& group_content = get_xml_content(compounddef);
         String title;
         String briefdescription;
         String detaileddescription;
         Vector<String> sections;
+        Vector<String> innergroups;
         for(auto& c : group_content.values())
         {
             if(c.type() != VariantType::object) continue;
             auto name = get_xml_name(c);
             if(name == _compoundname)
             {
-                auto name = get_xml_content(c).at(0).str();
-                if(!name) return set_error(BasicError::format_error(), "<compoundname> not found for group <compounddef>");
-                out_group_filename = name;
+                // auto name = get_xml_content(c).at(0).str();
+                // if(!name) return set_error(BasicError::format_error(), "<compoundname> not found for group <compounddef>");
+                // out_group_filename = name;
             }
             else if(name == _title)
             {
@@ -261,6 +268,21 @@ RV parse_group(const Variant& group, String& out_group_content, Name& out_group_
                     sections.push_back(move(section));
                 }
             }
+            else if(name == _innergroup)
+            {
+                auto& attr = get_xml_attributes(c);
+                auto refid = attr[_refid].str();
+                luassert(refid.size() > 8);
+                Name groupname = refid.c_str() + 8;
+                String innergroup;
+                innergroup.push_back('[');
+                encode_markdown_text(innergroup, c);
+                innergroup.append("](");
+                innergroup.append(groupname.c_str(), groupname.size());
+                innergroup.append(".md)");
+                printf("%s\n", innergroup.c_str());
+                innergroups.push_back(move(innergroup));
+            }
         }
         if(!title.empty())
         {
@@ -270,6 +292,16 @@ RV parse_group(const Variant& group, String& out_group_content, Name& out_group_
         }
         out_group_content.append(briefdescription);
         out_group_content.append(detaileddescription);
+        if(!innergroups.empty())
+        {
+            out_group_content.append("## Topics\n");
+            for(auto& innergroup : innergroups)
+            {
+                out_group_content.append("* ");
+                out_group_content.append(innergroup);
+                out_group_content.push_back('\n');
+            }
+        }
         for(auto& s : sections)
         {
             out_group_content.append(s);
