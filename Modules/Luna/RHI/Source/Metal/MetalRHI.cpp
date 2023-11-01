@@ -59,7 +59,6 @@ namespace Luna
                 register_boxed_type<SwapChain>();
                 impl_interface_for_type<SwapChain, ISwapChain, IDeviceChild>();
                 register_boxed_type<TextureView>();
-                luexp(init_devices());
                 luexp(init_main_device());
             }
             lucatchret;

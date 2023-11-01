@@ -24,6 +24,10 @@ namespace Luna
             c8 m_name[256];
 
             void init();
+            virtual const c8* get_name() override
+            {
+                return m_name;
+            }
         };
     }
 }
