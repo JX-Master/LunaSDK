@@ -98,7 +98,7 @@ namespace Luna
 		{
 			using namespace RHI;
 			auto device = get_main_device();
-			auto cb_align = device->get_uniform_buffer_data_alignment();
+			auto cb_align = device->check_feature(DeviceFeature::uniform_buffer_data_alignment).uniform_buffer_data_alignment;
 			luset(m_renderer.command_buffer, g_env->device->new_command_buffer(g_env->graphics_queue));
 			SceneRendererSettings settings;
 			settings.frame_profiling = true;

@@ -197,7 +197,7 @@ float4 main(PS_INPUT input) : SV_Target
                     PipelineLayoutFlag::allow_input_assembler_input_layout)));
 
                 // Create constant buffer.
-                usize buffer_size_align = dev->get_uniform_buffer_data_alignment();
+                usize buffer_size_align = dev->check_feature(DeviceFeature::uniform_buffer_data_alignment).uniform_buffer_data_alignment;
                 luset(g_cb, dev->new_buffer(MemoryType::upload, BufferDesc(BufferUsageFlag::uniform_buffer, align_upper(sizeof(Float4x4), buffer_size_align))));
             }
             lucatchret;
@@ -903,7 +903,7 @@ float4 main(PS_INPUT input) : SV_Target
                                 g_desc_sets.push_back(new_vs);
                             }
                             IDescriptorSet* vs = g_desc_sets[num_draw_calls];
-                            usize cb_align = dev->get_uniform_buffer_data_alignment();
+                            usize cb_align = dev->check_feature(DeviceFeature::uniform_buffer_data_alignment).uniform_buffer_data_alignment;
                             luexp(vs->update_descriptors({
                                 WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(g_cb)),
                                 WriteDescriptorSet::read_texture_view(1, TextureViewDesc::tex2d((ITexture*)pcmd->TextureId)),

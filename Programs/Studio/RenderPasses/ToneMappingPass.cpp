@@ -124,7 +124,7 @@ namespace Luna
             luset(m_histogram_ds, device->new_descriptor_set(DescriptorSetDesc(m_global_data->m_histogram_pass_dlayout)));
             luset(m_histogram_collect_ds, device->new_descriptor_set(DescriptorSetDesc(m_global_data->m_histogram_collect_pass_dlayout)));
             luset(m_tone_mapping_pass_ds, device->new_descriptor_set(DescriptorSetDesc(m_global_data->m_tone_mapping_pass_dlayout)));
-            auto cb_align = device->get_uniform_buffer_data_alignment();
+            auto cb_align = device->check_feature(DeviceFeature::uniform_buffer_data_alignment).uniform_buffer_data_alignment;
             luset(m_histogram_cb, device->new_buffer(MemoryType::upload, BufferDesc(BufferUsageFlag::uniform_buffer, align_upper(sizeof(LumHistogramParams), cb_align))));
 			luset(m_histogram_collect_cb, device->new_buffer(MemoryType::upload, BufferDesc(BufferUsageFlag::uniform_buffer, align_upper(sizeof(LumHistogramCollectParams), cb_align))));
 			luset(m_tone_mapping_cb, device->new_buffer(MemoryType::upload, BufferDesc(BufferUsageFlag::uniform_buffer, align_upper(sizeof(ToneMappingParams), cb_align))));
@@ -148,7 +148,7 @@ namespace Luna
 			Ref<ITexture> output_tex = ctx->get_output("ldr_texture");
 			auto lighting_tex_desc = lighting_tex->get_desc();
             auto output_tex_desc = output_tex->get_desc();
-            auto cb_align = cmdbuf->get_device()->get_uniform_buffer_data_alignment();
+            auto cb_align = cmdbuf->get_device()->check_feature(DeviceFeature::uniform_buffer_data_alignment).uniform_buffer_data_alignment;
 			constexpr f32 min_brightness = 0.001f;
 			constexpr f32 max_brightness = 20.0f;
             // Tone mapping pass.

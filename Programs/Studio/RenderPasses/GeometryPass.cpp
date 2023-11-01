@@ -112,7 +112,7 @@ namespace Luna
             auto render_desc = base_color_roughness_tex->get_desc();
             auto cmdbuf = ctx->get_command_buffer();
             auto device = cmdbuf->get_device();
-            auto cb_align = device->get_uniform_buffer_data_alignment();
+            auto cb_align = device->check_feature(DeviceFeature::uniform_buffer_data_alignment).uniform_buffer_data_alignment;
 			cmdbuf->resource_barrier(
 				{}, {
 					{base_color_roughness_tex, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::color_attachment_write, ResourceBarrierFlag::discard_content},

@@ -114,18 +114,23 @@ namespace Luna
             ret->setSize(size);
             return ret;
         }
-        bool Device::check_feature_support(DeviceFeature feature)
+        DeviceFeatureData Device::check_feature(DeviceFeature feature)
         {
-            switch (feature)
-            {
-            case DeviceFeature::unbound_descriptor_array: return m_support_metal_3_family;
-            case DeviceFeature::pixel_shader_write: return true;
-            default: return false;
-            }
-        }
-        usize Device::get_uniform_buffer_data_alignment()
-        {
-            return 0;
+            DeviceFeatureData ret;
+			switch (feature)
+			{
+			case DeviceFeature::unbound_descriptor_array:
+				ret.unbound_descriptor_array = m_support_metal_3_family;
+				break;
+			case DeviceFeature::pixel_shader_write:
+				ret.pixel_shader_write = true;
+				break;
+			case DeviceFeature::uniform_buffer_data_alignment:
+				ret.uniform_buffer_data_alignment = 0;
+				break;
+			default: lupanic();
+			}
+			return ret;
         }
         void Device::get_texture_data_placement_info(u32 width, u32 height, u32 depth, Format format,
 				u64* size, u64* alignment, u64* row_pitch, u64* slice_pitch)

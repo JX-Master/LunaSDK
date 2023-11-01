@@ -52,7 +52,7 @@ namespace Luna
                 DescriptorSetDesc(global_data->m_buffer_visualization_pass_dlayout)));
             luset(m_vis_params, device->new_buffer(MemoryType::upload,
                 BufferDesc(BufferUsageFlag::uniform_buffer, 
-                    align_upper(sizeof(u32), device->get_uniform_buffer_data_alignment()))));
+                    align_upper(sizeof(u32), device->check_feature(DeviceFeature::uniform_buffer_data_alignment).uniform_buffer_data_alignment))));
         }
         lucatchret;
         return ok;
@@ -82,7 +82,7 @@ namespace Luna
             }
             cmdbuf->begin_compute_pass(compute_pass);
             auto device = cmdbuf->get_device();
-            auto cb_align = device->get_uniform_buffer_data_alignment();
+            auto cb_align = device->check_feature(DeviceFeature::uniform_buffer_data_alignment).uniform_buffer_data_alignment;
             cmdbuf->resource_barrier(
                 { {m_vis_params, BufferStateFlag::automatic, BufferStateFlag::uniform_buffer_cs, ResourceBarrierFlag::none} },
                 {

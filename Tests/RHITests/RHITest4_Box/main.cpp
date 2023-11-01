@@ -183,7 +183,7 @@ RV start()
             16, 17, 18, 16, 18, 19,
             20, 21, 22, 20, 22, 23
         };
-        auto cb_align = dev->get_uniform_buffer_data_alignment();
+        auto cb_align = dev->check_feature(DeviceFeature::uniform_buffer_data_alignment).uniform_buffer_data_alignment;
         luset(cb, dev->new_buffer(MemoryType::upload, BufferDesc(BufferUsageFlag::uniform_buffer, align_upper(sizeof(Float4x4), cb_align))));
 
         lulet(image_file, open_file("luna.png", FileOpenFlag::read, FileCreationMode::open_existing));

@@ -257,14 +257,23 @@ namespace Luna
 			lucatchret;
 			return ret;
 		}
-		bool Device::check_feature_support(DeviceFeature feature)
+		DeviceFeatureData Device::check_feature(DeviceFeature feature)
 		{
+			DeviceFeatureData ret;
 			switch (feature)
 			{
-			case DeviceFeature::unbound_descriptor_array: return false;
-			case DeviceFeature::pixel_shader_write: return m_physical_device_features.fragmentStoresAndAtomics == VK_TRUE;
+			case DeviceFeature::unbound_descriptor_array:
+				ret.unbound_descriptor_array = false;
+				break;
+			case DeviceFeature::pixel_shader_write: 
+				ret.pixel_shader_write = m_physical_device_features.fragmentStoresAndAtomics == VK_TRUE;
+				break;
+			case DeviceFeature::uniform_buffer_data_alignment:
+				ret.uniform_buffer_data_alignment = (u32)m_physical_device_properties.limits.minUniformBufferOffsetAlignment;
+				break;
+			default: lupanic();
 			}
-			return false;
+			return ret;
 		}
 		void Device::get_texture_data_placement_info(u32 width, u32 height, u32 depth, Format format,
 			u64* size, u64* alignment, u64* row_pitch, u64* slice_pitch)
