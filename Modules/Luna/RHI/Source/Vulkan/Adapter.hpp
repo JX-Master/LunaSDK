@@ -9,6 +9,7 @@
 */
 #pragma once
 #include "Common.hpp"
+#include "../../Adapter.hpp"
 
 namespace Luna
 {
@@ -30,8 +31,23 @@ namespace Luna
 		RV init_physical_devices();
 		void clear_physical_devices();
 
-		// The result is stored in `g_vk_main_physical_device_index`.
-		R<usize> select_main_physical_device();
+		struct Adapter : IAdapter
+		{
+			lustruct("RHI::Adapter", "{72cf1eb1-41b1-4465-a9ca-326d1817e13e}");
+			luiimpl();
+
+			VkPhysicalDevice m_physical_device;
+			VkPhysicalDeviceProperties m_device_properties;
+			Vector<QueueFamily> m_queue_families;
+
+			void init(const Vector<QueueFamily>& queue_families);
+			virtual const c8* get_name() override
+			{
+				return m_device_properties.deviceName;
+			}
+		};
+
+		R<Ref<IAdapter>> select_main_physical_device();
 
 		struct PhysicalDeviceSurfaceInfo
 		{

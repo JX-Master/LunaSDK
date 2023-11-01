@@ -368,12 +368,12 @@ namespace Luna
             lucatchret;
             return ret;
         }
-        LUNA_RHI_API R<Ref<IDevice>> new_device(u32 adapter_index)
+        LUNA_RHI_API R<Ref<IDevice>> new_device(IAdapter* adapter)
         {
-            if(adapter_index >= get_num_adapters()) return set_error(BasicError::not_found(), "The specified adapter is not found.");
             AutoreleasePool pool;
+            Adapter* ada = cast_object<Adapter>(adapter->get_object());
             Ref<Device> dev = new_object<Device>();
-            dev->m_device = retain(g_devices->object<MTL::Device>(adapter_index));
+            dev->m_device = ada->m_device;
             auto r = dev->init();
             if(failed(r)) return r.errcode();
             return Ref<IDevice>(dev);

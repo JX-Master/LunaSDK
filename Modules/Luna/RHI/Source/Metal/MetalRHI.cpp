@@ -28,6 +28,8 @@ namespace Luna
         {
             lutry
             {
+                register_boxed_type<Adapter>();
+                impl_interface_for_type<Adapter, IAdapter>();
                 register_boxed_type<CommandBuffer>();
                 impl_interface_for_type<CommandBuffer, ICommandBuffer, IDeviceChild, IWaitable>();
                 register_boxed_type<DescriptorSet>();
