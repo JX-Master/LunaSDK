@@ -104,7 +104,7 @@ namespace Luna
         {
             auto cmdbuf = ctx->get_command_buffer();
             auto device = cmdbuf->get_device();
-            auto cb_align = device->get_uniform_buffer_data_alignment();
+            auto cb_align = device->check_feature(DeviceFeature::uniform_buffer_data_alignment).uniform_buffer_data_alignment;
             Ref<ITexture> output_tex = query_interface<ITexture>(ctx->get_output("scene_texture")->get_object());
             // Debug wireframe pass.
 			RenderPassDesc render_pass;

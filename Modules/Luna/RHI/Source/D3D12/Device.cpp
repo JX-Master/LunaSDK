@@ -240,18 +240,23 @@ namespace Luna
 			lucatchret;
 			return ok;
 		}
-		bool Device::check_feature_support(DeviceFeature feature)
+		DeviceFeatureData Device::check_feature(DeviceFeature feature)
 		{
+			DeviceFeatureData ret;
 			switch (feature)
 			{
-			case DeviceFeature::unbound_descriptor_array: return true;
-			case DeviceFeature::pixel_shader_write: return true;
+			case DeviceFeature::unbound_descriptor_array:
+				ret.unbound_descriptor_array = true;
+				break;
+			case DeviceFeature::pixel_shader_write:
+				ret.pixel_shader_write = true;
+				break;
+			case DeviceFeature::uniform_buffer_data_alignment:
+				ret.uniform_buffer_data_alignment = 256;
+				break;
+			default: lupanic();
 			}
-			return false;
-		}
-		usize Device::get_uniform_buffer_data_alignment()
-		{
-			return 256;
+			return ret;
 		}
 		void Device::get_texture_data_placement_info(u32 width, u32 height, u32 depth, Format format,
 				u64* size, u64* alignment, u64* row_pitch, u64* slice_pitch)

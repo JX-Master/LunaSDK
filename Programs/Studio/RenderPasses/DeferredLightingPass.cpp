@@ -68,7 +68,7 @@ namespace Luna
                 ps_desc.pipeline_layout = playout;
                 lulet(pso, device->new_compute_pipeline_state(ps_desc));
                 lulet(compute_cmdbuf, device->new_command_buffer(g_env->async_compute_queue));
-                u32 cb_align = device->get_uniform_buffer_data_alignment();
+                u32 cb_align = device->check_feature(DeviceFeature::uniform_buffer_data_alignment).uniform_buffer_data_alignment;
                 u32 cb_size = (u32)align_upper(sizeof(Float2), cb_align);
                 lulet(cb, device->new_buffer(MemoryType::upload, BufferDesc(BufferUsageFlag::uniform_buffer, cb_size)));
                 Float2U* mapped = nullptr;
@@ -112,7 +112,7 @@ namespace Luna
                 DescriptorSetDesc(global_data->m_deferred_lighting_pass_dlayout)));
             luset(m_lighting_params_cb, device->new_buffer(MemoryType::upload,
                 BufferDesc(BufferUsageFlag::uniform_buffer,
-                    align_upper(sizeof(LightingParamsCB), device->get_uniform_buffer_data_alignment()))));
+                    align_upper(sizeof(LightingParamsCB), device->check_feature(DeviceFeature::uniform_buffer_data_alignment).uniform_buffer_data_alignment))));
         }
         lucatchret;
         return ok;
@@ -135,7 +135,7 @@ namespace Luna
             Ref<ITexture> emissive_tex = ctx->get_input("emissive_texture");
             auto cmdbuf = ctx->get_command_buffer();
             auto device = cmdbuf->get_device();
-            auto cb_align = device->get_uniform_buffer_data_alignment();
+            auto cb_align = device->check_feature(DeviceFeature::uniform_buffer_data_alignment).uniform_buffer_data_alignment;
             auto sky_box = skybox ? skybox : m_global_data->m_default_skybox;
             ComputePassDesc compute_pass;
             u32 time_query_begin, time_query_end;

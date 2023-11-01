@@ -39,7 +39,7 @@ namespace Luna
         lutry
         { 
             m_settings = settings;
-            usize cb_align = m_device->get_uniform_buffer_data_alignment();
+            usize cb_align = m_device->check_feature(DeviceFeature::uniform_buffer_data_alignment).uniform_buffer_data_alignment;
             luset(m_camera_cb, m_device->new_buffer(MemoryType::upload, BufferDesc(BufferUsageFlag::uniform_buffer, align_upper(sizeof(CameraCB), cb_align))));
 			
 			// Build render graph.

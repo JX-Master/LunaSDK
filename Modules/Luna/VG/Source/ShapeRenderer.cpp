@@ -185,7 +185,7 @@ namespace Luna
 			auto dev = get_main_device();
 			lutry
 			{
-				u32 cb_element_size = (u32)align_upper(sizeof(Float4x4U), dev->get_uniform_buffer_data_alignment());
+				u32 cb_element_size = (u32)align_upper(sizeof(Float4x4U), dev->check_feature(DeviceFeature::uniform_buffer_data_alignment).uniform_buffer_data_alignment);
 				usize num_draw_calls = draw_calls.size();
 				u64 cb_size = cb_element_size * num_draw_calls;
 				// Build constant buffer.
