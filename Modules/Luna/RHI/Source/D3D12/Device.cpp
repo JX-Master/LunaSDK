@@ -7,6 +7,8 @@
 * @author JXMaster
 * @date 2019/7/17
 */
+#include <Luna/Runtime/PlatformDefines.hpp>
+#define LUNA_RHI_API LUNA_EXPORT
 #include "Device.hpp"
 #include "PipelineState.hpp"
 #include "Resource.hpp"
@@ -17,6 +19,7 @@
 #include "CommandBuffer.hpp"
 #include "Fence.hpp"
 #include "SwapChain.hpp"
+#include "Adapter.hpp"
 
 namespace Luna
 {
@@ -496,6 +499,19 @@ namespace Luna
 			}
 			lucatchret;
 			return Ref<ISwapChain>(r);
+		}
+		LUNA_RHI_API R<Ref<IDevice>> new_device(IAdapter* adapter)
+		{
+			Adapter* ada = cast_object<Adapter>(adapter->get_object());
+			ComPtr<ID3D12Device> dev;
+			Ref<Device> device = new_object<Device>();
+			auto res = device->init(ada->m_adapter.Get());
+			if (failed(res)) return res.errcode();
+			return Ref<IDevice>(device);
+		}
+		LUNA_RHI_API IDevice* get_main_device()
+		{
+			return g_main_device;
 		}
 	}
 }

@@ -9,6 +9,7 @@
 */
 #pragma once
 #include <d3d12.h>
+#include <dxgi1_5.h>
 #include "../DXGI/Common.hpp"
 #include "../../CommandBuffer.hpp"
 #include <Luna/Runtime/Unicode.hpp>
@@ -273,5 +274,7 @@ namespace Luna
 			default: return BasicError::bad_platform_call();
 			}
 		}
+		extern ComPtr<IDXGIFactory5> g_dxgi;
+		extern Ref<IDevice> g_main_device;
 	}
 }

@@ -222,90 +222,69 @@ namespace Luna
 			bool extensions_supported = check_device_extension_support(device);
 			return graphic_queue_present && present_queue_present && extensions_supported;
 		}
-		R<usize> select_main_physical_device()
+		R<Ref<IAdapter>> select_main_physical_device()
 		{
 			lutry
 			{
+				lulet(adapters, get_adapters());
 				// Prepare device data.
-				Vector<VkPhysicalDeviceProperties> device_properties;
-				for (usize i = 0; i < g_physical_devices.size(); ++i)
+				Vector<Adapter*> adapter_objects;
+				for (usize i = 0; i < adapters.size(); ++i)
 				{
-					VkPhysicalDeviceProperties properties;
-					vkGetPhysicalDeviceProperties(g_physical_devices[i], &properties);
-					device_properties.push_back(move(properties));
+					Adapter* adapter = cast_object<Adapter>(adapters[i]->get_object());
+					adapter_objects.push_back(adapter);
 				}
 				// Select dedicated device if present.
-				for (usize i = 0; i < g_physical_devices.size(); ++i)
+				for (usize i = 0; i < adapter_objects.size(); ++i)
 				{
-					lulet(suitable, is_device_suitable(g_physical_devices[i], g_physical_device_queue_families[i]));
-					if (suitable && device_properties[i].deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
+					lulet(suitable, is_device_suitable(adapter_objects[i]->m_physical_device, g_physical_device_queue_families[i]));
+					if (suitable && adapter_objects[i]->m_device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
 					{
-						return i;
+						return adapters[i];
 					}
 				}
 				// Fallback to intergrated GPU if present.
 				for (usize i = 0; i < g_physical_devices.size(); ++i)
 				{
-					lulet(suitable, is_device_suitable(g_physical_devices[i], g_physical_device_queue_families[i]));
-					if (suitable && device_properties[i].deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU)
+					lulet(suitable, is_device_suitable(adapter_objects[i]->m_physical_device, g_physical_device_queue_families[i]));
+					if (suitable && adapter_objects[i]->m_device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU)
 					{
-						return i;
+						return adapters[i];
 					}
 				}
 				// Fallback to Any GPU.
 				for (usize i = 0; i < g_physical_devices.size(); ++i)
 				{
-					lulet(suitable, is_device_suitable(g_physical_devices[i], g_physical_device_queue_families[i]));
+					lulet(suitable, is_device_suitable(adapter_objects[i]->m_physical_device, g_physical_device_queue_families[i]));
 					if (suitable)
 					{
-						return i;
+						return adapters[i];
 					}
 				}
 			}
 			lucatchret;
 			return set_error(BasicError::not_supported(), "Failed to find a suitable GPU for Vulkan!");
 		}
-		LUNA_RHI_API u32 get_num_adapters()
+		void Adapter::init(const Vector<QueueFamily>& queue_families)
 		{
-			return (u32)g_physical_devices.size();
+			m_queue_families = queue_families;
+			vkGetPhysicalDeviceProperties(m_physical_device, &m_device_properties);
 		}
-		LUNA_RHI_API AdapterDesc get_adapter_desc(u32 adapter_index)
+		LUNA_RHI_API R<Vector<Ref<IAdapter>>> get_adapters()
 		{
-			lucheck(adapter_index < g_physical_devices.size());
-			AdapterDesc ret;
-			VkPhysicalDeviceProperties device_properties;
-			VkPhysicalDeviceMemoryProperties memory_properties;
-			vkGetPhysicalDeviceProperties(g_physical_devices[adapter_index], &device_properties);
-			vkGetPhysicalDeviceMemoryProperties(g_physical_devices[adapter_index], &memory_properties);
-			strncpy(ret.name, device_properties.deviceName, 256);
-			u64 local_memory = 0;
-			u64 shared_memory = 0;
-			for (u32 i = 0; i < memory_properties.memoryHeapCount; ++i)
+			Vector<Ref<IAdapter>> ret;
+			lutry
 			{
-				if (memory_properties.memoryHeaps[i].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)
+				for(usize i = 0; i < g_physical_devices.size(); ++i)
 				{
-					local_memory += memory_properties.memoryHeaps[i].size;
-				}
-				else
-				{
-					shared_memory += memory_properties.memoryHeaps[i].size;
+					VkPhysicalDevice physical_device = g_physical_devices[i];
+					Ref<Adapter> adapter = new_object<Adapter>();
+					adapter->m_physical_device = physical_device;
+					adapter->init(g_physical_device_queue_families[i]);
+					ret.push_back(Ref<IAdapter>(adapter));
 				}
 			}
-			ret.local_memory = local_memory;
-			ret.shared_memory = shared_memory;
-			switch (device_properties.deviceType)
-			{
-			case VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU:
-				ret.type = AdapterType::integrated_gpu; break;
-			case VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU:
-				ret.type = AdapterType::discrete_gpu; break;
-			case VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU:
-				ret.type = AdapterType::virtual_gpu; break;
-			case VK_PHYSICAL_DEVICE_TYPE_CPU:
-				ret.type = AdapterType::software; break;
-			default:
-				ret.type = AdapterType::unknwon;
-			}
+			lucatchret;
 			return ret;
 		}
 	}

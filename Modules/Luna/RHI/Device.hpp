@@ -15,6 +15,7 @@
 #include "SwapChain.hpp"
 #include "Fence.hpp"
 #include "QueryHeap.hpp"
+#include "Adapter.hpp"
 
 #ifndef LUNA_RHI_API
 #define LUNA_RHI_API
@@ -71,6 +72,8 @@ namespace Luna
 				type(type),
 				flags(flags) {}
 		};
+
+		struct IAdapter;
 
 		//! Represents one logical graphic device on the platform.
 		struct IDevice : virtual Interface
@@ -172,5 +175,14 @@ namespace Luna
 			//! @return Returns the new created swap chain, or `nullptr` if failed to create.
 			virtual R<Ref<ISwapChain>> new_swap_chain(u32 command_queue_index, Window::IWindow* window, const SwapChainDesc& desc) = 0;
 		};
+
+		//! Creates one device using the specified adapter.
+		//! @param[in] adapter The adapter used for creating the device.
+		LUNA_RHI_API R<Ref<IDevice>> new_device(IAdapter* adapter);
+
+		//! Gets the main device.
+		//! If the main device is not set by `set_main_device`, this will create one device based on the adapters
+		//! returned by `get_preferred_device_adapter`, set the device as the main device and return the device.
+		LUNA_RHI_API IDevice* get_main_device();
 	}
 }

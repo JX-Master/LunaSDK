@@ -524,14 +524,14 @@ namespace Luna
 			lucatchret;
 			return ret;
 		}
-		LUNA_RHI_API R<Ref<IDevice>> new_device(u32 adapter_index)
+		LUNA_RHI_API R<Ref<IDevice>> new_device(IAdapter* adapter)
 		{
 			Ref<IDevice> ret;
 			lutry
 			{
-				if (adapter_index >= g_physical_devices.size()) return set_error(BasicError::not_found(), "The specified adapter is not found.");
 				Ref<Device> dev = new_object<Device>();
-				auto queue_families = g_physical_device_queue_families[adapter_index];
+				Adapter* ada = cast_object<Adapter>(adapter->get_object());
+				auto& queue_families = ada->m_queue_families;
 				for (auto& queue_family : queue_families)
 				{
 					if (queue_family.desc.type == CommandQueueType::graphics)
@@ -543,7 +543,7 @@ namespace Luna
 						queue_family.num_queues = min<u32>(queue_family.num_queues, 2);
 					}
 				}
-				luexp(dev->init(g_physical_devices[adapter_index], queue_families));
+				luexp(dev->init(ada->m_physical_device, queue_families));
 				ret = dev;
 			}
 			lucatchret;
