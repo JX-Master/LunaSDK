@@ -554,9 +554,9 @@ namespace Luna
 		{
 			return g_main_device.get();
 		}
-		LUNA_RHI_API APIType get_current_platform_api_type()
+		LUNA_RHI_API BackendType get_backend_type()
 		{
-			return APIType::vulkan;
+			return BackendType::vulkan;
 		}
 	}
 }

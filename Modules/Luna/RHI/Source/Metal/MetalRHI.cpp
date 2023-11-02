@@ -71,9 +71,9 @@ namespace Luna
             g_adapters.clear();
             g_adapters.shrink_to_fit();
         }
-        LUNA_RHI_API APIType get_current_platform_api_type()
+        LUNA_RHI_API BackendType get_backend_type()
 		{
-			return APIType::metal;
+			return BackendType::metal;
 		}
     }
 }
