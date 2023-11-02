@@ -37,7 +37,7 @@ namespace Luna
                 g_adapters.push_back(Ref<IAdapter>(adapter));
             }
         }
-        LUNA_RHI_API R<Vector<Ref<IAdapter>>> get_adapters()
+        LUNA_RHI_API Vector<Ref<IAdapter>> get_adapters()
         {
             return g_adapters;
         }
