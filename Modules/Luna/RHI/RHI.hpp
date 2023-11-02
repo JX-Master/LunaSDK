@@ -17,15 +17,15 @@ namespace Luna
 {
     namespace RHI
     {
-		enum class APIType : u8
+		enum class BackendType : u8
 		{
 			d3d12,
 			vulkan,
 			metal,
 		};
 
-		//! Gets the underlying graphic API type.
-		LUNA_RHI_API APIType get_current_platform_api_type();
+		//! Gets the render backend type.
+		LUNA_RHI_API BackendType get_backend_type();
     }
 
 	namespace RHIError

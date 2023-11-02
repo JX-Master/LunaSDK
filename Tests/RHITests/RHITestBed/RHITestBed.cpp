@@ -98,7 +98,7 @@ namespace Luna
 				luset(m_command_buffer, device->new_command_buffer(m_command_queue));
 				luset(m_back_buffer, m_swap_chain->get_current_back_buffer());
 
-				auto adapters = RHI::get_adapters().get();
+				auto adapters = RHI::get_adapters();
 				for (u32 i = 0; i < adapters.size(); ++i)
 				{
 					log_info("RHITest", "Adapter %u", i);

@@ -28,6 +28,6 @@ namespace Luna
         };
 
         //! Gets a list of adapters installed on the platform.
-        LUNA_RHI_API R<Vector<Ref<IAdapter>>> get_adapters();
+        LUNA_RHI_API Vector<Ref<IAdapter>> get_adapters();
     }
 }
