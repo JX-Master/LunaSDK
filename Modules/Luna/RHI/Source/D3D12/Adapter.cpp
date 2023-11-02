@@ -15,6 +15,7 @@ namespace Luna
 {
     namespace RHI
     {
+        Vector<Ref<IAdapter>> g_adapters;
         RV Adapter::init()
         {
             HRESULT hr = m_adapter->GetDesc1(&m_desc);
@@ -22,11 +23,11 @@ namespace Luna
             utf16_to_utf8(m_name, 256, (char16_t*)m_desc.Description);
             return ok;
         }
-        LUNA_RHI_API R<Vector<Ref<IAdapter>>> get_adapters()
+        RV init_adapters()
         {
-            Vector<Ref<IAdapter>> ret;
             lutry
             {
+                g_adapters.clear();
                 ComPtr<IDXGIAdapter1> ada;
                 u32 index = 0;
                 while (true)
@@ -36,12 +37,16 @@ namespace Luna
                     Ref<Adapter> adapter = new_object<Adapter>();
                     adapter->m_adapter = move(ada);
                     luexp(adapter->init());
-                    ret.push_back(Ref<IAdapter>(adapter));
+                    g_adapters.push_back(Ref<IAdapter>(adapter));
                     ++index;
                 }
             }
             lucatchret;
-            return ret;
+            return ok;
+        }
+        LUNA_RHI_API Vector<Ref<IAdapter>> get_adapters()
+        {
+            return g_adapters;
         }
     }
 }

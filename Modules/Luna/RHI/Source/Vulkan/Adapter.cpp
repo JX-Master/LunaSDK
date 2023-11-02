@@ -21,6 +21,7 @@ namespace Luna
 	{
 		Vector<VkPhysicalDevice> g_physical_devices;
 		Vector<Vector<QueueFamily>> g_physical_device_queue_families;
+		Vector<Ref<IAdapter>> g_adapters;
 		PhysicalDeviceSurfaceInfo get_physical_device_surface_info(VkPhysicalDevice device, VkSurfaceKHR surface)
 		{
 			PhysicalDeviceSurfaceInfo details;
@@ -174,12 +175,22 @@ namespace Luna
 					vkEnumeratePhysicalDevices(g_vk_instance, &device_count, g_physical_devices.data());
 				}
 				luexp(init_physical_device_queue_families());
+				for(usize i = 0; i < g_physical_devices.size(); ++i)
+				{
+					VkPhysicalDevice physical_device = g_physical_devices[i];
+					Ref<Adapter> adapter = new_object<Adapter>();
+					adapter->m_physical_device = physical_device;
+					adapter->init(g_physical_device_queue_families[i]);
+					g_adapters.push_back(Ref<IAdapter>(adapter));
+				}
 			}
 			lucatchret;
 			return ok;
 		}
 		void clear_physical_devices()
 		{
+			g_adapters.clear();
+			g_adapters.shrink_to_fit();
 			g_physical_device_queue_families.clear();
 			g_physical_device_queue_families.shrink_to_fit();
 			g_physical_devices.clear();
@@ -226,7 +237,7 @@ namespace Luna
 		{
 			lutry
 			{
-				lulet(adapters, get_adapters());
+				auto adapters = get_adapters();
 				// Prepare device data.
 				Vector<Adapter*> adapter_objects;
 				for (usize i = 0; i < adapters.size(); ++i)
@@ -270,22 +281,9 @@ namespace Luna
 			m_queue_families = queue_families;
 			vkGetPhysicalDeviceProperties(m_physical_device, &m_device_properties);
 		}
-		LUNA_RHI_API R<Vector<Ref<IAdapter>>> get_adapters()
+		LUNA_RHI_API Vector<Ref<IAdapter>> get_adapters()
 		{
-			Vector<Ref<IAdapter>> ret;
-			lutry
-			{
-				for(usize i = 0; i < g_physical_devices.size(); ++i)
-				{
-					VkPhysicalDevice physical_device = g_physical_devices[i];
-					Ref<Adapter> adapter = new_object<Adapter>();
-					adapter->m_physical_device = physical_device;
-					adapter->init(g_physical_device_queue_families[i]);
-					ret.push_back(Ref<IAdapter>(adapter));
-				}
-			}
-			lucatchret;
-			return ret;
+			return g_adapters;
 		}
 	}
 }

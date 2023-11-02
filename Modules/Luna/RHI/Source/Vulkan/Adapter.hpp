@@ -27,6 +27,7 @@ namespace Luna
 
 		extern Vector<VkPhysicalDevice> g_physical_devices;
 		extern Vector<Vector<QueueFamily>> g_physical_device_queue_families;
+		extern Vector<Ref<IAdapter>> g_adapters;
 
 		RV init_physical_devices();
 		void clear_physical_devices();

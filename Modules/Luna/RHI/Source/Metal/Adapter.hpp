@@ -29,5 +29,7 @@ namespace Luna
                 return m_name;
             }
         };
+        extern Vector<Ref<IAdapter>> g_adapters;
+        void init_adapters();
     }
 }

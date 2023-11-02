@@ -69,21 +69,25 @@ namespace Luna
 			{
 				return encode_hresult(hr);
 			}
-			auto adapters = get_adapters();
-			if(failed(adapters)) return adapters.errcode();
-#if defined(LUNA_RHI_DEBUG) && (LUNA_PLATFORM_VERSION >= LUNA_PLATFORM_VERSION_WIN10)
-			ComPtr<ID3D12Debug> debug;
-			D3D12GetDebugInterface(IID_PPV_ARGS(&debug));
-			if (debug) debug->EnableDebugLayer();
-#endif
-			auto dev = new_device(adapters.get()[0]);
-			if (failed(dev)) return dev.errcode();
-			g_main_device = dev.get();
+			lutry
+			{
+				luexp(init_adapters());
+				auto adapters = get_adapters();
+	#if defined(LUNA_RHI_DEBUG) && (LUNA_PLATFORM_VERSION >= LUNA_PLATFORM_VERSION_WIN10)
+				ComPtr<ID3D12Debug> debug;
+				D3D12GetDebugInterface(IID_PPV_ARGS(&debug));
+				if (debug) debug->EnableDebugLayer();
+	#endif
+				luset(g_main_device, new_device(adapters[0]));
+			}
+			lucatchret;
 			return ok;
 		}
 		void render_api_close()
 		{
 			g_main_device = nullptr;
+			g_adapters.clear();
+			g_adapters.shrink_to_fit();
 			g_dxgi = nullptr;
 		}
 		LUNA_RHI_API APIType get_current_platform_api_type()
