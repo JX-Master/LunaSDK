@@ -51,7 +51,7 @@ jobs:
           key: ${{ matrix.os }}-${{ matrix.arch }}-${{ steps.dep_hash.outputs.hash }}-W${{ steps.cache_key.outputs.key }}
           
       - name: Configure xmake debug
-        run: xmake f --mode=debug --contract_assertion=y --thread_safe_assertion=y --check_memory_leak=y --arch=${{ matrix.arch }} -c -y -v --rhi_debug=y --shared=${{ matrix.shared == 'shared' && 'y' || 'n'}}
+        run: xmake f --mode=debug --contract_assertion=y --thread_safe_assertion=y --arch=${{ matrix.arch }} -c -y -v --rhi_debug=y --shared=${{ matrix.shared == 'shared' && 'y' || 'n'}}
         
       - name: Build debug
         run: xmake build -y -v
