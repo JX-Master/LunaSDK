@@ -113,7 +113,7 @@ namespace Luna
         Texture::~Texture()
         {
 #ifdef LUNA_MEMORY_PROFILER_ENABLED
-            if(!m_memory->m_heap) memory_profiler_deallocate(m_texture.get());
+            if(m_memory && !m_memory->m_heap) memory_profiler_deallocate(m_texture.get());
 #endif
         }
         bool compare_texture_view_desc(const TextureViewDesc& lhs, const TextureViewDesc& rhs)
