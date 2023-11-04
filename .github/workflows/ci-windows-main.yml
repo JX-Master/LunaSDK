@@ -52,7 +52,7 @@ jobs:
           key: ${{ matrix.os }}-${{ matrix.toolchain }}-${{ matrix.arch }}-${{ steps.dep_hash.outputs.hash }}-W${{ steps.cache_key.outputs.key }}
           
       - name: Configure xmake debug
-        run: xmake f --mode=debug --contract_assertion=y --thread_safe_assertion=y --check_memory_leak=y --arch=${{ matrix.arch }} --toolchain=${{ matrix.toolchain }} -c -y -v --rhi_debug=y --rhi_api=${{ matrix.rhi_api }} --shared=${{ matrix.shared == 'shared' && 'y' || 'n'}}
+        run: xmake f --mode=debug --contract_assertion=y --thread_safe_assertion=y --arch=${{ matrix.arch }} --toolchain=${{ matrix.toolchain }} -c -y -v --rhi_debug=y --rhi_api=${{ matrix.rhi_api }} --shared=${{ matrix.shared == 'shared' && 'y' || 'n'}}
         
       - name: Build debug
         run: xmake build -y -v
@@ -61,7 +61,7 @@ jobs:
         run: xmake install -o ./install/${{ matrix.toolchain }}-${{ matrix.arch }}-${{ matrix.rhi_api }}-debug
 
       - name: Configure xmake release
-        run: xmake f --mode=release --contract_assertion=n --thread_safe_assertion=n --check_memory_leak=n --arch=${{ matrix.arch }} --toolchain=${{ matrix.toolchain }} -c -y -v --rhi_debug=n --rhi_api=${{ matrix.rhi_api }} --shared=${{ matrix.shared == 'shared' && 'y' || 'n'}}
+        run: xmake f --mode=release --contract_assertion=n --thread_safe_assertion=n --arch=${{ matrix.arch }} --toolchain=${{ matrix.toolchain }} -c -y -v --rhi_debug=n --rhi_api=${{ matrix.rhi_api }} --shared=${{ matrix.shared == 'shared' && 'y' || 'n'}}
 
       - name: Build release
         run: xmake build -y -v
