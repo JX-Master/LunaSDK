@@ -38,6 +38,7 @@ namespace Luna
 				}
 				m_memory = new_object<DeviceMemory>();
 				m_memory->m_device = m_device;
+				m_memory->m_memory_type = memory_type;
 				luexp(encode_hresult(m_device->m_allocator->CreateResource(
 					&allocation_desc,
 					&rd, state, NULL, &m_memory->m_allocation, IID_PPV_ARGS(&m_res)
@@ -302,6 +303,7 @@ namespace Luna
 				}
 				m_memory = new_object<DeviceMemory>();
 				m_memory->m_device = m_device;
+				m_memory->m_memory_type = memory_type;
 				luexp(encode_hresult(m_device->m_allocator->CreateResource(
 					&allocation_desc,
 					&rd, state, pcv, &m_memory->m_allocation, IID_PPV_ARGS(&m_res)

@@ -25,6 +25,7 @@ namespace Luna
 				encode_allocation_info(allocation, memory_type, test_flags(m_desc.flags, ResourceFlag::allow_aliasing));
 				auto memory = new_object<DeviceMemory>();
 				memory->m_device = m_device;
+				memory->m_memory_type = memory_type;
 				m_memory = memory;
 				luexp(encode_vk_result(vmaCreateBuffer(m_device->m_allocator, &create_info, &allocation, &m_buffer, &m_memory->m_allocation, &m_memory->m_allocation_info)));
 			}
@@ -136,6 +137,7 @@ namespace Luna
 				encode_allocation_info(allocation, memory_type, test_flags(desc.flags, ResourceFlag::allow_aliasing));
 				auto memory = new_object<DeviceMemory>();
 				memory->m_device = m_device;
+				memory->m_memory_type = memory_type;
 				m_memory = memory;
 				luexp(encode_vk_result(vmaCreateImage(m_device->m_allocator, &create_info, &allocation, &m_image, &m_memory->m_allocation, &m_memory->m_allocation_info)));
 				post_init();

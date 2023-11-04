@@ -75,6 +75,7 @@ namespace Luna
 		void render_api_close()
 		{
 			g_main_device.reset();
+			clear_physical_devices();
 			destroy_vk_instance();
 		}
 	}
