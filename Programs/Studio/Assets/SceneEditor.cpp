@@ -446,7 +446,9 @@ namespace Luna
 			scene_sz.x -= 1.0f;
 			scene_sz.y -= 5.0f;
 
-			settings.screen_size = UInt2U((u32)scene_sz.x, (u32)scene_sz.y);
+			auto& io = ImGui::GetIO();
+
+			settings.screen_size = UInt2U((u32)(scene_sz.x * io.DisplayFramebufferScale.x), (u32)(scene_sz.y * io.DisplayFramebufferScale.y));
 
 			// Draw Overlays.
 			luexp(m_renderer.command_buffer->submit({}, {}, true));
@@ -479,7 +481,7 @@ namespace Luna
 
 				if (m_renderer.get_settings().frame_profiling)
 				{
-					ImGui::Text("Frame Size: %ux%u", (u32)scene_sz.x, (u32)scene_sz.y);
+					ImGui::Text("Frame Size: %ux%u", (u32)(scene_sz.x * io.DisplayFramebufferScale.x), (u32)(scene_sz.y * io.DisplayFramebufferScale.y));
 					ImGui::Text("FPS: %f", ImGui::GetIO().Framerate);
 					for (usize i = 0; i < m_renderer.pass_time_intervals.size(); ++i)
 					{
