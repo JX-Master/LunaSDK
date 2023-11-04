@@ -35,6 +35,7 @@
 #include "SceneRenderer.hpp"
 #include <Luna/Runtime/Log.hpp>
 #include <Luna/Runtime/Thread.hpp>
+#include <Luna/Runtime/Profiler.hpp>
 
 namespace Luna
 {
@@ -45,6 +46,10 @@ namespace Luna
 		lutry
 		{
 			set_log_to_platform_enabled(true);
+
+			MemoryProfilerCallback memory_profiler_callback;
+			memory_profiler_callback.m_profiler = &m_memory_profiler;
+			m_memory_profiler_callback_handle = register_profiler_callback(memory_profiler_callback);
 
 			char title[256];
 			auto name = project_path.filename();
@@ -190,6 +195,7 @@ namespace Luna
 						snprintf(buf, 32, "Asset Browser %u", (u32)i);
 						ImGui::Checkbox(buf, &m_asset_browsers_enabled[i]);
 					}
+					ImGui::Checkbox("Memory Profiler", &m_memory_profiler_window_enabled);
 					ImGui::EndMenu();
 				}
 				ImGui::EndMainMenuBar();
@@ -201,6 +207,11 @@ namespace Luna
 				{
 					m_asset_browsers[i]->render();
 				}
+			}
+
+			if(m_memory_profiler_window_enabled)
+			{
+				m_memory_profiler.render();
 			}
 
 			// Draw Editors.
@@ -236,6 +247,10 @@ namespace Luna
 		}
 		lucatchret;
 		return ok;
+	}
+	void MainEditor::close()
+	{
+		unregister_profiler_callback(m_memory_profiler_callback_handle);
 	}
 
 	void register_components()
@@ -328,6 +343,7 @@ namespace Luna
 			{
 				luexp(main_editor->update());
 			}
+			main_editor->close();
 		}
 		lucatch
 		{

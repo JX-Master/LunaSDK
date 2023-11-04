@@ -103,7 +103,7 @@ namespace Luna
 		template <typename _Ty, typename... _Args>
 		_Ty* memnew(_Args&&... args)
 		{
-			_Ty* o = reinterpret_cast<_Ty*>(memalloc(sizeof(_Ty), alignof(_Ty)));
+			_Ty* o = reinterpret_cast<_Ty*>(OS::memalloc(sizeof(_Ty), alignof(_Ty)));
 			if (o)
 			{
 				new (o) _Ty(forward<_Args>(args)...);
@@ -117,7 +117,7 @@ namespace Luna
 		void memdelete(_Ty* o)
 		{
 			o->~_Ty();
-			memfree(o, alignof(_Ty));
+			OS::memfree(o, alignof(_Ty));
 		}
 
 		//! Queries the ticks of the high-performance counter of CPU.

@@ -25,6 +25,7 @@
 #include "Random.hpp"
 #include "ReadWriteLock.hpp"
 #include "StdIO.hpp"
+#include "Profiler.hpp"
 namespace Luna
 {
 	void error_init();
@@ -63,9 +64,7 @@ namespace Luna
 	{
 		if (g_initialized) return true;
 		OS::init();
-#ifdef LUNA_RUNTIME_CHECK_MEMORY_LEAK
-		memory_check_init();
-#endif
+		profiler_init();
 		error_init();
 		name_init();
 		type_registry_init();
@@ -91,9 +90,7 @@ namespace Luna
 		type_registry_close();
 		name_close();
 		error_close();
-#ifdef LUNA_RUNTIME_CHECK_MEMORY_LEAK
-		memory_check_close();
-#endif
+		profiler_close();
 		OS::close();
 		g_initialized = false;
 	}

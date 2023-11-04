@@ -11,6 +11,7 @@
 #include "Resource.hpp"
 #include "../../RHI.hpp"
 #include "DescriptorSet.hpp"
+#include <Luna/Runtime/Profiler.hpp>
 namespace Luna
 {
 	namespace RHI
@@ -43,6 +44,18 @@ namespace Luna
 					&allocation_desc,
 					&rd, state, NULL, &m_memory->m_allocation, IID_PPV_ARGS(&m_res)
 				)));
+#ifdef LUNA_MEMORY_PROFILER_ENABLED
+				memory_profiler_allocate(m_memory->m_allocation.Get(), m_memory->get_size());
+				memory_profiler_set_memory_domain(m_memory->m_allocation.Get(), g_memory_domain_gpu);
+				if(!test_flags(desc.flags, ResourceFlag::allow_aliasing))
+				{
+					memory_profiler_set_memory_type(m_memory->m_allocation.Get(), g_memory_type_buffer);
+				}
+				else
+				{
+					memory_profiler_set_memory_type(m_memory->m_allocation.Get(), g_memory_type_aliasing_memory);
+				}
+#endif
 			}
 			lucatchret;
 			return ok;
@@ -311,6 +324,18 @@ namespace Luna
 				auto created_desc = m_res->GetDesc();
 				m_desc.mip_levels = created_desc.MipLevels;
 				post_init();
+#ifdef LUNA_MEMORY_PROFILER_ENABLED
+				memory_profiler_allocate(m_memory->m_allocation.Get(), m_memory->get_size());
+				memory_profiler_set_memory_domain(m_memory->m_allocation.Get(), g_memory_domain_gpu);
+				if(!test_flags(desc.flags, ResourceFlag::allow_aliasing))
+				{
+					memory_profiler_set_memory_type(m_memory->m_allocation.Get(), g_memory_type_texture);
+				}
+				else
+				{
+					memory_profiler_set_memory_type(m_memory->m_allocation.Get(), g_memory_type_aliasing_memory);
+				}
+#endif
 			}
 			lucatchret;
 			return ok;

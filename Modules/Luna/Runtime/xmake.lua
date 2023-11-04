@@ -15,11 +15,4 @@ luna_sdk_module_target("Runtime")
             add_syslinks("pthread")
         end
     end
-
-    option("check_memory_leak")
-        set_default(false)
-        set_showmenu(true)
-        set_description("Whether to enable memory leak detection layer for Luna SDK")
-        add_defines("LUNA_RUNTIME_CHECK_MEMORY_LEAK")
-    option_end()
 target_end()

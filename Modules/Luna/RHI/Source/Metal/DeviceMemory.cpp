@@ -20,9 +20,20 @@ namespace Luna
                 m_heap = box(m_device->m_device->newHeap(desc));
                 if(!m_heap) return BasicError::bad_platform_call();
                 m_size = m_heap->size();
+#ifdef LUNA_MEMORY_PROFILER_ENABLED
+                memory_profiler_allocate(m_heap.get(), m_size);
+                memory_profiler_set_memory_domain(m_heap.get(), g_memory_domain_gpu);
+                memory_profiler_set_memory_type(m_heap.get(), g_memory_type_buffer);
+#endif
             }
             lucatchret;
             return ok;
+        }
+        DeviceMemory::~DeviceMemory()
+        {
+#ifdef LUNA_MEMORY_PROFILER_ENABLED
+            if(m_heap) memory_profiler_deallocate(m_heap.get());
+#endif
         }
     }
 }

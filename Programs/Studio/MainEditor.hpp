@@ -10,6 +10,7 @@
 #pragma once
 #include "StudioHeader.hpp"
 #include "AssetBrowser.hpp"
+#include "MemoryProfiler.hpp"
 #include <Luna/Runtime/HashMap.hpp>
 
 namespace Luna
@@ -29,6 +30,10 @@ namespace Luna
 
 		Vector<Ref<IAssetEditor>> m_editors;
 
+		MemoryProfiler m_memory_profiler;
+		usize m_memory_profiler_callback_handle;
+		bool m_memory_profiler_window_enabled = false;
+
 		//u32 m_next_asset_browser_index;
 
 		bool m_exiting;
@@ -45,6 +50,8 @@ namespace Luna
 		RV init(const Path& project_path);
 
 		RV update();
+
+		void close();
 
 		//Ref<AssetBrowser> new_asset_browser(Path initial_path);
 	};
