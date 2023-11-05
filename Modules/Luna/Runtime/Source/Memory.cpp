@@ -21,6 +21,7 @@ namespace Luna
 {
 	LUNA_RUNTIME_API void* memalloc(usize size, usize alignment)
 	{
+		if(!size) return nullptr;
 		void* mem = OS::memalloc(size, alignment);
 #ifdef LUNA_MEMORY_PROFILER_ENABLED
 		usize allocated = OS::memsize(mem, alignment);
@@ -28,25 +29,31 @@ namespace Luna
 #endif
 		return mem;
 	}
-	LUNA_RUNTIME_API void memfree(void* ptr, usize alignment)
-	{
-#ifdef LUNA_MEMORY_PROFILER_ENABLED
-		usize allocated = OS::memsize(ptr, alignment);
-		memory_profiler_deallocate(ptr, allocated);
-#endif
-		OS::memfree(ptr, alignment);
-	}
 	LUNA_RUNTIME_API void* memrealloc(void* ptr, usize size, usize alignment)
 	{
+		if(!ptr) return memalloc(size, alignment);
+		// freeing memroy if `size` is `0`.
+		if(!size)
+		{
+			memfree(ptr, alignment);
+			return nullptr;
+		}
+		// expanding or contracting the existing area pointed to by `ptr`, if possible.
+		usize old_size = memsize(ptr, alignment);
+		if(size <= old_size) return ptr;
+		// reallocating.
+		void* new_ptr = memalloc(size, alignment);
+		memcpy(new_ptr, ptr, min(old_size, size));
+		memfree(ptr, alignment);
+		return new_ptr;
+	}
+	LUNA_RUNTIME_API void memfree(void* ptr, usize alignment)
+	{
+		if(!ptr) return;
 #ifdef LUNA_MEMORY_PROFILER_ENABLED
-		usize allocated = OS::memsize(ptr, alignment);
+		memory_profiler_deallocate(ptr);
 #endif
-		void* mem = OS::memrealloc(ptr, size, alignment);
-#ifdef LUNA_MEMORY_PROFILER_ENABLED
-		usize new_allocated = OS::memsize(mem, alignment);
-		memory_profiler_reallocate(ptr, allocated, mem, new_allocated);
-#endif
-		return mem;
+		OS::memfree(ptr, alignment);
 	}
 	LUNA_RUNTIME_API usize memsize(void* ptr, usize alignment)
 	{

@@ -37,17 +37,11 @@ namespace Luna
 				g_allocated_memory += data->size;
 				break;
 			}
-			case ProfilerEventId::MEMORY_REALLOCATE:
-			{
-				ProfilerEventData::MemoryReallocate* data = (ProfilerEventData::MemoryReallocate*)event.data;
-				g_allocated_memory += data->new_size;
-				g_allocated_memory -= data->size;
-				break;
-			}
 			case ProfilerEventId::MEMORY_DEALLOCATE:
 			{
 				ProfilerEventData::MemoryDeallocate* data = (ProfilerEventData::MemoryDeallocate*)event.data;
-				g_allocated_memory -= data->size;
+				usize allocated = memsize(data->ptr);
+				g_allocated_memory -= allocated;
 				break;
 			}
 			default: break;

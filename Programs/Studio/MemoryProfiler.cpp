@@ -137,12 +137,6 @@ namespace Luna
                 m_profiler->on_allocate(data->ptr, data->size);
             }
             break;
-            case ProfilerEventId::MEMORY_REALLOCATE:
-            {
-                auto data = (ProfilerEventData::MemoryReallocate*)event.data;
-                m_profiler->on_reallocate(data->ptr, data->new_ptr, data->new_size);
-            }
-            break;
             case ProfilerEventId::MEMORY_DEALLOCATE:
             {
                 auto data = (ProfilerEventData::MemoryDeallocate*)event.data;

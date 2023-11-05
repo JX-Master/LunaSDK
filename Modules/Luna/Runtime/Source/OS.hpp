@@ -76,21 +76,6 @@ namespace Luna
 		//! @param[in] alignment Optional. The alignment requirement specified when allocating the memory block. Default is 0.
 		void memfree(void* ptr, usize alignment = 0);
 
-		//! Reallocates memory blocks. This function allocates a new memory block with the specified size and alignment
-		//! requirement, copies the data from the old memory block to the new one, and frees the old memory block.
-		//! 
-		//! The old memory block shall be the block allocated from `OS::memalloc` or `OS::memrealloc`.
-		//! 
-		//! @param[in] ptr The pointer to the former allocated memory allocated by `OS::memalloc` or `OS::memrealloc`. This will be freed if the new  
-		//! memory block is successfully allocated. If this parameter is `nullptr`, this method behaves the same as `OS::memalloc`.
-		//! @param[in] size The new number of bytes to allocate.
-		//! @param[in] alignment Optional. The alignment requirement for the old memory block. Default is 0. 
-		//! 
-		//! The new and old memory block use the same alignment requirement, which is decided when the old memory block is allocated.
-		//! @return Returns a pointer to the reallocated memory block. If the allocation is failed, returns `nullptr` and
-		//! the old memory block (if have) is not changed.
-		void* memrealloc(void* ptr, usize size, usize alignment = 0);
-
 		//! Gets the allocated size of the memory block allocated by `OS::memalloc` or `OS::memrealloc`. 
 		//! The returned size is the size that is available for the user to use. 
 		//! Note that the allocated size may be bigger than the size required to specify alignment and padding requirements.

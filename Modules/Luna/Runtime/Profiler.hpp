@@ -59,7 +59,6 @@ namespace Luna
     namespace ProfilerEventId
     {
         constexpr u64 MEMORY_ALLOCATE = strhash64("MEMORY_ALLOCATE");
-        constexpr u64 MEMORY_REALLOCATE = strhash64("MEMORY_REALLOCATE");
         constexpr u64 MEMORY_DEALLOCATE = strhash64("MEMORY_DEALLOCATE");
         constexpr u64 SET_MEMORY_NAME = strhash64("SET_MEMORY_NAME");
         constexpr u64 SET_MEMORY_TYPE = strhash64("SET_MEMORY_TYPE");
@@ -72,17 +71,9 @@ namespace Luna
             void* ptr;
             usize size;
         };
-        struct MemoryReallocate
-        {
-            void* ptr;
-            usize size;
-            void* new_ptr;
-            usize new_size;
-        };
         struct MemoryDeallocate
         {
             void* ptr;
-            usize size;
         };
         struct SetMemoryName
         {
@@ -110,29 +101,17 @@ namespace Luna
 	//! need to call this again.
 	LUNA_RUNTIME_API void memory_profiler_allocate(void* ptr, usize size);
 
-	//! @brief Emits one @ref PROFILER_EVENT_ID_MEMORY_REALLOCATE profiler event.
-	//! @param[in] ptr The old memory pointer.
-	//! @param[in] new_ptr The new memory pointer to register.
-	//! @param[in] new_size The new memory size.
-	//! @remark Memory reallocations through `memrealloc` call this internally when memory profiling is enabled, thus the user does not
-	//! need to call this again.
-	LUNA_RUNTIME_API void memory_profiler_reallocate(void* ptr, usize size, void* new_ptr, usize new_size);
-
 	//! @brief Emits one @ref PROFILER_EVENT_ID_MEMORY_DEALLOCATE profiler event.
 	//! @param[in] ptr The registered memory pointer.
 	//! @remark Memory deallocations through `memfree` call this internally when memory profiling is enabled, thus the user does not
 	//! need to call this again.
-	LUNA_RUNTIME_API void memory_profiler_deallocate(void* ptr, usize size);
-
-    LUNA_RUNTIME_API void memory_profiler_set_memory_name_static(void* ptr, const c8* name);
+	LUNA_RUNTIME_API void memory_profiler_deallocate(void* ptr);
 
 	//! @brief Sets a debug name for the memory block, for example, the name of the resource file this memory block is allocated for. 
 	//! This function emits one @ref PROFILER_EVENT_ID_SET_MEMORY_NAME profiler event.
 	//! @param[in] ptr The memory block pointer.
 	//! @param[in] name The debug name for the memory block.
 	LUNA_RUNTIME_API void memory_profiler_set_memory_name(void* ptr, const Name& name);
-
-    LUNA_RUNTIME_API void memory_profiler_set_memory_type_static(void* ptr, const Name& type);
 
 	//! @brief Sets the type of the object this memory block.
 	//! @param[in] ptr The memory block pointer.
