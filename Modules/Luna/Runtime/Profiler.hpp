@@ -75,12 +75,14 @@ namespace Luna
         struct MemoryReallocate
         {
             void* ptr;
+            usize size;
             void* new_ptr;
             usize new_size;
         };
         struct MemoryDeallocate
         {
             void* ptr;
+            usize size;
         };
         struct SetMemoryName
         {
@@ -114,13 +116,13 @@ namespace Luna
 	//! @param[in] new_size The new memory size.
 	//! @remark Memory reallocations through `memrealloc` call this internally when memory profiling is enabled, thus the user does not
 	//! need to call this again.
-	LUNA_RUNTIME_API void memory_profiler_reallocate(void* ptr, void* new_ptr, usize new_size);
+	LUNA_RUNTIME_API void memory_profiler_reallocate(void* ptr, usize size, void* new_ptr, usize new_size);
 
 	//! @brief Emits one @ref PROFILER_EVENT_ID_MEMORY_DEALLOCATE profiler event.
 	//! @param[in] ptr The registered memory pointer.
 	//! @remark Memory deallocations through `memfree` call this internally when memory profiling is enabled, thus the user does not
 	//! need to call this again.
-	LUNA_RUNTIME_API void memory_profiler_deallocate(void* ptr);
+	LUNA_RUNTIME_API void memory_profiler_deallocate(void* ptr, usize size);
 
     LUNA_RUNTIME_API void memory_profiler_set_memory_name_static(void* ptr, const c8* name);
 

@@ -76,10 +76,6 @@ namespace Luna
 	//! * If `ptr` is not `nullptr`, `alignment` **must** be equal to `alignment` passed to @ref memalloc or @ref memrealloc which allocates `ptr`.
 	LUNA_RUNTIME_API usize memsize(void* ptr, usize alignment = 0);
 
-	//! Gets the total memory allocated by @ref memalloc or @ref memrealloc in bytes.
-	//! @return Returns the total memory allocated by @ref memalloc or @ref memrealloc in bytes.
-	LUNA_RUNTIME_API usize get_allocated_memory();
-
 	//! @brief Allocates heap memory for one object and constructs the object.
 	//! @return Returns one pointer to the allocated object.
 	//! Returns `nullptr` if memory allocation failed.

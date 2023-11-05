@@ -210,20 +210,22 @@ namespace Luna
 		data->size = size;
 		submit_profiler_event(ProfilerEventId::MEMORY_ALLOCATE);
 	}
-	LUNA_RUNTIME_API void memory_profiler_reallocate(void* ptr, void* new_ptr, usize new_size)
+	LUNA_RUNTIME_API void memory_profiler_reallocate(void* ptr, usize size, void* new_ptr, usize new_size)
 	{
 		ProfilerEventData::MemoryReallocate* data = allocate_profiler_event_data<ProfilerEventData::MemoryReallocate>();
         new (data) ProfilerEventData::MemoryReallocate();
 		data->ptr = ptr;
+        data->size = size;
 		data->new_ptr = new_ptr;
 		data->new_size = new_size;
 		submit_profiler_event(ProfilerEventId::MEMORY_REALLOCATE);
 	}
-	LUNA_RUNTIME_API void memory_profiler_deallocate(void* ptr)
+	LUNA_RUNTIME_API void memory_profiler_deallocate(void* ptr, usize size)
 	{
 		ProfilerEventData::MemoryDeallocate* data = allocate_profiler_event_data<ProfilerEventData::MemoryDeallocate>();
         new (data) ProfilerEventData::MemoryDeallocate();
 		data->ptr = ptr;
+        data->size = size;
 		submit_profiler_event(ProfilerEventId::MEMORY_DEALLOCATE);
 	}
 	LUNA_RUNTIME_API void memory_profiler_set_memory_name(void* ptr, const Name& name)

@@ -11,6 +11,7 @@
 #include <Luna/Runtime/Runtime.hpp>
 #include <Luna/Runtime/Assert.hpp>
 #include <Luna/Runtime/Algorithm.hpp>
+#include <Luna/Runtime/Profiler.hpp>
 
 namespace Luna
 {
@@ -36,7 +37,10 @@ namespace Luna
 
 	// STL test framework modified from EASTL.
 
-	constexpr u32 magic_value_v = 0x01f1cbe8;
+	constexpr u32 MAGIC_VALUE = 0x01f1cbe8;
+
+	usize get_allocated_memory();
+	void memory_profiler_callback(const ProfilerEvent& event);
 
 	struct TestObject
 	{
@@ -56,7 +60,7 @@ namespace Luna
 		static i32  g_magic_error_count;  // Number of magic number mismatch errors.
 
 		explicit TestObject(i32 x = 0, bool throw_on_copy = false)
-			: m_value(x), m_throw_on_copy(throw_on_copy), m_magic(magic_value_v)
+			: m_value(x), m_throw_on_copy(throw_on_copy), m_magic(MAGIC_VALUE)
 		{
 			++g_count;
 			++g_ctor_count;
@@ -66,7 +70,7 @@ namespace Luna
 
 		// This constructor exists for the purpose of testing variadic template arguments, such as with the emplace container functions.
 		TestObject(i32 x0, i32 x1, i32 x2, bool throw_on_copy = false)
-			: m_value(x0 + x1 + x2), m_throw_on_copy(throw_on_copy), m_magic(magic_value_v)
+			: m_value(x0 + x1 + x2), m_throw_on_copy(throw_on_copy), m_magic(MAGIC_VALUE)
 		{
 			++g_count;
 			++g_ctor_count;
@@ -134,7 +138,7 @@ namespace Luna
 
 		~TestObject()
 		{
-			if (m_magic != magic_value_v)
+			if (m_magic != MAGIC_VALUE)
 				++g_magic_error_count;
 			m_magic = 0;
 			--g_count;
