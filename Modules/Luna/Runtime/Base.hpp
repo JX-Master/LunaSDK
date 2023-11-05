@@ -148,13 +148,7 @@ namespace Luna
 #endif
 
 	//! The maximum alignment requirement for a standard-layout scalar value.
-#ifdef LUNA_PLATFORM_32BIT
-	constexpr usize MAX_ALIGN = 8;
-#elif LUNA_PLATFORM_64BIT
-	constexpr usize MAX_ALIGN = 16;
-#else
-#error("Unspecified platform precision")
-#endif
+	constexpr usize MAX_ALIGN = alignof(long double);
 
 	constexpr f32 F32_MIN = (f32)FLT_MIN;
 	constexpr f32 F32_MAX = (f32)FLT_MAX;

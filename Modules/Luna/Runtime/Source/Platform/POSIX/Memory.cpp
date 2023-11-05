@@ -53,22 +53,6 @@ namespace Luna
                 free(origin_ptr);
             }
         }
-        void* memrealloc(void* ptr, usize size, usize alignment /* = 0 */)
-        {
-            if (!size)
-            {
-                memfree(ptr, alignment);
-                return nullptr;
-            }
-            void* new_ptr = memalloc(size, alignment);
-            if (ptr && new_ptr)
-            {
-                usize old_sz = memsize(ptr, alignment);
-                memcpy(new_ptr, ptr, min(old_sz, size));
-                memfree(ptr, alignment);
-            }
-            return new_ptr;
-        }
         usize memsize(void* ptr, usize alignment /* = 0 */)
         {
             if (!ptr) return 0;

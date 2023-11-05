@@ -39,8 +39,15 @@ option("build_tests")
     set_description("Whether to build tests for Luna SDK")
 option_end()
 
+option("memory_profiler")
+    set_default(true)
+    set_showmenu(true)
+    set_description("Whether to forcly enable memory profiler for Luna SDK. The memory profiler will still be enabled in Debug and Profile mode.")
+    add_defines("LUNA_ENABLE_MEMORY_PROFILER")
+option_end()
+
 function add_luna_sdk_options()
-    add_options("shared", "contract_assertion", "thread_safe_assertion")
+    add_options("shared", "contract_assertion", "thread_safe_assertion", "memory_profiler")
     -- Contract assertion is always enabled in debug mode.
     if has_config("contract_assertion") or is_mode("debug") then
         add_defines("LUNA_ENABLE_CONTRACT_ASSERTION")

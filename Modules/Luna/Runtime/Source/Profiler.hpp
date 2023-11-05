@@ -3,14 +3,15 @@
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
-* @file Memory.hpp
+* @file Profiler.hpp
 * @author JXMaster
-* @date 2021/5/10
+* @date 2023/11/2
 */
 #pragma once
-#include "../Memory.hpp"
+#include "../Profiler.hpp"
 
 namespace Luna
 {
-	
+    void profiler_init();
+    void profiler_close();
 }

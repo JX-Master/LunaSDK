@@ -13,10 +13,10 @@
 #include "Name.hpp"
 namespace Luna
 {
-	template <typename _Func>
+	template <typename _Func, typename _Alloc = Allocator>
 	class Event
 	{
-		Vector<Pair<usize, Function<_Func>>> m_handlers;
+		Vector<Pair<usize, Function<_Func>>, _Alloc> m_handlers;
 		usize m_next_handle = 0;
 	public:
 		//! Remove all handlers of this event.

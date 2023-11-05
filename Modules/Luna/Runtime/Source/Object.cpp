@@ -15,33 +15,12 @@
 #include "../UniquePtr.hpp"
 #include "../Vector.hpp"
 #include "../SpinLock.hpp"
-
-#ifdef LUNA_RUNTIME_CHECK_MEMORY_LEAK
-#include "../UnorderedSet.hpp"
-#endif
+#include "../Profiler.hpp"
 
 #include "OS.hpp"
 
 namespace Luna
 {
-	
-#ifdef LUNA_RUNTIME_CHECK_MEMORY_LEAK
-	// Records all alive objects.
-	static UnorderedSet<object_t> g_leak_check_allocated_objects;
-	static SpinLock g_leak_check_allocated_objects_mutex;
-	static void leak_check_register_allocated_object(object_t obj)
-	{
-		g_leak_check_allocated_objects_mutex.lock();
-		g_leak_check_allocated_objects.insert(obj);
-		g_leak_check_allocated_objects_mutex.unlock();
-	}
-	static void leak_check_unregister_allocated_object(object_t obj)
-	{
-		g_leak_check_allocated_objects_mutex.lock();
-		g_leak_check_allocated_objects.erase(obj);
-		g_leak_check_allocated_objects_mutex.unlock();
-	}
-#endif
 	struct ObjectHeader
 	{
 		typeinfo_t type;
@@ -86,9 +65,6 @@ namespace Luna
 			{
 				this->~ObjectHeader();
 				object_t obj = get_object();
-#ifdef LUNA_RUNTIME_CHECK_MEMORY_LEAK
-				leak_check_unregister_allocated_object(obj);
-#endif
 				usize alignment = get_type_alignment(type);
 				usize padded_size = get_padding_size(alignment);
 				void* raw_ptr = (void*)((usize)obj - padded_size);
@@ -110,8 +86,8 @@ namespace Luna
 		ObjectHeader* header = get_header(object);
 		new (header) ObjectHeader();
 		header->type = type;
-#ifdef LUNA_RUNTIME_CHECK_MEMORY_LEAK
-		leak_check_register_allocated_object(object);
+#ifdef LUNA_MEMORY_PROFILER_ENABLED
+		memory_profiler_set_memory_type(mem, get_type_name(type));
 #endif
 		return object;
 	}
@@ -187,19 +163,5 @@ namespace Luna
 	}
 	void object_close()
 	{
-#ifdef LUNA_RUNTIME_CHECK_MEMORY_LEAK
-		if (!g_leak_check_allocated_objects.empty())
-		{
-			for (object_t i : g_leak_check_allocated_objects)
-			{
-				ObjectHeader* header = get_header(i);
-				usize padded_size = ObjectHeader::get_padding_size(get_type_alignment(header->type));
-				void* raw_ptr = (void*)((usize)i - padded_size);
-				OS::debug_printf("[MEMORY LEAK CHECK]Leaked managed object:0x%016llx(%s), ref: %d, weak ref: %d.\n", 
-					(u64)raw_ptr, get_type_name(header->type).c_str(), header->ref_count, header->weak_ref_count);
-			}
-		}
-		g_leak_check_allocated_objects.clear();
-#endif
 	}
 }

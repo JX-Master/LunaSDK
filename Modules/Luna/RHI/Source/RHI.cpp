@@ -14,10 +14,22 @@ namespace Luna
 {
 	namespace RHI
 	{
+#ifdef LUNA_MEMORY_PROFILER_ENABLED
+		Name g_memory_domain_gpu;
+		Name g_memory_type_buffer;
+		Name g_memory_type_texture;
+		Name g_memory_type_aliasing_memory;
+#endif
 		RV init()
 		{
 			lutry
 			{
+#ifdef LUNA_MEMORY_PROFILER_ENABLED
+				g_memory_domain_gpu = "GPU";
+				g_memory_type_buffer = "Buffer";
+				g_memory_type_texture = "Texture";
+				g_memory_type_aliasing_memory = "Aliasing Memory";
+#endif
 				luexp(render_api_init());
 			}
 			lucatchret;
@@ -27,6 +39,12 @@ namespace Luna
 		void close()
 		{
 			render_api_close();
+#ifdef LUNA_MEMORY_PROFILER_ENABLED
+			g_memory_domain_gpu.reset();
+			g_memory_type_buffer.reset();
+			g_memory_type_texture.reset();
+			g_memory_type_aliasing_memory.reset();
+#endif
 		}
 
 		LUNA_STATIC_REGISTER_MODULE(RHI, "Window", init, close);

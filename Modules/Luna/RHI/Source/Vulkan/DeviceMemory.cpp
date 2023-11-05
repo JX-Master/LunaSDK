@@ -19,12 +19,21 @@ namespace Luna
 			m_alignment = pVkMemoryRequirements.alignment;
 			VmaAllocationCreateInfo allocation{};
 			encode_allocation_info(allocation, memory_type, allow_aliasing);
-			return encode_vk_result(vmaAllocateMemory(m_device->m_allocator, &pVkMemoryRequirements, &allocation, &m_allocation, &m_allocation_info));
+			RV res = encode_vk_result(vmaAllocateMemory(m_device->m_allocator, &pVkMemoryRequirements, &allocation, &m_allocation, &m_allocation_info));
+			if(failed(res)) return res;
+#ifdef LUNA_MEMORY_PROFILER_ENABLED
+			memory_profiler_allocate(&m_allocation, get_size());
+			memory_profiler_set_memory_domain(&m_allocation, g_memory_domain_gpu);
+			memory_profiler_set_memory_type(&m_allocation, g_memory_type_aliasing_memory);
+#endif
 		}
 		DeviceMemory::~DeviceMemory()
 		{
 			if (m_allocation != VK_NULL_HANDLE)
 			{
+#ifdef LUNA_MEMORY_PROFILER_ENABLED
+				memory_profiler_deallocate(&m_allocation);
+#endif
 				vmaFreeMemory(m_device->m_allocator, m_allocation);
 				m_allocation = VK_NULL_HANDLE;
 			}
