@@ -23,22 +23,8 @@ namespace Luna
         enum class DDSFlag : u32
         {
             none = 0,
-            texturecube = 0x01,
+            texturecube = 0x4,
         };
-
-        enum class DDSAlphaMode : u32
-        {
-            unknown = 0,
-            straight = 1,
-            premultiplied = 2,
-            opaque = 3,
-            custom = 4,
-        };
-
-        inline constexpr DDSAlphaMode get_dds_alpha_mode(u32 dds_image_desc_flags2)
-        {
-            return (DDSAlphaMode)(dds_image_desc_flags2 & 0x07);
-        }
 
         // Maps to DXGI_FORMAT
         enum class DDSFormat : u32
@@ -146,6 +132,11 @@ namespace Luna
             b4g4r4a4_unorm                          = 115
         };
 
+        inline bool is_valid(DDSFormat fmt)
+        {
+            return ((u32)fmt) < 99 || ((u32)fmt) == 115;
+        }
+
         inline bool is_compressed(DDSFormat fmt)
         {
             switch (fmt)
@@ -190,7 +181,7 @@ namespace Luna
             }
         }
 
-        usize bits_per_pixel(DDSFormat fmt)
+        inline usize bits_per_pixel(DDSFormat fmt)
         {
             switch (fmt)
             {
@@ -330,7 +321,6 @@ namespace Luna
             u32 array_size;
             u32 mip_levels;
             DDSFlag flags;
-            u32 flags2;
             DDSFormat format;
             DDSDimension dimension;
         };
@@ -339,6 +329,7 @@ namespace Luna
         {
             u32 width;
             u32 height;
+            u32 depth;
             u32 row_pitch;
             u32 slice_pitch;
             usize data_offset;
@@ -349,7 +340,15 @@ namespace Luna
             DDSImageDesc desc;
             Blob data;
             Vector<DDSSubresource> subresources;
+
+            DDSImage() :
+                desc({}) {}
         };
+
+        inline constexpr u32 calc_dds_subresoruce_index(u32 mip_slice, u32 array_slice, u32 mip_levels)
+        {
+            return array_slice * mip_levels + mip_slice;
+        }
 
         LUNA_IMAGE_API R<DDSImageDesc> read_dds_image_file_desc(const void* data, usize data_size);
         LUNA_IMAGE_API R<DDSImage> read_dds_image(const void* data, usize data_size);

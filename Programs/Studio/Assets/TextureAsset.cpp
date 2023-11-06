@@ -14,6 +14,7 @@
 #include <Luna/Image/Image.hpp>
 #include <Luna/VFS/VFS.hpp>
 #include <Luna/RHI/Utility.hpp>
+#include <Luna/Image/RHIHelper.hpp>
 
 namespace Luna
 {
@@ -136,10 +137,63 @@ namespace Luna
 			// Open image file.
 			Path file_path = path;
 			file_path.append_extension("tex");
-			lulet(file, VFS::open_file(file_path, FileOpenFlag::read, FileCreationMode::open_existing));
-			lulet(file_data, load_file_data(file));
-			// Check whether the texture contains mips.
-			if (file_data.size() >= 8 && !memcmp((const c8*)file_data.data(), "LUNAMIPS", 8))
+			auto file = VFS::open_file(file_path, FileOpenFlag::read, FileCreationMode::open_existing);
+			if (failed(file))
+			{
+				file_path.replace_extension("dds");
+				file = VFS::open_file(file_path, FileOpenFlag::read, FileCreationMode::open_existing);
+			}
+			if (failed(file))
+			{
+				return file.errcode();
+			}
+			lulet(file_data, load_file_data(file.get()));
+			if (file_data.size() >= 4 && !memcmp((const c8*)file_data.data(), "DDS ", 4))
+			{
+				lulet(dds_image, Image::read_dds_image(file_data.data(), file_data.size()));
+				RHI::TextureDesc desc;
+				switch (dds_image.desc.dimension)
+				{
+				case Image::DDSDimension::tex2d: desc.type = RHI::TextureType::tex2d; break;
+				case Image::DDSDimension::tex3d: desc.type = RHI::TextureType::tex3d; break;
+				case Image::DDSDimension::tex1d: desc.type = RHI::TextureType::tex1d; break;
+				default: lupanic();
+				}
+				desc.format = Image::dds_to_rhi_format(dds_image.desc.format);
+				if (desc.format == RHI::Format::unknown) luthrow(set_error(BasicError::not_supported(), "Unsupported DDS formats."));
+				desc.width = dds_image.desc.width;
+				desc.height = dds_image.desc.height;
+				desc.depth = dds_image.desc.depth;
+				desc.array_size = dds_image.desc.array_size;
+				desc.mip_levels = dds_image.desc.mip_levels;
+				desc.sample_count = 1;
+				desc.usages = RHI::TextureUsageFlag::read_texture | RHI::TextureUsageFlag::read_write_texture | RHI::TextureUsageFlag::copy_source | RHI::TextureUsageFlag::copy_dest;
+				if (test_flags(dds_image.desc.flags, Image::DDSFlag::texturecube))
+				{
+					desc.usages |= RHI::TextureUsageFlag::cube;
+				}
+				desc.flags = RHI::ResourceFlag::none;
+				// Create resource.
+				lulet(tex, g_env->device->new_texture(RHI::MemoryType::local, desc));
+				// Upload data.
+				lulet(upload_cmdbuf, g_env->device->new_command_buffer(g_env->async_copy_queue));
+				Vector<RHI::CopyResourceData> copies;
+				for (u32 item = 0; item < desc.array_size; ++item)
+				{
+					u32 d = desc.depth;
+					for (u32 mip = 0; mip < desc.mip_levels; ++mip)
+					{
+						auto& subresource = dds_image.subresources[Image::calc_dds_subresoruce_index(mip, item, desc.mip_levels)];
+						RHI::CopyResourceData copy = RHI::CopyResourceData::write_texture(tex, RHI::SubresourceIndex(mip, item), 0, 0, 0, dds_image.data.data() + subresource.data_offset, subresource.row_pitch, subresource.slice_pitch, subresource.width, subresource.height, d);
+						copies.push_back(move(copy));
+					}
+					if (d > 1) d >>= 1;
+				}
+				luexp(copy_resource_data(upload_cmdbuf, copies.cspan()));
+				tex->set_name(path.encode().c_str());
+				ret = tex;
+			}
+			else if (file_data.size() >= 8 && !memcmp((const c8*)file_data.data(), "LUNAMIPS", 8))
 			{
 				u64* dp = (u64*)(file_data.data() + 8);
 				u32 num_mips = (u32)*dp;
@@ -155,10 +209,10 @@ namespace Luna
 				}
 				// Load texture from file.
 				lulet(desc, Image::read_image_file_desc(file_data.data() + mip_descs[0].first, mip_descs[0].second));
-				auto desired_format = get_desired_format(desc.format);
+				auto desired_format = Image::get_rhi_desired_format(desc.format);
 				// Create resource.
 				lulet(tex, g_env->device->new_texture(RHI::MemoryType::local, RHI::TextureDesc::tex2d(
-					get_format_from_image_format(desc.format), 
+					Image::image_to_rhi_format(desc.format), 
 					RHI::TextureUsageFlag::read_texture | RHI::TextureUsageFlag::read_write_texture | RHI::TextureUsageFlag::copy_source | RHI::TextureUsageFlag::copy_dest, 
 					desc.width, desc.height)));
 				// Upload data
@@ -183,11 +237,11 @@ namespace Luna
 			{
 				// Load texture from file.
 				lulet(desc, Image::read_image_file_desc(file_data.data(), file_data.size()));
-				auto desired_format = get_desired_format(desc.format);
+				auto desired_format = Image::get_rhi_desired_format(desc.format);
 				lulet(image_data, Image::read_image_file(file_data.data(), file_data.size(), desired_format, desc));
 				// Create resource.
 				lulet(tex, RHI::get_main_device()->new_texture(RHI::MemoryType::local, RHI::TextureDesc::tex2d(
-					get_format_from_image_format(desc.format),
+					Image::image_to_rhi_format(desc.format),
 					RHI::TextureUsageFlag::read_texture | RHI::TextureUsageFlag::read_write_texture | RHI::TextureUsageFlag::copy_source | RHI::TextureUsageFlag::copy_dest,
 					desc.width, desc.height)));
 				// Upload data.

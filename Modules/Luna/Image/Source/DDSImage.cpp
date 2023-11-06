@@ -30,6 +30,10 @@ namespace Luna
         };
         constexpr u32 DDS_HEIGHT = 0x02;
         constexpr u32 DDS_HEADER_FLAGS_VOLUME = 0x00800000;
+        constexpr u32 DDS_HEADER_FLAGS_TEXTURE = 0x00001007;  // DDSD_CAPS | DDSD_HEIGHT | DDSD_WIDTH | DDSD_PIXELFORMAT
+        constexpr u32 DDS_HEADER_FLAGS_MIPMAP = 0x00020000;   // DDSD_MIPMAPCOUNT
+        constexpr u32 DDS_HEADER_FLAGS_PITCH = 0x00000008;  // DDSD_PITCH
+        constexpr u32 DDS_HEADER_FLAGS_LINEARSIZE = 0x00080000; // DDSD_LINEARSIZE
         struct DDSHeader
         {
             u32        size;
@@ -58,21 +62,22 @@ namespace Luna
             u32                 misc_flags2; // see DDS_MISC_FLAGS2
         };
 
-        inline void memcpy_le(void* dst, const void* src, usize size)
+        inline constexpr u32 make_four_cc(u8 ch0, u8 ch1, u8 ch2, u8 ch3)
         {
-#ifdef LUNA_PLATFORM_LITTLE_ENDIAN
-            memcpy(dst, src, size);
-#else
-            for(usize i = 0; i < size; ++i)
-            {
-                ((c8*)dst)[i] = ((const c8*)src)[size - i - 1];
-            }
-#endif
+            return (static_cast<u32>(ch0)
+                | (static_cast<u32>(ch1) << 8)
+                | (static_cast<u32>(ch2) << 16)
+                | (static_cast<u32>(ch3) << 24));
         }
+
+        constexpr u32 DX10_FOURCC = make_four_cc('D', 'X', '1', '0');
 
         LUNA_IMAGE_API R<DDSImageDesc> read_dds_image_file_desc(const void* data, usize data_size)
         {
             lucheck(data && data_size);
+#ifndef LUNA_PLATFORM_LITTLE_ENDIAN
+            return set_error(BasicError::not_supported(), "read_dds_image_file_desc is not implemented on big endian platforms");
+#else
             DDSImageDesc desc;
             memzero(&desc);
             if(data_size < (sizeof(DDSHeader) + sizeof(u32)))
@@ -86,100 +91,85 @@ namespace Luna
                     return set_error(BasicError::bad_data(), "DDS file magic number check failed.");
                 }
             }
-            // Encode header.
-            DDSHeader header;
-            {
-                const u32* src = (const u32*)((const c8*)data + 4);
-                for(usize i = 0; i < sizeof(DDSHeader) / sizeof(u32); ++i)
-                {
-                    memcpy_le(((u32*)&header) + i, src + i, sizeof(u32));
-                }
-            }
+            const DDSHeader* header = (const DDSHeader*)((const byte_t*)data + sizeof(u32));
             // Verify header to validate DDS file
-            if(header.size != sizeof(DDSHeader))
+            if(header->size != sizeof(DDSHeader))
             {
                 return BasicError::not_supported();
             }
-            if(header.ddspf.size != sizeof(DDSPixelFormat))
+            if(header->ddspf.size != sizeof(DDSPixelFormat))
             {
                 return BasicError::not_supported();
             }
-            desc.mip_levels = header.mip_map_count;
+            desc.mip_levels = header->mip_map_count;
             if(desc.mip_levels == 0) desc.mip_levels = 1;
             // Check for DX10 extension
-            if((header.ddspf.flags & DDS_FOURCC)
-                && (header.ddspf.four_cc == 'DX10'))
+            if((header->ddspf.flags & DDS_FOURCC)
+                && (header->ddspf.four_cc == DX10_FOURCC))
             {
-                if(header.size != sizeof(DDSHeader)
-                    || header.ddspf.size != sizeof(DDSPixelFormat))
+                if(header->size != sizeof(DDSHeader)
+                    || header->ddspf.size != sizeof(DDSPixelFormat))
                 {
-                    // We do not accept legacy DX9 'known variants' for modern "DX10" extension header files.
-                    return BasicError::not_supported();
+                    return set_error(BasicError::not_supported(), "Legacy DDS formats (without DX10 extension) are not suuported.");
                 }
                 // Buffer must be big enough for both headers and magic value.
                 if(data_size < (sizeof(DDSHeader) + sizeof(u32) + sizeof(DDSHeaderDXT10)))
                 {
                     return BasicError::not_supported();
                 }
-                const u32* src = (const u32*)((const u8*)data + sizeof(u32) + sizeof(DDSHeader));
-                DDSHeaderDXT10 d3d10ext;
-                for(usize i = 0; i < sizeof(DDSHeaderDXT10) / sizeof(u32); ++i)
-                {
-                    memcpy_le(((u32*)&d3d10ext) + i, src + i, sizeof(u32));
-                }
-                desc.array_size = d3d10ext.array_size;
+                const DDSHeaderDXT10* d3d10ext = (const DDSHeaderDXT10*)((const byte_t*)data + sizeof(u32) + sizeof(DDSHeader));;
+                desc.array_size = d3d10ext->array_size;
                 if(desc.array_size == 0)
                 {
                     return BasicError::bad_data();
                 }
-                desc.format = d3d10ext.format;
+                desc.format = d3d10ext->format;
                 if(!((u32)desc.format >= 1 && (u32)desc.format <= 191) || 
                     (u32)desc.format >= 111 && (u32)desc.format <= 114)
                 {
                     return BasicError::not_supported();
                 }
-                if(d3d10ext.misc_flag & DDS_RESOURCE_MISC_TEXTURECUBE)
+                if(d3d10ext->misc_flag & DDS_RESOURCE_MISC_TEXTURECUBE)
                 {
                     set_flags(desc.flags, DDSFlag::texturecube);
                 }
-                switch(d3d10ext.resource_dimension)
+                switch(d3d10ext->resource_dimension)
                 {
                     case DDSDimension::tex1d:
                         // D3DX writes 1D textures with a fixed Height of 1
-                        if((header.flags & DDS_HEIGHT) && header.height != 1)
+                        if((header->flags & DDS_HEIGHT) && header->height != 1)
                         {
                             return BasicError::bad_data();
                         }
-                        desc.width = header.width;
+                        desc.width = header->width;
                         desc.height = 1;
                         desc.depth = 1;
                         desc.dimension = DDSDimension::tex1d;
                         break;
                     case DDSDimension::tex2d:
-                        if(d3d10ext.misc_flag & DDS_RESOURCE_MISC_TEXTURECUBE)
+                        if(d3d10ext->misc_flag & DDS_RESOURCE_MISC_TEXTURECUBE)
                         {
                             set_flags(desc.flags, DDSFlag::texturecube);
                             desc.array_size *= 6;
                         }
-                        desc.width = header.width;
-                        desc.height = header.height;
+                        desc.width = header->width;
+                        desc.height = header->height;
                         desc.depth = 1;
                         desc.dimension = DDSDimension::tex2d;
                         break;
                     case DDSDimension::tex3d:
-                        if(!(header.flags & DDS_HEADER_FLAGS_VOLUME))
+                        if(!(header->flags & DDS_HEADER_FLAGS_VOLUME))
                         {
                             return BasicError::bad_data();
                         }
                         if(desc.array_size > 1) return BasicError::not_supported();
-                        desc.width = header.width;
-                        desc.height = header.height;
-                        desc.depth = header.depth;
+                        desc.width = header->width;
+                        desc.height = header->height;
+                        desc.depth = header->depth;
                         desc.dimension = DDSDimension::tex3d;
                         break;
                     default: return BasicError::bad_data();
                 }
-                desc.flags2 = d3d10ext.misc_flags2;
             }
             else
             {
@@ -187,6 +177,7 @@ namespace Luna
                 return set_error(BasicError::not_supported(), "Legacy DX9 DDS formats are not supported.");
             }
             return desc;
+#endif
         }
         u32 count_mips(u32 width, u32 height)
         {
@@ -328,38 +319,69 @@ namespace Luna
             luassert(desc.width > 0 && desc.height > 0 && desc.depth > 0);
             luassert(desc.array_size > 0);
             luassert(desc.mip_levels > 0);
-            u64 total_pixel_size = 0;
+            usize total_pixel_size = 0;
             usize num_images = 0;
             switch(desc.dimension)
             {
                 case DDSDimension::tex1d:
                 case DDSDimension::tex2d:
-                    for (usize item = 0; item < desc.array_size; ++item)
+                for (usize item = 0; item < desc.array_size; ++item)
+                {
+                    usize w = desc.width;
+                    usize h = desc.height;
+                    for (usize level = 0; level < desc.mip_levels; ++level)
                     {
-                        usize w = desc.width;
-                        usize h = desc.height;
-                        for (usize level = 0; level < desc.mip_levels; ++level)
+                        usize row_pitch, slice_pitch;
+                        auto r = compute_pitch(desc.format, w, h, row_pitch, slice_pitch);
+                        if (failed(r))
                         {
-                            usize row_pitch, slice_pitch;
-                            auto r = compute_pitch(desc.format, w, h, row_pitch, slice_pitch);
-                            if (failed(r))
-                            {
-                                out_num_images = out_pixel_size = 0;
-                                return r;
-                            }
-
-                            total_pixel_size += u64(slice_pitch);
-                            ++num_images;
-
-                            if (h > 1)
-                                h >>= 1;
-
-                            if (w > 1)
-                                w >>= 1;
+                            out_num_images = out_pixel_size = 0;
+                            return r;
                         }
+
+                        total_pixel_size += slice_pitch;
+                        ++num_images;
+
+                        if (h > 1)
+                            h >>= 1;
+
+                        if (w > 1)
+                            w >>= 1;
                     }
-                    break;
+                }
+                break;
+                case DDSDimension::tex3d:
+                {
+                    usize w = desc.width;
+                    usize h = desc.height;
+                    usize d = desc.depth;
+
+                    for (usize level = 0; level < desc.mip_levels; ++level)
+                    {
+                        usize row_pitch, slice_pitch;
+                        auto r = compute_pitch(desc.format, w, h, row_pitch, slice_pitch);
+                        if (failed(r))
+                        {
+                            num_images = out_pixel_size = 0;
+                            return r;
+                        }
+                        total_pixel_size += slice_pitch * d;
+                        ++num_images;
+                        if (h > 1)
+                            h >>= 1;
+
+                        if (w > 1)
+                            w >>= 1;
+
+                        if (d > 1)
+                            d >>= 1;
+                    }
+                }
+                break;
             }
+            out_num_images = num_images;
+            out_pixel_size = total_pixel_size;
+            return ok;
         }
         bool setup_image_array(const u8* pixels, usize pixel_size, DDSImageDesc& desc, Vector<DDSSubresource>& subresources)
         {
@@ -392,6 +414,7 @@ namespace Luna
 
                         subresources[index].width = w;
                         subresources[index].height = h;
+                        subresources[index].depth = 1;
                         subresources[index].row_pitch = row_pitch;
                         subresources[index].slice_pitch = slice_pitch;
                         subresources[index].data_offset = pixels - start_bits;
@@ -429,27 +452,25 @@ namespace Luna
                         if (failed(compute_pitch(desc.format, w, h, row_pitch, slice_pitch)))
                             return false;
 
-                        for (usize slice = 0; slice < d; ++slice)
+                        if (index >= subresources.size())
                         {
-                            if (index >= subresources.size())
-                            {
-                                return false;
-                            }
+                            return false;
+                        }
 
-                            // We use the same memory organization that Direct3D 11 needs for D3D11_SUBRESOURCE_DATA
-                            // with all slices of a given miplevel being continuous in memory
-                            subresources[index].width = w;
-                            subresources[index].height = h;
-                            subresources[index].row_pitch = row_pitch;
-                            subresources[index].slice_pitch = slice_pitch;
-                            subresources[index].data_offset = pixels - start_bits;
-                            ++index;
+                        // We use the same memory organization that Direct3D 11 needs for D3D11_SUBRESOURCE_DATA
+                        // with all slices of a given miplevel being continuous in memory
+                        subresources[index].width = w;
+                        subresources[index].height = h;
+                        subresources[index].depth = d;
+                        subresources[index].row_pitch = row_pitch;
+                        subresources[index].slice_pitch = slice_pitch;
+                        subresources[index].data_offset = pixels - start_bits;
+                        ++index;
 
-                            pixels += slice_pitch;
-                            if (pixels > end_bits)
-                            {
-                                return false;
-                            }
+                        pixels += slice_pitch * d;
+                        if (pixels > end_bits)
+                        {
+                            return false;
                         }
 
                         if (h > 1)
@@ -595,6 +616,7 @@ namespace Luna
                 }
                 break;
             }
+            return ok;
         }
         LUNA_IMAGE_API R<DDSImage> read_dds_image(const void* data, usize data_size)
         {
@@ -611,9 +633,247 @@ namespace Luna
             lucatchret;
             return r;
         }
+        constexpr u32 DDS_SURFACE_FLAGS_TEXTURE = 0x00001000; // DDSCAPS_TEXTURE
+        constexpr u32 DDS_SURFACE_FLAGS_MIPMAP = 0x00400008; // DDSCAPS_COMPLEX | DDSCAPS_MIPMAP
+        constexpr u32 DDS_SURFACE_FLAGS_CUBEMAP = 0x00000008;// DDSCAPS_COMPLEX
+        constexpr u32 DDS_CUBEMAP_POSITIVEX = 0x00000600; // DDSCAPS2_CUBEMAP | DDSCAPS2_CUBEMAP_POSITIVEX
+        constexpr u32 DDS_CUBEMAP_NEGATIVEX = 0x00000a00; // DDSCAPS2_CUBEMAP | DDSCAPS2_CUBEMAP_NEGATIVEX
+        constexpr u32 DDS_CUBEMAP_POSITIVEY = 0x00001200; // DDSCAPS2_CUBEMAP | DDSCAPS2_CUBEMAP_POSITIVEY
+        constexpr u32 DDS_CUBEMAP_NEGATIVEY = 0x00002200; // DDSCAPS2_CUBEMAP | DDSCAPS2_CUBEMAP_NEGATIVEY
+        constexpr u32 DDS_CUBEMAP_POSITIVEZ = 0x00004200; // DDSCAPS2_CUBEMAP | DDSCAPS2_CUBEMAP_POSITIVEZ
+        constexpr u32 DDS_CUBEMAP_NEGATIVEZ = 0x00008200; // DDSCAPS2_CUBEMAP | DDSCAPS2_CUBEMAP_NEGATIVEZ
+
+        constexpr u32 DDS_CUBEMAP_ALLFACES = ( DDS_CUBEMAP_POSITIVEX | DDS_CUBEMAP_NEGATIVEX |
+                                    DDS_CUBEMAP_POSITIVEY | DDS_CUBEMAP_NEGATIVEY |
+                                    DDS_CUBEMAP_POSITIVEZ | DDS_CUBEMAP_NEGATIVEZ );
+
+        constexpr u32 DDS_FLAGS_VOLUME = 0x00200000; // DDSCAPS2_VOLUME
+        RV encode_dds_header(ISeekableStream* stream, const DDSImageDesc& desc)
+        {
+            lutry
+            {
+                usize header_size = sizeof(u32) + sizeof(DDSHeader) + sizeof(DDSHeaderDXT10);
+                // write dds magic number.
+                luexp(stream->write("DDS ", 4));
+                DDSHeader header;
+                memzero(&header);
+                header.size = sizeof(DDSHeader);
+                header.ddspf.size = sizeof(DDSPixelFormat);
+                header.flags = DDS_HEADER_FLAGS_TEXTURE;
+                header.caps = DDS_SURFACE_FLAGS_TEXTURE;
+                if(desc.mip_levels > 0)
+                {
+                    header.flags |= DDS_HEADER_FLAGS_MIPMAP;
+                    if(desc.mip_levels > UINT16_MAX) return BasicError::bad_arguments();
+                    header.mip_map_count = desc.mip_levels;
+                    if(header.mip_map_count > 1) header.caps |= DDS_SURFACE_FLAGS_MIPMAP;
+                }
+                switch(desc.dimension)
+                {
+                    case DDSDimension::tex1d:
+                        header.width = desc.width;
+                        header.height = header.depth = 1;
+                        break;
+                    case DDSDimension::tex2d:
+                        header.width = desc.width;
+                        header.height = desc.height;
+                        header.depth = 1;
+                        if(test_flags(desc.flags, DDSFlag::texturecube))
+                        {
+                            header.caps |= DDS_SURFACE_FLAGS_CUBEMAP;
+                            header.caps2 |= DDS_CUBEMAP_ALLFACES;
+                        }
+                        break;
+                    case DDSDimension::tex3d:
+                        header.flags |= DDS_HEADER_FLAGS_VOLUME;
+                        header.caps2 |= DDS_FLAGS_VOLUME;
+                        header.width = desc.width;
+                        header.height = desc.height;
+                        header.depth = desc.depth;
+                        break;
+                    default: lupanic();
+                }
+                usize row_pitch, slice_pitch;
+                luexp(compute_pitch(desc.format, desc.width, desc.height, row_pitch, slice_pitch));
+                if(row_pitch > UINT32_MAX || slice_pitch > UINT32_MAX) return BasicError::not_supported();
+                if(is_compressed(desc.format))
+                {
+                    header.flags |= DDS_HEADER_FLAGS_LINEARSIZE;
+                    header.pitch_or_linear_size = slice_pitch;
+                }
+                else
+                {
+                    header.flags |= DDS_HEADER_FLAGS_PITCH;
+                    header.pitch_or_linear_size = row_pitch;
+                }
+                // Fill DX10 externsion info.
+                header.ddspf.flags |= DDS_FOURCC;
+                header.ddspf.four_cc = DX10_FOURCC;
+                DDSHeaderDXT10 ext;
+                memzero(&ext);
+                ext.format = desc.format;
+                ext.resource_dimension = desc.dimension;
+                if(desc.array_size > UINT16_MAX)
+                {
+                    return BasicError::bad_arguments();
+                }
+                if(test_flags(desc.flags, DDSFlag::texturecube))
+                {
+                    ext.misc_flag |= DDS_RESOURCE_MISC_TEXTURECUBE;
+                    if((desc.array_size % 6) != 0) return BasicError::bad_arguments();
+                    ext.array_size = desc.array_size / 6;
+                }
+                else
+                {
+                    ext.array_size = desc.array_size;
+                }
+                luexp(stream->write(&header, sizeof(DDSHeader)));
+                luexp(stream->write(&ext, sizeof(DDSHeaderDXT10)));
+            }
+            lucatchret;
+            return ok;
+        }
+        usize compute_scanlines(DDSFormat fmt, usize height)
+        {
+            switch (fmt)
+            {
+            case DDSFormat::bc1_typeless:
+            case DDSFormat::bc1_unorm:
+            case DDSFormat::bc1_unorm_srgb:
+            case DDSFormat::bc2_typeless:
+            case DDSFormat::bc2_unorm:
+            case DDSFormat::bc2_unorm_srgb:
+            case DDSFormat::bc3_typeless:
+            case DDSFormat::bc3_unorm:
+            case DDSFormat::bc3_unorm_srgb:
+            case DDSFormat::bc4_typeless:
+            case DDSFormat::bc4_unorm:
+            case DDSFormat::bc4_snorm:
+            case DDSFormat::bc5_typeless:
+            case DDSFormat::bc5_unorm:
+            case DDSFormat::bc5_snorm:
+            case DDSFormat::bc6h_typeless:
+            case DDSFormat::bc6h_uf16:
+            case DDSFormat::bc6h_sf16:
+            case DDSFormat::bc7_typeless:
+            case DDSFormat::bc7_unorm:
+            case DDSFormat::bc7_unorm_srgb:
+                luassert(is_compressed(fmt));
+                return max<usize>(1, (height + 3) / 4);
+            default:
+                luassert(is_valid(fmt));
+                luassert(!is_compressed(fmt));
+                return height;
+            }
+        }
         LUNA_IMAGE_API RV write_dds_file(ISeekableStream* stream, const DDSImage& image)
         {
-            
+            lutry
+            {
+                luexp(encode_dds_header(stream, image.desc));
+                switch(image.desc.dimension)
+                {
+                    case DDSDimension::tex1d:
+                    case DDSDimension::tex2d:
+                    {
+                        usize index = 0;
+                        for (usize item = 0; item < image.desc.array_size; ++item)
+                        {
+                            for (usize level = 0; level < image.desc.mip_levels; ++level, ++index)
+                            {
+                                if (index >= image.subresources.size())
+                                    return BasicError::bad_arguments();
+
+                                if(image.subresources[index].data_offset >= image.data.size())
+                                    return BasicError::bad_arguments();
+
+                                luassert(image.subresources[index].row_pitch > 0);
+                                luassert(image.subresources[index].slice_pitch > 0);
+
+                                usize dds_row_pitch, dds_slice_pitch;
+                                luexp(compute_pitch(image.desc.format, image.subresources[index].width, image.subresources[index].height, dds_row_pitch, dds_slice_pitch));
+
+                                if ((image.subresources[index].slice_pitch == dds_slice_pitch) && (dds_slice_pitch <= U32_MAX))
+                                {
+                                    luexp(stream->write(image.data.data() + image.subresources[index].data_offset, dds_slice_pitch));
+                                }
+                                else
+                                {
+                                    const usize row_pitch = image.subresources[index].row_pitch;
+                                    if (row_pitch < dds_row_pitch)
+                                    {
+                                        // DDS uses 1-byte alignment, so if this is happening then the input pitch isn't actually a full line of data
+                                        return BasicError::failure();
+                                    }
+                                    if (dds_row_pitch > U32_MAX)
+                                        return BasicError::out_of_range();
+
+                                    const u8* src = image.data.data() + image.subresources[index].data_offset;
+                                    const usize lines = compute_scanlines(image.desc.format, image.subresources[index].height);
+                                    for (usize j = 0; j < lines; ++j)
+                                    {
+                                        luexp(stream->write(src, dds_row_pitch));
+                                        src += row_pitch;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    break;
+                    case DDSDimension::tex3d:
+                    {
+                        if (image.desc.array_size != 1)
+                            return BasicError::not_supported();
+
+                        usize d = image.desc.depth;
+
+                        usize index = 0;
+                        for (usize level = 0; level < image.desc.mip_levels; ++level)
+                        {
+                            for (usize slice = 0; slice < d; ++slice, ++index)
+                            {
+                                if (index >= image.subresources.size())
+                                    return BasicError::bad_arguments();
+
+                                if(image.subresources[index].data_offset >= image.data.size())
+                                    return BasicError::bad_arguments();
+
+                                luassert(image.subresources[index].row_pitch > 0);
+                                luassert(image.subresources[index].slice_pitch > 0);
+
+                                usize dds_row_pitch, dds_slice_pitch;
+                                luexp(compute_pitch(image.desc.format, image.subresources[index].width, image.subresources[index].height, dds_row_pitch, dds_slice_pitch));
+
+                                if ((image.subresources[index].slice_pitch == dds_slice_pitch) && (dds_slice_pitch <= U32_MAX))
+                                {
+                                    luexp(stream->write(image.data.data() + image.subresources[index].data_offset, dds_slice_pitch));
+                                }
+                                else
+                                {
+                                    const usize row_pitch = image.subresources[index].row_pitch;
+                                    if (row_pitch < dds_row_pitch)
+                                    {
+                                        // DDS uses 1-byte alignment, so if this is happening then the input pitch isn't actually a full line of data
+                                        return BasicError::failure();
+                                    }
+                                    if (dds_row_pitch > U32_MAX) return BasicError::out_of_range();
+
+                                    const u8* src = image.data.data() + image.subresources[index].data_offset;
+                                    const usize lines = compute_scanlines(image.desc.format, image.subresources[index].height);
+                                    for (usize j = 0; j < lines; ++j)
+                                    {
+                                        luexp(stream->write(src, dds_row_pitch));
+                                        src += row_pitch;
+                                    }
+                                }
+                            }
+                            if (d > 1) d >>= 1;
+                        }
+                    }
+                }
+            }
+            lucatchret;
+            return ok;
         }
     }
 }

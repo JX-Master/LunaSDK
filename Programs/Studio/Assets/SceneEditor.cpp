@@ -22,6 +22,7 @@
 #include <Luna/Window/FileDialog.hpp>
 #include <Luna/Window/MessageBox.hpp>
 #include <Luna/RHI/Utility.hpp>
+#include <Luna/Image/RHIHelper.hpp>
 namespace Luna
 {
 	struct SceneEditorUserData
@@ -836,7 +837,8 @@ namespace Luna
 			Image::ImageDesc img_desc;
 			img_desc.width = (u32)desc.width;
 			img_desc.height = desc.height;
-			luset(img_desc.format, get_image_format_from_format(desc.format));
+			img_desc.format = Image::rhi_to_image_format(desc.format);
+			luassert(img_desc.format != Image::ImageFormat::unkonwn);
 			lulet(f, open_file(path.encode().c_str(), FileOpenFlag::write | FileOpenFlag::user_buffering, FileCreationMode::create_always));
 			luexp(Image::write_bmp_file(f, img_desc, img_data));
 		}

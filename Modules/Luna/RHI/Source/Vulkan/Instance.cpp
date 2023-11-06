@@ -132,7 +132,7 @@ namespace Luna
 				const c8** glfw_extensions = glfwGetRequiredInstanceExtensions(&glfw_extensions_count);
 				Vector<const c8*> extensions(glfw_extensions, glfw_extensions + glfw_extensions_count);
 				g_enable_validation_layer = false;
-#ifdef LUNA_RHI_DEBUG
+#if defined(LUNA_RHI_DEBUG) || defined(LUNA_DEBUG)
 				if (check_validation_layer_support())
 				{
 					g_enable_validation_layer = true;
