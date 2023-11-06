@@ -353,5 +353,6 @@ namespace Luna
 
         LUNA_IMAGE_API R<DDSImageDesc> read_dds_image_file_desc(const void* data, usize data_size);
         LUNA_IMAGE_API R<DDSImage> read_dds_image(const void* data, usize data_size);
+        LUNA_IMAGE_API RV write_dds_file(ISeekableStream* stream, const DDSImage& image);
     }
 }

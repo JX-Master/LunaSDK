@@ -361,41 +361,40 @@ namespace Luna
                     break;
             }
         }
-        bool setup_image_array(DDSImage& image)
+        bool setup_image_array(const u8* pixels, usize pixel_size, DDSImageDesc& desc, Vector<DDSSubresource>& subresources)
         {
             usize index = 0;
-            byte_t* pixels = image.data.data();
-            const byte_t* end_bits = image.data.data() + image.data.size();
-
-            switch (image.desc.dimension)
+            const byte_t* start_bits = pixels;
+            const byte_t* end_bits = pixels + pixel_size;
+            switch (desc.dimension)
             {
             case DDSDimension::tex1d:
             case DDSDimension::tex2d:
-                if (image.desc.array_size == 0 || image.desc.mip_levels == 0)
+                if (desc.array_size == 0 || desc.mip_levels == 0)
                 {
                     return false;
                 }
-                for (usize item = 0; item < image.desc.array_size; ++item)
+                for (usize item = 0; item < desc.array_size; ++item)
                 {
-                    usize w = image.desc.width;
-                    usize h = image.desc.height;
+                    usize w = desc.width;
+                    usize h = desc.height;
 
-                    for (usize level = 0; level < image.desc.mip_levels; ++level)
+                    for (usize level = 0; level < desc.mip_levels; ++level)
                     {
-                        if (index >= image.subresources.size())
+                        if (index >= subresources.size())
                         {
                             return false;
                         }
 
                         usize row_pitch, slice_pitch;
-                        if (failed(compute_pitch(image.desc.format, w, h, row_pitch, slice_pitch)))
+                        if (failed(compute_pitch(desc.format, w, h, row_pitch, slice_pitch)))
                             return false;
 
-                        image.subresources[index].width = w;
-                        image.subresources[index].height = h;
-                        image.subresources[index].row_pitch = row_pitch;
-                        image.subresources[index].slice_pitch = slice_pitch;
-                        image.subresources[index].data_offset = pixels - image.data.data();
+                        subresources[index].width = w;
+                        subresources[index].height = h;
+                        subresources[index].row_pitch = row_pitch;
+                        subresources[index].slice_pitch = slice_pitch;
+                        subresources[index].data_offset = pixels - start_bits;
                         ++index;
 
                         pixels += slice_pitch;
@@ -415,35 +414,35 @@ namespace Luna
 
             case DDSDimension::tex3d:
                 {
-                    if (image.desc.mip_levels == 0 || image.desc.depth == 0)
+                    if (desc.mip_levels == 0 || desc.depth == 0)
                     {
                         return false;
                     }
 
-                    usize w = image.desc.width;
-                    usize h = image.desc.height;
-                    usize d = image.desc.depth;
+                    usize w = desc.width;
+                    usize h = desc.height;
+                    usize d = desc.depth;
 
-                    for (usize level = 0; level < image.desc.mip_levels; ++level)
+                    for (usize level = 0; level < desc.mip_levels; ++level)
                     {
                         usize row_pitch, slice_pitch;
-                        if (failed(compute_pitch(image.desc.format, w, h, row_pitch, slice_pitch)))
+                        if (failed(compute_pitch(desc.format, w, h, row_pitch, slice_pitch)))
                             return false;
 
                         for (usize slice = 0; slice < d; ++slice)
                         {
-                            if (index >= image.subresources.size())
+                            if (index >= subresources.size())
                             {
                                 return false;
                             }
 
                             // We use the same memory organization that Direct3D 11 needs for D3D11_SUBRESOURCE_DATA
                             // with all slices of a given miplevel being continuous in memory
-                            image.subresources[index].width = w;
-                            image.subresources[index].height = h;
-                            image.subresources[index].row_pitch = row_pitch;
-                            image.subresources[index].slice_pitch = slice_pitch;
-                            image.subresources[index].data_offset = pixels - image.data.data();
+                            subresources[index].width = w;
+                            subresources[index].height = h;
+                            subresources[index].row_pitch = row_pitch;
+                            subresources[index].slice_pitch = slice_pitch;
+                            subresources[index].data_offset = pixels - start_bits;
                             ++index;
 
                             pixels += slice_pitch;
@@ -509,7 +508,7 @@ namespace Luna
             if(failed(r)) return r;
             image.subresources.resize(num_images);
             image.data = Blob(pixel_size, 16);
-            if(!setup_image_array(image))
+            if(!setup_image_array(image.data.data(), image.data.size(), image.desc, image.subresources))
             {
                 image.subresources.clear();
                 image.subresources.shrink_to_fit();
@@ -518,7 +517,85 @@ namespace Luna
             }
             return ok;
         }
+        RV copy_image(const byte_t* pixels, usize size, DDSImage& image)
+        {
+            usize pixel_size = image.data.size();
+            if(pixel_size > size)
+            {
+                return BasicError::end_of_file();
+            }
+            Vector<DDSSubresource> subresources(image.subresources.size());
+            if(!setup_image_array(pixels, size, image.desc, subresources))
+            {
+                return BasicError::failure();
+            }
+            switch(image.desc.dimension)
+            {
+                case DDSDimension::tex1d:
+                case DDSDimension::tex2d:
+                {
+                    usize index = 0;
+                    for (usize item = 0; item < image.desc.array_size; ++item)
+                    {
+                        usize lastgood = 0;
+                        for (usize level = 0; level < image.desc.mip_levels; ++level, ++index)
+                        {
+                            luassert(image.subresources[index].row_pitch == subresources[index].row_pitch);
+                            usize row_pitch = image.subresources[index].row_pitch;
 
+                            const byte_t *src = pixels + subresources[index].data_offset;
+                            byte_t* dst = image.data.data() + image.subresources[index].data_offset;
+
+                            if (is_compressed(image.desc.format))
+                            {
+                                luassert(image.subresources[index].slice_pitch == subresources[index].slice_pitch);
+                                usize slice_pitch = image.subresources[index].slice_pitch;
+                                memcpy(dst, src, slice_pitch);
+                            }
+                            else
+                            {
+                                memcpy_bitmap(dst, src, row_pitch, image.subresources[index].height, row_pitch, row_pitch);
+                                src += row_pitch * image.subresources[index].height;
+                                dst += row_pitch * image.subresources[index].height;
+                            }
+                        }
+                    }
+                }
+                break;
+                case DDSDimension::tex3d:
+                {
+                    usize index = 0;
+                    usize d = image.desc.depth;
+                    usize lastgood = 0;
+                    for (usize level = 0; level < image.desc.mip_levels; ++level)
+                    {
+                        for (usize slice = 0; slice < d; ++slice, ++index)
+                        {
+                            luassert(image.subresources[index].row_pitch == subresources[index].row_pitch);
+                            usize row_pitch = image.subresources[index].row_pitch;
+
+                            const byte_t* src = pixels + subresources[index].data_offset;
+                            byte_t* dst = image.data.data() + image.subresources[index].data_offset;
+
+                            if (is_compressed(image.desc.format))
+                            {
+                                luassert(image.subresources[index].slice_pitch == subresources[index].slice_pitch);
+                                usize slice_pitch = image.subresources[index].slice_pitch;
+                                memcpy(dst, src, slice_pitch);
+                            }
+                            else
+                            {
+                                memcpy_bitmap(dst, src, row_pitch, image.subresources[index].height, row_pitch, row_pitch);
+                                src += row_pitch * image.subresources[index].height;
+                                dst += row_pitch * image.subresources[index].height;
+                            }
+                        }
+                        if (d > 1) d >>= 1;
+                    }
+                }
+                break;
+            }
+        }
         LUNA_IMAGE_API R<DDSImage> read_dds_image(const void* data, usize data_size)
         {
             DDSImage r;
@@ -529,10 +606,14 @@ namespace Luna
                 // Resize images.
                 luexp(init_dds_image(r));
                 const void* pixels = (const u8*)data + offset;
-                
+                luexp(copy_image((const byte_t*)pixels, data_size - offset, r));
             }
             lucatchret;
             return r;
+        }
+        LUNA_IMAGE_API RV write_dds_file(ISeekableStream* stream, const DDSImage& image)
+        {
+            
         }
     }
 }
