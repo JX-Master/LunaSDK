@@ -12,6 +12,7 @@
 #include <Luna/RHI/RHI.hpp>
 #include <Luna/ImGui/ImGui.hpp>
 #include <Luna/Image/Image.hpp>
+#include <Luna/Image/DDSImage.hpp>
 #include <Luna/Font/Font.hpp>
 #include <Luna/Asset/Asset.hpp>
 #include <Luna/ObjLoader/ObjLoader.hpp>
@@ -84,64 +85,6 @@ namespace Luna
 		}
 		lucatchret;
 		return ok;
-	}
-
-	inline Image::ImagePixelFormat get_desired_format(Image::ImagePixelFormat format)
-	{
-		using namespace Image;
-		switch (format)
-		{
-		case ImagePixelFormat::r8_unorm: return ImagePixelFormat::r8_unorm;
-		case ImagePixelFormat::rg8_unorm: return ImagePixelFormat::rg8_unorm;
-		case ImagePixelFormat::rgb8_unorm: return ImagePixelFormat::rgba8_unorm;
-		case ImagePixelFormat::rgba8_unorm: return ImagePixelFormat::rgba8_unorm;
-		case ImagePixelFormat::r16_unorm: return ImagePixelFormat::r16_unorm;
-		case ImagePixelFormat::rg16_unorm: return ImagePixelFormat::rg16_unorm;
-		case ImagePixelFormat::rgb16_unorm: return ImagePixelFormat::rgba16_unorm;
-		case ImagePixelFormat::rgba16_unorm: return ImagePixelFormat::rgba16_unorm;
-		case ImagePixelFormat::r32_float: return ImagePixelFormat::r32_float;
-		case ImagePixelFormat::rg32_float: return ImagePixelFormat::rg32_float;
-		case ImagePixelFormat::rgb32_float: return ImagePixelFormat::rgba32_float;
-		case ImagePixelFormat::rgba32_float: return ImagePixelFormat::rgba32_float;
-		default: lupanic(); return format;
-		}
-	}
-	inline RHI::Format get_format_from_image_format(Image::ImagePixelFormat format)
-	{
-		using namespace Image;
-		switch (format)
-		{
-		case ImagePixelFormat::r8_unorm: return RHI::Format::r8_unorm;
-		case ImagePixelFormat::rg8_unorm: return RHI::Format::rg8_unorm;
-		case ImagePixelFormat::rgb8_unorm: return RHI::Format::rgba8_unorm;
-		case ImagePixelFormat::rgba8_unorm: return RHI::Format::rgba8_unorm;
-		case ImagePixelFormat::r16_unorm: return RHI::Format::r16_unorm;
-		case ImagePixelFormat::rg16_unorm: return RHI::Format::rg16_unorm;
-		case ImagePixelFormat::rgb16_unorm: return RHI::Format::rgba16_unorm;
-		case ImagePixelFormat::rgba16_unorm: return RHI::Format::rgba16_unorm;
-		case ImagePixelFormat::r32_float: return RHI::Format::r32_float;
-		case ImagePixelFormat::rg32_float: return RHI::Format::rg32_float;
-		case ImagePixelFormat::rgb32_float: return RHI::Format::rgba32_float;
-		case ImagePixelFormat::rgba32_float: return RHI::Format::rgba32_float;
-		default: lupanic(); return RHI::Format::unknown;
-		}
-	}
-	inline R<Image::ImagePixelFormat> get_image_format_from_format(RHI::Format format)
-	{
-		using namespace Image;
-		switch (format)
-		{
-		case RHI::Format::r8_unorm: return ImagePixelFormat::r8_unorm;
-		case RHI::Format::rg8_unorm: return ImagePixelFormat::rg8_unorm;
-		case RHI::Format::rgba8_unorm: return ImagePixelFormat::rgba8_unorm;
-		case RHI::Format::r16_unorm: return ImagePixelFormat::r16_unorm;
-		case RHI::Format::rg16_unorm: return ImagePixelFormat::rg16_unorm;
-		case RHI::Format::rgba16_unorm: return ImagePixelFormat::rgba16_unorm;
-		case RHI::Format::r32_float: return ImagePixelFormat::r32_float;
-		case RHI::Format::rg32_float: return ImagePixelFormat::rg32_float;
-		case RHI::Format::rgba32_float: return ImagePixelFormat::rgba32_float;
-		default: return BasicError::not_supported();
-		}
 	}
 	inline R<Blob> compile_shader(const Path& shader_file, ShaderCompiler::ShaderType shader_type)
 	{

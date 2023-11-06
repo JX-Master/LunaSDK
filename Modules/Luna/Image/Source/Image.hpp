@@ -3,7 +3,7 @@
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
-* @file ImageHeader.hpp
+* @file Image.hpp
 * @author JXMaster
 * @date 2020/3/6
 */

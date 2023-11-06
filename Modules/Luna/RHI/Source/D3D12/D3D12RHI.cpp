@@ -73,7 +73,7 @@ namespace Luna
 			{
 				luexp(init_adapters());
 				auto adapters = get_adapters();
-	#if defined(LUNA_RHI_DEBUG) && (LUNA_PLATFORM_VERSION >= LUNA_PLATFORM_VERSION_WIN10)
+	#if (defined(LUNA_RHI_DEBUG) || defined(LUNA_DEBUG)) && (LUNA_PLATFORM_VERSION >= LUNA_PLATFORM_VERSION_WIN10)
 				ComPtr<ID3D12Debug> debug;
 				D3D12GetDebugInterface(IID_PPV_ARGS(&debug));
 				if (debug) debug->EnableDebugLayer();
