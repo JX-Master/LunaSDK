@@ -320,9 +320,9 @@ namespace Luna
             u32 depth;
             u32 array_size;
             u32 mip_levels;
-            DDSFlag flags;
             DDSFormat format;
             DDSDimension dimension;
+            DDSFlag flags;
         };
 
         struct DDSSubresource
@@ -330,10 +330,15 @@ namespace Luna
             u32 width;
             u32 height;
             u32 depth;
-            u32 row_pitch;
-            u32 slice_pitch;
+            usize row_pitch;
+            usize slice_pitch;
             usize data_offset;
         };
+
+        inline constexpr u32 calc_dds_subresoruce_index(u32 mip_slice, u32 array_slice, u32 mip_levels)
+        {
+            return array_slice * mip_levels + mip_slice;
+        }
 
         struct DDSImage
         {
@@ -345,11 +350,7 @@ namespace Luna
                 desc({}) {}
         };
 
-        inline constexpr u32 calc_dds_subresoruce_index(u32 mip_slice, u32 array_slice, u32 mip_levels)
-        {
-            return array_slice * mip_levels + mip_slice;
-        }
-
+        LUNA_IMAGE_API R<DDSImage> new_dds_image(const DDSImageDesc& desc);
         LUNA_IMAGE_API R<DDSImageDesc> read_dds_image_file_desc(const void* data, usize data_size);
         LUNA_IMAGE_API R<DDSImage> read_dds_image(const void* data, usize data_size);
         LUNA_IMAGE_API RV write_dds_file(ISeekableStream* stream, const DDSImage& image);

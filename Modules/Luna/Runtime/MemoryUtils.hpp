@@ -102,6 +102,14 @@ namespace Luna
 		r += z * slice_pitch + y * row_pitch + x * bytes_per_pixel;
 		return (void*)r;
 	}
+
+	inline void* pixel_offset(void* base, usize x, usize y, usize bytes_per_pixel, usize row_pitch)
+	{
+		usize r = (usize)base;
+		r += y * row_pitch + x * bytes_per_pixel;
+		return (void*)r;
+	}
+
 	//! @brief Returns a pointer that offsets the specified pixels in the bitmap.
 	//! @param[in] base The pointer to the first pixel in the bitmap.
 	//! @param[in] x The x offset in pixels.
@@ -115,6 +123,13 @@ namespace Luna
 	{
 		usize r = (usize)base;
 		r += z * slice_pitch + y * row_pitch + x * bytes_per_pixel;
+		return (const void*)r;
+	}
+
+	inline const void* pixel_offset(const void* base, usize x, usize y, usize bytes_per_pixel, usize row_pitch)
+	{
+		usize r = (usize)base;
+		r += y * row_pitch + x * bytes_per_pixel;
 		return (const void*)r;
 	}
 

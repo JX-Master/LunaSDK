@@ -618,6 +618,53 @@ namespace Luna
             }
             return ok;
         }
+        LUNA_IMAGE_API R<DDSImage> new_dds_image(const DDSImageDesc& desc)
+        {
+            DDSImage image;
+            lutry
+            {
+                image.desc = desc;
+                usize pixel_size = 0;
+                if(image.desc.mip_levels == 0)
+                {
+                    image.desc.mip_levels = 1;
+                    u32 width = image.desc.width;
+                    u32 height = image.desc.height;
+                    u32 depth = image.desc.depth;
+                    while(width > 1 || height > 1 || depth > 1)
+                    {
+                        ++(image.desc.mip_levels);
+                        if(width > 1) width >>= 1;
+                        if(height > 1) height >>= 1;
+                        if(depth > 1) depth >>= 1;
+                    }
+                }
+                image.subresources.resize(image.desc.array_size * image.desc.mip_levels);
+                usize data_offset = 0;
+                for(u32 item = 0; item < image.desc.array_size; ++item)
+                {
+                    u32 width = image.desc.width;
+                    u32 height = image.desc.height;
+                    u32 depth = image.desc.depth;
+                    for (u32 mip = 0; mip < image.desc.mip_levels; ++mip)
+                    {
+                        auto& dst = image.subresources[calc_dds_subresoruce_index(mip, item, image.desc.mip_levels)];
+                        dst.width = width;
+                        dst.height = height;
+                        dst.depth = depth;
+                        luexp(compute_pitch(image.desc.format, dst.width, dst.height, dst.row_pitch, dst.slice_pitch));
+                        dst.data_offset = data_offset;
+                        data_offset += dst.slice_pitch * dst.depth;
+                        if(width > 1) width >>= 1;
+                        if(height > 1) height >>= 1;
+                        if(depth > 1) depth >>= 1;
+                    }
+                }
+                image.data = Blob(data_offset);
+            }
+            lucatchret;
+            return image;
+        }
         LUNA_IMAGE_API R<DDSImage> read_dds_image(const void* data, usize data_size)
         {
             DDSImage r;
@@ -695,7 +742,7 @@ namespace Luna
                 }
                 usize row_pitch, slice_pitch;
                 luexp(compute_pitch(desc.format, desc.width, desc.height, row_pitch, slice_pitch));
-                if(row_pitch > UINT32_MAX || slice_pitch > UINT32_MAX) return BasicError::not_supported();
+                if(row_pitch > (usize)U32_MAX || slice_pitch > (usize)U32_MAX) return BasicError::not_supported();
                 if(is_compressed(desc.format))
                 {
                     header.flags |= DDS_HEADER_FLAGS_LINEARSIZE;
