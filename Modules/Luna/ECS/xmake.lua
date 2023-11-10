@@ -1,5 +1,6 @@
 luna_sdk_module_target("ECS")
-    add_headerfiles("**.hpp")
+    add_headerfiles("*.hpp", {prefixdir = "Luna/ECS"})
+    add_headerfiles("Source/**.hpp", {install = false})
     add_files("Source/**.cpp")
     add_luna_modules("Runtime", "JobSystem")
 target_end()
