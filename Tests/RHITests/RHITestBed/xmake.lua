@@ -6,7 +6,7 @@ target("RHITestBed")
     else
         set_kind("static")
     end
-    add_headerfiles("*.hpp")
+    add_headerfiles("*.hpp", {install = false})
     add_files("*.cpp")
     add_luna_modules("Runtime", "RHI", "Window")
 target_end()

@@ -11,14 +11,16 @@ end
 
 luna_sdk_module_target("Window")
     add_options("window_glfw")
-    add_headerfiles("*.hpp", "Source/*.hpp")
+    add_headerfiles("*.hpp", {prefixdir = "Luna/Window"})
+    add_headerfiles("Source/*.hpp", {install = false})
     add_files("Source/*.cpp")
     if has_config("window_glfw") then
-        add_headerfiles("GLFW/*.hpp", "Source/GLFW/*.hpp")
+        add_headerfiles("(GLFW/*.hpp)", {prefixdir = "Luna/Window"})
+        add_headerfiles("Source/GLFW/*.hpp", {install = false})
         add_files("Source/GLFW/*.cpp")
     end
     if is_os("windows") then
-        add_headerfiles("Windows/*.hpp")
+        add_headerfiles("(Windows/*.hpp)", {prefixdir = "Luna/Window"})
         add_files("Source/Windows/*.cpp")
     end
     if is_os("macosx") then
