@@ -13,27 +13,29 @@
 #include <Luna/Runtime/Result.hpp>
 #include "KeyCode.hpp"
 
+#ifndef LUNA_HID_API
+#define LUNA_HID_API
+#endif
+
 namespace Luna
 {
 	namespace HID
 	{
-		//! @interface IMouse
-		//! Represents the mouse input device.
-		struct IMouse : virtual Interface
-		{
-			luiid("{7d3a9e2e-eff4-4341-99e0-78ef9c36f7dd}");
+		//! Checks if mouse input is supported on the current platform.
+		LUNA_HID_API bool supports_mouse();
 
-			//! Checks if the specified mouse button is pressed.
-			//! @return `true` if the mouse button is down, returns `false` otherwise.
-			virtual bool get_button_state(MouseButton mouse_button) = 0;
+		//! Checks if the specified mouse button is pressed.
+		//! @return `true` if the mouse button is down, returns `false` otherwise.
+		//! If mouse input is not supported, returns `false` always.
+		LUNA_HID_API bool get_mouse_button_state(MouseButton mouse_button);
 
-			//! Get the position of the mouse cursor in screen space.
-			//! @return The position of the mouse cursor in screen space.
-			virtual Int2U get_cursor_pos() = 0;
+		//! Get the position of the mouse cursor in screen space.
+		//! @return The position of the mouse cursor in screen space.
+		//! If screen cursor API is not supported, returns `(0, 0)` always.
+		LUNA_HID_API Int2U get_mouse_pos();
 
-			//! Sets the OS mouse cursor position. The position is based on the screen coordinates.
-			//! This only works for Desktop-based system.
-			virtual RV set_cursor_pos(i32 x, i32 y) = 0;
-		};
+		//! Sets the OS mouse cursor position. The position is based on the screen coordinates.
+		//! This only works for platforms that support mouse input.
+		LUNA_HID_API RV set_mouse_pos(i32 x, i32 y);
 	}
 }

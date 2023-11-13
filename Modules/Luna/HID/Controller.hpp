@@ -11,6 +11,10 @@
 #include <Luna/Runtime/Interface.hpp>
 #include <Luna/Runtime/Result.hpp>
 
+#ifndef LUNA_HID_API
+#define LUNA_HID_API
+#endif
+
 namespace Luna
 {
 	namespace HID
@@ -64,21 +68,18 @@ namespace Luna
 			f32 right_vibration;
 		};
 
-		//! @interface IController
-		//! Represents a general controller device.
-		struct IController : virtual Interface
-		{
-			luiid("{c4317d5e-766f-4103-b9d5-06d23c6b303d}");
+		//! Checks if game controller input is supported on the current platform.
+		LUNA_HID_API bool supports_controller();
 
-			//! Fetches the input state of the specified controller.
-			//! @param[in] index The 0-based index of controller.
-			//! @return Returns the state of the specified controller.
-			virtual ControllerInputState get_state(u32 index) = 0;
+		//! Fetches the input state of the specified controller.
+		//! @param[in] index The 0-based index of controller.
+		//! @return Returns the state of the specified controller.
+		//! If controller is not supported on this platform, returns one structure with all values set to 0.
+		LUNA_HID_API ControllerInputState get_controller_state(u32 index);
 
-			//! Sets the output state of the specified controller.
-			//! @param[in] index The 0-based index of controller.
-			//! @param[in] state The state to set.
-			virtual RV set_state(u32 index, const ControllerOutputState& state) = 0;
-		};
+		//! Sets the output state of the specified controller.
+		//! @param[in] index The 0-based index of controller.
+		//! @param[in] state The state to set.
+		LUNA_HID_API RV set_controller_state(u32 index, const ControllerOutputState& state);
 	}
 }
