@@ -543,7 +543,7 @@ namespace Luna
 			if (ImGui::IsMouseClicked(ImGuiMouseButton_Right) && in_bounds(ImGui::GetIO().MousePos, scene_pos, scene_pos + scene_sz))
 			{
 				m_navigating = true;
-				m_scene_click_pos = HID::get_device<HID::IMouse>().get()->get_cursor_pos();
+				m_scene_click_pos = HID::get_mouse_pos();
 			}
 
 			if (m_navigating && ImGui::IsMouseReleased(ImGuiMouseButton_Right))
@@ -553,8 +553,7 @@ namespace Luna
 
 			if (m_navigating)
 			{
-				auto mouse = HID::get_device<HID::IMouse>().get();
-				auto mouse_pos = mouse->get_cursor_pos();
+				auto mouse_pos = HID::get_mouse_pos();
 				auto mouse_delta = mouse_pos - m_scene_click_pos;
                 m_scene_click_pos = mouse_pos;
 				// Rotate camera based on mouse delta.

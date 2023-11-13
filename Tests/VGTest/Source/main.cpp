@@ -85,7 +85,7 @@ void on_mouse_down(Window::IWindow* window, Window::ModifierKeyFlag modifier_fla
 	if (button == HID::MouseButton::right)
 	{
 		g_camera_navigating = true;
-		g_scene_click_pos = HID::get_device<HID::IMouse>().get()->get_cursor_pos();
+		g_scene_click_pos = HID::get_mouse_pos();
 	}
 }
 
@@ -152,8 +152,7 @@ void run()
 
 		if (g_camera_navigating)
 		{
-			auto mouse = HID::get_device<HID::IMouse>().get();
-			auto mouse_pos = mouse->get_cursor_pos();
+			auto mouse_pos = HID::get_mouse_pos();
 			auto mouse_delta = mouse_pos - g_scene_click_pos;
 			g_scene_click_pos = mouse_pos;
 			// Rotate camera based on mouse delta.
@@ -166,33 +165,32 @@ void run()
 			auto up = AffineMatrix::up(rot_mat);
 
 			f32 camera_speed = g_camera_speed;
-			auto keyboard = HID::get_device<HID::IKeyboard>().get();
-			if (keyboard->get_key_state(HID::KeyCode::l_shift))
+			if (HID::get_key_state(HID::KeyCode::l_shift))
 			{
 				camera_speed *= 2.0f;
 			}
 
-			if (keyboard->get_key_state(HID::KeyCode::w))
+			if (HID::get_key_state(HID::KeyCode::w))
 			{
 				g_camera_position += forward * camera_speed;
 			}
-			if (keyboard->get_key_state(HID::KeyCode::a))
+			if (HID::get_key_state(HID::KeyCode::a))
 			{
 				g_camera_position += +left * camera_speed;
 			}
-			if (keyboard->get_key_state(HID::KeyCode::s))
+			if (HID::get_key_state(HID::KeyCode::s))
 			{
 				g_camera_position += -forward * camera_speed;
 			}
-			if (keyboard->get_key_state(HID::KeyCode::d))
+			if (HID::get_key_state(HID::KeyCode::d))
 			{
 				g_camera_position += -left * camera_speed;
 			}
-			if (keyboard->get_key_state(HID::KeyCode::q))
+			if (HID::get_key_state(HID::KeyCode::q))
 			{
 				g_camera_position += -up * camera_speed;
 			}
-			if (keyboard->get_key_state(HID::KeyCode::e))
+			if (HID::get_key_state(HID::KeyCode::e))
 			{
 				g_camera_position += +up * camera_speed;
 			}
