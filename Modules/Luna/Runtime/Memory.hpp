@@ -10,13 +10,10 @@
 */
 #pragma once
 #include "Base.hpp"
+#include "Hash.hpp"
 
 #ifndef LUNA_RUNTIME_API
 #define LUNA_RUNTIME_API
-#endif
-
-#ifdef LUNA_RUNTIME_CHECK_MEMORY_LEAK
-#include <typeinfo>
 #endif
 
 namespace Luna
@@ -79,34 +76,6 @@ namespace Luna
 	//! * If `ptr` is not `nullptr`, `alignment` **must** be equal to `alignment` passed to @ref memalloc or @ref memrealloc which allocates `ptr`.
 	LUNA_RUNTIME_API usize memsize(void* ptr, usize alignment = 0);
 
-	//! Gets the total memory allocated by @ref memalloc or @ref memrealloc in bytes.
-	//! @return Returns the total memory allocated by @ref memalloc or @ref memrealloc in bytes.
-	LUNA_RUNTIME_API usize get_allocated_memory();
-
-	//! @name Memory leaking detection
-	//! @{
-#ifdef LUNA_RUNTIME_CHECK_MEMORY_LEAK
-
-	//! @brief Registers one memory block to the leak detection system with one debug string that will be printed if the system 
-	//! detects memory leak.
-	//! @param[in] blk The allocated memory block.
-	//! @param[in] debug_name The attached debug string for the memory block.
-	//! @par Valid Usage
-	//! * `blk` must point to a memory block allocated by @ref memalloc or @ref memrealloc.
-	//! * `debug_name` must point to a null-terminated string.
-	//! @remark This function is available only if `LUNA_RUNTIME_CHECK_MEMORY_LEAK` macro is present.
-	LUNA_RUNTIME_API void register_memory_block(void* blk, const c8* debug_name);
-
-	//! @brief Unregisters one memory block from the leak detection system.
-	//! @param[in] blk The allocated memory block.
-	//! @par Valid Usage
-	//! * `blk` must be registered by a prior call to @ref register_memory_block.
-	//! @remark This function is available only if `LUNA_RUNTIME_CHECK_MEMORY_LEAK` macro is present.
-	LUNA_RUNTIME_API void unregister_memory_block(void* blk);
-
-#endif
-	//! @}
-
 	//! @brief Allocates heap memory for one object and constructs the object.
 	//! @return Returns one pointer to the allocated object.
 	//! Returns `nullptr` if memory allocation failed.
@@ -117,9 +86,6 @@ namespace Luna
 		if (o)
 		{
 			new (o) _Ty(forward<_Args>(args)...);
-#ifdef LUNA_RUNTIME_CHECK_MEMORY_LEAK
-			register_memory_block(o, typeid(_Ty).name());
-#endif
 			return o;
 		}
 		return nullptr;
@@ -134,11 +100,7 @@ namespace Luna
 	{
 		o->~_Ty();
 		Luna::memfree(o, alignof(_Ty));
-#ifdef LUNA_RUNTIME_CHECK_MEMORY_LEAK
-		unregister_memory_block(o);
-#endif
 	}
 
 	//! @}
-
 }

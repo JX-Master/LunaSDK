@@ -7,6 +7,8 @@
 * @author JXMaster
 * @date 2019/7/17
 */
+#include <Luna/Runtime/PlatformDefines.hpp>
+#define LUNA_RHI_API LUNA_EXPORT
 #include "Device.hpp"
 #include "PipelineState.hpp"
 #include "Resource.hpp"
@@ -17,6 +19,7 @@
 #include "CommandBuffer.hpp"
 #include "Fence.hpp"
 #include "SwapChain.hpp"
+#include "Adapter.hpp"
 
 namespace Luna
 {
@@ -240,18 +243,23 @@ namespace Luna
 			lucatchret;
 			return ok;
 		}
-		bool Device::check_feature_support(DeviceFeature feature)
+		DeviceFeatureData Device::check_feature(DeviceFeature feature)
 		{
+			DeviceFeatureData ret;
 			switch (feature)
 			{
-			case DeviceFeature::unbound_descriptor_array: return true;
-			case DeviceFeature::pixel_shader_write: return true;
+			case DeviceFeature::unbound_descriptor_array:
+				ret.unbound_descriptor_array = true;
+				break;
+			case DeviceFeature::pixel_shader_write:
+				ret.pixel_shader_write = true;
+				break;
+			case DeviceFeature::uniform_buffer_data_alignment:
+				ret.uniform_buffer_data_alignment = 256;
+				break;
+			default: lupanic();
 			}
-			return false;
-		}
-		usize Device::get_uniform_buffer_data_alignment()
-		{
-			return 256;
+			return ret;
 		}
 		void Device::get_texture_data_placement_info(u32 width, u32 height, u32 depth, Format format,
 				u64* size, u64* alignment, u64* row_pitch, u64* slice_pitch)
@@ -403,19 +411,15 @@ namespace Luna
 		R<Ref<IPipelineState>> Device::new_graphics_pipeline_state(const GraphicsPipelineStateDesc& desc)
 		{
 			Ref<PipelineState> s = new_object<PipelineState>(this);
-			if (!s->init_graphic(desc))
-			{
-				return BasicError::failure();
-			}
+			auto r = s->init_graphic(desc);
+			if(failed(r)) return r.errcode();
 			return Ref<IPipelineState>(s);
 		}
 		R<Ref<IPipelineState>> Device::new_compute_pipeline_state(const ComputePipelineStateDesc& desc)
 		{
 			Ref<PipelineState> s = new_object<PipelineState>(this);
-			if (!s->init_compute(desc))
-			{
-				return BasicError::failure();
-			}
+			auto r = s->init_compute(desc);
+			if(failed(r)) return r.errcode();
 			return Ref<IPipelineState>(s);
 		}
 		R<Ref<IDescriptorSetLayout>> Device::new_descriptor_set_layout(const DescriptorSetLayoutDesc& desc)
@@ -495,6 +499,19 @@ namespace Luna
 			}
 			lucatchret;
 			return Ref<ISwapChain>(r);
+		}
+		LUNA_RHI_API R<Ref<IDevice>> new_device(IAdapter* adapter)
+		{
+			Adapter* ada = cast_object<Adapter>(adapter->get_object());
+			ComPtr<ID3D12Device> dev;
+			Ref<Device> device = new_object<Device>();
+			auto res = device->init(ada->m_adapter.Get());
+			if (failed(res)) return res.errcode();
+			return Ref<IDevice>(device);
+		}
+		LUNA_RHI_API IDevice* get_main_device()
+		{
+			return g_main_device;
 		}
 	}
 }

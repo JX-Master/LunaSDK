@@ -51,8 +51,7 @@ namespace Luna
 
             R<NSPtr<MTL::HeapDescriptor>> get_heap_desc(MemoryType memory_type, Span<const BufferDesc> buffers, Span<const TextureDesc> textures);
 
-            virtual bool check_feature_support(DeviceFeature feature) override;
-			virtual usize get_uniform_buffer_data_alignment() override;
+            virtual DeviceFeatureData check_feature(DeviceFeature feature) override;
             virtual void get_texture_data_placement_info(u32 width, u32 height, u32 depth, Format format,
 				u64* size, u64* alignment, u64* row_pitch, u64* slice_pitch) override;
             virtual R<Ref<IBuffer>> new_buffer(MemoryType memory_type, const BufferDesc& desc) override;

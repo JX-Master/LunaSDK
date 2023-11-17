@@ -92,8 +92,7 @@ namespace Luna
 
 using namespace Luna;
 
-int main()
-{
+int main(){
 	luassert_always(Luna::init());
 	set_current_dir_to_process_path();
 	run_editor();

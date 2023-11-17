@@ -25,6 +25,7 @@ namespace Luna
             u64 m_size;
 
             RV init(MTL::HeapDescriptor* desc);
+            ~DeviceMemory();
 
             virtual IDevice* get_device() override { return m_device; }
             virtual void set_name(const c8* name) override  { set_object_name(m_heap.get(), name); }

@@ -14,6 +14,7 @@ using namespace Luna;
 
 void run()
 {
+	auto handle = register_profiler_callback(memory_profiler_callback);
 	array_test();
 	vector_test();
 	open_hash_test();
@@ -33,6 +34,7 @@ void run()
 	invoke_test();
 	function_test();
 	unicode_test();
+	unregister_profiler_callback(handle);
 }
 
 int main()

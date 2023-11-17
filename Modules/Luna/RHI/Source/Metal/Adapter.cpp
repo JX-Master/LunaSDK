@@ -15,33 +15,31 @@ namespace Luna
 {
     namespace RHI
     {
-        NSPtr<NS::Array> g_devices;
-
-        RV init_devices()
+        Vector<Ref<IAdapter>> g_adapters;
+        void Adapter::init()
         {
-            g_devices = box(MTL::CopyAllDevices());
-            return ok;
-        }
-        void clear_devices()
-        {
-            g_devices.reset();
-        }
-        LUNA_RHI_API u32 get_num_adapters()
-        {
-            return (u32)g_devices->count();
-        }
-        LUNA_RHI_API AdapterDesc get_adapter_desc(u32 adapter_index)
-        {
-            lucheck(adapter_index < get_num_adapters());
             AutoreleasePool pool;
-            MTL::Device* dev = g_devices->object<MTL::Device>(adapter_index);
-            AdapterDesc desc;
-            NS::String* name = dev->name();
-            strncpy(desc.name, name->cString(NS::StringEncoding::UTF8StringEncoding), 256);
-            desc.type = dev->lowPower() ? AdapterType::integrated_gpu : AdapterType::discrete_gpu;
-            desc.local_memory = dev->recommendedMaxWorkingSetSize();
-            desc.shared_memory = dev->recommendedMaxWorkingSetSize();
-            return desc;
+            NS::String* name = m_device->name();
+            strncpy(m_name, name->cString(NS::StringEncoding::UTF8StringEncoding), 256);
+        }
+        void init_adapters()
+        {
+            AutoreleasePool pool;
+            g_adapters.clear();
+            NSPtr<NS::Array> devices = box(MTL::CopyAllDevices());
+            u32 num_devices = devices->count();
+            for(u32 i = 0; i < num_devices; ++i)
+            {
+                MTL::Device* dev = devices->object<MTL::Device>(i);
+                Ref<Adapter> adapter = new_object<Adapter>();
+                adapter->m_device = retain(dev);
+                adapter->init();
+                g_adapters.push_back(Ref<IAdapter>(adapter));
+            }
+        }
+        LUNA_RHI_API Vector<Ref<IAdapter>> get_adapters()
+        {
+            return g_adapters;
         }
     }
 }

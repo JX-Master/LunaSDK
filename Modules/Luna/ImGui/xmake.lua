@@ -1,5 +1,5 @@
 luna_sdk_module_target("ImGui")
-    add_headerfiles("**.hpp")
+    add_headerfiles("*.hpp", {prefixdir = "Luna/ImGui"})
     add_files("Source/**.cpp")
     add_luna_modules("Runtime", "RHI", "HID", "Font", "ShaderCompiler")
     add_packages("imgui", {})

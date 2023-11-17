@@ -22,6 +22,7 @@
 #include <Luna/Window/FileDialog.hpp>
 #include <Luna/Window/MessageBox.hpp>
 #include <Luna/RHI/Utility.hpp>
+#include <Luna/Image/RHIHelper.hpp>
 namespace Luna
 {
 	struct SceneEditorUserData
@@ -98,7 +99,7 @@ namespace Luna
 		{
 			using namespace RHI;
 			auto device = get_main_device();
-			auto cb_align = device->get_uniform_buffer_data_alignment();
+			auto cb_align = device->check_feature(DeviceFeature::uniform_buffer_data_alignment).uniform_buffer_data_alignment;
 			luset(m_renderer.command_buffer, g_env->device->new_command_buffer(g_env->graphics_queue));
 			SceneRendererSettings settings;
 			settings.frame_profiling = true;
@@ -446,7 +447,9 @@ namespace Luna
 			scene_sz.x -= 1.0f;
 			scene_sz.y -= 5.0f;
 
-			settings.screen_size = UInt2U((u32)scene_sz.x, (u32)scene_sz.y);
+			auto& io = ImGui::GetIO();
+
+			settings.screen_size = UInt2U((u32)(scene_sz.x * io.DisplayFramebufferScale.x), (u32)(scene_sz.y * io.DisplayFramebufferScale.y));
 
 			// Draw Overlays.
 			luexp(m_renderer.command_buffer->submit({}, {}, true));
@@ -479,7 +482,7 @@ namespace Luna
 
 				if (m_renderer.get_settings().frame_profiling)
 				{
-					ImGui::Text("Frame Size: %ux%u", (u32)scene_sz.x, (u32)scene_sz.y);
+					ImGui::Text("Frame Size: %ux%u", (u32)(scene_sz.x * io.DisplayFramebufferScale.x), (u32)(scene_sz.y * io.DisplayFramebufferScale.y));
 					ImGui::Text("FPS: %f", ImGui::GetIO().Framerate);
 					for (usize i = 0; i < m_renderer.pass_time_intervals.size(); ++i)
 					{
@@ -540,7 +543,7 @@ namespace Luna
 			if (ImGui::IsMouseClicked(ImGuiMouseButton_Right) && in_bounds(ImGui::GetIO().MousePos, scene_pos, scene_pos + scene_sz))
 			{
 				m_navigating = true;
-				m_scene_click_pos = HID::get_device<HID::IMouse>().get()->get_cursor_pos();
+				m_scene_click_pos = HID::get_mouse_pos();
 			}
 
 			if (m_navigating && ImGui::IsMouseReleased(ImGuiMouseButton_Right))
@@ -550,8 +553,7 @@ namespace Luna
 
 			if (m_navigating)
 			{
-				auto mouse = HID::get_device<HID::IMouse>().get();
-				auto mouse_pos = mouse->get_cursor_pos();
+				auto mouse_pos = HID::get_mouse_pos();
 				auto mouse_delta = mouse_pos - m_scene_click_pos;
                 m_scene_click_pos = mouse_pos;
 				// Rotate camera based on mouse delta.
@@ -834,7 +836,8 @@ namespace Luna
 			Image::ImageDesc img_desc;
 			img_desc.width = (u32)desc.width;
 			img_desc.height = desc.height;
-			luset(img_desc.format, get_image_format_from_format(desc.format));
+			img_desc.format = Image::rhi_to_image_format(desc.format);
+			luassert(img_desc.format != Image::ImageFormat::unkonwn);
 			lulet(f, open_file(path.encode().c_str(), FileOpenFlag::write | FileOpenFlag::user_buffering, FileCreationMode::create_always));
 			luexp(Image::write_bmp_file(f, img_desc, img_data));
 		}

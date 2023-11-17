@@ -15,6 +15,7 @@
 #include "SwapChain.hpp"
 #include "Fence.hpp"
 #include "QueryHeap.hpp"
+#include "Adapter.hpp"
 
 #ifndef LUNA_RHI_API
 #define LUNA_RHI_API
@@ -30,6 +31,18 @@ namespace Luna
 			unbound_descriptor_array,
 			//! Allow pixel shaders to write and perform atomic operations on buffer and texture data.
 			pixel_shader_write,
+			//! The alignment requiremtn for the buffer data start location and size.
+			uniform_buffer_data_alignment,
+		};
+
+		struct DeviceFeatureData
+		{
+			union
+			{
+				bool unbound_descriptor_array;
+				bool pixel_shader_write;
+				u32 uniform_buffer_data_alignment;
+			};
 		};
 
 		enum class CommandQueueType : u8
@@ -60,16 +73,15 @@ namespace Luna
 				flags(flags) {}
 		};
 
+		struct IAdapter;
+
 		//! Represents one logical graphic device on the platform.
 		struct IDevice : virtual Interface
 		{
 			luiid("{099AB8FA-7239-41EE-B05C-D36B5DCE1ED7}");
 
-			//! Checks whether the specified device feature is present.
-			virtual bool check_feature_support(DeviceFeature feature) = 0;
-
-			//! Gets the alignment for the buffer data start location and size.
-			virtual usize get_uniform_buffer_data_alignment() = 0;
+			//! Checks the device feature.
+			virtual DeviceFeatureData check_feature(DeviceFeature feature) = 0;
 
 			//! Gets the texture data placement information when storing texture data in a buffer. 
 			//! The texture data is arranged in row-major order.
@@ -163,5 +175,14 @@ namespace Luna
 			//! @return Returns the new created swap chain, or `nullptr` if failed to create.
 			virtual R<Ref<ISwapChain>> new_swap_chain(u32 command_queue_index, Window::IWindow* window, const SwapChainDesc& desc) = 0;
 		};
+
+		//! Creates one device using the specified adapter.
+		//! @param[in] adapter The adapter used for creating the device.
+		LUNA_RHI_API R<Ref<IDevice>> new_device(IAdapter* adapter);
+
+		//! Gets the main device.
+		//! If the main device is not set by `set_main_device`, this will create one device based on the adapters
+		//! returned by `get_preferred_device_adapter`, set the device as the main device and return the device.
+		LUNA_RHI_API IDevice* get_main_device();
 	}
 }

@@ -55,7 +55,7 @@ namespace Luna
         {
             m_global_data = global_data;
             auto device = m_global_data->m_skybox_pass_pso->get_device();
-            auto cb_align = device->get_uniform_buffer_data_alignment();
+            auto cb_align = device->check_feature(DeviceFeature::uniform_buffer_data_alignment).uniform_buffer_data_alignment;
             luset(m_skybox_params_cb, device->new_buffer(MemoryType::upload, BufferDesc(BufferUsageFlag::uniform_buffer, align_upper(sizeof(SkyboxParams), cb_align))));
             luset(m_ds, device->new_descriptor_set(DescriptorSetDesc(m_global_data->m_skybox_pass_dlayout)));
         }
@@ -103,7 +103,7 @@ namespace Luna
                     });
 				cmdbuf->set_compute_pipeline_layout(m_global_data->m_skybox_pass_playout);
 				cmdbuf->set_compute_pipeline_state(m_global_data->m_skybox_pass_pso);
-                auto cb_align = cmdbuf->get_device()->get_uniform_buffer_data_alignment();
+                auto cb_align = cmdbuf->get_device()->check_feature(DeviceFeature::uniform_buffer_data_alignment).uniform_buffer_data_alignment;
                 luexp(m_ds->update_descriptors({
                     WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(m_skybox_params_cb, 0, (u32)align_upper(sizeof(SkyboxParams), cb_align))),
                     WriteDescriptorSet::read_texture_view(1, TextureViewDesc::tex2d(skybox)),

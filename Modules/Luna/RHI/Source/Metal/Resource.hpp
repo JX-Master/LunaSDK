@@ -29,6 +29,7 @@ namespace Luna
 
             RV init_as_committed(MemoryType memory_type, const BufferDesc& desc);
             RV init_as_aliasing(IDeviceMemory* memory, const BufferDesc& desc);
+            ~Buffer();
 
             virtual IDevice* get_device() override { return m_device; }
             virtual void set_name(const c8* name) override  { set_object_name(m_buffer.get(), name); }
@@ -54,6 +55,7 @@ namespace Luna
 
             RV init_as_committed(MemoryType memory_type, const TextureDesc& desc);
             RV init_as_aliasing(IDeviceMemory* memory, const TextureDesc& desc);
+            ~Texture();
 
             virtual IDevice* get_device() override { return m_device; }
             virtual void set_name(const c8* name) override  { set_object_name(m_texture.get(), name); }

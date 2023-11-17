@@ -40,10 +40,6 @@ namespace Luna
 				free(ptr);
 			}
 		}
-		void* memrealloc(void* ptr, usize size, usize alignment /* = 0 */)
-		{
-			return (alignment > MAX_ALIGN) ? _aligned_realloc(ptr, size, alignment) : realloc(ptr, size);
-		}
 		usize memsize(void* ptr, usize alignment /* = 0 */)
 		{
 			if (!ptr) return 0;

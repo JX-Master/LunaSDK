@@ -25,7 +25,7 @@ namespace Luna
 			MemoryType m_memory_type;
 
 			RV init(MemoryType memory_type, const D3D12MA::ALLOCATION_DESC& allocation_desc, const D3D12_RESOURCE_ALLOCATION_INFO& allocation_info);
-		
+			~DeviceMemory();
 			virtual IDevice* get_device() override { return m_device; }
 			virtual void set_name(const c8* name) override
 			{

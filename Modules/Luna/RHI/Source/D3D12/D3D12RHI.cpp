@@ -13,7 +13,6 @@
 #include <d3d12.h>
 #include "Device.hpp"
 #include "SwapChain.hpp"
-#include <dxgi1_5.h>
 #include <Luna/Runtime/Unicode.hpp>
 #pragma comment(lib, "d3d12.lib")
 #pragma comment(lib, "dxgi.lib")
@@ -27,18 +26,19 @@
 #include "DescriptorSetLayout.hpp"
 #include "QueryHeap.hpp"
 #include "Fence.hpp"
+#include "Adapter.hpp"
 
 namespace Luna
 {
 	namespace RHI
 	{
 		ComPtr<IDXGIFactory5> g_dxgi;
-		Ref<IDevice> g_device;
-
-		Vector<ComPtr<IDXGIAdapter1>> g_adapters;
+		Ref<IDevice> g_main_device;
 
 		RV render_api_init()
 		{
+			register_boxed_type<Adapter>();
+			impl_interface_for_type<Adapter, IAdapter>();
 			register_boxed_type<BufferResource>();
 			impl_interface_for_type<BufferResource, IBuffer, IResource, IDeviceChild>();
 			register_boxed_type<TextureResource>();
@@ -69,72 +69,30 @@ namespace Luna
 			{
 				return encode_hresult(hr);
 			}
-
-			ComPtr<IDXGIAdapter1> ada;
-			u32 index = 0;
-			while (true)
+			lutry
 			{
-				hr = g_dxgi->EnumAdapters1(index, ada.ReleaseAndGetAddressOf());
-				if (FAILED(hr)) break;
-				g_adapters.push_back(move(ada));
-				++index;
+				luexp(init_adapters());
+				auto adapters = get_adapters();
+	#if (defined(LUNA_RHI_DEBUG) || defined(LUNA_DEBUG)) && (LUNA_PLATFORM_VERSION >= LUNA_PLATFORM_VERSION_WIN10)
+				ComPtr<ID3D12Debug> debug;
+				D3D12GetDebugInterface(IID_PPV_ARGS(&debug));
+				if (debug) debug->EnableDebugLayer();
+	#endif
+				luset(g_main_device, new_device(adapters[0]));
 			}
-
-#if defined(LUNA_RHI_DEBUG) && (LUNA_PLATFORM_VERSION >= LUNA_PLATFORM_VERSION_WIN10)
-			ComPtr<ID3D12Debug> debug;
-			D3D12GetDebugInterface(IID_PPV_ARGS(&debug));
-			if (debug) debug->EnableDebugLayer();
-#endif
-			auto dev = new_device(0);
-			if (failed(dev)) return dev.errcode();
-			g_device = dev.get();
+			lucatchret;
 			return ok;
 		}
 		void render_api_close()
 		{
-			g_device = nullptr;
-			g_dxgi = nullptr;
+			g_main_device = nullptr;
 			g_adapters.clear();
 			g_adapters.shrink_to_fit();
+			g_dxgi = nullptr;
 		}
-		LUNA_RHI_API u32 get_num_adapters()
+		LUNA_RHI_API BackendType get_backend_type()
 		{
-			return (u32)g_adapters.size();
-		}
-		LUNA_RHI_API AdapterDesc get_adapter_desc(u32 index)
-		{
-			DXGI_ADAPTER_DESC1 desc;
-			g_adapters[index]->GetDesc1(&desc);
-			AdapterDesc dst;
-			utf16_to_utf8(dst.name, 256, (char16_t*)desc.Description);
-			dst.local_memory = desc.DedicatedSystemMemory + desc.DedicatedVideoMemory;
-			dst.shared_memory = desc.SharedSystemMemory;
-			dst.type = AdapterType::discrete_gpu;
-			if (!desc.DedicatedVideoMemory)
-			{
-				dst.type = AdapterType::integrated_gpu;
-			}
-			if (desc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE)
-			{
-				dst.type = AdapterType::software;
-			}
-			return dst;
-		}
-		LUNA_RHI_API R<Ref<IDevice>> new_device(u32 adapter_index)
-		{
-			ComPtr<ID3D12Device> dev;
-			Ref<Device> device = new_object<Device>();
-			auto res = device->init(g_adapters[adapter_index].Get());
-			if (failed(res)) return res.errcode();
-			return Ref<IDevice>(device);
-		}
-		LUNA_RHI_API IDevice* get_main_device()
-		{
-			return g_device;
-		}
-		LUNA_RHI_API APIType get_current_platform_api_type()
-		{
-			return APIType::d3d12;
+			return BackendType::d3d12;
 		}
 	}
 }

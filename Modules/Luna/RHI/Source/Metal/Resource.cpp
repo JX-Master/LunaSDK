@@ -30,6 +30,11 @@ namespace Luna
                     m_memory->m_device = m_device;
                     m_memory->m_memory_type = memory_type;
                     m_memory->m_size = m_buffer->allocatedSize();
+#ifdef LUNA_MEMORY_PROFILER_ENABLED
+                    memory_profiler_allocate(m_buffer.get(), m_memory->get_size());
+                    memory_profiler_set_memory_domain(m_buffer.get(), g_memory_domain_gpu);
+                    memory_profiler_set_memory_type(m_buffer.get(), g_memory_type_buffer);
+#endif
                 }
             }
             lucatchret;
@@ -45,6 +50,12 @@ namespace Luna
             m_memory = m;
             m_buffer->makeAliasable();
             return ok;
+        }
+        Buffer::~Buffer()
+        {
+#ifdef LUNA_MEMORY_PROFILER_ENABLED
+            if(!m_memory->m_heap) memory_profiler_deallocate(m_buffer.get());
+#endif
         }
         RV Buffer::map(usize read_begin, usize read_end, void** data)
         {
@@ -72,6 +83,11 @@ namespace Luna
                     m_memory->m_device = m_device;
                     m_memory->m_memory_type = memory_type;
                     m_memory->m_size = m_texture->allocatedSize();
+#ifdef LUNA_MEMORY_PROFILER_ENABLED
+                    memory_profiler_allocate(m_texture.get(), m_memory->get_size());
+                    memory_profiler_set_memory_domain(m_texture.get(), g_memory_domain_gpu);
+                    memory_profiler_set_memory_type(m_texture.get(), g_memory_type_texture);
+#endif
                 }
             }
             lucatchret;
@@ -93,6 +109,12 @@ namespace Luna
             }
             lucatchret;
             return ok;
+        }
+        Texture::~Texture()
+        {
+#ifdef LUNA_MEMORY_PROFILER_ENABLED
+            if(m_memory && !m_memory->m_heap) memory_profiler_deallocate(m_texture.get());
+#endif
         }
         bool compare_texture_view_desc(const TextureViewDesc& lhs, const TextureViewDesc& rhs)
 		{

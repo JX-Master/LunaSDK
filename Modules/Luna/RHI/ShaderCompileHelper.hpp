@@ -17,14 +17,14 @@ namespace Luna
 	{
 		inline ShaderCompiler::TargetFormat get_current_platform_shader_target_format()
 		{
-			auto api_type = get_current_platform_api_type();
+			auto api_type = get_backend_type();
 			switch (api_type)
 			{
-			case APIType::d3d12:
+			case BackendType::d3d12:
 				return ShaderCompiler::TargetFormat::dxil;
-			case APIType::vulkan:
+			case BackendType::vulkan:
 				return ShaderCompiler::TargetFormat::spir_v;
-            case APIType::metal:
+            case BackendType::metal:
                 return ShaderCompiler::TargetFormat::msl;
 			}
 			lupanic();

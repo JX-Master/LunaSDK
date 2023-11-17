@@ -114,18 +114,23 @@ namespace Luna
             ret->setSize(size);
             return ret;
         }
-        bool Device::check_feature_support(DeviceFeature feature)
+        DeviceFeatureData Device::check_feature(DeviceFeature feature)
         {
-            switch (feature)
-            {
-            case DeviceFeature::unbound_descriptor_array: return m_support_metal_3_family;
-            case DeviceFeature::pixel_shader_write: return true;
-            default: return false;
-            }
-        }
-        usize Device::get_uniform_buffer_data_alignment()
-        {
-            return 0;
+            DeviceFeatureData ret;
+			switch (feature)
+			{
+			case DeviceFeature::unbound_descriptor_array:
+				ret.unbound_descriptor_array = m_support_metal_3_family;
+				break;
+			case DeviceFeature::pixel_shader_write:
+				ret.pixel_shader_write = true;
+				break;
+			case DeviceFeature::uniform_buffer_data_alignment:
+				ret.uniform_buffer_data_alignment = 0;
+				break;
+			default: lupanic();
+			}
+			return ret;
         }
         void Device::get_texture_data_placement_info(u32 width, u32 height, u32 depth, Format format,
 				u64* size, u64* alignment, u64* row_pitch, u64* slice_pitch)
@@ -363,12 +368,12 @@ namespace Luna
             lucatchret;
             return ret;
         }
-        LUNA_RHI_API R<Ref<IDevice>> new_device(u32 adapter_index)
+        LUNA_RHI_API R<Ref<IDevice>> new_device(IAdapter* adapter)
         {
-            if(adapter_index >= get_num_adapters()) return set_error(BasicError::not_found(), "The specified adapter is not found.");
             AutoreleasePool pool;
+            Adapter* ada = cast_object<Adapter>(adapter->get_object());
             Ref<Device> dev = new_object<Device>();
-            dev->m_device = retain(g_devices->object<MTL::Device>(adapter_index));
+            dev->m_device = ada->m_device;
             auto r = dev->init();
             if(failed(r)) return r.errcode();
             return Ref<IDevice>(dev);

@@ -183,13 +183,13 @@ RV start()
             16, 17, 18, 16, 18, 19,
             20, 21, 22, 20, 22, 23
         };
-        auto cb_align = dev->get_uniform_buffer_data_alignment();
+        auto cb_align = dev->check_feature(DeviceFeature::uniform_buffer_data_alignment).uniform_buffer_data_alignment;
         luset(cb, dev->new_buffer(MemoryType::upload, BufferDesc(BufferUsageFlag::uniform_buffer, align_upper(sizeof(Float4x4), cb_align))));
 
         lulet(image_file, open_file("luna.png", FileOpenFlag::read, FileCreationMode::open_existing));
         lulet(image_file_data, load_file_data(image_file));
         Image::ImageDesc image_desc;
-        lulet(image_data, Image::read_image_file(image_file_data.data(), image_file_data.size(), Image::ImagePixelFormat::rgba8_unorm, image_desc));
+        lulet(image_data, Image::read_image_file(image_file_data.data(), image_file_data.size(), Image::ImageFormat::rgba8_unorm, image_desc));
 
         luset(vb, dev->new_buffer(MemoryType::local, BufferDesc(BufferUsageFlag::vertex_buffer | BufferUsageFlag::copy_dest, sizeof(vertices))));
         luset(ib, dev->new_buffer(MemoryType::local, BufferDesc(BufferUsageFlag::index_buffer | BufferUsageFlag::copy_dest, sizeof(indices))));

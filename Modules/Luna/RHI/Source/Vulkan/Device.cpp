@@ -257,14 +257,23 @@ namespace Luna
 			lucatchret;
 			return ret;
 		}
-		bool Device::check_feature_support(DeviceFeature feature)
+		DeviceFeatureData Device::check_feature(DeviceFeature feature)
 		{
+			DeviceFeatureData ret;
 			switch (feature)
 			{
-			case DeviceFeature::unbound_descriptor_array: return false;
-			case DeviceFeature::pixel_shader_write: return m_physical_device_features.fragmentStoresAndAtomics == VK_TRUE;
+			case DeviceFeature::unbound_descriptor_array:
+				ret.unbound_descriptor_array = false;
+				break;
+			case DeviceFeature::pixel_shader_write: 
+				ret.pixel_shader_write = m_physical_device_features.fragmentStoresAndAtomics == VK_TRUE;
+				break;
+			case DeviceFeature::uniform_buffer_data_alignment:
+				ret.uniform_buffer_data_alignment = (u32)m_physical_device_properties.limits.minUniformBufferOffsetAlignment;
+				break;
+			default: lupanic();
 			}
-			return false;
+			return ret;
 		}
 		void Device::get_texture_data_placement_info(u32 width, u32 height, u32 depth, Format format,
 			u64* size, u64* alignment, u64* row_pitch, u64* slice_pitch)
@@ -515,14 +524,14 @@ namespace Luna
 			lucatchret;
 			return ret;
 		}
-		LUNA_RHI_API R<Ref<IDevice>> new_device(u32 adapter_index)
+		LUNA_RHI_API R<Ref<IDevice>> new_device(IAdapter* adapter)
 		{
 			Ref<IDevice> ret;
 			lutry
 			{
-				if (adapter_index >= g_physical_devices.size()) return set_error(BasicError::not_found(), "The specified adapter is not found.");
 				Ref<Device> dev = new_object<Device>();
-				auto queue_families = g_physical_device_queue_families[adapter_index];
+				Adapter* ada = cast_object<Adapter>(adapter->get_object());
+				auto& queue_families = ada->m_queue_families;
 				for (auto& queue_family : queue_families)
 				{
 					if (queue_family.desc.type == CommandQueueType::graphics)
@@ -534,7 +543,7 @@ namespace Luna
 						queue_family.num_queues = min<u32>(queue_family.num_queues, 2);
 					}
 				}
-				luexp(dev->init(g_physical_devices[adapter_index], queue_families));
+				luexp(dev->init(ada->m_physical_device, queue_families));
 				ret = dev;
 			}
 			lucatchret;
@@ -545,9 +554,9 @@ namespace Luna
 		{
 			return g_main_device.get();
 		}
-		LUNA_RHI_API APIType get_current_platform_api_type()
+		LUNA_RHI_API BackendType get_backend_type()
 		{
-			return APIType::vulkan;
+			return BackendType::vulkan;
 		}
 	}
 }

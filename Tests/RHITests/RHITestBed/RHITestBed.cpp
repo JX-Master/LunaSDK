@@ -16,6 +16,7 @@
 #include <Luna/Window/Window.hpp>
 #include <Luna/Runtime/Time.hpp>
 #include <Luna/Runtime/Thread.hpp>
+#include <Luna/RHI/Adapter.hpp>
 
 namespace Luna
 {
@@ -97,22 +98,11 @@ namespace Luna
 				luset(m_command_buffer, device->new_command_buffer(m_command_queue));
 				luset(m_back_buffer, m_swap_chain->get_current_back_buffer());
 
-				u32 num_adapters = RHI::get_num_adapters();
-				for (u32 i = 0; i < num_adapters; ++i)
+				auto adapters = RHI::get_adapters();
+				for (u32 i = 0; i < adapters.size(); ++i)
 				{
-					auto desc = RHI::get_adapter_desc(i);
 					log_info("RHITest", "Adapter %u", i);
-					log_info("RHITest", "Name: %s", desc.name);
-					log_info("RHITest", "Shared Memory: %.4f MB", (f64)desc.shared_memory / (f64)1_mb);
-					log_info("RHITest", "Dedicated Memory: %.4f MB", (f64)desc.local_memory / (f64)1_mb);
-					if (desc.type == AdapterType::software)
-					{
-						log_info("RHITest", "Software simulated GPU.");
-					}
-					if (desc.type == AdapterType::integrated_gpu)
-					{
-						log_info("RHITest", "Intergrated GPU.");
-					}
+					log_info("RHITest", "Name: %s", adapters[i]->get_name());
 					log_info("RHITest", "====================");
 				}
 				m_time = get_ticks();

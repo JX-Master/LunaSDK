@@ -16,25 +16,25 @@ namespace Luna
 {
 	namespace Image
 	{
-		inline int stbiw_get_comp(ImagePixelFormat format)
+		inline int stbiw_get_comp(ImageFormat format)
 		{
 			switch (format)
 			{
-			case ImagePixelFormat::r8_unorm:
-			case ImagePixelFormat::r16_unorm:
-			case ImagePixelFormat::r32_float:
+			case ImageFormat::r8_unorm:
+			case ImageFormat::r16_unorm:
+			case ImageFormat::r32_float:
 				return 1;
-			case ImagePixelFormat::rg8_unorm:
-			case ImagePixelFormat::rg16_unorm:
-			case ImagePixelFormat::rg32_float:
+			case ImageFormat::rg8_unorm:
+			case ImageFormat::rg16_unorm:
+			case ImageFormat::rg32_float:
 				return 2;
-			case ImagePixelFormat::rgb8_unorm:
-			case ImagePixelFormat::rgb16_unorm:
-			case ImagePixelFormat::rgb32_float:
+			case ImageFormat::rgb8_unorm:
+			case ImageFormat::rgb16_unorm:
+			case ImageFormat::rgb32_float:
 				return 3;
-			case ImagePixelFormat::rgba8_unorm:
-			case ImagePixelFormat::rgba16_unorm:
-			case ImagePixelFormat::rgba32_float:
+			case ImageFormat::rgba8_unorm:
+			case ImageFormat::rgba16_unorm:
+			case ImageFormat::rgba32_float:
 				return 4;
 			default:
 				lupanic();
@@ -51,10 +51,10 @@ namespace Luna
 			{
 				switch (comp)
 				{
-				case 1: d.format = ImagePixelFormat::r32_float; break;
-				case 2: d.format = ImagePixelFormat::rg32_float; break;
-				case 3: d.format = ImagePixelFormat::rgb32_float; break;
-				case 4: d.format = ImagePixelFormat::rgba32_float; break;
+				case 1: d.format = ImageFormat::r32_float; break;
+				case 2: d.format = ImageFormat::rg32_float; break;
+				case 3: d.format = ImageFormat::rgb32_float; break;
+				case 4: d.format = ImageFormat::rgba32_float; break;
 				default: lupanic(); break;
 				}
 			}
@@ -62,10 +62,10 @@ namespace Luna
 			{
 				switch (comp)
 				{
-				case 1: d.format = ImagePixelFormat::r16_unorm; break;
-				case 2: d.format = ImagePixelFormat::rg16_unorm; break;
-				case 3: d.format = ImagePixelFormat::rgb16_unorm; break;
-				case 4: d.format = ImagePixelFormat::rgba16_unorm; break;
+				case 1: d.format = ImageFormat::r16_unorm; break;
+				case 2: d.format = ImageFormat::rg16_unorm; break;
+				case 3: d.format = ImageFormat::rgb16_unorm; break;
+				case 4: d.format = ImageFormat::rgba16_unorm; break;
 				default: lupanic(); break;
 				}
 			}
@@ -73,10 +73,10 @@ namespace Luna
 			{
 				switch (comp)
 				{
-				case 1: d.format = ImagePixelFormat::r8_unorm; break;
-				case 2: d.format = ImagePixelFormat::rg8_unorm; break;
-				case 3: d.format = ImagePixelFormat::rgb8_unorm; break;
-				case 4: d.format = ImagePixelFormat::rgba8_unorm; break;
+				case 1: d.format = ImageFormat::r8_unorm; break;
+				case 2: d.format = ImageFormat::rg8_unorm; break;
+				case 3: d.format = ImageFormat::rgb8_unorm; break;
+				case 4: d.format = ImageFormat::rgba8_unorm; break;
 				default: lupanic(); break;
 				}
 			}
@@ -95,58 +95,58 @@ namespace Luna
 			is_hdr = stbi_is_hdr_from_memory((const unsigned char*)data, (int)data_size);
 			return stbi_make_desc(x, y, comp, is_hdr, is_16_bit);
 		}
-		inline bool is_hdr(ImagePixelFormat format)
+		inline bool is_hdr(ImageFormat format)
 		{
 			switch (format)
 			{
-			case ImagePixelFormat::r32_float:
-			case ImagePixelFormat::rg32_float:
-			case ImagePixelFormat::rgb32_float:
-			case ImagePixelFormat::rgba32_float:
+			case ImageFormat::r32_float:
+			case ImageFormat::rg32_float:
+			case ImageFormat::rgb32_float:
+			case ImageFormat::rgba32_float:
 				return true;
 			default:
 				return false;
 			}
 		}
-		inline bool is_16_bit(ImagePixelFormat format)
+		inline bool is_16_bit(ImageFormat format)
 		{
 			switch (format)
 			{
-			case ImagePixelFormat::r16_unorm:
-			case ImagePixelFormat::rg16_unorm:
-			case ImagePixelFormat::rgb16_unorm:
-			case ImagePixelFormat::rgba16_unorm:
+			case ImageFormat::r16_unorm:
+			case ImageFormat::rg16_unorm:
+			case ImageFormat::rgb16_unorm:
+			case ImageFormat::rgba16_unorm:
 				return true;
 			default:
 				return false;
 			}
 		}
-		inline int get_comp(ImagePixelFormat format)
+		inline int get_comp(ImageFormat format)
 		{
 			switch (format)
 			{
-			case ImagePixelFormat::r8_unorm:
-			case ImagePixelFormat::r16_unorm:
-			case ImagePixelFormat::r32_float:
+			case ImageFormat::r8_unorm:
+			case ImageFormat::r16_unorm:
+			case ImageFormat::r32_float:
 				return 1;
-			case ImagePixelFormat::rg8_unorm:
-			case ImagePixelFormat::rg16_unorm:
-			case ImagePixelFormat::rg32_float:
+			case ImageFormat::rg8_unorm:
+			case ImageFormat::rg16_unorm:
+			case ImageFormat::rg32_float:
 				return 2;
-			case ImagePixelFormat::rgb8_unorm:
-			case ImagePixelFormat::rgb16_unorm:
-			case ImagePixelFormat::rgb32_float:
+			case ImageFormat::rgb8_unorm:
+			case ImageFormat::rgb16_unorm:
+			case ImageFormat::rgb32_float:
 				return 3;
-			case ImagePixelFormat::rgba8_unorm:
-			case ImagePixelFormat::rgba16_unorm:
-			case ImagePixelFormat::rgba32_float:
+			case ImageFormat::rgba8_unorm:
+			case ImageFormat::rgba16_unorm:
+			case ImageFormat::rgba32_float:
 				return 4;
 			default:
 				lupanic();
 				return 0;
 			}
 		}
-		LUNA_IMAGE_API R<Blob> read_image_file(const void* data, usize data_size, ImagePixelFormat desired_format, ImageDesc& out_desc)
+		LUNA_IMAGE_API R<Blob> read_image_file(const void* data, usize data_size, ImageFormat desired_format, ImageDesc& out_desc)
 		{
 			// Use stb_image library to load image.
 
@@ -179,34 +179,34 @@ namespace Luna
 			return ret;
 		}
 
-		inline bool check_png_format(ImagePixelFormat format)
+		inline bool check_png_format(ImageFormat format)
 		{
 			return (
-				(format == ImagePixelFormat::r8_unorm) ||
-				(format == ImagePixelFormat::rg8_unorm) ||
-				(format == ImagePixelFormat::rgba8_unorm) ||
-				(format == ImagePixelFormat::r16_unorm) ||
-				(format == ImagePixelFormat::rg16_unorm) ||
-				(format == ImagePixelFormat::rgba16_unorm)
+				(format == ImageFormat::r8_unorm) ||
+				(format == ImageFormat::rg8_unorm) ||
+				(format == ImageFormat::rgba8_unorm) ||
+				(format == ImageFormat::r16_unorm) ||
+				(format == ImageFormat::rg16_unorm) ||
+				(format == ImageFormat::rgba16_unorm)
 				) ? true : false;
 		}
 
-		inline bool check_bmp_tga_jpg_format(ImagePixelFormat format)
+		inline bool check_bmp_tga_jpg_format(ImageFormat format)
 		{
 			return (
-				(format == ImagePixelFormat::r8_unorm) ||
-				(format == ImagePixelFormat::rg8_unorm) ||
-				(format == ImagePixelFormat::rgba8_unorm)
+				(format == ImageFormat::r8_unorm) ||
+				(format == ImageFormat::rg8_unorm) ||
+				(format == ImageFormat::rgba8_unorm)
 				) ? true : false;
 		}
 
-		inline bool check_hdr_format(ImagePixelFormat format)
+		inline bool check_hdr_format(ImageFormat format)
 		{
 			return (
-				(format == ImagePixelFormat::r32_float) ||
-				(format == ImagePixelFormat::rg32_float) ||
-				(format == ImagePixelFormat::rgb32_float) ||
-				(format == ImagePixelFormat::rgba32_float)
+				(format == ImageFormat::r32_float) ||
+				(format == ImageFormat::rg32_float) ||
+				(format == ImageFormat::rgb32_float) ||
+				(format == ImageFormat::rgba32_float)
 				) ? true : false;
 		}
 		LUNA_IMAGE_API RV write_png_file(ISeekableStream* stream, const ImageDesc& desc, const Blob& image_data)

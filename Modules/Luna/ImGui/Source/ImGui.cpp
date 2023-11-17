@@ -197,7 +197,7 @@ float4 main(PS_INPUT input) : SV_Target
                     PipelineLayoutFlag::allow_input_assembler_input_layout)));
 
                 // Create constant buffer.
-                usize buffer_size_align = dev->get_uniform_buffer_data_alignment();
+                usize buffer_size_align = dev->check_feature(DeviceFeature::uniform_buffer_data_alignment).uniform_buffer_data_alignment;
                 luset(g_cb, dev->new_buffer(MemoryType::upload, BufferDesc(BufferUsageFlag::uniform_buffer, align_upper(sizeof(Float4x4), buffer_size_align))));
             }
             lucatchret;
@@ -571,12 +571,11 @@ float4 main(PS_INPUT input) : SV_Target
         static void handle_key_state_change(HID::KeyCode key, bool is_key_down)
         {
             ImGuiIO& io = ImGui::GetIO();
-            auto keyboard = HID::get_device<HID::IKeyboard>().get();
             // Submit modifiers
-            io.AddKeyEvent(ImGuiKey_ModCtrl, keyboard->get_key_state(HID::KeyCode::ctrl));
-            io.AddKeyEvent(ImGuiKey_ModShift, keyboard->get_key_state(HID::KeyCode::shift));
-            io.AddKeyEvent(ImGuiKey_ModAlt, keyboard->get_key_state(HID::KeyCode::menu));
-            io.AddKeyEvent(ImGuiKey_ModSuper, keyboard->get_key_state(HID::KeyCode::apps));
+            io.AddKeyEvent(ImGuiKey_ModCtrl, HID::get_key_state(HID::KeyCode::ctrl));
+            io.AddKeyEvent(ImGuiKey_ModShift, HID::get_key_state(HID::KeyCode::shift));
+            io.AddKeyEvent(ImGuiKey_ModAlt, HID::get_key_state(HID::KeyCode::menu));
+            io.AddKeyEvent(ImGuiKey_ModSuper, HID::get_key_state(HID::KeyCode::apps));
             auto key_id = hid_key_to_imgui_key(key);
             if (key_id != ImGuiKey_None)
             {
@@ -585,18 +584,18 @@ float4 main(PS_INPUT input) : SV_Target
             // Submit individual left/right modifier events
             if (key == HID::KeyCode::shift)
             {
-                if (keyboard->get_key_state(HID::KeyCode::l_shift) == is_key_down) io.AddKeyEvent(ImGuiKey_LeftShift, is_key_down);
-                if (keyboard->get_key_state(HID::KeyCode::r_shift) == is_key_down) io.AddKeyEvent(ImGuiKey_RightShift, is_key_down);
+                if (HID::get_key_state(HID::KeyCode::l_shift) == is_key_down) io.AddKeyEvent(ImGuiKey_LeftShift, is_key_down);
+                if (HID::get_key_state(HID::KeyCode::r_shift) == is_key_down) io.AddKeyEvent(ImGuiKey_RightShift, is_key_down);
             }
             else if (key == HID::KeyCode::ctrl)
             {
-                if (keyboard->get_key_state(HID::KeyCode::l_ctrl) == is_key_down) io.AddKeyEvent(ImGuiKey_LeftCtrl, is_key_down);
-                if (keyboard->get_key_state(HID::KeyCode::r_ctrl) == is_key_down) io.AddKeyEvent(ImGuiKey_RightCtrl, is_key_down);
+                if (HID::get_key_state(HID::KeyCode::l_ctrl) == is_key_down) io.AddKeyEvent(ImGuiKey_LeftCtrl, is_key_down);
+                if (HID::get_key_state(HID::KeyCode::r_ctrl) == is_key_down) io.AddKeyEvent(ImGuiKey_RightCtrl, is_key_down);
             }
             else if (key == HID::KeyCode::menu)
             {
-                if (keyboard->get_key_state(HID::KeyCode::l_menu) == is_key_down) io.AddKeyEvent(ImGuiKey_LeftAlt, is_key_down);
-                if (keyboard->get_key_state(HID::KeyCode::r_menu) == is_key_down) io.AddKeyEvent(ImGuiKey_RightAlt, is_key_down);
+                if (HID::get_key_state(HID::KeyCode::l_menu) == is_key_down) io.AddKeyEvent(ImGuiKey_LeftAlt, is_key_down);
+                if (HID::get_key_state(HID::KeyCode::r_menu) == is_key_down) io.AddKeyEvent(ImGuiKey_RightAlt, is_key_down);
             }
         }
 
@@ -684,8 +683,7 @@ float4 main(PS_INPUT input) : SV_Target
         {
             ImGuiIO& io = ImGui::GetIO();
 
-            auto mouse = HID::get_device<HID::IMouse>().get();
-            auto mouse_pos = mouse->get_cursor_pos();
+            auto mouse_pos = HID::get_mouse_pos();
 
             bool app_focused = true;
             //if(g_active_window) app_focused = g_active_window->is_foreground();
@@ -698,7 +696,7 @@ float4 main(PS_INPUT input) : SV_Target
                     Int2U pos = { (int)io.MousePos.x, (int)io.MousePos.y };
                     if ((io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) == 0)
                         pos = g_active_window->client_to_screen(pos);
-                    auto _ = mouse->set_cursor_pos(pos.x, pos.y);
+                    auto _ = HID::set_mouse_pos(pos.x, pos.y);
                 }
             }
         }
@@ -903,7 +901,7 @@ float4 main(PS_INPUT input) : SV_Target
                                 g_desc_sets.push_back(new_vs);
                             }
                             IDescriptorSet* vs = g_desc_sets[num_draw_calls];
-                            usize cb_align = dev->get_uniform_buffer_data_alignment();
+                            usize cb_align = dev->check_feature(DeviceFeature::uniform_buffer_data_alignment).uniform_buffer_data_alignment;
                             luexp(vs->update_descriptors({
                                 WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(g_cb)),
                                 WriteDescriptorSet::read_texture_view(1, TextureViewDesc::tex2d((ITexture*)pcmd->TextureId)),

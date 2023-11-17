@@ -28,6 +28,8 @@ namespace Luna
         {
             lutry
             {
+                register_boxed_type<Adapter>();
+                impl_interface_for_type<Adapter, IAdapter>();
                 register_boxed_type<CommandBuffer>();
                 impl_interface_for_type<CommandBuffer, ICommandBuffer, IDeviceChild, IWaitable>();
                 register_boxed_type<DescriptorSet>();
@@ -57,7 +59,7 @@ namespace Luna
                 register_boxed_type<SwapChain>();
                 impl_interface_for_type<SwapChain, ISwapChain, IDeviceChild>();
                 register_boxed_type<TextureView>();
-                luexp(init_devices());
+                init_adapters();
                 luexp(init_main_device());
             }
             lucatchret;
@@ -66,10 +68,12 @@ namespace Luna
 		void render_api_close()
         {
             g_main_device.reset();
+            g_adapters.clear();
+            g_adapters.shrink_to_fit();
         }
-        LUNA_RHI_API APIType get_current_platform_api_type()
+        LUNA_RHI_API BackendType get_backend_type()
 		{
-			return APIType::metal;
+			return BackendType::metal;
 		}
     }
 }
