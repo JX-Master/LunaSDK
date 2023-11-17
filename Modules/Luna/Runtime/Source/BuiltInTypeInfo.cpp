@@ -819,9 +819,6 @@ namespace Luna
 			set_hashable(boolean_type(), default_hash<bool>);
 			serial.serialize_func = serialize_usize;
 			serial.deserialize_func = deserialize_usize;
-			set_serializable(pointer_type(), &serial);
-			set_equatable(pointer_type(), default_equal_to<void*>);
-			set_hashable(pointer_type(), default_hash<void*>);
 		}
 		// Guid
 		{

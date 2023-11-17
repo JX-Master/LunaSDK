@@ -39,7 +39,6 @@ namespace Luna
 	static typeinfo_t g_c16_type;
 	static typeinfo_t g_c32_type;
 	static typeinfo_t g_boolean_type;
-	static typeinfo_t g_pointer_type;
 
 	LUNA_RUNTIME_API typeinfo_t void_type() { return g_void_type; }
 	LUNA_RUNTIME_API typeinfo_t u8_type() { return g_u8_type; }
@@ -58,7 +57,6 @@ namespace Luna
 	LUNA_RUNTIME_API typeinfo_t c16_type() { return g_c16_type; }
 	LUNA_RUNTIME_API typeinfo_t c32_type() { return g_c32_type; }
 	LUNA_RUNTIME_API typeinfo_t boolean_type() { return g_boolean_type; }
-	LUNA_RUNTIME_API typeinfo_t pointer_type() { return g_pointer_type; }
 
 	TypeInfo::~TypeInfo()
 	{
@@ -104,7 +102,6 @@ namespace Luna
 		g_c16_type = add_primitive_typeinfo("c16", Guid("{8ADABDAB-8503-4D5B-A20C-884A028B3E9F}"), sizeof(c16), alignof(c16));
 		g_c32_type = add_primitive_typeinfo("c32", Guid("{9A5F29BB-84CC-49AB-9FF6-7022E9DFD939}"), sizeof(c32), alignof(c32));
 		g_boolean_type = add_primitive_typeinfo("bool", Guid("{237D17F7-E1BA-401B-AE38-C75B04F53DB4}"), sizeof(bool), alignof(bool));
-		g_pointer_type = add_primitive_typeinfo("ptr_t", Guid("{EFCCC028-8A96-4EC2-9127-191D772F28BF}"), sizeof(void*), alignof(void*));
 	}
 	void type_registry_close()
 	{
@@ -386,18 +383,18 @@ namespace Luna
 		if (iter == g_type_guid_map.end()) return nullptr;
 		return (typeinfo_t)(iter->second);
 	}
-	LUNA_RUNTIME_API typeinfo_t get_generic_instanced_type(typeinfo_t generic_type, const typeinfo_t* generic_arguments, usize num_generic_arguments)
+	LUNA_RUNTIME_API typeinfo_t get_generic_instanced_type(typeinfo_t generic_type, Span<const typeinfo_t> generic_arguments)
 	{
 		OSMutexGuard guard(g_type_registry_lock);
 		if (((TypeInfo*)generic_type)->kind != TypeKind::generic_structure) return nullptr;
 		GenericStructureTypeInfo* st = (GenericStructureTypeInfo*)generic_type;
 		for (GenericStructureInstancedTypeInfo* gt : st->generic_instanced_types)
 		{
-			if (generic_arguments_equal(gt->generic_arguments.data(), gt->generic_arguments.size(), generic_arguments, num_generic_arguments)) return (typeinfo_t)gt;
+			if (generic_arguments_equal(gt->generic_arguments.data(), gt->generic_arguments.size(), generic_arguments.data(), generic_arguments.size())) return (typeinfo_t)gt;
 		}
-		if (!num_generic_arguments) return nullptr;
+		if (generic_arguments.size() == 0) return nullptr;
 		// Creates a new type for generic arguments.
-		return new_instanced_type(st, generic_arguments, num_generic_arguments);
+		return new_instanced_type(st, generic_arguments.data(), generic_arguments.size());
 	}
 	LUNA_RUNTIME_API Name get_type_name(typeinfo_t type, Name* alias)
 	{
