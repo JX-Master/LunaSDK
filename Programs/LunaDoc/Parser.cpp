@@ -57,9 +57,17 @@ Name _typedef;
 
 static void encode_markdown_text(String& out_text, const Variant& element);
 
+static void new_paragraph(String& out_text)
+{
+    // make sure only one blank is inserted per paragraph.
+    if(out_text.size() >= 2 && out_text[out_text.size() - 2] == '\n' && out_text[out_text.size() - 1] == '\n') return;
+    out_text.push_back('\n');
+    out_text.push_back('\n');
+}
+
 static void encode_parameter_list(String& out_text, const Variant& parameterlist)
 {
-    out_text.append("\n#### Parameters\n");
+    out_text.append("#### Parameters\n");
     auto& items = get_xml_content(parameterlist);
     for(auto& item : items.values())
     {
@@ -111,10 +119,11 @@ static void encode_markdown_text(String& out_text, const Variant& element)
             if(name == _para)
             {
                 encode_markdown_text(out_text, c);
-                out_text.append("\n\n");
+                new_paragraph(out_text);
             }
             else if(name == _parameterlist)
             {
+                new_paragraph(out_text);
                 encode_parameter_list(out_text, c);
             }
             else if(name == _simplesect)
@@ -122,6 +131,7 @@ static void encode_markdown_text(String& out_text, const Variant& element)
                 auto& attributes = get_xml_attributes(c);
                 if(attributes[_kind].str() == _return)
                 {
+                    new_paragraph(out_text);
                     out_text.append("#### Return value\n");
                     encode_markdown_text(out_text, c);
                 }
@@ -149,8 +159,7 @@ static void parse_func_section(String& out_group_content, const Variant& section
         Name qualifiedname;
         Name definition;
         Name argsstring;
-        String briefdescription;
-        String detaileddescription;
+        String description;
         String templateparamlist;
         for(auto& m : func_members.values())
         {
@@ -220,11 +229,11 @@ static void parse_func_section(String& out_group_content, const Variant& section
             }
             else if(member_name == _briefdescription)
             {
-                encode_markdown_text(briefdescription, m);
+                encode_markdown_text(description, m);
             }
             else if(member_name == _detaileddescription)
             {
-                encode_markdown_text(detaileddescription, m);
+                encode_markdown_text(description, m);
             }
         }
         out_group_content.append("### ");
@@ -235,13 +244,9 @@ static void parse_func_section(String& out_group_content, const Variant& section
         out_group_content.append(definition.c_str(), definition.size());
         out_group_content.append(argsstring.c_str(), argsstring.size());
         out_group_content.append("\n```\n\n");
-        if(!briefdescription.empty())
+        if(!description.empty())
         {
-            out_group_content.append(briefdescription);
-        }
-        if(!detaileddescription.empty())
-        {
-            out_group_content.append(detaileddescription);
+            out_group_content.append(description);
         }
     }
 }
@@ -258,8 +263,7 @@ static void parse_typedef_section(String& out_group_content, const Variant& sect
         auto& type_members = get_xml_content(c);
         Name qualifiedname;
         Name definition;
-        String briefdescription;
-        String detaileddescription;
+        String description;
         for(auto& m : type_members.values())
         {
             auto member_name = get_xml_name(m);
@@ -273,11 +277,11 @@ static void parse_typedef_section(String& out_group_content, const Variant& sect
             }
             else if(member_name == _briefdescription)
             {
-                encode_markdown_text(briefdescription, m);
+                encode_markdown_text(description, m);
             }
             else if(member_name == _detaileddescription)
             {
-                encode_markdown_text(detaileddescription, m);
+                encode_markdown_text(description, m);
             }
         }
         out_group_content.append("### ");
@@ -286,13 +290,9 @@ static void parse_typedef_section(String& out_group_content, const Variant& sect
         out_group_content.append("```c++\n");
         out_group_content.append(definition.c_str(), definition.size());
         out_group_content.append("\n```\n\n");
-        if(!briefdescription.empty())
+        if(!description.empty())
         {
-            out_group_content.append(briefdescription);
-        }
-        if(!detaileddescription.empty())
-        {
-            out_group_content.append(detaileddescription);
+            out_group_content.append(description);
         }
     }
 }
