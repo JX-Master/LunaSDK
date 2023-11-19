@@ -54,6 +54,8 @@ extern Name _parameteritem;
 extern Name _computeroutput;
 extern Name _innergroup;
 extern Name _refid;
+extern Name _templateparamlist;
+extern Name _typedef;
 
 
 // Generate AST from XML documents for groups.

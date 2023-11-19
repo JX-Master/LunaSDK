@@ -189,6 +189,8 @@ RV run(int argc, const char* argv[])
         _computeroutput = "computeroutput";
         _innergroup = "innergroup";
         _refid = "refid";
+        _templateparamlist = "templateparamlist";
+        _typedef = "typedef";
 
         set_log_to_platform_enabled(true);
         set_log_to_platform_verbosity(LogVerbosity::info);

@@ -52,6 +52,8 @@ Name _parameteritem;
 Name _computeroutput;
 Name _innergroup;
 Name _refid;
+Name _templateparamlist;
+Name _typedef;
 
 static void encode_markdown_text(String& out_text, const Variant& element);
 
@@ -149,10 +151,36 @@ static void parse_func_section(String& out_group_content, const Variant& section
         Name argsstring;
         String briefdescription;
         String detaileddescription;
+        String templateparamlist;
         for(auto& m : func_members.values())
         {
             auto member_name = get_xml_name(m);
-            if(member_name == _type)
+            if(member_name == _templateparamlist)
+            {
+                templateparamlist.append("template <");
+                auto& params = get_xml_content(m);
+                for(auto& p : params.values())
+                {
+                    auto param_name = get_xml_name(p);
+                    if(param_name == _param)
+                    {
+                        auto& type = get_xml_content(p).at(0);
+                        auto type_name = get_xml_name(type);
+                        if(type_name == _type)
+                        {
+                            templateparamlist.append(get_xml_content(type).at(0).c_str());
+                            templateparamlist.append(", ");
+                        }
+                    }
+                }
+                if(templateparamlist[templateparamlist.size() - 2] == ',' && templateparamlist[templateparamlist.size() - 1] == ' ')
+                {
+                    templateparamlist.pop_back();
+                    templateparamlist.pop_back();
+                }
+                templateparamlist.append(">\n");
+            }
+            else if(member_name == _type)
             {
                 //member[_type] = get_xml_content(m).at(0).str();
             }
@@ -196,7 +224,59 @@ static void parse_func_section(String& out_group_content, const Variant& section
             }
             else if(member_name == _detaileddescription)
             {
-                String bd;
+                encode_markdown_text(detaileddescription, m);
+            }
+        }
+        out_group_content.append("### ");
+        out_group_content.append(qualifiedname.c_str(), qualifiedname.size());
+        out_group_content.append("\n\n");
+        out_group_content.append("```c++\n");
+        if(!templateparamlist.empty()) out_group_content.append(templateparamlist);
+        out_group_content.append(definition.c_str(), definition.size());
+        out_group_content.append(argsstring.c_str(), argsstring.size());
+        out_group_content.append("\n```\n\n");
+        if(!briefdescription.empty())
+        {
+            out_group_content.append(briefdescription);
+        }
+        if(!detaileddescription.empty())
+        {
+            out_group_content.append(detaileddescription);
+        }
+    }
+}
+
+static void parse_typedef_section(String& out_group_content, const Variant& section)
+{
+    out_group_content.append("## Aliasing types\n");
+    auto& content = get_xml_content(section);
+    for(auto& c : content.values())
+    {
+        if(get_xml_name(c) != _memberdef) continue;
+        auto& attributes = get_xml_attributes(c);
+        if(attributes[_kind].str() != _typedef) continue;
+        auto& type_members = get_xml_content(c);
+        Name qualifiedname;
+        Name definition;
+        String briefdescription;
+        String detaileddescription;
+        for(auto& m : type_members.values())
+        {
+            auto member_name = get_xml_name(m);
+            if(member_name == _qualifiedname)
+            {
+                qualifiedname = get_xml_content(m).at(0).str();
+            }
+            else if(member_name == _definition)
+            {
+                definition = get_xml_content(m).at(0).str();
+            }
+            else if(member_name == _briefdescription)
+            {
+                encode_markdown_text(briefdescription, m);
+            }
+            else if(member_name == _detaileddescription)
+            {
                 encode_markdown_text(detaileddescription, m);
             }
         }
@@ -205,7 +285,6 @@ static void parse_func_section(String& out_group_content, const Variant& section
         out_group_content.append("\n\n");
         out_group_content.append("```c++\n");
         out_group_content.append(definition.c_str(), definition.size());
-        out_group_content.append(argsstring.c_str(), argsstring.size());
         out_group_content.append("\n```\n\n");
         if(!briefdescription.empty())
         {
@@ -261,12 +340,17 @@ RV parse_group(const Variant& group, String& out_group_content, Name& out_group_
             else if(name == _sectiondef)
             {
                 auto kind = get_xml_attributes(c)[_kind].str();
+                String section;
                 if(kind == _func)
                 {
-                    String section;
                     parse_func_section(section, c);
-                    sections.push_back(move(section));
+                    
                 }
+                else if(kind == _typedef)
+                {
+                    parse_typedef_section(section, c);
+                }
+                sections.push_back(move(section));
             }
             else if(name == _innergroup)
             {

@@ -30,7 +30,7 @@ namespace Luna
 	//! @brief The opaque pointer that points to the boxed object.
 	using object_t = opaque_t;
 
-	//! @brief The refereing counter type for boxed objects.
+	//! @brief The reference counter type for boxed objects.
 	using ref_count_t = i32;
 
 	//! @brief Registers one type so that it can be used for creating boxed objects.
@@ -137,9 +137,9 @@ namespace Luna
 	//! @param[in] object_ptr The object pointer.
 	//! @return Returns `object_ptr` casted to the specified type if type casting is succeeded, returns `nullptr` otherwise.
 	template <typename _Rty>
-	inline _Rty* cast_object(object_t object)
+	inline _Rty* cast_object(object_t object_ptr)
 	{
-		return object_is_type(object, get_type_by_guid(_Rty::__guid)) ? (_Rty*)object : nullptr;
+		return object_is_type(object_ptr, get_type_by_guid(_Rty::__guid)) ? (_Rty*)object_ptr : nullptr;
 	}
 
 	//! @}
