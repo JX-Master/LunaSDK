@@ -13,6 +13,7 @@
 #include <Luna/Runtime/Variant.hpp>
 #include <Luna/Runtime/Span.hpp>
 #include <Luna/Runtime/Result.hpp>
+#include <Luna/Runtime/Path.hpp>
 using namespace Luna;
 
 extern Name _doxygen;
@@ -56,8 +57,32 @@ extern Name _innergroup;
 extern Name _refid;
 extern Name _templateparamlist;
 extern Name _typedef;
+extern Name _innerclass;
+extern Name _basecompoundref;
+extern Name _publicattrib;
+extern Name _publicfunc;
+extern Name _variable;
+extern Name _ref;
+extern Name _ulink;
+extern Name _url;
 
+struct Parser
+{
+    // All read group files, identified by their refid.
+    HashMap<Name, Variant> group_files;
+    // All read class files, identified by their refid.
+    HashMap<Name, Variant> class_files;
 
-// Generate AST from XML documents for groups.
+    RV add_group_xml_file(Variant&& file_data);
+    RV add_class_xml_file(Variant&& file_data);
+    RV encode_md_files(const Path& output_dir);
 
-RV parse_group(const Variant& group, String& out_group_content, Name& out_group_filename);
+    private:
+    void encode_md_parameter_list(const Variant& parameterlist, String& out_text);
+    void encode_md_text(const Variant& element, String& out_text);
+    void encode_md_attrib_section(const Variant& section, String& out_group_content);
+    void encode_md_func_section(const Variant& section, String& out_group_content);
+    void encode_md_typedef_section(const Variant& section, String& out_group_content);
+    RV encode_md_class_file(const Variant& xml_data, String& out_content);
+    RV encode_md_group_file(const Variant& xml_data, String& out_content);
+};

@@ -27,7 +27,7 @@ Tasks:
     md, markdown   Generate markdown files.
     -h, --help      Print help message.
 Task options (markdown):
-    LunaDoc <-md|--markdown> [-o <./output>] [-s <./input_xml>]
+    LunaDoc <-md|--markdown> [-o <./output>] [-i <./input_xml>]
     -o  Sets the output directory. Use "./markdown" if not specified.
     -i  Sets the input directory. Use current working directory if not specified.
     -v  Outputs verbose information for debugging.
@@ -95,7 +95,7 @@ RV gen_markdown(int argc, const char* argv[])
         log_verbose("LunaDoc", "Input directory: %s", input_dir.encode().c_str());
         log_verbose("LunaDoc", "Output directory: %s", input_dir.encode().c_str());
         // Read source XML files.
-        Vector<Variant> group_files;
+        Parser parser;
         {
             lulet(iter, open_dir(input_dir.encode().c_str()));
             while(iter->is_valid())
@@ -107,39 +107,25 @@ RV gen_markdown(int argc, const char* argv[])
                     Path filename = input_dir.encode().c_str();
                     filename.append(name);
                     lulet(f, open_file(filename.encode().c_str(), FileOpenFlag::read, FileCreationMode::open_existing));
-                    lulet(group, VariantUtils::read_xml(f));
-                    group_files.push_back(move(group));
+                    lulet(data, VariantUtils::read_xml(f));
+                    luexp(parser.add_group_xml_file(move(data)));
+                }
+                else if((strstr(name, "class_") == name) || (strstr(name, "struct_") == name))
+                {
+                    log_info("LunaDoc", "Read class/struct file %s", name);
+                    Path filename = input_dir.encode().c_str();
+                    filename.append(name);
+                    lulet(f, open_file(filename.encode().c_str(), FileOpenFlag::read, FileCreationMode::open_existing));
+                    lulet(data, VariantUtils::read_xml(f));
+                    luexp(parser.add_class_xml_file(move(data)));
                 }
                 iter->move_next();
             }
-            if(group_files.empty())
+            if(parser.group_files.empty())
             {
                 log_info("LunaDoc", "No group found in %s", input_dir.encode().c_str());
             }
-            Vector<Pair<Name, String>> groups;
-            for(auto& g : group_files)
-            {
-                String group_md_text;
-                Name group_filename;
-                luexp(parse_group(g, group_md_text, group_filename));
-                groups.push_back(make_pair(move(group_filename), move(group_md_text)));
-            }
-            // Create directory if not exist
-            {
-                auto dir = get_file_attribute(output_dir.encode().c_str());
-                if (failed(dir))
-                {
-                    luexp(create_dir(output_dir.encode().c_str()));
-                }
-            }
-            for(auto& g : groups)
-            {
-                Path path = output_dir;
-                path.push_back(g.first);
-                path.append_extension("md");
-                lulet(f, open_file(path.encode().c_str(), FileOpenFlag::write, FileCreationMode::create_always));
-                luexp(f->write(g.second.c_str(), g.second.size()));
-            }
+            luexp(parser.encode_md_files(output_dir));
         }
     }
     lucatchret;
@@ -191,6 +177,14 @@ RV run(int argc, const char* argv[])
         _refid = "refid";
         _templateparamlist = "templateparamlist";
         _typedef = "typedef";
+        _innerclass = "innerclass";
+        _basecompoundref = "basecompoundref";
+        _publicattrib = "public-attrib";
+        _publicfunc = "public-func";
+        _variable = "variable";
+        _ref = "ref";
+        _ulink = "ulink";
+        _url = "url";
 
         set_log_to_platform_enabled(true);
         set_log_to_platform_verbosity(LogVerbosity::info);
