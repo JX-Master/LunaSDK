@@ -7,11 +7,6 @@
 * @author JXMaster
 * @date 2019/9/29
 */
-#include <Luna/Runtime/PlatformDefines.hpp>
-#ifdef LUNA_PLATFORM_WINDOWS
-
-#define LUNA_RUNTIME_API LUNA_EXPORT
-
 #include "../../../Platform/Windows/MiniWin.hpp"
 #include <io.h>
 #include <Luna/Runtime/Unicode.hpp>
@@ -848,5 +843,3 @@ namespace Luna
 
 
 }
-
-#endif

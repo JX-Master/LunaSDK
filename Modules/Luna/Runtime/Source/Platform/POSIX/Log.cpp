@@ -7,9 +7,6 @@
 * @author JXMaster
 * @date 2023/9/7
 */
-#include <Luna/Runtime/PlatformDefines.hpp>
-
-#ifdef LUNA_PLATFORM_POSIX
 #include "../../OS.hpp"
 #include <unistd.h>
 
@@ -57,5 +54,3 @@ namespace Luna
 		}
 	}
 }
-
-#endif

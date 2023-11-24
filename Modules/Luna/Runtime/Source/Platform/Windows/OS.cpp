@@ -7,9 +7,6 @@
 * @author JXMaster
 * @date 2020/12/9
  */
-#include <Luna/Runtime/PlatformDefines.hpp>
-
-#ifdef LUNA_PLATFORM_WINDOWS
 #include "../../OS.hpp"
 #include "../../../Platform/Windows/MiniWin.hpp"
 
@@ -23,9 +20,12 @@ namespace Luna
 		void file_init();
 		void std_io_init();
 		void std_io_close();
+		void debug_init();
+		void debug_close();
 
 		void init()
 		{
+			debug_init();
 			time_init();
 			thread_init();
 			file_init();
@@ -36,6 +36,7 @@ namespace Luna
 		{
 			std_io_close();
 			thread_close();
+			debug_close();
 		}
 
 		u32 get_num_processors()
@@ -47,5 +48,3 @@ namespace Luna
 		}
 	}
 }
-
-#endif

@@ -12,7 +12,6 @@
 
 #include <atomic>
 
-#ifdef LUNA_PLATFORM_WINDOWS
 #include "../../../Platform/Windows/MiniWin.hpp"
 
 namespace Luna
@@ -163,4 +162,3 @@ namespace Luna
 #endif
 
 }
-#endif

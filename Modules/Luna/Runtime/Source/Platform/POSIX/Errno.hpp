@@ -8,9 +8,6 @@
 * @date 2020/9/22
  */
 #pragma once
-#include <Luna/Runtime/PlatformDefines.hpp>
-#ifdef LUNA_PLATFORM_POSIX
-
 #include <errno.h>
 
 namespace Luna
@@ -101,5 +98,3 @@ namespace Luna
         }
     }
 }
-
-#endif
