@@ -24,7 +24,7 @@ namespace Luna
         }
         void free_backtrace_symbols(const c8** symbols)
         {
-            free(handle);
+            free(symbols);
         }
     }
 }
