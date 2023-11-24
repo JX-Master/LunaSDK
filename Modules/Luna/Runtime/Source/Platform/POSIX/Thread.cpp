@@ -7,10 +7,6 @@
 * @author JXMaster
 * @date 2020/9/28
 */
-#include <Luna/Runtime/PlatformDefines.hpp>
-
-#ifdef LUNA_PLATFORM_POSIX
-
 #include "../../OS.hpp"
 
 #include <unistd.h>
@@ -215,5 +211,3 @@ void* tls_get(opaque_t handle)
 }
 }
 }
-
-#endif

@@ -7,10 +7,6 @@
 * @author JXMaster
 * @date 2020/9/22
  */
-#include <Luna/Runtime/PlatformDefines.hpp>
-
-#ifdef LUNA_PLATFORM_POSIX
-
 #include "../../OS.hpp"
 #include <Luna/Runtime/Unicode.hpp>
 #include <assert.h>
@@ -21,7 +17,7 @@ namespace Luna
     {
         void assert_fail(const c8* msg, const c8* file, u32 line)
         {
-            printf ("%s:%d: failed assertion `%s'\n", file, line, msg);
+            printf ("Assertion Failed: %s FILE: %s, LINE: %d", msg, file, line);
             abort();
         }
 
@@ -34,5 +30,3 @@ namespace Luna
 
     }
 }
-
-#endif

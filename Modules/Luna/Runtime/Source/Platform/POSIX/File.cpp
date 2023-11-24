@@ -7,9 +7,6 @@
 * @author JXMaster
 * @date 2020/9/27
 */
-#include <Luna/Runtime/PlatformDefines.hpp>
-#ifdef LUNA_PLATFORM_POSIX
-
 #include "../../OS.hpp"
 #include <Luna/Runtime/Unicode.hpp>
 #include <Luna/Runtime/Algorithm.hpp>
@@ -814,4 +811,3 @@ namespace Luna
 		}
     }
 }
-#endif

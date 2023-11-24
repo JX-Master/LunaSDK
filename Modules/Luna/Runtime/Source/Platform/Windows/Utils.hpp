@@ -8,9 +8,6 @@
 * @date 2018/11/14
 */
 #pragma once
-#include <Luna/Runtime/PlatformDefines.hpp>
-
-#ifdef LUNA_PLATFORM_WINDOWS
 #include "../../../Platform/Windows/MiniWin.hpp"
 #include "../../../Unicode.hpp"
 #include "../../OS.hpp"
@@ -27,4 +24,3 @@ namespace Luna
 		}
 	}
 }
-#endif

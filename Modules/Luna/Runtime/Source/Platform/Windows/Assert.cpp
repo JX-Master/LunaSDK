@@ -7,10 +7,6 @@
 * @author JXMaster
 * @date 2018/10/26
  */
-#include <Luna/Runtime/PlatformDefines.hpp>
-
-#ifdef LUNA_PLATFORM_WINDOWS
-
 #include "../../OS.hpp"
 #include <Luna/Runtime/Unicode.hpp>
 #include <assert.h>
@@ -44,5 +40,3 @@ namespace Luna
     }
 
 }
-
-#endif
