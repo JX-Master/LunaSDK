@@ -14,7 +14,7 @@ namespace Luna
 {
     namespace OS
     {
-        ErrCode translate_last_error(DWORD code)
+        inline ErrCode translate_last_error(DWORD code)
         {
             switch(code)
             {

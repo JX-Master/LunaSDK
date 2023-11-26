@@ -6,7 +6,7 @@
 * @file Atomic.inl
 * @author JXMaster
 * @date 2018/12/7
- */
+*/
 #pragma once
 #include "../../../Base.hpp"
 

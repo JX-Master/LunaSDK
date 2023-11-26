@@ -6,7 +6,7 @@
 * @file Debug.cpp
 * @author JXMaster
 * @date 2023/11/24
- */
+*/
 #include "../../../Platform/Windows/MiniWin.hpp"
 #include "../../OS.hpp"
 #include "../../../SpinLock.hpp"
