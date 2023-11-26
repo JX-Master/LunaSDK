@@ -6,7 +6,7 @@
 * @file OS.cpp
 * @author JXMaster
 * @date 2020/12/9
- */
+*/
 #include "../../OS.hpp"
 #include "../../../Platform/Windows/MiniWin.hpp"
 

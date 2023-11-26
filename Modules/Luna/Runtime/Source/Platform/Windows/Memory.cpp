@@ -6,7 +6,7 @@
 * @file Memory.cpp
 * @author JXMaster
 * @date 2020/7/28
- */
+*/
 #include <Luna/Runtime/Assert.hpp>
 #include "../../../Platform/Windows/MiniWin.hpp"
 #include "../../OS.hpp"

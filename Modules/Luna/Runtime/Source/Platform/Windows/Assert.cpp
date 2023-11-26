@@ -6,7 +6,7 @@
 * @file Assert.hpp
 * @author JXMaster
 * @date 2018/10/26
- */
+*/
 #include "../../OS.hpp"
 #include <Luna/Runtime/Unicode.hpp>
 #include <assert.h>

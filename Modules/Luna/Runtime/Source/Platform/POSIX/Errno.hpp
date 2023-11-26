@@ -14,7 +14,7 @@ namespace Luna
 {
     namespace OS
     {
-        const c8* display_errno(int err)
+        inline const c8* display_errno(int err)
         {
             switch(err)
             {
