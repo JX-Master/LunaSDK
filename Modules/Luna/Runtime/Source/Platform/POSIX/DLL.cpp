@@ -20,7 +20,7 @@ namespace Luna
             void* h = dlopen(path, RTLD_LAZY);
             if(!h)
             {
-                return ser_error(BasicError::bad_platform_call(), "%s", dlerror());
+                return set_error(BasicError::bad_platform_call(), "%s", dlerror());
             }
             return (opaque_t)h;
         }
@@ -35,7 +35,7 @@ namespace Luna
             auto err = dlerror();
             if(err)
             {
-                return ser_error(BasicError::bad_platform_call(), "%s", dlerror());
+                return set_error(BasicError::bad_platform_call(), "%s", dlerror());
             }
             return proc;
         }
