@@ -113,9 +113,9 @@ namespace Luna
 		{
 			return m_base.capacity();
 		}
-		usize buffer_size() const
+		usize hash_table_size() const
 		{
-			return m_base.buffer_size();
+			return m_base.hash_table_size();
 		}
 		f32 load_factor() const
 		{

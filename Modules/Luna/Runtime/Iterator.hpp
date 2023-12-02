@@ -12,6 +12,9 @@
 #include "Base.hpp"
 namespace Luna
 {
+	//! @addtogroup Runtime
+    //! @{
+
 	template <typename _Iter>
 	struct iterator_traits
 	{
@@ -27,7 +30,6 @@ namespace Luna
 	struct bidirectional_iterator_tag : public forward_iterator_tag {};
 	struct random_access_iterator_tag : public bidirectional_iterator_tag {};
 
-	//! template specialization for pointers.
 	template <typename _Ty>
 	struct iterator_traits<_Ty*>
 	{
@@ -46,6 +48,8 @@ namespace Luna
 		using iterator_category = random_access_iterator_tag;
 	};
 
+	//! @brief An iterator adaptor that reverses the direction of a given iterator.
+	//! @details The given iterator must be at least an bidirectional iterator.
 	template <typename _Iter>
 	class ReverseIterator
 	{
@@ -60,15 +64,20 @@ namespace Luna
 		iterator_type m_base;
 
 	public:
+		//! @brief Constructs an empty reverse iterator.
 		constexpr ReverseIterator()
 			: m_base() { }
-
+		//! @brief Constructs a reverse iterator for the given iterator.
+		//! @param[in] i The iterator to use.
 		constexpr explicit ReverseIterator(iterator_type i)
 			: m_base(i) { }
 
+		//! @brief Constructs a reverse iterator by coping from the specified reverse iterator.
+		//! @param[in] ri The reverse iterator to use.
 		constexpr ReverseIterator(const ReverseIterator& ri)
 			: m_base(ri.m_base) { }
-
+		//! @brief Constructs a reverse iterator by coping from the specified reverse iterator of different iterator type.
+		//! @param[in] ri The reverse iterator to use.
 		template <typename _Uty>
 		constexpr ReverseIterator(const ReverseIterator<_Uty>& ri)
 			: m_base(ri.base()) { }
@@ -79,75 +88,86 @@ namespace Luna
 			m_base = ri.base(); 
 			return *this;
 		}
-
+		//! @brief Gets the base iterator of this reverse iterator.
+		//! @return Returns a copy of the base iterator of this reverse iterator.
 		constexpr iterator_type base() const
 		{
 			return m_base;
 		}
-
+		//! @brief Gets the object this iterator points to.
+		//! @return Returns the object this iterator points to.
 		constexpr reference operator*() const
 		{
 			iterator_type i(m_base);
 			return *--i;
 		}
-
+		//! @brief Gets one pointer to the object this iterator points to.
+		//! @return Returns one pointer to the object this iterator points to.
 		constexpr pointer operator->() const
 		{
 			return &(operator*());
 		}
-
+		//! @brief Pre-increments the iterator to the next object, which is the last object the base iterator points to.
+		//! @return Returns `*this`.
 		constexpr ReverseIterator& operator++()
 		{
 			--m_base; 
 			return *this;
 		}
-
+		//! @brief Post-increments the iterator to the next object, which is the last object the base iterator points to.
+		//! @return Returns one copy of `*this` that was made before the change.
 		constexpr ReverseIterator operator++(int)
 		{
 			ReverseIterator ri(*this);
 			--m_base;
 			return ri;
 		}
-
+		//! @brief Pre-decrements the iterator to the last object, which is the next object the base iterator points to.
+		//! @return Returns `*this`.
 		constexpr ReverseIterator& operator--()
 		{
 			++m_base; 
 			return *this;
 		}
-
+		//! @brief Post-decrements the iterator to the last object, which is the next object the base iterator points to.
+		//! @return Returns one copy of `*this` that was made before the change.
 		constexpr ReverseIterator operator--(int)
 		{
 			ReverseIterator ri(*this);
 			++m_base;
 			return ri;
 		}
-
+		//! @brief Gets one iterator which is advanced by `n` positions respectively.
+		//! @param[in] n The position to advance relative to the current position.
+		//! @return Returns one iterator which is advanced by `n` positions respectively.
 		constexpr ReverseIterator operator+(isize n) const
 		{
 			return ReverseIterator(m_base - n);
 		}
-
+		//! @brief Advances the iterator by `n` positions respectively.
+		//! @param[in] n The position to advance relative to the current position.
+		//! @return Returns `*this`.
 		constexpr ReverseIterator& operator+=(isize n)
 		{
 			m_base -= n; return *this;
 		}
-
+		//! @brief Gets one iterator which is advanced by `-n` positions respectively.
+		//! @param[in] n The position to advance relative to the current position.
+		//! @return Returns one iterator which is advanced by `-n` positions respectively.
 		constexpr ReverseIterator operator-(isize n) const
 		{
 			return ReverseIterator(m_base + n);
 		}
-
+		//! @brief Advances the iterator by `-n` positions respectively.
+		//! @param[in] n The position to advance relative to the current position.
+		//! @return Returns `*this`.
 		constexpr ReverseIterator& operator-=(isize n)
 		{
 			m_base += n; 
 			return *this;
 		}
-
-		// http://cplusplus.github.io/LWG/lwg-defects.html#386, 
-		// http://llvm.org/bugs/show_bug.cgi?id=17883 
-		// random_access_iterator operator[] is merely required to return something convertible to reference. 
-		// ReverseIterator operator[] can't necessarily know what to return as the underlying iterator 
-		// operator[] may return something other than reference.
+		//! @brief Returns a reference to the element at specified relative location.
+		//! @param[in] n The position relative to the current position.
 		constexpr reference operator[](isize n) const
 		{
 			return m_base[-n - 1];
@@ -217,6 +237,9 @@ namespace Luna
 		return ReverseIterator<_Iter>(a.base() - n);
 	}
 
+	//! @brief Creates one reverse iterator from one iterator.
+	//! @param[in] i The base iterator to create reverse iterator for.
+	//! @return Returns the created reverse iterator.
 	template <typename _Iter>
 	constexpr ReverseIterator<_Iter> make_reverse_iterator(_Iter i)
 	{
@@ -286,6 +309,9 @@ namespace Luna
 		}
 	}
 
+	//! @brief Advances the given iterator by `n` positions respectively.
+	//! @param[in] it The iterator to advance.
+	//! @param[in] n The position to advance relative to the current position.
 	template<typename _Iter, typename _Distance>
 #ifdef LUNA_COMPILER_CPP17
 	constexpr // required since C++17
@@ -296,6 +322,9 @@ namespace Luna
 			typename iterator_traits<_Iter>::iterator_category());
 	}
 
+	//! @brief Gets the number of elements between two iterators.
+	//! @param[in] first The iterator pointing to the first element.
+	//! @param[in] last The iterator pointing to the one-past-last element.
 	template<typename _It>
 #ifdef LUNA_COMPILER_CPP17
 	constexpr // required since C++17
@@ -306,6 +335,13 @@ namespace Luna
 			typename iterator_traits<_It>::iterator_category());
 	}
 
+
+	//! @brief Gets one iterator pointing to the next `n`th element of the element pointed 
+	//! by the input iterator.
+	//! @param[in] it The base iterator.
+	//! @param[in] n The position relative to the base iterator.
+	//! @return Returns the iterator pointing to the next `n`th element of the element pointed 
+	//! by the input iterator.
 	template<typename _Iter>
 #ifdef LUNA_COMPILER_CPP17
 	constexpr // required since C++17
@@ -316,6 +352,12 @@ namespace Luna
 		return it;
 	}
 
+	//! @brief Gets one iterator pointing to the last `n`th element of the element pointed 
+	//! by the input iterator.
+	//! @param[in] it The base iterator.
+	//! @param[in] n The position relative to the base iterator.
+	//! @return Returns the iterator pointing to the last `n`th element of the element pointed 
+	//! by the input iterator.
 	template<typename _BidirIt>
 #ifdef LUNA_COMPILER_CPP17
 	constexpr // required since C++17
@@ -326,5 +368,5 @@ namespace Luna
 		return it;
 	}
 
-
+	//! @}
 }

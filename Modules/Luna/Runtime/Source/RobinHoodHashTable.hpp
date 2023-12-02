@@ -261,7 +261,7 @@ namespace Luna
 			{
 				return m_size;
 			}
-			usize buffer_size() const
+			usize hash_table_size() const
 			{
 				return m_buffer_size;
 			}

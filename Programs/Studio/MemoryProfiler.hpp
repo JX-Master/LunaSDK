@@ -33,9 +33,9 @@ namespace Luna
         void on_allocate(void* ptr, usize size);
         void on_reallocate(void* ptr, void* new_ptr, usize new_size);
         void on_deallocate(void* ptr);
-        void on_set_memory_name(void* ptr, const Name& name);
-        void on_set_memory_type(void* ptr, const Name& type);
-        void on_set_memory_domain(void* ptr, const Name& domain);
+        void on_set_memory_name(void* ptr, const c8* name);
+        void on_set_memory_type(void* ptr, const c8* type);
+        void on_set_memory_domain(void* ptr, const c8* domain);
         void render();
     };
     struct MemoryProfilerCallback

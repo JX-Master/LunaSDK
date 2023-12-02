@@ -24,6 +24,11 @@ namespace Luna
 
 	//! @addtogroup Runtime
 	//! @{
+	//! @defgroup RuntimeAlgorithm Algorithms
+	//! @}
+
+	//! @addtogroup RuntimeAlgorithm
+	//! @{
 	
 	//! @brief Returns the smaller of the given values.
 	//! @param[in] a The first value to compare.

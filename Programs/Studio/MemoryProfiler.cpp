@@ -19,43 +19,35 @@ namespace Luna
         if(m_snapshoting) return;
         m_memory_blocks.insert(make_pair((usize)ptr, info));
     }
-    void MemoryProfiler::on_reallocate(void* ptr, void* new_ptr, usize new_size)
-    {
-        LockGuard guard(m_lock);
-        if(m_snapshoting) return;
-        auto iter = m_memory_blocks.find((usize)ptr);
-        if(iter == m_memory_blocks.end()) return;
-        MemoryBlockInfo info = move(iter->second);
-        info.size = new_size;
-        m_memory_blocks.erase(iter);
-        m_memory_blocks.insert(make_pair((usize)ptr, move(info)));
-    }
     void MemoryProfiler::on_deallocate(void* ptr)
     {
         LockGuard guard(m_lock);
         if(m_snapshoting) return;
         m_memory_blocks.erase((usize)ptr);
     }
-    void MemoryProfiler::on_set_memory_name(void* ptr, const Name& name)
+    void MemoryProfiler::on_set_memory_name(void* ptr, const c8* name)
     {
+        Name n = name;
         LockGuard guard(m_lock);
         auto iter = m_memory_blocks.find((usize)ptr);
         if(iter == m_memory_blocks.end()) return;
-        iter->second.name = name;
+        iter->second.name = move(n);
     }
-    void MemoryProfiler::on_set_memory_type(void* ptr, const Name& type)
+    void MemoryProfiler::on_set_memory_type(void* ptr, const c8* type)
     {
+        Name t = type;
         LockGuard guard(m_lock);
         auto iter = m_memory_blocks.find((usize)ptr);
         if(iter == m_memory_blocks.end()) return;
-        iter->second.type = type;
+        iter->second.type = move(t);
     }
-    void MemoryProfiler::on_set_memory_domain(void* ptr, const Name&domain)
+    void MemoryProfiler::on_set_memory_domain(void* ptr, const c8* domain)
     {
+        Name d = domain;
         LockGuard guard(m_lock);
         auto iter = m_memory_blocks.find((usize)ptr);
         if(iter == m_memory_blocks.end()) return;
-        iter->second.domain = domain;
+        iter->second.domain = move(d);
     }
     void MemoryProfiler::render()
     {

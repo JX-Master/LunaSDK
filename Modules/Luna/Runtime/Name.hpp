@@ -190,7 +190,8 @@ namespace Luna
 		{
 			return m_str == nullptr;
 		}
-
+		//! @brief Checks whether this name string is empty.
+		//! @return Returns `true` if this name string is empty, returns `false` otherwise.
 		operator bool() const
 		{
 			return !empty();
@@ -201,17 +202,22 @@ namespace Luna
 			release_name(m_str);
 			m_str = nullptr;
 		}
-
+		//! @brief Compares two names for equality.
+		//! @param[in] rhs The name to compare with.
+		//! @return Returns `true` if two names are equal, returns `false` otherwise.
 		bool operator==(const Name& rhs) const
 		{
 			return m_str == rhs.m_str;
 		}
-
+		//! @brief Compares two names for non-equality.
+		//! @param[in] rhs The name to compare with.
+		//! @return Returns `true` if two names are not equal, returns `false` otherwise.
 		bool operator!=(const Name& rhs) const
 		{
 			return m_str != rhs.m_str;
 		}
-
+		//! @brief Converts one name to one string.
+		//! @return Returns one string containing name characters.
 		operator String() const
 		{
 			return String(c_str(), get_name_size(m_str));

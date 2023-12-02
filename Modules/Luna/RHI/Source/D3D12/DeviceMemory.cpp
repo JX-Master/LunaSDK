@@ -20,8 +20,8 @@ namespace Luna
 			if(FAILED(hr)) return encode_hresult(hr);
 #ifdef LUNA_MEMORY_PROFILER_ENABLED
 			memory_profiler_allocate(m_allocation.Get(), get_size());
-			memory_profiler_set_memory_domain(m_allocation.Get(), g_memory_domain_gpu);
-			memory_profiler_set_memory_type(m_allocation.Get(), g_memory_type_aliasing_memory);
+			memory_profiler_set_memory_domain(m_allocation.Get(), "GPU", 3);
+			memory_profiler_set_memory_type(m_allocation.Get(), "Aliasing Memory", 15);
 #endif
 			return ok;
 		}

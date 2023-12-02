@@ -362,7 +362,7 @@ namespace Luna
 			normalize();
 		}
 
-		//! Assigns the content of this path with a new relative path that if appended to `base` path, 
+		//! @brief Assigns the content of this path with a new path that if appended to `base` path, 
 		//! creates a path equal to `target` path.
 		//! @param[in] base The base path.
 		//! @param[in] target The target path.

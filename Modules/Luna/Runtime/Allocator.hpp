@@ -13,10 +13,9 @@
 
 namespace Luna
 {
-	//! @class Allocator
 	//! @ingroup Runtime
-	//! The default allocator implementation that can be used for allocating memory for containers defined in @ref Runtime module.
-	//! The default allocator allocates memory by calling `memalloc`, and deallocates memory by calling `memfree`.
+	//! @brief The default allocator implementation that can be used for allocating memory for containers defined in Runtime module.
+	//! @details The default allocator allocates memory by calling @ref memalloc, and deallocates memory by calling @ref memfree.
 	class Allocator
 	{
 	public:

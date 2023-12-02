@@ -23,8 +23,8 @@ namespace Luna
 			if(failed(res)) return res;
 #ifdef LUNA_MEMORY_PROFILER_ENABLED
 			memory_profiler_allocate(&m_allocation, get_size());
-			memory_profiler_set_memory_domain(&m_allocation, g_memory_domain_gpu);
-			memory_profiler_set_memory_type(&m_allocation, g_memory_type_aliasing_memory);
+			memory_profiler_set_memory_domain(&m_allocation, "GPU", 3);
+			memory_profiler_set_memory_type(&m_allocation, "Aliasing Memory", 15);
 #endif
 		}
 		DeviceMemory::~DeviceMemory()
