@@ -7,10 +7,6 @@
 * @author JXMaster
 * @date 2020/9/22
  */
-#include <Luna/Runtime/PlatformDefines.hpp>
-
-#ifdef LUNA_PLATFORM_POSIX
-
 #include "../../OS.hpp"
 #include <pthread.h>
 #include <sys/time.h>
@@ -275,5 +271,3 @@ namespace Luna
         }
     }
 }
-
-#endif

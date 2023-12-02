@@ -6,13 +6,12 @@
 * @file Atomic.inl
 * @author JXMaster
 * @date 2018/12/7
- */
+*/
 #pragma once
 #include "../../../Base.hpp"
 
 #include <atomic>
 
-#ifdef LUNA_PLATFORM_WINDOWS
 #include "../../../Platform/Windows/MiniWin.hpp"
 
 namespace Luna
@@ -163,4 +162,3 @@ namespace Luna
 #endif
 
 }
-#endif

@@ -132,6 +132,7 @@ namespace Luna
 		}
 		c8* use_buf = abuf ? abuf : buf;
 		MutexGuard guard(g_log_mutex);
+		if(!tag) tag = "";
 		g_log_callbacks(verbosity, tag, strlen(tag), use_buf, len);
 		guard.unlock();
 		if (abuf) memfree(abuf);

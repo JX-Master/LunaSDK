@@ -10,8 +10,6 @@
 #pragma once
 #include "../../../Base.hpp"
 
-#ifdef LUNA_PLATFORM_POSIX
-
 namespace Luna
 {
 	inline i32 atom_inc_i32(i32 volatile* v)
@@ -137,4 +135,3 @@ namespace Luna
 	}
 
 }
-#endif

@@ -7,9 +7,6 @@
 * @author JXMaster
 * @date 2022/3/2
 */
-#include <Luna/Runtime/PlatformDefines.hpp>
-
-#ifdef LUNA_PLATFORM_WINDOWS
 #include "../../OS.hpp"
 #include "../../../Platform/Windows/MiniWin.hpp"
 
@@ -46,5 +43,3 @@ namespace Luna
 		}
 	}
 }
-
-#endif

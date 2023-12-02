@@ -7,9 +7,6 @@
 * @author JXMaster
 * @date 2023/3/26
 */
-#include <Luna/Runtime/PlatformDefines.hpp>
-#ifdef LUNA_PLATFORM_WINDOWS
-
 #include "../../../Platform/Windows/MiniWin.hpp"
 #include "../../../Result.hpp"
 
@@ -17,7 +14,7 @@ namespace Luna
 {
     namespace OS
     {
-        ErrCode translate_last_error(DWORD code)
+        inline ErrCode translate_last_error(DWORD code)
         {
             switch(code)
             {
@@ -37,5 +34,3 @@ namespace Luna
         }
     }
 }
-
-#endif

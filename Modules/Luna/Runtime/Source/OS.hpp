@@ -487,6 +487,49 @@ namespace Luna
 		//! 
 		//! This function must be thread-safe.
 		RV std_output(const c8* buffer, usize size, usize* write_bytes);
+
+		//! @brief Captures function call stack information of the current thread.
+		//! @param[out] frames One buffer that receives captured frames. Every frame is represented by 
+		//! one opaque handle in the buffer.
+		//! @return Returns the number of captured frames written to `frames`.
+		u32 stack_backtrace(Span<opaque_t> frames);
+
+		//! @brief Gets symbolic names for frames returned by @ref stack_backtrace.
+		//! @param[in] frames One buffer that contains frames to query.
+		//! @return Returns one array of strings that store symbolic names for frames. Strings are stored in 
+		//! the same order as `frames`. If the symbolic name of one frame is not found, `nullptr` will be written.
+		//! @par Valid Usage
+		//! 1. All frames in `frames` must be valid frames returned by @ref stack_backtrace. In particular, if the return
+		//! value of @ref stack_backtrace is smaller than the size of the frame buffer passed to @ref stack_backtrace, only 
+		//! valid frames, not the whole buffer, shall be specified in this call.
+		const c8** stack_backtrace_symbols(Span<const opaque_t> frames);
+
+		//! Frees symbols returned by @ref stack_backtrace_symbols.
+    	//! @param[in] symbols The symbol array returned by @ref stack_backtrace_symbols.
+		void free_backtrace_symbols(const c8** symbols);
+
+		//! @brief Loads the specified library to the process's address space. This call may load additional libraries
+		//! required by the specified library.
+		//! @param[in] path The path of the library file. It can be one `.dll` or `.exe` file on Windows,
+		//! or one `.so` file on POSIX systems.
+		//! @return Returns one handle that represents the loaded library.
+		R<opaque_t> load_library(const c8* path);
+
+		//! @brief Unloads the specified library.
+		//! @param[in] handle The library handle returned by @ref load_library.
+		//! @remark The library handle is reference counted: every call to  @ref load_library for the same library
+		//! file increases the reference counter, and every @ref free_library for the same library handle decreases the 
+		//! reference counter. The library will be removed from the process's address space when the reference counter drop to 0.
+		//! 
+		//! When one library is removed from the process's address space, it will decrease reference counters for all its dependent 
+		//! libraries, and removes them as well if their reference counters drop to 0.
+		void free_library(opaque_t handle);
+
+		//! @brief Gets the function address (function pointer) of one function in the library from its symbol name.
+		//! @param[in] handle The library handle returned by @ref load_library.
+		//! @param[in] symbol The function's symbol name.
+		//! @return Returns the function address of the specified function.
+		R<void*> get_library_function(opaque_t handle, const c8* symbol);
 	}
 
 	//! The allocator that allocates memory from OS directly.

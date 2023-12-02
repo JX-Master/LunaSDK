@@ -9,11 +9,12 @@
 */
 #include "TestCommon.hpp"
 #include <Luna/Runtime/Memory.hpp>
-
+#include <Luna/Runtime/Log.hpp>
 using namespace Luna;
 
 void run()
 {
+	set_log_to_platform_enabled(true);
 	auto handle = register_profiler_callback(memory_profiler_callback);
 	array_test();
 	vector_test();
