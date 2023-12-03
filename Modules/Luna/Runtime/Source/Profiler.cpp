@@ -77,6 +77,7 @@ namespace Luna
             if(addr + size <= (usize)buffer.data + buffer.capacity)
             {
                 m_next_entry.data = (void*)addr;
+                buffer.size = addr + size - (usize)buffer.data;
             }
         }
         if(!m_next_entry.data)
