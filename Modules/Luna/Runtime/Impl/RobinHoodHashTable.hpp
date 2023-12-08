@@ -9,12 +9,11 @@
 * @brief A hash table implementation that uses Robin Hood hashing.
 */
 #pragma once
-#include "Base.hpp"
-#include "Functional.hpp"
-#include "Algorithm.hpp"
-#include "Allocator.hpp"
+#include "../Base.hpp"
+#include "../Functional.hpp"
+#include "../Algorithm.hpp"
+#include "../Allocator.hpp"
 #include "HashTableBase.hpp"
-#include <cmath>
 
 namespace Luna
 {
