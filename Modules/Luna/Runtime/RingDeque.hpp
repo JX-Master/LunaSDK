@@ -843,13 +843,4 @@ namespace Luna
 			return m_allocator_and_buffer.first();
 		}
 	};
-
-	template <typename _Ty, typename _Alloc>
-	inline void gc_track(const RingDeque<_Ty, _Alloc>& obj)
-	{
-		for (auto& i : obj)
-		{
-			gc_track(i);
-		}
-	}
 }

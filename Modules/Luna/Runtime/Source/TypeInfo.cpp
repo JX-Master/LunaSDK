@@ -1203,12 +1203,12 @@ namespace Luna
 	inline void set_attribute(Vector<Pair<Name, Variant>>& attributes, const Name& name, const Variant& value)
 	{
 		for (auto& a : attributes)
-		{
-			if (a.first == name)
 			{
-				a.second = value; return;
+				if (a.first == name)
+				{
+					a.second = value; return;
+				}
 			}
-		}
 		attributes.push_back(make_pair(name, value));
 	}
 	LUNA_RUNTIME_API void set_type_attribute(typeinfo_t type, const Name& name, const Variant& value)
@@ -1218,8 +1218,7 @@ namespace Luna
 	}
 	inline void remove_attribute(Vector<Pair<Name, Variant>>& attributes, const Name& name)
 	{
-		auto iter = attributes.begin();
-		while (iter != attributes.end())
+		for(auto iter = attributes.begin(); iter != attributes.end(); ++iter)
 		{
 			if (iter->first == name)
 			{

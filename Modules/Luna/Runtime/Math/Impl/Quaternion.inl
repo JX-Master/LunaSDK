@@ -8,8 +8,8 @@
 * @date 2022/3/17
  */
 #pragma once
-#include "../../Math/Quaternion.hpp"
-#include "../../Math/SimdQuaternion.hpp"
+#include "../Quaternion.hpp"
+#include "../SimdQuaternion.hpp"
 namespace Luna
 {
 	inline bool Quaternion::operator == (const Quaternion& q) const

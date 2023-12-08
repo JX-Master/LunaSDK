@@ -977,7 +977,7 @@ namespace Luna
 		//! ```
 		float4 LUNA_SIMD_CALL cos_f4(float4 a);
 
-		//! Compute the sine and cosine of packed single-precision (32-bit) floating-point elements in `a` expressed in radians, 
+		//! Computes the sine and cosine of packed single-precision (32-bit) floating-point elements in `a` expressed in radians, 
 		//! and stores the results in `dst` and `out_cos`.
 		//! ```
 		//! dst.x := SIN(a.x)
@@ -992,5 +992,5 @@ namespace Luna
 		float4 LUNA_SIMD_CALL sincos_f4(float4& out_cos, float4 a);
 	}
 }
-#include "../Source/Math/SimdSource.inl"
+#include "Impl/Simd.inl"
 #endif

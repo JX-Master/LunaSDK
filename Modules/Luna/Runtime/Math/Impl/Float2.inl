@@ -8,8 +8,8 @@
 * @date 2022/3/16
  */
 #pragma once
-#include "../../Math/Vector.hpp"
-#include "../../Math/Simd.hpp"
+#include "../Vector.hpp"
+#include "../Simd.hpp"
 namespace Luna
 {
 	inline bool Float2::operator==(const Float2& vec) const

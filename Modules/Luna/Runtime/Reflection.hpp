@@ -14,75 +14,500 @@
 
 namespace Luna
 {
-	// Basic type informations.
+	//! @addtogroup Runtime
+	//! @{
+	//! @defgroup RuntimeType Type reflection
+	//! @}
 
+	//! @addtogroup RuntimeType
+	//! @{
+
+	//! @brief Checks whether one type is a primitive type.
+	//! @param[in] type The type object to check.
+	//! @return Returns `true` if the specified type is a primitive type.
+	//! Returns `false` otherwise.
+	//! @par Valid Usage
+	//! * `type` must specify one valid type object.
 	LUNA_RUNTIME_API bool is_primitive_type(typeinfo_t type);
+	//! @brief Checks whether one type is a structure type.
+	//! @param[in] type The type object to check.
+	//! @return Returns `true` if the specified type is a structure type.
+	//! Returns `false` otherwise.
+	//! @par Valid Usage
+	//! * `type` must specify one valid type object.
 	LUNA_RUNTIME_API bool is_struct_type(typeinfo_t type);
+	//! @brief Checks whether one type is an enumeration type.
+	//! @param[in] type The type object to check.
+	//! @return Returns `true` if the specified type is an enumeration type.
+	//! Returns `false` otherwise.
+	//! @par Valid Usage
+	//! * `type` must specify one valid type object.
 	LUNA_RUNTIME_API bool is_enum_type(typeinfo_t type);
+	//! @brief Checks whether one type is a generic structure type.
+	//! @param[in] type The type object to check.
+	//! @return Returns `true` if the specified type is a generic structure type.
+	//! Returns `false` otherwise.
+	//! @par Valid Usage
+	//! * `type` must specify one valid type object.
 	LUNA_RUNTIME_API bool is_generic_struct_type(typeinfo_t type);
+	//! @brief Checks whether one type is a generic instanced structure type.
+	//! @param[in] type The type object to check.
+	//! @return Returns `true` if the specified type is a generic instanced structure type.
+	//! Returns `false` otherwise.
+	//! @par Valid Usage
+	//! * `type` must specify one valid type object.
 	LUNA_RUNTIME_API bool is_generic_struct_instanced_type(typeinfo_t type);
 
+	//! @brief Gets one type by its name.
+	//! @param[in] name The name of the type.
+	//! @param[in] alias The alias name of the type.
+	//! @return Returns the type object that matches the name.
+	//! Returns `nullptr` if no such type is found.
 	LUNA_RUNTIME_API typeinfo_t get_type_by_name(const Name& name, const Name& alias = Name());
+	//! @brief Gets the name of the specified type.
+	//! @param[in] type The type object.
+	//! @param[out] alias If not `nullptr`, returns the alias of the type.
+	//! @return Returns the name of the specified type.
+	//! @par Valid Usage
+	//! * `type` must specify one valid type object.
 	LUNA_RUNTIME_API Name get_type_name(typeinfo_t type, Name* alias = nullptr);
+	//! @brief Gets the GUID of the specified type.
+	//! @param[in] type The type object.
+	//! @return Returns the GUID of the specified type.
+	//! @par Valid Usage
+	//! * `type` must specify one valid type object.
 	LUNA_RUNTIME_API Guid get_type_guid(typeinfo_t type);
+	//! @brief Gets the size of the specified type.
+	//! @param[in] type The type object.
+	//! @return Returns the size of the specified type in bytes.
+	//! @par Valid Usage
+	//! * `type` must specify one valid type object.
 	LUNA_RUNTIME_API usize get_type_size(typeinfo_t type);
+	//! @brief Gets the alignment requirement of the specified type.
+	//! @param[in] type The type object.
+	//! @return Returns the alignment requirement of the specified type in bytes.
+	//! @par Valid Usage
+	//! * `type` must specify one valid type object.
 	LUNA_RUNTIME_API usize get_type_alignment(typeinfo_t type);
+	//! @brief Gets user defined private data for the specified type.
+	//! @param[in] type The type object.
+	//! @param[in] data_guid The GUID of the private data to check.
+	//! @return Returns one pointer to the private data. Returns `nullptr` if such data does not exist.
+	//! @par Valid Usage
+	//! * `type` must specify one valid type object.
 	LUNA_RUNTIME_API void* get_type_private_data(typeinfo_t type, const Guid& data_guid);
+	//! @brief Sets user defined private data for the specified type.
+	//! @param[in] type The type object.
+	//! @param[in] data_guid The GUID of the private data. If one data with this GUID already exists, the original data
+	//! will be deleted and replaced by one new data.
+	//! @param[in] data_size The size of the data in bytes.
+	//! @param[in] data_alignment The alignment requirement of the data in bytes. Specify `0` to use the default alignment, 
+	//! which is @ref MAX_ALIGN.
+	//! @param[in] data_dtor One optional callback function that will be called when the data is going to be freed if specified.
+	//! @par Valid Usage
+	//! * `type` must specify one valid type object.
 	LUNA_RUNTIME_API void* set_type_private_data(typeinfo_t type, const Guid& data_guid, usize data_size, usize data_alignment = 0, void(*data_dtor)(void*) = nullptr);
 
+	//! @brief Checks whether one type is a trivially constructable type.
+	//! @details One type is trivially constructable if:
+	//! 1. It is a primitive or enumeration type, or
+	//! 2. It is a structure or generic structure instanced type without user-provided constructor function, and 
+	//! all properties of the type are trivially constructable.
+	//! @param[in] type The type object.
+	//! @return Returns `true` if the specified type is a trivially constructable type. 
+	//! Returns `false` otherwise.
+	//! @par Valid Usage
+	//! * `type` must specify one valid type object.
 	LUNA_RUNTIME_API bool is_type_trivially_constructable(typeinfo_t type);
+	//! @brief Checks whether one type is a trivially destructable type.
+	//! @details One type is trivially destructable if:
+	//! 1. It is a primitive or enumeration type, or
+	//! 2. It is a structure or generic structure instanced type without user-provided destructor function, and 
+	//! all properties of the type are trivially destructable.
+	//! @param[in] type The type object.
+	//! @return Returns `true` if the specified type is a trivially destructable type. 
+	//! Returns `false` otherwise.
+	//! @par Valid Usage
+	//! * `type` must specify one valid type object.
 	LUNA_RUNTIME_API bool is_type_trivially_destructable(typeinfo_t type);
+	//! @brief Checks whether one type is a trivially copy constructable type.
+	//! @details One type is trivially copy constructable if:
+	//! 1. It is a primitive or enumeration type, or
+	//! 2. It is a structure or generic structure instanced type without user-provided copy constructor function, and 
+	//! all properties of the type are trivially copy constructable.
+	//! @param[in] type The type object.
+	//! @return Returns `true` if the specified type is a trivially copy constructable type. 
+	//! Returns `false` otherwise.
+	//! @par Valid Usage
+	//! * `type` must specify one valid type object.
 	LUNA_RUNTIME_API bool is_type_trivially_copy_constructable(typeinfo_t type);
+	//! @brief Checks whether one type is a trivially move constructable type.
+	//! @details One type is trivially move constructable if:
+	//! 1. It is a primitive or enumeration type, or
+	//! 2. It is a structure or generic structure instanced type without user-provided move constructor function, and 
+	//! all properties of the type are trivially move constructable.
+	//! @param[in] type The type object.
+	//! @return Returns `true` if the specified type is a trivially move constructable type. 
+	//! Returns `false` otherwise.
+	//! @par Valid Usage
+	//! * `type` must specify one valid type object.
 	LUNA_RUNTIME_API bool is_type_trivially_move_constructable(typeinfo_t type);
+	//! @brief Checks whether one type is a trivially copy assignable type.
+	//! @details One type is trivially copy assignable if:
+	//! 1. It is a primitive or enumeration type, or
+	//! 2. It is a structure or generic structure instanced type without user-provided copy assignment function, and 
+	//! all properties of the type are trivially copy assignable.
+	//! @param[in] type The type object.
+	//! @return Returns `true` if the specified type is a trivially copy assignable type. 
+	//! Returns `false` otherwise.
+	//! @par Valid Usage
+	//! * `type` must specify one valid type object.
 	LUNA_RUNTIME_API bool is_type_trivially_copy_assignable(typeinfo_t type);
+	//! @brief Checks whether one type is a trivially move assignable type.
+	//! @details One type is trivially move assignable if:
+	//! 1. It is a primitive or enumeration type, or
+	//! 2. It is a structure or generic structure instanced type without user-provided move assignment function, and 
+	//! all properties of the type are trivially move assignable.
+	//! @param[in] type The type object.
+	//! @return Returns `true` if the specified type is a trivially move assignable type. 
+	//! Returns `false` otherwise.
+	//! @par Valid Usage
+	//! * `type` must specify one valid type object.
 	LUNA_RUNTIME_API bool is_type_trivially_move_assignable(typeinfo_t type);
+	//! @brief Checks whether one type is a trivially relocatable type.
+	//! @details One type is trivially relocatable if:
+	//! 1. It is a primitive or enumeration type, or
+	//! 2. It is a structure or generic structure instanced type with `trivially_relocatable` set to `true`.
+	//! @param[in] type The type object.
+	//! @return Returns `true` if the specified type is a trivially relocatable type. 
+	//! Returns `false` otherwise.
+	//! @par Valid Usage
+	//! * `type` must specify one valid type object.
 	LUNA_RUNTIME_API bool is_type_trivially_relocatable(typeinfo_t type);
 
-	// Basic type operations using reflection.
-
-	LUNA_RUNTIME_API void construct_type(typeinfo_t type, void* data);
+	//! @brief Constructs one instance of the specified type.
+	//! @details The construction is performed as follows:
+	//! 1. If `type` is a trivially constructable type, fills the memory with zeros.
+	//! 2. If `type` is a non-trivially-constructable type with user defined constructor function, calls the function.
+	//! 3. If `type` is a non-trivially-constructable type without user defined constructor function, constructs every 
+	//! property of the structure recursively.
+	//! @param[in] type The type object.
+	//! @param[in] data The pointer to the instance.
+	//! @par Valid Usage
+	//! * `type` must specify one valid type object and cannot be a generic structure type.
+	//! * `data` must specify one valid memory address.
+ 	LUNA_RUNTIME_API void construct_type(typeinfo_t type, void* data);
+	//! @brief Constructs one array of instances of the specified type.
+	//! @details The construction is performed as follows:
+	//! 1. If `type` is a trivially constructable type, fills the memory with zeros.
+	//! 2. If `type` is a non-trivially-constructable type with user defined constructor function, calls the function.
+	//! 3. If `type` is a non-trivially-constructable type without user defined constructor function, constructs every 
+	//! property of the structure recursively.
+	//! @param[in] type The type object.
+	//! @param[in] data The pointer to the instance array.
+	//! @param[in] count The number of instances to construct.
+	//! @par Valid Usage
+	//! * `type` must specify one valid type object and cannot be a generic structure type.
+	//! * `data` must specify one valid memory address.
 	LUNA_RUNTIME_API void construct_type_range(typeinfo_t type, void* data, usize count);
+	//! @brief Destructs one instance of the specified type.
+	//! @details The destruction is performed as follows:
+	//! 1. If `type` is a trivially destructable type, does nothing.
+	//! 2. If `type` is a non-trivially-destructable type with user defined destructor function, calls the function.
+	//! 3. If `type` is a non-trivially-destructable type without user defined destructor function, destructs every 
+	//! property of the structure recursively.
+	//! @param[in] type The type object.
+	//! @param[in] data The pointer to the instance.
+	//! @par Valid Usage
+	//! * `type` must specify one valid type object and cannot be a generic structure type.
+	//! * `data` must specify one valid memory address.
 	LUNA_RUNTIME_API void destruct_type(typeinfo_t type, void* data);
+	//! @brief Destructs one array of instances of the specified type.
+	//! @details The destruction is performed as follows:
+	//! 1. If `type` is a trivially destructable type, does nothing.
+	//! 2. If `type` is a non-trivially-destructable type with user defined destructor function, calls the function.
+	//! 3. If `type` is a non-trivially-destructable type without user defined destructor function, destructs every 
+	//! property of the structure recursively.
+	//! @param[in] type The type object.
+	//! @param[in] data The pointer to the instance array.
+	//! @param[in] count The number of instances to destruct.
+	//! @par Valid Usage
+	//! * `type` must specify one valid type object and cannot be a generic structure type.
+	//! * `data` must specify one valid memory address.
 	LUNA_RUNTIME_API void destruct_type_range(typeinfo_t type, void* data, usize count);
+	//! @brief Copy constructs one instance of the specified type.
+	//! @details The construction is performed as follows:
+	//! 1. If `type` is a trivially copy constructable type, use @ref memcpy to copy instance data.
+	//! 2. If `type` is a non-trivially-copy-constructable type with user defined copy constructor function, calls the function.
+	//! 3. If `type` is a non-trivially-copy-constructable type without user defined copy constructor function, copy constructs every 
+	//! property of the structure recursively.
+	//! @param[in] type The type object.
+	//! @param[in] dst The pointer to the instance to be copy constructed.
+	//! @param[in] src The pointer to the instance to copy data from.
+	//! @par Valid Usage
+	//! * `type` must specify one valid type object and cannot be a generic structure type.
+	//! * `dst` and `src` must specify one valid memory address.
 	LUNA_RUNTIME_API void copy_construct_type(typeinfo_t type, void* dst, void* src);
+	//! @brief Copy constructs one array of instances of the specified type.
+	//! @details The construction is performed as follows:
+	//! 1. If `type` is a trivially copy constructable type, use @ref memcpy to copy instance data.
+	//! 2. If `type` is a non-trivially-copy-constructable type with user defined copy constructor function, calls the function.
+	//! 3. If `type` is a non-trivially-copy-constructable type without user defined copy constructor function, copy constructs every 
+	//! property of the structure recursively.
+	//! @param[in] type The type object.
+	//! @param[in] dst The pointer to the instance array to be copy constructed.
+	//! @param[in] src The pointer to the instance array to copy data from.
+	//! @param[in] count The number of instances to construct.
+	//! @par Valid Usage
+	//! * `type` must specify one valid type object and cannot be a generic structure type.
+	//! * `dst` and `src` must specify one valid memory address.
 	LUNA_RUNTIME_API void copy_construct_type_range(typeinfo_t type, void* dst, void* src, usize count);
+	//! @brief Move constructs one instance of the specified type.
+	//! @details The construction is performed as follows:
+	//! 1. If `type` is a trivially move constructable type, use @ref memcpy to move instance data.
+	//! 2. If `type` is a non-trivially-move-constructable type with user defined move constructor function, calls the function.
+	//! 3. If `type` is a non-trivially-move-constructable type without user defined move constructor function, move constructs every 
+	//! property of the structure recursively.
+	//! @param[in] type The type object.
+	//! @param[in] dst The pointer to the instance to be move constructed.
+	//! @param[in] src The pointer to the instance to move data from.
+	//! @par Valid Usage
+	//! * `type` must specify one valid type object and cannot be a generic structure type.
+	//! * `dst` and `src` must specify one valid memory address.
 	LUNA_RUNTIME_API void move_construct_type(typeinfo_t type, void* dst, void* src);
+	//! @brief Move constructs one array of instances of the specified type.
+	//! @details The construction is performed as follows:
+	//! 1. If `type` is a trivially move constructable type, use @ref memcpy to move instance data.
+	//! 2. If `type` is a non-trivially-move-constructable type with user defined move constructor function, calls the function.
+	//! 3. If `type` is a non-trivially-move-constructable type without user defined move constructor function, move constructs every 
+	//! property of the structure recursively.
+	//! @param[in] type The type object.
+	//! @param[in] dst The pointer to the instance array to be move constructed.
+	//! @param[in] src The pointer to the instance array to move data from.
+	//! @param[in] count The number of instances to construct.
+	//! @par Valid Usage
+	//! * `type` must specify one valid type object and cannot be a generic structure type.
+	//! * `dst` and `src` must specify one valid memory address.
 	LUNA_RUNTIME_API void move_construct_type_range(typeinfo_t type, void* dst, void* src, usize count);
+	//! @brief Copy assigns one instance of the specified type.
+	//! @details The assignment is performed as follows:
+	//! 1. If `type` is a trivially copy assignable type, use @ref memcpy to copy instance data.
+	//! 2. If `type` is a non-trivially-copy-assignable type with user defined copy assignment function, calls the function.
+	//! 3. If `type` is a non-trivially-copy-assignable type without user defined copy assignment function, copy assigns every 
+	//! property of the structure recursively.
+	//! @param[in] type The type object.
+	//! @param[in] dst The pointer to the instance to be copy assigned.
+	//! @param[in] src The pointer to the instance to copy data from.
+	//! @par Valid Usage
+	//! * `type` must specify one valid type object and cannot be a generic structure type.
+	//! * `dst` and `src` must specify one valid memory address.
 	LUNA_RUNTIME_API void copy_assign_type(typeinfo_t type, void* dst, void* src);
+	//! @brief Copy assigns one array of instances of the specified type.
+	//! @details The assignment is performed as follows:
+	//! 1. If `type` is a trivially copy assignable type, use @ref memcpy to copy instance data.
+	//! 2. If `type` is a non-trivially-copy-assignable type with user defined copy assignment function, calls the function.
+	//! 3. If `type` is a non-trivially-copy-assignable type without user defined copy assignment function, copy assigns every 
+	//! property of the structure recursively.
+	//! @param[in] type The type object.
+	//! @param[in] dst The pointer to the instance array to be copy assigned.
+	//! @param[in] src The pointer to the instance array to copy data from.
+	//! @param[in] count The number of instances to assign.
+	//! @par Valid Usage
+	//! * `type` must specify one valid type object and cannot be a generic structure type.
+	//! * `dst` and `src` must specify one valid memory address.
 	LUNA_RUNTIME_API void copy_assign_type_range(typeinfo_t type, void* dst, void* src, usize count);
+	//! @brief Move assigns one instance of the specified type.
+	//! @details The assignment is performed as follows:
+	//! 1. If `type` is a trivially move assignable type, use @ref memcpy to move instance data.
+	//! 2. If `type` is a non-trivially-move-assignable type with user defined move assignment function, calls the function.
+	//! 3. If `type` is a non-trivially-move-assignable type without user defined move assignment function, move assigns every 
+	//! property of the structure recursively.
+	//! @param[in] type The type object.
+	//! @param[in] dst The pointer to the instance to be move assigned.
+	//! @param[in] src The pointer to the instance to move data from.
+	//! @par Valid Usage
+	//! * `type` must specify one valid type object and cannot be a generic structure type.
+	//! * `dst` and `src` must specify one valid memory address.
 	LUNA_RUNTIME_API void move_assign_type(typeinfo_t type, void* dst, void* src);
+	//! @brief Move assigns one array of instances of the specified type.
+	//! @details The assignment is performed as follows:
+	//! 1. If `type` is a trivially move assignable type, use @ref memcpy to move instance data.
+	//! 2. If `type` is a non-trivially-move-assignable type with user defined move assignment function, calls the function.
+	//! 3. If `type` is a non-trivially-move-assignable type without user defined move assignment function, move assigns every 
+	//! property of the structure recursively.
+	//! @param[in] type The type object.
+	//! @param[in] dst The pointer to the instance array to be move assigned.
+	//! @param[in] src The pointer to the instance array to move data from.
+	//! @param[in] count The number of instances to assign.
+	//! @par Valid Usage
+	//! * `type` must specify one valid type object and cannot be a generic structure type.
+	//! * `dst` and `src` must specify one valid memory address.
 	LUNA_RUNTIME_API void move_assign_type_range(typeinfo_t type, void* dst, void* src, usize count);
+	//! @brief Relocates one instance of the specified type.
+	//! @details The relocation is performed as follows:
+	//! 1. If `type` is a trivially relocatable type, use @ref memcpy to move instance data.
+	//! 2. If `type` is a non-trivially-relocatable type, use @ref move_construct_type to move construct one new instance on new location, 
+	//! then use @ref destruct_type to destruct the old instance.
+	//! @param[in] type The type object.
+	//! @param[in] dst The pointer to the instance to be relocated.
+	//! @param[in] src The pointer to the new location of the instance.
 	LUNA_RUNTIME_API void relocate_type(typeinfo_t type, void* dst, void* src);
+	//! @brief Relocates one array of instances of the specified type.
+	//! @details The relocation is performed as follows:
+	//! 1. If `type` is a trivially relocatable type, use @ref memcpy to move instance data.
+	//! 2. If `type` is a non-trivially-relocatable type, use @ref move_construct_type to move construct one new instance on new location, 
+	//! then use @ref destruct_type to destruct the old instance.
+	//! @param[in] type The type object.
+	//! @param[in] dst The pointer to the instance array to be relocated.
+	//! @param[in] src The pointer to the new location of the instance array.
+	//! @param[in] count The number of instances to relocate.
+	//! @par Valid Usage
+	//! * `type` must specify one valid type object and cannot be a generic structure type.
+	//! * `dst` and `src` must specify one valid memory address.
 	LUNA_RUNTIME_API void relocate_type_range(typeinfo_t type, void* dst, void* src, usize count);
 
-	// Equal to 
-
+	//! @brief The equality testing function used by the reflection system.
+	//! @param[in] type The type object.
+	//! @param[in] lhs The pointer to the first instance to be compared.
+	//! @param[in] rhs The pointer to the second instance to be compared.
+	//! @return Returns `true` if two instances are equal. Returns `false` otherwise.
 	using equal_to_func_t = bool(typeinfo_t type, const void* lhs, const void* rhs);
 
+	//! @brief Checks whether the specified type supports equality testing.
+	//! @param[in] type The type object.
+	//! @return Returns `true` if the specified type supports equality testing. Returns `false` otherwise.
+	//! @par Valid Usage
+	//! * `type` must specify one valid type object and cannot be a generic structure type.
 	LUNA_RUNTIME_API bool is_type_equatable(typeinfo_t type);
+	//! @brief Sets one type to support equality testing.
+	//! @param[in] type The type object.
+	//! @param[in] func The equality testing function to use.
+	//! @par Valid Usage
+	//! * `type` must specify one valid type object and cannot be a generic structure type.
+	//! * `func` must specify one valid function.
 	LUNA_RUNTIME_API void set_equatable(typeinfo_t type, equal_to_func_t* func);
+	//! @brief Checks whether two instances of one type are equal.
+	//! @param[in] type The type object.
+	//! @param[in] lhs The pointer to the first instance to be compared.
+	//! @param[in] rhs The pointer to the second instance to be compared.
+	//! @return Returns `true` if two instances are equal. Returns `false` otherwise.
+	//! Returns `false` if the type does not support equality testing.
+	//! @par Valid Usage
+	//! * `type` must specify one valid type object and cannot be a generic structure type.
 	LUNA_RUNTIME_API bool equal_to_type(typeinfo_t type, const void* lhs, const void* rhs);
 
-	// Hashing
-
+	//! @brief The hash code computing function used by the reflection system.
+	//! @param[in] type The type of the instance.
+	//! @param[in] inst The pointer to the instance.
+	//! @return Returns the computed hash code.
 	using hash_func_t = usize(typeinfo_t type, const void* inst);
 
+	//! @brief Checks whether the specified type supports hash code computing.
+	//! @param[in] type The type object.
+	//! @return Returns `true` if the specified type supports hash code computing. Returns `false` otherwise.
+	//! @par Valid Usage
+	//! * `type` must specify one valid type object and cannot be a generic structure type.
 	LUNA_RUNTIME_API bool is_type_hashable(typeinfo_t type);
+	//! @brief Sets one type to support hash code computing.
+	//! @param[in] type The type object.
+	//! @param[in] func The hash code computing function to use.
+	//! @par Valid Usage
+	//! * `type` must specify one valid type object and cannot be a generic structure type.
+	//! * `func` must specify one valid function.
 	LUNA_RUNTIME_API void set_hashable(typeinfo_t type, hash_func_t* func);
+	//! @brief Computes the hash code of one instance of the specified type.
+	//! @param[in] type The type of the instance.
+	//! @param[in] inst The pointer to the instance.
+	//! @return Returns the computed hash code. Returns `0` if the type does not support hash code computing.
+	//! @par Valid Usage
+	//! * `type` must specify one valid type object and cannot be a generic structure type.
 	LUNA_RUNTIME_API usize hash_type(typeinfo_t type, const void* inst);
 
-	// Type and property attributes.
-
+	//! @brief Sets one attribute of the specified type.
+	//! @param[in] type The type object.
+	//! @param[in] name The name of the attribute to set.
+	//! @param[in] value The value of the attribute.
+	//! @remark If `type` specifies one generic type, the attribute will be applied to all instanced types of that generic type.
+	//! @par Valid Usage
+	//! * `type` must specify one valid type object.
+	//! * `name` must not be empty.
 	LUNA_RUNTIME_API void set_type_attribute(typeinfo_t type, const Name& name, const Variant& value = Variant());
+	//! @brief Removes one attribute of the specified type.
+	//! @param[in] type The type object.
+	//! @param[in] name The name of the attribute to remove.
+	//! @par Valid Usage
+	//! * `type` must specify one valid type object.
+	//! * `name` must not be empty.
 	LUNA_RUNTIME_API void remove_type_attribute(typeinfo_t type, const Name& name);
+	//! @brief Checks whether the attribute of the specified type exists.
+	//! @param[in] type The type object.
+	//! @param[in] name The name of the attribute to check.
+	//! @return Returns `true` if the attribute exists. Returns `false` otherwise.
+	//! @par Valid Usage
+	//! * `type` must specify one valid type object.
+	//! * `name` must not be empty.
 	LUNA_RUNTIME_API bool check_type_attribute(typeinfo_t type, const Name& name);
+	//! @brief Gets the attribute of the specified type.
+	//! @param[in] type The type object.
+	//! @param[in] name The name of the attribute to get.
+	//! @return Returns the requested attribute. Returns one null variant if the attribute does not exist.
+	//! @par Valid Usage
+	//! * `type` must specify one valid type object.
+	//! * `name` must not be empty.
 	LUNA_RUNTIME_API Variant get_type_attribute(typeinfo_t type, const Name& name);
+	//! @brief Gets all attributes of the specified type.
+	//! @param[in] type The type object.
+	//! @return Returns one vector that contains attribute names of all attributes of the specified type.
+	//! @par Valid Usage
+	//! * `type` must specify one valid type object.
 	LUNA_RUNTIME_API Vector<Name> get_type_attributes(typeinfo_t type);
 
+	//! @brief Sets one attribute of the specified property.
+	//! @param[in] type The type object.
+	//! @param[in] property The property name.
+	//! @param[in] name The name of the attribute to set.
+	//! @param[in] value The value of the attribute.
+	//! @par Valid Usage
+	//! * `type` must specify one valid type object and cannot be a generic structure type.
+	//! * `property` must not be empty.
+	//! * `name` must not be empty.
 	LUNA_RUNTIME_API void set_property_attribute(typeinfo_t type, const Name& property, const Name& name, const Variant& value = Variant());
+	//! @brief Removes one attribute of the specified property.
+	//! @param[in] type The type object.
+	//! @param[in] property The property name.
+	//! @param[in] name The name of the attribute to remove.
+	//! @par Valid Usage
+	//! * `type` must specify one valid type object and cannot be a generic structure type.
+	//! * `property` must not be empty.
+	//! * `name` must not be empty.
 	LUNA_RUNTIME_API void remove_property_attribute(typeinfo_t type, const Name& property, const Name& name);
+	//! @brief Checks whether the attribute of the specified property exists.
+	//! @param[in] type The type object.
+	//! @param[in] property The property name.
+	//! @param[in] name The name of the attribute to check.
+	//! @return Returns `true` if the attribute exists. Returns `false` otherwise.
+	//! @par Valid Usage
+	//! * `type` must specify one valid type object and cannot be a generic structure type.
+	//! * `property` must not be empty.
+	//! * `name` must not be empty.
 	LUNA_RUNTIME_API bool check_property_attribute(typeinfo_t type, const Name& property, const Name& name);
+	//! @brief Gets the attribute of the specified property.
+	//! @param[in] type The type object.
+	//! @param[in] property The property name.
+	//! @param[in] name The name of the attribute to get.
+	//! @return Returns the requested attribute. Returns one null variant if the attribute does not exist.
+	//! @par Valid Usage
+	//! * `type` must specify one valid type object and cannot be a generic structure type.
+	//! * `property` must not be empty.
+	//! * `name` must not be empty.
 	LUNA_RUNTIME_API Variant get_property_attribute(typeinfo_t type, const Name& property, const Name& name);
+	//! @brief Gets all attributes of the specified property.
+	//! @param[in] type The type object.
+	//! @param[in] property The property name.
+	//! @return Returns one vector that contains attribute names of all attributes of the specified property.
+	//! @par Valid Usage
+	//! * `type` must specify one valid type object and cannot be a generic structure type.
+	//! * `property` must not be empty.
 	LUNA_RUNTIME_API Vector<Name> get_property_attributes(typeinfo_t type, const Name& property);
 
 	// Structure and enumeration type registration.
@@ -339,4 +764,6 @@ namespace Luna
 		desc.multienum = multienum;
 		return register_enum_type(desc);
 	}
+
+	//! @}
 }

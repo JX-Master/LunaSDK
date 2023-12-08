@@ -8,7 +8,7 @@
 * @date 2021/7/6
 */
 #pragma once
-#include "Source/OpenHashTable.hpp"
+#include "Impl/OpenHashTable.hpp"
 
 namespace Luna
 {
@@ -241,19 +241,4 @@ namespace Luna
 			return m_base.get_allocator();
 		}
 	};
-
-	template <
-		typename _Kty,
-		typename _Ty,
-		typename _ExtractKey,
-		typename _Hash,
-		typename _KeyEqual,
-		typename _Alloc>
-	inline void gc_track(const SelfIndexedUnorderedMultiMap<_Kty, _Ty, _ExtractKey, _Hash, _KeyEqual, _Alloc>& obj)
-	{
-		for (auto& i : obj)
-		{
-			gc_track(i);
-		}
-	}
 }

@@ -183,4 +183,4 @@ namespace Luna
 	}
 }
 
-#include "../Source/Math/Transform.inl"
+#include "Impl/Transform.inl"
