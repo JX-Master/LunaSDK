@@ -1221,8 +1221,7 @@ namespace Luna
 	}
 	inline void remove_attribute(Vector<Pair<Name, Variant>>& attributes, const Name& name)
 	{
-		auto iter = attributes.begin();
-		while (iter != attributes.end())
+		for(auto iter = attributes.begin(); iter != attributes.end(); ++iter)
 		{
 			if (iter->first == name)
 			{
