@@ -180,7 +180,7 @@ namespace Luna
 		vector_dtor(type, dest);
 		vector_move_ctor(type, dest, src);
 	}
-	static GenericStructureInstantiateInfo vector_instantiate(typeinfo_t base_type, const typeinfo_t* generic_arguments, usize num_generic_arguments)
+	static GenericStructureInstantiateInfo vector_instantiate(typeinfo_t base_type, Span<const typeinfo_t> generic_arguments)
 	{
 		GenericStructureInstantiateInfo ret;
 		ret.size = sizeof(VectorData);
@@ -244,7 +244,7 @@ namespace Luna
 		p->assign(data.c_str());
 		return ok;
 	}
-	static GenericStructureInstantiateInfo pair_instantiate(typeinfo_t base_type, const typeinfo_t* generic_arguments, usize num_generic_arguments)
+	static GenericStructureInstantiateInfo pair_instantiate(typeinfo_t base_type, Span<const typeinfo_t> generic_arguments)
 	{
 		typeinfo_t first = generic_arguments[0];
 		typeinfo_t second = generic_arguments[1];
@@ -300,10 +300,10 @@ namespace Luna
 		lucatchret;
 		return ok;
 	}
-	static GenericStructureInstantiateInfo tuple_instantiate(typeinfo_t base_type, const typeinfo_t* generic_arguments, usize num_generic_arguments)
+	static GenericStructureInstantiateInfo tuple_instantiate(typeinfo_t base_type, Span<const typeinfo_t> generic_arguments)
 	{
 		Vector<MemoryLayoutMember> members;
-		for (usize i = 0; i < num_generic_arguments; ++i)
+		for (usize i = 0; i < generic_arguments.size(); ++i)
 		{
 			members.push_back(MemoryLayoutMember(get_type_size(generic_arguments[i]), get_type_alignment(generic_arguments[i])));
 		}
@@ -328,7 +328,7 @@ namespace Luna
 		ret.copy_assign = nullptr;
 		ret.move_assign = nullptr;
 		ret.trivially_relocatable = true;
-		for (usize i = 0; i < num_generic_arguments; ++i)
+		for (usize i = 0; i < generic_arguments.size(); ++i)
 		{
 			ret.trivially_relocatable &= is_type_trivially_relocatable(generic_arguments[i]);
 		}
@@ -692,7 +692,7 @@ namespace Luna
 		lucatchret;
 		return ok;
 	}
-	static GenericStructureInstantiateInfo hashmap_instantiate(typeinfo_t base_type, const typeinfo_t* generic_arguments, usize num_generic_arguments)
+	static GenericStructureInstantiateInfo hashmap_instantiate(typeinfo_t base_type, Span<const typeinfo_t> generic_arguments)
 	{
 		GenericStructureInstantiateInfo ret;
 		ret.size = sizeof(HashTableData);
@@ -707,7 +707,7 @@ namespace Luna
 		ret.trivially_relocatable = true;
 		return ret;
 	}
-	static GenericStructureInstantiateInfo hashset_instantiate(typeinfo_t base_type, const typeinfo_t* generic_arguments, usize num_generic_arguments)
+	static GenericStructureInstantiateInfo hashset_instantiate(typeinfo_t base_type, Span<const typeinfo_t> generic_arguments)
 	{
 		GenericStructureInstantiateInfo ret;
 		ret.size = sizeof(HashTableData);
@@ -1130,10 +1130,10 @@ namespace Luna
 			desc.alias = "";
 			desc.generic_parameter_names = { "ElementType" };
 			desc.variable_generic_parameters = false;
-			desc.instantiate = [](typeinfo_t generic_type, const typeinfo_t* generic_arguments, usize num_generic_arguments)
+			desc.instantiate = [](typeinfo_t generic_type, Span<const typeinfo_t> generic_arguments)
 			{
 				GenericStructureInstantiateInfo info;
-				lucheck(num_generic_arguments);
+				lucheck(!generic_arguments.empty());
 				typeinfo_t element_type = generic_arguments[0];
 				usize element_size = get_type_size(element_type);
 				info.size = element_size * 2;
@@ -1185,10 +1185,10 @@ namespace Luna
 			desc.alias = "";
 			desc.generic_parameter_names = { "ElementType" };
 			desc.variable_generic_parameters = false;
-			desc.instantiate = [](typeinfo_t generic_type, const typeinfo_t* generic_arguments, usize num_generic_arguments)
+			desc.instantiate = [](typeinfo_t generic_type, Span<const typeinfo_t> generic_arguments)
 			{
 				GenericStructureInstantiateInfo info;
-				lucheck(num_generic_arguments);
+				lucheck(!generic_arguments.empty());
 				typeinfo_t element_type = generic_arguments[0];
 				usize element_size = get_type_size(element_type);
 				info.size = element_size * 3;
@@ -1246,10 +1246,10 @@ namespace Luna
 			desc.alias = "";
 			desc.generic_parameter_names = { "ElementType" };
 			desc.variable_generic_parameters = false;
-			desc.instantiate = [](typeinfo_t generic_type, const typeinfo_t* generic_arguments, usize num_generic_arguments)
+			desc.instantiate = [](typeinfo_t generic_type, Span<const typeinfo_t> generic_arguments)
 			{
 				GenericStructureInstantiateInfo info;
-				lucheck(num_generic_arguments);
+				lucheck(!generic_arguments.empty());
 				typeinfo_t element_type = generic_arguments[0];
 				usize element_size = get_type_size(element_type);
 				info.size = element_size * 4;

@@ -312,14 +312,14 @@ namespace Luna
 		return true;
 	}
 
-	static typeinfo_t new_instanced_type(GenericStructureTypeInfo* generic_type, const typeinfo_t* generic_arguments, usize num_generic_arguments)
+	static typeinfo_t new_instanced_type(GenericStructureTypeInfo* generic_type, Span<const typeinfo_t> generic_arguments)
 	{
 		UniquePtr<TypeInfo> t(memnew<GenericStructureInstancedTypeInfo>());
 		auto gt = (GenericStructureInstancedTypeInfo*)t.get();
 		gt->kind = TypeKind::generic_structure_instanced;
 		gt->generic_type = generic_type;
-		gt->generic_arguments.assign_n(generic_arguments, num_generic_arguments);
-		auto info = generic_type->instantiate(generic_type, generic_arguments, num_generic_arguments);
+		gt->generic_arguments.assign_n(generic_arguments.data(), generic_arguments.size());
+		auto info = generic_type->instantiate(generic_type, generic_arguments);
 		gt->size = info.size;
 		gt->alignment = info.alignment;
 		lucheck_msg(!info.base_type || is_struct_type(info.base_type), "The base type of one structure type must be a structure type.");
@@ -394,7 +394,7 @@ namespace Luna
 		}
 		if (generic_arguments.size() == 0) return nullptr;
 		// Creates a new type for generic arguments.
-		return new_instanced_type(st, generic_arguments.data(), generic_arguments.size());
+		return new_instanced_type(st, generic_arguments);
 	}
 	LUNA_RUNTIME_API Name get_type_name(typeinfo_t type, Name* alias)
 	{

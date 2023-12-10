@@ -512,10 +512,14 @@ namespace Luna
 
 	// Structure and enumeration type registration.
 
+	//! @brief Describes one structure property.
 	struct StructurePropertyDesc
 	{
+		//! The property name.
 		Name name;
+		//! The property type.
 		typeinfo_t type;
+		//! The offset, in bytes, from the beginning of the structure to the beginning of the property.
 		usize offset;
 		StructurePropertyDesc() = default;
 		StructurePropertyDesc(const Name& name, typeinfo_t type, usize offset) :
@@ -523,9 +527,13 @@ namespace Luna
 			type(type),
 			offset(offset) {}
 	};
+
+	//! @brief Describes one enumeration option.
 	struct EnumerationOptionDesc
 	{
+		//! The option name.
 		Name name;
+		//! The underlying value of the option.
 		i64 value;
 		EnumerationOptionDesc() = default;
 		EnumerationOptionDesc(const Name& name, i64 value) :
@@ -533,17 +541,44 @@ namespace Luna
 			value(value) {}
 	};
 
+	//! @brief The structure constructor used by the reflection system.
+	//! @param[in] type The type of the instance.
+	//! @param[in] inst The instance data.
 	using structure_ctor_t = void(typeinfo_t type, void* inst);
+	//! @brief The structure destructor used by the reflection system.
+	//! @param[in] type The type of the instance.
+	//! @param[in] inst The instance data.
 	using structure_dtor_t = void(typeinfo_t type, void* inst);
+	//! @brief The structure copy constructor used by the reflection system.
+	//! @param[in] type The type of the instance.
+	//! @param[in] dst The instance data to construct.
+	//! @param[in] src The instance data to copy data from.
 	using structure_copy_ctor_t = void(typeinfo_t type, void* dst, void* src);
+	//! @brief The structure move constructor used by the reflection system.
+	//! @param[in] type The type of the instance.
+	//! @param[in] dst The instance data to construct.
+	//! @param[in] src The instance data to move data from.
 	using structure_move_ctor_t = void(typeinfo_t type, void* dst, void* src);
+	//! @brief The structure copy assignment operator used by the reflection system.
+	//! @param[in] type The type of the instance.
+	//! @param[in] dst The instance data to assign.
+	//! @param[in] src The instance data to copy data from.
 	using structure_copy_assign_t = void(typeinfo_t type, void* dst, void* src);
+	//! @brief The structure move assignment operator used by the reflection system.
+	//! @param[in] type The type of the instance.
+	//! @param[in] dst The instance data to assign.
+	//! @param[in] src The instance data to move data from.
 	using structure_move_assign_t = void(typeinfo_t type, void* dst, void* src);
 
+	//! @brief Describes one structure type.
 	struct StructureTypeDesc
 	{
+		//! The GUID of the structure type. This should be unique for every type.
 		Guid guid;
+		//! The name of the structure type.
 		Name name;
+		//! The alias of the structure type. This can be empty.
+		//! The alias is used to identify types with the same name. This can be used for generic specialization types.
 		Name alias;
 		//! The size of the structure type, this should include the size for the base type of this type.
 		usize size;
@@ -552,25 +587,35 @@ namespace Luna
 		//! The base type of this structure type.
 		typeinfo_t base_type = nullptr;
 		//! The constructor function for this type. If `nullptr`, the default constructor will
-		//! be used.
+		//! be used. See remarks of @ref construct_type for default constructor behavior.
 		structure_ctor_t* ctor = nullptr;
 		//! The destructor function for this type. If `nullptr`, the default destructor will be used.
+		//! See remarks of @ref destruct_type for default constructor behavior.
 		structure_dtor_t* dtor = nullptr;
 		//! The copy constructor for this type. If `nullptr`, the default copy constructor will
 		//! be used.
+		//! See remarks of @ref copy_construct_type for default constructor behavior.
 		structure_copy_ctor_t* copy_ctor = nullptr;
 		//! The move constructor for this type. If `nullptr`, the default move constructor will be used.
+		//! See remarks of @ref move_construct_type for default constructor behavior.
 		structure_move_ctor_t* move_ctor = nullptr;
 		//! The copy assignment operator for this type. If `nullptr`, the default copy assignment operator will be used.
+		//! See remarks of @ref copy_assign_type for default constructor behavior.
 		structure_copy_assign_t* copy_assign = nullptr;
 		//! The mvoe assignment operator for this type. If `nullptr`, the default move assignment operator will be used.
+		//! See remarks of @ref move_assign_type for default constructor behavior.
 		structure_move_assign_t* move_assign = nullptr;
 		//! The properties of this structure type.
 		Vector<StructurePropertyDesc> properties;
-		//! Whether this structure is trivially relocatable.
+		//! Whether this structure is trivially relocatable. One structure is trivially relocatable if its content can be
+		//! moved to another memory address using @ref memcpy, and using the instance on new memory location behaves the same
+		//! as the instance on old memory location.
 		bool trivially_relocatable = true;
 	};
 
+	//! @brief Describes the information of one generic structure instantiation operation.
+	//! @details This is returned by the instantiation callback function when one new generic structure instanced type is
+	//! required.
 	struct GenericStructureInstantiateInfo
 	{
 		//! The size of the structure type, this should include the size for the base type of this type.
@@ -599,7 +644,11 @@ namespace Luna
 		bool trivially_relocatable = true;
 	};
 
-	using generic_structure_instantiate_t = GenericStructureInstantiateInfo(typeinfo_t generic_type, const typeinfo_t* generic_arguments, usize num_generic_arguments);
+	//! @brief The generic structure instantiation function called by the reflection system when one new generic structure instanced type is
+	//! required.
+	//! @param[in] generic_type The generic type to instantiate.
+	//! @param[in] generic_arguments Types that are used as arguments to instantiate one generic structure instanced type.
+	using generic_structure_instantiate_t = GenericStructureInstantiateInfo(typeinfo_t generic_type, Span<const typeinfo_t> generic_arguments);
 
 	struct GenericStructureTypeDesc
 	{
