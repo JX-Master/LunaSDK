@@ -65,6 +65,9 @@ extern Name _variable;
 extern Name _ref;
 extern Name _ulink;
 extern Name _url;
+extern Name _par;
+extern Name _itemizedlist;
+extern Name _listitem;
 
 struct Parser
 {

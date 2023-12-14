@@ -10,6 +10,8 @@
 */
 #pragma once
 #include "Iterator.hpp"
+#include "Span.hpp"
+#include "Algorithm.hpp"
 
 namespace Luna
 {
@@ -922,6 +924,63 @@ namespace Luna
 			destruct(last);
 		}
 		return d_last;
+	}
+
+	//! @brief Describes one member used by memory layouting algorithms.
+	struct MemoryLayoutMember
+	{
+		//! The size of this member in bytes. This property is filled by the user before calculating memory layouts.
+		usize size;
+		//! The alignment requirement of this member in bytes. This property is filled by the user before calculating memory layouts.
+		usize alignment;
+		//! The offset of this member in bytes. This property is filled by the memory layouting algorithm and can remain
+		//! uninitialized when calculating memory layouts.
+		usize offset;
+		MemoryLayoutMember() = default;
+		MemoryLayoutMember(usize size, usize alignment) :
+			size(size),
+			alignment(alignment) {}
+	};
+
+	//! @brief Calculates the size, alignment and memory layout for one structure type.
+	//! @details The calculated size, alignment and memory layout is compatible with C standard structure layout.
+	//! @param[inout] members One span that provides members of the structure.
+	//! @param[out] out_size The calculated size of the structure.
+	//! @param[out] out_alignment The calculated alignment of the structure.
+	inline void calculate_struct_memory_layout(Span<MemoryLayoutMember> members, usize& out_size, usize& out_alignment)
+	{
+		usize size = 0;
+		usize alignment = 0;
+		for (auto& i : members)
+		{
+			size = align_upper(size, i.alignment);
+			i.offset = size;
+			size += i.size;
+			alignment = max(alignment, i.alignment);
+		}
+		size = align_upper(size, alignment);
+		out_size = size;
+		out_alignment = alignment;
+	}
+
+	//! @brief Calculates the size, alignment and memory layout for one union type.
+	//! @details The calculated size, alignment and memory layout is compatible with C standard union layout.
+	//! @param[inout] members One span that provides members of the union.
+	//! @param[out] out_size The calculated size of the union.
+	//! @param[out] out_alignment The calculated alignment of the union.
+	inline void calculate_union_memory_layout(Span<MemoryLayoutMember> members, usize& out_size, usize& out_alignment)
+	{
+		usize size = 0;
+		usize alignment = 0;
+		for (auto& i : members)
+		{
+			i.offset = 0;
+			size = max(size, i.size);
+			alignment = max(alignment, i.alignment);
+		}
+		size = align_upper(size, alignment);
+		out_size = size;
+		out_alignment = alignment;
 	}
 
 	//! @}

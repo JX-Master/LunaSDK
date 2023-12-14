@@ -34,8 +34,8 @@ namespace Luna
 	//! 
 	//! Any valid error code number will not be 0.
 	//! 
-	//! The error code is wrapped in a unique structure so that it will never be confused 
-	//! with normal return value when the function return value is also an integer.
+	//! The error code is wrapped in a unique structure so that it will never be misinterpreted 
+	//! to a normal return value when the function return value is also an integer.
 	struct ErrCode
 	{
 		//! The identifier of the error code.

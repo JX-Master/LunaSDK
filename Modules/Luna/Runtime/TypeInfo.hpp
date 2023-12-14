@@ -17,7 +17,7 @@ namespace Luna
 {
 	//! @addtogroup Runtime
 	//! @{
-	//! @defgroup RuntimeType Type system
+	//! @defgroup RuntimeType Type reflection
 	//! @}
 
 	//! @addtogroup RuntimeType

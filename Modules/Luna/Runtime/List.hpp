@@ -141,7 +141,7 @@ namespace Luna
 	//! @addtogroup RuntimeContainer
     //! @{
 	
-	//! @brief A container that stores elements as double-linked lists (nods connected by pointers).
+	//! @brief A container that stores elements as double-linked lists (nodes connected by pointers).
 	template <typename _Ty, typename _Alloc = Allocator>
 	class List
 	{

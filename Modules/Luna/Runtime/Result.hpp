@@ -18,9 +18,12 @@
 
 namespace Luna
 {
-	//! R<_Ty> (represents for Result) is the wrapper object for the returned value of the function that may fail.
-	//! If the function succeeds, `R<_Ty>` contains the real returned object; if the function fails, `R<_Ty>` contains 
-	//! the error code along with the error domain so that it can be identified.
+	//! @addtogroup RuntimeError
+    //! @{
+
+	//! @brief A wrapper object for the return value of one function that may fail.
+	//! @details If the function succeeds, this object contains the return value; 
+	//! if the function fails, this object contains the error code so that it can be identified.
 	template <typename _Ty>
 	struct [[nodiscard]] R
 	{
@@ -32,40 +35,36 @@ namespace Luna
 
 	public:
 
-		//! Tests if the returned value is valid.
+		//! @brief Tests if the result is successful and the return value is valid.
+		//! @return Returns `true` if the call is successful. Returns `false` otherwise.
 		bool valid() const
 		{
 			return m_err_code == ErrCode(0);
 		}
-
-		//! Constructs with the returned value means success.
+		//! @brief Constructs one successful result object with the specified return value.
+		//! @param[in] v The return value.
 		R(const _Ty& v) :
 			m_err_code(0)
 		{
 			m_value.construct(v);
 		}
+		//! @brief Constructs one successful result object with the specified return value.
+		//! @param[in] v The return value.
 		R(_Ty&& v) :
 			m_err_code(0)
 		{
 			m_value.construct(move(v));
 		}
-
-		//! Constructs with error code means error.
+		//! @brief Constructs one failed result object with the specified error code.
+		//! @param[in] error The error code to set.
 		R(ErrCode error) :
 			m_err_code(error)
 		{
 			luassert(m_err_code.code);
 		}
-
-		//! Constructs the error explicitly.
-		static R failure(ErrCode error)
-		{
-			R r;
-			r.m_err_code = error;
-			luassert(r.m_err_code.code);
-			return r;
-		}
-
+		//! @brief Constructs one result object by coping from another result object.
+		//! @details The return value will be copy-constructed if valid.
+		//! @param[in] rhs The object to copy from.
 		R(const R& rhs) :
 			m_err_code(rhs.m_err_code)
 		{
@@ -74,6 +73,9 @@ namespace Luna
 				m_value.construct(rhs.m_value.get());
 			}
 		}
+		//! @brief Constructs one result object by moving from another result object.
+		//! @details The return value will be move-constructed if valid.
+		//! @param[in] rhs The object to move from.
 		R(R&& rhs) :
 			m_err_code(rhs.m_err_code)
 		{
@@ -82,6 +84,10 @@ namespace Luna
 				m_value.construct(move(rhs.m_value.get()));
 			}
 		}
+		//! @brief Assigns the result object by coping from another result object.
+		//! @details The return value will be copy-assigned if valid.
+		//! @param[in] rhs The object to copy from.
+		//! @return Returns `*this`.
 		R& operator=(const R& rhs)
 		{
 			if (m_err_code.code && !rhs.m_err_code.code)	// this is failure and rhs is success.
@@ -99,6 +105,10 @@ namespace Luna
 			m_err_code = rhs.m_err_code;
 			return *this;
 		}
+		//! @brief Assigns the result object by moving from another result object.
+		//! @details The return value will be move-assigned if valid.
+		//! @param[in] rhs The object to move from.
+		//! @return Returns `*this`.
 		R& operator=(R&& rhs)
 		{
 			if (m_err_code.code && !rhs.m_err_code.code)	// this is failure and rhs is success.
@@ -125,44 +135,34 @@ namespace Luna
 			}
 		}
 
-		//! Gets the returned value.
-		//! This can be called if and only if `valid()` is `true`.
+		//! @brief Gets the return value of the result object.
+		//! @return Returns one reference of the containing return value.
+		//! @par Valid Usage
+		//! * `valid()` must be `true` when calling this function.
 		const _Ty& get() const
 		{
 			luassert(valid());
 			return m_value.get();
 		}
+		//! @brief Gets the return value of the result object.
+		//! @return Returns one reference of the containing return value.
+		//! @par Valid Usage
+		//! * `valid()` must be `true` when calling this function.
 		_Ty& get()
 		{
 			luassert(valid());
 			return m_value.get();
 		}
-
-		//! Gets the data buffer stored in the result object.
-		const _Ty* data() const
-		{
-			return &m_value.get();
-		}
-		_Ty* data()
-		{
-			return &m_value.get();
-		}
-
-		//! Gets the error code.
-		//! If the returned value is valid, this returns an empty error object.
+		//! @brief Gets the error code of the result object.
+		//! @return Returns the error code of the result object. Returns `ErrCode(0)` if
+		//! the result is successful (no error is occured).
 		ErrCode errcode() const
 		{
 			return m_err_code;
 		}
-
-		//! Sets the error code directly.
-		void set_errcode(ErrCode err_code)
-		{
-			m_err_code = err_code;
-		}
 	};
 
-	// Specification for void type.
+	//! @brief Specification of @ref R for void type.
 	template <>
 	struct [[nodiscard]] R<void>
 	{
@@ -170,102 +170,132 @@ namespace Luna
 		ErrCode m_err_code;
 
 	public:
-		//! Tests if the returned value is valid.
+
+		//! @brief Tests if the result is successful.
+		//! @return Returns `true` if the call is successful. Returns `false` otherwise.
 		bool valid() const
 		{
 			return m_err_code == ErrCode(0);
 		}
-
-		//! Success does not require any returned value.
+		//! @brief Constructs one successful result object.
 		constexpr R() : m_err_code(0) {}
-
-		//! Returns the error object means error.
+		//! @brief Constructs one failed result object with the specified error code.
+		//! @param[in] error The error code to set.
 		R(ErrCode error) :
 			m_err_code(error)
 		{
 			luassert(m_err_code.code);
 		}
-
+		//! @brief Constructs one result object by coping from another result object.
+		//! @param[in] rhs The object to copy from.
 		R(const R& rhs) :
 			m_err_code(rhs.m_err_code) {}
+		//! @brief Assigns the result object by coping from another result object.
+		//! @param[in] rhs The object to copy from.
+		//! @return Returns `*this`.
 		R& operator=(const R& rhs)
 		{
 			m_err_code = rhs.m_err_code;
 			return *this;
 		}
-
-		//! Gets the error object.
-		//! If the returned value is valid, this returns an empty error object.
+		//! @brief Gets the error code of the result object.
+		//! @return Returns the error code of the result object. Returns `ErrCode(0)` if
+		//! the result object is valid (no error is occured).
 		ErrCode errcode() const
 		{
 			return m_err_code;
 		}
-
-		//! Sets the error code directly.
-		void set_errcode(ErrCode err_code)
-		{
-			m_err_code = err_code;
-		}
 	};
 
+	//! @brief An alias of `R<void>` for representing one throwable function with no return value.
 	using RV = R<void>;
 
+	//! @brief Tests whether the specified result is successful.
+	//! @param[in] r The result to test.
+	//! @return Returns `true` if the result is successful. Returns `false` otherwise.
 	template <typename _Ty>
 	bool succeeded(const R<_Ty>& r)
 	{
 		return r.valid();
 	}
 
+	//! @brief Tests whether the specified result is failed.
+	//! @param[in] r The result to test.
+	//! @return Returns `true` if the result is failed. Returns `false` otherwise.
 	template <typename _Ty>
 	bool failed(const R<_Ty>& r)
 	{
 		return !r.valid();
 	}
 
-	//! A helper function to test the error code of the current function.
-	//! @param[in] obj The original result object received from the called function. If the error code of this object is `BasicError::error_object`, 
-	//! this call returns the error code stored in the error object of the current thread. If the error code of this object is not `BasicError::error_object`,
-	//! this call returns the error code as is.
+	//! @brief Unwraps the real error code from the result.
+	//! @details If the error code of this result object is `BasicError::error_object`, this function returns the error code stored in 
+	//! the error object of the current thread. If the error code of this object is not `BasicError::error_object`,
+	//! this function returns the error code as is.
+	//! @param[in] obj The original result object received from the called function.
+	//! @return Returns the real error code from the result.
 	template <typename _Ty>
 	inline ErrCode unwrap_errcode(const R<_Ty>& obj)
 	{
 		return unwrap_errcode(obj.errcode());
 	}
 
-	//! The successful return value for functions that returns RV.
-	constexpr RV ok = RV();
+	//! @brief A special constant result object that represents one successful result.
+	//! @brief You can return `ok` instead of `RV()` to clearly represent one successful call for one function without return value.
+	constexpr RV ok;
+
+	//! @}
 }
 
+//! @addtogroup RuntimeError
+//! @{
+
+//! @brief Crashes the program if the specified result is failed.
+//! @param[in] _res The result to test.
 #define lupanic_if_failed(_res) {Luna::ErrCode _err = (_res).errcode(); if(_err.code != 0) Luna::assert_fail(Luna::explain(_err), luna_u8_string(__FILE__), (unsigned)(__LINE__)); }
 
-// Static-typed zero-overhead exception mechanism.
+//! @brief Crashes the program if the specified result is failed with custom message.
+//! @param[in] _res The result to test.
+//! @param[in] _msg The message to display.
+#define lupanic_if_failed_msg(_res, _msg) {Luna::ErrCode _err = (_res).errcode(); if(_err.code != 0) Luna::assert_fail(_msg, luna_u8_string(__FILE__), (unsigned)(__LINE__)); }
 
-#define lures _try_res
-#define luerr _try_err
-#define lutry ErrCode lures = ErrCode(0);
-#define luthrow(_r) { lures = (_r); goto luerr; }
-#define lucatch luerr: if((lures).code)
-#define lucatchret luerr: if((lures).code) { return lures; }
-#define luexp(_exp) { lures = (_exp).errcode(); if((lures).code) { goto luerr; } }
-#define luset(_v, _exp)  { auto _res = (_exp); if(!_res.valid()) { lures = _res.errcode(); goto luerr; } (_v) = move(_res.get()); }
-#define lulet(_v, _exp) auto _r_##_v = (_exp); if(!(_r_##_v).valid()) { lures = _r_##_v.errcode(); goto luerr; } auto& _v = _r_##_v.get();
+//! @brief The error code used in `lucatch` block to identify the error.
+//! @par Valid Usage
+//! * This may only be used in one `lucatch` block.
+#define luerr _try_res
 
-#define lures2 _try_res2
-#define luerr2 _try_err2
-#define lutry2 ErrCode lures2 = ErrCode(0);
-#define luthrow2(_r) { lures2 = (_r); goto luerr2; }
-#define lucatch2 luerr2: if((lures2).code)
-#define lucatchret2 luerr2: if((lures2).code) { return lures2; }
-#define luexp2(_exp) { lures2 = (_exp).errcode(); if((lures2).code) { goto luerr2; } }
-#define luset2(_v, _exp)  { auto _res = (_exp); if(!_res.valid()) { lures2 = _res.errcode(); goto luerr2; } (_v) = move(_res.get()); }
-#define lulet2(_v, _exp) auto _r_##_v = (_exp); if(!(_r_##_v).valid()) { lures2 = _r_##_v.errcode(); goto luerr2; } auto& _v = _r_##_v.get();
+//! @brief Opens one try block that encapsulates expressions that may fail.
+//! @par Valid Usage
+//! * Every function body can have only one try-catch block that encapsulates all expressions that may fail. If you need multiple try-catch blocks,
+//! you can use dedicated functions to wrap each try-catch block, then call such functions in your original function.
+#define lutry ErrCode luerr = ErrCode(0);
 
-#define lures3 _try_res3
-#define luerr3 _try_err3
-#define lutry3 ErrCode lures3 = ErrCode(0);
-#define luthrow3(_r) { lures3 = (_r); goto luerr3; }
-#define lucatch3 luerr3: if((lures3).code)
-#define lucatchret3 luerr3: if((lures3).code) { return lures3; }
-#define luexp3(_exp) { lures3 = (_exp).errcode(); if((lures3).code) { goto luerr3; } }
-#define luset3(_v, _exp)  { auto _res = (_exp); if(!_res.valid()) { lures3 = _res.errcode(); goto luerr3; } (_v) = move(_res.get()); }
-#define lulet3(_v, _exp) auto _r_##_v = (_exp); if(!(_r_##_v).valid()) { lures3 = _r_##_v.errcode(); goto luerr3; } auto& _v = _r_##_v.get();
+//! @brief Throws one error and jumps execution to the `lucatch` block.
+//! @param[in] _r The error code to throw.
+//! @par Valid Usage
+//! * This may only be used in one `lutry` block.
+#define luthrow(_r) { luerr = (_r); goto _try_err; }
+//! @brief Opens one catch block that handles errors thrown from try block.
+//! @par Valid Usage
+//! * This must be declared directly after the `lutry` block.
+#define lucatch _try_err: if((luerr).code)
+//! @brief Defines one catch block that returns the error code (if any) thrown from try block.
+//! @details This can be used if the error cannot be handled in this function.
+//! * This must be declared directly after the `lutry` block.
+#define lucatchret _try_err: if((luerr).code) { return luerr; }
+//! @brief Tests whether the specified expression returns one failed result, and throws the error code
+//! if failed.
+//! @param[in] _exp The expression to be evaluated.
+#define luexp(_exp) { luerr = (_exp).errcode(); if((luerr).code) { goto _try_err; } }
+//! @brief Assigns the return value of the specified expression to the specified variable if the return value is valid,
+//! and throws the error code if not.
+//! @param[in] _v The variable to be assigned.
+//! @param[in] _exp The expression to be evaluated.
+#define luset(_v, _exp)  { auto _res = (_exp); if(!_res.valid()) { luerr = _res.errcode(); goto _try_err; } (_v) = move(_res.get()); }
+//! @brief Creates one local variable to hold the return value of the specified expression if the return value is valid,
+//! and throws the error code if not.
+//! @param[in] _v The name of the local variable to be created.
+//! @param[in] _exp The expression to be evaluated.
+#define lulet(_v, _exp) auto _r_##_v = (_exp); if(!(_r_##_v).valid()) { luerr = _r_##_v.errcode(); goto _try_err; } auto& _v = _r_##_v.get();
+
+//@ }

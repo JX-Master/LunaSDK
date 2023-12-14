@@ -116,64 +116,64 @@ namespace Luna
 	{
 		StructureTypeInfo* t = (StructureTypeInfo*)type;
 		// construct every field of the structure.
-		for (auto& i : t->properties)
+		for (auto& i : t->property_descs)
 		{
-			void* dst = (void*)((usize)data + i.desc.offset);
-			construct_type(i.desc.type, dst);
+			void* dst = (void*)((usize)data + i.offset);
+			construct_type(i.type, dst);
 		}
 	}
 	static void structure_default_destruct(typeinfo_t type, void* data)
 	{
 		StructureTypeInfo* t = (StructureTypeInfo*)type;
 		// construct every field of the structure.
-		for (auto& i : t->properties)
+		for (auto& i : t->property_descs)
 		{
-			void* dst = (void*)((usize)data + i.desc.offset);
-			destruct_type(i.desc.type, dst);
+			void* dst = (void*)((usize)data + i.offset);
+			destruct_type(i.type, dst);
 		}
 	}
 	static void structure_default_copy_construct(typeinfo_t type, void* dst, void* src)
 	{
 		StructureTypeInfo* t = (StructureTypeInfo*)type;
 		// construct every field of the structure.
-		for (auto& i : t->properties)
+		for (auto& i : t->property_descs)
 		{
-			void* dst_property = (void*)((usize)dst + i.desc.offset);
-			void* src_property = (void*)((usize)src + i.desc.offset);
-			copy_construct_type(i.desc.type, dst_property, src_property);
+			void* dst_property = (void*)((usize)dst + i.offset);
+			void* src_property = (void*)((usize)src + i.offset);
+			copy_construct_type(i.type, dst_property, src_property);
 		}
 	}
 	static void structure_default_move_construct(typeinfo_t type, void* dst, void* src)
 	{
 		StructureTypeInfo* t = (StructureTypeInfo*)type;
 		// construct every field of the structure.
-		for (auto& i : t->properties)
+		for (auto& i : t->property_descs)
 		{
-			void* dst_property = (void*)((usize)dst + i.desc.offset);
-			void* src_property = (void*)((usize)src + i.desc.offset);
-			move_construct_type(i.desc.type, dst_property, src_property);
+			void* dst_property = (void*)((usize)dst + i.offset);
+			void* src_property = (void*)((usize)src + i.offset);
+			move_construct_type(i.type, dst_property, src_property);
 		}
 	}
 	static void structure_default_copy_assign(typeinfo_t type, void* dst, void* src)
 	{
 		StructureTypeInfo* t = (StructureTypeInfo*)type;
 		// construct every field of the structure.
-		for (auto& i : t->properties)
+		for (auto& i : t->property_descs)
 		{
-			void* dst_property = (void*)((usize)dst + i.desc.offset);
-			void* src_property = (void*)((usize)src + i.desc.offset);
-			copy_assign_type(i.desc.type, dst_property, src_property);
+			void* dst_property = (void*)((usize)dst + i.offset);
+			void* src_property = (void*)((usize)src + i.offset);
+			copy_assign_type(i.type, dst_property, src_property);
 		}
 	}
 	static void structure_default_move_assign(typeinfo_t type, void* dst, void* src)
 	{
 		StructureTypeInfo* t = (StructureTypeInfo*)type;
 		// construct every field of the structure.
-		for (auto& i : t->properties)
+		for (auto& i : t->property_descs)
 		{
-			void* dst_property = (void*)((usize)dst + i.desc.offset);
-			void* src_property = (void*)((usize)src + i.desc.offset);
-			move_assign_type(i.desc.type, dst_property, src_property);
+			void* dst_property = (void*)((usize)dst + i.offset);
+			void* src_property = (void*)((usize)src + i.offset);
+			move_assign_type(i.type, dst_property, src_property);
 		}
 	}
 	LUNA_RUNTIME_API bool is_primitive_type(typeinfo_t type)
@@ -223,26 +223,22 @@ namespace Luna
 		st->copy_assign = desc.copy_assign;
 		st->move_assign = desc.move_assign;
 		st->trivially_relocatable = desc.trivially_relocatable;
-		for (auto& p : desc.properties)
-		{
-			StructureProperty dst;
-			dst.desc = p;
-			st->properties.push_back(dst);
-		}
+		st->property_descs = Array<StructurePropertyDesc>(desc.properties.data(), desc.properties.size());
+		st->properties = Array<StructureProperty>(desc.properties.size());
 		bool use_default_ctor = false;
 		bool use_default_dtor = false;
 		bool use_default_copy_ctor = false;
 		bool use_default_move_ctor = false;
 		bool use_default_copy_assign = false;
 		bool use_default_move_assign = false;
-		for (auto& i : st->properties)
+		for (auto& i : st->property_descs)
 		{
-			if (!is_type_trivially_constructable(i.desc.type)) use_default_ctor = true;
-			if (!is_type_trivially_destructable(i.desc.type)) use_default_dtor = true;
-			if (!is_type_trivially_copy_constructable(i.desc.type)) use_default_copy_ctor = true;
-			if (!is_type_trivially_move_constructable(i.desc.type)) use_default_move_ctor = true;
-			if (!is_type_trivially_copy_assignable(i.desc.type)) use_default_copy_assign = true;
-			if (!is_type_trivially_move_assignable(i.desc.type)) use_default_move_assign = true;
+			if (!is_type_trivially_constructable(i.type)) use_default_ctor = true;
+			if (!is_type_trivially_destructable(i.type)) use_default_dtor = true;
+			if (!is_type_trivially_copy_constructable(i.type)) use_default_copy_ctor = true;
+			if (!is_type_trivially_move_constructable(i.type)) use_default_move_ctor = true;
+			if (!is_type_trivially_copy_assignable(i.type)) use_default_copy_assign = true;
+			if (!is_type_trivially_move_assignable(i.type)) use_default_move_assign = true;
 		}
 		// Adds callback for non-trivial case.
 		if (!st->ctor && use_default_ctor) st->ctor = structure_default_construct;
@@ -269,7 +265,7 @@ namespace Luna
 		st->guid = desc.guid;
 		st->name = desc.name;
 		st->alias = desc.alias;
-		st->generic_parameter_names = desc.generic_parameter_names;
+		st->generic_parameter_names.assign_n(desc.generic_parameter_names.data(), desc.generic_parameter_names.size());
 		st->variable_generic_parameters = desc.variable_generic_parameters;
 		st->instantiate = desc.instantiate;
 		g_type_registry.push_back(move(t));
@@ -294,7 +290,7 @@ namespace Luna
 		et->alias = desc.alias;
 		et->underlying_type = (PrimitiveTypeInfo*)ut;
 		et->multienum = desc.multienum;
-		et->options = desc.options;
+		et->options.assign_n(desc.options.data(), desc.options.size());
 		g_type_registry.push_back(move(t));
 		g_type_name_map.insert(make_pair(et->name, (NamedTypeInfo*)et));
 		g_type_guid_map.insert(make_pair(et->guid, (NamedTypeInfo*)et));
@@ -324,12 +320,8 @@ namespace Luna
 		gt->alignment = info.alignment;
 		lucheck_msg(!info.base_type || is_struct_type(info.base_type), "The base type of one structure type must be a structure type.");
 		gt->base_type = (TypeInfo*)info.base_type;
-		for (auto& p : info.properties)
-		{
-			StructureProperty dst;
-			dst.desc = p;
-			gt->properties.push_back(dst);
-		}
+		gt->property_descs = move(info.properties);
+		gt->properties = Array<StructureProperty>(gt->property_descs.size());
 		gt->ctor = info.ctor;
 		gt->dtor = info.dtor;
 		gt->copy_ctor = info.copy_ctor;
@@ -343,14 +335,14 @@ namespace Luna
 		bool use_default_move_ctor = false;
 		bool use_default_copy_assign = false;
 		bool use_default_move_assign = false;
-		for (auto& i : gt->properties)
+		for (auto& i : gt->property_descs)
 		{
-			if (!is_type_trivially_constructable(i.desc.type)) use_default_ctor = true;
-			if (!is_type_trivially_destructable(i.desc.type)) use_default_dtor = true;
-			if (!is_type_trivially_copy_constructable(i.desc.type)) use_default_copy_ctor = true;
-			if (!is_type_trivially_move_constructable(i.desc.type)) use_default_move_ctor = true;
-			if (!is_type_trivially_copy_assignable(i.desc.type)) use_default_copy_assign = true;
-			if (!is_type_trivially_move_assignable(i.desc.type)) use_default_move_assign = true;
+			if (!is_type_trivially_constructable(i.type)) use_default_ctor = true;
+			if (!is_type_trivially_destructable(i.type)) use_default_dtor = true;
+			if (!is_type_trivially_copy_constructable(i.type)) use_default_copy_ctor = true;
+			if (!is_type_trivially_move_constructable(i.type)) use_default_move_ctor = true;
+			if (!is_type_trivially_copy_assignable(i.type)) use_default_copy_assign = true;
+			if (!is_type_trivially_move_assignable(i.type)) use_default_move_assign = true;
 		}
 		// Adds callback for non-trivial case.
 		if (!gt->ctor && use_default_ctor) gt->ctor = structure_default_construct;
@@ -466,33 +458,23 @@ namespace Luna
 		}
 		return nullptr;
 	}
-	LUNA_RUNTIME_API usize count_struct_generic_arguments(typeinfo_t type)
+	LUNA_RUNTIME_API Span<const typeinfo_t> get_struct_generic_arguments(typeinfo_t type)
 	{
 		TypeInfo* t = (TypeInfo*)type;
 		switch (t->kind)
 		{
-		case TypeKind::generic_structure_instanced: return ((GenericStructureInstancedTypeInfo*)t)->generic_arguments.size();
-		case TypeKind::primitive: return 0;
-		case TypeKind::structure: return 0;
-		case TypeKind::enumeration: return 0;
-		case TypeKind::generic_structure: return 0;
-		default: lupanic();
-		}
-		return 0;
-	}
-	LUNA_RUNTIME_API typeinfo_t get_struct_generic_argument(typeinfo_t type, usize index)
-	{
-		TypeInfo* t = (TypeInfo*)type;
-		switch (t->kind)
+		case TypeKind::generic_structure_instanced:
 		{
-		case TypeKind::generic_structure_instanced: return ((GenericStructureInstancedTypeInfo*)t)->generic_arguments[index];
-		case TypeKind::primitive: return nullptr;
-		case TypeKind::structure: return nullptr;
-		case TypeKind::enumeration: return nullptr;
-		case TypeKind::generic_structure: return nullptr;
+			GenericStructureInstancedTypeInfo* src = ((GenericStructureInstancedTypeInfo*)t);
+			return Span<const typeinfo_t>(src->generic_arguments.data(), src->generic_arguments.size());
+		}
+		case TypeKind::primitive: return Span<const typeinfo_t>();
+		case TypeKind::structure: return Span<const typeinfo_t>();
+		case TypeKind::enumeration: return Span<const typeinfo_t>();
+		case TypeKind::generic_structure: return Span<const typeinfo_t>();
 		default: lupanic();
 		}
-		return nullptr;
+		return Span<const typeinfo_t>();
 	}
 	LUNA_RUNTIME_API usize count_struct_generic_parameters(typeinfo_t type)
 	{
@@ -508,19 +490,27 @@ namespace Luna
 		}
 		return 0;
 	}
-	LUNA_RUNTIME_API Name get_struct_generic_parameter_name(typeinfo_t type, usize index)
+	LUNA_RUNTIME_API Span<const Name> get_struct_generic_parameter_names(typeinfo_t type)
 	{
 		TypeInfo* t = (TypeInfo*)type;
 		switch (t->kind)
 		{
-		case TypeKind::generic_structure_instanced: return ((GenericStructureInstancedTypeInfo*)t)->generic_type->generic_parameter_names[index];
-		case TypeKind::primitive: return Name();
-		case TypeKind::structure: return Name();
-		case TypeKind::enumeration: return Name();
-		case TypeKind::generic_structure: return ((GenericStructureTypeInfo*)t)->generic_parameter_names[index];
+		case TypeKind::generic_structure_instanced:
+		{
+			auto src = ((GenericStructureInstancedTypeInfo*)t);
+			return Span<const Name>(src->generic_type->generic_parameter_names.data(), src->generic_type->generic_parameter_names.size());
+		}
+		case TypeKind::primitive: return Span<const Name>();
+		case TypeKind::structure: return Span<const Name>();
+		case TypeKind::enumeration: return Span<const Name>();
+		case TypeKind::generic_structure:
+		{
+			auto src = ((GenericStructureTypeInfo*)t);
+			return Span<const Name>(src->generic_parameter_names.data(), src->generic_parameter_names.size());
+		} 
 		default: lupanic();
 		}
-		return Name();
+		return Span<const Name>();
 	}
 	LUNA_RUNTIME_API bool is_type_trivially_constructable(typeinfo_t type)
 	{
@@ -1068,28 +1058,24 @@ namespace Luna
 			destruct_type_range(type, src, count);
 		}
 	}
-	LUNA_RUNTIME_API usize count_struct_properties(typeinfo_t type)
+	LUNA_RUNTIME_API Span<const StructurePropertyDesc> get_struct_properties(typeinfo_t type)
 	{
 		TypeInfo* t = (TypeInfo*)type;
 		switch (t->kind)
 		{
-		case TypeKind::structure: return ((StructureTypeInfo*)t)->properties.size();
-		case TypeKind::generic_structure_instanced: return ((GenericStructureInstancedTypeInfo*)t)->properties.size();
-        default: break;
-		}
-		return 0;
-	}
-	LUNA_RUNTIME_API StructurePropertyDesc get_struct_property(typeinfo_t type, usize index)
-	{
-		TypeInfo* t = (TypeInfo*)type;
-		switch (t->kind)
+		case TypeKind::structure:
 		{
-		case TypeKind::structure: return ((StructureTypeInfo*)t)->properties[index].desc;
-		case TypeKind::generic_structure_instanced: return ((GenericStructureInstancedTypeInfo*)t)->properties[index].desc;
+			auto& src = ((StructureTypeInfo*)t)->property_descs;
+			return Span<const StructurePropertyDesc>(src.data(), src.size());
+		}
+		case TypeKind::generic_structure_instanced:
+		{
+			auto& src = ((GenericStructureInstancedTypeInfo*)t)->property_descs;
+			return Span<const StructurePropertyDesc>(src.data(), src.size());
+		} 
         default: break;
 		}
-		lupanic();
-		return StructurePropertyDesc();
+		return Span<const StructurePropertyDesc>();
 	}
 	LUNA_RUNTIME_API typeinfo_t get_base_type(typeinfo_t type)
 	{
@@ -1102,26 +1088,19 @@ namespace Luna
 		}
 		return nullptr;
 	}
-	LUNA_RUNTIME_API usize count_enum_options(typeinfo_t type)
+	LUNA_RUNTIME_API Span<const EnumerationOptionDesc> get_enum_options(typeinfo_t type)
 	{
 		TypeInfo* t = (TypeInfo*)type;
 		switch (t->kind)
 		{
-		case TypeKind::enumeration: return ((EnumerationTypeInfo*)t)->options.size();
-        default: break;
-		}
-		return 0;
-	}
-	LUNA_RUNTIME_API EnumerationOptionDesc get_enum_option(typeinfo_t type, usize index)
-	{
-		TypeInfo* t = (TypeInfo*)type;
-		switch (t->kind)
+		case TypeKind::enumeration:
 		{
-		case TypeKind::enumeration: return ((EnumerationTypeInfo*)t)->options[index];
+			auto& src = ((EnumerationTypeInfo*)t)->options;
+			return Span<const EnumerationOptionDesc>(src.data(), src.size());
+		}
         default: break;
 		}
-		lupanic();
-		return EnumerationOptionDesc();
+		return Span<const EnumerationOptionDesc>();
 	}
 	LUNA_RUNTIME_API typeinfo_t get_enum_underlying_type(typeinfo_t type)
 	{
@@ -1299,11 +1278,11 @@ namespace Luna
 		case TypeKind::structure:
 		{
 			auto t2 = (StructureTypeInfo*)t;
-			for (auto& i : t2->properties)
+			for(usize i = 0; i < t2->properties.size(); ++i)
 			{
-				if (i.desc.name == property)
+				if (t2->property_descs[i].name == property)
 				{
-					set_attribute(i.attributes, name, value);
+					set_attribute(t2->properties[i].attributes, name, value);
 					break;
 				}
 			}
@@ -1312,11 +1291,11 @@ namespace Luna
 		case TypeKind::generic_structure_instanced:
 		{
 			auto t2 = (GenericStructureInstancedTypeInfo*)t;
-			for (auto& i : t2->properties)
+			for(usize i = 0; i < t2->properties.size(); ++i)
 			{
-				if (i.desc.name == property)
+				if (t2->property_descs[i].name == property)
 				{
-					set_attribute(i.attributes, name, value);
+					set_attribute(t2->properties[i].attributes, name, value);
 					break;
 				}
 			}
@@ -1333,26 +1312,26 @@ namespace Luna
 		case TypeKind::structure:
 		{
 			auto t2 = (StructureTypeInfo*)t;
-			for (auto& i : t2->properties)
+			for(usize i = 0; i < t2->properties.size(); ++i)
 			{
-				if (i.desc.name == property)
+				if (t2->property_descs[i].name == property)
 				{
-					remove_attribute(i.attributes, name);
+					remove_attribute(t2->properties[i].attributes, name);
+					break;
 				}
-				break;
 			}
 		}
 		break;
 		case TypeKind::generic_structure_instanced:
 		{
 			auto t2 = (GenericStructureInstancedTypeInfo*)t;
-			for (auto& i : t2->properties)
+			for(usize i = 0; i < t2->properties.size(); ++i)
 			{
-				if (i.desc.name == property)
+				if (t2->property_descs[i].name == property)
 				{
-					remove_attribute(i.attributes, name);
+					remove_attribute(t2->properties[i].attributes, name);
+					break;
 				}
-				break;
 			}
 		}
 		break;
@@ -1367,11 +1346,11 @@ namespace Luna
 		case TypeKind::structure:
 		{
 			auto t2 = (StructureTypeInfo*)t;
-			for (auto& i : t2->properties)
+			for(usize i = 0; i < t2->properties.size(); ++i)
 			{
-				if (i.desc.name == property)
+				if (t2->property_descs[i].name == property)
 				{
-					return check_attribute(i.attributes, name);
+					return check_attribute(t2->properties[i].attributes, name);
 				}
 			}
 		}
@@ -1379,11 +1358,11 @@ namespace Luna
 		case TypeKind::generic_structure_instanced:
 		{
 			auto t2 = (GenericStructureInstancedTypeInfo*)t;
-			for (auto& i : t2->properties)
+			for(usize i = 0; i < t2->properties.size(); ++i)
 			{
-				if (i.desc.name == property)
+				if (t2->property_descs[i].name == property)
 				{
-					return check_attribute(i.attributes, name);
+					return check_attribute(t2->properties[i].attributes, name);
 				}
 			}
 		}
@@ -1400,11 +1379,11 @@ namespace Luna
 		case TypeKind::structure:
 		{
 			auto t2 = (StructureTypeInfo*)t;
-			for (auto& i : t2->properties)
+			for(usize i = 0; i < t2->properties.size(); ++i)
 			{
-				if (i.desc.name == property)
+				if (t2->property_descs[i].name == property)
 				{
-					return get_attribute(i.attributes, name).first;
+					return get_attribute(t2->properties[i].attributes, name).first;
 				}
 			}
 		}
@@ -1412,11 +1391,11 @@ namespace Luna
 		case TypeKind::generic_structure_instanced:
 		{
 			auto t2 = (GenericStructureInstancedTypeInfo*)t;
-			for (auto& i : t2->properties)
+			for(usize i = 0; i < t2->properties.size(); ++i)
 			{
-				if (i.desc.name == property)
+				if (t2->property_descs[i].name == property)
 				{
-					return get_attribute(i.attributes, name).first;
+					return get_attribute(t2->properties[i].attributes, name).first;
 				}
 			}
 		}
@@ -1433,11 +1412,11 @@ namespace Luna
 		case TypeKind::structure:
 		{
 			auto t2 = (StructureTypeInfo*)t;
-			for (auto& i : t2->properties)
+			for(usize i = 0; i < t2->properties.size(); ++i)
 			{
-				if (i.desc.name == property)
+				if (t2->property_descs[i].name == property)
 				{
-					return get_attributes(i.attributes);
+					return get_attributes(t2->properties[i].attributes);
 				}
 			}
 		}
@@ -1445,11 +1424,11 @@ namespace Luna
 		case TypeKind::generic_structure_instanced:
 		{
 			auto t2 = (GenericStructureInstancedTypeInfo*)t;
-			for (auto& i : t2->properties)
+			for(usize i = 0; i < t2->properties.size(); ++i)
 			{
-				if (i.desc.name == property)
+				if (t2->property_descs[i].name == property)
 				{
-					return get_attributes(i.attributes);
+					return get_attributes(t2->properties[i].attributes);
 				}
 			}
 		}

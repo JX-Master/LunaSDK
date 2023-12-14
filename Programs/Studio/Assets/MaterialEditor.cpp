@@ -70,7 +70,7 @@ namespace Luna
 						}
 						lucatch
 						{
-							auto _ = Window::message_box(explain(lures), "Failed to save asset", Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
+							auto _ = Window::message_box(explain(luerr), "Failed to save asset", Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
 						}
 					}
 					ImGui::EndMenu();

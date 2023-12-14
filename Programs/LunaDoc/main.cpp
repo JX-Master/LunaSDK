@@ -185,6 +185,9 @@ RV run(int argc, const char* argv[])
         _ref = "ref";
         _ulink = "ulink";
         _url = "url";
+        _par = "par";
+        _itemizedlist = "itemizedlist";
+        _listitem = "listitem";
 
         set_log_to_platform_enabled(true);
         set_log_to_platform_verbosity(LogVerbosity::info);

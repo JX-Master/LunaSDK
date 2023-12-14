@@ -347,7 +347,7 @@ namespace Luna
 		}
 		lucatch
 		{
-			auto _ = Window::message_box(explain(lures), "Editor Crashed.", Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
+			auto _ = Window::message_box(explain(luerr), "Editor Crashed.", Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
 			return;
 		}
 		Asset::close();

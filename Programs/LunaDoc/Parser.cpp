@@ -62,6 +62,9 @@ Name _variable;
 Name _ref;
 Name _ulink;
 Name _url;
+Name _par;
+Name _itemizedlist;
+Name _listitem;
 
 static void new_paragraph(String& out_text)
 {
@@ -133,6 +136,24 @@ void Parser::encode_md_text(const Variant& element, String& out_text)
                 new_paragraph(out_text);
                 encode_md_parameter_list(c, out_text);
             }
+            else if(name == _title)
+            {
+                out_text.append("#### ");
+                encode_md_text(c, out_text);
+                out_text.push_back('\n');
+            }
+            else if(name == _itemizedlist)
+            {
+                auto& list_items = get_xml_content(c);
+                for(auto& item : list_items.values())
+                {
+                    if(get_xml_name(item) == _listitem)
+                    {
+                        out_text.append("* ");
+                        encode_md_text(item, out_text);
+                    }
+                }
+            }
             else if(name == _simplesect)
             {
                 auto& attributes = get_xml_attributes(c);
@@ -140,6 +161,11 @@ void Parser::encode_md_text(const Variant& element, String& out_text)
                 {
                     new_paragraph(out_text);
                     out_text.append("#### Return value\n");
+                    encode_md_text(c, out_text);
+                }
+                else if(attributes[_kind].str() == _par)
+                {
+                    new_paragraph(out_text);
                     encode_md_text(c, out_text);
                 }
             }
@@ -278,7 +304,7 @@ void Parser::encode_md_func_section(const Variant& section, String& out_group_co
         auto& attributes = get_xml_attributes(c);
         if(attributes[_kind].str() != _function) continue;
         auto& func_members = get_xml_content(c);
-        Name qualifiedname;
+        Name name;
         Name definition;
         Name argsstring;
         String templateparamlist;
@@ -326,11 +352,11 @@ void Parser::encode_md_func_section(const Variant& section, String& out_group_co
             }
             else if(member_name == _name)
             {
-                //member[_name] = get_xml_content(m).at(0).str();
+                name = get_xml_content(m).at(0).str();
             }
             else if(member_name == _qualifiedname)
             {
-                qualifiedname = get_xml_content(m).at(0).str();
+                //qualifiedname = get_xml_content(m).at(0).str();
             }
             else if(member_name == _param)
             {
@@ -360,7 +386,7 @@ void Parser::encode_md_func_section(const Variant& section, String& out_group_co
             }
         }
         out_group_content.append("### ");
-        out_group_content.append(qualifiedname.c_str(), qualifiedname.size());
+        out_group_content.append(name.c_str(), name.size());
         out_group_content.append("\n\n");
         out_group_content.append("```c++\n");
         if(!templateparamlist.empty()) out_group_content.append(templateparamlist);
