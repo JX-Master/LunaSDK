@@ -103,6 +103,20 @@ void Parser::encode_md_parameter_list(const Variant& parameterlist, String& out_
     }
 }
 
+inline bool is_blank_string(const c8* str)
+{
+    while(*str)
+    {
+        c8 ch = *str;
+        if(ch < 0 || ch > 127 || !isspace(ch))
+        {
+            return false;
+        }
+        ++str;
+    }
+    return true;
+}
+
 void Parser::encode_md_text(const Variant& element, String& out_text)
 {
     auto& content = get_xml_content(element);
@@ -111,17 +125,7 @@ void Parser::encode_md_text(const Variant& element, String& out_text)
         if(c.type() == VariantType::string)
         {
             Name text = c.str();
-            bool is_blank = true;
-            for(usize i = 0; i < text.size(); ++i)
-            {
-                c8 ch = text.c_str()[i];
-                if(ch < 0 || ch > 127 || !isspace(ch))
-                {
-                    is_blank = false;
-                    break;
-                }
-            }
-            if(!is_blank) out_text.append(text.c_str());
+            if(!is_blank_string(text.c_str())) out_text.append(text.c_str());
         }
         else
         {
@@ -218,8 +222,8 @@ void Parser::encode_md_text(const Variant& element, String& out_text)
 
 void Parser::encode_md_attrib_section(const Variant& section, String& out_group_content)
 {
-    out_group_content.append("## Properties\n");
     auto& content = get_xml_content(section);
+    String attrib_section;
     for(auto& c : content.values())
     {
         if(get_xml_name(c) != _memberdef) continue;
@@ -276,28 +280,38 @@ void Parser::encode_md_attrib_section(const Variant& section, String& out_group_
                 encode_md_text(m, detaileddescription);
             }
         }
-        out_group_content.append("### ");
-        out_group_content.append(name.c_str(), name.size());
-        out_group_content.append("\n\n");
-        out_group_content.append("```c++\n");
-        if(!templateparamlist.empty()) out_group_content.append(templateparamlist);
-        out_group_content.append(definition.c_str(), definition.size());
-        out_group_content.append("\n```\n\n");
+        // Skip undocumented entry.
+        if(is_blank_string(briefdescription.c_str()) && is_blank_string(detaileddescription.c_str()))
+        {
+            continue;
+        }
+        attrib_section.append("### ");
+        attrib_section.append(name.c_str(), name.size());
+        attrib_section.append("\n\n");
+        attrib_section.append("```c++\n");
+        if(!templateparamlist.empty()) attrib_section.append(templateparamlist);
+        attrib_section.append(definition.c_str(), definition.size());
+        attrib_section.append("\n```\n\n");
         if(!briefdescription.empty())
         {
-            out_group_content.append(briefdescription);
+            attrib_section.append(briefdescription);
         }
         if(!detaileddescription.empty())
         {
-            out_group_content.append(detaileddescription);
+            attrib_section.append(detaileddescription);
         }
+    }
+    if(!attrib_section.empty())
+    {
+        out_group_content.append("## Properties\n");
+        out_group_content.append(attrib_section);
     }
 }
 
 void Parser::encode_md_func_section(const Variant& section, String& out_group_content)
 {
-    out_group_content.append("## Functions\n");
     auto& content = get_xml_content(section);
+    String function_section;
     for(auto& c : content.values())
     {
         if(get_xml_name(c) != _memberdef) continue;
@@ -385,22 +399,32 @@ void Parser::encode_md_func_section(const Variant& section, String& out_group_co
                 encode_md_text(m, detaileddescription);
             }
         }
-        out_group_content.append("### ");
-        out_group_content.append(name.c_str(), name.size());
-        out_group_content.append("\n\n");
-        out_group_content.append("```c++\n");
-        if(!templateparamlist.empty()) out_group_content.append(templateparamlist);
-        out_group_content.append(definition.c_str(), definition.size());
-        out_group_content.append(argsstring.c_str(), argsstring.size());
-        out_group_content.append("\n```\n\n");
+        // Skip undocumented entry.
+        if(is_blank_string(briefdescription.c_str()) && is_blank_string(detaileddescription.c_str()))
+        {
+            continue;
+        }
+        function_section.append("### ");
+        function_section.append(name.c_str(), name.size());
+        function_section.append("\n\n");
+        function_section.append("```c++\n");
+        if(!templateparamlist.empty()) function_section.append(templateparamlist);
+        function_section.append(definition.c_str(), definition.size());
+        function_section.append(argsstring.c_str(), argsstring.size());
+        function_section.append("\n```\n\n");
         if(!briefdescription.empty())
         {
-            out_group_content.append(briefdescription);
+            function_section.append(briefdescription);
         }
         if(!detaileddescription.empty())
         {
-            out_group_content.append(detaileddescription);
+            function_section.append(detaileddescription);
         }
+    }
+    if(!function_section.empty())
+    {
+        out_group_content.append("## Functions\n");
+        out_group_content.append(function_section);
     }
 }
 
@@ -437,6 +461,11 @@ void Parser::encode_md_typedef_section(const Variant& section, String& out_group
             {
                 encode_md_text(m, detaileddescription);
             }
+        }
+        // Skip undocumented entry.
+        if(is_blank_string(briefdescription.c_str()) && is_blank_string(detaileddescription.c_str()))
+        {
+            return;
         }
         out_group_content.append("### ");
         out_group_content.append(qualifiedname.c_str(), qualifiedname.size());
@@ -590,14 +619,25 @@ RV Parser::encode_md_group_file(const Variant& group, String& out_group_content)
             else if(name == _innerclass)
             {
                 auto& attr = get_xml_attributes(c);
-                auto refid = attr[_refid].str();
-                String innerclass;
-                innerclass.push_back('[');
-                encode_md_text(c, innerclass);
-                innerclass.append("](");
-                innerclass.append(refid.c_str(), refid.size());
-                innerclass.append(".md)");
-                innerclasses.push_back(move(innerclass));
+                Name refid = attr[_refid].str();
+                bool valid_ref = false;
+                {
+                    auto iter = class_files.find(refid);
+                    if(iter != class_files.end())
+                    {
+                        valid_ref = true;
+                    }
+                }
+                if(valid_ref)
+                {
+                    String innerclass;
+                    innerclass.push_back('[');
+                    encode_md_text(c, innerclass);
+                    innerclass.append("](");
+                    innerclass.append(refid.c_str(), refid.size());
+                    innerclass.append(".md)");
+                    innerclasses.push_back(move(innerclass));
+                }
             }
         }
         if(!title.empty())
@@ -657,7 +697,30 @@ RV Parser::add_class_xml_file(Variant&& file_data)
     if(compounddef.type() != VariantType::object) return set_error(BasicError::format_error(), "<compounddef> not found");
     auto& compounddef_attribtues = get_xml_attributes(compounddef);
     Name class_id = compounddef_attribtues[_id].str();
-    class_files.insert(make_pair(class_id, move(file_data)));
+    // Skip classes without docs.
+    bool doc_class = true;
+    {
+        String briefdescription;
+        String detaileddescription;
+        auto& bd = find_first_xml_child_element(compounddef, _briefdescription);
+        if(bd.valid())
+        {
+            encode_md_text(bd, briefdescription);
+        }
+        auto& dd = find_first_xml_child_element(compounddef, _detaileddescription);
+        if(dd.valid())
+        {
+            encode_md_text(dd, briefdescription);
+        }
+        if(is_blank_string(briefdescription.c_str()) && is_blank_string(detaileddescription.c_str()))
+        {
+            doc_class = false;
+        }
+    }
+    if(doc_class)
+    {
+        class_files.insert(make_pair(class_id, move(file_data)));
+    }
     return ok;
 }
 
