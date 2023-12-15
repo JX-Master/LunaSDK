@@ -300,6 +300,7 @@ void Parser::encode_md_attrib_section(const Variant& section, String& out_group_
         {
             attrib_section.append(detaileddescription);
         }
+        attrib_section.append("---\n");
     }
     if(!attrib_section.empty())
     {
@@ -420,6 +421,7 @@ void Parser::encode_md_func_section(const Variant& section, String& out_group_co
         {
             function_section.append(detaileddescription);
         }
+        function_section.append("---\n");
     }
     if(!function_section.empty())
     {
@@ -430,8 +432,8 @@ void Parser::encode_md_func_section(const Variant& section, String& out_group_co
 
 void Parser::encode_md_typedef_section(const Variant& section, String& out_group_content)
 {
-    out_group_content.append("## Aliasing types\n");
     auto& content = get_xml_content(section);
+    String typedef_section;
     for(auto& c : content.values())
     {
         if(get_xml_name(c) != _memberdef) continue;
@@ -465,22 +467,28 @@ void Parser::encode_md_typedef_section(const Variant& section, String& out_group
         // Skip undocumented entry.
         if(is_blank_string(briefdescription.c_str()) && is_blank_string(detaileddescription.c_str()))
         {
-            return;
+            continue;
         }
-        out_group_content.append("### ");
-        out_group_content.append(qualifiedname.c_str(), qualifiedname.size());
-        out_group_content.append("\n\n");
-        out_group_content.append("```c++\n");
-        out_group_content.append(definition.c_str(), definition.size());
-        out_group_content.append("\n```\n\n");
+        typedef_section.append("### ");
+        typedef_section.append(qualifiedname.c_str(), qualifiedname.size());
+        typedef_section.append("\n\n");
+        typedef_section.append("```c++\n");
+        typedef_section.append(definition.c_str(), definition.size());
+        typedef_section.append("\n```\n\n");
         if(!briefdescription.empty())
         {
-            out_group_content.append(briefdescription);
+            typedef_section.append(briefdescription);
         }
         if(!detaileddescription.empty())
         {
-            out_group_content.append(detaileddescription);
+            typedef_section.append(detaileddescription);
         }
+        typedef_section.append("---\n");
+    }
+    if(!typedef_section.empty())
+    {
+        out_group_content.append("## Aliasing types\n");
+        out_group_content.append(typedef_section);
     }
 }
 
