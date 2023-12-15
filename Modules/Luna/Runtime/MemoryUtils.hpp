@@ -52,7 +52,7 @@ namespace Luna
 	//! @param[in] copy_size_per_row The size of the data to be copied for every row, in bytes.
 	//! @param[in] num_rows The number of rows to copy.
 	//! @param[in] dst_row_pitch The pitch to advance for one row in destination bitmap in bytes.
-	//! @param[in] src_row_pitch The pitch to advance for one row in destination bitmap in bytes.
+	//! @param[in] src_row_pitch The pitch to advance for one row in source bitmap in bytes.
 	//! @return Returns the `dst` pointer.
 	inline void* memcpy_bitmap(void* dst, const void* src, usize copy_size_per_row, usize num_rows, usize dst_row_pitch, usize src_row_pitch)
 	{
@@ -70,9 +70,9 @@ namespace Luna
 	//! @param[in] num_rows The number of rows to copy.
 	//! @param[in] num_slices The number of slices (layers) to copy.
 	//! @param[in] dst_row_pitch The pitch to advance for one row in destination bitmap in bytes.
-	//! @param[in] src_row_pitch The pitch to advance for one row in destination bitmap in bytes.
+	//! @param[in] src_row_pitch The pitch to advance for one row in source bitmap in bytes.
 	//! @param[in] dst_slice_pitch The pitch to advance for one slice (layer) in destination bitmap in bytes.
-	//! @param[in] src_slice_pitch The pitch to advance for one slice (layer) in destination bitmap in bytes.
+	//! @param[in] src_slice_pitch The pitch to advance for one slice (layer) in source bitmap in bytes.
 	//! @return Returns the `dst` pointer.
 	inline void* memcpy_bitmap3d(
 		void* dst, const void* src,
