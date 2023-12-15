@@ -76,7 +76,7 @@ static void new_paragraph(String& out_text)
 
 void Parser::encode_md_parameter_list(const Variant& parameterlist, String& out_text)
 {
-    out_text.append("#### Parameters\n");
+    out_text.append("## Parameters\n");
     auto& items = get_xml_content(parameterlist);
     for(auto& item : items.values())
     {
@@ -90,7 +90,7 @@ void Parser::encode_md_parameter_list(const Variant& parameterlist, String& out_
                 auto& parameter_name = get_xml_content(e).at(0);
                 if(get_xml_name(parameter_name) == _parametername)
                 {
-                    out_text.append("##### ");
+                    out_text.append("### ");
                     out_text.append(get_xml_content(parameter_name).at(0).str().c_str());
                     out_text.push_back('\n');
                 }
@@ -164,7 +164,7 @@ void Parser::encode_md_text(const Variant& element, String& out_text)
                 if(attributes[_kind].str() == _return)
                 {
                     new_paragraph(out_text);
-                    out_text.append("#### Return value\n");
+                    out_text.append("## Return value\n");
                     encode_md_text(c, out_text);
                 }
                 else if(attributes[_kind].str() == _par)
@@ -220,276 +220,369 @@ void Parser::encode_md_text(const Variant& element, String& out_text)
     }
 }
 
-void Parser::encode_md_attrib_section(const Variant& section, String& out_group_content)
+RV Parser::encode_md_attrib_section(const Variant& section, String& out_group_content, const Path& output_dir)
 {
-    auto& content = get_xml_content(section);
-    String attrib_section;
-    for(auto& c : content.values())
+    lutry
     {
-        if(get_xml_name(c) != _memberdef) continue;
-        auto& attributes = get_xml_attributes(c);
-        if(attributes[_kind].str() != _variable) continue;
-        auto& members = get_xml_content(c);
-        Name name;
-        Name definition;
-        String templateparamlist;
-        String briefdescription;
-        String detaileddescription;
-        for(auto& m : members.values())
+        auto& content = get_xml_content(section);
+        String attrib_section;
+        for(auto& c : content.values())
         {
-            auto member_name = get_xml_name(m);
-            if(member_name == _templateparamlist)
+            if(get_xml_name(c) != _memberdef) continue;
+            auto& attributes = get_xml_attributes(c);
+            if(attributes[_kind].str() != _variable) continue;
+            auto& members = get_xml_content(c);
+            Name name;
+            Name qualifiedname;
+            Name id = attributes[_id].str();
+            Name definition;
+            String templateparamlist;
+            String briefdescription;
+            String detaileddescription;
+            for(auto& m : members.values())
             {
-                templateparamlist.append("template <");
-                auto& params = get_xml_content(m);
-                for(auto& p : params.values())
+                auto member_name = get_xml_name(m);
+                if(member_name == _templateparamlist)
                 {
-                    auto param_name = get_xml_name(p);
-                    if(param_name == _param)
+                    templateparamlist.append("template <");
+                    auto& params = get_xml_content(m);
+                    for(auto& p : params.values())
                     {
-                        auto& type = get_xml_content(p).at(0);
-                        auto type_name = get_xml_name(type);
-                        if(type_name == _type)
+                        auto param_name = get_xml_name(p);
+                        if(param_name == _param)
                         {
-                            templateparamlist.append(get_xml_content(type).at(0).c_str());
-                            templateparamlist.append(", ");
+                            auto& type = get_xml_content(p).at(0);
+                            auto type_name = get_xml_name(type);
+                            if(type_name == _type)
+                            {
+                                templateparamlist.append(get_xml_content(type).at(0).c_str());
+                                templateparamlist.append(", ");
+                            }
                         }
                     }
+                    if(templateparamlist[templateparamlist.size() - 2] == ',' && templateparamlist[templateparamlist.size() - 1] == ' ')
+                    {
+                        templateparamlist.pop_back();
+                        templateparamlist.pop_back();
+                    }
+                    templateparamlist.append(">\n");
                 }
-                if(templateparamlist[templateparamlist.size() - 2] == ',' && templateparamlist[templateparamlist.size() - 1] == ' ')
+                else if(member_name == _definition)
                 {
-                    templateparamlist.pop_back();
-                    templateparamlist.pop_back();
+                    definition = get_xml_content(m).at(0).str();
                 }
-                templateparamlist.append(">\n");
+                else if(member_name == _name)
+                {
+                    name = get_xml_content(m).at(0).str();
+                }
+                else if(member_name == _qualifiedname)
+                {
+                    qualifiedname = get_xml_content(m).at(0).str();
+                }
+                else if(member_name == _briefdescription)
+                {
+                    encode_md_text(m, briefdescription);
+                }
+                else if(member_name == _detaileddescription)
+                {
+                    encode_md_text(m, detaileddescription);
+                }
             }
-            else if(member_name == _definition)
+            // Skip undocumented entry.
+            if(is_blank_string(briefdescription.c_str()) && is_blank_string(detaileddescription.c_str()))
             {
-                definition = get_xml_content(m).at(0).str();
+                continue;
             }
-            else if(member_name == _name)
+            // Set file content.
+            String file_content;
+            file_content.append("# ");
+            file_content.append(qualifiedname.c_str(), qualifiedname.size());
+            file_content.append("\n\n");
+            file_content.append("```c++\n");
+            if(!templateparamlist.empty()) file_content.append(templateparamlist);
+            file_content.append(definition.c_str(), definition.size());
+            file_content.append("\n```\n\n");
+            if(!is_blank_string(briefdescription.c_str()))
             {
-                name = get_xml_content(m).at(0).str();
+                file_content.append(briefdescription);
             }
-            else if(member_name == _briefdescription)
+            if(!is_blank_string(detaileddescription.c_str()))
             {
-                encode_md_text(m, briefdescription);
+                file_content.append("## Overview\n");
+                file_content.append(detaileddescription);
             }
-            else if(member_name == _detaileddescription)
+            // Write file.
+            Path path = output_dir;
+            path.push_back(id);
+            path.append_extension("md");
+            String path_str = path.encode();
+            log_info("LunaDoc", "Write %s", path_str.c_str());
+            lulet(f, open_file(path_str.c_str(), FileOpenFlag::write, FileCreationMode::create_always));
+            luexp(f->write(file_content.c_str(), file_content.size()));
+            // Write function section.
+            attrib_section.append("* [");
+            attrib_section.append(definition.c_str(), definition.size());
+            attrib_section.append("](");
+            attrib_section.append(id.c_str(), id.size());
+            attrib_section.append(".md)\n");
+            if(!is_blank_string(briefdescription.c_str()))
             {
-                encode_md_text(m, detaileddescription);
+                attrib_section.append("\n    ");
+                attrib_section.append(briefdescription);
             }
         }
-        // Skip undocumented entry.
-        if(is_blank_string(briefdescription.c_str()) && is_blank_string(detaileddescription.c_str()))
+        if(!attrib_section.empty())
         {
-            continue;
+            out_group_content.append("## Properties\n");
+            out_group_content.append(attrib_section);
         }
-        attrib_section.append("### ");
-        attrib_section.append(name.c_str(), name.size());
-        attrib_section.append("\n\n");
-        attrib_section.append("```c++\n");
-        if(!templateparamlist.empty()) attrib_section.append(templateparamlist);
-        attrib_section.append(definition.c_str(), definition.size());
-        attrib_section.append("\n```\n\n");
-        if(!briefdescription.empty())
-        {
-            attrib_section.append(briefdescription);
-        }
-        if(!detaileddescription.empty())
-        {
-            attrib_section.append(detaileddescription);
-        }
-        attrib_section.append("---\n");
     }
-    if(!attrib_section.empty())
-    {
-        out_group_content.append("## Properties\n");
-        out_group_content.append(attrib_section);
-    }
+    lucatchret;
+    return ok;
 }
 
-void Parser::encode_md_func_section(const Variant& section, String& out_group_content)
+RV Parser::encode_md_func_section(const Variant& section, String& out_group_content, const Path& output_dir)
 {
-    auto& content = get_xml_content(section);
-    String function_section;
-    for(auto& c : content.values())
+    lutry
     {
-        if(get_xml_name(c) != _memberdef) continue;
-        auto& attributes = get_xml_attributes(c);
-        if(attributes[_kind].str() != _function) continue;
-        auto& func_members = get_xml_content(c);
-        Name name;
-        Name definition;
-        Name argsstring;
-        String templateparamlist;
-        String briefdescription;
-        String detaileddescription;
-        for(auto& m : func_members.values())
+        auto& content = get_xml_content(section);
+        String function_section;
+        for(auto& c : content.values())
         {
-            auto member_name = get_xml_name(m);
-            if(member_name == _templateparamlist)
+            if(get_xml_name(c) != _memberdef) continue;
+            auto& attributes = get_xml_attributes(c);
+            if(attributes[_kind].str() != _function) continue;
+            auto& func_members = get_xml_content(c);
+            Name name;
+            Name qualifiedname;
+            Name id = attributes[_id].str();
+            Name definition;
+            Name argsstring;
+            String templateparamlist;
+            String briefdescription;
+            String detaileddescription;
+            for(auto& m : func_members.values())
             {
-                templateparamlist.append("template <");
-                auto& params = get_xml_content(m);
-                for(auto& p : params.values())
+                auto member_name = get_xml_name(m);
+                if(member_name == _templateparamlist)
                 {
-                    auto param_name = get_xml_name(p);
-                    if(param_name == _param)
+                    templateparamlist.append("template <");
+                    auto& params = get_xml_content(m);
+                    for(auto& p : params.values())
                     {
-                        auto& type = get_xml_content(p).at(0);
-                        auto type_name = get_xml_name(type);
-                        if(type_name == _type)
+                        auto param_name = get_xml_name(p);
+                        if(param_name == _param)
                         {
-                            templateparamlist.append(get_xml_content(type).at(0).c_str());
-                            templateparamlist.append(", ");
+                            auto& type = get_xml_content(p).at(0);
+                            auto type_name = get_xml_name(type);
+                            if(type_name == _type)
+                            {
+                                templateparamlist.append(get_xml_content(type).at(0).c_str());
+                                templateparamlist.append(", ");
+                            }
                         }
                     }
+                    if(templateparamlist[templateparamlist.size() - 2] == ',' && templateparamlist[templateparamlist.size() - 1] == ' ')
+                    {
+                        templateparamlist.pop_back();
+                        templateparamlist.pop_back();
+                    }
+                    templateparamlist.append(">\n");
                 }
-                if(templateparamlist[templateparamlist.size() - 2] == ',' && templateparamlist[templateparamlist.size() - 1] == ' ')
+                else if(member_name == _type)
                 {
-                    templateparamlist.pop_back();
-                    templateparamlist.pop_back();
+                    //member[_type] = get_xml_content(m).at(0).str();
                 }
-                templateparamlist.append(">\n");
+                else if(member_name == _definition)
+                {
+                    definition = get_xml_content(m).at(0).str();
+                }
+                else if(member_name == _argsstring)
+                {
+                    argsstring = get_xml_content(m).at(0).str();
+                }
+                else if(member_name == _name)
+                {
+                    name = get_xml_content(m).at(0).str();
+                }
+                else if(member_name == _qualifiedname)
+                {
+                    qualifiedname = get_xml_content(m).at(0).str();
+                }
+                else if(member_name == _param)
+                {
+                    // Variant param(VariantType::object);
+                    // auto& param_content = get_xml_content(m);
+                    // for(auto& param_m : param_content.values())
+                    // {
+                    //     auto param_m_name = get_xml_name(param_m);
+                    //     if(param_m_name == _type)
+                    //     {
+                    //         param[_type] = get_xml_content(param_m).at(0).str();
+                    //     }
+                    //     else if(param_m_name == _declname)
+                    //     {
+                    //         param[_declname] = get_xml_content(param_m).at(0).str();
+                    //     }
+                    // }
+                    // member[_param].push_back(move(param));
+                }
+                else if(member_name == _briefdescription)
+                {
+                    encode_md_text(m, briefdescription);
+                }
+                else if(member_name == _detaileddescription)
+                {
+                    encode_md_text(m, detaileddescription);
+                }
             }
-            else if(member_name == _type)
+            // Skip undocumented entry.
+            if(is_blank_string(briefdescription.c_str()) && is_blank_string(detaileddescription.c_str()))
             {
-                //member[_type] = get_xml_content(m).at(0).str();
+                continue;
             }
-            else if(member_name == _definition)
+            // Set file content.
+            String file_content;
+            file_content.append("# ");
+            file_content.append(qualifiedname.c_str(), qualifiedname.size());
+            file_content.append("\n\n");
+            file_content.append("```c++\n");
+            if(!templateparamlist.empty()) file_content.append(templateparamlist);
+            file_content.append(definition.c_str(), definition.size());
+            file_content.append(argsstring.c_str(), argsstring.size());
+            file_content.append("\n```\n\n");
+            if(!is_blank_string(briefdescription.c_str()))
             {
-                definition = get_xml_content(m).at(0).str();
+                file_content.append(briefdescription);
             }
-            else if(member_name == _argsstring)
+            if(!is_blank_string(detaileddescription.c_str()))
             {
-                argsstring = get_xml_content(m).at(0).str();
+                file_content.append("## Overview\n");
+                file_content.append(detaileddescription);
             }
-            else if(member_name == _name)
+            // Write file.
+            Path path = output_dir;
+            path.push_back(id);
+            path.append_extension("md");
+            String path_str = path.encode();
+            log_info("LunaDoc", "Write %s", path_str.c_str());
+            lulet(f, open_file(path_str.c_str(), FileOpenFlag::write, FileCreationMode::create_always));
+            luexp(f->write(file_content.c_str(), file_content.size()));
+            // Write function section.
+            function_section.append("* [");
+            function_section.append(definition.c_str(), definition.size());
+            function_section.append(argsstring.c_str(), argsstring.size());
+            function_section.append("](");
+            function_section.append(id.c_str(), id.size());
+            function_section.append(".md)\n");
+            if(!is_blank_string(briefdescription.c_str()))
             {
-                name = get_xml_content(m).at(0).str();
-            }
-            else if(member_name == _qualifiedname)
-            {
-                //qualifiedname = get_xml_content(m).at(0).str();
-            }
-            else if(member_name == _param)
-            {
-                // Variant param(VariantType::object);
-                // auto& param_content = get_xml_content(m);
-                // for(auto& param_m : param_content.values())
-                // {
-                //     auto param_m_name = get_xml_name(param_m);
-                //     if(param_m_name == _type)
-                //     {
-                //         param[_type] = get_xml_content(param_m).at(0).str();
-                //     }
-                //     else if(param_m_name == _declname)
-                //     {
-                //         param[_declname] = get_xml_content(param_m).at(0).str();
-                //     }
-                // }
-                // member[_param].push_back(move(param));
-            }
-            else if(member_name == _briefdescription)
-            {
-                encode_md_text(m, briefdescription);
-            }
-            else if(member_name == _detaileddescription)
-            {
-                encode_md_text(m, detaileddescription);
+                function_section.append("\n    ");
+                function_section.append(briefdescription);
             }
         }
-        // Skip undocumented entry.
-        if(is_blank_string(briefdescription.c_str()) && is_blank_string(detaileddescription.c_str()))
+        if(!function_section.empty())
         {
-            continue;
+            out_group_content.append("## Functions\n");
+            out_group_content.append(function_section);
         }
-        function_section.append("### ");
-        function_section.append(name.c_str(), name.size());
-        function_section.append("\n\n");
-        function_section.append("```c++\n");
-        if(!templateparamlist.empty()) function_section.append(templateparamlist);
-        function_section.append(definition.c_str(), definition.size());
-        function_section.append(argsstring.c_str(), argsstring.size());
-        function_section.append("\n```\n\n");
-        if(!briefdescription.empty())
-        {
-            function_section.append(briefdescription);
-        }
-        if(!detaileddescription.empty())
-        {
-            function_section.append(detaileddescription);
-        }
-        function_section.append("---\n");
     }
-    if(!function_section.empty())
-    {
-        out_group_content.append("## Functions\n");
-        out_group_content.append(function_section);
-    }
+    lucatchret;
+    return ok;
 }
 
-void Parser::encode_md_typedef_section(const Variant& section, String& out_group_content)
+RV Parser::encode_md_typedef_section(const Variant& section, String& out_group_content, const Path& output_dir)
 {
-    auto& content = get_xml_content(section);
-    String typedef_section;
-    for(auto& c : content.values())
+    lutry
     {
-        if(get_xml_name(c) != _memberdef) continue;
-        auto& attributes = get_xml_attributes(c);
-        if(attributes[_kind].str() != _typedef) continue;
-        auto& type_members = get_xml_content(c);
-        Name qualifiedname;
-        Name definition;
-        String briefdescription;
-        String detaileddescription;
-        for(auto& m : type_members.values())
+        auto& content = get_xml_content(section);
+        String typedef_section;
+        for(auto& c : content.values())
         {
-            auto member_name = get_xml_name(m);
-            if(member_name == _qualifiedname)
+            if(get_xml_name(c) != _memberdef) continue;
+            auto& attributes = get_xml_attributes(c);
+            if(attributes[_kind].str() != _typedef) continue;
+            auto& type_members = get_xml_content(c);
+            Name name;
+            Name qualifiedname;
+            Name id = attributes[_id].str();
+            Name definition;
+            String briefdescription;
+            String detaileddescription;
+            for(auto& m : type_members.values())
             {
-                qualifiedname = get_xml_content(m).at(0).str();
+                auto member_name = get_xml_name(m);
+                if(member_name == _qualifiedname)
+                {
+                    qualifiedname = get_xml_content(m).at(0).str();
+                }
+                else if(member_name == _name)
+                {
+                    name = get_xml_content(m).at(0).str();
+                }
+                else if(member_name == _definition)
+                {
+                    definition = get_xml_content(m).at(0).str();
+                }
+                else if(member_name == _briefdescription)
+                {
+                    encode_md_text(m, briefdescription);
+                }
+                else if(member_name == _detaileddescription)
+                {
+                    encode_md_text(m, detaileddescription);
+                }
             }
-            else if(member_name == _definition)
+            // Skip undocumented entry.
+            if(is_blank_string(briefdescription.c_str()) && is_blank_string(detaileddescription.c_str()))
             {
-                definition = get_xml_content(m).at(0).str();
+                continue;
             }
-            else if(member_name == _briefdescription)
+            // Set file content.
+            String file_content;
+            file_content.append("# ");
+            file_content.append(qualifiedname.c_str(), qualifiedname.size());
+            file_content.append("\n\n");
+            file_content.append("```c++\n");
+            file_content.append(definition.c_str(), definition.size());
+            file_content.append("\n```\n\n");
+            if(!is_blank_string(briefdescription.c_str()))
             {
-                encode_md_text(m, briefdescription);
+                file_content.append(briefdescription);
             }
-            else if(member_name == _detaileddescription)
+            if(!is_blank_string(detaileddescription.c_str()))
             {
-                encode_md_text(m, detaileddescription);
+                file_content.append("## Overview\n");
+                file_content.append(detaileddescription);
+            }
+            // Write file.
+            Path path = output_dir;
+            path.push_back(id);
+            path.append_extension("md");
+            String path_str = path.encode();
+            log_info("LunaDoc", "Write %s", path_str.c_str());
+            lulet(f, open_file(path_str.c_str(), FileOpenFlag::write, FileCreationMode::create_always));
+            luexp(f->write(file_content.c_str(), file_content.size()));
+            // Write function section.
+            typedef_section.append("* [");
+            typedef_section.append(definition.c_str(), definition.size());
+            typedef_section.append("](");
+            typedef_section.append(id.c_str(), id.size());
+            typedef_section.append(".md)\n");
+            if(!is_blank_string(briefdescription.c_str()))
+            {
+                typedef_section.append("\n    ");
+                typedef_section.append(briefdescription);
             }
         }
-        // Skip undocumented entry.
-        if(is_blank_string(briefdescription.c_str()) && is_blank_string(detaileddescription.c_str()))
+        if(!typedef_section.empty())
         {
-            continue;
+            out_group_content.append("## Aliasing types\n");
+            out_group_content.append(typedef_section);
         }
-        typedef_section.append("### ");
-        typedef_section.append(qualifiedname.c_str(), qualifiedname.size());
-        typedef_section.append("\n\n");
-        typedef_section.append("```c++\n");
-        typedef_section.append(definition.c_str(), definition.size());
-        typedef_section.append("\n```\n\n");
-        if(!briefdescription.empty())
-        {
-            typedef_section.append(briefdescription);
-        }
-        if(!detaileddescription.empty())
-        {
-            typedef_section.append(detaileddescription);
-        }
-        typedef_section.append("---\n");
     }
-    if(!typedef_section.empty())
-    {
-        out_group_content.append("## Aliasing types\n");
-        out_group_content.append(typedef_section);
-    }
+    lucatchret;
+    return ok;
 }
 
 struct BaseClassDesc
@@ -540,11 +633,11 @@ RV Parser::encode_md_class_file(const Name& xml_name, const Variant& xml_data, c
                 String section;
                 if(section_kind == _publicattrib)
                 {
-                    encode_md_attrib_section(m, section);
+                    luexp(encode_md_attrib_section(m, section, output_dir));
                 }
                 else if(section_kind == _publicfunc)
                 {
-                    encode_md_func_section(m, section);
+                    luexp(encode_md_func_section(m, section, output_dir));
                 }
                 sections.push_back(move(section));
             }
@@ -655,11 +748,11 @@ RV Parser::encode_md_group_file(const Name& xml_name, const Variant& xml_data, c
                 String section;
                 if(kind == _func)
                 {
-                    encode_md_func_section(c, section);
+                    luexp(encode_md_func_section(c, section, output_dir));
                 }
                 else if(kind == _typedef)
                 {
-                    encode_md_typedef_section(c, section);
+                    luexp(encode_md_typedef_section(c, section, output_dir));
                 }
                 sections.push_back(move(section));
             }
