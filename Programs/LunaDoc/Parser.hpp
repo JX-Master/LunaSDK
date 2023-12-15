@@ -86,6 +86,6 @@ struct Parser
     void encode_md_attrib_section(const Variant& section, String& out_group_content);
     void encode_md_func_section(const Variant& section, String& out_group_content);
     void encode_md_typedef_section(const Variant& section, String& out_group_content);
-    RV encode_md_class_file(const Variant& xml_data, String& out_content);
-    RV encode_md_group_file(const Variant& xml_data, String& out_content);
+    RV encode_md_class_file(const Name& xml_name, const Variant& xml_data, const Path& output_dir);
+    RV encode_md_group_file(const Name& xml_name, const Variant& xml_data, const Path& output_dir);
 };

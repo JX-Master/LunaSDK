@@ -492,14 +492,24 @@ void Parser::encode_md_typedef_section(const Variant& section, String& out_group
     }
 }
 
-RV Parser::encode_md_class_file(const Variant& xml_data, String& out_content)
+struct BaseClassDesc
+{
+    Name name;
+    Name prot;
+    Name virt;
+};
+
+RV Parser::encode_md_class_file(const Name& xml_name, const Variant& xml_data, const Path& output_dir)
 {
     lutry
     {
+        String out_content;
         auto& compounddef = find_first_xml_child_element(xml_data, _compounddef);
         auto& class_content = get_xml_content(compounddef);
+        auto& attributes = get_xml_attributes(compounddef);
         Name title;
-        Name base_class;
+        Vector<BaseClassDesc> base_classes;
+        Name kind = attributes[_kind].str();
         String briefdescription;
         String detaileddescription;
         Vector<String> sections;
@@ -516,7 +526,12 @@ RV Parser::encode_md_class_file(const Variant& xml_data, String& out_content)
             else if(member_name == _basecompoundref)
             {
                 auto basecompoundref = get_xml_content(m).at(0).str();
-                base_class = basecompoundref;
+                auto& baseattrs = get_xml_attributes(m);
+                BaseClassDesc base;
+                base.name = basecompoundref;
+                base.prot = baseattrs[_prot].str();
+                base.virt = baseattrs[_virt].str();
+                base_classes.push_back(move(base));
             }
             else if(member_name == _sectiondef)
             {
@@ -544,29 +559,67 @@ RV Parser::encode_md_class_file(const Variant& xml_data, String& out_content)
         }
         out_content.append("# ");
         out_content.append(title.c_str(), title.size());
-        out_content.append("\n\n");
-        if(!briefdescription.empty())
+        out_content.append("\n");
+        if(!is_blank_string(briefdescription.c_str()))
         {
             out_content.append(briefdescription);
         }
-        if(!detaileddescription.empty())
+        out_content.append("```c++\n");
+        out_content.append(kind.c_str(), kind.size());
+        out_content.push_back(' ');
+        out_content.append(title.c_str(), title.size());
+        if(!base_classes.empty())
         {
+            out_content.append(" : ");
+            for(usize i = 0; i < base_classes.size(); ++i)
+            {
+                auto& base = base_classes[i];
+                if(base.prot)
+                {
+                    out_content.append(base.prot.c_str(), base.prot.size());
+                    out_content.push_back(' ');
+                }
+                if(base.virt)
+                {
+                    out_content.append(base.virt.c_str(), base.virt.size());
+                    out_content.push_back(' ');
+                }
+                out_content.append(base.name.c_str(), base.name.size());
+                if(i != base_classes.size() - 1)
+                {
+                    out_content.append(", ");
+                }
+            }
+        }
+        out_content.append("\n```\n\n");
+        if(!is_blank_string(detaileddescription.c_str()))
+        {
+            out_content.append("## Overview\n");
             out_content.append(detaileddescription);
         }
         for(auto& s : sections)
         {
             out_content.append(s);
         }
+        // Write file.
+        Path path = output_dir;
+        path.push_back(xml_name);
+        path.append_extension("md");
+        String path_str = path.encode();
+        log_info("LunaDoc", "Write %s", path_str.c_str());
+        lulet(f, open_file(path_str.c_str(), FileOpenFlag::write, FileCreationMode::create_always));
+        luexp(f->write(out_content.c_str(), out_content.size()));
     }
     lucatchret;
     return ok;
 }
 
-RV Parser::encode_md_group_file(const Variant& group, String& out_group_content)
+RV Parser::encode_md_group_file(const Name& xml_name, const Variant& xml_data, const Path& output_dir)
 {
     lutry
     {
-        auto& compounddef = find_first_xml_child_element(group, _compounddef);
+        String out_content;
+        auto& compounddef = find_first_xml_child_element(xml_data, _compounddef);
         auto& group_content = get_xml_content(compounddef);
         String title;
         String briefdescription;
@@ -650,36 +703,44 @@ RV Parser::encode_md_group_file(const Variant& group, String& out_group_content)
         }
         if(!title.empty())
         {
-            out_group_content.append("# ");
-            out_group_content.append(title);
-            out_group_content.push_back('\n');
+            out_content.append("# ");
+            out_content.append(title);
+            out_content.push_back('\n');
         }
-        out_group_content.append(briefdescription);
-        out_group_content.append(detaileddescription);
+        out_content.append(briefdescription);
+        out_content.append(detaileddescription);
         if(!innergroups.empty())
         {
-            out_group_content.append("## Topics\n");
+            out_content.append("## Topics\n");
             for(auto& innergroup : innergroups)
             {
-                out_group_content.append("* ");
-                out_group_content.append(innergroup);
-                out_group_content.push_back('\n');
+                out_content.append("* ");
+                out_content.append(innergroup);
+                out_content.push_back('\n');
             }
         }
         if(!innerclasses.empty())
         {
-            out_group_content.append("## Classes\n");
+            out_content.append("## Classes\n");
             for(auto& innerclass : innerclasses)
             {
-                out_group_content.append("* ");
-                out_group_content.append(innerclass);
-                out_group_content.push_back('\n');
+                out_content.append("* ");
+                out_content.append(innerclass);
+                out_content.push_back('\n');
             }
         }
         for(auto& s : sections)
         {
-            out_group_content.append(s);
+            out_content.append(s);
         }
+        // Write file.
+        Path path = output_dir;
+        path.push_back(xml_name);
+        path.append_extension("md");
+        String path_str = path.encode();
+        log_info("LunaDoc", "Write %s", path_str.c_str());
+        lulet(f, open_file(path_str.c_str(), FileOpenFlag::write, FileCreationMode::create_always));
+        luexp(f->write(out_content.c_str(), out_content.size()));
     }
     lucatchret;
     return ok;
@@ -744,29 +805,14 @@ RV Parser::encode_md_files(const Path& output_dir)
                 luexp(create_dir(output_dir.encode().c_str()));
             }
         }
+        // Encode group files.
         for(auto& g : group_files)
         {
-            String group_md_text;
-            luexp(encode_md_group_file(g.second, group_md_text));
-            Path path = output_dir;
-            path.push_back(g.first);
-            path.append_extension("md");
-            String path_str = path.encode();
-            log_info("LunaDoc", "Write %s", path_str.c_str());
-            lulet(f, open_file(path_str.c_str(), FileOpenFlag::write, FileCreationMode::create_always));
-            luexp(f->write(group_md_text.c_str(), group_md_text.size()));
+            luexp(encode_md_group_file(g.first, g.second, output_dir));
         }
         for(auto& c : class_files)
         {
-            String class_md_text;
-            luexp(encode_md_class_file(c.second, class_md_text));
-            Path path = output_dir;
-            path.push_back(c.first);
-            path.append_extension("md");
-            String path_str = path.encode();
-            log_info("LunaDoc", "Write %s", path_str.c_str());
-            lulet(f, open_file(path_str.c_str(), FileOpenFlag::write, FileCreationMode::create_always));
-            luexp(f->write(class_md_text.c_str(), class_md_text.size()));
+            luexp(encode_md_class_file(c.first, c.second, output_dir));
         }
     }
     lucatchret;
