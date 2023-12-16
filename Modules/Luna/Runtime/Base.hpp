@@ -32,12 +32,15 @@ namespace Luna
 {
 	//! @addtogroup Runtime
 	//! @{
+	//! @defgroup RuntimeBaseType Basic types
+	//! @}
+
+	//! @addtogroup RuntimeBaseType
+	//! @{
 
     //------------------------------------------------------------------------------------------------------
     //  Basic Types
     //------------------------------------------------------------------------------------------------------
-
-	// `bool` and `void` types are used as-is.
 
     //! Unsigned 8-bit integer (0~255).
     using u8 = std::uint8_t;
@@ -171,6 +174,8 @@ namespace Luna
 	constexpr u64 F64_SIGN_MASK 	= 0x8000000000000000ULL;
 	constexpr u64 F64_EXPONENT_MASK = 0x7FF0000000000000ULL;
 	constexpr u64 F64_FRACTION_MASK = 0x000FFFFFFFFFFFFFULL;
+
+	//! @}
 
 	//------------------------------------------------------------------------------------------------------
 	//  Type Traits
