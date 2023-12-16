@@ -97,7 +97,7 @@ void Parser::encode_md_parameter_list(const Variant& parameterlist, String& out_
             if(element_name == _parameternamelist)
             {
                 auto& parameter_name = get_xml_content(e).at(0);
-                auto& direction = get_xml_attributes(parameter_name)[_direction].str();
+                auto direction = get_xml_attributes(parameter_name)[_direction].str();
                 if(get_xml_name(parameter_name) == _parametername)
                 {
                     out_text.append("* ");
