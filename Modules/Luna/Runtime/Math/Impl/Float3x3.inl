@@ -8,8 +8,8 @@
 * @date 2022/3/17
  */
 #pragma once
-#include "../../Math/Matrix.hpp"
-#include "../../Math/Simd.hpp"
+#include "../Matrix.hpp"
+#include "../Simd.hpp"
 namespace Luna
 {
 	inline bool Float3x3::operator==(const Float3x3& m) const

@@ -94,7 +94,8 @@ namespace Luna
 	//! @brief The base interface for all other interfaces in Luna SDK.
 	struct Interface
 	{
-		//! Gets the object that implements the interface.
+		//! @brief Gets the pointer to the boxed object that implements this interface.
+		//! @return Returns the pointer to the boxed object.
 		virtual object_t get_object() = 0;
 	};
 

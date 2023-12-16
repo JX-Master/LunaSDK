@@ -16,27 +16,37 @@
 #define LUNA_RUNTIME_API
 #endif
 
+//! @addtogroup Runtime
+//! @{
+//! @defgroup RuntimeModule Module system
+//! @}
+
 namespace Luna
 {
-	//! The function to be called when the module is initialized.
+	//! @addtogroup RuntimeModule
+	//! @{
+
+	//! @brief The function to be called when the module is initialized.
 	using module_init_func_t = RV();
 
-	//! The function to be called when the module is closed.
+	//! @brief The function to be called when the module is closed.
 	using module_close_func_t = void(void);
 
-	//! Module description structure. This shall be allocated on static memory and being kept valid during the application 
+	//! @brief Module description structure. 
+	//! @details This shall be allocated on static memory and being kept valid during the application 
 	//! lifetime.
 	struct ModuleDesc
 	{
-		//! Used by the Runtime. The user should not change these memory.
+		//! @brief Used by the Runtime. The user should not change these memory.
 		c8 reserved[32];
 
 		// Filled by the user.
 		
-		//! The name of the module. The lifetime of the string should be equal to the lifetime of the module.
+		//! @brief The name of the module. The lifetime of the string should be equal to the lifetime of the module.
 		const c8* name;
 		
-		//! A string that records modules this module depends on. The lifetime of the string should be no shorter than
+		//! @brief A string that records modules this module depends on.
+		//！@details The lifetime of the string should be no shorter than
 		//! the lifetime of the module.
 		//! 
 		//! In case that multiple modules are required, use semicolons(;) to separate them (for example: "Core;Input;Gfx").
@@ -46,16 +56,18 @@ namespace Luna
 		//! module gets initialized.
 		const c8* dependencies;
 
-		//! The initialize function of the module. This can be `nullptr`, which behaves the same as returning `RV()` directly.
+		//! @brief The initialize function of the module. 
+		//! @details This can be `nullptr`, which behaves the same as returning `RV()` directly.
 		module_init_func_t* init_func;
 
-		//! The close function of the module. This can be `nullptr`, which behaves like an empty close function.
+		//! @brief The close function of the module.
+		//! @details This can be `nullptr`, which behaves like an empty close function.
 		module_close_func_t* close_func;
 	};
 
-	//! Adds one module to the Runtime. This function can be called before `Luna::init` is called.
+	//! @brief Adds one module to the Runtime. This function can be called before `Luna::init` is called.
 	//! 
-	//! The added module will not be initialized immediately. If the module is added before the Runtime is initialized,
+	//! @details The added module will not be initialized immediately. If the module is added before the Runtime is initialized,
 	//! they will be initialized when `Luna::init` is called; if the module is added after the Runtime is initialized,
 	//! they must be initialized by one explicit call to `init_modules`. When `Luna::init` or `init_modules` are called,
 	//! all dependent modules of the registered module must also be registered.
@@ -67,24 +79,27 @@ namespace Luna
 	//! @param[in] module_desc The description structure of the module. This structure should be available during the module lifetime. 
 	LUNA_RUNTIME_API void add_module(ModuleDesc* module_desc);
 
-	//! Removes one module from the Runtime. This function cannot be called when the module is currently initialized.
+	//! @brief Removes one module from the Runtime. This function cannot be called when the module is currently initialized.
 	LUNA_RUNTIME_API void remove_module(ModuleDesc* module_desc);
 
-	//! Initializes all dependency modules for the specified module, but leaves the specified module as uninitialized.
+	//! @brief Initializes all dependency modules for the specified module, but leaves the specified module as uninitialized.
 	//! You may use this API to perform some pre-init configurations for the module initialize process.
 	//! @param[in] module_name The name of the specified module.
 	//! @remark If the specified module is already initialized, this function does nothing and succeeds.
-	LUNA_RUNTIME_API RV init_module_dependencies(Name module_name);
+	LUNA_RUNTIME_API RV init_module_dependencies(const Name& module_name);
 
-	//! Initializes the specified module and all dependency modules of the specified module.
+	//! @brief Initializes the specified module and all dependency modules of the specified module.
 	//! @param[in] module_name The name of the specified module.
 	//! @remark If the specified module is already initialized, this function does nothing and succeeds.
-	LUNA_RUNTIME_API RV init_module(Name module_name);
+	LUNA_RUNTIME_API RV init_module(const Name& module_name);
 
-	//! Initializes all uninitialized modules.
+	//! @brief Initializes all uninitialized modules.
 	//! @return Returns error code if at least one module is failed to initialize.
 	LUNA_RUNTIME_API RV init_modules();
 
+	//! @brief One static module registration helper class that registers the specified module when being constructed.
+	//! @details Do not use this structure directly, instead, use @ref LUNA_STATIC_REGISTER_MODULE to register one module, which will define this
+	//! structure internally.
 	struct StaticRegisterModule
 	{
 		ModuleDesc module_desc;
@@ -98,7 +113,16 @@ namespace Luna
 			add_module(&module_desc);
 		}
 	};
+
+	//! @}
 }
 
+//! @brief Registers one module statically. Define this in one of CPP files of your module.
+//! @ingroup RuntimeModule
+//! @param[in] _name The name of the module. Used by the system to index this module.
+//! @param[in] _dependencies The dependency modules of this module, written in one string separated by semicolons (";").
+//! @param[in] _init_func The module initialization function.
+//! @param[in] _close_func The module close function.
+//! @remark See docs of @ref Luna::ModuleDesc for details about every parameter of this macro.
 #define LUNA_STATIC_REGISTER_MODULE(_name, _dependencies, _init_func, _close_func) Luna::StaticRegisterModule luna_module_register_##_name(#_name, _dependencies, _init_func, _close_func); \
 	extern "C" LUNA_EXPORT void luna_static_register_module_##_name() {}

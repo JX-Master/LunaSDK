@@ -101,6 +101,8 @@ namespace Luna
 				if ((usize)(next_cur - (const c16*)src) * 2 >= src_size) return 0;
 				return utf16_decode_char_encoding(next_cur, encoding);
 			}
+			lupanic();
+			return 0;
 		}
 		void BufferReadContext::skip_utf16_bom()
 		{

@@ -234,7 +234,7 @@ namespace Luna
 		return ok;
 	}
 
-	LUNA_RUNTIME_API RV init_module_dependencies(Name module_name)
+	LUNA_RUNTIME_API RV init_module_dependencies(const Name& module_name)
 	{
 		lutry
 		{
@@ -262,7 +262,7 @@ namespace Luna
 		return ok;
 	}
 
-	LUNA_RUNTIME_API RV init_module(Name module_name)
+	LUNA_RUNTIME_API RV init_module(const Name& module_name)
 	{
 		lutry
 		{

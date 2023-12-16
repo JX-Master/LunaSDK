@@ -46,14 +46,14 @@ namespace Luna
 				)));
 #ifdef LUNA_MEMORY_PROFILER_ENABLED
 				memory_profiler_allocate(m_memory->m_allocation.Get(), m_memory->get_size());
-				memory_profiler_set_memory_domain(m_memory->m_allocation.Get(), g_memory_domain_gpu);
+				memory_profiler_set_memory_domain(m_memory->m_allocation.Get(), "GPU", 3);
 				if(!test_flags(desc.flags, ResourceFlag::allow_aliasing))
 				{
-					memory_profiler_set_memory_type(m_memory->m_allocation.Get(), g_memory_type_buffer);
+					memory_profiler_set_memory_type(m_memory->m_allocation.Get(), "Buffer", 6);
 				}
 				else
 				{
-					memory_profiler_set_memory_type(m_memory->m_allocation.Get(), g_memory_type_aliasing_memory);
+					memory_profiler_set_memory_type(m_memory->m_allocation.Get(), "Aliasing Memory", 15);
 				}
 #endif
 			}
@@ -326,14 +326,14 @@ namespace Luna
 				post_init();
 #ifdef LUNA_MEMORY_PROFILER_ENABLED
 				memory_profiler_allocate(m_memory->m_allocation.Get(), m_memory->get_size());
-				memory_profiler_set_memory_domain(m_memory->m_allocation.Get(), g_memory_domain_gpu);
+				memory_profiler_set_memory_domain(m_memory->m_allocation.Get(), "GPU", 3);
 				if(!test_flags(desc.flags, ResourceFlag::allow_aliasing))
 				{
-					memory_profiler_set_memory_type(m_memory->m_allocation.Get(), g_memory_type_texture);
+					memory_profiler_set_memory_type(m_memory->m_allocation.Get(), "Texture", 7);
 				}
 				else
 				{
-					memory_profiler_set_memory_type(m_memory->m_allocation.Get(), g_memory_type_aliasing_memory);
+					memory_profiler_set_memory_type(m_memory->m_allocation.Get(), "Aliasing Memory", 15);
 				}
 #endif
 			}

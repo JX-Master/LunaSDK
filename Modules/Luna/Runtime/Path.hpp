@@ -14,6 +14,15 @@
 
 namespace Luna
 {
+	//! @addtogroup Runtime
+	//! @{
+	//! @defgroup RuntimePath Path
+	//! @}
+
+	//! @addtogroup RuntimePath
+    //! @{
+	
+	//! @brief Separators used when encoding @ref Path into strings.
 	enum class PathSeparator : u32
 	{
 		//! Uses slash (/). 
@@ -24,12 +33,14 @@ namespace Luna
 		back_slash = 2
 	};
 
+	//! @brief Additional flags used by @ref Path.
 	enum class PathFlag : u32
 	{
 		none = 0x00,
 		absolute = 0x01,	// The path is absolute, if this is not set, then the path is relative.
 	};
 
+	//! @brief Describes components of @ref Path.
 	enum class PathComponent : u32
 	{
 		none = 0x00,
@@ -107,17 +118,17 @@ namespace Luna
 		}
 	}
 
-	//! @class Path
-	//! Path is one kind of string that describes the location of one node in a hierarchical-based node tree, given that each
-	//! node in the tree can be identified by a name string. A file path is used to identify a file or folder in the given 
+	//! @brief A container that contains a sequence of names that describe one path.
+	//! @details Path is one kind of string that describes the location of one node in a hierarchical-based node tree, given that each
+	//! node in the tree can be identified by a name string. For example, a file path is used to identify a file or folder in the given 
 	//! file system.
 	//! 
-	//! The Path class is designed to be platform-independent and efficient to handle file path related operations.
+	//! @ref Path is designed to be platform-independent and efficient to handle file path related operations.
 	//! In implementation, the path object does not store the path string directly, but breaks it down to several parts, and stores
 	//! each part independently. This makes path-related operations very fast and consumes less memory if you need to store lots of 
 	//! paths.
 	//! 
-	//! One path is composed by the following parts:
+	//! One path is composed by the following components:
 	//! 1. The root name, which usually determines the domain of the path. For example, then volume symbol on Windows (like C:) is 
 	//! one kind of root name.
 	//! 2. The directory nodes that composes the path. For example, "C:\Games\MyGame\" has root name "C:" and two directory nodes 
@@ -145,40 +156,60 @@ namespace Luna
 		using const_iterator = const_pointer;
 		using reverse_iterator = ReverseIterator<iterator>;
 		using const_reverse_iterator = ReverseIterator<const_iterator>;
-
+		
+		//! @brief Constructs one empty path.
 		Path() :
 			m_flags(PathFlag::none) {}
-
+		//! @brief Constructs one path by parsing the specified path string.
+		//! @param[in] str The path string.
 		Path(const String& str) :
 			m_flags(PathFlag::none)
 		{
 			assign(str);
 		}
+		//! @brief Constructs one path by parsing the specified path string with custom starting position.
+		//! @param[in] str The path string.
+		//! @param[in] pos The index of the first character to parse.
 		Path(const String& str, usize pos) :
 			m_flags(PathFlag::none)
 		{
 			assign(str, pos);
 		}
+		//! @brief Constructs one path by parsing the specified path string with custom starting position and string size.
+		//! @param[in] str The path string.
+		//! @param[in] pos The index of the first character to parse.
+		//! @param[in] count The number of characters to parse.
 		Path(const String& str, usize pos, usize count) :
 			m_flags(PathFlag::none)
 		{
 			assign(str, pos, count);
 		}
+		//! @brief Constructs one path by parsing the specified path string.
+		//! @param[in] s The path string.
+		//! @par Valid Usage
+		//! * `s` must specifies one null-terminated string.
 		Path(const c8* s) :
 			m_flags(PathFlag::none)
 		{
 			assign(s);
 		}
+		//! @brief Constructs one path by parsing the specified path string.
+		//! @param[in] s The path string.
+		//! @param[in] count The number of characters to parse.
 		Path(const c8* s, usize count) :
 			m_flags(PathFlag::none)
 		{
 			assign(s, count);
 		}
+		//! @brief Constructs one path by moving coping content from another path.
+		//! @param[in] rhs The path to copy from.
 		Path(const Path& rhs) :
 			m_flags(PathFlag::none)
 		{
 			assign(rhs);
 		}
+		//! @brief Constructs one path by moving moving content from another path.
+		//! @param[in] rhs The path to move from.
 		Path(Path&& rhs) :
 			m_nodes(move(rhs.m_nodes)),
 			m_flags(rhs.m_flags),
@@ -186,40 +217,52 @@ namespace Luna
 		{
 			rhs.m_flags = PathFlag::none;
 		}
-
+		//! @brief Replaces content of the path by parsing the specified path string.
+		//! @param[in] str The path string.
+		//! @return Returns `*this`.
 		Path& operator=(const String& str)
 		{
 			assign(str);
 			return *this;
 		}
+		//! @brief Replaces content of the path by parsing the specified path string.
+		//! @param[in] s The path string.
+		//! @return Returns `*this`.
 		Path& operator=(const c8* s)
 		{
 			assign(s);
 			return *this;
 		}
+		//! @brief Replaces content of the path by coping content from another path.
+		//! @param[in] rhs The path to copy from.
+		//! @return Returns `*this`.
 		Path& operator=(const Path& rhs)
 		{
 			assign(rhs);
 			return *this;
 		}
+		//! @brief Replaces content of the path by coping content from another path.
+		//! @param[in] rhs The path to move from.
+		//! @return Returns `*this`.
 		Path& operator=(Path&& rhs)
 		{
 			assign(move(rhs));
 			return *this;
 		}
-		
-		//! Retrieve the path flags.
+		//! @brief Gets the path flags.
+		//! @return Returns a copy of the path flags.
 		PathFlag flags() const
 		{
 			return m_flags;
 		}
+		//! @brief Gets the path flags.
+		//! @return Returns a reference of the path flags.
 		PathFlag& flags()
 		{
 			return m_flags;
 		}
-
-		//! Normalizes the path. 
-		//! This call remove all unneeded ".." and "." nodes from the path.
+		//! @brief Normalizes the path. 
+		//! @details This call remove all unneeded ".." and "." nodes from the path.
 		void normalize()
 		{
 			auto iter = m_nodes.begin();
@@ -244,11 +287,10 @@ namespace Luna
 				}
 			}
 		}
-
-		//! Generates a string that represents the current path.
-		//! @param[in] separator The separator format to use. Default is slash since it is well supported by all major platforms, 
-		//! even on Windows.
-		//! @param[in] has_root If the root name is appended to the path string.
+		//! @brief Encodes the current path to a string.
+		//! @param[in] separator The separator format to use. Default is slash since it is well supported by all major platforms.
+		//! @param[in] has_root Whether to add root name to the path string.
+		//! @return Returns the encoded path string.
 		String encode(PathSeparator separator = PathSeparator::slash, bool has_root = true) const
 		{
 			String buf;
@@ -276,14 +318,16 @@ namespace Luna
 			}
 			return buf;
 		}
-
-		//! Assigns another path to this path.
+		//! @brief Replaces content of the path by coping content from another path.
+		//! @param[in] rhs The path to copy from.
 		void assign(const Path& rhs)
 		{
 			m_flags = rhs.m_flags;
 			m_nodes = rhs.m_nodes;
 			m_root = rhs.m_root;
 		}
+		//! @brief Replaces content of the path by coping content from another path.
+		//! @param[in] rhs The path to move from.
 		void assign(Path&& rhs)
 		{
 			m_flags = rhs.m_flags;
@@ -291,30 +335,42 @@ namespace Luna
 			m_root = move(rhs.m_root);
 			rhs.m_flags = PathFlag::none;
 		}
-
-		//! Clears the current path and fills the path object by parsing the provided path string.
-		//! The flags, root name and file nodes will be deduced from the string.
-		//! 
-		//! Currently only the following root string will be recognized:
+		//! @brief Replaces content of the path by parsing the specified path string.
+		//! @param[in] str The path string.
+		//! @remark Currently only the following root string will be recognized:
 		//! * Windows volume: C:, D: etc.
 		//! * Remove Server: //My_Server or \\My_Server or IP-address format(\\192.168.31.1)
 		void assign(const String& str)
 		{
 			assign(str.c_str(), str.size());
 		}
+		//! @brief Replaces content of the path by parsing the specified path string with custom starting position.
+		//! @param[in] str The path string.
+		//! @param[in] pos The index of the first character to parse.
 		void assign(const String& str, usize pos)
 		{
 			assign(str.c_str() + pos, str.size() - pos);
 		}
+		//! @brief CReplaces content of the path by parsing the specified path string with custom starting position and string size.
+		//! @param[in] str The path string.
+		//! @param[in] pos The index of the first character to parse.
+		//! @param[in] count The number of characters to parse.
 		void assign(const String& str, usize pos, usize count)
 		{
 			assign(str.c_str() + pos, count);
 		}
+		//! @brief Replaces content of the path by parsing the specified path string.
+		//! @param[in] s The path string.
+		//! @par Valid Usage
+		//! * `s` must be null-terminated.
 		void assign(const c8* s)
 		{
 			if (s) assign(s, strlen(s));
 			else reset();
 		}
+		//! @brief Replaces content of the path by parsing the specified path string.
+		//! @param[in] s The path string.
+		//! @param[in] count The number of characters to parse.
 		void assign(const c8* s, usize count)
 		{
 			if (!s)
@@ -361,8 +417,7 @@ namespace Luna
 			}
 			normalize();
 		}
-
-		//! Assigns the content of this path with a new relative path that if appended to `base` path, 
+		//! @brief Assigns the content of this path with a new path that if appended to `base` path, 
 		//! creates a path equal to `target` path.
 		//! @param[in] base The base path.
 		//! @param[in] target The target path.
@@ -404,24 +459,26 @@ namespace Luna
 			}
 		}
 
-		//! Retrieve the path root name.
+		//! @brief Gets the path root name.
+		//! @return Returns a constant reference to the path root name.
 		const Name& root() const
 		{
 			return m_root;
 		}
+		//! @brief Gets the path root name.
+		//! @return Returns a reference to the path root name.
 		Name& root()
 		{
 			return m_root;
 		}
-
-		//! Gets the extension name of the path, that is, the name string after the last dot(.) character.
-		//! The extension is always in lower case.
-		//! Returns a null Name ("") if the path does not have an extension name.
+		//! @brief Gets the extension name of the path, that is, the name string after the last dot(.) character.
+		//! @return Returns the extension name of the path. The extension is always in lower case.
+		//! Returns an empty name if the path does not have an extension name.
 		Name extension() const
 		{
 			if (m_nodes.empty())
 			{
-				return Name("");
+				return Name();
 			}
 			auto& name = m_nodes.back();
 			const c8* str = name.c_str();
@@ -449,13 +506,14 @@ namespace Luna
 			}
 			return Name("");
 		}
-		//! Gets the filename of the path, which is the last node in the path excluding extension and the separating dot(`.`).
-		//! Returns a null Name ("") if the path is empty.
+		//! @brief Gets the filename of the path, which is the last node in the path excluding extension and the separating dot(`.`).
+		//! @return Returns the filename of the path.
+		//! Returns an empty name if the path is empty.
 		Name filename() const
 		{
 			if (m_nodes.empty())
 			{
-				return Name("");
+				return Name();
 			}
 			auto& name = m_nodes.back();
 			const c8* str = name.c_str();
@@ -480,17 +538,17 @@ namespace Luna
 			// No extension found, return the filename directly.
 			return name;
 		}
+		//! @brief Replaces the extension.
+		//! @param[in] new_extension The new extension to replace.
+		//! @par Valid Usage
+		//! * `new_extension` must be null-terminated.
 		void replace_extension(const c8* new_extension)
 		{
-			if (new_extension)
-			{
-				replace_extension(new_extension, strlen(new_extension));
-			}
-			else
-			{
-				replace_extension(new_extension, 0);
-			}
+			replace_extension(new_extension, new_extension ? strlen(new_extension) : 0);
 		}
+		//! @brief Replaces the extension.
+		//! @param[in] new_extension The new extension to replace.
+		//! @param[in] count The length of the new extension string.
 		void replace_extension(const c8* new_extension, usize count)
 		{
 			auto& name = m_nodes.back();
@@ -538,10 +596,19 @@ namespace Luna
 			}
 			name = Name(buf);;
 		}
+		//! @brief Appends the extension.
+		//! @details The system adds one extension separator (".") between extension and filename automatically.
+		//! @param[in] new_extension The extension to append.
+		//! @par Valid Usage
+		//! * `new_extension` must be null-terminated.
 		void append_extension(const c8* new_extension)
 		{
 			append_extension(new_extension, strlen(new_extension));
 		}
+		//! @brief Appends the extension.
+		//! @details The system adds one extension separator (".") between extension and filename automatically.
+		//! @param[in] new_extension The new extension to replace.
+		//! @param[in] count The length of the new extension string.
 		void append_extension(const c8* new_extension, usize count)
 		{
 			auto& name = m_nodes.back();
@@ -557,123 +624,179 @@ namespace Luna
 			buf[sz + count + 1] = 0;
 			name = Name(buf);
 		}
+		//! @brief Removes the extension.
+		//! @details The extension separator (".") is removed as well in this operation.
+		//! If the path does not have one extension (`extension().empty() == true`), this operation does nothing.
 		void remove_extension()
 		{
 			replace_extension(nullptr);
 		}
-
+		//! @brief Gets the name node at the specified index.
+		//! @param[in] index The index of the name node.
+		//! @return Returns one constant reference of the name node.
 		const_reference at(usize index) const
 		{
 			return m_nodes[index];
 		}
+		//! @brief Gets the name node at the specified index.
+		//! @param[in] index The index of the name node.
+		//! @return Returns one reference of the name node.
 		reference at(usize index)
 		{
 			return m_nodes[index];
 		}
+		//! @brief Gets the name node at the specified index.
+		//! @param[in] index The index of the name node.
+		//! @return Returns one constant reference of the name node.
 		const_reference operator[](usize index) const
 		{
 			return at(index);
 		}
+		//! @brief Gets the name node at the specified index.
+		//! @param[in] index The index of the name node.
+		//! @return Returns one reference of the name node.
 		reference operator[](usize index)
 		{
 			return at(index);
 		}
-
+		//! @brief Gets one iterator pointing to the first name node of the path.
+		//! @return Returns one iterator pointing to the first name node of the path.
 		iterator begin()
 		{
 			return m_nodes.begin();
 		}
+		//! @brief Gets one constant iterator pointing to the first name node of the path.
+		//! @return Returns one constant iterator pointing to the first name node of the path.
 		const_iterator begin() const
 		{
 			return m_nodes.begin();
 		}
+		//! @brief Gets one constant iterator pointing to the first name node of the path.
+		//! @return Returns one constant iterator pointing to the first name node of the path.
 		const_iterator cbegin() const
 		{
 			return m_nodes.cbegin();
 		}
+		//! @brief Gets one iterator pointing to the one past last name node of the path.
+		//! @return Returns one iterator pointing to the one past last name node of the path.
 		iterator end()
 		{
 			return m_nodes.end();
 		}
+		//! @brief Gets one constant iterator pointing to the one past last name node of the path.
+		//! @return Returns one constant iterator pointing to the one past last name node of the path.
 		const_iterator end() const
 		{
 			return m_nodes.end();
 		}
+		//! @brief Gets one constant iterator pointing to the one past last name node of the path.
+		//! @return Returns one constant iterator pointing to the one past last name node of the path.
 		const_iterator cend() const
 		{
 			return m_nodes.cend();
 		}
-
+		//! @brief Gets one reverse iterator pointing to the last name node of the path.
+		//! @return Returns one reverse iterator pointing to the last name node of the path.
 		reverse_iterator rbegin()
 		{
 			return m_nodes.rbegin();
 		}
+		//! @brief Gets one constant reverse iterator pointing to the last name node of the path.
+		//! @return Returns one constant reverse iterator pointing to the last name node of the path.
 		const_reverse_iterator rbegin() const
 		{
 			return m_nodes.rbegin();
 		}
+		//! @brief Gets one constant reverse iterator pointing to the last name node of the path.
+		//! @return Returns one constant reverse iterator pointing to the last name node of the path.
 		const_reverse_iterator crbegin() const
 		{
 			return m_nodes.crbegin();
 		}
+		//! @brief Gets one reverse iterator pointing to the one-before-first name node of the path.
+		//! @return Returns one reverse iterator pointing to the one-before-first name node of the path.
 		reverse_iterator rend()
 		{
 			return m_nodes.rend();
 		}
+		//! @brief Gets one constant reverse iterator pointing to the one-before-first name node of the path.
+		//! @return Returns one constant reverse iterator pointing to the one-before-first name node of the path.
 		const_reverse_iterator rend() const
 		{
 			return m_nodes.rend();
 		}
+		//! @brief Gets one constant reverse iterator pointing to the one-before-first name node of the path.
+		//! @return Returns one constant reverse iterator pointing to the one-before-first name node of the path.
 		const_reverse_iterator crend() const
 		{
 			return m_nodes.crend();
 		}
-
+		//! @brief Gets the size of the path, that is, the number of name nodes in the path.
+		//! @return Returns the size of the path.
 		usize size() const
 		{
 			return m_nodes.size();
 		}
+		//! @brief Checks whether this path is empty, that is, the size of this path is `0`.
+		//! @return Returns `true` if this path is empty, returns `false` otherwise.
 		bool empty() const
 		{
 			return m_nodes.empty();
 		}
-
+		//! @brief Gets the first name node in the path.
+		//! @return Returns one reference to the first name node in the path.
+		//! @par Valid Usage
+		//! * `empty()` must be `false` when calling this function.
 		reference front()
 		{
 			return m_nodes.front();
 		}
+		//! @brief Gets the first name node in the path.
+		//! @return Returns one constant reference to the first name node in the path.
+		//! @par Valid Usage
+		//! * `empty()` must be `false` when calling this function.
 		const_reference front() const
 		{
 			return m_nodes.front();
 		}
+		//! @brief Gets the last name node in the path.
+		//! @return Returns one reference to the last name node in the path.
+		//! @par Valid Usage
+		//! * `empty()` must be `false` when calling this function.
 		reference back()
 		{
 			return m_nodes.back();
 		}
+		//! @brief Gets the last name node in the path.
+		//! @return Returns one constant reference to the last name node in the path.
+		//! @par Valid Usage
+		//! * `empty()` must be `false` when calling this function.
 		const_reference back() const
 		{
 			return m_nodes.back();
 		}
-
-		//! Appends one node to the end of the path.
+		//! @brief Inserts one name node at the back of the path.
+		//! @param[in] path_node The name node to insert. The name node will be copy-inserted to the path.
 		void push_back(const Name& path_node)
 		{
 			m_nodes.push_back(path_node);
 		}
+		//! @brief Inserts one name node at the back of the path.
+		//! @param[in] path_node The name node to insert. The name node will be move-inserted to the path.
 		void push_back(Name&& path_node)
 		{
 			m_nodes.push_back(move(path_node));
 		}
-
-		//! Pops one node from the path. The path should have at least one node when this method is 
-		//! called.
+		//! @brief Removes the last name node of the path.
+		//! @par Valid Usage
+		//! * `empty()` must be `false` when calling this function.
 		void pop_back()
 		{
 			m_nodes.pop_back();
 		}
-
-		//! Appends another path to the end of this path. The flags and the root name of the appended path
-		//! are ignored.
+		//! @brief Appends another path to the end of this path. 
+		//! @details The flags and the root name of the appended path are ignored.
+		//! @param[in] appended_path The path to append.
 		void append(const Path& appended_path)
 		{
 			for (auto& i : appended_path.m_nodes)
@@ -681,6 +804,11 @@ namespace Luna
 				m_nodes.push_back(i);
 			}
 		}
+		//! @brief Appends another path to the end of this path. 
+		//! @details The flags and the root name of the appended path are ignored.
+		//! @param[in] appended_path The path to append.
+		//! @param[in] pos The index of the first node to append. 
+		//! Nodes in range [`appended_path.begin() + pos`, `appended_path.end()`) will be appended.
 		void append(const Path& appended_path, usize pos)
 		{
 			for (auto iter = appended_path.m_nodes.begin() + pos; iter != appended_path.m_nodes.end(); ++iter)
@@ -688,6 +816,12 @@ namespace Luna
 				m_nodes.push_back(*iter);
 			}
 		}
+		//! @brief Appends another path to the end of this path. 
+		//! @details The flags and the root name of the appended path are ignored.
+		//! @param[in] appended_path The path to append.
+		//! @param[in] pos The index of the first node to append. 
+		//! @param[in] count The number of nodes to append.
+		//! Nodes in range [`appended_path.begin() + pos`, `appended_path.begin() + pos + count`) will be appended.
 		void append(const Path& appended_path, usize pos, usize count)
 		{
 			for (usize i = 0; i < count; ++i)
@@ -695,37 +829,42 @@ namespace Luna
 				m_nodes.push_back(appended_path.m_nodes[pos + i]);
 			}
 		}
-
-		//! Clears all nodes in the path.
+		//! @brief Clears all nodes in the path.
 		void clear()
 		{
 			m_nodes.clear();
 		}
-
+		//! @brief Resets the path object.
+		//! @brief This operation clears all nodes in the path, then clears the root name and flags of the path.
 		void reset()
 		{
 			m_nodes.clear();
 			m_root.reset();
 			m_flags = PathFlag::none;
 		}
-
-		//! Erases `count` nodes starts from `pos`. The whole range to erase should be valid.
-		void erase(usize pos, usize count)
-		{
-			m_nodes.erase(m_nodes.begin() + pos, m_nodes.begin() + pos + count);
-		}
-		//! Erases the node identified by the iterator.
+		//! @brief Removes one name node from the path.
+		//! @param[in] pos The iterator pointing to the name node to be removed.
+		//! @return Returns one iterator pointing to the next name node of the removed name node when iterating nodes.
+		//! @par Valid Usage
+		//! * `pos` must points to a valid name node in the path.
 		iterator erase(const_iterator pos)
 		{
 			return m_nodes.erase(pos);
 		}
-		//! Erases elements in range identified by iterators.
+		//! @brief Removes one range of name nodes from the path.
+		//! @param[in] first The iterator pointing to the first name node to be removed.
+		//! @param[in] last The iterator pointing to the one-past-last name node to be removed.
+		//! @return Returns one iterator pointing to the next name node of the removed name nodes when iterating name nodes.
+		//! @par Valid Usage
+		//! * `first` must be either `end()` or one valid name node in the path.
+		//! * If `first != end()`, [`first`, `last`) must specifies either one empty range (`first == last`) or one valid name node range of the path.
+		//! * If `first == end()`, [`first`, `last`) must specifies one empty range (`first == last`).
 		iterator erase(const_iterator first, const_iterator last)
 		{
 			return m_nodes.erase(first, last);
 		}
-
-		//! Gets the hash code of this path.
+		//! @brief Computes the hash code of this path.
+		//! @return Returns the hash code of this path.
 		usize hash_code() const
 		{
 			usize h = test_flags(m_flags, PathFlag::absolute) ? 0x3745 : 0; // Random initial seed to deferent "/A/B" from "A/B".
@@ -743,10 +882,9 @@ namespace Luna
 			}
 			return h;
 		}
-
-		//! Checks if the current path is the subsequent path of the specified base path. 
-		//! For example, "/foo/bar" is a subsequent path of "/foo".
-		//!
+		//! @brief Checks whether the current path is one subsequent path of the specified base path. 
+		//! @details For example, "/foo/bar" is a subsequent path of "/foo".
+		//! @param[in] base The base path to be checked.
 		//! @remark Path A is the subsequent path of B if:
 		//! 1. Path A contains all nodes of B as its prefix path, in the same order as B.
 		//! 2. If both paths have root names, their root names should be identical.
@@ -771,28 +909,28 @@ namespace Luna
 			}
 			return true;
 		}
-
-		//! Compares if current path and the specified path is the same in the specified components.
+		//! @brief Compares two paths for equality.
 		//! @param[in] rhs The path to compare with.
-		//! @param[in] components_to_compare The components to compare, default is to compare all components
+		//! @param[in] compared_components The components to compare, default is to compare all components
 		//! and only `true` if all components of both paths are equal.
-		bool equal_to(const Path& rhs, PathComponent components_to_compare = PathComponent::all) const
+		//! @return Returns `true` if all compared components in both paths are equal. Returns `false` otherwise.
+		bool equal_to(const Path& rhs, PathComponent compared_components = PathComponent::all) const
 		{
-			if (test_flags(components_to_compare, PathComponent::flags))
+			if (test_flags(compared_components, PathComponent::flags))
 			{
 				if (m_flags != rhs.m_flags)
 				{
 					return false;
 				}
 			}
-			if (test_flags(components_to_compare, PathComponent::root))
+			if (test_flags(compared_components, PathComponent::root))
 			{
 				if (m_root != rhs.m_root)
 				{
 					return false;
 				}
 			}
-			if (test_flags(components_to_compare, PathComponent::nodes))
+			if (test_flags(compared_components, PathComponent::nodes))
 			{
 				if (m_nodes.size() != rhs.m_nodes.size())
 				{
@@ -808,12 +946,16 @@ namespace Luna
 			}
 			return true;
 		}
-
-		//! Same as `equal_to` with `components_to_compare` set to `EPathComponent::all`.
+		//! @brief Compares all components of two paths for equality.
+		//! @param[in] rhs The path to compare with.
+		//! @return Returns `true` if all components in both paths are equal. Returns `false` otherwise.
 		bool operator==(const Path& rhs) const
 		{
 			return equal_to(rhs);
 		}
+		//! @brief Compares all components of two paths for non-equality.
+		//! @param[in] rhs The path to compare with.
+		//! @return Returns `false` if all components in both paths are equal. Returns `true` otherwise.
 		bool operator!=(const Path& rhs) const
 		{
 			return !equal_to(rhs);
@@ -825,6 +967,11 @@ namespace Luna
 		usize operator()(const Path& val) const { return val.hash_code(); }
 	};
 
+	//! @brief Gets the type object of @ref Path.
+	//! @return Returns the type object of @ref Path.
 	LUNA_RUNTIME_API typeinfo_t path_type();
+	
 	template <> struct typeof_t<Path> { typeinfo_t operator()() const { return path_type(); } };
+
+	//! @}
 }

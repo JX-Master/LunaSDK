@@ -252,4 +252,4 @@ namespace Luna
 	template <> struct typeof_t<Color> { typeinfo_t operator()() const { return color_type(); } };
 }
 
-#include "../Source/Math/Color.inl"
+#include "Impl/Color.inl"

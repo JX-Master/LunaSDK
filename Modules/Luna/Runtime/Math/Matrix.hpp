@@ -356,5 +356,5 @@ namespace Luna
 	template <> struct typeof_t<Float4x4> { typeinfo_t operator()() const { return float4x4_type(); } };
 }
 
-#include "../Source/Math/Float3x3.inl"
-#include "../Source/Math/Float4x4.inl"
+#include "Impl/Float3x3.inl"
+#include "Impl/Float4x4.inl"

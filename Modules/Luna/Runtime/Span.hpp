@@ -86,7 +86,7 @@ namespace Luna
 			m_buffer(arr),
 			m_size(size) {}
 		constexpr Span(InitializerList<remove_cv_t<_Ty>> ilist) :
-			m_buffer((_Ty*)ilist.begin()),
+			m_buffer(ilist.begin()),
 			m_size(ilist.size()) {}
 		constexpr Span(const Span& rhs) :
             m_buffer(rhs.m_buffer),

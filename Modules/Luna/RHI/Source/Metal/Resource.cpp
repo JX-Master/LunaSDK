@@ -32,8 +32,8 @@ namespace Luna
                     m_memory->m_size = m_buffer->allocatedSize();
 #ifdef LUNA_MEMORY_PROFILER_ENABLED
                     memory_profiler_allocate(m_buffer.get(), m_memory->get_size());
-                    memory_profiler_set_memory_domain(m_buffer.get(), g_memory_domain_gpu);
-                    memory_profiler_set_memory_type(m_buffer.get(), g_memory_type_buffer);
+                    memory_profiler_set_memory_domain(m_buffer.get(), "GPU", 3);
+                    memory_profiler_set_memory_type(m_buffer.get(), "Buffer", 6);
 #endif
                 }
             }
@@ -85,8 +85,8 @@ namespace Luna
                     m_memory->m_size = m_texture->allocatedSize();
 #ifdef LUNA_MEMORY_PROFILER_ENABLED
                     memory_profiler_allocate(m_texture.get(), m_memory->get_size());
-                    memory_profiler_set_memory_domain(m_texture.get(), g_memory_domain_gpu);
-                    memory_profiler_set_memory_type(m_texture.get(), g_memory_type_texture);
+                    memory_profiler_set_memory_domain(m_texture.get(), "GPU", 3);
+                    memory_profiler_set_memory_type(m_texture.get(), "Texture", 7);
 #endif
                 }
             }

@@ -3,12 +3,12 @@
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
-* @file SimdSource.inl
+* @file Simd.inl
 * @author JXMaster
 * @date 2022/3/19
  */
 #pragma once
-#include "../../Math/Simd.hpp"
+#include "../Simd.hpp"
 #ifdef LUNA_SIMD
 namespace Luna
 {

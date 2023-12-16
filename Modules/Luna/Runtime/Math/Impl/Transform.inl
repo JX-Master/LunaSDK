@@ -8,8 +8,8 @@
 * @date 2022/3/26
  */
 #pragma once
-#include "../../Math/Transform.hpp"
-#include "../../Math/SimdTransform.hpp"
+#include "../Transform.hpp"
+#include "../SimdTransform.hpp"
 
 namespace Luna
 {

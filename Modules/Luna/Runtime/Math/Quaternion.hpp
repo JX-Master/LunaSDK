@@ -88,4 +88,4 @@ namespace Luna
 	template <> struct typeof_t<Quaternion> { typeinfo_t operator()() const { return quaternion_type(); } };
 }
 
-#include "../Source/Math/Quaternion.inl"
+#include "Impl/Quaternion.inl"

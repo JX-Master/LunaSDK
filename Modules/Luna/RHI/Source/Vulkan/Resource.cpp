@@ -30,14 +30,14 @@ namespace Luna
 				luexp(encode_vk_result(vmaCreateBuffer(m_device->m_allocator, &create_info, &allocation, &m_buffer, &m_memory->m_allocation, &m_memory->m_allocation_info)));
 #ifdef LUNA_MEMORY_PROFILER_ENABLED
 				memory_profiler_allocate(&m_memory->m_allocation, m_memory->get_size());
-				memory_profiler_set_memory_domain(&m_memory->m_allocation, g_memory_domain_gpu);
+				memory_profiler_set_memory_domain(&m_memory->m_allocation, "GPU", 3);
 				if(!test_flags(desc.flags, ResourceFlag::allow_aliasing))
 				{
-					memory_profiler_set_memory_type(&m_memory->m_allocation, g_memory_type_buffer);
+					memory_profiler_set_memory_type(&m_memory->m_allocation, "Buffer", 6);
 				}
 				else
 				{
-					memory_profiler_set_memory_type(&m_memory->m_allocation, g_memory_type_aliasing_memory);
+					memory_profiler_set_memory_type(&m_memory->m_allocation, "Aliasing Memory", 15);
 				}
 #endif
 			}
@@ -155,14 +155,14 @@ namespace Luna
 				post_init();
 #ifdef LUNA_MEMORY_PROFILER_ENABLED
 				memory_profiler_allocate(&m_memory->m_allocation, m_memory->get_size());
-				memory_profiler_set_memory_domain(&m_memory->m_allocation, g_memory_domain_gpu);
+				memory_profiler_set_memory_domain(&m_memory->m_allocation, "GPU", 3);
 				if(!test_flags(desc.flags, ResourceFlag::allow_aliasing))
 				{
-					memory_profiler_set_memory_type(&m_memory->m_allocation, g_memory_type_texture);
+					memory_profiler_set_memory_type(&m_memory->m_allocation, "Texture", 7);
 				}
 				else
 				{
-					memory_profiler_set_memory_type(&m_memory->m_allocation, g_memory_type_aliasing_memory);
+					memory_profiler_set_memory_type(&m_memory->m_allocation, "Aliasing Memory", 15);
 				}
 #endif
 			}

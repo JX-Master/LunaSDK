@@ -11,7 +11,6 @@
 #include "Base.hpp"
 namespace Luna
 {
-	// hash library.
 	namespace Impl
 	{
 		constexpr const u8 crc8_table[256] =
@@ -234,16 +233,24 @@ namespace Luna
 		}
 	}
 
-	//! `memhash` is the basic hash function that uses crc32 hash algorithm to hash 
-	//! any kind of binary data stream to a single hash value. The value may be `uint32`, 
-	//! `uint64` or `size_t`.
+	//! @addtogroup Runtime
+	//! @{
+	//! @defgroup RuntimeHash Hashing functions
+	//! @}
+
+    //! @addtogroup RuntimeHash
+    //! @{
+	
+	//! @brief Computes a hash code for the specified binary data.
+	//! @details This is the basic hash function that uses crc32 hash algorithm to hash 
+	//! any kind of binary data stream to a single hash value.
 	//! @param[in] data A pointer to the data to be hashed.
 	//! @param[in] size The length of the data in bytes.
 	//! @param[in] h A initial hash value. If this is a new hash, set to 0 (which
 	//! is the default value if not specified). If this is a rehash operation or a second
 	//! have before another one, you can specify the last hash value to get a different 
 	//! hash value from the same data.
-	//! @return Returns the hashed value.
+	//! @return Returns the hash code of the data.
 	template <typename _HashTy = usize>
 	inline _HashTy memhash(const void* data, usize size, _HashTy h = 0)
 	{
@@ -268,35 +275,50 @@ namespace Luna
 		return h;
 	}
 
-	//! A specialization of `memhash` that uses u8 value.
+	//! A specialization of @ref memhash that computes 8-bit hash code.
+	//! @param[in] data A pointer to the data to be hashed.
+	//! @param[in] size The length of the data in bytes.
+	//! @param[in] h A initial hash value. See @ref memhash for details.
+	//! @return Returns the hash code of the data.
 	inline u8 memhash8(const void* data, usize size, u8 h = 0)
 	{
 		return memhash<u8>(data, size, h);
 	}
 
-	//! A specialization of `memhash` that uses u16 value.
+	//! A specialization of @ref memhash that computes 16-bit hash code.
+	//! @param[in] data A pointer to the data to be hashed.
+	//! @param[in] size The length of the data in bytes.
+	//! @param[in] h A initial hash value. See @ref memhash for details.
+	//! @return Returns the hash code of the data.
 	inline u16 memhash16(const void* data, usize size, u16 h = 0)
 	{
 		return memhash<u16>(data, size, h);
 	}
 
-	//! A specialization of `memhash` that uses u32 value.
+	//! A specialization of @ref memhash that computes 32-bit hash code.
+	//! @param[in] data A pointer to the data to be hashed.
+	//! @param[in] size The length of the data in bytes.
+	//! @param[in] h A initial hash value. See @ref memhash for details.
+	//! @return Returns the hash code of the data.
 	inline u32 memhash32(const void* data, usize size, u32 h = 0)
 	{
 		return memhash<u32>(data, size, h);
 	}
 
-	//! A specialization of `memhash` that uses u64 value.
+	//! A specialization of @ref memhash that computes 64-bit hash code.
+	//! @param[in] data A pointer to the data to be hashed.
+	//! @param[in] size The length of the data in bytes.
+	//! @param[in] h A initial hash value. See @ref memhash for details.
+	//! @return Returns the hash code of the data.
 	inline u64 memhash64(const void* data, usize size, u64 h = 0)
 	{
 		return memhash<u64>(data, size, h);
 	}
 
-	//! Same as `memhash`, but accepts a null-terminated data stream (usually a string) 
-	//! as input.
-	//! @param[in] s A pointer to the null-terminated string.
-	//! @param[in] h A initial hash value. See documentation of `memhash` for details.
-	//! @return Returns the hashed value.
+	//! @brief Computes a hash code for the specified string.
+	//! @param[in] s A pointer to one null-terminated string to compute.
+	//! @param[in] h A initial hash value. See @ref memhash for details.
+	//! @return Returns the hash code of the string.
 	template <typename _HashTy = usize>
 	inline constexpr _HashTy strhash(const c8* s, _HashTy h = 0)
 	{
@@ -319,27 +341,41 @@ namespace Luna
 		return h;
 	}
 
-	//! A specialization of `strhash` that uses `u8` value.
+	//! A specialization of @ref strhash that computes 8-bit hash code.
+	//! @param[in] s A pointer to one null-terminated string to compute.
+	//! @param[in] h A initial hash value. See @ref memhash for details.
+	//! @return Returns the hash code of the string.
 	inline constexpr u8 strhash8(const c8* s, u8 h = 0)
 	{
 		return strhash<u8>(s, h);
 	}
 
-	//! A specialization of `strhash` that uses `u16` value.
+	//! A specialization of @ref strhash that computes 16-bit hash code.
+	//! @param[in] s A pointer to one null-terminated string to compute.
+	//! @param[in] h A initial hash value. See @ref memhash for details.
+	//! @return Returns the hash code of the string.
 	inline constexpr u16 strhash16(const c8* s, u16 h = 0)
 	{
 		return strhash<u16>(s, h);
 	}
 
-	//! A specialization of `strhash` that uses `u32` value.
+	//! A specialization of @ref strhash that computes 32-bit hash code.
+	//! @param[in] s A pointer to one null-terminated string to compute.
+	//! @param[in] h A initial hash value. See @ref memhash for details.
+	//! @return Returns the hash code of the string.
 	inline constexpr u32 strhash32(const c8* s, u32 h = 0)
 	{
 		return strhash<u32>(s, h);
 	}
 
-	//! A specialization of `strhash` that uses `u64` value.
+	//! A specialization of @ref strhash that computes 64-bit hash code.
+	//! @param[in] s A pointer to one null-terminated string to compute.
+	//! @param[in] h A initial hash value. See @ref memhash for details.
+	//! @return Returns the hash code of the string.
 	inline constexpr u64 strhash64(const c8* s, u64 h = 0)
 	{
 		return strhash<u64>(s, h);
 	}
+
+	//! @}
 }

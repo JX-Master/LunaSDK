@@ -155,7 +155,7 @@ namespace Luna
 					vkDestroySurfaceKHR(g_vk_instance, dummy_surface, nullptr);
 					dummy_surface = VK_NULL_HANDLE;
 				}
-				return lures;
+				return luerr;
 			}
 			return ok;
 		}

@@ -14,6 +14,7 @@
 #include "../SelfIndexedUnorderedMultiMap.hpp"
 #include "../SpinLock.hpp"
 #include "../Memory.hpp"
+#include "../Profiler.hpp"
 namespace Luna
 {
 	struct NameEntry
@@ -43,7 +44,7 @@ namespace Luna
 		}
 	};
 	Unconstructed<SelfIndexedUnorderedMultiMap<name_id_t, NameEntry*, NameEntryExtractKey>> g_name_map;
-	SpinLock g_name_mtx;
+	RecursiveSpinLock g_name_mtx;
 	bool g_name_inited = false;
 	static void erase_entry(NameEntry* entry)
 	{
@@ -113,6 +114,9 @@ namespace Luna
 		}
 		// Create new entry.
 		NameEntry* new_entry = (NameEntry*)memalloc(sizeof(c8) * (count + 1) + sizeof(NameEntry), alignof(NameEntry));
+#ifdef LUNA_MEMORY_PROFILER_ENABLED
+		memory_profiler_set_memory_type(new_entry, "Name", 4);
+#endif
 		new (new_entry) NameEntry(h, count, 1);
 		c8* buf = (c8*)(new_entry + 1);
 		memcpy(buf, name, sizeof(c8) * count);

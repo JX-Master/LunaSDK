@@ -8,8 +8,8 @@
 * @date 2022/3/17
  */
 #pragma once
-#include "../../Math/Color.hpp"
-#include "../../Math/Simd.hpp"
+#include "../Color.hpp"
+#include "../Simd.hpp"
 namespace Luna
 {
 	inline bool Color::operator==(const Color& v) const

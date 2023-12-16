@@ -10,7 +10,6 @@
 */
 #pragma once
 #include "../RHI.hpp"
-#include <Luna/Runtime/Profiler.hpp>
 
 namespace Luna
 {
@@ -92,11 +91,5 @@ namespace Luna
 				desc.array_size = 1;
 			}
 		}
-#ifdef LUNA_MEMORY_PROFILER_ENABLED
-		extern Name g_memory_domain_gpu;
-		extern Name g_memory_type_buffer;
-		extern Name g_memory_type_texture;
-		extern Name g_memory_type_aliasing_memory;
-#endif
 	}
 }

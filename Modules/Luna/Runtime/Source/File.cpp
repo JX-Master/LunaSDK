@@ -26,7 +26,7 @@ namespace Luna
 #ifdef LUNA_DEBUG
 		lucatch
 		{
-			return set_error(lures, "Failed to open file %s: %s", filename, explain(lures));
+			return set_error(luerr, "Failed to open file %s: %s", filename, explain(luerr));
 		}
 #else
 		lucatchret;

@@ -414,26 +414,24 @@ namespace Luna
 			ImGui::SetNextItemWidth(150.0f);
 			{
 				auto render_mode_type = typeof<SceneRendererMode>();
-				usize num_options = count_enum_options(render_mode_type);
+				auto options = get_enum_options(render_mode_type);
 				Name current_name;
-				for(usize i = 0; i < num_options; ++i)
+				for(auto& option : options)
 				{
-					auto desc = get_enum_option(render_mode_type, i);
-					if(desc.value == (i64)settings.mode)
+					if(option.value == (i64)settings.mode)
 					{
-						current_name = desc.name;
+						current_name = option.name;
 						break;
 					}
 				}
 				if(ImGui::BeginCombo("Render Mode", current_name.c_str()))
 				{
-					for(usize i = 0; i < num_options; ++i)
+					for(auto& option : options)
 					{
-						auto desc = get_enum_option(render_mode_type, i);
-						bool selected = (desc.value == (i64)settings.mode);
-						if(ImGui::Selectable(desc.name.c_str(), selected))
+						bool selected = (option.value == (i64)settings.mode);
+						if(ImGui::Selectable(option.name.c_str(), selected))
 						{
-							settings.mode = (SceneRendererMode)desc.value;
+							settings.mode = (SceneRendererMode)option.value;
 						}
 					}
 					ImGui::EndCombo();
@@ -766,7 +764,7 @@ namespace Luna
 					}
 					lucatch
 					{
-						auto _ = Window::message_box(explain(lures), "Failed to save scene", Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
+						auto _ = Window::message_box(explain(luerr), "Failed to save scene", Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
 					}
 				}
 				ImGui::EndMenu();
@@ -843,7 +841,7 @@ namespace Luna
 		}
 		lucatch
 		{
-			auto _ = Window::message_box(explain(lures), "Failed to capture image", Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
+			auto _ = Window::message_box(explain(luerr), "Failed to capture image", Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
 		}
 	}
 

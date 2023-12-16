@@ -9,7 +9,7 @@
 * @brief The SIMD extension to support transform computations.
  */
 #pragma once
-#include "../../Math/SimdTransform.hpp"
+#include "../SimdTransform.hpp"
 
 #ifdef LUNA_SIMD
 namespace Luna

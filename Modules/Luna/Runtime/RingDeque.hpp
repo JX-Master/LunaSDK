@@ -146,6 +146,11 @@ namespace Luna
         }
 	}
 
+	//! @addtogroup RuntimeContainer
+    //! @{
+	
+	//! @brief A container that implements a double-ended queue and uses a ring buffer
+	//! as its internal storage.
 	template <typename _Ty, typename _Alloc = Allocator>
 	class RingDeque
 	{
@@ -235,12 +240,10 @@ namespace Luna
 		{
             return m_allocator_and_buffer.first().template allocate<value_type>(n);
 		}
-
 		void deallocate(value_type* ptr, usize n)
 		{
             m_allocator_and_buffer.first().template deallocate<value_type>(ptr, n);
 		}
-
 		void free_buffer()
 		{
 			destruct_range(begin(), end());
@@ -844,12 +847,5 @@ namespace Luna
 		}
 	};
 
-	template <typename _Ty, typename _Alloc>
-	inline void gc_track(const RingDeque<_Ty, _Alloc>& obj)
-	{
-		for (auto& i : obj)
-		{
-			gc_track(i);
-		}
-	}
+	//! @}
 }

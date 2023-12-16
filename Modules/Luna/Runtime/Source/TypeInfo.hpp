@@ -49,7 +49,6 @@ namespace Luna
 	};
 	struct StructureProperty
 	{
-		StructurePropertyDesc desc;
 		Vector<Pair<Name, Variant>> attributes;
 	};
 	struct StructureTypeInfo : public NamedTypeInfo
@@ -63,19 +62,20 @@ namespace Luna
 		structure_move_ctor_t* move_ctor;
 		structure_copy_assign_t* copy_assign;
 		structure_move_assign_t* move_assign;
-		Vector<StructureProperty> properties;
+		Array<StructurePropertyDesc> property_descs;
+		Array<StructureProperty> properties;
 		bool trivially_relocatable;
 	};
 	struct EnumerationTypeInfo : public NamedTypeInfo
 	{
 		PrimitiveTypeInfo* underlying_type;
 		bool multienum;
-		Vector<EnumerationOptionDesc> options;
+		Array<EnumerationOptionDesc> options;
 	};
 	struct GenericStructureInstancedTypeInfo;
 	struct GenericStructureTypeInfo : public NamedTypeInfo
 	{
-		Vector<Name> generic_parameter_names;
+		Array<Name> generic_parameter_names;
 		bool variable_generic_parameters;
 		generic_structure_instantiate_t* instantiate;
 		Vector<GenericStructureInstancedTypeInfo*> generic_instanced_types;
@@ -83,7 +83,7 @@ namespace Luna
 	struct GenericStructureInstancedTypeInfo : public TypeInfo
 	{
 		GenericStructureTypeInfo* generic_type;
-		Vector<typeinfo_t> generic_arguments;
+		Array<typeinfo_t> generic_arguments;
 		usize size;
 		usize alignment;
 		TypeInfo* base_type;
@@ -93,7 +93,8 @@ namespace Luna
 		structure_move_ctor_t* move_ctor;
 		structure_copy_assign_t* copy_assign;
 		structure_move_assign_t* move_assign;
-		Vector<StructureProperty> properties;
+		Array<StructurePropertyDesc> property_descs;
+		Array<StructureProperty> properties;
 		bool trivially_relocatable;
 	};
 	void type_registry_init();

@@ -93,5 +93,5 @@ namespace Luna
 		float4 LUNA_SIMD_CALL quatslerp_f4(float4 a, float4 b, f32 t);
 	}
 }
-#include "../Source/Math/SimdQuaternion.inl"
+#include "Impl/SimdQuaternion.inl"
 #endif

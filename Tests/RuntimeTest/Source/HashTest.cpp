@@ -538,7 +538,7 @@ namespace Luna
 			lutest(h.size() == 0);
 			//! When the set is constructed, it does not allocate
 			//! any dynamic memory.
-			lutest(h.buffer_size() == 0);
+			lutest(h.hash_table_size() == 0);
 			h.max_load_factor(1.0f);
 
 			for (int i = 0; i < 100; ++i)
@@ -547,16 +547,16 @@ namespace Luna
 			}
 			lutest(h.size() == 100);
 			h.shrink_to_fit();
-			lutest(h.buffer_size() == 100);
+			lutest(h.hash_table_size() == 100);
 
 			h.clear();
 			lutest(h.empty());
 			lutest(h.size() == 0);
 			//! When the set gets cleared, it retains the buffer.
-			lutest(h.buffer_size() == 100);
+			lutest(h.hash_table_size() == 100);
 			//! The bucket can be freed by calling shrink_to_fit.
 			h.shrink_to_fit();
-			lutest(h.buffer_size() == 0);
+			lutest(h.hash_table_size() == 0);
 		}
 
 		{
@@ -703,19 +703,19 @@ namespace Luna
 			f32 max_lf = h.max_load_factor();
 			lutest(max_lf == (1.0f));
 			h.rehash(10000);
-			size_t n = h.buffer_size();
+			size_t n = h.hash_table_size();
 			lutest(n == 10000);
 			for (int i = 0; i < 10000; ++i)
 			{
 				h.insert(i);	// This also tests for high loading.
 			}
-			size_t n2 = h.buffer_size();
+			size_t n2 = h.hash_table_size();
 			lutest(n2 == n);	// Verify no rehashing has occurred, due to our high load factor.
 			for (int i = 0; i < 10000; ++i)
 			{
 				h.insert(i);	// This also tests for high loading.
 			}
-			size_t n3 = h.buffer_size();
+			size_t n3 = h.hash_table_size();
 			lutest(n3 == n);	// Verify no rehashing has occurred, because all second insertions are failed.
 		}
 

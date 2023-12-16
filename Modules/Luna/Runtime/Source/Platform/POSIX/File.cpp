@@ -169,7 +169,7 @@ namespace Luna
 			off_t r = lseek(fd, 0, SEEK_CUR);
 			if (r == (off_t)-1)
 			{
-				return R<u64>::failure(BasicError::bad_platform_call());
+				return BasicError::bad_platform_call();
 			}
 			return(u64)r;
 		}
@@ -406,7 +406,7 @@ namespace Luna
 			if (r < 0)
 			{
 				clearerr(f);
-				return R<u64>::failure(BasicError::bad_platform_call());
+				return BasicError::bad_platform_call();
 			}
 			return (u64)r;
 		}
@@ -582,7 +582,7 @@ namespace Luna
 				{
 					close_file(to_file);
 				}
-				return lures;
+				return luerr;
 			}
 				if (buf)
 				{

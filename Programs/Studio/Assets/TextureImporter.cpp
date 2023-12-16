@@ -506,7 +506,7 @@ namespace Luna
 		}
 		lucatch
 		{
-			auto _ = Window::message_box(explain(lures), "Failed to import texture asset",
+			auto _ = Window::message_box(explain(luerr), "Failed to import texture asset",
 								Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
 		}
 	}
@@ -663,9 +663,9 @@ namespace Luna
 			}
 			lucatch
 			{
-				if (lures != BasicError::interrupted())
+				if (luerr != BasicError::interrupted())
 				{
-					auto _ = Window::message_box(explain(lures), "Failed to import texture",
+					auto _ = Window::message_box(explain(luerr), "Failed to import texture",
 						Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
 				}
 				m_files.clear();

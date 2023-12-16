@@ -163,43 +163,25 @@ namespace Luna
 				}
 				file_sz = from_file->get_size();
 				luexp(to_file->set_size(file_sz));
-			}
-			lucatch
-			{
-				from_file = nullptr;
-				to_file = nullptr;
-				auto _ = to->m_driver->delete_file(to->m_driver->driver_data, to->m_mount_data, to_path);
-				return lures;
-			}
-			// preparing buffer.
-			void* buf = nullptr;
-			if (file_sz >= 16_mb)
-			{
-				buf = memalloc((usize)16_mb);
-			}
-			else
-			{
-				buf = memalloc((usize)file_sz);
-			}
-			if (!buf)
-			{
-				from_file = nullptr;
-				to_file = nullptr;
-				auto _ = to->m_driver->delete_file(to->m_driver->driver_data, to->m_mount_data, to_path);
-				return BasicError::out_of_memory();
-			}
-			// copying.
-			lutry2
-			{
+				// preparing buffer.
+				void* alloc_buf = nullptr;
+				usize alloc_size = max<usize>(file_sz, 16_mb);
+				alloc_buf = memalloc(alloc_size);
+				if (!alloc_buf)
+				{
+					luthrow(BasicError::out_of_memory());
+				}
+				Blob buf;
+				buf.attach((byte_t*)alloc_buf, alloc_size, 0);
 				if (file_sz >= 16_mb)
 				{
 					for (u64 i = 0; i < file_sz; i += 16_mb)
 					{
 						usize bytes_to_read = (usize)min(16_mb, file_sz - i);
 						usize bytes_read;
-						luexp2(from_file->read(buf, bytes_to_read, &bytes_read));
+						luexp(from_file->read(buf.data(), bytes_to_read, &bytes_read));
 						luassert(bytes_to_read == bytes_read);
-						luexp2(to_file->write(buf, bytes_to_read, &bytes_read));
+						luexp(to_file->write(buf.data(), bytes_to_read, &bytes_read));
 						luassert(bytes_to_read == bytes_read);
 					}
 				}
@@ -207,22 +189,19 @@ namespace Luna
 				{
 					usize bytes_to_read = (usize)file_sz;
 					usize bytes_read;
-					luexp2(from_file->read(buf, bytes_to_read, &bytes_read));
+					luexp(from_file->read(buf.data(), bytes_to_read, &bytes_read));
 					luassert(bytes_to_read == bytes_read);
-					luexp2(to_file->write(buf, bytes_to_read, &bytes_read));
+					luexp(to_file->write(buf.data(), bytes_to_read, &bytes_read));
 					luassert(bytes_to_read == bytes_read);
 				}
 			}
-			lucatch2
+			lucatch
 			{
-				// read or write failed.
-				memfree(buf);
 				from_file = nullptr;
 				to_file = nullptr;
 				auto _ = to->m_driver->delete_file(to->m_driver->driver_data, to->m_mount_data, to_path);
-				return lures2;
+				return luerr;
 			}
-			memfree(buf);
 			return ok;
 		}
 		LUNA_VFS_API R<Ref<IFile>>	open_file(const Path& path, FileOpenFlag flags, FileCreationMode creation)

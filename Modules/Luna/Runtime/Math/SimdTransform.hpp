@@ -226,5 +226,5 @@ namespace Luna
 		float4x4 LUNA_SIMD_CALL transform3d_look_to_f4x4(float4 eye, float4 eyedir, float4 updir);
 	}
 }
-#include "../Source/Math/SimdTransform.inl"
+#include "Impl/SimdTransform.inl"
 #endif

@@ -104,11 +104,11 @@ namespace Luna
 			}
 			lucatch
 			{
-				if (lures == BasicError::not_found())
+				if (luerr == BasicError::not_found())
 				{
 					return set_error(AssetError::meta_file_not_found(), "Asset meta file %s is not found.", meta_path.encode().c_str());
 				}
-				return lures;
+				return luerr;
 			}
 			return file;
 		}
@@ -409,13 +409,13 @@ namespace Luna
 			lucatch
 			{
 				entry->lock.lock();
-				if (lures == BasicError::error_object())
+				if (luerr == BasicError::error_object())
 				{
 					entry->last_load_result = get_error();
 				}
 				else
 				{
-					entry->last_load_result.code = lures;
+					entry->last_load_result.code = luerr;
 				}
 				entry->lock.unlock();
 			}

@@ -1,8 +1,10 @@
 luna_sdk_module_target("Runtime")
     add_headerfiles("*.hpp", {prefixdir = "Luna/Runtime"})
+    add_headerfiles("(Impl/**.hpp)", {prefixdir = "Luna/Runtime"})
+    add_headerfiles("(Impl/**.inl)", {prefixdir = "Luna/Runtime"})
     add_headerfiles("(Math/**.hpp)", {prefixdir = "Luna/Runtime"})
-    add_headerfiles("Source/*.hpp", {install = false})
-    add_headerfiles("Source/Math/**.inl", {install = false})
+    add_headerfiles("(Math/**.inl)", {prefixdir = "Luna/Runtime"})
+    add_headerfiles("Source/**.hpp", {install = false})
     add_files("Source/*.cpp")
     if is_plat("windows") then
         add_headerfiles("(Platform/Windows/**.hpp)", {prefixdir = "Luna/Runtime"})

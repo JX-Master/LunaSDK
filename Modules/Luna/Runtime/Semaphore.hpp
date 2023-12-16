@@ -13,6 +13,11 @@
 #include "Ref.hpp"
 namespace Luna
 {
+	//! @addtogroup RuntimeThread
+	//! @{
+	
+	//！@interface ISemaphore
+	//! Represents one system-level semaphore object.
 	struct ISemaphore : virtual IWaitable
 	{
 		luiid("{ef6a7782-0a6c-4a40-abc9-a6d2381a3397}");
@@ -26,4 +31,6 @@ namespace Luna
 	//! @param[in] max_count The max count the specified semaphore can reach to.
 	//! @return Returns the new created semaphore object.
 	LUNA_RUNTIME_API Ref<ISemaphore> new_semaphore(i32 initial_count, i32 max_count);
+
+	//! @}
 }

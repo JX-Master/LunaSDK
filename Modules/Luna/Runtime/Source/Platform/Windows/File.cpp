@@ -393,7 +393,7 @@ namespace Luna
 			if (cur < 0)
 			{
 				clearerr((FILE*)file);
-				return R<u64>::failure(BasicError::bad_platform_call());
+				return BasicError::bad_platform_call();
 			}
 			return (u64)cur;
 		}

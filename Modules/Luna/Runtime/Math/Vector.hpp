@@ -447,6 +447,6 @@ namespace Luna
 	template <typename _Ty> struct typeof_t<Vec4U<_Ty>> { typeinfo_t operator()() const { return get_generic_instanced_type(vec4u_type(), { typeof<_Ty>() }); } };
 }
 
-#include "../Source/Math/Float2.inl"
-#include "../Source/Math/Float3.inl"
-#include "../Source/Math/Float4.inl"
+#include "Impl/Float2.inl"
+#include "Impl/Float3.inl"
+#include "Impl/Float4.inl"

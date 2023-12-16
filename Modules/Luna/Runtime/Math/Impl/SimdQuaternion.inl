@@ -8,7 +8,7 @@
 * @date 2022/3/25
 * @brief The SIMD extension to support Quaternion computations.
 */
-#include "../../Math/SimdQuaternion.hpp"
+#include "../SimdQuaternion.hpp"
 
 #ifdef LUNA_SIMD
 namespace Luna

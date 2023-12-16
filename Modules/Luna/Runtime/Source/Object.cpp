@@ -87,7 +87,8 @@ namespace Luna
 		new (header) ObjectHeader();
 		header->type = type;
 #ifdef LUNA_MEMORY_PROFILER_ENABLED
-		memory_profiler_set_memory_type(mem, get_type_name(type));
+		Name type_name = get_type_name(type);
+		memory_profiler_set_memory_type(mem, type_name.c_str(), type_name.size());
 #endif
 		return object;
 	}
