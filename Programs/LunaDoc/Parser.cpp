@@ -72,6 +72,8 @@ Name _defname;
 Name _direction;
 Name _emphasis;
 Name _bold;
+Name _var;
+Name _initializer;
 
 static void new_paragraph(String& out_text)
 {
@@ -281,7 +283,9 @@ RV Parser::encode_md_attrib_section(const c8* section_name, const Variant& secti
             Name name;
             Name qualifiedname;
             Name id = attributes[_id].str();
+            Name is_constexpr = attributes[_constexpr].str();
             Name definition;
+            Name initializer;
             String templateparamlist;
             String briefdescription;
             String detaileddescription;
@@ -325,6 +329,10 @@ RV Parser::encode_md_attrib_section(const c8* section_name, const Variant& secti
                 {
                     qualifiedname = get_xml_content(m).at(0).str();
                 }
+                else if(member_name == _initializer)
+                {
+                    initializer = get_xml_content(m).at(0).str();
+                }
                 else if(member_name == _briefdescription)
                 {
                     encode_md_text(m, briefdescription);
@@ -347,6 +355,11 @@ RV Parser::encode_md_attrib_section(const c8* section_name, const Variant& secti
             file_content.append("```c++\n");
             if(!templateparamlist.empty()) file_content.append(templateparamlist);
             file_content.append(definition.c_str(), definition.size());
+            if(is_constexpr == _yes)
+            {
+                file_content.push_back(' ');
+                file_content.append(initializer.c_str(), initializer.size());
+            }
             file_content.append("\n```\n\n");
             if(!is_blank_string(briefdescription.c_str()))
             {
@@ -925,6 +938,10 @@ RV Parser::encode_md_group_file(const Name& xml_name, const Variant& xml_data, c
                 {
                     luexp(encode_md_def_section("Macros", c, section, output_dir));
                 }
+                else if(kind == _var)
+                {
+                    luexp(encode_md_attrib_section("Constants", c, section, output_dir));
+                }
                 sections.push_back(move(section));
             }
             else if(name == _innergroup)
@@ -1054,7 +1071,7 @@ void Parser::add_group_member_ids(const Variant& group_data)
         if(name == _sectiondef)
         {
             auto kind = get_xml_attributes(c)[_kind].str();
-            if(kind == _func || kind == _typedef)
+            if(kind == _func || kind == _typedef || kind == _define || kind == _var)
             {
                 add_section_ids(c);
             }

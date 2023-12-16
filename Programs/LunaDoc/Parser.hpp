@@ -76,6 +76,8 @@ extern Name _defname;
 extern Name _direction;
 extern Name _emphasis;
 extern Name _bold;
+extern Name _var;
+extern Name _initializer;
 
 struct Parser
 {
