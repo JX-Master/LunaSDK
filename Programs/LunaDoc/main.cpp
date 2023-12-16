@@ -187,7 +187,14 @@ RV run(int argc, const char* argv[])
         _url = "url";
         _par = "par";
         _itemizedlist = "itemizedlist";
+        _orderedlist = "orderedlist";
         _listitem = "listitem";
+        _remark = "remark";
+        _define = "define";
+        _defname = "defname";
+        _direction = "direction";
+        _emphasis = "emphasis";
+        _bold = "bold";
 
         set_log_to_platform_enabled(true);
         set_log_to_platform_verbosity(LogVerbosity::info);

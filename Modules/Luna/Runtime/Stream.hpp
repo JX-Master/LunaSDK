@@ -37,7 +37,7 @@ namespace Luna
 	{
 		luiid("{0345f636-ca5c-4b4d-8416-29834377d239}");
 
-		//! Reads data from the current position the cursor is pointing to and offsets the cursor back. If the data to be
+		//! Reads data from the current position the cursor is pointing to and advances the cursor. If the data to be
 		//! read is not ready, the platform suspends the calling thread until the data is ready.
 		//! @param[in] buffer The buffer to accept the read data.
 		//! @param[in] size The size, in bytes, to read from the stream.
@@ -49,7 +49,7 @@ namespace Luna
 		//! can be considered as an EOF symbol in stdlib.
 		virtual RV read(void* buffer, usize size, usize* read_bytes = nullptr) = 0;
 
-		//! Writes data to the current position the cursor is pointing to and offsets the cursor back. This call returns after
+		//! Writes data to the current position the cursor is pointing to and advances the cursor. This call returns after
 		//! all data have been written.
 		//! @param[in] buffer The buffer that holds the data to be written.
 		//! @param[in] size The size, in bytes, to write to the stream.

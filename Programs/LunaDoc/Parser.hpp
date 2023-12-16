@@ -14,6 +14,7 @@
 #include <Luna/Runtime/Span.hpp>
 #include <Luna/Runtime/Result.hpp>
 #include <Luna/Runtime/Path.hpp>
+#include <Luna/Runtime/HashSet.hpp>
 using namespace Luna;
 
 extern Name _doxygen;
@@ -67,7 +68,14 @@ extern Name _ulink;
 extern Name _url;
 extern Name _par;
 extern Name _itemizedlist;
+extern Name _orderedlist;
 extern Name _listitem;
+extern Name _remark;
+extern Name _define;
+extern Name _defname;
+extern Name _direction;
+extern Name _emphasis;
+extern Name _bold;
 
 struct Parser
 {
@@ -75,17 +83,24 @@ struct Parser
     HashMap<Name, Variant> group_files;
     // All read class files, identified by their refid.
     HashMap<Name, Variant> class_files;
+    // A set of valid identifiers
+    HashSet<Name> ids;
 
     RV add_group_xml_file(Variant&& file_data);
     RV add_class_xml_file(Variant&& file_data);
     RV encode_md_files(const Path& output_dir);
 
     private:
+    void add_section_ids(const Variant& section);
+    void add_group_member_ids(const Variant& group_data);
+    void add_class_member_ids(const Variant& class_data);
+
     void encode_md_parameter_list(const Variant& parameterlist, String& out_text);
-    void encode_md_text(const Variant& element, String& out_text);
-    RV encode_md_attrib_section(const Variant& section, String& out_group_content, const Path& output_dir);
-    RV encode_md_func_section(const Variant& section, String& out_group_content, const Path& output_dir);
-    RV encode_md_typedef_section(const Variant& section, String& out_group_content, const Path& output_dir);
+    void encode_md_text(const Variant& element, String& out_text, bool raw = false);
+    RV encode_md_attrib_section(const c8* section_name, const Variant& section, String& out_parent_content, const Path& output_dir);
+    RV encode_md_func_section(const c8* section_name, const Variant& section, String& out_parent_content, const Path& output_dir);
+    RV encode_md_def_section(const c8* section_name, const Variant& section, String& out_parent_content, const Path& output_dir);
+    RV encode_md_typedef_section(const c8* section_name, const Variant& section, String& out_parent_content, const Path& output_dir);
     RV encode_md_class_file(const Name& xml_name, const Variant& xml_data, const Path& output_dir);
     RV encode_md_group_file(const Name& xml_name, const Variant& xml_data, const Path& output_dir);
 };

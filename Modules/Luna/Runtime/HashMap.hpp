@@ -19,6 +19,7 @@ namespace Luna
 	//! @brief An container that contains key-value pairs with unique keys using open-addressing hashing algorithm.
 	//! @remark LunaSDK provides two kinds of hashing-based containers: open-addressing containers and closed-addressing containers.
 	//! The following containers are open-addressing containers, implemented using Robinhood hashing:
+	//! 
 	//! 1. @ref HashMap
 	//! 2. @ref HashSet
 	//! 3. @ref SelfIndexedHashmap
@@ -29,6 +30,7 @@ namespace Luna
 	//! 4. @ref UnorderedMultiSet
 	//! 5. @ref SelfIndexedUnorderedMap
 	//! 6. @ref SelfIndexedUnorderedMultiMap
+	//! 
 	//! Open addressing (also known as closed hashing) algorithms store elements directly in hash table arrays, while closed addressing (also known as open hashing) algorithms allocate
 	//! dedicated memory for every element, and stores pointers to such elements in hash table arrays. In open-addressing containers, one hash table slot can only store on element, the
 	//! second element with the same hash value must be relocated to another empty slot; in closed-addressing containers, all elements with the same hash value can be stored in the same 
@@ -37,6 +39,7 @@ namespace Luna
 	//! 
 	//! Prefer @ref HashMap and @ref HashSet instead of @ref UnorderedMap and @ref UnorderedSet, since it performs better in memory fragmentation, memory locality and cache performance. 
 	//! Use @ref UnorderedMap and @ref UnorderedSet if you have the following requirements:
+	//! 
 	//! 1. You want to insert multiple elements with the same key to the map, which is only supported by closed-addressing maps. Use @ref UnorderedMultiMap, @ref SelfIndexedUnorderedMultiMap
 	//! and @ref UnorderedMultiSet in such case.
 	//! 2. You element type has very big size, usually larger than 256, causing allocating element memory in data table become unacceptable because it will waste a lot of memory when

@@ -64,7 +64,14 @@ Name _ulink;
 Name _url;
 Name _par;
 Name _itemizedlist;
+Name _orderedlist;
 Name _listitem;
+Name _remark;
+Name _define;
+Name _defname;
+Name _direction;
+Name _emphasis;
+Name _bold;
 
 static void new_paragraph(String& out_text)
 {
@@ -88,11 +95,19 @@ void Parser::encode_md_parameter_list(const Variant& parameterlist, String& out_
             if(element_name == _parameternamelist)
             {
                 auto& parameter_name = get_xml_content(e).at(0);
+                auto& direction = get_xml_attributes(parameter_name)[_direction].str();
                 if(get_xml_name(parameter_name) == _parametername)
                 {
-                    out_text.append("### ");
+                    out_text.append("* ");
+                    if(direction)
+                    {
+                        out_text.push_back('*');
+                        out_text.append(direction.c_str(), direction.size());
+                        out_text.append("* ");
+                    }
+                    out_text.append("**");
                     out_text.append(get_xml_content(parameter_name).at(0).str().c_str());
-                    out_text.push_back('\n');
+                    out_text.append("**\n\n    ");
                 }
             }
             else if(element_name == _parameterdescription)
@@ -117,7 +132,7 @@ inline bool is_blank_string(const c8* str)
     return true;
 }
 
-void Parser::encode_md_text(const Variant& element, String& out_text)
+void Parser::encode_md_text(const Variant& element, String& out_text, bool raw)
 {
     auto& content = get_xml_content(element);
     for(auto& c : content.values())
@@ -142,7 +157,7 @@ void Parser::encode_md_text(const Variant& element, String& out_text)
             }
             else if(name == _title)
             {
-                out_text.append("#### ");
+                out_text.append("## ");
                 encode_md_text(c, out_text);
                 out_text.push_back('\n');
             }
@@ -158,25 +173,56 @@ void Parser::encode_md_text(const Variant& element, String& out_text)
                     }
                 }
             }
+            else if(name == _orderedlist)
+            {
+                auto& list_items = get_xml_content(c);
+                for(auto& item : list_items.values())
+                {
+                    if(get_xml_name(item) == _listitem)
+                    {
+                        out_text.append("1. ");
+                        encode_md_text(item, out_text);
+                    }
+                }
+            }
             else if(name == _simplesect)
             {
                 auto& attributes = get_xml_attributes(c);
-                if(attributes[_kind].str() == _return)
+                Name kind = attributes[_kind].str();
+                if(kind == _return)
                 {
                     new_paragraph(out_text);
                     out_text.append("## Return value\n");
                     encode_md_text(c, out_text);
                 }
-                else if(attributes[_kind].str() == _par)
+                else if(kind == _par)
                 {
                     new_paragraph(out_text);
                     encode_md_text(c, out_text);
                 }
+                else if(kind == _remark)
+                {
+                    new_paragraph(out_text);
+                    out_text.append("## Remark\n");
+                    encode_md_text(c, out_text);
+                }
+            }
+            else if(name == _emphasis)
+            {
+                out_text.push_back('*');
+                encode_md_text(c, out_text);
+                out_text.push_back('*');
+            }
+            else if(name == _bold)
+            {
+                out_text.append("**");
+                encode_md_text(c, out_text);
+                out_text.append("**");
             }
             else if(name == _computeroutput)
             {
                 out_text.push_back('`');
-                encode_md_text(c, out_text);
+                encode_md_text(c, out_text, true);
                 out_text.push_back('`');
             }
             else if(name == _ref)
@@ -185,13 +231,13 @@ void Parser::encode_md_text(const Variant& element, String& out_text)
                 Name id = attributes[_refid].str();
                 bool valid_ref = false;
                 {
-                    auto iter = class_files.find(id);
-                    if(iter != class_files.end())
+                    auto iter = ids.find(id);
+                    if(iter != ids.end())
                     {
                         valid_ref = true;
                     }
                 }
-                if(valid_ref)
+                if(valid_ref && !raw)
                 {
                     out_text.push_back('[');
                     encode_md_text(c, out_text);
@@ -220,7 +266,7 @@ void Parser::encode_md_text(const Variant& element, String& out_text)
     }
 }
 
-RV Parser::encode_md_attrib_section(const Variant& section, String& out_group_content, const Path& output_dir)
+RV Parser::encode_md_attrib_section(const c8* section_name, const Variant& section, String& out_parent_content, const Path& output_dir)
 {
     lutry
     {
@@ -308,7 +354,6 @@ RV Parser::encode_md_attrib_section(const Variant& section, String& out_group_co
             }
             if(!is_blank_string(detaileddescription.c_str()))
             {
-                file_content.append("## Overview\n");
                 file_content.append(detaileddescription);
             }
             // Write file.
@@ -333,15 +378,17 @@ RV Parser::encode_md_attrib_section(const Variant& section, String& out_group_co
         }
         if(!attrib_section.empty())
         {
-            out_group_content.append("## Properties\n");
-            out_group_content.append(attrib_section);
+            out_parent_content.append("## ");
+            out_parent_content.append(section_name);
+            out_parent_content.push_back('\n');
+            out_parent_content.append(attrib_section);
         }
     }
     lucatchret;
     return ok;
 }
 
-RV Parser::encode_md_func_section(const Variant& section, String& out_group_content, const Path& output_dir)
+RV Parser::encode_md_func_section(const c8* section_name, const Variant& section, String& out_parent_content, const Path& output_dir)
 {
     lutry
     {
@@ -409,24 +456,6 @@ RV Parser::encode_md_func_section(const Variant& section, String& out_group_cont
                 {
                     qualifiedname = get_xml_content(m).at(0).str();
                 }
-                else if(member_name == _param)
-                {
-                    // Variant param(VariantType::object);
-                    // auto& param_content = get_xml_content(m);
-                    // for(auto& param_m : param_content.values())
-                    // {
-                    //     auto param_m_name = get_xml_name(param_m);
-                    //     if(param_m_name == _type)
-                    //     {
-                    //         param[_type] = get_xml_content(param_m).at(0).str();
-                    //     }
-                    //     else if(param_m_name == _declname)
-                    //     {
-                    //         param[_declname] = get_xml_content(param_m).at(0).str();
-                    //     }
-                    // }
-                    // member[_param].push_back(move(param));
-                }
                 else if(member_name == _briefdescription)
                 {
                     encode_md_text(m, briefdescription);
@@ -457,7 +486,6 @@ RV Parser::encode_md_func_section(const Variant& section, String& out_group_cont
             }
             if(!is_blank_string(detaileddescription.c_str()))
             {
-                file_content.append("## Overview\n");
                 file_content.append(detaileddescription);
             }
             // Write file.
@@ -483,15 +511,123 @@ RV Parser::encode_md_func_section(const Variant& section, String& out_group_cont
         }
         if(!function_section.empty())
         {
-            out_group_content.append("## Functions\n");
-            out_group_content.append(function_section);
+            out_parent_content.append("## ");
+            out_parent_content.append(section_name);
+            out_parent_content.push_back('\n');
+            out_parent_content.append(function_section);
         }
     }
     lucatchret;
     return ok;
 }
 
-RV Parser::encode_md_typedef_section(const Variant& section, String& out_group_content, const Path& output_dir)
+RV Parser::encode_md_def_section(const c8* section_name, const Variant& section, String& out_parent_content, const Path& output_dir)
+{
+    lutry
+    {
+        auto& content = get_xml_content(section);
+        String function_section;
+        for(auto& c : content.values())
+        {
+            if(get_xml_name(c) != _memberdef) continue;
+            auto& attributes = get_xml_attributes(c);
+            if(attributes[_kind].str() != _define) continue;
+            auto& func_members = get_xml_content(c);
+            Name name;
+            Name id = attributes[_id].str();
+            String briefdescription;
+            String detaileddescription;
+            Vector<Name> param_list;
+            for(auto& m : func_members.values())
+            {
+                auto member_name = get_xml_name(m);
+                if(member_name == _name)
+                {
+                    name = get_xml_content(m).at(0).str();
+                }
+                else if(member_name == _param)
+                {
+                    auto& defname = find_first_xml_child_element(m, _defname);
+                    param_list.push_back(get_xml_content(defname).at(0).str());
+                }
+                else if(member_name == _briefdescription)
+                {
+                    encode_md_text(m, briefdescription);
+                }
+                else if(member_name == _detaileddescription)
+                {
+                    encode_md_text(m, detaileddescription);
+                }
+            }
+            // Skip undocumented entry.
+            if(is_blank_string(briefdescription.c_str()) && is_blank_string(detaileddescription.c_str()))
+            {
+                continue;
+            }
+            String signature(name.c_str(), name.size());
+            if(!param_list.empty())
+            {
+                signature.push_back('(');
+                for(usize i = 0; i < param_list.size(); ++i)
+                {
+                    signature.append(param_list[i].c_str(), param_list[i].size());
+                    if(i != param_list.size() - 1)
+                    {
+                        signature.append(", ");
+                    }
+                }
+                signature.push_back(')');
+            }
+            // Set file content.
+            String file_content;
+            file_content.append("# ");
+            file_content.append(name.c_str(), name.size());
+            file_content.append("\n\n");
+            file_content.append("```c++\n");
+            file_content.append("#define ");
+            file_content.append(signature);
+            file_content.append("\n```\n\n");
+            if(!is_blank_string(briefdescription.c_str()))
+            {
+                file_content.append(briefdescription);
+            }
+            if(!is_blank_string(detaileddescription.c_str()))
+            {
+                file_content.append(detaileddescription);
+            }
+            // Write file.
+            Path path = output_dir;
+            path.push_back(id);
+            path.append_extension("md");
+            String path_str = path.encode();
+            log_info("LunaDoc", "Write %s", path_str.c_str());
+            lulet(f, open_file(path_str.c_str(), FileOpenFlag::write, FileCreationMode::create_always));
+            luexp(f->write(file_content.c_str(), file_content.size()));
+            // Write function section.
+            function_section.append("* [");
+            function_section.append(signature);
+            function_section.append("](");
+            function_section.append(id.c_str(), id.size());
+            function_section.append(".md)\n");
+            if(!is_blank_string(briefdescription.c_str()))
+            {
+                function_section.append("\n    ");
+                function_section.append(briefdescription);
+            }
+        }
+        if(!function_section.empty())
+        {
+            out_parent_content.append("## ");
+            out_parent_content.append(section_name);
+            out_parent_content.push_back('\n');
+            out_parent_content.append(function_section);
+        }
+    }
+    lucatchret;
+    return ok;
+}
+
+RV Parser::encode_md_typedef_section(const c8* section_name, const Variant& section, String& out_parent_content, const Path& output_dir)
 {
     lutry
     {
@@ -552,7 +688,6 @@ RV Parser::encode_md_typedef_section(const Variant& section, String& out_group_c
             }
             if(!is_blank_string(detaileddescription.c_str()))
             {
-                file_content.append("## Overview\n");
                 file_content.append(detaileddescription);
             }
             // Write file.
@@ -577,8 +712,10 @@ RV Parser::encode_md_typedef_section(const Variant& section, String& out_group_c
         }
         if(!typedef_section.empty())
         {
-            out_group_content.append("## Aliasing types\n");
-            out_group_content.append(typedef_section);
+            out_parent_content.append("## ");
+            out_parent_content.append(section_name);
+            out_parent_content.push_back('\n');
+            out_parent_content.append(typedef_section);
         }
     }
     lucatchret;
@@ -590,6 +727,7 @@ struct BaseClassDesc
     Name name;
     Name prot;
     Name virt;
+    Name id;
 };
 
 RV Parser::encode_md_class_file(const Name& xml_name, const Variant& xml_data, const Path& output_dir)
@@ -624,6 +762,7 @@ RV Parser::encode_md_class_file(const Name& xml_name, const Variant& xml_data, c
                 base.name = basecompoundref;
                 base.prot = baseattrs[_prot].str();
                 base.virt = baseattrs[_virt].str();
+                base.id = baseattrs[_refid].str();
                 base_classes.push_back(move(base));
             }
             else if(member_name == _sectiondef)
@@ -633,11 +772,11 @@ RV Parser::encode_md_class_file(const Name& xml_name, const Variant& xml_data, c
                 String section;
                 if(section_kind == _publicattrib)
                 {
-                    luexp(encode_md_attrib_section(m, section, output_dir));
+                    luexp(encode_md_attrib_section("Member objects", m, section, output_dir));
                 }
                 else if(section_kind == _publicfunc)
                 {
-                    luexp(encode_md_func_section(m, section, output_dir));
+                    luexp(encode_md_func_section("Member functions", m, section, output_dir));
                 }
                 sections.push_back(move(section));
             }
@@ -687,8 +826,36 @@ RV Parser::encode_md_class_file(const Name& xml_name, const Variant& xml_data, c
         out_content.append("\n```\n\n");
         if(!is_blank_string(detaileddescription.c_str()))
         {
-            out_content.append("## Overview\n");
             out_content.append(detaileddescription);
+        }
+        if(!base_classes.empty())
+        {
+            if(base_classes.size() == 1)
+            {
+                out_content.append("## Base type\n");
+            }
+            else
+            {
+                out_content.append("## Base types\n");
+            }
+            for(auto& base : base_classes)
+            {
+                out_content.append("* ");
+                auto iter = ids.find(base.id);
+                if(iter == ids.end())
+                {
+                    out_content.append(base.name.c_str(), base.name.size());
+                }
+                else
+                {
+                    out_content.push_back('[');
+                    out_content.append(base.name.c_str(), base.name.size());
+                    out_content.append("](");
+                    out_content.append(base.id.c_str(), base.id.size());
+                    out_content.append(".md)");
+                }
+                out_content.push_back('\n');
+            }
         }
         for(auto& s : sections)
         {
@@ -748,11 +915,15 @@ RV Parser::encode_md_group_file(const Name& xml_name, const Variant& xml_data, c
                 String section;
                 if(kind == _func)
                 {
-                    luexp(encode_md_func_section(c, section, output_dir));
+                    luexp(encode_md_func_section("Functions", c, section, output_dir));
                 }
                 else if(kind == _typedef)
                 {
-                    luexp(encode_md_typedef_section(c, section, output_dir));
+                    luexp(encode_md_typedef_section("Alias types", c, section, output_dir));
+                }
+                else if(kind == _define)
+                {
+                    luexp(encode_md_def_section("Macros", c, section, output_dir));
                 }
                 sections.push_back(move(section));
             }
@@ -839,6 +1010,79 @@ RV Parser::encode_md_group_file(const Name& xml_name, const Variant& xml_data, c
     return ok;
 }
 
+void Parser::add_section_ids(const Variant& section)
+{
+    auto& content = get_xml_content(section);
+    for(auto& c : content.values())
+    {
+        if(get_xml_name(c) != _memberdef) continue;
+        auto& attributes = get_xml_attributes(c);
+        auto& members = get_xml_content(c);
+        Name id = attributes[_id].str();
+        String briefdescription;
+        String detaileddescription;
+        for(auto& m : members.values())
+        {
+            auto member_name = get_xml_name(m);
+            if(member_name == _briefdescription)
+            {
+                encode_md_text(m, briefdescription);
+            }
+            else if(member_name == _detaileddescription)
+            {
+                encode_md_text(m, detaileddescription);
+            }
+        }
+        // Skip undocumented entry.
+        if(is_blank_string(briefdescription.c_str()) && is_blank_string(detaileddescription.c_str()))
+        {
+            continue;
+        }
+        // Add entry.
+        ids.insert(id);
+    }
+}
+
+void Parser::add_group_member_ids(const Variant& group_data)
+{
+    auto& compounddef = find_first_xml_child_element(group_data, _compounddef);
+    auto& content = get_xml_content(compounddef);
+    for(auto& c : content.values())
+    {
+        if(c.type() != VariantType::object) continue;
+        auto name = get_xml_name(c);
+        if(name == _sectiondef)
+        {
+            auto kind = get_xml_attributes(c)[_kind].str();
+            if(kind == _func || kind == _typedef)
+            {
+                add_section_ids(c);
+            }
+        }
+    }
+}
+
+void Parser::add_class_member_ids(const Variant& class_data)
+{
+    String out_content;
+    auto& compounddef = find_first_xml_child_element(class_data, _compounddef);
+    auto& class_content = get_xml_content(compounddef);
+    for(auto& m : class_content.values())
+    {
+        if(m.type() != VariantType::object) continue;
+        auto member_name = get_xml_name(m);
+        if(member_name == _sectiondef)
+        {
+            Name kind = get_xml_attributes(m)[_kind].str();
+            String section;
+            if(kind == _publicattrib || kind == _publicfunc)
+            {
+                add_section_ids(m);
+            }
+        }
+    }
+}
+
 RV Parser::add_group_xml_file(Variant&& file_data)
 {
     if(get_xml_name(file_data) != _doxygen) return set_error(BasicError::format_error(), "One doxygen XML file must begin with <doxygen>, got %s", get_xml_name(file_data).c_str());
@@ -848,7 +1092,8 @@ RV Parser::add_group_xml_file(Variant&& file_data)
     Name group_id = compounddef_attribtues[_id].str();
     luassert(group_id.size() > 8);
     Name group_filename = group_id.c_str() + 8;
-    group_files.insert(make_pair(group_filename, move(file_data)));
+    auto iter = group_files.insert(make_pair(group_filename, move(file_data)));
+    add_group_member_ids(iter.first->second);
     return ok;
 }
 
@@ -881,7 +1126,9 @@ RV Parser::add_class_xml_file(Variant&& file_data)
     }
     if(doc_class)
     {
-        class_files.insert(make_pair(class_id, move(file_data)));
+        auto iter = class_files.insert(make_pair(class_id, move(file_data)));
+        ids.insert(class_id);
+        add_class_member_ids(iter.first->second);
     }
     return ok;
 }

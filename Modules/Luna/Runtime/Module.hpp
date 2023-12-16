@@ -21,11 +21,11 @@
 //! @defgroup RuntimeModule Module system
 //! @}
 
-//! @addtogroup RuntimeModule
-//! @{
-
 namespace Luna
 {
+	//! @addtogroup RuntimeModule
+	//! @{
+
 	//! @brief The function to be called when the module is initialized.
 	using module_init_func_t = RV();
 
@@ -86,12 +86,12 @@ namespace Luna
 	//! You may use this API to perform some pre-init configurations for the module initialize process.
 	//! @param[in] module_name The name of the specified module.
 	//! @remark If the specified module is already initialized, this function does nothing and succeeds.
-	LUNA_RUNTIME_API RV init_module_dependencies(Name module_name);
+	LUNA_RUNTIME_API RV init_module_dependencies(const Name& module_name);
 
 	//! @brief Initializes the specified module and all dependency modules of the specified module.
 	//! @param[in] module_name The name of the specified module.
 	//! @remark If the specified module is already initialized, this function does nothing and succeeds.
-	LUNA_RUNTIME_API RV init_module(Name module_name);
+	LUNA_RUNTIME_API RV init_module(const Name& module_name);
 
 	//! @brief Initializes all uninitialized modules.
 	//! @return Returns error code if at least one module is failed to initialize.
@@ -113,9 +113,12 @@ namespace Luna
 			add_module(&module_desc);
 		}
 	};
+
+	//! @}
 }
 
 //! @brief Registers one module statically. Define this in one of CPP files of your module.
+//! @ingroup RuntimeModule
 //! @param[in] _name The name of the module. Used by the system to index this module.
 //! @param[in] _dependencies The dependency modules of this module, written in one string separated by semicolons (";").
 //! @param[in] _init_func The module initialization function.
@@ -123,5 +126,3 @@ namespace Luna
 //! @remark See docs of @ref Luna::ModuleDesc for details about every parameter of this macro.
 #define LUNA_STATIC_REGISTER_MODULE(_name, _dependencies, _init_func, _close_func) Luna::StaticRegisterModule luna_module_register_##_name(#_name, _dependencies, _init_func, _close_func); \
 	extern "C" LUNA_EXPORT void luna_static_register_module_##_name() {}
-
-//! @}
