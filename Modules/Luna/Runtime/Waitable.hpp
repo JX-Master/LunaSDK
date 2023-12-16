@@ -12,7 +12,7 @@
 namespace Luna
 {
 	//! @interface IWaitable
-	//! @addtogroup Runtime
+	//! @ingroup Runtime
 	//! @brief Represents a waitable object used for multi-thread synchronization. 
 	//! @details Objects that implements `IWaitable` cannot be used cross process boundary.
 	struct IWaitable : virtual Interface
