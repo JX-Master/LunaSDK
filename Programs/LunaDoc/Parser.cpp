@@ -74,6 +74,8 @@ Name _emphasis;
 Name _bold;
 Name _var;
 Name _initializer;
+Name _enum;
+Name _enumvalue;
 
 static void new_paragraph(String& out_text)
 {
@@ -735,6 +737,189 @@ RV Parser::encode_md_typedef_section(const c8* section_name, const Variant& sect
     return ok;
 }
 
+struct EnumValue
+{
+    Name name;
+    Name initializer;
+    Name id;
+    String briefdescription;
+    String detaileddescription;
+};
+
+RV Parser::encode_md_enum_section(const c8* section_name, const Variant& section, String& out_parent_content, const Path& output_dir)
+{
+    lutry
+    {
+        auto& content = get_xml_content(section);
+        String section_content;
+        for(auto& c : content.values())
+        {
+            if(get_xml_name(c) != _memberdef) continue;
+            auto& attributes = get_xml_attributes(c);
+            if(attributes[_kind].str() != _enum) continue;
+            auto& members = get_xml_content(c);
+            Name name;
+            Name qualifiedname;
+            Name type;
+            Name id = attributes[_id].str();
+            String briefdescription;
+            String detaileddescription;
+            Vector<EnumValue> options;
+            for(auto& m : members.values())
+            {
+                auto member_name = get_xml_name(m);
+                if(member_name == _name)
+                {
+                    name = get_xml_content(m).at(0).str();
+                }
+                else if(member_name == _qualifiedname)
+                {
+                    qualifiedname = get_xml_content(m).at(0).str();
+                }
+                else if(member_name == _type)
+                {
+                    type = get_xml_content(m).at(0).str();
+                }
+                else if(member_name == _enumvalue)
+                {
+                    EnumValue option;
+                    option.id = get_xml_attributes(m)[_id].str();
+                    option.name = get_xml_content(find_first_xml_child_element(m, _name)).at(0).str();
+                    option.initializer = get_xml_content(find_first_xml_child_element(m, _initializer)).at(0).str();
+                    auto& briefdescription = find_first_xml_child_element(m, _briefdescription);
+                    auto& detaileddescription = find_first_xml_child_element(m, _detaileddescription);
+                    if(briefdescription.valid()) encode_md_text(briefdescription, option.briefdescription);
+                    if(detaileddescription.valid()) encode_md_text(detaileddescription, option.detaileddescription);
+                    if(is_blank_string(option.briefdescription.c_str()) && is_blank_string(option.detaileddescription.c_str()))
+                    {
+                        continue;
+                    }
+                    // Save option to individual files.
+                    String file_content;
+                    file_content.append("# ");
+                    file_content.append(qualifiedname.c_str(), qualifiedname.size());
+                    file_content.append("::");
+                    file_content.append(option.name.c_str(), option.name.size());
+                    file_content.append("\n\n");
+                    file_content.append("```c++\n");
+                    file_content.append(option.name.c_str(), option.name.size());
+                    if(option.initializer)
+                    {
+                        file_content.push_back(' ');
+                        file_content.append(option.initializer.c_str(), option.initializer.size());
+                    }
+                    file_content.append("\n```\n\n");
+                    if(!is_blank_string(option.briefdescription.c_str()))
+                    {
+                        file_content.append(option.briefdescription);
+                    }
+                    if(!is_blank_string(option.detaileddescription.c_str()))
+                    {
+                        file_content.append(option.detaileddescription);
+                    }
+                    Path path = output_dir;
+                    path.push_back(option.id);
+                    path.append_extension("md");
+                    String path_str = path.encode();
+                    log_info("LunaDoc", "Write %s", path_str.c_str());
+                    lulet(f, open_file(path_str.c_str(), FileOpenFlag::write, FileCreationMode::create_always));
+                    luexp(f->write(file_content.c_str(), file_content.size()));
+                    // Add option to enumeration.
+                    options.push_back(move(option));
+                }
+                else if(member_name == _briefdescription)
+                {
+                    encode_md_text(m, briefdescription);
+                }
+                else if(member_name == _detaileddescription)
+                {
+                    encode_md_text(m, detaileddescription);
+                }
+            }
+            // Skip undocumented entry.
+            if(is_blank_string(briefdescription.c_str()) && is_blank_string(detaileddescription.c_str()))
+            {
+                continue;
+            }
+            // Set file content.
+            String file_content;
+            file_content.append("# ");
+            file_content.append(qualifiedname.c_str(), qualifiedname.size());
+            file_content.append("\n\n");
+            file_content.append("```c++\n");
+            file_content.append("enum ");
+            file_content.append(name.c_str(), name.size());
+            if(type)
+            {
+                file_content.append(" : ");
+                file_content.append(type.c_str(), type.size());
+            }
+            file_content.append("\n{\n");
+            for(auto& o : options)
+            {
+                file_content.append("    ");
+                file_content.append(o.name.c_str(), o.name.size());
+                if(o.initializer)
+                {
+                    file_content.append(o.initializer.c_str(), o.initializer.size());
+                }
+                file_content.push_back('\n');
+            }
+            file_content.append("}\n```\n\n");
+            if(!is_blank_string(briefdescription.c_str()))
+            {
+                file_content.append(briefdescription);
+            }
+            if(!is_blank_string(detaileddescription.c_str()))
+            {
+                file_content.append(detaileddescription);
+            }
+            file_content.append("## Options\n");
+            for(auto& o : options)
+            {
+                file_content.append("* [");
+                file_content.append(o.name.c_str(), o.name.size());
+                file_content.append("](");
+                file_content.append(o.id.c_str(), o.id.size());
+                file_content.append(".md)\n");
+                if(!is_blank_string(o.briefdescription.c_str()))
+                {
+                    file_content.append("\n    ");
+                    file_content.append(o.briefdescription);
+                }
+            }
+            // Write file.
+            Path path = output_dir;
+            path.push_back(id);
+            path.append_extension("md");
+            String path_str = path.encode();
+            log_info("LunaDoc", "Write %s", path_str.c_str());
+            lulet(f, open_file(path_str.c_str(), FileOpenFlag::write, FileCreationMode::create_always));
+            luexp(f->write(file_content.c_str(), file_content.size()));
+            // Write function section.
+            section_content.append("* [");
+            section_content.append(qualifiedname.c_str(), qualifiedname.size());
+            section_content.append("](");
+            section_content.append(id.c_str(), id.size());
+            section_content.append(".md)\n");
+            if(!is_blank_string(briefdescription.c_str()))
+            {
+                section_content.append("\n    ");
+                section_content.append(briefdescription);
+            }
+        }
+        if(!section_content.empty())
+        {
+            out_parent_content.append("## ");
+            out_parent_content.append(section_name);
+            out_parent_content.push_back('\n');
+            out_parent_content.append(section_content);
+        }
+    }
+    lucatchret;
+    return ok;
+}
+
 struct BaseClassDesc
 {
     Name name;
@@ -942,6 +1127,10 @@ RV Parser::encode_md_group_file(const Name& xml_name, const Variant& xml_data, c
                 {
                     luexp(encode_md_attrib_section("Constants", c, section, output_dir));
                 }
+                else if(kind == _enum)
+                {
+                    luexp(encode_md_enum_section("Enumerations", c, section, output_dir));
+                }
                 sections.push_back(move(section));
             }
             else if(name == _innergroup)
@@ -1049,6 +1238,21 @@ void Parser::add_section_ids(const Variant& section)
             {
                 encode_md_text(m, detaileddescription);
             }
+            else if(member_name == _enumvalue)
+            {
+                auto& briefdescription = find_first_xml_child_element(m, _briefdescription);
+                auto& detaileddescription = find_first_xml_child_element(m, _detaileddescription);
+                String option_bd;
+                String option_dd;
+                if(briefdescription.valid()) encode_md_text(briefdescription, option_bd);
+                if(detaileddescription.valid()) encode_md_text(detaileddescription, option_dd);
+                if(is_blank_string(option_bd.c_str()) && is_blank_string(option_dd.c_str()))
+                {
+                    continue;
+                }
+                Name id = get_xml_attributes(m)[_id].str();
+                ids.insert(id);
+            }
         }
         // Skip undocumented entry.
         if(is_blank_string(briefdescription.c_str()) && is_blank_string(detaileddescription.c_str()))
@@ -1071,7 +1275,7 @@ void Parser::add_group_member_ids(const Variant& group_data)
         if(name == _sectiondef)
         {
             auto kind = get_xml_attributes(c)[_kind].str();
-            if(kind == _func || kind == _typedef || kind == _define || kind == _var)
+            if(kind == _func || kind == _typedef || kind == _define || kind == _var || kind == _enum)
             {
                 add_section_ids(c);
             }

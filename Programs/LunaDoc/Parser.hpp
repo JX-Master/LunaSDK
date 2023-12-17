@@ -78,6 +78,8 @@ extern Name _emphasis;
 extern Name _bold;
 extern Name _var;
 extern Name _initializer;
+extern Name _enum;
+extern Name _enumvalue;
 
 struct Parser
 {
@@ -103,6 +105,7 @@ struct Parser
     RV encode_md_func_section(const c8* section_name, const Variant& section, String& out_parent_content, const Path& output_dir);
     RV encode_md_def_section(const c8* section_name, const Variant& section, String& out_parent_content, const Path& output_dir);
     RV encode_md_typedef_section(const c8* section_name, const Variant& section, String& out_parent_content, const Path& output_dir);
+    RV encode_md_enum_section(const c8* section_name, const Variant& section, String& out_parent_content, const Path& output_dir);
     RV encode_md_class_file(const Name& xml_name, const Variant& xml_data, const Path& output_dir);
     RV encode_md_group_file(const Name& xml_name, const Variant& xml_data, const Path& output_dir);
 };

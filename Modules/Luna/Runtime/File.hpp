@@ -24,15 +24,15 @@ namespace Luna
 	enum class FileAttributeFlag : u32
 	{
 		none = 0x00,
-		//! This file is a read-only file. One read-only directory denotes a read-only file system.
+		//! @brief This file is a read-only file. One read-only directory denotes a read-only file system.
 		read_only = 0x01,
-		//! This file is a hidden file.
+		//! @brief This file is a hidden file.
 		hidden = 0x02,
-		//! This file is a directory.			
+		//! @brief This file is a directory.			
 		directory = 0x04,
-		//! This file is an character special file on UNIX/Linux systems.
+		//! @brief This file is an character special file on UNIX/Linux systems.
 		character_special = 0x08,
-		//! This file is an block special file on UNIX/Linux systems.
+		//! @brief This file is an block special file on UNIX/Linux systems.
         block_special = 0x10,
 	};
 
@@ -40,12 +40,12 @@ namespace Luna
 	enum class FileOpenFlag : u32
 	{
 		none = 0x00,
-		//! Grants read access to the file so that @ref IFile::read operations can be performed.
+		//! @brief Grants read access to the file so that @ref IFile::read operations can be performed.
 		read = 0x01,
-		//! Grants write access to the file so that @ref IFile::write operations can be performed.
+		//! @brief Grants write access to the file so that @ref IFile::write operations can be performed.
 		write = 0x02,
-		//! Allocates one user-mode buffer for the opened file. 
-		//! The user-mode buffer can be used to buffer the data read from file or to be written to file, 
+		//! @brief Allocates one user-mode buffer for the opened file. 
+		//! @details The user-mode buffer can be used to buffer the data read from file or to be written to file, 
 		//! thus reduce system calls if lots of small-sized reads/writes need to be performed.
 		user_buffering = 0x04,
 	};
@@ -53,18 +53,18 @@ namespace Luna
 	//! @brief Specifies file creation mmode.
 	enum class FileCreationMode : u32
 	{
-		//! Always creates a new file and opens it. If the file already exists, the old file content
+		//! @brief Always creates a new file and opens it. If the file already exists, the old file content
 		//! will be discarded and the file is treated as a new empty file.
 		create_always = 1,
-		//! Only creates a file and opens it when it does not exist. If the file already exists, the
+		//! @brief Only creates a file and opens it when it does not exist. If the file already exists, the
 		//! call fails with @ref BasicError::already_exists.
 		create_new = 2,
-		//! Always opens a file. If the file already exists, the file will be open with its data preserved,
+		//! @brief Always opens a file. If the file already exists, the file will be open with its data preserved,
 		//! if the file does not exist, it will be created and opened.
 		open_always = 3,
-		//! Only opens a file when it does exists. If the file does not exist, the call fails with @ref BasicError::not_found.
+		//! @brief Only opens a file when it does exists. If the file does not exist, the call fails with @ref BasicError::not_found.
 		open_existing = 4,
-		//! Only opens a file when it does exists, and discards the file data so the file is treated as a new
+		//! @brief Only opens a file when it does exists, and discards the file data so the file is treated as a new
 		//! file.
 		open_existing_as_new = 5
 	};
