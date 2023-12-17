@@ -197,6 +197,8 @@ RV run(int argc, const char* argv[])
         _bold = "bold";
         _var = "var";
         _initializer = "initializer";
+        _enum = "enum";
+        _enumvalue = "enumvalue";
 
         set_log_to_platform_enabled(true);
         set_log_to_platform_verbosity(LogVerbosity::info);
