@@ -17,7 +17,7 @@ namespace Luna
 	//! @{
 	
 	//！@interface ISemaphore
-	//! Represents one system-level semaphore object.
+	//! @brief Represents one system-level semaphore object.
 	struct ISemaphore : virtual IWaitable
 	{
 		luiid("{ef6a7782-0a6c-4a40-abc9-a6d2381a3397}");
@@ -26,7 +26,7 @@ namespace Luna
 		virtual void release() = 0;
 	};
 
-	//! Create a new semaphore object.
+	//! @brief Create a new semaphore object.
 	//! @param[in] initial_count The initial count of the semaphore.
 	//! @param[in] max_count The max count the specified semaphore can reach to.
 	//! @return Returns the new created semaphore object.

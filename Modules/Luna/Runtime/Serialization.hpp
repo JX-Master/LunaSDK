@@ -14,18 +14,43 @@
 
 namespace Luna
 {
+	//! @addtogroup Runtime
+	//! @{
+	//! @defgroup RuntimeSerialization Serialization
+	//! @}
+
+	//! @addtogroup RuntimeSerialization
+	//! @{
+	
+	//! @brief The serialization function for one instance.
+	//! @param[in] type The type of the instance.
+	//! @param[in] inst The instance data.
+	//! @return Returns one variant that stores the serialized data.
 	using serialize_func_t = R<Variant>(typeinfo_t type, const void* inst);
+
+	//! @brief The deserialization function for one instance.
+	//! @param[in] type The type of the instance.
+	//! @param[in] inst The instance data.
+	//! @param[in] data The serialized data used for deserialization.
 	using deserialize_func_t = RV(typeinfo_t type, void* inst, const Variant& data);
 
+	//! @brief Describes one serializable type.
 	struct SerializableTypeDesc
 	{
+		//! The serialization function of the type.
 		serialize_func_t* serialize_func;
+		//! The deserialization function of the type.
 		deserialize_func_t* deserialize_func;
 	};
 
+	//! @brief Checks whether one type is serializable.
+	//! @param[in] type The type to check.
+	//! @return Returns `ture` if the type is serializable. Returns `false` otherwise.
+	//! @par Valid Usage
+	//! * `type` must specify one valid type object.
 	LUNA_RUNTIME_API bool is_type_serializable(typeinfo_t type);
 
-	//! Sets one type to be serializable.
+	//! @brief Sets one type to be serializable.
 	//! @param[in] type The type to set.
 	//! @param[in] desc The user-provided serialize and deserialize callback. If `nullptr` is specified,
 	//! the system try to serialize the type bying serializing every property of the type.
@@ -33,27 +58,46 @@ namespace Luna
 	//! serializable.
 	LUNA_RUNTIME_API void set_serializable(typeinfo_t type, SerializableTypeDesc* desc = nullptr);
 
+	//! @brief Sets one type `_Ty` to be serializable.
+	//! @param[in] desc The user-provided serialize and deserialize callback. If `nullptr` is specified,
+	//! the system try to serialize the type bying serializing every property of the type.
+	//! `nullptr` can only be specified if this is a structure type and all properties of this type is 
+	//! serializable.
 	template <typename _Ty>
 	inline void set_serializable(SerializableTypeDesc* desc = nullptr)
 	{
 		set_serializable(typeof<_Ty>(), desc);
 	}
 
-	//! Serializes one value.
+	//! @brief Serializes one instance.
+	//! @param[in] type The type of the instance.
+	//! @param[in] inst The instance data.
+	//! @return Returns one variant that stores the serialized data.
 	LUNA_RUNTIME_API R<Variant> serialize(typeinfo_t type, const void* inst);
 
+	//! @brief Serializes one instance of type `_Ty`.
+	//! @param[in] inst The instance data.
+	//! @return Returns one variant that stores the serialized data.
 	template <typename _Ty>
 	inline R<Variant> serialize(const _Ty& inst)
 	{
 		return serialize(typeof<_Ty>(), &inst);
 	}
 
-	//! Deserializes one value.
+	//! @brief Deserializes one value.
+	//! @param[in] type The type of the instance.
+	//! @param[in] inst The instance data.
+	//! @param[in] data The serialized data used for deserialization.
 	LUNA_RUNTIME_API RV deserialize(typeinfo_t type, void* inst, const Variant& data);
 
+	//! @brief Deserializes one value of type `_Ty`.
+	//! @param[in] inst The instance data.
+	//! @param[in] data The serialized data used for deserialization.
 	template <typename _Ty>
 	inline RV deserialize(_Ty& inst, const Variant& data)
 	{
 		return deserialize(typeof<_Ty>(), &inst, data);
 	}
+
+	//! @}
 }
