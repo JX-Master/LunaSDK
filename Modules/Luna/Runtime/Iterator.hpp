@@ -323,8 +323,8 @@ namespace Luna
 	}
 
 	//! @brief Gets the number of elements between two iterators.
-	//! @param[in] first The iterator pointing to the first element.
-	//! @param[in] last The iterator pointing to the one-past-last element.
+	//! @param[in] first The iterator to the first element.
+	//! @param[in] last The iterator to the one-past-last element.
 	template<typename _It>
 #ifdef LUNA_COMPILER_CPP17
 	constexpr // required since C++17
@@ -336,11 +336,11 @@ namespace Luna
 	}
 
 
-	//! @brief Gets one iterator pointing to the next `n`th element of the element pointed 
+	//! @brief Gets one iterator to the next `n`th element of the element pointed 
 	//! by the input iterator.
 	//! @param[in] it The base iterator.
 	//! @param[in] n The position relative to the base iterator.
-	//! @return Returns the iterator pointing to the next `n`th element of the element pointed 
+	//! @return Returns the iterator to the next `n`th element of the element pointed 
 	//! by the input iterator.
 	template<typename _Iter>
 #ifdef LUNA_COMPILER_CPP17
@@ -352,11 +352,11 @@ namespace Luna
 		return it;
 	}
 
-	//! @brief Gets one iterator pointing to the last `n`th element of the element pointed 
+	//! @brief Gets one iterator to the last `n`th element of the element pointed 
 	//! by the input iterator.
 	//! @param[in] it The base iterator.
 	//! @param[in] n The position relative to the base iterator.
-	//! @return Returns the iterator pointing to the last `n`th element of the element pointed 
+	//! @return Returns the iterator to the last `n`th element of the element pointed 
 	//! by the input iterator.
 	template<typename _BidirIt>
 #ifdef LUNA_COMPILER_CPP17

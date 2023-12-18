@@ -84,9 +84,9 @@ namespace Luna
 	}
 
 	//! @brief Tests the equality of two ranges.
-	//! @param[in] first1 The iterator pointing to the first element of the first range.
-	//! @param[in] last1 The iterator pointing to the one-past-last element of the first range.
-	//! @param[in] first2 The iterator pointing to the first element of the second range.
+	//! @param[in] first1 The iterator to the first element of the first range.
+	//! @param[in] last1 The iterator to the one-past-last element of the first range.
+	//! @param[in] first2 The iterator to the first element of the second range.
 	//! @return Returns `true` if two ranges are equal, returns `false` otherwise.
 	template <typename _Iter1, typename _Iter2>
 	inline bool equal(_Iter1 first1, _Iter1 last1, _Iter2 first2)
@@ -102,9 +102,9 @@ namespace Luna
 	}
 
 	//! @brief Tests the equality of two ranges.
-	//! @param[in] first1 The iterator pointing to the first element of the first range.
-	//! @param[in] last1 The iterator pointing to the one-past-last element of the first range.
-	//! @param[in] first2 The iterator pointing to the first element of the second range.
+	//! @param[in] first1 The iterator to the first element of the first range.
+	//! @param[in] last1 The iterator to the one-past-last element of the first range.
+	//! @param[in] first2 The iterator to the first element of the second range.
 	//! @param[in] equal_compare The user-defined equal (==) comparison function used for comparing.
 	//! @return Returns `true` if two ranges are equal, returns `false` otherwise.
 	template <typename _Iter1, typename _Iter2, typename _EqualComp>
@@ -223,11 +223,11 @@ namespace Luna
 	}
 
 	//! @brief Searches for the first occurrence of the sequence of elements in the specified range.
-	//! @param[in] first The iterator pointing to the first element of the search range.
-	//! @param[in] last The iterator pointing to the one-past-last element of the search range.
-	//! @param[in] pattern_first The iterator pointing to the first element of the sequence to search.
-	//! @param[in] pattern_last The iterator pointing to the one-past-last element of the sequence to search.
-	//! @return Returns one iterator pointing to the beginning of first occurrence of the sequence[`pattern_first`, `pattern_last`).
+	//! @param[in] first The iterator to the first element of the search range.
+	//! @param[in] last The iterator to the one-past-last element of the search range.
+	//! @param[in] pattern_first The iterator to the first element of the sequence to search.
+	//! @param[in] pattern_last The iterator to the one-past-last element of the sequence to search.
+	//! @return Returns one iterator to the beginning of first occurrence of the sequence[`pattern_first`, `pattern_last`).
 	//! Returns `last` if no such occurrence is found.
 	template <typename _ForwardIt>
 	auto search(_ForwardIt first, _ForwardIt last,
@@ -247,11 +247,11 @@ namespace Luna
 	}
 
 	//! @brief Searches for the last occurrence of the sequence of elements in the specified range.
-	//! @param[in] first The iterator pointing to the first element of the search range.
-	//! @param[in] last The iterator pointing to the one-past-last element of the search range.
-	//! @param[in] pattern_first The iterator pointing to the first element of the sequence to search.
-	//! @param[in] pattern_last The iterator pointing to the one-past-last element of the sequence to search.
-	//! @return Returns one iterator pointing to the beginning of last occurrence of the sequence[`pattern_first`, `pattern_last`).
+	//! @param[in] first The iterator to the first element of the search range.
+	//! @param[in] last The iterator to the one-past-last element of the search range.
+	//! @param[in] pattern_first The iterator to the first element of the sequence to search.
+	//! @param[in] pattern_last The iterator to the one-past-last element of the sequence to search.
+	//! @return Returns one iterator to the beginning of last occurrence of the sequence[`pattern_first`, `pattern_last`).
 	//! Returns `last` if no such occurrence is found.
 	template <typename _ForwardIt>
 	auto find_end(_ForwardIt first, _ForwardIt last,
@@ -271,10 +271,10 @@ namespace Luna
 	}
 
 	//! @brief Searches for the first element in the range that is equal to (==) the specified value.
-	//! @param[in] first The iterator pointing to the first element of the search range.
-	//! @param[in] last The iterator pointing to the one-past-last element of the search range.
+	//! @param[in] first The iterator to the first element of the search range.
+	//! @param[in] last The iterator to the one-past-last element of the search range.
 	//! @param[in] value The value to compare for equality.
-	//! @return Returns one iterator pointing to the first element that is equal to the specified value. Returns `last` if not found.
+	//! @return Returns one iterator to the first element that is equal to the specified value. Returns `last` if not found.
 	template<typename _InputIt, typename _Ty>
 	inline constexpr _InputIt find(_InputIt first, _InputIt last, const _Ty& value)
 	{
@@ -287,10 +287,10 @@ namespace Luna
 	}
 
 	//! @brief Searches for the first element in the range that passes the user-provided unary predicate.
-	//! @param[in] first The iterator pointing to the first element of the search range.
-	//! @param[in] last The iterator pointing to the one-past-last element of the search range.
+	//! @param[in] first The iterator to the first element of the search range.
+	//! @param[in] last The iterator to the one-past-last element of the search range.
 	//! @param[in] p The user-provided unary predicate which will be called to test elements.
-	//! @return Returns one iterator pointing to the first element that `p(v)` is `true`. Returns `last` if not found.
+	//! @return Returns one iterator to the first element that `p(v)` is `true`. Returns `last` if not found.
 	//! @par Valid Usage
 	//! * The expression `p(v)` must be convertible to `bool` for every argument `v` of type `VT`, where `VT` is the value
 	//! type of `_InputIt`, and must not modify `v`.
@@ -306,10 +306,10 @@ namespace Luna
 	}
 
 	//! @brief Searches for the first element in the range that fails the user-provided unary predicate.
-	//! @param[in] first The iterator pointing to the first element of the search range.
-	//! @param[in] last The iterator pointing to the one-past-last element of the search range.
+	//! @param[in] first The iterator to the first element of the search range.
+	//! @param[in] last The iterator to the one-past-last element of the search range.
 	//! @param[in] q The user-provided unary predicate which will be called to test elements.
-	//! @return Returns one iterator pointing to the first element that `q(v)` is `false`. Returns `last` if not found.
+	//! @return Returns one iterator to the first element that `q(v)` is `false`. Returns `last` if not found.
 	//! @par Valid Usage
 	//! * The expression `q(v)` must be convertible to `bool` for every argument `v` of type `VT`, where `VT` is the value
 	//! type of `_InputIt`, and must not modify `v`.
@@ -325,8 +325,8 @@ namespace Luna
 	}
 
 	//! @brief Checks if the unary predicate returns `true` for all elements in the range.
-	//! @param[in] first The iterator pointing to the first element of the range.
-	//! @param[in] last The iterator pointing to the one-past-last element of the range.
+	//! @param[in] first The iterator to the first element of the range.
+	//! @param[in] last The iterator to the one-past-last element of the range.
 	//! @param[in] p The user-provided unary predicate which will be called to test elements.
 	//! @return Returns `ture` if the unary predicate returns `true` for all elements in the range. Returns `false` otherwise.
 	//! @par Valid Usage
@@ -339,8 +339,8 @@ namespace Luna
 	}
 
 	//! @brief Checks if the unary predicate returns `true` for at least one element in the range.
-	//! @param[in] first The iterator pointing to the first element of the range.
-	//! @param[in] last The iterator pointing to the one-past-last element of the range.
+	//! @param[in] first The iterator to the first element of the range.
+	//! @param[in] last The iterator to the one-past-last element of the range.
 	//! @param[in] p The user-provided unary predicate which will be called to test elements.
 	//! @return Returns `ture` if the unary predicate returns `true` for at least one element in the range. Returns `false` otherwise.
 	//! @par Valid Usage
@@ -353,8 +353,8 @@ namespace Luna
 	}
 
 	//! @brief Checks if the unary predicate returns `false` for all elements in the range.
-	//! @param[in] first The iterator pointing to the first element of the range.
-	//! @param[in] last The iterator pointing to the one-past-last element of the range.
+	//! @param[in] first The iterator to the first element of the range.
+	//! @param[in] last The iterator to the one-past-last element of the range.
 	//! @param[in] p The user-provided unary predicate which will be called to test elements.
 	//! @return Returns `ture` if the unary predicate returns `false` for all elements in the range. Returns `false` otherwise.
 	//! @par Valid Usage
@@ -367,8 +367,8 @@ namespace Luna
 	}
 
 	//! @brief Applies the given function object to every element in the range, in order.
-	//! @param[in] first The iterator pointing to the first element of the range.
-	//! @param[in] last The iterator pointing to the one-past-last element of the range.
+	//! @param[in] first The iterator to the first element of the range.
+	//! @param[in] last The iterator to the one-past-last element of the range.
 	//! @param[in] f The user-defined unary function object to be applied.
 	//! @return Returns `f`.
 	//! @par Valid Usage
@@ -383,8 +383,8 @@ namespace Luna
 	}
 
 	//! @brief Sorts the elements in the range in non-descending order. The order of equal elements is not guaranteed to be preserved.
-	//! @param[in] first The iterator pointing to the first element of the range.
-	//! @param[in] last The iterator pointing to the one-past-last element of the range.
+	//! @param[in] first The iterator to the first element of the range.
+	//! @param[in] last The iterator to the one-past-last element of the range.
 	template <typename _RandomIt>
 	void sort(_RandomIt first, _RandomIt last)
 	{
@@ -407,8 +407,8 @@ namespace Luna
 	}
 
 	//! @brief Sorts the elements in the range in non-descending order. The order of equal elements is not guaranteed to be preserved.
-	//! @param[in] first The iterator pointing to the first element of the range.
-	//! @param[in] last The iterator pointing to the one-past-last element of the range.
+	//! @param[in] first The iterator to the first element of the range.
+	//! @param[in] last The iterator to the one-past-last element of the range.
 	//! @param[in] comp The user-defined comparision function object, which returns `true` if the first argument is less than the second.
 	//! @par Valid Usage
 	//! * `comp` must have the following function signature: `bool comp(const Type& a, const Type& b)`, where `Type` is the value type of `_RandomIt`.
@@ -434,10 +434,10 @@ namespace Luna
 	}
 
 	//! @brief Finds the first element in the range such that `value < element` is `true`.
-	//! @param[in] first The iterator pointing to the first element of the range.
-	//! @param[in] last The iterator pointing to the one-past-last element of the range.
+	//! @param[in] first The iterator to the first element of the range.
+	//! @param[in] last The iterator to the one-past-last element of the range.
 	//! @param[in] value The value to compare elements to.
-	//! @return Returns an iterator pointing to the first element in the range such that `value < element` is `true`, 
+	//! @return Returns an iterator to the first element in the range such that `value < element` is `true`, 
 	//! or `last` if no such element is found.
 	//! @par Valid Usage
 	//! * Elements in the range specified by [`first`, `last`) must be sorted in non-descending order.
@@ -463,11 +463,11 @@ namespace Luna
 	}
 
 	//! @brief Finds the first element in the range such that `comp(value, element)` is `true`.
-	//! @param[in] first The iterator pointing to the first element of the range.
-	//! @param[in] last The iterator pointing to the one-past-last element of the range.
+	//! @param[in] first The iterator to the first element of the range.
+	//! @param[in] last The iterator to the one-past-last element of the range.
 	//! @param[in] value The value to compare elements to.
 	//! @param[in] comp The user-provided binary predicate which returns `​true` if the first argument is less than the second.
-	//! @return Returns an iterator pointing to the first element in the range such that `comp(value, element)` is `true`,
+	//! @return Returns an iterator to the first element in the range such that `comp(value, element)` is `true`,
 	//! or `last` if no such element is found.
 	//! @par Valid Usage
 	//! * Elements in the range specified by [`first`, `last`) must be sorted in non-descending order.
@@ -494,10 +494,10 @@ namespace Luna
 	}
 
 	//! @brief Finds the first element in the range such that `element < value` is `false`.
-	//! @param[in] first The iterator pointing to the first element of the range.
-	//! @param[in] last The iterator pointing to the one-past-last element of the range.
+	//! @param[in] first The iterator to the first element of the range.
+	//! @param[in] last The iterator to the one-past-last element of the range.
 	//! @param[in] value The value to compare elements to.
-	//! @return Returns an iterator pointing to the first element in the range such that `element < value` is `false`, 
+	//! @return Returns an iterator to the first element in the range such that `element < value` is `false`, 
 	//! or `last` if no such element is found.
 	//! @par Valid Usage
 	//! * Elements in the range specified by [`first`, `last`) must be sorted in non-descending order.
@@ -523,11 +523,11 @@ namespace Luna
 	}
 
 	//! @brief Finds the first element in the range such that `comp(element, value)` is `false`.
-	//! @param[in] first The iterator pointing to the first element of the range.
-	//! @param[in] last The iterator pointing to the one-past-last element of the range.
+	//! @param[in] first The iterator to the first element of the range.
+	//! @param[in] last The iterator to the one-past-last element of the range.
 	//! @param[in] value The value to compare elements to.
 	//! @param[in] comp The user-provided binary predicate which returns `​true` if the first argument is less than the second.
-	//! @return Returns an iterator pointing to the first element in the range such that `comp(element, value)` is `false`, 
+	//! @return Returns an iterator to the first element in the range such that `comp(element, value)` is `false`, 
 	//! or `last` if no such element is found.
 	//! @par Valid Usage
 	//! * Elements in the range specified by [`first`, `last`) must be sorted in non-descending order.
@@ -554,8 +554,8 @@ namespace Luna
 	}
 
 	//! @brief Checks if an element equivalent to the specified value appears within the range.
-	//! @param[in] first The iterator pointing to the first element of the range.
-	//! @param[in] last The iterator pointing to the one-past-last element of the range.
+	//! @param[in] first The iterator to the first element of the range.
+	//! @param[in] last The iterator to the one-past-last element of the range.
 	//! @param[in] value The value to compare elements to.
 	//! @return Returns `true` if an element equal to `value` is found, `false` otherwise.
 	//! @par Valid Usage
@@ -568,8 +568,8 @@ namespace Luna
 	}
 
 	//! @brief Checks if an element equivalent to the specified value appears within the range.
-	//! @param[in] first The iterator pointing to the first element of the range.
-	//! @param[in] last The iterator pointing to the one-past-last element of the range.
+	//! @param[in] first The iterator to the first element of the range.
+	//! @param[in] last The iterator to the one-past-last element of the range.
 	//! @param[in] value The value to compare elements to.
 	//! @param[in] comp The user-provided binary predicate which returns `​true` if the first argument is less than the second.
 	//! @return Returns `true` if an element equal to `value` is found, `false` otherwise.
@@ -584,10 +584,10 @@ namespace Luna
 	}
 
 	//! @brief Finds an element equivalent to the specified value in the range.
-	//! @param[in] first The iterator pointing to the first element of the range.
-	//! @param[in] last The iterator pointing to the one-past-last element of the range.
+	//! @param[in] first The iterator to the first element of the range.
+	//! @param[in] last The iterator to the one-past-last element of the range.
 	//! @param[in] value The value to compare elements to.
-	//! @return Returns an iterator pointing to the found element. If multiple equivalent elements exist in the range, returns the first one.
+	//! @return Returns an iterator to the found element. If multiple equivalent elements exist in the range, returns the first one.
 	//! Returns `last` if not found.
 	//! @par Valid Usage
 	//! * Elements in the range specified by [`first`, `last`) must be sorted in non-descending order.
@@ -599,11 +599,11 @@ namespace Luna
 	}
 
 	//! @brief Finds an element equivalent to the specified value in the range.
-	//! @param[in] first The iterator pointing to the first element of the range.
-	//! @param[in] last The iterator pointing to the one-past-last element of the range.
+	//! @param[in] first The iterator to the first element of the range.
+	//! @param[in] last The iterator to the one-past-last element of the range.
 	//! @param[in] value The value to compare elements to.
 	//! @param[in] comp The user-provided binary predicate which returns `​true` if the first argument is less than the second.
-	//! @return Returns an iterator pointing to the found element. If multiple equivalent elements exist in the range, returns the first one.
+	//! @return Returns an iterator to the found element. If multiple equivalent elements exist in the range, returns the first one.
 	//! Returns `last` if not found.
 	//! @par Valid Usage
 	//! * Elements in the range specified by [`first`, `last`) must be sorted in non-descending order.
@@ -616,8 +616,8 @@ namespace Luna
 	}
 
 	//! @brief Gets a range containing all elements equivalent to the specified value in the range.
-	//! @param[in] first The iterator pointing to the first element of the range.
-	//! @param[in] last The iterator pointing to the one-past-last element of the range.
+	//! @param[in] first The iterator to the first element of the range.
+	//! @param[in] last The iterator to the one-past-last element of the range.
 	//! @param[in] value The value to compare elements to.
 	//! @return Returns a pair of iterators pointing to the begin and end of the range. The first iterator points to the first element of the range,
 	//! the second iterator points to the one-past-last element of the range. If the specified element is not found in the range, returns one pair of iterators
@@ -634,8 +634,8 @@ namespace Luna
 	}
 
 	//! @brief Gets a range containing all elements equivalent to the specified value in the range.
-	//! @param[in] first The iterator pointing to the first element of the range.
-	//! @param[in] last The iterator pointing to the one-past-last element of the range.
+	//! @param[in] first The iterator to the first element of the range.
+	//! @param[in] last The iterator to the one-past-last element of the range.
 	//! @param[in] value The value to compare elements to.
 	//! @param[in] comp The user-provided binary predicate which returns `​true` if the first argument is less than the second.
 	//! @return Returns a pair of iterators pointing to the begin and end of the range. The first iterator points to the first element of the range,
@@ -655,10 +655,10 @@ namespace Luna
 
 	//! @brief Checks if the sorted range [`first2`, `last2`) is a subsequence of the sorted range [`first1`, `last1`).
 	//! (A subsequence need not be contiguous.)
-	//! @param[in] first1 The iterator pointing to the first element of the first range.
-	//! @param[in] last1 The iterator pointing to the one-past-last element of the first range.
-	//! @param[in] first2 The iterator pointing to the first element of the second range.
-	//! @param[in] last2 The iterator pointing to the one-past-last element of the second range.
+	//! @param[in] first1 The iterator to the first element of the first range.
+	//! @param[in] last1 The iterator to the one-past-last element of the first range.
+	//! @param[in] first2 The iterator to the first element of the second range.
+	//! @param[in] last2 The iterator to the one-past-last element of the second range.
 	//! @return Returns `true` if the sorted range [`first2`, `last2`) is a subsequence of the sorted range [`first1`, `last1`).
 	//! Returns `false` otherwise.
 	//! @par Valid Usage
@@ -678,10 +678,10 @@ namespace Luna
 	}
 	//! @brief Checks if the sorted range [`first2`, `last2`) is a subsequence of the sorted range [`first1`, `last1`).
 	//! (A subsequence need not be contiguous.)
-	//! @param[in] first1 The iterator pointing to the first element of the first range.
-	//! @param[in] last1 The iterator pointing to the one-past-last element of the first range.
-	//! @param[in] first2 The iterator pointing to the first element of the second range.
-	//! @param[in] last2 The iterator pointing to the one-past-last element of the second range.
+	//! @param[in] first1 The iterator to the first element of the first range.
+	//! @param[in] last1 The iterator to the one-past-last element of the first range.
+	//! @param[in] first2 The iterator to the first element of the second range.
+	//! @param[in] last2 The iterator to the one-past-last element of the second range.
 	//! @param[in] comp The user-provided binary predicate which returns `​true` if the first argument is less than the second.
 	//! @return Returns `true` if the sorted range [`first2`, `last2`) is a subsequence of the sorted range [`first1`, `last1`).
 	//! Returns `false` otherwise.
@@ -703,10 +703,10 @@ namespace Luna
 	}
 	
 	//! @brief Copies elements from one range to another range.
-	//! @param[in] first The iterator pointing to the first element of the source range.
-	//! @param[in] last The iterator pointing to the one-past-last element of the source range.
-	//! @param[in] d_first The iterator pointing to the first element of the destination range.
-	//! @return Returns one iterator pointing to the one-past-last element of the destination range.
+	//! @param[in] first The iterator to the first element of the source range.
+	//! @param[in] last The iterator to the one-past-last element of the source range.
+	//! @param[in] d_first The iterator to the first element of the destination range.
+	//! @return Returns one iterator to the one-past-last element of the destination range.
 	template<typename _InputIt, typename _OutputIt>
 	_OutputIt copy(_InputIt first, _InputIt last,
 		_OutputIt d_first)
@@ -719,11 +719,11 @@ namespace Luna
 
 	//! @brief Copies elements that pass user-defined function from one range to another range.
 	//! The relative order of elements that are copied is preserved.
-	//! @param[in] first The iterator pointing to the first element of the source range.
-	//! @param[in] last The iterator pointing to the one-past-last element of the source range.
-	//! @param[in] d_first The iterator pointing to the first element of the destination range.
+	//! @param[in] first The iterator to the first element of the source range.
+	//! @param[in] last The iterator to the one-past-last element of the source range.
+	//! @param[in] d_first The iterator to the first element of the destination range.
 	//! @param[in] pred The user-defined unary predicate which returns `​true` for elements that should be copied.
-	//! @return Returns one iterator pointing to the one-past-last element of the destination range.
+	//! @return Returns one iterator to the one-past-last element of the destination range.
 	//! @par Valid Usage
 	//! * The expression `pred(v)` must be convertible to `bool` for every argument `v` of type `VT`, where `VT` is the value
 	//! type of `_InputIt`, and must not modify `v`.
@@ -742,12 +742,12 @@ namespace Luna
 
 	//! @brief Copies elements that appear in the first sorted range and do not appear in the 
 	//! second sorted range to the destination range. The destination range is also sorted.
-	//! @param[in] first1 The iterator pointing to the first element of the first range.
-	//! @param[in] last1 The iterator pointing to the one-past-last element of the first range.
-	//! @param[in] first2 The iterator pointing to the first element of the second range.
-	//! @param[in] last2 The iterator pointing to the one-past-last element of the second range.
-	//! @param[in] d_first The iterator pointing to the first element of the destination range.
-	//! @return Returns one iterator pointing to the one-past-last element of the destination range.
+	//! @param[in] first1 The iterator to the first element of the first range.
+	//! @param[in] last1 The iterator to the one-past-last element of the first range.
+	//! @param[in] first2 The iterator to the first element of the second range.
+	//! @param[in] last2 The iterator to the one-past-last element of the second range.
+	//! @param[in] d_first The iterator to the first element of the destination range.
+	//! @return Returns one iterator to the one-past-last element of the destination range.
 	//! @remark If [`first1`, `last1`) contains `m` elements that are equivalent to each other and 
 	//! [`first2`, `last2`) contains `n` elements that are equivalent to them, 
 	//! the final `max(m - n, 0)` elements will be copied from [`first1`, `last1`) to the output range, 
@@ -777,13 +777,13 @@ namespace Luna
 
 	//! @brief Copies elements that appear in the first sorted range and do not appear in the 
 	//! second sorted range to the destination range. The destination range is also sorted.
-	//! @param[in] first1 The iterator pointing to the first element of the first range.
-	//! @param[in] last1 The iterator pointing to the one-past-last element of the first range.
-	//! @param[in] first2 The iterator pointing to the first element of the second range.
-	//! @param[in] last2 The iterator pointing to the one-past-last element of the second range.
-	//! @param[in] d_first The iterator pointing to the first element of the destination range.
+	//! @param[in] first1 The iterator to the first element of the first range.
+	//! @param[in] last1 The iterator to the one-past-last element of the first range.
+	//! @param[in] first2 The iterator to the first element of the second range.
+	//! @param[in] last2 The iterator to the one-past-last element of the second range.
+	//! @param[in] d_first The iterator to the first element of the destination range.
 	//! @param[in] comp The user-provided binary predicate which returns `​true` if the first argument is less than the second.
-	//! @return Returns one iterator pointing to the one-past-last element of the destination range.
+	//! @return Returns one iterator to the one-past-last element of the destination range.
 	//! @remark If [`first1`, `last1`) contains `m` elements that are equivalent to each other and 
 	//! [`first2`, `last2`) contains `n` elements that are equivalent to them, 
 	//! the final `max(m - n, 0)` elements will be copied from [`first1`, `last1`) to the output range, 
@@ -813,12 +813,12 @@ namespace Luna
 	}
 
 	//! @brief Constructs a sorted range consisting of elements that are found in both sorted ranges.
-	//! @param[in] first1 The iterator pointing to the first element of the first range.
-	//! @param[in] last1 The iterator pointing to the one-past-last element of the first range.
-	//! @param[in] first2 The iterator pointing to the first element of the second range.
-	//! @param[in] last2 The iterator pointing to the one-past-last element of the second range.
-	//! @param[in] d_first The iterator pointing to the first element of the destination range.
-	//! @return Returns one iterator pointing to the one-past-last element of the destination range.
+	//! @param[in] first1 The iterator to the first element of the first range.
+	//! @param[in] last1 The iterator to the one-past-last element of the first range.
+	//! @param[in] first2 The iterator to the first element of the second range.
+	//! @param[in] last2 The iterator to the one-past-last element of the second range.
+	//! @param[in] d_first The iterator to the first element of the destination range.
+	//! @return Returns one iterator to the one-past-last element of the destination range.
 	//! @remark If [`first1`, `last1`) contains `m` elements that are equivalent to each otherand [`first2`, `last2`)
 	//! contains `n` elements that are equivalent to them, the first `min(m, n)` elements will be copied from 
 	//! [`first1`, `last1`) to the output range, preserving order.
@@ -843,13 +843,13 @@ namespace Luna
 	}
 
 	//! @brief Constructs a sorted range consisting of elements that are found in both sorted ranges.
-	//! @param[in] first1 The iterator pointing to the first element of the first range.
-	//! @param[in] last1 The iterator pointing to the one-past-last element of the first range.
-	//! @param[in] first2 The iterator pointing to the first element of the second range.
-	//! @param[in] last2 The iterator pointing to the one-past-last element of the second range.
-	//! @param[in] d_first The iterator pointing to the first element of the destination range.
+	//! @param[in] first1 The iterator to the first element of the first range.
+	//! @param[in] last1 The iterator to the one-past-last element of the first range.
+	//! @param[in] first2 The iterator to the first element of the second range.
+	//! @param[in] last2 The iterator to the one-past-last element of the second range.
+	//! @param[in] d_first The iterator to the first element of the destination range.
 	//! @param[in] comp The user-provided binary predicate which returns `​true` if the first argument is less than the second.
-	//! @return Returns one iterator pointing to the one-past-last element of the destination range.
+	//! @return Returns one iterator to the one-past-last element of the destination range.
 	//! @remark If [`first1`, `last1`) contains `m` elements that are equivalent to each otherand [`first2`, `last2`)
 	//! contains `n` elements that are equivalent to them, the first `min(m, n)` elements will be copied from 
 	//! [`first1`, `last1`) to the output range, preserving order.
@@ -876,12 +876,12 @@ namespace Luna
 
 	//! @brief Computes symmetric difference of two sorted ranges: elements that are found in either of the ranges, 
 	//! but not in both of them are copied to the destination range. The destination range is also sorted.
-	//! @param[in] first1 The iterator pointing to the first element of the first range.
-	//! @param[in] last1 The iterator pointing to the one-past-last element of the first range.
-	//! @param[in] first2 The iterator pointing to the first element of the second range.
-	//! @param[in] last2 The iterator pointing to the one-past-last element of the second range.
-	//! @param[in] d_first The iterator pointing to the first element of the destination range.
-	//! @return Returns one iterator pointing to the one-past-last element of the destination range.
+	//! @param[in] first1 The iterator to the first element of the first range.
+	//! @param[in] last1 The iterator to the one-past-last element of the first range.
+	//! @param[in] first2 The iterator to the first element of the second range.
+	//! @param[in] last2 The iterator to the one-past-last element of the second range.
+	//! @param[in] d_first The iterator to the first element of the destination range.
+	//! @return Returns one iterator to the one-past-last element of the destination range.
 	//! @remark If [`first1`, `last1`) contains `m` elements that are equivalent to each otherand [`first2`, `last2`) contains 
 	//! `n` elements that are equivalent to them, then `abs(m - n)` of those elements will be copied to the output range, preserving order:
 	//! * if `m > n`, the final `m - n` of these elements from [`first1`, `last1`).
@@ -913,13 +913,13 @@ namespace Luna
 
 	//! @brief Computes symmetric difference of two sorted ranges: elements that are found in either of the ranges, 
 	//! but not in both of them are copied to the destination range. The destination range is also sorted.
-	//! @param[in] first1 The iterator pointing to the first element of the first range.
-	//! @param[in] last1 The iterator pointing to the one-past-last element of the first range.
-	//! @param[in] first2 The iterator pointing to the first element of the second range.
-	//! @param[in] last2 The iterator pointing to the one-past-last element of the second range.
-	//! @param[in] d_first The iterator pointing to the first element of the destination range.
+	//! @param[in] first1 The iterator to the first element of the first range.
+	//! @param[in] last1 The iterator to the one-past-last element of the first range.
+	//! @param[in] first2 The iterator to the first element of the second range.
+	//! @param[in] last2 The iterator to the one-past-last element of the second range.
+	//! @param[in] d_first The iterator to the first element of the destination range.
 	//! @param[in] comp The user-provided binary predicate which returns `​true` if the first argument is less than the second.
-	//! @return Returns one iterator pointing to the one-past-last element of the destination range.
+	//! @return Returns one iterator to the one-past-last element of the destination range.
 	//! @remark If [`first1`, `last1`) contains `m` elements that are equivalent to each otherand [`first2`, `last2`) contains 
 	//! `n` elements that are equivalent to them, then `abs(m - n)` of those elements will be copied to the output range, preserving order:
 	//! * if `m > n`, the final `m - n` of these elements from [`first1`, `last1`).
@@ -953,11 +953,11 @@ namespace Luna
 
 	//! @brief Constructs a sorted union beginning at the destination range consisting of the set of elements present in 
 	//! one or both sorted ranges.
-	//! @param[in] first1 The iterator pointing to the first element of the first range.
-	//! @param[in] last1 The iterator pointing to the one-past-last element of the first range.
-	//! @param[in] first2 The iterator pointing to the first element of the second range.
-	//! @param[in] last2 The iterator pointing to the one-past-last element of the second range.
-	//! @param[in] d_first The iterator pointing to the first element of the destination range.
+	//! @param[in] first1 The iterator to the first element of the first range.
+	//! @param[in] last1 The iterator to the one-past-last element of the first range.
+	//! @param[in] first2 The iterator to the first element of the second range.
+	//! @param[in] last2 The iterator to the one-past-last element of the second range.
+	//! @param[in] d_first The iterator to the first element of the destination range.
 	//! @remark If [`first1`, `last1`) contains `m` elements that are equivalent to each otherand 
 	//! [`first2`, `last2`) contains `n` elements that are equivalent to them, 
 	//! then all `m` elements will be copied from [`first1`, `last1`) to the output range, preserving order, 
@@ -989,11 +989,11 @@ namespace Luna
 
 	//! @brief Constructs a sorted union beginning at the destination range consisting of the set of elements present in 
 	//! one or both sorted ranges.
-	//! @param[in] first1 The iterator pointing to the first element of the first range.
-	//! @param[in] last1 The iterator pointing to the one-past-last element of the first range.
-	//! @param[in] first2 The iterator pointing to the first element of the second range.
-	//! @param[in] last2 The iterator pointing to the one-past-last element of the second range.
-	//! @param[in] d_first The iterator pointing to the first element of the destination range.
+	//! @param[in] first1 The iterator to the first element of the first range.
+	//! @param[in] last1 The iterator to the one-past-last element of the first range.
+	//! @param[in] first2 The iterator to the first element of the second range.
+	//! @param[in] last2 The iterator to the one-past-last element of the second range.
+	//! @param[in] d_first The iterator to the first element of the destination range.
 	//! @param[in] comp The user-provided binary predicate which returns `​true` if the first argument is less than the second.
 	//! @remark If [`first1`, `last1`) contains `m` elements that are equivalent to each otherand 
 	//! [`first2`, `last2`) contains `n` elements that are equivalent to them, 

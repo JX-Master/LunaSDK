@@ -16,7 +16,6 @@
 
 namespace Luna
 {
-	//! @class Vector
 	//! @ingroup Runtime
 	//! @brief A dynamic container type that stores a continuous array of elements.
 	template <typename _Ty, typename _Alloc = Allocator>

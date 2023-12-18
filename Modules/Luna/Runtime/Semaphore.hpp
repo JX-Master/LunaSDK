@@ -22,7 +22,7 @@ namespace Luna
 	{
 		luiid("{ef6a7782-0a6c-4a40-abc9-a6d2381a3397}");
 
-		//! Increases the counter value of the semaphore by one.
+		//! @brief Increases the counter value of the semaphore by one.
 		virtual void release() = 0;
 	};
 
