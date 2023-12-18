@@ -76,6 +76,7 @@ Name _var;
 Name _initializer;
 Name _enum;
 Name _enumvalue;
+Name _public_static_attrib;
 
 static void new_paragraph(String& out_text)
 {
@@ -976,6 +977,10 @@ RV Parser::encode_md_class_file(const Name& xml_name, const Variant& xml_data, c
                 {
                     luexp(encode_md_func_section("Member functions", m, section, output_dir));
                 }
+                else if(section_kind == _public_static_attrib)
+                {
+                    luexp(encode_md_attrib_section("Static objects", m, section, output_dir));
+                }
                 sections.push_back(move(section));
             }
             else if(member_name == _briefdescription)
@@ -1296,7 +1301,7 @@ void Parser::add_class_member_ids(const Variant& class_data)
         {
             Name kind = get_xml_attributes(m)[_kind].str();
             String section;
-            if(kind == _publicattrib || kind == _publicfunc)
+            if(kind == _publicattrib || kind == _publicfunc || kind == _public_static_attrib)
             {
                 add_section_ids(m);
             }
