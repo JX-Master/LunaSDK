@@ -414,24 +414,26 @@ namespace Luna
 			ImGui::SetNextItemWidth(150.0f);
 			{
 				auto render_mode_type = typeof<SceneRendererMode>();
-				auto options = get_enum_options(render_mode_type);
+				usize num_options = count_enum_options(render_mode_type);
 				Name current_name;
-				for(auto& option : options)
+				for(usize i = 0; i < num_options; ++i)
 				{
-					if(option.value == (i64)settings.mode)
+					auto desc = get_enum_option(render_mode_type, i);
+					if(desc.value == (i64)settings.mode)
 					{
-						current_name = option.name;
+						current_name = desc.name;
 						break;
 					}
 				}
 				if(ImGui::BeginCombo("Render Mode", current_name.c_str()))
 				{
-					for(auto& option : options)
+					for(usize i = 0; i < num_options; ++i)
 					{
-						bool selected = (option.value == (i64)settings.mode);
-						if(ImGui::Selectable(option.name.c_str(), selected))
+						auto desc = get_enum_option(render_mode_type, i);
+						bool selected = (desc.value == (i64)settings.mode);
+						if(ImGui::Selectable(desc.name.c_str(), selected))
 						{
-							settings.mode = (SceneRendererMode)option.value;
+							settings.mode = (SceneRendererMode)desc.value;
 						}
 					}
 					ImGui::EndCombo();

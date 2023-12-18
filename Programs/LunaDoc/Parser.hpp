@@ -80,6 +80,7 @@ extern Name _var;
 extern Name _initializer;
 extern Name _enum;
 extern Name _enumvalue;
+extern Name _public_static_attrib;
 
 struct Parser
 {

@@ -63,16 +63,16 @@ namespace Luna
 		//! @param[in] pos The index of the element.
 		//! @return Returns a constant reference of the specified element.
 		constexpr const_reference operator[](usize pos) const { lucheck(pos < _Size); return m_elements[pos]; }
-		//! @brief Gets a reference to the first (#0) element in the array.
+		//! @brief Gets a reference to the first (index 0) element in the array.
 		//! @return Returns a reference to the first element in the array.
 		constexpr reference front() { return m_elements[0]; }
-		//! @brief Gets a constant reference to the first (#0) element in the array.
+		//! @brief Gets a constant reference to the first (index 0) element in the array.
 		//! @return Returns a constant reference to the first element in the array.
 		constexpr const_reference front() const { return m_elements[0]; }
-		//! @brief Gets a reference to the last (#size - 1) element in the array.
+		//! @brief Gets a reference to the last (index `size()` - 1) element in the array.
 		//! @return Returns a reference to the first element in the array.
 		constexpr reference back() { return m_elements[_Size - 1]; }
-		//! @brief Gets a reference to the last (#size - 1) element in the array.
+		//! @brief Gets a reference to the last (index `size()` - 1) element in the array.
 		//! @return Returns a reference to the first element in the array.
 		constexpr const_reference back() const { return m_elements[_Size - 1]; }
 		//! @brief Gets one pointer to the array data memory.
@@ -81,41 +81,41 @@ namespace Luna
 		//! @brief Gets one constant pointer to the array data memory.
 		//! @return Returns one constant pointer to the array data memory.
 		constexpr const _Ty* data() const { return m_elements; }
-		//! @brief Gets one iterator pointing to the first element of the array.
-		//! @return Returns one iterator pointing to the first element of the array.
+		//! @brief Gets one iterator to the first element of the array.
+		//! @return Returns one iterator to the first element of the array.
 		constexpr iterator begin() { return m_elements; }
-		//! @brief Gets one constant iterator pointing to the first element of the array.
-		//! @return Returns one constant iterator pointing to the first element of the array.
+		//! @brief Gets one constant iterator to the first element of the array.
+		//! @return Returns one constant iterator to the first element of the array.
 		constexpr const_iterator begin() const { return m_elements; }
-		//! @brief Gets one constant iterator pointing to the first element of the array.
-		//! @return Returns one constant iterator pointing to the first element of the array.
+		//! @brief Gets one constant iterator to the first element of the array.
+		//! @return Returns one constant iterator to the first element of the array.
 		constexpr const_iterator cbegin() const { return m_elements; }
-		//! @brief Gets one iterator pointing to the one past last element of the array.
-		//! @return Returns one iterator pointing to the one past last element of the array.
+		//! @brief Gets one iterator to the one past last element of the array.
+		//! @return Returns one iterator to the one past last element of the array.
 		constexpr iterator end() { return m_elements + _Size; }
-		//! @brief Gets one constant iterator pointing to the one past last element of the array.
-		//! @return Returns one constant iterator pointing to the one past last element of the array.
+		//! @brief Gets one constant iterator to the one past last element of the array.
+		//! @return Returns one constant iterator to the one past last element of the array.
 		constexpr const_iterator end() const { return m_elements + _Size; }
-		//! @brief Gets one constant iterator pointing to the one past last element of the array.
-		//! @return Returns one constant iterator pointing to the one past last element of the array.
+		//! @brief Gets one constant iterator to the one past last element of the array.
+		//! @return Returns one constant iterator to the one past last element of the array.
 		constexpr const_iterator cend() const { return m_elements + _Size; }
-		//! @brief Gets one reverse iterator pointing to the last element of the array.
-		//! @return Returns one reverse iterator pointing to the last element of the array.
+		//! @brief Gets one reverse iterator to the last element of the array.
+		//! @return Returns one reverse iterator to the last element of the array.
 		constexpr reverse_iterator rbegin() { return reverse_iterator(end()); }
-		//! @brief Gets one constant reverse iterator pointing to the last element of the array.
-		//! @return Returns one constant reverse iterator pointing to the last element of the array.
+		//! @brief Gets one constant reverse iterator to the last element of the array.
+		//! @return Returns one constant reverse iterator to the last element of the array.
 		constexpr const_reverse_iterator rbegin() const { return const_reverse_iterator(end()); }
-		//! @brief Gets one constant reverse iterator pointing to the last element of the array.
-		//! @return Returns one constant reverse iterator pointing to the last element of the array.
+		//! @brief Gets one constant reverse iterator to the last element of the array.
+		//! @return Returns one constant reverse iterator to the last element of the array.
 		constexpr const_reverse_iterator crbegin() const { return const_reverse_iterator(cend()); }
-		//! @brief Gets one reverse iterator pointing to the one-before-first element of the array.
-		//! @return Returns one reverse iterator pointing to the one-before-first element of the array.
+		//! @brief Gets one reverse iterator to the one-before-first element of the array.
+		//! @return Returns one reverse iterator to the one-before-first element of the array.
 		constexpr reverse_iterator rend() { return reverse_iterator(begin()); }
-		//! @brief Gets one constant reverse iterator pointing to the one-before-first element of the array.
-		//! @return Returns one constant reverse iterator pointing to the one-before-first element of the array.
+		//! @brief Gets one constant reverse iterator to the one-before-first element of the array.
+		//! @return Returns one constant reverse iterator to the one-before-first element of the array.
 		constexpr const_reverse_iterator rend() const { return const_reverse_iterator(begin()); }
-		//! @brief Gets one constant reverse iterator pointing to the one-before-first element of the array.
-		//! @return Returns one constant reverse iterator pointing to the one-before-first element of the array.
+		//! @brief Gets one constant reverse iterator to the one-before-first element of the array.
+		//! @return Returns one constant reverse iterator to the one-before-first element of the array.
 		constexpr const_reverse_iterator crend() const { return const_reverse_iterator(cbegin()); }
 		//! @brief Checks whether this array is empty, that is, the size of this array is `0`.
 		//! @return Returns `true` if this array is empty, returns `false` otherwise.

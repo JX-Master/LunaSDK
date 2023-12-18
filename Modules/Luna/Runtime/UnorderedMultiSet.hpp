@@ -33,7 +33,6 @@ namespace Luna
 		using const_iterator = OpenHashTable::Iterator<value_type, true>;
 		using local_iterator = OpenHashTable::BucketIterator<value_type, false>;
 		using const_local_iterator = OpenHashTable::BucketIterator<value_type, true>;
-		using node_type = OpenHashTable::Node<value_type>;
 
 	private:
 
@@ -45,6 +44,8 @@ namespace Luna
 			m_base(move(base)) {}
 
 	public:
+		using node_type = OpenHashTable::SetNodeHandle<value_type, allocator_type>;
+		using insert_return_type = OpenHashTable::InsertResult<iterator, node_type>;
 
 		UnorderedMultiSet() :
 			m_base() {}
@@ -205,7 +206,7 @@ namespace Luna
 		}
 		iterator insert(node_type&& node)
 		{
-			return m_base.multi_insert(move(node));
+			return m_base.template multi_insert<node_type>(move(node));
 		}
 		template <typename... _Args>
 		iterator emplace(_Args&&... args)
@@ -229,7 +230,7 @@ namespace Luna
 		}
 		node_type extract(const_iterator pos)
 		{
-			return m_base.extract(pos);
+			return m_base.template extract<node_type>(pos);
 		}
 		allocator_type get_allocator() const
 		{

@@ -175,62 +175,93 @@ namespace Luna
 		// --------------------  End of ABI compatible part  --------------------
 
 	public:
+		//! @brief Gets one iterator to the first element of the queue.
+		//! @return Returns one iterator to the first element of the queue.
 		iterator begin()
 		{
 			return iterator(m_allocator_and_buffer.second(), m_capacity, m_begin);
 		}
+		//! @brief Gets one iterator to the one past last element of the queue.
+		//! @return Returns one iterator to the one past last element of the queue.
 		iterator end()
 		{
 			return iterator(m_allocator_and_buffer.second(), m_capacity, m_end);
 		}
+		//! @brief Gets one constant iterator to the first element of the queue.
+		//! @return Returns one constant iterator to the first element of the queue.
 		const_iterator begin() const
 		{
 			return const_iterator(m_allocator_and_buffer.second(), m_capacity, m_begin);
 		}
+		//! @brief Gets one constant iterator to the one past last element of the queue.
+		//! @return Returns one constant iterator to the one past last element of the queue.
 		const_iterator end() const
 		{
 			return const_iterator(m_allocator_and_buffer.second(), m_capacity, m_end);
 		}
+		//! @brief Gets one constant iterator to the first element of the queue.
+		//! @return Returns one constant iterator to the first element of the queue.
 		const_iterator cbegin() const
 		{
 			return const_iterator(m_allocator_and_buffer.second(), m_capacity, m_begin);
 		}
+		//! @brief Gets one constant iterator to the one past last element of the queue.
+		//! @return Returns one constant iterator to the one past last element of the queue.
 		const_iterator cend() const
 		{
 			return const_iterator(m_allocator_and_buffer.second(), m_capacity, m_end);
 		}
+		//! @brief Gets one reverse iterator to the last element of the queue.
+		//! @return Returns one reverse iterator to the last element of the queue.
 		reverse_iterator rbegin()
 		{
 			return reverse_iterator(end());
 		}
+		//! @brief Gets one reverse iterator to the one-before-first element of the queue.
+		//! @return Returns one reverse iterator to the one-before-first element of the queue.
 		reverse_iterator rend()
 		{
 			return reverse_iterator(begin());
 		}
+		//! @brief Gets one constant reverse iterator to the last element of the queue.
+		//! @return Returns one constant reverse iterator to the last element of the queue.
 		const_reverse_iterator rbegin() const
 		{
 			return reverse_iterator(end());
 		}
+		//! @brief Gets one constant reverse iterator to the one-before-first element of the queue.
+		//! @return Returns one constant reverse iterator to the one-before-first element of the queue.
 		const_reverse_iterator rend() const
 		{
 			return reverse_iterator(begin());
 		}
+		//! @brief Gets one constant reverse iterator to the last element of the queue.
+		//! @return Returns one constant reverse iterator to the last element of the queue.
 		const_reverse_iterator crbegin() const
 		{
 			return reverse_iterator(cend());
 		}
+		//! @brief Gets one constant reverse iterator to the one-before-first element of the queue.
+		//! @return Returns one constant reverse iterator to the one-before-first element of the queue.
 		const_reverse_iterator crend() const
 		{
 			return reverse_iterator(cbegin());
 		}
+		//! @brief Gets the size of the queue, that is, the number of elements in the queue.
+		//! @return Returns the size of the queue.
 		usize size() const
 		{
 			return (usize)(m_end - m_begin);
 		}
+		//! @brief Gets the capacity of the queue, that is, the maximum number of elements this queue can hold
+		//! before next expansion.
+		//! @return Returns the capacity of the queue.
 		usize capacity() const
 		{
 			return m_capacity;
 		}
+		//! @brief Checks whether this queue is empty, that is, the size of this queue is `0`.
+		//! @return Returns `true` if this queue is empty, returns `false` otherwise.
 		bool empty() const
 		{
 			return (size() == 0);
@@ -257,16 +288,21 @@ namespace Luna
 			m_end = 0;
 		}
 	public:
+		//! @brief Constructs an empty queue.
 		RingDeque() :
 			m_allocator_and_buffer(allocator_type(), nullptr),
 			m_capacity(0),
 			m_begin(0),
 			m_end(0) {}
+		//! @brief Constructs an empty queue with an custom allocator.
+		//! @param[in] alloc The allocator to use. The allocator object will be copy-constructed into the queue.
 		RingDeque(const allocator_type& alloc) :
 			m_allocator_and_buffer(alloc, nullptr),
 			m_capacity(0),
 			m_begin(0),
 			m_end(0) {}
+		//! @brief Constructs a queue by copying elements from another queue.
+		//! @param[in] rhs The queue to copy elements from.
 		RingDeque(const RingDeque& rhs) :
 			m_allocator_and_buffer(rhs.m_allocator_and_buffer.first(), nullptr),
 			m_capacity(0),
@@ -291,6 +327,9 @@ namespace Luna
 			m_begin = rhs.m_begin;
 			m_end = rhs.m_end;
 		}
+		//! @brief Constructs a queue with an custom allocator and with elements copied from another queue.
+		//! @param[in] rhs The queue to copy elements from.
+		//! @param[in] alloc The allocator to use. The allocator object will be copy-constructed into the queue.
 		RingDeque(const RingDeque& rhs, const allocator_type& alloc) :
 			m_allocator_and_buffer(alloc, nullptr),
 			m_capacity(0),
@@ -315,6 +354,8 @@ namespace Luna
 			m_begin = rhs.m_begin;
 			m_end = rhs.m_end;
 		}
+		//! @brief Constructs a queue by moving elements from another queue.
+		//! @param[in] rhs The queue to move elements from.
 		RingDeque(RingDeque&& rhs) :
 			m_allocator_and_buffer(move(rhs.m_allocator_and_buffer.first()), rhs.m_allocator_and_buffer.second()),
 			m_capacity(rhs.m_capacity),
@@ -326,6 +367,9 @@ namespace Luna
 			rhs.m_begin = 0;
 			rhs.m_end = 0;
 		}
+		//! @brief Constructs a queue with an custom allocator and with elements moved from another queue.
+		//! @param[in] rhs The queue to move elements from.
+		//! @param[in] alloc The allocator to use. The allocator object will be copy-constructed into the queue.
 		RingDeque(RingDeque&& rhs, const allocator_type& alloc) :
 			m_allocator_and_buffer(alloc, nullptr),
 			m_capacity(0),
@@ -365,6 +409,9 @@ namespace Luna
 				rhs.clear();
 			}
 		}
+		//! @brief Replaces elements of the queue by coping elements from another queue.
+		//! @param[in] rhs The queue to copy elements from.
+		//! @return Returns `*this`.
 		RingDeque& operator=(const RingDeque& rhs)
 		{
 			free_buffer();
@@ -386,6 +433,9 @@ namespace Luna
 			m_begin = rhs.m_begin;
 			m_end = rhs.m_end;
 		}
+		//! @brief Replaces elements of the queue by moving elements from another queue.
+		//! @param[in] rhs The queue to move elements from. This queue will be empty after this operation.
+		//! @return Returns `*this`.
 		RingDeque& operator=(RingDeque&& rhs)
 		{
 			free_buffer();
@@ -457,6 +507,10 @@ namespace Luna
 			m_end = sz;
 		}
 	public:
+		//! @brief Increases the capacity of the queue to a value greater than or equal to `new_cap`, so that it can 
+		//! hold at least `new_cap` elements without reallocating the internal buffer.
+		//! @details If `new_cap` is smaller than or equal to @ref capacity, this function does nothing.
+		//! @param[in] new_cap The new capacity value to reserve.
 		void reserve(usize new_cap)
 		{
 			if (new_cap > m_capacity)
@@ -473,6 +527,15 @@ namespace Luna
 			}
 		}
 	public:
+		//! @brief Resizes the queue.
+		//! @param[in] n The new size of the queue.
+		//! 
+		//! If `n` is greater than @ref size, `n - size()` new elements will be default-inserted at the back of 
+		//! the queue.
+		//! 
+		//! If `n` is smaller than @ref size, `size() - n` elements will be removed from the back of the queue.
+		//! 
+		//! If `n` is equal to @ref size, this function does nothing.
 		void resize(usize n)
 		{
 			reserve(n);
@@ -510,6 +573,15 @@ namespace Luna
 			}
 			m_end = m_begin + n;
 		}
+		//! @brief Resizes the queue.
+		//! @details If the new size is greater than @ref size, new elements will be copy-inserted at the back of 
+		//! the queue using the provided value.
+		//! 
+		//! If the new size is smaller than @ref size, `size - n` elements will be removed from the back of the queue.
+		//! 
+		//! If the new size is equal to @ref size, this function does nothing.
+		//! @param[in] n The new size of the queue.
+		//! @param[in] v The initial value to copy for new elements.
 		void resize(usize n, const value_type& v)
 		{
 			reserve(n);
@@ -547,6 +619,9 @@ namespace Luna
 			}
 			m_end = m_begin + n;
 		}
+		//! @brief Reduces the capacity of the queue so that @ref capacity == @ref size.
+		//! @details If @ref size is `0`, this function releases the internal storage buffer. This can be
+		//! used to clean up all dynamic memory allocated by this container.
 		void shrink_to_fit()
 		{
 			usize sz = size();
@@ -564,87 +639,150 @@ namespace Luna
 				}
 			}
 		}
+		//! @brief Gets the element at the specified index.
+		//! @param[in] n The index of the element.
+		//! @return Returns one reference to the element at the specified index.
+		//! @par Valid Usage
+		//! * @ref empty must be `false` when calling this function.
+		//! * `n` must be in range [`0`, `size()`).
 		reference operator[] (usize n)
 		{
 			luassert(n < size());
 			return m_allocator_and_buffer.second()[RingDequeImpl::round_idx(m_begin + n, m_capacity)];
 		}
+		//! @brief Gets the element at the specified index.
+		//! @param[in] n The index of the element.
+		//! @return Returns one constant reference to the element at the specified index.
+		//! @par Valid Usage
+		//! * @ref empty must be `false` when calling this function.
+		//! * `n` must be in range [`0`, `size()`).
 		const_reference operator[] (usize n) const
 		{
 			luassert(n < size());
 			return m_allocator_and_buffer.second()[RingDequeImpl::round_idx(m_begin + n, m_capacity)];
 		}
+		//! @brief Gets the element at the specified index.
+		//! @param[in] n The index of the element.
+		//! @return Returns one reference to the element at the specified index.
+		//! @par Valid Usage
+		//! * @ref empty must be `false` when calling this function.
+		//! * `n` must be in range [`0`, `size()`).
 		reference at(usize n)
 		{
 			luassert(n < size());
 			return m_allocator_and_buffer.second()[RingDequeImpl::round_idx(m_begin + n, m_capacity)];
 		}
+		//! @brief Gets the element at the specified index.
+		//! @param[in] n The index of the element.
+		//! @return Returns one reference to the element at the specified index.
+		//! @par Valid Usage
+		//! * @ref empty must be `false` when calling this function.
+		//! * `n` must be in range [`0`, `size()`).
 		const_reference at(usize n) const
 		{
 			luassert(n < size());
 			return m_allocator_and_buffer.second()[RingDequeImpl::round_idx(m_begin + n, m_capacity)];
 		}
+		//! @brief Gets the element at the front of the queue.
+		//! @details The front element is the element with index `0`.
+		//! @return Returns one reference to the front element of the queue.
+		//! @par Valid Usage
+		//! * @ref empty must be `false` when calling this function.
 		reference front()
 		{
 			luassert(!empty());
 			return m_allocator_and_buffer.second()[RingDequeImpl::round_idx(m_begin, m_capacity)];
 		}
+		//! @brief Gets the element at the front of the queue.
+		//! @details The front element is the element with index `0`.
+		//! @return Returns one constant reference to the front element of the queue.
+		//! @par Valid Usage
+		//! * @ref empty must be `false` when calling this function.
 		const_reference front() const
 		{
 			luassert(!empty());
 			return m_allocator_and_buffer.second()[RingDequeImpl::round_idx(m_begin, m_capacity)];
 		}
+		//! @brief Gets the element at the back of the queue.
+		//! @details The back element is the element with index `size() - 1`.
+		//! @return Returns one reference to the back element of the queue.
+		//! @par Valid Usage
+		//! * @ref empty must be `false` when calling this function.
 		reference back()
 		{
 			luassert(!empty());
 			return m_allocator_and_buffer.second()[RingDequeImpl::round_idx(m_end - 1, m_capacity)];
 		}
+		//! @brief Gets the element at the back of the queue.
+		//! @details The back element is the element with index `size() - 1`.
+		//! @return Returns one constant reference to the back element of the queue.
+		//! @par Valid Usage
+		//! * @ref empty must be `false` when calling this function.
 		const_reference back() const
 		{
 			luassert(!empty());
 			return m_allocator_and_buffer.second()[RingDequeImpl::round_idx(m_end - 1, m_capacity)];
 		}
+		//! @brief Removes all elements from the queue, but keeps the queue storage.
+		//! @details The user can call @ref shrink_to_fit after this to free the storage.
 		void clear()
 		{
 			destruct_range(begin(), end());
 			m_end = m_begin;
 		}
+		//! @brief Pushes one element to the back of the queue.
+		//! @param[in] val The element to push. The element will be copy-inserted to the queue.
 		void push_back(const value_type& val)
 		{
 			internal_expand_reserve(size() + 1);
 			new (m_allocator_and_buffer.second() + RingDequeImpl::round_idx(m_end, m_capacity)) value_type(val);
 			++m_end;
 		}
+		//! @brief Pushes one element to the back of the queue.
+		//! @param[in] val The element to push. The element will be move-inserted to the queue.
 		void push_back(value_type&& val)
 		{
 			internal_expand_reserve(size() + 1);
 			new (m_allocator_and_buffer.second() + RingDequeImpl::round_idx(m_end, m_capacity)) value_type(move(val));
 			++m_end;
 		}
+		//! @brief Removes the element from the back of the queue.
+		//! @par Valid Usage
+		//! * @ref empty must be `false` when calling this function.
 		void pop_back()
 		{
 			luassert(!empty());
 			destruct(m_allocator_and_buffer.second() + RingDequeImpl::round_idx(m_end - 1, m_capacity));
 			--m_end;
 		}
+		//! @brief Pushes one element at the front of the queue.
+		//! @param[in] val The element to push. The element will be copy-inserted to the queue.
 		void push_front(const value_type& val)
 		{
 			internal_expand_reserve(size() + 1);
 			new (m_allocator_and_buffer.second() + RingDequeImpl::round_idx(m_begin - 1, m_capacity)) value_type(val);
 			--m_begin;
 		}
+		//! @brief Pushes one element at the front of the queue.
+		//! @param[in] val The element to push. The element will be move-inserted to the queue.
 		void push_front(value_type&& val)
 		{
 			internal_expand_reserve(size() + 1);
 			new (m_allocator_and_buffer.second() + RingDequeImpl::round_idx(m_begin - 1, m_capacity)) value_type(move(val));
 			--m_begin;
 		}
+		//! @brief Removes the element at the front of the queue.
+		//! @par Valid Usage
+		//! * @ref empty must be `false` when calling this function.
 		void pop_front()
 		{
 			luassert(!empty());
 			destruct(m_allocator_and_buffer.second() + RingDequeImpl::round_idx(m_begin, m_capacity));
 			++m_begin;
 		}
+		//! @brief Replaces elements of the queue by several copies of the specified value.
+		//! @param[in] count The number of copies to insert to the queue.
+		//! @param[in] value The value to copy.
 		void assign(usize count, const value_type& value)
 		{
 			clear();
@@ -653,6 +791,9 @@ namespace Luna
 			m_begin = 0;
 			m_end = count;
 		}
+		//! @brief Replaces elements of the queue by elements specified by one range. Elements in the range will be copy-inserted into the queue.
+		//! @param[in] first The iterator to the first element of the range.
+		//! @param[in] last The iterator to the one-past-last element of the range.
 		template <typename _InputIter>
 		auto assign(_InputIter first, _InputIter last) -> enable_if_t<!is_integral_v<_InputIter>, void>
 		{
@@ -662,6 +803,8 @@ namespace Luna
 				push_back(*iter);
 			}
 		}
+		//! @brief Replaces elements of the queue by elements from one initializer queue.
+		//! @param[in] iqueue The initializer queue.
 		void assign(InitializerList<value_type> il)
 		{
 			assign(il.begin(), il.end());
@@ -745,31 +888,61 @@ namespace Luna
 		}
 
 	public:
-		iterator insert(const_iterator pos, const value_type& val)
+		//! @brief Inserts the specified element to the queue.
+		//! @param[in] pos The iterator to the position to insert the element. The element will be inserted before the element 
+		//! pointed by this iterator. This can be `end()`, indicating that the element will be inserted at the end of the queue.
+		//! @param[in] value The element to insert. The element will be copy-inserted into the queue.
+		//! @return Returns one iterator to the inserted element.
+		//! @par Valid Usage
+		//! * If `pos != end()`, `pos` must points to a valid element in the queue.
+		iterator insert(const_iterator pos, const value_type& value)
 		{
 			luassert((pos >= begin()) && (pos <= end()));
 			usize idx = (usize)(pos - begin());	// the place to insert the element.
 			insert_reserve(idx, 1);
-			new (m_allocator_and_buffer.second() + RingDequeImpl::round_idx(m_begin + idx, m_capacity)) value_type(val);
+			new (m_allocator_and_buffer.second() + RingDequeImpl::round_idx(m_begin + idx, m_capacity)) value_type(value);
 			return (begin() + idx);
 		}
-		iterator insert(const_iterator pos, value_type&& val)
+		//! @brief Inserts the specified element to the queue.
+		//! @param[in] pos The iterator to the position to insert the element. The element will be inserted before the element 
+		//! pointed by this iterator. This can be `end()`, indicating that the element will be inserted at the end of the queue.
+		//! @param[in] value The element to insert. The element will be move-inserted into the queue.
+		//! @return Returns one iterator to the inserted element.
+		//! @par Valid Usage
+		//! * If `pos != end()`, `pos` must points to a valid element in the queue.
+		iterator insert(const_iterator pos, value_type&& value)
 		{
 			luassert((pos >= begin()) && (pos <= end()));
 			usize idx = (usize)(pos - begin());	// the place to insert the element.
 			insert_reserve(idx, 1);
-			new (m_allocator_and_buffer.second() + RingDequeImpl::round_idx(m_begin + idx, m_capacity)) value_type(move(val));
+			new (m_allocator_and_buffer.second() + RingDequeImpl::round_idx(m_begin + idx, m_capacity)) value_type(move(value));
 			return (begin() + idx);
 		}
-		iterator insert(const_iterator pos, usize count, const value_type& val)
+		//! @brief Inserts several copies of the element to the queue.
+		//! @param[in] pos The iterator to the position to insert elements. The elements will be inserted before the element 
+		//! pointed by this iterator. This can be `end()`, indicating that the element will be inserted at the end of the queue.
+		//! @param[in] count The number of elements to insert.
+		//! @param[in] value The value to initialize the new elements with.
+		//! @return Returns one iterator to the first inserted element.
+		//! @par Valid Usage
+		//! * If `pos != end()`, `pos` must points to a valid element in the queue.
+		iterator insert(const_iterator pos, usize count, const value_type& value)
 		{
 			luassert((pos >= begin()) && (pos <= end()));
 			usize idx = (usize)(pos - begin());	// the place to insert the element.
 			insert_reserve(idx, count);
 			auto pos2 = begin() + idx;
-			fill_construct_range(pos2, pos2 + count, val);
+			fill_construct_range(pos2, pos2 + count, value);
 			return (begin() + idx);
 		}
+		//! @brief Inserts one range of elements to the queue.
+		//! @param[in] pos The iterator to the position to insert elements. The elements will be inserted before the element 
+		//! pointed by this iterator. This can be `end()`, indicating that the element will be inserted at the end of the queue.
+		//! @param[in] first The iterator to the first element to be inserted.
+		//! @param[in] last The iterator to the one-past-last element to be inserted.
+		//! @return Returns one iterator to the first inserted element.
+		//! @par Valid Usage
+		//! * If `pos != end()`, `pos` must points to a valid element in the queue.
 		template <typename _InputIt>
 		auto insert(const_iterator pos, _InputIt first, _InputIt last) -> enable_if_t<!is_integral_v<_InputIt>, iterator>
 		{
@@ -782,10 +955,22 @@ namespace Luna
 			}
 			return (begin() + idx);
 		}
-		iterator insert(const_iterator pos, InitializerList<value_type> il)
+		//! @brief Inserts one range of elements specified by the initializer queue to the queue.
+		//! @param[in] pos The iterator to the position to insert elements. The elements will be inserted before the element 
+		//! pointed by this iterator. This can be `end()`, indicating that the element will be inserted at the end of the queue.
+		//! @param[in] iqueue The initializer queue.
+		//! @return Returns one iterator to the first inserted element.
+		//! @par Valid Usage
+		//! * If `pos != end()`, `pos` must points to a valid element in the queue.
+		iterator insert(const_iterator pos, InitializerList<value_type> iqueue)
 		{
-			return insert(pos, il.begin(), il.end());
+			return insert(pos, iqueue.begin(), iqueue.end());
 		}
+		//! @brief Removes one element from the queue.
+		//! @param[in] pos The iterator to the element to be removed.
+		//! @return Returns one iterator to the next element of the removed element when iterating elements.
+		//! @par Valid Usage
+		//! * `pos` must points to a valid element in the queue.
 		iterator erase(const_iterator pos)
 		{
 			luassert((pos >= begin()) && (pos <= end()));
@@ -794,6 +979,14 @@ namespace Luna
 			internal_erase(idx, 1);
 			return begin() + idx;
 		}
+		//! @brief Removes one range of elements from the queue.
+		//! @param[in] first The iterator to the first element to be removed.
+		//! @param[in] last The iterator to the one-past-last element to be removed.
+		//! @return Returns one iterator to the next element of the removed elements when iterating elements.
+		//! @par Valid Usage
+		//! * `first` must be either `end()` or one valid element in the queue.
+		//! * If `first != end()`, [`first`, `last`) must specifies either one empty range (`first == last`) or one valid element range of the queue.
+		//! * If `first == end()`, [`first`, `last`) must specifies one empty range (`first == last`).
 		iterator erase(const_iterator first, const_iterator last)
 		{
 			luassert((first >= begin()) && (first <= end()));
@@ -810,12 +1003,20 @@ namespace Luna
 			internal_erase(pos, sz);
 			return begin() + pos;
 		}
+		//! @brief Swaps elements of this queue with the specified queue.
+		//! @param[in] rhs The queue to swap elements with.
 		void swap(RingDeque& rhs)
 		{
 			RingDeque tmp(move(*this));
 			(*this) = move(rhs);
 			rhs = move(tmp);
 		}
+		//! @brief Constructs one element directly on the specified position of the queue using the provided arguments.
+		//! @param[in] pos The iterator to the position to construct the element. The elements will be inserted before the element 
+		//! pointed by this iterator. This can be `end()`, indicating that the element will be inserted at the end of the queue.
+		//! @param[in] args The arguments to construct the element. `_Ty(args...)` will be used to 
+		//! construct the element.
+		//! @return Returns one iterator to the constructed element.
 		template <typename... _Args>
 		iterator emplace(const_iterator pos, _Args&&... args)
 		{
@@ -825,6 +1026,10 @@ namespace Luna
 			new (m_allocator_and_buffer.second() + RingDequeImpl::round_idx(m_begin + idx, m_capacity)) value_type(forward<_Args>(args)...);
 			return begin() + idx;
 		}
+		//! @brief Constructs one element directly on the back of the queue using the provided arguments.
+		//! @param[in] args The arguments to construct the element. `_Ty(args...)` will be used to 
+		//! construct the element.
+		//! @return Returns one reference to the constructed element.
 		template <typename... _Args>
 		iterator emplace_back(_Args&&... args)
 		{
@@ -833,6 +1038,10 @@ namespace Luna
 			++m_end;
 			return end() - 1;
 		}
+		//! @brief Constructs one element directly on the front of the queue using the provided arguments.
+		//! @param[in] args The arguments to construct the element. `_Ty(args...)` will be used to 
+		//! construct the element.
+		//! @return Returns one reference to the constructed element.
 		template <typename... _Args>
 		iterator emplace_front(_Args&&... args)
 		{
@@ -841,6 +1050,8 @@ namespace Luna
 			--m_begin;
 			return begin();
 		}
+		//! @brief Gets the allocator of the queue.
+		//! @return Returns one copy of the allocator of the queue.
 		allocator_type get_allocator() const
 		{
 			return m_allocator_and_buffer.first();

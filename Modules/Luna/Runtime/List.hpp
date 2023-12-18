@@ -173,8 +173,8 @@ namespace Luna
 		//! @param[in] alloc The allocator to use. The allocator object will be copy-constructed into the list.
 		explicit List(usize count, const allocator_type& alloc = allocator_type());
 		//! @brief Constructs a list with elements specified by one range. Elements in the range will be copy-inserted into the list. 
-		//! @param[in] first The iterator pointing to the first element of the range.
-		//! @param[in] last The iterator pointing to the one-past-last element of the range.
+		//! @param[in] first The iterator to the first element of the range.
+		//! @param[in] last The iterator to the one-past-last element of the range.
 		//! @param[in] alloc The allocator to use. The allocator object will be copy-constructed into the list.
  		template <typename _InputIt>
 		List(enable_if_t<!is_integral_v<_InputIt>, _InputIt> first, _InputIt last, const allocator_type& alloc = allocator_type());
@@ -214,8 +214,8 @@ namespace Luna
 		//! @param[in] value The value to copy.
 		void assign(usize count, const value_type& value);
 		//! @brief Replaces elements of the list by elements specified by one range. Elements in the range will be copy-inserted into the list.
-		//! @param[in] first The iterator pointing to the first element of the range.
-		//! @param[in] last The iterator pointing to the one-past-last element of the range.
+		//! @param[in] first The iterator to the first element of the range.
+		//! @param[in] last The iterator to the one-past-last element of the range.
 		template <typename _InputIt>
 		auto assign(_InputIt first, _InputIt last)->enable_if_t<!is_integral_v<_InputIt>, void>;
 		//! @brief Replaces elements of the list by elements from one initializer list.
@@ -241,41 +241,41 @@ namespace Luna
 		//! @par Valid Usage
 		//! * `empty()` must be `false` when calling this function.
 		const_reference back() const;
-		//! @brief Gets one iterator pointing to the first element of the list.
-		//! @return Returns one iterator pointing to the first element of the list.
+		//! @brief Gets one iterator to the first element of the list.
+		//! @return Returns one iterator to the first element of the list.
 		iterator begin();
-		//! @brief Gets one constant iterator pointing to the first element of the list.
-		//! @return Returns one constant iterator pointing to the first element of the list.
+		//! @brief Gets one constant iterator to the first element of the list.
+		//! @return Returns one constant iterator to the first element of the list.
 		const_iterator begin() const;
-		//! @brief Gets one constant iterator pointing to the first element of the list.
-		//! @return Returns one constant iterator pointing to the first element of the list.
+		//! @brief Gets one constant iterator to the first element of the list.
+		//! @return Returns one constant iterator to the first element of the list.
 		const_iterator cbegin() const;
-		//! @brief Gets one iterator pointing to the one past last element of the list.
-		//! @return Returns one iterator pointing to the one past last element of the list.
+		//! @brief Gets one iterator to the one past last element of the list.
+		//! @return Returns one iterator to the one past last element of the list.
 		iterator end();
-		//! @brief Gets one constant iterator pointing to the one past last element of the list.
-		//! @return Returns one constant iterator pointing to the one past last element of the list.
+		//! @brief Gets one constant iterator to the one past last element of the list.
+		//! @return Returns one constant iterator to the one past last element of the list.
 		const_iterator end() const;
-		//! @brief Gets one constant iterator pointing to the one past last element of the list.
-		//! @return Returns one constant iterator pointing to the one past last element of the list.
+		//! @brief Gets one constant iterator to the one past last element of the list.
+		//! @return Returns one constant iterator to the one past last element of the list.
 		const_iterator cend() const;
-		//! @brief Gets one reverse iterator pointing to the last element of the list.
-		//! @return Returns one reverse iterator pointing to the last element of the list.
+		//! @brief Gets one reverse iterator to the last element of the list.
+		//! @return Returns one reverse iterator to the last element of the list.
 		reverse_iterator rbegin();
-		//! @brief Gets one constant reverse iterator pointing to the last element of the list.
-		//! @return Returns one constant reverse iterator pointing to the last element of the list.
+		//! @brief Gets one constant reverse iterator to the last element of the list.
+		//! @return Returns one constant reverse iterator to the last element of the list.
 		const_reverse_iterator rbegin() const;
-		//! @brief Gets one constant reverse iterator pointing to the last element of the list.
-		//! @return Returns one constant reverse iterator pointing to the last element of the list.
+		//! @brief Gets one constant reverse iterator to the last element of the list.
+		//! @return Returns one constant reverse iterator to the last element of the list.
 		const_reverse_iterator crbegin() const;
-		//! @brief Gets one reverse iterator pointing to the one-before-first element of the list.
-		//! @return Returns one reverse iterator pointing to the one-before-first element of the list.
+		//! @brief Gets one reverse iterator to the one-before-first element of the list.
+		//! @return Returns one reverse iterator to the one-before-first element of the list.
 		reverse_iterator rend();
-		//! @brief Gets one constant reverse iterator pointing to the one-before-first element of the list.
-		//! @return Returns one constant reverse iterator pointing to the one-before-first element of the list.
+		//! @brief Gets one constant reverse iterator to the one-before-first element of the list.
+		//! @return Returns one constant reverse iterator to the one-before-first element of the list.
 		const_reverse_iterator rend() const;
-		//! @brief Gets one constant reverse iterator pointing to the one-before-first element of the list.
-		//! @return Returns one constant reverse iterator pointing to the one-before-first element of the list.
+		//! @brief Gets one constant reverse iterator to the one-before-first element of the list.
+		//! @return Returns one constant reverse iterator to the one-before-first element of the list.
 		const_reverse_iterator crend() const;
 		//! @brief Checks whether this list is empty, that is, the size of this list is `0`.
 		//! @return Returns `true` if this list is empty, returns `false` otherwise.
@@ -286,66 +286,66 @@ namespace Luna
 		//! @brief Removes all elements in the list.
 		void clear();
 		//! @brief Inserts the specified element to the list.
-		//! @param[in] pos The iterator pointing to the position to insert the element. The element will be inserted before the element 
+		//! @param[in] pos The iterator to the position to insert the element. The element will be inserted before the element 
 		//! pointed by this iterator. This can be `end()`, indicating that the element will be inserted at the end of the list.
 		//! @param[in] value The element to insert. The element will be copy-inserted into the list.
-		//! @return Returns one iterator pointing to the inserted element.
+		//! @return Returns one iterator to the inserted element.
 		//! @par Valid Usage
 		//! * If `pos != end()`, `pos` must points to a valid element in the list.
 		iterator insert(const_iterator pos, const value_type& value);
 		//! @brief Inserts the specified element to the list.
-		//! @param[in] pos The iterator pointing to the position to insert the element. The element will be inserted before the element 
+		//! @param[in] pos The iterator to the position to insert the element. The element will be inserted before the element 
 		//! pointed by this iterator. This can be `end()`, indicating that the element will be inserted at the end of the list.
 		//! @param[in] value The element to insert. The element will be move-inserted into the list.
-		//! @return Returns one iterator pointing to the inserted element.
+		//! @return Returns one iterator to the inserted element.
 		//! @par Valid Usage
 		//! * If `pos != end()`, `pos` must points to a valid element in the list.
 		iterator insert(const_iterator pos, value_type&& value);
 		//! @brief Inserts several copies of the element to the list.
-		//! @param[in] pos The iterator pointing to the position to insert elements. The elements will be inserted before the element 
+		//! @param[in] pos The iterator to the position to insert elements. The elements will be inserted before the element 
 		//! pointed by this iterator. This can be `end()`, indicating that the element will be inserted at the end of the list.
 		//! @param[in] count The number of elements to insert.
 		//! @param[in] value The value to initialize the new elements with.
-		//! @return Returns one iterator pointing to the first inserted element.
+		//! @return Returns one iterator to the first inserted element.
 		//! @par Valid Usage
 		//! * If `pos != end()`, `pos` must points to a valid element in the list.
 		iterator insert(const_iterator pos, usize count, const value_type& value);
 		//! @brief Inserts one range of elements to the list.
-		//! @param[in] pos The iterator pointing to the position to insert elements. The elements will be inserted before the element 
+		//! @param[in] pos The iterator to the position to insert elements. The elements will be inserted before the element 
 		//! pointed by this iterator. This can be `end()`, indicating that the element will be inserted at the end of the list.
-		//! @param[in] first The iterator pointing to the first element to be inserted.
-		//! @param[in] last The iterator pointing to the one-past-last element to be inserted.
-		//! @return Returns one iterator pointing to the first inserted element.
+		//! @param[in] first The iterator to the first element to be inserted.
+		//! @param[in] last The iterator to the one-past-last element to be inserted.
+		//! @return Returns one iterator to the first inserted element.
 		//! @par Valid Usage
 		//! * If `pos != end()`, `pos` must points to a valid element in the list.
 		template<typename _InputIt>
 		auto insert(const_iterator pos, _InputIt first, _InputIt last)->enable_if_t<!is_integral_v<_InputIt>, List<_Ty, _Alloc>::iterator>;
 		//! @brief Inserts one range of elements specified by the initializer list to the list.
-		//! @param[in] pos The iterator pointing to the position to insert elements. The elements will be inserted before the element 
+		//! @param[in] pos The iterator to the position to insert elements. The elements will be inserted before the element 
 		//! pointed by this iterator. This can be `end()`, indicating that the element will be inserted at the end of the list.
 		//! @param[in] ilist The initializer list.
-		//! @return Returns one iterator pointing to the first inserted element.
+		//! @return Returns one iterator to the first inserted element.
 		//! @par Valid Usage
 		//! * If `pos != end()`, `pos` must points to a valid element in the list.
 		iterator insert(const_iterator pos, InitializerList<value_type> ilist);
 		//! @brief Constructs one element directly on the specified position of the list using the provided arguments.
-		//! @param[in] pos The iterator pointing to the position to construct the element. The elements will be inserted before the element 
+		//! @param[in] pos The iterator to the position to construct the element. The elements will be inserted before the element 
 		//! pointed by this iterator. This can be `end()`, indicating that the element will be inserted at the end of the list.
 		//! @param[in] args The arguments to construct the element. `_Ty(args...)` will be used to 
 		//! construct the element.
-		//! @return Returns one iterator pointing to the constructed element.
+		//! @return Returns one iterator to the constructed element.
 		template<typename... _Args>
 		iterator emplace(const_iterator pos, _Args&&... args);
 		//! @brief Removes one element from the list.
-		//! @param[in] pos The iterator pointing to the element to be removed.
-		//! @return Returns one iterator pointing to the next element of the removed element when iterating elements.
+		//! @param[in] pos The iterator to the element to be removed.
+		//! @return Returns one iterator to the next element of the removed element when iterating elements.
 		//! @par Valid Usage
 		//! * `pos` must points to a valid element in the list.
 		iterator erase(const_iterator pos);
 		//! @brief Removes one range of elements from the list.
-		//! @param[in] first The iterator pointing to the first element to be removed.
-		//! @param[in] last The iterator pointing to the one-past-last element to be removed.
-		//! @return Returns one iterator pointing to the next element of the removed elements when iterating elements.
+		//! @param[in] first The iterator to the first element to be removed.
+		//! @param[in] last The iterator to the one-past-last element to be removed.
+		//! @return Returns one iterator to the next element of the removed elements when iterating elements.
 		//! @par Valid Usage
 		//! * `first` must be either `end()` or one valid element in the list.
 		//! * If `first != end()`, [`first`, `last`) must specifies either one empty range (`first == last`) or one valid element range of the list.
@@ -444,44 +444,44 @@ namespace Luna
 		//! @brief Transfers all elements from another list to this list.
 		//! @details No memory allocation or element copy/move will be performed, this function transfers elements by changing their
 		//! pointers directly so that they link to the new list.
-		//! @param[in] pos The iterator pointing to the position to insert the transferred elements.
+		//! @param[in] pos The iterator to the position to insert the transferred elements.
 		//! @param[in] other The list to transfer elements from. This list will be empty after this operation.
 		void splice(const_iterator pos, List& other);
 		//! @brief Transfers all elements from another list to this list.
 		//! @details No memory allocation or element copy/move will be performed, this function transfers elements by changing their
 		//! pointers directly so that they link to the new list.
-		//! @param[in] pos The iterator pointing to the position to insert the transferred elements.
+		//! @param[in] pos The iterator to the position to insert the transferred elements.
 		//! @param[in] other The list to transfer elements from. This list will be empty after this operation.
 		void splice(const_iterator pos, List&& other);
 		//! @brief Transfers one element from another list to this list.
 		//! @details No memory allocation or element copy/move will be performed, this function transfers elements by changing their
 		//! pointers directly so that they link to the new list.
-		//! @param[in] pos The iterator pointing to the position to insert the transferred element.
+		//! @param[in] pos The iterator to the position to insert the transferred element.
 		//! @param[in] other The list to transfer the element from.
-		//! @param[in] it The iterator pointing to the element to be transferred.
+		//! @param[in] it The iterator to the element to be transferred.
 		void splice(const_iterator pos, List& other, const_iterator it);
 		//! @brief Transfers one element from another list to this list.
 		//! @details No memory allocation or element copy/move will be performed, this function transfers elements by changing their
 		//! pointers directly so that they link to the new list.
-		//! @param[in] pos The iterator pointing to the position to insert the transferred element.
+		//! @param[in] pos The iterator to the position to insert the transferred element.
 		//! @param[in] other The list to transfer the element from.
-		//! @param[in] it The iterator pointing to the element to be transferred.
+		//! @param[in] it The iterator to the element to be transferred.
 		void splice(const_iterator pos, List&& other, const_iterator it);
 		//! @brief Transfers elements from another list to this list.
 		//! @details No memory allocation or element copy/move will be performed, this function transfers elements by changing their
 		//! pointers directly so that they link to the new list.
-		//! @param[in] pos The iterator pointing to the position to insert the transferred elements.
+		//! @param[in] pos The iterator to the position to insert the transferred elements.
 		//! @param[in] other The list to transfer elements from.
-		//! @param[in] first The iterator pointing to the first element to be transferred.
-		//! @param[in] last The iterator pointing to the one-past-last element to be transferred.
+		//! @param[in] first The iterator to the first element to be transferred.
+		//! @param[in] last The iterator to the one-past-last element to be transferred.
 		void splice(const_iterator pos, List& other, const_iterator first, const_iterator last);
 		//! @brief Transfers elements from another list to this list.
 		//! @details No memory allocation or element copy/move will be performed, this function transfers elements by changing their
 		//! pointers directly so that they link to the new list.
-		//! @param[in] pos The iterator pointing to the position to insert the transferred elements.
+		//! @param[in] pos The iterator to the position to insert the transferred elements.
 		//! @param[in] other The list to transfer elements from.
-		//! @param[in] first The iterator pointing to the first element to be transferred.
-		//! @param[in] last The iterator pointing to the one-past-last element to be transferred.
+		//! @param[in] first The iterator to the first element to be transferred.
+		//! @param[in] last The iterator to the one-past-last element to be transferred.
 		void splice(const_iterator pos, List&& other, const_iterator first, const_iterator last);
 		//! @brief Removes all elements that are equal to value.
 		//! @details Elements are compared using `equal_to<_Ty>`.

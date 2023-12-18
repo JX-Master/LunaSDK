@@ -11,6 +11,7 @@
 #pragma once
 #include "Waitable.hpp"
 #include "Ref.hpp"
+#include "SpinLock.hpp"
 
 namespace Luna
 {

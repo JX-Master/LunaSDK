@@ -103,48 +103,54 @@ namespace Luna
 		//! @param[in] alloc The allocator to use. The allocator object will be copy-constructed into the map.
 		HashMap(HashMap&& rhs, const allocator_type& alloc) :
 			m_base(move(rhs.m_base), alloc) {}
+		//! @brief Replaces elements of the map by coping elements from another map.
+		//! @param[in] rhs The map to copy elements from.
+		//! @return Returns `*this`.
 		HashMap& operator=(const HashMap& rhs)
 		{
 			m_base = rhs.m_base;
 			return *this;
 		}
+		//! @brief Replaces elements of the map by moving elements from another map.
+		//! @param[in] rhs The map to move elements from. This map will be empty after this operation.
+		//! @return Returns `*this`.
 		HashMap& operator=(HashMap&& rhs)
 		{
 			m_base = move(rhs.m_base);
 			return *this;
 		}
-		//! @brief Gets one iterator pointing to the first element of the map.
-		//! @return Returns one iterator pointing to the first element of the map.
+		//! @brief Gets one iterator to the first element of the map.
+		//! @return Returns one iterator to the first element of the map.
 		iterator begin()
 		{
 			return m_base.begin();
 		}
-		//! @brief Gets one constant iterator pointing to the first element of the map.
-		//! @return Returns one constant iterator pointing to the first element of the map.
+		//! @brief Gets one constant iterator to the first element of the map.
+		//! @return Returns one constant iterator to the first element of the map.
 		const_iterator begin() const
 		{
 			return m_base.begin();
 		}
-		//! @brief Gets one constant iterator pointing to the first element of the map.
-		//! @return Returns one constant iterator pointing to the first element of the map.
+		//! @brief Gets one constant iterator to the first element of the map.
+		//! @return Returns one constant iterator to the first element of the map.
 		const_iterator cbegin() const
 		{
 			return m_base.cbegin();
 		}
-		//! @brief Gets one iterator pointing to the one past last element of the map.
-		//! @return Returns one iterator pointing to the one past last element of the map.
+		//! @brief Gets one iterator to the one past last element of the map.
+		//! @return Returns one iterator to the one past last element of the map.
 		iterator end()
 		{
 			return m_base.end();
 		}
-		//! @brief Gets one constant iterator pointing to the one past last element of the map.
-		//! @return Returns one constant iterator pointing to the one past last element of the map.
+		//! @brief Gets one constant iterator to the one past last element of the map.
+		//! @return Returns one constant iterator to the one past last element of the map.
 		const_iterator end() const
 		{
 			return m_base.end();
 		}
-		//! @brief Gets one constant iterator pointing to the one past last element of the map.
-		//! @return Returns one constant iterator pointing to the one past last element of the map.
+		//! @brief Gets one constant iterator to the one past last element of the map.
+		//! @return Returns one constant iterator to the one past last element of the map.
 		const_iterator cend() const
 		{
 			return m_base.cend();
@@ -239,14 +245,14 @@ namespace Luna
 		}
 		//! @brief Finds the specified element in the map.
 		//! @param[in] key The key of the element to find.
-		//! @return Returns one iterator pointing to the element if the elemene is found. Returns `end()` otherwise.
+		//! @return Returns one iterator to the element if the element is found. Returns `end()` otherwise.
 		iterator find(const key_type& key)
 		{
 			return m_base.find(key);
 		}
 		//! @brief Finds the specified element in the map.
 		//! @param[in] key The key of the element to find.
-		//! @return Returns one const iterator pointing to the element if the elemene is found. Returns `end()` otherwise.
+		//! @return Returns one const iterator to the element if the element is found. Returns `end()` otherwise.
 		const_iterator find(const key_type& key) const
 		{
 			return m_base.find(key);
@@ -331,8 +337,8 @@ namespace Luna
 			return m_base.emplace(forward<_Args>(args)...);
 		}
 		//! @brief Removes one element from the map.
-		//! @param[in] pos The iterator pointing to the element to be removed.
-		//! @return Returns one iterator pointing to the next element of the removed element when iterating elements.
+		//! @param[in] pos The iterator to the element to be removed.
+		//! @return Returns one iterator to the next element of the removed element when iterating elements.
 		//! @par Valid Usage
 		//! * `pos` must points to a valid element in the map.
 		iterator erase(const_iterator pos)

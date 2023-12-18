@@ -659,74 +659,74 @@ namespace Luna
 		{
 			return at(index);
 		}
-		//! @brief Gets one iterator pointing to the first name node of the path.
-		//! @return Returns one iterator pointing to the first name node of the path.
+		//! @brief Gets one iterator to the first name node of the path.
+		//! @return Returns one iterator to the first name node of the path.
 		iterator begin()
 		{
 			return m_nodes.begin();
 		}
-		//! @brief Gets one constant iterator pointing to the first name node of the path.
-		//! @return Returns one constant iterator pointing to the first name node of the path.
+		//! @brief Gets one constant iterator to the first name node of the path.
+		//! @return Returns one constant iterator to the first name node of the path.
 		const_iterator begin() const
 		{
 			return m_nodes.begin();
 		}
-		//! @brief Gets one constant iterator pointing to the first name node of the path.
-		//! @return Returns one constant iterator pointing to the first name node of the path.
+		//! @brief Gets one constant iterator to the first name node of the path.
+		//! @return Returns one constant iterator to the first name node of the path.
 		const_iterator cbegin() const
 		{
 			return m_nodes.cbegin();
 		}
-		//! @brief Gets one iterator pointing to the one past last name node of the path.
-		//! @return Returns one iterator pointing to the one past last name node of the path.
+		//! @brief Gets one iterator to the one past last name node of the path.
+		//! @return Returns one iterator to the one past last name node of the path.
 		iterator end()
 		{
 			return m_nodes.end();
 		}
-		//! @brief Gets one constant iterator pointing to the one past last name node of the path.
-		//! @return Returns one constant iterator pointing to the one past last name node of the path.
+		//! @brief Gets one constant iterator to the one past last name node of the path.
+		//! @return Returns one constant iterator to the one past last name node of the path.
 		const_iterator end() const
 		{
 			return m_nodes.end();
 		}
-		//! @brief Gets one constant iterator pointing to the one past last name node of the path.
-		//! @return Returns one constant iterator pointing to the one past last name node of the path.
+		//! @brief Gets one constant iterator to the one past last name node of the path.
+		//! @return Returns one constant iterator to the one past last name node of the path.
 		const_iterator cend() const
 		{
 			return m_nodes.cend();
 		}
-		//! @brief Gets one reverse iterator pointing to the last name node of the path.
-		//! @return Returns one reverse iterator pointing to the last name node of the path.
+		//! @brief Gets one reverse iterator to the last name node of the path.
+		//! @return Returns one reverse iterator to the last name node of the path.
 		reverse_iterator rbegin()
 		{
 			return m_nodes.rbegin();
 		}
-		//! @brief Gets one constant reverse iterator pointing to the last name node of the path.
-		//! @return Returns one constant reverse iterator pointing to the last name node of the path.
+		//! @brief Gets one constant reverse iterator to the last name node of the path.
+		//! @return Returns one constant reverse iterator to the last name node of the path.
 		const_reverse_iterator rbegin() const
 		{
 			return m_nodes.rbegin();
 		}
-		//! @brief Gets one constant reverse iterator pointing to the last name node of the path.
-		//! @return Returns one constant reverse iterator pointing to the last name node of the path.
+		//! @brief Gets one constant reverse iterator to the last name node of the path.
+		//! @return Returns one constant reverse iterator to the last name node of the path.
 		const_reverse_iterator crbegin() const
 		{
 			return m_nodes.crbegin();
 		}
-		//! @brief Gets one reverse iterator pointing to the one-before-first name node of the path.
-		//! @return Returns one reverse iterator pointing to the one-before-first name node of the path.
+		//! @brief Gets one reverse iterator to the one-before-first name node of the path.
+		//! @return Returns one reverse iterator to the one-before-first name node of the path.
 		reverse_iterator rend()
 		{
 			return m_nodes.rend();
 		}
-		//! @brief Gets one constant reverse iterator pointing to the one-before-first name node of the path.
-		//! @return Returns one constant reverse iterator pointing to the one-before-first name node of the path.
+		//! @brief Gets one constant reverse iterator to the one-before-first name node of the path.
+		//! @return Returns one constant reverse iterator to the one-before-first name node of the path.
 		const_reverse_iterator rend() const
 		{
 			return m_nodes.rend();
 		}
-		//! @brief Gets one constant reverse iterator pointing to the one-before-first name node of the path.
-		//! @return Returns one constant reverse iterator pointing to the one-before-first name node of the path.
+		//! @brief Gets one constant reverse iterator to the one-before-first name node of the path.
+		//! @return Returns one constant reverse iterator to the one-before-first name node of the path.
 		const_reverse_iterator crend() const
 		{
 			return m_nodes.crend();
@@ -843,8 +843,8 @@ namespace Luna
 			m_flags = PathFlag::none;
 		}
 		//! @brief Removes one name node from the path.
-		//! @param[in] pos The iterator pointing to the name node to be removed.
-		//! @return Returns one iterator pointing to the next name node of the removed name node when iterating nodes.
+		//! @param[in] pos The iterator to the name node to be removed.
+		//! @return Returns one iterator to the next name node of the removed name node when iterating nodes.
 		//! @par Valid Usage
 		//! * `pos` must points to a valid name node in the path.
 		iterator erase(const_iterator pos)
@@ -852,9 +852,9 @@ namespace Luna
 			return m_nodes.erase(pos);
 		}
 		//! @brief Removes one range of name nodes from the path.
-		//! @param[in] first The iterator pointing to the first name node to be removed.
-		//! @param[in] last The iterator pointing to the one-past-last name node to be removed.
-		//! @return Returns one iterator pointing to the next name node of the removed name nodes when iterating name nodes.
+		//! @param[in] first The iterator to the first name node to be removed.
+		//! @param[in] last The iterator to the one-past-last name node to be removed.
+		//! @return Returns one iterator to the next name node of the removed name nodes when iterating name nodes.
 		//! @par Valid Usage
 		//! * `first` must be either `end()` or one valid name node in the path.
 		//! * If `first != end()`, [`first`, `last`) must specifies either one empty range (`first == last`) or one valid name node range of the path.

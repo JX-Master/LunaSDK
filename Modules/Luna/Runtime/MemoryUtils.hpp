@@ -314,7 +314,7 @@ namespace Luna
 	}
 
 	//! @brief Calls the default constructor for the object.
-	//! @param[in] dst An iterator pointing to the object to be constructed.
+	//! @param[in] dst An iterator to the object to be constructed.
 	template <typename _Iter>
 	inline void default_construct(_Iter dst)
 	{
@@ -323,7 +323,7 @@ namespace Luna
 	}
 
 	//! @brief Calls the value constructor for the object.
-	//! @param[in] dst An iterator pointing to the object to be constructed.
+	//! @param[in] dst An iterator to the object to be constructed.
 	template <typename _Iter>
 	inline void value_construct(_Iter dst)
 	{
@@ -332,8 +332,8 @@ namespace Luna
 	}
 
 	//! @brief Calls the copy constructor for the object.
-	//! @param[in] dst An iterator pointing to the object to be constructed.
-	//! @param[in] src An iterator pointing to the object to copy from.
+	//! @param[in] dst An iterator to the object to be constructed.
+	//! @param[in] src An iterator to the object to copy from.
 	template <typename _Iter1, typename _Iter2>
 	inline void copy_construct(_Iter1 dst, _Iter2 src)
 	{
@@ -342,8 +342,8 @@ namespace Luna
 	}
 
 	//! @brief Calls the move constructor for the object.
-	//! @param[in] dst An iterator pointing to the object to be constructed.
-	//! @param[in] src An iterator pointing to the object to move from.
+	//! @param[in] dst An iterator to the object to be constructed.
+	//! @param[in] src An iterator to the object to move from.
 	template <typename _Iter1, typename _Iter2>
 	inline void move_construct(_Iter1 dst, _Iter2 src)
 	{
@@ -352,7 +352,7 @@ namespace Luna
 	}
 
 	//! @brief Calls the direct constructor for the object.
-	//! @param[in] dst An iterator pointing to the object to be constructed.
+	//! @param[in] dst An iterator to the object to be constructed.
 	//! @param[in] args Arguments that will be passed to the constructor.
 	template <typename _Iter, typename... _Args>
 	inline void direct_construct(_Iter dst, _Args&&... args)
@@ -362,7 +362,7 @@ namespace Luna
 	}
 
 	//! @brief Calls the destructor of the object.
-	//! @param[in] dst An iterator pointing to the object to be destructed.
+	//! @param[in] dst An iterator to the object to be destructed.
 	template <typename _Iter>
 	inline void destruct(_Iter dst)
 	{
@@ -371,8 +371,8 @@ namespace Luna
 	}
 
 	//! @brief Calls the copy assignment operator of the object.
-	//! @param[in] dst An iterator pointing to the object to be assigned.
-	//! @param[in] src An iterator pointing to the object to copy from.
+	//! @param[in] dst An iterator to the object to be assigned.
+	//! @param[in] src An iterator to the object to copy from.
 	template <typename _Iter1, typename _Iter2>
 	inline void copy_assign(_Iter1 dst, _Iter2 src)
 	{
@@ -380,8 +380,8 @@ namespace Luna
 	}
 
 	//! @brief Calls the move assignment operator of the object.
-	//! @param[in] dst An iterator pointing to the object to be assigned.
-	//! @param[in] src An iterator pointing to the object to move from.
+	//! @param[in] dst An iterator to the object to be assigned.
+	//! @param[in] src An iterator to the object to move from.
 	template <typename _Iter1, typename _Iter2>
 	inline void move_assign(_Iter1 dst, _Iter2 src)
 	{

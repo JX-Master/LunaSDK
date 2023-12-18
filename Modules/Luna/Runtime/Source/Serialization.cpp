@@ -21,9 +21,10 @@ namespace Luna
 		Variant ret(VariantType::object);
 		lutry
 		{
-			auto properties = get_struct_properties(type);
-			for(auto& prop : properties)
+			usize count = count_struct_properties(type);
+			for (usize i = 0; i < count; ++i)
 			{
+				auto prop = get_struct_property(type, i);
 				if (is_type_serializable(prop.type))
 				{
 					lulet(data, serialize(prop.type, (const void*)((usize)inst + prop.offset)));
@@ -38,9 +39,10 @@ namespace Luna
 	{
 		lutry
 		{
-			auto properties = get_struct_properties(type);
-			for(auto& prop : properties)
+			usize count = count_struct_properties(type);
+			for (usize i = 0; i < count; ++i)
 			{
+				auto prop = get_struct_property(type, i);
 				auto& prop_data = data[prop.name];
 				if (prop_data.valid() && is_type_serializable(prop.type))
 				{
@@ -54,12 +56,13 @@ namespace Luna
 	static R<Variant> default_enum_serialization(typeinfo_t type, const void* inst)
 	{
 		i64 value = get_enum_instance_value(type, inst);
-		auto options = get_enum_options(type);
+		usize num_options = count_enum_options(type);
 		if (is_multienum_type(type))
 		{
 			Variant ret(VariantType::array);
-			for(auto& desc : options)
+			for (usize i = 0; i < num_options; ++i)
 			{
+				auto desc = get_enum_option(type, i);
 				if ((desc.value & value) != 0)
 				{
 					ret.push_back(desc.name);
@@ -69,8 +72,9 @@ namespace Luna
 		}
 		else
 		{
-			for(auto& desc : options)
+			for (usize i = 0; i < num_options; ++i)
 			{
+				auto desc = get_enum_option(type, i);
 				if (desc.value == value)
 				{
 					return Variant(desc.name);
@@ -90,14 +94,15 @@ namespace Luna
 	}
 	static RV default_enum_deserialization(typeinfo_t type, void* inst, const Variant& data)
 	{
-		auto options = get_enum_options(type);
+		usize num_options = count_enum_options(type);
 		if (is_multienum_type(type))
 		{
 			i64 value = 0;
 			for (auto& v : data.values())
 			{
-				for(auto& desc : options)
+				for (usize i = 0; i < num_options; ++i)
 				{
+					auto desc = get_enum_option(type, i);
 					if (desc.name == v.str())
 					{
 						value |= desc.value;
@@ -110,8 +115,9 @@ namespace Luna
 		else
 		{
 			bool found = false;
-			for(auto& desc : options)
+			for (usize i = 0; i < num_options; ++i)
 			{
+				auto desc = get_enum_option(type, i);
 				if (desc.name == data.str())
 				{
 					set_enum_instance_value(type, inst, desc.value);

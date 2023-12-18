@@ -72,7 +72,6 @@ namespace Luna
 		{
 			BucketIteratorBase<_Ty> m_base;
 
-			using node_type = Node<_Ty>;
 			using value_type = typename Node<_Ty>::value_type;
 			using pointer = conditional_t<_Const, const value_type*, value_type*>;
 			using reference = conditional_t<_Const, const value_type&, value_type&>;
@@ -163,19 +162,20 @@ namespace Luna
 		{
 			IteratorBase<_Ty> m_base;
 
-			using node_type = Node<_Ty>;
 			using value_type = typename Node<_Ty>::value_type;
 			using pointer = conditional_t<_Const, const value_type*, value_type*>;
 			using reference = conditional_t<_Const, const value_type&, value_type&>;
 			using iterator_category = forward_iterator_tag;
 
-			Iterator(node_type* node, node_type** bucket)
+			Iterator() = default;
+
+			Iterator(Node<value_type>* node, Node<value_type>** bucket)
 			{
 				m_base.m_current_node = node;
 				m_base.m_current_bucket = bucket;
 			}
 
-			Iterator(node_type** bucket)
+			Iterator(Node<value_type>** bucket)
 			{
 				m_base.m_current_bucket = bucket;
 				m_base.m_current_node = *bucket;
@@ -220,6 +220,117 @@ namespace Luna
 			}
 		};
 
+		template <typename _Vty, typename _Alloc>
+		struct NodeHandleBase
+		{
+			using allocator_type = _Alloc;
+			OptionalPair<allocator_type, Node<_Vty>*> allocator_and_node;
+			NodeHandleBase() :
+				allocator_and_node(allocator_type(), nullptr) {}
+			NodeHandleBase(const allocator_type& alloc) :
+				allocator_and_node(alloc, nullptr) {}
+			NodeHandleBase(const allocator_type& alloc, Node<_Vty>* node) :
+				allocator_and_node(alloc, node) {}
+			NodeHandleBase(const NodeHandleBase&) = delete;
+			NodeHandleBase(NodeHandleBase&& rhs) :
+				allocator_and_node(rhs.allocator_and_node.first(), rhs.allocator_and_node.second())
+			{
+				rhs.allocator_and_node.second() = nullptr;
+			}
+			NodeHandleBase& operator=(const NodeHandleBase&) = delete;
+			NodeHandleBase& operator=(NodeHandleBase&& rhs)
+			{
+				internal_free();
+				allocator_and_node.first() = rhs.allocator_and_node.first();
+				allocator_and_node.second() = rhs.allocator_and_node.second();
+				rhs.allocator_and_node.second() = nullptr;
+				return *this;
+			}
+			~NodeHandleBase()
+			{
+				internal_free();
+			}
+			void internal_free()
+			{
+				if(allocator_and_node.second())
+				{
+					allocator_and_node.second()->~Node<_Vty>();
+					allocator_and_node.first().template deallocate<Node<_Vty>>(allocator_and_node.second(), 1);
+				}
+			}
+			bool empty() const
+			{
+				return allocator_and_node.second() == nullptr;
+			}
+			explicit operator bool() const
+			{
+				return empty();
+			}
+			allocator_type get_allocator() const
+			{
+				return allocator_and_node.first();
+			}
+		};
+
+		template <typename _Kty, typename _Vty, typename _Alloc>
+		struct MapNodeHandle : public NodeHandleBase<Pair<_Kty, _Vty>, _Alloc>
+		{
+			MapNodeHandle() : NodeHandleBase<Pair<_Kty, _Vty>, _Alloc>() {}
+			MapNodeHandle(const _Alloc& alloc) : NodeHandleBase<Pair<_Kty, _Vty>, _Alloc>(alloc) {}
+			MapNodeHandle(const _Alloc& alloc, Node<Pair<_Kty, _Vty>>* node) : NodeHandleBase<Pair<_Kty, _Vty>, _Alloc>(alloc, node) {}
+			MapNodeHandle(const MapNodeHandle&) = delete;
+			MapNodeHandle(MapNodeHandle&& rhs) : NodeHandleBase<Pair<_Kty, _Vty>, _Alloc>(move(rhs)) {}
+			MapNodeHandle& operator=(const MapNodeHandle&) = delete;
+			MapNodeHandle& operator=(MapNodeHandle&& rhs)
+			{
+				NodeHandleBase<Pair<_Kty, _Vty>, _Alloc>::operator=(move(rhs));
+				return *this;
+			}
+			void swap(MapNodeHandle& rhs)
+			{
+				MapNodeHandle t = move(*this);
+				*this = move(rhs);
+				rhs = move(t);
+			}
+			using key_type = _Kty;
+			using mapped_type = _Vty;
+			key_type& key() const
+			{
+				return this->allocator_and_node.second()->first;
+			}
+			mapped_type& mapped() const
+			{
+				return this->allocator_and_node.second()->second;
+			}
+		};
+
+		template <typename _Vty, typename _Alloc>
+		struct SetNodeHandle : public NodeHandleBase<_Vty, _Alloc>
+		{
+			SetNodeHandle() : NodeHandleBase<_Vty, _Alloc>() {}
+			SetNodeHandle(const _Alloc& alloc) : NodeHandleBase<_Vty, _Alloc>(alloc) {}
+			SetNodeHandle(const _Alloc& alloc, Node<_Vty>* node) : NodeHandleBase<_Vty, _Alloc>(alloc, node) {}
+			SetNodeHandle(const SetNodeHandle&) = delete;
+			SetNodeHandle(SetNodeHandle&& rhs) : NodeHandleBase<_Vty, _Alloc>(move(rhs)) {}
+			SetNodeHandle& operator=(const SetNodeHandle&) = delete;
+			SetNodeHandle& operator=(SetNodeHandle&& rhs)
+			{
+				NodeHandleBase<_Vty, _Alloc>::operator=(move(rhs));
+				return *this;
+			}
+			void swap(SetNodeHandle& rhs)
+			{
+				SetNodeHandle t = move(*this);
+				*this = move(rhs);
+				rhs = move(t);
+			}
+			using value_type = _Vty;
+			value_type& value() const
+			{
+				return *(this->allocator_and_node.second());
+			}
+		};
+
 		template <typename _Kty, 
 			typename _Vty,
 			typename _ExtractKey,				// MapExtractKey for UnorderedMap, SetExtractKey for UnorderedSet.
@@ -242,14 +353,13 @@ namespace Luna
 			using const_iterator = Iterator<value_type, true>;
 			using local_iterator = BucketIterator<value_type, false>;
 			using const_local_iterator = BucketIterator<value_type, true>;
-			using node_type = Node<value_type>;
 
 			using extract_key = _ExtractKey;
 
 			// -------------------- Begin of ABI compatible part --------------------
 
 			//! A pointer to the hash table, which is an array of linked lists.
-			OptionalPair<allocator_type, node_type**> m_allocator_and_buckets;
+			OptionalPair<allocator_type, Node<value_type>**> m_allocator_and_buckets;
 			//! The number of buckets in total.
 			usize m_bucket_count;
 			//! The number of elements in the hash table.
@@ -309,7 +419,7 @@ namespace Luna
 			{
 				if (m_allocator_and_buckets.second())
 				{
-					deallocate<node_type*>(m_allocator_and_buckets.second(), m_bucket_count);
+					deallocate<Node<value_type>*>(m_allocator_and_buckets.second(), m_bucket_count);
 					m_allocator_and_buckets.second() = nullptr;
 				}
 			}
@@ -326,15 +436,15 @@ namespace Luna
 				m_size = 0;
 			}
 
-			node_type** internal_alloc_table(usize cap)
+			Node<value_type>** internal_alloc_table(usize cap)
 			{
-				node_type** buf = allocate<node_type*>(cap + 1);
+				Node<value_type>** buf = allocate<Node<value_type>*>(cap + 1);
 				if (!buf)
 				{
 					return nullptr;
 				}
-				memzero(buf, sizeof(node_type*) * cap);
-				buf[cap] = (node_type*)(USIZE_MAX);
+				memzero(buf, sizeof(Node<value_type>*) * cap);
+				buf[cap] = (Node<value_type>*)(USIZE_MAX);
 				return buf;
 			}
 
@@ -361,10 +471,10 @@ namespace Luna
 					m_bucket_count = rhs.m_bucket_count;
 					for (usize i = 0; i < rhs.m_bucket_count; ++i)
 					{
-						node_type* iter = rhs.m_allocator_and_buckets.second()[i];
+						Node<value_type>* iter = rhs.m_allocator_and_buckets.second()[i];
 						while (iter)
 						{
-							node_type* node = new_object<node_type>(*iter);
+							Node<value_type>* node = new_object<Node<value_type>>(*iter);
 							// insert.
 							node->m_next = m_allocator_and_buckets.second()[i];
 							m_allocator_and_buckets.second()[i] = node;
@@ -387,10 +497,10 @@ namespace Luna
 					m_bucket_count = rhs.m_bucket_count;
 					for (usize i = 0; i < rhs.m_bucket_count; ++i)
 					{
-						node_type* iter = rhs.m_allocator_and_buckets.second()[i];
+						Node<value_type>* iter = rhs.m_allocator_and_buckets.second()[i];
 						while (iter)
 						{
-							node_type* node = new_object<node_type>(*iter);
+							Node<value_type>* node = new_object<Node<value_type>>(*iter);
 							// insert.
 							node->m_next = m_allocator_and_buckets.second()[i];
 							m_allocator_and_buckets.second()[i] = node;
@@ -434,10 +544,10 @@ namespace Luna
 						m_bucket_count = rhs.m_bucket_count;
 						for (usize i = 0; i < rhs.m_bucket_count; ++i)
 						{
-							node_type* iter = rhs.m_allocator_and_buckets.second()[i];
+							Node<value_type>* iter = rhs.m_allocator_and_buckets.second()[i];
 							while (iter)
 							{
-								node_type* node = new_object<node_type>(move(*iter));
+								Node<value_type>* node = new_object<Node<value_type>>(move(*iter));
 								// insert.
 								node->m_next = m_allocator_and_buckets.second()[i];
 								m_allocator_and_buckets.second()[i] = node;
@@ -459,10 +569,10 @@ namespace Luna
 					m_bucket_count = rhs.m_bucket_count;
 					for (usize i = 0; i < rhs.m_bucket_count; ++i)
 					{
-						node_type* iter = rhs.m_allocator_and_buckets.second()[i];
+						Node<value_type>* iter = rhs.m_allocator_and_buckets.second()[i];
 						while (iter)
 						{
-							node_type* node = new_object<node_type>(*iter);
+							Node<value_type>* node = new_object<Node<value_type>>(*iter);
 							// insert.
 							node->m_next = m_allocator_and_buckets.second()[i];
 							m_allocator_and_buckets.second()[i] = node;
@@ -499,10 +609,10 @@ namespace Luna
 						m_bucket_count = rhs.m_bucket_count;
 						for (usize i = 0; i < rhs.m_bucket_count; ++i)
 						{
-							node_type* iter = rhs.m_allocator_and_buckets.second()[i];
+							Node<value_type>* iter = rhs.m_allocator_and_buckets.second()[i];
 							while (iter)
 							{
-								node_type* node = new_object<node_type>(move(*iter));
+								Node<value_type>* node = new_object<Node<value_type>>(move(*iter));
 								// insert.
 								node->m_next = m_allocator_and_buckets.second()[i];
 								m_allocator_and_buckets.second()[i] = node;
@@ -678,13 +788,13 @@ namespace Luna
 				// Do rehash. iterates the old hash buckets and moves all nodes to the new hash table.
 				for (usize i = 0; i < m_bucket_count; ++i)
 				{
-					node_type* iter = m_allocator_and_buckets.second()[i];	// the iterator for the linked list.
+					Node<value_type>* iter = m_allocator_and_buckets.second()[i];	// the iterator for the linked list.
 					while (iter)
 					{
 						// rehash the element.
 						usize bkt_index = (hasher()(extract_key()(iter->m_value))) % new_buckets_count;
 						// borrow the node from old bucket to new.
-						node_type* node = iter;
+						Node<value_type>* node = iter;
 						iter = iter->m_next;
 						node->m_next = new_bkts[bkt_index];	// insert into front.
 						new_bkts[bkt_index] = node;
@@ -762,20 +872,29 @@ namespace Luna
 				return end();	// not found.
 			}
 
-			//! Emplaces and inserts the elements as the first node in the bucket.
-			template <typename... _Args>
-			iterator internal_insert_to_first(usize hash_code, _Args&&... args)
+		private:
+
+			iterator internal_insert_to_first_node(usize hash_code, Node<value_type>* new_node)
 			{
 				increment_reserve(m_size + 1);
 				// In case that the table is rehashed, we need to defer the mediation until 
 				// the table is rehashed. 
 				usize bucket_index = hash_code_to_bucket_index(hash_code);
-				node_type* new_node = new_object<node_type>(forward<_Args>(args)...);
 				new_node->m_next = m_allocator_and_buckets.second()[bucket_index];
 				m_allocator_and_buckets.second()[bucket_index] = new_node;
 				++m_size;
 				return iterator(m_allocator_and_buckets.second() + bucket_index);
 			}
+
+			//! Emplaces and inserts the elements as the first node in the bucket.
+			template <typename... _Args>
+			iterator internal_insert_to_first(usize hash_code, _Args&&... args)
+			{
+				Node<value_type>* new_node = new_object<Node<value_type>>(forward<_Args>(args)...);
+				return internal_insert_to_first_node(hash_code, new_node);
+			}
+
+		public:
 
 			iterator find(const key_type& key)
 			{
@@ -868,16 +987,33 @@ namespace Luna
 				}
 				return make_pair(internal_insert_to_first(hash_code, move(value)), true);
 			}
-
-			iterator insert(node_type&& node)
+			template <typename _Ret, typename _Node>
+			_Ret insert(_Node&& node)
 			{
-				usize hash_code = hasher()(extract_key()(node.m_value));
-				auto iter = internal_find(extract_key()(node.m_value), hash_code_to_bucket_index(hash_code));
+				if(!node.allocator_and_node.second())
+				{
+					_Ret ret;
+					ret.inserted = false;
+					ret.position = end();
+					return ret;
+				}
+				auto& value = node.allocator_and_node.second()->m_value;
+				usize hash_code = hasher()(extract_key()(value));
+				auto iter = internal_find(extract_key()(value), hash_code_to_bucket_index(hash_code));
+				_Ret ret;
 				if (iter != end())
 				{
-					return iter;
+					ret.inserted = false;
+					ret.node = move(node);
+					ret.position = iter;
 				}
-				return internal_insert_to_first(hash_code, move(node));
+				else
+				{
+					ret.inserted = true;
+					ret.position = internal_insert_to_first_node(hash_code, node.allocator_and_node.second());
+					node.allocator_and_node.second() = nullptr;
+				}
+				return ret;
 			}
 			Pair<iterator, bool> insert_or_assign(const value_type& value)
 			{
@@ -930,7 +1066,7 @@ namespace Luna
 			template <typename... _Args>
 			Pair<iterator, bool> emplace(_Args&&... args)
 			{
-				node_type* new_node = new_object<node_type>(value_type(forward<_Args>(args)...));
+				Node<value_type>* new_node = new_object<Node<value_type>>(value_type(forward<_Args>(args)...));
 				usize hash_code = hasher()(extract_key()(new_node->m_value));
 				auto iter = internal_find(extract_key()(new_node->m_value), hash_code_to_bucket_index(hash_code));
 				if (iter != end())
@@ -949,7 +1085,7 @@ namespace Luna
 			}
 
 		private:
-			iterator multi_insert_node(node_type* new_node)
+			iterator multi_insert_node(Node<value_type>* new_node)
 			{
 				increment_reserve(m_size + 1);
 				usize hash_code = hasher()(extract_key()(new_node->m_value));
@@ -958,7 +1094,7 @@ namespace Luna
 				++m_size;
 				if (iter != end())
 				{
-					node_type* node = iter.m_base.m_current_node;
+					Node<value_type>* node = iter.m_base.m_current_node;
 					new_node->m_next = node->m_next;
 					node->m_next = new_node;
 				}
@@ -974,33 +1110,36 @@ namespace Luna
 			//! Same as insert, but allows multi values being inserted using the same key.
 			iterator multi_insert(const value_type& value)
 			{
-				node_type* new_node = new_object<node_type>(value);
+				Node<value_type>* new_node = new_object<Node<value_type>>(value);
 				return multi_insert_node(new_node);
 			}
 			iterator multi_insert(value_type&& value)
 			{
-				node_type* new_node = new_object<node_type>(move(value));
+				Node<value_type>* new_node = new_object<Node<value_type>>(move(value));
 				return multi_insert_node(new_node);
 			}
-			iterator multi_insert(node_type&& node)
+			template <typename _Node>
+			iterator multi_insert(_Node&& node)
 			{
-				node_type* new_node = new_object<node_type>(move(node));
-				return multi_insert_node(new_node);
+				if(!node.allocator_and_node.second())
+				{
+					return end();
+				}
+				iterator ret = multi_insert_node(node.allocator_and_node.second());
+				node.allocator_and_node.second() = nullptr;
+				return ret;
 			}
 			template <typename... _Args>
 			iterator multi_emplace(_Args&&... args)
 			{
-				node_type* new_node = new_object<node_type>(value_type(forward<_Args>(args)...));
+				Node<value_type>* new_node = new_object<Node<value_type>>(value_type(forward<_Args>(args)...));
 				return multi_insert_node(new_node);
 			}
-			iterator erase(const_iterator pos)
+		private:
+			Node<value_type>* internal_extract(const_iterator pos)
 			{
-				iterator inext(pos.m_base.m_current_node, pos.m_base.m_current_bucket);
-				++inext;
-
-				node_type* node = pos.m_base.m_current_node;
-				node_type* node_cur = *(pos.m_base.m_current_bucket);
-
+				Node<value_type>* node = pos.m_base.m_current_node;
+				Node<value_type>* node_cur = *(pos.m_base.m_current_bucket);
 				if (node == node_cur)
 				{
 					// If the remove node is the first node in the bucket, modify the bucket pointer.
@@ -1009,7 +1148,7 @@ namespace Luna
 				else
 				{
 					// Modify the prior node of the node to be deleted.
-					node_type* node_next = node_cur->m_next;
+					Node<value_type>* node_next = node_cur->m_next;
 					while (node_next != node)
 					{
 						node_cur = node_next;
@@ -1017,8 +1156,16 @@ namespace Luna
 					}
 					node_cur->m_next = node_next->m_next;
 				}
-				delete_object(node);
 				--m_size;
+				return node;
+			}
+		public:
+			iterator erase(const_iterator pos)
+			{
+				iterator inext(pos.m_base.m_current_node, pos.m_base.m_current_bucket);
+				++inext;
+				Node<value_type>* node = internal_extract(pos);
+				delete_object(node);
 				return inext;
 			}
 
@@ -1039,7 +1186,7 @@ namespace Luna
 				auto range = equal_range(key);
 				//! Finds the node before the first node to be erased.
 				//! `nullptr` if the first node to be erased is the first node in the bucket.
-				node_type* node_before = nullptr;
+				Node<value_type>* node_before = nullptr;
 				if (*(range.first.m_base.m_current_bucket) != range.first.m_base.m_current_node)
 				{
 					node_before = *(range.first.m_base.m_current_bucket);
@@ -1052,7 +1199,7 @@ namespace Luna
 				usize num_erase = 0;
 				auto iter = range.first;
 				// Record this so we know what to set after erasing.
-				node_type* node_after = iter.m_base.m_current_node->m_next;
+				Node<value_type>* node_after = iter.m_base.m_current_node->m_next;
 				while (iter != range.second)
 				{
 					auto erase_node = iter;
@@ -1073,18 +1220,32 @@ namespace Luna
 				m_size -= num_erase;
 				return num_erase;
 			}
-
-			node_type extract(const_iterator pos)
+			
+			template <typename _Node>
+			_Node extract(const_iterator pos)
 			{
-				node_type ret_node(move(*(pos.m_base.m_current_node)));
-				erase(pos);
-				return ret_node;
+				Node<value_type>* node = internal_extract(pos);
+				return _Node(get_allocator(), node);
 			}
 
 			allocator_type get_allocator() const
 			{
 				return m_allocator_and_buckets.first();
 			}
+		};
+
+		//! @brief Represents the insertion result of one node.
+		template <typename _Iter, typename _Node>
+		struct InsertResult
+		{	
+			//! @brief The iterator identifing the insertion position if `inserted` is `true`, or
+			//! 
+			_Iter    position;
+			//! `true` if the insertion is succeeded. `false` if the insertion is failed.
+			bool     inserted;
+			//! @brief The original node passed in if the insertion is failed. 
+			//! An empty node otherwise.
+			_Node 	 node;
 		};
 	}
 }
