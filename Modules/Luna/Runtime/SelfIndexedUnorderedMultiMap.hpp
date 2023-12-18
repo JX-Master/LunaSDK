@@ -348,7 +348,7 @@ namespace Luna
 		//! @return Returns one iterator to the inserted element. Returns `end()` if `node` is empty.
 		iterator insert(node_type&& node)
 		{
-			return m_base.multi_insert<node_type>(move(node));
+			return m_base.template multi_insert<node_type>(move(node));
 		}
 		//! @brief Constructs one element directly in the map using the provided arguments.
 		//! @param[in] args The arguments to construct the element. `_Ty(args...)` will be used to 
@@ -391,7 +391,7 @@ namespace Luna
 		//! * `pos` must points to a valid element in the map.
 		node_type extract(const_iterator pos)
 		{
-			return m_base.extract<node_type>(pos);
+			return m_base.template extract<node_type>(pos);
 		}
 		//! @brief Gets the allocator used by this map.
 		//! @return Returns one copy of the allocator used by this map.

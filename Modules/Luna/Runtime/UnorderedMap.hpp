@@ -207,7 +207,7 @@ namespace Luna
 		}
 		insert_return_type insert(node_type&& node)
 		{
-			return m_base.insert<insert_return_type, node_type>(move(node));
+			return m_base.template insert<insert_return_type, node_type>(move(node));
 		}
 		template <typename _M>
 		Pair<iterator, bool> insert_or_assign(const key_type& key, _M&& value)
@@ -240,7 +240,7 @@ namespace Luna
 		}
 		node_type extract(const_iterator pos)
 		{
-			return m_base.extract<node_type>(pos);
+			return m_base.template extract<node_type>(pos);
 		}
 		allocator_type get_allocator() const
 		{

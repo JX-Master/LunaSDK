@@ -275,15 +275,15 @@ namespace Luna
 		template <typename _Kty, typename _Vty, typename _Alloc>
 		struct MapNodeHandle : public NodeHandleBase<Pair<_Kty, _Vty>, _Alloc>
 		{
-			MapNodeHandle() : NodeHandleBase() {}
-			MapNodeHandle(const _Alloc& alloc) : NodeHandleBase(alloc) {}
-			MapNodeHandle(const _Alloc& alloc, Node<Pair<_Kty, _Vty>>* node) : NodeHandleBase(alloc, node) {}
+			MapNodeHandle() : NodeHandleBase<Pair<_Kty, _Vty>, _Alloc>() {}
+			MapNodeHandle(const _Alloc& alloc) : NodeHandleBase<Pair<_Kty, _Vty>, _Alloc>(alloc) {}
+			MapNodeHandle(const _Alloc& alloc, Node<Pair<_Kty, _Vty>>* node) : NodeHandleBase<Pair<_Kty, _Vty>, _Alloc>(alloc, node) {}
 			MapNodeHandle(const MapNodeHandle&) = delete;
-			MapNodeHandle(MapNodeHandle&& rhs) : NodeHandleBase(move(rhs)) {}
+			MapNodeHandle(MapNodeHandle&& rhs) : NodeHandleBase<Pair<_Kty, _Vty>, _Alloc>(move(rhs)) {}
 			MapNodeHandle& operator=(const MapNodeHandle&) = delete;
 			MapNodeHandle& operator=(MapNodeHandle&& rhs)
 			{
-				NodeHandleBase::operator=(move(rhs));
+				NodeHandleBase<Pair<_Kty, _Vty>, _Alloc>::operator=(move(rhs));
 				return *this;
 			}
 			void swap(MapNodeHandle& rhs)
@@ -296,26 +296,26 @@ namespace Luna
 			using mapped_type = _Vty;
 			key_type& key() const
 			{
-				return allocator_and_node.second()->first;
+				return this->allocator_and_node.second()->first;
 			}
 			mapped_type& mapped() const
 			{
-				return allocator_and_node.second()->second;
+				return this->allocator_and_node.second()->second;
 			}
 		};
 
 		template <typename _Vty, typename _Alloc>
 		struct SetNodeHandle : public NodeHandleBase<_Vty, _Alloc>
 		{
-			SetNodeHandle() : NodeHandleBase() {}
-			SetNodeHandle(const _Alloc& alloc) : NodeHandleBase(alloc) {}
-			SetNodeHandle(const _Alloc& alloc, Node<_Vty>* node) : NodeHandleBase(alloc, node) {}
+			SetNodeHandle() : NodeHandleBase<_Vty, _Alloc>() {}
+			SetNodeHandle(const _Alloc& alloc) : NodeHandleBase<_Vty, _Alloc>(alloc) {}
+			SetNodeHandle(const _Alloc& alloc, Node<_Vty>* node) : NodeHandleBase<_Vty, _Alloc>(alloc, node) {}
 			SetNodeHandle(const SetNodeHandle&) = delete;
-			SetNodeHandle(SetNodeHandle&& rhs) : NodeHandleBase(move(rhs)) {}
+			SetNodeHandle(SetNodeHandle&& rhs) : NodeHandleBase<_Vty, _Alloc>(move(rhs)) {}
 			SetNodeHandle& operator=(const SetNodeHandle&) = delete;
 			SetNodeHandle& operator=(SetNodeHandle&& rhs)
 			{
-				NodeHandleBase::operator=(move(rhs));
+				NodeHandleBase<_Vty, _Alloc>::operator=(move(rhs));
 				return *this;
 			}
 			void swap(SetNodeHandle& rhs)
@@ -327,7 +327,7 @@ namespace Luna
 			using value_type = _Vty;
 			value_type& value() const
 			{
-				return *(allocator_and_node.second());
+				return *(this->allocator_and_node.second());
 			}
 		};
 
