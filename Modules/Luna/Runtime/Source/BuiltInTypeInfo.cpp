@@ -939,7 +939,8 @@ namespace Luna
 			desc.guid = Guid("{F7ED58B5-5473-4A12-B69D-3A122FA1E60C}");
 			desc.name = "Vector";
 			desc.alias = "";
-			desc.generic_parameter_names = {"ElementType"};
+			Name generic_parameter_names[1] = {"ElementType"};
+			desc.generic_parameter_names = {generic_parameter_names, 1};
 			desc.variable_generic_parameters = false;
 			desc.instantiate = vector_instantiate;
 			typeinfo_t type = register_generic_struct_type(desc);
@@ -980,7 +981,8 @@ namespace Luna
 			desc.guid = Guid("{E2C85F8B-56DB-45BA-BBBA-AB36E09ED795}");
 			desc.name = "Pair";
 			desc.alias = "";
-			desc.generic_parameter_names = {"FirstElementType", "SecondElementType"};
+			Name generic_parameter_names[2] = {"FirstElementType", "SecondElementType"};
+			desc.generic_parameter_names = {generic_parameter_names, 2};
 			desc.variable_generic_parameters = false;
 			desc.instantiate = pair_instantiate;
 			typeinfo_t type = register_generic_struct_type(desc);
@@ -996,7 +998,8 @@ namespace Luna
 			desc.guid = Guid("{F577F1CC-1890-4A46-895B-DAF2C4678A04}");
 			desc.name = "Tuple";
 			desc.alias = "";
-			desc.generic_parameter_names = {"FirstElementType"}; // The tuple shall have at least one generic argument.
+			Name generic_parameter_names[1] = {"FirstElementType"};
+			desc.generic_parameter_names = {generic_parameter_names, 1}; // The tuple shall have at least one generic argument.
 			desc.variable_generic_parameters = true;
 			desc.instantiate = tuple_instantiate;
 			typeinfo_t type = register_generic_struct_type(desc);
@@ -1012,7 +1015,8 @@ namespace Luna
 			desc.guid = Guid("{40563229-68C4-48B3-ACAF-C7659B35DE88}");
 			desc.name = "HashMap";
 			desc.alias = "";
-			desc.generic_parameter_names = {"KeyType", "ValueType"};
+			Name generic_parameter_names[2] = {"KeyType", "ValueType"};
+			desc.generic_parameter_names = {generic_parameter_names, 2};
 			desc.variable_generic_parameters = false;
 			desc.instantiate = hashmap_instantiate;
 			typeinfo_t type = register_generic_struct_type(desc);
@@ -1028,7 +1032,8 @@ namespace Luna
 			desc.guid = Guid("{64356A48-BB74-4C7B-A43E-9D60E45B33E6}");
 			desc.name = "HashSet";
 			desc.alias = "";
-			desc.generic_parameter_names = {"ElementType"};
+			Name generic_parameter_names[1] = {"ElementType"};
+			desc.generic_parameter_names = {generic_parameter_names, 1};
 			desc.variable_generic_parameters = false;
 			desc.instantiate = hashset_instantiate;
 			typeinfo_t type = register_generic_struct_type(desc);
@@ -1125,7 +1130,8 @@ namespace Luna
 			desc.guid = Guid("{5B81F926-E591-4DDA-9D04-F9603D9121EF}");
 			desc.name = "Vec2U";
 			desc.alias = "";
-			desc.generic_parameter_names = { "ElementType" };
+			Name generic_parameter_names[1] = { "ElementType" };
+			desc.generic_parameter_names = {generic_parameter_names, 1};
 			desc.variable_generic_parameters = false;
 			desc.instantiate = [](typeinfo_t generic_type, Span<const typeinfo_t> generic_arguments)
 			{
@@ -1180,7 +1186,8 @@ namespace Luna
 			desc.guid = Guid("{045C93AB-4FB5-4010-BE09-B595BEC58CC5}");
 			desc.name = "Vec3U";
 			desc.alias = "";
-			desc.generic_parameter_names = { "ElementType" };
+			Name generic_parameter_names[1] = { "ElementType" };
+			desc.generic_parameter_names = {generic_parameter_names, 1};
 			desc.variable_generic_parameters = false;
 			desc.instantiate = [](typeinfo_t generic_type, Span<const typeinfo_t> generic_arguments)
 			{
@@ -1239,7 +1246,8 @@ namespace Luna
 			desc.guid = Guid("{FFC6016B-2156-4958-BBBC-E08A3F17E51C}");
 			desc.name = "Vec4U";
 			desc.alias = "";
-			desc.generic_parameter_names = { "ElementType" };
+			Name generic_parameter_names[1] = { "ElementType" };
+			desc.generic_parameter_names = { generic_parameter_names, 1 };
 			desc.variable_generic_parameters = false;
 			desc.instantiate = [](typeinfo_t generic_type, Span<const typeinfo_t> generic_arguments)
 			{
