@@ -24,7 +24,7 @@ namespace Luna
 
 	void edit_enum(const c8* name, typeinfo_t type, void* obj)
 	{
-		usize num_options = count_enum_options(type);
+		auto descs = get_enum_options(type);
 		if (is_multienum_type(type))
 		{
 			// TODO.
@@ -32,20 +32,20 @@ namespace Luna
 		}
 		else
 		{
-			const c8** options = (const c8**)alloca(sizeof(const c8*) * num_options);
+			const c8** options = (const c8**)alloca(sizeof(const c8*) * descs.size());
 			i64 value = get_enum_instance_value(type, obj);
 			int current_item = -1;
-			for (usize i = 0; i < num_options; ++i)
+			for (usize i = 0; i < descs.size(); ++i)
 			{
-				auto desc = get_enum_option(type, i);
+				auto& desc = descs[i];
 				options[i] = desc.name.c_str();
 				if (value == desc.value)
 				{
 					current_item = (int)i;
 				}
 			}
-			ImGui::Combo(name, &current_item, options, (int)num_options);
-			value = get_enum_option(type, current_item).value;
+			ImGui::Combo(name, &current_item, options, (int)descs.size());
+			value = descs[current_item].value;
 			set_enum_instance_value(type, obj, value);
 		}
 	}
@@ -177,10 +177,10 @@ namespace Luna
 	void edit_object(object_t obj)
 	{
 		auto type = get_object_type(obj);
-		usize num_properties = count_struct_properties(type);
-		for (usize i = 0; i < num_properties; ++i)
+		auto properties = get_struct_properties(type);
+		for (usize i = 0; i < properties.size(); ++i)
 		{
-			auto desc = get_struct_property(type, i);
+			auto& desc = properties[i];
 			edit_property(desc.name.c_str(), type, desc.type, (void*)((usize)obj + desc.offset));
 		}
 	}
