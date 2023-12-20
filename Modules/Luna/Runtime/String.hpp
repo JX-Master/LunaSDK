@@ -377,7 +377,8 @@ namespace Luna
 		//! @param[in] str The string to insert.
 		//! @param[in] index_str The index of the first character in `str` to insert.
 		//! @param[in] count The number of characters to insert.
-		void insert(usize index, const BasicString& str, usize index_str, usize count);
+		//! If `count` is greater than `str.size() - index_str`, only `str.size() - index_str` characters will be inserted.
+		void insert(usize index, const BasicString& str, usize index_str, usize count = npos);
 		//! @brief Inserts one character at the specified position.
 		//! @param[in] pos The iterator to the position to insert.
 		//! @param[in] ch The character to insert.
@@ -389,54 +390,329 @@ namespace Luna
 		//! @param[in] ch The character to insert.
 		//! @return Returns one iterator to the first inserted character.
 		iterator insert(const_iterator pos, usize count, value_type ch);
+		//! @brief Inserts characters from the iterator range at the specified position.
+		//! @param[in] pos The iterator to the position to insert.
+		//! @param[in] first The iterator to the first character to be inserted.
+		//! @param[in] last The iterator to the one-past-last character to be inserted.
 		template <typename _InputIt>
 		iterator insert(const_iterator pos, _InputIt first, _InputIt last);
+		//! @brief Inserts characters from the specified initializer list at the specified position.
+		//! @param[in] pos The iterator to the position to insert.
+		//! @param[in] ilist The initializer list of characters to be inserted.
 		iterator insert(const_iterator pos, InitializerList<value_type> ilist);
+		//! @brief Removes `count` characters from the specified position.
+		//! @param[in] index The index of the first character to remove.
+		//! @param[in] count The number of characters to remove.
+		//! If `count` is greater than `size() - index`, only `size() - index` characters will be removed.
 		void erase(usize index = 0, usize count = npos);
+		//! @brief Removes one character.
+		//! @param[in] pos The iterator to the character to remove.
+		//! @return Returns one iterator to the next character after the removed character,
+		//! or `end()` if such character does not exist.
+		//! @par Valid Usage
+		//! * `pos` must specifies one valid character in the string.
 		iterator erase(const_iterator pos);
+		//! @brief Removes characters in the specified range.
+		//! @param[in] first The iterator to the first character to remove.
+		//! @param[in] last The iterator to the one-past-last character to remove.
+		//! @return Returns one iterator to the next character after the removed characters,
+		//! or `end()` if such character does not exist.
+		//! @par Valid Usage
+		//! * `first` and `last` must specifies one valid character range [`first`, `last`) in the string.
 		iterator erase(const_iterator first, const_iterator last);
+		//! @brief Swaps characters of this string with the specified string.
+		//! @param[in] rhs The string to swap characters with.
 		void swap(BasicString& rhs);
+		//! @brief Appends `count` copies of character `ch` to the back of the string.
+		//! @param[in] count The number of character copies to append.
+		//! @param[in] ch The character to append.
 		void append(usize count, value_type ch);
+		//! @brief Appends another string to the back of the string.
+		//! @param[in] str The string to append.
 		void append(const BasicString& str);
+		//! @brief Appends one subrange of another string to the back of the string.
+		//! @param[in] str The string to append.
+		//! @param[in] index_str The index of the first character in `str` to append.
+		//! @param[in] count The number of characters to append.
+		//! If `count` is greater than `str.size() - pos`, only `str.size() - pos` characters will be appended.
 		void append(const BasicString& str, usize pos, usize count = npos);
+		//! @brief Appends one character array to the back of the string.
+		//! @param[in] s The pointer to the first character to append.
+		//! @param[in] count The number of characters to append.
+		//! @par Valid Usage
+		//! * If `count` is not `0`, `s` must points to a valid character array with at least `count` characters.
 		void append(const value_type* s, usize count);
+		//! @brief Appends one null-terminated C string to the back of the string.
+		//! @param[in] s The pointer to one null-terminated string, where characters are copied from.
+		//! @par Valid Usage
+		//! * `s` must points to a valid null-terminated string.
 		void append(const value_type* s);
+		//! @brief Appends characters from the iterator range to the back of the string.
+		//! @param[in] first The iterator to the first character to be appended.
+		//! @param[in] last The iterator to the one-past-last character to be appended.
 		template <typename _InputIt>
 		void append(_InputIt first, _InputIt last);
+		//! @brief Appends characters from the specified initializer list to the back of the string.
+		//! @param[in] ilist The initializer list of characters to be appended.
 		void append(InitializerList<value_type> ilist);
-		BasicString& operator+=(const BasicString& str);
-		BasicString& operator+=(value_type ch);
-		BasicString& operator+=(const value_type* s);
-		BasicString& operator+=(InitializerList<value_type> ilist);
+		//! @brief Compares this string with the specified string.
+		//! @param[in] rhs The string to compare with.
+		//! @return Returns `0` if both character sequences compare equivalent.
+		//! 
+		//! Returns negative value if `*this` appears before the character sequence specified by `rhs`, in lexicographical order.
+		//! 
+		//! Returns positive value if `*this` appears after the character sequence specified by `rhs`, in lexicographical order.
 		i32 compare(const BasicString& rhs) const;
+		//! @brief Compares [`pos1`, `pos1 + count1`) substring of this string to `rhs`.
+		//! @param[in] pos1 The index of the first character in `*this` to compare.
+		//! @param[in] count1 The number of characters in `*this` to compare.
+		//! If `pos1 + count1` is greater than `this->size()`, `count1` will be clamped to `this->size() - pos1`.
+		//! @param[in] rhs The string to compare with.
+		//! @return Returns `0` if both character sequences compare equivalent.
+		//! 
+		//! Returns negative value if `*this` appears before the character sequence specified by `rhs`, in lexicographical order.
+		//! 
+		//! Returns positive value if `*this` appears after the character sequence specified by `rhs`, in lexicographical order.
+		//! @par Valid Usage
+		//! * `pos1` must not be greater than `this->size()`.
 		i32 compare(usize pos1, usize count1, const BasicString& rhs) const;
+		//! @brief Compares a [`pos1`, `pos1 + count1`) substring of this string to a substring [`pos2`, `pos2 + count2`) of `rhs`.
+		//! @param[in] pos1 The index of the first character in `*this` to compare.
+		//! @param[in] count1 The number of characters in `*this` to compare.
+		//! If `pos1 + count1` is greater than `this->size()`, `count1` will be clamped to `this->size() - pos1`.
+		//! @param[in] rhs The string to compare with.
+		//! @param[in] pos2 The index of the first character in `rhs` to compare.
+		//! @param[in] count2 The number of characters in `rhs` to compare.
+		//! If `pos2 + count2` is greater than `rhs.size()`, `count2` will be clamped to `rhs.size() - pos2`.
+		//! @return Returns `0` if both character sequences compare equivalent.
+		//! 
+		//! Returns negative value if `*this` appears before the character sequence specified by `rhs`, in lexicographical order.
+		//! 
+		//! Returns positive value if `*this` appears after the character sequence specified by `rhs`, in lexicographical order.
+		//! @par Valid Usage
+		//! * `pos1` must not be greater than `this->size()`.
+		//! * `pos2` must not be greater than `rhs.size()`.
 		i32 compare(usize pos1, usize count1, const BasicString& rhs, usize pos2, usize count2 = npos) const;
+		//! @brief Compares this string to the null-terminated C string.
+		//! @param[in] s The null-terminated C string to compare with.
+		//! @return Returns `0` if both character sequences compare equivalent.
+		//! 
+		//! Returns negative value if `*this` appears before the character sequence specified by `rhs`, in lexicographical order.
+		//! 
+		//! Returns positive value if `*this` appears after the character sequence specified by `rhs`, in lexicographical order.
 		i32 compare(const value_type* s) const;
+		//! @brief Compares [`pos1`, `pos1 + count1`) substring of this string to the null-terminated C string.
+		//! @param[in] pos1 The index of the first character in `*this` to compare.
+		//! @param[in] count1 The number of characters in `*this` to compare.
+		//! If `pos1 + count1` is greater than `this->size()`, `count1` will be clamped to `this->size() - pos1`.
+		//! @param[in] s The null-terminated C string to compare with.
+		//! @return Returns `0` if both character sequences compare equivalent.
+		//! 
+		//! Returns negative value if `*this` appears before the character sequence specified by `rhs`, in lexicographical order.
+		//! 
+		//! Returns positive value if `*this` appears after the character sequence specified by `rhs`, in lexicographical order.
+		//! @par Valid Usage
+		//! * `pos1` must not be greater than `this->size()`.
+		//! * `s` must points to a valid null-terminated string.
 		i32 compare(usize pos1, usize count1, const value_type* s) const;
+		//! @brief Compares [`pos1`, `pos1 + count1`) substring of this string to the characters in the range [`s`, `s + count2`).
+		//! @param[in] pos1 The index of the first character in `*this` to compare.
+		//! @param[in] count1 The number of characters in `*this` to compare.
+		//! If `pos1 + count1` is greater than `this->size()`, `count1` will be clamped to `this->size() - pos1`.
+		//! @param[in] s The string to compare with.
+		//! @param[in] count2 The number of characters in `s` to compare.
+		//! @par Valid Usage
+		//! * `pos1` must not be greater than `this->size()`.
+		//! * If `count2` is not `0`, `s` must points to a valid character array with at least `count2` characters.
 		i32 compare(usize pos1, usize count1, const value_type* s, usize count2) const;
+		//! @brief Replaces characters in range [`pos`, `pos + count`) with characters of `str`.
+		//! @param[in] pos The index of the first character to replace.
+		//! @param[in] count The number of characters to replace.
+		//! If `pos + count` is greater than `this->size()`, `count` will be clamped to `this->size() - pos`.
+		//! @param[in] str The string to use for replacement.
+		//! @par Valid Usage
+		//! * `pos` must not be greater than `this->size()`.
 		void replace(usize pos, usize count, const BasicString& str);
+		//! @brief Replaces characters in range [`first`, `last`) with characters of `str`.
+		//! @param[in] first The iterator to the first character to replace.
+		//! @param[in] last The iterator to the one-past-last character to replace.
+		//! @param[in] str The string to use for replacement.
+		//! @par Valid Usage
+		//! * [`first`, `last`) must specify a valid range of this string.
 		void replace(const_iterator first, const_iterator last, const BasicString& str);
+		//! @brief Replaces characters in range [`pos`, `pos + count`) with a substring [`pos2`, `pos2 + count2`) of `str`.
+		//! @param[in] pos The index of the first character to replace.
+		//! @param[in] count The number of characters to replace.
+		//! If `pos + count` is greater than `this->size()`, `count` will be clamped to `this->size() - pos`.
+		//! @param[in] str The string to use for replacement.
+		//! @param[in] pos2 The index of the first character in `rhs` to use for replacement.
+		//! @param[in] count2 The number of characters in `rhs` to use for replacement.
+		//! If `pos2 + count2` is greater than `str.size()`, `count2` will be clamped to `str.size() - pos2`.
+		//! @par Valid Usage
+		//! * `pos` must not be greater than `this->size()`.
+		//! * `pos2` must not be greater than `str.size()`.
 		void replace(usize pos, usize count, const BasicString& str, usize pos2, usize count2 = npos);
+		//! @brief Replaces characters in range [`first`, `last`) with the characters in the range [`first2`, `last2`).
+		//! @param[in] first The iterator to the first character to replace.
+		//! @param[in] last The iterator to the one-past-last character to replace.
+		//! @param[in] first2 The iterator to the first character to use for replacement.
+		//! @param[in] last2 The iterator to the one-past-last character use for replacement.
+		//! @par Valid Usage
+		//! * [`first`, `last`) must specify a valid range of this string.
 		template <typename _InputIt>
 		void replace(const_iterator first, const_iterator last, _InputIt first2, _InputIt last2);
+		//! @brief Replaces characters in range [`pos`, `pos + count`) with a character array [`cstr`, `cstr + count2).
+		//! @param[in] pos The index of the first character to replace.
+		//! @param[in] count The number of characters to replace.
+		//! If `pos + count` is greater than `this->size()`, `count` will be clamped to `this->size() - pos`.
+		//! @param[in] cstr The pointer to the character array to use for replacement.
+		//! @param[in] count2 The number of characters in `cstr` to use for replacement.
+		//! @par Valid Usage
+		//! * `pos` must not be greater than `this->size()`.
 		void replace(usize pos, usize count, const value_type* cstr, usize count2);
+		//! @brief Replaces characters in range [`first`, `last`) with a character array [`cstr`, `cstr + count2).
+		//! @param[in] first The iterator to the first character to replace.
+		//! @param[in] last The iterator to the one-past-last character to replace.
+		//! @param[in] cstr The pointer to the character array to use for replacement.
+		//! @param[in] count2 The number of characters in `cstr` to use for replacement.
+		//! @par Valid Usage
+		//! * [`first`, `last`) must specify a valid range of this string.
 		void replace(const_iterator first, const_iterator last, const value_type* cstr, usize count2);
+		//! @brief Replaces characters in range [`pos`, `pos + count`) with a null-terminated C string.
+		//! @param[in] pos The index of the first character to replace.
+		//! @param[in] count The number of characters to replace.
+		//! If `pos + count` is greater than `this->size()`, `count` will be clamped to `this->size() - pos`.
+		//! @param[in] cstr The pointer to the null-terminated C string to use for replacement.
+		//! @par Valid Usage
+		//! * `pos` must not be greater than `this->size()`.
+		//! * `cstr` must points to a valid null-terminated string.
 		void replace(usize pos, usize count, const value_type* cstr);
+		//! @brief Replaces characters in range [`first`, `last`) with a null-terminated C string.
+		//! @param[in] first The iterator to the first character to replace.
+		//! @param[in] last The iterator to the one-past-last character to replace.
+		//! @param[in] cstr The pointer to the null-terminated C string to use for replacement.
+		//! @par Valid Usage
+		//! * [`first`, `last`) must specify a valid range of this string.
+		//! * `cstr` must points to a valid null-terminated string.
 		void replace(const_iterator first, const_iterator last, const value_type* cstr);
+		//! @brief Replaces characters in range [`pos`, `pos + count`) with `count2` copies of character `ch`.
+		//! @param[in] pos The index of the first character to replace.
+		//! @param[in] count The number of characters to replace.
+		//! If `pos + count` is greater than `this->size()`, `count` will be clamped to `this->size() - pos`.
+		//! @param[in] count2 The number of characters to use for replacement.
+		//! @param[in] ch The character to use for replacement.
+		//! @par Valid Usage
+		//! * `pos` must not be greater than `this->size()`.
 		void replace(usize pos, usize count, usize count2, value_type ch);
+		//! @brief Replaces characters in range [`first`, `last`) with `count2` copies of character `ch`.
+		//! @param[in] first The iterator to the first character to replace.
+		//! @param[in] last The iterator to the one-past-last character to replace.
+		//! @param[in] count2 The number of characters to use for replacement.
+		//! @param[in] ch The character to use for replacement.
+		//! @par Valid Usage
+		//! * [`first`, `last`) must specify a valid range of this string.
 		void replace(const_iterator first, const_iterator last, usize count2, value_type ch);
+		//! @brief Replaces characters in range [`first`, `last`) with characters from the specified initializer list.
+		//! @param[in] first The iterator to the first character to replace.
+		//! @param[in] last The iterator to the one-past-last character to replace.
+		//! @param[in] ilist The initializer list with the characters to use for replacement.
 		void replace(const_iterator first, const_iterator last, InitializerList<value_type> ilist);
+		//! @brief Creates a substring of this string.
+		//! @param[in] pos The index of the first character to include in the substring.
+		//! @param[in] count The number of characters to include in the substring.
+		//! If `pos + count` is greater than `this->size()`, `count` will be clamped to `this->size() - pos`.
+		//! @return Returns the created substring.
+		//! @par Valid Usage
+		//! * `pos` must not be greater than `this->size()`.
 		BasicString substr(usize pos = 0, usize count = npos) const;
+		//! @brief Copies a substring [`pos`, `pos + count`) to character string pointed to by `dst`.
+		//! @param[in] dst The pointer to the destination character string.
+		//! @param[in] count The number of characters to copy.
+		//! If `pos + count` is greater than `this->size()`, `count` will be clamped to `this->size() - pos`.
+		//! @param[in] pos The index of the first character to copy.
+		//! @return Returns number of characters copied.
+		//! @par Valid Usage
+		//! * `pos` must not be greater than `this->size()`.
 		usize copy(value_type* dst, usize count, usize pos = 0) const;
+		//! @brief Gets the allocator of the string.
+		//! @return Returns one copy of the allocator of the string.
 		allocator_type get_allocator() const;
-
+		//! @brief Finds the first occurrence of the specified character sequence in the string.
+		//! @param[in] str The string that holds the character sequence to search.
+		//! @param[in] pos The index at which to start the search.
+		//! @return Returns the index of the first character of the found occurrence. Returns @ref npos if no
+		//! such occurrence is found.
 		usize find(const BasicString& str, usize pos = 0) const;
+		//! @brief Finds the first occurrence of the specified character sequence in the string.
+		//! @param[in] s The string that holds the character sequence to search.
+		//! @param[in] pos The index at which to start the search.
+		//! @param[in] count The number of characters to search. Character in range [`s`, `s + count`)
+		//! will be used for searching.
+		//! @return Returns the index of the first character of the found occurrence. Returns @ref npos if no
+		//! such occurrence is found.
 		usize find(const value_type* s, usize pos, usize count) const;
+		//! @brief Finds the first occurrence of the specified character sequence in the string.
+		//! @param[in] s The string that holds the character sequence to search. Characters in range [`s`, `s + strlen(s)`)
+		//! will be used for searching.
+		//! @param[in] pos The index at which to start the search.
+		//! @return Returns the index of the first character of the found occurrence. Returns @ref npos if no
+		//! such occurrence is found.
+		//! @par Valid Usage
+		//! * `s` must points to a valid null-terminated string.
 		usize find(const value_type* s, usize pos = 0) const;
+		//! @brief Finds the first occurrence of the specified character in the string.
+		//! @param[in] ch The character to search for.
+		//! @param[in] pos The index at which to start the search.
+		//! @return Returns the index of the found character. Returns @ref npos if no
+		//! such occurrence is found.
 		usize find(value_type ch, usize pos = 0) const;
+		//! @brief Finds the last occurrence of the specified character sequence in the string.
+		//! @param[in] str The string that holds the character sequence to search.
+		//! @param[in] pos The index at which to begin searching. The character at `pos` is included in searching.
+		//! If `pos >= size()` (including @ref npos), the search will start from the end of the string.
+		//! @return Returns the index of the first character of the found occurrence. The index is an offset from the
+		//! start of the string, not the end.
+		//! Returns @ref npos if no such occurrence is found.
+		//! 
+		//! If `str.empty()` is `true`, returns `pos` if `pos < size()`, returns `size()` otherwise.
+		//!
+		//! @ref npos is always returned if `size() == 0`, even if `str.empty()` is `true`.
 		usize rfind(const BasicString& str, usize pos = npos) const;
+		//! @brief Finds the last occurrence of the specified character sequence in the string.
+		//! @param[in] s The string that holds the character sequence to search.
+		//! @param[in] pos The index at which to begin searching. The character at `pos` is included in searching.
+		//! If `pos >= size()` (including @ref npos), the search will start from the end of the string.
+		//! @param[in] count The number of characters to search. Character in range [`s`, `s + count`)
+		//! will be used for searching.
+		//! @return Returns the index of the first character of the found occurrence. The index is an offset from the
+		//! start of the string, not the end.
+		//! Returns @ref npos if no such occurrence is found.
+		//! 
+		//! If `count` is `0`, returns `pos` if `pos < size()`, returns `size()` otherwise.
+		//!
+		//! @ref npos is always returned if `size() == 0`, even if `count` is `0`.
 		usize rfind(const value_type* s, usize pos, usize count) const;
+		//! @brief Finds the last occurrence of the specified character sequence in the string.
+		//! @param[in] s The string that holds the character sequence to search. Characters in range [`s`, `s + strlen(s)`)
+		//! will be used for searching.
+		//! @param[in] pos The index at which to begin searching. The character at `pos` is included in searching.
+		//! If `pos >= size()` (including @ref npos), the search will start from the end of the string.
+		//! @return Returns the index of the first character of the found occurrence. The index is an offset from the
+		//! start of the string, not the end.
+		//! Returns @ref npos if no such occurrence is found.
+		//! 
+		//! If `strlen(s)` is `0`, returns `pos` if `pos < size()`, returns `size()` otherwise.
+		//!
+		//! @ref npos is always returned if `size() == 0`, even if `strlen(s)` is `0`.
+		//! @par Valid Usage
+		//! * `s` must points to a valid null-terminated string.
 		usize rfind(const value_type* s, usize pos = 0) const;
+		//! @brief Finds the first occurrence of the specified character in the string.
+		//! @param[in] ch The character to search for.
+		//! @param[in] pos The index at which to begin searching. The character at `pos` is included in searching.
+		//! If `pos >= size()` (including @ref npos), the search will start from the end of the string.
+		//! @return Returns the index of the found character. Returns @ref npos if no
+		//! such occurrence is found.
 		usize rfind(value_type ch, usize pos = npos) const;
 
 	private:
@@ -455,11 +731,21 @@ namespace Luna
 		void internal_expand_reserve(usize new_least_cap);
 	};
 
+	//! @brief The string that contains @ref c8 characters.
+	//! @details See @ref BasicString for string documentation.
 	using String = BasicString<c8>;
+	//! @brief The string that contains wchat_t characters.
+	//! @details See @ref BasicString for string documentation.
 	using WString = BasicString<wchar_t>;
+	//! @brief The string that contains @ref c16 characters.
+	//! @details See @ref BasicString for string documentation.
 	using String16 = BasicString<c16>;
+	//! @brief The string that contains @ref c32 characters.
+	//! @details See @ref BasicString for string documentation.
 	using String32 = BasicString<c32>;
 
+	//! Gets the type object of @ref String.
+	//! @return Returns the type object of @ref String.
 	LUNA_RUNTIME_API typeinfo_t string_type();
 	template <> struct typeof_t<String> { typeinfo_t operator()() const { return string_type(); } };
 

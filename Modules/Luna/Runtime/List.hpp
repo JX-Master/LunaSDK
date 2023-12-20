@@ -338,14 +338,16 @@ namespace Luna
 		iterator emplace(const_iterator pos, _Args&&... args);
 		//! @brief Removes one element from the list.
 		//! @param[in] pos The iterator to the element to be removed.
-		//! @return Returns one iterator to the next element of the removed element when iterating elements.
+		//! @return Returns one iterator to the next element after the removed element, 
+		//! or `end()` if such element does not exist.
 		//! @par Valid Usage
 		//! * `pos` must points to a valid element in the list.
 		iterator erase(const_iterator pos);
 		//! @brief Removes one range of elements from the list.
 		//! @param[in] first The iterator to the first element to be removed.
 		//! @param[in] last The iterator to the one-past-last element to be removed.
-		//! @return Returns one iterator to the next element of the removed elements when iterating elements.
+		//! @return Returns one iterator to the next element after the removed elements, 
+		//! or `end()` if such element does not exist.
 		//! @par Valid Usage
 		//! * `first` must be either `end()` or one valid element in the list.
 		//! * If `first != end()`, [`first`, `last`) must specifies either one empty range (`first == last`) or one valid element range of the list.

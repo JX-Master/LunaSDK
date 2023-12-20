@@ -13,6 +13,9 @@
 
 namespace Luna
 {
+	//! @addtogroup RuntimeString
+	//! @{
+
     using std::strncpy;
 	using std::strcat;
 	using std::strncat;
@@ -79,28 +82,30 @@ namespace Luna
 		return (i32)l - (i32)r;
 	}
 
-	//! Checks whether one string is the prefix string of another string.
-	//! This function compares two strings until one null terminator of one string is reached, and
+	//! @brief Checks whether one string is the prefix string of another string.
+	//! @details This function compares two strings until one null terminator of one string is reached, and
 	//! returns 0 if the compared part is equal. Examples:
 	//! * "aaa" & "aaab" -> 0 (only "aaa" is compared).
 	//! * "aaa" & "aa" -> 0 (only "aa" is compared).
 	//! * "" & "aa" -> 0 (nothing is compared).
 	//! * "aba" & "aaa" -> not 0.
 	//! * "aaab" & "aaac" -> not 0.
+	//! @param[in] lhs The first string to compare.
+	//! @param[in] rhs The second string to compare.
 	template <typename _CharT>
-	inline i32 strcmp_prefix(const _CharT* str1, const _CharT* str2)
+	inline i32 strcmp_prefix(const _CharT* lhs, const _CharT* rhs)
 	{
 		_CharT c1, c2;
-		while (*str1 && *str2)
+		while (*lhs && *rhs)
 		{
-			c1 = *str1;
-			c2 = *str2;
+			c1 = *lhs;
+			c2 = *rhs;
 			if (c1 != c2)
 			{
 				return (i32)c1 - (i32)c2;
 			}
-			++str1;
-			++str2;
+			++lhs;
+			++rhs;
 		}
 		return 0;
 	}
@@ -117,4 +122,6 @@ namespace Luna
     {
         return std::strtod(str, str_end);
     }
+
+	//! @}
 }

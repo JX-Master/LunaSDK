@@ -667,7 +667,7 @@ namespace Luna
 	inline void BasicString<_Char, _Alloc>::insert(usize index, const BasicString& str, usize index_str, usize count)
 	{
 		luassert(index <= m_size);
-		luassert(count <= (str.size() - index_str));
+		count = min(count, str.size() - index_str);
 		internal_expand_reserve(m_size + count);
 		if (index != m_size)
 		{
@@ -730,7 +730,7 @@ namespace Luna
 	template <typename _Char, typename _Alloc>
 	inline void BasicString<_Char, _Alloc>::erase(usize index, usize count)
 	{
-		count = count == npos ? m_size - index : count;
+		count = min(m_size - index, count);
 		luassert(index + count <= m_size);
 		if ((index + count) != m_size)
 		{
@@ -796,7 +796,7 @@ namespace Luna
 	template <typename _Char, typename _Alloc>
 	inline void BasicString<_Char, _Alloc>::append(const BasicString& str, usize pos, usize count)
 	{
-		count = count == npos ? str.size() : count;
+		count = min(count, str.size() - pos);
 		if (count)
 		{
 			internal_expand_reserve(m_size + count);
@@ -843,30 +843,6 @@ namespace Luna
 		append(ilist.begin(), ilist.end());
 	}
 	template <typename _Char, typename _Alloc>
-	inline BasicString<_Char, _Alloc>& BasicString<_Char, _Alloc>::operator+=(const BasicString& str)
-	{
-		append(str);
-		return *this;
-	}
-	template <typename _Char, typename _Alloc>
-	inline BasicString<_Char, _Alloc>& BasicString<_Char, _Alloc>::operator+=(value_type ch)
-	{
-		push_back(ch);
-		return *this;
-	}
-	template <typename _Char, typename _Alloc>
-	inline BasicString<_Char, _Alloc>& BasicString<_Char, _Alloc>::operator+=(const value_type* s)
-	{
-		append(s);
-		return *this;
-	}
-	template <typename _Char, typename _Alloc>
-	inline BasicString<_Char, _Alloc>& BasicString<_Char, _Alloc>::operator+=(InitializerList<value_type> ilist)
-	{
-		append(ilist);
-		return *this;
-	}
-	template <typename _Char, typename _Alloc>
 	inline i32 BasicString<_Char, _Alloc>::compare(const BasicString& rhs) const
 	{
 		return strcmp(c_str(), rhs.c_str());
@@ -904,6 +880,7 @@ namespace Luna
 	template <typename _Char, typename _Alloc>
 	inline void BasicString<_Char, _Alloc>::replace(usize pos, usize count, const BasicString& str)
 	{
+		count = min(count, m_size - pos);
 		isize delta = str.size() - count;
 		if (delta > 0)
 		{
@@ -924,7 +901,8 @@ namespace Luna
 	template <typename _Char, typename _Alloc>
 	inline void BasicString<_Char, _Alloc>::replace(usize pos, usize count, const BasicString& str, usize pos2, usize count2)
 	{
-		count2 = (pos2 + count2 > str.size()) ? str.size() - pos2 : count2;
+		count = min(count, m_size - pos);
+		count2 = min(count2, str.size() - pos2);
 		isize delta = count2 - count;
 		if (delta > 0)
 		{
@@ -946,6 +924,7 @@ namespace Luna
 	template <typename _Char, typename _Alloc>
 	inline void BasicString<_Char, _Alloc>::replace(usize pos, usize count, const value_type* cstr, usize count2)
 	{
+		count = min(count, m_size - pos);
 		isize delta = count2 - count;
 		if (delta > 0)
 		{
@@ -966,6 +945,7 @@ namespace Luna
 	template <typename _Char, typename _Alloc>
 	inline void BasicString<_Char, _Alloc>::replace(usize pos, usize count, const value_type* cstr)
 	{
+		count = min(count, m_size - pos);
 		usize count2 = strlength(cstr);
 		replace(pos, count, cstr, count2);
 	}
@@ -979,6 +959,7 @@ namespace Luna
 	template <typename _Char, typename _Alloc>
 	inline void BasicString<_Char, _Alloc>::replace(usize pos, usize count, usize count2, value_type ch)
 	{
+		count = min(count, m_size - pos);
 		isize delta = count2 - count;
 		if (delta > 0)
 		{

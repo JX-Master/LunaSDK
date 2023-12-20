@@ -270,7 +270,8 @@ namespace Luna
 		}
 		//! @brief Removes one element from the set.
 		//! @param[in] pos The iterator to the element to be removed.
-		//! @return Returns one iterator to the next element of the removed element when iterating elements.
+		//! @return Returns one iterator to the next element after the removed element, 
+		//! or `end()` if such element does not exist.
 		//! @par Valid Usage
 		//! * `pos` must points to a valid element in the set.
 		iterator erase(const_iterator pos)
