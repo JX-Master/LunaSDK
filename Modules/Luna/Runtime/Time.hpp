@@ -17,6 +17,14 @@
 
 namespace Luna
 {
+	//! @addtogroup Runtime
+	//! @{
+	//! @defgroup RuntimeTime Times
+	//! @}
+
+	//! @addtogroup RuntimeTime
+	//! @{
+
 	//! Queries the ticks of the high-resolution counter of CPU.
 	//! @return Returns the current ticks of the CPU.
 	LUNA_RUNTIME_API u64 get_ticks();
@@ -44,23 +52,35 @@ namespace Luna
 		u8 day_of_week;
 	};
 
-	//! Gets the timestamp of the current time.
-	//! The returned time is in UNIX time stamp format (number of seconds from Jan 1st, 1970, UTC).
+	//! Gets the UTC timestamp of the current time.
+	//! @details The returned time is in UNIX time stamp format (number of seconds from Jan 1st, 1970, UTC).
+	//! @return Returns the UTC timestamp of the current time.
 	LUNA_RUNTIME_API i64 get_utc_timestamp();
 
 	//! Gets the timestamp of the current time shiftted by the timezone setting of the current platform.
-	//! The returned time is in UNIX time stamp format (number of seconds from Jan 1st, 1970, UTC).
+	//! @details The returned time is in UNIX time stamp format (number of seconds from Jan 1st, 1970, UTC).
+	//! @return Returns the local timestamp.
 	LUNA_RUNTIME_API i64 get_local_timestamp();
 
 	//! Converts a local timestamp to a UTC timestamp based on the timezone setting of the current platform.
+	//! @param[in] local_ts The local timestamp.
+	//! @return Returns the converted UTC timestamp.
 	LUNA_RUNTIME_API i64 local_timestamp_to_utc_timestamp(i64 local_ts);
 
 	//! Converts a UTC timestamp to a local timestamp based on the timezone setting of the current platform.
+	//! @param[in] utc_ts The UTC timestamp.
+	//! @return Returns the converted local timestamp.
 	LUNA_RUNTIME_API i64 utc_timestamp_to_local_timestamp(i64 utc_ts);
 
-	//! Converts a timestamp to a calendar date time structure.
+	//! Converts a timestamp to a calendar date time.
+	//! @param[in] timestamp The timestamp to convert.
+	//! @return The converted calendar date time.
 	LUNA_RUNTIME_API DateTime timestamp_to_datetime(i64 timestamp);
 
 	//! Converts a data time structure to a timestamp, without any timezone shift.
+	//! @param[in] datetime The calendar date time to convert.
+	//! @return Returns the converted timestamp.
 	LUNA_RUNTIME_API i64 datetime_to_timestamp(const DateTime& datetime);
+
+	//! @}
 }

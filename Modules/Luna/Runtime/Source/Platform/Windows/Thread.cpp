@@ -18,6 +18,7 @@ namespace Luna
 {
 	namespace OS
 	{
+		using tls_destructor = void(void*);
 		Unconstructed<HashMap<DWORD, tls_destructor*, hash<DWORD>, equal_to<DWORD>, OSAllocator>> g_allocated_tls;
 		SpinLock g_allocated_tls_mtx;
 		struct Thread
@@ -167,7 +168,7 @@ namespace Luna
 		{
 			SwitchToThread();
 		}
-		opaque_t tls_alloc(tls_destructor* destructor)
+		opaque_t tls_alloc(void (*destructor)(void*))
 		{
 			DWORD index = TlsAlloc();
 			if (index == TLS_OUT_OF_INDEXES)

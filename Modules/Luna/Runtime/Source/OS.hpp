@@ -81,7 +81,7 @@ namespace Luna
 		//! Note that the allocated size may be bigger than the size required to specify alignment and padding requirements.
 		//! @param[in] ptr The pointer returned by `OS::memalloc` or `OS::memrealloc`.
 		//! @param[in] alignment Optional. The alignment requirement specified for the memory block during allocation. Default is 0. 
-		//! @return Returns the size of bytes of the memory block. If `ptr` is `nullptr`, the returned value is 0.
+		//! @return The size of bytes of the memory block. If `ptr` is `nullptr`, the returned value is 0.
 		usize memsize(void* ptr, usize alignment = 0);
 
 		//! Global object creation function.
@@ -106,12 +106,12 @@ namespace Luna
 		}
 
 		//! Queries the ticks of the high-performance counter of CPU.
-		//! @return Returns the current ticks of the CPU.
+		//! @return The current ticks of the CPU.
 		u64 get_ticks();
 
 		//! Queries the resolution of high-performance counter of CPU represented by
 		//! number of ticks per second.
-		//! @return Returns the number of ticks per second.
+		//! @return The number of ticks per second.
 		f64 get_ticks_per_second();
 
 		//! Gets the timestamp of the current time.
@@ -175,8 +175,6 @@ namespace Luna
 		//! If multi-thread is not supported on the target platform, this function does nothing and returns immediately
 		void yield_current_thread();
 
-		using tls_destructor = void(void*);
-
 		//! Allocates one thread local storage (TLS) slot for every thread running in this process, including the thread that is currently not being 
 		//! created yet. After the handle is returned, every thread can set a thread-local value to this slot using this handle.
 		//! 
@@ -191,8 +189,8 @@ namespace Luna
 		//! If multi-thread is not supported on the target platform, TLS can be mimicked using one global TLS table
 		//! for the only one thread.
 		//! 
-		//! @return Returns the handle to the TLS slot, or error code if failed.
-		opaque_t tls_alloc(tls_destructor* destructor = nullptr);
+		//! @return The handle to the TLS slot, or error code if failed.
+		opaque_t tls_alloc(void (*destructor)(void*));
 
 		//! Free the TLS slot allocated by `tls_alloc`. The handle will be invalid after this call and the pointer stored for every 
 		//! thread will be discarded.
@@ -210,7 +208,7 @@ namespace Luna
 
 		//! Get the value bound to the TLS slot of current thread.
 		//! @param[in] handle The handle of the slot to query.
-		//! @return Returns the pointer set, or `nullptr` if no pointer is set to this slot.
+		//! @return The pointer set, or `nullptr` if no pointer is set to this slot.
 		void* tls_get(opaque_t handle);
 
 		//! Creates one signal object.
@@ -303,7 +301,7 @@ namespace Luna
 		//! @param[in] path The path of the file.
 		//! @param[in] flags The file open flags.
 		//! @param[in] creation Specify whether to create a file if the file does not exist.
-		//! @return Returns the new opened file handle if succeeds. Returns one error code if failed.
+		//! @return The new opened file handle if succeeds. Returns one error code if failed.
 		//! Possible errors:
 		//! * BasicError::bad_arguments
 		//! * BasicError::access_denied
@@ -345,7 +343,7 @@ namespace Luna
 
 		//! Gets the size of the file in bytes.
 		//! @param[in] file The file handle opened by `open_file`.
-		//! @return Returns the size of the file, or error code on failure.
+		//! @return The size of the file, or error code on failure.
 		u64 get_file_size(opaque_t file);
 
 		//! Sets the size of the file in bytes.
@@ -379,7 +377,7 @@ namespace Luna
 
 		//! Gets the attribute/status of one file or directory.
 		//! @param[in] path The path of the file to get.
-		//! @return Returns the file attribute structure if succeeded, returns error code if failed.
+		//! @return The file attribute structure if succeeded, returns error code if failed.
 		//! Possible errors:
 		//! * BasicError::access_denied
 		//! * BasicError::not_found
@@ -445,7 +443,7 @@ namespace Luna
 		//! @param[in] buffer_length The length of the buffer for the current directory string, including the null terminator.
 		//! @param[in] A pointer to the buffer that receives the current directory string. To gets the required buffer size, specify
 		//! `buffer` to `nullptr` and `buffer_length` to 0.
-		//! @return Returns the number of `c8` characters copied into the buffer, including the null terminator. If `buffer_length` is 0 and
+		//! @return The number of `c8` characters copied into the buffer, including the null terminator. If `buffer_length` is 0 and
 		//! `buffer` is `nullptr`, returns the required buffer size to fetch the current directory, including the null terminator. 
 		u32 get_current_dir(u32 buffer_length, c8* buffer);
 
@@ -456,7 +454,7 @@ namespace Luna
 		RV set_current_dir(const c8* path);
 
 		//! Get the application executable file's absolute directory, ended with application executable name.
-		//! @return Returns the process path. The string is static and valid until the SDK closed.
+		//! @return The process path. The string is static and valid until the SDK closed.
 		const c8* get_process_path();
 
 		//! Returns the number of logical processors on the platform.
@@ -491,7 +489,7 @@ namespace Luna
 		//! Captures function call stack information of the current thread.
 		//! @param[out] frames One buffer that receives captured frames. Every frame is represented by 
 		//! one opaque handle in the buffer.
-		//! @return Returns the number of captured frames written to `frames`.
+		//! @return The number of captured frames written to `frames`.
 		u32 stack_backtrace(Span<opaque_t> frames);
 
 		//! Gets symbolic names for frames returned by @ref stack_backtrace.
@@ -528,7 +526,7 @@ namespace Luna
 		//! Gets the function address (function pointer) of one function in the library from its symbol name.
 		//! @param[in] handle The library handle returned by @ref load_library.
 		//! @param[in] symbol The function's symbol name.
-		//! @return Returns the function address of the specified function.
+		//! @return The function address of the specified function.
 		R<void*> get_library_function(opaque_t handle, const c8* symbol);
 	}
 

@@ -22,7 +22,7 @@ namespace Luna
 		g_main_thread = new_object<MainThread>();
 		g_main_thread_ref = query_interface<IThread>(g_main_thread.object());
 		g_main_thread->m_handle = OS::get_current_thread_handle();
-		g_tls_thread = OS::tls_alloc();
+		g_tls_thread = OS::tls_alloc(nullptr);
 		OS::tls_set(g_tls_thread, g_main_thread_ref);
 	}
 	void thread_close()
@@ -73,7 +73,7 @@ namespace Luna
 	{
 		OS::yield_current_thread();
 	}
-	LUNA_RUNTIME_API opaque_t tls_alloc(tls_destructor* destructor)
+	LUNA_RUNTIME_API opaque_t tls_alloc(void (*destructor)(void*))
 	{
 		return OS::tls_alloc(destructor);
 	}

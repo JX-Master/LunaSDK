@@ -37,8 +37,8 @@ namespace Luna
 	};
 	
 	//! @interface IThread
-	//! @threadsafe
 	//! Represents a system thread object.
+	//! @threadsafe
 	struct IThread : virtual IWaitable
 	{
 		luiid("{9e4fbbb8-0751-4703-bfb5-246dd1cf8b04}");
@@ -83,8 +83,6 @@ namespace Luna
 	//! @details There is no way to resume a thread from user mode, since threads are scheduled by OS automatically.
 	LUNA_RUNTIME_API void yield_current_thread();
 
-	using tls_destructor = void(void*);
-
 	//! Allocates one thread local storage (TLS) slot.
 	//! @details The TLS slot is allocated for every thread running in this process, including the thread that is currently not being 
 	//! created yet. After the handle is returned, every thread can set a thread-local value to this slot using this handle.
@@ -98,7 +96,7 @@ namespace Luna
 	//! be repeated several times until the TLS value is `nullptr` after the destructor returns.
 	//! 
 	//! @return Returns the handle to the TLS slot.
-	LUNA_RUNTIME_API opaque_t tls_alloc(tls_destructor* destructor = nullptr);
+	LUNA_RUNTIME_API opaque_t tls_alloc(void (*destructor)(void* ptr) = nullptr);
 
 	//! Frees the TLS slot allocated by `tls_alloc`. 
 	//! @details The handle will be invalid after this call and the pointer stored for every 
