@@ -52,7 +52,7 @@ namespace Luna
 	//! @addtogroup RuntimeUnicode
 	//! @{
 
-	//! @brief Gets the number of UTF-8 characters needed to store the Unicode char in UTF-8 encoding.
+	//! Gets the number of UTF-8 characters needed to store the Unicode char in UTF-8 encoding.
 	//! @param[in] ch The Unicode codepoint of the character.
 	//! @return Returns the number of UTF-8 characters needed to store the Unicode char in UTF-8 encoding.
 	inline constexpr usize utf8_charspan(c32 ch)
@@ -81,7 +81,7 @@ namespace Luna
 		return 6;
 	}
 
-	//! @brief Gets the number of UTF-8 characters the Unicode character takes from the first UTF-8 character.
+	//! Gets the number of UTF-8 characters the Unicode character takes from the first UTF-8 character.
 	//! @param[in] ch The first UTF-8 character of the Unicode character.
 	//! @return Returns the number of UTF-8 characters the Unicode character takes.
 	inline constexpr usize utf8_charlen(c8 ch)
@@ -112,7 +112,7 @@ namespace Luna
 		return 6;
 	}
 
-	//! @brief Gets the number of UTF-8 characters the Unicode character takes from the first UTF-8 character.
+	//! Gets the number of UTF-8 characters the Unicode character takes from the first UTF-8 character.
 	//! @param[in] src The pointer that points to the first UTF-8 character of the Unicode character.
 	//! @return Returns the number of UTF-8 characters the Unicode character takes.
 	inline constexpr usize utf8_charlen(const c8* src)
@@ -120,7 +120,7 @@ namespace Luna
 		return utf8_charlen(src[0]);
 	}
 
-	//! @brief Gets the number of Unicode characters in a null-terminated UTF-8 string, not including the null terminator.
+	//! Gets the number of Unicode characters in a null-terminated UTF-8 string, not including the null terminator.
 	//! @param[in] src The UTF-8 string to check.
 	//! @return Returns the number of Unicode characters in the UTF-8 string.
 	//! @par Valid Usage
@@ -136,7 +136,7 @@ namespace Luna
 		return l;
 	}
 
-	//! @brief Gets the index of the first UTF-8 character for the specified Unicode character.
+	//! Gets the index of the first UTF-8 character for the specified Unicode character.
 	//! @param[in] str The UTF-8 string to check.
 	//! @param[in] n The index of the Unicode character to check.
 	//! @return Returns the index of the first UTF-8 character for the specified Unicode character.
@@ -155,7 +155,7 @@ namespace Luna
 		return p;
 	}
 
-	//! @brief Encodes the Unicode character into 1~6 UTF-8 characters.
+	//! Encodes the Unicode character into 1~6 UTF-8 characters.
 	//! @param[in] dst The buffer for writing encoded UTF-8 characters.
 	//! @param[in] ch The Unicode character to encode.
 	//! @return Returns the number of UTF-8 characters written to `dst`.
@@ -164,14 +164,14 @@ namespace Luna
 	//! The user can use @ref utf8_charspan to check the required space in advance.
 	LUNA_RUNTIME_API usize utf8_encode_char(c8* dst, c32 ch);
 
-	//! @brief Decodes one Unicode character from 1~6 UTF-8 characters.
+	//! Decodes one Unicode character from 1~6 UTF-8 characters.
 	//! @param[in] str The pointer that points to UTF-8 characters to decode.
 	//! @return Returns the decoded Unicode character.
 	//! @par Valid Usage
 	//! * `str` must points to a valid UTF-8 character string.
 	LUNA_RUNTIME_API c32 utf8_decode_char(const c8* str);
 
-	//! @brief Gets the number of UTF-16 characters needed to store the Unicode char in UTF-16 encoding.
+	//! Gets the number of UTF-16 characters needed to store the Unicode char in UTF-16 encoding.
 	//! @param[in] ch The Unicode codepoint of the character.
 	//! @return Returns the number of UTF-16 characters needed to store the Unicode char in UTF-16 encoding.
 	inline constexpr usize utf16_charspan(c32 ch)
@@ -183,7 +183,7 @@ namespace Luna
 		return 2;
 	}
 
-	//! @brief Gets the number of UTF-16 characters the Unicode character takes from the first UTF-16 character.
+	//! Gets the number of UTF-16 characters the Unicode character takes from the first UTF-16 character.
 	//! @param[in] ch The first UTF-16 character of the Unicode character.
 	//! @return Returns the number of UTF-16 characters the Unicode character takes.
 	inline constexpr usize utf16_charlen(c16 ch)
@@ -195,7 +195,7 @@ namespace Luna
 		return 1;
 	}
 	
-	//! @brief Gets the number of UTF-16 characters the Unicode character takes from the first UTF-16 character.
+	//! Gets the number of UTF-16 characters the Unicode character takes from the first UTF-16 character.
 	//! @param[in] src The pointer that points to the first UTF-16 character of the Unicode character.
 	//! @return Returns the number of UTF-16 characters the Unicode character takes.
 	inline constexpr usize utf16_charlen(const c16* src)
@@ -203,7 +203,7 @@ namespace Luna
 		return utf16_charlen(src[0]);
 	}
 
-	//! @brief Gets the number of Unicode characters in a null-terminated UTF-16 string, not including the null terminator.
+	//! Gets the number of Unicode characters in a null-terminated UTF-16 string, not including the null terminator.
 	//! @param[in] src The UTF-16 string to check.
 	//! @return Returns the number of Unicode characters in the UTF-16 string.
 	//! @par Valid Usage
@@ -219,7 +219,7 @@ namespace Luna
 		return l;
 	}
 
-	//! @brief Gets the index of the first UTF-16 character for the specified Unicode character.
+	//! Gets the index of the first UTF-16 character for the specified Unicode character.
 	//! @param[in] str The UTF-16 string to check.
 	//! @param[in] n The index of the Unicode character to check.
 	//! @return Returns the index of the first UTF-16 character for the specified Unicode character.
@@ -238,7 +238,7 @@ namespace Luna
 		return p;
 	}
 
-	//! @brief Encodes the Unicode character into 1~2 UTF-16 characters using platform-native endian.
+	//! Encodes the Unicode character into 1~2 UTF-16 characters using platform-native endian.
 	//! @param[in] dst The buffer for writing encoded UTF-16 characters.
 	//! @param[in] ch The Unicode character to encode.
 	//! @return Returns the number of UTF-16 characters written to `dst`.
@@ -247,14 +247,14 @@ namespace Luna
 	//! The user can use @ref utf16_charspan to check the required space in advance.
 	LUNA_RUNTIME_API usize utf16_encode_char(c16* dst, c32 ch);
 
-	//! @brief Decodes one Unicode character from 1~2 UTF-16 characters.
+	//! Decodes one Unicode character from 1~2 UTF-16 characters.
 	//! @param[in] str The pointer that points to UTF-16 characters to decode.
 	//! @return Returns the decoded Unicode character.
 	//! @par Valid Usage
 	//! * `str` must points to a valid UTF-16 character string in platform-native endian.
 	LUNA_RUNTIME_API c32 utf16_decode_char(const c16* str);
 
-	//! @brief Converts a UTF-16 string to UTF-8 string.
+	//! Converts a UTF-16 string to UTF-8 string.
 	//! @param[in] dst The buffer to hold the output string.
 	//! @param[in] dst_max_chars The maximum characters the `dst` buffer can hold, including the null-terminator.
 	//! @param[in] src The buffer holding the source string.
@@ -265,14 +265,14 @@ namespace Luna
 	//! * `src` must be a valid UTF-16 string.
 	LUNA_RUNTIME_API usize utf16_to_utf8(c8* dst, usize dst_max_chars, const c16* src, usize src_chars = USIZE_MAX);
 
-	//! @brief Determines the length of the corresponding UTF-8 string for a UTF-16 string, not include the null-terminator.
+	//! Determines the length of the corresponding UTF-8 string for a UTF-16 string, not include the null-terminator.
 	//! @param[in] src The UTF-16 string to check.
 	//! @param[in] src_chars The maximum characters to read. Specify `USIZE_MAX` to read till the end of the 
 	//! string. The checking process will stop on first null terminator, or when `src_chars` is reached.
 	//! @return Returns the length of the corresponding UTF-8 string for a UTF-16 string, not include the null-terminator.
 	LUNA_RUNTIME_API usize utf16_to_utf8_len(const c16* src, usize src_chars = USIZE_MAX);
 
-	//! @brief Converts a UTF-8 string to UTF-16 string.
+	//! Converts a UTF-8 string to UTF-16 string.
 	//! @param[in] dst The buffer to hold the output string.
 	//! @param[in] dst_max_chars The maximum characters the `dst` buffer can hold, including the null-terminator.
 	//! @param[in] src The holding the source string.
@@ -283,7 +283,7 @@ namespace Luna
 	//! * `src` must be a valid UTF-8 string.
 	LUNA_RUNTIME_API usize utf8_to_utf16(c16* dst, usize dst_max_chars, const c8* src, usize src_chars = USIZE_MAX);
 
-	//! @brief Determines the length of the corresponding UTF-16 string for a UTF-8 string, not include the null-terminator.
+	//! Determines the length of the corresponding UTF-16 string for a UTF-8 string, not include the null-terminator.
 	//! @param[in] src The UTF-8 string to check.
 	//! @param[in] src_chars The maximum characters to read. Specify `USIZE_MAX` to read till the end of the 
 	//! string. The checking process will stop on first null terminator, or when `src_chars` is reached.

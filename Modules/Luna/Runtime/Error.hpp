@@ -28,7 +28,7 @@ namespace Luna
     //! @addtogroup RuntimeError
     //! @{
 	
-	//! @brief The error code type represents one single error. 
+	//! The error code type represents one single error. 
 	//! @details In Luna Runtime, every error is represented by one error code, 
 	//! the code value will be determined when the error is firstly accessed, and will never be changed.
 	//! 
@@ -61,7 +61,7 @@ namespace Luna
 		usize operator()(ErrCode val) const { return val.code; }
 	};
 
-	//! @brief The error category type represents one container that can hold multiple error
+	//! The error category type represents one container that can hold multiple error
 	//! codes and sub-categories. 
 	//! @details Like the error code, the category value will be determined when the error 
 	//! category is firstly accessed, and will never be changed.
@@ -69,7 +69,7 @@ namespace Luna
 	//! Any valid error type number will not be 0.
 	using errcat_t = usize;
 
-	//! @brief Gets the error code represented by the error name.
+	//! Gets the error code represented by the error name.
 	//! @param[in] errcat_name The name of the category that holds the error name.
 	//! Use "::" to separate category names if the category is a sub-category.
 	//! @param[in] errcode_name The name of the error code.
@@ -78,7 +78,7 @@ namespace Luna
 	//! for the error code, and returns one valid error code number that represents to the error.
 	LUNA_RUNTIME_API ErrCode get_error_code_by_name(const c8* errcat_name, const c8* errcode_name);
 
-	//! @brief Gets the error category represented by the error category name.
+	//! Gets the error category represented by the error category name.
 	//! @param[in] errcat_name The full name of the error category.
 	//! Use "::" to separate category names if the category is a sub-category.
 	//! @return Returns the error category of the corresponding error name. The return value will never be 
@@ -86,39 +86,39 @@ namespace Luna
 	//! for the error category, and returns one valid error category number that represents to the error category.
 	LUNA_RUNTIME_API errcat_t get_error_category_by_name(const c8* errcat_name);
 
-	//! @brief Fetches the name of the error code.
+	//! Fetches the name of the error code.
 	//! @param[in] err_code The error code value.
 	//! @return Returns the name of the error code. This string is valid until the 
 	//! runtime is closed. Returns empty string ("") if the error code does not exist.
 	LUNA_RUNTIME_API const c8* get_error_code_name(ErrCode err_code);
 
-	//! @brief Fetches the name of the error category.
+	//! Fetches the name of the error category.
 	//! @param[in] err_category The error category value.
 	//! @return Returns the name of the error category. This string is valid until the 
 	//! runtime is closed. Returns empty string ("") if the error category does not exist.
 	LUNA_RUNTIME_API const c8* get_error_category_name(errcat_t err_category);
 
-	//! @brief Fetches the error category that holds the error code.
+	//! Fetches the error category that holds the error code.
 	//! @param[in] err_code The error code value.
 	//! @return Returns the error category that holds the error code, or 0 if the error 
 	//! code does not exist.
 	LUNA_RUNTIME_API errcat_t get_error_code_category(ErrCode err_code);
 
-	//! @brief Fetches all error categories registered in the system, including all subcategories.
+	//! Fetches all error categories registered in the system, including all subcategories.
 	//! @return Returns all error categories registered in the system.
 	LUNA_RUNTIME_API Vector<errcat_t> get_all_error_categories();
 
-	//! @brief Fetches all error codes that belongs to the specified error category.
+	//! Fetches all error codes that belongs to the specified error category.
 	//! @param[in] err_category The error category to look up.
 	//! @return Returns all error codes that belongs to the specified category.
 	LUNA_RUNTIME_API Vector<ErrCode> get_all_error_codes_of_category(errcat_t err_category);
 
-	//! @brief Fetches all child error categories that belongs to the specified error category.
+	//! Fetches all child error categories that belongs to the specified error category.
 	//! @param[in] err_category The error category to look up.
 	//! @return Returns all child error categories that belongs to the specified category.
 	LUNA_RUNTIME_API Vector<errcat_t> get_all_error_subcategories_of_category(errcat_t err_category);
 
-	//! @brief The error object encapsulates one error code along with one
+	//! The error object encapsulates one error code along with one
 	//! string that describes the error.
 	struct Error
 	{
@@ -169,7 +169,7 @@ namespace Luna
 		}
 	};
 
-	//! @brief Gets the error object of this thread. Every thread will be assigned with one error object.
+	//! Gets the error object of this thread. Every thread will be assigned with one error object.
 	//! @return Returns the error object of this thread.
 	LUNA_RUNTIME_API Error& get_error();
 
@@ -182,83 +182,83 @@ namespace Luna
 		//! Contains core errors defined by Luna SDK. These errors can also be used by user modules.
 		//! @{
 		
-		//! @brief Gets the error category object of `BasicError`.
+		//! Gets the error category object of `BasicError`.
 		LUNA_RUNTIME_API errcat_t errtype();
-		//! @brief General failure. 
+		//! General failure. 
 		//! @remark The user should avoid returning generic failure if it can determine what is going wrong and can report that
 		//! since returning generic failure does not provide any information for the caller to handle the error.
 		LUNA_RUNTIME_API ErrCode failure();
-		//! @brief The error is recorded in the error object of the current thread. The user should call `get_error()` to fetch the error
+		//! The error is recorded in the error object of the current thread. The user should call `get_error()` to fetch the error
 		//! object to check the real error.
 		LUNA_RUNTIME_API ErrCode error_object();
-		//! @brief The specified item does not exist.
+		//! The specified item does not exist.
 		LUNA_RUNTIME_API ErrCode not_found();
-		//! @brief The specified item already exists.
+		//! The specified item already exists.
 		LUNA_RUNTIME_API ErrCode already_exists();
-		//! @brief The specified item is not unique.
+		//! The specified item is not unique.
 		LUNA_RUNTIME_API ErrCode not_unique();
-		//! @brief Invalid arguments are specified. This is caused by a programming error and must be fixed before the application is released.
+		//! Invalid arguments are specified. This is caused by a programming error and must be fixed before the application is released.
 		LUNA_RUNTIME_API ErrCode bad_arguments();
-		//! @brief The function calling time is not valid, like using one resource before it is initialized, or 
+		//! The function calling time is not valid, like using one resource before it is initialized, or 
 		//! trying to reset one resource when the resource is still using.
 		//! This is caused by a programming error and must be fixed before the application is released.
 		LUNA_RUNTIME_API ErrCode bad_calling_time();
-		//! @brief The system cannot allocate enough memory to finish this operation.
+		//! The system cannot allocate enough memory to finish this operation.
 		LUNA_RUNTIME_API ErrCode out_of_memory();
-		//! @brief The required operation is not supported by the instance/platform/build.
+		//! The required operation is not supported by the instance/platform/build.
 		LUNA_RUNTIME_API ErrCode not_supported();
-		//! @brief A call to the underlying OS/platform/library was failed and the reason cannot be represented by any other error code.
+		//! A call to the underlying OS/platform/library was failed and the reason cannot be represented by any other error code.
 		LUNA_RUNTIME_API ErrCode bad_platform_call();
-		//! @brief The access to the file or resource is denied.
+		//! The access to the file or resource is denied.
 		LUNA_RUNTIME_API ErrCode access_denied();
-		//! @brief The specified path is not a directory, or one component of the path prefix of the specified path is not a directory.
+		//! The specified path is not a directory, or one component of the path prefix of the specified path is not a directory.
 		LUNA_RUNTIME_API ErrCode not_directory();
-		//! @brief The specified path is a directory.
+		//! The specified path is a directory.
 		LUNA_RUNTIME_API ErrCode is_directory();
-		//! @brief The directory is not empty.
+		//! The directory is not empty.
 		LUNA_RUNTIME_API ErrCode directory_not_empty();
-		//! @brief The file format is not valid or not supported.
+		//! The file format is not valid or not supported.
 		LUNA_RUNTIME_API ErrCode bad_file();
-		//! @brief System IO error.
+		//! System IO error.
 		LUNA_RUNTIME_API ErrCode io_error();
-		//! @brief The time limit is reached before this operation succeeds.
+		//! The time limit is reached before this operation succeeds.
 		LUNA_RUNTIME_API ErrCode timeout();
-		//! @brief The provided data or string is too long.
+		//! The provided data or string is too long.
 		LUNA_RUNTIME_API ErrCode data_too_long();
-		//! @brief The buffer provided by the user is not large enough to contain all returned data.
+		//! The buffer provided by the user is not large enough to contain all returned data.
 		LUNA_RUNTIME_API ErrCode insufficient_user_buffer();
-		//! @brief The service provider is not ready to handle this call at this moment.
+		//! The service provider is not ready to handle this call at this moment.
 		//! The user should try again later.
 		LUNA_RUNTIME_API ErrCode not_ready();
-		//! @brief The value specified by the user is out of the valid range from the value.
+		//! The value specified by the user is out of the valid range from the value.
 		LUNA_RUNTIME_API ErrCode out_of_range();
-		//! @brief The system has run out of intenal resources (usually handles or resources with a fixed count limit) to finish the operation.
+		//! The system has run out of intenal resources (usually handles or resources with a fixed count limit) to finish the operation.
 		LUNA_RUNTIME_API ErrCode out_of_resource();
-		//! @brief The system has run out of internal buffer to finish the operation.
+		//! The system has run out of internal buffer to finish the operation.
 		//! This usually indicates that one data or message buffer/queue is full.
 		LUNA_RUNTIME_API ErrCode insufficient_system_buffer();
-		//! @brief Format error detected when parsing the scripts or strings.
+		//! Format error detected when parsing the scripts or strings.
 		LUNA_RUNTIME_API ErrCode format_error();
-		//! @brief The operation is interrupted by user or system.
+		//! The operation is interrupted by user or system.
 		LUNA_RUNTIME_API ErrCode interrupted();
-		//! @brief The end of the file or data stream is reached.
+		//! The end of the file or data stream is reached.
 		LUNA_RUNTIME_API ErrCode end_of_file();
-		//! @brief One instance is expected in the context, but the value in one null-able type is absent.
+		//! One instance is expected in the context, but the value in one null-able type is absent.
 		LUNA_RUNTIME_API ErrCode null_value();
-		//! @brief The instance provided to the as expression does not conforms to the type provided.
+		//! The instance provided to the as expression does not conforms to the type provided.
 		LUNA_RUNTIME_API ErrCode bad_cast();
-		//! @brief The operation is still in progress when this call returns. This is usually not an error, but a notation to the user that
+		//! The operation is still in progress when this call returns. This is usually not an error, but a notation to the user that
 		//! the operation is asynchronous.
 		LUNA_RUNTIME_API ErrCode in_progress();
-		//! @brief The library/platform version is not matched.
+		//! The library/platform version is not matched.
 		LUNA_RUNTIME_API ErrCode version_dismatch();
-		//! @brief No data is available.
+		//! No data is available.
 		LUNA_RUNTIME_API ErrCode no_data();
-		//! @brief The data validation is failed.
+		//! The data validation is failed.
 		LUNA_RUNTIME_API ErrCode bad_data();
-		//! @brief The address is not valid.
+		//! The address is not valid.
 		LUNA_RUNTIME_API ErrCode bad_address();
-		//! @brief One deadlock is detected.
+		//! One deadlock is detected.
 		LUNA_RUNTIME_API ErrCode deadlock();
 
 		//! @}
@@ -266,7 +266,7 @@ namespace Luna
 		//! @}
 	}
 
-	//! @brief Sets the error object of this thread.
+	//! Sets the error object of this thread.
 	//! @details This function is auxiliary and it behaves the same as fetching the error object then setting it.
 	//! @param[in] code The error code to set.
 	//! @param[in] fmt The error message formatting syntax.
@@ -278,7 +278,7 @@ namespace Luna
 		return BasicError::error_object();
 	}
 
-	//! @brief Sets the error object of this thread.
+	//! Sets the error object of this thread.
 	//! @details This function is auxiliary and it behaves the same as fetching the error object then setting it.
 	//! @param[in] code The error code to set.
 	//! @param[in] fmt The error message formatting syntax.
@@ -293,7 +293,7 @@ namespace Luna
 		return BasicError::error_object();
 	}
 
-	//! @brief Gets a brief description about the error code.
+	//! Gets a brief description about the error code.
 	//! @param[in] err_code The error code to fetch.
 	//! @return Returns one C string that describes the error code.
 	//! @remark 
@@ -308,7 +308,7 @@ namespace Luna
 		return get_error_code_name(err_code);
 	}
 
-	//! @brief Gets the real error code if the error code is @ref BasicError::error_object.
+	//! Gets the real error code if the error code is @ref BasicError::error_object.
 	//! @param[in] err_code The error code to unwrap.
 	//! @return If the error code is @ref BasicError::error_object, returns `get_error().code`. Otherwise, returns `err_code` directly.
 	inline ErrCode unwrap_errcode(ErrCode err_code)

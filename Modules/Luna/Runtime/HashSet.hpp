@@ -16,7 +16,7 @@ namespace Luna
 	//! @addtogroup RuntimeContainer
     //! @{
 	
-	//! @brief An container that contains a set of unique objects using open-addressing hashing algorithm.
+	//! An container that contains a set of unique objects using open-addressing hashing algorithm.
 	//! @remark See remarks of @ref HashMap for details.
 	template <
 		typename _Kty,
@@ -43,27 +43,27 @@ namespace Luna
 		HashSet(table_type&& base) :
 			m_base(move(base)) {}
 	public:
-		//! @brief Constructs an empty set.
+		//! Constructs an empty set.
 		HashSet() :
 			m_base() {}
-		//! @brief Constructs an empty set with an custom allocator.
+		//! Constructs an empty set with an custom allocator.
 		//! @param[in] alloc The allocator to use. The allocator object will be copy-constructed into the set.
 		HashSet(const allocator_type& alloc) :
 			m_base(alloc) {}
-		//! @brief Constructs a set by coping elements from another set.
+		//! Constructs a set by coping elements from another set.
 		//! @param[in] rhs The set to copy elements from.
 		HashSet(const HashSet& rhs) :
 			m_base(rhs.m_base) {}
-		//! @brief Constructs a set with an custom allocator and with elements copied from another set.
+		//! Constructs a set with an custom allocator and with elements copied from another set.
 		//! @param[in] rhs The set to copy elements from.
 		//! @param[in] alloc The allocator to use. The allocator object will be copy-constructed into the set.
 		HashSet(const HashSet& rhs, const allocator_type& alloc) :
 			m_base(rhs.m_base, alloc) {}
-		//! @brief Constructs a set by moving elements from another set.
+		//! Constructs a set by moving elements from another set.
 		//! @param[in] rhs The set to move elements from.
 		HashSet(HashSet&& rhs) :
 			m_base(move(rhs.m_base)) {}
-		//! @brief Constructs a set with an custom allocator and with elements moved from another set.
+		//! Constructs a set with an custom allocator and with elements moved from another set.
 		//! @param[in] rhs The set to move elements from.
 		//! @param[in] alloc The allocator to use. The allocator object will be copy-constructed into the set.
 		HashSet(HashSet&& rhs, const allocator_type& alloc) :
@@ -79,75 +79,75 @@ namespace Luna
 			return *this;
 		}
 	public:
-		//! @brief Gets one iterator to the first element of the set.
+		//! Gets one iterator to the first element of the set.
 		//! @return Returns one iterator to the first element of the set.
 		iterator begin()
 		{
 			return m_base.begin();
 		}
-		//! @brief Gets one constant iterator to the first element of the set.
+		//! Gets one constant iterator to the first element of the set.
 		//! @return Returns one constant iterator to the first element of the set.
 		const_iterator begin() const
 		{
 			return m_base.begin();
 		}
-		//! @brief Gets one constant iterator to the first element of the set.
+		//! Gets one constant iterator to the first element of the set.
 		//! @return Returns one constant iterator to the first element of the set.
 		const_iterator cbegin() const
 		{
 			return m_base.cbegin();
 		}
-		//! @brief Gets one iterator to the one past last element of the set.
+		//! Gets one iterator to the one past last element of the set.
 		//! @return Returns one iterator to the one past last element of the set.
 		iterator end()
 		{
 			return m_base.end();
 		}
-		//! @brief Gets one constant iterator to the one past last element of the set.
+		//! Gets one constant iterator to the one past last element of the set.
 		//! @return Returns one constant iterator to the one past last element of the set.
 		const_iterator end() const
 		{
 			return m_base.end();
 		}
-		//! @brief Gets one constant iterator to the one past last element of the set.
+		//! Gets one constant iterator to the one past last element of the set.
 		//! @return Returns one constant iterator to the one past last element of the set.
 		const_iterator cend() const
 		{
 			return m_base.cend();
 		}
-		//! @brief Checks whether this set is empty, that is, the size of this set is `0`.
+		//! Checks whether this set is empty, that is, the size of this set is `0`.
 		//! @return Returns `true` if this set is empty, returns `false` otherwise.
 		bool empty() const
 		{
 			return m_base.empty();
 		}
-		//! @brief Gets the size of the set, that is, the number of elements in the set.
+		//! Gets the size of the set, that is, the number of elements in the set.
 		//! @return Returns the size of the set.
 		usize size() const
 		{
 			return m_base.size();
 		}
-		//! @brief Gets the capacity of the set, that is, the number of elements the 
+		//! Gets the capacity of the set, that is, the number of elements the 
 		//! hash table can hold before expanding the hash table.
 		//! @return Returns the capacity of the set.
 		usize capacity() const
 		{
 			return m_base.capacity();
 		}
-		//! @brief Gets the hash table size of the set, that is, the number of slots of the
+		//! Gets the hash table size of the set, that is, the number of slots of the
 		//! hash table array.
 		//! @return Returns the hash table size of the set.
 		usize hash_table_size() const
 		{
 			return m_base.hash_table_size();
 		}
-		//! @brief Gets the load factor of the set, which can be computed by `(f32)size() / (f32)hash_table_size()`.
+		//! Gets the load factor of the set, which can be computed by `(f32)size() / (f32)hash_table_size()`.
 		//! @return Returns the load factor of the set.
 		f32 load_factor() const
 		{
 			return m_base.load_factor();
 		}
-		//! @brief Gets the maximum load factor allowed for the set. 
+		//! Gets the maximum load factor allowed for the set. 
 		//! @details If `load_factor() > max_load_factor()` is `true` after one element is inserted, the set
 		//! will expand the hash table to bring more hash table slots.
 		//! @return Returns the maximum load factor allowed for the set.
@@ -155,7 +155,7 @@ namespace Luna
 		{
 			return m_base.max_load_factor();
 		}
-		//! @brief Sets the maximum load factor allowed for the set.
+		//! Sets the maximum load factor allowed for the set.
 		//! @details If the new load factor is smaller than `load_factor()`, the set
 		//! will expand the hash table to bring more hash table slots.
 		//! @param[in] ml The new load factor to set.
@@ -165,30 +165,30 @@ namespace Luna
 		{
 			m_base.max_load_factor(ml);
 		}
-		//! @brief Removes all elements in the set.
+		//! Removes all elements in the set.
 		void clear()
 		{
 			m_base.clear();
 		}
-		//! @brief Reduces the hash table size to a minimum value that satisfy the maximum load factor limitation.
+		//! Reduces the hash table size to a minimum value that satisfy the maximum load factor limitation.
 		//! @details The hash table size can be computed as: `ceilf((f32)size() / max_load_factor())`.
 		void shrink_to_fit()
 		{
 			m_base.shrink_to_fit();
 		}
-		//! @brief Gets the hash function used by this set.
+		//! Gets the hash function used by this set.
 		//! @return Returns the hash function used by this set.
 		hasher hash_function() const
 		{
 			return m_base.hash_function();
 		}
-		//! @brief Gets the equality comparison function used by this set.
+		//! Gets the equality comparison function used by this set.
 		//! @return Returns the equality comparison function used by this set.
 		key_equal key_eq() const
 		{
 			return m_base.key_eq();
 		}
-		//! @brief Changes the data table size and rehashes all elements to insert them to the new data table.
+		//! Changes the data table size and rehashes all elements to insert them to the new data table.
 		//! @param[in] new_data_table_size The new data table size to set.
 		//! @remark If the new data table size is too small or makes load factor exceed load factor limits, 
 		//! the new data table size will be expanded to a minimum value that satisfies requirements.
@@ -196,28 +196,28 @@ namespace Luna
 		{
 			m_base.rehash(new_buckets_count);
 		}
-		//! @brief Expands the data table size to the specified value.
+		//! Expands the data table size to the specified value.
 		//! @param[in] new_cap The new data table size to expand to.
 		//! @remark This function does nothing if `new_cap` is smaller than or equal to `capacity()`.
 		void reserve(usize new_cap)
 		{
 			m_base.reserve(new_cap);
 		}
-		//! @brief Finds the specified element in the set.
+		//! Finds the specified element in the set.
 		//! @param[in] key The key of the element to find.
 		//! @return Returns one iterator to the element if the element is found. Returns `end()` otherwise.
 		iterator find(const key_type& key)
 		{
 			return m_base.find(key);
 		}
-		//! @brief Finds the specified element in the set.
+		//! Finds the specified element in the set.
 		//! @param[in] key The key of the element to find.
 		//! @return Returns one const iterator to the element if the element is found. Returns `end()` otherwise.
 		const_iterator find(const key_type& key) const
 		{
 			return m_base.find(key);
 		}
-		//! @brief Gets the number of elements whose key is equal to the specified key.
+		//! Gets the number of elements whose key is equal to the specified key.
 		//! @param[in] key The key of the element to count.
 		//! @return Returns the number of elements whose key is equal to the specified key.
 		//! @remark Since this set does not allow inserting multiple elements with the same key, the returned value 
@@ -226,14 +226,14 @@ namespace Luna
 		{
 			return m_base.count(key);
 		}
-		//! @brief Checks whether at least one element with the specified key exists.
+		//! Checks whether at least one element with the specified key exists.
 		//! @param[in] key The key of the element to check.
 		//! @return Returns `ture` if at least one element with the specified key exists. Returns `false` otherwise.
 		bool contains(const key_type& key) const
 		{
 			return m_base.contains(key);
 		}
-		//! @brief Inserts the specified value to the set.
+		//! Inserts the specified value to the set.
 		//! @param[in] value The value to insert. The element is copy-constructed into the set.
 		//! @return Returns one iterator-bool pair indicating the insertion result:
 		//! * If the returned Boolean value is `true`, then the element is successfully inserted to the set, and the 
@@ -244,7 +244,7 @@ namespace Luna
 		{
 			return m_base.insert(value);
 		}
-		//! @brief Inserts the specified value to the set.
+		//! Inserts the specified value to the set.
 		//! @param[in] value The value to insert. The element is move-constructed into the set.
 		//! @return Returns one iterator-bool pair indicating the insertion result:
 		//! * If the returned Boolean value is `true`, then the element is successfully inserted to the set, and the 
@@ -255,7 +255,7 @@ namespace Luna
 		{
 			return m_base.insert(move(value));
 		}
-		//! @brief Constructs one element directly in the set using the provided arguments.
+		//! Constructs one element directly in the set using the provided arguments.
 		//! @param[in] args The arguments to construct the element. `_Kty(args...)` will be used to 
 		//! construct the element.
 		//! @return Returns one iterator-bool pair indicating the result:
@@ -268,7 +268,7 @@ namespace Luna
 		{
 			return m_base.emplace(forward<_Args>(args)...);
 		}
-		//! @brief Removes one element from the set.
+		//! Removes one element from the set.
 		//! @param[in] pos The iterator to the element to be removed.
 		//! @return Returns one iterator to the next element after the removed element, 
 		//! or `end()` if such element does not exist.
@@ -278,7 +278,7 @@ namespace Luna
 		{
 			return m_base.erase(pos);
 		}
-		//! @brief Removes elements with the specified key from the set.
+		//! Removes elements with the specified key from the set.
 		//! @param[in] key The key of the elements to remove.
 		//! @return Returns the number of elements removed by this operation.
 		//! @remark The returned value can only be `0` or `1` for this set type.
@@ -286,7 +286,7 @@ namespace Luna
 		{
 			return m_base.erase(key);
 		}
-		//! @brief Swaps elements of this set with the specified set.
+		//! Swaps elements of this set with the specified set.
 		//! @param[in] rhs The set to swap elements with.
 		void swap(HashSet& rhs)
 		{
@@ -294,7 +294,7 @@ namespace Luna
 			rhs = move(*this);
 			*this = move(tmp);
 		}
-		//! @brief Gets the allocator used by this set.
+		//! Gets the allocator used by this set.
 		//! @return Returns one copy of the allocator used by this set.
 		allocator_type get_allocator() const
 		{

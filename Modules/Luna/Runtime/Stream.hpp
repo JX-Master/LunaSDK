@@ -16,7 +16,7 @@ namespace Luna
 	//! @addtogroup Runtime
 	//! @{
 	
-	//! @brief Specify the seek mode for one seekable stream.
+	//! Specify the seek mode for one seekable stream.
 	enum class SeekMode : u32
 	{
 		//! The offset is relative to the beginning of the stream.
@@ -28,7 +28,7 @@ namespace Luna
 	};
 
 	//! @interface IStream
-	//! @brief Represents a serial stream sequence of bytes and supports read/write operations on them.
+	//! Represents a serial stream sequence of bytes and supports read/write operations on them.
 	//! @details Common implementations of streams include file, memory buffer, web socket and so on.
 	//! 
 	//! This object is not thread safe and the I/O operations on this object is not asynchronous (will suspend
@@ -37,7 +37,7 @@ namespace Luna
 	{
 		luiid("{0345f636-ca5c-4b4d-8416-29834377d239}");
 
-		//! @brief Reads data from the current position the cursor is pointing to and advances the cursor. 
+		//! Reads data from the current position the cursor is pointing to and advances the cursor. 
 		//! @details If the data to be read is not ready, the platform suspends the calling thread until the data is ready.
 		//! @param[in] buffer The buffer to accept the read data.
 		//! @param[in] size The size, in bytes, to read from the stream.
@@ -50,7 +50,7 @@ namespace Luna
 		//! can be considered as an EOF symbol in stdlib.
 		virtual RV read(void* buffer, usize size, usize* read_bytes = nullptr) = 0;
 
-		//! @brief Writes data to the current position the cursor is pointing to and advances the cursor. 
+		//! Writes data to the current position the cursor is pointing to and advances the cursor. 
 		//! @details This call returns after all data have been written.
 		//! @param[in] buffer The buffer that holds the data to be written.
 		//! @param[in] size The size, in bytes, to write to the stream.
@@ -65,16 +65,16 @@ namespace Luna
 	};
 
 	//! @interface ISeekableStream
-	//! @brief Represents one stream object that supports setting the cursor position.
+	//! Represents one stream object that supports setting the cursor position.
 	struct ISeekableStream : virtual IStream
 	{
 		luiid("{42F66080-C388-4EE0-9C4D-1EEC1B82F692}");
 
-		//! @brief Gets the current position of the stream cursor. 
+		//! Gets the current position of the stream cursor. 
 		//! @return Returns the current position of the stream cursor. The position is number of bytes relative to the beginning of the stream.
 		virtual R<u64> tell() = 0;
 
-		//! @brief Moves the read/write cursor to a new position.
+		//! Moves the read/write cursor to a new position.
 		//! @param[in] offset Number of bytes to move relative to the position specified by `mode`.
 		//! @param[in] mode The seek mode to use.
 		//! @remark The cursor position is not bound to the size of the stream. If you move the cursor beyond the end of the stream, the cursor
@@ -85,11 +85,11 @@ namespace Luna
 		//! The cursor value cannot be negative, if the new cursor position goes below 0, the seek operation fails.
 		virtual RV seek(i64 offset, SeekMode mode) = 0;
 
-		//! @brief Gets the size of the stream buffer in bytes.
+		//! Gets the size of the stream buffer in bytes.
 		//! @return Returns the of the stream buffer in bytes. Returns `0` if the underlying stream is invalid or does not have a specific size.
 		virtual u64 get_size() = 0;
 
-		//! @brief Sets the size of the stream buffer.
+		//! Sets the size of the stream buffer.
 		//! @details If the current stream buffer size is smaller than the size to set and this call succeeded, the stream buffer will be extended to the 
 		//! size specified, with data between the last size and current size be uninitialized. 
 		//! If the current stream buffer size is greater than the size to set and this call succeeded, the stream buffer will be truncated and 

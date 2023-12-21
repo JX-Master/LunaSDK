@@ -15,7 +15,7 @@ namespace Luna
 	//! @addtogroup RuntimeContainer
     //! @{
 	
-	//! @brief Represents one self-indexed unordered map similar to @ref SelfIndexedUnorderedMap, but allows multiple elements with the same key 
+	//! Represents one self-indexed unordered map similar to @ref SelfIndexedUnorderedMap, but allows multiple elements with the same key 
 	//! to be inserted.
 	template <
 		typename _Kty,
@@ -53,32 +53,32 @@ namespace Luna
 	public:
 		using node_type = OpenHashTable::SetNodeHandle<value_type, allocator_type>;
 
-		//! @brief Constructs an empty map.
+		//! Constructs an empty map.
 		SelfIndexedUnorderedMultiMap() :
 			m_base() {}
-		//! @brief Constructs an empty map with an custom allocator.
+		//! Constructs an empty map with an custom allocator.
 		//! @param[in] alloc The allocator to use. The allocator object will be copy-constructed into the map.
 		SelfIndexedUnorderedMultiMap(const allocator_type& alloc) :
 			m_base(alloc) {}
-		//! @brief Constructs a map by coping elements from another map.
+		//! Constructs a map by coping elements from another map.
 		//! @param[in] rhs The map to copy elements from.
 		SelfIndexedUnorderedMultiMap(const SelfIndexedUnorderedMultiMap& rhs) :
 			m_base(rhs.m_base) {}
-		//! @brief Constructs a map with an custom allocator and with elements copied from another map.
+		//! Constructs a map with an custom allocator and with elements copied from another map.
 		//! @param[in] rhs The map to copy elements from.
 		//! @param[in] alloc The allocator to use. The allocator object will be copy-constructed into the map.
 		SelfIndexedUnorderedMultiMap(const SelfIndexedUnorderedMultiMap& rhs, const allocator_type& alloc) :
             m_base(rhs.m_base, alloc) {}
-		//! @brief Constructs a map by moving elements from another map.
+		//! Constructs a map by moving elements from another map.
 		//! @param[in] rhs The map to move elements from.
 		SelfIndexedUnorderedMultiMap(SelfIndexedUnorderedMultiMap&& rhs) :
 			m_base(move(rhs.m_base)) {}
-		//! @brief Constructs a map with an custom allocator and with elements moved from another map.
+		//! Constructs a map with an custom allocator and with elements moved from another map.
 		//! @param[in] rhs The map to move elements from.
 		//! @param[in] alloc The allocator to use. The allocator object will be copy-constructed into the map.
 		SelfIndexedUnorderedMultiMap(SelfIndexedUnorderedMultiMap&& rhs, const allocator_type& alloc) :
 			m_base(move(rhs.m_base), alloc) {}
-		//! @brief Replaces elements of the map by coping elements from another map.
+		//! Replaces elements of the map by coping elements from another map.
 		//! @param[in] rhs The map to copy elements from.
 		//! @return Returns `*this`.
 		SelfIndexedUnorderedMultiMap& operator=(const SelfIndexedUnorderedMultiMap& rhs)
@@ -86,7 +86,7 @@ namespace Luna
 			m_base = rhs.m_base;
 			return *this;
 		}
-		//! @brief Replaces elements of the map by moving elements from another map.
+		//! Replaces elements of the map by moving elements from another map.
 		//! @param[in] rhs The map to move elements from. This map will be empty after this operation.
 		//! @return Returns `*this`.
 		SelfIndexedUnorderedMultiMap& operator=(SelfIndexedUnorderedMultiMap&& rhs)
@@ -95,43 +95,43 @@ namespace Luna
 			return *this;
 		}
 	public:
-		//! @brief Gets one iterator to the first element of the map.
+		//! Gets one iterator to the first element of the map.
 		//! @return Returns one iterator to the first element of the map.
 		iterator begin()
 		{
 			return m_base.begin();
 		}
-		//! @brief Gets one constant iterator to the first element of the map.
+		//! Gets one constant iterator to the first element of the map.
 		//! @return Returns one constant iterator to the first element of the map.
 		const_iterator begin() const
 		{
 			return m_base.begin();
 		}
-		//! @brief Gets one constant iterator to the first element of the map.
+		//! Gets one constant iterator to the first element of the map.
 		//! @return Returns one constant iterator to the first element of the map.
 		const_iterator cbegin() const
 		{
 			return m_base.cbegin();
 		}
-		//! @brief Gets one iterator to the one past last element of the map.
+		//! Gets one iterator to the one past last element of the map.
 		//! @return Returns one iterator to the one past last element of the map.
 		iterator end()
 		{
 			return m_base.end();
 		}
-		//! @brief Gets one constant iterator to the one past last element of the map.
+		//! Gets one constant iterator to the one past last element of the map.
 		//! @return Returns one constant iterator to the one past last element of the map.
 		const_iterator end() const
 		{
 			return m_base.end();
 		}
-		//! @brief Gets one constant iterator to the one past last element of the map.
+		//! Gets one constant iterator to the one past last element of the map.
 		//! @return Returns one constant iterator to the one past last element of the map.
 		const_iterator cend() const
 		{
 			return m_base.cend();
 		}
-		//! @brief Gets an iterator to the first element of the bucket with specified index.
+		//! Gets an iterator to the first element of the bucket with specified index.
 		//! @param[in] n The index of the bucket.
 		//! @return Returns one iterator to the first element of the bucket.
 		//! @par Valid Usage
@@ -140,7 +140,7 @@ namespace Luna
 		{
 			return m_base.begin(n);
 		}
-		//! @brief Gets an constant iterator to the first element of the bucket with specified index.
+		//! Gets an constant iterator to the first element of the bucket with specified index.
 		//! @param[in] n The index of the bucket.
 		//! @return Returns one constant iterator to the first element of the bucket.
 		//! @par Valid Usage
@@ -149,7 +149,7 @@ namespace Luna
 		{
 			return m_base.begin(n);
 		}
-		//! @brief Gets a constant iterator to the first element of the bucket with specified index.
+		//! Gets a constant iterator to the first element of the bucket with specified index.
 		//! @param[in] n The index of the bucket.
 		//! @return Returns one constant iterator to the first element of the bucket.
 		//! @par Valid Usage
@@ -158,7 +158,7 @@ namespace Luna
 		{
 			return m_base.cbegin(n);
 		}
-		//! @brief Gets an iterator to the one-past-last element of the bucket with specified index.
+		//! Gets an iterator to the one-past-last element of the bucket with specified index.
 		//! @param[in] n The index of the bucket.
 		//! @return Returns one iterator to the one-past-last element of the bucket.
 		//! @par Valid Usage
@@ -167,7 +167,7 @@ namespace Luna
 		{
 			return m_base.end(n);
 		}
-		//! @brief Gets a constant iterator to the one-past-last element of the bucket with specified index.
+		//! Gets a constant iterator to the one-past-last element of the bucket with specified index.
 		//! @param[in] n The index of the bucket.
 		//! @return Returns one iterator to the one-past-last element of the bucket.
 		//! @par Valid Usage
@@ -176,7 +176,7 @@ namespace Luna
 		{
 			return m_base.end(n);
 		}
-		//! @brief Gets a constant iterator to the one-past-last element of the bucket with specified index.
+		//! Gets a constant iterator to the one-past-last element of the bucket with specified index.
 		//! @param[in] n The index of the bucket.
 		//! @return Returns one iterator to the one-past-last element of the bucket.
 		//! @par Valid Usage
@@ -185,32 +185,32 @@ namespace Luna
 		{
 			return m_base.cend(n);
 		}
-		//! @brief Checks whether this map is empty, that is, the size of this map is `0`.
+		//! Checks whether this map is empty, that is, the size of this map is `0`.
 		//! @return Returns `true` if this map is empty, returns `false` otherwise.
 		bool empty() const
 		{
 			return m_base.empty();
 		}
-		//! @brief Gets the size of the map, that is, the number of elements in the map.
+		//! Gets the size of the map, that is, the number of elements in the map.
 		//! @return Returns the size of the map.
 		usize size() const
 		{
 			return m_base.size();
 		}
-		//! @brief Gets the capacity of the map, that is, the number of elements the 
+		//! Gets the capacity of the map, that is, the number of elements the 
 		//! buckets can hold before expanding the bucket buffer.
 		//! @return Returns the capacity of the map.
 		usize capacity() const
 		{
 			return m_base.capacity();
 		}
-		//! @brief Gets the number of buckets of the map.
+		//! Gets the number of buckets of the map.
 		//! @return Returns the number of buckets of the map.
 		usize bucket_count() const
 		{
 			return m_base.bucket_count();
 		}
-		//! @brief Gets the number of elements of the specified bucket.
+		//! Gets the number of elements of the specified bucket.
 		//! @param[in] n The index of the bucket.
 		//! @return Returns the number of elements of the specified bucket.
 		//! @par Valid Usage
@@ -219,7 +219,7 @@ namespace Luna
 		{
 			return m_base.bucket_size(n);
 		}
-		//! @brief Gets the index of the bucket that stores the specified key.
+		//! Gets the index of the bucket that stores the specified key.
 		//! @param[in] key The key to check.
 		//! @return Returns the index of the bucket that stores the specified key.
 		//! @par Valid Usage
@@ -228,13 +228,13 @@ namespace Luna
 		{
 			return m_base.bucket(key);
 		}
-		//! @brief Gets the load factor of the map, which can be computed by `(f32)size() / (f32)bucket_count()`.
+		//! Gets the load factor of the map, which can be computed by `(f32)size() / (f32)bucket_count()`.
 		//! @return Returns the load factor of the map. Returns `0.0f` if @ref bucket_count is `0`.
 		f32 load_factor() const
 		{
 			return m_base.load_factor();
 		}
-		//! @brief Gets the maximum load factor allowed for the map. 
+		//! Gets the maximum load factor allowed for the map. 
 		//! @details If `load_factor() > max_load_factor()` is `true` after one element is inserted, the map
 		//! will expand bucket buffer to bring more buckets.
 		//! @return Returns the maximum load factor allowed for the map.
@@ -242,7 +242,7 @@ namespace Luna
 		{
 			return m_base.max_load_factor();
 		}
-		//! @brief Sets the maximum load factor allowed for the map.
+		//! Sets the maximum load factor allowed for the map.
 		//! @details If the new load factor is smaller than `load_factor()`, the map
 		//! will expand bucket buffer to bring more buckets.
 		//! @param[in] ml The new load factor to set.
@@ -252,24 +252,24 @@ namespace Luna
 		{
 			m_base.max_load_factor(ml);
 		}
-		//! @brief Removes all elements in the map.
+		//! Removes all elements in the map.
 		void clear()
 		{
 			m_base.clear();
 		}
-		//! @brief Gets the hash function used by this map.
+		//! Gets the hash function used by this map.
 		//! @return Returns the hash function used by this map.
 		hasher hash_function() const
 		{
 			return m_base.hash_function();
 		}
-		//! @brief Gets the equality comparison function used by this map.
+		//! Gets the equality comparison function used by this map.
 		//! @return Returns the equality comparison function used by this map.
 		key_equal key_eq() const
 		{
 			return m_base.key_eq();
 		}
-		//! @brief Changes the bucket count and rehashes all elements to insert them to the new buckets.
+		//! Changes the bucket count and rehashes all elements to insert them to the new buckets.
 		//! @param[in] new_buckets_count The new bucket count to set.
 		//! @remark If the new bucket count is too small or makes load factor exceed load factor limits, 
 		//! the new bucket count will be expanded to a minimum value that satisfies requirements. You can specify
@@ -278,7 +278,7 @@ namespace Luna
 		{
 			m_base.rehash(new_buckets_count);
 		}
-		//! @brief Expands the bucket buffer so that it can store at least `new_cap` elements without enpanding the 
+		//! Expands the bucket buffer so that it can store at least `new_cap` elements without enpanding the 
 		//! bucket buffer again.
 		//! @param[in] new_cap The number of element to reserve.
 		//! @remark This function does nothing if `new_cap` is smaller than or equal to @ref capacity.
@@ -286,63 +286,63 @@ namespace Luna
 		{
 			m_base.reserve(new_cap);
 		}
-		//! @brief Finds the specified element in the map.
+		//! Finds the specified element in the map.
 		//! @param[in] key The key of the element to find.
 		//! @return Returns one iterator to the element if the element is found. Returns `end()` otherwise.
 		iterator find(const key_type& key)
 		{
 			return m_base.find(key);
 		}
-		//! @brief Finds the specified element in the map.
+		//! Finds the specified element in the map.
 		//! @param[in] key The key of the element to find.
 		//! @return Returns one const iterator to the element if the element is found. Returns `end()` otherwise.
 		const_iterator find(const key_type& key) const
 		{
 			return m_base.find(key);
 		}
-		//! @brief Gets the number of elements whose key is equal to the specified key.
+		//! Gets the number of elements whose key is equal to the specified key.
 		//! @param[in] key The key of the element to count.
 		//! @return Returns the number of elements whose key is equal to the specified key.
 		usize count(const key_type& key) const
 		{
 			return m_base.count(key);
 		}
-		//! @brief Gets one pair of iterators specifying one range of elements whose keys are equal to the specified key.
+		//! Gets one pair of iterators specifying one range of elements whose keys are equal to the specified key.
 		//! @param[in] key The key to test.
 		//! @return Returns the element range.
 		Pair<iterator, iterator> equal_range(const key_type& key)
 		{
 			return m_base.equal_range(key);
 		}
-		//! @brief Gets one pair of iterators specifying one range of elements whose keys are equal to the specified key.
+		//! Gets one pair of iterators specifying one range of elements whose keys are equal to the specified key.
 		//! @param[in] key The key to test.
 		//! @return Returns the element range.
 		Pair<const_iterator, const_iterator> equal_range(const key_type& key) const
 		{
 			return m_base.equal_range(key);
 		}
-		//! @brief Checks whether at least one element with the specified key exists.
+		//! Checks whether at least one element with the specified key exists.
 		//! @param[in] key The key of the element to check.
 		//! @return Returns `ture` if at least one element with the specified key exists. Returns `false` otherwise.
 		bool contains(const key_type& key) const
 		{
 			return m_base.contains(key);
 		}
-		//! @brief Inserts the specified value to the map. The key is extracted from the value.
+		//! Inserts the specified value to the map. The key is extracted from the value.
 		//! @param[in] value The value to insert. The element is copy-constructed into the map.
 		//! @return Returns one iterator to the inserted element.
 		iterator insert(const value_type& value)
 		{
 			return m_base.multi_insert(value);
 		}
-		//! @brief Inserts the specified value to the map. The key is extracted from the value.
+		//! Inserts the specified value to the map. The key is extracted from the value.
 		//! @param[in] value The value to insert. The element is move-constructed into the map.
 		//! @return Returns one iterator to the inserted element.
 		iterator insert(value_type&& value)
 		{
 			return m_base.multi_insert(move(value));
 		}
-		//! @brief Inserts one node to the map if the node is not empty.
+		//! Inserts one node to the map if the node is not empty.
 		//! @param[in] node The node to insert. The node must be extracted from one unordered map of the same type using
 		//! @ref extract.
 		//! @return Returns one iterator to the inserted element. Returns `end()` if `node` is empty.
@@ -350,7 +350,7 @@ namespace Luna
 		{
 			return m_base.template multi_insert<node_type>(move(node));
 		}
-		//! @brief Constructs one element directly in the map using the provided arguments.
+		//! Constructs one element directly in the map using the provided arguments.
 		//! @param[in] args The arguments to construct the element. `_Ty(args...)` will be used to 
 		//! construct the element.
 		//! @return Returns one iterator to the inserted element.
@@ -359,7 +359,7 @@ namespace Luna
 		{
 			return m_base.multi_emplace(forward<_Args>(args)...);
 		}
-		//! @brief Removes one element from the map.
+		//! Removes one element from the map.
 		//! @param[in] pos The iterator to the element to be removed.
 		//! @return Returns one iterator to the next element after the removed element, 
 		//! or `end()` if such element does not exist.
@@ -369,14 +369,14 @@ namespace Luna
 		{
 			return m_base.erase(pos);
 		}
-		//! @brief Removes elements with the specified key from the map.
+		//! Removes elements with the specified key from the map.
 		//! @param[in] key The key of the elements to remove.
 		//! @return Returns the number of elements removed by this operation.
 		usize erase(const key_type& key)
 		{
 			return m_base.multi_erase(key);
 		}
-		//! @brief Swaps elements of this map with the specified map.
+		//! Swaps elements of this map with the specified map.
 		//! @param[in] rhs The map to swap elements with.
 		void swap(SelfIndexedUnorderedMultiMap& rhs)
 		{
@@ -384,7 +384,7 @@ namespace Luna
 			rhs = move(*this);
 			*this = move(tmp);
 		}
-		//! @brief Extracts one node from the map, so that it can be inserted to another map without any 
+		//! Extracts one node from the map, so that it can be inserted to another map without any 
 		//! element copy or move operation.
 		//! @param[in] pos The iterator to the element to be extracted.
 		//! @return Returns the extracted node.
@@ -394,7 +394,7 @@ namespace Luna
 		{
 			return m_base.template extract<node_type>(pos);
 		}
-		//! @brief Gets the allocator used by this map.
+		//! Gets the allocator used by this map.
 		//! @return Returns one copy of the allocator used by this map.
 		allocator_type get_allocator() const
 		{

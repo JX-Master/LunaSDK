@@ -457,7 +457,7 @@ namespace Luna
 	//  Miscellaneous
 	//------------------------------------------------------------------------------------------------------
 	
-	//! @brief Represents a Globally Unique Identifier.
+	//! Represents a Globally Unique Identifier.
 	//! @details `Guid` is a shortcut for Globally Unique Identifier. It is a 128-bit unsigned integer that is usually randomly
 	//! generated and is used to identify one instance across multiple devices or domains.
 	//! 
@@ -670,7 +670,7 @@ namespace Luna
 		return left;
 	}
 
-	//! @brief Tests if the provided enumeration contains the specified enumeration option.
+	//! Tests if the provided enumeration contains the specified enumeration option.
 	//! @param[in] flags The flags to test.
 	//! @param[in] options A combination of flags to test.
 	//! @return Returns `true` if all flags in the `options` combination are set in `flags`, returns `false` otherwise.
@@ -680,7 +680,7 @@ namespace Luna
 		return static_cast<underlying_type_t<_Ty>>(flags & options) == static_cast<underlying_type_t<_Ty>>(options);
 	}
 
-	//! @brief Sets the provided enumeration options to 1.
+	//! Sets the provided enumeration options to 1.
 	//! @param[in] flags The flag variable to set.
 	//! @param[in] options The options to set to 1.
 	template <typename _Ty>
@@ -689,7 +689,7 @@ namespace Luna
 		flags = static_cast<_Ty>(static_cast<underlying_type_t<_Ty>>(flags) | static_cast<underlying_type_t<_Ty>>(options));
 	}
 
-	//! @brief Resets the provided enumeration options to 0.
+	//! Resets the provided enumeration options to 0.
 	//! @param[in] flags The flag variable to reset.
 	//! @param[in] options The options to set to 0.
 	template <typename _Ty>
@@ -698,7 +698,7 @@ namespace Luna
 		flags = static_cast<_Ty>(static_cast<underlying_type_t<_Ty>>(flags) & ~static_cast<underlying_type_t<_Ty>>(options));
 	}
 
-	//! @brief Sets the provided enumeration options to 1 or 0 based on the value provided.
+	//! Sets the provided enumeration options to 1 or 0 based on the value provided.
 	//! @param[in] flags The original flags before set.
 	//! @param[in] options The options to set to 1 or 0.
 	//! @param[in] value If this is `true`, all options specified will be set to 1, else they will be set to 0.
@@ -709,7 +709,7 @@ namespace Luna
 		return value ? set_flags(flags, options) : reset_flags(flags, options);
 	}
 
-	//! @brief Stores a pair of values. 
+	//! Stores a pair of values. 
 	//! @details This struct is ABI-compatible and can be used as parameters for interface methods, whether by value, by pointer
 	//! or by reference.
 	template <typename _Ty1, typename _Ty2>
@@ -817,7 +817,7 @@ namespace Luna
 		return Pair<decay_t<_Ty1>, decay_t<_Ty2>>(forward<_Ty1>(first), forward<_Ty2>(second));
 	}
 
-	//! @brief Similar to `Pair`, but allows one element in the pair to be empty and does not have one byte dummy allocation.
+	//! Similar to `Pair`, but allows one element in the pair to be empty and does not have one byte dummy allocation.
 	template <typename _Ty1, typename _Ty2, bool = is_empty_v<_Ty1> && !is_final_v<_Ty1>, bool = is_empty_v<_Ty2> && !is_final_v<_Ty2>>
 	class OptionalPair final
 	{

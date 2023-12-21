@@ -19,7 +19,7 @@ namespace Luna
 {
 	namespace VariantUtils
 	{
-		//! @brief Reads one JSON string.
+		//! Reads one JSON string.
 		LUNA_VARIANT_UTILS_API R<Variant> read_json(const c8* src, usize src_size = USIZE_MAX);
 
 		LUNA_VARIANT_UTILS_API R<Variant> read_json(IStream* stream);

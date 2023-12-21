@@ -14,12 +14,12 @@
 namespace Luna
 {
 	//! @ingroup Runtime
-	//! @brief The default allocator implementation that can be used for allocating memory for containers defined in Runtime module.
+	//! The default allocator implementation that can be used for allocating memory for containers defined in Runtime module.
 	//! @details The default allocator allocates memory by calling @ref memalloc, and deallocates memory by calling @ref memfree.
 	class Allocator
 	{
 	public:
-		//! @brief Allocates memory for the specified number of elements.
+		//! Allocates memory for the specified number of elements.
 		//! @param[in] n The number of elements to allocate memory for. 
 		//! @return Returns the allocated memory. The size of the allocated memory is at least `sizeof(_Ty) * n` bytes, and the 
 		//! alignment of the allocated memory is at least `alignof(_Ty)` bytes. The returned memory is uninitialized.
@@ -36,7 +36,7 @@ namespace Luna
 #endif
 			
 		}
-		//! @brief Deallocates memory allocated from @ref allocate
+		//! Deallocates memory allocated from @ref allocate
 		//! @param[in] ptr The memory pointer returned by @ref allocate.
 		//! @param[in] n The number of elements earler passed to @ref allocate.
 		template <typename _Ty>

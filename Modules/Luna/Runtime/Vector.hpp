@@ -17,7 +17,7 @@
 namespace Luna
 {
 	//! @ingroup Runtime
-	//! @brief A dynamic container type that stores a continuous array of elements.
+	//! A dynamic container type that stores a continuous array of elements.
 	template <typename _Ty, typename _Alloc = Allocator>
 	class Vector
 	{
@@ -40,21 +40,21 @@ namespace Luna
 		//! @name Constructors
 		//! @{
 
-		//! @brief Constructs one empty vector with default-initialized allocator.
+		//! Constructs one empty vector with default-initialized allocator.
 		Vector();
-		//! @brief Constructs one empty vector using the specified allocator instance. 
+		//! Constructs one empty vector using the specified allocator instance. 
 		//! @param[alloc] The allocator instance bound to this vector. The allocator instance is copied into the vector type.
 		Vector(const allocator_type& alloc);
-		//! @brief Constructs one vector with `count` elements, with their values initialized by `value`.
+		//! Constructs one vector with `count` elements, with their values initialized by `value`.
 		//! @param[in] count The number of elements in the vector.
 		//! @param[in] value The value for each element in the vector. The value is copy constructed into each element.
 		//! @param[in] alloc The optioanl allocator instance bound to this vector. The allocator instance is copied into the vector type.
 		Vector(usize count, const value_type& value, const allocator_type& alloc = allocator_type());
-		//! @brief Constructs one vector with `count` elements, which their values being default-initialized.
+		//! Constructs one vector with `count` elements, which their values being default-initialized.
 		//! @param[in] count The number of elements in the vector.
 		//! @param[in] alloc The optioanl allocator instance bound to this vector. The allocator instance is copied into the vector type.
 		Vector(usize count, const allocator_type& alloc = allocator_type());
-		//! @brief Constructs one vector with elements copied from the specified range.
+		//! Constructs one vector with elements copied from the specified range.
 		//! @param[in] first The iterator that points to the first element of the copy range.
 		//! @param[in] last The iterator that points to the last element of the copy range.
 		//! @param[in] alloc The optioanl allocator instance bound to this vector. The allocator instance is copied into the vector type.
@@ -63,21 +63,21 @@ namespace Luna
 		Vector(enable_if_t<is_same_v<remove_cv_t<_InputIt>, value_type*>, _InputIt> first, _InputIt last, const allocator_type& alloc = allocator_type());
 		template <typename _InputIt>
 		Vector(enable_if_t<!is_integral_v<_InputIt> && !is_same_v<remove_cv_t<_InputIt>, value_type*>, _InputIt> first, _InputIt last, const allocator_type& alloc = allocator_type());
-		//! @brief Constructs one vector by coping all elements from another vector.
+		//! Constructs one vector by coping all elements from another vector.
 		//! @param[in] rhs The vector to copy from. Every element of the new vector is copy-constructed from the corresponding elements in `rhs` vector.
 		Vector(const Vector& rhs);
-		//! @brief Constructs one vector by coping all elements from another vector, but uses different allocator.
+		//! Constructs one vector by coping all elements from another vector, but uses different allocator.
 		//! @param[in] rhs The vector to copy from. Every element of the new vector is copy-constructed from the corresponding elements in `rhs` vector.
 		//! @param[in] alloc The allocator instance bound to this vector. The allocator instance is copied into the vector type.
 		Vector(const Vector& rhs, const allocator_type& alloc);
-		//! @brief Constructs one vector by moving all elements from another vector.
+		//! Constructs one vector by moving all elements from another vector.
 		//! @param[in] rhs The vector to move elements from. Every element of the new vector is move-constructed from the corresponding elements in `rhs` vector. `rhs` vector is empty after this operation.
 		Vector(Vector&& rhs);
-		//! @brief Constructs one vector by moving all elements from another vector, but uses different allocator.
+		//! Constructs one vector by moving all elements from another vector, but uses different allocator.
 		//! @param[in] rhs The vector to move elements from. Every element of the new vector is move-constructed from the corresponding elements in `rhs` vector. `rhs` vector is empty after this operation.
 		//! @param[in] alloc The allocator instance bound to this vector. The allocator instance is copied into the vector type.
 		Vector(Vector&& rhs, const allocator_type& alloc);
-		//! @brief Constructs one vector by coping all elements from an initializer list.
+		//! Constructs one vector by coping all elements from an initializer list.
 		//! @param[in] init The initializer list that contains the initial data of the vector. Every element of the new vector is copy-constructed from the corresponding elements in the initializer list.
 		//! @param[in] alloc The optioanl allocator instance bound to this vector. The allocator instance is copied into the vector type.
 		Vector(InitializerList<value_type> init, const allocator_type& alloc = allocator_type());
@@ -86,7 +86,7 @@ namespace Luna
 		//! @name Assign vector data
 		//! @{
 		
-		//! @brief Assigning vector data 
+		//! Assigning vector data 
 		Vector& operator=(const Vector& rhs);
 		Vector& operator=(Vector&& rhs);
 		Vector& operator=(InitializerList<value_type> ilist);
@@ -98,22 +98,22 @@ namespace Luna
 		//! @name Iterating vector elements
 		//! @{
 		
-		//! @brief Fetches one iterator that points to the first element in the vector.
+		//! Fetches one iterator that points to the first element in the vector.
 		//! @return Returns one iterator that points to the first element in the vector.
 		iterator begin();
-		//! @brief Fetches one iterator that points to the one-past-last element in the vector.
+		//! Fetches one iterator that points to the one-past-last element in the vector.
 		//! @return Returns one iterator that points to the one-past-last element in the vector.
 		iterator end();
-		//! @brief Fetches one constant iterator that points to the first element in the vector.
+		//! Fetches one constant iterator that points to the first element in the vector.
 		//! @return Returns one constant iterator that points to the first element in the vector.
 		const_iterator begin() const;
-		//! @brief Fetches one constant iterator that points to the one-past-last  element in the vector.
+		//! Fetches one constant iterator that points to the one-past-last  element in the vector.
 		//! @return Returns one constant iterator that points to the one-past-last  element in the vector.
 		const_iterator end() const;
-		//! @brief Fetches one constant iterator that points to the first element in the vector.
+		//! Fetches one constant iterator that points to the first element in the vector.
 		//! @return Returns one constant iterator that points to the first element in the vector.
 		const_iterator cbegin() const;
-		//! @brief Fetches one constant iterator that points to the one-past-last  element in the vector.
+		//! Fetches one constant iterator that points to the one-past-last  element in the vector.
 		//! @return Returns one constant iterator that points to the one-past-last  element in the vector.
 		const_iterator cend() const;
 		reverse_iterator rbegin();

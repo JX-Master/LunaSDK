@@ -26,26 +26,26 @@ namespace Luna
 	//! @addtogroup RuntimeModule
 	//! @{
 
-	//! @brief The function to be called when the module is initialized.
+	//! The function to be called when the module is initialized.
 	using module_init_func_t = RV();
 
-	//! @brief The function to be called when the module is closed.
+	//! The function to be called when the module is closed.
 	using module_close_func_t = void(void);
 
-	//! @brief Module description structure. 
+	//! Module description structure. 
 	//! @details This shall be allocated on static memory and being kept valid during the application 
 	//! lifetime.
 	struct ModuleDesc
 	{
-		//! @brief Used by the Runtime. The user should not change these memory.
+		//! Used by the Runtime. The user should not change these memory.
 		c8 reserved[32];
 
 		// Filled by the user.
 		
-		//! @brief The name of the module. The lifetime of the string should be equal to the lifetime of the module.
+		//! The name of the module. The lifetime of the string should be equal to the lifetime of the module.
 		const c8* name;
 		
-		//! @brief A string that records modules this module depends on.
+		//! A string that records modules this module depends on.
 		//！@details The lifetime of the string should be no shorter than
 		//! the lifetime of the module.
 		//! 
@@ -56,16 +56,16 @@ namespace Luna
 		//! module gets initialized.
 		const c8* dependencies;
 
-		//! @brief The initialize function of the module. 
+		//! The initialize function of the module. 
 		//! @details This can be `nullptr`, which behaves the same as returning `RV()` directly.
 		module_init_func_t* init_func;
 
-		//! @brief The close function of the module.
+		//! The close function of the module.
 		//! @details This can be `nullptr`, which behaves like an empty close function.
 		module_close_func_t* close_func;
 	};
 
-	//! @brief Adds one module to the Runtime. This function can be called before `Luna::init` is called.
+	//! Adds one module to the Runtime. This function can be called before `Luna::init` is called.
 	//! 
 	//! @details The added module will not be initialized immediately. If the module is added before the Runtime is initialized,
 	//! they will be initialized when `Luna::init` is called; if the module is added after the Runtime is initialized,
@@ -79,25 +79,25 @@ namespace Luna
 	//! @param[in] module_desc The description structure of the module. This structure should be available during the module lifetime. 
 	LUNA_RUNTIME_API void add_module(ModuleDesc* module_desc);
 
-	//! @brief Removes one module from the Runtime. This function cannot be called when the module is currently initialized.
+	//! Removes one module from the Runtime. This function cannot be called when the module is currently initialized.
 	LUNA_RUNTIME_API void remove_module(ModuleDesc* module_desc);
 
-	//! @brief Initializes all dependency modules for the specified module, but leaves the specified module as uninitialized.
+	//! Initializes all dependency modules for the specified module, but leaves the specified module as uninitialized.
 	//! You may use this API to perform some pre-init configurations for the module initialize process.
 	//! @param[in] module_name The name of the specified module.
 	//! @remark If the specified module is already initialized, this function does nothing and succeeds.
 	LUNA_RUNTIME_API RV init_module_dependencies(const Name& module_name);
 
-	//! @brief Initializes the specified module and all dependency modules of the specified module.
+	//! Initializes the specified module and all dependency modules of the specified module.
 	//! @param[in] module_name The name of the specified module.
 	//! @remark If the specified module is already initialized, this function does nothing and succeeds.
 	LUNA_RUNTIME_API RV init_module(const Name& module_name);
 
-	//! @brief Initializes all uninitialized modules.
+	//! Initializes all uninitialized modules.
 	//! @return Returns error code if at least one module is failed to initialize.
 	LUNA_RUNTIME_API RV init_modules();
 
-	//! @brief One static module registration helper class that registers the specified module when being constructed.
+	//! One static module registration helper class that registers the specified module when being constructed.
 	//! @details Do not use this structure directly, instead, use @ref LUNA_STATIC_REGISTER_MODULE to register one module, which will define this
 	//! structure internally.
 	struct StaticRegisterModule
@@ -117,7 +117,7 @@ namespace Luna
 	//! @}
 }
 
-//! @brief Registers one module statically. Define this in one of CPP files of your module.
+//! Registers one module statically. Define this in one of CPP files of your module.
 //! @ingroup RuntimeModule
 //! @param[in] _name The name of the module. Used by the system to index this module.
 //! @param[in] _dependencies The dependency modules of this module, written in one string separated by semicolons (";").

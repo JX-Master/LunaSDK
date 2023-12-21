@@ -21,7 +21,7 @@ namespace Luna
 	//! @addtogroup RuntimeThread
 	//! @{
 	
-	//! @brief Provides one spin lock that can give one thread exclusive access to one resource in multi-thread environments.
+	//! Provides one spin lock that can give one thread exclusive access to one resource in multi-thread environments.
 	//! @details A spin lock is like a light-weight mutex. Both mutex and spin lock are used to give one thread exclusive access to some 
 	//! specific resource, but they have the following differences:
 	//! 1. The spin lock is implemented purely in user-mode by C++, while the mutex is implemented by the underlying platform/OS and 
@@ -38,14 +38,14 @@ namespace Luna
 	{
 		volatile u32 counter;
 	public:
-		//! @brief Constructs one spin lock. The spin lock is unlocked after creation.
+		//! Constructs one spin lock. The spin lock is unlocked after creation.
 		SpinLock() :
 			counter(0) {}
 		SpinLock(const SpinLock&) = delete;
 		SpinLock(SpinLock&& rhs) = delete;
 		SpinLock& operator=(const SpinLock&) = delete;
 		SpinLock& operator=(SpinLock&& rhs) = delete;
-		//! @brief Locks the spin lock.
+		//! Locks the spin lock.
 		//! @details This function blocks the current thread until the spin lock is successfully locked.
 		//! Locking the same spin lock from the same thread twice causes deadlock. Use @ref RecursiveSpinLock
 		//! if you need to lock the same spin lock multiple times from the same thread.
@@ -58,7 +58,7 @@ namespace Luna
 #endif
 			}
 		}
-		//! @brief Tries to lock the spin lock.
+		//! Tries to lock the spin lock.
 		//! @return Returns `true` if the spin lock is successfully locked when the function returns. Returns 
 		//! `false` otherwise.
 		bool try_lock()
@@ -66,20 +66,20 @@ namespace Luna
 			u32 comp = atom_compare_exchange_u32(&counter, 1, 0);
 			return comp == 0;
 		}
-		//! @brief Unlocks the spin lock.
+		//! Unlocks the spin lock.
 		void unlock()
 		{
 			atom_exchange_u32(&counter, 0);
 		}
 	};
 
-	//! @brief Similar to @ref SpinLock, but allows the lock to be obtained mutable times from the same thread.
+	//! Similar to @ref SpinLock, but allows the lock to be obtained mutable times from the same thread.
 	class RecursiveSpinLock
 	{
 		volatile IThread* th;
 		volatile u32 counter;
 	public:
-		//! @brief Constructs one spin lock. The spin lock is unlocked after creation.
+		//! Constructs one spin lock. The spin lock is unlocked after creation.
 		RecursiveSpinLock() :
 			th(nullptr),
 			counter(0) {}
@@ -87,7 +87,7 @@ namespace Luna
 		RecursiveSpinLock(RecursiveSpinLock&& rhs) = delete;
 		RecursiveSpinLock& operator=(const RecursiveSpinLock&) = delete;
 		RecursiveSpinLock& operator=(RecursiveSpinLock&& rhs) = delete;
-		//! @brief Locks the spin lock.
+		//! Locks the spin lock.
 		void lock()
 		{
 			IThread* t = get_current_thread();
@@ -103,7 +103,7 @@ namespace Luna
 #endif
 			}
 		}
-		//! @brief Tries to lock the spin lock.
+		//! Tries to lock the spin lock.
 		//! @return Returns `true` if the spin lock is successfully locked when the function returns. Returns 
 		//! `false` otherwise.
 		bool try_lock()
@@ -117,7 +117,7 @@ namespace Luna
 			volatile IThread* comp = atom_compare_exchange_pointer(&th, t, nullptr);
 			return comp == nullptr;
 		}
-		//! @brief Unlocks the spin lock.
+		//! Unlocks the spin lock.
 		//! @details If the lock is acquired from the same thread multiple times, the user should call this function 
 		//! the same times as @ref lock to finally release the lock.
 		void unlock()
@@ -133,7 +133,7 @@ namespace Luna
 		}
 	};
 
-	//! @brief The RAII wrapper that locks the specified lock upon construction, and unlocks the specified lock upon 
+	//! The RAII wrapper that locks the specified lock upon construction, and unlocks the specified lock upon 
 	//! destruction.
 	//! @details This can be used for both @ref SpinLock and @ref RecursiveSpinLock
 	template <typename _SpinLock>
@@ -141,7 +141,7 @@ namespace Luna
 	{
 		_SpinLock* _m;
 	public:
-		//! @brief Constructs one lock guard and acquires the specified lock.
+		//! Constructs one lock guard and acquires the specified lock.
 		//! @param[in] lock The spin lock to acquire.
 		explicit LockGuard(_SpinLock& lock) :
 			_m(&lock)
@@ -152,7 +152,7 @@ namespace Luna
 		LockGuard(LockGuard&&) = delete;
 		LockGuard& operator=(const LockGuard&) = delete;
 		LockGuard& operator=(LockGuard&&) = delete;
-		//! @brief Releases the acquired spin lock manually.
+		//! Releases the acquired spin lock manually.
 		//! @details This function does nothing if the lock is already released.
 		void unlock()
 		{
@@ -162,7 +162,7 @@ namespace Luna
 				_m = nullptr;
 			}
 		}
-		//! @brief Replaces the acquired spin lock.
+		//! Replaces the acquired spin lock.
 		//! @details The prior lock will be released firstly if not released, then
 		//! the new lock will be acquired.
 		//! @param[in] lock The new spin lock to acquire.

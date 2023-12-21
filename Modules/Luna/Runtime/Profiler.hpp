@@ -31,7 +31,7 @@ namespace Luna
     //! @addtogroup RuntimeProfiler
     //! @{
     
-    //! @brief A emitted profiler event.
+    //! A emitted profiler event.
     struct ProfilerEvent
     {
         //! The time that this 
@@ -44,7 +44,7 @@ namespace Luna
         const void* data;
     };
 
-    //! @brief Allocates one temporary buffer that can be used to store event data for the next profiler event.
+    //! Allocates one temporary buffer that can be used to store event data for the next profiler event.
     //! @param[in] size The size to allocate in bytes.
     //! @param[in] alignment The alignment requirement of the allocated memory in bytes. This can be `0`, indicating
     //! that no alignment requirement is specified.
@@ -55,7 +55,7 @@ namespace Luna
     //! * If `alignment` is not `0`, `alignment` must be power of 2 (like 4, 8, 16, etc.).
     LUNA_RUNTIME_API void* allocate_profiler_event_data(usize size, usize alignment, void(*dtor)(void*) = nullptr);
 
-    //! @brief One helper function that calls the destructor of the specified type on the pointer.
+    //! One helper function that calls the destructor of the specified type on the pointer.
     //! @param[in] data The pointer to the object to be destructed.
     template <typename _Ty>
     inline void profiler_event_data_dtor(void* data)
@@ -63,7 +63,7 @@ namespace Luna
         ((_Ty*)data)->~_Ty();
     }
 
-    //! @brief Allocates one temporary object that can be used to store event data for the next profiler event.
+    //! Allocates one temporary object that can be used to store event data for the next profiler event.
     //! @details This function uses the specified type to provide size, alignment and destructor for the memory.
     //! @return Returns the allocated object. The returned object is not initialized, the user should call
     //! `new (ptr) _Ty(...)` to initialize the object manually.
@@ -73,37 +73,37 @@ namespace Luna
         return (_Ty*)allocate_profiler_event_data(sizeof(_Ty), alignof(_Ty), profiler_event_data_dtor<_Ty>);
     }
 
-    //! @brief Submits one profiler event.
+    //! Submits one profiler event.
     //! @param[in] event_id The ID of the event to set.
     LUNA_RUNTIME_API void submit_profiler_event(u64 event_id);
 
     using on_profiler_event_t = void(const ProfilerEvent& event);
 
-    //! @brief Registers one profiler callback function.
+    //! Registers one profiler callback function.
     //! @param[in] handler The callback function object to register.
     //! @return Returns one handle that can be used to unregister the callback function.
     LUNA_RUNTIME_API usize register_profiler_callback(const Function<on_profiler_event_t>& handler);
-    //! @brief Unregisters one profiler callback function.
+    //! Unregisters one profiler callback function.
     //! @param[in] handler_id The handler that returned by @ref register_profiler_callback for the callback function 
     //! to unregister. 
     LUNA_RUNTIME_API void unregister_profiler_callback(usize handler_id);
 
     namespace ProfilerEventId
     {
-        //! @brief The memory allocation event ID.
+        //! The memory allocation event ID.
         constexpr u64 MEMORY_ALLOCATE = strhash64("MEMORY_ALLOCATE");
-        //! @brief The memory deallocation event ID.
+        //! The memory deallocation event ID.
         constexpr u64 MEMORY_DEALLOCATE = strhash64("MEMORY_DEALLOCATE");
-        //! @brief The set memory name event ID.
+        //! The set memory name event ID.
         constexpr u64 SET_MEMORY_NAME = strhash64("SET_MEMORY_NAME");
-        //! @brief The set memory type event ID.
+        //! The set memory type event ID.
         constexpr u64 SET_MEMORY_TYPE = strhash64("SET_MEMORY_TYPE");
-        //! @brief The set memory domain event ID.
+        //! The set memory domain event ID.
         constexpr u64 SET_MEMORY_DOMAIN = strhash64("SET_MEMORY_DOMAIN");
     }
     namespace ProfilerEventData
     {
-        //! @brief The memory allocation event data.
+        //! The memory allocation event data.
         struct MemoryAllocate
         {
             //! The memory pointer.
@@ -117,7 +117,7 @@ namespace Luna
             //! The memory pointer.
             void* ptr;
         };
-        //! @brief The set memory name event data.
+        //! The set memory name event data.
         struct SetMemoryName
         {
             //! The memory pointer.
@@ -128,7 +128,7 @@ namespace Luna
             //! so long as this structure is valid.
             const c8 name[1];
         };
-        //! @brief The set memory type event data.
+        //! The set memory type event data.
         struct SetMemoryType
         {
             //! The memory pointer.
@@ -140,7 +140,7 @@ namespace Luna
             //! so long as this structure is valid.
             const c8 type[1];
         };
-        //! @brief The set memory domain event data.
+        //! The set memory domain event data.
         struct SetMemoryDomain
         {
             //! The memory pointer.
@@ -155,7 +155,7 @@ namespace Luna
     }
 
 #ifdef LUNA_MEMORY_PROFILER_ENABLED
-	//! @brief Emits one @ref PROFILER_EVENT_ID_MEMORY_ALLOCATE profiler event.
+	//! Emits one @ref PROFILER_EVENT_ID_MEMORY_ALLOCATE profiler event.
 	//! @param[in] ptr The pointer that represents the memory.
 	//! This pointer is used only for identifing the memory block, it may not be the real memory address of the memory block, but must be unique in the application domain.
 	//! @param[in] size The size of the memory block, in bytes.
@@ -163,13 +163,13 @@ namespace Luna
 	//! need to call this again.
 	LUNA_RUNTIME_API void memory_profiler_allocate(void* ptr, usize size);
 
-	//! @brief Emits one @ref PROFILER_EVENT_ID_MEMORY_DEALLOCATE profiler event.
+	//! Emits one @ref PROFILER_EVENT_ID_MEMORY_DEALLOCATE profiler event.
 	//! @param[in] ptr The registered memory pointer.
 	//! @remark Memory deallocations through `memfree` call this internally when memory profiling is enabled, thus the user does not
 	//! need to call this again.
 	LUNA_RUNTIME_API void memory_profiler_deallocate(void* ptr);
 
-	//! @brief Sets a debug name for the memory block, for example, the name of the resource file this memory block is allocated for. 
+	//! Sets a debug name for the memory block, for example, the name of the resource file this memory block is allocated for. 
 	//! This function emits one @ref PROFILER_EVENT_ID_SET_MEMORY_NAME profiler event.
 	//! @param[in] ptr The memory block pointer.
 	//! @param[in] name The debug name for the memory block.
@@ -177,14 +177,14 @@ namespace Luna
     //! using @ref strlen.
 	LUNA_RUNTIME_API void memory_profiler_set_memory_name(void* ptr, const c8* name, usize str_size = USIZE_MAX);
 
-	//! @brief Sets the type of the object this memory block.
+	//! Sets the type of the object this memory block.
 	//! @param[in] ptr The memory block pointer.
 	//! @param[in] domain The type name for the memory block.
     //! @param[in] str_size The size of the name, not including the null terminator. If this is `USIZE_MAX`, the size is determined by the system
     //! using @ref strlen.
 	LUNA_RUNTIME_API void memory_profiler_set_memory_type(void* ptr, const c8* type, usize str_size = USIZE_MAX);
 
-	//! @brief Sets the memory domain. 
+	//! Sets the memory domain. 
     //! @details The memory domain is usually the heap or pool that allocates this memory block. 
 	//! This function emits one @ref PROFILER_EVENT_ID_SET_MEMORY_DOMAIN profiler event.
 	//! @param[in] ptr The memory block pointer.

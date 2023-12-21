@@ -26,7 +26,7 @@ namespace Luna
 	//! @addtogroup RuntimeMemory
 	//! @{
 
-	//! @brief Allocates heap memory.
+	//! Allocates heap memory.
 	//! @param[in] size The size, in bytes, of the memory block to allocate. If this is `0`, no memory will be allocated.
 	//! @param[in] alignment Optional. The alignment requirement, in bytes, of the memory block to allocate. Default is `0`.
 	//! 
@@ -39,7 +39,7 @@ namespace Luna
 	//! * If `alignment` is not `0`, `alignment` **must** be powers of 2 (like 32, 64, 128, 256, etc).
 	LUNA_RUNTIME_API void* memalloc(usize size, usize alignment = 0);
 
-	//! @brief Frees heap memory.
+	//! Frees heap memory.
 	//! @param[in] ptr The pointer returned by @ref memalloc or @ref memrealloc. 
 	//! If this is `nullptr`, this function does nothing.
 	//! @param[in] alignment Optional. The alignment requirement specified when allocating the memory block. Default is 0.
@@ -47,7 +47,7 @@ namespace Luna
 	//! * If `ptr` is not `nullptr`, `alignment` **must** be equal to `alignment` passed to @ref memalloc or @ref memrealloc which allocates `ptr`.
 	LUNA_RUNTIME_API void memfree(void* ptr, usize alignment = 0);
 
-	//! @brief Reallocates heap memory.
+	//! Reallocates heap memory.
 	//! @param[in] ptr The pointer to the former allocated memory block.
 	//! If this is `nullptr`, this method behaves the same as @ref memalloc.
 	//! @param[in] size The size, in bytes, of the new memory to allocate.
@@ -64,7 +64,7 @@ namespace Luna
 	//! * If `ptr` is not `nullptr`, `alignment` **must** be equal to `alignment` passed to @ref memalloc or @ref memrealloc which allocates `ptr`.
 	LUNA_RUNTIME_API void* memrealloc(void* ptr, usize size, usize alignment = 0);
 
-	//! @brief Gets the allocated size of one memory block.
+	//! Gets the allocated size of one memory block.
 	//! @param[in] ptr The pointer to the memory block.
 	//! @param[in] alignment Optional. The alignment requirement of the allocated memory block. Default is 0. 
 	//! @return Returns the size of bytes of the memory block.
@@ -76,7 +76,7 @@ namespace Luna
 	//! * If `ptr` is not `nullptr`, `alignment` **must** be equal to `alignment` passed to @ref memalloc or @ref memrealloc which allocates `ptr`.
 	LUNA_RUNTIME_API usize memsize(void* ptr, usize alignment = 0);
 
-	//! @brief Allocates heap memory for one object and constructs the object.
+	//! Allocates heap memory for one object and constructs the object.
 	//! @return Returns one pointer to the allocated object.
 	//! Returns `nullptr` if memory allocation failed.
 	template <typename _Ty, typename... _Args>
@@ -91,7 +91,7 @@ namespace Luna
 		return nullptr;
 	}
 
-	//! @brief Destructs one object and frees its memory.
+	//! Destructs one object and frees its memory.
 	//! @param[in] o The pointer to the object to be deleted.
 	//! @par Valid Usage
 	//! * `o` must point to a object created by `memnew`.

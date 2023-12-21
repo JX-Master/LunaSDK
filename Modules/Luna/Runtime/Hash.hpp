@@ -241,7 +241,7 @@ namespace Luna
     //! @addtogroup RuntimeHash
     //! @{
 	
-	//! @brief Computes a hash code for the specified binary data.
+	//! Computes a hash code for the specified binary data.
 	//! @details This is the basic hash function that uses crc32 hash algorithm to hash 
 	//! any kind of binary data stream to a single hash value.
 	//! @param[in] data A pointer to the data to be hashed.
@@ -315,7 +315,7 @@ namespace Luna
 		return memhash<u64>(data, size, h);
 	}
 
-	//! @brief Computes a hash code for the specified string.
+	//! Computes a hash code for the specified string.
 	//! @param[in] s A pointer to one null-terminated string to compute.
 	//! @param[in] h A initial hash value. See @ref memhash for details.
 	//! @return Returns the hash code of the string.

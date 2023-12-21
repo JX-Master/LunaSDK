@@ -25,7 +25,7 @@ namespace Luna
 	//! @addtogroup RuntimeInterface
 	//! @{
 	
-	//! @brief Describes arguments to register an interface implementation.
+	//! Describes arguments to register an interface implementation.
 	struct InterfaceImplDesc
 	{
 		//! The GUID of the type that implements the interface.
@@ -36,7 +36,7 @@ namespace Luna
 		void* (*cast_to_interface)(object_t obj);
 	};
 
-	//! @brief Registers one interface implementation.
+	//! Registers one interface implementation.
 	//! @param[in] desc The interface implementation descriptor.
 	LUNA_RUNTIME_API void impl_interface_for_type(const InterfaceImplDesc& desc);
 
@@ -61,20 +61,20 @@ namespace Luna
 		impl_interface_for_type<_Ty, _Itys...>();
 	}
 
-	//! @brief Checks whether the specified type implements the specified interface.
+	//! Checks whether the specified type implements the specified interface.
 	//! @param[in] type The type to query.
 	//! @param[in] iid The interface GUID to query.
 	//! @return Returns `true` if the specified type implements the specified interface. Returns `false` otherwise.
 	LUNA_RUNTIME_API bool is_interface_implemented_by_type(typeinfo_t type, const Guid& iid);
 
-	//! @brief Gets one interface pointer from one pointer to one boxed object that implements the interface.
+	//! Gets one interface pointer from one pointer to one boxed object that implements the interface.
 	//! @param[in] object The pointer to the boxed object to query interface from.
 	//! @param[in] iid The interface GUID to query.
 	//! @return Returns one pointer that can be safely reinterpreted to the specified interface pointer.
 	//! Returns `nullptr` if the specified interface is not implemented by the specified boxed object.
 	LUNA_RUNTIME_API void* query_interface(object_t object, const Guid& iid);
 
-	//! @brief Gets one interface pointer from one pointer to one boxed object that implements the interface.
+	//! Gets one interface pointer from one pointer to one boxed object that implements the interface.
 	//! @param[in] object The pointer to the boxed object to query interface from.
 	//! @return Returns the specified interface pointer for the boxed object.
 	//! Returns `nullptr` if the specified interface is not implemented by the specified boxed object.
@@ -91,10 +91,10 @@ namespace Luna
 	}
 
 	//! @interface Interface
-	//! @brief The base interface for all other interfaces in Luna SDK.
+	//! The base interface for all other interfaces in Luna SDK.
 	struct Interface
 	{
-		//! @brief Gets the pointer to the boxed object that implements this interface.
+		//! Gets the pointer to the boxed object that implements this interface.
 		//! @return Returns the pointer to the boxed object.
 		virtual object_t get_object() = 0;
 	};

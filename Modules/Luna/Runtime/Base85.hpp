@@ -24,7 +24,7 @@ namespace Luna
 	//! @addtogroup RuntimeBase85
 	//! @{
 
-	//! @brief Get the encoded base85 string size from the raw data size.
+	//! Get the encoded base85 string size from the raw data size.
 	//! @param[in] raw_size The size of the raw binary data in bytes. This size must be times of 4.
 	//! @return The size of the encoded string in bytes. The string size does not include the null-terminator.
 	inline constexpr usize base85_get_encoded_size(usize raw_size)
@@ -32,7 +32,7 @@ namespace Luna
 		return raw_size / 4 * 5;
 	}
 
-	//! @brief Get the decoded binary size from the encoded base85 string size.
+	//! Get the decoded binary size from the encoded base85 string size.
 	//! @param[in] encoded_size The size of the encoded string, in bytes, and not including the null
 	//! terminator. The size of the string must be times of 5.
 	//! @return The size of the decoded raw data, in bytes.
@@ -41,7 +41,7 @@ namespace Luna
 		return encoded_size / 5 * 4;
 	}
 
-	//! @brief Encode a binary data to a base85 string.
+	//! Encode a binary data to a base85 string.
 	//! @param[in] dst The character buffer used to hold the encoded base85 string.
 	//! @param[in] dst_max_chars The maximum characters the `dst` buffer can hold, including the null-terminator.
 	//! @param[in] src The source binary data.
@@ -51,7 +51,7 @@ namespace Luna
 	//! * If `src_size_bytes` is not `0`, `src_size_bytes` must be times of 4.
 	LUNA_RUNTIME_API usize base85_encode(c8* dst, usize dst_max_chars, const void* src, usize src_size_bytes);
 
-	//! @brief Decode a base85 string to binary data. The system assumes the string passed in is a valid base85 string.
+	//! Decode a base85 string to binary data. The system assumes the string passed in is a valid base85 string.
 	//! @param[in] dst The binary buffer used to hold the decoded data.
 	//! @param[in] dst_max_bytes The maximum bytes the `dst` buffer can hold.
 	//! @param[in] src The null-terminated base85 source string.

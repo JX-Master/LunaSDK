@@ -28,7 +28,7 @@ namespace Luna
 	using std::memcpy;
 	using std::memmove;
 
-	//! @brief Clears the specified memory region to 0.
+	//! Clears the specified memory region to 0.
 	//! @param[in] dst The start address of memory region to clear.
 	//! @param[in] byte_count The size, in bytes, of the memory region to clear.
 	//! @return Returns the `dst` pointer.
@@ -37,7 +37,7 @@ namespace Luna
 		return memset(dst, 0, byte_count);
 	}
 
-	//! @brief Clears the memory of the specified object to 0.
+	//! Clears the memory of the specified object to 0.
 	//! @param[in] dst The object to clear. The size of the memory region to clear will be `sizeof(_Ty)`.
 	//! @return Returns the `dst` pointer.
 	template <typename _Ty>
@@ -46,7 +46,7 @@ namespace Luna
 		return (_Ty*)memzero(dst, sizeof(_Ty));
 	}
 
-	//! @brief Copies the data for a 2D bitmap.
+	//! Copies the data for a 2D bitmap.
 	//! @param[in] dst A pointer to the first pixel to be copied in destination bitmap.
 	//! @param[in] src A pointer to the first pixel to be copied in source bitmap.
 	//! @param[in] copy_size_per_row The size of the data to be copied for every row, in bytes.
@@ -63,7 +63,7 @@ namespace Luna
 		return dst;
 	}
 
-	//! @brief Copies the data for a 3D bitmap.
+	//! Copies the data for a 3D bitmap.
 	//! @param[in] dst A pointer to the first pixel to be copied in destination bitmap.
 	//! @param[in] src A pointer to the first pixel to be copied in source bitmap.
 	//! @param[in] copy_size_per_row The size of the data to be copied for every row, in bytes.
@@ -89,7 +89,7 @@ namespace Luna
 		return dst;
 	}
 
-	//! @brief Returns a pointer that offsets the specified pixels in the bitmap.
+	//! Returns a pointer that offsets the specified pixels in the bitmap.
 	//! @param[in] base The pointer to the first pixel in the bitmap.
 	//! @param[in] x The x offset in pixels.
 	//! @param[in] y The y offset in pixels.
@@ -112,7 +112,7 @@ namespace Luna
 		return (void*)r;
 	}
 
-	//! @brief Returns a pointer that offsets the specified pixels in the bitmap.
+	//! Returns a pointer that offsets the specified pixels in the bitmap.
 	//! @param[in] base The pointer to the first pixel in the bitmap.
 	//! @param[in] x The x offset in pixels.
 	//! @param[in] y The y offset in pixels.
@@ -160,28 +160,28 @@ namespace Luna
 		};
 	}
 
-	//! @brief A integer literal suffix that multiples one number with 1024. Use it like `3_kb`.
+	//! A integer literal suffix that multiples one number with 1024. Use it like `3_kb`.
 	inline constexpr unsigned long long operator"" _kb(unsigned long long v)
 	{
 		return v * 1024;
 	}
-	//! @brief A integer literal suffix that multiples one number with 1024 * 1024. Use it like `3_mb`.
+	//! A integer literal suffix that multiples one number with 1024 * 1024. Use it like `3_mb`.
 	inline constexpr unsigned long long operator"" _mb(unsigned long long v)
 	{
 		return v * 1024 * 1024;
 	}
-	//! @brief A integer literal suffix that multiples one number with 1024 * 1024 * 1024. Use it like `3_gb`.
+	//! A integer literal suffix that multiples one number with 1024 * 1024 * 1024. Use it like `3_gb`.
 	inline constexpr unsigned long long operator"" _gb(unsigned long long v)
 	{
 		return v * 1024 * 1024 * 1024;
 	}
-	//! @brief A integer literal suffix that multiples one number with 1024 * 1024 * 1024 * 1024. Use it like `3_tb`.
+	//! A integer literal suffix that multiples one number with 1024 * 1024 * 1024 * 1024. Use it like `3_tb`.
 	inline constexpr unsigned long long operator"" _tb(unsigned long long v)
 	{
 		return v * 1024 * 1024 * 1024 * 1024;
 	}
 
-	//! @brief Tests if specified bit is 1.
+	//! Tests if specified bit is 1.
 	//! @param[in] base_addr The address of the bit to offset from.
 	//! @param[in] bit_offset The number of bits shifted from the `base_addr`.
 	//! @return Returns `true` if the bit is 1, `false` if the bit is 0.
@@ -211,7 +211,7 @@ namespace Luna
 		return (*(const u8*)((usize)base_addr + bit_offset / 8)) & Impl::BIT_MASK[bit_offset % 8] ? true : false;;
 	}
 
-	//! @brief Sets the specified bit to 1.
+	//! Sets the specified bit to 1.
 	//! @param[in] base_addr The address of the bit to offset from.
 	//! @param[in] bit_offset The number of bits shifted from the `base_addr`.
 	//! @remark See remarks of @ref bit_test for details.
@@ -220,7 +220,7 @@ namespace Luna
 		*(u8*)((usize)addr + bit_offset / 8) |= Impl::BIT_MASK[bit_offset % 8];
 	}
 
-	//! @brief Sets the specified bit to 0.
+	//! Sets the specified bit to 0.
 	//! @param[in] base_addr The address of the bit to offset from.
 	//! @param[in] bit_offset The number of bits shifted from the `base_addr`.
 	//! @remark See remarks of @ref bit_test for details.
@@ -229,7 +229,7 @@ namespace Luna
 		*(u8*)((usize)addr + bit_offset / 8) &= Impl::BIT_MASK_REVERSE[bit_offset % 8];
 	}
 
-	//! @brief Sets the specified bit to 1 if `value` is `true`, or to 0 if `value` is `false`.
+	//! Sets the specified bit to 1 if `value` is `true`, or to 0 if `value` is `false`.
 	//! @param[in] base_addr The address of the bit to offset from.
 	//! @param[in] bit_offset The number of bits shifted from the `base_addr`.
 	//! @param[in] value The value to set for the bit.
@@ -240,7 +240,7 @@ namespace Luna
 		else bit_reset(addr, bit_offset);
 	}
 
-	//! @brief Returns the address/size that aligns the origin address/size to the nearest matched aligned 
+	//! Returns the address/size that aligns the origin address/size to the nearest matched aligned 
 	//! address/size that is greater than or equal to the the origin address/size.
 	//! @param[in] origin The unaligned address/size.
 	//! @param[in] alignment The alignment boundary. If alignment is 0, `origin` will be returned as-is.
@@ -251,7 +251,7 @@ namespace Luna
 		return alignment ? ((origin + (_Ty1)alignment - 1) / (_Ty1)alignment * (_Ty1)alignment) : origin;
 	}
 
-	//! @brief Represents one object that supports manual construction and destruction.
+	//! Represents one object that supports manual construction and destruction.
 	//! @details `Unconstructed` provides a way to allocate the memory for a C++ object without their constructor/destructor
 	//! being called by system. You have the ability to call their constructor/destructor manually.
 	//! Such feature is useful when you need to declare some static constructed objects and want to control their construction/
@@ -271,20 +271,20 @@ namespace Luna
 		Unconstructed& operator=(const Unconstructed&) = delete;
 		Unconstructed& operator=(Unconstructed&&) = delete;
 
-		//! @brief Get a reference to the object.
+		//! Get a reference to the object.
 		//! @return Returns a reference to the object.
 		_Ty& get()
 		{
 			return *reinterpret_cast<_Ty*>(&m_buffer);
 		}
-		//! @brief Get a const reference to the object.
+		//! Get a const reference to the object.
 		//! @return Returns a const reference to the object.
 		const _Ty& get() const
 		{
 			return *reinterpret_cast<const _Ty*>(&m_buffer);
 		}
 
-		//! @brief Constructs the object.
+		//! Constructs the object.
 		//! @param[in] args Arguments that will be passed to the constructor of the object.
 		template< typename... Args>
 		void construct(Args&&... args)
@@ -292,14 +292,14 @@ namespace Luna
 			new (m_buffer) _Ty(forward<Args>(args)...);
 		}
 
-		//! @brief Destructs the object.
+		//! Destructs the object.
 		void destruct()
 		{
 			get().~_Ty();
 		}
 	};
 
-	//! @brief Gets the real address for object or function `value`, even if the `operator&` of the object
+	//! Gets the real address for object or function `value`, even if the `operator&` of the object
 	//! has been overloaded.
 	//! @param[in] value The object to fetch address.
 	//! @return Returns one pointer to the object.
@@ -313,7 +313,7 @@ namespace Luna
 #endif
 	}
 
-	//! @brief Calls the default constructor for the object.
+	//! Calls the default constructor for the object.
 	//! @param[in] dst An iterator to the object to be constructed.
 	template <typename _Iter>
 	inline void default_construct(_Iter dst)
@@ -322,7 +322,7 @@ namespace Luna
 			typename iterator_traits<_Iter>::value_type;
 	}
 
-	//! @brief Calls the value constructor for the object.
+	//! Calls the value constructor for the object.
 	//! @param[in] dst An iterator to the object to be constructed.
 	template <typename _Iter>
 	inline void value_construct(_Iter dst)
@@ -331,7 +331,7 @@ namespace Luna
 			typename iterator_traits<_Iter>::value_type();
 	}
 
-	//! @brief Calls the copy constructor for the object.
+	//! Calls the copy constructor for the object.
 	//! @param[in] dst An iterator to the object to be constructed.
 	//! @param[in] src An iterator to the object to copy from.
 	template <typename _Iter1, typename _Iter2>
@@ -341,7 +341,7 @@ namespace Luna
 			typename iterator_traits<_Iter1>::value_type(*src);
 	}
 
-	//! @brief Calls the move constructor for the object.
+	//! Calls the move constructor for the object.
 	//! @param[in] dst An iterator to the object to be constructed.
 	//! @param[in] src An iterator to the object to move from.
 	template <typename _Iter1, typename _Iter2>
@@ -351,7 +351,7 @@ namespace Luna
 			typename iterator_traits<_Iter1>::value_type(move(*src));
 	}
 
-	//! @brief Calls the direct constructor for the object.
+	//! Calls the direct constructor for the object.
 	//! @param[in] dst An iterator to the object to be constructed.
 	//! @param[in] args Arguments that will be passed to the constructor.
 	template <typename _Iter, typename... _Args>
@@ -361,7 +361,7 @@ namespace Luna
 			typename iterator_traits<_Iter>::value_type(forward<_Args>(args)...);
 	}
 
-	//! @brief Calls the destructor of the object.
+	//! Calls the destructor of the object.
 	//! @param[in] dst An iterator to the object to be destructed.
 	template <typename _Iter>
 	inline void destruct(_Iter dst)
@@ -370,7 +370,7 @@ namespace Luna
 		static_cast<value_type*>(addressof(*dst))->~value_type();
 	}
 
-	//! @brief Calls the copy assignment operator of the object.
+	//! Calls the copy assignment operator of the object.
 	//! @param[in] dst An iterator to the object to be assigned.
 	//! @param[in] src An iterator to the object to copy from.
 	template <typename _Iter1, typename _Iter2>
@@ -379,7 +379,7 @@ namespace Luna
 		(*dst) = (*src);
 	}
 
-	//! @brief Calls the move assignment operator of the object.
+	//! Calls the move assignment operator of the object.
 	//! @param[in] dst An iterator to the object to be assigned.
 	//! @param[in] src An iterator to the object to move from.
 	template <typename _Iter1, typename _Iter2>
@@ -394,7 +394,7 @@ namespace Luna
 		using default_construct_range_is_value_type_class = typename is_class<typename iterator_traits<_Iter>::value_type>::type;
 	}
 
-	//! @brief Default-constructs a range of objects.
+	//! Default-constructs a range of objects.
 	//! @param[in] first An iterator to the first object to be constructed.
 	//! @param[in] last An iterator to one-past-last object to be constructed.
 	//! @details This function performs default initialization on each object in the range [`first`, `last`).
@@ -424,7 +424,7 @@ namespace Luna
 		>::type;
 	}
 
-	//! @brief Value-constructs a range of objects.
+	//! Value-constructs a range of objects.
 	//! @param[in] first An iterator to the first object to be constructed.
 	//! @param[in] last An iterator to one-past-last object to be constructed.
 	//! @details This function performs value initialization on each object in the range [`first`, `last`).
@@ -460,7 +460,7 @@ namespace Luna
 		>::type;
 	}
 
-	//! @brief Copy-constructs a range of objects.
+	//! Copy-constructs a range of objects.
 	//! @param[in] first An iterator to the first object to be copied from.
 	//! @param[in] last An iterator to one-past-last object to be copied from.
 	//! @param[in] d_first An iterator to the first object to be constructed.
@@ -489,7 +489,7 @@ namespace Luna
 		return d_first + (last - first);
 	}
 
-	//! @brief Copy-constructs a range of objects. The range is provided by first object and object count.
+	//! Copy-constructs a range of objects. The range is provided by first object and object count.
 	//! @param[in] first An iterator to the first object to be copied from.
 	//! @param[in] count The number of objects to copy-construct.
 	//! @param[in] d_first An iterator to the first object to be constructed.
@@ -527,7 +527,7 @@ namespace Luna
 		using move_construct_range_is_value_type_trivial = typename is_trivially_move_constructible<typename iterator_traits<_Iter1>::value_type>::type;
 	}
 
-	//! @brief Move-constructs a range of objects.
+	//! Move-constructs a range of objects.
 	//! @param[in] first An iterator to the first object to be moved from.
 	//! @param[in] last An iterator to one-past-last object to be moved from.
 	//! @param[in] d_first An iterator to the first object to be constructed.
@@ -559,7 +559,7 @@ namespace Luna
 		using destruct_range_is_value_type_trivial = typename is_trivially_destructible <typename iterator_traits<_Iter>::value_type>::type;
 	}
 
-	//! @brief Destructs every object in the range.
+	//! Destructs every object in the range.
 	//! @param[in] first An iterator to the first object to be destructed.
 	//! @param[in] last An iterator to one-past-last object to be destructed.
 	//! @remark If `value_type` is trivially destructible, do nothing.
@@ -589,7 +589,7 @@ namespace Luna
 		>::type;
 	}
 
-	//! @brief Performs copy assignment operation on every object in the destination range using the corresponding object in the source range.
+	//! Performs copy assignment operation on every object in the destination range using the corresponding object in the source range.
 	//! @param[in] first An iterator to the first object to be copied from.
 	//! @param[in] last An iterator to one-past-last object to be copied from.
 	//! @param[in] d_first An iterator to the first object to be assigned.
@@ -638,7 +638,7 @@ namespace Luna
 		>::type;
 	}
 
-	//! @brief Performs move assignment operation on every object in the destination range using the corresponding object in the source range.
+	//! Performs move assignment operation on every object in the destination range using the corresponding object in the source range.
 	//! @param[in] first An iterator to the first object to be moved from.
 	//! @param[in] last An iterator to one-past-last object to be moved from.
 	//! @param[in] d_first An iterator to the first object to be assigned.
@@ -666,7 +666,7 @@ namespace Luna
 		return d_first + (last - first);
 	}
 
-	//! @brief Same as @ref move_assign_range, but performs the move assign from back to front.
+	//! Same as @ref move_assign_range, but performs the move assign from back to front.
 	//! @param[in] first An iterator to the first object to be moved from.
 	//! @param[in] last An iterator to one-past-last object to be moved from.
 	//! @param[in] d_last An iterator to the one-past-back object in the range to be assigned.
@@ -691,7 +691,7 @@ namespace Luna
 		return d_last - sz;
 	}
 
-	//! @brief Performs copy construct on each of the object in the range by taking a copy of the provided object.
+	//! Performs copy construct on each of the object in the range by taking a copy of the provided object.
 	//! @param[in] first An iterator to the first object to be constructed.
 	//! @param[in] last An iterator to one-past-last object to be constructed.
 	//! @param[in] value The object to copy from for each object to be constructed.
@@ -707,7 +707,7 @@ namespace Luna
 		return first;
 	}
 
-	//! @brief Performs copy assignment on each of the object in the range by taking a copy of the provided object.
+	//! Performs copy assignment on each of the object in the range by taking a copy of the provided object.
 	//! @param[in] first An iterator to the first object to be assigned.
 	//! @param[in] last An iterator to one-past-last object to be assigned.
 	//! @param[in] value The object to copy from for each object to be assigned.
@@ -758,7 +758,7 @@ namespace Luna
 		}
 	}
 
-	//! @brief Relocates objects in the source range to a new range that is not overlap with the source range.
+	//! Relocates objects in the source range to a new range that is not overlap with the source range.
 	//! @details After this call, the objects in the destination range behaves the same as the corresponding objects 
 	//! formerly in the source range, except that the places(memory addresses) for objects are changed.
 	//! @param[in] first An iterator to the first object to be relocated from.
@@ -796,7 +796,7 @@ namespace Luna
 		}
 		return d_first;
 	}
-	//! @brief Relocates one object.
+	//! Relocates one object.
 	//! @details After this call, the object in the destination memory behaves the same as the object 
 	//! formerly in the source memory, except that the place(memory address) for the object is changed.
 	//! @param[in] dst An iterator to relocation destination.
@@ -844,7 +844,7 @@ namespace Luna
 			typename is_trivially_relocatable<typename iterator_traits<_Iter2>::value_type>::type>::type;
 	}
 
-	//! @brief Relocates objects in the source range to a new range.
+	//! Relocates objects in the source range to a new range.
 	//! @details This function behaves the same as @ref copy_relocate_range, except that it allows the destination range 
 	//! overlaps with the source range, proved that the first object in the destination range does not in the source range.
 	//! @ref memmove is used instead of @ref memcpy if the whole range can be relocated in one call.
@@ -900,7 +900,7 @@ namespace Luna
 			typename is_trivially_relocatable<typename iterator_traits<_Iter2>::value_type>::type>::type;
 	}
 
-	//! @brief Relocates objects in the source range to a new range.
+	//! Relocates objects in the source range to a new range.
 	//! @details This function behaves the same as @ref move_relocate_range, except that it relocates object from last to first, so
 	//! the last object in the destination range should not in the source range.
 	//! @ref memmove is used instead of @ref memcpy if the whole range can be relocated in one call.
@@ -926,7 +926,7 @@ namespace Luna
 		return d_last;
 	}
 
-	//! @brief Describes one member used by memory layouting algorithms.
+	//! Describes one member used by memory layouting algorithms.
 	struct MemoryLayoutMember
 	{
 		//! The size of this member in bytes. This property is filled by the user before calculating memory layouts.
@@ -942,7 +942,7 @@ namespace Luna
 			alignment(alignment) {}
 	};
 
-	//! @brief Calculates the size, alignment and memory layout for one structure type.
+	//! Calculates the size, alignment and memory layout for one structure type.
 	//! @details The calculated size, alignment and memory layout is compatible with C standard structure layout.
 	//! @param[inout] members One span that provides members of the structure.
 	//! @param[out] out_size The calculated size of the structure.
@@ -963,7 +963,7 @@ namespace Luna
 		out_alignment = alignment;
 	}
 
-	//! @brief Calculates the size, alignment and memory layout for one union type.
+	//! Calculates the size, alignment and memory layout for one union type.
 	//! @details The calculated size, alignment and memory layout is compatible with C standard union layout.
 	//! @param[inout] members One span that provides members of the union.
 	//! @param[out] out_size The calculated size of the union.

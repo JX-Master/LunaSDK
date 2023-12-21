@@ -21,7 +21,7 @@ namespace Luna
         {
             luiid("{3be9e0bb-0633-4547-ba1a-c964cf480adc}");
 
-            //! @brief Gets the name of the adapter.
+            //! Gets the name of the adapter.
             //! @return Returns the name of the adapter. The returned string is valid until the adapter interface is 
             //! released.
             virtual const c8* get_name() = 0;

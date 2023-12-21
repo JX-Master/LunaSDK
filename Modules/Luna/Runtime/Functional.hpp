@@ -17,7 +17,7 @@ namespace Luna
 	//! @addtogroup Runtime
     //! @{
 	
-	//! @brief Function object for performing comparisons. Unless specialised, invokes `operator==` on type T.
+	//! Function object for performing comparisons. Unless specialised, invokes `operator==` on type T.
 	template <typename _Ty>
 	struct equal_to
 	{
@@ -27,7 +27,7 @@ namespace Luna
 		}
 	};
 
-	//! @brief Function object for performing comparisons. Unless specialized, invokes `operator<` on type T.
+	//! Function object for performing comparisons. Unless specialized, invokes `operator<` on type T.
 	template <typename _Ty>
 	struct less
 	{
@@ -37,7 +37,7 @@ namespace Luna
 		}
 	};
 
-	//! @brief Function object that hashes the specified type into a `usize` 
+	//! Function object that hashes the specified type into a `usize` 
 	//! hash code that can be used in hash map and hash set.
 	template <typename _Ty> struct hash;
 
@@ -149,7 +149,7 @@ namespace Luna
 		}
 	};
 
-	//! @brief Wraps one reference to one copyable, assignable object.
+	//! Wraps one reference to one copyable, assignable object.
 	template <typename _Ty>
 	class ReferenceWrapper
 	{
@@ -257,7 +257,7 @@ namespace Luna
 			InvokeFunction {};
 	}
 
-	//! @brief Invokes the specified callable object.
+	//! Invokes the specified callable object.
 	//! @param[in] f The callable object to invoke.
 	//! @return Returns the return value of the callable object.
 	template <typename _Func>
@@ -266,7 +266,7 @@ namespace Luna
 		return static_cast<_Func&&>(f)();
 	}
 
-	//! @brief Invokes the specified callable object.
+	//! Invokes the specified callable object.
 	//! @param[in] f The callable object to invoke.
 	//! @param[in] arg1 The first argument passed to the callable object.
 	//! @param[in] args The rest arguments passed to the callable object.
@@ -303,7 +303,7 @@ namespace Luna
 		};
 	}
 
-	//! @brief Invokes the specified callable object.
+	//! Invokes the specified callable object.
 	//! @param[in] f The callable object to invoke.
 	//! @param[in] arg1 The first argument passed to the callable object.
 	//! @param[in] args The rest arguments passed to the callable object.
@@ -332,7 +332,7 @@ namespace Luna
 	template <typename _Func>
 	struct Function;
 
-	//! @brief A function wrapper that can store one callable object, and enable coping, moving and invoking of such callable object.
+	//! A function wrapper that can store one callable object, and enable coping, moving and invoking of such callable object.
 	//! @details The callable object can be a function pointer or a function object (types that overloads `operator()`).
 	template <typename _R, typename... _Args>
 	struct Function<_R(_Args...)>
@@ -385,15 +385,15 @@ namespace Luna
 		}
 	public:
 		using result_type = _R;
-		//! @brief Constructs an empty function wrapper.
+		//! Constructs an empty function wrapper.
 		Function() :
 			m_type(Type::empty),
 			m_func(nullptr) {}
-		//! @brief Constructs an empty function wrapper with `nullptr`.
+		//! Constructs an empty function wrapper with `nullptr`.
 		Function(nullptr_t ) :
 			m_type(Type::empty),
 			m_func(nullptr) {}
-		//! @brief Constructs an function wrapper by coping from another function object.
+		//! Constructs an function wrapper by coping from another function object.
 		//! @param[in] rhs The function object to copy from.
 		Function(const Function& rhs) :
 			m_type(rhs.m_type)
@@ -401,7 +401,7 @@ namespace Luna
 			if (m_type == Type::object) m_callable = rhs.m_callable->clone();
 			else m_func = rhs.m_func;
 		}
-		//! @brief Constructs an function wrapper by moving from another function object.
+		//! Constructs an function wrapper by moving from another function object.
 		//! @param[in] rhs The function object to move from.
 		Function(Function&& rhs) :
 			m_type(rhs.m_type)
@@ -418,12 +418,12 @@ namespace Luna
 			}
 			rhs.m_type = Type::empty;
 		}
-		//! @brief Constructs an function wrapper using one function pointer.
+		//! Constructs an function wrapper using one function pointer.
 		//! @param[in] func The function pointer to assign.
 		Function(function_t* func) :
 			m_type(Type::function),
 			m_func(func) {}
-		//! @brief Constructs an function wrapper using one function object.
+		//! Constructs an function wrapper using one function object.
 		//! @param[in] value The function object to assign. The function object will be copy-constructed into the wrapper.
 		template <typename _Ty>
 		Function(_Ty&& value) :
@@ -473,7 +473,7 @@ namespace Luna
 			m_callable = memnew<Callable<remove_cv_t<remove_reference_t<_Ty>>>>(forward<_Ty>(value));
 			return *this;
 		}
-		//! @brief Swaps the data of this function wrapper with another function wrapper.
+		//! Swaps the data of this function wrapper with another function wrapper.
 		//! @param[in] rhs The function wrapper to swap with.
 		void swap(Function& rhs)
 		{
@@ -493,21 +493,21 @@ namespace Luna
 			else if (rhs.m_type == Type::object) rhs.m_callable = (ICallable*)data;
 			else rhs.m_func = nullptr;
 		}
-		//! @brief Tests whether this function wrapper is empty.
+		//! Tests whether this function wrapper is empty.
 		//! @return Return `true` if this function wrapper is empty, that is, contains no callable object. 
 		//! Return `false` otherwise.
 		bool empty() const
 		{
 			return m_type == Type::empty;
 		}
-		//! @brief Tests whether this function wrapper is non-empty.
+		//! Tests whether this function wrapper is non-empty.
 		//! @return Return `true` if this function wrapper is non-empty, that is, contains one callable object. 
 		//! Return `false` otherwise.
 		operator bool() const
 		{
 			return m_type != Type::empty;
 		}
-		//! @brief Invokes the function wrapper. This will invoke the callable object that is stored in the function.
+		//! Invokes the function wrapper. This will invoke the callable object that is stored in the function.
 		//! @param[in] args The arguments passed to the callable object.
 		//! @return Returns the return value of the callable object if `_R` is not `void`. Returns nothing otherwise.
 		_R operator()(_Args... args) const

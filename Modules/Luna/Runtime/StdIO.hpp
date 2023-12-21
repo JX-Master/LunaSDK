@@ -21,7 +21,7 @@ namespace Luna
     //! @name Standard input/output
     //! @{
 
-    //! @brief Gets the stream object that is connected to the system standard input/output device.
+    //! Gets the stream object that is connected to the system standard input/output device.
     //! @details All read operation from the stream reads input from the standard input device; 
     //! all write operations to the stream outputs data to the standard output device.
     //! 

@@ -13,10 +13,10 @@
 
 namespace Luna
 {
-	//! @brief Represents one span whose size is determined at runtime.
+	//! Represents one span whose size is determined at runtime.
 	inline constexpr usize DYNAMIC_EXTENT = USIZE_MAX;
 
-	//! @brief Represents one reference to one continuous sequence of instances. The size of the span is fixed and specified as template argument.
+	//! Represents one reference to one continuous sequence of instances. The size of the span is fixed and specified as template argument.
 	template <typename _Ty, usize _Size = DYNAMIC_EXTENT>
 	class Span
 	{
@@ -30,14 +30,14 @@ namespace Luna
 		using iterator = pointer;
 		using reverse_iterator = ReverseIterator<iterator>;
 
-		//! @brief Constructs one empty span.
+		//! Constructs one empty span.
 		constexpr Span() :
 			m_buffer(nullptr) {}
-		//! @brief Constructs one span by providing the referred range directly.
+		//! Constructs one span by providing the referred range directly.
 		//! @param[in] data The pointer to the first element in the range.
 		constexpr Span(element_type* arr) :
 			m_buffer(arr) {}
-		//! @brief Constructs one span using the data provided by the specified initializer list.
+		//! Constructs one span using the data provided by the specified initializer list.
 		//! @param[in] ilist The initializer list used.
 		//! @remark This is only used to specify one initializer list for one Span parameter of one function. 
 		//! Since the initializer list exists only in the expression evaluation scope, you can not refer
@@ -50,75 +50,75 @@ namespace Luna
 		{
 			static_assert(ilist.size() >= _Size, "The size of the initializer list must be not smaller than the size of the span.");
 		}
-		//! @brief Constructs one span by coping data from another span.
+		//! Constructs one span by coping data from another span.
 		//! @param[in] rhs The span to copy data from.
 		constexpr Span(const Span& rhs) = default;
-		//! @brief Assigns one span by coping data from another span.
+		//! Assigns one span by coping data from another span.
 		//! @param[in] rhs The span to copy data from.
 		//! @return Returns `*this`.
 		constexpr Span& operator=(const Span& rhs) = default;
 
-		//! @brief Gets one iterator to the first element of the span.
+		//! Gets one iterator to the first element of the span.
 		//! @return Returns one iterator to the first element of the span.
 		constexpr iterator begin() const { return m_buffer; }
-		//! @brief Gets one iterator to the one past last element of the span.
+		//! Gets one iterator to the one past last element of the span.
 		//! @return Returns one iterator to the one past last element of the span.
 		constexpr iterator end() const { return m_buffer + _Size; }
-		//! @brief Gets one reverse iterator to the last element of the span.
+		//! Gets one reverse iterator to the last element of the span.
 		//! @return Returns one reverse iterator to the last element of the span.
 		constexpr reverse_iterator rbegin() const { return reverse_iterator(end()); }
-		//! @brief Gets one reverse iterator to the one-before-first element of the span.
+		//! Gets one reverse iterator to the one-before-first element of the span.
 		//! @return Returns one reverse iterator to the one-before-first element of the span.
 		constexpr reverse_iterator rend() const { return reverse_iterator(begin()); }
 
-		//! @brief Gets a reference to the first (index 0) element in the span.
+		//! Gets a reference to the first (index 0) element in the span.
 		//! @return Returns a reference to the first element in the span.
 		constexpr reference front() const { return *m_buffer; }
-		//! @brief Gets a reference to the last (index `size()` - 1) element in the span.
+		//! Gets a reference to the last (index `size()` - 1) element in the span.
 		//! @return Returns a reference to the first element in the span.
 		constexpr reference back() const { return *(m_buffer + _Size - 1); }
-		//! @brief Gets a refernece of the element at the specified index.
+		//! Gets a refernece of the element at the specified index.
 		//! @param[in] pos The index of the element.
 		//! @return Returns a reference of the specified element.
 		constexpr reference operator[](usize index) const { lucheck(index < _Size); return m_buffer[index]; }
-		//! @brief Gets one pointer to the span data memory.
+		//! Gets one pointer to the span data memory.
 		//! @return Returns one pointer to the span data memory.
 		constexpr pointer data() const { return m_buffer; }
 
-		//! @brief Gets the size (number of elements) of the span.
+		//! Gets the size (number of elements) of the span.
 		//! @return Returns the size of the span.
 		constexpr usize size() const { return _Size; }
-		//! @brief Gets the size of the span in bytes, which is `size() * sizeof(element_type)`.
+		//! Gets the size of the span in bytes, which is `size() * sizeof(element_type)`.
 		//! @return Returns the size of the span  in bytes.
 		constexpr usize size_bytes() const { return _Size * sizeof(element_type); }
-		//! @brief Checks whether this span is empty, that is, the size of this span is `0`.
+		//! Checks whether this span is empty, that is, the size of this span is `0`.
 		//! @return Returns `true` if this span is empty, returns `false` otherwise.
 		constexpr bool empty() const { return _Size == 0; }
 
-		//! @brief Creates a new fixed-sized span referring the first `_Count` elements of this span.
+		//! Creates a new fixed-sized span referring the first `_Count` elements of this span.
 		//! @return Returns one span referring the first `_Count` elements of this span.
 		template <usize _Count>
 		constexpr Span<element_type, _Count> first() const { return Span<element_type, _Count>(m_buffer); }
-		//! @brief Creates a new dynamic-sized span referring the first `count` elements of this span.
+		//! Creates a new dynamic-sized span referring the first `count` elements of this span.
 		//! @param[in] count The size of the new span.
 		//! @return Returns one span referring the first `count` elements of this span.
 		constexpr Span<element_type, DYNAMIC_EXTENT> first(usize count) const { return Span<element_type, DYNAMIC_EXTENT>(m_buffer, count); }
 
-		//! @brief Creates a new fixed-sized span referring the last `_Count` elements of this span.
+		//! Creates a new fixed-sized span referring the last `_Count` elements of this span.
 		//! @return Returns one span referring the last `_Count` elements of this span.
 		template <usize _Count>
 		constexpr Span<element_type, _Count> last() const { return Span<element_type, _Count>(m_buffer + _Size - _Count); }
-		//! @brief Creates a new dynamic-sized span referring the last `count` elements of this span.
+		//! Creates a new dynamic-sized span referring the last `count` elements of this span.
 		//! @param[in] count The size of the new span.
 		//! @return Returns one span referring the last `count` elements of this span.
 		constexpr Span<element_type, DYNAMIC_EXTENT> last(usize count) const { return Span<element_type, DYNAMIC_EXTENT>(m_buffer + (_Size - count), count); }
 
-		//! @brief Creates a new fixed-sized span referring `_Count` elements beginning at `offset` of this span.
+		//! Creates a new fixed-sized span referring `_Count` elements beginning at `offset` of this span.
 		//! @param[in] offset The index of the first element to refer for the new span.
 		//! @return Returns one span referring `_Count` elements beginning at `offset` of this span.
 		template <usize _Count>
 		constexpr Span<element_type, _Count> subspan(usize offset) const { return Span<element_type, _Count>(m_buffer + offset); }
-		//! @brief Creates a new dynamic-sized span referring `count` elements beginning at `offset` of this span.
+		//! Creates a new dynamic-sized span referring `count` elements beginning at `offset` of this span.
 		//! @param[in] offset The index of the first element to refer for the new span.
 		//! @param[in] count The size of the new span.
 		//! @return Returns one span referring `count` elements beginning at `offset` of this span.
@@ -128,7 +128,7 @@ namespace Luna
 		_Ty* m_buffer;
 	};
 
-	//! @brief Represents one reference to one continuous sequence of instances. The size of the span is determined at runtime.
+	//! Represents one reference to one continuous sequence of instances. The size of the span is determined at runtime.
 	template <typename _Ty>
 	class Span<_Ty, DYNAMIC_EXTENT>
 	{
@@ -142,17 +142,17 @@ namespace Luna
 		using iterator = pointer;
 		using reverse_iterator = ReverseIterator<iterator>;
 
-		//! @brief Constructs one empty span.
+		//! Constructs one empty span.
 		constexpr Span() :
 			m_buffer(nullptr),
 			m_size(0) {}
-		//! @brief Constructs one span by providing the referred range directly.
+		//! Constructs one span by providing the referred range directly.
 		//! @param[in] data The pointer to the first element in the range.
 		//! @param[in] size The size of the range.
 		constexpr Span(element_type* data, usize size) :
 			m_buffer(data),
 			m_size(size) {}
-		//! @brief Constructs one span using the data provided by the specified initializer list.
+		//! Constructs one span using the data provided by the specified initializer list.
 		//! @param[in] ilist The initializer list used.
 		//! @remark This is only used to specify one initializer list for one Span parameter of one function. 
 		//! Since the initializer list exists only in the expression evaluation scope, you can not refer
@@ -161,12 +161,12 @@ namespace Luna
 		constexpr Span(InitializerList<remove_cv_t<_Ty>> ilist) :
 			m_buffer(ilist.begin()),
 			m_size(ilist.size()) {}
-		//! @brief Constructs one span by coping data from another span.
+		//! Constructs one span by coping data from another span.
 		//! @param[in] rhs The span to copy data from.
 		constexpr Span(const Span& rhs) :
             m_buffer(rhs.m_buffer),
             m_size(rhs.m_size) {}
-		//! @brief Assigns one span by coping data from another span.
+		//! Assigns one span by coping data from another span.
 		//! @param[in] rhs The span to copy data from.
 		//! @return Returns `*this`.
 		constexpr Span& operator=(const Span& rhs)
@@ -176,67 +176,67 @@ namespace Luna
             return *this;
         }
 
-		//! @brief Gets one iterator to the first element of the span.
+		//! Gets one iterator to the first element of the span.
 		//! @return Returns one iterator to the first element of the span.
 		constexpr iterator begin() const { return m_buffer; }
-		//! @brief Gets one iterator to the one past last element of the span.
+		//! Gets one iterator to the one past last element of the span.
 		//! @return Returns one iterator to the one past last element of the span.
 		constexpr iterator end() const { return m_buffer + m_size; }
-		//! @brief Gets one reverse iterator to the last element of the span.
+		//! Gets one reverse iterator to the last element of the span.
 		//! @return Returns one reverse iterator to the last element of the span.
 		constexpr reverse_iterator rbegin() const { return reverse_iterator(end()); }
-		//! @brief Gets one reverse iterator to the one-before-first element of the span.
+		//! Gets one reverse iterator to the one-before-first element of the span.
 		//! @return Returns one reverse iterator to the one-before-first element of the span.
 		constexpr reverse_iterator rend() const { return reverse_iterator(begin()); }
 
-		//! @brief Gets a reference to the first (index 0) element in the span.
+		//! Gets a reference to the first (index 0) element in the span.
 		//! @return Returns a reference to the first element in the span.
 		constexpr reference front() const { return *m_buffer; }
-		//! @brief Gets a reference to the last (index `size()` - 1) element in the span.
+		//! Gets a reference to the last (index `size()` - 1) element in the span.
 		//! @return Returns a reference to the first element in the span.
 		constexpr reference back() const { return *(m_buffer + m_size - 1); }
-		//! @brief Gets a refernece of the element at the specified index.
+		//! Gets a refernece of the element at the specified index.
 		//! @param[in] pos The index of the element.
 		//! @return Returns a reference of the specified element.
 		constexpr reference operator[](usize index) const { lucheck(index < m_size); return m_buffer[index]; }
-		//! @brief Gets one pointer to the span data memory.
+		//! Gets one pointer to the span data memory.
 		//! @return Returns one pointer to the span data memory.
 		constexpr pointer data() const { return m_buffer; }
 
-		//! @brief Gets the size (number of elements) of the span.
+		//! Gets the size (number of elements) of the span.
 		//! @return Returns the size of the span.
 		constexpr usize size() const { return m_size; }
-		//! @brief Gets the size of the span in bytes, which is `size() * sizeof(element_type)`.
+		//! Gets the size of the span in bytes, which is `size() * sizeof(element_type)`.
 		//! @return Returns the size of the span  in bytes.
 		constexpr usize size_bytes() const { return m_size * sizeof(element_type); }
-		//! @brief Checks whether this span is empty, that is, the size of this span is `0`.
+		//! Checks whether this span is empty, that is, the size of this span is `0`.
 		//! @return Returns `true` if this span is empty, returns `false` otherwise.
 		constexpr bool empty() const { return m_size == 0; }
 
-		//! @brief Creates a new fixed-sized span referring the first `_Count` elements of this span.
+		//! Creates a new fixed-sized span referring the first `_Count` elements of this span.
 		//! @return Returns one span referring the first `_Count` elements of this span.
 		template <usize _Count>
 		constexpr Span<element_type, _Count> first() const { return Span<element_type, _Count>(m_buffer); }
-		//! @brief Creates a new dynamic-sized span referring the first `count` elements of this span.
+		//! Creates a new dynamic-sized span referring the first `count` elements of this span.
 		//! @param[in] count The size of the new span.
 		//! @return Returns one span referring the first `count` elements of this span.
 		constexpr Span<element_type, DYNAMIC_EXTENT> first(usize count) const { return Span<element_type, DYNAMIC_EXTENT>(m_buffer, count); }
 
-		//! @brief Creates a new fixed-sized span referring the last `_Count` elements of this span.
+		//! Creates a new fixed-sized span referring the last `_Count` elements of this span.
 		//! @return Returns one span referring the last `_Count` elements of this span.
 		template <usize _Count>
 		constexpr Span<element_type, _Count> last() const { return Span<element_type, _Count>(m_buffer + m_size - _Count); }
-		//! @brief Creates a new dynamic-sized span referring the last `count` elements of this span.
+		//! Creates a new dynamic-sized span referring the last `count` elements of this span.
 		//! @param[in] count The size of the new span.
 		//! @return Returns one span referring the last `count` elements of this span.
 		constexpr Span<element_type, DYNAMIC_EXTENT> last(usize count) const { return Span<element_type, DYNAMIC_EXTENT>(m_buffer + (m_size - count), count); }
 
-		//! @brief Creates a new fixed-sized span referring `_Count` elements beginning at `offset` of this span.
+		//! Creates a new fixed-sized span referring `_Count` elements beginning at `offset` of this span.
 		//! @param[in] offset The index of the first element to refer for the new span.
 		//! @return Returns one span referring `_Count` elements beginning at `offset` of this span.
 		template <usize _Count>
 		constexpr Span<element_type, _Count> subspan(usize offset) const { return Span<element_type, _Count>(m_buffer + offset); }
-		//! @brief Creates a new dynamic-sized span referring `count` elements beginning at `offset` of this span.
+		//! Creates a new dynamic-sized span referring `count` elements beginning at `offset` of this span.
 		//! @param[in] offset The index of the first element to refer for the new span.
 		//! @param[in] count The size of the new span.
 		//! @return Returns one span referring `count` elements beginning at `offset` of this span.

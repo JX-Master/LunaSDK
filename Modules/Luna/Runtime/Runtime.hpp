@@ -28,7 +28,7 @@ namespace Luna
 	//! @addtogroup RuntimeInit
 	//! @{
 
-	//! @brief Initializes Luna SDK.
+	//! Initializes Luna SDK.
 	//! @details Call this function to initialize Luna SDK. Most features provided by Luna SDK are only available after Luna SDK is initialized, 
 	//! so always initialize Luna SDK firstly on program startup. Calling this function when Luna SDK is already initialized does nothing and returns `true` directly.
 	//! 
@@ -36,7 +36,7 @@ namespace Luna
 	//! @return Returns `true` if Luna SDK is succssfully initialized, returns `false` otherwise.
 	LUNA_RUNTIME_API bool init();
 
-	//! @brief Closes Luna SDK.
+	//! Closes Luna SDK.
 	//! @details Call this function to close Luna SDK. Most features provided by Luna SDK are not available after Luna SDK is closed.
 	//! Calling this function when Luna SDK is not initialized or already closed does nothing and returns directly.
 	//! 

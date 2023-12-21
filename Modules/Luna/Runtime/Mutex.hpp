@@ -20,7 +20,7 @@ namespace Luna
 	
 	//! @interface IMutex
 	//! @threadsafe
-	//! @brief Represents a system-level mutex object.
+	//! Represents a system-level mutex object.
 	//! @details The mutex or critical section is an important object that provides
 	//! synchronization functionality for multiple threads that wants to 
 	//! access the same resource without data race. The mutex can be "owned"
@@ -38,7 +38,7 @@ namespace Luna
 	{
 		luiid("{eff5c37a-8994-4136-a841-3f494a75385e}");
 
-		//! @brief Releases the ownership of the mutex.
+		//! Releases the ownership of the mutex.
 		virtual void unlock() = 0;
 	};
 
@@ -46,28 +46,28 @@ namespace Luna
 	//! @return Returns the new created mutex object.
 	LUNA_RUNTIME_API Ref<IMutex> new_mutex();
 
-	//! @brief A RAII wrapper for one mutex object that releases the mutex automatically when the wrapper is 
+	//! A RAII wrapper for one mutex object that releases the mutex automatically when the wrapper is 
 	//! destructed.
 	class MutexGuard
 	{
 		Ref<IMutex> m_mtx;
 	public:
-		//! @brief Constructs an empty mutex lock.
+		//! Constructs an empty mutex lock.
 		MutexGuard() :
 			m_mtx(nullptr) {}
-		//! @brief Constructs a mutex lock that locks the specified mutex.
+		//! Constructs a mutex lock that locks the specified mutex.
 		//! @param[in] mtx The mutex to lock.
 		MutexGuard(IMutex* mtx) :
 			m_mtx(mtx)
 		{
 			m_mtx->wait();
 		}
-		//! @brief Checks whether this mutex lock is locking one mutex.
+		//! Checks whether this mutex lock is locking one mutex.
 		bool locked() const
 		{
 			return m_mtx ? true : false;
 		}
-		//! @brief Locks the specified mutex.
+		//! Locks the specified mutex.
 		//! If there is already one locked mutex, the former mutex will be unlocked firstly.
 		//! @param[in] mtx The mutex to lock.
 		void lock(IMutex* mtx)
@@ -76,7 +76,7 @@ namespace Luna
 			m_mtx = mtx;
 			m_mtx->wait();
 		}
-		//! @brief Unlocks the currently locking mutex.
+		//! Unlocks the currently locking mutex.
 		//! If no mutex is currently locked, this function does nothing.
 		void unlock()
 		{

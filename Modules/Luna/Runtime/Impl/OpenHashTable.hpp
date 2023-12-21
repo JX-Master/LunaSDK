@@ -1234,16 +1234,16 @@ namespace Luna
 			}
 		};
 
-		//! @brief Represents the insertion result of one node.
+		//! Represents the insertion result of one node.
 		template <typename _Iter, typename _Node>
 		struct InsertResult
 		{	
-			//! @brief The iterator identifing the insertion position if `inserted` is `true`, or
+			//! The iterator identifing the insertion position if `inserted` is `true`, or
 			//! 
 			_Iter    position;
 			//! `true` if the insertion is succeeded. `false` if the insertion is failed.
 			bool     inserted;
-			//! @brief The original node passed in if the insertion is failed. 
+			//! The original node passed in if the insertion is failed. 
 			//! An empty node otherwise.
 			_Node 	 node;
 		};

@@ -26,128 +26,128 @@ namespace Luna
 	//! @addtogroup RuntimeAtomic
     //! @{
 
-	//! @brief Atomically increase the value of the variable by 1.
+	//! Atomically increase the value of the variable by 1.
 	//! @details This operation cannot be interrupted by system thread switching.
 	//! @param[in] v The pointer to the variable that needs to be changed.
 	//! @return Returns the value of the variable after this operation.
 	i32 atom_inc_i32(i32 volatile* v);
-	//! @brief Atomically increase the value of the variable by 1.
+	//! Atomically increase the value of the variable by 1.
 	//! @details This operation cannot be interrupted by system thread switching.
 	//! @param[in] v The pointer to the variable that needs to be changed.
 	//! @return Returns the value of the variable after this operation.
 	u32 atom_inc_u32(u32 volatile* v);
-	//! @brief Atomically increase the value of the variable by 1.
+	//! Atomically increase the value of the variable by 1.
 	//! @details This operation cannot be interrupted by system thread switching.
 	//! @param[in] v The pointer to the variable that needs to be changed.
 	//! @return Returns the value of the variable after this operation.
 	i64 atom_inc_i64(i64 volatile* v);
-	//! @brief Atomically increase the value of the variable by 1.
+	//! Atomically increase the value of the variable by 1.
 	//! @details This operation cannot be interrupted by system thread switching.
 	//! @param[in] v The pointer to the variable that needs to be changed.
 	//! @return Returns the value of the variable after this operation.
 	u64 atom_inc_u64(u64 volatile* v);
-	//! @brief Atomically increase the value of the variable by 1.
+	//! Atomically increase the value of the variable by 1.
 	//! @details This operation cannot be interrupted by system thread switching.
 	//! @param[in] v The pointer to the variable that needs to be changed.
 	//! @return Returns the value of the variable after this operation.
 	usize atom_inc_usize(usize volatile* v);
 
-	//! @brief Atomically decrease the value of the variable by 1.
+	//! Atomically decrease the value of the variable by 1.
 	//! @details This operation cannot be interrupted by system thread switching.
 	//! @param[in] v The pointer to the variable that needs to be changed.
 	//! @return Returns the value of the variable after this operation.
 	i32 atom_dec_i32(i32 volatile* v);
-	//! @brief Atomically decrease the value of the variable by 1.
+	//! Atomically decrease the value of the variable by 1.
 	//! @details This operation cannot be interrupted by system thread switching.
 	//! @param[in] v The pointer to the variable that needs to be changed.
 	//! @return Returns the value of the variable after this operation.
 	u32 atom_dec_u32(u32 volatile* v);
-	//! @brief Atomically decrease the value of the variable by 1.
+	//! Atomically decrease the value of the variable by 1.
 	//! @details This operation cannot be interrupted by system thread switching.
 	//! @param[in] v The pointer to the variable that needs to be changed.
 	//! @return Returns the value of the variable after this operation.
 	i64 atom_dec_i64(i64 volatile* v);
-	//! @brief Atomically decrease the value of the variable by 1.
+	//! Atomically decrease the value of the variable by 1.
 	//! @details This operation cannot be interrupted by system thread switching.
 	//! @param[in] v The pointer to the variable that needs to be changed.
 	//! @return Returns the value of the variable after this operation.
 	u64 atom_dec_u64(u64 volatile* v);
-	//! @brief Atomically decrease the value of the variable by 1.
+	//! Atomically decrease the value of the variable by 1.
 	//! @details This operation cannot be interrupted by system thread switching.
 	//! @param[in] v The pointer to the variable that needs to be changed.
 	//! @return Returns the value of the variable after this operation.
 	usize atom_dec_usize(usize volatile* v);
 
-	//! @brief Atomically increase the value of the variable by the the value provided. 
+	//! Atomically increase the value of the variable by the the value provided. 
 	//! @details This operation cannot be interrupted by system thread switching.
 	//! @param[in] base The pointer to the variable that needs to be changed.
 	//! @param[in] v The value that needs to be added to the variable.
 	//! @return Returns the value of the variable before this operation.
 	i32 atom_add_i32(i32 volatile* base, i32 v);
-	//! @brief Atomically increase the value of the variable by the the value provided. 
+	//! Atomically increase the value of the variable by the the value provided. 
 	//! @details This operation cannot be interrupted by system thread switching.
 	//! @param[in] base The pointer to the variable that needs to be changed.
 	//! @param[in] v The value that needs to be added to the variable.
 	//! @return Returns the value of the variable before this operation.
 	u32 atom_add_u32(u32 volatile* base, i32 v);
-	//! @brief Atomically increase the value of the variable by the the value provided. 
+	//! Atomically increase the value of the variable by the the value provided. 
 	//! @details This operation cannot be interrupted by system thread switching.
 	//! @param[in] base The pointer to the variable that needs to be changed.
 	//! @param[in] v The value that needs to be added to the variable.
 	//! @return Returns the value of the variable before this operation.
 	i64 atom_add_i64(i64 volatile* base, i64 v);
-	//! @brief Atomically increase the value of the variable by the the value provided. 
+	//! Atomically increase the value of the variable by the the value provided. 
 	//! @details This operation cannot be interrupted by system thread switching.
 	//! @param[in] base The pointer to the variable that needs to be changed.
 	//! @param[in] v The value that needs to be added to the variable.
 	//! @return Returns the value of the variable before this operation.
 	u64 atom_add_u64(u64 volatile* base, i64 v);
-	//! @brief Atomically increase the value of the variable by the the value provided. 
+	//! Atomically increase the value of the variable by the the value provided. 
 	//! @details This operation cannot be interrupted by system thread switching.
 	//! @param[in] base The pointer to the variable that needs to be changed.
 	//! @param[in] v The value that needs to be added to the variable.
 	//! @return Returns the value of the variable before this operation.
 	usize atom_add_usize(usize volatile* base, isize v);
 
-	//! @brief Atomically replace the value of the variable with the value provided.
+	//! Atomically replace the value of the variable with the value provided.
 	//! @details This operation cannot be interrupted by system thread switching.
 	//! @param[in] dst The pointer to the variable that needs to be changed.
 	//! @param[in] v The value that needs to be set to the variable.
 	//! @return Returns the value of the variable before this operation took place.
 	i32 atom_exchange_i32(i32 volatile* dst, i32 v);
-	//! @brief Atomically replace the value of the variable with the value provided.
+	//! Atomically replace the value of the variable with the value provided.
 	//! @details This operation cannot be interrupted by system thread switching.
 	//! @param[in] dst The pointer to the variable that needs to be changed.
 	//! @param[in] v The value that needs to be set to the variable.
 	//! @return Returns the value of the variable before this operation took place.
 	u32 atom_exchange_u32(u32 volatile* dst, u32 v);
-	//! @brief Atomically replace the value of the variable with the value provided.
+	//! Atomically replace the value of the variable with the value provided.
 	//! @details This operation cannot be interrupted by system thread switching.
 	//! @param[in] dst The pointer to the variable that needs to be changed.
 	//! @param[in] v The value that needs to be set to the variable.
 	//! @return Returns the value of the variable before this operation took place.
 	i64 atom_exchange_i64(i64 volatile* dst, i64 v);
-	//! @brief Atomically replace the value of the variable with the value provided.
+	//! Atomically replace the value of the variable with the value provided.
 	//! @details This operation cannot be interrupted by system thread switching.
 	//! @param[in] dst The pointer to the variable that needs to be changed.
 	//! @param[in] v The value that needs to be set to the variable.
 	//! @return Returns the value of the variable before this operation took place.
 	u64 atom_exchange_u64(u64 volatile* dst, u64 v);
-	//! @brief Atomically replace the value of the variable with the value provided.
+	//! Atomically replace the value of the variable with the value provided.
 	//! @details This operation cannot be interrupted by system thread switching.
 	//! @param[in] dst The pointer to the variable that needs to be changed.
 	//! @param[in] v The value that needs to be set to the variable.
 	//! @return Returns the value of the variable before this operation took place.
 	template <typename _Ty>
 	_Ty* atom_exchange_pointer(_Ty* volatile* target, void* value);
-	//! @brief Atomically replace the value of the variable with the value provided.
+	//! Atomically replace the value of the variable with the value provided.
 	//! @details This operation cannot be interrupted by system thread switching.
 	//! @param[in] dst The pointer to the variable that needs to be changed.
 	//! @param[in] v The value that needs to be set to the variable.
 	//! @return Returns the value of the variable before this operation took place.
 	usize atom_exchange_usize(usize volatile* dst, usize v);
 
-	//! @brief Atomically compares the value of the variable with the specified comperand, 
+	//! Atomically compares the value of the variable with the specified comperand, 
 	//! and sets the variable to the specified value if equal.
 	//! @param[in] dst The pointer to the variable that needs to be compared.
 	//! @param[in] exchange The value to set to the variable if `*dst == comperand`.
@@ -163,7 +163,7 @@ namespace Luna
 	//! }
 	//! ```
 	i32 atom_compare_exchange_i32(i32 volatile* dst, i32 exchange, i32 comperand);
-	//! @brief Atomically compares the value of the variable with the specified comperand, 
+	//! Atomically compares the value of the variable with the specified comperand, 
 	//! and sets the variable to the specified value if equal.
 	//! @param[in] dst The pointer to the variable that needs to be compared.
 	//! @param[in] exchange The value to set to the variable if `*dst == comperand`.
@@ -171,7 +171,7 @@ namespace Luna
 	//! @return Returns the value of the variable before this operation took place.
 	//! @remark See remarks of @ref atom_compare_exchange_i32 for details.
 	u32 atom_compare_exchange_u32(u32 volatile* dst, u32 exchange, u32 comperand);
-	//! @brief Atomically compares the value of the variable with the specified comperand, 
+	//! Atomically compares the value of the variable with the specified comperand, 
 	//! and sets the variable to the specified value if equal.
 	//! @param[in] dst The pointer to the variable that needs to be compared.
 	//! @param[in] exchange The value to set to the variable if `*dst == comperand`.
@@ -181,7 +181,7 @@ namespace Luna
 	template <typename _Ty>
 	_Ty* atom_compare_exchange_pointer(_Ty* volatile* dst, void* exchange, void* comperand);
 #ifdef LUNA_PLATFORM_64BIT
-//! @brief Atomically compares the value of the variable with the specified comperand, 
+//! Atomically compares the value of the variable with the specified comperand, 
 	//! and sets the variable to the specified value if equal.
 	//! @param[in] dst The pointer to the variable that needs to be compared.
 	//! @param[in] exchange The value to set to the variable if `*dst == comperand`.
@@ -189,7 +189,7 @@ namespace Luna
 	//! @return Returns the value of the variable before this operation took place.
 	//! @remark See remarks of @ref atom_compare_exchange_i32 for details.
 	i64 atom_compare_exchange_i64(i64 volatile* dst, i64 exchange, i64 comperand);
-	//! @brief Atomically compares the value of the variable with the specified comperand, 
+	//! Atomically compares the value of the variable with the specified comperand, 
 	//! and sets the variable to the specified value if equal.
 	//! @param[in] dst The pointer to the variable that needs to be compared.
 	//! @param[in] exchange The value to set to the variable if `*dst == comperand`.
@@ -198,7 +198,7 @@ namespace Luna
 	//! @remark See remarks of @ref atom_compare_exchange_i32 for details.
 	u64 atom_compare_exchange_u64(u64 volatile* dst, u64 exchange, u64 comperand);
 #endif
-	//! @brief Atomically compares the value of the variable with the specified comperand, 
+	//! Atomically compares the value of the variable with the specified comperand, 
 	//! and sets the variable to the specified value if equal.
 	//! @param[in] dst The pointer to the variable that needs to be compared.
 	//! @param[in] exchange The value to set to the variable if `*dst == comperand`.

@@ -17,16 +17,16 @@ namespace Luna
 	//! @{
 	
 	//！@interface ISemaphore
-	//! @brief Represents one system-level semaphore object.
+	//! Represents one system-level semaphore object.
 	struct ISemaphore : virtual IWaitable
 	{
 		luiid("{ef6a7782-0a6c-4a40-abc9-a6d2381a3397}");
 
-		//! @brief Increases the counter value of the semaphore by one.
+		//! Increases the counter value of the semaphore by one.
 		virtual void release() = 0;
 	};
 
-	//! @brief Create a new semaphore object.
+	//! Create a new semaphore object.
 	//! @param[in] initial_count The initial count of the semaphore.
 	//! @param[in] max_count The max count the specified semaphore can reach to.
 	//! @return Returns the new created semaphore object.

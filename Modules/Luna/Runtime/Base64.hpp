@@ -24,7 +24,7 @@ namespace Luna
     //! @addtogroup RuntimeBase64
     //! @{
 
-	//! @brief Get the encoded base64 string size from the raw data size.
+	//! Get the encoded base64 string size from the raw data size.
 	//! @param[in] raw_size The size of the raw binary data in bytes.
 	//! @return The size of the encoded string in bytes. The string size does not include the null-terminator.
 	inline constexpr usize base64_get_encoded_size(usize raw_size)
@@ -32,7 +32,7 @@ namespace Luna
 		return (raw_size + 2) / 3 * 4;
 	}
 
-	//! @brief Get the decoded binary size from the encoded base64 string size.
+	//! Get the decoded binary size from the encoded base64 string size.
 	//! @details This value may be greater than the actual data size if the size of raw data is not times of 3.
 	//! You should use this value to allocate memory, and use the size value returned by the actual decode 
 	//! function as the size information, since that is precise.
@@ -44,7 +44,7 @@ namespace Luna
 		return encoded_size / 4 * 3;
 	}
 
-	//! @brief Encode a binary data to a base64 string.
+	//! Encode a binary data to a base64 string.
 	//! @param[in] dst The character buffer used to hold the encoded base64 string.
 	//! @param[in] dst_max_chars The maximum characters the `dst` buffer can hold, including the null-terminator.
 	//! @param[in] src The source binary data.
@@ -52,7 +52,7 @@ namespace Luna
 	//! @return Returned the number of characters outputted into `dst` buffer.
 	LUNA_RUNTIME_API usize base64_encode(c8* dst, usize dst_max_chars, const void* src, usize src_size_bytes);
 
-	//! @brief Decode a base64 string to binary data. The system assumes the string passed in is a valid base64 string.
+	//! Decode a base64 string to binary data. The system assumes the string passed in is a valid base64 string.
 	//! @param[in] dst The binary buffer used to hold the decoded data.
 	//! @param[in] dst_max_bytes The maximum bytes the `dst` buffer can hold.
 	//! @param[in] src The null-terminated base64 source string.
