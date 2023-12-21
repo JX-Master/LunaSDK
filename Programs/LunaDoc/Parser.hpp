@@ -96,6 +96,8 @@ struct Parser
     RV encode_md_files(const Path& output_dir);
 
     private:
+    String get_element_brief_desc(const Variant& element);
+
     void add_section_ids(const Variant& section);
     void add_group_member_ids(const Variant& group_data);
     void add_class_member_ids(const Variant& class_data);

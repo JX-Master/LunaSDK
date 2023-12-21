@@ -929,6 +929,17 @@ struct BaseClassDesc
     Name id;
 };
 
+String Parser::get_element_brief_desc(const Variant& element)
+{
+    String briefdescription;
+    auto& bd = find_first_xml_child_element(element, _briefdescription);
+    if(bd.valid())
+    {
+        encode_md_text(bd, briefdescription);
+    }
+    return briefdescription;
+}
+
 RV Parser::encode_md_class_file(const Name& xml_name, const Variant& xml_data, const Path& output_dir)
 {
     lutry
@@ -1172,6 +1183,17 @@ RV Parser::encode_md_group_file(const Name& xml_name, const Variant& xml_data, c
                     innerclass.append("](");
                     innerclass.append(refid.c_str(), refid.size());
                     innerclass.append(".md)");
+                    auto iter = class_files.find(refid);
+                    if(iter != class_files.end())
+                    {
+                        auto& class_compounddef = find_first_xml_child_element(iter->second, _compounddef);
+                        String class_bd = get_element_brief_desc(class_compounddef);
+                        if(!is_blank_string(class_bd.c_str()))
+                        {
+                            innerclass.append("\n\n    ");
+                            innerclass.append(class_bd);
+                        }
+                    }
                     innerclasses.push_back(move(innerclass));
                 }
             }
@@ -1196,7 +1218,7 @@ RV Parser::encode_md_group_file(const Name& xml_name, const Variant& xml_data, c
         }
         if(!innerclasses.empty())
         {
-            out_content.append("## Classes\n");
+            out_content.append("## Types\n");
             for(auto& innerclass : innerclasses)
             {
                 out_content.append("* ");
