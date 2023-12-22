@@ -138,7 +138,37 @@ namespace Luna
 	//! @}
 }
 
+//! @addtogroup RuntimeType
+//! @{
+
+//! Declares the name and guid for one structure or class type.
+//! @param[in] name The name string of the type.
+//! @param[in] guid The GUID string of the type.
+//! @remark Add this macro to the type body. For exmaple:
+//! ```
+//! struct MyType
+//! {
+//! 	lustruct("MyType", "{dbeecd7a-2dc5-423e-8e20-7521826c3f06}");
+//! 	// other members...
+//! };
 #define lustruct(_name, _guid) static constexpr const Luna::c8* __name = _name; static constexpr Luna::Guid __guid { Luna::Guid(u8##_guid) };
+
+//! Declares one property used in @ref register_struct_type.
+//! @param[in] _struct The outer structure or class name.
+//! @param[in] _type The property type.
+//! @param[in] _name The property name.
 #define luproperty(_struct, _type, _name) {#_name, typeof<_type>(), offsetof(_struct, _name)}
+
+//! Declares the name and guid for one enumeration type.
+//! @details This macro must be defined directly in `Luna` namespace.
+//! @param[in] _type The enumeration type.
+//! @param[in] name The name string of the type.
+//! @param[in] guid The GUID string of the type.
 #define luenum(_type, _name, _guid) template <> struct EnumTypeInfo<_type> { static constexpr const Luna::c8* __name = _name; static constexpr Luna::Guid __guid { Luna::Guid(u8##_guid) }; }; template <> struct typeof_t<_type> { typeinfo_t operator()() const { return get_type_by_guid(EnumTypeInfo<_type>::__guid); } };
+
+//! Declares one option used in @ref register_enum_type.
+//! @param[in] _enum The outer enumeration type.
+//! @param[in] _item The option name.
 #define luoption(_enum, _item) {#_item, (i64)(_enum::_item)}
+
+//! @}

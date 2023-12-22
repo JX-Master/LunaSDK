@@ -81,6 +81,10 @@ extern Name _initializer;
 extern Name _enum;
 extern Name _enumvalue;
 extern Name _public_static_attrib;
+extern Name _programlisting;
+extern Name _codeline;
+extern Name _highlight;
+extern Name _sp;
 
 struct Parser
 {

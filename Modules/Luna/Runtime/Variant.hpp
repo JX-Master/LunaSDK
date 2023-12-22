@@ -16,38 +16,38 @@
 
 namespace Luna
 {
-//! @addtogroup Runtime
-//! @{
+	//! @addtogroup Runtime
+	//! @{
 
 	//! Defines all possible types of one @ref Variant object.
 	//! @remark To fetch the type of one variant, call @ref Variant::type
 	enum class VariantType : u8
 	{
 		//! Indicates a null variant. 
-		//! A null variant represents the absence of value for the variant object.
+		//! @details A null variant represents the absence of value for the variant object.
 		null = 0,
 		//! Indicates an object variant.
-		//! An object variant contains one set of @ref Variant objects, which acts as children of the current variant. 
+		//! @details An object variant contains one set of @ref Variant objects, which acts as children of the current variant. 
 		//! Children in object variant are indexed by @ref Name strings, and do not have a particular order.
 		object = 1,
 		//! Indicates an array variant.
-		//! An array variant contains one array of @ref Variant objects, which acts as children of the current variant.
+		//! @details An array variant contains one array of @ref Variant objects, which acts as children of the current variant.
 		array = 2,
 		//! Indicates a number variant.
-		//! A number variant stores a number of integer or floating-point type. The number type of one number variant is represented by @ref VariantNumberType 
+		//! @details A number variant stores a number of integer or floating-point type. The number type of one number variant is represented by @ref VariantNumberType 
 		//! and can be fetched by calling @ref Variant::number_type method. The number value of the variant can be fetched by calling @ref Variant::unum, 
 		//! @ref Variant::inum and @ref Variant::fnum methods, each of them returns the underlying number in specified format with implicit number type conversion when needed.	
 		number = 3,
 		//! Indicates a string variant.
-		//! A string variant contains one string represented by a @ref Name object. You can fetch the underlying string by calling @ref Variant::str or @ref Variant::c_str, 
+		//! @details A string variant contains one string represented by a @ref Name object. You can fetch the underlying string by calling @ref Variant::str or @ref Variant::c_str, 
 		//! the former one returns one @ref Name object while the later one returns one C-style string (`const c8*`).
 		string = 4,
 		//! Indicates a Boolean variant.
-		//! A Boolean variant stores a Boolean value with only two possible values: `true` and `false`. 
+		//! @details A Boolean variant stores a Boolean value with only two possible values: `true` and `false`. 
 		//! The Boolean value of one Boolean variant can be fetched by calling @ref Variant::boolean method.
 		boolean = 5,
 		//! Indicates a BLOB (binary large object) variant.
-		//! A BLOB variant can store arbitrary binary data. The data pointer, size and alignment of the data can be fetched by calling @ref Variant::blob_data, @ref Variant::blob_size 
+		//! @details A BLOB variant can store arbitrary binary data. The data pointer, size and alignment of the data can be fetched by calling @ref Variant::blob_data, @ref Variant::blob_size 
 		//! and @ref Variant::blob_alignment methods.
 		blob = 6
 	};

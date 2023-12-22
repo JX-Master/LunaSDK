@@ -77,6 +77,10 @@ Name _initializer;
 Name _enum;
 Name _enumvalue;
 Name _public_static_attrib;
+Name _programlisting;
+Name _codeline;
+Name _highlight;
+Name _sp;
 
 static void new_paragraph(String& out_text)
 {
@@ -266,6 +270,25 @@ void Parser::encode_md_text(const Variant& element, String& out_text, bool raw)
                 out_text.push_back('(');
                 out_text.append(url.c_str(), url.size());
                 out_text.push_back(')');
+            }
+            else if(name == _programlisting)
+            {
+                out_text.append("\n```\n");
+                encode_md_text(c, out_text);
+                out_text.append("```\n");
+            }
+            else if(name == _codeline)
+            {
+                encode_md_text(c, out_text);
+                out_text.append("\n");
+            }
+            else if(name == _highlight)
+            {
+                encode_md_text(c, out_text);
+            }
+            else if(name == _sp)
+            {
+                out_text.push_back(' ');
             }
         }
     }
