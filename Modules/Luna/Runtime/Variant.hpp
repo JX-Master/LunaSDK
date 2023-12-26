@@ -713,7 +713,7 @@ namespace Luna
 		bool do_small_obj_erase(const Name& k);
 	};
 
-//! @}
+	//! @}
 }
 
 #include "Impl/Variant.inl"

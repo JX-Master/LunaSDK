@@ -151,6 +151,7 @@ namespace Luna
 //! 	lustruct("MyType", "{dbeecd7a-2dc5-423e-8e20-7521826c3f06}");
 //! 	// other members...
 //! };
+//! ```
 #define lustruct(_name, _guid) static constexpr const Luna::c8* __name = _name; static constexpr Luna::Guid __guid { Luna::Guid(u8##_guid) };
 
 //! Declares one property used in @ref Luna::register_struct_type.

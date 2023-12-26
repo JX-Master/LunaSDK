@@ -13,12 +13,12 @@
 
 namespace Luna
 {
-	/// @addtogroup Runtime
-	/// {
+	//! @addtogroup Runtime
+	//! @{
 	
-	/// The default object deletion function used by @ref UniquePtr, which calls @ref memdelete to delete
-	/// The object.
-	/// @tparam _Ty The type of the object.
+	//! The default object deletion function used by @ref UniquePtr, which calls @ref memdelete to delete
+	//! The object.
+	//! @tparam _Ty The type of the object.
 	template <typename _Ty>
 	struct DefaultDelete
 	{
@@ -29,11 +29,11 @@ namespace Luna
 		}
 	};
 
-	/// A smart pointer that wraps one dynamically created object, and deletes the object when 
-	/// the pointer is destructed.
-	/// 
-	/// @tparam _Ty The type of the object to wrap.
-	/// @tparam _Deleter The object deletion function to use.
+	//! A smart pointer that wraps one dynamically created object, and deletes the object when 
+	//! the pointer is destructed.
+	//! 
+	//! @tparam _Ty The type of the object to wrap.
+	//! @tparam _Deleter The object deletion function to use.
 	template <typename _Ty, typename _Deleter = DefaultDelete<_Ty>>
 	class UniquePtr
 	{
@@ -184,7 +184,7 @@ namespace Luna
 		}
 	};
 
-	/// @}
+	//! @}
 
 	template <typename _Ty> struct hash<UniquePtr<_Ty>>
 	{
