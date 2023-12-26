@@ -45,7 +45,7 @@ namespace Luna
 			lutsassert();
 			auto& dc = get_current_draw_call();
 			u32 idx_offset = (u32)m_vertices.size();
-			m_vertices.insert_n(m_vertices.end(), vertices.data(), vertices.size());
+			m_vertices.insert(m_vertices.end(), vertices);
 			m_indices.reserve(m_indices.size() + indices.size());
 			for(u32 i : indices)
 			{
@@ -89,11 +89,11 @@ namespace Luna
 			v[0].color = v[1].color = v[2].color = v[3].color = color;
 			v[0].begin_command = v[1].begin_command = v[2].begin_command = v[3].begin_command = begin_command;
 			v[0].num_commands = v[1].num_commands = v[2].num_commands = v[3].num_commands = num_commands;
-			m_vertices.insert_n(m_vertices.end(), v, 4);
+			m_vertices.insert(m_vertices.end(), Span<Vertex>(v, 4));
 			u32 indices[] = {
 				idx_offset , idx_offset + 1, idx_offset + 2,
 				idx_offset , idx_offset + 2, idx_offset + 3 };
-			m_indices.insert_n(m_indices.end(), indices, 6);
+			m_indices.insert(m_indices.end(), Span<u32>(indices, 6));
 			dc.num_indices += 6;
 		}
 		RV ShapeDrawList::close()

@@ -129,7 +129,7 @@ namespace Luna
 			usize new_size = (usize)(dst_components_end - dst_components_begin);
 			if (new_size != m_component_types.size())
 			{
-				m_component_types.assign_n(dst_components_begin, new_size);
+				m_component_types.assign(Span<typeinfo_t>(dst_components_begin, new_size));
 				return true;
 			}
 			return false;
@@ -144,7 +144,7 @@ namespace Luna
 			usize new_size = (usize)(dst_components_end - dst_components_begin);
 			if (new_size != m_component_types.size())
 			{
-				m_component_types.assign_n(dst_components_begin, new_size);
+				m_component_types.assign(Span<typeinfo_t>(dst_components_begin, new_size));
 				return true;
 			}
 			return false;
@@ -159,7 +159,7 @@ namespace Luna
 			usize new_size = (usize)(dst_tags_end - dst_tags_begin);
 			if (new_size != m_tags.size())
 			{
-				m_tags.assign_n(dst_tags_begin, new_size);
+				m_tags.assign(Span<entity_id_t>(dst_tags_begin, new_size));
 				return true;
 			}
 			return false;
@@ -174,7 +174,7 @@ namespace Luna
 			usize new_size = (usize)(dst_tags_end - dst_tags_begin);
 			if (new_size != m_tags.size())
 			{
-				m_tags.assign_n(dst_tags_begin, new_size);
+				m_tags.assign(Span<entity_id_t>(dst_tags_begin, new_size));
 				return true;
 			}
 			return false;

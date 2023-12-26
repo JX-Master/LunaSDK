@@ -140,7 +140,7 @@ namespace Luna
 					c32 ch = utf8_decode_char(cur);
 					wchar_t wch[2];
 					usize wsz = utf16_encode_char((c16*)wch, ch);
-					wfilter.insert_n(wfilter.end(), wch, wsz);
+					wfilter.insert(wfilter.end(), Span<wchar_t>(wch, wsz));
 					cur += utf8_charspan(ch);
 				}
 				wfilter.push_back('\0');
@@ -155,7 +155,7 @@ namespace Luna
 						c32 ch = utf8_decode_char(cur);
 						wchar_t wch[2];
 						usize wsz = utf16_encode_char((c16*)wch, ch);
-						wfilter.insert_n(wfilter.end(), wch, wsz);
+						wfilter.insert(wfilter.end(), Span<wchar_t>(wch, wsz));
 						cur += utf8_charspan(ch);
 					}
 					wfilter.push_back(';');
@@ -169,7 +169,7 @@ namespace Luna
 			if (test_flags(flags, FileDialogFlag::any_file))
 			{
 				const wchar_t f[] = L"All Files\0*.*\0";
-				wfilter.insert_n(wfilter.end(), f, 14);
+				wfilter.insert(wfilter.end(), Span<const wchar_t>(f, 14));
 			}
 			wfilter.push_back('\0');
 			ofn.lpstrFile = out;
@@ -257,7 +257,7 @@ namespace Luna
 					c32 ch = utf8_decode_char(cur);
 					wchar_t wch[2];
 					usize wsz = utf16_encode_char((c16*)wch, ch);
-					wfilter.insert_n(wfilter.end(), wch, wsz);
+					wfilter.insert(wfilter.end(), Span<wchar_t>(wch, wsz));
 					cur += utf8_charspan(ch);
 				}
 				wfilter.push_back('\0');
@@ -272,7 +272,7 @@ namespace Luna
 						c32 ch = utf8_decode_char(cur);
 						wchar_t wch[2];
 						usize wsz = utf16_encode_char((c16*)wch, ch);
-						wfilter.insert_n(wfilter.end(), wch, wsz);
+						wfilter.insert(wfilter.end(), Span<wchar_t>(wch, wsz));
 						cur += utf8_charspan(ch);
 					}
 					wfilter.push_back(';');
@@ -286,7 +286,7 @@ namespace Luna
 			if (test_flags(flags, FileDialogFlag::any_file))
 			{
 				const wchar_t f[] = L"All Files\0*.*\0";
-				wfilter.insert_n(wfilter.end(), f, 14);
+				wfilter.insert(wfilter.end(), Span<const wchar_t>(f, 14));
 			}
 			wfilter.push_back('\0');
 			// Translate initial path if have.

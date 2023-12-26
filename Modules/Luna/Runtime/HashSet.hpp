@@ -68,17 +68,22 @@ namespace Luna
 		//! @param[in] alloc The allocator to use. The allocator object will be copy-constructed into the set.
 		HashSet(HashSet&& rhs, const allocator_type& alloc) :
 			m_base(move(rhs.m_base), alloc) {}
+		//! Replaces elements of the set by coping elements from another set.
+		//! @param[in] rhs The set to copy elements from.
+		//! @return Returns `*this`.
 		HashSet& operator=(const HashSet& rhs)
 		{
 			m_base = rhs.m_base;
 			return *this;
 		}
+		//! Replaces elements of the set by moving elements from another set.
+		//! @param[in] rhs The set to move elements from. This set will be empty after this operation.
+		//! @return Returns `*this`.
 		HashSet& operator=(HashSet&& rhs)
 		{
 			m_base = move(rhs.m_base);
 			return *this;
 		}
-	public:
 		//! Gets one iterator to the first element of the set.
 		//! @return Returns one iterator to the first element of the set.
 		iterator begin()

@@ -11,8 +11,10 @@
 #include "Interface.hpp"
 namespace Luna
 {
+	//! @addtogroup RuntimeThread
+	//! @{
+	
 	//! @interface IWaitable
-	//! @ingroup Runtime
 	//! Represents a waitable object used for multi-thread synchronization. 
 	//! @details Objects that implements `IWaitable` cannot be used cross process boundary.
 	struct IWaitable : virtual Interface
@@ -27,4 +29,6 @@ namespace Luna
 		//! @details This will not suspend the current thread, if the condition is not satisfied, this call returns immediately with `false`.
 		virtual bool try_wait() = 0;
 	};
+
+	//! @}
 }

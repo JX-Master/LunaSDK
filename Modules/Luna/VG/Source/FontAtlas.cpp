@@ -87,7 +87,7 @@ namespace Luna
 		{
 			lutsassert();
 			usize begin = m_shape_points.size();
-			m_shape_points.insert_n(m_shape_points.end(), points.data(), points.size());
+			m_shape_points.insert(m_shape_points.end(), points);
 			ShapeDesc desc;
 			desc.first_shape_point = begin;
 			desc.num_shape_points = points.size();

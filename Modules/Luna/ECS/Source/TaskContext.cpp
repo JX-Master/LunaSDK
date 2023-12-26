@@ -41,12 +41,8 @@ namespace Luna
                 EntityResolver resolver;
                 resolver.m_src_cluster = record->m_cluster;
                 resolver.m_src_index = record->m_index;
-                resolver.m_component_types.assign_n(
-					record->m_cluster->m_component_types.data(),
-					record->m_cluster->m_component_types.size());
-				resolver.m_tags.assign_n(
-					record->m_cluster->m_tags.data(),
-					record->m_cluster->m_tags.size());
+                resolver.m_component_types.assign(record->m_cluster->m_component_types);
+				resolver.m_tags.assign(record->m_cluster->m_tags);
                 iter = resolvers.insert(make_pair(id, move(resolver))).first;
             }
             return &(iter->second);

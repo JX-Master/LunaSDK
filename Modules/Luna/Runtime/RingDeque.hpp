@@ -151,6 +151,8 @@ namespace Luna
 	
 	//! A container that implements a double-ended queue and uses a ring buffer
 	//! as its internal storage.
+	//! @tparam _Ty The element type of the container.
+	//! @tparam _Alloc The memory allocator used by the container. If not specified, @ref Allocator will be used.
 	template <typename _Ty, typename _Alloc = Allocator>
 	class RingDeque
 	{
@@ -955,16 +957,16 @@ namespace Luna
 			}
 			return (begin() + idx);
 		}
-		//! Inserts one range of elements specified by the initializer queue to the queue.
+		//! Inserts one range of elements specified by the initializer list to the queue.
 		//! @param[in] pos The iterator to the position to insert elements. The elements will be inserted before the element 
 		//! pointed by this iterator. This can be `end()`, indicating that the element will be inserted at the end of the queue.
-		//! @param[in] iqueue The initializer queue.
+		//! @param[in] ilist The initializer list.
 		//! @return Returns one iterator to the first inserted element.
 		//! @par Valid Usage
 		//! * If `pos != end()`, `pos` must points to a valid element in the queue.
-		iterator insert(const_iterator pos, InitializerList<value_type> iqueue)
+		iterator insert(const_iterator pos, InitializerList<value_type> ilist)
 		{
-			return insert(pos, iqueue.begin(), iqueue.end());
+			return insert(pos, ilist.begin(), ilist.end());
 		}
 		//! Removes one element from the queue.
 		//! @param[in] pos The iterator to the element to be removed.

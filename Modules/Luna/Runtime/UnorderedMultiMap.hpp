@@ -96,7 +96,6 @@ namespace Luna
 			m_base = move(rhs.m_base);
 			return *this;
 		}
-	public:
 		//! Gets one iterator to the first element of the map.
 		//! @return Returns one iterator to the first element of the map.
 		iterator begin()

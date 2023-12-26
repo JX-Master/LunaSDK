@@ -99,22 +99,6 @@ namespace Luna
 	{
 		do_construct(move(rhs));
 	}
-	inline Variant::Variant(const Vector<Pair<const Name, Variant>>& values)
-	{
-		do_construct(values);
-	}
-	inline Variant::Variant(Vector<Pair<const Name, Variant>>&& values)
-	{
-		do_construct(move(values));
-	}
-	inline Variant::Variant(const Vector<Variant>& values)
-	{
-		do_construct(values);
-	}
-	inline Variant::Variant(Vector<Variant>&& values)
-	{
-		do_construct(move(values));
-	}
 	inline Variant::Variant(i64 v)
 	{
 		do_construct(v);
@@ -165,30 +149,6 @@ namespace Luna
 	{
 		do_destruct();
 		do_construct(move(rhs));
-		return *this;
-	}
-	inline Variant& Variant::operator=(const Vector<Pair<const Name, Variant>>& values)
-	{
-		do_destruct();
-		do_construct(values);
-		return *this;
-	}
-	inline Variant& Variant::operator=(Vector<Pair<const Name, Variant>>&& values)
-	{
-		do_destruct();
-		do_construct(move(values));
-		return *this;
-	}
-	inline Variant& Variant::operator=(const Vector<Variant>& values)
-	{
-		do_destruct();
-		do_construct(values);
-		return *this;
-	}
-	inline Variant& Variant::operator=(Vector<Variant>&& values)
-	{
-		do_destruct();
-		do_construct(move(values));
 		return *this;
 	}
 	inline Variant& Variant::operator=(u64 v)
@@ -253,7 +213,7 @@ namespace Luna
 		case VariantType::null:
 			return true;
 		case VariantType::object:
-			//if (size() != rhs.size()) return false;
+			if (size() != rhs.size()) return false;
 			{
 				for (auto& i : key_values())
 				{

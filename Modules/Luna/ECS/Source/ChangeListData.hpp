@@ -80,7 +80,7 @@ namespace Luna
 			void write(const _Ty& data)
 			{
 				const u8* begin = reinterpret_cast<const u8*>(&data);
-				m_op_data.insert_n(m_op_data.end(), begin, sizeof(_Ty));
+				m_op_data.insert(m_op_data.end(), Span<const u8>(begin, sizeof(_Ty)));
 			}
 		};
 

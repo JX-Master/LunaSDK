@@ -95,7 +95,6 @@ namespace Luna
 			m_base = move(rhs.m_base);
 			return *this;
 		}
-	public:
 		//! Gets one iterator to the first element of the map.
 		//! @return Returns one iterator to the first element of the map.
 		iterator begin()
@@ -131,6 +130,60 @@ namespace Luna
 		const_iterator cend() const
 		{
 			return m_base.cend();
+		}
+		//! Gets an iterator to the first element of the bucket with specified index.
+		//! @param[in] n The index of the bucket.
+		//! @return Returns one iterator to the first element of the bucket.
+		//! @par Valid Usage
+		//! * `n` must be smaller than @ref bucket_count.
+		local_iterator begin(usize n)
+		{
+			return m_base.begin(n);
+		}
+		//! Gets an constant iterator to the first element of the bucket with specified index.
+		//! @param[in] n The index of the bucket.
+		//! @return Returns one constant iterator to the first element of the bucket.
+		//! @par Valid Usage
+		//! * `n` must be smaller than @ref bucket_count.
+		const_local_iterator begin(usize n) const
+		{
+			return m_base.begin(n);
+		}
+		//! Gets a constant iterator to the first element of the bucket with specified index.
+		//! @param[in] n The index of the bucket.
+		//! @return Returns one constant iterator to the first element of the bucket.
+		//! @par Valid Usage
+		//! * `n` must be smaller than @ref bucket_count.
+		const_local_iterator cbegin(usize n) const
+		{
+			return m_base.cbegin(n);
+		}
+		//! Gets an iterator to the one-past-last element of the bucket with specified index.
+		//! @param[in] n The index of the bucket.
+		//! @return Returns one iterator to the one-past-last element of the bucket.
+		//! @par Valid Usage
+		//! * `n` must be smaller than @ref bucket_count.
+		local_iterator end(usize n)
+		{
+			return m_base.end(n);
+		}
+		//! Gets a constant iterator to the one-past-last element of the bucket with specified index.
+		//! @param[in] n The index of the bucket.
+		//! @return Returns one iterator to the one-past-last element of the bucket.
+		//! @par Valid Usage
+		//! * `n` must be smaller than @ref bucket_count.
+		const_local_iterator end(usize n) const
+		{
+			return m_base.end(n);
+		}
+		//! Gets a constant iterator to the one-past-last element of the bucket with specified index.
+		//! @param[in] n The index of the bucket.
+		//! @return Returns one iterator to the one-past-last element of the bucket.
+		//! @par Valid Usage
+		//! * `n` must be smaller than @ref bucket_count.
+		const_local_iterator cend(usize n) const
+		{
+			return m_base.cend(n);
 		}
 		//! Checks whether this map is empty, that is, the size of this map is `0`.
 		//! @return Returns `true` if this map is empty, returns `false` otherwise.

@@ -131,10 +131,7 @@ namespace Luna
 	}
 	template <typename _Ty, typename _Alloc>
 	template <typename _Iter>
-	inline Vector<_Ty, _Alloc>::Vector(enable_if_t<is_same_v<remove_cv_t<_Iter>, value_type*>, _Iter> first, _Iter last, const allocator_type& alloc) :
-		m_allocator_buffer(alloc, nullptr),
-		m_size(0),
-		m_capacity(0)
+	inline void Vector<_Ty, _Alloc>::internal_construct(enable_if_t<is_same_v<remove_cv_t<_Iter>, value_type*>, _Iter> first, _Iter last)
 	{
 		usize count = last - first;
 		if (count)
@@ -146,15 +143,21 @@ namespace Luna
 	}
 	template <typename _Ty, typename _Alloc>
 	template <typename _Iter>
-	inline Vector<_Ty, _Alloc>::Vector(enable_if_t<!is_integral_v<_Iter> && !is_same_v<remove_cv_t<_Iter>, value_type*>, _Iter> first, _Iter last, const allocator_type& alloc) :
-		m_allocator_buffer(alloc, nullptr),
-		m_size(0),
-		m_capacity(0)
+	inline void Vector<_Ty, _Alloc>::internal_construct(enable_if_t<!is_same_v<remove_cv_t<_Iter>, value_type*>, _Iter> first, _Iter last)
 	{
 		for (; first != last; ++first)
 		{
 			push_back(*first);
 		}
+	}
+	template <typename _Ty, typename _Alloc>
+	template <typename _InputIt>
+	inline Vector<_Ty, _Alloc>::Vector(enable_if_t<!is_integral_v<_InputIt>, _InputIt> first, _InputIt last, const allocator_type& alloc) :
+		m_allocator_buffer(alloc, nullptr),
+		m_size(0),
+		m_capacity(0)
+	{
+		internal_construct(first, last);
 	}
 	template <typename _Ty, typename _Alloc>
 	inline Vector<_Ty, _Alloc>& Vector<_Ty, _Alloc>::operator=(const Vector& rhs)
@@ -427,14 +430,17 @@ namespace Luna
 	}
 	template <typename _Ty, typename _Alloc>
 	template <typename _InputIter>
-	inline auto Vector<_Ty, _Alloc>::assign(_InputIter first, _InputIter last) -> enable_if_t<is_same_v<remove_cv_t<_InputIter>, value_type*>, void>
+	inline auto Vector<_Ty, _Alloc>::internal_assign(_InputIter first, _InputIter last) -> enable_if_t<is_same_v<remove_cv_t<_InputIter>, value_type*>, void>
 	{
 		usize count = last - first;
-		assign_n(first, count);
+		clear();
+		reserve(count);
+		copy_construct_range(first, last, m_allocator_buffer.second());
+		m_size = count;
 	}
 	template <typename _Ty, typename _Alloc>
 	template <typename _InputIter>
-	inline auto Vector<_Ty, _Alloc>::assign(_InputIter first, _InputIter last) -> enable_if_t<!is_integral_v<_InputIter> && !is_same_v<remove_cv_t<_InputIter>, value_type*>, void>
+	inline auto Vector<_Ty, _Alloc>::internal_assign(_InputIter first, _InputIter last) -> enable_if_t<!is_same_v<remove_cv_t<_InputIter>, value_type*>, void>
 	{
 		clear();
 		for (; first != last; ++first)
@@ -443,18 +449,24 @@ namespace Luna
 		}
 	}
 	template <typename _Ty, typename _Alloc>
+	template <typename _InputIter>
+	inline auto Vector<_Ty, _Alloc>::assign(_InputIter first, _InputIter last) -> enable_if_t<!is_integral_v<_InputIter>, void>
+	{
+		internal_assign(first, last);
+	}
+	template <typename _Ty, typename _Alloc>
 	inline void Vector<_Ty, _Alloc>::assign(InitializerList<value_type> il)
 	{
 		assign(il.begin(), il.end());
 	}
 	template <typename _Ty, typename _Alloc>
-	template <typename _InputIt>
-	inline void Vector<_Ty, _Alloc>::assign_n(_InputIt first, usize count)
+	template <typename _Rty>
+	inline void Vector<_Ty, _Alloc>::assign(Span<_Rty> data)
 	{
 		clear();
-		reserve(count);
-		copy_construct_range(first, first + count, m_allocator_buffer.second());
-		m_size = count;
+		reserve(data.size());
+		copy_construct_range(data.begin(), data.end(), m_allocator_buffer.second());
+		m_size = data.size();
 	}
 	template <typename _Ty, typename _Alloc>
 	inline typename Vector<_Ty, _Alloc>::iterator Vector<_Ty, _Alloc>::insert(const_iterator pos, const value_type& val)
@@ -503,15 +515,14 @@ namespace Luna
 	}
 	template <typename _Ty, typename _Alloc>
 	template <typename _InputIt>
-	inline auto Vector<_Ty, _Alloc>::insert(const_iterator pos, _InputIt first, _InputIt last) -> enable_if_t<is_same_v<remove_cv_t<_InputIt>, value_type*>, Vector<_Ty, _Alloc>::iterator>
+	inline auto Vector<_Ty, _Alloc>::internal_insert(const_iterator pos, _InputIt first, _InputIt last) -> enable_if_t<is_same_v<remove_cv_t<_InputIt>, value_type*>, Vector<_Ty, _Alloc>::iterator>
 	{
 		usize count = (last - first);
 		return insert_n(pos, first, count);
 	}
-
 	template <typename _Ty, typename _Alloc>
 	template <typename _InputIt>
-	inline auto Vector<_Ty, _Alloc>::insert(const_iterator pos, _InputIt first, _InputIt last) -> enable_if_t<!is_integral_v<_InputIt> && !is_same_v<remove_cv_t<_InputIt>, value_type*>, Vector<_Ty, _Alloc>::iterator>
+	inline auto Vector<_Ty, _Alloc>::internal_insert(const_iterator pos, _InputIt first, _InputIt last) -> enable_if_t<!is_same_v<remove_cv_t<_InputIt>, value_type*>, Vector<_Ty, _Alloc>::iterator>
 	{
 		lucheck(((usize)pos >= (usize)m_allocator_buffer.second()) && ((usize)pos <= (usize)(m_allocator_buffer.second() + m_size)));
 		usize index = pos - cbegin();
@@ -522,26 +533,31 @@ namespace Luna
 		}
 		return begin() + index;
 	}
-
+	template <typename _Ty, typename _Alloc>
+	template <typename _InputIt>
+	inline auto Vector<_Ty, _Alloc>::insert(const_iterator pos, _InputIt first, _InputIt last) -> enable_if_t<!is_integral_v<_InputIt>, iterator>
+	{
+		return internal_insert(pos, first, last);
+	}
 	template <typename _Ty, typename _Alloc>
 	inline typename Vector<_Ty, _Alloc>::iterator Vector<_Ty, _Alloc>::insert(const_iterator pos, InitializerList<value_type> il)
 	{
 		return insert(pos, il.begin(), il.end());
 	}
 	template <typename _Ty, typename _Alloc>
-	template <typename _InputIt>
-	inline typename Vector<_Ty, _Alloc>::iterator Vector<_Ty, _Alloc>::insert_n(const_iterator pos, _InputIt first, usize count)
+	template <typename _Rty>
+	inline typename Vector<_Ty, _Alloc>::iterator Vector<_Ty, _Alloc>::insert(const_iterator pos,  Span<_Rty> data)
 	{
 		lucheck(((usize)pos >= (usize)m_allocator_buffer.second()) && ((usize)pos <= (usize)(m_allocator_buffer.second() + m_size)));
 		usize index = pos - cbegin();
-		internal_expand_reserve(count + m_size);
+		internal_expand_reserve(data.size() + m_size);
 		pos = begin() + index;
 		if (pos != end())
 		{
-			move_relocate_range_backward((value_type*)pos, (value_type*)end(), (value_type*)end() + count);
+			move_relocate_range_backward((value_type*)pos, (value_type*)end(), (value_type*)end() + data.size());
 		}
-		copy_construct_range(first, first + count, (value_type*)pos);
-		m_size += count;
+		copy_construct_range(data.begin(), data.end(), (value_type*)pos);
+		m_size += data.size();
 		return const_cast<iterator>(pos);
 	}
 	template <typename _Ty, typename _Alloc>

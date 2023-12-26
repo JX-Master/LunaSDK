@@ -268,62 +268,117 @@ namespace Luna
 		using key_value_enumerator = ObjectEnumerator;
 		using const_key_value_enumerator = ConstObjectEnumerator;
 
-		//! @name Constructors
-		//! @{
-
-		//! Initializes one empty value with the specified value type.
+		//! Initializes one empty variant with the specified variant type.
+		//! @param[in] type The of the new variant. If not specified, one variant with @ref VariantType::null will be constructed.
 		Variant(VariantType type = VariantType::null);
-		//! Initializes the value with one copy of another value.
+		//! Initializes one variant by coping data from another variant.
+		//! @param[in] rhs The variant to copy from.
 		Variant(const Variant& rhs);
-		//! Initializes the value by moving the data of another value to this value.
+		//! Initializes one variant by moving data from another variant.
+		//! @param[in] rhs The variant to move from.
 		Variant(Variant&& rhs);
-		//! Initializes one object variant and sets the children using the values provided.
-		Variant(const Vector<Pair<const Name, Variant>>& values);
-		Variant(Vector<Pair<const Name, Variant>>&& values);
-		//! Initializes one array variant and sets the children using the values provided.
-		Variant(const Vector<Variant>& values);
-		Variant(Vector<Variant>&& values);
-		//! Initializes one signed-integer-typed value and sets its data to the specified value.
+		//! Initializes one variant of @ref VariantType::number and @ref VariantNumberType::number_i64 and sets its data to the specified value.
+		//! @param[in] v The number value to set.
 		Variant(i64 v);
-		//! Initializes one unsigned-integer-typed value and sets its data to the specified value.
+		//! Initializes one variant of @ref VariantType::number and @ref VariantNumberType::number_u64 and sets its data to the specified value.
+		//! @param[in] v The number value to set.
 		Variant(u64 v);
-		//! Initializes one floating-point-number-typed value and sets its data to the specified value.
+		//! Initializes one variant of @ref VariantType::number and @ref VariantNumberType::number_f64 and sets its data to the specified value.
+		//! @param[in] v The number value to set.
 		Variant(f64 v);
-		//! Initializes one string variant and sets its data to the specified value.
+		//! Initializes one variant of @ref VariantType::string and sets its data to the specified value.
+		//! @param[in] v The string to set.
 		Variant(const Name& v);
-		//! Initializes one string variant and sets its data to the specified value.
+		//! Initializes one variant of @ref VariantType::string and sets its data to the specified value.
+		//! @param[in] v The string to set.
 		Variant(Name&& v);
-		//! Initializes one string variant and sets its data to the specified value.
+		//! Initializes one variant of @ref VariantType::string and sets its data to the specified value.
+		//! @param[in] v The string to set.
 		Variant(const c8* v);
-		//! Initializes one Boolean variant and sets its data to the specified value.
+		//! Initializes one variant of @ref VariantType::boolean and sets its data to the specified value.
+		//! @param[in] v The Boolean value to set.
 		Variant(bool v);
-		//! Initializes one BLOB variant and sets its data to the specified value.
+		//! Initializes one variant of @ref VariantType::blob and sets its data to the specified value.
+		//! @param[in] blob_data The blob data to set. The blob data will be copied into the variant.
 		Variant(const Blob& blob_data);
+		//! Initializes one variant of @ref VariantType::blob and sets its data to the specified value.
+		//! @param[in] blob_data The blob data to set. The blob data will be moved into the variant.
 		Variant(Blob&& blob_data);
 
-		//! @}
-
 		~Variant();
-		Variant& operator=(const Variant& rhs);
-		Variant& operator=(Variant&& rhs);
-		Variant& operator=(const Vector<Pair<const Name, Variant>>& values);
-		Variant& operator=(Vector<Pair<const Name, Variant>>&& values);
-		Variant& operator=(const Vector<Variant>& values);
-		Variant& operator=(Vector<Variant>&& values);
-		Variant& operator=(u64 v);
-		Variant& operator=(i64 v);
-		Variant& operator=(f64 v);
-		Variant& operator=(const Name& v);
-		Variant& operator=(Name&& v);
-		Variant& operator=(const c8* v);
-		Variant& operator=(bool v);
-		Variant& operator=(const Blob& blob_data);
-		Variant& operator=(Blob&& blob_data);
-		bool operator==(const Variant& rhs) const;
-		bool operator!=(const Variant& rhs) const;
 
-		//! @name Accessors
-		//! @{
+		//! Assigns one variant by coping data from another variant.
+		//! @param[in] rhs The variant to copy from.
+		//! @return Returns `*this`.
+		Variant& operator=(const Variant& rhs);
+		//! Assigns one variant by moving data from another variant.
+		//! @param[in] rhs The variant to move from.
+		//! @return Returns `*this`.
+		Variant& operator=(Variant&& rhs);
+		//! Assigns one variant with one number.
+		//! The variant type will be @ref VariantType::number and @ref VariantNumberType::number_u64 after this assignment.
+		//! @param[in] v The number value to set.
+		//! @return Returns `*this`.
+		Variant& operator=(u64 v);
+		//! Assigns one variant with one number.
+		//! The variant type will be @ref VariantType::number and @ref VariantNumberType::number_i64 after this assignment.
+		//! @param[in] v The number value to set.
+		//! @return Returns `*this`.
+		Variant& operator=(i64 v);
+		//! Assigns one variant with one number.
+		//! The variant type will be @ref VariantType::number and @ref VariantNumberType::number_f64 after this assignment.
+		//! @param[in] v The number value to set.
+		//! @return Returns `*this`.
+		Variant& operator=(f64 v);
+		//! Assigns one variant with one string.
+		//! The variant type will be @ref VariantType::string after this assignment.
+		//! @param[in] v The string to set.
+		//! @return Returns `*this`.
+		Variant& operator=(const Name& v);
+		//! Assigns one variant with one string.
+		//! The variant type will be @ref VariantType::string after this assignment.
+		//! @param[in] v The string to set.
+		//! @return Returns `*this`.
+		Variant& operator=(Name&& v);
+		//! Assigns one variant with one string.
+		//! The variant type will be @ref VariantType::string after this assignment.
+		//! @param[in] v The string to set.
+		//! @return Returns `*this`.
+		Variant& operator=(const c8* v);
+		//! Assigns one variant with one Boolean value.
+		//! The variant type will be @ref VariantType::boolean after this assignment.
+		//! @param[in] v The Boolean value to set.
+		//! @return Returns `*this`.
+		Variant& operator=(bool v);
+		//! Assigns one variant with one blob.
+		//! The variant type will be @ref VariantType::blob after this assignment.
+		//! @param[in] blob_data The blob data to set. The blob data will be copied into the variant.
+		//! @return Returns `*this`.
+		Variant& operator=(const Blob& blob_data);
+		//! Assigns one variant with one blob.
+		//! The variant type will be @ref VariantType::blob after this assignment.
+		//! @param[in] blob_data The blob data to set. The blob data will be moved into the variant.
+		//! @return Returns `*this`.
+		Variant& operator=(Blob&& blob_data);
+		//! Compares two variant for equality.
+		//! @param[in] rhs The variant to compare.
+		//! @return Returns `true` if two variants are equal. Returns `false` otherwise.
+		//! @remark The comparison is proceeded as follows:
+		//! 1. If `this->type() != ths.type()`, returns `false`.
+		//! 2. Otherwise, checks the type of the variant:
+		//! 	1. If `type()` is `VariantType::null`, returns `true`.
+		//! 	2. If `type()` is `VariantType::object`, returns `true` if two variants have the same key-value pairs. Every element of `rhs` will be compared with the element with the same key in `*this` recursively.
+		//! 	3. If `type()` is `VariantType::array`, returns `true` if two variants have the same array data and size. Every element will be compared with the element with the same index in `*this` recursively.
+		//! 	4. If `type()` is `VariantType::number`, returns `true` if two variants have the same number type and value.
+		//! 	5. If `type()` is `VariantType::string`, returns `true` if two variants have the same string data. The string data is compared by comparing the underlying @ref Name objects that contain the string.
+		//! 	6. If `type()` is `VariantType::boolean`, returns `true` if two variants have the same Boolean value.
+		//! 	7. If `type()` is `VariantType::blob`, returns `true` if two variants have the same blob data. The blob data is compared using @ref memcmp.
+		bool operator==(const Variant& rhs) const;
+		//! Compares two variant for non-equality.
+		//! @details See remarks of @ref operator== for details.
+		//! @param[in] rhs The variant to compare.
+		//! @return Returns `true` if two variants are not equal. Returns `false` otherwise.
+		bool operator!=(const Variant& rhs) const;
 
 		//! Gets the type of the variant.
 		//! @return Returns the type of the variant.
@@ -338,11 +393,6 @@ namespace Luna
 		//! Checks whether the variant contains no child variant.
 		//! @return Returns `true` if @ref size of the variant is `0`. Returns `false` otherwise.
 		bool empty() const;
-
-		//! @}
-
-		//! @name Accessing child variants
-		//! @{
 		
 		//! Gets the child variant when this is an array variant.
 		//! @param[in] i The index of the child variant to fetch.
@@ -436,11 +486,6 @@ namespace Luna
 		//! ```
 		const_key_value_enumerator key_values() const;
 
-		//! @}
-
-		//! @name Adding and removing child variants.
-		//! @{
-
 		//! Copy-inserts one variant to the specified index.
 		//! @param[in] i The index to insert the variant to.
 		//! @param[in] val The variant to insert.
@@ -513,11 +558,6 @@ namespace Luna
 		//! * The current variant must be an object variant.
 		bool erase(const Name& k);
 
-		//! @}
-
-		//! @name Fetching variant data
-		//! @{
-
 		//! Gets the string of one string variant.
 		//! @param[in] default_value The optional default string to return.
 		//! @return Returns the string data of one variant if @ref type is @ref VariantType::string.
@@ -567,12 +607,11 @@ namespace Luna
 		//! @return Returns the detached blob data if the variant is a BLOB variant. Returns one empty @ref Blob object otherwise.
 		Blob blob_detach();
 
-		//! Returns one reference to one global constant variant that contains no data.
+		//! Gets one reference to one global constant variant that contains no data.
 		//! @details This is used as the default return value if one query operation fails, so that the user can chain multiple `[]` operations
 		//! like data["persons"][0]["name"] without the need to handle null variant explicitly (query child variants of one null variant also returns `npos`).
+		//! @return Returns one reference to one global constant variant that contains no data.
 		static LUNA_RUNTIME_API const Variant& npos();
-
-		//! @}
 		
 	private:
 		friend class ObjectEnumerator;
