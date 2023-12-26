@@ -16,7 +16,7 @@ namespace Luna
 	//! @addtogroup RuntimeThread
 	//! @{
 	
-	//！@interface ISemaphore
+	//! @interface ISemaphore
 	//! Represents one system-level semaphore object.
 	struct ISemaphore : virtual IWaitable
 	{

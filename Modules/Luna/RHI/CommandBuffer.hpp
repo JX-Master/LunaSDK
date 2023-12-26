@@ -70,7 +70,7 @@ namespace Luna
 			uniform_buffer_ps = 0x20,
 			//! Used as a read-only resource for pixel shader.
 			shader_read_ps = 0x40,
-			//！Used as a write-only resource for pixel shader. Enabled only if pixel shader write feature is supported.
+			//! Used as a write-only resource for pixel shader. Enabled only if pixel shader write feature is supported.
 			shader_write_ps = 0x80,
 			//! Used as a uniform buffer for compute shader.
 			uniform_buffer_cs = 0x0100,
@@ -103,7 +103,7 @@ namespace Luna
 			shader_read_vs = 0x01,
 			//! Used as a read-only resource for pixel shader.
 			shader_read_ps = 0x02,
-			//！Used as a write-only resource for pixel shader. Enabled only if pixel shader write feature is supported.
+			//! Used as a write-only resource for pixel shader. Enabled only if pixel shader write feature is supported.
 			shader_write_ps = 0x04,
 			//! Used as a color attachment with read access.
 			color_attachment_read = 0x08,
