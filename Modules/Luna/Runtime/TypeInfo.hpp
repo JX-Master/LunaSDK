@@ -142,8 +142,8 @@ namespace Luna
 //! @{
 
 //! Declares the name and guid for one structure or class type.
-//! @param[in] name The name string of the type.
-//! @param[in] guid The GUID string of the type.
+//! @param[in] _name The name string of the type.
+//! @param[in] _guid The GUID string of the type.
 //! @remark Add this macro to the type body. For exmaple:
 //! ```
 //! struct MyType
@@ -153,7 +153,7 @@ namespace Luna
 //! };
 #define lustruct(_name, _guid) static constexpr const Luna::c8* __name = _name; static constexpr Luna::Guid __guid { Luna::Guid(u8##_guid) };
 
-//! Declares one property used in @ref register_struct_type.
+//! Declares one property used in @ref Luna::register_struct_type.
 //! @param[in] _struct The outer structure or class name.
 //! @param[in] _type The property type.
 //! @param[in] _name The property name.
@@ -162,11 +162,11 @@ namespace Luna
 //! Declares the name and guid for one enumeration type.
 //! @details This macro must be defined directly in `Luna` namespace.
 //! @param[in] _type The enumeration type.
-//! @param[in] name The name string of the type.
-//! @param[in] guid The GUID string of the type.
+//! @param[in] _name The name string of the type.
+//! @param[in] _guid The GUID string of the type.
 #define luenum(_type, _name, _guid) template <> struct EnumTypeInfo<_type> { static constexpr const Luna::c8* __name = _name; static constexpr Luna::Guid __guid { Luna::Guid(u8##_guid) }; }; template <> struct typeof_t<_type> { typeinfo_t operator()() const { return get_type_by_guid(EnumTypeInfo<_type>::__guid); } };
 
-//! Declares one option used in @ref register_enum_type.
+//! Declares one option used in @ref Luna::register_enum_type.
 //! @param[in] _enum The outer enumeration type.
 //! @param[in] _item The option name.
 #define luoption(_enum, _item) {#_item, (i64)(_enum::_item)}
