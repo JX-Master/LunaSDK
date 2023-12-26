@@ -327,13 +327,21 @@ RV Parser::encode_md_attrib_section(const c8* section_name, const Variant& secti
                         auto param_name = get_xml_name(p);
                         if(param_name == _param)
                         {
-                            auto& type = get_xml_content(p).at(0);
-                            auto type_name = get_xml_name(type);
-                            if(type_name == _type)
+                            auto& param_content = get_xml_content(p);
+                            for(auto& c : param_content.values())
                             {
-                                templateparamlist.append(get_xml_content(type).at(0).c_str());
-                                templateparamlist.append(", ");
+                                auto param_element_name = get_xml_name(c);
+                                if(param_element_name == _type)
+                                {
+                                    templateparamlist.append(get_xml_content(c).at(0).c_str());
+                                }
+                                else if(param_element_name == _declname)
+                                {
+                                    templateparamlist.push_back(' ');
+                                    templateparamlist.append(get_xml_content(c).at(0).c_str());
+                                }
                             }
+                            templateparamlist.append(", ");
                         }
                     }
                     if(templateparamlist[templateparamlist.size() - 2] == ',' && templateparamlist[templateparamlist.size() - 1] == ' ')
@@ -977,11 +985,45 @@ RV Parser::encode_md_class_file(const Name& xml_name, const Variant& xml_data, c
         String briefdescription;
         String detaileddescription;
         Vector<String> sections;
+        String templateparamlist;
         for(auto& m : class_content.values())
         {
             if(m.type() != VariantType::object) continue;
             auto member_name = get_xml_name(m);
-            if(member_name == _compoundname)
+            if(member_name == _templateparamlist)
+            {
+                templateparamlist.append("template <");
+                auto& params = get_xml_content(m);
+                for(auto& p : params.values())
+                {
+                    auto param_name = get_xml_name(p);
+                    if(param_name == _param)
+                    {
+                        auto& param_content = get_xml_content(p);
+                        for(auto& c : param_content.values())
+                        {
+                            auto param_element_name = get_xml_name(c);
+                            if(param_element_name == _type)
+                            {
+                                templateparamlist.append(get_xml_content(c).at(0).c_str());
+                            }
+                            else if(param_element_name == _declname)
+                            {
+                                templateparamlist.push_back(' ');
+                                templateparamlist.append(get_xml_content(c).at(0).c_str());
+                            }
+                        }
+                        templateparamlist.append(", ");
+                    }
+                }
+                if(templateparamlist[templateparamlist.size() - 2] == ',' && templateparamlist[templateparamlist.size() - 1] == ' ')
+                {
+                    templateparamlist.pop_back();
+                    templateparamlist.pop_back();
+                }
+                templateparamlist.append(">\n");
+            }
+            else if(member_name == _compoundname)
             {
                 auto compoundname = get_xml_content(m).at(0).str();
                 if(!compoundname) return set_error(BasicError::format_error(), "<compoundname> not found for group <compounddef>");
@@ -1034,6 +1076,7 @@ RV Parser::encode_md_class_file(const Name& xml_name, const Variant& xml_data, c
             out_content.append(briefdescription);
         }
         out_content.append("```c++\n");
+        if(!templateparamlist.empty()) out_content.append(templateparamlist);
         out_content.append(kind.c_str(), kind.size());
         out_content.push_back(' ');
         out_content.append(title.c_str(), title.size());
