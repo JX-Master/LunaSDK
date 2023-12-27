@@ -11,9 +11,9 @@
 #include "PlatformDefines.hpp"
 
 #if defined(LUNA_PLATFORM_WINDOWS)
-#include "Source/Platform/Windows/AtomicImpl.hpp"
+#include "Impl/Platform/Windows/AtomicImpl.hpp"
 #elif defined(LUNA_PLATFORM_POSIX)
-#include "Source/Platform/POSIX/AtomicImpl.hpp"
+#include "Impl/Platform/POSIX/AtomicImpl.hpp"
 #endif
 
 namespace Luna
