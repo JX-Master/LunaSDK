@@ -243,7 +243,7 @@ namespace Luna
 							NextColumn();
 							NextColumn();
 
-							SetColumnWidth(0, GetWindowContentRegionWidth() - 430);
+							SetColumnWidth(0, GetWindowContentRegionMax().x - GetWindowContentRegionMin().x - 430);
 							SetColumnWidth(1, 250);
 							SetColumnWidth(2, 80);
 							SetColumnWidth(3, 100);
