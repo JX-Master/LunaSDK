@@ -91,8 +91,6 @@ function add_luna_modules(...)
     end
 end
 
-add_requires("imgui", {configs = {shared = has_config("shared")}})
-
 add_includedirs("Modules")
 set_languages("c99", "cxx17")
 
