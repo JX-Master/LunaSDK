@@ -244,8 +244,9 @@ namespace Luna
 				address_w(address_w),
 				anisotropy_enable(anisotropy_enable),
 				compare_enable(compare_enable),
-				max_anisotropy(max_anisotropy),
 				compare_function(compare_function),
+				border_color(border_color),
+				max_anisotropy(max_anisotropy),
 				min_lod(min_lod),
 				max_lod(max_lod) {}
 			bool operator==(const SamplerDesc& rhs)
