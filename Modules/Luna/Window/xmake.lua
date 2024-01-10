@@ -1,5 +1,5 @@
 if is_os("windows") or is_os("macosx") then
-    add_requires("glfw", {configs = {shared = has_config("shared")}})
+    add_requires("glfw")
 end
 
 luna_sdk_module_target("Window")
