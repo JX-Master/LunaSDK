@@ -42,9 +42,11 @@ luna_sdk_module_target("ShaderCompiler")
             if target:is_arch("x64") then 
                 os.cp("$(projectdir)/SDKs/dxc/windows/x64/bin/dxcompiler.dll", path.join(target:installdir(), "bin", "dxcompiler.dll"))
                 os.cp("$(projectdir)/SDKs/dxc/windows/x64/bin/dxil.dll", path.join(target:installdir(), "bin", "dxil.dll"))
+                os.cp("$(projectdir)/SDKs/dxc/windows/x64/lib/dxcompiler.lib", path.join(target:installdir(), "lib", "dxcompiler.lib"))
             elseif target:is_arch("arm64") then 
                 os.cp("$(projectdir)/SDKs/dxc/windows/arm64/bin/dxcompiler.dll", path.join(target:installdir(), "bin", "dxcompiler.dll"))
                 os.cp("$(projectdir)/SDKs/dxc/windows/arm64/bin/dxil.dll", path.join(target:installdir(), "bin", "dxil.dll"))
+                os.cp("$(projectdir)/SDKs/dxc/windows/arm64/lib/dxcompiler.lib", path.join(target:installdir(), "lib", "dxcompiler.lib"))
             end
         elseif target:is_plat("macosx") then
             os.cp("$(projectdir)/SDKs/dxc/macosx/lib/libdxcompiler.dylib", path.join(target:installdir(), "bin", "libdxcompiler.dylib"))
@@ -54,6 +56,7 @@ luna_sdk_module_target("ShaderCompiler")
         if target:is_plat("windows") then 
             os.rm(path.join(target:installdir(), "bin", "dxcompiler.dll"))
             os.rm(path.join(target:installdir(), "bin", "dxil.dll"))
+            os.rm(path.join(target:installdir(), "lib", "dxcompiler.lib"))
         elseif target:is_plat("macosx") then
             os.rm(path.join(target:installdir(), "bin", "libdxcompiler.dylib"))
         end
