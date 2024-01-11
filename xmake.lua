@@ -1,7 +1,6 @@
 set_project("Luna")
 
 add_moduledirs("Tools/xmake/modules")
-add_repositories("luna-repo SDKs")
 
 add_rules("mode.debug", "mode.profile", "mode.release")
 add_defines("LUNA_MANUAL_CONFIG_DEBUG_LEVEL")
