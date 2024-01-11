@@ -72,7 +72,7 @@ namespace Luna
 	}
 	LUNA_RUNTIME_API RV add_dependency_module(Module* current, Module* dependency)
 	{
-		auto& iter = g_modules.find(current);
+		auto iter = g_modules.find(current);
 		lucheck_msg(iter != g_modules.end(), "add_dependency_module failed: current module must be registered firstly!");
 		auto r = add_module(dependency);
 		if(failed(r)) return r;
