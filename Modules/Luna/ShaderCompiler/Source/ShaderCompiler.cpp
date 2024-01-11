@@ -319,13 +319,20 @@ namespace Luna
 			return new_object<Compiler>();
 		}
 
-		RV init()
+		struct ShaderCompilerModule : public Module
 		{
-			register_boxed_type<Compiler>();
-			impl_interface_for_type<Compiler, ICompiler>();
-			return ok;
-		}
-
-		LUNA_STATIC_REGISTER_MODULE(ShaderCompiler, "", init, nullptr);
+			virtual const c8* get_name() override { return "ShaderCompiler"; }
+			virtual RV on_init() override
+			{
+				register_boxed_type<Compiler>();
+				impl_interface_for_type<Compiler, ICompiler>();
+				return ok;
+			}
+		};
+	}
+	LUNA_SHADER_COMPILER_API Module* module_shader_compiler()
+	{
+		static ShaderCompiler::ShaderCompilerModule m;
+		return &m;
 	}
 }

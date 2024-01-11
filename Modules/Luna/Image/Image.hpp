@@ -95,4 +95,7 @@ namespace Luna
 		LUNA_IMAGE_API errcat_t errtype();
 		LUNA_IMAGE_API ErrCode file_parse_error();
 	}
+
+	struct Module;
+	LUNA_IMAGE_API Module* module_image();
 }

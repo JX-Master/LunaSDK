@@ -21,5 +21,5 @@ luna_sdk_module_target("Window")
         add_files("Source/Cocoa/*.mm")
         add_frameworks("AppKit", "UniformTypeIdentifiers")
     end
-    add_luna_modules("Runtime")
+    add_deps("Runtime")
 target_end()

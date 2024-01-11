@@ -139,7 +139,7 @@ namespace Luna
 				{
 					c8 buf[64];
 					snprintf(buf, 64, "RHI Test - FPS: %lld", m_frame_count);
-					m_window->set_title(buf);
+					lupanic_if_failed(m_window->set_title(buf));
 					m_time = new_time;
 					m_frame_count = 0;
 				}
@@ -183,5 +183,17 @@ namespace Luna
 		}
 	}
 
-	LUNA_STATIC_REGISTER_MODULE(RHITestBed, "RHI", nullptr, nullptr);
+	struct RHITestBedModule : public Module
+	{
+		virtual const c8* get_name() override { return "RHITestBed"; }
+		virtual RV on_register() override
+		{
+			return add_dependency_modules(this, {module_rhi(), module_window()});
+		}
+	};
+	LUNA_RHI_TESTBED_API Module* module_rhi_test_bed()
+	{
+		static RHITestBedModule m;
+		return &m;
+	}
 }

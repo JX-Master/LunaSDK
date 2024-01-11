@@ -14,6 +14,8 @@
 #include "MainEditor.hpp"
 #include <Luna/Runtime/Module.hpp>
 #include <Luna/Runtime/Log.hpp>
+#include <Luna/VariantUtils/VariantUtils.hpp>
+#include <Luna/RG/RG.hpp>
 
 namespace Luna
 {
@@ -56,6 +58,16 @@ namespace Luna
 	{
 		set_log_to_platform_enabled(true);
 		set_log_to_platform_verbosity(LogVerbosity::error);
+		lupanic_if_failed(add_modules({module_variant_utils(),
+			module_hid(),
+			module_window(),
+			module_rhi(),
+			module_image(),
+			module_font(),
+			module_imgui(),
+			module_asset(),
+			module_obj_loader(),
+			module_rg()}));
 		auto r = init_modules();
 		if (failed(r))
 		{

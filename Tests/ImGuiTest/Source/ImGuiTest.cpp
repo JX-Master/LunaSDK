@@ -110,6 +110,7 @@ int main()
 {
 	// Start modules.
 	Luna::init();
+	lupanic_if_failed(add_modules({module_window(), module_rhi(), module_imgui()}));
 	auto res = Luna::init_modules();
 	if (failed(res))
 	{

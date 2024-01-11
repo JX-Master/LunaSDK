@@ -113,4 +113,7 @@ namespace Luna
 		//! Gets the default font object, which is embedded into the SDK and only supports for ASCII codepoint range.
 		LUNA_FONT_API IFontFile* get_default_font();
 	}
+
+	struct Module;
+	LUNA_FONT_API Module* module_font();
 }

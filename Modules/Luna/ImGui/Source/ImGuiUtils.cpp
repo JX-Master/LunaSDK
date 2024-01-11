@@ -924,7 +924,28 @@ float4 main(PS_INPUT input) : SV_Target
             return ok;
         }
 
-        LUNA_STATIC_REGISTER_MODULE(ImGui, "RHI;HID;Font;ShaderCompiler", init, close);
+        struct ImGuiModule : public Module
+        {
+            virtual const c8* get_name() override { return "ImGui"; }
+			virtual RV on_register() override
+			{
+				return add_dependency_modules(this, {module_rhi(), module_hid(), module_font(), module_shader_compiler(), module_window()} );
+			}
+			virtual RV on_init() override
+			{
+				return init();
+			}
+			virtual void on_close() override
+			{
+				close();
+			}
+        };
+    }
+
+    LUNA_IMGUI_API Module* module_imgui()
+    {
+        static ImGuiUtils::ImGuiModule m;
+        return &m;
     }
 }
 

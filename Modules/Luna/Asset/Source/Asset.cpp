@@ -20,6 +20,7 @@
 #include <Luna/Runtime/Serialization.hpp>
 #include <Luna/VariantUtils/JSON.hpp>
 #include <Luna/Runtime/Reflection.hpp>
+#include <Luna/VariantUtils/VariantUtils.hpp>
 
 namespace Luna
 {
@@ -559,43 +560,56 @@ namespace Luna
 			close_asset_registry();
 			close_asset_type();
 		}
-		RV module_init()
+		struct AssetModule : public Module
 		{
-			init_asset_type();
-			init_asset_registry();
-			register_struct_type<asset_t>({});
-			SerializableTypeDesc desc;
-			desc.serialize_func = [](typeinfo_t type, const void* inst) -> R<Variant>
+			virtual const c8* get_name() override { return "Asset"; }
+			virtual RV on_register() override
 			{
-				const asset_t* obj = (const asset_t*)inst;
-				if (!obj->handle) return Variant();
-				auto guid = Asset::get_asset_guid(*obj);
-				return serialize(guid);
-			};
-			desc.deserialize_func = [](typeinfo_t type, void* inst, const Variant& data) -> RV
+				return add_dependency_modules(this, {module_variant_utils(), module_vfs(), module_job_system()});
+			}
+			virtual RV on_init() override
 			{
-				lutry
+				init_asset_type();
+				init_asset_registry();
+				register_struct_type<asset_t>({});
+				SerializableTypeDesc desc;
+				desc.serialize_func = [](typeinfo_t type, const void* inst) -> R<Variant>
 				{
-					asset_t* obj = (asset_t*)inst;
-					if (data.empty()) obj->handle = nullptr;
-					Guid guid = Guid(0, 0);
-					luexp(deserialize(guid, data));
-					*obj = Asset::get_asset(guid);
-				}
-				lucatchret;
+					const asset_t* obj = (const asset_t*)inst;
+					if (!obj->handle) return Variant();
+					auto guid = Asset::get_asset_guid(*obj);
+					return serialize(guid);
+				};
+				desc.deserialize_func = [](typeinfo_t type, void* inst, const Variant& data) -> RV
+				{
+					lutry
+					{
+						asset_t* obj = (asset_t*)inst;
+						if (data.empty()) obj->handle = nullptr;
+						Guid guid = Guid(0, 0);
+						luexp(deserialize(guid, data));
+						*obj = Asset::get_asset(guid);
+					}
+					lucatchret;
+					return ok;
+				};
+				set_serializable<asset_t>(&desc);
 				return ok;
-			};
-			set_serializable<asset_t>(&desc);
-			return ok;
-		}
-		void module_close()
-		{
-			close_asset_registry();
-			close_asset_type();
-			g_assets_mutex.reset();
-			g_asset_types_mutex.reset();
-		}
-		LUNA_STATIC_REGISTER_MODULE(Asset, "VariantUtils;VFS;JobSystem", module_init, module_close);
+			}
+			virtual void on_close() override
+			{
+				close_asset_registry();
+				close_asset_type();
+				g_assets_mutex.reset();
+				g_asset_types_mutex.reset();
+			}
+		};
+	}
+
+	LUNA_ASSET_API Module* module_asset()
+	{
+		static Asset::AssetModule m;
+		return &m;
 	}
 
 	namespace AssetError

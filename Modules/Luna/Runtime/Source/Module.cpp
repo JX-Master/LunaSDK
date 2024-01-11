@@ -22,140 +22,89 @@ namespace Luna
 {
 	struct ModuleEntry
 	{
-		ModuleDesc* m_prior = nullptr;
-		ModuleDesc* m_next = nullptr;
+		Name m_name;
+		Vector<Module*> m_dependencies;
 		bool m_initialized = false;
 	};
-	static_assert(sizeof(ModuleEntry) <= sizeof(c8) * 32, "ModuleEntry size too big!");
 
-	ModuleDesc* g_module_header;
+	// All registered modules.
+	HashMap<Module*, ModuleEntry> g_modules;
 
-	LUNA_RUNTIME_API void add_module(ModuleDesc* module_desc)
-	{
-		ModuleEntry* entry = (ModuleEntry*)(module_desc->reserved);
-		new (entry) ModuleEntry();
-		entry->m_next = g_module_header;
-		ModuleEntry* last_entry = (ModuleEntry*)(g_module_header->reserved);
-		if (last_entry)
-		{
-			last_entry->m_prior = module_desc;
-		}
-		g_module_header = module_desc;
-	}
-
-	LUNA_RUNTIME_API void remove_module(ModuleDesc* module_desc)
-	{
-		ModuleEntry* entry = (ModuleEntry*)(module_desc->reserved);
-		ModuleDesc* prior = entry->m_prior;
-		ModuleDesc* next = entry->m_next;
-		if (prior)
-		{
-			ModuleEntry* prior_entry = (ModuleEntry*)(prior->reserved);
-			prior_entry->m_next = next;
-		}
-		if (next)
-		{
-			ModuleEntry* next_extry = (ModuleEntry*)(next->reserved);
-			next_extry->m_prior = prior;
-		}
-		entry->m_prior = nullptr;
-		entry->m_next = nullptr;
-		if (g_module_header == module_desc)
-		{
-			g_module_header = next;
-		}
-	}
-
-	//! Records all initialized modules, sorted by their initialization order.
-	Vector<ModuleDesc*> g_initialized_modules;
+	// Records all initialized modules, sorted by their initialization order.
+	Vector<Module*> g_initialized_modules;
 
 	void module_init()
 	{
 	}
-
 	void module_close()
 	{
 		for (auto iter = g_initialized_modules.rbegin(); iter != g_initialized_modules.rend(); ++iter)
 		{
-			ModuleEntry* entry = (ModuleEntry*)((*iter)->reserved);
-			if (entry->m_initialized)
-			{
-				if ((*iter)->close_func)
-				{
-					(*iter)->close_func();
-				}
-				entry->m_initialized = false;
-			}
+			Module* entry = *iter;
+			entry->on_close();
 		}
 		g_initialized_modules.clear();
 		g_initialized_modules.shrink_to_fit();
+		g_modules.clear();
+		g_modules.shrink_to_fit();	
 	}
-
-	static HashMap<Name, ModuleDesc*> get_registered_modules()
+	LUNA_RUNTIME_API RV add_module(Module* handle)
 	{
-		HashMap<Name, ModuleDesc*> modules;
+		auto iter = g_modules.find(handle);
+		if(iter != g_modules.end()) return ok;
+		ModuleEntry entry;
+		entry.m_name = handle->get_name();
+		g_modules.insert(make_pair(handle, move(entry)));
+		auto r = handle->on_register();
+		if(failed(r))
 		{
-			ModuleDesc* iter = g_module_header;
-			while (iter)
+			g_modules.erase(handle);
+			return r;
+		}
+		return ok;
+	}
+	LUNA_RUNTIME_API void remove_module(Module* handle)
+	{
+		auto iter = g_modules.find(handle);
+		lucheck_msg(iter != g_modules.end(), "remove_module failed: module not registered.");
+		lucheck_msg(!iter->second.m_initialized, "remove_module failed: try to unregister one initialized module.");
+		g_modules.erase(iter);
+	}
+	LUNA_RUNTIME_API RV add_dependency_module(Module* current, Module* dependency)
+	{
+		auto iter = g_modules.find(current);
+		lucheck_msg(iter != g_modules.end(), "add_dependency_module failed: current module must be registered firstly!");
+		auto r = add_module(dependency);
+		if(failed(r)) return r;
+		for(Module* dep : iter->second.m_dependencies)
+		{
+			if(dep == dependency) return ok;
+		}
+		iter->second.m_dependencies.push_back(dependency);
+		return ok;
+	}
+	LUNA_RUNTIME_API Module* get_module_by_name(const Name& name)
+	{
+		for(auto iter = g_modules.begin(); iter != g_modules.end(); ++iter)
+		{
+			if(iter->second.m_name == name)
 			{
-				modules.insert(Pair<Name, ModuleDesc*>(Name(iter->name), iter));
-				ModuleEntry* entry = (ModuleEntry*)(iter->reserved);
-				iter = entry->m_next;
+				return iter->first;
 			}
 		}
-		return modules;
+		return nullptr;
 	}
-
-	static Vector<Name> get_dependency_module_names(const c8* dependencies)
+	static R<Vector<Module*>> get_module_init_queue()
 	{
-		const c8* cur = dependencies;
-		Vector<Name> ret;
-		while (cur && *cur != '\0')
+		HashSet<Module*> unresolved_modules;
+		for(auto& m : g_modules)
 		{
-			// Find next ';'
-			const c8* end = strchr(cur, ';');
-			Name dep;
-			if (end)
+			if(!m.second.m_initialized)
 			{
-				dep = Name(cur, end - cur);
-			}
-			else
-			{
-				dep = Name(cur);
-			}
-			ret.push_back(dep);
-			if (end)
-			{
-				cur = end + 1;
-			}
-			else
-			{
-				break;
+				unresolved_modules.insert(m.first);
 			}
 		}
-		return ret;
-	}
-
-	static R<Vector<ModuleDesc*>> get_module_init_queue(const HashMap<Name, ModuleDesc*>& modules)
-	{
-		HashMap<Name, ModuleDesc*> unresolved_modules = modules;
-		// Exclude all initialized modules.
-		{
-			auto iter = unresolved_modules.begin();
-			while (iter != unresolved_modules.end())
-			{
-				ModuleEntry* entry = (ModuleEntry*)(iter->second->reserved);
-				if (entry->m_initialized)
-				{
-					iter = unresolved_modules.erase(iter);
-				}
-				else
-				{
-					++iter;
-				}
-			}
-		}
-		Vector<ModuleDesc*> init_queue;
+		Vector<Module*> init_queue;
 		// Loop until all modules are resolved and pushed into the queue.
 		while (!unresolved_modules.empty())
 		{
@@ -164,16 +113,12 @@ namespace Luna
 			while (iter != unresolved_modules.end())
 			{
 				bool can_init = true;	// If this module can be initialized.
-
 				// Check dependencies.
-				auto dependencies = get_dependency_module_names((*iter).second->dependencies);
-
-				for (auto& dep : dependencies)
+				auto module_iter = g_modules.find(*iter);
+				luassert(module_iter != g_modules.end());
+				Vector<Module*>& dependencies = module_iter->second.m_dependencies;
+				for (Module* dep : dependencies)
 				{
-					if (!modules.contains(dep))
-					{
-						return set_error(BasicError::not_found(), "Module %s required by module %s is not found.", dep.c_str(), iter->second->name);
-					}
 					if (unresolved_modules.contains(dep))
 					{
 						// The dependency is not initialized.
@@ -184,8 +129,7 @@ namespace Luna
 				if (can_init)
 				{
 					// Remove this.
-					init_queue.push_back(iter->second);
-					ModuleEntry* entry = (ModuleEntry*)(iter->second->reserved);
+					init_queue.push_back(*iter);
 					any_removed = true;
 					iter = unresolved_modules.erase(iter);
 				}
@@ -202,105 +146,89 @@ namespace Luna
 		}
 		return init_queue;
 	}
-
-	static void get_module_dependencies(const HashMap<Name, ModuleDesc*>& modules, HashSet<ModuleDesc*>& dependencies, ModuleDesc* desc)
-	{
-		auto deps = get_dependency_module_names(desc->dependencies);
-		for (auto& dep : deps)
-		{
-			auto iter = modules.find(dep);
-			luassert(iter != modules.end());
-			dependencies.insert(iter->second);
-			get_module_dependencies(modules, dependencies, iter->second);
-		}
-	}
-
-	static RV init_module(ModuleDesc* desc)
+	static RV init_single_module(Module* handle)
 	{
 		lutry
 		{
-			ModuleEntry* entry = (ModuleEntry*)(desc->reserved);
-			if (!entry->m_initialized)
+			auto entry = g_modules.find(handle);
+			if (!entry->second.m_initialized)
 			{
-				if (desc->init_func)
-				{
-					luexp(desc->init_func());
-				}
-				entry->m_initialized = true;
-				g_initialized_modules.push_back(desc);
+				luexp(entry->first->on_init());
+				entry->second.m_initialized = true;
+				g_initialized_modules.push_back(entry->first);
 			}
 		}
 		lucatchret;
 		return ok;
 	}
-
-	LUNA_RUNTIME_API RV init_module_dependencies(const Name& module_name)
+	LUNA_RUNTIME_API RV init_module_dependencies(Module* handle)
 	{
+		lucheck_msg(handle, "init_module_dependencies failed: handle is nullptr");
 		lutry
 		{
-			auto modules = get_registered_modules();
-			auto iter = modules.find(module_name);
-			if (iter == modules.end())
+			auto iter = g_modules.find(handle);
+			if (iter == g_modules.end())
 			{
-				return set_error(BasicError::not_found(), "Module %s is not found.", module_name.c_str());
+				return set_error(BasicError::not_found(), "Module %s is not registered.", handle->get_name());
 			}
-			ModuleEntry* entry = (ModuleEntry*)(iter->second->reserved);
-			if (entry->m_initialized) return ok;
-			lulet(queue, get_module_init_queue(modules));
-			HashSet<ModuleDesc*> dependencies;
-			get_module_dependencies(modules, dependencies, iter->second);
+			if (iter->second.m_initialized) return ok;
+			lulet(queue, get_module_init_queue());
+			HashSet<Module*> dependencies;
+			for(Module* m : iter->second.m_dependencies)
+			{
+				dependencies.insert(m);
+			}
 			for (auto i : queue)
 			{
 				auto iter = dependencies.find(i);
 				if (iter != dependencies.end())
 				{
-					luexp(init_module(i));
+					luexp(init_single_module(i));
 				}
 			}
 		}
 		lucatchret;
 		return ok;
 	}
-
-	LUNA_RUNTIME_API RV init_module(const Name& module_name)
+	LUNA_RUNTIME_API RV init_module(Module* handle)
 	{
+		lucheck_msg(handle, "init_module failed: handle is nullptr");
 		lutry
 		{
-			auto modules = get_registered_modules();
-			auto iter = modules.find(module_name);
-			if (iter == modules.end())
+			auto iter = g_modules.find(handle);
+			if (iter == g_modules.end())
 			{
-				return set_error(BasicError::not_found(), "Module %s is not found.", module_name.c_str());
+				return set_error(BasicError::not_found(), "Module %s is not found.", handle->get_name());
 			}
-			ModuleEntry* entry = (ModuleEntry*)(iter->second->reserved);
-			if (entry->m_initialized) return ok;
-			lulet(queue, get_module_init_queue(modules));
-			HashSet<ModuleDesc*> dependencies;
-			get_module_dependencies(modules, dependencies, iter->second);
+			if (iter->second.m_initialized) return ok;
+			lulet(queue, get_module_init_queue());
+			HashSet<Module*> dependencies;
+			for(Module* m : iter->second.m_dependencies)
+			{
+				dependencies.insert(m);
+			}
 			for (auto i : queue)
 			{
 				auto iter = dependencies.find(i);
 				if (iter != dependencies.end())
 				{
-					luexp(init_module(i));
+					luexp(init_single_module(i));
 				}
 			}
-			luexp(init_module(iter->second));
+			luexp(init_single_module(iter->first));
 		}
 		lucatchret;
 		return ok;
 	}
-
 	LUNA_RUNTIME_API RV init_modules()
 	{
 		lutry
 		{
-			auto modules = get_registered_modules();
-			lulet(queue, get_module_init_queue(modules));
+			lulet(queue, get_module_init_queue());
 			// Initialize all modules by order.
 			for (auto i : queue)
 			{
-				luexp(init_module(i));
+				luexp(init_single_module(i));
 			}
 		}
 		lucatchret;

@@ -112,4 +112,7 @@ namespace Luna
 
 		LUNA_VFS_API ErrCode driver_not_found();
 	}
+
+	struct Module;
+	LUNA_VFS_API Module* module_vfs();
 }

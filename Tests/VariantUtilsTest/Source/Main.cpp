@@ -11,11 +11,13 @@
 #include <Luna/Runtime/Runtime.hpp>
 #include <Luna/Runtime/Module.hpp>
 #include <Luna/Runtime/Log.hpp>
+#include <Luna/VariantUtils/VariantUtils.hpp>
 using namespace Luna;
 
 int main()
 {
     Luna::init();
+    lupanic_if_failed(add_modules({module_variant_utils()}));
     lupanic_if_failed(init_modules());
     set_log_to_platform_enabled(true);
     set_log_to_platform_verbosity(LogVerbosity::warning);

@@ -20,6 +20,7 @@
 #include <Luna/Runtime/Time.hpp>
 #include <Luna/Runtime/File.hpp>
 #include <Luna/Runtime/Thread.hpp>
+#include <Luna/VG/VG.hpp>
 
 namespace Luna
 {
@@ -58,11 +59,11 @@ RV recreate_window_resources(u32 width, u32 height)
 		{
 			if (!g_swap_chain)
 			{
-				g_swap_chain = get_main_device()->new_swap_chain(g_command_queue, g_window, SwapChainDesc({ width, height, 2, Format::bgra8_unorm, true})).get();
+				luset(g_swap_chain, get_main_device()->new_swap_chain(g_command_queue, g_window, SwapChainDesc({ width, height, 2, Format::bgra8_unorm, true})));
 			}
 			else
 			{
-				g_swap_chain->reset({width, height, 2, Format::bgra8_unorm, true});
+				luexp(g_swap_chain->reset({width, height, 2, Format::bgra8_unorm, true}));
 			}
 		}
 	}
@@ -103,6 +104,7 @@ void on_window_close(Window::IWindow* window)
 
 void init()
 {
+	lupanic_if_failed(add_modules({module_window(), module_rhi(), module_font(), module_vg()}))
 	lupanic_if_failed(init_modules());
 
 	g_text_arrange_result.construct();
@@ -175,7 +177,7 @@ void run()
 		auto res = g_time_text_arranger->arrange(RectF(0, sz.y - HEADER_TEXT_HEIGHT, sz.x, HEADER_TEXT_HEIGHT), VG::TextAlignment::center, VG::TextAlignment::center);
 		if (!res.lines.empty())
 		{
-			g_time_text_arranger->commit(res, g_shape_draw_list);
+			lupanic_if_failed(g_time_text_arranger->commit(res, g_shape_draw_list));
 			g_time_text_arranger->clear_text_buffer();
 		}
 
@@ -193,19 +195,19 @@ void run()
 
 		auto dcs = g_shape_draw_list->get_draw_calls();
 
-		g_shape_renderer->set_render_target(g_swap_chain->get_current_back_buffer().get());
-		g_shape_renderer->render(g_command_buffer, g_shape_draw_list->get_vertex_buffer(), g_shape_draw_list->get_index_buffer(),  { dcs.data(), (u32)dcs.size() });
+		lupanic_if_failed(g_shape_renderer->set_render_target(g_swap_chain->get_current_back_buffer().get()));
+		lupanic_if_failed(g_shape_renderer->render(g_command_buffer, g_shape_draw_list->get_vertex_buffer(), g_shape_draw_list->get_index_buffer(),  { dcs.data(), (u32)dcs.size() }));
 
 		g_command_buffer->resource_barrier({},
 			{
 				{g_swap_chain->get_current_back_buffer().get(), RHI::SubresourceIndex(0, 0), RHI::TextureStateFlag::automatic, RHI::TextureStateFlag::present, RHI::ResourceBarrierFlag::none}
 			});
 
-		g_command_buffer->submit({}, {}, true);
+		lupanic_if_failed(g_command_buffer->submit({}, {}, true));
 		g_command_buffer->wait();
 
-		g_swap_chain->present();
-		g_command_buffer->reset();
+		lupanic_if_failed(g_swap_chain->present());
+		lupanic_if_failed(g_command_buffer->reset());
 		g_shape_renderer->reset();
 		g_shape_draw_list->reset();
 

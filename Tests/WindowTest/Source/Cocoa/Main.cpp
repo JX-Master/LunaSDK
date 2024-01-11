@@ -26,6 +26,7 @@ void run()
     
     StartupParams params;
     set_startup_params(params);
+    lupanic_if_failed(add_modules({module_window()}));
     luassert_always(succeeded(init_modules()));
     multi_window_test_run();
 }

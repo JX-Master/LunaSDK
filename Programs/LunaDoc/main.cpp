@@ -15,6 +15,7 @@
 #include <Luna/Runtime/Path.hpp>
 #include <Luna/Runtime/File.hpp>
 #include <Luna/VariantUtils/XML.hpp>
+#include <Luna/VariantUtils/VariantUtils.hpp>
 using namespace Luna;
 
 RV print_help()
@@ -204,6 +205,7 @@ RV run(int argc, const char* argv[])
         set_log_to_platform_enabled(true);
         set_log_to_platform_verbosity(LogVerbosity::info);
         auto io = get_std_io_stream();
+        luexp(add_module(module_variant_utils()));
         luexp(init_modules());
         if(argc < 2)
         {

@@ -23,26 +23,6 @@ namespace Luna
 		Ref<IMutex> g_driver_mutex;
 		Vector<MountPair> g_mounts;
 		Ref<IMutex> g_mounts_mutex;
-		RV init()
-		{
-			g_driver_mutex = new_mutex();
-			g_mounts_mutex = new_mutex();
-			register_platform_filesystem_driver();
-			return ok;
-		}
-		void close()
-		{
-			g_mounts.clear();
-			g_mounts.shrink_to_fit();
-			g_mounts_mutex = nullptr;
-			for (auto& i : g_drivers)
-			{
-				if (i.second.get()->driver_close) i.second.get()->driver_close(i.second.get()->driver_data);
-			}
-			g_drivers.clear();
-			g_drivers.shrink_to_fit();
-			g_driver_mutex = nullptr;
-		}
 		LUNA_VFS_API void register_driver(const Name& name, const DriverDesc& desc)
 		{
 			MutexGuard guard(g_driver_mutex);
@@ -320,7 +300,36 @@ namespace Luna
 			return ret;
 		}
 
-		LUNA_STATIC_REGISTER_MODULE(VFS, "", init, close);
+		struct VFSModule : public Module
+		{
+			virtual const c8* get_name() override { return "VFS"; }
+			virtual RV on_init() override
+			{
+				g_driver_mutex = new_mutex();
+				g_mounts_mutex = new_mutex();
+				register_platform_filesystem_driver();
+				return ok;
+			}
+			virtual void on_close() override
+			{
+				g_mounts.clear();
+				g_mounts.shrink_to_fit();
+				g_mounts_mutex = nullptr;
+				for (auto& i : g_drivers)
+				{
+					if (i.second.get()->driver_close) i.second.get()->driver_close(i.second.get()->driver_data);
+				}
+				g_drivers.clear();
+				g_drivers.shrink_to_fit();
+				g_driver_mutex = nullptr;
+			}
+		};
+	}
+
+	LUNA_VFS_API Module* module_vfs()
+	{
+		static VFS::VFSModule m;
+		return &m;
 	}
 
 	namespace VFSError
