@@ -31,4 +31,7 @@ namespace Luna
 		LUNA_RHI_TESTBED_API Window::IWindow* get_window();
 		LUNA_RHI_TESTBED_API u32 get_command_queue_index();
 	}
+
+	struct Module;
+	LUNA_RHI_TESTBED_API Module* module_rhi_test_bed();
 }

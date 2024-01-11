@@ -7,6 +7,8 @@
 * @author JXMaster
 * @date 2022/4/14
 */
+#include <Luna/Runtime/PlatformDefines.hpp>
+#define LUNA_RHI_API LUNA_EXPORT
 #include "RHI.hpp"
 #include <Luna/Runtime/Module.hpp>
 #include "../DescriptorSet.hpp"
@@ -14,24 +16,28 @@ namespace Luna
 {
 	namespace RHI
 	{
-		RV init()
+		struct RHIModule : public Module
 		{
-			lutry
+			virtual const c8* get_name() override { return "RHI"; }
+			virtual RV on_register() override
 			{
-				luexp(render_api_init());
+				return add_dependency_module(this, module_window());
 			}
-			lucatchret;
-			return ok;
-		}
-
-		void close()
-		{
-			render_api_close();
-		}
-
-		LUNA_STATIC_REGISTER_MODULE(RHI, "Window", init, close);
+			virtual RV on_init() override
+			{
+				return render_api_init();
+			}
+			virtual void on_close() override
+			{
+				render_api_close();
+			}
+		};
 	}
-
+	LUNA_RHI_API Module* module_rhi()
+	{
+		static RHI::RHIModule m;
+		return &m;
+	}
 	namespace RHIError
 	{
 		LUNA_RHI_API errcat_t errtype()

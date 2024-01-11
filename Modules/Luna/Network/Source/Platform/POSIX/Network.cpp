@@ -24,11 +24,11 @@
 
 namespace Luna
 {
-    namespace Net
+    namespace Network
     {
         struct Socket : ISocket
         {
-            lustruct("Net::Socket", "{35d804cf-4249-491f-a3e0-c95944ad5339}");
+            lustruct("Network::Socket", "{35d804cf-4249-491f-a3e0-c95944ad5339}");
 			luiimpl();
 
 			AddressFamily m_af;
@@ -166,14 +166,13 @@ namespace Luna
 			}
 			return NetworkError::address_not_supported();
 		}
-        RV init()
+        RV platform_init()
 		{
 			register_boxed_type<Socket>();
 			impl_interface_for_type<Socket, ISocket>();
 			return ok;
 		}
-
-		void close()
+		void platform_close()
 		{
 			
 		}
@@ -227,7 +226,5 @@ namespace Luna
 			s->m_socket = r;
 			return Ref<ISocket>(s);
         }
-
-        LUNA_STATIC_REGISTER_MODULE(Network, "", init, close);
     }
 }

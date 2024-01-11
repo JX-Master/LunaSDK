@@ -12,8 +12,8 @@
 #include <Luna/Runtime/Ref.hpp>
 #include <Luna/Runtime/Result.hpp>
 
-#ifndef LUNA_AUDIO_API
-#define LUNA_AUDIO_API
+#ifndef LUNA_AHI_API
+#define LUNA_AHI_API
 #endif
 
 namespace Luna
@@ -73,6 +73,6 @@ namespace Luna
             virtual void remove_capture_data_callback(usize handle) = 0;
         };
 
-        LUNA_AUDIO_API R<Ref<IDevice>> new_device(const DeviceDesc& desc);
+        LUNA_AHI_API R<Ref<IDevice>> new_device(const DeviceDesc& desc);
     }
 }

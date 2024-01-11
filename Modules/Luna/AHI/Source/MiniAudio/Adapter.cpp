@@ -8,7 +8,7 @@
 * @date 2023/10/15
 */
 #include <Luna/Runtime/PlatformDefines.hpp>
-#define LUNA_AUDIO_API LUNA_EXPORT
+#define LUNA_AHI_API LUNA_EXPORT
 #include "Adapter.hpp"
 
 namespace Luna
@@ -42,7 +42,7 @@ namespace Luna
             *num_formats = num_formats_to_write;
             return num_formats_to_write == m_info.nativeDataFormatCount ? ok : BasicError::insufficient_user_buffer();
         }
-        LUNA_AUDIO_API RV get_adapters(Vector<Ref<IAdapter>>* playback_adapters, Vector<Ref<IAdapter>>* capture_adapters)
+        LUNA_AHI_API RV get_adapters(Vector<Ref<IAdapter>>* playback_adapters, Vector<Ref<IAdapter>>* capture_adapters)
         {
             ma_device_info* pPlaybackInfos;
             ma_uint32 playbackCount;

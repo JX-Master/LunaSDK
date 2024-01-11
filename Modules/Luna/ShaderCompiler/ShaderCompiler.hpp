@@ -154,4 +154,7 @@ namespace Luna
 
 		LUNA_SHADER_COMPILER_API Ref<ICompiler> new_compiler();
 	}
+
+	struct Module;
+	LUNA_SHADER_COMPILER_API Module* module_shader_compiler();
 }

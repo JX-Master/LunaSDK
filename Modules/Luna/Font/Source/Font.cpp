@@ -15,23 +15,26 @@ namespace Luna
 	namespace Font
 	{
 		Ref<IFontFile> g_default_font;
-		void deinit()
+		struct FontModule : public Module
 		{
-			g_default_font = nullptr;
-		}
-		RV init()
-		{
-			register_boxed_type<FontFileTTF>();
-			impl_interface_for_type<FontFileTTF, IFontFile>();
-			auto r = load_font_file((const byte_t*)opensans_regular_ttf, (usize)opensans_regular_ttf_size, FontFileFormat::ttf);
-			if (failed(r))
+			virtual const c8* get_name() override { return "Font"; }
+			virtual RV on_init() override
 			{
-				return r.errcode();
+				register_boxed_type<FontFileTTF>();
+				impl_interface_for_type<FontFileTTF, IFontFile>();
+				auto r = load_font_file((const byte_t*)opensans_regular_ttf, (usize)opensans_regular_ttf_size, FontFileFormat::ttf);
+				if (failed(r))
+				{
+					return r.errcode();
+				}
+				g_default_font = r.get();
+				return ok;
 			}
-			g_default_font = r.get();
-			return ok;
-		}
-		LUNA_STATIC_REGISTER_MODULE(Font, "", init, deinit);
+			virtual void on_close() override
+			{
+				g_default_font = nullptr;
+			}
+		};
 		LUNA_FONT_API R<Ref<IFontFile>> load_font_file(const byte_t* data, usize data_size, FontFileFormat format)
 		{
 			switch (format)
@@ -58,5 +61,10 @@ namespace Luna
 		{
 			return g_default_font;
 		}
+	}
+	LUNA_FONT_API Module* module_font()
+	{
+		static Font::FontModule m;
+		return &m;
 	}
 }

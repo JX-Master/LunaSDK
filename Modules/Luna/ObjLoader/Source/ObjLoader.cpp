@@ -23,7 +23,10 @@ namespace Luna
 	{
 		static_assert(sizeof(Index) == sizeof(tinyobj::index_t), "Index size does not match");
 
-		LUNA_STATIC_REGISTER_MODULE(ObjLoader, "", nullptr, nullptr);
+		struct ObjLoaderModule : public Module
+		{
+			virtual const c8* get_name() override { return "ObjLoader"; }
+		};
 
 		void copy_shape(Shape& dst, const tinyobj::shape_t& src)
 		{
@@ -136,5 +139,11 @@ namespace Luna
 
 			return obj;
 		}
+	}
+
+	LUNA_OBJ_LOADER_API Module* module_obj_loader()
+	{
+		static ObjLoader::ObjLoaderModule m;
+		return &m;
 	}
 }

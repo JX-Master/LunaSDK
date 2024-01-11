@@ -23,7 +23,7 @@ void run()
 {
     using namespace Luna;
     using namespace Luna::Windowing;
-    
+    lupanic_if_failed(add_modules({module_window()}));
     StartupParams params;
     params.main_window_title = "Window Test";
     params.main_window_flags = WindowCreationFlag::default_size |

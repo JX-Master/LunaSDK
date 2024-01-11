@@ -1,18 +1,19 @@
+
 /*!
 * This file is a portion of Luna SDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
-* @file ECS.hpp
+* @file VG.hpp
 * @author JXMaster
-* @date 2022/8/11
+* @date 2024/1/11
 */
 #pragma once
-#include "TaskContext.hpp"
-#include "World.hpp"
-
+#ifndef LUNA_VG_API
+#define LUNA_VG_API
+#endif
 namespace Luna
 {
     struct Module;
-    LUNA_ECS_API Module* module_ecs();
+    LUNA_VG_API Module* module_vg();
 }

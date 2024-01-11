@@ -97,4 +97,7 @@ namespace Luna
 		//! @param[in] file_name The platform path of the file.
 		LUNA_OBJ_LOADER_API R<ObjMesh> load(Span<const byte_t> obj_file, Span<const byte_t> mtl_file);
 	}
+
+	struct Module;
+	LUNA_OBJ_LOADER_API Module* module_obj_loader();
 }

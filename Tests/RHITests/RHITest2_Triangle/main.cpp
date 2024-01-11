@@ -185,6 +185,7 @@ void run_app()
 int main()
 {
 	if (!Luna::init()) return 0;
+	lupanic_if_failed(add_modules({module_rhi_test_bed(), module_shader_compiler()}));
 	auto r = init_modules();
 	if (failed(r))
 	{

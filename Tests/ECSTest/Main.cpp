@@ -11,6 +11,7 @@
 #include <Luna/Runtime/Module.hpp>
 #include <Luna/ECS/ECS.hpp>
 #include <Luna/Runtime/Math/Vector.hpp>
+#include <Luna/JobSystem/JobSystem.hpp>
 
 #define lutest luassert_always
 
@@ -133,6 +134,7 @@ void ecs_test()
 int main()
 {
 	Luna::init();
+	lupanic_if_failed(Luna::add_modules({Luna::module_job_system(), Luna::module_ecs()}));
 	lupanic_if_failed(Luna::init_modules());
 	ecs_test();
 	Luna::close();

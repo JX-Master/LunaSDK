@@ -18,11 +18,11 @@
 
 namespace Luna
 {
-	namespace Net
+	namespace Network
 	{
 		struct Socket : ISocket
 		{
-			lustruct("Net::Socket", "{42EF7CB8-B292-4837-88A4-D2E8AC156BA2}");
+			lustruct("Network::Socket", "{42EF7CB8-B292-4837-88A4-D2E8AC156BA2}");
 			luiimpl();
 
 			AddressFamily m_af;
@@ -184,7 +184,7 @@ namespace Luna
 			}
 			return NetworkError::address_not_supported();
 		}
-		RV init()
+		RV platform_init()
 		{
 			register_boxed_type<Socket>();
 			impl_interface_for_type<Socket, ISocket>();
@@ -198,7 +198,7 @@ namespace Luna
 			return ok;
 		}
 
-		void close()
+		void platform_close()
 		{
 			WSACleanup();
 		}
@@ -315,8 +315,6 @@ namespace Luna
 			s->m_socket = r;
 			return Ref<ISocket>(s);
 		}
-
-		LUNA_STATIC_REGISTER_MODULE(Network, "", init, close);
 
 		LUNA_NETWORK_API R<Vector<AddressInfo>> getaddrinfo(const c8* node, const c8* service, const AddressInfo* hints)
 		{

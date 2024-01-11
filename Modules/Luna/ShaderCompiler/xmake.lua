@@ -4,7 +4,7 @@ luna_sdk_module_target("ShaderCompiler")
     add_headerfiles("*.hpp", {prefixdir = "Luna/ShaderCompiler"})
     add_headerfiles("Source/**.hpp", {install = false})
     add_files("Source/*.cpp")
-    add_luna_modules("Runtime", "VariantUtils")
+    add_deps("Runtime", "VariantUtils")
     add_packages("spirv-cross")
     if is_os("windows") then 
         add_includedirs("$(projectdir)/SDKs/dxc/windows/include")

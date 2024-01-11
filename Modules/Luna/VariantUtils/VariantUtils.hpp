@@ -3,16 +3,16 @@
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
-* @file ECS.hpp
+* @file VariantUtils.hpp
 * @author JXMaster
-* @date 2022/8/11
+* @date 2024/1/11
 */
 #pragma once
-#include "TaskContext.hpp"
-#include "World.hpp"
-
+#ifndef LUNA_VARIANT_UTILS_API
+#define LUNA_VARIANT_UTILS_API
+#endif
 namespace Luna
 {
     struct Module;
-    LUNA_ECS_API Module* module_ecs();
+    LUNA_VARIANT_UTILS_API Module* module_variant_utils();
 }

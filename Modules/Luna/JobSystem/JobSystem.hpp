@@ -70,4 +70,7 @@ namespace Luna
 		//! @return Returns `true` if the job is finished, `false` otherwise.
 		LUNA_JOBSYSTEM_API bool is_job_finished(job_id_t job);
 	}
+
+	struct Module;
+	LUNA_JOBSYSTEM_API Module* module_job_system();
 }

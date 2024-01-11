@@ -6,5 +6,5 @@ luna_sdk_module_target("Network")
     elseif is_os("linux", "macosx") then
         add_files("Source/Platform/POSIX/**.cpp")
     end
-    add_luna_modules("Runtime")
+    add_deps("Runtime")
 target_end()

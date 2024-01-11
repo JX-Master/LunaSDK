@@ -17,14 +17,22 @@ namespace Luna
 {
 	namespace HID
 	{
-		static RV hid_init()
+		struct HIDModule : public Module
 		{
-			return platform_init();
-		}
-		static void hid_close()
-		{
-			platform_close();
-		}
-		LUNA_STATIC_REGISTER_MODULE(HID, "", hid_init, hid_close);
+			virtual const c8* get_name() override { return "HID"; }
+			virtual RV on_init() override
+			{
+				return platform_init();
+			}
+			virtual void on_close() override
+			{
+				platform_close();
+			}
+		};
+	}
+	LUNA_HID_API Module* module_hid()
+	{
+		static HID::HIDModule m;
+		return &m;
 	}
 }

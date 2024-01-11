@@ -22,6 +22,7 @@ void run()
 int main()
 {
 	if (!Luna::init()) return 0;
+	lupanic_if_failed(add_modules({module_rhi_test_bed()}));
 	auto r = init_modules();
 	if (failed(r))
 	{
