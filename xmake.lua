@@ -99,11 +99,6 @@ if is_os("windows") then
     add_defines("_UNICODE")
     add_defines("NOMINMAX")
     add_defines("_CRT_SECURE_NO_WARNINGS")
-    if (is_mode("release")) then
-        set_runtimes("MD")
-    else
-        set_runtimes("MDd")
-    end
 end
 
 includes("Modules")
