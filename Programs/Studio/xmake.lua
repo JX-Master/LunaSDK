@@ -4,7 +4,6 @@ target("Studio")
     add_headerfiles("**.hpp")
     add_files("**.cpp")
     add_luna_modules("Runtime", "VariantUtils", "HID", "Window", "RHI", "Image", "Font", "ImGui", "Asset", "ObjLoader", "RG")
-    add_packages("imgui")
 
     local shader_files = {
             "Common.hlsl",
