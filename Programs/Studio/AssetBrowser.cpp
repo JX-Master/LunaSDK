@@ -256,7 +256,7 @@ namespace Luna
 				dl->AddRectFilled(region_min, region_max, 0xFF202020);
 
 				dl->AddRect(region_min, region_max,
-					Color(ImGui::GetStyle().Colors[(u32)ImGuiCol_Border]).abgr8());
+					Color::to_rgba8(Float4(ImGui::GetStyle().Colors[(u32)ImGuiCol_Border])));
 
 				bool btn_clicked = false;
 				if ((m_path.flags() & PathFlag::absolute) != PathFlag::none)
@@ -402,7 +402,7 @@ namespace Luna
 					if (siter != m_selections.end())
 					{
 						// Draw selection background.
-						dl->AddRectFilled(tile_min - padding, tile_max - padding, Color(ImGui::GetStyle().Colors[(u32)ImGuiCol_Button]).abgr8());
+						dl->AddRectFilled(tile_min - padding, tile_max - padding, Color::to_rgba8(Float4(ImGui::GetStyle().Colors[(u32)ImGuiCol_Button])));
 					}
 
 					if (assets.get()[i].m_is_dir)
@@ -520,12 +520,12 @@ namespace Luna
 							if (Asset::get_asset_state(asset.get()) == Asset::AssetState::loaded)
 							{
 								// Draw green circle.
-								dl->AddCircleFilled(tile_min + Float2(m_tile_size, m_tile_size) - 5.0f, 10.0f, Color::green().abgr8());
+								dl->AddCircleFilled(tile_min + Float2(m_tile_size, m_tile_size) - 5.0f, 10.0f, Color::to_rgba8(Color::green()));
 							}
 							else
 							{
 								// Draw yellow circle.
-								dl->AddCircleFilled(tile_min + Float2(m_tile_size, m_tile_size) - 5.0f, 10.0f, Color::yellow().abgr8());
+								dl->AddCircleFilled(tile_min + Float2(m_tile_size, m_tile_size) - 5.0f, 10.0f, Color::to_rgba8(Color::yellow()));
 							}
 						}
 						else
@@ -534,7 +534,7 @@ namespace Luna
 							Float2 center = tile_min / 2.0f + (tile_min + Float2(m_tile_size, m_tile_size) / 2.0f);
 							ImGui::SetCursorScreenPos(center - text_sz / 2.0f);
 							ImGui::Text("Unknown");
-							dl->AddCircleFilled(tile_min + Float2(m_tile_size, m_tile_size) - 5.0f, 10.0f, Color::red().abgr8());
+							dl->AddCircleFilled(tile_min + Float2(m_tile_size, m_tile_size) - 5.0f, 10.0f, Color::to_rgba8(Color::red()));
 						}
 					}
 

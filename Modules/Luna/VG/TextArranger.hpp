@@ -90,9 +90,9 @@ namespace Luna
 
 			virtual void set_font(IFontAtlas* font) = 0;
 
-			virtual color_u32 get_font_color() = 0;
+			virtual u32 get_font_color() = 0;
 
-			virtual void set_font_color(color_u32 color) = 0;
+			virtual void set_font_color(u32 color) = 0;
 
 			virtual f32 get_font_size() = 0;
 

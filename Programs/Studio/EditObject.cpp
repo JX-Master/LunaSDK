@@ -135,11 +135,6 @@ namespace Luna
 			Float4* data = (Float4*)obj;
 			ImGui::DragFloat4(name, data->m);
 		}
-		else if (type == typeof<Color>())
-		{
-			Color* data = (Color*)obj;
-			ImGui::ColorEdit4(name, data->m);
-		}
 		else if (type == typeof<Quaternion>())
 		{
 			Quaternion* data = (Quaternion*)obj;

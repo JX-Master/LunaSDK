@@ -187,7 +187,7 @@ namespace Luna
 					{
 						auto dl = ImGui::GetWindowDrawList();
 						dl->AddRectFilled(sel_pos, sel_pos + sel_size,
-							Color(ImGui::GetStyle().Colors[(u32)ImGuiCol_Button]).abgr8());
+							Color::to_rgba8(Float4(ImGui::GetStyle().Colors[(u32)ImGuiCol_Button])));
 					}
 					ImGui::Text("%s", entities[i]->name.c_str());
 				}
@@ -514,7 +514,7 @@ namespace Luna
 					struct GizmoLine
 					{
 						Float3U line;
-						color_u32 color;
+						u32 color;
 
 						bool operator<(const GizmoLine& rhs) const
 						{
@@ -524,9 +524,9 @@ namespace Luna
 					};
 
 					Vector<GizmoLine> lines;
-					lines.push_back({ x_gizmo.xyz(), Color::red().abgr8() });
-					lines.push_back({ y_gizmo.xyz(), Color::green().abgr8() });
-					lines.push_back({ z_gizmo.xyz(), Color::blue().abgr8() });
+					lines.push_back({ x_gizmo.xyz(), Color::to_rgba8(Color::red()) });
+					lines.push_back({ y_gizmo.xyz(), Color::to_rgba8(Color::green()) });
+					lines.push_back({ z_gizmo.xyz(), Color::to_rgba8(Color::blue()) });
 
 					// Sort by depth to ensure correct drawing order.
 					sort(lines.begin(), lines.end());

@@ -522,7 +522,6 @@ namespace Luna
 	static typeinfo_t g_float3x3_type;
 	static typeinfo_t g_float4x4_type;
 	static typeinfo_t g_quaternion_type;
-	static typeinfo_t g_color_type;
 	static typeinfo_t g_blob_type;
 
 	inline typeinfo_t make_hashmap_value_type(typeinfo_t key_type, typeinfo_t value_type)
@@ -1353,36 +1352,6 @@ namespace Luna
 			};
 			set_serializable(g_quaternion_type, &desc);
 		}
-		// Color
-		{
-			g_color_type = register_struct_type<Color>({
-				luproperty(Color, f32, r),
-				luproperty(Color, f32, g),
-				luproperty(Color, f32, b),
-				luproperty(Color, f32, a)
-				});
-			SerializableTypeDesc desc;
-			desc.serialize_func = [](typeinfo_t type, const void* inst) -> R<Variant>
-			{
-				auto v = (const Color*)inst;
-				Variant r(VariantType::array);
-				r.push_back(v->r);
-				r.push_back(v->g);
-				r.push_back(v->b);
-				r.push_back(v->a);
-				return r;
-			};
-			desc.deserialize_func = [](typeinfo_t type, void* inst, const Variant& data)
-			{
-				auto v = (Color*)inst;
-				v->r = (f32)data[0].fnum();
-				v->g = (f32)data[1].fnum();
-				v->b = (f32)data[2].fnum();
-				v->a = (f32)data[3].fnum();
-				return ok;
-			};
-			set_serializable(g_color_type, &desc);
-		}
 		// Blob
 		{
 			StructureTypeDesc t;
@@ -1438,6 +1407,5 @@ namespace Luna
 	LUNA_RUNTIME_API typeinfo_t float3x3_type() { return g_float3x3_type; }
 	LUNA_RUNTIME_API typeinfo_t float4x4_type() { return g_float4x4_type; }
 	LUNA_RUNTIME_API typeinfo_t quaternion_type() { return g_quaternion_type; }
-	LUNA_RUNTIME_API typeinfo_t color_type() { return g_color_type; }
 	LUNA_RUNTIME_API typeinfo_t blob_type() { return g_blob_type; }
 }

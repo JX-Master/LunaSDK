@@ -24,7 +24,7 @@ namespace Luna
 			struct FontState
 			{
 				Ref<IFontAtlas> m_font;
-				color_u32 m_color;
+				u32 m_color;
 				f32 m_size;
 				f32 m_char_span;
 				f32 m_line_span;
@@ -80,11 +80,11 @@ namespace Luna
 					m_state_dirty = true;
 				}
 			}
-			color_u32 get_font_color()
+			u32 get_font_color()
 			{
 				return m_current_state.m_color;
 			}
-			void  set_font_color(color_u32 color)
+			void  set_font_color(u32 color)
 			{
 				lutsassert();
 				if (color != m_current_state.m_color)

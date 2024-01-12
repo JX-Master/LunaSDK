@@ -448,9 +448,9 @@ namespace Luna
 		float4 length = sqrt_f4(length_sq);
 		return getx_f4(length);
 #else
-		f32 delX = v1.x - v2.x;
-		f32 delY = v1.y - v2.y;
-		return sqrtf(delX * delX + delY * delY);
+		f32 dx = v1.x - v2.x;
+		f32 dy = v1.y - v2.y;
+		return sqrtf(dx * dx + dy * dy);
 #endif
 	}
 	inline f32 distance_squared(const Float2& v1, const Float2& v2)
@@ -462,9 +462,9 @@ namespace Luna
 		float4 sub = sub_f4(vec2, vec1);
 		return dot2_f4(sub, sub);
 #else
-		f32 delX = v1.x - v2.x;
-		f32 delY = v1.y - v2.y;
-		return delX * delX + delY * delY;
+		f32 dx = v1.x - v2.x;
+		f32 dy = v1.y - v2.y;
+		return dx * dx + dy * dy;
 #endif
 	}
 	inline Float2 min(const Float2& v1, const Float2& v2)
@@ -570,14 +570,22 @@ namespace Luna
 		return result;
 #else
 		Float2 result;
-		result.x = ((-(t * t * t) + 2.0f * (t * t) - t) * v1.x
-			+ (3.0f * (t * t * t) - 5.0f * (t * t) + 2.0f) * v2.x
-			+ (-3.0f * (t * t * t) + 4.0f * (t * t) + t) * v3.x
-			+ ((t * t * t) - (t * t)) * v4.x) * 0.5f;
-		result.y = ((-(t * t * t) + 2.0f * (t * t) - t) * v1.y
-			+ (3.0f * (t * t * t) - 5.0f * (t * t) + 2.0f) * v2.y
-			+ (-3.0f * (t * t * t) + 4.0f * (t * t) + t) * v3.y
-			+ ((t * t * t) - (t * t)) * v4.y) * 0.5f;
+		f32 t2 = t * t;
+		f32 t3 = t2 * t;
+		f32 f1 = -t3 + 2.0f * t2 - t;
+		f32 f2 = 3.0f * t3 - 5.0f * t2 + 2.0f;
+		f32 f3 = -3.0f * t3 + 4.0f * t2 + t;
+		f32 f4 = t3 - t2;
+		result.x = (
+			f1 * v1.x +
+			f2 * v2.x +
+			f3 * v3.x +
+			f4 * v4.x) * 0.5f;
+		result.y = (
+			f1 * v1.y +
+			f2 * v2.y +
+			f3 * v3.y +
+			f4 * v4.y) * 0.5f;
 		return result;
 #endif
 	}
@@ -599,14 +607,22 @@ namespace Luna
 		return result;
 #else
 		Float2 result;
-		result.x = (2 * (t * t * t) - 3 * (t * t) + 1) * v1.x +
-			((t * t * t) - 2 * (t * t) + t) * t1.x +
-			(-2 * (t * t * t) + 3 * (t * t)) * v2.x +
-			((t * t * t) - (t * t)) * t2.x;
-		result.y = (2 * (t * t * t) - 3 * (t * t) + 1) * v1.y +
-			((t * t * t) - 2 * (t * t) + t) * t1.y +
-			(-2 * (t * t * t) + 3 * (t * t)) * v2.y +
-			((t * t * t) - (t * t)) * t2.y;
+		f32 t2 = t * t;
+		f32 t3 = t2 * t;
+		f32 f1 = 2 * t3 - 3 * t2 + 1;
+		f32 f2 = t3 - 2 * t2 + t;
+		f32 f3 = -2 * t3 + 3 * t2;
+		f32 f4 = t3 - t2;
+		result.x = 
+			f1 * v1.x +
+			f2 * t1.x +
+			f3 * v2.x +
+			f4 * t2.x;
+		result.y = 
+			f1 * v1.y +
+			f2 * t1.y +
+			f3 * v2.y +
+			f4 * t2.y;
 		return result;
 #endif
 	}

@@ -78,7 +78,7 @@ const f32 max_size = 300.0f;
 void rearrange_text(const RectF& rect)
 {
 	g_text_arranger->clear_text_buffer();
-	g_text_arranger->set_font_color(Color::white().rgba8());
+	g_text_arranger->set_font_color(Color::to_rgba8(Color::white()));
 	g_text_arranger->set_font_size(g_font_size);
 	for (usize i = 0; i < 300; ++i)
 	{
