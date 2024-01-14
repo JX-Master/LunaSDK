@@ -280,15 +280,21 @@ namespace Luna
 			return ok;
 		}
 
-		void deinit() {}
-
-		RV init()
+		struct ImageModule : public Module
 		{
-			stbi_init();
-			return ok;
-		}
+			virtual const c8* get_name() override { return "Image"; }
+			virtual RV on_init() override
+			{
+				stbi_init();
+				return ok;
+			}
+		};
+	}
 
-		LUNA_STATIC_REGISTER_MODULE(Image, "", init, deinit);
+	LUNA_IMAGE_API Module* module_image()
+	{
+		static Image::ImageModule m;
+		return &m;
 	}
 
 	namespace ImageError

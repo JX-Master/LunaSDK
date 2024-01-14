@@ -11,6 +11,7 @@
 #define LUNA_WINDOW_API LUNA_EXPORT
 #include "Window.hpp"
 #include <Luna/Runtime/Module.hpp>
+#include "../Window.hpp"
 namespace Luna
 {
 	namespace Window
@@ -19,32 +20,29 @@ namespace Luna
 		c8 g_name[260];
 		Version g_version;
 
-		RV init()
+		struct WindowModule : public Module
 		{
-			if (g_startup_params.name)
+			virtual const c8* get_name() override { return "Window"; }
+			virtual RV on_init() override
 			{
-				auto len = strlen(g_startup_params.name);
-				memcpy(g_name, g_startup_params.name, min<usize>(len, 260));
+				if (g_startup_params.name)
+				{
+					auto len = strlen(g_startup_params.name);
+					memcpy(g_name, g_startup_params.name, min<usize>(len, 260));
+				}
+				g_version = g_startup_params.version;
+				return platform_init();
 			}
-			g_version = g_startup_params.version;
-			return platform_init();
-		}
-
-		void close()
-		{
-			platform_close();
-		}
-
-		LUNA_STATIC_REGISTER_MODULE(Window, "", init, close);
-
-		LUNA_WINDOW_API const c8* get_name()
-		{
-			return g_name;
-		}
-
-		LUNA_WINDOW_API Version get_version()
-		{
-			return g_version;
-		}
+			virtual void on_close() override
+			{
+				platform_close();
+			}
+		};
+		
+	}
+	LUNA_WINDOW_API Module* module_window()
+	{
+		static Window::WindowModule m;
+		return &m;
 	}
 }

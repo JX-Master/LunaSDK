@@ -40,4 +40,6 @@ namespace Luna
 		//! The swap chain is no longer compatible with the surface and should be reset.
 		LUNA_RHI_API ErrCode swap_chain_out_of_date();
 	}
+	struct Module;
+	LUNA_RHI_API Module* module_rhi();
 }

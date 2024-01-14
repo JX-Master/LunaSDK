@@ -3,8 +3,7 @@ target("Studio")
     add_options("rhi_api")
     add_headerfiles("**.hpp")
     add_files("**.cpp")
-    add_luna_modules("Runtime", "VariantUtils", "HID", "Window", "RHI", "Image", "Font", "ImGui", "Asset", "ObjLoader", "RG")
-    add_packages("imgui")
+    add_deps("Runtime", "VariantUtils", "HID", "Window", "RHI", "Image", "Font", "ImGui", "Asset", "ObjLoader", "RG")
 
     local shader_files = {
             "Common.hlsl",
@@ -36,12 +35,16 @@ target("Studio")
             os.cp(path.join(shader_source_dir, i), path.join(target_dir, "Shaders", i))
         end
     end)
-
+    after_clean(function (target) 
+        os.rm(path.join(target:targetdir(), "Shaders"))
+    end)
     after_install(function (target)
         local shader_source_dir = vformat("$(scriptdir)/Shaders")
         for _, i in pairs(shader_files) do
             os.cp(path.join(shader_source_dir, i), path.join(target:installdir(), "bin", "Shaders", i))
         end
     end)
-    
+    after_uninstall(function (target) 
+        os.rm(path.join(target:installdir(), "bin", "Shaders"))
+    end)
 target_end()

@@ -359,6 +359,23 @@ namespace Luna
 				}
 			}
 		}
-		LUNA_STATIC_REGISTER_MODULE(JobSystem, "", job_system_init, job_system_close);
+
+		struct JobSystemModule : public Module
+		{
+			virtual const c8* get_name() override { return "JobSystem"; }
+			virtual RV on_init() override
+			{
+				return job_system_init();
+			}
+			virtual void on_close() override
+			{
+				job_system_close();
+			}
+		};
+	}
+	LUNA_JOBSYSTEM_API Module* module_job_system()
+	{
+		static JobSystem::JobSystemModule m;
+		return &m;
 	}
 }

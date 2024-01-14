@@ -74,6 +74,8 @@ namespace Luna
 
 			RV init(u32 queue_index, Window::IWindow* window, const SwapChainDesc& desc);
 
+			~SwapChain();
+
 			//! Called when the back buffer is resized or when the swap chain is initialized.
 			RV reset_back_buffer_resources();
 

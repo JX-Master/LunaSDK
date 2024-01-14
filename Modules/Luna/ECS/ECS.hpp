@@ -13,4 +13,6 @@
 
 namespace Luna
 {
+    struct Module;
+    LUNA_ECS_API Module* module_ecs();
 }

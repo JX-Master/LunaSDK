@@ -102,6 +102,14 @@ namespace Luna
 			lucatchret;
 			return ok;
 		}
+		SwapChain::~SwapChain()
+		{
+			for (auto& back_buffer : m_back_buffers)
+			{
+				WaitForSingleObject(back_buffer.m_event, INFINITE);
+				back_buffer.m_back_buffer->m_res.Reset();
+			}
+		}
 		RV SwapChain::reset_back_buffer_resources()
 		{
 			// Fetch resources.

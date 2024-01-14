@@ -14,6 +14,7 @@
 #include <Luna/Runtime/Runtime.hpp>
 #include <Luna/Runtime/Module.hpp>
 #include <Luna/Runtime/Object.hpp>
+#include <Luna/Window/Window.hpp>
 
 namespace Luna
 {
@@ -26,6 +27,7 @@ void run(HINSTANCE hInstance,
     int nCmdShow)
 {
     using namespace Luna;
+    lupanic_if_failed(add_modules({module_window()}));
     init_modules();
     Luna::multi_window_test_run();
 }

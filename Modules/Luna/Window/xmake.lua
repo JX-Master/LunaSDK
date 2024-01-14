@@ -1,23 +1,17 @@
-option("window_glfw")
-    set_default(true)
-    set_showmenu(true)
-    set_description("Whether to use GLFW framework for window.")
-    add_defines("LUNA_WINDOW_GLFW")
-option_end()
-
-if has_config("window_glfw") then
-    add_requires("glfw", {configs = {shared = has_config("shared")}})
+if is_os("windows") or is_os("macosx") then
+    add_requires("glfw")
 end
 
 luna_sdk_module_target("Window")
-    add_options("window_glfw")
     add_headerfiles("*.hpp", {prefixdir = "Luna/Window"})
     add_headerfiles("Source/*.hpp", {install = false})
     add_files("Source/*.cpp")
-    if has_config("window_glfw") then
+    if is_os("windows") or is_os("macosx") then
         add_headerfiles("(GLFW/*.hpp)", {prefixdir = "Luna/Window"})
         add_headerfiles("Source/GLFW/*.hpp", {install = false})
         add_files("Source/GLFW/*.cpp")
+        add_defines("LUNA_WINDOW_GLFW")
+        add_packages("glfw")
     end
     if is_os("windows") then
         add_headerfiles("(Windows/*.hpp)", {prefixdir = "Luna/Window"})
@@ -27,9 +21,5 @@ luna_sdk_module_target("Window")
         add_files("Source/Cocoa/*.mm")
         add_frameworks("AppKit", "UniformTypeIdentifiers")
     end
-    add_luna_modules("Runtime")
-    if has_config("window_glfw") then
-        add_packages("glfw")
-    end
+    add_deps("Runtime")
 target_end()
-

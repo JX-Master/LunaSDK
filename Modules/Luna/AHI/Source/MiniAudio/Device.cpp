@@ -8,7 +8,7 @@
 * @date 2023/10/16
 */
 #include <Luna/Runtime/PlatformDefines.hpp>
-#define LUNA_AUDIO_API LUNA_EXPORT
+#define LUNA_AHI_API LUNA_EXPORT
 #include "Adapter.hpp"
 #include "Device.hpp"
 #include <Luna/Runtime/Array.hpp>
@@ -261,7 +261,7 @@ namespace Luna
         {
             ma_device_uninit(&m_device);
         }
-        LUNA_AUDIO_API R<Ref<IDevice>> new_device(const DeviceDesc& desc)
+        LUNA_AHI_API R<Ref<IDevice>> new_device(const DeviceDesc& desc)
         {
             Ref<Device> dev = new_object<Device>();
             lutry

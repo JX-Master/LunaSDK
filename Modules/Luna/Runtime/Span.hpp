@@ -159,7 +159,7 @@ namespace Luna
 		//! one initializer list on one lvalue span (spans exist as local variables, member variables or global/static variables),
 		//! or the behavior is undefined.
 		constexpr Span(InitializerList<remove_cv_t<_Ty>> ilist) :
-			m_buffer(ilist.begin()),
+			m_buffer((_Ty*)ilist.begin()),
 			m_size(ilist.size()) {}
 		//! Constructs one span by coping data from another span.
 		//! @param[in] rhs The span to copy data from.

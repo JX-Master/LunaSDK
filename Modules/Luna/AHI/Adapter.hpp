@@ -14,8 +14,8 @@
 #include <Luna/Runtime/Result.hpp>
 #include <Luna/Runtime/Ref.hpp>
 
-#ifndef LUNA_AUDIO_API
-#define LUNA_AUDIO_API
+#ifndef LUNA_AHI_API
+#define LUNA_AHI_API
 #endif
 
 namespace Luna
@@ -82,6 +82,6 @@ namespace Luna
         //! Gets a list of adapters (driver-provided audio devices) present on the platform.
         //! @param[out] playback_adapters If not `nullptr`, returns all playback adapaters on the platform.
         //! @param[out] capture_adapters If not `nullptr`, returns all capture adapaters on the platform.
-        LUNA_AUDIO_API RV get_adapters(Vector<Ref<IAdapter>>* playback_adapters, Vector<Ref<IAdapter>>* capture_adapters);
+        LUNA_AHI_API RV get_adapters(Vector<Ref<IAdapter>>* playback_adapters, Vector<Ref<IAdapter>>* capture_adapters);
     }
 }

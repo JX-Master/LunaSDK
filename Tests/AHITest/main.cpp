@@ -17,6 +17,7 @@
 #include <Luna/Runtime/Thread.hpp>
 #include <Luna/AHI/Device.hpp>
 #include <Luna/AHI/Adapter.hpp>
+#include <Luna/AHI/AHI.hpp>
 using namespace Luna;
 
 inline f32 gen_sine_wave(f32 time, f32 freq, f32 amp)
@@ -204,6 +205,7 @@ RV run()
 {
     lutry
     {
+        luexp(add_modules({module_ahi(), module_rhi(), module_window(), module_imgui()}));
         luexp(init_modules());
         lulet(window, Window::new_window("Luna Studio - Open Project", Window::WindowDisplaySettings::as_windowed(Window::DEFAULT_POS, Window::DEFAULT_POS, 1000, 500)));
 		auto dev = RHI::get_main_device();

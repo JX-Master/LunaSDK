@@ -17,7 +17,7 @@
 
 namespace Luna
 {
-	namespace Net
+	namespace Network
 	{
 		//! Converts the unsigned integer hostlong from host byte order to network byte order.
 		LUNA_NETWORK_API u32 hton(u32 hostlong);
@@ -220,4 +220,7 @@ namespace Luna
 		//! The service is not supported on the target host with specified socket type.
 		LUNA_NETWORK_API ErrCode service_not_found();
 	}
+
+	struct Module;
+	LUNA_NETWORK_API Module* module_network();
 }

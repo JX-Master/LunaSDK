@@ -71,4 +71,6 @@ namespace Luna
 			return r.errcode();
 		}
 	}
+	struct Module;
+	LUNA_HID_API Module* module_hid();
 }

@@ -15,6 +15,7 @@
 #include <Luna/Runtime/Span.hpp>
 #include <Luna/Runtime/Event.hpp>
 #include "Monitor.hpp"
+#include <Luna/Runtime/Module.hpp>
 
 namespace Luna
 {
@@ -310,4 +311,6 @@ namespace Luna
 			const WindowDisplaySettings& display_settings,
 			WindowCreationFlag flags = WindowCreationFlag::none);
 	}
+
+	LUNA_WINDOW_API Module* module_window();
 }

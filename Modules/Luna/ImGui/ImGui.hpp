@@ -9,8 +9,8 @@
 */
 #pragma once
 #include <Luna/Runtime/Math/Matrix.hpp>
-#include <imgui.h>
-#include <ImGuizmo.h>
+#include "imgui.h"
+#include "ImGuizmo.h"
 #include <Luna/RHI/RHI.hpp>
 #include <Luna/Font/Font.hpp>
 
@@ -42,6 +42,9 @@ namespace Luna
 		LUNA_IMGUI_API Vector<Pair<c16, c16>> get_glyph_ranges_thai();
 		LUNA_IMGUI_API Vector<Pair<c16, c16>> get_glyph_ranges_vietnamese();
 	}
+
+	struct Module;
+	LUNA_IMGUI_API Module* module_imgui();
 }
 
 namespace ImGui

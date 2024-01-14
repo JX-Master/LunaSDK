@@ -7,7 +7,10 @@
 * @author JXMaster
 * @date 2022/8/27
 */
+#include <Luna/Runtime/PlatformDefines.hpp>
+#define LUNA_VARIANT_UTILS_API LUNA_EXPORT
 #include <Luna/Runtime/Module.hpp>
+#include "../VariantUtils.hpp"
 
 namespace Luna
 {
@@ -15,15 +18,24 @@ namespace Luna
     {
         void xml_init();
         void xml_close();
-        RV init()
+
+        struct ModuleVariantUtils : public Module
         {
-            VariantUtils::xml_init();
-            return ok;
-        }
-        void close()
-        {
-            VariantUtils::xml_close();
-        }
-        LUNA_STATIC_REGISTER_MODULE(VariantUtils, "", init, close);
+            virtual const c8* get_name() override { return "VariantUtils"; }
+			virtual RV on_init() override
+			{
+                xml_init();
+				return ok;
+			}
+			virtual void on_close() override
+			{
+				xml_close();
+			}
+        };
+    }
+    LUNA_VARIANT_UTILS_API Module* module_variant_utils()
+    {
+        static VariantUtils::ModuleVariantUtils m;
+        return &m;
     }
 }

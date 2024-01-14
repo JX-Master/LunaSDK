@@ -1,7 +1,6 @@
 set_project("Luna")
 
 add_moduledirs("Tools/xmake/modules")
-add_repositories("luna-repo SDKs")
 
 add_rules("mode.debug", "mode.profile", "mode.release")
 add_defines("LUNA_MANUAL_CONFIG_DEBUG_LEVEL")
@@ -77,22 +76,6 @@ function set_luna_sdk_program()
     set_kind("binary")
 end
 
-function add_luna_modules(...)
-    local args = {...}
-    for i, mod in ipairs(args) do
-        add_deps(mod)
-        if mod ~= "Runtime" then
-            if is_plat("windows") then 
-                add_ldflags("/INCLUDE:luna_static_register_module_" .. mod, {force = true, public = false})
-            else
-                add_ldflags("-u _luna_static_register_module_" .. mod, {force = true, public = false})
-            end
-        end
-    end
-end
-
-add_requires("imgui", {configs = {shared = has_config("shared")}})
-
 add_includedirs("Modules")
 set_languages("c99", "cxx17")
 
@@ -102,11 +85,6 @@ if is_os("windows") then
     add_defines("_UNICODE")
     add_defines("NOMINMAX")
     add_defines("_CRT_SECURE_NO_WARNINGS")
-    if (is_mode("release")) then
-        set_runtimes("MD")
-    else
-        set_runtimes("MDd")
-    end
 end
 
 includes("Modules")

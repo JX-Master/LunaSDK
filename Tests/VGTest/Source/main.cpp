@@ -24,6 +24,7 @@
 #include <Luna/HID/HID.hpp>
 #include <Luna/HID/Mouse.hpp>
 #include <Luna/HID/Keyboard.hpp>
+#include <Luna/VG/VG.hpp>
 
 namespace Luna
 {
@@ -99,6 +100,7 @@ void on_mouse_up(Window::IWindow* window, Window::ModifierKeyFlag modifier_flags
 
 void init()
 {
+	lupanic_if_failed(add_modules({module_window(), module_rhi(), module_font(), module_vg(), module_hid()}));
 	lupanic_if_failed(init_modules());
 	// register event.
 	g_window = Window::new_window("Luna Vector Graphics Test", Window::WindowDisplaySettings::as_windowed(), Window::WindowCreationFlag::resizable).get();
@@ -208,7 +210,7 @@ void run()
 			g_text_arranger->add_text(text);
 			RectF bounding_rect = RectF(0, 0, window_sz.x, window_sz.y - 100.0f);
 			auto arrange_result = g_text_arranger->arrange(bounding_rect, VG::TextAlignment::begin, VG::TextAlignment::center);
-			g_text_arranger->commit(arrange_result, g_shape_draw_list);
+			lupanic_if_failed(g_text_arranger->commit(arrange_result, g_shape_draw_list));
 		}
 
 		constexpr f32 shape_scale = 2.0f;
@@ -263,24 +265,24 @@ void run()
 
 		auto dcs = g_shape_draw_list->get_draw_calls();
 
-		g_shape_renderer->set_render_target(g_swap_chain->get_current_back_buffer().get());
+		lupanic_if_failed(g_shape_renderer->set_render_target(g_swap_chain->get_current_back_buffer().get()));
 
 		Float4x4 proj_matrix = ProjectionMatrix::make_perspective_fov(PI / 3.0f, (f32)window_sz.x / (f32)window_sz.y, 0.3f, 10000.0f);
 		Float4x4 view_matrix = inverse(AffineMatrix::make(g_camera_position, g_camera_rotation, Float3(1.0f)));
 		Float4x4U mat = Float4x4U(mul(view_matrix, proj_matrix));
 
-		g_shape_renderer->render(g_command_buffer, g_shape_draw_list->get_vertex_buffer(), g_shape_draw_list->get_index_buffer(),  { dcs.data(), (u32)dcs.size() }, &mat);
+		lupanic_if_failed(g_shape_renderer->render(g_command_buffer, g_shape_draw_list->get_vertex_buffer(), g_shape_draw_list->get_index_buffer(),  { dcs.data(), (u32)dcs.size() }, &mat));
 
 		g_command_buffer->resource_barrier({},
 			{
 				{g_swap_chain->get_current_back_buffer().get(), RHI::SubresourceIndex(0, 0), RHI::TextureStateFlag::automatic, RHI::TextureStateFlag::present, RHI::ResourceBarrierFlag::none}
 			});
 
-		g_command_buffer->submit({}, {}, true);
+		lupanic_if_failed(g_command_buffer->submit({}, {}, true));
 		g_command_buffer->wait();
 
-		g_swap_chain->present();
-		g_command_buffer->reset();
+		lupanic_if_failed(g_swap_chain->present());
+		lupanic_if_failed(g_command_buffer->reset());
 		g_shape_renderer->reset();
 		g_shape_draw_list->reset();
 		g_text_arranger->reset();

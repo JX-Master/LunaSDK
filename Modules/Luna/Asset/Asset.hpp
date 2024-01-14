@@ -183,4 +183,7 @@ namespace Luna
 		LUNA_ASSET_API ErrCode asset_not_registered();
 		LUNA_ASSET_API ErrCode asset_data_not_loaded();
 	}
+	
+	struct Module;
+	LUNA_ASSET_API Module* module_asset();
 }
