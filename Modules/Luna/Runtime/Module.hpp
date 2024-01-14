@@ -128,7 +128,6 @@ namespace Luna
 	LUNA_RUNTIME_API RV init_module(Module* handle);
 
 	//! @brief Initializes all uninitialized modules.
-	//! @return Returns error code if at least one module is failed to initialize.
 	LUNA_RUNTIME_API RV init_modules();
 	
 	//! @}
