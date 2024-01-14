@@ -158,7 +158,10 @@ namespace Luna
 				g_initialized_modules.push_back(entry->first);
 			}
 		}
-		lucatchret;
+		lucatch
+		{
+			return set_error(luerr, "Failed to initialize module %s: %s", handle->get_name(), explain(luerr));
+		}
 		return ok;
 	}
 	LUNA_RUNTIME_API RV init_module_dependencies(Module* handle)
