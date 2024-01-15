@@ -13,6 +13,10 @@
 
 namespace Luna
 {
+	//! @addtogroup RuntimeMath
+	//! @{
+	
+	//! Used to represent one rotation operaiton using four @ref f32 values.
 	struct alignas(Float4) Quaternion
 	{
 		lustruct("Quaternion", "{213A7986-C939-4D2F-BD3B-39DAF5D25DF3}");
@@ -20,44 +24,115 @@ namespace Luna
 		{
 			struct
 			{
+				//! The fist component of the quaternion.
 				f32 x;
+				//! The second component of the quaternion.
 				f32 y;
+				//! The third component of the quaternion.
 				f32 z;
+				//! The fourth component of the quaternion.
 				f32 w;
 			};
+			//! The array of components.
 			f32 m[4];
 		};
 
+		//! Constructs one quaternion with components uninitialized.
 		Quaternion() = default;
+		//! Constructs one quaternion by coping components from another quaternion.
 		Quaternion(const Quaternion&) = default;
+		//! Assigns one quaternion by coping components from another quaternion.
 		Quaternion& operator=(const Quaternion&) = default;
-
+		//! Constructs one quaternion by coping components from another quaternion.
 		Quaternion(Quaternion&&) = default;
+		//! Assigns one quaternion by coping components from another quaternion.
 		Quaternion& operator=(Quaternion&&) = default;
-		constexpr Quaternion(f32 _x, f32 _y, f32 _z, f32 _w) :
-			x(_x), y(_y), z(_z), w(_w) {}
-		Quaternion(const Float3& v, f32 scalar) :
-			x(v.x), y(v.y), z(v.z), w(scalar) {}
+		//! Constructs one quaternion from values.
+		//! @param[in] x The value of the first component.
+		//! @param[in] y The value of the second component.
+		//! @param[in] z The value of the third component.
+		//! @param[in] w The value of the fourth component.
+		constexpr Quaternion(f32 x, f32 y, f32 z, f32 w) :
+			x(x), y(y), z(z), w(w) {}
+		//! Constructs one quaternion from one vector.
+		//! @param[in] v The vector to copy components from.
 		explicit Quaternion(const Float4& v) :
 			x(v.x), y(v.y), z(v.z), w(v.w) {}
-
-		// Comparison operators
+		//! Compares two quaternions for equality.
+		//! @param[in] q The quaternion to compare with.
+		//! @return Returns `true` if two quaternions are equal. Returns `false` otherwise.
 		bool operator == (const Quaternion& q) const;
+		//! Compares two quaternions for non-equality.
+		//! @param[in] q The quaternion to compare with.
+		//! @return Returns `true` if two quaternions are not equal. Returns `false` otherwise.
 		bool operator != (const Quaternion& q) const;
-
-		// Assignment operators
-		Quaternion& operator= (const Float4& F) { x = F.x; y = F.y; z = F.z; w = F.w; return *this; }
+		//! Assigns one quaternion by coping components from one vector.
+		//! @param[in] v The vector to copy components from.
+		//! @return Returns `*this`.
+		Quaternion& operator= (const Float4& v) { x = v.x; y = v.y; z = v.z; w = v.w; return *this; }
+		//! Adds this quaternion with one quaternion, and stores the result to this quaternion.
+		//! @details This function performs the following operations:
+		//! ```
+		//! this->x += q.x;
+		//! this->y += q.y;
+		//! this->z += q.z;
+		//! this->w += q.w;
+		//! ```
+		//! @param[in] q The quaternion to add.
+		//! @return Returns `*this`.
 		Quaternion& operator+= (const Quaternion& q);
+		//! Subtracts this quaternion with one quaternion, and stores the result to this quaternion.
+		//! @details This function performs the following operations:
+		//! ```
+		//! this->x -= q.x;
+		//! this->y -= q.y;
+		//! this->z -= q.z;
+		//! this->w -= q.w;
+		//! ```
+		//! @param[in] q The quaternion to subtract.
+		//! @return Returns `*this`.
 		Quaternion& operator-= (const Quaternion& q);
+		//! Concatenates two quaternions, and stores the result to this quaternion.
+		//! @details This function performs the following operations:
+		//! ```
+		//! this->x = q.w * x + q.x * w + q.y * z - q.z * y;
+		//! this->y = q.w * y - q.x * z + q.y * w + q.z * x;
+		//! this->z = q.w * z + q.x * y - q.y * x + q.z * w;
+		//! this->w = q.w * w - q.x * x - q.y * y - q.z * z;
+		//! ```
+		//! @param[in] q The quaternion to multiply.
+		//! @return Returns `*this`.
 		Quaternion& operator*= (const Quaternion& q);
-		Quaternion& operator*= (f32 S);
+		//! Multiplies this quaternion with one scalar, and stores the result to this quaternion.
+		//! @details This function performs the following operations:
+		//! ```
+		//! this->x *= s;
+		//! this->y *= s;
+		//! this->z *= s;
+		//! this->w *= s;
+		//! ```
+		//! @param[in] s The scalar to multiply.
+		//! @return Returns `*this`.
+		Quaternion& operator*= (f32 s);
+		//! Concatenates one inversed quaternion of `q` to this quaternions, and stores the result to this quaternion.
+		//! @details This function performs the following operations:
+		//! ```
+		//! Quaternion inv = inverse(q);
+		//! *this = *this * inv;
+		//! ```
+		//! @param[in] q The quaternion to divide.
+		//! @return Returns `*this`.
 		Quaternion& operator/= (const Quaternion& q);
-
-		// Unary operators
+		//! Gets the quaternion as-is.
+		//! @return Returns one copy of this quaternion.
 		Quaternion operator+ () const { return *this; }
+		//! Gets a negation of this quaternion.
+		//! @return Returns a negation of this vector.
 		Quaternion operator- () const;
 
-		// Additional assignment.
+		//! Creates one quaternion from rotation axis and rotation angle.
+		//! @param[in] axis The rotation axis.
+		//! @param[in] angle The rotation angle represented in radians.
 		static Quaternion from_axis_angle(const Float3& axis, f32 angle);
 		static Quaternion from_euler_angles(const Float3& euler_angles);
 		static Quaternion from_euler_angles(f32 pitch, f32 yaw, f32 roll);
@@ -86,6 +161,8 @@ namespace Luna
 
 	LUNA_RUNTIME_API typeinfo_t quaternion_type();
 	template <> struct typeof_t<Quaternion> { typeinfo_t operator()() const { return quaternion_type(); } };
+
+	//! @}
 }
 
 #include "Impl/Quaternion.inl"

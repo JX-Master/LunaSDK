@@ -196,7 +196,7 @@ void run()
 			{
 				g_camera_position += +up * camera_speed;
 			}
-			auto eular = rot_mat.euler_angles();
+			auto eular = AffineMatrix::euler_angles(rot_mat);
 			eular += {deg_to_rad((f32)mouse_delta.y / 10.0f), deg_to_rad((f32)mouse_delta.x / 10.0f), 0.0f};
 			eular.x = clamp(eular.x, deg_to_rad(-85.0f), deg_to_rad(85.0f));
 			g_camera_rotation = Quaternion::from_euler_angles(eular);

@@ -106,9 +106,17 @@ namespace Luna
 		Float3 translation(const Float4x4& affine_matrix);
 		//! Returns the rotation component of one 2D affine matrix.
 		f32 rotation(const Float3x3& affine_matrix);
-		//! Returns the rotation component of one 3D affine matrix.
+		//! Computes the quaternion from this rotation matrix. This method cannot be used for affine matrix directly,
+		//! to use this method for affine matrix, call `rotation_matrix` to extract the rotation matrix from affine matrix
+		//! first.
 		Quaternion rotation(const Float4x4& affine_matrix);
-		//! Returns the rotation component in euler angles form (pitch, yaw, roll).
+		//! Computes the euler angles from this rotation matrix. 
+		//! @details This method cannot be used for affine matrix directly,
+		//! to use this method for affine matrix, call `rotation_matrix` to extract the rotation matrix from affine matrix
+		//! first.
+		//!
+		//! The returned euler angles represents the radians of clockwise rotation along Z(roll), X(pitch), Y(yaw) axis in 
+		//! that order.
 		Float3 euler_angles(const Float4x4& affine_matrix);
 		//! Returns the scaling component of one 2D affine matrix.
 		Float2 scaling(const Float3x3& affine_matrix);

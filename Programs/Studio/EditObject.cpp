@@ -138,7 +138,7 @@ namespace Luna
 		else if (type == typeof<Quaternion>())
 		{
 			Quaternion* data = (Quaternion*)obj;
-			auto euler = AffineMatrix::make_rotation(*data).euler_angles();
+			auto euler = AffineMatrix::euler_angles(AffineMatrix::make_rotation(*data));
 			euler *= 180.0f / PI;
 			if (euler.x > 89.0f || euler.x < -89.0f)
 			{

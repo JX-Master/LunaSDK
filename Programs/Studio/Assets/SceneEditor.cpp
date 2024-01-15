@@ -594,7 +594,7 @@ namespace Luna
 				{
 					camera_entity->position += + up * 0.1f * camera_speed;
 				}
-				auto eular = rot_mat.euler_angles();
+				auto eular = AffineMatrix::euler_angles(rot_mat);
 				eular += {deg_to_rad((f32)mouse_delta.y / 10.0f), deg_to_rad((f32)mouse_delta.x / 10.0f), 0.0f};
 				eular.x = clamp(eular.x, deg_to_rad(-85.0f), deg_to_rad(85.0f));
 				camera_entity->rotation = Quaternion::from_euler_angles(eular);
@@ -616,7 +616,7 @@ namespace Luna
 	{
 		ImGui::DragFloat3("Position", t->position.m, 0.01f);
 
-		auto euler = AffineMatrix::make_rotation(t->rotation).euler_angles();
+		auto euler = AffineMatrix::euler_angles(AffineMatrix::make_rotation(t->rotation));
 		euler *= 180.0f / PI;
 		if (euler.x > 89.0f || euler.x < -89.0f)
 		{

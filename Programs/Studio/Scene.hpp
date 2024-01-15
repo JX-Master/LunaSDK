@@ -125,8 +125,8 @@ namespace Luna
 		void set_this_to_parent_matrix(const Float4x4& mat)
 		{
 			position = AffineMatrix::translation(mat);
-			scale = mat.scale_factor();
-			Float3 eular_angles = mat.rotation_matrix().euler_angles();
+			scale = AffineMatrix::scaling(mat);
+			Float3 eular_angles = AffineMatrix::euler_angles(AffineMatrix::rotation_matrix(mat));
 			rotation = Quaternion::from_euler_angles(Float3(eular_angles.x, eular_angles.y, eular_angles.z));
 		}
 		void set_parent_to_this_matrix(const Float4x4& mat)
