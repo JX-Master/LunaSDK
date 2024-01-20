@@ -41,7 +41,7 @@ namespace Luna
 	Ref<VG::ITextArranger> g_text_arranger;
 
 	Float3 g_camera_position;
-	Quaternion g_camera_rotation = Quaternion::identity();
+	Float4 g_camera_rotation = Quaternion::identity();
 	f32 g_camera_speed = 10.0f;
 	bool g_camera_navigating = false;
 	Float2 g_scene_click_pos;

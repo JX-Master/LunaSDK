@@ -721,16 +721,6 @@ namespace Luna
 		ret.trivially_relocatable = true;
 		return ret;
 	}
-	static R<Variant> quaternion_serialize(typeinfo_t type, const void* inst)
-	{
-		const Quaternion* q = (const Quaternion*)inst;
-		Variant r(VariantType::array);
-		r.push_back(q->x);
-		r.push_back(q->y);
-		r.push_back(q->z);
-		r.push_back(q->w);
-		return r;
-	}
 	void add_builtin_typeinfo()
 	{
 		// Primitive types.
@@ -1321,36 +1311,6 @@ namespace Luna
 				{"r3", typeof<Float4>(), offsetof(Float4x4, r[3])}
 				});
 			set_serializable(g_float4x4_type);
-		}
-		// Quaternion
-		{
-			g_quaternion_type = register_struct_type<Quaternion>({
-				luproperty(Quaternion, f32, x),
-				luproperty(Quaternion, f32, y),
-				luproperty(Quaternion, f32, z),
-				luproperty(Quaternion, f32, w)
-				});
-			SerializableTypeDesc desc;
-			desc.serialize_func = [](typeinfo_t type, const void* inst) -> R<Variant>
-			{
-				auto q = (const Quaternion*)inst;
-				Variant r(VariantType::array);
-				r.push_back(q->x);
-				r.push_back(q->y);
-				r.push_back(q->z);
-				r.push_back(q->w);
-				return r;
-			};
-			desc.deserialize_func = [](typeinfo_t type, void* inst, const Variant& data)
-			{
-				auto q = (Quaternion*)inst;
-				q->x = (f32)data[0].fnum();
-				q->y = (f32)data[1].fnum();
-				q->z = (f32)data[2].fnum();
-				q->w = (f32)data[3].fnum();
-				return ok;
-			};
-			set_serializable(g_quaternion_type, &desc);
 		}
 		// Blob
 		{

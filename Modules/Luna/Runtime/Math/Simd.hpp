@@ -35,13 +35,24 @@
 #ifdef LUNA_SIMD
 namespace Luna
 {
+	//! @addtogroup RuntimeMath
+	//! @{
+	//! @defgroup RuntimeMathSimd SIMD library
+	//! @}
+
+	//! @addtogroup RuntimeMathSimd
+	//! @{
 	namespace Simd
 	{
 #if defined(LUNA_SSE2_INTRINSICS)
-		using float4 = __m128;		// 4 packed 32-bit single precision float-point number.
-		using int4 = __m128i;		// 4 packed 32-bit signed integer number.
+		//! SIMD type for 4 packed 32-bit floating point values.
+		using float4 = __m128;
+		//! SIMD type for 4 packed 32-bit signed integer values.
+		using int4 = __m128i;		
 #elif defined(LUNA_NEON_INTRINSICS)
+		//! SIMD type for 4 packed 32-bit floating point values.
 		using float4 = float32x4_t;
+		//! SIMD type for 4 packed 32-bit signed integer values.
 		using int4 = int32x4_t;
 #else
 #error "Unknown intrinsics"
@@ -70,46 +81,60 @@ namespace Luna
 #endif
 		};
 
-		//! Reinterprets vector of type `int4` to type `float4` without changing the data of the vector.
+		//! Reinterprets SIMD varaible of type `int4` to type `float4` without changing the data of the varaible.
 		float4 LUNA_SIMD_CALL casti_f4(int4 a);
-		//! Reinterprets vector of type `float4` to type `int4` without changing the data of the vector.
+		//! Reinterprets SIMD varaible of type `float4` to type `int4` without changing the data of the varaible.
 		int4 LUNA_SIMD_CALL castf_i4(float4 a);
 		//! Loads 64-bits (composed of 2 packed single-precision (32-bit) floating-point elements) from memory into 
-		//! the first two elements of `dst`.
-		//! `mem_addr` must be aligned on a 16-byte boundary or a general-protection exception may be generated.
+		//! the first two elements of `dst`. The rest 2 elements are filled with 0.
+		//! @details
 		//! ```
 		//! dst.x := MEM[mem_addr:mem_addr+31]
 		//! dst.y := MEM[mem_addr+32:mem_addr+63]
 		//! dst.z := 0
 		//! dst.w := 0
 		//! ```
+		//! @param[in] mem_addr The memory to load values.
+		//! @par Valid Usage
+		//! * `mem_addr` must be aligned on a 16-byte boundary or a general-protection exception may be generated.
 		float4 LUNA_SIMD_CALL load_f2(f32 const* mem_addr);
-		//! Loads 128-bits (composed of 4 packed single-precision (32-bit) floating-point elements) from memory into `dst`. 
-		//! `mem_addr` must be aligned on a 16-byte boundary or a general-protection exception may be generated.
+		//! Loads 128-bits (composed of 4 packed single-precision (32-bit) floating-point elements) from memory into `dst`.
+		//! @details
 		//! ```
 		//! dst.x := MEM[mem_addr:mem_addr+31]
 		//! dst.y := MEM[mem_addr+32:mem_addr+63]
 		//! dst.z := MEM[mem_addr+64:mem_addr+95]
 		//! dst.w := MEM[mem_addr+96:mem_addr+127]
 		//! ```
+		//! @par Valid Usage
+		//! * `mem_addr` must be aligned on a 16-byte boundary or a general-protection exception may be generated.
 		float4 LUNA_SIMD_CALL load_f4(f32 const* mem_addr);
 		//! Stores the lower 2 single-precision (32-bit) floating-point elements from `a` into memory. 
-		//! `mem_addr` must be aligned on a 16-byte boundary or a general-protection exception may be generated.
+		//! @details
 		//! ```
 		//! MEM[mem_addr:mem_addr+31] := a.x
 		//! MEM[mem_addr+32:mem_addr+63] := a.y
 		//! ```
+		//! @param[in] mem_addr The memory to store values.
+		//! @param[in] a The value to store.
+		//! @par Valid Usage
+		//! * `mem_addr` must be aligned on a 16-byte boundary or a general-protection exception may be generated.
 		void LUNA_SIMD_CALL store_f2(f32* mem_addr, float4 a);
 		//! Stores 128-bits (composed of 4 packed single-precision (32-bit) floating-point elements) from `a` into memory. 
-		//! `mem_addr` must be aligned on a 16-byte boundary or a general-protection exception may be generated.
+		//! @details
 		//! ```
 		//! MEM[mem_addr:mem_addr+31] := a.x
 		//! MEM[mem_addr+32:mem_addr+63] := a.y
 		//! MEM[mem_addr+64:mem_addr+95] := a.z
 		//! MEM[mem_addr+96:mem_addr+127] := a.w
 		//! ```
+		//! @param[in] mem_addr The memory to store values.
+		//! @param[in] a The value to store.
+		//! @par Valid Usage
+		//! * `mem_addr` must be aligned on a 16-byte boundary or a general-protection exception may be generated.
 		void LUNA_SIMD_CALL store_f4(f32* mem_addr, float4 a);
 		//! Sets packed single-precision (32-bit) floating-point elements in `dst` with the supplied values.
+		//! @details
 		//! ```
 		//! dst.x := e0
 		//! dst.y := e1
@@ -118,6 +143,7 @@ namespace Luna
 		//! ```
 		float4 LUNA_SIMD_CALL set_f4(f32 e0, f32 e1, f32 e2, f32 e3);
 		//! Sets packed 32-bit integers in `dst` with the supplied values.
+		//! @details
 		//! ```
 		//! dst.x := e0
 		//! dst.y := e1
@@ -126,6 +152,7 @@ namespace Luna
 		//! ```
 		int4 LUNA_SIMD_CALL set_i4(i32 e0, i32 e1, i32 e2, i32 e3);
 		//! Returns vector of type `float4` with all elements set to zero.
+		//! @details
 		//! ```
 		//! dst.x := 0
 		//! dst.y := 0
@@ -134,6 +161,7 @@ namespace Luna
 		//! ```
 		float4 LUNA_SIMD_CALL setzero_f4();
 		//! Broadcasts single-precision (32-bit) floating-point value `e0` to all elements of `dst`.
+		//! @details
 		//! ```
 		//! dst.x := e0
 		//! dst.y := e0
@@ -142,11 +170,13 @@ namespace Luna
 		//! ```
 		float4 LUNA_SIMD_CALL dup_f4(f32 e0);
 		//! Stores the first single-precision (32-bit) floating-point element from `a` into `dst`. 
+		//! @details
 		//! ```
 		//! dst := a.x
 		//! ```
 		f32 LUNA_SIMD_CALL getx_f4(float4 a);
 		//! Replaces the forth element of `a` with `b`, and stores the results in `dst`.
+		//! @details
 		//! ```
 		//! dst.x := a.x
 		//! dst.y := a.y
@@ -155,6 +185,7 @@ namespace Luna
 		//! ```
 		float4 LUNA_SIMD_CALL setw_f4(float4 a, f32 b);
 		//! Broadcasts the first element of `a` to every element of `dst`.
+		//! @details
 		//! ```
 		//! dst.x := a.x
 		//! dst.y := a.x
@@ -163,6 +194,7 @@ namespace Luna
 		//! ```
 		float4 LUNA_SIMD_CALL dupx_f4(float4 a);
 		//! Broadcasts the second element of `a` to every element of `dst`.
+		//! @details
 		//! ```
 		//! dst.x := a.y
 		//! dst.y := a.y
@@ -171,6 +203,7 @@ namespace Luna
 		//! ```
 		float4 LUNA_SIMD_CALL dupy_f4(float4 a);
 		//! Broadcasts the third element of `a` to every element of `dst`.
+		//! @details
 		//! ```
 		//! dst.x := a.z
 		//! dst.y := a.z
@@ -179,6 +212,7 @@ namespace Luna
 		//! ```
 		float4 LUNA_SIMD_CALL dupz_f4(float4 a);
 		//! Broadcasts the forth element of `a` to every element of `dst`.
+		//! @details
 		//! ```
 		//! dst.x := a.w
 		//! dst.y := a.w
@@ -187,6 +221,7 @@ namespace Luna
 		//! ```
 		float4 LUNA_SIMD_CALL dupw_f4(float4 a);
 		//! Compares packed single-precision (32-bit) floating-point elements in `a` and `b` for equality, and stores the results in `dst`.
+		//! @details
 		//! ```
 		//! dst.x := (a.x == b.x) ? 0xFFFFFFFF : 0
 		//! dst.y := (a.y == b.y) ? 0xFFFFFFFF : 0
@@ -195,6 +230,7 @@ namespace Luna
 		//!	```
 		int4 LUNA_SIMD_CALL cmpeq_f4(float4 a, float4 b);
 		//! Compares packed single-precision (32-bit) floating-point elements in `a` and `b` for not-equal, and stores the results in `dst`.
+		//! @details
 		//! ```
 		//! dst.x := (a.x != b.x) ? 0xFFFFFFFF : 0
 		//! dst.y := (a.y != b.y) ? 0xFFFFFFFF : 0
@@ -203,6 +239,7 @@ namespace Luna
 		//!	```
 		int4 LUNA_SIMD_CALL cmpneq_f4(float4 a, float4 b);
 		//! Compares packed single-precision (32-bit) floating-point elements in `a` and `b` for greater-than, and stores the results in `dst`.
+		//! @details
 		//! ```
 		//! dst.x := (a.x > b.x) ? 0xFFFFFFFF : 0
 		//! dst.y := (a.y > b.y) ? 0xFFFFFFFF : 0
@@ -211,6 +248,7 @@ namespace Luna
 		//!	```
 		int4 LUNA_SIMD_CALL cmpgt_f4(float4 a, float4 b);
 		//! Compares packed single-precision (32-bit) floating-point elements in `a` and `b` for less-than, and stores the results in `dst`.
+		//! @details
 		//! ```
 		//! dst.x := (a.x < b.x) ? 0xFFFFFFFF : 0
 		//! dst.y := (a.y < b.y) ? 0xFFFFFFFF : 0
@@ -219,6 +257,7 @@ namespace Luna
 		//!	```
 		int4 LUNA_SIMD_CALL cmplt_f4(float4 a, float4 b);
 		//! Compares packed single-precision (32-bit) floating-point elements in `a` and `b` for greater-than-or-equal, and stores the results in dst.
+		//! @details
 		//! ```
 		//! dst.x := (a.x >= b.x) ? 0xFFFFFFFF : 0
 		//! dst.y := (a.y >= b.y) ? 0xFFFFFFFF : 0
@@ -227,6 +266,7 @@ namespace Luna
 		//!	```
 		int4 LUNA_SIMD_CALL cmpge_f4(float4 a, float4 b);
 		//! Compares packed single-precision (32-bit) floating-point elements in `a` and `b` for less-than-or-equal, and stores the results in dst.
+		//! @details
 		//! ```
 		//! dst.x := (a.x <= b.x) ? 0xFFFFFFFF : 0
 		//! dst.y := (a.y <= b.y) ? 0xFFFFFFFF : 0
@@ -236,6 +276,7 @@ namespace Luna
 		int4 LUNA_SIMD_CALL cmple_f4(float4 a, float4 b);
 		//!
 		//! Converts the comparison result mask to one 32-bit integer.
+		//! @details
 		//! ```
 		//! FOR j := 0 to 3
 		//! 	i := j * 32
@@ -251,6 +292,7 @@ namespace Luna
 		//!	```
 		i32 LUNA_SIMD_CALL maskint_i4(int4 a);
 		//! Adds packed single-precision (32-bit) floating-point elements in `a` and `b`, and stores the results in `dst`.
+		//! @details
 		//! ```
 		//! dst.x = a.x + b.x
 		//! dst.y = a.y + b.y
@@ -259,6 +301,7 @@ namespace Luna
 		//! ```
 		float4 LUNA_SIMD_CALL add_f4(float4 a, float4 b);
 		//! Subtracts packed single-precision (32-bit) floating-point elements in `a` and `b`, and stores the results in `dst`.
+		//! @details
 		//! ```
 		//! dst.x = a.x - b.x
 		//! dst.y = a.y - b.y
@@ -267,6 +310,7 @@ namespace Luna
 		//! ```
 		float4 LUNA_SIMD_CALL sub_f4(float4 a, float4 b);
 		//! Multiplies packed single-precision (32-bit) floating-point elements in `a` and `b`, and stores the results in `dst`.
+		//! @details
 		//! ```
 		//! dst.x = a.x * b.x
 		//! dst.y = a.y * b.y
@@ -275,6 +319,7 @@ namespace Luna
 		//! ```
 		float4 LUNA_SIMD_CALL mul_f4(float4 a, float4 b);
 		//! Divides packed single-precision (32-bit) floating-point elements in a by packed elements in b, and stores the results in dst.
+		//! @details
 		//! ```
 		//! dst.x = a.x / b.x
 		//! dst.y = a.y / b.y
@@ -284,6 +329,7 @@ namespace Luna
 		float4 LUNA_SIMD_CALL div_f4(float4 a, float4 b);
 		//! Scales packed single-precision (32-bit) floating-point elements in `a` using one single-precision (32-bit) floating-point element `b`, 
 		//! and stores the results in `dst`.
+		//! @details
 		//! ```
 		//! dst.x = a.x * b
 		//! dst.y = a.y * b
@@ -293,6 +339,7 @@ namespace Luna
 		float4 LUNA_SIMD_CALL scale_f4(float4 a, f32 b);
 		//! Multiply packed single-precision (32-bit) floating-point elements in `a` and `b`, add the intermediate result to packed elements in `c`, 
 		//! and store the results in `dst`.
+		//! @details
 		//! ```
 		//! dst.x = (a.x * b.x) + c.x
 		//! dst.y = (a.y * b.y) + c.y
@@ -302,6 +349,7 @@ namespace Luna
 		float4 LUNA_SIMD_CALL muladd_f4(float4 a, float4 b, float4 c);
 		//! Multiply packed single-precision (32-bit) floating-point elements in `a` and `b`, 
 		//! add the negated intermediate result to packed elements in `c`, and store the results in dst.
+		//! @details
 		//! ```
 		//! dst.x = -(a.x * b.x) + c.x
 		//! dst.y = -(a.y * b.y) + c.y
@@ -311,6 +359,7 @@ namespace Luna
 		float4 LUNA_SIMD_CALL negmuladd_f4(float4 a, float4 b, float4 c);
 		//! Scales packed single-precision (32-bit) floating-point elements in `a` using one single-precision (32-bit) floating-point element `b`, 
 		//! add the intermediate result to packed elements in `c`, and stores the results in `dst`.
+		//! @details
 		//! ```
 		//! dst.x = (a.x * b) + c.x
 		//! dst.y = (a.y * b) + c.y
@@ -319,6 +368,7 @@ namespace Luna
 		//! ```
 		float4 LUNA_SIMD_CALL scaleadd_f4(float4 a, f32 b, float4 c);
 		//! Computes the square root of packed single-precision (32-bit) floating-point elements in `a`, and stores the results in `dst`.
+		//! @details
 		//! ```
 		//! dst.x = SQRT(a.x)
 		//! dst.y = SQRT(a.y)
@@ -328,6 +378,7 @@ namespace Luna
 		float4 LUNA_SIMD_CALL sqrt_f4(float4 a);
 		//! Computes the approximate reciprocal square root of packed single-precision (32-bit) floating-point elements in `a`, and stores the results in `dst`.
 		//! SSE specific: The maximum relative error for this approximation is less than 1.5*2^-12.
+		//! @details
 		//! ```
 		//! dst.x = 1.0 / SQRT(a.x)
 		//! dst.y = 1.0 / SQRT(a.y)
@@ -336,6 +387,7 @@ namespace Luna
 		//! ```
 		float4 LUNA_SIMD_CALL rsqrtest_f4(float4 a);
 		//! Computes the reciprocal square root of packed single-precision (32-bit) floating-point elements in `a`, and stores the results in `dst`.
+		//! @details
 		//! ```
 		//! dst.x = 1.0 / SQRT(a.x)
 		//! dst.y = 1.0 / SQRT(a.y)
@@ -345,6 +397,7 @@ namespace Luna
 		float4 LUNA_SIMD_CALL rsqrt_f4(float4 a);
 		//! Compare packed single-precision (32-bit) floating-point elements in `a` and `b`, and store packed maximum values in `dst`.
 		//! SSE specific: `dst` does not follow the IEEE Standard for Floating - Point Arithmetic(IEEE 754) maximum value when inputs are NaN or signed - zero values.
+		//! @details
 		//! ```
 		//! dst.x = MAX(a.x, b.x)
 		//! dst.y = MAX(a.y, b.y)
@@ -354,6 +407,7 @@ namespace Luna
 		float4 LUNA_SIMD_CALL max_f4(float4 a, float4 b);
 		//! Compare packed single-precision (32-bit) floating-point elements in `a` and `b`, and store packed minimum values in `dst`.
 		//! SSE specific: `dst` does not follow the IEEE Standard for Floating - Point Arithmetic(IEEE 754) minimum value when inputs are NaN or signed - zero values.
+		//! @details
 		//! ```
 		//! dst.x = MIN(a.x, b.x)
 		//! dst.y = MIN(a.y, b.y)
@@ -363,6 +417,7 @@ namespace Luna
 		float4 LUNA_SIMD_CALL min_f4(float4 a, float4 b);
 		//! 
 		//! Computes the bitwise AND of every bit in `a` and `b`, and stores the results in `dst`.
+		//! @details
 		//! ```
 		//! dst.x = AND(a.x, b.x)
 		//! dst.y = AND(a.y, b.y)
@@ -372,6 +427,7 @@ namespace Luna
 		int4 LUNA_SIMD_CALL and_i4(int4 a, int4 b);
 		//! 
 		//! Computes the bitwise OR of every bit in `a` and `b`, and stores the results in `dst`.
+		//! @details
 		//! ```
 		//! dst.x = OR(a.x, b.x)
 		//! dst.y = OR(a.y, b.y)
@@ -380,21 +436,25 @@ namespace Luna
 		//! ```
 		int4 LUNA_SIMD_CALL or_i4(int4 a, int4 b);
 		//! Computes the dot product on the first two elements of `a` and `b`, and stores the result in `dst`.
+		//! @details
 		//! ```
 		//! dst := (a.x * b.x) + (a.y * b.y)
 		//! ```
 		f32 LUNA_SIMD_CALL dot2_f4(float4 a, float4 b);
 		//! Computes the dot product on the first three elements of `a` and `b`, and stores the result in `dst`.
+		//! @details
 		//! ```
 		//! dst := (a.x * b.x) + (a.y * b.y) + (a.z * b.z)
 		//! ```
 		f32 LUNA_SIMD_CALL dot3_f4(float4 a, float4 b);
 		//! Computes the dot product on elements of `a` and `b`, and stores the result in `dst`.
+		//! @details
 		//! ```
 		//! dst := (a.x * b.x) + (a.y * b.y) + (a.z * b.z) + (a.w * b.w)
 		//! ```
 		f32 LUNA_SIMD_CALL dot4_f4(float4 a, float4 b);
 		//! Computes the dot product on the first two elements of `a` and `b`, and stores the result in each element of `dst`.
+		//! @details
 		//! ```
 		//! dp := (a.x * b.x) + (a.y * b.y)
 		//! dst.x := dp
@@ -404,6 +464,7 @@ namespace Luna
 		//! ```
 		float4 LUNA_SIMD_CALL dot2v_f4(float4 a, float4 b);
 		//! Computes the dot product on the first three elements of `a` and `b`, and stores the result in each element of `dst`.
+		//! @details
 		//! ```
 		//! dp := (a.x * b.x) + (a.y * b.y) + (a.z * b.z)
 		//! dst.x := dp
@@ -413,6 +474,7 @@ namespace Luna
 		//! ```
 		float4 LUNA_SIMD_CALL dot3v_f4(float4 a, float4 b);
 		//! Computes the dot product on elements of `a` and `b`, and stores the result in each element of `dst`.
+		//! @details
 		//! ```
 		//! dp := (a.x * b.x) + (a.y * b.y) + (a.z * b.z) + (a.w * b.w)
 		//! dst.x := dp
@@ -422,6 +484,7 @@ namespace Luna
 		//! ```
 		float4 LUNA_SIMD_CALL dot4v_f4(float4 a, float4 b);
 		//! Computes the cross product on the first two elements of `a` and `b`, and stores the result in `dst`.
+		//! @details
 		//! ```
 		//! cp := (a.x * b.y) - (a.y * b.x)
 		//! dst.x := cp
@@ -431,6 +494,7 @@ namespace Luna
 		//! ```
 		float4 LUNA_SIMD_CALL cross2_f4(float4 a, float4 b);
 		//! Computes the cross product on the first three elements of `a` and `b`, and stores the result in each element of `dst`.
+		//! @details
 		//! ```
 		//! dst.x = a.y * b.z - a.z * b.y
 		//! dst.y = a.z * b.x - a.x * b.z
@@ -439,6 +503,7 @@ namespace Luna
 		//! ```
 		float4 LUNA_SIMD_CALL cross3_f4(float4 a, float4 b);
 		//! Computes the cross product on elements of `a`, `b` and `c`, and stores the result in each element of `dst`.
+		//! @details
 		//! ```
 		//! dst.x = ((b.z * c.w - b.w * c.z) * a.y) - ((b.y * c.w - b.w * c.y) * a.z) + ((b.y * c.z - b.z * c.y) * a.w)
 		//! dst.y = ((b.w * c.z - b.z * c.w) * a.x) - ((b.w * c.x - b.x * c.w) * a.z) + ((b.z * c.x - b.x * c.z) * a.w)
@@ -447,6 +512,7 @@ namespace Luna
 		//! ```
 		float4 LUNA_SIMD_CALL cross4_f4(float4 a, float4 b, float4 c);
 		//! Normalizes the first two elements of `a`, and stores the result in `dst`.
+		//! @details
 		//! ```
 		//! LENGTH := SQRT((a.x * b.x) + (a.y * b.y))
 		//! dst.x = a.x / LENGTH
@@ -457,6 +523,7 @@ namespace Luna
 		//! If the length of `a` parameter is 0 or INF, the result is indefinite.
 		float4 LUNA_SIMD_CALL normalize2_f4(float4 a);
 		//! Normalizes the first three elements of `a`, and stores the result in `dst`.
+		//! @details
 		//! ```
 		//! LENGTH := SQRT((a.x * b.x) + (a.y * b.y) + (a.z * b.z))
 		//! dst.x = a.x / LENGTH
@@ -467,6 +534,7 @@ namespace Luna
 		//! If the length of `a` parameter is 0 or INF, the result is indefinite.
 		float4 LUNA_SIMD_CALL normalize3_f4(float4 a);
 		//! Normalizes elements of `a`, and stores the result in `dst`.
+		//! @details
 		//! ```
 		//! LENGTH := SQRT((a.x * b.x) + (a.y * b.y) + (a.z * b.z) + (a.w * b.w))
 		//! dst.x = a.x / LENGTH
@@ -478,6 +546,7 @@ namespace Luna
 		float4 LUNA_SIMD_CALL normalize4_f4(float4 a);
 		//! Performs reflection operation based on the first two elements of `i` (incident vector) and `n`(normal vector), and stores the 
 		//! refected vector in `dst`.
+		//! @details
 		//! ```
 		//! PROJ := (a.x * b.x) + (a.y * b.y)
 		//! dst.x = i.x - 2 * PROJ * n.x
@@ -488,6 +557,7 @@ namespace Luna
 		float4 LUNA_SIMD_CALL reflect2_f4(float4 i, float4 n);
 		//! Performs reflection operation based on the first three elements of `i` (incident vector) and `n`(normal vector), and stores the 
 		//! refected vector in `dst`.
+		//! @details
 		//! ```
 		//! PROJ := (a.x * b.x) + (a.y * b.y) + (a.z * b.z)
 		//! dst.x = i.x - 2 * PROJ * n.x
@@ -498,6 +568,7 @@ namespace Luna
 		float4 LUNA_SIMD_CALL reflect3_f4(float4 i, float4 n);
 		//! Performs reflection operation based on elements of `i` (incident vector) and `n`(normal vector), and stores the 
 		//! refected vector in `dst`.
+		//! @details
 		//! ```
 		//! PROJ := (a.x * b.x) + (a.y * b.y) + (a.z * b.z) + (a.w * b.w)
 		//! dst.x = i.x - 2 * PROJ * n.x
@@ -508,8 +579,7 @@ namespace Luna
 		float4 LUNA_SIMD_CALL reflect4_f4(float4 i, float4 n);
 		//! Performs refraction operation based on the first two elements of `i` (incident vector),  `n`(normal vector) and the scalar value
 		//! `index` (refraction index), and stores the refected vector in `dst`.
-		//! `i` and `n` should be properly normalized before calling this function. 
-		//! `index` is `Ni/Nt`, where `Ni` is the refraction index of incident media, and `Nt` is the refraction index of the transmission media.
+		//! @details
 		//! ```
 		//! PROJ := (a.x * b.x) + (a.y * b.y)
 		//! DETER := 1.0 - index * index  * (1.0 - PROJ * PROJ)
@@ -522,11 +592,13 @@ namespace Luna
 		//!		ENDIF
 		//! ENDFOR
 		//!	```
+		//! `i` and `n` should be properly normalized before calling this function.
+		//! 
+		//! `index` is `Ni/Nt`, where `Ni` is the refraction index of incident media, and `Nt` is the refraction index of the transmission media.
 		float4 LUNA_SIMD_CALL refract2_f4(float4 i, float4 n, f32 index);
 		//! Performs refraction operation based on the first three elements of `i` (incident vector),  `n`(normal vector) and the scalar value
 		//! `index` (refraction index), and stores the refected vector in `dst`.
-		//! `i` and `n` should be properly normalized before calling this function. 
-		//! `index` is `Ni/Nt`, where `Ni` is the refraction index of incident media, and `Nt` is the refraction index of the transmission media.
+		//! @details
 		//! ```
 		//! PROJ := (a.x * b.x) + (a.y * b.y) + (a.z * b.z)
 		//! DETER := 1.0 - index * index  * (1.0 - PROJ * PROJ)
@@ -539,11 +611,13 @@ namespace Luna
 		//!		ENDIF
 		//! ENDFOR
 		//!	```
+		//! `i` and `n` should be properly normalized before calling this function.
+		//! 
+		//! `index` is `Ni/Nt`, where `Ni` is the refraction index of incident media, and `Nt` is the refraction index of the transmission media.
 		float4 LUNA_SIMD_CALL refract3_f4(float4 i, float4 n, f32 index);
 		//! Performs refraction operation based on elements of `i` (incident vector),  `n`(normal vector) and the scalar value
 		//! `index` (refraction index), and stores the refected vector in `dst`.
-		//! `i` and `n` should be properly normalized before calling this function. 
-		//! `index` is `Ni/Nt`, where `Ni` is the refraction index of incident media, and `Nt` is the refraction index of the transmission media.
+		//! @details
 		//! ```
 		//! PROJ := (a.x * b.x) + (a.y * b.y) + (a.z * b.z) + (a.w * b.w)
 		//! DETER := 1.0 - index * index  * (1.0 - PROJ * PROJ)
@@ -556,9 +630,13 @@ namespace Luna
 		//!		ENDIF
 		//! ENDFOR
 		//!	```
+		//! `i` and `n` should be properly normalized before calling this function.
+		//! 
+		//! `index` is `Ni/Nt`, where `Ni` is the refraction index of incident media, and `Nt` is the refraction index of the transmission media.
 		float4 LUNA_SIMD_CALL refract4_f4(float4 i, float4 n, f32 index);
 		//! Computes linear interpolation on packed single-precision (32-bit) floating-point elements in `a` and `b` using the single-precision 
 		//! (32-bit) floating-point value `t`, and stores the results in `dst`.
+		//! @details
 		//! ```
 		//! FOR j := 0 to 3
 		//! 	i := j*32
@@ -567,6 +645,7 @@ namespace Luna
 		float4 LUNA_SIMD_CALL lerp_f4(float4 a, float4 b, f32 t);
 		//! Computes linear interpolation on packed single-precision (32-bit) floating-point elements in `a` and `b` using the corresponding packed 
 		//! single-precision (32-bit) floating-point element in `t`, and stores the results in `dst`.
+		//! @details
 		//! ```
 		//! FOR j := 0 to 3
 		//! 	i := j*32
@@ -576,6 +655,7 @@ namespace Luna
 		float4 LUNA_SIMD_CALL lerpv_f4(float4 a, float4 b, float4 t);
 		//! Computes barycentric interpolation on packed single-precision (32-bit) floating-point elements in `a`, `b` and `c` using the single-precision 
 		//! (32-bit) floating-point values `f` and `g`, and stores the results in `dst`.
+		//! @details
 		//! ```
 		//! FOR j := 0 to 3
 		//! 	i := j*32
@@ -585,6 +665,7 @@ namespace Luna
 		float4 LUNA_SIMD_CALL barycentric_f4(float4 a, float4 b, float4 c, f32 f, f32 g);
 		//! Computes Catmull-Rom spline interpolation on packed single-precision (32-bit) floating-point elements in `a`, `b`, `c` and `d` 
 		//! using the single-precision (32-bit) floating-point value `t`, and stores the results in `dst`.
+		//! @details
 		//! ```
 		//! T0 := (-t^3 + 2 * t^2 - t) * 0.5
 		//! T1 := (3 * t^3 - 5 * t^2 + 2) * 0.5
@@ -598,6 +679,7 @@ namespace Luna
 		float4 LUNA_SIMD_CALL catmull_rom_f4(float4 a, float4 b, float4 c, float4 d, f32 t);
 		//! Computes Hermite spline interpolation on packed single-precision (32-bit) floating-point elements in `v0`, `t0`, `v1` and `t1` 
 		//! using the single-precision (32-bit) floating-point value `t`, and stores the results in `dst`.
+		//! @details
 		//! ```
 		//! P0 := (2 * t^3 - 3 * t^2 + 1)
 		//! P1 := (t^3 - 2 * t^2 + t)
@@ -617,6 +699,7 @@ namespace Luna
 		
 		//! Shuffles single-precision (32-bit) floating-point elements in `a` based on the control parameter `_SelectX`, `_SelectY`, `_SelectZ` 
 		//! and `_SelectW`, and stores the results in `dst`.
+		//! @details
 		//! ```
 		//! DEFINE SELECT4(src, control)
 		//!		CASE(control) OF
@@ -640,6 +723,7 @@ namespace Luna
 
 		//! Performs a per-component selection between `a` and `b` based on the control parameter `_SelectX`, `_SelectY`, `_SelectZ` 
 		//! and `_SelectW`, and stores the results in `dst`.
+		//! @details
 		//! ```
 		//! DEFINE SELECT2(a, b control)
 		//!		CASE(control) OF
@@ -667,6 +751,7 @@ namespace Luna
 
 		//! Shuffles single-precision (32-bit) floating-point elements in `a` and `b` based on the control parameter `_SelectX`, `_SelectY`, `_SelectZ` 
 		//! and `_SelectW`, and stores the results in `dst`.
+		//! @details
 		//! ```
 		//! DEFINE SELECT8(a, b, control)
 		//!		CASE(control) OF
@@ -691,6 +776,7 @@ namespace Luna
 
 		//! Loads 12 packed single-precision (32-bit) floating-point elements from `mem_addr` to `dst`. The highest
 		//! 4 packed single-precision (32-bit) floating-point elements are uninitialized.
+		//! @details
 		//!  ```
 		//! FOR r := 0 to 2
 		//!		i := 128 * r
@@ -707,6 +793,7 @@ namespace Luna
 
 		//! Loads 16 packed single-precision (32-bit) floating-point elements from `mem_addr` to `dst`.
 		//! `mem_addr` must be aligned on a 16-byte boundary or a general-protection exception may be generated.
+		//! @details
 		//! ```
 		//! FOR r := 0 to 3
 		//!		i := 128 * r
@@ -719,6 +806,7 @@ namespace Luna
 		float4x4 LUNA_SIMD_CALL load_f4x4(f32 const* mem_addr);
 
 		//! Creates one 4x4 matrix by loading four vectors, and stores the result in `dst`.
+		//! @details
 		//! ```
 		//! dst[0] := r0
 		//! dst[1] := r1
@@ -729,6 +817,7 @@ namespace Luna
 		
 		//! Stores the first 12 packed single-precision (32-bit) floating-point elements from `m` to `dst`.
 		//! `mem_addr` must be aligned on a 16-byte boundary or a general-protection exception may be generated.
+		//! @details
 		//! ```
 		//! FOR r := 0 to 2
 		//!		i := 128 * r
@@ -742,6 +831,7 @@ namespace Luna
 
 		//! Stores packed single-precision (32-bit) floating-point elements from `m` to `dst`.
 		//! `mem_addr` must be aligned on a 16-byte boundary or a general-protection exception may be generated.
+		//! @details
 		//! ```
 		//! FOR r := 0 to 3
 		//!		i := 128 * r
@@ -755,6 +845,7 @@ namespace Luna
 
 		float3x4 LUNA_SIMD_CALL setzero_f3x4();
 		//! Returns matrix of type `float4x4` with all elements set to zero.
+		//! @details
 		//! ```
 		//! FOR r := 0 to 3
 		//!		dst[r].x := 0
@@ -785,6 +876,7 @@ namespace Luna
 
 		//! Performs 3x3 matrix multiplication on `a` and `b`, and stores the result 
 		//! in `dst`.
+		//! @details
 		//! ```
 		//! dst[0].x := a[0].x * b[0].x + a[0].y * b[1].x + a[0].z * b[2].x
 		//! dst[0].y := a[0].x * b[0].y + a[0].y * b[1].y + a[0].z * b[2].y
@@ -801,6 +893,7 @@ namespace Luna
 
 		//! Performs 4x4 matrix multiplication on `a` and `b`, and stores the result 
 		//! in `dst`.
+		//! @details
 		//! ```
 		//! dst[0].x := a[0].x * b[0].x + a[0].y * b[1].x + a[0].z * b[2].x + a[0].w * b[3].x
 		//! dst[0].y := a[0].x * b[0].y + a[0].y * b[1].y + a[0].z * b[2].y + a[0].w * b[3].y
@@ -822,6 +915,7 @@ namespace Luna
 		float4x4 LUNA_SIMD_CALL matmul_f4x4(float4x4 a, float4x4 b);
 
 		//! Performs matrix transpose on `a`, and stores the result in `dst`.
+		//! @details
 		//! ```
 		//! dst[0].x = a[0].x
 		//! dst[0].y = a[1].x
@@ -843,6 +937,7 @@ namespace Luna
 		float4x4 LUNA_SIMD_CALL transpose_f4x4(float4x4 a);
 
 		//! Computes the determinant of the 3x3 matrix `a`, and stores the result in `dst`.
+		//! @details
 		//! ```
 		//! dst :=	a[0].x * (a[1].y * a[2].z - a[1].z * a[2].y) +
 		//!			a[0].y * (a[1].z * a[2].x - a[1].x * a[2].z) +
@@ -850,6 +945,7 @@ namespace Luna
 		//! ```
 		f32 LUNA_SIMD_CALL determinant_f3x3(float3x4 a);
 		//! Computes the determinant of the 3x3 matrix `a`, and stores the result in every element of `dst`.
+		//! @details
 		//! ```
 		//! DETER :=a[0].x * (a[1].y * a[2].z - a[1].z * a[2].y) +
 		//!			a[0].y * (a[1].z * a[2].x - a[1].x * a[2].z) +
@@ -863,6 +959,7 @@ namespace Luna
 
 		//! Computes the determinant and the inverse matrix of `a`, stores the determinant in `out_determinant`, and
 		//! stores the inverse matrix in `dst`.
+		//! @details
 		//! ```
 		//!	DETER :=a[0].x * (a[1].y * a[2].z - a[1].z * a[2].y) +
 		//!			a[0].y * (a[1].z * a[2].x - a[1].x * a[2].z) +
@@ -886,6 +983,7 @@ namespace Luna
 		float3x4 LUNA_SIMD_CALL inverse_f3x3(float3x4 a, f32* out_determinant);
 
 		//! Calculates the determinant of matrix `a`, and stores the result in `dst`.
+		//! @details
 		//! ```
 		//! dst :=	 a[0].x * (a[1].y * (a[2].z * a[3].w - a[2].w * a[3].z) + a[1].z * (a[2].w * a[3].y - a[2].y * a[3].w) + a[1].w * (a[2].y * a[3].z - a[2].z * a[3].y))
 		//!			-a[0].y * (a[1].x * (a[2].z * a[3].w - a[2].w * a[3].z) + a[1].z * (a[2].w * a[3].x - a[2].x * a[3].w) + a[1].w * (a[2].x * a[3].z - a[2].z * a[3].x))
@@ -895,6 +993,7 @@ namespace Luna
 		f32 LUNA_SIMD_CALL determinant_f4x4(float4x4 a);
 
 		//! Calculates the determinant of matrix `a`, and stores the result in every element of `dst`.
+		//! @details
 		//! ```
 		//! DETER := a[0].x * (a[1].y * (a[2].z * a[3].w - a[2].w * a[3].z) + a[1].z * (a[2].w * a[3].y - a[2].y * a[3].w) + a[1].w * (a[2].y * a[3].z - a[2].z * a[3].y))
 		//!			-a[0].y * (a[1].x * (a[2].z * a[3].w - a[2].w * a[3].z) + a[1].z * (a[2].w * a[3].x - a[2].x * a[3].w) + a[1].w * (a[2].x * a[3].z - a[2].z * a[3].x))
@@ -909,6 +1008,7 @@ namespace Luna
 
 		//! Computes the determinant and the inverse matrix of `a`, stores the determinant in `out_determinant`, and
 		//! stores the inverse matrix in `dst`.
+		//! @details
 		//! ```
 		//! DETER := a[0].x * (a[1].y * (a[2].z * a[3].w - a[2].w * a[3].z) + a[1].z * (a[2].w * a[3].y - a[2].y * a[3].w) + a[1].w * (a[2].y * a[3].z - a[2].z * a[3].y))
 		//!			-a[0].y * (a[1].x * (a[2].z * a[3].w - a[2].w * a[3].z) + a[1].z * (a[2].w * a[3].x - a[2].x * a[3].w) + a[1].w * (a[2].x * a[3].z - a[2].z * a[3].x))
@@ -939,6 +1039,7 @@ namespace Luna
 		float4x4 LUNA_SIMD_CALL inverse_f4x4(float4x4 a, f32* out_determinant);
 
 		//! Rounds each component of `a` to the nearest even integer.
+		//! @details
 		//! ```
 		//! dst.x := ROUND(a.x)
 		//! dst.y := ROUND(a.y)
@@ -949,6 +1050,7 @@ namespace Luna
 
 		//! Computes the per-component angle modulo 2PI for `a`, and stores the results in `dst`. The angle is expressed in radians.
 		//! The result is rounded in [-PI, PI].
+		//! @details
 		//! ```
 		//! dst.x := a.x - 2 * PI * round( a.x / (2 * PI) )
 		//! dst.y := a.y - 2 * PI * round( a.y / (2 * PI) )
@@ -959,6 +1061,7 @@ namespace Luna
 
 		//! Computes the sine of packed single-precision (32-bit) floating-point elements in `a` expressed in radians, 
 		//! and stores the results in `dst`.
+		//! @details
 		//! ```
 		//! dst.x := SIN(a.x)
 		//! dst.y := SIN(a.y)
@@ -969,6 +1072,7 @@ namespace Luna
 
 		//! Computes the cosine of packed single-precision (32-bit) floating-point elements in `a` expressed in radians, 
 		//! and stores the results in `dst`.
+		//! @details
 		//! ```
 		//! dst.x := COS(a.x)
 		//! dst.y := COS(a.y)
@@ -979,6 +1083,7 @@ namespace Luna
 
 		//! Computes the sine and cosine of packed single-precision (32-bit) floating-point elements in `a` expressed in radians, 
 		//! and stores the results in `dst` and `out_cos`.
+		//! @details
 		//! ```
 		//! dst.x := SIN(a.x)
 		//! dst.y := SIN(a.y)
@@ -991,6 +1096,7 @@ namespace Luna
 		//! ```
 		float4 LUNA_SIMD_CALL sincos_f4(float4& out_cos, float4 a);
 	}
+	//! @}
 }
 #include "Impl/Simd.inl"
 #endif

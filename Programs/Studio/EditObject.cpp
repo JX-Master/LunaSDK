@@ -132,24 +132,29 @@ namespace Luna
 		}
 		else if (type == typeof<Float4>())
 		{
-			Float4* data = (Float4*)obj;
-			ImGui::DragFloat4(name, data->m);
-		}
-		else if (type == typeof<Quaternion>())
-		{
-			Quaternion* data = (Quaternion*)obj;
-			auto euler = AffineMatrix::euler_angles(AffineMatrix::make_rotation(*data));
-			euler *= 180.0f / PI;
-			if (euler.x > 89.0f || euler.x < -89.0f)
+			auto quat = get_property_attribute(object_type, name, "quaternion");
+			if(quat == true)
 			{
-				euler.z = 0.0f;
+				Float4* data = (Float4*)obj;
+				auto euler = AffineMatrix::euler_angles(AffineMatrix::make_rotation(*data));
+				euler *= 180.0f / PI;
+				if (euler.x > 89.0f || euler.x < -89.0f)
+				{
+					euler.z = 0.0f;
+				}
+				ImGui::DragFloat3(name, euler.m);
+				if (ImGui::IsItemEdited())
+				{
+					euler *= PI / 180.0f;
+					*data = Quaternion::from_euler_angles(euler);
+				}
 			}
-			ImGui::DragFloat3(name, euler.m);
-			if (ImGui::IsItemEdited())
+			else
 			{
-				euler *= PI / 180.0f;
-				*data = Quaternion::from_euler_angles(euler);
+				Float4* data = (Float4*)obj;
+				ImGui::DragFloat4(name, data->m);
 			}
+			
 		}
 		else if (type == typeof<Asset::asset_t>())
 		{

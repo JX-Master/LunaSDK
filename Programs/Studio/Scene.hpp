@@ -27,7 +27,7 @@ namespace Luna
 		Entity* parent = nullptr;
 		Vector<Ref<Entity>> children;
 		Float3 position = Float3::zero();
-		Quaternion rotation = Quaternion::identity();
+		Float4 rotation = Quaternion::identity();
 		Float3 scale = Float3::one();
 		HashMap<typeinfo_t, ObjRef> components;
 
@@ -108,7 +108,7 @@ namespace Luna
 			}
 			return position;
 		}
-		Quaternion world_rotation() const
+		Float4 world_rotation() const
 		{
 			if (parent)
 			{

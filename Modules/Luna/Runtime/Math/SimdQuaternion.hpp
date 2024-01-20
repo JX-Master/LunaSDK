@@ -14,9 +14,12 @@
 #ifdef LUNA_SIMD
 namespace Luna
 {
+	//! @addtogroup RuntimeMathSimd
+	//! @{
 	namespace Simd
 	{
 		//! Multiplies two quaternion `a` and `b`, and stores the result in `dst`.
+		//! @details
 		//! ```
 		//! dst.x := (a.x * b.w) + (a.w * b.x) + (a.z * b.y) - (a.y * b.z)
 		//! dst.y := (a.y * b.w) - (a.z * b.x) + (a.w * b.y) + (a.x * b.z)
@@ -26,6 +29,7 @@ namespace Luna
 		float4 LUNA_SIMD_CALL mulquat_f4(float4 a, float4 b);
 
 		//! Inverts the quaternion `a`, and stores the result in `dst`.
+		//! @details
 		//! ```
 		//! DOT := a.x * a.x + a.y * a.y + a.z * a.z + a.w * a.w;
 		//! dst.x := -a.x / DOT;
@@ -37,6 +41,7 @@ namespace Luna
 
 		//! Computes one rotation quaternion based on the given normal `a` and one angle `a`, and stores 
 		//! the result quaternion in `dst`.
+		//! @details
 		//! ```
 		//! SINE := SIN(a * 0.5)
 		//! COSINE := COS(a * 0.5)
@@ -49,6 +54,7 @@ namespace Luna
 
 		//! Computes a rotation quaternion based on a vector containing the Euler angles (pitch, yaw, and roll),
 		//! and stores the result in `dst`.
+		//! @details
 		//! ```
 		//! PITCH := a.x
 		//! YAW   := a.y
@@ -68,6 +74,7 @@ namespace Luna
 
 		//! Interpolates between two unit quaternions `a` and `b` using linear interpolation, 
 		//! and stores the result in `dst`.
+		//! @details
 		//! ```
 		//! OMEGA := ACOS(DOT4(a, b))
 		//! WA := SIN((1.0 - t) * OMEGA) / SIN(OMEGA)
@@ -81,6 +88,7 @@ namespace Luna
 
 		//! Interpolates between two unit quaternions `a` and `b` using spherical linear interpolation, 
 		//! and stores the result in `dst`.
+		//! @details
 		//! ```
 		//! OMEGA := ACOS(DOT4(a, b))
 		//! WA := SIN((1.0 - t) * OMEGA) / SIN(OMEGA)
@@ -92,6 +100,7 @@ namespace Luna
 		//! ```
 		float4 LUNA_SIMD_CALL quatslerp_f4(float4 a, float4 b, f32 t);
 	}
+	//! @}
 }
 #include "Impl/SimdQuaternion.inl"
 #endif

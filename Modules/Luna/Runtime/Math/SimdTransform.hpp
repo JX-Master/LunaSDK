@@ -14,9 +14,12 @@
 #ifdef LUNA_SIMD
 namespace Luna
 {
+	//! @addtogroup RuntimeMathSimd
+	//! @{
 	namespace Simd
 	{
-		//! Builds a 2D affine transformation matrix.
+		//! Builds a 2D affine matrix from translation, rotation and scaling.
+		//! @details
 		//! ```
 		//! ret[0].x := scaling.x * COS(rotation)
 		//! ret[0].y := scaling.x * SIN(rotation)
@@ -32,7 +35,8 @@ namespace Luna
 		//! ret[2].w := 0
 		//! ```
 		float3x4 LUNA_SIMD_CALL transform2d_f3x4(float4 translation, f32 rotation, float4 scaling);
-
+		//! Builds a 2D affine matrix from translation.
+		//! @details
 		//! ```
 		//! ret[0].x := 1
 		//! ret[0].y := 0
@@ -48,7 +52,8 @@ namespace Luna
 		//! ret[2].w := 0
 		//! ```
 		float3x4 LUNA_SIMD_CALL transform2d_translation_f3x4(float4 translation);
-
+		//! Builds a 2D affine matrix from roation.
+		//! @details
 		//! ```
 		//! ret[0].x := COS(rotation)
 		//! ret[0].y := SIN(rotation)
@@ -64,7 +69,8 @@ namespace Luna
 		//! ret[2].w := 0
 		//! ```
 		float3x4 LUNA_SIMD_CALL transform2d_rotation_f3x4(f32 rotation);
-
+		//! Builds a 2D affine matrix from scaling.
+		//! @details
 		//! ```
 		//! ret[0].x := scaling.x
 		//! ret[0].y := 0
@@ -80,9 +86,10 @@ namespace Luna
 		//! ret[2].w := 0
 		//! ```
 		float3x4 LUNA_SIMD_CALL transform2d_scaling_f3x4(float4 scaling);
-
+		//! Builds a 3D affine matrix from translation, rotation and scaling.
 		float4x4 LUNA_SIMD_CALL transform3d_f4x4(float4 translation, float4 rotation_quaternion, float4 scaling);
-		
+		//! Builds a 3D affine matrix from translation.
+		//! @details
 		//! ```
 		//! ret[0].x := 1
 		//! ret[0].y := 0
@@ -102,6 +109,8 @@ namespace Luna
 		//! ret[3].w := 1
 		//! ```
 		float4x4 LUNA_SIMD_CALL transform3d_translation_f4x4(float4 translation);
+		//! Builds a 3D affine matrix from rotation represented by one quaternion.
+		//! @details
 		//! ```
 		//! QX := quaternion.x
 		//! QY := quaternion.y
@@ -125,6 +134,8 @@ namespace Luna
 		//! ret[3].w := 1
 		//! ```
 		float4x4 LUNA_SIMD_CALL transform3d_rotation_quaternion_f4x4(float4 quaternion);
+		//! Builds a 3D affine matrix from rotation along X axis.
+		//! @details
 		//! ```
 		//! S := SIN(rotation)
 		//! C := COS(rotation)
@@ -146,6 +157,8 @@ namespace Luna
 		//! ret[3].w := 1
 		//! ```
 		float4x4 LUNA_SIMD_CALL transform3d_rotation_x_f4x4(f32 rotation);
+		//! Builds a 3D affine matrix from rotation along Y axis.
+		//! @details
 		//! ```
 		//! S := SIN(rotation)
 		//! C := COS(rotation)
@@ -167,6 +180,8 @@ namespace Luna
 		//! ret[3].w := 1
 		//! ```
 		float4x4 LUNA_SIMD_CALL transform3d_rotation_y_f4x4(f32 rotation);
+		//! Builds a 3D affine matrix from rotation along Z axis.
+		//! @details
 		//! ```
 		//! S := SIN(rotation)
 		//! C := COS(rotation)
@@ -188,8 +203,13 @@ namespace Luna
 		//! ret[3].w := 1
 		//! ```
 		float4x4 LUNA_SIMD_CALL transform3d_rotation_z_f4x4(f32 rotation);
+		//! Builds a 3D affine matrix from rotation represented by rotation axis and rotation angle.
 		float4x4 LUNA_SIMD_CALL transform3d_rotation_normal_angle_f4x4(float4 normal, f32 angle);
+		//! Builds a 3D affine matrix from rotation represented by euler angles (pitch, yaw, roll).
 		float4x4 LUNA_SIMD_CALL transform3d_rotation_euler_angles_f4x4(float4 pitch_yaw_roll);
+		//! Builds a 3D affine matrix from scaling.
+		//! @details
+		//! 
 		//! ```
 		//! ret[0].x := scaling.x
 		//! ret[0].y := 0
@@ -225,6 +245,7 @@ namespace Luna
 		//! ```
 		float4x4 LUNA_SIMD_CALL transform3d_look_to_f4x4(float4 eye, float4 eyedir, float4 updir);
 	}
+	//! @}
 }
 #include "Impl/SimdTransform.inl"
 #endif
