@@ -18,11 +18,15 @@ namespace Luna
 	//! @defgroup RuntimeMathQuaternion Quaternion operations
 	//! @}
 
-	//! @addtogroup RuntimeMathQuaternion
-	//! @{
 	namespace Quaternion
 	{
+		//! @addtogroup RuntimeMathQuaternion
+		//! @{
+		
 		//! Concatenates two quaternions.
+		//! @param[in] q1 The first quaternion.
+		//! @param[in] q2 The second quaternion.
+		//! @return Returns the result quaternion.
 		Float4 mul(const Float4& q1, const Float4& q2);
 		//! Creates one quaternion from rotation axis and rotation angle.
 		//! @param[in] axis The rotation axis.
@@ -62,8 +66,9 @@ namespace Luna
 		//! @param[in] t The interpolation weight. `0` to choose `q1`, `1` to choose `q2`.
 		//! @return Returns the result quaternion.
 		Float4 slerp(const Float4& q1, const Float4& q2, f32 t);
+		
+		//! @}
 	}
-	//! @}
 }
 
 #include "Impl/Quaternion.inl"

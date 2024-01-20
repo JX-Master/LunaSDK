@@ -49,10 +49,11 @@ namespace Luna
 	//! @defgroup RuntimeMathTransform Transform operations
 	//! @}
 
-	//! @addtogroup RuntimeMathTransform
-	//! @{
 	namespace AffineMatrix
 	{
+		//! @addtogroup RuntimeMathTransform
+		//! @{
+		
 		//! Constructs one 2D affine matrix.
 		//! @details The transform matrix is composed in scaling-rotation-translation order.
 		//! @param[in] translation The translation vector.
@@ -336,8 +337,9 @@ namespace Luna
 		//! @param[in] far_z The Z position of the far plane.
 		//! @return Returns the projection matrix.
 		Float4x4 make_orthographic_off_center(f32 left, f32 right, f32 bottom, f32 top, f32 near_z, f32 far_z);
+		
+		//! @}
 	}
-	//! @}
 }
 
 #include "Impl/Transform.inl"

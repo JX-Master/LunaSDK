@@ -14,10 +14,11 @@
 #ifdef LUNA_SIMD
 namespace Luna
 {
-	//! @addtogroup RuntimeMathSimd
-	//! @{
 	namespace Simd
 	{
+		//! @addtogroup RuntimeMathSimd
+		//! @{
+		
 		//! Builds a 2D affine matrix from translation, rotation and scaling.
 		//! @details
 		//! ```
@@ -244,8 +245,9 @@ namespace Luna
 		//! dst[3] := VEC4(TX, TY, TZ, 1)
 		//! ```
 		float4x4 LUNA_SIMD_CALL transform3d_look_to_f4x4(float4 eye, float4 eyedir, float4 updir);
+		
+		//! @}
 	}
-	//! @}
 }
 #include "Impl/SimdTransform.inl"
 #endif

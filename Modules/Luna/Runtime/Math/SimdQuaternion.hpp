@@ -14,10 +14,11 @@
 #ifdef LUNA_SIMD
 namespace Luna
 {
-	//! @addtogroup RuntimeMathSimd
-	//! @{
 	namespace Simd
 	{
+		//! @addtogroup RuntimeMathSimd
+		//! @{
+		
 		//! Multiplies two quaternion `a` and `b`, and stores the result in `dst`.
 		//! @details
 		//! ```
@@ -99,8 +100,9 @@ namespace Luna
 		//! dst.w = a.w * WA + b.w * WB
 		//! ```
 		float4 LUNA_SIMD_CALL quatslerp_f4(float4 a, float4 b, f32 t);
+		
+		//! @}
 	}
-	//! @}
 }
 #include "Impl/SimdQuaternion.inl"
 #endif

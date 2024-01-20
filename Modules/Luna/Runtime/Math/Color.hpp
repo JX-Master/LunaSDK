@@ -17,11 +17,11 @@ namespace Luna
 	//! @defgroup RuntimeColor Color operations
 	//! @}
 
-	//! @addtogroup RuntimeColor
-	//! @{
-
 	namespace Color
 	{
+		//! @addtogroup RuntimeColor
+		//! @{
+
 		// Regularly used colors.
 		// Reference : http://www.w3school.com.cn/tiy/color.asp
 
@@ -379,9 +379,9 @@ namespace Luna
 		//! @param[in] color The color to invert.
 		//! @return Returns the inverted color.
 		Float4 negate(const Float4& color);
-	}
 
-	//! @}
+		//! @}
+	}
 }
 
 #include "Impl/Color.inl"

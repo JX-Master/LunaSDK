@@ -40,10 +40,11 @@ namespace Luna
 	//! @defgroup RuntimeMathSimd SIMD library
 	//! @}
 
-	//! @addtogroup RuntimeMathSimd
-	//! @{
 	namespace Simd
 	{
+		//! @addtogroup RuntimeMathSimd
+		//! @{
+		
 #if defined(LUNA_SSE2_INTRINSICS)
 		//! SIMD type for 4 packed 32-bit floating point values.
 		using float4 = __m128;
@@ -1095,8 +1096,9 @@ namespace Luna
 		//! out_cos.w := COS(a.w)
 		//! ```
 		float4 LUNA_SIMD_CALL sincos_f4(float4& out_cos, float4 a);
+
+		//! @}
 	}
-	//! @}
 }
 #include "Impl/Simd.inl"
 #endif
