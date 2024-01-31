@@ -22,7 +22,10 @@ namespace Luna
 {
 	namespace Window
 	{
+		//! @addtogroup Window Window
+		//! @{
 
+		//! Platform-specific application startup parameters.
 		struct StartupParams
 		{
 			//! Tha application name.
@@ -45,16 +48,25 @@ namespace Luna
 			HICON hIconSm = NULL;
 #endif
 		};
+
 		//! Sets the startup parameters for Window module. This should be called
-		//! before the module is initialized.
+		//! before the Window module is initialized.
+		//! @param[in] params The startup parameters to set.
 		LUNA_WINDOW_API void set_startup_params(const StartupParams& params);
 
 		//! Gets the application name.
 		//! @return Returns one string that represents the application name. The string is valid 
 		//! until this module is closed.
+		//! @remark The application version is set by filling @ref StartupParams::name and calling @ref set_startup_params
+		//! before Window module is initialized.
 		LUNA_WINDOW_API const c8* get_name();
 
 		//! Gets the application version.
+		//! @return Returns the application version.
+		//! @remark The application version is set by filling @ref StartupParams::version and calling @ref set_startup_params
+		//! before Window module is initialized.
 		LUNA_WINDOW_API Version get_version();
+
+		//! @}
 	}
 }

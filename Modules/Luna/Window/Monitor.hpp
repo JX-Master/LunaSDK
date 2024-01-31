@@ -20,6 +20,9 @@ namespace Luna
 {
 	namespace Window
 	{
+		//! @addtogroup Window
+		//! @{
+		
 		//! The opaque handle that represents the system moditor.
 		using monitor_t = opaque_t;
 
@@ -84,5 +87,7 @@ namespace Luna
 
 		//! Gets the name of the monitor.
 		LUNA_WINDOW_API Name get_monitor_name(monitor_t monitor);
+
+		//! @}
 	}
 }
