@@ -57,7 +57,6 @@ namespace Luna
                 case MA_NOT_UNIQUE: return BasicError::not_unique();
                 case MA_IN_PROGRESS: return BasicError::not_ready();
                 case MA_CANCELLED: return BasicError::interrupted();
-                case MA_CRC_MISMATCH: return BasicError::bad_data();
                 case MA_FORMAT_NOT_SUPPORTED: return AHIError::format_not_supported();
                 case MA_DEVICE_TYPE_NOT_SUPPORTED: return AHIError::device_type_not_supported();
                 case MA_SHARE_MODE_NOT_SUPPORTED: return AHIError::share_mode_not_supported();
@@ -66,7 +65,6 @@ namespace Luna
                 case MA_API_NOT_FOUND: return AHIError::api_not_found();
                 case MA_INVALID_DEVICE_CONFIG: return AHIError::bad_device_config();
                 case MA_LOOP: return AHIError::loop();
-                case MA_BACKEND_NOT_ENABLED: return AHIError::backend_not_enabled();
                 case MA_DEVICE_NOT_INITIALIZED: return BasicError::bad_calling_time();
                 case MA_DEVICE_ALREADY_INITIALIZED: return BasicError::bad_calling_time();
                 case MA_DEVICE_NOT_STARTED: return AHIError::device_not_started();

@@ -27,7 +27,6 @@ namespace Luna
         LUNA_AHI_API ErrCode api_not_found();
         LUNA_AHI_API ErrCode bad_device_config();
         LUNA_AHI_API ErrCode loop();
-        LUNA_AHI_API ErrCode backend_not_enabled();
         LUNA_AHI_API ErrCode device_not_started();
         LUNA_AHI_API ErrCode device_not_stopped();
         LUNA_AHI_API ErrCode failed_to_init_backend();
