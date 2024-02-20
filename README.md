@@ -69,13 +69,13 @@ Designed target platforms:
     chmod +x ./gen_xcode.sh
     ./gen_xcode.sh
     ```
-1. Since the current version of xmake does not support running custom post-build scripts in XCode, you may need to copy images, shaders and other files to `build/macosx/{arch}/release/Debug` directory if the program failed to find them.
+1. Since the current version of xmake does not support running custom post-build scripts in XCode, you may need to copy images, shaders and other files to `build/macosx/{arch}/release/Debug` directory if the program fails to find them.
 1. Open `Luna.xcodeproj` on the root directory of Luna SDK.
 1. Build products in XCode. 
 
 ## System Requirements
 
-he following requirements must be satisfied to run Luna SDK with Direct3D 12 rendering backend:
+The following requirements must be satisfied to run Luna SDK with Direct3D 12 rendering backend:
 
 * Windows 10 operating system, 64-bit.
 
@@ -103,7 +103,8 @@ See [Luna SDK Docs](https://www.lunasdk.org).
 
 ## Contact Author
 * Email: jxmaster@yeah.net
-* Twitter: @JXMaster
+* Threads: @jx_master
+* Discord: jxmaster.me
 * Zhihu: https://www.zhihu.com/people/jx-master
 * Bilibili: https://space.bilibili.com/9919368
 
