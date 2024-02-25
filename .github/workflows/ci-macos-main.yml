@@ -45,7 +45,7 @@ jobs:
 
       # Cache xmake dependencies
       - name: Retrieve cached xmake dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ${{ env.XMAKE_GLOBALDIR }}\.xmake\packages
           key: ${{ matrix.os }}-${{ matrix.arch }}-${{ steps.dep_hash.outputs.hash }}-W${{ steps.cache_key.outputs.key }}
@@ -69,13 +69,13 @@ jobs:
         run: xmake install -o ./install/${{ matrix.arch }}-release
 
       - name: Collect artifacts debug
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.shared }}-debug
           path: ./install/${{ matrix.arch }}-debug
           
       - name: Collect artifacts release
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.shared }}-release
           path: ./install/${{ matrix.arch }}-release
