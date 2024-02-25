@@ -14,6 +14,10 @@ namespace Luna
 {
     namespace RHI
     {
+        //! @addtogroup RHI
+        //! @{
+
+        //! Describes data formats for vertices and pixels in RHI.
         enum class Format : u16
         {
             unknown = 0,
@@ -97,7 +101,7 @@ namespace Luna
             count
         };
 
-        //! Returns the size of one pixel in the specified format, in bits.
+        //! Gets the size of one pixel in the specified format, in bits.
         inline usize bits_per_pixel(Format format)
         {
             switch (format)
@@ -358,5 +362,7 @@ namespace Luna
 
             virtual TextureDesc get_desc() = 0;
         };
+
+        //! @}
     }
 }
