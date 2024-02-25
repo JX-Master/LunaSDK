@@ -11,10 +11,8 @@
 #define LUNA_RHI_API LUNA_EXPORT
 #include "Adapter.hpp"
 #include "Instance.hpp"
-#include <GLFW/glfw3.h>
-#include <Luna/Window/GLFW/GLFWWindow.hpp>
 #include <Luna/Runtime/HashSet.hpp>
-
+#include <Luna/Window/Vulkan/Vulkan.hpp>
 namespace Luna
 {
 	namespace RHI
@@ -129,13 +127,7 @@ namespace Luna
 			{
 				luset(dummy_window, Window::new_window("Dummy Window", Window::WindowDisplaySettings::as_windowed(), Window::WindowCreationFlag::hidden));
 				// Fetch surface for dummy window.
-				Window::IGLFWWindow* window = query_interface<Window::IGLFWWindow>(dummy_window->get_object());
-				if (!window)
-				{
-					return BasicError::not_supported();
-				}
-				GLFWwindow* glfw_window = window->get_glfw_window_handle();
-				luexp(encode_vk_result(glfwCreateWindowSurface(g_vk_instance, window->get_glfw_window_handle(), nullptr, &dummy_surface)));
+				luset(dummy_surface, Window::new_vulkan_surface_from_window(g_vk_instance, dummy_window));
 				// Select physical device.
 				for (usize i = 0; i < g_physical_devices.size(); ++i)
 				{

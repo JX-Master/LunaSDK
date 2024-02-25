@@ -14,7 +14,10 @@ namespace Luna
 {
 	namespace RHI
 	{
-		//! Specify the type of descriptors that can be placed in a descriptor set.
+		//! @addtogroup RHI
+        //! @{
+		
+		//! Specifies the type of descriptors that can be placed in a descriptor set.
 		enum class DescriptorType : u8
 		{
 			//! Specifies uniform buffer view, which allows reading data from one uniform buffer.
@@ -56,34 +59,49 @@ namespace Luna
 			sampler,
 		};
 
+		//! Specifies the texture view type, which is how render pipeline interprets texture data.
 		enum class TextureViewType : u8
 		{
-			//! Use the image type as the image view type.
+			//! Uses the texture resource's type as the texture view type.
 			unspecified = 0,
+			//! Interprets texture data as one 1D texture.
 			tex1d,
+			//! Interprets texture data as one 2D texture.
 			tex2d,
+			//! Interprets texture data as one 2D multi-sample texture.
 			tex2dms,
+			//! Interprets texture data as one 3D texture.
 			tex3d,
+			//! Interprets texture data as one cube texture.
 			texcube,
+			//! Interprets texture data as one 1D texture array.
 			tex1darray,
+			//! Interprets texture data as one 2D texture array.
 			tex2darray,
+			//! Interprets texture data as one 2D multi-sample texture array.
 			tex2dmsarray,
+			//! Interprets texture data as one cube texture array.
 			texcubearray
 		};
 
+		//! Specifies which shader can access descriptors in the specified binding.
 		enum class ShaderVisibilityFlag : u8
 		{
 			none = 0x00,
+			//! The vertex shader can access descriptors in the specified binding.
 			vertex = 0x01,
+			//! The pixel shader can access descriptors in the specified binding.
 			pixel = 0x02,
+			//! The compute shader can access descriptors in the specified binding.
 			compute = 0x04,
+			//! All shaders can access descriptors in the specified binding.
 			all = vertex | pixel | compute
 		};
 
 		//! Describes one binding in one descriptor set.
 		struct DescriptorSetLayoutBinding
 		{
-			//! The slot to bind this descriptor.
+			//! The slot to bind the descriptor(s).
 			//! If `num_descs` is greater than 1, slots [binding_slot, binding_slot + num_descs)
 			//! will be occupied and cannot be used in another bindings.
 			//! The binding slot does not need to be continuous.
@@ -171,6 +189,7 @@ namespace Luna
 			}
 		};
 
+		//! Specifies additional flags for one descriptor set layout.
 		enum class DescriptorSetLayoutFlag : u32
 		{
 			none = 0,
@@ -179,9 +198,12 @@ namespace Luna
 			variable_descriptors = 1,
 		};
 
+		//! Specifies one descriptor set layout.
 		struct DescriptorSetLayoutDesc
 		{
+			//! An array of bindings for this descriptor set layout.
 			Span<const DescriptorSetLayoutBinding> bindings;
+			//! Additional flags for this descriptor set layout.
 			DescriptorSetLayoutFlag flags = DescriptorSetLayoutFlag::none;
 
 			DescriptorSetLayoutDesc() {}
@@ -191,11 +213,20 @@ namespace Luna
 				flags(flags) {}
 		};
 
+		//! @interface IDescriptorSetLayout
+		//! Represents one descriptor set layout that can be used to create 
+		//! descriptor sets and pipeline layouts.
 		struct IDescriptorSetLayout : virtual IDeviceChild
 		{
 			luiid("{68D6929B-D94F-48B1-A19E-B89E0CF0D008}");
 
-
+			//! Gets the descriptor of this descriptor set layout.
+			//! @return Returns the descriptor of this descriptor set layout.
+			//! The returned descriptor is valid until this descriptor set layout 
+			//! object is destructed.
+			virtual DescriptorSetLayoutDesc get_desc() = 0;
 		};
+
+		//! @}
 	}
 }

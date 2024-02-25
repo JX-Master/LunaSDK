@@ -31,9 +31,9 @@ namespace Luna
 				if (m_sampler_heap_size) m_sampler_heap_offset = m_device->m_sampler_heap.allocate_descs(m_sampler_heap_size);
 				else m_sampler_heap_offset = 0;
 			}
-			for (auto& i : layout->m_bindings)
+			for (auto i = 0; i < layout->m_bindings.size(); ++i)
 			{
-				m_bound_index_to_offset.insert(make_pair(i.desc.binding_slot, i.offset_in_heap));
+				m_bound_index_to_offset.insert(make_pair(layout->m_bindings[i].binding_slot, layout->m_binding_info[i].offset_in_heap));
 			}
 			return ok;
 		}

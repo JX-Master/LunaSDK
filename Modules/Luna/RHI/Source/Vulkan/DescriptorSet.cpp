@@ -23,11 +23,7 @@ namespace Luna
 				alloc_info.descriptorPool = m_device->m_desc_pool;
 				alloc_info.descriptorSetCount = 1;
 				alloc_info.pSetLayouts = &m_layout->m_layout;
-				if (test_flags(m_layout->m_desc.flags, DescriptorSetLayoutFlag::variable_descriptors))
-				{
-					return BasicError::not_supported();
-				}
-				/*VkDescriptorSetVariableDescriptorCountAllocateInfo variable_info{};
+				VkDescriptorSetVariableDescriptorCountAllocateInfo variable_info{};
 				if (test_flags(m_layout->m_desc.flags, DescriptorSetLayoutFlag::variable_descriptors))
 				{
 					variable_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO;
@@ -35,7 +31,7 @@ namespace Luna
 					variable_info.pDescriptorCounts = &counts;
 					variable_info.descriptorSetCount = 1;
 					alloc_info.pNext = &variable_info;
-				}*/
+				}
 				MutexGuard guard(m_device->m_desc_pool_mtx);
 				luexp(encode_vk_result(m_device->m_funcs.vkAllocateDescriptorSets(m_device->m_device, &alloc_info, &m_desc_set)));
 			}

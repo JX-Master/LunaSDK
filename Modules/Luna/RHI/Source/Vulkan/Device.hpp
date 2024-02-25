@@ -43,6 +43,8 @@ namespace Luna
 			//VkPhysicalDeviceMemoryProperties m_memory_properties;
 			VkPhysicalDeviceFeatures m_physical_device_features;
 			VkPhysicalDeviceProperties m_physical_device_properties;
+			Vector<VkExtensionProperties> m_extension_properties;
+			bool m_supports_descriptor_indexing;
 
 			// Descriptor Pools.
 			VkDescriptorPool m_desc_pool = VK_NULL_HANDLE;

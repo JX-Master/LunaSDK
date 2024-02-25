@@ -3,6 +3,7 @@ if is_os("windows") or is_os("macosx") then
 end
 
 luna_sdk_module_target("Window")
+    add_options("rhi_api")
     add_headerfiles("*.hpp", {prefixdir = "Luna/Window"})
     add_headerfiles("Source/*.hpp", {install = false})
     add_files("Source/*.cpp")
@@ -20,6 +21,11 @@ luna_sdk_module_target("Window")
     if is_os("macosx") then
         add_files("Source/Cocoa/*.mm")
         add_frameworks("AppKit", "UniformTypeIdentifiers")
+    end
+    if is_config("rhi_api", "Vulkan") then 
+        add_packages("volk")
+        add_headerfiles("(Vulkan/*.hpp)", {prefixdir = "Luna/Window"})
+        add_files("Source/Vulkan/*.cpp")
     end
     add_deps("Runtime")
 target_end()

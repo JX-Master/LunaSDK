@@ -43,7 +43,6 @@ namespace Luna
 
 			struct BindingInfo
 			{
-				DescriptorSetLayoutBinding desc;
 				//! The target heap to allocate descriptors for this binding.
 				//! We will create one heap for every type of descriptors (SRV/UAV/CBV heaps are merged into one heap).
 				D3D12_DESCRIPTOR_HEAP_TYPE target_heap;
@@ -62,8 +61,9 @@ namespace Luna
 			//! Describes how to allocate root parameters in order to bind this descriptor set.
 			//! (shader space is not initialized).
 			Vector<RootParameterInfo> m_root_parameters;
+			Array<DescriptorSetLayoutBinding> m_bindings;
 			// Describes how every binding maps to root parameters and descriptor heaps.
-			Vector<BindingInfo> m_bindings;
+			Array<BindingInfo> m_binding_info;
 
 			void init(const DescriptorSetLayoutDesc& desc);
 
@@ -76,6 +76,13 @@ namespace Luna
 				return m_device.as<IDevice>();
 			}
 			virtual void set_name(const c8* name) override {}
+			virtual DescriptorSetLayoutDesc get_desc() override
+			{
+				DescriptorSetLayoutDesc ret;
+				ret.bindings = {m_bindings.data(), m_bindings.size()};
+				ret.flags = m_flags;
+				return ret;
+			}
 		};
 	}
 }

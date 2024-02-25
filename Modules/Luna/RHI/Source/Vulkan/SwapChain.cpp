@@ -9,9 +9,8 @@
 */
 #include <Luna/Runtime/PlatformDefines.hpp>
 #include "SwapChain.hpp"
-#include <GLFW/glfw3.h>
-#include <Luna/Window/GLFW/GLFWWindow.hpp>
 #include "Instance.hpp"
+#include <Luna/Window/Vulkan/Vulkan.hpp>
 namespace Luna
 {
 	namespace RHI
@@ -66,9 +65,7 @@ namespace Luna
 			{
 				m_queue = queue;
 				m_window = window;
-				Window::IGLFWWindow* w = query_interface<Window::IGLFWWindow>(m_window->get_object());
-				if (!w) return BasicError::not_supported();
-				luexp(encode_vk_result(glfwCreateWindowSurface(g_vk_instance, w->get_glfw_window_handle(), nullptr, &m_surface)));
+				luset(m_surface, Window::new_vulkan_surface_from_window(g_vk_instance, m_window));
 				luexp(create_swap_chain(desc));
 				VkFenceCreateInfo fence_create_info{};
 				fence_create_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
@@ -133,15 +130,13 @@ namespace Luna
 				luexp(encode_vk_result(m_device->m_funcs.vkGetSwapchainImagesKHR(m_device->m_device, m_swap_chain, &image_count, nullptr)));
 				VkImage* images = (VkImage*)alloca(sizeof(VkImage) * image_count);
 				luexp(encode_vk_result(m_device->m_funcs.vkGetSwapchainImagesKHR(m_device->m_device, m_swap_chain, &image_count, images)));
-				TextureDesc desc;
-				desc.type = TextureType::tex2d;
-				desc.format = m_desc.format;
-				desc.width = m_desc.width;
-				desc.height = m_desc.height;
-				desc.depth = 1;
-				desc.array_size = 1;
-				desc.mip_levels = 1;
-				desc.sample_count = 1;
+				TextureDesc desc = TextureDesc::tex2d(
+					m_desc.format,
+					TextureUsageFlag::color_attachment,
+					m_desc.width,
+					m_desc.height,
+					1, 1, 1, ResourceFlag::none
+				);
 				for (u32 i = 0; i < image_count; ++i)
 				{
 					auto res = new_object<ImageResource>();

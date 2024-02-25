@@ -44,7 +44,9 @@ namespace Luna
 		{
 			lutry
 			{
-				m_desc = desc;
+				m_bindings.assign_n(desc.bindings.data(), desc.bindings.size());
+				m_desc.bindings = {m_bindings.data(), m_bindings.size()};
+				m_desc.flags = desc.flags;
 				VkDescriptorSetLayoutCreateInfo info{};
 				info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
 				VkDescriptorSetLayoutBinding* bindings = nullptr;
@@ -63,16 +65,15 @@ namespace Luna
 					info.pBindings = nullptr;
 					info.bindingCount = 0;
 				}
-				//VkDescriptorSetLayoutBindingFlagsCreateInfo binding_flags{};
+				VkDescriptorSetLayoutBindingFlagsCreateInfo binding_flags{};
 				if (test_flags(desc.flags, DescriptorSetLayoutFlag::variable_descriptors) && info.bindingCount)
 				{
-					return set_error(BasicError::not_supported(), "variable descriptors is not supported on this device.");
-					/*binding_flags.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO_EXT;
+					binding_flags.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO_EXT;
 					binding_flags.bindingCount = info.bindingCount;
 					auto flags = (VkDescriptorBindingFlags*)alloca(sizeof(VkDescriptorBindingFlags) * info.bindingCount);
 					memzero(flags, sizeof(VkDescriptorBindingFlags) * info.bindingCount);
 					flags[info.bindingCount - 1] |= VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT_EXT;
-					info.pNext = &binding_flags;*/
+					info.pNext = &binding_flags;
 				}
 				luexp(encode_vk_result(m_device->m_funcs.vkCreateDescriptorSetLayout(m_device->m_device, &info, nullptr, &m_layout)));
 			}

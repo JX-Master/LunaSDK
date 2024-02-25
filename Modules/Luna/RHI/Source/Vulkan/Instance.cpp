@@ -8,8 +8,8 @@
 * @date 2023/4/16
 */
 #include "Instance.hpp"
-#include <GLFW/glfw3.h>
 #include <Luna/Runtime/Log.hpp>
+#include <Luna/Window/Vulkan/Vulkan.hpp>
 
 namespace Luna
 {
@@ -117,7 +117,7 @@ namespace Luna
 			lutry
 			{
 				luexp(encode_vk_result(volkInitialize()));
-				//luexp(encode_vk_result(vkEnumerateInstanceVersion(&g_vk_version)));
+				luexp(encode_vk_result(vkEnumerateInstanceVersion(&g_vk_version)));
 				VkApplicationInfo app_info{};
 				app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
 				app_info.pApplicationName = "Luna SDK";
@@ -129,8 +129,8 @@ namespace Luna
 				create_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
 				create_info.pApplicationInfo = &app_info;
 				u32 glfw_extensions_count = 0;
-				const c8** glfw_extensions = glfwGetRequiredInstanceExtensions(&glfw_extensions_count);
-				Vector<const c8*> extensions(glfw_extensions, glfw_extensions + glfw_extensions_count);
+				auto window_required_extensions = Window::get_required_vulkan_instance_extensions();
+				Vector<const c8*> extensions(window_required_extensions.begin(), window_required_extensions.end());
 				g_enable_validation_layer = false;
 #if defined(LUNA_RHI_DEBUG) || defined(LUNA_DEBUG)
 				if (check_validation_layer_support())

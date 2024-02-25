@@ -17,6 +17,11 @@ namespace Luna
 {
     namespace RHI
     {
+        //! @addtogroup RHI
+        //! @{
+        
+        //! @interface IAdapter
+        //! Represents a physical graphics device installed on the platform.
         struct IAdapter : virtual Interface
         {
             luiid("{3be9e0bb-0633-4547-ba1a-c964cf480adc}");
@@ -28,6 +33,11 @@ namespace Luna
         };
 
         //! Gets a list of adapters installed on the platform.
+        //! @return Returns a list of adapters installed on the platform.
+        //! @remark The returned list will not change after RHI module is initialized, you should 
+        //! restart the module/application if you install/remove adapters at run time.
         LUNA_RHI_API Vector<Ref<IAdapter>> get_adapters();
+
+        //! @}
     }
 }

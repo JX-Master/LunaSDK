@@ -48,16 +48,11 @@ namespace Luna
 		void DescriptorSetLayout::init(const DescriptorSetLayoutDesc& desc)
 		{
 			m_flags = desc.flags;
-			m_bindings.reserve(desc.bindings.size());
-			for (auto& b : desc.bindings)
-			{
-				BindingInfo info;
-				info.desc = b;
-				m_bindings.push_back(info);
-			}
+			m_bindings.assign_n(desc.bindings.begin(), desc.bindings.size());
+			m_binding_info.assign(desc.bindings.size());
 			// Sort the bindings by their binding slot.
 			sort(m_bindings.begin(), m_bindings.end(),
-				[](const BindingInfo& lhs, const BindingInfo& rhs) {return lhs.desc.binding_slot < rhs.desc.binding_slot; });
+				[](const DescriptorSetLayoutBinding& lhs, const DescriptorSetLayoutBinding& rhs) {return lhs.binding_slot < rhs.binding_slot; });
 			// Resolve bindings to D3D12 descriptor heaps.
 			{
 				bool variable_binding_enabled = false;
@@ -65,12 +60,14 @@ namespace Luna
 				if (test_flags(m_flags, DescriptorSetLayoutFlag::variable_descriptors))
 				{
 					variable_binding_enabled = true;
-					variable_binding_slot = m_bindings.back().desc.binding_slot;
-					m_bindings.back().desc.num_descs = U32_MAX;
+					variable_binding_slot = m_bindings.back().binding_slot;
+					m_bindings.back().num_descs = U32_MAX;
 				}
-				for (auto& binding : m_bindings)
+				for (usize i = 0; i < m_bindings.size(); ++i)
 				{
-					switch (binding.desc.type)
+					auto& binding = m_binding_info[i];
+					auto& desc = m_bindings[i];
+					switch (desc.type)
 					{
 					case DescriptorType::read_buffer_view:
 					case DescriptorType::read_texture_view:
@@ -84,14 +81,14 @@ namespace Luna
 						lupanic();
 						break;
 					}
-					if (binding.desc.num_descs == U32_MAX) continue;
+					if (desc.num_descs == U32_MAX) continue;
 					HeapInfo* heap = get_heap_by_type(binding.target_heap);
 					binding.offset_in_heap = heap->m_size;
-					heap->m_size += binding.desc.num_descs;
+					heap->m_size += desc.num_descs;
 				}
 				if (variable_binding_enabled)
 				{
-					auto& binding = m_bindings.back();
+					auto& binding = m_binding_info.back();
 					HeapInfo* heap = get_heap_by_type(binding.target_heap);
 					binding.offset_in_heap = heap->m_size;
 					heap->m_variable = true;
@@ -100,30 +97,32 @@ namespace Luna
 			// Resolve bindings to D3D12 root parameters (descriptor table type).
 			// The system merges continuous bindings with the same type and shader visibility to the same parameter.
 			{
-				for (auto& binding : m_bindings)
+				for (usize i = 0; i < m_bindings.size(); ++i)
 				{
-					binding.root_parameter_index = get_root_parameter_index(binding.desc.type, binding.desc.shader_visibility_flags);
+					auto& binding = m_binding_info[i];
+					auto& desc = m_bindings[i];
+					binding.root_parameter_index = get_root_parameter_index(desc.type, desc.shader_visibility_flags);
 					auto& root_parameter = m_root_parameters[binding.root_parameter_index];
 					// Check whether we can merge to the last range.
-					if (!root_parameter.m_ranges.empty() && binding.desc.num_descs != U32_MAX)
+					if (!root_parameter.m_ranges.empty() && desc.num_descs != U32_MAX)
 					{
 						D3D12_DESCRIPTOR_RANGE& last_range = root_parameter.m_ranges.back();
-						if (last_range.RangeType == encode_descriptor_range_type(binding.desc.type) &&
-							(last_range.BaseShaderRegister + last_range.NumDescriptors == binding.desc.binding_slot) &&
+						if (last_range.RangeType == encode_descriptor_range_type(desc.type) &&
+							(last_range.BaseShaderRegister + last_range.NumDescriptors == desc.binding_slot) &&
 							(last_range.OffsetInDescriptorsFromTableStart + last_range.NumDescriptors == binding.offset_in_heap)
 							)
 						{
 							binding.range_index = (u32)root_parameter.m_ranges.size() - 1;
-							last_range.NumDescriptors += binding.desc.num_descs;
+							last_range.NumDescriptors += desc.num_descs;
 							continue;
 						}
 					}
 					// Append a new range.
 					D3D12_DESCRIPTOR_RANGE range;
-					range.BaseShaderRegister = binding.desc.binding_slot;
-					range.NumDescriptors = binding.desc.num_descs == U32_MAX ? UINT_MAX : binding.desc.num_descs;
+					range.BaseShaderRegister = desc.binding_slot;
+					range.NumDescriptors = desc.num_descs == U32_MAX ? UINT_MAX : desc.num_descs;
 					range.OffsetInDescriptorsFromTableStart = binding.offset_in_heap;
-					range.RangeType = encode_descriptor_range_type(binding.desc.type);
+					range.RangeType = encode_descriptor_range_type(desc.type);
 					range.RegisterSpace = 0;
 					binding.range_index = (u32)root_parameter.m_ranges.size();
 					root_parameter.m_ranges.push_back(range);

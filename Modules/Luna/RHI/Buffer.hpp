@@ -14,6 +14,10 @@ namespace Luna
 {
     namespace RHI
     {
+		//! @addtogroup RHI
+        //! @{
+		
+		//! Specifies possible usages for one @ref IBuffer object.
         enum class BufferUsageFlag : u16
 		{
 			none = 0x00,
@@ -35,6 +39,7 @@ namespace Luna
 			indirect_buffer = 0x80,
 		};
 
+		//! Describes one @ref IBuffer object.
 		struct BufferDesc
 		{
 			//! The size of the buffer in bytes.
@@ -53,10 +58,14 @@ namespace Luna
 				size(size) {}
 		};
 
+		//! @interface IBuffer
+		//! Represents one buffer resource that can be used to contain 
+		//! arbitrary binary data.
         struct IBuffer : virtual IResource
 		{
 			luiid("{548E82ED-947F-4F4C-95A0-DC0607C96C54}");
 
+			//! Gets the descriptor of this buffer object.
 			virtual BufferDesc get_desc() = 0;
 
 			//! Maps the resource data to system memory and enables CPU access to the resource data.
@@ -82,5 +91,7 @@ namespace Luna
 			//! If `write_end` is larger than the subresource size (like setting to `USIZE_MAX`), the write range will be clamped to [write_begin, resource_size). 
 			virtual void unmap(usize write_begin, usize write_end) = 0;
 		};
+
+		//! @}
     }
 }

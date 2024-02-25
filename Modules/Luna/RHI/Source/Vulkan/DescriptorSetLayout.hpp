@@ -20,6 +20,7 @@ namespace Luna
 			luiimpl();
 
 			Ref<Device> m_device;
+			Array<DescriptorSetLayoutBinding> m_bindings;
 			DescriptorSetLayoutDesc m_desc;
 			VkDescriptorSetLayout m_layout = VK_NULL_HANDLE;
 			Name m_name;
@@ -29,6 +30,7 @@ namespace Luna
 
 			virtual IDevice* get_device() override { return m_device.get(); }
 			virtual void set_name(const c8* name) override { m_name = name; }
+			virtual DescriptorSetLayoutDesc get_desc() override { return m_desc; }
 		};
 	}
 }

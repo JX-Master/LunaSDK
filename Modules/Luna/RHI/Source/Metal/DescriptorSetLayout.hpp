@@ -32,6 +32,13 @@ namespace Luna
 
             virtual IDevice* get_device() override { return m_device; }
             virtual void set_name(const c8* name) override  { }
+            virtual DescriptorSetLayoutDesc get_desc() override
+            {
+                DescriptorSetLayoutDesc ret;
+                ret.bindings = {m_bindings.data(), m_bindings.size()};
+                ret.flags = m_flags;
+                return ret;
+            }
         };
     }
 }

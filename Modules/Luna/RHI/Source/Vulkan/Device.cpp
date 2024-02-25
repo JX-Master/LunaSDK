@@ -36,6 +36,31 @@ namespace Luna
 				enabled_extensions.push_back(VK_KHR_MAINTENANCE1_EXTENSION_NAME);
 			}
 
+			// Get device extensions.
+			u32 extension_count = 0;
+			vkEnumerateDeviceExtensionProperties(physical_device, nullptr, &extension_count, nullptr);
+			m_extension_properties.resize(extension_count);
+			vkEnumerateDeviceExtensionProperties(physical_device, nullptr, &extension_count, m_extension_properties.data());
+			
+			if (g_vk_version < VK_API_VERSION_1_2)
+			{
+				m_supports_descriptor_indexing = false;
+				for(auto& extension : m_extension_properties)
+				{
+					if(strcmp(extension.extensionName, VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME) == 0)
+					{
+						m_supports_descriptor_indexing = true;
+						enabled_extensions.push_back(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME);
+						break;
+					}
+				}
+			}
+			else
+			{
+				// VK_EXT_descriptor_indexing is promoted to 1.2 and later.
+				m_supports_descriptor_indexing = true;
+			}
+
 			m_desc_pool_mtx = new_mutex();
 			m_physical_device = physical_device;
 			vkGetPhysicalDeviceProperties(physical_device, &m_physical_device_properties);
@@ -263,7 +288,7 @@ namespace Luna
 			switch (feature)
 			{
 			case DeviceFeature::unbound_descriptor_array:
-				ret.unbound_descriptor_array = false;
+				ret.unbound_descriptor_array = m_supports_descriptor_indexing;
 				break;
 			case DeviceFeature::pixel_shader_write: 
 				ret.pixel_shader_write = m_physical_device_features.fragmentStoresAndAtomics == VK_TRUE;
