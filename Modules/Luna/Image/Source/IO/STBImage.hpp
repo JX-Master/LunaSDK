@@ -15,29 +15,29 @@
 
 namespace Luna
 {
-	namespace Image
-	{
+    namespace Image
+    {
 
-		inline void* stbi_malloc(usize sz)
-		{
-			return memalloc(sz);
-		}
+        inline void* stbi_malloc(usize sz)
+        {
+            return memalloc(sz);
+        }
 
-		inline void stbi_free(void* p)
-		{
-			memfree(p);
-		}
+        inline void stbi_free(void* p)
+        {
+            memfree(p);
+        }
 
-		inline void* stbi_realloc(void* p, usize newsz)
-		{
-			return memrealloc(p, newsz);
-		}
-	}
+        inline void* stbi_realloc(void* p, usize newsz)
+        {
+            return memrealloc(p, newsz);
+        }
+    }
 }
 
-#define STBI_MALLOC(sz)			Luna::Image::stbi_malloc(sz)
-#define STBI_REALLOC(p,newsz)	Luna::Image::stbi_realloc(p,newsz)
-#define STBI_FREE(p)			Luna::Image::stbi_free(p)
+#define STBI_MALLOC(sz)            Luna::Image::stbi_malloc(sz)
+#define STBI_REALLOC(p,newsz)    Luna::Image::stbi_realloc(p,newsz)
+#define STBI_FREE(p)            Luna::Image::stbi_free(p)
 
 #ifdef LUNA_PLATFORM_WINDOWS
 #define STBI_WINDOWS_UTF8
@@ -49,11 +49,11 @@ namespace Luna
 
 namespace Luna
 {
-	namespace Image
-	{
-		extern stbi_io_callbacks stbi_iocb;
+    namespace Image
+    {
+        extern stbi_io_callbacks stbi_iocb;
 
-		// Initializes the STB context.
-		void stbi_init();
-	}
+        // Initializes the STB context.
+        void stbi_init();
+    }
 }

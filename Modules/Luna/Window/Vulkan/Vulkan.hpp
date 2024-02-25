@@ -20,7 +20,7 @@ namespace Luna
     namespace Window
     {
         //! @addtogroup Window
-		//! @{
+        //! @{
         
         //! Creates a vulkan surface form window.
         //! @param[in] instance The Vulkan instance.

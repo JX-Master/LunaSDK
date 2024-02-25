@@ -13,11 +13,11 @@
 
 namespace Luna
 {
-	namespace Asset
-	{
-		R<AssetTypeDesc> get_asset_type_desc(const Name& name);
-		void init_asset_type();
-		void close_asset_type();
-		extern Ref<IMutex> g_asset_types_mutex;
-	}
+    namespace Asset
+    {
+        R<AssetTypeDesc> get_asset_type_desc(const Name& name);
+        void init_asset_type();
+        void close_asset_type();
+        extern Ref<IMutex> g_asset_types_mutex;
+    }
 }

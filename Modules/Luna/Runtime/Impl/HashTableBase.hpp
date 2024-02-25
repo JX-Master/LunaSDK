@@ -12,26 +12,26 @@
 
 namespace Luna
 {
-	namespace Impl
-	{
-		// Extract key reference from value reference.
+    namespace Impl
+    {
+        // Extract key reference from value reference.
 
-		template <typename _Kty, typename _Vty>
-		struct MapExtractKey
-		{
-			const _Kty& operator()(const _Vty& p) const
-			{
-				return p.first;
-			}
-		};
+        template <typename _Kty, typename _Vty>
+        struct MapExtractKey
+        {
+            const _Kty& operator()(const _Vty& p) const
+            {
+                return p.first;
+            }
+        };
 
-		template <typename _Kty, typename _Vty>
-		struct SetExtractKey
-		{
-			const _Kty& operator()(const _Vty& p) const
-			{
-				return p;
-			}
-		};
-	}
+        template <typename _Kty, typename _Vty>
+        struct SetExtractKey
+        {
+            const _Kty& operator()(const _Vty& p) const
+            {
+                return p;
+            }
+        };
+    }
 }

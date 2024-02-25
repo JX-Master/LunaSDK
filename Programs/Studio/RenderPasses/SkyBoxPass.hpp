@@ -17,8 +17,8 @@ namespace Luna
         lustruct("SkyBoxPassGlobalData", "{cc8658bc-ecbc-4659-9b10-e95b377c7581}");
 
         Ref<RHI::IPipelineState> m_skybox_pass_pso;
-		Ref<RHI::IDescriptorSetLayout> m_skybox_pass_dlayout;
-		Ref<RHI::IPipelineLayout> m_skybox_pass_playout;
+        Ref<RHI::IDescriptorSetLayout> m_skybox_pass_dlayout;
+        Ref<RHI::IPipelineLayout> m_skybox_pass_playout;
         Name m_texture_name = "texture";
         Name m_depth_texture_name = "depth_texture";
 

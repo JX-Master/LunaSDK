@@ -12,9 +12,9 @@
 
 namespace Luna
 {
-	namespace Font
-	{
-		extern const long int opensans_regular_ttf_size;
-		extern const unsigned char opensans_regular_ttf[];
-	}
+    namespace Font
+    {
+        extern const long int opensans_regular_ttf_size;
+        extern const unsigned char opensans_regular_ttf[];
+    }
 }

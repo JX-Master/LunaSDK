@@ -65,15 +65,15 @@ namespace Luna
             lucatchret;
             return ok;
         }
-		void render_api_close()
+        void render_api_close()
         {
             g_main_device.reset();
             g_adapters.clear();
             g_adapters.shrink_to_fit();
         }
         LUNA_RHI_API BackendType get_backend_type()
-		{
-			return BackendType::metal;
-		}
+        {
+            return BackendType::metal;
+        }
     }
 }

@@ -12,25 +12,25 @@
 #include "Device.hpp"
 namespace Luna
 {
-	namespace RHI
-	{
-		struct DescriptorSetLayout : IDescriptorSetLayout
-		{
-			lustruct("RHI::DescriptorSetLayout", "{A98BDEC9-14D2-4CD0-AC5F-666BB828A1F7}");
-			luiimpl();
+    namespace RHI
+    {
+        struct DescriptorSetLayout : IDescriptorSetLayout
+        {
+            lustruct("RHI::DescriptorSetLayout", "{A98BDEC9-14D2-4CD0-AC5F-666BB828A1F7}");
+            luiimpl();
 
-			Ref<Device> m_device;
-			Array<DescriptorSetLayoutBinding> m_bindings;
-			DescriptorSetLayoutDesc m_desc;
-			VkDescriptorSetLayout m_layout = VK_NULL_HANDLE;
-			Name m_name;
+            Ref<Device> m_device;
+            Array<DescriptorSetLayoutBinding> m_bindings;
+            DescriptorSetLayoutDesc m_desc;
+            VkDescriptorSetLayout m_layout = VK_NULL_HANDLE;
+            Name m_name;
 
-			RV init(const DescriptorSetLayoutDesc& desc);
-			~DescriptorSetLayout();
+            RV init(const DescriptorSetLayoutDesc& desc);
+            ~DescriptorSetLayout();
 
-			virtual IDevice* get_device() override { return m_device.get(); }
-			virtual void set_name(const c8* name) override { m_name = name; }
-			virtual DescriptorSetLayoutDesc get_desc() override { return m_desc; }
-		};
-	}
+            virtual IDevice* get_device() override { return m_device.get(); }
+            virtual void set_name(const c8* name) override { m_name = name; }
+            virtual DescriptorSetLayoutDesc get_desc() override { return m_desc; }
+        };
+    }
 }

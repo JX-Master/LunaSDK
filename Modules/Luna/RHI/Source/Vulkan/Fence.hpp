@@ -12,22 +12,22 @@
 
 namespace Luna
 {
-	namespace RHI
-	{
-		struct Fence : IFence
-		{
-			lustruct("RHI::Fence", "{DCC665F4-475F-4EAA-8837-17362D44BAD9}");
-			luiimpl();
+    namespace RHI
+    {
+        struct Fence : IFence
+        {
+            lustruct("RHI::Fence", "{DCC665F4-475F-4EAA-8837-17362D44BAD9}");
+            luiimpl();
 
-			Ref<Device> m_device;
-			VkSemaphore m_semaphore = VK_NULL_HANDLE;
-			Name m_name;
+            Ref<Device> m_device;
+            VkSemaphore m_semaphore = VK_NULL_HANDLE;
+            Name m_name;
 
-			RV init();
-			~Fence();
+            RV init();
+            ~Fence();
 
-			virtual IDevice* get_device() override { return m_device.get(); }
-			virtual void set_name(const c8* name) override { m_name = name; }
-		};
-	}
+            virtual IDevice* get_device() override { return m_device.get(); }
+            virtual void set_name(const c8* name) override { m_name = name; }
+        };
+    }
 }

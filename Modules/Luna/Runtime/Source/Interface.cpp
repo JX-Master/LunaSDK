@@ -14,24 +14,24 @@
 
 namespace Luna
 {
-	LUNA_RUNTIME_API void impl_interface_for_type(const InterfaceImplDesc& desc)
-	{
-		auto type = get_type_by_guid(desc.type_guid);
-		lucheck(type);
-		InterfaceImplEntry* entry = (InterfaceImplEntry*)
-			set_type_private_data(type, desc.interface_guid, sizeof(InterfaceImplEntry), alignof(InterfaceImplEntry));
-		entry->cast_to_interface = desc.cast_to_interface;
-	}
-	LUNA_RUNTIME_API bool is_interface_implemented_by_type(typeinfo_t type, const Guid& iid)
-	{
-		InterfaceImplEntry* entry = (InterfaceImplEntry*)get_type_private_data(type, iid);
-		return entry != nullptr;
-	}
-	LUNA_RUNTIME_API void* query_interface(object_t object, const Guid& iid)
-	{
-		typeinfo_t type = get_object_type(object);
-		InterfaceImplEntry* entry = (InterfaceImplEntry*)get_type_private_data(type, iid);
-		if (!entry) return nullptr;
-		return entry->cast_to_interface(object);
-	}
+    LUNA_RUNTIME_API void impl_interface_for_type(const InterfaceImplDesc& desc)
+    {
+        auto type = get_type_by_guid(desc.type_guid);
+        lucheck(type);
+        InterfaceImplEntry* entry = (InterfaceImplEntry*)
+            set_type_private_data(type, desc.interface_guid, sizeof(InterfaceImplEntry), alignof(InterfaceImplEntry));
+        entry->cast_to_interface = desc.cast_to_interface;
+    }
+    LUNA_RUNTIME_API bool is_interface_implemented_by_type(typeinfo_t type, const Guid& iid)
+    {
+        InterfaceImplEntry* entry = (InterfaceImplEntry*)get_type_private_data(type, iid);
+        return entry != nullptr;
+    }
+    LUNA_RUNTIME_API void* query_interface(object_t object, const Guid& iid)
+    {
+        typeinfo_t type = get_object_type(object);
+        InterfaceImplEntry* entry = (InterfaceImplEntry*)get_type_private_data(type, iid);
+        if (!entry) return nullptr;
+        return entry->cast_to_interface(object);
+    }
 }

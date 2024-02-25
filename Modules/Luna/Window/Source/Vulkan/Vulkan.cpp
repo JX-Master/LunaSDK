@@ -22,10 +22,10 @@ namespace Luna
             lutry
             {
 #ifdef LUNA_WINDOW_GLFW
-				if(glfwVulkanSupported() == GLFW_FALSE)
-				{
-					return set_error(BasicError::not_supported(), "Vulkan is not supported on this platform.");
-				}
+                if(glfwVulkanSupported() == GLFW_FALSE)
+                {
+                    return set_error(BasicError::not_supported(), "Vulkan is not supported on this platform.");
+                }
                 Window::IGLFWWindow* glfw_window = query_interface<Window::IGLFWWindow>(window->get_object());
                 if (!glfw_window)
                 {

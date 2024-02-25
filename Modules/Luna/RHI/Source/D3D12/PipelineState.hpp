@@ -15,31 +15,31 @@
 
 namespace Luna
 {
-	namespace RHI
-	{
-		struct PipelineState : IPipelineState
-		{
-			lustruct("RHI::PipelineState", "{31F529FE-43C4-4DF1-842B-BAF52CCFCF3F}");
-			luiimpl()
+    namespace RHI
+    {
+        struct PipelineState : IPipelineState
+        {
+            lustruct("RHI::PipelineState", "{31F529FE-43C4-4DF1-842B-BAF52CCFCF3F}");
+            luiimpl()
 
-			Ref<Device> m_device;
-			ComPtr<ID3D12PipelineState> m_pso;
-			bool m_is_graphics;
+            Ref<Device> m_device;
+            ComPtr<ID3D12PipelineState> m_pso;
+            bool m_is_graphics;
 
-			PrimitiveTopology m_primitive_topology;
+            PrimitiveTopology m_primitive_topology;
 
-			PipelineState(Device* dev) :
-				m_device(dev),
-				m_primitive_topology(PrimitiveTopology::triangle_list) {}
+            PipelineState(Device* dev) :
+                m_device(dev),
+                m_primitive_topology(PrimitiveTopology::triangle_list) {}
 
-			virtual IDevice* get_device() override
-			{
-				return m_device.as<IDevice>();
-			}
-			virtual void set_name(const c8* name) override { set_object_name(m_pso.Get(), name); }
+            virtual IDevice* get_device() override
+            {
+                return m_device.as<IDevice>();
+            }
+            virtual void set_name(const c8* name) override { set_object_name(m_pso.Get(), name); }
 
-			RV init_graphic(const GraphicsPipelineStateDesc& desc);
-			RV init_compute(const ComputePipelineStateDesc& desc);
-		};
-	}
+            RV init_graphic(const GraphicsPipelineStateDesc& desc);
+            RV init_compute(const ComputePipelineStateDesc& desc);
+        };
+    }
 }

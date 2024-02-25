@@ -57,8 +57,8 @@ namespace Luna
             virtual void remove_component(typeinfo_t component_type) override { m_data.remove_component(component_type); }
             virtual void remove_all_components() override { m_data.remove_all_components(); }
             virtual void add_tag(entity_id_t tag) override { m_data.add_tag(tag); }
-			virtual void remove_tag(entity_id_t tag) override { m_data.remove_tag(tag); }
-			virtual void remove_all_tags() override { m_data.remove_all_tags(); }
+            virtual void remove_tag(entity_id_t tag) override { m_data.remove_tag(tag); }
+            virtual void remove_all_tags() override { m_data.remove_all_tags(); }
         };
     }
 } 

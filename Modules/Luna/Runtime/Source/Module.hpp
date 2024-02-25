@@ -12,6 +12,6 @@
 
 namespace Luna
 {
-	void module_init();
-	void module_close();
+    void module_init();
+    void module_close();
 }

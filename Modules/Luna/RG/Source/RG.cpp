@@ -20,23 +20,23 @@ namespace Luna
         struct RGModule : public Module
         {
             virtual const c8* get_name() override { return "RG"; }
-			virtual RV on_register() override
-			{
-				return add_dependency_module(this, module_rhi());
-			}
-			virtual RV on_init() override
-			{
-				register_boxed_type<RenderGraph>();
+            virtual RV on_register() override
+            {
+                return add_dependency_module(this, module_rhi());
+            }
+            virtual RV on_init() override
+            {
+                register_boxed_type<RenderGraph>();
                 impl_interface_for_type<RenderGraph, IRenderGraph, IRenderPassContext, IRenderGraphCompiler>();
                 g_render_pass_types_mtx = new_mutex();
                 return ok;
-			}
-			virtual void on_close() override
-			{
-				g_render_pass_types.clear();
+            }
+            virtual void on_close() override
+            {
+                g_render_pass_types.clear();
                 g_render_pass_types.shrink_to_fit();
                 g_render_pass_types_mtx.reset();
-			}
+            }
         };
     }
     LUNA_RG_API Module* module_rg()

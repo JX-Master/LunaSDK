@@ -13,15 +13,15 @@
 
 namespace Luna
 {
-	void edit_enum(const c8* name, typeinfo_t type, void* obj);
+    void edit_enum(const c8* name, typeinfo_t type, void* obj);
 
-	template <typename _Ty>
-	void edit_enum(const c8* name, _Ty& obj)
-	{
-		edit_enum(name, typeof<_Ty>(), &obj);
-	}
+    template <typename _Ty>
+    void edit_enum(const c8* name, _Ty& obj)
+    {
+        edit_enum(name, typeof<_Ty>(), &obj);
+    }
 
-	void edit_asset(const c8* name, Asset::asset_t& asset);
+    void edit_asset(const c8* name, Asset::asset_t& asset);
 
-	void edit_object(object_t obj);
+    void edit_object(object_t obj);
 }

@@ -14,36 +14,36 @@
 #include "../Interface.hpp"
 namespace Luna
 {
-	struct Signal : ISignal
-	{
-		lustruct("Signal", "{95a2e5b2-d48a-4f19-bfb8-22c273c0ad4b}");
-		luiimpl();
+    struct Signal : ISignal
+    {
+        lustruct("Signal", "{95a2e5b2-d48a-4f19-bfb8-22c273c0ad4b}");
+        luiimpl();
 
-		opaque_t m_handle;
+        opaque_t m_handle;
 
-		Signal(bool manual_reset)
-		{
-			m_handle = OS::new_signal(manual_reset);
-		}
-		~Signal()
-		{
-			OS::delete_signal(m_handle);
-		}
-		virtual void wait() override
-		{
-			OS::wait_signal(m_handle);
-		}
-		virtual bool try_wait() override
-		{
-			return OS::try_wait_signal(m_handle);
-		}
-		virtual void trigger() override
-		{
-			OS::trigger_signal(m_handle);
-		}
-		virtual void reset() override
-		{
-			OS::reset_signal(m_handle);
-		}
-	};
+        Signal(bool manual_reset)
+        {
+            m_handle = OS::new_signal(manual_reset);
+        }
+        ~Signal()
+        {
+            OS::delete_signal(m_handle);
+        }
+        virtual void wait() override
+        {
+            OS::wait_signal(m_handle);
+        }
+        virtual bool try_wait() override
+        {
+            return OS::try_wait_signal(m_handle);
+        }
+        virtual void trigger() override
+        {
+            OS::trigger_signal(m_handle);
+        }
+        virtual void reset() override
+        {
+            OS::reset_signal(m_handle);
+        }
+    };
 }

@@ -19,41 +19,41 @@ namespace Luna
 {
     namespace OS
     {
-		void time_init();
+        void time_init();
         void file_init();
         void std_io_init();
         void std_io_close();
 
-		void init()
-		{
-			time_init();
+        void init()
+        {
+            time_init();
             file_init();
             std_io_init();
-		}
+        }
 
-		void close()
+        void close()
         {
             std_io_close();
         }
 
-		u32 get_num_processors()
-		{
+        u32 get_num_processors()
+        {
 #ifdef LUNA_PLATFORM_MACOS
-			size_t size;
-			int name[2];
-			size = 4;
-			name[0] = CTL_HW;
-			name[1] = HW_NCPU;
-			int processor_count;
-			if (sysctl(name, 2, &processor_count, &size, nullptr, 0) != 0)
-			{
-				processor_count = 1;
-			}
-			return (u32)processor_count;
+            size_t size;
+            int name[2];
+            size = 4;
+            name[0] = CTL_HW;
+            name[1] = HW_NCPU;
+            int processor_count;
+            if (sysctl(name, 2, &processor_count, &size, nullptr, 0) != 0)
+            {
+                processor_count = 1;
+            }
+            return (u32)processor_count;
 #else
-			int processor_count = max<int>(sysconf(_SC_NPROCESSORS_ONLN), 1);
-			return (u32)processor_count;
+            int processor_count = max<int>(sysconf(_SC_NPROCESSORS_ONLN), 1);
+            return (u32)processor_count;
 #endif
-		}
+        }
     }
 }

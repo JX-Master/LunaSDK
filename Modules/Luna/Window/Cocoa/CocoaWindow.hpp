@@ -17,10 +17,10 @@ namespace Luna
     namespace Window
     {
         //! @addtogroup Window
-		//! @{
+        //! @{
         
         //! @interface ICocoaWindow
-		//! Implemented by window object on macOS platform.
+        //! Implemented by window object on macOS platform.
         struct ICocoaWindow : virtual IWindow
         {
             luiid("{f9ac2644-eb2d-4394-b653-611bed104bb9}");

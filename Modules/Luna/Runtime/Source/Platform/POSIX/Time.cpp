@@ -21,21 +21,21 @@ namespace Luna
     namespace OS
     {
 #ifdef LUNA_PLATFORM_MACOS
-		f64 g_ticks_per_second;
+        f64 g_ticks_per_second;
 #endif
         u64 g_start_ticks;
     
-		void time_init()
-		{
+        void time_init()
+        {
 #ifdef LUNA_PLATFORM_MACOS
             mach_timebase_info_data_t tb_info;
             luassert_msg_always(mach_timebase_info(&tb_info) == KERN_SUCCESS, "mach_timebase_info failed.");
             g_ticks_per_second = (1000000000.0 * (f64)tb_info.denom) / (f64)tb_info.numer;
 #endif
             g_start_ticks = get_ticks();
-		}
-		u64 get_ticks()
-		{
+        }
+        u64 get_ticks()
+        {
 #ifdef LUNA_PLATFORM_MACOS
             return mach_absolute_time();
 #else
@@ -43,26 +43,26 @@ namespace Luna
             clock_gettime(CLOCK_MONOTONIC, &spec);
             return (i64(spec.tv_sec) * 1000000000U + spec.tv_nsec);
 #endif
-		}
-		f64 get_ticks_per_second()
-		{
+        }
+        f64 get_ticks_per_second()
+        {
 #ifdef LUNA_PLATFORM_MACOS
-			return g_ticks_per_second;
+            return g_ticks_per_second;
 #else
-			return 1000000000.0;
+            return 1000000000.0;
 #endif
-		}
+        }
         i64 get_utc_timestamp()
         {
             time_t t = time(nullptr);
             return (i64)t;
         }
-	    i64 get_local_timestamp()
+        i64 get_local_timestamp()
         {
             time_t t = time(nullptr);
             return utc_timestamp_to_local_timestamp((i64)t);
         }
-	    i64 local_timestamp_to_utc_timestamp(i64 local_ts)
+        i64 local_timestamp_to_utc_timestamp(i64 local_ts)
         {
             tm dt;
             time_t t = (time_t)local_ts;
@@ -71,13 +71,13 @@ namespace Luna
             // mktime returns utc timestamp from local date time, which is what we need here.
             return (i64)mktime(&dt);
         }
-	    i64 utc_timestamp_to_local_timestamp(i64 utc_ts)
+        i64 utc_timestamp_to_local_timestamp(i64 utc_ts)
         {
             i64 offset = local_timestamp_to_utc_timestamp(utc_ts);
             offset -= utc_ts;
             return utc_ts - offset;
         }
-	    DateTime timestamp_to_datetime(i64 timestamp)
+        DateTime timestamp_to_datetime(i64 timestamp)
         {
             tm dt;
             time_t t = (time_t)timestamp;
@@ -92,7 +92,7 @@ namespace Luna
             dt_r.day_of_week = dt.tm_wday;
             return dt_r;
         }
-	    i64 datetime_to_timestamp(const DateTime& datetime)
+        i64 datetime_to_timestamp(const DateTime& datetime)
         {
             tm dt;
             dt.tm_year = datetime.year - 1900;

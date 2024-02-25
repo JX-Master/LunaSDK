@@ -12,10 +12,10 @@
 #include "../Application.hpp"
 namespace Luna
 {
-	namespace Window
-	{
-		extern StartupParams g_startup_params;
-		RV platform_init();
-		void platform_close();
-	}
+    namespace Window
+    {
+        extern StartupParams g_startup_params;
+        RV platform_init();
+        void platform_close();
+    }
 }

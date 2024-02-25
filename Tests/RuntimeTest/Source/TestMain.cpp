@@ -14,34 +14,34 @@ using namespace Luna;
 
 void run()
 {
-	set_log_to_platform_enabled(true);
-	auto handle = register_profiler_callback(memory_profiler_callback);
-	array_test();
-	vector_test();
-	open_hash_test();
-	ring_deque_test();
-	string_test();
-	list_test();
-	robin_hood_hash_test();
-	tuple_test();
-	name_test();
-	path_test();
-	error_test();
-	variant_test();
-	time_test();
-	file_test();
-	math_test();
-	serialize_test();
-	invoke_test();
-	function_test();
-	unicode_test();
-	unregister_profiler_callback(handle);
+    set_log_to_platform_enabled(true);
+    auto handle = register_profiler_callback(memory_profiler_callback);
+    array_test();
+    vector_test();
+    open_hash_test();
+    ring_deque_test();
+    string_test();
+    list_test();
+    robin_hood_hash_test();
+    tuple_test();
+    name_test();
+    path_test();
+    error_test();
+    variant_test();
+    time_test();
+    file_test();
+    math_test();
+    serialize_test();
+    invoke_test();
+    function_test();
+    unicode_test();
+    unregister_profiler_callback(handle);
 }
 
 int main()
 {
-	init();
-	run();
-	close();
-	return 0;
+    init();
+    run();
+    close();
+    return 0;
 }

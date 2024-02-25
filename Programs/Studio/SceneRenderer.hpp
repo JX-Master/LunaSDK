@@ -13,25 +13,25 @@
 namespace Luna
 {
     struct CameraCB
-	{
-		Float4x4U world_to_view;
-		Float4x4U view_to_proj;
-		Float4x4U world_to_proj;
-		Float4x4U proj_to_world;
-		Float4x4U view_to_world;
-		u32 screen_width;
-		u32 screen_height;
-	};
+    {
+        Float4x4U world_to_view;
+        Float4x4U view_to_proj;
+        Float4x4U world_to_proj;
+        Float4x4U proj_to_world;
+        Float4x4U view_to_world;
+        u32 screen_width;
+        u32 screen_height;
+    };
 
-	struct LightingParams
-	{
-		Float3U strength;
-		f32 attenuation_power;
-		Float3U direction;
-		u32 type;
-		Float3U position;
-		f32 spot_attenuation_power;
-	};
+    struct LightingParams
+    {
+        Float3U strength;
+        f32 attenuation_power;
+        Float3U direction;
+        u32 type;
+        Float3U position;
+        f32 spot_attenuation_power;
+    };
 
     enum class SceneRendererMode : u8
     {
@@ -86,7 +86,7 @@ namespace Luna
         // The name of enabled passes if frame_profiling is enabled.
         Vector<Name> enabled_passes;
         // The time intervals of each passes if frame_profiling is enabled.
-		Vector<f64> pass_time_intervals;
+        Vector<f64> pass_time_intervals;
 
         SceneRenderer(RHI::IDevice* device);
         const SceneRendererSettings& get_settings();
@@ -96,22 +96,22 @@ namespace Luna
         
     private:
         // Resources.
-		static constexpr usize LIGHTING_BUFFER = 0;
-		static constexpr usize DEPTH_BUFFER = 1;
-		static constexpr usize BACK_BUFFER = 2;
-		static constexpr usize WIREFRAME_BACK_BUFFER = 3;
+        static constexpr usize LIGHTING_BUFFER = 0;
+        static constexpr usize DEPTH_BUFFER = 1;
+        static constexpr usize BACK_BUFFER = 2;
+        static constexpr usize WIREFRAME_BACK_BUFFER = 3;
         static constexpr usize GBUFFER_VIS_BUFFER = 4;
-		static constexpr usize BASE_COLOR_ROUGHNESS_BUFFER = 5;
-		static constexpr usize NORMAL_METALLIC_BUFFER = 6;
-		static constexpr usize EMISSIVE_BUFFER = 7;
+        static constexpr usize BASE_COLOR_ROUGHNESS_BUFFER = 5;
+        static constexpr usize NORMAL_METALLIC_BUFFER = 6;
+        static constexpr usize EMISSIVE_BUFFER = 7;
 
-		// Passes.
-		static constexpr usize WIREFRAME_PASS = 0;
-		static constexpr usize GEOMETRY_PASS = 1;
+        // Passes.
+        static constexpr usize WIREFRAME_PASS = 0;
+        static constexpr usize GEOMETRY_PASS = 1;
         static constexpr usize BUFFER_VIS_PASS = 2;
-		static constexpr usize SKYBOX_PASS = 3;
-		static constexpr usize DEFERRED_LIGHTING_PASS = 4;
-		static constexpr usize TONE_MAPPING_PASS = 5;
+        static constexpr usize SKYBOX_PASS = 3;
+        static constexpr usize DEFERRED_LIGHTING_PASS = 4;
+        static constexpr usize TONE_MAPPING_PASS = 5;
         Ref<RHI::IDevice> m_device;
         SceneRendererSettings m_settings;
         Ref<RG::IRenderGraph> m_render_graph;

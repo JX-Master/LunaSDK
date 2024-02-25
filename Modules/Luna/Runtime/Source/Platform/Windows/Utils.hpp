@@ -13,14 +13,14 @@
 #include "../../OS.hpp"
 namespace Luna
 {
-	namespace OS
-	{
-		inline wchar_t* utf8_to_wchar_buffered(const c8* src)
-		{
-			usize len = utf8_to_utf16_len(src) + 1;
-			wchar_t* buf = (wchar_t*)memalloc(sizeof(wchar_t) * len);
-			utf8_to_utf16((c16*)buf, len, src);
-			return buf;
-		}
-	}
+    namespace OS
+    {
+        inline wchar_t* utf8_to_wchar_buffered(const c8* src)
+        {
+            usize len = utf8_to_utf16_len(src) + 1;
+            wchar_t* buf = (wchar_t*)memalloc(sizeof(wchar_t) * len);
+            utf8_to_utf16((c16*)buf, len, src);
+            return buf;
+        }
+    }
 }

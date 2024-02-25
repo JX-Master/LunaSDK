@@ -18,8 +18,8 @@ namespace Luna
         lustruct("DeferredLightingPassGlobalData", "{b2d383e3-34ee-4f7e-a100-07b07301a4b3}");
 
         Ref<RHI::IPipelineState> m_deferred_lighting_pass_pso;
-		Ref<RHI::IDescriptorSetLayout> m_deferred_lighting_pass_dlayout;
-		Ref<RHI::IPipelineLayout> m_deferred_lighting_pass_playout;
+        Ref<RHI::IDescriptorSetLayout> m_deferred_lighting_pass_dlayout;
+        Ref<RHI::IPipelineLayout> m_deferred_lighting_pass_playout;
 
         Ref<RHI::ITexture> m_default_skybox;
 

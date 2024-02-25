@@ -20,11 +20,11 @@ namespace Luna
     namespace ECS
     {
         template <typename _Ty>
-		inline void read_data(_Ty& value, u8*& data_ptr)
-		{
-			memcpy(&value, data_ptr, sizeof(_Ty));
-			data_ptr += sizeof(_Ty);
-		}
+        inline void read_data(_Ty& value, u8*& data_ptr)
+        {
+            memcpy(&value, data_ptr, sizeof(_Ty));
+            data_ptr += sizeof(_Ty);
+        }
 
         inline EntityResolver* get_resolver(World* world, HashMap<entity_id_t, EntityResolver>& resolvers, 
             entity_id_t id)
@@ -34,15 +34,15 @@ namespace Luna
             {
                 auto record = world->get_entity_record(id);
                 if (!record)
-				{
-					log_warning("ECS", "TaskContext::end - Invalid entity ID was specified in the context, the entity may be removed or not created. All operations to the entity will be ignored.");
+                {
+                    log_warning("ECS", "TaskContext::end - Invalid entity ID was specified in the context, the entity may be removed or not created. All operations to the entity will be ignored.");
                     return nullptr;
-				}
+                }
                 EntityResolver resolver;
                 resolver.m_src_cluster = record->m_cluster;
                 resolver.m_src_index = record->m_index;
                 resolver.m_component_types.assign(record->m_cluster->m_component_types);
-				resolver.m_tags.assign(record->m_cluster->m_tags);
+                resolver.m_tags.assign(record->m_cluster->m_tags);
                 iter = resolvers.insert(make_pair(id, move(resolver))).first;
             }
             return &(iter->second);
@@ -50,13 +50,13 @@ namespace Luna
         void TaskContext::apply_change_list()
         {
             u8* data_ptr = m_data.m_ops.m_op_data.data();
-			u8* data_end = data_ptr + m_data.m_ops.m_op_data.size();
+            u8* data_end = data_ptr + m_data.m_ops.m_op_data.size();
             HashMap<entity_id_t, EntityResolver> resolvers;
             EntityResolver* current_resolver = nullptr;
             while (data_ptr < data_end)
-			{
+            {
                 ChangeListOpType op;
-				read_data(op, data_ptr);
+                read_data(op, data_ptr);
                 switch(op)
                 {
                 case ChangeListOpType::add_entity:
@@ -81,7 +81,7 @@ namespace Luna
                 case ChangeListOpType::set_target_entity:
                 {
                     entity_id_t id;
-				    read_data(id, data_ptr);
+                    read_data(id, data_ptr);
                     current_resolver = get_resolver(m_world, resolvers, id);
                 }
                 break;
@@ -89,9 +89,9 @@ namespace Luna
                 case ChangeListOpType::add_component_if_not_exists:
                 {
                     typeinfo_t component_type;
-				    usize index;
+                    usize index;
                     read_data(component_type, data_ptr);
-				    read_data(index, data_ptr);
+                    read_data(index, data_ptr);
                     if(current_resolver)
                     {
                         bool added = current_resolver->add_component(component_type);
@@ -171,71 +171,71 @@ namespace Luna
             auto id = JobSystem::allocate_job_id();
             Vector<JobSystem::job_id_t> wait_jobs;
             if (m_world->m_last_exclusive_task != JobSystem::INVALID_JOB_ID)
-			{
-				wait_jobs.push_back(m_world->m_last_exclusive_task);
-			}
+            {
+                wait_jobs.push_back(m_world->m_last_exclusive_task);
+            }
             m_world->remove_finished_tasks();
-			if (exec_mode == TaskExecutionMode::exclusive)
-			{
+            if (exec_mode == TaskExecutionMode::exclusive)
+            {
                 // Wait for all previous tasks.
-				for (auto& i : m_world->m_tasks)
-				{
-					wait_jobs.push_back(i.m_id);
-				}
+                for (auto& i : m_world->m_tasks)
+                {
+                    wait_jobs.push_back(i.m_id);
+                }
                 // Clear all tasks.
-				m_world->m_tasks.clear();
-				m_world->m_last_exclusive_task = id;
-			}
-			else
-			{
-				TaskScheduleData data;
-				for (usize i = 0; i < read_components.size(); ++i)
-				{
-					data.m_read_components.insert(read_components[i]);
-				}
-				for (usize i = 0; i < write_components.size(); ++i)
-				{
-					data.m_write_components.insert(write_components[i]);
-				}
-				// Resolve wait tasks.
-				for (auto& t : m_world->m_tasks)
-				{
-					bool wait_this_task = false;
-					// Block write for reads.
-					for (typeinfo_t i : data.m_read_components)
-					{
-						if (t.m_write_components.contains(i))
-						{
-							wait_this_task = true;
-							break;
-						}
-					}
-					if (!wait_this_task)
-					{
-						// Block read & write for writes.
-						for (typeinfo_t i : data.m_write_components)
-						{
-							if (t.m_read_components.contains(i) || t.m_write_components.contains(i))
-							{
-								wait_this_task = true;
-								break;
-							}
-						}
-					}
-					if (wait_this_task)
-					{
-						wait_jobs.push_back(t.m_id);
-					}
-				}
-				data.m_id = id;
-				m_world->m_tasks.push_back(move(data));
-			}
-			guard.unlock();
+                m_world->m_tasks.clear();
+                m_world->m_last_exclusive_task = id;
+            }
+            else
+            {
+                TaskScheduleData data;
+                for (usize i = 0; i < read_components.size(); ++i)
+                {
+                    data.m_read_components.insert(read_components[i]);
+                }
+                for (usize i = 0; i < write_components.size(); ++i)
+                {
+                    data.m_write_components.insert(write_components[i]);
+                }
+                // Resolve wait tasks.
+                for (auto& t : m_world->m_tasks)
+                {
+                    bool wait_this_task = false;
+                    // Block write for reads.
+                    for (typeinfo_t i : data.m_read_components)
+                    {
+                        if (t.m_write_components.contains(i))
+                        {
+                            wait_this_task = true;
+                            break;
+                        }
+                    }
+                    if (!wait_this_task)
+                    {
+                        // Block read & write for writes.
+                        for (typeinfo_t i : data.m_write_components)
+                        {
+                            if (t.m_read_components.contains(i) || t.m_write_components.contains(i))
+                            {
+                                wait_this_task = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (wait_this_task)
+                    {
+                        wait_jobs.push_back(t.m_id);
+                    }
+                }
+                data.m_id = id;
+                m_world->m_tasks.push_back(move(data));
+            }
+            guard.unlock();
             // Waits for all dependency tasks before running this task.
-			for (auto job : wait_jobs)
-			{
-				JobSystem::wait_job(job);
-			}
+            for (auto job : wait_jobs)
+            {
+                JobSystem::wait_job(job);
+            }
             return id;
         }
         void TaskContext::end_task(JobSystem::job_id_t id)
@@ -275,11 +275,11 @@ namespace Luna
         R<EntityAddress> TaskContext::get_entity(entity_id_t id)
         {
             EntityRecord* record = m_world->get_entity_record(id);
-			if (!record) return ECSError::entity_not_found();
+            if (!record) return ECSError::entity_not_found();
             EntityAddress ret;
             ret.cluster = record->m_cluster;
             ret.index = record->m_index;
-			return ret;
+            return ret;
         }
         void TaskContext::get_clusters(Vector<Cluster*>& result, filter_func_t* filter, void* userdata)
         {

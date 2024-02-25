@@ -14,23 +14,23 @@
 
 namespace Luna
 {
-	namespace Font
-	{
-		struct FontFileTTF : IFontFile
-		{
-			lustruct("Font::FontFileTTF", "{5ead091d-2a74-49b8-9201-f97b7d19685f}");
-			luiimpl();
+    namespace Font
+    {
+        struct FontFileTTF : IFontFile
+        {
+            lustruct("Font::FontFileTTF", "{5ead091d-2a74-49b8-9201-f97b7d19685f}");
+            luiimpl();
 
-			Blob m_data;
-			Vector<stbtt_fontinfo> m_infos;
+            Blob m_data;
+            Vector<stbtt_fontinfo> m_infos;
 
-			FontFileTTF() {}
+            FontFileTTF() {}
 
-			RV init(const byte_t* data, usize data_size);
-			virtual const Blob& get_data() override
-			{
-				return m_data;
-			}
+            RV init(const byte_t* data, usize data_size);
+            virtual const Blob& get_data() override
+            {
+                return m_data;
+            }
             virtual u32 count_fonts() override;
             virtual glyph_t find_glyph(u32 font_index, u32 codepoint) override;
             virtual f32 scale_for_pixel_height(u32 font_index, f32 pixels) override;
@@ -41,7 +41,7 @@ namespace Luna
             virtual RectI get_glyph_bounding_box(u32 font_index, glyph_t glyph) override;
             virtual RectI get_glyph_bitmap_box(u32 font_index, glyph_t glyph, f32 scale_x, f32 scale_y, f32 shift_x, f32 shift_y) override;
             virtual void render_glyph_bitmap(u32 font_index, glyph_t glyph, void* output, i32 out_w, i32 out_h, i32 out_row_pitch,
-				f32 scale_x, f32 scale_y, f32 shift_x, f32 shift_y) override;
-		};
-	}
+                f32 scale_x, f32 scale_y, f32 shift_x, f32 shift_y) override;
+        };
+    }
 }

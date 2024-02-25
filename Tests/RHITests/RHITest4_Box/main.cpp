@@ -44,11 +44,11 @@ f32 camera_rotation = 0.0f;
 
 RV start()
 {
-	lutry
-	{
-		auto dev = RHI::get_main_device();
+    lutry
+    {
+        auto dev = RHI::get_main_device();
 
-		using namespace RHI;
+        using namespace RHI;
         luset(dlayout, dev->new_descriptor_set_layout(DescriptorSetLayoutDesc({
             DescriptorSetLayoutBinding::uniform_buffer_view(0, 1, ShaderVisibilityFlag::vertex),
             DescriptorSetLayoutBinding::read_texture_view(TextureViewType::tex2d, 1, 1, ShaderVisibilityFlag::pixel),
@@ -104,28 +104,28 @@ RV start()
                 return float4(tex.Sample(tex_sampler, input.texcoord));
             })";
         auto compiler = ShaderCompiler::new_compiler();
-		compiler->set_source({ vs_shader_code, strlen(vs_shader_code)});
-		compiler->set_source_name("DemoAppVS");
-		compiler->set_entry_point("main");
-		compiler->set_target_format(RHI::get_current_platform_shader_target_format());
-		compiler->set_shader_type(ShaderCompiler::ShaderType::vertex);
-		compiler->set_shader_model(6, 0);
-		compiler->set_optimization_level(ShaderCompiler::OptimizationLevel::full);
-		luexp(compiler->compile());
-		auto vs_data = compiler->get_output();
-		Blob vs(vs_data.data(), vs_data.size());
+        compiler->set_source({ vs_shader_code, strlen(vs_shader_code)});
+        compiler->set_source_name("DemoAppVS");
+        compiler->set_entry_point("main");
+        compiler->set_target_format(RHI::get_current_platform_shader_target_format());
+        compiler->set_shader_type(ShaderCompiler::ShaderType::vertex);
+        compiler->set_shader_model(6, 0);
+        compiler->set_optimization_level(ShaderCompiler::OptimizationLevel::full);
+        luexp(compiler->compile());
+        auto vs_data = compiler->get_output();
+        Blob vs(vs_data.data(), vs_data.size());
 
         compiler->reset();
-		compiler->set_source({ ps_shader_code, strlen(ps_shader_code)});
-		compiler->set_source_name("DemoAppPS");
-		compiler->set_entry_point("main");
-		compiler->set_target_format(RHI::get_current_platform_shader_target_format());
-		compiler->set_shader_type(ShaderCompiler::ShaderType::pixel);
-		compiler->set_shader_model(6, 0);
-		compiler->set_optimization_level(ShaderCompiler::OptimizationLevel::full);
-		luexp(compiler->compile());
-		auto ps_data = compiler->get_output();
-		Blob ps(ps_data.data(), ps_data.size());
+        compiler->set_source({ ps_shader_code, strlen(ps_shader_code)});
+        compiler->set_source_name("DemoAppPS");
+        compiler->set_entry_point("main");
+        compiler->set_target_format(RHI::get_current_platform_shader_target_format());
+        compiler->set_shader_type(ShaderCompiler::ShaderType::pixel);
+        compiler->set_shader_model(6, 0);
+        compiler->set_optimization_level(ShaderCompiler::OptimizationLevel::full);
+        luexp(compiler->compile());
+        auto ps_data = compiler->get_output();
+        Blob ps(ps_data.data(), ps_data.size());
 
         IDescriptorSetLayout* dl = dlayout;
 
@@ -133,23 +133,23 @@ RV start()
             PipelineLayoutFlag::allow_input_assembler_input_layout)));
         GraphicsPipelineStateDesc ps_desc;
         ps_desc.primitive_topology = PrimitiveTopology::triangle_list;
-		ps_desc.blend_state = BlendDesc({ 
+        ps_desc.blend_state = BlendDesc({ 
             AttachmentBlendDesc(false, BlendFactor::src_alpha, BlendFactor::one_minus_src_alpha, BlendOp::add, BlendFactor::one_minus_src_alpha, BlendFactor::zero, BlendOp::add, ColorWriteMask::all) });
-		ps_desc.rasterizer_state = RasterizerDesc(FillMode::solid, CullMode::back, 0, 0.0f, 0.0f, false, true);
-		ps_desc.depth_stencil_state = DepthStencilDesc(true, true, CompareFunction::less_equal, false, 0x00, 0x00, DepthStencilOpDesc(), DepthStencilOpDesc());
-		ps_desc.ib_strip_cut_value = IndexBufferStripCutValue::disabled;
+        ps_desc.rasterizer_state = RasterizerDesc(FillMode::solid, CullMode::back, 0, 0.0f, 0.0f, false, true);
+        ps_desc.depth_stencil_state = DepthStencilDesc(true, true, CompareFunction::less_equal, false, 0x00, 0x00, DepthStencilOpDesc(), DepthStencilOpDesc());
+        ps_desc.ib_strip_cut_value = IndexBufferStripCutValue::disabled;
         InputBindingDesc bindings[] = {InputBindingDesc(0, sizeof(Vertex), InputRate::per_vertex)};
         InputAttributeDesc attributes[] = {
             InputAttributeDesc("POSITION", 0, 0, 0, 0, Format::rgb32_float),
             InputAttributeDesc("TEXCOORD", 0, 1, 0, 12, Format::rg32_float)
         };
         ps_desc.input_layout = InputLayoutDesc({bindings, 1}, {attributes, 2});
-		ps_desc.vs = vs.cspan();
-		ps_desc.ps = ps.cspan();
-		ps_desc.pipeline_layout = playout;
-		ps_desc.num_color_attachments = 1;
-		ps_desc.color_formats[0] = Format::bgra8_unorm;
-		ps_desc.depth_stencil_format = Format::d32_float;
+        ps_desc.vs = vs.cspan();
+        ps_desc.ps = ps.cspan();
+        ps_desc.pipeline_layout = playout;
+        ps_desc.num_color_attachments = 1;
+        ps_desc.color_formats[0] = Format::bgra8_unorm;
+        ps_desc.depth_stencil_format = Format::d32_float;
         luset(pso, dev->new_graphics_pipeline_state(ps_desc));
         
         auto window_size = get_window()->get_framebuffer_size();
@@ -201,9 +201,9 @@ RV start()
         luexp(copy_resource_data(upload_cmdbuf, {
                 CopyResourceData::write_buffer(vb, 0, vertices, sizeof(vertices)),
                 CopyResourceData::write_buffer(ib, 0, indices, sizeof(indices)),
-				CopyResourceData::write_texture(file_tex, SubresourceIndex(0, 0), 0, 0, 0, 
-					image_data.data(), image_desc.width * 4, image_desc.width * image_desc.height * 4, 
-					image_desc.width, image_desc.height, 1)}));
+                CopyResourceData::write_texture(file_tex, SubresourceIndex(0, 0), 0, 0, 0, 
+                    image_data.data(), image_desc.width * 4, image_desc.width * image_desc.height * 4, 
+                    image_desc.width, image_desc.height, 1)}));
         luexp(desc_set->update_descriptors(
             {
                 WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(cb)),
@@ -211,14 +211,14 @@ RV start()
                 WriteDescriptorSet::sampler(2, SamplerDesc(Filter::linear, Filter::linear, Filter::linear, TextureAddressMode::clamp,
                         TextureAddressMode::clamp, TextureAddressMode::clamp))
             }));
-	}
-	lucatchret;
-	return ok;
+    }
+    lucatchret;
+    return ok;
 }
 
 void draw()
 {
-	lutry
+    lutry
     {
         camera_rotation += 1.0f;
         Float3 camera_pos(cosf(camera_rotation / 180.0f * PI) * 3.0f, 1.0f, sinf(camera_rotation / 180.0f * PI) * 3.0f);
@@ -232,7 +232,7 @@ void draw()
 
         using namespace RHI;
 
-		auto cmdbuf = get_command_buffer();
+        auto cmdbuf = get_command_buffer();
         cmdbuf->resource_barrier(
             {
                 {cb, BufferStateFlag::automatic, BufferStateFlag::uniform_buffer_vs, ResourceBarrierFlag::none},
@@ -262,14 +262,14 @@ void draw()
         cmdbuf->end_render_pass();
     }
     lucatch
-	{
-		lupanic();
-	}
+    {
+        lupanic();
+    }
 }
 
 void resize(u32 width, u32 height)
 {
-	lutry
+    lutry
     {
         using namespace RHI;
         auto dev = get_main_device();
@@ -277,43 +277,43 @@ void resize(u32 width, u32 height)
             TextureUsageFlag::depth_stencil_attachment, width, height, 1, 1)));
     }
     lucatch
-	{
-		lupanic();
-	}
+    {
+        lupanic();
+    }
 }
 
 void cleanup()
 {
-	dlayout.reset();
-	desc_set.reset();
-	playout.reset();
-	pso.reset();
-	depth_tex.reset();
-	vb.reset();
-	ib.reset();
-	cb.reset();
-	file_tex.reset();
+    dlayout.reset();
+    desc_set.reset();
+    playout.reset();
+    pso.reset();
+    depth_tex.reset();
+    vb.reset();
+    ib.reset();
+    cb.reset();
+    file_tex.reset();
 }
 
 void run_app()
 {
-	register_init_func(start);
-	register_close_func(cleanup);
-	register_resize_func(resize);
-	register_draw_func(draw);
-	lupanic_if_failed(run());
+    register_init_func(start);
+    register_close_func(cleanup);
+    register_resize_func(resize);
+    register_draw_func(draw);
+    lupanic_if_failed(run());
 }
 
 int main()
 {
-	if (!Luna::init()) return 0;
+    if (!Luna::init()) return 0;
     lupanic_if_failed(add_modules({module_rhi_test_bed(), module_shader_compiler(), module_image()}));
-	auto r = init_modules();
-	if (failed(r))
-	{
-		log_error("%s", explain(r.errcode()));
-	}
-	else run_app();
-	Luna::close();
-	return 0;
+    auto r = init_modules();
+    if (failed(r))
+    {
+        log_error("%s", explain(r.errcode()));
+    }
+    else run_app();
+    Luna::close();
+    return 0;
 }

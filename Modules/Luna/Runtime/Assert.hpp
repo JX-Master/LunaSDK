@@ -24,18 +24,18 @@
 
 namespace Luna
 {
-	//! Reports an assertion failure information to the underlying OS or CRT.
-	//! @details This function works in all builds, and can be called even if the runtime is not initialized.
-	//! The behavior of this function depends on the OS/CRT implementation, but in general it will 
-	//! present an error message box and then terminate the program.
-	//! @param[in] msg The UTF-8 error message to show.
-	//! @param[in] file The UTF-8 name of the file that causes the panic.
-	//! @param[in] line The code line the assertion is placed.
-	LUNA_RUNTIME_API void assert_fail(const c8* msg, const c8* file, u32 line);
+    //! Reports an assertion failure information to the underlying OS or CRT.
+    //! @details This function works in all builds, and can be called even if the runtime is not initialized.
+    //! The behavior of this function depends on the OS/CRT implementation, but in general it will 
+    //! present an error message box and then terminate the program.
+    //! @param[in] msg The UTF-8 error message to show.
+    //! @param[in] file The UTF-8 name of the file that causes the panic.
+    //! @param[in] line The code line the assertion is placed.
+    LUNA_RUNTIME_API void assert_fail(const c8* msg, const c8* file, u32 line);
 
-	//! Triggers a debug break, pauses the program and attaches the debugger to the program.
-	//! @details This only works in debug build.
-	LUNA_RUNTIME_API void debug_break();
+    //! Triggers a debug break, pauses the program and attaches the debugger to the program.
+    //! @details This only works in debug build.
+    LUNA_RUNTIME_API void debug_break();
 }
 
 #define luna_u8_string_(s) u8 ## s

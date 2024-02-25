@@ -12,8 +12,8 @@
 
 namespace Luna
 {
-	RV register_static_texture_asset_type();
-	void register_texture_editor();
-	void register_texture_importer();
-	Name get_static_texture_asset_type();
+    RV register_static_texture_asset_type();
+    void register_texture_editor();
+    void register_texture_importer();
+    Name get_static_texture_asset_type();
 }

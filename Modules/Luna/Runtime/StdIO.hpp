@@ -16,7 +16,7 @@
 namespace Luna
 {
     //! @addtogroup Runtime
-	//! @{
+    //! @{
 
     //! @name Standard input/output
     //! @{
@@ -39,5 +39,5 @@ namespace Luna
 
     //! @}
 
-	//! @}
+    //! @}
 }

@@ -10,14 +10,14 @@
 #include "../../HID.hpp"
 namespace Luna
 {
-	namespace HID
-	{
-		RV platform_init()
-		{
-			return ok;
-		}
-		void platform_close()
-		{
-		}
-	}
+    namespace HID
+    {
+        RV platform_init()
+        {
+            return ok;
+        }
+        void platform_close()
+        {
+        }
+    }
 }

@@ -20,7 +20,7 @@ namespace Luna
         lutry
         {
             luset(m_deferred_lighting_pass_dlayout, device->new_descriptor_set_layout(DescriptorSetLayoutDesc({
-						DescriptorSetLayoutBinding::uniform_buffer_view(0, 1, ShaderVisibilityFlag::compute),
+                        DescriptorSetLayoutBinding::uniform_buffer_view(0, 1, ShaderVisibilityFlag::compute),
                         DescriptorSetLayoutBinding::uniform_buffer_view(1, 1, ShaderVisibilityFlag::compute),
                         DescriptorSetLayoutBinding::read_buffer_view(2, 1, ShaderVisibilityFlag::compute),
                         DescriptorSetLayoutBinding::read_texture_view(TextureViewType::tex2d, 3, 1, ShaderVisibilityFlag::compute),
@@ -29,20 +29,20 @@ namespace Luna
                         DescriptorSetLayoutBinding::read_texture_view(TextureViewType::tex2d, 6, 1, ShaderVisibilityFlag::compute),
                         DescriptorSetLayoutBinding::read_texture_view(TextureViewType::tex2d, 7, 1, ShaderVisibilityFlag::compute),
                         DescriptorSetLayoutBinding::read_texture_view(TextureViewType::tex2d, 8, 1, ShaderVisibilityFlag::compute),
-						DescriptorSetLayoutBinding::read_write_texture_view(TextureViewType::tex2d, 9, 1, ShaderVisibilityFlag::compute),
-						DescriptorSetLayoutBinding::sampler(10, 1, ShaderVisibilityFlag::compute)
-						})));
+                        DescriptorSetLayoutBinding::read_write_texture_view(TextureViewType::tex2d, 9, 1, ShaderVisibilityFlag::compute),
+                        DescriptorSetLayoutBinding::sampler(10, 1, ShaderVisibilityFlag::compute)
+                        })));
             auto dlayout = m_deferred_lighting_pass_dlayout.get();
-			luset(m_deferred_lighting_pass_playout, device->new_pipeline_layout(PipelineLayoutDesc({ &dlayout, 1 },
-				PipelineLayoutFlag::deny_vertex_shader_access |
-				PipelineLayoutFlag::deny_pixel_shader_access)));
+            luset(m_deferred_lighting_pass_playout, device->new_pipeline_layout(PipelineLayoutDesc({ &dlayout, 1 },
+                PipelineLayoutFlag::deny_vertex_shader_access |
+                PipelineLayoutFlag::deny_pixel_shader_access)));
 
             lulet(cs_blob, compile_shader("Shaders/DeferredLighting.hlsl", ShaderCompiler::ShaderType::compute));
 
-			ComputePipelineStateDesc ps_desc;
-			ps_desc.cs = cs_blob.cspan();
-			ps_desc.pipeline_layout = m_deferred_lighting_pass_playout;
-			luset(m_deferred_lighting_pass_pso, device->new_compute_pipeline_state(ps_desc));
+            ComputePipelineStateDesc ps_desc;
+            ps_desc.cs = cs_blob.cspan();
+            ps_desc.pipeline_layout = m_deferred_lighting_pass_playout;
+            luset(m_deferred_lighting_pass_pso, device->new_compute_pipeline_state(ps_desc));
 
             luset(m_default_skybox, device->new_texture(MemoryType::local, TextureDesc::tex2d(Format::rgba8_unorm, 
                 TextureUsageFlag::read_texture | TextureUsageFlag::copy_dest, 1, 1, 1, 1)));
@@ -192,47 +192,47 @@ namespace Luna
         lutry
         {
             DeferredLightingPassGlobalData* data = (DeferredLightingPassGlobalData*)userdata;
-			auto scene_texture = compiler->get_output_resource("scene_texture");
-			auto depth_texture = compiler->get_input_resource("depth_texture");
+            auto scene_texture = compiler->get_output_resource("scene_texture");
+            auto depth_texture = compiler->get_input_resource("depth_texture");
             auto base_color_roughness_texture = compiler->get_input_resource("base_color_roughness_texture");
             auto normal_metallic_texture = compiler->get_input_resource("normal_metallic_texture");
             auto emissive_texture = compiler->get_input_resource("emissive_texture");
-			if(scene_texture == RG::INVALID_RESOURCE) return set_error(BasicError::bad_arguments(), "DeferredLightingPass: Output \"scene_texture\" is not specified.");
-			if(depth_texture == RG::INVALID_RESOURCE) return set_error(BasicError::bad_arguments(), "DeferredLightingPass: Input \"depth_texture\" is not specified.");
+            if(scene_texture == RG::INVALID_RESOURCE) return set_error(BasicError::bad_arguments(), "DeferredLightingPass: Output \"scene_texture\" is not specified.");
+            if(depth_texture == RG::INVALID_RESOURCE) return set_error(BasicError::bad_arguments(), "DeferredLightingPass: Input \"depth_texture\" is not specified.");
             if(base_color_roughness_texture == RG::INVALID_RESOURCE) return set_error(BasicError::bad_arguments(), "DeferredLightingPass: Input \"base_color_roughness_texture\" is not specified.");
             if(normal_metallic_texture == RG::INVALID_RESOURCE) return set_error(BasicError::bad_arguments(), "DeferredLightingPass: Input \"normal_metallic_texture\" is not specified.");
             if(emissive_texture == RG::INVALID_RESOURCE) return set_error(BasicError::bad_arguments(), "DeferredLightingPass: Input \"emissive_texture\" is not specified.");
-			RG::ResourceDesc desc = compiler->get_resource_desc(scene_texture);
-			if (desc.texture.format != RHI::Format::rgba32_float)
-			{
-				return set_error(BasicError::bad_arguments(), "DeferredLightingPass: Invalid format for \"scene_texture\" is specified. \"scene_texture\" must be Format::rgba32_float.");
-			}
-			desc.texture.usages |= RHI::TextureUsageFlag::read_write_texture;
-			compiler->set_resource_desc(scene_texture, desc);
+            RG::ResourceDesc desc = compiler->get_resource_desc(scene_texture);
+            if (desc.texture.format != RHI::Format::rgba32_float)
+            {
+                return set_error(BasicError::bad_arguments(), "DeferredLightingPass: Invalid format for \"scene_texture\" is specified. \"scene_texture\" must be Format::rgba32_float.");
+            }
+            desc.texture.usages |= RHI::TextureUsageFlag::read_write_texture;
+            compiler->set_resource_desc(scene_texture, desc);
 
-			desc = compiler->get_resource_desc(depth_texture);
-			if (desc.texture.format != RHI::Format::d32_float)
-			{
-				return set_error(BasicError::bad_arguments(), "DeferredLightingPass: Invalid format for \"depth_texture\" is specified. \"depth_texture\" must be Format::d32_float.");
-			}
-			desc.texture.usages |= RHI::TextureUsageFlag::read_texture;
-			compiler->set_resource_desc(depth_texture, desc);
+            desc = compiler->get_resource_desc(depth_texture);
+            if (desc.texture.format != RHI::Format::d32_float)
+            {
+                return set_error(BasicError::bad_arguments(), "DeferredLightingPass: Invalid format for \"depth_texture\" is specified. \"depth_texture\" must be Format::d32_float.");
+            }
+            desc.texture.usages |= RHI::TextureUsageFlag::read_texture;
+            compiler->set_resource_desc(depth_texture, desc);
 
             desc = compiler->get_resource_desc(base_color_roughness_texture);
-			desc.texture.usages |= RHI::TextureUsageFlag::read_texture;
-			compiler->set_resource_desc(base_color_roughness_texture, desc);
+            desc.texture.usages |= RHI::TextureUsageFlag::read_texture;
+            compiler->set_resource_desc(base_color_roughness_texture, desc);
 
             desc = compiler->get_resource_desc(normal_metallic_texture);
-			desc.texture.usages |= RHI::TextureUsageFlag::read_texture;
-			compiler->set_resource_desc(normal_metallic_texture, desc);
+            desc.texture.usages |= RHI::TextureUsageFlag::read_texture;
+            compiler->set_resource_desc(normal_metallic_texture, desc);
 
             desc = compiler->get_resource_desc(emissive_texture);
-			desc.texture.usages |= RHI::TextureUsageFlag::read_texture;
-			compiler->set_resource_desc(emissive_texture, desc);
+            desc.texture.usages |= RHI::TextureUsageFlag::read_texture;
+            compiler->set_resource_desc(emissive_texture, desc);
 
-			Ref<DeferredLightingPass> pass = new_object<DeferredLightingPass>();
+            Ref<DeferredLightingPass> pass = new_object<DeferredLightingPass>();
             luexp(pass->init(data));
-			compiler->set_render_pass_object(pass);
+            compiler->set_render_pass_object(pass);
         }
         lucatchret;
         return ok;

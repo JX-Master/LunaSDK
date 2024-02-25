@@ -52,18 +52,18 @@ namespace Luna
         usize memsize(void* ptr, usize alignment /* = 0 */)
         {
             if (!ptr) return 0;
-			if (alignment <= MAX_ALIGN)
-			{
+            if (alignment <= MAX_ALIGN)
+            {
 #ifdef LUNA_PLATFORM_MACOS
-				return malloc_size(ptr);
+                return malloc_size(ptr);
 #else
                 return malloc_usable_size(ptr);
 #endif
-			}
-			isize offset = *(((isize*)ptr) - 1);
-			void* origin_ptr = (void*)(((usize)ptr) - offset);
+            }
+            isize offset = *(((isize*)ptr) - 1);
+            void* origin_ptr = (void*)(((usize)ptr) - offset);
 #ifdef LUNA_PLATFORM_MACOS
-			return malloc_size(origin_ptr) - offset;
+            return malloc_size(origin_ptr) - offset;
 #else
             return malloc_usable_size(origin_ptr) - offset;
 #endif

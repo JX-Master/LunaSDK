@@ -12,7 +12,7 @@
 
 namespace Luna
 {
-	Name get_material_asset_type();
-	void register_material_asset_type();
-	void register_material_editor();
+    Name get_material_asset_type();
+    void register_material_asset_type();
+    void register_material_editor();
 }

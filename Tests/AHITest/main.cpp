@@ -208,12 +208,12 @@ RV run()
         luexp(add_modules({module_ahi(), module_rhi(), module_window(), module_imgui()}));
         luexp(init_modules());
         lulet(window, Window::new_window("Luna Studio - Open Project", Window::WindowDisplaySettings::as_windowed(Window::DEFAULT_POS, Window::DEFAULT_POS, 1000, 500)));
-		auto dev = RHI::get_main_device();
+        auto dev = RHI::get_main_device();
         u32 graphics_queue = U32_MAX;
         {
             u32 num_queues = dev->get_num_command_queues();
             for (u32 i = 0; i < num_queues; ++i)
-		    {
+            {
                 auto desc = dev->get_command_queue_desc(i);
                 if (desc.type == RHI::CommandQueueType::graphics)
                 {
@@ -223,7 +223,7 @@ RV run()
             }
         }
         lulet(swap_chain, dev->new_swap_chain(graphics_queue, window, RHI::SwapChainDesc({0, 0, 2, RHI::Format::bgra8_unorm, true})));
-		lulet(cmdbuf, dev->new_command_buffer(graphics_queue));
+        lulet(cmdbuf, dev->new_command_buffer(graphics_queue));
         window->get_close_event().add_handler([](Window::IWindow* window) { window->close(); });
 
         Vector<Ref<AHI::IAdapter>> playback_adapters;
@@ -234,38 +234,38 @@ RV run()
         Vector<AudioSource> audio_sources;
 
         // Create back buffer.
-		u32 w = 0, h = 0;
-		// Create ImGui context.
-		ImGuiUtils::set_active_window(window);
+        u32 w = 0, h = 0;
+        // Create ImGui context.
+        ImGuiUtils::set_active_window(window);
         while(true)
         {
             Window::poll_events();
-			if (window->is_closed())
-			{
-				break;
-			}
+            if (window->is_closed())
+            {
+                break;
+            }
             if (window->is_minimized())
-			{
-				sleep(100);
-				continue;
-			}
+            {
+                sleep(100);
+                continue;
+            }
             // Recreate the back buffer if needed.
-			auto fb_sz = window->get_framebuffer_size();
-			if (fb_sz.x && fb_sz.y && (fb_sz.x != w || fb_sz.y != h))
-			{
-				luexp(swap_chain->reset({fb_sz.x, fb_sz.y, 2, RHI::Format::unknown, true}));
-				f32 clear_color[] = { 0.0f, 0.0f, 0.0f, 1.0f };
-				w = fb_sz.x;
-				h = fb_sz.y;
-			}
+            auto fb_sz = window->get_framebuffer_size();
+            if (fb_sz.x && fb_sz.y && (fb_sz.x != w || fb_sz.y != h))
+            {
+                luexp(swap_chain->reset({fb_sz.x, fb_sz.y, 2, RHI::Format::unknown, true}));
+                f32 clear_color[] = { 0.0f, 0.0f, 0.0f, 1.0f };
+                w = fb_sz.x;
+                h = fb_sz.y;
+            }
             auto sz = window->get_size();
-			ImGuiUtils::update_io();
-			ImGui::NewFrame();
+            ImGuiUtils::update_io();
+            ImGui::NewFrame();
             {
                 using namespace ImGui;
-				SetNextWindowPos({ 0.0f, 0.0f });
-				SetNextWindowSize({ (f32)sz.x, (f32)sz.y });
-				Begin("AHITest", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse);
+                SetNextWindowPos({ 0.0f, 0.0f });
+                SetNextWindowSize({ (f32)sz.x, (f32)sz.y });
+                Begin("AHITest", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse);
 
                 if(CollapsingHeader("Adapters and formats"))
                 {
@@ -363,21 +363,21 @@ RV run()
                 End();
             }
             ImGui::Render();
-			Float4U clear_color = { 0.0f, 0.0f, 0.0f, 1.0f };
+            Float4U clear_color = { 0.0f, 0.0f, 0.0f, 1.0f };
 
-			RHI::RenderPassDesc render_pass;
-			lulet(back_buffer, swap_chain->get_current_back_buffer());
-			render_pass.color_attachments[0] = RHI::ColorAttachment(back_buffer, RHI::LoadOp::clear, RHI::StoreOp::store, clear_color);
-			cmdbuf->begin_render_pass(render_pass);
-			cmdbuf->end_render_pass();
-			luexp(ImGuiUtils::render_draw_data(ImGui::GetDrawData(), cmdbuf, back_buffer));
-			cmdbuf->resource_barrier({}, {
-				{back_buffer, RHI::TEXTURE_BARRIER_ALL_SUBRESOURCES, RHI::TextureStateFlag::automatic, RHI::TextureStateFlag::present, RHI::ResourceBarrierFlag::none}
-				});
-			luexp(cmdbuf->submit({}, {}, true));
-			cmdbuf->wait();
-			luexp(cmdbuf->reset());
-			luexp(swap_chain->present());
+            RHI::RenderPassDesc render_pass;
+            lulet(back_buffer, swap_chain->get_current_back_buffer());
+            render_pass.color_attachments[0] = RHI::ColorAttachment(back_buffer, RHI::LoadOp::clear, RHI::StoreOp::store, clear_color);
+            cmdbuf->begin_render_pass(render_pass);
+            cmdbuf->end_render_pass();
+            luexp(ImGuiUtils::render_draw_data(ImGui::GetDrawData(), cmdbuf, back_buffer));
+            cmdbuf->resource_barrier({}, {
+                {back_buffer, RHI::TEXTURE_BARRIER_ALL_SUBRESOURCES, RHI::TextureStateFlag::automatic, RHI::TextureStateFlag::present, RHI::ResourceBarrierFlag::none}
+                });
+            luexp(cmdbuf->submit({}, {}, true));
+            cmdbuf->wait();
+            luexp(cmdbuf->reset());
+            luexp(swap_chain->present());
         }
     }
     lucatchret;

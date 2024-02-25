@@ -18,14 +18,14 @@ namespace Luna
         struct NetworkModule : public Module
         {
             virtual const c8* get_name() override { return "Network"; }
-			virtual RV on_init() override
-			{
-				return platform_init();
-			}
-			virtual void on_close() override
-			{
-				platform_close();
-			}
+            virtual RV on_init() override
+            {
+                return platform_init();
+            }
+            virtual void on_close() override
+            {
+                platform_close();
+            }
         };
     }
     LUNA_NETWORK_API Module* module_network()

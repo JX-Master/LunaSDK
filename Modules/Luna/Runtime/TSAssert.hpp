@@ -13,32 +13,32 @@
 #include "Thread.hpp"
 namespace Luna
 {
-	struct TSLock
-	{
-		IThread* m_owning_thread;
+    struct TSLock
+    {
+        IThread* m_owning_thread;
 
-		TSLock() :
-			m_owning_thread(nullptr) {}
-	};
+        TSLock() :
+            m_owning_thread(nullptr) {}
+    };
 
-	struct TSGuard
-	{
-		IThread* m_last_thread;
-		TSLock& m_lock;
+    struct TSGuard
+    {
+        IThread* m_last_thread;
+        TSLock& m_lock;
 
-		TSGuard(TSLock& lock) :
-			m_lock(lock)
-		{
-			IThread* cur = get_current_thread();
-			m_last_thread = atom_exchange_pointer((IThread* volatile*)(&(lock.m_owning_thread)), cur);
-			luassert_msg_always((m_last_thread == nullptr) || (m_last_thread == cur), "Data race detected!");
-		}
+        TSGuard(TSLock& lock) :
+            m_lock(lock)
+        {
+            IThread* cur = get_current_thread();
+            m_last_thread = atom_exchange_pointer((IThread* volatile*)(&(lock.m_owning_thread)), cur);
+            luassert_msg_always((m_last_thread == nullptr) || (m_last_thread == cur), "Data race detected!");
+        }
 
-		~TSGuard()
-		{
-			atom_exchange_pointer((IThread* volatile*)(&(m_lock.m_owning_thread)), m_last_thread);
-		}
-	};
+        ~TSGuard()
+        {
+            atom_exchange_pointer((IThread* volatile*)(&(m_lock.m_owning_thread)), m_last_thread);
+        }
+    };
 }
 
 //! @addtogroup Runtime
@@ -59,22 +59,22 @@ namespace Luna
 //! // The non-thread-safe type.
 //! class MyType
 //! {
-//! 	lutsassert_lock();
-//! 	i32 value; // The data that should be accessed by only one thread.
-//! 	
-//!		// Will crash the program if another thread is also calling functions of the same object
+//!     lutsassert_lock();
+//!     i32 value; // The data that should be accessed by only one thread.
+//!     
+//!        // Will crash the program if another thread is also calling functions of the same object
 //!     // with lutsassert() set
-//!		void set_value(i32 v)
-//! 	{
-//!			lutsassert();
-//!			value = v;
-//!		}
-//!		// 
-//! 	i32 get_value()
-//!		{
-//!			lutsassert();
-//! 		return value;
-//! 	}
+//!        void set_value(i32 v)
+//!     {
+//!            lutsassert();
+//!            value = v;
+//!        }
+//!        // 
+//!     i32 get_value()
+//!        {
+//!            lutsassert();
+//!         return value;
+//!     }
 //! };
 //! ```
 #define lutsassert_lock() mutable Luna::TSLock m_tsassert_lock;
@@ -93,22 +93,22 @@ namespace Luna
 //! // The non-thread-safe type.
 //! class MyType
 //! {
-//! 	lutsassert_lock();
-//! 	i32 value; // The data that should be accessed by only one thread.
-//! 	
-//!		// Will crash the program if another thread is also calling functions of the same object
+//!     lutsassert_lock();
+//!     i32 value; // The data that should be accessed by only one thread.
+//!     
+//!        // Will crash the program if another thread is also calling functions of the same object
 //!     // with lutsassert() set
-//!		void set_value(i32 v)
-//! 	{
-//!			lutsassert();
-//!			value = v;
-//!		}
-//!		// 
-//! 	i32 get_value()
-//!		{
-//!			lutsassert();
-//! 		return value;
-//! 	}
+//!        void set_value(i32 v)
+//!     {
+//!            lutsassert();
+//!            value = v;
+//!        }
+//!        // 
+//!     i32 get_value()
+//!        {
+//!            lutsassert();
+//!         return value;
+//!     }
 //! };
 //! ```
 #define lutsassert_lock() 

@@ -19,16 +19,16 @@ namespace Luna
     namespace RHI
     {
         enum class ResourceDataCopyOp : u8
-		{
-			//! Copy data of one buffer resource from resource memory to host memory.
-			read_buffer,
-			//! Copy data of one buffer resource from host memory to resource memory.
-			write_buffer,
-			//! Copy data of one texture resource from resource memory to host memory.
-			read_texture,
-			//! Copy data of one texture resource from host memory to resource memory.
-			write_texture
-		};
+        {
+            //! Copy data of one buffer resource from resource memory to host memory.
+            read_buffer,
+            //! Copy data of one buffer resource from host memory to resource memory.
+            write_buffer,
+            //! Copy data of one texture resource from resource memory to host memory.
+            read_texture,
+            //! Copy data of one texture resource from host memory to resource memory.
+            write_texture
+        };
         struct CopyResourceData
         {
             ResourceDataCopyOp op;

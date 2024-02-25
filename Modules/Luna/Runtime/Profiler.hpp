@@ -155,43 +155,43 @@ namespace Luna
     }
 
 #ifdef LUNA_MEMORY_PROFILER_ENABLED
-	//! Emits one @ref PROFILER_EVENT_ID_MEMORY_ALLOCATE profiler event.
-	//! @param[in] ptr The pointer that represents the memory.
-	//! This pointer is used only for identifing the memory block, it may not be the real memory address of the memory block, but must be unique in the application domain.
-	//! @param[in] size The size of the memory block, in bytes.
-	//! @remark Memory allocations through `memalloc` call this internally when memory profiling is enabled, thus the user does not
-	//! need to call this again.
-	LUNA_RUNTIME_API void memory_profiler_allocate(void* ptr, usize size);
+    //! Emits one @ref PROFILER_EVENT_ID_MEMORY_ALLOCATE profiler event.
+    //! @param[in] ptr The pointer that represents the memory.
+    //! This pointer is used only for identifing the memory block, it may not be the real memory address of the memory block, but must be unique in the application domain.
+    //! @param[in] size The size of the memory block, in bytes.
+    //! @remark Memory allocations through `memalloc` call this internally when memory profiling is enabled, thus the user does not
+    //! need to call this again.
+    LUNA_RUNTIME_API void memory_profiler_allocate(void* ptr, usize size);
 
-	//! Emits one @ref PROFILER_EVENT_ID_MEMORY_DEALLOCATE profiler event.
-	//! @param[in] ptr The registered memory pointer.
-	//! @remark Memory deallocations through `memfree` call this internally when memory profiling is enabled, thus the user does not
-	//! need to call this again.
-	LUNA_RUNTIME_API void memory_profiler_deallocate(void* ptr);
+    //! Emits one @ref PROFILER_EVENT_ID_MEMORY_DEALLOCATE profiler event.
+    //! @param[in] ptr The registered memory pointer.
+    //! @remark Memory deallocations through `memfree` call this internally when memory profiling is enabled, thus the user does not
+    //! need to call this again.
+    LUNA_RUNTIME_API void memory_profiler_deallocate(void* ptr);
 
-	//! Sets a debug name for the memory block, for example, the name of the resource file this memory block is allocated for. 
-	//! This function emits one @ref PROFILER_EVENT_ID_SET_MEMORY_NAME profiler event.
-	//! @param[in] ptr The memory block pointer.
-	//! @param[in] name The debug name for the memory block.
+    //! Sets a debug name for the memory block, for example, the name of the resource file this memory block is allocated for. 
+    //! This function emits one @ref PROFILER_EVENT_ID_SET_MEMORY_NAME profiler event.
+    //! @param[in] ptr The memory block pointer.
+    //! @param[in] name The debug name for the memory block.
     //! @param[in] str_size The size of the name, not including the null terminator. If this is `USIZE_MAX`, the size is determined by the system
     //! using @ref strlen.
-	LUNA_RUNTIME_API void memory_profiler_set_memory_name(void* ptr, const c8* name, usize str_size = USIZE_MAX);
+    LUNA_RUNTIME_API void memory_profiler_set_memory_name(void* ptr, const c8* name, usize str_size = USIZE_MAX);
 
-	//! Sets the type of the object this memory block.
-	//! @param[in] ptr The memory block pointer.
-	//! @param[in] domain The type name for the memory block.
+    //! Sets the type of the object this memory block.
+    //! @param[in] ptr The memory block pointer.
+    //! @param[in] domain The type name for the memory block.
     //! @param[in] str_size The size of the name, not including the null terminator. If this is `USIZE_MAX`, the size is determined by the system
     //! using @ref strlen.
-	LUNA_RUNTIME_API void memory_profiler_set_memory_type(void* ptr, const c8* type, usize str_size = USIZE_MAX);
+    LUNA_RUNTIME_API void memory_profiler_set_memory_type(void* ptr, const c8* type, usize str_size = USIZE_MAX);
 
-	//! Sets the memory domain. 
+    //! Sets the memory domain. 
     //! @details The memory domain is usually the heap or pool that allocates this memory block. 
-	//! This function emits one @ref PROFILER_EVENT_ID_SET_MEMORY_DOMAIN profiler event.
-	//! @param[in] ptr The memory block pointer.
-	//! @param[in] domain The domain name for the memory block.
+    //! This function emits one @ref PROFILER_EVENT_ID_SET_MEMORY_DOMAIN profiler event.
+    //! @param[in] ptr The memory block pointer.
+    //! @param[in] domain The domain name for the memory block.
     //! @param[in] str_size The size of the name, not including the null terminator. If this is `USIZE_MAX`, the size is determined by the system
     //! using @ref strlen.
-	LUNA_RUNTIME_API void memory_profiler_set_memory_domain(void* ptr, const c8* domain, usize str_size = USIZE_MAX);
+    LUNA_RUNTIME_API void memory_profiler_set_memory_domain(void* ptr, const c8* domain, usize str_size = USIZE_MAX);
 #endif
 
     //! @}

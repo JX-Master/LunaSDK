@@ -32,8 +32,8 @@ namespace Luna
             m_desc = desc;
             m_command_queue_index = command_queue_index;
             auto framebuffer_size = m_window->get_framebuffer_size();
-			m_desc.width = m_desc.width == 0 ? framebuffer_size.x : m_desc.width;
-			m_desc.height = m_desc.height == 0 ? framebuffer_size.y : m_desc.height;
+            m_desc.width = m_desc.width == 0 ? framebuffer_size.x : m_desc.width;
+            m_desc.height = m_desc.height == 0 ? framebuffer_size.y : m_desc.height;
             m_desc.format = m_desc.format == Format::unknown ? Format::bgra8_unorm_srgb : m_desc.format;
             init_metal_layer(m_desc);
             return ok;

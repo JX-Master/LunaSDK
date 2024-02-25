@@ -228,43 +228,43 @@ namespace Luna
             luassert_msg_always(ret == 0, "pthread_rwlock_init failed.");
             return o;
         }
-		void delete_read_write_lock(opaque_t lock)
+        void delete_read_write_lock(opaque_t lock)
         {
             pthread_rwlock_t* o = (pthread_rwlock_t*)lock;
             auto ret = pthread_rwlock_destroy(o);
             luassert_msg_always(ret == 0, "pthread_rwlock_destroy failed.");
             memdelete(o);
         }
-		void acquire_read_lock(opaque_t lock)
+        void acquire_read_lock(opaque_t lock)
         {
             pthread_rwlock_t* o = (pthread_rwlock_t*)lock;
             auto ret = pthread_rwlock_rdlock(o);
             luassert_msg_always(ret == 0, "pthread_rwlock_rdlock failed.");
         }
-		void acquire_write_lock(opaque_t lock)
+        void acquire_write_lock(opaque_t lock)
         {
             pthread_rwlock_t* o = (pthread_rwlock_t*)lock;
             auto ret = pthread_rwlock_wrlock(o);
             luassert_msg_always(ret == 0, "pthread_rwlock_wrlock failed.");
         }
-		bool try_acquire_read_lock(opaque_t lock)
+        bool try_acquire_read_lock(opaque_t lock)
         {
             pthread_rwlock_t* o = (pthread_rwlock_t*)lock;
             auto ret = pthread_rwlock_tryrdlock(o);
             return ret == 0 ? true : false;
         }
-		bool try_acquire_write_lock(opaque_t lock)
+        bool try_acquire_write_lock(opaque_t lock)
         {
             pthread_rwlock_t* o = (pthread_rwlock_t*)lock;
             auto ret = pthread_rwlock_trywrlock(o);
             return ret == 0 ? true : false;
         }
-		void release_read_lock(opaque_t lock)
+        void release_read_lock(opaque_t lock)
         {
             pthread_rwlock_t* o = (pthread_rwlock_t*)lock;
             pthread_rwlock_unlock(o);
         }
-		void release_write_lock(opaque_t lock)
+        void release_write_lock(opaque_t lock)
         {
             pthread_rwlock_t* o = (pthread_rwlock_t*)lock;
             pthread_rwlock_unlock(o);

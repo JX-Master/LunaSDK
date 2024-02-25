@@ -15,37 +15,37 @@
 
 namespace Luna
 {
-	namespace Asset
-	{
-		struct AssetMetaFile
-		{
-			lustruct("Asset::AssetMetaFile", "{93C04F6C-BC6C-4586-8CB2-7DF1B249DA21}");
-			Guid guid;
-			Name type;
-		};
+    namespace Asset
+    {
+        struct AssetMetaFile
+        {
+            lustruct("Asset::AssetMetaFile", "{93C04F6C-BC6C-4586-8CB2-7DF1B249DA21}");
+            Guid guid;
+            Name type;
+        };
 
-		// Maps to `asset_t`
-		struct AssetEntry
-		{
-			Guid guid;
-			Name type;
-			Path path;
-			ObjRef data;
-			JobSystem::job_id_t last_load_job;
-			Error last_load_result;
-			SpinLock lock;
-			AssetEntry() :
-				last_load_job(JobSystem::INVALID_JOB_ID) {}
-			void reset()
-			{
-				type.reset();
-				path.clear();
-				data.reset();
-				last_load_job = JobSystem::INVALID_JOB_ID;
-				last_load_result.reset();
-			}
-		};
-		void init_asset_registry();
-		void close_asset_registry();
-	}
+        // Maps to `asset_t`
+        struct AssetEntry
+        {
+            Guid guid;
+            Name type;
+            Path path;
+            ObjRef data;
+            JobSystem::job_id_t last_load_job;
+            Error last_load_result;
+            SpinLock lock;
+            AssetEntry() :
+                last_load_job(JobSystem::INVALID_JOB_ID) {}
+            void reset()
+            {
+                type.reset();
+                path.clear();
+                data.reset();
+                last_load_job = JobSystem::INVALID_JOB_ID;
+                last_load_result.reset();
+            }
+        };
+        void init_asset_registry();
+        void close_asset_registry();
+    }
 }

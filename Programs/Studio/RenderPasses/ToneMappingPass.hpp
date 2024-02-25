@@ -20,14 +20,14 @@ namespace Luna
         Ref<RHI::IPipelineLayout> m_histogram_clear_pass_playout;
         Ref<RHI::IPipelineState> m_histogram_clear_pass_pso;
         Ref<RHI::IDescriptorSetLayout> m_histogram_pass_dlayout;
-		Ref<RHI::IPipelineLayout> m_histogram_pass_playout;
-		Ref<RHI::IPipelineState> m_histogram_pass_pso;
-		Ref<RHI::IDescriptorSetLayout> m_histogram_collect_pass_dlayout;
-		Ref<RHI::IPipelineLayout> m_histogram_collect_pass_playout;
-		Ref<RHI::IPipelineState> m_histogram_collect_pass_pso;
-		Ref<RHI::IDescriptorSetLayout> m_tone_mapping_pass_dlayout;
-		Ref<RHI::IPipelineLayout> m_tone_mapping_pass_playout;
-		Ref<RHI::IPipelineState> m_tone_mapping_pass_pso;
+        Ref<RHI::IPipelineLayout> m_histogram_pass_playout;
+        Ref<RHI::IPipelineState> m_histogram_pass_pso;
+        Ref<RHI::IDescriptorSetLayout> m_histogram_collect_pass_dlayout;
+        Ref<RHI::IPipelineLayout> m_histogram_collect_pass_playout;
+        Ref<RHI::IPipelineState> m_histogram_collect_pass_pso;
+        Ref<RHI::IDescriptorSetLayout> m_tone_mapping_pass_dlayout;
+        Ref<RHI::IPipelineLayout> m_tone_mapping_pass_playout;
+        Ref<RHI::IPipelineState> m_tone_mapping_pass_pso;
 
         RV init(RHI::IDevice* device);
     };

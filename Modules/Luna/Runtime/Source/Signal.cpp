@@ -13,8 +13,8 @@
 #include "Signal.hpp"
 namespace Luna
 {
-	LUNA_RUNTIME_API Ref<ISignal> new_signal(bool manual_reset)
-	{
-		return new_object<Signal>(manual_reset);
-	}
+    LUNA_RUNTIME_API Ref<ISignal> new_signal(bool manual_reset)
+    {
+        return new_object<Signal>(manual_reset);
+    }
 }

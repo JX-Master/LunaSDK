@@ -81,7 +81,7 @@ namespace Luna
             iter2->second.second += 1;
         }
         ImGui::SetNextWindowSize({ 500.0f, 1000.0f }, ImGuiCond_FirstUseEver);
-		ImGui::Begin("Memory Usages", nullptr, ImGuiWindowFlags_NoCollapse);
+        ImGui::Begin("Memory Usages", nullptr, ImGuiWindowFlags_NoCollapse);
         for(auto& h : heaps)
         {
             if(ImGui::CollapsingHeader(h.first.c_str()))

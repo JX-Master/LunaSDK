@@ -1,7 +1,7 @@
 
 cbuffer g_cb : register(b0)
 {
-	float g_exposure;
+    float g_exposure;
     uint g_auto_exposure;
 }
 Texture2D<float4> g_scene_tex : register(t1);
@@ -27,13 +27,13 @@ float3 tonemap(float3 color, float exposure)
 
 float3 gamma_correction(float3 color, float gamma)
 {
-	return pow(abs(color), 1.0 / gamma);  
+    return pow(abs(color), 1.0 / gamma);  
 }
 
 [numthreads(8, 8, 1)]
 void main(int3 dispatch_thread_id : SV_DispatchThreadID)
 {
-	float3 hdr_color = g_scene_tex[dispatch_thread_id.xy].xyz;
+    float3 hdr_color = g_scene_tex[dispatch_thread_id.xy].xyz;
     float exposure;
     if(g_auto_exposure > 0)
     {
@@ -44,8 +44,8 @@ void main(int3 dispatch_thread_id : SV_DispatchThreadID)
     {
         exposure = g_exposure;
     }
-	float3 ldr_color = tonemap(hdr_color, exposure);
-	float3 final = gamma_correction(ldr_color, 2.2);
+    float3 ldr_color = tonemap(hdr_color, exposure);
+    float3 final = gamma_correction(ldr_color, 2.2);
 
-	g_dst_tex[dispatch_thread_id.xy] = float4(saturate(final.xyz), 1.0);
+    g_dst_tex[dispatch_thread_id.xy] = float4(saturate(final.xyz), 1.0);
 }

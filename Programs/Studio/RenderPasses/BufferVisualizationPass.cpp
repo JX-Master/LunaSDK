@@ -20,23 +20,23 @@ namespace Luna
         lutry
         {
             luset(m_buffer_visualization_pass_dlayout, device->new_descriptor_set_layout(DescriptorSetLayoutDesc({
-						DescriptorSetLayoutBinding::uniform_buffer_view(0, 1, ShaderVisibilityFlag::compute),
-						DescriptorSetLayoutBinding::read_texture_view(TextureViewType::tex2d, 1, 1, ShaderVisibilityFlag::compute),
+                        DescriptorSetLayoutBinding::uniform_buffer_view(0, 1, ShaderVisibilityFlag::compute),
+                        DescriptorSetLayoutBinding::read_texture_view(TextureViewType::tex2d, 1, 1, ShaderVisibilityFlag::compute),
                         DescriptorSetLayoutBinding::read_texture_view(TextureViewType::tex2d, 2, 1, ShaderVisibilityFlag::compute),
                         DescriptorSetLayoutBinding::read_texture_view(TextureViewType::tex2d, 3, 1, ShaderVisibilityFlag::compute),
-						DescriptorSetLayoutBinding::read_write_texture_view(TextureViewType::tex2d, 4, 1, ShaderVisibilityFlag::compute)
-						})));
+                        DescriptorSetLayoutBinding::read_write_texture_view(TextureViewType::tex2d, 4, 1, ShaderVisibilityFlag::compute)
+                        })));
             auto dlayout = m_buffer_visualization_pass_dlayout.get();
-			luset(m_buffer_visualization_pass_playout, device->new_pipeline_layout(PipelineLayoutDesc({ &dlayout, 1 },
-				PipelineLayoutFlag::deny_vertex_shader_access |
-				PipelineLayoutFlag::deny_pixel_shader_access)));
+            luset(m_buffer_visualization_pass_playout, device->new_pipeline_layout(PipelineLayoutDesc({ &dlayout, 1 },
+                PipelineLayoutFlag::deny_vertex_shader_access |
+                PipelineLayoutFlag::deny_pixel_shader_access)));
 
             lulet(cs_blob, compile_shader("Shaders/BufferVisualization.hlsl", ShaderCompiler::ShaderType::compute));
 
-			ComputePipelineStateDesc ps_desc;
-			ps_desc.cs = cs_blob.cspan();
-			ps_desc.pipeline_layout = m_buffer_visualization_pass_playout;
-			luset(m_buffer_visualization_pass_pso, device->new_compute_pipeline_state(ps_desc));
+            ComputePipelineStateDesc ps_desc;
+            ps_desc.cs = cs_blob.cspan();
+            ps_desc.pipeline_layout = m_buffer_visualization_pass_playout;
+            luset(m_buffer_visualization_pass_pso, device->new_compute_pipeline_state(ps_desc));
         }
         lucatchret;
         return ok;
@@ -115,41 +115,41 @@ namespace Luna
         lutry
         {
             BufferVisualizationPassGlobalData* data = (BufferVisualizationPassGlobalData*)userdata;
-			auto scene_texture = compiler->get_output_resource("scene_texture");
-			auto depth_texture = compiler->get_input_resource("depth_texture");
+            auto scene_texture = compiler->get_output_resource("scene_texture");
+            auto depth_texture = compiler->get_input_resource("depth_texture");
             auto base_color_roughness_texture = compiler->get_input_resource("base_color_roughness_texture");
             auto normal_metallic_texture = compiler->get_input_resource("normal_metallic_texture");
-			if(scene_texture == RG::INVALID_RESOURCE) return set_error(BasicError::bad_arguments(), "BufferVisualizationPass: Output \"scene_texture\" is not specified.");
-			if(depth_texture == RG::INVALID_RESOURCE) return set_error(BasicError::bad_arguments(), "BufferVisualizationPass: Input \"depth_texture\" is not specified.");
+            if(scene_texture == RG::INVALID_RESOURCE) return set_error(BasicError::bad_arguments(), "BufferVisualizationPass: Output \"scene_texture\" is not specified.");
+            if(depth_texture == RG::INVALID_RESOURCE) return set_error(BasicError::bad_arguments(), "BufferVisualizationPass: Input \"depth_texture\" is not specified.");
             if(base_color_roughness_texture == RG::INVALID_RESOURCE) return set_error(BasicError::bad_arguments(), "BufferVisualizationPass: Input \"base_color_roughness_texture\" is not specified.");
             if(normal_metallic_texture == RG::INVALID_RESOURCE) return set_error(BasicError::bad_arguments(), "BufferVisualizationPass: Input \"normal_metallic_texture\" is not specified.");
             RG::ResourceDesc desc = compiler->get_resource_desc(scene_texture);
-			if (desc.texture.format != RHI::Format::rgba8_unorm)
-			{
-				return set_error(BasicError::bad_arguments(), "BufferVisualizationPass: Invalid format for \"scene_texture\" is specified. \"scene_texture\" must be Format::rgba8_unorm.");
-			}
-			desc.texture.usages |= RHI::TextureUsageFlag::read_write_texture;
-			compiler->set_resource_desc(scene_texture, desc);
+            if (desc.texture.format != RHI::Format::rgba8_unorm)
+            {
+                return set_error(BasicError::bad_arguments(), "BufferVisualizationPass: Invalid format for \"scene_texture\" is specified. \"scene_texture\" must be Format::rgba8_unorm.");
+            }
+            desc.texture.usages |= RHI::TextureUsageFlag::read_write_texture;
+            compiler->set_resource_desc(scene_texture, desc);
 
-			desc = compiler->get_resource_desc(depth_texture);
-			if (desc.texture.format != RHI::Format::d32_float)
-			{
-				return set_error(BasicError::bad_arguments(), "BufferVisualizationPass: Invalid format for \"depth_texture\" is specified. \"depth_texture\" must be Format::d32_float.");
-			}
-			desc.texture.usages |= RHI::TextureUsageFlag::read_texture;
-			compiler->set_resource_desc(depth_texture, desc);
+            desc = compiler->get_resource_desc(depth_texture);
+            if (desc.texture.format != RHI::Format::d32_float)
+            {
+                return set_error(BasicError::bad_arguments(), "BufferVisualizationPass: Invalid format for \"depth_texture\" is specified. \"depth_texture\" must be Format::d32_float.");
+            }
+            desc.texture.usages |= RHI::TextureUsageFlag::read_texture;
+            compiler->set_resource_desc(depth_texture, desc);
 
             desc = compiler->get_resource_desc(base_color_roughness_texture);
-			desc.texture.usages |= RHI::TextureUsageFlag::read_texture;
-			compiler->set_resource_desc(base_color_roughness_texture, desc);
+            desc.texture.usages |= RHI::TextureUsageFlag::read_texture;
+            compiler->set_resource_desc(base_color_roughness_texture, desc);
 
             desc = compiler->get_resource_desc(normal_metallic_texture);
-			desc.texture.usages |= RHI::TextureUsageFlag::read_texture;
-			compiler->set_resource_desc(normal_metallic_texture, desc);
+            desc.texture.usages |= RHI::TextureUsageFlag::read_texture;
+            compiler->set_resource_desc(normal_metallic_texture, desc);
 
-			Ref<BufferVisualizationPass> pass = new_object<BufferVisualizationPass>();
+            Ref<BufferVisualizationPass> pass = new_object<BufferVisualizationPass>();
             luexp(pass->init(data));
-			compiler->set_render_pass_object(pass);
+            compiler->set_render_pass_object(pass);
         }
         lucatchret;
         return ok;

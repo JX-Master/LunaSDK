@@ -20,8 +20,8 @@ namespace Luna
         lustruct("WireframePassGlobalData", "{df0720b0-7ace-4cb4-94af-90260b82f8e7}");
 
         Ref<RHI::IPipelineState> m_debug_mesh_renderer_pso;
-		Ref<RHI::IDescriptorSetLayout> m_debug_mesh_renderer_dlayout;
-		Ref<RHI::IPipelineLayout> m_debug_mesh_renderer_playout;
+        Ref<RHI::IDescriptorSetLayout> m_debug_mesh_renderer_dlayout;
+        Ref<RHI::IPipelineLayout> m_debug_mesh_renderer_playout;
 
         RV init(RHI::IDevice* device);
     };
@@ -32,7 +32,7 @@ namespace Luna
         luiimpl();
 
         Span<Ref<Entity>> ts;
-		Span<Ref<ModelRenderer>> rs;
+        Span<Ref<ModelRenderer>> rs;
 
         Ref<RHI::IBuffer> camera_cb;
         Ref<RHI::IBuffer> model_matrices;

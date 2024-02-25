@@ -20,20 +20,20 @@ using namespace Luna::RHITestBed;
 RV start()
 {
 
-	return ok;
+    return ok;
 }
 
 void draw()
 {
-	auto cb = get_command_buffer();
-	cb->resource_barrier({},
-		{
-			{get_back_buffer(), TEXTURE_BARRIER_ALL_SUBRESOURCES, TextureStateFlag::automatic, TextureStateFlag::color_attachment_write, ResourceBarrierFlag::discard_content}
-		});
-	RenderPassDesc render_pass;
-	render_pass.color_attachments[0] = ColorAttachment(get_back_buffer(), LoadOp::clear, StoreOp::store, Color::blue_violet());
-	cb->begin_render_pass(render_pass);
-	cb->end_render_pass();
+    auto cb = get_command_buffer();
+    cb->resource_barrier({},
+        {
+            {get_back_buffer(), TEXTURE_BARRIER_ALL_SUBRESOURCES, TextureStateFlag::automatic, TextureStateFlag::color_attachment_write, ResourceBarrierFlag::discard_content}
+        });
+    RenderPassDesc render_pass;
+    render_pass.color_attachments[0] = ColorAttachment(get_back_buffer(), LoadOp::clear, StoreOp::store, Color::blue_violet());
+    cb->begin_render_pass(render_pass);
+    cb->end_render_pass();
 }
 
 void resize(u32 width, u32 height)
@@ -46,23 +46,23 @@ void cleanup()
 
 void run_app()
 {
-	register_init_func(start);
-	register_close_func(cleanup);
-	register_resize_func(resize);
-	register_draw_func(draw);
-	lupanic_if_failed(run());
+    register_init_func(start);
+    register_close_func(cleanup);
+    register_resize_func(resize);
+    register_draw_func(draw);
+    lupanic_if_failed(run());
 }
 
 int main()
 {
-	if (!Luna::init()) return 0;
-	lupanic_if_failed(add_modules({module_rhi_test_bed()}));
-	auto r = init_modules();
-	if (failed(r))
-	{
-		log_error("RHITest1_FillBackBuffer", "%s", explain(r.errcode()));
-	}
-	else run_app();
-	Luna::close();
-	return 0;
+    if (!Luna::init()) return 0;
+    lupanic_if_failed(add_modules({module_rhi_test_bed()}));
+    auto r = init_modules();
+    if (failed(r))
+    {
+        log_error("RHITest1_FillBackBuffer", "%s", explain(r.errcode()));
+    }
+    else run_app();
+    Luna::close();
+    return 0;
 }

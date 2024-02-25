@@ -12,12 +12,12 @@ namespace Luna
 {
     namespace HID
     {
-		RV platform_init()
-		{
-			return ok;
-		}
-		void platform_close()
-		{
-		}
+        RV platform_init()
+        {
+            return ok;
+        }
+        void platform_close()
+        {
+        }
     }
 }

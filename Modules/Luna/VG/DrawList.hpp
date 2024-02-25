@@ -30,11 +30,11 @@ namespace Luna
             //! The number of shape points of this draw call.
             u32 num_points;
             //! The origin point for this draw call.
-			Float2U origin_point;
+            Float2U origin_point;
             //! The rotation for this draw call.
-			f32 rotation;
-			//! The clip rect for this draw call.
-			RectI clip_rect;
+            f32 rotation;
+            //! The clip rect for this draw call.
+            RectI clip_rect;
         };
 
         struct IDrawList : virtual Interface

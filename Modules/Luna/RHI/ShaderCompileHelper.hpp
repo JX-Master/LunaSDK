@@ -13,22 +13,22 @@
 
 namespace Luna
 {
-	namespace RHI
-	{
-		inline ShaderCompiler::TargetFormat get_current_platform_shader_target_format()
-		{
-			auto api_type = get_backend_type();
-			switch (api_type)
-			{
-			case BackendType::d3d12:
-				return ShaderCompiler::TargetFormat::dxil;
-			case BackendType::vulkan:
-				return ShaderCompiler::TargetFormat::spir_v;
+    namespace RHI
+    {
+        inline ShaderCompiler::TargetFormat get_current_platform_shader_target_format()
+        {
+            auto api_type = get_backend_type();
+            switch (api_type)
+            {
+            case BackendType::d3d12:
+                return ShaderCompiler::TargetFormat::dxil;
+            case BackendType::vulkan:
+                return ShaderCompiler::TargetFormat::spir_v;
             case BackendType::metal:
                 return ShaderCompiler::TargetFormat::msl;
-			}
-			lupanic();
-			return ShaderCompiler::TargetFormat::none;
-		}
-	}
+            }
+            lupanic();
+            return ShaderCompiler::TargetFormat::none;
+        }
+    }
 }

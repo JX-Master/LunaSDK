@@ -12,7 +12,7 @@
 
 namespace Luna
 {
-	Name get_scene_asset_type();
-	void register_scene_asset_type();
-	RV register_scene_editor();
+    Name get_scene_asset_type();
+    void register_scene_asset_type();
+    RV register_scene_editor();
 }
