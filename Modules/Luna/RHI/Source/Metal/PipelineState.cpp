@@ -57,7 +57,7 @@ namespace Luna
                     {
                         NSPtr<MTL::CompileOptions> options = box(MTL::CompileOptions::alloc()->init());
                         String source_string((const c8*)desc.ps.data.data(), desc.ps.data.size());
-                        NS::String* source = NS::String::string(source_obj.c_str(), NS::UTF8StringEncoding);
+                        NS::String* source = NS::String::string(source_string.c_str(), NS::UTF8StringEncoding);
                         ps = box(m_device->m_device->newLibrary(source, options.get(), &err));
                         if(!ps)
                         {
@@ -65,13 +65,17 @@ namespace Luna
                             return set_error(BasicError::bad_platform_call(), "%s", err_desc->cString(NS::UTF8StringEncoding));
                         }
                         NSPtr<MTL::FunctionConstantValues> values = box(MTL::FunctionConstantValues::alloc()->init());
-                        NS::String* name = NS::String::string(desc.ps.c_str(), NS::StringEncoding::UTF8StringEncoding);
+                        NS::String* name = NS::String::string(desc.ps.entry_point.c_str(), NS::StringEncoding::UTF8StringEncoding);
                         ps_func = box(ps->newFunction(name, values.get(), &err));
                         if(!ps_func)
                         {
                             NS::String* err_desc = err->description();
                             return set_error(BasicError::bad_platform_call(), "%s", err_desc->cString(NS::UTF8StringEncoding));
                         }
+                    }
+                    else if(desc.ps.format == ShaderDataFormat::metallib)
+                    {
+                        
                     }
                     else
                     {
