@@ -13,8 +13,12 @@ namespace Luna
 {
     namespace RHI
     {
+        //! @addtogroup RHI
+        //! @{
+        
         //! @interface IFence
-        //! A fence is a synchronization primitive that can be used to insert a dependency between queue operations. 
+        //! Represents a synchronization object that can be used to synchronize commands executed in different command queues.
+        //! @details A fence is a synchronization primitive that can be used to insert a dependency between queue operations. 
         //! When the user submits one queue operation, she may specify multiple fences as either wait targets or signal targets. 
         //! Before the device processes the operation, it will firstly waits for all wait targets to be signaled. After the device 
         //! processes the operation, it will signal all signal targets, so that other operations waiting on these fences can be 
@@ -31,5 +35,7 @@ namespace Luna
             luiid("{126700A9-A8CC-45FE-AC5F-C68879B8D7FD}");
 
         };
+
+        //! @}
     }
 }

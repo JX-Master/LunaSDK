@@ -24,7 +24,7 @@ namespace Luna
                 alloc_info.descriptorSetCount = 1;
                 alloc_info.pSetLayouts = &m_layout->m_layout;
                 VkDescriptorSetVariableDescriptorCountAllocateInfo variable_info{};
-                if (test_flags(m_layout->m_desc.flags, DescriptorSetLayoutFlag::variable_descriptors))
+                if (test_flags(m_layout->m_flags, DescriptorSetLayoutFlag::variable_descriptors))
                 {
                     variable_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO;
                     u32 counts = desc.num_variable_descriptors;

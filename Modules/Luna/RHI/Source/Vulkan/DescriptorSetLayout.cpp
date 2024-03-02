@@ -44,9 +44,7 @@ namespace Luna
         {
             lutry
             {
-                m_bindings.assign_n(desc.bindings.data(), desc.bindings.size());
-                m_desc.bindings = {m_bindings.data(), m_bindings.size()};
-                m_desc.flags = desc.flags;
+                m_flags = desc.flags;
                 VkDescriptorSetLayoutCreateInfo info{};
                 info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
                 VkDescriptorSetLayoutBinding* bindings = nullptr;

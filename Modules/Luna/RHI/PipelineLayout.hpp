@@ -16,6 +16,10 @@ namespace Luna
 {
     namespace RHI
     {
+        //! @addtogroup RHI
+        //! @{
+        
+        //! Describes attributes of one pipeline layout object.
         enum class PipelineLayoutFlag : u32
         {
             none = 0,
@@ -27,10 +31,13 @@ namespace Luna
             deny_pixel_shader_access = 0x04,
         };
 
-        //! Describes the pipeline layout.
+        //! Describes one pipeline layout.
         struct PipelineLayoutDesc
         {
+            //! The layouts of descriptor sets that can be bound to pipelines 
+            //! using this pipeline layout, ordered by their binding order.
             Span<IDescriptorSetLayout*> descriptor_set_layouts;
+            //! Attribute flags of this pipeline layout.
             PipelineLayoutFlag flags;
 
             PipelineLayoutDesc() = default;
@@ -49,5 +56,7 @@ namespace Luna
             luiid("{347097dc-04e2-44e8-a9a0-3f89e77b4425}");
 
         };
+
+        //! @}
     }
 }

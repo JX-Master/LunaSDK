@@ -16,15 +16,35 @@ namespace Luna
 {
     namespace RHI
     {
+        //! @addtogroup RHI
+        //! @{
+
+        struct ShaderBytecode
+        {
+            Span<const byte_t> bytecode;
+
+        };
+        
+        //! Describes pipeline states for one compute pipeline.
         struct ComputePipelineStateDesc
         {
+            //! The pipeline layout used with this pipeline state.
+            //! @details This is used to check the compatibility between the pipeline layout and
+            //! the pipeline state when creating the pipeline state object. Depends the 
+            //! implementation, the pipeline state object may or may not stores one refernce
+            //! to this pipeline layout. When binding pipeline layouts and pipeline states to
+            //! pipelines, any pipeline layout that is compatible to this pipeline state can be used.
             IPipelineLayout* pipeline_layout = nullptr;
+            //! The compute shader bytecode in platform's native format.
             Span<const byte_t> cs;
         };
 
+        //! The input rate for one input attribute (per vertex or per instance).
         enum class InputRate : u8
         {
+            //! The input attribute is stepped once per vertex.
             per_vertex = 1,
+            //! The input attribute is stepped once per instance.
             per_instance = 2
         };
 
@@ -341,12 +361,14 @@ namespace Luna
         };
 
         //! @interface IPipelineState
-        //! @threadsafe
+        //! Describes pipeline states.
         struct IPipelineState : virtual IDeviceChild
         {
             luiid("{A2AC1B03-5258-464E-9CA4-7497AFB7F443}");
 
 
         };
+
+        //! @}
     }
 }

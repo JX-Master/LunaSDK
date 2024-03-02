@@ -14,6 +14,9 @@ namespace Luna
 {
     namespace RHI
     {
+        //! @addtogroup RHI
+        //! @{
+        
         //! Specify the memory type. See remarks for details.
         //! @remark The memory type determines the memory location and access policy for the memory.
         //! The system will choose the most suitable heap to allocate memory based on the target platform 
@@ -59,15 +62,22 @@ namespace Luna
             //! The buffer resource can only be used as the copy destination for GPU copy commands.
             readback = 2,
         };
+
+        //! @interface IDeviceMemory
         //! Represents one allocated device memory.
         struct IDeviceMemory : virtual IDeviceChild
         {
             luiid("{066D9159-5E46-4967-A92C-752C1530308E}");
 
+            //! Gets the memory type of the device memory.
+            //! @return Returns the memory type of the device memory.
             virtual MemoryType get_memory_type() = 0;
 
-            //! Gets the size of the memory in bytes.
+            //! Gets the size of the memory.
+            //! @return Returns the size of the memory in bytes.
             virtual u64 get_size() = 0;
         };
+
+        //! @}
     }
 }

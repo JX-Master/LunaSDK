@@ -47,87 +47,85 @@ namespace Luna
         }
         void DescriptorSetLayout::init(const DescriptorSetLayoutDesc& desc)
         {
-            m_flags = desc.flags;
-            m_bindings.assign_n(desc.bindings.begin(), desc.bindings.size());
-            m_binding_info.assign(desc.bindings.size());
-            // Sort the bindings by their binding slot.
-            sort(m_bindings.begin(), m_bindings.end(),
+            Array<DescriptorSetLayoutBinding> desc_bindings(desc.bindings.data(), desc.bindings.size());
+            // Sort bindings by their binding slot.
+            sort(desc_bindings.begin(), desc_bindings.end(),
                 [](const DescriptorSetLayoutBinding& lhs, const DescriptorSetLayoutBinding& rhs) {return lhs.binding_slot < rhs.binding_slot; });
-            // Resolve bindings to D3D12 descriptor heaps.
+            m_bindings.assign(desc.bindings.size());
+            for(usize i = 0; i < desc.bindings.size(); ++i)
             {
-                bool variable_binding_enabled = false;
-                u32 variable_binding_slot = 0;
-                if (test_flags(m_flags, DescriptorSetLayoutFlag::variable_descriptors))
+                m_bindings[i].binding_slot = desc_bindings[i].binding_slot;
+                m_bindings[i].num_descs = desc_bindings[i].num_descs;
+            }
+            // Handle variable bindings.
+            bool variable_binding_enabled = false;
+            if (test_flags(desc.flags, DescriptorSetLayoutFlag::variable_descriptors))
+            {
+                variable_binding_enabled = true;
+                m_bindings.back().num_descs = U32_MAX;
+            }
+            // Resolve bindings to D3D12 descriptor heaps.
+            for (usize i = 0; i < m_bindings.size(); ++i)
+            {
+                auto& binding = m_bindings[i];
+                switch (desc_bindings[i].type)
                 {
-                    variable_binding_enabled = true;
-                    variable_binding_slot = m_bindings.back().binding_slot;
-                    m_bindings.back().num_descs = U32_MAX;
+                case DescriptorType::read_buffer_view:
+                case DescriptorType::read_texture_view:
+                case DescriptorType::read_write_buffer_view:
+                case DescriptorType::read_write_texture_view:
+                case DescriptorType::uniform_buffer_view:
+                    binding.target_heap = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV; break;
+                case DescriptorType::sampler:
+                    binding.target_heap = D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER; break;
+                default:
+                    lupanic();
+                    break;
                 }
-                for (usize i = 0; i < m_bindings.size(); ++i)
+                HeapInfo* heap = get_heap_by_type(binding.target_heap);
+                binding.offset_in_heap = heap->m_size;
+                if(variable_binding_enabled && binding.num_descs == U32_MAX)
                 {
-                    auto& binding = m_binding_info[i];
-                    auto& desc = m_bindings[i];
-                    switch (desc.type)
-                    {
-                    case DescriptorType::read_buffer_view:
-                    case DescriptorType::read_texture_view:
-                    case DescriptorType::read_write_buffer_view:
-                    case DescriptorType::read_write_texture_view:
-                    case DescriptorType::uniform_buffer_view:
-                        binding.target_heap = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV; break;
-                    case DescriptorType::sampler:
-                        binding.target_heap = D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER; break;
-                    default:
-                        lupanic();
-                        break;
-                    }
-                    if (desc.num_descs == U32_MAX) continue;
-                    HeapInfo* heap = get_heap_by_type(binding.target_heap);
-                    binding.offset_in_heap = heap->m_size;
-                    heap->m_size += desc.num_descs;
-                }
-                if (variable_binding_enabled)
-                {
-                    auto& binding = m_binding_info.back();
-                    HeapInfo* heap = get_heap_by_type(binding.target_heap);
-                    binding.offset_in_heap = heap->m_size;
                     heap->m_variable = true;
+                }
+                else
+                {
+                    heap->m_size += binding.num_descs;
                 }
             }
             // Resolve bindings to D3D12 root parameters (descriptor table type).
             // The system merges continuous bindings with the same type and shader visibility to the same parameter.
+            for (usize i = 0; i < m_bindings.size(); ++i)
             {
-                for (usize i = 0; i < m_bindings.size(); ++i)
+                auto& binding = m_bindings[i];
+                auto& desc = desc_bindings[i];
+                binding.root_parameter_index = get_root_parameter_index(desc.type, desc.shader_visibility_flags);
+                auto& root_parameter = m_root_parameters[binding.root_parameter_index];
+                // Check whether we can merge to the last range.
+                if (!root_parameter.m_ranges.empty() && binding.num_descs != U32_MAX)
                 {
-                    auto& binding = m_binding_info[i];
-                    auto& desc = m_bindings[i];
-                    binding.root_parameter_index = get_root_parameter_index(desc.type, desc.shader_visibility_flags);
-                    auto& root_parameter = m_root_parameters[binding.root_parameter_index];
-                    // Check whether we can merge to the last range.
-                    if (!root_parameter.m_ranges.empty() && desc.num_descs != U32_MAX)
+                    D3D12_DESCRIPTOR_RANGE& last_range = root_parameter.m_ranges.back();
+                    if (last_range.RangeType == encode_descriptor_range_type(desc.type) &&
+                        (last_range.BaseShaderRegister + last_range.NumDescriptors == binding.binding_slot) &&
+                        (last_range.OffsetInDescriptorsFromTableStart + last_range.NumDescriptors == binding.offset_in_heap)
+                        )
                     {
-                        D3D12_DESCRIPTOR_RANGE& last_range = root_parameter.m_ranges.back();
-                        if (last_range.RangeType == encode_descriptor_range_type(desc.type) &&
-                            (last_range.BaseShaderRegister + last_range.NumDescriptors == desc.binding_slot) &&
-                            (last_range.OffsetInDescriptorsFromTableStart + last_range.NumDescriptors == binding.offset_in_heap)
-                            )
-                        {
-                            binding.range_index = (u32)root_parameter.m_ranges.size() - 1;
-                            last_range.NumDescriptors += desc.num_descs;
-                            continue;
-                        }
+                        binding.range_index = (u32)root_parameter.m_ranges.size() - 1;
+                        last_range.NumDescriptors += binding.num_descs;
+                        continue;
                     }
-                    // Append a new range.
-                    D3D12_DESCRIPTOR_RANGE range;
-                    range.BaseShaderRegister = desc.binding_slot;
-                    range.NumDescriptors = desc.num_descs == U32_MAX ? UINT_MAX : desc.num_descs;
-                    range.OffsetInDescriptorsFromTableStart = binding.offset_in_heap;
-                    range.RangeType = encode_descriptor_range_type(desc.type);
-                    range.RegisterSpace = 0;
-                    binding.range_index = (u32)root_parameter.m_ranges.size();
-                    root_parameter.m_ranges.push_back(range);
                 }
+                // Append a new range.
+                D3D12_DESCRIPTOR_RANGE range;
+                range.BaseShaderRegister = binding.binding_slot;
+                range.NumDescriptors = binding.num_descs == U32_MAX ? UINT_MAX : binding.num_descs;
+                range.OffsetInDescriptorsFromTableStart = binding.offset_in_heap;
+                range.RangeType = encode_descriptor_range_type(desc.type);
+                range.RegisterSpace = 0;
+                binding.range_index = (u32)root_parameter.m_ranges.size();
+                root_parameter.m_ranges.push_back(range);
             }
+            m_root_parameters.shrink_to_fit();
         }
         DescriptorSetLayout::HeapInfo* DescriptorSetLayout::get_heap_by_type(D3D12_DESCRIPTOR_HEAP_TYPE heap)
         {

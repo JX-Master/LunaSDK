@@ -33,7 +33,8 @@ namespace Luna
             }
             for (auto i = 0; i < layout->m_bindings.size(); ++i)
             {
-                m_bound_index_to_offset.insert(make_pair(layout->m_bindings[i].binding_slot, layout->m_binding_info[i].offset_in_heap));
+                auto& binding = layout->m_bindings[i];
+                m_bound_index_to_offset.insert(make_pair(binding.binding_slot, binding.offset_in_heap));
             }
             return ok;
         }

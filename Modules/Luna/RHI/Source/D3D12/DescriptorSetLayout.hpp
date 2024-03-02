@@ -21,7 +21,6 @@ namespace Luna
             luiimpl();
 
             Ref<Device> m_device;
-            DescriptorSetLayoutFlag m_flags;
 
             struct HeapInfo
             {
@@ -53,6 +52,10 @@ namespace Luna
                 u32 root_parameter_index;
                 //! The target range in the target root parameter.
                 u32 range_index;
+                //! The slot to bind the descriptor(s).
+                u32 binding_slot;
+                //! The number of descriptors of this binding.
+                u32 num_descs;
             };
 
             //! Describes how to allocate heaps for this descriptor set layout.
@@ -61,9 +64,8 @@ namespace Luna
             //! Describes how to allocate root parameters in order to bind this descriptor set.
             //! (shader space is not initialized).
             Vector<RootParameterInfo> m_root_parameters;
-            Array<DescriptorSetLayoutBinding> m_bindings;
             // Describes how every binding maps to root parameters and descriptor heaps.
-            Array<BindingInfo> m_binding_info;
+            Array<BindingInfo> m_bindings;
 
             void init(const DescriptorSetLayoutDesc& desc);
 
@@ -76,13 +78,6 @@ namespace Luna
                 return m_device.as<IDevice>();
             }
             virtual void set_name(const c8* name) override {}
-            virtual DescriptorSetLayoutDesc get_desc() override
-            {
-                DescriptorSetLayoutDesc ret;
-                ret.bindings = {m_bindings.data(), m_bindings.size()};
-                ret.flags = m_flags;
-                return ret;
-            }
         };
     }
 }

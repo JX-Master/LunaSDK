@@ -220,11 +220,6 @@ namespace Luna
         {
             luiid("{68D6929B-D94F-48B1-A19E-B89E0CF0D008}");
 
-            //! Gets the descriptor of this descriptor set layout.
-            //! @return Returns the descriptor of this descriptor set layout.
-            //! The returned descriptor is valid until this descriptor set layout 
-            //! object is destructed.
-            virtual DescriptorSetLayoutDesc get_desc() = 0;
         };
 
         //! @}
