@@ -9,11 +9,9 @@
 * @brief The cross-platform shader compiler interface.
 */
 #pragma once
-#include <Luna/Runtime/Interface.hpp>
 #include <Luna/Runtime/Span.hpp>
 #include <Luna/Runtime/Path.hpp>
 #include <Luna/Runtime/Result.hpp>
-#include <Luna/Runtime/Ref.hpp>
 
 #ifndef LUNA_SHADER_COMPILER_API
 #define LUNA_SHADER_COMPILER_API
@@ -23,136 +21,161 @@ namespace Luna
 {
     namespace ShaderCompiler
     {
+        //! @addtogroup ShaderCompiler ShaderCompiler
+        //! The ShaderCompiler module provides API to compile shaders.
+        //! ShaderCompiler is designed to work with RHI, but it can also be used independently to implement shader compile command-line 
+        //! tools without importing RHI module.
+        //! @{
+        
+        //! The compile target to output.
         enum class TargetFormat : u8
         {
             //! Outputs nothing. This can be used if you only want to validate the input source code.
             none = 0,
-            //! [Windows Only] Outputs DirectX Intermediate Language for shader model 6.0 and newer.
+            //! [Windows only] Outputs DirectX Intermediate Language for shader model 6.0 and newer.
             dxil,
-            //! Outputs SPIR-V for Vulkan and OpenGL.
+            //! Outputs SPIR-V for Vulkan API.
             spir_v,
             //! Outputs Metal Shading Lauguage.
-            msl
+            msl,
         };
 
+        //! The matrix pack mode.
         enum class MatrixPackMode : u8
         {
-            dont_care = 0,
+            //! Use column major pack mode.
+            //! @details In column major pack mode, the matrix data is read as four columns, each column
+            //! has four values arranged in memory continuously. This pack mode has slightly better performance
+            //! than row major pack mode in certain hardware.
+            column_major = 0,
+            //! Use row major pack mode.
+            //! @details In column major pack mode, the matrix data is read as four rows, each row
+            //! has four values arranged in memory continuously.
             row_major = 1,
-            column_major = 2,
         };
 
+        //! Specifies the shader compile type.
         enum class ShaderType : u8
         {
+            //! Compiles the shader as vertex shader.
             vertex = 1,
+            //! Compiles the shader as pixel (fragment) shader.
             pixel = 2,
+            //! Compiles the shader as compute shader.
             compute = 3
         };
-
+        
+        //! Specifies the shader optimization level.
         enum class OptimizationLevel : u8
         {
+            //! Do not perform any optimization. This can be used if 
+            //! you want to debug shader code using shader debugging tools.
             none,
+            //! Specifies shader optimization level 1.
             speed,
+            //! Specifies shader optimization level 2.
             full
         };
 
-        enum class MSLPlatform : u8
+        //! Specifies the HLSL shader model version used when compiling HLSL source code.
+        struct ShaderModel
         {
+            //! The shader model version major number.
+            u32 major;
+            //! The shader model version minor number.
+            u32 minor;
+        };
+
+        //! Specifies the intended running platform for one metal shader.
+        enum class MetalPlatform : u8
+        {
+            //! The shader is intended to be running on macOS.
             macos = 0,
+            //! The shader is intended to be running on iOS.
             ios = 1
         };
 
+        //! Describes one shader compile action.
+        struct ShaderCompileParameters
+        {
+            //! The shader source data in HLSL or GLSL(SPIR-V) format.
+            //! This is required for one shader compile action.
+            Span<const c8> source;
+            //! The source shader name.
+            //! This will be used by the compiler and the debug tools to identify the shader if not empty.
+            Name source_name;
+            //! The platform-native shader source file path.
+            //! This will be used by the compiler or debugger to resolve local include file and PDB file if not empty.
+            Path source_file_path;
+            //! The entry point function name of the shader. This must not be empty.
+            Name entry_point = "main";
+            //! The shader compile target format.
+            //! If the target is @ref TargetFormat::none, no shader compilation is performed.
+            TargetFormat target_format = TargetFormat::none;
+            //! The type of the shader to compile.
+            ShaderType shader_type = ShaderType::vertex;
+            //! The shader model used for compiling shaders.
+            ShaderModel shader_model = {6, 0};
+            //! The optimization level used for compiling shaders.
+            OptimizationLevel optimization_level = OptimizationLevel::full;
+            //! Whether to add debug informations to the shader binary.
+            bool debug = false;
+            //! Whether to skip shader validation.
+            bool skip_validation = false;
+            //! The matrix pack mode when interpreting matrix data.
+            MatrixPackMode matrix_pack_mode = MatrixPackMode::column_major;
+            //! One array of paths that the compiler will use to find include files.
+            Span<const Path> include_paths;
+            //! One set of definitions the compiler will use when preprocessing shader files.
+            Span<const Pair<Name, Name>> definitions;
+            //! The target platform for one metal shader.
+            //! This is used only if `target_format` is @ref TargetFormat::msl.
+            MetalPlatform metal_platform = MetalPlatform::macos;
+        };
+
+        //! Describes shader compile result.
+        struct ShaderCompileResult
+        {
+            //! The compiled shader data.
+            Blob data;
+            //! The format of the compiled data.
+            TargetFormat format = TargetFormat::none;
+            //! The shader entry point function name.
+            //! @details This should be used instead of @ref ShaderCompileParameters::entry_point when specifying entry point
+            //! in RHI APIs, since the compiler may marshall function names in source files, the entry point name may change 
+            //! before and after compilation.
+            Name entry_point;
+            //! The number of threads for one thread group in X dimension.
+            //! @details This is used only when the compile target is @ref TargetFormat::msl, since MSL does not record this 
+            //! in shader code.
+            u32 metal_numthreads_x = 0;
+            //! The number of threads for one thread group in Y dimension.
+            //! @details This is used only when the compile target is @ref TargetFormat::msl, since MSL does not record this 
+            //! in shader code.
+            u32 metal_numthreads_y = 0;
+            //! The number of threads for one thread group in Z dimension.
+            //! @details This is used only when the compile target is @ref TargetFormat::msl, since MSL does not record this 
+            //! in shader code.
+            u32 metal_numthreads_z = 0;
+        };
+
+        //! @interface ICompiler
         //! The compiler that compiles one shader source code into one target form.
         struct ICompiler : virtual Interface
         {
             luiid("{C2D6A83B-0B01-49AC-BFE4-94FAABBB5ACC}");
 
-            //! Resets the compiler settings.
-            //! The default settings are:
-            //! * source : <Null>
-            //! * source name : "unnamed"
-            //! * source file path : <Null>
-            //! * entry point : "main"
-            //! * output format : none
-            //! * shader type : vertex
-            //! * shader model : 5.1
-            //! * optimization level : none
-            //! * debug : false
-            //! * skip validation : false
-            //! * matrix pack mode : dont_care
-            //! * include paths: <Null>
-            //! * definitions : <Null>
-            //! * additional arguments : <Null>
-            //! * MSL platform: macos
-            virtual void reset() = 0;
-
-            //! Sets the source code of the compiler to be compiled.
-            //! For performance considerations, the compiler will not copy source code into one internal buffer, 
-            //! it only keeps one reference to the source code, so make sure the source code string is available until
-            //! the compiliation is finished.
-            virtual void set_source(Span<const c8> data) = 0;
-
-            //! Sets the source name. The source name will be used by the compiler and the debug tools to identify the shader.
-            virtual void set_source_name(const Name& name) = 0;
-
-            //! Sets the source file path. 
-            //! The source file path is optional and will be used by the compiler or debugger to resolve local include file and PDB file.
-            //! The user should provide this path whenever possible.
-            virtual void set_source_file_path(const Path& path) = 0;
-
-            //! Sets the name of the entry point function.
-            //! The default entry point function name will be "main".
-            virtual void set_entry_point(const Name& entry_point) = 0;
-
-            //! Sets the target format of the compiler.
-            virtual void set_target_format(TargetFormat format) = 0;
-
-            //! Sets the shader type to be compiled.
-            virtual void set_shader_type(ShaderType shader_type) = 0;
-
-            //! Sets the shader model to compile. The default shader model is 5.1.
-            virtual void set_shader_model(u32 major, u32 minor) = 0;
-
-            //! Sets the optimization level.
-            virtual void set_optimization_level(OptimizationLevel optimization_level) = 0;
-
-            //! Whether to generate debug info for the shader.
-            virtual void set_debug(bool debug) = 0;
-
-            //! Whether to skip validating the shader.
-            virtual void set_skip_validation(bool skip_validation) = 0;
-
-            //! Sets the matrix pack mode for the shader.
-            virtual void set_matrix_pack_mode(MatrixPackMode matrix_pack_mode) = 0;
-
-            //! Gets the system include paths. The include path is one VFS directory that the system will use to search for the include file.
-            //! The include file is searched in same order the include path was declared in the include path list.
-            virtual Vector<Path>& get_include_paths() = 0;
-
-            //! Gets a list of definitions for the shader.
-            virtual HashMap<Name, Name>& get_definitions() = 0;
-
-            //! Gets additional arguments for the compilation.
-            virtual Variant& get_additional_arguments() = 0;
-
-            // MSL target specifc settings.
-
-            //! Sets the target platform for generated MSL output.
-            virtual void set_msl_platform(MSLPlatform platform) = 0;
-
             //! Triggers compile for the source code.
-            virtual RV compile() = 0;
-
-            //! Gets the compiliation result if the compile was succeeded.
-            //! The compiliation result is stored as a BLOB object, described by data pointer and data size.
-            //! The blob object is valid until `reset` is called, or until another `compile` is called.
-            //! The returned span is empty if `compile` throws errors, or if no valid compiled data exists in the compiler.
-            virtual Span<const byte_t> get_output() = 0;
-
-
+            //! @param[in] params The parameters passed to the compiler.
+            //! @return Returns the compile result.
+            virtual R<ShaderCompileResult> compile(const ShaderCompileParameters& params) = 0;
         };
 
+        //! Creates one new compiler.
+        //! @return Returns the created compiler.
         LUNA_SHADER_COMPILER_API Ref<ICompiler> new_compiler();
+
+        //! @}
     }
 
     struct Module;

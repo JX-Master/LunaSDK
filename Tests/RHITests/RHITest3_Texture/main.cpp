@@ -76,18 +76,16 @@ RV start()
                 })";
 
             auto compiler = ShaderCompiler::new_compiler();
-            compiler->set_source({ vs_shader_code, sizeof(vs_shader_code) });
-            compiler->set_source_name("TestTextureVS");
-            compiler->set_entry_point("main");
-            compiler->set_target_format(RHI::get_current_platform_shader_target_format());
-            compiler->set_shader_type(ShaderCompiler::ShaderType::vertex);
-            compiler->set_shader_model(6, 0);
-            compiler->set_optimization_level(ShaderCompiler::OptimizationLevel::full);
+            ShaderCompiler::ShaderCompileParameters params;
+            params.source = { vs_shader_code, sizeof(vs_shader_code) };
+            params.source_name = "TestTextureVS";
+            params.entry_point = "main";
+            params.target_format = RHI::get_current_platform_shader_target_format();
+            params.shader_type = ShaderCompiler::ShaderType::vertex;
+            params.shader_model = {6, 0};
+            params.optimization_level = ShaderCompiler::OptimizationLevel::full;
 
-            luexp(compiler->compile());
-
-            auto vs_data = compiler->get_output();
-            Blob vs(vs_data.data(), vs_data.size());
+            lulet(vs_data, compiler->compile(params));
 
             const char ps_shader_code[] =
                 R"(struct PS_INPUT
@@ -107,19 +105,15 @@ RV start()
                     return out_col; 
                 })";
 
-            compiler->reset();
-            compiler->set_source({ ps_shader_code, sizeof(ps_shader_code) });
-            compiler->set_source_name("TestTexturePS");
-            compiler->set_entry_point("main");
-            compiler->set_target_format(RHI::get_current_platform_shader_target_format());
-            compiler->set_shader_type(ShaderCompiler::ShaderType::pixel);
-            compiler->set_shader_model(6, 0);
-            compiler->set_optimization_level(ShaderCompiler::OptimizationLevel::full);
+            params.source = { ps_shader_code, sizeof(ps_shader_code) };
+            params.source_name = "TestTexturePS";
+            params.entry_point = "main";
+            params.target_format = RHI::get_current_platform_shader_target_format();
+            params.shader_type = ShaderCompiler::ShaderType::pixel;
+            params.shader_model = {6, 0};
+            params.optimization_level = ShaderCompiler::OptimizationLevel::full;
 
-            luexp(compiler->compile());
-
-            auto ps_data = compiler->get_output();
-            Blob ps(ps_data.data(), ps_data.size());
+            lulet(ps_data, compiler->compile(params));
 
             luset(desc_set_layout, device->new_descriptor_set_layout(DescriptorSetLayoutDesc({
                 DescriptorSetLayoutBinding::read_texture_view(TextureViewType::tex2d, 0, 1, ShaderVisibilityFlag::pixel),
@@ -140,8 +134,8 @@ RV start()
                 InputAttributeDesc("TEXCOORD", 0, 1, 0, 8, Format::rg32_float)
             };
             desc.input_layout = InputLayoutDesc({input_bindings, 1}, {input_attributes, 2});
-            desc.vs = { vs.data(), vs.size() };
-            desc.ps = { ps.data(), ps.size() };
+            desc.vs = get_shader_data_from_compile_result(vs_data);
+            desc.ps = get_shader_data_from_compile_result(ps_data);
             desc.pipeline_layout = pipeline_layout;
             desc.depth_stencil_state = DepthStencilDesc(false, false);
             desc.num_color_attachments = 1;

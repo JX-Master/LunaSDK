@@ -146,9 +146,28 @@ namespace Luna
             PipelineLayout* playout = static_cast<PipelineLayout*>(desc.pipeline_layout->get_object());
             D3D12_GRAPHICS_PIPELINE_STATE_DESC d;
             d.pRootSignature = playout->m_rs.Get();
-
-            fill_shader_data(d.VS, desc.vs);
-            fill_shader_data(d.PS, desc.ps);
+            if(desc.vs.format != ShaderDataFormat::none)
+            {
+                if(desc.vs.format != ShaderDataFormat::dxil)
+                {
+                    return set_error(BasicError::bad_arguments(), "The vertex shader data must be in ShaderDataFormat::dxil format for D3D12 backend.");
+                }
+                if(desc.vs.data.empty())
+                {
+                    return set_error(BasicError::bad_arguments(), 
+                        "The vertex shader data is empty, but format is not ShaderDataFormat::none");
+                }
+                fill_shader_data(d.VS, desc.vs.data);
+            }
+            else
+            {
+                fill_shader_data(d.VS, {});
+            }
+            if(desc.ps.format != ShaderDataFormat::dxil || desc.ps.data.empty())
+            {
+                return set_error(BasicError::bad_arguments(), "The pixel shader data must be in ShaderDataFormat::dxil format and must not be empty for D3D12 backend.");
+            }
+            fill_shader_data(d.PS, desc.ps.data);
             fill_shader_data(d.DS, {});
             fill_shader_data(d.HS, {});
             fill_shader_data(d.GS, {});
@@ -326,7 +345,11 @@ namespace Luna
             d.pRootSignature = playout->m_rs.Get();
             d.CachedPSO.CachedBlobSizeInBytes = 0;
             d.CachedPSO.pCachedBlob = nullptr;
-            fill_shader_data(d.CS, desc.cs);
+            if(desc.cs.format != ShaderDataFormat::dxil || desc.cs.data.empty())
+            {
+                return set_error(BasicError::bad_arguments(), "The compute shader data must be in ShaderDataFormat::dxil format and must not be empty for D3D12 backend.");
+            }
+            fill_shader_data(d.CS, desc.cs.data);
             d.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
             d.NodeMask = 0;
             HRESULT hr = m_device->m_device->CreateComputePipelineState(&d, IID_PPV_ARGS(&m_pso));

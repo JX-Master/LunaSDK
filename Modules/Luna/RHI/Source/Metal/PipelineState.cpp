@@ -24,48 +24,58 @@ namespace Luna
                 NSPtr<MTL::Library> ps;
                 NSPtr<MTL::Function> vs_func;
                 NSPtr<MTL::Function> ps_func;
-                if(!desc.vs.empty())
+                if(desc.vs.format != ShaderDataFormat::none)
                 {
-                    lulet(vs_obj, VariantUtils::read_json((const c8*)desc.vs.data(), desc.vs.size()));
-                    auto& source_obj = vs_obj["source"];
-                    auto& entry_point_obj = vs_obj["entry_point"];
-                    NSPtr<MTL::CompileOptions> options = box(MTL::CompileOptions::alloc()->init());
-                    NS::String* source = NS::String::string(source_obj.c_str(), NS::UTF8StringEncoding);
-                    vs = box(m_device->m_device->newLibrary(source, options.get(), &err));
-                    if(!vs)
+                    if(desc.vs.format == ShaderDataFormat::msl)
                     {
-                        NS::String* err_desc = err->description();
-                        return set_error(BasicError::bad_platform_call(), "%s", err_desc->cString(NS::UTF8StringEncoding));
+                        NSPtr<MTL::CompileOptions> options = box(MTL::CompileOptions::alloc()->init());
+                        String source_string((const c8*)desc.vs.data.data(), desc.vs.data.size());
+                        NS::String* source = NS::String::string(source_string.c_str(), NS::UTF8StringEncoding);
+                        vs = box(m_device->m_device->newLibrary(source, options.get(), &err));
+                        if(!vs)
+                        {
+                            NS::String* err_desc = err->description();
+                            return set_error(BasicError::bad_platform_call(), "%s", err_desc->cString(NS::UTF8StringEncoding));
+                        }
+                        NSPtr<MTL::FunctionConstantValues> values = box(MTL::FunctionConstantValues::alloc()->init());
+                        NS::String* name = NS::String::string(desc.vs.entry_point.c_str(), NS::StringEncoding::UTF8StringEncoding);
+                        vs_func = box(vs->newFunction(name, values.get(), &err));
+                        if(!vs_func)
+                        {
+                            NS::String* err_desc = err->description();
+                            return set_error(BasicError::bad_platform_call(), "%s", err_desc->cString(NS::UTF8StringEncoding));
+                        }
                     }
-                    NSPtr<MTL::FunctionConstantValues> values = box(MTL::FunctionConstantValues::alloc()->init());
-                    NS::String* name = NS::String::string(entry_point_obj.c_str(), NS::StringEncoding::UTF8StringEncoding);
-                    vs_func = box(vs->newFunction(name, values.get(), &err));
-                    if(!vs_func)
+                    else
                     {
-                        NS::String* err_desc = err->description();
-                        return set_error(BasicError::bad_platform_call(), "%s", err_desc->cString(NS::UTF8StringEncoding));
+                        return set_error(BasicError::bad_arguments(), "The vertex shader format must be ShaderDataFormat::msl for Metal backend.");
                     }
                 }
-                if(!desc.ps.empty())
+                if(desc.ps.format != ShaderDataFormat::none)
                 {
-                    lulet(ps_obj, VariantUtils::read_json((const c8*)desc.ps.data(), desc.ps.size()));
-                    auto& source_obj = ps_obj["source"];
-                    auto& entry_point_obj = ps_obj["entry_point"];
-                    NSPtr<MTL::CompileOptions> options = box(MTL::CompileOptions::alloc()->init());
-                    NS::String* source = NS::String::string(source_obj.c_str(), NS::UTF8StringEncoding);
-                    ps = box(m_device->m_device->newLibrary(source, options.get(), &err));
-                    if(!ps)
+                    if(desc.ps.format == ShaderDataFormat::msl)
                     {
-                        NS::String* err_desc = err->description();
-                        return set_error(BasicError::bad_platform_call(), "%s", err_desc->cString(NS::UTF8StringEncoding));
+                        NSPtr<MTL::CompileOptions> options = box(MTL::CompileOptions::alloc()->init());
+                        String source_string((const c8*)desc.ps.data.data(), desc.ps.data.size());
+                        NS::String* source = NS::String::string(source_obj.c_str(), NS::UTF8StringEncoding);
+                        ps = box(m_device->m_device->newLibrary(source, options.get(), &err));
+                        if(!ps)
+                        {
+                            NS::String* err_desc = err->description();
+                            return set_error(BasicError::bad_platform_call(), "%s", err_desc->cString(NS::UTF8StringEncoding));
+                        }
+                        NSPtr<MTL::FunctionConstantValues> values = box(MTL::FunctionConstantValues::alloc()->init());
+                        NS::String* name = NS::String::string(desc.ps.c_str(), NS::StringEncoding::UTF8StringEncoding);
+                        ps_func = box(ps->newFunction(name, values.get(), &err));
+                        if(!ps_func)
+                        {
+                            NS::String* err_desc = err->description();
+                            return set_error(BasicError::bad_platform_call(), "%s", err_desc->cString(NS::UTF8StringEncoding));
+                        }
                     }
-                    NSPtr<MTL::FunctionConstantValues> values = box(MTL::FunctionConstantValues::alloc()->init());
-                    NS::String* name = NS::String::string(entry_point_obj.c_str(), NS::StringEncoding::UTF8StringEncoding);
-                    ps_func = box(ps->newFunction(name, values.get(), &err));
-                    if(!ps_func)
+                    else
                     {
-                        NS::String* err_desc = err->description();
-                        return set_error(BasicError::bad_platform_call(), "%s", err_desc->cString(NS::UTF8StringEncoding));
+                        return set_error(BasicError::bad_arguments(), "The pixel shader format must be ShaderDataFormat::msl for Metal backend.");
                     }
                 }
                 NSPtr<MTL::RenderPipelineDescriptor> d = box(MTL::RenderPipelineDescriptor::alloc()->init());
@@ -218,20 +228,25 @@ namespace Luna
                 NS::Error* err = nullptr;
                 NSPtr<MTL::Library> cs;
                 NSPtr<MTL::Function> cs_func;
-                NSPtr<MTL::CompileOptions> options = box(MTL::CompileOptions::alloc()->init());
-                lulet(cs_obj, VariantUtils::read_json((const c8*)desc.cs.data(), desc.cs.size()));
-                auto& source_obj = cs_obj["source"];
-                auto& entry_point_obj = cs_obj["entry_point"];
-                NS::String* source = NS::String::string(source_obj.c_str(), NS::UTF8StringEncoding);
-                cs = box(m_device->m_device->newLibrary(source, options.get(), &err));
-                if(!cs)
+                if(desc.cs.format == ShaderDataFormat::msl)
                 {
-                    NS::String* err_desc = err->description();
-                    return set_error(BasicError::bad_platform_call(), "%s", err_desc->cString(NS::UTF8StringEncoding));
+                    NSPtr<MTL::CompileOptions> options = box(MTL::CompileOptions::alloc()->init());
+                    String source_string((const c8*)desc.cs.data.data(), desc.cs.data.size());
+                    NS::String* source = NS::String::string(source_string.c_str(), NS::UTF8StringEncoding);
+                    cs = box(m_device->m_device->newLibrary(source, options.get(), &err));
+                    if(!cs)
+                    {
+                        NS::String* err_desc = err->description();
+                        return set_error(BasicError::bad_platform_call(), "%s", err_desc->cString(NS::UTF8StringEncoding));
+                    }
+                    NSPtr<MTL::FunctionConstantValues> values = box(MTL::FunctionConstantValues::alloc()->init());
+                    NS::String* name = NS::String::string(desc.cs.entry_point.c_str(), NS::StringEncoding::UTF8StringEncoding);
+                    cs_func = box(cs->newFunction(name, values.get(), &err));
                 }
-                NSPtr<MTL::FunctionConstantValues> values = box(MTL::FunctionConstantValues::alloc()->init());
-                NS::String* name = NS::String::string(entry_point_obj.c_str(), NS::StringEncoding::UTF8StringEncoding);
-                cs_func = box(cs->newFunction(name, values.get(), &err));
+                else
+                {
+                    return set_error(BasicError::bad_arguments(), "The compute shader format must be ShaderDataFormat::msl for Metal backend.");
+                }
                 if(!cs_func)
                 {
                     NS::String* err_desc = err->description();
@@ -246,14 +261,7 @@ namespace Luna
                     NS::String* err_desc = err->description();
                     return set_error(BasicError::bad_platform_call(), "%s", err_desc->cString(NS::UTF8StringEncoding));
                 }
-                {
-                    auto& num_threads = cs_obj["numthreads"];
-                    u64 x = 0, y = 0, z = 0;
-                    x = num_threads[0].unum();
-                    y = num_threads[1].unum();
-                    z = num_threads[2].unum();
-                    m_num_threads_per_group = UInt3U((u32)x, (u32)y, (u32)z);
-                }
+                m_num_threads_per_group = UInt3U(desc.metal_numthreads_x, desc.metal_numthreads_y, desc.metal_numthreads_z);
             }
             lucatchret;
             return ok;

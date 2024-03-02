@@ -18,8 +18,8 @@ namespace Luna
 {
     namespace VG
     {
-        Blob g_fill_shader_vs;
-        Blob g_fill_shader_ps;
+        ShaderCompiler::ShaderCompileResult g_fill_shader_vs;
+        ShaderCompiler::ShaderCompileResult g_fill_shader_ps;
         Ref<RHI::IDescriptorSetLayout> g_fill_desc_layout;
         Ref<RHI::IPipelineLayout> g_fill_playout;
         Ref<RHI::ITexture> g_white_tex;
@@ -32,28 +32,24 @@ namespace Luna
             {
                 {
                     auto compiler = ShaderCompiler::new_compiler();
-                    compiler->set_source({ FILL_SHADER_SOURCE_VS, FILL_SHADER_SOURCE_VS_SIZE });
-                    compiler->set_source_name("FillVS");
-                    compiler->set_entry_point("main");
-                    compiler->set_target_format(RHI::get_current_platform_shader_target_format());
-                    compiler->set_shader_type(ShaderCompiler::ShaderType::vertex);
-                    compiler->set_shader_model(6, 0);
-                    compiler->set_optimization_level(ShaderCompiler::OptimizationLevel::full);
-                    luexp(compiler->compile());
-                    auto data = compiler->get_output();
-                    g_fill_shader_vs = Blob(data.data(), data.size());
+                    ShaderCompiler::ShaderCompileParameters params;
+                    params.source = { FILL_SHADER_SOURCE_VS, FILL_SHADER_SOURCE_VS_SIZE };
+                    params.source_name = "FillVS";
+                    params.entry_point = "main";
+                    params.target_format = RHI::get_current_platform_shader_target_format();
+                    params.shader_type = ShaderCompiler::ShaderType::vertex;
+                    params.shader_model = {6, 0};
+                    params.optimization_level = ShaderCompiler::OptimizationLevel::full;
+                    luset(g_fill_shader_vs, compiler->compile(params));
 
-                    compiler->reset();
-                    compiler->set_source({ FILL_SHADER_SOURCE_PS, FILL_SHADER_SOURCE_PS_SIZE });
-                    compiler->set_source_name("FillPS");
-                    compiler->set_entry_point("main");
-                    compiler->set_target_format(RHI::get_current_platform_shader_target_format());
-                    compiler->set_shader_type(ShaderCompiler::ShaderType::pixel);
-                    compiler->set_shader_model(6, 0);
-                    compiler->set_optimization_level(ShaderCompiler::OptimizationLevel::full);
-                    luexp(compiler->compile());
-                    data = compiler->get_output();
-                    g_fill_shader_ps = Blob(data.data(), data.size());
+                    params.source = { FILL_SHADER_SOURCE_PS, FILL_SHADER_SOURCE_PS_SIZE };
+                    params.source_name = "FillPS";
+                    params.entry_point = "main";
+                    params.target_format = RHI::get_current_platform_shader_target_format();
+                    params.shader_type = ShaderCompiler::ShaderType::pixel;
+                    params.shader_model = {6, 0};
+                    params.optimization_level = ShaderCompiler::OptimizationLevel::full;
+                    luset(g_fill_shader_ps, compiler->compile(params));
                 }
                 {
                     DescriptorSetLayoutBinding bindings[] = {
@@ -108,8 +104,10 @@ namespace Luna
         }
         void deinit_render_resources()
         {
-            g_fill_shader_vs.clear();
-            g_fill_shader_ps.clear();
+            g_fill_shader_vs.data.clear();
+            g_fill_shader_vs.entry_point.reset();
+            g_fill_shader_ps.data.clear();
+            g_fill_shader_ps.entry_point.reset();
             g_fill_desc_layout = nullptr;
             g_fill_playout = nullptr;
             g_white_tex = nullptr;
@@ -133,8 +131,8 @@ namespace Luna
                 };
                 desc.input_layout = InputLayoutDesc({bindings, 1}, {attributes, 6});
                 desc.pipeline_layout = g_fill_playout;
-                desc.vs = { g_fill_shader_vs.data(), g_fill_shader_vs.size() };
-                desc.ps = { g_fill_shader_ps.data(), g_fill_shader_ps.size() };
+                desc.vs = get_shader_data_from_compile_result(g_fill_shader_vs);
+                desc.ps = get_shader_data_from_compile_result(g_fill_shader_ps);
                 desc.blend_state = BlendDesc({ AttachmentBlendDesc(true, BlendFactor::src_alpha, BlendFactor::one_minus_src_alpha, BlendOp::add, BlendFactor::zero,
                         BlendFactor::one, BlendOp::add, ColorWriteMask::all) });
                 desc.rasterizer_state = RasterizerDesc(FillMode::solid, CullMode::back, false, false, false, false, false);

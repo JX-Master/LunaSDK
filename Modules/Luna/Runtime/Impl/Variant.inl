@@ -628,7 +628,7 @@ namespace Luna
     {
         return type() == VariantType::boolean ? m_b : default_value;
     }
-    inline byte_t* Variant::blob_data()
+    inline void* Variant::blob_data()
     {
         if (type() == VariantType::blob)
         {
@@ -636,7 +636,7 @@ namespace Luna
         }
         return nullptr;
     }
-    inline const byte_t* Variant::blob_data() const
+    inline const void* Variant::blob_data() const
     {
         if (type() == VariantType::blob)
         {

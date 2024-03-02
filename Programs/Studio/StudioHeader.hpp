@@ -86,9 +86,9 @@ namespace Luna
         lucatchret;
         return ok;
     }
-    inline R<Blob> compile_shader(const Path& shader_file, ShaderCompiler::ShaderType shader_type)
+    inline R<ShaderCompiler::ShaderCompileResult> compile_shader(const Path& shader_file, ShaderCompiler::ShaderType shader_type)
     {
-        Blob ret;
+        ShaderCompiler::ShaderCompileResult ret;
         lutry
         {
             lulet(f, open_file(shader_file.encode().c_str(), FileOpenFlag::read, FileCreationMode::open_existing));
@@ -97,23 +97,22 @@ namespace Luna
             luexp(f->read(file_blob.data(), file_blob.size()));
             f.reset();
             auto compiler = ShaderCompiler::new_compiler();
-            compiler->set_source({ (const c8*)file_blob.data(), file_blob.size()});
-            compiler->set_source_name(shader_file.filename());
-            compiler->set_source_file_path(shader_file);
-            compiler->set_entry_point("main");
-            compiler->set_target_format(RHI::get_current_platform_shader_target_format());
-            compiler->set_shader_type(shader_type);
-            compiler->set_shader_model(6, 0);
+            ShaderCompiler::ShaderCompileParameters params;
+            params.source = {(const c8*)file_blob.data(), file_blob.size()};
+            params.source_name = shader_file.filename();
+            params.source_file_path = shader_file;
+            params.entry_point = "main";
+            params.target_format = RHI::get_current_platform_shader_target_format();
+            params.shader_type = shader_type;
+            params.shader_model = {6, 0};
 #ifdef LUNA_DEBUG
-            compiler->set_optimization_level(ShaderCompiler::OptimizationLevel::none);
-            compiler->set_debug(true);
+            params.optimization_level = ShaderCompiler::OptimizationLevel::none;
+            params.debug = true;
 #else
-            compiler->set_optimization_level(ShaderCompiler::OptimizationLevel::full);
-            compiler->set_debug(false);
+            params.optimization_level = ShaderCompiler::OptimizationLevel::full;
+            params.debug = false;
 #endif
-            luexp(compiler->compile());
-            auto shader_data = compiler->get_output();
-            ret = Blob(shader_data.data(), shader_data.size());
+            luset(ret, compiler->compile(params));
         }
         lucatchret;
         return ret;

@@ -43,8 +43,8 @@ namespace Luna
         usize g_vb_size;
         usize g_ib_size;
 
-        Blob g_vs_blob;
-        Blob g_ps_blob;
+        ShaderCompiler::ShaderCompileResult g_vs_blob;
+        ShaderCompiler::ShaderCompileResult g_ps_blob;
 
         Ref<RHI::IDescriptorSetLayout> g_desc_layout;
         Ref<RHI::IPipelineLayout> g_playout;
@@ -161,28 +161,23 @@ float4 main(PS_INPUT input) : SV_Target
                 auto dev = get_main_device();
 
                 auto compiler = ShaderCompiler::new_compiler();
-
-                compiler->set_source({ IMGUI_VS_SOURCE, sizeof(IMGUI_VS_SOURCE) });
-                compiler->set_source_name("ImGuiVS");
-                compiler->set_entry_point("main");
-                compiler->set_target_format(get_current_platform_shader_target_format());
-                compiler->set_shader_type(ShaderCompiler::ShaderType::vertex);
-                compiler->set_shader_model(6, 0);
-                compiler->set_optimization_level(ShaderCompiler::OptimizationLevel::full);
-                luexp(compiler->compile());
-                auto vs_data = compiler->get_output();
-                g_vs_blob = Blob(vs_data.data(), vs_data.size());
-                compiler->reset();
-                compiler->set_source({ IMGUI_PS_SOURCE, sizeof(IMGUI_PS_SOURCE) });
-                compiler->set_source_name("ImGuiPS");
-                compiler->set_entry_point("main");
-                compiler->set_target_format(get_current_platform_shader_target_format());
-                compiler->set_shader_type(ShaderCompiler::ShaderType::pixel);
-                compiler->set_shader_model(6, 0);
-                compiler->set_optimization_level(ShaderCompiler::OptimizationLevel::full);
-                luexp(compiler->compile());
-                auto ps_data = compiler->get_output();
-                g_ps_blob = Blob(ps_data.data(), ps_data.size());
+                ShaderCompiler::ShaderCompileParameters params;
+                params.source = { IMGUI_VS_SOURCE, sizeof(IMGUI_VS_SOURCE) };
+                params.source_name = "ImGuiVS";
+                params.entry_point = "main";
+                params.target_format = get_current_platform_shader_target_format();
+                params.shader_type = ShaderCompiler::ShaderType::vertex;
+                params.shader_model = {6, 0};
+                params.optimization_level = ShaderCompiler::OptimizationLevel::full;
+                luset(g_vs_blob, compiler->compile(params));
+                params.source = { IMGUI_PS_SOURCE, sizeof(IMGUI_PS_SOURCE) };
+                params.source_name = "ImGuiPS";
+                params.entry_point = "main";
+                params.target_format = get_current_platform_shader_target_format();
+                params.shader_type = ShaderCompiler::ShaderType::pixel;
+                params.shader_model = {6, 0};
+                params.optimization_level = ShaderCompiler::OptimizationLevel::full;
+                luset(g_ps_blob, compiler->compile(params));
                 luset(g_desc_layout, dev->new_descriptor_set_layout(DescriptorSetLayoutDesc(
                     {
                         DescriptorSetLayoutBinding::uniform_buffer_view(0, 1, ShaderVisibilityFlag::vertex),
@@ -399,8 +394,10 @@ float4 main(PS_INPUT input) : SV_Target
             g_font_file = nullptr;
             g_vb = nullptr;
             g_ib = nullptr;
-            g_vs_blob.clear();
-            g_ps_blob.clear();
+            g_vs_blob.data.clear();
+            g_vs_blob.entry_point.reset();
+            g_ps_blob.data.clear();
+            g_ps_blob.entry_point.reset();
             g_active_window = nullptr;
             g_playout = nullptr;
             g_pso.clear();
@@ -762,8 +759,8 @@ float4 main(PS_INPUT input) : SV_Target
                 };
                 ps_desc.input_layout.bindings = { input_bindings, 1 };
                 ps_desc.input_layout.attributes = { input_attributes , 3 };
-                ps_desc.vs = { g_vs_blob.data(), g_vs_blob.size() };
-                ps_desc.ps = { g_ps_blob.data(), g_ps_blob.size() };
+                ps_desc.vs = get_shader_data_from_compile_result(g_vs_blob);
+                ps_desc.ps = get_shader_data_from_compile_result(g_ps_blob);
                 ps_desc.pipeline_layout = g_playout;
                 ps_desc.num_color_attachments = 1;
                 ps_desc.color_formats[0] = rt_format;

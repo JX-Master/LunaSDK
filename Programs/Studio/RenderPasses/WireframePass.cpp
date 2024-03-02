@@ -56,15 +56,15 @@ namespace Luna
                   return float4(1.0f, 1.0f, 1.0f, 1.0f);
                 })";
             auto compiler = ShaderCompiler::new_compiler();
-            compiler->set_source({ pixelShader, strlen(pixelShader) });
-            compiler->set_source_name("MeshDebugPS");
-            compiler->set_entry_point("main");
-            compiler->set_target_format(get_current_platform_shader_target_format());
-            compiler->set_shader_type(ShaderCompiler::ShaderType::pixel);
-            compiler->set_shader_model(6, 0);
-            compiler->set_optimization_level(ShaderCompiler::OptimizationLevel::full);
-            luexp(compiler->compile());
-            Blob ps_blob = compiler->get_output();
+            ShaderCompiler::ShaderCompileParameters params;
+            params.source = { pixelShader, strlen(pixelShader) };
+            params.source_name = "MeshDebugPS";
+            params.entry_point = "main";
+            params.target_format = get_current_platform_shader_target_format();
+            params.shader_type = ShaderCompiler::ShaderType::pixel;
+            params.shader_model = {6, 0};
+            params.optimization_level = ShaderCompiler::OptimizationLevel::full;
+            lulet(ps_blob, compiler->compile(params));
 
             GraphicsPipelineStateDesc ps_desc;
             ps_desc.primitive_topology = PrimitiveTopology::triangle_list;
@@ -78,8 +78,8 @@ namespace Luna
             InputBindingDesc binding(0, sizeof(Vertex), InputRate::per_vertex);
             ps_desc.input_layout.bindings = { &binding, 1 };
             ps_desc.input_layout.attributes = { attributes.data(), attributes.size() };
-            ps_desc.vs = vs_blob.cspan();
-            ps_desc.ps = ps_blob.cspan();
+            ps_desc.vs = get_shader_data_from_compile_result(vs_blob);
+            ps_desc.ps = get_shader_data_from_compile_result(ps_blob);
             ps_desc.pipeline_layout = m_debug_mesh_renderer_playout;
             ps_desc.num_color_attachments = 1;
             ps_desc.color_formats[0] = Format::rgba8_unorm;

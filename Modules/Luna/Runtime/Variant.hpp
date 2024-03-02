@@ -590,11 +590,11 @@ namespace Luna
         //! Gets the data pointer of one BLOB variant.
         //! @return Returns the data pointer if the variant is a BLOB variant with @ref blob_size greater than `0`. 
         //! Returns `nullptr` otherwise.
-        byte_t* blob_data();
+        void* blob_data();
         //! Gets the data pointer of one BLOB variant.
         //! @return Returns the data pointer if the variant is a BLOB variant with @ref blob_size greater than `0`. 
         //! Returns `nullptr` otherwise.
-        const byte_t* blob_data() const;
+        const void* blob_data() const;
         //! Gets the data size, in bytes, of one BLOB variant.
         //! @return Returns the size of the data if the variant is a BLOB variant. Returns 0 otherwise.
         usize blob_size() const;
@@ -671,7 +671,7 @@ namespace Luna
             u64 m_ui;
             f64 m_fi;
             bool m_b;
-            byte_t* m_blob;
+            void* m_blob;
             Blob* m_big_blob;
             Name m_str;
             Pair<const Name, Variant>* m_obj;

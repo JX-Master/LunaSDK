@@ -100,7 +100,7 @@ namespace Luna
                 lulet(cs_blob, compile_shader("Shaders/MipmapGenerationCS.hlsl", ShaderCompiler::ShaderType::compute));
                 ComputePipelineStateDesc ps_desc;
                 ps_desc.pipeline_layout = m_mipmapping_playout;
-                ps_desc.cs = cs_blob.cspan();
+                fill_compute_pipeline_state_desc_from_compile_result(ps_desc, cs_blob);
                 luset(m_mipmapping_pso, RHI::get_main_device()->new_compute_pipeline_state(ps_desc));
             }
             {
@@ -120,7 +120,7 @@ namespace Luna
                 lulet(cs_blob, compile_shader("Shaders/PrecomputeEnvironmentMapMips.hlsl", ShaderCompiler::ShaderType::compute));
                 ComputePipelineStateDesc ps_desc;
                 ps_desc.pipeline_layout = m_env_mipmapping_playout;
-                ps_desc.cs = cs_blob.cspan();
+                fill_compute_pipeline_state_desc_from_compile_result(ps_desc, cs_blob);
                 luset(m_env_mipmapping_pso, RHI::get_main_device()->new_compute_pipeline_state(ps_desc));
             }
         }
@@ -429,7 +429,7 @@ namespace Luna
                         for (u32 mip = 0; mip < desc.mip_levels; ++mip)
                         {
                             auto& subresource = dds_image.subresources[Image::calc_dds_subresoruce_index(mip, item, desc.mip_levels)];
-                            RHI::CopyResourceData copy = RHI::CopyResourceData::write_texture(tex, RHI::SubresourceIndex(mip, item), 0, 0, 0, dds_image.data.data() + subresource.data_offset, subresource.row_pitch, subresource.slice_pitch, subresource.width, subresource.height, d);
+                            RHI::CopyResourceData copy = RHI::CopyResourceData::write_texture(tex, RHI::SubresourceIndex(mip, item), 0, 0, 0, (const u8*)dds_image.data.data() + subresource.data_offset, subresource.row_pitch, subresource.slice_pitch, subresource.width, subresource.height, d);
                             copies.push_back(move(copy));
                         }
                         if (d > 1) d >>= 1;
@@ -486,7 +486,7 @@ namespace Luna
                     for (u32 mip = 0; mip < desc.mip_levels; ++mip)
                     {
                         auto& dst = image.subresources[Image::calc_dds_subresoruce_index(mip, item, desc.mip_levels)];
-                        RHI::CopyResourceData copy = RHI::CopyResourceData::read_texture(image.data.data() + dst.data_offset,
+                        RHI::CopyResourceData copy = RHI::CopyResourceData::read_texture((u8*)image.data.data() + dst.data_offset,
                             dst.row_pitch, dst.slice_pitch, tex, RHI::SubresourceIndex(mip, item), 0, 0, 0,
                             dst.width, dst.height, dst.depth);
                         copies.push_back(move(copy));

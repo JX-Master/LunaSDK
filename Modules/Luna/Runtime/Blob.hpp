@@ -23,7 +23,7 @@ namespace Luna
     //! of the managed memory from one blob object.
     class Blob
     {
-        byte_t* m_buffer;
+        void* m_buffer;
         usize m_size;
         usize m_alignment;
 
@@ -43,7 +43,7 @@ namespace Luna
         //! @param[in] data_sz The size, in bytes, of the data pointed by `blob_data`.
         //! @param[in] alignment The optional alignment, in bytes, of the memory to allocate.
         //! @details The blob object will allocate memory for the data and copies the data into the blob memory.
-        Blob(const byte_t* blob_data, usize data_sz, usize alignment = 0);
+        Blob(const void* blob_data, usize data_sz, usize alignment = 0);
         //! Constructs one blob object with a list of elements.
         //! @param[in] blob_data The @ref Span that represents the list. The blob allocates enough memory to hold all elements in the list. 
         //! Every element in the list will be copied as if by @ref memcpy.
@@ -78,10 +78,10 @@ namespace Luna
         
         //! Gets one pointer to the data of the blob object.
         //! @return Returns the pointer to the data of the blob object. Returns `nullptr` if @ref empty returns `true`.
-        const byte_t* data() const;
+        const void* data() const;
         //! Gets one pointer to the data of the blob object.
         //! @return Returns the pointer to the data of the blob object. Returns `nullptr` if @ref empty returns `true`.
-        byte_t* data();
+        void* data();
         //! Gets the size of the memory managed by this blob object.
         //! @return Returns the size, in bytes, of the memory managed by this blob object.
         usize size() const;
@@ -118,10 +118,10 @@ namespace Luna
         //! @param[in] size The size, in bytes, of the memory to attach. This must be equal to the size passed to @ref memalloc or @ref memrealloc when allocating the memory.
         //! @param[in] alignment The alignment, in bytes, of the memory to attach. This must be equal to the alignment passed to @ref memalloc or @ref memrealloc when allocating the memory.
         //! This can be `0` if `0` is also passed to @ref memalloc or @ref memrealloc when allocating the memory.
-        void attach(byte_t* data, usize size, usize alignment);
+        void attach(void* data, usize size, usize alignment);
         //! Detaches the managed memory of one blob object. The blob object is empty after this operation.
         //! @return Returns the pointer to the detached managed memory of the blob object. Returns `nullptr` is this blob object is already empty.
-        byte_t* detach();
+        void* detach();
         
         //! @}
     };
@@ -145,13 +145,13 @@ namespace Luna
         m_size(sz),
         m_alignment(alignment)
     {
-        m_buffer = (byte_t*)memalloc(sz, alignment);
+        m_buffer = memalloc(sz, alignment);
     }
-    inline Blob::Blob(const byte_t* blob_data, usize data_sz, usize alignment) :
+    inline Blob::Blob(const void* blob_data, usize data_sz, usize alignment) :
         m_size(data_sz),
         m_alignment(alignment)
     {
-        m_buffer = (byte_t*)memalloc(data_sz, alignment);
+        m_buffer = memalloc(data_sz, alignment);
         memcpy(m_buffer, blob_data, data_sz);
     }
     template <usize _Size>
@@ -159,7 +159,7 @@ namespace Luna
         m_size(blob_data.size()),
         m_alignment(alignment)
     {
-        m_buffer = (byte_t*)memalloc(blob_data.size(), alignment);
+        m_buffer = memalloc(blob_data.size(), alignment);
         memcpy(m_buffer, blob_data.data(), blob_data.size());
     }
     inline Blob::Blob(const Blob& rhs) :
@@ -169,7 +169,7 @@ namespace Luna
     {
         if (m_size)
         {
-            m_buffer = (byte_t*)memalloc(m_size, m_alignment);
+            m_buffer = memalloc(m_size, m_alignment);
             memcpy(m_buffer, rhs.m_buffer, m_size);
         }
     }
@@ -189,7 +189,7 @@ namespace Luna
         m_alignment = rhs.m_alignment;
         if (m_size)
         {
-            m_buffer = (byte_t*)memalloc(m_size, m_alignment);
+            m_buffer = memalloc(m_size, m_alignment);
             memcpy(m_buffer, rhs.m_buffer, m_size);
         }
         return *this;
@@ -209,11 +209,11 @@ namespace Luna
     {
         do_destruct();
     }
-    inline const byte_t* Blob::data() const
+    inline const void* Blob::data() const
     {
         return m_buffer;
     }
-    inline byte_t* Blob::data()
+    inline void* Blob::data()
     {
         return m_buffer;
     }
@@ -223,15 +223,15 @@ namespace Luna
     }
     inline Span<const byte_t> Blob::span() const
     {
-        return Span<const byte_t>(data(), size());
+        return Span<const byte_t>((const byte_t*)data(), size());
     }
     inline Span<const byte_t> Blob::cspan() const
     {
-        return Span<const byte_t>(data(), size());
+        return Span<const byte_t>((const byte_t*)data(), size());
     }
     inline Span<byte_t> Blob::span()
     {
-        return Span<byte_t>(data(), size());
+        return Span<byte_t>((byte_t*)data(), size());
     }
     inline usize Blob::alignment() const
     {
@@ -245,12 +245,12 @@ namespace Luna
     {
         if(keep_content)
         {
-            m_buffer = (byte_t*)memrealloc(m_buffer, sz, m_alignment);
+            m_buffer = memrealloc(m_buffer, sz, m_alignment);
         }
         else
         {
-            byte_t* old_buffer = m_buffer;
-            m_buffer = (byte_t*)memalloc(sz, m_alignment);
+            void* old_buffer = m_buffer;
+            m_buffer = memalloc(sz, m_alignment);
             if(old_buffer) memfree(old_buffer, m_alignment);
         }
         m_size = sz;
@@ -262,16 +262,16 @@ namespace Luna
         m_size = 0;
         m_alignment = 0;
     }
-    inline void Blob::attach(byte_t* data, usize size, usize alignment)
+    inline void Blob::attach(void* data, usize size, usize alignment)
     {
         do_destruct();
         m_buffer = data;
         m_size = size;
         m_alignment = alignment;
     }
-    inline byte_t* Blob::detach()
+    inline void* Blob::detach()
     {
-        byte_t* buf = m_buffer;
+        void* buf = m_buffer;
         m_buffer = nullptr;
         m_size = 0;
         m_alignment = 0;

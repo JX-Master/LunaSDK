@@ -51,28 +51,44 @@ namespace Luna
                 u32 num_stages = 0;
                 ShaderModule vs;
                 ShaderModule ps;
-                if (!desc.vs.empty())
+                if(desc.vs.format != ShaderDataFormat::none)
                 {
-                    luexp(vs.init(m_device, desc.vs));
+                    if(desc.vs.format != ShaderDataFormat::spirv)
+                    {
+                        return set_error(BasicError::bad_arguments(), "The data format of vertex shader must be ShaderDataFormat::spirv for Vulkan backend!");
+                    }
+                    if(desc.vs.data.empty())
+                    {
+                        return set_error(BasicError::bad_arguments(), "The vertex shader data is empty.");
+                    }
+                    luexp(vs.init(m_device, desc.vs.data));
                     shader_modles[num_stages] = vs.shader_module;
                     auto& dst = stages[num_stages];
                     dst.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
                     dst.stage = VK_SHADER_STAGE_VERTEX_BIT;
                     dst.module = shader_modles[num_stages];
-                    dst.pName = "main";
+                    dst.pName = desc.vs.entry_point.c_str();
                     dst.flags = 0;
                     dst.pSpecializationInfo = nullptr;
                     ++num_stages;
                 }
-                if (!desc.ps.empty())
+                if (desc.ps.format != ShaderDataFormat::none)
                 {
-                    luexp(ps.init(m_device, desc.ps));
+                    if(desc.ps.format != ShaderDataFormat::spirv)
+                    {
+                        return set_error(BasicError::bad_arguments(), "The data format of pixel shader must be ShaderDataFormat::spirv for Vulkan backend!");
+                    }
+                    if(desc.ps.data.empty())
+                    {
+                        return set_error(BasicError::bad_arguments(), "The pixel shader data is empty.");
+                    }
+                    luexp(ps.init(m_device, desc.ps.data));
                     shader_modles[num_stages] = ps.shader_module;
                     auto& dst = stages[num_stages];
                     dst.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
                     dst.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
                     dst.module = shader_modles[num_stages];
-                    dst.pName = "main";
+                    dst.pName = desc.ps.entry_point.c_str();
                     dst.flags = 0;
                     dst.pSpecializationInfo = nullptr;
                     ++num_stages;
@@ -283,11 +299,15 @@ namespace Luna
                 // compute stage.
                 ShaderModule cs;
                 VkShaderModule shader_modle = { VK_NULL_HANDLE };
-                luexp(cs.init(m_device, desc.cs));
+                if(desc.cs.format != ShaderDataFormat::spirv || desc.cs.data.empty())
+                {
+                    return set_error(BasicError::not_supported(), "The compute shader data must be in ShaderDataFormat::spirv and must not be empty for Vulkan backend");
+                }
+                luexp(cs.init(m_device, desc.cs.data));
                 create_info.stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
                 create_info.stage.stage = VK_SHADER_STAGE_COMPUTE_BIT;
                 create_info.stage.module = cs.shader_module;
-                create_info.stage.pName = "main";
+                create_info.stage.pName = desc.cs.entry_point.c_str();
                 create_info.stage.flags = 0;
                 create_info.stage.pSpecializationInfo = nullptr;
                 // pipeline layout.

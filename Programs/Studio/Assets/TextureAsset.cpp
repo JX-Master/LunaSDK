@@ -54,7 +54,7 @@ namespace Luna
                 lulet(cs_blob, compile_shader("Shaders/MipmapGenerationCS.hlsl", ShaderCompiler::ShaderType::compute));
                 ComputePipelineStateDesc ps_desc;
                 ps_desc.pipeline_layout = m_mipmapping_playout;
-                ps_desc.cs = cs_blob.cspan();
+                fill_compute_pipeline_state_desc_from_compile_result(ps_desc, cs_blob);
                 luset(m_mipmapping_pso, RHI::get_main_device()->new_compute_pipeline_state(ps_desc));
             }
         }
@@ -184,7 +184,7 @@ namespace Luna
                     for (u32 mip = 0; mip < desc.mip_levels; ++mip)
                     {
                         auto& subresource = dds_image.subresources[Image::calc_dds_subresoruce_index(mip, item, desc.mip_levels)];
-                        RHI::CopyResourceData copy = RHI::CopyResourceData::write_texture(tex, RHI::SubresourceIndex(mip, item), 0, 0, 0, dds_image.data.data() + subresource.data_offset, subresource.row_pitch, subresource.slice_pitch, subresource.width, subresource.height, d);
+                        RHI::CopyResourceData copy = RHI::CopyResourceData::write_texture(tex, RHI::SubresourceIndex(mip, item), 0, 0, 0, (const u8*)dds_image.data.data() + subresource.data_offset, subresource.row_pitch, subresource.slice_pitch, subresource.width, subresource.height, d);
                         copies.push_back(move(copy));
                     }
                     if (d > 1) d >>= 1;
@@ -195,7 +195,7 @@ namespace Luna
             }
             else if (file_data.size() >= 8 && !memcmp((const c8*)file_data.data(), "LUNAMIPS", 8))
             {
-                u64* dp = (u64*)(file_data.data() + 8);
+                u64* dp = (u64*)((u8*)file_data.data() + 8);
                 u32 num_mips = (u32)*dp;
                 ++dp;
                 Vector<Pair<u64, u64>> mip_descs;
@@ -208,7 +208,7 @@ namespace Luna
                     mip_descs.push_back(p);
                 }
                 // Load texture from file.
-                lulet(desc, Image::read_image_file_desc(file_data.data() + mip_descs[0].first, mip_descs[0].second));
+                lulet(desc, Image::read_image_file_desc((const u8*)file_data.data() + mip_descs[0].first, mip_descs[0].second));
                 auto desired_format = Image::get_rhi_desired_format(desc.format);
                 // Create resource.
                 lulet(tex, g_env->device->new_texture(RHI::MemoryType::local, RHI::TextureDesc::tex2d(
@@ -223,7 +223,7 @@ namespace Luna
                 for (u32 i = 0; i < num_mips; ++i)
                 {
                     Image::ImageDesc desc;
-                    lulet(image_data, Image::read_image_file(file_data.data() + mip_descs[i].first, mip_descs[i].second, desired_format, desc));
+                    lulet(image_data, Image::read_image_file((const u8*)file_data.data() + mip_descs[i].first, mip_descs[i].second, desired_format, desc));
                     copies.push_back(RHI::CopyResourceData::write_texture(tex, RHI::SubresourceIndex(i, 0), 0, 0, 0, 
                         image_data.data(), pixel_size(desc.format) * desc.width, pixel_size(desc.format) * desc.width * desc.height, desc.width, desc.height, 1));
                     image_data_array.push_back(move(image_data));

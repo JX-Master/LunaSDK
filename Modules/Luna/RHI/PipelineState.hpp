@@ -19,10 +19,31 @@ namespace Luna
         //! @addtogroup RHI
         //! @{
 
-        struct ShaderBytecode
+        //! Specify shader data format.
+        enum class ShaderDataFormat : u8
         {
-            Span<const byte_t> bytecode;
-
+            //! No shader data. This must be set if @ref ShaderData::data is empty.
+            none = 0,
+            //! DirectX intermediate language format. Used only for Direct3D 12 format.
+            dxil,
+            //! SPIR-V format. Used only for Vulkan backend.
+            spirv,
+            //! Metal shading language source form. Used only for Metal backend.
+            msl,
+            //! Metal library. Used only for Metal backend.
+            metallib
+        };
+        
+        //! Specify one shader data.
+        struct ShaderData
+        {
+            //! The shader data.
+            Span<const byte_t> data;
+            //! The shader entry point function name for Metal and Vulkan backend. 
+            //! This is ignored in D3D12 backend.
+            Name entry_point;
+            //! The shader data format.
+            ShaderDataFormat format = ShaderDataFormat::none;
         };
         
         //! Describes pipeline states for one compute pipeline.
@@ -35,8 +56,20 @@ namespace Luna
             //! to this pipeline layout. When binding pipeline layouts and pipeline states to
             //! pipelines, any pipeline layout that is compatible to this pipeline state can be used.
             IPipelineLayout* pipeline_layout = nullptr;
-            //! The compute shader bytecode in platform's native format.
-            Span<const byte_t> cs;
+            //! The compute shader data.
+            ShaderData cs;
+            //! The number of threads in one thread group in X dimension for Metal backend.
+            //! @details This is used only if the RHI backend is @ref BackendType::metal, since metal shader files
+            //! does not include thread group size.
+            u32 metal_numthreads_x;
+            //! The number of threads in one thread group in Y dimension for Metal backend.
+            //! @details This is used only if the RHI backend is @ref BackendType::metal, since metal shader files
+            //! does not include thread group size.
+            u32 metal_numthreads_y;
+            //! The number of threads in one thread group in Z dimension for Metal backend.
+            //! @details This is used only if the RHI backend is @ref BackendType::metal, since metal shader files
+            //! does not include thread group size.
+            u32 metal_numthreads_z;
         };
 
         //! The input rate for one input attribute (per vertex or per instance).
@@ -345,8 +378,8 @@ namespace Luna
         {
             InputLayoutDesc input_layout;
             IPipelineLayout* pipeline_layout = nullptr;
-            Span<const byte_t> vs;
-            Span<const byte_t> ps;
+            ShaderData vs;
+            ShaderData ps;
             RasterizerDesc rasterizer_state;
             DepthStencilDesc depth_stencil_state;
             BlendDesc blend_state;

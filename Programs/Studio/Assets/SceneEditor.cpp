@@ -900,19 +900,15 @@ namespace Luna
                           return output;
                         })";
                 auto compiler = ShaderCompiler::new_compiler();
-                compiler->set_source({ vertexShader, strlen(vertexShader) });
-                compiler->set_source_name("GridVS");
-                compiler->set_entry_point("main");
-                compiler->set_target_format(get_current_platform_shader_target_format());
-                compiler->set_shader_type(ShaderCompiler::ShaderType::vertex);
-                compiler->set_shader_model(6, 0);
-                compiler->set_optimization_level(ShaderCompiler::OptimizationLevel::full);
-                luexp(compiler->compile());
-                Blob vs_blob;
-                {
-                    auto output = compiler->get_output();
-                    vs_blob = Blob(output.data(), output.size());
-                }
+                ShaderCompiler::ShaderCompileParameters params;
+                params.source = { vertexShader, strlen(vertexShader) };
+                params.source_name = "GridVS";
+                params.entry_point = "main";
+                params.target_format = get_current_platform_shader_target_format();
+                params.shader_type = ShaderCompiler::ShaderType::vertex;
+                params.shader_model = {6, 0};
+                params.optimization_level = ShaderCompiler::OptimizationLevel::full;
+                lulet(vs_blob, compiler->compile(params));
                 static const char* pixelShader =
                     R"(struct PS_INPUT
                     {
@@ -925,16 +921,14 @@ namespace Luna
                         return float4(1.0f, 1.0f, 1.0f, 1.0f);
                     })";
 
-                compiler->reset();
-                compiler->set_source({ pixelShader, strlen(pixelShader) });
-                compiler->set_source_name("GridPS");
-                compiler->set_entry_point("main");
-                compiler->set_target_format(get_current_platform_shader_target_format());
-                compiler->set_shader_type(ShaderCompiler::ShaderType::pixel);
-                compiler->set_shader_model(6, 0);
-                compiler->set_optimization_level(ShaderCompiler::OptimizationLevel::full);
-                luexp(compiler->compile());
-                Blob ps_blob = compiler->get_output();
+                params.source = { pixelShader, strlen(pixelShader) };
+                params.source_name = "GridPS";
+                params.entry_point = "main";
+                params.target_format = get_current_platform_shader_target_format();
+                params.shader_type = ShaderCompiler::ShaderType::pixel;
+                params.shader_model = {6, 0};
+                params.optimization_level = ShaderCompiler::OptimizationLevel::full;
+                lulet(ps_blob, compiler->compile(params));
 
                 GraphicsPipelineStateDesc ps_desc;
                 ps_desc.primitive_topology = PrimitiveTopology::line_list;
@@ -948,8 +942,8 @@ namespace Luna
                 ps_desc.input_layout.attributes = { &attribute, 1 };
                 ps_desc.input_layout.bindings = { &binding, 1 };
                 ps_desc.pipeline_layout = m_grid_playout;
-                ps_desc.vs = { vs_blob.data(), vs_blob.size() };
-                ps_desc.ps = { ps_blob.data(), ps_blob.size() };
+                ps_desc.vs = get_shader_data_from_compile_result(vs_blob);
+                ps_desc.ps = get_shader_data_from_compile_result(ps_blob);
                 ps_desc.num_color_attachments = 1;
                 ps_desc.color_formats[0] = Format::rgba8_unorm;
 

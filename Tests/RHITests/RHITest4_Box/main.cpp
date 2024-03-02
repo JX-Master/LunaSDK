@@ -104,28 +104,26 @@ RV start()
                 return float4(tex.Sample(tex_sampler, input.texcoord));
             })";
         auto compiler = ShaderCompiler::new_compiler();
-        compiler->set_source({ vs_shader_code, strlen(vs_shader_code)});
-        compiler->set_source_name("DemoAppVS");
-        compiler->set_entry_point("main");
-        compiler->set_target_format(RHI::get_current_platform_shader_target_format());
-        compiler->set_shader_type(ShaderCompiler::ShaderType::vertex);
-        compiler->set_shader_model(6, 0);
-        compiler->set_optimization_level(ShaderCompiler::OptimizationLevel::full);
-        luexp(compiler->compile());
-        auto vs_data = compiler->get_output();
-        Blob vs(vs_data.data(), vs_data.size());
+        ShaderCompiler::ShaderCompileParameters params;
+        params.source = { vs_shader_code, sizeof(vs_shader_code) };
+        params.source_name = "TestBoxVS";
+        params.entry_point = "main";
+        params.target_format = RHI::get_current_platform_shader_target_format();
+        params.shader_type = ShaderCompiler::ShaderType::vertex;
+        params.shader_model = {6, 0};
+        params.optimization_level = ShaderCompiler::OptimizationLevel::full;
+        
+        lulet(vs_data, compiler->compile(params));
 
-        compiler->reset();
-        compiler->set_source({ ps_shader_code, strlen(ps_shader_code)});
-        compiler->set_source_name("DemoAppPS");
-        compiler->set_entry_point("main");
-        compiler->set_target_format(RHI::get_current_platform_shader_target_format());
-        compiler->set_shader_type(ShaderCompiler::ShaderType::pixel);
-        compiler->set_shader_model(6, 0);
-        compiler->set_optimization_level(ShaderCompiler::OptimizationLevel::full);
-        luexp(compiler->compile());
-        auto ps_data = compiler->get_output();
-        Blob ps(ps_data.data(), ps_data.size());
+        params.source = { ps_shader_code, sizeof(ps_shader_code) };
+        params.source_name = "TestBoxPS";
+        params.entry_point = "main";
+        params.target_format = RHI::get_current_platform_shader_target_format();
+        params.shader_type = ShaderCompiler::ShaderType::pixel;
+        params.shader_model = {6, 0};
+        params.optimization_level = ShaderCompiler::OptimizationLevel::full;
+
+        lulet(ps_data, compiler->compile(params));
 
         IDescriptorSetLayout* dl = dlayout;
 
@@ -144,8 +142,8 @@ RV start()
             InputAttributeDesc("TEXCOORD", 0, 1, 0, 12, Format::rg32_float)
         };
         ps_desc.input_layout = InputLayoutDesc({bindings, 1}, {attributes, 2});
-        ps_desc.vs = vs.cspan();
-        ps_desc.ps = ps.cspan();
+        ps_desc.vs = get_shader_data_from_compile_result(vs_data);
+        ps_desc.ps = get_shader_data_from_compile_result(ps_data);
         ps_desc.pipeline_layout = playout;
         ps_desc.num_color_attachments = 1;
         ps_desc.color_formats[0] = Format::bgra8_unorm;

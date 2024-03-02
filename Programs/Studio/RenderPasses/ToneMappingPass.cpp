@@ -31,7 +31,7 @@ namespace Luna
 
                 lulet(cs_blob, compile_shader("Shaders/LumHistogramClear.hlsl", ShaderCompiler::ShaderType::compute));
                 ComputePipelineStateDesc ps_desc;
-                ps_desc.cs = cs_blob.cspan();
+                fill_compute_pipeline_state_desc_from_compile_result(ps_desc, cs_blob);
                 ps_desc.pipeline_layout = m_histogram_clear_pass_playout;
                 luset(m_histogram_clear_pass_pso, device->new_compute_pipeline_state(ps_desc));
             }
@@ -49,7 +49,7 @@ namespace Luna
 
                 lulet(cs_blob, compile_shader("Shaders/LumHistogram.hlsl", ShaderCompiler::ShaderType::compute));
                 ComputePipelineStateDesc ps_desc;
-                ps_desc.cs = cs_blob.cspan();
+                fill_compute_pipeline_state_desc_from_compile_result(ps_desc, cs_blob);
                 ps_desc.pipeline_layout = m_histogram_pass_playout;
                 luset(m_histogram_pass_pso, device->new_compute_pipeline_state(ps_desc));
             }
@@ -67,7 +67,7 @@ namespace Luna
 
                 lulet(cs_blob, compile_shader("Shaders/LumHistogramCollect.hlsl", ShaderCompiler::ShaderType::compute));
                 ComputePipelineStateDesc ps_desc;
-                ps_desc.cs = cs_blob.cspan();
+                fill_compute_pipeline_state_desc_from_compile_result(ps_desc, cs_blob);
                 ps_desc.pipeline_layout = m_histogram_collect_pass_playout;
                 luset(m_histogram_collect_pass_pso, device->new_compute_pipeline_state(ps_desc));
             }
@@ -86,7 +86,7 @@ namespace Luna
 
                 lulet(cs_blob, compile_shader("Shaders/ToneMappingCS.hlsl", ShaderCompiler::ShaderType::compute));
                 ComputePipelineStateDesc ps_desc;
-                ps_desc.cs = cs_blob.cspan();
+                fill_compute_pipeline_state_desc_from_compile_result(ps_desc, cs_blob);
                 ps_desc.pipeline_layout = m_tone_mapping_pass_playout;
                 luset(m_tone_mapping_pass_pso, device->new_compute_pipeline_state(ps_desc));
             }

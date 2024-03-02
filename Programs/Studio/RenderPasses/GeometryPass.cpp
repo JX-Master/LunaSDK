@@ -51,8 +51,8 @@ namespace Luna
             InputBindingDesc binding(0, sizeof(Vertex), InputRate::per_vertex);
             ps_desc.input_layout.attributes = { attributes.data(), attributes.size() };
             ps_desc.input_layout.bindings = { &binding, 1 };
-            ps_desc.vs = vs_blob.cspan();
-            ps_desc.ps = ps_blob.cspan();
+            ps_desc.vs = get_shader_data_from_compile_result(vs_blob);
+            ps_desc.ps = get_shader_data_from_compile_result(ps_blob);
             ps_desc.pipeline_layout = m_geometry_pass_playout;
             ps_desc.num_color_attachments = 3;
             ps_desc.color_formats[0] = Format::rgba8_unorm;

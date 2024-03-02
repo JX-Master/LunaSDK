@@ -34,7 +34,7 @@ namespace Luna
             lulet(cs_blob, compile_shader("Shaders/BufferVisualization.hlsl", ShaderCompiler::ShaderType::compute));
 
             ComputePipelineStateDesc ps_desc;
-            ps_desc.cs = cs_blob.cspan();
+            fill_compute_pipeline_state_desc_from_compile_result(ps_desc, cs_blob);
             ps_desc.pipeline_layout = m_buffer_visualization_pass_playout;
             luset(m_buffer_visualization_pass_pso, device->new_compute_pipeline_state(ps_desc));
         }
