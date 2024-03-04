@@ -132,10 +132,13 @@ namespace Luna
                 element_size(element_size),
                 input_rate(input_rate) {}
         };
-
+        //! Describes the vertex input layout for the graphics pipeline.
         struct InputLayoutDesc
         {
+            //! An array of vertex input binding descriptors, each of them describes one
+            //! vertex buffer that will be bound to the pipeline.
             Span<const InputBindingDesc> bindings;
+            //! An array of vertex input attributes.
             Span<const InputAttributeDesc> attributes;
             InputLayoutDesc() = default;
             InputLayoutDesc(
@@ -145,54 +148,93 @@ namespace Luna
                 bindings(bindings),
                 attributes(attributes) {}
         };
-
+        //! Specifies the blend factor used for blending.
         enum class BlendFactor : u8
         {
+            //! Returns `0.0`.
             zero,
+            //! Returns `1.0`.
             one,
+            //! Returns `src.rgb`, which is the new generated color of the corresponding attachment.
             src_color,
+            //! Returns `1.0 - src.rgb`.
             one_minus_src_color,
+            //! Returns `src.a`, which is the new generated alpha of the corresponding attachment.
             src_alpha,
+            //! Returns `1.0 - src.a`.
             one_minus_src_alpha,
+            //! Returns `dst.rgb`.
             dst_color,
+            //! Returns `1.0 - dst.rgb`.
             one_minus_dst_color,
+            //! Returns `dst.alpha`.
             dst_alpha,
+            //! Returns `1.0 - dst.alpha`.
             one_minus_dst_alpha,
+            //! Returns `clamp(src.a, 0.0, 1.0)`.
             src_alpha_saturated,
+            //! Returns `blend_factor`.
             blend_factor,
+            //! Returns `1.0 - blend_factor`.
             one_minus_blend_factor,
+            //! Returns `src1.rgb`, which is the new generated color of the first color attachment.
             src1_color,
+            //! Returns `1.0 - src1.rgb`.
             one_minus_src1_color,
+            //! Returns `src1.a`, which is the new generated alpha of the first color attachment.
             src1_alpha,
+            //! Returns `1.0 - src1.a`.
             one_minus_src1_alpha
         };
+        //! Specifies the blend operation.
         enum class BlendOp : u8
         {
+            //! Returns `src_blend + dst_blend`.
             add,
+            //! Returns `src_blend - dst_blend`.
             subtract,
+            //! Returns `dst_blend - src_blend`.
             rev_subtract,
+            //! Returns `min(src_blend, dst_blend)`.
             min,
+            //! Returns `max(src_blend, dst_blend)`.
             max
         };
+        //! Identifies which components of each pixel of a attachment are writable during blending.
         enum class ColorWriteMask : u8
         {
             none = 0x00,
+            //! Allow data to be stored in the red component.
             red = 1,
+            //! Allow data to be stored in the green component.
             green = 2,
+            //! Allow data to be stored in the blue component.
             blue = 4,
+            //! Allow data to be stored in the alpha component.
             alpha = 8,
+            //! Allow data to be stored in all components.
             all = red | green | blue | alpha
         };
-
+        //! Describes the blending configurations for one attachment.
         struct AttachmentBlendDesc
         {
+            //! Whether to enable color blending for this attachment.
+            //! If this is `false`, pixels outputted by the graphics pipeline will overwrite
+            //! existing pixels directly if they are not discarded in pixel shader.
             bool blend_enable;
+            //! The blend factor used for the source color.
             BlendFactor src_blend_color;
+            //! The blend factor used for the destination color.
             BlendFactor dst_blend_color;
+            //! The blend operation used for color blending.
             BlendOp blend_op_color;
+            //! The blend factor used for the source alpha.
             BlendFactor src_blend_alpha;
+            //! The blend factor used for the destination alpha.
             BlendFactor dst_blend_alpha;
+            //! The blend operation used for alpha blending.
             BlendOp blend_op_alpha;
+            //! The color components that can be modified during blending.
             ColorWriteMask color_write_mask;
 
             AttachmentBlendDesc(
@@ -215,10 +257,20 @@ namespace Luna
                 color_write_mask(color_write_mask) {}
         };
 
+        //! Describes blending configurations for one graphics pipeline.
         struct BlendDesc
         {
+            //! Whether to use the alpha value outputted from pixel shader
+            //! as the coverage value to compute sample coverage mask
+            //! in MSAA pipelines.
             bool alpha_to_coverage_enable;
+            //! Whether to use independent blending configurations for every
+            //! attachment.
+            //! 
+            //! If this is `false`, only the first element in `attachments` 
+            //! will be used, and its values will be applied to all attachments.
             bool independent_blend_enable;
+            //! The blending configurations for each attachment.
             AttachmentBlendDesc attachments[8];
 
             BlendDesc(
@@ -237,27 +289,50 @@ namespace Luna
             }
         };
 
+        //! Describes triangle fill mode of the rasterizer.
         enum class FillMode : u8
         {
+            //! Only generate fragments for pixels near the border of the triangle.
             wireframe,
+            //! Generate fragments for all pixels covered by the triangle.
             solid
         };
 
+        //! Describes cull mode of the rasterizer.
         enum class CullMode : u8
         {
+            //! Generate fragments for all pixels covered by triangles.
             none,
+            //! Only generate fragments for pixels covered by front-facing triangles.
             front,
+            //! Only generate fragments for pixels covered by back-facing triangles.
             back
         };
-
+        
+        //! Describes rasterizer configurations for one graphics pipeline.
         struct RasterizerDesc
         {
+            //! The constant depth bias value added to the depth value generated by the vertex shader 
+            //! in depth bias step.
             i32 depth_bias;
+            //! The slope-scaled depth bias value added to the depth value generated by the vertex shader 
+            //! in depth bias step.
             f32 slope_scaled_depth_bias;
+            //! The bias value range ([`-depth_bias_clamp`, `depth_bias_clamp`]) allowed to be added to the depth value generated by the vertex shader 
+            //! in depth bias step.
             f32 depth_bias_clamp;
+            //! The fill mode of the rasterizer.
             FillMode fill_mode;
+            //! The cull mode of the rasterizer.
             CullMode cull_mode;
+            //! If this is `true`, triangles will be regarded as front-facing if its three vertices are wound 
+            //! counter-clockwisly from view of camera.
+            //! 
+            //! If this is `false`, triangles will be regarded as front-facing if its three vertices are wound 
+            //! clockwisly order from view of camera.
             bool front_counter_clockwise;
+            //! Whether to discard fragments outside of the allowed depth range (0~1).
+            //! If this is `false`, outside fragments will have their depth values clamped to [`0`, `1`].
             bool depth_clip_enable;
 
             RasterizerDesc(
@@ -278,35 +353,60 @@ namespace Luna
                 depth_clip_enable(depth_clip_enable) {}
         };
 
+        //! Specifies the stencil operation to perform when stencil test passed or failed.
         enum class StencilOp : u8
         {
+            //! Keeps the original stencil data.
             keep,
+            //! Clears the stencil data to 0.
             zero,
+            //! Replaces the stencil data with the data set by @ref ICommandBuffer::set_stencil_ref.
             replace,
+            //! Increases the stencil data by one, and clamps the result so that it will not overflow and goes to 0.
             increment_saturated,
+            //! Decreases the stencil data by one, and clamps the result so that it will not underflow and goes to the maximum representable value.
             decrement_saturated,
+            //! Inverts the stencil data. This will invert every bit of the stencil data.
             invert,
+            //! Increases the stencil data by one. If the data overflows, it will be reset to 0.
             increment,
+            //! Decreases the stencil data by one. If the data underflows, it will be reset to the maximum representable value.
             decrement
         };
 
+        //! Specifies the compare function used for comparison.
         enum class CompareFunction : u8
         {
-            never,    // Never pass comparison
+            //! Never passes the comparison.
+            never,
+            //! Passes the comparison if A < B.
             less,
+            //! Passes the comparison if A == B.
             equal,
+            //! Passes the comparison if A <= B.
             less_equal,
+            //! Passes the comparison if A > B.
             greater,
+            //! Passes the comparison if A != B.
             not_equal,
+            //! Passes the comparison if A >= B.
             greater_equal,
-            always    // Always pass comparison
+            //! Always passes the comparison.
+            always
         };
-
+        
+        //! Describes the depth stencil operation.
         struct DepthStencilOpDesc
         {
+            //! The operation to perform when stencil comparison failed.
             StencilOp stencil_fail_op;
+            //! The operation to perform when stencil comparison passed, but depth test failed.
             StencilOp stencil_depth_fail_op;
+            //! The operation to perform when both stencil comparison and depth test passed.
             StencilOp stencil_pass_op;
+            //! The compare function used for stencil comparison.
+            //! The comparison is performed between the stencil reference value set by @ref ICommandBuffer::set_stencil_ref
+            //! and the stencil value in the stencil attachment.
             CompareFunction stencil_func;
 
             DepthStencilOpDesc(
@@ -321,9 +421,7 @@ namespace Luna
                 stencil_func(stencil_func) {}
         };
 
-        constexpr u8 DEFAULT_STENCIL_READ_MASK = 0xff;
-        constexpr u8 DEFAULT_STENCIL_WRITE_MASK = 0xff;
-
+        //! Describes depth stencil stage configurations of one graphics pipeline.
         struct DepthStencilDesc
         {
             bool depth_test_enable;
@@ -340,8 +438,8 @@ namespace Luna
                 bool depth_write_enable = true,
                 CompareFunction depth_func = CompareFunction::less,
                 bool stencil_enable = false,
-                u8 stencil_read_mask = DEFAULT_STENCIL_READ_MASK,
-                u8 stencil_write_mask = DEFAULT_STENCIL_WRITE_MASK,
+                u8 stencil_read_mask = 0xff,
+                u8 stencil_write_mask = 0xff,
                 const DepthStencilOpDesc& front_face = DepthStencilOpDesc(),
                 const DepthStencilOpDesc& back_face = DepthStencilOpDesc()
             ) :
@@ -394,7 +492,8 @@ namespace Luna
         };
 
         //! @interface IPipelineState
-        //! Describes pipeline states.
+        //! Represents one pipeline state object that stores pipeline configurations that can be 
+        //! applied to one pipeline in one call.
         struct IPipelineState : virtual IDeviceChild
         {
             luiid("{A2AC1B03-5258-464E-9CA4-7497AFB7F443}");
