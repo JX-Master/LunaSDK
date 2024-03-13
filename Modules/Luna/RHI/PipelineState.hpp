@@ -46,7 +46,7 @@ namespace Luna
             ShaderDataFormat format = ShaderDataFormat::none;
         };
         
-        //! Describes pipeline states for one compute pipeline.
+        //! Describes pipeline configurations of one compute pipeline.
         struct ComputePipelineStateDesc
         {
             //! The pipeline layout used with this pipeline state.
@@ -424,13 +424,25 @@ namespace Luna
         //! Describes depth stencil stage configurations of one graphics pipeline.
         struct DepthStencilDesc
         {
+            //! Whether depth testing is enabled. If this is `false`, all pixels from pixel shader will pass 
+            //! depth testing.
             bool depth_test_enable;
+            //! Whether to write the pixel's depth value to depth buffer if one pixel passes depth testing.
             bool depth_write_enable;
+            //! The compare function used for depth comparison in depth testing.
             CompareFunction depth_func;
+            //! Whether stencil testing is enabled. If this is `false`, all pixels from pixel shader will pass 
+            //! stencil testing.
             bool stencil_enable;
+            //! The mask used to specify bits that will be loaded from stencil buffer for stencil testing.
+            //! All bits that are not specified in the mask (with mask bit value 0) will be set to 0 before stencil testing 
+            //! is performed.
             u8 stencil_read_mask;
+            //! The mask used to specify bits that are allowed to be modified in stencil testing.
             u8 stencil_write_mask;
+            //! The depth stencil operation performed for the front face of one triangle.
             DepthStencilOpDesc front_face;
+            //! The depth stencil operation performed for the back face of one triangle.
             DepthStencilOpDesc back_face;
 
             DepthStencilDesc(
@@ -453,41 +465,79 @@ namespace Luna
                 back_face(back_face) {}
         };
 
+        //! The value used to finish an existing line or triangle strip and start a new one when 
+        //! @ref GraphicsPipelineStateDesc::primitive_topology is set to @ref PrimitiveTopology::line_strip or
+        //! @ref PrimitiveTopology::triangle_strip.
         enum class IndexBufferStripCutValue : u8
         {
-            //! This should be set if primitive topology is not strip.
+            //! This should be set if @ref GraphicsPipelineStateDesc::primitive_topology is not 
+            //! @ref PrimitiveTopology::line_strip or @ref PrimitiveTopology::triangle_strip.
             disabled,
-            //! This should be set if the index type is `Format::r16_uint`.
+            //! Use 0xFFFF as index buffer strip cut value.
+            //! This can only be set if the index buffer format is @ref Format::r16_uint.
             value_0xffff,
-            //! This should be set if the index type is `Format::r32_uint`.
+            //! Use 0xFFFFFFFF as index buffer strip cut value.
+            //! This can only be set if the index buffer format is @ref Format::r32_uint.
             value_0xffffffff
         };
 
+        //! Specifies the primitive type for the graphics pipeline to draw.
         enum class PrimitiveTopology : u8
         {
+            //! Draws point list, where every vertex in the vertex buffer specifies one point.
             point_list,
+            //! Draws line list, where every two continious vertices in the vertex buffer specify
+            //! two points of one line.
             line_list,
+            //! Draws line strip, where every vertex and its prior vertex in the vertex buffer specify 
+            //! two points of one line.
+            //!  
+            //! If any of the two vertices is not valid (out of valid vertex draw range or indexed by
+            //! strip cut value), the current line will not be drawn.
             line_strip,
+            //! Draws triangle list, where every three continious vertices in the vertex buffer specify
+            //! three points of one triangle.
             triangle_list,
+            //! Draws line strip, where every vertex and its prior two vertices in the vertex buffer 
+            //! specify three points of one triangle.
+            //!  
+            //! If any of the three vertices is not valid (out of valid vertex draw range or indexed by
+            //! strip cut value), the current triangle will not be drawn.
             triangle_strip,
         };
 
+        //! Describes pipeline configurations of one compute pipeline.
         struct GraphicsPipelineStateDesc
         {
+            //! The input layout configurations.
             InputLayoutDesc input_layout;
+            //! The compatible pipeline layout configurations.
             IPipelineLayout* pipeline_layout = nullptr;
+            //! The vertex shader data.
             ShaderData vs;
+            //! The pixel shader data.
             ShaderData ps;
+            //! The rasterizer configurations.
             RasterizerDesc rasterizer_state;
+            //! The configurations of depth stencil stage.
             DepthStencilDesc depth_stencil_state;
+            //! The configurations of blend stage.
             BlendDesc blend_state;
+            //! The index buffer strip cut value. This must match the format of the index buffer, 
+            //! see @ref IndexBufferStripCutValue for details.
             IndexBufferStripCutValue ib_strip_cut_value = IndexBufferStripCutValue::disabled;
+            //! The primitive topology of primitives to be drawn.
             PrimitiveTopology primitive_topology = PrimitiveTopology::triangle_list;
+            //! The number of attachments that can be set. This must be a value between [`1`, `8`].
             u8 num_color_attachments = 0;
-            //! The pixel format of the render target.
+            //! The color attachment formats.
+            //! Only [`0`, `num_color_attachments`) elements in this array will be used, other 
+            //! elements will be ignored.
             Format color_formats[8] = { Format::unknown };
+            //! The depth stencil attachment format.
+            //! This must be @ref Format::unknown if depth stencil attachment is not used.
             Format depth_stencil_format = Format::unknown;
-            //! Specify the sample count, 1 if MSAA is not used.
+            //! Specify the sample count. This must be `1` if MSAA is not used.
             u32 sample_count = 1;
         };
 
