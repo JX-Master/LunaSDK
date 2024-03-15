@@ -15,6 +15,10 @@ namespace Luna
 {
     namespace RHI
     {
+        //! @addtogroup RHI
+        //! @{
+        
+        //! Specifies additional flags for one resource.
         enum class ResourceFlag : u16
         {
             none = 0,
@@ -28,6 +32,7 @@ namespace Luna
             allow_aliasing = 0x01,
         };
 
+        //! Specifies the index pair of one subresource in one texture resource.
         struct SubresourceIndex
         {
             //! The mip index of the subresource.
@@ -41,17 +46,6 @@ namespace Luna
                 array_slice(array_slice) {}
             bool operator==(const SubresourceIndex& rhs) const { return mip_slice == rhs.mip_slice && array_slice == rhs.array_slice; }
         };
-    }
-    template <>
-    struct hash<RHI::SubresourceIndex>
-    {
-        usize operator()(const RHI::SubresourceIndex& value)
-        {
-            return memhash(&value, sizeof(RHI::SubresourceIndex));
-        }
-    };
-    namespace RHI
-    {
 
         //! @interface IResource
         //! Represents a memory region that can be accessed by GPU.
@@ -62,5 +56,15 @@ namespace Luna
             //! Gets the device memory object that holds memory of this resource.
             virtual IDeviceMemory* get_memory() = 0;
         };
+
+        //! @}
     }
+    template <>
+    struct hash<RHI::SubresourceIndex>
+    {
+        usize operator()(const RHI::SubresourceIndex& value)
+        {
+            return memhash(&value, sizeof(RHI::SubresourceIndex));
+        }
+    };
 }

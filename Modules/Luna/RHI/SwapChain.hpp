@@ -16,6 +16,10 @@ namespace Luna
 {
     namespace RHI
     {
+        //! @addtogroup RHI
+        //! @{
+
+        //! Describes one swap chain.
         struct SwapChainDesc
         {
             //! The width of the swap chain back buffer. 
@@ -47,6 +51,7 @@ namespace Luna
         };
 
         //! @interface ISwapChain
+        //! Represents one swap chain used for presenting images to the screen.
         struct ISwapChain : virtual IDeviceChild
         {
             luiid("{cc455fba-646d-4a64-83e4-149f004a5ea0}");
@@ -77,5 +82,7 @@ namespace Luna
             //! @param[in] desc The new swap chain descriptor object.
             virtual RV reset(const SwapChainDesc& desc) = 0;
         };
+
+        //! @}
     }
 }
