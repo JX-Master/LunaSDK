@@ -16,6 +16,7 @@
 #include <Luna/Runtime/Log.hpp>
 #include <Luna/VariantUtils/VariantUtils.hpp>
 #include <Luna/RG/RG.hpp>
+#include <Luna/JobSystem/JobSystem.hpp>
 
 namespace Luna
 {
@@ -67,7 +68,8 @@ namespace Luna
             module_imgui(),
             module_asset(),
             module_obj_loader(),
-            module_rg()}));
+            module_rg(),
+            module_job_system()}));
         auto r = init_modules();
         if (failed(r))
         {

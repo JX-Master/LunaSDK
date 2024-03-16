@@ -43,7 +43,7 @@ namespace Luna
         snprintf(title, 32, "Model Editor###%d", (u32)(usize)this);
         ImGui::Begin(title, &m_open, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_MenuBar);
 
-        Ref<Model> model = Asset::get_asset_data(m_model);
+        Ref<Model> model = get_asset_or_async_load_if_not_ready<Model>(m_model);
         if (!model || (Asset::get_asset_state(m_model) != Asset::AssetState::loaded))
         {
             ImGui::Text("Model Asset is not loaded.");
@@ -73,7 +73,7 @@ namespace Luna
             edit_asset("Mesh Asset", model->mesh);
             if (model->mesh)
             {
-                Ref<Mesh> mesh = Asset::get_asset_data(model->mesh);
+                Ref<Mesh> mesh = get_asset_or_async_load_if_not_ready<Mesh>(model->mesh);
                 if (mesh)
                 {
                     ImGui::Text("This mesh requires %u material(s).", (u32)mesh->pieces.size());

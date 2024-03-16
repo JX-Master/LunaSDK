@@ -22,86 +22,175 @@ namespace Luna
         {
             unknown = 0,
             // Ordinary 8-Bit Formats
+
+            //! Ordinary format with one component stored as 8-bit normalized unsigned integer.
             r8_unorm,
+            //! Ordinary format with one component stored as 8-bit normalized signed integer.
             r8_snorm,
+            //! Ordinary format with one component stored as 8-bit unsigned integer.
             r8_uint,
+            //! Ordinary format with one component stored as 8-bit signed integer.
             r8_sint,
+
             // Ordinary 16-Bit Formats
+
+            //! Ordinary format with one component stored as 16-bit normalized unsigned integer.
             r16_unorm,
+            //! Ordinary format with one component stored as 16-bit normalized signed integer.
             r16_snorm,
+            //! Ordinary format with one component stored as 16-bit unsigned integer.
             r16_uint,
+            //! Ordinary format with one component stored as 16-bit signed integer.
             r16_sint,
+            //! Ordinary format with one component stored as 16-bit (half-precision) floating-point number.
             r16_float,
+            //! Ordinary format with two components stored as 8-bit normalized unsigned integers.
             rg8_unorm,
+            //! Ordinary format with two components stored as 8-bit normalized signed integers.
             rg8_snorm,
+            //! Ordinary format with two components stored as 8-bit unsigned integers.
             rg8_uint,
+            //! Ordinary format with two components stored as 8-bit signed integers.
             rg8_sint,
+
             // Ordinary 32-Bit Formats
+
+            //! Ordinary format with one component stored as 32-bit unsigned integer.
             r32_uint,
+            //! Ordinary format with one component stored as 32-bit signed integer.
             r32_sint,
+            //! Ordinary format with one component stored as 32-bit (single-precision) floating-point number.
             r32_float,
+            //! Ordinary format with two components stored as 16-bit normalized unsigned integers.
             rg16_unorm,
+            //! Ordinary format with two components stored as 16-bit normalized signed integers.
             rg16_snorm,
+            //! Ordinary format with two components stored as 16-bit unsigned integers.
             rg16_uint,
+            //! Ordinary format with two components stored as 16-bit signed integers.
             rg16_sint,
+            //! Ordinary format with two components stored as 16-bit (half-precision) floating-point numbers.
             rg16_float,
+            //! Ordinary format with four components stored as 8-bit normalized unsigned integers in RGBA order.
             rgba8_unorm,
+            //! Ordinary format with four components stored as 8-bit normalized unsigned integers in RGBA order with conversion between sRGB and linear space.
             rgba8_unorm_srgb,
+            //! Ordinary format with four components stored as 8-bit normalized signed integers in RGBA order.
             rgba8_snorm,
+            //! Ordinary format with four components stored as 8-bit unsigned integers in RGBA order.
             rgba8_uint,
+            //! Ordinary format with four components stored as 8-bit signed integers in RGBA order.
             rgba8_sint,
+            //! Ordinary format with four components stored as 8-bit normalized unsigned integers in BGRA order.
             bgra8_unorm,
+            //! Ordinary format with four components stored as 8-bit normalized unsigned integers in BGRA order with conversion between sRGB and linear space.
             bgra8_unorm_srgb,
+
             // Ordinary 64-Bit Formats
+
+            //! Ordinary format with two components stored as 32-bit unsigned integers.
             rg32_uint,
+            //! Ordinary format with two components stored as 32-bit signed integers.
             rg32_sint,
+            //! Ordinary format with two components stored as 32-bit (single-precision) floating-point numbers.
             rg32_float,
+            //! Ordinary format with four components stored as 16-bit normalized unsigned integers in RGBA order.
             rgba16_unorm,
+            //! Ordinary format with four components stored as 16-bit normalized signed integers in RGBA order.
             rgba16_snorm,
+            //! Ordinary format with four components stored as 16-bit unsigned integers in RGBA order.
             rgba16_uint,
+            //! Ordinary format with four components stored as 16-bit signed integers in RGBA order.
             rgba16_sint,
+            //! Ordinary format with four components stored as 16-bit (half-precision) floating-point numbers.
             rgba16_float,
+
             // Ordinary 96-Bit Formats
+
+            //! Ordinary format with three components stored as 32-bit unsigned integers.
             rgb32_uint,
+            //! Ordinary format with three components stored as 32-bit signed integers.
             rgb32_sint,
+            //! Ordinary format with three components stored as 32-bit (single-precision) floating-point numbers.
             rgb32_float,
+
             // Ordinary 128-Bit Formats
+
+            //! Ordinary format with four components stored as 32-bit unsigned integers in RGBA order.
             rgba32_uint,
+            //! Ordinary format with four components stored as 32-bit signed integers in RGBA order.
             rgba32_sint,
+            //! Ordinary format with four components stored as 32-bit (single-precision) floating-point numbers in RGBA order.
             rgba32_float,
+
             // Packed 16-Bit Formats
+
+            //! Packed format with three components stored as 5-bit, 6-bit and 5-bit normalized unsigned integers in BGR order.
             b5g6r5_unorm,
+            //! Packed format with four components stored as 5-bit, 5-bit, 5-bit and 1-bit normalized unsigned integers in BGRA order.
             bgr5a1_unorm,
+
             // Packed 32-Bit Formats
+
+            //! Packed format with four components stored as 10-bit, 10-bit, 10-bit and 2-bit normalized unsigned integers in RGBA order.
             rgb10a2_unorm,
+            //! Packed format with four components stored as 10-bit, 10-bit, 10-bit and 2-bit unsigned integers in RGBA order.
             rgb10a2_uint,
+            //! Packed format with three components stored as 11-bit, 11-bit and 10-bit floating-point numbers in RGB order.
+            //! The components have no sign bit. The 10-bit float has 5 bits of mantissa and 5 bits of exponent. The 11-bit floats have 6-bit mantissa and 5-bit exponent.
             rg11b10_float,
+            //! Packed format with three components stored as floating-point numbers in RGB order. Each component has 9-bit mantissa, and a 5-bit exponent is shared by
+            //! all three components.
             rgb9e5_float,
-            // Depth-stencil
+
+            // Depth-stencil Formats
+
+            //! Depth stencil format with one depth component stored as 16-bit normalized unsigned integer.
             d16_unorm,
+            //! Depth stencil format with one depth component stored as 32-bit (single-precision) floating-point number.
             d32_float,
+            //! Depth stencil format with one depth component stored as 24-bit normalized unsigned integer and one stencil component stored as 8-bit unsigned integer.
             d24_unorm_s8_uint,
+            //! Depth stencil format with one depth component stored as 32-bit (single-precision) floating-point number and one stencil component stored as 8-bit unsigned integer.
             d32_float_s8_uint_x24,
-            // Compressed formats
-            bc1_rgba_unorm,   // DXT1
+
+            // Compressed Formats
+
+            //! BC1 (DXT1) compressed format.
+            bc1_rgba_unorm,
+            //! BC1 (DXT1) compressed format with conversion between sRGB and linear space.
             bc1_rgba_unorm_srgb,
-            bc2_rgba_unorm,   // DXT3
+            //! BC2 (DXT3) compressed format.
+            bc2_rgba_unorm,
+            //! BC2 (DXT3) compressed format with conversion between sRGB and linear space.
             bc2_rgba_unorm_srgb,
-            bc3_rgba_unorm,   // DXT5
+            //! BC3 (DXT5) compressed format.
+            bc3_rgba_unorm,   
+            //! BC3 (DXT5) compressed format with conversion between sRGB and linear space.
             bc3_rgba_unorm_srgb,
-            bc4_r_unorm,   // RGTC Unsigned Red
-            bc4_r_snorm,   // RGTC Signed Red
-            bc5_rg_unorm,   // RGTC Unsigned RG
-            bc5_rg_snorm,   // RGTC Signed RG
+            //! BC4 compressed format with one component stored as normalized unsigned integer.
+            bc4_r_unorm,
+            //! BC4 compressed format with one component stored as normalized signed integer.
+            bc4_r_snorm,
+            //! BC5 compressed format with two components stored as normalized unsigned integer.
+            bc5_rg_unorm,
+            //! BC5 compressed format with two components stored as normalized signed integer.
+            bc5_rg_snorm,
+            //! BC6H compressed format with four floating-point components.
             bc6h_rgb_sfloat,
+            //! BC6H compressed format with four unsigned floating-point components.
             bc6h_rgb_ufloat,
+            //! BC7 compressed format.
             bc7_rgba_unorm,
+            //! BC7 compressed format with conversion between sRGB and linear space.
             bc7_rgba_unorm_srgb,
 
             count
         };
 
         //! Gets the size of one pixel in the specified format, in bits.
+        //! @param[in] format The format to check.
+        //! @return Returns the number of bits used for one pixel of the specified format.
         inline usize bits_per_pixel(Format format)
         {
             switch (format)
@@ -186,6 +275,7 @@ namespace Luna
             }
         }
 
+        //! Specifies the texture type.
         enum class TextureType : u8
         {
             //! Specify one-dimensional texture.
@@ -196,6 +286,7 @@ namespace Luna
             tex3d,
         };
 
+        //! Specifies possible usages of one texture resource.
         enum class TextureUsageFlag : u16
         {
             none = 0x00,
@@ -217,6 +308,7 @@ namespace Luna
             cube = 0x80,
         };
 
+        //! Describes one texture resource.
         struct TextureDesc
         {
             //! The type of the texture.
@@ -313,25 +405,33 @@ namespace Luna
             }
         };
 
+        //! Describes one pair of depth and stencil values used for clearing 
+        //! depth stencil attachments.
         struct DepthStencilValue
         {
             f32 depth;
             u8 stencil;
         };
 
+        //! Specifies the clear value type used.
         enum class ClearValueType : u32
         {
             color = 1,
             depth_stencil = 2
         };
 
+        //! Describes one clear value used to specify optimized clear value for texture resources.
         struct ClearValue
         {
+            //! The format of the texture.
             Format format;
+            //! The type of the clear value.
             ClearValueType type;
             union
             {
+                //! The clear color to use if `type` is @ref ClearValueType::color.
                 f32 color[4];
+                //! The depth stencil clear value to use if `type` is @ref ClearValueType::depth_stencil.
                 DepthStencilValue depth_stencil;
             };
             static ClearValue as_color(Format format, f32 color[4])
@@ -356,10 +456,14 @@ namespace Luna
             }
         };
 
+        //! @interface ITexture
+        //! Represents one texture resource that can be used to contain 
+        //! pixel data of certain format.
         struct ITexture : virtual IResource
         {
             luiid("{66189448-3914-4055-A4B3-AE3D6EF57F1A}");
 
+            //! Gets the descriptor of the texture.
             virtual TextureDesc get_desc() = 0;
         };
 

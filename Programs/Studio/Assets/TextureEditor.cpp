@@ -31,7 +31,7 @@ namespace Luna
 
     void TextureEditor::on_render()
     {
-        Ref<RHI::ITexture> tex = Asset::get_asset_data(m_tex);
+        Ref<RHI::ITexture> tex = get_asset_or_async_load_if_not_ready<RHI::ITexture>(m_tex);
         if (!tex)
         {
             m_open = false;
@@ -59,7 +59,7 @@ namespace Luna
     {
         if (Asset::get_asset_state(asset) == Asset::AssetState::loaded)
         {
-            Ref<RHI::IResource> tex = Asset::get_asset_data(asset);
+            Ref<RHI::IResource> tex = get_asset_or_async_load_if_not_ready<RHI::IResource>(asset);
             if (tex)
             {
                 ImGui::SetCursorScreenPos({ draw_rect.offset_x, draw_rect.offset_y });

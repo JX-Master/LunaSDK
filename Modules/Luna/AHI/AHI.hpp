@@ -14,6 +14,10 @@
 
 namespace Luna
 {
+    //! @addtogroup AHI 
+    //! The AHI (Audio Hardware Interface) module provides uniform API to use platform's 
+    //! audio input / output interface for audio capture and playback.
+    
     struct Module;
     LUNA_AHI_API Module* module_ahi();
 }

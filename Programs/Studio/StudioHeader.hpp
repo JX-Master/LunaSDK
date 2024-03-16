@@ -117,6 +117,18 @@ namespace Luna
         lucatchret;
         return ret;
     }
+    
+    void async_load_asset(Asset::asset_t asset);
+
+    template <typename _Ty>
+    inline Ref<_Ty> get_asset_or_async_load_if_not_ready(Asset::asset_t asset)
+    {
+        if(asset && Asset::get_asset_state(asset) == Asset::AssetState::unloaded)
+        {
+            async_load_asset(asset);
+        }
+        return Asset::get_asset_data<_Ty>(asset);
+    }
 
     //! @interface IAssetEditor
     //! Represents a window of the editor.

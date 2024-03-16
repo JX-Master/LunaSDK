@@ -60,7 +60,7 @@ namespace Luna
             luexp(VFS::mount(VFS::get_platform_filesystem_driver(), mount_path.encode(PathSeparator::system_preferred).c_str(), "/"));
 
             // Load all asset metadata.
-            luexp(Asset::update_assets_meta("/"));
+            luexp(Asset::load_assets_meta("/"));
 
             // Create window and render objects.
             snprintf(title, 256, "%s - Luna Studio", name.c_str());

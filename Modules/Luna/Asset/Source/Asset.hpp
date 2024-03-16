@@ -31,18 +31,16 @@ namespace Luna
             Name type;
             Path path;
             ObjRef data;
-            JobSystem::job_id_t last_load_job;
-            Error last_load_result;
+            bool loading;
             SpinLock lock;
             AssetEntry() :
-                last_load_job(JobSystem::INVALID_JOB_ID) {}
+                loading(false) {}
             void reset()
             {
                 type.reset();
                 path.clear();
                 data.reset();
-                last_load_job = JobSystem::INVALID_JOB_ID;
-                last_load_result.reset();
+                loading = false;
             }
         };
         void init_asset_registry();

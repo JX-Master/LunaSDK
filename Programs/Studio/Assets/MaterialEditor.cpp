@@ -51,7 +51,7 @@ namespace Luna
         }
         ImGui::Begin(title, &m_open, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_MenuBar);
 
-        Ref<Material> mat = Asset::get_asset_data(m_material);
+        Ref<Material> mat = get_asset_or_async_load_if_not_ready<Material>(m_material);
         if (!mat || (Asset::get_asset_state(m_material) != Asset::AssetState::loaded))
         {
             ImGui::Text("Material Asset is not loaded.");

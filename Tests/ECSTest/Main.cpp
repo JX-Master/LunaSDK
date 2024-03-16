@@ -9,7 +9,7 @@
 */
 #include <Luna/Runtime/Runtime.hpp>
 #include <Luna/Runtime/Module.hpp>
-#include <Luna/ECS/ECS.hpp>
+#include <Luna/Experimental/ECS/ECS.hpp>
 #include <Luna/Runtime/Math/Vector.hpp>
 #include <Luna/JobSystem/JobSystem.hpp>
 

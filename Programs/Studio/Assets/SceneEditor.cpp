@@ -113,7 +113,7 @@ namespace Luna
 
     void SceneEditor::draw_entity_list()
     {
-        auto s = Asset::get_asset_data<Scene>(m_scene);
+        auto s = get_asset_or_async_load_if_not_ready<Scene>(m_scene);
 
         // Draw entity list.
         ImGui::Text("Entity List");
@@ -226,7 +226,7 @@ namespace Luna
         ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 5.0f);
         ImGui::BeginChild("Scene Components", Float2(0.0f, 0.0f), true);
 
-        auto s = Asset::get_asset_data<Scene>(m_scene);
+        auto s = get_asset_or_async_load_if_not_ready<Scene>(m_scene);
         auto& components = s->scene_components;
         if (components.empty())
         {
@@ -314,7 +314,7 @@ namespace Luna
 
             ImGui::Text("Scene");
 
-            Scene* s = Asset::get_asset_data<Scene>(m_scene);
+            Scene* s = get_asset_or_async_load_if_not_ready<Scene>(m_scene);
 
             m_renderer.scene = s;
 
@@ -731,7 +731,7 @@ namespace Luna
         snprintf(title, 32, "Scene Editor###%d", (u32)(usize)this);
         ImGui::SetNextWindowSize(Float2(1000, 500), ImGuiCond_FirstUseEver);
         ImGui::Begin(title, &m_open, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_MenuBar);
-        auto s = Asset::get_asset_data<Scene>(m_scene);
+        auto s = get_asset_or_async_load_if_not_ready<Scene>(m_scene);
         if (!s)
         {
             ImGui::Text("Asset Unloaded");

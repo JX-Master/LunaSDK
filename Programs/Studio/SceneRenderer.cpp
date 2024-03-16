@@ -206,12 +206,12 @@ namespace Luna
                 auto r = i->get_component<ModelRenderer>();
                 if (r)
                 {
-                    auto model = Asset::get_asset_data<Model>(r->model);
+                    auto model = get_asset_or_async_load_if_not_ready<Model>(r->model);
                     if (!model)
                     {
                         continue;
                     }
-                    auto mesh = Asset::get_asset_data<Mesh>(model->mesh);
+                    auto mesh = get_asset_or_async_load_if_not_ready<Mesh>(model->mesh);
                     if (!mesh)
                     {
                         continue;
@@ -375,7 +375,7 @@ namespace Luna
                     skybox->camera_fov = camera_component->fov;
                     skybox->camera_type = camera_component->type;
                     skybox->view_to_world = camera_entity->local_to_world_matrix();
-                    auto skybox_tex = Asset::get_asset_data<RHI::IResource>(scene_renderer->skybox);
+                    auto skybox_tex = get_asset_or_async_load_if_not_ready<RHI::IResource>(scene_renderer->skybox);
                     skybox->skybox = skybox_tex;
                     geometry->camera_cb = m_camera_cb;
                     geometry->ts = {ts.data(), ts.size()};

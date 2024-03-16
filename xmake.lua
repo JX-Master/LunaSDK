@@ -113,6 +113,7 @@ end
 
 add_includedirs("Modules")
 set_languages("c99", "cxx17")
+set_exceptions("none")
 
 if is_os("windows") then 
     add_defines("_WINDOWS")

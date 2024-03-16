@@ -23,19 +23,19 @@ namespace Luna
 
         using job_func_t = void(void* params);
 
-        //! Allocates one job ID, so that other threads can wait for it by calling `wait_job`.
+        //! Allocates one job ID, so that other threads can wait for it by calling @ref wait_job.
         //! @return Returns the allocated job ID.
-        //! @remark This function is called internally by the job system for all jobs submitted by `submit_job`, so the user doesn't need to call this function manually.
+        //! @remark This function is called internally by the job system for all jobs submitted by @ref submit_job, so the user doesn't need to call this function manually.
         //! However, the job ID can also be used solely without submitting any job to provide a synchronizing point that other threads can wait for.
         //! 
-        //! Every allocated job ID must be finished by calling `finish_job_id`, or memory leak will occur. For job IDs created by `submit_job`, the job system calls `finish_job_id` 
-        //! automatically when the job callback function returns, so the user should not finish it manually. But for job IDs created by `allocate_job_id`, the user should call
-        //! `finish_job_id` manually to correctly finish them.
+        //! Every allocated job ID must be finished by calling @ref finish_job_id, or memory leak will occur. For job IDs created by @ref submit_job, the job system calls @ref finish_job_id 
+        //! automatically when the job callback function returns, so the user should not finish it manually. But for job IDs created by @ref allocate_job_id, the user should call
+        //! @ref finish_job_id manually to correctly finish them.
         LUNA_JOBSYSTEM_API job_id_t allocate_job_id();
 
         //! Marks one job ID as finished, so that all jobs waiting for this job ID will be resumed.
-        //! This function should only be called for job IDs allocated by `allocate_job_id`, never call this function for job IDs returned by `submit_job`.
-        //! See remarks of `allocate_job_id` for details.
+        //! This function should only be called for job IDs allocated by @ref allocate_job_id, never call this function for job IDs returned by @ref submit_job.
+        //! See remarks of @ref allocate_job_id for details.
         LUNA_JOBSYSTEM_API void finish_job_id(job_id_t job);
 
         //! Creates a new job.
@@ -62,11 +62,11 @@ namespace Luna
         LUNA_JOBSYSTEM_API job_id_t get_current_job_id(void* params);
 
         //! Waits for the job to finish.
-        //! @param[in] job The job ID to wait. If this is `INVALID_JOB_ID`, this call returns immediately.
+        //! @param[in] job The job ID to wait. If this is @ref INVALID_JOB_ID, this call returns immediately.
         LUNA_JOBSYSTEM_API void wait_job(job_id_t job);
 
         //! Checks whether the specified job is finished.
-        //! @param[in] job The job ID to check. If this is `INVALID_JOB_ID`, this call always return `true`.
+        //! @param[in] job The job ID to check. If this is @ref INVALID_JOB_ID, this call always return `true`.
         //! @return Returns `true` if the job is finished, `false` otherwise.
         LUNA_JOBSYSTEM_API bool is_job_finished(job_id_t job);
     }

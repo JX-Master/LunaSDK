@@ -14,6 +14,7 @@
 #include <Luna/Runtime/Log.hpp>
 #include <Luna/Window/MessageBox.hpp>
 #include <Luna/Runtime/Unicode.hpp>
+#include <Luna/JobSystem/JobSystem.hpp>
 
 namespace Luna
 {
@@ -507,13 +508,7 @@ namespace Luna
                             // Load the data if not loaded.
                             if (Asset::get_asset_state(asset.get()) == Asset::AssetState::unloaded)
                             {
-                                auto& err = Asset::get_asset_loading_result(asset.get());
-                                if (err.code != ErrCode(0))
-                                {
-                                    // Output error.
-                                    log_error("App", "Asset Loading Error: %s", err.explain());
-                                }
-                                Asset::load_asset(asset.get());
+                                async_load_asset(asset.get());
                             }
 
                             // Draw status circle.
@@ -570,7 +565,7 @@ namespace Luna
                                     auto r = VFS::move_file(from_path, to_path, FileMoveFlag::fail_if_exists);
                                     if(succeeded(r))
                                     {
-                                        r = Asset::update_assets_meta(to_path);
+                                        r = Asset::load_assets_meta(to_path);
                                     }
                                     if(failed(r))
                                     {
@@ -737,5 +732,24 @@ namespace Luna
 
         ImGui::EndChild();
         ImGui::PopStyleVar();
+    }
+    struct AssetLoadTask
+    {
+        Asset::asset_t asset;
+    };
+    void async_load_asset_func(void* params)
+    {
+        AssetLoadTask* task = (AssetLoadTask*)params;
+        auto r = Asset::load_asset(task->asset);
+        if(failed(r))
+        {
+            log_error("Studio", "Failed to load asset %s: %s", Asset::get_asset_path(task->asset).encode().c_str(), explain(r.errcode()));
+        }
+    }
+    void async_load_asset(Asset::asset_t asset)
+    {
+        AssetLoadTask* task = (AssetLoadTask*)JobSystem::new_job(async_load_asset_func, sizeof(AssetLoadTask), alignof(AssetLoadTask));
+        task->asset = asset;
+        JobSystem::submit_job(task);
     }
 }
