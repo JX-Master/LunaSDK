@@ -35,7 +35,7 @@ namespace Luna
             }
             return ok;
         }
-        u32 FontFileTTF::count_fonts()
+        u32 FontFileTTF::get_num_fonts()
         {
             return u32(m_infos.size());
         }

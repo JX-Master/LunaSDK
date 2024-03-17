@@ -27,11 +27,11 @@ namespace Luna
             FontFileTTF() {}
 
             RV init(const byte_t* data, usize data_size);
-            virtual const Blob& get_data() override
+            virtual Span<const byte_t> get_data() override
             {
-                return m_data;
+                return m_data.cspan();
             }
-            virtual u32 count_fonts() override;
+            virtual u32 get_num_fonts() override;
             virtual glyph_t find_glyph(u32 font_index, u32 codepoint) override;
             virtual f32 scale_for_pixel_height(u32 font_index, f32 pixels) override;
             virtual void get_vmetrics(u32 font_index, i32* ascent, i32* descent, i32* lineGap) override;

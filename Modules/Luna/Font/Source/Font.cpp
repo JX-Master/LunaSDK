@@ -22,7 +22,7 @@ namespace Luna
             {
                 register_boxed_type<FontFileTTF>();
                 impl_interface_for_type<FontFileTTF, IFontFile>();
-                auto r = load_font_file((const byte_t*)opensans_regular_ttf, (usize)opensans_regular_ttf_size, FontFileFormat::ttf);
+                auto r = load_ttf_font_file((const byte_t*)opensans_regular_ttf, (usize)opensans_regular_ttf_size, FontFileFormat::ttf);
                 if (failed(r))
                 {
                     return r.errcode();
@@ -35,7 +35,7 @@ namespace Luna
                 g_default_font = nullptr;
             }
         };
-        LUNA_FONT_API R<Ref<IFontFile>> load_font_file(const byte_t* data, usize data_size, FontFileFormat format)
+        LUNA_FONT_API R<Ref<IFontFile>> load_ttf_font_file(const byte_t* data, usize data_size, FontFileFormat format)
         {
             switch (format)
             {

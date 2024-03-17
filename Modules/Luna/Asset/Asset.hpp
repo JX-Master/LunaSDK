@@ -20,7 +20,7 @@ namespace Luna
 {
     namespace Asset
     {
-        //! @addtogroup RHI
+        //! @addtogroup Asset
         //! @{
         
         //! Represents one handle that identifies one asset entry in process scope.
