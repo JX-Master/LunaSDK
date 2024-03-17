@@ -69,14 +69,13 @@ namespace Luna
             lucheck_msg(font_index < m_infos.size(), "Invalid font index.");
             return stbtt_GetGlyphKernAdvance(&m_infos[font_index], ch1, ch2);
         }
-        Vector<i16> FontFileTTF::get_glyph_shape(u32 font_index, glyph_t glyph)
+        void FontFileTTF::get_glyph_shape(u32 font_index, glyph_t glyph, Vector<i16>& out_commands)
         {
             lucheck_msg(font_index < m_infos.size(), "Invalid font index.");
             if (glyph == INVALID_GLYPH)
             {
-                return Vector<i16>();
+                return;
             }
-            Vector<i16> ret;
             stbtt_vertex* vertices;
             int num_vertices = stbtt_GetGlyphShape(&m_infos[font_index], glyph, &vertices);
             for (int i = 0; i < num_vertices; ++i)
@@ -85,17 +84,16 @@ namespace Luna
                 switch (v.type)
                 {
                 case STBTT_vmove:
-                    ret.insert(ret.end(), { COMMAND_MOVE_TO, v.x, v.y }); break;
+                    out_commands.insert(out_commands.end(), { COMMAND_MOVE_TO, v.x, v.y }); break;
                 case STBTT_vline:
-                    ret.insert(ret.end(), { COMMAND_LINE_TO, v.x, v.y }); break;
+                    out_commands.insert(out_commands.end(), { COMMAND_LINE_TO, v.x, v.y }); break;
                 case STBTT_vcurve:
-                    ret.insert(ret.end(), { COMMAND_CURVE_TO, v.cx, v.cy, v.x, v.y }); break;
+                    out_commands.insert(out_commands.end(), { COMMAND_CURVE_TO, v.cx, v.cy, v.x, v.y }); break;
                 case STBTT_vcubic:
                     lupanic(); break;
                 }
             }
             if(vertices) stbtt_FreeShape(&m_infos[font_index], vertices);
-            return ret;
         }
         RectI FontFileTTF::get_glyph_bounding_box(u32 font_index, glyph_t glyph)
         {

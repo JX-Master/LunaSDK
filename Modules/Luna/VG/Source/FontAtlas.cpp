@@ -129,7 +129,8 @@ namespace Luna
             {
                 return false;
             }
-            auto font_shape = m_font->get_glyph_shape(m_font_index, glyph);
+            Vector<i16> font_shape;
+            m_font->get_glyph_shape(m_font_index, glyph, font_shape);
             usize i = 0;
             Vector<f32> font_data;
             while (i < font_shape.size())

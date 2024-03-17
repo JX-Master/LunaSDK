@@ -22,7 +22,7 @@ namespace Luna
             {
                 register_boxed_type<FontFileTTF>();
                 impl_interface_for_type<FontFileTTF, IFontFile>();
-                auto r = load_ttf_font_file((const byte_t*)opensans_regular_ttf, (usize)opensans_regular_ttf_size, FontFileFormat::ttf);
+                auto r = load_ttf_font_file((const byte_t*)opensans_regular_ttf, (usize)opensans_regular_ttf_size);
                 if (failed(r))
                 {
                     return r.errcode();
@@ -35,27 +35,17 @@ namespace Luna
                 g_default_font = nullptr;
             }
         };
-        LUNA_FONT_API R<Ref<IFontFile>> load_ttf_font_file(const byte_t* data, usize data_size, FontFileFormat format)
+        LUNA_FONT_API R<Ref<IFontFile>> load_ttf_font_file(const byte_t* data, usize data_size)
         {
-            switch (format)
+            Ref<IFontFile> ret;
+            Ref<FontFileTTF> f = new_object<FontFileTTF>();
+            lutry
             {
-            case FontFileFormat::ttf:
-            {
-                Ref<IFontFile> ret;
-                Ref<FontFileTTF> f = new_object<FontFileTTF>();
-                lutry
-                {
-                    luexp(f->init(data, data_size));
-                }
-                lucatchret;
-                ret = f;
-                return ret;
+                luexp(f->init(data, data_size));
             }
-            default:
-                lupanic();
-                break;
-            }
-            return BasicError::not_supported();
+            lucatchret;
+            ret = f;
+            return ret;
         }
         LUNA_FONT_API IFontFile* get_default_font()
         {
