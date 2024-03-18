@@ -21,6 +21,7 @@ namespace Luna
     namespace Asset
     {
         //! @addtogroup Asset
+        //! Run-time asset management system.
         //! @{
         
         //! Represents one handle that identifies one asset entry in process scope.

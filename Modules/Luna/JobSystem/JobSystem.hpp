@@ -17,10 +17,17 @@ namespace Luna
 {
     namespace JobSystem
     {
+        //! @addtogroup HID
+        //! @{
+        
+        //! Identifies one job that can be waited.
         using job_id_t = u64;
 
+        //! A special ID that identifies one invalid job.
         constexpr job_id_t INVALID_JOB_ID = 0;
 
+        //! The callback function of one job.
+        //! @param[in] params The parameter passed to @ref submit_job.
         using job_func_t = void(void* params);
 
         //! Allocates one job ID, so that other threads can wait for it by calling @ref wait_job.
@@ -52,16 +59,17 @@ namespace Luna
         //! @param[in] params The parameter block pointer of the job. Every job can only be submitted once.
         //! If the parameter block is not trivially destructable, the user must destruct the parameter block manually at the end of the
         //! job callback function.
-        //! @return Returns the assigned job ID for the job that can be used to wait for the job.
+        //! @return Returns the job ID for the submitted job, which can be used to wait for the job using @ref wait_job, or check whether
+        //! the job is finished using @ref is_job_finished.
         LUNA_JOBSYSTEM_API job_id_t submit_job(void* params);
 
         //! Fetches the job ID assigned with the specified job.
         //! @param[in] params The parameter block pointer of the job.
-        //! @return Returns the assigned job ID for the job that can be used to wait for the job.
-        //! Returns `INVALID_JOB_ID` if the job is not submitted yet.
+        //! @return Returns the assigned job ID for the job.
+        //! Returns @ref INVALID_JOB_ID if the job is not submitted yet.
         LUNA_JOBSYSTEM_API job_id_t get_current_job_id(void* params);
 
-        //! Waits for the job to finish.
+        //! Blocks the current thread to wait for the job to finish.
         //! @param[in] job The job ID to wait. If this is @ref INVALID_JOB_ID, this call returns immediately.
         LUNA_JOBSYSTEM_API void wait_job(job_id_t job);
 
@@ -69,6 +77,8 @@ namespace Luna
         //! @param[in] job The job ID to check. If this is @ref INVALID_JOB_ID, this call always return `true`.
         //! @return Returns `true` if the job is finished, `false` otherwise.
         LUNA_JOBSYSTEM_API bool is_job_finished(job_id_t job);
+
+        //! @}
     }
 
     struct Module;

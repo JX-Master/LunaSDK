@@ -24,6 +24,7 @@ namespace Luna
     namespace Font
     {
         //! @addtogroup Font
+        //! The font file parsing library.
         //! @{
         
         //! The index type of one font glyph.
