@@ -29,7 +29,7 @@ namespace Luna
         // Maps to DXGI_FORMAT
         enum class DDSFormat : u32
         {
-            unknown                                    = 0,
+            unknown                                 = 0,
             r32g32b32a32_typeless                   = 1,
             r32g32b32a32_float                      = 2,
             r32g32b32a32_uint                       = 3,

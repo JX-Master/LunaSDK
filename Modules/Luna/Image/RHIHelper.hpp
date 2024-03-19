@@ -67,7 +67,7 @@ namespace Luna
             case RHI::Format::r32_float: return ImageFormat::r32_float;
             case RHI::Format::rg32_float: return ImageFormat::rg32_float;
             case RHI::Format::rgba32_float: return ImageFormat::rgba32_float;
-            default: return ImageFormat::unkonwn;
+            default: return ImageFormat::unknown;
             }
         }
         inline RHI::Format dds_to_rhi_format(Image::DDSFormat format)

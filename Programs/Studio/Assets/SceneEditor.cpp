@@ -835,9 +835,9 @@ namespace Luna
             img_desc.width = (u32)desc.width;
             img_desc.height = desc.height;
             img_desc.format = Image::rhi_to_image_format(desc.format);
-            luassert(img_desc.format != Image::ImageFormat::unkonwn);
+            luassert(img_desc.format != Image::ImageFormat::unknown);
             lulet(f, open_file(path.encode().c_str(), FileOpenFlag::write | FileOpenFlag::user_buffering, FileCreationMode::create_always));
-            luexp(Image::write_bmp_file(f, img_desc, img_data));
+            luexp(Image::write_bmp_file(f, img_desc, img_data.data(), img_data.size()));
         }
         lucatch
         {

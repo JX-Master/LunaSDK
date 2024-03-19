@@ -367,7 +367,7 @@ namespace Luna
                 //    img_desc.width = mip_width;
                 //    img_desc.height = mip_height;
                 //    img_desc.format, Image::rhi_to_image_format(desc.format);
-                //    if (img_desc.format == Image::ImageFormat::unkonwn)
+                //    if (img_desc.format == Image::ImageFormat::unknown)
                 //    {
                 //        luthrow(BasicError::not_supported());
                 //    }

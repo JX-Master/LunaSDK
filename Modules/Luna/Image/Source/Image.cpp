@@ -209,70 +209,90 @@ namespace Luna
                 (format == ImageFormat::rgba32_float)
                 ) ? true : false;
         }
-        LUNA_IMAGE_API RV write_png_file(ISeekableStream* stream, const ImageDesc& desc, const Blob& image_data)
+        LUNA_IMAGE_API RV write_png_file(ISeekableStream* stream, const ImageDesc& desc, const void* data, usize data_size)
         {
             if (!check_png_format(desc.format))
             {
                 return set_error(BasicError::bad_arguments(), "The specified encode format does not support the image pixel format.");
             }
+            if(desc.width * desc.height * pixel_size(desc.format) > data_size)
+            {
+                return set_error(BasicError::bad_arguments(), "The pixel data is not enough.");
+            }
             int comp = stbiw_get_comp(desc.format);
-            int res = stbi_write_png_to_func(stbi_write_func, (void*)&stream, desc.width, desc.height, comp, image_data.data(), (u32)pixel_size(desc.format) * desc.width);
+            int res = stbi_write_png_to_func(stbi_write_func, (void*)&stream, desc.width, desc.height, comp, data, (u32)pixel_size(desc.format) * desc.width);
             if (!res)
             {
                 return ImageError::file_parse_error();
             }
             return ok;
         }
-        LUNA_IMAGE_API RV write_bmp_file(ISeekableStream* stream, const ImageDesc& desc, const Blob& image_data)
+        LUNA_IMAGE_API RV write_bmp_file(ISeekableStream* stream, const ImageDesc& desc, const void* data, usize data_size)
         {
             if (!check_bmp_tga_jpg_format(desc.format))
             {
                 return set_error(BasicError::bad_arguments(), "The specified encode format does not support the image pixel format.");
             }
+            if(desc.width * desc.height * pixel_size(desc.format) > data_size)
+            {
+                return set_error(BasicError::bad_arguments(), "The pixel data is not enough.");
+            }
             int comp = stbiw_get_comp(desc.format);
-            int res = stbi_write_bmp_to_func(stbi_write_func, (void*)&stream, desc.width, desc.height, comp, image_data.data());
+            int res = stbi_write_bmp_to_func(stbi_write_func, (void*)&stream, desc.width, desc.height, comp, data);
             if (!res)
             {
                 return ImageError::file_parse_error();
             }
             return ok;
         }
-        LUNA_IMAGE_API RV write_tga_file(ISeekableStream* stream, const ImageDesc& desc, const Blob& image_data)
+        LUNA_IMAGE_API RV write_tga_file(ISeekableStream* stream, const ImageDesc& desc, const void* data, usize data_size)
         {
             if (!check_bmp_tga_jpg_format(desc.format))
             {
                 return set_error(BasicError::bad_arguments(), "The specified encode format does not support the image pixel format.");
             }
+            if(desc.width * desc.height * pixel_size(desc.format) > data_size)
+            {
+                return set_error(BasicError::bad_arguments(), "The pixel data is not enough.");
+            }
             int comp = stbiw_get_comp(desc.format);
-            int res = stbi_write_tga_to_func(stbi_write_func, (void*)&stream, desc.width, desc.height, comp, image_data.data());
+            int res = stbi_write_tga_to_func(stbi_write_func, (void*)&stream, desc.width, desc.height, comp, data);
             if (!res)
             {
                 return ImageError::file_parse_error();
             }
             return ok;
         }
-        LUNA_IMAGE_API RV write_jpg_file(ISeekableStream* stream, const ImageDesc& desc, const Blob& image_data, u32 quality)
+        LUNA_IMAGE_API RV write_jpg_file(ISeekableStream* stream, const ImageDesc& desc, const void* data, usize data_size, u32 quality)
         {
             if (!check_bmp_tga_jpg_format(desc.format))
             {
                 return set_error(BasicError::bad_arguments(), "The specified encode format does not support the image pixel format.");
             }
+            if(desc.width * desc.height * pixel_size(desc.format) > data_size)
+            {
+                return set_error(BasicError::bad_arguments(), "The pixel data is not enough.");
+            }
             int comp = stbiw_get_comp(desc.format);
-            int res = stbi_write_jpg_to_func(stbi_write_func, (void*)&stream, desc.width, desc.height, comp, image_data.data(), quality);
+            int res = stbi_write_jpg_to_func(stbi_write_func, (void*)&stream, desc.width, desc.height, comp, data, quality);
             if (!res)
             {
                 return ImageError::file_parse_error();
             }
             return ok;
         }
-        LUNA_IMAGE_API RV write_hdr_file(ISeekableStream* stream, const ImageDesc& desc, const Blob& image_data)
+        LUNA_IMAGE_API RV write_hdr_file(ISeekableStream* stream, const ImageDesc& desc, const void* data, usize data_size)
         {
             if (!check_hdr_format(desc.format))
             {
                 return set_error(BasicError::bad_arguments(), "The specified encode format does not support the image pixel format.");
             }
+            if(desc.width * desc.height * pixel_size(desc.format) > data_size)
+            {
+                return set_error(BasicError::bad_arguments(), "The pixel data is not enough.");
+            }
             int comp = stbiw_get_comp(desc.format);
-            int res = stbi_write_hdr_to_func(stbi_write_func, (void*)&stream, desc.width, desc.height, comp, (f32*)image_data.data());
+            int res = stbi_write_hdr_to_func(stbi_write_func, (void*)&stream, desc.width, desc.height, comp, (f32*)data);
             if (!res)
             {
                 return ImageError::file_parse_error();
