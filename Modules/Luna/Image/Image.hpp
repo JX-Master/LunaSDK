@@ -21,8 +21,8 @@ namespace Luna
 {
     namespace Image
     {
-        //! @addtogroup Image
-        //! The image file parsing and saving library.
+        //! @addtogroup Image Image
+        //! Image module provides functions to parse and save image files.
         //! @{
 
         //! Formats that can be saved in one image file (except DDS, which is identified by @ref DDSFormat).

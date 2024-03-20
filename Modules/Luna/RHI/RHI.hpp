@@ -6,7 +6,6 @@
 * @file RHI.hpp
 * @author JXMaster
 * @date 2022/4/12
-* @brief Render Hardware Interface for Luna SDK.
 */
 #pragma once
 #include "Device.hpp"
@@ -18,8 +17,7 @@ namespace Luna
     namespace RHI
     {
         //! @addtogroup RHI RHI
-        //! The RHI (Rendering Hardware Interface) module provides uniform API to use platform's graphcis
-        //! hardware (GPU) to accelerate rendering and parallel computing tasks.
+        //! Render Hardware Interface (RHI) module provides uniform API to use platform's graphcis hardware (GPU) to accelerate rendering and parallel computing tasks.
         //! @{
         
         //! Lists supported RHI backends (implementation APIs).

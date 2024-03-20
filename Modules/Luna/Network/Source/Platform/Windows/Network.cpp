@@ -316,7 +316,7 @@ namespace Luna
             return Ref<ISocket>(s);
         }
 
-        LUNA_NETWORK_API R<Vector<AddressInfo>> getaddrinfo(const c8* node, const c8* service, const AddressInfo* hints)
+        LUNA_NETWORK_API RV getaddrinfo(const c8* node, const c8* service, const AddressInfo* hints, Vector<AddressInfo>& out_result)
         {
             ADDRINFOW d_hints;
             memzero(&d_hints, sizeof(ADDRINFOW));
@@ -347,7 +347,6 @@ namespace Luna
             {
                 return translate_error(err);
             }
-            Vector<AddressInfo> ret;
             Vector<c8> buffer;
             for(auto i = result; i; i = i->ai_next)
             {
@@ -375,13 +374,13 @@ namespace Luna
                     memcpy(&r.addr.ipv4.address, &addr->sin_addr.S_un.S_un_b.s_b1, 4);
                 }
                 else continue;
-                ret.push_back(r);
+                out_result.push_back(r);
             }
             if(result)
             {
                 FreeAddrInfoW(result);
             }
-            return ret;
+            return ok;
         }
     }
 }

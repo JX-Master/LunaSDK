@@ -20,8 +20,8 @@
 #endif
 namespace Luna
 {
-    //! @addtogroup HID
-    //! Human Interface Device module provides APIs to access platform's input and output devices, like mouse, 
+    //! @addtogroup HID HID
+    //! Human Interface Device (HID) module provides APIs to access platform's input and output devices, like mouse, 
     //! keyboard, controller, etc.
     
     struct Module;

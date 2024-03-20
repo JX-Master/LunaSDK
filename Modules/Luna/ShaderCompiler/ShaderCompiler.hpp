@@ -21,7 +21,7 @@ namespace Luna
 {
     namespace ShaderCompiler
     {
-        //! @addtogroup ShaderCompiler ShaderCompiler
+        //! @addtogroup ShaderCompiler Shader Compiler
         //! The ShaderCompiler module provides API to compile shaders.
         //! ShaderCompiler is designed to work with RHI, but it can also be used independently to implement shader compile command-line 
         //! tools without importing RHI module.

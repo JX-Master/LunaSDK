@@ -23,8 +23,8 @@ namespace Luna
 {
     namespace Font
     {
-        //! @addtogroup Font
-        //! The font file parsing library.
+        //! @addtogroup Font Font
+        //! Font module provides functions to parse font file, extract glyph shape and render glyph bitmap using CPU.
         //! @{
         
         //! The index type of one font glyph.

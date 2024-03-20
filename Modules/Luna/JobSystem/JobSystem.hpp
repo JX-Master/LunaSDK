@@ -17,7 +17,8 @@ namespace Luna
 {
     namespace JobSystem
     {
-        //! @addtogroup HID
+        //! @addtogroup JobSystem Job System
+        //! Job system module provides thread pool to execute jobs asynchronously for a multithreaded computer program.
         //! @{
         
         //! Identifies one job that can be waited.
