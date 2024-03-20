@@ -167,11 +167,21 @@ namespace Luna
 
         //! @}
     }
-
+    //! @addtogroup Image
+    //! @{
+    //! @defgroup ImageError Image Errors
+    //! @}
     namespace ImageError
     {
+        //! @addtogroup ImageError
+        //! @{
+
         LUNA_IMAGE_API errcat_t errtype();
+
+        //! Failed to parse image file.
         LUNA_IMAGE_API ErrCode file_parse_error();
+
+        //! @}
     }
 
     struct Module;

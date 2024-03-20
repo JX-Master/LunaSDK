@@ -16,6 +16,12 @@ namespace Luna
 {
     namespace Image
     {
+        //! @addtogroup Image
+        //! @{
+
+        //! Gets desired image format form RHI format.
+        //! @param[in] format The specified RHI format.
+        //! @return Returns the desired image format.
         inline Image::ImageFormat get_rhi_desired_format(Image::ImageFormat format)
         {
             switch (format)
@@ -35,6 +41,9 @@ namespace Luna
             default: lupanic(); return format;
             }
         }
+        //! Converts image format to RHI format.
+        //! @param[in] format The image format.
+        //! @return Returns the converted RHI format.
         inline RHI::Format image_to_rhi_format(Image::ImageFormat format)
         {
             switch (format)
@@ -54,6 +63,10 @@ namespace Luna
             default: lupanic(); return RHI::Format::unknown;
             }
         }
+        //! Converts RHI format to image format.
+        //! @param[in] format The RHI format.
+        //! @return Returns the converted image format.
+        //! Returns @ref ImageFormat::unknown if no image format can be mapped to the specified RHI format.
         inline Image::ImageFormat rhi_to_image_format(RHI::Format format)
         {
             switch (format)
@@ -70,6 +83,10 @@ namespace Luna
             default: return ImageFormat::unknown;
             }
         }
+        //! Converts DDS image format to RHI format.
+        //! @param[in] format The DDS image format.
+        //! @return Returns the converted RHI format.
+        //! Returns @ref RHI::Format::unknown if no RHI format can be mapped to the specified DDS image format.
         inline RHI::Format dds_to_rhi_format(Image::DDSFormat format)
         {
             switch (format)
@@ -143,6 +160,10 @@ namespace Luna
             default: return RHI::Format::unknown;
             }
         }
+        //! Converts RHI format to DDS image format.
+        //! @param[in] format The RHI format.
+        //! @return Returns the converted DDS format. 
+        //! Returns @ref DDSFormat::unknown if no DDS image format can be mapped to the specified RHI format.
         inline DDSFormat rhi_to_dds_format(RHI::Format format)
         {
             switch (format)
@@ -216,5 +237,7 @@ namespace Luna
             default: return DDSFormat::unknown;
             }
         }
+
+        //! @}
     }
 }

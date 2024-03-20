@@ -383,7 +383,7 @@ namespace Luna
             out_pixel_size = total_pixel_size;
             return ok;
         }
-        bool setup_image_array(const u8* pixels, usize pixel_size, DDSImageDesc& desc, Vector<DDSSubresource>& subresources)
+        bool setup_image_array(const u8* pixels, usize pixel_size, DDSImageDesc& desc, Array<DDSSubresource>& subresources)
         {
             usize index = 0;
             const byte_t* start_bits = pixels;
@@ -522,17 +522,15 @@ namespace Luna
                     return BasicError::not_supported();
             }
             image.subresources.clear();
-            image.subresources.shrink_to_fit();
             image.data.clear();
             usize pixel_size, num_images;
             auto r = determine_image_array(desc, num_images, pixel_size);
             if(failed(r)) return r;
-            image.subresources.resize(num_images);
+            image.subresources.assign(num_images);
             image.data = Blob(pixel_size, 16);
             if(!setup_image_array((const u8*)image.data.data(), image.data.size(), image.desc, image.subresources))
             {
                 image.subresources.clear();
-                image.subresources.shrink_to_fit();
                 image.data.clear();
                 return BasicError::failure();
             }
@@ -545,7 +543,7 @@ namespace Luna
             {
                 return BasicError::end_of_file();
             }
-            Vector<DDSSubresource> subresources(image.subresources.size());
+            Array<DDSSubresource> subresources(image.subresources.size());
             if(!setup_image_array(pixels, size, image.desc, subresources))
             {
                 return BasicError::failure();
@@ -639,7 +637,7 @@ namespace Luna
                         if(depth > 1) depth >>= 1;
                     }
                 }
-                image.subresources.resize(image.desc.array_size * image.desc.mip_levels);
+                image.subresources.assign(image.desc.array_size * image.desc.mip_levels);
                 usize data_offset = 0;
                 for(u32 item = 0; item < image.desc.array_size; ++item)
                 {

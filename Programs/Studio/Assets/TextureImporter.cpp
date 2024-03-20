@@ -441,45 +441,25 @@ namespace Luna
             // Write asset file (DDS).
             {
                 auto desc = tex->get_desc();
-                Image::DDSImage image;
+                Image::DDSImageDesc image_desc;
+                image_desc.width = desc.width;
+                image_desc.height = desc.height;
+                image_desc.depth = desc.depth;
+                image_desc.array_size = desc.array_size;
+                image_desc.mip_levels = desc.mip_levels;
+                image_desc.format = Image::rhi_to_dds_format(desc.format);
                 switch (desc.type)
                 {
-                case RHI::TextureType::tex1d: image.desc.dimension = Image::DDSDimension::tex1d; break;
-                case RHI::TextureType::tex2d: image.desc.dimension = Image::DDSDimension::tex2d; break;
-                case RHI::TextureType::tex3d: image.desc.dimension = Image::DDSDimension::tex3d; break;
+                case RHI::TextureType::tex1d: image_desc.dimension = Image::DDSDimension::tex1d; break;
+                case RHI::TextureType::tex2d: image_desc.dimension = Image::DDSDimension::tex2d; break;
+                case RHI::TextureType::tex3d: image_desc.dimension = Image::DDSDimension::tex3d; break;
                 default: break;
                 }
-                image.desc.format = Image::rhi_to_dds_format(desc.format);
-                image.desc.width = desc.width;
-                image.desc.height = desc.height;
-                image.desc.depth = desc.depth;
-                image.desc.mip_levels = desc.mip_levels;
-                image.desc.array_size = desc.array_size;
                 if (test_flags(desc.usages, TextureUsageFlag::cube))
                 {
-                    set_flags(image.desc.flags, Image::DDSFlag::texturecube);
+                    set_flags(image_desc.flags, Image::DDSFlag::texturecube);
                 }
-
-                image.subresources.resize(desc.mip_levels * desc.array_size);
-                for (u32 item = 0; item < desc.array_size; ++item)
-                {
-                    for (u32 mip = 0; mip < desc.mip_levels; ++mip)
-                    {
-                        auto& dst = image.subresources[Image::calc_dds_subresoruce_index(mip, item, desc.mip_levels)];
-                        dst.width = max<u32>(desc.width >> mip, 1);
-                        dst.height = max<u32>(desc.height >> mip, 1);
-                        dst.depth = max<u32>(desc.depth >> mip, 1);
-                        dst.row_pitch = (u32)dst.width * bits_per_pixel(desc.format) / 8;
-                        dst.slice_pitch = dst.row_pitch * dst.height;
-                    }
-                }
-                usize data_offset = 0;
-                for (auto& dst : image.subresources)
-                {
-                    dst.data_offset = data_offset;
-                    data_offset += (usize)dst.slice_pitch * (usize)dst.depth;
-                }
-                image.data = Blob(data_offset);
+                lulet(image, Image::new_dds_image(image_desc));
                 Vector<RHI::CopyResourceData> copies;
                 for (u32 item = 0; item < desc.array_size; ++item)
                 {
