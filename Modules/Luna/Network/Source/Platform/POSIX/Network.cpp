@@ -159,7 +159,7 @@ namespace Luna
                     return translate_error(errno);
                 }
                 address.ipv4.port = addr.sin_port;
-                memcpy(&address.ipv4.address, & addr.sin_addr.s_addr, 4);
+                memcpy(&address.ipv4.address, &addr.sin_addr.s_addr, 4);
                 Ref<Socket> s = new_object<Socket>();
                 s->m_socket = r;
                 return Ref<ISocket>(s);
@@ -225,6 +225,107 @@ namespace Luna
             s->m_af = af;
             s->m_socket = r;
             return Ref<ISocket>(s);
+        }
+        LUNA_NETWORK_API RV getaddrinfo(const c8* node, const c8* service, const AddressInfo* hints, Vector<AddressInfo>& out_result)
+        {
+            struct addrinfo d_hints;
+            memzero(&d_hints, sizeof(d_hints));
+            if(hints)
+            {
+                switch(hints->family)
+                {
+                    case AddressFamily::unspecified: d_hints.ai_family = AF_UNSPEC; break;
+                    case AddressFamily::ipv4: d_hints.ai_family = AF_INET; break;
+                    case AddressFamily::ipv6: d_hints.ai_family = AF_INET6; break;
+                    default: return NetworkError::address_not_supported();
+                }
+                switch(hints->socktype)
+                {
+                    case SocketType::unspecified: d_hints.ai_socktype = 0; break;
+                    case SocketType::stream: d_hints.ai_socktype = SOCK_STREAM; break;
+                    case SocketType::dgram: d_hints.ai_socktype = SOCK_DGRAM; break;
+                    case SocketType::raw: d_hints.ai_socktype = SOCK_RAW; break;
+                    case SocketType::rdm: d_hints.ai_socktype = SOCK_RDM; break;
+                    default: return NetworkError::protocol_not_supported();
+                }
+                switch(hints->protocol)
+                {
+                    case Protocol::unspecified: d_hints.ai_protocol = 0; break;
+                    case Protocol::icmp: d_hints.ai_protocol = IPPROTO_ICMP; break;
+                    case Protocol::igmp: d_hints.ai_protocol = IPPROTO_IGMP; break;
+                    case Protocol::tcp: d_hints.ai_protocol = IPPROTO_TCP; break;
+                    case Protocol::udp: d_hints.ai_protocol = IPPROTO_UDP; break;
+                    case Protocol::icmpv6: d_hints.ai_protocol = IPPROTO_ICMPV6; break;
+                    default: return NetworkError::protocol_not_supported();
+                }
+                if(test_flags(hints->flags, AddressInfoFlag::passive))
+                {
+                    d_hints.ai_flags |= AI_PASSIVE;
+                }
+            }
+            else
+            {
+                d_hints.ai_family = AF_UNSPEC;
+            }
+            d_hints.ai_flags |= AI_CANONNAME;
+            struct addrinfo* result = nullptr;
+            auto err = ::getaddrinfo(node, service, &d_hints, &result);
+            if(err)
+            {
+                return translate_error(err);
+            }
+            for(auto i = result; i; i = i->ai_next)
+            {
+                AddressInfo r;
+                switch(i->ai_family)
+                {
+                    case AF_UNSPEC: r.family = AddressFamily::unspecified; break;
+                    case AF_INET: r.family = AddressFamily::ipv4; break;
+                    case AF_INET6: r.family = AddressFamily::ipv6; break;
+                    default: continue;
+                }
+                switch(i->ai_socktype)
+                {
+                    case 0: r.socktype = SocketType::unspecified; break;
+                    case SOCK_STREAM: r.socktype = SocketType::stream; break;
+                    case SOCK_DGRAM: r.socktype = SocketType::dgram; break;
+                    case SOCK_RAW: r.socktype = SocketType::raw; break;
+                    case SOCK_RDM: r.socktype = SocketType::rdm; break;
+                    default: continue;
+                }
+                switch(i->ai_protocol)
+                {
+                    case 0: r.protocol = Protocol::unspecified; break;
+                    case IPPROTO_ICMP: r.protocol = Protocol::icmp; break;
+                    case IPPROTO_IGMP: r.protocol = Protocol::igmp; break;
+                    case IPPROTO_TCP: r.protocol = Protocol::tcp; break;
+                    case IPPROTO_UDP: r.protocol = Protocol::udp; break;
+                    case IPPROTO_ICMPV6: r.protocol = Protocol::icmpv6; break;
+                }
+                if(i->ai_canonname)
+                {
+                    r.canonname = Name(i->ai_canonname);
+                }
+                r.flags = AddressInfoFlag::none;
+                if(i->ai_flags & AI_PASSIVE)
+                {
+                    set_flags(r.flags, AddressInfoFlag::passive);
+                }
+                if(i->ai_addr->sa_family == AF_INET)
+                {
+                    sockaddr_in* addr = (sockaddr_in*)i->ai_addr;
+                    r.addr.family = AddressFamily::ipv4;
+                    r.addr.ipv4.port = ntoh(addr->sin_port);
+                    memcpy(&r.addr.ipv4.address, &addr->sin_addr.s_addr, 4);
+                }
+                else continue;
+                out_result.push_back(r);
+            }
+            if(result)
+            {
+                freeaddrinfo(result);
+            }
+            return ok;
         }
     }
 }
