@@ -137,16 +137,16 @@ namespace Luna
             }
             virtual RV get_pass_time_intervals(Vector<u64>& pass_time_intervals) override;
 
-            virtual usize get_input_resource(const Name& parameter) override
+            virtual usize get_input_resource(const Name& name) override
             {
                 auto& pass = m_pass_data[m_current_compile_pass];
-                auto iter = pass.m_input_resources.find(parameter);
+                auto iter = pass.m_input_resources.find(name);
                 return iter == pass.m_input_resources.end() ? INVALID_RESOURCE : iter->second;
             }
-            virtual usize get_output_resource(const Name& parameter) override
+            virtual usize get_output_resource(const Name& name) override
             {
                 auto& pass = m_pass_data[m_current_compile_pass];
-                auto iter = pass.m_output_resources.find(parameter);
+                auto iter = pass.m_output_resources.find(name);
                 return iter == pass.m_output_resources.end() ? INVALID_RESOURCE : iter->second;
             }
 

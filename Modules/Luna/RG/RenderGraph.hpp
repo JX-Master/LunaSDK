@@ -14,6 +14,9 @@ namespace Luna
 {
     namespace RG
     {
+        //! @addtogroup RG
+        //! @{
+        
         struct RenderGraphPassNode
         {
             Name name; // The pass name.
@@ -99,5 +102,7 @@ namespace Luna
         };
 
         LUNA_RG_API Ref<IRenderGraph> new_render_graph(RHI::IDevice* device);
+
+        //! @}
     }
 }

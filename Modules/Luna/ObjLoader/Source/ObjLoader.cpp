@@ -108,10 +108,10 @@ namespace Luna
             auto& attributes = obj.attributes;
 
             // Copy attributes.
-            attributes.vertices.resize(attrib.vertices.size() / 3);
-            attributes.normals.resize(attrib.normals.size() / 3);
-            attributes.texcoords.resize(attrib.texcoords.size() / 2);
-            attributes.colors.resize(attrib.colors.size() / 3);
+            attributes.vertices.assign(attrib.vertices.size() / 3);
+            attributes.normals.assign(attrib.normals.size() / 3);
+            attributes.texcoords.assign(attrib.texcoords.size() / 2);
+            attributes.colors.assign(attrib.colors.size() / 3);
 
             if (attributes.vertices.size())
             {
@@ -131,7 +131,7 @@ namespace Luna
             }
 
             // Copy shape information.
-            obj.shapes.resize(shapes.size());
+            obj.shapes.assign(shapes.size());
             for (usize i = 0; i < shapes.size(); ++i)
             {
                 copy_shape(obj.shapes[i], shapes[i]);
