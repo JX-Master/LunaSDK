@@ -158,7 +158,7 @@ namespace Luna
                         m_pass_data[resource_track_data[i].last_access].m_release_resources.push_back(i);
                     }
                 }
-                // Create output resources.
+                // Create persistent resources.
                 for(usize i = 0; i < m_desc.resources.size(); ++i)
                 {
                     if(m_desc.resources[i].type == RenderGraphResourceType::persistent)
