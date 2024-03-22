@@ -305,10 +305,10 @@ namespace Luna
             }
         }
 
-        static void reverse_object(Variant& after, const Variant& patch);
-        static void reverse_array(Variant& after, const Variant& patch);
+        static void revert_object(Variant& after, const Variant& patch);
+        static void revert_array(Variant& after, const Variant& patch);
 
-        LUNA_VARIANT_UTILS_API void reverse(Variant& after, const Variant& delta)
+        LUNA_VARIANT_UTILS_API void revert(Variant& after, const Variant& delta)
         {
             if (delta.type() == VariantType::object)
             {
@@ -316,10 +316,10 @@ namespace Luna
                 if (after.type() == VariantType::array
                     && array_magic.str() == "a")
                 {
-                    reverse_array(after, delta);
+                    revert_array(after, delta);
                     return;
                 }
-                reverse_object(after, delta);
+                revert_object(after, delta);
                 return;
             }
             if (delta.type() == VariantType::array)
@@ -367,7 +367,7 @@ namespace Luna
             }
         }
 
-        static void reverse_object(Variant& after, const Variant& delta)
+        static void revert_object(Variant& after, const Variant& delta)
         {
             for (auto& d : delta.key_values())
             {
@@ -382,7 +382,7 @@ namespace Luna
                 }
                 else
                 {
-                    reverse(property, patch_value);
+                    revert(property, patch_value);
                 }
             }
         }
@@ -469,7 +469,7 @@ namespace Luna
             }
         }
 
-        static void reverse_array(Variant& after, const Variant& delta)
+        static void revert_array(Variant& after, const Variant& delta)
         {
             Vector<usize> to_remove;
             Vector<Pair<usize, Variant>> to_insert;
@@ -497,7 +497,7 @@ namespace Luna
                         }
                         else
                         {
-                            // reverse removal
+                            // revert removal
                             Variant v(VariantType::array);
                             v.push_back(move(value[0]));
                             to_insert.push_back(make_pair(insert_index, move(v)));
@@ -509,7 +509,7 @@ namespace Luna
                     usize insert_index = (usize)atoll(op.first.c_str());
                     if (value.type() == VariantType::array && value.size() == 1)
                     {
-                        // reverse insertion.
+                        // revert insertion.
                         to_remove.push_back(insert_index);
                     }
                     else
@@ -524,7 +524,7 @@ namespace Luna
             // first modify entries
             for (auto& op : to_modify)
             {
-                reverse(after.at(op.first), op.second);
+                revert(after.at(op.first), op.second);
             }
 
             // remove items, in reverse order to avoid sawing our own floor
@@ -543,7 +543,7 @@ namespace Luna
             }
         }
 
-        LUNA_VARIANT_UTILS_API void add_diff_prefix(Variant& delta, const Vector<Variant>& prefix_nodes)
+        LUNA_VARIANT_UTILS_API void add_diff_prefix(Variant& delta, Span<const Variant> prefix_nodes)
         {
             for (auto iter = prefix_nodes.rbegin(); iter != prefix_nodes.rend(); ++iter)
             {

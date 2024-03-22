@@ -473,7 +473,7 @@ namespace Luna
         {
             for (u32 i = 0; i < num_indents; ++i)
             {
-                s.push_back('\t');
+                s.append("    ", 4);
             }
         }
 

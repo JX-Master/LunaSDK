@@ -346,7 +346,7 @@ namespace Luna
             Variant after = read_json("{ }").get();
             Variant delta = diff(before, after);
             Variant unpatched = after;
-            reverse(unpatched, delta);
+            revert(unpatched, delta);
             luassert_always(unpatched == before);
         }
         //Unpatch_ObjectApplyEdit_Success
@@ -355,7 +355,7 @@ namespace Luna
             Variant after = read_json("{ \"p\" : true }").get();
             Variant delta = diff(before, after);
             Variant unpatched = after;
-            reverse(unpatched, delta);
+            revert(unpatched, delta);
             luassert_always(unpatched == before);
         }
         //Unpatch_ObjectApplyEditText_Success
@@ -364,7 +364,7 @@ namespace Luna
             Variant after = read_json("{ \"p\" : \"blah1\" }").get();
             Variant delta = diff(before, after);
             Variant unpatched = after;
-            reverse(unpatched, delta);
+            revert(unpatched, delta);
             luassert_always(unpatched == before);
         }
         //Unpatch_NestedObjectApplyEdit_Success
@@ -373,7 +373,7 @@ namespace Luna
             Variant after = read_json("{ \"i\": { \"p\" : true } }").get();
             Variant delta = diff(before, after);
             Variant unpatched = after;
-            reverse(unpatched, delta);
+            revert(unpatched, delta);
             luassert_always(unpatched == before);
         }
         //Unpatch_ArrayUnpatchAdd_Success
@@ -382,7 +382,7 @@ namespace Luna
             Variant after = read_json("[1,2,3,4]").get();
             Variant delta = diff(before, after);
             Variant unpatched = after;
-            reverse(unpatched, delta);
+            revert(unpatched, delta);
             luassert_always(unpatched == before);
         }
         //Unpatch_ArrayUnpatchRemove_Success
@@ -391,7 +391,7 @@ namespace Luna
             Variant after = read_json("[1,2]").get();
             Variant delta = diff(before, after);
             Variant unpatched = after;
-            reverse(unpatched, delta);
+            revert(unpatched, delta);
             luassert_always(unpatched == before);
         }
         //Unpatch_ArrayUnpatchModify_Success
@@ -400,7 +400,7 @@ namespace Luna
             Variant after = read_json("[1,4,{\"p\": [1] }]").get();
             Variant delta = diff(before, after);
             Variant unpatched = after;
-            reverse(unpatched, delta);
+            revert(unpatched, delta);
             luassert_always(unpatched == before);
         }
         //Unpatch_ArrayUnpatchComplex_Success
@@ -409,7 +409,7 @@ namespace Luna
             Variant after = read_json("{\"p\": [1,2,[1,3],false,\"11112\",3,{\"p\":true},10,10] }").get();
             Variant delta = diff(before, after);
             Variant unpatched = after;
-            reverse(unpatched, delta);
+            revert(unpatched, delta);
             luassert_always(unpatched == before);
         }
         //Unpatch_ArrayUnpatchMoving_Success
@@ -418,7 +418,7 @@ namespace Luna
             Variant after = read_json("[10,0,1,7,2,4,5,6,88,9,3]").get();
             Variant delta = read_json("{ \"8\": [88], \"_t\": \"a\", \"_3\": [\"\", 10, 3], \"_7\": [\"\", 3, 3], \"_8\": [8, 0, 0], \"_10\": [\"\", 0, 3] }").get();
             Variant unpatched = after;
-            reverse(unpatched, delta);
+            revert(unpatched, delta);
             luassert_always(unpatched == before);
         }
         //Unpatch_ArrayPatchMovingNonConsecutive_Success
@@ -427,7 +427,7 @@ namespace Luna
             Variant after = read_json("[0,4,3,1,5]").get();
             Variant delta = read_json("{\"_t\": \"a\", \"_2\": [\"\", 2, 3],\"_3\": [\"\", 1, 3]}").get();
             Variant unpatched = after;
-            reverse(unpatched, delta);
+            revert(unpatched, delta);
             luassert_always(unpatched == before);
         }
         //Unpatch_ArrayPatchMoveDeletingNonConsecutive_Success
@@ -436,7 +436,7 @@ namespace Luna
             Variant after = read_json("[0,5,3]").get();
             Variant delta = read_json("{\"_t\": \"a\", \"_1\": [ 1, 0, 0], \"_3\": [4,0, 0],\"_4\": [ \"\", 1, 3 ]}").get();
             Variant unpatched = after;
-            reverse(unpatched, delta);
+            revert(unpatched, delta);
             luassert_always(unpatched == before);
         }
         //Unpatch_Bug16Exception_Success
@@ -445,7 +445,7 @@ namespace Luna
             Variant after = read_json("{\r\n  \"rootRegion\": {\r\n    \"rows\": [\r\n      \"auto\",\r\n      \"auto\"\r\n    ],\r\n    \"members\": [\r\n      {\r\n        \"row\": 3\r\n      },\r\n      {\r\n        \"name\": \"label-header\"\r\n      }\r\n    ]\r\n  }\r\n}").get();
             Variant delta = diff(before, after);
             Variant unpatched = after;
-            reverse(unpatched, delta);
+            revert(unpatched, delta);
             luassert_always(unpatched == before);
         }
         //Unpatch_Bug16SilentFail_Success
@@ -454,7 +454,7 @@ namespace Luna
             Variant after = read_json("{\r\n    \"members\": [\r\n      {\r\n        \"name\": \"text-box\",\r\n        \"version\": \"1.0.0\",\r\n        \"required\": false,\r\n        \"isArray\": false,\r\n        \"row\": 3,\r\n        \"rowSpan\": 1,\r\n        \"column\": 0,\r\n        \"columnSpan\": 1,\r\n        \"readOnly\": false,\r\n        \"properties\": [\r\n          {\r\n            \"destPath\": \"ng-model\",\r\n            \"srcPath\": \"cmt\"\r\n          }\r\n        ],\r\n        \"parent\": \"Acknowledge Unit (111)\"\r\n      },\r\n      {\r\n        \"name\": \"component-label\",\r\n        \"version\": \"1.0.0\",\r\n        \"label\": \"COMMAND_DIALOG_COMMENT\",\r\n        \"required\": false,\r\n        \"isArray\": false,\r\n        \"row\": 2,\r\n        \"rowSpan\": 1,\r\n        \"column\": 0,\r\n        \"columnSpan\": 1,\r\n        \"readOnly\": false,\r\n        \"properties\": [],\r\n        \"parent\": \"Acknowledge Unit (111)\"\r\n      },\r\n      {\r\n        \"name\": \"label-header\",\r\n        \"version\": \"1.0.0\",\r\n        \"column\": 0,\r\n        \"row\": 0,\r\n        \"columnSpan\": 1,\r\n        \"rowSpan\": 1,\r\n        \"properties\": [],\r\n        \"addedArgs\": {},\r\n        \"parent\": \"Acknowledge Unit (111)\",\r\n        \"label\": \"test\"\r\n      }\r\n    ]\r\n  }").get();
             Variant delta = diff(before, after);
             Variant unpatched = after;
-            reverse(unpatched, delta);
+            revert(unpatched, delta);
             luassert_always(unpatched == before);
         }
         // Test diff prefix.
@@ -496,7 +496,7 @@ namespace Luna
             Variant delta2 = diff(before2, after2);
 
             Vector<Variant> prefix_path = { "rootRegion", "members", (u64)0 };
-            add_diff_prefix(delta2, prefix_path);
+            add_diff_prefix(delta2, prefix_path.cspan());
             luassert_always(delta == delta2);
 
             Variant patched = before;

@@ -213,16 +213,30 @@ namespace Luna
         case VariantType::null:
             return true;
         case VariantType::object:
-            if (size() != rhs.size()) return false;
             {
+                // Since both `this` and `rhs` may contain invalid chilren (child variants with variant type `null`), we
+                // need to calculate the number of valid children manually so that two variants are considered the same if one has 
+                // one null property and the other does not have such property.
+                usize valid_children = 0;
+                usize rhs_valid_children = 0;
                 for (auto& i : key_values())
                 {
-                    const Variant& rv = rhs.find(i.first);
-                    if (rv != i.second)
+                    // Only compare valid children.
+                    if(i.second.valid())
                     {
-                        return false;
+                        ++valid_children;
+                        const Variant& rv = rhs.find(i.first);
+                        if (rv != i.second)
+                        {
+                            return false;
+                        }
                     }
                 }
+                for (auto& i : rhs.key_values())
+                {
+                    if(i.second.valid()) ++rhs_valid_children;
+                }
+                if(valid_children != rhs_valid_children) return false;
                 return true;
             }
         case VariantType::array:

@@ -13,6 +13,8 @@
 #endif
 namespace Luna
 {
+    //! @addtogroup VariantUtils Variant Utils
+    //! Variant Utils module provides functions to operate @ref Luna::Variant objects.
     struct Module;
     LUNA_VARIANT_UTILS_API Module* module_variant_utils();
 }
