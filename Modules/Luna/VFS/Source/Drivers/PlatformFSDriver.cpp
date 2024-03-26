@@ -101,17 +101,17 @@ namespace Luna
         {
             DriverDesc desc;
             desc.driver_data = nullptr;
-            desc.driver_close = nullptr;
-            desc.mount = fs_mount;
-            desc.unmount = fs_unmount;
-            desc.open_file = fs_open_file;
-            desc.get_file_attribute = fs_get_file_attribute;
-            desc.copy_file = fs_copy_file;
-            desc.move_file = fs_move_file;
-            desc.delete_file = fs_delete_file;
-            desc.open_dir = fs_open_dir;
-            desc.create_dir = fs_create_dir;
-            desc.get_native_path = fs_get_native_path;
+            desc.on_driver_unregister = nullptr;
+            desc.on_mount = fs_mount;
+            desc.on_unmount = fs_unmount;
+            desc.on_open_file = fs_open_file;
+            desc.on_get_file_attribute = fs_get_file_attribute;
+            desc.on_copy_file = fs_copy_file;
+            desc.on_move_file = fs_move_file;
+            desc.on_delete_file = fs_delete_file;
+            desc.on_open_dir = fs_open_dir;
+            desc.on_create_dir = fs_create_dir;
+            desc.on_get_native_path = fs_get_native_path;
             register_driver(get_platform_filesystem_driver(), desc);
         }
         LUNA_VFS_API Name get_platform_filesystem_driver()

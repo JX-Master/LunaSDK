@@ -30,7 +30,7 @@ namespace Luna
             // If the driver is registered, unregister it first.
             if (iter != g_drivers.end())
             {
-                if(iter->second.get()->driver_close) iter->second.get()->driver_close(iter->second.get()->driver_data);
+                if(iter->second.get()->on_driver_unregister) iter->second.get()->on_driver_unregister(iter->second.get()->driver_data);
                 g_drivers.erase(iter);
             }
             UniquePtr<DriverDesc> d(memnew<DriverDesc>());
@@ -64,7 +64,7 @@ namespace Luna
             }
             lutry
             {
-                luset(p.m_mount_data, d->mount(d->driver_data, driver_path, mount_path, params_type, params_data));
+                luset(p.m_mount_data, d->on_mount(d->driver_data, driver_path, mount_path, params_type, params_data));
             }
             lucatchret;
             g_mounts.push_back(move(p));
@@ -80,7 +80,7 @@ namespace Luna
                 {
                     lutry
                     {
-                        luexp(iter->m_driver->unmount(iter->m_driver->driver_data, iter->m_mount_data));
+                        luexp(iter->m_driver->on_unmount(iter->m_driver->driver_data, iter->m_mount_data));
                     }
                     lucatchret;
                     g_mounts.erase(iter);
@@ -132,14 +132,14 @@ namespace Luna
             u64 file_sz;
             lutry
             {
-                luset(from_file, from->m_driver->open_file(from->m_driver->driver_data, from->m_mount_data, from_path, FileOpenFlag::read, FileCreationMode::open_existing));
+                luset(from_file, from->m_driver->on_open_file(from->m_driver->driver_data, from->m_mount_data, from_path, FileOpenFlag::read, FileCreationMode::open_existing));
                 if (fail_if_exists)
                 {
-                    luset(to_file, to->m_driver->open_file(to->m_driver->driver_data, to->m_mount_data, to_path, FileOpenFlag::write, FileCreationMode::create_new));
+                    luset(to_file, to->m_driver->on_open_file(to->m_driver->driver_data, to->m_mount_data, to_path, FileOpenFlag::write, FileCreationMode::create_new));
                 }
                 else
                 {
-                    luset(to_file, to->m_driver->open_file(to->m_driver->driver_data, to->m_mount_data, to_path, FileOpenFlag::write, FileCreationMode::create_always));
+                    luset(to_file, to->m_driver->on_open_file(to->m_driver->driver_data, to->m_mount_data, to_path, FileOpenFlag::write, FileCreationMode::create_always));
                 }
                 file_sz = from_file->get_size();
                 luexp(to_file->set_size(file_sz));
@@ -179,7 +179,7 @@ namespace Luna
             {
                 from_file = nullptr;
                 to_file = nullptr;
-                auto _ = to->m_driver->delete_file(to->m_driver->driver_data, to->m_mount_data, to_path);
+                auto _ = to->m_driver->on_delete_file(to->m_driver->driver_data, to->m_mount_data, to_path);
                 return luerr;
             }
             return ok;
@@ -192,7 +192,7 @@ namespace Luna
             lutry
             {
                 lulet(mnt, route_path(path, relative_path));
-                luset(ret, mnt.m_driver->open_file(mnt.m_driver->driver_data, mnt.m_mount_data, relative_path, flags, creation));
+                luset(ret, mnt.m_driver->on_open_file(mnt.m_driver->driver_data, mnt.m_mount_data, relative_path, flags, creation));
             }
             lucatchret;
             return ret;
@@ -205,12 +205,12 @@ namespace Luna
             lutry
             {
                 lulet(mnt, route_path(path, relative_path));
-                luset(ret, mnt.m_driver->get_file_attribute(mnt.m_driver->driver_data, mnt.m_mount_data, relative_path));
+                luset(ret, mnt.m_driver->on_get_file_attribute(mnt.m_driver->driver_data, mnt.m_mount_data, relative_path));
             }
             lucatchret;
             return ret;
         }
-        LUNA_VFS_API RV    copy_file(const Path& from_file_path, const Path& to_file_path, FileCopyFlag flags)
+        LUNA_VFS_API RV copy_file(const Path& from_file_path, const Path& to_file_path, FileCopyFlag flags)
         {
             MutexGuard _guard(g_mounts_mutex);
             Path from_path;
@@ -221,7 +221,7 @@ namespace Luna
                 lulet(to, route_path(to_file_path, to_path));
                 if (from.m_driver == to.m_driver)
                 {
-                    return from.m_driver->copy_file(from.m_driver->driver_data, from.m_mount_data, to.m_mount_data, from_path, to_path, flags);
+                    return from.m_driver->on_copy_file(from.m_driver->driver_data, from.m_mount_data, to.m_mount_data, from_path, to_path, flags);
                 }
                 // Force copy.
                 luexp(copy_file_between_driver(&from, &to, from_path, to_path, test_flags(flags, FileCopyFlag::fail_if_exists)));
@@ -229,7 +229,7 @@ namespace Luna
             lucatchret;
             return ok;
         }
-        LUNA_VFS_API RV    move_file(const Path& from_file_path, const Path& to_file_path, FileMoveFlag flags)
+        LUNA_VFS_API RV move_file(const Path& from_file_path, const Path& to_file_path, FileMoveFlag flags)
         {
             MutexGuard _guard(g_mounts_mutex);
             Path from_path;
@@ -240,23 +240,23 @@ namespace Luna
                 lulet(to, route_path(to_file_path, to_path));
                 if (from.m_driver == to.m_driver)
                 {
-                    return from.m_driver->move_file(from.m_driver->driver_data, from.m_mount_data, to.m_mount_data, from_path, to_path, flags);
+                    return from.m_driver->on_move_file(from.m_driver->driver_data, from.m_mount_data, to.m_mount_data, from_path, to_path, flags);
                 }
                 // copy and delete.
                 luexp(copy_file_between_driver(&from, &to, from_path, to_path, test_flags(flags, FileMoveFlag::fail_if_exists)));
-                luexp(from.m_driver->delete_file(from.m_driver->driver_data, from.m_mount_data, from_path));
+                luexp(from.m_driver->on_delete_file(from.m_driver->driver_data, from.m_mount_data, from_path));
             }
             lucatchret;
             return ok;
         }
-        LUNA_VFS_API RV    delete_file(const Path& file_path)
+        LUNA_VFS_API RV delete_file(const Path& file_path)
         {
             MutexGuard _guard(g_mounts_mutex);
             Path relative_path;
             lutry
             {
                 lulet(mnt, route_path(file_path, relative_path));
-                luexp(mnt.m_driver->delete_file(mnt.m_driver->driver_data, mnt.m_mount_data, relative_path));
+                luexp(mnt.m_driver->on_delete_file(mnt.m_driver->driver_data, mnt.m_mount_data, relative_path));
             }
             lucatchret;
             return ok;
@@ -269,7 +269,7 @@ namespace Luna
             lutry
             {
                 lulet(mnt, route_path(dir_path, relative_path));
-                luset(ret, mnt.m_driver->open_dir(mnt.m_driver->driver_data, mnt.m_mount_data, relative_path));
+                luset(ret, mnt.m_driver->on_open_dir(mnt.m_driver->driver_data, mnt.m_mount_data, relative_path));
             }
             lucatchret;
             return ret;
@@ -281,7 +281,7 @@ namespace Luna
             lutry
             {
                 lulet(mnt, route_path(dir_path, relative_path));
-                luexp(mnt.m_driver->create_dir(mnt.m_driver->driver_data, mnt.m_mount_data, relative_path));
+                luexp(mnt.m_driver->on_create_dir(mnt.m_driver->driver_data, mnt.m_mount_data, relative_path));
             }
             lucatchret;
             return ok;
@@ -294,7 +294,7 @@ namespace Luna
             lutry
             {
                 lulet(mnt, route_path(vfs_path, relative_path));
-                luset(ret, mnt.m_driver->get_native_path(mnt.m_driver->driver_data, mnt.m_mount_data, relative_path));
+                luset(ret, mnt.m_driver->on_get_native_path(mnt.m_driver->driver_data, mnt.m_mount_data, relative_path));
             }
             lucatchret;
             return ret;
@@ -317,7 +317,7 @@ namespace Luna
                 g_mounts_mutex = nullptr;
                 for (auto& i : g_drivers)
                 {
-                    if (i.second.get()->driver_close) i.second.get()->driver_close(i.second.get()->driver_data);
+                    if (i.second.get()->on_driver_unregister) i.second.get()->on_driver_unregister(i.second.get()->driver_data);
                 }
                 g_drivers.clear();
                 g_drivers.shrink_to_fit();
