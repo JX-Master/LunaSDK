@@ -518,7 +518,7 @@ namespace Luna
     inline auto Vector<_Ty, _Alloc>::internal_insert(const_iterator pos, _InputIt first, _InputIt last) -> enable_if_t<is_same_v<remove_cv_t<_InputIt>, value_type*>, Vector<_Ty, _Alloc>::iterator>
     {
         usize count = (last - first);
-        return insert_n(pos, first, count);
+        return insert(pos, Span<remove_pointer_t<_InputIt>>(first, count));
     }
     template <typename _Ty, typename _Alloc>
     template <typename _InputIt>

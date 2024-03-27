@@ -86,15 +86,15 @@ namespace Luna
                 line_to(points, inner_min_x, inner_max_y);
                 line_to(points, inner_min_x, inner_min_y);
             }
-            LUNA_VG_API void add_line(Vector<f32>& points, f32 p1_x, f32 p1_y, f32 p2_x, f32 p2_y, f32 border_width, f32 border_offset)
+            LUNA_VG_API void add_line(Vector<f32>& points, f32 p1_x, f32 p1_y, f32 p2_x, f32 p2_y, f32 width, f32 offset)
             {
                 Float2 p1(p1_x, p1_y);
                 Float2 p2(p2_x, p2_y);
                 Float2 n(p1_y - p2_y, p2_x - p1_x);
                 n = normalize(n);
-                f32 border_width_div_2 = border_width / 2.0f;
-                Float2 n1 = n * (border_width_div_2 + border_offset);
-                Float2 n2 = -n * (border_width_div_2 - border_offset);
+                f32 width_div_2 = width / 2.0f;
+                Float2 n1 = n * (width_div_2 + offset);
+                Float2 n2 = -n * (width_div_2 - offset);
                 Float2 p1_1 = p1 + n1;
                 Float2 p1_2 = p1 + n2;
                 Float2 p2_1 = p2 + n1;

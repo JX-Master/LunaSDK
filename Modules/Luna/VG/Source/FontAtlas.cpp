@@ -212,44 +212,44 @@ namespace Luna
             lucatchret;
             return ok;
         }
-        void FontAtlas::get_glyph_hmetrics(u32 codepoint, i32* advance_width, i32* left_side_bearing)
-        {
-            auto iter = m_shape_map.find(codepoint);
-            if (iter == m_shape_map.end())
-            {
-                auto loaded = load_glyph(codepoint);
-                if (loaded) iter = m_shape_map.find(codepoint);
-                else iter = m_shape_map.find(0);
-            }
-            if (advance_width) *advance_width = iter->second.m_advance_width;
-            if (left_side_bearing) *left_side_bearing = iter->second.m_left_side_bearing;
-        }
-        i32 FontAtlas::get_kern_advance(u32 ch1, u32 ch2)
-        {
-            auto iter1 = m_shape_map.find(ch1);
-            if (iter1 == m_shape_map.end())
-            {
-                auto loaded = load_glyph(ch1);
-                if (loaded)
-                {
-                    iter1 = m_shape_map.find(ch1);
-                }
-            }
-            auto iter2 = m_shape_map.find(ch2);
-            if (iter2 == m_shape_map.end())
-            {
-                auto loaded = load_glyph(ch2);
-                if (loaded)
-                {
-                    iter2 = m_shape_map.find(ch2);
-                }
-            }
-            if (iter1 != m_shape_map.end() && iter2 != m_shape_map.end())
-            {
-                return m_font->get_kern_advance(m_font_index, iter1->second.m_glyph, iter2->second.m_glyph);
-            }
-            return 0;
-        }
+        // void FontAtlas::get_glyph_hmetrics(u32 codepoint, i32* advance_width, i32* left_side_bearing)
+        // {
+        //     auto iter = m_shape_map.find(codepoint);
+        //     if (iter == m_shape_map.end())
+        //     {
+        //         auto loaded = load_glyph(codepoint);
+        //         if (loaded) iter = m_shape_map.find(codepoint);
+        //         else iter = m_shape_map.find(0);
+        //     }
+        //     if (advance_width) *advance_width = iter->second.m_advance_width;
+        //     if (left_side_bearing) *left_side_bearing = iter->second.m_left_side_bearing;
+        // }
+        // i32 FontAtlas::get_kern_advance(u32 ch1, u32 ch2)
+        // {
+        //     auto iter1 = m_shape_map.find(ch1);
+        //     if (iter1 == m_shape_map.end())
+        //     {
+        //         auto loaded = load_glyph(ch1);
+        //         if (loaded)
+        //         {
+        //             iter1 = m_shape_map.find(ch1);
+        //         }
+        //     }
+        //     auto iter2 = m_shape_map.find(ch2);
+        //     if (iter2 == m_shape_map.end())
+        //     {
+        //         auto loaded = load_glyph(ch2);
+        //         if (loaded)
+        //         {
+        //             iter2 = m_shape_map.find(ch2);
+        //         }
+        //     }
+        //     if (iter1 != m_shape_map.end() && iter2 != m_shape_map.end())
+        //     {
+        //         return m_font->get_kern_advance(m_font_index, iter1->second.m_glyph, iter2->second.m_glyph);
+        //     }
+        //     return 0;
+        // }
         R<RHI::IBuffer*> FontAtlas::get_shape_buffer()
         {
             lutsassert();

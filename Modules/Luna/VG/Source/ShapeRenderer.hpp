@@ -50,8 +50,6 @@ namespace Luna
 
             RV init(RHI::ITexture* render_target);
 
-            virtual void reset() override;
-
             virtual RV set_render_target(RHI::ITexture* render_target) override;
 
             virtual RV render(

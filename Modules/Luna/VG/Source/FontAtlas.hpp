@@ -86,20 +86,20 @@ namespace Luna
                 font->get_vmetrics(index, &(m_ascent), &(m_descent), &(m_line_gap));
                 clear();
             }
-            virtual void get_glyph_hmetrics(u32 codepoint, i32* advance_width, i32* left_side_bearing) override;
-            virtual f32 scale_for_pixel_height(f32 pixels) override
-            {
-                lutsassert();
-                return m_font->scale_for_pixel_height(m_font_index, pixels);
-            }
-            virtual void get_vmetrics(i32* ascent, i32* descent, i32* line_gap) override
-            {
-                lutsassert();
-                if (ascent) *ascent = m_ascent;
-                if (descent) *descent = m_descent;
-                if (line_gap) *line_gap = m_line_gap;
-            }
-            virtual i32 get_kern_advance(u32 ch1, u32 ch2) override;
+            // void get_glyph_hmetrics(u32 codepoint, i32* advance_width, i32* left_side_bearing);
+            // f32 scale_for_pixel_height(f32 pixels)
+            // {
+            //     lutsassert();
+            //     return m_font->scale_for_pixel_height(m_font_index, pixels);
+            // }
+            // void get_vmetrics(i32* ascent, i32* descent, i32* line_gap)
+            // {
+            //     lutsassert();
+            //     if (ascent) *ascent = m_ascent;
+            //     if (descent) *descent = m_descent;
+            //     if (line_gap) *line_gap = m_line_gap;
+            // }
+            // i32 get_kern_advance(u32 ch1, u32 ch2);
             virtual R<RHI::IBuffer*> get_shape_buffer() override;
             virtual Span<const f32> get_shape_points() override;
             virtual void get_glyph(usize codepoint, usize* first_shape_point, usize* num_shape_points, RectF* bounding_rect) override;

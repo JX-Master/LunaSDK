@@ -12,7 +12,6 @@
 #include "FontAtlas.hpp"
 #include "ShapeDrawList.hpp"
 #include "ShapeRenderer.hpp"
-#include "TextArranger.hpp"
 #include <Luna/Runtime/Module.hpp>
 #include <Luna/RHI/RHI.hpp>
 #include <Luna/ShaderCompiler/ShaderCompiler.hpp>
@@ -36,8 +35,6 @@ namespace Luna
                 impl_interface_for_type<ShapeDrawList, IShapeDrawList>();
                 register_boxed_type<FillShapeRenderer>();
                 impl_interface_for_type<FillShapeRenderer, IShapeRenderer>();
-                register_boxed_type<TextArranger>();
-                impl_interface_for_type<TextArranger, ITextArranger>();
                 return init_render_resources();
             }
             virtual void on_close() override

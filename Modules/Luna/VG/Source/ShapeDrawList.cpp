@@ -96,7 +96,7 @@ namespace Luna
             m_indices.insert(m_indices.end(), Span<u32>(indices, 6));
             dc.num_indices += 6;
         }
-        RV ShapeDrawList::close()
+        RV ShapeDrawList::compile()
         {
             lutsassert();
             lutry

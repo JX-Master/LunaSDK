@@ -165,7 +165,7 @@ namespace Luna
                 const Float2U& min_position, const Float2U& max_position,
                 const Float2U& min_shapecoord, const Float2U& max_shapecoord, u32 color,
                 const Float2U& min_texcoord, const Float2U& max_texcoord) override;
-            virtual RV close() override;
+            virtual RV compile() override;
             virtual RHI::IBuffer* get_vertex_buffer() override
             {
                 return m_vertex_buffer;
@@ -182,9 +182,9 @@ namespace Luna
             {
                 return m_index_buffer_size;
             }
-            virtual Vector<ShapeDrawCall> get_draw_calls() override
+            virtual void get_draw_calls(Vector<ShapeDrawCall>& out_draw_calls) override
             {
-                return m_draw_calls;
+                out_draw_calls.insert(out_draw_calls.end(), m_draw_calls.begin(), m_draw_calls.end());
             }
         };
     }

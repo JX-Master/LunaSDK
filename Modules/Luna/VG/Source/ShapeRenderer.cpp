@@ -148,10 +148,6 @@ namespace Luna
         {
             return set_render_target(render_target);
         }
-        void FillShapeRenderer::reset()
-        {
-            lutsassert();
-        }
         RV FillShapeRenderer::set_render_target(RHI::ITexture* render_target)
         {
             lutsassert();

@@ -32,8 +32,7 @@ namespace Luna
     Ref<RHI::ICommandBuffer> g_command_buffer;
 
     Ref<VG::IFontAtlas> g_font_atlas;
-    Ref<VG::ITextArranger> g_time_text_arranger;
-    Ref<VG::ITextArranger> g_text_arranger;
+    Vector<VG::TextArrangeSection> g_text_sections;
     Ref<VG::IShapeDrawList> g_shape_draw_list;
     Ref<VG::IShapeRenderer> g_shape_renderer;
 
@@ -78,15 +77,22 @@ const f32 max_size = 300.0f;
 
 void rearrange_text(const RectF& rect)
 {
-    g_text_arranger->clear_text_buffer();
-    g_text_arranger->set_font_color(Color::to_rgba8(Color::white()));
-    g_text_arranger->set_font_size(g_font_size);
+    String text;
     for (usize i = 0; i < 300; ++i)
     {
-        g_text_arranger->add_text(sample_text);
+        text.append(sample_text);
     }
-    g_text_arranger->add_text("\n");
-    g_text_arrange_result.get() = g_text_arranger->arrange(rect, VG::TextAlignment::center, VG::TextAlignment::center);
+    text.push_back('\n');
+    g_text_sections.clear();
+    VG::TextArrangeSection section;
+    section.color = Color::to_rgba8(Color::white());
+    section.font_size = g_font_size;
+    section.num_chars = text.size();
+    section.font_atlas = g_font_atlas;
+    g_text_sections.push_back(section);
+    g_text_arrange_result.get() = VG::arrange_text(
+        text.c_str(), text.size(), g_text_sections.cspan(),
+        rect, VG::TextAlignment::center, VG::TextAlignment::center);
 }
 
 constexpr u32 HEADER_TEXT_HEIGHT = 150;
@@ -137,8 +143,7 @@ void init()
     g_shape_renderer = VG::new_fill_shape_renderer(g_swap_chain->get_current_back_buffer().get()).get();
 
     g_font_atlas = VG::new_font_atlas(font, 0);
-    g_time_text_arranger = VG::new_text_arranger(g_font_atlas);
-    g_text_arranger = VG::new_text_arranger(g_font_atlas);
+    
     g_command_buffer = dev->new_command_buffer(g_command_queue).get();
     g_font_size = 30.0f;
     g_font_size_increment = 1;
@@ -167,33 +172,39 @@ void run()
         f64 time1 = ((f64)get_ticks() / get_ticks_per_second()) * 1000;
         c8 buf[64];
 
-        g_time_text_arranger->set_font_size(50.0f);
-        g_time_text_arranger->set_font_color(0xCCFFCCFF);
-        g_time_text_arranger->add_text("FPS: ");
+        VG::TextArrangeSection section;
+        section.font_size = 50.0f;
+        section.color = 0xCCFFCCFF;
+        section.font_atlas = g_font_atlas;
+        String fps_text;
+        fps_text.append("FPS: ");
         sprintf(buf, "%f", 1000.0f / g_frame_time);
-        g_time_text_arranger->add_text(buf);
-        g_time_text_arranger->add_text("\n");
+        fps_text.append(buf);
+        fps_text.push_back('\n');
+        section.num_chars = fps_text.size();
 
-        auto res = g_time_text_arranger->arrange(RectF(0, sz.y - HEADER_TEXT_HEIGHT, sz.x, HEADER_TEXT_HEIGHT), VG::TextAlignment::center, VG::TextAlignment::center);
+        auto res = VG::arrange_text(
+            fps_text.c_str(), fps_text.size(), {&section, 1},
+            RectF(0, sz.y - HEADER_TEXT_HEIGHT, sz.x, HEADER_TEXT_HEIGHT), VG::TextAlignment::center, VG::TextAlignment::center);
         if (!res.lines.empty())
         {
-            lupanic_if_failed(g_time_text_arranger->commit(res, g_shape_draw_list));
-            g_time_text_arranger->clear_text_buffer();
+            lupanic_if_failed(VG::commit_text_arrange_result(res, {&section, 1}, g_shape_draw_list));
         }
 
         if (!g_text_arrange_result.get().lines.empty())
         {
-            lupanic_if_failed(g_text_arranger->commit(g_text_arrange_result.get(), g_shape_draw_list));
+            lupanic_if_failed(VG::commit_text_arrange_result(g_text_arrange_result.get(), g_text_sections.cspan(), g_shape_draw_list));
         }
 
-        lupanic_if_failed(g_shape_draw_list->close());
+        lupanic_if_failed(g_shape_draw_list->compile());
 
         RHI::RenderPassDesc desc;
         desc.color_attachments[0] = RHI::ColorAttachment(g_swap_chain->get_current_back_buffer().get(), RHI::LoadOp::clear, RHI::StoreOp::store, Float4U{ 0.0f });
         g_command_buffer->begin_render_pass(desc);
         g_command_buffer->end_render_pass();
 
-        auto dcs = g_shape_draw_list->get_draw_calls();
+        Vector<VG::ShapeDrawCall> dcs;
+        g_shape_draw_list->get_draw_calls(dcs);
 
         lupanic_if_failed(g_shape_renderer->set_render_target(g_swap_chain->get_current_back_buffer().get()));
         lupanic_if_failed(g_shape_renderer->render(g_command_buffer, g_shape_draw_list->get_vertex_buffer(), g_shape_draw_list->get_index_buffer(),  { dcs.data(), (u32)dcs.size() }));
@@ -208,7 +219,6 @@ void run()
 
         lupanic_if_failed(g_swap_chain->present());
         lupanic_if_failed(g_command_buffer->reset());
-        g_shape_renderer->reset();
         g_shape_draw_list->reset();
 
         u64 frame_ticks = get_ticks();
@@ -225,8 +235,8 @@ void shutdown()
     g_command_buffer = nullptr;
 
     g_font_atlas = nullptr;
-    g_text_arranger = nullptr;
-    g_time_text_arranger = nullptr;
+    g_text_sections.clear();
+    g_text_sections.shrink_to_fit();
     g_shape_draw_list = nullptr;
     g_shape_renderer = nullptr;
 
