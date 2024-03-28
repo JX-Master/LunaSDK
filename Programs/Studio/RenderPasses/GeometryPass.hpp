@@ -20,14 +20,14 @@ namespace Luna
         lustruct("GeometryPassGlobalData", "{8e00d9f0-e920-45e2-a9fc-c7e51644d286}");
 
         Ref<RHI::IPipelineState> m_geometry_pass_pso;
-		Ref<RHI::IDescriptorSetLayout> m_geometry_pass_dlayout;
-		Ref<RHI::IPipelineLayout> m_geometry_pass_playout;
+        Ref<RHI::IDescriptorSetLayout> m_geometry_pass_dlayout;
+        Ref<RHI::IPipelineLayout> m_geometry_pass_playout;
 
-        Ref<RHI::ITexture> m_default_base_color;	// 1.0f, 1.0f, 1.0f, 1.0f
-		Ref<RHI::ITexture> m_default_roughness;	// 0.5f
-		Ref<RHI::ITexture> m_default_normal;		// 0.5f, 0.5f, 1.0f, 1.0f
-		Ref<RHI::ITexture> m_default_metallic;	// 0.0f
-		Ref<RHI::ITexture> m_default_emissive;	// 0.0f, 0.0f, 0.0f, 0.0f
+        Ref<RHI::ITexture> m_default_base_color;    // 1.0f, 1.0f, 1.0f, 1.0f
+        Ref<RHI::ITexture> m_default_roughness;    // 0.5f
+        Ref<RHI::ITexture> m_default_normal;        // 0.5f, 0.5f, 1.0f, 1.0f
+        Ref<RHI::ITexture> m_default_metallic;    // 0.0f
+        Ref<RHI::ITexture> m_default_emissive;    // 0.0f, 0.0f, 0.0f, 0.0f
     
         RV init(RHI::IDevice* device);
     };
@@ -38,7 +38,7 @@ namespace Luna
         luiimpl();
 
         Span<Ref<Entity>> ts;
-		Span<Ref<ModelRenderer>> rs;
+        Span<Ref<ModelRenderer>> rs;
         Ref<RHI::IBuffer> camera_cb;
         Ref<RHI::IBuffer> model_matrices;
 

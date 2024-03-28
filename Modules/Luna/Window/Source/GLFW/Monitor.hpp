@@ -12,10 +12,10 @@
 #ifdef LUNA_WINDOW_GLFW
 namespace Luna
 {
-	namespace Window
-	{
-		void monitor_init();
-		void monitor_close();
-	}
+    namespace Window
+    {
+        void monitor_init();
+        void monitor_close();
+    }
 }
 #endif

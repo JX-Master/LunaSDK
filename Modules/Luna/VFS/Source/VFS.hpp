@@ -13,14 +13,14 @@
 
 namespace Luna
 {
-	namespace VFS
-	{
-		// Mount path.
-		struct MountPair
-		{
-			Path m_mount_path;
-			DriverDesc* m_driver;
-			void* m_mount_data;
-		};
-	}
+    namespace VFS
+    {
+        // Mount path.
+        struct MountPair
+        {
+            Path m_mount_path;
+            DriverDesc* m_driver;
+            void* m_mount_data;
+        };
+    }
 }

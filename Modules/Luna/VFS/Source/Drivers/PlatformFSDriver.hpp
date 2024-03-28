@@ -11,8 +11,8 @@
 
 namespace Luna
 {
-	namespace VFS
-	{
-		void register_platform_filesystem_driver();
-	}
+    namespace VFS
+    {
+        void register_platform_filesystem_driver();
+    }
 }

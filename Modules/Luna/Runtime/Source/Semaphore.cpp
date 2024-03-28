@@ -13,8 +13,8 @@
 #include "Semaphore.hpp"
 namespace Luna
 {
-	LUNA_RUNTIME_API Ref<ISemaphore> new_semaphore(i32 initial_count, i32 max_count)
-	{
-		return new_object<Semaphore>(initial_count, max_count);
-	}
+    LUNA_RUNTIME_API Ref<ISemaphore> new_semaphore(i32 initial_count, i32 max_count)
+    {
+        return new_object<Semaphore>(initial_count, max_count);
+    }
 }

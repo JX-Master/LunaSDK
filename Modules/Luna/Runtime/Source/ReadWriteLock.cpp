@@ -13,8 +13,8 @@
 #include "ReadWriteLock.hpp"
 namespace Luna
 {
-	LUNA_RUNTIME_API Ref<IReadWriteLock> new_read_write_lock()
-	{
-		return new_object<ReadWriteLock>();
-	}
+    LUNA_RUNTIME_API Ref<IReadWriteLock> new_read_write_lock()
+    {
+        return new_object<ReadWriteLock>();
+    }
 }

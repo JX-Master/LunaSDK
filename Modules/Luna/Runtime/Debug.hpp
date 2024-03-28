@@ -25,13 +25,13 @@ namespace Luna
     //! @addtogroup RuntimeDebug
     //! @{
     
-    //! @brief Captures function call stack information of the current thread.
+    //! Captures function call stack information of the current thread.
     //! @param[out] frames One buffer that receives captured frames. Every frame is represented by 
     //! one opaque handle in the buffer.
     //! @return Returns the number of captured frames written to `frames`.
     LUNA_RUNTIME_API u32 stack_backtrace(Span<opaque_t> frames);
 
-    //! @brief Gets symbolic names for frames returned by @ref stack_backtrace.
+    //! Gets symbolic names for frames returned by @ref stack_backtrace.
     //! @param[in] frames One buffer that contains frames to query.
     //! @return Returns one array of strings that store symbolic names for frames. Strings are stored in 
     //! the same order as `frames`. If the symbolic name of one frame is not found, `nullptr` will be written.

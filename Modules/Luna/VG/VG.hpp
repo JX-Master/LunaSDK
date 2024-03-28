@@ -14,6 +14,9 @@
 #endif
 namespace Luna
 {
+    //! @addtogroup VG Vector Graphics
+    //! Vector Graphics (VG) module provides functions to render GPU-accelerated vector graphics on 2D or 3D space.
+    
     struct Module;
     LUNA_VG_API Module* module_vg();
 }

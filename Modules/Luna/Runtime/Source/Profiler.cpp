@@ -203,26 +203,26 @@ namespace Luna
         }
     }
 #ifdef LUNA_MEMORY_PROFILER_ENABLED
-	LUNA_RUNTIME_API void memory_profiler_allocate(void* ptr, usize size)
-	{
-		ProfilerEventData::MemoryAllocate* data = (ProfilerEventData::MemoryAllocate*)allocate_profiler_event_data(
+    LUNA_RUNTIME_API void memory_profiler_allocate(void* ptr, usize size)
+    {
+        ProfilerEventData::MemoryAllocate* data = (ProfilerEventData::MemoryAllocate*)allocate_profiler_event_data(
                 sizeof(ProfilerEventData::MemoryAllocate), 
                 alignof(ProfilerEventData::MemoryAllocate));
-		data->ptr = ptr;
-		data->size = size;
-		submit_profiler_event(ProfilerEventId::MEMORY_ALLOCATE);
-	}
-	LUNA_RUNTIME_API void memory_profiler_deallocate(void* ptr)
-	{
-		ProfilerEventData::MemoryDeallocate* data = (ProfilerEventData::MemoryDeallocate*)allocate_profiler_event_data(
+        data->ptr = ptr;
+        data->size = size;
+        submit_profiler_event(ProfilerEventId::MEMORY_ALLOCATE);
+    }
+    LUNA_RUNTIME_API void memory_profiler_deallocate(void* ptr)
+    {
+        ProfilerEventData::MemoryDeallocate* data = (ProfilerEventData::MemoryDeallocate*)allocate_profiler_event_data(
             sizeof(ProfilerEventData::MemoryDeallocate),
             alignof(ProfilerEventData::MemoryDeallocate)
         );
-		data->ptr = ptr;
-		submit_profiler_event(ProfilerEventId::MEMORY_DEALLOCATE);
-	}
-	LUNA_RUNTIME_API void memory_profiler_set_memory_name(void* ptr, const c8* name, usize str_size)
-	{
+        data->ptr = ptr;
+        submit_profiler_event(ProfilerEventId::MEMORY_DEALLOCATE);
+    }
+    LUNA_RUNTIME_API void memory_profiler_set_memory_name(void* ptr, const c8* name, usize str_size)
+    {
         if(str_size == USIZE_MAX) str_size = strlen(name);
         usize sz = sizeof(ProfilerEventData::SetMemoryName) + str_size; // One extra character is allocated in structure.
         ProfilerEventData::SetMemoryName* data = (ProfilerEventData::SetMemoryName*)allocate_profiler_event_data(sz, alignof(ProfilerEventData::SetMemoryName));
@@ -230,29 +230,29 @@ namespace Luna
         c8* dst = const_cast<c8*>(data->name);
         memcpy(dst, name, str_size);
         dst[str_size] = 0;
-		submit_profiler_event(ProfilerEventId::SET_MEMORY_NAME);
-	}
-	LUNA_RUNTIME_API void memory_profiler_set_memory_type(void* ptr, const c8* type, usize str_size)
-	{
+        submit_profiler_event(ProfilerEventId::SET_MEMORY_NAME);
+    }
+    LUNA_RUNTIME_API void memory_profiler_set_memory_type(void* ptr, const c8* type, usize str_size)
+    {
         if(str_size == USIZE_MAX) str_size = strlen(type);
         usize sz = sizeof(ProfilerEventData::SetMemoryType) + str_size; // One extra character is allocated in structure.
-		ProfilerEventData::SetMemoryType* data = (ProfilerEventData::SetMemoryType*)allocate_profiler_event_data(sz, alignof(ProfilerEventData::SetMemoryType));
-		data->ptr = ptr;
+        ProfilerEventData::SetMemoryType* data = (ProfilerEventData::SetMemoryType*)allocate_profiler_event_data(sz, alignof(ProfilerEventData::SetMemoryType));
+        data->ptr = ptr;
         c8* dst = const_cast<c8*>(data->type);
-		memcpy(dst, type, str_size);
+        memcpy(dst, type, str_size);
         dst[str_size] = 0;
-		submit_profiler_event(ProfilerEventId::SET_MEMORY_TYPE);
-	}
-	LUNA_RUNTIME_API void memory_profiler_set_memory_domain(void* ptr, const c8* domain, usize str_size)
-	{
+        submit_profiler_event(ProfilerEventId::SET_MEMORY_TYPE);
+    }
+    LUNA_RUNTIME_API void memory_profiler_set_memory_domain(void* ptr, const c8* domain, usize str_size)
+    {
         if(str_size == USIZE_MAX) str_size = strlen(domain);
         usize sz = sizeof(ProfilerEventData::SetMemoryDomain) + str_size; // One extra character is allocated in structure.
         ProfilerEventData::SetMemoryDomain* data = (ProfilerEventData::SetMemoryDomain*)allocate_profiler_event_data(sz, alignof(ProfilerEventData::SetMemoryDomain));
-		data->ptr = ptr;
+        data->ptr = ptr;
         c8* dst = const_cast<c8*>(data->domain);
-		memcpy(dst, domain, str_size);
+        memcpy(dst, domain, str_size);
         dst[str_size] = 0;
-		submit_profiler_event(ProfilerEventId::SET_MEMORY_DOMAIN);
-	}
+        submit_profiler_event(ProfilerEventId::SET_MEMORY_DOMAIN);
+    }
 #endif
 }

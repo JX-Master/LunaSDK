@@ -14,32 +14,32 @@
 
 namespace Luna
 {
-	struct Semaphore : ISemaphore
-	{
-		lustruct("Semaphore", "{4d155da3-acdb-4ac6-aecb-70e43a5faedf}");
-		luiimpl();
+    struct Semaphore : ISemaphore
+    {
+        lustruct("Semaphore", "{4d155da3-acdb-4ac6-aecb-70e43a5faedf}");
+        luiimpl();
 
-		opaque_t m_handle;
+        opaque_t m_handle;
 
-		Semaphore(i32 initial_count, i32 max_count)
-		{
-			m_handle = OS::new_semaphore(initial_count, max_count);
-		}
-		~Semaphore()
-		{
-			OS::delete_semaphore(m_handle);
-		}
-		virtual void wait() override
-		{
-			OS::acquire_semaphore(m_handle);
-		}
-		virtual bool try_wait() override
-		{
-			return OS::try_acquire_semaphore(m_handle);
-		}
-		virtual void release() override
-		{
-			OS::release_semaphore(m_handle);
-		}
-	};
+        Semaphore(i32 initial_count, i32 max_count)
+        {
+            m_handle = OS::new_semaphore(initial_count, max_count);
+        }
+        ~Semaphore()
+        {
+            OS::delete_semaphore(m_handle);
+        }
+        virtual void wait() override
+        {
+            OS::acquire_semaphore(m_handle);
+        }
+        virtual bool try_wait() override
+        {
+            return OS::try_acquire_semaphore(m_handle);
+        }
+        virtual void release() override
+        {
+            OS::release_semaphore(m_handle);
+        }
+    };
 }

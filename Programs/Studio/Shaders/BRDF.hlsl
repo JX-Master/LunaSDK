@@ -5,7 +5,7 @@
 float3 fresnel_schlick(float h_dot_v, float3 f0)
 {
     float sphg = pow(2.0, (-5.55473 * h_dot_v - 6.98316) * h_dot_v);
-	return f0 + (float3(1.0, 1.0, 1.0) - f0) * sphg;
+    return f0 + (float3(1.0, 1.0, 1.0) - f0) * sphg;
 }
 
 // use GGX / Trowbridge-Reitz, same as Disney and Unreal 4
@@ -13,8 +13,8 @@ float3 fresnel_schlick(float h_dot_v, float3 f0)
 float ggx_normal_distrb(float h_dot_n, float roughness)
 {
     float alpha = roughness * roughness;
-	float tmp = alpha / max(1e-8, (h_dot_n * h_dot_n * (alpha * alpha - 1.0) + 1.0));
-	return tmp * tmp / PI;
+    float tmp = alpha / max(1e-8, (h_dot_n * h_dot_n * (alpha * alpha - 1.0) + 1.0));
+    return tmp * tmp / PI;
 }
 
 // Schlick with Smith-like choice of k

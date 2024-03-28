@@ -23,14 +23,14 @@ namespace Luna
     //! @addtogroup RuntimeDLL
     //! @{
     
-    //! @brief Loads the specified library to the process's address space. This call may load additional libraries
+    //! Loads the specified library to the process's address space. This call may load additional libraries
     //! required by the specified library.
     //! @param[in] path The path of the library file. It can be one `.dll` or `.exe` file on Windows,
     //! or one `.so` file on POSIX systems.
     //! @return Returns one handle that represents the loaded library.
     LUNA_RUNTIME_API R<opaque_t> load_library(const c8* path);
 
-    //! @brief Unloads the specified library.
+    //! Unloads the specified library.
     //! @param[in] handle The library handle returned by @ref load_library.
     //! @remark The library handle is reference counted: every call to  @ref load_library for the same library
     //! file increases the reference counter, and every @ref free_library for the same library handle decreases the 
@@ -40,7 +40,7 @@ namespace Luna
     //! libraries, and removes them as well if their reference counters drop to 0.
     LUNA_RUNTIME_API void free_library(opaque_t handle);
 
-    //! @brief Gets the function address (function pointer) of one function in the library from its symbol name.
+    //! Gets the function address (function pointer) of one function in the library from its symbol name.
     //! @param[in] handle The library handle returned by @ref load_library.
     //! @param[in] symbol The function's symbol name.
     //! @return Returns the function address of the specified function.

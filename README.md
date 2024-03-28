@@ -6,13 +6,20 @@
 
 Luna SDK is a C++ software development framework for real-time rendering applications like video games, interactive multimedia programs, data visualization programs and so on.
 
-Key features:
+Specifications:
 
-* Everything is built from scratch, including os abstraction layer, container library, math library and much more.
-* Modern graphics API targeting Direct3D 12, Vulkan and Metal, including window management.
+* Self-implemented fundamental libraries, including platform abstraction layer, container library, math library and more. No dependency on C++ STL.
 * Full dynamic type reflection, including full support for generic types.
-* Serialization support based on reflection.
-* Built-in asset system and virtual file system for managing assets in runtime.
+* Serialization and deserialization based on reflection, including JSON and XML support.
+* Job system and thread pool for asynchronous computing.
+* Render Hardware Interface (RHI) targeting Direct3D 12, Vulkan and Metal.
+* Window management API.
+* Shader compiling APIs that compile HLSL shaders to DXIL, SPIR-V and Metal.
+* Low-latency Audio Hardware Interface (AHI).
+* Human Interface Device API providing APIs to access input / output devices.
+* Asset system and virtual file system for managing assets at runtime.
+* File loader for image files, font files and .OBJ files.
+* GPU-driven vector graphics rendering.
 * Well documented and CI tested.
 
 Designed target platforms:
@@ -69,13 +76,13 @@ Designed target platforms:
     chmod +x ./gen_xcode.sh
     ./gen_xcode.sh
     ```
-1. Since the current version of xmake does not support running custom post-build scripts in XCode, you may need to copy images, shaders and other files to `build/macosx/{arch}/release/Debug` directory if the program failed to find them.
+1. Since the current version of xmake does not support running custom post-build scripts in XCode, you may need to copy images, shaders and other files to `build/macosx/{arch}/release/Debug` directory if the program fails to find them.
 1. Open `Luna.xcodeproj` on the root directory of Luna SDK.
 1. Build products in XCode. 
 
 ## System Requirements
 
-he following requirements must be satisfied to run Luna SDK with Direct3D 12 rendering backend:
+The following requirements must be satisfied to run Luna SDK with Direct3D 12 rendering backend:
 
 * Windows 10 operating system, 64-bit.
 
@@ -103,7 +110,8 @@ See [Luna SDK Docs](https://www.lunasdk.org).
 
 ## Contact Author
 * Email: jxmaster@yeah.net
-* Twitter: @JXMaster
+* Threads: @jx_master
+* Discord: jxmaster.me
 * Zhihu: https://www.zhihu.com/people/jx-master
 * Bilibili: https://space.bilibili.com/9919368
 

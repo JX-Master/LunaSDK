@@ -17,14 +17,21 @@
 
 namespace Luna
 {
-	namespace HID
-	{
-		//! Checks if keyboard input is supported on the current platform.
-		LUNA_HID_API bool supports_keyboard();
+    namespace HID
+    {
+        //! @addtogroup HID
+        //! @{
+        
+        //! Checks if keyboard input is supported on the current platform.
+        //! @return Returns `true` if keyboard input is supported on the current platform. Returns `false` otherwise.
+        LUNA_HID_API bool supports_keyboard();
 
-		//! Checks the if the specified key on the keyboard is pressed.
-		//! @param[in] key The key to check.
-		//! @return	`true` if the key is pressed, `false` otherwise.
-		LUNA_HID_API bool get_key_state(KeyCode key);
-	}
+        //! Checks the if the specified key on the keyboard is pressed.
+        //! @param[in] key The key to check.
+        //! @return Returns `true` if the specified key is pressed, `false` otherwise.
+        //! If keyboard is not supported on the current platform, returns `false` always.
+        LUNA_HID_API bool get_key_state(KeyCode key);
+
+        //! @}
+    }
 }

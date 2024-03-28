@@ -15,39 +15,39 @@
 
 namespace Luna
 {
-	namespace Asset
-	{
-		struct AssetTypeDescExtractKey
-		{
-			Name operator()(const AssetTypeDesc& v)
-			{
-				return v.name;
-			}
-		};
+    namespace Asset
+    {
+        struct AssetTypeDescExtractKey
+        {
+            Name operator()(const AssetTypeDesc& v)
+            {
+                return v.name;
+            }
+        };
 
-		Ref<IMutex> g_asset_types_mutex;
-		SelfIndexedHashMap<Name, AssetTypeDesc, AssetTypeDescExtractKey> g_asset_types;
+        Ref<IMutex> g_asset_types_mutex;
+        SelfIndexedHashMap<Name, AssetTypeDesc, AssetTypeDescExtractKey> g_asset_types;
 
-		void init_asset_type()
-		{
-			g_asset_types_mutex = new_mutex();
-		}
-		void close_asset_type()
-		{
-			g_asset_types.clear();
-			g_asset_types.shrink_to_fit();
-		}
-		LUNA_ASSET_API void register_asset_type(const AssetTypeDesc& desc)
-		{
-			MutexGuard g(g_asset_types_mutex);
-			g_asset_types.insert_or_assign(desc);
-		}
-		R<AssetTypeDesc> get_asset_type_desc(const Name& name)
-		{
-			MutexGuard g(g_asset_types_mutex);
-			auto iter = g_asset_types.find(name);
-			if (iter == g_asset_types.end()) return AssetError::unknown_asset_type();
-			return *iter;
-		}
-	}
+        void init_asset_type()
+        {
+            g_asset_types_mutex = new_mutex();
+        }
+        void close_asset_type()
+        {
+            g_asset_types.clear();
+            g_asset_types.shrink_to_fit();
+        }
+        LUNA_ASSET_API void register_asset_type(const AssetTypeDesc& desc)
+        {
+            MutexGuard g(g_asset_types_mutex);
+            g_asset_types.insert_or_assign(desc);
+        }
+        R<AssetTypeDesc> get_asset_type_desc(const Name& name)
+        {
+            MutexGuard g(g_asset_types_mutex);
+            auto iter = g_asset_types.find(name);
+            if (iter == g_asset_types.end()) return AssetError::unknown_asset_type();
+            return *iter;
+        }
+    }
 }

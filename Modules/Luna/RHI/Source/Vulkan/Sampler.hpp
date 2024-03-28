@@ -12,17 +12,17 @@
 
 namespace Luna
 {
-	namespace RHI
-	{
-		struct Sampler
-		{
-			lustruct("RHI::Sampler", "{CF6D9848-D8CB-4F29-8BD7-270D4D123EC1}");
+    namespace RHI
+    {
+        struct Sampler
+        {
+            lustruct("RHI::Sampler", "{CF6D9848-D8CB-4F29-8BD7-270D4D123EC1}");
 
-			Ref<Device> m_device;
-			VkSampler m_sampler = VK_NULL_HANDLE;
+            Ref<Device> m_device;
+            VkSampler m_sampler = VK_NULL_HANDLE;
 
-			RV init(const SamplerDesc& desc);
-			~Sampler();
-		};
-	}
+            RV init(const SamplerDesc& desc);
+            ~Sampler();
+        };
+    }
 }

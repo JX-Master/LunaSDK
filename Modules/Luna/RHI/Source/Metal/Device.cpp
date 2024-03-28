@@ -117,31 +117,31 @@ namespace Luna
         DeviceFeatureData Device::check_feature(DeviceFeature feature)
         {
             DeviceFeatureData ret;
-			switch (feature)
-			{
-			case DeviceFeature::unbound_descriptor_array:
-				ret.unbound_descriptor_array = m_support_metal_3_family;
-				break;
-			case DeviceFeature::pixel_shader_write:
-				ret.pixel_shader_write = true;
-				break;
-			case DeviceFeature::uniform_buffer_data_alignment:
-				ret.uniform_buffer_data_alignment = 0;
-				break;
-			default: lupanic();
-			}
-			return ret;
+            switch (feature)
+            {
+            case DeviceFeature::unbound_descriptor_array:
+                ret.unbound_descriptor_array = m_support_metal_3_family;
+                break;
+            case DeviceFeature::pixel_shader_write:
+                ret.pixel_shader_write = true;
+                break;
+            case DeviceFeature::uniform_buffer_data_alignment:
+                ret.uniform_buffer_data_alignment = 0;
+                break;
+            default: lupanic();
+            }
+            return ret;
         }
         void Device::get_texture_data_placement_info(u32 width, u32 height, u32 depth, Format format,
-				u64* size, u64* alignment, u64* row_pitch, u64* slice_pitch)
+                u64* size, u64* alignment, u64* row_pitch, u64* slice_pitch)
         {
             if (alignment) *alignment = 4;
-			u64 d_row_pitch = (u64)width * (u64)bits_per_pixel(format) / 8;
-			if (row_pitch) *row_pitch = d_row_pitch;
-			u64 d_slice_pitch = d_row_pitch * height;
-			if (slice_pitch) *slice_pitch = d_slice_pitch;
-			u64 d_size = d_slice_pitch * depth;
-			if (size) *size = d_size;
+            u64 d_row_pitch = (u64)width * (u64)bits_per_pixel(format) / 8;
+            if (row_pitch) *row_pitch = d_row_pitch;
+            u64 d_slice_pitch = d_row_pitch * height;
+            if (slice_pitch) *slice_pitch = d_slice_pitch;
+            u64 d_size = d_slice_pitch * depth;
+            if (size) *size = d_size;
         }
         R<Ref<IBuffer>> Device::new_buffer(MemoryType memory_type, const BufferDesc& desc)
         {
@@ -156,7 +156,7 @@ namespace Luna
             lucatchret;
             return ret;
         }
-		R<Ref<ITexture>> Device::new_texture(MemoryType memory_type, const TextureDesc& desc, const ClearValue* optimized_clear_value)
+        R<Ref<ITexture>> Device::new_texture(MemoryType memory_type, const TextureDesc& desc, const ClearValue* optimized_clear_value)
         {
             Ref<ITexture> ret;
             lutry
@@ -174,7 +174,7 @@ namespace Luna
             auto desc = get_heap_desc(memory_type, buffers, textures);
             return succeeded(desc);
         }
-		R<Ref<IDeviceMemory>> Device::allocate_memory(MemoryType memory_type, Span<const BufferDesc> buffers, Span<const TextureDesc> textures)
+        R<Ref<IDeviceMemory>> Device::allocate_memory(MemoryType memory_type, Span<const BufferDesc> buffers, Span<const TextureDesc> textures)
         {
             Ref<IDeviceMemory> ret;
             lutry
@@ -202,7 +202,7 @@ namespace Luna
             lucatchret;
             return ret;
         }
-		R<Ref<ITexture>> Device::new_aliasing_texture(IDeviceMemory* device_memory, const TextureDesc& desc, const ClearValue* optimized_clear_value)
+        R<Ref<ITexture>> Device::new_aliasing_texture(IDeviceMemory* device_memory, const TextureDesc& desc, const ClearValue* optimized_clear_value)
         {
             Ref<ITexture> ret;
             lutry
@@ -284,11 +284,11 @@ namespace Luna
         {
             return (u32)m_queues.size();
         }
-		CommandQueueDesc Device::get_command_queue_desc(u32 command_queue_index)
+        CommandQueueDesc Device::get_command_queue_desc(u32 command_queue_index)
         {
             return m_queues[command_queue_index].desc;
         }
-		R<Ref<ICommandBuffer>> Device::new_command_buffer(u32 command_queue_index)
+        R<Ref<ICommandBuffer>> Device::new_command_buffer(u32 command_queue_index)
         {
             Ref<ICommandBuffer> ret;
             lutry
@@ -379,10 +379,10 @@ namespace Luna
             return Ref<IDevice>(dev);
         }
         Ref<IDevice> g_main_device;
-		LUNA_RHI_API IDevice* get_main_device()
-		{
-			return g_main_device.get();
-		}
+        LUNA_RHI_API IDevice* get_main_device()
+        {
+            return g_main_device.get();
+        }
         RV init_main_device()
         {
             if(!g_main_device)

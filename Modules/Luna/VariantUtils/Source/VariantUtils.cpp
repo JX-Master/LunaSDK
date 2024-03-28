@@ -22,15 +22,15 @@ namespace Luna
         struct ModuleVariantUtils : public Module
         {
             virtual const c8* get_name() override { return "VariantUtils"; }
-			virtual RV on_init() override
-			{
+            virtual RV on_init() override
+            {
                 xml_init();
-				return ok;
-			}
-			virtual void on_close() override
-			{
-				xml_close();
-			}
+                return ok;
+            }
+            virtual void on_close() override
+            {
+                xml_close();
+            }
         };
     }
     LUNA_VARIANT_UTILS_API Module* module_variant_utils()

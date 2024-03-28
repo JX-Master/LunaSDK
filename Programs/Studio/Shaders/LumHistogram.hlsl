@@ -28,7 +28,7 @@ uint color_to_bin(float3 hdr_color, float min_brightness, float max_brightness)
 
 cbuffer LumHistogramCB : register(b0)
 {
-	uint src_width;
+    uint src_width;
     uint src_height;
     float min_brightness;
     float max_brightness;

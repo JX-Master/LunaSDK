@@ -11,6 +11,6 @@
 
 namespace Luna
 {
-	void name_init();
-	void name_close();
+    void name_init();
+    void name_close();
 }

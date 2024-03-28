@@ -1,4 +1,4 @@
-Copyright (c) 2018-2023 Jixiang Zhou (JXMaster)
+Copyright (c) 2018-2024 Jixiang Zhou (JXMaster)
 
 The software is supplied "as is", without warranty of any kind,
 express or implied, including, without limitation, the warranties

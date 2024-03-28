@@ -383,7 +383,7 @@ namespace Luna
             out_pixel_size = total_pixel_size;
             return ok;
         }
-        bool setup_image_array(const u8* pixels, usize pixel_size, DDSImageDesc& desc, Vector<DDSSubresource>& subresources)
+        bool setup_image_array(const u8* pixels, usize pixel_size, DDSImageDesc& desc, Array<DDSSubresource>& subresources)
         {
             usize index = 0;
             const byte_t* start_bits = pixels;
@@ -522,17 +522,15 @@ namespace Luna
                     return BasicError::not_supported();
             }
             image.subresources.clear();
-            image.subresources.shrink_to_fit();
             image.data.clear();
             usize pixel_size, num_images;
             auto r = determine_image_array(desc, num_images, pixel_size);
             if(failed(r)) return r;
-            image.subresources.resize(num_images);
+            image.subresources.assign(num_images);
             image.data = Blob(pixel_size, 16);
-            if(!setup_image_array(image.data.data(), image.data.size(), image.desc, image.subresources))
+            if(!setup_image_array((const u8*)image.data.data(), image.data.size(), image.desc, image.subresources))
             {
                 image.subresources.clear();
-                image.subresources.shrink_to_fit();
                 image.data.clear();
                 return BasicError::failure();
             }
@@ -545,7 +543,7 @@ namespace Luna
             {
                 return BasicError::end_of_file();
             }
-            Vector<DDSSubresource> subresources(image.subresources.size());
+            Array<DDSSubresource> subresources(image.subresources.size());
             if(!setup_image_array(pixels, size, image.desc, subresources))
             {
                 return BasicError::failure();
@@ -565,7 +563,7 @@ namespace Luna
                             usize row_pitch = image.subresources[index].row_pitch;
 
                             const byte_t *src = pixels + subresources[index].data_offset;
-                            byte_t* dst = image.data.data() + image.subresources[index].data_offset;
+                            byte_t* dst = (byte_t*)image.data.data() + image.subresources[index].data_offset;
 
                             if (is_compressed(image.desc.format))
                             {
@@ -596,7 +594,7 @@ namespace Luna
                             usize row_pitch = image.subresources[index].row_pitch;
 
                             const byte_t* src = pixels + subresources[index].data_offset;
-                            byte_t* dst = image.data.data() + image.subresources[index].data_offset;
+                            byte_t* dst = (byte_t*)image.data.data() + image.subresources[index].data_offset;
 
                             if (is_compressed(image.desc.format))
                             {
@@ -639,7 +637,7 @@ namespace Luna
                         if(depth > 1) depth >>= 1;
                     }
                 }
-                image.subresources.resize(image.desc.array_size * image.desc.mip_levels);
+                image.subresources.assign(image.desc.array_size * image.desc.mip_levels);
                 usize data_offset = 0;
                 for(u32 item = 0; item < image.desc.array_size; ++item)
                 {
@@ -842,7 +840,7 @@ namespace Luna
 
                                 if ((image.subresources[index].slice_pitch == dds_slice_pitch) && (dds_slice_pitch <= U32_MAX))
                                 {
-                                    luexp(stream->write(image.data.data() + image.subresources[index].data_offset, dds_slice_pitch));
+                                    luexp(stream->write((const u8*)image.data.data() + image.subresources[index].data_offset, dds_slice_pitch));
                                 }
                                 else
                                 {
@@ -855,7 +853,7 @@ namespace Luna
                                     if (dds_row_pitch > U32_MAX)
                                         return BasicError::out_of_range();
 
-                                    const u8* src = image.data.data() + image.subresources[index].data_offset;
+                                    const u8* src = (const u8*)image.data.data() + image.subresources[index].data_offset;
                                     const usize lines = compute_scanlines(image.desc.format, image.subresources[index].height);
                                     for (usize j = 0; j < lines; ++j)
                                     {
@@ -893,7 +891,7 @@ namespace Luna
 
                                 if ((image.subresources[index].slice_pitch == dds_slice_pitch) && (dds_slice_pitch <= U32_MAX))
                                 {
-                                    luexp(stream->write(image.data.data() + image.subresources[index].data_offset, dds_slice_pitch));
+                                    luexp(stream->write((const u8*)image.data.data() + image.subresources[index].data_offset, dds_slice_pitch));
                                 }
                                 else
                                 {
@@ -905,7 +903,7 @@ namespace Luna
                                     }
                                     if (dds_row_pitch > U32_MAX) return BasicError::out_of_range();
 
-                                    const u8* src = image.data.data() + image.subresources[index].data_offset;
+                                    const u8* src = (const u8*)image.data.data() + image.subresources[index].data_offset;
                                     const usize lines = compute_scanlines(image.desc.format, image.subresources[index].height);
                                     for (usize j = 0; j < lines; ++j)
                                     {

@@ -12,39 +12,39 @@
 
 namespace Luna
 {
-	namespace OS
-	{
-		void time_init();
-		void thread_init();
-		void thread_close();
-		void file_init();
-		void std_io_init();
-		void std_io_close();
-		void debug_init();
-		void debug_close();
+    namespace OS
+    {
+        void time_init();
+        void thread_init();
+        void thread_close();
+        void file_init();
+        void std_io_init();
+        void std_io_close();
+        void debug_init();
+        void debug_close();
 
-		void init()
-		{
-			debug_init();
-			time_init();
-			thread_init();
-			file_init();
-			std_io_init();
-		}
+        void init()
+        {
+            debug_init();
+            time_init();
+            thread_init();
+            file_init();
+            std_io_init();
+        }
 
-		void close() 
-		{
-			std_io_close();
-			thread_close();
-			debug_close();
-		}
+        void close() 
+        {
+            std_io_close();
+            thread_close();
+            debug_close();
+        }
 
-		u32 get_num_processors()
-		{
-			SYSTEM_INFO si;
-			memzero(&si, sizeof(SYSTEM_INFO));
-			::GetSystemInfo(&si);
-			return si.dwNumberOfProcessors;
-		}
-	}
+        u32 get_num_processors()
+        {
+            SYSTEM_INFO si;
+            memzero(&si, sizeof(SYSTEM_INFO));
+            ::GetSystemInfo(&si);
+            return si.dwNumberOfProcessors;
+        }
+    }
 }

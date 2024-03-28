@@ -12,20 +12,20 @@
 
 namespace Luna
 {
-	namespace RHI
-	{
-		//! The vulkan instance version.
-		extern u32 g_vk_version;
-		//! The global Vulkan instance.
-		extern VkInstance g_vk_instance;
+    namespace RHI
+    {
+        //! The vulkan instance version.
+        extern u32 g_vk_version;
+        //! The global Vulkan instance.
+        extern VkInstance g_vk_instance;
 
-		//! Whether the Vulkan validation layer is enabled.
-		extern bool g_enable_validation_layer;
+        //! Whether the Vulkan validation layer is enabled.
+        extern bool g_enable_validation_layer;
 
-		//! The enabled Vulkan layers.
-		extern Vector<const c8*> g_enabled_layers;
+        //! The enabled Vulkan layers.
+        extern Vector<const c8*> g_enabled_layers;
 
-		RV create_vk_instance();
-		void destroy_vk_instance();
-	}
+        RV create_vk_instance();
+        void destroy_vk_instance();
+    }
 }

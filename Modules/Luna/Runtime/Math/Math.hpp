@@ -26,238 +26,358 @@
 
 namespace Luna
 {
-	constexpr f32 PI = 3.141592654f;
-	constexpr f32 TWO_PI = 6.283185307f;
-	constexpr f32 ONE_DIV_PI = 0.318309886f;
-	constexpr f32 ONE_DIV_TWO_PI = 0.159154943f;
-	constexpr f32 PI_DIV_TWO = 1.570796327f;
-	constexpr f32 PI_DIV_FOUR = 0.785398163f;
+    //! @addtogroup Runtime
+    //! @{
+    //! @defgroup RuntimeMath Math library
+    //! @}
 
-	constexpr f32 F32_INFINITY = (f32)HUGE_VALF;
-	constexpr f64 F64_INFINITY = (f64)HUGE_VAL;
-	constexpr f32 F32_NAN = std::numeric_limits<f32>::quiet_NaN();
-	constexpr f64 F64_NAN = std::numeric_limits<f64>::quiet_NaN();
+    //! @addtogroup RuntimeMath
+    //! @{
+    
+    //! The constant value `pi`.
+    constexpr f32 PI = 3.141592654f;
+    //! The constant value `pi * 2.0`.
+    constexpr f32 TWO_PI = 6.283185307f;
+    //! The constant value `1.0 / pi`.
+    constexpr f32 ONE_DIV_PI = 0.318309886f;
+    //! The constant value `0.5 / pi`.
+    constexpr f32 ONE_DIV_TWO_PI = 0.159154943f;
+    //! The constant value `pi / 2.0`.
+    constexpr f32 PI_DIV_TWO = 1.570796327f;
+    //! The constant value `pi / 4.0`.
+    constexpr f32 PI_DIV_FOUR = 0.785398163f;
+    //! The INF value for f32 type.
+    constexpr f32 F32_INFINITY = (f32)HUGE_VALF;
+    //! The INF value for f64 type.
+    constexpr f64 F64_INFINITY = (f64)HUGE_VAL;
+    //! The NaN value for f32 type.
+    constexpr f32 F32_NAN = std::numeric_limits<f32>::quiet_NaN();
+    //! The NaN value for f64 type.
+    constexpr f64 F64_NAN = std::numeric_limits<f64>::quiet_NaN();
 
-	//! Convert degree angle to radius angle.
-	inline constexpr f32 deg_to_rad(f32 degrees)
-	{
-		return degrees * (PI / 180.0f);
-	}
-	//! Convert radius angle to degree angle.
-	inline constexpr f32 rad_to_deg(f32 radians)
-	{
-		return radians * (180.0f / PI);
-	}
+    //! Converts degree angle to radian angle.
+    //! @param[in] degrees The degree angle to convert.
+    //! @return Returns the angle converted to radian angle.
+    inline constexpr f32 deg_to_rad(f32 degrees)
+    {
+        return degrees * (PI / 180.0f);
+    }
+    //! Converts radian angle to degree angle.
+    //! @param[in] radians The radian angle to convert.
+    //! @return Returns the angle converted to degree angle.
+    inline constexpr f32 rad_to_deg(f32 radians)
+    {
+        return radians * (180.0f / PI);
+    }
 
-	//! Check whether the provided number is power of two.
-	template <typename _Ty>
-	constexpr bool is_pow_of_two(_Ty n)
-	{
-		return (((n)&((n)-1)) == 0 && (n) != 0);
-	}
+    //! Check whether the provided number is power of two.
+    //! @tparam _Ty The value type.
+    //! @param[in] n The value to check.
+    //! @return Returns `ture` if the value is power of two. Returns `false` otherwise.
+    template <typename _Ty>
+    constexpr bool is_pow_of_two(_Ty n)
+    {
+        return (((n)&((n)-1)) == 0 && (n) != 0);
+    }
 
-	//! Rect is used to specify a region in the bitmap, texture or window.
-	template <typename _Ty>
-	struct Rect
-	{
-		_Ty offset_x;
-		_Ty offset_y;
-		_Ty width;
-		_Ty height;
+    //! Used to specify a 2D rectangle region using position and size.
+    //! @tparam _Ty The type that represents values of the rectangle.
+    template <typename _Ty>
+    struct Rect
+    {
+        //! The X position of the rectangle.
+        _Ty offset_x;
+        //! The Y position of the rectangle.
+        _Ty offset_y;
+        //! The width of the rectangle.
+        _Ty width;
+        //! The height of the rectangle.
+        _Ty height;
 
-		Rect() = default;
-		Rect(_Ty offset_x, _Ty offset_y, _Ty width, _Ty height) :
-			offset_x(offset_x),
-			offset_y(offset_y),
-			width(width),
-			height(height) {}
+        //! Constructs one rectangle. Values of the rectangle is uninitialized.
+        Rect() = default;
+        //! Constructs one rectangle.
+        //! @param[in] offset_x The X position of the rectangle.
+        //! @param[in] offset_y The Y position of the rectangle.
+        //! @param[in] width The width of the rectangle.
+        //! @param[in] height The height of the rectangle.
+        Rect(_Ty offset_x, _Ty offset_y, _Ty width, _Ty height) :
+            offset_x(offset_x),
+            offset_y(offset_y),
+            width(width),
+            height(height) {}
+        //! Compares two rectangles for equality.
+        //! @param[in] rhs The rectangle to compare with.
+        //! @return Returns `true` if two rectangles are equal. Returns `false` otherwise.
+        bool operator==(const Rect& rhs) const
+        {
+            return ((offset_x == rhs.offset_x) &&
+                (offset_y == rhs.offset_y) &&
+                (width == rhs.width) &&
+                (height == rhs.height));
+        }
+        //! Compares two rectangles for non-equality.
+        //! @param[in] rhs The rectangle to compare with.
+        //! @return Returns `true` if two rectangles are not equal. Returns `false` otherwise.
+        bool operator!= (const Rect& rhs) const
+        {
+            return !(*this == rhs);
+        }
+    };
 
-		bool operator==(const Rect& rhs) const
-		{
-			return ((offset_x == rhs.offset_x) &&
-				(offset_y == rhs.offset_y) &&
-				(width == rhs.width) &&
-				(height == rhs.height));
-		}
-		bool operator!= (const Rect& rhs) const
-		{
-			return !(*this == rhs);
-		}
-	};
+    //! Used to specify a 2D rectangle region using offsets with its container rectangle.
+    //! @tparam _Ty The type that represents values of the rectangle.
+    template <typename _Ty>
+    struct OffsetRect
+    {
+        //! The left offset of the rectangle from its container.
+        _Ty left;
+        //! The top offset of the rectangle from its container.
+        _Ty top;
+        //! The right offset of the rectangle from its container.
+        _Ty right;
+        //! The bottom offset of the rectangle from its container.
+        _Ty bottom;
 
-	template <typename _Ty>
-	struct OffsetRect
-	{
-		_Ty left;
-		_Ty top;
-		_Ty right;
-		_Ty bottom;
+        //! Constructs one rectangle. Values of the rectangle is uninitialized.
+        OffsetRect() = default;
+        //! Constructs one rectangle.
+        //! @param[in] left The left offset of the rectangle from its container.
+        //! @param[in] top The top offset of the rectangle from its container.
+        //! @param[in] right The right offset of the rectangle from its container.
+        //! @param[in] bottom The bottom offset of the rectangle from its container.
+        OffsetRect(_Ty left, _Ty top, _Ty right, _Ty bottom) :
+            left(left),
+            top(top),
+            right(right),
+            bottom(bottom) {}
+        //! Compares two rectangles for equality.
+        //! @param[in] rhs The rectangle to compare with.
+        //! @return Returns `true` if two rectangles are equal. Returns `false` otherwise.
+        bool operator==(const OffsetRect& rhs) const
+        {
+            return ((left == rhs.left) &&
+                (top == rhs.top) &&
+                (right == rhs.right) &&
+                (bottom == rhs.bottom));
+        }
+        //! Compares two rectangles for non-equality.
+        //! @param[in] rhs The rectangle to compare with.
+        //! @return Returns `true` if two rectangles are not equal. Returns `false` otherwise.
+        bool operator!= (const OffsetRect& rhs) const
+        {
+            return !(*this == rhs);
+        }
+    };
 
-		OffsetRect() = default;
-		OffsetRect(_Ty left, _Ty top, _Ty right, _Ty bottom) :
-			left(left),
-			top(top),
-			right(right),
-			bottom(bottom) {}
-		bool operator==(const OffsetRect& rhs) const
-		{
-			return ((left == rhs.left) &&
-				(top == rhs.top) &&
-				(right == rhs.right) &&
-				(bottom == rhs.bottom));
-		}
-		bool operator!= (const OffsetRect& rhs) const
-		{
-			return !(*this == rhs);
-		}
-	};
+    //! A instanced type of @ref Rect that uses @ref i32 as value type.
+    using RectI = Rect<i32>;
+    //! A instanced type of @ref Rect that uses @ref u32 as value type.
+    using RectU = Rect<u32>;
+    //! A instanced type of @ref Rect that uses @ref f32 as value type.
+    using RectF = Rect<f32>;
+    //! A instanced type of @ref OffsetRect that uses @ref i32 as value type.
+    using OffsetRectI = OffsetRect<i32>;
+    //! A instanced type of @ref OffsetRect that uses @ref u32 as value type.
+    using OffsetRectU = OffsetRect<u32>;
+    //! A instanced type of @ref OffsetRect that uses @ref f32 as value type.
+    using OffsetRectF = OffsetRect<f32>;
 
-	using RectI = Rect<i32>;
-	using RectU = Rect<u32>;
-	using RectF = Rect<f32>;
-	using OffsetRectI = OffsetRect<i32>;
-	using OffsetRectU = OffsetRect<u32>;
-	using OffsetRectF = OffsetRect<f32>;
+    //! Used to specify a 3D box region using position and size.
+    //! @tparam _Ty The type that represents values of the box.
+    template <typename _Ty>
+    struct Box
+    {
+        //! The X position of the box.
+        _Ty offset_x;
+        //! The Y position of the box.
+        _Ty offset_y;
+        //! The Z position of the box.
+        _Ty offset_z;
+        //！The width of the box.
+        _Ty width;
+        //! The height of the box.
+        _Ty height;
+        //! The depth of the box.
+        _Ty depth;
 
-	template <typename _Ty>
-	struct Box
-	{
-		_Ty offset_x;
-		_Ty offset_y;
-		_Ty offset_z;
-		_Ty width;		// The size in x-axis
-		_Ty height;		// The size in y-axis
-		_Ty depth;		// The size in z-axis
+        //! Constructs one box. Values of the box is uninitialized.
+        Box() = default;
+        //! Constructs one box.
+        //! @param[in] offset_x The X position of the box.
+        //! @param[in] offset_y The Y position of the box.
+        //! @param[in] offset_z The Z position of the box.
+        //! @param[in] width The width of the box.
+        //! @param[in] height The height of the box.
+        //! @param[in] depth The depth of the box.
+        Box(_Ty offset_x, _Ty offset_y, _Ty offset_z, _Ty width, _Ty height, _Ty depth) :
+            offset_x(offset_x),
+            offset_y(offset_y),
+            offset_z(offset_z),
+            width(width),
+            height(height),
+            depth(depth) {}
+        //! Compares two boxes for equality.
+        //! @param[in] rhs The box to compare with.
+        //! @return Returns `true` if two boxes are equal. Returns `false` otherwise.
+        bool operator==(const Box& rhs) const
+        {
+            return (offset_x == rhs.offset_x) &&
+                (offset_y == rhs.offset_y) &&
+                (offset_z == rhs.offset_z) &&
+                (width == rhs.width) &&
+                (height == rhs.height) &&
+                (depth == rhs.depth);
+        }
+        //! Compares two boxes for non-equality.
+        //! @param[in] rhs The box to compare with.
+        //! @return Returns `true` if two boxes are not equal. Returns `false` otherwise.
+        bool operator!=(const Box& rhs) const
+        {
+            return !(*this == rhs);
+        }
+    };
+    
+    //! Used to specify a 3D box region using offsets with its container box.
+    //! @tparam _Ty The type that represents values of the box.
+    template <typename _Ty>
+    struct OffsetBox
+    {
+        //! The left offset of the rectangle from its container.
+        _Ty left;
+        //! The top offset of the rectangle from its container.
+        _Ty top;
+        //! The front offset of the rectangle from its container.
+        _Ty front;
+        //! The right offset of the rectangle from its container.
+        _Ty right;
+        //! The bottom offset of the rectangle from its container.
+        _Ty bottom;
+        //! The back offset of the rectangle from its container.
+        _Ty back;
 
-		Box() = default;
-		Box(_Ty offset_x, _Ty offset_y, _Ty offset_z, _Ty width, _Ty height, _Ty depth) :
-			offset_x(offset_x),
-			offset_y(offset_y),
-			offset_z(offset_z),
-			width(width),
-			height(height),
-			depth(depth) {}
-		bool operator==(const Box& rhs) const
-		{
-			return (offset_x == rhs.offset_x) &&
-				(offset_y == rhs.offset_y) &&
-				(offset_z == rhs.offset_z) &&
-				(width == rhs.width) &&
-				(height == rhs.height) &&
-				(depth == rhs.depth);
-		}
-		bool operator!=(const Box& rhs) const
-		{
-			return !(*this == rhs);
-		}
-	};
+        //! Constructs one box. Values of the box is uninitialized.
+        OffsetBox() = default;
+        //! Constructs one box.
+        //! @param[in] left The left offset of the rectangle from its container.
+        //! @param[in] top The top offset of the rectangle from its container.
+        //! @param[in] front The front offset of the rectangle from its container.
+        //! @param[in] right The right offset of the rectangle from its container.
+        //! @param[in] bottom The bottom offset of the rectangle from its container.
+        //! @param[in] back The back offset of the rectangle from its container.
+        OffsetBox(_Ty left, _Ty top, _Ty front, _Ty right, _Ty bottom, _Ty back) :
+            left(left),
+            top(top),
+            front(front),
+            right(right),
+            bottom(bottom),
+            back(back) {}
+        //! Compares two boxes for equality.
+        //! @param[in] rhs The box to compare with.
+        //! @return Returns `true` if two boxes are equal. Returns `false` otherwise.
+        bool operator==(const OffsetBox& rhs) const
+        {
+            return (left == rhs.left) &&
+                (top == rhs.top) &&
+                (front == rhs.front) &&
+                (right == rhs.right) &&
+                (bottom == rhs.bottom) &&
+                (back == rhs.back);
+        }
+        //! Compares two boxes for non-equality.
+        //! @param[in] rhs The box to compare with.
+        //! @return Returns `true` if two boxes are not equal. Returns `false` otherwise.
+        bool operator!=(const OffsetBox& rhs) const
+        {
+            return !(*this == rhs);
+        }
+    };
 
-	template <typename _Ty>
-	struct OffsetBox
-	{
-		_Ty left;
-		_Ty top;
-		_Ty front;
-		_Ty right;
-		_Ty bottom;
-		_Ty back;
+    //! A instanced type of @ref Box that uses @ref i32 as value type.
+    using BoxI = Box<i32>;
+    //! A instanced type of @ref Box that uses @ref u32 as value type.
+    using BoxU = Box<u32>;
+    //! A instanced type of @ref Box that uses @ref f32 as value type.
+    using BoxF = Box<f32>;
+    //! A instanced type of @ref OffsetBox that uses @ref i32 as value type.
+    using OffsetBoxI = OffsetBox<i32>;
+    //! A instanced type of @ref OffsetBox that uses @ref u32 as value type.
+    using OffsetBoxU = OffsetBox<u32>;
+    //! A instanced type of @ref OffsetBox that uses @ref f32 as value type.
+    using OffsetBoxF = OffsetBox<f32>;
 
-		OffsetBox() = default;
-		OffsetBox(_Ty left, _Ty top, _Ty front, _Ty right, _Ty bottom, _Ty back) :
-			left(left),
-			top(top),
-			front(front),
-			right(right),
-			bottom(bottom),
-			back(back) {}
-		bool operator==(const OffsetBox& rhs) const
-		{
-			return (left == rhs.left) &&
-				(top == rhs.top) &&
-				(front == rhs.front) &&
-				(right == rhs.right) &&
-				(bottom == rhs.bottom) &&
-				(back == rhs.back);
-		}
-		bool operator!=(const OffsetBox& rhs) const
-		{
-			return !(*this == rhs);
-		}
-	};
+    //! Performs linear interpolation on the given values.
+    //! @tparam _VTy The type of the interpolated value.
+    //! @tparam _TTy The type of the weight value.
+    //! @param[in] f1 The first value to interpolate.
+    //! @param[in] f2 The second value to interpolate.
+    //! @param[in] t The interpolation weight to use.
+    //! @return Returns the interpolated value. The value is calculated as `f1 * (1 - t) + f2 * t`.
+    template <typename _VTy, typename _TTy>
+    inline _VTy lerp(_VTy f1, _VTy f2, _TTy t)
+    {
+        return f1 + t * (f2 - f1);
+    }
+    
+    //! Performs smoothstep interpolation on the given values.
+    //! @param[in] f1 The first value to interpolate.
+    //! @param[in] f2 The second value to interpolate.
+    //! @param[in] t The interpolation weight to use. The value is clamped to [0, 1] before use.
+    //! @return Returns the interpolated value.
+    inline f32 smoothstep(f32 f1, f32 f2, f32 t)
+    {
+        t = (t > 1.0f) ? 1.0f : ((t < 0.0f) ? 0.0f : t);  // Clamp value to 0 to 1
+        t = t * t * (3.f - 2.f * t);
+        return lerp(f1, f2, t);
+    }
 
-	using BoxI = Box<i32>;
-	using BoxU = Box<u32>;
-	using BoxF = Box<f32>;
-	using OffsetBoxI = OffsetBox<i32>;
-	using OffsetBoxU = OffsetBox<u32>;
-	using OffsetBoxF = OffsetBox<f32>;
+    //! Clamps the value to the specified range.
+    //! @tparam _Ty1 The type of the value to clamp.
+    //! @tparam _Ty2 The type of the low clamp threshold.
+    //! @tparam _Ty3 The type of the high clamp threshold.
+    //! @param[in] v The value to clamp.
+    //! @param[in] min_v The low clamp threshold.
+    //! @param[in] max_v The high clamp threshold.
+    //! @return Returns the value clamped to [`min_v`, `max_v`].
+    template <typename _Ty1, typename _Ty2, typename _Ty3>
+    inline _Ty1 clamp(_Ty1 v, _Ty2 min_v, _Ty3 max_v)
+    {
+        v = v > (_Ty1)min_v ? v : (_Ty1)min_v;
+        v = v < (_Ty1)max_v ? v : (_Ty1)max_v;
+        return v;
+    }
 
-	template <typename _Ty>
-	inline _Ty lerp(_Ty f1, _Ty f2, _Ty t)
-	{
-		return f1 + t * (f2 - f1);
-	}
-	
-	inline f32 smoothstep(f32 f1, f32 f2, f32 t)
-	{
-		t = (t > 1.0f) ? 1.0f : ((t < 0.0f) ? 0.0f : t);  // Clamp value to 0 to 1
-		t = t * t * (3.f - 2.f * t);
-		return lerp(f1, f2, t);
-	}
+    //! Calculates the Greatest Common Divisor of two numbers.
+    //! @tparam[in] _Ty The number type.
+    //! @param[in] a The first number.
+    //! @param[in] b The second number.
+    //! @return Returns the Greatest Common Divisor of two numbers.
+    template <typename _Ty>
+    inline constexpr _Ty gcd(_Ty a, _Ty b)
+    {
+        // make sure a <= b.
+        if (a > b)
+        {
+            auto t = a;
+            a = b;
+            b = t;
+        }
+        auto i = a;
+        while (i)
+        {
+            if ((a % i == 0) && (b % i == 0))
+            {
+                return i;
+            }
+            --i;
+        }
+        return 1;
+    }
 
-	template <typename _Ty1, typename _Ty2, typename _Ty3>
-	inline _Ty1 clamp(_Ty1 v, _Ty2 min_v, _Ty3 max_v)
-	{
-		v = v > (_Ty1)min_v ? v : (_Ty1)min_v;
-		v = v < (_Ty1)max_v ? v : (_Ty1)max_v;
-		return v;
-	}
+    using std::isinf;
+    using std::isnan;
 
-	template <typename _Ty>
-	struct Fraction
-	{
-		_Ty numerator;
-		_Ty denominator;
-
-		Fraction() = default;
-		Fraction(_Ty numerator, _Ty denominator) :
-			numerator(numerator),
-			denominator(denominator) {}
-		bool operator==(const Fraction& rhs) const
-		{
-			return (numerator == rhs.numerator) &&
-				(denominator == rhs.denominator);
-		}
-		bool operator!=(const Fraction& rhs) const
-		{
-			return !(*this == rhs);
-		}
-	};
-
-	//! Calculates the Greatest Common Divisor of two numbers.
-	template <typename _Ty>
-	inline constexpr _Ty gcd(_Ty a, _Ty b)
-	{
-		// make sure a <= b.
-		if (a > b)
-		{
-			auto t = a;
-			a = b;
-			b = t;
-		}
-		auto i = a;
-		while (i)
-		{
-			if ((a % i == 0) && (b % i == 0))
-			{
-				return i;
-			}
-			--i;
-		}
-		return 1;
-	}
-	using std::isinf;
-	using std::isnan;
+    //! @}
 }
 
 // Luna math library uses SIMD (Single-Instruction-Multiple-Data) for accelerating vector math compuations when possible. See

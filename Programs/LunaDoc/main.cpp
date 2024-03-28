@@ -201,6 +201,10 @@ RV run(int argc, const char* argv[])
         _enum = "enum";
         _enumvalue = "enumvalue";
         _public_static_attrib = "public-static-attrib";
+        _programlisting = "programlisting";
+        _codeline = "codeline";
+        _highlight = "highlight";
+        _sp = "sp";
 
         set_log_to_platform_enabled(true);
         set_log_to_platform_verbosity(LogVerbosity::info);

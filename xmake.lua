@@ -45,6 +45,41 @@ option("memory_profiler")
     add_defines("LUNA_ENABLE_MEMORY_PROFILER")
 option_end()
 
+function get_default_rhi_api()
+    local default_rhi_api = false
+    if is_os("windows") then
+        default_rhi_api = "D3D12"
+    elseif is_os("macosx", "ios") then
+        default_rhi_api = "Metal"
+    elseif is_os("linux", "android") then
+        default_rhi_api = "Vulkan"
+    end
+    if default_rhi_api == false then
+        raise("No Graphics API is present for the current platform!")
+    end
+    return default_rhi_api
+end
+
+option("rhi_api")
+    set_default(get_default_rhi_api())
+    set_showmenu(true)
+    if is_os("windows") then
+        set_values("D3D12", "Vulkan")
+    elseif is_os("macosx", "ios") then
+        set_values("Metal")
+    elseif is_os("linux", "android") then
+        set_values("Vulkan")
+    end
+    set_description("The Graphics API to use for Luna SDK")
+option_end()
+
+if is_config("rhi_api", "Vulkan") then 
+    add_requires("volk", {configs = {header_only = true}})
+    add_requires("vulkan-memory-allocator")
+elseif is_config("rhi_api", "D3D12") then 
+    add_requires("d3d12-memory-allocator")
+end
+
 function add_luna_sdk_options()
     add_options("shared", "contract_assertion", "thread_safe_assertion", "memory_profiler")
     -- Contract assertion is always enabled in debug mode.
@@ -78,6 +113,7 @@ end
 
 add_includedirs("Modules")
 set_languages("c99", "cxx17")
+set_exceptions("none")
 
 if is_os("windows") then 
     add_defines("_WINDOWS")

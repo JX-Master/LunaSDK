@@ -357,14 +357,14 @@ namespace Luna
                 buffer->m_buffer.get(), (NS::UInteger)start_index_location, 1, (NS::Integer)base_vertex_location, 0);
         }
         void CommandBuffer::draw_instanced(u32 vertex_count_per_instance, u32 instance_count, u32 start_vertex_location,
-				u32 start_instance_location)
+                u32 start_instance_location)
         {
             assert_graphcis_context();
             m_render->drawPrimitives(m_primitive_type, (NS::UInteger)start_vertex_location, (NS::UInteger)vertex_count_per_instance, 
                 (NS::UInteger)instance_count, (NS::UInteger)start_instance_location);
         }
         void CommandBuffer::draw_indexed_instanced(u32 index_count_per_instance, u32 instance_count, u32 start_index_location,
-				i32 base_vertex_location, u32 start_instance_location)
+                i32 base_vertex_location, u32 start_instance_location)
         {
             assert_graphcis_context();
             Buffer* buffer = cast_object<Buffer>(m_index_buffer_view.buffer->get_object());
@@ -615,9 +615,9 @@ namespace Luna
             }
         }
         void CommandBuffer::copy_buffer(
-			IBuffer* dst, u64 dst_offset,
-			IBuffer* src, u64 src_offset,
-			u64 copy_bytes)
+            IBuffer* dst, u64 dst_offset,
+            IBuffer* src, u64 src_offset,
+            u64 copy_bytes)
         {
             assert_copy_context();
             Buffer* d = cast_object<Buffer>(dst->get_object());
@@ -625,9 +625,9 @@ namespace Luna
             m_blit->copyFromBuffer(s->m_buffer.get(), src_offset, d->m_buffer.get(), dst_offset, copy_bytes);
         }
         void CommandBuffer::copy_texture(
-			ITexture* dst, SubresourceIndex dst_subresource, u32 dst_x, u32 dst_y, u32 dst_z,
-			ITexture* src, SubresourceIndex src_subresource, u32 src_x, u32 src_y, u32 src_z,
-			u32 copy_width, u32 copy_height, u32 copy_depth)
+            ITexture* dst, SubresourceIndex dst_subresource, u32 dst_x, u32 dst_y, u32 dst_z,
+            ITexture* src, SubresourceIndex src_subresource, u32 src_x, u32 src_y, u32 src_z,
+            u32 copy_width, u32 copy_height, u32 copy_depth)
         {
             assert_copy_context();
             Texture* d = cast_object<Texture>(dst->get_object());
@@ -637,9 +637,9 @@ namespace Luna
                 d->m_texture.get(), dst_subresource.array_slice, dst_subresource.mip_slice, MTL::Origin::Make(dst_x, dst_y, dst_z));
         }
         void CommandBuffer::copy_buffer_to_texture(
-			ITexture* dst, SubresourceIndex dst_subresource, u32 dst_x, u32 dst_y, u32 dst_z,
-			IBuffer* src, u64 src_offset, u32 src_row_pitch, u32 src_slice_pitch,
-			u32 copy_width, u32 copy_height, u32 copy_depth)
+            ITexture* dst, SubresourceIndex dst_subresource, u32 dst_x, u32 dst_y, u32 dst_z,
+            IBuffer* src, u64 src_offset, u32 src_row_pitch, u32 src_slice_pitch,
+            u32 copy_width, u32 copy_height, u32 copy_depth)
         {
             assert_copy_context();
             Texture* d = cast_object<Texture>(dst->get_object());
@@ -649,9 +649,9 @@ namespace Luna
                 d->m_texture.get(), dst_subresource.array_slice, dst_subresource.mip_slice, MTL::Origin::Make(dst_x, dst_y, dst_z));
         }
         void CommandBuffer::copy_texture_to_buffer(
-			IBuffer* dst, u64 dst_offset, u32 dst_row_pitch, u32 dst_slice_pitch,
-			ITexture* src, SubresourceIndex src_subresource, u32 src_x, u32 src_y, u32 src_z,
-			u32 copy_width, u32 copy_height, u32 copy_depth)
+            IBuffer* dst, u64 dst_offset, u32 dst_row_pitch, u32 dst_slice_pitch,
+            ITexture* src, SubresourceIndex src_subresource, u32 src_x, u32 src_y, u32 src_z,
+            u32 copy_width, u32 copy_height, u32 copy_depth)
         {
             assert_copy_context();
             Buffer* d = cast_object<Buffer>(dst->get_object());

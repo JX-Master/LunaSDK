@@ -43,8 +43,8 @@ namespace Luna
         usize g_vb_size;
         usize g_ib_size;
 
-        Blob g_vs_blob;
-        Blob g_ps_blob;
+        ShaderCompiler::ShaderCompileResult g_vs_blob;
+        ShaderCompiler::ShaderCompileResult g_ps_blob;
 
         Ref<RHI::IDescriptorSetLayout> g_desc_layout;
         Ref<RHI::IPipelineLayout> g_playout;
@@ -85,10 +85,10 @@ struct PS_INPUT
 PS_INPUT main(VS_INPUT input)
 {
     PS_INPUT output;
-	output.pos = mul( ProjectionMatrix, float4(input.pos.xy, 0.f, 1.f));
-	output.col = input.col;
-	output.uv  = input.uv;
-	return output;
+    output.pos = mul( ProjectionMatrix, float4(input.pos.xy, 0.f, 1.f));
+    output.col = input.col;
+    output.uv  = input.uv;
+    return output;
 })";
         const c8 IMGUI_PS_SOURCE[] = R"(
 struct PS_INPUT
@@ -161,28 +161,23 @@ float4 main(PS_INPUT input) : SV_Target
                 auto dev = get_main_device();
 
                 auto compiler = ShaderCompiler::new_compiler();
-
-                compiler->set_source({ IMGUI_VS_SOURCE, sizeof(IMGUI_VS_SOURCE) });
-                compiler->set_source_name("ImGuiVS");
-                compiler->set_entry_point("main");
-                compiler->set_target_format(get_current_platform_shader_target_format());
-                compiler->set_shader_type(ShaderCompiler::ShaderType::vertex);
-                compiler->set_shader_model(6, 0);
-                compiler->set_optimization_level(ShaderCompiler::OptimizationLevel::full);
-                luexp(compiler->compile());
-                auto vs_data = compiler->get_output();
-                g_vs_blob = Blob(vs_data.data(), vs_data.size());
-                compiler->reset();
-                compiler->set_source({ IMGUI_PS_SOURCE, sizeof(IMGUI_PS_SOURCE) });
-                compiler->set_source_name("ImGuiPS");
-                compiler->set_entry_point("main");
-                compiler->set_target_format(get_current_platform_shader_target_format());
-                compiler->set_shader_type(ShaderCompiler::ShaderType::pixel);
-                compiler->set_shader_model(6, 0);
-                compiler->set_optimization_level(ShaderCompiler::OptimizationLevel::full);
-                luexp(compiler->compile());
-                auto ps_data = compiler->get_output();
-                g_ps_blob = Blob(ps_data.data(), ps_data.size());
+                ShaderCompiler::ShaderCompileParameters params;
+                params.source = { IMGUI_VS_SOURCE, sizeof(IMGUI_VS_SOURCE) };
+                params.source_name = "ImGuiVS";
+                params.entry_point = "main";
+                params.target_format = get_current_platform_shader_target_format();
+                params.shader_type = ShaderCompiler::ShaderType::vertex;
+                params.shader_model = {6, 0};
+                params.optimization_level = ShaderCompiler::OptimizationLevel::full;
+                luset(g_vs_blob, compiler->compile(params));
+                params.source = { IMGUI_PS_SOURCE, sizeof(IMGUI_PS_SOURCE) };
+                params.source_name = "ImGuiPS";
+                params.entry_point = "main";
+                params.target_format = get_current_platform_shader_target_format();
+                params.shader_type = ShaderCompiler::ShaderType::pixel;
+                params.shader_model = {6, 0};
+                params.optimization_level = ShaderCompiler::OptimizationLevel::full;
+                luset(g_ps_blob, compiler->compile(params));
                 luset(g_desc_layout, dev->new_descriptor_set_layout(DescriptorSetLayoutDesc(
                     {
                         DescriptorSetLayoutBinding::uniform_buffer_view(0, 1, ShaderVisibilityFlag::vertex),
@@ -297,7 +292,7 @@ float4 main(PS_INPUT input) : SV_Target
             }
             return r;
         }
-		LUNA_IMGUI_API Vector<Pair<c16, c16>> get_glyph_ranges_greek()
+        LUNA_IMGUI_API Vector<Pair<c16, c16>> get_glyph_ranges_greek()
         {
             ImGuiIO& io = ::ImGui::GetIO();
             const ImWchar* range = io.Fonts->GetGlyphRangesGreek();
@@ -309,7 +304,7 @@ float4 main(PS_INPUT input) : SV_Target
             }
             return r;
         }
-		LUNA_IMGUI_API Vector<Pair<c16, c16>> get_glyph_ranges_korean()
+        LUNA_IMGUI_API Vector<Pair<c16, c16>> get_glyph_ranges_korean()
         {
             ImGuiIO& io = ::ImGui::GetIO();
             const ImWchar* range = io.Fonts->GetGlyphRangesKorean();
@@ -321,7 +316,7 @@ float4 main(PS_INPUT input) : SV_Target
             }
             return r;
         }
-		LUNA_IMGUI_API Vector<Pair<c16, c16>> get_glyph_ranges_japanese()
+        LUNA_IMGUI_API Vector<Pair<c16, c16>> get_glyph_ranges_japanese()
         {
             ImGuiIO& io = ::ImGui::GetIO();
             const ImWchar* range = io.Fonts->GetGlyphRangesJapanese();
@@ -333,7 +328,7 @@ float4 main(PS_INPUT input) : SV_Target
             }
             return r;
         }
-		LUNA_IMGUI_API Vector<Pair<c16, c16>> get_glyph_ranges_chinese_full()
+        LUNA_IMGUI_API Vector<Pair<c16, c16>> get_glyph_ranges_chinese_full()
         {
             ImGuiIO& io = ::ImGui::GetIO();
             const ImWchar* range = io.Fonts->GetGlyphRangesChineseFull();
@@ -345,7 +340,7 @@ float4 main(PS_INPUT input) : SV_Target
             }
             return r;
         }
-		LUNA_IMGUI_API Vector<Pair<c16, c16>> get_glyph_ranges_chinese_simplified_common()
+        LUNA_IMGUI_API Vector<Pair<c16, c16>> get_glyph_ranges_chinese_simplified_common()
         {
             ImGuiIO& io = ::ImGui::GetIO();
             const ImWchar* range = io.Fonts->GetGlyphRangesChineseSimplifiedCommon();
@@ -357,7 +352,7 @@ float4 main(PS_INPUT input) : SV_Target
             }
             return r;
         }
-		LUNA_IMGUI_API Vector<Pair<c16, c16>> get_glyph_ranges_cyrillic()
+        LUNA_IMGUI_API Vector<Pair<c16, c16>> get_glyph_ranges_cyrillic()
         {
             ImGuiIO& io = ::ImGui::GetIO();
             const ImWchar* range = io.Fonts->GetGlyphRangesCyrillic();
@@ -369,7 +364,7 @@ float4 main(PS_INPUT input) : SV_Target
             }
             return r;
         }
-		LUNA_IMGUI_API Vector<Pair<c16, c16>> get_glyph_ranges_thai()
+        LUNA_IMGUI_API Vector<Pair<c16, c16>> get_glyph_ranges_thai()
         {
             ImGuiIO& io = ::ImGui::GetIO();
             const ImWchar* range = io.Fonts->GetGlyphRangesThai();
@@ -381,7 +376,7 @@ float4 main(PS_INPUT input) : SV_Target
             }
             return r;
         }
-		LUNA_IMGUI_API Vector<Pair<c16, c16>> get_glyph_ranges_vietnamese()
+        LUNA_IMGUI_API Vector<Pair<c16, c16>> get_glyph_ranges_vietnamese()
         {
             ImGuiIO& io = ::ImGui::GetIO();
             const ImWchar* range = io.Fonts->GetGlyphRangesVietnamese();
@@ -399,8 +394,10 @@ float4 main(PS_INPUT input) : SV_Target
             g_font_file = nullptr;
             g_vb = nullptr;
             g_ib = nullptr;
-            g_vs_blob.clear();
-            g_ps_blob.clear();
+            g_vs_blob.data.clear();
+            g_vs_blob.entry_point.reset();
+            g_ps_blob.data.clear();
+            g_ps_blob.entry_point.reset();
             g_active_window = nullptr;
             g_playout = nullptr;
             g_pso.clear();
@@ -762,8 +759,8 @@ float4 main(PS_INPUT input) : SV_Target
                 };
                 ps_desc.input_layout.bindings = { input_bindings, 1 };
                 ps_desc.input_layout.attributes = { input_attributes , 3 };
-                ps_desc.vs = { g_vs_blob.data(), g_vs_blob.size() };
-                ps_desc.ps = { g_ps_blob.data(), g_ps_blob.size() };
+                ps_desc.vs = get_shader_data_from_compile_result(g_vs_blob);
+                ps_desc.ps = get_shader_data_from_compile_result(g_ps_blob);
                 ps_desc.pipeline_layout = g_playout;
                 ps_desc.num_color_attachments = 1;
                 ps_desc.color_formats[0] = rt_format;
@@ -828,10 +825,10 @@ float4 main(PS_INPUT input) : SV_Target
                     float B = draw_data->DisplayPos.y + draw_data->DisplaySize.y;
                     mvp =
                     {
-                        { 2.0f / (R - L),		0.0f,				0.0f,       0.0f },
-                        { 0.0f,					2.0f / (T - B),     0.0f,       0.0f },
-                        { 0.0f,					0.0f,				0.5f,       0.0f },
-                        { (R + L) / (L - R),	(T + B) / (B - T),  0.5f,       1.0f },
+                        { 2.0f / (R - L),        0.0f,                0.0f,       0.0f },
+                        { 0.0f,                    2.0f / (T - B),     0.0f,       0.0f },
+                        { 0.0f,                    0.0f,                0.5f,       0.0f },
+                        { (R + L) / (L - R),    (T + B) / (B - T),  0.5f,       1.0f },
                     };
                     void* cb_resource = nullptr;
                     luexp(g_cb->map(0, 0, &cb_resource));
@@ -927,18 +924,18 @@ float4 main(PS_INPUT input) : SV_Target
         struct ImGuiModule : public Module
         {
             virtual const c8* get_name() override { return "ImGui"; }
-			virtual RV on_register() override
-			{
-				return add_dependency_modules(this, {module_rhi(), module_hid(), module_font(), module_shader_compiler(), module_window()} );
-			}
-			virtual RV on_init() override
-			{
-				return init();
-			}
-			virtual void on_close() override
-			{
-				close();
-			}
+            virtual RV on_register() override
+            {
+                return add_dependency_modules(this, {module_rhi(), module_hid(), module_font(), module_shader_compiler(), module_window()} );
+            }
+            virtual RV on_init() override
+            {
+                return init();
+            }
+            virtual void on_close() override
+            {
+                close();
+            }
         };
     }
 

@@ -13,12 +13,12 @@
 
 namespace Luna
 {
-	namespace Image
-	{
-		void stbi_write_func(void* context, void* data, int size)
-		{
-			ISeekableStream** stream = (ISeekableStream**)context;
-			auto _ = (*stream)->write(data, (usize)size);
-		}
-	}
+    namespace Image
+    {
+        void stbi_write_func(void* context, void* data, int size)
+        {
+            ISeekableStream** stream = (ISeekableStream**)context;
+            auto _ = (*stream)->write(data, (usize)size);
+        }
+    }
 }

@@ -16,19 +16,19 @@ using namespace Luna;
 
 void run()
 {
-	RHITestBed::run();
+    RHITestBed::run();
 }
 
 int main()
 {
-	if (!Luna::init()) return 0;
-	lupanic_if_failed(add_modules({module_rhi_test_bed()}));
-	auto r = init_modules();
-	if (failed(r))
-	{
-		log_error("RHITest", "%s", explain(r.errcode()));
-	}
-	else run();
-	Luna::close();
-	return 0;
+    if (!Luna::init()) return 0;
+    lupanic_if_failed(add_modules({module_rhi_test_bed()}));
+    auto r = init_modules();
+    if (failed(r))
+    {
+        log_error("RHITest", "%s", explain(r.errcode()));
+    }
+    else run();
+    Luna::close();
+    return 0;
 }

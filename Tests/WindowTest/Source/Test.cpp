@@ -35,8 +35,8 @@ namespace Luna
         }
     }
 
-	void multi_window_test_run()
-	{
+    void multi_window_test_run()
+    {
         using namespace Window;
         auto main_window = new_window("Window Test", WindowDisplaySettings::as_windowed(), 
             WindowCreationFlag::resizable).get();
@@ -49,5 +49,5 @@ namespace Luna
             Window::poll_events();
             sleep(16);
         }
-	}
+    }
 }

@@ -13,32 +13,32 @@
 #include "OS.hpp"
 namespace Luna
 {
-	struct Mutex : IMutex
-	{
-		lustruct("Mutex", "{0df3d468-0d98-4aee-b11d-905ad291def2}");
-		luiimpl();
+    struct Mutex : IMutex
+    {
+        lustruct("Mutex", "{0df3d468-0d98-4aee-b11d-905ad291def2}");
+        luiimpl();
 
-		opaque_t m_handle;
+        opaque_t m_handle;
 
-		Mutex()
-		{
-			m_handle = OS::new_mutex();
-		}
-		~Mutex()
-		{
-			OS::delete_mutex(m_handle);
-		}
-		virtual void wait() override
-		{
-			OS::lock_mutex(m_handle);
-		}
-		virtual bool try_wait() override
-		{
-			return OS::try_lock_mutex(m_handle);
-		}
-		virtual void unlock() override
-		{
-			OS::unlock_mutex(m_handle);
-		}
-	};
+        Mutex()
+        {
+            m_handle = OS::new_mutex();
+        }
+        ~Mutex()
+        {
+            OS::delete_mutex(m_handle);
+        }
+        virtual void wait() override
+        {
+            OS::lock_mutex(m_handle);
+        }
+        virtual bool try_wait() override
+        {
+            return OS::try_lock_mutex(m_handle);
+        }
+        virtual void unlock() override
+        {
+            OS::unlock_mutex(m_handle);
+        }
+    };
 }

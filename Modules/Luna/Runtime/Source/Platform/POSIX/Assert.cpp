@@ -24,7 +24,7 @@ namespace Luna
         void debug_break()
         {
 #ifdef LUNA_DEBUG
-			__builtin_debugtrap();
+            __builtin_debugtrap();
 #endif
         }
 

@@ -18,12 +18,12 @@
 
 inline void* luna_stbtt_malloc(size_t x, void* u)
 {
-	return Luna::memalloc(x);
+    return Luna::memalloc(x);
 }
 
 inline void luna_stbtt_free(void* x, void* u)
 {
-	Luna::memfree(x);
+    Luna::memfree(x);
 }
 
 #define STBTT_malloc(x,u) luna_stbtt_malloc(x, u)

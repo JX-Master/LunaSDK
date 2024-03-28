@@ -27,56 +27,56 @@
 #include "SwapChain.hpp"
 namespace Luna
 {
-	namespace RHI
-	{
-		RV render_api_init()
-		{
-			VkSurfaceKHR dummy_surface = VK_NULL_HANDLE;
-			Ref<Window::IWindow> dummy_window;
-			lutry
-			{
-				register_boxed_type<Adapter>();
-				impl_interface_for_type<Adapter, IAdapter>();
-				register_boxed_type<CommandBuffer>();
-				impl_interface_for_type<CommandBuffer, ICommandBuffer, IDeviceChild, IWaitable>();
-				register_boxed_type<DescriptorSet>();
-				impl_interface_for_type<DescriptorSet, IDescriptorSet, IDeviceChild>();
-				register_boxed_type<DescriptorSetLayout>();
-				impl_interface_for_type<DescriptorSetLayout, IDescriptorSetLayout, IDeviceChild>();
-				register_boxed_type<Device>();
-				impl_interface_for_type<Device, IDevice>();
-				register_boxed_type<DeviceMemory>();
-				impl_interface_for_type<DeviceMemory, IDeviceMemory, IDeviceChild>();
-				register_boxed_type<Fence>();
-				impl_interface_for_type<Fence, IFence, IDeviceChild>();
-				register_boxed_type<ImageView>();
-				register_boxed_type<PipelineState>();
-				impl_interface_for_type<PipelineState, IPipelineState, IDeviceChild>();
-				register_boxed_type<QueryHeap>();
-				impl_interface_for_type<QueryHeap, IQueryHeap, IDeviceChild>();
-				register_boxed_type<BufferResource>();
-				impl_interface_for_type<BufferResource, IBuffer, IResource, IDeviceChild>();
-				register_boxed_type<ImageResource>();
-				impl_interface_for_type<ImageResource, ITexture, IResource, IDeviceChild>();
-				register_boxed_type<Sampler>();
-				register_boxed_type<PipelineLayout>();
-				impl_interface_for_type<PipelineLayout, IPipelineLayout, IDeviceChild>();
-				register_boxed_type<SwapChain>();
-				impl_interface_for_type<SwapChain, ISwapChain, IDeviceChild>();
+    namespace RHI
+    {
+        RV render_api_init()
+        {
+            VkSurfaceKHR dummy_surface = VK_NULL_HANDLE;
+            Ref<Window::IWindow> dummy_window;
+            lutry
+            {
+                register_boxed_type<Adapter>();
+                impl_interface_for_type<Adapter, IAdapter>();
+                register_boxed_type<CommandBuffer>();
+                impl_interface_for_type<CommandBuffer, ICommandBuffer, IDeviceChild, IWaitable>();
+                register_boxed_type<DescriptorSet>();
+                impl_interface_for_type<DescriptorSet, IDescriptorSet, IDeviceChild>();
+                register_boxed_type<DescriptorSetLayout>();
+                impl_interface_for_type<DescriptorSetLayout, IDescriptorSetLayout, IDeviceChild>();
+                register_boxed_type<Device>();
+                impl_interface_for_type<Device, IDevice>();
+                register_boxed_type<DeviceMemory>();
+                impl_interface_for_type<DeviceMemory, IDeviceMemory, IDeviceChild>();
+                register_boxed_type<Fence>();
+                impl_interface_for_type<Fence, IFence, IDeviceChild>();
+                register_boxed_type<ImageView>();
+                register_boxed_type<PipelineState>();
+                impl_interface_for_type<PipelineState, IPipelineState, IDeviceChild>();
+                register_boxed_type<QueryHeap>();
+                impl_interface_for_type<QueryHeap, IQueryHeap, IDeviceChild>();
+                register_boxed_type<BufferResource>();
+                impl_interface_for_type<BufferResource, IBuffer, IResource, IDeviceChild>();
+                register_boxed_type<ImageResource>();
+                impl_interface_for_type<ImageResource, ITexture, IResource, IDeviceChild>();
+                register_boxed_type<Sampler>();
+                register_boxed_type<PipelineLayout>();
+                impl_interface_for_type<PipelineLayout, IPipelineLayout, IDeviceChild>();
+                register_boxed_type<SwapChain>();
+                impl_interface_for_type<SwapChain, ISwapChain, IDeviceChild>();
 
-				luexp(create_vk_instance());
-				luexp(init_physical_devices());
-				lulet(main_physical_device, select_main_physical_device());
-				luset(g_main_device, new_device(main_physical_device));
-			}
-			lucatchret;
-			return ok;
-		}
-		void render_api_close()
-		{
-			g_main_device.reset();
-			clear_physical_devices();
-			destroy_vk_instance();
-		}
-	}
+                luexp(create_vk_instance());
+                luexp(init_physical_devices());
+                lulet(main_physical_device, select_main_physical_device());
+                luset(g_main_device, new_device(main_physical_device));
+            }
+            lucatchret;
+            return ok;
+        }
+        void render_api_close()
+        {
+            g_main_device.reset();
+            clear_physical_devices();
+            destroy_vk_instance();
+        }
+    }
 }

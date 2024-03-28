@@ -13,16 +13,16 @@
 
 namespace Luna
 {
-	Name get_static_mesh_asset_type();
-	void register_static_mesh_asset_type();
-	void register_static_mesh_importer();
+    Name get_static_mesh_asset_type();
+    void register_static_mesh_asset_type();
+    void register_static_mesh_importer();
 
-	//! The format used to save mesh data.
-	struct MeshAsset
-	{
-		lustruct("MeshAsset", "{8953365D-B966-48DC-8B15-3A156DA5ED04}");
-		Vector<MeshPiece> pieces;
-		Blob vertex_data;
-		Blob index_data;
-	};
+    //! The format used to save mesh data.
+    struct MeshAsset
+    {
+        lustruct("MeshAsset", "{8953365D-B966-48DC-8B15-3A156DA5ED04}");
+        Vector<MeshPiece> pieces;
+        Blob vertex_data;
+        Blob index_data;
+    };
 }

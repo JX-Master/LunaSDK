@@ -14,35 +14,35 @@
 #include "../Window.hpp"
 namespace Luna
 {
-	namespace Window
-	{
-		StartupParams g_startup_params;
-		c8 g_name[260];
-		Version g_version;
+    namespace Window
+    {
+        StartupParams g_startup_params;
+        c8 g_name[260];
+        Version g_version;
 
-		struct WindowModule : public Module
-		{
-			virtual const c8* get_name() override { return "Window"; }
-			virtual RV on_init() override
-			{
-				if (g_startup_params.name)
-				{
-					auto len = strlen(g_startup_params.name);
-					memcpy(g_name, g_startup_params.name, min<usize>(len, 260));
-				}
-				g_version = g_startup_params.version;
-				return platform_init();
-			}
-			virtual void on_close() override
-			{
-				platform_close();
-			}
-		};
-		
-	}
-	LUNA_WINDOW_API Module* module_window()
-	{
-		static Window::WindowModule m;
-		return &m;
-	}
+        struct WindowModule : public Module
+        {
+            virtual const c8* get_name() override { return "Window"; }
+            virtual RV on_init() override
+            {
+                if (g_startup_params.name)
+                {
+                    auto len = strlen(g_startup_params.name);
+                    memcpy(g_name, g_startup_params.name, min<usize>(len, 260));
+                }
+                g_version = g_startup_params.version;
+                return platform_init();
+            }
+            virtual void on_close() override
+            {
+                platform_close();
+            }
+        };
+        
+    }
+    LUNA_WINDOW_API Module* module_window()
+    {
+        static Window::WindowModule m;
+        return &m;
+    }
 }

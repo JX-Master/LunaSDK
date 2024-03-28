@@ -30,7 +30,7 @@ namespace Luna
             virtual IDevice* get_device() override { return m_device; }
             virtual void set_name(const c8* name) override  { set_object_name(m_heap.get(), name); }
             virtual MemoryType get_memory_type() override { return m_memory_type; }
-			virtual u64 get_size() override { return m_size; }
+            virtual u64 get_size() override { return m_size; }
         };
     }
 }

@@ -14,8 +14,8 @@
 
 namespace Luna
 {
-	struct InterfaceImplEntry
-	{
-		void* (*cast_to_interface)(object_t obj);
-	};
+    struct InterfaceImplEntry
+    {
+        void* (*cast_to_interface)(object_t obj);
+    };
 }

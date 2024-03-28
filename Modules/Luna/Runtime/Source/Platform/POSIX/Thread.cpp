@@ -179,7 +179,7 @@ void yield_current_thread()
 {
     ::sched_yield();
 }
-opaque_t tls_alloc(tls_destructor* destructor)
+opaque_t tls_alloc(void (*destructor)(void*))
 {
     pthread_key_t key;
     int r = pthread_key_create(&key, destructor);

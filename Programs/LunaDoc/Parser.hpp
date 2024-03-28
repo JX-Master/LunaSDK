@@ -81,6 +81,10 @@ extern Name _initializer;
 extern Name _enum;
 extern Name _enumvalue;
 extern Name _public_static_attrib;
+extern Name _programlisting;
+extern Name _codeline;
+extern Name _highlight;
+extern Name _sp;
 
 struct Parser
 {
@@ -96,6 +100,8 @@ struct Parser
     RV encode_md_files(const Path& output_dir);
 
     private:
+    String get_element_brief_desc(const Variant& element);
+
     void add_section_ids(const Variant& section);
     void add_group_member_ids(const Variant& group_data);
     void add_class_member_ids(const Variant& class_data);

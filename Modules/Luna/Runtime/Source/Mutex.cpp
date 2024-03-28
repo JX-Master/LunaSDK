@@ -13,8 +13,8 @@
 #include "Mutex.hpp"
 namespace Luna
 {
-	LUNA_RUNTIME_API Ref<IMutex> new_mutex()
-	{
-		return new_object<Mutex>();
-	}
+    LUNA_RUNTIME_API Ref<IMutex> new_mutex()
+    {
+        return new_object<Mutex>();
+    }
 }

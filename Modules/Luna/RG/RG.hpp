@@ -13,6 +13,9 @@
 #endif
 namespace Luna
 {
+    //! @addtogroup RG Render Graph
+    //! Render Graph (RG) module provides functions to construct render pass dependency graph to automatically reuse in-frame 
+    //! transient render resources to reduce memory comsumption. 
     struct Module;
     LUNA_RG_API Module* module_rg();
 }

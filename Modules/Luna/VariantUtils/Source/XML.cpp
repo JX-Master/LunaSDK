@@ -51,7 +51,7 @@ namespace Luna
         {
             return xml_element[_attributes];
         }
-		LUNA_VARIANT_UTILS_API Variant& get_xml_attributes(Variant& xml_element)
+        LUNA_VARIANT_UTILS_API Variant& get_xml_attributes(Variant& xml_element)
         {
             return xml_element[_attributes];
         }
@@ -81,7 +81,7 @@ namespace Luna
         {
             lucheck(ctx.next_char() == '<' && ctx.next_char(1) == '!' && ctx.next_char(2) == '-' && ctx.next_char(3) == '-');
             ctx.consume('<');
-			ctx.consume('!');
+            ctx.consume('!');
             ctx.consume('-');
             ctx.consume('-');
             c32 ch = ctx.next_char();
@@ -107,15 +107,15 @@ namespace Luna
         static void skip_whitespaces_and_comments(IReadContext& ctx)
         {
             c32 ch = ctx.next_char();
-			while (ch)
-			{
-				if (is_whitespace(ch))
-				{
-					ctx.consume(ch);
-				}
-				else if (ch == '<')
-				{
-					c32 chs[3];
+            while (ch)
+            {
+                if (is_whitespace(ch))
+                {
+                    ctx.consume(ch);
+                }
+                else if (ch == '<')
+                {
+                    c32 chs[3];
                     chs[0] = ctx.next_char(1);
                     chs[1] = ctx.next_char(2);
                     chs[2] = ctx.next_char(3);
@@ -123,23 +123,23 @@ namespace Luna
                     {
                         skip_single_line_comment(ctx);
                     }
-					else
-					{
-						break;
-					}
-				}
-				else break;
-				ch = ctx.next_char();
-			}
+                    else
+                    {
+                        break;
+                    }
+                }
+                else break;
+                ch = ctx.next_char();
+            }
         }
         static void skip_comments(IReadContext& ctx)
         {
             c32 ch = ctx.next_char();
-			while (ch)
-			{
-				if (ch == '<')
-				{
-					c32 chs[3];
+            while (ch)
+            {
+                if (ch == '<')
+                {
+                    c32 chs[3];
                     chs[0] = ctx.next_char(1);
                     chs[1] = ctx.next_char(2);
                     chs[2] = ctx.next_char(3);
@@ -147,14 +147,14 @@ namespace Luna
                     {
                         skip_single_line_comment(ctx);
                     }
-					else
-					{
-						break;
-					}
-				}
-				else break;
-				ch = ctx.next_char();
-			}
+                    else
+                    {
+                        break;
+                    }
+                }
+                else break;
+                ch = ctx.next_char();
+            }
         }
         static RV skip_xml_header(IReadContext& ctx)
         {
@@ -256,12 +256,12 @@ namespace Luna
             return (ch_num >= '0' && ch_num <= '9') || (ch_num >= 'a' && ch_num <= 'f') || (ch_num >= 'A' && ch_num <= 'F'); 
         }
         inline u8 atohex(c32 ch)
-		{
+        {
             u32 ch_num = (u32)ch;
-			return ch_num >= '0' && ch_num <= '9' ? ch_num - '0' :
-				ch_num >= 'a' && ch_num <= 'f' ? ch_num - 'a' + 10 :
-				ch_num >= 'A' && ch_num <= 'F' ? ch_num - 'A' + 10 : 0;
-		}
+            return ch_num >= '0' && ch_num <= '9' ? ch_num - '0' :
+                ch_num >= 'a' && ch_num <= 'f' ? ch_num - 'a' + 10 :
+                ch_num >= 'A' && ch_num <= 'F' ? ch_num - 'A' + 10 : 0;
+        }
         static RV read_reference(IReadContext& ctx, String& s)
         {
             c32 ch = ctx.next_char();
@@ -381,8 +381,8 @@ namespace Luna
             return ok;
         }
         static R<String> read_xml_string_literal(IReadContext& ctx)
-		{
-			String s;
+        {
+            String s;
             lutry
             {
                 c32 ch = ctx.next_char();
@@ -409,8 +409,8 @@ namespace Luna
                 }
             }
             lucatchret;
-			return s;
-		}
+            return s;
+        }
         static R<String> read_xml_character_data(IReadContext& ctx)
         {
             String s;
@@ -683,43 +683,43 @@ namespace Luna
         LUNA_VARIANT_UTILS_API R<Variant> read_xml(const void* src, usize src_size)
         {
             lucheck(src);
-			BufferReadContext ctx;
+            BufferReadContext ctx;
             ctx.src = src;
-			ctx.cur = src;
-			ctx.src_size = src_size;
-			ctx.line = 1;
-			ctx.pos = 1;
+            ctx.cur = src;
+            ctx.src_size = src_size;
+            ctx.line = 1;
+            ctx.pos = 1;
             ctx.encoding = Encoding::utf_8;
             ctx.skip_utf16_bom();
             return read_xml_document(ctx);
         }
-		LUNA_VARIANT_UTILS_API R<Variant> read_xml(IStream* stream)
+        LUNA_VARIANT_UTILS_API R<Variant> read_xml(IStream* stream)
         {
             lucheck(stream);
-			StreamReadContext ctx;
-			ctx.stream = stream;
-			ctx.line = 1;
-			ctx.pos = 1;
+            StreamReadContext ctx;
+            ctx.stream = stream;
+            ctx.line = 1;
+            ctx.pos = 1;
             ctx.skip_utf16_bom();
-			return read_xml_document(ctx);
+            return read_xml_document(ctx);
         }
         inline void write_indents(String& s, u32 num_indents)
-		{
-			for (u32 i = 0; i < num_indents; ++i)
-			{
-				s.push_back('\t');
-			}
-		}
+        {
+            for (u32 i = 0; i < num_indents; ++i)
+            {
+                s.push_back('\t');
+            }
+        }
         void write_xml_string(String& dst, const Name& str)
         {
             const c8* cur = str.c_str();
-			const c8* end = str.c_str() + str.size();
-			while (cur < end)
-			{
-				c32 ch = utf8_decode_char(cur);
-				switch (ch)
-				{
-				case '<':
+            const c8* end = str.c_str() + str.size();
+            while (cur < end)
+            {
+                c32 ch = utf8_decode_char(cur);
+                switch (ch)
+                {
+                case '<':
                     dst.append("&lt;");
                     break;
                 case '>':
@@ -743,12 +743,12 @@ namespace Luna
                 case '\t':
                     dst.append("&#9;");
                     break;
-				default:
-					dst.append(cur, utf8_charspan(ch));
-					break;
-				}
-				cur += utf8_charspan(ch);
-			}
+                default:
+                    dst.append(cur, utf8_charspan(ch));
+                    break;
+                }
+                cur += utf8_charspan(ch);
+            }
         }
         void write_xml_element(const Variant& v, String& s, bool indent, u32 base_indent)
         {
@@ -779,9 +779,9 @@ namespace Luna
                 for(auto& child : content.values())
                 {
                     if (indent && !single_chardata_content)
-					{
-						write_indents(s, base_indent);
-					}
+                    {
+                        write_indents(s, base_indent);
+                    }
                     if(child.type() == VariantType::object)
                     {
                         write_xml_element(child, s, indent, base_indent);
@@ -791,15 +791,15 @@ namespace Luna
                         write_xml_string(s, child.c_str());
                     }
                     if (indent && !single_chardata_content)
-					{
-						s.push_back('\n');
-					}
+                    {
+                        s.push_back('\n');
+                    }
                 }
                 if (indent && !single_chardata_content)
-				{
-					--base_indent;
-					write_indents(s, base_indent);
-				}
+                {
+                    --base_indent;
+                    write_indents(s, base_indent);
+                }
             }
             // end tag.
             s.push_back('<');
@@ -814,10 +814,10 @@ namespace Luna
             write_xml_element(v, r, indent, 0);
             return r;
         }
-		LUNA_VARIANT_UTILS_API RV write_xml(IStream* stream, const Variant& v, bool indent)
+        LUNA_VARIANT_UTILS_API RV write_xml(IStream* stream, const Variant& v, bool indent)
         {
             String data = write_xml(v, indent);
-			return stream->write(data.data(), data.size());
+            return stream->write(data.data(), data.size());
         }
     }
 }

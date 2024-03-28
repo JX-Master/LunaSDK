@@ -3,8 +3,7 @@
 Solution
 build
 .DS_Store
-Tools/doxygen/xml
-Tools/doxygen/html
+Tools/doxygen/generated
 CMakeFiles
 CMakeScripts
 Luna.xcodeproj

@@ -12,7 +12,7 @@
 
 namespace Luna
 {
-	Name get_model_asset_type();
-	void register_model_asset_type();
-	void register_model_editor();
+    Name get_model_asset_type();
+    void register_model_asset_type();
+    void register_model_editor();
 }

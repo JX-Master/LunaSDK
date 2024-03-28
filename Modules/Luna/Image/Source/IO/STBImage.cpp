@@ -12,38 +12,38 @@
 
 namespace Luna
 {
-	namespace Image
-	{
-		stbi_io_callbacks stbi_iocb;
-		int stbi_read(void *user, char *data, int size)
-		{
-			ISeekableStream** stream = reinterpret_cast<ISeekableStream**>(user);
-			usize read_bytes;
-			RV r = (*stream)->read(data, (usize)size, &read_bytes);
-			if (!r.valid())
-			{
-				return 0;
-			}
-			return (int)read_bytes;
-		}
+    namespace Image
+    {
+        stbi_io_callbacks stbi_iocb;
+        int stbi_read(void *user, char *data, int size)
+        {
+            ISeekableStream** stream = reinterpret_cast<ISeekableStream**>(user);
+            usize read_bytes;
+            RV r = (*stream)->read(data, (usize)size, &read_bytes);
+            if (!r.valid())
+            {
+                return 0;
+            }
+            return (int)read_bytes;
+        }
 
-		void stbi_skip(void *user, int n)
-		{
-			ISeekableStream** stream = reinterpret_cast<ISeekableStream**>(user);
-			auto _ = (*stream)->seek(n, SeekMode::current);
-		}
+        void stbi_skip(void *user, int n)
+        {
+            ISeekableStream** stream = reinterpret_cast<ISeekableStream**>(user);
+            auto _ = (*stream)->seek(n, SeekMode::current);
+        }
 
-		int stbi_eof(void *user)
-		{
-			ISeekableStream** stream = reinterpret_cast<ISeekableStream**>(user);
-			return ((*stream)->tell().get() >= (*stream)->get_size());
-		}
+        int stbi_eof(void *user)
+        {
+            ISeekableStream** stream = reinterpret_cast<ISeekableStream**>(user);
+            return ((*stream)->tell().get() >= (*stream)->get_size());
+        }
 
-		void stbi_init()
-		{
-			stbi_iocb.eof = stbi_eof;
-			stbi_iocb.read = stbi_read;
-			stbi_iocb.skip = stbi_skip;
-		}
-	}
+        void stbi_init()
+        {
+            stbi_iocb.eof = stbi_eof;
+            stbi_iocb.read = stbi_read;
+            stbi_iocb.skip = stbi_skip;
+        }
+    }
 }

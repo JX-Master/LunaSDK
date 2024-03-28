@@ -35,8 +35,8 @@ namespace Luna
             virtual void set_name(const c8* name) override  { set_object_name(m_buffer.get(), name); }
             virtual IDeviceMemory* get_memory() override { return m_memory; }
             virtual BufferDesc get_desc() override { return m_desc; }
-			virtual RV map(usize read_begin, usize read_end, void** data) override;
-			virtual void unmap(usize write_begin, usize write_end) override {}
+            virtual RV map(usize read_begin, usize read_end, void** data) override;
+            virtual void unmap(usize write_begin, usize write_end) override {}
         };
         struct Texture : ITexture
         {
@@ -50,8 +50,8 @@ namespace Luna
             Ref<DeviceMemory> m_memory;
 
             // Texture views.
-			Vector<Pair<TextureViewDesc, Ref<TextureView>>> m_texture_views;
-			SpinLock m_texture_views_lock;
+            Vector<Pair<TextureViewDesc, Ref<TextureView>>> m_texture_views;
+            SpinLock m_texture_views_lock;
 
             RV init_as_committed(MemoryType memory_type, const TextureDesc& desc);
             RV init_as_aliasing(IDeviceMemory* memory, const TextureDesc& desc);
