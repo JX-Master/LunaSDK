@@ -749,6 +749,39 @@ namespace Luna
     LUNA_RUNTIME_API typeinfo_t string_type();
     template <> struct typeof_t<String> { typeinfo_t operator()() const { return string_type(); } };
 
+    //! Creates one string that contains the formatted text.
+    //! @param[in] format The formatting syntax used to format the text.
+    //! @param[in] args The formatting arguments.
+    //! @return Returns the created string.
+    inline String vstrprintf(const c8* format, VarList args)
+    {
+        constexpr usize STACK_BUFFER_SIZE = 128;
+        c8 buf[STACK_BUFFER_SIZE];
+        i32 len = vsnprintf(buf, STACK_BUFFER_SIZE, format, args);
+        String ret(len, '\0');
+        if(len >= STACK_BUFFER_SIZE)
+        {
+            vsnprintf(ret.data(), ret.size() + 1, format, args);
+        }
+        else
+        {
+            strncpy(ret.data(), buf, ret.size() + 1);
+        }
+        return ret;
+    }
+
+    //! Creates one string that contains the formatted text.
+    //! @param[in] format The formatting syntax used to format the text.
+    //! @return Returns the created string.
+    inline String strprintf(const c8* format, ...)
+    {
+        VarList args;
+        va_start(args, format);
+        String ret = vstrprintf(format, args);
+        va_end(args);
+        return ret;
+    }
+
     //! @}
 }
 

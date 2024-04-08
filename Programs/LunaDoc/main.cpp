@@ -29,9 +29,9 @@ Tasks:
     -h, --help      Print help message.
 Task options (markdown):
     LunaDoc <-md|--markdown> [-o <./output>] [-i <./input_xml>]
-    -o  Sets the output directory. Use "./markdown" if not specified.
-    -i  Sets the input directory. Use current working directory if not specified.
-    -v  Outputs verbose information for debugging.
+    -o Sets the output directory. Use "./markdown" if not specified.
+    -i Sets the input directory. Use current working directory if not specified.
+    -v Outputs verbose information for debugging.
 )";
     auto io = get_std_io_stream();
     return io->write(help_text, sizeof(help_text));
