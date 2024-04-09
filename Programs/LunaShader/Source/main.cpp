@@ -37,7 +37,7 @@ Options:
         compute: Compiles compute shader.
         default: vertex
     -e <entry_point> Sets the entry point function name.
-        defaut: main
+        default: main
     --optimize <none|1|2> Sets the shader optimization level.
         none: Do not perform any optimization. This can be used if 
             you want to debug shader code using shader debugging tools.
