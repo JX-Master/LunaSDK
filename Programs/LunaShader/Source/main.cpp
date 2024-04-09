@@ -342,11 +342,11 @@ namespace Luna
             source.append(source_name);
             source.append(R"();
 })");
-            Path header_filename = output_filename;
+            Path header_filename = output_filename.c_str();
             header_filename.replace_extension("hpp");
             lulet(out_header, open_file(header_filename.encode().c_str(), FileOpenFlag::write, FileCreationMode::create_always));
             luexp(out_header->write(header.data(), header.size()));
-            Path source_filename = output_filename;
+            Path source_filename = output_filename.c_str();
             source_filename.replace_extension("cpp");
             lulet(out_source, open_file(source_filename.encode().c_str(), FileOpenFlag::write, FileCreationMode::create_always));
             luexp(out_source->write(source.data(), source.size()));
