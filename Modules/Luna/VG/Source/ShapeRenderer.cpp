@@ -13,13 +13,13 @@
 #include <Luna/Runtime/Math/Transform.hpp>
 #include <Luna/RHI/ShaderCompileHelper.hpp>
 #include <Luna/RHI/Utility.hpp>
+#include <FillVS.hpp>
+#include <FillPS.hpp>
 
 namespace Luna
 {
     namespace VG
     {
-        ShaderCompiler::ShaderCompileResult g_fill_shader_vs;
-        ShaderCompiler::ShaderCompileResult g_fill_shader_ps;
         Ref<RHI::IDescriptorSetLayout> g_fill_desc_layout;
         Ref<RHI::IPipelineLayout> g_fill_playout;
         Ref<RHI::ITexture> g_white_tex;
@@ -30,27 +30,6 @@ namespace Luna
             auto dev = get_main_device();
             lutry
             {
-                {
-                    auto compiler = ShaderCompiler::new_compiler();
-                    ShaderCompiler::ShaderCompileParameters params;
-                    params.source = { FILL_SHADER_SOURCE_VS, FILL_SHADER_SOURCE_VS_SIZE };
-                    params.source_name = "FillVS";
-                    params.entry_point = "main";
-                    params.target_format = RHI::get_current_platform_shader_target_format();
-                    params.shader_type = ShaderCompiler::ShaderType::vertex;
-                    params.shader_model = {6, 0};
-                    params.optimization_level = ShaderCompiler::OptimizationLevel::full;
-                    luset(g_fill_shader_vs, compiler->compile(params));
-
-                    params.source = { FILL_SHADER_SOURCE_PS, FILL_SHADER_SOURCE_PS_SIZE };
-                    params.source_name = "FillPS";
-                    params.entry_point = "main";
-                    params.target_format = RHI::get_current_platform_shader_target_format();
-                    params.shader_type = ShaderCompiler::ShaderType::pixel;
-                    params.shader_model = {6, 0};
-                    params.optimization_level = ShaderCompiler::OptimizationLevel::full;
-                    luset(g_fill_shader_ps, compiler->compile(params));
-                }
                 {
                     DescriptorSetLayoutBinding bindings[] = {
                         DescriptorSetLayoutBinding::uniform_buffer_view(0, 1, ShaderVisibilityFlag::vertex),
@@ -104,10 +83,6 @@ namespace Luna
         }
         void deinit_render_resources()
         {
-            g_fill_shader_vs.data.clear();
-            g_fill_shader_vs.entry_point.reset();
-            g_fill_shader_ps.data.clear();
-            g_fill_shader_ps.entry_point.reset();
             g_fill_desc_layout = nullptr;
             g_fill_playout = nullptr;
             g_white_tex = nullptr;
@@ -131,8 +106,8 @@ namespace Luna
                 };
                 desc.input_layout = InputLayoutDesc({bindings, 1}, {attributes, 6});
                 desc.pipeline_layout = g_fill_playout;
-                desc.vs = get_shader_data_from_compile_result(g_fill_shader_vs);
-                desc.ps = get_shader_data_from_compile_result(g_fill_shader_ps);
+                desc.vs = LUNA_GET_SHADER_DATA(FillVS);
+                desc.ps = LUNA_GET_SHADER_DATA(FillPS);
                 desc.blend_state = BlendDesc({ AttachmentBlendDesc(true, BlendFactor::src_alpha, BlendFactor::one_minus_src_alpha, BlendOp::add, BlendFactor::zero,
                         BlendFactor::one, BlendOp::add, ColorWriteMask::all) });
                 desc.rasterizer_state = RasterizerDesc(FillMode::solid, CullMode::back, false, false, false, false, false);

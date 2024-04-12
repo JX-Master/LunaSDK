@@ -2,6 +2,51 @@ set_project("Luna")
 
 add_moduledirs("Tools/xmake/modules")
 
+rule("luna.shader")
+    set_extensions(".hlsl")
+    on_load(function (target) 
+        local headerdir = path.join(target:autogendir(), "shaders")
+        if not os.isdir(headerdir) then 
+            os.mkdir(headerdir)
+        end 
+        target:add("includedirs", headerdir)
+        
+        local cpp_rule = target:rule("c++.build"):clone()
+        cpp_rule:add("deps", "luna.shader", {order = true})
+        target:rule_add(cpp_rule)
+    end)
+    on_build_file(function (target, sourcefile, opt)
+        import("compile_shader")
+        import("utils.progress")
+        import("core.project.depend")
+
+        -- get object file
+        local headerdir = path.absolute(path.join(target:autogendir(), "shaders"))
+        local targetfile = path.join(headerdir, path.basename(sourcefile) .. ".hpp")
+        local configs = target:fileconfig(sourcefile) or {}
+
+        -- need build this object?
+        local dependfile = target:dependfile(targetfile)
+        local dependinfo = target:is_rebuilt() and {} or (depend.load(dependfile) or {})
+        if not depend.is_changed(dependinfo, {lastmtime = os.mtime(targetfile), values = configs}) then
+            return
+        end
+
+        -- trace progress info
+        progress.show(opt.progress, "${color.build.object}compiling.shader %s", sourcefile)
+
+        -- build this object.
+        configs.output = targetfile
+        configs.cpp_output = true
+        compile_shader.compile_shader(sourcefile, configs)
+
+        -- update files and values to the dependent file
+        dependinfo.files = {sourcefile}
+        dependinfo.values = configs
+        depend.save(dependinfo, dependfile)
+    end)
+rule_end()
+
 add_rules("mode.debug", "mode.profile", "mode.release")
 add_defines("LUNA_MANUAL_CONFIG_DEBUG_LEVEL")
 if is_mode("debug") then
