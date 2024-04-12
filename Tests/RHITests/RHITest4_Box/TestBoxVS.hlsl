@@ -1,3 +1,12 @@
+/*!
+* This file is a portion of Luna SDK.
+* For conditions of distribution and use, see the disclaimer
+* and license in LICENSE.txt
+* 
+* @file TestBoxVS.hlsl
+* @author JXMaster
+* @date 2024/4/12
+*/
 cbuffer vertexBuffer : register(b0)
 {
     float4x4 world_to_proj;
