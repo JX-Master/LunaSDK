@@ -29,12 +29,16 @@ luna_sdk_module_target("ShaderCompiler")
                 os.cp("$(projectdir)/SDKs/dxc/windows/arm64/bin/dxcompiler.dll", path.join(target:targetdir(), "dxcompiler.dll"))
                 os.cp("$(projectdir)/SDKs/dxc/windows/arm64/bin/dxil.dll", path.join(target:targetdir(), "dxil.dll"))
             end
+        elseif target:is_plat("macosx") then 
+            os.cp("$(projectdir)/SDKs/dxc/macosx/lib/libdxcompiler.dylib", path.join(target:targetdir(), "libdxcompiler.dylib"))
         end
     end)
     after_clean(function(target)
         if target:is_plat("windows") then 
             os.rm(path.join(target:targetdir(), "dxcompiler.dll"))
             os.rm(path.join(target:targetdir(), "dxil.dll"))
+        elseif target:is_plat("macosx") then 
+            os.rm(path.join(target:targetdir(), "libdxcompiler.dylib"))
         end
     end)
     after_install(function(target) 
