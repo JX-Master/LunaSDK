@@ -44,6 +44,16 @@ namespace Luna
             Name entry_point;
             //! The shader data format.
             ShaderDataFormat format = ShaderDataFormat::none;
+
+            ShaderData() = default;
+            ShaderData(const ShaderData&) = default;
+            ShaderData(ShaderData&&) = default;
+            ShaderData& operator=(const ShaderData&) = default;
+            ShaderData& operator=(ShaderData&&) = default;
+            ShaderData(Span<const byte_t> data, const Name& entry_point, ShaderDataFormat format) :
+                data(data),
+                entry_point(entry_point),
+                format(format) {}
         };
         
         //! Describes pipeline configurations of one compute pipeline.

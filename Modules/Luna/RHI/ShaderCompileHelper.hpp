@@ -35,6 +35,20 @@ namespace Luna
             lupanic();
             return ShaderCompiler::TargetFormat::none;
         }
+
+        //! Converts @ref ShaderCompiler::TargetFormat to @ref ShaderDataFormat.
+        //! @param[in] format The shader compile target format to convert.
+        //! @return Returns the converted shader data format.
+        inline ShaderDataFormat get_shader_data_format_from_compile_target_format(ShaderCompiler::TargetFormat format)
+        {
+            switch(format)
+            {
+                case ShaderCompiler::TargetFormat::dxil: return ShaderDataFormat::dxil; break;
+                case ShaderCompiler::TargetFormat::spir_v: return ShaderDataFormat::spirv; break;
+                case ShaderCompiler::TargetFormat::msl: return ShaderDataFormat::msl; break;
+            }
+        }
+
         //! Gets one @ref ShaderData structure that referrs the specified compile result.
         //! @param[in] compile_result The shader compile result.
         //! @return Returns one @ref ShaderData structure that referrs the specified compile result.
@@ -46,12 +60,7 @@ namespace Luna
             ShaderData r;
             r.data = compile_result.data.cspan();
             r.entry_point = compile_result.entry_point;
-            switch(compile_result.format)
-            {
-                case ShaderCompiler::TargetFormat::dxil: r.format = ShaderDataFormat::dxil; break;
-                case ShaderCompiler::TargetFormat::spir_v: r.format = ShaderDataFormat::spirv; break;
-                case ShaderCompiler::TargetFormat::msl: r.format = ShaderDataFormat::msl; break;
-            }
+            r.format = get_shader_data_format_from_compile_target_format(compile_result.format);
             return r;
         }
         //! Fills `cs`, `metal_numthreads_x`, `metal_numthreads_y` and `metal_numthreads_z` properties of 
@@ -69,3 +78,5 @@ namespace Luna
         //! @}
     }
 }
+
+#define LUNA_GET_SHADER_DATA(_shader) Luna::RHI::ShaderData(Luna::Span<const Luna::byte_t>((const Luna::byte_t*)SHADER_DATA_##_shader, SHADER_DATA_SIZE_##_shader), Luna::Name(SHADER_ENTRY_POINT_##_shader), Luna::RHI::get_shader_data_format_from_compile_target_format(SHADER_DATA_FORMAT_##_shader))

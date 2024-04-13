@@ -20,6 +20,8 @@
 #include <Luna/Font/Font.hpp>
 #include <Luna/RHI/ShaderCompileHelper.hpp>
 #include <Luna/RHI/Utility.hpp>
+#include <ImGuiVS.hpp>
+#include <ImGuiPS.hpp>
 namespace Luna
 {
     template<>
@@ -43,9 +45,6 @@ namespace Luna
         usize g_vb_size;
         usize g_ib_size;
 
-        ShaderCompiler::ShaderCompileResult g_vs_blob;
-        ShaderCompiler::ShaderCompileResult g_ps_blob;
-
         Ref<RHI::IDescriptorSetLayout> g_desc_layout;
         Ref<RHI::IPipelineLayout> g_playout;
         HashMap<RHI::Format, Ref<RHI::IPipelineState>> g_pso;
@@ -56,63 +55,6 @@ namespace Luna
         Ref<RHI::IBuffer> g_cb;
 
         Ref<RHI::ITexture> g_font_tex;
-
-        const c8 IMGUI_VS_SOURCE[] = R"(
-cbuffer vertexBuffer : register(b0) 
-{
-    float4x4 ProjectionMatrix; 
-};
-Texture2D texture0 : register(t1);
-SamplerState sampler0 : register(s2);
-struct VS_INPUT
-{
-    [[vk::location(0)]]
-    float2 pos : POSITION;
-    [[vk::location(1)]]
-    float2 uv  : TEXCOORD0;
-    [[vk::location(2)]]
-    float4 col : COLOR0;
-};
-struct PS_INPUT
-{
-    [[vk::location(0)]]
-    float4 pos : SV_POSITION;
-    [[vk::location(1)]]
-    float2 uv  : TEXCOORD0;
-    [[vk::location(2)]]
-    float4 col : COLOR0;
-};
-PS_INPUT main(VS_INPUT input)
-{
-    PS_INPUT output;
-    output.pos = mul( ProjectionMatrix, float4(input.pos.xy, 0.f, 1.f));
-    output.col = input.col;
-    output.uv  = input.uv;
-    return output;
-})";
-        const c8 IMGUI_PS_SOURCE[] = R"(
-struct PS_INPUT
-{
-    [[vk::location(0)]]
-    float4 pos : SV_POSITION;
-    [[vk::location(1)]]
-    float2 uv  : TEXCOORD0;
-    [[vk::location(2)]]
-    float4 col : COLOR0;
-};
-cbuffer vertexBuffer : register(b0)
-{
-    float4x4 ProjectionMatrix;
-};
-Texture2D texture0 : register(t1);
-SamplerState sampler0 : register(s2);
-[[vk::location(0)]]
-float4 main(PS_INPUT input) : SV_Target
-{
-    float4 out_col = input.col * texture0.Sample(sampler0, input.uv); 
-    return out_col; 
-}
-)";
 
         static RV init()
         {
@@ -159,25 +101,6 @@ float4 main(PS_INPUT input) : SV_Target
             lutry
             {
                 auto dev = get_main_device();
-
-                auto compiler = ShaderCompiler::new_compiler();
-                ShaderCompiler::ShaderCompileParameters params;
-                params.source = { IMGUI_VS_SOURCE, sizeof(IMGUI_VS_SOURCE) };
-                params.source_name = "ImGuiVS";
-                params.entry_point = "main";
-                params.target_format = get_current_platform_shader_target_format();
-                params.shader_type = ShaderCompiler::ShaderType::vertex;
-                params.shader_model = {6, 0};
-                params.optimization_level = ShaderCompiler::OptimizationLevel::full;
-                luset(g_vs_blob, compiler->compile(params));
-                params.source = { IMGUI_PS_SOURCE, sizeof(IMGUI_PS_SOURCE) };
-                params.source_name = "ImGuiPS";
-                params.entry_point = "main";
-                params.target_format = get_current_platform_shader_target_format();
-                params.shader_type = ShaderCompiler::ShaderType::pixel;
-                params.shader_model = {6, 0};
-                params.optimization_level = ShaderCompiler::OptimizationLevel::full;
-                luset(g_ps_blob, compiler->compile(params));
                 luset(g_desc_layout, dev->new_descriptor_set_layout(DescriptorSetLayoutDesc(
                     {
                         DescriptorSetLayoutBinding::uniform_buffer_view(0, 1, ShaderVisibilityFlag::vertex),
@@ -394,10 +317,6 @@ float4 main(PS_INPUT input) : SV_Target
             g_font_file = nullptr;
             g_vb = nullptr;
             g_ib = nullptr;
-            g_vs_blob.data.clear();
-            g_vs_blob.entry_point.reset();
-            g_ps_blob.data.clear();
-            g_ps_blob.entry_point.reset();
             g_active_window = nullptr;
             g_playout = nullptr;
             g_pso.clear();
@@ -759,8 +678,8 @@ float4 main(PS_INPUT input) : SV_Target
                 };
                 ps_desc.input_layout.bindings = { input_bindings, 1 };
                 ps_desc.input_layout.attributes = { input_attributes , 3 };
-                ps_desc.vs = get_shader_data_from_compile_result(g_vs_blob);
-                ps_desc.ps = get_shader_data_from_compile_result(g_ps_blob);
+                ps_desc.vs = LUNA_GET_SHADER_DATA(ImGuiVS);
+                ps_desc.ps = LUNA_GET_SHADER_DATA(ImGuiPS);
                 ps_desc.pipeline_layout = g_playout;
                 ps_desc.num_color_attachments = 1;
                 ps_desc.color_formats[0] = rt_format;

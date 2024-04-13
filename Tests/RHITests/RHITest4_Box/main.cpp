@@ -20,6 +20,8 @@
 #include <Luna/Runtime/File.hpp>
 #include <Luna/Runtime/Math/Transform.hpp>
 #include <Luna/RHI/Utility.hpp>
+#include <TestBoxVS.hpp>
+#include <TestBoxPS.hpp>
 
 using namespace Luna;
 using namespace Luna::RHI;
@@ -56,75 +58,6 @@ RV start()
         })));
         luset(desc_set, dev->new_descriptor_set(DescriptorSetDesc(dlayout)));
 
-        const char vs_shader_code[] = R"(
-            cbuffer vertexBuffer : register(b0)
-            {
-                float4x4 world_to_proj;
-            };
-            Texture2D tex : register(t1);
-            SamplerState tex_sampler : register(s2);
-            struct VS_INPUT
-            {
-                [[vk::location(0)]]
-                float3 position : POSITION;
-                [[vk::location(1)]]
-                float2 texcoord : TEXCOORD;
-            };
-            struct PS_INPUT
-            {
-                [[vk::location(0)]]
-                float4 position : SV_POSITION;
-                [[vk::location(1)]]
-                float2 texcoord : TEXCOORD;
-            };
-            PS_INPUT main(VS_INPUT input)
-            {
-                PS_INPUT output;
-                output.position = mul(world_to_proj, float4(input.position, 1.0f));
-                output.texcoord = input.texcoord;
-                return output;
-            })";
-        const char ps_shader_code[] = R"(
-            cbuffer vertexBuffer : register(b0)
-            {
-                float4x4 world_to_proj;
-            };
-            Texture2D tex : register(t1);
-            SamplerState tex_sampler : register(s2);
-            struct PS_INPUT
-            {
-                [[vk::location(0)]]
-                float4 position : SV_POSITION;
-                [[vk::location(1)]]
-                float2 texcoord : TEXCOORD;
-            };
-            [[vk::location(0)]]
-            float4 main(PS_INPUT input) : SV_Target
-            {
-                return float4(tex.Sample(tex_sampler, input.texcoord));
-            })";
-        auto compiler = ShaderCompiler::new_compiler();
-        ShaderCompiler::ShaderCompileParameters params;
-        params.source = { vs_shader_code, sizeof(vs_shader_code) };
-        params.source_name = "TestBoxVS";
-        params.entry_point = "main";
-        params.target_format = RHI::get_current_platform_shader_target_format();
-        params.shader_type = ShaderCompiler::ShaderType::vertex;
-        params.shader_model = {6, 0};
-        params.optimization_level = ShaderCompiler::OptimizationLevel::full;
-        
-        lulet(vs_data, compiler->compile(params));
-
-        params.source = { ps_shader_code, sizeof(ps_shader_code) };
-        params.source_name = "TestBoxPS";
-        params.entry_point = "main";
-        params.target_format = RHI::get_current_platform_shader_target_format();
-        params.shader_type = ShaderCompiler::ShaderType::pixel;
-        params.shader_model = {6, 0};
-        params.optimization_level = ShaderCompiler::OptimizationLevel::full;
-
-        lulet(ps_data, compiler->compile(params));
-
         IDescriptorSetLayout* dl = dlayout;
 
         luset(playout, dev->new_pipeline_layout(PipelineLayoutDesc({&dl, 1}, 
@@ -142,8 +75,8 @@ RV start()
             InputAttributeDesc("TEXCOORD", 0, 1, 0, 12, Format::rg32_float)
         };
         ps_desc.input_layout = InputLayoutDesc({bindings, 1}, {attributes, 2});
-        ps_desc.vs = get_shader_data_from_compile_result(vs_data);
-        ps_desc.ps = get_shader_data_from_compile_result(ps_data);
+        ps_desc.vs = LUNA_GET_SHADER_DATA(TestBoxVS);
+        ps_desc.ps = LUNA_GET_SHADER_DATA(TestBoxPS);
         ps_desc.pipeline_layout = playout;
         ps_desc.num_color_attachments = 1;
         ps_desc.color_formats[0] = Format::bgra8_unorm;

@@ -37,7 +37,7 @@ namespace Luna
             ret.r[1] = R1;
             ret.r[2] = R2;
 #endif
-            
+            return ret;
         }
         inline float3x4 LUNA_SIMD_CALL transform2d_translation_f3x4(float4 translation)
         {

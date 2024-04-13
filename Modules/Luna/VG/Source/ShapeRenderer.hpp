@@ -18,11 +18,6 @@ namespace Luna
         RV init_render_resources();
         void deinit_render_resources();
 
-        extern const c8 FILL_SHADER_SOURCE_VS[];
-        extern const c8 FILL_SHADER_SOURCE_PS[];
-        extern usize FILL_SHADER_SOURCE_VS_SIZE;
-        extern usize FILL_SHADER_SOURCE_PS_SIZE;
-
         struct FillShapeRenderer : IShapeRenderer
         {
             lustruct("RHI::FillShapeRenderer", "{3E50DDB9-C896-4B87-9000-BA8E5C7632BE}");
