@@ -7,7 +7,6 @@
 * @author JXMaster
 * @date 2020/5/9
 */
-#pragma once
 #include "Texture.hpp"
 #include <Luna/RHI/RHI.hpp>
 #include <Luna/Runtime/File.hpp>

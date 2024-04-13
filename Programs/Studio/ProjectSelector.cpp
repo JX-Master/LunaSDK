@@ -252,7 +252,7 @@ namespace Luna
                             while (iter != recents.end())
                             {
                                 DateTime dt = timestamp_to_datetime(utc_timestamp_to_local_timestamp(iter->m_last_use_time));
-                                Text(iter->m_path.encode().c_str());
+                                Text("%s", iter->m_path.encode().c_str());
                                 NextColumn();
                                 Text("%hu/%hu/%hu %02hu:%02hu", dt.year, dt.month, dt.day, dt.hour, dt.minute);
                                 NextColumn();

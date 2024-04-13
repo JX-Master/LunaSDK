@@ -22,16 +22,16 @@ namespace Luna
         {
             if(window->is_full_screen())
             {
-                window->set_display_settings(Window::WindowDisplaySettings::as_windowed());
+                lupanic_if_failed(window->set_display_settings(Window::WindowDisplaySettings::as_windowed()));
             }
             else
             {
-                window->set_display_settings(Window::WindowDisplaySettings::as_full_screen());
+                lupanic_if_failed(window->set_display_settings(Window::WindowDisplaySettings::as_full_screen()));
             }
         }
         else if(key == HID::KeyCode::r)
         {
-            window->set_resizable(!window->is_resizable());
+            lupanic_if_failed(window->set_resizable(!window->is_resizable()));
         }
     }
 

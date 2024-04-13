@@ -94,15 +94,15 @@ void run()
         desc.color_attachments[0] = ColorAttachment(back_buffer, LoadOp::clear, StoreOp::store, { 0.0f, 0.0f, 0.0f, 1.0f });
         cmdbuf->begin_render_pass(desc);
         cmdbuf->end_render_pass();
-        ImGuiUtils::render_draw_data(ImGui::GetDrawData(), cmdbuf, back_buffer);
+        lupanic_if_failed(ImGuiUtils::render_draw_data(ImGui::GetDrawData(), cmdbuf, back_buffer));
         cmdbuf->resource_barrier({},
         {
             {swap_chain->get_current_back_buffer().get(), SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::present, ResourceBarrierFlag::none}
         });
-        cmdbuf->submit({}, {}, true);
+        lupanic_if_failed(cmdbuf->submit({}, {}, true));
         cmdbuf->wait();
-        swap_chain->present();
-        cmdbuf->reset();
+        lupanic_if_failed(swap_chain->present());
+        lupanic_if_failed(cmdbuf->reset());
     }
 }
 

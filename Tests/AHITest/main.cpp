@@ -109,6 +109,7 @@ struct AudioSourceCallback
                 case AHI::BitDepth::f32:
                 dst_buffer = write_f32(dst_buffer, sample, format.num_channels);
                 break;
+                default: break;
             }
         }
         time += (f32)num_frames / (f32)format.sample_rate;
@@ -313,6 +314,7 @@ RV run()
                                 case AHI::BitDepth::s24: bit_depth = "24bit"; break;
                                 case AHI::BitDepth::s32: bit_depth = "32bit"; break;
                                 case AHI::BitDepth::f32: bit_depth = "32bit(float)"; break;
+                                default: break;
                             }
                             Text("Playback: %s, %uHz, %u channels", bit_depth, device->get_sample_rate(), device->get_playback_num_channels());
                             bd = device->get_capture_bit_depth();
@@ -323,6 +325,7 @@ RV run()
                                 case AHI::BitDepth::s24: bit_depth = "24bit"; break;
                                 case AHI::BitDepth::s32: bit_depth = "32bit"; break;
                                 case AHI::BitDepth::f32: bit_depth = "32bit(float)"; break;
+                                default: break;
                             }
                             Text("Capture: %s, %uHz, %u channels", bit_depth, device->get_sample_rate(), device->get_capture_num_channels());
                         }

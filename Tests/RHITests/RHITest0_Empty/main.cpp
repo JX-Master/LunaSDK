@@ -16,7 +16,7 @@ using namespace Luna;
 
 void run()
 {
-    RHITestBed::run();
+    lupanic_if_failed(RHITestBed::run());
 }
 
 int main()

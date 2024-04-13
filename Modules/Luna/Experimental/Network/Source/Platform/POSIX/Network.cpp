@@ -44,7 +44,7 @@ namespace Luna
                     m_socket = -1;
                 }
             }
-            virtual opaque_t get_native_handle() override { return (opaque_t)m_socket; }
+            virtual opaque_t get_native_handle() override { return (opaque_t)(usize)m_socket; }
             virtual RV read(void* buffer, usize size, usize* read_bytes) override;
             virtual RV write(const void* buffer, usize size, usize* write_bytes) override;
             virtual RV bind(const SocketAddress& address) override;

@@ -18,11 +18,13 @@ namespace Luna
             m_desc = desc;
             m_buffer = box(m_device->m_device->newBuffer(sizeof(u64) * desc.count, encode_resource_options(RHI::MemoryType::readback)));
             if(!m_buffer) return BasicError::bad_platform_call();
+            return ok;
         }
         RV BufferQueryHeap::get_occlusion_values(u32 index, u32 count, u64* values)
         {
             const u64* data = (const u64*)m_buffer->contents();
             memcpy(values, data + index, count * sizeof(u64));
+            return ok;
         }
         RV CounterSampleQueryHeap::init(const QueryHeapDesc& desc)
         {

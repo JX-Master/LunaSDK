@@ -132,8 +132,8 @@ namespace Luna
                 m_queue_lock = new_mutex();
             }
 
-            Cluster* get_cluster(Span<const typeinfo_t> components, Span<const entity_id_t> tags,
-                bool create_if_not_exist);
+            virtual Cluster* get_cluster(Span<const typeinfo_t> components, Span<const entity_id_t> tags,
+                bool create_if_not_exist) override;
             EntityRecord* get_entity_record(entity_id_t id);
             EntityRecord* get_or_create_entity_record(entity_id_t id);
 

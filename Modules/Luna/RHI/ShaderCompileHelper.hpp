@@ -46,7 +46,9 @@ namespace Luna
                 case ShaderCompiler::TargetFormat::dxil: return ShaderDataFormat::dxil; break;
                 case ShaderCompiler::TargetFormat::spir_v: return ShaderDataFormat::spirv; break;
                 case ShaderCompiler::TargetFormat::msl: return ShaderDataFormat::msl; break;
+                default: break;
             }
+            return ShaderDataFormat::none;
         }
 
         //! Gets one @ref ShaderData structure that referrs the specified compile result.

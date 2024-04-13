@@ -482,7 +482,7 @@ namespace Luna
                 luexp(Image::write_dds_file(f, image));
                 f.reset();
             }
-            Asset::load_asset(asset);
+            luexp(Asset::load_asset(asset));
         }
         lucatch
         {
@@ -714,13 +714,13 @@ namespace Luna
                     switch(file.m_dds_desc.dimension)
                     {
                         case Image::DDSDimension::tex1d:
-                            ImGui::Text("1D Texture", file.m_dds_desc.width);
+                            ImGui::Text("1D Texture");
                             break;
                         case Image::DDSDimension::tex2d:
-                            ImGui::Text("2D Texture", file.m_dds_desc.width);
+                            ImGui::Text("2D Texture");
                             break;
                         case Image::DDSDimension::tex3d:
-                            ImGui::Text("3D Texture", file.m_dds_desc.width);
+                            ImGui::Text("3D Texture");
                             break;
                         default: lupanic();
                     }

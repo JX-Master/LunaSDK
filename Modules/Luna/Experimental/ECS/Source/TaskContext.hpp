@@ -51,7 +51,7 @@ namespace Luna
             virtual entity_id_t add_entity() override { return m_data.add_entity(m_world->m_entity_id_allocator.allocate_id()); }
             virtual void remove_entity(entity_id_t id) override { return m_data.remove_entity(id); }
             virtual void remove_all_entities() override { m_data.remove_all_entities(); }
-            virtual void set_target_entity(entity_id_t id) { m_data.set_target_entity(id); }
+            virtual void set_target_entity(entity_id_t id) override { m_data.set_target_entity(id); }
             virtual void* add_component(typeinfo_t component_type, bool allow_overwrite, usize* data_index) override { return m_data.add_component(component_type, allow_overwrite, data_index); }
             virtual void* get_temp_component_data(typeinfo_t component_type, usize index) override { return m_data.get_temp_component_data(component_type, index); }
             virtual void remove_component(typeinfo_t component_type) override { m_data.remove_component(component_type); }

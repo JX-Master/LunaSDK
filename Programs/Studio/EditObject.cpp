@@ -197,7 +197,7 @@ namespace Luna
             label.append(Asset::get_asset_type(asset).c_str());
         }
 
-        ImGui::Text(name);
+        ImGui::Text("%s", name);
         ImGui::SameLine();
 
         auto pos_before = ImGui::GetCursorScreenPos();
@@ -226,7 +226,7 @@ namespace Luna
 
             ImGui::SetCursorScreenPos(pos_after);
             auto path = Asset::get_asset_path(asset);
-            Text(path.encode().c_str());
+            Text("%s", path.encode().c_str());
             SameLine();
             PushID(name);
             if (Button("Clear"))

@@ -105,12 +105,12 @@ RV start()
                     image_desc.width, image_desc.height, 1)}));
             luset(desc_set, device->new_descriptor_set(DescriptorSetDesc(desc_set_layout)));
 
-            desc_set->update_descriptors(
+            luexp(desc_set->update_descriptors(
                 {
                     WriteDescriptorSet::read_texture_view(0, TextureViewDesc::tex2d(tex)),
                     WriteDescriptorSet::sampler(1, SamplerDesc(Filter::linear, Filter::linear, Filter::linear, TextureAddressMode::clamp,
                             TextureAddressMode::clamp, TextureAddressMode::clamp))
-                });
+                }));
         }
     }
     lucatchret;
@@ -139,7 +139,7 @@ void draw()
     };
 
     void* mapped = nullptr;
-    vb->map(0, 0, &mapped);
+    lupanic_if_failed(vb->map(0, 0, &mapped));
     memcpy(mapped, data, sizeof(data));
     vb->unmap(0, sizeof(data));
 

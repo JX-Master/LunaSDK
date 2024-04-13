@@ -740,7 +740,7 @@ namespace Luna
         }
         if (Asset::get_asset_state(m_scene) == Asset::AssetState::unloaded)
         {
-            Asset::load_asset(m_scene);
+            auto _ = Asset::load_asset(m_scene);
         }
         if (Asset::get_asset_state(m_scene) != Asset::AssetState::loaded)
         {

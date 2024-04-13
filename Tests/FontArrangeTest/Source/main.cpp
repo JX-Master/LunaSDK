@@ -178,7 +178,7 @@ void run()
         section.font_atlas = g_font_atlas;
         String fps_text;
         fps_text.append("FPS: ");
-        sprintf(buf, "%f", 1000.0f / g_frame_time);
+        snprintf(buf, 64, "%f", 1000.0f / g_frame_time);
         fps_text.append(buf);
         fps_text.push_back('\n');
         section.num_chars = fps_text.size();

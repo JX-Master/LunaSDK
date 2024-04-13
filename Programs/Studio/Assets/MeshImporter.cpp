@@ -216,7 +216,7 @@ namespace Luna
             auto json_data = VariantUtils::write_json(data);
             luexp(f->write(json_data.data(), json_data.size()));
             f.reset();
-            Asset::load_asset(asset);
+            luexp(Asset::load_asset(asset));
         }
         lucatch
         {
@@ -287,7 +287,7 @@ namespace Luna
         }
         else
         {
-            ImGui::Text(m_source_file_path.encode().c_str());
+            ImGui::Text("%s", m_source_file_path.encode().c_str());
             ImGui::Text("Object Information:");
 
             ImGui::Text("Vertex entries count: %u", (u32)m_obj_file.attributes.vertices.size());
