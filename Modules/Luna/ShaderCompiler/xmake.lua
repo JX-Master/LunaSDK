@@ -17,7 +17,7 @@ luna_sdk_module_target("ShaderCompiler")
         add_includedirs("$(projectdir)/SDKs/dxc/macosx/include")
         add_cxflags("-fms-extensions")
         add_linkdirs("$(projectdir)/SDKs/dxc/macosx/lib")
-        add_rpathdirs("$(projectdir)/SDKs/dxc/macosx/lib")
+        add_rpathdirs("@executable_path/.")
     end
     add_links("dxcompiler")
     after_build(function(target)
