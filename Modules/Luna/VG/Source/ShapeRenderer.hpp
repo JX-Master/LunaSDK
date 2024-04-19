@@ -43,8 +43,6 @@ namespace Luna
 
             RV create_pso(RHI::Format rt_format);
 
-            RV init(RHI::ITexture* render_target);
-
             virtual RV set_render_target(RHI::ITexture* render_target) override;
 
             virtual RV render(

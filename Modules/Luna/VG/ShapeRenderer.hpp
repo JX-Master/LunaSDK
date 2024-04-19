@@ -48,7 +48,7 @@ namespace Luna
         //! Creates a new shape renderer that draws filled shape contours.
         //! @param[in] render_target The texture used as the render target of the renderer.
         //! @return Returns the created shape renderer.
-        LUNA_VG_API R<Ref<IShapeRenderer>> new_fill_shape_renderer(RHI::ITexture* render_target);
+        LUNA_VG_API Ref<IShapeRenderer> new_fill_shape_renderer();
 
         //! @}
     }

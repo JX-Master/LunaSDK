@@ -80,6 +80,10 @@ namespace Luna
                 m_state_dirty(false)
             {}
 
+            virtual RHI::IDevice* get_device() override
+            {
+                return m_device;
+            }
             virtual void reset() override;
             virtual Vector<f32>& get_shape_points() override
             {
@@ -182,9 +186,9 @@ namespace Luna
             {
                 return m_index_buffer_size;
             }
-            virtual void get_draw_calls(Vector<ShapeDrawCall>& out_draw_calls) override
+            virtual Span<const ShapeDrawCall> get_draw_calls() override
             {
-                out_draw_calls.insert(out_draw_calls.end(), m_draw_calls.begin(), m_draw_calls.end());
+                return m_draw_calls.cspan();
             }
         };
     }

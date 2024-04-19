@@ -129,11 +129,11 @@ void init()
     }
 
     lupanic_if_failed(recreate_window_resources(sz.x, sz.y));
-    g_shape_renderer = VG::new_fill_shape_renderer(g_swap_chain->get_current_back_buffer().get()).get();
+    g_shape_renderer = VG::new_fill_shape_renderer().get();
     g_command_buffer = dev->new_command_buffer(g_command_queue).get();
 
     auto font = Font::get_default_font();
-    g_font_atlas = VG::new_font_atlas(font, 0);
+    g_font_atlas = VG::new_font_atlas();
 }
 
 void run()
@@ -205,10 +205,11 @@ void run()
             const c8* text = "Vector Graphics";
             VG::TextArrangeSection section;
             section.font_size = 128;
-            section.font_atlas = g_font_atlas;
+            section.font_file = Font::get_default_font();
+            section.font_index = 0;
             RectF bounding_rect = RectF(0, 0, window_sz.x, window_sz.y - 100.0f);
             auto arrange_result = VG::arrange_text(text, 15, {&section, 1}, bounding_rect, VG::TextAlignment::begin, VG::TextAlignment::center);
-            lupanic_if_failed(VG::commit_text_arrange_result(arrange_result, { &section, 1 }, g_shape_draw_list));
+            lupanic_if_failed(VG::commit_text_arrange_result(arrange_result, { &section, 1 }, g_font_atlas, g_shape_draw_list));
         }
 
         constexpr f32 shape_scale = 2.0f;
@@ -261,16 +262,13 @@ void run()
         g_command_buffer->begin_render_pass(desc);
         g_command_buffer->end_render_pass();
 
-        Vector<VG::ShapeDrawCall> dcs;
-        g_shape_draw_list->get_draw_calls(dcs);
-
         lupanic_if_failed(g_shape_renderer->set_render_target(g_swap_chain->get_current_back_buffer().get()));
 
         Float4x4 proj_matrix = ProjectionMatrix::make_perspective_fov(PI / 3.0f, (f32)window_sz.x / (f32)window_sz.y, 0.3f, 10000.0f);
         Float4x4 view_matrix = inverse(AffineMatrix::make(g_camera_position, g_camera_rotation, Float3(1.0f)));
         Float4x4U mat = Float4x4U(mul(view_matrix, proj_matrix));
 
-        lupanic_if_failed(g_shape_renderer->render(g_command_buffer, g_shape_draw_list->get_vertex_buffer(), g_shape_draw_list->get_index_buffer(),  { dcs.data(), (u32)dcs.size() }, &mat));
+        lupanic_if_failed(g_shape_renderer->render(g_command_buffer, g_shape_draw_list->get_vertex_buffer(), g_shape_draw_list->get_index_buffer(),  g_shape_draw_list->get_draw_calls(), &mat));
 
         g_command_buffer->resource_barrier({},
             {

@@ -46,9 +46,9 @@ namespace Luna
         struct ShapeDrawCall
         {
             //! The shape buffer bind to this draw call.
-            RHI::IBuffer* shape_buffer;
+            Ref<RHI::IBuffer> shape_buffer;
             //! The texture bind to this draw call. May be `nullptr`.
-            RHI::ITexture* texture;
+            Ref<RHI::ITexture> texture;
             //! The attached sampler for this draw call.
             RHI::SamplerDesc sampler;
             //! The fist index to draw for this draw call.
@@ -66,6 +66,10 @@ namespace Luna
         struct IShapeDrawList : virtual Interface
         {
             luiid("{14F1CA71-7B2D-4072-A2EE-DFD64B62FCD5}");
+
+            //! Gets the bounded RHI device.
+            //! @return Returns the bounded RHI device.
+            virtual RHI::IDevice* get_device() = 0;
 
             //! Resets the draw list. The call clears all shapes recorded, but retains their memory
             //! and resources, so they can be reused for new shapes.
@@ -195,7 +199,7 @@ namespace Luna
             //! Gets an array of draw calls that should be invoked to draw glyphs in this draw list.
             //! @param[out] out_draw_calls Returns the compiled draw calls. Elements will be pushed to the end of the vector,
             //! and existing elements will not be modified.
-            virtual void get_draw_calls(Vector<ShapeDrawCall>& out_draw_calls) = 0;
+            virtual Span<const ShapeDrawCall> get_draw_calls() = 0;
         };
 
         //! Creates a new shape draw list.

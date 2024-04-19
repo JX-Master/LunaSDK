@@ -12,6 +12,7 @@
 #include <Luna/Runtime/HashMap.hpp>
 #include <Luna/Runtime/TSAssert.hpp>
 #include <Luna/RHI/Device.hpp>
+#include <Luna/Runtime/UniquePtr.hpp>
 
 namespace Luna
 {
@@ -23,45 +24,43 @@ namespace Luna
             luiimpl();
             lutsassert_lock();
 
-            struct ShapeDesc
+            struct GlyphDesc
             {
-                usize first_shape_point;
-                usize num_shape_points;
-                RectF bounding_rect;
+                u32 m_first_command;
+                u32 m_num_commands;
+                RectF m_bounding_rect;
             };
 
-            struct GlyphData
+            struct FontGlyphs
             {
-                i32 m_advance_width;
-                i32 m_left_side_bearing;
-                Font::glyph_t m_glyph;
-                usize m_shape_index;
+                HashMap<u32, GlyphDesc> m_glyphs;
             };
 
-            Ref<RHI::IDevice> m_device;
-            Ref<Font::IFontFile> m_font;
-            u32 m_font_index;
             Vector<f32> m_shape_points;
-            Vector<ShapeDesc> m_shapes;
-            HashMap<u64, GlyphData> m_shape_map;
+            HashMap<Pair<Font::IFontFile*, u32>, UniquePtr<FontGlyphs>> m_shapes;
+
+            Font::IFontFile* m_current_font;
+            u32 m_current_font_index;
+            FontGlyphs* m_current_font_glyphs;
+
+            GlyphDesc m_default_glyph;
 
             Ref<RHI::IBuffer> m_shape_buffer;
             usize m_shape_buffer_capacity;
             bool m_shape_buffer_dirty;
 
-            i32 m_ascent;
-            i32 m_descent;
-            i32 m_line_gap;
-
             FontAtlas() :
                 m_shape_buffer_capacity(0),
-                m_shape_buffer_dirty(false) {}
+                m_shape_buffer_dirty(false) 
+            {
+                clear();
+            }
 
             usize add_shape(Span<const f32> points, const RectF* bounding_rect);
+
             void load_default_glyph();
-            bool load_glyph(u32 codepoint);
-            usize get_glyph_shape_index(u32 codepoint);
-            RV recreate_buffer();
+
+            RV recreate_buffer(RHI::IDevice* device);
 
             virtual void clear() override
             {
@@ -69,40 +68,45 @@ namespace Luna
                 m_shape_points.clear();
                 m_shapes.clear();
                 m_shape_buffer_dirty = false;
-                m_shape_map.clear();
+                m_current_font = nullptr;
+                m_current_font_index = 0;
+                m_current_font_glyphs = nullptr;
                 load_default_glyph();
             }
             virtual Font::IFontFile* get_font(u32* index) override
             {
                 lutsassert();
-                if (index) *index = m_font_index;
-                return m_font;
+                if (index) *index = m_current_font_index;
+                return m_current_font;
             }
             virtual void set_font(Font::IFontFile* font, u32 index) override
             {
                 lutsassert();
-                m_font = font;
-                m_font_index = index;
-                font->get_vmetrics(index, &(m_ascent), &(m_descent), &(m_line_gap));
-                clear();
+                m_current_font = font;
+                m_current_font_index = index;
+                auto iter = m_shapes.find(make_pair(font, index));
+                if(iter == m_shapes.end())
+                {
+                    iter = m_shapes.insert(make_pair(make_pair(font, index), UniquePtr<FontGlyphs>(memnew<FontGlyphs>()))).first;
+                }
+                m_current_font_glyphs = iter->second.get();
             }
-            // void get_glyph_hmetrics(u32 codepoint, i32* advance_width, i32* left_side_bearing);
-            // f32 scale_for_pixel_height(f32 pixels)
-            // {
-            //     lutsassert();
-            //     return m_font->scale_for_pixel_height(m_font_index, pixels);
-            // }
-            // void get_vmetrics(i32* ascent, i32* descent, i32* line_gap)
-            // {
-            //     lutsassert();
-            //     if (ascent) *ascent = m_ascent;
-            //     if (descent) *descent = m_descent;
-            //     if (line_gap) *line_gap = m_line_gap;
-            // }
-            // i32 get_kern_advance(u32 ch1, u32 ch2);
-            virtual R<RHI::IBuffer*> get_shape_buffer() override;
-            virtual Span<const f32> get_shape_points() override;
-            virtual void get_glyph(usize codepoint, usize* first_shape_point, usize* num_shape_points, RectF* bounding_rect) override;
+            virtual R<RHI::IBuffer*> get_shape_buffer(RHI::IDevice* device) override;
+            virtual Span<const f32> get_shape_points() override
+            {
+                lutsassert();
+                return { m_shape_points.data(), m_shape_points.size() };
+            }
+            virtual void get_glyph(u32 codepoint, usize* first_shape_point, usize* num_shape_points, RectF* bounding_rect) override;
         };
     }
+
+    template<>
+    struct hash<Pair<Font::IFontFile*, u32>>
+    {
+        usize operator()(const Pair<Font::IFontFile*, u32>& key)
+        {
+            return hash<Font::IFontFile*>()(key.first) ^ hash<u32>()(key.second);
+        }
+    };
 }

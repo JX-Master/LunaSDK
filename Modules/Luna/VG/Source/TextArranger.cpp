@@ -11,44 +11,12 @@
 #define LUNA_VG_API LUNA_EXPORT
 #include "../TextArranger.hpp"
 #include <Luna/Runtime/Unicode.hpp>
+#include "../Shapes.hpp"
 
 namespace Luna
 {
     namespace VG
     {
-        bool should_rotate_in_vertical_line(u32 codepoint)
-        {
-            if (
-                (codepoint >= 0x3000 && codepoint <= 0x30ff) || // Japanese characters.
-                (codepoint >= 0xff00 && codepoint <= 0xffef) || // Japanese katakana (semi).
-                (codepoint >= 0xAC00 && codepoint <= 0xD7FF) || // Korean characters.
-                (codepoint >= 0x4e00 && codepoint <= 0x9fff) || // Basic Chinese characters / Basic Chinese characters extension.
-                (codepoint >= 0x3400 && codepoint <= 0x4DBF) || // Chinese characters extension A.
-                (codepoint >= 0x20000 && codepoint <= 0x2A6DF) || // Chinese characters extension B.
-                (codepoint >= 0x2A700 && codepoint <= 0x2B738) || // Chinese characters extension C.
-                (codepoint >= 0x2B740 && codepoint <= 0x2B81D) || // Chinese characters extension D.
-                (codepoint >= 0x2B820 && codepoint <= 0x2CEA1) || // Chinese characters extension E.
-                (codepoint >= 0x2CEB0 && codepoint <= 0x2EBE0) || // Chinese characters extension F.
-                (codepoint >= 0x30000 && codepoint <= 0x3134A) || // Chinese characters extension G.
-                (codepoint >= 0x2F00 && codepoint <= 0x2FD5) ||
-                (codepoint >= 0x2E80 && codepoint <= 0x2EF3) ||
-                (codepoint >= 0xF900 && codepoint <= 0xFAD9) ||
-                (codepoint >= 0x2F800 && codepoint <= 0x2FA1D) ||
-                (codepoint >= 0xE815 && codepoint <= 0xE86F) ||
-                (codepoint >= 0xE400 && codepoint <= 0xE5E8) ||
-                (codepoint >= 0xE600 && codepoint <= 0xE6CF) ||
-                (codepoint >= 0x31C0 && codepoint <= 0x31E3) ||
-                (codepoint >= 0x2FF0 && codepoint <= 0x2FFB) ||
-                (codepoint >= 0x3105 && codepoint <= 0x312F) ||
-                (codepoint >= 0x31A0 && codepoint <= 0x31BA) ||
-                (codepoint == 0x3007)
-                )
-            {
-                return false;
-            }
-            return true;
-        }
-
         struct TextStream
         {
             const c8* m_text;
@@ -63,7 +31,8 @@ namespace Luna
 
             // Current state info. reloaded by `load_current_state`.
 
-            IFontAtlas* m_font_atlas;
+            Font::IFontFile* m_font;
+            u32 m_font_index;
             f32 m_font_scale;
             f32 m_ascent;
             f32 m_decent;
@@ -106,20 +75,19 @@ namespace Luna
                 load_current_char();
             }
 
-            IFontAtlas* get_next_char_font_file(f32& font_scale);
+            Pair<Font::IFontFile*, u32> get_next_char_font_file(f32& font_scale);
 
         };
         void TextStream::load_current_section()
         {
             if (m_section_cursor < m_sections.size())
             {
-                lucheck_msg(m_sections[m_section_cursor].font_atlas, "TextArrangeSection::font_atlas must not be nullptr!");
-                m_font_atlas = m_sections[m_section_cursor].font_atlas;
-                u32 font_index;
-                auto font_file = m_font_atlas->get_font(&font_index);
-                m_font_scale = font_file->scale_for_pixel_height(font_index, m_sections[m_section_cursor].font_size);
+                lucheck_msg(m_sections[m_section_cursor].font_file, "TextArrangeSection::font_file must not be nullptr!");
+                m_font = m_sections[m_section_cursor].font_file;
+                m_font_index = m_sections[m_section_cursor].font_index;
+                m_font_scale = m_font->scale_for_pixel_height(m_font_index, m_sections[m_section_cursor].font_size);
                 i32 a, d, l;
-                font_file->get_vmetrics(font_index, &a, &d, &l);
+                m_font->get_vmetrics(m_font_index, &a, &d, &l);
                 m_ascent = (f32)a * m_font_scale;
                 m_decent = (f32)d * m_font_scale;
                 m_line_gap = (f32)l * m_font_scale;
@@ -135,32 +103,31 @@ namespace Luna
             {
                 m_char = utf8_decode_char(m_text + m_cursor);
                 i32 advance_width, left_side_bearing;
-                u32 font_index;
-                auto font_file = m_font_atlas->get_font(&font_index);
-                font_file->get_glyph_hmetrics(font_index, font_file->find_glyph(font_index, m_char), &advance_width, &left_side_bearing);
+                u32 font_index = m_font_index;
+                auto font_file = m_font;
+                auto glyph = font_file->find_glyph(font_index, m_char);
+                font_file->get_glyph_hmetrics(font_index, glyph, &advance_width, &left_side_bearing);
                 m_char_advance_length = (f32)advance_width * m_font_scale;
                 m_char_left_side_bearing = (f32)left_side_bearing * m_font_scale;
-                RectF rect;
-                m_font_atlas->get_glyph(m_char, nullptr, nullptr, &rect);
+                RectI rect = font_file->get_glyph_bounding_box(font_index, glyph);
                 m_char_bounding_rect = RectF(rect.offset_x * m_font_scale, rect.offset_y * m_font_scale,
                     rect.width * m_font_scale, rect.height * m_font_scale);
             }
         }
 
-        IFontAtlas* TextStream::get_next_char_font_file(f32& font_scale)
+        Pair<Font::IFontFile*, u32> TextStream::get_next_char_font_file(f32& font_scale)
         {
             usize next_cursor = m_cursor + utf8_charspan(m_char);
             if (m_section_cursor < (m_sections.size() - 1) && m_next_section_begin <= m_cursor)
             {
                 usize section_cursor = m_section_cursor + 1;
-                auto font = m_sections[section_cursor].font_atlas;
-                u32 font_index;
-                auto font_file = font->get_font(&font_index);
+                auto font_file = m_sections[section_cursor].font_file;
+                u32 font_index = m_sections[section_cursor].font_index;
                 font_scale = font_file->scale_for_pixel_height(font_index, m_sections[section_cursor].font_size);
-                return font;
+                return make_pair(font_file, font_index);
             }
             font_scale = m_font_scale;
-            return m_font_atlas;
+            return make_pair(m_font, m_font_index);
         }
 
         LUNA_VG_API TextArrangeResult arrange_text(
@@ -233,11 +200,11 @@ namespace Luna
                     if (next_char)
                     {
                         f32 next_font_scale;
-                        auto next_font_atlas = s.get_next_char_font_file(next_font_scale);
-                        u32 next_font_index;
-                        auto next_font_file = next_font_atlas->get_font(&next_font_index);
-                        u32 font_index;
-                        auto font_file = s.m_font_atlas->get_font(&font_index);
+                        auto next_font_pair = s.get_next_char_font_file(next_font_scale);
+                        u32 next_font_index = next_font_pair.second;
+                        auto next_font_file = next_font_pair.first;
+                        u32 font_index = s.m_font_index;
+                        auto font_file = s.m_font;
                         kern = max((f32)font_file->get_kern_advance(font_index, font_file->find_glyph(font_index, s.m_char), font_file->find_glyph(font_index, next_char)) * s.m_font_scale,
                             (f32)next_font_file->get_kern_advance(next_font_index, next_font_file->find_glyph(next_font_index, s.m_char), next_font_file->find_glyph(next_font_index, next_char)) * next_font_scale);
                     }
@@ -372,6 +339,7 @@ namespace Luna
         LUNA_VG_API RV commit_text_arrange_result(
             const TextArrangeResult& result,
             Span<const TextArrangeSection> sections,
+            IFontAtlas* font_atlas,
             IShapeDrawList* draw_list
         )
         {
@@ -379,6 +347,15 @@ namespace Luna
             {
                 usize state_index = 0;
                 usize next_section_begin = sections[state_index].num_chars;
+                font_atlas->set_font(sections[state_index].font_file, sections[state_index].font_index);
+                // write glyphs to font atlas.
+                for (auto& line : result.lines)
+                {
+                    for (auto& glyph : line.glyphs)
+                    {
+                        font_atlas->get_glyph(glyph.character, nullptr, nullptr, nullptr); 
+                    }
+                }
                 for (auto& line : result.lines)
                 {
                     for (auto& glyph : line.glyphs)
@@ -388,15 +365,16 @@ namespace Luna
                         {
                             ++state_index;
                             next_section_begin += sections[state_index].num_chars;
+                            font_atlas->set_font(sections[state_index].font_file, sections[state_index].font_index);
                         }
                         // Draw this glyph.
                         usize size;
                         RectF shape_coord;
                         usize offset;
-                        sections[state_index].font_atlas->get_glyph(glyph.character, &offset, &size, &shape_coord);
+                        font_atlas->get_glyph(glyph.character, &offset, &size, &shape_coord);
                         if (glyph.bounding_rect.width != 0.0f && glyph.bounding_rect.height != 0.0f)
                         {
-                            lulet(shape_buffer, sections[state_index].font_atlas->get_shape_buffer());
+                            lulet(shape_buffer, font_atlas->get_shape_buffer(draw_list->get_device()));
                             draw_list->set_shape_buffer(shape_buffer);
                             draw_list->draw_shape((u32)offset, (u32)size,
                                 Float2U(glyph.bounding_rect.offset_x, glyph.bounding_rect.offset_y),

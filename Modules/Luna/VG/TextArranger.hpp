@@ -93,10 +93,12 @@ namespace Luna
         //! Describes parameters used to arrange one text section.
         struct TextArrangeSection
         {
-            //! The font atlas used to record glyphs in this section.
-            IFontAtlas* font_atlas = nullptr;
+            //! The font file to use.
+            Font::IFontFile* font_file = nullptr;
             //! The number of @ref c8 characters in this section.
             usize num_chars = 0;
+            //! The font index to use.
+            u32 font_index = 0;
             //! The font color in RGBA8 format.
             u32 color = 0xFFFFFFFF;
             //! The font size.
@@ -133,6 +135,7 @@ namespace Luna
         LUNA_VG_API RV commit_text_arrange_result(
             const TextArrangeResult& result,
             Span<const TextArrangeSection> sections,
+            IFontAtlas* font_atlas,
             IShapeDrawList* draw_list
         );
 

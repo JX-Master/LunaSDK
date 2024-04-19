@@ -119,26 +119,31 @@ namespace Luna
             lucatchret;
             return ok;
         }
-        RV FillShapeRenderer::init(RHI::ITexture* render_target)
-        {
-            return set_render_target(render_target);
-        }
         RV FillShapeRenderer::set_render_target(RHI::ITexture* render_target)
         {
             lutsassert();
-            auto desc = render_target->get_desc();
-            lutry
+            if(render_target)
             {
-                if (m_rt_format != desc.format)
+                auto desc = render_target->get_desc();
+                lutry
                 {
-                    luexp(create_pso(desc.format));
-                    m_rt_format = desc.format;
+                    if (m_rt_format != desc.format)
+                    {
+                        luexp(create_pso(desc.format));
+                        m_rt_format = desc.format;
+                    }
+                    m_render_target = render_target;
+                    m_screen_width = desc.width;
+                    m_screen_height = desc.height;
                 }
-                m_render_target = render_target;
-                m_screen_width = desc.width;
-                m_screen_height = desc.height;
+                lucatchret;
             }
-            lucatchret;
+            else 
+            {
+                m_render_target = nullptr;
+                m_screen_width = 0;
+                m_screen_height = 0;
+            }
             return ok;
         }
         RV FillShapeRenderer::render(
@@ -151,7 +156,12 @@ namespace Luna
         {
             using namespace RHI;
             lutsassert();
+            lucheck_msg(m_render_target, "Call IShapeRenderer::set_render_target() firstly before render()!");
             auto dev = get_main_device();
+            if(draw_calls.size() == 0)
+            {
+                return ok;
+            }
             lutry
             {
                 u32 cb_element_size = (u32)align_upper(sizeof(Float4x4U), dev->check_feature(DeviceFeature::uniform_buffer_data_alignment).uniform_buffer_data_alignment);
@@ -197,7 +207,7 @@ namespace Luna
                     luexp(ds->update_descriptors({
                         WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(m_cbs_resource, i * cb_element_size)),
                         WriteDescriptorSet::read_buffer_view(1, BufferViewDesc::structured_buffer(dc.shape_buffer, 0, num_points, 4)),
-                        WriteDescriptorSet::read_texture_view(2, TextureViewDesc::tex2d(dc.texture ? dc.texture : g_white_tex.get())),
+                        WriteDescriptorSet::read_texture_view(2, TextureViewDesc::tex2d(dc.texture ? dc.texture : g_white_tex)),
                         WriteDescriptorSet::sampler(3, dc.sampler)
                         }));
                 }
@@ -236,15 +246,10 @@ namespace Luna
             lucatchret;
             return ok;
         }
-        LUNA_VG_API R<Ref<IShapeRenderer>> new_fill_shape_renderer(RHI::ITexture* render_target)
+        LUNA_VG_API Ref<IShapeRenderer> new_fill_shape_renderer()
         {
             Ref<IShapeRenderer> ret;
             Ref<FillShapeRenderer> renderer = new_object<FillShapeRenderer>();
-            lutry
-            {
-                luexp(renderer->init(render_target));
-            }
-            lucatchret;
             ret = renderer;
             return ret;
         }
