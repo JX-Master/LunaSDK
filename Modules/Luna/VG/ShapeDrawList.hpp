@@ -46,9 +46,9 @@ namespace Luna
         struct ShapeDrawCall
         {
             //! The shape buffer bind to this draw call.
-            RHI::IBuffer* shape_buffer;
+            Ref<RHI::IBuffer> shape_buffer;
             //! The texture bind to this draw call. May be `nullptr`.
-            RHI::ITexture* texture;
+            Ref<RHI::ITexture> texture;
             //! The attached sampler for this draw call.
             RHI::SamplerDesc sampler;
             //! The fist index to draw for this draw call.
