@@ -7,6 +7,8 @@
 * @author JXMaster
 * @date 2024/3/30
 */
+#include <Luna/Runtime/PlatformDefines.hpp>
+#define LUNA_GUI_API LUNA_EXPORT
 #include "../Widgets.hpp"
 #include "../WidgetList.hpp"
 
