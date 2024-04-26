@@ -182,7 +182,7 @@ namespace Luna
             render_pass.color_attachments[0] = ColorAttachment(base_color_roughness_tex, LoadOp::clear, StoreOp::store, Float4U(0.0f));
             render_pass.color_attachments[1] = ColorAttachment(normal_metallic_tex, LoadOp::clear, StoreOp::store, Float4U(0.0f));
             render_pass.color_attachments[2] = ColorAttachment(emissive_tex, LoadOp::clear, StoreOp::store, Float4U(0.0f));
-            render_pass.depth_stencil_attachment = DepthStencilAttachment(depth_tex, true, LoadOp::clear, StoreOp::store, 1.0F);
+            render_pass.depth_stencil_attachment = DepthStencilAttachment(depth_tex, false, LoadOp::clear, StoreOp::store, 1.0F);
             u32 time_query_begin, time_query_end;
             auto query_heap = ctx->get_timestamp_query_heap(&time_query_begin, &time_query_end);
             if(query_heap)
