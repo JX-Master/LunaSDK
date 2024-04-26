@@ -16,6 +16,9 @@
 #include "../StudioHeader.hpp"
 #include <Luna/RHI/Utility.hpp>
 
+#include <GeometryVert.hpp>
+#include <GeometryPixel.hpp>
+
 namespace Luna
 {
     RV GeometryPassGlobalData::init(RHI::IDevice* device)
@@ -37,9 +40,6 @@ namespace Luna
             luset(m_geometry_pass_playout, device->new_pipeline_layout(PipelineLayoutDesc({ &dl, 1 },
                 PipelineLayoutFlag::allow_input_assembler_input_layout)));
 
-            lulet(vs_blob, compile_shader("Shaders/GeometryVert.hlsl", ShaderCompiler::ShaderType::vertex));
-            lulet(ps_blob, compile_shader("Shaders/GeometryPixel.hlsl", ShaderCompiler::ShaderType::pixel));
-
             GraphicsPipelineStateDesc ps_desc;
             ps_desc.primitive_topology = PrimitiveTopology::triangle_list;
             ps_desc.blend_state = BlendDesc({ AttachmentBlendDesc(true, BlendFactor::one, BlendFactor::zero, BlendOp::add, BlendFactor::one, BlendFactor::zero, BlendOp::add, ColorWriteMask::all) });
@@ -51,8 +51,8 @@ namespace Luna
             InputBindingDesc binding(0, sizeof(Vertex), InputRate::per_vertex);
             ps_desc.input_layout.attributes = { attributes.data(), attributes.size() };
             ps_desc.input_layout.bindings = { &binding, 1 };
-            ps_desc.vs = get_shader_data_from_compile_result(vs_blob);
-            ps_desc.ps = get_shader_data_from_compile_result(ps_blob);
+            ps_desc.vs = LUNA_GET_SHADER_DATA(GeometryVert);
+            ps_desc.ps = LUNA_GET_SHADER_DATA(GeometryPixel);
             ps_desc.pipeline_layout = m_geometry_pass_playout;
             ps_desc.num_color_attachments = 3;
             ps_desc.color_formats[0] = Format::rgba8_unorm;

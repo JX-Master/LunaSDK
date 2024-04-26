@@ -385,7 +385,9 @@ int main(int argc, const char* argv[])
     auto r = run(argc, argv);
     if(failed(r))
     {
-        log_error("LunaShader", "%s", explain(r.errcode()));
+        String errmsg = explain(r.errcode());
+        auto io = get_std_io_stream();
+        io->write(errmsg.c_str(), errmsg.size());
         Luna::close();
         return -1;
     }

@@ -12,6 +12,8 @@
 #include "../SceneRenderer.hpp"
 #include "../StudioHeader.hpp"
 
+#include <BufferVisualization.hpp>
+
 namespace Luna
 {
     RV BufferVisualizationPassGlobalData::init(RHI::IDevice* device)
@@ -31,10 +33,8 @@ namespace Luna
                 PipelineLayoutFlag::deny_vertex_shader_access |
                 PipelineLayoutFlag::deny_pixel_shader_access)));
 
-            lulet(cs_blob, compile_shader("Shaders/BufferVisualization.hlsl", ShaderCompiler::ShaderType::compute));
-
             ComputePipelineStateDesc ps_desc;
-            fill_compute_pipeline_state_desc_from_compile_result(ps_desc, cs_blob);
+            LUNA_FILL_COMPUTE_SHADER_DATA(ps_desc, BufferVisualization);
             ps_desc.pipeline_layout = m_buffer_visualization_pass_playout;
             luset(m_buffer_visualization_pass_pso, device->new_compute_pipeline_state(ps_desc));
         }

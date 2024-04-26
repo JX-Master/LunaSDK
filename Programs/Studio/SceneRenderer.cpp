@@ -20,6 +20,7 @@
 #include "RenderPasses/GeometryPass.hpp"
 #include "RenderPasses/DeferredLightingPass.hpp"
 #include "RenderPasses/BufferVisualizationPass.hpp"
+#include "RenderPasses/BloomPass.hpp"
 #include "StudioHeader.hpp"
 
 namespace Luna
@@ -47,12 +48,13 @@ namespace Luna
                 using namespace RG;
                 
                 RenderGraphDesc desc;
-                desc.passes.resize(8);
+                desc.passes.resize(7);
                 desc.passes[WIREFRAME_PASS] = {"WireframePass", "Wireframe"};
                 desc.passes[GEOMETRY_PASS] = {"GeometryPass", "Geometry"};
                 desc.passes[BUFFER_VIS_PASS] = {"BufferVisualizationPass", "BufferVisualization"};
                 desc.passes[SKYBOX_PASS] = {"SkyBoxPass", "SkyBox"};
                 desc.passes[DEFERRED_LIGHTING_PASS] = {"DeferredLightingPass", "DeferredLighting"};
+                desc.passes[BLOOM_PASS] = {"BloomPass", "Bloom"};
                 desc.passes[TONE_MAPPING_PASS] = {"ToneMappingPass", "ToneMapping"};
                 desc.resources.resize(9);
                 desc.resources[LIGHTING_BUFFER] = { RenderGraphResourceType::transient,
@@ -99,6 +101,11 @@ namespace Luna
                     "EmissiveBuffer",
                     ResourceDesc::as_texture(MemoryType::local,
                         TextureDesc::tex2d(Format::rgba16_float, TextureUsageFlag::read_texture | TextureUsageFlag::color_attachment, 0, 0, 1, 1))};
+                desc.resources[BLOOM_BUFFER] = {RenderGraphResourceType::transient,
+                    RenderGraphResourceFlag::none,
+                    "BloomBuffer",
+                    ResourceDesc::as_texture(MemoryType::local,
+                        TextureDesc::tex2d(Format::rgba16_float, TextureUsageFlag::copy_dest | TextureUsageFlag::read_texture, 0, 0, 1, 1))};
 
                 switch(settings.mode)
                 {
@@ -135,7 +142,10 @@ namespace Luna
                 desc.input_connections.push_back({BUFFER_VIS_PASS, "base_color_roughness_texture", BASE_COLOR_ROUGHNESS_BUFFER});
                 desc.input_connections.push_back({BUFFER_VIS_PASS, "normal_metallic_texture", NORMAL_METALLIC_BUFFER});
                 desc.output_connections.push_back({BUFFER_VIS_PASS, "scene_texture", GBUFFER_VIS_BUFFER});
+                desc.input_connections.push_back({BLOOM_PASS, "scene_texture", LIGHTING_BUFFER});
+                desc.output_connections.push_back({BLOOM_PASS, "bloom_texture", BLOOM_BUFFER});
                 desc.input_connections.push_back({TONE_MAPPING_PASS, "hdr_texture", LIGHTING_BUFFER});
+                desc.input_connections.push_back({TONE_MAPPING_PASS, "bloom_texture", BLOOM_BUFFER});
                 desc.output_connections.push_back({TONE_MAPPING_PASS, "ldr_texture", BACK_BUFFER});
 
                 m_render_graph->set_desc(desc);
@@ -372,6 +382,7 @@ namespace Luna
                     GeometryPass* geometry = cast_object<GeometryPass>(m_render_graph->get_render_pass(GEOMETRY_PASS)->get_object());
                     DeferredLightingPass* lighting = cast_object<DeferredLightingPass>(m_render_graph->get_render_pass(DEFERRED_LIGHTING_PASS)->get_object());
                     ToneMappingPass* tone_mapping = cast_object<ToneMappingPass>(m_render_graph->get_render_pass(TONE_MAPPING_PASS)->get_object());
+                    BloomPass* bloom_pass = cast_object<BloomPass>(m_render_graph->get_render_pass(BLOOM_PASS)->get_object());
                     skybox->camera_fov = camera_component->fov;
                     skybox->camera_type = camera_component->type;
                     skybox->view_to_world = camera_entity->local_to_world_matrix();
@@ -397,6 +408,8 @@ namespace Luna
                     }
                     tone_mapping->exposure = scene_renderer->exposure;
                     tone_mapping->auto_exposure = scene_renderer->auto_exposure;
+                    tone_mapping->bloom_intensity = scene_renderer->bloom_intensity;
+                    bloom_pass->lum_threshold = scene_renderer->bloom_threshold;
                 }
             }
             luexp(m_render_graph->execute(command_buffer));

@@ -82,3 +82,7 @@ namespace Luna
 }
 
 #define LUNA_GET_SHADER_DATA(_shader) Luna::RHI::ShaderData(Luna::Span<const Luna::byte_t>((const Luna::byte_t*)SHADER_DATA_##_shader, SHADER_DATA_SIZE_##_shader), Luna::Name(SHADER_ENTRY_POINT_##_shader), Luna::RHI::get_shader_data_format_from_compile_target_format(SHADER_DATA_FORMAT_##_shader))
+#define LUNA_FILL_COMPUTE_SHADER_DATA(_desc, _shader) {_desc.cs = LUNA_GET_SHADER_DATA(_shader); \
+_desc.metal_numthreads_x = SHADER_METAL_NUMTHREADS_X_##_shader; \
+_desc.metal_numthreads_y = SHADER_METAL_NUMTHREADS_Y_##_shader; \
+_desc.metal_numthreads_z = SHADER_METAL_NUMTHREADS_Z_##_shader; }

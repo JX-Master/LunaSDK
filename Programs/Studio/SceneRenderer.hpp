@@ -104,6 +104,7 @@ namespace Luna
         static constexpr usize BASE_COLOR_ROUGHNESS_BUFFER = 5;
         static constexpr usize NORMAL_METALLIC_BUFFER = 6;
         static constexpr usize EMISSIVE_BUFFER = 7;
+        static constexpr usize BLOOM_BUFFER = 8;
 
         // Passes.
         static constexpr usize WIREFRAME_PASS = 0;
@@ -111,7 +112,8 @@ namespace Luna
         static constexpr usize BUFFER_VIS_PASS = 2;
         static constexpr usize SKYBOX_PASS = 3;
         static constexpr usize DEFERRED_LIGHTING_PASS = 4;
-        static constexpr usize TONE_MAPPING_PASS = 5;
+        static constexpr usize BLOOM_PASS = 5;
+        static constexpr usize TONE_MAPPING_PASS = 6;
         Ref<RHI::IDevice> m_device;
         SceneRendererSettings m_settings;
         Ref<RG::IRenderGraph> m_render_graph;
