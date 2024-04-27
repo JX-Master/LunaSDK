@@ -35,8 +35,10 @@ namespace Luna
             unbound_descriptor_array,
             //! Allow pixel shaders to write and perform atomic operations on buffer and texture data.
             pixel_shader_write,
-            //! The alignment requiremtn for the buffer data start location and size.
+            //! The alignment requirement for the uniform buffer size.
             uniform_buffer_data_alignment,
+            //! The alignment requirement for the offset (first_element * element_size) of one structured buffer view.
+            structured_buffer_offset_alignment,
         };
 
         //! Represents the device feature check result.
@@ -50,6 +52,8 @@ namespace Luna
                 bool pixel_shader_write;
                 //! The feature check result of @ref DeviceFeature::uniform_buffer_data_alignment.
                 u32 uniform_buffer_data_alignment;
+                //! The feature check result of @ref DeviceFeature::structured_buffer_offset_alignment.
+                u32 structured_buffer_offset_alignment;
             };
         };
 

@@ -296,6 +296,9 @@ namespace Luna
             case DeviceFeature::uniform_buffer_data_alignment:
                 ret.uniform_buffer_data_alignment = (u32)m_physical_device_properties.limits.minUniformBufferOffsetAlignment;
                 break;
+            case DeviceFeature::structured_buffer_offset_alignment:
+                ret.structured_buffer_offset_alignment = (u32)m_physical_device_properties.limits.minStorageBufferOffsetAlignment;
+                break;
             default: lupanic();
             }
             return ret;
