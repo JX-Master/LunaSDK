@@ -12,6 +12,7 @@
 #include "CommonVertex.hpp"
 #include "../Scene.hpp"
 #include "../ModelRenderer.hpp"
+#include "../SceneRenderer.hpp"
 
 namespace Luna
 {
@@ -23,6 +24,8 @@ namespace Luna
         Ref<RHI::IDescriptorSetLayout> m_debug_mesh_renderer_dlayout;
         Ref<RHI::IPipelineLayout> m_debug_mesh_renderer_playout;
 
+        u32 m_model_matrices_stride;
+
         RV init(RHI::IDevice* device);
     };
 
@@ -31,8 +34,7 @@ namespace Luna
         lustruct("WireframePass", "{849e92d5-6407-4018-9ee7-4ffa34ab3044}");
         luiimpl();
 
-        Span<Ref<Entity>> ts;
-        Span<Ref<ModelRenderer>> rs;
+        Span<MeshRenderParams> mesh_render_params;
 
         Ref<RHI::IBuffer> camera_cb;
         Ref<RHI::IBuffer> model_matrices;

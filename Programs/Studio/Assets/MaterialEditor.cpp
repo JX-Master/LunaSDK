@@ -90,6 +90,7 @@ namespace Luna
             {
                 edit_asset("Emissive", mat->emissive);
             }
+            ImGui::DragFloat("Emissive Intensity", &mat->emissive_intensity);
         }
         ImGui::End();
     }

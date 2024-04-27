@@ -51,6 +51,8 @@ namespace Luna
             ps_desc.num_color_attachments = 1;
             ps_desc.color_formats[0] = Format::rgba8_unorm;
             luset(m_debug_mesh_renderer_pso, device->new_graphics_pipeline_state(ps_desc));
+            u32 sb_alignment = device->check_feature(RHI::DeviceFeature::structured_buffer_offset_alignment).structured_buffer_offset_alignment;
+            m_model_matrices_stride = (u32)align_upper(sizeof(MeshBuffer), sb_alignment);
         }
         lucatchret;
         return ok;
@@ -92,19 +94,19 @@ namespace Luna
             cmdbuf->set_viewport(Viewport(0.0f, 0.0f, (f32)render_desc.width, (f32)render_desc.height, 0.0f, 1.0f));
             cmdbuf->set_scissor_rect(RectI(0, 0, (i32)render_desc.width, (i32)render_desc.height));
             // Draw Meshes.
-            for (usize i = 0; i < ts.size(); ++i)
+            for (usize i = 0; i < mesh_render_params.size(); ++i)
             {
                 auto vs = device->new_descriptor_set(DescriptorSetDesc(m_global_data->m_debug_mesh_renderer_dlayout)).get();
                 luexp(vs->update_descriptors({
                     WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(camera_cb, 0, (u32)align_upper(sizeof(CameraCB), cb_align))),
-                    WriteDescriptorSet::read_buffer_view(1, BufferViewDesc::structured_buffer(model_matrices, i, 1, sizeof(Float4x4) * 2))
+                    WriteDescriptorSet::read_buffer_view(1, BufferViewDesc::structured_buffer(model_matrices, i, 1, m_global_data->m_model_matrices_stride))
                     }));
                 IDescriptorSet* vs_d = vs.get();
                 cmdbuf->set_graphics_descriptor_sets(0, { &vs_d, 1 });
                 cmdbuf->attach_device_object(vs);
 
                 // Draw pieces.
-                auto mesh = get_asset_or_async_load_if_not_ready<Mesh>(get_asset_or_async_load_if_not_ready<Model>(rs[i]->model)->mesh);
+                auto mesh = get_asset_or_async_load_if_not_ready<Mesh>(get_asset_or_async_load_if_not_ready<Model>(mesh_render_params[i].renderer->model)->mesh);
 
                 auto vb_view = VertexBufferView(mesh->vb, 0,
                     mesh->vb_count * sizeof(Vertex), sizeof(Vertex));

@@ -204,9 +204,9 @@ namespace Luna
             if(normal_metallic_texture == RG::INVALID_RESOURCE) return set_error(BasicError::bad_arguments(), "DeferredLightingPass: Input \"normal_metallic_texture\" is not specified.");
             if(emissive_texture == RG::INVALID_RESOURCE) return set_error(BasicError::bad_arguments(), "DeferredLightingPass: Input \"emissive_texture\" is not specified.");
             RG::ResourceDesc desc = compiler->get_resource_desc(scene_texture);
-            if (desc.texture.format != RHI::Format::rgba32_float)
+            if (desc.texture.format != RHI::Format::rgba16_float)
             {
-                return set_error(BasicError::bad_arguments(), "DeferredLightingPass: Invalid format for \"scene_texture\" is specified. \"scene_texture\" must be Format::rgba32_float.");
+                return set_error(BasicError::bad_arguments(), "DeferredLightingPass: Invalid format for \"scene_texture\" is specified. \"scene_texture\" must be Format::rgba16_float.");
             }
             desc.texture.usages |= RHI::TextureUsageFlag::read_write_texture;
             compiler->set_resource_desc(scene_texture, desc);

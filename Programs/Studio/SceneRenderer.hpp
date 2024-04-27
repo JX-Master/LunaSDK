@@ -10,6 +10,7 @@
 #pragma once
 #include "Scene.hpp"
 #include <Luna/RG/RenderGraph.hpp>
+#include "ModelRenderer.hpp"
 namespace Luna
 {
     struct CameraCB
@@ -31,6 +32,23 @@ namespace Luna
         u32 type;
         Float3U position;
         f32 spot_attenuation_power;
+    };
+
+    struct MeshBuffer
+    {
+        Float4x4U model_to_world;
+        Float4x4U world_to_model;
+    };
+
+    struct MaterialParameters
+    {
+        f32 emissive_intensity;
+    };
+
+    struct MeshRenderParams
+    {
+        Ref<Entity> entity;
+        Ref<ModelRenderer> renderer;
     };
 
     enum class SceneRendererMode : u8
@@ -118,8 +136,14 @@ namespace Luna
         SceneRendererSettings m_settings;
         Ref<RG::IRenderGraph> m_render_graph;
         Ref<RHI::IBuffer> m_camera_cb;
+
+        u32 m_model_matrices_stride;
+        u32 m_material_parameter_stride;
+
         usize m_num_model_matrices = 0;
         Ref<RHI::IBuffer> m_model_matrices;
+        usize m_num_materials = 0;
+        Ref<RHI::IBuffer> m_material_parameters;
         usize m_num_lights = 0;
         Ref<RHI::IBuffer> m_lighting_params;
     };

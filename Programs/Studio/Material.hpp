@@ -33,5 +33,6 @@ namespace Luna
         Asset::asset_t normal;
         Asset::asset_t metallic;
         Asset::asset_t emissive;
+        f32 emissive_intensity = 1.0f;
     };
 }
