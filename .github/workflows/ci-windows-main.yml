@@ -30,7 +30,7 @@ jobs:
       - name: Install xmake
         uses: xmake-io/github-action-setup-xmake@v1
         with:
-          xmake-version: latest
+          xmake-version: '2.8.9'
           actions-cache-folder: .xmake-cache-W${{ steps.cache_key.outputs.key }}
       
       - name: Setup project
