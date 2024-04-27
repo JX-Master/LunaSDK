@@ -20,6 +20,7 @@ luna_sdk_module_target("ShaderCompiler")
         add_rpathdirs("@executable_path/.")
     end
     add_links("dxcompiler")
+    set_exceptions("cxx")
     after_build(function(target)
         if target:is_plat("windows") then 
             if target:is_arch("x64") then 
