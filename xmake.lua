@@ -133,6 +133,7 @@ if is_config("rhi_api", "Vulkan") then
     add_requires("volk", {configs = {header_only = true}})
     add_requires("vulkan-memory-allocator")
 elseif is_config("rhi_api", "D3D12") then 
+    add_requireconfs("d3d12-memory-allocator", {configs = {toolchains = "msvc"}}) -- currently d3d12-memory-allocator does not support clang-cl.
     add_requires("d3d12-memory-allocator")
 end
 
