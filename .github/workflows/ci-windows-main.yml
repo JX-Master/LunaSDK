@@ -40,16 +40,16 @@ jobs:
         run: xmake repo --update
 
       # Fetch xmake dephash
-      - name: Calculate xmake dependencies hash
-        id: dep_hash
-        run: echo "hash=$(xmake l utils.ci.packageskey)" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+      # - name: Calculate xmake dependencies hash
+      #   id: dep_hash
+      #   run: echo "hash=$(xmake l utils.ci.packageskey)" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
 
       # Cache xmake dependencies
-      - name: Retrieve cached xmake dependencies
-        uses: actions/cache@v4
-        with:
-          path: ${{ env.XMAKE_GLOBALDIR }}\.xmake\packages
-          key: ${{ matrix.os }}-${{ matrix.toolchain }}-${{ matrix.arch }}-${{ steps.dep_hash.outputs.hash }}-W${{ steps.cache_key.outputs.key }}
+      # - name: Retrieve cached xmake dependencies
+      #   uses: actions/cache@v4
+      #   with:
+      #     path: ${{ env.XMAKE_GLOBALDIR }}\.xmake\packages
+      #     key: ${{ matrix.os }}-${{ matrix.toolchain }}-${{ matrix.arch }}-${{ steps.dep_hash.outputs.hash }}-W${{ steps.cache_key.outputs.key }}
           
       - name: Configure xmake debug
         run: xmake f --mode=debug --contract_assertion=y --thread_safe_assertion=y --arch=${{ matrix.arch }} --toolchain=${{ matrix.toolchain }} -c -y -v --rhi_debug=y --rhi_api=${{ matrix.rhi_api }} --shared=${{ matrix.shared == 'shared' && 'y' || 'n'}}
