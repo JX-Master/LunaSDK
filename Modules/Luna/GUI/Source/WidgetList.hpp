@@ -7,8 +7,8 @@
 * @author JXMaster
 * @date 2024/3/29
 */
+#pragma once
 #include "../WidgetList.hpp"
-
 namespace Luna
 {
     namespace GUI
@@ -18,32 +18,46 @@ namespace Luna
             lustruct("GUI::WidgetList", "{978cad33-41b8-4d26-b450-3829fd30c55b}");
             luiimpl();
 
-            Vector<u32> m_widget_buffer;
-            Vector<Name> m_texts;
+            Ref<Widget> m_current_widget;
+            Vector<Ref<Widget>> m_widget_stack;
 
-            WidgetList()
-            {
-                reset();
-            }
             virtual void reset() override
             {
-                m_widget_buffer.clear();
-                m_texts.clear();
+                m_current_widget.reset();
+                m_widget_stack.clear();
             }
-            virtual Vector<u32>& get_widget_buffer() override
+            virtual Widget* get_current_widget() override
             {
-                return m_widget_buffer;
+                return m_current_widget;
             }
-            virtual u32 add_text(const Name& text) override
+            virtual void set_current_widget(Widget* widget) override
             {
-                u32 i = (u32)m_texts.size();
-                m_texts.push_back(text);
-                return i;
+                m_current_widget = widget;
             }
-            virtual Name get_text(u32 index) override
+            virtual const Vector<Ref<Widget>> get_widget_stack() override
             {
-                if(index >= m_texts.size()) return Name();
-                return m_texts[index];
+                return m_widget_stack;
+            }
+            virtual void push_widget(Widget* widget) override
+            {
+                m_widget_stack.push_back(widget);
+            }
+            virtual void pop_widget(u32 pop_count) override
+            {
+                while(pop_count)
+                {
+                    m_widget_stack.pop_back();
+                    --pop_count;
+                }
+            }
+            virtual void add_widget(Widget* widget) override
+            {
+                m_current_widget = widget;
+                if(!m_widget_stack.empty())
+                {
+                    m_widget_stack.back()->children.push_back(m_current_widget);
+                    m_current_widget->parent = m_widget_stack.back();
+                }
             }
         };
     }

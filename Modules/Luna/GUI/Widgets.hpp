@@ -7,7 +7,8 @@
 * @author JXMaster
 * @date 2024/3/29
 */
-#include <Luna/Runtime/Name.hpp>
+#pragma once
+#include "WidgetList.hpp"
 
 #ifndef LUNA_GUI_API
 #define LUNA_GUI_API
@@ -17,52 +18,34 @@ namespace Luna
 {
     namespace GUI
     {
-        struct IWidgetList;
+        LUNA_GUI_API void begin_resizable_window(IWidgetList* list);
 
-        enum class Condition : u8
-        {
-            always = 0,
-            add = 1,
-            replace = 2,
-        };
-
-        enum class RectComponent : u8
-        {
-            none = 0,
-            left = 1,
-            top = 2,
-            right = 4,
-            bottom = 8,
-            all = left | top | right | bottom
-        };
-
-        enum class ColorType : u8
-        {
-            background = 0,
-            border = 1,
-            text = 2, // text color.
-        };
-
-        enum class StyleType : u8
-        {
-            text_size, // text height.
-        };
-
-        LUNA_GUI_API void begin_widget(IWidgetList* list);
+        LUNA_GUI_API void begin_rectangle(IWidgetList* list);
 
         LUNA_GUI_API void end(IWidgetList* list);
 
-        LUNA_GUI_API void set_anthor(IWidgetList* list, f32 left, f32 top, f32 right, f32 bottom, Condition condition = Condition::always, RectComponent components = RectComponent::all);
+        inline constexpr u32 VATTR_ANTHOR = strhash32("anthor");
 
-        LUNA_GUI_API void set_rect(IWidgetList* list, f32 left, f32 top, f32 right, f32 bottom, Condition condition = Condition::always, RectComponent components = RectComponent::all);
+        LUNA_GUI_API void set_anthor(IWidgetList* list, f32 left, f32 top, f32 right, f32 bottom);
 
-        LUNA_GUI_API void set_color(IWidgetList* list, ColorType color_type, u32 color, Condition condition = Condition::always);
+        inline constexpr u32 VATTR_OFFSET = strhash32("offset");
+
+        LUNA_GUI_API void set_offset(IWidgetList* list, f32 left, f32 top, f32 right, f32 bottom);
 
         //! Adds one text widget.
         //! @param[in] text The text to draw.
         LUNA_GUI_API void text(IWidgetList* list, const Name& text);
 
-        //! Sets widget style value.
-        LUNA_GUI_API void set_style(IWidgetList* list, StyleType type, f32 value, Condition condition = Condition::always);
+        //! Sets widget scalar attribute value.
+        LUNA_GUI_API void set_sattr(IWidgetList* list, u32 kind, f32 value);
+
+        //! Sets widget vector attribute value.
+        LUNA_GUI_API void set_vattr(IWidgetList* list, u32 kind, const Float4U& value);
+
+        inline constexpr u32 VATTR_BACKGROUND_COLOR = strhash32("background_color");
+
+        inline constexpr u32 SATTR_TEXT_SIZE = strhash32("text_size");
+
+        inline constexpr u32 VATTR_TEXT_COLOR = strhash32("text_color");
     }
 }

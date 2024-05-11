@@ -10,110 +10,41 @@
 #include "../Context.hpp"
 #include <Luna/Runtime/UniquePtr.hpp>
 #include <Luna/VG/TextArranger.hpp>
+#include "../Widget.hpp"
 
 namespace Luna
 {
     namespace GUI
     {
-        enum class WidgetType : u8
-        {
-            container = 0,
-            text = 1
-        };
-
-        struct Widget;
-        struct Widget
-        {
-            WidgetType m_type;
-            Widget* m_parent = nullptr;
-            Vector<Widget*> m_children;
-
-            u32 m_background_color = 0xFFFFFFFF;
-            u32 m_border_color = 0xFFFFFFFF;
-            OffsetRectF m_anthor = OffsetRectF(0, 0, 1, 1);
-            OffsetRectF m_rect = OffsetRectF(0, 0, 0, 0);
-
-            // Generated data.
-            f32 m_min_x;
-            f32 m_min_y;
-            f32 m_max_x;
-            f32 m_max_y;
-
-            Widget(WidgetType type = WidgetType::container) :
-                m_type(type) {}
-            virtual ~Widget() {}
-        };
-
-        struct TextWidget : public Widget
-        {
-            Name m_text;
-            u32 m_text_color = 0xFFFFFFFF;
-            f32 m_text_size = 16.0f;
-
-            // Generated data.
-            VG::TextArrangeResult m_arrange_result;
-            Vector<VG::TextArrangeSection> m_text_arrange_sections;
-
-            TextWidget() :
-                Widget(WidgetType::text) {}
-        };
-
         struct Context : public IContext
         {
             lustruct("GUI::Context", "{2ee81356-fb85-4fea-ad8b-578635de5c6a}");
             luiimpl();
 
             ContextIO m_io;
-            bool m_dirty;
 
-            Vector<UniquePtr<Widget>> m_widgets;
-            Widget* m_root_widget;
-            Widget* m_current_widget;
-            Vector<Widget*> m_widget_stack;
-
+            //! The root widget set by `reset`.
+            Ref<Widget> m_new_root_widget;
+            //! The root widget set by `update` from `m_new_root_widget` after widget diff.
+            Ref<Widget> m_root_widget;
+            Ref<WidgetBuildData> m_root_widget_build_data;
             Ref<VG::IFontAtlas> m_font_atlas;
 
-            Context() :
-                m_dirty(true),
-                m_root_widget(nullptr),
-                m_current_widget(nullptr)
+            Context()
             {
                 m_font_atlas = VG::new_font_atlas();
             }
-
-            Widget* add_widget(WidgetType type)
-            {
-                switch(type)
-                {
-                    case WidgetType::container:
-                        m_widgets.emplace_back(memnew<Widget>());
-                        break;
-                    case WidgetType::text:
-                        m_widgets.emplace_back(memnew<TextWidget>());
-                        break;
-                }
-                m_current_widget = m_widgets.back().get();
-                if(!m_widget_stack.empty())
-                {
-                    m_widget_stack.back()->m_children.push_back(m_current_widget);
-                    m_current_widget->m_parent = m_widget_stack.back();
-                }
-                return m_current_widget;
-            }
-
+            ~Context() {}
             virtual ContextIO& get_io() override
             {
                 return m_io;
             }
-            virtual RV reset(IWidgetList* widget_list) override;
+            virtual void reset(Widget* root_widget) override;
+            void diff_widget_tree();
             virtual RV update() override;
-            virtual bool is_dirty() override
+            virtual VG::IFontAtlas* get_font_altas() override
             {
-                return m_dirty;
-            }
-            virtual void set_dirty() override
-            {
-                m_dirty = true;
+                return m_font_atlas;
             }
             virtual RV render(VG::IShapeDrawList* draw_list) override;
         };

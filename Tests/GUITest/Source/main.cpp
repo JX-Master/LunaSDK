@@ -81,21 +81,22 @@ void run()
             auto& io = ctx->get_io();
             io.width = w;
             io.height = h;
-            ctx->set_dirty();
         }
+        Ref<GUI::Widget> root_widget;
         {
             using namespace GUI;
-            begin_widget(list);
-            set_color(list, ColorType::background, 0);
+            begin_resizable_window(list);
+            root_widget = list->get_current_widget();
+            set_vattr(list, VATTR_BACKGROUND_COLOR, {0, 0, 0, 0});
             for(u32 y = 0; y < 4; ++y)
             {
                 for (u32 x = 0; x < 4; ++x)
                 {
-                    begin_widget(list);
+                    begin_rectangle(list);
                     Float4 color = Float4(((f32)x) / 3, ((f32)y) / 3, 0.0f, 1.0f);
-                    set_color(list, ColorType::background, Color::to_rgba8(color));
+                    set_vattr(list, VATTR_BACKGROUND_COLOR, color);
                     set_anthor(list, ((f32)x) / 4, ((f32)y) / 4, ((f32)x + 1) / 4, ((f32)y + 1) / 4);
-                    begin_widget(list);
+                    begin_rectangle(list);
                     f32 anchor_x_min, anchor_x_max, anchor_y_min, anchor_y_max;
                     f32 rect_x_min, rect_x_max, rect_y_min, rect_y_max;
                     switch(x)
@@ -115,18 +116,18 @@ void run()
                         default: break;
                     }
                     set_anthor(list, anchor_x_min, anchor_y_min, anchor_x_max, anchor_y_max);
-                    set_rect(list, rect_x_min, rect_y_min, rect_x_max, rect_y_max);
+                    set_offset(list, rect_x_min, rect_y_min, rect_x_max, rect_y_max);
                     color.z = 1.0f;
-                    set_color(list, ColorType::background, Color::to_rgba8(color));
+                    set_vattr(list, VATTR_BACKGROUND_COLOR, color);
                     text(list, "Text");
-                    set_style(list, StyleType::text_size, 32);
+                    set_sattr(list, SATTR_TEXT_SIZE, 32);
                     end(list);
                     end(list);
                 }
             }
             end(list);
         }
-        lupanic_if_failed(ctx->reset(list));
+        ctx->reset(root_widget);
         lupanic_if_failed(ctx->update());
         lupanic_if_failed(ctx->render(draw_list));
         lupanic_if_failed(draw_list->compile());
@@ -138,6 +139,7 @@ void run()
         cmdbuf->begin_render_pass(desc);
         cmdbuf->end_render_pass();
         lupanic_if_failed(renderer->render(cmdbuf, draw_list->get_vertex_buffer(), draw_list->get_index_buffer(), draw_list->get_draw_calls()));
+        cmdbuf->resource_barrier({}, {TextureBarrier(back_buffer, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::present)});
         lupanic_if_failed(cmdbuf->submit({}, {}, true));
         cmdbuf->wait();
         lupanic_if_failed(swap_chain->present());
