@@ -14,6 +14,7 @@
 #include <Luna/Runtime/Math/Color.hpp>
 #include <Luna/VG/Shapes.hpp>
 #include "../../Widgets.hpp"
+#include "../../Widgets/Rectangle.hpp"
 
 namespace Luna
 {
@@ -23,7 +24,7 @@ namespace Luna
         {
             lutry
             {
-                Float4U background_color = widget->get_vattr(VATTR_BACKGROUND_COLOR, Float4U(0));
+                Float4U background_color = widget->get_vattr(VATTR_BACKGROUND_COLOR, true, Float4U(0));
                 if(background_color.w != 0)
                 {
                     auto& points = draw_list->get_shape_points();

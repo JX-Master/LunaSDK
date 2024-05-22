@@ -42,10 +42,15 @@ namespace Luna
         //! Sets widget vector attribute value.
         LUNA_GUI_API void set_vattr(IWidgetList* list, u32 kind, const Float4U& value);
 
+        //! Sets widget text attribute value.
+        LUNA_GUI_API void set_tattr(IWidgetList* list, u32 kind, const Name& value);
+
         inline constexpr u32 VATTR_BACKGROUND_COLOR = strhash32("background_color");
 
         inline constexpr u32 SATTR_TEXT_SIZE = strhash32("text_size");
 
         inline constexpr u32 VATTR_TEXT_COLOR = strhash32("text_color");
+
+        inline constexpr u32 TATTR_TEXT = strhash32("text");
     }
 }

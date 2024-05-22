@@ -31,8 +31,8 @@ namespace Luna
                 // Calculate bounding rect.
                 if(parent)
                 {
-                    Float4U anthor = widget->get_vattr(VATTR_ANTHOR, {0, 0, 1, 1});
-                    Float4U offset = widget->get_vattr(VATTR_OFFSET, {0, 0, 0, 0});
+                    Float4U anthor = widget->get_vattr(VATTR_ANTHOR, false, {0, 0, 1, 1});
+                    Float4U offset = widget->get_vattr(VATTR_OFFSET, false, {0, 0, 0, 0});
                     bounding_rect = calc_widget_bounding_rect(parent->bounding_rect, 
                         OffsetRectF{anthor.x, anthor.y, anthor.z, anthor.w}, 
                         OffsetRectF{offset.x, offset.y, offset.z, offset.w});

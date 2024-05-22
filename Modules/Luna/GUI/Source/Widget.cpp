@@ -37,23 +37,107 @@ namespace Luna
             }
             return true;
         }
+        inline bool tattrs_equal(const HashMap<u32, Name>& a, const HashMap<u32, Name>& b)
+        {
+            if (a.size() != b.size()) return false;
+            for(auto& p : a)
+            {
+                auto iter = b.find(p.first);
+                if(iter == b.end()) return false;
+                if(p.second != iter->second) return false;
+            }
+            return true;
+        }
         LUNA_GUI_API bool Widget::equal_to(Widget *rhs)
         {
             return get_object_type(rhs) == get_object_type(this) && (id == rhs->id) &&
                 sattrs_equal(sattrs, rhs->sattrs) &&
-                vattrs_equal(vattrs, rhs->vattrs);
+                vattrs_equal(vattrs, rhs->vattrs) &&
+                tattrs_equal(tattrs, rhs->tattrs);
         }
-        LUNA_GUI_API f32 Widget::get_sattr(u32 key, f32 default_value, bool* found)
+        LUNA_GUI_API f32 Widget::get_sattr(u32 key, bool recursive, f32 default_value, bool* found)
         {
             auto iter = sattrs.find(key);
-            if (found) *found = (iter != sattrs.end());
-            return iter == sattrs.end() ? default_value : iter->second;
+            if (iter != sattrs.end())
+            {
+                if (found) *found = true;
+                return iter->second;
+            }
+            // not found in current node.
+            if (recursive)
+            {
+                Widget* cur = parent;
+                while(cur)
+                {
+                    iter = cur->sattrs.find(key);
+                    if (iter != cur->sattrs.end())
+                    {
+                        // found.
+                        if (found) *found = true;
+                        return iter->second;
+                    }
+                    cur = cur->parent;
+                }
+            }
+            // not found.
+            if (found) *found = false;
+            return default_value;
         }
-        LUNA_GUI_API Float4U Widget::get_vattr(u32 key, const Float4U& default_value, bool* found)
+        LUNA_GUI_API Float4U Widget::get_vattr(u32 key, bool recursive, const Float4U& default_value, bool* found)
         {
             auto iter = vattrs.find(key);
-            if (found) *found = (iter != vattrs.end());
-            return iter == vattrs.end() ? default_value : iter->second;
+            if (iter != vattrs.end())
+            {
+                if (found) *found = true;
+                return iter->second;
+            }
+            // not found in current node.
+            if (recursive)
+            {
+                Widget* cur = parent;
+                while(cur)
+                {
+                    iter = cur->vattrs.find(key);
+                    if (iter != cur->vattrs.end())
+                    {
+                        // found.
+                        if (found) *found = true;
+                        return iter->second;
+                    }
+                    cur = cur->parent;
+                }
+            }
+            // not found.
+            if (found) *found = false;
+            return default_value;
+        }
+        LUNA_GUI_API Name Widget::get_tattr(u32 key, bool recursive, const Name& default_value, bool* found)
+        {
+            auto iter = tattrs.find(key);
+            if (iter != tattrs.end())
+            {
+                if (found) *found = true;
+                return iter->second;
+            }
+            // not found in current node.
+            if (recursive)
+            {
+                Widget* cur = parent;
+                while(cur)
+                {
+                    iter = cur->tattrs.find(key);
+                    if (iter != cur->tattrs.end())
+                    {
+                        // found.
+                        if (found) *found = true;
+                        return iter->second;
+                    }
+                    cur = cur->parent;
+                }
+            }
+            // not found.
+            if (found) *found = false;
+            return default_value;
         }
     }
 }

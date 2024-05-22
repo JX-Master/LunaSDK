@@ -11,6 +11,7 @@
 #define LUNA_GUI_API LUNA_EXPORT
 #include "ResizableWindow.hpp"
 #include "../../Context.hpp"
+#include "../../Widgets/ResizableWindow.hpp"
 
 namespace Luna
 {

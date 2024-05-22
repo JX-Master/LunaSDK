@@ -36,12 +36,14 @@ namespace Luna
             // Attribute values.
             HashMap<u32, f32> sattrs;
             HashMap<u32, Float4U> vattrs;
+            HashMap<u32, Name> tattrs;
 
             virtual ~Widget() {}
             virtual Ref<WidgetBuildData> new_build_data() = 0;
             LUNA_GUI_API virtual bool equal_to(Widget* rhs);
-            LUNA_GUI_API f32 get_sattr(u32 key, f32 default_value = 0, bool* found = nullptr);
-            LUNA_GUI_API Float4U get_vattr(u32 key, const Float4U& default_value = Float4U(0), bool* found = nullptr);
+            LUNA_GUI_API f32 get_sattr(u32 key, bool recursive = false, f32 default_value = 0, bool* found = nullptr);
+            LUNA_GUI_API Float4U get_vattr(u32 key, bool recursive = false, const Float4U& default_value = Float4U(0), bool* found = nullptr);
+            LUNA_GUI_API Name get_tattr(u32 key, bool recursive = false, const Name& default_value = Name(), bool* found = nullptr);
         };
 
         struct WidgetBuildData
@@ -74,30 +76,6 @@ namespace Luna
 
             //! Called when the widget data is rendered.
             LUNA_GUI_API virtual RV render(IContext* ctx, VG::IShapeDrawList* draw_list);
-        };
-
-        struct Rectangle : Widget
-        {
-            lustruct("RHI::Rectangle", "{d0e27859-1439-4089-bf55-b8fe82b24c47}");
-
-            LUNA_GUI_API virtual Ref<WidgetBuildData> new_build_data() override;
-        };
-
-        struct Text : Widget
-        {
-            lustruct("RHI::Text", "{06fa0393-d4f9-4dce-b340-d9790b36c732}");
-
-            Name text;
-
-            LUNA_GUI_API virtual Ref<WidgetBuildData> new_build_data() override;
-            LUNA_GUI_API virtual bool equal_to(Widget* rhs) override;
-        };
-
-        struct ResizableWindow : Widget
-        {
-            lustruct("RHI::ResizableWindow", "{22637fc6-330d-46e9-ad80-16d2ed7ec328}");
-
-            LUNA_GUI_API virtual Ref<WidgetBuildData> new_build_data() override;
         };
     }
 }

@@ -11,6 +11,9 @@
 #define LUNA_GUI_API LUNA_EXPORT
 #include "../Widgets.hpp"
 #include "../WidgetList.hpp"
+#include "../Widgets/Rectangle.hpp"
+#include "../Widgets/Text.hpp"
+#include "../Widgets/ResizableWindow.hpp"
 
 namespace Luna
 {
@@ -43,8 +46,8 @@ namespace Luna
         LUNA_GUI_API void text(IWidgetList* list, const Name& text)
         {
             Ref<Text> widget = new_object<Text>();
-            widget->text = text;
             list->add_widget(widget);
+            set_tattr(list, TATTR_TEXT, text);
         }
         LUNA_GUI_API void set_sattr(IWidgetList* list, u32 kind, f32 value)
         {
@@ -55,6 +58,11 @@ namespace Luna
         {
             Widget* widget = list->get_current_widget();
             widget->vattrs.insert_or_assign(kind, value);
+        }
+        LUNA_GUI_API void set_tattr(IWidgetList* list, u32 kind, const Name& value)
+        {
+            Widget* widget = list->get_current_widget();
+            widget->tattrs.insert_or_assign(kind, value);
         }
     }
 }

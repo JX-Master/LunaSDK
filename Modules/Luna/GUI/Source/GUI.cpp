@@ -16,8 +16,11 @@
 #include "Context.hpp"
 #include <Luna/Font/Font.hpp>
 #include "Widgets/Rectangle.hpp"
+#include "../Widgets/Rectangle.hpp"
 #include "Widgets/Text.hpp"
+#include "../Widgets/Text.hpp"
 #include "Widgets/ResizableWindow.hpp"
+#include "../Widgets/ResizableWindow.hpp"
 
 namespace Luna
 {
