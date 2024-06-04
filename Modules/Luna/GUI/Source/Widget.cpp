@@ -10,51 +10,13 @@
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_GUI_API LUNA_EXPORT
 #include "../Widget.hpp"
+#include "../Context.hpp"
+#include "../Widgets.hpp"
 
 namespace Luna
 {
     namespace GUI
     {
-        inline bool sattrs_equal(const HashMap<u32, f32>& a, const HashMap<u32, f32>& b)
-        {
-            if (a.size() != b.size()) return false;
-            for(auto& p : a)
-            {
-                auto iter = b.find(p.first);
-                if(iter == b.end()) return false;
-                if(p.second != iter->second) return false;
-            }
-            return true;
-        }
-        inline bool vattrs_equal(const HashMap<u32, Float4U>& a, const HashMap<u32, Float4U>& b)
-        {
-            if (a.size() != b.size()) return false;
-            for(auto& p : a)
-            {
-                auto iter = b.find(p.first);
-                if(iter == b.end()) return false;
-                if(p.second != iter->second) return false;
-            }
-            return true;
-        }
-        inline bool tattrs_equal(const HashMap<u32, Name>& a, const HashMap<u32, Name>& b)
-        {
-            if (a.size() != b.size()) return false;
-            for(auto& p : a)
-            {
-                auto iter = b.find(p.first);
-                if(iter == b.end()) return false;
-                if(p.second != iter->second) return false;
-            }
-            return true;
-        }
-        LUNA_GUI_API bool Widget::equal_to(Widget *rhs)
-        {
-            return get_object_type(rhs) == get_object_type(this) && (id == rhs->id) &&
-                sattrs_equal(sattrs, rhs->sattrs) &&
-                vattrs_equal(vattrs, rhs->vattrs) &&
-                tattrs_equal(tattrs, rhs->tattrs);
-        }
         LUNA_GUI_API f32 Widget::get_sattr(u32 key, bool recursive, f32 default_value, bool* found)
         {
             auto iter = sattrs.find(key);
@@ -138,6 +100,44 @@ namespace Luna
             // not found.
             if (found) *found = false;
             return default_value;
+        }
+        LUNA_GUI_API RV Widget::update(IContext* ctx)
+        {
+            lutry
+            {
+                // Calculate bounding rect.
+                if(parent)
+                {
+                    Float4U anthor = get_vattr(VATTR_ANTHOR, false, {0, 0, 1, 1});
+                    Float4U offset = get_vattr(VATTR_OFFSET, false, {0, 0, 0, 0});
+                    bounding_rect = calc_widget_bounding_rect(parent->bounding_rect, 
+                        OffsetRectF{anthor.x, anthor.y, anthor.z, anthor.w}, 
+                        OffsetRectF{offset.x, offset.y, offset.z, offset.w});
+                }
+                else
+                {
+                    auto& io = ctx->get_io();
+                    bounding_rect = OffsetRectF{0, 0, (f32)io.width, (f32)io.height};
+                }
+                for(auto& c : children)
+                {
+                    luexp(c->update(ctx));
+                }
+            }
+            lucatchret;
+            return ok;
+        }
+        LUNA_GUI_API RV Widget::render(IContext* ctx, VG::IShapeDrawList* draw_list)
+        {
+            lutry
+            {
+                for(auto& c : children)
+                {
+                    luexp(c->render(ctx, draw_list));
+                }
+            }
+            lucatchret;
+            return ok;
         }
     }
 }

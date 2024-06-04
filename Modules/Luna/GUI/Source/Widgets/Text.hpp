@@ -5,7 +5,7 @@
 * 
 * @file Text.hpp
 * @author JXMaster
-* @date 2024/5/8
+* @date 2024/5/21
 */
 #pragma once
 #include "../../Widget.hpp"
@@ -15,14 +15,14 @@ namespace Luna
 {
     namespace GUI
     {
-        struct TextBuildData : WidgetBuildData
+        struct Text : Widget
         {
-            lustruct("GUI::TextBuildData", "{bc4f2b36-a3e6-4eca-aef6-86bf114b2bd1}");
+            lustruct("GUI::Text", "{06fa0393-d4f9-4dce-b340-d9790b36c732}");
 
             VG::TextArrangeResult arrange_result;
             Vector<VG::TextArrangeSection> text_arrange_sections;
 
-            virtual RV build(IContext* ctx) override;
+            virtual RV update(IContext* ctx) override;
             virtual RV render(IContext* ctx, VG::IShapeDrawList* draw_list) override;
         };
     }

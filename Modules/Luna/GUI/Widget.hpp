@@ -21,14 +21,15 @@ namespace Luna
 {
     namespace GUI
     {
-        struct WidgetBuildData;
+        using widget_id_t = u32;
+
         struct IContext;
         struct Widget
         {
             lustruct("GUI::Widget", "{b6eb9d49-be6b-4afb-9a53-09449217d00d}");
 
             // The id of the widget. Used to transfer states between widgets. Can be empty.
-            Name id;
+            widget_id_t id;
             // Parent widget.
             Widget* parent = nullptr;
             // Child widgets.
@@ -38,43 +39,21 @@ namespace Luna
             HashMap<u32, Float4U> vattrs;
             HashMap<u32, Name> tattrs;
 
-            virtual ~Widget() {}
-            virtual Ref<WidgetBuildData> new_build_data() = 0;
-            LUNA_GUI_API virtual bool equal_to(Widget* rhs);
-            LUNA_GUI_API f32 get_sattr(u32 key, bool recursive = false, f32 default_value = 0, bool* found = nullptr);
-            LUNA_GUI_API Float4U get_vattr(u32 key, bool recursive = false, const Float4U& default_value = Float4U(0), bool* found = nullptr);
-            LUNA_GUI_API Name get_tattr(u32 key, bool recursive = false, const Name& default_value = Name(), bool* found = nullptr);
-        };
-
-        struct WidgetBuildData
-        {
-            lustruct("GUI::WidgetBuildData", "{ff4f1ef1-54c5-4a99-adc5-5b41efcd171a}");
-
-            //! Pointer to the parent build data if any.
-            WidgetBuildData* parent = nullptr;
-            //! Pointer to the widget that builds this build data.
-            Ref<Widget> widget;
-            //! Child build data objects.
-            Vector<Ref<WidgetBuildData>> children;
+            // The following properties are widget computed data that will get updates every frame based on widget states.
 
             // The offset to place this widget in screen coordinates.
             OffsetRectF bounding_rect;
 
-            // The state object attached with this widget. Can be null.
-            ObjRef state;
+            virtual ~Widget() {}
+            LUNA_GUI_API f32 get_sattr(u32 key, bool recursive = false, f32 default_value = 0, bool* found = nullptr);
+            LUNA_GUI_API Float4U get_vattr(u32 key, bool recursive = false, const Float4U& default_value = Float4U(0), bool* found = nullptr);
+            LUNA_GUI_API Name get_tattr(u32 key, bool recursive = false, const Name& default_value = Name(), bool* found = nullptr);
 
-            // Whether this widget should be rebuilt.
-            bool dirty = true;
+            //! Called after the widget tree is built and before the widget is rendered. The widget should handle user input and generate render data 
+            //! in this call.
+            LUNA_GUI_API virtual RV update(IContext* ctx);
 
-            //! Called every frame to check whether this widget should be rebuilt.
-            //! The derived widget may set `dirty` to `true` in this function to let `build` to be called
-            //! in this frame.
-            LUNA_GUI_API virtual void update(IContext* ctx);
-
-            //! Called when the widget data should be rebuilt (`dirty` is `true`).
-            LUNA_GUI_API virtual RV build(IContext* ctx);
-
-            //! Called when the widget data is rendered.
+            //! Called when the widget is rendered.
             LUNA_GUI_API virtual RV render(IContext* ctx, VG::IShapeDrawList* draw_list);
         };
     }

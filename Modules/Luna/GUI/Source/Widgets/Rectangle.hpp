@@ -5,7 +5,7 @@
 * 
 * @file Rectangle.hpp
 * @author JXMaster
-* @date 2024/5/8
+* @date 2024/5/21
 */
 #pragma once
 #include "../../Widget.hpp"
@@ -14,9 +14,9 @@ namespace Luna
 {
     namespace GUI
     {
-        struct RectangleBuildData : WidgetBuildData
+        struct Rectangle : Widget
         {
-            lustruct("GUI::RectangleBuildData", "{7faae92b-28c6-4f00-ad71-5e12ef82d3f3}");
+            lustruct("GUI::Rectangle", "{d0e27859-1439-4089-bf55-b8fe82b24c47}");
 
             virtual RV render(IContext* ctx, VG::IShapeDrawList* draw_list) override;
         };

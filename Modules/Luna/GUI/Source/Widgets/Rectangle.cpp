@@ -7,24 +7,21 @@
 * @author JXMaster
 * @date 2024/5/8
 */
-#include <Luna/Runtime/PlatformDefines.hpp>
-#define LUNA_GUI_API LUNA_EXPORT
-#include "Rectangle.hpp"
 #include "../../Context.hpp"
 #include <Luna/Runtime/Math/Color.hpp>
 #include <Luna/VG/Shapes.hpp>
 #include "../../Widgets.hpp"
-#include "../../Widgets/Rectangle.hpp"
+#include "Rectangle.hpp"
 
 namespace Luna
 {
     namespace GUI
     {
-        RV RectangleBuildData::render(IContext* ctx, VG::IShapeDrawList* draw_list)
+        RV Rectangle::render(IContext* ctx, VG::IShapeDrawList* draw_list)
         {
             lutry
             {
-                Float4U background_color = widget->get_vattr(VATTR_BACKGROUND_COLOR, true, Float4U(0));
+                Float4U background_color = get_vattr(VATTR_BACKGROUND_COLOR, true, Float4U(0));
                 if(background_color.w != 0)
                 {
                     auto& points = draw_list->get_shape_points();
@@ -46,10 +43,6 @@ namespace Luna
             }
             lucatchret;
             return ok;
-        }
-        LUNA_GUI_API Ref<WidgetBuildData> Rectangle::new_build_data()
-        {
-            return new_object<RectangleBuildData>();
         }
     }
 }

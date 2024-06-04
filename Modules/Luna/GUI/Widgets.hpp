@@ -8,7 +8,7 @@
 * @date 2024/3/29
 */
 #pragma once
-#include "WidgetList.hpp"
+#include "Context.hpp"
 
 #ifndef LUNA_GUI_API
 #define LUNA_GUI_API
@@ -18,32 +18,30 @@ namespace Luna
 {
     namespace GUI
     {
-        LUNA_GUI_API void begin_resizable_window(IWidgetList* list);
+        LUNA_GUI_API void begin_rectangle(IContext* ctx);
 
-        LUNA_GUI_API void begin_rectangle(IWidgetList* list);
-
-        LUNA_GUI_API void end(IWidgetList* list);
+        LUNA_GUI_API void end(IContext* ctx);
 
         inline constexpr u32 VATTR_ANTHOR = strhash32("anthor");
 
-        LUNA_GUI_API void set_anthor(IWidgetList* list, f32 left, f32 top, f32 right, f32 bottom);
+        LUNA_GUI_API void set_anthor(IContext* ctx, f32 left, f32 top, f32 right, f32 bottom);
 
         inline constexpr u32 VATTR_OFFSET = strhash32("offset");
 
-        LUNA_GUI_API void set_offset(IWidgetList* list, f32 left, f32 top, f32 right, f32 bottom);
+        LUNA_GUI_API void set_offset(IContext* ctx, f32 left, f32 top, f32 right, f32 bottom);
 
         //! Adds one text widget.
         //! @param[in] text The text to draw.
-        LUNA_GUI_API void text(IWidgetList* list, const Name& text);
+        LUNA_GUI_API void text(IContext* ctx, const Name& text);
 
         //! Sets widget scalar attribute value.
-        LUNA_GUI_API void set_sattr(IWidgetList* list, u32 kind, f32 value);
+        LUNA_GUI_API void set_sattr(IContext* ctx, u32 kind, f32 value);
 
         //! Sets widget vector attribute value.
-        LUNA_GUI_API void set_vattr(IWidgetList* list, u32 kind, const Float4U& value);
+        LUNA_GUI_API void set_vattr(IContext* ctx, u32 kind, const Float4U& value);
 
         //! Sets widget text attribute value.
-        LUNA_GUI_API void set_tattr(IWidgetList* list, u32 kind, const Name& value);
+        LUNA_GUI_API void set_tattr(IContext* ctx, u32 kind, const Name& value);
 
         inline constexpr u32 VATTR_BACKGROUND_COLOR = strhash32("background_color");
 

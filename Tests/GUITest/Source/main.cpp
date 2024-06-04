@@ -5,7 +5,6 @@
 #include <Luna/GUI/GUI.hpp>
 #include <Luna/Runtime/Log.hpp>
 #include <Luna/Runtime/Thread.hpp>
-#include <Luna/GUI/WidgetList.hpp>
 #include <Luna/GUI/Widgets.hpp>
 #include <Luna/GUI/Context.hpp>
 #include <Luna/Runtime/Math/Color.hpp>
@@ -44,8 +43,6 @@ void run()
 
     Ref<ICommandBuffer> cmdbuf = dev->new_command_buffer(queue).get();
 
-    Ref<GUI::IWidgetList> list = GUI::new_widget_list();
-
     Ref<GUI::IContext> ctx = GUI::new_context();
 
     Ref<VG::IShapeDrawList> draw_list = VG::new_shape_draw_list(dev);
@@ -82,21 +79,19 @@ void run()
             io.width = w;
             io.height = h;
         }
-        Ref<GUI::Widget> root_widget;
+        ctx->begin_frame();
         {
             using namespace GUI;
-            begin_resizable_window(list);
-            root_widget = list->get_current_widget();
-            set_vattr(list, VATTR_BACKGROUND_COLOR, {0, 0, 0, 0});
+            set_vattr(ctx, VATTR_BACKGROUND_COLOR, {0, 0, 0, 0});
             for(u32 y = 0; y < 4; ++y)
             {
                 for (u32 x = 0; x < 4; ++x)
                 {
-                    begin_rectangle(list);
+                    begin_rectangle(ctx);
                     Float4 color = Float4(((f32)x) / 3, ((f32)y) / 3, 0.0f, 1.0f);
-                    set_vattr(list, VATTR_BACKGROUND_COLOR, color);
-                    set_anthor(list, ((f32)x) / 4, ((f32)y) / 4, ((f32)x + 1) / 4, ((f32)y + 1) / 4);
-                    begin_rectangle(list);
+                    set_vattr(ctx, VATTR_BACKGROUND_COLOR, color);
+                    set_anthor(ctx, ((f32)x) / 4, ((f32)y) / 4, ((f32)x + 1) / 4, ((f32)y + 1) / 4);
+                    begin_rectangle(ctx);
                     f32 anchor_x_min, anchor_x_max, anchor_y_min, anchor_y_max;
                     f32 rect_x_min, rect_x_max, rect_y_min, rect_y_max;
                     switch(x)
@@ -115,19 +110,17 @@ void run()
                         case 3: anchor_y_min = 0.0f; anchor_y_max = 1.0f; rect_y_min = 10.0f; rect_y_max = -10.0f; break;
                         default: break;
                     }
-                    set_anthor(list, anchor_x_min, anchor_y_min, anchor_x_max, anchor_y_max);
-                    set_offset(list, rect_x_min, rect_y_min, rect_x_max, rect_y_max);
+                    set_anthor(ctx, anchor_x_min, anchor_y_min, anchor_x_max, anchor_y_max);
+                    set_offset(ctx, rect_x_min, rect_y_min, rect_x_max, rect_y_max);
                     color.z = 1.0f;
-                    set_vattr(list, VATTR_BACKGROUND_COLOR, color);
-                    text(list, "Text");
-                    set_sattr(list, SATTR_TEXT_SIZE, 32);
-                    end(list);
-                    end(list);
+                    set_vattr(ctx, VATTR_BACKGROUND_COLOR, color);
+                    text(ctx, "Text");
+                    set_sattr(ctx, SATTR_TEXT_SIZE, 32);
+                    end(ctx);
+                    end(ctx);
                 }
             }
-            end(list);
         }
-        ctx->reset(root_widget);
         lupanic_if_failed(ctx->update());
         lupanic_if_failed(ctx->render(draw_list));
         lupanic_if_failed(draw_list->compile());
@@ -144,7 +137,7 @@ void run()
         cmdbuf->wait();
         lupanic_if_failed(swap_chain->present());
         lupanic_if_failed(cmdbuf->reset());
-        list->reset();
+        ctx->end_frame();
         draw_list->reset();
     }
 }
