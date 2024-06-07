@@ -28,5 +28,7 @@ namespace Luna
         f32 skybox_rotation = 0.0f;
         f32 exposure = 1.0f / 9.6f;
         bool auto_exposure = true;
+        f32 bloom_threshold = 1.0f;
+        f32 bloom_intensity = 1.0f;
     };
 }

@@ -31,6 +31,7 @@
 #include "RenderPasses/GeometryPass.hpp"
 #include "RenderPasses/DeferredLightingPass.hpp"
 #include "RenderPasses/BufferVisualizationPass.hpp"
+#include "RenderPasses/BloomPass.hpp"
 
 #include "SceneRenderer.hpp"
 #include <Luna/Runtime/Log.hpp>
@@ -113,6 +114,7 @@ namespace Luna
             luexp(register_wireframe_pass());
             luexp(register_geometry_pass());
             luexp(register_deferred_lighting_pass());
+            luexp(register_bloom_pass());
             luexp(register_tone_mapping_pass());
             luexp(register_buffer_visualization_pass());
 
@@ -316,13 +318,19 @@ namespace Luna
             luproperty(SceneSettings, Float3, environment_color),
             luproperty(SceneSettings, f32, skybox_rotation),
             luproperty(SceneSettings, f32, exposure),
-            luproperty(SceneSettings, bool, auto_exposure)
+            luproperty(SceneSettings, bool, auto_exposure),
+            luproperty(SceneSettings, f32, bloom_threshold),
+            luproperty(SceneSettings, f32, bloom_intensity)
             });
         set_serializable<SceneSettings>();
         g_env->scene_component_types.insert(typeof<SceneSettings>());
         set_property_attribute(typeof<SceneSettings>(), "environment_color", "color_gui", true);
         set_property_attribute(typeof<SceneSettings>(), "exposure", "gui_min", (f64)0.00001f);
         set_property_attribute(typeof<SceneSettings>(), "exposure", "gui_max", (f64)1.0f);
+        set_property_attribute(typeof<SceneSettings>(), "bloom_threshold", "gui_min", (f64)0.0f);
+        set_property_attribute(typeof<SceneSettings>(), "bloom_threshold", "gui_max", (f64)10.0f);
+        set_property_attribute(typeof<SceneSettings>(), "bloom_intensity", "gui_min", (f64)0.0f);
+        set_property_attribute(typeof<SceneSettings>(), "bloom_intensity", "gui_max", (f64)2.0f);
     }
 
     void run_main_editor(const Path& project_path)

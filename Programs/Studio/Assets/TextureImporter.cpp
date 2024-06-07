@@ -15,6 +15,10 @@
 #include <Luna/RHI/Utility.hpp>
 #include <Luna/Image/DDSImage.hpp>
 #include <Luna/Image/RHIHelper.hpp>
+
+#include <MipmapGenerationCS.hpp>
+#include <PrecomputeEnvironmentMapMips.hpp>
+
 namespace Luna
 {
     enum class TexturePrefilerType : u8
@@ -97,10 +101,9 @@ namespace Luna
                     
                     PipelineLayoutFlag::deny_pixel_shader_access)));
 
-                lulet(cs_blob, compile_shader("Shaders/MipmapGenerationCS.hlsl", ShaderCompiler::ShaderType::compute));
                 ComputePipelineStateDesc ps_desc;
+                LUNA_FILL_COMPUTE_SHADER_DATA(ps_desc, MipmapGenerationCS);
                 ps_desc.pipeline_layout = m_mipmapping_playout;
-                fill_compute_pipeline_state_desc_from_compile_result(ps_desc, cs_blob);
                 luset(m_mipmapping_pso, RHI::get_main_device()->new_compute_pipeline_state(ps_desc));
             }
             {
@@ -114,13 +117,10 @@ namespace Luna
                 luset(m_env_mipmapping_playout, RHI::get_main_device()->new_pipeline_layout(PipelineLayoutDesc(
                     { &dlayout, 1 },
                     PipelineLayoutFlag::deny_vertex_shader_access |
-                    
                     PipelineLayoutFlag::deny_pixel_shader_access)));
-
-                lulet(cs_blob, compile_shader("Shaders/PrecomputeEnvironmentMapMips.hlsl", ShaderCompiler::ShaderType::compute));
                 ComputePipelineStateDesc ps_desc;
+                LUNA_FILL_COMPUTE_SHADER_DATA(ps_desc, PrecomputeEnvironmentMapMips);
                 ps_desc.pipeline_layout = m_env_mipmapping_playout;
-                fill_compute_pipeline_state_desc_from_compile_result(ps_desc, cs_blob);
                 luset(m_env_mipmapping_pso, RHI::get_main_device()->new_compute_pipeline_state(ps_desc));
             }
         }

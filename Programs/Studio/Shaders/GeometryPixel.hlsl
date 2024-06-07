@@ -63,7 +63,7 @@ PSOutput main(PSInput i)
     o.base_color_roughness.w = roughness;
     o.normal_metallic.xyz = max(normal * 0.5f + 0.5f, 0.0f);
     o.normal_metallic.w = metallic;
-    o.emissive.xyz = emissive.xyz;
+    o.emissive.xyz = emissive.xyz * g_material_params[0].emissive_intensity;
     o.emissive.w = 0.0f;
     return o;
 }

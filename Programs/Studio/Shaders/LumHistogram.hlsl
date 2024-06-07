@@ -32,10 +32,13 @@ cbuffer LumHistogramCB : register(b0)
     uint src_height;
     float min_brightness;
     float max_brightness;
+    float bloom_intensity;
 }
 
 Texture2D g_src_tex : register(t1);
-RWStructuredBuffer<uint> g_dst_buffer : register(u2);
+Texture2D g_bloom_tex : register(t2);
+RWStructuredBuffer<uint> g_dst_buffer : register(u3);
+SamplerState g_sampler : register(s4);
 
 groupshared uint histogram_shared[256];
 
@@ -48,6 +51,10 @@ void main(int3 dispatch_thread_id : SV_DispatchThreadID, uint group_index : SV_G
     if((uint)dispatch_thread_id.x < src_width && (uint)dispatch_thread_id.y < src_height)
     {
         float3 hdr_color = g_src_tex[dispatch_thread_id.xy].xyz;
+        float2 texel_size = float2(2 / (float)src_width, 2 / (float)src_height);
+        float2 uv = texel_size * ((float2)dispatch_thread_id.xy + 0.5f);
+        float3 bloom_color = g_bloom_tex.SampleLevel(g_sampler, uv, 0.0f) * bloom_intensity;
+        hdr_color += bloom_color;
         uint bin_index = color_to_bin(hdr_color, min_brightness, max_brightness);
         InterlockedAdd(histogram_shared[bin_index], 1);
     }

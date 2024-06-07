@@ -126,7 +126,10 @@ namespace Luna
                 ret.pixel_shader_write = true;
                 break;
             case DeviceFeature::uniform_buffer_data_alignment:
-                ret.uniform_buffer_data_alignment = 0;
+                ret.uniform_buffer_data_alignment = 1;
+                break;
+            case DeviceFeature::structured_buffer_offset_alignment:
+                ret.structured_buffer_offset_alignment = 1;
                 break;
             default: lupanic();
             }

@@ -295,6 +295,7 @@ namespace Luna
             {
                 luset(ret, allocate_transient_resource(desc));
                 m_temporary_resources.push_back(ret);
+                m_cmdbuf->attach_device_object(ret); // Prevent this resource object being freed before execution.
             }
             lucatchret;
             return ret;
@@ -305,6 +306,7 @@ namespace Luna
             {
                 if(iter->get() == res)
                 {
+                    release_transient_resource(res);
                     m_temporary_resources.erase(iter);
                     return;
                 }

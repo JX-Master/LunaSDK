@@ -26,6 +26,7 @@ namespace Luna
             memory_profiler_set_memory_domain(&m_allocation, "GPU", 3);
             memory_profiler_set_memory_type(&m_allocation, "Aliasing Memory", 15);
 #endif
+            return ok;
         }
         DeviceMemory::~DeviceMemory()
         {

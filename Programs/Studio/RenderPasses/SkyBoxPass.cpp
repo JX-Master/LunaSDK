@@ -14,6 +14,9 @@
 #include <Luna/Asset/Asset.hpp>
 #include <Luna/Runtime/Math/Matrix.hpp>
 #include "../StudioHeader.hpp"
+
+#include <SkyboxCS.hpp>
+
 namespace Luna
 {
     RV SkyBoxPassGlobalData::init(RHI::IDevice* device)
@@ -32,9 +35,8 @@ namespace Luna
             luset(m_skybox_pass_playout, device->new_pipeline_layout(PipelineLayoutDesc({ &dl, 1 },
                 PipelineLayoutFlag::deny_vertex_shader_access |
                 PipelineLayoutFlag::deny_pixel_shader_access)));
-            lulet(cs_blob, compile_shader("Shaders/SkyboxCS.hlsl", ShaderCompiler::ShaderType::compute));
             ComputePipelineStateDesc ps_desc;
-            fill_compute_pipeline_state_desc_from_compile_result(ps_desc, cs_blob);
+            LUNA_FILL_COMPUTE_SHADER_DATA(ps_desc, SkyboxCS);
             ps_desc.pipeline_layout = m_skybox_pass_playout;
             luset(m_skybox_pass_pso, device->new_compute_pipeline_state(ps_desc));
         }

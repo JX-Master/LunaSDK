@@ -12,6 +12,10 @@
 #include "../SceneRenderer.hpp"
 #include "../StudioHeader.hpp"
 #include <Luna/RHI/Utility.hpp>
+
+#include <DeferredLighting.hpp>
+#include <PrecomputeIntegrateBRDF.hpp>
+
 namespace Luna
 {
     RV DeferredLightingPassGlobalData::init(RHI::IDevice* device)
@@ -37,10 +41,8 @@ namespace Luna
                 PipelineLayoutFlag::deny_vertex_shader_access |
                 PipelineLayoutFlag::deny_pixel_shader_access)));
 
-            lulet(cs_blob, compile_shader("Shaders/DeferredLighting.hlsl", ShaderCompiler::ShaderType::compute));
-
             ComputePipelineStateDesc ps_desc;
-            fill_compute_pipeline_state_desc_from_compile_result(ps_desc, cs_blob);
+            LUNA_FILL_COMPUTE_SHADER_DATA(ps_desc, DeferredLighting);
             ps_desc.pipeline_layout = m_deferred_lighting_pass_playout;
             luset(m_deferred_lighting_pass_pso, device->new_compute_pipeline_state(ps_desc));
 
@@ -62,9 +64,8 @@ namespace Luna
                 lulet(playout, device->new_pipeline_layout(PipelineLayoutDesc({ &dl, 1 },
                     PipelineLayoutFlag::deny_vertex_shader_access |
                     PipelineLayoutFlag::deny_pixel_shader_access)));
-                lulet(cs_blob, compile_shader("Shaders/PrecomputeIntegrateBRDF.hlsl", ShaderCompiler::ShaderType::compute));
                 ComputePipelineStateDesc ps_desc;
-                fill_compute_pipeline_state_desc_from_compile_result(ps_desc, cs_blob);
+                LUNA_FILL_COMPUTE_SHADER_DATA(ps_desc, PrecomputeIntegrateBRDF);
                 ps_desc.pipeline_layout = playout;
                 lulet(pso, device->new_compute_pipeline_state(ps_desc));
                 lulet(compute_cmdbuf, device->new_command_buffer(g_env->async_compute_queue));
@@ -203,9 +204,9 @@ namespace Luna
             if(normal_metallic_texture == RG::INVALID_RESOURCE) return set_error(BasicError::bad_arguments(), "DeferredLightingPass: Input \"normal_metallic_texture\" is not specified.");
             if(emissive_texture == RG::INVALID_RESOURCE) return set_error(BasicError::bad_arguments(), "DeferredLightingPass: Input \"emissive_texture\" is not specified.");
             RG::ResourceDesc desc = compiler->get_resource_desc(scene_texture);
-            if (desc.texture.format != RHI::Format::rgba32_float)
+            if (desc.texture.format != RHI::Format::rgba16_float)
             {
-                return set_error(BasicError::bad_arguments(), "DeferredLightingPass: Invalid format for \"scene_texture\" is specified. \"scene_texture\" must be Format::rgba32_float.");
+                return set_error(BasicError::bad_arguments(), "DeferredLightingPass: Invalid format for \"scene_texture\" is specified. \"scene_texture\" must be Format::rgba16_float.");
             }
             desc.texture.usages |= RHI::TextureUsageFlag::read_write_texture;
             compiler->set_resource_desc(scene_texture, desc);

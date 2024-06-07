@@ -20,7 +20,9 @@
 #include "RenderPasses/GeometryPass.hpp"
 #include "RenderPasses/DeferredLightingPass.hpp"
 #include "RenderPasses/BufferVisualizationPass.hpp"
+#include "RenderPasses/BloomPass.hpp"
 #include "StudioHeader.hpp"
+#include "Material.hpp"
 
 namespace Luna
 {
@@ -28,6 +30,9 @@ namespace Luna
         m_device(device)
     {
         m_render_graph = RG::new_render_graph(device);
+        u32 sb_alignment = device->check_feature(RHI::DeviceFeature::structured_buffer_offset_alignment).structured_buffer_offset_alignment;
+        m_model_matrices_stride = (u32)align_upper(sizeof(MeshBuffer), sb_alignment);
+        m_material_parameter_stride = (u32)align_upper(sizeof(MaterialParameters), sb_alignment);
     }
     const SceneRendererSettings& SceneRenderer::get_settings()
     {
@@ -47,19 +52,20 @@ namespace Luna
                 using namespace RG;
                 
                 RenderGraphDesc desc;
-                desc.passes.resize(8);
+                desc.passes.resize(7);
                 desc.passes[WIREFRAME_PASS] = {"WireframePass", "Wireframe"};
                 desc.passes[GEOMETRY_PASS] = {"GeometryPass", "Geometry"};
                 desc.passes[BUFFER_VIS_PASS] = {"BufferVisualizationPass", "BufferVisualization"};
                 desc.passes[SKYBOX_PASS] = {"SkyBoxPass", "SkyBox"};
                 desc.passes[DEFERRED_LIGHTING_PASS] = {"DeferredLightingPass", "DeferredLighting"};
+                desc.passes[BLOOM_PASS] = {"BloomPass", "Bloom"};
                 desc.passes[TONE_MAPPING_PASS] = {"ToneMappingPass", "ToneMapping"};
                 desc.resources.resize(9);
                 desc.resources[LIGHTING_BUFFER] = { RenderGraphResourceType::transient,
                     RenderGraphResourceFlag::none,
                     "LightingBuffer",
                     ResourceDesc::as_texture(MemoryType::local,
-                        TextureDesc::tex2d(Format::rgba32_float, TextureUsageFlag::read_texture | TextureUsageFlag::read_write_texture,
+                        TextureDesc::tex2d(Format::rgba16_float, TextureUsageFlag::read_texture | TextureUsageFlag::read_write_texture,
                             (u32)settings.screen_size.x, (u32)settings.screen_size.y, 1, 1)) };
                 desc.resources[DEPTH_BUFFER] = {RenderGraphResourceType::transient, 
                     RenderGraphResourceFlag::none,
@@ -99,6 +105,11 @@ namespace Luna
                     "EmissiveBuffer",
                     ResourceDesc::as_texture(MemoryType::local,
                         TextureDesc::tex2d(Format::rgba16_float, TextureUsageFlag::read_texture | TextureUsageFlag::color_attachment, 0, 0, 1, 1))};
+                desc.resources[BLOOM_BUFFER] = {RenderGraphResourceType::transient,
+                    RenderGraphResourceFlag::none,
+                    "BloomBuffer",
+                    ResourceDesc::as_texture(MemoryType::local,
+                        TextureDesc::tex2d(Format::rgba16_float, TextureUsageFlag::copy_dest | TextureUsageFlag::read_texture, 0, 0, 1, 1))};
 
                 switch(settings.mode)
                 {
@@ -135,7 +146,10 @@ namespace Luna
                 desc.input_connections.push_back({BUFFER_VIS_PASS, "base_color_roughness_texture", BASE_COLOR_ROUGHNESS_BUFFER});
                 desc.input_connections.push_back({BUFFER_VIS_PASS, "normal_metallic_texture", NORMAL_METALLIC_BUFFER});
                 desc.output_connections.push_back({BUFFER_VIS_PASS, "scene_texture", GBUFFER_VIS_BUFFER});
+                desc.input_connections.push_back({BLOOM_PASS, "scene_texture", LIGHTING_BUFFER});
+                desc.output_connections.push_back({BLOOM_PASS, "bloom_texture", BLOOM_BUFFER});
                 desc.input_connections.push_back({TONE_MAPPING_PASS, "hdr_texture", LIGHTING_BUFFER});
+                desc.input_connections.push_back({TONE_MAPPING_PASS, "bloom_texture", BLOOM_BUFFER});
                 desc.output_connections.push_back({TONE_MAPPING_PASS, "ldr_texture", BACK_BUFFER});
 
                 m_render_graph->set_desc(desc);
@@ -198,8 +212,8 @@ namespace Luna
             auto device = command_buffer->get_device();
 
             // Fetch meshes to draw.
-            Vector<Ref<Entity>> ts;
-            Vector<Ref<ModelRenderer>> rs;
+            Vector<MeshRenderParams> render_params;
+            Vector<MaterialParameters> materials;
             auto& entities = s->root_entities;
             for (auto& i : entities)
             {
@@ -216,30 +230,65 @@ namespace Luna
                     {
                         continue;
                     }
-                    ts.push_back(i);
-                    rs.push_back(r);
+                    MeshRenderParams params;
+                    params.entity = i;
+                    params.renderer = r;
+                    u32 num_pieces = (u32)mesh->pieces.size();
+                    for(u32 i = 0; i < num_pieces; ++i)
+                    {
+                        MaterialParameters mat_params;
+                        mat_params.emissive_intensity = 1.0f;
+                        if(i < model->materials.size())
+                        {
+                            auto mat = get_asset_or_async_load_if_not_ready<Material>(model->materials[i]);
+                            if(mat)
+                            {
+                                mat_params.emissive_intensity = mat->emissive_intensity;
+                            }
+                        }
+                        materials.push_back(mat_params);
+                    }
+                    render_params.push_back(params);
                 }
             }
 
             // Upload mesh matrices.
             {
-                if (m_num_model_matrices < ts.size())
+                if (m_num_model_matrices < render_params.size())
                 {
-                    luset(m_model_matrices, device->new_buffer(MemoryType::upload, BufferDesc(BufferUsageFlag::read_buffer, (u64)sizeof(Float4x4) * 2 * (u64)ts.size())));
-                    m_num_model_matrices = ts.size();
+                    luset(m_model_matrices, device->new_buffer(MemoryType::upload, BufferDesc(BufferUsageFlag::read_buffer, (u64)m_model_matrices_stride * (u64)render_params.size())));
+                    m_num_model_matrices = render_params.size();
                 }
-                if (!ts.empty())
+                if (!render_params.empty())
                 {
-                    void* mapped = nullptr;
-                    luexp(m_model_matrices->map(0, 0, &mapped));
-                    for (usize i = 0; i < ts.size(); ++i)
+                    u8* mapped = nullptr;
+                    luexp(m_model_matrices->map(0, 0, (void**)&mapped));
+                    for (usize i = 0; i < render_params.size(); ++i)
                     {
-                        Float4x4 m2w = ts[i]->local_to_world_matrix();
-                        Float4x4 w2m = ts[i]->world_to_local_matrix();
-                        memcpy((Float4x4*)mapped + i * 2, m2w.r[0].m, sizeof(Float4x4));
-                        memcpy((Float4x4*)mapped + (i * 2 + 1), w2m.r[0].m, sizeof(Float4x4));
+                        MeshBuffer* dst = (MeshBuffer*)(mapped + i * m_model_matrices_stride);
+                        dst->model_to_world = render_params[i].entity->local_to_world_matrix();
+                        dst->world_to_model = render_params[i].entity->world_to_local_matrix();
                     }
-                    m_model_matrices->unmap(0, 2 * ts.size() * sizeof(Float4x4));
+                    m_model_matrices->unmap(0, render_params.size() * m_model_matrices_stride);
+                }
+            }
+            // Upload material parameters.
+            {
+                if (m_num_materials < materials.size())
+                {
+                    luset(m_material_parameters, device->new_buffer(MemoryType::upload, BufferDesc(BufferUsageFlag::read_buffer, (u64)m_material_parameter_stride * (u64)materials.size())));
+                    m_num_materials = materials.size();
+                }
+                if (!materials.empty())
+                {
+                    u8* mapped = nullptr;
+                    luexp(m_material_parameters->map(0, 0, (void**)&mapped));
+                    for(usize i = 0; i < materials.size(); ++i)
+                    {
+                        MaterialParameters* dst = (MaterialParameters*)(mapped + i * m_material_parameter_stride);
+                        *dst = materials[i];
+                    }
+                    m_material_parameters->unmap(0, materials.size() * m_material_parameter_stride);
                 }
             }
 
@@ -341,62 +390,62 @@ namespace Luna
                     WireframePass* wireframe = cast_object<WireframePass>(m_render_graph->get_render_pass(WIREFRAME_PASS)->get_object());
                     wireframe->model_matrices = m_model_matrices;
                     wireframe->camera_cb = m_camera_cb;
-                    wireframe->ts = {ts.data(), ts.size()};
-                    wireframe->rs = {rs.data(), rs.size()};
+                    wireframe->mesh_render_params = {render_params.data(), render_params.size()};
                 }
-                else if(m_settings.mode == SceneRendererMode::base_color ||
+                else
+                {
+                    GeometryPass* geometry = cast_object<GeometryPass>(m_render_graph->get_render_pass(GEOMETRY_PASS)->get_object());
+                    geometry->camera_cb = m_camera_cb;
+                    geometry->mesh_render_params = {render_params.data(), render_params.size()};
+                    geometry->model_matrices = m_model_matrices;
+                    geometry->material_parameters = m_material_parameters;
+                    if(m_settings.mode == SceneRendererMode::base_color ||
                         m_settings.mode == SceneRendererMode::normal ||
                         m_settings.mode == SceneRendererMode::roughness ||
                         m_settings.mode == SceneRendererMode::metallic ||
                         m_settings.mode == SceneRendererMode::depth)
-                {
-                    GeometryPass* geometry = cast_object<GeometryPass>(m_render_graph->get_render_pass(GEOMETRY_PASS)->get_object());
-                    BufferVisualizationPass* buffer_vis = cast_object<BufferVisualizationPass>(m_render_graph->get_render_pass(BUFFER_VIS_PASS)->get_object());
-                    geometry->camera_cb = m_camera_cb;
-                    geometry->ts = {ts.data(), ts.size()};
-                    geometry->rs = {rs.data(), rs.size()};
-                    geometry->model_matrices = m_model_matrices;
-                    switch(m_settings.mode)
                     {
-                        case SceneRendererMode::base_color: buffer_vis->vis_type = 0; break;
-                        case SceneRendererMode::normal: buffer_vis->vis_type = 1; break;
-                        case SceneRendererMode::roughness: buffer_vis->vis_type = 2; break;
-                        case SceneRendererMode::metallic: buffer_vis->vis_type = 3; break;
-                        case SceneRendererMode::depth: buffer_vis->vis_type = 4; break;
-                        default: break;
+                        BufferVisualizationPass* buffer_vis = cast_object<BufferVisualizationPass>(m_render_graph->get_render_pass(BUFFER_VIS_PASS)->get_object());
+                        switch(m_settings.mode)
+                        {
+                            case SceneRendererMode::base_color: buffer_vis->vis_type = 0; break;
+                            case SceneRendererMode::normal: buffer_vis->vis_type = 1; break;
+                            case SceneRendererMode::roughness: buffer_vis->vis_type = 2; break;
+                            case SceneRendererMode::metallic: buffer_vis->vis_type = 3; break;
+                            case SceneRendererMode::depth: buffer_vis->vis_type = 4; break;
+                            default: break;
+                        }
                     }
-                }
-                else
-                {
-                    SkyBoxPass* skybox = cast_object<SkyBoxPass>(m_render_graph->get_render_pass(SKYBOX_PASS)->get_object());
-                    GeometryPass* geometry = cast_object<GeometryPass>(m_render_graph->get_render_pass(GEOMETRY_PASS)->get_object());
-                    DeferredLightingPass* lighting = cast_object<DeferredLightingPass>(m_render_graph->get_render_pass(DEFERRED_LIGHTING_PASS)->get_object());
-                    ToneMappingPass* tone_mapping = cast_object<ToneMappingPass>(m_render_graph->get_render_pass(TONE_MAPPING_PASS)->get_object());
-                    skybox->camera_fov = camera_component->fov;
-                    skybox->camera_type = camera_component->type;
-                    skybox->view_to_world = camera_entity->local_to_world_matrix();
-                    auto skybox_tex = get_asset_or_async_load_if_not_ready<RHI::IResource>(scene_renderer->skybox);
-                    skybox->skybox = skybox_tex;
-                    geometry->camera_cb = m_camera_cb;
-                    geometry->ts = {ts.data(), ts.size()};
-                    geometry->rs = {rs.data(), rs.size()};
-                    geometry->model_matrices = m_model_matrices;
-                    lighting->skybox = skybox_tex;
-                    lighting->camera_cb = m_camera_cb;
-                    lighting->light_params = m_lighting_params;
-                    lighting->light_ts = {light_ts.data(), light_ts.size()};
-                    switch (m_settings.mode)
+                    else
                     {
-                        case SceneRendererMode::lit: lighting->lighting_mode = 0; break;
-                        case SceneRendererMode::emissive: lighting->lighting_mode = 1; break;
-                        case SceneRendererMode::diffuse_lighting: lighting->lighting_mode = 2; break;
-                        case SceneRendererMode::specular_lighting: lighting->lighting_mode = 3; break;
-                        case SceneRendererMode::ambient_diffuse_lighting: lighting->lighting_mode = 4; break;
-                        case SceneRendererMode::ambient_specular_lighting: lighting->lighting_mode = 5; break;
-                        default: break;
+                        SkyBoxPass* skybox = cast_object<SkyBoxPass>(m_render_graph->get_render_pass(SKYBOX_PASS)->get_object());
+                        DeferredLightingPass* lighting = cast_object<DeferredLightingPass>(m_render_graph->get_render_pass(DEFERRED_LIGHTING_PASS)->get_object());
+                        ToneMappingPass* tone_mapping = cast_object<ToneMappingPass>(m_render_graph->get_render_pass(TONE_MAPPING_PASS)->get_object());
+                        BloomPass* bloom_pass = cast_object<BloomPass>(m_render_graph->get_render_pass(BLOOM_PASS)->get_object());
+                        skybox->camera_fov = camera_component->fov;
+                        skybox->camera_type = camera_component->type;
+                        skybox->view_to_world = camera_entity->local_to_world_matrix();
+                        auto skybox_tex = get_asset_or_async_load_if_not_ready<RHI::IResource>(scene_renderer->skybox);
+                        skybox->skybox = skybox_tex;
+                        lighting->skybox = skybox_tex;
+                        lighting->camera_cb = m_camera_cb;
+                        lighting->light_params = m_lighting_params;
+                        lighting->light_ts = {light_ts.data(), light_ts.size()};
+                        switch (m_settings.mode)
+                        {
+                            case SceneRendererMode::lit: lighting->lighting_mode = 0; break;
+                            case SceneRendererMode::emissive: lighting->lighting_mode = 1; break;
+                            case SceneRendererMode::diffuse_lighting: lighting->lighting_mode = 2; break;
+                            case SceneRendererMode::specular_lighting: lighting->lighting_mode = 3; break;
+                            case SceneRendererMode::ambient_diffuse_lighting: lighting->lighting_mode = 4; break;
+                            case SceneRendererMode::ambient_specular_lighting: lighting->lighting_mode = 5; break;
+                            default: break;
+                        }
+                        tone_mapping->exposure = scene_renderer->exposure;
+                        tone_mapping->auto_exposure = scene_renderer->auto_exposure;
+                        tone_mapping->bloom_intensity = scene_renderer->bloom_intensity;
+                        bloom_pass->lum_threshold = scene_renderer->bloom_threshold;
                     }
-                    tone_mapping->exposure = scene_renderer->exposure;
-                    tone_mapping->auto_exposure = scene_renderer->auto_exposure;
                 }
             }
             luexp(m_render_graph->execute(command_buffer));

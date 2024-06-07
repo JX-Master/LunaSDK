@@ -47,6 +47,17 @@ rule("luna.shader")
     end)
 rule_end()
 
+function add_luna_shader(file, config)
+    if is_config("rhi_api", "D3D12") then
+        config.target_format = "dxil"
+    elseif is_config("rhi_api", "Vulkan") then
+        config.target_format = "spir_v"
+    elseif is_config("rhi_api", "Metal") then
+        config.target_format = "msl"
+    end
+    add_files(file, config)
+end
+
 add_rules("mode.debug", "mode.profile", "mode.release")
 add_defines("LUNA_MANUAL_CONFIG_DEBUG_LEVEL")
 if is_mode("debug") then
@@ -122,11 +133,11 @@ if is_config("rhi_api", "Vulkan") then
     add_requires("volk", {configs = {header_only = true}})
     add_requires("vulkan-memory-allocator")
 elseif is_config("rhi_api", "D3D12") then 
-    add_requires("d3d12-memory-allocator")
+    add_requires("d3d12-memory-allocator", {configs = {toolchains = "msvc"}}) -- currently d3d12-memory-allocator does not support clang-cl.
 end
 
 function add_luna_sdk_options()
-    add_options("shared", "contract_assertion", "thread_safe_assertion", "memory_profiler")
+    add_options("shared", "contract_assertion", "thread_safe_assertion", "memory_profiler", "rhi_api")
     -- Contract assertion is always enabled in debug mode.
     if has_config("contract_assertion") or is_mode("debug") then
         add_defines("LUNA_ENABLE_CONTRACT_ASSERTION")
@@ -143,6 +154,7 @@ function luna_sdk_module_target(target_name)
         set_kind("static")
     end
     set_basename("Luna" .. target_name)
+    set_exceptions("none")
 end
 
 function set_luna_sdk_test()
@@ -158,7 +170,6 @@ end
 
 add_includedirs("Modules")
 set_languages("c99", "cxx17")
-set_exceptions("none")
 
 if is_os("windows") then 
     add_defines("_WINDOWS")

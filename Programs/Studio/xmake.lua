@@ -1,50 +1,33 @@
 target("Studio")
     set_luna_sdk_program()
+    add_rules("luna.shader")
     add_options("rhi_api")
     add_headerfiles("**.hpp")
     add_files("**.cpp")
     add_deps("Runtime", "VariantUtils", "HID", "Window", "RHI", "Image", "Font", "ImGui", "Asset", "ObjLoader", "RG", "JobSystem")
-
-    local shader_files = {
-            "Common.hlsl",
-            "BRDF.hlsl",
-            "CameraParams.hlsl",
-            "CommonVertex.hlsl",
-            "IBLCommon.hlsl",
-            "MipmapGenerationCS.hlsl",
-            "SkyboxCS.hlsl",
-            "ToneMappingCS.hlsl",
-            "LumHistogramClear.hlsl",
-            "LumHistogram.hlsl",
-            "LumHistogramCollect.hlsl",
-            "GeometryCommon.hlsl",
-            "GeometryVert.hlsl",
-            "GeometryPixel.hlsl",
-            "MeshBuffer.hlsl",
-            "DeferredLighting.hlsl",
-            "BufferVisualization.hlsl",
-            "PrecomputeIntegrateBRDF.hlsl",
-            "PrecomputeEnvironmentMapMips.hlsl",
-            "WireframeVert.hlsl"
-        }
-
-    after_build(function (target)
-        local target_dir = target:targetdir()
-        local shader_source_dir = vformat("$(scriptdir)/Shaders")
-        for _, i in pairs(shader_files) do
-            os.cp(path.join(shader_source_dir, i), path.join(target_dir, "Shaders", i))
-        end
-    end)
-    after_clean(function (target) 
-        os.rm(path.join(target:targetdir(), "Shaders"))
-    end)
-    after_install(function (target)
-        local shader_source_dir = vformat("$(scriptdir)/Shaders")
-        for _, i in pairs(shader_files) do
-            os.cp(path.join(shader_source_dir, i), path.join(target:installdir(), "bin", "Shaders", i))
-        end
-    end)
-    after_uninstall(function (target) 
-        os.rm(path.join(target:installdir(), "bin", "Shaders"))
-    end)
+    
+    add_luna_shader("Shaders/MipmapGenerationCS.hlsl", {type = "compute"})
+    add_luna_shader("Shaders/SkyboxCS.hlsl", {type = "compute"})
+    add_luna_shader("Shaders/ToneMappingCS.hlsl", {type = "compute"})
+    add_luna_shader("Shaders/LumHistogramClear.hlsl", {type = "compute"})
+    add_luna_shader("Shaders/LumHistogram.hlsl", {type = "compute"})
+    add_luna_shader("Shaders/LumHistogramCollect.hlsl", {type = "compute"})
+    add_luna_shader("Shaders/GeometryVert.hlsl", {type = "vertex"})
+    add_luna_shader("Shaders/GeometryPixel.hlsl", {type = "pixel"})
+    add_luna_shader("Shaders/DeferredLighting.hlsl", {type = "compute"})
+    add_luna_shader("Shaders/BufferVisualization.hlsl", {type = "compute"})
+    add_luna_shader("Shaders/PrecomputeIntegrateBRDF.hlsl", {type = "compute"})
+    add_luna_shader("Shaders/PrecomputeEnvironmentMapMips.hlsl", {type = "compute"})
+    add_luna_shader("Shaders/WireframeVert.hlsl", {type = "vertex"})
+    add_luna_shader("Shaders/WireframePixel.hlsl", {type = "pixel"})
+    add_luna_shader("Shaders/BloomSetupCS.hlsl", {type = "compute", debug = true})
+    add_luna_shader("Shaders/BloomDownSampleCS.hlsl", {type = "compute", debug = true})
+    add_luna_shader("Shaders/BloomUpSampleCS.hlsl", {type = "compute", debug = true})
+    add_headerfiles("Shaders/Common.hlsl",
+            "Shaders/BRDF.hlsl",
+            "Shaders/CameraParams.hlsl",
+            "Shaders/CommonVertex.hlsl",
+            "Shaders/IBLCommon.hlsl",
+            "Shaders/GeometryCommon.hlsl",
+            "Shaders/MeshBuffer.hlsl", {install = false})
 target_end()

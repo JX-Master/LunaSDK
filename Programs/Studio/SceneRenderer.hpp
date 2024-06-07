@@ -10,6 +10,7 @@
 #pragma once
 #include "Scene.hpp"
 #include <Luna/RG/RenderGraph.hpp>
+#include "ModelRenderer.hpp"
 namespace Luna
 {
     struct CameraCB
@@ -31,6 +32,23 @@ namespace Luna
         u32 type;
         Float3U position;
         f32 spot_attenuation_power;
+    };
+
+    struct MeshBuffer
+    {
+        Float4x4U model_to_world;
+        Float4x4U world_to_model;
+    };
+
+    struct MaterialParameters
+    {
+        f32 emissive_intensity;
+    };
+
+    struct MeshRenderParams
+    {
+        Ref<Entity> entity;
+        Ref<ModelRenderer> renderer;
     };
 
     enum class SceneRendererMode : u8
@@ -104,6 +122,7 @@ namespace Luna
         static constexpr usize BASE_COLOR_ROUGHNESS_BUFFER = 5;
         static constexpr usize NORMAL_METALLIC_BUFFER = 6;
         static constexpr usize EMISSIVE_BUFFER = 7;
+        static constexpr usize BLOOM_BUFFER = 8;
 
         // Passes.
         static constexpr usize WIREFRAME_PASS = 0;
@@ -111,13 +130,20 @@ namespace Luna
         static constexpr usize BUFFER_VIS_PASS = 2;
         static constexpr usize SKYBOX_PASS = 3;
         static constexpr usize DEFERRED_LIGHTING_PASS = 4;
-        static constexpr usize TONE_MAPPING_PASS = 5;
+        static constexpr usize BLOOM_PASS = 5;
+        static constexpr usize TONE_MAPPING_PASS = 6;
         Ref<RHI::IDevice> m_device;
         SceneRendererSettings m_settings;
         Ref<RG::IRenderGraph> m_render_graph;
         Ref<RHI::IBuffer> m_camera_cb;
+
+        u32 m_model_matrices_stride;
+        u32 m_material_parameter_stride;
+
         usize m_num_model_matrices = 0;
         Ref<RHI::IBuffer> m_model_matrices;
+        usize m_num_materials = 0;
+        Ref<RHI::IBuffer> m_material_parameters;
         usize m_num_lights = 0;
         Ref<RHI::IBuffer> m_lighting_params;
     };
