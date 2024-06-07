@@ -18,7 +18,7 @@ namespace Luna
         {
             lustruct("GUI::Rectangle", "{d0e27859-1439-4089-bf55-b8fe82b24c47}");
 
-            virtual RV render(IContext* ctx, VG::IShapeDrawList* draw_list) override;
+            virtual RV draw(IContext* ctx, VG::IShapeDrawList* draw_list) override;
         };
     }
 }

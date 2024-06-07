@@ -10,7 +10,6 @@
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_GUI_API LUNA_EXPORT
 #include "Context.hpp"
-#include "../Widgets.hpp"
 #include <Luna/Runtime/RingDeque.hpp>
 #include <Luna/Runtime/Math/Color.hpp>
 #include <Luna/VG/Shapes.hpp>
@@ -63,6 +62,7 @@ namespace Luna
         void Context::add_widget(Widget *widget)
         {
             m_current_widget = widget;
+            m_current_widget->id = get_id();
             if(!m_widget_stack.empty())
             {
                 m_widget_stack.back()->children.push_back(m_current_widget);
@@ -80,11 +80,11 @@ namespace Luna
         }
         RV Context::update()
         {
-            return m_root_widget->update(this);
+            return m_root_widget->update(this, OffsetRectF(0, 0, m_io.width, m_io.height));
         }
         RV Context::render(VG::IShapeDrawList* draw_list)
         {
-            return m_root_widget->render(this, draw_list);
+            return m_root_widget->draw(this, draw_list);
         }
         LUNA_GUI_API Ref<IContext> new_context()
         {

@@ -10,6 +10,7 @@
 struct TransformParams
 {
     float4x4 transform;
+    float4 clip_rect;
 };
 TransformParams g_cbuffer : register(b0);
 StructuredBuffer<float> g_commands : register(t1);
@@ -21,15 +22,17 @@ struct PSIn
     [[vk::location(0)]]
     float4 position        : SV_POSITION;
     [[vk::location(1)]]
-    float2 shapecoord    : SHAPECOORD;
+    float2 position_2d   : POSITION_2D;
     [[vk::location(2)]]
-    float2 texcoord        : TEXCOORD;
+    float2 shapecoord    : SHAPECOORD;
     [[vk::location(3)]]
-    float4 color        : COLOR;
+    float2 texcoord        : TEXCOORD;
     [[vk::location(4)]]
     uint begin_command_offset : COMMAND_OFFSET;
     [[vk::location(5)]]
     uint num_commands    : NUM_COMMANDS;
+    [[vk::location(6)]]
+    float4 color        : COLOR;
 };
 
 static float DENOMINATOR_EPSILON = 0.0001220703125f;
@@ -175,6 +178,19 @@ float circle_test_y_axis(float2 v0, float2 v1, float2 center, float radius, bool
     return sign * saturate(yt * pixels_per_unit.y + 0.5f);
 }
 
+float clip_rect_test(float2 pos, float4 clip_rect, float2 pixels_per_unit)
+{
+    float4 rect = float4(clip_rect.x, clip_rect.y, clip_rect.x + clip_rect.z, clip_rect.y + clip_rect.w);
+    rect -= float4(pos.x, pos.y, pos.x, pos.y);
+    if (rect.x > 0 || rect.y > 0 || rect.z < 0 || rect.w < 0)
+    {
+        // out of clip rect.
+        return 0;
+    }
+    float2 dist = min(abs(rect.xy), abs(rect.zw));
+    dist = saturate(dist * pixels_per_unit);
+    return min(dist.x, dist.y);
+}
 
 static const float COMMAND_MOVE_TO = 1.0f;
 static const float COMMAND_LINE_TO = 2.0f;
@@ -241,6 +257,10 @@ float4 main(PSIn v) : SV_Target
     float weight_x = 1.0f - abs(coverage_x * 2.0f - 1.0f);
     float weight_y = 1.0f - abs(coverage_y * 2.0f - 1.0f);
     float coverage = max(abs(coverage_x * weight_x + coverage_y * weight_y) / max(weight_x + weight_y, 0.0001220703125f), min(abs(coverage_x), abs(coverage_y)));
+    if(any(g_cbuffer.clip_rect != float4(0, 0, 0, 0)))
+    {
+        coverage *= clip_rect_test(v.position_2d, g_cbuffer.clip_rect, pixels_per_unit);
+    }
     float4 col = g_tex.Sample(g_sampler, v.texcoord);
     col *= v.color;
     col.w *= coverage;

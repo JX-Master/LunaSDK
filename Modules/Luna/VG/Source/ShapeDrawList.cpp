@@ -38,6 +38,7 @@ namespace Luna
             m_sampler = get_default_sampler();
             m_origin = Float2U(0.0f);
             m_rotation = 0.0f;
+            m_clip_rect = RectF{0, 0, 0, 0};
             m_state_dirty = false;
         }
         void ShapeDrawList::draw_shape_raw(Span<const Vertex> vertices, Span<const u32> indices)
@@ -55,7 +56,7 @@ namespace Luna
         }
         void ShapeDrawList::draw_shape(u32 begin_command, u32 num_commands,
             const Float2U& min_position, const Float2U& max_position,
-            const Float2U& min_shapecoord, const Float2U& max_shapecoord, u32 color,
+            const Float2U& min_shapecoord, const Float2U& max_shapecoord, const Float4U& color,
             const Float2U& min_texcoord, const Float2U& max_texcoord)
         {
             lutsassert();

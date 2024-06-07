@@ -7,46 +7,42 @@
 * @author JXMaster
 * @date 2024/5/8
 */
+#include <Luna/Runtime/PlatformDefines.hpp>
+#define LUNA_GUI_API LUNA_EXPORT
 #include "../Context.hpp"
 #include "../../Widgets.hpp"
 #include "Text.hpp"
+#include "../../WidgetDraw.hpp"
 
 namespace Luna
 {
     namespace GUI
     {
-        RV Text::update(IContext* ctx)
+        RV Text::update(IContext* ctx, const OffsetRectF& layout_rect)
         {
             // Calculate bounding rect.
-            if(parent)
-            {
-                Float4U anthor = get_vattr(VATTR_ANTHOR, false, {0, 0, 1, 1});
-                Float4U offset = get_vattr(VATTR_OFFSET, false, {0, 0, 0, 0});
-                bounding_rect = calc_widget_bounding_rect(parent->bounding_rect, 
+            Float4U anthor = get_vattr(VATTR_ANTHOR, false, {0, 0, 1, 1});
+            Float4U offset = get_vattr(VATTR_OFFSET, false, {0, 0, 0, 0});
+            bounding_rect = calc_widget_bounding_rect(layout_rect, 
                     OffsetRectF{anthor.x, anthor.y, anthor.z, anthor.w}, 
                     OffsetRectF{offset.x, offset.y, offset.z, offset.w});
-            }
-            // Build font.
-            VG::TextArrangeSection section;
-            section.font_file = Font::get_default_font();
-            section.font_index = 0;
-            section.font_size = get_sattr(SATTR_TEXT_SIZE, true, 18.0f);
-            section.color = Color::to_rgba8(get_vattr(VATTR_TEXT_COLOR, true, Float4U(1.0f)));
-            section.char_span = 0;
-            section.line_span = 0;
-            Name text = get_tattr(TATTR_TEXT, false);
-            section.num_chars = text.size();
-            text_arrange_sections.clear();
-            text_arrange_sections.push_back(section);
-            auto& io = ctx->get_io();
-            RectF rect(bounding_rect.left, io.height - bounding_rect.bottom, bounding_rect.right - bounding_rect.left, bounding_rect.bottom - bounding_rect.top);
-            arrange_result = VG::arrange_text(text.c_str(), text.size(), 
-                text_arrange_sections.cspan(), rect, VG::TextAlignment::center, VG::TextAlignment::begin);
             return ok;
         }
-        RV Text::render(IContext *ctx, VG::IShapeDrawList *draw_list)
+        RV Text::draw(IContext *ctx, VG::IShapeDrawList *draw_list)
         {
-            return VG::commit_text_arrange_result(arrange_result, text_arrange_sections.cspan(), ctx->get_font_altas(), draw_list);
+            Font::IFontFile* font = cast_object<Font::IFontFile>(get_oattr(OATTR_FONT, true, Font::get_default_font()));
+            u32 font_index = get_sattr(SATTR_FONT_INDEX, true, 0);
+            return draw_text(ctx, draw_list, text.c_str(), text.size(), 
+                get_vattr(VATTR_TEXT_COLOR, true, Float4U(1.0f)), 
+                get_sattr(SATTR_TEXT_SIZE, true, DEFAULT_TEXT_SIZE), 
+                bounding_rect.left, bounding_rect.top, bounding_rect.right, bounding_rect.bottom,
+                font, font_index);
+        }
+        LUNA_GUI_API void text(IContext* ctx, const Name& text)
+        {
+            Ref<Text> widget = new_object<Text>();
+            ctx->add_widget(widget);
+            widget->text = text;
         }
     }
 }

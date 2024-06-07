@@ -42,6 +42,7 @@ namespace Luna
             RHI::SamplerDesc m_sampler;
             Float2U m_origin;
             f32 m_rotation;
+            RectF m_clip_rect;
 
             // If `true`, then the draw call should be re-targeted.
             bool m_state_dirty;
@@ -55,6 +56,7 @@ namespace Luna
                 dc.sampler = m_sampler;
                 dc.origin_point = m_origin;
                 dc.rotation = m_rotation;
+                dc.clip_rect = m_clip_rect;
                 dc.base_index = (u32)m_indices.size();
                 dc.num_indices = 0;
             }
@@ -164,10 +166,23 @@ namespace Luna
             {
                 return m_rotation;
             }
+            virtual void set_clip_rect(const RectF& clip_rect) override
+            {
+                lutsassert();
+                if (m_clip_rect != clip_rect)
+                {
+                    m_state_dirty = true;
+                    m_clip_rect = clip_rect;
+                }
+            }
+            virtual RectF get_clip_rect() override
+            {
+                return m_clip_rect;
+            }
             virtual void draw_shape_raw(Span<const Vertex> vertices, Span<const u32> indices) override;
             virtual void draw_shape(u32 begin_command, u32 num_commands,
                 const Float2U& min_position, const Float2U& max_position,
-                const Float2U& min_shapecoord, const Float2U& max_shapecoord, u32 color,
+                const Float2U& min_shapecoord, const Float2U& max_shapecoord, const Float4U& color,
                 const Float2U& min_texcoord, const Float2U& max_texcoord) override;
             virtual RV compile() override;
             virtual RHI::IBuffer* get_vertex_buffer() override

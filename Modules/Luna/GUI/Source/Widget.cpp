@@ -11,7 +11,6 @@
 #define LUNA_GUI_API LUNA_EXPORT
 #include "../Widget.hpp"
 #include "../Context.hpp"
-#include "../Widgets.hpp"
 
 namespace Luna
 {
@@ -101,39 +100,59 @@ namespace Luna
             if (found) *found = false;
             return default_value;
         }
-        LUNA_GUI_API RV Widget::update(IContext* ctx)
+        LUNA_GUI_API object_t Widget::get_oattr(u32 key, bool recursive, object_t default_value, bool* found)
+        {
+            auto iter = oattrs.find(key);
+            if (iter != oattrs.end())
+            {
+                if (found) *found = true;
+                return iter->second.get();
+            }
+            // not found in current node.
+            if (recursive)
+            {
+                Widget* cur = parent;
+                while(cur)
+                {
+                    iter = cur->oattrs.find(key);
+                    if (iter != cur->oattrs.end())
+                    {
+                        // found.
+                        if (found) *found = true;
+                        return iter->second.get();
+                    }
+                    cur = cur->parent;
+                }
+            }
+            // not found.
+            if (found) *found = false;
+            return default_value;
+        }
+        LUNA_GUI_API RV Widget::update(IContext* ctx, const OffsetRectF& layout_rect)
         {
             lutry
             {
                 // Calculate bounding rect.
-                if(parent)
-                {
-                    Float4U anthor = get_vattr(VATTR_ANTHOR, false, {0, 0, 1, 1});
-                    Float4U offset = get_vattr(VATTR_OFFSET, false, {0, 0, 0, 0});
-                    bounding_rect = calc_widget_bounding_rect(parent->bounding_rect, 
-                        OffsetRectF{anthor.x, anthor.y, anthor.z, anthor.w}, 
+                Float4U anthor = get_vattr(VATTR_ANTHOR, false, {0, 0, 1, 1});
+                Float4U offset = get_vattr(VATTR_OFFSET, false, {0, 0, 0, 0});
+                bounding_rect = calc_widget_bounding_rect(layout_rect, OffsetRectF{anthor.x, anthor.y, anthor.z, anthor.w}, 
                         OffsetRectF{offset.x, offset.y, offset.z, offset.w});
-                }
-                else
-                {
-                    auto& io = ctx->get_io();
-                    bounding_rect = OffsetRectF{0, 0, (f32)io.width, (f32)io.height};
-                }
+
                 for(auto& c : children)
                 {
-                    luexp(c->update(ctx));
+                    luexp(c->update(ctx, bounding_rect));
                 }
             }
             lucatchret;
             return ok;
         }
-        LUNA_GUI_API RV Widget::render(IContext* ctx, VG::IShapeDrawList* draw_list)
+        LUNA_GUI_API RV Widget::draw(IContext* ctx, VG::IShapeDrawList* draw_list)
         {
             lutry
             {
                 for(auto& c : children)
                 {
-                    luexp(c->render(ctx, draw_list));
+                    luexp(c->draw(ctx, draw_list));
                 }
             }
             lucatchret;

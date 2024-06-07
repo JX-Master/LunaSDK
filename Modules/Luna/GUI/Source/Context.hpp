@@ -49,6 +49,7 @@ namespace Luna
 
             Context()
             {
+                memzero(&m_io);
                 m_font_atlas = VG::new_font_atlas();
             }
             ~Context() {}

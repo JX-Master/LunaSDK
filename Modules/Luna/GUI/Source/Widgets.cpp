@@ -10,23 +10,11 @@
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_GUI_API LUNA_EXPORT
 #include "../Widgets.hpp"
-#include "Widgets/Rectangle.hpp"
-#include "Widgets/Text.hpp"
 
 namespace Luna
 {
     namespace GUI
     {
-        LUNA_GUI_API void begin_rectangle(IContext* ctx)
-        {
-            Ref<Rectangle> widget = new_object<Rectangle>();
-            ctx->add_widget(widget);
-            ctx->push_widget(widget);
-        }
-        LUNA_GUI_API void end(IContext* ctx)
-        {
-            ctx->pop_widget();
-        }
         LUNA_GUI_API void set_anthor(IContext* ctx, f32 left, f32 top, f32 right, f32 bottom)
         {
             set_vattr(ctx, VATTR_ANTHOR, Float4U(left, top, right, bottom));
@@ -34,12 +22,6 @@ namespace Luna
         LUNA_GUI_API void set_offset(IContext* ctx, f32 left, f32 top, f32 right, f32 bottom)
         {
             set_vattr(ctx, VATTR_OFFSET, Float4U(left, top, right, bottom));
-        }
-        LUNA_GUI_API void text(IContext* ctx, const Name& text)
-        {
-            Ref<Text> widget = new_object<Text>();
-            ctx->add_widget(widget);
-            set_tattr(ctx, TATTR_TEXT, text);
         }
         LUNA_GUI_API void set_sattr(IContext* ctx, u32 kind, f32 value)
         {

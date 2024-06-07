@@ -9,6 +9,7 @@
 #include <Luna/GUI/Context.hpp>
 #include <Luna/Runtime/Math/Color.hpp>
 #include <Luna/VG/ShapeRenderer.hpp>
+#include <Luna/Runtime/Math/Transform.hpp>
 
 using namespace Luna;
 
@@ -75,14 +76,14 @@ void run()
             f32 clear_color[] = { 0.0f, 0.0f, 0.0f, 1.0f };
             w = ww;
             h = wh;
-            auto& io = ctx->get_io();
-            io.width = w;
-            io.height = h;
         }
+        auto& io = ctx->get_io();
+        auto gui_size = window->get_size();
+        io.width = gui_size.x;
+        io.height = gui_size.y;
         ctx->begin_frame();
         {
             using namespace GUI;
-            set_vattr(ctx, VATTR_BACKGROUND_COLOR, {0, 0, 0, 0});
             for(u32 y = 0; y < 4; ++y)
             {
                 for (u32 x = 0; x < 4; ++x)
@@ -116,11 +117,14 @@ void run()
                     set_vattr(ctx, VATTR_BACKGROUND_COLOR, color);
                     text(ctx, "Text");
                     set_sattr(ctx, SATTR_TEXT_SIZE, 32);
-                    end(ctx);
-                    end(ctx);
+                    end_rectangle(ctx);
+                    end_rectangle(ctx);
                 }
             }
         }
+        begin_window(ctx, "test window");
+
+        end_window(ctx);
         lupanic_if_failed(ctx->update());
         lupanic_if_failed(ctx->render(draw_list));
         lupanic_if_failed(draw_list->compile());
@@ -131,7 +135,9 @@ void run()
         desc.color_attachments[0] = ColorAttachment(back_buffer, LoadOp::clear, StoreOp::store, { 0.0f, 0.0f, 0.0f, 1.0f });
         cmdbuf->begin_render_pass(desc);
         cmdbuf->end_render_pass();
-        lupanic_if_failed(renderer->render(cmdbuf, draw_list->get_vertex_buffer(), draw_list->get_index_buffer(), draw_list->get_draw_calls()));
+
+        Float4x4U projection = ProjectionMatrix::make_orthographic_off_center(0 , (f32)gui_size.x, 0, (f32)gui_size.y, 0, 1);
+        lupanic_if_failed(renderer->render(cmdbuf, draw_list->get_vertex_buffer(), draw_list->get_index_buffer(), draw_list->get_draw_calls(), &projection));
         cmdbuf->resource_barrier({}, {TextureBarrier(back_buffer, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::present)});
         lupanic_if_failed(cmdbuf->submit({}, {}, true));
         cmdbuf->wait();

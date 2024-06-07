@@ -17,6 +17,8 @@
 #include <Luna/Runtime/Math/Vector.hpp>
 #include <Luna/Runtime/Result.hpp>
 #include <Luna/VG/ShapeDrawList.hpp>
+#include "Attributes.hpp"
+
 namespace Luna
 {
     namespace GUI
@@ -38,6 +40,7 @@ namespace Luna
             HashMap<u32, f32> sattrs;
             HashMap<u32, Float4U> vattrs;
             HashMap<u32, Name> tattrs;
+            HashMap<u32, ObjRef> oattrs;
 
             // The following properties are widget computed data that will get updates every frame based on widget states.
 
@@ -48,13 +51,14 @@ namespace Luna
             LUNA_GUI_API f32 get_sattr(u32 key, bool recursive = false, f32 default_value = 0, bool* found = nullptr);
             LUNA_GUI_API Float4U get_vattr(u32 key, bool recursive = false, const Float4U& default_value = Float4U(0), bool* found = nullptr);
             LUNA_GUI_API Name get_tattr(u32 key, bool recursive = false, const Name& default_value = Name(), bool* found = nullptr);
+            LUNA_GUI_API object_t get_oattr(u32 key, bool recursive = false, object_t default_value = nullptr, bool* found = nullptr);
 
             //! Called after the widget tree is built and before the widget is rendered. The widget should handle user input and generate render data 
             //! in this call.
-            LUNA_GUI_API virtual RV update(IContext* ctx);
+            LUNA_GUI_API virtual RV update(IContext* ctx, const OffsetRectF& layout_rect);
 
             //! Called when the widget is rendered.
-            LUNA_GUI_API virtual RV render(IContext* ctx, VG::IShapeDrawList* draw_list);
+            LUNA_GUI_API virtual RV draw(IContext* ctx, VG::IShapeDrawList* draw_list);
         };
     }
 }

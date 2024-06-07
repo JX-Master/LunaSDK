@@ -225,20 +225,22 @@ namespace Luna
             numpad8,
             //! 9 key on the number pad.
             numpad9,
-            // . key on the number pad.
+            //! . key on the number pad.
             numpad_decimal,
-            // + key on the number pad.
+            //! + key on the number pad.
             numpad_add,
-            // - key on the number pad.
+            //! - key on the number pad.
             numpad_subtract,
-            // * on the number pad.
+            //! * on the number pad.
             numpad_multiply,
-            // / on the number pad.
+            //! / on the number pad.
             numpad_divide,
-            // = on the number pad (Mac only)
+            //! = on the number pad (Mac only)
             numpad_equal,
-            // enter on the number pad (Mac only, Windows will always return normal "enter").
+            //! enter on the number pad (Mac only, Windows will always return normal "enter").
             numpad_enter,
+            //! the number of keys in the enumeration.
+            count
         };
 
         //! Specifies mouse button. These values can be bitwise-OR combined to select multiple mouse buttons if needed.

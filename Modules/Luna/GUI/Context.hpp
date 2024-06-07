@@ -14,6 +14,8 @@
 #include <Luna/VG/ShapeDrawList.hpp>
 #include <Luna/VG/FontAtlas.hpp>
 #include "Widget.hpp"
+#include <Luna/HID/Mouse.hpp>
+#include <Luna/HID/KeyCode.hpp>
 
 #ifndef LUNA_GUI_API
 #define LUNA_GUI_API
@@ -29,6 +31,14 @@ namespace Luna
             u32 width;
             //! The height of the viewport.
             u32 height;
+            //! The mouse X position.
+            i32 mouse_x;
+            //! The mouse Y position.
+            i32 mouse_y;
+            //! The mouse button state.
+            HID::MouseButton pressed_mouse_buttons;
+            //! The keyboard key state.
+            bool key_pressed[(u32)HID::KeyCode::count];
         };
 
         LUNA_GUI_API OffsetRectF calc_widget_bounding_rect(const OffsetRectF& parent_bounding_rect, const OffsetRectF& anthor, const OffsetRectF& offset);

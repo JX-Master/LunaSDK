@@ -64,42 +64,42 @@ namespace Luna
     //! @param[in] object_ptr The object pointer.
     //! @return Returns the strong reference counter value of the object after the operation.
     //! @par Valid Usage
-    //! * `object_ptr` must points to one memory returned by @ref object_alloc.
+    //! * `object_ptr` must point to one memory returned by @ref object_alloc.
     LUNA_RUNTIME_API ref_count_t object_retain(object_t object_ptr);
 
     //! Decreases the strong refernece counter value by one, and destroys the object if the reference counter drops to 0.
     //! @param[in] object_ptr The object pointer.
     //! @return Returns the strong reference counter value of the object after the operation.
     //! @par Valid Usage
-    //! * `object_ptr` must points to one memory returned by @ref object_alloc.
+    //! * `object_ptr` must point to one memory returned by @ref object_alloc.
     LUNA_RUNTIME_API ref_count_t object_release(object_t object_ptr);
 
     //! Fetches the strong refernece counter value of the boxed object.
     //! @param[in] object_ptr The object pointer.
     //! @return Returns the strong reference counter value of the object.
     //! @par Valid Usage
-    //! * `object_ptr` must points to one memory returned by @ref object_alloc.
+    //! * `object_ptr` must point to one memory returned by @ref object_alloc.
     LUNA_RUNTIME_API ref_count_t object_ref_count(object_t object_ptr);
 
     //! Increases the weak refernece counter value by one.
     //! @param[in] object_ptr The object pointer.
     //! @return Returns the weak reference counter value of the object after the operation.
     //! @par Valid Usage
-    //! * `object_ptr` must points to one memory returned by @ref object_alloc.
+    //! * `object_ptr` must point to one memory returned by @ref object_alloc.
     LUNA_RUNTIME_API ref_count_t object_retain_weak(object_t object_ptr);
 
     //! Decreases the weak refernece counter value by one.
     //! @param[in] object_ptr The object pointer.
     //! @return Returns the weak reference counter value of the object after the operation.
     //! @par Valid Usage
-    //! * `object_ptr` must points to one memory returned by @ref object_alloc.
+    //! * `object_ptr` must point to one memory returned by @ref object_alloc.
     LUNA_RUNTIME_API ref_count_t object_release_weak(object_t object_ptr);
 
     //! Fetches the weak refernece counter value of the boxed object.
     //! @param[in] object_ptr The object pointer.
     //! @return Returns the weak reference counter value of the object.
     //! @par Valid Usage
-    //! * `object_ptr` must points to one memory returned by @ref object_alloc.
+    //! * `object_ptr` must point to one memory returned by @ref object_alloc.
     LUNA_RUNTIME_API ref_count_t object_weak_ref_count(object_t object_ptr);
 
     //! Checks if the boxed object is expired, that is, destructed but its memeory is not freed.
@@ -107,7 +107,7 @@ namespace Luna
     //! @param[in] object_ptr The object pointer.
     //! @return Returns `true` if the object is expired, returns `false` otherwise.
     //! @par Valid Usage
-    //! * `object_ptr` must points to one memory returned by @ref object_alloc.
+    //! * `object_ptr` must point to one memory returned by @ref object_alloc.
     LUNA_RUNTIME_API bool object_expired(object_t object_ptr);
 
     //! Increases the strong refernece counter value by one if the boxed object is not expired.
@@ -116,21 +116,22 @@ namespace Luna
     //! @return Returns `true` if the object is valid and the strong reference counter value is successfully increased, 
     //! returns `false` otherwise.
     //! @par Valid Usage
-    //! * `object_ptr` must points to one memory returned by @ref object_alloc.
+    //! * `object_ptr` must point to one memory returned by @ref object_alloc.
     LUNA_RUNTIME_API bool object_retain_if_not_expired(object_t object_ptr);
 
     //! Gets the type object of the boxed object.
     //! @param[in] object_ptr The object pointer.
     //! @return Returns the type object of the boxed object.
     //! @par Valid Usage
-    //! * `object_ptr` must points to one memory returned by @ref object_alloc.
+    //! * `object_ptr` must point to one memory returned by @ref object_alloc.
     LUNA_RUNTIME_API typeinfo_t get_object_type(object_t object_ptr);
 
     //! Checks whether the boxed object is the specified type or derived types of the specified type.
     //! @param[in] object_ptr The object pointer.
+    //! @param[in] type The type object to check.
     //! @return Returns `true` if the boxed object is the specified type or derived types of the specified type, returns `false` otherwise.
     //! @par Valid Usage
-    //! * `object_ptr` must points to one memory returned by @ref object_alloc.
+    //! * `object_ptr` must point to one memory returned by @ref object_alloc.
     LUNA_RUNTIME_API bool object_is_type(object_t object_ptr, typeinfo_t type);
 
     //! Casts the object to the specified type.
@@ -139,7 +140,7 @@ namespace Luna
     template <typename _Rty>
     inline _Rty* cast_object(object_t object_ptr)
     {
-        return object_is_type(object_ptr, get_type_by_guid(_Rty::__guid)) ? (_Rty*)object_ptr : nullptr;
+        return object_ptr ? (object_is_type(object_ptr, get_type_by_guid(_Rty::__guid)) ? (_Rty*)object_ptr : nullptr) : nullptr;
     }
 
     //! @}

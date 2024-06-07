@@ -16,6 +16,7 @@
 #include <Luna/Font/Font.hpp>
 #include "Widgets/Rectangle.hpp"
 #include "Widgets/Text.hpp"
+#include "Widgets/Window.hpp"
 
 namespace Luna
 {
@@ -35,6 +36,8 @@ namespace Luna
                 register_boxed_type<Widget>();
                 register_struct_type<Rectangle>({}, typeof<Widget>());
                 register_struct_type<Text>({}, typeof<Widget>());
+                register_struct_type<Window>({}, typeof<Widget>());
+                register_boxed_type<WindowState>();
                 return ok;
             }
             virtual void on_close() override

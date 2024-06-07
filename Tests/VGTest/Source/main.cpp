@@ -176,7 +176,7 @@ void run()
             }
             if (HID::get_key_state(HID::KeyCode::a))
             {
-                g_camera_position += +left * camera_speed;
+                g_camera_position += left * camera_speed;
             }
             if (HID::get_key_state(HID::KeyCode::s))
             {
@@ -192,7 +192,7 @@ void run()
             }
             if (HID::get_key_state(HID::KeyCode::e))
             {
-                g_camera_position += +up * camera_speed;
+                g_camera_position += up * camera_speed;
             }
             auto eular = AffineMatrix::euler_angles(rot_mat);
             eular += {deg_to_rad((f32)mouse_delta.y / 10.0f), deg_to_rad((f32)mouse_delta.x / 10.0f), 0.0f};
@@ -220,39 +220,39 @@ void run()
         VG::ShapeBuilder::add_rectangle_filled(points, 0, 0, 100, 100);
         u32 end_offset = (u32)points.size();
         Float2 draw_pos = { window_sz.x / 2.0f - 200.0f * shape_scale, window_sz.y - 500.0f * shape_scale };
-        g_shape_draw_list->draw_shape(offset, end_offset - offset, draw_pos, draw_pos + 100.0f * shape_scale, { 0.0f, 0.0f }, { 100.0f, 100.0f }, Color::to_rgba8(Color::light_pink()));
+        g_shape_draw_list->draw_shape(offset, end_offset - offset, draw_pos, draw_pos + 100.0f * shape_scale, { 0.0f, 0.0f }, { 100.0f, 100.0f }, Color::light_pink());
 
         offset = end_offset;
         VG::ShapeBuilder::add_rectangle_bordered(points, 0, 0, 100, 100, 5, -2.5f);
         end_offset = (u32)points.size();
         draw_pos.y += 150.0f * shape_scale;
-        g_shape_draw_list->draw_shape(offset, end_offset - offset, draw_pos, draw_pos + 100.0f * shape_scale, { 0.0f, 0.0f }, { 100.0f, 100.0f }, Color::to_rgba8(Color::light_pink()));
+        g_shape_draw_list->draw_shape(offset, end_offset - offset, draw_pos, draw_pos + 100.0f * shape_scale, { 0.0f, 0.0f }, { 100.0f, 100.0f }, Color::light_pink());
 
         offset = end_offset;
         VG::ShapeBuilder::add_rounded_rectangle_filled(points, 0, 0, 100, 100, 10);
         end_offset = (u32)points.size();
         draw_pos.x += 150.0f * shape_scale;
         draw_pos.y -= 150.0f * shape_scale;
-        g_shape_draw_list->draw_shape(offset, end_offset - offset, draw_pos, draw_pos + 100.0f * shape_scale, { 0.0f, 0.0f }, { 100.0f, 100.0f }, Color::to_rgba8(Color::light_green()));
+        g_shape_draw_list->draw_shape(offset, end_offset - offset, draw_pos, draw_pos + 100.0f * shape_scale, { 0.0f, 0.0f }, { 100.0f, 100.0f }, Color::light_green());
 
         offset = end_offset;
         VG::ShapeBuilder::add_rounded_rectangle_bordered(points, 0, 0, 100, 100, 10, 5, -2.5f);
         end_offset = (u32)points.size();
         draw_pos.y += 150.0f * shape_scale;
-        g_shape_draw_list->draw_shape(offset, end_offset - offset, draw_pos, draw_pos + 100.0f * shape_scale, { 0.0f, 0.0f }, { 100.0f, 100.0f }, Color::to_rgba8(Color::light_green()));
+        g_shape_draw_list->draw_shape(offset, end_offset - offset, draw_pos, draw_pos + 100.0f * shape_scale, { 0.0f, 0.0f }, { 100.0f, 100.0f }, Color::light_green());
 
         offset = end_offset;
         VG::ShapeBuilder::add_circle_filled(points, 50, 50, 50);
         end_offset = (u32)points.size();
         draw_pos.x += 150.0f * shape_scale;
         draw_pos.y -= 150.0f * shape_scale;
-        g_shape_draw_list->draw_shape(offset, end_offset - offset, draw_pos, draw_pos + 100.0f * shape_scale, { 0.0f, 0.0f }, { 100.0f, 100.0f }, Color::to_rgba8(Color::light_blue()));
+        g_shape_draw_list->draw_shape(offset, end_offset - offset, draw_pos, draw_pos + 100.0f * shape_scale, { 0.0f, 0.0f }, { 100.0f, 100.0f }, Color::light_blue());
 
         offset = end_offset;
         VG::ShapeBuilder::add_circle_bordered(points, 50, 50, 50, 5, -2.5f);
         end_offset = (u32)points.size();
         draw_pos.y += 150.0f * shape_scale;
-        g_shape_draw_list->draw_shape(offset, end_offset - offset, draw_pos, draw_pos + 100.0f * shape_scale, { 0.0f, 0.0f }, { 100.0f, 100.0f }, Color::to_rgba8(Color::light_blue()));
+        g_shape_draw_list->draw_shape(offset, end_offset - offset, draw_pos, draw_pos + 100.0f * shape_scale, { 0.0f, 0.0f }, { 100.0f, 100.0f }, Color::light_blue());
 
         lupanic_if_failed(g_shape_draw_list->compile());
 

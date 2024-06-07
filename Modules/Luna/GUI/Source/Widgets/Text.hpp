@@ -19,11 +19,10 @@ namespace Luna
         {
             lustruct("GUI::Text", "{06fa0393-d4f9-4dce-b340-d9790b36c732}");
 
-            VG::TextArrangeResult arrange_result;
-            Vector<VG::TextArrangeSection> text_arrange_sections;
+            Name text;
 
-            virtual RV update(IContext* ctx) override;
-            virtual RV render(IContext* ctx, VG::IShapeDrawList* draw_list) override;
+            virtual RV update(IContext* ctx, const OffsetRectF& layout_rect) override;
+            virtual RV draw(IContext* ctx, VG::IShapeDrawList* draw_list) override;
         };
     }
 }
