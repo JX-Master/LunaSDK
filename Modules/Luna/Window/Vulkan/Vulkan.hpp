@@ -28,11 +28,6 @@ namespace Luna
         //! @return Returns the created vulkan surface.
         LUNA_WINDOW_API R<VkSurfaceKHR> new_vulkan_surface_from_window(VkInstance instance, IWindow* window);
 
-        //! Gets an array of vulkan instance extensions required by the window module to create vulkan 
-        //! surface from @ref IWindow.
-        //! @return Returns the array of required vulkan instance extensions .
-        LUNA_WINDOW_API Span<const c8*> get_required_vulkan_instance_extensions();
-
         //! @}
     }
 }

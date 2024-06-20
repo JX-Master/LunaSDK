@@ -46,16 +46,5 @@ namespace Luna
             lucatchret;
             return surface;
         }
-
-        LUNA_WINDOW_API Span<const c8*> get_required_vulkan_instance_extensions()
-        {
-#ifdef LUNA_WINDOW_GLFW
-            u32 count = 0;
-            const char** extensions = glfwGetRequiredInstanceExtensions(&count);
-            return {extensions, count};
-#else
-            return {nullptr, 0};
-#endif
-        }
     }
 }

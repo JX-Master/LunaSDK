@@ -9,7 +9,7 @@
 */
 #pragma once
 #include <Luna/Runtime/PlatformDefines.hpp>
-#include "../Window.hpp"
+#include "../../Window.hpp"
 
 struct GLFWwindow;
 

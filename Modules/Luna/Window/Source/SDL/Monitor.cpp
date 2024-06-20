@@ -78,6 +78,7 @@ namespace Luna
                     dst_mode.blue_bits = 0;
                     break;
             }
+            return dst_mode;
         }
         RV refresh_monitor_list()
         {
@@ -85,7 +86,7 @@ namespace Luna
             int num_displays = SDL_GetNumVideoDisplays();
             if (num_displays < 0)
             {
-                return set_error(BasicError::bad_platform_call(), "%s", SDL_GetError());
+                return set_error(BasicError::bad_platform_call(), "SDL error: %s", SDL_GetError());
             }
             g_monitors.reserve((u32)num_displays);
             for(int i = 0; i < num_displays; ++i)

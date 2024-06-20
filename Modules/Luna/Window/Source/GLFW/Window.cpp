@@ -9,7 +9,6 @@
 */
 #include <Luna/Runtime/PlatformDefines.hpp>
 
-#ifdef LUNA_WINDOW_GLFW
 #define LUNA_WINDOW_API LUNA_EXPORT
 #include "Window.hpp"
 #include <Luna/Runtime/Thread.hpp>
@@ -411,4 +410,3 @@ namespace Luna
         }
     }
 }
-#endif

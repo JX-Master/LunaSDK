@@ -10,10 +10,9 @@
 #pragma once
 #include "../../Window.hpp"
 
-#ifdef LUNA_WINDOW_GLFW
 #include <GLFW/glfw3.h>
 #include "../WindowEvents.hpp"
-#include "../../GLFW/GLFWWindow.hpp"
+#include "GLFWWindow.hpp"
 
 #ifdef LUNA_PLATFORM_WINDOWS
 #include "../../Windows/Win32Window.hpp"
@@ -171,5 +170,3 @@ namespace Luna
         };
     }
 }
-
-#endif

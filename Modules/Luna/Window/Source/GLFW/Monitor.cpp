@@ -8,7 +8,6 @@
 * @date 2022/10/4
 */
 #include <Luna/Runtime/PlatformDefines.hpp>
-#ifdef LUNA_WINDOW_GLFW
 #define LUNA_WINDOW_API LUNA_EXPORT
 #include "Monitor.hpp"
 #include <GLFW/glfw3.h>
@@ -121,4 +120,3 @@ namespace Luna
         }
     }
 }
-#endif
