@@ -262,6 +262,7 @@ namespace Luna
         {
             if (is_closed()) return nullptr;
             SDL_SysWMinfo info;
+            SDL_VERSION(&info.version);
             SDL_bool r = SDL_GetWindowWMInfo(m_window, &info);
             luassert(info.subsystem == SDL_SYSWM_COCOA);
             if (r == SDL_FALSE) return nullptr;
