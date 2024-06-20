@@ -10,6 +10,7 @@
 #include "SurfaceBind.hpp"
 #if defined(LUNA_PLATFORM_WINDOWS)
 #include <Luna/Window/Windows/Win32Window.hpp>
+#include <vulkan/vulkan_win32.h>
 #endif
 
 namespace Luna
@@ -31,7 +32,12 @@ namespace Luna
                 return BasicError::not_supported();
             }
             info.hwnd = win32_window->get_hwnd();
-            err = vkCreateWin32SurfaceKHR(instance, &info, nullptr, &surface);
+            auto func = (PFN_vkCreateWin32SurfaceKHR)vkGetInstanceProcAddr(instance, "vkCreateWin32SurfaceKHR");
+            if (!func)
+            {
+                return BasicError::not_supported();
+            }
+            err = func(instance, &info, nullptr, &surface);
             if (err)
             {
                 return encode_vk_result(err).errcode();

@@ -251,6 +251,7 @@ namespace Luna
         {
             if (is_closed()) return nullptr;
             SDL_SysWMinfo info;
+            SDL_VERSION(&info.version);
             SDL_bool r = SDL_GetWindowWMInfo(m_window, &info);
             luassert(info.subsystem == SDL_SYSWM_WINDOWS);
             if (r == SDL_FALSE) return nullptr;
@@ -505,38 +506,41 @@ namespace Luna
                     case SDL_WINDOWEVENT:
                     {
                         SDL_Window* sdl_window = SDL_GetWindowFromID(event.window.windowID);
-                        Window* window = (Window*)SDL_GetWindowData(sdl_window, "LunaWindow");
-                        switch(event.window.event)
+                        if (sdl_window)
                         {
-                            case SDL_WINDOWEVENT_SHOWN:
-                            window->m_events.show(window);
-                            break;
-                            case SDL_WINDOWEVENT_HIDDEN:
-                            window->m_events.hide(window);
-                            break;
-                            case SDL_WINDOWEVENT_MOVED:
-                            window->m_events.move(window, event.window.data1, event.window.data2);
-                            break;
-                            case SDL_WINDOWEVENT_RESIZED:
-                            handle_window_resize_event(window);
-                            break;
-                            case SDL_WINDOWEVENT_ENTER:
-                            window->m_events.mouse_enter(window);
-                            break;
-                            case SDL_WINDOWEVENT_LEAVE:
-                            window->m_events.mouse_leave(window);
-                            break;
-                            case SDL_WINDOWEVENT_FOCUS_GAINED:
-                            window->m_events.focus(window);
-                            break;
-                            case SDL_WINDOWEVENT_FOCUS_LOST:
-                            window->m_events.lose_focus(window);
-                            break;
-                            case SDL_WINDOWEVENT_CLOSE:
-                            window->m_events.close(window);
-                            break;
-                            case SDL_WINDOWEVENT_DISPLAY_CHANGED:
-                            handle_window_resize_event(window);
+                            Window* window = (Window*)SDL_GetWindowData(sdl_window, "LunaWindow");
+                            switch(event.window.event)
+                            {
+                                case SDL_WINDOWEVENT_SHOWN:
+                                window->m_events.show(window);
+                                break;
+                                case SDL_WINDOWEVENT_HIDDEN:
+                                window->m_events.hide(window);
+                                break;
+                                case SDL_WINDOWEVENT_MOVED:
+                                window->m_events.move(window, event.window.data1, event.window.data2);
+                                break;
+                                case SDL_WINDOWEVENT_RESIZED:
+                                handle_window_resize_event(window);
+                                break;
+                                case SDL_WINDOWEVENT_ENTER:
+                                window->m_events.mouse_enter(window);
+                                break;
+                                case SDL_WINDOWEVENT_LEAVE:
+                                window->m_events.mouse_leave(window);
+                                break;
+                                case SDL_WINDOWEVENT_FOCUS_GAINED:
+                                window->m_events.focus(window);
+                                break;
+                                case SDL_WINDOWEVENT_FOCUS_LOST:
+                                window->m_events.lose_focus(window);
+                                break;
+                                case SDL_WINDOWEVENT_CLOSE:
+                                window->m_events.close(window);
+                                break;
+                                case SDL_WINDOWEVENT_DISPLAY_CHANGED:
+                                handle_window_resize_event(window);
+                            }
                         }
                     }
                     break;

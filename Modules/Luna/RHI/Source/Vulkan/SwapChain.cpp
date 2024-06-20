@@ -10,7 +10,7 @@
 #include <Luna/Runtime/PlatformDefines.hpp>
 #include "SwapChain.hpp"
 #include "Instance.hpp"
-#include <Luna/Window/Vulkan/Vulkan.hpp>
+#include "SurfaceBind.hpp"
 namespace Luna
 {
     namespace RHI

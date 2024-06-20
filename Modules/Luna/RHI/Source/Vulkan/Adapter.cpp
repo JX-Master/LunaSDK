@@ -12,7 +12,7 @@
 #include "Adapter.hpp"
 #include "Instance.hpp"
 #include <Luna/Runtime/HashSet.hpp>
-#include <Luna/Window/Vulkan/Vulkan.hpp>
+#include "SurfaceBind.hpp"
 namespace Luna
 {
     namespace RHI

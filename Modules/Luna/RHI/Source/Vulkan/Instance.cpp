@@ -9,7 +9,10 @@
 */
 #include "Instance.hpp"
 #include <Luna/Runtime/Log.hpp>
-#include <Luna/Window/Vulkan/Vulkan.hpp>
+
+#ifdef LUNA_PLATFORM_WINDOWS
+#include <vulkan/vulkan_win32.h>
+#endif
 
 namespace Luna
 {
