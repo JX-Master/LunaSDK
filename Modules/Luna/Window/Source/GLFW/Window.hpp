@@ -12,7 +12,6 @@
 
 #include <GLFW/glfw3.h>
 #include "../WindowEvents.hpp"
-#include "GLFWWindow.hpp"
 
 #ifdef LUNA_PLATFORM_WINDOWS
 #include "../../Windows/Win32Window.hpp"
@@ -78,11 +77,11 @@ namespace Luna
         }
 
 #if defined(LUNA_PLATFORM_WINDOWS)
-        struct Window : public IWin32Window, public IGLFWWindow
+        struct Window : public IWin32Window
 #elif defined(LUNA_PLATFORM_MACOS)
-        struct Window : public ICocoaWindow, public IGLFWWindow
+        struct Window : public ICocoaWindow
 #else
-        struct Window : public IGLFWWindow
+        struct Window : public IWindow
 #endif
         {
             lustruct("RHI::Window", "{2b85ad9e-f949-448a-8d4a-98c4ed39d537}");
@@ -137,10 +136,6 @@ namespace Luna
                 return glfwGetCocoaWindow(m_window);
             }
 #endif
-            virtual GLFWwindow* get_glfw_window_handle() override
-            {
-                return m_window;
-            }
             virtual Event<window_close_event_handler_t>& get_close_event()  override { return m_events.close; }
             virtual Event<window_focus_event_handler_t>& get_focus_event()  override { return m_events.focus; }
             virtual Event<window_lose_focus_event_handler_t>& get_lose_focus_event()  override { return m_events.lose_focus; }
@@ -149,17 +144,19 @@ namespace Luna
             virtual Event<window_resize_event_handler_t>& get_resize_event()  override { return m_events.resize; }
             virtual Event<window_framebuffer_resize_event_handler_t>& get_framebuffer_resize_event() override { return m_events.framebuffer_resize; }
             virtual Event<window_move_event_handler_t>& get_move_event()  override { return m_events.move; }
-            virtual Event<window_begin_resize_move_t>& get_begin_resize_move_event()  override { return m_events.begin_resize_move; }
-            virtual Event<window_end_resize_move_t>& get_end_resize_move_event()  override { return m_events.end_resize_move; }
             virtual Event<window_dpi_changed_event_handler_t>& get_dpi_changed_event()  override { return m_events.dpi_changed; }
             virtual Event<window_key_down_event_handler_t>& get_key_down_event()  override { return m_events.key_down; }
             virtual Event<window_key_up_event_handler_t>& get_key_up_event()  override { return m_events.key_up; }
             virtual Event<window_input_character_event_handler_t>& get_input_character_event()  override { return m_events.input_character; }
+            virtual Event<window_mouse_enter_event_handler_t>& get_mouse_enter_event() override { return m_events.mouse_enter; }
+            virtual Event<window_mouse_leave_event_handlet_t>& get_mouse_leave_event() override { return m_events.mouse_leave; }
             virtual Event<window_mouse_move_event_handler_t>& get_mouse_move_event()  override { return m_events.mouse_move; }
             virtual Event<window_mouse_down_event_handler_t>& get_mouse_down_event()  override { return m_events.mouse_down; }
             virtual Event<window_mouse_up_event_handler_t>& get_mouse_up_event()  override { return m_events.mouse_up; }
             virtual Event<window_mouse_wheel_event_handler_t>& get_mouse_wheel_event()  override { return m_events.mouse_wheel; }
-            virtual Event<window_touch_event_handler_t>& get_touch_event()  override { return m_events.touch; }
+            virtual Event<window_touch_move_event_handler_t>& get_touch_move_event()  override { return m_events.touch_move; }
+            virtual Event<window_touch_move_event_handler_t>& get_touch_down_event()  override { return m_events.touch_down; }
+            virtual Event<window_touch_move_event_handler_t>& get_touch_up_event()  override { return m_events.touch_up; }
             virtual Event<window_drop_file_event_handler_t>& get_drop_file_event()  override { return m_events.drop_file; }
             Window() :
                 m_window(nullptr) {}
