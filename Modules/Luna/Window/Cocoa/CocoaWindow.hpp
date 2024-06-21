@@ -27,6 +27,8 @@ namespace Luna
 
             //! Gets NSWindow* handle of the window object.
             //! @return Returns NSWindow* handle of the window object.
+            //! The window handle is owned by the window object, the user cannot increase/decrease the reference
+            //! counter of the window handle.
             virtual id get_nswindow() = 0;
         };
 
