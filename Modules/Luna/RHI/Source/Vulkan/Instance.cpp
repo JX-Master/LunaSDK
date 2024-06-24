@@ -9,7 +9,10 @@
 */
 #include "Instance.hpp"
 #include <Luna/Runtime/Log.hpp>
-#include <Luna/Window/Vulkan/Vulkan.hpp>
+
+#ifdef LUNA_PLATFORM_WINDOWS
+#include <vulkan/vulkan_win32.h>
+#endif
 
 namespace Luna
 {
@@ -129,8 +132,11 @@ namespace Luna
                 create_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
                 create_info.pApplicationInfo = &app_info;
                 u32 glfw_extensions_count = 0;
-                auto window_required_extensions = Window::get_required_vulkan_instance_extensions();
-                Vector<const c8*> extensions(window_required_extensions.begin(), window_required_extensions.end());
+                Vector<const c8*> extensions;
+                extensions.push_back(VK_KHR_SURFACE_EXTENSION_NAME);
+#ifdef LUNA_PLATFORM_WINDOWS
+                extensions.push_back(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
+#endif
                 g_enable_validation_layer = false;
 #if defined(LUNA_RHI_DEBUG) || defined(LUNA_DEBUG)
                 if (check_validation_layer_support())

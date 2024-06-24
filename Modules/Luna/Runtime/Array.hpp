@@ -8,7 +8,7 @@
 * @date 2022/9/27
 */
 #pragma once
-#include "Iterator.hpp"
+#include "Span.hpp"
 #include "Algorithm.hpp"
 #include "Memory.hpp"
 #include "MemoryUtils.hpp"
@@ -117,6 +117,15 @@ namespace Luna
         //! Gets one constant reverse iterator to the one-before-first element of the array.
         //! @return Returns one constant reverse iterator to the one-before-first element of the array.
         constexpr const_reverse_iterator crend() const { return const_reverse_iterator(cbegin()); }
+        //! Creates one span that specifies elements of this array.
+        //! @return Returns the span that specifies elements of this array.
+        constexpr Span<_Ty, _Size> span() { return Span<_Ty, _Size>(m_elements); }
+        //! Creates one constant span that specifies elements of this array.
+        //! @return Returns the constant span that specifies elements of this array.
+        constexpr Span<const _Ty, _Size> span() const { return Span<const _Ty, _Size>(m_elements); }
+        //! Creates one constant span that specifies elements of this array.
+        //! @return Returns the constant span that specifies elements of this array.
+        constexpr Span<const _Ty, _Size> cspan() const { return Span<const _Ty, _Size>(m_elements); }
         //! Checks whether this array is empty, that is, the size of this array is `0`.
         //! @return Returns `true` if this array is empty, returns `false` otherwise.
         constexpr bool empty() const { return false; }
@@ -170,6 +179,9 @@ namespace Luna
         constexpr reverse_iterator rend() { return reverse_iterator(begin()); }
         constexpr const_reverse_iterator rend() const { return const_reverse_iterator(begin()); }
         constexpr const_reverse_iterator crend() const { return const_reverse_iterator(cbegin()); }
+        constexpr Span<_Ty> span() { return Span<_Ty>(); }
+        constexpr Span<const _Ty> span() const { return Span<const _Ty>(); }
+        constexpr Span<const _Ty> cspan() const { return Span<const _Ty>(); }
         constexpr bool empty() const { return true; }
         constexpr usize size() const { return 0; }
         constexpr void fill(const _Ty& value) {}
@@ -304,6 +316,9 @@ namespace Luna
         reverse_iterator rend() { return reverse_iterator(begin()); }
         const_reverse_iterator rend() const { return const_reverse_iterator(begin()); }
         const_reverse_iterator crend() const { return const_reverse_iterator(cbegin()); }
+        constexpr Span<_Ty> span() { return Span<_Ty>(m_elements, m_size); }
+        constexpr Span<const _Ty> span() const { return Span<const _Ty>(m_elements, m_size); }
+        constexpr Span<const _Ty> cspan() const { return Span<const _Ty>(m_elements, m_size); }
         bool empty() const { return m_size == 0; }
         usize size() const { return m_size; }
         void clear()

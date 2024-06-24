@@ -80,7 +80,7 @@ void on_window_close(Window::IWindow* window)
     window->close();
 }
 
-void on_mouse_down(Window::IWindow* window, Window::ModifierKeyFlag modifier_flags, HID::MouseButton button)
+void on_mouse_down(Window::IWindow* window, HID::MouseButton button)
 {
     if (button == HID::MouseButton::right)
     {
@@ -89,7 +89,7 @@ void on_mouse_down(Window::IWindow* window, Window::ModifierKeyFlag modifier_fla
     }
 }
 
-void on_mouse_up(Window::IWindow* window, Window::ModifierKeyFlag modifier_flags, HID::MouseButton button)
+void on_mouse_up(Window::IWindow* window, HID::MouseButton button)
 {
     if (button == HID::MouseButton::right)
     {

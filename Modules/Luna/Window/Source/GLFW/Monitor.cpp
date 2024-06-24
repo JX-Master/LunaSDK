@@ -8,7 +8,6 @@
 * @date 2022/10/4
 */
 #include <Luna/Runtime/PlatformDefines.hpp>
-#ifdef LUNA_WINDOW_GLFW
 #define LUNA_WINDOW_API LUNA_EXPORT
 #include "Monitor.hpp"
 #include <GLFW/glfw3.h>
@@ -41,14 +40,17 @@ namespace Luna
         }
         static void glfw_monitor_callback(GLFWmonitor* monitor, int event)
         {
+            MonitorEvent e;
+            e.orientation = MonitorOrientation::unknown;
             if (event == GLFW_CONNECTED)
             {
-                g_monitor_change_event(monitor, MonitorEvent::connected);
+                e.type = MonitorEventType::connected;
             }
             else if (event == GLFW_DISCONNECTED)
             {
-                g_monitor_change_event(monitor, MonitorEvent::disconnected);
+                e.type = MonitorEventType::disconnected;
             }
+            g_monitor_change_event(monitor, e);
         }
         void monitor_init()
         {
@@ -121,4 +123,3 @@ namespace Luna
         }
     }
 }
-#endif

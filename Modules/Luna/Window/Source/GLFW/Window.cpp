@@ -9,7 +9,6 @@
 */
 #include <Luna/Runtime/PlatformDefines.hpp>
 
-#ifdef LUNA_WINDOW_GLFW
 #define LUNA_WINDOW_API LUNA_EXPORT
 #include "Window.hpp"
 #include <Luna/Runtime/Thread.hpp>
@@ -131,11 +130,11 @@ namespace Luna
         {
             register_boxed_type<Window>();
 #if defined(LUNA_PLATFORM_WINDOWS)
-            impl_interface_for_type<Window, IGLFWWindow, IWin32Window, IWindow>();
+            impl_interface_for_type<Window, IWin32Window, IWindow>();
 #elif defined(LUNA_PLATFORM_MACOS)
-            impl_interface_for_type<Window, IGLFWWindow, ICocoaWindow, IWindow>();
+            impl_interface_for_type<Window, ICocoaWindow, IWindow>();
 #else
-            impl_interface_for_type<Window, IGLFWWindow, IWindow>();
+            impl_interface_for_type<Window, IWindow>();
 #endif
             
             if(!glfwInit())
@@ -270,6 +269,18 @@ namespace Luna
             c32 character = codepoint;
             pw->m_events.input_character(static_cast<IWindow*>(pw), character);
         }
+        static void glfw_on_mouse_enter(GLFWwindow* window, int entered)
+        {
+            Window* pw = (Window*)glfwGetWindowUserPointer(window);
+            if (entered)
+            {
+                pw->m_events.mouse_enter(static_cast<IWindow*>(pw));
+            }
+            else
+            {
+                pw->m_events.mouse_leave(static_cast<IWindow*>(pw));
+            }
+        }
         static void glfw_on_mouse_move(GLFWwindow* window, double xpos, double ypos)
         {
             Window* pw = (Window*)glfwGetWindowUserPointer(window);
@@ -287,9 +298,8 @@ namespace Luna
             else if (button == GLFW_MOUSE_BUTTON_4) btn = HID::MouseButton::function1;
             else if (button == GLFW_MOUSE_BUTTON_5) btn = HID::MouseButton::function2;
             else return;
-            auto modifier_flags = glfw_translate_mods(mods);
-            if (action == GLFW_PRESS) pw->m_events.mouse_down(static_cast<IWindow*>(pw), modifier_flags, btn);
-            else if (action == GLFW_RELEASE) pw->m_events.mouse_up(static_cast<IWindow*>(pw), modifier_flags, btn);
+            if (action == GLFW_PRESS) pw->m_events.mouse_down(static_cast<IWindow*>(pw), btn);
+            else if (action == GLFW_RELEASE) pw->m_events.mouse_up(static_cast<IWindow*>(pw), btn);
         }
         static void glfw_on_mouse_wheel(GLFWwindow* window, double xoffset, double yoffset)
         {
@@ -301,11 +311,7 @@ namespace Luna
         static void glfw_on_drop_file(GLFWwindow* window, int count, const char** paths)
         {
             Window* pw = (Window*)glfwGetWindowUserPointer(window);
-            double x, y;
-            glfwGetCursorPos(window, &x, &y);
-            i32 mouse_position_x = (i32)x;
-            i32 mouse_position_y = (i32)y;
-            pw->m_events.drop_file(static_cast<IWindow*>(pw), mouse_position_x, mouse_position_y, Span<const c8*>(paths, count));
+            pw->m_events.drop_file(static_cast<IWindow*>(pw), Span<const c8*>(paths, count));
         }
         static void glfw_on_dpi_change(GLFWwindow* window, float xscale, float yscale)
         {
@@ -321,6 +327,7 @@ namespace Luna
             glfwSetWindowPosCallback(window, glfw_on_move);
             glfwSetKeyCallback(window, glfw_on_key);
             glfwSetCharCallback(window, glfw_on_char);
+            glfwSetCursorEnterCallback(window, glfw_on_mouse_enter);
             glfwSetCursorPosCallback(window, glfw_on_mouse_move);
             glfwSetMouseButtonCallback(window, glfw_on_mouse_button);
             glfwSetScrollCallback(window, glfw_on_mouse_wheel);
@@ -411,4 +418,3 @@ namespace Luna
         }
     }
 }
-#endif

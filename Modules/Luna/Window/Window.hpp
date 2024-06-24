@@ -25,6 +25,7 @@ namespace Luna
         //! The Window module provides window management functionalities of the underlying system.
         //! @{
         
+        
         //! Identifies keys that are pressed in window mouse events.
         enum class ModifierKeyFlag : u8
         {
@@ -65,12 +66,6 @@ namespace Luna
         //! The handler for window move resize event.
         using window_move_event_handler_t = void(IWindow* window, i32 x, i32 y);
 
-        //! The handler for window begin resize move event.
-        using window_begin_resize_move_t = void(IWindow* window);
-
-        //! The handler for window end resize move event.
-        using window_end_resize_move_t = void(IWindow* window);
-
         //! The handler for window dpi changed event.
         using window_dpi_changed_event_handler_t = void(IWindow* window, f32 dpi_scale);
 
@@ -83,35 +78,53 @@ namespace Luna
         //! The handler for window input character event.
         using window_input_character_event_handler_t = void(IWindow* window, c32 character);
 
+        //! The handler for mouse enter event.
+        using window_mouse_enter_event_handler_t = void(IWindow* window);
+
+        //! The handler for mouse leave event.
+        using window_mouse_leave_event_handlet_t = void(IWindow* window);
+
         //! The handler for mouse move event.
         using window_mouse_move_event_handler_t = void(IWindow* window, i32 x, i32 y);
 
         //! The handler for mouse down event.
-        using window_mouse_down_event_handler_t = void(IWindow* window, ModifierKeyFlag modifier_flags, HID::MouseButton button);
+        using window_mouse_down_event_handler_t = void(IWindow* window, HID::MouseButton button);
 
         //! The handler for mouse up event.
-        using window_mouse_up_event_handler_t = void(IWindow* window, ModifierKeyFlag modifier_flags, HID::MouseButton button);
+        using window_mouse_up_event_handler_t = void(IWindow* window, HID::MouseButton button);
         
         //! The handler for mouse up event.
         using window_mouse_wheel_event_handler_t = void(IWindow* window, f32 x_wheel_delta, f32 y_wheel_delta);
 
-        //! Identifies one touch point in one window touch event.
-        struct WindowEventTouchPoint
-        {
-            //! The unique ID that idenfity every touch point between touch events.
-            u32 id;
-            //! The position of the touch point, relative to the touch window.
-            Int2U position;
-        };
+        //! The handler for touch move event.
+        //! This event is emitted when the position of one existing touch point is changed.
+        //! @param[in] window The window this event is dispatched to.
+        //! @param[in] id The identifier of the touch point. 
+        //! This id remains unchanged for the same touch point during different touch events.
+        //! @param[in] x The x position of the touch point relative to the window position.
+        //! @param[in] y The y position of the touch point relative to the window position.
+        using window_touch_move_event_handler_t = void(IWindow* window, u64 id, f32 x, f32 y);
 
-        //! The handler for touch event.
-        //! @param[in] touches The span that includes all touch points for this event.
-        //! @param[in] changed_mask A bit-combined mask to identify whether every touch point is changed between multiple touch 
-        //! events. Use `(changed_mask & (1 << i))` to test the touch point `i`, where `i` is the index of `touches`.
-        using window_touch_event_handler_t = void(IWindow* window, Span<WindowEventTouchPoint> touches, u32 changed_mask);
+        //! The hanlder for touch down event.
+        //! This event is emitted when the a new touch point is detected.
+        //! @param[in] window The window this event is dispatched to.
+        //! @param[in] id The identifier of the touch point. 
+        //! This id remains unchanged for the same touch point during different touch events.
+        //! @param[in] x The x position of the touch point relative to the window position.
+        //! @param[in] y The y position of the touch point relative to the window position.
+        using window_touch_down_event_handler_t = void(IWindow* window, u64 id, f32 x, f32 y);
+
+        //! The hanlder for touch up event.
+        //! This event is emitted when the a existing touch point is released.
+        //! @param[in] window The window this event is dispatched to.
+        //! @param[in] id The identifier of the touch point. 
+        //! This id remains unchanged for the same touch point during different touch events.
+        //! @param[in] x The x position of the touch point relative to the window position.
+        //! @param[in] y The y position of the touch point relative to the window position.
+        using window_touch_up_event_handler_t = void(IWindow* window, u64 id, f32 x, f32 y);
 
         //! The handler for drop file event.
-        using window_drop_file_event_handler_t = void(IWindow* window, i32 x, i32 y, Span<const c8*> paths);
+        using window_drop_file_event_handler_t = void(IWindow* window, Span<const c8*> paths);
 
         //! Specify this value as `x` or `y` of the window to let windowing system choose one suitable position for the window.
         constexpr i32 DEFAULT_POS = I32_MAX;
@@ -124,6 +137,8 @@ namespace Luna
             //! On full screen mode, if this is `nullptr`, window will be displayed on the main monitor.
             //! 
             //! This must be `nullptr` if `full_screen` is `false`.
+            //! 
+            //! This must be set to `nullptr` for platforms that do not support multiple windows, for example, mobile devices.
             monitor_t monitor;
             //! The X position of the window.
             //! 
@@ -140,10 +155,14 @@ namespace Luna
             //! The width of the window.
             //! 
             //! If `0` is specified, the system will choose the suitable size for the window.
+            //! 
+            //! This must be set to `0` for platforms that do not support multiple windows, for example, mobile devices.
             u32 width;
             //! The height of the window.
             //! 
             //! If `0` is specified, the system will choose the suitable size for the window.
+            //! 
+            //! This must be set to `0` for platforms that do not support multiple windows, for example, mobile devices.
             u32 height;
             //! The refresh rate of the window.
             //! 
@@ -152,6 +171,8 @@ namespace Luna
             //! This must be set to `0` if `full_screen` is `false`.
             u32 refresh_rate;
             //! Whether this window is full screen.
+            //! 
+            //! This must be set to `true` for platforms that do not support multiple windows, for example, mobile devices.
             bool full_screen;
 
             //! Creates one window display settings structure that specifies one windowed window.
@@ -341,14 +362,6 @@ namespace Luna
             //! @details This event will be emitted when the window position is changed.
             //! @return Returns one reference of the event object.
             virtual Event<window_move_event_handler_t>& get_move_event() = 0;
-            //! Gets the begin resize move event of this window.
-            //! @details This event will be emitted when the user starts to change the window rect.
-            //! @return Returns one reference of the event object.
-            virtual Event<window_begin_resize_move_t>& get_begin_resize_move_event() = 0;
-            //! Gets the end resize move event of this window.
-            //! @details This event will be emitted when the user finishes changing the window rect.
-            //! @return Returns one reference of the event object.
-            virtual Event<window_end_resize_move_t>& get_end_resize_move_event() = 0;
             //! Gets the end dpi changed event of this window.
             //! @details This event will be emitted when the window DPI is changed. This may happen when the window is moved to another minitor
             //! with different DPI settings.
@@ -366,6 +379,14 @@ namespace Luna
             //! @details This event will be emitted when one character input is transmitted to this window.
             //! @return Returns one reference of the event object.
             virtual Event<window_input_character_event_handler_t>& get_input_character_event() = 0;
+            //! Gets the mouse enter event of this window.
+            //! @details This event will be emitted when the mouse cursor enters the window region.
+            //! @return Returns one reference of the event object.
+            virtual Event<window_mouse_enter_event_handler_t>& get_mouse_enter_event() = 0;
+            //! Gets the mouse leave event of this window.
+            //! @details This event will be emitted when the mouse cursor leaves the window region.
+            //! @return Returns one reference of the event object.
+            virtual Event<window_mouse_leave_event_handlet_t>& get_mouse_leave_event() = 0;
             //! Gets the mouse move event of this window.
             //! @details This event will be emitted when the mouse is moved and the window has mouse focus.
             //! @return Returns one reference of the event object.
@@ -382,10 +403,18 @@ namespace Luna
             //! @details This event will be emitted when the mouse wheel is scrolled and the window has mouse focus.
             //! @return Returns one reference of the event object.
             virtual Event<window_mouse_wheel_event_handler_t>& get_mouse_wheel_event() = 0;
-            //! Gets the touch event of this window.
-            //! @details This event will be emitted when the window is focused and touched.
+            //! Gets the touch move event of this window.
+            //! @details This event will be emitted when the window is focused and the position of one existing touch point is changed.
             //! @return Returns one reference of the event object.
-            virtual Event<window_touch_event_handler_t>& get_touch_event() = 0;
+            virtual Event<window_touch_move_event_handler_t>& get_touch_move_event() = 0;
+            //! Gets the touch down event of this window.
+            //! @details This event will be emitted when the window is focused and one new touch point is emitted.
+            //! @return Returns one reference of the event object.
+            virtual Event<window_touch_down_event_handler_t>& get_touch_down_event() = 0;
+            //! Gets the touch up event of this window.
+            //! @details This event will be emitted when the window is focused and one existing touch point is released.
+            //! @return Returns one reference of the event object.
+            virtual Event<window_touch_up_event_handler_t>& get_touch_up_event() = 0;
             //! Gets the drop file event of this window.
             //! @details This event will be emitted when one file is dropped on the window.
             //! @return Returns one reference of the event object.

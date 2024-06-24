@@ -23,17 +23,19 @@ namespace Luna
             Event<window_resize_event_handler_t> resize;
             Event<window_framebuffer_resize_event_handler_t> framebuffer_resize;
             Event<window_move_event_handler_t> move;
-            Event<window_begin_resize_move_t> begin_resize_move;
-            Event<window_end_resize_move_t> end_resize_move;
             Event<window_dpi_changed_event_handler_t> dpi_changed;
             Event<window_key_down_event_handler_t> key_down;
             Event<window_key_up_event_handler_t> key_up;
             Event<window_input_character_event_handler_t> input_character;
+            Event<window_mouse_enter_event_handler_t> mouse_enter;
+            Event<window_mouse_leave_event_handlet_t> mouse_leave;
             Event<window_mouse_move_event_handler_t> mouse_move;
             Event<window_mouse_down_event_handler_t> mouse_down;
             Event<window_mouse_up_event_handler_t> mouse_up;
             Event<window_mouse_wheel_event_handler_t> mouse_wheel;
-            Event<window_touch_event_handler_t> touch;
+            Event<window_touch_move_event_handler_t> touch_move;
+            Event<window_touch_down_event_handler_t> touch_down;
+            Event<window_touch_up_event_handler_t> touch_up;
             Event<window_drop_file_event_handler_t> drop_file;
 
             void reset()
@@ -46,17 +48,19 @@ namespace Luna
                 resize.clear();
                 framebuffer_resize.clear();
                 move.clear();
-                begin_resize_move.clear();
-                end_resize_move.clear();
                 dpi_changed.clear();
                 key_down.clear();
                 key_up.clear();
                 input_character.clear();
+                mouse_enter.clear();
+                mouse_leave.clear();
                 mouse_move.clear();
                 mouse_down.clear();
                 mouse_up.clear();
                 mouse_wheel.clear();
-                touch.clear();
+                touch_move.clear();
+                touch_down.clear();
+                touch_up.clear();
                 drop_file.clear();
             }
         };

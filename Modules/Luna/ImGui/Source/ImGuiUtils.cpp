@@ -452,7 +452,7 @@ namespace Luna
             io.AddMousePosEvent((f32)x, (f32)y);
         }
 
-        static void handle_mouse_down(Window::IWindow* window, Window::ModifierKeyFlag modifier_flags, HID::MouseButton button)
+        static void handle_mouse_down(Window::IWindow* window, HID::MouseButton button)
         {
             ImGuiIO& io = ImGui::GetIO();
             int button_id = 0;
@@ -465,7 +465,7 @@ namespace Luna
             io.AddMouseButtonEvent(button_id, true);
         }
 
-        static void handle_mouse_up(Window::IWindow* window, Window::ModifierKeyFlag modifier_flags, HID::MouseButton button)
+        static void handle_mouse_up(Window::IWindow* window, HID::MouseButton button)
         {
             ImGuiIO& io = ImGui::GetIO();
             int button_id = 0;

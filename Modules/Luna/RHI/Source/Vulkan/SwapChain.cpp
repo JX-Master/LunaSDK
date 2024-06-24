@@ -10,7 +10,7 @@
 #include <Luna/Runtime/PlatformDefines.hpp>
 #include "SwapChain.hpp"
 #include "Instance.hpp"
-#include <Luna/Window/Vulkan/Vulkan.hpp>
+#include "SurfaceBind.hpp"
 namespace Luna
 {
     namespace RHI
@@ -65,7 +65,7 @@ namespace Luna
             {
                 m_queue = queue;
                 m_window = window;
-                luset(m_surface, Window::new_vulkan_surface_from_window(g_vk_instance, m_window));
+                luset(m_surface, new_surface_from_window(g_vk_instance, m_window));
                 luexp(create_swap_chain(desc));
                 VkFenceCreateInfo fence_create_info{};
                 fence_create_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;

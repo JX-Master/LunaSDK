@@ -12,7 +12,7 @@
 #include "Adapter.hpp"
 #include "Instance.hpp"
 #include <Luna/Runtime/HashSet.hpp>
-#include <Luna/Window/Vulkan/Vulkan.hpp>
+#include "SurfaceBind.hpp"
 namespace Luna
 {
     namespace RHI
@@ -127,7 +127,7 @@ namespace Luna
             {
                 luset(dummy_window, Window::new_window("Dummy Window", Window::WindowDisplaySettings::as_windowed(), Window::WindowCreationFlag::hidden));
                 // Fetch surface for dummy window.
-                luset(dummy_surface, Window::new_vulkan_surface_from_window(g_vk_instance, dummy_window));
+                luset(dummy_surface, new_surface_from_window(g_vk_instance, dummy_window));
                 // Select physical device.
                 for (usize i = 0; i < g_physical_devices.size(); ++i)
                 {

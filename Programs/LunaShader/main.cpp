@@ -387,7 +387,7 @@ int main(int argc, const char* argv[])
     {
         String errmsg = explain(r.errcode());
         auto io = get_std_io_stream();
-        io->write(errmsg.c_str(), errmsg.size());
+        auto _ = io->write(errmsg.c_str(), errmsg.size());
         Luna::close();
         return -1;
     }
