@@ -33,6 +33,7 @@ namespace Luna
             m_default_glyph.m_first_command = first_command;
             m_default_glyph.m_num_commands = 5;
             m_default_glyph.m_bounding_rect = rect;
+            m_shape_buffer_dirty = true;
         }
         RV FontAtlas::recreate_buffer(RHI::IDevice* device)
         {

@@ -11,6 +11,7 @@
 #include <Luna/Runtime/Math/Vector.hpp>
 #include <Luna/RHI/DescriptorSet.hpp>
 #include <Luna/Runtime/Ref.hpp>
+#include <Luna/Runtime/Math/Color.hpp>
 
 #ifndef LUNA_VG_API
 #define LUNA_VG_API
@@ -34,12 +35,12 @@ namespace Luna
             //! The texture coordinate of the vertex for sampling
             //! the attached resources.
             Float2U texcoord;
-            //! An additional color that can be used to tint the vertex.
-            u32 color;
             //! The offset of the first command for this shape in the shape buffer.
             u32 begin_command;
             //! The number of commands (f32 values) used for this shape.
             u32 num_commands;
+            //! An additional color that can be used to tint the vertex.
+            Float4U color;
         };
 
         //! Describes one shape draw call.
@@ -51,6 +52,8 @@ namespace Luna
             Ref<RHI::ITexture> texture;
             //! The attached sampler for this draw call.
             RHI::SamplerDesc sampler;
+            //! The clip rectangle for this draw call.
+            RectF clip_rect;
             //! The fist index to draw for this draw call.
             u32 base_index;
             //! The number of indices to draw for this draw call.
@@ -143,6 +146,15 @@ namespace Luna
             //! @return Returns the rotation for the following draw calls in clockwise degrees.
             virtual f32 get_rotation() = 0;
 
+            //! Sets the clip rectangle for the following draw calls.
+            //! @param[in] clip_rect The clip rectangle to set.
+            //! Set clip rectangle to {0, 0, 0, 0} will disable the clip rectangle.
+            virtual void set_clip_rect(const RectF& clip_rect) = 0;
+
+            //! Gets the clip rectangle for the following draw calls.
+            //! @return Returns the set clip rectangle.
+            virtual RectF get_clip_rect() = 0;
+
             //! Draws one shape by submitting vertices and indices directly.
             //! @param[in] vertices The draw vertices.
             //! @param[in] indices The draw indices. Valid index range is [`0`, `vertices.size()`).
@@ -161,7 +173,7 @@ namespace Luna
             virtual void draw_shape(u32 begin_command, u32 num_commands,
                 const Float2U& min_position, const Float2U& max_position,
                 const Float2U& min_shapecoord, const Float2U& max_shapecoord,
-                u32 color = 0xFFFFFFFF,
+                const Float4U& color = Color::white(),
                 const Float2U& min_texcoord = Float2U(0.0f), const Float2U& max_texcoord = Float2U(0.0f)
                 ) = 0;
 

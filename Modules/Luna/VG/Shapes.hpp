@@ -89,6 +89,43 @@ namespace Luna
         //! * END: The end angle of the circle in degrees. The value should be in [270, 360].
         //! See remarks of @ref COMMAND_CIRCLE_Q1 for details.
         constexpr f32 COMMAND_CIRCLE_Q4 = 7.0f;
+        //! The command code that draws one axis-aligned ellipse part in the first quadrant.
+        //! @details This command takes 5 points: {COMMAND_CIRCLE_Q2, RX, RY, BEGIN, END}
+        //! * RX: The radius of the ellipse in X axis.
+        //! * RY: The radius of the ellipse in Y axis.
+        //! * BEGIN: The beginning angle of the circle in degrees. The value should be in [90, 180].
+        //! * END: The end angle of the circle in degrees. The value should be in [90, 180].
+        //! @remark 
+        //! The axis-aligned ellipse drawing command is similar to circle drawing commands, except that
+        //! the radius in X and Y axis can be set separately.
+        //! 
+        //! To draw one ellipse that is not axis-aligned, the user can rotate the draw vertex of the ellipse
+        //! directly.
+        constexpr f32 COMMAND_AXIS_ALIGNED_ELLIPSE_Q1 = 8.0f;
+        //! The command code that draws one axis-aligned ellipse part in the second quadrant.
+        //! @details This command takes 5 points: {COMMAND_CIRCLE_Q2, RX, RY, BEGIN, END}
+        //! * RX: The radius of the ellipse in X axis.
+        //! * RY: The radius of the ellipse in Y axis.
+        //! * BEGIN: The beginning angle of the circle in degrees. The value should be in [90, 180].
+        //! * END: The end angle of the circle in degrees. The value should be in [90, 180].
+        //! See remarks of @ref COMMAND_AXIS_ALIGNED_ELLIPSE_Q1 for details.
+        constexpr f32 COMMAND_AXIS_ALIGNED_ELLIPSE_Q2 = 9.0f;
+        //! The command code that draws one axis-aligned ellipse part in the third quadrant.
+        //! @details This command takes 5 points: {COMMAND_CIRCLE_Q2, RX, RY, BEGIN, END}
+        //! * RX: The radius of the ellipse in X axis.
+        //! * RY: The radius of the ellipse in Y axis.
+        //! * BEGIN: The beginning angle of the circle in degrees. The value should be in [90, 180].
+        //! * END: The end angle of the circle in degrees. The value should be in [90, 180].
+        //! See remarks of @ref COMMAND_AXIS_ALIGNED_ELLIPSE_Q1 for details.
+        constexpr f32 COMMAND_AXIS_ALIGNED_ELLIPSE_Q3 = 10.0f;
+        //! The command code that draws one axis-aligned ellipse part in the fourth quadrant.
+        //! @details This command takes 5 points: {COMMAND_CIRCLE_Q2, RX, RY, BEGIN, END}
+        //! * RX: The radius of the ellipse in X axis.
+        //! * RY: The radius of the ellipse in Y axis.
+        //! * BEGIN: The beginning angle of the circle in degrees. The value should be in [90, 180].
+        //! * END: The end angle of the circle in degrees. The value should be in [90, 180].
+        //! See remarks of @ref COMMAND_AXIS_ALIGNED_ELLIPSE_Q1 for details.
+        constexpr f32 COMMAND_AXIS_ALIGNED_ELLIPSE_Q4 = 11.0f;
 
         namespace ShapeBuilder
         {
@@ -123,6 +160,17 @@ namespace Luna
             //! If the end angle is greater than the beginning angle, the circle is drawn counter-clockwisly,
             //! otherwise, the circle is drawn clockwisly.
             LUNA_VG_API void circle_to(Vector<f32>& points, f32 radius, f32 begin, f32 end);
+            //! Adds commands to draw one axis aligned ellipse part to shape data points.
+            //! @details If the draw ellipse part overlaps multiple quadrants, this function
+            //! seprates the ellipse part to multiple @ref COMMAND_AXIS_ALIGNED_ELLIPSE_Q1, @ref COMMAND_AXIS_ALIGNED_ELLIPSE_Q2,
+            //! @ref COMMAND_AXIS_ALIGNED_ELLIPSE_Q3 and @ref COMMAND_AXIS_ALIGNED_ELLIPSE_Q4 commands automatically.
+            //! @param[in] points The shape data point buffer to add command to.
+            //! @param[in] radius_x The radius of the ellipse in X axis.
+            //! @param[in] begin The beginning angle of the ellipse in degrees.
+            //! @param[in] end The end angle of the ellipse in degrees.
+            //! If the end angle is greater than the beginning angle, the ellipse is drawn counter-clockwisly,
+            //! otherwise, the ellipse is drawn clockwisly.
+            LUNA_VG_API void axis_aligned_ellipse_to(Vector<f32>& points, f32 radius_x, f32 radius_y, f32 begin, f32 end);
             //! Adds commands to draw one filled axis-aligned rectangle.
             //! @param[in] points The shape data point buffer to add command to.
             //! @param[in] min_x The minimum x coordinates of the rectangle.
@@ -184,7 +232,45 @@ namespace Luna
             //! @param[in] border_offset The offset of the border line relative to the circle border. Positive value
             //! makes the border line move outside of the circle, while negative value makes the border line move inside of the circle.
             LUNA_VG_API void add_circle_bordered(Vector<f32>& points, f32 center_x, f32 center_y, f32 radius, f32 border_width, f32 border_offset = 0.0f);
-
+            //! Adds commands to draw one filled axis aligned ellipse.
+            //! @param[in] points The shape data point buffer to add command to.
+            //! @param[in] center_x The x coordinates of the ellipse center.
+            //! @param[in] center_y The y coordinates of the ellipse center.
+            //! @param[in] radius_x The ellipse radius in X axis.
+            //! @param[in] radius_y The ellipse radius in Y axis.
+            LUNA_VG_API void add_axis_aligned_ellipse_filled(Vector<f32>& points, f32 center_x, f32 center_y, f32 radius_x, f32 radius_y);
+            //! Adds commands to draw one bordered axis aligned ellipse.
+            //! @param[in] points The shape data point buffer to add command to.
+            //! @param[in] center_x The x coordinates of the ellipse center.
+            //! @param[in] center_y The y coordinates of the ellipse center.
+            //! @param[in] radius_x The ellipse radius in X axis.
+            //! @param[in] radius_y The ellipse radius in Y axis.
+            //! @param[in] border_width The width of the border line.
+            //! @param[in] border_offset The offset of the border line relative to the ellipse border. Positive value
+            //! makes the border line move outside of the ellipse, while negative value makes the border line move inside of the ellipse.
+            LUNA_VG_API void add_axis_aligned_ellipse_bordered(Vector<f32>& points, f32 center_x, f32 center_y, f32 radius_x, f32 radius_y, f32 border_width, f32 border_offset = 0.0f);
+            //! Adds commands to draw one filled triangle.
+            //! @param[in] points The shape data point buffer to add command to.
+            //! @param[in] x1 The x coordinates of the first triangle point.
+            //! @param[in] y1 The y coordinates of the first triangle point.
+            //! @param[in] x2 The x coordinates of the second triangle point.
+            //! @param[in] y2 The y coordinates of the second triangle point.
+            //! @param[in] x3 The x coordinates of the third triangle point.
+            //! @param[in] y3 The y coordinates of the third triangle point.
+            LUNA_VG_API void add_triangle_filled(Vector<f32>& points, f32 x1, f32 y1, f32 x2, f32 y2, f32 x3, f32 y3);
+            //! Adds commands to draw one bordered triangle.
+            //! @param[in] points The shape data point buffer to add command to.
+            //! @param[in] x1 The x coordinates of the first triangle point.
+            //! @param[in] y1 The y coordinates of the first triangle point.
+            //! @param[in] x2 The x coordinates of the second triangle point.
+            //! @param[in] y2 The y coordinates of the second triangle point.
+            //! @param[in] x3 The x coordinates of the third triangle point.
+            //! @param[in] y3 The y coordinates of the third triangle point.
+            //! @param[in] border_width The width of the border line.
+            //! @param[in] border_offset The offset of the border line relative to the triangle border. Positive value
+            //! makes the border line move outside of the triangle, while negative value makes the border line move inside of the triangle.
+            LUNA_VG_API void add_triangle_bordered(Vector<f32>& points, f32 x1, f32 y1, f32 x2, f32 y2, f32 x3, f32 y3, f32 border_width, f32 border_offset = 0.0f);
+            
             //! @}
         }
 

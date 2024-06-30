@@ -356,6 +356,9 @@ namespace Luna
                         font_atlas->get_glyph(glyph.character, nullptr, nullptr, nullptr); 
                     }
                 }
+                lulet(shape_buffer, font_atlas->get_shape_buffer(draw_list->get_device()));
+                Ref<RHI::IBuffer> old_shape_buffer = draw_list->get_shape_buffer();
+                draw_list->set_shape_buffer(shape_buffer);
                 for (auto& line : result.lines)
                 {
                     for (auto& glyph : line.glyphs)
@@ -374,8 +377,6 @@ namespace Luna
                         font_atlas->get_glyph(glyph.character, &offset, &size, &shape_coord);
                         if (glyph.bounding_rect.width != 0.0f && glyph.bounding_rect.height != 0.0f)
                         {
-                            lulet(shape_buffer, font_atlas->get_shape_buffer(draw_list->get_device()));
-                            draw_list->set_shape_buffer(shape_buffer);
                             draw_list->draw_shape((u32)offset, (u32)size,
                                 Float2U(glyph.bounding_rect.offset_x, glyph.bounding_rect.offset_y),
                                 Float2U(glyph.bounding_rect.offset_x + glyph.bounding_rect.width, glyph.bounding_rect.offset_y + glyph.bounding_rect.height),
@@ -386,6 +387,8 @@ namespace Luna
                         }
                     }
                 }
+                // restore old shape buffer.
+                draw_list->set_shape_buffer(old_shape_buffer);
             }
             lucatchret;
             return ok;
