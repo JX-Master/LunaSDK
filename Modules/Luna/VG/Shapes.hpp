@@ -294,7 +294,7 @@ namespace Luna
             //! Adds one closed filled polygon.
             //! @param[in] points The shape data point buffer to add command to.
             //! @param[in] vertices The vertices of the polygon.
-            LUNA_VG_API void add_polygon_filled(Vector<f32>& points, Span<const Float2U>& vertices);
+            LUNA_VG_API void add_polygon_filled(Vector<f32>& points, Span<const Float2U> vertices);
 
             //! Adds one closed bordered polygon.
             //! @param[in] points The shape data point buffer to add command to.
@@ -302,14 +302,14 @@ namespace Luna
             //! @param[in] border_width The width of the border.
             //! @param[in] border_offset The offset of the border.
             //! If the polygon is winded clockwisly, positive value makes the border line move outside of the polygon, while negative value makes the border line move inside of the polygon.
-            LUNA_VG_API void add_polygon_bordered(Vector<f32>& points, Span<const Float2U>& vertices, f32 border_width, f32 border_offset = 0.0f);
+            LUNA_VG_API void add_polygon_bordered(Vector<f32>& points, Span<const Float2U> vertices, f32 border_width, f32 border_offset = 0.0f);
 
             //! Adds one line that is compose by multiple vertices connected by line strips.
             //! @param[in] points The shape data point buffer to add command to.
             //! @param[in] vertices The vertices of the polyline.
             //! @param[in] line_width The width of the polyline.
             //! @param[in] line_offset The offset of the polyline.
-            LUNA_VG_API void add_polyline(Vector<f32>& points, Span<const Float2U>& vertices, f32 line_width, f32 line_offset = 0.0f);
+            LUNA_VG_API void add_polyline(Vector<f32>& points, Span<const Float2U> vertices, f32 line_width, f32 line_offset = 0.0f);
 
             //! @}
         }

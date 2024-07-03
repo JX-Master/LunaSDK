@@ -354,7 +354,7 @@ namespace Luna
                 line_to(points, p2_in.x, p2_in.y);
                 line_to(points, p1_in.x, p1_in.y);
             }
-            LUNA_VG_API void add_polygon_filled(Vector<f32>& points, Span<const Float2U>& vertices)
+            LUNA_VG_API void add_polygon_filled(Vector<f32>& points, Span<const Float2U> vertices)
             {
                 if(vertices.size() < 3) return;
                 move_to(points, vertices[0].x, vertices[0].y);
@@ -377,7 +377,7 @@ namespace Luna
                 }
                 return normalize(dir) * offset;
             }
-            LUNA_VG_API void add_polygon_bordered(Vector<f32>& points, Span<const Float2U>& vertices, f32 border_width, f32 border_offset)
+            LUNA_VG_API void add_polygon_bordered(Vector<f32>& points, Span<const Float2U> vertices, f32 border_width, f32 border_offset)
             {
                 if(vertices.size() < 3) return;
                 // draw outside polygon.
@@ -408,7 +408,7 @@ namespace Luna
                 }
                 line_to(points, first_point.x, first_point.y);
             }
-            LUNA_VG_API void add_polyline(Vector<f32>& points, Span<const Float2U>& vertices, f32 line_width, f32 line_offset)
+            LUNA_VG_API void add_polyline(Vector<f32>& points, Span<const Float2U> vertices, f32 line_width, f32 line_offset)
             {
                 if(vertices.size() < 2) return;
                 // draw outside polygon.

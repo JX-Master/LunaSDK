@@ -154,10 +154,10 @@ namespace Luna
             v[2].shapecoord = max_shapecoord;
             v[3].shapecoord.x = max_shapecoord.x;
             v[3].shapecoord.y = min_shapecoord.y;
-            v[0].texcoord = {0, 0};
-            v[1].texcoord = {0, 0};
-            v[2].texcoord = {0, 0};
-            v[3].texcoord = {0, 0};
+            v[0].texcoord = Float2U{0, 0};
+            v[1].texcoord = Float2U{0, 0};
+            v[2].texcoord = Float2U{0, 0};
+            v[3].texcoord = Float2U{0, 0};
             v[0].color = encode_color(cmd->bottom);
             v[1].color = encode_color(cmd->left);
             v[2].color = encode_color(cmd->top);
