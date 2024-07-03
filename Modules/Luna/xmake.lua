@@ -14,5 +14,6 @@ includes("Image")
 includes("ObjLoader")
 includes("RG")
 includes("AHI")
+includes("GUI")
 
 includes("Experimental") -- For modules that is not ready for production use.

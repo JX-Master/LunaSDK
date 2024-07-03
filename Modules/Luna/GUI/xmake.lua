@@ -1,0 +1,10 @@
+add_requires("nuklear 4.12.0")
+
+luna_sdk_module_target("GUI")
+    add_headerfiles("*.hpp", {prefixdir = "Luna/GUI"})
+    add_headerfiles("Source/**.hpp", {install = false})
+    add_files("Source/**.c")
+    add_files("Source/**.cpp")
+    add_deps("Runtime", "VG", "Font")
+    add_packages("nuklear")
+target_end()

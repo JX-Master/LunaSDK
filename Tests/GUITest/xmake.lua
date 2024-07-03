@@ -1,0 +1,6 @@
+target("GUITest")
+    set_luna_sdk_test()
+    set_kind("binary")
+    add_files("main.cpp")
+    add_deps("Runtime", "Window", "RHI", "VG", "GUI", "Font")
+target_end()
