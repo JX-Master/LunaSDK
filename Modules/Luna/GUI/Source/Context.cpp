@@ -395,7 +395,8 @@ namespace Luna
             {
                 switch(cmd->type)
                 {
-                    case NK_COMMAND_NOP: break;
+                    case NK_COMMAND_NOP: 
+                    case NK_COMMAND_CUSTOM: break;
                     case NK_COMMAND_SCISSOR:
                     add_scissor_rect(this, draw_list, (struct nk_command_scissor*)cmd); break;
                     case NK_COMMAND_LINE:

@@ -41,7 +41,7 @@ namespace Luna
                 m_dirty = false;
             }
             lucatchret;
-            return m_buffer;
+            return m_buffer.get();
         }
 
         LUNA_VG_API Ref<IShapeBuffer> new_shape_buffer()
