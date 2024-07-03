@@ -232,6 +232,45 @@ namespace Luna
                     circle_to(points, inner_radius, -270.0f, 90.0f);
                 }
             }
+            LUNA_VG_API void add_arc_filled(Vector<f32>& points, f32 center_x, f32 center_y, f32 radius, f32 begin_angle, f32 end_angle)
+            {
+                move_to(points, center_x, center_y);
+                f32 begin_angle_rad = deg_to_rad(begin_angle);
+                f32 x1 = center_x + radius * cosf(begin_angle_rad);
+                f32 y1 = center_y + radius * sinf(begin_angle_rad);
+                line_to(points, x1, y1);
+                circle_to(points, radius, begin_angle, end_angle);
+                line_to(points, center_x, center_y);
+            }
+            LUNA_VG_API void add_arc_bordered(Vector<f32>& points, f32 center_x, f32 center_y, f32 radius, f32 begin_angle, f32 end_angle, f32 border_width, f32 border_offset)
+            {
+                f32 border_width_div_2 = border_width / 2.0f;
+                f32 border_offset_outer = border_width_div_2 + border_offset;
+                f32 border_offset_inner = border_width_div_2 - border_offset;
+                f32 inner_radius = max(radius - border_offset_inner, 0.0f);
+                f32 outer_radius = max(radius + border_offset_outer, 0.0f);
+                if(outer_radius == 0.0f) return;
+                if(inner_radius == 0.0f)
+                {
+                    add_arc_filled(points, center_x, center_y, outer_radius, begin_angle, end_angle);
+                }
+                else
+                {
+                    f32 begin_angle_rad = deg_to_rad(begin_angle);
+                    f32 end_angle_rad = deg_to_rad(end_angle);
+                    f32 inner_x1 = center_x + inner_radius * cosf(begin_angle_rad);
+                    f32 inner_y1 = center_y + inner_radius * sinf(begin_angle_rad);
+                    f32 outer_x1 = center_x + outer_radius * cosf(begin_angle_rad);
+                    f32 outer_y1 = center_y + outer_radius * sinf(begin_angle_rad);
+                    f32 inner_x2 = center_x + inner_radius * cosf(end_angle_rad);
+                    f32 inner_y2 = center_y + inner_radius * sinf(end_angle_rad);
+                    move_to(points, inner_x1, inner_y1);
+                    line_to(points, outer_x1, outer_y1);
+                    circle_to(points, outer_radius, begin_angle, end_angle);
+                    line_to(points, inner_x2, inner_y2);
+                    circle_to(points, inner_radius, end_angle, begin_angle);
+                }
+            }
             LUNA_VG_API void add_axis_aligned_ellipse_filled(Vector<f32>& points, f32 center_x, f32 center_y, f32 radius_x, f32 radius_y)
             {
                 move_to(points, center_x, center_y + radius_y);
@@ -314,6 +353,93 @@ namespace Luna
                 line_to(points, p3_in.x, p3_in.y);
                 line_to(points, p2_in.x, p2_in.y);
                 line_to(points, p1_in.x, p1_in.y);
+            }
+            LUNA_VG_API void add_polygon_filled(Vector<f32>& points, Span<const Float2U>& vertices)
+            {
+                if(vertices.size() < 3) return;
+                move_to(points, vertices[0].x, vertices[0].y);
+                for(usize i = 1; i < vertices.size(); ++i)
+                {
+                    line_to(points, vertices[i].x, vertices[i].y);
+                }
+                line_to(points, vertices[0].x, vertices[0].y);
+            }
+            inline Float2 calc_polyline_offset(f32 x1, f32 y1, f32 x2, f32 y2, f32 x3, f32 y3, f32 offset)
+            {
+                Float2 dir1 = normalize(Float2(x2 - x1, y2 - y1));
+                Float2 dir2 = normalize(Float2(x3 - x2, y3 - y2));
+                dir1 = Float2(-dir1.y, dir1.x);
+                dir2 = Float2(-dir2.y, dir2.x);
+                Float2 dir = dir1 + dir2;
+                if(length(dir) <= F32_EPSILON)
+                {
+                    return dir1 * offset;
+                }
+                return normalize(dir) * offset;
+            }
+            LUNA_VG_API void add_polygon_bordered(Vector<f32>& points, Span<const Float2U>& vertices, f32 border_width, f32 border_offset)
+            {
+                if(vertices.size() < 3) return;
+                // draw outside polygon.
+                f32 half_border_width = border_width / 2.0f;
+                f32 outer_offset = half_border_width + border_offset;
+                Float2 d = calc_polyline_offset(vertices.back().x, vertices.back().y, vertices[0].x, vertices[0].y, vertices[1].x, vertices[1].y, outer_offset);
+                Float2 first_point(vertices[0].x + d.x, vertices[0].y + d.y);
+                move_to(points, first_point.x, first_point.y);
+                for(usize i = 1; i < vertices.size(); ++i)
+                {
+                    usize last_point = i == vertices.size() - 1 ? 0 : i + 1;
+                    d = calc_polyline_offset(vertices[i - 1].x, vertices[i - 1].y, vertices[i].x, vertices[i].y, vertices[last_point].x, vertices[last_point].y, outer_offset);
+                    line_to(points, vertices[i].x + d.x, vertices[i].y + d.y);
+                }
+                line_to(points, first_point.x, first_point.y);
+                // draw inside polygon.
+                f32 inner_offset = half_border_width - border_offset;
+                d = calc_polyline_offset(vertices[1].x, vertices[1].y, vertices[0].x, vertices[0].y, vertices.back().x, vertices.back().y, inner_offset);
+                first_point = Float2(vertices[0].x + d.x, vertices[0].y + d.y);
+                move_to(points, first_point.x, first_point.y);
+                for(usize i = 1; i < vertices.size(); ++i)
+                {
+                    usize draw_index = vertices.size() - i - 1;
+                    usize first_vertex = draw_index == 0 ? vertices.size() - 1 : draw_index - 1;
+                    d = calc_polyline_offset(vertices[draw_index + 1].x, vertices[draw_index + 1].y, 
+                        vertices[draw_index].x, vertices[draw_index].y, vertices[first_vertex].x, vertices[first_vertex].y, inner_offset);
+                    line_to(points, vertices[draw_index].x + d.x, vertices[draw_index].y + d.y);
+                }
+                line_to(points, first_point.x, first_point.y);
+            }
+            LUNA_VG_API void add_polyline(Vector<f32>& points, Span<const Float2U>& vertices, f32 line_width, f32 line_offset)
+            {
+                if(vertices.size() < 2) return;
+                // draw outside polygon.
+                f32 half_line_width = line_width / 2.0f;
+                f32 outer_offset = half_line_width + line_offset;
+                Float2 first_d = normalize(Float2(vertices[1].x - vertices[0].x, vertices[1].y - vertices[0].y));
+                first_d = Float2(-first_d.y, first_d.x);
+                Float2 d = first_d * outer_offset;
+                move_to(points, vertices[0].x + d.x, vertices[0].y + d.y);
+                for(usize i = 1; i < vertices.size() - 1; ++i)
+                {
+                    d = calc_polyline_offset(vertices[i - 1].x, vertices[i - 1].y, vertices[i].x, vertices[i].y, vertices[i + 1].x, vertices[i + 1].y, outer_offset);
+                    line_to(points, vertices[i].x + d.x, vertices[i].y + d.y);
+                }
+                d = normalize(Float2(vertices.back().x - vertices[vertices.size() - 2].x, vertices.back().y - vertices[vertices.size() - 2].y));
+                d = Float2(-d.y, d.x);
+                line_to(points, vertices.back().x + d.x * outer_offset, vertices.back().x + d.y * outer_offset);
+                // draw inner polygon.
+                f32 inner_offset = half_line_width - line_offset;
+                line_to(points, vertices.back().x + -d.x * inner_offset, vertices.back().y + -d.y * inner_offset);
+                for(usize i = 1; i < vertices.size() - 1; ++i)
+                {
+                    usize draw_index = vertices.size() - i - 1;
+                    d = calc_polyline_offset(vertices[draw_index + 1].x, vertices[draw_index + 1].y, 
+                        vertices[draw_index].x, vertices[draw_index].y, vertices[draw_index - 1].x, vertices[draw_index - 1].y, inner_offset);
+                    line_to(points, vertices[draw_index].x + d.x, vertices[draw_index].y + d.y);
+                }
+                d = first_d * -inner_offset;
+                line_to(points, vertices[0].x + d.x, vertices[0].y + d.y);
+                d = first_d * outer_offset;
+                line_to(points, vertices[0].x + d.x, vertices[0].y + d.y);
             }
         }
     }

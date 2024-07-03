@@ -304,8 +304,8 @@ float4 main(PSIn v) : SV_Target
             i += 5;
         }
     }
-    float weight_x = 1.0f - abs(coverage_x * 2.0f - 1.0f);
-    float weight_y = 1.0f - abs(coverage_y * 2.0f - 1.0f);
+    float weight_x = 1.0f - abs(abs(coverage_x) * 2.0f - 1.0f);
+    float weight_y = 1.0f - abs(abs(coverage_y) * 2.0f - 1.0f);
     float coverage = max(abs(coverage_x * weight_x + coverage_y * weight_y) / max(weight_x + weight_y, 0.0001220703125f), min(abs(coverage_x), abs(coverage_y)));
     if(any(g_cbuffer.clip_rect != float4(0, 0, 0, 0)))
     {

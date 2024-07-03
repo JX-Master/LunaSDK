@@ -23,21 +23,19 @@ namespace Luna
 
             Ref<RHI::IBuffer> m_vertex_buffer;
             Ref<RHI::IBuffer> m_index_buffer;
-            Ref<RHI::IBuffer> m_internal_shape_buffer;
+            Ref<IShapeBuffer> m_internal_shape_buffer;
             u64 m_vertex_buffer_size;
             u64 m_index_buffer_size;
-            u64 m_internal_shape_buffer_size;
             u64 m_vertex_buffer_capacity;
             u64 m_index_buffer_capacity;
-            u64 m_internal_shape_buffer_capacity;
 
+            Vector<Ref<IShapeBuffer>> m_draw_call_buffers;
             Vector<ShapeDrawCall> m_draw_calls;
             Vector<Vertex> m_vertices;
             Vector<u32> m_indices;
-            Vector<f32> m_internal_shape_points;
 
             // Current draw state.
-            Ref<RHI::IBuffer> m_shape_buffer;
+            Ref<IShapeBuffer> m_shape_buffer;
             Ref<RHI::ITexture> m_texture;
             RHI::SamplerDesc m_sampler;
             Float2U m_origin;
@@ -50,8 +48,8 @@ namespace Luna
             void new_draw_call()
             {
                 m_draw_calls.emplace_back();
+                m_draw_call_buffers.push_back(m_shape_buffer);
                 ShapeDrawCall& dc = m_draw_calls.back();
-                dc.shape_buffer = m_shape_buffer;
                 dc.texture = m_texture;
                 dc.sampler = m_sampler;
                 dc.origin_point = m_origin;
@@ -74,25 +72,20 @@ namespace Luna
                 m_vertex_buffer_capacity(0),
                 m_index_buffer_size(0),
                 m_index_buffer_capacity(0),
-                m_internal_shape_buffer_size(0),
-                m_internal_shape_buffer_capacity(0),
                 m_sampler(get_default_sampler()),
                 m_origin(0.0f),
                 m_rotation(0.0f),
                 m_state_dirty(false)
-            {}
+            {
+                m_internal_shape_buffer = new_shape_buffer();
+            }
 
             virtual RHI::IDevice* get_device() override
             {
                 return m_device;
             }
             virtual void reset() override;
-            virtual Vector<f32>& get_shape_points() override
-            {
-                lutsassert();
-                return m_internal_shape_points;
-            }
-            virtual void set_shape_buffer(RHI::IBuffer* shape_buffer) override
+            virtual void set_shape_buffer(IShapeBuffer* shape_buffer) override
             {
                 lutsassert();
                 if (m_shape_buffer != shape_buffer)
@@ -101,9 +94,9 @@ namespace Luna
                     m_shape_buffer = shape_buffer;
                 }
             }
-            virtual RHI::IBuffer* get_shape_buffer() override
+            virtual IShapeBuffer* get_shape_buffer() override
             {
-                return m_shape_buffer;
+                return m_shape_buffer ? m_shape_buffer : m_internal_shape_buffer;
             }
             virtual void set_texture(RHI::ITexture* tex) override
             {

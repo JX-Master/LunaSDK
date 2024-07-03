@@ -190,12 +190,12 @@ void run()
             RectF(0, sz.y - HEADER_TEXT_HEIGHT, sz.x, HEADER_TEXT_HEIGHT), VG::TextAlignment::center, VG::TextAlignment::center);
         if (!res.lines.empty())
         {
-            lupanic_if_failed(VG::commit_text_arrange_result(res, {&section, 1}, g_font_atlas, g_shape_draw_list));
+            VG::commit_text_arrange_result(res, {&section, 1}, g_font_atlas, g_shape_draw_list);
         }
 
         if (!g_text_arrange_result.get().lines.empty())
         {
-            lupanic_if_failed(VG::commit_text_arrange_result(g_text_arrange_result.get(), g_text_sections.cspan(), g_font_atlas, g_shape_draw_list));
+            VG::commit_text_arrange_result(g_text_arrange_result.get(), g_text_sections.cspan(), g_font_atlas, g_shape_draw_list);
         }
 
         lupanic_if_failed(g_shape_draw_list->compile());

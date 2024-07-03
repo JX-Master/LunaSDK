@@ -209,13 +209,13 @@ void run()
             section.font_index = 0;
             RectF bounding_rect = RectF(0, 0, window_sz.x, window_sz.y - 100.0f);
             auto arrange_result = VG::arrange_text(text, 15, {&section, 1}, bounding_rect, VG::TextAlignment::begin, VG::TextAlignment::center);
-            lupanic_if_failed(VG::commit_text_arrange_result(arrange_result, { &section, 1 }, g_font_atlas, g_shape_draw_list));
+            VG::commit_text_arrange_result(arrange_result, { &section, 1 }, g_font_atlas, g_shape_draw_list);
         }
 
         constexpr f32 shape_scale = 2.0f;
 
         g_shape_draw_list->set_shape_buffer(nullptr);
-        auto& points = g_shape_draw_list->get_shape_points();
+        auto& points = g_shape_draw_list->get_shape_buffer()->get_shape_points(true);
         u32 offset = (u32)points.size();
         VG::ShapeBuilder::add_rectangle_filled(points, 0, 0, 100, 100);
         u32 end_offset = (u32)points.size();

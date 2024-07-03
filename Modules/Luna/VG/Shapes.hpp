@@ -9,6 +9,7 @@
 */
 #pragma once
 #include <Luna/Runtime/Vector.hpp>
+#include <Luna/Runtime/Math/Vector.hpp>
 
 #ifndef LUNA_VG_API
 #define LUNA_VG_API
@@ -232,6 +233,25 @@ namespace Luna
             //! @param[in] border_offset The offset of the border line relative to the circle border. Positive value
             //! makes the border line move outside of the circle, while negative value makes the border line move inside of the circle.
             LUNA_VG_API void add_circle_bordered(Vector<f32>& points, f32 center_x, f32 center_y, f32 radius, f32 border_width, f32 border_offset = 0.0f);
+            //! Adds commands to draw one filled arc.
+            //! @param[in] points The shape data point buffer to add command to.
+            //! @param[in] center_x The x coordinates of the arc center.
+            //! @param[in] center_y The y coordinates of the arc center.
+            //! @param[in] radius The arc radius.
+            //! @param[in] begin_angle The angle of the beginning point of the arc in degrees.
+            //! @param[in] end_angle The angle of the ending point of the arc in degrees.
+            LUNA_VG_API void add_arc_filled(Vector<f32>& points, f32 center_x, f32 center_y, f32 radius, f32 begin_angle, f32 end_angle);
+            //! Adds commands to draw one bordered arc.
+            //! @param[in] points The shape data point buffer to add command to.
+            //! @param[in] center_x The x coordinates of the arc center.
+            //! @param[in] center_y The y coordinates of the arc center.
+            //! @param[in] radius The arc radius.
+            //! @param[in] begin_angle The angle of the beginning point of the arc in degrees.
+            //! @param[in] end_angle The angle of the ending point of the arc in degrees.
+            //! @param[in] border_width The width of the border line.
+            //! @param[in] border_offset The offset of the border line relative to the arc border. Positive value
+            //! makes the border line move outside of the arc, while negative value makes the border line move inside of the arc.
+            LUNA_VG_API void add_arc_bordered(Vector<f32>& points, f32 center_x, f32 center_y, f32 radius, f32 begin_angle, f32 end_angle, f32 border_width, f32 border_offset = 0.0f);
             //! Adds commands to draw one filled axis aligned ellipse.
             //! @param[in] points The shape data point buffer to add command to.
             //! @param[in] center_x The x coordinates of the ellipse center.
@@ -271,6 +291,26 @@ namespace Luna
             //! makes the border line move outside of the triangle, while negative value makes the border line move inside of the triangle.
             LUNA_VG_API void add_triangle_bordered(Vector<f32>& points, f32 x1, f32 y1, f32 x2, f32 y2, f32 x3, f32 y3, f32 border_width, f32 border_offset = 0.0f);
             
+            //! Adds one closed filled polygon.
+            //! @param[in] points The shape data point buffer to add command to.
+            //! @param[in] vertices The vertices of the polygon.
+            LUNA_VG_API void add_polygon_filled(Vector<f32>& points, Span<const Float2U>& vertices);
+
+            //! Adds one closed bordered polygon.
+            //! @param[in] points The shape data point buffer to add command to.
+            //! @param[in] vertices The vertices of the polygon.
+            //! @param[in] border_width The width of the border.
+            //! @param[in] border_offset The offset of the border.
+            //! If the polygon is winded clockwisly, positive value makes the border line move outside of the polygon, while negative value makes the border line move inside of the polygon.
+            LUNA_VG_API void add_polygon_bordered(Vector<f32>& points, Span<const Float2U>& vertices, f32 border_width, f32 border_offset = 0.0f);
+
+            //! Adds one line that is compose by multiple vertices connected by line strips.
+            //! @param[in] points The shape data point buffer to add command to.
+            //! @param[in] vertices The vertices of the polyline.
+            //! @param[in] line_width The width of the polyline.
+            //! @param[in] line_offset The offset of the polyline.
+            LUNA_VG_API void add_polyline(Vector<f32>& points, Span<const Float2U>& vertices, f32 line_width, f32 line_offset = 0.0f);
+
             //! @}
         }
 

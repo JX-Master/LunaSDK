@@ -36,7 +36,6 @@ namespace Luna
                 HashMap<u32, GlyphDesc> m_glyphs;
             };
 
-            Vector<f32> m_shape_points;
             HashMap<Pair<Font::IFontFile*, u32>, UniquePtr<FontGlyphs>> m_shapes;
 
             Font::IFontFile* m_current_font;
@@ -45,14 +44,10 @@ namespace Luna
 
             GlyphDesc m_default_glyph;
 
-            Ref<RHI::IBuffer> m_shape_buffer;
-            usize m_shape_buffer_capacity;
-            bool m_shape_buffer_dirty;
-
-            FontAtlas() :
-                m_shape_buffer_capacity(0),
-                m_shape_buffer_dirty(false) 
+            Ref<IShapeBuffer> m_shape_buffer;
+            FontAtlas()
             {
+                m_shape_buffer = new_shape_buffer();
                 clear();
             }
 
@@ -65,9 +60,8 @@ namespace Luna
             virtual void clear() override
             {
                 lutsassert();
-                m_shape_points.clear();
+                m_shape_buffer->get_shape_points(true).clear();
                 m_shapes.clear();
-                m_shape_buffer_dirty = false;
                 m_current_font = nullptr;
                 m_current_font_index = 0;
                 m_current_font_glyphs = nullptr;
@@ -91,11 +85,9 @@ namespace Luna
                 }
                 m_current_font_glyphs = iter->second.get();
             }
-            virtual R<RHI::IBuffer*> get_shape_buffer(RHI::IDevice* device) override;
-            virtual Span<const f32> get_shape_points() override
+            virtual IShapeBuffer* get_shape_buffer() override
             {
-                lutsassert();
-                return { m_shape_points.data(), m_shape_points.size() };
+                return m_shape_buffer.get();
             }
             virtual void get_glyph(u32 codepoint, usize* first_shape_point, usize* num_shape_points, RectF* bounding_rect) override;
         };

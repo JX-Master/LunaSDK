@@ -1,4 +1,3 @@
-
 /*!
 * This file is a portion of Luna SDK.
 * For conditions of distribution and use, see the disclaimer
@@ -133,7 +132,7 @@ namespace Luna
         //! @param[in] sections The text arrange sections. This must be the same sections
         //! passed to @ref arrange_text when arranging texts.
         //! @param[in] draw_list The draw list to commit text arrange result to.
-        LUNA_VG_API RV commit_text_arrange_result(
+        LUNA_VG_API void commit_text_arrange_result(
             const TextArrangeResult& result,
             Span<const TextArrangeSection> sections,
             IFontAtlas* font_atlas,
