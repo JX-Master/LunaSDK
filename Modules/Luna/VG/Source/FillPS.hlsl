@@ -309,7 +309,9 @@ float4 main(PSIn v) : SV_Target
     float coverage = max(abs(coverage_x * weight_x + coverage_y * weight_y) / max(weight_x + weight_y, 0.0001220703125f), min(abs(coverage_x), abs(coverage_y)));
     if(any(g_cbuffer.clip_rect != float4(0, 0, 0, 0)))
     {
-        coverage *= clip_rect_test(v.position_2d, g_cbuffer.clip_rect, pixels_per_unit);
+        float2 pos_units_per_pixel = fwidth(v.position_2d);
+        float2 pixels_per_pos_unit = 1.0f / pos_units_per_pixel;
+        coverage *= clip_rect_test(v.position_2d, g_cbuffer.clip_rect, pixels_per_pos_unit);
     }
     float4 col = g_tex.Sample(g_sampler, v.texcoord);
     col *= v.color;

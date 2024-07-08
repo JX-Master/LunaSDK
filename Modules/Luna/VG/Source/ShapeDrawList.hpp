@@ -75,6 +75,7 @@ namespace Luna
                 m_sampler(get_default_sampler()),
                 m_origin(0.0f),
                 m_rotation(0.0f),
+                m_clip_rect(0, 0, 0, 0),
                 m_state_dirty(false)
             {
                 m_internal_shape_buffer = new_shape_buffer();
