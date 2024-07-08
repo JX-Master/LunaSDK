@@ -8,4 +8,5 @@
 * @date 2024/6/29
 */
 #define NK_BUTTON_TRIGGER_ON_RELEASE
+#define NK_INCLUDE_STANDARD_VARARGS
 #include <nuklear.h>

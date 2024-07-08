@@ -59,7 +59,14 @@ namespace Luna
         }
         static void add_scissor_rect(Context* ctx, VG::IShapeDrawList* draw_list, struct nk_command_scissor* cmd)
         {
-            draw_list->set_clip_rect(RectF{(f32)cmd->x, (f32)(ctx->m_viewport_size.y - cmd->y), (f32)cmd->w, (f32)cmd->h});
+            if(cmd->x == -8192 && cmd->y == -8192 && cmd->w == 16384 && cmd->h == 16384)
+            {
+                draw_list->set_clip_rect(RectF{0, 0, 0, 0});
+            }
+            else
+            {
+                draw_list->set_clip_rect(RectF{(f32)cmd->x, (f32)(ctx->m_viewport_size.y - cmd->y - cmd->h), (f32)cmd->w, (f32)cmd->h});
+            }
         }
         inline Float4U encode_color(const struct nk_color& color)
         {
@@ -387,7 +394,29 @@ namespace Luna
             }
             VG::commit_text_arrange_result(result, {&section, 1}, ctx->m_font_atlas, draw_list);
         }
-        static void add_image(Context* ctx, VG::IShapeDrawList* draw_list, struct nk_command_image* cmd);
+        static void add_image(Context* ctx, VG::IShapeDrawList* draw_list, struct nk_command_image* cmd)
+        {
+            // draw a textured rectangle.
+            auto& points = draw_list->get_shape_buffer()->get_shape_points(true);
+            u32 offset = (u32)points.size();
+            VG::ShapeBuilder::add_rectangle_filled(points, 0, 0, cmd->w, cmd->h);
+            u32 size = (u32)points.size() - offset;
+
+            RHI::ITexture* texture = (RHI::ITexture*)cmd->img.handle.ptr;
+
+            f32 min_texcoord_x = (f32)cmd->img.region[0] / (f32)cmd->img.w;
+            f32 min_texcoord_y = (f32)cmd->img.region[1] / (f32)cmd->img.h;
+            f32 max_texcoord_x = (f32)(cmd->img.w - cmd->img.region[2]) / (f32)cmd->img.w;
+            f32 max_texcoord_y = (f32)(cmd->img.h - cmd->img.region[3]) / (f32)cmd->img.h;
+
+            draw_list->set_texture(texture);
+            draw_list->draw_shape(offset, size, 
+                {(f32)cmd->x, (f32)ctx->m_viewport_size.y - ((f32)cmd->y + (f32)cmd->h)}, 
+                {(f32)cmd->x + (f32)cmd->w, (f32)ctx->m_viewport_size.y - (f32)cmd->y},
+                {0, 0}, {(f32)cmd->w, (f32)cmd->h}, encode_color(cmd->col), 
+                {min_texcoord_x, min_texcoord_y}, {max_texcoord_x, max_texcoord_y});
+            draw_list->set_texture(nullptr);
+        }
         void Context::render(VG::IShapeDrawList* draw_list)
         {
             const struct nk_command *cmd = 0;
@@ -430,6 +459,7 @@ namespace Luna
                     case NK_COMMAND_TEXT:
                     add_text(this, draw_list, (struct nk_command_text*)cmd); break;
                     case NK_COMMAND_IMAGE:
+                    add_image(this, draw_list, (struct nk_command_image*)cmd); break;
                     break;
                 }
             }

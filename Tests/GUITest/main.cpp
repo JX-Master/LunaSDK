@@ -18,12 +18,25 @@
 #include <Luna/GUI/Widgets.hpp>
 #include <Luna/VG/ShapeRenderer.hpp>
 #include <Luna/Runtime/Math/Transform.hpp>
+#include <Luna/HID/HID.hpp>
 
 using namespace Luna;
 
 void on_window_close(Window::IWindow* window)
 {
     window->close();
+}
+
+inline Int2U window_pos_to_gui_pos(Window::IWindow* window, i32 x, i32 y)
+{
+    auto ss = window->get_size();
+    auto fs = window->get_framebuffer_size();
+    auto scale = window->get_dpi_scale_factor();
+    f32 cx = (f32)x / (f32)ss.x;
+    f32 cy = (f32)y / (f32)ss.y;
+    cx *= (f32)fs.x / scale;
+    cy *= (f32)fs.y / scale;
+    return Int2U((i32)cx, (i32)cy);
 }
 
 void run()
@@ -60,6 +73,38 @@ void run()
     Ref<VG::IShapeDrawList> draw_list = VG::new_shape_draw_list(dev);
 
     Ref<VG::IShapeRenderer> renderer = VG::new_fill_shape_renderer();
+
+    window->get_mouse_move_event().add_handler([ctx](IWindow* window, i32 x, i32 y){
+        // Convert to gui coordinates.
+        auto pos = window_pos_to_gui_pos(window, x, y);
+        ctx->input_mouse_move(pos.x, pos.y);
+    });
+
+    window->get_mouse_down_event().add_handler([ctx](IWindow* window, HID::MouseButton button){
+        auto mouse_pos = HID::get_mouse_pos();
+        mouse_pos = window->screen_to_client(mouse_pos);
+        mouse_pos = window_pos_to_gui_pos(window, mouse_pos.x, mouse_pos.y);
+        ctx->input_mouse_button(button, mouse_pos.x, mouse_pos.y, true);
+    });
+
+    window->get_mouse_up_event().add_handler([ctx](IWindow* window, HID::MouseButton button){
+        auto mouse_pos = HID::get_mouse_pos();
+        mouse_pos = window->screen_to_client(mouse_pos);
+        mouse_pos = window_pos_to_gui_pos(window, mouse_pos.x, mouse_pos.y);
+        ctx->input_mouse_button(button, mouse_pos.x, mouse_pos.y, false);
+    });
+
+    window->get_key_down_event().add_handler([ctx](IWindow* window, HID::KeyCode key) {
+        ctx->input_key(key, true);
+    });
+
+    window->get_key_up_event().add_handler([ctx](IWindow* window, HID::KeyCode key) {
+        ctx->input_key(key, false);
+    });
+
+    window->get_input_character_event().add_handler([ctx](IWindow* window, c32 ch) {
+        ctx->input_character(ch);
+    });
 
     // Create back buffer.
     u32 w = 0, h = 0;
@@ -98,7 +143,9 @@ void run()
         if(GUI::begin(ctx, "Debug Window", RectF(50, 50, 200, 200), 
             GUI::WindowFlag::border | GUI::WindowFlag::movable | GUI::WindowFlag::closable))
         {
+            GUI::layout_row_dynamic(ctx, 30.0f, 1);
             GUI::text(ctx, "Sample Text");
+            GUI::button_label(ctx, "Button");
         }
         GUI::end(ctx);
 
@@ -133,7 +180,7 @@ int main()
 {
     // Start modules.
     Luna::init();
-    lupanic_if_failed(add_modules({module_window(), module_rhi(), module_gui(), module_font()}));
+    lupanic_if_failed(add_modules({module_window(), module_rhi(), module_gui(), module_font(), module_hid()}));
     auto res = Luna::init_modules();
     if (failed(res))
     {
