@@ -115,7 +115,7 @@ namespace Luna
             Context* c = (Context*)(ctx->get_object());
             struct nk_image img;
             img.handle.ptr = image;
-            auto& desc = image->get_desc();
+            auto desc = image->get_desc();
             img.w = desc.width;
             img.h = desc.height;
             img.region[0] = offsets.left;
