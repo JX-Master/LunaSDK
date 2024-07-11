@@ -9,8 +9,7 @@
 */
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_GUI_API LUNA_EXPORT
-#include "../Widgets.hpp"
-#include "Context.hpp"
+#include "WidgetCommon.hpp"
 
 namespace Luna
 {
@@ -110,18 +109,10 @@ namespace Luna
             Context* c = (Context*)(ctx->get_object());
             nk_label_colored_wrap(&c->m_ctx, text, encode_color_from_rgba8(color_rgba));
         }
-        LUNA_GUI_API void image(IContext* ctx, RHI::ITexture* image, const OffsetRectU offsets)
+        LUNA_GUI_API void image(IContext* ctx, RHI::ITexture* image, const OffsetRectU& offsets)
         {
             Context* c = (Context*)(ctx->get_object());
-            struct nk_image img;
-            img.handle.ptr = image;
-            auto desc = image->get_desc();
-            img.w = desc.width;
-            img.h = desc.height;
-            img.region[0] = offsets.left;
-            img.region[1] = offsets.top;
-            img.region[2] = offsets.right;
-            img.region[3] = offsets.bottom;
+            struct nk_image img = encode_image(image, offsets);
             nk_image(&c->m_ctx, img);
         }
         LUNA_GUI_API void labelf(IContext* ctx, TextAlignment alignment, const c8* fmt, ...)
@@ -196,17 +187,5 @@ namespace Luna
             Context* c = (Context*)(ctx->get_object());
             return nk_button_symbol(&c->m_ctx, (enum nk_symbol_type)symbol);
         }
-
-        LUNA_GUI_API void layout_row_dynamic(IContext* ctx, f32 height, u32 cols)
-        {
-            Context* c = (Context*)(ctx->get_object());
-            nk_layout_row_dynamic(&c->m_ctx, height, cols);
-        }
-        LUNA_GUI_API void layout_row_static(IContext* ctx, f32 height, u32 item_width, u32 cols)
-        {
-            Context* c = (Context*)(ctx->get_object());
-            nk_layout_row_static(&c->m_ctx, height, item_width, cols);
-        }
-        
     }
 }

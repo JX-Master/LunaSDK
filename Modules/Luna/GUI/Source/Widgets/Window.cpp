@@ -7,25 +7,14 @@
 * @author JXMaster
 * @date 2024/7/8
 */
-#pragma once
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_GUI_API LUNA_EXPORT
-#include "../Widgets.hpp"
-#include "Context.hpp"
+#include "WidgetCommon.hpp"
 
 namespace Luna
 {
     namespace GUI
     {
-        inline struct nk_rect encode_rect(const RectF& r)
-        {
-            struct nk_rect rect;
-            rect.x = r.offset_x;
-            rect.y = r.offset_y;
-            rect.w = r.width;
-            rect.h = r.height;
-            return rect;
-        }
         LUNA_GUI_API bool begin(IContext* ctx, const c8* title, const RectF& bounding_rect, WindowFlag flags)
         {
             Context* c = (Context*)(ctx->get_object());
@@ -46,18 +35,10 @@ namespace Luna
             Context* c = (Context*)(ctx->get_object());
             nk_end(&c->m_ctx);
         }
-        inline RectF decode_rect(const struct nk_rect& rect)
-        {
-            return RectF(rect.x, rect.y, rect.w, rect.h);
-        }
         LUNA_GUI_API RectF get_current_window_bounds(IContext* ctx)
         {
             Context* c = (Context*)(ctx->get_object());
             return decode_rect(nk_window_get_bounds(&c->m_ctx));
-        }
-        inline Float2U decode_vec2(const struct nk_vec2& vec)
-        {
-            return Float2U(vec.x, vec.y);
         }
         LUNA_GUI_API Float2U get_current_window_position(IContext* ctx)
         {
@@ -150,13 +131,6 @@ namespace Luna
         {
             Context* c = (Context*)(ctx->get_object());
             nk_window_set_bounds(&c->m_ctx, window_name, encode_rect(bounding_rect));
-        }
-        inline struct nk_vec2 encode_vec2(const Float2U& vec)
-        {
-            struct nk_vec2 r;
-            r.x = vec.x;
-            r.y = vec.y;
-            return r;   
         }
         LUNA_GUI_API void set_window_position(IContext* ctx, const c8* window_name, const Float2U& pos)
         {

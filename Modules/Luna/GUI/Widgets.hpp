@@ -60,7 +60,7 @@ namespace Luna
             minus
         };
 
-        // Windows.
+        // Window APIs.
 
         LUNA_GUI_API bool begin(IContext* ctx, const c8* title, const RectF& bounding_rect, WindowFlag flags = WindowFlag::none);
         LUNA_GUI_API bool begin_titled(IContext* ctx, const c8* name, const c8* title, const RectF& bounding_rect, WindowFlag flags = WindowFlag::none);
@@ -94,6 +94,55 @@ namespace Luna
         LUNA_GUI_API void show_window(IContext* ctx, const c8* window_name);
         LUNA_GUI_API void hide_window(IContext* ctx, const c8* window_name);
 
+        // Layout APIs.
+
+        LUNA_GUI_API void set_min_row_height(IContext* ctx, f32 height);
+        LUNA_GUI_API void reset_min_row_height(IContext* ctx);
+        LUNA_GUI_API RectF get_next_row_bounds(IContext* ctx);
+        LUNA_GUI_API void layout_row_dynamic(IContext* ctx, f32 height, u32 cols);
+        LUNA_GUI_API void layout_row_static(IContext* ctx, f32 height, u32 item_width, u32 cols);
+        LUNA_GUI_API void layout_row_dynamic(IContext* ctx, f32 height, Span<const f32> col_width_ratios);
+        LUNA_GUI_API void layout_row_static(IContext* ctx, f32 height, Span<const f32> col_widths);
+        LUNA_GUI_API void layout_row_begin_dynamic(IContext* ctx, f32 height, u32 cols);
+        LUNA_GUI_API void layout_row_begin_static(IContext* ctx, f32 height, u32 cols);
+        LUNA_GUI_API void layout_row_push(IContext* ctx, f32 width_or_width_ratio);
+        LUNA_GUI_API void layout_row_end(IContext* ctx);
+        LUNA_GUI_API void layout_row_template_begin(IContext* ctx, f32 height);
+        LUNA_GUI_API void layout_row_template_push_dynamic(IContext* ctx);
+        LUNA_GUI_API void layout_row_template_push_variable(IContext* ctx, f32 min_width);
+        LUNA_GUI_API void layout_row_template_push_static(IContext* ctx, f32 width);
+        LUNA_GUI_API void layout_row_template_end(IContext* ctx);
+        LUNA_GUI_API void layout_space_begin_dynamic(IContext* ctx, f32 height, f32 num_widgets);
+        LUNA_GUI_API void layout_space_begin_static(IContext* ctx, f32 height, f32 num_widgets);
+        LUNA_GUI_API void layout_space_push(IContext* ctx, const RectF& bounding_rect);
+        LUNA_GUI_API void layout_space_end(IContext* ctx);
+        LUNA_GUI_API RectF get_layout_space_bounds(IContext* ctx);
+        LUNA_GUI_API Float2U layout_space_local_to_screen(IContext* ctx, const Float2& pos);
+        LUNA_GUI_API Float2U layout_space_screen_to_local(IContext* ctx, const Float2& pos);
+        LUNA_GUI_API RectF layout_space_local_to_screen_rect(IContext* ctx, const RectF& rect);
+        LUNA_GUI_API RectF layout_space_screen_to_local_rect(IContext* ctx, const RectF& rect);
+        LUNA_GUI_API void spacer(IContext* ctx);
+
+        // Group APIs.
+        LUNA_GUI_API bool begin_group(IContext* ctx, const c8* title, WindowFlag flags);
+        LUNA_GUI_API bool begin_group_titled(IContext* ctx, const c8* name, const c8* title, WindowFlag flags);
+        LUNA_GUI_API void end_group(IContext* ctx);
+        LUNA_GUI_API bool begin_scrolled_group(IContext* ctx, u32* x_offset, u32* y_offset, const c8* title, WindowFlag flags);
+        LUNA_GUI_API void end_scrolled_group(IContext* ctx);
+        LUNA_GUI_API UInt2U get_group_scroll(IContext* ctx, const c8* name);
+        LUNA_GUI_API void set_group_scroll(IContext* ctx, const c8* name, f32 scroll_x, f32 scroll_y);
+
+        // Tree 
+        LUNA_GUI_API bool begin_section(IContext* ctx, const c8* title, bool* collapsed = nullptr);
+        LUNA_GUI_API bool begin_image_section(IContext* ctx, RHI::ITexture* image, const OffsetRectU& image_rect_offset, const c8* title, bool* collapsed = nullptr);
+        LUNA_GUI_API void end_section(IContext* ctx);
+        LUNA_GUI_API bool begin_treelist(IContext* ctx, const c8* title, bool* collapsed = nullptr);
+        LUNA_GUI_API bool begin_image_treelist(IContext* ctx, RHI::ITexture* image, const OffsetRectU& image_rect_offset, const c8* title, bool* collapsed = nullptr);
+        LUNA_GUI_API void end_treelist(IContext* ctx);
+
+        // List view
+
+
         LUNA_GUI_API void horizontal_rule(IContext* ctx, u32 color_rgba, bool rounding);
         LUNA_GUI_API void text(IContext* ctx, const c8* text, u32 size = U32_MAX, TextAlignment alignment = TextAlignment::middle_left);
         LUNA_GUI_API void text_colored(IContext* ctx, const u32 color_rgba, const c8* text, u32 size = U32_MAX, TextAlignment alignment = TextAlignment::middle_left);
@@ -103,7 +152,7 @@ namespace Luna
         LUNA_GUI_API void label_colored(IContext* ctx, const c8* text, const u32 color_rgba, TextAlignment alignment = TextAlignment::middle_left);
         LUNA_GUI_API void label_wrap(IContext* ctx, const c8* text);
         LUNA_GUI_API void label_colored_wrap(IContext* ctx, const c8* text, const u32 color_rgba);
-        LUNA_GUI_API void image(IContext* ctx, RHI::ITexture* image, const OffsetRectU offsets = OffsetRectU(0, 0, 0, 0));
+        LUNA_GUI_API void image(IContext* ctx, RHI::ITexture* image, const OffsetRectU& offsets = OffsetRectU(0, 0, 0, 0));
         LUNA_GUI_API void labelf(IContext* ctx, TextAlignment alignment, const c8* fmt, ...);
         LUNA_GUI_API void labelf_colored(IContext* ctx, TextAlignment alignment, const u32 color_rgba, const c8* fmt, ...);
         LUNA_GUI_API void labelf_wrap(IContext* ctx, const c8* fmt, ...);
@@ -117,9 +166,6 @@ namespace Luna
         LUNA_GUI_API bool button_label(IContext* ctx, const c8* text);
         LUNA_GUI_API bool button_color(IContext* ctx, const u32 color_rgba);
         LUNA_GUI_API bool button_symbol(IContext* ctx, SymbolType symbol);
-
-        LUNA_GUI_API void layout_row_dynamic(IContext* ctx, f32 height, u32 cols);
-        LUNA_GUI_API void layout_row_static(IContext* ctx, f32 height, u32 item_width, u32 cols);
 
     }
 }
