@@ -362,7 +362,7 @@ namespace Luna
             VG::TextArrangeResult result = VG::arrange_text(
                 cmd->string, cmd->length,
                 {&section, 1},
-                RectF(cmd->x, (ctx->m_viewport_size.y - cmd->y - cmd->h), F32_MAX, F32_MAX),
+                RectF((f32)cmd->x, (ctx->m_viewport_size.y - (f32)cmd->y - (f32)cmd->height), F32_MAX, F32_MAX),
                 VG::TextAlignment::end,
                 VG::TextAlignment::begin
             );
@@ -371,26 +371,13 @@ namespace Luna
                 auto& points = draw_list->get_shape_buffer()->get_shape_points(true);
                 // draw text background.
                 u32 offset = (u32)points.size();
-                VG::ShapeBuilder::add_rectangle_filled(points, 0, 0, (f32)cmd->w, (f32)cmd->h);
+                VG::ShapeBuilder::add_rectangle_filled(points, 0, 0, (f32)cmd->w, (f32)cmd->height);
                 u32 size = (u32)points.size() - offset;
                 draw_list->draw_shape(offset, size, 
-                        {(f32)cmd->x, (ctx->m_viewport_size.y - (f32)cmd->y - (f32)cmd->h)}, 
+                        {(f32)cmd->x, (ctx->m_viewport_size.y - (f32)cmd->y - (f32)cmd->height)}, 
                         {(f32)cmd->x + (f32)cmd->w, (ctx->m_viewport_size.y - (f32)cmd->y)},
                         {0, 0}, {(f32)cmd->w, (f32)cmd->h}, 
                         encode_color(cmd->background));
-                // for(auto& line : result.lines)
-                // {
-                //     u32 offset = (u32)points.size();
-                //     VG::ShapeBuilder::add_rectangle_filled(points, 0, 0, 
-                //         line.bounding_rect.width, line.bounding_rect.height);
-                //     u32 size = (u32)points.size() - offset;
-                //     draw_list->draw_shape(offset, size, 
-                //         {line.bounding_rect.offset_x, line.bounding_rect.offset_y}, 
-                //         {line.bounding_rect.offset_x + line.bounding_rect.width, 
-                //             line.bounding_rect.offset_y + line.bounding_rect.height},
-                //         {0, 0}, {line.bounding_rect.width, line.bounding_rect.height}, 
-                //         Float4U(cmd->background.r, cmd->background.g, cmd->background.b, cmd->background.a));
-                // }
             }
             VG::commit_text_arrange_result(result, {&section, 1}, ctx->m_font_atlas, draw_list);
         }

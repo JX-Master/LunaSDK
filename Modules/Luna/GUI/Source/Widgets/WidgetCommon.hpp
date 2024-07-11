@@ -52,5 +52,21 @@ namespace Luna
             img.region[3] = offsets.bottom;
             return img;
         }
+        inline struct nk_color encode_color_from_rgba8(u32 c)
+        {
+            struct nk_color r;
+#ifdef LUNA_PLATFORM_LITTLE_ENDIAN
+            r.r = (c & 0x000000ff);
+            r.g = (c & 0x0000ff00) >> 8;
+            r.b = (c & 0x00ff0000) >> 16;
+            r.a = (c & 0xff000000) >> 24;
+#else
+            r.r = (c & 0xff000000) >> 24;
+            r.g = (c & 0x00ff0000) >> 16;
+            r.b = (c & 0x0000ff00) >> 8;
+            r.a = (c & 0x000000ff);
+#endif
+            return r;
+        }
     }
 }

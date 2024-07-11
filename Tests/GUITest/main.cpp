@@ -139,15 +139,17 @@ void run()
         UInt2U gui_size = UInt2U((u32)((f32)w / dpi_scale_factor), (u32)((f32)h / dpi_scale_factor));
         ctx->set_viewport_size(gui_size);
         ctx->begin_frame();
+        
+        GUI::show_overview_demo_window(ctx);
 
-        if(GUI::begin(ctx, "Debug Window", RectF(50, 50, 200, 200), 
-            GUI::WindowFlag::border | GUI::WindowFlag::movable | GUI::WindowFlag::closable))
-        {
-            GUI::layout_row_dynamic(ctx, 30.0f, 1);
-            GUI::text(ctx, "Sample Text");
-            GUI::button_label(ctx, "Button");
-        }
-        GUI::end(ctx);
+        // if(GUI::begin(ctx, "Debug Window", RectF(50, 50, 200, 200), 
+        //     GUI::WindowFlag::border | GUI::WindowFlag::movable | GUI::WindowFlag::closable))
+        // {
+        //     GUI::layout_row_dynamic(ctx, 30.0f, 1);
+        //     GUI::text(ctx, "Sample Text");
+        //     GUI::button_label(ctx, "Button");
+        // }
+        // GUI::end(ctx);
 
         ctx->render(draw_list);
 

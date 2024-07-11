@@ -60,6 +60,9 @@ namespace Luna
             minus
         };
 
+        // Demo window.
+        LUNA_GUI_API i32 show_overview_demo_window(IContext* ctx);
+
         // Window APIs.
 
         LUNA_GUI_API bool begin(IContext* ctx, const c8* title, const RectF& bounding_rect, WindowFlag flags = WindowFlag::none);
@@ -140,9 +143,7 @@ namespace Luna
         LUNA_GUI_API bool begin_image_treelist(IContext* ctx, RHI::ITexture* image, const OffsetRectU& image_rect_offset, const c8* title, bool* collapsed = nullptr);
         LUNA_GUI_API void end_treelist(IContext* ctx);
 
-        // List view
-
-
+        // Text
         LUNA_GUI_API void horizontal_rule(IContext* ctx, u32 color_rgba, bool rounding);
         LUNA_GUI_API void text(IContext* ctx, const c8* text, u32 size = U32_MAX, TextAlignment alignment = TextAlignment::middle_left);
         LUNA_GUI_API void text_colored(IContext* ctx, const u32 color_rgba, const c8* text, u32 size = U32_MAX, TextAlignment alignment = TextAlignment::middle_left);

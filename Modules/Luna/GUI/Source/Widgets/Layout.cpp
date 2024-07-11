@@ -145,5 +145,10 @@ namespace Luna
             Context* c = (Context*)(ctx->get_object());
             nk_spacer(&c->m_ctx);
         }
+        LUNA_GUI_API void horizontal_rule(IContext* ctx, u32 color_rgba, bool rounding)
+        {
+            Context* c = (Context*)(ctx->get_object());
+            nk_rule_horizontal(&c->m_ctx, encode_color_from_rgba8(color_rgba), rounding);
+        }
     }
 }
