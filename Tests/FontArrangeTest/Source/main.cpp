@@ -85,7 +85,7 @@ void rearrange_text(const RectF& rect)
     text.push_back('\n');
     g_text_sections.clear();
     VG::TextArrangeSection section;
-    section.color = Color::to_rgba8(Color::white());
+    section.color = Color::white();
     section.font_size = g_font_size;
     section.num_chars = text.size();
     section.font_file = Font::get_default_font();
@@ -175,7 +175,7 @@ void run()
 
         VG::TextArrangeSection section;
         section.font_size = 50.0f;
-        section.color = 0xCCFFCCFF;
+        section.color = Float4U(0.8f, 1.0f, 0.8f, 1.0f);
         section.font_file = Font::get_default_font();
         section.font_index = 0;
         String fps_text;
@@ -190,12 +190,12 @@ void run()
             RectF(0, sz.y - HEADER_TEXT_HEIGHT, sz.x, HEADER_TEXT_HEIGHT), VG::TextAlignment::center, VG::TextAlignment::center);
         if (!res.lines.empty())
         {
-            lupanic_if_failed(VG::commit_text_arrange_result(res, {&section, 1}, g_font_atlas, g_shape_draw_list));
+            VG::commit_text_arrange_result(res, {&section, 1}, g_font_atlas, g_shape_draw_list);
         }
 
         if (!g_text_arrange_result.get().lines.empty())
         {
-            lupanic_if_failed(VG::commit_text_arrange_result(g_text_arrange_result.get(), g_text_sections.cspan(), g_font_atlas, g_shape_draw_list));
+            VG::commit_text_arrange_result(g_text_arrange_result.get(), g_text_sections.cspan(), g_font_atlas, g_shape_draw_list);
         }
 
         lupanic_if_failed(g_shape_draw_list->compile());

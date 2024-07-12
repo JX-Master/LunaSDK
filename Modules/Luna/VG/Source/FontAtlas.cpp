@@ -28,45 +28,12 @@ namespace Luna
                 COMMAND_LINE_TO, 0.0f, 0.0f,
             };
             RectF rect = RectF(0.0f, 0.0f, 5.0f, 10.0f);
-            u32 first_command = (u32)m_shape_points.size();
-            m_shape_points.insert(m_shape_points.end(), Span<f32>(points, 5));
+            auto& shape_points = m_shape_buffer->get_shape_points(true);
+            u32 first_command = (u32)shape_points.size();
+            shape_points.insert(shape_points.end(), Span<f32>(points, 5));
             m_default_glyph.m_first_command = first_command;
             m_default_glyph.m_num_commands = 5;
             m_default_glyph.m_bounding_rect = rect;
-        }
-        RV FontAtlas::recreate_buffer(RHI::IDevice* device)
-        {
-            lutry
-            {
-                using namespace RHI;
-                if (m_shape_buffer_capacity < m_shape_points.size())
-                {
-                    u64 shape_buffer_size = m_shape_points.size() * sizeof(f32);
-                    luset(m_shape_buffer, get_main_device()->new_buffer(MemoryType::upload, BufferDesc(
-                        BufferUsageFlag::read_buffer, shape_buffer_size)));
-                    m_shape_buffer_capacity = m_shape_points.size();
-                }
-                void* shape_data = nullptr;
-                luexp(m_shape_buffer->map(0, 0, &shape_data));
-                memcpy(shape_data, m_shape_points.data(), m_shape_points.size() * sizeof(f32));
-                m_shape_buffer->unmap(0, m_shape_points.size() * sizeof(f32));
-                m_shape_buffer_dirty = false;
-            }
-            lucatchret;
-            return ok;
-        }
-        R<RHI::IBuffer*> FontAtlas::get_shape_buffer(RHI::IDevice* device)
-        {
-            lutsassert();
-            lutry
-            {
-                if (m_shape_buffer_dirty)
-                {
-                    luexp(recreate_buffer(device));
-                }
-            }
-            lucatchret;
-            return m_shape_buffer.get();
         }
         void FontAtlas::get_glyph(u32 codepoint, usize* first_shape_point, usize* num_shape_points, RectF* bounding_rect)
         {
@@ -79,9 +46,10 @@ namespace Luna
                 return;
             }
             // try to load glyph from font file.
-            u32 first_command = (u32)m_shape_points.size();
+            auto& shape_points = m_shape_buffer->get_shape_points(true);
+            u32 first_command = (u32)shape_points.size();
             RectF rect;
-            auto r = get_font_glyph_shape(m_current_font, m_current_font_index, codepoint, &m_shape_points, &rect);
+            auto r = get_font_glyph_shape(m_current_font, m_current_font_index, codepoint, &shape_points, &rect);
             if(failed(r))
             {
                 if (first_shape_point) *first_shape_point = m_default_glyph.m_first_command;
@@ -89,8 +57,7 @@ namespace Luna
                 if (bounding_rect) *bounding_rect = m_default_glyph.m_bounding_rect;
                 return;
             }
-            m_shape_buffer_dirty = true;
-            u32 num_commands = (u32)m_shape_points.size() - first_command;
+            u32 num_commands = (u32)shape_points.size() - first_command;
             GlyphDesc desc;
             desc.m_first_command = first_command;
             desc.m_num_commands = num_commands;

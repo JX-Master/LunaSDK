@@ -1,4 +1,3 @@
-
 /*!
 * This file is a portion of Luna SDK.
 * For conditions of distribution and use, see the disclaimer
@@ -100,7 +99,7 @@ namespace Luna
             //! The font index to use.
             u32 font_index = 0;
             //! The font color in RGBA8 format.
-            u32 color = 0xFFFFFFFF;
+            Float4U color = Color::white();
             //! The font size.
             f32 font_size = 18.0f;
             //! The space to add between two adjacent characters.
@@ -116,6 +115,7 @@ namespace Luna
         //! @param[in] sections The text arrange sections. Every section may
         //! use a different set of text arrange parameters.
         //! @param[in] bounding_rect The bounding rectangle to arrange text in.
+        //! The original point (offset_x, offset_y) of the bounding rectangle is the left bottom point of the bounding rectangle.
         //! @param[in] vertical_alignment The vertical alignment for text lines.
         //! @param[in] horizontal_alignment The horizontal alignment for text lines.
         //! @return Returns the text arrange result.
@@ -132,7 +132,7 @@ namespace Luna
         //! @param[in] sections The text arrange sections. This must be the same sections
         //! passed to @ref arrange_text when arranging texts.
         //! @param[in] draw_list The draw list to commit text arrange result to.
-        LUNA_VG_API RV commit_text_arrange_result(
+        LUNA_VG_API void commit_text_arrange_result(
             const TextArrangeResult& result,
             Span<const TextArrangeSection> sections,
             IFontAtlas* font_atlas,

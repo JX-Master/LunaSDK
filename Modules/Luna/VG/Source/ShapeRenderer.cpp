@@ -32,7 +32,7 @@ namespace Luna
             {
                 {
                     DescriptorSetLayoutBinding bindings[] = {
-                        DescriptorSetLayoutBinding::uniform_buffer_view(0, 1, ShaderVisibilityFlag::vertex),
+                        DescriptorSetLayoutBinding::uniform_buffer_view(0, 1, ShaderVisibilityFlag::all),
                         DescriptorSetLayoutBinding::read_buffer_view(1, 1, ShaderVisibilityFlag::all),
                         DescriptorSetLayoutBinding::read_texture_view(TextureViewType::tex2d, 2, 1, ShaderVisibilityFlag::pixel),
                         DescriptorSetLayoutBinding::sampler(3, 1, ShaderVisibilityFlag::pixel)
@@ -100,9 +100,9 @@ namespace Luna
                     InputAttributeDesc("POSITION", 0, 0, 0, offsetof(Vertex, position), Format::rg32_float),
                     InputAttributeDesc("SHAPECOORD", 0, 1, 0, offsetof(Vertex, shapecoord), Format::rg32_float),
                     InputAttributeDesc("TEXCOORD", 0, 2, 0, offsetof(Vertex, texcoord), Format::rg32_float),
-                    InputAttributeDesc("COLOR", 0, 3, 0, offsetof(Vertex, color), Format::rgba8_unorm),
-                    InputAttributeDesc("COMMAND_OFFSET", 0, 4, 0, offsetof(Vertex, begin_command), Format::r32_uint),
-                    InputAttributeDesc("NUM_COMMANDS", 0, 5, 0, offsetof(Vertex, num_commands), Format::r32_uint)
+                    InputAttributeDesc("COMMAND_OFFSET", 0, 3, 0, offsetof(Vertex, begin_command), Format::r32_uint),
+                    InputAttributeDesc("NUM_COMMANDS", 0, 4, 0, offsetof(Vertex, num_commands), Format::r32_uint),
+                    InputAttributeDesc("COLOR", 0, 5, 0, offsetof(Vertex, color), Format::rgba32_float)
                 };
                 desc.input_layout = InputLayoutDesc({bindings, 1}, {attributes, 6});
                 desc.pipeline_layout = g_fill_playout;
@@ -146,6 +146,11 @@ namespace Luna
             }
             return ok;
         }
+        struct CBData
+        {
+            Float4x4U transform;
+            Float4U clip_rect;
+        };
         RV FillShapeRenderer::render(
             RHI::ICommandBuffer* cmdbuf,
             RHI::IBuffer* vertex_buffer,
@@ -164,7 +169,7 @@ namespace Luna
             }
             lutry
             {
-                u32 cb_element_size = (u32)align_upper(sizeof(Float4x4U), dev->check_feature(DeviceFeature::uniform_buffer_data_alignment).uniform_buffer_data_alignment);
+                u32 cb_element_size = (u32)align_upper(sizeof(CBData), dev->check_feature(DeviceFeature::uniform_buffer_data_alignment).uniform_buffer_data_alignment);
                 usize num_draw_calls = draw_calls.size();
                 u64 cb_size = cb_element_size * num_draw_calls;
                 // Build constant buffer.
@@ -178,7 +183,7 @@ namespace Luna
                 luexp(m_cbs_resource->map(0, 0, &cb_data));
                 for (usize i = 0; i < num_draw_calls; ++i)
                 {
-                    Float4x4U* dst = (Float4x4U*)(((usize)cb_data) + i * cb_element_size);
+                    CBData* dst = (CBData*)(((usize)cb_data) + i * cb_element_size);
                     Float4x4 transform = AffineMatrix::make_rotation_z(draw_calls[i].rotation / 180.0f * PI);
                     transform = mul(transform, AffineMatrix::make_translation(Float3(draw_calls[i].origin_point.x, draw_calls[i].origin_point.y, 0.0f)));
                     if (transform_matrix)
@@ -190,7 +195,9 @@ namespace Luna
                         Float4x4 mat = ProjectionMatrix::make_orthographic_off_center(0.0f, (f32)m_screen_width, 0.0f, (f32)m_screen_height, 0.0f, 1.0f);
                         transform = mul(transform, mat);
                     }
-                    *dst = transform;
+                    dst->transform = transform;
+                    auto& clip_rect = draw_calls[i].clip_rect;
+                    dst->clip_rect = Float4U{clip_rect.offset_x, clip_rect.offset_y, clip_rect.width, clip_rect.height};
                 }
                 m_cbs_resource->unmap(0, cb_size);
                 // Build view sets.

@@ -9,7 +9,7 @@
 */
 #pragma once
 #include <Luna/Font/Font.hpp>
-#include <Luna/RHI/Buffer.hpp>
+#include "ShapeBuffer.hpp"
 
 #ifndef LUNA_VG_API
 #define LUNA_VG_API
@@ -43,16 +43,10 @@ namespace Luna
             virtual void set_font(Font::IFontFile* font, u32 index) = 0;
 
             //! Gets the shape buffer that stores the glyph contour commands. 
-            //! @details This call will copy shape command points to the shape buffer using GPU if shape point data
-            //! is modified after last call to @ref get_shape_buffer (or if @ref get_shape_buffer is called for the first time after
-            //! @ref clear), so the user should call this function only if all glyph shapes are packed to the atlas to avoid data copy overhead.
-            //! @param[in] device The device to create the shape buffer when needed.
+            //! @remark Note that the shape buffer data is managed by font atlas, the user should not modify
+            //! the data directly, but can bind the shape buffer to any shape draw list.
             //! @return Returns the shape buffer.
-            virtual R<RHI::IBuffer*> get_shape_buffer(RHI::IDevice* device) = 0;
-
-            //! Gets the shape points data.
-            //! @return Returns the shape point data. The returned data span is valid until a new glyph is packed to the atlas.
-            virtual Span<const f32> get_shape_points() = 0;
+            virtual IShapeBuffer* get_shape_buffer() = 0;
 
             //! Queries the information of the specified glyph, and optionally packs the glyph to this atlas if it is not packed yet.
             //! @param[in] codepoint The codepoint of the glyph. This is the Unicode of the glyph in most font files.

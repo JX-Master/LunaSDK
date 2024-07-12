@@ -10,6 +10,7 @@
 struct TransformParams
 {
     float4x4 transform;
+    float4 clip_rect;
 };
 TransformParams g_cbuffer : register(b0);
 StructuredBuffer<float> g_commands : register(t1);
@@ -25,11 +26,11 @@ struct VSIn
     [[vk::location(2)]]
     float2 texcoord   : TEXCOORD;
     [[vk::location(3)]]
-    float4 color      : COLOR;
-    [[vk::location(4)]]
     uint begin_command_offset : COMMAND_OFFSET;
-    [[vk::location(5)]]
+    [[vk::location(4)]]
     uint num_commands : NUM_COMMANDS;
+    [[vk::location(5)]]
+    float4 color      : COLOR;
 };
 
 struct VSOut
@@ -37,15 +38,17 @@ struct VSOut
     [[vk::location(0)]]
     float4 position        : SV_POSITION;
     [[vk::location(1)]]
-    float2 shapecoord    : SHAPECOORD;
+    float2 position_2d   : POSITION_2D;
     [[vk::location(2)]]
-    float2 texcoord        : TEXCOORD;
+    float2 shapecoord    : SHAPECOORD;
     [[vk::location(3)]]
-    float4 color        : COLOR;
+    float2 texcoord        : TEXCOORD;
     [[vk::location(4)]]
     uint begin_command_offset : COMMAND_OFFSET;
     [[vk::location(5)]]
     uint num_commands    : NUM_COMMANDS;
+    [[vk::location(6)]]
+    float4 color        : COLOR;
 };
 
 VSOut main(VSIn v)
@@ -55,6 +58,7 @@ VSOut main(VSIn v)
     pos = mul(g_cbuffer.transform, pos);
     VSOut o;
     o.position = pos;
+    o.position_2d = v.position;
     o.shapecoord = v.shapecoord;
     o.texcoord = v.texcoord;
     o.color = v.color;

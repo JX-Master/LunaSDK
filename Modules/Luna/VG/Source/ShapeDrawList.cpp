@@ -30,14 +30,16 @@ namespace Luna
         {
             lutsassert();
             m_draw_calls.clear();
+            m_draw_call_buffers.clear();
             m_vertices.clear();
             m_indices.clear();
-            m_internal_shape_points.clear();
+            m_internal_shape_buffer->get_shape_points(true).clear();
             m_shape_buffer.reset();
             m_texture.reset();
             m_sampler = get_default_sampler();
             m_origin = Float2U(0.0f);
             m_rotation = 0.0f;
+            m_clip_rect = RectF{0, 0, 0, 0};
             m_state_dirty = false;
         }
         void ShapeDrawList::draw_shape_raw(Span<const Vertex> vertices, Span<const u32> indices)
@@ -55,7 +57,7 @@ namespace Luna
         }
         void ShapeDrawList::draw_shape(u32 begin_command, u32 num_commands,
             const Float2U& min_position, const Float2U& max_position,
-            const Float2U& min_shapecoord, const Float2U& max_shapecoord, u32 color,
+            const Float2U& min_shapecoord, const Float2U& max_shapecoord, const Float4U& color,
             const Float2U& min_texcoord, const Float2U& max_texcoord)
         {
             lutsassert();
@@ -104,7 +106,7 @@ namespace Luna
                 // Pack data.
                 u32 num_vertices = (u32)m_vertices.size();
                 u32 num_indices = (u32)m_indices.size();
-                u32 num_internal_buffer_points = (u32)m_internal_shape_points.size();
+                u32 num_internal_buffer_points = (u32)m_internal_shape_buffer->get_shape_points().size();
                 if (m_vertex_buffer_capacity < num_vertices)
                 {
                     // Recreate vertex buffer.
@@ -121,14 +123,6 @@ namespace Luna
                     m_index_buffer_capacity = num_indices;
                 }
                 m_index_buffer_size = num_indices;
-                if(m_internal_shape_buffer_capacity < num_internal_buffer_points)
-                {
-                    // Recreate internal shape buffer.
-                    luset(m_internal_shape_buffer, m_device->new_buffer(RHI::MemoryType::upload, RHI::BufferDesc(
-                        RHI::BufferUsageFlag::read_buffer, num_internal_buffer_points * sizeof(f32))));
-                    m_internal_shape_buffer_capacity = num_internal_buffer_points;
-                }
-                m_internal_shape_buffer_size = num_internal_buffer_points;
                 if(m_vertex_buffer)
                 {
                     Vertex* vertex_data = nullptr;
@@ -143,18 +137,15 @@ namespace Luna
                     memcpy(index_data, m_indices.data(), m_indices.size() * sizeof(u32));
                     m_index_buffer->unmap(0, sizeof(u32) * m_indices.size());
                 }
-                if(m_internal_shape_buffer)
+                for(usize i = 0; i < m_draw_calls.size(); ++i)
                 {
-                    f32* shape_data = nullptr;
-                    luexp(m_internal_shape_buffer->map(0, 0, (void**)&shape_data));
-                    memcpy(shape_data, m_internal_shape_points.data(), m_internal_shape_points.size() * sizeof(f32));
-                    m_internal_shape_buffer->unmap(0, m_internal_shape_points.size() * sizeof(f32));
-                }
-                for(auto& dc : m_draw_calls)
-                {
-                    if(!dc.shape_buffer)
+                    if(!m_draw_call_buffers[i])
                     {
-                        dc.shape_buffer = m_internal_shape_buffer;
+                        luset(m_draw_calls[i].shape_buffer, m_internal_shape_buffer->build(m_device));
+                    }
+                    else
+                    {
+                        luset(m_draw_calls[i].shape_buffer, m_draw_call_buffers[i]->build(m_device));
                     }
                 }
             }

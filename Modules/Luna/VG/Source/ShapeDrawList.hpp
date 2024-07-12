@@ -23,25 +23,24 @@ namespace Luna
 
             Ref<RHI::IBuffer> m_vertex_buffer;
             Ref<RHI::IBuffer> m_index_buffer;
-            Ref<RHI::IBuffer> m_internal_shape_buffer;
+            Ref<IShapeBuffer> m_internal_shape_buffer;
             u64 m_vertex_buffer_size;
             u64 m_index_buffer_size;
-            u64 m_internal_shape_buffer_size;
             u64 m_vertex_buffer_capacity;
             u64 m_index_buffer_capacity;
-            u64 m_internal_shape_buffer_capacity;
 
+            Vector<Ref<IShapeBuffer>> m_draw_call_buffers;
             Vector<ShapeDrawCall> m_draw_calls;
             Vector<Vertex> m_vertices;
             Vector<u32> m_indices;
-            Vector<f32> m_internal_shape_points;
 
             // Current draw state.
-            Ref<RHI::IBuffer> m_shape_buffer;
+            Ref<IShapeBuffer> m_shape_buffer;
             Ref<RHI::ITexture> m_texture;
             RHI::SamplerDesc m_sampler;
             Float2U m_origin;
             f32 m_rotation;
+            RectF m_clip_rect;
 
             // If `true`, then the draw call should be re-targeted.
             bool m_state_dirty;
@@ -49,12 +48,13 @@ namespace Luna
             void new_draw_call()
             {
                 m_draw_calls.emplace_back();
+                m_draw_call_buffers.push_back(m_shape_buffer);
                 ShapeDrawCall& dc = m_draw_calls.back();
-                dc.shape_buffer = m_shape_buffer;
                 dc.texture = m_texture;
                 dc.sampler = m_sampler;
                 dc.origin_point = m_origin;
                 dc.rotation = m_rotation;
+                dc.clip_rect = m_clip_rect;
                 dc.base_index = (u32)m_indices.size();
                 dc.num_indices = 0;
             }
@@ -72,25 +72,21 @@ namespace Luna
                 m_vertex_buffer_capacity(0),
                 m_index_buffer_size(0),
                 m_index_buffer_capacity(0),
-                m_internal_shape_buffer_size(0),
-                m_internal_shape_buffer_capacity(0),
                 m_sampler(get_default_sampler()),
                 m_origin(0.0f),
                 m_rotation(0.0f),
+                m_clip_rect(0, 0, 0, 0),
                 m_state_dirty(false)
-            {}
+            {
+                m_internal_shape_buffer = new_shape_buffer();
+            }
 
             virtual RHI::IDevice* get_device() override
             {
                 return m_device;
             }
             virtual void reset() override;
-            virtual Vector<f32>& get_shape_points() override
-            {
-                lutsassert();
-                return m_internal_shape_points;
-            }
-            virtual void set_shape_buffer(RHI::IBuffer* shape_buffer) override
+            virtual void set_shape_buffer(IShapeBuffer* shape_buffer) override
             {
                 lutsassert();
                 if (m_shape_buffer != shape_buffer)
@@ -99,9 +95,9 @@ namespace Luna
                     m_shape_buffer = shape_buffer;
                 }
             }
-            virtual RHI::IBuffer* get_shape_buffer() override
+            virtual IShapeBuffer* get_shape_buffer() override
             {
-                return m_shape_buffer;
+                return m_shape_buffer ? m_shape_buffer : m_internal_shape_buffer;
             }
             virtual void set_texture(RHI::ITexture* tex) override
             {
@@ -164,10 +160,23 @@ namespace Luna
             {
                 return m_rotation;
             }
+            virtual void set_clip_rect(const RectF& clip_rect) override
+            {
+                lutsassert();
+                if (m_clip_rect != clip_rect)
+                {
+                    m_state_dirty = true;
+                    m_clip_rect = clip_rect;
+                }
+            }
+            virtual RectF get_clip_rect() override
+            {
+                return m_clip_rect;
+            }
             virtual void draw_shape_raw(Span<const Vertex> vertices, Span<const u32> indices) override;
             virtual void draw_shape(u32 begin_command, u32 num_commands,
                 const Float2U& min_position, const Float2U& max_position,
-                const Float2U& min_shapecoord, const Float2U& max_shapecoord, u32 color,
+                const Float2U& min_shapecoord, const Float2U& max_shapecoord, const Float4U& color,
                 const Float2U& min_texcoord, const Float2U& max_texcoord) override;
             virtual RV compile() override;
             virtual RHI::IBuffer* get_vertex_buffer() override
