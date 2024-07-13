@@ -32,11 +32,12 @@ namespace Luna
         {
             Font::IFontFile* font = cast_object<Font::IFontFile>(get_oattr(OATTR_FONT, true, Font::get_default_font()));
             u32 font_index = get_sattr(SATTR_FONT_INDEX, true, 0);
-            return draw_text(ctx, draw_list, text.c_str(), text.size(), 
+            draw_text(ctx, draw_list, text.c_str(), text.size(), 
                 get_vattr(VATTR_TEXT_COLOR, true, Float4U(1.0f)), 
                 get_sattr(SATTR_TEXT_SIZE, true, DEFAULT_TEXT_SIZE), 
                 bounding_rect.left, bounding_rect.top, bounding_rect.right, bounding_rect.bottom,
                 font, font_index);
+            return ok;
         }
         LUNA_GUI_API void text(IContext* ctx, const Name& text)
         {

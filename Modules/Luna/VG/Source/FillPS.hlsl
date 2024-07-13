@@ -152,6 +152,14 @@ float2 circle_get_point(float2 center, float radius, float angle)
     return center + radius * sc;
 }
 
+float2 ellipse_get_point(float2 center, float2 radius, float angle)
+{
+    angle = angle * PI_DIV_180;
+    float2 sc;
+    sincos(angle, sc.y, sc.x);
+    return center + radius * sc;
+}
+
 float circle_test_x_axis(float2 v0, float2 v1, float2 center, float radius, bool choose_first, float2 pixels_per_unit)
 {
     // Early out if this curve is before the pixel.
@@ -178,6 +186,28 @@ float circle_test_y_axis(float2 v0, float2 v1, float2 center, float radius, bool
     return sign * saturate(yt * pixels_per_unit.y + 0.5f);
 }
 
+float ellipse_test_x_axis(float2 v0, float2 v1, float2 center, float2 radius, bool choose_first, float2 pixels_per_unit)
+{
+    if (max(v0.x, v1.x) * pixels_per_unit.x < -0.5f) return 0.0f;
+    int sign = ((v0.y > 0) ? 1 : 0) - ((v1.y > 0) ? 1 : 0);
+    if (sign == 0) return 0.0f;
+    float normy = center.y / radius.y;
+    float delta = sqrt(1 - normy * normy) * radius.x;
+    float xt = choose_first ? center.x - delta : center.x + delta;
+    return sign * saturate(xt * pixels_per_unit.x + 0.5f);
+}
+
+float ellipse_test_y_axis(float2 v0, float2 v1, float2 center, float2 radius, bool choose_first, float2 pixels_per_unit)
+{
+    if (max(v0.y, v1.y) * pixels_per_unit.y < -0.5f) return 0.0f;
+    int sign = ((v1.x > 0) ? 1 : 0) - ((v0.x > 0) ? 1 : 0);
+    if (sign == 0) return 0.0f;
+    float normx = center.x / radius.x;
+    float delta = sqrt(1 - normx * normx) * radius.y;
+    float yt = choose_first ? center.y - delta : center.y + delta;
+    return sign * saturate(yt * pixels_per_unit.y + 0.5f);
+}
+
 float clip_rect_test(float2 pos, float4 clip_rect, float2 pixels_per_unit)
 {
     float4 rect = float4(clip_rect.x, clip_rect.y, clip_rect.x + clip_rect.z, clip_rect.y + clip_rect.w);
@@ -199,6 +229,10 @@ static const float COMMAND_CIRCLE_Q1 = 4.0f;
 static const float COMMAND_CIRCLE_Q2 = 5.0f;
 static const float COMMAND_CIRCLE_Q3 = 6.0f;
 static const float COMMAND_CIRCLE_Q4 = 7.0f;
+static const float COMMAND_AXIS_ALIGNED_ELLIPSE_Q1 = 8.0f;
+static const float COMMAND_AXIS_ALIGNED_ELLIPSE_Q2 = 9.0f;
+static const float COMMAND_AXIS_ALIGNED_ELLIPSE_Q3 = 10.0f;
+static const float COMMAND_AXIS_ALIGNED_ELLIPSE_Q4 = 11.0f;
 
 [[vk::location(0)]]
 float4 main(PSIn v) : SV_Target
@@ -253,13 +287,31 @@ float4 main(PSIn v) : SV_Target
             coverage_y += circle_test_y_axis(v0, v1, center, radius, (command == COMMAND_CIRCLE_Q3) || (command == COMMAND_CIRCLE_Q4), pixels_per_unit);
             i += 4;
         }
+        else if(command >= COMMAND_AXIS_ALIGNED_ELLIPSE_Q1 && command <= COMMAND_AXIS_ALIGNED_ELLIPSE_Q4)
+        {
+            float2 v0 = last_point - v.shapecoord;
+            float rx = g_commands[i + 1];
+            float ry = g_commands[i + 2];
+            float2 radius = float2(rx, ry);
+            float begin = g_commands[i + 3];
+            float end = g_commands[i + 4];
+            float2 center = ellipse_get_point(last_point, radius, 180.0f + begin);
+            last_point = ellipse_get_point(center, radius, end);
+            float2 v1 = last_point - v.shapecoord;
+            center = center - v.shapecoord;
+            coverage_x += ellipse_test_x_axis(v0, v1, center, radius, (command == COMMAND_AXIS_ALIGNED_ELLIPSE_Q2) || (command == COMMAND_AXIS_ALIGNED_ELLIPSE_Q3), pixels_per_unit);
+            coverage_y += ellipse_test_y_axis(v0, v1, center, radius, (command == COMMAND_AXIS_ALIGNED_ELLIPSE_Q3) || (command == COMMAND_AXIS_ALIGNED_ELLIPSE_Q4), pixels_per_unit);
+            i += 5;
+        }
     }
-    float weight_x = 1.0f - abs(coverage_x * 2.0f - 1.0f);
-    float weight_y = 1.0f - abs(coverage_y * 2.0f - 1.0f);
+    float weight_x = 1.0f - abs(abs(coverage_x) * 2.0f - 1.0f);
+    float weight_y = 1.0f - abs(abs(coverage_y) * 2.0f - 1.0f);
     float coverage = max(abs(coverage_x * weight_x + coverage_y * weight_y) / max(weight_x + weight_y, 0.0001220703125f), min(abs(coverage_x), abs(coverage_y)));
     if(any(g_cbuffer.clip_rect != float4(0, 0, 0, 0)))
     {
-        coverage *= clip_rect_test(v.position_2d, g_cbuffer.clip_rect, pixels_per_unit);
+        float2 pos_units_per_pixel = fwidth(v.position_2d);
+        float2 pixels_per_pos_unit = 1.0f / pos_units_per_pixel;
+        coverage *= clip_rect_test(v.position_2d, g_cbuffer.clip_rect, pixels_per_pos_unit);
     }
     float4 col = g_tex.Sample(g_sampler, v.texcoord);
     col *= v.color;

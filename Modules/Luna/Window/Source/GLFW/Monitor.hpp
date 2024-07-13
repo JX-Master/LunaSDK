@@ -9,7 +9,6 @@
 */
 #include "../../Window.hpp"
 
-#ifdef LUNA_WINDOW_GLFW
 namespace Luna
 {
     namespace Window
@@ -18,4 +17,3 @@ namespace Luna
         void monitor_close();
     }
 }
-#endif

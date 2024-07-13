@@ -83,25 +83,21 @@ namespace Luna
         }
         RV Window::draw(IContext* ctx, VG::IShapeDrawList* draw_list)
         {
-            lutry
+            // draw window rect.
+            Float4U background_color = get_vattr(VATTR_BACKGROUND_COLOR, true, Float4U(0.94f, 0.94f, 0.94f, 1.0f));
+            auto& points = draw_list->get_shape_buffer()->get_shape_points();
+            auto& io = ctx->get_io();
+            if(background_color.w != 0)
             {
-                // draw window rect.
-                Float4U background_color = get_vattr(VATTR_BACKGROUND_COLOR, true, Float4U(0.94f, 0.94f, 0.94f, 1.0f));
-                auto& points = draw_list->get_shape_points();
-                auto& io = ctx->get_io();
-                if(background_color.w != 0)
-                {
-                    draw_rectangle_filled(ctx, draw_list, bounding_rect.left, bounding_rect.top, bounding_rect.right, bounding_rect.bottom, background_color);
-                }
-                // draw title.
-                f32 text_size = get_sattr(SATTR_TEXT_SIZE, true, DEFAULT_TEXT_SIZE);
-                Font::IFontFile* font = cast_object<Font::IFontFile>(get_oattr(OATTR_FONT, true, Font::get_default_font()));
-                u32 font_index = get_sattr(SATTR_FONT_INDEX, true, 0);
-                luexp(draw_text(ctx, draw_list, title.c_str(), title.size(), Float4U(0.1f, 0.1f, 0.1f, 1.0f), text_size, 
-                    bounding_rect.left + 2, bounding_rect.top + 2, bounding_rect.right - 2, bounding_rect.top + text_size + 2, 
-                    font, font_index));
+                draw_rectangle_filled(ctx, draw_list, bounding_rect.left, bounding_rect.top, bounding_rect.right, bounding_rect.bottom, background_color);
             }
-            lucatchret;
+            // draw title.
+            f32 text_size = get_sattr(SATTR_TEXT_SIZE, true, DEFAULT_TEXT_SIZE);
+            Font::IFontFile* font = cast_object<Font::IFontFile>(get_oattr(OATTR_FONT, true, Font::get_default_font()));
+            u32 font_index = get_sattr(SATTR_FONT_INDEX, true, 0);
+            draw_text(ctx, draw_list, title.c_str(), title.size(), Float4U(0.1f, 0.1f, 0.1f, 1.0f), text_size, 
+                bounding_rect.left + 2, bounding_rect.top + 2, bounding_rect.right - 2, bounding_rect.top + text_size + 2, 
+                font, font_index);
             return ok;
         }
         LUNA_GUI_API void begin_window(IContext* ctx, const c8* title)

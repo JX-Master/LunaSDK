@@ -80,7 +80,7 @@ void on_window_close(Window::IWindow* window)
     window->close();
 }
 
-void on_mouse_down(Window::IWindow* window, Window::ModifierKeyFlag modifier_flags, HID::MouseButton button)
+void on_mouse_down(Window::IWindow* window, HID::MouseButton button)
 {
     if (button == HID::MouseButton::right)
     {
@@ -89,7 +89,7 @@ void on_mouse_down(Window::IWindow* window, Window::ModifierKeyFlag modifier_fla
     }
 }
 
-void on_mouse_up(Window::IWindow* window, Window::ModifierKeyFlag modifier_flags, HID::MouseButton button)
+void on_mouse_up(Window::IWindow* window, HID::MouseButton button)
 {
     if (button == HID::MouseButton::right)
     {
@@ -209,19 +209,19 @@ void run()
             section.font_index = 0;
             RectF bounding_rect = RectF(0, 0, window_sz.x, window_sz.y - 100.0f);
             auto arrange_result = VG::arrange_text(text, 15, {&section, 1}, bounding_rect, VG::TextAlignment::begin, VG::TextAlignment::center);
-            lupanic_if_failed(VG::commit_text_arrange_result(arrange_result, { &section, 1 }, g_font_atlas, g_shape_draw_list));
+            VG::commit_text_arrange_result(arrange_result, { &section, 1 }, g_font_atlas, g_shape_draw_list);
         }
 
         constexpr f32 shape_scale = 2.0f;
 
         g_shape_draw_list->set_shape_buffer(nullptr);
-        auto& points = g_shape_draw_list->get_shape_points();
+        auto& points = g_shape_draw_list->get_shape_buffer()->get_shape_points(true);
         u32 offset = (u32)points.size();
         VG::ShapeBuilder::add_rectangle_filled(points, 0, 0, 100, 100);
         u32 end_offset = (u32)points.size();
-        Float2 draw_pos = { window_sz.x / 2.0f - 200.0f * shape_scale, window_sz.y - 500.0f * shape_scale };
+        Float2 draw_pos = { window_sz.x / 2.0f - 350.0f * shape_scale, window_sz.y - 500.0f * shape_scale };
         g_shape_draw_list->draw_shape(offset, end_offset - offset, draw_pos, draw_pos + 100.0f * shape_scale, { 0.0f, 0.0f }, { 100.0f, 100.0f }, Color::light_pink());
-
+        
         offset = end_offset;
         VG::ShapeBuilder::add_rectangle_bordered(points, 0, 0, 100, 100, 5, -2.5f);
         end_offset = (u32)points.size();
@@ -233,10 +233,23 @@ void run()
         end_offset = (u32)points.size();
         draw_pos.x += 150.0f * shape_scale;
         draw_pos.y -= 150.0f * shape_scale;
-        g_shape_draw_list->draw_shape(offset, end_offset - offset, draw_pos, draw_pos + 100.0f * shape_scale, { 0.0f, 0.0f }, { 100.0f, 100.0f }, Color::light_green());
+        g_shape_draw_list->draw_shape(offset, end_offset - offset, draw_pos, draw_pos + 100.0f * shape_scale, { 0.0f, 0.0f }, { 100.0f, 100.0f }, Color::light_yellow());
 
         offset = end_offset;
         VG::ShapeBuilder::add_rounded_rectangle_bordered(points, 0, 0, 100, 100, 10, 5, -2.5f);
+        end_offset = (u32)points.size();
+        draw_pos.y += 150.0f * shape_scale;
+        g_shape_draw_list->draw_shape(offset, end_offset - offset, draw_pos, draw_pos + 100.0f * shape_scale, { 0.0f, 0.0f }, { 100.0f, 100.0f }, Color::light_yellow());
+
+        offset = end_offset;
+        VG::ShapeBuilder::add_triangle_filled(points, 0, 0, 50, 100, 100, 0);
+        end_offset = (u32)points.size();
+        draw_pos.x += 150.0f * shape_scale;
+        draw_pos.y -= 150.0f * shape_scale;
+        g_shape_draw_list->draw_shape(offset, end_offset - offset, draw_pos, draw_pos + 100.0f * shape_scale, { 0.0f, 0.0f }, { 100.0f, 100.0f }, Color::light_green());
+
+        offset = end_offset;
+        VG::ShapeBuilder::add_triangle_bordered(points, 0, 0, 50, 100, 100, 0, 5, -2.5f);
         end_offset = (u32)points.size();
         draw_pos.y += 150.0f * shape_scale;
         g_shape_draw_list->draw_shape(offset, end_offset - offset, draw_pos, draw_pos + 100.0f * shape_scale, { 0.0f, 0.0f }, { 100.0f, 100.0f }, Color::light_green());
@@ -254,6 +267,19 @@ void run()
         draw_pos.y += 150.0f * shape_scale;
         g_shape_draw_list->draw_shape(offset, end_offset - offset, draw_pos, draw_pos + 100.0f * shape_scale, { 0.0f, 0.0f }, { 100.0f, 100.0f }, Color::light_blue());
 
+        offset = end_offset;
+        VG::ShapeBuilder::add_axis_aligned_ellipse_filled(points, 50, 50, 50, 25);
+        end_offset = (u32)points.size();
+        draw_pos.x += 150.0f * shape_scale;
+        draw_pos.y -= 150.0f * shape_scale;
+        g_shape_draw_list->draw_shape(offset, end_offset - offset, draw_pos, draw_pos + 100.0f * shape_scale, { 0.0f, 0.0f }, { 100.0f, 100.0f }, Color::light_steel_blue());
+
+        offset = end_offset;
+        VG::ShapeBuilder::add_axis_aligned_ellipse_bordered(points, 50, 50, 50, 25, 5, -2.5f);
+        end_offset = (u32)points.size();
+        draw_pos.y += 150.0f * shape_scale;
+        g_shape_draw_list->draw_shape(offset, end_offset - offset, draw_pos, draw_pos + 100.0f * shape_scale, { 0.0f, 0.0f }, { 100.0f, 100.0f }, Color::light_steel_blue());
+        
         lupanic_if_failed(g_shape_draw_list->compile());
 
         RHI::RenderPassDesc desc;

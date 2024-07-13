@@ -23,7 +23,7 @@ namespace Luna
         LUNA_GUI_API void draw_rectangle_filled(IContext* ctx, VG::IShapeDrawList* draw_list, 
             f32 min_x, f32 min_y, f32 max_x, f32 max_y, const Float4& color);
 
-        LUNA_GUI_API RV draw_text(IContext* ctx, VG::IShapeDrawList* draw_list, 
+        LUNA_GUI_API void draw_text(IContext* ctx, VG::IShapeDrawList* draw_list, 
             const c8* text, usize text_len, 
             const Float4U& text_color,
             f32 text_size, 

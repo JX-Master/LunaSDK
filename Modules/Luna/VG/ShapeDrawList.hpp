@@ -12,6 +12,7 @@
 #include <Luna/RHI/DescriptorSet.hpp>
 #include <Luna/Runtime/Ref.hpp>
 #include <Luna/Runtime/Math/Color.hpp>
+#include "ShapeBuffer.hpp"
 
 #ifndef LUNA_VG_API
 #define LUNA_VG_API
@@ -78,11 +79,6 @@ namespace Luna
             //! and resources, so they can be reused for new shapes.
             virtual void reset() = 0;
 
-            //! Gets shape points that are recorded in internal shape buffer.
-            //! @return Returns one vector that contains the recorded shape points.
-            //! The user may add points to this vector manually.
-            virtual Vector<f32>& get_shape_points() = 0;
-
             //! Sets the shape buffer used for the following draw calls.
             //! @param[in] shape_buffer The shape buffer to set. If this is `nullptr`, the internal shape buffer will be set.
             //! @remark The shape buffer is similar to "glyph atlas texture" in VG. However, instead of storing bitmaps of glyphs 
@@ -97,11 +93,11 @@ namespace Luna
             //! to create shape buffer herself, she can also pass `nullptr` to @ref set_shape_buffer to use the shape draw list's internal shape 
             //! buffer. The internal shape buffer is designed to draw contours that may change every frame, like the GUI widget that are generated 
             //! at runtime, and the data of the internal shape buffer will be cleared every time @ref reset is called.
-            virtual void set_shape_buffer(RHI::IBuffer* shape_buffer) = 0;
+            virtual void set_shape_buffer(IShapeBuffer* shape_buffer) = 0;
 
             //! Gets the current set shape buffer. See remarks of @ref set_shape_buffer for details.
-            //! @return Returns the current set shape buffer. Returns `nullptr` if the internal shape buffer is used.
-            virtual RHI::IBuffer* get_shape_buffer() = 0;
+            //! @return Returns the current set shape buffer.
+            virtual IShapeBuffer* get_shape_buffer() = 0;
 
             //! Sets the texture to be sampled when rendering the succeeding shapes.
             //! @param[in] tex The texture to set. Specify `nullptr` is allowed, which behaves the same as applying one white texture with all components set to

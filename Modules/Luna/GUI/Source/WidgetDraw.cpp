@@ -19,7 +19,7 @@ namespace Luna
     {
         LUNA_GUI_API void draw_rectangle_filled(IContext* ctx, VG::IShapeDrawList* draw_list, f32 min_x, f32 min_y, f32 max_x, f32 max_y, const Float4& color)
         {
-            auto& points = draw_list->get_shape_points();
+            auto& points = draw_list->get_shape_buffer()->get_shape_points();
             u32 begin_command = (u32)points.size();
             auto& io = ctx->get_io();
             f32 screen_min_y = io.height - max_y;
@@ -31,7 +31,7 @@ namespace Luna
                 {min_x, screen_min_y}, {max_x, screen_max_y},
                 color);
         }
-        LUNA_GUI_API RV draw_text(IContext* ctx, VG::IShapeDrawList* draw_list, 
+        LUNA_GUI_API void draw_text(IContext* ctx, VG::IShapeDrawList* draw_list, 
             const c8* text, usize text_len, 
             const Float4U& text_color,
             f32 text_size, 
@@ -56,7 +56,7 @@ namespace Luna
             auto& io = ctx->get_io();
             RectF rect{min_x, io.height - max_y, max_x - min_x, max_y - min_y};
             VG::TextArrangeResult result = VG::arrange_text(text, text_len, {&section, 1}, rect, vertical_alignment, horizontal_alignment);
-            return VG::commit_text_arrange_result(result, {&section, 1}, ctx->get_font_altas(), draw_list);
+            VG::commit_text_arrange_result(result, {&section, 1}, ctx->get_font_altas(), draw_list);
         }
     }
 }
