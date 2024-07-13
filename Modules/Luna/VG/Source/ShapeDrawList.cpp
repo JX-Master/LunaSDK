@@ -37,8 +37,7 @@ namespace Luna
             m_shape_buffer.reset();
             m_texture.reset();
             m_sampler = get_default_sampler();
-            m_origin = Float2U(0.0f);
-            m_rotation = 0.0f;
+            m_transform = Float4x4::identity();
             m_clip_rect = RectF{0, 0, 0, 0};
             m_state_dirty = false;
         }

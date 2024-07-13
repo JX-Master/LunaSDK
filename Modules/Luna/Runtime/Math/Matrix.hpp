@@ -355,6 +355,14 @@ namespace Luna
             ret.r[2].z = column3.z;
             return ret;
         }
+        bool operator==(const Float3x2U& rhs) const
+        {
+            return to_float3x3() == rhs.to_float3x3();
+        }
+        bool operator!=(const Float3x2U& rhs) const
+        {
+            return !(*this == rhs);
+        }
     };
     //! Unaligned 3x3 matrix with @ref f32 elements.
     struct Float3x3U
@@ -404,6 +412,14 @@ namespace Luna
         operator Float3x3() const
         {
             return to_float3x3();
+        }
+        bool operator==(const Float3x3U& rhs) const
+        {
+            return to_float3x3() == rhs.to_float3x3();
+        }
+        bool operator!=(const Float3x3U& rhs) const
+        {
+            return !(*this == rhs);
         }
     };
     //! 4x4 matrix type with @ref f32 components.
@@ -782,6 +798,14 @@ namespace Luna
             ret.r[3].w = column4.w;
             return ret;
         }
+        bool operator==(const Float4x3U& rhs) const
+        {
+            return to_float4x4() == rhs.to_float4x4();
+        }
+        bool operator!=(const Float4x3U& rhs) const
+        {
+            return !(*this == rhs);
+        }
     };
     //! Unaligned 4x4 matrix with @ref f32 elements.
     struct Float4x4U
@@ -834,6 +858,14 @@ namespace Luna
         operator Float4x4() const
         {
             return to_float4x4();
+        }
+        bool operator==(const Float4x4U& rhs) const
+        {
+            return to_float4x4() == rhs.to_float4x4();
+        }
+        bool operator!=(const Float4x4U& rhs) const
+        {
+            return !(*this == rhs);
         }
     };
     //! Gets the type object of @ref Float3x3.

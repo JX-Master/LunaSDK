@@ -12,6 +12,7 @@
 #include <Luna/RHI/DescriptorSet.hpp>
 #include <Luna/Runtime/Ref.hpp>
 #include <Luna/Runtime/Math/Color.hpp>
+#include <Luna/Runtime/Math/Transform.hpp>
 #include "ShapeBuffer.hpp"
 
 #ifndef LUNA_VG_API
@@ -59,10 +60,8 @@ namespace Luna
             u32 base_index;
             //! The number of indices to draw for this draw call.
             u32 num_indices;
-            //! The origin point for this draw call.
-            Float2U origin_point;
-            //! The rotation for this draw call.
-            f32 rotation;
+            //! The transform matrix for this draw call.
+            Float4x4U transform;
         };
 
         //! @interface IShapeDrawList
@@ -121,26 +120,14 @@ namespace Luna
             //! @return Returns the currently set sampler state.
             virtual RHI::SamplerDesc get_sampler() = 0;
 
-            //! Sets the origin point for the following draw calls.
-            //! @details The origin point is relative to the origin point of the canvas. 
-            //! The origin point of the canvas is at the bottom-left corner. The x axis points to right and the y axis points to up.
-            //! 
-            //! The initial origin point is (0,0) when the draw list has been reset.
+            //! Sets the transform matrix for the following draw calls.
+            //! @details The initial transform matrix is @ref Float4x4::identity when the draw list has been reset.
             //! @param[in] origin The origin point position to set.
-            virtual void set_origin(const Float2& origin) = 0;
+            virtual void set_transform(const Float4x4U& transform) = 0;
 
-            //! Gets the origin point for the following draw calls.
-            //! @return Returns the origin point for the following draw calls.
-            virtual Float2 get_origin() = 0;
-
-            //! Sets the rotation for the following draw calls.
-            //! @details The rotation is relative to the set origin point.
-            //! @param[in] degrees The rotation to set in clockwise degrees.
-            virtual void set_rotation(f32 degrees) = 0;
-
-            //! Gets the rotation for the following draw calls.
-            //! @return Returns the rotation for the following draw calls in clockwise degrees.
-            virtual f32 get_rotation() = 0;
+            //! Gets the transform matrix for the following draw calls.
+            //! @return Returns the transform matrix for the following draw calls.
+            virtual Float4x4U get_transform() = 0;
 
             //! Sets the clip rectangle for the following draw calls.
             //! @param[in] clip_rect The clip rectangle to set.
