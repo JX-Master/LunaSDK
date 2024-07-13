@@ -153,6 +153,7 @@ namespace Luna
     }
     LUNA_RUNTIME_API bool object_is_type(object_t object_ptr, typeinfo_t type)
     {
+        lucheck_msg(object_ptr, "object_ptr is nullptr");
         if (!type) return false;
         typeinfo_t obj_type = get_object_type(object_ptr);
         while (obj_type)

@@ -184,8 +184,7 @@ namespace Luna
                 for (usize i = 0; i < num_draw_calls; ++i)
                 {
                     CBData* dst = (CBData*)(((usize)cb_data) + i * cb_element_size);
-                    Float4x4 transform = AffineMatrix::make_rotation_z(draw_calls[i].rotation / 180.0f * PI);
-                    transform = mul(transform, AffineMatrix::make_translation(Float3(draw_calls[i].origin_point.x, draw_calls[i].origin_point.y, 0.0f)));
+                    Float4x4 transform = draw_calls[i].transform;
                     if (transform_matrix)
                     {
                         transform = mul(transform, *transform_matrix);
