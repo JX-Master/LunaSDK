@@ -238,8 +238,11 @@ namespace Luna
         {
             Window* pw = (Window*)glfwGetWindowUserPointer(window);
             pw->m_events.close(static_cast<IWindow*>(pw));
-            // Always set to false, since we will handle the close message and destroy the window manually.
-            glfwSetWindowShouldClose(window, GLFW_FALSE);
+            if (pw->m_window)
+            {
+                // The window is not destroyed by the user, set the flag to false.
+                glfwSetWindowShouldClose(window, GLFW_FALSE);
+            }
         }
         static void glfw_on_resize(GLFWwindow* window, int width, int height)
         {
