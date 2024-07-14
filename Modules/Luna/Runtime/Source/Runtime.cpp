@@ -75,6 +75,7 @@ namespace Luna
         log_init();
         std_io_init();
         module_init();
+        g_profiler_ready = true;
         g_initialized = true;
         return true;
     }
@@ -82,6 +83,7 @@ namespace Luna
     {
         if (!g_initialized) return;
         module_close();
+        g_profiler_ready = false;
         std_io_close();
         log_close();
         random_close();
