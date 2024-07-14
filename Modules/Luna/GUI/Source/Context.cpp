@@ -20,7 +20,7 @@ namespace Luna
     {
         static void* nk_alloc(nk_handle userdata, void* old, nk_size new_size)
         {
-            void* ptr = memrealloc(old, new_size);
+            void* ptr = memalloc(new_size);
 #ifdef LUNA_MEMORY_PROFILER_ENABLED
             memory_profiler_set_memory_domain(ptr, "Nuklear", 7);
 #endif
