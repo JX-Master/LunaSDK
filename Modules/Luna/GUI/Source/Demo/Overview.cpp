@@ -12,7 +12,12 @@
 #include "../../Widgets.hpp"
 #include "../Context.hpp"
 
-extern "C" int overview(struct nk_context *ctx);
+#include <limits.h>
+#include <time.h>
+
+extern "C" {
+    static int overview(struct nk_context *ctx);
+}
 
 namespace Luna
 {
@@ -437,7 +442,7 @@ static int overview(struct nk_context *ctx)
                 }
                 /* progressbar combobox */
                 sum = prog_a + prog_b + prog_c + prog_d;
-                sprintf(buffer, "%lu", (unsigned long)sum);
+                snprintf(buffer, 64, "%lu", (unsigned long)sum);
                 if (nk_combo_begin_label(ctx, buffer, nk_vec2(200,200))) {
                     nk_layout_row_dynamic(ctx, 30, 1);
                     nk_progress(ctx, &prog_a, 100, NK_MODIFIABLE);
@@ -449,7 +454,7 @@ static int overview(struct nk_context *ctx)
 
                 /* checkbox combobox */
                 sum = (size_t)(check_values[0] + check_values[1] + check_values[2] + check_values[3] + check_values[4]);
-                sprintf(buffer, "%lu", (unsigned long)sum);
+                snprintf(buffer, 64, "%lu", (unsigned long)sum);
                 if (nk_combo_begin_label(ctx, buffer, nk_vec2(200,200))) {
                     nk_layout_row_dynamic(ctx, 30, 1);
                     nk_checkbox_label(ctx, weapons[0], &check_values[0]);
@@ -460,7 +465,7 @@ static int overview(struct nk_context *ctx)
                 }
 
                 /* complex text combobox */
-                sprintf(buffer, "%.2f, %.2f, %.2f", position[0], position[1],position[2]);
+                snprintf(buffer, 64, "%.2f, %.2f, %.2f", position[0], position[1],position[2]);
                 if (nk_combo_begin_label(ctx, buffer, nk_vec2(200,200))) {
                     nk_layout_row_dynamic(ctx, 25, 1);
                     nk_property_float(ctx, "#X:", -1024.0f, &position[0], 1024.0f, 1,0.5f);
@@ -470,7 +475,7 @@ static int overview(struct nk_context *ctx)
                 }
 
                 /* chart combobox */
-                sprintf(buffer, "%.1f", chart_selection);
+                snprintf(buffer, 64, "%.1f", chart_selection);
                 if (nk_combo_begin_label(ctx, buffer, nk_vec2(200,250))) {
                     size_t i = 0;
                     static const float values[]={26.0f,13.0f,30.0f,15.0f,25.0f,10.0f,20.0f,40.0f, 12.0f, 8.0f, 22.0f, 28.0f, 5.0f};
@@ -503,7 +508,7 @@ static int overview(struct nk_context *ctx)
                     }
 
                     /* time combobox */
-                    sprintf(buffer, "%02d:%02d:%02d", sel_time.tm_hour, sel_time.tm_min, sel_time.tm_sec);
+                    snprintf(buffer, 64, "%02d:%02d:%02d", sel_time.tm_hour, sel_time.tm_min, sel_time.tm_sec);
                     if (nk_combo_begin_label(ctx, buffer, nk_vec2(200,250))) {
                         time_selected = 1;
                         nk_layout_row_dynamic(ctx, 25, 1);
@@ -514,7 +519,7 @@ static int overview(struct nk_context *ctx)
                     }
 
                     /* date combobox */
-                    sprintf(buffer, "%02d-%02d-%02d", sel_date.tm_mday, sel_date.tm_mon+1, sel_date.tm_year+1900);
+                    snprintf(buffer, 64, "%02d-%02d-%02d", sel_date.tm_mday, sel_date.tm_mon+1, sel_date.tm_year+1900);
                     if (nk_combo_begin_label(ctx, buffer, nk_vec2(350,400)))
                     {
                         int i = 0;
@@ -540,7 +545,7 @@ static int overview(struct nk_context *ctx)
                             } else sel_date.tm_mon--;
                         }
                         nk_layout_row_push(ctx, 0.9f);
-                        sprintf(buffer, "%s %d", month[sel_date.tm_mon], year);
+                        snprintf(buffer, 64, "%s %d", month[sel_date.tm_mon], year);
                         nk_label(ctx, buffer, NK_TEXT_CENTERED);
                         nk_layout_row_push(ctx, 0.05f);
                         if (nk_button_symbol(ctx, NK_SYMBOL_TRIANGLE_RIGHT)) {
@@ -568,7 +573,7 @@ static int overview(struct nk_context *ctx)
                         /* days  */
                         if (week_day > 0) nk_spacing(ctx, week_day);
                         for (i = 1; i <= days; ++i) {
-                            sprintf(buffer, "%d", i);
+                            snprintf(buffer, 64, "%d", i);
                             if (nk_button_label(ctx, buffer)) {
                                 sel_date.tm_mday = i;
                                 nk_combo_close(ctx);
@@ -1073,7 +1078,7 @@ static int overview(struct nk_context *ctx)
                     char buffer[64];
                     nk_layout_row_static(ctx, 18, 150, 1);
                     for (i = 0; i < 64; ++i) {
-                        sprintf(buffer, "0x%02x", i);
+                        snprintf(buffer, 64, "0x%02x", i);
                         nk_labelf(ctx, NK_TEXT_LEFT, "%s: scrollable region", buffer);
                     }
                     nk_group_end(ctx);
@@ -1083,7 +1088,7 @@ static int overview(struct nk_context *ctx)
                     char buffer[64];
                     nk_layout_row_dynamic(ctx, 25, 2);
                     for (i = 0; i < 64; ++i) {
-                        sprintf(buffer, "%08d", ((((i%7)*10)^32))+(64+(i%2)*2));
+                        snprintf(buffer, 64, "%08d", ((((i%7)*10)^32))+(64+(i%2)*2));
                         nk_button_label(ctx, buffer);
                     }
                     nk_group_end(ctx);
