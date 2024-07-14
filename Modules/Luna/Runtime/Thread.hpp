@@ -65,6 +65,14 @@ namespace Luna
     //! @return The thread object of the current thread.
     LUNA_RUNTIME_API IThread* get_current_thread();
 
+    //! Gets the thread ID of the current thread.
+    //! @return Returns the thread ID of the current thread.
+    LUNA_RUNTIME_API u64 get_current_thread_id();
+
+    //! Gets the thread handle of the current thread.
+    //! @return Returns the thread handle of the current thread.
+    LUNA_RUNTIME_API opaque_t get_current_thread_handle();
+
     //! Gets the thread object of the main thread.
     //! @return The thread object of the main thread.
     LUNA_RUNTIME_API IThread* get_main_thread();

@@ -22,7 +22,7 @@ namespace Luna
     Event<on_profiler_event_t, OSAllocator> g_profiler_callbacks;
     opaque_t g_profiler_callbacks_lock;
     opaque_t g_profiler_thread_context_tls;
-    bool g_profiler_inited = false;
+    bool g_profiler_ready = false;
 
     struct ProfilerEventEntry
     {
@@ -140,16 +140,14 @@ namespace Luna
     }
     void profiler_init()
     {
-        g_profiler_callbacks_lock = OS::new_read_write_lock();
         g_profiler_thread_context_tls = OS::tls_alloc(profiler_thread_context_dtor);
-        g_profiler_inited = true;
+        g_profiler_callbacks_lock = OS::new_read_write_lock();
     }
     void profiler_close()
     {
-        g_profiler_inited = false;
         g_profiler_callbacks.clear();
-        OS::tls_free(g_profiler_thread_context_tls);
         OS::delete_read_write_lock(g_profiler_callbacks_lock);
+        OS::tls_free(g_profiler_thread_context_tls);
     }
     LUNA_RUNTIME_API void* allocate_profiler_event_data(usize size, usize alignment, void(*dtor)(void*))
     {
@@ -158,7 +156,7 @@ namespace Luna
     }
     LUNA_RUNTIME_API void submit_profiler_event(u64 event_id)
     {
-        if(!g_profiler_inited) return;
+        if(!g_profiler_ready) return;
         auto ctx = get_profiler_thread_context();
         ctx->m_next_entry.timestamp = OS::get_ticks();
         ctx->m_next_entry.id = event_id;

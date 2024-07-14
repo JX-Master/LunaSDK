@@ -38,8 +38,7 @@ namespace Luna
             Ref<IShapeBuffer> m_shape_buffer;
             Ref<RHI::ITexture> m_texture;
             RHI::SamplerDesc m_sampler;
-            Float2U m_origin;
-            f32 m_rotation;
+            Float4x4U m_transform;
             RectF m_clip_rect;
 
             // If `true`, then the draw call should be re-targeted.
@@ -52,8 +51,7 @@ namespace Luna
                 ShapeDrawCall& dc = m_draw_calls.back();
                 dc.texture = m_texture;
                 dc.sampler = m_sampler;
-                dc.origin_point = m_origin;
-                dc.rotation = m_rotation;
+                dc.transform = m_transform;
                 dc.clip_rect = m_clip_rect;
                 dc.base_index = (u32)m_indices.size();
                 dc.num_indices = 0;
@@ -73,8 +71,7 @@ namespace Luna
                 m_index_buffer_size(0),
                 m_index_buffer_capacity(0),
                 m_sampler(get_default_sampler()),
-                m_origin(0.0f),
-                m_rotation(0.0f),
+                m_transform(Float4x4::identity()),
                 m_clip_rect(0, 0, 0, 0),
                 m_state_dirty(false)
             {
@@ -134,31 +131,18 @@ namespace Luna
             {
                 return m_sampler;
             }
-            virtual void set_origin(const Float2& origin) override
+            virtual void set_transform(const Float4x4U& transform) override
             {
                 lutsassert();
-                if (m_origin != origin)
+                if (m_transform != transform)
                 {
                     m_state_dirty = true;
-                    m_origin = origin;
+                    m_transform = transform;
                 }
             }
-            virtual Float2 get_origin() override
+            virtual Float4x4U get_transform() override
             {
-                return m_origin;
-            }
-            virtual void set_rotation(f32 degrees) override
-            {
-                lutsassert();
-                if (m_rotation != degrees)
-                {
-                    m_state_dirty = true;
-                    m_rotation = degrees;
-                }
-            }
-            virtual f32 get_rotation() override
-            {
-                return m_rotation;
+                return m_transform;
             }
             virtual void set_clip_rect(const RectF& clip_rect) override
             {
