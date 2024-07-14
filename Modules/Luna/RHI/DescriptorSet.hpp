@@ -305,11 +305,11 @@ namespace Luna
                 max_anisotropy(max_anisotropy),
                 min_lod(min_lod),
                 max_lod(max_lod) {}
-            bool operator==(const SamplerDesc& rhs)
+            bool operator==(const SamplerDesc& rhs) const
             {
                 return !memcmp(this, &rhs, sizeof(SamplerDesc));
             }
-            bool operator!= (const SamplerDesc& rhs)
+            bool operator!= (const SamplerDesc& rhs) const
             {
                 return !(*this == rhs);
             }
