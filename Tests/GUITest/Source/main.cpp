@@ -48,6 +48,8 @@ void run()
 
     Ref<VG::IShapeDrawList> draw_list = VG::new_shape_draw_list(dev);
 
+    Ref<GUI::IDrawList> gui_draw_list = GUI::new_draw_list();
+
     Ref<VG::IShapeRenderer> renderer = VG::new_fill_shape_renderer();
 
     // Create back buffer.
@@ -126,7 +128,9 @@ void run()
 
         end_window(ctx);
         lupanic_if_failed(ctx->update());
-        lupanic_if_failed(ctx->render(draw_list));
+        gui_draw_list->begin(draw_list);
+        lupanic_if_failed(ctx->render(gui_draw_list));
+        gui_draw_list->end();
         lupanic_if_failed(draw_list->compile());
         
         auto back_buffer = swap_chain->get_current_back_buffer().get();

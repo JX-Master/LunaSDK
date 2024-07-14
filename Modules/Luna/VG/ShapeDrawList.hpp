@@ -197,6 +197,25 @@ namespace Luna
             virtual Span<const ShapeDrawCall> get_draw_calls() = 0;
         };
 
+        //! Generates vertices and indices used to draw one shape rectangle.
+        //! @param[out] out_vertices The buffer to write generated vertices to. 4 vertices will be written.
+        //! @param[out] out_indices The buffer to write generated indices to. 6 indices will be written.
+        //! @param[in] begin_command The index of the first command point of the glyph to draw in shape buffer.
+        //! @param[in] num_commands The number of command points of the glyph to draw.
+        //! @param[in] min_position The minimum position of the bounding rect of the shape.
+        //! @param[in] max_position The maximum position of the bounding rect of the shape.
+        //! @param[in] min_shapecoord The shape coordinate value that maps to the minimum position of the bounding rect of the shape.
+        //! @param[in] max_shapecoord The shape coordinate value that maps to the maximum position of the bounding rect of the shape.
+        //! @param[in] color The color to tint the shape in RGBA8 form.
+        //! @param[in] min_texcoord The texture coordinate value that maps to the minimum position of the bounding rect of the shape.
+        //! @param[in] max_shapecoord The texture coordinate value that maps to the maximum position of the bounding rect of the shape.
+        LUNA_VG_API void get_rect_shape_draw_vertices(Vertex out_vertices[4], u32 out_indices[6],
+            u32 begin_command, u32 num_commands,
+            const Float2U& min_position, const Float2U& max_position,
+            const Float2U& min_shapecoord, const Float2U& max_shapecoord,
+            const Float4U& color = Color::white(),
+            const Float2U& min_texcoord = Float2U(0.0f), const Float2U& max_texcoord = Float2U(0.0f));
+
         //! Creates a new shape draw list.
         //! @param[in] device The device used to render to the draw list. This is used to create 
         //! RHI buffers used by the draw list.

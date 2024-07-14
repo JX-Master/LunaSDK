@@ -123,7 +123,7 @@ namespace Luna
             {
                 return m_font_atlas;
             }
-            virtual RV render(VG::IShapeDrawList* draw_list) override;
+            virtual RV render(IDrawList* draw_list) override;
         };
     }
 }

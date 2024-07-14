@@ -34,7 +34,7 @@ namespace Luna
     //! A emitted profiler event.
     struct ProfilerEvent
     {
-        //! The time that this 
+        //! The event submission time.
         u64 timestamp;
         //! The event ID.
         u64 id;

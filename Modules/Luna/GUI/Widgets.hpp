@@ -19,6 +19,23 @@ namespace Luna
 {
     namespace GUI
     {
+        // Layout widgets.
+
+        // enum class VerticalAlignment : u8
+        // {
+        //     top,
+        //     center,
+        //     bottom
+        // };
+
+        // LUNA_GUI_API void begin_vertical_layout(IContext* ctx);
+
+        // LUNA_GUI_API void set_element_vertical_alignment(IContext* ctx, VerticalAlignment alignment);
+
+        // LUNA_GUI_API void set_element_horizontal_alignment(IContext* ctx, HorizontalAlignment alignment);
+
+        // LUNA_GUI_API void end_vertical_layout(IContext* ctx);
+
         LUNA_GUI_API void begin_rectangle(IContext* ctx);
 
         LUNA_GUI_API void end_rectangle(IContext* ctx);

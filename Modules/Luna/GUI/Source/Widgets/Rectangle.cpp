@@ -18,7 +18,7 @@ namespace Luna
 {
     namespace GUI
     {
-        RV Rectangle::draw(IContext* ctx, VG::IShapeDrawList* draw_list)
+        RV Rectangle::draw(IContext* ctx, IDrawList* draw_list)
         {
             lutry
             {

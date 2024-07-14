@@ -40,7 +40,7 @@ namespace Luna
                 size_condition(Condition::never) {}
 
             virtual RV update(IContext* ctx, const OffsetRectF& layout_rect) override;
-            virtual RV draw(IContext* ctx, VG::IShapeDrawList* draw_list) override;
+            virtual RV draw(IContext* ctx, IDrawList* draw_list) override;
         };
     }
 }

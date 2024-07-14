@@ -146,7 +146,7 @@ namespace Luna
             lucatchret;
             return ok;
         }
-        LUNA_GUI_API RV Widget::draw(IContext* ctx, VG::IShapeDrawList* draw_list)
+        LUNA_GUI_API RV Widget::draw(IContext* ctx, IDrawList* draw_list)
         {
             lutry
             {

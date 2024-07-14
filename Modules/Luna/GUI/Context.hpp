@@ -101,7 +101,7 @@ namespace Luna
             virtual VG::IFontAtlas* get_font_altas() = 0;
 
             //! Renders the context.
-            virtual RV render(VG::IShapeDrawList* draw_list) = 0;
+            virtual RV render(IDrawList* draw_list) = 0;
         };
 
         LUNA_GUI_API Ref<IContext> new_context();

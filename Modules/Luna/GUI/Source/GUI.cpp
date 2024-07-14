@@ -17,6 +17,7 @@
 #include "Widgets/Rectangle.hpp"
 #include "Widgets/Text.hpp"
 #include "Widgets/Window.hpp"
+#include "DrawList.hpp"
 
 namespace Luna
 {
@@ -38,6 +39,8 @@ namespace Luna
                 register_struct_type<Text>({}, typeof<Widget>());
                 register_struct_type<Window>({}, typeof<Widget>());
                 register_boxed_type<WindowState>();
+                register_boxed_type<DrawList>();
+                impl_interface_for_type<DrawList, IDrawList>();
                 return ok;
             }
             virtual void on_close() override

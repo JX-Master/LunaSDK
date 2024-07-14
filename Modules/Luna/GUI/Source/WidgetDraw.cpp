@@ -17,7 +17,7 @@ namespace Luna
 {
     namespace GUI
     {
-        LUNA_GUI_API void draw_rectangle_filled(IContext* ctx, VG::IShapeDrawList* draw_list, f32 min_x, f32 min_y, f32 max_x, f32 max_y, const Float4& color)
+        LUNA_GUI_API void draw_rectangle_filled(IContext* ctx, IDrawList* draw_list, f32 min_x, f32 min_y, f32 max_x, f32 max_y, const Float4& color)
         {
             auto& points = draw_list->get_shape_buffer()->get_shape_points();
             u32 begin_command = (u32)points.size();
@@ -26,12 +26,12 @@ namespace Luna
             f32 screen_max_y = io.height - min_y;
             VG::ShapeBuilder::add_rectangle_filled(points, min_x, screen_min_y, max_x, screen_max_y);
             u32 num_commands = (u32)points.size() - begin_command;
-            draw_list->draw_shape(begin_command, num_commands, 
+            draw_list->add_shape(begin_command, num_commands, 
                 {min_x, screen_min_y}, {max_x, screen_max_y}, 
                 {min_x, screen_min_y}, {max_x, screen_max_y},
                 color);
         }
-        LUNA_GUI_API void draw_text(IContext* ctx, VG::IShapeDrawList* draw_list, 
+        LUNA_GUI_API void draw_text(IContext* ctx, IDrawList* draw_list, 
             const c8* text, usize text_len, 
             const Float4U& text_color,
             f32 text_size, 
@@ -56,7 +56,15 @@ namespace Luna
             auto& io = ctx->get_io();
             RectF rect{min_x, io.height - max_y, max_x - min_x, max_y - min_y};
             VG::TextArrangeResult result = VG::arrange_text(text, text_len, {&section, 1}, rect, vertical_alignment, horizontal_alignment);
-            VG::commit_text_arrange_result(result, {&section, 1}, ctx->get_font_altas(), draw_list);
+            Vector<VG::Vertex> vertices;
+            Vector<u32> indices;
+            VG::generate_text_arrange_result_draw_vertices(result, {&section, 1}, ctx->get_font_altas(), vertices, indices);
+            
+            auto state = draw_list->get_state();
+            state.shape_buffer = ctx->get_font_altas()->get_shape_buffer();
+            u32 stack = draw_list->push_state(&state);
+            draw_list->add_shape_raw(vertices.cspan(), indices.cspan());
+            draw_list->pop_state(stack);
         }
     }
 }

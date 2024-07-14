@@ -127,10 +127,25 @@ namespace Luna
             TextAlignment horizontal_alignment
         );
 
+        //! Generates shape draw vertices and indices for the text arrange result.
+        //! @param[in] result The text arrange result.
+        //! @param[in] sections The text arrange sections. This must be the same sections
+        //! passed to @ref arrange_text when arranging texts.
+        //! @param[in] font_atlas The font atlas used to record commands to draw glyphs.
+        //! @param[out] out_vertices The buffer to write generated vertices to.
+        //! @param[out] out_indices The buffer to write generated indices to.
+        LUNA_VG_API void generate_text_arrange_result_draw_vertices(
+            const TextArrangeResult& result,
+            Span<const TextArrangeSection> sections,
+            IFontAtlas* font_atlas,
+            Vector<Vertex>& out_vertices, Vector<u32>& out_indices
+        );
+
         //! Commits the text arrange result to the specicied draw list for rendering.
         //! @param[in] result The text arrange result.
         //! @param[in] sections The text arrange sections. This must be the same sections
         //! passed to @ref arrange_text when arranging texts.
+        //! @param[in] font_atlas The font atlas used to record commands to draw glyphs.
         //! @param[in] draw_list The draw list to commit text arrange result to.
         LUNA_VG_API void commit_text_arrange_result(
             const TextArrangeResult& result,

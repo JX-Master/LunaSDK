@@ -82,7 +82,7 @@ namespace Luna
         {
             return m_root_widget->update(this, OffsetRectF(0, 0, m_io.width, m_io.height));
         }
-        RV Context::render(VG::IShapeDrawList* draw_list)
+        RV Context::render(IDrawList* draw_list)
         {
             return m_root_widget->draw(this, draw_list);
         }

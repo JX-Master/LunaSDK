@@ -28,7 +28,7 @@ namespace Luna
                     OffsetRectF{offset.x, offset.y, offset.z, offset.w});
             return ok;
         }
-        RV Text::draw(IContext *ctx, VG::IShapeDrawList *draw_list)
+        RV Text::draw(IContext *ctx, IDrawList* draw_list)
         {
             Font::IFontFile* font = cast_object<Font::IFontFile>(get_oattr(OATTR_FONT, true, Font::get_default_font()));
             u32 font_index = get_sattr(SATTR_FONT_INDEX, true, 0);

@@ -81,12 +81,11 @@ namespace Luna
             lucatchret;
             return ok;
         }
-        RV Window::draw(IContext* ctx, VG::IShapeDrawList* draw_list)
+        RV Window::draw(IContext* ctx, IDrawList* draw_list)
         {
             // draw window rect.
             Float4U background_color = get_vattr(VATTR_BACKGROUND_COLOR, true, Float4U(0.94f, 0.94f, 0.94f, 1.0f));
-            auto& points = draw_list->get_shape_buffer()->get_shape_points();
-            auto& io = ctx->get_io();
+            u32 stack = draw_list->push_state(nullptr, false);
             if(background_color.w != 0)
             {
                 draw_rectangle_filled(ctx, draw_list, bounding_rect.left, bounding_rect.top, bounding_rect.right, bounding_rect.bottom, background_color);
@@ -98,6 +97,7 @@ namespace Luna
             draw_text(ctx, draw_list, title.c_str(), title.size(), Float4U(0.1f, 0.1f, 0.1f, 1.0f), text_size, 
                 bounding_rect.left + 2, bounding_rect.top + 2, bounding_rect.right - 2, bounding_rect.top + text_size + 2, 
                 font, font_index);
+            draw_list->pop_state(stack);
             return ok;
         }
         LUNA_GUI_API void begin_window(IContext* ctx, const c8* title)
