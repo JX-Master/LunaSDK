@@ -212,14 +212,10 @@ float clip_rect_test(float2 pos, float4 clip_rect, float2 pixels_per_unit)
 {
     float4 rect = float4(clip_rect.x, clip_rect.y, clip_rect.x + clip_rect.z, clip_rect.y + clip_rect.w);
     rect -= float4(pos.x, pos.y, pos.x, pos.y);
-    if (rect.x > 0 || rect.y > 0 || rect.z < 0 || rect.w < 0)
-    {
-        // out of clip rect.
-        return 0;
-    }
-    float2 dist = min(abs(rect.xy), abs(rect.zw));
-    dist = saturate(dist * pixels_per_unit);
-    return min(dist.x, dist.y);
+    // expand the border for one pixel to avoid color leaking at clip border, so that if one pixel falls exactly on the clip rect border,
+    // it will get transparent value 1.0 instead of 0.0 (which is the actual distance to the border).
+    float2 dist = float2(min(rect.z, -rect.x), min(rect.w, -rect.y)) * pixels_per_unit + 1; 
+    return saturate(dist.x) * saturate(dist.y);
 }
 
 static const float COMMAND_MOVE_TO = 1.0f;

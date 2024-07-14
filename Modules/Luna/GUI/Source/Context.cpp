@@ -59,14 +59,7 @@ namespace Luna
         }
         static void add_scissor_rect(Context* ctx, VG::IShapeDrawList* draw_list, struct nk_command_scissor* cmd)
         {
-            if(cmd->x == -8192 && cmd->y == -8192 && cmd->w == 16384 && cmd->h == 16384)
-            {
-                draw_list->set_clip_rect(RectF{0, 0, 0, 0});
-            }
-            else
-            {
-                draw_list->set_clip_rect(RectF{(f32)cmd->x, (f32)(ctx->m_viewport_size.y - cmd->y - cmd->h), (f32)cmd->w, (f32)cmd->h});
-            }
+            draw_list->set_clip_rect(RectF{(f32)cmd->x, (f32)ctx->m_viewport_size.y - (f32)cmd->y - (f32)cmd->h, (f32)cmd->w, (f32)cmd->h});
         }
         inline Float4U encode_color(const struct nk_color& color)
         {
@@ -102,41 +95,76 @@ namespace Luna
         {
             // not supported by VG yet. As far as I know, no built-in Nuklear widgets draw curves.
         }
-        static void add_rect(Context* ctx, VG::IShapeDrawList* draw_list, struct nk_command_rect* cmd)
+        static void draw_rect(VG::IShapeDrawList* draw_list, const Float2U& viewport_size, const Float2U& position, const Float2U& size, const Float4U& color, f32 width)
         {
             auto& points = draw_list->get_shape_buffer()->get_shape_points(true);
             u32 offset = (u32)points.size();
+            VG::ShapeBuilder::add_rectangle_bordered(points, 0, 0, size.x, size.y, width, -width / 2.0f);
+            u32 num_points = (u32)points.size() - offset;
+            draw_list->draw_shape(offset, num_points, 
+                {position.x, viewport_size.y - (position.y + size.y)}, 
+                {position.x + size.x, viewport_size.y - position.y},
+                {0, 0}, {size.x, size.y}, color);
+        }
+        static void draw_round_rect(VG::IShapeDrawList* draw_list, const Float2U& viewport_size, const Float2U& position, const Float2U& size, const Float4U& color, f32 width, f32 rounding)
+        {
+            auto& points = draw_list->get_shape_buffer()->get_shape_points(true);
+            u32 offset = (u32)points.size();
+            VG::ShapeBuilder::add_rounded_rectangle_bordered(points, 0, 0, size.x, size.y, rounding, width, -width / 2.0f);
+            u32 num_points = (u32)points.size() - offset;
+            draw_list->draw_shape(offset, num_points, 
+                {position.x, viewport_size.y - (position.y + size.y)}, 
+                {position.x + size.x, viewport_size.y - position.y},
+                {0, 0}, {size.x, size.y}, color);
+        }
+        static void draw_rect_filled(VG::IShapeDrawList* draw_list, const Float2U& viewport_size, const Float2U& position, const Float2U& size, const Float4U& color)
+        {
+            auto& points = draw_list->get_shape_buffer()->get_shape_points(true);
+            u32 offset = (u32)points.size();
+            VG::ShapeBuilder::add_rectangle_filled(points, 0, 0, size.x, size.y);
+            u32 num_points = (u32)points.size() - offset;
+            draw_list->draw_shape(offset, num_points, 
+                {position.x, viewport_size.y - (position.y + size.y)}, 
+                {position.x + size.x, viewport_size.y - position.y},
+                {0, 0}, {size.x, size.y}, color);
+        }
+        static void draw_round_rect_filled(VG::IShapeDrawList* draw_list, const Float2U& viewport_size, const Float2U& position, const Float2U& size, const Float4U& color, f32 rounding)
+        {
+            auto& points = draw_list->get_shape_buffer()->get_shape_points(true);
+            u32 offset = (u32)points.size();
+            VG::ShapeBuilder::add_rounded_rectangle_filled(points, 0, 0, size.x, size.y, rounding);
+            u32 num_points = (u32)points.size() - offset;
+            draw_list->draw_shape(offset, num_points, 
+                {position.x, viewport_size.y - (position.y + size.y)}, 
+                {position.x + size.x, viewport_size.y - position.y},
+                {0, 0}, {size.x, size.y}, color);
+        }
+        static void add_rect(Context* ctx, VG::IShapeDrawList* draw_list, struct nk_command_rect* cmd)
+        {
             if(cmd->rounding)
             {
-                VG::ShapeBuilder::add_rounded_rectangle_bordered(points, 0, 0, cmd->w, cmd->h, cmd->rounding, cmd->line_thickness);
+                draw_round_rect(draw_list, Float2U(ctx->m_viewport_size.x, ctx->m_viewport_size.y), 
+                    Float2U(cmd->x, cmd->y), Float2U(cmd->w, cmd->h), encode_color(cmd->color), cmd->line_thickness, cmd->rounding);
             }
             else
             {
-                VG::ShapeBuilder::add_rectangle_bordered(points, 0, 0, cmd->w, cmd->h, cmd->line_thickness);
+                draw_rect(draw_list, Float2U(ctx->m_viewport_size.x, ctx->m_viewport_size.y), 
+                    Float2U(cmd->x, cmd->y), Float2U(cmd->w, cmd->h), encode_color(cmd->color), cmd->line_thickness);
             }
-            u32 size = (u32)points.size() - offset;
-            draw_list->draw_shape(offset, size, 
-                {(f32)cmd->x, (f32)ctx->m_viewport_size.y - ((f32)cmd->y + (f32)cmd->h)}, 
-                {(f32)cmd->x + (f32)cmd->w, (f32)ctx->m_viewport_size.y - (f32)cmd->y},
-                {0, 0}, {(f32)cmd->w, (f32)cmd->h}, encode_color(cmd->color));
         }
         static void add_rect_filled(Context* ctx, VG::IShapeDrawList* draw_list, struct nk_command_rect_filled* cmd)
         {
-            auto& points = draw_list->get_shape_buffer()->get_shape_points(true);
-            u32 offset = (u32)points.size();
             if(cmd->rounding)
             {
-                VG::ShapeBuilder::add_rounded_rectangle_filled(points, 0, 0, cmd->w, cmd->h, cmd->rounding);
+                draw_round_rect_filled(draw_list, Float2U(ctx->m_viewport_size.x, ctx->m_viewport_size.y), 
+                    Float2U(cmd->x, cmd->y), Float2U(cmd->w, cmd->h), encode_color(cmd->color), cmd->rounding);
             }
             else
             {
-                VG::ShapeBuilder::add_rectangle_filled(points, 0, 0, cmd->w, cmd->h);
+                draw_rect_filled(draw_list, Float2U(ctx->m_viewport_size.x, ctx->m_viewport_size.y), 
+                    Float2U(cmd->x, cmd->y), Float2U(cmd->w, cmd->h), encode_color(cmd->color));
             }
-            u32 size = (u32)points.size() - offset;
-            draw_list->draw_shape(offset, size, 
-                {(f32)cmd->x, (f32)ctx->m_viewport_size.y - ((f32)cmd->y + (f32)cmd->h)}, 
-                {(f32)cmd->x + (f32)cmd->w, (f32)ctx->m_viewport_size.y - (f32)cmd->y},
-                {0, 0}, {(f32)cmd->w, (f32)cmd->h}, encode_color(cmd->color));
+            
         }
         static void add_rect_multi_color(Context* ctx, VG::IShapeDrawList* draw_list, struct nk_command_rect_multi_color* cmd)
         {
@@ -366,19 +394,19 @@ namespace Luna
                 VG::TextAlignment::end,
                 VG::TextAlignment::begin
             );
-            if (cmd->background.a > 0.0f)
-            {
-                auto& points = draw_list->get_shape_buffer()->get_shape_points(true);
-                // draw text background.
-                u32 offset = (u32)points.size();
-                VG::ShapeBuilder::add_rectangle_filled(points, 0, 0, (f32)cmd->w, (f32)cmd->height);
-                u32 size = (u32)points.size() - offset;
-                draw_list->draw_shape(offset, size, 
-                        {(f32)cmd->x, (ctx->m_viewport_size.y - (f32)cmd->y - (f32)cmd->height)}, 
-                        {(f32)cmd->x + (f32)cmd->w, (ctx->m_viewport_size.y - (f32)cmd->y)},
-                        {0, 0}, {(f32)cmd->w, (f32)cmd->h}, 
-                        encode_color(cmd->background));
-            }
+            // if (cmd->background.a > 0.0f)
+            // {
+            //     auto& points = draw_list->get_shape_buffer()->get_shape_points(true);
+            //     // draw text background.
+            //     u32 offset = (u32)points.size();
+            //     VG::ShapeBuilder::add_rectangle_filled(points, 0, 0, (f32)cmd->w, (f32)cmd->height);
+            //     u32 size = (u32)points.size() - offset;
+            //     draw_list->draw_shape(offset, size, 
+            //             {(f32)cmd->x, (ctx->m_viewport_size.y - (f32)cmd->y - (f32)cmd->height)}, 
+            //             {(f32)cmd->x + (f32)cmd->w, (ctx->m_viewport_size.y - (f32)cmd->y)},
+            //             {0, 0}, {(f32)cmd->w, (f32)cmd->h}, 
+            //             encode_color(cmd->background));
+            // }
             VG::commit_text_arrange_result(result, {&section, 1}, ctx->m_font_atlas, draw_list);
         }
         static void add_image(Context* ctx, VG::IShapeDrawList* draw_list, struct nk_command_image* cmd)
