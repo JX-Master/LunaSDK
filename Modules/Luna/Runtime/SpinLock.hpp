@@ -76,7 +76,7 @@ namespace Luna
     //! Similar to @ref SpinLock, but allows the lock to be obtained mutable times from the same thread.
     class RecursiveSpinLock
     {
-        volatile IThread* th;
+        volatile opaque_t th;
         volatile u32 counter;
     public:
         //! Constructs one spin lock. The spin lock is unlocked after creation.
@@ -90,7 +90,7 @@ namespace Luna
         //! Locks the spin lock.
         void lock()
         {
-            IThread* t = get_current_thread();
+            opaque_t t = get_current_thread_handle();
             if (th == t)
             {
                 ++counter;
@@ -108,13 +108,13 @@ namespace Luna
         //! `false` otherwise.
         bool try_lock()
         {
-            IThread* t = get_current_thread();
+            opaque_t t = get_current_thread_handle();
             if (th == t)
             {
                 ++counter;
                 return true;
             }
-            volatile IThread* comp = atom_compare_exchange_pointer(&th, t, nullptr);
+            volatile opaque_t comp = atom_compare_exchange_pointer(&th, t, nullptr);
             return comp == nullptr;
         }
         //! Unlocks the spin lock.

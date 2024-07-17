@@ -136,6 +136,10 @@ namespace Luna
         {
             ::CloseHandle((HANDLE)thread);
         }
+        u64 get_current_thread_id()
+        {
+            return (u64)::GetCurrentThreadId();
+        }
         opaque_t get_current_thread_handle()
         {
             return opaque_t(::GetCurrentThread());

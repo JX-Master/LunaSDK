@@ -157,6 +157,9 @@ namespace Luna
         //! Closes the thread handle. 
         void detach_thread(opaque_t thread);
 
+        //! Gets the thrad ID of the current thread.
+        u64 get_current_thread_id();
+
         //! Gets the current thread handle.
         opaque_t get_current_thread_handle();
 
