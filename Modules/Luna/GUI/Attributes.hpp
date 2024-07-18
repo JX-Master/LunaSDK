@@ -46,5 +46,7 @@ namespace Luna
         inline constexpr u32 OATTR_FONT = strhash32("font");
 
         inline constexpr u32 SATTR_FONT_INDEX = strhash32("font_index");
+
+        inline constexpr u32 SATTR_ROUNDED_CORNER_RADIUS = strhash32("rounded_corner_radius");
     }
 }

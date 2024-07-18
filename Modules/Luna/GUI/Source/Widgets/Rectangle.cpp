@@ -11,39 +11,40 @@
 #define LUNA_GUI_API LUNA_EXPORT
 #include "../../Context.hpp"
 #include "../../Widgets.hpp"
-#include "Rectangle.hpp"
+#include "../../Widgets/Rectangle.hpp"
 #include "../../WidgetDraw.hpp"
 
 namespace Luna
 {
     namespace GUI
     {
-        RV Rectangle::draw(IContext* ctx, IDrawList* draw_list)
+        LUNA_GUI_API RV Rectangle::update(IContext* ctx, const OffsetRectF& layout_rect)
         {
-            lutry
+            bounding_rect = layout_rect;
+            return ok;
+        }
+        LUNA_GUI_API RV Rectangle::draw(IContext* ctx, IDrawList* draw_list)
+        {
+            Float4U background_color = get_vattr(this, VATTR_BACKGROUND_COLOR, true, Float4U(0));
+            f32 rounding_radius = get_sattr(this, SATTR_ROUNDED_CORNER_RADIUS, true, 0.0f);
+            if(background_color.w != 0)
             {
-                Float4U background_color = get_vattr(VATTR_BACKGROUND_COLOR, true, Float4U(0));
-                if(background_color.w != 0)
+                if(rounding_radius > 0)
+                {
+                    draw_rounded_rectangle_filled(ctx, draw_list, bounding_rect.left, bounding_rect.top, bounding_rect.right, bounding_rect.bottom, rounding_radius, background_color);
+                }
+                else
                 {
                     draw_rectangle_filled(ctx, draw_list, bounding_rect.left, bounding_rect.top, bounding_rect.right, bounding_rect.bottom, background_color);
                 }
-                for(auto& c : children)
-                {
-                    luexp(c->draw(ctx, draw_list));
-                }
             }
-            lucatchret;
             return ok;
         }
-        LUNA_GUI_API void begin_rectangle(IContext* ctx)
+        LUNA_GUI_API Rectangle* rectangle(IWidgetBuilder* builder)
         {
             Ref<Rectangle> widget = new_object<Rectangle>();
-            ctx->add_widget(widget);
-            ctx->push_widget(widget);
-        }
-        LUNA_GUI_API void end_rectangle(IContext* ctx)
-        {
-            ctx->pop_widget();
+            builder->add_widget(widget);
+            return widget;
         }
     }
 }

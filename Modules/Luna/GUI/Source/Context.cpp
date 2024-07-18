@@ -13,6 +13,7 @@
 #include <Luna/Runtime/RingDeque.hpp>
 #include <Luna/Runtime/Math/Color.hpp>
 #include <Luna/VG/Shapes.hpp>
+#include "../Widgets/Widget.hpp"
 
 namespace Luna
 {
@@ -33,16 +34,20 @@ namespace Luna
             r.bottom = ay2 + offset.bottom;
             return r;
         }
-        void Context::begin_frame()
+        void Context::set_widget(IWidget* root_widget)
         {
-            m_id_stack.clear();
-            m_widget_stack.clear();
-            Ref<Widget> root_widget = new_object<Widget>();
-            add_widget(root_widget);
-            push_widget(root_widget);
             m_root_widget = root_widget;
         }
-        void Context::end_frame()
+        object_t Context::get_widget_state(widget_id_t id)
+        {
+            auto iter = m_widget_state_reg.find(id);
+            return iter == m_widget_state_reg.end() ? nullptr : iter->second.state.get();
+        }
+        void Context::set_widget_state(widget_id_t id, object_t state, WidgetStateLifetime lifetime)
+        {
+            m_widget_state_reg.insert_or_assign(id, WidgetStateEntry(ObjRef(state), lifetime));
+        }
+        RV Context::update()
         {
             auto iter = m_widget_state_reg.begin();
             while(iter != m_widget_state_reg.end())
@@ -58,28 +63,6 @@ namespace Luna
                 }
                 ++iter;
             }
-        }
-        void Context::add_widget(Widget *widget)
-        {
-            m_current_widget = widget;
-            m_current_widget->id = get_id();
-            if(!m_widget_stack.empty())
-            {
-                m_widget_stack.back()->children.push_back(m_current_widget);
-                m_current_widget->parent = m_widget_stack.back();
-            }
-        }
-        object_t Context::get_widget_state(widget_id_t id)
-        {
-            auto iter = m_widget_state_reg.find(id);
-            return iter == m_widget_state_reg.end() ? nullptr : iter->second.state.get();
-        }
-        void Context::set_widget_state(widget_id_t id, object_t state, WidgetStateLifetime lifetime)
-        {
-            m_widget_state_reg.insert_or_assign(id, WidgetStateEntry(ObjRef(state), lifetime));
-        }
-        RV Context::update()
-        {
             return m_root_widget->update(this, OffsetRectF(0, 0, m_io.width, m_io.height));
         }
         RV Context::render(IDrawList* draw_list)

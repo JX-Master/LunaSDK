@@ -25,17 +25,17 @@ namespace Luna
             end
         };
 
-        struct VerticalLayout : Widget
-        {
-            lustruct("GUI::VerticalLayout", "04aaf290-ad94-4f27-9218-f25c27dd9464");
+        // struct VerticalLayout : Widget
+        // {
+        //     lustruct("GUI::VerticalLayout", "04aaf290-ad94-4f27-9218-f25c27dd9464");
 
-            HorizontalAlignment horizontal_alignment = HorizontalAlignment::begin;
+        //     HorizontalAlignment horizontal_alignment = HorizontalAlignment::begin;
 
             
-        };
+        // };
 
-        LUNA_GUI_API VerticalLayout* begin_vertical_layout(IContext* ctx);
+        // LUNA_GUI_API VerticalLayout* begin_vertical_layout(IContext* ctx);
 
-        LUNA_GUI_API void end_vertical_layout(IContext* ctx);
+        // LUNA_GUI_API void end_vertical_layout(IContext* ctx);
     }
 }

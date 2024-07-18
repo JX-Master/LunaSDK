@@ -31,6 +31,21 @@ namespace Luna
                 {min_x, screen_min_y}, {max_x, screen_max_y},
                 color);
         }
+        LUNA_GUI_API void draw_rounded_rectangle_filled(IContext* ctx, IDrawList* draw_list,
+            f32 min_x, f32 min_y, f32 max_x, f32 max_y, f32 radius, const Float4& color)
+        {
+            auto& points = draw_list->get_shape_buffer()->get_shape_points();
+            u32 begin_command = (u32)points.size();
+            auto& io = ctx->get_io();
+            f32 screen_min_y = io.height - max_y;
+            f32 screen_max_y = io.height - min_y;
+            VG::ShapeBuilder::add_rounded_rectangle_filled(points, min_x, screen_min_y, max_x, screen_max_y, radius);
+            u32 num_commands = (u32)points.size() - begin_command;
+            draw_list->add_shape(begin_command, num_commands, 
+                {min_x, screen_min_y}, {max_x, screen_max_y}, 
+                {min_x, screen_min_y}, {max_x, screen_max_y},
+                color);
+        }
         LUNA_GUI_API void draw_text(IContext* ctx, IDrawList* draw_list, 
             const c8* text, usize text_len, 
             const Float4U& text_color,

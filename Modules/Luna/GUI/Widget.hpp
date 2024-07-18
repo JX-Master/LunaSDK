@@ -32,13 +32,8 @@ namespace Luna
             preferred,
             maximum,
         };
-        
-        //! @interface IAnchor
-        //! Created by the parent widget to specify the per-element placement information.
-        struct IAnchor : virtual Interface
-        {
-            
-        };
+
+        struct IContext;
 
         //! @interface IWidget
         //! The base interface for all objects that can be attached to GUI as widgets.
@@ -63,74 +58,23 @@ namespace Luna
             //! This function should only be called by parent widget when setting child widgets. The end user should not call this function directly.
             virtual void set_parent(IWidget* widget) = 0;
 
-            //! Gets the scalar attribute of the specified widget.
-            virtual f32 get_sattr(u32 key, bool recursive = true, f32 default_value = 0, bool* found = nullptr) = 0;
+            virtual HashMap<u32, f32>& get_sattrs() = 0;
 
-            //! Sets the scalar attribute of the specified widget.
-            virtual void set_sattr(u32 key, f32 value) = 0;
+            virtual HashMap<u32, Float4U>& get_vattrs() = 0;
 
-            //! Removes the scalar attribute of the specified widget.
-            virtual void remove_sattr(u32 key) = 0;
+            virtual HashMap<u32, Name>& get_tattrs() = 0;
 
-            //! Gets vector attributes of the specified widget.
-            virtual Float4U get_vattr(u32 key, bool recursive = true, const Float4U& default_value = Float4U(0), bool* found = nullptr) = 0;
-
-            virtual void set_vattr(u32 key, const Float4U& value) = 0;
-
-            virtual void remove_vattr(u32 key) = 0;
-
-            //! Gets text attributes of the specified widget.
-            virtual Name get_tattr(u32 key, bool recursive = true, const Name& default_value = Name(), bool* found = nullptr) = 0;
-
-            virtual void set_tattr(u32 key, const Name& value) = 0;
-
-            virtual void remove_tattr(u32 key) = 0;
-
-            //! Gets object attributes of the specified widget.
-            virtual object_t get_oattr(u32 key, bool recursive = true, object_t default_value = nullptr, bool* found = nullptr) = 0;
-
-            virtual void set_oattr(u32 key, object_t value) = 0;
-
-            virtual void remove_oattr(u32 key) = 0;
+            virtual HashMap<u32, ObjRef>& get_oattrs() = 0;
 
             //! Calculates the desired size of the specified widget.
-            virtual Float2U get_desired_size(DesiredSizeType type, const Float2U& suggested_size) = 0;
-        };
-
-        struct IContext;
-        struct Widget
-        {
-            lustruct("GUI::Widget", "{b6eb9d49-be6b-4afb-9a53-09449217d00d}");
-
-            // The id of the widget. Used to transfer states between widgets. Can be empty.
-            widget_id_t id;
-            // Parent widget.
-            Widget* parent = nullptr;
-            // Child widgets.
-            Vector<Ref<Widget>> children;
-            // Attribute values.
-            HashMap<u32, f32> sattrs;
-            HashMap<u32, Float4U> vattrs;
-            HashMap<u32, Name> tattrs;
-            HashMap<u32, ObjRef> oattrs;
-
-            // The following properties are widget computed data that will get updates every frame based on widget states.
-
-            // The offset to place this widget in screen coordinates.
-            OffsetRectF bounding_rect;
-
-            virtual ~Widget() {}
-            LUNA_GUI_API f32 get_sattr(u32 key, bool recursive = false, f32 default_value = 0, bool* found = nullptr);
-            LUNA_GUI_API Float4U get_vattr(u32 key, bool recursive = false, const Float4U& default_value = Float4U(0), bool* found = nullptr);
-            LUNA_GUI_API Name get_tattr(u32 key, bool recursive = false, const Name& default_value = Name(), bool* found = nullptr);
-            LUNA_GUI_API object_t get_oattr(u32 key, bool recursive = false, object_t default_value = nullptr, bool* found = nullptr);
+            //virtual Float2U get_desired_size(DesiredSizeType type, const Float2U& suggested_size) = 0;
 
             //! Called after the widget tree is built and before the widget is rendered. The widget should handle user input and generate render data 
             //! in this call.
-            LUNA_GUI_API virtual RV update(IContext* ctx, const OffsetRectF& layout_rect);
+            virtual RV update(IContext* ctx, const OffsetRectF& layout_rect) = 0;
 
             //! Called when the widget is rendered.
-            LUNA_GUI_API virtual RV draw(IContext* ctx, IDrawList* draw_list);
+            virtual RV draw(IContext* ctx, IDrawList* draw_list) = 0;
         };
     }
 }

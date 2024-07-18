@@ -10,6 +10,8 @@
 #include <Luna/Runtime/Math/Color.hpp>
 #include <Luna/VG/ShapeRenderer.hpp>
 #include <Luna/Runtime/Math/Transform.hpp>
+#include <Luna/GUI/WidgetBuilder.hpp>
+#include <Luna/GUI/Widgets.hpp>
 
 using namespace Luna;
 
@@ -45,6 +47,8 @@ void run()
     Ref<ICommandBuffer> cmdbuf = dev->new_command_buffer(queue).get();
 
     Ref<GUI::IContext> ctx = GUI::new_context();
+
+    Ref<GUI::IWidgetBuilder> builder = GUI::new_widget_builder();
 
     Ref<VG::IShapeDrawList> draw_list = VG::new_shape_draw_list(dev);
 
@@ -83,50 +87,63 @@ void run()
         auto gui_size = window->get_size();
         io.width = gui_size.x;
         io.height = gui_size.y;
-        ctx->begin_frame();
+        builder->reset();
+        begin_canvas(builder);
         {
             using namespace GUI;
             for(u32 y = 0; y < 4; ++y)
             {
                 for (u32 x = 0; x < 4; ++x)
                 {
-                    begin_rectangle(ctx);
-                    Float4 color = Float4(((f32)x) / 3, ((f32)y) / 3, 0.0f, 1.0f);
-                    set_vattr(ctx, VATTR_BACKGROUND_COLOR, color);
-                    set_anthor(ctx, ((f32)x) / 4, ((f32)y) / 4, ((f32)x + 1) / 4, ((f32)y + 1) / 4);
-                    begin_rectangle(ctx);
-                    f32 anchor_x_min, anchor_x_max, anchor_y_min, anchor_y_max;
-                    f32 rect_x_min, rect_x_max, rect_y_min, rect_y_max;
-                    switch(x)
+                    begin_canvas(builder);
+                    set_anthor(builder, ((f32)x) / 4, ((f32)y) / 4, ((f32)x + 1) / 4, ((f32)y + 1) / 4);
                     {
-                        case 0: anchor_x_min = 0.0f; anchor_x_max = 0.0f; rect_x_min = 10.0f; rect_x_max = 50.0f; break;
-                        case 1: anchor_x_min = 0.5f; anchor_x_max = 0.5f; rect_x_min = -20.0f; rect_x_max = 20.0f; break;
-                        case 2: anchor_x_min = 1.0f; anchor_x_max = 1.0f; rect_x_min = -50.0f; rect_x_max = -10.0f; break;
-                        case 3: anchor_x_min = 0.0f; anchor_x_max = 1.0f; rect_x_min = 10.0f; rect_x_max = -10.0f; break;
-                        default: break;
+                        // background.
+                        rectangle(builder);
+                        set_anthor(builder, 0, 0, 1, 1);
+                        Float4 color = Float4(((f32)x) / 3, ((f32)y) / 3, 0.0f, 1.0f);
+                        set_vattr(builder, VATTR_BACKGROUND_COLOR, color);
+                        // Text canvas.
+                        begin_canvas(builder);
+                        f32 anchor_x_min, anchor_x_max, anchor_y_min, anchor_y_max;
+                        f32 rect_x_min, rect_x_max, rect_y_min, rect_y_max;
+                        switch(x)
+                        {
+                            case 0: anchor_x_min = 0.0f; anchor_x_max = 0.0f; rect_x_min = 10.0f; rect_x_max = 50.0f; break;
+                            case 1: anchor_x_min = 0.5f; anchor_x_max = 0.5f; rect_x_min = -20.0f; rect_x_max = 20.0f; break;
+                            case 2: anchor_x_min = 1.0f; anchor_x_max = 1.0f; rect_x_min = -50.0f; rect_x_max = -10.0f; break;
+                            case 3: anchor_x_min = 0.0f; anchor_x_max = 1.0f; rect_x_min = 10.0f; rect_x_max = -10.0f; break;
+                            default: break;
+                        }
+                        switch(y)
+                        {
+                            case 0: anchor_y_min = 0.0f; anchor_y_max = 0.0f; rect_y_min = 10.0f; rect_y_max = 50.0f; break;
+                            case 1: anchor_y_min = 0.5f; anchor_y_max = 0.5f; rect_y_min = -20.0f; rect_y_max = 20.0f; break;
+                            case 2: anchor_y_min = 1.0f; anchor_y_max = 1.0f; rect_y_min = -50.0f; rect_y_max = -10.0f; break;
+                            case 3: anchor_y_min = 0.0f; anchor_y_max = 1.0f; rect_y_min = 10.0f; rect_y_max = -10.0f; break;
+                            default: break;
+                        }
+                        set_anthor(builder, anchor_x_min, anchor_y_min, anchor_x_max, anchor_y_max);
+                        set_offset(builder, rect_x_min, rect_y_min, rect_x_max, rect_y_max);
+                        {
+                            // Text background.
+                            rectangle(builder);
+                            set_anthor(builder, 0, 0, 1, 1);
+                            color.z = 1.0f;
+                            set_vattr(builder, VATTR_BACKGROUND_COLOR, color);
+
+                            text(builder, "Text");
+                            set_anthor(builder, 0, 0, 1, 1);
+                            set_sattr(builder, SATTR_TEXT_SIZE, 32);
+                        }
+                        end_canvas(builder);
                     }
-                    switch(y)
-                    {
-                        case 0: anchor_y_min = 0.0f; anchor_y_max = 0.0f; rect_y_min = 10.0f; rect_y_max = 50.0f; break;
-                        case 1: anchor_y_min = 0.5f; anchor_y_max = 0.5f; rect_y_min = -20.0f; rect_y_max = 20.0f; break;
-                        case 2: anchor_y_min = 1.0f; anchor_y_max = 1.0f; rect_y_min = -50.0f; rect_y_max = -10.0f; break;
-                        case 3: anchor_y_min = 0.0f; anchor_y_max = 1.0f; rect_y_min = 10.0f; rect_y_max = -10.0f; break;
-                        default: break;
-                    }
-                    set_anthor(ctx, anchor_x_min, anchor_y_min, anchor_x_max, anchor_y_max);
-                    set_offset(ctx, rect_x_min, rect_y_min, rect_x_max, rect_y_max);
-                    color.z = 1.0f;
-                    set_vattr(ctx, VATTR_BACKGROUND_COLOR, color);
-                    text(ctx, "Text");
-                    set_sattr(ctx, SATTR_TEXT_SIZE, 32);
-                    end_rectangle(ctx);
-                    end_rectangle(ctx);
+                    end_canvas(builder);
                 }
             }
         }
-        begin_window(ctx, "test window");
-
-        end_window(ctx);
+        end_canvas(builder);
+        ctx->set_widget(builder->get_root_widget());
         lupanic_if_failed(ctx->update());
         gui_draw_list->begin(draw_list);
         lupanic_if_failed(ctx->render(gui_draw_list));
@@ -147,7 +164,6 @@ void run()
         cmdbuf->wait();
         lupanic_if_failed(swap_chain->present());
         lupanic_if_failed(cmdbuf->reset());
-        ctx->end_frame();
         draw_list->reset();
     }
 }

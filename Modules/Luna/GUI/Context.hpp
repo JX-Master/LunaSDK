@@ -58,36 +58,7 @@ namespace Luna
             //! Gets the IO state that will be parsed in the next @ref update call.
             virtual ContextIO& get_io() = 0;
 
-            //! Begins a new frame recording.
-            virtual void begin_frame() = 0;
-
-            //! Ends one frame.
-            virtual void end_frame() = 0;
-
-            // Widget ID APIs.
-
-            virtual void push_id(const Name& name_id) = 0;
-            virtual void push_id(const c8* str_id, usize str_len) = 0;
-            virtual void push_id(const void* ptr_id) = 0;
-            virtual void push_id(i32 int_id) = 0;
-            virtual void pop_id() = 0;
-
-            //! Generates widget ID based on the current widget ID stack.
-            virtual widget_id_t get_id() = 0;
-            virtual widget_id_t get_id(const Name& name_id) = 0;
-            virtual widget_id_t get_id(const c8* str_id, usize str_len) = 0;
-            virtual widget_id_t get_id(const void* ptr_id) = 0;
-            virtual widget_id_t get_id(i32 int_id) = 0;
-
-            virtual Widget* get_current_widget() = 0;
-
-            virtual void add_widget(Widget* widget) = 0;
-
-            //! Pushes one widget to the widget stack so that new widgets will be created as child widgets of this widget.
-            virtual void push_widget(Widget* widget) = 0;
-
-            //! Pops one widget from the widget stack.
-            virtual void pop_widget() = 0;
+            virtual void set_widget(IWidget* root_widget) = 0;
 
             //! Gets widget implicit state.
             virtual object_t get_widget_state(widget_id_t id) = 0;
