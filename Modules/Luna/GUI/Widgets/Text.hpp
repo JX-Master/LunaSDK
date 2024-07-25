@@ -24,9 +24,10 @@ namespace Luna
             lustruct("GUI::Text", "{06fa0393-d4f9-4dce-b340-d9790b36c732}");
 
             Name text;
-            OffsetRectF bounding_rect;
 
-            LUNA_GUI_API virtual RV update(IContext* ctx, const OffsetRectF& layout_rect) override;
+            LUNA_GUI_API virtual f32 get_desired_size_x(DesiredSizeType type, const f32* suggested_size_y) override;
+            LUNA_GUI_API virtual f32 get_desired_size_y(DesiredSizeType type, const f32* suggested_size_x) override;
+
             LUNA_GUI_API virtual RV draw(IContext* ctx, IDrawList* draw_list) override;
         };
     }

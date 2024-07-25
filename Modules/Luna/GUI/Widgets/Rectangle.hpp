@@ -22,9 +22,6 @@ namespace Luna
         {
             lustruct("GUI::Rectangle", "{d0e27859-1439-4089-bf55-b8fe82b24c47}");
 
-            OffsetRectF bounding_rect;
-
-            LUNA_GUI_API virtual RV update(IContext* ctx, const OffsetRectF& layout_rect) override;
             LUNA_GUI_API virtual RV draw(IContext* ctx, IDrawList* draw_list) override;
         };
     }

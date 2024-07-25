@@ -9,6 +9,7 @@
 */
 #pragma once
 #include "../Widget.hpp"
+#include <Luna/Runtime/Math/Vector.hpp>
 namespace Luna
 {
     namespace GUI
@@ -30,6 +31,8 @@ namespace Luna
             HashMap<u32, Float4U> vattrs;
             HashMap<u32, Name> tattrs;
             HashMap<u32, ObjRef> oattrs;
+            // Bounding rect.
+            OffsetRectF bounding_rect = OffsetRectF(0, 0, 0, 0);
 
             virtual ~Widget() {}
             
@@ -66,7 +69,50 @@ namespace Luna
             {
                 return oattrs;
             }
-            virtual RV update(IContext* ctx, const OffsetRectF& layout_rect) override
+            virtual f32 get_desired_size_x(DesiredSizeType type, const f32* suggested_size_y) override
+            {
+                u32 attr = 0;
+                switch(type)
+                {
+                    case DesiredSizeType::required: attr = SATTR_REQUIRED_SIZE_X; break;
+                    case DesiredSizeType::preferred: attr = SATTR_PREFERRED_SIZE_X; break;
+                    case DesiredSizeType::filling: attr = SATTR_FILLING_SIZE_X; break;
+                }
+                return get_sattr(this, attr, false, 0.0f);
+            }
+            virtual f32 get_desired_size_y(DesiredSizeType type, const f32* suggested_size_x) override
+            {
+                u32 attr = 0;
+                switch(type)
+                {
+                    case DesiredSizeType::required: attr = SATTR_REQUIRED_SIZE_Y; break;
+                    case DesiredSizeType::preferred: attr = SATTR_PREFERRED_SIZE_Y; break;
+                    case DesiredSizeType::filling: attr = SATTR_FILLING_SIZE_Y; break;
+                }
+                return get_sattr(this, attr, false, 0.0f);
+            }
+            virtual RV begin_update(IContext* ctx) override
+            {
+                return ok;
+            }
+            virtual RV layout(IContext* ctx, const OffsetRectF& layout_rect) override
+            {
+                bounding_rect = layout_rect;
+                return ok;
+            }
+            virtual OffsetRectF get_bounding_rect() override
+            {
+                return bounding_rect;
+            }
+            virtual bool contains_point(f32 x, f32 y) override
+            {
+                return in_bounds(Float2(x, y), Float2(bounding_rect.left, bounding_rect.top), Float2(bounding_rect.right, bounding_rect.bottom));
+            }
+            virtual RV handle_event(IContext* ctx, object_t e, bool& handled) override
+            {
+                return ok;
+            }
+            virtual RV update(IContext* ctx) override
             {
                 return ok;
             }
@@ -75,10 +121,5 @@ namespace Luna
                 return ok;
             }
         };
-
-        LUNA_GUI_API f32 get_sattr(IWidget* widget, u32 key, bool recursive = false, f32 default_value = 0, bool* found = nullptr);
-        LUNA_GUI_API Float4U get_vattr(IWidget* widget, u32 key, bool recursive = false, const Float4U& default_value = Float4U(0), bool* found = nullptr);
-        LUNA_GUI_API Name get_tattr(IWidget* widget, u32 key, bool recursive = false, const Name& default_value = Name(), bool* found = nullptr);
-        LUNA_GUI_API object_t get_oattr(IWidget* widget, u32 key, bool recursive = false, object_t default_value = nullptr, bool* found = nullptr);
     }
 }

@@ -13,12 +13,13 @@
 #include "../../Widgets/Canvas.hpp"
 #include "../../Attributes.hpp"
 #include "../../Context.hpp"
+#include "../../LayoutUtils.hpp"
 
 namespace Luna
 {
     namespace GUI
     {
-        LUNA_GUI_API RV Canvas::update(IContext* ctx, const OffsetRectF& layout_rect)
+        LUNA_GUI_API RV Canvas::layout(IContext* ctx, const OffsetRectF& layout_rect)
         {
             lutry
             {
@@ -29,7 +30,19 @@ namespace Luna
                     Float4U offset = get_vattr(c, VATTR_OFFSET, false, {0, 0, 0, 0});
                     OffsetRectF bounding_rect = calc_widget_bounding_rect(layout_rect, OffsetRectF{anthor.x, anthor.y, anthor.z, anthor.w}, 
                             OffsetRectF{offset.x, offset.y, offset.z, offset.w});
-                    luexp(c->update(ctx, bounding_rect));
+                    luexp(c->layout(ctx, bounding_rect));
+                }
+            }
+            lucatchret;
+            return ok;
+        }
+        LUNA_GUI_API RV Canvas::update(IContext* ctx)
+        {
+            lutry
+            {
+                for(auto& c : children)
+                {
+                    luexp(c->update(ctx));
                 }
             }
             lucatchret;
@@ -51,14 +64,17 @@ namespace Luna
         {
             children.push_back(Ref<IWidget>(child));
         }
-        LUNA_GUI_API Array<IWidget*> Canvas::get_children()
+        LUNA_GUI_API void Canvas::get_children(Vector<IWidget*>& out_children)
         {
-            Array<IWidget*> ret(children.size());
+            out_children.reserve(out_children.size() + children.size());
             for(usize i = 0; i < children.size(); ++i)
             {
-                ret[i] = children[i];
+                out_children.push_back(children[i]);
             }
-            return ret;
+        }
+        LUNA_GUI_API usize Canvas::get_num_children()
+        {
+            return children.size();
         }
         LUNA_GUI_API Canvas* begin_canvas(IWidgetBuilder* builder)
         {

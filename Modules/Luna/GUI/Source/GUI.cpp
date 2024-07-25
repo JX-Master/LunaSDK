@@ -16,10 +16,12 @@
 #include <Luna/Font/Font.hpp>
 #include "../Widgets/Rectangle.hpp"
 #include "../Widgets/Text.hpp"
-#include "../Widgets/Window.hpp"
 #include "../Widgets/Canvas.hpp"
+#include "../Widgets/HorizontalLayout.hpp"
+#include "../Widgets/VerticalLayout.hpp"
 #include "DrawList.hpp"
 #include "WidgetBuilder.hpp"
+#include "../Event.hpp"
 
 namespace Luna
 {
@@ -44,15 +46,19 @@ namespace Luna
                 impl_interface_for_type<Text, IWidget>();
                 register_struct_type<Canvas>({}, typeof<Widget>());
                 impl_interface_for_type<Canvas, IContainer, IWidget>();
-                //register_struct_type<Window>({}, typeof<Widget>());
-                //register_boxed_type<WindowState>();
-                
+                register_struct_type<HorizontalLayout>({}, typeof<Widget>());
+                impl_interface_for_type<HorizontalLayout, IContainer, IWidget>();
+                register_struct_type<VerticalLayout>({}, typeof<Widget>());
+                impl_interface_for_type<VerticalLayout, IContainer, IWidget>();
                 register_boxed_type<DrawList>();
                 impl_interface_for_type<DrawList, IDrawList>();
                 register_boxed_type<WidgetBuilder>();
                 impl_interface_for_type<WidgetBuilder, IWidgetBuilder>();
                 register_struct_type<RootWidget>({}, typeof<Widget>());
                 impl_interface_for_type<RootWidget, IContainer, IWidget>();
+                register_struct_type<MouseEvent>({});
+                register_struct_type<MouseMoveEvent>({}, typeof<MouseEvent>());
+                register_struct_type<MouseButtonEvent>({}, typeof<MouseEvent>());
                 return ok;
             }
             virtual void on_close() override

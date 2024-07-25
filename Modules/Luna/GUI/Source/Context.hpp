@@ -11,6 +11,8 @@
 #include <Luna/Runtime/UniquePtr.hpp>
 #include <Luna/VG/TextArranger.hpp>
 #include "../Widget.hpp"
+#include <Luna/Runtime/RingDeque.hpp>
+#include "../Event.hpp"
 
 namespace Luna
 {
@@ -41,6 +43,10 @@ namespace Luna
             };
             HashMap<widget_id_t, WidgetStateEntry> m_widget_state_reg;
 
+            // Event queue.
+            RingDeque<ObjRef> m_event_queue;
+            Vector<Pair<IWidget*, typeinfo_t>> m_event_capture_stack;
+
             Context()
             {
                 memzero(&m_io);
@@ -51,9 +57,23 @@ namespace Luna
             {
                 return m_io;
             }
+            virtual IWidget* get_widget() override
+            {
+                return m_root_widget;
+            }
             virtual void set_widget(IWidget* root_widget) override;
             virtual object_t get_widget_state(widget_id_t id) override;
             virtual void set_widget_state(widget_id_t id, object_t state, WidgetStateLifetime lifetime) override;
+            virtual void push_event(object_t event) override
+            {
+                m_event_queue.push_back(ObjRef(event));
+            }
+            virtual void capture_event(IWidget* widget, typeinfo_t event_type) override
+            {
+                m_event_capture_stack.push_back(make_pair(widget, event_type));
+            }
+            RV dispatch_mouse_event(MouseEvent* event, bool& handled);
+            RV dispatch_event(object_t event);
             virtual RV update() override;
             virtual VG::IFontAtlas* get_font_altas() override
             {

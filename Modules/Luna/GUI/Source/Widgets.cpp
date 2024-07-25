@@ -15,11 +15,11 @@ namespace Luna
 {
     namespace GUI
     {
-        LUNA_GUI_API void set_anthor(IWidgetBuilder* builder, f32 left, f32 top, f32 right, f32 bottom)
+        LUNA_GUI_API void set_canvas_anthor(IWidgetBuilder* builder, f32 left, f32 top, f32 right, f32 bottom)
         {
             set_vattr(builder, VATTR_ANTHOR, Float4U(left, top, right, bottom));
         }
-        LUNA_GUI_API void set_offset(IWidgetBuilder* builder, f32 left, f32 top, f32 right, f32 bottom)
+        LUNA_GUI_API void set_canvas_offset(IWidgetBuilder* builder, f32 left, f32 top, f32 right, f32 bottom)
         {
             set_vattr(builder, VATTR_OFFSET, Float4U(left, top, right, bottom));
         }

@@ -18,11 +18,6 @@ namespace Luna
 {
     namespace GUI
     {
-        LUNA_GUI_API RV Rectangle::update(IContext* ctx, const OffsetRectF& layout_rect)
-        {
-            bounding_rect = layout_rect;
-            return ok;
-        }
         LUNA_GUI_API RV Rectangle::draw(IContext* ctx, IDrawList* draw_list)
         {
             Float4U background_color = get_vattr(this, VATTR_BACKGROUND_COLOR, true, Float4U(0));
@@ -31,7 +26,7 @@ namespace Luna
             {
                 if(rounding_radius > 0)
                 {
-                    draw_rounded_rectangle_filled(ctx, draw_list, bounding_rect.left, bounding_rect.top, bounding_rect.right, bounding_rect.bottom, rounding_radius, background_color);
+                    draw_rounded_rectangle_filled(ctx, draw_list, bounding_rect.left, bounding_rect.top, bounding_rect.right, bounding_rect.bottom, background_color, rounding_radius);
                 }
                 else
                 {

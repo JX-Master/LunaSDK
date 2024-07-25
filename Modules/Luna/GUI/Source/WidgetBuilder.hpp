@@ -23,20 +23,24 @@ namespace Luna
 
             Vector<Ref<IWidget>> children;
 
-            virtual RV update(IContext* ctx, const OffsetRectF& layout_rect) override;
+            virtual RV layout(IContext* ctx, const OffsetRectF& layout_rect) override;
+            virtual RV update(IContext* ctx) override;
             virtual RV draw(IContext* ctx, IDrawList* draw_list) override;
             virtual void add_child(IWidget* child) override
             {
                 children.push_back(child);
             }
-            virtual Array<IWidget*> get_children() override
+            virtual void get_children(Vector<IWidget*>& out_children) override
             {
-                Array<IWidget*> ret(children.size());
+                out_children.reserve(out_children.size() + children.size());
                 for(usize i = 0; i < children.size(); ++i)
                 {
-                    ret[i] = children[i];
+                    out_children.push_back(children[i]);
                 }
-                return ret;
+            }
+            virtual usize get_num_children() override
+            {
+                return children.size();
             }
         };
         struct WidgetBuilder : IWidgetBuilder

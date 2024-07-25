@@ -41,8 +41,6 @@ namespace Luna
             bool key_pressed[(u32)HID::KeyCode::count];
         };
 
-        LUNA_GUI_API OffsetRectF calc_widget_bounding_rect(const OffsetRectF& parent_bounding_rect, const OffsetRectF& anthor, const OffsetRectF& offset);
-
         enum class WidgetStateLifetime : u8
         {
             frame = 0, // until current frame end.
@@ -58,6 +56,8 @@ namespace Luna
             //! Gets the IO state that will be parsed in the next @ref update call.
             virtual ContextIO& get_io() = 0;
 
+            virtual IWidget* get_widget() = 0;
+
             virtual void set_widget(IWidget* root_widget) = 0;
 
             //! Gets widget implicit state.
@@ -65,6 +65,19 @@ namespace Luna
 
             //! Sets widget implicit state.
             virtual void set_widget_state(widget_id_t id, object_t state, WidgetStateLifetime lifetime = WidgetStateLifetime::next_frame) = 0;
+
+            //! Pushes event to the event FIFO queue. The event will be processed in the next call to @ref update.
+            virtual void push_event(object_t event) = 0;
+
+            //! Captures event type, so events of that type are always sent to the specified widget.
+            //! @param[in] widget The widget to capture the event.
+            //! @param[in] event_type The event the widget wants to capture.
+            //! @remark Every time one new update is triggered by @ref update, all previously set captures will be released before 
+            //! @ref IWidget::begin_update is called. In order to retain the capture between updates, the widget should call
+            //! this function in @ref IWidget::begin_update, so that the widget gains capture before event handing stage take place.
+            //! 
+            //! The capture does not need to be released explicitly, since they will be released before next @ref update call.
+            virtual void capture_event(IWidget* widget, typeinfo_t event_type) = 0;
 
             //! Updates the internal state (like input, animation, etc) of the context.
             virtual RV update() = 0;

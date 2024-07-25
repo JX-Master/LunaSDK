@@ -9,7 +9,9 @@
 */
 #pragma once
 
-#include <Widgets/Canvas.hpp>
+#include "Widgets/Canvas.hpp"
+#include "Widgets/HorizontalLayout.hpp"
+#include "Widgets/VerticalLayout.hpp"
 
 #ifndef LUNA_GUI_API
 #define LUNA_GUI_API
@@ -19,11 +21,16 @@ namespace Luna
 {
     namespace GUI
     {
-        LUNA_GUI_API Canvas* begin_canvas(IContext* ctx);
-        LUNA_GUI_API void end_canvas(IContext* ctx);
-        LUNA_GUI_API void set_anthor(IContext* ctx, f32 left, f32 top, f32 right, f32 bottom);
-        LUNA_GUI_API void set_offset(IContext* ctx, f32 left, f32 top, f32 right, f32 bottom);
+        struct IWidgetBuilder;
+        LUNA_GUI_API Canvas* begin_canvas(IWidgetBuilder* builder);
+        LUNA_GUI_API void end_canvas(IWidgetBuilder* builder);
+        LUNA_GUI_API void set_canvas_anthor(IWidgetBuilder* builder, f32 left, f32 top, f32 right, f32 bottom);
+        LUNA_GUI_API void set_canvas_offset(IWidgetBuilder* builder, f32 left, f32 top, f32 right, f32 bottom);
 
+        LUNA_GUI_API HorizontalLayout* begin_hlayout(IWidgetBuilder* builder);
+        LUNA_GUI_API void end_hlayout(IWidgetBuilder* builder);
 
+        LUNA_GUI_API VerticalLayout* begin_vlayout(IWidgetBuilder* builder);
+        LUNA_GUI_API void end_vlayout(IWidgetBuilder* builder);
     }
 }

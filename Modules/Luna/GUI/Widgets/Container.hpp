@@ -14,6 +14,9 @@ namespace Luna
 {
     namespace GUI
     {
+        //! @interface IContainer
+        //! Represents one widget that can contain child widgets.
+        //! Implement this interface so that the system can recognize one widget as one container.
         struct IContainer : virtual IWidget
         {
             luiid("15a3b87a-df22-429f-acc8-214e585210f6");
@@ -22,9 +25,14 @@ namespace Luna
             virtual void add_child(IWidget* child) = 0;
 
             //! Gets a list of child widgets of this container.
-            //! @remark This is a generic method of getting children. 
-            //! The implementation may provide a better way of accessing child widgets.
-            virtual Array<IWidget*> get_children() = 0;
+            //! @param[out] out_children The array to write child widgets to.
+            //! Child widgets will be pushed to the end of this array, existing elements in the 
+            //! array are not changed.
+            virtual void get_children(Vector<IWidget*>& out_children) = 0;
+
+            //! Gets the number of child widgets of tihs container.
+            //! @return Returns the number of child widgets of tihs container.
+            virtual usize get_num_children() = 0;
         };
     }
 }

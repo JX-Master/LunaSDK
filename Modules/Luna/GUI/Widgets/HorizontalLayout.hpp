@@ -3,29 +3,28 @@
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
-* @file Canvas.hpp
+* @file HorizontalLayout.hpp
 * @author JXMaster
-* @date 2024/7/18
+* @date 2024/7/19
 */
 #pragma once
 
 #include "Widget.hpp"
 #include "Container.hpp"
 
-#ifndef LUNA_GUI_API
-#define LUNA_GUI_API
-#endif
-
 namespace Luna
 {
     namespace GUI
     {
-        struct Canvas : Widget, virtual IContainer
+        struct HorizontalLayout : Widget, virtual IContainer
         {
-            lustruct("GUI::Canvas", "15c6b337-07b0-4760-91cd-cfaeeb398f37");
+            lustruct("GUI::HorizontalLayout", "ba2eacd5-f79e-4e71-8275-82d641e4bc77");
 
-            //! The children of the canvas.
+            //! The children of the layout.
             Vector<Ref<IWidget>> children;
+
+            LUNA_GUI_API virtual f32 get_desired_size_x(DesiredSizeType type, const f32* suggested_size_y) override;
+            LUNA_GUI_API virtual f32 get_desired_size_y(DesiredSizeType type, const f32* suggested_size_x) override;
 
             LUNA_GUI_API virtual RV layout(IContext* ctx, const OffsetRectF& layout_rect) override;
             LUNA_GUI_API virtual RV update(IContext* ctx) override;
