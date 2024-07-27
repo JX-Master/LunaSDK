@@ -13,6 +13,7 @@
 #include "Widgets/Canvas.hpp"
 #include "Widgets/Rectangle.hpp"
 #include "Widgets/Text.hpp"
+#include "Widgets/Button.hpp"
 
 #ifndef LUNA_GUI_API
 #define LUNA_GUI_API
@@ -37,5 +38,11 @@ namespace Luna
 
         //! Sets widget text attribute value.
         LUNA_GUI_API void set_tattr(IWidgetBuilder* builder, u32 kind, const Name& value);
+
+        LUNA_GUI_API Button* begin_button(IWidgetBuilder* builder, widget_id_t id, const Function<RV(void)>& on_click);
+
+        LUNA_GUI_API void end_button(IWidgetBuilder* builder);
+
+        LUNA_GUI_API Button* button(IWidgetBuilder* builder, const Name& text, const Function<RV(void)>& on_click, widget_id_t id = 0);
     }
 }

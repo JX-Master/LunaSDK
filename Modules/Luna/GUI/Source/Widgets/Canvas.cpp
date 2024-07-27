@@ -23,6 +23,7 @@ namespace Luna
         {
             lutry
             {
+                luexp(Widget::layout(ctx, layout_rect));
                 for(auto& c : children)
                 {
                     // Calculate bounding rect.
@@ -31,6 +32,18 @@ namespace Luna
                     OffsetRectF bounding_rect = calc_widget_bounding_rect(layout_rect, OffsetRectF{anthor.x, anthor.y, anthor.z, anthor.w}, 
                             OffsetRectF{offset.x, offset.y, offset.z, offset.w});
                     luexp(c->layout(ctx, bounding_rect));
+                }
+            }
+            lucatchret;
+            return ok;
+        }
+        LUNA_GUI_API RV Canvas::begin_update(IContext* ctx)
+        {
+            lutry
+            {
+                for(auto& c : children)
+                {
+                    luexp(c->begin_update(ctx));
                 }
             }
             lucatchret;

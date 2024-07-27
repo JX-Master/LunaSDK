@@ -15,6 +15,7 @@
 #include <Luna/GUI/Layout.hpp>
 #include <Luna/HID/HID.hpp>
 #include <Luna/GUI/Event.hpp>
+#include <Luna/GUI/Attributes.hpp>
 
 using namespace Luna;
 
@@ -70,7 +71,7 @@ void run()
     window->get_mouse_down_event().add_handler([ctx](IWindow* window, HID::MouseButton button)
     {
         Ref<GUI::MouseButtonEvent> e = new_object<GUI::MouseButtonEvent>();
-        auto pos = HID::get_mouse_pos();
+        auto pos = window->screen_to_client(HID::get_mouse_pos());
         e->x = pos.x;
         e->y = pos.y;
         e->button = button;
@@ -81,7 +82,7 @@ void run()
     window->get_mouse_up_event().add_handler([ctx](IWindow* window, HID::MouseButton button)
     {
         Ref<GUI::MouseButtonEvent> e = new_object<GUI::MouseButtonEvent>();
-        auto pos = HID::get_mouse_pos();
+        auto pos = window->screen_to_client(HID::get_mouse_pos());
         e->x = pos.x;
         e->y = pos.y;
         e->button = button;
@@ -94,6 +95,8 @@ void run()
 
     while (true)
     {
+        using namespace GUI;
+
         poll_events();
 
         if (window->is_closed())
@@ -122,58 +125,69 @@ void run()
         io.height = gui_size.y;
         builder->reset();
         begin_canvas(builder);
-        {
-            using namespace GUI;
-            for(u32 y = 0; y < 4; ++y)
-            {
-                for (u32 x = 0; x < 4; ++x)
-                {
-                    begin_canvas(builder);
-                    set_canvas_anthor(builder, ((f32)x) / 4, ((f32)y) / 4, ((f32)x + 1) / 4, ((f32)y + 1) / 4);
-                    {
-                        // background.
-                        rectangle(builder);
-                        set_canvas_anthor(builder, 0, 0, 1, 1);
-                        Float4 color = Float4(((f32)x) / 3, ((f32)y) / 3, 0.0f, 1.0f);
-                        set_vattr(builder, VATTR_BACKGROUND_COLOR, color);
-                        // Text canvas.
-                        begin_canvas(builder);
-                        f32 anchor_x_min, anchor_x_max, anchor_y_min, anchor_y_max;
-                        f32 rect_x_min, rect_x_max, rect_y_min, rect_y_max;
-                        switch(x)
-                        {
-                            case 0: anchor_x_min = 0.0f; anchor_x_max = 0.0f; rect_x_min = 10.0f; rect_x_max = 50.0f; break;
-                            case 1: anchor_x_min = 0.5f; anchor_x_max = 0.5f; rect_x_min = -20.0f; rect_x_max = 20.0f; break;
-                            case 2: anchor_x_min = 1.0f; anchor_x_max = 1.0f; rect_x_min = -50.0f; rect_x_max = -10.0f; break;
-                            case 3: anchor_x_min = 0.0f; anchor_x_max = 1.0f; rect_x_min = 10.0f; rect_x_max = -10.0f; break;
-                            default: break;
-                        }
-                        switch(y)
-                        {
-                            case 0: anchor_y_min = 0.0f; anchor_y_max = 0.0f; rect_y_min = 10.0f; rect_y_max = 50.0f; break;
-                            case 1: anchor_y_min = 0.5f; anchor_y_max = 0.5f; rect_y_min = -20.0f; rect_y_max = 20.0f; break;
-                            case 2: anchor_y_min = 1.0f; anchor_y_max = 1.0f; rect_y_min = -50.0f; rect_y_max = -10.0f; break;
-                            case 3: anchor_y_min = 0.0f; anchor_y_max = 1.0f; rect_y_min = 10.0f; rect_y_max = -10.0f; break;
-                            default: break;
-                        }
-                        set_canvas_anthor(builder, anchor_x_min, anchor_y_min, anchor_x_max, anchor_y_max);
-                        set_canvas_offset(builder, rect_x_min, rect_y_min, rect_x_max, rect_y_max);
-                        {
-                            // Text background.
-                            rectangle(builder);
-                            set_canvas_anthor(builder, 0, 0, 1, 1);
-                            color.z = 1.0f;
-                            set_vattr(builder, VATTR_BACKGROUND_COLOR, color);
+        // {
+        //     using namespace GUI;
+        //     for(u32 y = 0; y < 4; ++y)
+        //     {
+        //         for (u32 x = 0; x < 4; ++x)
+        //         {
+        //             begin_canvas(builder);
+        //             set_canvas_anthor(builder, ((f32)x) / 4, ((f32)y) / 4, ((f32)x + 1) / 4, ((f32)y + 1) / 4);
+        //             {
+        //                 // background.
+        //                 rectangle(builder);
+        //                 set_canvas_anthor(builder, 0, 0, 1, 1);
+        //                 Float4 color = Float4(((f32)x) / 3, ((f32)y) / 3, 0.0f, 1.0f);
+        //                 set_vattr(builder, VATTR_BACKGROUND_COLOR, color);
+        //                 // Text canvas.
+        //                 begin_canvas(builder);
+        //                 f32 anchor_x_min, anchor_x_max, anchor_y_min, anchor_y_max;
+        //                 f32 rect_x_min, rect_x_max, rect_y_min, rect_y_max;
+        //                 switch(x)
+        //                 {
+        //                     case 0: anchor_x_min = 0.0f; anchor_x_max = 0.0f; rect_x_min = 10.0f; rect_x_max = 50.0f; break;
+        //                     case 1: anchor_x_min = 0.5f; anchor_x_max = 0.5f; rect_x_min = -20.0f; rect_x_max = 20.0f; break;
+        //                     case 2: anchor_x_min = 1.0f; anchor_x_max = 1.0f; rect_x_min = -50.0f; rect_x_max = -10.0f; break;
+        //                     case 3: anchor_x_min = 0.0f; anchor_x_max = 1.0f; rect_x_min = 10.0f; rect_x_max = -10.0f; break;
+        //                     default: break;
+        //                 }
+        //                 switch(y)
+        //                 {
+        //                     case 0: anchor_y_min = 0.0f; anchor_y_max = 0.0f; rect_y_min = 10.0f; rect_y_max = 50.0f; break;
+        //                     case 1: anchor_y_min = 0.5f; anchor_y_max = 0.5f; rect_y_min = -20.0f; rect_y_max = 20.0f; break;
+        //                     case 2: anchor_y_min = 1.0f; anchor_y_max = 1.0f; rect_y_min = -50.0f; rect_y_max = -10.0f; break;
+        //                     case 3: anchor_y_min = 0.0f; anchor_y_max = 1.0f; rect_y_min = 10.0f; rect_y_max = -10.0f; break;
+        //                     default: break;
+        //                 }
+        //                 set_canvas_anthor(builder, anchor_x_min, anchor_y_min, anchor_x_max, anchor_y_max);
+        //                 set_canvas_offset(builder, rect_x_min, rect_y_min, rect_x_max, rect_y_max);
+        //                 {
+        //                     // Text background.
+        //                     rectangle(builder);
+        //                     set_canvas_anthor(builder, 0, 0, 1, 1);
+        //                     color.z = 1.0f;
+        //                     set_vattr(builder, VATTR_BACKGROUND_COLOR, color);
 
-                            text(builder, "Text");
-                            set_canvas_anthor(builder, 0, 0, 1, 1);
-                            set_sattr(builder, SATTR_TEXT_SIZE, 32);
-                        }
-                        end_canvas(builder);
-                    }
-                    end_canvas(builder);
-                }
+        //                     text(builder, "Text");
+        //                     set_canvas_anthor(builder, 0, 0, 1, 1);
+        //                     set_sattr(builder, SATTR_TEXT_SIZE, 32);
+        //                 }
+        //                 end_canvas(builder);
+        //             }
+        //             end_canvas(builder);
+        //         }
+        //     }
+        // }
+        {
+            begin_vlayout(builder);
+            set_sattr(builder, SATTR_TEXT_SIZE, 64.0f);
+            {
+                text(builder, "Text 1");
+                button(builder, "Long Text Button 1", [](){ log_info("GUIText", "Button 1 pressed."); return ok; });
+                text(builder, "Text 2");
+                button(builder, "Long Text Button 2", [](){ log_info("GUITest", "Button 2 pressed."); return ok; });
             }
+            end_vlayout(builder);
         }
         end_canvas(builder);
         ctx->set_widget(builder->get_root_widget());

@@ -27,6 +27,7 @@ namespace Luna
             //! The children of the canvas.
             Vector<Ref<IWidget>> children;
 
+            LUNA_GUI_API virtual RV begin_update(IContext* ctx) override;
             LUNA_GUI_API virtual RV layout(IContext* ctx, const OffsetRectF& layout_rect) override;
             LUNA_GUI_API virtual RV update(IContext* ctx) override;
             LUNA_GUI_API virtual RV draw(IContext* ctx, IDrawList* draw_list) override;

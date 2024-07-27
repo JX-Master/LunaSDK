@@ -10,22 +10,46 @@
 #pragma once
 #include "Widget.hpp"
 #include "Container.hpp"
-#include <Luna/Runtime/Event.hpp>
+#include <Luna/Runtime/Functional.hpp>
 
 namespace Luna
 {
     namespace GUI
     {
+        enum class ButtonStateType
+        {
+            normal = 0,
+            hovered = 1,
+            pressed = 2,
+        };
+
+        struct ButtonState
+        {
+            lustruct("GUI::ButtonState", "9ebc5d25-7386-4229-a77e-2368321193b5");
+            
+            ButtonStateType state_type = ButtonStateType::normal;
+            bool capture_mouse_event = false;
+            bool triggered = false;
+        };
+
         struct Button : Widget, virtual IContainer
         {
             lustruct("GUI::Button", "1ba55eff-b981-42a8-bb7a-d21c8cbfbe0e");
 
             Ref<IWidget> body;
-            Event<void(void)> on_click;
-            ObjRef button_state;
+            Function<RV(void)> on_click;
+            ButtonState* button_state;
 
+            LUNA_GUI_API virtual f32 get_desired_size_x(DesiredSizeType type, const f32* suggested_size_y) override;
+            LUNA_GUI_API virtual f32 get_desired_size_y(DesiredSizeType type, const f32* suggested_size_x) override;
             LUNA_GUI_API virtual RV begin_update(IContext* ctx) override;
+            LUNA_GUI_API virtual RV layout(IContext* ctx, const OffsetRectF& layout_rect) override;
+            LUNA_GUI_API virtual RV handle_event(IContext* ctx, object_t e, bool& handled) override;
+            LUNA_GUI_API virtual RV update(IContext* ctx) override;
             LUNA_GUI_API virtual RV draw(IContext* ctx, IDrawList* draw_list) override;
+            LUNA_GUI_API virtual void add_child(IWidget* child) override;
+            LUNA_GUI_API virtual void get_children(Vector<IWidget*>& out_children) override;
+            LUNA_GUI_API virtual usize get_num_children() override;
         };
     }
 }

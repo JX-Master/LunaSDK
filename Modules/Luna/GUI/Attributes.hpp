@@ -51,6 +51,8 @@ namespace Luna
 
         inline constexpr u32 VATTR_BUTTON_PRESSED_BORDER_COLOR = strhash32("button_pressed_border_color");
 
+        inline constexpr u32 VATTR_BUTTON_PADDING = strhash32("button_padding");
+
         inline constexpr u32 SATTR_BUTTON_BORDER_WIDTH = strhash32("button_border_width");
 
         inline constexpr u32 SATTR_BUTTON_ROUNDED_CORNER_RADIUS = strhash32("button_rounded_corner_radius");

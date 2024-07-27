@@ -22,7 +22,8 @@ namespace Luna
             luiimpl();
 
             Vector<Ref<IWidget>> children;
-
+            
+            virtual RV begin_update(IContext* ctx) override;
             virtual RV layout(IContext* ctx, const OffsetRectF& layout_rect) override;
             virtual RV update(IContext* ctx) override;
             virtual RV draw(IContext* ctx, IDrawList* draw_list) override;
@@ -118,6 +119,10 @@ namespace Luna
             virtual IWidget* get_current_widget() override
             {
                 return m_current_widget;
+            }
+            virtual void set_current_widget(IWidget* widget) override
+            {
+                m_current_widget = widget;
             }
             virtual void add_widget(IWidget* widget) override;
             virtual void push_widget(IWidget* widget) override

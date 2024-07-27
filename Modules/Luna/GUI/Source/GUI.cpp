@@ -19,6 +19,7 @@
 #include "../Widgets/Canvas.hpp"
 #include "../Widgets/HorizontalLayout.hpp"
 #include "../Widgets/VerticalLayout.hpp"
+#include "../Widgets/Button.hpp"
 #include "DrawList.hpp"
 #include "WidgetBuilder.hpp"
 #include "../Event.hpp"
@@ -59,6 +60,9 @@ namespace Luna
                 register_struct_type<MouseEvent>({});
                 register_struct_type<MouseMoveEvent>({}, typeof<MouseEvent>());
                 register_struct_type<MouseButtonEvent>({}, typeof<MouseEvent>());
+                register_struct_type<ButtonState>({});
+                register_struct_type<Button>({}, typeof<Widget>());
+                impl_interface_for_type<Button, IContainer, IWidget>();
                 return ok;
             }
             virtual void on_close() override

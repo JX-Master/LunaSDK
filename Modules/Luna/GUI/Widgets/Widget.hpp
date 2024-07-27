@@ -60,7 +60,6 @@ namespace Luna
             {
                 return vattrs;
             }
-            
             virtual HashMap<u32, Name>& get_tattrs() override
             {
                 return tattrs;

@@ -44,6 +44,8 @@ namespace Luna
 
             virtual IWidget* get_current_widget() = 0;
 
+            virtual void set_current_widget(IWidget* widget) = 0;
+
             virtual void add_widget(IWidget* widget) = 0;
 
             //! Pushes one widget to the widget stack so that new widgets will be created as child widgets of this widget.

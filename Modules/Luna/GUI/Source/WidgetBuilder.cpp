@@ -15,10 +15,23 @@ namespace Luna
 {
     namespace GUI
     {
+        RV RootWidget::begin_update(IContext* ctx)
+        {
+            lutry
+            {
+                for(auto& c : children)
+                {
+                    luexp(c->begin_update(ctx));
+                }
+            }
+            lucatchret;
+            return ok;
+        }
         RV RootWidget::layout(IContext* ctx, const OffsetRectF& layout_rect)
         {
             lutry
             {
+                luexp(Widget::layout(ctx, layout_rect));
                 for(auto& c : children)
                 {
                     luexp(c->layout(ctx, layout_rect));

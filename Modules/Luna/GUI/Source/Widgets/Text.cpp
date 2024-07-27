@@ -21,7 +21,7 @@ namespace Luna
         LUNA_GUI_API f32 Text::get_desired_size_x(DesiredSizeType type, const f32* suggested_size_y)
         {
             if(type == DesiredSizeType::required || type == DesiredSizeType::filling) return 0;
-            Font::IFontFile* font = cast_object<Font::IFontFile>(get_oattr(this, OATTR_FONT, true, Font::get_default_font()));
+            Font::IFontFile* font = query_interface<Font::IFontFile>(get_oattr(this, OATTR_FONT, true, Font::get_default_font()));
             u32 font_index = get_sattr(this, SATTR_FONT_INDEX, true, 0);
             f32 text_size = get_sattr(this, SATTR_TEXT_SIZE, true, DEFAULT_TEXT_SIZE);
             VG::TextArrangeSection section;
@@ -37,7 +37,7 @@ namespace Luna
         LUNA_GUI_API f32 Text::get_desired_size_y(DesiredSizeType type, const f32* suggested_size_x)
         {
             if(type == DesiredSizeType::required || type == DesiredSizeType::filling) return 0;
-            Font::IFontFile* font = cast_object<Font::IFontFile>(get_oattr(this, OATTR_FONT, true, Font::get_default_font()));
+            Font::IFontFile* font = query_interface<Font::IFontFile>(get_oattr(this, OATTR_FONT, true, Font::get_default_font()));
             u32 font_index = get_sattr(this, SATTR_FONT_INDEX, true, 0);
             f32 text_size = get_sattr(this, SATTR_TEXT_SIZE, true, DEFAULT_TEXT_SIZE);
             VG::TextArrangeSection section;

@@ -49,6 +49,18 @@ namespace Luna
             }
             return ret;
         }
+        LUNA_GUI_API RV VerticalLayout::begin_update(IContext* ctx)
+        {
+            lutry
+            {
+                for(auto& c : children)
+                {
+                    luexp(c->begin_update(ctx));
+                }
+            }
+            lucatchret;
+            return ok;
+        }
         LUNA_GUI_API RV VerticalLayout::layout(IContext* ctx, const OffsetRectF& layout_rect)
         {
             lutry
