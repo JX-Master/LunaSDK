@@ -183,9 +183,13 @@ void run()
             set_sattr(builder, SATTR_TEXT_SIZE, 64.0f);
             {
                 text(builder, "Text 1");
-                button(builder, "Long Text Button 1", [](){ log_info("GUIText", "Button 1 pressed."); return ok; });
+                begin_hlayout(builder);
+                button(builder, "Button 1", [](){ log_info("GUIText", "Button 1 pressed."); return ok; });
+                button(builder, "Button 2", [](){ log_info("GUIText", "Button 2 pressed."); return ok; });
+                button(builder, "Button 3", [](){ log_info("GUIText", "Button 3 pressed."); return ok; });
+                end_hlayout(builder);
                 text(builder, "Text 2");
-                button(builder, "Long Text Button 2", [](){ log_info("GUITest", "Button 2 pressed."); return ok; });
+                button(builder, "Long Text Button 4", [](){ log_info("GUITest", "Button 4 pressed."); return ok; });
             }
             end_vlayout(builder);
         }

@@ -18,9 +18,10 @@ namespace Luna
 {
     namespace GUI
     {
+        constexpr Float4U BUTTON_DEFAULT_PADDING(10, 10, 10, 10);
         LUNA_GUI_API f32 Button::get_desired_size_x(DesiredSizeType type, const f32* suggested_size_y)
         {
-            Float4U padding = get_vattr(this, VATTR_BUTTON_PADDING, true, Float4U(20, 20, 20, 20));
+            Float4U padding = get_vattr(this, VATTR_BUTTON_PADDING, true, BUTTON_DEFAULT_PADDING);
             f32 ret = 0;
             if(body)
             {
@@ -32,7 +33,6 @@ namespace Luna
             }
             return ret;
         }
-        constexpr Float4U BUTTON_DEFAULT_PADDING(20, 20, 20, 20);
         LUNA_GUI_API f32 Button::get_desired_size_y(DesiredSizeType type, const f32* suggested_size_x)
         {
             Float4U padding = get_vattr(this, VATTR_BUTTON_PADDING, true, BUTTON_DEFAULT_PADDING);
