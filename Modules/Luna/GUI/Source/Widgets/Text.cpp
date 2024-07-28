@@ -58,7 +58,7 @@ namespace Luna
                 get_vattr(this, VATTR_TEXT_COLOR, true, Float4U(1.0f)), 
                 get_sattr(this, SATTR_TEXT_SIZE, true, DEFAULT_TEXT_SIZE), 
                 bounding_rect.left, bounding_rect.top, bounding_rect.right, bounding_rect.bottom,
-                font, font_index);
+                font, font_index, 0.0, 0.0, vertical_alignment, horizontal_alignment);
             return ok;
         }
         LUNA_GUI_API Text* text(IWidgetBuilder* builder, const Name& text)

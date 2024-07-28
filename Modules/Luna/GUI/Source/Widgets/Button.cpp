@@ -21,8 +21,10 @@ namespace Luna
         constexpr Float4U BUTTON_DEFAULT_PADDING(10, 10, 10, 10);
         LUNA_GUI_API f32 Button::get_desired_size_x(DesiredSizeType type, const f32* suggested_size_y)
         {
+            bool attr_found = false;
+            f32 ret = get_desired_size_x_attr(this, type, &attr_found);
+            if(attr_found) return ret;
             Float4U padding = get_vattr(this, VATTR_BUTTON_PADDING, true, BUTTON_DEFAULT_PADDING);
-            f32 ret = 0;
             if(body)
             {
                 ret = body->get_desired_size_x(type, suggested_size_y);
@@ -35,8 +37,10 @@ namespace Luna
         }
         LUNA_GUI_API f32 Button::get_desired_size_y(DesiredSizeType type, const f32* suggested_size_x)
         {
+            bool attr_found = false;
+            f32 ret = get_desired_size_y_attr(this, type, &attr_found);
+            if(attr_found) return ret;
             Float4U padding = get_vattr(this, VATTR_BUTTON_PADDING, true, BUTTON_DEFAULT_PADDING);
-            f32 ret = 0;
             if(body)
             {
                 ret = body->get_desired_size_y(type, suggested_size_x);
@@ -242,7 +246,9 @@ namespace Luna
                 id = memhash32(t.c_str(), t.size());
             }
             Button* button = begin_button(builder, id, on_click);
-            text(builder, t);
+            Text* text_widget = text(builder, t);
+            text_widget->vertical_alignment = VG::TextAlignment::center;
+            text_widget->horizontal_alignment = VG::TextAlignment::center;
             end_button(builder);
             builder->set_current_widget(button);
             return button;

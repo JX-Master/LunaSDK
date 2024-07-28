@@ -17,9 +17,76 @@ namespace Luna
 {
     namespace GUI
     {
+        static Array<f32> compute_hlayout(const Vector<Ref<IWidget>>& children, f32 total_size, const f32* total_size_other)
+        {
+            // Arrange in X.
+            Array<f32> children_size(children.size() * 4, 0);
+            f32* allocated_size = children_size.data();
+            f32* required_size = children_size.data() + children.size();
+            f32* preferred_size = children_size.data() + children.size() * 2;
+            f32* filling_size = children_size.data() + children.size() * 3;
+            f32 allocated = 0;
+            // Allocate required size.
+            for(usize i = 0; i < children.size(); ++i)
+            {
+                required_size[i] = children[i]->get_desired_size_x(DesiredSizeType::required, total_size_other);
+                allocated_size[i] = required_size[i];
+                allocated += required_size[i];
+            }
+            // Allocate preferred size.
+            if(total_size > allocated)
+            {
+                f32 preferred_size_sum = 0;
+                for(usize i = 0; i < children.size(); ++i)
+                {
+                    preferred_size[i] = max(children[i]->get_desired_size_x(DesiredSizeType::preferred, total_size_other), required_size[i]);
+                    preferred_size_sum += preferred_size[i];
+                }
+                if(preferred_size_sum <= total_size)
+                {
+                    for(usize i = 0; i < children.size(); ++i)
+                    {
+                        allocated_size[i] = preferred_size[i];
+                    }
+                    allocated = preferred_size_sum;
+                }
+                else
+                {
+                    f32 ratio = total_size / preferred_size_sum;
+                    for(usize i = 0; i < children.size(); ++i)
+                    {
+                        allocated_size[i] = preferred_size[i] * ratio;
+                    }
+                    allocated = total_size;
+                }
+            }
+            // Allocate filling size.
+            if(total_size > allocated)
+            {
+                f32 total_filling_size = total_size - allocated;
+                f32 filling_size_weight = 0;
+                for(usize i = 0; i < children.size(); ++i)
+                {
+                    filling_size[i] = children[i]->get_desired_size_x(DesiredSizeType::filling, total_size_other);
+                    filling_size_weight += filling_size[i];
+                }
+                if(filling_size_weight > 0)
+                {
+                    f32 filling_size_per_unit = total_filling_size / filling_size_weight;
+                    for(usize i = 0; i < children.size(); ++i)
+                    {
+                        allocated_size[i] += filling_size_per_unit * filling_size[i];
+                    }
+                    allocated = total_size;
+                }
+            }
+            return children_size;
+        }
         LUNA_GUI_API f32 HorizontalLayout::get_desired_size_x(DesiredSizeType type, const f32* suggested_size_y)
         {
-            f32 ret = 0;
+            bool found = false;
+            f32 ret = get_desired_size_x_attr(this, type, &found);
+            if(found) return ret;
             if(type == DesiredSizeType::required || type == DesiredSizeType::preferred)
             {
                 for(auto& c : children)
@@ -35,12 +102,27 @@ namespace Luna
         }
         LUNA_GUI_API f32 HorizontalLayout::get_desired_size_y(DesiredSizeType type, const f32* suggested_size_x)
         {
-            f32 ret = 0;
+            bool found = false;
+            f32 ret = get_desired_size_y_attr(this, type, &found);
+            if(found) return ret;
             if(type == DesiredSizeType::required || type == DesiredSizeType::preferred)
             {
-                for(auto& c : children)
+                if(suggested_size_x)
                 {
-                    ret = max(c->get_desired_size_y(type, suggested_size_x), ret);
+                    // try to layout using the suggested size.
+                    Array<f32> children_size = compute_hlayout(children, *suggested_size_x, nullptr);
+                    f32* allocated_size = children_size.data();
+                    for(usize i = 0; i < children.size(); ++i)
+                    {
+                        ret = max(children[i]->get_desired_size_y(type, allocated_size + i), ret);
+                    }
+                }
+                else
+                {
+                    for(auto& c : children)
+                    {
+                        ret = max(c->get_desired_size_y(type, nullptr), ret);
+                    }
                 }
             }
             else
@@ -66,69 +148,10 @@ namespace Luna
             lutry
             {
                 luexp(Widget::layout(ctx, layout_rect));
-                // Arrange in X.
                 f32 total_size = layout_rect.right - layout_rect.left;
                 f32 total_size_other = layout_rect.bottom - layout_rect.top;
-                Array<f32> children_size(children.size() * 4, 0);
+                Array<f32> children_size = compute_hlayout(children, total_size, &total_size_other);
                 f32* allocated_size = children_size.data();
-                f32* required_size = children_size.data() + children.size();
-                f32* preferred_size = children_size.data() + children.size() * 2;
-                f32* filling_size = children_size.data() + children.size() * 3;
-                f32 allocated = 0;
-                // Allocate required size.
-                for(usize i = 0; i < children.size(); ++i)
-                {
-                    required_size[i] = children[i]->get_desired_size_x(DesiredSizeType::required, &total_size_other);
-                    allocated_size[i] = required_size[i];
-                    allocated += required_size[i];
-                }
-                // Allocate preferred size.
-                if(total_size > allocated)
-                {
-                    f32 preferred_size_sum = 0;
-                    for(usize i = 0; i < children.size(); ++i)
-                    {
-                        preferred_size[i] = max(children[i]->get_desired_size_x(DesiredSizeType::preferred, &total_size_other), required_size[i]);
-                        preferred_size_sum += preferred_size[i];
-                    }
-                    if(preferred_size_sum <= total_size)
-                    {
-                        for(usize i = 0; i < children.size(); ++i)
-                        {
-                            allocated_size[i] = preferred_size[i];
-                        }
-                        allocated = preferred_size_sum;
-                    }
-                    else
-                    {
-                        f32 ratio = total_size / preferred_size_sum;
-                        for(usize i = 0; i < children.size(); ++i)
-                        {
-                            allocated_size[i] = preferred_size[i] * ratio;
-                        }
-                        allocated = total_size;
-                    }
-                }
-                // Allocate filling size.
-                if(total_size > allocated)
-                {
-                    f32 total_filling_size = total_size - allocated;
-                    f32 filling_size_weight = 0;
-                    for(usize i = 0; i < children.size(); ++i)
-                    {
-                        filling_size[i] = children[i]->get_desired_size_x(DesiredSizeType::filling, &total_size_other);
-                        filling_size_weight += filling_size[i];
-                    }
-                    if(filling_size_weight > 0)
-                    {
-                        f32 filling_size_per_unit = total_filling_size / filling_size_weight;
-                        for(usize i = 0; i < children.size(); ++i)
-                        {
-                            allocated_size[i] += filling_size_per_unit * filling_size[i];
-                        }
-                        allocated = total_size;
-                    }
-                }
                 // Update children.
                 f32 current_offset = 0;
                 for(usize i = 0; i < children.size(); ++i)

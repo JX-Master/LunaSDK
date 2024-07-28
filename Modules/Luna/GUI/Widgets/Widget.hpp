@@ -70,25 +70,11 @@ namespace Luna
             }
             virtual f32 get_desired_size_x(DesiredSizeType type, const f32* suggested_size_y) override
             {
-                u32 attr = 0;
-                switch(type)
-                {
-                    case DesiredSizeType::required: attr = SATTR_REQUIRED_SIZE_X; break;
-                    case DesiredSizeType::preferred: attr = SATTR_PREFERRED_SIZE_X; break;
-                    case DesiredSizeType::filling: attr = SATTR_FILLING_SIZE_X; break;
-                }
-                return get_sattr(this, attr, false, 0.0f);
+                return get_desired_size_x_attr(this, type);
             }
             virtual f32 get_desired_size_y(DesiredSizeType type, const f32* suggested_size_x) override
             {
-                u32 attr = 0;
-                switch(type)
-                {
-                    case DesiredSizeType::required: attr = SATTR_REQUIRED_SIZE_Y; break;
-                    case DesiredSizeType::preferred: attr = SATTR_PREFERRED_SIZE_Y; break;
-                    case DesiredSizeType::filling: attr = SATTR_FILLING_SIZE_Y; break;
-                }
-                return get_sattr(this, attr, false, 0.0f);
+                return get_desired_size_y_attr(this, type);
             }
             virtual RV begin_update(IContext* ctx) override
             {

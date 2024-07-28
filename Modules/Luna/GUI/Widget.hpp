@@ -129,5 +129,7 @@ namespace Luna
         LUNA_GUI_API Float4U get_vattr(IWidget* widget, u32 key, bool recursive = false, const Float4U& default_value = Float4U(0), bool* found = nullptr);
         LUNA_GUI_API Name get_tattr(IWidget* widget, u32 key, bool recursive = false, const Name& default_value = Name(), bool* found = nullptr);
         LUNA_GUI_API object_t get_oattr(IWidget* widget, u32 key, bool recursive = false, object_t default_value = nullptr, bool* found = nullptr);
+        LUNA_GUI_API f32 get_desired_size_x_attr(IWidget* widget, DesiredSizeType type, bool* found = nullptr);
+        LUNA_GUI_API f32 get_desired_size_y_attr(IWidget* widget, DesiredSizeType type, bool* found = nullptr);
     }
 }

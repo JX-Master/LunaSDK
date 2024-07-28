@@ -24,6 +24,8 @@ namespace Luna
             lustruct("GUI::Text", "{06fa0393-d4f9-4dce-b340-d9790b36c732}");
 
             Name text;
+            VG::TextAlignment vertical_alignment = VG::TextAlignment::begin;
+            VG::TextAlignment horizontal_alignment = VG::TextAlignment::begin;
 
             LUNA_GUI_API virtual f32 get_desired_size_x(DesiredSizeType type, const f32* suggested_size_y) override;
             LUNA_GUI_API virtual f32 get_desired_size_y(DesiredSizeType type, const f32* suggested_size_x) override;

@@ -38,5 +38,27 @@ namespace Luna
             IWidget* widget = builder->get_current_widget();
             widget->get_tattrs().insert_or_assign(kind, value);
         }
+        LUNA_GUI_API f32 get_desired_size_x_attr(IWidget* widget, DesiredSizeType type, bool* found)
+        {
+            u32 attr = 0;
+            switch(type)
+            {
+                case DesiredSizeType::required: attr = SATTR_REQUIRED_SIZE_X; break;
+                case DesiredSizeType::preferred: attr = SATTR_PREFERRED_SIZE_X; break;
+                case DesiredSizeType::filling: attr = SATTR_FILLING_SIZE_X; break;
+            }
+            return get_sattr(widget, attr, false, 0.0f, found);
+        }
+        LUNA_GUI_API f32 get_desired_size_y_attr(IWidget* widget, DesiredSizeType type, bool* found)
+        {
+            u32 attr = 0;
+            switch(type)
+            {
+                case DesiredSizeType::required: attr = SATTR_REQUIRED_SIZE_Y; break;
+                case DesiredSizeType::preferred: attr = SATTR_PREFERRED_SIZE_Y; break;
+                case DesiredSizeType::filling: attr = SATTR_FILLING_SIZE_Y; break;
+            }
+            return get_sattr(widget, attr, false, 0.0f, found);
+        }
     }
 }
