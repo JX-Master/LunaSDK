@@ -239,7 +239,7 @@ namespace Luna
                 }
                 cmdbuf->resource_barrier({}, { barriers.data(), (u32)barriers.size()});
                 RenderPassDesc desc;
-                desc.color_attachments[0] = ColorAttachment(m_render_target, LoadOp::clear, StoreOp::store, Float4U{ 0.0f });
+                desc.color_attachments[0] = ColorAttachment(m_render_target, LoadOp::load, StoreOp::store);
                 cmdbuf->begin_render_pass(desc);
                 cmdbuf->set_graphics_pipeline_state(m_fill_pso);
                 cmdbuf->set_graphics_pipeline_layout(g_fill_playout);
