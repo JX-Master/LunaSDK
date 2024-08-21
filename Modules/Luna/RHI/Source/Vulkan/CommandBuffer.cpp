@@ -773,7 +773,7 @@ namespace Luna
                 // The copy is performed one per mips.
                 u32 mip_levels = td->m_desc.mip_levels;
                 u32 array_count = td->m_desc.array_size;
-                luassert(copies, VkImageCopy, mip_levels);
+                lualloca(copies, VkImageCopy, mip_levels);
                 for (u32 mip = 0; mip < mip_levels; ++mip)
                 {
                     VkImageCopy& copy = copies[mip];
