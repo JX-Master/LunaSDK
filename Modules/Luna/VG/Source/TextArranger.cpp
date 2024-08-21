@@ -336,6 +336,69 @@ namespace Luna
             return res;
         }
 
+        LUNA_VG_API void generate_text_arrange_result_draw_vertices(
+            const TextArrangeResult& result,
+            Span<const TextArrangeSection> sections,
+            IFontAtlas* font_atlas,
+            Vector<Vertex>& out_vertices, Vector<u32>& out_indices
+        )
+        {
+            usize state_index = 0;
+            usize next_section_begin = sections[state_index].num_chars;
+            font_atlas->set_font(sections[state_index].font_file, sections[state_index].font_index);
+            // write glyphs to font atlas.
+            usize num_glyphs = 0;
+            for (auto& line : result.lines)
+            {
+                num_glyphs += line.glyphs.size();
+                // for (auto& glyph : line.glyphs)
+                // {
+                //     font_atlas->get_glyph(glyph.character, nullptr, nullptr, nullptr);
+                // }
+            }
+            out_vertices.reserve(out_vertices.size() + num_glyphs * 4);
+            out_indices.reserve(out_indices.size() + num_glyphs * 6);
+            IShapeBuffer* shape_buffer = font_atlas->get_shape_buffer();
+            for (auto& line : result.lines)
+            {
+                for (auto& glyph : line.glyphs)
+                {
+                    usize cursor = glyph.index;
+                    while ((state_index < sections.size() - 1) && (next_section_begin <= cursor))
+                    {
+                        ++state_index;
+                        next_section_begin += sections[state_index].num_chars;
+                        font_atlas->set_font(sections[state_index].font_file, sections[state_index].font_index);
+                    }
+                    // Draw this glyph.
+                    usize size;
+                    RectF shape_coord;
+                    usize offset;
+                    font_atlas->get_glyph(glyph.character, &offset, &size, &shape_coord);
+                    if (glyph.bounding_rect.width != 0.0f && glyph.bounding_rect.height != 0.0f)
+                    {
+                        Vertex vertices[4];
+                        u32 indices[6];
+                        u32 idx_offset = (u32)out_vertices.size();
+                        get_rect_shape_draw_vertices(vertices, indices, (u32)offset, (u32)size,
+                            Float2U(glyph.bounding_rect.offset_x, glyph.bounding_rect.offset_y),
+                            Float2U(glyph.bounding_rect.offset_x + glyph.bounding_rect.width, glyph.bounding_rect.offset_y + glyph.bounding_rect.height),
+                            Float2U(shape_coord.offset_x, shape_coord.offset_y),
+                            Float2U(shape_coord.offset_x + shape_coord.width, shape_coord.offset_y + shape_coord.height),
+                            sections[state_index].color);
+                        indices[0] += idx_offset;
+                        indices[1] += idx_offset;
+                        indices[2] += idx_offset;
+                        indices[3] += idx_offset;
+                        indices[4] += idx_offset;
+                        indices[5] += idx_offset;
+                        out_vertices.insert(out_vertices.end(), Span<const Vertex>{vertices, 4});
+                        out_indices.insert(out_indices.end(), Span<const u32>{indices, 6});
+                    }
+                }
+            }
+        }
+
         LUNA_VG_API void commit_text_arrange_result(
             const TextArrangeResult& result,
             Span<const TextArrangeSection> sections,
@@ -347,13 +410,13 @@ namespace Luna
             usize next_section_begin = sections[state_index].num_chars;
             font_atlas->set_font(sections[state_index].font_file, sections[state_index].font_index);
             // write glyphs to font atlas.
-            for (auto& line : result.lines)
-            {
-                for (auto& glyph : line.glyphs)
-                {
-                    font_atlas->get_glyph(glyph.character, nullptr, nullptr, nullptr); 
-                }
-            }
+            // for (auto& line : result.lines)
+            // {
+            //     for (auto& glyph : line.glyphs)
+            //     {
+            //         font_atlas->get_glyph(glyph.character, nullptr, nullptr, nullptr); 
+            //     }
+            // }
             IShapeBuffer* shape_buffer = font_atlas->get_shape_buffer();
             Ref<IShapeBuffer> old_shape_buffer = draw_list->get_shape_buffer();
             draw_list->set_shape_buffer(shape_buffer);

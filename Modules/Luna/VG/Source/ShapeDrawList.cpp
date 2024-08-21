@@ -63,37 +63,17 @@ namespace Luna
             auto& dc = get_current_draw_call();
             u32 idx_offset = (u32)m_vertices.size();
             Vertex v[4];
-            v[0].position = min_position;
-            //v[1].position = Float2U(min_position.x, max_position.y);
-            v[1].position.x = min_position.x;
-            v[1].position.y = max_position.y;
-            v[2].position = max_position;
-            //v[3].position = Float2U(max_position.x, min_position.y);
-            v[3].position.x = max_position.x;
-            v[3].position.y = min_position.y;
-            v[0].shapecoord = min_shapecoord;
-            //v[1].shapecoord = Float2U(min_shapecoord.x, max_shapecoord.y);
-            v[1].shapecoord.x = min_shapecoord.x;
-            v[1].shapecoord.y = max_shapecoord.y;
-            v[2].shapecoord = max_shapecoord;
-            //v[3].shapecoord = Float2U(max_shapecoord.x, min_shapecoord.y);
-            v[3].shapecoord.x = max_shapecoord.x;
-            v[3].shapecoord.y = min_shapecoord.y;
-            v[0].texcoord = min_texcoord;
-            //v[1].texcoord = Float2U(min_texcoord.x, max_texcoord.y);
-            v[1].texcoord.x = min_texcoord.x;
-            v[1].texcoord.y = max_texcoord.y;
-            v[2].texcoord = max_texcoord;
-            //v[3].texcoord = Float2U(max_texcoord.x, min_texcoord.y);
-            v[3].texcoord.x = max_texcoord.x;
-            v[3].texcoord.y = min_texcoord.y;
-            v[0].color = v[1].color = v[2].color = v[3].color = color;
-            v[0].begin_command = v[1].begin_command = v[2].begin_command = v[3].begin_command = begin_command;
-            v[0].num_commands = v[1].num_commands = v[2].num_commands = v[3].num_commands = num_commands;
+            u32 indices[6];
+            get_rect_shape_draw_vertices(v, indices, begin_command, num_commands, 
+                min_position, max_position, min_shapecoord, max_shapecoord,
+                color, min_texcoord, max_texcoord);
             m_vertices.insert(m_vertices.end(), Span<Vertex>(v, 4));
-            u32 indices[] = {
-                idx_offset , idx_offset + 1, idx_offset + 2,
-                idx_offset , idx_offset + 2, idx_offset + 3 };
+            indices[0] += idx_offset;
+            indices[1] += idx_offset;
+            indices[2] += idx_offset;
+            indices[3] += idx_offset;
+            indices[4] += idx_offset;
+            indices[5] += idx_offset;
             m_indices.insert(m_indices.end(), Span<u32>(indices, 6));
             dc.num_indices += 6;
         }
@@ -150,6 +130,47 @@ namespace Luna
             }
             lucatchret;
             return ok;
+        }
+        LUNA_VG_API void get_rect_shape_draw_vertices(Vertex out_vertices[4], u32 out_indices[6],
+            u32 begin_command, u32 num_commands,
+            const Float2U& min_position, const Float2U& max_position,
+            const Float2U& min_shapecoord, const Float2U& max_shapecoord,
+            const Float4U& color,
+            const Float2U& min_texcoord, const Float2U& max_texcoord)
+        {
+            out_vertices[0].position = min_position;
+            //out_vertices[1].position = Float2U(min_position.x, max_position.y);
+            out_vertices[1].position.x = min_position.x;
+            out_vertices[1].position.y = max_position.y;
+            out_vertices[2].position = max_position;
+            //out_vertices[3].position = Float2U(max_position.x, min_position.y);
+            out_vertices[3].position.x = max_position.x;
+            out_vertices[3].position.y = min_position.y;
+            out_vertices[0].shapecoord = min_shapecoord;
+            //out_vertices[1].shapecoord = Float2U(min_shapecoord.x, max_shapecoord.y);
+            out_vertices[1].shapecoord.x = min_shapecoord.x;
+            out_vertices[1].shapecoord.y = max_shapecoord.y;
+            out_vertices[2].shapecoord = max_shapecoord;
+            //out_vertices[3].shapecoord = Float2U(max_shapecoord.x, min_shapecoord.y);
+            out_vertices[3].shapecoord.x = max_shapecoord.x;
+            out_vertices[3].shapecoord.y = min_shapecoord.y;
+            out_vertices[0].texcoord = min_texcoord;
+            //out_vertices[1].texcoord = Float2U(min_texcoord.x, max_texcoord.y);
+            out_vertices[1].texcoord.x = min_texcoord.x;
+            out_vertices[1].texcoord.y = max_texcoord.y;
+            out_vertices[2].texcoord = max_texcoord;
+            //out_vertices[3].texcoord = Float2U(max_texcoord.x, min_texcoord.y);
+            out_vertices[3].texcoord.x = max_texcoord.x;
+            out_vertices[3].texcoord.y = min_texcoord.y;
+            out_vertices[0].color = out_vertices[1].color = out_vertices[2].color = out_vertices[3].color = color;
+            out_vertices[0].begin_command = out_vertices[1].begin_command = out_vertices[2].begin_command = out_vertices[3].begin_command = begin_command;
+            out_vertices[0].num_commands = out_vertices[1].num_commands = out_vertices[2].num_commands = out_vertices[3].num_commands = num_commands;
+            out_indices[0] = 0;
+            out_indices[1] = 1;
+            out_indices[2] = 2;
+            out_indices[3] = 0;
+            out_indices[4] = 2;
+            out_indices[5] = 3;
         }
         LUNA_VG_API Ref<IShapeDrawList> new_shape_draw_list(RHI::IDevice* device)
         {
