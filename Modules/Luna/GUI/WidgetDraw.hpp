@@ -21,16 +21,16 @@ namespace Luna
     namespace GUI
     {
         LUNA_GUI_API void draw_rectangle_filled(IContext* ctx, IDrawList* draw_list, 
-            f32 min_x, f32 min_y, f32 max_x, f32 max_y, const Float4& color);
+            f32 min_x, f32 min_y, f32 max_x, f32 max_y, const Float4U& color);
 
         LUNA_GUI_API void draw_rectangle_bordered(IContext* ctx, IDrawList* draw_list, 
-            f32 min_x, f32 min_y, f32 max_x, f32 max_y, const Float4& color, f32 border_width);
+            f32 min_x, f32 min_y, f32 max_x, f32 max_y, const Float4U& color, f32 border_width, f32 border_offset = 0.0f);
 
         LUNA_GUI_API void draw_rounded_rectangle_filled(IContext* ctx, IDrawList* draw_list, 
-            f32 min_x, f32 min_y, f32 max_x, f32 max_y, const Float4& color, f32 radius);
+            f32 min_x, f32 min_y, f32 max_x, f32 max_y, const Float4U& color, f32 radius);
 
         LUNA_GUI_API void draw_rounded_rectangle_bordered(IContext* ctx, IDrawList* draw_list, 
-            f32 min_x, f32 min_y, f32 max_x, f32 max_y, const Float4& color, f32 radius, f32 border_width);
+            f32 min_x, f32 min_y, f32 max_x, f32 max_y, const Float4U& color, f32 radius, f32 border_width);
 
         LUNA_GUI_API void draw_text(IContext* ctx, IDrawList* draw_list, 
             const c8* text, usize text_len, 

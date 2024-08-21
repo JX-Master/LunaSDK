@@ -10,10 +10,6 @@
 #pragma once
 #include "Widget.hpp"
 
-#ifndef LUNA_GUI_API
-#define LUNA_GUI_API
-#endif
-
 namespace Luna
 {
     namespace GUI
@@ -22,7 +18,7 @@ namespace Luna
         {
             lustruct("GUI::Rectangle", "{d0e27859-1439-4089-bf55-b8fe82b24c47}");
 
-            LUNA_GUI_API virtual RV draw(IContext* ctx, IDrawList* draw_list) override;
+            LUNA_GUI_API virtual RV draw(IContext* ctx, IDrawList* draw_list, IDrawList* overlay_draw_list) override;
         };
     }
 }

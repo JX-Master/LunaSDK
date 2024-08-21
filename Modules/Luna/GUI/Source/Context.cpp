@@ -34,48 +34,6 @@ namespace Luna
         {
             m_widget_state_reg.insert_or_assign(id, WidgetStateEntry(ObjRef(state), lifetime));
         }
-        RV Context::dispatch_mouse_event(MouseEvent* me, bool& handled)
-        {
-            lutry
-            {
-                if (!m_root_widget->contains_point(me->x, me->y)) return ok;
-                // Walk the widget tree to find one widget that is suitable for this event.
-                Vector<IWidget*> widgets;
-                Vector<IContainer*> container_stack;
-                container_stack.push_back(query_interface<IContainer>(m_root_widget->get_object()));
-                Vector<IWidget*> children;
-                while(!container_stack.empty())
-                {
-                    children.clear();
-                    IContainer* container = container_stack.back();
-                    container_stack.pop_back();
-                    widgets.push_back(container);
-                    container->get_children(children);
-                    for(auto iter = children.begin(); iter != children.end(); ++iter)
-                    {
-                        IWidget* c = *iter;
-                        if(c->contains_point(me->x, me->y))
-                        {
-                            widgets.push_back(c);
-                            IContainer* child_container = query_interface<IContainer>(c->get_object());
-                            if(child_container)
-                            {
-                                container_stack.push_back(child_container);
-                            }
-                        }
-                    }
-                }
-                // Dispatch event to all widgets.
-                for(auto iter = widgets.begin(); iter != widgets.end(); ++iter)
-                {
-                    IWidget* w = *iter;
-                    luexp(w->handle_event(this, me, handled));
-                    if(handled) return ok;
-                }
-            }
-            lucatchret;
-            return ok;
-        }
         RV Context::dispatch_event(object_t e)
         {
             lutry
@@ -94,7 +52,7 @@ namespace Luna
                 MouseEvent* me = cast_object<MouseEvent>(e);
                 if(me)
                 {
-                    luexp(dispatch_mouse_event(me, handled));
+                    luexp(dispatch_event_by_pos(this, m_root_widget, e, me->x, me->y, handled));
                     if(handled) return ok;
                 }
                 // No widget can handle this event, do nothing.
@@ -137,9 +95,9 @@ namespace Luna
             lucatchret;
             return ok;
         }
-        RV Context::render(IDrawList* draw_list)
+        RV Context::render(IDrawList* draw_list, IDrawList* overlay_draw_list)
         {
-            return m_root_widget->draw(this, draw_list);
+            return m_root_widget->draw(this, draw_list, overlay_draw_list);
         }
         LUNA_GUI_API Ref<IContext> new_context()
         {

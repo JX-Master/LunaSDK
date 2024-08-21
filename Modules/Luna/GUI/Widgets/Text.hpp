@@ -11,10 +11,6 @@
 #include "Widget.hpp"
 #include <Luna/VG/TextArranger.hpp>
 
-#ifndef LUNA_GUI_API
-#define LUNA_GUI_API
-#endif
-
 namespace Luna
 {
     namespace GUI
@@ -30,7 +26,7 @@ namespace Luna
             LUNA_GUI_API virtual f32 get_desired_size_x(DesiredSizeType type, const f32* suggested_size_y) override;
             LUNA_GUI_API virtual f32 get_desired_size_y(DesiredSizeType type, const f32* suggested_size_x) override;
 
-            LUNA_GUI_API virtual RV draw(IContext* ctx, IDrawList* draw_list) override;
+            LUNA_GUI_API virtual RV draw(IContext* ctx, IDrawList* draw_list, IDrawList* overlay_draw_list) override;
         };
     }
 }

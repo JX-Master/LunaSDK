@@ -101,7 +101,7 @@ namespace Luna
             {
                 return ok;
             }
-            virtual RV draw(IContext* ctx, IDrawList* draw_list) override
+            virtual RV draw(IContext* ctx, IDrawList* draw_list, IDrawList* overlay_draw_list) override
             {
                 return ok;
             }

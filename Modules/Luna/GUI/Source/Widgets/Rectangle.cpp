@@ -18,7 +18,7 @@ namespace Luna
 {
     namespace GUI
     {
-        LUNA_GUI_API RV Rectangle::draw(IContext* ctx, IDrawList* draw_list)
+        LUNA_GUI_API RV Rectangle::draw(IContext* ctx, IDrawList* draw_list, IDrawList* overlay_draw_list)
         {
             Float4U background_color = get_vattr(this, VATTR_BACKGROUND_COLOR, true, Float4U(0));
             f32 rounding_radius = get_sattr(this, SATTR_ROUNDED_CORNER_RADIUS, true, 0.0f);

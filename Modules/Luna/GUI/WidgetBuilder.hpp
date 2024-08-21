@@ -29,16 +29,12 @@ namespace Luna
 
             virtual void push_id(const Name& name_id) = 0;
             virtual void push_id(const c8* str_id, usize str_len) = 0;
-            virtual void push_id(const void* ptr_id) = 0;
-            virtual void push_id(i32 int_id) = 0;
             virtual void pop_id() = 0;
 
             //! Generates widget ID based on the current widget ID stack.
             virtual widget_id_t get_id() = 0;
             virtual widget_id_t get_id(const Name& name_id) = 0;
             virtual widget_id_t get_id(const c8* str_id, usize str_len) = 0;
-            virtual widget_id_t get_id(const void* ptr_id) = 0;
-            virtual widget_id_t get_id(i32 int_id) = 0;
 
             virtual IWidget* get_root_widget() = 0;
 

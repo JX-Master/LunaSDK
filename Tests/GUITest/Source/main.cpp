@@ -24,6 +24,17 @@ void on_window_close(Window::IWindow* window)
     window->close();
 }
 
+inline void window_pos_to_gui_pos(Window::IWindow* window, i32& x, i32& y)
+{
+    auto size = window->get_size();
+    auto gui_size = window->get_framebuffer_size() / window->get_dpi_scale_factor();
+    if(size != gui_size)
+    {
+        x = x * gui_size.x / size.x;
+        y = y * gui_size.y / size.y;
+    }
+}
+
 void run()
 {
     set_log_to_platform_enabled(true);
@@ -55,14 +66,17 @@ void run()
     Ref<GUI::IWidgetBuilder> builder = GUI::new_widget_builder();
 
     Ref<VG::IShapeDrawList> draw_list = VG::new_shape_draw_list(dev);
+    Ref<VG::IShapeDrawList> overlay_draw_list = VG::new_shape_draw_list(dev);
 
     Ref<GUI::IDrawList> gui_draw_list = GUI::new_draw_list();
+    Ref<GUI::IDrawList> gui_overlay_draw_list = GUI::new_draw_list();
 
     Ref<VG::IShapeRenderer> renderer = VG::new_fill_shape_renderer();
 
     window->get_mouse_move_event().add_handler([ctx](IWindow* window, i32 x, i32 y)
     {
         Ref<GUI::MouseMoveEvent> e = new_object<GUI::MouseMoveEvent>();
+        window_pos_to_gui_pos(window, x, y);
         e->x = (f32)x;
         e->y = (f32)y;
         ctx->push_event(e);
@@ -72,6 +86,7 @@ void run()
     {
         Ref<GUI::MouseButtonEvent> e = new_object<GUI::MouseButtonEvent>();
         auto pos = window->screen_to_client(HID::get_mouse_pos());
+        window_pos_to_gui_pos(window, pos.x, pos.y);
         e->x = pos.x;
         e->y = pos.y;
         e->button = button;
@@ -83,6 +98,7 @@ void run()
     {
         Ref<GUI::MouseButtonEvent> e = new_object<GUI::MouseButtonEvent>();
         auto pos = window->screen_to_client(HID::get_mouse_pos());
+        window_pos_to_gui_pos(window, pos.x, pos.y);
         e->x = pos.x;
         e->y = pos.y;
         e->button = button;
@@ -120,7 +136,7 @@ void run()
             h = wh;
         }
         auto& io = ctx->get_io();
-        auto gui_size = window->get_size();
+        auto gui_size = window->get_framebuffer_size() / window->get_dpi_scale_factor();
         io.width = gui_size.x;
         io.height = gui_size.y;
         builder->reset();
@@ -179,43 +195,80 @@ void run()
         //     }
         // }
         {
-            begin_vlayout(builder);
-            set_sattr(builder, SATTR_TEXT_SIZE, 64.0f);
+            begin_dockspace(builder);
             {
-                text(builder, "Text 1");
-                begin_hlayout(builder);
-                button(builder, "Button 1", [](){ log_info("GUIText", "Button 1 pressed."); return ok; });
-                button(builder, "Button 2", [](){ log_info("GUIText", "Button 2 pressed."); return ok; });
-                button(builder, "Button 3", [](){ log_info("GUIText", "Button 3 pressed."); return ok; });
-                end_hlayout(builder);
-                text(builder, "Text 2");
-                button(builder, "Long Text Button 4", [](){ log_info("GUITest", "Button 4 pressed."); return ok; });
+                auto vlayout = begin_vlayout(builder);
+                set_sattr(builder, SATTR_TEXT_SIZE, 64.0f);
+                Name title("Test Window 1");
+                set_tattr(builder, TATTR_TITLE, title);
+                builder->push_id(title);
+                vlayout->id = builder->get_id();
+                {
+                    text(builder, "Text 1");
+                    begin_hlayout(builder);
+                    {
+                        button(builder, "Button 1", [](){ log_info("GUIText", "Button 1 pressed."); return ok; });
+                        button(builder, "Button 2", [](){ log_info("GUIText", "Button 2 pressed."); return ok; });
+                        button(builder, "Button 3", [](){ log_info("GUIText", "Button 3 pressed."); return ok; });
+                    }
+                    end_hlayout(builder);
+                    text(builder, "Text 2");
+                    button(builder, "Long Text Button 4", [](){ log_info("GUITest", "Button 4 pressed."); return ok; });
+                }
+                builder->pop_id();
+                end_vlayout(builder);
+
+                vlayout = begin_vlayout(builder);
+                set_sattr(builder, SATTR_TEXT_SIZE, 64.0f);
+                title = "Test Window 2";
+                set_tattr(builder, TATTR_TITLE, title);
+                builder->push_id(title);
+                vlayout->id = builder->get_id();
+                {
+                    text(builder, "Text 3");
+                    begin_hlayout(builder);
+                    {
+                        button(builder, "Button 1", [](){ log_info("GUIText", "Button 4 pressed."); return ok; });
+                        button(builder, "Button 2", [](){ log_info("GUIText", "Button 5 pressed."); return ok; });
+                        button(builder, "Button 3", [](){ log_info("GUIText", "Button 6 pressed."); return ok; });
+                    }
+                    end_hlayout(builder);
+                }
+                builder->pop_id();
+                end_vlayout(builder);
             }
-            end_vlayout(builder);
+            end_dockspace(builder);
         }
         end_canvas(builder);
         ctx->set_widget(builder->get_root_widget());
         lupanic_if_failed(ctx->update());
         gui_draw_list->begin(draw_list);
-        lupanic_if_failed(ctx->render(gui_draw_list));
+        gui_overlay_draw_list->begin(overlay_draw_list);
+        lupanic_if_failed(ctx->render(gui_draw_list, gui_overlay_draw_list));
+        gui_overlay_draw_list->end();
         gui_draw_list->end();
         lupanic_if_failed(draw_list->compile());
+        lupanic_if_failed(overlay_draw_list->compile());
         
         auto back_buffer = swap_chain->get_current_back_buffer().get();
-        lupanic_if_failed(renderer->set_render_target(back_buffer));
+        lupanic_if_failed(renderer->begin(back_buffer));
         RenderPassDesc desc;
         desc.color_attachments[0] = ColorAttachment(back_buffer, LoadOp::clear, StoreOp::store, { 0.0f, 0.0f, 0.0f, 1.0f });
         cmdbuf->begin_render_pass(desc);
         cmdbuf->end_render_pass();
 
         Float4x4U projection = ProjectionMatrix::make_orthographic_off_center(0 , (f32)gui_size.x, 0, (f32)gui_size.y, 0, 1);
-        lupanic_if_failed(renderer->render(cmdbuf, draw_list->get_vertex_buffer(), draw_list->get_index_buffer(), draw_list->get_draw_calls(), &projection));
+        renderer->draw(draw_list->get_vertex_buffer(), draw_list->get_index_buffer(), draw_list->get_draw_calls(), &projection);
+        renderer->draw(overlay_draw_list->get_vertex_buffer(), overlay_draw_list->get_index_buffer(), overlay_draw_list->get_draw_calls(), &projection);
+        lupanic_if_failed(renderer->end());
+        renderer->submit(cmdbuf);
         cmdbuf->resource_barrier({}, {TextureBarrier(back_buffer, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::present)});
         lupanic_if_failed(cmdbuf->submit({}, {}, true));
         cmdbuf->wait();
         lupanic_if_failed(swap_chain->present());
         lupanic_if_failed(cmdbuf->reset());
         draw_list->reset();
+        overlay_draw_list->reset();
     }
 }
 

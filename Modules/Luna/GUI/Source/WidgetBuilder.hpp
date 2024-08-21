@@ -26,7 +26,7 @@ namespace Luna
             virtual RV begin_update(IContext* ctx) override;
             virtual RV layout(IContext* ctx, const OffsetRectF& layout_rect) override;
             virtual RV update(IContext* ctx) override;
-            virtual RV draw(IContext* ctx, IDrawList* draw_list) override;
+            virtual RV draw(IContext* ctx, IDrawList* draw_list, IDrawList* overlay_draw_list) override;
             virtual void add_child(IWidget* child) override
             {
                 children.push_back(child);
@@ -76,14 +76,6 @@ namespace Luna
             {
                 m_id_stack.push_back(get_id(str_id, str_len));
             }
-            virtual void push_id(const void* ptr_id) override
-            {
-                m_id_stack.push_back(get_id(ptr_id));
-            }
-            virtual void push_id(i32 int_id) override
-            {
-                m_id_stack.push_back(get_id(int_id));
-            }
             virtual void pop_id() override
             {
                 m_id_stack.pop_back();
@@ -103,14 +95,6 @@ namespace Luna
             {
                 if(str_len == USIZE_MAX) str_len = strlen(str_id);
                 return memhash32(str_id, str_len, get_id());
-            }
-            virtual widget_id_t get_id(const void* ptr_id) override
-            {
-                return memhash32(&ptr_id, sizeof(void*), get_id());
-            }
-            virtual widget_id_t get_id(i32 int_id) override
-            {
-                return memhash32(&int_id, sizeof(i32), get_id());
             }
             virtual IWidget* get_root_widget() override
             {

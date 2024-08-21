@@ -12,76 +12,12 @@
 #include "../../Widgets/VerticalLayout.hpp"
 #include "../../Layout.hpp"
 #include "../../WidgetBuilder.hpp"
+#include "../../LayoutUtils.hpp"
 
 namespace Luna
 {
     namespace GUI
     {
-        static Array<f32> compute_vlayout(const Vector<Ref<IWidget>>& children, f32 total_size, const f32* total_size_other)
-        {
-            // Arrange in Y.
-            Array<f32> children_size(children.size() * 4, 0);
-            f32* allocated_size = children_size.data();
-            f32* required_size = children_size.data() + children.size();
-            f32* preferred_size = children_size.data() + children.size() * 2;
-            f32* filling_size = children_size.data() + children.size() * 3;
-            f32 allocated = 0;
-            // Allocate required size.
-            for(usize i = 0; i < children.size(); ++i)
-            {
-                required_size[i] = children[i]->get_desired_size_y(DesiredSizeType::required, total_size_other);
-                allocated_size[i] = required_size[i];
-                allocated += required_size[i];
-            }
-            // Allocate preferred size.
-            if(total_size > allocated)
-            {
-                f32 preferred_size_sum = 0;
-                for(usize i = 0; i < children.size(); ++i)
-                {
-                    preferred_size[i] = max(children[i]->get_desired_size_y(DesiredSizeType::preferred, total_size_other), required_size[i]);
-                    preferred_size_sum += preferred_size[i];
-                }
-                if(preferred_size_sum <= total_size)
-                {
-                    for(usize i = 0; i < children.size(); ++i)
-                    {
-                        allocated_size[i] = preferred_size[i];
-                    }
-                    allocated = preferred_size_sum;
-                }
-                else
-                {
-                    f32 ratio = total_size / preferred_size_sum;
-                    for(usize i = 0; i < children.size(); ++i)
-                    {
-                        allocated_size[i] = preferred_size[i] * ratio;
-                    }
-                    allocated = total_size;
-                }
-            }
-            // Allocate filling size.
-            if(total_size > allocated)
-            {
-                f32 total_filling_size = total_size - allocated;
-                f32 filling_size_weight = 0;
-                for(usize i = 0; i < children.size(); ++i)
-                {
-                    filling_size[i] = children[i]->get_desired_size_y(DesiredSizeType::filling, total_size_other);
-                    filling_size_weight += filling_size[i];
-                }
-                if(filling_size_weight > 0)
-                {
-                    f32 filling_size_per_unit = total_filling_size / filling_size_weight;
-                    for(usize i = 0; i < children.size(); ++i)
-                    {
-                        allocated_size[i] += filling_size_per_unit * filling_size[i];
-                    }
-                    allocated = total_size;
-                }
-            }
-            return children_size;
-        }
         LUNA_GUI_API f32 VerticalLayout::get_desired_size_x(DesiredSizeType type, const f32* suggested_size_y)
         {
             bool found = false;
@@ -92,7 +28,15 @@ namespace Luna
                 if(suggested_size_y)
                 {
                     // try to layout using the suggested size.
-                    Array<f32> children_size = compute_vlayout(children, *suggested_size_y, nullptr);
+                    Array<f32> children_size(children.size() * 4);
+                    Array<IWidget*> children_widgets(children.size());
+                    for(usize i = 0; i < children.size(); ++i)
+                    {
+                        children_widgets[i] = children[i];
+                    }
+                    calc_vlayout(children_widgets.data(), children_widgets.size(), *suggested_size_y, nullptr,
+                        children_size.data(), children_size.data() + children.size(),
+                        children_size.data() + children.size() * 2, children_size.data() + children.size() * 3);
                     f32* allocated_size = children_size.data();
                     for(usize i = 0; i < children.size(); ++i)
                     {
@@ -142,10 +86,18 @@ namespace Luna
                 luexp(Widget::layout(ctx, layout_rect));
                 f32 total_size = layout_rect.bottom - layout_rect.top;
                 f32 total_size_other = layout_rect.right - layout_rect.left;
-                Array<f32> children_size = compute_vlayout(children, total_size, &total_size_other);
+                Array<f32> children_size(children.size() * 4);
+                Array<IWidget*> children_widgets(children.size());
+                for(usize i = 0; i < children.size(); ++i)
+                {
+                    children_widgets[i] = children[i];
+                }
+                calc_vlayout(children_widgets.data(), children_widgets.size(), total_size, &total_size_other,
+                    children_size.data(), children_size.data() + children.size(),
+                    children_size.data() + children.size() * 2, children_size.data() + children.size() * 3);
                 f32* allocated_size = children_size.data();
                 // Update children.
-                f32 current_offset = 0;
+                f32 current_offset = layout_rect.top;
                 for(usize i = 0; i < children.size(); ++i)
                 {
                     OffsetRectF rect(layout_rect.left, current_offset, layout_rect.right, current_offset + allocated_size[i]);
@@ -168,13 +120,13 @@ namespace Luna
             lucatchret;
             return ok;
         }
-        LUNA_GUI_API RV VerticalLayout::draw(IContext* ctx, IDrawList* draw_list)
+        LUNA_GUI_API RV VerticalLayout::draw(IContext* ctx, IDrawList* draw_list, IDrawList* overlay_draw_list)
         {
             lutry
             {
                 for(auto& c : children)
                 {
-                    luexp(c->draw(ctx, draw_list));
+                    luexp(c->draw(ctx, draw_list, overlay_draw_list));
                 }
             }
             lucatchret;

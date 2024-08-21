@@ -46,7 +46,7 @@ namespace Luna
             LUNA_GUI_API virtual RV layout(IContext* ctx, const OffsetRectF& layout_rect) override;
             LUNA_GUI_API virtual RV handle_event(IContext* ctx, object_t e, bool& handled) override;
             LUNA_GUI_API virtual RV update(IContext* ctx) override;
-            LUNA_GUI_API virtual RV draw(IContext* ctx, IDrawList* draw_list) override;
+            LUNA_GUI_API virtual RV draw(IContext* ctx, IDrawList* draw_list, IDrawList* overlay_draw_list) override;
             LUNA_GUI_API virtual void add_child(IWidget* child) override;
             LUNA_GUI_API virtual void get_children(Vector<IWidget*>& out_children) override;
             LUNA_GUI_API virtual usize get_num_children() override;

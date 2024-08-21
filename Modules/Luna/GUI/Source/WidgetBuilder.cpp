@@ -52,13 +52,13 @@ namespace Luna
             lucatchret;
             return ok;
         }
-        RV RootWidget::draw(IContext* ctx, IDrawList* draw_list)
+        RV RootWidget::draw(IContext* ctx, IDrawList* draw_list, IDrawList* overlay_draw_list)
         {
             lutry
             {
                 for(auto& c : children)
                 {
-                    luexp(c->draw(ctx, draw_list));
+                    luexp(c->draw(ctx, draw_list, overlay_draw_list));
                 }
             }
             lucatchret;

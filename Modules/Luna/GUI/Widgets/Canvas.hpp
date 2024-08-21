@@ -12,10 +12,6 @@
 #include "Widget.hpp"
 #include "Container.hpp"
 
-#ifndef LUNA_GUI_API
-#define LUNA_GUI_API
-#endif
-
 namespace Luna
 {
     namespace GUI
@@ -30,7 +26,7 @@ namespace Luna
             LUNA_GUI_API virtual RV begin_update(IContext* ctx) override;
             LUNA_GUI_API virtual RV layout(IContext* ctx, const OffsetRectF& layout_rect) override;
             LUNA_GUI_API virtual RV update(IContext* ctx) override;
-            LUNA_GUI_API virtual RV draw(IContext* ctx, IDrawList* draw_list) override;
+            LUNA_GUI_API virtual RV draw(IContext* ctx, IDrawList* draw_list, IDrawList* overlay_draw_list) override;
 
             LUNA_GUI_API virtual void add_child(IWidget* child) override;
             LUNA_GUI_API virtual void get_children(Vector<IWidget*>& out_children) override;

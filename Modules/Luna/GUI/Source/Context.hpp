@@ -79,7 +79,7 @@ namespace Luna
             {
                 return m_font_atlas;
             }
-            virtual RV render(IDrawList* draw_list) override;
+            virtual RV render(IDrawList* draw_list, IDrawList* overlay_draw_list) override;
         };
     }
 }

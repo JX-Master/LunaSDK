@@ -14,6 +14,7 @@
 #include "Widgets/Rectangle.hpp"
 #include "Widgets/Text.hpp"
 #include "Widgets/Button.hpp"
+#include "Widgets/Slider.hpp"
 
 #ifndef LUNA_GUI_API
 #define LUNA_GUI_API
@@ -39,10 +40,14 @@ namespace Luna
         //! Sets widget text attribute value.
         LUNA_GUI_API void set_tattr(IWidgetBuilder* builder, u32 kind, const Name& value);
 
-        LUNA_GUI_API Button* begin_button(IWidgetBuilder* builder, widget_id_t id, const Function<RV(void)>& on_click);
+        LUNA_GUI_API Button* begin_button(IWidgetBuilder* builder, const Name& id, const Function<RV(void)>& on_click);
 
         LUNA_GUI_API void end_button(IWidgetBuilder* builder);
 
-        LUNA_GUI_API Button* button(IWidgetBuilder* builder, const Name& text, const Function<RV(void)>& on_click, widget_id_t id = 0);
+        LUNA_GUI_API Button* button(IWidgetBuilder* builder, const Name& text, const Function<RV(void)>& on_click, const Name& id = Name());
+
+        inline RV default_slider_on_value_changed_handler(f32) { return ok; }
+
+        LUNA_GUI_API Slider* slider(IWidgetBuilder* builder, widget_id_t id, f32* value, f32 min_value, f32 max_value, const Function<RV(f32)>& on_value_changed = default_slider_on_value_changed_handler);
     }
 }

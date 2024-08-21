@@ -122,7 +122,7 @@ namespace Luna
             virtual RV update(IContext* ctx) = 0;
 
             //! Called when the widget is rendered.
-            virtual RV draw(IContext* ctx, IDrawList* draw_list) = 0;
+            virtual RV draw(IContext* ctx, IDrawList* draw_list, IDrawList* overlay_draw_list) = 0;
         };
 
         LUNA_GUI_API f32 get_sattr(IWidget* widget, u32 key, bool recursive = false, f32 default_value = 0, bool* found = nullptr);

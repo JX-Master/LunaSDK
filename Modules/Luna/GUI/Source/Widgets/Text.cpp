@@ -50,7 +50,7 @@ namespace Luna
                 VG::TextAlignment::begin, VG::TextAlignment::begin);
             return result.bounding_rect.height;
         }
-        LUNA_GUI_API RV Text::draw(IContext *ctx, IDrawList* draw_list)
+        LUNA_GUI_API RV Text::draw(IContext *ctx, IDrawList* draw_list, IDrawList* overlay_draw_list)
         {
             Font::IFontFile* font = cast_object<Font::IFontFile>(get_oattr(this, OATTR_FONT, true, Font::get_default_font()));
             u32 font_index = get_sattr(this, SATTR_FONT_INDEX, true, 0);

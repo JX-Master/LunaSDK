@@ -17,7 +17,7 @@ namespace Luna
 {
     namespace GUI
     {
-        LUNA_GUI_API void draw_rectangle_filled(IContext* ctx, IDrawList* draw_list, f32 min_x, f32 min_y, f32 max_x, f32 max_y, const Float4& color)
+        LUNA_GUI_API void draw_rectangle_filled(IContext* ctx, IDrawList* draw_list, f32 min_x, f32 min_y, f32 max_x, f32 max_y, const Float4U& color)
         {
             auto& points = draw_list->get_shape_buffer()->get_shape_points();
             u32 begin_command = (u32)points.size();
@@ -32,14 +32,14 @@ namespace Luna
                 color);
         }
         LUNA_GUI_API void draw_rectangle_bordered(IContext* ctx, IDrawList* draw_list, 
-            f32 min_x, f32 min_y, f32 max_x, f32 max_y, const Float4& color, f32 border_width)
+            f32 min_x, f32 min_y, f32 max_x, f32 max_y, const Float4U& color, f32 border_width, f32 border_offset)
         {
             auto& points = draw_list->get_shape_buffer()->get_shape_points();
             u32 begin_command = (u32)points.size();
             auto& io = ctx->get_io();
             f32 screen_min_y = io.height - max_y;
             f32 screen_max_y = io.height - min_y;
-            VG::ShapeBuilder::add_rectangle_bordered(points, min_x, screen_min_y, max_x, screen_max_y, border_width, -border_width / 2.0f);
+            VG::ShapeBuilder::add_rectangle_bordered(points, min_x, screen_min_y, max_x, screen_max_y, border_width, border_offset);
             u32 num_commands = (u32)points.size() - begin_command;
             draw_list->add_shape(begin_command, num_commands, 
                 {min_x, screen_min_y}, {max_x, screen_max_y}, 
@@ -47,7 +47,7 @@ namespace Luna
                 color);
         }
         LUNA_GUI_API void draw_rounded_rectangle_filled(IContext* ctx, IDrawList* draw_list,
-            f32 min_x, f32 min_y, f32 max_x, f32 max_y, const Float4& color, f32 radius)
+            f32 min_x, f32 min_y, f32 max_x, f32 max_y, const Float4U& color, f32 radius)
         {
             auto& points = draw_list->get_shape_buffer()->get_shape_points();
             u32 begin_command = (u32)points.size();
@@ -62,7 +62,7 @@ namespace Luna
                 color);
         }
         LUNA_GUI_API void draw_rounded_rectangle_bordered(IContext* ctx, IDrawList* draw_list, 
-            f32 min_x, f32 min_y, f32 max_x, f32 max_y, const Float4& color, f32 radius, f32 border_width)
+            f32 min_x, f32 min_y, f32 max_x, f32 max_y, const Float4U& color, f32 radius, f32 border_width)
         {
             auto& points = draw_list->get_shape_buffer()->get_shape_points();
             u32 begin_command = (u32)points.size();

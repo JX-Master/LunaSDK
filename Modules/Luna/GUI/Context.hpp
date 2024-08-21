@@ -45,8 +45,8 @@ namespace Luna
         {
             frame = 0, // until current frame end.
             next_frame = 1, // until next frame end.
-            process = 2, // until module close.
-            persistent = 3 // persistent (will be saved to file on module close).
+            context = 2, // until context destruction.
+            persistent = 3 // persistent (will be saved to file on context destruction).
         };
 
         struct IContext : virtual Interface
@@ -85,7 +85,7 @@ namespace Luna
             virtual VG::IFontAtlas* get_font_altas() = 0;
 
             //! Renders the context.
-            virtual RV render(IDrawList* draw_list) = 0;
+            virtual RV render(IDrawList* draw_list, IDrawList* overlay_draw_list) = 0;
         };
 
         LUNA_GUI_API Ref<IContext> new_context();

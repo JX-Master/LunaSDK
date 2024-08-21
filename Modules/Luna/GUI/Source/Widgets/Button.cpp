@@ -58,8 +58,8 @@ namespace Luna
             {
                 state = new_object<ButtonState>();
             }
-            ctx->set_widget_state(id, state.get());
-            button_state = state.get();
+            ctx->set_widget_state(id, state);
+            button_state = state;
             if(state->capture_mouse_event)
             {
                 ctx->capture_event(this, typeof<MouseEvent>());
@@ -153,7 +153,7 @@ namespace Luna
             lucatchret;
             return ok;
         }
-        LUNA_GUI_API RV Button::draw(IContext* ctx, IDrawList* draw_list)
+        LUNA_GUI_API RV Button::draw(IContext* ctx, IDrawList* draw_list, IDrawList* overlay_draw_list)
         {
             luassert(button_state);
             Float4U background_color, border_color;
@@ -203,7 +203,7 @@ namespace Luna
             {
                 if(body)
                 {
-                    luexp(body->draw(ctx, draw_list));    
+                    luexp(body->draw(ctx, draw_list, overlay_draw_list));
                 }
             }
             lucatchret;
@@ -224,7 +224,7 @@ namespace Luna
         {
             return body ? 1 : 0;
         }
-        LUNA_GUI_API Button* begin_button(IWidgetBuilder* builder, widget_id_t id, const Function<RV(void)>& on_click)
+        LUNA_GUI_API Button* begin_button(IWidgetBuilder* builder, const Name& id, const Function<RV(void)>& on_click)
         {
             Ref<Button> widget = new_object<Button>();
             builder->push_id(id);
@@ -239,13 +239,10 @@ namespace Luna
             builder->pop_widget();
             builder->pop_id();
         }
-        LUNA_GUI_API Button* button(IWidgetBuilder* builder, const Name& t, const Function<RV(void)>& on_click, widget_id_t id)
+        LUNA_GUI_API Button* button(IWidgetBuilder* builder, const Name& t, const Function<RV(void)>& on_click, const Name& id)
         {
-            if(id == 0)
-            {
-                id = memhash32(t.c_str(), t.size());
-            }
-            Button* button = begin_button(builder, id, on_click);
+            Name hash_id = id ? id : t;
+            Button* button = begin_button(builder, hash_id, on_click);
             Text* text_widget = text(builder, t);
             text_widget->vertical_alignment = VG::TextAlignment::center;
             text_widget->horizontal_alignment = VG::TextAlignment::center;

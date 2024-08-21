@@ -12,6 +12,8 @@
 #include "Widgets/Canvas.hpp"
 #include "Widgets/HorizontalLayout.hpp"
 #include "Widgets/VerticalLayout.hpp"
+#include "Widgets/Spacer.hpp"
+#include "Widgets/Dockspace.hpp"
 
 #ifndef LUNA_GUI_API
 #define LUNA_GUI_API
@@ -32,5 +34,10 @@ namespace Luna
 
         LUNA_GUI_API VerticalLayout* begin_vlayout(IWidgetBuilder* builder);
         LUNA_GUI_API void end_vlayout(IWidgetBuilder* builder);
+
+        LUNA_GUI_API Spacer* spacer(IWidgetBuilder* builder);
+
+        LUNA_GUI_API Dockspace* begin_dockspace(IWidgetBuilder* builder);
+        LUNA_GUI_API void end_dockspace(IWidgetBuilder* builder);
     }
 }

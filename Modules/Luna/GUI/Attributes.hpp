@@ -59,6 +59,8 @@ namespace Luna
 
         inline constexpr u32 SATTR_TEXT_SIZE = strhash32("text_size");
 
+        inline constexpr u32 SATTR_TITLE_TEXT_SIZE = strhash32("title_text_size");
+
         inline constexpr f32 DEFAULT_TEXT_SIZE = 18;
 
         inline constexpr u32 VATTR_TEXT_COLOR = strhash32("text_color");
@@ -80,5 +82,7 @@ namespace Luna
         inline constexpr u32 SATTR_FILLING_SIZE_X = strhash32("filling_size_x");
 
         inline constexpr u32 SATTR_FILLING_SIZE_Y = strhash32("filling_size_y");
+
+        inline constexpr u32 TATTR_TITLE = strhash32("title");
     }
 }
