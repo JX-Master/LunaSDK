@@ -121,6 +121,7 @@ namespace Luna
             data.m_advance_width = 5;
             data.m_left_side_bearing = 0;
             m_shape_map.insert(make_pair(0, data));
+            m_shape_buffer_dirty = true;
         }
         bool FontAtlas::load_glyph(u32 codepoint)
         {
