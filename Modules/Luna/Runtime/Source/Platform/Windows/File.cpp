@@ -14,6 +14,7 @@
 #include <shellapi.h>
 #include "ErrCode.hpp"
 #include "../../../Path.hpp"
+#include "../../../Alloca.hpp"
 
 #pragma comment(lib, "Shell32.lib")
 
@@ -26,7 +27,7 @@ namespace Luna
             lucheck(path);
 
             usize buffer_size = utf8_to_utf16_len(path) + 1;
-            wchar_t* pathbuffer = (wchar_t*)alloca(sizeof(wchar_t) * buffer_size);
+            lualloca(pathbuffer, wchar_t, buffer_size);
             utf8_to_utf16((char16_t*)pathbuffer, buffer_size, path);
 
             DWORD dw_access = 0;
@@ -193,7 +194,7 @@ namespace Luna
             lucheck(path);
 
             usize buffer_size = utf8_to_utf16_len(path) + 1;
-            wchar_t* pathbuffer = (wchar_t*)alloca(sizeof(wchar_t) * buffer_size);
+            lualloca(pathbuffer, wchar_t, buffer_size);
             utf8_to_utf16((char16_t*)pathbuffer, buffer_size, path);
             const wchar_t* mode;
             FILE* f = NULL;
@@ -515,7 +516,7 @@ namespace Luna
         {
             lucheck(path);
             usize buffer_size = utf8_to_utf16_len(path) + 1;
-            wchar_t* pathbuffer = (wchar_t*)alloca(sizeof(wchar_t) * buffer_size);
+            lualloca(pathbuffer, wchar_t, buffer_size);
             utf8_to_utf16((char16_t*)pathbuffer, buffer_size, path);
             WIN32_FILE_ATTRIBUTE_DATA d;
             if (!::GetFileAttributesExW(pathbuffer, GetFileExInfoStandard, &d))
@@ -547,8 +548,8 @@ namespace Luna
             lucheck(from_path && to_path);
             usize from_size = utf8_to_utf16_len(from_path) + 1;
             usize to_size = utf8_to_utf16_len(to_path) + 1;
-            wchar_t* fromBuffer = (wchar_t*)alloca(sizeof(wchar_t) * from_size);
-            wchar_t* toBuffer = (wchar_t*)alloca(sizeof(wchar_t) * to_size);
+            lualloca(fromBuffer, wchar_t, from_size);
+            lualloca(toBuffer, wchar_t, to_size);
             utf8_to_utf16((char16_t*)fromBuffer, from_size, from_path);
             utf8_to_utf16((char16_t*)toBuffer, to_size, to_path);
             BOOL r = CopyFileW(fromBuffer, toBuffer, test_flags(flags, FileCopyFlag::fail_if_exists));
@@ -561,8 +562,8 @@ namespace Luna
             lucheck(from_path && to_path);
             usize from_size = utf8_to_utf16_len(from_path) + 1;
             usize to_size = utf8_to_utf16_len(to_path) + 1;
-            wchar_t* fromBuffer = (wchar_t*)alloca(sizeof(wchar_t) * from_size);
-            wchar_t* toBuffer = (wchar_t*)alloca(sizeof(wchar_t) * to_size);
+            lualloca(fromBuffer, wchar_t, from_size);
+            lualloca(toBuffer, wchar_t, to_size);
             utf8_to_utf16((char16_t*)fromBuffer, from_size, from_path);
             utf8_to_utf16((char16_t*)toBuffer, to_size, to_path);
             DWORD dw = MOVEFILE_COPY_ALLOWED;
@@ -578,7 +579,7 @@ namespace Luna
         static RV delete_single_file(const c8* path)
         {
             usize buffer_size = utf8_to_utf16_len(path) + 1;
-            wchar_t* pathbuffer = (wchar_t*)alloca(sizeof(wchar_t) * buffer_size);
+            lualloca(pathbuffer, wchar_t, buffer_size);
             utf8_to_utf16((char16_t*)pathbuffer, buffer_size, path);
             BOOL r = DeleteFileW(pathbuffer);
             if(r) return ok;
@@ -588,7 +589,7 @@ namespace Luna
         static RV delete_empty_directory(const c8* path)
         {
             usize buffer_size = utf8_to_utf16_len(path) + 1;
-            wchar_t* pathbuffer = (wchar_t*)alloca(sizeof(wchar_t) * buffer_size);
+            lualloca(pathbuffer, wchar_t, buffer_size);
             utf8_to_utf16((char16_t*)pathbuffer, buffer_size, path);
             BOOL r = RemoveDirectoryW(pathbuffer);
             if(r) return ok;
@@ -659,7 +660,7 @@ namespace Luna
         R<opaque_t> open_dir(const c8* path)
         {
             usize buffer_size = utf8_to_utf16_len(path) + 3;    // for possible "/*" and null terminator.
-            wchar_t* pathbuffer = (wchar_t*)alloca(sizeof(wchar_t) * buffer_size);
+            lualloca(pathbuffer, wchar_t, buffer_size);
             utf8_to_utf16((char16_t*)pathbuffer, buffer_size, path);
             // Append "\\*"
             if (pathbuffer[buffer_size - 4] == '/' || pathbuffer[buffer_size - 4] == '\\')
@@ -772,7 +773,7 @@ namespace Luna
         RV    create_dir(const c8* path)
         {
             usize buffer_size = utf8_to_utf16_len(path) + 1;
-            wchar_t* pathbuffer = (wchar_t*)alloca(sizeof(wchar_t) * buffer_size);
+            lualloca(pathbuffer, wchar_t, buffer_size);
             utf8_to_utf16((char16_t*)pathbuffer, buffer_size, path);
             BOOL r = ::CreateDirectoryW(pathbuffer, 0);
             if (!r)
@@ -793,7 +794,7 @@ namespace Luna
         RV    remove_dir(const c8* path)
         {
             usize buffer_size = utf8_to_utf16_len(path) + 1;
-            wchar_t* pathbuffer = (wchar_t*)alloca(sizeof(wchar_t) * buffer_size);
+            lualloca(pathbuffer, wchar_t, buffer_size);
             utf8_to_utf16((char16_t*)pathbuffer, buffer_size, path);
             BOOL r = ::RemoveDirectoryW(pathbuffer);
             if (!r)
@@ -806,7 +807,7 @@ namespace Luna
         u32 get_current_dir(u32 buffer_length, c8* buffer)
         {
             DWORD sz = ::GetCurrentDirectoryW(0, NULL);
-            wchar_t* path = (wchar_t*)alloca(sizeof(wchar_t) * sz);
+            lualloca(path, wchar_t, sz);
             ::GetCurrentDirectoryW(sz, path);
             if (buffer && buffer_length)
             {
@@ -817,7 +818,7 @@ namespace Luna
         RV set_current_dir(const c8* path)
         {
             usize u16len = utf8_to_utf16_len(path);
-            wchar_t* dpath = (wchar_t*)alloca(sizeof(wchar_t) * (u16len + 1));
+            lualloca(dpath, wchar_t, u16len + 1);
             utf8_to_utf16((char16_t*)dpath, u16len + 1, path);
             if (FAILED(::SetCurrentDirectoryW(dpath)))
             {

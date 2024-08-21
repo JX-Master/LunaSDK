@@ -11,6 +11,7 @@
 #include "Name.hpp"
 #include "Vector.hpp"
 #include "Memory.hpp"
+#include "Alloca.hpp"
 
 namespace Luna
 {
@@ -494,7 +495,7 @@ namespace Luna
                     {
                         return Name("");
                     }
-                    c8* buf = (c8*)alloca(sizeof(c8) * ext_sz);
+                    lualloca(buf, c8, ext_sz);
                     memcpy(buf, str + i + 1, ext_sz * sizeof(c8));
                     for (usize j = 0; j < ext_sz - 1; ++j)
                     {
@@ -529,7 +530,7 @@ namespace Luna
                     {
                         return Name("");
                     }
-                    c8* buf = (c8*)alloca(sizeof(c8) * filename_sz);
+                    lualloca(buf, c8, filename_sz);
                     memcpy(buf, str, filename_sz * sizeof(c8));
                     return Name(buf, filename_sz);
                 }
@@ -580,7 +581,7 @@ namespace Luna
             {
                 new_filename_len = filename_len;
             }
-            c8* buf = (c8*)alloca(sizeof(c8) * (new_filename_len + 1));
+            lualloca(buf, c8, new_filename_len + 1);
             buf[new_filename_len] = 0;
             // copy filename.
             memcpy(buf, str, filename_len * sizeof(c8));
@@ -614,7 +615,7 @@ namespace Luna
             auto& name = m_nodes.back();
             const c8* str = name.c_str();
             usize sz = strlen(str);
-            c8* buf = (c8*)alloca(sizeof(c8) * (sz + count + 2));
+            lualloca(buf, c8, sz + count + 2);
             // copy original namec8
             memcpy(buf, str, sz * sizeof(c8));
             buf[sz] = '.';

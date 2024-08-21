@@ -10,6 +10,7 @@
 #include "CommandBuffer.hpp"
 #include "QueryHeap.hpp"
 #include "Fence.hpp"
+#include <Luna/Runtime/Alloca.hpp>
 
 namespace Luna
 {
@@ -459,7 +460,7 @@ namespace Luna
             {
                 m_vbs[i] = views[i - start_slot];
             }
-            D3D12_VERTEX_BUFFER_VIEW* vbv = (D3D12_VERTEX_BUFFER_VIEW*)alloca(sizeof(D3D12_VERTEX_BUFFER_VIEW) * views.size());
+            lualloca(vbv, D3D12_VERTEX_BUFFER_VIEW, views.size());
             for (u32 i = 0; i < views.size(); ++i)
             {
                 vbv[i].BufferLocation = cast_object<BufferResource>(views[i].buffer->get_object())->m_res->GetGPUVirtualAddress() + views[i].offset;
@@ -525,7 +526,7 @@ namespace Luna
         {
             lutsassert();
             assert_graphcis_context();
-            D3D12_VIEWPORT* vs = (D3D12_VIEWPORT*)alloca(sizeof(D3D12_VIEWPORT) * viewports.size());
+            lualloca(vs, D3D12_VIEWPORT, viewports.size());
             for (u32 i = 0; i < viewports.size(); ++i)
             {
                 vs[i].Height = viewports[i].height;
@@ -541,7 +542,7 @@ namespace Luna
         {
             lutsassert();
             assert_graphcis_context();
-            D3D12_RECT* rs = (D3D12_RECT*)alloca(sizeof(D3D12_RECT) * rects.size());
+            lualloca(rs, D3D12_RECT, rects.size());
             auto tex_sz = m_render_pass_context.m_tex_size;
             for (u32 i = 0; i < rects.size(); ++i)
             {

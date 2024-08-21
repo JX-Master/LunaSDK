@@ -9,6 +9,7 @@
 */
 #include "PipelineLayout.hpp"
 #include "DescriptorSetLayout.hpp"
+#include <Luna/Runtime/Alloca.hpp>
 namespace Luna
 {
     namespace RHI
@@ -27,7 +28,7 @@ namespace Luna
                 }
                 else
                 {
-                    VkDescriptorSetLayout* layouts = (VkDescriptorSetLayout*)alloca(sizeof(VkDescriptorSetLayout*) * desc.descriptor_set_layouts.size());
+                    lualloca(layouts, VkDescriptorSetLayout, desc.descriptor_set_layouts.size());
                     for (usize i = 0; i < desc.descriptor_set_layouts.size(); ++i)
                     {
                         DescriptorSetLayout* desc_layout = (DescriptorSetLayout*)desc.descriptor_set_layouts[i]->get_object();

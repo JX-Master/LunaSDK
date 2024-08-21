@@ -11,6 +11,7 @@
 #include "SwapChain.hpp"
 #include "Instance.hpp"
 #include <Luna/Window/Vulkan/Vulkan.hpp>
+#include <Luna/Runtime/Alloca.hpp>
 namespace Luna
 {
     namespace RHI
@@ -128,7 +129,7 @@ namespace Luna
                 luexp(encode_vk_result(m_device->m_funcs.vkCreateSwapchainKHR(m_device->m_device, &create_info, nullptr, &m_swap_chain)));
                 u32 image_count;
                 luexp(encode_vk_result(m_device->m_funcs.vkGetSwapchainImagesKHR(m_device->m_device, m_swap_chain, &image_count, nullptr)));
-                VkImage* images = (VkImage*)alloca(sizeof(VkImage) * image_count);
+                lualloca(images, VkImage, image_count);
                 luexp(encode_vk_result(m_device->m_funcs.vkGetSwapchainImagesKHR(m_device->m_device, m_swap_chain, &image_count, images)));
                 TextureDesc desc = TextureDesc::tex2d(
                     m_desc.format,

@@ -14,6 +14,7 @@
 #include <WinSock2.h>
 #include <Luna/Runtime/Unicode.hpp>
 #include <ws2tcpip.h>
+#include <Luna/Runtime/Alloca.hpp>
 #pragma comment(lib, "ws2_32.lib")
 
 namespace Luna
@@ -337,8 +338,8 @@ namespace Luna
             d_hints.ai_flags |= AI_CANONNAME;
             usize node_len = utf8_to_utf16_len(node);
             usize service_len = utf8_to_utf16_len(service);
-            wchar_t* wnode = (wchar_t*)alloca(sizeof(wchar_t) * (node_len + 1));
-            wchar_t* wservice = (wchar_t*)alloca(sizeof(wchar_t) * (service_len + 1));
+            lualloca(wnode, wchar_t, node_len + 1);
+            lualloca(wservice, wchar_t, service_len + 1);
             utf8_to_utf16((c16*)wnode, node_len + 1, node);
             utf8_to_utf16((c16*)wservice, service_len + 1, service);
             ADDRINFOW* result = nullptr;

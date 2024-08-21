@@ -16,6 +16,7 @@
 #include "Fence.hpp"
 #include "Instance.hpp"
 #include "../RHI.hpp"
+#include <Luna/Runtime/Alloca.hpp>
 namespace Luna
 {
     namespace RHI
@@ -430,7 +431,7 @@ namespace Luna
 
                 u32 num_attachments = num_color_attachments + num_resolve_targets;
                 if (use_depth_stencil) ++num_attachments;
-                VkClearValue* clear_values = (VkClearValue*)alloca(sizeof(VkClearValue) * num_attachments);
+                lualloca(clear_values, VkClearValue, num_attachments);
                 u32 attachment_index = 0;
                 for (usize i = 0; i < num_color_attachments; ++i)
                 {
@@ -497,8 +498,8 @@ namespace Luna
         void CommandBuffer::set_vertex_buffers(u32 start_slot, Span<const VertexBufferView> views)
         {
             assert_graphcis_context();
-            VkBuffer* bufs = (VkBuffer*)alloca(sizeof(VkBuffer) * views.size());
-            VkDeviceSize* vk_offsets = (VkDeviceSize*)alloca(sizeof(VkDeviceSize) * views.size());
+            lualloca(bufs, VkBuffer, views.size());
+            lualloca(vk_offsets, VkDeviceSize, views.size());
             for (u32 i = 0; i < views.size(); ++i)
             {
                 BufferResource* res = cast_object<BufferResource>(views[i].buffer->get_object());
@@ -529,7 +530,7 @@ namespace Luna
             VkPipelineLayout layout = VK_NULL_HANDLE;
             PipelineLayout* playout = (PipelineLayout*)m_graphics_pipeline_layout->get_object();
             layout = playout->m_pipeline_layout;
-            VkDescriptorSet* sets = (VkDescriptorSet*)alloca(sizeof(VkDescriptorSet) * descriptor_sets.size());
+            lualloca(sets, VkDescriptorSet, descriptor_sets.size());
             for (u32 i = 0; i < descriptor_sets.size(); ++i)
             {
                 auto s = (DescriptorSet*)(descriptor_sets[i]->get_object());
@@ -546,7 +547,7 @@ namespace Luna
         {
             assert_graphcis_context();
             u32 max_num_viewports = m_device->m_physical_device_properties.limits.maxViewports;
-            VkViewport* vps = (VkViewport*)alloca(sizeof(VkViewport) * max_num_viewports);
+            lualloca(vps, VkViewport, max_num_viewports);
             for (usize i = 0; i < max_num_viewports; ++i)
             {
                 auto& d = vps[i];
@@ -578,7 +579,7 @@ namespace Luna
         {
             assert_graphcis_context();
             u32 max_num_viewports = m_device->m_physical_device_properties.limits.maxViewports;
-            VkRect2D* r = (VkRect2D*)alloca(sizeof(VkRect2D) * max_num_viewports);
+            lualloca(r, VkRect2D, max_num_viewports);
             for (usize i = 0; i < max_num_viewports; ++i)
             {
                 auto& d = r[i];
@@ -708,7 +709,7 @@ namespace Luna
             VkPipelineLayout layout = VK_NULL_HANDLE;
             PipelineLayout* playout = (PipelineLayout*)m_compute_pipeline_layout->get_object();
             layout = playout->m_pipeline_layout;
-            VkDescriptorSet* sets = (VkDescriptorSet*)alloca(sizeof(VkDescriptorSet) * descriptor_sets.size());
+            lualloca(sets, VkDescriptorSet, descriptor_sets.size());
             for (u32 i = 0; i < descriptor_sets.size(); ++i)
             {
                 auto s = (DescriptorSet*)descriptor_sets[i]->get_object();
@@ -772,7 +773,7 @@ namespace Luna
                 // The copy is performed one per mips.
                 u32 mip_levels = td->m_desc.mip_levels;
                 u32 array_count = td->m_desc.array_size;
-                VkImageCopy* copies = (VkImageCopy*)alloca(sizeof(VkImageCopy) * mip_levels);
+                luassert(copies, VkImageCopy, mip_levels);
                 for (u32 mip = 0; mip < mip_levels; ++mip)
                 {
                     VkImageCopy& copy = copies[mip];
@@ -1019,9 +1020,18 @@ namespace Luna
                 submit.pWaitDstStageMask = wait_stages.data();
                 submit.signalSemaphoreCount = (u32)signal_fences.size();
                 VkSemaphore* signal_semaphores = nullptr;
+                Array<VkSemaphore> signal_semaphores_buffer;
                 if (!signal_fences.empty())
                 {
-                    signal_semaphores = (VkSemaphore*)alloca(sizeof(VkSemaphore) * signal_fences.size());
+                    if(sizeof(VkSemaphore) * signal_fences.size() <= 256)
+                    {
+                        signal_semaphores = (VkSemaphore*)alloca(sizeof(VkSemaphore) * signal_fences.size());
+                    }
+                    else
+                    {
+                        signal_semaphores_buffer = Array<VkSemaphore>(signal_fences.size());
+                        signal_semaphores = signal_semaphores_buffer.data();
+                    }
                     for (usize i = 0; i < signal_fences.size(); ++i)
                     {
                         Fence* fence = (Fence*)signal_fences[i]->get_object();

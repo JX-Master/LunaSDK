@@ -9,6 +9,7 @@
 */
 #include "DescriptorSet.hpp"
 #include "Resource.hpp"
+#include <Luna/Runtime/Alloca.hpp>
 namespace Luna
 {
     namespace RHI
@@ -55,7 +56,7 @@ namespace Luna
                 u32 num_writes = (u32)writes.size();
                 if (num_writes)
                 {
-                    d_writes = (VkWriteDescriptorSet*)alloca(sizeof(VkWriteDescriptorSet) * num_writes);
+                    lualloca(d_writes, VkWriteDescriptorSet, num_writes);
                     memzero(d_writes, sizeof(VkWriteDescriptorSet) * num_writes);
                     for (u32 i = 0; i < num_writes; ++i)
                     {
@@ -75,7 +76,7 @@ namespace Luna
                         {
                             if (d.descriptorCount)
                             {
-                                VkDescriptorBufferInfo* infos = (VkDescriptorBufferInfo*)alloca(sizeof(VkDescriptorBufferInfo) * d.descriptorCount);
+                                lualloca(infos, VkDescriptorBufferInfo, d.descriptorCount);
                                 for (u32 j = 0; j < d.descriptorCount; ++j)
                                 {
                                     auto& s_buffer = s.buffer_views[j];
@@ -102,7 +103,7 @@ namespace Luna
                         {
                             if (d.descriptorCount)
                             {
-                                VkDescriptorImageInfo* infos = (VkDescriptorImageInfo*)alloca(sizeof(VkDescriptorImageInfo) * d.descriptorCount);
+                                lualloca(infos, VkDescriptorImageInfo, d.descriptorCount);
                                 memzero(infos, sizeof(VkDescriptorImageInfo) * d.descriptorCount);
                                 for (u32 j = 0; j < d.descriptorCount; ++j)
                                 {
@@ -129,7 +130,7 @@ namespace Luna
                         {
                             if (d.descriptorCount)
                             {
-                                VkDescriptorImageInfo* infos = (VkDescriptorImageInfo*)alloca(sizeof(VkDescriptorImageInfo) * d.descriptorCount);
+                                lualloca(infos, VkDescriptorImageInfo, d.descriptorCount);
                                 memzero(infos, sizeof(VkDescriptorImageInfo) * d.descriptorCount);
                                 for (u32 j = 0; j < d.descriptorCount; ++j)
                                 {

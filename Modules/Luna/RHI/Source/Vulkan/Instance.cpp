@@ -10,6 +10,7 @@
 #include "Instance.hpp"
 #include <Luna/Runtime/Log.hpp>
 #include <Luna/Window/Vulkan/Vulkan.hpp>
+#include <Luna/Runtime/Alloca.hpp>
 
 namespace Luna
 {
@@ -72,7 +73,7 @@ namespace Luna
         {
             u32 layer_count;
             vkEnumerateInstanceLayerProperties(&layer_count, nullptr);
-            VkLayerProperties* available_layers = (VkLayerProperties*)alloca(layer_count * sizeof(VkLayerProperties));
+            lualloca(available_layers, VkLayerProperties, layer_count);
             vkEnumerateInstanceLayerProperties(&layer_count, available_layers);
 
             bool layer_found = false;

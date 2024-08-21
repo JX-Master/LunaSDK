@@ -22,6 +22,7 @@
 #include "QueryHeap.hpp"
 #include "ResourceStateTrackingSystem.hpp"
 #include "SwapChain.hpp"
+#include <Luna/Runtime/Alloca.hpp>
 namespace Luna
 {
     namespace RHI
@@ -76,7 +77,7 @@ namespace Luna
                 create_info.pNext = nullptr;
                 create_info.queueFamilyIndex = src.index;
                 create_info.queueCount = src.num_queues;
-                f32* priorities = (f32*)alloca(sizeof(f32) * src.num_queues);
+                lualloca(priorities, f32, src.num_queues);
                 for (usize i = 0; i < src.num_queues; ++i) priorities[i] = 1.0f;
                 create_info.pQueuePriorities = priorities;
                 create_info.flags = 0;

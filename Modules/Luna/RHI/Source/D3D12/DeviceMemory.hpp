@@ -10,6 +10,7 @@
 #pragma once
 #include "D3D12Common.hpp"
 #include "Device.hpp"
+#include <Luna/Runtime/Alloca.hpp>
 
 namespace Luna
 {
@@ -30,7 +31,7 @@ namespace Luna
             virtual void set_name(const c8* name) override
             {
                 usize len = utf8_to_utf16_len(name);
-                wchar_t* buf = (wchar_t*)alloca(sizeof(wchar_t) * (len + 1));
+                lualloca(buf, wchar_t, len + 1);
                 utf8_to_utf16((c16*)buf, len + 1, name);
                 m_allocation->SetName(buf);
             }

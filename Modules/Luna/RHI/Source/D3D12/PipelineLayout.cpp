@@ -9,6 +9,7 @@
 */
 #include "PipelineLayout.hpp"
 #include "DescriptorSetLayout.hpp"
+#include <Luna/Runtime/Alloca.hpp>
 
 namespace Luna
 {
@@ -33,7 +34,7 @@ namespace Luna
                     param.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
                     param.ShaderVisibility = root.m_shader_visibility;
                     param.DescriptorTable.NumDescriptorRanges = (UINT)root.m_ranges.size();
-                    D3D12_DESCRIPTOR_RANGE* ranges = (D3D12_DESCRIPTOR_RANGE*)alloca(sizeof(D3D12_DESCRIPTOR_RANGE) * root.m_ranges.size());
+                    lualloca(ranges, D3D12_DESCRIPTOR_RANGE, root.m_ranges.size());
                     param.DescriptorTable.pDescriptorRanges = ranges;
                     for (usize j = 0; j < root.m_ranges.size(); ++j)
                     {
