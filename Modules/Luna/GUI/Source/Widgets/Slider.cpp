@@ -72,5 +72,13 @@ namespace Luna
             }
             return ok;
         }
+        LUNA_GUI_API RV Slider::update(IContext* ctx)
+        {
+            return ok;
+        }
+        LUNA_GUI_API RV Slider::draw(IContext* ctx, IDrawList* draw_list, IDrawList* overlay_draw_list)
+        {
+            return ok;
+        }
     }
 }
