@@ -205,8 +205,10 @@ void run()
         g_command_buffer->begin_render_pass(desc);
         g_command_buffer->end_render_pass();
 
-        lupanic_if_failed(g_shape_renderer->set_render_target(g_swap_chain->get_current_back_buffer().get()));
-        lupanic_if_failed(g_shape_renderer->render(g_command_buffer, g_shape_draw_list->get_vertex_buffer(), g_shape_draw_list->get_index_buffer(),  g_shape_draw_list->get_draw_calls()));
+        lupanic_if_failed(g_shape_renderer->begin(g_swap_chain->get_current_back_buffer().get()));
+        g_shape_renderer->draw(g_shape_draw_list->get_vertex_buffer(), g_shape_draw_list->get_index_buffer(),  g_shape_draw_list->get_draw_calls());
+        lupanic_if_failed(g_shape_renderer->end());
+        g_shape_renderer->submit(g_command_buffer);
 
         g_command_buffer->resource_barrier({},
             {

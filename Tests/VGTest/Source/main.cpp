@@ -72,7 +72,6 @@ RV recreate_window_resources(u32 width, u32 height)
 void on_window_resize(Window::IWindow* window, u32 width, u32 height)
 {
     lupanic_if_failed(recreate_window_resources(width, height));
-    lupanic_if_failed(g_shape_renderer->set_render_target(g_swap_chain->get_current_back_buffer().get()));
 }
 
 void on_window_close(Window::IWindow* window)
@@ -288,13 +287,16 @@ void run()
         g_command_buffer->begin_render_pass(desc);
         g_command_buffer->end_render_pass();
 
-        lupanic_if_failed(g_shape_renderer->set_render_target(g_swap_chain->get_current_back_buffer().get()));
+        lupanic_if_failed(g_shape_renderer->begin(g_swap_chain->get_current_back_buffer().get()));
 
         Float4x4 proj_matrix = ProjectionMatrix::make_perspective_fov(PI / 3.0f, (f32)window_sz.x / (f32)window_sz.y, 0.3f, 10000.0f);
         Float4x4 view_matrix = inverse(AffineMatrix::make(g_camera_position, g_camera_rotation, Float3(1.0f)));
         Float4x4U mat = Float4x4U(mul(view_matrix, proj_matrix));
 
-        lupanic_if_failed(g_shape_renderer->render(g_command_buffer, g_shape_draw_list->get_vertex_buffer(), g_shape_draw_list->get_index_buffer(),  g_shape_draw_list->get_draw_calls(), &mat));
+        g_shape_renderer->draw(g_shape_draw_list->get_vertex_buffer(), g_shape_draw_list->get_index_buffer(),  g_shape_draw_list->get_draw_calls(), &mat);
+
+        lupanic_if_failed(g_shape_renderer->end());
+        g_shape_renderer->submit(g_command_buffer);
 
         g_command_buffer->resource_barrier({},
             {

@@ -25,24 +25,31 @@ namespace Luna
         {
             luiid("{C0FBD0AE-B7F6-4A82-A59B-B1115ACCBD94}");
 
-            //! Sets the target render texture for the following draw calls.
-            //! @param[in] render_target The texture to set.
-            virtual RV set_render_target(RHI::ITexture* render_target) = 0;
+            //! Starts recording draw calls.
+            //! @remark This call will clear all RHI resorurces used for previous draw calls, so call this
+            //! function only after the previous render commands are finished by GPU.
+            //! @param[in] render_target The texture to use for rendering draw calls.
+            virtual RV begin(RHI::ITexture* render_target) = 0;
 
-            //! Draws shapes to the bound texture.
-            //! @param[in] cmdbuf The command buffer used to record shape draw calls.
+            //! Adds draw calls to this renderer.
             //! @param[in] vertex_buffer The vertex buffer fetched from @ref IShapeDrawList::get_vertex_buffer.
             //! @param[in] index_buffer The index buffer fetched from @ref IShapeDrawList::get_index_buffer.
             //! @param[in] draw_calls The shape draw calls fetched from @ref IShapeDrawList::get_draw_calls.
             //! @param[in] transform_matrix The projection transfrom matrix applied to vertices. If this is `nullptr`, the 
             //! default transfrom matrix will be used, which is @ref Float4x4::identity.
-            virtual RV render(
-                RHI::ICommandBuffer* cmdbuf,
+            virtual void draw(
                 RHI::IBuffer* vertex_buffer,
                 RHI::IBuffer* index_buffer,
                 Span<const ShapeDrawCall> draw_calls,
                 Float4x4U* transform_matrix = nullptr
             ) = 0;
+
+            //! Finishes recording draw calls and refreshes RHI resources.
+            virtual RV end() = 0;
+
+            //! Ganerates RHI draw commands to the specified command buffer.
+            //! @param[in] cmdbuf The command buffer used to record shape draw calls.
+            virtual void submit(RHI::ICommandBuffer* cmdbuf) = 0;
         };
 
         //! Creates a new shape renderer that draws filled shape contours.
