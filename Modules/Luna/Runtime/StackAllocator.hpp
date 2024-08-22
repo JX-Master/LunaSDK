@@ -18,13 +18,7 @@ namespace Luna
 
     struct StackAllocator
     {
-        struct AllocationHeader
-        {
-            AllocationHeader* next;
-        };
-
-        static_assert((sizeof(AllocationHeader) % MAX_ALIGN) == 0, "Wrong AllocationHeader alignment!");
-
+    private:
         opaque_t m_allocation;
     public:
         StackAllocator() :
