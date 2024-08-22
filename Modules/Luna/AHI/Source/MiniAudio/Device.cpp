@@ -164,17 +164,7 @@ namespace Luna
                 format.bit_depth = device->get_playback_bit_depth();
                 usize buffer_size = get_frame_size(format.bit_depth, format.num_channels) * (usize)frameCount;
                 usize num_mix_buffers = device->m_audio_sources.size();
-                Array<MixBuffer> mix_buffer_array;
-                MixBuffer* mix_buffers;
-                if(num_mix_buffers > 32)
-                {
-                    mix_buffer_array = Array<MixBuffer>(num_mix_buffers);
-                    mix_buffers = mix_buffer_array.data();
-                }
-                else
-                {
-                    mix_buffers = (MixBuffer*)salloc.allocate(sizeof(MixBuffer) * num_mix_buffers);
-                }
+                MixBuffer* mix_buffers = (MixBuffer*)salloc.allocate(sizeof(MixBuffer) * num_mix_buffers);
                 for(usize i = 0; i < device->m_audio_sources.size(); ++i)
                 {
                     auto& dst = device->m_audio_sources[i];

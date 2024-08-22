@@ -5,12 +5,17 @@
 * 
 * @file StackAllocator.hpp
 * @author JXMaster
-* @date 2020/8/22
+* @date 2024/8/22
 */
 #pragma once
 #include "Memory.hpp"
+
 namespace Luna
 {
+    LUNA_RUNTIME_API opaque_t begin_stack_alloc_scope();
+    LUNA_RUNTIME_API void* stack_alloc(usize size, usize alignment = 0);
+    LUNA_RUNTIME_API void end_stack_alloc_scope(opaque_t handle);
+
     struct StackAllocator
     {
         struct AllocationHeader
@@ -20,27 +25,17 @@ namespace Luna
 
         static_assert((sizeof(AllocationHeader) % MAX_ALIGN) == 0, "Wrong AllocationHeader alignment!");
 
-        AllocationHeader* m_allocation;
+        opaque_t m_allocation;
     public:
         StackAllocator() :
-            m_allocation(nullptr) {}
+            m_allocation(begin_stack_alloc_scope()) {}
         ~StackAllocator()
         {
-            AllocationHeader* next = m_allocation;
-            while(next)
-            {
-                AllocationHeader* cur = next;
-                next = next->next;
-                memfree(cur);
-            }
+            end_stack_alloc_scope(m_allocation);
         }
         void* allocate(usize size)
         {
-            usize allocated_size = size + sizeof(AllocationHeader);
-            AllocationHeader* header = (AllocationHeader*)memalloc(allocated_size);
-            header->next = m_allocation;
-            m_allocation = header;
-            return (void*)(header + 1);
+            return stack_alloc(size);
         }
     };
 }
