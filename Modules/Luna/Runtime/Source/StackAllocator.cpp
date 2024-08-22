@@ -55,7 +55,7 @@ namespace Luna
         }
         void end_scope(opaque_t handle)
         {
-            lucheck_msg((usize)handle <= (usize)cursor, "Invalid end_stack_alloc_scope parameter");
+            lucheck_msg((usize)handle <= (usize)cursor, "Try to close one scope that is already closed.");
             cursor = (byte_t*)handle;
         }
     };
@@ -103,6 +103,7 @@ namespace Luna
     }
     LUNA_RUNTIME_API void* stack_alloc(usize size, usize alignment)
     {
+        if(!size) return 0;
         return get_stack_allocator_ctx()->allocate(size, alignment);
     }
     LUNA_RUNTIME_API void end_stack_alloc_scope(opaque_t handle)
