@@ -9,6 +9,8 @@
 */
 #include "DescriptorSet.hpp"
 #include "Resource.hpp"
+#include <Luna/Runtime/StackAllocator.hpp>
+
 namespace Luna
 {
     namespace RHI
@@ -143,6 +145,7 @@ namespace Luna
         }
         RV DescriptorSet::update_descriptors(Span<const WriteDescriptorSet> writes)
         {
+            StackAllocator salloc;
             lutry
             {
                 u64* data = nullptr;
@@ -232,8 +235,8 @@ namespace Luna
                             }
                             else
                             {
-                                MTL::Buffer** buffers = (MTL::Buffer**)alloca(sizeof(MTL::Buffer*) * write.num_descs);
-                                NS::UInteger* offsets = (NS::UInteger*)alloca(sizeof(NS::UInteger) * write.num_descs);
+                                MTL::Buffer** buffers = (MTL::Buffer**)salloc.allocate(sizeof(MTL::Buffer*) * write.num_descs);
+                                NS::UInteger* offsets = (NS::UInteger*)salloc.allocate(sizeof(NS::UInteger) * write.num_descs);
                                 for(usize i = 0; i < write.num_descs; ++i)
                                 {
                                     auto& view = write.buffer_views[i];
@@ -257,8 +260,8 @@ namespace Luna
                             }
                             else
                             {
-                                MTL::Buffer** buffers = (MTL::Buffer**)alloca(sizeof(MTL::Buffer*) * write.num_descs);
-                                NS::UInteger* offsets = (NS::UInteger*)alloca(sizeof(NS::UInteger) * write.num_descs);
+                                MTL::Buffer** buffers = (MTL::Buffer**)salloc.allocate(sizeof(MTL::Buffer*) * write.num_descs);
+                                NS::UInteger* offsets = (NS::UInteger*)salloc.allocate(sizeof(NS::UInteger) * write.num_descs);
                                 for(usize i = 0; i < write.num_descs; ++i)
                                 {
                                     auto& view = write.buffer_views[i];
@@ -291,7 +294,7 @@ namespace Luna
                             }
                             else
                             {
-                                MTL::Texture** textures = (MTL::Texture**)alloca(sizeof(MTL::Texture*) * write.num_descs);
+                                MTL::Texture** textures = (MTL::Texture**)salloc.allocate(sizeof(MTL::Texture*) * write.num_descs);
                                 for(usize i = 0; i < write.num_descs; ++i)
                                 {
                                     auto view = write.texture_views[i];
@@ -322,7 +325,7 @@ namespace Luna
                             }
                             else
                             {
-                                MTL::SamplerState** samplers = (MTL::SamplerState**)alloca(sizeof(MTL::SamplerState*) * write.num_descs);
+                                MTL::SamplerState** samplers = (MTL::SamplerState**)salloc.allocate(sizeof(MTL::SamplerState*) * write.num_descs);
                                 for(usize i = 0; i < write.num_descs; ++i)
                                 {
                                     const SamplerDesc& view = write.samplers[i];

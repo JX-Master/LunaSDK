@@ -8,8 +8,9 @@
 * @date 2018/10/26
 */
 #include "../../OS.hpp"
-#include <Luna/Runtime/Unicode.hpp>
+#include "../../../Unicode.hpp"
 #include <assert.h>
+#include "../../../StackAllocator.hpp"
 
 namespace Luna
 {
@@ -18,10 +19,11 @@ namespace Luna
         void assert_fail(const c8* msg, const c8* file, u32 line)
         {
 #ifdef LUNA_DEBUG
+            StackAllocator salloc;
             usize msg_len = utf8_to_utf16_len(msg);
             usize file_len = utf8_to_utf16_len(file);
-            c16* wbuf = (c16*)alloca(sizeof(c16) * (msg_len + 1));
-            c16* wfile = (c16*)alloca(sizeof(c16) * (file_len + 1));
+            c16* wbuf = (c16*)salloc.allocate(sizeof(c16) * (msg_len + 1));
+            c16* wfile = (c16*)salloc.allocate(sizeof(c16) * (file_len + 1));
             utf8_to_utf16(wbuf, msg_len + 1, msg);
             utf8_to_utf16(wfile, file_len + 1, file);
             _wassert((wchar_t*)wbuf, (wchar_t*)wfile, line);

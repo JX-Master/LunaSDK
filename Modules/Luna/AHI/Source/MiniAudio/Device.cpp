@@ -13,6 +13,7 @@
 #include "Device.hpp"
 #include <Luna/Runtime/Array.hpp>
 #include <Luna/Runtime/Math/Math.hpp>
+#include <Luna/Runtime/StackAllocator.hpp>
 
 namespace Luna
 {
@@ -152,6 +153,7 @@ namespace Luna
         }
         void data_callback(ma_device* pDevice, void* pOutput, const void* pInput, ma_uint32 frameCount)
         {
+            StackAllocator salloc;
             Device* device = (Device*)pDevice->pUserData;
             if(test_flags(device->m_flags, DeviceFlag::playback))
             {
@@ -171,7 +173,7 @@ namespace Luna
                 }
                 else
                 {
-                    mix_buffers = (MixBuffer*)alloca(sizeof(MixBuffer) * num_mix_buffers);
+                    mix_buffers = (MixBuffer*)salloc.allocate(sizeof(MixBuffer) * num_mix_buffers);
                 }
                 for(usize i = 0; i < device->m_audio_sources.size(); ++i)
                 {
