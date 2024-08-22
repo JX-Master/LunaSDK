@@ -14,6 +14,7 @@
 #include "../../Window.hpp"
 #include <Luna/Runtime/Unicode.hpp>
 #include <Luna/Runtime/StringUtils.hpp>
+#include <Luna/Runtime/StackAllocator.hpp>
 
 #include <Luna/Runtime/Platform/Windows/MiniWin.hpp>
 #include <commdlg.h>
@@ -32,13 +33,14 @@ namespace Luna
     {
         LUNA_WINDOW_API R<MessageBoxButton> message_box(const c8* text, const c8* caption, MessageBoxType type, MessageBoxIcon icon)
         {
+            StackAllocator salloc;
             wchar_t* wtext;
             wchar_t* wcap;
             usize text_size, caption_size;
             text_size = utf8_to_utf16_len(text);
             caption_size = utf8_to_utf16_len(caption);
-            wtext = (wchar_t*)alloca((text_size + 1) * sizeof(wchar_t));
-            wcap = (wchar_t*)alloca((caption_size + 1) * sizeof(wchar_t));
+            wtext = (wchar_t*)salloc.allocate((text_size + 1) * sizeof(wchar_t));
+            wcap = (wchar_t*)salloc.allocate((caption_size + 1) * sizeof(wchar_t));
             utf8_to_utf16((char16_t*)wtext, text_size + 1, text);
             utf8_to_utf16((char16_t*)wcap, caption_size + 1, caption);
             UINT f = 0;
@@ -108,6 +110,7 @@ namespace Luna
 
         LUNA_WINDOW_API R<Vector<Path>> open_file_dialog(const c8* title, Span<const FileDialogFilter> filters, const Path& initial_dir, FileDialogFlag flags)
         {
+            StackAllocator salloc;
             Vector<Path> paths;
             OPENFILENAMEW ofn;
             ZeroMemory(&ofn, sizeof(ofn));
@@ -128,7 +131,7 @@ namespace Luna
             if (title)
             {
                 usize wt_size = utf8_to_utf16_len(title);
-                wtitle = (wchar_t*)alloca(sizeof(wchar_t) * (wt_size + 1));
+                wtitle = (wchar_t*)salloc.allocate(sizeof(wchar_t) * (wt_size + 1));
                 utf8_to_utf16((char16_t*)wtitle, wt_size + 1, title);
             }
             Vector<wchar_t> wfilter;
@@ -194,7 +197,7 @@ namespace Luna
                     // Multiple file.
                     usize dir_wsz = strlen((char16_t*)ofn.lpstrFile);
                     usize dir_sz = utf16_to_utf8_len((char16_t*)ofn.lpstrFile);
-                    char* dir_buf = (char*)alloca(sizeof(char) * (dir_sz + 1));
+                    char* dir_buf = (char*)salloc.allocate(sizeof(char) * (dir_sz + 1));
                     utf16_to_utf8(dir_buf, (dir_sz + 1), (char16_t*)ofn.lpstrFile);
                     char16_t* wdir_cur = (char16_t*)ofn.lpstrFile + dir_wsz + 1;
                     Path file_path = dir_buf;
@@ -214,7 +217,7 @@ namespace Luna
                 {
                     // Single file.
                     usize ret_sz = utf16_to_utf8_len((char16_t*)ofn.lpstrFile);
-                    char* ret_buf = (char*)alloca(sizeof(char) * (ret_sz + 1));
+                    char* ret_buf = (char*)salloc.allocate(sizeof(char) * (ret_sz + 1));
                     utf16_to_utf8(ret_buf, (ret_sz + 1), (char16_t*)ofn.lpstrFile);
                     auto ret_path = Path(ret_buf);
                     paths.push_back(ret_path);
@@ -239,13 +242,14 @@ namespace Luna
 
         LUNA_WINDOW_API R<Path> save_file_dialog(const c8* title, Span<const FileDialogFilter> filters, const Path& initial_file_path, FileDialogFlag flags)
         {
+            StackAllocator salloc;
             Path ret_path;
             // Translate filter.
             wchar_t* wtitle = nullptr;
             if (title)
             {
                 usize wt_size = utf8_to_utf16_len(title);
-                wtitle = (wchar_t*)alloca(sizeof(wchar_t) * (wt_size + 1));
+                wtitle = (wchar_t*)salloc.allocate(sizeof(wchar_t) * (wt_size + 1));
                 utf8_to_utf16((char16_t*)wtitle, wt_size + 1, title);
             }
             Vector<wchar_t> wfilter;
@@ -328,7 +332,7 @@ namespace Luna
             }
 
             usize ret_sz = utf16_to_utf8_len((char16_t*)ofn.lpstrFile);
-            char* ret_buf = (char*)alloca(sizeof(char) * (ret_sz + 1));
+            char* ret_buf = (char*)salloc.allocate(sizeof(char) * (ret_sz + 1));
             utf16_to_utf8(ret_buf, (ret_sz + 1), (char16_t*)ofn.lpstrFile);
             ret_path = Path(ret_buf);
             return ret_path;
@@ -336,6 +340,7 @@ namespace Luna
 
         LUNA_WINDOW_API R<Path> open_dir_dialog(const c8* title, const Path& initial_dir)
         {
+            StackAllocator salloc;
             Path path;
             ComPtr<IFileDialog> pfd;
             if (FAILED(CoCreateInstance(CLSID_FileOpenDialog, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&pfd))))
@@ -347,7 +352,7 @@ namespace Luna
             {
                 wchar_t* wtitle = nullptr;
                 usize wt_size = utf8_to_utf16_len(title);
-                wtitle = (wchar_t*)alloca(sizeof(wchar_t) * (wt_size + 1));
+                wtitle = (wchar_t*)salloc.allocate(sizeof(wchar_t) * (wt_size + 1));
                 utf8_to_utf16((char16_t*)wtitle, wt_size + 1, title);
                 pfd->SetTitle(wtitle);
             }
@@ -387,7 +392,7 @@ namespace Luna
                     if (SUCCEEDED(psi->GetDisplayName(SIGDN_DESKTOPABSOLUTEPARSING, &tmp)))
                     {
                         usize path_len = utf16_to_utf8_len((char16_t*)tmp);
-                        char* buf = (char*)alloca(sizeof(char) * (path_len + 1));
+                        char* buf = (char*)salloc.allocate(sizeof(char) * (path_len + 1));
                         utf16_to_utf8(buf, path_len + 1, (char16_t*)tmp);
 
                         path = Path(buf);

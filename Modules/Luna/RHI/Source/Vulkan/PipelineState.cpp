@@ -9,6 +9,7 @@
 */
 #include "PipelineState.hpp"
 #include "PipelineLayout.hpp"
+#include <Luna/Runtime/StackAllocator.hpp>
 
 namespace Luna
 {
@@ -40,6 +41,7 @@ namespace Luna
         };
         RV PipelineState::init_as_graphics(const GraphicsPipelineStateDesc& desc)
         {
+            StackAllocator salloc;
             lutry
             {
                 VkGraphicsPipelineCreateInfo create_info{};
@@ -105,7 +107,7 @@ namespace Luna
                 }
                 else
                 {
-                    VkVertexInputBindingDescription* descs = (VkVertexInputBindingDescription*)alloca(
+                    VkVertexInputBindingDescription* descs = (VkVertexInputBindingDescription*)salloc.allocate(
                         sizeof(VkVertexInputBindingDescription) * desc.input_layout.bindings.size());
                     memzero(descs, sizeof(VkVertexInputBindingDescription) * desc.input_layout.bindings.size());
                     for (usize i = 0; i < desc.input_layout.bindings.size(); ++i)
@@ -132,7 +134,7 @@ namespace Luna
                 }
                 else
                 {
-                    VkVertexInputAttributeDescription* descs = (VkVertexInputAttributeDescription*)alloca(
+                    VkVertexInputAttributeDescription* descs = (VkVertexInputAttributeDescription*)salloc.allocate(
                         sizeof(VkVertexInputAttributeDescription) * desc.input_layout.attributes.size());
                     memzero(descs, sizeof(VkVertexInputAttributeDescription) * desc.input_layout.attributes.size());
                     for (usize i = 0; i < desc.input_layout.attributes.size(); ++i)

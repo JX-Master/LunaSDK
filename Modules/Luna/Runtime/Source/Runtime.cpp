@@ -36,6 +36,9 @@ namespace Luna
     void log_init();
     void log_close();
 
+    void stack_allocator_init();
+    void stack_allocator_close();
+
     void register_types_and_interfaces()
     {
         register_boxed_type<Signal>();
@@ -64,6 +67,7 @@ namespace Luna
     {
         if (g_initialized) return true;
         OS::init();
+        stack_allocator_init();
         profiler_init();
         error_init();
         name_init();
@@ -93,6 +97,7 @@ namespace Luna
         name_close();
         error_close();
         profiler_close();
+        stack_allocator_close();
         OS::close();
         g_initialized = false;
     }

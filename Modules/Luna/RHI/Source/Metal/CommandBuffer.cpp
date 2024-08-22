@@ -13,6 +13,7 @@
 #include "DescriptorSet.hpp"
 #include "QueryHeap.hpp"
 #include "Fence.hpp"
+#include <Luna/Runtime/StackAllocator.hpp>
 
 namespace Luna
 {
@@ -211,8 +212,9 @@ namespace Luna
         void CommandBuffer::set_vertex_buffers(u32 start_slot, Span<const VertexBufferView> views)
         {
             assert_graphcis_context();
-            MTL::Buffer** buffers = (MTL::Buffer**)alloca(sizeof(MTL::Buffer*) * views.size());
-            NS::UInteger* offsets = (NS::UInteger*)alloca(sizeof(NS::UInteger) * views.size());
+            StackAllocator salloc;
+            MTL::Buffer** buffers = (MTL::Buffer**)salloc.allocate(sizeof(MTL::Buffer*) * views.size());
+            NS::UInteger* offsets = (NS::UInteger*)salloc.allocate(sizeof(NS::UInteger) * views.size());
             for(usize i = 0; i < views.size(); ++i)
             {
                 const VertexBufferView& view = views[i];
@@ -253,8 +255,9 @@ namespace Luna
         {
             lucheck_msg(start_index + descriptor_sets.size() < 16, "Invalid descriptor set index range. Descriptor set index range must be in [0, 16) on Metal.");
             assert_graphcis_context();
-            MTL::Buffer** buffers = (MTL::Buffer**)alloca(sizeof(MTL::Buffer*) * descriptor_sets.size());
-            NS::UInteger* offsets = (NS::UInteger*)alloca(sizeof(NS::UInteger) * descriptor_sets.size());
+            StackAllocator salloc;
+            MTL::Buffer** buffers = (MTL::Buffer**)salloc.allocate(sizeof(MTL::Buffer*) * descriptor_sets.size());
+            NS::UInteger* offsets = (NS::UInteger*)salloc.allocate(sizeof(NS::UInteger) * descriptor_sets.size());
             Vector<MTL::Resource*> resources;
             for(usize i = 0; i < descriptor_sets.size(); ++i)
             {
@@ -293,7 +296,8 @@ namespace Luna
         void CommandBuffer::set_viewports(Span<const Viewport> viewports)
         {
             assert_graphcis_context();
-            MTL::Viewport* vps = (MTL::Viewport*)alloca(sizeof(MTL::Viewport) * viewports.size());
+            StackAllocator salloc;
+            MTL::Viewport* vps = (MTL::Viewport*)salloc.allocate(sizeof(MTL::Viewport) * viewports.size());
             for(usize i = 0; i < viewports.size(); ++i)
             {
                 MTL::Viewport& dst = vps[i];
@@ -320,7 +324,8 @@ namespace Luna
         void CommandBuffer::set_scissor_rects(Span<const RectI> rects)
         {
             assert_graphcis_context();
-            MTL::ScissorRect* dsts = (MTL::ScissorRect*)alloca(sizeof(MTL::ScissorRect) * rects.size());
+            StackAllocator salloc;
+            MTL::ScissorRect* dsts = (MTL::ScissorRect*)salloc.allocate(sizeof(MTL::ScissorRect) * rects.size());
             for(usize i = 0; i < rects.size(); ++i)
             {
                 MTL::ScissorRect& dst = dsts[i];
@@ -505,8 +510,9 @@ namespace Luna
         void CommandBuffer::set_compute_descriptor_sets(u32 start_index, Span<IDescriptorSet*> descriptor_sets)
         {
             assert_compute_context();
-            MTL::Buffer** buffers = (MTL::Buffer**)alloca(sizeof(MTL::Buffer*) * descriptor_sets.size());
-            NS::UInteger* offsets = (NS::UInteger*)alloca(sizeof(NS::UInteger) * descriptor_sets.size());
+            StackAllocator salloc;
+            MTL::Buffer** buffers = (MTL::Buffer**)salloc.allocate(sizeof(MTL::Buffer*) * descriptor_sets.size());
+            NS::UInteger* offsets = (NS::UInteger*)salloc.allocate(sizeof(NS::UInteger) * descriptor_sets.size());
             Vector<MTL::Resource*> resources;
             for(usize i = 0; i < descriptor_sets.size(); ++i)
             {
@@ -677,25 +683,26 @@ namespace Luna
         }
         void CommandBuffer::resource_barrier(Span<const BufferBarrier> buffer_barriers, Span<const TextureBarrier> texture_barriers)
         {
-             if(m_compute)
-             {
-                 usize num_resources = buffer_barriers.size() + texture_barriers.size();
-                 MTL::Resource** resources = (MTL::Resource**)alloca(sizeof(MTL::Resource*) * num_resources);
-                 usize i = 0;
-                 for(const BufferBarrier& barrier : buffer_barriers)
-                 {
-                     Buffer* res = cast_object<Buffer>(barrier.buffer->get_object());
-                     resources[i] = res->m_buffer.get();
-                     ++i;
-                 }
-                 for(const TextureBarrier& barrier : texture_barriers)
-                 {
-                     Texture* res = cast_object<Texture>(barrier.texture->get_object());
-                     resources[i] = res->m_texture.get();
-                     ++i;
-                 }
-                 m_compute->memoryBarrier(resources, i);
-             }
+            StackAllocator salloc;
+            if(m_compute)
+            {
+                usize num_resources = buffer_barriers.size() + texture_barriers.size();
+                MTL::Resource** resources = (MTL::Resource**)salloc.allocate(sizeof(MTL::Resource*) * num_resources);
+                usize i = 0;
+                for(const BufferBarrier& barrier : buffer_barriers)
+                {
+                    Buffer* res = cast_object<Buffer>(barrier.buffer->get_object());
+                    resources[i] = res->m_buffer.get();
+                    ++i;
+                }
+                for(const TextureBarrier& barrier : texture_barriers)
+                {
+                    Texture* res = cast_object<Texture>(barrier.texture->get_object());
+                    resources[i] = res->m_texture.get();
+                    ++i;
+                }
+                m_compute->memoryBarrier(resources, i);
+            }
         }
         RV CommandBuffer::submit(Span<IFence*> wait_fences, Span<IFence*> signal_fences, bool allow_host_waiting)
         {

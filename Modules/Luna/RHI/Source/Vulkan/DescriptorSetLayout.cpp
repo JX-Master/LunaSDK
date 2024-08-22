@@ -8,6 +8,7 @@
 * @date 2023/4/19
 */
 #include "DescriptorSetLayout.hpp"
+#include <Luna/Runtime/StackAllocator.hpp>
 
 namespace Luna
 {
@@ -42,6 +43,7 @@ namespace Luna
         }
         RV DescriptorSetLayout::init(const DescriptorSetLayoutDesc& desc)
         {
+            StackAllocator salloc;
             lutry
             {
                 m_flags = desc.flags;
@@ -50,7 +52,7 @@ namespace Luna
                 VkDescriptorSetLayoutBinding* bindings = nullptr;
                 if (!desc.bindings.empty())
                 {
-                    bindings = (VkDescriptorSetLayoutBinding*)alloca(sizeof(VkDescriptorSetLayoutBinding) * desc.bindings.size());
+                    bindings = (VkDescriptorSetLayoutBinding*)salloc.allocate(sizeof(VkDescriptorSetLayoutBinding) * desc.bindings.size());
                     for (usize i = 0; i < desc.bindings.size(); ++i)
                     {
                         encode_descriptor_set_binding(bindings[i], desc.bindings[i]);
@@ -68,7 +70,7 @@ namespace Luna
                 {
                     binding_flags.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO_EXT;
                     binding_flags.bindingCount = info.bindingCount;
-                    auto flags = (VkDescriptorBindingFlags*)alloca(sizeof(VkDescriptorBindingFlags) * info.bindingCount);
+                    auto flags = (VkDescriptorBindingFlags*)salloc.allocate(sizeof(VkDescriptorBindingFlags) * info.bindingCount);
                     memzero(flags, sizeof(VkDescriptorBindingFlags) * info.bindingCount);
                     flags[info.bindingCount - 1] |= VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT_EXT;
                     info.pNext = &binding_flags;
