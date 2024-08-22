@@ -19,7 +19,7 @@ namespace Luna
     opaque_t g_stack_allocator_tls;
 
     // Allocators for all threads.
-    struct alignas(MAX_ALIGN) StackAllocatorTLSContext
+    struct StackAllocatorTLSContext
     {
         byte_t* data;
         byte_t* cursor;
