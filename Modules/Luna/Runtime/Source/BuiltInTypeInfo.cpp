@@ -19,6 +19,7 @@
 #include "../Math/Matrix.hpp"
 #include "../Math/Quaternion.hpp"
 #include "../Math/Color.hpp"
+#include <Luna/Runtime/StackAllocator.hpp>
 
 namespace Luna
 {
@@ -363,11 +364,12 @@ namespace Luna
     inline usize robinhood_insert(usize h, typeinfo_t value_type, usize value_size, usize value_alignment, void* src_buf, void* value_buf, RobinHoodHashing::ControlBlock* cb_buf, usize buffer_size)
     {
         luassert(h != RobinHoodHashing::EMPTY_SLOT && !RobinHoodHashing::is_tombstone(h));
+        StackAllocator salloc;
         // Extract current data.
         usize pos = h % buffer_size;
         usize dist = 0;
         usize ret_pos = USIZE_MAX;
-        void* temp_v = alloca(value_size + value_alignment);
+        void* temp_v = salloc.allocate(value_size + value_alignment);
         temp_v = (void*)align_upper((usize)temp_v, value_alignment);
         while (true)
         {
@@ -637,6 +639,7 @@ namespace Luna
     }
     static RV hashmap_deserialize(typeinfo_t type, void* inst, const Variant& data)
     {
+        StackAllocator salloc;
         lutry
         {
             HashTableData* d = (HashTableData*)inst;
@@ -645,7 +648,7 @@ namespace Luna
             typeinfo_t value_type = make_hashmap_value_type(key_type, generic_arguments[1]);
             usize value_size = get_type_size(value_type);
             usize value_alignment = get_type_alignment(value_type);
-            void* value_buffer = alloca(value_size + value_alignment);
+            void* value_buffer = salloc.allocate(value_size + value_alignment);
             value_buffer = (void*)align_upper((usize)value_buffer, value_alignment);
             for (auto& v : data.values())
             {
@@ -669,13 +672,14 @@ namespace Luna
     }
     static RV hashset_deserialize(typeinfo_t type, void* inst, const Variant& data)
     {
+        StackAllocator salloc;
         lutry
         {
             HashTableData* d = (HashTableData*)inst;
             typeinfo_t value_type = get_struct_generic_arguments(type)[0];
             usize value_size = get_type_size(value_type);
             usize value_alignment = get_type_alignment(value_type);
-            void* value_buffer = alloca(value_size + value_alignment);
+            void* value_buffer = salloc.allocate(value_size + value_alignment);
             value_buffer = (void*)align_upper((usize)value_buffer, value_alignment);
             for (auto& v : data.values())
             {

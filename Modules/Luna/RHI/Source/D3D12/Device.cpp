@@ -20,6 +20,7 @@
 #include "Fence.hpp"
 #include "SwapChain.hpp"
 #include "Adapter.hpp"
+#include <Luna/Runtime/StackAllocator.hpp>
 
 namespace Luna
 {
@@ -332,6 +333,7 @@ namespace Luna
         }
         R<Ref<IDeviceMemory>> Device::allocate_memory(MemoryType memory_type, Span<const BufferDesc> buffers, Span<const TextureDesc> textures)
         {
+            StackAllocator salloc;
             Ref<IDeviceMemory> ret;
             lutry
             {
@@ -340,7 +342,7 @@ namespace Luna
                 D3D12MA::ALLOCATION_DESC allocation_desc{};
                 allocation_desc.HeapType = encode_memory_type(memory_type);
                 allocation_desc.ExtraHeapFlags = D3D12_HEAP_FLAG_DENY_BUFFERS | D3D12_HEAP_FLAG_DENY_RT_DS_TEXTURES | D3D12_HEAP_FLAG_DENY_NON_RT_DS_TEXTURES;
-                D3D12_RESOURCE_DESC* descs = (D3D12_RESOURCE_DESC*)alloca(sizeof(D3D12_RESOURCE_DESC) * (buffers.size() + textures.size()));
+                D3D12_RESOURCE_DESC* descs = (D3D12_RESOURCE_DESC*)salloc.allocate(sizeof(D3D12_RESOURCE_DESC) * (buffers.size() + textures.size()));
                 u32 i = 0;
                 for (auto& buffer : buffers)
                 {

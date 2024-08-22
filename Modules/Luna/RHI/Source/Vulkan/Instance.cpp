@@ -10,6 +10,7 @@
 #include "Instance.hpp"
 #include <Luna/Runtime/Log.hpp>
 #include <Luna/Window/Vulkan/Vulkan.hpp>
+#include <Luna/Runtime/StackAllocator.hpp>
 
 namespace Luna
 {
@@ -70,9 +71,10 @@ namespace Luna
 
         static bool check_validation_layer_support()
         {
+            StackAllocator salloc;
             u32 layer_count;
             vkEnumerateInstanceLayerProperties(&layer_count, nullptr);
-            VkLayerProperties* available_layers = (VkLayerProperties*)alloca(layer_count * sizeof(VkLayerProperties));
+            VkLayerProperties* available_layers = (VkLayerProperties*)salloc.allocate(layer_count * sizeof(VkLayerProperties));
             vkEnumerateInstanceLayerProperties(&layer_count, available_layers);
 
             bool layer_found = false;

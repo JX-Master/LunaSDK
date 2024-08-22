@@ -14,6 +14,7 @@
 #include "../../SwapChain.hpp"
 #include <Luna/Runtime/TSAssert.hpp>
 #include "Resource.hpp"
+#include <Luna/Runtime/StackAllocator.hpp>
 
 #pragma comment( lib, "dxguid.lib")
 
@@ -85,8 +86,9 @@ namespace Luna
             }
             virtual void set_name(const c8* name)  override
             {
+                StackAllocator salloc;
                 usize len = utf8_to_utf16_len(name);
-                wchar_t* buf = (wchar_t*)alloca(sizeof(wchar_t) * (len + 1));
+                wchar_t* buf = (wchar_t*)salloc.allocate(sizeof(wchar_t) * (len + 1));
                 utf8_to_utf16((c16*)buf, len + 1, name);
                 m_sc->SetPrivateData(WKPDID_D3DDebugObjectNameW, sizeof(wchar_t) * (len + 1), buf);
             }

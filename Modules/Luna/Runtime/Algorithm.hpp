@@ -12,6 +12,7 @@
 #include "Base.hpp"
 #include "Iterator.hpp"
 #include "Memory.hpp"
+#include <Luna/Runtime/StackAllocator.hpp>
 
 namespace Luna
 {
@@ -233,13 +234,14 @@ namespace Luna
     auto search(_ForwardIt first, _ForwardIt last,
         _ForwardIt pattern_first, _ForwardIt pattern_last) -> enable_if_t<is_pointer_v<_ForwardIt>, _ForwardIt>
     {
+        StackAllocator salloc;
         usize str_size = (usize)distance(first, last);
         usize pattern_size = (usize)distance(pattern_first, pattern_last);
         if(pattern_size == 0) return first;
         usize* lps;
         usize lps_size_bytes = sizeof(usize) * pattern_size;
         if(lps_size_bytes > Impl::KMP_STACK_SIZE_THRESHOLD) lps = (usize*)memalloc(lps_size_bytes);
-        else lps = (usize*)alloca(lps_size_bytes);
+        else lps = (usize*)salloc.allocate(lps_size_bytes);
         Impl::kmp_compute_lps(pattern_first, pattern_size, lps);
         auto it = Impl::kmp_search(first, str_size, pattern_first, pattern_size, lps);
         if(lps_size_bytes > Impl::KMP_STACK_SIZE_THRESHOLD) memfree(lps);
@@ -257,13 +259,14 @@ namespace Luna
     auto find_end(_ForwardIt first, _ForwardIt last,
         _ForwardIt pattern_first, _ForwardIt pattern_last) -> enable_if_t<is_pointer_v<_ForwardIt>, _ForwardIt>
     {
+        StackAllocator salloc;
         usize str_size = (usize)distance(first, last);
         usize pattern_size = (usize)distance(pattern_first, pattern_last);
         if(pattern_size == 0) return last;
         usize* lps;
         usize lps_size_bytes = sizeof(usize) * pattern_size;
         if(lps_size_bytes > Impl::KMP_STACK_SIZE_THRESHOLD) lps = (usize*)memalloc(lps_size_bytes);
-        else lps = (usize*)alloca(lps_size_bytes);
+        else lps = (usize*)salloc.allocate(lps_size_bytes);
         Impl::kmp_compute_lps_reverse(pattern_first, pattern_size, lps);
         auto it = Impl::kmp_search_reverse(first, str_size, pattern_first, pattern_size, lps);
         if(lps_size_bytes > Impl::KMP_STACK_SIZE_THRESHOLD) memfree(lps);

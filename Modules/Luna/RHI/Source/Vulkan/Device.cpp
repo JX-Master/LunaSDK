@@ -22,12 +22,15 @@
 #include "QueryHeap.hpp"
 #include "ResourceStateTrackingSystem.hpp"
 #include "SwapChain.hpp"
+#include <Luna/Runtime/StackAllocator.hpp>
+
 namespace Luna
 {
     namespace RHI
     {
         RV Device::init(VkPhysicalDevice physical_device, const Vector<QueueFamily>& queue_families)
         {
+            StackAllocator salloc;
             Vector<const c8*> enabled_extensions;
             // This is required.
             enabled_extensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
@@ -76,7 +79,7 @@ namespace Luna
                 create_info.pNext = nullptr;
                 create_info.queueFamilyIndex = src.index;
                 create_info.queueCount = src.num_queues;
-                f32* priorities = (f32*)alloca(sizeof(f32) * src.num_queues);
+                f32* priorities = (f32*)salloc.allocate(sizeof(f32) * src.num_queues);
                 for (usize i = 0; i < src.num_queues; ++i) priorities[i] = 1.0f;
                 create_info.pQueuePriorities = priorities;
                 create_info.flags = 0;

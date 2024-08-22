@@ -9,6 +9,7 @@
 */
 #include "DescriptorSet.hpp"
 #include "Resource.hpp"
+#include <Luna/Runtime/StackAllocator.hpp>
 namespace Luna
 {
     namespace RHI
@@ -49,13 +50,14 @@ namespace Luna
         }
         RV DescriptorSet::update_descriptors(Span<const WriteDescriptorSet> writes)
         {
+            StackAllocator salloc;
             lutry
             {
                 VkWriteDescriptorSet* d_writes = nullptr;
                 u32 num_writes = (u32)writes.size();
                 if (num_writes)
                 {
-                    d_writes = (VkWriteDescriptorSet*)alloca(sizeof(VkWriteDescriptorSet) * num_writes);
+                    d_writes = (VkWriteDescriptorSet*)salloc.allocate(sizeof(VkWriteDescriptorSet) * num_writes);
                     memzero(d_writes, sizeof(VkWriteDescriptorSet) * num_writes);
                     for (u32 i = 0; i < num_writes; ++i)
                     {
@@ -75,7 +77,7 @@ namespace Luna
                         {
                             if (d.descriptorCount)
                             {
-                                VkDescriptorBufferInfo* infos = (VkDescriptorBufferInfo*)alloca(sizeof(VkDescriptorBufferInfo) * d.descriptorCount);
+                                VkDescriptorBufferInfo* infos = (VkDescriptorBufferInfo*)salloc.allocate(sizeof(VkDescriptorBufferInfo) * d.descriptorCount);
                                 for (u32 j = 0; j < d.descriptorCount; ++j)
                                 {
                                     auto& s_buffer = s.buffer_views[j];
@@ -102,7 +104,7 @@ namespace Luna
                         {
                             if (d.descriptorCount)
                             {
-                                VkDescriptorImageInfo* infos = (VkDescriptorImageInfo*)alloca(sizeof(VkDescriptorImageInfo) * d.descriptorCount);
+                                VkDescriptorImageInfo* infos = (VkDescriptorImageInfo*)salloc.allocate(sizeof(VkDescriptorImageInfo) * d.descriptorCount);
                                 memzero(infos, sizeof(VkDescriptorImageInfo) * d.descriptorCount);
                                 for (u32 j = 0; j < d.descriptorCount; ++j)
                                 {
@@ -129,7 +131,7 @@ namespace Luna
                         {
                             if (d.descriptorCount)
                             {
-                                VkDescriptorImageInfo* infos = (VkDescriptorImageInfo*)alloca(sizeof(VkDescriptorImageInfo) * d.descriptorCount);
+                                VkDescriptorImageInfo* infos = (VkDescriptorImageInfo*)salloc.allocate(sizeof(VkDescriptorImageInfo) * d.descriptorCount);
                                 memzero(infos, sizeof(VkDescriptorImageInfo) * d.descriptorCount);
                                 for (u32 j = 0; j < d.descriptorCount; ++j)
                                 {

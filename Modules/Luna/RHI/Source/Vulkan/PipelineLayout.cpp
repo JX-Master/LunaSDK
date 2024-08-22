@@ -9,12 +9,14 @@
 */
 #include "PipelineLayout.hpp"
 #include "DescriptorSetLayout.hpp"
+#include <Luna/Runtime/StackAllocator.hpp>
 namespace Luna
 {
     namespace RHI
     {
         RV PipelineLayout::init(const PipelineLayoutDesc& desc)
         {
+            StackAllocator salloc;
             lutry
             {
                 VkPipelineLayoutCreateInfo create_info{};
@@ -27,7 +29,7 @@ namespace Luna
                 }
                 else
                 {
-                    VkDescriptorSetLayout* layouts = (VkDescriptorSetLayout*)alloca(sizeof(VkDescriptorSetLayout*) * desc.descriptor_set_layouts.size());
+                    VkDescriptorSetLayout* layouts = (VkDescriptorSetLayout*)salloc.allocate(sizeof(VkDescriptorSetLayout*) * desc.descriptor_set_layouts.size());
                     for (usize i = 0; i < desc.descriptor_set_layouts.size(); ++i)
                     {
                         DescriptorSetLayout* desc_layout = (DescriptorSetLayout*)desc.descriptor_set_layouts[i]->get_object();

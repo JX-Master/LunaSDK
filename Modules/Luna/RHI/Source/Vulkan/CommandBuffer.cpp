@@ -16,6 +16,7 @@
 #include "Fence.hpp"
 #include "Instance.hpp"
 #include "../RHI.hpp"
+#include <Luna/Runtime/StackAllocator.hpp>
 namespace Luna
 {
     namespace RHI
@@ -325,6 +326,7 @@ namespace Luna
         void CommandBuffer::begin_render_pass(const RenderPassDesc& desc)
         {
             lucheck_msg(!m_render_pass_begin && !m_copy_pass_begin && !m_compute_pass_begin, "begin_render_pass can only be called when no other pass is open.");
+            StackAllocator salloc;
             lutry
             {
                 RenderPassKey rp;
@@ -430,7 +432,7 @@ namespace Luna
 
                 u32 num_attachments = num_color_attachments + num_resolve_targets;
                 if (use_depth_stencil) ++num_attachments;
-                VkClearValue* clear_values = (VkClearValue*)alloca(sizeof(VkClearValue) * num_attachments);
+                VkClearValue* clear_values = (VkClearValue*)salloc.allocate(sizeof(VkClearValue) * num_attachments);
                 u32 attachment_index = 0;
                 for (usize i = 0; i < num_color_attachments; ++i)
                 {
@@ -497,8 +499,9 @@ namespace Luna
         void CommandBuffer::set_vertex_buffers(u32 start_slot, Span<const VertexBufferView> views)
         {
             assert_graphcis_context();
-            VkBuffer* bufs = (VkBuffer*)alloca(sizeof(VkBuffer) * views.size());
-            VkDeviceSize* vk_offsets = (VkDeviceSize*)alloca(sizeof(VkDeviceSize) * views.size());
+            StackAllocator salloc;
+            VkBuffer* bufs = (VkBuffer*)salloc.allocate(sizeof(VkBuffer) * views.size());
+            VkDeviceSize* vk_offsets = (VkDeviceSize*)salloc.allocate(sizeof(VkDeviceSize) * views.size());
             for (u32 i = 0; i < views.size(); ++i)
             {
                 BufferResource* res = cast_object<BufferResource>(views[i].buffer->get_object());
@@ -526,10 +529,11 @@ namespace Luna
         void CommandBuffer::set_graphics_descriptor_sets(u32 start_index, Span<IDescriptorSet*> descriptor_sets)
         {
             assert_graphcis_context();
+            StackAllocator salloc;
             VkPipelineLayout layout = VK_NULL_HANDLE;
             PipelineLayout* playout = (PipelineLayout*)m_graphics_pipeline_layout->get_object();
             layout = playout->m_pipeline_layout;
-            VkDescriptorSet* sets = (VkDescriptorSet*)alloca(sizeof(VkDescriptorSet) * descriptor_sets.size());
+            VkDescriptorSet* sets = (VkDescriptorSet*)salloc.allocate(sizeof(VkDescriptorSet) * descriptor_sets.size());
             for (u32 i = 0; i < descriptor_sets.size(); ++i)
             {
                 auto s = (DescriptorSet*)(descriptor_sets[i]->get_object());
@@ -545,8 +549,9 @@ namespace Luna
         void CommandBuffer::set_viewports(Span<const Viewport> viewports)
         {
             assert_graphcis_context();
+            StackAllocator salloc;
             u32 max_num_viewports = m_device->m_physical_device_properties.limits.maxViewports;
-            VkViewport* vps = (VkViewport*)alloca(sizeof(VkViewport) * max_num_viewports);
+            VkViewport* vps = (VkViewport*)salloc.allocate(sizeof(VkViewport) * max_num_viewports);
             for (usize i = 0; i < max_num_viewports; ++i)
             {
                 auto& d = vps[i];
@@ -577,8 +582,9 @@ namespace Luna
         void CommandBuffer::set_scissor_rects(Span<const RectI> rects)
         {
             assert_graphcis_context();
+            StackAllocator salloc;
             u32 max_num_viewports = m_device->m_physical_device_properties.limits.maxViewports;
-            VkRect2D* r = (VkRect2D*)alloca(sizeof(VkRect2D) * max_num_viewports);
+            VkRect2D* r = (VkRect2D*)salloc.allocate(sizeof(VkRect2D) * max_num_viewports);
             for (usize i = 0; i < max_num_viewports; ++i)
             {
                 auto& d = r[i];
@@ -705,10 +711,11 @@ namespace Luna
         void CommandBuffer::set_compute_descriptor_sets(u32 start_index, Span<IDescriptorSet*> descriptor_sets)
         {
             assert_compute_context();
+            StackAllocator salloc;
             VkPipelineLayout layout = VK_NULL_HANDLE;
             PipelineLayout* playout = (PipelineLayout*)m_compute_pipeline_layout->get_object();
             layout = playout->m_pipeline_layout;
-            VkDescriptorSet* sets = (VkDescriptorSet*)alloca(sizeof(VkDescriptorSet) * descriptor_sets.size());
+            VkDescriptorSet* sets = (VkDescriptorSet*)salloc.allocate(sizeof(VkDescriptorSet) * descriptor_sets.size());
             for (u32 i = 0; i < descriptor_sets.size(); ++i)
             {
                 auto s = (DescriptorSet*)descriptor_sets[i]->get_object();
@@ -755,6 +762,7 @@ namespace Luna
         void CommandBuffer::copy_resource(IResource* dst, IResource* src)
         {
             assert_copy_context();
+            StackAllocator salloc;
             BufferResource* s = cast_object<BufferResource>(src->get_object());
             BufferResource* d = cast_object<BufferResource>(dst->get_object());
             if (s && d)
@@ -772,7 +780,7 @@ namespace Luna
                 // The copy is performed one per mips.
                 u32 mip_levels = td->m_desc.mip_levels;
                 u32 array_count = td->m_desc.array_size;
-                VkImageCopy* copies = (VkImageCopy*)alloca(sizeof(VkImageCopy) * mip_levels);
+                VkImageCopy* copies = (VkImageCopy*)salloc.allocate(sizeof(VkImageCopy) * mip_levels);
                 for (u32 mip = 0; mip < mip_levels; ++mip)
                 {
                     VkImageCopy& copy = copies[mip];
@@ -942,6 +950,7 @@ namespace Luna
         RV CommandBuffer::submit(Span<IFence*> wait_fences, Span<IFence*> signal_fences, bool allow_host_waiting)
         {
             lucheck_msg(!m_render_pass_begin && !m_copy_pass_begin && !m_compute_pass_begin, "submit can only be called when no render, compute or copy pass is open.");
+            StackAllocator salloc;
             if (!m_recording) return BasicError::bad_calling_time();
             lutry
             {
@@ -1021,7 +1030,7 @@ namespace Luna
                 VkSemaphore* signal_semaphores = nullptr;
                 if (!signal_fences.empty())
                 {
-                    signal_semaphores = (VkSemaphore*)alloca(sizeof(VkSemaphore) * signal_fences.size());
+                    signal_semaphores = (VkSemaphore*)salloc.allocate(sizeof(VkSemaphore) * signal_fences.size());
                     for (usize i = 0; i < signal_fences.size(); ++i)
                     {
                         Fence* fence = (Fence*)signal_fences[i]->get_object();
