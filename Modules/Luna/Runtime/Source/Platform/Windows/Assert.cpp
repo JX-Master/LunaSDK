@@ -10,7 +10,6 @@
 #include "../../OS.hpp"
 #include <Luna/Runtime/Unicode.hpp>
 #include <assert.h>
-#include "../../../Alloca.hpp"
 
 namespace Luna
 {
@@ -21,8 +20,8 @@ namespace Luna
 #ifdef LUNA_DEBUG
             usize msg_len = utf8_to_utf16_len(msg);
             usize file_len = utf8_to_utf16_len(file);
-            lualloca(wbuf, c16, msg_len + 1);
-            lualloca(wfile, c16, file_len + 1);
+            c16* wbuf = (c16*)alloca(sizeof(c16) * (msg_len + 1));
+            c16* wfile = (c16*)alloca(sizeof(c16) * (file_len + 1));
             utf8_to_utf16(wbuf, msg_len + 1, msg);
             utf8_to_utf16(wfile, file_len + 1, file);
             _wassert((wchar_t*)wbuf, (wchar_t*)wfile, line);

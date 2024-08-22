@@ -13,7 +13,6 @@
 #include <Luna/Runtime/Math/Color.hpp>
 #include <Luna/Runtime/Math/Transform.hpp>
 #include "MainEditor.hpp"
-#include <Luna/Runtime/Alloca.hpp>
 
 namespace Luna
 {
@@ -33,7 +32,7 @@ namespace Luna
         }
         else
         {
-            lualloca(options, const c8*, descs.size());
+            const c8** options = (const c8**)alloca(sizeof(const c8*) * descs.size());
             i64 value = get_enum_instance_value(type, obj);
             int current_item = -1;
             for (usize i = 0; i < descs.size(); ++i)

@@ -15,7 +15,6 @@
 #include "DescriptorSet.hpp"
 #include "PipelineState.hpp"
 #include "PipelineLayout.hpp"
-#include <Luna/Runtime/Alloca.hpp>
 
 namespace Luna
 {
@@ -244,7 +243,7 @@ namespace Luna
             virtual void begin_event(const c8* event_name) override
             {
                 usize len = utf8_to_utf16_len(event_name);
-                lualloca(buf, wchar_t, len + 1);
+                wchar_t* buf = (wchar_t*)alloca(sizeof(wchar_t) * (len + 1));
                 utf8_to_utf16((c16*)buf, len + 1, event_name);
                 m_li->BeginEvent(0, buf, sizeof(wchar_t) * (len + 1));
             }

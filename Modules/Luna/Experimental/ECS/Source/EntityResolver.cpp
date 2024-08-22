@@ -10,7 +10,6 @@
 */
 #include "EntityResolver.hpp"
 #include "World.hpp"
-#include <Luna/Runtime/Alloca.hpp>
 
 namespace Luna
 {
@@ -122,7 +121,7 @@ namespace Luna
         }
         bool EntityResolver::add_component(typeinfo_t component)
         {
-            lualloca(dst_components_begin, typeinfo_t, m_component_types.size() + 1);
+            auto dst_components_begin = (typeinfo_t*)alloca(sizeof(typeinfo_t) * (m_component_types.size() + 1));
             auto dst_components_end = set_union(
                 m_component_types.begin(), m_component_types.end(),
                 &component, &component + 1,
@@ -137,7 +136,7 @@ namespace Luna
         }
         bool EntityResolver::remove_component(typeinfo_t component)
         {
-            lualloca(dst_components_begin, typeinfo_t, m_component_types.size());
+            auto dst_components_begin = (typeinfo_t*)alloca(sizeof(typeinfo_t) * m_component_types.size());
             auto dst_components_end = set_difference(
                 m_component_types.begin(), m_component_types.end(),
                 &component, &component + 1,
@@ -152,7 +151,7 @@ namespace Luna
         }
         bool EntityResolver::add_tag(entity_id_t tag)
         {
-            lualloca(dst_tags_begin, entity_id_t, m_tags.size() + 1);
+            auto dst_tags_begin = (entity_id_t*)alloca(sizeof(entity_id_t) * (m_tags.size() + 1));
             auto dst_tags_end = set_union(
                 m_tags.begin(), m_tags.end(),
                 &tag, &tag + 1,
@@ -167,7 +166,7 @@ namespace Luna
         }
         bool EntityResolver::remove_tag(entity_id_t tag)
         {
-            lualloca(dst_tags_begin, entity_id_t, m_tags.size());
+            auto dst_tags_begin = (entity_id_t*)alloca(sizeof(entity_id_t) * m_tags.size());
             auto dst_tags_end = set_difference(
                 m_tags.begin(), m_tags.end(),
                 &tag, &tag + 1,

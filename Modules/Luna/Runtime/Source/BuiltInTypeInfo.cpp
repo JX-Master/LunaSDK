@@ -367,17 +367,7 @@ namespace Luna
         usize pos = h % buffer_size;
         usize dist = 0;
         usize ret_pos = USIZE_MAX;
-        Array<u8> temp_v_buffer;
-        void* temp_v;
-        if(value_size + value_alignment <= 256)
-        {
-            temp_v = alloca(value_size + value_alignment);
-        }
-        else
-        {
-            temp_v_buffer = Array<u8>(value_size + value_alignment);
-            temp_v = temp_v_buffer.data();
-        }
+        void* temp_v = alloca(value_size + value_alignment);
         temp_v = (void*)align_upper((usize)temp_v, value_alignment);
         while (true)
         {
@@ -655,17 +645,7 @@ namespace Luna
             typeinfo_t value_type = make_hashmap_value_type(key_type, generic_arguments[1]);
             usize value_size = get_type_size(value_type);
             usize value_alignment = get_type_alignment(value_type);
-            Array<u8> value_buffer_alloca;
-            void* value_buffer;
-            if(value_size + value_alignment <= 256)
-            {
-                value_buffer = alloca(value_size + value_alignment);
-            }
-            else
-            {
-                value_buffer_alloca = Array<u8>(value_size + value_alignment);
-                value_buffer = value_buffer_alloca.data();
-            }
+            void* value_buffer = alloca(value_size + value_alignment);
             value_buffer = (void*)align_upper((usize)value_buffer, value_alignment);
             for (auto& v : data.values())
             {
@@ -695,17 +675,7 @@ namespace Luna
             typeinfo_t value_type = get_struct_generic_arguments(type)[0];
             usize value_size = get_type_size(value_type);
             usize value_alignment = get_type_alignment(value_type);
-            Array<u8> value_buffer_alloca;
-            void* value_buffer;
-            if(value_size + value_alignment <= 256)
-            {
-                value_buffer = alloca(value_size + value_alignment);
-            }
-            else
-            {
-                value_buffer_alloca = Array<u8>(value_size + value_alignment);
-                value_buffer = value_buffer_alloca.data();
-            }
+            void* value_buffer = alloca(value_size + value_alignment);
             value_buffer = (void*)align_upper((usize)value_buffer, value_alignment);
             for (auto& v : data.values())
             {

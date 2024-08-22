@@ -9,7 +9,6 @@
 */
 #include "DescriptorSet.hpp"
 #include "Resource.hpp"
-#include <Luna/Runtime/Alloca.hpp>
 namespace Luna
 {
     namespace RHI
@@ -52,22 +51,11 @@ namespace Luna
         {
             lutry
             {
-                Blob d_writes_buffer;
                 VkWriteDescriptorSet* d_writes = nullptr;
                 u32 num_writes = (u32)writes.size();
-                Vector<Array<VkDescriptorBufferInfo>> buffer_info_array;
-                Vector<Array<VkDescriptorImageInfo>> image_info_array;
                 if (num_writes)
                 {
-                    if(sizeof(VkWriteDescriptorSet) * num_writes <= 256)
-                    {
-                        d_writes = (VkWriteDescriptorSet*)alloca(sizeof(VkWriteDescriptorSet) * num_writes);
-                    }
-                    else
-                    {
-                        d_writes_buffer.resize(sizeof(VkWriteDescriptorSet) * num_writes);
-                        d_writes = (VkWriteDescriptorSet*)d_writes_buffer.data();
-                    }
+                    d_writes = (VkWriteDescriptorSet*)alloca(sizeof(VkWriteDescriptorSet) * num_writes);
                     memzero(d_writes, sizeof(VkWriteDescriptorSet) * num_writes);
                     for (u32 i = 0; i < num_writes; ++i)
                     {
@@ -87,8 +75,7 @@ namespace Luna
                         {
                             if (d.descriptorCount)
                             {
-                                buffer_info_array.emplace_back(d.descriptorCount);
-                                auto& infos = buffer_info_array.back();
+                                VkDescriptorBufferInfo* infos = (VkDescriptorBufferInfo*)alloca(sizeof(VkDescriptorBufferInfo) * d.descriptorCount);
                                 for (u32 j = 0; j < d.descriptorCount; ++j)
                                 {
                                     auto& s_buffer = s.buffer_views[j];
@@ -106,7 +93,7 @@ namespace Luna
                                         d_buffer.range = (u64)s_buffer.element_count * (u64)s_buffer.element_size;
                                     }
                                 }
-                                d.pBufferInfo = infos.data();
+                                d.pBufferInfo = infos;
                             }
                         }
                         break;
@@ -115,9 +102,8 @@ namespace Luna
                         {
                             if (d.descriptorCount)
                             {
-                                image_info_array.emplace_back(d.descriptorCount);
-                                auto& infos = image_info_array.back();
-                                memzero(infos.data(), sizeof(VkDescriptorImageInfo) * d.descriptorCount);
+                                VkDescriptorImageInfo* infos = (VkDescriptorImageInfo*)alloca(sizeof(VkDescriptorImageInfo) * d.descriptorCount);
+                                memzero(infos, sizeof(VkDescriptorImageInfo) * d.descriptorCount);
                                 for (u32 j = 0; j < d.descriptorCount; ++j)
                                 {
                                     auto& s_image = s.texture_views[j];
@@ -135,7 +121,7 @@ namespace Luna
                                     d_image.imageView = view->m_image_view;
                                     d_image.sampler = VK_NULL_HANDLE;
                                 }
-                                d.pImageInfo = infos.data();
+                                d.pImageInfo = infos;
                             }
                         }
                         break;
@@ -143,9 +129,8 @@ namespace Luna
                         {
                             if (d.descriptorCount)
                             {
-                                image_info_array.emplace_back(d.descriptorCount);
-                                auto& infos = image_info_array.back();
-                                memzero(infos.data(), sizeof(VkDescriptorImageInfo) * d.descriptorCount);
+                                VkDescriptorImageInfo* infos = (VkDescriptorImageInfo*)alloca(sizeof(VkDescriptorImageInfo) * d.descriptorCount);
+                                memzero(infos, sizeof(VkDescriptorImageInfo) * d.descriptorCount);
                                 for (u32 j = 0; j < d.descriptorCount; ++j)
                                 {
                                     auto& s_sampler = s.samplers[j];
@@ -158,7 +143,7 @@ namespace Luna
                                     m_samplers.insert_or_assign(s.binding_slot + s.first_array_index + j, sampler);
                                     d_sampler.sampler = sampler->m_sampler;
                                 }
-                                d.pImageInfo = infos.data();
+                                d.pImageInfo = infos;
                             }
                         }
                         break;

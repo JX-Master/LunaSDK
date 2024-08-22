@@ -14,7 +14,7 @@
 #include "../../Window.hpp"
 #include <Luna/Runtime/Unicode.hpp>
 #include <Luna/Runtime/StringUtils.hpp>
-#include <Luna/Runtime/Alloca.hpp>
+
 #include <Luna/Runtime/Platform/Windows/MiniWin.hpp>
 #include <commdlg.h>
 #include <wrl/client.h>
@@ -32,11 +32,13 @@ namespace Luna
     {
         LUNA_WINDOW_API R<MessageBoxButton> message_box(const c8* text, const c8* caption, MessageBoxType type, MessageBoxIcon icon)
         {
+            wchar_t* wtext;
+            wchar_t* wcap;
             usize text_size, caption_size;
             text_size = utf8_to_utf16_len(text);
             caption_size = utf8_to_utf16_len(caption);
-            lualloca(wtext, wchar_t, text_size + 1);
-            lualloca(wcap, wchar_t, caption_size + 1);
+            wtext = (wchar_t*)alloca((text_size + 1) * sizeof(wchar_t));
+            wcap = (wchar_t*)alloca((caption_size + 1) * sizeof(wchar_t));
             utf8_to_utf16((char16_t*)wtext, text_size + 1, text);
             utf8_to_utf16((char16_t*)wcap, caption_size + 1, caption);
             UINT f = 0;
@@ -121,20 +123,12 @@ namespace Luna
             {
                 out[0] = '\0';
             }
-            Array<wchar_t> wtitle_buffer;
+
             wchar_t* wtitle = nullptr;
             if (title)
             {
                 usize wt_size = utf8_to_utf16_len(title);
-                if(sizeof(wchar_t) * (wt_size + 1) <= 256)
-                {
-                    wtitle = (wchar_t*)alloca(sizeof(wchar_t) * (wt_size + 1));
-                }
-                else
-                {
-                    wtitle_buffer = Array<wchar_t>(wt_size + 1);
-                    wtitle = wtitle_buffer.data();
-                }
+                wtitle = (wchar_t*)alloca(sizeof(wchar_t) * (wt_size + 1));
                 utf8_to_utf16((char16_t*)wtitle, wt_size + 1, title);
             }
             Vector<wchar_t> wfilter;
@@ -200,7 +194,7 @@ namespace Luna
                     // Multiple file.
                     usize dir_wsz = strlen((char16_t*)ofn.lpstrFile);
                     usize dir_sz = utf16_to_utf8_len((char16_t*)ofn.lpstrFile);
-                    lualloca(dir_buf, char, dir_sz + 1);
+                    char* dir_buf = (char*)alloca(sizeof(char) * (dir_sz + 1));
                     utf16_to_utf8(dir_buf, (dir_sz + 1), (char16_t*)ofn.lpstrFile);
                     char16_t* wdir_cur = (char16_t*)ofn.lpstrFile + dir_wsz + 1;
                     Path file_path = dir_buf;
@@ -220,7 +214,7 @@ namespace Luna
                 {
                     // Single file.
                     usize ret_sz = utf16_to_utf8_len((char16_t*)ofn.lpstrFile);
-                    lualloca(ret_buf, char, ret_sz + 1);
+                    char* ret_buf = (char*)alloca(sizeof(char) * (ret_sz + 1));
                     utf16_to_utf8(ret_buf, (ret_sz + 1), (char16_t*)ofn.lpstrFile);
                     auto ret_path = Path(ret_buf);
                     paths.push_back(ret_path);
@@ -251,7 +245,7 @@ namespace Luna
             if (title)
             {
                 usize wt_size = utf8_to_utf16_len(title);
-                lualloca(wtitle, wchar_t, wt_size + 1);
+                wtitle = (wchar_t*)alloca(sizeof(wchar_t) * (wt_size + 1));
                 utf8_to_utf16((char16_t*)wtitle, wt_size + 1, title);
             }
             Vector<wchar_t> wfilter;
@@ -334,7 +328,7 @@ namespace Luna
             }
 
             usize ret_sz = utf16_to_utf8_len((char16_t*)ofn.lpstrFile);
-            lualloca(ret_buf, char, ret_sz + 1);
+            char* ret_buf = (char*)alloca(sizeof(char) * (ret_sz + 1));
             utf16_to_utf8(ret_buf, (ret_sz + 1), (char16_t*)ofn.lpstrFile);
             ret_path = Path(ret_buf);
             return ret_path;
@@ -351,8 +345,9 @@ namespace Luna
 
             if (title)
             {
+                wchar_t* wtitle = nullptr;
                 usize wt_size = utf8_to_utf16_len(title);
-                lualloca(wtitle, wchar_t, wt_size + 1);
+                wtitle = (wchar_t*)alloca(sizeof(wchar_t) * (wt_size + 1));
                 utf8_to_utf16((char16_t*)wtitle, wt_size + 1, title);
                 pfd->SetTitle(wtitle);
             }
@@ -392,7 +387,7 @@ namespace Luna
                     if (SUCCEEDED(psi->GetDisplayName(SIGDN_DESKTOPABSOLUTEPARSING, &tmp)))
                     {
                         usize path_len = utf16_to_utf8_len((char16_t*)tmp);
-                        lualloca(buf, char, path_len + 1);
+                        char* buf = (char*)alloca(sizeof(char) * (path_len + 1));
                         utf16_to_utf8(buf, path_len + 1, (char16_t*)tmp);
 
                         path = Path(buf);

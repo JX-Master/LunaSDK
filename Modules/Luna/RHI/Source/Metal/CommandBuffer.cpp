@@ -13,7 +13,6 @@
 #include "DescriptorSet.hpp"
 #include "QueryHeap.hpp"
 #include "Fence.hpp"
-#include <Luna/Runtime/Alloca.hpp>
 
 namespace Luna
 {
@@ -212,8 +211,8 @@ namespace Luna
         void CommandBuffer::set_vertex_buffers(u32 start_slot, Span<const VertexBufferView> views)
         {
             assert_graphcis_context();
-            lualloca(buffers, MTL::Buffer*, views.size());
-            lualloca(offsets, NS::UInteger, views.size());
+            MTL::Buffer** buffers = (MTL::Buffer**)alloca(sizeof(MTL::Buffer*) * views.size());
+            NS::UInteger* offsets = (NS::UInteger*)alloca(sizeof(NS::UInteger) * views.size());
             for(usize i = 0; i < views.size(); ++i)
             {
                 const VertexBufferView& view = views[i];
@@ -254,8 +253,8 @@ namespace Luna
         {
             lucheck_msg(start_index + descriptor_sets.size() < 16, "Invalid descriptor set index range. Descriptor set index range must be in [0, 16) on Metal.");
             assert_graphcis_context();
-            lualloca(buffers, MTL::Buffer*, descriptor_sets.size());
-            lualloca(offsets, NS::UInteger, descriptor_sets.size());
+            MTL::Buffer** buffers = (MTL::Buffer**)alloca(sizeof(MTL::Buffer*) * descriptor_sets.size());
+            NS::UInteger* offsets = (NS::UInteger*)alloca(sizeof(NS::UInteger) * descriptor_sets.size());
             Vector<MTL::Resource*> resources;
             for(usize i = 0; i < descriptor_sets.size(); ++i)
             {
@@ -294,7 +293,7 @@ namespace Luna
         void CommandBuffer::set_viewports(Span<const Viewport> viewports)
         {
             assert_graphcis_context();
-            lualloca(vps, MTL::Viewport, viewports.size());
+            MTL::Viewport* vps = (MTL::Viewport*)alloca(sizeof(MTL::Viewport) * viewports.size());
             for(usize i = 0; i < viewports.size(); ++i)
             {
                 MTL::Viewport& dst = vps[i];
@@ -321,7 +320,7 @@ namespace Luna
         void CommandBuffer::set_scissor_rects(Span<const RectI> rects)
         {
             assert_graphcis_context();
-            lualloca(dsts, MTL::ScissorRect, rects.size());
+            MTL::ScissorRect* dsts = (MTL::ScissorRect*)alloca(sizeof(MTL::ScissorRect) * rects.size());
             for(usize i = 0; i < rects.size(); ++i)
             {
                 MTL::ScissorRect& dst = dsts[i];
@@ -506,8 +505,8 @@ namespace Luna
         void CommandBuffer::set_compute_descriptor_sets(u32 start_index, Span<IDescriptorSet*> descriptor_sets)
         {
             assert_compute_context();
-            lualloca(buffers, MTL::Buffer*, descriptor_sets.size());
-            lualloca(offsets, NS::UInteger, descriptor_sets.size());
+            MTL::Buffer** buffers = (MTL::Buffer**)alloca(sizeof(MTL::Buffer*) * descriptor_sets.size());
+            NS::UInteger* offsets = (NS::UInteger*)alloca(sizeof(NS::UInteger) * descriptor_sets.size());
             Vector<MTL::Resource*> resources;
             for(usize i = 0; i < descriptor_sets.size(); ++i)
             {
@@ -681,7 +680,7 @@ namespace Luna
              if(m_compute)
              {
                  usize num_resources = buffer_barriers.size() + texture_barriers.size();
-                 lualloca(resources, MTL::Resource*, num_resources);
+                 MTL::Resource** resources = (MTL::Resource**)alloca(sizeof(MTL::Resource*) * num_resources);
                  usize i = 0;
                  for(const BufferBarrier& barrier : buffer_barriers)
                  {

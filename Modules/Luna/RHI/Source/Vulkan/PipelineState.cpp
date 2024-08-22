@@ -9,7 +9,6 @@
 */
 #include "PipelineState.hpp"
 #include "PipelineLayout.hpp"
-#include <Luna/Runtime/Alloca.hpp>
 
 namespace Luna
 {
@@ -106,7 +105,8 @@ namespace Luna
                 }
                 else
                 {
-                    lualloca(descs, VkVertexInputBindingDescription, desc.input_layout.bindings.size());
+                    VkVertexInputBindingDescription* descs = (VkVertexInputBindingDescription*)alloca(
+                        sizeof(VkVertexInputBindingDescription) * desc.input_layout.bindings.size());
                     memzero(descs, sizeof(VkVertexInputBindingDescription) * desc.input_layout.bindings.size());
                     for (usize i = 0; i < desc.input_layout.bindings.size(); ++i)
                     {
@@ -132,7 +132,8 @@ namespace Luna
                 }
                 else
                 {
-                    lualloca(descs, VkVertexInputAttributeDescription, desc.input_layout.attributes.size());
+                    VkVertexInputAttributeDescription* descs = (VkVertexInputAttributeDescription*)alloca(
+                        sizeof(VkVertexInputAttributeDescription) * desc.input_layout.attributes.size());
                     memzero(descs, sizeof(VkVertexInputAttributeDescription) * desc.input_layout.attributes.size());
                     for (usize i = 0; i < desc.input_layout.attributes.size(); ++i)
                     {

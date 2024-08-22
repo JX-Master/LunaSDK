@@ -9,7 +9,6 @@
 */
 #include "DescriptorSet.hpp"
 #include "Resource.hpp"
-#include <Luna/Runtime/Alloca.hpp>
 namespace Luna
 {
     namespace RHI
@@ -233,8 +232,8 @@ namespace Luna
                             }
                             else
                             {
-                                lualloca(buffers, MTL::Buffer*, write.num_descs);
-                                lualloca(offsets, NS::UInteger, write.num_descs);
+                                MTL::Buffer** buffers = (MTL::Buffer**)alloca(sizeof(MTL::Buffer*) * write.num_descs);
+                                NS::UInteger* offsets = (NS::UInteger*)alloca(sizeof(NS::UInteger) * write.num_descs);
                                 for(usize i = 0; i < write.num_descs; ++i)
                                 {
                                     auto& view = write.buffer_views[i];
@@ -258,8 +257,8 @@ namespace Luna
                             }
                             else
                             {
-                                lualloca(buffers, MTL::Buffer*, write.num_descs);
-                                lualloca(offsets, NS::UInteger, write.num_descs);
+                                MTL::Buffer** buffers = (MTL::Buffer**)alloca(sizeof(MTL::Buffer*) * write.num_descs);
+                                NS::UInteger* offsets = (NS::UInteger*)alloca(sizeof(NS::UInteger) * write.num_descs);
                                 for(usize i = 0; i < write.num_descs; ++i)
                                 {
                                     auto& view = write.buffer_views[i];
@@ -292,7 +291,7 @@ namespace Luna
                             }
                             else
                             {
-                                lualloca(textures, MTL::Texture*, write.num_descs);
+                                MTL::Texture** textures = (MTL::Texture**)alloca(sizeof(MTL::Texture*) * write.num_descs);
                                 for(usize i = 0; i < write.num_descs; ++i)
                                 {
                                     auto view = write.texture_views[i];
@@ -323,7 +322,7 @@ namespace Luna
                             }
                             else
                             {
-                                lualloca(samplers, MTL::SamplerState*, write.num_descs);
+                                MTL::SamplerState** samplers = (MTL::SamplerState**)alloca(sizeof(MTL::SamplerState*) * write.num_descs);
                                 for(usize i = 0; i < write.num_descs; ++i)
                                 {
                                     const SamplerDesc& view = write.samplers[i];

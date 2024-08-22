@@ -13,7 +13,6 @@
 #include "Instance.hpp"
 #include <Luna/Runtime/HashSet.hpp>
 #include <Luna/Window/Vulkan/Vulkan.hpp>
-#include <Luna/Runtime/Alloca.hpp>
 namespace Luna
 {
     namespace RHI
@@ -58,7 +57,7 @@ namespace Luna
             bool device_swap_chain_supported = check_device_swap_chain_support(device, check_surface);
             uint32_t queue_family_count = 0;
             vkGetPhysicalDeviceQueueFamilyProperties(device, &queue_family_count, nullptr);
-            lualloca(queue_families, VkQueueFamilyProperties, queue_family_count);
+            VkQueueFamilyProperties* queue_families = (VkQueueFamilyProperties*)alloca(sizeof(VkQueueFamilyProperties) * queue_family_count);
             Vector<QueueFamily> ret;
             bool graphics_queue_family_present = false;
             bool compute_queue_family_present = false;
@@ -193,7 +192,7 @@ namespace Luna
         {
             u32 extension_count;
             vkEnumerateDeviceExtensionProperties(device, nullptr, &extension_count, nullptr);
-            lualloca(available_extensions, VkExtensionProperties, extension_count);
+            VkExtensionProperties* available_extensions = (VkExtensionProperties*)alloca(sizeof(VkExtensionProperties) * extension_count);
             vkEnumerateDeviceExtensionProperties(device, nullptr, &extension_count, available_extensions);
             HashSet<Name> required_extensions;
 

@@ -10,7 +10,7 @@
 #include "../../OS.hpp"
 #include "../../../Platform/Windows/MiniWin.hpp"
 #include "../../../Unicode.hpp"
-#include "../../../Alloca.hpp"
+
 namespace Luna
 {
     namespace OS
@@ -60,10 +60,10 @@ namespace Luna
             }
             // Encode the text in UTF-16.
             usize wlen_tag = utf8_to_utf16_len(tag, tag_len);
-            lualloca(wtag, wchar_t, wlen_tag + 1);
+            wchar_t* wtag = (wchar_t*)alloca(sizeof(wchar_t) * (wlen_tag + 1));
             wlen_tag = utf8_to_utf16((c16*)wtag, wlen_tag + 1, tag, tag_len);
             usize wlen = utf8_to_utf16_len(message, message_len);
-            lualloca(wmessage, wchar_t, wlen + 1);
+            wchar_t* wmessage = (wchar_t*)alloca(sizeof(wchar_t) * (wlen + 1));
             wlen = utf8_to_utf16((c16*)wmessage, wlen + 1, message, message_len);
             WriteConsoleW(hConsole, L"[", 1, NULL, NULL);
             WriteConsoleW(hConsole, wtag, wlen_tag, NULL, NULL);
