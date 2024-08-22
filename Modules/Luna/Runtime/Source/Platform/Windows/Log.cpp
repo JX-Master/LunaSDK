@@ -10,6 +10,7 @@
 #include "../../OS.hpp"
 #include "../../../Platform/Windows/MiniWin.hpp"
 #include "../../../Unicode.hpp"
+#include "../../../StackAllocator.hpp"
 
 namespace Luna
 {
@@ -44,6 +45,7 @@ namespace Luna
         }
         void log(LogVerbosity verbosity, const c8* tag, usize tag_len, const c8* message, usize message_len)
         {
+            StackAllocator salloc;
             HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
             switch (verbosity)
             {
@@ -60,10 +62,10 @@ namespace Luna
             }
             // Encode the text in UTF-16.
             usize wlen_tag = utf8_to_utf16_len(tag, tag_len);
-            wchar_t* wtag = (wchar_t*)alloca(sizeof(wchar_t) * (wlen_tag + 1));
+            wchar_t* wtag = (wchar_t*)salloc.allocate(sizeof(wchar_t) * (wlen_tag + 1));
             wlen_tag = utf8_to_utf16((c16*)wtag, wlen_tag + 1, tag, tag_len);
             usize wlen = utf8_to_utf16_len(message, message_len);
-            wchar_t* wmessage = (wchar_t*)alloca(sizeof(wchar_t) * (wlen + 1));
+            wchar_t* wmessage = (wchar_t*)salloc.allocate(sizeof(wchar_t) * (wlen + 1));
             wlen = utf8_to_utf16((c16*)wmessage, wlen + 1, message, message_len);
             WriteConsoleW(hConsole, L"[", 1, NULL, NULL);
             WriteConsoleW(hConsole, wtag, wlen_tag, NULL, NULL);

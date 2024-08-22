@@ -31,7 +31,7 @@ namespace Luna
     //! @param[in] alignment Optional. The alignment requirement, in bytes, of the memory block to allocate. Default is `0`.
     //! 
     //! If this is 0 (default), then the memory is allocated with no additional alignment requirement. In such case, the memory address is 
-    //! aligned to 8 bytes in 32-bit platform, and 16 bytes in 64-bit platform.
+    //! aligned to @ref MAX_ALIGN.
     //! 
     //! @return Returns one pointer to the allocated memory block.
     //! Returns `nullptr` if memory allocation failed or if `size` is `0`.

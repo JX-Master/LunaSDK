@@ -13,6 +13,7 @@
 #include "Instance.hpp"
 #include <Luna/Runtime/HashSet.hpp>
 #include "SurfaceBind.hpp"
+#include <Luna/Runtime/StackAllocator.hpp>
 namespace Luna
 {
     namespace RHI
@@ -54,10 +55,11 @@ namespace Luna
         static R<Vector<QueueFamily>> get_device_queue_families(VkPhysicalDevice device, VkSurfaceKHR check_surface)
         {
             // Check device swap chain support.
+            StackAllocator salloc;
             bool device_swap_chain_supported = check_device_swap_chain_support(device, check_surface);
             uint32_t queue_family_count = 0;
             vkGetPhysicalDeviceQueueFamilyProperties(device, &queue_family_count, nullptr);
-            VkQueueFamilyProperties* queue_families = (VkQueueFamilyProperties*)alloca(sizeof(VkQueueFamilyProperties) * queue_family_count);
+            VkQueueFamilyProperties* queue_families = (VkQueueFamilyProperties*)salloc.allocate(sizeof(VkQueueFamilyProperties) * queue_family_count);
             Vector<QueueFamily> ret;
             bool graphics_queue_family_present = false;
             bool compute_queue_family_present = false;
@@ -190,9 +192,10 @@ namespace Luna
         }
         inline bool check_device_extension_support(VkPhysicalDevice device)
         {
+            StackAllocator salloc;
             u32 extension_count;
             vkEnumerateDeviceExtensionProperties(device, nullptr, &extension_count, nullptr);
-            VkExtensionProperties* available_extensions = (VkExtensionProperties*)alloca(sizeof(VkExtensionProperties) * extension_count);
+            VkExtensionProperties* available_extensions = (VkExtensionProperties*)salloc.allocate(sizeof(VkExtensionProperties) * extension_count);
             vkEnumerateDeviceExtensionProperties(device, nullptr, &extension_count, available_extensions);
             HashSet<Name> required_extensions;
 
