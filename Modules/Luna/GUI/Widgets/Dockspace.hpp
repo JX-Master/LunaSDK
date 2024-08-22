@@ -82,6 +82,8 @@ namespace Luna
             OffsetRectF clicking_node_rect;
             bool dragging = false;
             Float2U dragging_mouse_pos; // Used to track mouse position when dragging dock.
+            WidgetDockNode* dragging_dock_target = nullptr;
+            u32 dragging_dock_side; // 0 - left, 1 - right, 2 - top, 3 - bottom, 4 - center.
         };
 
         struct Dockspace : Widget, virtual IContainer

@@ -375,6 +375,7 @@ namespace Luna
                         // Start dragging.
                         state->dragging = true;
                     }
+                    state->dragging_dock_target = nullptr;
                     if(!state->dragging)
                     {
                         luexp(docknode_handle_mouse_event(ctx, this, state->root.get(), mouse_event, handled));
@@ -382,6 +383,65 @@ namespace Luna
                     else
                     {
                         state->dragging_mouse_pos = Float2U(mouse_event->x, mouse_event->y);
+                        // Check target.
+                        RingDeque<DockNodeBase*> scan_queue;
+                        scan_queue.push_back(state->root.get());
+                        while(!scan_queue.empty())
+                        {
+                            DockNodeBase* node = scan_queue.front();
+                            scan_queue.pop_front();
+                            if(node->type == DockNodeType::widget)
+                            {
+                                WidgetDockNode* wnode = (WidgetDockNode*)node;
+                                f32 width = wnode->widget_rect.right - wnode->widget_rect.left;
+                                f32 height = wnode->widget_rect.bottom - wnode->widget_rect.top;
+                                if(in_bounds(Float2(state->dragging_mouse_pos), 
+                                    Float2(wnode->widget_rect.left, wnode->widget_rect.top), 
+                                    Float2(wnode->widget_rect.right, wnode->widget_rect.bottom)))
+                                {
+                                    state->dragging_dock_target = wnode;
+                                    if(in_bounds(Float2(state->dragging_mouse_pos), 
+                                        Float2(wnode->widget_rect.left, wnode->widget_rect.top), 
+                                        Float2(wnode->widget_rect.left + width * 0.1f, wnode->widget_rect.bottom)))
+                                    {
+                                        // Left
+                                        state->dragging_dock_side = 0;
+                                    }
+                                    else if(in_bounds(Float2(state->dragging_mouse_pos), 
+                                        Float2(wnode->widget_rect.right - width * 0.1f, wnode->widget_rect.top), 
+                                        Float2(wnode->widget_rect.right, wnode->widget_rect.bottom)))
+                                    {
+                                        // Right
+                                        state->dragging_dock_side = 1;
+                                    }
+                                    else if(in_bounds(Float2(state->dragging_mouse_pos), 
+                                        Float2(wnode->widget_rect.left, wnode->widget_rect.top), 
+                                        Float2(wnode->widget_rect.right, wnode->widget_rect.top + height * 0.1f)))
+                                    {
+                                        // Top
+                                        state->dragging_dock_side = 2;
+                                    }
+                                    else if(in_bounds(Float2(state->dragging_mouse_pos), 
+                                        Float2(wnode->widget_rect.left, wnode->widget_rect.bottom - height * 0.1f), 
+                                        Float2(wnode->widget_rect.right, wnode->widget_rect.bottom)))
+                                    {
+                                        // Bottom
+                                        state->dragging_dock_side = 3;
+                                    }
+                                    else
+                                    {
+                                        // Center.
+                                        state->dragging_dock_side = 4;
+                                    }   
+                                }
+                            }
+                            else
+                            {
+                                BinaryDockNode* bnode = (BinaryDockNode*)node;
+                                scan_queue.push_back(bnode->first_child.get());
+                                scan_queue.push_back(bnode->second_child.get());
+                            }
+                        }
                     }
                     MouseButtonEvent* be = cast_object<MouseButtonEvent>(e);
                     if(be && be->button == HID::MouseButton::left && be->pressed == false)
@@ -511,21 +571,44 @@ namespace Luna
                 // Draw overlay.
                 if(state->dragging)
                 {
-                    OffsetRectF rect(
-                        state->clicking_node_rect.left - state->clicking_pos.x + state->dragging_mouse_pos.x,
-                        state->clicking_node_rect.top - state->clicking_pos.y + state->dragging_mouse_pos.y,
-                        state->clicking_node_rect.right - state->clicking_pos.x + state->dragging_mouse_pos.x,
-                        state->clicking_node_rect.bottom - state->clicking_pos.y + state->dragging_mouse_pos.y
-                    );
-                    draw_rectangle_filled(ctx, overlay_draw_list, rect.left, rect.top, rect.right, rect.bottom, Float4(1.0f, 1.0f, 1.0f, 1.0f));
-                    IWidget* widget = find_widget_by_id(this, state->clicking_node->widgets[state->clicking_widget_index].id);
-                    Name title = get_tattr(widget, TATTR_TITLE, false, "Untitled");
-                    f32 title_size = get_sattr(this, SATTR_TITLE_TEXT_SIZE, true, DEFAULT_TEXT_SIZE);
-                    Font::IFontFile* font = query_interface<Font::IFontFile>(get_oattr(this, OATTR_FONT, true, Font::get_default_font()));
-                    u32 font_index = get_sattr(this, SATTR_FONT_INDEX, true, 0);
-                    draw_text(ctx, overlay_draw_list, title.c_str(), title.size(), Float4U(0, 0, 0, 1), title_size, 
-                                rect.left + 5.0f, rect.top + 5.0f, rect.right - 5.0f, rect.top + title_size + 6.0f, 
-                                font, font_index);
+                    // Draw overlay color
+                    if(state->dragging_dock_target)
+                    {
+                        WidgetDockNode* wnode = state->dragging_dock_target;
+                        f32 width = wnode->widget_rect.right - wnode->widget_rect.left;
+                        f32 height = wnode->widget_rect.bottom - wnode->widget_rect.top;
+                        f32 left = wnode->widget_rect.left;
+                        f32 top = wnode->widget_rect.top;
+                        f32 right = wnode->widget_rect.right;
+                        f32 bottom = wnode->widget_rect.bottom;
+                        switch(state->dragging_dock_side)
+                        {
+                            case 0: right = left + width * 0.5f; break; // Left
+                            case 1: left = left + width * 0.5f; break; // Right
+                            case 2: bottom = top + height * 0.5f; break; // Top
+                            case 3: top = bottom - height * 0.5f; break; // Bottom
+                            default: break;
+                        }
+                        draw_rectangle_filled(ctx, overlay_draw_list, left, top, right, bottom, Float4U(0.5, 0.5, 1.0, 0.5));
+                    }
+                    // Draw title rect.
+                    {
+                        OffsetRectF rect(
+                            state->clicking_node_rect.left - state->clicking_pos.x + state->dragging_mouse_pos.x,
+                            state->clicking_node_rect.top - state->clicking_pos.y + state->dragging_mouse_pos.y,
+                            state->clicking_node_rect.right - state->clicking_pos.x + state->dragging_mouse_pos.x,
+                            state->clicking_node_rect.bottom - state->clicking_pos.y + state->dragging_mouse_pos.y
+                        );
+                        draw_rectangle_filled(ctx, overlay_draw_list, rect.left, rect.top, rect.right, rect.bottom, Float4(1.0f, 1.0f, 1.0f, 1.0f));
+                        IWidget* widget = find_widget_by_id(this, state->clicking_node->widgets[state->clicking_widget_index].id);
+                        Name title = get_tattr(widget, TATTR_TITLE, false, "Untitled");
+                        f32 title_size = get_sattr(this, SATTR_TITLE_TEXT_SIZE, true, DEFAULT_TEXT_SIZE);
+                        Font::IFontFile* font = query_interface<Font::IFontFile>(get_oattr(this, OATTR_FONT, true, Font::get_default_font()));
+                        u32 font_index = get_sattr(this, SATTR_FONT_INDEX, true, 0);
+                        draw_text(ctx, overlay_draw_list, title.c_str(), title.size(), Float4U(0, 0, 0, 1), title_size, 
+                                    rect.left + 5.0f, rect.top + 5.0f, rect.right - 5.0f, rect.top + title_size + 6.0f, 
+                                    font, font_index);
+                    }
                 }
             }
             lucatchret;
