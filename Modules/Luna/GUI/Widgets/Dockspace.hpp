@@ -23,13 +23,15 @@ namespace Luna
             vertical,
         };
 
+        struct BinaryDockNode;
+
         struct DockNodeBase
         {
             DockNodeType type;
             //! Computed in @ref Dockspace::layout. Will not be saved.
             OffsetRectF layout_rect;
             //! Set when building widget tree, Will not be saved.
-            DockNodeBase* parent = nullptr;
+            BinaryDockNode* parent = nullptr;
 
             DockNodeBase(DockNodeType type) :
                 type(type) {}
@@ -80,6 +82,8 @@ namespace Luna
             u32 clicking_widget_index;
             Float2U clicking_pos;
             OffsetRectF clicking_node_rect;
+
+            // The mouse dragging state. Use for docking nodes.
             bool dragging = false;
             Float2U dragging_mouse_pos; // Used to track mouse position when dragging dock.
             WidgetDockNode* dragging_dock_target = nullptr;

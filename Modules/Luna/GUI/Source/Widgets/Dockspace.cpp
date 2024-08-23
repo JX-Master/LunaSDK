@@ -72,6 +72,91 @@ namespace Luna
             }
             return ret;
         }
+        static void add_widget_to_node(Dockspace* dockspace, widget_id_t widget_id, WidgetDockNode* target_node, u32 target_side)
+        {
+            if(target_side == 4)
+            {
+                // add to target node directly.
+                WidgetDockNode::WidgetItem item;
+                item.id = widget_id;
+                item.tab_rect_left = 0;
+                item.tab_rect_right = 0;
+                target_node->widgets.push_back(item);
+            }
+            else
+            {
+                // create new binary node to separate space.
+                UniquePtr<DockNodeBase> new_bnode(memnew<BinaryDockNode>(target_side < 2 ? DockNodeType::horizontal : DockNodeType::vertical));
+                BinaryDockNode* bnode = (BinaryDockNode*)new_bnode.get();
+                // insert new binary node to node tree.
+                BinaryDockNode* parent = target_node->parent;
+                UniquePtr<DockNodeBase> old_node;
+                if(parent)
+                {
+                    if(parent->first_child.get() == target_node)
+                    {
+                        old_node = move(parent->first_child);
+                        parent->first_child = move(new_bnode);
+                    }
+                    else
+                    {
+                        old_node = move(parent->second_child);
+                        parent->second_child = move(new_bnode);
+                    }
+                    bnode->parent = parent;
+                }
+                else
+                {
+                    // This node is root node.
+                    if(dockspace->state->root.get() == target_node)
+                    {
+                        old_node = move(dockspace->state->root);
+                        dockspace->state->root = move(new_bnode);
+                    }
+                }
+                // Create and insert new widget node.
+                WidgetDockNode* new_widget_node;
+                if(target_side == 0 || target_side == 2)
+                {
+                    // Add new widget to first child.
+                    bnode->first_child.reset(memnew<WidgetDockNode>());
+                    bnode->second_child = move(old_node);
+                    new_widget_node = (WidgetDockNode*)bnode->first_child.get();
+                }
+                else
+                {
+                    // Add new widget to second child.
+                    bnode->second_child.reset(memnew<WidgetDockNode>());
+                    bnode->first_child = move(old_node);
+                    new_widget_node = (WidgetDockNode*)bnode->second_child.get();
+                }
+                target_node->parent = bnode;
+                new_widget_node->parent = bnode;
+                // Add widget to new node.
+                WidgetDockNode::WidgetItem item;
+                item.id = widget_id;
+                item.tab_rect_left = 0;
+                item.tab_rect_right = 0;
+                new_widget_node->widgets.push_back(item);
+            }
+        }
+        static void remove_widget_from_node(Dockspace* dockspace, WidgetDockNode* source_node, widget_id_t widget_id)
+        {
+            for(auto iter = source_node->widgets.begin(); iter != source_node->widgets.end(); ++iter)
+            {
+                if(iter->id == widget_id)
+                {
+                    source_node->widgets.erase(iter);
+                    source_node->current_tab = min<u32>(source_node->current_tab, source_node->widgets.size() - 1);
+                    break;
+                }
+            }
+            if(source_node->widgets.empty())
+            {
+                // remove node with no widgets.
+                detach_widget_node(dockspace, source_node);
+            }
+        }
         static void refresh_widget_tree(Dockspace* dockspace)
         {
             // Collect existing widgets.
@@ -322,7 +407,7 @@ namespace Luna
                             for(usize i = 0; i < wnode->widgets.size(); ++i)
                             {
                                 auto& w = wnode->widgets[i];
-                                if(in_bounds(Float2(e->x, e->y), Float2(w.tab_rect_left, wnode->title_rect.top), Float2(w.tab_rect_right, wnode->title_rect.bottom)))
+                                if(in_bounds(Float2(e->x, e->y), Float2(wnode->title_rect.left + w.tab_rect_left, wnode->title_rect.top), Float2(wnode->title_rect.left + w.tab_rect_right, wnode->title_rect.bottom)))
                                 {
                                     // We need to relayout the widget when we change to a new tab, since this tab is hidden when `layout` is called,
                                     // thus not get updated.
@@ -335,7 +420,7 @@ namespace Luna
                                     dockspace->state->clicking_node = wnode;
                                     dockspace->state->clicking_widget_index = i;
                                     dockspace->state->clicking_pos = Float2U{e->x, e->y};
-                                    dockspace->state->clicking_node_rect = OffsetRectF(w.tab_rect_left, wnode->title_rect.top, w.tab_rect_right, wnode->title_rect.bottom);
+                                    dockspace->state->clicking_node_rect = OffsetRectF(wnode->title_rect.left + w.tab_rect_left, wnode->title_rect.top, wnode->title_rect.left + w.tab_rect_right, wnode->title_rect.bottom);
                                     break;
                                 }
                             }
@@ -446,6 +531,13 @@ namespace Luna
                     MouseButtonEvent* be = cast_object<MouseButtonEvent>(e);
                     if(be && be->button == HID::MouseButton::left && be->pressed == false)
                     {
+                        if(state->dragging && state->dragging_dock_target)
+                        {
+                            // Drop the node to the target.
+                            auto widget_id = state->clicking_node->widgets[state->clicking_widget_index].id;
+                            add_widget_to_node(this, widget_id, state->dragging_dock_target, state->dragging_dock_side);
+                            remove_widget_from_node(this, state->clicking_node, widget_id);
+                        }
                         state->clicking_node = nullptr;
                         state->dragging = false;
                     }
@@ -510,7 +602,7 @@ namespace Luna
                             node->layout_rect.left, wnode->title_rect.top, node->layout_rect.right, wnode->title_rect.bottom, Float4(0.8f, 0.8f, 0.8f, 1.0f));
                         auto& current_node = wnode->widgets[wnode->current_tab];
                         draw_rectangle_filled(ctx, draw_list,
-                            current_node.tab_rect_left, wnode->title_rect.top, current_node.tab_rect_right, wnode->title_rect.bottom, Float4(1.0f, 1.0f, 1.0f, 1.0f));
+                            wnode->title_rect.left + current_node.tab_rect_left, wnode->title_rect.top, wnode->title_rect.left + current_node.tab_rect_right, wnode->title_rect.bottom, Float4(1.0f, 1.0f, 1.0f, 1.0f));
                         // Draw title.
                         Font::IFontFile* font = query_interface<Font::IFontFile>(get_oattr(dockspace, OATTR_FONT, true, Font::get_default_font()));
                         u32 font_index = get_sattr(dockspace, SATTR_FONT_INDEX, true, 0);
@@ -519,7 +611,8 @@ namespace Luna
                             IWidget* widget = find_widget_by_id(dockspace, w.id);
                             Name title = get_tattr(widget, TATTR_TITLE, false, "Untitled");
                             draw_text(ctx, draw_list, title.c_str(), title.size(), Float4U(0, 0, 0, 1), title_size, 
-                                w.tab_rect_left + 5.0f, node->layout_rect.top + 5.0f, w.tab_rect_right - 5.0f, node->layout_rect.top + title_size + 6.0f, 
+                                wnode->title_rect.left + w.tab_rect_left + 5.0f, node->layout_rect.top + 5.0f, 
+                                wnode->title_rect.left + w.tab_rect_right - 5.0f, node->layout_rect.top + title_size + 6.0f, 
                                 font, font_index);
                         }
                         // Draw content.
