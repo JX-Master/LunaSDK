@@ -297,8 +297,8 @@ namespace Luna
         return (typeinfo_t)et;
     }
 
-    inline bool generic_arguments_equal(const typeinfo_t* lhs_generic_arguments, usize lhs_num_generic_arguments, 
-        const typeinfo_t* rhs_generic_arguments, usize rhs_num_generic_arguments)
+    inline bool generic_arguments_equal(const GenericArgument* lhs_generic_arguments, usize lhs_num_generic_arguments, 
+        const GenericArgument* rhs_generic_arguments, usize rhs_num_generic_arguments)
     {
         if (lhs_num_generic_arguments != rhs_num_generic_arguments) return false;
         for (usize i = 0; i < lhs_num_generic_arguments; ++i)
@@ -308,7 +308,7 @@ namespace Luna
         return true;
     }
 
-    static typeinfo_t new_instanced_type(GenericStructureTypeInfo* generic_type, Span<const typeinfo_t> generic_arguments)
+    static typeinfo_t new_instanced_type(GenericStructureTypeInfo* generic_type, Span<const GenericArgument> generic_arguments)
     {
         UniquePtr<TypeInfo> t(memnew<GenericStructureInstancedTypeInfo>());
         auto gt = (GenericStructureInstancedTypeInfo*)t.get();
@@ -375,7 +375,7 @@ namespace Luna
         if (iter == g_type_guid_map.end()) return nullptr;
         return (typeinfo_t)(iter->second);
     }
-    LUNA_RUNTIME_API typeinfo_t get_generic_instanced_type(typeinfo_t generic_type, Span<const typeinfo_t> generic_arguments)
+    LUNA_RUNTIME_API typeinfo_t get_generic_instanced_type(typeinfo_t generic_type, Span<const GenericArgument> generic_arguments)
     {
         OSMutexGuard guard(g_type_registry_lock);
         if (((TypeInfo*)generic_type)->kind != TypeKind::generic_structure) return nullptr;
@@ -458,7 +458,7 @@ namespace Luna
         }
         return nullptr;
     }
-    LUNA_RUNTIME_API Span<const typeinfo_t> get_struct_generic_arguments(typeinfo_t type)
+    LUNA_RUNTIME_API Span<const GenericArgument> get_struct_generic_arguments(typeinfo_t type)
     {
         TypeInfo* t = (TypeInfo*)type;
         switch (t->kind)
@@ -466,15 +466,15 @@ namespace Luna
         case TypeKind::generic_structure_instanced:
         {
             GenericStructureInstancedTypeInfo* src = ((GenericStructureInstancedTypeInfo*)t);
-            return Span<const typeinfo_t>(src->generic_arguments.data(), src->generic_arguments.size());
+            return Span<const GenericArgument>(src->generic_arguments.data(), src->generic_arguments.size());
         }
-        case TypeKind::primitive: return Span<const typeinfo_t>();
-        case TypeKind::structure: return Span<const typeinfo_t>();
-        case TypeKind::enumeration: return Span<const typeinfo_t>();
-        case TypeKind::generic_structure: return Span<const typeinfo_t>();
+        case TypeKind::primitive: return Span<const GenericArgument>();
+        case TypeKind::structure: return Span<const GenericArgument>();
+        case TypeKind::enumeration: return Span<const GenericArgument>();
+        case TypeKind::generic_structure: return Span<const GenericArgument>();
         default: lupanic();
         }
-        return Span<const typeinfo_t>();
+        return Span<const GenericArgument>();
     }
     LUNA_RUNTIME_API usize count_struct_generic_parameters(typeinfo_t type)
     {

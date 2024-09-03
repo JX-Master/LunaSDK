@@ -358,4 +358,12 @@ namespace Luna
     
     struct Module;
     LUNA_ASSET_API Module* module_asset();
+
+    template <> struct hash<Asset::asset_t>
+    {
+        usize operator()(Asset::asset_t val) const
+        {
+            return (usize)val.handle;
+        }
+    };
 }

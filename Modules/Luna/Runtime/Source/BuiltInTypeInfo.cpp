@@ -23,6 +23,28 @@
 
 namespace Luna
 {
+    static typeinfo_t g_guid_type;
+    static typeinfo_t g_version_type;
+    static typeinfo_t g_string_type;
+    static typeinfo_t g_name_type;
+    static typeinfo_t g_vector_type;
+    static typeinfo_t g_path_type;
+    static typeinfo_t g_pair_type;
+    static typeinfo_t g_tuple_type;
+    static typeinfo_t g_hash_map_type;
+    static typeinfo_t g_hash_set_type;
+    static typeinfo_t g_float2_type;
+    static typeinfo_t g_float3_type;
+    static typeinfo_t g_float4_type;
+    static typeinfo_t g_vec2u_type;
+    static typeinfo_t g_vec3u_type;
+    static typeinfo_t g_vec4u_type;
+    static typeinfo_t g_float3x3_type;
+    static typeinfo_t g_float4x4_type;
+    static typeinfo_t g_quaternion_type;
+    static typeinfo_t g_blob_type;
+    static typeinfo_t g_array_type;
+
     static R<Variant> serialize_guid(typeinfo_t type, const void* inst)
     {
         const Guid* guid = (const Guid*)inst;
@@ -144,14 +166,14 @@ namespace Luna
     static void vector_dtor(typeinfo_t type, void* inst)
     {
         VectorData* vec = (VectorData*)inst;
-        typeinfo_t element_type = get_struct_generic_arguments(type)[0];
+        typeinfo_t element_type = get_struct_generic_arguments(type)[0].type;
         vec->free_buffer(element_type);
     }
     static void vector_copy_ctor(typeinfo_t type, void* dest, void* src)
     {
         VectorData* dest_vec = (VectorData*)dest;
         VectorData* src_vec = (VectorData*)src;
-        typeinfo_t element_type = get_struct_generic_arguments(type)[0];
+        typeinfo_t element_type = get_struct_generic_arguments(type)[0].type;
         dest_vec->m_buffer = nullptr;
         dest_vec->m_size = src_vec->m_size;
         dest_vec->m_capacity = src_vec->m_size;
@@ -181,8 +203,9 @@ namespace Luna
         vector_dtor(type, dest);
         vector_move_ctor(type, dest, src);
     }
-    static GenericStructureInstantiateInfo vector_instantiate(typeinfo_t base_type, Span<const typeinfo_t> generic_arguments)
+    static GenericStructureInstantiateInfo vector_instantiate(typeinfo_t base_type, Span<const GenericArgument> generic_arguments)
     {
+        lucheck(generic_arguments.size() >= 1 && generic_arguments[0].argument_type == GenericArgumentType::type);
         GenericStructureInstantiateInfo ret;
         ret.size = sizeof(VectorData);
         ret.alignment = alignof(VectorData);
@@ -201,12 +224,12 @@ namespace Luna
         Variant ret(VariantType::array);
         lutry
         {
-            VectorData* vec = (VectorData*)inst;
-            typeinfo_t element_type = get_struct_generic_arguments(type)[0];
+            const VectorData* vec = (const VectorData*)inst;
+            typeinfo_t element_type = get_struct_generic_arguments(type)[0].type;
             usize element_size = get_type_size(element_type);
             for (usize i = 0; i < vec->m_size; ++i)
             {
-                lulet(data, serialize(element_type, (void*)((usize)vec->m_buffer + i * element_size)));
+                lulet(data, serialize(element_type, (const void*)((usize)vec->m_buffer + i * element_size)));
                 ret.push_back(move(data));
             }
         }
@@ -217,7 +240,7 @@ namespace Luna
     {
         if (data.type() != VariantType::array) return BasicError::bad_arguments();
         VectorData* vec = (VectorData*)inst;
-        typeinfo_t element_type = get_struct_generic_arguments(type)[0];
+        typeinfo_t element_type = get_struct_generic_arguments(type)[0].type;
         usize element_size = get_type_size(element_type);
         vector_dtor(type, vec);
         vec->reserve(element_type, element_size, data.size());
@@ -245,10 +268,13 @@ namespace Luna
         p->assign(data.c_str());
         return ok;
     }
-    static GenericStructureInstantiateInfo pair_instantiate(typeinfo_t base_type, Span<const typeinfo_t> generic_arguments)
+    static GenericStructureInstantiateInfo pair_instantiate(typeinfo_t base_type, Span<const GenericArgument> generic_arguments)
     {
-        typeinfo_t first = generic_arguments[0];
-        typeinfo_t second = generic_arguments[1];
+        lucheck(generic_arguments.size() >= 2);
+        lucheck(generic_arguments[0].argument_type == GenericArgumentType::type);
+        lucheck(generic_arguments[1].argument_type == GenericArgumentType::type);
+        typeinfo_t first = generic_arguments[0].type;
+        typeinfo_t second = generic_arguments[1].type;
         MemoryLayoutMember members[2] = {
             MemoryLayoutMember(get_type_size(first), get_type_alignment(first)),
             MemoryLayoutMember(get_type_size(second), get_type_alignment(second))
@@ -297,13 +323,14 @@ namespace Luna
         lucatchret;
         return ok;
     }
-    static GenericStructureInstantiateInfo tuple_instantiate(typeinfo_t base_type, Span<const typeinfo_t> generic_arguments)
+    static GenericStructureInstantiateInfo tuple_instantiate(typeinfo_t base_type, Span<const GenericArgument> generic_arguments)
     {
         Vector<MemoryLayoutMember> members;
         members.reserve(generic_arguments.size());
         for (usize i = 0; i < generic_arguments.size(); ++i)
         {
-            members.push_back(MemoryLayoutMember(get_type_size(generic_arguments[i]), get_type_alignment(generic_arguments[i])));
+            lucheck(generic_arguments[i].argument_type == GenericArgumentType::type);
+            members.push_back(MemoryLayoutMember(get_type_size(generic_arguments[i].type), get_type_alignment(generic_arguments[i].type)));
         }
         GenericStructureInstantiateInfo ret;
         calculate_struct_memory_layout({members.data(), members.size()}, ret.size, ret.alignment);
@@ -314,7 +341,7 @@ namespace Luna
             c8 name_buf[8];
             snprintf(name_buf, 8, "%u", i);
             prop.name = name_buf;
-            prop.type = generic_arguments[i];
+            prop.type = generic_arguments[i].type;
             prop.offset = members[i].offset;
             ret.properties[i] = prop;
         }
@@ -328,7 +355,7 @@ namespace Luna
         ret.trivially_relocatable = true;
         for (usize i = 0; i < generic_arguments.size(); ++i)
         {
-            ret.trivially_relocatable &= is_type_trivially_relocatable(generic_arguments[i]);
+            ret.trivially_relocatable &= is_type_trivially_relocatable(generic_arguments[i].type);
         }
         return ret;
     }
@@ -505,27 +532,6 @@ namespace Luna
             return ret;
         }
     };
-    static typeinfo_t g_guid_type;
-    static typeinfo_t g_version_type;
-    static typeinfo_t g_string_type;
-    static typeinfo_t g_name_type;
-    static typeinfo_t g_vector_type;
-    static typeinfo_t g_path_type;
-    static typeinfo_t g_pair_type;
-    static typeinfo_t g_tuple_type;
-    static typeinfo_t g_hash_map_type;
-    static typeinfo_t g_hash_set_type;
-    static typeinfo_t g_float2_type;
-    static typeinfo_t g_float3_type;
-    static typeinfo_t g_float4_type;
-    static typeinfo_t g_vec2u_type;
-    static typeinfo_t g_vec3u_type;
-    static typeinfo_t g_vec4u_type;
-    static typeinfo_t g_float3x3_type;
-    static typeinfo_t g_float4x4_type;
-    static typeinfo_t g_quaternion_type;
-    static typeinfo_t g_blob_type;
-
     inline typeinfo_t make_hashmap_value_type(typeinfo_t key_type, typeinfo_t value_type)
     {
         return get_generic_instanced_type(g_pair_type, { key_type, value_type });
@@ -542,14 +548,15 @@ namespace Luna
     static void hashmap_dtor(typeinfo_t type, void* inst)
     {
         HashTableData* d = (HashTableData*)inst;
-        auto generic_arguments = get_struct_generic_arguments(type);
-        typeinfo_t value_type = make_hashmap_value_type(generic_arguments[0], generic_arguments[1]);
+        Span<const GenericArgument> generic_arguments = get_struct_generic_arguments(type);
+        typeinfo_t value_type = make_hashmap_value_type(generic_arguments[0].type, generic_arguments[1].type);
         d->clear_and_free_table(value_type);
     }
     static void hashset_dtor(typeinfo_t type, void* inst)
     {
         HashTableData* d = (HashTableData*)inst;
-        typeinfo_t value_type = get_struct_generic_arguments(type)[0];
+        Span<const GenericArgument> generic_arguments = get_struct_generic_arguments(type);
+        typeinfo_t value_type = generic_arguments[0].type;
         d->clear_and_free_table(value_type);
     }
     inline void hashtable_copy_ctor(typeinfo_t value_type, HashTableData* dest, HashTableData* src)
@@ -587,13 +594,13 @@ namespace Luna
     }
     static void hashmap_copy_ctor(typeinfo_t type, void* dest, void* src)
     {
-        auto generic_arguments = get_struct_generic_arguments(type);
-        typeinfo_t value_type = make_hashmap_value_type(generic_arguments[0], generic_arguments[1]);
+        Span<const GenericArgument> generic_arguments = get_struct_generic_arguments(type);
+        typeinfo_t value_type = make_hashmap_value_type(generic_arguments[0].type, generic_arguments[1].type);
         hashtable_copy_ctor(value_type, (HashTableData*)dest, (HashTableData*)src);
     }
     static void hashset_copy_ctor(typeinfo_t type, void* dest, void* src)
     {
-        typeinfo_t value_type = get_struct_generic_arguments(type)[0];
+        typeinfo_t value_type = get_struct_generic_arguments(type)[0].type;
         hashtable_copy_ctor(value_type, (HashTableData*)dest, (HashTableData*)src);
     }
     static void hashtable_move_ctor(typeinfo_t type, void* dest, void* src)
@@ -628,8 +635,8 @@ namespace Luna
     static R<Variant> hashmap_serialize(typeinfo_t type, const void* inst)
     {
         const HashTableData* d = (const HashTableData*)inst;
-        auto generic_arguments = get_struct_generic_arguments(type);
-        typeinfo_t value_type = make_hashmap_value_type(generic_arguments[0], generic_arguments[1]);
+        Span<const GenericArgument> generic_arguments = get_struct_generic_arguments(type);
+        typeinfo_t value_type = make_hashmap_value_type(generic_arguments[0].type, generic_arguments[1].type);
         return d->do_serialize(value_type);
     }
     inline usize alter_hash(usize h)
@@ -643,9 +650,9 @@ namespace Luna
         lutry
         {
             HashTableData* d = (HashTableData*)inst;
-            auto generic_arguments = get_struct_generic_arguments(type);
-            typeinfo_t key_type = generic_arguments[0];
-            typeinfo_t value_type = make_hashmap_value_type(key_type, generic_arguments[1]);
+            Span<const GenericArgument> generic_arguments = get_struct_generic_arguments(type);
+            typeinfo_t key_type = generic_arguments[0].type;
+            typeinfo_t value_type = make_hashmap_value_type(key_type, generic_arguments[1].type);
             usize value_size = get_type_size(value_type);
             usize value_alignment = get_type_alignment(value_type);
             void* value_buffer = salloc.allocate(value_size + value_alignment);
@@ -667,7 +674,7 @@ namespace Luna
     static R<Variant> hashset_serialize(typeinfo_t type, const void* inst)
     {
         const HashTableData* d = (const HashTableData*)inst;
-        typeinfo_t value_type = get_struct_generic_arguments(type)[0];
+        typeinfo_t value_type = get_struct_generic_arguments(type)[0].type;
         return d->do_serialize(value_type);
     }
     static RV hashset_deserialize(typeinfo_t type, void* inst, const Variant& data)
@@ -676,7 +683,7 @@ namespace Luna
         lutry
         {
             HashTableData* d = (HashTableData*)inst;
-            typeinfo_t value_type = get_struct_generic_arguments(type)[0];
+            typeinfo_t value_type = get_struct_generic_arguments(type)[0].type;
             usize value_size = get_type_size(value_type);
             usize value_alignment = get_type_alignment(value_type);
             void* value_buffer = salloc.allocate(value_size + value_alignment);
@@ -695,8 +702,9 @@ namespace Luna
         lucatchret;
         return ok;
     }
-    static GenericStructureInstantiateInfo hashmap_instantiate(typeinfo_t base_type, Span<const typeinfo_t> generic_arguments)
+    static GenericStructureInstantiateInfo hashmap_instantiate(typeinfo_t base_type, Span<const GenericArgument> generic_arguments)
     {
+        lucheck(generic_arguments.size() >= 2 && generic_arguments[0].argument_type == GenericArgumentType::type && generic_arguments[1].argument_type == GenericArgumentType::type);
         GenericStructureInstantiateInfo ret;
         ret.size = sizeof(HashTableData);
         ret.alignment = alignof(HashTableData);
@@ -710,8 +718,9 @@ namespace Luna
         ret.trivially_relocatable = true;
         return ret;
     }
-    static GenericStructureInstantiateInfo hashset_instantiate(typeinfo_t base_type, Span<const typeinfo_t> generic_arguments)
+    static GenericStructureInstantiateInfo hashset_instantiate(typeinfo_t base_type, Span<const GenericArgument> generic_arguments)
     {
+        lucheck(generic_arguments.size() >= 1 && generic_arguments[0].argument_type == GenericArgumentType::type);
         GenericStructureInstantiateInfo ret;
         ret.size = sizeof(HashTableData);
         ret.alignment = alignof(HashTableData);
@@ -724,6 +733,201 @@ namespace Luna
         ret.move_assign = hashset_move_assign;
         ret.trivially_relocatable = true;
         return ret;
+    }
+    struct DynamicArrayData
+    {
+        void* m_elements;
+        usize m_size;
+
+        void internal_free(typeinfo_t element_type)
+        {
+            if (m_elements)
+            {
+                destruct_type_range(element_type, m_elements, m_size);
+                memfree(m_elements, get_type_alignment(element_type));
+                m_elements = nullptr;
+                m_size = 0;
+            }
+        }
+    };
+    static void fixed_array_ctor(typeinfo_t type, void* inst)
+    {
+        Span<const GenericArgument> generic_arguments = get_struct_generic_arguments(type);
+        construct_type_range(generic_arguments[0].type, inst, (usize)generic_arguments[1].integer);
+    }
+    static void dynamic_array_dtor(typeinfo_t type, void* inst)
+    {
+        DynamicArrayData* arr = (DynamicArrayData*)inst;
+        typeinfo_t element_type = get_struct_generic_arguments(type)[0].type;
+        arr->internal_free(element_type);
+    }
+    static void fixed_array_dtor(typeinfo_t type, void* inst)
+    {
+        Span<const GenericArgument> generic_arguments = get_struct_generic_arguments(type);
+        destruct_type_range(generic_arguments[0].type, inst, (usize)generic_arguments[1].integer);
+    }
+    static void dynamic_array_copy_ctor(typeinfo_t type, void* dest, void* src)
+    {
+        DynamicArrayData* dst_array = (DynamicArrayData*)dest;
+        DynamicArrayData* src_array = (DynamicArrayData*)src;
+        typeinfo_t element_type = get_struct_generic_arguments(type)[0].type;
+        dst_array->m_elements = nullptr;
+        dst_array->m_size = src_array->m_size;
+        if (src_array->m_size)
+        {
+            usize element_size = get_type_size(element_type);
+            dst_array->m_elements = memalloc(element_size * src_array->m_size, get_type_alignment(element_type));
+            copy_construct_type_range(element_type, dst_array->m_elements, src_array->m_elements, src_array->m_size);
+        }
+    }
+    static void fixed_array_copy_ctor(typeinfo_t type, void* dest, void* src)
+    {
+        Span<const GenericArgument> generic_arguments = get_struct_generic_arguments(type);
+        copy_construct_type_range(generic_arguments[0].type, dest, src, (usize)generic_arguments[1].integer);
+    }
+    static void dynamic_array_move_ctor(typeinfo_t type, void* dest, void* src)
+    {
+        DynamicArrayData* dst_array = (DynamicArrayData*)dest;
+        DynamicArrayData* src_array = (DynamicArrayData*)src;
+        *dst_array = *src_array;
+        src_array->m_elements = nullptr;
+        src_array->m_size = 0;
+    }
+    static void fixed_array_move_ctor(typeinfo_t type, void* dest, void* src)
+    {
+        Span<const GenericArgument> generic_arguments = get_struct_generic_arguments(type);
+        move_construct_type_range(generic_arguments[0].type, dest, src, (usize)generic_arguments[1].integer);
+    }
+    static void dynamic_array_copy_assign(typeinfo_t type, void* dest, void* src)
+    {
+        dynamic_array_dtor(type, dest);
+        dynamic_array_copy_ctor(type, dest, src);
+    }
+    static void fixed_array_copy_assign(typeinfo_t type, void* dest, void* src)
+    {
+        Span<const GenericArgument> generic_arguments = get_struct_generic_arguments(type);
+        copy_assign_type_range(generic_arguments[0].type, dest, src, (usize)generic_arguments[1].integer);
+    }
+    static void dynamic_array_move_assign(typeinfo_t type, void* dest, void* src)
+    {
+        dynamic_array_dtor(type, dest);
+        dynamic_array_move_ctor(type, dest, src);
+    }
+    static void fixed_array_move_assign(typeinfo_t type, void* dest, void* src)
+    {
+        Span<const GenericArgument> generic_arguments = get_struct_generic_arguments(type);
+        move_assign_type_range(generic_arguments[0].type, dest, src, (usize)generic_arguments[1].integer);
+    }
+    static GenericStructureInstantiateInfo array_instantiate(typeinfo_t base_type, Span<const GenericArgument> generic_arguments)
+    {
+        lucheck(generic_arguments.size() >= 1 && generic_arguments[0].argument_type == GenericArgumentType::type);
+        GenericStructureInstantiateInfo ret;
+        if(generic_arguments.size() == 1)
+        {
+            ret.size = sizeof(DynamicArrayData);
+            ret.alignment = alignof(DynamicArrayData);
+            ret.base_type = nullptr;
+            ret.ctor = nullptr;
+            ret.dtor = dynamic_array_dtor;
+            ret.copy_ctor = dynamic_array_copy_ctor;
+            ret.move_ctor = dynamic_array_move_ctor;
+            ret.copy_assign = dynamic_array_copy_assign;
+            ret.move_assign = dynamic_array_move_assign;
+            ret.trivially_relocatable = true;
+        }
+        else
+        {
+            lucheck(generic_arguments[1].argument_type == GenericArgumentType::integer);
+            ret.size = get_type_size(generic_arguments[0].type) * (usize)generic_arguments[1].integer;
+            ret.alignment = get_type_alignment(generic_arguments[0].type);
+            ret.base_type = nullptr;
+            ret.ctor = fixed_array_ctor;
+            ret.dtor = fixed_array_dtor;
+            ret.copy_ctor = fixed_array_copy_ctor;
+            ret.move_ctor = fixed_array_move_ctor;
+            ret.copy_assign = fixed_array_copy_assign;
+            ret.move_assign = fixed_array_move_assign;
+            ret.trivially_relocatable = is_type_trivially_relocatable(generic_arguments[0].type);
+        }
+        return ret;
+    }
+    static R<Variant> serialize_array(typeinfo_t type, const void* inst)
+    {
+        Variant ret(VariantType::array);
+        lutry
+        {
+            Span<const GenericArgument> generic_arguments = get_struct_generic_arguments(type);
+            typeinfo_t element_type = generic_arguments[0].type;
+            usize element_size = get_type_size(element_type);
+            if(generic_arguments.size() == 1)
+            {
+                const DynamicArrayData* arr = (const DynamicArrayData*)inst;
+                for (usize i = 0; i < arr->m_size; ++i)
+                {
+                    lulet(data, serialize(element_type, (const void*)((usize)arr->m_elements + i * element_size)));
+                    ret.push_back(move(data));
+                }
+            }
+            else
+            {
+                usize num_elements = (usize)generic_arguments[1].integer;
+                for (usize i = 0; i < num_elements; ++i)
+                {
+                    lulet(data, serialize(element_type, (const void*)((usize)inst + i * element_size)));
+                    ret.push_back(move(data));
+                }
+            }
+        }
+        lucatchret;
+        return ret;
+    }
+    static RV deserialize_array(typeinfo_t type, void* inst, const Variant& data)
+    {
+        if (data.type() != VariantType::array) return BasicError::bad_arguments();
+        lutry
+        {
+            Span<const GenericArgument> generic_arguments = get_struct_generic_arguments(type);
+            typeinfo_t element_type = generic_arguments[0].type;
+            usize element_size = get_type_size(element_type);
+            if(generic_arguments.size() == 1)
+            {
+                DynamicArrayData* arr = (DynamicArrayData*)inst;
+                // Reallocate buffer if needed.
+                if(arr->m_size != data.size())
+                {
+                    dynamic_array_dtor(type, inst);
+                    arr->m_elements = nullptr;
+                    arr->m_size = 0;
+                    if(data.size() != 0)
+                    {
+                        arr->m_elements = memalloc(element_size * data.size(), get_type_alignment(element_type));
+                        arr->m_size = data.size();
+                        for (usize i = 0; i < data.size(); ++i)
+                        {
+                            void* dst = (void*)((usize)arr->m_elements + i * element_size);
+                            construct_type(element_type, dst);
+                        }
+                    }
+                }
+                // Deserialize data.
+                for (usize i = 0; i < data.size(); ++i)
+                {
+                    void* dst = (void*)((usize)arr->m_elements + i * element_size);
+                    luexp(deserialize(element_type, dst, data[i]));
+                }
+            }
+            else
+            {
+                usize num_elements = (usize)generic_arguments[1].integer;
+                for (usize i = 0; i < data.size() && i < num_elements; ++i)
+                {
+                    void* dst = (void*)((usize)inst + i * element_size);
+                    luexp(deserialize(element_type, dst, data[i]));
+                }
+            }
+        }
+        lucatchret;
+        return ok;
     }
     void add_builtin_typeinfo()
     {
@@ -1126,11 +1330,11 @@ namespace Luna
             Name generic_parameter_names[1] = { "ElementType" };
             desc.generic_parameter_names = {generic_parameter_names, 1};
             desc.variable_generic_parameters = false;
-            desc.instantiate = [](typeinfo_t generic_type, Span<const typeinfo_t> generic_arguments)
+            desc.instantiate = [](typeinfo_t generic_type, Span<const GenericArgument> generic_arguments)
             {
                 GenericStructureInstantiateInfo info;
-                lucheck(!generic_arguments.empty());
-                typeinfo_t element_type = generic_arguments[0];
+                lucheck(generic_arguments.size() >= 1 && generic_arguments[0].argument_type == GenericArgumentType::type);
+                typeinfo_t element_type = generic_arguments[0].type;
                 usize element_size = get_type_size(element_type);
                 info.size = element_size * 2;
                 info.alignment = get_type_alignment(element_type);
@@ -1182,11 +1386,11 @@ namespace Luna
             Name generic_parameter_names[1] = { "ElementType" };
             desc.generic_parameter_names = {generic_parameter_names, 1};
             desc.variable_generic_parameters = false;
-            desc.instantiate = [](typeinfo_t generic_type, Span<const typeinfo_t> generic_arguments)
+            desc.instantiate = [](typeinfo_t generic_type, Span<const GenericArgument> generic_arguments)
             {
                 GenericStructureInstantiateInfo info;
-                lucheck(!generic_arguments.empty());
-                typeinfo_t element_type = generic_arguments[0];
+                lucheck(generic_arguments.size() >= 1 && generic_arguments[0].argument_type == GenericArgumentType::type);
+                typeinfo_t element_type = generic_arguments[0].type;
                 usize element_size = get_type_size(element_type);
                 info.size = element_size * 3;
                 info.alignment = get_type_alignment(element_type);
@@ -1242,11 +1446,11 @@ namespace Luna
             Name generic_parameter_names[1] = { "ElementType" };
             desc.generic_parameter_names = { generic_parameter_names, 1 };
             desc.variable_generic_parameters = false;
-            desc.instantiate = [](typeinfo_t generic_type, Span<const typeinfo_t> generic_arguments)
+            desc.instantiate = [](typeinfo_t generic_type, Span<const GenericArgument> generic_arguments)
             {
                 GenericStructureInstantiateInfo info;
-                lucheck(!generic_arguments.empty());
-                typeinfo_t element_type = generic_arguments[0];
+                lucheck(generic_arguments.size() >= 1 && generic_arguments[0].argument_type == GenericArgumentType::type);
+                typeinfo_t element_type = generic_arguments[0].type;
                 usize element_size = get_type_size(element_type);
                 info.size = element_size * 4;
                 info.alignment = get_type_alignment(element_type);
@@ -1350,6 +1554,23 @@ namespace Luna
             };
             set_serializable(g_blob_type, &desc);
         }
+        // Array
+        {
+            GenericStructureTypeDesc desc;
+            desc.guid = Guid("{5b626deb-4d45-4c10-b5ce-5c4decd4eb65}");
+            desc.name = "Array";
+            desc.alias = "";
+            Name generic_parameter_names[2] = {"ElementType", "ElementCount"};
+            desc.generic_parameter_names = {generic_parameter_names, 2};
+            desc.variable_generic_parameters = false;
+            desc.instantiate = array_instantiate;
+            typeinfo_t type = register_generic_struct_type(desc);
+            g_array_type = type;
+            SerializableTypeDesc serial;
+            serial.serialize_func = serialize_array;
+            serial.deserialize_func = deserialize_array;
+            set_serializable(type, &serial);
+        }
     }
 
     LUNA_RUNTIME_API typeinfo_t guid_type() { return g_guid_type; }
@@ -1372,4 +1593,5 @@ namespace Luna
     LUNA_RUNTIME_API typeinfo_t float4x4_type() { return g_float4x4_type; }
     LUNA_RUNTIME_API typeinfo_t quaternion_type() { return g_quaternion_type; }
     LUNA_RUNTIME_API typeinfo_t blob_type() { return g_blob_type; }
+    LUNA_RUNTIME_API typeinfo_t array_type() { return g_array_type; }
 }

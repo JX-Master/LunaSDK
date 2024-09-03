@@ -83,7 +83,7 @@ namespace Luna
     struct GenericStructureInstancedTypeInfo : public TypeInfo
     {
         GenericStructureTypeInfo* generic_type;
-        Array<typeinfo_t> generic_arguments;
+        Array<GenericArgument> generic_arguments;
         usize size;
         usize alignment;
         TypeInfo* base_type;
