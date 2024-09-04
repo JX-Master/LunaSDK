@@ -10,6 +10,7 @@
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_IMGUI_API LUNA_EXPORT
 #include "../ImGui.hpp"
+#include "imgui.h"
 #include <Luna/Runtime/Result.hpp>
 #include <Luna/Runtime/Module.hpp>
 #include <Luna/Runtime/Time.hpp>
@@ -56,9 +57,34 @@ namespace Luna
 
         Ref<RHI::ITexture> g_font_tex;
 
+        struct SampledImage : ISampledImage
+        {
+            lustruct("ImGuiUtils::SampledImage", "29378bf1-b58e-4c8a-a30f-d29239f9a713");
+            luiimpl();
+
+            Ref<RHI::ITexture> m_texture;
+            RHI::SamplerDesc m_sampler;
+
+            virtual RHI::ITexture* get_texture() override { return m_texture; }
+            virtual void set_texture(RHI::ITexture* texture) override { m_texture = texture; }
+            virtual RHI::SamplerDesc get_sampler() override { return m_sampler; }
+            virtual void set_sampler(const RHI::SamplerDesc& desc) override { m_sampler = desc; }
+        };
+
+        LUNA_IMGUI_API Ref<ISampledImage> new_sampled_image(RHI::ITexture* texture, const RHI::SamplerDesc& sampler_desc)
+        {
+            Ref<SampledImage> image = new_object<SampledImage>();
+            image->m_texture = texture;
+            image->m_sampler = sampler_desc;
+            return Ref<ISampledImage>(image);
+        }
+
         static RV init()
         {
             using namespace RHI;
+            register_boxed_type<SampledImage>();
+            impl_interface_for_type<SampledImage, ISampledImage>();
+
             // Setup Dear ImGui context
             IMGUI_CHECKVERSION();
             ImGui::CreateContext();
@@ -180,7 +206,7 @@ namespace Luna
                     luexp(copy_resource_data(upload_cmdbuf, {CopyResourceData::write_texture(g_font_tex, SubresourceIndex(0, 0), 0, 0, 0, 
                         pixels, src_row_pitch, src_row_pitch * height, width, height, 1)}));
                 }
-                io.Fonts->TexID = (ITexture*)(g_font_tex);
+                io.Fonts->TexID = g_font_tex->get_object();
             }
             lucatchret;
             return ok;
@@ -818,11 +844,30 @@ namespace Luna
                             }
                             IDescriptorSet* vs = g_desc_sets[num_draw_calls];
                             usize cb_align = dev->check_feature(DeviceFeature::uniform_buffer_data_alignment).uniform_buffer_data_alignment;
-                            luexp(vs->update_descriptors({
-                                WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(g_cb)),
-                                WriteDescriptorSet::read_texture_view(1, TextureViewDesc::tex2d((ITexture*)pcmd->TextureId)),
-                                WriteDescriptorSet::sampler(2, SamplerDesc(Filter::linear, Filter::linear, Filter::linear, TextureAddressMode::clamp, TextureAddressMode::clamp, TextureAddressMode::clamp))
-                                }));
+                            object_t tex_object = pcmd->TextureId;
+                            ITexture* tex1 = query_interface<ITexture>(tex_object);
+                            ISampledImage* sampled_tex = query_interface<ISampledImage>(tex_object);
+                            if(tex1)
+                            {
+                                luexp(vs->update_descriptors({
+                                    WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(g_cb)),
+                                    WriteDescriptorSet::read_texture_view(1, TextureViewDesc::tex2d(tex1)),
+                                    WriteDescriptorSet::sampler(2, SamplerDesc(Filter::linear, Filter::linear, Filter::linear, TextureAddressMode::clamp, TextureAddressMode::clamp, TextureAddressMode::clamp))
+                                    }));
+                            }
+                            else if(sampled_tex)
+                            {
+                                luexp(vs->update_descriptors({
+                                    WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(g_cb)),
+                                    WriteDescriptorSet::read_texture_view(1, TextureViewDesc::tex2d(sampled_tex->get_texture())),
+                                    WriteDescriptorSet::sampler(2, sampled_tex->get_sampler())
+                                    }));
+                            }
+                            else
+                            {
+                                // should not get here.
+                                lupanic();
+                            }
                             cmd_buffer->set_graphics_descriptor_sets(0, { &vs, 1 });
                             cmd_buffer->set_scissor_rect(r);
                             cmd_buffer->draw_indexed(pcmd->ElemCount, pcmd->IdxOffset + idx_offset, pcmd->VtxOffset + vtx_offset);
@@ -897,6 +942,22 @@ namespace ImGui
         return 0;
     }
 
+    LUNA_IMGUI_API void Image(Luna::RHI::ITexture* texture, const ImVec2& image_size, const ImVec2& uv0, const ImVec2& uv1, const ImVec4& tint_col, const ImVec4& border_col)
+    {
+        Image((ImTextureID)texture->get_object(), image_size, uv0, uv1, tint_col, border_col);
+    }
+    LUNA_IMGUI_API void Image(Luna::ImGuiUtils::ISampledImage* texture, const ImVec2& image_size, const ImVec2& uv0, const ImVec2& uv1, const ImVec4& tint_col, const ImVec4& border_col)
+    {
+        Image((ImTextureID)texture->get_object(), image_size, uv0, uv1, tint_col, border_col);
+    }
+    LUNA_IMGUI_API bool ImageButton(const char* str_id, Luna::RHI::ITexture* texture, const ImVec2& image_size, const ImVec2& uv0, const ImVec2& uv1, const ImVec4& bg_col, const ImVec4& tint_col)
+    {
+        return ImageButton(str_id, (ImTextureID)texture->get_object(), image_size, uv0, uv1, bg_col, tint_col);
+    }
+    LUNA_IMGUI_API bool ImageButton(const char* str_id, Luna::ImGuiUtils::ISampledImage* texture, const ImVec2& image_size, const ImVec2& uv0, const ImVec2& uv1, const ImVec4& bg_col, const ImVec4& tint_col)
+    {
+        return ImageButton(str_id, (ImTextureID)texture->get_object(), image_size, uv0, uv1, bg_col, tint_col);
+    }
     LUNA_IMGUI_API bool InputText(const char* label, Luna::String& buf, ImGuiInputTextFlags flags, ImGuiInputTextCallback callback, void* user_data)
     {
         IM_ASSERT(!(flags & ImGuiInputTextFlags_CallbackResize));
