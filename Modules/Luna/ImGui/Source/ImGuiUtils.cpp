@@ -789,7 +789,14 @@ namespace Luna
                     for (i32 cmd_i = 0; cmd_i < cmd_list->CmdBuffer.Size; ++cmd_i)
                     {
                         const ImDrawCmd* pcmd = &cmd_list->CmdBuffer[cmd_i];
-                        barriers.push_back({ (ITexture*)pcmd->TextureId, TEXTURE_BARRIER_ALL_SUBRESOURCES, TextureStateFlag::automatic, TextureStateFlag::shader_read_ps, ResourceBarrierFlag::none });
+                        object_t tid = (object_t)pcmd->TextureId;
+                        ITexture* tex = query_interface<ITexture>(tid);
+                        if(!tex)
+                        {
+                            ISampledImage* img = query_interface<ISampledImage>(tid);
+                            tex = img->get_texture();
+                        }
+                        barriers.push_back({ tex, TEXTURE_BARRIER_ALL_SUBRESOURCES, TextureStateFlag::automatic, TextureStateFlag::shader_read_ps, ResourceBarrierFlag::none });
                     }
                 }
                 cmd_buffer->begin_event("ImGui");
