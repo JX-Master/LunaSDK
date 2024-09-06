@@ -434,6 +434,7 @@ namespace Luna
             }
             m_begin = rhs.m_begin;
             m_end = rhs.m_end;
+            return *this;
         }
         //! Replaces elements of the queue by moving elements from another queue.
         //! @param[in] rhs The queue to move elements from. This queue will be empty after this operation.
