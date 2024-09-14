@@ -41,6 +41,18 @@ namespace Luna
         LUNA_IMGUI_API Vector<Pair<c16, c16>> get_glyph_ranges_cyrillic();
         LUNA_IMGUI_API Vector<Pair<c16, c16>> get_glyph_ranges_thai();
         LUNA_IMGUI_API Vector<Pair<c16, c16>> get_glyph_ranges_vietnamese();
+
+        struct ISampledImage : virtual Interface
+        {
+            luiid("7c85e4ac-3cf1-4d18-9a56-1bd8043e3e3f");
+
+            virtual RHI::ITexture* get_texture() = 0;
+            virtual void set_texture(RHI::ITexture* texture) = 0;
+            virtual RHI::SamplerDesc get_sampler() = 0;
+            virtual void set_sampler(const RHI::SamplerDesc& desc) = 0;
+        };
+
+        LUNA_IMGUI_API Ref<ISampledImage> new_sampled_image(RHI::ITexture* texture, const RHI::SamplerDesc& sampler_desc);
     }
 
     struct Module;
@@ -49,6 +61,10 @@ namespace Luna
 
 namespace ImGui
 {
+    LUNA_IMGUI_API void Image(Luna::RHI::ITexture* texture, const ImVec2& image_size, const ImVec2& uv0 = ImVec2(0, 0), const ImVec2& uv1 = ImVec2(1, 1), const ImVec4& tint_col = ImVec4(1, 1, 1, 1), const ImVec4& border_col = ImVec4(0, 0, 0, 0));
+    LUNA_IMGUI_API void Image(Luna::ImGuiUtils::ISampledImage* texture, const ImVec2& image_size, const ImVec2& uv0 = ImVec2(0, 0), const ImVec2& uv1 = ImVec2(1, 1), const ImVec4& tint_col = ImVec4(1, 1, 1, 1), const ImVec4& border_col = ImVec4(0, 0, 0, 0));
+    LUNA_IMGUI_API bool ImageButton(const char* str_id, Luna::RHI::ITexture* texture, const ImVec2& image_size, const ImVec2& uv0 = ImVec2(0, 0), const ImVec2& uv1 = ImVec2(1, 1), const ImVec4& bg_col = ImVec4(0, 0, 0, 0), const ImVec4& tint_col = ImVec4(1, 1, 1, 1));
+    LUNA_IMGUI_API bool ImageButton(const char* str_id, Luna::ImGuiUtils::ISampledImage* texture, const ImVec2& image_size, const ImVec2& uv0 = ImVec2(0, 0), const ImVec2& uv1 = ImVec2(1, 1), const ImVec4& bg_col = ImVec4(0, 0, 0, 0), const ImVec4& tint_col = ImVec4(1, 1, 1, 1));
     LUNA_IMGUI_API bool InputText(const char* label, Luna::String& buf, ImGuiInputTextFlags flags = 0, ImGuiInputTextCallback callback = NULL, void* user_data = NULL);
     LUNA_IMGUI_API bool InputTextMultiline(const char* label, Luna::String& buf, const ImVec2& size = ImVec2(0, 0), ImGuiInputTextFlags flags = 0, ImGuiInputTextCallback callback = NULL, void* user_data = NULL);
     LUNA_IMGUI_API bool InputTextWithHint(const char* label, const char* hint, Luna::String& buf, ImGuiInputTextFlags flags = 0, ImGuiInputTextCallback callback = NULL, void* user_data = NULL);
