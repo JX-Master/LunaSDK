@@ -23,9 +23,12 @@ namespace Luna
         SpinLock g_allocated_tls_mtx;
         struct Thread
         {
+            HANDLE m_handle;
             thread_callback_func_t* m_func;
             void* m_params;
         };
+        HANDLE m_main_thread_handle = NULL;
+        DWORD m_current_thread_handle_tls = 0;
     }
 }
 DWORD WINAPI WinThreadEntry(LPVOID cookie)
@@ -33,6 +36,7 @@ DWORD WINAPI WinThreadEntry(LPVOID cookie)
     using namespace Luna;
     using namespace Luna::OS;
     Thread* ctx = (Thread*)cookie;
+    ::TlsSetValue(m_current_thread_handle_tls, ctx->m_handle);
     ctx->m_func(ctx->m_params);
     // Clean up all tls.
     g_allocated_tls_mtx.lock();
@@ -57,9 +61,17 @@ namespace Luna
         void thread_init()
         {
             g_allocated_tls.construct();
+            m_current_thread_handle_tls = ::TlsAlloc();
+            luassert_always(m_current_thread_handle_tls != TLS_OUT_OF_INDEXES);
+            m_main_thread_handle = ::OpenThread(THREAD_ALL_ACCESS, FALSE, ::GetCurrentThreadId());
+            luassert_always(m_main_thread_handle);
+            ::TlsSetValue(m_current_thread_handle_tls, m_main_thread_handle);
         }
         void thread_close()
         {
+            ::CloseHandle(m_main_thread_handle);
+            m_main_thread_handle = NULL;
+            ::TlsFree(m_current_thread_handle_tls);
             g_allocated_tls.destruct();
         }
         opaque_t new_thread(thread_callback_func_t* callback, void* params, const c8* name, usize stack_size)
@@ -76,6 +88,7 @@ namespace Luna
                 Luna::memdelete(t);
                 lupanic_msg_always("CreateThread failed.");
             }
+            t->m_handle = h;
             if (name)
             {
                 wchar_t* buf = utf8_to_wchar_buffered(name);
@@ -138,7 +151,7 @@ namespace Luna
         }
         opaque_t get_current_thread_handle()
         {
-            return opaque_t(::GetCurrentThread());
+            return opaque_t(::TlsGetValue(m_current_thread_handle_tls));
         }
         void sleep(u32 time_milliseconds)
         {
