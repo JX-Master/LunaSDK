@@ -307,7 +307,70 @@ namespace Luna
         }
         return true;
     }
-
+    static void instaced_structure_default_construct(typeinfo_t type, void* data)
+    {
+        GenericStructureInstancedTypeInfo* t = (GenericStructureInstancedTypeInfo*)type;
+        // construct every field of the structure.
+        for (auto& i : t->property_descs)
+        {
+            void* dst = (void*)((usize)data + i.offset);
+            construct_type(i.type, dst);
+        }
+    }
+    static void instaced_structure_default_destruct(typeinfo_t type, void* data)
+    {
+        GenericStructureInstancedTypeInfo* t = (GenericStructureInstancedTypeInfo*)type;
+        // construct every field of the structure.
+        for (auto& i : t->property_descs)
+        {
+            void* dst = (void*)((usize)data + i.offset);
+            destruct_type(i.type, dst);
+        }
+    }
+    static void instaced_structure_default_copy_construct(typeinfo_t type, void* dst, void* src)
+    {
+        GenericStructureInstancedTypeInfo* t = (GenericStructureInstancedTypeInfo*)type;
+        // construct every field of the structure.
+        for (auto& i : t->property_descs)
+        {
+            void* dst_property = (void*)((usize)dst + i.offset);
+            void* src_property = (void*)((usize)src + i.offset);
+            copy_construct_type(i.type, dst_property, src_property);
+        }
+    }
+    static void instaced_structure_default_move_construct(typeinfo_t type, void* dst, void* src)
+    {
+        GenericStructureInstancedTypeInfo* t = (GenericStructureInstancedTypeInfo*)type;
+        // construct every field of the structure.
+        for (auto& i : t->property_descs)
+        {
+            void* dst_property = (void*)((usize)dst + i.offset);
+            void* src_property = (void*)((usize)src + i.offset);
+            move_construct_type(i.type, dst_property, src_property);
+        }
+    }
+    static void instaced_structure_default_copy_assign(typeinfo_t type, void* dst, void* src)
+    {
+        GenericStructureInstancedTypeInfo* t = (GenericStructureInstancedTypeInfo*)type;
+        // construct every field of the structure.
+        for (auto& i : t->property_descs)
+        {
+            void* dst_property = (void*)((usize)dst + i.offset);
+            void* src_property = (void*)((usize)src + i.offset);
+            copy_assign_type(i.type, dst_property, src_property);
+        }
+    }
+    static void instaced_structure_default_move_assign(typeinfo_t type, void* dst, void* src)
+    {
+        GenericStructureInstancedTypeInfo* t = (GenericStructureInstancedTypeInfo*)type;
+        // construct every field of the structure.
+        for (auto& i : t->property_descs)
+        {
+            void* dst_property = (void*)((usize)dst + i.offset);
+            void* src_property = (void*)((usize)src + i.offset);
+            move_assign_type(i.type, dst_property, src_property);
+        }
+    }
     static typeinfo_t new_instanced_type(GenericStructureTypeInfo* generic_type, Span<const typeinfo_t> generic_arguments)
     {
         UniquePtr<TypeInfo> t(memnew<GenericStructureInstancedTypeInfo>());
@@ -345,12 +408,12 @@ namespace Luna
             if (!is_type_trivially_move_assignable(i.type)) use_default_move_assign = true;
         }
         // Adds callback for non-trivial case.
-        if (!gt->ctor && use_default_ctor) gt->ctor = structure_default_construct;
-        if (!gt->dtor && use_default_dtor) gt->dtor = structure_default_destruct;
-        if (!gt->copy_ctor && use_default_copy_ctor) gt->copy_ctor = structure_default_copy_construct;
-        if (!gt->move_ctor && use_default_move_ctor) gt->move_ctor = structure_default_move_construct;
-        if (!gt->copy_assign && use_default_copy_assign) gt->copy_assign = structure_default_copy_assign;
-        if (!gt->move_assign && use_default_move_assign) gt->move_assign = structure_default_move_assign;
+        if (!gt->ctor && use_default_ctor) gt->ctor = instaced_structure_default_construct;
+        if (!gt->dtor && use_default_dtor) gt->dtor = instaced_structure_default_destruct;
+        if (!gt->copy_ctor && use_default_copy_ctor) gt->copy_ctor = instaced_structure_default_copy_construct;
+        if (!gt->move_ctor && use_default_move_ctor) gt->move_ctor = instaced_structure_default_move_construct;
+        if (!gt->copy_assign && use_default_copy_assign) gt->copy_assign = instaced_structure_default_copy_assign;
+        if (!gt->move_assign && use_default_move_assign) gt->move_assign = instaced_structure_default_move_assign;
         g_type_registry.push_back(move(t));
         generic_type->generic_instanced_types.push_back(gt);
         return (typeinfo_t)gt;
