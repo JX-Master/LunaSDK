@@ -579,6 +579,21 @@ namespace Luna
             lucatchret;
             return ok;
         }
+        LUNA_ASSET_API void get_referred_assets(asset_t asset, Vector<asset_t>& out_referred_assets)
+        {
+            if(!asset.handle) return;
+            AssetEntry* entry = (AssetEntry*)asset.handle;
+            LockGuard g(entry->lock);
+            if (entry->type.empty()) return;
+            auto desc = get_asset_type_desc(entry->type);
+            if(failed(desc)) return;
+            ObjRef data = entry->data;
+            g.unlock();
+            if(desc.get().on_get_referred_assets)
+            {
+                desc.get().on_get_referred_assets(desc.get().userdata.get(), asset, out_referred_assets);
+            }
+        }
         LUNA_ASSET_API void close()
         {
             MutexGuard guard(g_assets_mutex);

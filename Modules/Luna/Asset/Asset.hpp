@@ -125,6 +125,13 @@ namespace Luna
             //! This can be `nullptr` if the user calls @ref set_asset_data with `data` equals to `nullptr`. In such case,
             //! this function behaves like unloading existing asset data object.
             RV(*on_set_asset_data)(object_t userdata, asset_t asset, object_t data) = nullptr;
+            //! Called when assets referred by the specified asset is required.
+            //! @param[in] userdata The userdata.
+            //! @param[in] asset The asset handle of the asset to be queried.
+            //! @param[out] referred_assets Returns the assets referred by this asset.
+            //! This vector may not be empty when this function is called. If this vector is not empty, the returned
+            //! assets shall be pushed to the end of this vector, and existing elements shall not be modified.
+            void(*on_get_referred_assets)(object_t userdata, asset_t asset, Vector<asset_t>& referred_assets) = nullptr;
         };
 
         //! Registers one asset type so the asset system can handle the asset of that type.
@@ -318,6 +325,13 @@ namespace Luna
         //! worker thread in job system.
         //! @param[in] asset The asset handle of the asset to operate.
         LUNA_ASSET_API RV save_asset(asset_t asset);
+
+        //! Gets referred assets of the specified asset.
+        //! @param[in] asset The handle of the asset to query.
+        //! @param[out] out_referred_assets Returns the referred assets of the specified asset.
+        //! If this vector is not empty, the returned assets will be pushed to the end of the vector, and existing
+        //! elements will not be modified.
+        LUNA_ASSET_API void get_referred_assets(asset_t asset, Vector<asset_t>& out_referred_assets);
 
         //! Closes the asset registry.
         //! @details This call removes all registered assets and asset types, and invalidates all asset handles.
