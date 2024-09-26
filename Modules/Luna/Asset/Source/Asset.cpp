@@ -587,7 +587,6 @@ namespace Luna
             if (entry->type.empty()) return;
             auto desc = get_asset_type_desc(entry->type);
             if(failed(desc)) return;
-            ObjRef data = entry->data;
             g.unlock();
             if(desc.get().on_get_referred_assets)
             {
