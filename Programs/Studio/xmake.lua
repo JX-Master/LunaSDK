@@ -4,7 +4,7 @@ target("Studio")
     add_options("rhi_api")
     add_headerfiles("**.hpp")
     add_files("**.cpp")
-    add_deps("Runtime", "VariantUtils", "HID", "Window", "RHI", "Image", "Font", "ImGui", "Asset", "ObjLoader", "RG", "JobSystem")
+    add_deps("Runtime", "VariantUtils", "HID", "Window", "RHI", "Image", "Font", "ImGui", "Asset", "ObjLoader", "RG", "JobSystem", "ShaderCompiler")
     
     add_luna_shader("Shaders/MipmapGenerationCS.hlsl", {type = "compute"})
     add_luna_shader("Shaders/SkyboxCS.hlsl", {type = "compute"})
