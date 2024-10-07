@@ -408,7 +408,7 @@ namespace Luna
                     value *= 10;
                     value += i - '0';
                 }
-                return Variant(value);
+                return Variant(-value);
             }
         }
 

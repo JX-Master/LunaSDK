@@ -154,11 +154,6 @@ namespace Luna
         //! @par Valid Usage
         //! * `s` must points to a valid null-terminated string.
         BasicString& operator=(const value_type* s);
-        //! Assigns the string with the specified character. This operation behaves the same as 
-        //! `assign(1, ch)`.
-        //! @param[in] ch The character to assign.
-        //! @return Returns `*this`.
-        BasicString& operator=(value_type ch);
         //! Assigns the string by coping characters from the initializer list.
         //! @param[in] ilist The initializer list to copy characters from.
         //! @return Returns `*this`.

@@ -274,16 +274,6 @@ namespace Luna
         return *this;
     }
     template <typename _Char, typename _Alloc>
-    inline BasicString<_Char, _Alloc>& BasicString<_Char, _Alloc>::operator=(value_type ch)
-    {
-        clear();
-        reserve(1);
-        m_allocator_and_buffer.second()[0] = ch;
-        m_size = 1;
-        m_allocator_and_buffer.second()[m_size] = (value_type)0;
-        return *this;
-    }
-    template <typename _Char, typename _Alloc>
     inline BasicString<_Char, _Alloc>& BasicString<_Char, _Alloc>::operator=(InitializerList<value_type> ilist)
     {
         clear();

@@ -67,8 +67,8 @@ namespace Luna
     {
         if (g_initialized) return true;
         OS::init();
-        stack_allocator_init();
         profiler_init();
+        stack_allocator_init();
         error_init();
         name_init();
         type_registry_init();
@@ -96,8 +96,8 @@ namespace Luna
         type_registry_close();
         name_close();
         error_close();
-        profiler_close();
         stack_allocator_close();
+        profiler_close();
         OS::close();
         g_initialized = false;
     }
