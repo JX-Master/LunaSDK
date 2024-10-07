@@ -74,5 +74,14 @@ namespace Luna
             Variant& blob_var2 = blob_var2_r.get();
             luassert_always(blob_var == blob_var2);
         }
+
+        {
+            // Bugfix: reading negative number will result in positive number.
+            Variant var1((i64)-3);
+            String s = VariantUtils::write_json(var1);
+            R<Variant> var2 = VariantUtils::read_json(s.c_str());
+            luassert_always(succeeded(var2));
+            luassert_always(var1 == var2.get());
+        }
     }
 }
