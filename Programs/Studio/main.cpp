@@ -69,7 +69,8 @@ namespace Luna
             module_asset(),
             module_obj_loader(),
             module_rg(),
-            module_job_system()}));
+            module_job_system(),
+            module_shader_compiler()}));
         auto r = init_modules();
         if (failed(r))
         {
