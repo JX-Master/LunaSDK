@@ -726,6 +726,16 @@ namespace Luna
     //! * `type` must specify one valid type object.
     LUNA_RUNTIME_API Span<const StructurePropertyDesc> get_struct_properties(typeinfo_t type);
 
+    //! Gets properties of the specified structure.
+    //! @param[in] type The type to query.
+    //! @param[out] out_properties Returns properties of the specified structure. Existing elements in the vector will not be modified.
+    //! If `type` is not a structure or generic structure instanced type, this vector is not changed.
+    //! @param[in] include_base_type Whether to query properties that belongs to the base type of this structure type if this structure type has
+    //! base type. If this is `false`, only properties that belongs to this type (not the base type) will be returned.
+    //! @par Valid Usage
+    //! * `type` must specify one valid type object.
+    LUNA_RUNTIME_API void get_struct_properties(typeinfo_t type, Vector<StructurePropertyDesc>& out_properties, bool include_base_type = true);
+    
     //! Gets the base type of the specified type.
     //! @param[in] type The type to query.
     //! @return Returns the base type of the specified type.

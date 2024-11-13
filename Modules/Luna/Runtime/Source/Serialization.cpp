@@ -21,7 +21,8 @@ namespace Luna
         Variant ret(VariantType::object);
         lutry
         {
-            auto properties = get_struct_properties(type);
+            Vector<StructurePropertyDesc> properties;
+            get_struct_properties(type, properties);
             for(auto& prop : properties)
             {
                 if (is_type_serializable(prop.type))
@@ -38,7 +39,8 @@ namespace Luna
     {
         lutry
         {
-            auto properties = get_struct_properties(type);
+            Vector<StructurePropertyDesc> properties;
+            get_struct_properties(type, properties);
             for(auto& prop : properties)
             {
                 auto& prop_data = data[prop.name];
