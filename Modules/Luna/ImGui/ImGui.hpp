@@ -30,7 +30,7 @@ namespace Luna
 
         LUNA_IMGUI_API RV render_draw_data(ImDrawData* data, RHI::ICommandBuffer* cmd_buffer, RHI::ITexture* render_target);
         LUNA_IMGUI_API RV refresh_font_texture();
-        LUNA_IMGUI_API f32 get_dpi_scaled_font_size();
+        LUNA_IMGUI_API void add_default_font(f32 font_size);
 
         LUNA_IMGUI_API Vector<Pair<c16, c16>> get_glyph_ranges_default();
         LUNA_IMGUI_API Vector<Pair<c16, c16>> get_glyph_ranges_greek();

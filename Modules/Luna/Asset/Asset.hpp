@@ -270,6 +270,18 @@ namespace Luna
         //! @param[in] new_path The new path of the asset.
         LUNA_ASSET_API RV move_asset(asset_t asset, const Path& new_path);
 
+        //! Makes a duplication of the specified asset.
+        //! @details This function performs the following tasks:
+        //! 1. Copies all data files fetched from @ref get_asset_files from old path to new path.
+        //! 2. Creates a new asset or gets the asset with the provided GUID by calling @ref get_asset.
+        //! 3. Sets the new asset metadata, and saves the metadata to asset metadata file.
+        //! @param[in] asset The asset handle of the asset to operate.
+        //! @param[in] new_path The path of the new asset.
+        //! @param[in] guid The GUID of the new asset. This will be provided to @ref get_asset as-is.
+        //! Is this is 0, the asset GUID of the new asset is generated automatically.
+        //! @return Returns the new created asset. The asset is in @ref AssetState::unloaded state if it is newly created.
+        LUNA_ASSET_API R<asset_t> copy_asset(asset_t asset, const Path& new_path, const Guid& guid = Guid(0, 0));
+
         //! Gets the asset data object.
         //! @param[in] asset The asset handle of the asset to query.
         //! @return Returns the asset data, or `nullptr` if the asset data is not loaded or loading.

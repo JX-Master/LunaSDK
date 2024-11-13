@@ -1121,24 +1121,33 @@ namespace Luna
             destruct_type_range(type, src, count);
         }
     }
-    LUNA_RUNTIME_API Span<const StructurePropertyDesc> get_struct_properties(typeinfo_t type)
+    LUNA_RUNTIME_API void get_struct_properties(typeinfo_t type, Vector<StructurePropertyDesc>& out_properties, bool include_base_type)
     {
         TypeInfo* t = (TypeInfo*)type;
         switch (t->kind)
         {
         case TypeKind::structure:
         {
-            auto& src = ((StructureTypeInfo*)t)->property_descs;
-            return Span<const StructurePropertyDesc>(src.data(), src.size());
+            StructureTypeInfo* type = (StructureTypeInfo*)t;
+            if(include_base_type && type->base_type)
+            {
+                get_struct_properties(type->base_type, out_properties, true);
+            }
+            out_properties.insert(out_properties.end(), type->property_descs.begin(), type->property_descs.end());
+            break;
         }
         case TypeKind::generic_structure_instanced:
         {
-            auto& src = ((GenericStructureInstancedTypeInfo*)t)->property_descs;
-            return Span<const StructurePropertyDesc>(src.data(), src.size());
+            GenericStructureInstancedTypeInfo* type = (GenericStructureInstancedTypeInfo*)t;
+            if(include_base_type && type->base_type)
+            {
+                get_struct_properties(type->base_type, out_properties, true);
+            }
+            out_properties.insert(out_properties.end(), type->property_descs.begin(), type->property_descs.end());
+            break;
         } 
         default: break;
         }
-        return Span<const StructurePropertyDesc>();
     }
     LUNA_RUNTIME_API typeinfo_t get_base_type(typeinfo_t type)
     {

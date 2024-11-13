@@ -44,6 +44,8 @@ namespace Luna
     static typeinfo_t g_quaternion_type;
     static typeinfo_t g_blob_type;
     static typeinfo_t g_array_type;
+    static typeinfo_t g_rect_type;
+    static typeinfo_t g_offset_rect_type;
 
     static R<Variant> serialize_guid(typeinfo_t type, const void* inst)
     {
@@ -301,7 +303,8 @@ namespace Luna
         Variant ret(VariantType::array);
         lutry
         {
-            auto props = get_struct_properties(type);
+            Vector<StructurePropertyDesc> props;
+            get_struct_properties(type, props);
             luassert(props.size() >= 2);
             lulet(data, serialize(props[0].type, (const void*)((usize)inst + props[0].offset)));
             ret.push_back(move(data));
@@ -313,7 +316,8 @@ namespace Luna
     }
     static RV deserialize_pair(typeinfo_t type, void* inst, const Variant& data)
     {
-        auto props = get_struct_properties(type);
+        Vector<StructurePropertyDesc> props;
+        get_struct_properties(type, props);
         luassert(props.size() >= 2);
         lutry
         {
@@ -364,7 +368,8 @@ namespace Luna
         Variant ret(VariantType::array);
         lutry
         {
-            auto properties = get_struct_properties(type);
+            Vector<StructurePropertyDesc> properties;
+            get_struct_properties(type, properties);
             for (auto& prop : properties)
             {
                 lulet(data, serialize(prop.type, (const void*)((usize)inst + prop.offset)));
@@ -376,7 +381,8 @@ namespace Luna
     }
     static RV deserialize_tuple(typeinfo_t type, void* inst, const Variant& data)
     {
-        auto properties = get_struct_properties(type);
+        Vector<StructurePropertyDesc> properties;
+        get_struct_properties(type, properties);
         lutry
         {
             for (usize i = 0; i < properties.size(); ++i)
@@ -1352,7 +1358,8 @@ namespace Luna
                 Variant r(VariantType::array);
                 lutry
                 {
-                    auto properties = get_struct_properties(type);
+                    Vector<StructurePropertyDesc> properties;
+                    get_struct_properties(type, properties);
                     luassert(properties.size() >= 2);
                     lulet(val, serialize(properties[0].type, (const void*)((usize)inst + properties[0].offset)));
                     r.push_back(move(val));
@@ -1367,7 +1374,8 @@ namespace Luna
             {
                 lutry
                 {
-                    auto properties = get_struct_properties(type);
+                    Vector<StructurePropertyDesc> properties;
+                    get_struct_properties(type, properties);
                     luassert(properties.size() >= 2);
                     luexp(deserialize(properties[0].type, (void*)((usize)inst + properties[0].offset), data[0]));
                     luexp(deserialize(properties[1].type, (void*)((usize)inst + properties[1].offset), data[1]));
@@ -1409,7 +1417,8 @@ namespace Luna
                 Variant r(VariantType::array);
                 lutry
                 {
-                    auto properties = get_struct_properties(type);
+                    Vector<StructurePropertyDesc> properties;
+                    get_struct_properties(type, properties);
                     luassert(properties.size() >= 3);
                     lulet(val, serialize(properties[0].type, (const void*)((usize)inst + properties[0].offset)));
                     r.push_back(move(val));
@@ -1426,7 +1435,8 @@ namespace Luna
             {
                 lutry
                 {
-                    auto properties = get_struct_properties(type);
+                    Vector<StructurePropertyDesc> properties;
+                    get_struct_properties(type, properties);
                     luassert(properties.size() >= 3);
                     luexp(deserialize(properties[0].type, (void*)((usize)inst + properties[0].offset), data[0]));
                     luexp(deserialize(properties[1].type, (void*)((usize)inst + properties[1].offset), data[1]));
@@ -1470,7 +1480,8 @@ namespace Luna
                 Variant r(VariantType::array);
                 lutry
                 {
-                    auto properties = get_struct_properties(type);
+                    Vector<StructurePropertyDesc> properties;
+                    get_struct_properties(type, properties);
                     luassert(properties.size() >= 4);
                     lulet(val, serialize(properties[0].type, (const void*)((usize)inst + properties[0].offset)));
                     r.push_back(move(val));
@@ -1489,7 +1500,8 @@ namespace Luna
             {
                 lutry
                 {
-                    auto properties = get_struct_properties(type);
+                    Vector<StructurePropertyDesc> properties;
+                    get_struct_properties(type, properties);
                     luassert(properties.size() >= 4);
                     luexp(deserialize(properties[0].type, (void*)((usize)inst + properties[0].offset), data[0]));
                     luexp(deserialize(properties[1].type, (void*)((usize)inst + properties[1].offset), data[1]));
@@ -1571,6 +1583,138 @@ namespace Luna
             serial.deserialize_func = deserialize_array;
             set_serializable(type, &serial);
         }
+        // Rect
+        {
+            GenericStructureTypeDesc desc;
+            desc.guid = Guid("{a526631b-489d-49fd-9513-4286e3165795}");
+            desc.name = "Rect";
+            desc.alias = "";
+            Name generic_parameter_names[1] = { "ElementType" };
+            desc.generic_parameter_names = { generic_parameter_names, 1 };
+            desc.variable_generic_parameters = false;
+            desc.instantiate = [](typeinfo_t generic_type, Span<const GenericArgument> generic_arguments)
+            {
+                GenericStructureInstantiateInfo info;
+                lucheck(generic_arguments.size() >= 1 && generic_arguments[0].argument_type == GenericArgumentType::type);
+                typeinfo_t element_type = generic_arguments[0].type;
+                usize element_size = get_type_size(element_type);
+                info.size = element_size * 4;
+                info.alignment = get_type_alignment(element_type);
+                info.properties = {
+                    StructurePropertyDesc("offset_x", element_type, 0),
+                    StructurePropertyDesc("offset_y", element_type, element_size),
+                    StructurePropertyDesc("width", element_type, element_size * 2),
+                    StructurePropertyDesc("height", element_type, element_size * 3)
+                };
+                return info;
+            };
+            typeinfo_t type = register_generic_struct_type(desc);
+            g_rect_type = type;
+            SerializableTypeDesc serial;
+            serial.serialize_func = [](typeinfo_t type, const void* inst) -> R<Variant>
+            {
+                Variant r(VariantType::array);
+                lutry
+                {
+                    Vector<StructurePropertyDesc> properties;
+                    get_struct_properties(type, properties);
+                    luassert(properties.size() >= 4);
+                    lulet(val, serialize(properties[0].type, (const void*)((usize)inst + properties[0].offset)));
+                    r.push_back(move(val));
+                    luset(val, serialize(properties[1].type, (const void*)((usize)inst + properties[1].offset)))
+                    r.push_back(move(val));
+                    luset(val, serialize(properties[2].type, (const void*)((usize)inst + properties[2].offset)))
+                    r.push_back(move(val));
+                    luset(val, serialize(properties[3].type, (const void*)((usize)inst + properties[3].offset)))
+                    r.push_back(move(val));
+                    return r;
+                }
+                lucatchret;
+                return r;
+            };
+            serial.deserialize_func = [](typeinfo_t type, void* inst, const Variant& data) -> RV
+            {
+                lutry
+                {
+                    Vector<StructurePropertyDesc> properties;
+                    get_struct_properties(type, properties);
+                    luassert(properties.size() >= 4);
+                    luexp(deserialize(properties[0].type, (void*)((usize)inst + properties[0].offset), data[0]));
+                    luexp(deserialize(properties[1].type, (void*)((usize)inst + properties[1].offset), data[1]));
+                    luexp(deserialize(properties[2].type, (void*)((usize)inst + properties[2].offset), data[2]));
+                    luexp(deserialize(properties[3].type, (void*)((usize)inst + properties[3].offset), data[3]));
+                }
+                lucatchret;
+                return ok;
+            };
+            set_serializable(type, &serial);
+        }
+        // OffsetRect
+        {
+            GenericStructureTypeDesc desc;
+            desc.guid = Guid("{9e6e3216-0918-4d2d-82f4-fbd67e6ba146}");
+            desc.name = "OffsetRect";
+            desc.alias = "";
+            Name generic_parameter_names[1] = { "ElementType" };
+            desc.generic_parameter_names = { generic_parameter_names, 1 };
+            desc.variable_generic_parameters = false;
+            desc.instantiate = [](typeinfo_t generic_type, Span<const GenericArgument> generic_arguments)
+            {
+                GenericStructureInstantiateInfo info;
+                lucheck(generic_arguments.size() >= 1 && generic_arguments[0].argument_type == GenericArgumentType::type);
+                typeinfo_t element_type = generic_arguments[0].type;
+                usize element_size = get_type_size(element_type);
+                info.size = element_size * 4;
+                info.alignment = get_type_alignment(element_type);
+                info.properties = {
+                    StructurePropertyDesc("left", element_type, 0),
+                    StructurePropertyDesc("top", element_type, element_size),
+                    StructurePropertyDesc("right", element_type, element_size * 2),
+                    StructurePropertyDesc("bottom", element_type, element_size * 3)
+                };
+                return info;
+            };
+            typeinfo_t type = register_generic_struct_type(desc);
+            g_offset_rect_type = type;
+            SerializableTypeDesc serial;
+            serial.serialize_func = [](typeinfo_t type, const void* inst) -> R<Variant>
+            {
+                Variant r(VariantType::array);
+                lutry
+                {
+                    Vector<StructurePropertyDesc> properties;
+                    get_struct_properties(type, properties);
+                    luassert(properties.size() >= 4);
+                    lulet(val, serialize(properties[0].type, (const void*)((usize)inst + properties[0].offset)));
+                    r.push_back(move(val));
+                    luset(val, serialize(properties[1].type, (const void*)((usize)inst + properties[1].offset)))
+                    r.push_back(move(val));
+                    luset(val, serialize(properties[2].type, (const void*)((usize)inst + properties[2].offset)))
+                    r.push_back(move(val));
+                    luset(val, serialize(properties[3].type, (const void*)((usize)inst + properties[3].offset)))
+                    r.push_back(move(val));
+                    return r;
+                }
+                lucatchret;
+                return r;
+            };
+            serial.deserialize_func = [](typeinfo_t type, void* inst, const Variant& data) -> RV
+            {
+                lutry
+                {
+                    Vector<StructurePropertyDesc> properties;
+                    get_struct_properties(type, properties);
+                    luassert(properties.size() >= 4);
+                    luexp(deserialize(properties[0].type, (void*)((usize)inst + properties[0].offset), data[0]));
+                    luexp(deserialize(properties[1].type, (void*)((usize)inst + properties[1].offset), data[1]));
+                    luexp(deserialize(properties[2].type, (void*)((usize)inst + properties[2].offset), data[2]));
+                    luexp(deserialize(properties[3].type, (void*)((usize)inst + properties[3].offset), data[3]));
+                }
+                lucatchret;
+                return ok;
+            };
+            set_serializable(type, &serial);
+        }
     }
 
     LUNA_RUNTIME_API typeinfo_t guid_type() { return g_guid_type; }
@@ -1594,4 +1738,6 @@ namespace Luna
     LUNA_RUNTIME_API typeinfo_t quaternion_type() { return g_quaternion_type; }
     LUNA_RUNTIME_API typeinfo_t blob_type() { return g_blob_type; }
     LUNA_RUNTIME_API typeinfo_t array_type() { return g_array_type; }
+    LUNA_RUNTIME_API typeinfo_t rect_type() { return g_rect_type; }
+    LUNA_RUNTIME_API typeinfo_t offset_rect_type() { return g_offset_rect_type; }
 }

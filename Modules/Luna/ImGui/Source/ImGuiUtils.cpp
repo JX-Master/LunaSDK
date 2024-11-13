@@ -149,41 +149,28 @@ namespace Luna
             return ok;
         }
 
-        static void add_default_font(f32 render_scale)
+        LUNA_IMGUI_API void add_default_font(f32 font_size)
         {
             ImGuiIO& io = ::ImGui::GetIO();
             Font::IFontFile* font = Font::get_default_font();
-            usize font_size = font->get_data().size();
-            void* font_data = ImGui::MemAlloc(font_size);
-            memcpy(font_data, font->get_data().data(), font_size);
-            io.Fonts->AddFontFromMemoryTTF(const_cast<void*>(font_data), (int)font_size, 18.0f * render_scale, NULL, NULL);
+            usize font_data_size = font->get_data().size();
+            void* font_data = ImGui::MemAlloc(font_data_size);
+            memcpy(font_data, font->get_data().data(), font_data_size);
+            io.Fonts->AddFontFromMemoryTTF(const_cast<void*>(font_data), (int)font_data_size, font_size, NULL, NULL);
         }
 
-        LUNA_IMGUI_API f32 get_dpi_scaled_font_size()
+        static f32 get_font_render_scale()
         {
-            return 18.0f * (g_active_window ? g_active_window->get_dpi_scale_factor() : 1.0f);
+            return g_active_window ? g_active_window->get_dpi_scale_factor() : 1.0f;
         }
 
-        static RV rebuild_font(f32 render_scale, f32 display_scale)
+        static f32 get_font_display_scale()
         {
-            using namespace RHI;
-            lutry
-            {
-                ImGuiIO& io = ::ImGui::GetIO();
-                if(io.Fonts->ConfigData.Size == 0)
-                {
-                    add_default_font(render_scale);
-                }
-                // Modify font configs.
-                for(auto& config : io.Fonts->ConfigData)
-                {
-                    config.SizePixels = 18.0f * render_scale;
-                }
-                io.FontGlobalScale = display_scale;
-                luexp(refresh_font_texture());
-            }
-            lucatchret;
-            return ok;
+            if(!g_active_window) return 1.0;
+            auto sz = g_active_window->get_size();
+            auto fb_sz = g_active_window->get_framebuffer_size();
+            f32 display_scale = (f32)sz.x / (f32)fb_sz.x;
+            return display_scale;
         }
 
         LUNA_IMGUI_API RV refresh_font_texture()
@@ -192,6 +179,19 @@ namespace Luna
             lutry
             {
                 ImGuiIO& io = ::ImGui::GetIO();
+                f32 render_scale = get_font_render_scale();
+                f32 display_scale = get_font_display_scale();
+                if(io.Fonts->ConfigData.Size == 0)
+                {
+                    add_default_font(18.0f * render_scale);
+                }
+                // Modify font configs.
+                for(auto& config : io.Fonts->ConfigData)
+                {
+                    config.SizePixels = 18.0f * render_scale;
+                }
+                io.FontGlobalScale = display_scale;
+                // Build font.
                 unsigned char* pixels;
                 int width, height;
                 if(!io.Fonts->Build())
@@ -574,10 +574,7 @@ namespace Luna
 
         static void handle_dpi_changed(Window::IWindow* window, f32 dpi_scale)
         {
-            auto sz = window->get_size();
-            auto fb_sz = window->get_framebuffer_size();
-            f32 display_scale = (f32)sz.x / (f32)fb_sz.x;
-            auto _ = rebuild_font(dpi_scale, display_scale);
+            auto _ = refresh_font_texture();
         }
 
         usize g_handle_mouse_move;
@@ -669,17 +666,7 @@ namespace Luna
 
             if (!g_font_tex)
             {
-                if (g_active_window)
-                {
-                    auto sz = g_active_window->get_size();
-                    auto fb_sz = g_active_window->get_framebuffer_size();
-                    f32 display_scale = (f32)sz.x / (f32)fb_sz.x;
-                    auto _ = rebuild_font(g_active_window->get_dpi_scale_factor(), display_scale);
-                }
-                else
-                {
-                    auto _ = rebuild_font(1.0f, 1.0f);
-                }
+                auto _ = refresh_font_texture();
             }
         }
 
