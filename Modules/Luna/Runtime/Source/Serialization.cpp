@@ -39,11 +39,6 @@ namespace Luna
     {
         lutry
         {
-            typeinfo_t base_type = get_base_type(type);
-            if(base_type)
-            {
-                luexp(deserialize(base_type, inst, data));
-            }
             Vector<StructurePropertyDesc> properties;
             get_struct_properties(type, properties);
             for(auto& prop : properties)
