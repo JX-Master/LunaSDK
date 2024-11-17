@@ -611,10 +611,16 @@ namespace Luna
                     lutry
                     {
                         asset_t* obj = (asset_t*)inst;
-                        if (data.empty()) obj->handle = nullptr;
-                        Guid guid = Guid(0, 0);
-                        luexp(deserialize(guid, data));
-                        *obj = Asset::get_asset(guid);
+                        if (data.empty())
+                        {
+                            obj->handle = nullptr;
+                        }
+                        else
+                        {
+                            Guid guid = Guid(0, 0);
+                            luexp(deserialize(guid, data));
+                            *obj = Asset::get_asset(guid);
+                        }
                     }
                     lucatchret;
                     return ok;
