@@ -20,6 +20,7 @@ namespace Luna
     namespace OS
     {
         void time_init();
+        void thread_init();
         void file_init();
         void std_io_init();
         void std_io_close();
@@ -27,6 +28,7 @@ namespace Luna
         void init()
         {
             time_init();
+            thread_init();
             file_init();
             std_io_init();
         }
