@@ -16,6 +16,10 @@
 #include <emmintrin.h>
 #endif
 
+#if defined(LUNA_PLATFORM_ARM64) || defined(LUNA_PLATFORM_ARM32)
+#include <arm_acle.h>
+#endif
+
 namespace Luna
 {
     //! @addtogroup RuntimeThread
@@ -55,6 +59,8 @@ namespace Luna
             {
 #if defined(LUNA_PLATFORM_X86) || defined(LUNA_PLATFORM_X86_64)
                 _mm_pause(); // not_ready-waiting.
+#elif defined(LUNA_PLATFORM_ARM64) || defined(LUNA_PLATFORM_ARM32)
+                __yield();
 #endif
             }
         }
@@ -76,12 +82,12 @@ namespace Luna
     //! Similar to @ref SpinLock, but allows the lock to be obtained mutable times from the same thread.
     class RecursiveSpinLock
     {
-        volatile opaque_t th;
+        volatile usize tid;
         volatile u32 counter;
     public:
         //! Constructs one spin lock. The spin lock is unlocked after creation.
         RecursiveSpinLock() :
-            th(nullptr),
+            tid(0),
             counter(0) {}
         RecursiveSpinLock(const RecursiveSpinLock&) = delete;
         RecursiveSpinLock(RecursiveSpinLock&& rhs) = delete;
@@ -90,16 +96,18 @@ namespace Luna
         //! Locks the spin lock.
         void lock()
         {
-            opaque_t t = get_current_thread_handle();
-            if (th == t)
+            usize current_tid = get_current_thread_id();
+            if (tid == current_tid)
             {
                 ++counter;
                 return;
             }
-            while (atom_compare_exchange_pointer(&th, t, nullptr) != nullptr)
+            while (atom_compare_exchange_usize(&tid, current_tid, 0) != 0)
             {
 #if defined(LUNA_PLATFORM_X86) || defined(LUNA_PLATFORM_X86_64)
                 _mm_pause(); // not_ready-waiting.
+#elif defined(LUNA_PLATFORM_ARM64) || defined(LUNA_PLATFORM_ARM32)
+                __yield();
 #endif
             }
         }
@@ -108,14 +116,14 @@ namespace Luna
         //! `false` otherwise.
         bool try_lock()
         {
-            opaque_t t = get_current_thread_handle();
-            if (th == t)
+            usize current_tid = get_current_thread_id();
+            if (tid == current_tid)
             {
                 ++counter;
                 return true;
             }
-            volatile opaque_t comp = atom_compare_exchange_pointer(&th, t, nullptr);
-            return comp == nullptr;
+            volatile usize comp = atom_compare_exchange_usize(&tid, current_tid, 0);
+            return comp == 0;
         }
         //! Unlocks the spin lock.
         //! @details If the lock is acquired from the same thread multiple times, the user should call this function 
@@ -128,7 +136,7 @@ namespace Luna
             }
             else
             {
-                atom_exchange_pointer(&th, nullptr);
+                atom_exchange_usize(&tid, 0);
             }
         }
     };
