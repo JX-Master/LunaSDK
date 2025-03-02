@@ -125,12 +125,66 @@ namespace Luna
     LUNA_RUNTIME_API typeinfo_t pair_type();
     template <typename _Ty1, typename _Ty2> struct typeof_t<Pair<_Ty1, _Ty2>> 
     { typeinfo_t operator()() const { return get_generic_instanced_type(pair_type(), {typeof<_Ty1>(), typeof<_Ty2>()}); } };
+
+    //! Specifies the type of one generic argument.
+    enum class GenericArgumentType : u8
+    {
+        //! This argument is not set.
+        none = 0,
+        //! This argument is a type.
+        type = 1,
+        //! This argument is a integer.
+        integer = 2,
+    };
+
+    //! Specifies one generic argument.
+    struct GenericArgument
+    {
+        //! The type of the argument.
+        GenericArgumentType argument_type;
+        union
+        {
+            //! The value of the argument if argument is a type.
+            typeinfo_t type;
+            //! The value of the argument if argument is an integer.
+            i64 integer;
+        };
+
+        GenericArgument() :
+            argument_type(GenericArgumentType::none),
+            type(nullptr) {}
+        GenericArgument(typeinfo_t type) :
+            argument_type(GenericArgumentType::type),
+            type(type) {}
+        GenericArgument(i64 integer) :
+            argument_type(GenericArgumentType::integer),
+            integer(integer) {}
+        GenericArgument(const GenericArgument&) = default;
+        GenericArgument(GenericArgument&&) = default;
+        GenericArgument& operator=(const GenericArgument&) = default;
+        GenericArgument& operator=(GenericArgument&&) = default;
+        bool operator==(const GenericArgument& rhs) const
+        {
+            if(argument_type != rhs.argument_type) return false;
+            switch(argument_type)
+            {
+                case GenericArgumentType::type: return type == rhs.type;
+                case GenericArgumentType::integer: return integer == rhs.integer;
+                default: lupanic();
+            }
+            return false;
+        }
+        bool operator!=(const GenericArgument& rhs) const
+        {
+            return !(*this == rhs);
+        }
+    };
     
     //! Gets one instanced type of one generic type.
     //! @param[in] generic_type The generic type.
     //! @param[in] generic_arguments The type arguments that are used to query the instanced type.
     //! @return Returns the instanced type requested.
-    LUNA_RUNTIME_API typeinfo_t get_generic_instanced_type(typeinfo_t generic_type, Span<const typeinfo_t> generic_arguments);
+    LUNA_RUNTIME_API typeinfo_t get_generic_instanced_type(typeinfo_t generic_type, Span<const GenericArgument> generic_arguments);
 
     template <typename _Ty>
     struct EnumTypeInfo {};

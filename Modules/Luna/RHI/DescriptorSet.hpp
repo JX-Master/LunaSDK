@@ -278,7 +278,7 @@ namespace Luna
             f32 max_lod;
 
             SamplerDesc() = default;
-            SamplerDesc(Filter min_filter,
+            constexpr SamplerDesc(Filter min_filter,
                 Filter mag_filter,
                 Filter mip_filter,
                 TextureAddressMode address_u,

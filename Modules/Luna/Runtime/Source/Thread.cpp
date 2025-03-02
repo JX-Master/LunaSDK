@@ -57,13 +57,9 @@ namespace Luna
         IThread* th = (IThread*)OS::tls_get(g_tls_thread);
         return th;
     }
-    LUNA_RUNTIME_API u64 get_current_thread_id()
+    LUNA_RUNTIME_API usize get_current_thread_id()
     {
         return OS::get_current_thread_id();
-    }
-    LUNA_RUNTIME_API opaque_t get_current_thread_handle()
-    {
-        return OS::get_current_thread_handle();
     }
     LUNA_RUNTIME_API IThread* get_main_thread()
     {

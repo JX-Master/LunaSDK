@@ -652,7 +652,7 @@ namespace Luna
     //! required.
     //! @param[in] generic_type The generic type to instantiate.
     //! @param[in] generic_arguments Types that are used as arguments to instantiate one generic structure instanced type.
-    using generic_structure_instantiate_t = GenericStructureInstantiateInfo(typeinfo_t generic_type, Span<const typeinfo_t> generic_arguments);
+    using generic_structure_instantiate_t = GenericStructureInstantiateInfo(typeinfo_t generic_type, Span<const GenericArgument> generic_arguments);
 
     //! Describes one generic structure type.
     struct GenericStructureTypeDesc
@@ -720,11 +720,13 @@ namespace Luna
 
     //! Gets properties of the specified structure.
     //! @param[in] type The type to query.
-    //! @return Returns properties of the specified structure. The returned buffer is valid until SDK shutdown.
-    //! Returns one empty range if `type` is not a structure or generic structure instanced type.
+    //! @param[out] out_properties Returns properties of the specified structure. Existing elements in the vector will not be modified.
+    //! If `type` is not a structure or generic structure instanced type, this vector is not changed.
+    //! @param[in] include_base_type Whether to query properties that belongs to the base type of this structure type if this structure type has
+    //! base type. If this is `false`, only properties that belongs to this type (not the base type) will be returned.
     //! @par Valid Usage
     //! * `type` must specify one valid type object.
-    LUNA_RUNTIME_API Span<const StructurePropertyDesc> get_struct_properties(typeinfo_t type);
+    LUNA_RUNTIME_API void get_struct_properties(typeinfo_t type, Vector<StructurePropertyDesc>& out_properties, bool include_base_type = true);
 
     //! Gets the base type of the specified type.
     //! @param[in] type The type to query.
@@ -792,7 +794,7 @@ namespace Luna
     //! Returns one empty span if `type` is not a generic structure instanced type.
     //! @par Valid Usage
     //! * `type` must specify one valid type object.
-    LUNA_RUNTIME_API Span<const typeinfo_t> get_struct_generic_arguments(typeinfo_t type);
+    LUNA_RUNTIME_API Span<const GenericArgument> get_struct_generic_arguments(typeinfo_t type);
 
     //! Gets the generic parameter names of the specified type.
     //! @param[in] type The type to query.

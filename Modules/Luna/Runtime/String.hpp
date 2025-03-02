@@ -154,11 +154,6 @@ namespace Luna
         //! @par Valid Usage
         //! * `s` must points to a valid null-terminated string.
         BasicString& operator=(const value_type* s);
-        //! Assigns the string with the specified character. This operation behaves the same as 
-        //! `assign(1, ch)`.
-        //! @param[in] ch The character to assign.
-        //! @return Returns `*this`.
-        BasicString& operator=(value_type ch);
         //! Assigns the string by coping characters from the initializer list.
         //! @param[in] ilist The initializer list to copy characters from.
         //! @return Returns `*this`.
@@ -750,36 +745,38 @@ namespace Luna
     template <> struct typeof_t<String> { typeinfo_t operator()() const { return string_type(); } };
 
     //! Creates one string that contains the formatted text.
+    //! @param[out] str The string instance to receive the formatted string.
+    //! If this instance is not empty, existing content will be overwritten.
     //! @param[in] format The formatting syntax used to format the text.
     //! @param[in] args The formatting arguments.
     //! @return Returns the created string.
-    inline String vstrprintf(const c8* format, VarList args)
+    inline void vstrprintf(String& str, const c8* format, VarList args)
     {
         constexpr usize STACK_BUFFER_SIZE = 128;
         c8 buf[STACK_BUFFER_SIZE];
         i32 len = vsnprintf(buf, STACK_BUFFER_SIZE, format, args);
-        String ret(len, '\0');
+        str.resize(len, 0);
         if(len >= STACK_BUFFER_SIZE)
         {
-            vsnprintf(ret.data(), ret.size() + 1, format, args);
+            vsnprintf(str.data(), str.size() + 1, format, args);
         }
         else
         {
-            strncpy(ret.data(), buf, ret.size() + 1);
+            strncpy(str.data(), buf, str.size() + 1);
         }
-        return ret;
     }
 
     //! Creates one string that contains the formatted text.
+    //! @param[out] str The string instance to receive the formatted string.
+    //! If this instance is not empty, existing content will be overwritten.
     //! @param[in] format The formatting syntax used to format the text.
     //! @return Returns the created string.
-    inline String strprintf(const c8* format, ...)
+    inline void strprintf(String& str, const c8* format, ...)
     {
         VarList args;
         va_start(args, format);
-        String ret = vstrprintf(format, args);
+        vstrprintf(str, format, args);
         va_end(args);
-        return ret;
     }
 
     //! @}

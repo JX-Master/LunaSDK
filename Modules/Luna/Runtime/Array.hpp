@@ -12,6 +12,7 @@
 #include "Algorithm.hpp"
 #include "Memory.hpp"
 #include "MemoryUtils.hpp"
+#include "TypeInfo.hpp"
 
 namespace Luna
 {
@@ -379,6 +380,27 @@ namespace Luna
         }
         _Ty* m_elements;
         usize m_size;
+    };
+
+    //! Gets the type object of @ref Array.
+    //! @return Returns the type object of @ref Array. The returned type is a generic type that can be
+    //! instantiated by providing the element type.
+    LUNA_RUNTIME_API typeinfo_t array_type();
+
+    template <typename _Ty, usize _Size>
+    struct typeof_t<Array<_Ty, _Size>>
+    {
+        typeinfo_t operator()() const 
+        {
+            if(_Size == DYNAMIC_ARRAY_SIZE)
+            {
+                return get_generic_instanced_type(array_type(), { typeof<_Ty>() });
+            }
+            else
+            {
+                return get_generic_instanced_type(array_type(), { typeof<_Ty>(), (i64)(_Size) });
+            }
+        }
     };
 
     //! @}

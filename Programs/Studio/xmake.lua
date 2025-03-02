@@ -4,7 +4,7 @@ target("Studio")
     add_options("rhi_api")
     add_headerfiles("**.hpp")
     add_files("**.cpp")
-    add_deps("Runtime", "VariantUtils", "HID", "Window", "RHI", "Image", "Font", "ImGui", "Asset", "ObjLoader", "RG", "JobSystem")
+    add_deps("Runtime", "VariantUtils", "HID", "Window", "RHI", "Image", "Font", "ImGui", "Asset", "ObjLoader", "RG", "JobSystem", "ShaderCompiler")
     
     add_luna_shader("Shaders/MipmapGenerationCS.hlsl", {type = "compute"})
     add_luna_shader("Shaders/SkyboxCS.hlsl", {type = "compute"})
@@ -20,9 +20,9 @@ target("Studio")
     add_luna_shader("Shaders/PrecomputeEnvironmentMapMips.hlsl", {type = "compute"})
     add_luna_shader("Shaders/WireframeVert.hlsl", {type = "vertex"})
     add_luna_shader("Shaders/WireframePixel.hlsl", {type = "pixel"})
-    add_luna_shader("Shaders/BloomSetupCS.hlsl", {type = "compute", debug = true})
-    add_luna_shader("Shaders/BloomDownSampleCS.hlsl", {type = "compute", debug = true})
-    add_luna_shader("Shaders/BloomUpSampleCS.hlsl", {type = "compute", debug = true})
+    add_luna_shader("Shaders/BloomSetupCS.hlsl", {type = "compute"})
+    add_luna_shader("Shaders/BloomDownSampleCS.hlsl", {type = "compute"})
+    add_luna_shader("Shaders/BloomUpSampleCS.hlsl", {type = "compute"})
     add_headerfiles("Shaders/Common.hlsl",
             "Shaders/BRDF.hlsl",
             "Shaders/CameraParams.hlsl",

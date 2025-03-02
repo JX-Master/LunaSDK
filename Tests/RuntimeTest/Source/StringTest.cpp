@@ -73,10 +73,6 @@ namespace Luna
             str8 = u8"Sample String";
             lutest(!strcmp(str8.c_str(), u8"Sample String"));
 
-            // operator=(value_type ch)
-            str8 = 'c';
-            lutest(!strcmp(str8.c_str(), u8"c"));
-
             // operator=(InitializerList<value_type> ilist)
             str8 = { 'e', 't', 'f' };
             lutest(!strcmp(str8.c_str(), u8"etf"));

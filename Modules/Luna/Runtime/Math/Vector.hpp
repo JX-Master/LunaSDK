@@ -10,7 +10,6 @@
  */
 #pragma once
 #include "Math.hpp"
-#include "../TypeInfo.hpp"
 
 namespace Luna
 {

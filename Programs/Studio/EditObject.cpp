@@ -179,7 +179,8 @@ namespace Luna
     void edit_object(object_t obj)
     {
         auto type = get_object_type(obj);
-        auto properties = get_struct_properties(type);
+        Vector<StructurePropertyDesc> properties;
+        get_struct_properties(type, properties);
         for (usize i = 0; i < properties.size(); ++i)
         {
             auto& desc = properties[i];

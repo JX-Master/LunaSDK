@@ -8,6 +8,7 @@
 * @date 2022/5/23
 * @brief The serialization API.
 */
+#pragma once
 #include "TypeInfo.hpp"
 #include "Variant.hpp"
 #include "Result.hpp"

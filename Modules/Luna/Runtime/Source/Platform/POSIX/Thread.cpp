@@ -8,7 +8,10 @@
 * @date 2020/9/28
 */
 #include "../../OS.hpp"
+#include "../../../Base.hpp"
+#include "../../../Assert.hpp"
 
+#include <cstdint>
 #include <unistd.h>
 #include <pthread.h>
 
@@ -26,9 +29,11 @@ namespace Luna
             int m_sched_policy;
             sched_param m_sched_param;
 
-            thread_callback_func_t* m_func;
-            void* m_params;
-            opaque_t m_finish_signal;
+            // The following params are used only for non-main thread.
+
+            thread_callback_func_t* m_func = nullptr;
+            void* m_params = nullptr;
+            opaque_t m_finish_signal = nullptr;
 
             bool m_detached = false;
             
@@ -43,7 +48,8 @@ namespace Luna
             }
         };
 
-        thread_local Thread* tls_current_thread;
+        static thread_local Thread* tls_current_thread;
+        static Thread main_thread_handle;
 
         static void* posix_thread_main(void* cookie)
         {
@@ -67,6 +73,14 @@ namespace Luna
             }
             memdelete(t);
             return 0;
+        }
+
+        void thread_init()
+        {
+            main_thread_handle.m_handle = pthread_self();
+            int r = pthread_getschedparam(main_thread_handle.m_handle, &main_thread_handle.m_sched_policy, &main_thread_handle.m_sched_param);
+            luassert_msg_always(r == 0, "pthread_getschedparam failed");
+            tls_current_thread = &main_thread_handle;
         }
 
         opaque_t new_thread(thread_callback_func_t* callback, void* params, const c8* name, usize stack_size)
@@ -109,20 +123,17 @@ namespace Luna
             {
             case ThreadPriority::low:
                 param.sched_priority = (param.sched_priority + sched_get_priority_min(t->m_sched_policy)) >> 1;
-                pthread_setschedparam(t->m_handle, t->m_sched_policy, &param);
-                break;
-            case ThreadPriority::normal:
-                pthread_setschedparam(t->m_handle, t->m_sched_policy, &param);
                 break;
             case ThreadPriority::high:
                 param.sched_priority = (param.sched_priority + sched_get_priority_max(t->m_sched_policy)) >> 1;
-                pthread_setschedparam(t->m_handle, t->m_sched_policy, &param);
                 break;
             case ThreadPriority::critical:
                 param.sched_priority = sched_get_priority_max(t->m_sched_policy);
-                pthread_setschedparam(t->m_handle, t->m_sched_policy, &param);
                 break;
+            default: break;
             }
+            int r = pthread_setschedparam(t->m_handle, t->m_sched_policy, &param);
+            luassert_msg_always(r == 0, "pthread_setschedparam failed");
         }
         void wait_thread(opaque_t thread)
         {
@@ -140,16 +151,17 @@ namespace Luna
             pthread_detach(t->m_handle);
             t->m_detached = true;
         }
-        u64 get_current_thread_id()
+        usize get_current_thread_id()
         {
-            static thread_local u64 id = 0;
+            static thread_local usize id = 0;
             if (id != 0) return id;
 #ifdef LUNA_PLATFORM_MACOS
+            static_assert(sizeof(usize) == sizeof(uint64_t), "Only macOS 64-bit is supported.");
             uint64_t tid;
             pthread_threadid_np(0, &tid);
-            id = (u64)tid;
+            id = (usize)tid;
 #elif LUNA_PLATFORM_LINUX
-            id = (u64)gettid();
+            id = (usize)gettid();
 #else
 #error "Unrecognized Platform"
 #endif

@@ -10,6 +10,7 @@
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_IMGUI_API LUNA_EXPORT
 #include "../ImGui.hpp"
+#include "imgui.h"
 #include <Luna/Runtime/Result.hpp>
 #include <Luna/Runtime/Module.hpp>
 #include <Luna/Runtime/Time.hpp>
@@ -56,9 +57,34 @@ namespace Luna
 
         Ref<RHI::ITexture> g_font_tex;
 
+        struct SampledImage : ISampledImage
+        {
+            lustruct("ImGuiUtils::SampledImage", "29378bf1-b58e-4c8a-a30f-d29239f9a713");
+            luiimpl();
+
+            Ref<RHI::ITexture> m_texture;
+            RHI::SamplerDesc m_sampler;
+
+            virtual RHI::ITexture* get_texture() override { return m_texture; }
+            virtual void set_texture(RHI::ITexture* texture) override { m_texture = texture; }
+            virtual RHI::SamplerDesc get_sampler() override { return m_sampler; }
+            virtual void set_sampler(const RHI::SamplerDesc& desc) override { m_sampler = desc; }
+        };
+
+        LUNA_IMGUI_API Ref<ISampledImage> new_sampled_image(RHI::ITexture* texture, const RHI::SamplerDesc& sampler_desc)
+        {
+            Ref<SampledImage> image = new_object<SampledImage>();
+            image->m_texture = texture;
+            image->m_sampler = sampler_desc;
+            return Ref<ISampledImage>(image);
+        }
+
         static RV init()
         {
             using namespace RHI;
+            register_boxed_type<SampledImage>();
+            impl_interface_for_type<SampledImage, ISampledImage>();
+
             // Setup Dear ImGui context
             IMGUI_CHECKVERSION();
             ImGui::CreateContext();
@@ -123,36 +149,56 @@ namespace Luna
             return ok;
         }
 
-        static RV rebuild_font(Font::IFontFile* font, f32 render_scale, f32 display_scale, Span<Pair<c16, c16>> ranges = {})
+        LUNA_IMGUI_API void add_default_font(f32 font_size)
+        {
+            ImGuiIO& io = ::ImGui::GetIO();
+            Font::IFontFile* font = Font::get_default_font();
+            usize font_data_size = font->get_data().size();
+            void* font_data = ImGui::MemAlloc(font_data_size);
+            memcpy(font_data, font->get_data().data(), font_data_size);
+            io.Fonts->AddFontFromMemoryTTF(const_cast<void*>(font_data), (int)font_data_size, font_size, NULL, NULL);
+        }
+
+        static f32 get_font_render_scale()
+        {
+            return g_active_window ? g_active_window->get_dpi_scale_factor() : 1.0f;
+        }
+
+        static f32 get_font_display_scale()
+        {
+            if(!g_active_window) return 1.0;
+            auto sz = g_active_window->get_size();
+            auto fb_sz = g_active_window->get_framebuffer_size();
+            f32 display_scale = (f32)sz.x / (f32)fb_sz.x;
+            return display_scale;
+        }
+
+        LUNA_IMGUI_API RV refresh_font_texture()
         {
             using namespace RHI;
             lutry
             {
                 ImGuiIO& io = ::ImGui::GetIO();
+                f32 render_scale = get_font_render_scale();
+                f32 display_scale = get_font_display_scale();
+                if(io.Fonts->ConfigData.Size == 0)
+                {
+                    add_default_font(18.0f * render_scale);
+                }
+                // Modify font configs.
+                for(auto& config : io.Fonts->ConfigData)
+                {
+                    config.SizePixels = 18.0f * render_scale;
+                }
+                io.FontGlobalScale = display_scale;
+                // Build font.
                 unsigned char* pixels;
                 int width, height;
-                io.Fonts->Clear();
-                if(!font)
+                if(!io.Fonts->Build())
                 {
-                    font = Font::get_default_font();
+                    return set_error(BasicError::bad_arguments(), "Failed to build ImGui font atlas data.");
                 }
-                ImVector<ImWchar> build_ranges;
-                if(!ranges.empty())
-                {
-                    ImFontGlyphRangesBuilder builder;
-                    for(auto& range : ranges)
-                    {
-                        ImWchar r[4] = {(ImWchar)range.first, (ImWchar)range.second, 0, 0};
-                        builder.AddRanges(r);
-                    }
-                    builder.BuildRanges(&build_ranges);
-                }
-                usize font_size = font->get_data().size();
-                void* font_data = ImGui::MemAlloc(font_size);
-                memcpy(font_data, font->get_data().data(), font_size);
-                io.Fonts->AddFontFromMemoryTTF(const_cast<void*>(font_data), (int)font_size, 18.0f * render_scale, NULL, build_ranges.empty() ? NULL : build_ranges.Data);
                 io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
-                io.FontGlobalScale = display_scale;
                 auto dev = get_main_device();
                 luset(g_font_tex, dev->new_texture(MemoryType::local, TextureDesc::tex2d(Format::rgba8_unorm,
                     TextureUsageFlag::read_texture | TextureUsageFlag::copy_dest, width, height, 1, 1)));
@@ -180,29 +226,13 @@ namespace Luna
                     luexp(copy_resource_data(upload_cmdbuf, {CopyResourceData::write_texture(g_font_tex, SubresourceIndex(0, 0), 0, 0, 0, 
                         pixels, src_row_pitch, src_row_pitch * height, width, height, 1)}));
                 }
-                io.Fonts->TexID = (ITexture*)(g_font_tex);
+                io.Fonts->TexID = g_font_tex->get_object();
+                io.Fonts->ClearTexData();
             }
             lucatchret;
             return ok;
         }
 
-        Ref<Font::IFontFile> g_font_file;
-
-        LUNA_IMGUI_API RV set_font(Font::IFontFile* font, f32 font_size, Span<Pair<c16, c16>> ranges)
-        {
-            g_font_file = font;
-            if(!g_active_window)
-            {
-                return rebuild_font(g_font_file, 1.0f, 1.0f, ranges);
-            }
-            else
-            {
-                auto sz = g_active_window->get_size();
-                auto fb_sz = g_active_window->get_framebuffer_size();
-                f32 display_scale = (f32)sz.x / (f32)fb_sz.x;
-                return rebuild_font(g_font_file, g_active_window->get_dpi_scale_factor(), display_scale, ranges);
-            }
-        }
         LUNA_IMGUI_API Vector<Pair<c16, c16>> get_glyph_ranges_default()
         {
             ImGuiIO& io = ::ImGui::GetIO();
@@ -314,7 +344,6 @@ namespace Luna
         static void close()
         {
             ImGui::DestroyContext();
-            g_font_file = nullptr;
             g_vb = nullptr;
             g_ib = nullptr;
             g_active_window = nullptr;
@@ -545,10 +574,7 @@ namespace Luna
 
         static void handle_dpi_changed(Window::IWindow* window, f32 dpi_scale)
         {
-            auto sz = window->get_size();
-            auto fb_sz = window->get_framebuffer_size();
-            f32 display_scale = (f32)sz.x / (f32)fb_sz.x;
-            auto _ = rebuild_font(g_font_file, dpi_scale, display_scale);
+            auto _ = refresh_font_texture();
         }
 
         usize g_handle_mouse_move;
@@ -640,17 +666,7 @@ namespace Luna
 
             if (!g_font_tex)
             {
-                if (g_active_window)
-                {
-                    auto sz = g_active_window->get_size();
-                    auto fb_sz = g_active_window->get_framebuffer_size();
-                    f32 display_scale = (f32)sz.x / (f32)fb_sz.x;
-                    auto _ = rebuild_font(g_font_file, g_active_window->get_dpi_scale_factor(), display_scale);
-                }
-                else
-                {
-                    auto _ = rebuild_font(g_font_file, 1.0f, 1.0f);
-                }
+                auto _ = refresh_font_texture();
             }
         }
 
@@ -763,7 +779,14 @@ namespace Luna
                     for (i32 cmd_i = 0; cmd_i < cmd_list->CmdBuffer.Size; ++cmd_i)
                     {
                         const ImDrawCmd* pcmd = &cmd_list->CmdBuffer[cmd_i];
-                        barriers.push_back({ (ITexture*)pcmd->TextureId, TEXTURE_BARRIER_ALL_SUBRESOURCES, TextureStateFlag::automatic, TextureStateFlag::shader_read_ps, ResourceBarrierFlag::none });
+                        object_t tid = (object_t)pcmd->TextureId;
+                        ITexture* tex = query_interface<ITexture>(tid);
+                        if(!tex)
+                        {
+                            ISampledImage* img = query_interface<ISampledImage>(tid);
+                            tex = img->get_texture();
+                        }
+                        barriers.push_back({ tex, TEXTURE_BARRIER_ALL_SUBRESOURCES, TextureStateFlag::automatic, TextureStateFlag::shader_read_ps, ResourceBarrierFlag::none });
                     }
                 }
                 cmd_buffer->begin_event("ImGui");
@@ -818,11 +841,30 @@ namespace Luna
                             }
                             IDescriptorSet* vs = g_desc_sets[num_draw_calls];
                             usize cb_align = dev->check_feature(DeviceFeature::uniform_buffer_data_alignment).uniform_buffer_data_alignment;
-                            luexp(vs->update_descriptors({
-                                WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(g_cb)),
-                                WriteDescriptorSet::read_texture_view(1, TextureViewDesc::tex2d((ITexture*)pcmd->TextureId)),
-                                WriteDescriptorSet::sampler(2, SamplerDesc(Filter::linear, Filter::linear, Filter::linear, TextureAddressMode::clamp, TextureAddressMode::clamp, TextureAddressMode::clamp))
-                                }));
+                            object_t tex_object = pcmd->TextureId;
+                            ITexture* tex1 = query_interface<ITexture>(tex_object);
+                            ISampledImage* sampled_tex = query_interface<ISampledImage>(tex_object);
+                            if(tex1)
+                            {
+                                luexp(vs->update_descriptors({
+                                    WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(g_cb)),
+                                    WriteDescriptorSet::read_texture_view(1, TextureViewDesc::tex2d(tex1)),
+                                    WriteDescriptorSet::sampler(2, SamplerDesc(Filter::linear, Filter::linear, Filter::linear, TextureAddressMode::clamp, TextureAddressMode::clamp, TextureAddressMode::clamp))
+                                    }));
+                            }
+                            else if(sampled_tex)
+                            {
+                                luexp(vs->update_descriptors({
+                                    WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(g_cb)),
+                                    WriteDescriptorSet::read_texture_view(1, TextureViewDesc::tex2d(sampled_tex->get_texture())),
+                                    WriteDescriptorSet::sampler(2, sampled_tex->get_sampler())
+                                    }));
+                            }
+                            else
+                            {
+                                // should not get here.
+                                lupanic();
+                            }
                             cmd_buffer->set_graphics_descriptor_sets(0, { &vs, 1 });
                             cmd_buffer->set_scissor_rect(r);
                             cmd_buffer->draw_indexed(pcmd->ElemCount, pcmd->IdxOffset + idx_offset, pcmd->VtxOffset + vtx_offset);
@@ -845,7 +887,7 @@ namespace Luna
             virtual const c8* get_name() override { return "ImGui"; }
             virtual RV on_register() override
             {
-                return add_dependency_modules(this, {module_rhi(), module_hid(), module_font(), module_shader_compiler(), module_window()} );
+                return add_dependency_modules(this, {module_rhi(), module_hid(), module_font(), module_window()} );
             }
             virtual RV on_init() override
             {
@@ -897,6 +939,22 @@ namespace ImGui
         return 0;
     }
 
+    LUNA_IMGUI_API void Image(Luna::RHI::ITexture* texture, const ImVec2& image_size, const ImVec2& uv0, const ImVec2& uv1, const ImVec4& tint_col, const ImVec4& border_col)
+    {
+        Image((ImTextureID)texture->get_object(), image_size, uv0, uv1, tint_col, border_col);
+    }
+    LUNA_IMGUI_API void Image(Luna::ImGuiUtils::ISampledImage* texture, const ImVec2& image_size, const ImVec2& uv0, const ImVec2& uv1, const ImVec4& tint_col, const ImVec4& border_col)
+    {
+        Image((ImTextureID)texture->get_object(), image_size, uv0, uv1, tint_col, border_col);
+    }
+    LUNA_IMGUI_API bool ImageButton(const char* str_id, Luna::RHI::ITexture* texture, const ImVec2& image_size, const ImVec2& uv0, const ImVec2& uv1, const ImVec4& bg_col, const ImVec4& tint_col)
+    {
+        return ImageButton(str_id, (ImTextureID)texture->get_object(), image_size, uv0, uv1, bg_col, tint_col);
+    }
+    LUNA_IMGUI_API bool ImageButton(const char* str_id, Luna::ImGuiUtils::ISampledImage* texture, const ImVec2& image_size, const ImVec2& uv0, const ImVec2& uv1, const ImVec4& bg_col, const ImVec4& tint_col)
+    {
+        return ImageButton(str_id, (ImTextureID)texture->get_object(), image_size, uv0, uv1, bg_col, tint_col);
+    }
     LUNA_IMGUI_API bool InputText(const char* label, Luna::String& buf, ImGuiInputTextFlags flags, ImGuiInputTextCallback callback, void* user_data)
     {
         IM_ASSERT(!(flags & ImGuiInputTextFlags_CallbackResize));

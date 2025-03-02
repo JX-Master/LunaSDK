@@ -106,7 +106,14 @@ namespace Luna
                         dst.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
                     }
                     depth_stencil_attachment_ref.attachment = attachment_index;
-                    depth_stencil_attachment_ref.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+                    if (key.depth_stencil_read_only)
+                    {
+                        depth_stencil_attachment_ref.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+                    }
+                    else
+                    {
+                        depth_stencil_attachment_ref.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+                    }
                     ++attachment_index;
                 }
                 VkSubpassDescription subpass{};
