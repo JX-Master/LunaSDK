@@ -2,7 +2,7 @@
 
 # Luna SDK
 
-![Luna SDK LOGO](https://www.lunasdk.org/logo.png)
+![Luna SDK LOGO](https://www.lunasdk.net/logo.png)
 
 Luna SDK is a C++ software development framework for real-time rendering applications like video games, interactive multimedia programs, data visualization programs and so on.
 
@@ -101,7 +101,7 @@ The following requirements must be satisfied to run Luna SDK with Metal renderin
 * macOS 10.15 (Catalina) and later.
 
 ## Docs
-See [Luna SDK Docs](https://www.lunasdk.org).
+See [Luna SDK Docs](https://www.lunasdk.net).
 
 ## Feedback & Discussion
 * `Issues` page is available for bug report and feature request (not guaranteed to be satisfied).
@@ -147,7 +147,7 @@ Luna SDK is licensed under the zlib/libpng license, see [LICENSE.txt](./LICENSE.
 
 ## Mascot
 
-![](https://www.lunasdk.org/luna-robot.png)
+![](https://www.lunasdk.net/luna-robot.png)
 
 Say Hi to our mascot, a Luna SDK LOGO with two ellipses that look like eyes of one spherical robot.
 
