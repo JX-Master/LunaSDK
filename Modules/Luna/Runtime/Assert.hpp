@@ -84,7 +84,7 @@ namespace Luna
 #define lupanic_msg(_message) ((void)0)
 #endif
 
-#ifdef LUNA_ENABLE_CONTRACT_ASSERTION
+#ifdef LUNA_ENABLE_API_VALIDATION
 //! Checks whether the specified condition evaluates to a non-zero value, and reports an assertion failure if not.
 //! @details This only works when contract assertion option is enabled.
 //! @param[in] _condition The condition to evaluate.

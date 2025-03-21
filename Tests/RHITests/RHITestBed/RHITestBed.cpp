@@ -72,7 +72,7 @@ namespace Luna
         {
             window->close();
         }
-        RV init()
+        LUNA_RHI_TESTBED_API RV init()
         {
             lutry
             {
@@ -107,32 +107,18 @@ namespace Luna
                 }
                 m_time = get_ticks();
                 m_frame_count = 0;
+                if (m_init_func)
+                {
+                    luexp(m_init_func());
+                }
             }
             lucatchret;
             return ok;
         }
-        LUNA_RHI_TESTBED_API RV run()
+        LUNA_RHI_TESTBED_API RV update()
         {
-            auto r = init();
-            if (failed(r)) return r.errcode();
-            if (m_init_func)
+            lutry
             {
-                auto r = m_init_func();
-                if (failed(r))
-                {
-                    log_error("%s", explain(r.errcode()));
-                    return r.errcode();
-                }
-            }
-            while (true)
-            {
-                Window::poll_events();
-                if (m_window->is_closed()) break;
-                if (m_window->is_minimized())
-                {
-                    sleep(100);
-                    continue;
-                }
                 ++m_frame_count;
                 u64 new_time = get_ticks();
                 if (new_time - m_time >= get_ticks_per_second())
@@ -158,12 +144,16 @@ namespace Luna
                 m_command_buffer->wait();
                 lupanic_if_failed(m_swap_chain->present());
             }
+            lucatchret;
+            return ok;
+        }
+        LUNA_RHI_TESTBED_API void close()
+        {
             if (m_close_func) m_close_func();
             m_window.reset();
             m_swap_chain.reset();
             m_back_buffer.reset();
             m_command_buffer.reset();
-            return ok;
         }
         LUNA_RHI_TESTBED_API RHI::ITexture* get_back_buffer()
         {

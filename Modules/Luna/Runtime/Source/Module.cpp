@@ -223,6 +223,12 @@ namespace Luna
         lucatchret;
         return ok;
     }
+    LUNA_RUNTIME_API bool is_module_initialized(Module* module)
+    {
+        auto iter = g_modules.find(module);
+        if(iter == g_modules.end()) return false;
+        return iter->second.m_initialized;
+    }
     LUNA_RUNTIME_API RV init_modules()
     {
         lutry
