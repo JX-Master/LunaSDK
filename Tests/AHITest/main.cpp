@@ -220,10 +220,10 @@ namespace Luna
         u32 height = 0;
     };
 
-    Window::AppResult app_init(opaque_t* app_state, int argc, char* argv[])
+    Window::AppStatus app_init(opaque_t* app_state, int argc, char* argv[])
     {
         bool r = Luna::init();
-        if(!r) return Window::AppResult::failed;
+        if(!r) return Window::AppStatus::failing;
         lutry
         {
             luexp(add_modules({module_ahi(), module_rhi(), module_window(), module_imgui()}));
@@ -249,7 +249,7 @@ namespace Luna
             }
             luset(app->swap_chain, dev->new_swap_chain(graphics_queue, app->window, RHI::SwapChainDesc({0, 0, 2, RHI::Format::bgra8_unorm, true})));
             luset(app->cmdbuf, dev->new_command_buffer(graphics_queue));
-            app->window->get_close_event().add_handler([](Window::IWindow* window) { window->close(); });
+            app->window->get_events().close.add_handler([](Window::IWindow* window) { window->close(); });
 
             
             luexp(AHI::get_adapters(&app->playback_adapters, &app->capture_adapters));
@@ -259,22 +259,22 @@ namespace Luna
         lucatch
         {
             log_error("AHITest", "%s", explain(luerr));
-            return Window::AppResult::failed;
+            return Window::AppStatus::failing;
         }
-        return Window::AppResult::ok;
+        return Window::AppStatus::running;
     }
     
-    Window::AppResult app_update(opaque_t app_state)
+    Window::AppStatus app_update(opaque_t app_state)
     {
         lutry
         {
             App* app = (App*)app_state;
             using namespace RHI;
-            if (app->window->is_closed()) return Window::AppResult::exiting;
+            if (app->window->is_closed()) return Window::AppStatus::exiting;
             if (app->window->is_minimized())
             {
                 sleep(100);
-                return Window::AppResult::ok;
+                return Window::AppStatus::running;
             }
             // Recreate the back buffer if needed.
             auto fb_sz = app->window->get_framebuffer_size();
@@ -411,12 +411,12 @@ namespace Luna
         lucatch
         {
             log_error("AHITest", "%s", explain(luerr));
-            return Window::AppResult::failed;
+            return Window::AppStatus::failing;
         }
-        return Window::AppResult::ok;
+        return Window::AppStatus::running;
     }
 
-    void app_close(opaque_t app_state)
+    void app_close(opaque_t app_state, Window::AppStatus status)
     {
         App* app = (App*)app_state;
         memdelete(app);

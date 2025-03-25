@@ -32,7 +32,7 @@ namespace Luna
             Event<window_mouse_move_event_handler_t> mouse_move;
             Event<window_mouse_down_event_handler_t> mouse_down;
             Event<window_mouse_up_event_handler_t> mouse_up;
-            Event<window_mouse_wheel_event_handler_t> mouse_wheel;
+            Event<window_scroll_event_handler_t> scroll;
             Event<window_touch_move_event_handler_t> touch_move;
             Event<window_touch_down_event_handler_t> touch_down;
             Event<window_touch_up_event_handler_t> touch_up;
@@ -57,7 +57,7 @@ namespace Luna
                 mouse_move.clear();
                 mouse_down.clear();
                 mouse_up.clear();
-                mouse_wheel.clear();
+                scroll.clear();
                 touch_move.clear();
                 touch_down.clear();
                 touch_up.clear();

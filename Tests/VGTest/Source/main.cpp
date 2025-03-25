@@ -99,10 +99,10 @@ namespace Luna
         }
     }
 
-    Window::AppResult app_init(opaque_t* app_state, int argc, char* argv[])
+    Window::AppStatus app_init(opaque_t* app_state, int argc, char* argv[])
     {
         bool r = Luna::init();
-        if(!r) return Window::AppResult::failed;
+        if(!r) return Window::AppStatus::failing;
         lutry
         {
             luexp(add_modules({module_window(), module_rhi(), module_font(), module_vg(), module_hid()}));
@@ -111,14 +111,14 @@ namespace Luna
             *app_state = app;
             // register event.
             luset(app->window, Window::new_window("Luna Vector Graphics Test", Window::WindowDisplaySettings::as_windowed(), Window::WindowCreationFlag::resizable));
-            app->window->get_mouse_down_event().add_handler([app](Window::IWindow* window, HID::MouseButton button) { on_mouse_down(app, window, button); });
-            app->window->get_mouse_up_event().add_handler([app](Window::IWindow* window, HID::MouseButton button) { on_mouse_up(app, window, button); });
+            app->window->get_events().mouse_down.add_handler([app](Window::IWindow* window, HID::MouseButton button) { on_mouse_down(app, window, button); });
+            app->window->get_events().mouse_up.add_handler([app](Window::IWindow* window, HID::MouseButton button) { on_mouse_up(app, window, button); });
             auto sz = app->window->get_size();
 
             app->camera_position = Float3(sz.x / 2.0f, sz.y / 2.0f, -3000.0f);
 
-            app->window->get_close_event().add_handler(on_window_close);
-            app->window->get_framebuffer_resize_event().add_handler([app](Window::IWindow* window, u32 width, u32 height) { on_window_resize(app, window, width, height); });
+            app->window->get_events().close.add_handler(on_window_close);
+            app->window->get_events().framebuffer_resize.add_handler([app](Window::IWindow* window, u32 width, u32 height) { on_window_resize(app, window, width, height); });
 
             app->shape_draw_list = VG::new_shape_draw_list();
 
@@ -146,20 +146,20 @@ namespace Luna
         lucatch
         {
             log_error("VGTest", "%s", explain(luerr));
-            return Window::AppResult::failed;
+            return Window::AppStatus::failing;
         }
-        return Window::AppResult::ok;
+        return Window::AppStatus::running;
     }
-    Window::AppResult app_update(opaque_t app_state)
+    Window::AppStatus app_update(opaque_t app_state)
     {
         lutry
         {
             App* app = (App*)app_state;
-            if (app->window->is_closed()) return Window::AppResult::exiting;
+            if (app->window->is_closed()) return Window::AppStatus::exiting;
             if (app->window->is_minimized())
             {
                 sleep(100);
-                return Window::AppResult::ok;
+                return Window::AppStatus::running;
             }
 
             if (app->camera_navigating)
@@ -326,11 +326,11 @@ namespace Luna
         lucatch
         {
             log_error("VGTest", "%s", explain(luerr));
-            return Window::AppResult::failed;
+            return Window::AppStatus::failing;
         }
-        return Window::AppResult::ok;
+        return Window::AppStatus::running;
     }
-    void app_close(opaque_t app_state)
+    void app_close(opaque_t app_state, Window::AppStatus status)
     {
         App* app = (App*)app_state;
         memdelete(app);

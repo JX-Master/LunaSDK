@@ -3,28 +3,29 @@
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
-* @file Monitor.hpp
+* @file Display.hpp
 * @author JXMaster
 * @date 2024/6/16
 */
-#include "../../Monitor.hpp"
+#include "../../Display.hpp"
 #include <Luna/Runtime/Result.hpp>
+#include <SDL3/SDL.h>
 
 namespace Luna
 {
     namespace Window
     {
-        struct Monitor
+        struct Display
         {
             Name m_name;
-            u32 m_index;
+            SDL_DisplayID m_id;
             bool m_disconnected = false;
         };
 
-        RV monitor_init();
-        void monitor_close();
+        RV display_init();
+        void display_close();
 
-        RV refresh_monitor_list();
-        void dispatch_monitor_event(monitor_t monitor, const MonitorEvent& e);
+        RV refresh_display_list();
+        display_t get_display_from_display_id(SDL_DisplayID id);
     }
 }

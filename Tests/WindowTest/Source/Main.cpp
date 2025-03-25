@@ -12,6 +12,7 @@
 #include <Luna/Runtime/Module.hpp>
 #include <Luna/Runtime/Thread.hpp>
 #include <Luna/Window/AppMain.hpp>
+#include <Luna/Window/Window.hpp>
 
 namespace Luna
 {
@@ -41,10 +42,10 @@ namespace Luna
 
     Ref<Window::IWindow> g_main_window;
 
-    Window::AppResult app_init(opaque_t* app_state, int argc, char* argv[])
+    Window::AppStatus app_init(opaque_t* app_state, int argc, char* argv[])
     {
         bool r = Luna::init();
-        if(!r) return Window::AppResult::failed;
+        if(!r) return Window::AppStatus::failing;
         lutry
         {
             luexp(add_modules({module_window()}));
@@ -53,24 +54,24 @@ namespace Luna
             luexp(init_modules());
             luset(g_main_window, Window::new_window("Window Test", Window::WindowDisplaySettings::as_windowed(), 
                 Window::WindowCreationFlag::resizable));
-            g_main_window->get_close_event().add_handler(on_window_close);
-            g_main_window->get_key_down_event().add_handler(on_window_key_pressed);
+            g_main_window->get_events().close.add_handler(on_window_close);
+            g_main_window->get_events().key_down.add_handler(on_window_key_pressed);
         }
         lucatch
         {
-            return Window::AppResult::failed;
+            return Window::AppStatus::failing;
         }
-        return Window::AppResult::ok;
+        return Window::AppStatus::running;
     }
 
-    Window::AppResult app_update(opaque_t app_state)
+    Window::AppStatus app_update(opaque_t app_state)
     {
-        if(g_main_window->is_closed()) return Window::AppResult::exiting;
+        if(g_main_window->is_closed()) return Window::AppStatus::exiting;
         sleep(16);
-        return Window::AppResult::ok;
+        return Window::AppStatus::running;
     }
 
-    void app_close(opaque_t app_state)
+    void app_close(opaque_t app_state, Window::AppStatus status)
     {
         g_main_window.reset();
         Luna::close();

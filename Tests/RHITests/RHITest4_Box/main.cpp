@@ -231,10 +231,10 @@ void cleanup()
 
 namespace Luna
 {
-    Window::AppResult app_init(opaque_t* app_state, int argc, char* argv[])
+    Window::AppStatus app_init(opaque_t* app_state, int argc, char* argv[])
     {
         bool r = Luna::init();
-        if(!r) return Window::AppResult::failed;
+        if(!r) return Window::AppStatus::failing;
         lutry
         {
             luexp(add_modules({module_rhi_test_bed()}));
@@ -248,19 +248,19 @@ namespace Luna
         lucatch
         {
             log_error("RHITest", "%s", explain(luerr));
-            return Window::AppResult::failed;
+            return Window::AppStatus::failing;
         }
-        return Window::AppResult::ok;
+        return Window::AppStatus::running;
     }
 
-    Window::AppResult app_update(opaque_t app_state)
+    Window::AppStatus app_update(opaque_t app_state)
     {
         auto window = RHITestBed::get_window();
-        if(window->is_closed()) return Window::AppResult::exiting;
+        if(window->is_closed()) return Window::AppStatus::exiting;
         if(window->is_minimized())
         {
             sleep(100);
-            return Window::AppResult::ok;
+            return Window::AppStatus::running;
         }
         lutry
         {
@@ -269,12 +269,12 @@ namespace Luna
         lucatch
         {
             log_error("RHITest", "%s", explain(luerr));
-            return Window::AppResult::failed;
+            return Window::AppStatus::failing;
         }
-        return Window::AppResult::ok;
+        return Window::AppStatus::running;
     }
 
-    void app_close(opaque_t app_state)
+    void app_close(opaque_t app_state, Window::AppStatus status)
     {
         RHITestBed::close();
         Luna::close();

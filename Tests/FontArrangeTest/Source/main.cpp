@@ -112,10 +112,10 @@ namespace Luna
         window->close();
     }
 
-    Window::AppResult app_init(opaque_t* app_state, int argc, char* argv[])
+    Window::AppStatus app_init(opaque_t* app_state, int argc, char* argv[])
     {
         bool r = Luna::init();
-        if(!r) return Window::AppResult::failed;
+        if(!r) return Window::AppStatus::failing;
         lutry
         {
             luexp(add_modules({module_window(), module_rhi(), module_font(), module_vg()}))
@@ -126,8 +126,8 @@ namespace Luna
             luset(app->window, Window::new_window("Luna Vector Graphics Test", Window::WindowDisplaySettings::as_windowed(), Window::WindowCreationFlag::resizable));
             auto sz = app->window->get_framebuffer_size();
 
-            app->window->get_close_event().add_handler(on_window_close);
-            app->window->get_framebuffer_resize_event().add_handler([app](Window::IWindow* window, u32 width, u32 height) { on_window_resize(app, window, width, height); });
+            app->window->get_events().close.add_handler(on_window_close);
+            app->window->get_events().framebuffer_resize.add_handler([app](Window::IWindow* window, u32 width, u32 height) { on_window_resize(app, window, width, height); });
 
             auto font = Font::get_default_font();
 
@@ -165,21 +165,21 @@ namespace Luna
         lucatch
         {
             log_error("FontArrangeTest", "%s", explain(luerr));
-            return Window::AppResult::failed;
+            return Window::AppStatus::failing;
         }
-        return Window::AppResult::ok;
+        return Window::AppStatus::running;
     }
 
-    Window::AppResult app_update(opaque_t app_state)
+    Window::AppStatus app_update(opaque_t app_state)
     {
         lutry
         {
             App* app = (App*)app_state;
-            if (app->window->is_closed()) return Window::AppResult::exiting;
+            if (app->window->is_closed()) return Window::AppStatus::exiting;
             if (app->window->is_minimized())
             {
                 sleep(100);
-                return Window::AppResult::ok;
+                return Window::AppStatus::running;
             }
             auto sz = app->window->get_framebuffer_size();
             f64 time1 = ((f64)get_ticks() / get_ticks_per_second()) * 1000;
@@ -243,12 +243,12 @@ namespace Luna
         lucatch
         {
             log_error("FontArrangeTest", "%s", explain(luerr));
-            return Window::AppResult::failed;
+            return Window::AppStatus::failing;
         }
-        return Window::AppResult::ok;
+        return Window::AppStatus::running;
     }
 
-    void app_close(opaque_t app_state)
+    void app_close(opaque_t app_state, Window::AppStatus status)
     {
         App* app = (App*)app_state;
         memdelete(app);
