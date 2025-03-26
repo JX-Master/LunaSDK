@@ -3,7 +3,7 @@
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
-* @file Monitor.hpp
+* @file Display.hpp
 * @author JXMaster
 * @date 2022/10/4
 */
@@ -13,7 +13,7 @@ namespace Luna
 {
     namespace Window
     {
-        void monitor_init();
-        void monitor_close();
+        void display_init();
+        void display_close();
     }
 }

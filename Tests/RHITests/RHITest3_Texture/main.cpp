@@ -18,6 +18,9 @@
 #include <Luna/RHI/Utility.hpp>
 #include <TestTextureVS.hpp>
 #include <TestTexturePS.hpp>
+#include <Luna/Runtime/Thread.hpp>
+
+#include <Luna/Window/AppMain.hpp>
 
 using namespace Luna;
 using namespace Luna::RHI;
@@ -178,25 +181,54 @@ void cleanup()
     ib.reset();
 }
 
-void run_app()
+namespace Luna
 {
-    register_init_func(start);
-    register_close_func(cleanup);
-    register_resize_func(resize);
-    register_draw_func(draw);
-    lupanic_if_failed(run());
-}
-
-int main()
-{
-    if (!Luna::init()) return 0;
-    lupanic_if_failed(add_modules({module_rhi_test_bed(), module_shader_compiler(), module_image()}));
-    auto r = init_modules();
-    if (failed(r))
+    Window::AppStatus app_init(opaque_t* app_state, int argc, char* argv[])
     {
-        log_error("%s", explain(r.errcode()));
+        bool r = Luna::init();
+        if(!r) return Window::AppStatus::failing;
+        lutry
+        {
+            luexp(add_modules({module_rhi_test_bed()}));
+            luexp(init_modules());
+            register_init_func(start);
+            register_close_func(cleanup);
+            register_resize_func(resize);
+            register_draw_func(draw);
+            luexp(RHITestBed::init());
+        }
+        lucatch
+        {
+            log_error("RHITest", "%s", explain(luerr));
+            return Window::AppStatus::failing;
+        }
+        return Window::AppStatus::running;
     }
-    else run_app();
-    Luna::close();
-    return 0;
+
+    Window::AppStatus app_update(opaque_t app_state)
+    {
+        auto window = RHITestBed::get_window();
+        if(window->is_closed()) return Window::AppStatus::exiting;
+        if(window->is_minimized())
+        {
+            sleep(100);
+            return Window::AppStatus::running;
+        }
+        lutry
+        {
+            luexp(RHITestBed::update());
+        }
+        lucatch
+        {
+            log_error("RHITest", "%s", explain(luerr));
+            return Window::AppStatus::failing;
+        }
+        return Window::AppStatus::running;
+    }
+
+    void app_close(opaque_t app_state, Window::AppStatus status)
+    {
+        RHITestBed::close();
+        Luna::close();
+    }
 }

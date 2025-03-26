@@ -75,7 +75,7 @@ option("shared")
     add_defines("LUNA_BUILD_SHARED_LIB")
 option_end()
 
-option("contract_assertion")
+option("api_validation")
     set_default(false)
     set_showmenu(true)
     set_description("Enables contract assertions. This is always enabled in debug build.")
@@ -137,10 +137,10 @@ elseif is_config("rhi_api", "D3D12") then
 end
 
 function add_luna_sdk_options()
-    add_options("shared", "contract_assertion", "thread_safe_assertion", "memory_profiler", "rhi_api")
-    -- Contract assertion is always enabled in debug mode.
-    if has_config("contract_assertion") or is_mode("debug") then
-        add_defines("LUNA_ENABLE_CONTRACT_ASSERTION")
+    add_options("shared", "api_validation", "thread_safe_assertion", "memory_profiler", "rhi_api")
+    -- API validation is always enabled in debug mode.
+    if has_config("api_validation") or is_mode("debug") then
+        add_defines("LUNA_ENABLE_API_VALIDATION")
     end
 end
 

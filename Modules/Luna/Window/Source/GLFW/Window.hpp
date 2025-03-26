@@ -88,7 +88,7 @@ namespace Luna
             luiimpl();
 
             GLFWwindow* m_window;
-            WindowEvents m_events;
+            WindowCallbacks m_callbacks;
 
             // Used to restore window size and pos when exiting from full screen mode.
             u32 m_windowed_width;
@@ -110,8 +110,8 @@ namespace Luna
             virtual RV set_visible(bool visible) override { if (visible) glfwShowWindow(m_window); else glfwHideWindow(m_window); return check_glfw_error(); }
             virtual bool is_resizable() override { return glfwGetWindowAttrib(m_window, GLFW_RESIZABLE) != 0; }
             virtual RV set_resizable(bool resizable) override { glfwSetWindowAttrib(m_window, GLFW_RESIZABLE, resizable ? GLFW_TRUE : GLFW_FALSE); return check_glfw_error(); }
-            virtual bool is_frameless() override { return glfwGetWindowAttrib(m_window, GLFW_DECORATED) == 0; }
-            virtual RV set_frameless(bool frameless) override { glfwSetWindowAttrib(m_window, GLFW_DECORATED, frameless ? GLFW_FALSE : GLFW_TRUE); return check_glfw_error(); }
+            virtual bool is_borderless() override { return glfwGetWindowAttrib(m_window, GLFW_DECORATED) == 0; }
+            virtual RV set_borderless(bool borderless) override { glfwSetWindowAttrib(m_window, GLFW_DECORATED, borderless ? GLFW_FALSE : GLFW_TRUE); return check_glfw_error(); }
             virtual Int2U get_position() override;
             virtual RV set_position(i32 x, i32 y) override;
             virtual UInt2U get_size() override;
@@ -119,7 +119,7 @@ namespace Luna
             virtual UInt2U get_framebuffer_size() override;
             virtual f32 get_dpi_scale_factor() override;
             virtual bool is_full_screen() override { return get_monitor() != nullptr; }
-            virtual monitor_t get_monitor() override {return glfwGetWindowMonitor(m_window); }
+            virtual display_t get_monitor() override {return glfwGetWindowMonitor(m_window); }
             virtual RV set_title(const c8* title) override { glfwSetWindowTitle(m_window, title); return check_glfw_error(); }
             virtual RV set_display_settings(const WindowDisplaySettings& display_settings) override;
             virtual Int2U screen_to_client(const Int2U& point) override;
@@ -136,28 +136,10 @@ namespace Luna
                 return glfwGetCocoaWindow(m_window);
             }
 #endif
-            virtual Event<window_close_event_handler_t>& get_close_event()  override { return m_events.close; }
-            virtual Event<window_focus_event_handler_t>& get_focus_event()  override { return m_events.focus; }
-            virtual Event<window_lose_focus_event_handler_t>& get_lose_focus_event()  override { return m_events.lose_focus; }
-            virtual Event<window_show_event_handler_t>& get_show_event()  override { return m_events.show; }
-            virtual Event<window_hide_event_handler_t>& get_hide_event()  override { return m_events.hide; }
-            virtual Event<window_resize_event_handler_t>& get_resize_event()  override { return m_events.resize; }
-            virtual Event<window_framebuffer_resize_event_handler_t>& get_framebuffer_resize_event() override { return m_events.framebuffer_resize; }
-            virtual Event<window_move_event_handler_t>& get_move_event()  override { return m_events.move; }
-            virtual Event<window_dpi_changed_event_handler_t>& get_dpi_changed_event()  override { return m_events.dpi_changed; }
-            virtual Event<window_key_down_event_handler_t>& get_key_down_event()  override { return m_events.key_down; }
-            virtual Event<window_key_up_event_handler_t>& get_key_up_event()  override { return m_events.key_up; }
-            virtual Event<window_input_character_event_handler_t>& get_input_character_event()  override { return m_events.input_character; }
-            virtual Event<window_mouse_enter_event_handler_t>& get_mouse_enter_event() override { return m_events.mouse_enter; }
-            virtual Event<window_mouse_leave_event_handlet_t>& get_mouse_leave_event() override { return m_events.mouse_leave; }
-            virtual Event<window_mouse_move_event_handler_t>& get_mouse_move_event()  override { return m_events.mouse_move; }
-            virtual Event<window_mouse_down_event_handler_t>& get_mouse_down_event()  override { return m_events.mouse_down; }
-            virtual Event<window_mouse_up_event_handler_t>& get_mouse_up_event()  override { return m_events.mouse_up; }
-            virtual Event<window_mouse_wheel_event_handler_t>& get_mouse_wheel_event()  override { return m_events.mouse_wheel; }
-            virtual Event<window_touch_move_event_handler_t>& get_touch_move_event()  override { return m_events.touch_move; }
-            virtual Event<window_touch_move_event_handler_t>& get_touch_down_event()  override { return m_events.touch_down; }
-            virtual Event<window_touch_move_event_handler_t>& get_touch_up_event()  override { return m_events.touch_up; }
-            virtual Event<window_drop_file_event_handler_t>& get_drop_file_event()  override { return m_events.drop_file; }
+            virtual WindowCallbacks& get_callbacks() override
+            {
+                return m_callbacks;
+            }
             Window() :
                 m_window(nullptr) {}
             ~Window()

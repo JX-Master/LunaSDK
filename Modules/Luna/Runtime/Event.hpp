@@ -10,7 +10,7 @@
 #pragma once
 #include "Vector.hpp"
 #include "Functional.hpp"
-#include "Name.hpp"
+
 namespace Luna
 {
     //! @addtogroup Runtime
@@ -20,7 +20,7 @@ namespace Luna
     template <typename _Func, typename _Alloc = Allocator>
     class Event
     {
-        Vector<Pair<usize, Function<_Func>>, _Alloc> m_handlers;
+        Vector<Pair<usize, Function<_Func> >, _Alloc> m_handlers;
         usize m_next_handle = 0;
     public:
         //! Removes all handlers registered to this event.

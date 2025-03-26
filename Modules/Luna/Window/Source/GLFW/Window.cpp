@@ -163,16 +163,6 @@ namespace Luna
             }   
         }
 
-        inline ModifierKeyFlag glfw_translate_mods(int mods)
-        {
-            ModifierKeyFlag flags = ModifierKeyFlag::none;
-            if (mods & GLFW_MOD_SHIFT) set_flags(flags, ModifierKeyFlag::shift);
-            if (mods & GLFW_MOD_CONTROL) set_flags(flags, ModifierKeyFlag::ctrl);
-            if (mods & GLFW_MOD_ALT) set_flags(flags, ModifierKeyFlag::menu);
-            if (mods & GLFW_MOD_SUPER) set_flags(flags, ModifierKeyFlag::system);
-            return flags;
-        }
-
         inline HID::KeyCode glfw_translate_key(int key)
         {
             if (key >= GLFW_KEY_0 && key <= GLFW_KEY_9) return (HID::KeyCode)((int)HID::KeyCode::num0 + key - GLFW_KEY_0);

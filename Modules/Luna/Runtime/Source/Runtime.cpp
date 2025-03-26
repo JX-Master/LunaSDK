@@ -83,6 +83,10 @@ namespace Luna
         g_initialized = true;
         return true;
     }
+    LUNA_RUNTIME_API bool is_initialized()
+    {
+        return g_initialized;
+    }
     LUNA_RUNTIME_API void close()
     {
         if (!g_initialized) return;
