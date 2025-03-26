@@ -250,12 +250,8 @@ namespace Luna
         HWND Window::get_hwnd()
         {
             if (is_closed()) return nullptr;
-            SDL_SysWMinfo info;
-            SDL_VERSION(&info.version);
-            SDL_bool r = SDL_GetWindowWMInfo(m_window, &info);
-            luassert(info.subsystem == SDL_SYSWM_WINDOWS);
-            if (r == SDL_FALSE) return nullptr;
-            return info.info.win.window;
+            HWND hwnd = (HWND)SDL_GetPointerProperty(SDL_GetWindowProperties(m_window), SDL_PROP_WINDOW_WIN32_HWND_POINTER, NULL);
+            return hwnd;
         }
 #endif
 #ifdef LUNA_PLATFORM_MACOS
