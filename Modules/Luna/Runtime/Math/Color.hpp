@@ -311,21 +311,45 @@ namespace Luna
         //! @param[in] color The color to convert.
         //! @return Returns the converted color.
         constexpr u32 to_rgba8(const Float4& color);
+        //! Makes one 32-bit color value from components directly.
+        //! @param[in] r The red channel value.
+        //! @param[in] g The green channel value.
+        //! @param[in] b The blue channel value.
+        //! @param[in] a The alpha channel value.
+        constexpr u32 make_rgba8(u8 r, u8 g, u8 b, u8 a);
         //! Converts one @ref Float4 linear color value to one 32-bit color value.
         //! Every color component takes 8 bits, and is arranged in ARGB order (A in least significant 8 bits, B in most significant 8 bits).
         //! @param[in] color The color to convert.
         //! @return Returns the converted color.
         constexpr u32 to_argb8(const Float4& color);
+        //! Makes one 32-bit color value from components directly.
+        //! @param[in] r The red channel value.
+        //! @param[in] g The green channel value.
+        //! @param[in] b The blue channel value.
+        //! @param[in] a The alpha channel value.
+        constexpr u32 make_argb8(u8 r, u8 g, u8 b, u8 a);
         //! Converts one @ref Float4 linear color value to one 32-bit color value.
         //! Every color component takes 8 bits, and is arranged in ABGR order (A in least significant 8 bits, R in most significant 8 bits).
         //! @param[in] color The color to convert.
         //! @return Returns the converted color.
         constexpr u32 to_abgr8(const Float4& color);
+        //! Makes one 32-bit color value from components directly.
+        //! @param[in] r The red channel value.
+        //! @param[in] g The green channel value.
+        //! @param[in] b The blue channel value.
+        //! @param[in] a The alpha channel value.
+        constexpr u32 make_abgr8(u8 r, u8 g, u8 b, u8 a);
         //! Converts one @ref Float4 linear color value to one 32-bit color value.
         //! Every color component takes 8 bits, and is arranged in BGRA order (B in least significant 8 bits, A in most significant 8 bits).
         //! @param[in] color The color to convert.
         //! @return Returns the converted color.
         constexpr u32 to_bgra8(const Float4& color);
+        //! Makes one 32-bit color value from components directly.
+        //! @param[in] r The red channel value.
+        //! @param[in] g The green channel value.
+        //! @param[in] b The blue channel value.
+        //! @param[in] a The alpha channel value.
+        constexpr u32 make_bgra8(u8 r, u8 g, u8 b, u8 a);
         //! Converts one 32-bit color value to one @ref Float4 linear color.
         //! The source color is interpreted in RGBA order (R in least significant 8 bits, A in most significant 8 bits).
         //! @param[in] color The color to convert.
