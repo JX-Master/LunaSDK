@@ -41,7 +41,7 @@ void run()
     using namespace RHI;
     using namespace Window;
     Ref<IWindow> window = new_window("GUITest", WindowDisplaySettings::as_windowed(), WindowCreationFlag::resizable).get();
-    window->get_close_event().add_handler(on_window_close);
+    window->get_events().close.add_handler(on_window_close);
 
     Ref<IDevice> dev = get_main_device();
 
@@ -73,7 +73,7 @@ void run()
 
     Ref<VG::IShapeRenderer> renderer = VG::new_fill_shape_renderer();
 
-    window->get_mouse_move_event().add_handler([ctx](IWindow* window, i32 x, i32 y)
+    window->get_events().mouse_move.add_handler([ctx](IWindow* window, i32 x, i32 y)
     {
         Ref<GUI::MouseMoveEvent> e = new_object<GUI::MouseMoveEvent>();
         window_pos_to_gui_pos(window, x, y);
@@ -82,7 +82,7 @@ void run()
         ctx->push_event(e);
     });
 
-    window->get_mouse_down_event().add_handler([ctx](IWindow* window, HID::MouseButton button)
+    window->get_events().mouse_down.add_handler([ctx](IWindow* window, HID::MouseButton button)
     {
         Ref<GUI::MouseButtonEvent> e = new_object<GUI::MouseButtonEvent>();
         auto pos = window->screen_to_client(HID::get_mouse_pos());
@@ -94,7 +94,7 @@ void run()
         ctx->push_event(e);
     });
 
-    window->get_mouse_up_event().add_handler([ctx](IWindow* window, HID::MouseButton button)
+    window->get_events().mouse_up.add_handler([ctx](IWindow* window, HID::MouseButton button)
     {
         Ref<GUI::MouseButtonEvent> e = new_object<GUI::MouseButtonEvent>();
         auto pos = window->screen_to_client(HID::get_mouse_pos());
