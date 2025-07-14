@@ -72,7 +72,7 @@ namespace Luna
         {
             window->close();
         }
-        RV init()
+        LUNA_RHI_TESTBED_API RV init()
         {
             lutry
             {
@@ -91,8 +91,8 @@ namespace Luna
                 }
                 if (m_command_queue == U32_MAX) return set_error(BasicError::not_supported(), "No command queue is suitable.");
                 luset(m_window, new_window("RHI Test", WindowDisplaySettings::as_windowed(), WindowCreationFlag::resizable));
-                m_window->get_close_event().add_handler(on_window_close);
-                m_window->get_framebuffer_resize_event().add_handler(on_window_resize);
+                m_window->get_events().close.add_handler(on_window_close);
+                m_window->get_events().framebuffer_resize.add_handler(on_window_resize);
                 luset(m_swap_chain, device->new_swap_chain(m_command_queue, m_window, SwapChainDesc({0, 0, 2, Format::bgra8_unorm, true})));
                 auto sz = m_window->get_size();
                 luset(m_command_buffer, device->new_command_buffer(m_command_queue));
@@ -107,32 +107,18 @@ namespace Luna
                 }
                 m_time = get_ticks();
                 m_frame_count = 0;
+                if (m_init_func)
+                {
+                    luexp(m_init_func());
+                }
             }
             lucatchret;
             return ok;
         }
-        LUNA_RHI_TESTBED_API RV run()
+        LUNA_RHI_TESTBED_API RV update()
         {
-            auto r = init();
-            if (failed(r)) return r.errcode();
-            if (m_init_func)
+            lutry
             {
-                auto r = m_init_func();
-                if (failed(r))
-                {
-                    log_error("%s", explain(r.errcode()));
-                    return r.errcode();
-                }
-            }
-            while (true)
-            {
-                Window::poll_events();
-                if (m_window->is_closed()) break;
-                if (m_window->is_minimized())
-                {
-                    sleep(100);
-                    continue;
-                }
                 ++m_frame_count;
                 u64 new_time = get_ticks();
                 if (new_time - m_time >= get_ticks_per_second())
@@ -158,12 +144,16 @@ namespace Luna
                 m_command_buffer->wait();
                 lupanic_if_failed(m_swap_chain->present());
             }
+            lucatchret;
+            return ok;
+        }
+        LUNA_RHI_TESTBED_API void close()
+        {
             if (m_close_func) m_close_func();
             m_window.reset();
             m_swap_chain.reset();
             m_back_buffer.reset();
             m_command_buffer.reset();
-            return ok;
         }
         LUNA_RHI_TESTBED_API RHI::ITexture* get_back_buffer()
         {

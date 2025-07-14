@@ -21,233 +21,237 @@
 #include <Luna/Runtime/File.hpp>
 #include <Luna/Runtime/Thread.hpp>
 #include <Luna/VG/VG.hpp>
+#include <Luna/Runtime/Log.hpp>
+
+#include <Luna/Window/AppMain.hpp>
 
 namespace Luna
 {
-    Ref<Window::IWindow> g_window;
-
-    u32 g_command_queue;
-
-    Ref<RHI::ISwapChain> g_swap_chain;
-    Ref<RHI::ICommandBuffer> g_command_buffer;
-
-    Ref<VG::IFontAtlas> g_font_atlas;
-    Vector<VG::TextArrangeSection> g_text_sections;
-    Ref<VG::IShapeDrawList> g_shape_draw_list;
-    Ref<VG::IShapeRenderer> g_shape_renderer;
-
-    Unconstructed<VG::TextArrangeResult> g_text_arrange_result;
-
-    f32 g_font_size;
-    f32 g_font_size_increment;
-
-    u64 g_last_frame_ticks;
-
-    f64 g_render_time;
-    f64 g_frame_time;
-}
-
-using namespace Luna;
-
-RV recreate_window_resources(u32 width, u32 height)
-{
-    using namespace RHI;
-    lutry
+    struct App
     {
-        if(width && height)
-        {
-            if (!g_swap_chain)
-            {
-                luset(g_swap_chain, get_main_device()->new_swap_chain(g_command_queue, g_window, SwapChainDesc({ width, height, 2, Format::bgra8_unorm, true})));
-            }
-            else
-            {
-                luexp(g_swap_chain->reset({width, height, 2, Format::bgra8_unorm, true}));
-            }
-        }
-    }
-    lucatchret;
-    return ok;
-}
+        Ref<Window::IWindow> window;
 
-const c8* sample_text = u8"Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.";
-
-const f32 min_size = 10.0f;
-const f32 max_size = 300.0f;
-
-void rearrange_text(const RectF& rect)
-{
-    String text;
-    for (usize i = 0; i < 300; ++i)
-    {
-        text.append(sample_text);
-    }
-    text.push_back('\n');
-    g_text_sections.clear();
-    VG::TextArrangeSection section;
-    section.color = Color::white();
-    section.font_size = g_font_size;
-    section.num_chars = text.size();
-    section.font_file = Font::get_default_font();
-    section.font_index = 0;
-    g_text_sections.push_back(section);
-    g_text_arrange_result.get() = VG::arrange_text(
-        text.c_str(), text.size(), g_text_sections.cspan(),
-        rect, VG::TextAlignment::center, VG::TextAlignment::center);
-}
-
-constexpr u32 HEADER_TEXT_HEIGHT = 150;
-
-void on_window_resize(Window::IWindow* window, u32 width, u32 height)
-{
-    lupanic_if_failed(recreate_window_resources(width, height));
-    rearrange_text(RectF(0.0f, 0.0f, (f32)width, max((f32)(height - HEADER_TEXT_HEIGHT), 0.0f)));
-}
-
-void on_window_close(Window::IWindow* window)
-{
-    window->close();
-}
-
-void init()
-{
-    lupanic_if_failed(add_modules({module_window(), module_rhi(), module_font(), module_vg()}))
-    lupanic_if_failed(init_modules());
-
-    g_text_arrange_result.construct();
-
-    // register event.
-    g_window = Window::new_window("Luna Vector Graphics Test", Window::WindowDisplaySettings::as_windowed(), Window::WindowCreationFlag::resizable).get();
-    auto sz = g_window->get_framebuffer_size();
-
-    g_window->get_close_event().add_handler(on_window_close);
-    g_window->get_framebuffer_resize_event().add_handler(on_window_resize);
-
-    auto font = Font::get_default_font();
-
-    g_shape_draw_list = VG::new_shape_draw_list();
-
-    auto dev = RHI::get_main_device();
-
-    g_command_queue = U32_MAX;
-    u32 num_queues = dev->get_num_command_queues();
-    for (u32 i = 0; i < num_queues; ++i)
-    {
-        auto desc = dev->get_command_queue_desc(i);
-        if (desc.type == RHI::CommandQueueType::graphics)
-        {
-            g_command_queue = i;
-            break;
-        }
-    }
-    lupanic_if_failed(recreate_window_resources(sz.x, sz.y));
-    g_shape_renderer = VG::new_fill_shape_renderer().get();
-
-    g_font_atlas = VG::new_font_atlas();
+        u32 command_queue;
     
-    g_command_buffer = dev->new_command_buffer(g_command_queue).get();
-    g_font_size = 30.0f;
-    g_font_size_increment = 1;
+        Ref<RHI::ISwapChain> swap_chain;
+        Ref<RHI::ICommandBuffer> command_buffer;
+    
+        Ref<VG::IFontAtlas> font_atlas;
+        Vector<VG::TextArrangeSection> text_sections;
+        Ref<VG::IShapeDrawList> shape_draw_list;
+        Ref<VG::IShapeRenderer> shape_renderer;
+    
+        VG::TextArrangeResult text_arrange_result;
+    
+        f32 font_size;
+        f32 font_size_increment;
+    
+        u64 last_frame_ticks;
+    
+        f64 render_time;
+        f64 frame_time;
+    };
 
-    g_render_time = 0;
-    g_frame_time = 0;
-
-    auto size = g_window->get_framebuffer_size();
-
-    rearrange_text(RectF(0.0f, 0.0f, (f32)size.x, max((f32)(size.y - HEADER_TEXT_HEIGHT), 0.0f)));
-}
-
-void run()
-{
-    while (true)
+    RV recreate_window_resources(App* app, u32 width, u32 height)
     {
-        //new_frame();
-        Window::poll_events();
-        if (g_window->is_closed()) break;
-        if (g_window->is_minimized())
+        using namespace RHI;
+        lutry
         {
-            sleep(100);
-            continue;
+            if(width && height)
+            {
+                if (!app->swap_chain)
+                {
+                    luset(app->swap_chain, get_main_device()->new_swap_chain(app->command_queue, app->window, SwapChainDesc({ width, height, 2, Format::bgra8_unorm, true})));
+                }
+                else
+                {
+                    luexp(app->swap_chain->reset({width, height, 2, Format::bgra8_unorm, true}));
+                }
+            }
         }
-        auto sz = g_window->get_framebuffer_size();
-        f64 time1 = ((f64)get_ticks() / get_ticks_per_second()) * 1000;
-        c8 buf[64];
+        lucatchret;
+        return ok;
+    }
 
+    const c8* SAMPLE_TEXT = u8"Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.";
+
+    const f32 MIN_SIZE = 10.0f;
+    const f32 MAX_SIZE = 300.0f;
+
+    void rearrange_text(App* app, const RectF& rect)
+    {
+        String text;
+        for (usize i = 0; i < 300; ++i)
+        {
+            text.append(SAMPLE_TEXT);
+        }
+        text.push_back('\n');
+        app->text_sections.clear();
         VG::TextArrangeSection section;
-        section.font_size = 50.0f;
-        section.color = Float4U(0.8f, 1.0f, 0.8f, 1.0f);
+        section.color = Color::white();
+        section.font_size = app->font_size;
+        section.num_chars = text.size();
         section.font_file = Font::get_default_font();
         section.font_index = 0;
-        String fps_text;
-        fps_text.append("FPS: ");
-        snprintf(buf, 64, "%f", 1000.0f / g_frame_time);
-        fps_text.append(buf);
-        fps_text.push_back('\n');
-        section.num_chars = fps_text.size();
-
-        auto res = VG::arrange_text(
-            fps_text.c_str(), fps_text.size(), {&section, 1},
-            RectF(0, sz.y - HEADER_TEXT_HEIGHT, sz.x, HEADER_TEXT_HEIGHT), VG::TextAlignment::center, VG::TextAlignment::center);
-        if (!res.lines.empty())
-        {
-            VG::commit_text_arrange_result(res, {&section, 1}, g_font_atlas, g_shape_draw_list);
-        }
-
-        if (!g_text_arrange_result.get().lines.empty())
-        {
-            VG::commit_text_arrange_result(g_text_arrange_result.get(), g_text_sections.cspan(), g_font_atlas, g_shape_draw_list);
-        }
-
-        lupanic_if_failed(g_shape_draw_list->compile());
-
-        RHI::RenderPassDesc desc;
-        desc.color_attachments[0] = RHI::ColorAttachment(g_swap_chain->get_current_back_buffer().get(), RHI::LoadOp::clear, RHI::StoreOp::store, Float4U{ 0.0f });
-        g_command_buffer->begin_render_pass(desc);
-        g_command_buffer->end_render_pass();
-
-        lupanic_if_failed(g_shape_renderer->begin(g_swap_chain->get_current_back_buffer().get()));
-        g_shape_renderer->draw(g_shape_draw_list->get_vertex_buffer(), g_shape_draw_list->get_index_buffer(),  g_shape_draw_list->get_draw_calls());
-        lupanic_if_failed(g_shape_renderer->end());
-        g_shape_renderer->submit(g_command_buffer);
-
-        g_command_buffer->resource_barrier({},
-            {
-                {g_swap_chain->get_current_back_buffer().get(), RHI::SubresourceIndex(0, 0), RHI::TextureStateFlag::automatic, RHI::TextureStateFlag::present, RHI::ResourceBarrierFlag::none}
-            });
-
-        lupanic_if_failed(g_command_buffer->submit({}, {}, true));
-        g_command_buffer->wait();
-
-        lupanic_if_failed(g_swap_chain->present());
-        lupanic_if_failed(g_command_buffer->reset());
-        g_shape_draw_list->reset();
-
-        u64 frame_ticks = get_ticks();
-
-        g_frame_time = f64(frame_ticks - g_last_frame_ticks) / get_ticks_per_second() * 1000.0;
-        g_last_frame_ticks = frame_ticks;
+        app->text_sections.push_back(section);
+        app->text_arrange_result = VG::arrange_text(
+            text.c_str(), text.size(), app->text_sections.cspan(),
+            rect, VG::TextAlignment::center, VG::TextAlignment::center);
     }
-}
-void shutdown()
-{
-    g_window = nullptr;
 
-    g_swap_chain = nullptr;
-    g_command_buffer = nullptr;
+    constexpr u32 HEADER_TEXT_HEIGHT = 150;
 
-    g_font_atlas = nullptr;
-    g_text_sections.clear();
-    g_text_sections.shrink_to_fit();
-    g_shape_draw_list = nullptr;
-    g_shape_renderer = nullptr;
+    void on_window_resize(App* app, Window::IWindow* window, u32 width, u32 height)
+    {
+        lupanic_if_failed(recreate_window_resources(app, width, height));
+        rearrange_text(app, RectF(0.0f, 0.0f, (f32)width, max((f32)(height - HEADER_TEXT_HEIGHT), 0.0f)));
+    }
 
-    g_text_arrange_result.destruct();
-}
-int main()
-{
-    Luna::init();
-    ::init();
-    run();
-    ::shutdown();
-    Luna::close();
+    void on_window_close(Window::IWindow* window)
+    {
+        window->close();
+    }
+
+    Window::AppStatus app_init(opaque_t* app_state, int argc, char* argv[])
+    {
+        bool r = Luna::init();
+        if(!r) return Window::AppStatus::failing;
+        lutry
+        {
+            luexp(add_modules({module_window(), module_rhi(), module_font(), module_vg()}))
+            luexp(init_modules());
+            App* app = memnew<App>();
+            *app_state = app;
+            // register event.
+            luset(app->window, Window::new_window("Luna Vector Graphics Test", Window::WindowDisplaySettings::as_windowed(), Window::WindowCreationFlag::resizable));
+            auto sz = app->window->get_framebuffer_size();
+
+            app->window->get_events().close.add_handler(on_window_close);
+            app->window->get_events().framebuffer_resize.add_handler([app](Window::IWindow* window, u32 width, u32 height) { on_window_resize(app, window, width, height); });
+
+            auto font = Font::get_default_font();
+
+            app->shape_draw_list = VG::new_shape_draw_list();
+
+            auto dev = RHI::get_main_device();
+
+            app->command_queue = U32_MAX;
+            u32 num_queues = dev->get_num_command_queues();
+            for (u32 i = 0; i < num_queues; ++i)
+            {
+                auto desc = dev->get_command_queue_desc(i);
+                if (desc.type == RHI::CommandQueueType::graphics)
+                {
+                    app->command_queue = i;
+                    break;
+                }
+            }
+            luexp(recreate_window_resources(app, sz.x, sz.y));
+            app->shape_renderer = VG::new_fill_shape_renderer();
+
+            app->font_atlas = VG::new_font_atlas();
+            
+            luset(app->command_buffer, dev->new_command_buffer(app->command_queue));
+            app->font_size = 30.0f;
+            app->font_size_increment = 1;
+
+            app->render_time = 0;
+            app->frame_time = 0;
+
+            auto size = app->window->get_framebuffer_size();
+
+            rearrange_text(app, RectF(0.0f, 0.0f, (f32)size.x, max((f32)(size.y - HEADER_TEXT_HEIGHT), 0.0f)));
+        }
+        lucatch
+        {
+            log_error("FontArrangeTest", "%s", explain(luerr));
+            return Window::AppStatus::failing;
+        }
+        return Window::AppStatus::running;
+    }
+
+    Window::AppStatus app_update(opaque_t app_state)
+    {
+        lutry
+        {
+            App* app = (App*)app_state;
+            if (app->window->is_closed()) return Window::AppStatus::exiting;
+            if (app->window->is_minimized())
+            {
+                sleep(100);
+                return Window::AppStatus::running;
+            }
+            auto sz = app->window->get_framebuffer_size();
+            f64 time1 = ((f64)get_ticks() / get_ticks_per_second()) * 1000;
+            c8 buf[64];
+
+            VG::TextArrangeSection section;
+            section.font_size = 50.0f;
+            section.color = Float4U(0.8f, 1.0f, 0.8f, 1.0f);
+            section.font_file = Font::get_default_font();
+            section.font_index = 0;
+            String fps_text;
+            fps_text.append("FPS: ");
+            snprintf(buf, 64, "%f", 1000.0f / app->frame_time);
+            fps_text.append(buf);
+            fps_text.push_back('\n');
+            section.num_chars = fps_text.size();
+
+            auto res = VG::arrange_text(
+                fps_text.c_str(), fps_text.size(), {&section, 1},
+                RectF(0, sz.y - HEADER_TEXT_HEIGHT, sz.x, HEADER_TEXT_HEIGHT), VG::TextAlignment::center, VG::TextAlignment::center);
+            if (!res.lines.empty())
+            {
+                VG::commit_text_arrange_result(res, {&section, 1}, app->font_atlas, app->shape_draw_list);
+            }
+
+            if (!app->text_arrange_result.lines.empty())
+            {
+                VG::commit_text_arrange_result(app->text_arrange_result, app->text_sections.cspan(), app->font_atlas, app->shape_draw_list);
+            }
+
+            luexp(app->shape_draw_list->compile());
+
+            RHI::RenderPassDesc desc;
+            lulet(back_buffer, app->swap_chain->get_current_back_buffer());
+            desc.color_attachments[0] = RHI::ColorAttachment(back_buffer, RHI::LoadOp::clear, RHI::StoreOp::store, Float4U{ 0.0f });
+            app->command_buffer->begin_render_pass(desc);
+            app->command_buffer->end_render_pass();
+
+            luexp(app->shape_renderer->begin(back_buffer));
+            app->shape_renderer->draw(app->shape_draw_list->get_vertex_buffer(), app->shape_draw_list->get_index_buffer(),  app->shape_draw_list->get_draw_calls());
+            luexp(app->shape_renderer->end());
+            app->shape_renderer->submit(app->command_buffer);
+
+            app->command_buffer->resource_barrier({},
+                {
+                    {back_buffer, RHI::SubresourceIndex(0, 0), RHI::TextureStateFlag::automatic, RHI::TextureStateFlag::present, RHI::ResourceBarrierFlag::none}
+                });
+
+            luexp(app->command_buffer->submit({}, {}, true));
+            app->command_buffer->wait();
+
+            luexp(app->swap_chain->present());
+            luexp(app->command_buffer->reset());
+            app->shape_draw_list->reset();
+
+            u64 frame_ticks = get_ticks();
+
+            app->frame_time = f64(frame_ticks - app->last_frame_ticks) / get_ticks_per_second() * 1000.0;
+            app->last_frame_ticks = frame_ticks;
+        }
+        lucatch
+        {
+            log_error("FontArrangeTest", "%s", explain(luerr));
+            return Window::AppStatus::failing;
+        }
+        return Window::AppStatus::running;
+    }
+
+    void app_close(opaque_t app_state, Window::AppStatus status)
+    {
+        App* app = (App*)app_state;
+        memdelete(app);
+        Luna::close();
+    }
 }

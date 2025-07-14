@@ -507,7 +507,7 @@ namespace Luna
             io.AddMouseButtonEvent(button_id, false);
         }
 
-        static void handle_mouse_wheel(Window::IWindow* window, f32 x_wheel_delta, f32 y_wheel_delta)
+        static void handle_scroll(Window::IWindow* window, f32 x_wheel_delta, f32 y_wheel_delta)
         {
             ImGuiIO& io = ImGui::GetIO();
             io.AddMouseWheelEvent(x_wheel_delta, y_wheel_delta);
@@ -572,7 +572,7 @@ namespace Luna
             io.AddInputCharacterUTF16((c16)character);
         }
 
-        static void handle_dpi_changed(Window::IWindow* window, f32 dpi_scale)
+        static void handle_dpi_changed(Window::IWindow* window)
         {
             auto _ = refresh_font_texture();
         }
@@ -580,7 +580,7 @@ namespace Luna
         usize g_handle_mouse_move;
         usize g_handle_mouse_down;
         usize g_handle_mouse_up;
-        usize g_handle_mouse_wheel;
+        usize g_handle_scroll;
         usize g_handle_key_down;
         usize g_handle_key_up;
         usize g_handle_focus;
@@ -593,31 +593,33 @@ namespace Luna
             if (g_active_window)
             {
                 // Unregister old callbacks.
-                g_active_window->get_mouse_move_event().remove_handler(g_handle_mouse_move);
-                g_active_window->get_mouse_down_event().remove_handler(g_handle_mouse_down);
-                g_active_window->get_mouse_up_event().remove_handler(g_handle_mouse_up);
-                g_active_window->get_mouse_wheel_event().remove_handler(g_handle_mouse_wheel);
-                g_active_window->get_key_down_event().remove_handler(g_handle_key_down);
-                g_active_window->get_key_up_event().remove_handler(g_handle_key_up);
-                g_active_window->get_focus_event().remove_handler(g_handle_focus);
-                g_active_window->get_lose_focus_event().remove_handler(g_handle_lose_focus);
-                g_active_window->get_input_character_event().remove_handler(g_handle_input_character);
-                g_active_window->get_dpi_changed_event().remove_handler(g_handle_dpi_changed);
+                auto& events = g_active_window->get_events();
+                events.mouse_move.remove_handler(g_handle_mouse_move);
+                events.mouse_down.remove_handler(g_handle_mouse_down);
+                events.mouse_up.remove_handler(g_handle_mouse_up);
+                events.scroll.remove_handler(g_handle_scroll);
+                events.key_down.remove_handler(g_handle_key_down);
+                events.key_up.remove_handler(g_handle_key_up);
+                events.focus.remove_handler(g_handle_focus);
+                events.lose_focus.remove_handler(g_handle_lose_focus);
+                events.input_character.remove_handler(g_handle_input_character);
+                events.dpi_changed.remove_handler(g_handle_dpi_changed);
             }
             g_active_window = window;
             if (g_active_window)
             {
                 // Register new callbacks.
-                g_handle_mouse_move = g_active_window->get_mouse_move_event().add_handler(handle_mouse_move);
-                g_handle_mouse_down = g_active_window->get_mouse_down_event().add_handler(handle_mouse_down);
-                g_handle_mouse_up = g_active_window->get_mouse_up_event().add_handler(handle_mouse_up);
-                g_handle_mouse_wheel = g_active_window->get_mouse_wheel_event().add_handler(handle_mouse_wheel);
-                g_handle_key_down = g_active_window->get_key_down_event().add_handler(handle_key_down);
-                g_handle_key_up = g_active_window->get_key_up_event().add_handler(handle_key_up);
-                g_handle_focus = g_active_window->get_focus_event().add_handler(handle_focus);
-                g_handle_lose_focus = g_active_window->get_lose_focus_event().add_handler(handle_lose_focus);
-                g_handle_input_character = g_active_window->get_input_character_event().add_handler(handle_input_character);
-                g_handle_dpi_changed = g_active_window->get_dpi_changed_event().add_handler(handle_dpi_changed);
+                auto& events = g_active_window->get_events();
+                g_handle_mouse_move = events.mouse_move.add_handler(handle_mouse_move);
+                g_handle_mouse_down = events.mouse_down.add_handler(handle_mouse_down);
+                g_handle_mouse_up = events.mouse_up.add_handler(handle_mouse_up);
+                g_handle_scroll = events.scroll.add_handler(handle_scroll);
+                g_handle_key_down = events.key_down.add_handler(handle_key_down);
+                g_handle_key_up = events.key_up.add_handler(handle_key_up);
+                g_handle_focus = events.focus.add_handler(handle_focus);
+                g_handle_lose_focus = events.lose_focus.add_handler(handle_lose_focus);
+                g_handle_input_character = events.input_character.add_handler(handle_input_character);
+                g_handle_dpi_changed = events.dpi_changed.add_handler(handle_dpi_changed);
             }
         }
 
