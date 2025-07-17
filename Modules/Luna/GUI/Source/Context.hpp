@@ -26,7 +26,7 @@ namespace Luna
             ContextIO m_io;
 
             // Widget update context.
-            Ref<IWidget> m_root_widget;
+            Ref<Widget> m_root_widget;
 
             // Render context.
             Ref<VG::IFontAtlas> m_font_atlas;
@@ -45,7 +45,7 @@ namespace Luna
 
             // Event queue.
             RingDeque<ObjRef> m_event_queue;
-            Vector<Pair<IWidget*, typeinfo_t>> m_event_capture_stack;
+            Vector<Pair<Widget*, typeinfo_t>> m_event_capture_stack;
 
             Context()
             {
@@ -57,18 +57,18 @@ namespace Luna
             {
                 return m_io;
             }
-            virtual IWidget* get_widget() override
+            virtual Widget* get_widget() override
             {
                 return m_root_widget;
             }
-            virtual void set_widget(IWidget* root_widget) override;
+            virtual void set_widget(Widget* root_widget) override;
             virtual object_t get_widget_state(widget_id_t id) override;
             virtual void set_widget_state(widget_id_t id, object_t state, WidgetStateLifetime lifetime) override;
             virtual void push_event(object_t event) override
             {
                 m_event_queue.push_back(ObjRef(event));
             }
-            virtual void capture_event(IWidget* widget, typeinfo_t event_type) override
+            virtual void capture_event(Widget* widget, typeinfo_t event_type) override
             {
                 m_event_capture_stack.push_back(make_pair(widget, event_type));
             }

@@ -13,15 +13,14 @@
 #include <Luna/Runtime/RingDeque.hpp>
 #include <Luna/Runtime/Math/Color.hpp>
 #include <Luna/VG/Shapes.hpp>
-#include "../Widgets/Widget.hpp"
+#include "../Widget.hpp"
 #include "../Event.hpp"
-#include "../Widgets/Container.hpp"
 
 namespace Luna
 {
     namespace GUI
     {
-        void Context::set_widget(IWidget* root_widget)
+        void Context::set_widget(Widget* root_widget)
         {
             m_root_widget = root_widget;
         }

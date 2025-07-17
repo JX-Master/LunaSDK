@@ -9,40 +9,20 @@
 */
 #pragma once
 #include "../WidgetBuilder.hpp"
-#include "../Widgets/Container.hpp"
-#include "../Widgets/Widget.hpp"
+#include "../Widget.hpp"
 
 namespace Luna
 {
     namespace GUI
     {
-        struct RootWidget : Widget, virtual IContainer
+        struct RootWidget : Widget
         {
             lustruct("RHI::RootWidget", "RHI::108d0749-1ad1-4698-9c7a-645e3712f12e");
-            luiimpl();
-
-            Vector<Ref<IWidget>> children;
             
             virtual RV begin_update(IContext* ctx) override;
             virtual RV layout(IContext* ctx, const OffsetRectF& layout_rect) override;
             virtual RV update(IContext* ctx) override;
             virtual RV draw(IContext* ctx, IDrawList* draw_list, IDrawList* overlay_draw_list) override;
-            virtual void add_child(IWidget* child) override
-            {
-                children.push_back(child);
-            }
-            virtual void get_children(Vector<IWidget*>& out_children) override
-            {
-                out_children.reserve(out_children.size() + children.size());
-                for(usize i = 0; i < children.size(); ++i)
-                {
-                    out_children.push_back(children[i]);
-                }
-            }
-            virtual usize get_num_children() override
-            {
-                return children.size();
-            }
         };
         struct WidgetBuilder : IWidgetBuilder
         {
@@ -52,9 +32,9 @@ namespace Luna
             Vector<widget_id_t> m_id_stack;
 
             // Widget build context.
-            Ref<IWidget> m_root_widget;
-            Ref<IWidget> m_current_widget;
-            Vector<Ref<IContainer>> m_widget_stack;
+            Ref<Widget> m_root_widget;
+            Ref<Widget> m_current_widget;
+            Vector<Ref<Widget>> m_widget_stack;
 
             virtual void reset() override
             {
@@ -96,20 +76,20 @@ namespace Luna
                 if(str_len == USIZE_MAX) str_len = strlen(str_id);
                 return memhash32(str_id, str_len, get_id());
             }
-            virtual IWidget* get_root_widget() override
+            virtual Widget* get_root_widget() override
             {
                 return m_root_widget;
             }
-            virtual IWidget* get_current_widget() override
+            virtual Widget* get_current_widget() override
             {
                 return m_current_widget;
             }
-            virtual void set_current_widget(IWidget* widget) override
+            virtual void set_current_widget(Widget* widget) override
             {
                 m_current_widget = widget;
             }
-            virtual void add_widget(IWidget* widget) override;
-            virtual void push_widget(IWidget* widget) override
+            virtual void add_widget(Widget* widget) override;
+            virtual void push_widget(Widget* widget) override
             {
                 m_widget_stack.push_back(widget);
             }

@@ -47,7 +47,7 @@ namespace Luna
         };
 
         struct IContext;
-        struct IWidget;
-        LUNA_GUI_API RV dispatch_event_by_pos(IContext* ctx, IWidget* widget, object_t e, f32 x, f32 y, bool& handled);
+        struct Widget;
+        LUNA_GUI_API RV dispatch_event_by_pos(IContext* ctx, Widget* widget, object_t e, f32 x, f32 y, bool& handled);
     }
 }

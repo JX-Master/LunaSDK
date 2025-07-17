@@ -8,7 +8,7 @@
 * @date 2024/5/21
 */
 #pragma once
-#include "Widget.hpp"
+#include "../Widget.hpp"
 #include <Luna/VG/TextArranger.hpp>
 
 namespace Luna

@@ -19,7 +19,7 @@ namespace Luna
         {
             lutry
             {
-                for(auto& c : children)
+                for(auto& c : get_children())
                 {
                     luexp(c->begin_update(ctx));
                 }
@@ -32,7 +32,7 @@ namespace Luna
             lutry
             {
                 luexp(Widget::layout(ctx, layout_rect));
-                for(auto& c : children)
+                for(auto& c : get_children())
                 {
                     luexp(c->layout(ctx, layout_rect));
                 }
@@ -44,7 +44,7 @@ namespace Luna
         {
             lutry
             {
-                for(auto& c : children)
+                for(auto& c : get_children())
                 {
                     luexp(c->update(ctx));
                 }
@@ -56,7 +56,7 @@ namespace Luna
         {
             lutry
             {
-                for(auto& c : children)
+                for(auto& c : get_children())
                 {
                     luexp(c->draw(ctx, draw_list, overlay_draw_list));
                 }
@@ -64,14 +64,13 @@ namespace Luna
             lucatchret;
             return ok;
         }
-        void WidgetBuilder::add_widget(IWidget *widget)
+        void WidgetBuilder::add_widget(Widget *widget)
         {
             m_current_widget = widget;
             m_current_widget->set_id(get_id());
             if(!m_widget_stack.empty())
             {
                 m_widget_stack.back()->add_child(m_current_widget);
-                m_current_widget->set_parent(m_widget_stack.back().as<IWidget>());
             }
         }
         LUNA_GUI_API Ref<IWidgetBuilder> new_widget_builder()

@@ -36,16 +36,16 @@ namespace Luna
             virtual widget_id_t get_id(const Name& name_id) = 0;
             virtual widget_id_t get_id(const c8* str_id, usize str_len) = 0;
 
-            virtual IWidget* get_root_widget() = 0;
+            virtual Widget* get_root_widget() = 0;
 
-            virtual IWidget* get_current_widget() = 0;
+            virtual Widget* get_current_widget() = 0;
 
-            virtual void set_current_widget(IWidget* widget) = 0;
+            virtual void set_current_widget(Widget* widget) = 0;
 
-            virtual void add_widget(IWidget* widget) = 0;
+            virtual void add_widget(Widget* widget) = 0;
 
             //! Pushes one widget to the widget stack so that new widgets will be created as child widgets of this widget.
-            virtual void push_widget(IWidget* widget) = 0;
+            virtual void push_widget(Widget* widget) = 0;
 
             //! Pops one widget from the widget stack.
             virtual void pop_widget() = 0;

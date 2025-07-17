@@ -28,7 +28,7 @@ namespace Luna
             r.bottom = ay2 + offset.bottom;
             return r;
         }
-        LUNA_GUI_API void calc_hlayout(IWidget** widgets, usize num_widgets, 
+        LUNA_GUI_API void calc_hlayout(Widget** widgets, usize num_widgets, 
             f32 total_size, const f32* total_size_other,
             f32* out_allocated_size,
             f32* out_required_size,
@@ -100,7 +100,7 @@ namespace Luna
                 memzero(out_filling_size, sizeof(f32) * num_widgets);
             }
         }
-        LUNA_GUI_API void calc_vlayout(IWidget** widgets, usize num_widgets, 
+        LUNA_GUI_API void calc_vlayout(Widget** widgets, usize num_widgets, 
             f32 total_size, const f32* total_size_other,
             f32* out_allocated_size,
             f32* out_required_size,

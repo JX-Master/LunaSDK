@@ -27,9 +27,9 @@ namespace Luna
             if(!node->parent)
             {
                 // This is a root node, remove from dockspace directly.
-                if(dockspace->state->root.get() == node)
+                if(dockspace->m_state->root.get() == node)
                 {
-                    ret = move(dockspace->state->root);
+                    ret = move(dockspace->m_state->root);
                 }
                 return ret;
             }
@@ -51,9 +51,9 @@ namespace Luna
             {
                 // Parent is root node, replace in dockspace directly.
                 other_node->parent = nullptr;
-                if(dockspace->state->root.get() == parent)
+                if(dockspace->m_state->root.get() == parent)
                 {
-                    dockspace->state->root = move(other_node);
+                    dockspace->m_state->root = move(other_node);
                 }
             }
             else
@@ -108,10 +108,10 @@ namespace Luna
                 else
                 {
                     // This node is root node.
-                    if(dockspace->state->root.get() == target_node)
+                    if(dockspace->m_state->root.get() == target_node)
                     {
-                        old_node = move(dockspace->state->root);
-                        dockspace->state->root = move(new_bnode);
+                        old_node = move(dockspace->m_state->root);
+                        dockspace->m_state->root = move(new_bnode);
                     }
                 }
                 // Create and insert new widget node.
@@ -161,7 +161,7 @@ namespace Luna
         {
             // Collect existing widgets.
             HashSet<widget_id_t> widgets;
-            for(auto& w : dockspace->children)
+            for(auto& w : dockspace->get_children())
             {
                 if(w->get_id() != 0)
                 {
@@ -170,9 +170,9 @@ namespace Luna
             }
             // Remove all widgets that does not exist anymore.
             RingDeque<DockNodeBase*> nodes;
-            if(dockspace->state->root)
+            if(dockspace->m_state->root)
             {
-                nodes.push_back(dockspace->state->root.get());
+                nodes.push_back(dockspace->m_state->root.get());
             }
             Vector<WidgetDockNode*> widget_nodes;
             HashSet<widget_id_t> existing_widgets;
@@ -226,20 +226,20 @@ namespace Luna
             {
                 if(!existing_widgets.contains(id))
                 {
-                    if(!dockspace->state->root)
+                    if(!dockspace->m_state->root)
                     {
                         // Set this node as root.
                         WidgetDockNode* wnode = memnew<WidgetDockNode>();
                         WidgetDockNode::WidgetItem item;
                         item.id = id;
                         wnode->widgets.push_back(item);
-                        dockspace->state->root.reset(wnode);
+                        dockspace->m_state->root.reset(wnode);
                     }
                     else
                     {
                         // Find first docknode in the dockspace.
                         RingDeque<DockNodeBase*> nodes;
-                        nodes.push_back(dockspace->state->root.get());
+                        nodes.push_back(dockspace->m_state->root.get());
                         bool inserted = false;
                         while(!nodes.empty())
                         {
@@ -276,14 +276,14 @@ namespace Luna
         }
         LUNA_GUI_API RV Dockspace::begin_update(IContext* ctx)
         {
-            Ref<DockspaceState> s = cast_object<DockspaceState>(ctx->get_widget_state(id));
+            Ref<DockspaceState> s = cast_object<DockspaceState>(ctx->get_widget_state(get_id()));
             if(!s)
             {
                 s = new_object<DockspaceState>();
             }
-            ctx->set_widget_state(id, s.get(), WidgetStateLifetime::persistent);
-            state = s.get();
-            if(state->clicking_node)
+            ctx->set_widget_state(get_id(), s.get(), WidgetStateLifetime::persistent);
+            m_state = s.get();
+            if(m_state->clicking_node)
             {
                 ctx->capture_event(this, typeof<MouseEvent>());
             }
@@ -291,7 +291,7 @@ namespace Luna
             refresh_widget_tree(this);
             lutry
             {
-                for(auto& c : children)
+                for(auto& c : get_children())
                 {
                     luexp(c->begin_update(ctx));
                 }
@@ -300,9 +300,9 @@ namespace Luna
             return ok;
         }
         constexpr f32 DOCKNODE_SEP_LINE_WIDTH = 2.0f;
-        static IWidget* find_widget_by_id(Dockspace* dockspace, widget_id_t widget_id)
+        static Widget* find_widget_by_id(Dockspace* dockspace, widget_id_t widget_id)
         {
-            for(auto& c : dockspace->children)
+            for(auto& c : dockspace->get_children())
             {
                 if(c->get_id() == widget_id)
                 {
@@ -322,19 +322,19 @@ namespace Luna
                 {
                     WidgetDockNode* cnode = (WidgetDockNode*)node;
                     cnode->title_rect = layout_rect;
-                    f32 title_bar_height = get_sattr(dockspace, SATTR_TITLE_TEXT_SIZE, true, DEFAULT_TEXT_SIZE) + 10.0f;
+                    f32 title_bar_height = dockspace->get_sattr(SATTR_TITLE_TEXT_SIZE, true, DEFAULT_TEXT_SIZE) + 10.0f;
                     cnode->title_rect.bottom = min(cnode->title_rect.top + title_bar_height, layout_rect.bottom);
                     cnode->widget_rect = layout_rect;
                     cnode->widget_rect.top = cnode->title_rect.bottom;
                     // Layout tab rect.
                     f32 tab_rect_offset = 0;
-                    f32 title_size = get_sattr(dockspace, SATTR_TITLE_TEXT_SIZE, true, DEFAULT_TEXT_SIZE);
-                    Font::IFontFile* font = query_interface<Font::IFontFile>(get_oattr(dockspace, OATTR_FONT, true, Font::get_default_font()));
-                    u32 font_index = get_sattr(dockspace, SATTR_FONT_INDEX, true, 0);
+                    f32 title_size = dockspace->get_sattr(SATTR_TITLE_TEXT_SIZE, true, DEFAULT_TEXT_SIZE);
+                    Font::IFontFile* font = query_interface<Font::IFontFile>(dockspace->get_oattr(OATTR_FONT, true, Font::get_default_font()));
+                    u32 font_index = dockspace->get_sattr(SATTR_FONT_INDEX, true, 0);
                     for(auto& w : cnode->widgets)
                     {
-                        IWidget* widget = find_widget_by_id(dockspace, cnode->widgets[cnode->current_tab].id);
-                        Name title = get_tattr(widget, TATTR_TITLE, false, "Untitled");
+                        Widget* widget = find_widget_by_id(dockspace, cnode->widgets[cnode->current_tab].id);
+                        Name title = widget->get_tattr(TATTR_TITLE, false, "Untitled");
                         VG::TextArrangeSection section;
                         section.font_file = font;
                         section.font_index = font_index;
@@ -345,7 +345,7 @@ namespace Luna
                         w.tab_rect_right = w.tab_rect_left + result.bounding_rect.width + 10.0f;
                         tab_rect_offset = w.tab_rect_right;
                     }
-                    IWidget* widget = find_widget_by_id(dockspace, cnode->widgets[cnode->current_tab].id);
+                    Widget* widget = find_widget_by_id(dockspace, cnode->widgets[cnode->current_tab].id);
                     luexp(widget->layout(ctx, cnode->widget_rect));
                 }
                 break;
@@ -384,9 +384,9 @@ namespace Luna
             lutry
             {
                 luexp(Widget::layout(ctx, layout_rect));
-                if(state->root)
+                if(m_state->root)
                 {
-                    luexp(layout_docknode(this, state->root.get(), ctx, layout_rect));
+                    luexp(layout_docknode(this, m_state->root.get(), ctx, layout_rect));
                 }
             }
             lucatchret;
@@ -411,16 +411,16 @@ namespace Luna
                                 {
                                     // We need to relayout the widget when we change to a new tab, since this tab is hidden when `layout` is called,
                                     // thus not get updated.
-                                    IWidget* widget = find_widget_by_id(dockspace, w.id);
+                                    Widget* widget = find_widget_by_id(dockspace, w.id);
                                     if(wnode->current_tab != i)
                                     {
                                         wnode->current_tab = (u32)i;
                                         luexp(widget->layout(ctx, wnode->widget_rect));
                                     }
-                                    dockspace->state->clicking_node = wnode;
-                                    dockspace->state->clicking_widget_index = i;
-                                    dockspace->state->clicking_pos = Float2U{e->x, e->y};
-                                    dockspace->state->clicking_node_rect = OffsetRectF(wnode->title_rect.left + w.tab_rect_left, wnode->title_rect.top, wnode->title_rect.left + w.tab_rect_right, wnode->title_rect.bottom);
+                                    dockspace->m_state->clicking_node = wnode;
+                                    dockspace->m_state->clicking_widget_index = i;
+                                    dockspace->m_state->clicking_pos = Float2U{e->x, e->y};
+                                    dockspace->m_state->clicking_node_rect = OffsetRectF(wnode->title_rect.left + w.tab_rect_left, wnode->title_rect.top, wnode->title_rect.left + w.tab_rect_right, wnode->title_rect.bottom);
                                     break;
                                 }
                             }
@@ -428,7 +428,7 @@ namespace Luna
                         // Broadcast event to child widgets if we are not currently dragging nodes.
                         if(in_bounds(Float2(e->x, e->y), Float2(wnode->widget_rect.left, wnode->widget_rect.top), Float2(wnode->widget_rect.right, wnode->widget_rect.bottom)))
                         {
-                            IWidget* widget = find_widget_by_id(dockspace, wnode->widgets[wnode->current_tab].id);
+                            Widget* widget = find_widget_by_id(dockspace, wnode->widgets[wnode->current_tab].id);
                             luexp(dispatch_event_by_pos(ctx, widget, e, e->x, e->y, handled));
                         }
                     }
@@ -455,22 +455,22 @@ namespace Luna
                 if(mouse_event)
                 {
                     MouseMoveEvent* me = cast_object<MouseMoveEvent>(e);
-                    if(me && state->clicking_node && !state->dragging && distance_squared(state->clicking_pos, Float2(me->x, me->y)) > 25.0f)
+                    if(me && m_state->clicking_node && !m_state->dragging && distance_squared(m_state->clicking_pos, Float2(me->x, me->y)) > 25.0f)
                     {
                         // Start dragging.
-                        state->dragging = true;
+                        m_state->dragging = true;
                     }
-                    state->dragging_dock_target = nullptr;
-                    if(!state->dragging)
+                    m_state->dragging_dock_target = nullptr;
+                    if(!m_state->dragging)
                     {
-                        luexp(docknode_handle_mouse_event(ctx, this, state->root.get(), mouse_event, handled));
+                        luexp(docknode_handle_mouse_event(ctx, this, m_state->root.get(), mouse_event, handled));
                     }
                     else
                     {
-                        state->dragging_mouse_pos = Float2U(mouse_event->x, mouse_event->y);
+                        m_state->dragging_mouse_pos = Float2U(mouse_event->x, mouse_event->y);
                         // Check target.
                         RingDeque<DockNodeBase*> scan_queue;
-                        scan_queue.push_back(state->root.get());
+                        scan_queue.push_back(m_state->root.get());
                         while(!scan_queue.empty())
                         {
                             DockNodeBase* node = scan_queue.front();
@@ -480,43 +480,43 @@ namespace Luna
                                 WidgetDockNode* wnode = (WidgetDockNode*)node;
                                 f32 width = wnode->widget_rect.right - wnode->widget_rect.left;
                                 f32 height = wnode->widget_rect.bottom - wnode->widget_rect.top;
-                                if(in_bounds(Float2(state->dragging_mouse_pos), 
+                                if(in_bounds(Float2(m_state->dragging_mouse_pos), 
                                     Float2(wnode->widget_rect.left, wnode->widget_rect.top), 
                                     Float2(wnode->widget_rect.right, wnode->widget_rect.bottom)))
                                 {
-                                    state->dragging_dock_target = wnode;
-                                    if(in_bounds(Float2(state->dragging_mouse_pos), 
+                                    m_state->dragging_dock_target = wnode;
+                                    if(in_bounds(Float2(m_state->dragging_mouse_pos), 
                                         Float2(wnode->widget_rect.left, wnode->widget_rect.top), 
                                         Float2(wnode->widget_rect.left + width * 0.1f, wnode->widget_rect.bottom)))
                                     {
                                         // Left
-                                        state->dragging_dock_side = 0;
+                                        m_state->dragging_dock_side = 0;
                                     }
-                                    else if(in_bounds(Float2(state->dragging_mouse_pos), 
+                                    else if(in_bounds(Float2(m_state->dragging_mouse_pos), 
                                         Float2(wnode->widget_rect.right - width * 0.1f, wnode->widget_rect.top), 
                                         Float2(wnode->widget_rect.right, wnode->widget_rect.bottom)))
                                     {
                                         // Right
-                                        state->dragging_dock_side = 1;
+                                        m_state->dragging_dock_side = 1;
                                     }
-                                    else if(in_bounds(Float2(state->dragging_mouse_pos), 
+                                    else if(in_bounds(Float2(m_state->dragging_mouse_pos), 
                                         Float2(wnode->widget_rect.left, wnode->widget_rect.top), 
                                         Float2(wnode->widget_rect.right, wnode->widget_rect.top + height * 0.1f)))
                                     {
                                         // Top
-                                        state->dragging_dock_side = 2;
+                                        m_state->dragging_dock_side = 2;
                                     }
-                                    else if(in_bounds(Float2(state->dragging_mouse_pos), 
+                                    else if(in_bounds(Float2(m_state->dragging_mouse_pos), 
                                         Float2(wnode->widget_rect.left, wnode->widget_rect.bottom - height * 0.1f), 
                                         Float2(wnode->widget_rect.right, wnode->widget_rect.bottom)))
                                     {
                                         // Bottom
-                                        state->dragging_dock_side = 3;
+                                        m_state->dragging_dock_side = 3;
                                     }
                                     else
                                     {
                                         // Center.
-                                        state->dragging_dock_side = 4;
+                                        m_state->dragging_dock_side = 4;
                                     }   
                                 }
                             }
@@ -531,15 +531,15 @@ namespace Luna
                     MouseButtonEvent* be = cast_object<MouseButtonEvent>(e);
                     if(be && be->button == HID::MouseButton::left && be->pressed == false)
                     {
-                        if(state->dragging && state->dragging_dock_target)
+                        if(m_state->dragging && m_state->dragging_dock_target)
                         {
                             // Drop the node to the target.
-                            auto widget_id = state->clicking_node->widgets[state->clicking_widget_index].id;
-                            add_widget_to_node(this, widget_id, state->dragging_dock_target, state->dragging_dock_side);
-                            remove_widget_from_node(this, state->clicking_node, widget_id);
+                            auto widget_id = m_state->clicking_node->widgets[m_state->clicking_widget_index].id;
+                            add_widget_to_node(this, widget_id, m_state->dragging_dock_target, m_state->dragging_dock_side);
+                            remove_widget_from_node(this, m_state->clicking_node, widget_id);
                         }
-                        state->clicking_node = nullptr;
-                        state->dragging = false;
+                        m_state->clicking_node = nullptr;
+                        m_state->dragging = false;
                     }
                     // Since we have handled this event manually in `docknode_handle_mouse_event`, we should prevent this event from 
                     // broadcasting to child widgets again.
@@ -554,9 +554,9 @@ namespace Luna
             lutry
             {
                 RingDeque<DockNodeBase*> nodes;
-                if(state->root)
+                if(m_state->root)
                 {
-                    nodes.push_back(state->root.get());
+                    nodes.push_back(m_state->root.get());
                 }
                 while(!nodes.empty())
                 {
@@ -575,7 +575,7 @@ namespace Luna
                         case DockNodeType::widget:
                         {
                             WidgetDockNode* wnode = (WidgetDockNode*)node;
-                            IWidget* widget = find_widget_by_id(this, wnode->widgets[wnode->current_tab].id);
+                            Widget* widget = find_widget_by_id(this, wnode->widgets[wnode->current_tab].id);
                             luassert(widget);
                             luexp(widget->update(ctx));
                         }
@@ -596,7 +596,7 @@ namespace Luna
                     case DockNodeType::widget:
                     {
                         WidgetDockNode* wnode = (WidgetDockNode*)node;
-                        f32 title_size = get_sattr(dockspace, SATTR_TITLE_TEXT_SIZE, true, DEFAULT_TEXT_SIZE);
+                        f32 title_size = dockspace->get_sattr(SATTR_TITLE_TEXT_SIZE, true, DEFAULT_TEXT_SIZE);
                         // Draw title background.
                         draw_rectangle_filled(ctx, draw_list, 
                             node->layout_rect.left, wnode->title_rect.top, node->layout_rect.right, wnode->title_rect.bottom, Float4(0.8f, 0.8f, 0.8f, 1.0f));
@@ -604,19 +604,19 @@ namespace Luna
                         draw_rectangle_filled(ctx, draw_list,
                             wnode->title_rect.left + current_node.tab_rect_left, wnode->title_rect.top, wnode->title_rect.left + current_node.tab_rect_right, wnode->title_rect.bottom, Float4(1.0f, 1.0f, 1.0f, 1.0f));
                         // Draw title.
-                        Font::IFontFile* font = query_interface<Font::IFontFile>(get_oattr(dockspace, OATTR_FONT, true, Font::get_default_font()));
-                        u32 font_index = get_sattr(dockspace, SATTR_FONT_INDEX, true, 0);
+                        Font::IFontFile* font = query_interface<Font::IFontFile>(dockspace->get_oattr(OATTR_FONT, true, Font::get_default_font()));
+                        u32 font_index = dockspace->get_sattr(SATTR_FONT_INDEX, true, 0);
                         for(auto& w : wnode->widgets)
                         {
-                            IWidget* widget = find_widget_by_id(dockspace, w.id);
-                            Name title = get_tattr(widget, TATTR_TITLE, false, "Untitled");
+                            Widget* widget = find_widget_by_id(dockspace, w.id);
+                            Name title = widget->get_tattr(TATTR_TITLE, false, "Untitled");
                             draw_text(ctx, draw_list, title.c_str(), title.size(), Float4U(0, 0, 0, 1), title_size, 
                                 wnode->title_rect.left + w.tab_rect_left + 5.0f, node->layout_rect.top + 5.0f, 
                                 wnode->title_rect.left + w.tab_rect_right - 5.0f, node->layout_rect.top + title_size + 6.0f, 
                                 font, font_index);
                         }
                         // Draw content.
-                        IWidget* widget = find_widget_by_id(dockspace, current_node.id);
+                        Widget* widget = find_widget_by_id(dockspace, current_node.id);
                         luexp(widget->draw(ctx, draw_list, overlay_draw_list));
                     }
                     break;
@@ -655,26 +655,26 @@ namespace Luna
             lutry
             {
                 // Draw root.
-                if(state->root)
+                if(m_state->root)
                 {
-                    DockNodeBase* node = state->root.get();
+                    DockNodeBase* node = m_state->root.get();
                     draw_rectangle_filled(ctx, draw_list, node->layout_rect.left, node->layout_rect.top, node->layout_rect.right, node->layout_rect.bottom, Float4(1, 1, 1, 1));
-                    luexp(draw_docknode(this, state->root.get(), ctx, draw_list, overlay_draw_list));
+                    luexp(draw_docknode(this, m_state->root.get(), ctx, draw_list, overlay_draw_list));
                 }
                 // Draw overlay.
-                if(state->dragging)
+                if(m_state->dragging)
                 {
                     // Draw overlay color
-                    if(state->dragging_dock_target)
+                    if(m_state->dragging_dock_target)
                     {
-                        WidgetDockNode* wnode = state->dragging_dock_target;
+                        WidgetDockNode* wnode = m_state->dragging_dock_target;
                         f32 width = wnode->widget_rect.right - wnode->widget_rect.left;
                         f32 height = wnode->widget_rect.bottom - wnode->widget_rect.top;
                         f32 left = wnode->widget_rect.left;
                         f32 top = wnode->widget_rect.top;
                         f32 right = wnode->widget_rect.right;
                         f32 bottom = wnode->widget_rect.bottom;
-                        switch(state->dragging_dock_side)
+                        switch(m_state->dragging_dock_side)
                         {
                             case 0: right = left + width * 0.5f; break; // Left
                             case 1: left = left + width * 0.5f; break; // Right
@@ -687,17 +687,17 @@ namespace Luna
                     // Draw title rect.
                     {
                         OffsetRectF rect(
-                            state->clicking_node_rect.left - state->clicking_pos.x + state->dragging_mouse_pos.x,
-                            state->clicking_node_rect.top - state->clicking_pos.y + state->dragging_mouse_pos.y,
-                            state->clicking_node_rect.right - state->clicking_pos.x + state->dragging_mouse_pos.x,
-                            state->clicking_node_rect.bottom - state->clicking_pos.y + state->dragging_mouse_pos.y
+                            m_state->clicking_node_rect.left - m_state->clicking_pos.x + m_state->dragging_mouse_pos.x,
+                            m_state->clicking_node_rect.top - m_state->clicking_pos.y + m_state->dragging_mouse_pos.y,
+                            m_state->clicking_node_rect.right - m_state->clicking_pos.x + m_state->dragging_mouse_pos.x,
+                            m_state->clicking_node_rect.bottom - m_state->clicking_pos.y + m_state->dragging_mouse_pos.y
                         );
                         draw_rectangle_filled(ctx, overlay_draw_list, rect.left, rect.top, rect.right, rect.bottom, Float4(1.0f, 1.0f, 1.0f, 1.0f));
-                        IWidget* widget = find_widget_by_id(this, state->clicking_node->widgets[state->clicking_widget_index].id);
-                        Name title = get_tattr(widget, TATTR_TITLE, false, "Untitled");
-                        f32 title_size = get_sattr(this, SATTR_TITLE_TEXT_SIZE, true, DEFAULT_TEXT_SIZE);
-                        Font::IFontFile* font = query_interface<Font::IFontFile>(get_oattr(this, OATTR_FONT, true, Font::get_default_font()));
-                        u32 font_index = get_sattr(this, SATTR_FONT_INDEX, true, 0);
+                        Widget* widget = find_widget_by_id(this, m_state->clicking_node->widgets[m_state->clicking_widget_index].id);
+                        Name title = widget->get_tattr(TATTR_TITLE, false, "Untitled");
+                        f32 title_size = get_sattr(SATTR_TITLE_TEXT_SIZE, true, DEFAULT_TEXT_SIZE);
+                        Font::IFontFile* font = query_interface<Font::IFontFile>(get_oattr(OATTR_FONT, true, Font::get_default_font()));
+                        u32 font_index = get_sattr(SATTR_FONT_INDEX, true, 0);
                         draw_text(ctx, overlay_draw_list, title.c_str(), title.size(), Float4U(0, 0, 0, 1), title_size, 
                                     rect.left + 5.0f, rect.top + 5.0f, rect.right - 5.0f, rect.top + title_size + 6.0f, 
                                     font, font_index);
@@ -706,18 +706,6 @@ namespace Luna
             }
             lucatchret;
             return ok;
-        }
-        LUNA_GUI_API void Dockspace::add_child(IWidget* child)
-        {
-            children.push_back(child);
-        }
-        LUNA_GUI_API void Dockspace::get_children(Vector<IWidget*>& out_children)
-        {
-            out_children.insert(out_children.end(), children.begin(), children.end());
-        }
-        LUNA_GUI_API usize Dockspace::get_num_children()
-        {
-            return children.size();
         }
         LUNA_GUI_API Dockspace* begin_dockspace(IWidgetBuilder* builder)
         {

@@ -21,9 +21,9 @@ namespace Luna
         LUNA_GUI_API f32 Text::get_desired_size_x(DesiredSizeType type, const f32* suggested_size_y)
         {
             if(type == DesiredSizeType::required || type == DesiredSizeType::filling) return 0;
-            Font::IFontFile* font = query_interface<Font::IFontFile>(get_oattr(this, OATTR_FONT, true, Font::get_default_font()));
-            u32 font_index = get_sattr(this, SATTR_FONT_INDEX, true, 0);
-            f32 text_size = get_sattr(this, SATTR_TEXT_SIZE, true, DEFAULT_TEXT_SIZE);
+            Font::IFontFile* font = query_interface<Font::IFontFile>(get_oattr(OATTR_FONT, true, Font::get_default_font()));
+            u32 font_index = get_sattr(SATTR_FONT_INDEX, true, 0);
+            f32 text_size = get_sattr(SATTR_TEXT_SIZE, true, DEFAULT_TEXT_SIZE);
             VG::TextArrangeSection section;
             section.font_file = font;
             section.font_index = font_index;
@@ -37,9 +37,9 @@ namespace Luna
         LUNA_GUI_API f32 Text::get_desired_size_y(DesiredSizeType type, const f32* suggested_size_x)
         {
             if(type == DesiredSizeType::required || type == DesiredSizeType::filling) return 0;
-            Font::IFontFile* font = query_interface<Font::IFontFile>(get_oattr(this, OATTR_FONT, true, Font::get_default_font()));
-            u32 font_index = get_sattr(this, SATTR_FONT_INDEX, true, 0);
-            f32 text_size = get_sattr(this, SATTR_TEXT_SIZE, true, DEFAULT_TEXT_SIZE);
+            Font::IFontFile* font = query_interface<Font::IFontFile>(get_oattr(OATTR_FONT, true, Font::get_default_font()));
+            u32 font_index = get_sattr(SATTR_FONT_INDEX, true, 0);
+            f32 text_size = get_sattr(SATTR_TEXT_SIZE, true, DEFAULT_TEXT_SIZE);
             VG::TextArrangeSection section;
             section.font_file = font;
             section.font_index = font_index;
@@ -52,11 +52,12 @@ namespace Luna
         }
         LUNA_GUI_API RV Text::draw(IContext *ctx, IDrawList* draw_list, IDrawList* overlay_draw_list)
         {
-            Font::IFontFile* font = cast_object<Font::IFontFile>(get_oattr(this, OATTR_FONT, true, Font::get_default_font()));
-            u32 font_index = get_sattr(this, SATTR_FONT_INDEX, true, 0);
+            Font::IFontFile* font = cast_object<Font::IFontFile>(get_oattr(OATTR_FONT, true, Font::get_default_font()));
+            u32 font_index = get_sattr(SATTR_FONT_INDEX, true, 0);
+            auto bounding_rect = get_bounding_rect();
             draw_text(ctx, draw_list, text.c_str(), text.size(), 
-                get_vattr(this, VATTR_TEXT_COLOR, true, Float4U(1.0f)), 
-                get_sattr(this, SATTR_TEXT_SIZE, true, DEFAULT_TEXT_SIZE), 
+                get_vattr(VATTR_TEXT_COLOR, true, Float4U(1.0f)), 
+                get_sattr(SATTR_TEXT_SIZE, true, DEFAULT_TEXT_SIZE), 
                 bounding_rect.left, bounding_rect.top, bounding_rect.right, bounding_rect.bottom,
                 font, font_index, 0.0, 0.0, vertical_alignment, horizontal_alignment);
             return ok;

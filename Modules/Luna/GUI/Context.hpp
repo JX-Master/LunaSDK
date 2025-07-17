@@ -56,9 +56,9 @@ namespace Luna
             //! Gets the IO state that will be parsed in the next @ref update call.
             virtual ContextIO& get_io() = 0;
 
-            virtual IWidget* get_widget() = 0;
+            virtual Widget* get_widget() = 0;
 
-            virtual void set_widget(IWidget* root_widget) = 0;
+            virtual void set_widget(Widget* root_widget) = 0;
 
             //! Gets widget implicit state.
             virtual object_t get_widget_state(widget_id_t id) = 0;
@@ -77,7 +77,7 @@ namespace Luna
             //! this function in @ref IWidget::begin_update, so that the widget gains capture before event handing stage take place.
             //! 
             //! The capture does not need to be released explicitly, since they will be released before next @ref update call.
-            virtual void capture_event(IWidget* widget, typeinfo_t event_type) = 0;
+            virtual void capture_event(Widget* widget, typeinfo_t event_type) = 0;
 
             //! Updates the internal state (like input, animation, etc) of the context.
             virtual RV update() = 0;

@@ -8,8 +8,7 @@
 * @date 2024/8/6
 */
 #pragma once
-#include "Widget.hpp"
-#include "Container.hpp"
+#include "../Widget.hpp"
 #include <Luna/Runtime/UniquePtr.hpp>
 
 namespace Luna
@@ -90,23 +89,17 @@ namespace Luna
             u32 dragging_dock_side; // 0 - left, 1 - right, 2 - top, 3 - bottom, 4 - center.
         };
 
-        struct Dockspace : Widget, virtual IContainer
+        struct Dockspace : Widget
         {
             lustruct("GUI::Dockspace", "2888349e-97af-484b-8f6e-6eab16284053");
 
-            Vector<Ref<IWidget>> children;
-            DockspaceState* state = nullptr;
+            DockspaceState* m_state = nullptr;
 
             LUNA_GUI_API virtual RV begin_update(IContext* ctx) override;
             LUNA_GUI_API virtual RV layout(IContext* ctx, const OffsetRectF& layout_rect) override;
             LUNA_GUI_API virtual RV handle_event(IContext* ctx, object_t e, bool& handled) override;
             LUNA_GUI_API virtual RV update(IContext* ctx) override;
             LUNA_GUI_API virtual RV draw(IContext* ctx, IDrawList* draw_list, IDrawList* overlay_draw_list) override;
-
-            LUNA_GUI_API virtual void add_child(IWidget* child) override;
-            LUNA_GUI_API virtual void get_children(Vector<IWidget*>& out_children) override;
-            LUNA_GUI_API virtual usize get_num_children() override;
-
         };
     }
 }

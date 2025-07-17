@@ -20,10 +20,11 @@ namespace Luna
     {
         LUNA_GUI_API RV Rectangle::draw(IContext* ctx, IDrawList* draw_list, IDrawList* overlay_draw_list)
         {
-            Float4U background_color = get_vattr(this, VATTR_BACKGROUND_COLOR, true, Float4U(0));
-            f32 rounding_radius = get_sattr(this, SATTR_ROUNDED_CORNER_RADIUS, true, 0.0f);
+            Float4U background_color = get_vattr(VATTR_BACKGROUND_COLOR, true, Float4U(0));
+            f32 rounding_radius = get_sattr(SATTR_ROUNDED_CORNER_RADIUS, true, 0.0f);
             if(background_color.w != 0)
             {
+                auto bounding_rect = get_bounding_rect();
                 if(rounding_radius > 0)
                 {
                     draw_rounded_rectangle_filled(ctx, draw_list, bounding_rect.left, bounding_rect.top, bounding_rect.right, bounding_rect.bottom, background_color, rounding_radius);

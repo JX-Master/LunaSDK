@@ -27,9 +27,10 @@ namespace Luna
             {
                 if(suggested_size_y)
                 {
+                    auto children = get_children();
                     // try to layout using the suggested size.
                     Array<f32> children_size(children.size() * 4);
-                    Array<IWidget*> children_widgets(children.size());
+                    Array<Widget*> children_widgets(children.size());
                     for(usize i = 0; i < children.size(); ++i)
                     {
                         children_widgets[i] = children[i];
@@ -45,7 +46,7 @@ namespace Luna
                 }
                 else
                 {
-                    for(auto& c : children)
+                    for(auto& c : get_children())
                     {
                         ret = max(c->get_desired_size_x(type, nullptr), ret);
                     }
@@ -60,7 +61,7 @@ namespace Luna
             if(found) return ret;
             if(type == DesiredSizeType::required || type == DesiredSizeType::preferred)
             {
-                for(auto& c : children)
+                for(auto& c : get_children())
                 {
                     ret += c->get_desired_size_y(type, suggested_size_x);
                 }
@@ -71,7 +72,7 @@ namespace Luna
         {
             lutry
             {
-                for(auto& c : children)
+                for(auto& c : get_children())
                 {
                     luexp(c->begin_update(ctx));
                 }
@@ -86,8 +87,9 @@ namespace Luna
                 luexp(Widget::layout(ctx, layout_rect));
                 f32 total_size = layout_rect.bottom - layout_rect.top;
                 f32 total_size_other = layout_rect.right - layout_rect.left;
+                auto children = get_children();
                 Array<f32> children_size(children.size() * 4);
-                Array<IWidget*> children_widgets(children.size());
+                Array<Widget*> children_widgets(children.size());
                 for(usize i = 0; i < children.size(); ++i)
                 {
                     children_widgets[i] = children[i];
@@ -112,6 +114,7 @@ namespace Luna
         {
             lutry
             {
+                auto children = get_children();
                 for(usize i = 0; i < children.size(); ++i)
                 {
                     luexp(children[i]->update(ctx));
@@ -124,25 +127,13 @@ namespace Luna
         {
             lutry
             {
-                for(auto& c : children)
+                for(auto& c : get_children())
                 {
                     luexp(c->draw(ctx, draw_list, overlay_draw_list));
                 }
             }
             lucatchret;
             return ok;
-        }
-        LUNA_GUI_API void VerticalLayout::add_child(IWidget* child)
-        {
-            children.push_back(child);
-        }
-        LUNA_GUI_API void VerticalLayout::get_children(Vector<IWidget*>& out_children)
-        {
-            out_children.insert(out_children.end(), children.begin(), children.end());
-        }
-        LUNA_GUI_API usize VerticalLayout::get_num_children()
-        {
-            return children.size();
         }
         LUNA_GUI_API VerticalLayout* begin_vlayout(IWidgetBuilder* builder)
         {

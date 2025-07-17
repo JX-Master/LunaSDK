@@ -55,81 +55,142 @@ namespace Luna
 
         struct IContext;
 
-        //! @interface IWidget
-        //! The base interface for all objects that can be attached to GUI as widgets.
-        struct IWidget : virtual Interface
+        //! The base class for all widgets.
+        struct LUNA_GUI_API Widget
         {
-            luiid("efe053d8-485d-48a8-80de-a6e841ecd8c5");
+            lustruct("GUI::Widget", "{b6eb9d49-be6b-4afb-9a53-09449217d00d}");
 
             //! Gets the widget ID of the widget.
             //! @details The widget ID is used to identify widgets between two updates, so that state objects can be attached to the widget correctly.
             //! This can be empty, which identifies one stateless widget that will be rebuilt in every update.
-            virtual widget_id_t get_id() = 0;
+            virtual widget_id_t get_id();
 
             //! Sets the widget ID of the widget.
-            virtual void set_id(widget_id_t id) = 0;
+            virtual void set_id(widget_id_t id);
 
             //! Gets the parent widget of this widget.
-            virtual IWidget* get_parent() = 0;
+            virtual Widget* get_parent();
 
-            //! Sets the parent widget of this widget.
-            //! @remark The implementation must NOT keep a strong reference to the parent widget in order to prevent reference cycling.
-            //! 
-            //! This function should only be called by parent widget when setting child widgets. The end user should not call this function directly.
-            virtual void set_parent(IWidget* widget) = 0;
+            //! Adds one child widget to this widget.
+            //! @param[in] child The child to add.
+            //! @param[in] pos The position of the new child to insert.
+            //! If this is 0 or greater, child will be inserted at `pos`.
+            //! If this is smaller than 0, child will be inserted at `get_num_children() + 1 - pos`.
+            //! @par Valid Usage.
+            //! * `child` must not be `nullptr`.
+            //! * `pos` must specify a valid position.
+            virtual void add_child(Widget* child, isize pos = -1);
 
-            virtual HashMap<u32, f32>& get_sattrs() = 0;
+            //! Removes the child widget at specified widget.
+            //! @param[in] index The index of the child to remove.
+            //! @return Returns the removed widget.
+            virtual Ref<Widget> remove_child(usize index);
 
-            virtual HashMap<u32, Float4U>& get_vattrs() = 0;
+            //! Gets the child at the specified index.
+            //! @param[in] index The index of the child to get.
+            //! @return Returns the child.
+            //! @par Valid Usage
+            //! * `index` must specify a valid position (between `[0, get_num_children())`).
+            virtual Widget* get_child(usize index);
 
-            virtual HashMap<u32, Name>& get_tattrs() = 0;
+            //! Sets the child at the specified index.
+            //! @param[in] index The index of the child to get.
+            //! @return Returns the old child before the new child is set.
+            //! @par Valid Usage
+            //! * `index` must specify a valid position (between `[0, get_num_children())`).
+            virtual Ref<Widget> set_child(usize index, Widget* new_widget);
 
-            virtual HashMap<u32, ObjRef>& get_oattrs() = 0;
+            //! Gets a list of child widgets of this widget.
+            //! @param[out] out_children The array to write child widgets to.
+            //! Child widgets will be pushed to the end of this array, existing elements in the 
+            //! array are not changed.
+            virtual Span<const Ref<Widget>> get_children();
 
-            virtual f32 get_desired_size_x(DesiredSizeType type, const f32* suggested_size_y) = 0;
+            //! Sets a list of child widgets to replace exisiting one.
+            //! @param[in] widgets An array of widgets to set.
+            //! @param[in] num_widgets The number of widgets in the array.
+            //! @par Valid Usage
+            //! * If `num_widgets` is not 0, `widgets` must not be `nullptr`, and every element of `widgets` must not be `nullptr`.
+            virtual void set_children(Widget** widgets, usize num_widgets);
 
-            virtual f32 get_desired_size_y(DesiredSizeType type, const f32* suggested_size_x) = 0;
+            virtual HashMap<u32, f32>& get_sattrs();
+
+            virtual HashMap<u32, Float4U>& get_vattrs();
+
+            virtual HashMap<u32, Name>& get_tattrs();
+
+            virtual HashMap<u32, ObjRef>& get_oattrs();
+
+            virtual f32 get_sattr(u32 key, bool recursive = false, f32 default_value = 0, bool* found = nullptr);
+
+            virtual Float4U get_vattr(u32 key, bool recursive = false, const Float4U& default_value = Float4U(0, 0, 0, 0), bool* found = nullptr);
+
+            virtual Name get_tattr(u32 key, bool recursive = false, const Name& default_value = Name(), bool* found = nullptr);
+
+            virtual object_t get_oattr(u32 key, bool recursive = false, object_t default_value = nullptr, bool* found = nullptr);
+            
+            virtual f32 get_desired_size_x(DesiredSizeType type, const f32* suggested_size_y);
+
+            virtual f32 get_desired_size_y(DesiredSizeType type, const f32* suggested_size_x);
 
             //! Called firstly when a new frame update is performed.
-            virtual RV begin_update(IContext* ctx) = 0;
+            virtual RV begin_update(IContext* ctx);
 
             //! Called to update the layout of the widget.
-            virtual RV layout(IContext* ctx, const OffsetRectF& layout_rect) = 0;
+            virtual RV layout(IContext* ctx, const OffsetRectF& layout_rect);
 
             //! Gets the bounding rectangle of this widget.
             //! @return Returns the bounding rectangle of this widget.
             //! @par Valid Usage
             //! * This function must be called after @ref layout, since the bounding rectangle is calculated based on the 
             //! layout rectangle.
-            virtual OffsetRectF get_bounding_rect() = 0;
+            virtual OffsetRectF get_bounding_rect();
 
             //! Tests whether the specified point is in the widget boundary.
             //! @param[in] x The X position of the point in screen coordinates.
             //! @param[in] y The Y position of the point in screen coordinates.
             //! @return Returns `true` if the specified point is in the widget boundary, returns `false` otherwise.
             //! @remark This function is used to determine whether on position-based event should be handled by this widget.
-            virtual bool contains_point(f32 x, f32 y) = 0;
+            virtual bool contains_point(f32 x, f32 y);
 
             //! Called when one event is sent to this widget.
             //! @param[in] ctx The GUI context.
             //! @param[in] e The event to be handled.
             //! @param[in] handled Set to `true` will prevent event from broadcasting to the following widgets.
             //! This is set to `false` when passed in.
-            virtual RV handle_event(IContext* ctx, object_t e, bool& handled) = 0;
+            virtual RV handle_event(IContext* ctx, object_t e, bool& handled);
 
             //! Called after the widget tree is built and before the widget is rendered. The widget should handle user input and generate render data 
             //! in this call.
-            virtual RV update(IContext* ctx) = 0;
+            virtual RV update(IContext* ctx);
 
             //! Called when the widget is rendered.
-            virtual RV draw(IContext* ctx, IDrawList* draw_list, IDrawList* overlay_draw_list) = 0;
+            virtual RV draw(IContext* ctx, IDrawList* draw_list, IDrawList* overlay_draw_list);
+
+        protected:
+            //! Sets the bounding rectangle of this widget.
+            //! @param[in] bounding_rect The bounding rectangle to set.
+            virtual void set_bounding_rect(const OffsetRectF& bounding_rect);
+
+        private:
+            // The id of the widget. Used to transfer states between widgets. Can be empty.
+            widget_id_t m_id;
+            // Parent widget.
+            Widget* m_parent = nullptr;
+            // Attribute values.
+            HashMap<u32, f32> m_sattrs;
+            HashMap<u32, Float4U> m_vattrs;
+            HashMap<u32, Name> m_tattrs;
+            HashMap<u32, ObjRef> m_oattrs;
+            //! The children of this widget.
+            Vector<Ref<Widget>> m_children;
+
+            // Bounding rect.
+            OffsetRectF m_bounding_rect = OffsetRectF(0, 0, 0, 0);
+            
         };
 
-        LUNA_GUI_API f32 get_sattr(IWidget* widget, u32 key, bool recursive = false, f32 default_value = 0, bool* found = nullptr);
-        LUNA_GUI_API Float4U get_vattr(IWidget* widget, u32 key, bool recursive = false, const Float4U& default_value = Float4U(0), bool* found = nullptr);
-        LUNA_GUI_API Name get_tattr(IWidget* widget, u32 key, bool recursive = false, const Name& default_value = Name(), bool* found = nullptr);
-        LUNA_GUI_API object_t get_oattr(IWidget* widget, u32 key, bool recursive = false, object_t default_value = nullptr, bool* found = nullptr);
-        LUNA_GUI_API f32 get_desired_size_x_attr(IWidget* widget, DesiredSizeType type, bool* found = nullptr);
-        LUNA_GUI_API f32 get_desired_size_y_attr(IWidget* widget, DesiredSizeType type, bool* found = nullptr);
+        LUNA_GUI_API f32 get_desired_size_x_attr(Widget* widget, DesiredSizeType type, bool* found = nullptr);
+        LUNA_GUI_API f32 get_desired_size_y_attr(Widget* widget, DesiredSizeType type, bool* found = nullptr);
     }
 }

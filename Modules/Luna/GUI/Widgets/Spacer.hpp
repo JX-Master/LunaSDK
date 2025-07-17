@@ -8,7 +8,7 @@
 * @date 2024/7/29
 */
 #pragma once
-#include "Widget.hpp"
+#include "../Widget.hpp"
 
 namespace Luna
 {

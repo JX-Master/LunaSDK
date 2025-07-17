@@ -45,6 +45,7 @@ namespace Luna
         }
         LUNA_GUI_API RV Slider::begin_update(IContext* ctx)
         {
+            auto id = get_id();
             Ref<SliderState> state = (SliderState*)(ctx->get_widget_state(id));
             if(!state)
             {

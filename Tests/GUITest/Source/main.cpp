@@ -202,7 +202,7 @@ void run()
                 Name title("Test Window 1");
                 set_tattr(builder, TATTR_TITLE, title);
                 builder->push_id(title);
-                vlayout->id = builder->get_id();
+                vlayout->set_id(builder->get_id());
                 {
                     text(builder, "Text 1");
                     begin_hlayout(builder);
@@ -223,7 +223,7 @@ void run()
                 title = "Test Window 2";
                 set_tattr(builder, TATTR_TITLE, title);
                 builder->push_id(title);
-                vlayout->id = builder->get_id();
+                vlayout->set_id(builder->get_id());
                 {
                     text(builder, "Text 3");
                     begin_hlayout(builder);

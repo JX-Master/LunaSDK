@@ -25,20 +25,20 @@ namespace Luna
         }
         LUNA_GUI_API void set_sattr(IWidgetBuilder* builder, u32 kind, f32 value)
         {
-            IWidget* widget = builder->get_current_widget();
+            Widget* widget = builder->get_current_widget();
             widget->get_sattrs().insert_or_assign(kind, value);
         }
         LUNA_GUI_API void set_vattr(IWidgetBuilder* builder, u32 kind, const Float4U& value)
         {
-            IWidget* widget = builder->get_current_widget();
+            Widget* widget = builder->get_current_widget();
             widget->get_vattrs().insert_or_assign(kind, value);
         }
         LUNA_GUI_API void set_tattr(IWidgetBuilder* builder, u32 kind, const Name& value)
         {
-            IWidget* widget = builder->get_current_widget();
+            Widget* widget = builder->get_current_widget();
             widget->get_tattrs().insert_or_assign(kind, value);
         }
-        LUNA_GUI_API f32 get_desired_size_x_attr(IWidget* widget, DesiredSizeType type, bool* found)
+        LUNA_GUI_API f32 get_desired_size_x_attr(Widget* widget, DesiredSizeType type, bool* found)
         {
             u32 attr = 0;
             switch(type)
@@ -47,9 +47,9 @@ namespace Luna
                 case DesiredSizeType::preferred: attr = SATTR_PREFERRED_SIZE_X; break;
                 case DesiredSizeType::filling: attr = SATTR_FILLING_SIZE_X; break;
             }
-            return get_sattr(widget, attr, false, 0.0f, found);
+            return widget->get_sattr(attr, false, 0.0f, found);
         }
-        LUNA_GUI_API f32 get_desired_size_y_attr(IWidget* widget, DesiredSizeType type, bool* found)
+        LUNA_GUI_API f32 get_desired_size_y_attr(Widget* widget, DesiredSizeType type, bool* found)
         {
             u32 attr = 0;
             switch(type)
@@ -58,7 +58,7 @@ namespace Luna
                 case DesiredSizeType::preferred: attr = SATTR_PREFERRED_SIZE_Y; break;
                 case DesiredSizeType::filling: attr = SATTR_FILLING_SIZE_Y; break;
             }
-            return get_sattr(widget, attr, false, 0.0f, found);
+            return widget->get_sattr(attr, false, 0.0f, found);
         }
     }
 }
