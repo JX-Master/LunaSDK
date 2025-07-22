@@ -144,16 +144,15 @@ namespace Luna
             lucatchret;
             return ok;
         }
-        LUNA_GUI_API HorizontalLayout* begin_hlayout(IWidgetBuilder* builder)
+        LUNA_GUI_API HorizontalLayout* begin_hlayout(IWidgetBuilder* builder, const Name& id)
         {
-            Ref<HorizontalLayout> widget = new_object<HorizontalLayout>();
-            builder->add_widget(widget);
-            builder->push_widget(widget);
+            HorizontalLayout* widget = builder->begin_widget<HorizontalLayout>();
+            widget->set_id(id);
             return widget;
         }
         LUNA_GUI_API void end_hlayout(IWidgetBuilder* builder)
         {
-            builder->pop_widget();
+            builder->end_widget();
         }
     }
 }

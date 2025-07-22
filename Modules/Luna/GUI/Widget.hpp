@@ -24,7 +24,7 @@ namespace Luna
 {
     namespace GUI
     {
-        using widget_id_t = u32;
+        using widget_hash_t = u32;
 
         enum class DesiredSizeType : u8
         {
@@ -61,12 +61,39 @@ namespace Luna
             lustruct("GUI::Widget", "{b6eb9d49-be6b-4afb-9a53-09449217d00d}");
 
             //! Gets the widget ID of the widget.
-            //! @details The widget ID is used to identify widgets between two updates, so that state objects can be attached to the widget correctly.
-            //! This can be empty, which identifies one stateless widget that will be rebuilt in every update.
-            virtual widget_id_t get_id();
+            //! The widget ID is used to compute 
+            virtual Name get_id();
 
             //! Sets the widget ID of the widget.
-            virtual void set_id(widget_id_t id);
+            virtual void set_id(const Name& id);
+
+            //! Checks whether the id of this widget is global. Default is `false`.
+            //! @details When calculating hash value from ID, the system uses not only the ID of the current widget, but also 
+            //! all IDs of parent widgets of the current widget, so that two widgets can have different hash values even with
+            //! the same ID. You can disable this behavior by setting the ID as global id, in such case, the system computes the 
+            //! hash value using only the ID of the current widget, not IDs of parent widgets.
+            //! 
+            //! One widget with global ID behaves like they are placed directly under the root widget of the context. 
+            //! Child widgets of one widget with global ID will be hashed using the global ID and the ID of child widgets, unless 
+            //! they also use global IDs.
+            virtual bool is_global_id();
+
+            //! Sets whether this widget uses global ID.
+            //! @param[in] global `true` if this widget uses global ID, `false` if not.
+            virtual void set_global_id(bool global);
+
+            //! Gets the widget hash value of the widget.
+            //! @details The widget hash value is used to identify widgets between two updates, so that state objects can be attached to the widget correctly.
+            //! If this is 0, then a new state object will be attached to this widget in every update, thus this widget cannot have state between two updates.
+            //! @return Returns the hash value of the widget.
+            virtual widget_hash_t get_hash();
+
+            //! Sets the widget hash value of the widget.
+            //! @param[in] hash The hash value to set.
+            //! @remark In most of the time, the hash value is computed by the system in @ref IContext::set_widget using IDs of the current widget and
+            //! parent widgets. But you can also set the hash value explicitly to force this widget to use the state object with the target hash value.
+            //! @ref IContext::set_widget Will not modify the hash value if it is not `0`.
+            virtual void set_hash(widget_hash_t hash);
 
             //! Gets the parent widget of this widget.
             virtual Widget* get_parent();
@@ -173,8 +200,8 @@ namespace Luna
             virtual void set_bounding_rect(const OffsetRectF& bounding_rect);
 
         private:
-            // The id of the widget. Used to transfer states between widgets. Can be empty.
-            widget_id_t m_id;
+            // The id of the widget.
+            Name m_id;
             // Parent widget.
             Widget* m_parent = nullptr;
             // Attribute values.
@@ -185,9 +212,14 @@ namespace Luna
             //! The children of this widget.
             Vector<Ref<Widget>> m_children;
 
+            // Hash value.
+            u32 m_hash = 0;
+
             // Bounding rect.
             OffsetRectF m_bounding_rect = OffsetRectF(0, 0, 0, 0);
-            
+
+            // Flags.
+            bool m_global_id = false;
         };
 
         LUNA_GUI_API f32 get_desired_size_x_attr(Widget* widget, DesiredSizeType type, bool* found = nullptr);

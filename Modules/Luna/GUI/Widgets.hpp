@@ -48,6 +48,6 @@ namespace Luna
 
         inline RV default_slider_on_value_changed_handler(f32) { return ok; }
 
-        LUNA_GUI_API Slider* slider(IWidgetBuilder* builder, widget_id_t id, f32* value, f32 min_value, f32 max_value, const Function<RV(f32)>& on_value_changed = default_slider_on_value_changed_handler);
+        LUNA_GUI_API Slider* slider(IWidgetBuilder* builder, widget_hash_t hash, f32* value, f32 min_value, f32 max_value, const Function<RV(f32)>& on_value_changed = default_slider_on_value_changed_handler);
     }
 }

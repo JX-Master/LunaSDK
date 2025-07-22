@@ -16,11 +16,6 @@ namespace Luna
 {
     namespace GUI
     {
-        LUNA_GUI_API Spacer* spacer(IWidgetBuilder* builder)
-        {
-            Ref<Spacer> widget = new_object<Spacer>();
-            builder->add_widget(widget);
-            return widget;
-        }
+        
     }
 }

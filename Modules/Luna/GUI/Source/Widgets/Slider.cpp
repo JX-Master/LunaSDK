@@ -45,13 +45,13 @@ namespace Luna
         }
         LUNA_GUI_API RV Slider::begin_update(IContext* ctx)
         {
-            auto id = get_id();
-            Ref<SliderState> state = (SliderState*)(ctx->get_widget_state(id));
+            auto hash = get_hash();
+            Ref<SliderState> state = (SliderState*)(ctx->get_widget_state(hash));
             if(!state)
             {
                 state = new_object<SliderState>();
             }
-            ctx->set_widget_state(id, state);
+            ctx->set_widget_state(hash, state);
             slider_state = state;
             if(state->sliding)
             {

@@ -72,13 +72,13 @@ namespace Luna
             }
             return ret;
         }
-        static void add_widget_to_node(Dockspace* dockspace, widget_id_t widget_id, WidgetDockNode* target_node, u32 target_side)
+        static void add_widget_to_node(Dockspace* dockspace, widget_hash_t widget_hash, WidgetDockNode* target_node, u32 target_side)
         {
             if(target_side == 4)
             {
                 // add to target node directly.
                 WidgetDockNode::WidgetItem item;
-                item.id = widget_id;
+                item.hash = widget_hash;
                 item.tab_rect_left = 0;
                 item.tab_rect_right = 0;
                 target_node->widgets.push_back(item);
@@ -134,17 +134,17 @@ namespace Luna
                 new_widget_node->parent = bnode;
                 // Add widget to new node.
                 WidgetDockNode::WidgetItem item;
-                item.id = widget_id;
+                item.hash = widget_hash;
                 item.tab_rect_left = 0;
                 item.tab_rect_right = 0;
                 new_widget_node->widgets.push_back(item);
             }
         }
-        static void remove_widget_from_node(Dockspace* dockspace, WidgetDockNode* source_node, widget_id_t widget_id)
+        static void remove_widget_from_node(Dockspace* dockspace, WidgetDockNode* source_node, widget_hash_t widget_hash)
         {
             for(auto iter = source_node->widgets.begin(); iter != source_node->widgets.end(); ++iter)
             {
-                if(iter->id == widget_id)
+                if(iter->hash == widget_hash)
                 {
                     source_node->widgets.erase(iter);
                     source_node->current_tab = min<u32>(source_node->current_tab, source_node->widgets.size() - 1);
@@ -160,12 +160,12 @@ namespace Luna
         static void refresh_widget_tree(Dockspace* dockspace)
         {
             // Collect existing widgets.
-            HashSet<widget_id_t> widgets;
+            HashSet<widget_hash_t> widgets;
             for(auto& w : dockspace->get_children())
             {
-                if(w->get_id() != 0)
+                if(w->get_hash() != 0)
                 {
-                    widgets.insert(w->get_id());
+                    widgets.insert(w->get_hash());
                 }
             }
             // Remove all widgets that does not exist anymore.
@@ -175,7 +175,7 @@ namespace Luna
                 nodes.push_back(dockspace->m_state->root.get());
             }
             Vector<WidgetDockNode*> widget_nodes;
-            HashSet<widget_id_t> existing_widgets;
+            HashSet<widget_hash_t> existing_widgets;
             while(!nodes.empty())
             {
                 DockNodeBase* node = nodes.front();
@@ -197,8 +197,8 @@ namespace Luna
                         auto iter = wnode->widgets.begin();
                         while(iter != wnode->widgets.end())
                         {
-                            existing_widgets.insert(iter->id);
-                            auto found = widgets.find(iter->id);
+                            existing_widgets.insert(iter->hash);
+                            auto found = widgets.find(iter->hash);
                             if(found == widgets.end())
                             {
                                 iter = wnode->widgets.erase(iter);
@@ -222,16 +222,16 @@ namespace Luna
                 }
             }
             // Add new widgets.
-            for(widget_id_t id : widgets)
+            for(widget_hash_t hash : widgets)
             {
-                if(!existing_widgets.contains(id))
+                if(!existing_widgets.contains(hash))
                 {
                     if(!dockspace->m_state->root)
                     {
                         // Set this node as root.
                         WidgetDockNode* wnode = memnew<WidgetDockNode>();
                         WidgetDockNode::WidgetItem item;
-                        item.id = id;
+                        item.hash = hash;
                         wnode->widgets.push_back(item);
                         dockspace->m_state->root.reset(wnode);
                     }
@@ -251,7 +251,7 @@ namespace Luna
                                 {
                                     WidgetDockNode* wnode = (WidgetDockNode*)node;
                                     WidgetDockNode::WidgetItem item;
-                                    item.id = id;
+                                    item.hash = hash;
                                     wnode->widgets.push_back(item);
                                     wnode->current_tab = (u32)wnode->widgets.size() - 1;
                                     inserted = true;
@@ -276,12 +276,12 @@ namespace Luna
         }
         LUNA_GUI_API RV Dockspace::begin_update(IContext* ctx)
         {
-            Ref<DockspaceState> s = cast_object<DockspaceState>(ctx->get_widget_state(get_id()));
+            Ref<DockspaceState> s = cast_object<DockspaceState>(ctx->get_widget_state(get_hash()));
             if(!s)
             {
                 s = new_object<DockspaceState>();
             }
-            ctx->set_widget_state(get_id(), s.get(), WidgetStateLifetime::persistent);
+            ctx->set_widget_state(get_hash(), s.get(), WidgetStateLifetime::persistent);
             m_state = s.get();
             if(m_state->clicking_node)
             {
@@ -300,11 +300,11 @@ namespace Luna
             return ok;
         }
         constexpr f32 DOCKNODE_SEP_LINE_WIDTH = 2.0f;
-        static Widget* find_widget_by_id(Dockspace* dockspace, widget_id_t widget_id)
+        static Widget* find_widget_by_hash(Dockspace* dockspace, widget_hash_t widget_hash)
         {
             for(auto& c : dockspace->get_children())
             {
-                if(c->get_id() == widget_id)
+                if(c->get_hash() == widget_hash)
                 {
                     return c.get();
                 }
@@ -333,7 +333,7 @@ namespace Luna
                     u32 font_index = dockspace->get_sattr(SATTR_FONT_INDEX, true, 0);
                     for(auto& w : cnode->widgets)
                     {
-                        Widget* widget = find_widget_by_id(dockspace, cnode->widgets[cnode->current_tab].id);
+                        Widget* widget = find_widget_by_hash(dockspace, cnode->widgets[cnode->current_tab].hash);
                         Name title = widget->get_tattr(TATTR_TITLE, false, "Untitled");
                         VG::TextArrangeSection section;
                         section.font_file = font;
@@ -345,7 +345,7 @@ namespace Luna
                         w.tab_rect_right = w.tab_rect_left + result.bounding_rect.width + 10.0f;
                         tab_rect_offset = w.tab_rect_right;
                     }
-                    Widget* widget = find_widget_by_id(dockspace, cnode->widgets[cnode->current_tab].id);
+                    Widget* widget = find_widget_by_hash(dockspace, cnode->widgets[cnode->current_tab].hash);
                     luexp(widget->layout(ctx, cnode->widget_rect));
                 }
                 break;
@@ -411,7 +411,7 @@ namespace Luna
                                 {
                                     // We need to relayout the widget when we change to a new tab, since this tab is hidden when `layout` is called,
                                     // thus not get updated.
-                                    Widget* widget = find_widget_by_id(dockspace, w.id);
+                                    Widget* widget = find_widget_by_hash(dockspace, w.hash);
                                     if(wnode->current_tab != i)
                                     {
                                         wnode->current_tab = (u32)i;
@@ -428,7 +428,7 @@ namespace Luna
                         // Broadcast event to child widgets if we are not currently dragging nodes.
                         if(in_bounds(Float2(e->x, e->y), Float2(wnode->widget_rect.left, wnode->widget_rect.top), Float2(wnode->widget_rect.right, wnode->widget_rect.bottom)))
                         {
-                            Widget* widget = find_widget_by_id(dockspace, wnode->widgets[wnode->current_tab].id);
+                            Widget* widget = find_widget_by_hash(dockspace, wnode->widgets[wnode->current_tab].hash);
                             luexp(dispatch_event_by_pos(ctx, widget, e, e->x, e->y, handled));
                         }
                     }
@@ -534,9 +534,9 @@ namespace Luna
                         if(m_state->dragging && m_state->dragging_dock_target)
                         {
                             // Drop the node to the target.
-                            auto widget_id = m_state->clicking_node->widgets[m_state->clicking_widget_index].id;
-                            add_widget_to_node(this, widget_id, m_state->dragging_dock_target, m_state->dragging_dock_side);
-                            remove_widget_from_node(this, m_state->clicking_node, widget_id);
+                            auto widget_hash = m_state->clicking_node->widgets[m_state->clicking_widget_index].hash;
+                            add_widget_to_node(this, widget_hash, m_state->dragging_dock_target, m_state->dragging_dock_side);
+                            remove_widget_from_node(this, m_state->clicking_node, widget_hash);
                         }
                         m_state->clicking_node = nullptr;
                         m_state->dragging = false;
@@ -575,7 +575,7 @@ namespace Luna
                         case DockNodeType::widget:
                         {
                             WidgetDockNode* wnode = (WidgetDockNode*)node;
-                            Widget* widget = find_widget_by_id(this, wnode->widgets[wnode->current_tab].id);
+                            Widget* widget = find_widget_by_hash(this, wnode->widgets[wnode->current_tab].hash);
                             luassert(widget);
                             luexp(widget->update(ctx));
                         }
@@ -608,7 +608,7 @@ namespace Luna
                         u32 font_index = dockspace->get_sattr(SATTR_FONT_INDEX, true, 0);
                         for(auto& w : wnode->widgets)
                         {
-                            Widget* widget = find_widget_by_id(dockspace, w.id);
+                            Widget* widget = find_widget_by_hash(dockspace, w.hash);
                             Name title = widget->get_tattr(TATTR_TITLE, false, "Untitled");
                             draw_text(ctx, draw_list, title.c_str(), title.size(), Float4U(0, 0, 0, 1), title_size, 
                                 wnode->title_rect.left + w.tab_rect_left + 5.0f, node->layout_rect.top + 5.0f, 
@@ -616,7 +616,7 @@ namespace Luna
                                 font, font_index);
                         }
                         // Draw content.
-                        Widget* widget = find_widget_by_id(dockspace, current_node.id);
+                        Widget* widget = find_widget_by_hash(dockspace, current_node.hash);
                         luexp(widget->draw(ctx, draw_list, overlay_draw_list));
                     }
                     break;
@@ -693,7 +693,7 @@ namespace Luna
                             m_state->clicking_node_rect.bottom - m_state->clicking_pos.y + m_state->dragging_mouse_pos.y
                         );
                         draw_rectangle_filled(ctx, overlay_draw_list, rect.left, rect.top, rect.right, rect.bottom, Float4(1.0f, 1.0f, 1.0f, 1.0f));
-                        Widget* widget = find_widget_by_id(this, m_state->clicking_node->widgets[m_state->clicking_widget_index].id);
+                        Widget* widget = find_widget_by_hash(this, m_state->clicking_node->widgets[m_state->clicking_widget_index].hash);
                         Name title = widget->get_tattr(TATTR_TITLE, false, "Untitled");
                         f32 title_size = get_sattr(SATTR_TITLE_TEXT_SIZE, true, DEFAULT_TEXT_SIZE);
                         Font::IFontFile* font = query_interface<Font::IFontFile>(get_oattr(OATTR_FONT, true, Font::get_default_font()));
@@ -707,16 +707,15 @@ namespace Luna
             lucatchret;
             return ok;
         }
-        LUNA_GUI_API Dockspace* begin_dockspace(IWidgetBuilder* builder)
+        LUNA_GUI_API Dockspace* begin_dockspace(IWidgetBuilder* builder, const Name& id)
         {
-            Ref<Dockspace> widget = new_object<Dockspace>();
-            builder->add_widget(widget);
-            builder->push_widget(widget);
+            Dockspace* widget = builder->begin_widget<Dockspace>();
+            widget->set_id(id);
             return widget;
         }
         LUNA_GUI_API void end_dockspace(IWidgetBuilder* builder)
         {
-            builder->pop_widget();
+            builder->end_widget();
         }
     }
 }

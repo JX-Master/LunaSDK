@@ -20,18 +20,49 @@ namespace Luna
 {
     namespace GUI
     {
+        static void compute_widget_hash(Widget* widget, widget_hash_t base, u32 child_index)
+        {
+            if(widget->get_hash() == 0)
+            {
+                if(widget->is_global_id())
+                {
+                    base = 0;
+                }
+                Name id = widget->get_id();
+                widget_hash_t h;
+                if(!id)
+                {
+                    String hash_str;
+                    strprintf(hash_str, "%s%u", get_type_name(get_object_type(widget)).c_str(), child_index);
+                    h = memhash<widget_hash_t>(hash_str.c_str(), hash_str.size(), base);
+                }
+                else
+                {
+                    h = memhash<widget_hash_t>(id.c_str(), id.size(), base);
+                }
+                widget->set_hash(h);
+            }
+            auto h = widget->get_hash();
+            auto children = widget->get_children();
+            for(usize i = 0; i < children.size(); ++i)
+            {
+                compute_widget_hash(children[i].get(), h, (u32)i);
+            }
+        }
         void Context::set_widget(Widget* root_widget)
         {
             m_root_widget = root_widget;
+            // Update widget hash value.
+            compute_widget_hash(m_root_widget, 0, 0);
         }
-        object_t Context::get_widget_state(widget_id_t id)
+        object_t Context::get_widget_state(widget_hash_t hash)
         {
-            auto iter = m_widget_state_reg.find(id);
+            auto iter = m_widget_state_reg.find(hash);
             return iter == m_widget_state_reg.end() ? nullptr : iter->second.state.get();
         }
-        void Context::set_widget_state(widget_id_t id, object_t state, WidgetStateLifetime lifetime)
+        void Context::set_widget_state(widget_hash_t hash, object_t state, WidgetStateLifetime lifetime)
         {
-            m_widget_state_reg.insert_or_assign(id, WidgetStateEntry(ObjRef(state), lifetime));
+            m_widget_state_reg.insert_or_assign(hash, WidgetStateEntry(ObjRef(state), lifetime));
         }
         RV Context::dispatch_event(object_t e)
         {

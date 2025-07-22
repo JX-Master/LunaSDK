@@ -76,16 +76,13 @@ namespace Luna
             lucatchret;
             return ok;
         }
-        LUNA_GUI_API Canvas* begin_canvas(IWidgetBuilder* builder)
+        LUNA_GUI_API Canvas* begin_canvas(IWidgetBuilder* builder, const Name& id)
         {
-            Ref<Canvas> widget = new_object<Canvas>();
-            builder->add_widget(widget);
-            builder->push_widget(widget);
-            return widget;
+            return builder->begin_widget<Canvas>();
         }
         LUNA_GUI_API void end_canvas(IWidgetBuilder* builder)
         {
-            builder->pop_widget();
+            builder->end_widget();
         }
     }
 }

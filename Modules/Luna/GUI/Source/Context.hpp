@@ -41,7 +41,7 @@ namespace Luna
                     state(s),
                     lifetime(l) {}
             };
-            HashMap<widget_id_t, WidgetStateEntry> m_widget_state_reg;
+            HashMap<widget_hash_t, WidgetStateEntry> m_widget_state_reg;
 
             // Event queue.
             RingDeque<ObjRef> m_event_queue;
@@ -62,8 +62,8 @@ namespace Luna
                 return m_root_widget;
             }
             virtual void set_widget(Widget* root_widget) override;
-            virtual object_t get_widget_state(widget_id_t id) override;
-            virtual void set_widget_state(widget_id_t id, object_t state, WidgetStateLifetime lifetime) override;
+            virtual object_t get_widget_state(widget_hash_t hash) override;
+            virtual void set_widget_state(widget_hash_t hash, object_t state, WidgetStateLifetime lifetime) override;
             virtual void push_event(object_t event) override
             {
                 m_event_queue.push_back(ObjRef(event));

@@ -19,22 +19,18 @@ namespace Luna
 {
     namespace GUI
     {
+        struct ITheme;
+
         struct IWidgetBuilder : virtual Interface
         {
             luiid("cee0afe1-c196-445f-840f-10de72f8af18");
 
             virtual void reset() = 0;
 
-            // Widget ID APIs.
+            // Theme APIs.
 
-            virtual void push_id(const Name& name_id) = 0;
-            virtual void push_id(const c8* str_id, usize str_len) = 0;
-            virtual void pop_id() = 0;
-
-            //! Generates widget ID based on the current widget ID stack.
-            virtual widget_id_t get_id() = 0;
-            virtual widget_id_t get_id(const Name& name_id) = 0;
-            virtual widget_id_t get_id(const c8* str_id, usize str_len) = 0;
+            virtual void push_theme(ITheme* theme) = 0;
+            virtual void pop_theme() = 0;
 
             virtual Widget* get_root_widget() = 0;
 
@@ -42,13 +38,23 @@ namespace Luna
 
             virtual void set_current_widget(Widget* widget) = 0;
 
-            virtual void add_widget(Widget* widget) = 0;
+            virtual Widget* new_widget(const Guid& widget_guid) = 0;
 
-            //! Pushes one widget to the widget stack so that new widgets will be created as child widgets of this widget.
-            virtual void push_widget(Widget* widget) = 0;
+            template <typename _Ty>
+            _Ty* new_widget()
+            {
+                return cast_object<_Ty>(new_widget(_Ty::__guid));
+            }
 
-            //! Pops one widget from the widget stack.
-            virtual void pop_widget() = 0;
+            virtual Widget* begin_widget(const Guid& widget_guid) = 0;
+
+            template <typename _Ty>
+            _Ty* begin_widget()
+            {
+                return cast_object<_Ty>(begin_widget(_Ty::__guid));
+            }
+
+            virtual void end_widget() = 0;
         };
 
         LUNA_GUI_API Ref<IWidgetBuilder> new_widget_builder();

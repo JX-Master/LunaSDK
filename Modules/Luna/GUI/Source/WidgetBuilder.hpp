@@ -10,14 +10,16 @@
 #pragma once
 #include "../WidgetBuilder.hpp"
 #include "../Widget.hpp"
+#include "../Theme.hpp"
 
 namespace Luna
 {
     namespace GUI
     {
+        // This is a special widget that only used as the root widget of one widget tree.
         struct RootWidget : Widget
         {
-            lustruct("RHI::RootWidget", "RHI::108d0749-1ad1-4698-9c7a-645e3712f12e");
+            lustruct("RHI::RootWidget", "108d0749-1ad1-4698-9c7a-645e3712f12e");
             
             virtual RV begin_update(IContext* ctx) override;
             virtual RV layout(IContext* ctx, const OffsetRectF& layout_rect) override;
@@ -29,52 +31,33 @@ namespace Luna
             lustruct("RHI::WidgetBuilder", "f440e804-d7da-450e-9ebe-ec61a3de1b79");
             luiimpl();
 
-            Vector<widget_id_t> m_id_stack;
+            Vector<Ref<ITheme>> m_themes;
 
             // Widget build context.
             Ref<Widget> m_root_widget;
             Ref<Widget> m_current_widget;
             Vector<Ref<Widget>> m_widget_stack;
 
+            Widget* new_widget_internal(const Guid& guid, bool push);
+
             virtual void reset() override
             {
-                m_id_stack.clear();
                 m_widget_stack.clear();
                 m_root_widget = new_object<RootWidget>();
-                add_widget(m_root_widget);
-                push_widget(m_root_widget);
+                m_current_widget = m_root_widget;
+                m_widget_stack.push_back(m_root_widget);
             }
             WidgetBuilder()
             {
                 reset();
             }
-            virtual void push_id(const Name& name_id) override
+            virtual void push_theme(ITheme* theme) override
             {
-                m_id_stack.push_back(get_id(name_id));
+                m_themes.push_back(theme);
             }
-            virtual void push_id(const c8* str_id, usize str_len) override
+            virtual void pop_theme() override
             {
-                m_id_stack.push_back(get_id(str_id, str_len));
-            }
-            virtual void pop_id() override
-            {
-                m_id_stack.pop_back();
-            }
-            //! Generates widget ID based on the current widget ID stack.
-            virtual widget_id_t get_id() override
-            {
-                widget_id_t id = m_id_stack.empty() ? 0 : m_id_stack.back();
-                return id;
-            }
-            virtual widget_id_t get_id(const Name& name_id) override
-            {
-                name_id_t id = name_id.id();
-                return memhash32(&id, sizeof(name_id_t), get_id());
-            }
-            virtual widget_id_t get_id(const c8* str_id, usize str_len) override
-            {
-                if(str_len == USIZE_MAX) str_len = strlen(str_id);
-                return memhash32(str_id, str_len, get_id());
+                m_themes.pop_back();
             }
             virtual Widget* get_root_widget() override
             {
@@ -88,15 +71,9 @@ namespace Luna
             {
                 m_current_widget = widget;
             }
-            virtual void add_widget(Widget* widget) override;
-            virtual void push_widget(Widget* widget) override
-            {
-                m_widget_stack.push_back(widget);
-            }
-            virtual void pop_widget() override
-            {
-                m_widget_stack.pop_back();
-            }
+            virtual Widget* new_widget(const Guid& widget_guid) override;
+            virtual Widget* begin_widget(const Guid& widget_guid) override;
+            virtual void end_widget() override;
         };
     }
 }

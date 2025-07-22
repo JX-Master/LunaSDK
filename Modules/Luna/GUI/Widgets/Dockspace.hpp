@@ -41,7 +41,7 @@ namespace Luna
         {
             struct WidgetItem
             {
-                widget_id_t id;
+                widget_hash_t hash;
                 f32 tab_rect_left;
                 f32 tab_rect_right;
             };

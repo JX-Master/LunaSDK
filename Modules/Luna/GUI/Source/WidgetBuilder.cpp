@@ -10,6 +10,7 @@
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_GUI_API LUNA_EXPORT
 #include "WidgetBuilder.hpp"
+#include "../Theme.hpp"
 
 namespace Luna
 {
@@ -64,18 +65,44 @@ namespace Luna
             lucatchret;
             return ok;
         }
-        void WidgetBuilder::add_widget(Widget *widget)
+        Widget* WidgetBuilder::new_widget_internal(const Guid& guid, bool push)
         {
-            m_current_widget = widget;
-            m_current_widget->set_id(get_id());
+            Ref<Widget> ret;
+            for(auto iter = m_themes.rbegin(); iter != m_themes.rend(); ++iter)
+            {
+                ret = (*iter)->new_widget(guid);
+                if(ret) break;
+            }
+            lucheck_msg(ret, "Widget GUID is not supported by any theme in the current theme stack.");
+            m_current_widget = ret;
             if(!m_widget_stack.empty())
             {
                 m_widget_stack.back()->add_child(m_current_widget);
             }
+            if(push)
+            {
+                m_widget_stack.push_back(m_current_widget);
+            }
+            return ret.get();
+        }
+        Widget* WidgetBuilder::new_widget(const Guid& widget_guid)
+        {
+            return new_widget_internal(widget_guid, false);
+        }
+        Widget* WidgetBuilder::begin_widget(const Guid& widget_guid)
+        {
+            return new_widget_internal(widget_guid, true);
+        }
+        void WidgetBuilder::end_widget()
+        {
+            m_widget_stack.pop_back();
         }
         LUNA_GUI_API Ref<IWidgetBuilder> new_widget_builder()
         {
-            return new_object<WidgetBuilder>();
+            Ref<WidgetBuilder> builder = new_object<WidgetBuilder>();
+            Ref<ITheme> theme = new_default_theme();
+            builder->push_theme(theme);
+            return builder;
         }
     }
 }

@@ -197,12 +197,10 @@ void run()
         {
             begin_dockspace(builder);
             {
-                auto vlayout = begin_vlayout(builder);
-                set_sattr(builder, SATTR_TEXT_SIZE, 64.0f);
                 Name title("Test Window 1");
+                auto vlayout = begin_vlayout(builder, title);
+                set_sattr(builder, SATTR_TEXT_SIZE, 64.0f);                
                 set_tattr(builder, TATTR_TITLE, title);
-                builder->push_id(title);
-                vlayout->set_id(builder->get_id());
                 {
                     text(builder, "Text 1");
                     begin_hlayout(builder);
@@ -215,15 +213,12 @@ void run()
                     text(builder, "Text 2");
                     button(builder, "Long Text Button 4", [](){ log_info("GUITest", "Button 4 pressed."); return ok; });
                 }
-                builder->pop_id();
                 end_vlayout(builder);
 
-                vlayout = begin_vlayout(builder);
-                set_sattr(builder, SATTR_TEXT_SIZE, 64.0f);
                 title = "Test Window 2";
+                vlayout = begin_vlayout(builder, title);
+                set_sattr(builder, SATTR_TEXT_SIZE, 64.0f);
                 set_tattr(builder, TATTR_TITLE, title);
-                builder->push_id(title);
-                vlayout->set_id(builder->get_id());
                 {
                     text(builder, "Text 3");
                     begin_hlayout(builder);
@@ -234,7 +229,6 @@ void run()
                     }
                     end_hlayout(builder);
                 }
-                builder->pop_id();
                 end_vlayout(builder);
             }
             end_dockspace(builder);

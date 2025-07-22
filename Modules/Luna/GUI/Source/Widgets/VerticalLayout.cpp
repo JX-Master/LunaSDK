@@ -135,16 +135,15 @@ namespace Luna
             lucatchret;
             return ok;
         }
-        LUNA_GUI_API VerticalLayout* begin_vlayout(IWidgetBuilder* builder)
+        LUNA_GUI_API VerticalLayout* begin_vlayout(IWidgetBuilder* builder, const Name& id)
         {
-            Ref<VerticalLayout> widget = new_object<VerticalLayout>();
-            builder->add_widget(widget);
-            builder->push_widget(widget);
+            VerticalLayout* widget = builder->begin_widget<VerticalLayout>();
+            widget->set_id(id);
             return widget;
         }
         LUNA_GUI_API void end_vlayout(IWidgetBuilder* builder)
         {
-            builder->pop_widget();
+            builder->end_widget();
         }
     }
 }

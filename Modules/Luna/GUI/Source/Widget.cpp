@@ -16,14 +16,34 @@ namespace Luna
 {
     namespace GUI
     {
-        widget_id_t Widget::get_id()
+        Name Widget::get_id()
         {
             return m_id;
         }
 
-        void Widget::set_id(widget_id_t id)
+        void Widget::set_id(const Name& id)
         {
             m_id = id;
+        }
+
+        bool Widget::is_global_id()
+        {
+            return m_global_id;
+        }
+
+        void Widget::set_global_id(bool global)
+        {
+            m_global_id = global;
+        }
+
+        widget_hash_t Widget::get_hash()
+        {
+            return m_hash;
+        }
+
+        void Widget::set_hash(widget_hash_t hash)
+        {
+            m_hash = hash;
         }
 
         Widget* Widget::get_parent()

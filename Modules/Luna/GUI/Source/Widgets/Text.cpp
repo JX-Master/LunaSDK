@@ -64,8 +64,7 @@ namespace Luna
         }
         LUNA_GUI_API Text* text(IWidgetBuilder* builder, const Name& text)
         {
-            Ref<Text> widget = new_object<Text>();
-            builder->add_widget(widget);
+            Ref<Text> widget = builder->new_widget<Text>();
             widget->text = text;
             return widget;
         }

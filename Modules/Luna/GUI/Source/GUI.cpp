@@ -25,6 +25,7 @@
 #include "DrawList.hpp"
 #include "WidgetBuilder.hpp"
 #include "../Event.hpp"
+#include "Theme.hpp"
 
 namespace Luna
 {
@@ -42,6 +43,8 @@ namespace Luna
                 register_boxed_type<Context>();
                 impl_interface_for_type<Context, IContext>();
                 register_boxed_type<Widget>();
+                register_boxed_type<Theme>();
+                impl_interface_for_type<Theme, ITheme>();
                 register_struct_type<Rectangle>({}, typeof<Widget>());
                 register_struct_type<Text>({}, typeof<Widget>());
                 register_struct_type<Canvas>({}, typeof<Widget>());

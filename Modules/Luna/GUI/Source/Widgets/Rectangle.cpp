@@ -38,9 +38,7 @@ namespace Luna
         }
         LUNA_GUI_API Rectangle* rectangle(IWidgetBuilder* builder)
         {
-            Ref<Rectangle> widget = new_object<Rectangle>();
-            builder->add_widget(widget);
-            return widget;
+            return builder->new_widget<Rectangle>();
         }
     }
 }

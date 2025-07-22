@@ -55,12 +55,12 @@ namespace Luna
         }
         LUNA_GUI_API RV Button::begin_update(IContext* ctx)
         {
-            Ref<ButtonState> state = (ButtonState*)(ctx->get_widget_state(get_id()));
+            Ref<ButtonState> state = (ButtonState*)(ctx->get_widget_state(get_hash()));
             if(!state)
             {
                 state = new_object<ButtonState>();
             }
-            ctx->set_widget_state(get_id(), state);
+            ctx->set_widget_state(get_hash(), state);
             m_button_state = state;
             if(state->capture_mouse_event)
             {
@@ -147,7 +147,7 @@ namespace Luna
         {
             lutry
             {
-                luassert(button_state);
+                luassert(m_button_state);
                 if(m_button_state->triggered)
                 {
                     luexp(m_on_click());
@@ -158,7 +158,7 @@ namespace Luna
         }
         LUNA_GUI_API RV Button::draw(IContext* ctx, IDrawList* draw_list, IDrawList* overlay_draw_list)
         {
-            luassert(button_state);
+            luassert(m_button_state);
             Float4U background_color, border_color;
             switch(m_button_state->state_type)
             {
@@ -216,18 +216,14 @@ namespace Luna
         }
         LUNA_GUI_API Button* begin_button(IWidgetBuilder* builder, const Name& id, const Function<RV(void)>& on_click)
         {
-            Ref<Button> widget = new_object<Button>();
-            builder->push_id(id);
-            widget->set_id(builder->get_id());
+            Ref<Button> widget = builder->begin_widget<Button>();
+            widget->set_id(id);
             widget->m_on_click = on_click;
-            builder->add_widget(widget);
-            builder->push_widget(widget);
             return widget;
         }
         LUNA_GUI_API void end_button(IWidgetBuilder* builder)
         {
-            builder->pop_widget();
-            builder->pop_id();
+            builder->end_widget();
         }
         LUNA_GUI_API Button* button(IWidgetBuilder* builder, const Name& t, const Function<RV(void)>& on_click, const Name& id)
         {

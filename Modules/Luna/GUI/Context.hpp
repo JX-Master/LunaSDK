@@ -61,10 +61,10 @@ namespace Luna
             virtual void set_widget(Widget* root_widget) = 0;
 
             //! Gets widget implicit state.
-            virtual object_t get_widget_state(widget_id_t id) = 0;
+            virtual object_t get_widget_state(widget_hash_t hash) = 0;
 
             //! Sets widget implicit state.
-            virtual void set_widget_state(widget_id_t id, object_t state, WidgetStateLifetime lifetime = WidgetStateLifetime::next_frame) = 0;
+            virtual void set_widget_state(widget_hash_t hash, object_t state, WidgetStateLifetime lifetime = WidgetStateLifetime::next_frame) = 0;
 
             //! Pushes event to the event FIFO queue. The event will be processed in the next call to @ref update.
             virtual void push_event(object_t event) = 0;
