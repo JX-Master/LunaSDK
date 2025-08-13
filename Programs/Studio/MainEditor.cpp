@@ -42,6 +42,50 @@ namespace Luna
 {
     MainEditor* g_main_editor;
 
+    void MainEditor::draw_main_menu_bar()
+    {
+        // Main menu bar.
+        if(ImGui::BeginMainMenuBar())
+        {
+            if(ImGui::BeginMenu("File"))
+            {
+                if(ImGui::MenuItem("Save All"))
+                {
+                    auto _ = save_all();
+                }
+                ImGui::EndMenu();
+            }
+            if(ImGui::BeginMenu("Edit"))
+            {
+                if(ImGui::MenuItem("Undo", "Ctrl+Z", nullptr, can_undo()))
+                {
+                    undo();
+                }
+                if(ImGui::MenuItem("Redo", "Ctrl+Shift+Z", nullptr, can_redo()))
+                {
+                    redo();
+                }
+                ImGui::EndMenu();
+            }
+            if(ImGui::BeginMenu("View"))
+            {
+                if(ImGui::BeginMenu("Asset Browser"))
+                {
+                    for (usize i = 0; i < 4; ++i)
+                    {
+                        c8 buf[32];
+                        snprintf(buf, 32, "Asset Browser %u", (u32)i);
+                        ImGui::Checkbox(buf, &m_asset_browsers_enabled[i]);
+                    }
+                    ImGui::EndMenu();
+                }
+                ImGui::Checkbox("Memory Profiler", &m_memory_profiler_window_enabled);
+                ImGui::EndMenu();
+            }
+            ImGui::EndMainMenuBar();
+        }
+    }
+
     RV MainEditor::init(const Path& project_path)
     {
         lutry
@@ -64,10 +108,35 @@ namespace Luna
             luexp(Asset::load_assets_meta("/"));
 
             // Create window and render objects.
-            snprintf(title, 256, "%s - Luna Studio", name.c_str());
+            snprintf(title, 256, "%s - %s", name.c_str(), APP_NAME);
             luset(m_window, Window::new_window(title, Window::WindowDisplaySettings::as_windowed(), Window::WindowCreationFlag::resizable));
 
-            m_window->get_events().close.add_handler([](Window::IWindow* window) {window->close(); });
+            m_window->get_events().close.add_handler([](Window::IWindow* window) 
+            {
+                bool should_close = true;
+                if(g_main_editor->has_any_unsaved_changes())
+                {
+                    auto r = Window::message_box("Save changes before closing the current project?", APP_NAME, Window::MessageBoxType::yes_no_cancel, Window::MessageBoxIcon::question);
+                    luassert_always(succeeded(r));
+                    if(r.get() == Window::MessageBoxButton::cancel)
+                    {
+                        should_close = false;
+                    }
+                    else if(r.get() == Window::MessageBoxButton::yes)
+                    {
+                        // Save document.
+                        RV ret = g_main_editor->save_all();
+                        if(failed(ret))
+                        {
+                            should_close = false;
+                        }
+                    }
+                }
+                if(should_close)
+                {
+                    window->close();
+                }
+            });
 
             luset(m_swap_chain, g_env->device->new_swap_chain(g_env->graphics_queue, m_window, RHI::SwapChainDesc({0, 0, 2, RHI::Format::bgra8_unorm, true})));
             luset(m_cmdbuf, g_env->device->new_command_buffer(g_env->graphics_queue));
@@ -186,22 +255,7 @@ namespace Luna
             ImGui::End();
             ImGui::PopStyleVar(3);
 
-            // Draw Asset Browser.
-            if (ImGui::BeginMainMenuBar())
-            {
-                if (ImGui::BeginMenu("View"))
-                {
-                    for (usize i = 0; i < 4; ++i)
-                    {
-                        c8 buf[32];
-                        snprintf(buf, 32, "Asset Browser %u", (u32)i);
-                        ImGui::Checkbox(buf, &m_asset_browsers_enabled[i]);
-                    }
-                    ImGui::Checkbox("Memory Profiler", &m_memory_profiler_window_enabled);
-                    ImGui::EndMenu();
-                }
-                ImGui::EndMainMenuBar();
-            }
+            draw_main_menu_bar();
 
             for (usize i = 0; i < 4; ++i)
             {
@@ -253,6 +307,63 @@ namespace Luna
     void MainEditor::close()
     {
         unregister_profiler_callback(m_memory_profiler_callback_handle);
+    }
+    RV MainEditor::save_all()
+    {
+        RV ret = ok;
+        for(auto& asset : m_assets_version)
+        {
+            if(asset.second.edit_version != asset.second.save_version)
+            {
+                auto r = save_asset(asset.first);
+                if(failed(r))
+                {
+                    ret = r;
+                    String errmsg;
+                    strprintf(errmsg, "Failed to save asset %s: %s", Asset::get_asset_path(asset.first).encode().c_str(), explain(r.errcode()));
+                    auto _ = Window::message_box(errmsg.c_str(), APP_NAME, Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
+                }
+            }
+        }
+        return ret;
+    }
+    void MainEditor::execute(Operation* op)
+    {
+        luassert(op);
+        op->execute();
+        while(m_operations_stack_top < m_operations_stack.size())
+        {
+            m_operations_stack.pop_back();
+        }
+        // Keep memory usage reasonable for undo history.
+        while(m_operations_stack.size() > 256)
+        {
+            m_operations_stack.pop_front();
+        }
+        m_operations_stack.push_back(op);
+        m_operations_stack_top = m_operations_stack.size();
+    }
+    void MainEditor::undo()
+    {
+        luassert(can_undo());
+        m_operations_stack[m_operations_stack_top - 1]->revert();
+        m_operations_stack_top -= 1;
+    }
+    void MainEditor::redo()
+    {
+        luassert(can_redo());
+        m_operations_stack[m_operations_stack_top]->execute();
+        m_operations_stack_top += 1;
+    }
+    RV MainEditor::save_asset(Asset::asset_t asset)
+    {
+        lutry
+        {
+            luexp(Asset::save_asset(asset));
+            mark_asset_as_saved(asset);
+        }
+        lucatchret;
+        return ok;
     }
 
     void register_components()
@@ -337,6 +448,9 @@ namespace Luna
     {
         register_boxed_type<MainEditor>();
         register_boxed_type<AssetBrowser>();
+        register_struct_type<Operation>({});
+        register_struct_type<AssetEditingOp>({}, typeof<Operation>());
+        register_struct_type<DiffAssetEditingOp>({}, typeof<AssetEditingOp>());
 
         Ref<MainEditor> main_editor = new_object<MainEditor>();
         g_main_editor = main_editor;
