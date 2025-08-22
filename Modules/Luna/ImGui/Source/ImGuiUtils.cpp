@@ -40,6 +40,7 @@ namespace Luna
 
         Ref<Window::IWindow> g_active_window;
         u64 g_time;
+        bool g_window_text_input_enabled = false;
 
         Ref<RHI::IBuffer> g_vb;
         Ref<RHI::IBuffer> g_ib;
@@ -604,8 +605,13 @@ namespace Luna
                 events.lose_focus.remove_handler(g_handle_lose_focus);
                 events.input_character.remove_handler(g_handle_input_character);
                 events.dpi_changed.remove_handler(g_handle_dpi_changed);
+                if(g_window_text_input_enabled)
+                {
+                    g_active_window->stop_text_input();
+                }
             }
             g_active_window = window;
+            g_window_text_input_enabled = false;
             if (g_active_window)
             {
                 // Register new callbacks.
@@ -665,6 +671,18 @@ namespace Luna
             
             // Update OS mouse position
             update_hid_mouse();
+
+            if(io.WantTextInput && !g_window_text_input_enabled)
+            {
+                g_active_window->start_text_input();
+                g_window_text_input_enabled = true;
+            }
+
+            if(!io.WantTextInput && g_window_text_input_enabled)
+            {
+                g_active_window->stop_text_input();
+                g_window_text_input_enabled = false;
+            }
 
             if (!g_font_tex)
             {
