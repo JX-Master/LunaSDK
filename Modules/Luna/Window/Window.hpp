@@ -362,6 +362,17 @@ namespace Luna
             //! events.
             //! @return Returns one reference to the window events set.
             virtual WindowEvents& get_events() = 0;
+
+            //! Starts receiving Unicode text input for this window.
+            //! @details `input_character` window event will be triggered only after this is called and before
+            //! @ref stop_text_input is called.
+            //! 
+            //! On some platforms this call will bring up IME and on-screen virtual keyboard to let the user
+            //! input texts.
+            virtual RV start_text_input() = 0;
+
+            //! Stops receiving Unicode text input for this window.
+            virtual RV stop_text_input() = 0;
         };
 
         //! Processes events for all windows created from the current thread.

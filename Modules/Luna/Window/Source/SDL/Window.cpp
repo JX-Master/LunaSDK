@@ -246,6 +246,16 @@ namespace Luna
             auto pos = get_position();
             return Int2U(point.x + pos.x, point.y + pos.y);
         }
+        RV Window::start_text_input()
+        {
+            bool r = SDL_StartTextInput(m_window);
+            return encode_sdl_result(r);
+        }
+        RV Window::stop_text_input()
+        {
+            bool r = SDL_StopTextInput(m_window);
+            return encode_sdl_result(r);
+        }
 #ifdef LUNA_PLATFORM_WINDOWS
         HWND Window::get_hwnd()
         {
