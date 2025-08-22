@@ -84,6 +84,8 @@ namespace Luna
             {
                 close();
             }
+            virtual RV start_text_input() override;
+            virtual RV stop_text_input() override;
         };
     }
 }
