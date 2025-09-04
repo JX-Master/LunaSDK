@@ -16,13 +16,7 @@ namespace Luna
 {
     namespace RHI
     {
-        struct CopyBufferPlacementInfo
-        {
-            u64 offset;
-            u64 row_pitch;
-            u64 slice_pitch;
-            Format pixel_format;
-        };
+        
         LUNA_RHI_API RV copy_resource_data(ICommandBuffer* command_buffer, Span<const CopyResourceData> copies)
         {
             auto dev = command_buffer->get_device();

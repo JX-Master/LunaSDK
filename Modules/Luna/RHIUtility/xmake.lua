@@ -1,0 +1,6 @@
+luna_sdk_module_target("RHIUtility")
+    add_rules("luna.shader")
+    add_headerfiles("**.hpp")
+    add_files("Source/**.cpp")
+    add_deps("Runtime", "RHI")
+target_end()
