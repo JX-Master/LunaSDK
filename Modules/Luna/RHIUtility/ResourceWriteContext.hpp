@@ -55,14 +55,14 @@ namespace Luna
             //! @param[in] height The number of rows to copy.
             //! @param[in] depth The number of slices to copy.
             //! @param[in] out_row_pitch Returns the stride, in bytes, to advance between every 2 rows of data in `out_memory`.
-            //! @param[in] out_slide_pitch Returns the stride, in bytes, to advance between every 2 slices (row * column) of data in `out_memory`.
+            //! @param[in] out_slice_pitch Returns the stride, in bytes, to advance between every 2 slices (row * column) of data in `out_memory`.
             //! @return Returns the pointer to the internal buffer that the user can write data to. The texture data should be arranged in row-major order. 
             //! @par Valid Usage
             //! 1. `src` must points to a valid memory until the copy operation is finished.
             virtual R<void*> write_texture(RHI::ITexture* texture, RHI::SubresourceIndex subresource, 
                 u32 x, u32 y, u32 z,
                 u32 width, u32 height, u32 depth,
-                u32& out_row_pitch, u32& out_slide_pitch) = 0;
+                u32& out_row_pitch, u32& out_slice_pitch) = 0;
 
             //! Commits data copy calls to the target command buffer.
             //! @param[in] command_buffer The command buffer used to perform the data copy operation. 

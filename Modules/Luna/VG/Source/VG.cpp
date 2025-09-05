@@ -15,6 +15,7 @@
 #include "ShapeBuffer.hpp"
 #include <Luna/Runtime/Module.hpp>
 #include <Luna/RHI/RHI.hpp>
+#include <Luna/RHIUtility/RHIUtility.hpp>
 #include <Luna/ShaderCompiler/ShaderCompiler.hpp>
 
 namespace Luna
@@ -26,7 +27,7 @@ namespace Luna
             virtual const c8* get_name() override { return "VG"; }
             virtual RV on_register() override
             {
-                return add_dependency_modules(this, {module_rhi(), module_shader_compiler()});
+                return add_dependency_modules(this, {module_rhi(), module_rhi_utility(), module_shader_compiler()});
             }
             virtual RV on_init() override
             {

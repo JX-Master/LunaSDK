@@ -19,12 +19,6 @@ namespace Luna
     {
         //! @addtogroup RHIUtility RHIUtility
         //! The of RHI utility module contains high-level functions implemented using RHI API for common tasks.
-        //! @{
-
-        
-
-
-        //! @}
     }
 
     struct Module;

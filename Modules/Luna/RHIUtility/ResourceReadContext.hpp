@@ -74,17 +74,17 @@ namespace Luna
             //! @par Valid Usage
             //! 1. This function should only be called after @ref commit and before @ref reset. If `submit_and_wait` is `false`,
             //! this function should only be called after all copy commands are finished.
-            virtual const void* get_buffer_data(usize handle) = 0;
+            virtual R<const void*> get_buffer_data(usize handle) = 0;
             
             //! Gets the copied texture data.
             //! @param[in] handle The handle returned by the @ref read_texture for the operation to query.
             //! @param[out] out_row_pitch Returns the stride, in bytes, to advance between every 2 rows of data in the returned pointer.
-            //! @param[out] out_slide_pitch Returns the stride, in bytes, to advance between every 2 slices (row * column) of data in the returned pointer.
+            //! @param[out] out_slice_pitch Returns the stride, in bytes, to advance between every 2 slices (row * column) of data in the returned pointer.
             //! @return Returns one pointer to the read texture data. Texture data is arranged in row-major order. The pointer is valid until @ref reset is called.
             //! @par Valid Usage
             //! 1. This function should only be called after @ref commit and before @ref reset. If `submit_and_wait` is `false`,
             //! this function should only be called after all copy commands are finished.
-            virtual const void* get_texture_data(usize handle, u32& out_row_pitch, u32& out_slide_pitch) = 0;
+            virtual R<const void*> get_texture_data(usize handle, u32& out_row_pitch, u32& out_slice_pitch) = 0;
         };
 
         //! Creates a new resource read context.

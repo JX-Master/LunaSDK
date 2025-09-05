@@ -15,10 +15,11 @@
 #include <Luna/RHI/ShaderCompileHelper.hpp>
 #include <Luna/Runtime/File.hpp>
 #include <Luna/Image/Image.hpp>
-#include <Luna/RHI/Utility.hpp>
+#include <Luna/RHIUtility/ResourceWriteContext.hpp>
 #include <TestTextureVS.hpp>
 #include <TestTexturePS.hpp>
 #include <Luna/Runtime/Thread.hpp>
+#include <Luna/RHIUtility/RHIUtility.hpp>
 
 #include <Luna/Window/AppMain.hpp>
 
@@ -102,10 +103,11 @@ RV start()
 
             u32 copy_queue_index = get_command_queue_index();
             lulet(upload_cmdbuf, device->new_command_buffer(copy_queue_index));
-            luexp(copy_resource_data(upload_cmdbuf, {
-                CopyResourceData::write_texture(tex, SubresourceIndex(0, 0), 0, 0, 0, 
-                    image_data.data(), image_desc.width * 4, image_desc.width * image_desc.height * 4, 
-                    image_desc.width, image_desc.height, 1)}));
+            auto writer = RHIUtility::new_resource_write_context(device);
+            u32 row_pitch, slice_pitch;
+            lulet(mapped, writer->write_texture(tex, SubresourceIndex(0, 0), 0, 0, 0, image_desc.width, image_desc.height, 1, row_pitch, slice_pitch));
+            memcpy_bitmap(mapped, image_data.data(), image_desc.width * 4, image_desc.height, row_pitch, image_desc.width * 4);
+            luexp(writer->commit(upload_cmdbuf, true));
             luset(desc_set, device->new_descriptor_set(DescriptorSetDesc(desc_set_layout)));
 
             luexp(desc_set->update_descriptors(
@@ -189,7 +191,7 @@ namespace Luna
         if(!r) return Window::AppStatus::failing;
         lutry
         {
-            luexp(add_modules({module_rhi_test_bed()}));
+            luexp(add_modules({module_rhi_test_bed(), module_rhi_utility()}));
             luexp(init_modules());
             register_init_func(start);
             register_close_func(cleanup);

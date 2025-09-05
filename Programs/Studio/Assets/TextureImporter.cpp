@@ -12,7 +12,8 @@
 #include <Luna/Window/MessageBox.hpp>
 #include <Luna/Runtime/File.hpp>
 #include <Luna/VFS/VFS.hpp>
-#include <Luna/RHI/Utility.hpp>
+#include <Luna/RHIUtility/ResourceWriteContext.hpp>
+#include <Luna/RHIUtility/ResourceReadContext.hpp>
 #include <Luna/Image/DDSImage.hpp>
 #include <Luna/Image/RHIHelper.hpp>
 
@@ -319,8 +320,11 @@ namespace Luna
                     Image::ImageDesc image_desc;
                     lulet(img_data, Image::read_image_file(file.m_file_data.data(), file.m_file_data.size(), Image::get_rhi_desired_format(file.m_desc.format), image_desc));
                     lulet(upload_cmdbuf, device->new_command_buffer(g_env->async_copy_queue));
-                    luexp(copy_resource_data(upload_cmdbuf, {CopyResourceData::write_texture(tex, SubresourceIndex(0, 0), 0, 0, 0, img_data.data(), pixel_size(image_desc.format) * image_desc.width,
-                        pixel_size(image_desc.format) * image_desc.width * image_desc.height, image_desc.width, image_desc.height, 1)}));
+                    auto writer = RHIUtility::new_resource_write_context(g_env->device);
+                    u32 row_pitch, slice_pitch;
+                    lulet(mapped, writer->write_texture(tex, RHI::SubresourceIndex(0, 0), 0, 0, 0, image_desc.width, image_desc.height, 1, row_pitch, slice_pitch));
+                    memcpy_bitmap(mapped, img_data.data(), pixel_size(image_desc.format) * image_desc.width, image_desc.height, row_pitch, pixel_size(image_desc.format) * image_desc.width);
+                    luexp(writer->commit(upload_cmdbuf, true));
                 }
                 // Generate mipmaps.
                 {
@@ -422,19 +426,20 @@ namespace Luna
                 // Upload data.
                 {
                     lulet(upload_cmdbuf, g_env->device->new_command_buffer(g_env->async_copy_queue));
-                    Vector<RHI::CopyResourceData> copies;
+                    auto writer = RHIUtility::new_resource_write_context(g_env->device);
                     for (u32 item = 0; item < desc.array_size; ++item)
                     {
                         u32 d = desc.depth;
                         for (u32 mip = 0; mip < desc.mip_levels; ++mip)
                         {
                             auto& subresource = dds_image.subresources[Image::calc_dds_subresoruce_index(mip, item, desc.mip_levels)];
-                            RHI::CopyResourceData copy = RHI::CopyResourceData::write_texture(tex, RHI::SubresourceIndex(mip, item), 0, 0, 0, (const u8*)dds_image.data.data() + subresource.data_offset, subresource.row_pitch, subresource.slice_pitch, subresource.width, subresource.height, d);
-                            copies.push_back(move(copy));
+                            u32 row_pitch, slice_pitch;
+                            lulet(mapped, writer->write_texture(tex, RHI::SubresourceIndex(mip, item), 0, 0, 0, subresource.width, subresource.height, d, row_pitch, slice_pitch));
+                            memcpy_bitmap3d(mapped, (const u8*)dds_image.data.data() + subresource.data_offset, subresource.row_pitch, subresource.height, d, row_pitch, subresource.row_pitch, slice_pitch, subresource.slice_pitch);
                         }
                         if (d > 1) d >>= 1;
                     }
-                    luexp(copy_resource_data(upload_cmdbuf, copies.cspan()));
+                    luexp(writer->commit(upload_cmdbuf, true));
                 }
             }
             else lupanic();
@@ -460,20 +465,31 @@ namespace Luna
                     set_flags(image_desc.flags, Image::DDSFlag::texturecube);
                 }
                 lulet(image, Image::new_dds_image(image_desc));
-                Vector<RHI::CopyResourceData> copies;
+                auto reader = RHIUtility::new_resource_read_context(g_env->device);
+                Vector<usize> read_ops;
                 for (u32 item = 0; item < desc.array_size; ++item)
                 {
                     for (u32 mip = 0; mip < desc.mip_levels; ++mip)
                     {
                         auto& dst = image.subresources[Image::calc_dds_subresoruce_index(mip, item, desc.mip_levels)];
-                        RHI::CopyResourceData copy = RHI::CopyResourceData::read_texture((u8*)image.data.data() + dst.data_offset,
-                            dst.row_pitch, dst.slice_pitch, tex, RHI::SubresourceIndex(mip, item), 0, 0, 0,
-                            dst.width, dst.height, dst.depth);
-                        copies.push_back(move(copy));
+                        read_ops.push_back(reader->read_texture(tex, RHI::SubresourceIndex(mip, item), 0, 0, 0, dst.width, dst.height, dst.depth));
                     }
                 }
                 lulet(readback_cmdbuf, device->new_command_buffer(g_env->async_copy_queue));
-                luexp(copy_resource_data(readback_cmdbuf, copies.cspan()));
+                luexp(reader->commit(readback_cmdbuf, true));
+                usize read_i = 0;
+                for (u32 item = 0; item < desc.array_size; ++item)
+                {
+                    for (u32 mip = 0; mip < desc.mip_levels; ++mip)
+                    {
+                        auto& dst = image.subresources[Image::calc_dds_subresoruce_index(mip, item, desc.mip_levels)];
+                        usize read_op = read_ops[read_i];
+                        ++read_i;
+                        u32 row_pitch, slice_pitch;
+                        lulet(mapped, reader->get_texture_data(read_op, row_pitch, slice_pitch));
+                        memcpy_bitmap3d((u8*)image.data.data() + dst.data_offset, mapped, dst.row_pitch, dst.height, dst.depth, dst.row_pitch, row_pitch, dst.slice_pitch, slice_pitch);
+                    }
+                }
                 Path file_path = create_dir;
                 file_path.push_back(file.m_asset_name);
                 luset(asset, Asset::new_asset(file_path, get_static_texture_asset_type()));

@@ -21,7 +21,8 @@
 #include "../Camera.hpp"
 #include <Luna/Window/FileDialog.hpp>
 #include <Luna/Window/MessageBox.hpp>
-#include <Luna/RHI/Utility.hpp>
+#include <Luna/RHIUtility/ResourceReadContext.hpp>
+#include <Luna/RHIUtility/ResourceWriteContext.hpp>
 #include <Luna/Image/RHIHelper.hpp>
 namespace Luna
 {
@@ -829,8 +830,12 @@ namespace Luna
             usize slice_pitch = row_pitch * desc.height;
             Blob img_data(slice_pitch);
             lulet(readback_cmdbuf, device->new_command_buffer(g_env->async_copy_queue));
-            luexp(copy_resource_data(readback_cmdbuf, {CopyResourceData::read_texture(img_data.data(), (u32)row_pitch, (u32)slice_pitch, m_renderer.render_texture, SubresourceIndex(0, 0), 0, 0, 0,
-                desc.width, desc.height, 1)}));
+            auto reader = RHIUtility::new_resource_read_context(g_env->device);
+            usize op = reader->read_texture(m_renderer.render_texture, SubresourceIndex(0, 0), 0, 0, 0, desc.width, desc.height, 1);
+            luexp(reader->commit(readback_cmdbuf, true));
+            u32 src_row_pitch, src_slice_pitch;
+            lulet(mapped, reader->get_texture_data(op, src_row_pitch, src_slice_pitch));
+            memcpy_bitmap(img_data.data(), mapped, row_pitch, desc.height, row_pitch, src_row_pitch);
             Image::ImageDesc img_desc;
             img_desc.width = (u32)desc.width;
             img_desc.height = desc.height;
@@ -952,7 +957,10 @@ namespace Luna
 
             // Upload grid vertex data.
             lulet(upload_cmdbuf, device->new_command_buffer(g_env->async_copy_queue));
-            luexp(copy_resource_data(upload_cmdbuf, {CopyResourceData::write_buffer(m_grid_vb, 0, grids, sizeof(grids))}));
+            auto writer = RHIUtility::new_resource_write_context(g_env->device);
+            lulet(mapped, writer->write_buffer(m_grid_vb, 0, sizeof(grids)));
+            memcpy(mapped, grids, sizeof(grids));
+            luexp(writer->commit(upload_cmdbuf, true));
         }
         lucatchret;
         return ok;

@@ -19,10 +19,11 @@
 #include <Luna/Image/Image.hpp>
 #include <Luna/Runtime/File.hpp>
 #include <Luna/Runtime/Math/Transform.hpp>
-#include <Luna/RHI/Utility.hpp>
+#include <Luna/RHIUtility/ResourceWriteContext.hpp>
 #include <TestBoxVS.hpp>
 #include <TestBoxPS.hpp>
 #include <Luna/Runtime/Thread.hpp>
+#include <Luna/RHIUtility/RHIUtility.hpp>
 
 #include <Luna/Window/AppMain.hpp>
 
@@ -132,12 +133,16 @@ RV start()
         
         u32 copy_queue_index = get_command_queue_index();
         lulet(upload_cmdbuf, dev->new_command_buffer(copy_queue_index));
-        luexp(copy_resource_data(upload_cmdbuf, {
-                CopyResourceData::write_buffer(vb, 0, vertices, sizeof(vertices)),
-                CopyResourceData::write_buffer(ib, 0, indices, sizeof(indices)),
-                CopyResourceData::write_texture(file_tex, SubresourceIndex(0, 0), 0, 0, 0, 
-                    image_data.data(), image_desc.width * 4, image_desc.width * image_desc.height * 4, 
-                    image_desc.width, image_desc.height, 1)}));
+        auto writer = RHIUtility::new_resource_write_context(dev);
+        void* mapped;
+        luset(mapped, writer->write_buffer(vb, 0, sizeof(vertices)));
+        memcpy(mapped, vertices, sizeof(vertices));
+        luset(mapped, writer->write_buffer(ib, 0, sizeof(indices)));
+        memcpy(mapped, indices, sizeof(indices));
+        u32 row_pitch, slice_pitch;
+        luset(mapped, writer->write_texture(file_tex, SubresourceIndex(0, 0), 0, 0, 0, image_desc.width, image_desc.height, 1, row_pitch, slice_pitch));
+        memcpy_bitmap(mapped, image_data.data(), image_desc.width * 4, image_desc.height, row_pitch, image_desc.width * 4);
+        luexp(writer->commit(upload_cmdbuf, true));
         luexp(desc_set->update_descriptors(
             {
                 WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(cb)),
@@ -237,7 +242,7 @@ namespace Luna
         if(!r) return Window::AppStatus::failing;
         lutry
         {
-            luexp(add_modules({module_rhi_test_bed()}));
+            luexp(add_modules({module_rhi_test_bed(), module_rhi_utility()}));
             luexp(init_modules());
             register_init_func(start);
             register_close_func(cleanup);

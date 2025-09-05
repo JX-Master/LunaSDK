@@ -41,7 +41,12 @@ namespace Luna
         {
             lutry
             {
-                if(!m_upload_buffer || m_upload_buffer->get_desc().size < m_last_batch_upload_buffer_required_size)
+                u64 upload_buffer_size = 0;
+                if(m_upload_buffer)
+                {
+                    upload_buffer_size = m_upload_buffer->get_desc().size;
+                }
+                if(m_last_batch_upload_buffer_required_size && upload_buffer_size < m_last_batch_upload_buffer_required_size)
                 {
                     luset(m_upload_buffer, m_device->new_buffer(MemoryType::upload, BufferDesc(BufferUsageFlag::copy_source, m_last_batch_upload_buffer_required_size)));
                     set_upload_buffer_debug_name(m_upload_buffer);
@@ -83,6 +88,7 @@ namespace Luna
                 }
                 m_ops.push_back(move(op));
                 m_upload_buffer_required_size += size;
+                m_buffer_barriers.emplace_back(buffer, BufferStateFlag::automatic, BufferStateFlag::copy_dest);
             }
             lucatchret;
             return ret;
@@ -90,7 +96,7 @@ namespace Luna
         R<void*> ResourceWriteContext::write_texture(RHI::ITexture* texture, RHI::SubresourceIndex subresource, 
                 u32 x, u32 y, u32 z,
                 u32 width, u32 height, u32 depth,
-                u32& out_row_pitch, u32& out_slide_pitch)
+                u32& out_row_pitch, u32& out_slice_pitch)
         {
             void* ret = nullptr;
             lutry
@@ -116,7 +122,6 @@ namespace Luna
                     texture_desc.format, &size, &alignment, &row_pitch, &slice_pitch);
                 op.texture_params.row_pitch = row_pitch;
                 op.texture_params.slice_pitch = slice_pitch;
-                op.texture_params.pixel_format = texture_desc.format;
                 usize offset = align_upper(m_upload_buffer_required_size, (usize)alignment);
                 if(offset + size > upload_buffer_size)
                 {
@@ -136,8 +141,8 @@ namespace Luna
                 m_ops.push_back(move(op));
                 m_upload_buffer_required_size = offset + (usize)size;
                 out_row_pitch = row_pitch;
-                out_slide_pitch = slice_pitch;
-
+                out_slice_pitch = slice_pitch;
+                m_texture_barriers.emplace_back(texture, subresource, TextureStateFlag::automatic, TextureStateFlag::copy_dest);
             }
             lucatchret;
             return ret;
@@ -171,7 +176,7 @@ namespace Luna
                     else if (copy.texture)
                     {
                         command_buffer->copy_buffer_to_texture(copy.texture, copy.texture_params.subresource, copy.texture_params.x, copy.texture_params.y, copy.texture_params.z, 
-                            m_upload_buffer, copy.upload_buffer_offset, (u32)copy.texture_params.row_pitch, (u32)copy.texture_params.slice_pitch, 
+                            copy.upload_buffer, copy.upload_buffer_offset, (u32)copy.texture_params.row_pitch, (u32)copy.texture_params.slice_pitch, 
                             copy.texture_params.width, copy.texture_params.height, copy.texture_params.depth);
                     }
                 }
@@ -186,6 +191,12 @@ namespace Luna
             }
             lucatchret;
             return ok;
+        }
+        LUNA_RHI_UTILITY_API Ref<IResourceWriteContext> new_resource_write_context(RHI::IDevice* device)
+        {
+            auto r = new_object<ResourceWriteContext>();
+            r->m_device = device;
+            return r;
         }
     }
 }
