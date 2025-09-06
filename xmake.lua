@@ -4,6 +4,7 @@ add_moduledirs("Tools/xmake/modules")
 
 rule("luna.shader")
     set_extensions(".hlsl")
+    add_orders("luna.shader", "c++.build")
     on_load(function (target) 
         local headerdir = path.join(target:autogendir(), "shaders")
         if not os.isdir(headerdir) then 

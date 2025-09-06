@@ -16,8 +16,8 @@
 #include <Luna/RHIUtility/ResourceReadContext.hpp>
 #include <Luna/Image/DDSImage.hpp>
 #include <Luna/Image/RHIHelper.hpp>
+#include <Luna/RHIUtility/MipmapGenerationContext.hpp>
 
-#include <MipmapGenerationCS.hpp>
 #include <PrecomputeEnvironmentMapMips.hpp>
 
 namespace Luna
@@ -56,9 +56,7 @@ namespace Luna
 
         Vector<TextureFile> m_files;
 
-        Ref<RHI::IDescriptorSetLayout> m_mipmapping_dlayout;
-        Ref<RHI::IPipelineLayout> m_mipmapping_playout;
-        Ref<RHI::IPipelineState> m_mipmapping_pso;
+        Ref<RHIUtility::IMipmapGenerationContext> m_mipmap_generation_ctx;
 
         Ref<RHI::IDescriptorSetLayout> m_env_mipmapping_dlayout;
         Ref<RHI::IPipelineLayout> m_env_mipmapping_playout;
@@ -69,7 +67,6 @@ namespace Luna
         RV init();
         void import_texture_asset(const Path& create_dir, const TextureFile& file);
         void import_dds_texture_asset(const Path& create_dir, const Image::DDSImage& file);
-        RV generate_mipmaps(RHI::ITexture* resource_with_most_detailed_mip, RHI::ICommandBuffer* compute_cmdbuf);
         R<Ref<RHI::ITexture>> generate_environment_mipmaps(RHI::ITexture* resource_with_most_detailed_mip, RHI::ICommandBuffer* compute_cmdbuf);
 
         bool m_open = true;
@@ -89,115 +86,23 @@ namespace Luna
         lutry
         {
             {
-                luset(m_mipmapping_dlayout, RHI::get_main_device()->new_descriptor_set_layout(DescriptorSetLayoutDesc({
-                    DescriptorSetLayoutBinding::uniform_buffer_view(0, 1, ShaderVisibilityFlag::all),
-                    DescriptorSetLayoutBinding::read_texture_view(TextureViewType::tex2d, 1, 1, ShaderVisibilityFlag::all),
-                    DescriptorSetLayoutBinding::read_write_texture_view(TextureViewType::tex2d, 2, 1, ShaderVisibilityFlag::all),
-                    DescriptorSetLayoutBinding::sampler(3, 1, ShaderVisibilityFlag::all)
-                    })));
-                auto dlayout = m_mipmapping_dlayout.get();
-                luset(m_mipmapping_playout, RHI::get_main_device()->new_pipeline_layout(PipelineLayoutDesc(
-                    { &dlayout, 1 },
-                    PipelineLayoutFlag::deny_vertex_shader_access |
-                    
-                    PipelineLayoutFlag::deny_pixel_shader_access)));
-
-                ComputePipelineStateDesc ps_desc;
-                LUNA_FILL_COMPUTE_SHADER_DATA(ps_desc, MipmapGenerationCS);
-                ps_desc.pipeline_layout = m_mipmapping_playout;
-                luset(m_mipmapping_pso, RHI::get_main_device()->new_compute_pipeline_state(ps_desc));
-            }
-            {
-                luset(m_env_mipmapping_dlayout, RHI::get_main_device()->new_descriptor_set_layout(DescriptorSetLayoutDesc({
+                luset(m_env_mipmapping_dlayout, g_env->device->new_descriptor_set_layout(DescriptorSetLayoutDesc({
                     DescriptorSetLayoutBinding::uniform_buffer_view(0, 1, ShaderVisibilityFlag::all),
                     DescriptorSetLayoutBinding::read_texture_view(TextureViewType::tex2d, 1, 1, ShaderVisibilityFlag::all),
                     DescriptorSetLayoutBinding::read_write_texture_view(TextureViewType::tex2d, 2, 1, ShaderVisibilityFlag::all),
                     DescriptorSetLayoutBinding::sampler(3, 1, ShaderVisibilityFlag::all)
                     })));
                 auto dlayout = m_env_mipmapping_dlayout.get();
-                luset(m_env_mipmapping_playout, RHI::get_main_device()->new_pipeline_layout(PipelineLayoutDesc(
+                luset(m_env_mipmapping_playout, g_env->device->new_pipeline_layout(PipelineLayoutDesc(
                     { &dlayout, 1 },
                     PipelineLayoutFlag::deny_vertex_shader_access |
                     PipelineLayoutFlag::deny_pixel_shader_access)));
                 ComputePipelineStateDesc ps_desc;
                 LUNA_FILL_COMPUTE_SHADER_DATA(ps_desc, PrecomputeEnvironmentMapMips);
                 ps_desc.pipeline_layout = m_env_mipmapping_playout;
-                luset(m_env_mipmapping_pso, RHI::get_main_device()->new_compute_pipeline_state(ps_desc));
+                luset(m_env_mipmapping_pso, g_env->device->new_compute_pipeline_state(ps_desc));
+                luset(m_mipmap_generation_ctx, RHIUtility::new_mipmap_generation_context(g_env->device));
             }
-        }
-        lucatchret;
-        return ok;
-    }
-
-    RV TextureImporter::generate_mipmaps(RHI::ITexture* resource_with_most_detailed_mip, RHI::ICommandBuffer* compute_cmdbuf)
-    {
-        using namespace RHI;
-        lutry
-        {
-            auto desc = resource_with_most_detailed_mip->get_desc();
-            lucheck(desc.mip_levels);
-            lucheck(desc.type == TextureType::tex2d);
-            lucheck(desc.depth == 1);
-
-            if (desc.mip_levels == 1)
-            {
-                return ok;
-            }
-
-            auto device = g_env->device;
-
-            if (!m_mipmapping_playout)
-            {
-                luexp(init());
-            }
-            compute_cmdbuf->begin_compute_pass();
-            compute_cmdbuf->set_compute_pipeline_layout(m_mipmapping_playout);
-            compute_cmdbuf->set_compute_pipeline_state(m_mipmapping_pso);
-            u32 cb_align = (u32)device->check_feature(DeviceFeature::uniform_buffer_data_alignment).uniform_buffer_data_alignment;
-            u32 cb_size = (u32)align_upper(sizeof(Float2), cb_align);
-            lulet(cb, device->new_buffer(MemoryType::upload,
-                BufferDesc(BufferUsageFlag::uniform_buffer, cb_size * (desc.mip_levels - 1))));
-
-            void* mapped = nullptr;
-            luexp(cb->map(0, 0, &mapped));
-            for (u32 j = 0; j < (u32)(desc.mip_levels - 1); ++j)
-            {
-                u32 width = max<u32>((u32)desc.width >> (j + 1), 1);
-                u32 height = max<u32>(desc.height >> (j + 1), 1);
-                Float2U* dst = (Float2U*)((usize)mapped + cb_size * j);
-                dst->x = 1.0f / (f32)width;
-                dst->y = 1.0f / (f32)height;
-            }
-            cb->unmap(0, USIZE_MAX);
-
-            u32 width = desc.width / 2;
-            u32 height = desc.height / 2;
-
-            for (u32 j = 0; j < (u32)(desc.mip_levels - 1); ++j)
-            {
-                TextureBarrier barriers[] = {
-                    {resource_with_most_detailed_mip, SubresourceIndex(j, 0), TextureStateFlag::automatic, TextureStateFlag::shader_read_cs, ResourceBarrierFlag::none},
-                    {resource_with_most_detailed_mip, SubresourceIndex(j + 1, 0),TextureStateFlag::automatic, TextureStateFlag::shader_write_cs, ResourceBarrierFlag::none}
-                };
-                compute_cmdbuf->resource_barrier({}, { barriers, 2 });
-                lulet(vs, device->new_descriptor_set(DescriptorSetDesc(m_mipmapping_dlayout)));
-                luexp(vs->update_descriptors({
-                    WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(cb, cb_size * j, cb_size)),
-                    WriteDescriptorSet::read_texture_view(1, TextureViewDesc::tex2d(resource_with_most_detailed_mip, Format::unknown, j, 1)),
-                    WriteDescriptorSet::read_write_texture_view(2, TextureViewDesc::tex2d(resource_with_most_detailed_mip, Format::unknown, j + 1, 1)),
-                    WriteDescriptorSet::sampler(3, SamplerDesc(Filter::linear, Filter::linear, Filter::linear, TextureAddressMode::clamp, TextureAddressMode::clamp, TextureAddressMode::clamp))
-                    }));
-                compute_cmdbuf->set_compute_descriptor_set(0, vs);
-                compute_cmdbuf->attach_device_object(vs);
-                compute_cmdbuf->dispatch(align_upper(width, 8) / 8, align_upper(height, 8) / 8, 1);
-                width = max<u32>(width / 2, 1);
-                height = max<u32>(height / 2, 1);
-            }
-            compute_cmdbuf->end_compute_pass();
-            compute_cmdbuf->resource_barrier({}, { {resource_with_most_detailed_mip, TEXTURE_BARRIER_ALL_SUBRESOURCES, TextureStateFlag::automatic, TextureStateFlag::none, ResourceBarrierFlag::none} });
-            luexp(compute_cmdbuf->submit({}, {}, true));
-            compute_cmdbuf->wait();
-            luexp(compute_cmdbuf->reset());
         }
         lucatchret;
         return ok;
@@ -216,7 +121,7 @@ namespace Luna
 
             auto device = g_env->device;
 
-            if (!m_mipmapping_playout)
+            if (!m_env_mipmapping_playout)
             {
                 luexp(init());
             }
@@ -329,7 +234,9 @@ namespace Luna
                 // Generate mipmaps.
                 {
                     lulet(cmd, device->new_command_buffer(g_env->async_compute_queue));
-                    luexp(generate_mipmaps(tex, cmd));
+                    m_mipmap_generation_ctx->generate_mipmaps(tex);
+                    luexp(m_mipmap_generation_ctx->commit(cmd, true));
+                    m_mipmap_generation_ctx->reset();
                     if (file.m_prefiler_type == TexturePrefilerType::environment_map)
                     {
                         luset(tex, generate_environment_mipmaps(tex, cmd));

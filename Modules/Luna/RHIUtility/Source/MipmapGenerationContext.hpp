@@ -19,9 +19,15 @@ namespace Luna
         {
             lustruct("RHIUtility::MipmapGenerationPipelineState", "294d027f-a80f-4be9-9fbf-65815e605f2e");
 
-            Ref<RHI::IDescriptorSetLayout> m_dlayout;
-            Ref<RHI::IPipelineLayout> m_playout;
-            Ref<RHI::IPipelineState> m_pso;
+            Ref<RHI::IDescriptorSetLayout> m_dlayout_1d;
+            Ref<RHI::IPipelineLayout> m_playout_1d;
+            Ref<RHI::IPipelineState> m_pso_1d;
+            Ref<RHI::IDescriptorSetLayout> m_dlayout_2d;
+            Ref<RHI::IPipelineLayout> m_playout_2d;
+            Ref<RHI::IPipelineState> m_pso_2d;
+            Ref<RHI::IDescriptorSetLayout> m_dlayout_3d;
+            Ref<RHI::IPipelineLayout> m_playout_3d;
+            Ref<RHI::IPipelineState> m_pso_3d;
 
             RV init(RHI::IDevice* device);
 
@@ -46,7 +52,9 @@ namespace Luna
             Name m_name;
             Ref<MipmapGenerationPipelineState> m_ps;
             Vector<MipmapGenerationOp> m_ops;
-            Vector<Ref<RHI::IDescriptorSet>> m_dss;
+            Vector<Ref<RHI::IDescriptorSet>> m_dss_1d;
+            Vector<Ref<RHI::IDescriptorSet>> m_dss_2d;
+            Vector<Ref<RHI::IDescriptorSet>> m_dss_3d;
             Ref<RHI::IBuffer> m_cb;
 
             RV init(RHI::IDevice* device);

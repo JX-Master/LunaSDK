@@ -9,6 +9,7 @@
 */
 #pragma once
 #include "../ResourceReadContext.hpp"
+#include <Luna/RHI/Device.hpp>
 
 namespace Luna
 {

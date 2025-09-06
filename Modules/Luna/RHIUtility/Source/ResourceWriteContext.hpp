@@ -9,6 +9,7 @@
 */
 #pragma once
 #include "../ResourceWriteContext.hpp"
+#include <Luna/RHI/Device.hpp>
 
 namespace Luna
 {

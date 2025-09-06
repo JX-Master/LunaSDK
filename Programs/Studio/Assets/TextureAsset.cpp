@@ -15,9 +15,44 @@
 #include <Luna/RHIUtility/ResourceWriteContext.hpp>
 #include <Luna/Image/RHIHelper.hpp>
 #include <Luna/RHIUtility/MipmapGenerationContext.hpp>
+#include <Luna/Runtime/SpinLock.hpp>
 
 namespace Luna
 {
+    struct TextureAssetUserdata
+    {
+        lustruct("TextureAssetUserdata", "{816CDA20-AB1C-4E24-A7CE-59E2EFE9BE1E}");
+
+        Ref<RHIUtility::IMipmapGenerationContext> m_mipmap_generation_context;
+        SpinLock m_lock;
+
+        RV init();
+
+        RV generate_mipmaps(RHI::ITexture* resource_with_most_detailed_mip, RHI::ICommandBuffer* compute_cmdbuf);
+    };
+    RV TextureAssetUserdata::init()
+    {
+        using namespace RHI;
+        lutry
+        {
+            luset(m_mipmap_generation_context, RHIUtility::new_mipmap_generation_context(g_env->device));
+        }
+        lucatchret;
+        return ok;
+    }
+    RV TextureAssetUserdata::generate_mipmaps(RHI::ITexture* resource_with_most_detailed_mip, RHI::ICommandBuffer* compute_cmdbuf)
+    {
+        using namespace RHI;
+        lutry
+        {
+            LockGuard guard(m_lock);
+            m_mipmap_generation_context->generate_mipmaps(resource_with_most_detailed_mip);
+            luexp(m_mipmap_generation_context->commit(compute_cmdbuf, true));
+            m_mipmap_generation_context->reset();
+        }
+        lucatchret;
+        return ok;
+    }
     static R<ObjRef> load_texture_asset(object_t userdata, Asset::asset_t asset, const Path& path)
     {
         ObjRef ret;
@@ -139,12 +174,10 @@ namespace Luna
                 memcpy_bitmap(mapped, image_data.data(), pixel_size(desc.format) * desc.width, desc.height, row_pitch, pixel_size(desc.format) * desc.width);
                 luexp(writer->commit(upload_cmdbuf, true));
                 // Generate mipmaps.
-                
-                lulet(generator, RHIUtility::new_mipmap_generation_context(g_env->device));
-                generator->generate_mipmaps(tex, 0);
+                Ref<TextureAssetUserdata> ctx = ObjRef(userdata);
                 lulet(cmdbuf, g_env->device->new_command_buffer(g_env->async_compute_queue));
                 cmdbuf->set_name("MipmapGeneration");
-                luexp(generator->commit(cmdbuf, true));
+                luexp(ctx->generate_mipmaps(tex, cmdbuf));
                 tex->set_name(path.encode().c_str());
                 ret = tex;
             }
@@ -156,12 +189,15 @@ namespace Luna
     {
         lutry
         {
+            register_boxed_type<TextureAssetUserdata>();
+            Ref<TextureAssetUserdata> userdata = new_object<TextureAssetUserdata>();
+            luexp(userdata->init());
             Asset::AssetTypeDesc desc;
             desc.name = get_static_texture_asset_type();
             desc.on_load_asset = load_texture_asset;
             desc.on_save_asset = nullptr;
             desc.on_set_asset_data = nullptr;
-            desc.userdata = nullptr;
+            desc.userdata = userdata;
             Asset::register_asset_type(desc);
         }
         lucatchret;
