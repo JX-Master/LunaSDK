@@ -669,7 +669,7 @@ namespace Luna
         //! Constructs one weak reference from one strong reference of the same type.
         //! @details The weak reference counter of the new boxed object, if not null, will be increased.
         //! @param[in] rhs The reference to set.
-        WeakRef(const Ref<_Ty>& rhs) : m_vtable(rhs.vtable()) { internal_addref(); }
+        WeakRef(const Ref<_Ty>& rhs) : m_vtable(rhs.get()) { internal_addref(); }
         //! Assigns this reference by coping the pointer from one strong reference of the same type.
         //! @details The weak reference counter of the new boxed object, if not null, will be increased.
         //! The weak reference counter of the original boxed object, if not null, will be decreased before assignment.

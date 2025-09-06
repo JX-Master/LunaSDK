@@ -1,3 +1,13 @@
+/*!
+* This file is a portion of Luna SDK.
+* For conditions of distribution and use, see the disclaimer
+* and license in LICENSE.txt
+* 
+* @file MipmapGenerationCS.hlsl
+* @author JXMaster
+* @date 2025/9/6
+*/
+
 cbuffer CB : register(b0)
 {
     float2 texel_size;    // 1.0 / destination dimension

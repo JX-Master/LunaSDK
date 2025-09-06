@@ -14,6 +14,7 @@
 #include <Luna/RHI/RHI.hpp>
 #include "ResourceReadContext.hpp"
 #include "ResourceWriteContext.hpp"
+#include "MipmapGenerationContext.hpp"
 
 namespace Luna
 {
@@ -32,7 +33,14 @@ namespace Luna
                 impl_interface_for_type<ResourceReadContext, IResourceReadContext, RHI::IDeviceChild>();
                 register_boxed_type<ResourceWriteContext>();
                 impl_interface_for_type<ResourceWriteContext, IResourceWriteContext, RHI::IDeviceChild>();
+                register_boxed_type<MipmapGenerationPipelineState>();
+                register_boxed_type<MipmapGenerationContext>();
+                impl_interface_for_type<MipmapGenerationContext, IMipmapGenerationContext, RHI::IDeviceChild>();
                 return ok;
+            }
+            virtual void on_close() override
+            {
+                cleanup_mipmap_generation_states();
             }
         };
     }
