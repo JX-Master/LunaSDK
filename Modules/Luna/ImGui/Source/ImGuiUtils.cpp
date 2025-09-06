@@ -20,7 +20,8 @@
 #include <Luna/Runtime/Math/Matrix.hpp>
 #include <Luna/Font/Font.hpp>
 #include <Luna/RHI/ShaderCompileHelper.hpp>
-#include <Luna/RHI/Utility.hpp>
+#include <Luna/RHIUtility/RHIUtility.hpp>
+#include <Luna/RHIUtility/ResourceWriteContext.hpp>
 #include <ImGuiVS.hpp>
 #include <ImGuiPS.hpp>
 namespace Luna
@@ -224,8 +225,11 @@ namespace Luna
                         }
                     }
                     lulet(upload_cmdbuf, dev->new_command_buffer(copy_queue_index));
-                    luexp(copy_resource_data(upload_cmdbuf, {CopyResourceData::write_texture(g_font_tex, SubresourceIndex(0, 0), 0, 0, 0, 
-                        pixels, src_row_pitch, src_row_pitch * height, width, height, 1)}));
+                    auto writer = RHIUtility::new_resource_write_context(dev);
+                    u32 row_pitch, slice_pitch;
+                    lulet(mapped, writer->write_texture(g_font_tex, SubresourceIndex(0, 0), 0, 0, 0, width, height, 1, row_pitch, slice_pitch));
+                    memcpy_bitmap(mapped, pixels, src_row_pitch, height, row_pitch, src_row_pitch);
+                    luexp(writer->commit(upload_cmdbuf, true));
                 }
                 io.Fonts->TexID = g_font_tex->get_object();
                 io.Fonts->ClearTexData();
@@ -907,7 +911,7 @@ namespace Luna
             virtual const c8* get_name() override { return "ImGui"; }
             virtual RV on_register() override
             {
-                return add_dependency_modules(this, {module_rhi(), module_hid(), module_font(), module_window()} );
+                return add_dependency_modules(this, {module_rhi(), module_rhi_utility(), module_hid(), module_font(), module_window()} );
             }
             virtual RV on_init() override
             {

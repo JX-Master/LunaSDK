@@ -10,7 +10,7 @@
 #include "ToneMappingPass.hpp"
 #include <Luna/Runtime/File.hpp>
 #include "../StudioHeader.hpp"
-#include <Luna/RHI/Utility.hpp>
+#include <Luna/RHIUtility/ResourceWriteContext.hpp>
 
 #include <LumHistogramClear.hpp>
 #include <ToneMappingCS.hpp>
@@ -141,7 +141,11 @@ namespace Luna
                 TextureUsageFlag::read_write_texture | TextureUsageFlag::read_texture | TextureUsageFlag::copy_dest, 1, 1)));
             f32 value = 0.0f;
             lulet(upload_cmdbuf, device->new_command_buffer(g_env->async_copy_queue));
-            luexp(copy_resource_data(upload_cmdbuf, {CopyResourceData::write_texture(m_lum_tex, SubresourceIndex(0, 0), 0, 0, 0, &value, 4, 4, 1, 1, 1)}));
+            auto writer = RHIUtility::new_resource_write_context(g_env->device);
+            u32 row_pitch, slice_pitch;
+            lulet(mapped, writer->write_texture(m_lum_tex, SubresourceIndex(0, 0), 0, 0, 0, 1, 1, 1, row_pitch, slice_pitch));
+            memcpy_bitmap(mapped, &value, 4, 1, row_pitch, 4);
+            luexp(writer->commit(upload_cmdbuf, true));
         }
         lucatchret;
         return ok;

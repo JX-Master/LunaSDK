@@ -14,7 +14,7 @@
 #include "../Material.hpp"
 #include "../SceneRenderer.hpp"
 #include "../StudioHeader.hpp"
-#include <Luna/RHI/Utility.hpp>
+#include <Luna/RHIUtility/ResourceWriteContext.hpp>
 
 #include <GeometryVert.hpp>
 #include <GeometryPixel.hpp>
@@ -80,12 +80,20 @@ namespace Luna
             u8 metallic_data = 0;
             u8 emissive_data[4] = { 0, 0, 0, 0 };
             lulet(upload_cmdbuf, device->new_command_buffer(g_env->async_copy_queue));
-            luexp(copy_resource_data(upload_cmdbuf, {
-                CopyResourceData::write_texture(m_default_base_color, SubresourceIndex(0, 0), 0, 0, 0, base_color_data, 4, 4, 1, 1, 1),
-                CopyResourceData::write_texture(m_default_roughness, SubresourceIndex(0, 0), 0, 0, 0, &roughness_data, 1, 1, 1, 1, 1),
-                CopyResourceData::write_texture(m_default_normal, SubresourceIndex(0, 0), 0, 0, 0, normal_data, 4, 4, 1, 1, 1),
-                CopyResourceData::write_texture(m_default_metallic, SubresourceIndex(0, 0), 0, 0, 0, &metallic_data, 1, 1, 1, 1, 1),
-                CopyResourceData::write_texture(m_default_emissive, SubresourceIndex(0, 0), 0, 0, 0, emissive_data, 4, 4, 1, 1, 1)}));
+            auto writer = RHIUtility::new_resource_write_context(g_env->device);
+            u32 row_pitch, slice_pitch;
+            void* mapped;
+            luset(mapped, writer->write_texture(m_default_base_color, SubresourceIndex(0, 0), 0, 0, 0, 1, 1, 1, row_pitch, slice_pitch));
+            memcpy(mapped, base_color_data, sizeof(base_color_data));
+            luset(mapped, writer->write_texture(m_default_roughness, SubresourceIndex(0, 0), 0, 0, 0, 1, 1, 1, row_pitch, slice_pitch));
+            memcpy(mapped, &roughness_data, sizeof(roughness_data));
+            luset(mapped, writer->write_texture(m_default_normal, SubresourceIndex(0, 0), 0, 0, 0, 1, 1, 1, row_pitch, slice_pitch));
+            memcpy(mapped, normal_data, sizeof(normal_data));
+            luset(mapped, writer->write_texture(m_default_metallic, SubresourceIndex(0, 0), 0, 0, 0, 1, 1, 1, row_pitch, slice_pitch));
+            memcpy(mapped, &metallic_data, sizeof(metallic_data));
+            luset(mapped, writer->write_texture(m_default_emissive, SubresourceIndex(0, 0), 0, 0, 0, 1, 1, 1, row_pitch, slice_pitch));
+            memcpy(mapped, emissive_data, sizeof(emissive_data));
+            luexp(writer->commit(upload_cmdbuf, true));
             u32 sb_alignment = device->check_feature(RHI::DeviceFeature::structured_buffer_offset_alignment).structured_buffer_offset_alignment;
             m_model_matrices_stride = (u32)align_upper(sizeof(MeshBuffer), sb_alignment);
             m_material_parameter_stride = (u32)align_upper(sizeof(MaterialParameters), sb_alignment);

@@ -12,7 +12,8 @@
 #include "ShapeRenderer.hpp"
 #include <Luna/Runtime/Math/Transform.hpp>
 #include <Luna/RHI/ShaderCompileHelper.hpp>
-#include <Luna/RHI/Utility.hpp>
+#include <Luna/RHIUtility/RHIUtility.hpp>
+#include <Luna/RHIUtility/ResourceWriteContext.hpp>
 #include <FillVS.hpp>
 #include <FillPS.hpp>
 
@@ -71,10 +72,11 @@ namespace Luna
                             }
                         }
                         lulet(upload_cmdbuf, dev->new_command_buffer(copy_queue_index));
-                        luexp(copy_resource_data(upload_cmdbuf, {
-                            CopyResourceData::write_texture(g_white_tex, SubresourceIndex(0, 0), 0, 0, 0, 
-                            &data, sizeof(data), sizeof(data), 1, 1, 1)
-                        }));
+                        auto writer = RHIUtility::new_resource_write_context(dev);
+                        u32 row_pitch, slice_pitch;
+                        lulet(mapped, writer->write_texture(g_white_tex, SubresourceIndex(0, 0), 0, 0, 0, 1, 1, 1, row_pitch, slice_pitch));
+                        memcpy_bitmap(mapped, &data, sizeof(data), 1, row_pitch, sizeof(data));
+                        luexp(writer->commit(upload_cmdbuf, true));
                     }
                 }
             }

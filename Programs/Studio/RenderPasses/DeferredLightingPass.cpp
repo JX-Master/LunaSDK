@@ -11,7 +11,7 @@
 #include <Luna/Runtime/File.hpp>
 #include "../SceneRenderer.hpp"
 #include "../StudioHeader.hpp"
-#include <Luna/RHI/Utility.hpp>
+#include <Luna/RHIUtility/ResourceWriteContext.hpp>
 
 #include <DeferredLighting.hpp>
 #include <PrecomputeIntegrateBRDF.hpp>
@@ -50,7 +50,11 @@ namespace Luna
                 TextureUsageFlag::read_texture | TextureUsageFlag::copy_dest, 1, 1, 1, 1)));
             u8 skybox_data[] = {0, 0, 0, 0};
             lulet(upload_cmdbuf, device->new_command_buffer(g_env->async_copy_queue));
-            luexp(copy_resource_data(upload_cmdbuf, {CopyResourceData::write_texture(m_default_skybox, SubresourceIndex(0, 0), 0, 0, 0, skybox_data, 4, 4, 1, 1, 1)}));
+            auto writer = RHIUtility::new_resource_write_context(g_env->device);
+            u32 row_pitch, slice_pitch;
+            lulet(mapped, writer->write_texture(m_default_skybox, SubresourceIndex(0, 0), 0, 0, 0, 1, 1, 1, row_pitch, slice_pitch));
+            memcpy_bitmap(mapped, skybox_data, 4, 1, row_pitch, 4);
+            luexp(writer->commit(upload_cmdbuf, true));
 
             // Generate integrate brdf.
             constexpr usize INTEGEATE_BRDF_SIZE = 256;
