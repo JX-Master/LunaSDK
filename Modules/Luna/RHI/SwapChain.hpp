@@ -19,6 +19,41 @@ namespace Luna
         //! @addtogroup RHI
         //! @{
 
+        enum class ColorSpace : u32
+        {
+            //! Uses system-default color space for the specified format.
+            unspecified = 0,
+            //! Uses sRGB color space.
+            //! * Primaries: BT.709
+            //! * Transfer: sRGB (gamma 2.2)
+            //! * Range: 0~1
+            srgb,
+            //! Uses linear scRGB color space.
+            //! * Primaries: BT.709
+            //! * Transfer: linear
+            //! * Range: unbound
+            //! @remarks This is the format used by Windows DWM. Use FP16 swap chain format
+            //! is suggested for this color space.
+            scrgb_linear,
+            //! Uses BT.2020 color space.
+            //! * Primaries: BT.2020
+            //! * Transfer: SMPTE ST 2084 (PQ2084)
+            //! * Range: 0-1
+            //! @remarks This is usually used with rgb10a2_unorm format, also known as HDR10/BT.2100.
+            bt2020,
+            //! Uses Display P3 color space.
+            //! * Primaries: DCI P3.
+            //! * White point: D65
+            //! * Transfer: sRGB (gamma 2.2)
+            //! * Range: 0-1
+            display_p3,
+            //! Uses ACES color space with linear transfer function.
+            //! * Primaries: ACES
+            //! * Transfer: linear
+            //! * Range: unbound.
+            acescg_linear,
+        };
+
         //! Describes one swap chain.
         struct SwapChainDesc
         {
@@ -32,6 +67,8 @@ namespace Luna
             u32 buffer_count;
             //! The pixel format of the back buffer.
             Format format;
+            //! The color space used by the swap chain.
+            ColorSpace color_space;
             //! Whether to synchronize frame image presentation to vertical blanks of the monitor.
             bool vertical_synchronized;
 
@@ -41,12 +78,14 @@ namespace Luna
                 u32 height,
                 u32 buffer_count,
                 Format format,
-                bool vertical_synchronized
+                bool vertical_synchronized,
+                ColorSpace color_space = ColorSpace::unspecified
             ) :
                 width(width),
                 height(height),
                 buffer_count(buffer_count),
                 format(format),
+                color_space(color_space),
                 vertical_synchronized(vertical_synchronized) {}
         };
 

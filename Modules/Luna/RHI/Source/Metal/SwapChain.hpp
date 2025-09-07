@@ -31,7 +31,7 @@ namespace Luna
 
             u32 m_command_queue_index;
 
-            void init_metal_layer(const SwapChainDesc& desc);
+            RV init_metal_layer(const SwapChainDesc& desc);
 
             RV init(u32 command_queue_index, Window::IWindow* window, const SwapChainDesc& desc);
 
@@ -44,6 +44,6 @@ namespace Luna
             virtual RV reset(const SwapChainDesc& desc) override;
         };
 
-        void bind_layer_to_window(Window::IWindow* window, CA::MetalLayer* layer, u32 buffer_count);
+        RV bind_layer_to_window(Window::IWindow* window, CA::MetalLayer* layer, ColorSpace color_space, u32 buffer_count);
     }
 }

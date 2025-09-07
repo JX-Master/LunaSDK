@@ -76,5 +76,10 @@ namespace Luna
             static ErrCode e = get_error_code_by_name("RHIError", "swap_chain_out_of_date");
             return e;
         }
+        LUNA_RHI_API ErrCode color_space_not_supported()
+        {
+            static ErrCode e = get_error_code_by_name("RHIError", "color_space_not_supported");
+            return e;
+        }
     }
 }

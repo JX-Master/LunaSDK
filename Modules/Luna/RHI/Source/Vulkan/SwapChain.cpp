@@ -16,19 +16,40 @@ namespace Luna
 {
     namespace RHI
     {
-        R<VkSurfaceFormatKHR> choose_swap_surface_format(const Vector<VkSurfaceFormatKHR>& available_formats, Format desired_format)
+        inline R<VkColorSpaceKHR> encode_color_space(ColorSpace color_space)
         {
-            if (desired_format == Format::unknown)
+            switch(color_space)
             {
-                return available_formats.front();
+                case ColorSpace::srgb: return VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+                case ColorSpace::scrgb_linear: return VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT;
+                case ColorSpace::bt2020: return VK_COLOR_SPACE_HDR10_ST2084_EXT;
+                case ColorSpace::display_p3: return VK_COLOR_SPACE_DISPLAY_P3_NONLINEAR_EXT;
+                default: return RHIError::color_space_not_supported();
             }
-            VkFormat desired_vk_format = encode_format(desired_format);
+        }
+        R<VkSurfaceFormatKHR> choose_swap_surface_format(const Vector<VkSurfaceFormatKHR>& available_formats, Format desired_format, ColorSpace desired_color_space)
+        {
             for (const auto& format : available_formats)
             {
-                if (format.format == desired_vk_format)
+                if(desired_format != Format::unknown)
                 {
-                    return format;
+                    VkFormat desired_vk_format = encode_format(desired_format);
+                    if(desired_vk_format != format.format)
+                    {
+                        continue;
+                    }
                 }
+                if(desired_color_space != ColorSpace::unspecified)
+                {
+                    auto res = encode_color_space(desired_color_space);
+                    if(failed(res)) return res.errcode();
+                    VkColorSpaceKHR desired_vk_color_space = res.get();
+                    if(desired_vk_color_space != format.colorSpace)
+                    {
+                        continue;
+                    }
+                }
+                return format;
             }
             return set_error(BasicError::not_supported(), "The specified pixel format for swap chain is not supported.");
         }
@@ -101,7 +122,7 @@ namespace Luna
                     return set_error(BasicError::not_supported(), "The specified command queue for creating swap chain does not have presenting support");
                 }
                 auto surface_info = get_physical_device_surface_info(m_device->m_physical_device, m_surface);
-                lulet(surface_format, choose_swap_surface_format(surface_info.formats, desc.format));
+                lulet(surface_format, choose_swap_surface_format(surface_info.formats, desc.format, desc.color_space));
                 auto present_mode = choose_present_mode(surface_info.present_modes, desc.vertical_synchronized);
                 lulet(extent, choose_swap_extent(surface_info.capabilities, m_desc));
                 if (desc.buffer_count < surface_info.capabilities.minImageCount || desc.buffer_count > surface_info.capabilities.maxImageCount)
@@ -223,6 +244,10 @@ namespace Luna
                 if (new_desc.format == Format::unknown)
                 {
                     new_desc.format = m_desc.format;
+                }
+                if (new_desc.color_space == ColorSpace::unspecified)
+                {
+                    new_desc.color_space = m_desc.color_space;
                 }
                 luexp(create_swap_chain(new_desc));
             }
