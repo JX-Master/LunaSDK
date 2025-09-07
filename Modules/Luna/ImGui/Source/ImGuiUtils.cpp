@@ -611,7 +611,7 @@ namespace Luna
                 events.dpi_changed.remove_handler(g_handle_dpi_changed);
                 if(g_window_text_input_enabled)
                 {
-                    g_active_window->stop_text_input();
+                    auto _ = g_active_window->stop_text_input();
                 }
             }
             g_active_window = window;
@@ -678,13 +678,13 @@ namespace Luna
 
             if(io.WantTextInput && !g_window_text_input_enabled)
             {
-                g_active_window->start_text_input();
+                auto _ = g_active_window->start_text_input();
                 g_window_text_input_enabled = true;
             }
 
             if(!io.WantTextInput && g_window_text_input_enabled)
             {
-                g_active_window->stop_text_input();
+                auto _ = g_active_window->stop_text_input();
                 g_window_text_input_enabled = false;
             }
 

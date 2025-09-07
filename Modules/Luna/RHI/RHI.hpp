@@ -61,6 +61,8 @@ namespace Luna
         LUNA_RHI_API ErrCode frame_statistics_disjoint();
         //! The swap chain is no longer compatible with the surface and should be reset.
         LUNA_RHI_API ErrCode swap_chain_out_of_date();
+        //! The color space format is not supported by the current backend.
+        LUNA_RHI_API ErrCode color_space_not_supported();
         
         //! @}
     }
