@@ -31,9 +31,6 @@ namespace Luna
                         case ColorSpace::srgb:
                         cs = CGColorSpaceCreateWithName(kCGColorSpaceSRGB);
                         break;
-                        case ColorSpace::scrgb:
-                        cs = CGColorSpaceCreateWithName(kCGColorSpaceExtendedSRGB);
-                        break;
                         case ColorSpace::scrgb_linear:
                         cs = CGColorSpaceCreateWithName(kCGColorSpaceExtendedLinearSRGB);
                         break;
