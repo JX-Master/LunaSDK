@@ -79,6 +79,7 @@ namespace Luna
 
             //! Called when the back buffer is resized or when the swap chain is initialized.
             RV reset_back_buffer_resources();
+            RV set_color_space(ColorSpace color_space);
 
             virtual IDevice* get_device() override
             {

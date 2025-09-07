@@ -28,11 +28,6 @@ namespace Luna
             //! * Transfer: sRGB (gamma 2.2)
             //! * Range: 0~1
             srgb,
-            //! Uses scRGB color space.
-            //! * Primaries: BT.709
-            //! * Transfer: sRGB (gamma 2.2)
-            //! * Range: unbound
-            scrgb,
             //! Uses linear scRGB color space.
             //! * Primaries: BT.709
             //! * Transfer: linear

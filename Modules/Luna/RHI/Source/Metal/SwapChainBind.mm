@@ -16,7 +16,7 @@ namespace Luna
 {
     namespace RHI
     {
-        void bind_layer_to_window(Window::IWindow* window, CA::MetalLayer* layer, ColorSpace color_space, u32 buffer_count)
+        RV bind_layer_to_window(Window::IWindow* window, CA::MetalLayer* layer, ColorSpace color_space, u32 buffer_count)
         {
             @autoreleasepool
             {
@@ -46,7 +46,8 @@ namespace Luna
                         case ColorSpace::acescg_linear:
                         cs = CGColorSpaceCreateWithName(kCGColorSpaceACESCGLinear);
                         break;
-                        default: lupanic(); break;
+                        default: 
+                        return RHIError::color_space_not_supported();
                     }
                     [native_layer setColorspace:cs];
                 }
@@ -54,6 +55,7 @@ namespace Luna
                 [native_layer setMaximumDrawableCount:buffer_count];
                 [[ns_window contentView] setWantsLayer:YES];
                 [[ns_window contentView] setNeedsLayout:YES];
+                return ok;
             }
         }
     }

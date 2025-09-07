@@ -13,7 +13,7 @@ namespace Luna
 {
     namespace RHI
     {
-        void SwapChain::init_metal_layer(const SwapChainDesc& desc)
+        RV SwapChain::init_metal_layer(const SwapChainDesc& desc)
         {
             AutoreleasePool pool;
             m_metal_layer = retain(CA::MetalLayer::layer());
@@ -24,7 +24,7 @@ namespace Luna
             size.width = desc.width;
             size.height = desc.height;
             m_metal_layer->setDrawableSize(size);
-            bind_layer_to_window(m_window, m_metal_layer.get(), desc.color_space, desc.buffer_count);
+            return bind_layer_to_window(m_window, m_metal_layer.get(), desc.color_space, desc.buffer_count);
         }
         RV SwapChain::init(u32 command_queue_index, Window::IWindow* window, const SwapChainDesc& desc)
         {
@@ -35,8 +35,7 @@ namespace Luna
             m_desc.width = m_desc.width == 0 ? framebuffer_size.x : m_desc.width;
             m_desc.height = m_desc.height == 0 ? framebuffer_size.y : m_desc.height;
             m_desc.format = m_desc.format == Format::unknown ? Format::bgra8_unorm_srgb : m_desc.format;
-            init_metal_layer(m_desc);
-            return ok;
+            return init_metal_layer(m_desc);
         }
         R<ITexture*> SwapChain::get_current_back_buffer()
         {

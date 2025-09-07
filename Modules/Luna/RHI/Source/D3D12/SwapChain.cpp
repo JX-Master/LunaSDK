@@ -97,6 +97,7 @@ namespace Luna
                     d.Flags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
                 }
                 luexp(encode_hresult(dxgifac->CreateSwapChainForHwnd(m_device->m_command_queues[queue_index]->m_command_queue.Get(), hwnd, &d, NULL, NULL, &m_sc)));
+                luexp(set_color_space(m_desc.color_space));
                 luexp(reset_back_buffer_resources());
             }
             lucatchret;
@@ -134,6 +135,37 @@ namespace Luna
                     luexp(res.init(m_device, resource.Get()));
                     m_back_buffers.push_back(move(res));
                 }
+            }
+            lucatchret;
+            return ok;
+        }
+        RV SwapChain::set_color_space(ColorSpace color_space)
+        {
+            lutry
+            {
+                ComPtr<IDXGISwapChain3> swap_chain;
+                m_sc->QueryInterface<IDXGISwapChain3>(&swap_chain);
+                if(!swap_chain)
+                {
+                    return RHIError::color_space_not_supported();
+                }
+                DXGI_COLOR_SPACE_TYPE type;
+                if(color_space == ColorSpace::unspecified) return ok;
+                switch(color_space)
+                {
+                    case ColorSpace::srgb:
+                    type = DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;
+                    break;
+                    case ColorSpace::scrgb_linear:
+                    type = DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709;
+                    break;
+                    case ColorSpace::bt2020:
+                    type = DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020;
+                    break;
+                    default:
+                    return RHIError::color_space_not_supported();
+                }
+                luexp(encode_hresult(swap_chain->SetColorSpace1(type)));
             }
             lucatchret;
             return ok;
@@ -198,6 +230,10 @@ namespace Luna
             {
                 modified_desc.format = m_desc.format;
             }
+            if(modified_desc.color_space == ColorSpace::unspecified)
+            {
+                modified_desc.color_space = m_desc.color_space;
+            }
             lutry
             {
                 DXGI_SWAP_CHAIN_FLAG flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
@@ -207,6 +243,7 @@ namespace Luna
                 }
                 luexp(encode_hresult(m_sc->ResizeBuffers(modified_desc.buffer_count, modified_desc.width, modified_desc.height, encode_format(modified_desc.format), flags)));
                 m_desc = modified_desc;
+                luexp(set_color_space(m_desc.color_space));
                 luexp(reset_back_buffer_resources());
             }
             lucatchret;
