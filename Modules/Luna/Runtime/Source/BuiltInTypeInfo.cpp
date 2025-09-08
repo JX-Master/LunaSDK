@@ -646,6 +646,7 @@ namespace Luna
             auto generic_arguments = get_struct_generic_arguments(type);
             typeinfo_t key_type = generic_arguments[0];
             typeinfo_t value_type = make_hashmap_value_type(key_type, generic_arguments[1]);
+            d->clear_and_free_table(value_type);
             usize value_size = get_type_size(value_type);
             usize value_alignment = get_type_alignment(value_type);
             void* value_buffer = salloc.allocate(value_size + value_alignment);
@@ -677,6 +678,7 @@ namespace Luna
         {
             HashTableData* d = (HashTableData*)inst;
             typeinfo_t value_type = get_struct_generic_arguments(type)[0];
+            d->clear_and_free_table(value_type);
             usize value_size = get_type_size(value_type);
             usize value_alignment = get_type_alignment(value_type);
             void* value_buffer = salloc.allocate(value_size + value_alignment);
