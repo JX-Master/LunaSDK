@@ -141,6 +141,17 @@ namespace Luna
             m_ops.push_back(move(op));
         }
 
+        inline RHI::Format convert_format(RHI::Format format)
+        {
+            switch(format)
+            {
+                case RHI::Format::bgra8_unorm_srgb: return RHI::Format::bgra8_unorm;
+                case RHI::Format::rgba8_unorm_srgb: return RHI::Format::rgba8_unorm;
+                default: break;
+            }
+            return format;
+        }
+
         RV MipmapGenerationContext::commit(RHI::ICommandBuffer* compute_cmdbuf, bool submit_and_wait)
         {
             using namespace RHI;
@@ -252,14 +263,16 @@ namespace Luna
                             {op.tex, SubresourceIndex(mip, 0),TextureStateFlag::automatic, TextureStateFlag::shader_write_cs, ResourceBarrierFlag::none}
                         };
                         compute_cmdbuf->resource_barrier({}, { barriers, 2 });
+                        // SRGB texture cannot be set as read_write_texture_view on D3D12, convert to compatible format instead.
+                        Format tex_format = convert_format(op.tex->get_desc().format);
                         switch(desc.type)
                         {
                             case RHI::TextureType::tex1d:
                             {
                                 luexp(m_dss_1d[num_1d_ops]->update_descriptors({
                                     WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(m_cb, cb_entry_size * op_i, cb_entry_size)),
-                                    WriteDescriptorSet::read_texture_view(1, TextureViewDesc::tex1d(op.tex, Format::unknown, mip - 1, 1)),
-                                    WriteDescriptorSet::read_write_texture_view(2, TextureViewDesc::tex1d(op.tex, Format::unknown, mip, 1)),
+                                    WriteDescriptorSet::read_texture_view(1, TextureViewDesc::tex1d(op.tex, tex_format, mip - 1, 1)),
+                                    WriteDescriptorSet::read_write_texture_view(2, TextureViewDesc::tex1d(op.tex, tex_format, mip, 1)),
                                     WriteDescriptorSet::sampler(3, SamplerDesc(Filter::linear, Filter::linear, Filter::linear, TextureAddressMode::clamp, TextureAddressMode::clamp, TextureAddressMode::clamp))
                                 }));
                                 compute_cmdbuf->set_compute_descriptor_set(0, m_dss_1d[num_1d_ops]);
@@ -270,8 +283,8 @@ namespace Luna
                             {
                                 luexp(m_dss_2d[num_2d_ops]->update_descriptors({
                                     WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(m_cb, cb_entry_size * op_i, cb_entry_size)),
-                                    WriteDescriptorSet::read_texture_view(1, TextureViewDesc::tex2d(op.tex, Format::unknown, mip - 1, 1)),
-                                    WriteDescriptorSet::read_write_texture_view(2, TextureViewDesc::tex2d(op.tex, Format::unknown, mip, 1)),
+                                    WriteDescriptorSet::read_texture_view(1, TextureViewDesc::tex2d(op.tex, tex_format, mip - 1, 1)),
+                                    WriteDescriptorSet::read_write_texture_view(2, TextureViewDesc::tex2d(op.tex, tex_format, mip, 1)),
                                     WriteDescriptorSet::sampler(3, SamplerDesc(Filter::linear, Filter::linear, Filter::linear, TextureAddressMode::clamp, TextureAddressMode::clamp, TextureAddressMode::clamp))
                                 }));
                                 compute_cmdbuf->set_compute_descriptor_set(0, m_dss_2d[num_2d_ops]);
@@ -282,8 +295,8 @@ namespace Luna
                             {
                                 luexp(m_dss_3d[num_3d_ops]->update_descriptors({
                                     WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(m_cb, cb_entry_size * op_i, cb_entry_size)),
-                                    WriteDescriptorSet::read_texture_view(1, TextureViewDesc::tex3d(op.tex, Format::unknown, mip - 1, 1)),
-                                    WriteDescriptorSet::read_write_texture_view(2, TextureViewDesc::tex3d(op.tex, Format::unknown, mip, 1)),
+                                    WriteDescriptorSet::read_texture_view(1, TextureViewDesc::tex3d(op.tex, tex_format, mip - 1, 1)),
+                                    WriteDescriptorSet::read_write_texture_view(2, TextureViewDesc::tex3d(op.tex, tex_format, mip, 1)),
                                     WriteDescriptorSet::sampler(3, SamplerDesc(Filter::linear, Filter::linear, Filter::linear, TextureAddressMode::clamp, TextureAddressMode::clamp, TextureAddressMode::clamp))
                                 }));
                                 compute_cmdbuf->set_compute_descriptor_set(0, m_dss_3d[num_3d_ops]);
