@@ -65,16 +65,14 @@ namespace Luna
             //! @param[in] to_mount_data The mount data returned by @ref on_mount for the device that the file is copied to.
             //! @param[in] from_path The path of the file to copy from relative to the mount root path.
             //! @param[in] to_path The path of the file to copy to relative to the mount root path.
-            //! @param[in] flags The file copy flags.
-            RV(*on_copy_file)(void* driver_data, void* from_mount_data, void* to_mount_data, const Path& from_path, const Path& to_path, FileCopyFlag flags);
+            RV(*on_copy_file)(void* driver_data, void* from_mount_data, void* to_mount_data, const Path& from_path, const Path& to_path);
             //! Called when @ref VFS::move_file is called on two files that both belong to devices of this driver.
             //! @param[in] driver_data The user-provided driver data.
             //! @param[in] from_mount_data The mount data returned by @ref on_mount for the device that the file is moved from.
             //! @param[in] to_mount_data The mount data returned by @ref on_mount for the device that the file is moved to.
             //! @param[in] from_path The path of the file to move from relative to the mount root path.
             //! @param[in] to_path The path of the file to move to relative to the mount root path.
-            //! @param[in] flags The file move flags.
-            RV(*on_move_file)(void* driver_data, void* from_mount_data, void* to_mount_data, const Path& from_path, const Path& to_path, FileMoveFlag flags);
+            RV(*on_move_file)(void* driver_data, void* from_mount_data, void* to_mount_data, const Path& from_path, const Path& to_path);
             //! Called when @ref VFS::delete_file is called on one file that belongs to devices of this driver.
             //! @param[in] driver_data The user-provided driver data.
             //! @param[in] mount_data The mount data returned by @ref on_mount for the device.

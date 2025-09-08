@@ -124,7 +124,7 @@ namespace Luna
             // Not found.
             return BasicError::not_found();
         }
-        static RV copy_file_between_driver(MountPair* from, MountPair* to, const Path& from_path, const Path& to_path, bool fail_if_exists)
+        static RV copy_file_between_driver(MountPair* from, MountPair* to, const Path& from_path, const Path& to_path)
         {
             // try open file.
             Ref<IFile> from_file;
@@ -133,14 +133,7 @@ namespace Luna
             lutry
             {
                 luset(from_file, from->m_driver->on_open_file(from->m_driver->driver_data, from->m_mount_data, from_path, FileOpenFlag::read, FileCreationMode::open_existing));
-                if (fail_if_exists)
-                {
-                    luset(to_file, to->m_driver->on_open_file(to->m_driver->driver_data, to->m_mount_data, to_path, FileOpenFlag::write, FileCreationMode::create_new));
-                }
-                else
-                {
-                    luset(to_file, to->m_driver->on_open_file(to->m_driver->driver_data, to->m_mount_data, to_path, FileOpenFlag::write, FileCreationMode::create_always));
-                }
+                luset(to_file, to->m_driver->on_open_file(to->m_driver->driver_data, to->m_mount_data, to_path, FileOpenFlag::write, FileCreationMode::create_new));
                 file_sz = from_file->get_size();
                 luexp(to_file->set_size(file_sz));
                 // preparing buffer.
@@ -210,7 +203,7 @@ namespace Luna
             lucatchret;
             return ret;
         }
-        LUNA_VFS_API RV copy_file(const Path& from_file_path, const Path& to_file_path, FileCopyFlag flags)
+        LUNA_VFS_API RV copy_file(const Path& from_file_path, const Path& to_file_path)
         {
             MutexGuard _guard(g_mounts_mutex);
             Path from_path;
@@ -221,15 +214,15 @@ namespace Luna
                 lulet(to, route_path(to_file_path, to_path));
                 if (from.m_driver == to.m_driver)
                 {
-                    return from.m_driver->on_copy_file(from.m_driver->driver_data, from.m_mount_data, to.m_mount_data, from_path, to_path, flags);
+                    return from.m_driver->on_copy_file(from.m_driver->driver_data, from.m_mount_data, to.m_mount_data, from_path, to_path);
                 }
                 // Force copy.
-                luexp(copy_file_between_driver(&from, &to, from_path, to_path, test_flags(flags, FileCopyFlag::fail_if_exists)));
+                luexp(copy_file_between_driver(&from, &to, from_path, to_path));
             }
             lucatchret;
             return ok;
         }
-        LUNA_VFS_API RV move_file(const Path& from_file_path, const Path& to_file_path, FileMoveFlag flags)
+        LUNA_VFS_API RV move_file(const Path& from_file_path, const Path& to_file_path)
         {
             MutexGuard _guard(g_mounts_mutex);
             Path from_path;
@@ -240,10 +233,10 @@ namespace Luna
                 lulet(to, route_path(to_file_path, to_path));
                 if (from.m_driver == to.m_driver)
                 {
-                    return from.m_driver->on_move_file(from.m_driver->driver_data, from.m_mount_data, to.m_mount_data, from_path, to_path, flags);
+                    return from.m_driver->on_move_file(from.m_driver->driver_data, from.m_mount_data, to.m_mount_data, from_path, to_path);
                 }
                 // copy and delete.
-                luexp(copy_file_between_driver(&from, &to, from_path, to_path, test_flags(flags, FileMoveFlag::fail_if_exists)));
+                luexp(copy_file_between_driver(&from, &to, from_path, to_path));
                 luexp(from.m_driver->on_delete_file(from.m_driver->driver_data, from.m_mount_data, from_path));
             }
             lucatchret;

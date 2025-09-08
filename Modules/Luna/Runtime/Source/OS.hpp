@@ -389,15 +389,15 @@ namespace Luna
 
         //! Copies the file from the source path to the destination path.
         //! Refer to docs in `File.hpp`.
-        RV    copy_file(const c8* from_path, const c8* to_path, FileCopyFlag flags);
+        RV copy_file(const c8* from_path, const c8* to_path);
 
         //! Moves the file from the source path to the destination path. This call can also be used to rename a file.
         //! Refer to docs in `File.hpp`.
-        RV    move_file(const c8* from_path, const c8* to_path, FileMoveFlag flags);
+        RV move_file(const c8* from_path, const c8* to_path);
 
         //! Deletes the specified file or directory.
         //! Refer to docs in `File.hpp`.
-        RV    delete_file(const c8* path);
+        RV delete_file(const c8* path);
 
         //! Creates a file iterator handle that can be used to iterate all files in the specified directory. 
         //! File placeholders for current and parent directory ("." and "..") should not be included in the iterator entry.

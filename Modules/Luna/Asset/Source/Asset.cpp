@@ -433,7 +433,7 @@ namespace Luna
                     {
                         to_path.append_extension(f.c_str() + extension_begin);
                     }
-                    luexp(VFS::move_file(from_path, to_path, FileMoveFlag::fail_if_exists));
+                    luexp(VFS::move_file(from_path, to_path));
                     from_path.pop_back();
                     to_path.pop_back();
                 }
@@ -500,7 +500,7 @@ namespace Luna
                     {
                         to_path.append_extension(f.c_str() + extension_begin);
                     }
-                    luexp(VFS::copy_file(from_path, to_path, FileCopyFlag::fail_if_exists));
+                    luexp(VFS::copy_file(from_path, to_path));
                     from_path.pop_back();
                     to_path.pop_back();
                 }

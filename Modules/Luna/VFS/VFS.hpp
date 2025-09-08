@@ -69,14 +69,13 @@ namespace Luna
         //! Copies the file or directory from the source path to the destination path.
         //! @param[in] from_path Source file or directory path.
         //! @param[in] to_path Destination file or directory path.
-        //! @param[in] flags Additional flags.
         //! @par Possible Errors:
         //! * BasicError::bad_arguments
         //! * BasicError::already_exists
         //! * BasicError::access_denied
         //! * BasicError::not_found
         //! * BasicError::bad_platform_call for all errors that cannot be identified.
-        LUNA_VFS_API RV copy_file(const Path& from_path, const Path& to_path, FileCopyFlag flags = FileCopyFlag::none);
+        LUNA_VFS_API RV copy_file(const Path& from_path, const Path& to_path);
         //! Moves the file or directory from the source path to the destination path. This call can also be used to rename a file.
         //! @param[in] from_path Source file path.
         //! @param[in] to_path Destination file path.
@@ -86,7 +85,7 @@ namespace Luna
         //! * BasicError::access_denied
         //! * BasicError::not_found
         //! * BasicError::bad_platform_call for all errors that cannot be identified.
-        LUNA_VFS_API RV move_file(const Path& from_path, const Path& to_path, FileMoveFlag flags = FileMoveFlag::none);
+        LUNA_VFS_API RV move_file(const Path& from_path, const Path& to_path);
         //! Deletes the specified file.
         //! @param[in] path The file to delete.
         //! @par Possible Errors:

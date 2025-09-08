@@ -562,7 +562,7 @@ namespace Luna
                                 to_path.push_back(m_asset_name_editing_buf);
                                 if(assets.get()[i].m_is_dir)
                                 {
-                                    auto r = VFS::move_file(from_path, to_path, FileMoveFlag::fail_if_exists);
+                                    auto r = VFS::move_file(from_path, to_path);
                                     if(succeeded(r))
                                     {
                                         r = Asset::load_assets_meta(to_path);

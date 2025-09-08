@@ -539,7 +539,7 @@ namespace Luna
             }
             return attribute;
         }
-        RV copy_file(const c8* from_path, const c8* to_path, FileCopyFlag flags)
+        RV copy_file(const c8* from_path, const c8* to_path)
         {
             lucheck(from_path && to_path);
             constexpr u64 max_buffer_sz = 1_mb;
@@ -549,14 +549,7 @@ namespace Luna
             lutry
             {
                 luset(from_file, OS::open_file(from_path, FileOpenFlag::read, FileCreationMode::open_existing));
-                if (test_flags(flags, FileCopyFlag::fail_if_exists))
-                {
-                    luset(to_file, OS::open_file(to_path, FileOpenFlag::write, FileCreationMode::create_new));
-                }
-                else
-                {
-                    luset(to_file, OS::open_file(to_path, FileOpenFlag::write, FileCreationMode::create_always));
-                }
+                luset(to_file, OS::open_file(to_path, FileOpenFlag::write, FileCreationMode::create_new));
                 auto copy_size = OS::get_file_size(from_file);
                 u64 sz = copy_size;
                 while (sz)
@@ -599,10 +592,9 @@ namespace Luna
             }
             return ok;
         }
-        RV move_file(const c8* from_path, const c8* to_path, FileMoveFlag flags)
+        RV move_file(const c8* from_path, const c8* to_path)
         {
-            bool fail_if_exists = test_flags(flags, FileMoveFlag::fail_if_exists);
-            if (fail_if_exists && get_file_attribute(to_path).valid())
+            if (get_file_attribute(to_path).valid())
             {
                 return BasicError::already_exists();
             }
@@ -612,7 +604,7 @@ namespace Luna
                 // Try to copy&delete.
                 lutry
                 {
-                    luexp(OS::copy_file(from_path, to_path, fail_if_exists? FileCopyFlag::fail_if_exists : FileCopyFlag::none));
+                    luexp(OS::copy_file(from_path, to_path));
                     luexp(OS::delete_file(from_path));
                 }
                 lucatchret;
