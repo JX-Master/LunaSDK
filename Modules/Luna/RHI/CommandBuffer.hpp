@@ -462,6 +462,41 @@ namespace Luna
                 size(size),
                 format(format) {}
         };
+        
+        //! Specifies parameter layout for @ref ICommandBuffer::draw_indexed_indirect arguments buffer.
+        struct DrawIndexedIndirectArgument
+        {
+            //! The number of indices to draw for every instance.
+            u32 index_count_per_instance;
+            //! The number of instances to draw.
+            u32 instance_count;
+            //! The position of the index pointing to first per-vertex data to use for instance drawing.
+            //! Vertex data pointed by index in range [`start_index_location`, `start_index_location + index_count_per_instance`) will be used.
+            u32 start_index_location;
+            //! An offset that will be added to all indices numbers before 
+            //! dereferring vertex data from their indices. This can be used to batch vertices of multiple meshes into
+            //! one vertex buffer, and use offsets to draw each of them separately.
+            i32 base_vertex_location;
+            //! The index of the first per-instance data to use for instance drawing.
+            //! Instance data in range [`start_instance_location`, `start_instance_location + instance_count`) will be used.
+            u32 start_instance_location;
+        };
+
+        //! Specifies parameter layout for @ref ICommandBuffer::draw_indirect arguments buffer.
+        struct DrawIndirectArgument
+        {
+            //! The number of vertices to draw for every instance.
+            u32 vertex_count_per_instance;
+            //! The number of instances to draw.
+            u32 instance_count;
+            //! The position of the first per-vertex data to use for instance drawing.
+            //! Vertex data in range [`start_vertex_location`, `start_vertex_location + vertex_count_per_instance`) will be used.
+            u32 start_vertex_location;
+            //! The index of the first per-instance data to use for instance drawing.
+            //! Instance data in range [`start_instance_location`, `start_instance_location + instance_count`) will be used.
+            u32 start_instance_location;
+        };
+
         //! @interface ICommandBuffer
         //! Used to allocate memory for commands, record commands, submitting 
         //! commands to GPU and tracks the state of the submitted commands.
@@ -634,6 +669,46 @@ namespace Luna
             //! Instance data in range [`start_instance_location`, `start_instance_location + instance_count`) will be used.
             virtual void draw_indexed_instanced(u32 index_count_per_instance, u32 instance_count, u32 start_index_location,
                 i32 base_vertex_location, u32 start_instance_location) = 0;
+
+            //! Dispatches indirect indexed draw calls, where the draw call arguments are read from the specified argument buffer.
+            //! @param[in] argument_buffer The buffer to read draw arguments from. Argument data must be placed in the structure using the layout 
+            //! specified by @ref DrawIndexedIndirectArgument.
+            //! @param[in] argument_buffer_offset The offset, in bytes, of the first argument data from the beginning of the argument buffer.
+            //! @param[in] draw_count The number of draw calls to dispatch.
+            //! @param[in] argument_buffer_stride The number of bytes to advance between two argument structures in argument buffer.
+            virtual void draw_indexed_indirect(IBuffer* argument_buffer, usize argument_buffer_offset, u32 draw_count, u32 argument_buffer_stride) = 0;
+
+            //! Dispatches indirect draw calls, where the draw call arguments are read from the specified argument buffer.
+            //! @param[in] argument_buffer The buffer to read draw arguments from. Argument data must be placed in the structure using the layout 
+            //! specified by @ref DrawIndirectArgument.
+            //! @param[in] argument_buffer_offset The offset, in bytes, of the first argument data from the beginning of the argument buffer.
+            //! @param[in] draw_count The number of draw calls to dispatch.
+            //! @param[in] argument_buffer_stride The number of bytes to advance between two argument structures in argument buffer.
+            virtual void draw_indirect(IBuffer* argument_buffer, usize argument_buffer_offset, u32 draw_count, u32 argument_buffer_stride) = 0;
+
+            //! Dispatches indirect indexed draw calls, where the draw call arguments are read from the specified argument buffer. The number of
+            //! draw calls are read from the count buffer.
+            //! @param[in] argument_buffer The buffer to read draw arguments from. Argument data must be placed in the structure using the layout 
+            //! specified by @ref DrawIndexedIndirectArgument.
+            //! @param[in] argument_buffer_offset The offset, in bytes, of the first argument data from the beginning of the argument buffer.
+            //! @param[in] count_buffer The buffer to read draw call count number. The count number must be in @ref u32 format.
+            //! @param[in] count_buffer_offset The offset, in bytes, of the count number from the beginning of the coount buffer.
+            //! @param[in] max_draw_count The maximum number of draw calls allows to be dispatched.
+            //! @param[in] argument_buffer_stride The number of bytes to advance between two argument structures in argument buffer.
+            virtual void draw_indexed_indirect_count(IBuffer* argument_buffer, usize argument_buffer_offset, IBuffer* count_buffer, usize count_buffer_offset,
+                u32 max_draw_count, u32 argument_buffer_stride) = 0;
+
+            //! Dispatches indirect draw calls, where the draw call arguments are read from the specified argument buffer. The number of
+            //! draw calls are read from the count buffer.
+            //! @param[in] argument_buffer The buffer to read draw arguments from. Argument data must be placed in the structure using the layout 
+            //! specified by @ref DrawIndirectArgument.
+            //! @param[in] argument_buffer_offset The offset, in bytes, of the first argument data from the beginning of the argument buffer.
+            //! @param[in] count_buffer The buffer to read draw call count number. The count number must be in @ref u32 format.
+            //! @param[in] count_buffer_offset The offset, in bytes, of the count number from the beginning of the coount buffer.
+            //! @param[in] max_draw_count The maximum number of draw calls allows to be dispatched.
+            //! @param[in] argument_buffer_stride The number of bytes to advance between two argument structures in argument buffer.
+            virtual void draw_indirect_count(IBuffer* argument_buffer, usize argument_buffer_offset, IBuffer* count_buffer, usize count_buffer_offset,
+                u32 max_draw_count, u32 argument_buffer_stride) = 0;
             
             //! Starts one occlusion query.
             //! @param[in] mode The working mode of the new occlusion query.

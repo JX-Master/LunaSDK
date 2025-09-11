@@ -35,7 +35,7 @@ namespace Luna
             vertex_buffer = 0x20,
             //! Allows this resource to be bound as a index buffer.
             index_buffer = 0x40,
-            //! Allows this resource to be bound as a buffer providing indirect draw arguments.
+            //! Allows this resource to be bound as an argument buffer providing indirect draw arguments.
             indirect_buffer = 0x80,
         };
 
