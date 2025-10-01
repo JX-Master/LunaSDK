@@ -101,7 +101,7 @@ The following requirements must be satisfied to run LunaSDK with Metal rendering
 * macOS 10.15 (Catalina) and later.
 
 ## Docs
-See [LunaSDK Docs](https://www.lunasdk.net).
+Docs are placed at `./LunaSDK-Docs` directory. Use [Obsidian](https://obsidian.md/) to open and read the docs.
 
 ## Feedback & Discussion
 * `Issues` page is available for bug report and feature request (not guaranteed to be satisfied).
