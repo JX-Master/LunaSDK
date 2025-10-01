@@ -1,6 +1,6 @@
 
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 

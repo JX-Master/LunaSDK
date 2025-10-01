@@ -1,6 +1,6 @@
 -- spirv-cross will fail on Windows using clang-cl
 if is_os("windows") then 
-    add_requireconfs("spirv-cross", {configs = {toolchains = "msvc"}})
+    add_requireconfs("spirv-cross", {configs = {toolchains = "msvc", exceptions = false}})
 end
 add_requires("spirv-cross")
 
@@ -29,7 +29,6 @@ luna_sdk_module_target("ShaderCompiler")
         add_rpathdirs("@executable_path/.")
     end
     add_links("dxcompiler")
-    set_exceptions("cxx")
     after_build(function(target)
         if target:is_plat("windows") then 
             if target:is_arch("x64") then 

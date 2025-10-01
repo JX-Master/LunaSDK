@@ -1,0 +1,11 @@
+{
+	"id": "easy-typing-obsidian",
+	"name": "Easy Typing",
+	"version": "5.5.15",
+	"minAppVersion": "0.15.0",
+	"description": "This plugin aims to enhance and optimize the editing experience in Obsidian",
+	"author": "yaozhuwa",
+	"authorUrl": "https://github.com/Yaozhuwa",
+	"isDesktopOnly": false,
+	"fundingUrl": "https://www.buymeacoffee.com/yaozhuwa"
+}

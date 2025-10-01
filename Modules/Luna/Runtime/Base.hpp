@@ -1,19 +1,19 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
 * @file Base.hpp
 * @author JXMaster
 * @date 2018/10/26
-* @brief Defines basic types and functions to be used in Luna SDK.
+* @brief Defines basic types and functions to be used in LunaSDK.
  */
 #pragma once
 
 #include "PlatformDefines.hpp"
 
 // Include C++ STD.
-// This is the only place where Luna SDK includes C++ STD. We only uses a minimum set of 
+// This is the only place where LunaSDK includes C++ STD. We only uses a minimum set of 
 // STD headers so that the SDK is portable to most platforms.
 #include <cstdint>
 #include <cfloat>

@@ -92,13 +92,13 @@ option_end()
 option("build_tests")
     set_default(true)
     set_showmenu(true)
-    set_description("Whether to build tests for Luna SDK")
+    set_description("Whether to build tests for LunaSDK")
 option_end()
 
 option("memory_profiler")
     set_default(true)
     set_showmenu(true)
-    set_description("Whether to forcly enable memory profiler for Luna SDK. The memory profiler will still be enabled in Debug and Profile mode.")
+    set_description("Whether to forcly enable memory profiler for LunaSDK. The memory profiler will still be enabled in Debug and Profile mode.")
     add_defines("LUNA_ENABLE_MEMORY_PROFILER")
 option_end()
 
@@ -127,7 +127,7 @@ option("rhi_api")
     elseif is_os("linux", "android") then
         set_values("Vulkan")
     end
-    set_description("The Graphics API to use for Luna SDK")
+    set_description("The Graphics API to use for LunaSDK")
 option_end()
 
 if is_config("rhi_api", "Vulkan") then 

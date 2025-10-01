@@ -1,0 +1,49 @@
+{
+  "frames": [
+    {
+      "url": "https://weread.qq.com/",
+      "displayName": "WeRead",
+      "icon": "library",
+      "hideOnMobile": true,
+      "addRibbonIcon": true,
+      "openInCenter": true,
+      "zoomLevel": 1,
+      "forceIframe": false,
+      "customCss": ""
+    },
+    {
+      "url": "https://www.notion.so/",
+      "displayName": "Notion",
+      "icon": "book",
+      "hideOnMobile": true,
+      "addRibbonIcon": true,
+      "openInCenter": true,
+      "zoomLevel": 1,
+      "forceIframe": false,
+      "customCss": ""
+    },
+    {
+      "url": "https://www.dida365.com/webapp/",
+      "displayName": "TODO",
+      "icon": "check",
+      "hideOnMobile": true,
+      "addRibbonIcon": false,
+      "openInCenter": false,
+      "zoomLevel": 1,
+      "forceIframe": false,
+      "customCss": ""
+    },
+    {
+      "url": "https://jf.homefont.cn/",
+      "displayName": "简繁转换",
+      "icon": "languages",
+      "hideOnMobile": true,
+      "addRibbonIcon": true,
+      "openInCenter": false,
+      "zoomLevel": 1,
+      "forceIframe": false,
+      "customCss": ""
+    }
+  ],
+  "padding": 5
+}
