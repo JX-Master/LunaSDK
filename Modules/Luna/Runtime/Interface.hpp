@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -91,7 +91,7 @@ namespace Luna
     }
 
     //! @interface Interface
-    //! The base interface for all other interfaces in Luna SDK.
+    //! The base interface for all other interfaces in LunaSDK.
     struct Interface
     {
         //! Gets the pointer to the boxed object that implements this interface.

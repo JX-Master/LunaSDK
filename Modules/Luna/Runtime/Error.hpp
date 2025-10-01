@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -179,7 +179,7 @@ namespace Luna
            //! @{
 
         //! @name Basic errors
-        //! Contains core errors defined by Luna SDK. These errors can also be used by user modules.
+        //! Contains core errors defined by LunaSDK. These errors can also be used by user modules.
         //! @{
         
         //! Gets the error category object of `BasicError`.

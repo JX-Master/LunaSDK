@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -208,7 +208,7 @@ namespace Luna
     LUNA_RUNTIME_API RV set_current_dir(const c8* path);
     //! Gets the full (absolute) path of the application's executable file.
     //! @return Returns the full (absolute) path of the application's executable file. 
-    //! The returned pointer is valid until Luna SDK is closed.
+    //! The returned pointer is valid until LunaSDK is closed.
     LUNA_RUNTIME_API const c8* get_process_path();
 
     //! @}

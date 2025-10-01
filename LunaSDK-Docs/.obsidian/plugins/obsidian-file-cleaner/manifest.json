@@ -1,0 +1,10 @@
+{
+	"id": "obsidian-file-cleaner",
+	"name": "File Cleaner",
+	"version": "0.1.5",
+	"minAppVersion": "0.12.0",
+	"description": "Help you to clean empty files and unused attachments in the vault.",
+	"author": "Johnson0907",
+	"authorUrl": "https://github.com/Johnson0907",
+	"isDesktopOnly": false
+}

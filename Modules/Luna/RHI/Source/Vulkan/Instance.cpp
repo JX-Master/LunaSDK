@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 *
@@ -125,9 +125,9 @@ namespace Luna
                 luexp(encode_vk_result(vkEnumerateInstanceVersion(&g_vk_version)));
                 VkApplicationInfo app_info{};
                 app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-                app_info.pApplicationName = "Luna SDK";
+                app_info.pApplicationName = "LunaSDK";
                 app_info.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
-                app_info.pEngineName = "Luna SDK";
+                app_info.pEngineName = "LunaSDK";
                 app_info.engineVersion = VK_MAKE_VERSION(0, 8, 0);
                 app_info.apiVersion = g_vk_version;
                 VkInstanceCreateInfo create_info{};

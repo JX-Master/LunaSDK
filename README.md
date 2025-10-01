@@ -1,10 +1,10 @@
 **This is an experimental project and is in actively development. The APIs, implementations and docs may subject to rapid changes. Please don't use this project in production environments.**
 
-# Luna SDK
+# LunaSDK
 
-![Luna SDK LOGO](https://www.lunasdk.net/logo.png)
+![LunaSDK LOGO](https://www.lunasdk.net/logo.png)
 
-Luna SDK is a C++ software development framework for real-time rendering applications like video games, interactive multimedia programs, data visualization programs and so on.
+LunaSDK is a C++ software development framework for real-time rendering applications like video games, interactive multimedia programs, data visualization programs and so on.
 
 Specifications:
 
@@ -77,31 +77,31 @@ Designed target platforms:
     ./gen_xcode.sh
     ```
 1. Since the current version of xmake does not support running custom post-build scripts in XCode, you may need to copy images, shaders and other files to `build/macosx/{arch}/release/Debug` directory if the program fails to find them.
-1. Open `Luna.xcodeproj` on the root directory of Luna SDK.
+1. Open `Luna.xcodeproj` on the root directory of LunaSDK.
 1. Build products in XCode. 
 
 ## System Requirements
 
-The following requirements must be satisfied to run Luna SDK with Direct3D 12 rendering backend:
+The following requirements must be satisfied to run LunaSDK with Direct3D 12 rendering backend:
 
 * Windows 10 operating system, 64-bit.
 
-The following requirements must be satisfied to run Luna SDK with Vulkan rendering backend:
+The following requirements must be satisfied to run LunaSDK with Vulkan rendering backend:
 
 * Vulkan runtime must be present on the system, and must be supported by your GPU and driver.
   * Vulkan runtime is shipped as part of system components on most modern operations systems, including Windows, Linux and Android.
   * To check whether your GPU and driver supports Vulkan, consult [this database](https://vulkan.gpuinfo.org/).
-  * Installation of [Vulkan SDK](https://vulkan.lunarg.com/) is **not required** to build Luna SDK with Vulkan rendering backend.
+  * Installation of [Vulkan SDK](https://vulkan.lunarg.com/) is **not required** to build LunaSDK with Vulkan rendering backend.
 
 * `VK_KHR_maintenance1 ` extension support, which is mandatory in Vulkan 1.1+.
 * `VK_KHR_swapchain` extension support, which should be supported on all platforms with display screens.
 
-The following requirements must be satisfied to run Luna SDK with Metal rendering backend:
+The following requirements must be satisfied to run LunaSDK with Metal rendering backend:
 
 * macOS 10.15 (Catalina) and later.
 
 ## Docs
-See [Luna SDK Docs](https://www.lunasdk.net).
+See [LunaSDK Docs](https://www.lunasdk.net).
 
 ## Feedback & Discussion
 * `Issues` page is available for bug report and feature request (not guaranteed to be satisfied).
@@ -116,7 +116,7 @@ See [Luna SDK Docs](https://www.lunasdk.net).
 * Bilibili: https://space.bilibili.com/9919368
 
 ## Third Party SDKs and References
-Luna SDK uses the following third party SDKs:
+LunaSDK uses the following third party SDKs:
 1. [Dear ImGui](https://github.com/ocornut/imgui) for GUI rendering (MIT License).
 1. [ImGuizmo](https://github.com/CedricGuillemet/ImGuizmo) for rendering gizmos using ImGui (MIT License).
 1. [DirectX Shader Compiler](https://github.com/microsoft/DirectXShaderCompiler) for compiling HLSL shaders (University of Illinois Open Source License).
@@ -129,14 +129,14 @@ Luna SDK uses the following third party SDKs:
 
 All SDKs are either embedded in the project, or can be fetched automatically by xmake scripts, the user does not need to install them manually.
 
-The following SDKs are not directly used Luna SDK, but part of their design and implementation is referred when developing similar functionalities in Luna SDK:
+The following SDKs are not directly used LunaSDK, but part of their design and implementation is referred when developing similar functionalities in LunaSDK:
 
 1. [jsondiffpatch.net](https://github.com/wbish/jsondiffpatch.net) when developing the variant differential library (MIT License).
 2. [DirectXMath](https://github.com/microsoft/DirectXMath) when developing the math library (MIT License).
 
 ## Alternatives
 
-Here are some alternative real-time rendering engines/frameworks that have similar design goals to Luna SDK.
+Here are some alternative real-time rendering engines/frameworks that have similar design goals to LunaSDK.
 
 * [Sakura Engine](https://github.com/SakuraEngine/SakuraEngine) developed by SaeruHikari and other contributors (MIT License).
 * [Horizon Engine](https://github.com/harukumo/HorizonEngine) developed by harukumo.
@@ -144,11 +144,11 @@ Here are some alternative real-time rendering engines/frameworks that have simil
 * [CatDogEngine](https://github.com/CatDogEngine/CatDogEngine) developed by T-rvw, Hinageshi01 and other contributors (GPL-2.0 License).
 
 ## License
-Luna SDK is licensed under the zlib/libpng license, see [LICENSE.txt](./LICENSE.txt) for more information.
+LunaSDK is licensed under the zlib/libpng license, see [LICENSE.txt](./LICENSE.txt) for more information.
 
 ## Mascot
 
 ![](https://www.lunasdk.net/luna-robot.png)
 
-Say Hi to our mascot, a Luna SDK LOGO with two ellipses that look like eyes of one spherical robot.
+Say Hi to our mascot, a LunaSDK LOGO with two ellipses that look like eyes of one spherical robot.
 

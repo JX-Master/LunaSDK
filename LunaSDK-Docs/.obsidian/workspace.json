@@ -1,0 +1,251 @@
+{
+  "main": {
+    "id": "154c011348fb5a50",
+    "type": "split",
+    "children": [
+      {
+        "id": "cf31b0f53d82707e",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "dbade0a6e5dede60",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Manual/RHI Devices.md",
+                "mode": "preview",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "RHI Devices"
+            }
+          },
+          {
+            "id": "480020b6700a71d8",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Manual/RHI Resources.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "RHI Resources"
+            }
+          }
+        ],
+        "currentTab": 1
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "a482facda7525740",
+    "type": "split",
+    "children": [
+      {
+        "id": "15c02f9fa938824a",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "c33495f8d6a804ed",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Files"
+            }
+          },
+          {
+            "id": "3c955fe1937effc8",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Search"
+            }
+          },
+          {
+            "id": "a5a118186bf142b0",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "Bookmarks"
+            }
+          },
+          {
+            "id": "b1ca752f837ae574",
+            "type": "leaf",
+            "state": {
+              "type": "recent-files",
+              "state": {},
+              "icon": "lucide-ghost",
+              "title": "recent-files"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "307a99d02055be1a",
+    "type": "split",
+    "children": [
+      {
+        "id": "52412d4e1b6e2d4d",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "6e4093f78a4c6041",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "Manual/Getting Started.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Backlinks for Getting Started"
+            }
+          },
+          {
+            "id": "9127d386217a3658",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "LunaSDK.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Outgoing links from LunaSDK"
+            }
+          },
+          {
+            "id": "a46977146ef9de41",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "Tags"
+            }
+          },
+          {
+            "id": "060724066f7d9071",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "LunaSDK.md",
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "Outline of LunaSDK"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Open quick switcher": false,
+      "graph:Open graph view": false,
+      "canvas:Create new canvas": false,
+      "daily-notes:Open today's daily note": false,
+      "templates:Insert template": false,
+      "command-palette:Open command palette": false,
+      "bases:Create new base": false,
+      "obsidian-custom-frames:Open WeRead": false,
+      "obsidian-custom-frames:Open Notion": false,
+      "obsidian-custom-frames:Open 简繁转换": false,
+      "obsidian-file-cleaner:Clean files": false,
+      "float-search:Search obsidian in modal view": false,
+      "templater-obsidian:Templater": false
+    }
+  },
+  "active": "480020b6700a71d8",
+  "lastOpenFiles": [
+    "Manual/RHI Devices.md",
+    "Manual/Rendering.md",
+    "Manual/RHI Command Queues and Command Buffers.md",
+    "LunaSDK.md",
+    "Manual/Recording RHI Commands.md",
+    "Manual/RHI Resources.md",
+    "Manual/RHI Pipeline Configuration.md",
+    "Res/input_layout.svg",
+    "Res/DemoApp-window.png",
+    "Res/DemoApp-final.png",
+    "Res/command_buffer_state_transitions.svg",
+    "Res/pipeline_stages.svg",
+    "Res/ndc.svg",
+    "Res/multiple_command_queues.svg",
+    "Res/multiple_command_buffers.svg",
+    "Res/command_queue.svg",
+    "Res/subresources.svg",
+    "Manual/Strings.md",
+    "Manual/RHI Shader Resource Binding.md",
+    "Manual/Basics.md",
+    "Manual/Boxed Objects.md",
+    "Manual/Interfaces.md",
+    "Manual/Basic Types.md",
+    "Manual/Serialization and Deserialization.md",
+    "Manual/Variants.md",
+    "Manual/Assertions.md",
+    "Manual/Coding Convention.md",
+    "Manual/Math Library.md",
+    "Manual/Logs.md",
+    "Manual/Time.md",
+    "Manual/Thread and Synchronization Objects.md",
+    "Manual/File Management.md",
+    "Manual/Error Handling.md",
+    "Manual/Type System.md",
+    "Manual/Modules.md",
+    "Res/DemoApp/xmake.lua",
+    "Res/DemoApp/main.cpp",
+    "Res/DemoApp",
+    "Res/新建文件夹",
+    "Res",
+    "Manual",
+    "Introduction",
+    "getting_started",
+    "res",
+    "Untitled.base"
+  ]
+}
