@@ -30,15 +30,9 @@ namespace Luna
         //! Gets the primary display of the platform.
         LUNA_WINDOW_API display_t get_primary_display();
 
-        //! Gets the number of displays currently connected to the platform.
-        LUNA_WINDOW_API u32 count_displays();
-
-        //! Gets the display at specified index.
-        //! @param[in] index The index of the display to get.
-        //! @return Returns the display handle that can be used to query for display information.
-        //! @par Valid Usage
-        //! * `index` must be in range [0, @ref count_displays).
-        LUNA_WINDOW_API display_t get_display(u32 index);
+        //! Gets a list of displays of the current platform.
+        //! @param[out] out_displays Returns a list of displays of the platform.
+        LUNA_WINDOW_API void get_displays(Vector<display_t>& out_displays);
 
         //! Specifies the display orientation.
         enum class DisplayOrientation : u32
@@ -120,6 +114,11 @@ namespace Luna
         //! @param[in] display The display to query.
         //! @return Returns the current video mode of the display.
         LUNA_WINDOW_API R<VideoMode> get_display_video_mode(display_t display);
+
+        //! Gets the DPI scale value of the platform.
+        //! @param[in] display The display to query.
+        //! @return Returns the current DPI scale value of the display.
+        LUNA_WINDOW_API R<f32> get_display_dpi_scale(display_t display);
 
         //! Gets the native resolution of the display.
         //! @param[in] display The display to query.

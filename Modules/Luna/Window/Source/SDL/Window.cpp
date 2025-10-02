@@ -8,6 +8,7 @@
 * @date 2024/6/16
 */
 #include <Luna/Runtime/PlatformDefines.hpp>
+#include <SDL3/SDL_keyboard.h>
 #define LUNA_WINDOW_API LUNA_EXPORT
 #include "Window.hpp"
 #include "../Window.hpp"
@@ -249,6 +250,16 @@ namespace Luna
         RV Window::start_text_input()
         {
             bool r = SDL_StartTextInput(m_window);
+            return encode_sdl_result(r);
+        }
+        RV Window::set_text_input_area(const RectI& input_rect, i32 cursor)
+        {
+            SDL_Rect rect;
+            rect.x = input_rect.offset_x;
+            rect.y = input_rect.offset_y;
+            rect.w = input_rect.width;
+            rect.h = input_rect.height;
+            bool r = SDL_SetTextInputArea(m_window, &rect, cursor);
             return encode_sdl_result(r);
         }
         RV Window::stop_text_input()

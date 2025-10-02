@@ -10,6 +10,10 @@ Every thread uses a thread-local variable to record the current thread's handle,
 
 The user can call `yield_current_thread` to yield the remain time slice of the current thread and let OS to schedule other threads. This is useful for reducing CPU cycles if the current thread is waiting for another operation to finish by hardware or another thread.
 
+### Main Thread
+
+LunaSDK recognizes main thread as the thread that initializes LunaSDK, which **does not need to be** the real main thread of the process. On some platforms like Android, the system requires the main thread to respond quickly to system events, or the application will be terminated by the system, so most developers only use main thread to forward system events, and use a separate thread for running application logic. In such case the main thread fetched from `get_main_thread` will be the thread that runs the application logic, not the real main thread of the process.
+
 ## Thread local storage (TLS)
 
 ```c++

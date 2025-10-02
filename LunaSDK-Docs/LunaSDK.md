@@ -5,6 +5,7 @@ Thanks for using LunaSDK. This user manual provides a comprehensive explanation 
 ## Basics
 
 ![[Basics]]
-
+## Window Management
+![[Window Management]]
 ## Rendering
 ![[Rendering]]

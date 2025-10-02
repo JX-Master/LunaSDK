@@ -371,6 +371,11 @@ namespace Luna
             //! input texts.
             virtual RV start_text_input() = 0;
 
+            //! Sets the text input area, so that platform may place an IME overlay next to this area.
+            //! @param[in] input_rect The input area in window coordinates.
+            //! @param[in] cursor The X offset of the cursor relative to `input_rect.offset_x`.
+            virtual RV set_text_input_area(const RectI& input_rect, i32 cursor) = 0;
+
             //! Stops receiving Unicode text input for this window.
             virtual RV stop_text_input() = 0;
         };

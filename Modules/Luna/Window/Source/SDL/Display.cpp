@@ -8,6 +8,7 @@
 * @date 2024/6/16
 */
 #include <Luna/Runtime/PlatformDefines.hpp>
+#include <SDL3/SDL_video.h>
 #define LUNA_WINDOW_API LUNA_EXPORT
 
 #include "Display.hpp"
@@ -143,13 +144,12 @@ namespace Luna
         {
             return get_display_from_display_id(SDL_GetPrimaryDisplay());
         }
-        LUNA_WINDOW_API u32 count_displays()
+        LUNA_WINDOW_API void get_displays(Vector<display_t>& out_displays)
         {
-            return (u32)g_displays.size();
-        }
-        LUNA_WINDOW_API display_t get_display(u32 index)
-        {
-            return (display_t)g_displays[index].get();
+            for(auto& display : g_displays)
+            {
+                out_displays.push_back(display.get());
+            }
         }
         LUNA_WINDOW_API DisplayEvents& get_display_events()
         {
@@ -177,6 +177,17 @@ namespace Luna
             const SDL_DisplayMode* mode = SDL_GetCurrentDisplayMode(m->m_id);
             if(mode == nullptr) return set_error(BasicError::bad_platform_call(), "SDL error: %s", SDL_GetError());
             return encode_video_mode(*mode);
+        }
+        LUNA_WINDOW_API R<f32> get_display_dpi_scale(display_t display)
+        {
+            Display* m = (Display*)display;
+            lucheck_msg(!m->m_disconnected, "Cannot call this function on a disconnected display.");
+            f32 ret = SDL_GetDisplayContentScale(m->m_id);
+            if(ret == 0)
+            {
+                return set_error(BasicError::bad_platform_call(), "SDL error: %s", SDL_GetError());
+            }
+            return ret;
         }
         LUNA_WINDOW_API R<UInt2U> get_display_native_resolution(display_t display)
         {
