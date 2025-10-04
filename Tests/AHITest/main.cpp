@@ -232,7 +232,7 @@ namespace Luna
             App* app = memnew<App>();
             *app_state = app;
 
-            luset(app->window, Window::new_window("Luna Studio - Open Project", Window::WindowDisplaySettings::as_windowed(Window::DEFAULT_POS, Window::DEFAULT_POS, 1000, 500)));
+            luset(app->window, Window::new_window("Luna Studio - Open Project", Window::DEFAULT_POS, Window::DEFAULT_POS, 1000, 500));
             auto dev = RHI::get_main_device();
             u32 graphics_queue = U32_MAX;
             {

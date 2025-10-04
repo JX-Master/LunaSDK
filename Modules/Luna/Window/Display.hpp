@@ -94,12 +94,8 @@ namespace Luna
             u32 width;
             //! The height of the display in screen coordinates.
             u32 height;
-            //! The bit depth of the red channel of the video mode.
-            u32 red_bits;
-            //! The bit depth of the green channel of the video mode.
-            u32 green_bits;
-            //! The bit depth of the blue channel of the video mode.
-            u32 blue_bits;
+            //! The bit depth of the video mode.
+            u32 bits_per_pixel;
             //! The refresh rate, in Hz, of the video mode.
             u32 refresh_rate;
         };
@@ -115,15 +111,10 @@ namespace Luna
         //! @return Returns the current video mode of the display.
         LUNA_WINDOW_API R<VideoMode> get_display_video_mode(display_t display);
 
-        //! Gets the DPI scale value of the platform.
+        //! Gets the native video mode of the display.
         //! @param[in] display The display to query.
-        //! @return Returns the current DPI scale value of the display.
-        LUNA_WINDOW_API R<f32> get_display_dpi_scale(display_t display);
-
-        //! Gets the native resolution of the display.
-        //! @param[in] display The display to query.
-        //! @return Returns the native resolution (width, height) of the display.
-        LUNA_WINDOW_API R<UInt2U> get_display_native_resolution(display_t display);
+        //! @return Returns the native video mode of the display.
+        LUNA_WINDOW_API R<VideoMode> get_display_native_video_mode(display_t display);
 
         //! Gets the virtual position of the display in screen coordinates.
         //! @param[in] display The display to query.
@@ -142,7 +133,7 @@ namespace Luna
         //! Gets the name of the display.
         //! @param[in] display The display to query.
         //! @return Returns the name of the display.
-        LUNA_WINDOW_API Name get_display_name(display_t display);
+        LUNA_WINDOW_API R<Name> get_display_name(display_t display);
 
         //! @}
     }

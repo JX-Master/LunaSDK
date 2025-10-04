@@ -70,6 +70,11 @@ namespace Luna
                 }
             }
         }
+        //! Checks whether this event has no handler.
+        bool empty() const
+        {
+            return m_handlers.empty();
+        }
     };
 
     //! @}

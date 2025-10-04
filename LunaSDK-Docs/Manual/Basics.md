@@ -1,4 +1,4 @@
-The basic concepts and features that every user should understand in order to use LunaSDK correctly and efficiently.
+The basic concepts and features of LunaSDK.
 * [[Coding Convention]]
 * [[Initialization and Shutdown]]
 * [[Basic Types]]

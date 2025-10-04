@@ -49,7 +49,7 @@ namespace Luna
             App* app = memnew<App>();
             *app_state = app;
 
-            luset(app->window, new_window("ImGui Demo", WindowDisplaySettings::as_windowed(), WindowCreationFlag::resizable));
+            luset(app->window, new_window("ImGui Demo"));
             app->window->get_events().close.add_handler(on_window_close);
 
             Ref<IDevice> dev = get_main_device();

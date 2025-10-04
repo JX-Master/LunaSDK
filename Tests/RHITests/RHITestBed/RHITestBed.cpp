@@ -90,7 +90,7 @@ namespace Luna
                     }
                 }
                 if (m_command_queue == U32_MAX) return set_error(BasicError::not_supported(), "No command queue is suitable.");
-                luset(m_window, new_window("RHI Test", WindowDisplaySettings::as_windowed(), WindowCreationFlag::resizable));
+                luset(m_window, new_window("RHI Test"));
                 m_window->get_events().close.add_handler(on_window_close);
                 m_window->get_events().framebuffer_resize.add_handler(on_window_resize);
                 luset(m_swap_chain, device->new_swap_chain(m_command_queue, m_window, SwapChainDesc({0, 0, 2, Format::bgra8_unorm, true})));

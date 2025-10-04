@@ -22,12 +22,6 @@ namespace Luna
         Vector<UniquePtr<Display>> g_displays;
         DisplayEvents g_display_events;
 
-        inline void set_video_mode_rgb_bits(VideoMode& mode, u32 rbits, u32 gbits, u32 bbits)
-        {
-            mode.red_bits = rbits;
-            mode.green_bits = gbits;
-            mode.blue_bits = bbits;
-        }
         VideoMode encode_video_mode(const SDL_DisplayMode& mode)
         {
             VideoMode dst_mode;
@@ -37,7 +31,7 @@ namespace Luna
             switch (mode.format)
             {
                 case SDL_PIXELFORMAT_RGB332:
-                    set_video_mode_rgb_bits(dst_mode, 3, 3, 2);
+                    dst_mode.bits_per_pixel = 8;
                     break;
                 case SDL_PIXELFORMAT_XRGB4444:
                 case SDL_PIXELFORMAT_XBGR4444:
@@ -45,22 +39,20 @@ namespace Luna
                 case SDL_PIXELFORMAT_RGBA4444:
                 case SDL_PIXELFORMAT_ABGR4444:
                 case SDL_PIXELFORMAT_BGRA4444:
-                    set_video_mode_rgb_bits(dst_mode, 4, 4, 4);
-                    break;
                 case SDL_PIXELFORMAT_XRGB1555:
                 case SDL_PIXELFORMAT_XBGR1555:
                 case SDL_PIXELFORMAT_ARGB1555:
                 case SDL_PIXELFORMAT_RGBA5551:
                 case SDL_PIXELFORMAT_ABGR1555:
                 case SDL_PIXELFORMAT_BGRA5551:
-                    set_video_mode_rgb_bits(dst_mode, 5, 5, 5);
-                    break;
                 case SDL_PIXELFORMAT_RGB565:
                 case SDL_PIXELFORMAT_BGR565:
-                    set_video_mode_rgb_bits(dst_mode, 5, 6, 5);
+                    dst_mode.bits_per_pixel = 16;
                     break;
                 case SDL_PIXELFORMAT_RGB24:
                 case SDL_PIXELFORMAT_BGR24:
+                    dst_mode.bits_per_pixel = 24;
+                    break;
                 case SDL_PIXELFORMAT_XRGB8888:
                 case SDL_PIXELFORMAT_RGBX8888:
                 case SDL_PIXELFORMAT_XBGR8888:
@@ -69,15 +61,12 @@ namespace Luna
                 case SDL_PIXELFORMAT_RGBA8888:
                 case SDL_PIXELFORMAT_ABGR8888:
                 case SDL_PIXELFORMAT_BGRA8888:
-                    set_video_mode_rgb_bits(dst_mode, 8, 8, 8);
-                    break;
                 case SDL_PIXELFORMAT_ARGB2101010:
-                    set_video_mode_rgb_bits(dst_mode, 10, 10, 10);
+                    dst_mode.bits_per_pixel = 32;
                     break;
                 default:
-                    dst_mode.red_bits = 0;
-                    dst_mode.green_bits = 0;
-                    dst_mode.blue_bits = 0;
+                    lupanic_always();
+                    dst_mode.bits_per_pixel = 32;
                     break;
             }
             return dst_mode;
@@ -94,7 +83,13 @@ namespace Luna
             g_displays.reserve((u32)num_displays);
             for(int i = 0; i < num_displays; ++i)
             {
-                Name display_name = SDL_GetDisplayName(i);
+                const char* name = SDL_GetDisplayName(displays[i]);
+                if(!name)
+                {
+                    SDL_free(displays);
+                    return set_error(BasicError::bad_platform_call(), "SDL error: %s", SDL_GetError());
+                }
+                Name display_name = name;
                 // try to match existing display.
                 UniquePtr<Display> display;
                 for(auto iter = old_displays.begin(); iter != old_displays.end(); ++iter)
@@ -178,24 +173,13 @@ namespace Luna
             if(mode == nullptr) return set_error(BasicError::bad_platform_call(), "SDL error: %s", SDL_GetError());
             return encode_video_mode(*mode);
         }
-        LUNA_WINDOW_API R<f32> get_display_dpi_scale(display_t display)
-        {
-            Display* m = (Display*)display;
-            lucheck_msg(!m->m_disconnected, "Cannot call this function on a disconnected display.");
-            f32 ret = SDL_GetDisplayContentScale(m->m_id);
-            if(ret == 0)
-            {
-                return set_error(BasicError::bad_platform_call(), "SDL error: %s", SDL_GetError());
-            }
-            return ret;
-        }
-        LUNA_WINDOW_API R<UInt2U> get_display_native_resolution(display_t display)
+        LUNA_WINDOW_API R<VideoMode> get_display_native_video_mode(display_t display)
         {
             Display* m = (Display*)display;
             lucheck_msg(!m->m_disconnected, "Cannot call this function on a disconnected display.");
             const SDL_DisplayMode* mode = SDL_GetDesktopDisplayMode(m->m_id);
             if(mode == nullptr) return set_error(BasicError::bad_platform_call(), "SDL error: %s", SDL_GetError());
-            return UInt2U((u32)mode->w, (u32)mode->h);
+            return encode_video_mode(*mode);
         }
         LUNA_WINDOW_API R<Int2U> get_display_position(display_t display)
         {
@@ -221,30 +205,10 @@ namespace Luna
             lucatchret;
             return RectI(rect.x, rect.y, rect.w, rect.h);
         }
-        LUNA_WINDOW_API Name get_display_name(display_t display)
+        LUNA_WINDOW_API R<Name> get_display_name(display_t display)
         {
             Display* m = (Display*)display;
             return m->m_name;
-        }
-        LUNA_WINDOW_API void dispatch_display_orientation_event(display_t display, DisplayOrientation orientation)
-        {
-            g_display_events.orientation(display, orientation);
-        }
-        LUNA_WINDOW_API void dispatch_display_connect_event(display_t display)
-        {
-            lupanic_if_failed(refresh_display_list());
-            g_display_events.connect(display);
-        }
-        LUNA_WINDOW_API void dispatch_display_disconnect_event(display_t display)
-        {
-            Display* d = (Display*)display;
-            d->m_disconnected = true;
-            g_display_events.disconnect(display);
-            lupanic_if_failed(refresh_display_list());
-        }
-        LUNA_WINDOW_API void dispatch_display_move_event(display_t display)
-        {
-            g_display_events.move(display);
         }
     }
 }

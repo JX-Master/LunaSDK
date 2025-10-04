@@ -51,40 +51,19 @@ namespace Luna
 
 #ifdef LUNA_ENABLE_THREAD_SAFE_ASSERTION
 
-//! Defines a thread safe assertion lock that marks one structure or class type that should never be accessed by multiple threads
-//! without synchronization.
-//! @remark Add this macro to the body of one structure or class definition, and add @ref lutsassert to member functions that should
-//! be protected. For example:
-//! ```
-//! // The non-thread-safe type.
-//! class MyType
-//! {
-//!     lutsassert_lock();
-//!     i32 value; // The data that should be accessed by only one thread.
-//!     
-//!        // Will crash the program if another thread is also calling functions of the same object
-//!     // with lutsassert() set
-//!        void set_value(i32 v)
-//!     {
-//!            lutsassert();
-//!            value = v;
-//!        }
-//!        // 
-//!     i32 get_value()
-//!        {
-//!            lutsassert();
-//!         return value;
-//!     }
-//! };
-//! ```
-#define lutsassert_lock() mutable Luna::TSLock m_tsassert_lock;
-
-//! Tests this function call for thread safety.
-//! @remark See remarks of @ref lutsassert_lock for details.
-#define lutsassert() Luna::TSGuard _tsguard(this->m_tsassert_lock);
+#define lutsassert_lock_impl() mutable Luna::TSLock m_tsassert_lock
+#define lutsassert_impl() Luna::TSGuard _tsguard(this->m_tsassert_lock);
+#define lutsassert_main_thread_impl() luassert_msg_always(Luna::get_current_thread() == Luna::get_main_thread(), "This function must only be called from the main thread.")
 
 #else
 
+#define lutsassert_lock_impl() 
+#define lutsassert_impl()
+#define lutsassert_main_thread_impl()
+
+#endif
+
+
 //! Defines a thread safe assertion lock that marks one structure or class type that should never be accessed by multiple threads
 //! without synchronization.
 //! @remark Add this macro to the body of one structure or class definition, and add @ref lutsassert to member functions that should
@@ -111,12 +90,13 @@ namespace Luna
 //!     }
 //! };
 //! ```
-#define lutsassert_lock() 
+#define lutsassert_lock() lutsassert_lock_impl()
 
 //! Tests this function call for thread safety.
 //! @remark See remarks of @ref lutsassert_lock for details.
-#define lutsassert()
+#define lutsassert() lutsassert_impl()
 
-#endif
+//! Checks this function call is in main thread.
+#define lutsassert_main_thread() lutsassert_main_thread_impl()
 
 //! @}

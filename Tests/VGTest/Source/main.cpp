@@ -110,7 +110,7 @@ namespace Luna
             App* app = memnew<App>();
             *app_state = app;
             // register event.
-            luset(app->window, Window::new_window("Luna Vector Graphics Test", Window::WindowDisplaySettings::as_windowed(), Window::WindowCreationFlag::resizable));
+            luset(app->window, Window::new_window("Luna Vector Graphics Test"));
             app->window->get_events().mouse_down.add_handler([app](Window::IWindow* window, HID::MouseButton button) { on_mouse_down(app, window, button); });
             app->window->get_events().mouse_up.add_handler([app](Window::IWindow* window, HID::MouseButton button) { on_mouse_up(app, window, button); });
             auto sz = app->window->get_size();

@@ -23,6 +23,7 @@
 #endif
 
 #pragma comment(lib, "shell32.lib")
+#pragma comment(lib, "User32.lib")
 
 namespace Luna
 {
@@ -74,7 +75,12 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 #endif
     while(result == Window::AppStatus::running)
     {
-        Window::poll_events();
+        MSG msg = {};
+        while (::PeekMessageW(&msg, NULL, 0, 0, PM_REMOVE))
+        {
+            ::TranslateMessage(&msg);
+            ::DispatchMessageW(&msg);
+        }
         result = app_update(app_state);
     }
     app_close(app_state, result);

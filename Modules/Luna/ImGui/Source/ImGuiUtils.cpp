@@ -577,7 +577,7 @@ namespace Luna
             io.AddInputCharacterUTF16((c16)character);
         }
 
-        static void handle_dpi_changed(Window::IWindow* window)
+        static void handle_dpi_scale_changed(Window::IWindow* window)
         {
             auto _ = refresh_font_texture();
         }
@@ -588,10 +588,10 @@ namespace Luna
         usize g_handle_scroll;
         usize g_handle_key_down;
         usize g_handle_key_up;
-        usize g_handle_focus;
-        usize g_handle_lose_focus;
+        usize g_handle_input_focus;
+        usize g_handle_lose_input_focus;
         usize g_handle_input_character;
-        usize g_handle_dpi_changed;
+        usize g_handle_dpi_scale_changed;
 
         LUNA_IMGUI_API void set_active_window(Window::IWindow* window)
         {
@@ -605,10 +605,10 @@ namespace Luna
                 events.scroll.remove_handler(g_handle_scroll);
                 events.key_down.remove_handler(g_handle_key_down);
                 events.key_up.remove_handler(g_handle_key_up);
-                events.focus.remove_handler(g_handle_focus);
-                events.lose_focus.remove_handler(g_handle_lose_focus);
+                events.input_focus.remove_handler(g_handle_input_focus);
+                events.lose_input_focus.remove_handler(g_handle_lose_input_focus);
                 events.input_character.remove_handler(g_handle_input_character);
-                events.dpi_changed.remove_handler(g_handle_dpi_changed);
+                events.dpi_scale_changed.remove_handler(g_handle_dpi_scale_changed);
                 if(g_window_text_input_enabled)
                 {
                     auto _ = g_active_window->stop_text_input();
@@ -626,10 +626,10 @@ namespace Luna
                 g_handle_scroll = events.scroll.add_handler(handle_scroll);
                 g_handle_key_down = events.key_down.add_handler(handle_key_down);
                 g_handle_key_up = events.key_up.add_handler(handle_key_up);
-                g_handle_focus = events.focus.add_handler(handle_focus);
-                g_handle_lose_focus = events.lose_focus.add_handler(handle_lose_focus);
+                g_handle_input_focus = events.input_focus.add_handler(handle_focus);
+                g_handle_lose_input_focus = events.lose_input_focus.add_handler(handle_lose_focus);
                 g_handle_input_character = events.input_character.add_handler(handle_input_character);
-                g_handle_dpi_changed = events.dpi_changed.add_handler(handle_dpi_changed);
+                g_handle_dpi_scale_changed = events.dpi_scale_changed.add_handler(handle_dpi_scale_changed);
             }
         }
 

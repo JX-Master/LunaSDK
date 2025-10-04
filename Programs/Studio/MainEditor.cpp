@@ -109,7 +109,7 @@ namespace Luna
 
             // Create window and render objects.
             snprintf(title, 256, "%s - %s", name.c_str(), APP_NAME);
-            luset(m_window, Window::new_window(title, Window::WindowDisplaySettings::as_windowed(), Window::WindowCreationFlag::resizable));
+            luset(m_window, Window::new_window(title));
 
             m_window->get_events().close.add_handler([](Window::IWindow* window) 
             {
@@ -143,6 +143,11 @@ namespace Luna
 
             // Create ImGui context.
             ImGuiUtils::set_active_window(m_window);
+
+            register_boxed_type<AssetBrowser>();
+            register_struct_type<Operation>({});
+            register_struct_type<AssetEditingOp>({}, typeof<Operation>());
+            register_struct_type<DiffAssetEditingOp>({}, typeof<AssetEditingOp>());
 
             // Create asset browser instance.
             for (usize i = 0; i < 4; ++i)
@@ -208,8 +213,6 @@ namespace Luna
 
     RV MainEditor::update()
     {
-        Window::poll_events();
-
         if (m_window->is_closed())
         {
             m_exiting = true;
@@ -442,37 +445,6 @@ namespace Luna
         set_property_attribute(typeof<SceneSettings>(), "bloom_threshold", "gui_max", (f64)10.0f);
         set_property_attribute(typeof<SceneSettings>(), "bloom_intensity", "gui_min", (f64)0.0f);
         set_property_attribute(typeof<SceneSettings>(), "bloom_intensity", "gui_max", (f64)2.0f);
-    }
-
-    void run_main_editor(const Path& project_path)
-    {
-        register_boxed_type<MainEditor>();
-        register_boxed_type<AssetBrowser>();
-        register_struct_type<Operation>({});
-        register_struct_type<AssetEditingOp>({}, typeof<Operation>());
-        register_struct_type<DiffAssetEditingOp>({}, typeof<AssetEditingOp>());
-
-        Ref<MainEditor> main_editor = new_object<MainEditor>();
-        g_main_editor = main_editor;
-        if (!main_editor)
-        {
-            return;
-        }
-        lutry
-        {
-            luexp(main_editor->init(project_path));
-            while (!main_editor->m_exiting)
-            {
-                luexp(main_editor->update());
-            }
-            main_editor->close();
-        }
-        lucatch
-        {
-            auto _ = Window::message_box(explain(luerr), "Editor Crashed.", Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
-            return;
-        }
-        Asset::close();
     }
 
     void draw_asset_tile(Asset::asset_t asset, const RectF& draw_rect)

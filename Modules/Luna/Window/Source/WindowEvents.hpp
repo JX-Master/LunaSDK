@@ -23,7 +23,7 @@ namespace Luna
             Event<window_resize_event_handler_t> resize;
             Event<window_framebuffer_resize_event_handler_t> framebuffer_resize;
             Event<window_move_event_handler_t> move;
-            Event<window_dpi_changed_event_handler_t> dpi_changed;
+            Event<window_dpi_scale_changed_event_handler_t> dpi_scale_changed;
             Event<window_key_down_event_handler_t> key_down;
             Event<window_key_up_event_handler_t> key_up;
             Event<window_input_character_event_handler_t> input_character;
@@ -48,7 +48,7 @@ namespace Luna
                 resize.clear();
                 framebuffer_resize.clear();
                 move.clear();
-                dpi_changed.clear();
+                dpi_scale_changed.clear();
                 key_down.clear();
                 key_up.clear();
                 input_character.clear();

@@ -4,6 +4,9 @@
 
 ![LunaSDK LOGO](https://www.lunasdk.net/logo.png)
 
+[![windows-build](https://github.com/JX-Master/LunaSDK/actions/workflows/ci-windows-main.yml/badge.svg?branch=main)](https://github.com/JX-Master/LunaSDK/actions/workflows/ci-windows-main.yml)
+[![macos-build](https://github.com/JX-Master/LunaSDK/actions/workflows/ci-macos-main.yml/badge.svg?branch=main)](https://github.com/JX-Master/LunaSDK/actions/workflows/ci-macos-main.yml)
+
 LunaSDK is a C++ software development framework for real-time rendering applications like video games, interactive multimedia programs, data visualization programs and so on.
 
 Specifications:
@@ -30,61 +33,11 @@ Designed target platforms:
 * Android (Vulkan) (Not implemented yet.)
 * iOS (Metal) (Not implemented yet.)
 
-## Building
-
-[![windows-build](https://github.com/JX-Master/LunaSDK/actions/workflows/ci-windows-main.yml/badge.svg?branch=main)](https://github.com/JX-Master/LunaSDK/actions/workflows/ci-windows-main.yml)
-[![macos-build](https://github.com/JX-Master/LunaSDK/actions/workflows/ci-macos-main.yml/badge.svg?branch=main)](https://github.com/JX-Master/LunaSDK/actions/workflows/ci-macos-main.yml)
-
-### Prerequisites
-
-* C++ toolchain on your platform:
-    * Visual Studio 2019 or later on Windows (C++ desktop development & C++ game development workload).
-    * XCode and command line tools on macOS.
-    * clang or gcc on Linux (not implemented yet).
-* xmake building system, check [here](https://xmake.io/#/guide/installation) for installation instructions.
-* For Visual Studio Code users, install `XMake`(tboox) and `C/C++`(Microsoft) extensions on Visual Studio Code to improve development experience.
-
-### Visual Studio
-1. Clone or download this project.
-1. Double click `setup.bat` to perform project setup.
-1. Double click `gen_vs2019.bat` or execute the following commands:
-
-    ``` xmake project  -y -k vsxmake2019 -m "debug;profile;release" Solution ```
-
-    if you user other Visual Studio versions, change `vsxmake2019` to your version, like `vsxmake2021`.
-
-1. Open solution file in `/Solution/vsxmake2019/Luna.sln`
-1. Build solution in Visual Studio.
-
-### Visual Studio Code
-1. Clone or download this project.
-1. Run `setup.bat` (on Windows) or `setup.sh` (on macOS) to perform project setup.
-1. Open Code editor on the project root directory, then choose xmake toolchain in Code editor.
-1. Configure the building option by executing `xmake f {options}`. Possible options include:
-   1. `-p` for target platform, including `windows` and `macosx`. This can be set automatically for most of the time.
-   1. `-a` for architecture, including `x64` and `arm64`. 
-   1. `-m` for mode, including `debug`, `profile`and `release`.
-   1. `--rhi_debug=y` if you want to enable the debug layer of the rendering backend (D3D12 debug layer or Vulkan validation layer).
-   1. `--rhi_api=XXX` for choosing the rendering backend, including `D3D12` (default on Windows), `Vulkan` (default on Linux) and `Metal` (default on macOS). 
-1. Open terminal and execute `xmake build` for all projects, or `xmake build {target}` for a specific target, like `Studio`. You may also use `Run and Debug` tab to build project if you install the `XMake` extension.
-
-### XCode
-1. Clone or download this project.
-1. Run `setup.sh` to perform project setup.
-1. Run `gen_xcode.sh` on terminal:
-    ```
-    chmod +x ./gen_xcode.sh
-    ./gen_xcode.sh
-    ```
-1. Since the current version of xmake does not support running custom post-build scripts in XCode, you may need to copy images, shaders and other files to `build/macosx/{arch}/release/Debug` directory if the program fails to find them.
-1. Open `Luna.xcodeproj` on the root directory of LunaSDK.
-1. Build products in XCode. 
-
 ## System Requirements
 
-The following requirements must be satisfied to run LunaSDK with Direct3D 12 rendering backend:
+### Windows
 
-* Windows 10 operating system, 64-bit.
+* Windows 10 version 1703 (OS build 15063) or later.
 
 The following requirements must be satisfied to run LunaSDK with Vulkan rendering backend:
 
@@ -96,7 +49,7 @@ The following requirements must be satisfied to run LunaSDK with Vulkan renderin
 * `VK_KHR_maintenance1 ` extension support, which is mandatory in Vulkan 1.1+.
 * `VK_KHR_swapchain` extension support, which should be supported on all platforms with display screens.
 
-The following requirements must be satisfied to run LunaSDK with Metal rendering backend:
+### macOS
 
 * macOS 10.15 (Catalina) and later.
 
@@ -110,7 +63,6 @@ Docs are placed at `./LunaSDK-Docs` directory. Use [Obsidian](https://obsidian.m
 
 ## Contact Author
 * Email: jxmaster@yeah.net
-* Threads: @jx_master
 * Discord: jxmaster.me
 * Zhihu: https://www.zhihu.com/people/jx-master
 * Bilibili: https://space.bilibili.com/9919368
@@ -125,7 +77,7 @@ LunaSDK uses the following third party SDKs:
 1. [Vulkan Memory Allocator](https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator) for allocating device memory on Vulkan backend (MIT License).
 1. [D3D12 Memory Allocator](https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator) for allocating device memory on D3D12 backend (MIT License).
 1. [miniaudio](https://miniaud.io/index.html) for cross-platform low-level platform audio interface (public domain).
-1. [SDL2](https://www.libsdl.org) for window management on iOS and Android (zlib License).
+1. [SDL3](https://www.libsdl.org) for window management (zlib License).
 
 All SDKs are either embedded in the project, or can be fetched automatically by xmake scripts, the user does not need to install them manually.
 

@@ -23,20 +23,11 @@ namespace Luna
 
     void on_window_key_pressed(Window::IWindow* window, HID::KeyCode key)
     {
-        if(key == HID::KeyCode::spacebar)
+        if(key == HID::KeyCode::r)
         {
-            if(window->is_full_screen())
-            {
-                lupanic_if_failed(window->set_display_settings(Window::WindowDisplaySettings::as_windowed()));
-            }
-            else
-            {
-                lupanic_if_failed(window->set_display_settings(Window::WindowDisplaySettings::as_full_screen()));
-            }
-        }
-        else if(key == HID::KeyCode::r)
-        {
-            lupanic_if_failed(window->set_resizable(!window->is_resizable()));
+            auto style = window->get_style();
+            set_flags(style, Window::WindowStyleFlag::resizable, !test_flags(style, Window::WindowStyleFlag::resizable));
+            lupanic_if_failed(window->set_style(style));
         }
     }
 
@@ -52,8 +43,7 @@ namespace Luna
             Window::StartupParams params;
             Window::set_startup_params(params);
             luexp(init_modules());
-            luset(g_main_window, Window::new_window("Window Test", Window::WindowDisplaySettings::as_windowed(), 
-                Window::WindowCreationFlag::resizable));
+            luset(g_main_window, Window::new_window("Window Test"));
             g_main_window->get_events().close.add_handler(on_window_close);
             g_main_window->get_events().key_down.add_handler(on_window_key_pressed);
         }

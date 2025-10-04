@@ -123,7 +123,7 @@ namespace Luna
             App* app = memnew<App>();
             *app_state = app;
             // register event.
-            luset(app->window, Window::new_window("Luna Vector Graphics Test", Window::WindowDisplaySettings::as_windowed(), Window::WindowCreationFlag::resizable));
+            luset(app->window, Window::new_window("Luna Vector Graphics Test"));
             auto sz = app->window->get_framebuffer_size();
 
             app->window->get_events().close.add_handler(on_window_close);

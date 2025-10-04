@@ -7,7 +7,8 @@
 * @author JXMaster
 * @date 2024/6/16
 */
-#include "../../Display.hpp"
+#pragma once
+#include "../../../Display.hpp"
 #include <Luna/Runtime/Result.hpp>
 #include <SDL3/SDL.h>
 
@@ -21,6 +22,8 @@ namespace Luna
             SDL_DisplayID m_id;
             bool m_disconnected = false;
         };
+
+        extern DisplayEvents g_display_events;
 
         RV display_init();
         void display_close();

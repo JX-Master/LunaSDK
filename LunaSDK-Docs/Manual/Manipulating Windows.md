@@ -18,7 +18,7 @@ Windows' positions and sizes are measured in window coordinates, which on some p
 
 ## DPI Scaling
 
-The DPI scale value of one window is the same as the [[Displays#DPI Scaling|DPI scale value of the display]] that contains the window. The DPI scale value of one window can be fetched by calling `IWindow::get_dpi_scale_factor`. This value can change if the user moves the window from one display to another, in such case the system sends `WindowEvents::dpi_changed` event to the application, so application can update its content to fit new DPI scale value.
+The DPI scale value of one window is the same as the [[Displays#DPI Scaling|DPI scale value of the display]] that contains the window. The DPI scale value of one window can be fetched by calling `IWindow::get_dpi_scale_factor`. This value can change if the user moves the window from one display to another, in such case the system sends `WindowEvents::dpi_scale_changed` event to the application, so application can update its content to fit new DPI scale value.
 
 ## Window Events
 

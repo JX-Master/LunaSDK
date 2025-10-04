@@ -44,7 +44,7 @@ RV DemoApp::init()
 {
     lutry
     {
-        luset(window, Window::new_window("DemoApp", Window::WindowDisplaySettings::as_windowed(), Window::WindowCreationFlag::resizable));
+        luset(window, Window::new_window("DemoApp"));
         window->get_close_event().add_handler([](Window::IWindow* window) { window->close(); });
         window->get_framebuffer_resize_event().add_handler([this](Window::IWindow* window, u32 width, u32 height) {
             lupanic_if_failed(this->resize(width, height));
