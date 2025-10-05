@@ -34,59 +34,6 @@ namespace Luna
         //! @param[out] out_displays Returns a list of displays of the platform.
         LUNA_WINDOW_API void get_displays(Vector<display_t>& out_displays);
 
-        //! Specifies the display orientation.
-        enum class DisplayOrientation : u32
-        {
-            //! The orientation is not specified.
-            unknown = 0,
-            //! The display is in landscape orientation.
-            landscape,
-            //! The display is in landscape flipped orientation.
-            landscape_flipped,
-            //! The display is in portrait orientation.
-            portrait,
-            //! The display is in portrait flipped orientation.
-            portrait_flipped,
-        };
-
-        //! Callbacks for display events.
-        struct DisplayEvents
-        {
-            //! Called when the orientation of the display is changed.
-            //! @param[in] display The display whose orientation is changed.
-            //! @param[in] orientation The new display orientation after change.
-            Event<void(display_t display, DisplayOrientation orientation)> orientation;
-
-            //! Called when a new display is connected to the platform.
-            //! @param[in] display The display that is connected.
-            Event<void(display_t display)> connect;
-
-            //! Called when a display is disconnected from the platform.
-            //! @param[in] display The display that is disconnected.
-            //! Since the display is disconnected, this handle is actually invalid, and the only thing that can be done 
-            //! with this handle is to remove information attached to it in user application.
-            Event<void(display_t display)> disconnect;
-
-            //! Called when the position of the display in desktop coordinates 
-            //! is changed. This usually happens when the user changes the display settings in the
-            //! system settings.
-            //! @param[in] display The display whose position is changed.
-            Event<void(display_t display)> move;
-
-            void reset()
-            {
-                orientation.clear();
-                connect.clear();
-                disconnect.clear();
-                move.clear();
-            }
-        };
-
-        //! Gets the display events set, so that user application can register handlers to 
-        //! monitor such events.
-        //! @return Returns one reference to the display events set.
-        LUNA_WINDOW_API DisplayEvents& get_display_events();
-
         //! Describes one video mode of one display.
         struct VideoMode
         {
@@ -110,11 +57,6 @@ namespace Luna
         //! @param[in] display The display to query.
         //! @return Returns the current video mode of the display.
         LUNA_WINDOW_API R<VideoMode> get_display_video_mode(display_t display);
-
-        //! Gets the native video mode of the display.
-        //! @param[in] display The display to query.
-        //! @return Returns the native video mode of the display.
-        LUNA_WINDOW_API R<VideoMode> get_display_native_video_mode(display_t display);
 
         //! Gets the virtual position of the display in screen coordinates.
         //! @param[in] display The display to query.

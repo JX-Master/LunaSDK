@@ -20,7 +20,6 @@ namespace Luna
     namespace Window
     {
         Vector<UniquePtr<Display>> g_displays;
-        DisplayEvents g_display_events;
 
         VideoMode encode_video_mode(const SDL_DisplayMode& mode)
         {
@@ -146,10 +145,6 @@ namespace Luna
                 out_displays.push_back(display.get());
             }
         }
-        LUNA_WINDOW_API DisplayEvents& get_display_events()
-        {
-            return g_display_events;
-        }
         LUNA_WINDOW_API RV get_display_supported_video_modes(display_t display, Vector<VideoMode>& out_video_modes)
         {
             Display* m = (Display*)display;
@@ -170,14 +165,6 @@ namespace Luna
             Display* m = (Display*)display;
             lucheck_msg(!m->m_disconnected, "Cannot call this function on a disconnected display.");
             const SDL_DisplayMode* mode = SDL_GetCurrentDisplayMode(m->m_id);
-            if(mode == nullptr) return set_error(BasicError::bad_platform_call(), "SDL error: %s", SDL_GetError());
-            return encode_video_mode(*mode);
-        }
-        LUNA_WINDOW_API R<VideoMode> get_display_native_video_mode(display_t display)
-        {
-            Display* m = (Display*)display;
-            lucheck_msg(!m->m_disconnected, "Cannot call this function on a disconnected display.");
-            const SDL_DisplayMode* mode = SDL_GetDesktopDisplayMode(m->m_id);
             if(mode == nullptr) return set_error(BasicError::bad_platform_call(), "SDL error: %s", SDL_GetError());
             return encode_video_mode(*mode);
         }

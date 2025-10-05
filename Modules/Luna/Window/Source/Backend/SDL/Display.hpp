@@ -23,8 +23,6 @@ namespace Luna
             bool m_disconnected = false;
         };
 
-        extern DisplayEvents g_display_events;
-
         RV display_init();
         void display_close();
 

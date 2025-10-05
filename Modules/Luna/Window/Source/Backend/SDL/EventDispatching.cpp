@@ -11,7 +11,6 @@
 #define LUNA_WINDOW_API LUNA_EXPORT
 #include "../../../SDL/EventHandling.hpp"
 #include "Window.hpp"
-#include "Display.hpp"
 #include <Luna/Runtime/Unicode.hpp>
 #include <Luna/Runtime/Thread.hpp>
 #include <Luna/Runtime/TSAssert.hpp>
@@ -146,50 +145,7 @@ namespace Luna
 
         LUNA_WINDOW_API void handle_sdl_event(SDL_Event& event)
         {
-            if(event.type >= SDL_EVENT_DISPLAY_FIRST && event.type <= SDL_EVENT_DISPLAY_LAST)
-            {
-                Display* display = (Display*)get_display_from_display_id(event.display.displayID);
-                switch(event.type)
-                {
-                    case SDL_EVENT_DISPLAY_ORIENTATION:
-                    DisplayOrientation orientation;
-                    switch(event.display.data1)
-                    {
-                        case SDL_ORIENTATION_UNKNOWN:
-                        orientation = DisplayOrientation::unknown;
-                        break;
-                        case SDL_ORIENTATION_LANDSCAPE:
-                        orientation = DisplayOrientation::landscape;
-                        break;
-                        case SDL_ORIENTATION_LANDSCAPE_FLIPPED:
-                        orientation = DisplayOrientation::landscape_flipped;
-                        break;
-                        case SDL_ORIENTATION_PORTRAIT:
-                        orientation = DisplayOrientation::portrait;
-                        break;
-                        case SDL_ORIENTATION_PORTRAIT_FLIPPED:
-                        orientation = DisplayOrientation::portrait_flipped;
-                        break;
-                    }
-                    g_display_events.orientation(display, orientation);
-                    break;
-                    case SDL_EVENT_DISPLAY_ADDED:
-                    lupanic_if_failed(refresh_display_list());
-                    g_display_events.connect(display);
-                    break;
-                    case SDL_EVENT_DISPLAY_REMOVED:
-                    display->m_disconnected = true;
-                    g_display_events.disconnect(display);
-                    break;
-                    case SDL_EVENT_DISPLAY_MOVED:
-                    g_display_events.move(display);
-                    break;
-                    default:
-                    lupanic();
-                    break;
-                }
-            }
-            else if(event.type >= SDL_EVENT_WINDOW_FIRST && event.type <= SDL_EVENT_WINDOW_LAST)
+            if(event.type >= SDL_EVENT_WINDOW_FIRST && event.type <= SDL_EVENT_WINDOW_LAST)
             {
                 Window* window = get_window_from_sdl_window_id(event.window.windowID);
                 if(window)

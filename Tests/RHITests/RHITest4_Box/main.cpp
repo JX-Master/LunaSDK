@@ -261,7 +261,10 @@ namespace Luna
     Window::AppStatus app_update(opaque_t app_state)
     {
         auto window = RHITestBed::get_window();
-        if(window->is_closed()) return Window::AppStatus::exiting;
+        if(window->is_closed())
+        {
+            return Window::AppStatus::exiting;
+        }
         if(window->is_minimized())
         {
             sleep(100);

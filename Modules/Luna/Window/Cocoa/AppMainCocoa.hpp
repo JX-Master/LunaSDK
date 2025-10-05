@@ -3,19 +3,21 @@
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
-* @file Display.hpp
+* @file AppMainCocoa.hpp
 * @author JXMaster
-* @date 2025/10/2
+* @date 2025/10/5
 */
 #pragma once
-#include "../../../Display.hpp"
-#include <Luna/Runtime/Result.hpp>
+
+#ifndef LUNA_WINDOW_API
+#define LUNA_WINDOW_API
+#endif
 
 namespace Luna
 {
     namespace Window
     {
-        RV display_init();
-        void display_close();
+        //! Initializes Cocoa application state.
+        LUNA_WINDOW_API void cocoa_app_init();
     }
 }

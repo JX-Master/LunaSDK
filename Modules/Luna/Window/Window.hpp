@@ -176,7 +176,7 @@ namespace Luna
             //! Whether this window is resizable by dragging the border of the window.
             resizable = 0x01,
             //! Disables all decorations for the window.
-            //! If this is set, `resizable`, `minimizable`, `maximizable` and `closable` has no effect.
+            //! If this is set, `resizable` has no effect.
             borderless = 0x02,
         };
 

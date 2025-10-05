@@ -10,7 +10,7 @@
 */
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_WINDOW_API LUNA_EXPORT
-#include "Display.hpp"
+#include "../../../Display.hpp"
 #include <Luna/Runtime/Platform/Windows/MiniWin.hpp>
 #include <shellscalingapi.h>
 #include <Luna/Runtime/Unicode.hpp>
@@ -25,8 +25,6 @@ namespace Luna
         {
             Vector<HMONITOR> displays;
         };
-
-        DisplayEvents g_display_events;
 
         static BOOL Monitorenumproc(
             HMONITOR hMonitor,
@@ -58,10 +56,6 @@ namespace Luna
                 out_displays.push_back(monitor);
             }
         }
-        LUNA_WINDOW_API DisplayEvents& get_display_events()
-        {
-            return g_display_events;
-        }
         LUNA_WINDOW_API RV get_display_supported_video_modes(display_t display, Vector<VideoMode>& out_video_modes)
         {
             MONITORINFOEXW info;
@@ -92,26 +86,6 @@ namespace Luna
             DEVMODEW dev_mode;
             dev_mode.dmSize = sizeof(DEVMODEW);
             if (!EnumDisplaySettingsW(info.szDevice, ENUM_CURRENT_SETTINGS, &dev_mode))
-            {
-                return set_error(BasicError::bad_platform_call(), "EnumDisplaySettingsW failed");
-            }
-            VideoMode mode;
-            mode.width = dev_mode.dmPelsWidth;
-            mode.height = dev_mode.dmPelsHeight;
-            mode.refresh_rate = dev_mode.dmDisplayFrequency;
-            mode.bits_per_pixel = dev_mode.dmBitsPerPel;
-            return mode;
-        }
-        LUNA_WINDOW_API R<VideoMode> get_display_native_video_mode(display_t display)
-        {
-            MONITORINFOEXW info;
-            memzero(&info);
-            info.cbSize = sizeof(MONITORINFOEXW);
-            BOOL r = ::GetMonitorInfoW((HMONITOR)display, &info);
-            if(!r) return BasicError::bad_platform_call();
-            DEVMODEW dev_mode;
-            dev_mode.dmSize = sizeof(DEVMODEW);
-            if (!EnumDisplaySettingsW(info.szDevice, ENUM_REGISTRY_SETTINGS, &dev_mode))
             {
                 return set_error(BasicError::bad_platform_call(), "EnumDisplaySettingsW failed");
             }
