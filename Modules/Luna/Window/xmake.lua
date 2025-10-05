@@ -4,7 +4,7 @@ option("sdl3_window")
     set_description("Whether to use SDL3 for window backend.")
 option_end()
 
-if has_config("sdl3_window") and (is_os("windows") or is_os("macosx") or is_os("linux") or is_os("ios") or is_os("android")) then
+if (has_config("sdl3_window") and (is_os("windows")) or is_os("macosx") or is_os("linux") or is_os("ios") or is_os("android")) then
     add_requires("libsdl3")
 end
 
