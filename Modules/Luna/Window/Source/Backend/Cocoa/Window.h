@@ -10,7 +10,10 @@
 #pragma once
 #include "../../Window.hpp"
 #include "../../../Cocoa/CocoaWindow.hpp"
+#include <Luna/HID/KeyCode.hpp>
 #include <objc/objc.h>
+
+#import <Cocoa/Cocoa.h>
 
 namespace Luna
 {
@@ -23,6 +26,7 @@ namespace Luna
 
             id m_window; // NSWindow*
             id m_delegate; // NSWindowDelegate*
+            id m_input_view; // NSView*
             WindowEvents m_events;
             
             // Used to cache files specified by drag and drop
@@ -62,9 +66,9 @@ namespace Luna
             }
             virtual id get_nswindow() override;
             
-            virtual RV start_text_input() override;
+            virtual RV begin_text_input() override;
             virtual RV set_text_input_area(const RectI& input_rect, i32 cursor) override;
-            virtual RV stop_text_input() override;
+            virtual RV end_text_input() override;
 
             Window();
             ~Window();
@@ -75,3 +79,17 @@ namespace Luna
     }
 }
 
+@interface LunaTextInputView : NSView <NSTextInputClient>
+{
+    NSMutableAttributedString* _markedText;
+    NSRange _selectedRange;
+    NSRange _markedRange;
+    Luna::RectI _inputRect;
+    int _pendingKey;
+    Luna::HID::KeyCode _pendingKeyCode;
+}
+@property (nonatomic, assign) Luna::Window::Window* lunaWindow;
+- (void)setPendingKey:(int)key keyCode:(Luna::HID::KeyCode)keyCode;
+- (void)processPendingKeyEvent;
+- (void)clearPendingKey;
+@end

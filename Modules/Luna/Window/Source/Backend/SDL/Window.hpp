@@ -82,9 +82,9 @@ namespace Luna
             {
                 close();
             }
-            virtual RV start_text_input() override;
+            virtual RV begin_text_input() override;
             virtual RV set_text_input_area(const RectI& input_rect, i32 cursor) override;
-            virtual RV stop_text_input() override;
+            virtual RV end_text_input() override;
         };
     }
 }

@@ -4,7 +4,7 @@ All IME functions work in a per window basis, different windows can have differe
 
 ## Enabling / Disabling IME
 
-IME is disabled by default. Call `IWindow::start_text_input` to enable IME, and `IWindow::stop_text_input` to disable IME. On some platforms, enabling IME will bring up one virtual keyboard on screen to let the user input characters.
+IME is disabled by default. Call `IWindow::begin_text_input` to enable IME, and `IWindow::end_text_input` to disable IME. On some platforms, enabling IME will bring up one virtual keyboard on screen to let the user input characters.
 
 ## Set IME Text Input Area
 

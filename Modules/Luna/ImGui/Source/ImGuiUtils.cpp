@@ -571,10 +571,10 @@ namespace Luna
             io.AddFocusEvent(false);
         }
 
-        static void handle_input_character(Window::IWindow* window, c32 character)
+        static void handle_input_text(Window::IWindow* window, const c8* text, usize length)
         {
             ImGuiIO& io = ImGui::GetIO();
-            io.AddInputCharacterUTF16((c16)character);
+            io.AddInputCharactersUTF8(text);
         }
 
         static void handle_dpi_scale_changed(Window::IWindow* window)
@@ -607,11 +607,11 @@ namespace Luna
                 events.key_up.remove_handler(g_handle_key_up);
                 events.input_focus.remove_handler(g_handle_input_focus);
                 events.lose_input_focus.remove_handler(g_handle_lose_input_focus);
-                events.input_character.remove_handler(g_handle_input_character);
+                events.input_text.remove_handler(g_handle_input_character);
                 events.dpi_scale_changed.remove_handler(g_handle_dpi_scale_changed);
                 if(g_window_text_input_enabled)
                 {
-                    auto _ = g_active_window->stop_text_input();
+                    auto _ = g_active_window->end_text_input();
                 }
             }
             g_active_window = window;
@@ -628,7 +628,7 @@ namespace Luna
                 g_handle_key_up = events.key_up.add_handler(handle_key_up);
                 g_handle_input_focus = events.input_focus.add_handler(handle_focus);
                 g_handle_lose_input_focus = events.lose_input_focus.add_handler(handle_lose_focus);
-                g_handle_input_character = events.input_character.add_handler(handle_input_character);
+                g_handle_input_character = events.input_text.add_handler(handle_input_text);
                 g_handle_dpi_scale_changed = events.dpi_scale_changed.add_handler(handle_dpi_scale_changed);
             }
         }
@@ -678,13 +678,13 @@ namespace Luna
 
             if(io.WantTextInput && !g_window_text_input_enabled)
             {
-                auto _ = g_active_window->start_text_input();
+                auto _ = g_active_window->begin_text_input();
                 g_window_text_input_enabled = true;
             }
 
             if(!io.WantTextInput && g_window_text_input_enabled)
             {
-                auto _ = g_active_window->stop_text_input();
+                auto _ = g_active_window->end_text_input();
                 g_window_text_input_enabled = false;
             }
 

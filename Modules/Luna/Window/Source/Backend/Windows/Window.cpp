@@ -284,7 +284,7 @@ namespace Luna
             lutsassert_main_thread();
             return m_events;
         }
-        RV Window::start_text_input()
+        RV Window::begin_text_input()
         {
             lutsassert_main_thread();
             m_text_input_active = true;
@@ -318,7 +318,7 @@ namespace Luna
             
             return ok;
         }
-        RV Window::stop_text_input()
+        RV Window::end_text_input()
         {
             lutsassert_main_thread();
             m_text_input_active = false;

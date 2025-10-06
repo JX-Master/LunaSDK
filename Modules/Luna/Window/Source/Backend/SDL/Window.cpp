@@ -226,7 +226,7 @@ namespace Luna
             auto pos = get_position();
             return Int2U(point.x + pos.x, point.y + pos.y);
         }
-        RV Window::start_text_input()
+        RV Window::begin_text_input()
         {
             lutsassert_main_thread();
             bool r = SDL_StartTextInput(m_window);
@@ -243,7 +243,7 @@ namespace Luna
             bool r = SDL_SetTextInputArea(m_window, &rect, cursor);
             return encode_sdl_result(r);
         }
-        RV Window::stop_text_input()
+        RV Window::end_text_input()
         {
             lutsassert_main_thread();
             bool r = SDL_StopTextInput(m_window);

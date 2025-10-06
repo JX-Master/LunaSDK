@@ -80,10 +80,11 @@ namespace Luna
             //! @param[in] window The window that gains keyboard input focus.
             //! @param[in] key The key that is released.
             Event<void(IWindow* window, HID::KeyCode key)> key_up;
-            //! Dispatched when one input character is sent to the window.
+            //! Dispatched when the windowr receives input text.
             //! @param[in] window The window that receives the input character.
-            //! @param[in] character The Unicode character that is sent to the window.
-            Event<void(IWindow* window, c32 character)> input_character;
+            //! @param[in] text The input text in UTF-8 encoding. The text is null-terminated.
+            //! @param[in] length The length of the input text.
+            Event<void(IWindow* window, const c8* text, usize length)> input_text;
             //! Dispatched when the mouse cursor enters the non-covered region of the window.
             //! @param[in] window The window that the mouse cursor is entered.
             Event<void(IWindow* window)> mouse_enter;
@@ -153,7 +154,7 @@ namespace Luna
                 dpi_scale_changed.clear();
                 key_down.clear();
                 key_up.clear();
-                input_character.clear();
+                input_text.clear();
                 mouse_enter.clear();
                 mouse_leave.clear();
                 mouse_move.clear();
@@ -286,11 +287,11 @@ namespace Luna
 
             //! Starts receiving Unicode text input for this window.
             //! @details `input_character` window event will be triggered only after this is called and before
-            //! @ref stop_text_input is called.
+            //! @ref end_text_input is called.
             //! 
             //! On some platforms this call will bring up IME and on-screen virtual keyboard to let the user
             //! input texts.
-            virtual RV start_text_input() = 0;
+            virtual RV begin_text_input() = 0;
 
             //! Sets the text input area, so that platform may place an IME overlay next to this area.
             //! @param[in] input_rect The input area in window coordinates.
@@ -298,7 +299,7 @@ namespace Luna
             virtual RV set_text_input_area(const RectI& input_rect, i32 cursor) = 0;
 
             //! Stops receiving Unicode text input for this window.
-            virtual RV stop_text_input() = 0;
+            virtual RV end_text_input() = 0;
         };
 
         //! Flags that specifies the initial state and style of the window.

@@ -9,18 +9,183 @@
 */
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_WINDOW_API LUNA_EXPORT
-#include "Window.hpp"
+#include "Window.h"
 #include "../../Window.hpp"
 #include <Luna/Runtime/Thread.hpp>
 #include <Luna/Runtime/TSAssert.hpp>
 #include <Luna/Runtime/HashMap.hpp>
 #include <Luna/Runtime/Mutex.hpp>
-#import <Cocoa/Cocoa.h>
 #import <objc/runtime.h>
 
 // Forward declaration for the delegate
-@interface LunaWindowDelegate : NSObject<NSWindowDelegate>
+@interface LunaWindowDelegate : NSResponder<NSWindowDelegate>
 @property (nonatomic, assign) Luna::Window::Window* lunaWindow;
+@end
+
+@implementation LunaTextInputView
+
+- (void)setInputRect:(Luna::RectI)inputRect
+{
+    _inputRect = inputRect;
+}
+
+- (instancetype)initWithFrame:(NSRect)frameRect
+{
+    self = [super initWithFrame:frameRect];
+    if (self)
+    {
+        _markedText = [[NSMutableAttributedString alloc] init];
+        _selectedRange = NSMakeRange(NSNotFound, 0);
+        _markedRange = NSMakeRange(NSNotFound, 0);
+        _pendingKey = -1;
+        _pendingKeyCode = Luna::HID::KeyCode::unknown;
+    }
+    return self;
+}
+- (BOOL)acceptsFirstResponder
+{
+    return YES;
+}
+
+- (BOOL)canBecomeKeyView
+{
+    return YES;
+}
+
+- (void)insertText:(id)string replacementRange:(NSRange)replacementRange
+{
+    // Read IME text. 
+    if (self.lunaWindow && !self.lunaWindow->is_closed())
+    {
+        NSString* characters = [string isKindOfClass:[NSAttributedString class]] ? 
+            [(NSAttributedString*)string string] : (NSString*)string;
+
+        if ([self hasMarkedText]) 
+        {
+            [self unmarkText];
+        }
+        
+        const char* utf8 = [characters UTF8String];
+        if (utf8)
+        {
+            self.lunaWindow->get_events().input_text(self.lunaWindow, utf8, strlen(utf8));
+        }
+    }
+}
+
+- (void)setMarkedText:(id)string selectedRange:(NSRange)selectedRange replacementRange:(NSRange)replacementRange
+{
+    // IME inputing.
+    if ([string isKindOfClass:[NSAttributedString class]])
+    {
+        _markedText = [[NSMutableAttributedString alloc] initWithAttributedString:string];
+    }
+    else
+    {
+        _markedText = [[NSMutableAttributedString alloc] initWithString:string];
+    }
+
+    if([_markedText length] == 0)
+    {
+        [self unmarkText];
+        return;
+    }
+    
+    _markedRange = NSMakeRange(0, [_markedText length]);
+    _selectedRange = selectedRange;
+
+    [self clearPendingKey];
+}
+
+- (void)unmarkText
+{
+    _markedText = nil;
+    _markedRange = NSMakeRange(NSNotFound, 0);
+    [self clearPendingKey];
+}
+
+- (NSRange)selectedRange
+{
+    return _selectedRange;
+}
+
+- (NSRange)markedRange
+{
+    return _markedRange;
+}
+
+- (BOOL)hasMarkedText
+{
+    return _markedText != nil;
+}
+
+- (NSAttributedString *)attributedSubstringForProposedRange:(NSRange)range actualRange:(NSRangePointer)actualRange
+{
+    if (actualRange)
+        *actualRange = range;
+    
+    if (range.location < [_markedText length])
+    {
+        return [_markedText attributedSubstringFromRange:range];
+    }
+    return nil;
+}
+
+- (NSArray<NSAttributedStringKey> *)validAttributesForMarkedText
+{
+    return @[];
+}
+
+- (NSRect)firstRectForCharacterRange:(NSRange)range actualRange:(NSRangePointer)actualRange
+{
+    Luna::Window::Window* window = self.lunaWindow;
+    NSWindow* nswindow = (NSWindow*)window->m_window;
+    NSRect contentRect = [nswindow contentRectForFrameRect:[nswindow frame]];
+    float windowHeight = contentRect.size.height;
+    NSRect rect = NSMakeRect(_inputRect.offset_x, windowHeight - _inputRect.offset_y - _inputRect.height,
+                             _inputRect.width, _inputRect.height);
+
+    if (actualRange) {
+        *actualRange = range;
+    }
+    
+    rect = [nswindow convertRectToScreen:rect];
+
+    return rect;
+}
+
+- (NSUInteger)characterIndexForPoint:(NSPoint)point
+{
+    return 0;
+}
+
+- (void)doCommandBySelector:(SEL)selector
+{
+    // Handle special keys (like enter, delete, etc.).
+    // Can handle non-text input keys here.
+}
+
+- (void)setPendingKey:(int)key keyCode:(Luna::HID::KeyCode)keyCode
+{
+    _pendingKey = key;
+    _pendingKeyCode = keyCode;
+}
+
+- (void)processPendingKeyEvent
+{
+    if(_pendingKey < 0)
+    {
+        return;
+    }
+    self.lunaWindow->get_events().key_down(self.lunaWindow, _pendingKeyCode);
+    [self clearPendingKey];
+}
+
+- (void)clearPendingKey
+{
+    _pendingKey = -1;
+}
+
 @end
 
 namespace Luna
@@ -65,6 +230,8 @@ namespace Luna
                         delegate.lunaWindow = nullptr;
                         m_delegate = nil;
                     }
+
+                    m_input_view = nil;
                     
                     m_window = nil;
                 }
@@ -394,9 +561,31 @@ namespace Luna
             return m_window;
         }
 
-        RV Window::start_text_input()
+        RV Window::begin_text_input()
         {
             lutsassert_main_thread();
+            @autoreleasepool
+            {
+                NSView* parentView;
+                NSWindow* window = (NSWindow*)m_window;
+
+                parentView = [window contentView];
+                LunaTextInputView* input_view = nil;
+
+                if(!m_input_view)
+                {
+                    input_view = [[LunaTextInputView alloc] initWithFrame:NSMakeRect(0.0, 0.0, 0.0, 0.0)];
+                    input_view.lunaWindow = this;
+                    m_input_view = input_view;
+                }
+                input_view = (LunaTextInputView*)m_input_view;
+                
+                if(![[input_view superview] isEqual:parentView])
+                {
+                    [parentView addSubview:input_view];
+                    [window makeFirstResponder:input_view];
+                }
+            }
             m_text_input_active = true;
             return ok;
         }
@@ -404,13 +593,28 @@ namespace Luna
         RV Window::set_text_input_area(const RectI& input_rect, i32 cursor)
         {
             lutsassert_main_thread();
-            // macOS handles IME positioning automatically
+            @autoreleasepool
+            {
+                if(m_input_view)
+                {
+                    LunaTextInputView* input_view = (LunaTextInputView*)m_input_view;
+
+                }
+            }
             return ok;
         }
 
-        RV Window::stop_text_input()
+        RV Window::end_text_input()
         {
             lutsassert_main_thread();
+            @autoreleasepool
+            {
+                if(m_input_view)
+                {
+                    LunaTextInputView* input_view = (LunaTextInputView*)m_input_view;
+                    [input_view removeFromSuperview];
+                }
+            }
             m_text_input_active = false;
             return ok;
         }
@@ -532,6 +736,7 @@ namespace Luna
                 LunaWindowDelegate* delegate = [[LunaWindowDelegate alloc] init];
                 delegate.lunaWindow = lunaWindow.get();
                 [window setDelegate:delegate];
+                [window setNextResponder: delegate];
                 lunaWindow->m_delegate = delegate;
                 
                 // Register drag and drop
@@ -624,6 +829,16 @@ namespace Luna
     {
         self.lunaWindow->get_events().dpi_scale_changed(self.lunaWindow);
     }
+}
+
+- (void)keyDown:(NSEvent *)event
+{
+    // Prevent the system beep.
+}
+
+- (void)keyUp:(NSEvent *)event
+{
+    // Prevent the system beep.
 }
 
 @end

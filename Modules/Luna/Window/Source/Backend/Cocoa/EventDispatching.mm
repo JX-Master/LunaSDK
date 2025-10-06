@@ -10,7 +10,7 @@
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_WINDOW_API LUNA_EXPORT
 #include "../../../Cocoa/EventHandling.hpp"
-#include "Window.hpp"
+#include "Window.h"
 #include <Luna/Runtime/Unicode.hpp>
 #include <Luna/Runtime/Thread.hpp>
 #include <Luna/Runtime/TSAssert.hpp>
@@ -198,28 +198,18 @@ namespace Luna
                         case NSEventTypeKeyDown:
                         {
                             HID::KeyCode key = translate_key([event keyCode]);
-                            if (key != HID::KeyCode::unknown)
+                            if(window->m_text_input_active)
                             {
-                                window->get_events().key_down(window, key);
+                                LunaTextInputView* view = window->m_input_view;
+                                [view setPendingKey:[event keyCode] keyCode:key];
+                                [view interpretKeyEvents:[NSArray arrayWithObject:event]];
+                                [view processPendingKeyEvent];
                             }
-                            
-                            // Handle text input
-                            if (window->m_text_input_active)
+                            else
                             {
-                                NSString* characters = [event characters];
-                                if (characters && [characters length] > 0)
+                                if (key != HID::KeyCode::unknown)
                                 {
-                                    const char* utf8 = [characters UTF8String];
-                                    if (utf8)
-                                    {
-                                        const char* cur = utf8;
-                                        while(*cur)
-                                        {
-                                            c32 ch = utf8_decode_char(cur);
-                                            cur += utf8_charspan(ch);
-                                            window->get_events().input_character(window, ch);
-                                        }
-                                    }
+                                    window->get_events().key_down(window, key);
                                 }
                             }
                             break;

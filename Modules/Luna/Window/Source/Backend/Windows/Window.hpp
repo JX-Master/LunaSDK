@@ -54,9 +54,9 @@ namespace Luna
             virtual Int2U screen_to_client(const Int2U& point) override;
             virtual Int2U client_to_screen(const Int2U& point) override;
             virtual WindowEvents& get_events() override;
-            virtual RV start_text_input() override;
+            virtual RV begin_text_input() override;
             virtual RV set_text_input_area(const RectI& input_rect, i32 cursor) override;
-            virtual RV stop_text_input() override;
+            virtual RV end_text_input() override;
             virtual HWND get_hwnd() override;
         };
     }

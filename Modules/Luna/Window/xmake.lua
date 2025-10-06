@@ -22,7 +22,7 @@ luna_sdk_module_target("Window")
         add_headerfiles("Source/Backend/Windows/*.hpp", {install = false})
         add_files("Source/Backend/Windows/*.cpp")
     elseif is_os("macosx") then 
-        add_headerfiles("Source/Backend/Cocoa/*.hpp", {install = false})
+        add_headerfiles("Source/Backend/Cocoa/*.h", {install = false})
         add_files("Source/Backend/Cocoa/*.mm")
     end
     if is_os("windows") then
