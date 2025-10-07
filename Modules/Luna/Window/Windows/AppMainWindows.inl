@@ -63,7 +63,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 {
     int argc;
     char** argv = Luna::Window::win32_get_argv(&argc);
-    int r = luna_main(argc, argv);
+    int r = luna_main(argc, (const char**)argv);
     HeapFree(GetProcessHeap(), 0, argv);
     return r;
 }

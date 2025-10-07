@@ -582,16 +582,10 @@ namespace Luna
             auto _ = refresh_font_texture();
         }
 
-        usize g_handle_mouse_move;
-        usize g_handle_mouse_down;
-        usize g_handle_mouse_up;
-        usize g_handle_scroll;
-        usize g_handle_key_down;
-        usize g_handle_key_up;
-        usize g_handle_input_focus;
-        usize g_handle_lose_input_focus;
-        usize g_handle_input_character;
-        usize g_handle_dpi_scale_changed;
+        LUNA_IMGUI_API bool handle_window_event(ObjRef event)
+        {
+            
+        }
 
         LUNA_IMGUI_API void set_active_window(Window::IWindow* window)
         {

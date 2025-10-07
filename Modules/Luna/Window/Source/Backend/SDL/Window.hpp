@@ -36,7 +36,6 @@ namespace Luna
             luiimpl();
 
             SDL_Window* m_window;
-            WindowEvents m_events;
             // Used to cache files specified by SDL_DROPFILE.
             Vector<String> m_drop_files;
             f32 m_drop_x;
@@ -66,10 +65,6 @@ namespace Luna
             virtual RV set_title(const c8* title) override;
             virtual Int2U screen_to_client(const Int2U& point) override;
             virtual Int2U client_to_screen(const Int2U& point) override;
-            virtual WindowEvents& get_events() override
-            {
-                return m_events;
-            }
 #ifdef LUNA_PLATFORM_WINDOWS
             virtual HWND get_hwnd() override;
 #endif

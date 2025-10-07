@@ -132,7 +132,6 @@ namespace Luna
         {
             g_displays.clear();
             g_displays.shrink_to_fit();
-            g_display_events.reset();
         }
         LUNA_WINDOW_API display_t get_primary_display()
         {
