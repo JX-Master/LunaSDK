@@ -18,10 +18,9 @@ namespace Luna
         {
             lustruct("Window::Window", "{541DB2B8-3EB7-465B-BCCA-522AFFC157CA}");
             luiimpl();
-            
+
             HWND m_hwnd;
             WindowStyleFlag m_style;
-            WindowEvents m_events;
             bool m_text_input_active = false;
             Window() :
                 m_hwnd(nullptr) {}
@@ -53,7 +52,6 @@ namespace Luna
             virtual RV set_title(const c8* title) override;
             virtual Int2U screen_to_client(const Int2U& point) override;
             virtual Int2U client_to_screen(const Int2U& point) override;
-            virtual WindowEvents& get_events() override;
             virtual RV begin_text_input() override;
             virtual RV set_text_input_area(const RectI& input_rect, i32 cursor) override;
             virtual RV end_text_input() override;

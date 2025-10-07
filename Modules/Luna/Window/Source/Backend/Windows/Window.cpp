@@ -63,6 +63,25 @@ namespace Luna
         {
             UnregisterClassW(WIN32_CLASS_NAME, g_startup_params.hInstance);
         }
+        void platform_poll_events(bool wait_event)
+        {
+            MSG msg;
+            if (wait_event)
+            {
+                // Wait for at least one event.
+                if (GetMessageW(&msg, NULL, 0, 0))
+                {
+                    TranslateMessage(&msg);
+                    DispatchMessageW(&msg);
+                }
+            }
+            // Poll all remaining events.
+            while (PeekMessageW(&msg, NULL, 0, 0, PM_REMOVE))
+            {
+                TranslateMessage(&msg);
+                DispatchMessageW(&msg);
+            }
+        }
         LUNA_WINDOW_API void set_startup_params(const StartupParams& params)
 		{
 			g_startup_params = params;
@@ -279,11 +298,6 @@ namespace Luna
             ClientToScreen(m_hwnd, &pt);
             return Int2U(pt.x, pt.y);
         }
-        WindowEvents& Window::get_events()
-        {
-            lutsassert_main_thread();
-            return m_events;
-        }
         RV Window::begin_text_input()
         {
             lutsassert_main_thread();
@@ -391,6 +405,19 @@ namespace Luna
                 SetWindowLongPtrW(hwnd, GWLP_USERDATA, (LONG_PTR)window.object());
                 // Enable drag and drop.
                 DragAcceptFiles(hwnd, TRUE);
+                // Enable mouse enter/leave messages.
+                {
+                    TRACKMOUSEEVENT track_mouse;
+                    track_mouse.cbSize = sizeof(TRACKMOUSEEVENT);
+                    track_mouse.dwFlags = TME_HOVER | TME_LEAVE;
+                    track_mouse.hwndTrack = hwnd;
+                    track_mouse.dwHoverTime = HOVER_DEFAULT;
+                    if(!TrackMouseEvent(&track_mouse))
+                    {
+                        DWORD err = GetLastError();
+                        return set_error(BasicError::bad_platform_call(), "TrackMouseEvent failed. Error code: %u", err);
+                    }
+                }
                 // Show window if not hidden
                 if (!test_flags(creation_flags, WindowCreationFlag::hidden))
                 {

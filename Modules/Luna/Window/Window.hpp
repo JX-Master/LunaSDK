@@ -12,8 +12,6 @@
 #include <Luna/Runtime/Result.hpp>
 #include <Luna/HID/KeyCode.hpp>
 #include <Luna/Runtime/Ref.hpp>
-#include <Luna/Runtime/Span.hpp>
-#include <Luna/Runtime/Event.hpp>
 #include "Display.hpp"
 #include <Luna/Runtime/Module.hpp>
 
@@ -24,149 +22,6 @@ namespace Luna
         //! @addtogroup Window Window
         //! The Window module provides window management functionalities of the underlying system.
         //! @{
-
-        struct IWindow;
-
-        //! A set of events that can be monitored by the application for the specified window.
-        struct WindowEvents
-        {
-            //! Dispatched when one window is requested to be closed, usually
-            //! because the user clicks the close button of the window.
-            //! @param[in] window The window that is requested to be closed.
-            Event<void(IWindow* window)> close;
-            //! Dispatched when one window is destroyed. The handler should clean up any resource 
-            //! attached to this window.
-            //! @param[in] window The window that is destroyed.
-            Event<void(IWindow* window)> destroy;
-            //! Dispatched when one window gains input focus.
-            //! @param[in] window The window that gains the input focus.
-            Event<void(IWindow* window)> input_focus;
-            //! Dispatched when one window gains input focus.
-            //! @param[in] window The window that loses the input focus.
-            Event<void(IWindow* window)> lose_input_focus;
-            //! Dispatched when the window's visibility is changed from
-            //! hidden to show.
-            //! @param[in] window The window whose visibility is changed.
-            Event<void(IWindow* window)> show;
-            //! Dispatched when the window's visibility is changed from 
-            //! show to hidden.
-            //! @param[in] window The window whose visibility is changed.
-            Event<void(IWindow* window)> hide;
-            //! Dispatched when the window's size is changed.
-            //! @param[in] window The window whose size is changed.
-            //! @param[in] width The new width of the window in screen coordinates.
-            //! @param[in] height The new height of the window in screen coordinates.
-            Event<void(IWindow* window, u32 width, u32 height)> resize;
-            //! Dispatched when the window's framebuffer size is changed.
-            //! @param[in] window The window whose framebuffer's size is changed.
-            //! @param[in] width The new width of the window's framebuffer size in pixels.
-            //! @param[in] height The new height of the window's framebuffer size in pixels.
-            Event<void(IWindow* window, u32 width, u32 height)> framebuffer_resize;
-            //! Dispatched when when the window's position is changed.
-            //! @param[in] window The window that is moved.
-            //! @param[in] x The X position of the window in screen coordinates after move.
-            //! @param[in] Y The Y position of the window in screen coordinates after move.
-            Event<void(IWindow* window, i32 x, i32 y)> move;
-            //! Dispatched when when the window's DPI (dots per inch) is changed. This 
-            //! may happen if the user changes the DPI of the display, or moves the window to another display
-            //! with different DPI.
-            //! @param[in] window The window whose DPI is changed.
-            Event<void(IWindow* window)> dpi_scale_changed;
-            //! Dispatched when the user presses one key with one window being focused.
-            //! @param[in] window The window that gains keyboard input focus.
-            //! @param[in] key The key that is pressed.
-            Event<void(IWindow* window, HID::KeyCode key)> key_down;
-            //! Dispatched when the user releases one key with one window being focused.
-            //! @param[in] window The window that gains keyboard input focus.
-            //! @param[in] key The key that is released.
-            Event<void(IWindow* window, HID::KeyCode key)> key_up;
-            //! Dispatched when the windowr receives input text.
-            //! @param[in] window The window that receives the input character.
-            //! @param[in] text The input text in UTF-8 encoding. The text is null-terminated.
-            //! @param[in] length The length of the input text.
-            Event<void(IWindow* window, const c8* text, usize length)> input_text;
-            //! Dispatched when the mouse cursor enters the non-covered region of the window.
-            //! @param[in] window The window that the mouse cursor is entered.
-            Event<void(IWindow* window)> mouse_enter;
-            //! Dispatched when the mouse cursor leaves the non-covered region of the window.
-            //! @param[in] window The window that the mouse cursor is leaved.
-            Event<void(IWindow* window)> mouse_leave;
-            //! Dispatched when the mouse cursor is moved in the non-covered region of the window.
-            //! @param[in] window The window that the mouse cursor is moved within.
-            //! @param[in] x The new X position of the mouse cursor relative to the window client area.
-            //! @param[in] y The new Y position of the mouse cursor relative to the window client area.
-            Event<void(IWindow* window, i32 x, i32 y)> mouse_move;
-            //! Dispatched when the mouse button is pressed and the target window has mouse input focus.
-            //! @param[in] window The window that gains input focus.
-            //! @param[in] button The mouse button that is pressed.
-            Event<void(IWindow* window, HID::MouseButton button)> mouse_down;
-            //! Dispatched when the mouse button is released and the target window has mouse input focus.
-            //! @param[in] window The window that gains input focus.
-            //! @param[in] button The mouse button that is released.
-            Event<void(IWindow* window, HID::MouseButton button)> mouse_up;
-            //! Dispatched when the window is scrolled by mouse wheel or trackpad and the window gains input
-            //! focus.
-            //! @param[in] window The window that gains input focus.
-            //! @param[in] scroll_x The scroll delta in X dimension.
-            //! @param[in] scroll_y The scroll delta in Y dimension.
-            Event<void(IWindow* window, f32 scroll_x, f32 scroll_y)> scroll;
-            //! Dispatched when the a new touch point is detected.
-            //! @param[in] window The window this event is dispatched to.
-            //! @param[in] id The identifier of the touch point. 
-            //! This id remains unchanged for the same touch point during different touch events.
-            //! @param[in] x The x position of the touch point relative to the window position.
-            //! @param[in] y The y position of the touch point relative to the window position.
-            Event<void(IWindow* window, u64 id, f32 x, f32 y)> touch_down;
-            //! Dispatched when the position of one existing touch point is changed.
-            //! @param[in] window The window this event is dispatched to.
-            //! @param[in] id The identifier of the touch point. 
-            //! This id remains unchanged for the same touch point during different touch events.
-            //! @param[in] x The x position of the touch point relative to the window position.
-            //! @param[in] y The y position of the touch point relative to the window position.
-            Event<void(IWindow* window, u64 id, f32 x, f32 y)> touch_move;
-            //! Dispatched when the a existing touch point is released.
-            //! @param[in] window The window this event is dispatched to.
-            //! @param[in] id The identifier of the touch point. 
-            //! This id remains unchanged for the same touch point during different touch events.
-            //! @param[in] x The x position of the touch point relative to the window position.
-            //! @param[in] y The y position of the touch point relative to the window position.
-            Event<void(IWindow* window, u64 id, f32 x, f32 y)> touch_up;
-            //! Dispatched when the user drags and drops files into the window.
-            //! @param[in] window The window this event is dispatched to.
-            //! @param[in] paths The array of paths of files being dropped. Every element of the array 
-            //! is one null-terminated string. These strings should be valid before this function returns.
-            //! @param[in] num_paths The number of string paths in `paths`.
-            //! @param[in] x The x position of the drop point relative to the window position.
-            //! @param[in] y The x position of the drop point relative to the window position.
-            Event<void(IWindow* window, const c8** paths, usize num_paths, f32 x, f32 y)> drop_file;
-
-            void reset()
-            {
-                close.clear();
-                destroy.clear();
-                input_focus.clear();
-                lose_input_focus.clear();
-                show.clear();
-                hide.clear();
-                resize.clear();
-                framebuffer_resize.clear();
-                move.clear();
-                dpi_scale_changed.clear();
-                key_down.clear();
-                key_up.clear();
-                input_text.clear();
-                mouse_enter.clear();
-                mouse_leave.clear();
-                mouse_move.clear();
-                mouse_down.clear();
-                mouse_up.clear();
-                scroll.clear();
-                touch_move.clear();
-                touch_down.clear();
-                touch_up.clear();
-                drop_file.clear();
-            }
-        };
 
         //! Specify this value as `x` or `y` of the window to let windowing system choose one suitable position for the window.
         constexpr i32 DEFAULT_POS = I32_MAX;
@@ -279,11 +134,6 @@ namespace Luna
 
             //! Converts one client coordinate to one screen coordinate.
             virtual Int2U client_to_screen(const Int2U& point) = 0;
-            
-            //! Gets the window events set. The user application can register callbacks to monitor 
-            //! events.
-            //! @return Returns one reference to the window events set.
-            virtual WindowEvents& get_events() = 0;
 
             //! Starts receiving Unicode text input for this window.
             //! @details `input_character` window event will be triggered only after this is called and before

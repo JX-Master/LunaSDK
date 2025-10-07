@@ -12,7 +12,7 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
-#include "../AppMain.hpp"
+#include "../AppMainHeader.hpp"
 #include <shellapi.h>
 #include <Luna/Runtime/Unicode.hpp>
 #include "../Window.hpp"
@@ -63,27 +63,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 {
     int argc;
     char** argv = Luna::Window::win32_get_argv(&argc);
-    using namespace Luna;
-    opaque_t app_state = nullptr;
-    Window::AppStatus result = app_init(&app_state, argc, argv);
-#ifdef LUNA_ENABLE_API_VALIDATION
-    if(result == Window::AppStatus::running)
-    {
-        lucheck_msg(Luna::is_initialized(), "Luna::init must be called in app_init.");
-        lucheck_msg(Luna::is_module_initialized(module_window()), "Window module must be initialized in app_init.");
-    }
-#endif
-    while(result == Window::AppStatus::running)
-    {
-        MSG msg = {};
-        while (::PeekMessageW(&msg, NULL, 0, 0, PM_REMOVE))
-        {
-            ::TranslateMessage(&msg);
-            ::DispatchMessageW(&msg);
-        }
-        result = app_update(app_state);
-    }
-    app_close(app_state, result);
+    int r = luna_main(argc, argv);
     HeapFree(GetProcessHeap(), 0, argv);
-    return result == Window::AppStatus::failing ? -1 : 0;
+    return r;
 }
