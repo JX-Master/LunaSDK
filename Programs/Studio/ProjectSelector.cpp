@@ -15,11 +15,10 @@
 #include <Luna/Window/FileDialog.hpp>
 #include <Luna/Window/MessageBox.hpp>
 #include <Luna/Runtime/Thread.hpp>
+#include <Luna/Window/Event.hpp>
 
 namespace Luna
 {
-    ProjectSelector* g_project_selector = nullptr;
-
     //! Creates project file at the specified directory.
     static R<Path> create_project_dir(const Path& dir_path, const String& project_name, bool should_create_dir)
     {
@@ -52,6 +51,12 @@ namespace Luna
         lucatchret;
         return ret_path;
     }
+
+    struct RecentFileRecord
+    {
+        u64 m_last_use_time;
+        Path m_path;
+    };
 
     void read_recents(Vector<RecentFileRecord>& recents)
     {
@@ -126,14 +131,14 @@ namespace Luna
         }
     }
 
-    RV ProjectSelector::init()
+    R<Path> select_project()
     {
+        Path path;
         lutry
         {
-            luset(window, Window::new_window("Luna Studio - Open Project", Window::DEFAULT_POS, Window::DEFAULT_POS, 1000, 500));
-            luset(swap_chain, g_env->device->new_swap_chain(g_env->graphics_queue, window, RHI::SwapChainDesc({0, 0, 2, RHI::Format::bgra8_unorm, true})));
-            luset(cmdbuf, g_env->device->new_command_buffer(g_env->graphics_queue));
-            window->get_events().close.add_handler([](Window::IWindow* window) { window->close(); });
+            lulet(window, Window::new_window("Luna Studio - Open Project", Window::DEFAULT_POS, Window::DEFAULT_POS, 1000, 500));
+            lulet(swap_chain, g_env->device->new_swap_chain(g_env->graphics_queue, window, RHI::SwapChainDesc({0, 0, 2, RHI::Format::bgra8_unorm, true})));
+            lulet(cmdbuf, g_env->device->new_command_buffer(g_env->graphics_queue));
 
             // Create back buffer.
             u32 w = 0, h = 0;
@@ -141,171 +146,172 @@ namespace Luna
             // Create ImGui context.
             ImGuiUtils::set_active_window(window);
 
+            Window::set_event_handler([](object_t event, void* userdata)
+            {
+                ImGuiUtils::handle_window_event(event);
+            }, nullptr);
+
             auto new_solution_name = String();
 
             Vector<RecentFileRecord> recents;
             read_recents(recents);
 
             bool create_dir = true;
-        }
-        lucatchret;
-        return ok;
-    }
 
-    RV ProjectSelector::update()
-    {
-        if (window->is_closed())
-        {
-            exiting = true;
-            return ok;
-        }
-        if (window->is_minimized())
-        {
-            sleep(100);
-            return ok;
-        }
-        lutry
-        {
-            // Recreate the back buffer if needed.
-            auto fb_sz = window->get_framebuffer_size();
-            auto desc = swap_chain->get_desc();
-            u32 w = desc.width;
-            u32 h = desc.height;
-            if (fb_sz.x && fb_sz.y && (fb_sz.x != w || fb_sz.y != h))
+            while (path.empty())
             {
-                luexp(swap_chain->reset({fb_sz.x, fb_sz.y, 2, RHI::Format::unknown, true}));
-                f32 clear_color[] = { 0.0f, 0.0f, 0.0f, 1.0f };
-                w = fb_sz.x;
-                h = fb_sz.y;
-            }
-            auto sz = window->get_size();
+                Window::poll_events();
 
-            ImGuiUtils::update_io();
-            ImGui::NewFrame();
-            {
-                using namespace ImGui;
-                SetNextWindowPos({ 0.0f, 0.0f });
-                SetNextWindowSize({ (f32)sz.x, (f32)sz.y });
-                Begin("Luna Studio Project Selector", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse);
-
-                if (CollapsingHeader("New Project", ImGuiTreeNodeFlags_DefaultOpen))
+                if (window->is_closed())
                 {
-                    InputText("Project Name", new_solution_name);
-                    Checkbox("Create Project Folder", &create_dir);
-                    if (Button("Create New Project"))
-                    {
-                        auto rpath = Window::open_dir_dialog("Select Project Folder");
-                        if (succeeded(rpath))
-                        {
-                            auto res2 = create_project_dir(rpath.get(), new_solution_name, create_dir);
-                            if (succeeded(res2))
-                            {
-                                selected_path = res2.get();
-                            }
-                            else
-                            {
-                                auto _ = Window::message_box(explain(res2.errcode()), "Project Creation Failed", Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
-                            }
-                        }
-                    }
+                    break;
+                }
+                if (window->is_minimized())
+                {
+                    sleep(100);
+                    continue;
                 }
 
-                if (CollapsingHeader("Open Existing Project", ImGuiTreeNodeFlags_DefaultOpen))
+                // Recreate the back buffer if needed.
+                auto fb_sz = window->get_framebuffer_size();
+                if (fb_sz.x && fb_sz.y && (fb_sz.x != w || fb_sz.y != h))
                 {
-                    if (Button("Browse Project File"))
-                    {
-                        Window::FileDialogFilter filter;
-                        filter.name = "Luna Project File";
-                        const c8* extension = "lunaproj";
-                        filter.extensions = {&extension, 1};
-                        auto rpath = Window::open_file_dialog("Select Project File", {&filter, 1});
-                        if (succeeded(rpath) && !rpath.get().empty())
-                        {
-                            selected_path = rpath.get()[0];
-                            selected_path.pop_back();
-                        }
-                    }
-
-                    if (!recents.empty())
-                    {
-                        // Show recent files.
-                        PushStyleVar(ImGuiStyleVar_ChildRounding, 5.0f);
-                        BeginChild("Recent Projects", { 0.0f, 0.0f }, true);
-
-                        Text("Recent Projects");
-
-                        Columns(4);
-
-                        Text("Path");
-                        NextColumn();
-                        Text("Last Assess Date");
-                        NextColumn();
-                        NextColumn();
-                        NextColumn();
-
-                        SetColumnWidth(0, GetWindowContentRegionMax().x - GetWindowContentRegionMin().x - 430);
-                        SetColumnWidth(1, 250);
-                        SetColumnWidth(2, 80);
-                        SetColumnWidth(3, 100);
-
-                        auto iter = recents.begin();
-                        while (iter != recents.end())
-                        {
-                            DateTime dt = timestamp_to_datetime(utc_timestamp_to_local_timestamp(iter->m_last_use_time));
-                            Text("%s", iter->m_path.encode().c_str());
-                            NextColumn();
-                            Text("%hu/%hu/%hu %02hu:%02hu", dt.year, dt.month, dt.day, dt.hour, dt.minute);
-                            NextColumn();
-                            PushID(&(iter->m_path));
-                            if (Button("Open"))
-                            {
-                                selected_path = iter->m_path;
-                            }
-                            NextColumn();
-                            if (Button("Remove"))
-                            {
-                                iter = recents.erase(iter);
-                                write_recents(recents, Path());
-                            }
-                            else
-                            {
-                                ++iter;
-                            }
-                            PopID();
-                            NextColumn();
-                        }
-
-                        EndChild();
-                        PopStyleVar();
-                    }
+                    luexp(swap_chain->reset({fb_sz.x, fb_sz.y, 2, RHI::Format::unknown, true}));
+                    f32 clear_color[] = { 0.0f, 0.0f, 0.0f, 1.0f };
+                    w = fb_sz.x;
+                    h = fb_sz.y;
                 }
+                auto sz = window->get_size();
 
-                End();
+                ImGuiUtils::update_io();
+                ImGui::NewFrame();
+                {
+                    using namespace ImGui;
+                    SetNextWindowPos({ 0.0f, 0.0f });
+                    SetNextWindowSize({ (f32)sz.x, (f32)sz.y });
+                    Begin("Luna Studio Project Selector", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse);
+
+                    if (CollapsingHeader("New Project", ImGuiTreeNodeFlags_DefaultOpen))
+                    {
+                        InputText("Project Name", new_solution_name);
+                        Checkbox("Create Project Folder", &create_dir);
+                        if (Button("Create New Project"))
+                        {
+                            auto rpath = Window::open_dir_dialog("Select Project Folder");
+                            if (succeeded(rpath))
+                            {
+                                auto res2 = create_project_dir(rpath.get(), new_solution_name, create_dir);
+                                if (succeeded(res2))
+                                {
+                                    path = res2.get();
+                                }
+                                else
+                                {
+                                    auto _ = Window::message_box(explain(res2.errcode()), "Project Creation Failed", Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
+                                }
+                            }
+                        }
+                    }
+
+                    if (CollapsingHeader("Open Existing Project", ImGuiTreeNodeFlags_DefaultOpen))
+                    {
+                        if (Button("Browse Project File"))
+                        {
+                            Window::FileDialogFilter filter;
+                            filter.name = "Luna Project File";
+                            const c8* extension = "lunaproj";
+                            filter.extensions = {&extension, 1};
+                            auto rpath = Window::open_file_dialog("Select Project File", {&filter, 1});
+                            if (succeeded(rpath) && !rpath.get().empty())
+                            {
+                                path = rpath.get()[0];
+                                path.pop_back();
+                            }
+                        }
+
+
+                        if (!recents.empty())
+                        {
+                            // Show recent files.
+                            PushStyleVar(ImGuiStyleVar_ChildRounding, 5.0f);
+                            BeginChild("Recent Projects", { 0.0f, 0.0f }, true);
+
+                            Text("Recent Projects");
+
+                            Columns(4);
+
+                            Text("Path");
+                            NextColumn();
+                            Text("Last Assess Date");
+                            NextColumn();
+                            NextColumn();
+                            NextColumn();
+
+                            SetColumnWidth(0, GetWindowContentRegionMax().x - GetWindowContentRegionMin().x - 430);
+                            SetColumnWidth(1, 250);
+                            SetColumnWidth(2, 80);
+                            SetColumnWidth(3, 100);
+
+                            auto iter = recents.begin();
+                            while (iter != recents.end())
+                            {
+                                DateTime dt = timestamp_to_datetime(utc_timestamp_to_local_timestamp(iter->m_last_use_time));
+                                Text("%s", iter->m_path.encode().c_str());
+                                NextColumn();
+                                Text("%hu/%hu/%hu %02hu:%02hu", dt.year, dt.month, dt.day, dt.hour, dt.minute);
+                                NextColumn();
+                                PushID(&(iter->m_path));
+                                if (Button("Open"))
+                                {
+                                    path = iter->m_path;
+                                }
+                                NextColumn();
+                                if (Button("Remove"))
+                                {
+                                    iter = recents.erase(iter);
+                                    write_recents(recents, Path());
+                                }
+                                else
+                                {
+                                    ++iter;
+                                }
+                                PopID();
+                                NextColumn();
+                            }
+
+                            EndChild();
+                            PopStyleVar();
+                        }
+                    }
+
+                    End();
+                }
+                ImGui::Render();
+                Float4U clear_color = { 0.0f, 0.0f, 0.0f, 1.0f };
+
+                RHI::RenderPassDesc render_pass;
+                lulet(back_buffer, swap_chain->get_current_back_buffer());
+                render_pass.color_attachments[0] = RHI::ColorAttachment(back_buffer, RHI::LoadOp::clear, RHI::StoreOp::store, clear_color);
+                cmdbuf->begin_render_pass(render_pass);
+                cmdbuf->end_render_pass();
+                luexp(ImGuiUtils::render_draw_data(ImGui::GetDrawData(), cmdbuf, back_buffer));
+                cmdbuf->resource_barrier({}, {
+                    {back_buffer, RHI::TEXTURE_BARRIER_ALL_SUBRESOURCES, RHI::TextureStateFlag::automatic, RHI::TextureStateFlag::present, RHI::ResourceBarrierFlag::none}
+                    });
+                luexp(cmdbuf->submit({}, {}, true));
+                cmdbuf->wait();
+                luexp(cmdbuf->reset());
+                luexp(swap_chain->present());
             }
-            ImGui::Render();
-            Float4U clear_color = { 0.0f, 0.0f, 0.0f, 1.0f };
-
-            RHI::RenderPassDesc render_pass;
-            lulet(back_buffer, swap_chain->get_current_back_buffer());
-            render_pass.color_attachments[0] = RHI::ColorAttachment(back_buffer, RHI::LoadOp::clear, RHI::StoreOp::store, clear_color);
-            cmdbuf->begin_render_pass(render_pass);
-            cmdbuf->end_render_pass();
-            luexp(ImGuiUtils::render_draw_data(ImGui::GetDrawData(), cmdbuf, back_buffer));
-            cmdbuf->resource_barrier({}, {
-                {back_buffer, RHI::TEXTURE_BARRIER_ALL_SUBRESOURCES, RHI::TextureStateFlag::automatic, RHI::TextureStateFlag::present, RHI::ResourceBarrierFlag::none}
-                });
-            luexp(cmdbuf->submit({}, {}, true));
-            cmdbuf->wait();
-            luexp(cmdbuf->reset());
-            luexp(swap_chain->present());
-
-            if(!selected_path.empty())
+            if (path.empty())
             {
-                write_recents(recents, selected_path);
-                exiting = true;
+                return BasicError::failure();
             }
+
+            // Write to the recents.
+            write_recents(recents, path);
         }
         lucatchret;
-        return ok;
+        return path;
     }
 }

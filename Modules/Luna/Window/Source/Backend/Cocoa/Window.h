@@ -69,6 +69,7 @@ namespace Luna
             virtual RV begin_text_input() override;
             virtual RV set_text_input_area(const RectI& input_rect, i32 cursor) override;
             virtual RV end_text_input() override;
+            virtual bool is_text_input_active() override;
 
             Window();
             ~Window();

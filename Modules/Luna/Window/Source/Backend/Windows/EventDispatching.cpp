@@ -7,11 +7,14 @@
 * @author JXMaster
 * @date 2025/10/3
 */
+#include <Luna/Runtime/PlatformDefines.hpp>
+#define LUNA_WINDOW_API LUNA_EXPORT
 #include "Window.hpp"
 #include <windowsx.h>
 #include <shellapi.h>
 #include <Luna/Runtime/Unicode.hpp>
 #include "../../../Event.hpp"
+#include <Luna/Runtime/TSAssert.hpp>
 
 #pragma comment(lib, "Shell32.lib")
 
@@ -91,6 +94,27 @@ namespace Luna
             default: lupanic(); return HID::KeyCode::unknown;
             }
         }
+
+        LUNA_WINDOW_API void poll_events(bool wait_events)
+        {
+            lutsassert_main_thread();
+            MSG msg;
+            if (wait_events)
+            {
+                // Wait for at least one event.
+                if (GetMessageW(&msg, NULL, 0, 0))
+                {
+                    TranslateMessage(&msg);
+                    DispatchMessageW(&msg);
+                }
+            }
+            // Poll all remaining events.
+            while (PeekMessageW(&msg, NULL, 0, 0, PM_REMOVE))
+            {
+                TranslateMessage(&msg);
+                DispatchMessageW(&msg);
+            }
+        }
     }
 }
 
@@ -104,20 +128,32 @@ LRESULT CALLBACK luna_window_win_proc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM
         // If the window object is not ready, we simply do not handle all messages.
         return DefWindowProcW(hWnd, msg, wParam, lParam);
     }
+    void(*event_handler)(object_t event, void* userdata);
+    void* event_handler_userdata;
+    get_event_handler(&event_handler, &event_handler_userdata);
+    if(!event_handler)
+    {
+        return DefWindowProcW(hWnd, msg, wParam, lParam);
+    }
     switch (msg)
     {
     case WM_CLOSE:
         {
             auto event = new_object<WindowRequestCloseEvent>();
             event->window = pw;
-            push_event(event.object());
+            event->do_close = true;
+            event_handler(event.object(), event_handler_userdata);
+            if(event->do_close)
+            {
+                return DefWindowProcW(hWnd, msg, wParam, lParam);
+            }
         }
         return 0;
     case WM_DESTROY:
         {
             auto event = new_object<WindowClosedEvent>();
             event->window = pw;
-            push_event(event.object());
+            event_handler(event.object(), event_handler_userdata);
         }
         if(pw->m_hwnd)
         {
@@ -128,14 +164,14 @@ LRESULT CALLBACK luna_window_win_proc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM
         {
             auto event = new_object<WindowInputFocusEvent>();
             event->window = pw;
-            push_event(event.object());
+            event_handler(event.object(), event_handler_userdata);
         }
         return 0;
     case WM_KILLFOCUS:
         {
             auto event = new_object<WindowLoseInputFocusEvent>();
             event->window = pw;
-            push_event(event.object());
+            event_handler(event.object(), event_handler_userdata);
         }
         return 0;
     case WM_SHOWWINDOW:
@@ -143,13 +179,13 @@ LRESULT CALLBACK luna_window_win_proc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM
         {
             auto event = new_object<WindowShowEvent>();
             event->window = pw;
-            push_event(event.object());
+            event_handler(event.object(), event_handler_userdata);
         }
         else
         {
             auto event = new_object<WindowHideEvent>();
             event->window = pw;
-            push_event(event.object());
+            event_handler(event.object(), event_handler_userdata);
         }
         return DefWindowProcW(hWnd, msg, wParam, lParam);
     case WM_SIZE:
@@ -161,14 +197,14 @@ LRESULT CALLBACK luna_window_win_proc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM
             event->window = pw;
             event->width = width;
             event->height = height;
-            push_event(event.object());
+            event_handler(event.object(), event_handler_userdata);
         }
         {
             auto event = new_object<WindowFramebufferResizeEvent>();
             event->window = pw;
             event->width = width;
             event->height = height;
-            push_event(event.object());
+            event_handler(event.object(), event_handler_userdata);
         }
         return 0;
     }
@@ -180,7 +216,7 @@ LRESULT CALLBACK luna_window_win_proc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM
         event->window = pw;
         event->x = x;
         event->y = y;
-        push_event(event.object());
+        event_handler(event.object(), event_handler_userdata);
         return 0;
     }
     // case WM_ENTERSIZEMOVE:
@@ -193,7 +229,7 @@ LRESULT CALLBACK luna_window_win_proc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM
     {
         auto event = new_object<WindowDPIScaleChangedEvent>();
         event->window = pw;
-        push_event(event.object());
+        event_handler(event.object(), event_handler_userdata);
         return 0;
     }
     case WM_KEYDOWN:
@@ -206,7 +242,7 @@ LRESULT CALLBACK luna_window_win_proc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM
         auto event = new_object<WindowKeyDownEvent>();
         event->window = pw;
         event->key = translate_virtual_key(key);
-        push_event(event.object());
+        event_handler(event.object(), event_handler_userdata);
         return 0;
     }
     case WM_KEYUP:
@@ -219,7 +255,7 @@ LRESULT CALLBACK luna_window_win_proc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM
         auto event = new_object<WindowKeyUpEvent>();
         event->window = pw;
         event->key = translate_virtual_key(key);
-        push_event(event.object());
+        event_handler(event.object(), event_handler_userdata);
         return 0;
     }
     case WM_CHAR:
@@ -232,7 +268,7 @@ LRESULT CALLBACK luna_window_win_proc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM
             c8 buf[6];
             usize size = utf8_encode_char(buf, character);
             event->text.append(buf, size);
-            push_event(event.object());
+            event_handler(event.object(), event_handler_userdata);
         }
         return 0;
     }
@@ -250,7 +286,7 @@ LRESULT CALLBACK luna_window_win_proc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM
             c8 buf[6];
             usize size = utf8_encode_char(buf, character);
             event->text.append(buf, size);
-            push_event(event.object());
+            event_handler(event.object(), event_handler_userdata);
             return FALSE;
         }
         return FALSE;
@@ -259,14 +295,14 @@ LRESULT CALLBACK luna_window_win_proc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM
     {
         auto event = new_object<WindowMouseEnterEvent>();
         event->window = pw;
-        push_event(event.object());
+        event_handler(event.object(), event_handler_userdata);
         return 0;
     }
     case WM_MOUSELEAVE:
     {
         auto event = new_object<WindowMouseLeaveEvent>();
         event->window = pw;
-        push_event(event.object());
+        event_handler(event.object(), event_handler_userdata);
         return 0;
     }
     case WM_MOUSEMOVE:
@@ -277,7 +313,7 @@ LRESULT CALLBACK luna_window_win_proc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM
         event->window = pw;
         event->x = x;
         event->y = y;
-        push_event(event.object());
+        event_handler(event.object(), event_handler_userdata);
         return 0;
     }
     case WM_LBUTTONDOWN:
@@ -291,7 +327,7 @@ LRESULT CALLBACK luna_window_win_proc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM
         auto event = new_object<WindowMouseDownEvent>();
         event->window = pw;
         event->button = btn;
-        push_event(event.object());
+        event_handler(event.object(), event_handler_userdata);
         return 0;
     }
     case WM_XBUTTONDOWN:
@@ -301,7 +337,7 @@ LRESULT CALLBACK luna_window_win_proc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM
         auto event = new_object<WindowMouseDownEvent>();
         event->window = pw;
         event->button = button;
-        push_event(event.object());
+        event_handler(event.object(), event_handler_userdata);
         return TRUE;
     }
     case WM_LBUTTONUP:
@@ -315,7 +351,7 @@ LRESULT CALLBACK luna_window_win_proc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM
         auto event = new_object<WindowMouseUpEvent>();
         event->window = pw;
         event->button = button;
-        push_event(event.object());
+        event_handler(event.object(), event_handler_userdata);
         return 0;
     }
     case WM_XBUTTONUP:
@@ -325,7 +361,7 @@ LRESULT CALLBACK luna_window_win_proc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM
         auto event = new_object<WindowMouseUpEvent>();
         event->window = pw;
         event->button = button;
-        push_event(event.object());
+        event_handler(event.object(), event_handler_userdata);
         return TRUE;
     }
     /*case WM_LBUTTONDBLCLK:
@@ -351,7 +387,7 @@ LRESULT CALLBACK luna_window_win_proc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM
         event->window = pw;
         event->scroll_x = x_wheel_delta;
         event->scroll_y = y_wheel_delta;
-        push_event(event.object());
+        event_handler(event.object(), event_handler_userdata);
         return 0;
     }
     case WM_MOUSEHWHEEL:
@@ -364,7 +400,7 @@ LRESULT CALLBACK luna_window_win_proc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM
         event->window = pw;
         event->scroll_x = x_wheel_delta;
         event->scroll_y = y_wheel_delta;
-        push_event(event.object());
+        event_handler(event.object(), event_handler_userdata);
         return 0;
     }
     case WM_DROPFILES:
@@ -393,7 +429,7 @@ LRESULT CALLBACK luna_window_win_proc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM
         event->files = move(files);
         event->x = pt.x;
         event->y = pt.y;
-        push_event(event.object());
+        event_handler(event.object(), event_handler_userdata);
 
         DragFinish(hdrop);
         return 0;

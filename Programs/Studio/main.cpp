@@ -57,6 +57,48 @@ namespace Luna
         return ok;
     }
 
+    void run_editor()
+    {
+        set_log_to_platform_enabled(true);
+        set_log_to_platform_verbosity(LogVerbosity::error);
+        lupanic_if_failed(add_modules({module_variant_utils(),
+            module_hid(),
+            module_window(),
+            module_rhi(),
+            module_image(),
+            module_font(),
+            module_imgui(),
+            module_asset(),
+            module_obj_loader(),
+            module_rg(),
+            module_job_system(),
+            module_shader_compiler()}));
+        auto r = init_modules();
+        if (failed(r))
+        {
+            log_error("App", explain(r.errcode()));
+            return;
+        }
+        if (failed(init_env())) return;
+
+        // Run project selector.
+        auto project = select_project();
+        if (failed(project))
+        {
+            memdelete(g_env);
+            g_env = nullptr;
+            return;
+        }
+
+        // Run main editor.
+        run_main_editor(project.get());
+
+        memdelete(g_env);
+        g_env = nullptr;
+
+        return;
+    }
+
     void set_current_dir_to_process_path()
     {
         Path p = get_process_path();
@@ -65,100 +107,13 @@ namespace Luna
     }
 }
 
-namespace Luna
-{
-    Window::AppStatus app_init(opaque_t* app_state, int argc, char* argv[])
-    {
-        bool r = Luna::init();
-        if(!r) return Window::AppStatus::failing;
-        set_current_dir_to_process_path();
-        set_log_to_platform_enabled(true);
-        set_log_to_platform_verbosity(LogVerbosity::error);
-        lutry
-        {
-            luexp(add_modules({module_variant_utils(),
-                module_hid(),
-                module_window(),
-                module_rhi(),
-                module_image(),
-                module_font(),
-                module_imgui(),
-                module_asset(),
-                module_obj_loader(),
-                module_rg(),
-                module_job_system(),
-                module_shader_compiler()}));
-            luexp(init_modules());
-            luexp(init_env());
-            g_project_selector = memnew<ProjectSelector>();
-            luexp(g_project_selector->init());
-        }
-        lucatch
-        {
-            log_error("App", explain(luerr));
-            return Window::AppStatus::failing;
-        }
-        return Window::AppStatus::running;
-    }
+using namespace Luna;
 
-    Window::AppStatus app_update(opaque_t app_state)
-    {
-        lutry
-        {
-            if(g_project_selector)
-            {
-                luexp(g_project_selector->update());
-                if(g_project_selector->exiting)
-                {
-                    Path path = g_project_selector->selected_path;
-                    if(path.empty())
-                    {
-                        return Window::AppStatus::exiting;
-                    }
-                    // Switch to main editor.
-                    memdelete(g_project_selector);
-                    g_project_selector = nullptr;
-                    g_main_editor = memnew<MainEditor>();
-                    luexp(g_main_editor->init(path));
-                }
-            }
-            else
-            {
-                luassert(g_main_editor);
-                luexp(g_main_editor->update());
-                if(g_main_editor->m_exiting)
-                {
-                    g_main_editor->close();
-                    return Window::AppStatus::exiting;
-                }
-            }
-        }
-        lucatch
-        {
-            log_error("App", explain(luerr));
-            return Window::AppStatus::failing;
-        }
-        return Window::AppStatus::running;
-    }
-    
-    void app_close(opaque_t app_state, Window::AppStatus status)
-    {
-        Asset::close();
-        if(g_main_editor)
-        {
-            memdelete(g_main_editor);
-            g_main_editor = nullptr;
-        }
-        if(g_project_selector)
-        {
-            memdelete(g_project_selector);
-            g_project_selector = nullptr;
-        }
-        if(g_env)
-        {
-            memdelete(g_env);
-            g_env = nullptr;
-        }
-        Luna::close();
-    }
+int luna_main(int argc, const char* argv[])
+{
+    luassert_always(Luna::init());
+    set_current_dir_to_process_path();
+    run_editor();
+    Luna::close();
+    return 0;
 }

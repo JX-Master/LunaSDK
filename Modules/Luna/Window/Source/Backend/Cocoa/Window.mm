@@ -619,6 +619,11 @@ namespace Luna
             return ok;
         }
 
+        bool Window::is_text_input_active()
+        {
+            return m_text_input_active;
+        }
+
         RV platform_init()
         {
             @autoreleasepool

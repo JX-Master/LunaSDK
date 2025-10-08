@@ -150,6 +150,10 @@ namespace Luna
 
             //! Stops receiving Unicode text input for this window.
             virtual RV end_text_input() = 0;
+
+            //! Checks whether the text input is active.
+            //! @return Returns `true` if text input is active, returns `false` otherwise.
+            virtual bool is_text_input_active() = 0;
         };
 
         //! Flags that specifies the initial state and style of the window.

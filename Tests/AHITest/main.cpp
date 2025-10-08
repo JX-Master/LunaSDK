@@ -230,6 +230,11 @@ namespace Luna
 
             App app;
 
+            Window::set_event_handler([](object_t event, void* userdata)
+            {
+                ImGuiUtils::handle_window_event(event);
+            }, nullptr);
+
             luset(app.window, Window::new_window("Luna Studio - Open Project", Window::DEFAULT_POS, Window::DEFAULT_POS, 1000, 500));
             auto dev = RHI::get_main_device();
             u32 graphics_queue = U32_MAX;
@@ -255,13 +260,7 @@ namespace Luna
             while(true)
             {
                 // Handle events.
-                while(ObjRef event = Window::pop_event())
-                {
-                    if(!ImGuiUtils::handle_window_event(event))
-                    {
-                        Window::default_event_handler(event.get());
-                    }
-                }
+                Window::poll_events();
                 if (app.window->is_closed()) break;
                 if (app.window->is_minimized())
                 {
@@ -404,21 +403,23 @@ namespace Luna
         lucatchret;
         return ok;
     }
+}
 
-    int luna_main(int argc, const char** argv)
+using namespace Luna;
+
+int luna_main(int argc, const char** argv)
+{
+    if(!Luna::init())
     {
-        if(!Luna::init())
-        {
-            return -1;
-        }
-        RV r = run_app();
-        if(failed(r))
-        {
-            log_error("AHITest", "%s", explain(r.errcode()));
-            Luna::close();
-            return -1;
-        }
-        Luna::close();
-        return 0;
+        return -1;
     }
+    RV r = run_app();
+    if(failed(r))
+    {
+        log_error("AHITest", "%s", explain(r.errcode()));
+        Luna::close();
+        return -1;
+    }
+    Luna::close();
+    return 0;
 }

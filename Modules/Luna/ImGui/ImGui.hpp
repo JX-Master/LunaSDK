@@ -22,10 +22,13 @@ namespace Luna
 {
     namespace ImGuiUtils
     {
+        //! Sets the current active window.
+        LUNA_IMGUI_API void set_active_window(Window::IWindow* window);
+        
         //! Dispatches the window event to ImGui.
         //! @param[in] event The window event to handle.
         //! @return Returns `true` if the event is consumed by ImGui, `false` otherwise.
-        LUNA_IMGUI_API bool handle_window_event(ObjRef event);
+        LUNA_IMGUI_API bool handle_window_event(object_t event);
 
         //! Updates ImGui IO using inputs and times. This should be called before ImGui::NewFrame().
         LUNA_IMGUI_API void update_io();

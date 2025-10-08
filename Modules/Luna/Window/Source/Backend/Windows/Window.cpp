@@ -63,25 +63,6 @@ namespace Luna
         {
             UnregisterClassW(WIN32_CLASS_NAME, g_startup_params.hInstance);
         }
-        void platform_poll_events(bool wait_event)
-        {
-            MSG msg;
-            if (wait_event)
-            {
-                // Wait for at least one event.
-                if (GetMessageW(&msg, NULL, 0, 0))
-                {
-                    TranslateMessage(&msg);
-                    DispatchMessageW(&msg);
-                }
-            }
-            // Poll all remaining events.
-            while (PeekMessageW(&msg, NULL, 0, 0, PM_REMOVE))
-            {
-                TranslateMessage(&msg);
-                DispatchMessageW(&msg);
-            }
-        }
         LUNA_WINDOW_API void set_startup_params(const StartupParams& params)
 		{
 			g_startup_params = params;
@@ -97,7 +78,6 @@ namespace Luna
         }
         bool Window::is_closed()
         {
-            lutsassert_main_thread();
             return m_hwnd == nullptr;
         }
         bool Window::has_input_focus()
@@ -198,7 +178,10 @@ namespace Luna
             lutsassert_main_thread();
             if (is_closed()) return BasicError::bad_calling_time();
             m_style = style;
-            LONG wstyle = encode_style(style);
+            LONG wstyle = GetWindowLongW(m_hwnd, GWL_STYLE);
+            // Reset all window style bits.
+            wstyle &= ~(WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_THICKFRAME | WS_MAXIMIZEBOX);
+            wstyle |= encode_style(m_style);
             SetWindowLongW(m_hwnd, GWL_STYLE, wstyle);
             if(!SetWindowPos(m_hwnd, NULL, 0, 0, 0, 0, 
                 SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED))
@@ -338,6 +321,10 @@ namespace Luna
             m_text_input_active = false;
             return ok;
         }
+        bool Window::is_text_input_active()
+        {
+            return m_text_input_active;
+        }
         HWND Window::get_hwnd()
         {
             lutsassert_main_thread();
@@ -382,7 +369,7 @@ namespace Luna
                     rect.top = y;
                     rect.right = width + x;
                     rect.bottom = height + y;
-                    AdjustWindowRect(&rect, style, FALSE);
+                    AdjustWindowRectEx(&rect, style, FALSE, WS_EX_APPWINDOW);
                     x = rect.left;
                     y = rect.top;
                     width = rect.right - rect.left;
@@ -392,7 +379,7 @@ namespace Luna
                 StackAllocator alloc;
                 wchar_t* window_namew = (wchar_t*)alloc.allocate(sizeof(wchar_t) * (title_sz + 1));
                 utf8_to_utf16((c16*)window_namew, title_sz + 1, title);
-                HWND hwnd = CreateWindowExW(0, WIN32_CLASS_NAME, window_namew, style, x, y, width, height,
+                HWND hwnd = CreateWindowExW(WS_EX_APPWINDOW, WIN32_CLASS_NAME, window_namew, style, x, y, width, height,
                     nullptr, nullptr, g_startup_params.hInstance, nullptr);
                 if (!hwnd)
                 {

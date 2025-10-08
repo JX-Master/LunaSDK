@@ -22,6 +22,7 @@
 #include <Luna/RHI/ShaderCompileHelper.hpp>
 #include <Luna/RHIUtility/RHIUtility.hpp>
 #include <Luna/RHIUtility/ResourceWriteContext.hpp>
+#include <Luna/Window/Event.hpp>
 #include <ImGuiVS.hpp>
 #include <ImGuiPS.hpp>
 namespace Luna
@@ -474,50 +475,6 @@ namespace Luna
             }
         }
 
-        static void handle_mouse_move(Window::IWindow* window, i32 x, i32 y)
-        {
-            ImGuiIO& io = ImGui::GetIO();
-            if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
-            {
-                auto pos = g_active_window->client_to_screen(Int2U(x, y));
-                x = pos.x;
-                y = pos.y;
-            }
-            io.AddMousePosEvent((f32)x, (f32)y);
-        }
-
-        static void handle_mouse_down(Window::IWindow* window, HID::MouseButton button)
-        {
-            ImGuiIO& io = ImGui::GetIO();
-            int button_id = 0;
-            if (button == HID::MouseButton::left) button_id = 0;
-            else if (button == HID::MouseButton::right) button_id = 1;
-            else if (button == HID::MouseButton::middle) button_id = 2;
-            else if (button == HID::MouseButton::function1) button_id = 3;
-            else if (button == HID::MouseButton::function2) button_id = 4;
-            // TODO: Add capture API.
-            io.AddMouseButtonEvent(button_id, true);
-        }
-
-        static void handle_mouse_up(Window::IWindow* window, HID::MouseButton button)
-        {
-            ImGuiIO& io = ImGui::GetIO();
-            int button_id = 0;
-            if (button == HID::MouseButton::left) button_id = 0;
-            else if (button == HID::MouseButton::right) button_id = 1;
-            else if (button == HID::MouseButton::middle) button_id = 2;
-            else if (button == HID::MouseButton::function1) button_id = 3;
-            else if (button == HID::MouseButton::function2) button_id = 4;
-
-            io.AddMouseButtonEvent(button_id, false);
-        }
-
-        static void handle_scroll(Window::IWindow* window, f32 x_wheel_delta, f32 y_wheel_delta)
-        {
-            ImGuiIO& io = ImGui::GetIO();
-            io.AddMouseWheelEvent(x_wheel_delta, y_wheel_delta);
-        }
-
         static void handle_key_state_change(HID::KeyCode key, bool is_key_down)
         {
             ImGuiIO& io = ImGui::GetIO();
@@ -549,60 +506,93 @@ namespace Luna
             }
         }
 
-        static void handle_key_down(Window::IWindow* window, HID::KeyCode key)
+        LUNA_IMGUI_API bool handle_window_event(object_t event)
         {
-            handle_key_state_change(key, true);
-        }
-
-        static void handle_key_up(Window::IWindow* window, HID::KeyCode key)
-        {
-            handle_key_state_change(key, false);
-        }
-
-        static void handle_focus(Window::IWindow* window)
-        {
+            using namespace Window;
             ImGuiIO& io = ImGui::GetIO();
-            io.AddFocusEvent(true);
-        }
+            if(auto window_event = cast_object<WindowEvent>(event))
+            {
+                if(window_event->window != g_active_window) return false;
+                if(auto e = cast_object<WindowMouseMoveEvent>(event))
+                {
+                    i32 x = e->x;
+                    i32 y = e->y;
+                    if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+                    {
+                        auto pos = g_active_window->client_to_screen(Int2U(x, y));
+                        x = pos.x;
+                        y = pos.y;
+                    }
+                    io.AddMousePosEvent((f32)x, (f32)y);
+                    return true;
+                }
+                else if(auto e = cast_object<WindowMouseDownEvent>(event))
+                {
+                    int button_id = 0;
+                    if (e->button == HID::MouseButton::left) button_id = 0;
+                    else if (e->button == HID::MouseButton::right) button_id = 1;
+                    else if (e->button == HID::MouseButton::middle) button_id = 2;
+                    else if (e->button == HID::MouseButton::function1) button_id = 3;
+                    else if (e->button == HID::MouseButton::function2) button_id = 4;
+                    // TODO: Add capture API.
+                    io.AddMouseButtonEvent(button_id, true);
+                    return true;
+                }
+                else if(auto e = cast_object<WindowMouseUpEvent>(event))
+                {
+                    int button_id = 0;
+                    if (e->button == HID::MouseButton::left) button_id = 0;
+                    else if (e->button == HID::MouseButton::right) button_id = 1;
+                    else if (e->button == HID::MouseButton::middle) button_id = 2;
+                    else if (e->button == HID::MouseButton::function1) button_id = 3;
+                    else if (e->button == HID::MouseButton::function2) button_id = 4;
 
-        static void handle_lose_focus(Window::IWindow* window)
-        {
-            ImGuiIO& io = ImGui::GetIO();
-            io.AddFocusEvent(false);
-        }
-
-        static void handle_input_text(Window::IWindow* window, const c8* text, usize length)
-        {
-            ImGuiIO& io = ImGui::GetIO();
-            io.AddInputCharactersUTF8(text);
-        }
-
-        static void handle_dpi_scale_changed(Window::IWindow* window)
-        {
-            auto _ = refresh_font_texture();
-        }
-
-        LUNA_IMGUI_API bool handle_window_event(ObjRef event)
-        {
-            
+                    io.AddMouseButtonEvent(button_id, false);
+                    return true;
+                }
+                else if(auto e = cast_object<WindowScrollEvent>(event))
+                {
+                    io.AddMouseWheelEvent(e->scroll_x, e->scroll_y);
+                    return true;
+                }
+                else if(auto e = cast_object<WindowKeyDownEvent>(event))
+                {
+                    handle_key_state_change(e->key, true);
+                    return true;
+                }
+                else if(auto e = cast_object<WindowKeyUpEvent>(event))
+                {
+                    handle_key_state_change(e->key, false);
+                    return true;
+                }
+                else if(auto e = cast_object<WindowInputFocusEvent>(event))
+                {
+                    io.AddFocusEvent(true);
+                    return true;
+                }
+                else if(auto e = cast_object<WindowLoseInputFocusEvent>(event))
+                {
+                    io.AddFocusEvent(false);
+                    return true;
+                }
+                else if(auto e = cast_object<WindowInputTextEvent>(event))
+                {
+                    io.AddInputCharactersUTF8(e->text.c_str());
+                    return true;
+                }
+                else if(auto e = cast_object<WindowDPIScaleChangedEvent>(event))
+                {
+                    auto _ = refresh_font_texture();
+                    return true;
+                }
+            }
+            return false;
         }
 
         LUNA_IMGUI_API void set_active_window(Window::IWindow* window)
         {
             if (g_active_window)
             {
-                // Unregister old callbacks.
-                auto& events = g_active_window->get_events();
-                events.mouse_move.remove_handler(g_handle_mouse_move);
-                events.mouse_down.remove_handler(g_handle_mouse_down);
-                events.mouse_up.remove_handler(g_handle_mouse_up);
-                events.scroll.remove_handler(g_handle_scroll);
-                events.key_down.remove_handler(g_handle_key_down);
-                events.key_up.remove_handler(g_handle_key_up);
-                events.input_focus.remove_handler(g_handle_input_focus);
-                events.lose_input_focus.remove_handler(g_handle_lose_input_focus);
-                events.input_text.remove_handler(g_handle_input_character);
-                events.dpi_scale_changed.remove_handler(g_handle_dpi_scale_changed);
                 if(g_window_text_input_enabled)
                 {
                     auto _ = g_active_window->end_text_input();
@@ -610,21 +600,6 @@ namespace Luna
             }
             g_active_window = window;
             g_window_text_input_enabled = false;
-            if (g_active_window)
-            {
-                // Register new callbacks.
-                auto& events = g_active_window->get_events();
-                g_handle_mouse_move = events.mouse_move.add_handler(handle_mouse_move);
-                g_handle_mouse_down = events.mouse_down.add_handler(handle_mouse_down);
-                g_handle_mouse_up = events.mouse_up.add_handler(handle_mouse_up);
-                g_handle_scroll = events.scroll.add_handler(handle_scroll);
-                g_handle_key_down = events.key_down.add_handler(handle_key_down);
-                g_handle_key_up = events.key_up.add_handler(handle_key_up);
-                g_handle_input_focus = events.input_focus.add_handler(handle_focus);
-                g_handle_lose_input_focus = events.lose_input_focus.add_handler(handle_lose_focus);
-                g_handle_input_character = events.input_text.add_handler(handle_input_text);
-                g_handle_dpi_scale_changed = events.dpi_scale_changed.add_handler(handle_dpi_scale_changed);
-            }
         }
 
         static void update_hid_mouse()

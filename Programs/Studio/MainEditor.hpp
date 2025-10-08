@@ -21,6 +21,8 @@ namespace Luna
 
     struct MainEditor
     {
+        lustruct("MainEditor", "{CF004929-E981-4E1D-A4AE-96EEC79AD1EB}");
+
         Path m_project_path;
 
         Ref<Window::IWindow> m_window;
@@ -152,6 +154,8 @@ namespace Luna
     };
 
     void register_components();
+
+    void run_main_editor(const Path& project_path);
 
     void draw_asset_tile(Asset::asset_t asset, const RectF& draw_rect);
 

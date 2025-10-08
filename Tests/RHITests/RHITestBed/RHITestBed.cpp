@@ -17,6 +17,8 @@
 #include <Luna/Runtime/Time.hpp>
 #include <Luna/Runtime/Thread.hpp>
 #include <Luna/RHI/Adapter.hpp>
+#include <Luna/Window/Event.hpp>
+#include <Luna/RHIUtility/RHIUtility.hpp>
 
 namespace Luna
 {
@@ -59,19 +61,6 @@ namespace Luna
         {
             m_resize_func = resize_func;
         }
-        void on_window_resize(IWindow* window, u32 width, u32 height)
-        {
-            if(width && height)
-            {
-                // resize back buffer.
-                lupanic_if_failed(m_swap_chain->reset({ width, height, 2, Format::bgra8_unorm, true }));
-                if (m_resize_func) m_resize_func(width, height);
-            }
-        }
-        void on_window_close(IWindow* window)
-        {
-            window->close();
-        }
         LUNA_RHI_TESTBED_API RV init()
         {
             lutry
@@ -91,8 +80,17 @@ namespace Luna
                 }
                 if (m_command_queue == U32_MAX) return set_error(BasicError::not_supported(), "No command queue is suitable.");
                 luset(m_window, new_window("RHI Test"));
-                m_window->get_events().close.add_handler(on_window_close);
-                m_window->get_events().framebuffer_resize.add_handler(on_window_resize);
+                Window::set_event_handler([](object_t event, void* userdata) {
+                    if(auto e = cast_object<WindowFramebufferResizeEvent>(event))
+                    {
+                        if(e->width && e->height)
+                        {
+                            // resize back buffer.
+                            lupanic_if_failed(m_swap_chain->reset({ e->width, e->height, 2, Format::bgra8_unorm, true }));
+                            if (m_resize_func) m_resize_func(e->width, e->height);
+                        }
+                    }
+                }, nullptr);
                 luset(m_swap_chain, device->new_swap_chain(m_command_queue, m_window, SwapChainDesc({0, 0, 2, Format::bgra8_unorm, true})));
                 auto sz = m_window->get_size();
                 luset(m_command_buffer, device->new_command_buffer(m_command_queue));
@@ -178,7 +176,7 @@ namespace Luna
         virtual const c8* get_name() override { return "RHITestBed"; }
         virtual RV on_register() override
         {
-            return add_dependency_modules(this, {module_rhi(), module_window()});
+            return add_dependency_modules(this, {module_rhi(), module_window(), module_rhi_utility()});
         }
     };
     LUNA_RHI_TESTBED_API Module* module_rhi_test_bed()

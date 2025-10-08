@@ -199,13 +199,7 @@ namespace Luna
         {
             lutsassert_main_thread();
             if (is_closed()) return 1.0f;
-            UInt2U fs = get_framebuffer_size();
-            UInt2U ws = get_size();
-            f64 dpix = (f64)fs.x / (f64)ws.x;
-            f64 dpiy = (f64)fs.y / (f64)ws.y;
-            // On most cases dpix == dpiy, but if it is not, we use diagonal size ratio
-            // as DPI ratio.
-            return (f32)sqrt((dpix * dpix + dpiy * dpiy) / 2);
+            return SDL_GetWindowDisplayScale(m_window);
         }
         RV Window::set_title(const c8* title)
         {
@@ -248,6 +242,10 @@ namespace Luna
             lutsassert_main_thread();
             bool r = SDL_StopTextInput(m_window);
             return encode_sdl_result(r);
+        }
+        bool Window::is_text_input_active()
+        {
+            return SDL_TextInputActive(m_window);
         }
 #ifdef LUNA_PLATFORM_WINDOWS
         HWND Window::get_hwnd()

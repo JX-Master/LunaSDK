@@ -13,68 +13,55 @@
 #include "Window.hpp"
 #include <Luna/Runtime/Reflection.hpp>
 #include <Luna/Runtime/RingDeque.hpp>
-#include <Luna/Runtime/SpinLock.hpp>
+#include <Luna/Runtime/TSAssert.hpp>
 
 namespace Luna
 {
     namespace Window
     {
-        RingDeque<ObjRef> g_event_queue;
-        SpinLock g_event_queue_lock;
+        void(*g_event_handler)(object_t event, void* userdata) = nullptr;
+        void* g_event_handler_userdata = nullptr;
 
-        void init_events()
+        LUNA_WINDOW_API void set_event_handler(void(*event_handler)(object_t event, void* userdata), void* userdata)
         {
-            register_struct_type<WindowRequestCloseEvent>({});
-            register_struct_type<WindowClosedEvent>({});
-            register_struct_type<WindowInputFocusEvent>({});
-            register_struct_type<WindowLoseInputFocusEvent>({});
-            register_struct_type<WindowShowEvent>({});
-            register_struct_type<WindowHideEvent>({});
-            register_struct_type<WindowResizeEvent>({});
-            register_struct_type<WindowFramebufferResizeEvent>({});
-            register_struct_type<WindowMoveEvent>({});
-            register_struct_type<WindowDPIScaleChangedEvent>({});
-            register_struct_type<WindowKeyDownEvent>({});
-            register_struct_type<WindowKeyUpEvent>({});
-            register_struct_type<WindowInputTextEvent>({});
-            register_struct_type<WindowMouseEnterEvent>({});
-            register_struct_type<WindowMouseLeaveEvent>({});
-            register_struct_type<WindowMouseMoveEvent>({});
-            register_struct_type<WindowMouseDownEvent>({});
-            register_struct_type<WindowMouseUpEvent>({});
-            register_struct_type<WindowScrollEvent>({});
-            register_struct_type<WindowTouchDownEvent>({});
-            register_struct_type<WindowTouchMoveEvent>({});
-            register_struct_type<WindowTouchUpEvent>({});
-            register_struct_type<WindowDropFilesEvent>({});
+            lutsassert_main_thread();
+            g_event_handler = event_handler;
+            g_event_handler_userdata = userdata;
         }
-        void close_events()
+
+        LUNA_WINDOW_API void get_event_handler(void(**out_event_handler)(object_t event, void* userdata), void** out_userdata)
         {
-            g_event_queue.clear();
-            g_event_queue.shrink_to_fit();
+            lutsassert_main_thread();
+            if(out_event_handler) *out_event_handler = g_event_handler;
+            if(out_userdata) *out_userdata = g_event_handler_userdata;
         }
-        LUNA_WINDOW_API ObjRef pop_event(bool wait_event)
+
+        void register_events()
         {
-            platform_poll_events(wait_event);
-            LockGuard guard(g_event_queue_lock);
-            // If wait_event is true, the event queue must has at least one event here.
-            luassert(!wait_event || !g_event_queue.empty());
-            if(g_event_queue.empty()) return ObjRef();
-            ObjRef event = move(g_event_queue.front());
-            g_event_queue.pop_front();
-            return event;
-        }
-        LUNA_WINDOW_API void push_event(object_t event)
-        {
-            LockGuard guard(g_event_queue_lock);
-            g_event_queue.push_back(ObjRef(event));
-        }
-        LUNA_WINDOW_API void default_event_handler(object_t event)
-        {
-            if(WindowRequestCloseEvent* e = cast_object<WindowRequestCloseEvent>(event))
-            {
-                e->window->close();
-            }
+            auto window_event_type = register_struct_type<WindowEvent>({});
+            register_struct_type<WindowRequestCloseEvent>({}, window_event_type);
+            register_struct_type<WindowClosedEvent>({}, window_event_type);
+            register_struct_type<WindowInputFocusEvent>({}, window_event_type);
+            register_struct_type<WindowLoseInputFocusEvent>({}, window_event_type);
+            register_struct_type<WindowShowEvent>({}, window_event_type);
+            register_struct_type<WindowHideEvent>({}, window_event_type);
+            register_struct_type<WindowResizeEvent>({}, window_event_type);
+            register_struct_type<WindowFramebufferResizeEvent>({}, window_event_type);
+            register_struct_type<WindowMoveEvent>({}, window_event_type);
+            register_struct_type<WindowDPIScaleChangedEvent>({}, window_event_type);
+            register_struct_type<WindowKeyDownEvent>({}, window_event_type);
+            register_struct_type<WindowKeyUpEvent>({}, window_event_type);
+            register_struct_type<WindowInputTextEvent>({}, window_event_type);
+            register_struct_type<WindowMouseEnterEvent>({}, window_event_type);
+            register_struct_type<WindowMouseLeaveEvent>({}, window_event_type);
+            register_struct_type<WindowMouseMoveEvent>({}, window_event_type);
+            register_struct_type<WindowMouseDownEvent>({}, window_event_type);
+            register_struct_type<WindowMouseUpEvent>({}, window_event_type);
+            register_struct_type<WindowScrollEvent>({}, window_event_type);
+            register_struct_type<WindowTouchDownEvent>({}, window_event_type);
+            register_struct_type<WindowTouchMoveEvent>({}, window_event_type);
+            register_struct_type<WindowTouchUpEvent>({}, window_event_type);
+            register_struct_type<WindowDropFilesEvent>({}, window_event_type);
         }
     }
 }

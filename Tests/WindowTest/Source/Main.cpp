@@ -13,57 +13,48 @@
 #include <Luna/Runtime/Thread.hpp>
 #include <Luna/Window/AppMain.hpp>
 #include <Luna/Window/Window.hpp>
+#include <Luna/Window/Event.hpp>
+#include <Luna/Runtime/Log.hpp>
 
-namespace Luna
+int luna_main(int argc, const char* argv[])
 {
-    void on_window_close(Window::IWindow* window)
+    using namespace Luna;
+    if(!Luna::init()) return -1;
+    lutry
     {
-        window->close();
-    }
+        luexp(add_modules({module_window()}));
+        Window::StartupParams params;
+        Window::set_startup_params(params);
+        luexp(init_modules());
 
-    void on_window_key_pressed(Window::IWindow* window, HID::KeyCode key)
-    {
-        if(key == HID::KeyCode::r)
+        Window::set_event_handler([](object_t event, void* userdata)
         {
-            auto style = window->get_style();
-            set_flags(style, Window::WindowStyleFlag::resizable, !test_flags(style, Window::WindowStyleFlag::resizable));
-            lupanic_if_failed(window->set_style(style));
+            if(auto e = cast_object<Window::WindowKeyDownEvent>(event))
+            {
+                if(e->key == HID::KeyCode::r)
+                {
+                    auto style = e->window->get_style();
+                    set_flags(style, Window::WindowStyleFlag::resizable, !test_flags(style, Window::WindowStyleFlag::resizable));
+                    lupanic_if_failed(e->window->set_style(style));
+                }
+            }
+        }, nullptr);
+
+        lulet(window, Window::new_window("Window Test"));
+
+        while(true)
+        {
+            Window::poll_events();
+            if(window->is_closed()) break;
+            sleep(16);
         }
     }
-
-    Ref<Window::IWindow> g_main_window;
-
-    Window::AppStatus app_init(opaque_t* app_state, int argc, char* argv[])
+    lucatch
     {
-        bool r = Luna::init();
-        if(!r) return Window::AppStatus::failing;
-        lutry
-        {
-            luexp(add_modules({module_window()}));
-            Window::StartupParams params;
-            Window::set_startup_params(params);
-            luexp(init_modules());
-            luset(g_main_window, Window::new_window("Window Test"));
-            g_main_window->get_events().close.add_handler(on_window_close);
-            g_main_window->get_events().key_down.add_handler(on_window_key_pressed);
-        }
-        lucatch
-        {
-            return Window::AppStatus::failing;
-        }
-        return Window::AppStatus::running;
-    }
-
-    Window::AppStatus app_update(opaque_t app_state)
-    {
-        if(g_main_window->is_closed()) return Window::AppStatus::exiting;
-        sleep(16);
-        return Window::AppStatus::running;
-    }
-
-    void app_close(opaque_t app_state, Window::AppStatus status)
-    {
-        g_main_window.reset();
+        log_error("WindowTest", "%s", explain(luerr));
         Luna::close();
+        return -1;
     }
+    Luna::close();
+    return 0;
 }

@@ -704,9 +704,16 @@ namespace Luna
     //! @param[in] value If this is `true`, all options specified will be set to 1, else they will be set to 0.
     //! @return Returns the enumeration after all options specified being set.
     template <typename _Ty>
-    inline constexpr auto set_flags(_Ty flags, _Ty options, bool value) -> enable_if_t<is_enum_v<_Ty>, void>
+    inline constexpr auto set_flags(_Ty& flags, _Ty options, bool value) -> enable_if_t<is_enum_v<_Ty>, void>
     {
-        return value ? set_flags(flags, options) : reset_flags(flags, options);
+        if(value)
+        {
+            set_flags(flags, options);
+        }
+        else
+        {
+            reset_flags(flags, options);
+        }
     }
 
     //! Stores a pair of values. 

@@ -15,10 +15,8 @@ namespace Luna
     namespace Window
     {
         extern StartupParams g_startup_params;
-        void init_events();
-        void close_events();
+        void register_events();
         RV platform_init();
         void platform_close();
-        void platform_poll_events(bool wait_event);
     }
 }
