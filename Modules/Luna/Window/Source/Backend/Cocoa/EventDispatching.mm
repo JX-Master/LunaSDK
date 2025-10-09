@@ -9,7 +9,9 @@
 */
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_WINDOW_API LUNA_EXPORT
-#include "../../../Cocoa/EventHandling.hpp"
+#include "../../Event.hpp"
+#include "EventDispatching.h"
+#include "Luna/Window/Event.hpp"
 #include "Window.h"
 #include <Luna/Runtime/Unicode.hpp>
 #include <Luna/Runtime/Thread.hpp>
@@ -153,12 +155,23 @@ namespace Luna
 
         static void process_cocoa_event(NSEvent* event);
 
-        LUNA_WINDOW_API void poll_cocoa_events()
+        LUNA_WINDOW_API void poll_events(bool wait_events)
         {
             lutsassert_main_thread();
             @autoreleasepool
             {
                 NSEvent* event = nil;
+                if(wait_events)
+                {
+                    event = [NSApp nextEventMatchingMask:NSEventMaskAny
+                                       untilDate:[NSDate distantFuture]
+                                          inMode:NSDefaultRunLoopMode
+                                         dequeue:YES];
+                    if(event)
+                    {
+                        process_cocoa_event(event);
+                    }
+                }
                 while ((event = [NSApp nextEventMatchingMask:NSEventMaskAny
                                                    untilDate:nil
                                                       inMode:NSDefaultRunLoopMode
@@ -169,10 +182,21 @@ namespace Luna
             }
         }
 
-        LUNA_WINDOW_API void handle_cocoa_event(void* nsevent_ptr)
+        void post_custom_event_to_queue(Window* window, u32 event_type, u32 data1, u32 data2)
         {
-            NSEvent* event = (__bridge NSEvent*)nsevent_ptr;
-            process_cocoa_event(event);
+            @autoreleasepool
+            {
+                NSEvent* customEvent = [NSEvent otherEventWithType:NSEventTypeApplicationDefined
+                                                        location:NSZeroPoint
+                                                    modifierFlags:0
+                                                        timestamp:[[NSProcessInfo processInfo] systemUptime]
+                                                    windowNumber:window ? [(NSWindow*)window->m_window windowNumber] : 0
+                                                            context:nil
+                                                            subtype:event_type
+                                                            data1:data1
+                                                            data2:data2];
+                [NSApp postEvent:customEvent atStart:NO];
+            }
         }
 
         static void process_cocoa_event(NSEvent* event)
@@ -195,6 +219,28 @@ namespace Luna
                 {
                     switch ([event type])
                     {
+                        case NSEventTypeApplicationDefined:
+                        {
+                            switch([event subtype])
+                            {
+                                case APP_DEFINED_EVENT_SHOW:
+                                {
+                                    auto e = new_object<WindowShowEvent>();
+                                    e->window = window;
+                                    dispatch_event_to_handler(e.object());
+                                }
+                                case APP_DEFINED_EVENT_HIDE:
+                                {
+                                    auto e = new_object<WindowHideEvent>();
+                                    e->window = window;
+                                    dispatch_event_to_handler(e.object());
+                                }
+                                default:
+                                    break;
+                            }
+                            break;
+                        }
+
                         case NSEventTypeKeyDown:
                         {
                             HID::KeyCode key = translate_key([event keyCode]);
@@ -209,7 +255,10 @@ namespace Luna
                             {
                                 if (key != HID::KeyCode::unknown)
                                 {
-                                    window->get_events().key_down(window, key);
+                                    auto e = new_object<WindowKeyDownEvent>();
+                                    e->window = window;
+                                    e->key = key = key;
+                                    dispatch_event_to_handler(e.object());
                                 }
                             }
                             break;
@@ -220,7 +269,10 @@ namespace Luna
                             HID::KeyCode key = translate_key([event keyCode]);
                             if (key != HID::KeyCode::unknown)
                             {
-                                window->get_events().key_up(window, key);
+                                auto e = new_object<WindowKeyUpEvent>();
+                                e->window = window;
+                                e->key = key = key;
+                                dispatch_event_to_handler(e.object());
                             }
                             break;
                         }
@@ -237,8 +289,13 @@ namespace Luna
                             CGFloat height = [contentView bounds].size.height;
                             i32 x = (i32)locationInWindow.x;
                             i32 y = (i32)(height - locationInWindow.y);
-                            
-                            window->get_events().mouse_move(window, x, y);
+
+                            auto e = new_object<WindowMouseMoveEvent>();
+                            e->window = window;
+                            e->x = x;
+                            e->y = y;
+                            dispatch_event_to_handler(e.object());
+
                             break;
                         }
                         
@@ -249,7 +306,10 @@ namespace Luna
                             HID::MouseButton button = translate_mouse_button([event buttonNumber]);
                             if (button != HID::MouseButton::none)
                             {
-                                window->get_events().mouse_down(window, button);
+                                auto e = new_object<WindowMouseDownEvent>();
+                                e->window = window;
+                                e->button = button;
+                                dispatch_event_to_handler(e.object());
                             }
                             break;
                         }
@@ -261,7 +321,10 @@ namespace Luna
                             HID::MouseButton button = translate_mouse_button([event buttonNumber]);
                             if (button != HID::MouseButton::none)
                             {
-                                window->get_events().mouse_up(window, button);
+                                auto e = new_object<WindowMouseUpEvent>();
+                                e->window = window;
+                                e->button = button;
+                                dispatch_event_to_handler(e.object());
                             }
                             break;
                         }
@@ -279,19 +342,27 @@ namespace Luna
                                 dy *= 0.1f;
                             }
                             
-                            window->get_events().scroll(window, (f32)dx, (f32)dy);
+                            auto e = new_object<WindowScrollEvent>();
+                            e->window = window;
+                            e->scroll_x = (f32)dx;
+                            e->scroll_y = (f32)dy;
+                            dispatch_event_to_handler(e.object());
                             break;
                         }
                         
                         case NSEventTypeMouseEntered:
                         {
-                            window->get_events().mouse_enter(window);
+                            auto e = new_object<WindowMouseEnterEvent>();
+                            e->window = window;
+                            dispatch_event_to_handler(e.object());
                             break;
                         }
                         
                         case NSEventTypeMouseExited:
                         {
-                            window->get_events().mouse_leave(window);
+                            auto e = new_object<WindowMouseLeaveEvent>();
+                            e->window = window;
+                            dispatch_event_to_handler(e.object());
                             break;
                         }
                         

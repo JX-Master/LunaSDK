@@ -22,6 +22,14 @@ namespace Luna
         void(*g_event_handler)(object_t event, void* userdata) = nullptr;
         void* g_event_handler_userdata = nullptr;
 
+        void dispatch_event_to_handler(object_t event)
+        {
+            if(g_event_handler)
+            {
+                g_event_handler(event, g_event_handler_userdata);
+            }
+        }
+
         LUNA_WINDOW_API void set_event_handler(void(*event_handler)(object_t event, void* userdata), void* userdata)
         {
             lutsassert_main_thread();

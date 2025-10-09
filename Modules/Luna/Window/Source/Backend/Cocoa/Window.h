@@ -27,7 +27,6 @@ namespace Luna
             id m_window; // NSWindow*
             id m_delegate; // NSWindowDelegate*
             id m_input_view; // NSView*
-            WindowEvents m_events;
             
             // Used to cache files specified by drag and drop
             Vector<String> m_drop_files;
@@ -60,10 +59,6 @@ namespace Luna
             virtual RV set_title(const c8* title) override;
             virtual Int2U screen_to_client(const Int2U& point) override;
             virtual Int2U client_to_screen(const Int2U& point) override;
-            virtual WindowEvents& get_events() override
-            {
-                return m_events;
-            }
             virtual id get_nswindow() override;
             
             virtual RV begin_text_input() override;

@@ -17,11 +17,6 @@
 #include <Luna/Runtime/Unicode.hpp>
 #include "../Window.hpp"
 
-#ifdef LUNA_ENABLE_API_VALIDATION
-#include <Luna/Runtime/Runtime.hpp>
-#include <Luna/Runtime/Module.hpp>
-#endif
-
 #pragma comment(lib, "shell32.lib")
 #pragma comment(lib, "User32.lib")
 

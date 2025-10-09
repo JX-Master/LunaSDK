@@ -14,8 +14,20 @@
 #include <Luna/Runtime/Thread.hpp>
 #include <Luna/Runtime/TSAssert.hpp>
 #include <Luna/Runtime/HashMap.hpp>
-#include <Luna/Runtime/Mutex.hpp>
+#include "../../../Event.hpp"
+#include "EventDispatching.h"
 #import <objc/runtime.h>
+
+inline void dispatch_event_to_handler(Luna::object_t event)
+{
+    void(*event_handler)(Luna::object_t event, void* userdata);
+    void* event_handler_userdata;
+    Luna::Window::get_event_handler(&event_handler, &event_handler_userdata);
+    if(event_handler)
+    {
+        event_handler(event, event_handler_userdata);
+    }
+}
 
 // Forward declaration for the delegate
 @interface LunaWindowDelegate : NSResponder<NSWindowDelegate>
@@ -68,7 +80,10 @@
         const char* utf8 = [characters UTF8String];
         if (utf8)
         {
-            self.lunaWindow->get_events().input_text(self.lunaWindow, utf8, strlen(utf8));
+            auto e = Luna::new_object<Luna::Window::WindowInputTextEvent>();
+            e->window = self.lunaWindow;
+            e->text = utf8;
+            dispatch_event_to_handler(e.object());
         }
     }
 }
@@ -177,7 +192,10 @@
     {
         return;
     }
-    self.lunaWindow->get_events().key_down(self.lunaWindow, _pendingKeyCode);
+    auto e = Luna::new_object<Luna::Window::WindowKeyDownEvent>();
+    e->window = self.lunaWindow;
+    e->key = _pendingKeyCode;
+    dispatch_event_to_handler(e.object());
     [self clearPendingKey];
 }
 
@@ -218,7 +236,9 @@ namespace Luna
                     objc_setAssociatedObject(window, (const void*)WINDOW_POINTER_KEY, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
                     
                     // Trigger destroy event
-                    m_events.destroy(this);
+                    auto e = Luna::new_object<Luna::Window::WindowClosedEvent>();
+                    e->window = this;
+                    dispatch_event_to_handler(e.object());
                     
                     [window setDelegate: nil];
                     [window close];
@@ -381,10 +401,12 @@ namespace Luna
                 if (visible)
                 {
                     [window orderFront:nil];
+                    post_custom_event_to_queue(this, APP_DEFINED_EVENT_SHOW, 0, 0);
                 }
                 else
                 {
                     [window orderOut:nil];
+                    post_custom_event_to_queue(this, APP_DEFINED_EVENT_HIDE, 0, 0);
                 }
             }
             return ok;
@@ -754,6 +776,7 @@ namespace Luna
                 if (!test_flags(flags, WindowCreationFlag::hidden))
                 {
                     [window makeKeyAndOrderFront:nil];
+                    post_custom_event_to_queue(lunaWindow.get(), APP_DEFINED_EVENT_SHOW, 0, 0);
                 }
                 
                 return Ref<IWindow>(lunaWindow);
@@ -769,8 +792,11 @@ namespace Luna
 {
     if (self.lunaWindow && !self.lunaWindow->is_closed())
     {
-        self.lunaWindow->get_events().close(self.lunaWindow);
-        return NO; // Let the user close the window by calling close() in the event handler
+        auto e = Luna::new_object<Luna::Window::WindowRequestCloseEvent>();
+        e->window = self.lunaWindow;
+        e->do_close = true;
+        dispatch_event_to_handler(e.object());
+        return e->do_close ? YES : NO;
     }
     return YES;
 }
@@ -779,7 +805,9 @@ namespace Luna
 {
     if (self.lunaWindow && !self.lunaWindow->is_closed())
     {
-        self.lunaWindow->get_events().input_focus(self.lunaWindow);
+        auto e = Luna::new_object<Luna::Window::WindowInputFocusEvent>();
+        e->window = self.lunaWindow;
+        dispatch_event_to_handler(e.object());
     }
 }
 
@@ -787,7 +815,9 @@ namespace Luna
 {
     if (self.lunaWindow && !self.lunaWindow->is_closed())
     {
-        self.lunaWindow->get_events().lose_input_focus(self.lunaWindow);
+        auto e = Luna::new_object<Luna::Window::WindowLoseInputFocusEvent>();
+        e->window = self.lunaWindow;
+        dispatch_event_to_handler(e.object());
     }
 }
 
@@ -796,10 +826,22 @@ namespace Luna
     if (self.lunaWindow && !self.lunaWindow->is_closed())
     {
         Luna::UInt2U size = self.lunaWindow->get_size();
-        self.lunaWindow->get_events().resize(self.lunaWindow, size.x, size.y);
+        {
+            auto e = Luna::new_object<Luna::Window::WindowResizeEvent>();
+            e->window = self.lunaWindow;
+            e->width = size.x;
+            e->height = size.y;
+            dispatch_event_to_handler(e.object());
+        }
         
         Luna::UInt2U fbSize = self.lunaWindow->get_framebuffer_size();
-        self.lunaWindow->get_events().framebuffer_resize(self.lunaWindow, fbSize.x, fbSize.y);
+        {
+            auto e = Luna::new_object<Luna::Window::WindowFramebufferResizeEvent>();
+            e->window = self.lunaWindow;
+            e->width = fbSize.x;
+            e->height = fbSize.y;
+            dispatch_event_to_handler(e.object());
+        }
     }
 }
 
@@ -808,7 +850,11 @@ namespace Luna
     if (self.lunaWindow && !self.lunaWindow->is_closed())
     {
         Luna::Int2U pos = self.lunaWindow->get_position();
-        self.lunaWindow->get_events().move(self.lunaWindow, pos.x, pos.y);
+        auto e = Luna::new_object<Luna::Window::WindowMoveEvent>();
+        e->window = self.lunaWindow;
+        e->x = pos.x;
+        e->y = pos.y;
+        dispatch_event_to_handler(e.object());
     }
 }
 
@@ -816,23 +862,9 @@ namespace Luna
 {
     if (self.lunaWindow && !self.lunaWindow->is_closed())
     {
-        self.lunaWindow->get_events().hide(self.lunaWindow);
-    }
-}
-
-- (void)windowDidDeminiaturize:(NSNotification*)notification
-{
-    if (self.lunaWindow && !self.lunaWindow->is_closed())
-    {
-        self.lunaWindow->get_events().show(self.lunaWindow);
-    }
-}
-
-- (void)windowDidChangeBackingProperties:(NSNotification*)notification
-{
-    if (self.lunaWindow && !self.lunaWindow->is_closed())
-    {
-        self.lunaWindow->get_events().dpi_scale_changed(self.lunaWindow);
+        auto e = Luna::new_object<Luna::Window::WindowHideEvent>();
+        e->window = self.lunaWindow;
+        dispatch_event_to_handler(e.object());
     }
 }
 
