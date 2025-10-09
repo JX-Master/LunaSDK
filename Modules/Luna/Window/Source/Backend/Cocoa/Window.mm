@@ -599,7 +599,7 @@ namespace Luna
                 if(m_input_view)
                 {
                     LunaTextInputView* input_view = (LunaTextInputView*)m_input_view;
-
+                    [input_view setInputRect: input_rect];
                 }
             }
             return ok;

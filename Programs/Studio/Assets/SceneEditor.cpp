@@ -566,32 +566,32 @@ namespace Luna
 
                 f32 camera_speed = m_camera_speed;
                 auto& io = ImGui::GetIO();
-                if (io.KeysDown[ImGuiKey_LeftShift])
+                if (ImGui::IsKeyDown(ImGuiKey_LeftShift))
                 {
                     camera_speed *= 2.0f;
                 }
 
-                if (io.KeysDown[ImGuiKey_W])
+                if (ImGui::IsKeyDown(ImGuiKey_W))
                 {
                     camera_entity->position += forward * 0.1f * camera_speed;
                 }
-                if (io.KeysDown[ImGuiKey_A])
+                if (ImGui::IsKeyDown(ImGuiKey_A))
                 {
                     camera_entity->position += + left * 0.1f * camera_speed;
                 }
-                if (io.KeysDown[ImGuiKey_S])
+                if (ImGui::IsKeyDown(ImGuiKey_S))
                 {
                     camera_entity->position += - forward * 0.1f * camera_speed;
                 }
-                if (io.KeysDown[ImGuiKey_D])
+                if (ImGui::IsKeyDown(ImGuiKey_D))
                 {
                     camera_entity->position += - left * 0.1f * camera_speed;
                 }
-                if (io.KeysDown[ImGuiKey_Q])
+                if (ImGui::IsKeyDown(ImGuiKey_Q))
                 {
                     camera_entity->position += - up * 0.1f * camera_speed;
                 }
-                if (io.KeysDown[ImGuiKey_E])
+                if (ImGui::IsKeyDown(ImGuiKey_E))
                 {
                     camera_entity->position += + up * 0.1f * camera_speed;
                 }

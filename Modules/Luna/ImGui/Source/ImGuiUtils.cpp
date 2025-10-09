@@ -7,6 +7,9 @@
 * @author JXMaster
 * @date 2022/6/14
 */
+#include "Luna/RHI/CommandBuffer.hpp"
+#include "Luna/RHIUtility/MipmapGenerationContext.hpp"
+#include "Luna/Runtime/Object.hpp"
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_IMGUI_API LUNA_EXPORT
 #include "../ImGui.hpp"
@@ -23,6 +26,7 @@
 #include <Luna/RHIUtility/RHIUtility.hpp>
 #include <Luna/RHIUtility/ResourceWriteContext.hpp>
 #include <Luna/Window/Event.hpp>
+#include "Luna/Window/Clipboard.hpp"
 #include <ImGuiVS.hpp>
 #include <ImGuiPS.hpp>
 namespace Luna
@@ -42,7 +46,6 @@ namespace Luna
 
         Ref<Window::IWindow> g_active_window;
         u64 g_time;
-        bool g_window_text_input_enabled = false;
 
         Ref<RHI::IBuffer> g_vb;
         Ref<RHI::IBuffer> g_ib;
@@ -57,8 +60,6 @@ namespace Luna
         Vector<Ref<RHI::IDescriptorSet>> g_desc_sets;
 
         Ref<RHI::IBuffer> g_cb;
-
-        Ref<RHI::ITexture> g_font_tex;
 
         struct SampledImage : ISampledImage
         {
@@ -81,6 +82,11 @@ namespace Luna
             image->m_sampler = sampler_desc;
             return Ref<ISampledImage>(image);
         }
+
+        struct ImGuiClipboardData
+        {
+            String text;
+        };
 
         static RV init()
         {
@@ -125,6 +131,48 @@ namespace Luna
             io.BackendRendererName = "imgui_impl_luna_rhi";
             io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset;  // We can honor the ImDrawCmd::VtxOffset field, allowing for large meshes.
             io.BackendFlags |= ImGuiBackendFlags_RendererHasViewports;  // We can create multi-viewports on the Renderer side (optional)
+            io.BackendFlags |= ImGuiBackendFlags_RendererHasTextures;
+            
+            auto& platform_io = ImGui::GetPlatformIO();
+
+            platform_io.Platform_ClipboardUserData = memnew<ImGuiClipboardData>();
+            platform_io.Platform_GetClipboardTextFn = [](ImGuiContext* ctx) -> const char*
+            {
+                ImGuiClipboardData* data = (ImGuiClipboardData*)ImGui::GetPlatformIO().Platform_ClipboardUserData;
+                if(data)
+                {
+                    auto r = Window::get_clipboard_text(data->text);
+                    return data->text.c_str();
+                }
+                return nullptr;
+            };
+            platform_io.Platform_SetClipboardTextFn = [](ImGuiContext* ctx, const char* text)
+            {
+                auto r = Window::set_clipboard_text(text);
+            };
+            platform_io.Platform_SetImeDataFn = [](ImGuiContext* ctx, ImGuiViewport* viewport, ImGuiPlatformImeData* data)
+            {
+                if(!g_active_window) return;
+                if ((!(data->WantVisible || data->WantTextInput) && g_active_window->is_text_input_active()))
+                {
+                    auto _ = g_active_window->end_text_input();
+                }
+                if (data->WantVisible)
+                {
+                    RectI r;
+                    r.offset_x = (int)(data->InputPos.x - viewport->Pos.x);
+                    r.offset_y = (int)(data->InputPos.y - viewport->Pos.y + data->InputLineHeight);
+                    r.width = 1;
+                    r.height = (int)data->InputLineHeight;
+                    auto _ = g_active_window->set_text_input_area(r, 0);
+                }
+                if (!g_active_window->is_text_input_active() && (data->WantVisible || data->WantTextInput))
+                {
+                    auto _ = g_active_window->begin_text_input();
+                }
+            };
+
+            add_default_font(18.0f);
 
             // Create render resources.
             lutry
@@ -176,69 +224,6 @@ namespace Luna
             return display_scale;
         }
 
-        LUNA_IMGUI_API RV refresh_font_texture()
-        {
-            using namespace RHI;
-            lutry
-            {
-                ImGuiIO& io = ::ImGui::GetIO();
-                f32 render_scale = get_font_render_scale();
-                f32 display_scale = get_font_display_scale();
-                if(io.Fonts->ConfigData.Size == 0)
-                {
-                    add_default_font(18.0f * render_scale);
-                }
-                // Modify font configs.
-                for(auto& config : io.Fonts->ConfigData)
-                {
-                    config.SizePixels = 18.0f * render_scale;
-                }
-                io.FontGlobalScale = display_scale;
-                // Build font.
-                unsigned char* pixels;
-                int width, height;
-                if(!io.Fonts->Build())
-                {
-                    return set_error(BasicError::bad_arguments(), "Failed to build ImGui font atlas data.");
-                }
-                io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
-                auto dev = get_main_device();
-                luset(g_font_tex, dev->new_texture(MemoryType::local, TextureDesc::tex2d(Format::rgba8_unorm,
-                    TextureUsageFlag::read_texture | TextureUsageFlag::copy_dest, width, height, 1, 1)));
-                u32 src_row_pitch = (u32)width * 4;
-                {
-                    u32 copy_queue_index = U32_MAX;
-                    {
-                        // Prefer a dedicated copy queue if present.
-                        u32 num_queues = dev->get_num_command_queues();
-                        for (u32 i = 0; i < num_queues; ++i)
-                        {
-                            auto desc = dev->get_command_queue_desc(i);
-                            if (desc.type == CommandQueueType::graphics && copy_queue_index == U32_MAX)
-                            {
-                                copy_queue_index = i;
-                            }
-                            else if (desc.type == CommandQueueType::copy)
-                            {
-                                copy_queue_index = i;
-                                break;
-                            }
-                        }
-                    }
-                    lulet(upload_cmdbuf, dev->new_command_buffer(copy_queue_index));
-                    auto writer = RHIUtility::new_resource_write_context(dev);
-                    u32 row_pitch, slice_pitch;
-                    lulet(mapped, writer->write_texture(g_font_tex, SubresourceIndex(0, 0), 0, 0, 0, width, height, 1, row_pitch, slice_pitch));
-                    memcpy_bitmap(mapped, pixels, src_row_pitch, height, row_pitch, src_row_pitch);
-                    luexp(writer->commit(upload_cmdbuf, true));
-                }
-                io.Fonts->TexID = g_font_tex->get_object();
-                io.Fonts->ClearTexData();
-            }
-            lucatchret;
-            return ok;
-        }
-
         LUNA_IMGUI_API Vector<Pair<c16, c16>> get_glyph_ranges_default()
         {
             ImGuiIO& io = ::ImGui::GetIO();
@@ -251,104 +236,27 @@ namespace Luna
             }
             return r;
         }
-        LUNA_IMGUI_API Vector<Pair<c16, c16>> get_glyph_ranges_greek()
-        {
-            ImGuiIO& io = ::ImGui::GetIO();
-            const ImWchar* range = io.Fonts->GetGlyphRangesGreek();
-            Vector<Pair<c16, c16>> r;
-            while(*range)
-            {
-                r.push_back(make_pair(range[0], range[1]));
-                range += 2;
-            }
-            return r;
-        }
-        LUNA_IMGUI_API Vector<Pair<c16, c16>> get_glyph_ranges_korean()
-        {
-            ImGuiIO& io = ::ImGui::GetIO();
-            const ImWchar* range = io.Fonts->GetGlyphRangesKorean();
-            Vector<Pair<c16, c16>> r;
-            while(*range)
-            {
-                r.push_back(make_pair(range[0], range[1]));
-                range += 2;
-            }
-            return r;
-        }
-        LUNA_IMGUI_API Vector<Pair<c16, c16>> get_glyph_ranges_japanese()
-        {
-            ImGuiIO& io = ::ImGui::GetIO();
-            const ImWchar* range = io.Fonts->GetGlyphRangesJapanese();
-            Vector<Pair<c16, c16>> r;
-            while(*range)
-            {
-                r.push_back(make_pair(range[0], range[1]));
-                range += 2;
-            }
-            return r;
-        }
-        LUNA_IMGUI_API Vector<Pair<c16, c16>> get_glyph_ranges_chinese_full()
-        {
-            ImGuiIO& io = ::ImGui::GetIO();
-            const ImWchar* range = io.Fonts->GetGlyphRangesChineseFull();
-            Vector<Pair<c16, c16>> r;
-            while(*range)
-            {
-                r.push_back(make_pair(range[0], range[1]));
-                range += 2;
-            }
-            return r;
-        }
-        LUNA_IMGUI_API Vector<Pair<c16, c16>> get_glyph_ranges_chinese_simplified_common()
-        {
-            ImGuiIO& io = ::ImGui::GetIO();
-            const ImWchar* range = io.Fonts->GetGlyphRangesChineseSimplifiedCommon();
-            Vector<Pair<c16, c16>> r;
-            while(*range)
-            {
-                r.push_back(make_pair(range[0], range[1]));
-                range += 2;
-            }
-            return r;
-        }
-        LUNA_IMGUI_API Vector<Pair<c16, c16>> get_glyph_ranges_cyrillic()
-        {
-            ImGuiIO& io = ::ImGui::GetIO();
-            const ImWchar* range = io.Fonts->GetGlyphRangesCyrillic();
-            Vector<Pair<c16, c16>> r;
-            while(*range)
-            {
-                r.push_back(make_pair(range[0], range[1]));
-                range += 2;
-            }
-            return r;
-        }
-        LUNA_IMGUI_API Vector<Pair<c16, c16>> get_glyph_ranges_thai()
-        {
-            ImGuiIO& io = ::ImGui::GetIO();
-            const ImWchar* range = io.Fonts->GetGlyphRangesThai();
-            Vector<Pair<c16, c16>> r;
-            while(*range)
-            {
-                r.push_back(make_pair(range[0], range[1]));
-                range += 2;
-            }
-            return r;
-        }
-        LUNA_IMGUI_API Vector<Pair<c16, c16>> get_glyph_ranges_vietnamese()
-        {
-            ImGuiIO& io = ::ImGui::GetIO();
-            const ImWchar* range = io.Fonts->GetGlyphRangesVietnamese();
-            Vector<Pair<c16, c16>> r;
-            while(*range)
-            {
-                r.push_back(make_pair(range[0], range[1]));
-                range += 2;
-            }
-            return r;
-        }
         static void close()
         {
+            auto& platform_io = ImGui::GetPlatformIO();
+            ImGuiClipboardData* clipboard = (ImGuiClipboardData*)platform_io.Platform_ClipboardUserData;
+            if(clipboard)
+            {
+                memdelete(clipboard);
+                platform_io.Platform_ClipboardUserData = nullptr;
+            }
+            // Delete all imgui textures.
+            for (ImTextureData* tex : ImGui::GetPlatformIO().Textures)
+            {
+                if (tex->RefCount == 1 && tex->BackendUserData)
+                {
+                    object_t tex_id = (object_t)tex->BackendUserData;
+                    object_release(tex_id);
+                    tex->BackendUserData = nullptr;
+                    tex->SetTexID(ImTextureID_Invalid);
+                    tex->SetStatus(ImTextureStatus_Destroyed);
+                }
+            }
             ImGui::DestroyContext();
             g_vb = nullptr;
             g_ib = nullptr;
@@ -357,7 +265,6 @@ namespace Luna
             g_pso.clear();
             g_pso.shrink_to_fit();
             g_cb = nullptr;
-            g_font_tex = nullptr;
             g_desc_layout = nullptr;
             g_desc_sets.clear();
             g_desc_sets.shrink_to_fit();
@@ -479,10 +386,10 @@ namespace Luna
         {
             ImGuiIO& io = ImGui::GetIO();
             // Submit modifiers
-            io.AddKeyEvent(ImGuiKey_ModCtrl, HID::get_key_state(HID::KeyCode::ctrl));
-            io.AddKeyEvent(ImGuiKey_ModShift, HID::get_key_state(HID::KeyCode::shift));
-            io.AddKeyEvent(ImGuiKey_ModAlt, HID::get_key_state(HID::KeyCode::menu));
-            io.AddKeyEvent(ImGuiKey_ModSuper, HID::get_key_state(HID::KeyCode::apps));
+            io.AddKeyEvent(ImGuiMod_Ctrl, HID::get_key_state(HID::KeyCode::ctrl));
+            io.AddKeyEvent(ImGuiMod_Shift, HID::get_key_state(HID::KeyCode::shift));
+            io.AddKeyEvent(ImGuiMod_Alt, HID::get_key_state(HID::KeyCode::menu));
+            io.AddKeyEvent(ImGuiMod_Super, HID::get_key_state(HID::KeyCode::l_system) || HID::get_key_state(HID::KeyCode::r_system));
             auto key_id = hid_key_to_imgui_key(key);
             if (key_id != ImGuiKey_None)
             {
@@ -503,6 +410,11 @@ namespace Luna
             {
                 if (HID::get_key_state(HID::KeyCode::l_menu) == is_key_down) io.AddKeyEvent(ImGuiKey_LeftAlt, is_key_down);
                 if (HID::get_key_state(HID::KeyCode::r_menu) == is_key_down) io.AddKeyEvent(ImGuiKey_RightAlt, is_key_down);
+            }
+            else if (key == HID::KeyCode::l_system || key == HID::KeyCode::r_system)
+            {
+                if (HID::get_key_state(HID::KeyCode::l_system) == is_key_down) io.AddKeyEvent(ImGuiKey_LeftSuper, is_key_down);
+                if (HID::get_key_state(HID::KeyCode::r_system) == is_key_down) io.AddKeyEvent(ImGuiKey_RightSuper, is_key_down);
             }
         }
 
@@ -582,7 +494,20 @@ namespace Luna
                 }
                 else if(auto e = cast_object<WindowDPIScaleChangedEvent>(event))
                 {
-                    auto _ = refresh_font_texture();
+                    ImGuiIO& io = ::ImGui::GetIO();
+                    f32 render_scale = get_font_render_scale();
+                    f32 display_scale = get_font_display_scale();
+                    if(io.Fonts->Sources.Size == 0)
+                    {
+                        add_default_font(18.0f * render_scale);
+                    }
+                    // Modify font configs.
+                    for(auto& config : io.Fonts->Sources)
+                    {
+                        config.SizePixels = 18.0f * render_scale;
+                    }
+                    auto& style = ImGui::GetStyle();
+                    style.FontScaleMain = display_scale;
                     return true;
                 }
             }
@@ -591,15 +516,7 @@ namespace Luna
 
         LUNA_IMGUI_API void set_active_window(Window::IWindow* window)
         {
-            if (g_active_window)
-            {
-                if(g_window_text_input_enabled)
-                {
-                    auto _ = g_active_window->end_text_input();
-                }
-            }
             g_active_window = window;
-            g_window_text_input_enabled = false;
         }
 
         static void update_hid_mouse()
@@ -644,23 +561,6 @@ namespace Luna
             
             // Update OS mouse position
             update_hid_mouse();
-
-            if(io.WantTextInput && !g_window_text_input_enabled)
-            {
-                auto _ = g_active_window->begin_text_input();
-                g_window_text_input_enabled = true;
-            }
-
-            if(!io.WantTextInput && g_window_text_input_enabled)
-            {
-                auto _ = g_active_window->end_text_input();
-                g_window_text_input_enabled = false;
-            }
-
-            if (!g_font_tex)
-            {
-                auto _ = refresh_font_texture();
-            }
         }
 
         static R<RHI::IPipelineState*> get_pso(RHI::Format rt_format)
@@ -698,6 +598,85 @@ namespace Luna
             lucatchret;
             return iter->second.get();
         }
+        struct TextureUpdateContext
+        {
+            Ref<RHI::ICommandBuffer> m_cmd_buffer;
+            Ref<RHIUtility::IResourceWriteContext> m_writer;
+
+            RHIUtility::IResourceWriteContext* get_writer()
+            {
+                if(!m_writer)
+                {
+                    m_writer = RHIUtility::new_resource_write_context(m_cmd_buffer->get_device());
+                }
+                return m_writer;
+            }
+        };
+        static RV update_texture(ImTextureData* texture, TextureUpdateContext& ctx)
+        {
+            lutry
+            {
+                RHI::IDevice* dev = ctx.m_cmd_buffer->get_device();
+                if(texture->Status == ImTextureStatus_WantCreate)
+                {
+                    // Create and upload new texture to graphics system
+                    //IMGUI_DEBUG_LOG("UpdateTexture #%03d: WantCreate %dx%d\n", tex->UniqueID, tex->Width, tex->Height);
+                    IM_ASSERT(texture->TexID == 0 && texture->BackendUserData == nullptr);
+                    IM_ASSERT(texture->Format == ImTextureFormat_RGBA32);
+
+                    // Create texture
+                    // (Bilinear sampling is required by default. Set 'io.Fonts->Flags |= ImFontAtlasFlags_NoBakedLines' or 'style.AntiAliasedLinesUseTex = false' to allow point/nearest sampling)
+                    lulet(tex, dev->new_texture(RHI::MemoryType::local, RHI::TextureDesc::tex2d(
+                        RHI::Format::rgba8_unorm, 
+                        RHI::TextureUsageFlag::read_texture | RHI::TextureUsageFlag::copy_dest, 
+                        texture->Width, texture->Height, 1, 1)));
+                    
+                    auto writer = ctx.get_writer();
+                    u32 row_pitch, slice_pitch;
+                    lulet(mapped, writer->write_texture(tex, RHI::SubresourceIndex(0, 0), 0, 0, 0, texture->Width, texture->Height, 1, row_pitch, slice_pitch));
+                    memcpy_bitmap(mapped, texture->GetPixels(), 
+                        texture->GetPitch(), texture->Height, 
+                        row_pitch, texture->GetPitch());
+                    
+                    luexp(writer->commit(ctx.m_cmd_buffer, true));
+                    writer->reset();
+                    texture->SetTexID((ImTextureID)tex.object());
+                    texture->BackendUserData = tex.object();
+                    // For one reference from texture backend user data.
+                    object_retain(tex.object());
+                    texture->SetStatus(ImTextureStatus_OK);
+                }
+                else if(texture->Status == ImTextureStatus_WantUpdates)
+                {
+                    object_t tex_id = (object_t)texture->GetTexID();
+                    RHI::ITexture* dst_tex = query_interface<RHI::ITexture>(tex_id);
+                    luassert(dst_tex);
+                    auto writer = ctx.get_writer();
+                    u32 row_pitch, slice_pitch;
+                    auto r = texture->UpdateRect;
+                    lulet(mapped, writer->write_texture(
+                        dst_tex, RHI::SubresourceIndex(0, 0), 
+                        r.x, r.y, 0, 
+                        r.w, r.h, 1, row_pitch, slice_pitch));
+                    memcpy_bitmap(mapped, texture->GetPixelsAt(r.x, r.y), 
+                        r.w * texture->BytesPerPixel, r.h, row_pitch, texture->GetPitch());
+                    luexp(writer->commit(ctx.m_cmd_buffer, true));
+                    writer->reset();
+                    texture->SetStatus(ImTextureStatus_OK);
+                }
+                else if(texture->Status == ImTextureStatus_WantDestroy)
+                {
+                    object_t tex_id = (object_t)texture->BackendUserData;
+                    if(!tex_id) return ok;
+                    object_release(tex_id);
+                    texture->BackendUserData = nullptr;
+                    texture->SetTexID(ImTextureID_Invalid);
+                    texture->SetStatus(ImTextureStatus_Destroyed);
+                }
+            }
+            lucatchret;
+            return ok;
+        }
 
         LUNA_IMGUI_API RV render_draw_data(ImDrawData* draw_data, RHI::ICommandBuffer* cmd_buffer, RHI::ITexture* render_target)
         {
@@ -710,6 +689,20 @@ namespace Luna
                 int fb_height = (int)(io.DisplaySize.y * io.DisplayFramebufferScale.y);
                 if (fb_width == 0 || fb_height == 0)
                     return ok;
+
+                if(draw_data->Textures != nullptr)
+                {
+                    TextureUpdateContext ctx;
+                    ctx.m_cmd_buffer = cmd_buffer;
+                    for(ImTextureData* texture : *draw_data->Textures)
+                    {
+                        if(texture->Status != ImTextureStatus_OK)
+                        {
+                            luexp(update_texture(texture, ctx));
+                        }
+                    }
+                }
+
                 draw_data->ScaleClipRects(io.DisplayFramebufferScale);
                 
                 // Create and grow vertex/index buffers if needed
@@ -772,7 +765,7 @@ namespace Luna
                     for (i32 cmd_i = 0; cmd_i < cmd_list->CmdBuffer.Size; ++cmd_i)
                     {
                         const ImDrawCmd* pcmd = &cmd_list->CmdBuffer[cmd_i];
-                        object_t tid = (object_t)pcmd->TextureId;
+                        object_t tid = (object_t)pcmd->TexRef.GetTexID();
                         ITexture* tex = query_interface<ITexture>(tid);
                         if(!tex)
                         {
@@ -834,7 +827,7 @@ namespace Luna
                             }
                             IDescriptorSet* vs = g_desc_sets[num_draw_calls];
                             usize cb_align = dev->check_feature(DeviceFeature::uniform_buffer_data_alignment).uniform_buffer_data_alignment;
-                            object_t tex_object = pcmd->TextureId;
+                            object_t tex_object = (object_t)pcmd->TexRef.GetTexID();
                             ITexture* tex1 = query_interface<ITexture>(tex_object);
                             ISampledImage* sampled_tex = query_interface<ISampledImage>(tex_object);
                             if(tex1)
@@ -932,21 +925,21 @@ namespace ImGui
         return 0;
     }
 
-    LUNA_IMGUI_API void Image(Luna::RHI::ITexture* texture, const ImVec2& image_size, const ImVec2& uv0, const ImVec2& uv1, const ImVec4& tint_col, const ImVec4& border_col)
+    LUNA_IMGUI_API void Image(Luna::RHI::ITexture* texture, const ImVec2& image_size, const ImVec2& uv0, const ImVec2& uv1)
     {
-        Image((ImTextureID)texture->get_object(), image_size, uv0, uv1, tint_col, border_col);
+        Image(ImTextureRef((ImTextureID)texture->get_object()), image_size, uv0, uv1);
     }
-    LUNA_IMGUI_API void Image(Luna::ImGuiUtils::ISampledImage* texture, const ImVec2& image_size, const ImVec2& uv0, const ImVec2& uv1, const ImVec4& tint_col, const ImVec4& border_col)
+    LUNA_IMGUI_API void Image(Luna::ImGuiUtils::ISampledImage* texture, const ImVec2& image_size, const ImVec2& uv0, const ImVec2& uv1)
     {
-        Image((ImTextureID)texture->get_object(), image_size, uv0, uv1, tint_col, border_col);
+        Image(ImTextureRef((ImTextureID)texture->get_object()), image_size, uv0, uv1);
     }
     LUNA_IMGUI_API bool ImageButton(const char* str_id, Luna::RHI::ITexture* texture, const ImVec2& image_size, const ImVec2& uv0, const ImVec2& uv1, const ImVec4& bg_col, const ImVec4& tint_col)
     {
-        return ImageButton(str_id, (ImTextureID)texture->get_object(), image_size, uv0, uv1, bg_col, tint_col);
+        return ImageButton(str_id, ImTextureRef((ImTextureID)texture->get_object()), image_size, uv0, uv1, bg_col, tint_col);
     }
     LUNA_IMGUI_API bool ImageButton(const char* str_id, Luna::ImGuiUtils::ISampledImage* texture, const ImVec2& image_size, const ImVec2& uv0, const ImVec2& uv1, const ImVec4& bg_col, const ImVec4& tint_col)
     {
-        return ImageButton(str_id, (ImTextureID)texture->get_object(), image_size, uv0, uv1, bg_col, tint_col);
+        return ImageButton(str_id, ImTextureRef((ImTextureID)texture->get_object()), image_size, uv0, uv1, bg_col, tint_col);
     }
     LUNA_IMGUI_API bool InputText(const char* label, Luna::String& buf, ImGuiInputTextFlags flags, ImGuiInputTextCallback callback, void* user_data)
     {
