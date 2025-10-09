@@ -141,6 +141,7 @@ namespace Luna
                 ImGuiClipboardData* data = (ImGuiClipboardData*)ImGui::GetPlatformIO().Platform_ClipboardUserData;
                 if(data)
                 {
+                    data->text.clear();
                     auto r = Window::get_clipboard_text(data->text);
                     return data->text.c_str();
                 }
