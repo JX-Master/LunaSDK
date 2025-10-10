@@ -394,6 +394,9 @@ namespace Luna
 
                 for (usize i = 0; i < num_assets; ++i)
                 {
+                    // Set cursor pos for next tile.
+                    ImGui::SetCursorPos(origin_pos + Float2(woff, hoff));
+
                     auto dl = ImGui::GetWindowDrawList();
 
                     auto tile_min = ImGui::GetCursorScreenPos() + padding;
@@ -640,9 +643,6 @@ namespace Luna
                         woff = 0;
                         hoff += tile_height;
                     }
-
-                    // Set cursor pos for next tile.
-                    ImGui::SetCursorPos(origin_pos + Float2(woff, hoff));
                 }
 
                 if(ImGui::BeginPopup(asset_popup_id))
