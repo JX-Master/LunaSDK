@@ -35,6 +35,11 @@ Next, fills `main.cpp` with the following initial content. As we go further, we 
 #include <Luna/Runtime/Module.hpp>
 #include <Luna/Runtime/Log.hpp>
 #include <Luna/Runtime/UniquePtr.hpp>
+#include <Luna/Window/Window.hpp>
+#include <Luna/RHI/RHI.hpp>
+#include <Luna/ShaderCompiler/ShaderCompiler.hpp>
+#include <Luna/Window/AppMain.hpp>
+
 using namespace Luna;
 struct DemoApp
 {
@@ -50,7 +55,7 @@ RV DemoApp::update()
 {
     return ok;
 }
-bool DemoApp::is_closed()
+bool DemoApp::is_exiting()
 {
     return false;
 }
@@ -74,31 +79,42 @@ RV run_app()
     }
     return ok;
 }
-int main()
+int luna_main(int argc, const char* argv[])
 {
-    bool initialized = Luna::init();
-    if(!initialized) return -1;
+    if(!Luna::init()) return -1;
     RV result = run_app();
     if(failed(result)) log_error("DemoApp", "%s", explain(result.errcode()));
     Luna::close();
     return 0;
 }
 ```
-The first four lines includes the header files that we need to include to compile the program, which are:
-* <Runtime/Runtime. hpp> for `Luna::init()` and `Luna::shutdown()`.
-* <Runtime/Module. hpp> for `Luna::init_modules()`.
-* <Runtime/Log. hpp> for `Luna::log_error()`.
-* <Runtime/UniquePtr. hpp> for `Luna::UniquePtr<T>`.
+Fristly we include header files that we need to include to compile the program, which are:
+* <Luna/Runtime/Runtime. hpp> for `Luna::init()` and `Luna::shutdown()`.
+* <Luna/Runtime/Module. hpp> for `Luna::init_modules()`.
+* <Luna/Runtime/Log. hpp> for `Luna::log_error()`.
+* <Luna/Runtime/UniquePtr. hpp> for `UniquePtr<T>`.
+* <Luna/Window/Window. hpp> for `module_window()`.
+* <Luna/RHI/RHI. hpp> for `module_rhi()`.
+* <Luna/ShaderCompiler/ShaderCompiler. hpp> for `module_shader_compiler()`
+* <Luna/Window/AppMain. hpp> for `luna_main()`
 
-You can include any SDK interface header files using similar syntax: `#include <Luna/Module/File>`. We set `{LUNA_ROOT_DIR}/Engine` as the global include directory, the user may check it for available header files. In this example, all header files are from the `Runtime` module, which is the core module of LunaSDK that provides fundamental SDK features.
+You can include any SDK interface header files using similar syntax: `#include <Luna/Module/File>`. We set `{LUNA_ROOT_DIR}/Engine` as the global include directory, the user may check it for available header files. We will describe these modules and files when we reach the place for using them.
 
 The next statement is `using namespace Luna`. In LunaSDK, all types, functions and variables are defined in `Luna` namespace, and every module will define its elements in nested namespace, such as `Luna::RHI`. So, we use this statement to prevent spelling the `Luna::` namespace prefix in our following code.
 
-The program starts with the `main` function, just like any normal C/C++ program. In the main function, we firstly call `Luna::init` to initialize LunaSDK. This function should be called before any other LunaSDK function. `Luna::init` returns one Boolean value to indicate whether the SDK initialization is succeeded, if the return value is `false`, we then return `-1` and exit the program to indicate one runtime error. If `Luna::init` returns `true`, then one `Luna::close` call is need before the program exit to let the SDK clean up all internal resources.
+The program starts with the `luna_main` function, this is a special entry function defined in `<Luna/Window/AppMain.hpp>`. Since different platforms use different entry point functions (for example, Windows uses `WinMain` instead of regular `main`), we define a wrapper entry function for every platfrom in `AppMain.hpp`, then calls `luna_main` from that wrapper function to hide such platform differences. This feature is totally optional, if you are happy with handling platform-specific main functions yourself, you can still manage the entry function manually.
+
+> Only include `<Luna/Window/AppMain.hpp>` in your main function file, not in any header file, since `<Luna/Window/AppMain.hpp>` defines platform-specific main function directly, including this function in multiple files result in symbol redifinition.
+
+In the main function, we firstly call `Luna::init` to initialize LunaSDK. This function should be called before any other LunaSDK function. `Luna::init` returns one Boolean value to indicate whether the SDK initialization is succeeded, if the return value is `false`, we then return `-1` and exit the program to indicate one runtime error. If `Luna::init` returns `true`, then one `Luna::close` call is need before the program exit to let LunaSDK clean up all internal resources.
 
 We then wrap the real program logic in one `run_app` function. The return type of `run_app` is `RV`, which is a shortcut for `R<void>`, this is part of the error handling mechanism of LunaSDK. `R<T>` is a structure that encapsulates one return value with type `T` and one error code with type `ErrCode`, which is simply an alias of `usize` (or `std::size_t`). If the function succeeds, the returned value will be one `T` -typed value and one error code `0`; if the function fails, the returned value will be one non-zero error code, and the `T` -typed value will be uninitialized and inaccessible, you may call `errcode()` to fetch the error code from `R<T>`, and may call `explain` to get a brief description of the error. In our `main` function, we check whether our `run_app` function is failed by using `failed` helper function (there is also one `succeeded` helper function available), then we print the error description and exits the program if any error occurs.
 
-In our `run_app` function, the first thing to do is calling `add_modules`, which will add all modules we need to use into the module system, so that we can initialize such modules by calling `init_modules`. The program only needs to add modules that are directly used by the program, if such modules have dependent modules, they will be added to the module system automatically when such modules are added. The `Runtime` module is always implicitly added to the module system, so the program should not add `Runtime` module explicitly. After adding modules, `run_app` then calls `init_modules`, which will initialize all linked SDK modules for our program. We deliberately separate module initialization from `Luna::init` so that the user get a chance to set module initialization parameters before initializing modules, and modules can also indicate initialization failure by returning error codes (error handling system is available after `Luna::init`). 
+In our `run_app` function, the first thing to do is calling `add_modules`, which will add all modules we need to use into the module system, so that we can initialize such modules by calling `init_modules`. The program only needs to add modules that are directly used by the program, if such modules have dependent modules, they will be added to the module system automatically when such modules are added. In our example, the following modules are added:
+1. `Window`: Provides functions for managing windows.
+2. `RHI`: Provides uniform interfaces to rendering backend (like D3D12\Vulkan\Metal).
+3. `ShaderCompiler`: Provides functions to compile shaders at run time.
+The `Runtime` module is always implicitly added to the module system, so the program should not add `Runtime` module explicitly. After adding modules, `run_app` then calls `init_modules`, which will initialize all linked SDK modules for our program. We deliberately separate module initialization from `Luna::init` so that the user get a chance to set module initialization parameters before initializing modules, and modules can also indicate initialization failure by returning error codes, since error handling system is available only after `Luna::init` .
 
 Then, we allocate and initialize one new object of `DemoApp` type by calling `memnew` function. The following table shows memory allocation functions used in LunaSDK:
 
@@ -123,13 +139,7 @@ After filling this content, execute `xmake build DemoApp` on terminal or click `
 
 Now that we have one basic program structure, we need to create a system window so that we can render images to it. We also need to implement window event handling so that the program can exit when the user clicks the close button of the window.
 
-Window creation is fairly simple, we firstly need to introduce one new header:
-
-```c++
-#include <Luna/Window/Window.hpp>
-```
-
-then we add one new property to our `DemoApp` structure:
+Window creation is fairly simple, we firstly add one new property to our `DemoApp` structure:
 
 ```c++
 struct DemoApp
@@ -183,37 +193,38 @@ Since we use `goto` statement to implement `lutry` and `lucatch`, it you needs m
 Now let's get back to `Window::new_window` function that does the actual work:
 
 ```c++
-R<Ref<IWindow>> new_window(const c8* title, const WindowDisplaySettings& display_settings, WindowCreationFlag flags)
+LUNA_WINDOW_API R<Ref<IWindow>> new_window(const c8* title, 
+            i32 x = DEFAULT_POS,
+            i32 y = DEFAULT_POS,
+            u32 width = 0,
+            u32 height = 0,
+            WindowStyleFlag style_flags = WindowStyleFlag::resizable,
+            WindowCreationFlag creation_flags = WindowCreationFlag::none);
 ```
 
-In this function, `title` Specifies the title of the window, which is usually displayed on the title bar of the window. `flags` are a combination of `WindowCreationFlag` enumeration class that lists flags for window creation process, like whether the window is resizable by dragging the border of the window, whether the window is a border-less window, etc. `display_settings` specifies the display settings for the window, which is described by `WindowDisplaySettings` structre:
+In this function, `title` Specifies the title of the window, which is usually displayed on the title bar of the window. `x` and `y` are the position of the window on screen coordinates. The user may pass `DEFAULT_POS` constant to indicate a system-specific default position for the window. `width` and `height` are used to control the size of the window, the user can pass `0` to indicate a system-specific default size. `style_flags` specifies the window style, like whether window is borderless, whether the window can be resized by dragging the window border, etc. `creation_flags` are a combination of `WindowCreationFlag` enumeration class that lists flags for window creation process. For now, we just leave most parameters as default and LunaSDK will create a proper window for us.
 
+After the window is created, we need to set our window event handler so that we can handle window events properly. To set event handlers, firstly include a new header:
 ```c++
-struct WindowDisplaySettings
-{
-	monitor_t monitor;
-	i32 x;
-	i32 y;
-	u32 width;
-	u32 height;
-	u32 refresh_rate;
-	bool full_screen;
-};
+#include <Luna/Window/Event.hpp>
 ```
 
-Every window can be displayed in windowed mode or full screen mode, which can be specified by `full_screen`. `monitor` specifies the monitor to attach the window to in full screen mode. If `monitor` is `nullptr` and the window is set to full screen mode, the primary monitor of the system will be used. `x` and `y` are the position of the window on screen coordinates in windowed mode. The user may pass `DEFAULT_POS` constant to indicate a system-specific default position for the window. `width` and `height` are used to control the size of the window, the user can pass `0` to indicate a system-specific default size. `refresh_rate` controls the refresh rate of the window, the user may pass `0` to use the default refresh rate of the system. `WindowDisplaySettings` comes with two static functions `as_windowed` and `as_full_screen` for quickly specify all parameters in one row, with default values specified when they are skipped by the user, just as in our example.
-
-After the window is created, we need to register window event callbacks so that we can handle window events properly. In this example, the events we need to handle is the close event (triggered when the close button of the window is pressed) and the framebuffer resize event (triggered when the window framebuffer size is changed). This can be done by the following statements:
-
+In this example, the events we need to handle is the framebuffer resize event (triggered when the window framebuffer size is changed). This can be done by the following statements:
 ```c++
-window->get_close_event().add_handler([](Window::IWindow* window) { window->close(); });
-window->get_framebuffer_resize_event().add_handler([this](Window::IWindow* window, u32 width, u32 height) {
-    lupanic_if_failed(this->resize(width, height));
-    });
+Window::set_event_handler([](object_t event, void* userdata){
+            DemoApp* app = (DemoApp*)userdata;
+            if(Window::WindowFramebufferResizeEvent* e = cast_object<Window::WindowFramebufferResizeEvent>(event))
+            {
+                lupanic_if_failed(app->resize(e->width, e->height));
+            }
+        }, this);
+```
+`set_event_handler` allows the program to set one function that will be called when system events are dispatched to the current application:
+```c++
+LUNA_WINDOW_API void set_event_handler(void(*event_handler)(object_t event, void* userdata), void* userdata);
 ```
 
-`get_close_event` and `get_framebuffer_resize_event` are methods of `IWindow` that gets the close event and the framebuffer resize event object of the window. The event object is a collection of callback functions that once triggered, calls all the callback functions. We then register one callback function to the close event that closes the window immediately, and one callback function to the framebuffer resize event that calls the `resize` method of our `DempApp`. The `resize` method is currently empty, we will fill the content of this method when we create render textures later:
-
+The event is provided as a [[Boxed Objects|boxed object]], so we can check the concrete event type by trying to cast it using `cast_object<T>`. In our example, we try to catch `WindowFramebufferResizeEvent`, and call `DemoApp::resize` to handle this event.The `resize` method is currently empty, we will fill the content of this method when we create render textures later:
 ```c++
 RV DemoApp::resize(u32 width, u32 height)
 {
@@ -222,7 +233,6 @@ RV DemoApp::resize(u32 width, u32 height)
 ```
 
 Window events are not polled automatically, we need to tell the window system to poll events at every frame by calling `Window::poll_events` in `update` function:
-
 ```c++
 RV DemoApp::update()
 {
@@ -248,6 +258,11 @@ So far, the complete code for `main.cpp` is:
 #include <Luna/Runtime/Log.hpp>
 #include <Luna/Runtime/UniquePtr.hpp>
 #include <Luna/Window/Window.hpp>
+#include <Luna/Window/Event.hpp>
+#include <Luna/RHI/RHI.hpp>
+#include <Luna/ShaderCompiler/ShaderCompiler.hpp>
+#include <Luna/Window/AppMain.hpp>
+
 using namespace Luna;
 struct DemoApp
 {
@@ -263,10 +278,13 @@ RV DemoApp::init()
     lutry
     {
         luset(window, Window::new_window("DemoApp"));
-        window->get_close_event().add_handler([](Window::IWindow* window) { window->close(); });
-        window->get_framebuffer_resize_event().add_handler([this](Window::IWindow* window, u32 width, u32 height) {
-            lupanic_if_failed(this->resize(width, height));
-            });
+        Window::set_event_handler([](object_t event, void* userdata){
+            DemoApp* app = (DemoApp*)userdata;
+            if(Window::WindowFramebufferResizeEvent* e = cast_object<Window::WindowFramebufferResizeEvent>(event))
+            {
+                lupanic_if_failed(app->resize(e->width, e->height));
+            }
+        }, this);
     }
     lucatchret;
     return ok;
@@ -284,6 +302,7 @@ RV DemoApp::resize(u32 width, u32 height)
 {
     return ok;
 }
+
 RV run_app()
 {
     auto result = add_modules({
@@ -304,10 +323,9 @@ RV run_app()
     }
     return ok;
 }
-int main()
+int luna_main(int argc, const char* argv[])
 {
-    bool initialized = Luna::init();
-    if(!initialized) return -1;
+    if(!Luna::init()) return -1;
     RV result = run_app();
     if(failed(result)) log_error("DemoApp", "%s", explain(result.errcode()));
     Luna::close();
@@ -319,32 +337,27 @@ Build and run `DemoApp`, and you will see a blank window appears, and the progra
 ![[DemoApp-window.png]]
 ## Fetching graphics device
 
-After the window is created, we can start drawing our box. LunaSDK provides all rendering features through `RHI` module, which is the abbreviation of *Rendering Hardware Interface*. To use RHI module, we need to include its header first:
-
+After the window is created, we can start drawing our box. LunaSDK provides all rendering features through `RHI` module, which is the abbreviation of *Rendering Hardware Interface*. The RHI module header is already included as:
 ```c++
 #include <Luna/RHI/RHI.hpp>
 ```
 
 In LunaSDK, all graphics resources are related to one specific graphics device represented by `RHI::IDevice`, which is the virtual representation of the physical graphics device on the platform, so we need to add one property to `DemoApp` to hold this device:
-
 ```c++
 Ref<RHI::IDevice> dev;
 ```
 
 When `RHI` module initializes, it automatically chooses the most suitable physical device and creates one `IDevice` instance for you, which can be fetched by `RHI::get_main_device()`. You may also create additional devices for special use, but in our `DemoApp`, we will stick to the default one  by adding the following line in the `lutry ` scope of `DemoApp::init`:
-
 ```c++
 dev = RHI::get_main_device();
 ```
 
 We can also import all RHI types and functions by `using namespace RHI;` so that we don't need to spell them all over the `init` function:
-
 ```c++
 using namespace RHI;
 ```
 
 The code of `DemoApp::init` should look similar to:
-
 ```c++
 RV DemoApp::init()
 {
