@@ -422,6 +422,10 @@ namespace Luna
         LUNA_IMGUI_API bool handle_window_event(object_t event)
         {
             using namespace Window;
+            if(ImGui::GetCurrentContext() == nullptr)
+            {
+                return false;
+            }
             ImGuiIO& io = ImGui::GetIO();
             if(auto window_event = cast_object<WindowEvent>(event))
             {
