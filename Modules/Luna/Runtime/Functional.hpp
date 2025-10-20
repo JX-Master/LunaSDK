@@ -149,6 +149,11 @@ namespace Luna
         }
     };
 
+    template <> struct hash<typeinfo_t>
+    {
+        usize operator()(typeinfo_t rhs) const { return (usize)rhs.handle; }
+    };
+
     //! Wraps one reference to one copyable, assignable object.
     template <typename _Ty>
     class ReferenceWrapper

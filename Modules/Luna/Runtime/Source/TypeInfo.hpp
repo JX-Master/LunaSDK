@@ -65,6 +65,7 @@ namespace Luna
         Array<StructurePropertyDesc> property_descs;
         Array<StructureProperty> properties;
         bool trivially_relocatable;
+        bool abstract;
     };
     struct EnumerationTypeInfo : public NamedTypeInfo
     {
