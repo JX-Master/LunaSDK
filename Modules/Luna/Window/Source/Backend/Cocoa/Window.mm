@@ -221,6 +221,7 @@ namespace Luna
 
         Window::~Window()
         {
+            m_destructing = true;
             close();
         }
 
@@ -843,11 +844,14 @@ namespace Luna
     {
         objc_setAssociatedObject(self.lunaWindow->m_window, (const void*)Luna::Window::WINDOW_POINTER_KEY, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
         
-        // Trigger closed event
-        auto e = Luna::new_object<Luna::Window::WindowClosedEvent>();
-        e->window = self.lunaWindow;
-        dispatch_event_to_handler(e.object());
-
+        if(!self.lunaWindow->m_destructing)
+        {
+            // Trigger closed event
+            auto e = Luna::new_object<Luna::Window::WindowClosedEvent>();
+            e->window = self.lunaWindow;
+            dispatch_event_to_handler(e.object());
+        }
+        
         self.lunaWindow->m_input_view = nil;
         self.lunaWindow->m_window = nil;
         self.lunaWindow = nil;

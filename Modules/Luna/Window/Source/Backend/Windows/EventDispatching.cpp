@@ -145,9 +145,12 @@ LRESULT CALLBACK luna_window_win_proc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM
         return 0;
     case WM_DESTROY:
         {
-            auto event = new_object<WindowClosedEvent>();
-            event->window = pw;
-            dispatch_event_to_handler(event.object());
+            if(!pw->m_destructing)
+            {
+                auto event = new_object<WindowClosedEvent>();
+                event->window = pw;
+                dispatch_event_to_handler(event.object());
+            }
         }
         if(pw->m_hwnd)
         {

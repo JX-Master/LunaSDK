@@ -95,7 +95,9 @@ namespace Luna
 
     LUNA_RUNTIME_API ref_count_t object_retain(object_t object_ptr)
     {
-        return atom_inc_i32(&(get_header(object_ptr)->ref_count));
+        ObjectHeader* header = get_header(object_ptr);
+        lucheck_msg(header->ref_count, "Cannot retain object whose reference counter is already 0");
+        return atom_inc_i32(&(header->ref_count));
     }
     LUNA_RUNTIME_API ref_count_t object_release(object_t object_ptr)
     {

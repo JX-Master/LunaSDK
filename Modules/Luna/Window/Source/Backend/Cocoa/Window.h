@@ -34,6 +34,7 @@ namespace Luna
             f32 m_drop_y;
             
             bool m_text_input_active;
+            bool m_destructing = false; // If `true`, close is called inside of ~Window, and we should not dispatch close message.
 
             virtual void close() override;
             virtual bool is_closed() override;
