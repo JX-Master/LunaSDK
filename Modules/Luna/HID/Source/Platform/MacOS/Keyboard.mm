@@ -134,14 +134,14 @@ namespace Luna
                     kVK_ANSI_KeypadEnter;
                 default: break;
             }
-            return 0;
+            return 65535;
         }
         LUNA_HID_API bool get_key_state(KeyCode key)
         {
             @autoreleasepool
             {
                 CGKeyCode code = map_key_code(key);
-                if(code == 0) return false;
+                if(code == 65535) return false;
                 bool pressed = CGEventSourceKeyState(kCGEventSourceStateHIDSystemState, code);
                 return pressed;
             }
