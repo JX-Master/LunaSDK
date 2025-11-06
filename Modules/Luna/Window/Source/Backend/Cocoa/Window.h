@@ -32,6 +32,7 @@ namespace Luna
             Vector<String> m_drop_files;
             f32 m_drop_x;
             f32 m_drop_y;
+            unsigned int m_modifier_flags = 0;
             
             bool m_text_input_active;
             bool m_destructing = false; // If `true`, close is called inside of ~Window, and we should not dispatch close message.

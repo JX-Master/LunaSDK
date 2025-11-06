@@ -80,13 +80,10 @@ namespace Luna
                 case KeyCode::tab: return kVK_Tab;
                 case KeyCode::caps_lock: return kVK_CapsLock;
                 case KeyCode::enter: return kVK_Return;
-                case KeyCode::ctrl: return kVK_Control;
                 case KeyCode::l_ctrl: return kVK_Control;
                 case KeyCode::r_ctrl: return kVK_RightControl;
-                case KeyCode::shift: return kVK_Shift;
                 case KeyCode::l_shift: return kVK_Shift;
                 case KeyCode::r_shift: return kVK_RightShift;
-                case KeyCode::menu: return kVK_Option;
                 case KeyCode::l_menu: return kVK_Option;
                 case KeyCode::r_menu: return kVK_RightOption;
                 case KeyCode::l_system: return kVK_Command;
@@ -138,6 +135,10 @@ namespace Luna
         }
         LUNA_HID_API bool get_key_state(KeyCode key)
         {
+            if(key == KeyCode::ctrl) return get_key_state(KeyCode::l_ctrl) || get_key_state(KeyCode::r_ctrl);
+            else if(key == KeyCode::shift) return get_key_state(KeyCode::l_shift) || get_key_state(KeyCode::r_shift);
+            else if(key == KeyCode::menu) return get_key_state(KeyCode::l_menu) || get_key_state(KeyCode::r_menu);
+            else if(key == KeyCode::system) return get_key_state(KeyCode::l_system) || get_key_state(KeyCode::r_system);
             @autoreleasepool
             {
                 CGKeyCode code = map_key_code(key);

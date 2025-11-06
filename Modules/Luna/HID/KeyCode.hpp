@@ -152,6 +152,8 @@ namespace Luna
             l_menu,
             //! Right alt key on Windows, right option key on Mac.
             r_menu,
+            //! Windows key on Windows, command key on Mac.
+            system,
             //! Left Windows key on Windows, left command key on Mac.
             l_system,
             //! Right Windows key on Windows, right command key on Mac.
