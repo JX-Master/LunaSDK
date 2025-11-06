@@ -96,9 +96,9 @@ option("build_tests")
 option_end()
 
 option("memory_profiler")
-    set_default(true)
+    set_default(false)
     set_showmenu(true)
-    set_description("Whether to forcly enable memory profiler for LunaSDK. The memory profiler will still be enabled in Debug and Profile mode.")
+    set_description("Whether to forcly enable memory profiler for LunaSDK.")
     add_defines("LUNA_ENABLE_MEMORY_PROFILER")
 option_end()
 

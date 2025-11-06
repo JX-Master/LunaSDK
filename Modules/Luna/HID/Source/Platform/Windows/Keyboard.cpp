@@ -87,12 +87,19 @@ namespace Luna
             case KeyCode::numpad_subtract:    return VK_SUBTRACT;
             case KeyCode::numpad_multiply:    return VK_MULTIPLY;
             case KeyCode::numpad_divide:    return VK_DIVIDE;
-            default: lupanic(); return 0;
+            default: break;
             }
+            return 0;
         }
         LUNA_HID_API bool get_key_state(KeyCode key)
         {
-            return (GetAsyncKeyState(map_virtual_key(key)) & 0x8000) ? true : false;
+            if(key == KeyCode::ctrl) return get_key_state(KeyCode::l_ctrl) || get_key_state(KeyCode::r_ctrl);
+            else if(key == KeyCode::shift) return get_key_state(KeyCode::l_shift) || get_key_state(KeyCode::r_shift);
+            else if(key == KeyCode::menu) return get_key_state(KeyCode::l_menu) || get_key_state(KeyCode::r_menu);
+            else if(key == KeyCode::system) return get_key_state(KeyCode::l_system) || get_key_state(KeyCode::r_system);
+            int virtual_key = map_virtual_key(key);
+            if(virtual_key == 0) return false;
+            return (GetAsyncKeyState(virtual_key) & 0x8000) ? true : false;
         }
     }
 }

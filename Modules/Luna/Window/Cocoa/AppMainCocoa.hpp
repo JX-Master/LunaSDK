@@ -3,12 +3,11 @@
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
-* @file EventHandling.hpp
+* @file AppMainCocoa.hpp
 * @author JXMaster
-* @date 2025/3/25
+* @date 2025/10/5
 */
 #pragma once
-#include <SDL3/SDL.h>
 
 #ifndef LUNA_WINDOW_API
 #define LUNA_WINDOW_API
@@ -18,6 +17,7 @@ namespace Luna
 {
     namespace Window
     {
-        LUNA_WINDOW_API void handle_sdl_event(SDL_Event& event);
+        //! Initializes Cocoa application state.
+        LUNA_WINDOW_API void cocoa_app_init();
     }
 }

@@ -23,8 +23,32 @@ namespace Luna
     //! @addtogroup RuntimeType
     //! @{
     
-    //! The opaque pointer that points to one type object.
-    using typeinfo_t = opaque_t;
+    //! Represents one handle to one type object.
+    struct typeinfo_t
+    {
+        opaque_t handle;
+
+        constexpr typeinfo_t() :
+            handle(nullptr) {}
+        constexpr typeinfo_t(opaque_t in_handle) :
+            handle(in_handle) {}
+        typeinfo_t(const typeinfo_t&) = default;
+        typeinfo_t(typeinfo_t&&) = default;
+        typeinfo_t& operator=(const typeinfo_t&) = default;
+        typeinfo_t& operator=(typeinfo_t&&) = default;
+        operator bool() const
+        {
+            return handle != nullptr;
+        }
+        bool operator==(const typeinfo_t& rhs) const
+        {
+            return handle == rhs.handle;
+        }
+        bool operator!=(const typeinfo_t& rhs) const
+        {
+            return handle != rhs.handle;
+        }
+    };
 
     //! Gets the type object from one type GUID.
     //! @param[in] guid The GUID of the type.
@@ -41,7 +65,7 @@ namespace Luna
     //! @return Returns the type object of the specified type. Returns `nullptr` if the type is not registered.
     //! @remark This function calls @ref typeof_t internally to get the type object of the specified type.
     template <typename _Ty>
-    inline typeinfo_t typeof() { return typeof_t<_Ty>()(); }
+    inline typeinfo_t typeof() { return typeof_t<decay_t<_Ty>>()(); }
 
     //! Gets the type object of `void` type.
     //! @return Returns the type object of `void` type.
@@ -94,6 +118,9 @@ namespace Luna
     //! Gets the type object of `bool` type.
     //! @return Returns the type object of `bool` type.
     LUNA_RUNTIME_API typeinfo_t boolean_type();
+    //! Gets the type object of `typeinfo_t` type.
+    //! @return Returns the type object of `typeinfo_t` type.
+    LUNA_RUNTIME_API typeinfo_t typeinfo_type();
 
     template <> struct typeof_t<u8> { typeinfo_t operator()() const { return u8_type(); } };
     template <> struct typeof_t<i8> { typeinfo_t operator()() const { return i8_type(); } };
@@ -109,6 +136,7 @@ namespace Luna
     template <> struct typeof_t<c16> { typeinfo_t operator()() const { return c16_type(); } };
     template <> struct typeof_t<c32> { typeinfo_t operator()() const { return c32_type(); } };
     template <> struct typeof_t<bool> { typeinfo_t operator()() const { return boolean_type(); } };
+    template <> struct typeof_t<typeinfo_t> { typeinfo_t operator()() const { return typeinfo_type(); }};
 
     //! Gets the type object of `Guid` type.
     //! @return Returns the type object of `Guid` type.

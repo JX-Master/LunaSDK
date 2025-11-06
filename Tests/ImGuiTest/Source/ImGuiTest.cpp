@@ -13,6 +13,7 @@
 #include <Luna/Runtime/Module.hpp>
 #include <Luna/Runtime/Log.hpp>
 #include <Luna/Runtime/Thread.hpp>
+#include <Luna/Window/Event.hpp>
 
 #include <Luna/Window/AppMain.hpp>
 
@@ -34,10 +35,8 @@ namespace Luna
         u32 height = 0;
     };
 
-    Window::AppStatus app_init(opaque_t* app_state, int argc, char* argv[])
+    RV run_app()
     {
-        bool r = Luna::init();
-        if(!r) return Window::AppStatus::failing;
         lutry
         {
             luexp(add_modules({module_window(), module_rhi(), module_imgui()}));
@@ -46,11 +45,14 @@ namespace Luna
             using namespace RHI;
             using namespace Window;
 
-            App* app = memnew<App>();
-            *app_state = app;
+            App app;
 
-            luset(app->window, new_window("ImGui Demo", WindowDisplaySettings::as_windowed(), WindowCreationFlag::resizable));
-            app->window->get_events().close.add_handler(on_window_close);
+            Window::set_event_handler([](object_t event, void* userdata)
+            {
+                ImGuiUtils::handle_window_event(event);
+            }, nullptr);
+
+            luset(app.window, new_window("ImGui Demo"));
 
             Ref<IDevice> dev = get_main_device();
 
@@ -66,85 +68,78 @@ namespace Luna
                 }
             }
 
-            luset(app->swap_chain, dev->new_swap_chain(queue, app->window, SwapChainDesc({0, 0, 2, Format::bgra8_unorm, true})));
-            luset(app->cmdbuf, dev->new_command_buffer(queue));
+            luset(app.swap_chain, dev->new_swap_chain(queue, app.window, SwapChainDesc({0, 0, 2, Format::bgra8_unorm, true})));
+            luset(app.cmdbuf, dev->new_command_buffer(queue));
 
             // Create back buffer.
             u32 w = 0, h = 0;
 
-            ImGuiUtils::set_active_window(app->window);
-        }
-        lucatch
-        {
-            log_error("ImGuiTest", "%s", explain(luerr));
-            return Window::AppStatus::failing;
-        }
-        return Window::AppStatus::running;
-    }
+            ImGuiUtils::set_active_window(app.window);
 
-    Window::AppStatus app_update(opaque_t app_state)
-    {
-        lutry
-        {
-            App* app = (App*)app_state;
-            using namespace RHI;
-            if (app->window->is_closed()) return Window::AppStatus::exiting;
-            if (app->window->is_minimized())
+            while(true)
             {
-                sleep(100);
-                return Window::AppStatus::running;
+                Window::poll_events();
+                if (app.window->is_closed()) break;
+                if (app.window->is_minimized())
+                {
+                    sleep(100);
+                    continue;
+                }
+                // Recreate the back buffer if needed.
+                auto sz = app.window->get_framebuffer_size();
+                auto ww = sz.x;
+                auto wh = sz.y;
+                if (ww != app.width || wh != app.height)
+                {
+                    luexp(app.swap_chain->reset({ww, wh, 2, Format::unknown, true}));
+                    f32 clear_color[] = { 0.0f, 0.0f, 0.0f, 1.0f };
+                    app.width = ww;
+                    app.height = wh;
+                }
+
+                ImGuiUtils::update_io();
+                ImGui::NewFrame();
+
+                ImGui::ShowDemoWindow();
+                
+                auto window_size = app.window->get_size();
+                ImGui::Text("Window Size: %ux%u", window_size.x, window_size.y);
+                ImGui::Text("Framebuffer Size: %ux%u", sz.x, sz.y);
+                ImGui::Text("DPI Scale: %f", app.window->get_dpi_scale_factor());
+
+                ImGui::Render();
+                
+                auto back_buffer = app.swap_chain->get_current_back_buffer().get();
+                RenderPassDesc desc;
+                desc.color_attachments[0] = ColorAttachment(back_buffer, LoadOp::clear, StoreOp::store, { 0.0f, 0.0f, 0.0f, 1.0f });
+                app.cmdbuf->begin_render_pass(desc);
+                app.cmdbuf->end_render_pass();
+                luexp(ImGuiUtils::render_draw_data(ImGui::GetDrawData(), app.cmdbuf, back_buffer));
+                app.cmdbuf->resource_barrier({},
+                {
+                    {app.swap_chain->get_current_back_buffer().get(), SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::present, ResourceBarrierFlag::none}
+                });
+                luexp(app.cmdbuf->submit({}, {}, true));
+                app.cmdbuf->wait();
+                luexp(app.swap_chain->present());
+                luexp(app.cmdbuf->reset());
             }
-            // Recreate the back buffer if needed.
-            auto sz = app->window->get_framebuffer_size();
-            auto ww = sz.x;
-            auto wh = sz.y;
-            if (ww != app->width || wh != app->height)
-            {
-                luexp(app->swap_chain->reset({ww, wh, 2, Format::unknown, true}));
-                f32 clear_color[] = { 0.0f, 0.0f, 0.0f, 1.0f };
-                app->width = ww;
-                app->height = wh;
-            }
-
-            ImGuiUtils::update_io();
-            ImGui::NewFrame();
-
-            ImGui::ShowDemoWindow();
-            
-            auto window_size = app->window->get_size();
-            ImGui::Text("Window Size: %ux%u", window_size.x, window_size.y);
-            ImGui::Text("Framebuffer Size: %ux%u", sz.x, sz.y);
-            ImGui::Text("DPI Scale: %f", app->window->get_dpi_scale_factor());
-
-            ImGui::Render();
-            
-            auto back_buffer = app->swap_chain->get_current_back_buffer().get();
-            RenderPassDesc desc;
-            desc.color_attachments[0] = ColorAttachment(back_buffer, LoadOp::clear, StoreOp::store, { 0.0f, 0.0f, 0.0f, 1.0f });
-            app->cmdbuf->begin_render_pass(desc);
-            app->cmdbuf->end_render_pass();
-            luexp(ImGuiUtils::render_draw_data(ImGui::GetDrawData(), app->cmdbuf, back_buffer));
-            app->cmdbuf->resource_barrier({},
-            {
-                {app->swap_chain->get_current_back_buffer().get(), SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::present, ResourceBarrierFlag::none}
-            });
-            luexp(app->cmdbuf->submit({}, {}, true));
-            app->cmdbuf->wait();
-            luexp(app->swap_chain->present());
-            luexp(app->cmdbuf->reset());
         }
-        lucatch
-        {
-            log_error("ImGuiTest", "%s", explain(luerr));
-            return Window::AppStatus::failing;
-        }
-        return Window::AppStatus::running;
+        lucatchret;
+        return ok;
     }
+}
 
-    void app_close(opaque_t app_state, Window::AppStatus status)
+int luna_main(int argc, const char* argv[])
+{
+    if(!Luna::init()) return -1;
+    auto r = Luna::run_app();
+    if(failed(r))
     {
-        App* app = (App*)app_state;
-        memdelete(app);
+        Luna::log_error("ImGuiTest", "%s", Luna::explain(r.errcode()));
         Luna::close();
+        return -1;
     }
+    Luna::close();
+    return 0;
 }

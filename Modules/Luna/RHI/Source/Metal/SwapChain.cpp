@@ -104,7 +104,7 @@ namespace Luna
                     m_current_back_buffer.reset();
                     m_current_drawable.reset();
                     m_metal_layer.reset();
-                    init_metal_layer(m_desc);
+                    luexp(init_metal_layer(m_desc));
                 }
                 m_desc = new_desc;
             }

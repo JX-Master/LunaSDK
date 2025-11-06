@@ -37,6 +37,7 @@
 #include <Luna/Runtime/Log.hpp>
 #include <Luna/Runtime/Thread.hpp>
 #include <Luna/Runtime/Profiler.hpp>
+#include <Luna/Window/Event.hpp>
 
 namespace Luna
 {
@@ -109,34 +110,40 @@ namespace Luna
 
             // Create window and render objects.
             snprintf(title, 256, "%s - %s", name.c_str(), APP_NAME);
-            luset(m_window, Window::new_window(title, Window::WindowDisplaySettings::as_windowed(), Window::WindowCreationFlag::resizable));
+            luset(m_window, Window::new_window(title));
 
-            m_window->get_events().close.add_handler([](Window::IWindow* window) 
-            {
-                bool should_close = true;
-                if(g_main_editor->has_any_unsaved_changes())
+            Window::set_event_handler([](object_t event, void* userdata){
+                MainEditor* editor = (MainEditor*)userdata;
+                if(!ImGuiUtils::handle_window_event(event))
                 {
-                    auto r = Window::message_box("Save changes before closing the current project?", APP_NAME, Window::MessageBoxType::yes_no_cancel, Window::MessageBoxIcon::question);
-                    luassert_always(succeeded(r));
-                    if(r.get() == Window::MessageBoxButton::cancel)
+                    if(auto e = cast_object<Window::WindowRequestCloseEvent>(event))
                     {
-                        should_close = false;
-                    }
-                    else if(r.get() == Window::MessageBoxButton::yes)
-                    {
-                        // Save document.
-                        RV ret = g_main_editor->save_all();
-                        if(failed(ret))
+                        if(e->window == editor->m_window)
                         {
-                            should_close = false;
+                            bool should_close = true;
+                            if(editor->has_any_unsaved_changes())
+                            {
+                                auto r = Window::message_box("Save changes before closing the current project?", APP_NAME, Window::MessageBoxType::yes_no_cancel, Window::MessageBoxIcon::question);
+                                luassert_always(succeeded(r));
+                                if(r.get() == Window::MessageBoxButton::cancel)
+                                {
+                                    should_close = false;
+                                }
+                                else if(r.get() == Window::MessageBoxButton::yes)
+                                {
+                                    // Save document.
+                                    RV ret = editor->save_all();
+                                    if(failed(ret))
+                                    {
+                                        should_close = false;
+                                    }
+                                }
+                            }
+                            e->do_close = should_close;
                         }
                     }
                 }
-                if(should_close)
-                {
-                    window->close();
-                }
-            });
+            }, this);
 
             luset(m_swap_chain, g_env->device->new_swap_chain(g_env->graphics_queue, m_window, RHI::SwapChainDesc({0, 0, 2, RHI::Format::bgra8_unorm, true})));
             luset(m_cmdbuf, g_env->device->new_command_buffer(g_env->graphics_queue));

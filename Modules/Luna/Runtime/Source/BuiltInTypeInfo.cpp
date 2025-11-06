@@ -19,6 +19,7 @@
 #include "../Math/Matrix.hpp"
 #include "../Math/Quaternion.hpp"
 #include "../Math/Color.hpp"
+#include "../Any.hpp"
 #include <Luna/Runtime/StackAllocator.hpp>
 
 namespace Luna
@@ -46,6 +47,7 @@ namespace Luna
     static typeinfo_t g_array_type;
     static typeinfo_t g_rect_type;
     static typeinfo_t g_offset_rect_type;
+    static typeinfo_t g_any_type;
 
     static R<Variant> serialize_guid(typeinfo_t type, const void* inst)
     {
@@ -111,7 +113,34 @@ namespace Luna
     static RV deserialize_c16(typeinfo_t type, void* inst, const Variant& data) { *((c16*)inst) = (c16)data.unum(); return ok; }
     static RV deserialize_c32(typeinfo_t type, void* inst, const Variant& data) { *((c32*)inst) = (c32)data.unum(); return ok; }
     static RV deserialize_bool(typeinfo_t type, void* inst, const Variant& data) { *((bool*)inst) = data.boolean(); return ok; }
-
+    static R<Variant> serialize_typeinfo(typeinfo_t type, const void* inst)
+    {
+        typeinfo_t o = *(const typeinfo_t*)inst;
+        Variant ret(VariantType::array);
+        if(o)
+        {
+            Guid guid = get_type_guid(o);
+            ret.push_back(guid.low);
+            ret.push_back(guid.high);
+        }
+        return ret;
+    }
+    static RV deserialize_typeinfo(typeinfo_t type, void* inst, const Variant& data)
+    {
+        typeinfo_t* dst = (typeinfo_t*)inst;
+        if(data.empty())
+        {
+            *dst = nullptr;
+        }
+        else
+        {
+            Guid guid;
+            guid.low = data[0].unum();
+            guid.high = data[1].unum();
+            *dst = get_type_by_guid(guid);
+        }
+        return ok;
+    }
     static R<Variant> serialize_string(typeinfo_t type, const void* inst)
     {
         const String* s = (const String*)inst;
@@ -171,7 +200,7 @@ namespace Luna
         typeinfo_t element_type = get_struct_generic_arguments(type)[0].type;
         vec->free_buffer(element_type);
     }
-    static void vector_copy_ctor(typeinfo_t type, void* dest, void* src)
+    static void vector_copy_ctor(typeinfo_t type, void* dest, const void* src)
     {
         VectorData* dest_vec = (VectorData*)dest;
         VectorData* src_vec = (VectorData*)src;
@@ -195,7 +224,7 @@ namespace Luna
         src_vec->m_capacity = 0;
         src_vec->m_size = 0;
     }
-    static void vector_copy_assign(typeinfo_t type, void* dest, void* src)
+    static void vector_copy_assign(typeinfo_t type, void* dest, const void* src)
     {
         vector_dtor(type, dest);
         vector_copy_ctor(type, dest, src);
@@ -598,13 +627,13 @@ namespace Luna
             dest->m_size = src->m_size;
         }
     }
-    static void hashmap_copy_ctor(typeinfo_t type, void* dest, void* src)
+    static void hashmap_copy_ctor(typeinfo_t type, void* dest, const void* src)
     {
         Span<const GenericArgument> generic_arguments = get_struct_generic_arguments(type);
         typeinfo_t value_type = make_hashmap_value_type(generic_arguments[0].type, generic_arguments[1].type);
         hashtable_copy_ctor(value_type, (HashTableData*)dest, (HashTableData*)src);
     }
-    static void hashset_copy_ctor(typeinfo_t type, void* dest, void* src)
+    static void hashset_copy_ctor(typeinfo_t type, void* dest, const void* src)
     {
         typeinfo_t value_type = get_struct_generic_arguments(type)[0].type;
         hashtable_copy_ctor(value_type, (HashTableData*)dest, (HashTableData*)src);
@@ -618,12 +647,12 @@ namespace Luna
         srcd->m_buffer_size = 0;
         srcd->m_size = 0;
     }
-    static void hashmap_copy_assign(typeinfo_t type, void* dest, void* src)
+    static void hashmap_copy_assign(typeinfo_t type, void* dest, const void* src)
     {
         hashmap_dtor(type, dest);
         hashmap_copy_ctor(type, dest, src);
     }
-    static void hashset_copy_assign(typeinfo_t type, void* dest, void* src)
+    static void hashset_copy_assign(typeinfo_t type, void* dest, const void* src)
     {
         hashset_dtor(type, dest);
         hashset_copy_ctor(type, dest, src);
@@ -774,7 +803,7 @@ namespace Luna
         Span<const GenericArgument> generic_arguments = get_struct_generic_arguments(type);
         destruct_type_range(generic_arguments[0].type, inst, (usize)generic_arguments[1].integer);
     }
-    static void dynamic_array_copy_ctor(typeinfo_t type, void* dest, void* src)
+    static void dynamic_array_copy_ctor(typeinfo_t type, void* dest, const void* src)
     {
         DynamicArrayData* dst_array = (DynamicArrayData*)dest;
         DynamicArrayData* src_array = (DynamicArrayData*)src;
@@ -788,7 +817,7 @@ namespace Luna
             copy_construct_type_range(element_type, dst_array->m_elements, src_array->m_elements, src_array->m_size);
         }
     }
-    static void fixed_array_copy_ctor(typeinfo_t type, void* dest, void* src)
+    static void fixed_array_copy_ctor(typeinfo_t type, void* dest, const void* src)
     {
         Span<const GenericArgument> generic_arguments = get_struct_generic_arguments(type);
         copy_construct_type_range(generic_arguments[0].type, dest, src, (usize)generic_arguments[1].integer);
@@ -806,12 +835,12 @@ namespace Luna
         Span<const GenericArgument> generic_arguments = get_struct_generic_arguments(type);
         move_construct_type_range(generic_arguments[0].type, dest, src, (usize)generic_arguments[1].integer);
     }
-    static void dynamic_array_copy_assign(typeinfo_t type, void* dest, void* src)
+    static void dynamic_array_copy_assign(typeinfo_t type, void* dest, const void* src)
     {
         dynamic_array_dtor(type, dest);
         dynamic_array_copy_ctor(type, dest, src);
     }
-    static void fixed_array_copy_assign(typeinfo_t type, void* dest, void* src)
+    static void fixed_array_copy_assign(typeinfo_t type, void* dest, const void* src)
     {
         Span<const GenericArgument> generic_arguments = get_struct_generic_arguments(type);
         copy_assign_type_range(generic_arguments[0].type, dest, src, (usize)generic_arguments[1].integer);
@@ -1022,8 +1051,11 @@ namespace Luna
             set_serializable(boolean_type(), &serial);
             set_equatable(boolean_type(), default_equal_to<bool>);
             set_hashable(boolean_type(), default_hash<bool>);
-            serial.serialize_func = serialize_usize;
-            serial.deserialize_func = deserialize_usize;
+            serial.serialize_func = serialize_typeinfo;
+            serial.deserialize_func = deserialize_typeinfo;
+            set_serializable(typeinfo_type(), &serial);
+            set_equatable(typeinfo_type(), default_equal_to<typeinfo_t>);
+            set_hashable(typeinfo_type(), default_hash<typeinfo_t>);
         }
         // Guid
         {
@@ -1717,6 +1749,60 @@ namespace Luna
             };
             set_serializable(type, &serial);
         }
+        // Any
+        {
+            StructureTypeDesc t;
+            t.guid = Guid("{ad77afab-1ae2-49e2-a896-dd3a9584c43d}");
+            t.name = "Any";
+            t.alias = "";
+            t.size = sizeof(Any);
+            t.alignment = alignof(Any);
+            t.ctor = is_trivially_constructible_v<Any> ? nullptr : default_ctor<Any>;
+            t.dtor = is_trivially_destructible_v<Any> ? nullptr : default_dtor<Any>;
+            t.copy_ctor = is_trivially_copy_constructible_v<Any> ? nullptr : default_copy_ctor<Any>;
+            t.move_ctor = is_trivially_move_constructible_v<Any> ? nullptr : default_move_ctor<Any>;
+            t.copy_assign = is_trivially_copy_assignable_v<Any> ? nullptr : default_copy_assign<Any>;
+            t.move_assign = is_trivially_move_assignable_v<Any> ? nullptr : default_move_assign<Any>;
+            t.trivially_relocatable = true;
+            g_any_type = register_struct_type(t);
+            SerializableTypeDesc desc;
+            desc.serialize_func = [](typeinfo_t type, const void* inst)->R<Variant>
+            {
+                auto v = (const Any*)inst;
+                Variant ret(VariantType::array);
+                lutry
+                {
+                    if(v->has_value())
+                    {
+                        lulet(type, serialize(get_type_guid(v->type())));
+                        lulet(value, serialize(v->type(), v->data()));
+                        ret.push_back(move(type));
+                        ret.push_back(move(value));
+                    }
+                }
+                lucatchret;
+                return ret;
+            };
+            desc.deserialize_func = [](typeinfo_t type, void* inst, const Variant& data) -> RV
+            {
+                lutry
+                {
+                    auto v = (Any*)inst;
+                    if(!data.empty())
+                    {
+                        Guid type_guid;
+                        luexp(deserialize(type_guid, data[0]));
+                        typeinfo_t type = get_type_by_guid(type_guid);
+                        if(!type) return set_error(BasicError::bad_data(), "Deserialize Any failed: unknown type.");
+                        v->construct(type);
+                        luexp(deserialize(type, v->data(), data[1]));
+                    }
+                }
+                lucatchret;
+                return ok;
+            };
+            set_serializable(g_any_type, &desc);
+        }
     }
 
     LUNA_RUNTIME_API typeinfo_t guid_type() { return g_guid_type; }
@@ -1742,4 +1828,5 @@ namespace Luna
     LUNA_RUNTIME_API typeinfo_t array_type() { return g_array_type; }
     LUNA_RUNTIME_API typeinfo_t rect_type() { return g_rect_type; }
     LUNA_RUNTIME_API typeinfo_t offset_rect_type() { return g_offset_rect_type; }
+    LUNA_RUNTIME_API typeinfo_t any_type() { return g_any_type; }
 }

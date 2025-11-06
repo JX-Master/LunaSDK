@@ -127,7 +127,7 @@ namespace Luna
             Ref<Window::IWindow> dummy_window;
             lutry
             {
-                luset(dummy_window, Window::new_window("Dummy Window", Window::WindowDisplaySettings::as_windowed(), Window::WindowCreationFlag::hidden));
+                luset(dummy_window, Window::new_window("Dummy Window", 0, 0, 0, 0, Window::WindowStyleFlag::none,Window::WindowCreationFlag::hidden));
                 // Fetch surface for dummy window.
                 luset(dummy_surface, new_surface_from_window(g_vk_instance, dummy_window));
                 // Select physical device.

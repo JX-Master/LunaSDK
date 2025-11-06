@@ -24,6 +24,7 @@
 #include <TestBoxPS.hpp>
 #include <Luna/Runtime/Thread.hpp>
 #include <Luna/RHIUtility/RHIUtility.hpp>
+#include <Luna/Window/Event.hpp>
 
 #include <Luna/Window/AppMain.hpp>
 
@@ -234,54 +235,38 @@ void cleanup()
     file_tex.reset();
 }
 
-namespace Luna
+int luna_main(int argc, const char* argv[])
 {
-    Window::AppStatus app_init(opaque_t* app_state, int argc, char* argv[])
+    if(!Luna::init()) return -1;
+    lutry
     {
-        bool r = Luna::init();
-        if(!r) return Window::AppStatus::failing;
-        lutry
+        luexp(add_modules({module_rhi_test_bed()}));
+        luexp(init_modules());
+        register_init_func(start);
+        register_close_func(cleanup);
+        register_resize_func(resize);
+        register_draw_func(draw);
+        luexp(RHITestBed::init());
+        while(true)
         {
-            luexp(add_modules({module_rhi_test_bed(), module_rhi_utility()}));
-            luexp(init_modules());
-            register_init_func(start);
-            register_close_func(cleanup);
-            register_resize_func(resize);
-            register_draw_func(draw);
-            luexp(RHITestBed::init());
-        }
-        lucatch
-        {
-            log_error("RHITest", "%s", explain(luerr));
-            return Window::AppStatus::failing;
-        }
-        return Window::AppStatus::running;
-    }
-
-    Window::AppStatus app_update(opaque_t app_state)
-    {
-        auto window = RHITestBed::get_window();
-        if(window->is_closed()) return Window::AppStatus::exiting;
-        if(window->is_minimized())
-        {
-            sleep(100);
-            return Window::AppStatus::running;
-        }
-        lutry
-        {
+            Window::poll_events();
+            auto window = RHITestBed::get_window();
+            if(window->is_closed()) break;
+            if(window->is_minimized())
+            {
+                sleep(100);
+                continue;
+            }
             luexp(RHITestBed::update());
         }
-        lucatch
-        {
-            log_error("RHITest", "%s", explain(luerr));
-            return Window::AppStatus::failing;
-        }
-        return Window::AppStatus::running;
-    }
-
-    void app_close(opaque_t app_state, Window::AppStatus status)
-    {
         RHITestBed::close();
-        Luna::close();
     }
+    lucatch
+    {
+        log_error("RHITest", "%s", explain(luerr));
+        Luna::close();
+        return -1;
+    }
+    Luna::close();
+    return 0;
 }

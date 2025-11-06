@@ -18,6 +18,8 @@
 #include <Luna/RG/RG.hpp>
 #include <Luna/JobSystem/JobSystem.hpp>
 
+#include <Luna/Window/AppMain.hpp>
+
 namespace Luna
 {
     AppEnv* g_env = nullptr;
@@ -107,7 +109,8 @@ namespace Luna
 
 using namespace Luna;
 
-int main(){
+int luna_main(int argc, const char* argv[])
+{
     luassert_always(Luna::init());
     set_current_dir_to_process_path();
     run_editor();

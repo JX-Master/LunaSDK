@@ -9,12 +9,12 @@
 */
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_WINDOW_API LUNA_EXPORT
-#include "../../SDL/EventHandling.hpp"
-#include "../../EventDispatching.hpp"
+#include "../../../Event.hpp"
+#include "../../Event.hpp"
 #include "Window.hpp"
-#include "Display.hpp"
 #include <Luna/Runtime/Unicode.hpp>
 #include <Luna/Runtime/Thread.hpp>
+#include <Luna/Runtime/TSAssert.hpp>
 
 namespace Luna
 {
@@ -144,50 +144,9 @@ namespace Luna
             return KeyCode::unknown;
         }
 
-        LUNA_WINDOW_API void handle_sdl_event(SDL_Event& event)
+        void handle_sdl_event(SDL_Event& event)
         {
-            if(event.type >= SDL_EVENT_DISPLAY_FIRST && event.type <= SDL_EVENT_DISPLAY_LAST)
-            {
-                Display* display = (Display*)get_display_from_display_id(event.display.displayID);
-                switch(event.type)
-                {
-                    case SDL_EVENT_DISPLAY_ORIENTATION:
-                    DisplayOrientation orientation;
-                    switch(event.display.data1)
-                    {
-                        case SDL_ORIENTATION_UNKNOWN:
-                        orientation = DisplayOrientation::unknown;
-                        break;
-                        case SDL_ORIENTATION_LANDSCAPE:
-                        orientation = DisplayOrientation::landscape;
-                        break;
-                        case SDL_ORIENTATION_LANDSCAPE_FLIPPED:
-                        orientation = DisplayOrientation::landscape_flipped;
-                        break;
-                        case SDL_ORIENTATION_PORTRAIT:
-                        orientation = DisplayOrientation::portrait;
-                        break;
-                        case SDL_ORIENTATION_PORTRAIT_FLIPPED:
-                        orientation = DisplayOrientation::portrait_flipped;
-                        break;
-                    }
-                    dispatch_display_orientation_event(display, orientation);
-                    break;
-                    case SDL_EVENT_DISPLAY_ADDED:
-                    dispatch_display_connect_event(display);
-                    break;
-                    case SDL_EVENT_DISPLAY_REMOVED:
-                    dispatch_display_disconnect_event(display);
-                    break;
-                    case SDL_EVENT_DISPLAY_MOVED:
-                    dispatch_display_move_event(display);
-                    break;
-                    default:
-                    lupanic();
-                    break;
-                }
-            }
-            else if(event.type >= SDL_EVENT_WINDOW_FIRST && event.type <= SDL_EVENT_WINDOW_LAST)
+            if(event.type >= SDL_EVENT_WINDOW_FIRST && event.type <= SDL_EVENT_WINDOW_LAST)
             {
                 Window* window = get_window_from_sdl_window_id(event.window.windowID);
                 if(window)
@@ -195,37 +154,99 @@ namespace Luna
                     switch(event.type)
                     {
                         case SDL_EVENT_WINDOW_SHOWN:
-                        dispatch_window_show_event(window);
+                        {
+                            auto e = new_object<WindowShowEvent>();
+                            e->window = window;
+                            dispatch_event_to_handler(e.object());
+                        }
                         break;
                         case SDL_EVENT_WINDOW_HIDDEN:
-                        dispatch_window_hide_event(window);
+                        {
+                            auto e = new_object<WindowHideEvent>();
+                            e->window = window;
+                            dispatch_event_to_handler(e.object());
+                        }
                         break;
                         case SDL_EVENT_WINDOW_MOVED:
-                        dispatch_window_move_event(window, event.window.data1, event.window.data2);
+                        {
+                            auto e = new_object<WindowMoveEvent>();
+                            e->window = window;
+                            e->x = event.window.data1;
+                            e->y = event.window.data2;
+                            dispatch_event_to_handler(e.object());
+                        }
                         break;
                         case SDL_EVENT_WINDOW_RESIZED:
-                        dispatch_window_resize_event(window, event.window.data1, event.window.data2);
+                        {
+                            auto e = new_object<WindowResizeEvent>();
+                            e->window = window;
+                            e->width = event.window.data1;
+                            e->height = event.window.data2;
+                            dispatch_event_to_handler(e.object());
+                        }
                         break;
                         case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
-                        dispatch_window_framebuffer_resize_event(window, event.window.data1, event.window.data2);
+                        {
+                            auto e = new_object<WindowFramebufferResizeEvent>();
+                            e->window = window;
+                            e->width = event.window.data1;
+                            e->height = event.window.data2;
+                            dispatch_event_to_handler(e.object());
+                        }
                         break;
                         case SDL_EVENT_WINDOW_MOUSE_ENTER:
-                        dispatch_window_mouse_enter_event(window);
+                        {
+                            auto e = new_object<WindowMouseEnterEvent>();
+                            e->window = window;
+                            dispatch_event_to_handler(e.object());
+                        }
                         break;
                         case SDL_EVENT_WINDOW_MOUSE_LEAVE:
-                        dispatch_window_mouse_leave_event(window);
+                        {
+                            auto e = new_object<WindowMouseLeaveEvent>();
+                            e->window = window;
+                            dispatch_event_to_handler(e.object());
+                        }
                         break;
                         case SDL_EVENT_WINDOW_FOCUS_GAINED:
-                        dispatch_window_focus_event(window);
+                        {
+                            auto e = new_object<WindowInputFocusEvent>();
+                            e->window = window;
+                            dispatch_event_to_handler(e.object());
+                        }
                         break;
                         case SDL_EVENT_WINDOW_FOCUS_LOST:
-                        dispatch_window_lose_focus_event(window);
+                        {
+                            auto e = new_object<WindowLoseInputFocusEvent>();
+                            e->window = window;
+                            dispatch_event_to_handler(e.object());
+                        }
                         break;
                         case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
-                        dispatch_window_close_event(window);
+                        {
+                            auto e = new_object<WindowRequestCloseEvent>();
+                            e->window = window;
+                            e->do_close = true;
+                            dispatch_event_to_handler(e.object());
+                            if(e->do_close)
+                            {
+                                window->close();
+                            }
+                        }
                         break;
                         case SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED:
-                        dispatch_window_dpi_changed_event(window);
+                        {
+                            auto e = new_object<WindowDPIScaleChangedEvent>();
+                            e->window = window;
+                            dispatch_event_to_handler(e.object());
+                        }
+                        break;
+                        case SDL_EVENT_WINDOW_DESTROYED:
+                        {
+                            auto e = new_object<WindowClosedEvent>();
+                            e->window = window;
+                            dispatch_event_to_handler(e.object());
+                        }
                         break;
                     }
                 }
@@ -240,11 +261,17 @@ namespace Luna
                     {
                         if (event.type == SDL_EVENT_KEY_DOWN)
                         {
-                            dispatch_window_key_down_event(window, key);
+                            auto e = new_object<WindowKeyDownEvent>();
+                            e->window = window;
+                            e->key = key;
+                            dispatch_event_to_handler(e.object());
                         }
                         else
                         {
-                            dispatch_window_key_up_event(window, key);
+                            auto e = new_object<WindowKeyUpEvent>();
+                            e->window = window;
+                            e->key = key;
+                            dispatch_event_to_handler(e.object());
                         }
                     }
                 }
@@ -254,14 +281,10 @@ namespace Luna
                 Window* window = get_window_from_sdl_window_id(event.text.windowID);
                 if(window)
                 {
-                    usize utf8_len = utf8_strlen(event.text.text);
-                    const char* cur = event.text.text;
-                    for(usize i = 0; i < utf8_len; ++i)
-                    {
-                        c32 ch = utf8_decode_char(cur);
-                        cur += utf8_charspan(ch);
-                        dispatch_window_input_character_event(window, ch);
-                    }
+                    auto e = new_object<WindowInputTextEvent>();
+                    e->window = window;
+                    e->text = event.text.text;
+                    dispatch_event_to_handler(e.object());
                 }
             }
             else if(event.type == SDL_EVENT_MOUSE_MOTION)
@@ -269,7 +292,11 @@ namespace Luna
                 Window* window = get_window_from_sdl_window_id(event.motion.windowID);
                 if(window)
                 {
-                    dispatch_window_mouse_move_event(window, event.motion.x, event.motion.y);
+                    auto e = new_object<WindowMouseMoveEvent>();
+                    e->window = window;
+                    e->x = event.motion.x;
+                    e->y = event.motion.y;
+                    dispatch_event_to_handler(e.object());
                 }
             }
             else if(event.type == SDL_EVENT_MOUSE_BUTTON_DOWN || event.type == SDL_EVENT_MOUSE_BUTTON_UP)
@@ -289,11 +316,17 @@ namespace Luna
                     }
                     if(event.type == SDL_EVENT_MOUSE_BUTTON_DOWN)
                     {
-                        dispatch_window_mouse_down_event(window, button);
+                        auto e = new_object<WindowMouseDownEvent>();
+                        e->window = window;
+                        e->button = button;
+                        dispatch_event_to_handler(e.object());
                     }
                     else
                     {
-                        dispatch_window_mouse_up_event(window, button);
+                        auto e = new_object<WindowMouseUpEvent>();
+                        e->window = window;
+                        e->button = button;
+                        dispatch_event_to_handler(e.object());
                     }
                 }
             }
@@ -302,7 +335,11 @@ namespace Luna
                 Window* window = get_window_from_sdl_window_id(event.wheel.windowID);
                 if(window)
                 {
-                    dispatch_window_scroll_event(window, event.wheel.x, event.wheel.y);
+                    auto e = new_object<WindowScrollEvent>();
+                    e->window = window;
+                    e->scroll_x = event.wheel.x;
+                    e->scroll_y = event.wheel.y;
+                    dispatch_event_to_handler(e.object());
                 }
             }
             else if(event.type == SDL_EVENT_FINGER_MOTION || event.type == SDL_EVENT_FINGER_DOWN || event.type == SDL_EVENT_FINGER_UP)
@@ -312,15 +349,30 @@ namespace Luna
                 {
                     if(event.type == SDL_EVENT_FINGER_MOTION)
                     {
-                        dispatch_window_touch_move_event(window, (u64)event.tfinger.fingerID, event.tfinger.x, event.tfinger.y);
+                        auto e = new_object<WindowTouchMoveEvent>();
+                        e->window = window;
+                        e->id = (u64)event.tfinger.fingerID;
+                        e->x = event.tfinger.x;
+                        e->y = event.tfinger.y;
+                        dispatch_event_to_handler(e.object());
                     }
                     else if(event.type == SDL_EVENT_FINGER_DOWN)
                     {
-                        dispatch_window_touch_down_event(window, (u64)event.tfinger.fingerID, event.tfinger.x, event.tfinger.y);
+                        auto e = new_object<WindowTouchDownEvent>();
+                        e->window = window;
+                        e->id = (u64)event.tfinger.fingerID;
+                        e->x = event.tfinger.x;
+                        e->y = event.tfinger.y;
+                        dispatch_event_to_handler(e.object());
                     }
                     else
                     {
-                        dispatch_window_touch_up_event(window, (u64)event.tfinger.fingerID, event.tfinger.x, event.tfinger.y);
+                        auto e = new_object<WindowTouchUpEvent>();
+                        e->window = window;
+                        e->id = (u64)event.tfinger.fingerID;
+                        e->x = event.tfinger.x;
+                        e->y = event.tfinger.y;
+                        dispatch_event_to_handler(e.object());
                     }
                 }
             }
@@ -337,38 +389,42 @@ namespace Luna
                     {
                         window->m_drop_files.clear();
                     }
+                    else if(event.type == SDL_EVENT_DROP_POSITION)
+                    {
+                        window->m_drop_x = event.drop.x;
+                        window->m_drop_y = event.drop.y;
+                    }
                     else if(event.type == SDL_EVENT_DROP_COMPLETE)
                     {
+                        window->m_drop_x = event.drop.x;
+                        window->m_drop_y = event.drop.y;
                         Array<const c8*> files(window->m_drop_files.size());
                         for(usize i = 0; i < window->m_drop_files.size(); ++i)
                         {
                             files[i] = window->m_drop_files[i].c_str();
                         }
-                        dispatch_window_drop_file_event(window, files.data(), files.size());
+                        auto e = new_object<WindowDropFilesEvent>();
+                        e->window = window;
+                        e->files.assign_n(files.data(), files.size());
+                        e->x = window->m_drop_x;
+                        e->y = window->m_drop_y;
+                        dispatch_event_to_handler(e.object());
                         window->m_drop_files.clear();
                     }
                 }
             }
         }
-
         LUNA_WINDOW_API void poll_events(bool wait_events)
         {
-            lucheck_msg(get_current_thread() == get_main_thread(), "Window::poll_events must only be called from the main thread.");
             SDL_Event event;
-            bool any_event;
             if(wait_events)
             {
-                any_event = SDL_WaitEvent(&event);
-            }
-            else
-            {
-                any_event = SDL_PollEvent(&event);
-            }
-            while (any_event)
-            {
-                // Handle event.
+                SDL_WaitEvent(&event);
                 handle_sdl_event(event);
-                any_event = SDL_PollEvent(&event);
+            }
+            while(SDL_PollEvent(&event))
+            {
+                handle_sdl_event(event);
             }
         }
     }

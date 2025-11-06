@@ -39,9 +39,11 @@ namespace Luna
     struct SerializableTypeDesc
     {
         //! The serialization function of the type.
-        serialize_func_t* serialize_func;
+        //! If this is `nullptr`, the default serialization function for the input type will be used.
+        serialize_func_t* serialize_func = nullptr;
         //! The deserialization function of the type.
-        deserialize_func_t* deserialize_func;
+        //! If this is `nullptr`, the default deserialization function for the input type will be used.
+        deserialize_func_t* deserialize_func = nullptr;
     };
 
     //! Checks whether one type is serializable.

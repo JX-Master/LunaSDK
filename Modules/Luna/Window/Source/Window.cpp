@@ -31,6 +31,7 @@ namespace Luna
                     memcpy(g_name, g_startup_params.name, min<usize>(len, 260));
                 }
                 g_version = g_startup_params.version;
+                register_events();
                 return platform_init();
             }
             virtual void on_close() override

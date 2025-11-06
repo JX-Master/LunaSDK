@@ -48,7 +48,7 @@ namespace Luna
         {
             if (!atom_exchange_u32(&expired, 1))
             {
-                // We use number 2 to identify the object is destroying, so present the calls to `destroy`
+                // We use number 2 to identify the object is destroying, so prevent the calls to `destroy`
                 // to free this object. This may happen when object A holds a strong
                 // reference to object B and object B holds a weak reference to A, when A is expiring, it
                 // releases the reference to B, so B is destroyed and releases the reference to A, and makes
@@ -95,7 +95,9 @@ namespace Luna
 
     LUNA_RUNTIME_API ref_count_t object_retain(object_t object_ptr)
     {
-        return atom_inc_i32(&(get_header(object_ptr)->ref_count));
+        ObjectHeader* header = get_header(object_ptr);
+        lucheck_msg(header->ref_count, "Cannot retain object whose reference counter is already 0");
+        return atom_inc_i32(&(header->ref_count));
     }
     LUNA_RUNTIME_API ref_count_t object_release(object_t object_ptr)
     {

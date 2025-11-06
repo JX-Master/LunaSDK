@@ -8,5 +8,5 @@ target("RHITestBed")
     end
     add_headerfiles("*.hpp", {install = false})
     add_files("*.cpp")
-    add_deps("Runtime", "RHI", "Window")
+    add_deps("Runtime", "RHI", "RHIUtility", "Window")
 target_end()
