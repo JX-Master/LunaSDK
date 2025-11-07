@@ -234,7 +234,7 @@ namespace Luna
             PushID(name);
             if (Button("Clear"))
             {
-                asset = nullptr;
+                asset.reset();
             }
             PopID();
         }

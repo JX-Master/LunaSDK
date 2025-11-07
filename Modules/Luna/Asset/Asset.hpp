@@ -53,7 +53,7 @@ namespace Luna
             opaque_t handle;
             asset_t() :
                 handle(nullptr) {}
-            constexpr asset_t(opaque_t handle) :
+            explicit constexpr asset_t(opaque_t handle) :
                 handle(handle) {}
             constexpr bool operator==(const asset_t& rhs) const
             {
@@ -64,6 +64,10 @@ namespace Luna
                 return handle != rhs.handle;
             }
             operator bool() const { return handle != nullptr; }
+            void reset()
+            {
+                handle = nullptr;
+            }
         };
 
         //! Identifies the asset state.
