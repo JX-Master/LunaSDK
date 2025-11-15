@@ -11,27 +11,25 @@
 #include <Luna/Runtime/Math/Vector.hpp>
 namespace Luna
 {
-    struct DirectionalLight
+    enum class LightType : u32
     {
-        lustruct("DirectionalLight", "{10FA0F19-622B-41E5-84A1-914DF54877A4}");
-        Float3 intensity = { 0.5f, 0.5f, 0.5f };
-        f32 intensity_multiplier = 1.0f;
+        directional = 0,
+        point = 1,
+        spot = 2,
     };
 
-    struct PointLight
-    {
-        lustruct("PointLight", "{D1537251-EBBD-41DB-83E0-3FAE204FCE4F}");
-        Float3 intensity = { 0.5f, 0.5f, 0.5f };
-        f32 intensity_multiplier = 1.0f;
-        f32 attenuation_power = 1.0f;
-    };
+    luenum(LightType, "LightType", "8c1ba13f-e896-4814-9086-0d4f8e104447");
 
-    struct SpotLight
+    struct Light
     {
-        lustruct("SpotLight", "{2BB45396-E0E3-433E-8794-49BEE8BD1BB5}");
+        lustruct("Light", "1838b3c9-41c9-4ae5-8b23-4cfb17344473");
+
+        LightType type;
         Float3 intensity = { 0.5f, 0.5f, 0.5f };
         f32 intensity_multiplier = 1.0f;
+        // Only for point light and spot light.
         f32 attenuation_power = 1.0f;
+        // Only for spot light.
         f32 spot_power = 64.0f;
     };
 }

@@ -19,32 +19,22 @@ namespace Luna
         return "Scene";
     }
 
-    R<Variant> serialize_entity(const Entity* entity)
+    static R<Variant> serialize_actor(typeinfo_t type, const void* inst)
     {
+        const SceneActor& actor = *((const SceneActor*)inst);
         Variant ret;
         lutry
         {
-            lulet(data, serialize(entity->name));
-            ret["name"] = move(data);
-            luset(data, serialize(entity->position));
-            ret["position"] = move(data);
-            luset(data, serialize(entity->rotation));
-            ret["rotation"] = move(data);
-            luset(data, serialize(entity->scale));
-            ret["scale"] = move(data);
-            data = Variant(VariantType::array);
-            for (auto& i : entity->children)
-            {
-                lulet(child, serialize_entity(i.get()));
-                data.push_back(move(child));
-            }
-            ret["children"] = move(data);
-            data = Variant(VariantType::array);
-            for (auto& i : entity->components)
+            luset(ret["guid"], serialize(actor.guid));
+            luset(ret["name"], serialize(actor.name));
+            luset(ret["transform"], serialize(actor.transform));
+            luset(ret["children"], serialize(actor.children));
+            Variant data = Variant(VariantType::array);
+            for (auto& i : actor.components)
             {
                 Variant comp(VariantType::array);
-                lulet(type, serialize<Guid>(get_type_guid(i.first)));
-                lulet(value, serialize(i.first, i.second.get()));
+                lulet(type, serialize<Guid>(get_type_guid(i.type())));
+                lulet(value, serialize(i.type(), i.get()));
                 comp.push_back(move(type));
                 comp.push_back(move(value));
                 data.push_back(move(comp));
@@ -54,21 +44,16 @@ namespace Luna
         lucatchret;
         return ret;
     }
-    RV deserialize_entity(Entity* entity, const Variant& data)
+
+    static RV deserialize_actor(typeinfo_t type, void* inst, const Variant& data)
     {
+        SceneActor& actor = *((SceneActor*)inst);
         lutry
         {
-            luexp(deserialize(entity->name, data["name"]));
-            luexp(deserialize(entity->position, data["position"]));
-            luexp(deserialize(entity->rotation, data["rotation"]));
-            luexp(deserialize(entity->scale, data["scale"]));
-            for (auto& child : data["children"].values())
-            {
-                Ref<Entity> ch = new_object<Entity>();
-                luexp(deserialize_entity(ch.get(), child));
-                ch->parent = entity;
-                entity->children.push_back(ch);
-            }
+            luexp(deserialize(actor.guid, data["guid"]));
+            luexp(deserialize(actor.name, data["name"]));
+            luexp(deserialize(actor.transform, data["transform"]));
+            luexp(deserialize(actor.children, data["children"]));
             for (auto& comp : data["components"].values())
             {
                 Guid type_guid;
@@ -76,10 +61,11 @@ namespace Luna
                 typeinfo_t type = get_type_by_guid(type_guid);
                 if (!type) return BasicError::bad_data();
                 object_t obj = object_alloc(type);
+                construct_type(type, obj);
                 ObjRef ref;
                 ref.attach(obj);
                 luexp(deserialize(type, obj, comp[1]));
-                entity->components.insert(make_pair(type, ref));
+                actor.components.push_back(move(ref));
             }
         }
         lucatchret;
@@ -87,66 +73,23 @@ namespace Luna
     }
     void register_scene_asset_type()
     {
-        register_struct_type<Entity>({});
-        register_struct_type<Scene>({});
+        register_struct_type<SceneActor>({
+            luproperty(SceneActor, Guid, guid),
+            luproperty(SceneActor, Name, name),
+            luproperty(SceneActor, Transform, transform),
+            luproperty(SceneActor, Vector<Guid>, children)
+        });
         {
             SerializableTypeDesc desc;
-            desc.serialize_func = [](typeinfo_t type, const void* inst)->R<Variant> {
-                Variant ret;
-                lutry
-                {
-                    const Scene * scene = (const Scene*)inst;
-                    Variant root_entities(VariantType::array);
-                    for (auto& i : scene->root_entities)
-                    {
-                        lulet(data, serialize_entity(i.get()));
-                        root_entities.push_back(move(data));
-                    }
-                    ret["root_entities"] = move(root_entities);
-                    Variant scene_components(VariantType::array);
-                    for (auto& i : scene->scene_components)
-                    {
-                        Variant comp(VariantType::array);
-                        lulet(type, serialize<Guid>(get_type_guid(i.first)));
-                        lulet(value, serialize(i.first, i.second.get()));
-                        comp.push_back(move(type));
-                        comp.push_back(move(value));
-                        scene_components.push_back(move(comp));
-                    }
-                    ret["scene_components"] = move(scene_components);
-                }
-                lucatchret;
-                return ret;
-            };
-            desc.deserialize_func = [](typeinfo_t type, void* inst, const Variant& data)->RV {
-                lutry
-                {
-                    Scene * scene = (Scene*)inst;
-                    for (auto& i : data["root_entities"].values())
-                    {
-                        Ref<Entity> ent = new_object<Entity>();
-                        luexp(deserialize_entity(ent.get(), i));
-                        scene->root_entities.push_back(ent);
-                    }
-                    for (auto& i : data["scene_components"].values())
-                    {
-                        Guid type_guid;
-                        luexp(deserialize(type_guid, i[(usize)0]));
-                        typeinfo_t type = get_type_by_guid(type_guid);
-                        if (!type) return BasicError::bad_data();
-                        object_t obj = object_alloc(type);
-                        construct_type(type, obj);
-                        ObjRef ref;
-                        ref.attach(obj);
-                        luexp(deserialize(type, obj, i[1]));
-                        scene->scene_components.insert(make_pair(type, ref));
-                    }
-                }
-                lucatchret;
-                return ok;
-            };
-            set_serializable<Scene>(&desc);
+            desc.serialize_func = serialize_actor;
+            desc.deserialize_func = deserialize_actor;
+            set_serializable<SceneActor>(&desc);
         }
+        register_struct_type<Scene>({
+            luproperty(Scene, SceneSettings, settings),
+            luproperty(Scene, Vector<SceneActor>, actors)
+        });
+        set_serializable<Scene>();
         {
             Asset::AssetTypeDesc desc;
             desc.name = get_scene_asset_type();

@@ -186,3 +186,5 @@ includes("Programs")
 if has_config("build_tests") then
     includes("Tests")
 end
+
+set_policy("build.sanitizer.address", true)

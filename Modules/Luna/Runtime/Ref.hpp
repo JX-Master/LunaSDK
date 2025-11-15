@@ -312,7 +312,7 @@ namespace Luna
         template <typename _Rty, typename _Enable = enable_if_t<is_base_of_v<Interface, _Rty>>>
         Ref(_Rty* ptr)
         {
-            _Ty* v = query_interface<_Ty>(ptr->get_object());
+            _Ty* v = ptr ? query_interface<_Ty>(ptr->get_object()) : nullptr;
             m_vtable = v;
             internal_addref();
         }

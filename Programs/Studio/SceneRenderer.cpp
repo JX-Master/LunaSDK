@@ -163,43 +163,19 @@ namespace Luna
     }
     RV SceneRenderer::render()
     {
+        luassert(world);
         lutry
         {
-            Scene* s = scene.get();
-            if(!s) return set_error(BasicError::null_value(), "`scene` is `nullptr`.");
-
-            auto scene_renderer = s->get_scene_component<SceneSettings>();
-            if (!scene_renderer)
-            {
-                return set_error(BasicError::bad_data(), "The scene must have one `SceneSettings` global component attached.");
-            }
-
-            // Fetch camera component.
-            auto camera_entity = s->find_entity(scene_renderer->camera_entity);
-            if (!camera_entity)
-            {
-                return set_error(BasicError::bad_data(), "`camera_entity` of `SceneSettings` is null or refers to one invalid entity.");
-            }
-
-            auto camera_component = camera_entity->get_component<Camera>();
-            if (!camera_component)
-            {
-                return set_error(BasicError::bad_data(), "`camera_entity` of `SceneSettings` must have one `Camera` component.");
-            }
-
-            camera_component->aspect_ratio = (f32)m_settings.screen_size.x / (f32)m_settings.screen_size.y;
-
             // Update and upload camera data.
-            auto world_to_view = camera_entity->world_to_local_matrix();
-            auto view_to_proj = camera_component->get_projection_matrix();
+            auto world_to_view = params.world_to_view;
+            auto view_to_proj = params.view_to_proj;
             auto world_to_proj = mul(world_to_view, view_to_proj);
             CameraCB camera_cb_data;
             camera_cb_data.world_to_view = world_to_view;
             camera_cb_data.view_to_proj = view_to_proj;
             camera_cb_data.world_to_proj = world_to_proj;
             camera_cb_data.proj_to_world = inverse(world_to_proj);
-            camera_cb_data.view_to_world = camera_entity->local_to_world_matrix();
-            Float3 env_color = scene_renderer->environment_color;
+            camera_cb_data.view_to_world = params.view_to_world;
             camera_cb_data.screen_width = m_settings.screen_size.x;
             camera_cb_data.screen_height = m_settings.screen_size.y;
             void* mapped = nullptr;
@@ -212,43 +188,54 @@ namespace Luna
             auto device = command_buffer->get_device();
 
             // Fetch meshes to draw.
+            ECS::IWorld* ecs_world = world->get_ecs_world();
+            Vector<ECS::Cluster*> clusters;
+            ecs_world->find_clusters({typeof<ModelRenderer>(), typeof<Transform>(), typeof<ActorInfo>()}, {}, clusters);
             Vector<MeshRenderParams> render_params;
             Vector<MaterialParameters> materials;
-            auto& entities = s->root_entities;
-            for (auto& i : entities)
+            for(auto cluster : clusters)
             {
-                auto r = i->get_component<ModelRenderer>();
-                if (r)
+                usize num_chunks = ECS::get_cluster_num_chunks(cluster);
+                usize num_entities = ECS::get_cluster_num_entities(cluster);
+                for(usize chunk = 0; chunk < num_chunks; ++chunk)
                 {
-                    auto model = get_asset_or_async_load_if_not_ready<Model>(r->model);
-                    if (!model)
+                    usize num_chunk_entities = min(num_entities - chunk * ECS::CLUSTER_CHUNK_CAPACITY, ECS::CLUSTER_CHUNK_CAPACITY);
+                    Transform* transform = ECS::get_cluster_components_data<Transform>(cluster, chunk);
+                    ModelRenderer* renderer = ECS::get_cluster_components_data<ModelRenderer>(cluster, chunk);
+                    ActorInfo* info = ECS::get_cluster_components_data<ActorInfo>(cluster, chunk);
+                    for(usize i = 0; i < num_chunk_entities; ++i)
                     {
-                        continue;
-                    }
-                    auto mesh = get_asset_or_async_load_if_not_ready<Mesh>(model->mesh);
-                    if (!mesh)
-                    {
-                        continue;
-                    }
-                    MeshRenderParams params;
-                    params.entity = i;
-                    params.renderer = r;
-                    u32 num_pieces = (u32)mesh->pieces.size();
-                    for(u32 i = 0; i < num_pieces; ++i)
-                    {
-                        MaterialParameters mat_params;
-                        mat_params.emissive_intensity = 1.0f;
-                        if(i < model->materials.size())
+                        auto model = get_asset_or_async_load_if_not_ready<Model>(renderer[i].model);
+                        if (!model)
                         {
-                            auto mat = get_asset_or_async_load_if_not_ready<Material>(model->materials[i]);
-                            if(mat)
-                            {
-                                mat_params.emissive_intensity = mat->emissive_intensity;
-                            }
+                            continue;
                         }
-                        materials.push_back(mat_params);
+                        auto mesh = get_asset_or_async_load_if_not_ready<Mesh>(model->mesh);
+                        if (!mesh)
+                        {
+                            continue;
+                        }
+                        MeshRenderParams params;
+                        params.local_to_world_mat = info->get_actor()->get_local_to_world_matrix();
+                        params.world_to_local_mat = info->get_actor()->get_world_to_local_matrix();
+                        params.model = model;
+                        u32 num_pieces = (u32)mesh->pieces.size();
+                        for(u32 i = 0; i < num_pieces; ++i)
+                        {
+                            MaterialParameters mat_params;
+                            mat_params.emissive_intensity = 1.0f;
+                            if(i < model->materials.size())
+                            {
+                                auto mat = get_asset_or_async_load_if_not_ready<Material>(model->materials[i]);
+                                if(mat)
+                                {
+                                    mat_params.emissive_intensity = mat->emissive_intensity;
+                                }
+                            }
+                            materials.push_back(mat_params);
+                        }
+                        render_params.push_back(params);
                     }
-                    render_params.push_back(params);
                 }
             }
 
@@ -266,8 +253,8 @@ namespace Luna
                     for (usize i = 0; i < render_params.size(); ++i)
                     {
                         MeshBuffer* dst = (MeshBuffer*)(mapped + i * m_model_matrices_stride);
-                        dst->model_to_world = render_params[i].entity->local_to_world_matrix();
-                        dst->world_to_model = render_params[i].entity->world_to_local_matrix();
+                        dst->model_to_world = render_params[i].local_to_world_mat;
+                        dst->world_to_model = render_params[i].world_to_local_mat;
                     }
                     m_model_matrices->unmap(0, render_params.size() * m_model_matrices_stride);
                 }
@@ -293,29 +280,49 @@ namespace Luna
             }
 
             // Fetches lights to draw.
-            Vector<Ref<Entity>> light_ts;
-            Vector<ObjRef> light_rs;
-            for (auto& i : entities)
+            Vector<LightingParams> lights;
+            clusters.clear();
+            ecs_world->find_clusters({typeof<Light>(), typeof<Transform>(), typeof<ActorInfo>()}, {}, clusters);
+            for(auto cluster : clusters)
             {
-                ObjRef r = ObjRef(i->get_component<DirectionalLight>());
-                if (!r)
+                usize num_chunks = ECS::get_cluster_num_chunks(cluster);
+                usize num_entities = ECS::get_cluster_num_entities(cluster);
+                for(usize chunk = 0; chunk < num_chunks; ++chunk)
                 {
-                    r = i->get_component<PointLight>();
-                    if (!r)
+                    usize num_chunk_entities = min(num_entities - chunk * ECS::CLUSTER_CHUNK_CAPACITY, ECS::CLUSTER_CHUNK_CAPACITY);
+                    Transform* transform = ECS::get_cluster_components_data<Transform>(cluster, chunk);
+                    ActorInfo* info = ECS::get_cluster_components_data<ActorInfo>(cluster, chunk);
+                    Light* light = ECS::get_cluster_components_data<Light>(cluster, chunk);
+                    for(usize i = 0; i < num_chunk_entities; ++i)
                     {
-                        r = i->get_component<SpotLight>();
+                        LightingParams p;
+                        Light& light_i = light[i];
+                        Actor* actor = info[i].get_actor();
+                        p.strength = light_i.intensity * light_i.intensity_multiplier;
+                        p.position = actor->get_world_position();
+                        p.direction = AffineMatrix::forward(AffineMatrix::make_rotation(actor->get_world_rotation()));
+                        p.attenuation_power = light_i.attenuation_power;
+                        p.spot_attenuation_power = light_i.spot_power;
+                        switch(light_i.type)
+                        {
+                        case LightType::directional:
+                            p.type = 0;
+                            break;
+                        case LightType::point:
+                            p.type = 1;
+                            break;
+                        case LightType::spot:
+                            p.type = 2;
+                            break;
+                        }
+                        lights.push_back(p);
                     }
-                }
-                if (r)
-                {
-                    light_ts.push_back(i);
-                    light_rs.push_back(r);
                 }
             }
 
             // Upload lighting params.
             {
-                usize light_size = max<usize>(light_ts.size(), 1);
+                usize light_size = max<usize>(lights.size(), 1);
                 if (m_num_lights < light_size)
                 {
                     luset(m_lighting_params, device->new_buffer(MemoryType::upload, BufferDesc(BufferUsageFlag::read_buffer, sizeof(LightingParams) * light_size)));
@@ -323,53 +330,8 @@ namespace Luna
                 }
                 void* mapped = nullptr;
                 luexp(m_lighting_params->map(0, 0, &mapped));
-                for (usize i = 0; i < light_ts.size(); ++i)
-                {
-                    LightingParams p;
-                    Ref<DirectionalLight> directional = light_rs[i];
-                    if (directional)
-                    {
-                        p.strength = directional->intensity * directional->intensity_multiplier;
-                        p.attenuation_power = 1.0f;
-                        p.direction = AffineMatrix::forward(AffineMatrix::make_rotation(light_ts[i]->world_rotation()));
-                        p.type = 0;
-                        p.position = light_ts[i]->world_position();
-                        p.spot_attenuation_power = 0.0f;
-                    }
-                    else
-                    {
-                        Ref<PointLight> point = light_rs[i];
-                        if (point)
-                        {
-                            p.strength = point->intensity * point->intensity_multiplier;
-                            p.attenuation_power = point->attenuation_power;
-                            p.direction = Float3U(0.0f, 0.0f, 1.0f);
-                            p.type = 1;
-                            p.position = light_ts[i]->world_position();
-                            p.spot_attenuation_power = 0.0f;
-                        }
-                        else
-                        {
-                            Ref<SpotLight> spot = light_rs[i];
-                            if (spot)
-                            {
-                                p.strength = spot->intensity * spot->intensity_multiplier;
-                                p.attenuation_power = spot->attenuation_power;
-                                p.direction = AffineMatrix::forward(AffineMatrix::make_rotation(light_ts[i]->world_rotation()));
-                                p.type = 2;
-                                p.position = light_ts[i]->world_position();
-                                p.spot_attenuation_power = spot->spot_power;
-                            }
-                            else
-                            {
-                                lupanic_always();
-                            }
-                        }
-                    }
-                    memcpy((LightingParams*)mapped + i, &p, sizeof(LightingParams));
-                }
                 // Adds one fake light if there is no light so the SRV is not empty (which is invalid).
-                if (light_ts.empty())
+                if (lights.empty())
                 {
                     LightingParams p;
                     p.strength = Float3U{ 0.0f, 0.0f, 0.0f };
@@ -379,6 +341,10 @@ namespace Luna
                     p.position = Float3U{ 0.0f, 0.0f, 0.0f };
                     p.spot_attenuation_power = 0.0f;
                     memcpy((LightingParams*)mapped, &p, sizeof(LightingParams));
+                }
+                else
+                {
+                    memcpy(mapped, lights.data(), sizeof(LightingParams) * lights.size());
                 }
                 m_lighting_params->unmap(0, light_size * sizeof(LightingParams));
             }
@@ -422,15 +388,14 @@ namespace Luna
                         DeferredLightingPass* lighting = cast_object<DeferredLightingPass>(m_render_graph->get_render_pass(DEFERRED_LIGHTING_PASS)->get_object());
                         ToneMappingPass* tone_mapping = cast_object<ToneMappingPass>(m_render_graph->get_render_pass(TONE_MAPPING_PASS)->get_object());
                         BloomPass* bloom_pass = cast_object<BloomPass>(m_render_graph->get_render_pass(BLOOM_PASS)->get_object());
-                        skybox->camera_fov = camera_component->fov;
-                        skybox->camera_type = camera_component->type;
-                        skybox->view_to_world = camera_entity->local_to_world_matrix();
-                        auto skybox_tex = get_asset_or_async_load_if_not_ready<RHI::IResource>(scene_renderer->skybox);
-                        skybox->skybox = skybox_tex;
-                        lighting->skybox = skybox_tex;
+                        skybox->camera_fov = params.camera_fov;
+                        skybox->camera_type = params.camera_type;
+                        skybox->view_to_world = params.view_to_world;
+                        skybox->skybox = params.skybox;
+                        lighting->skybox = params.skybox;
                         lighting->camera_cb = m_camera_cb;
                         lighting->light_params = m_lighting_params;
-                        lighting->light_ts = {light_ts.data(), light_ts.size()};
+                        lighting->num_lights = (u32)lights.size();
                         switch (m_settings.mode)
                         {
                             case SceneRendererMode::lit: lighting->lighting_mode = 0; break;
@@ -441,10 +406,10 @@ namespace Luna
                             case SceneRendererMode::ambient_specular_lighting: lighting->lighting_mode = 5; break;
                             default: break;
                         }
-                        tone_mapping->exposure = scene_renderer->exposure;
-                        tone_mapping->auto_exposure = scene_renderer->auto_exposure;
-                        tone_mapping->bloom_intensity = scene_renderer->bloom_intensity;
-                        bloom_pass->lum_threshold = scene_renderer->bloom_threshold;
+                        tone_mapping->exposure = params.camera_exposure;
+                        tone_mapping->auto_exposure = params.camera_auto_exposure;
+                        tone_mapping->bloom_intensity = params.bloom_intensity;
+                        bloom_pass->lum_threshold = params.bloom_threshold;
                     }
                 }
             }

@@ -127,7 +127,6 @@ namespace Luna
         using namespace RHI;
         lutry
         {
-            u32 num_lights = light_ts.empty() ? 1 : (u32)light_ts.size();
             LightingParamsCB* mapped = nullptr;
             luexp(m_lighting_params_cb->map(0, 0, (void**)&mapped));
             mapped->lighting_mode = lighting_mode;

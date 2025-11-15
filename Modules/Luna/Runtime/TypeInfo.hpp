@@ -36,9 +36,9 @@ namespace Luna
         typeinfo_t(typeinfo_t&&) = default;
         typeinfo_t& operator=(const typeinfo_t&) = default;
         typeinfo_t& operator=(typeinfo_t&&) = default;
-        operator bool() const
+        operator opaque_t() const
         {
-            return handle != nullptr;
+            return handle;
         }
         bool operator==(const typeinfo_t& rhs) const
         {

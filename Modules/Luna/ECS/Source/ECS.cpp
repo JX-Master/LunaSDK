@@ -10,7 +10,6 @@
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_ECS_API LUNA_EXPORT
 #include "World.hpp"
-#include "TaskContext.hpp"
 #include <Luna/Runtime/Module.hpp>
 namespace Luna
 {
@@ -27,8 +26,6 @@ namespace Luna
             {
                 register_boxed_type<World>();
                 impl_interface_for_type<World, IWorld>();
-                register_boxed_type<TaskContext>();
-                impl_interface_for_type<TaskContext, ITaskContext>();
                 return ok;
             }
         };

@@ -10,7 +10,9 @@
 #pragma once
 #include "Scene.hpp"
 #include <Luna/RG/RenderGraph.hpp>
-#include "ModelRenderer.hpp"
+#include "World.hpp"
+#include "Camera.hpp"
+#include "Model.hpp"
 namespace Luna
 {
     struct CameraCB
@@ -47,8 +49,9 @@ namespace Luna
 
     struct MeshRenderParams
     {
-        Ref<Entity> entity;
-        Ref<ModelRenderer> renderer;
+        Float4x4U local_to_world_mat;
+        Float4x4U world_to_local_mat;
+        Ref<Model> model;
     };
 
     enum class SceneRendererMode : u8
@@ -73,16 +76,16 @@ namespace Luna
     {
         // The screen size.
         UInt2U screen_size;
-        // Whether to collect profiling data.
-        bool frame_profiling = false;
         // The rendering mode.
         SceneRendererMode mode = SceneRendererMode::lit;
+        // Whether to collect profiling data.
+        bool frame_profiling = false;
 
         bool operator==(const SceneRendererSettings& rhs) const
         {
             return screen_size == rhs.screen_size && 
-            frame_profiling == rhs.frame_profiling && 
-            mode == rhs.mode;
+            mode == rhs.mode &&
+            frame_profiling == rhs.frame_profiling;
         }
         bool operator!=(const SceneRendererSettings& rhs) const
         {
@@ -90,10 +93,30 @@ namespace Luna
         }
     };
 
+    struct SceneRendererParams
+    {
+        Float4x4U world_to_view;
+        Float4x4U view_to_world;
+        Float4x4U view_to_proj;
+
+        //Float3U environment_color;
+        RHI::ITexture* skybox = nullptr;
+        f32 camera_exposure = 1.0f;
+        f32 camera_fov;
+        CameraType camera_type;
+
+        f32 bloom_intensity = 1.0f;
+        f32 bloom_threshold = 1.0f;
+        bool camera_auto_exposure = false;
+    };
+
     struct SceneRenderer
     {
-        // The scene to be rendered.
-        Ref<Scene> scene = nullptr;
+        // The world to be rendered.
+        World* world = nullptr;
+
+        // The renderer parameters that can be updated at every frame.
+        SceneRendererParams params;
 
         // The command buffer used to render the scene.
         Ref<RHI::ICommandBuffer> command_buffer;

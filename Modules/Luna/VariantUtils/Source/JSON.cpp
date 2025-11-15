@@ -240,6 +240,7 @@ namespace Luna
         static R<Variant> read_blob(const String& str)
         {
             // Check if this is a blob.
+            if(str.size() < 8) return BasicError::failure();
             if (!memcmp(str.c_str(), "@base85@", 8 * sizeof(c8)))
             {
                 c8* end_chr;

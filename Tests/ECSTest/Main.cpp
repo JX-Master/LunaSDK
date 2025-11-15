@@ -9,9 +9,9 @@
 */
 #include <Luna/Runtime/Runtime.hpp>
 #include <Luna/Runtime/Module.hpp>
-#include <Luna/Experimental/ECS/ECS.hpp>
+#include <Luna/ECS/ECS.hpp>
+#include <Luna/ECS/World.hpp>
 #include <Luna/Runtime/Math/Vector.hpp>
-#include <Luna/JobSystem/JobSystem.hpp>
 
 #define lutest luassert_always
 
@@ -31,103 +31,85 @@ void ecs_test()
     {
         // Create world and task context.
         Ref<IWorld> world = new_world();
-        Ref<ITaskContext> context = new_task_context();
     }
     {
         // Create/remove entity and validating.
         Ref<IWorld> world = new_world();
-        Ref<ITaskContext> context = new_task_context();
-        context->begin(world, TaskExecutionMode::exclusive, {}, {});
-        entity_id_t id = context->add_entity();
-        auto r = context->get_entity(id);
-        lutest(failed(r));
-        lutest(r.errcode() == ECSError::entity_not_found());
-        context->end();
-
-        context->begin(world, TaskExecutionMode::exclusive, {}, {});
-        r = context->get_entity(id);
+        Cluster* empty_cluster = world->get_cluster({}, {}, true);
+        lutest(empty_cluster);
+        entity_id_t id = world->new_entity(empty_cluster);
+        lutest(id != NULL_ENTITY);
+        auto r = world->get_entity_address(id);
         lutest(succeeded(r));
-        context->remove_entity(id);
-        context->end();
 
-        context->begin(world, TaskExecutionMode::exclusive, {}, {});
-        r = context->get_entity(id);
+        world->delete_entity(id);
+        r = world->get_entity_address(id);
         lutest(failed(r));
         lutest(r.errcode() == ECSError::entity_not_found());
-        context->end();
     }
     {
         // Reuse the same index will not cause former entity being relived.
         Ref<IWorld> world = new_world();
-        Ref<ITaskContext> context = new_task_context();
-        context->begin(world, TaskExecutionMode::exclusive, {}, {});
-        entity_id_t id = context->add_entity();
-        context->end();
-        context->begin(world, TaskExecutionMode::exclusive, {}, {});
-        context->remove_entity(id);
-        context->end();
-        context->begin(world, TaskExecutionMode::exclusive, {}, {});
-        entity_id_t id2 = context->add_entity();
-        context->end();
-        context->begin(world, TaskExecutionMode::exclusive, {}, {});
-        lutest(id.index == id2.index);
+        Cluster* empty_cluster = world->get_cluster({}, {}, true);
+        entity_id_t id = world->new_entity(empty_cluster);
+        world->delete_entity(id);
+        entity_id_t id2 = world->new_entity(empty_cluster);
         lutest(id != id2);
-        auto r = context->get_entity(id);
+        auto r = world->get_entity_address(id);
         lutest(failed(r));
         lutest(r.errcode() == ECSError::entity_not_found());
-        r = context->get_entity(id2);
+        r = world->get_entity_address(id2);
         lutest(succeeded(r));
-        context->end();
     }
     {
         // Add, fetch and remove components.
         Ref<IWorld> world = new_world();
-        Ref<ITaskContext> context = new_task_context();
-        context->begin(world, TaskExecutionMode::exclusive, {}, {});
-        entity_id_t id = context->add_entity();
-        context->set_target_entity(id);
-        Position* data = context->add_component<Position>();
-        data->position = Float3(30.0f, 20.0f, 100.0f);
-        context->end();
-        // fetch component.
-        context->begin(world, TaskExecutionMode::exclusive, {}, {});
-        EntityAddress addr = context->get_entity(id).get();
-        data = get_cluster_components_data<Position>(addr.cluster);
-        lutest(data[addr.index].position == Float3(30.0f, 20.0f, 100.0f));
+        Cluster* empty_cluster = world->get_cluster({}, {}, true);
+        Cluster* position_cluster = world->get_cluster({typeof<Position>()}, {}, true);
+
+        entity_id_t id = world->new_entity(empty_cluster);
+        auto r = world->get_entity_address(id);
+        lutest(succeeded(r));
+        lutest(get_cluster_num_entities(empty_cluster) == 1);
+
+        // add component.
+        r = world->set_entity_cluster(id, position_cluster);
+        lutest(succeeded(r));
+        lutest(get_cluster_num_entities(empty_cluster) == 0);
+        lutest(get_cluster_num_entities(position_cluster) == 1);
+        
+        // fetch component and set data.
+        usize chunk_id = r.get().index / CLUSTER_CHUNK_CAPACITY;
+        usize index_in_chunk = r.get().index % CLUSTER_CHUNK_CAPACITY;
+        Position* positions = get_cluster_components_data<Position>(position_cluster, chunk_id);
+        lutest(positions);
+        positions[index_in_chunk].position = Float3(30.0f, 20.0f, 100.0f);
+
         // remove component.
-        context->set_target_entity(id);
-        context->remove_component<Position>();
-        context->end();
-        context->begin(world, TaskExecutionMode::exclusive, {}, {});
-        addr = context->get_entity(id).get();
-        data = get_cluster_components_data<Position>(addr.cluster);
-        lutest(data == nullptr);
-        context->end();
+        r = world->set_entity_cluster(id, empty_cluster);
+        lutest(get_cluster_num_entities(empty_cluster) == 1);
+        lutest(get_cluster_num_entities(position_cluster) == 0);
     }
     {
         // Add fetch and remove tags.
         Ref<IWorld> world = new_world();
-        Ref<ITaskContext> context = new_task_context();
-        context->begin(world, TaskExecutionMode::exclusive, {}, {});
-        entity_id_t id = context->add_entity();
-        context->set_target_entity(id);
-        auto tag = context->add_entity();
-        context->add_tag(tag.value);
-        context->end();
+        usize tag;
+        Cluster* tag_cluster = world->get_cluster({}, {&tag}, true);
+       
+        // add tag.
+        entity_id_t id = world->new_entity(tag_cluster);
         // fetch tag.
-        context->begin(world, TaskExecutionMode::exclusive, {}, {});
-        EntityAddress addr = context->get_entity(id).get();
-        auto tags = get_cluster_tags(addr.cluster);
-        lutest(binary_search(tags.begin(), tags.end(), tag));
+        auto r = world->get_entity_address(id);
+        lutest(succeeded(r));
+        auto tags = get_cluster_tags(r.get().cluster);
+        lutest(binary_search(tags.begin(), tags.end(), &tag));
         // Remove tag.
-        context->set_target_entity(id);
-        context->remove_tag(tag.value);
-        context->end();
-        context->begin(world, TaskExecutionMode::exclusive, {}, {});
-        addr = context->get_entity(id).get();
-        auto tags2 = get_cluster_tags(addr.cluster);
-        lutest(!binary_search(tags2.begin(), tags2.end(), tag));
-        context->end();
+        Cluster* empty_cluster = world->get_cluster({}, {}, true);
+        lutest(empty_cluster != tag_cluster);
+        r = world->set_entity_cluster(id, empty_cluster);
+        lutest(succeeded(r));
+        tags = get_cluster_tags(r.get().cluster);
+        lutest(!binary_search(tags.begin(), tags.end(), &tag));
     }
 }
 

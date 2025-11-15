@@ -13,8 +13,7 @@
 #include <Luna/Runtime/File.hpp>
 #include <Luna/Asset/Asset.hpp>
 #include <Luna/Runtime/Math/Matrix.hpp>
-#include "../StudioHeader.hpp"
-
+#include <Luna/RHI/ShaderCompileHelper.hpp>
 #include <SkyboxCS.hpp>
 
 namespace Luna

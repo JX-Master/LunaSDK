@@ -12,6 +12,7 @@
 #include <Luna/RHI/RHI.hpp>
 #include <Luna/Asset/Asset.hpp>
 #include <Luna/RG/RenderGraph.hpp>
+#include "Actor.hpp"
 namespace Luna
 {
     struct Entity;
@@ -19,7 +20,7 @@ namespace Luna
     {
         lustruct("SceneSettings", "{CE0188A0-C1A6-421E-A60C-8D4F260972A3}");
 
-        Name camera_entity;
+        ActorRef camera_actor;
 
         Asset::asset_t skybox;
 

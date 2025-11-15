@@ -1359,7 +1359,37 @@ namespace Luna
                 v->w = (f32)data[3].fnum();
                 return ok;
             };
-            set_serializable(g_float4_type);
+            set_serializable(g_float4_type, &desc);
+        }
+        // Quaternion
+        {
+            g_quaternion_type = register_struct_type<Quaternion>({
+                luproperty(Quaternion, f32, x),
+                luproperty(Quaternion, f32, y),
+                luproperty(Quaternion, f32, z),
+                luproperty(Quaternion, f32, w)
+            });
+            SerializableTypeDesc desc;
+            desc.serialize_func = [](typeinfo_t type, const void* inst) -> R<Variant>
+            {
+                auto v = (const Quaternion*)inst;
+                Variant r(VariantType::array);
+                r.push_back(v->x);
+                r.push_back(v->y);
+                r.push_back(v->z);
+                r.push_back(v->w);
+                return r;
+            };
+            desc.deserialize_func = [](typeinfo_t type, void* inst, const Variant& data)
+            {
+                auto v = (Quaternion*)inst;
+                v->x = (f32)data[0].fnum();
+                v->y = (f32)data[1].fnum();
+                v->z = (f32)data[2].fnum();
+                v->w = (f32)data[3].fnum();
+                return ok;
+            };
+            set_serializable(g_quaternion_type, &desc);
         }
         // Vec2U
         {

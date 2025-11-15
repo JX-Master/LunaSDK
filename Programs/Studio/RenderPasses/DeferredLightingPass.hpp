@@ -35,8 +35,7 @@ namespace Luna
 
         Ref<RHI::ITexture> skybox;
         u32 lighting_mode;
-
-        Span<Ref<Entity>> light_ts;
+        u32 num_lights;
         Ref<RHI::IBuffer> camera_cb;
         Ref<RHI::IBuffer> light_params;
 

@@ -17,6 +17,7 @@
 #include <Luna/VariantUtils/VariantUtils.hpp>
 #include <Luna/RG/RG.hpp>
 #include <Luna/JobSystem/JobSystem.hpp>
+#include <Luna/ECS/ECS.hpp>
 
 #include <Luna/Window/AppMain.hpp>
 
@@ -72,7 +73,8 @@ namespace Luna
             module_obj_loader(),
             module_rg(),
             module_job_system(),
-            module_shader_compiler()}));
+            module_shader_compiler(),
+            module_ecs()}));
         auto r = init_modules();
         if (failed(r))
         {

@@ -8,8 +8,10 @@
 * @date 2022/8/11
 */
 #pragma once
-#include "TaskContext.hpp"
-#include "World.hpp"
+
+#ifndef LUNA_ECS_API
+#define LUNA_ECS_API
+#endif
 
 namespace Luna
 {

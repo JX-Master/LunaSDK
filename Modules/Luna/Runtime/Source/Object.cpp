@@ -63,11 +63,11 @@ namespace Luna
         {
             if (expired != 2)
             {
-                this->~ObjectHeader();
                 object_t obj = get_object();
                 usize alignment = get_type_alignment(type);
                 usize padded_size = get_padding_size(alignment);
                 void* raw_ptr = (void*)((usize)obj - padded_size);
+                this->~ObjectHeader();
                 memfree(raw_ptr, alignment);
             }
         }

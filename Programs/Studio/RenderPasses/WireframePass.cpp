@@ -106,7 +106,7 @@ namespace Luna
                 cmdbuf->attach_device_object(vs);
 
                 // Draw pieces.
-                auto mesh = get_asset_or_async_load_if_not_ready<Mesh>(get_asset_or_async_load_if_not_ready<Model>(mesh_render_params[i].renderer->model)->mesh);
+                auto mesh = get_asset_or_async_load_if_not_ready<Mesh>(mesh_render_params[i].model->mesh);
 
                 auto vb_view = VertexBufferView(mesh->vb, 0,
                     mesh->vb_count * sizeof(Vertex), sizeof(Vertex));

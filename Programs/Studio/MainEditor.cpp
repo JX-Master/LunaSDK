@@ -19,10 +19,12 @@
 #include <Luna/Window/MessageBox.hpp>
 
 #include "Camera.hpp"
+#include "Transform.hpp"
 #include "Light.hpp"
 #include "SceneSettings.hpp"
 #include "ModelRenderer.hpp"
 #include <Luna/Runtime/Serialization.hpp>
+#include "World.hpp"
 #include "Scene.hpp"
 
 #include "RenderPasses/SkyBoxPass.hpp"
@@ -395,34 +397,40 @@ namespace Luna
         set_property_attribute(typeof<Camera>(), "fov", "gui_min", (f64)deg_to_rad(60));
         set_property_attribute(typeof<Camera>(), "fov", "gui_max", (f64)deg_to_rad(160));
         set_property_attribute(typeof<Camera>(), "aspect_ratio", "hide", true);
+        
+        register_struct_type<ActorRef>({
+            luproperty(ActorRef, Guid, guid)
+        });
+        set_serializable<ActorRef>();
 
-        register_struct_type<DirectionalLight>({
-                luproperty(DirectionalLight, Float3, intensity),
-                luproperty(DirectionalLight, f32, intensity_multiplier)
+        register_struct_type<ActorInfo>({});
+
+        register_struct_type<Transform>({
+            luproperty(Transform, Float3, position),
+            luproperty(Transform, Quaternion, rotation),
+            luproperty(Transform, Float3, scale)
+        });
+        set_serializable<Transform>();
+
+        register_enum_type<LightType>({
+            luoption(LightType, directional),
+            luoption(LightType, point),
+            luoption(LightType, spot)
+        });
+
+        set_serializable<LightType>();
+
+        register_struct_type<Light>({
+            luproperty(Light, LightType, type),
+            luproperty(Light, Float3, intensity),
+            luproperty(Light, f32, intensity_multiplier),
+            luproperty(Light, f32, attenuation_power),
+            luproperty(Light, f32, spot_power)
             });
-        set_serializable<DirectionalLight>();
-        g_env->component_types.insert(typeof<DirectionalLight>());
+        set_serializable<Light>();
+        g_env->component_types.insert(typeof<Light>());
 
-        register_struct_type<PointLight>({
-            luproperty(PointLight, Float3, intensity),
-            luproperty(PointLight, f32, intensity_multiplier),
-            luproperty(PointLight, f32, attenuation_power)
-            });
-        set_serializable<PointLight>();
-        g_env->component_types.insert(typeof<PointLight>());
-
-        register_struct_type<SpotLight>({
-            luproperty(SpotLight, Float3, intensity),
-            luproperty(SpotLight, f32, intensity_multiplier),
-            luproperty(SpotLight, f32, attenuation_power),
-            luproperty(SpotLight, f32, spot_power)
-            });
-        set_serializable<SpotLight>();
-        g_env->component_types.insert(typeof<SpotLight>());
-
-        set_property_attribute(typeof<DirectionalLight>(), "intensity", "color_gui", true);
-        set_property_attribute(typeof<PointLight>(), "intensity", "color_gui", true);
-        set_property_attribute(typeof<SpotLight>(), "intensity", "color_gui", true);
+        set_property_attribute(typeof<Light>(), "intensity", "color_gui", true);
 
         register_struct_type<ModelRenderer>({
             luproperty(ModelRenderer, Asset::asset_t, model)
@@ -431,7 +439,7 @@ namespace Luna
         g_env->component_types.insert(typeof<ModelRenderer>());
 
         register_struct_type<SceneSettings>({
-            luproperty(SceneSettings, Name, camera_entity),
+            luproperty(SceneSettings, ActorRef, camera_actor),
             luproperty(SceneSettings, Asset::asset_t, skybox),
             luproperty(SceneSettings, Float3, environment_color),
             luproperty(SceneSettings, f32, skybox_rotation),

@@ -134,7 +134,7 @@ namespace Luna
             
             for (usize i = 0; i < mesh_render_params.size(); ++i)
             {
-                auto model = get_asset_or_async_load_if_not_ready<Model>(mesh_render_params[i].renderer->model);
+                auto model = mesh_render_params[i].model;
                 auto mesh = get_asset_or_async_load_if_not_ready<Mesh>(model->mesh);
 
                 u32 num_pieces = (u32)mesh->pieces.size();
@@ -213,7 +213,7 @@ namespace Luna
             u32 first_material_element = 0;
             for (usize i = 0; i < mesh_render_params.size(); ++i)
             {
-                auto model = get_asset_or_async_load_if_not_ready<Model>(mesh_render_params[i].renderer->model);
+                auto model = mesh_render_params[i].model;
                 auto mesh = get_asset_or_async_load_if_not_ready<Mesh>(model->mesh);
                 cmdbuf->set_vertex_buffers(0, { VertexBufferView(mesh->vb, 0,
                     mesh->vb_count * sizeof(Vertex), sizeof(Vertex)) });
