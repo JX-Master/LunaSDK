@@ -13,19 +13,6 @@ namespace Luna
 {
     namespace RHI
     {
-        RV SwapChain::init_metal_layer(const SwapChainDesc& desc)
-        {
-            AutoreleasePool pool;
-            m_metal_layer = retain(CA::MetalLayer::layer());
-            m_metal_layer->setDevice(m_device->m_device.get());
-            m_metal_layer->setFramebufferOnly(true);
-            m_metal_layer->setPixelFormat(encode_pixel_format(desc.format));
-            CGSize size;
-            size.width = desc.width;
-            size.height = desc.height;
-            m_metal_layer->setDrawableSize(size);
-            return bind_layer_to_window(m_window, m_metal_layer.get(), desc.color_space, desc.buffer_count);
-        }
         RV SwapChain::init(u32 command_queue_index, Window::IWindow* window, const SwapChainDesc& desc)
         {
             m_window = window;

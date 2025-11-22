@@ -43,7 +43,5 @@ namespace Luna
             virtual RV present() override;
             virtual RV reset(const SwapChainDesc& desc) override;
         };
-
-        RV bind_layer_to_window(Window::IWindow* window, CA::MetalLayer* layer, ColorSpace color_space, u32 buffer_count);
     }
 }

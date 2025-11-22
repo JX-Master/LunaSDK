@@ -21,9 +21,11 @@ namespace Luna
     {
         void(*g_event_handler)(object_t event, void* userdata) = nullptr;
         void* g_event_handler_userdata = nullptr;
+        bool g_any_event_dispatched = false;
 
         void dispatch_event_to_handler(object_t event)
         {
+            g_any_event_dispatched = true;
             if(g_event_handler)
             {
                 g_event_handler(event, g_event_handler_userdata);
@@ -70,6 +72,15 @@ namespace Luna
             register_struct_type<WindowTouchMoveEvent>({}, window_event_type);
             register_struct_type<WindowTouchUpEvent>({}, window_event_type);
             register_struct_type<WindowDropFilesEvent>({}, window_event_type);
+            register_struct_type<ApplicationEvent>({});
+            register_struct_type<ApplicationDidEnterForegroundEvent>({}, typeof<ApplicationEvent>());
+            register_struct_type<ApplicationWillEnterForegroundEvent>({}, typeof<ApplicationEvent>());
+            register_struct_type<ApplicationDidEnterBackgroundEvent>({}, typeof<ApplicationEvent>());
+            register_struct_type<ApplicationWillEnterBackgroundEvent>({}, typeof<ApplicationEvent>());
+            register_struct_type<ApplicationWillTerminateEvent>({}, typeof<ApplicationEvent>());
+            register_struct_type<ApplicationDidReceiveMemoryWarningEvent>({}, typeof<ApplicationEvent>());
+            register_struct_type<ScreenKeyboardShownEvent>({});
+            register_struct_type<ScreenKeyboardHiddenEvent>({});
         }
     }
 }

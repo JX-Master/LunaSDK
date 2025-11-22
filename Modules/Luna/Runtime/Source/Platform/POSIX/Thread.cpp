@@ -57,7 +57,7 @@ namespace Luna
             tls_current_thread = t;
             if(t->m_name_buf)
             {
-#ifdef LUNA_PLATFORM_MACOS
+#if defined(LUNA_PLATFORM_MACOS) || defined(LUNA_PLATFORM_IOS)
                 pthread_setname_np(t->m_name_buf);
 #elif LUNA_PLATFORM_LINUX
                 pthread_setname_np(pthread_self(), t->m_name_buf);
@@ -155,7 +155,7 @@ namespace Luna
         {
             static thread_local usize id = 0;
             if (id != 0) return id;
-#ifdef LUNA_PLATFORM_MACOS
+#if defined(LUNA_PLATFORM_MACOS) || defined(LUNA_PLATFORM_IOS)
             static_assert(sizeof(usize) == sizeof(uint64_t), "Only macOS 64-bit is supported.");
             uint64_t tid;
             pthread_threadid_np(0, &tid);

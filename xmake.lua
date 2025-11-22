@@ -103,22 +103,26 @@ option("memory_profiler")
 option_end()
 
 function get_default_rhi_api()
-    local default_rhi_api = false
-    if is_os("windows") then
+    local default_rhi_api = nil
+    if is_plat("windows") then
         default_rhi_api = "D3D12"
-    elseif is_os("macosx", "ios") then
+    elseif is_plat("macosx", "iphoneos") then
         default_rhi_api = "Metal"
-    elseif is_os("linux", "android") then
+    elseif is_plat("linux", "android") then
         default_rhi_api = "Vulkan"
-    end
-    if default_rhi_api == false then
-        raise("No Graphics API is present for the current platform!")
     end
     return default_rhi_api
 end
 
+function set_default_rhi_api()
+    local default_rhi = get_default_rhi_api();
+    if default_rhi then
+        set_default(default_rhi)
+    end
+end
+
 option("rhi_api")
-    set_default(get_default_rhi_api())
+    set_default_rhi_api()
     set_showmenu(true)
     if is_os("windows") then
         set_values("D3D12", "Vulkan")
@@ -186,5 +190,3 @@ includes("Programs")
 if has_config("build_tests") then
     includes("Tests")
 end
-
-set_policy("build.sanitizer.address", true)

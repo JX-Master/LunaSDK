@@ -194,8 +194,6 @@ namespace Luna
 
             //! The input text in UTF-8 encoding. The text is null-terminated.
             String text;
-            //! The length of the input text.
-            usize length;
         };
 
         //! Dispatched when the mouse cursor enters the non-covered region of the window.
@@ -327,6 +325,61 @@ namespace Luna
             f32 x;
             //! The y position of the drop point relative to the window position.
             f32 y;
+        };
+
+        //! The base class for all application level events.
+        struct ApplicationEvent
+        {
+            lustruct("Window::ApplicationEvent", "ce988e37-c317-4fac-8538-726df3a6a62b");
+        };
+
+        //! Dispatched when the application has entered foreground.
+        struct ApplicationDidEnterForegroundEvent : ApplicationEvent
+        {
+            lustruct("Window::ApplicationDidEnterForegroundEvent", "5bb08e54-ac48-47be-9487-4221dcb26d6d");
+        };
+
+        //! Dispatched when the application will enter foreground.
+        struct ApplicationWillEnterForegroundEvent : ApplicationEvent
+        {
+            lustruct("Window::ApplicationWillEnterForegroundEvent", "43bee904-7ca8-441c-9c4c-fff2184170db");
+        };
+
+        //! Dispatched when the applicaiton has entered background.
+        struct ApplicationDidEnterBackgroundEvent : ApplicationEvent
+        {
+            lustruct("Window::ApplicationDidEnterBackgroundEvent", "3bc3cf7b-99c9-4e0e-b612-903758eb292e");
+        };
+
+        //! Dispatched when the application will enter background.
+        struct ApplicationWillEnterBackgroundEvent : ApplicationEvent
+        {
+            lustruct("Window::ApplicationWillEnterBackgroundEvent", "08a8d9e7-4714-495d-9311-e89107185817");
+        };
+
+        //! Dispatched when the application is about to be terminated.
+        struct ApplicationWillTerminateEvent : ApplicationEvent
+        {
+            lustruct("Window::ApplicationWillTerminateEvent", "be1ebcea-348b-4e16-8849-a30b1d395a52");
+        };
+
+        //! Dispatched when the system memory is low and the application should
+        //! free some memory to prevent being killed.
+        struct ApplicationDidReceiveMemoryWarningEvent : ApplicationEvent
+        {
+            lustruct("Window::ApplicationDidReceiveMemoryWarningEvent", "ae40df0e-b372-46f5-90ad-d363ce3ed89a");
+        };
+
+        //! Dispatched when the screen keyboard is shown.
+        struct ScreenKeyboardShownEvent
+        {
+            lustruct("Window::ScreenKeyboardShownEvent", "07d9ab5b-27bf-4227-b052-88d7141c72ea");
+        };
+
+        //! Dispatched when the screen keyboard is hidden.
+        struct ScreenKeyboardHiddenEvent
+        {
+            lustruct("Window::ScreenKeyboardHiddenEvent", "4c1aa6c9-01ea-4603-89f3-63aef717b23a");
         };
 
         //! @}

@@ -3,9 +3,9 @@
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
-* @file CocoaWindow.hpp
+* @file UIKitWindow.hpp
 * @author JXMaster
-* @date 2025/10/5
+* @date 2025/11/21
 */
 #pragma once
 #include <Luna/Runtime/PlatformDefines.hpp>
@@ -19,19 +19,17 @@ namespace Luna
         //! @addtogroup Window
         //! @{
         
-        //! @interface ICocoaWindow
-        //! Implemented by window object on macOS platform.
-        struct ICocoaWindow : virtual IWindow
+        //! @interface IUIKitWindow
+        //! Implemented by window object on iOS platform.
+        struct IUIKitWindow : virtual IWindow
         {
-            luiid("{f9ac2644-eb2d-4394-b653-611bed104bb9}");
+            luiid("dccb697e-4411-4797-b28d-78d1fcd0339f");
 
-            //! Gets NSWindow* handle of the window object.
-            //! @return Returns NSWindow* handle of the window object.
+            //! Gets UIWIndow* handle of the window object.
+            //! @return Returns UIWIndow* handle of the window object.
             //! The window handle is owned by the window object, the user cannot increase/decrease the reference
             //! counter of the window handle.
-            virtual id get_nswindow() = 0;
+            virtual id get_uiwindow() = 0;
         };
-
-        //! @}
     }
 }
