@@ -3,3 +3,4 @@ if is_plat("windows", "macosx", "linux") then
     includes("LunaDoc")
     includes("LunaShader")
 end
+includes("MultiPlatformSample")
