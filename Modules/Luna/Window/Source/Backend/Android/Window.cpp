@@ -35,6 +35,9 @@ namespace Luna
             {
                 register_struct_type<AndroidWindow>({});
                 impl_interface_for_type<AndroidWindow, IAndroidWindow, IWindow>();
+                luassert(g_android_app->window);
+                g_window = new_object<AndroidWindow>();
+                g_window->m_window = g_android_app->window;
             }
             lucatchret
             return ok;
@@ -50,6 +53,16 @@ namespace Luna
             return g_window.get();
         }
 
+        static bool g_native_window_initialized = false;
+
+        void handle_cmd_wait_window(android_app *pApp, int32_t cmd)
+        {
+            if(cmd == APP_CMD_INIT_WINDOW)
+            {
+                g_native_window_initialized = true;
+            }
+        }
+
         void handle_cmd(android_app *pApp, int32_t cmd) 
         {
             switch (cmd) 
@@ -58,6 +71,7 @@ namespace Luna
                 {
                     g_window = new_object<AndroidWindow>();
                     g_window->m_window = pApp->window;
+
                 }
                     break;
                 case APP_CMD_TERM_WINDOW:
@@ -134,10 +148,27 @@ namespace Luna
                     break;
             }
         }
-        
-        LUNA_WINDOW_API void set_android_app(android_app *pApp)
+
+        LUNA_WINDOW_API void prepare_app(android_app *pApp)
         {
             g_android_app = pApp;
+            g_android_app->onAppCmd = handle_cmd_wait_window;
+            // Block until native window is initialized.
+            while(!g_native_window_initialized)
+            {
+                int ident;
+                int events;
+                android_poll_source* source = nullptr;
+                for (;;)
+                {
+                    int res = ALooper_pollOnce(-1, &ident, &events, (void**)&source);
+                    if (res >= 0 && source)
+                    {
+                        // android_poll_source carries its app pointer.
+                        source->process(source->app, source);
+                    }
+                }
+            }
             g_android_app->onAppCmd = handle_cmd;
         }
         

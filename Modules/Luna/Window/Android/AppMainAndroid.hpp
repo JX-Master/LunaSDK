@@ -23,7 +23,6 @@ namespace Luna
 {
     namespace Window
     {
-        LUNA_WINDOW_API void set_android_app(android_app *pApp);
-        LUNA_WINDOW_API void wait_until_native_window_ready();
+        LUNA_WINDOW_API void prepare_app(android_app *pApp);
     }
 }

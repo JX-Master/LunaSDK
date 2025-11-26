@@ -18,8 +18,7 @@ extern "C"
 
 void android_main(struct android_app*pApp)
 {
-    Luna::Window::set_android_app(pApp);
-    Luna::Window::wait_until_native_window_ready(); // We need NativeWindow to be ready before initializing Vulkan (RHI module).
+    Luna::Window::prepare_app(pApp);
     luna_main(0, nullptr);
 }
 
