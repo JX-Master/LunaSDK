@@ -59,7 +59,7 @@ namespace Luna
             {
 #if defined(LUNA_PLATFORM_MACOS) || defined(LUNA_PLATFORM_IOS)
                 pthread_setname_np(t->m_name_buf);
-#elif LUNA_PLATFORM_LINUX
+#elif defined(LUNA_PLATFORM_LINUX) || defined(LUNA_PLATFORM_ANDROID)
                 pthread_setname_np(pthread_self(), t->m_name_buf);
 #else
 #error "Unrecognized Platform"
@@ -160,7 +160,7 @@ namespace Luna
             uint64_t tid;
             pthread_threadid_np(0, &tid);
             id = (usize)tid;
-#elif LUNA_PLATFORM_LINUX
+#elif defined(LUNA_PLATFORM_LINUX) || defined(LUNA_PLATFORM_ANDROID)
             id = (usize)gettid();
 #else
 #error "Unrecognized Platform"

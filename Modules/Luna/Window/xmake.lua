@@ -12,6 +12,9 @@ luna_sdk_module_target("Window")
     elseif is_os("ios") then
         add_headerfiles("Source/Backend/UIKit/*.h", {install = false})
         add_files("Source/Backend/UIKit/*.mm")
+    elseif is_os("android") then
+        add_headerfiles("Source/Backend/Android/*.hpp", {install = false})
+        add_files("Source/Backend/Android/*.cpp")
     end
     if is_os("windows") then
         add_headerfiles("(Windows/*.hpp)", {prefixdir = "Luna/Window"})
@@ -26,6 +29,10 @@ luna_sdk_module_target("Window")
         add_headerfiles("(UIKit/*.hpp)", {prefixdir = "Luna/Window"})
         add_files("Source/UIKit/*.mm")
         add_frameworks("UIKit", "CoreGraphics", "QuartzCore")
+    end
+    if is_os("android") then
+        add_headerfiles("(Android/**.hpp)", {prefixdir = "Luna/Window"})
+        add_headerfiles("(Android/**.h)", {prefixdir = "Luna/Window"})
     end
     add_deps("Runtime")
 target_end()

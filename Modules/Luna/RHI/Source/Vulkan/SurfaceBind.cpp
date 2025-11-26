@@ -13,6 +13,11 @@
 #include <vulkan/vulkan_win32.h>
 #endif
 
+#if defined(LUNA_PLATFORM_ANDROID)
+#include <Luna/Window/Android/AndroidWindow.hpp>
+#include <vulkan/vulkan_android.h>
+#endif
+
 namespace Luna
 {
     namespace RHI
@@ -42,8 +47,35 @@ namespace Luna
             {
                 return encode_vk_result(err).errcode();
             }
+#elif defined(LUNA_PLATFORM_ANDROID)
+            Window::IAndroidWindow* android_window = query_interface<Window::IAndroidWindow>(window->get_object());
+            if (!android_window)
+            {
+                return BasicError::not_supported();
+            }
+            ANativeWindow* native_window = (ANativeWindow*)android_window->get_native_window();
+            if (!native_window)
+            {
+                return BasicError::bad_calling_time();
+            }
+            VkResult err;
+            VkAndroidSurfaceCreateInfoKHR info{};
+            info.sType = VK_STRUCTURE_TYPE_ANDROID_SURFACE_CREATE_INFO_KHR;
+            info.pNext = nullptr;
+            info.flags = 0;
+            info.window = native_window;
+            auto func = (PFN_vkCreateAndroidSurfaceKHR)vkGetInstanceProcAddr(instance, "vkCreateAndroidSurfaceKHR");
+            if (!func)
+            {
+                return BasicError::not_supported();
+            }
+            err = func(instance, &info, nullptr, &surface);
+            if (err)
+            {
+                return encode_vk_result(err).errcode();
+            }
 #else
-            return BasicError::not_supported();
+#error "Unsupported platform"
 #endif
             return surface;
         }

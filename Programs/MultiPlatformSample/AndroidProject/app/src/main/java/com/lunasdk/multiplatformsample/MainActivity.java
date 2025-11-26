@@ -1,12 +1,16 @@
 package com.lunasdk.multiplatformsample;
 
-import android.view.View;
+import static android.view.WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE;
 
-import com.google.androidgamesdk.GameActivity;
+import android.app.NativeActivity;
+import android.view.WindowInsets;
+import android.view.WindowInsetsController;
 
-public class MainActivity extends GameActivity {
+import androidx.appcompat.app.AppCompatActivity;
+
+public class MainActivity extends NativeActivity {
     static {
-        System.loadLibrary("multiplatformsample");
+        System.loadLibrary("MultiPlatformSample");
     }
 
     @Override
@@ -19,14 +23,10 @@ public class MainActivity extends GameActivity {
     }
 
     private void hideSystemUi() {
-        View decorView = getWindow().getDecorView();
-        decorView.setSystemUiVisibility(
-                View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-                        | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                        | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                        | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                        | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                        | View.SYSTEM_UI_FLAG_FULLSCREEN
-        );
+        WindowInsetsController controller = getWindow().getDecorView().getWindowInsetsController();
+        controller.hide(WindowInsets.Type.statusBars());
+        controller.hide(WindowInsets.Type.navigationBars());
+        controller.setSystemBarsBehavior(BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+        getWindow().setDecorFitsSystemWindows(false);
     }
 }

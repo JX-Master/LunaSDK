@@ -632,6 +632,16 @@ namespace Luna
         //! Gets the allocator of the string.
         //! @return Returns one copy of the allocator of the string.
         allocator_type get_allocator() const;
+        //! Creates one span that specifies the element buffer of this vector.
+        //! @return Returns the span that specifies the element buffer of this vector.
+        Span<value_type> span();
+        //! Creates one constant span that specifies the element buffer of this vector.
+        //! @return Returns the constant span that specifies the element buffer of this vector.
+        //! The return value of `data()` function of the returned span may be 
+        Span<const value_type> span() const;
+        //! Creates one constant span that specifies the element buffer of this vector.
+        //! @return Returns the constant span that specifies the element buffer of this vector.
+        Span<const value_type> cspan() const;
         //! Finds the first occurrence of the specified character sequence in the string.
         //! @param[in] str The string that holds the character sequence to search.
         //! @param[in] pos The index at which to start the search.

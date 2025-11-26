@@ -2,5 +2,5 @@
 plugins {
     id 'com.android.application' version '8.0.0' apply false
     id 'com.android.library' version '8.0.0' apply false
-    id "org.tboox.gradle-xmake-plugin" version "1.2.3"
+    id 'org.tboox.gradle-xmake-plugin' version "1.2.3"
 }

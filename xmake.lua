@@ -170,7 +170,13 @@ end
 function set_luna_sdk_program()
     add_luna_sdk_options()
     set_group("Programs")
-    set_kind("binary")
+    if is_plat("android") then
+        -- Android uses Java Activity as main entry point, the user program is provided as 
+        -- shared library for JNI invoking.
+        set_kind("shared")
+    else
+        set_kind("binary")
+    end
 end
 
 add_includedirs("Modules")
