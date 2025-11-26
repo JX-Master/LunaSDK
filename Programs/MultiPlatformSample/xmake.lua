@@ -8,12 +8,10 @@ target("MultiPlatformSample")
     if is_plat("android") then 
         add_syslinks("android")
     end
-    if not is_plat("android") then
-        before_build (function (target)
-            os.cp("$(scriptdir)/Res/luna.png", target:targetdir() .. "/luna.png")
-        end)
-        after_install (function (target)
-            os.cp(target:targetdir() .. "/luna.png", target:installdir() .. "/bin/luna.png")
-        end)
-    end
+    before_build( function (target)
+        import("bin_to_cpp")
+        local file_dir = path.join(target:scriptdir(), "Res", "Luna.png")
+        bin_to_cpp.bin_to_cpp_header_only(file_dir, path.join(target:autogendir(), "LunaTex.hpp"))
+        target:add("includedirs", target:autogendir())
+    end)
 target_end()

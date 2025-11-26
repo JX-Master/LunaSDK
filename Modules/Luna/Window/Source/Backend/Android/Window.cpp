@@ -20,6 +20,7 @@ extern "C"
 #include "../../../Android/native_app_glue/android_native_app_glue.h"
 #include <android/native_activity.h>
 #include <android/configuration.h>
+#include <android/log.h>
 }
 
 namespace Luna
@@ -53,14 +54,9 @@ namespace Luna
             return g_window.get();
         }
 
-        static bool g_native_window_initialized = false;
-
         void handle_cmd_wait_window(android_app *pApp, int32_t cmd)
         {
-            if(cmd == APP_CMD_INIT_WINDOW)
-            {
-                g_native_window_initialized = true;
-            }
+            
         }
 
         void handle_cmd(android_app *pApp, int32_t cmd) 
@@ -151,24 +147,23 @@ namespace Luna
 
         LUNA_WINDOW_API void prepare_app(android_app *pApp)
         {
+            __android_log_write(ANDROID_LOG_VERBOSE, "LunaSDK", "Prepare app for running");
             g_android_app = pApp;
             g_android_app->onAppCmd = handle_cmd_wait_window;
             // Block until native window is initialized.
-            while(!g_native_window_initialized)
+            while(!g_android_app->window)
             {
                 int ident;
                 int events;
                 android_poll_source* source = nullptr;
-                for (;;)
+                int res = ALooper_pollOnce(-1, &ident, &events, (void**)&source);
+                if (res >= 0 && source)
                 {
-                    int res = ALooper_pollOnce(-1, &ident, &events, (void**)&source);
-                    if (res >= 0 && source)
-                    {
-                        // android_poll_source carries its app pointer.
-                        source->process(source->app, source);
-                    }
+                    // android_poll_source carries its app pointer.
+                    source->process(source->app, source);
                 }
             }
+            __android_log_write(ANDROID_LOG_VERBOSE, "LunaSDK", "App ready for running, calling luna_main");
             g_android_app->onAppCmd = handle_cmd;
         }
         

@@ -272,7 +272,7 @@ namespace Luna
     //! @param[in] fmt The error message formatting syntax.
     //! @param[in] args The arguments for the error message.
     //! @return Returns @ref BasicError::error_object always, so you may chain this function with the return statement like `return set_error(...)`.
-    inline ErrCode set_error(ErrCode code, const c8* fmt, VarList args)
+    inline ErrCode set_error_v(ErrCode code, const c8* fmt, VarList args)
     {
         get_error() = Error(code, fmt, args);
         return BasicError::error_object();

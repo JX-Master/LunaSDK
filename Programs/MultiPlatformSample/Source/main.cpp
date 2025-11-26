@@ -18,6 +18,7 @@
 
 #include <BoxVert.hpp>
 #include <BoxPixel.hpp>
+#include <LunaTex.hpp>
 
 using namespace Luna;
 struct DemoApp
@@ -82,6 +83,7 @@ RV DemoApp::init()
         }
         if(queue == U32_MAX) return BasicError::not_supported();
         luset(cmdbuf, dev->new_command_buffer(queue));
+        //luset(swap_chain, dev->new_swap_chain(queue, window, SwapChainDesc(0, 0, 0, Format::unknown, true)));
         luset(swap_chain, dev->new_swap_chain(queue, window, SwapChainDesc(0, 0, 2, Format::bgra8_unorm, true)));
         luset(dlayout, dev->new_descriptor_set_layout (DescriptorSetLayoutDesc ({
             DescriptorSetLayoutBinding:: uniform_buffer_view (0, 1, ShaderVisibilityFlag::vertex),
@@ -109,7 +111,8 @@ RV DemoApp::init()
         ps_desc.ps = LUNA_GET_SHADER_DATA(BoxPixel);
         ps_desc.pipeline_layout = playout;
         ps_desc.num_color_attachments = 1;
-        ps_desc.color_formats[0] = Format::rgba8_unorm;
+        //ps_desc.color_formats[0] = swap_chain->get_desc().format;
+        ps_desc.color_formats[0] = Format::bgra8_unorm;
         ps_desc.depth_stencil_format = Format::d32_float;
         luset(pso, dev->new_graphics_pipeline_state(ps_desc));
         auto window_size = window->get_framebuffer_size();
@@ -147,10 +150,8 @@ RV DemoApp::init()
         memcpy(vb_data, vertices, sizeof(vertices));
         memcpy(ib_data, indices, sizeof(indices));
         luexp(writer->commit(cmdbuf, true));
-        lulet(image_file, open_file("Luna.png", FileOpenFlag::read, FileCreationMode::open_existing));
-        lulet(image_file_data, load_file_data(image_file));
         Image::ImageDesc image_desc;
-        lulet(image_data, Image::read_image_file(image_file_data.data(), image_file_data.size(), Image::ImageFormat::rgba8_unorm, image_desc));
+        lulet(image_data, Image::read_image_file(LUNA_PNG_DATA, LUNA_PNG_SIZE, Image::ImageFormat::rgba8_unorm, image_desc));
         luset(file_tex, dev->new_texture(MemoryType::local, TextureDesc::tex2d(Format::rgba8_unorm, 
             TextureUsageFlag::copy_dest | TextureUsageFlag::read_texture, image_desc.width, image_desc.height, 1, 1)));
         writer->reset();
@@ -233,7 +234,8 @@ RV DemoApp::resize(u32 width, u32 height)
         using namespace RHI;
         if(width && height)
         {
-            luexp(swap_chain->reset({width, height, 2, Format::unknown, true}));
+            //luexp(swap_chain->reset({width, height, 0, Format::unknown, true}));
+            luexp(swap_chain->reset({width, height, 2, Format::bgra8_unorm, true}));
             luset(depth_tex, dev->new_texture(MemoryType:: local, TextureDesc::tex2d(Format::d32_float, TextureUsageFlag::depth_stencil_attachment, width, height, 1, 1)));
         }
     }
@@ -265,7 +267,17 @@ RV run_app()
 }
 int luna_main(int argc, const char* argv[])
 {
-    if(!Luna::init()) return -1;
+    if(!Luna::init())
+    {
+        lupanic_msg("Failed to initialize LunaSDK");
+    }
+    Luna::set_log_to_platform_enabled(true);
+#if LUNA_DEBUG
+    Luna::set_log_to_platform_verbosity(Luna::LogVerbosity::verbose);
+#else
+    Luna::set_log_to_platform_verbosity(Luna::LogVerbosity::info);
+#endif
+    Luna::log_verbose("DemoApp", "LunaSDK initialized");
     RV result = run_app();
     if(failed(result)) log_error("DemoApp", "%s", explain(result.errcode()));
     Luna::close();

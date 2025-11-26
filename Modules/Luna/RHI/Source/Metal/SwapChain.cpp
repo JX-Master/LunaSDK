@@ -21,7 +21,8 @@ namespace Luna
             auto framebuffer_size = m_window->get_framebuffer_size();
             m_desc.width = m_desc.width == 0 ? framebuffer_size.x : m_desc.width;
             m_desc.height = m_desc.height == 0 ? framebuffer_size.y : m_desc.height;
-            m_desc.format = m_desc.format == Format::unknown ? Format::bgra8_unorm_srgb : m_desc.format;
+            m_desc.format = m_desc.format == Format::unknown ? Format::bgra8_unorm : m_desc.format;
+            m_desc.buffer_count = m_desc.buffer_count == 0 ? 2 : m_desc.buffer_count;
             return init_metal_layer(m_desc);
         }
         R<ITexture*> SwapChain::get_current_back_buffer()
@@ -77,6 +78,7 @@ namespace Luna
                 if(!new_desc.buffer_count) new_desc.buffer_count = m_desc.buffer_count;
                 if(new_desc.format == Format::unknown) new_desc.format = m_desc.format;
                 if(new_desc.color_space == ColorSpace::unspecified) new_desc.color_space = m_desc.color_space;
+                if(new_desc.buffer_count == 0) new_desc.buffer_count = m_desc.buffer_count;
                 if(new_desc.buffer_count == m_desc.buffer_count && 
                     new_desc.format == m_desc.format &&
                     new_desc.vertical_synchronized == m_desc.vertical_synchronized)

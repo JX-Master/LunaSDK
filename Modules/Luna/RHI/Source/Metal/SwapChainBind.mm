@@ -17,6 +17,8 @@
 #include <UIKit/UIKit.h>
 #endif
 
+#import <QuartzCore/CAMetalLayer.h>
+
 namespace Luna
 {
     namespace RHI
