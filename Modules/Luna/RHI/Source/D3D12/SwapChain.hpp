@@ -101,7 +101,7 @@ namespace Luna
             {
                 return m_desc;
             }
-            virtual SwapChainSurfaceTransform get_surface_transform() override { return SwapChainSurfaceTransform::none; }
+            virtual SwapChainSurfaceTransform get_surface_transform() override { return SwapChainSurfaceTransform::identity; }
             virtual R<ITexture*> get_current_back_buffer() override;
             virtual RV present() override;
             virtual bool reset_suggested() override

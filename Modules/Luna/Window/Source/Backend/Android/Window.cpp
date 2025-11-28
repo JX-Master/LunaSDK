@@ -196,7 +196,6 @@ namespace Luna
             __android_log_write(ANDROID_LOG_VERBOSE, "LunaSDK", "App ready for running, calling luna_main");
             g_android_app->onAppCmd = handle_cmd;
         }
-
         LUNA_WINDOW_API void set_startup_params(const StartupParams& params)
 		{
 			g_startup_params = params;

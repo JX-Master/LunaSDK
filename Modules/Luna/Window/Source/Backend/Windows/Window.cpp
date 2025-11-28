@@ -63,6 +63,7 @@ namespace Luna
         {
             UnregisterClassW(WIN32_CLASS_NAME, g_startup_params.hInstance);
         }
+        StartupParams g_startup_params;
         LUNA_WINDOW_API void set_startup_params(const StartupParams& params)
 		{
 			g_startup_params = params;
