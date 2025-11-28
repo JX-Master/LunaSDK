@@ -11,7 +11,10 @@ target("MultiPlatformSample")
     before_build( function (target)
         import("bin_to_cpp")
         local file_dir = path.join(target:scriptdir(), "Res", "Luna.png")
-        bin_to_cpp.bin_to_cpp_header_only(file_dir, path.join(target:autogendir(), "LunaTex.hpp"))
+        local header_file = path.join(target:autogendir(), "LunaTex.hpp")
+        if not os.exists(header_file) then
+            bin_to_cpp.bin_to_cpp_header_only(file_dir, header_file)
+        end
         target:add("includedirs", target:autogendir())
     end)
 target_end()

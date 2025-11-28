@@ -67,6 +67,14 @@ namespace Luna
 		{
 			g_startup_params = params;
 		}
+        LUNA_WINDOW_API const c8* get_app_name()
+        {
+            return g_startup_params.name;
+        }
+        LUNA_RUNTIME_API Version get_app_version()
+        {
+            return g_startup_params.version;
+        }
         void Window::close()
         {
             lutsassert_main_thread();

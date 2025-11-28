@@ -13,6 +13,10 @@
 #include "SurfaceBind.hpp"
 #include <Luna/Runtime/StackAllocator.hpp>
 
+#ifdef LUNA_PLATFORM_ANDROID
+#include <Luna/Window/Android/AndroidWindow.hpp>
+#endif
+
 #ifdef LUNA_RHI_DEBUG
 #include <Luna/Runtime/Log.hpp>
 #endif
@@ -206,6 +210,10 @@ namespace Luna
             {
                 m_queue = queue;
                 m_window = window;
+#ifdef LUNA_PLATFORM_ANDROID
+                Window::IAndroidWindow* android_window = query_interface<Window::IAndroidWindow>(window);
+                m_native_window = (ANativeWindow*)android_window->get_native_window();
+#endif
                 luset(m_surface, new_surface_from_window(g_vk_instance, m_window));
                 luexp(create_swap_chain(desc));
                 VkFenceCreateInfo fence_create_info{};
@@ -216,22 +224,46 @@ namespace Luna
             lucatchret;
             return ok;
         }
-        void SwapChain::clean_up_swap_chain()
+        RV SwapChain::wait_until_queue_empty()
         {
             MutexGuard guard(m_queue.queue_mtx);
-            m_device->m_funcs.vkQueueWaitIdle(m_queue.queue);
-            m_swap_chain_images.clear();
-            if (m_swap_chain != VK_NULL_HANDLE)
-            {
-                m_device->m_funcs.vkDestroySwapchainKHR(m_device->m_device, m_swap_chain, nullptr);
-                m_swap_chain = VK_NULL_HANDLE;
-            }
+            return encode_vk_result(m_device->m_funcs.vkQueueWaitIdle(m_queue.queue));
         }
         RV SwapChain::create_swap_chain(const SwapChainDesc& desc)
         {
             StackAllocator salloc;
             lutry
             {
+                // Free old swap chain images.
+                if(m_swap_chain)
+                {
+                    luexp(wait_until_queue_empty());
+                    m_swap_chain_images.clear();
+                }
+#ifdef LUNA_PLATFORM_ANDROID
+                {
+                    // Check if we need to recreate surface. 
+                    // This happens when native window is terminated and recreated (because app is switched out or screen is locked).
+                    Window::IAndroidWindow* android_window = query_interface<Window::IAndroidWindow>(m_window);
+                    ANativeWindow* native_window = (ANativeWindow*)android_window->get_native_window();
+                    if(native_window != m_native_window)
+                    {
+                        if(m_swap_chain != VK_NULL_HANDLE)
+                        {
+                            m_device->m_funcs.vkDestroySwapchainKHR(m_device->m_device, m_swap_chain, nullptr);
+                            m_swap_chain = VK_NULL_HANDLE;
+                        }
+                        if (m_surface != VK_NULL_HANDLE)
+                        {
+                            vkDestroySurfaceKHR(g_vk_instance, m_surface, nullptr);
+                            m_surface = VK_NULL_HANDLE;
+                        }
+                        luset(m_surface, new_surface_from_window(g_vk_instance, m_window));
+                        m_native_window = native_window;
+                    }
+                }
+#endif
+                VkSwapchainKHR old_swap_chain = m_swap_chain;
                 m_desc = desc;
                 auto framebuffer_size = m_window->get_framebuffer_size();
                 m_desc.width = m_desc.width == 0 ? framebuffer_size.x : m_desc.width;
@@ -272,8 +304,12 @@ namespace Luna
                 create_info.compositeAlpha = VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR;
                 create_info.presentMode = present_mode;
                 create_info.clipped = VK_TRUE;
-                create_info.oldSwapchain = VK_NULL_HANDLE;
+                create_info.oldSwapchain = old_swap_chain;
                 luexp(encode_vk_result(m_device->m_funcs.vkCreateSwapchainKHR(m_device->m_device, &create_info, nullptr, &m_swap_chain)));
+                if(old_swap_chain)
+                {
+                    m_device->m_funcs.vkDestroySwapchainKHR(m_device->m_device, old_swap_chain, nullptr);
+                }
                 u32 image_count;
                 luexp(encode_vk_result(m_device->m_funcs.vkGetSwapchainImagesKHR(m_device->m_device, m_swap_chain, &image_count, nullptr)));
                 VkImage* images = (VkImage*)salloc.allocate(sizeof(VkImage) * image_count);
@@ -296,13 +332,19 @@ namespace Luna
                     m_swap_chain_images.push_back(res);
                 }
                 m_back_buffer_fetched = false;
+                m_reset_suggested = false;
             }
             lucatchret;
             return ok;
         }
         SwapChain::~SwapChain()
         {
-            clean_up_swap_chain();
+            m_swap_chain_images.clear();
+            if (m_swap_chain != VK_NULL_HANDLE)
+            {
+                m_device->m_funcs.vkDestroySwapchainKHR(m_device->m_device, m_swap_chain, nullptr);
+                m_swap_chain = VK_NULL_HANDLE;
+            }
             if (m_acqure_fence != VK_NULL_HANDLE)
             {
                 m_device->m_funcs.vkDestroyFence(m_device->m_device, m_acqure_fence, nullptr);
@@ -313,6 +355,25 @@ namespace Luna
                 vkDestroySurfaceKHR(g_vk_instance, m_surface, nullptr);
                 m_surface = VK_NULL_HANDLE;
             }
+        }
+        SwapChainSurfaceTransform SwapChain::get_surface_transform()
+        {
+            VkSurfaceCapabilitiesKHR capabilities;
+            vkGetPhysicalDeviceSurfaceCapabilitiesKHR(m_device->m_physical_device, m_surface, &capabilities);
+            switch(capabilities.currentTransform)
+            {
+                case VK_SURFACE_TRANSFORM_INHERIT_BIT_KHR: return SwapChainSurfaceTransform::unspecified;
+                case VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR: return SwapChainSurfaceTransform::identity;
+                case VK_SURFACE_TRANSFORM_ROTATE_90_BIT_KHR: return SwapChainSurfaceTransform::rotate_90;
+                case VK_SURFACE_TRANSFORM_ROTATE_180_BIT_KHR: return SwapChainSurfaceTransform::rotate_180;
+                case VK_SURFACE_TRANSFORM_ROTATE_270_BIT_KHR: return SwapChainSurfaceTransform::rotate_270;
+                case VK_SURFACE_TRANSFORM_HORIZONTAL_MIRROR_BIT_KHR: return SwapChainSurfaceTransform::horizontal_mirror;
+                case VK_SURFACE_TRANSFORM_HORIZONTAL_MIRROR_ROTATE_90_BIT_KHR: return SwapChainSurfaceTransform::horizontal_mirror_rotate_90;
+                case VK_SURFACE_TRANSFORM_HORIZONTAL_MIRROR_ROTATE_180_BIT_KHR: return SwapChainSurfaceTransform::horizontal_mirror_rotate_180;
+                case VK_SURFACE_TRANSFORM_HORIZONTAL_MIRROR_ROTATE_270_BIT_KHR: return SwapChainSurfaceTransform::horizontal_mirror_rotate_270;
+                default: lupanic();
+            }
+            return SwapChainSurfaceTransform::unspecified;
         }
         R<ITexture*> SwapChain::get_current_back_buffer()
         {
@@ -353,19 +414,43 @@ namespace Luna
                 present_info.pSwapchains = &m_swap_chain;
                 present_info.pImageIndices = &m_current_back_buffer;
                 MutexGuard guard(m_queue.queue_mtx);
-                luexp(encode_vk_result(m_device->m_funcs.vkQueuePresentKHR(m_queue.queue, &present_info)));
+                VkResult res = m_device->m_funcs.vkQueuePresentKHR(m_queue.queue, &present_info);
+                if(res == VK_SUBOPTIMAL_KHR)
+                {
+                    m_reset_suggested = true;
+                }
+                luexp(encode_vk_result(res));
                 m_back_buffer_fetched = false;
             }
             lucatchret;
             return ok;
+        }
+        bool SwapChain::reset_suggested()
+        {
+#ifdef LUNA_PLATFORM_ANDROID
+            Window::IAndroidWindow* android_window = query_interface<Window::IAndroidWindow>(m_window);
+            ANativeWindow* native_window = (ANativeWindow*)android_window->get_native_window();
+            if(native_window != m_native_window)
+            {
+                m_reset_suggested = true;
+            }
+#endif
+            return m_reset_suggested;
         }
         RV SwapChain::reset(const SwapChainDesc& desc)
         {
             // Wait for all presenting calls to finish.
             lutry
             {
-                clean_up_swap_chain();
                 auto new_desc = desc;
+                if (new_desc.width == 0)
+                {
+                    new_desc.width = m_desc.width;
+                }
+                if (new_desc.height == 0)
+                {
+                    new_desc.height = m_desc.height;
+                }
                 if (new_desc.format == Format::unknown)
                 {
                     new_desc.format = m_desc.format;

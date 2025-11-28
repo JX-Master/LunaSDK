@@ -16,6 +16,7 @@
 #include <Luna/Window/UIKit/UIKitWindow.hpp>
 #include <UIKit/UIKit.h>
 #endif
+#import <QuartzCore/CAMetalLayer.h>
 
 #import <QuartzCore/CAMetalLayer.h>
 

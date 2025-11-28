@@ -15,6 +15,8 @@
 #include <Luna/Image/Image.hpp>
 #include <Luna/Runtime/Math/Transform.hpp>
 #include <Luna/Window/AppMain.hpp>
+#include <Luna/Runtime/Thread.hpp>
+#include <Luna/RHIUtility/BlitContext.hpp>
 
 #include <BoxVert.hpp>
 #include <BoxPixel.hpp>
@@ -32,12 +34,14 @@ struct DemoApp
     Ref<RHI::IDescriptorSet> desc_set;
     Ref<RHI::IPipelineLayout> playout;
     Ref<RHI::IPipelineState> pso;
+    Ref<RHI::ITexture> color_tex;
     Ref<RHI::ITexture> depth_tex;
     Ref<RHI::IBuffer> vb;
     Ref<RHI::IBuffer> ib;
     Ref<RHI::IBuffer> ub;
     Ref<RHI::ITexture> file_tex;
     f32 camera_rotation = 0.0f;
+    Ref<RHIUtility::IBlitContext> blit_context;
 
     RV init();
     RV update();
@@ -49,6 +53,16 @@ struct Vertex
     Float3U position;
     Float2U texcoord;
 };
+
+void handle_app_event(object_t event, void* userdata)
+{
+    DemoApp* app = (DemoApp*)userdata;
+    if(auto e = cast_object<Window::WindowFramebufferResizeEvent>(event))
+    {
+        lupanic_if_failed(app->resize(e->width, e->height));
+    }
+}
+
 RV DemoApp::init()
 {
     lutry
@@ -61,13 +75,7 @@ RV DemoApp::init()
 #elif defined(LUNA_PLATFORM_MOBILE)
         window = Window::get_system_window();
 #endif
-        Window::set_event_handler([](object_t event, void* userdata){
-            DemoApp* app = (DemoApp*)userdata;
-            if(Window::WindowFramebufferResizeEvent* e = cast_object<Window::WindowFramebufferResizeEvent>(event))
-            {
-                lupanic_if_failed(app->resize(e->width, e->height));
-            }
-        }, this);
+        Window::set_event_handler(handle_app_event, this);
         dev = RHI::get_main_device();
         using namespace RHI;
         queue = U32_MAX;
@@ -83,8 +91,7 @@ RV DemoApp::init()
         }
         if(queue == U32_MAX) return BasicError::not_supported();
         luset(cmdbuf, dev->new_command_buffer(queue));
-        //luset(swap_chain, dev->new_swap_chain(queue, window, SwapChainDesc(0, 0, 0, Format::unknown, true)));
-        luset(swap_chain, dev->new_swap_chain(queue, window, SwapChainDesc(0, 0, 2, Format::bgra8_unorm, true)));
+        luset(swap_chain, dev->new_swap_chain(queue, window, SwapChainDesc(0, 0, 0, Format::unknown, true)));
         luset(dlayout, dev->new_descriptor_set_layout (DescriptorSetLayoutDesc ({
             DescriptorSetLayoutBinding:: uniform_buffer_view (0, 1, ShaderVisibilityFlag::vertex),
             DescriptorSetLayoutBinding:: read_texture_view (TextureViewType:: tex2d, 1, 1, ShaderVisibilityFlag::pixel),
@@ -111,11 +118,11 @@ RV DemoApp::init()
         ps_desc.ps = LUNA_GET_SHADER_DATA(BoxPixel);
         ps_desc.pipeline_layout = playout;
         ps_desc.num_color_attachments = 1;
-        //ps_desc.color_formats[0] = swap_chain->get_desc().format;
-        ps_desc.color_formats[0] = Format::bgra8_unorm;
+        ps_desc.color_formats[0] = Format::rgba8_unorm;
         ps_desc.depth_stencil_format = Format::d32_float;
         luset(pso, dev->new_graphics_pipeline_state(ps_desc));
         auto window_size = window->get_framebuffer_size();
+        luset(color_tex, dev->new_texture(MemoryType::local, TextureDesc::tex2d(Format::rgba8_unorm, TextureUsageFlag::color_attachment | TextureUsageFlag::read_texture, window_size.x, window_size.y, 1, 1)));
         luset(depth_tex, dev->new_texture(MemoryType::local, TextureDesc::tex2d(Format::d32_float, TextureUsageFlag::depth_stencil_attachment, window_size.x, window_size.y, 1, 1)));
         Vertex vertices[] = {
             {{+0.5, -0.5, -0.5}, {0.0, 1.0}} , {{+0.5, +0.5, -0.5}, {0.0, 0.0}} ,
@@ -165,7 +172,7 @@ RV DemoApp::init()
             WriteDescriptorSet::read_texture_view(1, TextureViewDesc::tex2d(file_tex)),
             WriteDescriptorSet::sampler(2, SamplerDesc(Filter::linear, Filter::linear, Filter::linear, TextureAddressMode::clamp, TextureAddressMode::clamp, TextureAddressMode::clamp))
         }));
-
+        luset(blit_context, RHIUtility::new_blit_context(dev, swap_chain->get_desc().format));
     }
     lucatchret;
     return ok;
@@ -174,9 +181,18 @@ RV DemoApp::update()
 {
     Window::poll_events();
     if(window->is_closed()) return ok;
-    if(window->is_minimized()) return ok;
+    if(window->is_minimized())
+    {
+        Luna::sleep(100);
+        return ok;
+    }
     lutry
     {
+        if(swap_chain->reset_suggested())
+        {
+            auto size = window->get_framebuffer_size();
+            luexp(resize(size.x, size.y));
+        }
         camera_rotation += 1.0f;
         Float3 camera_pos(cosf(camera_rotation / 180.0f * PI) * 3.0f, 1.0f, sinf(camera_rotation / 180.0f * PI) * 3.0f);
         Float4x4 camera_mat = AffineMatrix::make_look_at(camera_pos, Float3(0, 0, 0), Float3(0, 1, 0));
@@ -187,18 +203,17 @@ RV DemoApp::update()
         memcpy(camera_mapped, &camera_mat, sizeof(Float4x4));
         ub->unmap(0, sizeof(Float4x4));
         using namespace RHI;
-        lulet(back_buffer, swap_chain->get_current_back_buffer());
         cmdbuf->resource_barrier({
             BufferBarrier(ub, BufferStateFlag::automatic, BufferStateFlag::uniform_buffer_vs),
             BufferBarrier(vb, BufferStateFlag::automatic, BufferStateFlag::vertex_buffer),
             BufferBarrier(ib, BufferStateFlag::automatic, BufferStateFlag::index_buffer)
         }, {
             TextureBarrier(file_tex, TEXTURE_BARRIER_ALL_SUBRESOURCES, TextureStateFlag::automatic, TextureStateFlag::shader_read_ps),
-            TextureBarrier(back_buffer, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::color_attachment_write),
+            TextureBarrier(color_tex, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::color_attachment_write),
             TextureBarrier(depth_tex, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::depth_stencil_attachment_write)
         });
         RenderPassDesc desc;
-        desc.color_attachments[0] = ColorAttachment(back_buffer, LoadOp::clear, StoreOp::store, Float4U(0.0f));
+        desc.color_attachments[0] = ColorAttachment(color_tex, LoadOp::clear, StoreOp::store, Float4U(0.0f));
         desc.depth_stencil_attachment = DepthStencilAttachment(depth_tex, false, LoadOp::clear, StoreOp::store, 1.0f);
         cmdbuf->begin_render_pass(desc);
         cmdbuf->set_graphics_pipeline_layout(playout);
@@ -212,12 +227,47 @@ RV DemoApp::update()
         cmdbuf->set_viewport(Viewport(0.0f, 0.0f, (f32)window_sz.x, (f32)window_sz.y, 0.0f, 1.0f));
         cmdbuf->draw_indexed(36, 0, 0);
         cmdbuf->end_render_pass();
+        lulet(back_buffer, swap_chain->get_current_back_buffer());
+        SamplerDesc sampler(Filter::linear, Filter::linear, Filter::linear, TextureAddressMode::clamp, TextureAddressMode::clamp, TextureAddressMode::clamp);
+        auto surface_transform = swap_chain->get_surface_transform();
+        auto surface_desc = swap_chain->get_desc();
+        f32 surface_width = (f32)surface_desc.width;
+        f32 surface_height = (f32)surface_desc.height;
+        switch(surface_transform)
+        {
+            case SwapChainSurfaceTransform::identity:
+            blit_context->blit(back_buffer, SubresourceIndex(0, 0), TextureViewDesc::tex2d(color_tex), sampler, {0, 0}, {surface_width, 0}, {0, surface_height}, {surface_width, surface_height});
+            break;
+            case SwapChainSurfaceTransform::rotate_90:
+            blit_context->blit(back_buffer, SubresourceIndex(0, 0), TextureViewDesc::tex2d(color_tex), sampler, {surface_width, 0}, {surface_width, surface_height}, {0, 0}, {0, surface_height});
+            break;
+            case SwapChainSurfaceTransform::rotate_180:
+            blit_context->blit(back_buffer, SubresourceIndex(0, 0), TextureViewDesc::tex2d(color_tex), sampler, {surface_width, surface_height}, {0, surface_height}, {surface_width, 0}, {0, 0});
+            break;
+            case SwapChainSurfaceTransform::rotate_270:
+            blit_context->blit(back_buffer, SubresourceIndex(0, 0), TextureViewDesc::tex2d(color_tex), sampler, {0, surface_height}, {0, 0}, {surface_width, surface_height}, {surface_width, 0});
+            break;
+            case SwapChainSurfaceTransform::horizontal_mirror:
+            blit_context->blit(back_buffer, SubresourceIndex(0, 0), TextureViewDesc::tex2d(color_tex), sampler, {surface_width, 0}, {0, 0}, {surface_width, surface_height}, {0, surface_height});
+            break;
+            case SwapChainSurfaceTransform::horizontal_mirror_rotate_90:
+            blit_context->blit(back_buffer, SubresourceIndex(0, 0), TextureViewDesc::tex2d(color_tex), sampler, {surface_width, surface_height}, {surface_width, 0}, {0, surface_height}, {0, 0});
+            break;
+            case SwapChainSurfaceTransform::horizontal_mirror_rotate_180:
+            blit_context->blit(back_buffer, SubresourceIndex(0, 0), TextureViewDesc::tex2d(color_tex), sampler, {0, surface_height}, {surface_width, surface_height}, {0, 0}, {surface_width, 0});
+            break;
+            case SwapChainSurfaceTransform::horizontal_mirror_rotate_270:
+            blit_context->blit(back_buffer, SubresourceIndex(0, 0), TextureViewDesc::tex2d(color_tex), sampler, {0, 0}, {0, surface_height}, {surface_width, 0}, {surface_width, surface_height});
+            break;
+        }
+        luexp(blit_context->commit(cmdbuf, false));
         cmdbuf->resource_barrier({}, {
             TextureBarrier(back_buffer, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::present)
         });
         luexp(cmdbuf->submit({}, {}, true));
         cmdbuf->wait();
         luexp(cmdbuf->reset());
+        blit_context->reset();
         luexp(swap_chain->present());
     }
     lucatchret;
@@ -234,8 +284,30 @@ RV DemoApp::resize(u32 width, u32 height)
         using namespace RHI;
         if(width && height)
         {
-            //luexp(swap_chain->reset({width, height, 0, Format::unknown, true}));
-            luexp(swap_chain->reset({width, height, 2, Format::bgra8_unorm, true}));
+            RHI::SwapChainSurfaceTransform transform = swap_chain->get_surface_transform();
+            const c8* transform_str = "";
+            switch(transform)
+            {
+                case RHI::SwapChainSurfaceTransform::identity:   transform_str = "identity"; break;
+                case RHI::SwapChainSurfaceTransform::rotate_90:  transform_str = "rotate_90"; break;
+                case RHI::SwapChainSurfaceTransform::rotate_180: transform_str = "rotate_180"; break;
+                case RHI::SwapChainSurfaceTransform::rotate_270: transform_str = "rotate_270"; break;
+                default: break;
+            }
+            log_info("DemoApp", "Window resized: (%u, %u), %s", width, height, transform_str);
+            u32 swap_chain_width = width;
+            u32 swap_chain_height = height;
+#ifdef LUNA_PLATFORM_ANDROID
+            if(transform == RHI::SwapChainSurfaceTransform::rotate_90 || transform == RHI::SwapChainSurfaceTransform::rotate_270)
+            {
+                // On Android, the swap chain surface will not be rotated with system orientation, 
+                // they are always presented as portrait mode. The application shall rotate the 
+                // image manually.
+                swap(swap_chain_width, swap_chain_height);
+            }
+#endif
+            luexp(swap_chain->reset({swap_chain_width, swap_chain_height, 0, Format::unknown, true}));
+            luset(color_tex, dev->new_texture(MemoryType::local, TextureDesc::tex2d(Format::rgba8_unorm, TextureUsageFlag::color_attachment | TextureUsageFlag::read_texture, width, height, 1, 1)));
             luset(depth_tex, dev->new_texture(MemoryType:: local, TextureDesc::tex2d(Format::d32_float, TextureUsageFlag::depth_stencil_attachment, width, height, 1, 1)));
         }
     }

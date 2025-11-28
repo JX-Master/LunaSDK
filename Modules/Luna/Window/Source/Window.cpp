@@ -16,7 +16,7 @@ namespace Luna
 {
     namespace Window
     {
-        StartupParams g_startup_params;
+        extern StartupParams g_startup_params;
         c8 g_name[260];
         Version g_version;
 

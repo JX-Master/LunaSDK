@@ -6,8 +6,6 @@ import android.app.NativeActivity;
 import android.view.WindowInsets;
 import android.view.WindowInsetsController;
 
-import androidx.appcompat.app.AppCompatActivity;
-
 public class MainActivity extends NativeActivity {
     static {
         System.loadLibrary("MultiPlatformSample");

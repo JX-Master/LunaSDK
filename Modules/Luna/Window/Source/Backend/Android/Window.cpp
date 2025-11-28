@@ -29,6 +29,14 @@ namespace Luna
     {
         static android_app* g_android_app = nullptr;
         Ref<AndroidWindow> g_window;
+        StartupParams g_startup_params;
+
+        struct AndroidConfig
+        {
+            int32_t orientation;
+        };
+
+        AndroidConfig g_current_config;
 
         RV platform_init()
         {
@@ -39,6 +47,7 @@ namespace Luna
                 luassert(g_android_app->window);
                 g_window = new_object<AndroidWindow>();
                 g_window->m_window = g_android_app->window;
+                g_current_config.orientation = AConfiguration_getOrientation(g_android_app->config);
             }
             lucatchret
             return ok;
@@ -63,29 +72,44 @@ namespace Luna
         {
             switch (cmd) 
             {
+                // Restore window.
                 case APP_CMD_INIT_WINDOW:
                 {
-                    g_window = new_object<AndroidWindow>();
                     g_window->m_window = pApp->window;
-
+                    {
+                        auto e = new_object<WindowInputFocusEvent>();
+                        e->window = g_window;
+                        dispatch_event_to_handler(e.object());
+                    }
                 }
                     break;
+                // Minimize window.
                 case APP_CMD_TERM_WINDOW:
                 {
-                    auto e = new_object<WindowClosedEvent>();
-                    e->window = g_window;
-                    dispatch_event_to_handler(e.object());
+                    {
+                        auto e = new_object<WindowLoseInputFocusEvent>();
+                        e->window = g_window;
+                        dispatch_event_to_handler(e);
+                    }
                     g_window->m_window = nullptr;
-                    g_window.reset();
                 }
                     break;
                 case APP_CMD_WINDOW_RESIZED:
                 {
-                    auto e = new_object<WindowResizeEvent>();
-                    e->window = g_window;
-                    e->width = ANativeWindow_getWidth(g_window->m_window);
-                    e->height = ANativeWindow_getHeight(g_window->m_window);
-                    dispatch_event_to_handler(e.object());
+                    {
+                        auto e = new_object<WindowResizeEvent>();
+                        e->window = g_window;
+                        e->width = ANativeWindow_getWidth(g_window->m_window);
+                        e->height = ANativeWindow_getHeight(g_window->m_window);
+                        dispatch_event_to_handler(e.object());
+                    }
+                    {
+                        auto e = new_object<WindowFramebufferResizeEvent>();
+                        e->window = g_window;
+                        e->width = ANativeWindow_getWidth(g_window->m_window);
+                        e->height = ANativeWindow_getHeight(g_window->m_window);
+                        dispatch_event_to_handler(e.object());
+                    }
                 }
                     break;
 
@@ -102,6 +126,11 @@ namespace Luna
                     auto e = new_object<WindowLoseInputFocusEvent>();
                     e->window = g_window;
                     dispatch_event_to_handler(e.object());
+                }
+                    break;
+                case APP_CMD_CONFIG_CHANGED:
+                {
+
                 }
                     break;
                 case APP_CMD_LOW_MEMORY:
@@ -138,6 +167,7 @@ namespace Luna
                 {
                     auto e = new_object<ApplicationWillTerminateEvent>();
                     dispatch_event_to_handler(e.object());
+                    g_window->m_closed = true;
                 }
                     break;
                 default:
@@ -166,24 +196,37 @@ namespace Luna
             __android_log_write(ANDROID_LOG_VERBOSE, "LunaSDK", "App ready for running, calling luna_main");
             g_android_app->onAppCmd = handle_cmd;
         }
+
+        LUNA_WINDOW_API void set_startup_params(const StartupParams& params)
+		{
+			g_startup_params = params;
+		}
+        LUNA_WINDOW_API const c8* get_app_name()
+        {
+            return g_startup_params.name;
+        }
+        LUNA_RUNTIME_API Version get_app_version()
+        {
+            return g_startup_params.version;
+        }
         
         bool AndroidWindow::has_input_focus()
         {
             lutsassert_main_thread();
-            return !is_closed();
+            return m_window != nullptr;
         }
 
         bool AndroidWindow::has_mouse_focus()
         {
             lutsassert_main_thread();
-            return !is_closed();
+            return m_window != nullptr;
         }
 
         bool AndroidWindow::is_minimized()
         {
             lutsassert_main_thread();
             // Android native window is always fullscreen; treat as not minimized.
-            return false;
+            return m_window == nullptr;
         }
 
         Int2U AndroidWindow::get_position()
@@ -196,7 +239,7 @@ namespace Luna
         UInt2U AndroidWindow::get_size()
         {
             lutsassert_main_thread();
-            if (is_closed()) return UInt2U(0, 0);
+            if (is_minimized()) return UInt2U(0, 0);
             return UInt2U((u32)ANativeWindow_getWidth(m_window),
                 (u32)ANativeWindow_getHeight(m_window));
         }
@@ -204,7 +247,7 @@ namespace Luna
         UInt2U AndroidWindow::get_framebuffer_size()
         {
             lutsassert_main_thread();
-            if (is_closed()) return UInt2U(0, 0);
+            if (is_minimized()) return UInt2U(0, 0);
             // On Android, framebuffer matches ANativeWindow buffer size.
             return UInt2U((u32)ANativeWindow_getWidth(m_window),
                 (u32)ANativeWindow_getHeight(m_window));

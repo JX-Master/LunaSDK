@@ -525,7 +525,6 @@ namespace Luna
             //! 
             //! The following functions can only be called outside of one render pass range:
             //! * submit
-            //! * set_context
             //! * resource_barrier
             virtual void begin_render_pass(const RenderPassDesc& desc) = 0;
 

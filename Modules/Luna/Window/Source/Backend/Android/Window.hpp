@@ -23,10 +23,11 @@ namespace Luna
             
             ANativeWindow* m_window = nullptr;
             bool m_text_input_active = false;
+            bool m_closed = false;
 
             virtual bool is_closed() override
             {
-                return m_window == nullptr;
+                return m_closed;
             }
             virtual bool has_input_focus() override;
             virtual bool has_mouse_focus() override;
