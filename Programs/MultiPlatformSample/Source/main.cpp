@@ -236,6 +236,7 @@ RV DemoApp::update()
         switch(surface_transform)
         {
             case SwapChainSurfaceTransform::identity:
+            case SwapChainSurfaceTransform::unspecified:
             blit_context->blit(back_buffer, SubresourceIndex(0, 0), TextureViewDesc::tex2d(color_tex), sampler, {0, 0}, {surface_width, 0}, {0, surface_height}, {surface_width, surface_height});
             break;
             case SwapChainSurfaceTransform::rotate_90:
