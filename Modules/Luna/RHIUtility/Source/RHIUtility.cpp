@@ -15,6 +15,7 @@
 #include "ResourceReadContext.hpp"
 #include "ResourceWriteContext.hpp"
 #include "MipmapGenerationContext.hpp"
+#include "BlitContext.hpp"
 
 namespace Luna
 {
@@ -36,6 +37,8 @@ namespace Luna
                 register_boxed_type<MipmapGenerationPipelineState>();
                 register_boxed_type<MipmapGenerationContext>();
                 impl_interface_for_type<MipmapGenerationContext, IMipmapGenerationContext, RHI::IDeviceChild>();
+                register_boxed_type<BlitContext>();
+                impl_interface_for_type<BlitContext, IBlitContext, RHI::IDeviceChild>();
                 return ok;
             }
             virtual void on_close() override

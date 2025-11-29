@@ -9,6 +9,7 @@
 */
 #pragma once
 #include "Window.hpp"
+#include "Application.hpp"
 
 #ifndef LUNA_WINDOW_API
 #define LUNA_WINDOW_API

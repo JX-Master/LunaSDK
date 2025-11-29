@@ -72,13 +72,13 @@ namespace Luna
             register_struct_type<WindowTouchMoveEvent>({}, window_event_type);
             register_struct_type<WindowTouchUpEvent>({}, window_event_type);
             register_struct_type<WindowDropFilesEvent>({}, window_event_type);
-            register_struct_type<ApplicationEvent>({});
-            register_struct_type<ApplicationDidEnterForegroundEvent>({}, typeof<ApplicationEvent>());
-            register_struct_type<ApplicationWillEnterForegroundEvent>({}, typeof<ApplicationEvent>());
-            register_struct_type<ApplicationDidEnterBackgroundEvent>({}, typeof<ApplicationEvent>());
-            register_struct_type<ApplicationWillEnterBackgroundEvent>({}, typeof<ApplicationEvent>());
-            register_struct_type<ApplicationWillTerminateEvent>({}, typeof<ApplicationEvent>());
-            register_struct_type<ApplicationDidReceiveMemoryWarningEvent>({}, typeof<ApplicationEvent>());
+            auto app_event_type = register_struct_type<ApplicationEvent>({});
+            register_struct_type<ApplicationDidEnterForegroundEvent>({}, app_event_type);
+            register_struct_type<ApplicationWillEnterForegroundEvent>({}, app_event_type);
+            register_struct_type<ApplicationDidEnterBackgroundEvent>({}, app_event_type);
+            register_struct_type<ApplicationWillEnterBackgroundEvent>({}, app_event_type);
+            register_struct_type<ApplicationWillTerminateEvent>({}, app_event_type);
+            register_struct_type<ApplicationDidReceiveMemoryWarningEvent>({}, app_event_type);
             register_struct_type<ScreenKeyboardShownEvent>({});
             register_struct_type<ScreenKeyboardHiddenEvent>({});
         }

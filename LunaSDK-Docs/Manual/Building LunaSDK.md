@@ -1,34 +1,44 @@
 ## Prerequisites
-
-* C++ toolchain on your platform:
-    * Visual Studio 2019 or later on Windows (Choose C++ desktop development & C++ game development workload).
-    * XCode and command line tools on macOS.
-    * clang or gcc on Linux (not implemented yet).
+### Common
 * xmake building system, check [here](https://xmake.io/#/guide/installation) for installation instructions.
+### Windows
+* Visual Studio 2019 or later (Choose C++ desktop development & C++ game development workload).
+### macOS
+* XCode and Command Line Tool.
+### Android
+* Android Studio with Android SDK of your choice (Level 31 and newer is tested).
+* Install NDK (29.0.14206865 or newer) in `Tools -> SDK Manager` in Android Studio.
 
 ## Building
 
 1. Clone or download this project.
 2. Run `setup.bat` (on Windows) or `setup.sh` (on macOS) to download third party SDKs that are not managed by xmake. You may need to invoke `chmod +x ./setup.sh` firstly on macOS if a "permission denied" error occurs.
 3. Configure the building option by executing `xmake f {options}`. Possible options include:
-	1. `-p` for target platform, supported values are `windows` and `macosx`. This can be set automatically if you build project for the current platform.
-	2.  `-a` for architecture, supported values are `x64` on Windows, `x86_64` and `arm64` on macOS.
+	1. `-p` for target platform, supported values are `windows`,  `macosx` and `android`. This can be set automatically if you build project for the current platform.
+	2.  `-a` for architecture, supported values are `x64` on Windows, `x86_64` and `arm64` on macOS, `arm64-v8a` and `x86_64` for Android.
 	3.  `-m` for mode, supported values are:
 		1. `debug`: keep debug info and disable code optimization.
 		2. `profile`: discard debug info, enable full code optimization, keep profiling codes.
 		3. `release`: discard debug info, enable full code optimization, remov profiling codes.
-	4. `--shared=y` for building all libraries as shared libraries.
-	5. `--rhi_debug=y` if you want to enable the debug layer of the rendering backend (D3D12 debug layer or Vulkan validation layer).
-	6. `--rhi_api=XXX` for choosing the rendering backend, supported values are: 
+	4. `--ndk={NDK_PATH}` to specifiy NDK path if you want to build for Android platform.
+	5. `--shared=y` for building all libraries as shared libraries.
+	6. `--rhi_debug=y` if you want to enable the debug layer of the rendering backend (D3D12 debug layer or Vulkan validation layer).
+	7. `--rhi_api=XXX` for choosing the rendering backend, supported values are: 
 		1. Windows: `D3D12` (default),  `Vulkan`.
 		2. macOS: `Metal` (default). 
-	7. `--memory_profiler=y` for enabling memory profiler.
-	8. `--thread_safe_assertion=y` for enabling thread safe assertions.
-	9. `--build_tests=y` for building unit tests.
-	10. `--api_validation=y` for enabling api validation macros (`lucheck` and variations).
+	8. `--memory_profiler=y` for enabling memory profiler.
+	9. `--thread_safe_assertion=y` for enabling thread safe assertions.
+	10. `--build_tests=y` for building unit tests.
+	11. `--api_validation=y` for enabling api validation macros (`lucheck` and variations).
 	xmake will download and install dependency packages on first configure command.
 4. Build the project by executing `xmake build`, or build one target by executing `xmake build {target}`.
 5. Run one target by executing `xmake run {target}`.
+
+### Packaging for Android devices
+
+One Android Studio project is required for packaging `.apk` files for Android devices. When creating projects, make sure that:
+1. `NativeActivity` is used as the base class of your application activity class.
+2. `org.tboox.gradle-xmake-plugin` plugin is specified in `build.gradle` of your project and module, and root xmake script file is specified. See [xmake-gradle GitHub page](https://github.com/xmake-io/xmake-gradle) for details.
 
 ## Debugging in IDEs
 

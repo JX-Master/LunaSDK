@@ -1,6 +1,6 @@
 Welcome to LunaSDK. In this article, we will guide you to LunaSDK by creating a simple program that draws one textured 3D cube on the screen. At the end of this article, you will have a basic understanding of using LunaSDK to create a simple graphic program, and can start to explore more advanced features provided by LunaSDK. The source code of this article can be found in `{DOCS_ROOT_DIR}/Res/DemoApp`
 ## Prerequisites
-In this article, we assume that you have the basic knowledge of C++ programming and graphics programming (like using D3D11, D3D12 or OpenGL). You should also correctly setup LunaSDK and developing environments using the instructions provided in `README.md` of the project.
+In this article, we assume that you have the basic knowledge of C++ programming and graphics programming (like using D3D11, D3D12 or OpenGL). You should also correctly setup LunaSDK and developing environments using the instructions provided in `README.md` of the project. The program described in this article runs ONLY on desktop platforms (Windows and macOS), it does not compile on mobile and other platforms.
 
 ## Creating the program
 The first thing to do is to create an binary target for our demo program, so that XMake build system can correctly build our program. To create a new program, create a new folder in the `{ROOT_DIR}/Programs` directory, and name it `DemoApp`. In this folder, create a new Lua script file called `xmake.lua`, and fill its content with the following text:
@@ -9,7 +9,7 @@ The first thing to do is to create an binary target for our demo program, so tha
 target("DemoApp")
     set_luna_sdk_program()
     add_files("**.cpp")
-    add_deps("Runtime", "Window", "RHI", "ShaderCompiler", "Image")
+    add_deps("Runtime", "Window", "RHI", "RHIUtility", "ShaderCompiler", "Image")
 target_end()
 ```
 
@@ -472,7 +472,6 @@ RV DemoApp::resize(u32 width, u32 height)
         using namespace RHI;
         if(width && height)
         {
-            auto dev = get_main_device();
             luexp(swap_chain->reset({width, height, 2, Format::unknown, true}));
         }
     }
@@ -547,7 +546,7 @@ Ref<RHI::IDescriptorSet> desc_set;
 We need **1** descriptor set with **1** constant buffer view, **1** shader resource view and **1** sampler. So we can create our descriptor set layout object in `DemoApp::init` like so:
 
 ```c++
-luset (dlayout, dev->new_descriptor_set_layout (DescriptorSetLayoutDesc ({
+luset(dlayout, dev->new_descriptor_set_layout (DescriptorSetLayoutDesc ({
     DescriptorSetLayoutBinding:: uniform_buffer_view (0, 1, ShaderVisibilityFlag::vertex),
     DescriptorSetLayoutBinding:: read_texture_view (TextureViewType:: tex2d, 1, 1, ShaderVisibilityFlag::pixel),
     DescriptorSetLayoutBinding:: sampler (2, 1, ShaderVisibilityFlag::pixel)
@@ -557,7 +556,7 @@ luset (dlayout, dev->new_descriptor_set_layout (DescriptorSetLayoutDesc ({
 Then we can create one descriptor set using the descriptor set layout object:
 
 ```c++
-luset (desc_set, dev->new_descriptor_set (DescriptorSetDesc (dlayout)));
+luset(desc_set, dev->new_descriptor_set (DescriptorSetDesc (dlayout)));
 ```
 
 We will fill descriptors in the set by calling `update_descriptors` later.
@@ -567,14 +566,13 @@ We will fill descriptors in the set by calling `update_descriptors` later.
 The next thing to do is compiling shaders for the pipeline state object. LunaSDK uses HLSL as the source shader language, and uses `ShaderCompiler` module to compile HLSL to DXBC, DXIL, SPIR-V and other target shading languages. To compile shader, we need to include corresponding header files:
 
 ```c++
-#include <Luna/ShaderCompiler/ShaderCompiler. hpp>
-#include <Luna/RHI/ShaderCompileHelper. hpp>
+#include <Luna/RHI/ShaderCompileHelper.hpp>
 ```
 
-`ShaderCompileHelper. hpp` includes `RHI:: get_current_platform_shader_target_format ()` function, which tell the shader compiler the native target target shader format for the current graphics API. Since our shader is rather simple, we declare our shader source code directly in the C++ source file, in `DemoApp::init` function:
+`ShaderCompileHelper.hpp` includes `RHI::get_current_platform_shader_target_format()` function, which tell the shader compiler the native target target shader format for the current graphics API. Since our shader is rather simple, we declare our shader source code directly in the C++ source file, in `DemoApp::init` function:
 
 ```c++
-const char vs_shader_code[] = R" (
+const char vs_shader_code[] = R"(
 cbuffer vertexBuffer : register (b0)
 {
     float4x4 world_to_proj;
@@ -601,7 +599,7 @@ PS_INPUT main (VS_INPUT input)
     return output;
 })";
 
-const char ps_shader_code[] = R" (
+const char ps_shader_code[] = R"(
 Texture2D tex : register (t1);
 SamplerState tex_sampler : register (s2);
 struct PS_INPUT
@@ -623,20 +621,20 @@ here we use C++ raw string syntax `R" ()"` to declare multiline string without a
 Then we can compile shaders using `ShaderCompiler::ICompiler` object:
 
 ```c++
-auto compiler = ShaderCompiler:: new_compiler ();
-ShaderCompiler:: ShaderCompileParameters params;
-params. source = { vs_shader_code, strlen (vs_shader_code) };
-params. source_name = "DemoAppVS";
-params. entry_point = "main";
-params. target_format = RHI:: get_current_platform_shader_target_format ();
-params. shader_type = ShaderCompiler::ShaderType:: vertex;
-params. shader_model = {6, 0};
-params. optimization_level = ShaderCompiler::OptimizationLevel:: full;
-lulet (vs_data, compiler->compile (params));
-params. source = { ps_shader_code, strlen (ps_shader_code) };
-params. source_name = "DemoAppPS";
-params. shader_type = ShaderCompiler::ShaderType:: pixel;
-lulet (ps_data, compiler->compile (params));
+auto compiler = ShaderCompiler::new_compiler();
+ShaderCompiler::ShaderCompileParameters params;
+params.source = { vs_shader_code, strlen(vs_shader_code) };
+params.source_name = "DemoAppVS";
+params.entry_point = "main";
+params.target_format = RHI::get_current_platform_shader_target_format();
+params.shader_type = ShaderCompiler::ShaderType::vertex;
+params.shader_model = {6, 0};
+params.optimization_level = ShaderCompiler::OptimizationLevel::full;
+lulet(vs_data, compiler->compile (params));
+params.source = { ps_shader_code, strlen(ps_shader_code) };
+params.source_name = "DemoAppPS";
+params.shader_type = ShaderCompiler::ShaderType::pixel;
+lulet(ps_data, compiler->compile(params));
 ```
 
 The shader compilation process is fairly simple, we fill all shader compilation settings to one `ShaderCompileParameters` object, then pass that object to `IShaderCompiler::compile` to compile the shader source code. `IShaderCompiler::compile` returns one `ShaderCompileResult` object, will contains the shader compilation result, and can be converted to `RHI::ShaderData`, which is used to create RHI pipeline state objects.
@@ -664,7 +662,7 @@ Ref<RHI::IPipelineLayout> playout;
 Then we can create pipeline layout object using the following code:
 
 ```c++
-luset (playout, dev->new_pipeline_layout (PipelineLayoutDesc ({dlayout}, 
+luset(playout, dev->new_pipeline_layout(PipelineLayoutDesc({dlayout}, 
     PipelineLayoutFlag::allow_input_assembler_input_layout)));
 ```
 
@@ -701,26 +699,26 @@ Then we can create pipeline state object using the following code:
 
 ```c++
 GraphicsPipelineStateDesc ps_desc;
-ps_desc. primitive_topology = PrimitiveTopology:: triangle_list;
-ps_desc. rasterizer_state = RasterizerDesc ();
-ps_desc. depth_stencil_state = DepthStencilDesc (true, true, CompareFunction::less_equal);
-ps_desc. ib_strip_cut_value = IndexBufferStripCutValue:: disabled;
+ps_desc.primitive_topology = PrimitiveTopology::triangle_list;
+ps_desc.rasterizer_state = RasterizerDesc ();
+ps_desc.depth_stencil_state = DepthStencilDesc (true, true, CompareFunction::less_equal);
+ps_desc.ib_strip_cut_value = IndexBufferStripCutValue::disabled;
 InputAttributeDesc input_attributes[] = {
-    InputAttributeDesc ("POSITION", 0, 0, 0, 0, Format::rgb32_float),
-    InputAttributeDesc ("TEXCOORD", 0, 1, 0, 12, Format::rg32_float)
+    InputAttributeDesc("POSITION", 0, 0, 0, 0, Format::rgb32_float),
+    InputAttributeDesc("TEXCOORD", 0, 1, 0, 12, Format::rg32_float)
 };
 InputBindingDesc input_bindings[] = {
-    InputBindingDesc (0, 20, InputRate::per_vertex)
+    InputBindingDesc(0, 20, InputRate::per_vertex)
 };
-ps_desc. input_layout. attributes = {input_attributes, 2};
-ps_desc. input_layout. bindings = {input_bindings, 1};
-ps_desc. vs = get_shader_data_from_compile_result (vs_data);
-ps_desc. ps = get_shader_data_from_compile_result (ps_data);
-ps_desc. pipeline_layout = playout;
-ps_desc. num_color_attachments = 1;
-ps_desc. color_formats[0] = Format:: rgba8_unorm;
-ps_desc. depth_stencil_format = Format:: d32_float;
-luset (pso, dev->new_graphics_pipeline_state (ps_desc));
+ps_desc.input_layout.attributes = {input_attributes, 2};
+ps_desc.input_layout.bindings = {input_bindings, 1};
+ps_desc.vs = get_shader_data_from_compile_result(vs_data);
+ps_desc.ps = get_shader_data_from_compile_result(ps_data);
+ps_desc.pipeline_layout = playout;
+ps_desc.num_color_attachments = 1;
+ps_desc.color_formats[0] = Format::rgba8_unorm;
+ps_desc.depth_stencil_format = Format::d32_float;
+luset(pso, dev->new_graphics_pipeline_state(ps_desc));
 ```
 
 Note that `RHI::get_shader_data_from_compile_result` is from `<Luna/RHI/ShaderCompileHelper. hpp>` header, which converts one `ShaderCompiler::ShaderCompileResult` object to one `RHI::ShaderData` object conveniently. The user can also perform such conversion manually by assigning every properties of `RHI::ShaderData` using corresponding properties in `ShaderCompiler::ShaderCompileResult`.
@@ -750,11 +748,11 @@ struct TextureDesc
 To simplify the texture description, we can use static methods provided by `TextureDesc` to quickly construct `TextureDesc` structure:
 
 ```c++
-TextureDesc TextureDesc:: tex1d (Format format, TextureUsageFlag usages, u64 width, u32 array_size = 1, u32 mip_levels = 0, ResourceFlag flags = ResourceFlag::none);
+TextureDesc TextureDesc::tex1d(Format format, TextureUsageFlag usages, u64 width, u32 array_size = 1, u32 mip_levels = 0, ResourceFlag flags = ResourceFlag::none);
 
-TextureDesc TextureDesc:: tex2d (Format format, TextureUsageFlag usages, u64 width, u32 height, u32 array_size = 1, u32 mip_levels = 0, u32 sample_count = 1, ResourceFlag flags = ResourceFlag::none);
+TextureDesc TextureDesc::tex2d(Format format, TextureUsageFlag usages, u64 width, u32 height, u32 array_size = 1, u32 mip_levels = 0, u32 sample_count = 1, ResourceFlag flags = ResourceFlag::none);
 
-TextureDesc TextureDesc:: tex3d (Format format, TextureUsageFlag usages, u64 width, u32 height, u32 depth, u32 mip_levels = 0, ResourceFlag flags = ResourceFlag::none);
+TextureDesc TextureDesc::tex3d(Format format, TextureUsageFlag usages, u64 width, u32 height, u32 depth, u32 mip_levels = 0, ResourceFlag flags = ResourceFlag::none);
 ```
 
 Back to our `DemoApp`, we need to add one new property to `DemoApp` to hold the depth texture:
@@ -766,8 +764,8 @@ Ref<RHI::ITexture> depth_tex;
 Then we can create textures using the following code:
 
 ```c++
-auto window_size = window->get_framebuffer_size ();
-luset (depth_tex, dev->new_texture (MemoryType:: local, TextureDesc:: tex2d (Format:: d32_float, TextureUsageFlag:: depth_stencil_attachment, window_size. x, window_size. y, 1, 1)));
+auto window_size = window->get_framebuffer_size();
+luset(depth_tex, dev->new_texture(MemoryType::local, TextureDesc::tex2d(Format::d32_float, TextureUsageFlag::depth_stencil_attachment, window_size.x, window_size.y, 1, 1)));
 ```
 
 The first parameter of `new_texture` is the memory type of texture memory. The memory type is defined by `MemoryType` enumeration, possible options include:
@@ -781,7 +779,7 @@ Note that when retrieving window size for rendering, we need to call `IWindow::g
 Since we are using the window size as the depth texture size, the depth texture should also be recreated when the window size is changed. This can be done by adding the following code to the `DemoApp::resize` method:
 
 ```c++
-luset (depth_tex, dev->new_texture (MemoryType:: local, TextureDesc:: tex2d (Format:: d32_float, TextureUsageFlag:: depth_stencil_attachment, width, height, 1, 1)));
+luset(depth_tex, dev->new_texture(MemoryType:: local, TextureDesc::tex2d(Format::d32_float, TextureUsageFlag::depth_stencil_attachment, width, height, 1, 1)));
 ```
 
 ## Creating buffers and uploading buffer data
@@ -849,8 +847,8 @@ u32 indices[] = {
     16, 17, 18, 16, 18, 19,
     20, 21, 22, 20, 22, 23
 };
-luset (vb, dev->new_buffer (MemoryType:: local, BufferDesc (BufferUsageFlag:: vertex_buffer | BufferUsageFlag:: copy_dest, sizeof (vertices))));
-luset (ib, dev->new_buffer (MemoryType:: local, BufferDesc (BufferUsageFlag:: index_buffer | BufferUsageFlag:: copy_dest, sizeof (indices))));
+luset(vb, dev->new_buffer(MemoryType::local, BufferDesc(BufferUsageFlag::vertex_buffer | BufferUsageFlag::copy_dest, sizeof(vertices))));
+luset(ib, dev->new_buffer(MemoryType::local, BufferDesc(BufferUsageFlag::index_buffer | BufferUsageFlag::copy_dest, sizeof(indices))));
 ```
 
 We firstly define vertex and index data for our box, then we create two buffer resources to hold the vertex and index data. One buffer is created by calling `IDevice::new_buffer`, which is similar to `IDevice::new_texture`, but takes `BufferDesc` as the resource descriptor object. Since we only need to upload vertex and index buffer data once, these two buffers are created in local memory to achieve maximum GPU bandwidth.
@@ -860,50 +858,50 @@ We can use similar code to create the constant buffer for uploading camera prope
 In our `DemoApp`, the data of the uniform buffer is the 4x4 world-to-project matrix of the camera. We need to add a new include file to use matrix types:
 
 ```c++
-#include <Luna/Runtime/Math/Matrix. hpp>
+#include <Luna/Runtime/Math/Matrix.hpp>
 ```
 
 then we can use the following code to create constant buffer:
 
 ```c++
-auto ub_align = dev->check_feature (DeviceFeature::uniform_buffer_data_alignment). uniform_buffer_data_alignment;
-luset (ub, dev->new_buffer (MemoryType:: upload, BufferDesc (BufferUsageFlag:: uniform_buffer, align_upper (sizeof (Float4x4), ub_align))));
+auto ub_align = dev->check_feature(DeviceFeature::uniform_buffer_data_alignment).uniform_buffer_data_alignment;
+luset(ub, dev->new_buffer(MemoryType::upload, BufferDesc(BufferUsageFlag::uniform_buffer, align_upper(sizeof(Float4x4), ub_align))));
 ```
 
 as you can see, `Float4x4` is the matrix type used in LunaSDK. We also have `Float3x3` for 2D affine transformations.
 
 ## Uploading vertex and index data
 
-Now that we have created one vertex buffer and one index buffer, we need to upload vertex and index data to these buffers, so that they can be used by GPU correctly. As we have mentioned before, resources with `local` memory type can not be accessed by the host directly. To copy data between local memory and host memory, we can either use *staging buffers* to transfer the data manually, or we can use `RHI::copy_resource_data` to perform data copy automatically. We will show how to perform data copy in both approaches.
+Now that we have created one vertex buffer and one index buffer, we need to upload vertex and index data to these buffers, so that they can be used by GPU correctly. As we have mentioned before, resources with `local` memory type can not be accessed by the host directly. To copy data between local memory and host memory, we can either use *staging buffers* to transfer the data manually, or we can use `RHIUtility::IResourceWriteContext` to perform data copy automatically. We will show how to perform data copy in both approaches.
 
 ### Uploading data manually
 
 In order to upload data to resources with `local` memory type, we need to create intermediate buffers with `upload` memory type, copy data to such buffers form the host, and use GPU to copy data from such buffers to resources with `local` memory type. Such intermediate buffers are usually called *staging buffers*, and are used frequently to copy data from host memory to device local memory. The following code shows how to upload data for our vertex and index buffer:
 
 ```c++
-lulet (vb_staging, dev->new_buffer (MemoryType:: upload, BufferDesc (BufferUsageFlag:: copy_source, sizeof (vertices))));
-lulet (ib_staging, dev->new_buffer (MemoryType:: upload, BufferDesc (BufferUsageFlag:: copy_source, sizeof (indices))));
+lulet(vb_staging, dev->new_buffer(MemoryType::upload, BufferDesc(BufferUsageFlag::copy_source, sizeof(vertices))));
+lulet(ib_staging, dev->new_buffer(MemoryType::upload, BufferDesc(BufferUsageFlag::copy_source, sizeof(indices))));
 void* vb_mapped = nullptr;
-luexp (vb_staging->map (0, 0, &vb_mapped));
-memcpy (vb_mapped, vertices, sizeof (vertices));
-vb_staging->unmap (0, sizeof (vertices));
+luexp(vb_staging->map(0, 0, &vb_mapped));
+memcpy(vb_mapped, vertices, sizeof(vertices));
+vb_staging->unmap(0, sizeof(vertices));
 void* ib_mapped = nullptr;
-luexp (ib_staging->map (0, 0, &ib_mapped));
-memcpy (ib_mapped, indices, sizeof (indices));
-ib_staging->unmap (0, sizeof (indices));
-cmdbuf->begin_copy_pass ();
-cmdbuf->resource_barrier ({
-    BufferBarrier (vb, BufferStateFlag:: automatic, BufferStateFlag::copy_dest),
-    BufferBarrier (vb_staging, BufferStateFlag:: automatic, BufferStateFlag::copy_source),
-    BufferBarrier (ib, BufferStateFlag:: automatic, BufferStateFlag::copy_dest),
-    BufferBarrier (ib_staging, BufferStateFlag:: automatic, BufferStateFlag::copy_source),
+luexp(ib_staging->map(0, 0, &ib_mapped));
+memcpy(ib_mapped, indices, sizeof(indices));
+ib_staging->unmap(0, sizeof(indices));
+cmdbuf->begin_copy_pass();
+cmdbuf->resource_barrier({
+    BufferBarrier(vb, BufferStateFlag::automatic, BufferStateFlag::copy_dest),
+    BufferBarrier(vb_staging, BufferStateFlag::automatic, BufferStateFlag::copy_source),
+    BufferBarrier(ib, BufferStateFlag::automatic, BufferStateFlag::copy_dest),
+    BufferBarrier(ib_staging, BufferStateFlag::automatic, BufferStateFlag::copy_source),
 }, {});
-cmdbuf->copy_buffer (vb, 0, vb_staging, 0, sizeof (vertices));
-cmdbuf->copy_buffer (ib, 0, ib_staging, 0, sizeof (indices));
-cmdbuf->end_copy_pass ();
-cmdbuf->submit ({}, {}, true);
-cmdbuf->wait ();
-cmdbuf->reset ();
+cmdbuf->copy_buffer(vb, 0, vb_staging, 0, sizeof(vertices));
+cmdbuf->copy_buffer(ib, 0, ib_staging, 0, sizeof(indices));
+cmdbuf->end_copy_pass();
+cmdbuf->submit({}, {}, true);
+cmdbuf->wait();
+cmdbuf->reset();
 ```
 
 Firstly, we create two staging buffers `vb_staging` and `ib_staging`. These two buffers have the same size as `vb` and `ib` and use upload memory type, so they can be written by the host directly. Then, we use `IBuffer::map` to take pointers to the buffer memory, use `memcpy` to copy data to the memory, then use `IBuffer::unmap` to release the host access to the memory. `map` takes two integer parameters indicating the host reading range of the mapped memory, this should always be `0` if the memory type of the buffer is not `readback`, just like this case. `unmap` takes another two integer parameters indicating the host writing range of the mapped memory. in our case, we have written memory in `[0, sizeof (data))` range, so we should specify the range correctly. There is a special range `[0, USIZE_MAX)` that indicates the whole buffer memory is read or written, so we don't need to specify the size explicitly.
@@ -914,24 +912,43 @@ The first command we need to record is `ICommandBuffer::begin_copy_pass`, which 
 
 When we finish recording commands into the command buffer, we call `ICommandBuffer::submit` to submit the command buffer to the command queue, call `ICommandBuffer::wait` to wait for the command buffer to be finished, then call `ICommandBuffer::reset` to clear commands in the command buffer, and reset the command buffer state so that it can be used for a recording new commands.
 
-### Uploading data using `RHI::copy_resource_data`
+### Uploading data using `RHIUtility::IResourceWriteContext`
 
-In order to use `RHI::copy_resource_data`, we need to include one new header file:
-
-```c++
-#include <Luna/RHI/Utility. hpp>
-```
-
-`RHI/Utility. hpp` is an auxiliary library that defines high-level functionalities implemented using APIs provided by `RHI`, including `RHI::copy_resource_data` we use here. The following code shows how to upload data using `RHI::copy_resource_data`:
+In order to use `RHIUtility::IResourceWriteContext`, we need to include two new header files:
 
 ```c++
-luexp (copy_resource_data (cmdbuf, {
-    CopyResourceData:: write_buffer (vb, 0, vertices, sizeof (vertices)),
-    CopyResourceData:: write_buffer (ib, 0, indices, sizeof (indices))
-}));
+#inlcude <Luna/RHIUtility/RHIUtility.hpp>
+#include <Luna/RHIUtility/ResourceWriteContext.hpp>
 ```
 
-You can see how `RHI::copy_resource_data` greatly simplifies the code we need to write in order to upload resource data.
+`RHIUtility` is an auxiliary library that defines high-level functionalities implemented using APIs provided by `RHI`, including `RHIUtility::IResourceWriteContext` we use here. When then initialize this module in `run_app`:
+```c++
+RV run_app()
+{
+    auto result = add_modules({
+        module_window(),
+        module_rhi(),
+        module_rhi_utility(), // Add this.
+        module_shader_compiler()
+    });
+    //...
+}
+```
+
+Then, add this code in `DemoApp::init`:
+
+```c++
+Ref<RHIUtility::IResourceWriteContext> writer = RHIUtility::new_resource_write_context(dev);
+lulet(vb_data, writer->write_buffer(vb, 0, sizeof(vertices)));
+lulet(ib_data, writer->write_buffer(ib, 0, sizeof(indices)));
+memcpy(vb_data, vertices, sizeof(vertices));
+memcpy(ib_data, indices, sizeof(indices));
+luexp(writer->commit(cmdbuf, true));
+```
+
+We firstly create a `IResourceWriteContext` object, which contains a staging buffer and uploads data from system memory to resource memory. `IResourceWriteContext` defines `write_buffer` and `write_texture` functions, which accept the resource we need to write and return the memory buffer that can be used to write data to. We then copy vertex data and index data to the memory buffer using `memcpy`. Finally, we call `commit` to perform the actual upload operation using the provided command buffer. The second parameter of `commit` is `true`, which submits the copy operation to GPU and blocks the current thread until the upload operation is finished on GPU side.
+
+> Similarly, if we want to read data from GPU resources, we can use `IResourceReadContext` in `<Luna/RHIUtility/ResourceReadContext.hpp>`.
 
 ## Loading image from file
 
@@ -939,34 +956,34 @@ The next step is to load our Luna LOGO image that will be drawn on the box surfa
 
 ![](luna.png)
 
-Save the image file in the same directory as `main. cpp`, and naming it `luna. png`. You should have one file structure similar to this:
+Save the image file in the same directory as `main.cpp`, and naming it `luna.png`. You should have one file structure similar to this:
 
 ```
 DemoApp
-|- xmake. lua
-|- main. cpp
-|- luna. png
+|- xmake.lua
+|- main.cpp
+|- luna.png
 ```
 
 Then fills `xmake. lua` with the following code:
 
 ```lua
 target ("DemoApp")
-    set_luna_sdk_program ()
-    add_files ("**. cpp")
-    add_deps ("Runtime", "Window", "RHI", "ShaderCompiler", "Image")
-    before_build (function (target)
-        os. cp ("$(scriptdir)/luna. png", target: targetdir () .. "/luna. png")
-    end)
-    after_install (function (target)
-        os. cp (target: targetdir () .. "/luna. png", target: installdir () .. "/bin/luna. png")
-    end)
+	set_luna_sdk_program()
+	add_files("Source/**.cpp")
+	add_deps("Runtime", "Window", "RHI", "RHIUtility", "ShaderCompiler", "Image")
+	before_build (function (target)
+	    os.cp("$(scriptdir)/luna.png", target:targetdir() .. "/luna.png")
+	end)
+	after_install (function (target)
+	    os.cp(target:targetdir() .. "/luna.png", target:installdir() .. "/bin/luna.png")
+	end)
 target_end ()
 ```
 
 This script triggers registers custom functions before building the program and after installing the program, the custom function copies the image file to same the directory of our program binary file, so that our program can correctly find the image file.
 
-Then, go back to `main. cpp`, and add one new property to `DemoApp` to represent the loaded image:
+Then, go back to `main.cpp`, and add one new property to `DemoApp` to represent the loaded image:
 
 ```c++
 Ref<RHI::ITexture> file_tex;
@@ -975,64 +992,68 @@ Ref<RHI::ITexture> file_tex;
 To load the image in our program, we need to use one new module called `Image`, which parses image file data and gives row-majored image data in our desired format. We also need to use the file API provided by `Runtime` module, so we includes two new headers:
 
 ```c++
-#include <Luna/Runtime/File. hpp>
-#include <Luna/Image/Image. hpp>
+#include <Luna/Runtime/File.hpp>
+#include <Luna/Image/Image.hpp>
 ```
 
-The first thing to do is to load image file data from our `luna. png` file. In order to load file data, we need to use the `open_file` function provided by the `Runtime` module. This function returns one file handle represented by `IFile` if the file is correctly opened. Then, we loads the file data into one `Blob` object by calling `load_file_data`, this function creates one properly-sized blob object, and calls `IFile::read` to read all data of the file to the blob, then returns the blob:
+The first thing to do is to load image file data from our `luna.png` file. In order to load file data, we need to use the `open_file` function provided by the `Runtime` module. This function returns one file handle represented by `IFile` if the file is correctly opened. Then, we loads the file data into one `Blob` object by calling `load_file_data`, this function creates one properly-sized blob object, and calls `IFile::read` to read all data of the file to the blob, then returns the blob:
 
 ```c++
-lulet (image_file, open_file ("Luna. png", FileOpenFlag:: read, FileCreationMode::open_existing));
-lulet (image_file_data, load_file_data (image_file));
+lulet(image_file, open_file("Luna.png", FileOpenFlag::read, FileCreationMode::open_existing));
+lulet(image_file_data, load_file_data(image_file));
 ```
 
 Now that the file data has been stored in `image_file_data`, we need to call `Image::read_image_file` function to parse the file data and gives the real image data:
 
 ```c++
-Image:: ImageDesc image_desc;
-lulet (image_data, Image:: read_image_file (image_file_data. data (), image_file_data. size (), Image::ImageFormat:: rgba8_unorm, image_desc));
+Image::ImageDesc image_desc;
+lulet(image_data, Image::read_image_file(image_file_data.data(), image_file_data.size(), Image::ImageFormat::rgba8_unorm, image_desc));
 ```
 
 `Image::read_image_file` function outputs one `Image::ImageDesc` structure that describes the returned image data, including the width, height and pixel format of the image. The image data is arranged in a row-major manner and without and alignment padding. We can now creates the texture resource based on the image size:
 
 ```c++
-luset (file_tex, dev->new_texture (MemoryType:: local, TextureDesc:: tex2d (Format:: rgba8_unorm, 
-    TextureUsageFlag:: copy_dest | TextureUsageFlag:: read_texture, image_desc. width, image_desc. height, 1, 1)));
+luset(file_tex, dev->new_texture(MemoryType::local, TextureDesc::tex2d(Format::rgba8_unorm, 
+    TextureUsageFlag::copy_dest | TextureUsageFlag::read_texture, image_desc.width, image_desc.height, 1, 1)));
 ```
 
 The following code shows how to upload data for our texture:
 
 ```c++
 u64 tex_size, tex_row_pitch, tex_slice_pitch;
-dev->get_texture_data_placement_info (image_desc. width, image_desc. height, 1, Format:: rgba8_unorm, &tex_size, nullptr, &tex_row_pitch, &tex_slice_pitch);
-lulet (file_tex_staging, dev->new_buffer (MemoryType:: upload, BufferDesc (BufferUsageFlag:: copy_source, tex_size)));
+dev->get_texture_data_placement_info(image_desc.width, image_desc.height, 1, Format::rgba8_unorm, &tex_size, nullptr, &tex_row_pitch, &tex_slice_pitch);
+lulet(file_tex_staging, dev->new_buffer(MemoryType::upload, BufferDesc(BufferUsageFlag::copy_source, tex_size)));
 void* file_tex_mapped = nullptr;
-luexp (file_tex_staging->map (0, 0, &file_tex_mapped));
-memcpy_bitmap (file_tex_mapped, image_data. data (), image_desc. width * 4, image_desc. height, tex_row_pitch, image_desc. width * 4);
-file_tex_staging->unmap (0, USIZE_MAX);
-cmdbuf->begin_copy_pass ();
+luexp(file_tex_staging->map(0, 0, &file_tex_mapped));
+memcpy_bitmap(file_tex_mapped, image_data.data(), image_desc.width * 4, image_desc.height, tex_row_pitch, image_desc.width * 4);
+file_tex_staging->unmap(0, USIZE_MAX);
+cmdbuf->begin_copy_pass();
 cmdbuf->resource_barrier ({
-    BufferBarrier (file_tex_staging, BufferStateFlag:: automatic, BufferStateFlag::copy_source)
+    BufferBarrier(file_tex_staging, BufferStateFlag::automatic, BufferStateFlag::copy_source)
 }, {
-    TextureBarrier (file_tex, TEXTURE_BARRIER_ALL_SUBRESOURCES, TextureStateFlag:: automatic, TextureStateFlag::copy_dest)
+    TextureBarrier(file_tex, TEXTURE_BARRIER_ALL_SUBRESOURCES, TextureStateFlag::automatic, TextureStateFlag::copy_dest)
 });
-cmdbuf->copy_buffer_to_texture (file_tex, SubresourceIndex (0, 0), 0, 0, 0, file_tex_staging, 0, tex_row_pitch, tex_slice_pitch, image_desc. width, image_desc. height, 1);
-cmdbuf->end_copy_pass ();
-cmdbuf->submit ({}, {}, true);
-cmdbuf->wait ();
-cmdbuf->reset ();
+cmdbuf->copy_buffer_to_texture(file_tex, SubresourceIndex(0, 0), 0, 0, 0, file_tex_staging, 0, tex_row_pitch, tex_slice_pitch, image_desc.width, image_desc.height, 1);
+cmdbuf->end_copy_pass();
+cmdbuf->submit({}, {}, true);
+cmdbuf->wait();
+cmdbuf->reset();
 ```
 
 Uploading texture data is similar to uploading buffer data, we need to create one staging buffer to hold the texture data, then use `ICommandBuffer::copy_buffer_to_texture` to copy data from buffer to texture. Note that most systems have special alignment requirements for texture data in buffers when copying data between buffers and textures, the user should call `IDevice::get_texture_data_placement_info` to fetch the texture data placement information for one specific texture, and use that information to manipulate texture data in the buffer. Instead of `memcpy` , the user should call `memcpy_bitmap` to copy row-major bitmap data, which takes `src_row_pitch` and `dst_row_pitch` to correctly offsets every texture data row.
 
-We can also use `RHI::copy_resource_data` to upload data for textures like so:
+We can also use `RHIUtility::IResourceWriteContext` to upload data for textures like so:
 
 ```c++
-luexp (copy_resource_data (cmdbuf, {
-    CopyResourceData:: write_texture (file_tex, SubresourceIndex (0, 0), 0, 0, 0, 
-        image_data. data (), image_desc. width * 4, image_desc. width * image_desc. height * 4, image_desc. width, image_desc. height, 1)
-}));
+writer->reset();
+u32 row_pitch, slice_pitch;
+lulet(image_buffer, writer->write_texture(file_tex, SubresourceIndex(0, 0),
+    0, 0, 0, image_desc.width, image_desc.height, 1, row_pitch, slice_pitch));
+memcpy_bitmap(image_buffer, image_data.data(), image_desc.width * 4, image_desc.height, row_pitch, image_desc.width * 4);
+luexp(writer->commit(cmdbuf, true));
 ```
+
+This code reuses the writer context we created for uploading buffer data, we can simple reuse one context by calling `reset` on the context. To copy image data, we use `memcpy_bitmap`, which performs `memcpy` on each row of the image data.
 
 ## Set up descriptor set
 
@@ -1040,9 +1061,9 @@ Once the uniform buffer and file texture is set up, we can bind these two resour
 
 ```c++
 luexp (desc_set->update_descriptors ({
-    WriteDescriptorSet:: uniform_buffer_view (0, BufferViewDesc:: uniform_buffer (ub)),
-    WriteDescriptorSet:: read_texture_view (1, TextureViewDesc:: tex2d (file_tex)),
-    WriteDescriptorSet:: sampler (2, SamplerDesc (Filter:: linear, Filter:: linear, Filter:: linear, TextureAddressMode:: clamp, TextureAddressMode:: clamp, TextureAddressMode::clamp))
+    WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(ub)),
+    WriteDescriptorSet::read_texture_view(1, TextureViewDesc::tex2d(file_tex)),
+    WriteDescriptorSet::sampler(2, SamplerDesc(Filter::linear, Filter::linear, Filter::linear, TextureAddressMode::clamp, TextureAddressMode::clamp, TextureAddressMode::clamp))
 }));
 ```
 
@@ -1062,14 +1083,14 @@ We can increase the rotation angle of the camera by one at every frame by adding
 camera_rotation += 1.0f;
 ```
 
-Since we are going to use many functions that may throw errors, it is better to declare one `lutry`-`lucatch` scope that wraps all succeeding codes in `DemoApp:update`. Also, we don't want to render the image if the window is closed or minimized, so we add two early-out conditions after `Window:: poll_events ()`. Now `DemoApp::update` should look like this:
+Since we are going to use many functions that may throw errors, it is better to declare one `lutry`-`lucatch` scope that wraps all succeeding codes in `DemoApp:update`. Also, we don't want to render the image if the window is closed or minimized, so we add two early-out conditions after `Window::poll_events()`. Now `DemoApp::update` should look like this:
 
 ```c++
-RV DemoApp:: update ()
+RV DemoApp::update()
 {
-    Window:: poll_events ();
-    if (window->is_closed ()) return ok;
-    if (window->is_minimized ()) return ok;
+    Window::poll_events();
+    if(window->is_closed()) return ok;
+    if(window->is_minimized()) return ok;
     lutry
     {
         camera_rotation += 1.0f;
@@ -1083,16 +1104,16 @@ RV DemoApp:: update ()
 After we updates the camera rotation, we need to calculate the view-projection matrix for the camera. Fortunately, the math library of the `Runtime` module already includes implementations for many commonly used vector and matrix calculations, and here we are going to use two of them: `AffineMatrix::make_look_at` and `ProjectionMatrix::make_perspective_fov`. To use these two functions, we firstly need to add one new header file:
 
 ```c+
-#include <Luna/Runtime/Math/Transform. hpp>
+#include <Luna/Runtime/Math/Transform.hpp>
 ```
 
 Then the matrix can be computed using the following code:
 
 ```c++
-Float3 camera_pos (cosf (camera_rotation / 180.0f * PI) * 3.0f, 1.0f, sinf (camera_rotation / 180.0f * PI) * 3.0f);
-Float4x4 camera_mat = AffineMatrix:: make_look_at (camera_pos, Float3 (0, 0, 0), Float3 (0, 1, 0));
-auto window_sz = window->get_framebuffer_size ();
-camera_mat = mul (camera_mat, ProjectionMatrix:: make_perspective_fov (PI / 3.0f, (f32) window_sz. x / (f32) window_sz. y, 0.001f, 100.0f));
+Float3 camera_pos(cosf(camera_rotation / 180.0f * PI) * 3.0f, 1.0f, sinf(camera_rotation / 180.0f * PI) * 3.0f);
+Float4x4 camera_mat = AffineMatrix::make_look_at(camera_pos, Float3(0, 0, 0), Float3(0, 1, 0));
+auto window_sz = window->get_framebuffer_size();
+camera_mat = mul(camera_mat, ProjectionMatrix::make_perspective_fov(PI / 3.0f, (f32)window_sz.x / (f32) window_sz.y, 0.001f, 100.0f));
 ```
 
 `AffineMatrix::make_look_at` generates one camera view matrix from the position of the camera and the position of the point to look at. `ProjectionMatrix::make_perspective_fov` is another helper function that generates one projection matrix from the specified field-of-view and aspect ratio values. Those two matrices are multiplied by `mul` function to get the final view-projection matrix. Note that when performing matrix multiplications, use `mul` instead of operator `*`, the later one is used to multiply each element in the matrix separately.
@@ -1101,9 +1122,9 @@ After we get the matrix, we need to copy the matrix data to the uniform buffer r
 
 ```c++
 void* camera_mapped;
-luexp (ub->map (0, 0, &camera_mapped));
-memcpy (camera_mapped, &camera_mat, sizeof (Float4x4));
-ub->unmap (0, sizeof (Float4x4));
+luexp(ub->map(0, 0, &camera_mapped));
+memcpy(camera_mapped, &camera_mat, sizeof(Float4x4));
+ub->unmap(0, sizeof(Float4x4));
 ```
 
 ## Fetching the back buffer
@@ -1111,7 +1132,8 @@ ub->unmap (0, sizeof (Float4x4));
 In order to render contents to one window, we need to fetch back buffers managed by the window swap chain. The number of back buffers that are contained by a swap chain is determined by `SwapChainDesc::buffer_count`, which can be set when the swap chain is created or reset. At every frame, only one back buffer can be used for rendering, which can be fetched by calling `ISwapChain::get_current_back_buffer`:
 
 ```c++
-lulet (back_buffer, swap_chain->get_current_back_buffer ());
+using namespace RHI;
+lulet(back_buffer, swap_chain->get_current_back_buffer());
 ```
 
 `ISwapChain::get_current_back_buffer` can be called multiple times during the same frame, and will return the same back buffer. The current back buffer will be switched when `ISwapChain::present` is called, the user should not use the back buffer in the previous frame after `ISwapChain::present` is called.
@@ -1121,16 +1143,15 @@ lulet (back_buffer, swap_chain->get_current_back_buffer ());
 In LunaSDK, every graphic resource has one state that describes the current memory layout and pipeline access polity of the resource. Before we can issue draw calls, we need to transfer every resource we use to their correct states. LunaSDK requires the user to transfer the state explicitly by calling `ICommandBuffer::resource_barrier` with transition-typed resource barriers. In our example, we need to perform the following transitions:
 
 ```c++
-cmdbuf->resource_barrier ({
-    BufferBarrier (ub, BufferStateFlag:: automatic, BufferStateFlag::uniform_buffer_vs),
-    BufferBarrier (vb, BufferStateFlag:: automatic, BufferStateFlag::vertex_buffer),
-    BufferBarrier (ib, BufferStateFlag:: automatic, BufferStateFlag::index_buffer)
+cmdbuf->resource_barrier({
+    BufferBarrier(ub, BufferStateFlag::automatic, BufferStateFlag::uniform_buffer_vs),
+    BufferBarrier(vb, BufferStateFlag::automatic, BufferStateFlag::vertex_buffer),
+    BufferBarrier(ib, BufferStateFlag::automatic, BufferStateFlag::index_buffer)
 }, {
-    TextureBarrier (file_tex, TEXTURE_BARRIER_ALL_SUBRESOURCES, TextureStateFlag:: automatic, TextureStateFlag::shader_read_ps),
-    TextureBarrier (back_buffer, SubresourceIndex (0, 0), TextureStateFlag:: automatic, TextureStateFlag::color_attachment_write),
-    TextureBarrier (depth_tex, SubresourceIndex (0, 0), TextureStateFlag:: automatic, TextureStateFlag::depth_stencil_attachment_write)
-});
-```
+    TextureBarrier(file_tex, TEXTURE_BARRIER_ALL_SUBRESOURCES, TextureStateFlag::automatic, TextureStateFlag::shader_read_ps),
+    TextureBarrier(back_buffer, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::color_attachment_write),
+    TextureBarrier(depth_tex, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::depth_stencil_attachment_write)
+});```
 
 One resource can have multiple states, so long as such states are compatible to each other. For example, one texture can have `TextureStateFlag::shader_read_vs` and `TextureStateFlag::shader_read_ps` at the same time if it will be accessed by both vertex and pixel shader, or can have `TextureStateFlag::shader_read_cs` and `TextureStateFlag::shader_write_cs` at the same time if it will be read and write by compute shader. LunaSDK internally tracks the current states for all resources, so we can set `before` states of resources to `automatic` in most cases, which tells the system to load the previous states automatically. LunaSDK also omits unnecessary barriers automatically.
 
@@ -1140,20 +1161,20 @@ Finally, we can issue the draw call that draws our box:
 
 ```c++
 RenderPassDesc desc;
-desc. color_attachments[0] = ColorAttachment (back_buffer, LoadOp:: clear, StoreOp:: store, Float4U (0.0f));
-desc. depth_stencil_attachment = DepthStencilAttachment (depth_tex, false, LoadOp:: clear, StoreOp:: store, 1.0f);
-cmdbuf->begin_render_pass (desc);
-cmdbuf->set_graphics_pipeline_layout (playout);
-cmdbuf->set_graphics_pipeline_state (pso);
-cmdbuf->set_graphics_descriptor_set (0, desc_set);
-auto sz = vb->get_desc (). size;
-cmdbuf->set_vertex_buffers (0, {VertexBufferView (vb, 0, sz, sizeof (Vertex))});
-sz = ib->get_desc (). size;
-cmdbuf->set_index_buffer (IndexBufferView (ib, 0, sz, Format::r32_uint));
-cmdbuf->set_scissor_rect (RectI (0, 0, (i32) window_sz. x, (i32) window_sz. y));
-cmdbuf->set_viewport (Viewport (0.0f, 0.0f, (f32) window_sz. x, (f32) window_sz. y, 0.0f, 1.0f));
-cmdbuf->draw_indexed (36, 0, 0);
-cmdbuf->end_render_pass ();
+desc.color_attachments[0] = ColorAttachment(back_buffer, LoadOp::clear, StoreOp::store, Float4U(0.0f));
+desc.depth_stencil_attachment = DepthStencilAttachment(depth_tex, false, LoadOp::clear, StoreOp::store, 1.0f);
+cmdbuf->begin_render_pass(desc);
+cmdbuf->set_graphics_pipeline_layout(playout);
+cmdbuf->set_graphics_pipeline_state(pso);
+cmdbuf->set_graphics_descriptor_set(0, desc_set);
+auto sz = vb->get_desc().size;
+cmdbuf->set_vertex_buffers(0, {VertexBufferView(vb, 0, sz, sizeof(Vertex))});
+sz = ib->get_desc().size;
+cmdbuf->set_index_buffer(IndexBufferView(ib, 0, sz, Format::r32_uint));
+cmdbuf->set_scissor_rect(RectI(0, 0, (i32)window_sz.x, (i32)window_sz.y));
+cmdbuf->set_viewport(Viewport(0.0f, 0.0f, (f32)window_sz.x, (f32)window_sz.y, 0.0f, 1.0f));
+cmdbuf->draw_indexed(36, 0, 0);
+cmdbuf->end_render_pass();
 ```
 
 The first thing to do is to begin a *render pass* that attaches one set of color attachments and/or the depth stencil attachment to the graphic pipeline, these textures are bound to the pipeline during the current render pass and cannot be changed, while all other settings (like shader input layout object, pipeline state object, descriptor sets, etc) can be changed within the same render pass.
@@ -1163,17 +1184,17 @@ The render pass begins with `ICommandBuffer::begin_render_pass`. In the render p
 Before we can submit our command buffer, we need to insert another resource barrier to transfer our back buffer into `TextureStateFlag::present` state. This is required for one back buffer to be successfully presented.
 
 ```c++
-cmdbuf->resource_barrier ({}, {
-    TextureBarrier (back_buffer, SubresourceIndex (0, 0), TextureStateFlag:: automatic, TextureStateFlag::present)
+cmdbuf->resource_barrier({}, {
+    TextureBarrier(back_buffer, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::present)
 });
 ```
 
 Finally, we submit our command buffer, waiting for its completion, and resets the command buffer for next frame:
 
 ```c++
-luexp (cmdbuf->submit ({}, {}, true));
-cmdbuf->wait ();
-luexp (cmdbuf->reset ());
+luexp(cmdbuf->submit({}, {}, true));
+cmdbuf->wait();
+luexp(cmdbuf->reset());
 ```
 
 ## Presenting the render result

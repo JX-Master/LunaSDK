@@ -161,22 +161,22 @@ namespace Luna
     }
 
     //! A integer literal suffix that multiples one number with 1024. Use it like `3_kb`.
-    inline constexpr unsigned long long operator"" _kb(unsigned long long v)
+    inline constexpr unsigned long long operator""_kb(unsigned long long v)
     {
         return v * 1024;
     }
     //! A integer literal suffix that multiples one number with 1024 * 1024. Use it like `3_mb`.
-    inline constexpr unsigned long long operator"" _mb(unsigned long long v)
+    inline constexpr unsigned long long operator""_mb(unsigned long long v)
     {
         return v * 1024 * 1024;
     }
     //! A integer literal suffix that multiples one number with 1024 * 1024 * 1024. Use it like `3_gb`.
-    inline constexpr unsigned long long operator"" _gb(unsigned long long v)
+    inline constexpr unsigned long long operator""_gb(unsigned long long v)
     {
         return v * 1024 * 1024 * 1024;
     }
     //! A integer literal suffix that multiples one number with 1024 * 1024 * 1024 * 1024. Use it like `3_tb`.
-    inline constexpr unsigned long long operator"" _tb(unsigned long long v)
+    inline constexpr unsigned long long operator""_tb(unsigned long long v)
     {
         return v * 1024 * 1024 * 1024 * 1024;
     }

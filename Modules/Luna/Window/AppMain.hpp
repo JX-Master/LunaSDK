@@ -15,4 +15,6 @@
 #include "Cocoa/AppMainCocoa.inl"
 #elif defined(LUNA_PLATFORM_IOS)
 #include "UIKit/AppMainUIKit.inl"
+#elif defined(LUNA_PLATFORM_ANDROID)
+#include "Android/AppMainAndroid.inl"
 #endif

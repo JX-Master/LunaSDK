@@ -23,7 +23,8 @@ namespace Luna
                 switch (desc.type)
                 {
                 case QueryType::occlusion: create_info.queryType = VK_QUERY_TYPE_OCCLUSION; break;
-                case QueryType::timestamp: create_info.queryType = VK_QUERY_TYPE_TIMESTAMP; break;
+                case QueryType::timestamp: 
+                case QueryType::timestamp_copy_queue: create_info.queryType = VK_QUERY_TYPE_TIMESTAMP; break;
                 case QueryType::pipeline_statistics: create_info.queryType = VK_QUERY_TYPE_PIPELINE_STATISTICS; break;
                 }
                 create_info.queryCount = desc.count;

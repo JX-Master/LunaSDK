@@ -1008,6 +1008,21 @@ namespace Luna
         return m_allocator_and_buffer.first();
     }
     template <typename _Char, typename _Alloc>
+    inline Span<_Char> BasicString<_Char, _Alloc>::span()
+    {
+        return Span<_Char>(data(), size());
+    }
+    template <typename _Char, typename _Alloc>
+    inline Span<const _Char> BasicString<_Char, _Alloc>::span() const
+    {
+        return Span<const _Char>(data(), size());
+    }
+    template <typename _Char, typename _Alloc>
+    inline Span<const _Char> BasicString<_Char, _Alloc>::cspan() const
+    {
+        return Span<const _Char>(data(), size());
+    }
+    template <typename _Char, typename _Alloc>
     inline usize BasicString<_Char, _Alloc>::find(const BasicString& str, usize pos) const
     {
         if(pos >= size()) return npos;

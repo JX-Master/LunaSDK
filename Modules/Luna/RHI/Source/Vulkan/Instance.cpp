@@ -15,6 +15,10 @@
 #include <vulkan/vulkan_win32.h>
 #endif
 
+#ifdef LUNA_PLATFORM_ANDROID
+#include <vulkan/vulkan_android.h>
+#endif
+
 namespace Luna
 {
     namespace RHI
@@ -139,11 +143,21 @@ namespace Luna
 #ifdef LUNA_PLATFORM_WINDOWS
                 extensions.push_back(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
 #endif
+#ifdef LUNA_PLATFORM_ANDROID
+                extensions.push_back(VK_KHR_ANDROID_SURFACE_EXTENSION_NAME);
+#endif
                 g_enable_validation_layer = false;
 #if defined(LUNA_RHI_DEBUG) || defined(LUNA_DEBUG)
                 if (check_validation_layer_support())
                 {
                     g_enable_validation_layer = true;
+                }
+                else
+                {
+                    log_warning("RHI", "RHI module is built with rhi-debug is enabled, but Vulkan validate layer is not supported on the current environment. The debug layer will not be used.");
+#ifdef LUNA_PLATFORM_ANDROID
+                    log_warning("RHI", "Consult \"Vulkan validation layers on Android\" on how you can enable Vulkan validation layers on Android.");
+#endif
                 }
 #endif
                 if (g_enable_validation_layer)
