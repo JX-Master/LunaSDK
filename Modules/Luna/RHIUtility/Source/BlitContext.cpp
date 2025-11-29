@@ -40,7 +40,7 @@ namespace Luna
                 GraphicsPipelineStateDesc ps_desc;
                 ps_desc.primitive_topology = PrimitiveTopology::triangle_list;
                 ps_desc.blend_state = BlendDesc();
-                ps_desc.rasterizer_state = RasterizerDesc(FillMode::solid, CullMode::none, 0, 0.0f, 0.0f, false, true);
+                ps_desc.rasterizer_state = RasterizerDesc(FillMode::solid, CullMode::none, 0, 0.0f, 0.0f, false, false);
                 ps_desc.depth_stencil_state = DepthStencilDesc(false, false, CompareFunction::always, false, 0x00, 0x00, DepthStencilOpDesc(), DepthStencilOpDesc());
                 ps_desc.ib_strip_cut_value = IndexBufferStripCutValue::disabled;
                 InputBindingDesc input_bindings[] = {

@@ -261,6 +261,9 @@ namespace Luna
             case DeviceFeature::structured_buffer_offset_alignment:
                 ret.structured_buffer_offset_alignment = 1;
                 break;
+            case DeviceFeature::rasterizer_depth_clamp:
+                ret.rasterizer_depth_clamp = true;
+                break;
             default: lupanic();
             }
             return ret;

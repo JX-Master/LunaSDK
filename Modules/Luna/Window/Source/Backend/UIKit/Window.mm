@@ -56,6 +56,20 @@ namespace Luna
             g_window.reset();
         }
 
+        StartupParams g_startup_params;
+        LUNA_WINDOW_API void set_startup_params(const StartupParams& params)
+		{
+			g_startup_params = params;
+		}
+        LUNA_WINDOW_API const c8* get_app_name()
+        {
+            return g_startup_params.name;
+        }
+        LUNA_RUNTIME_API Version get_app_version()
+        {
+            return g_startup_params.version;
+        }
+
         RV UIKitWindow::init(UIWindowScene* scene)
         {
             @autoreleasepool

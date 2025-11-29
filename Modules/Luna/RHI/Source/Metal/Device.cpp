@@ -131,6 +131,13 @@ namespace Luna
             case DeviceFeature::structured_buffer_offset_alignment:
                 ret.structured_buffer_offset_alignment = 1;
                 break;
+            case DeviceFeature::rasterizer_depth_clamp:
+#ifdef LUNA_PLATFORM_MACOS
+                ret.rasterizer_depth_clamp = true;
+#else
+                ret.rasterizer_depth_clamp = false; // TODO: depth clamp is supported on Metal 4 or later on iOS, which we are currently not supported.
+#endif
+                break;
             default: lupanic();
             }
             return ret;

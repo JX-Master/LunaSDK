@@ -221,7 +221,7 @@ namespace Luna
                 d.RasterizerState.DepthBias = desc.rasterizer_state.depth_bias;
                 d.RasterizerState.DepthBiasClamp = desc.rasterizer_state.depth_bias_clamp;
                 d.RasterizerState.SlopeScaledDepthBias = desc.rasterizer_state.slope_scaled_depth_bias;
-                d.RasterizerState.DepthClipEnable = desc.rasterizer_state.depth_clip_enable ? TRUE : FALSE;
+                d.RasterizerState.DepthClipEnable = desc.rasterizer_state.depth_clamp_enable ? FALSE : TRUE;
                 d.RasterizerState.MultisampleEnable = desc.sample_count == 1 ? FALSE : TRUE;
                 d.RasterizerState.AntialiasedLineEnable = TRUE;
                 d.RasterizerState.ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF;

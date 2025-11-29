@@ -57,7 +57,7 @@ RV start()
             desc.pipeline_layout = pipeline_layout;
             desc.vs = LUNA_GET_SHADER_DATA(TestTriangleVS);
             desc.ps = LUNA_GET_SHADER_DATA(TestTrianglePS);
-            desc.rasterizer_state.depth_clip_enable = false;
+            desc.rasterizer_state.depth_clamp_enable = true;
             desc.depth_stencil_state = DepthStencilDesc(false, false);
             desc.num_color_attachments = 1;
             desc.color_formats[0] = Format::bgra8_unorm;

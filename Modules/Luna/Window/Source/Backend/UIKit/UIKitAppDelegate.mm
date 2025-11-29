@@ -11,6 +11,7 @@
 #define LUNA_WINDOW_API LUNA_EXPORT
 #include "../../../UIKit/AppMainUIKit.hpp"
 #include "../../Event.hpp"
+#include <Luna/Runtime/Runtime.hpp>
 
 #import "UIKitAppDelegate.h"
 #import "Window.h"
@@ -191,6 +192,7 @@ using namespace Luna::Window;
 
 - (void)sceneDidBecomeActive:(UIScene *)scene
 {
+    if (!Luna::is_initialized()) return;
     if(g_window)
     {
         g_window->m_minimized = false;
@@ -207,6 +209,7 @@ using namespace Luna::Window;
 
 - (void)sceneWillEnterForeground:(UIScene *)scene
 {
+    if (!Luna::is_initialized()) return;
     auto e = new_object<ApplicationWillEnterForegroundEvent>();
     dispatch_event_to_handler(e.object());
 }
