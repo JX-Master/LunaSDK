@@ -7,6 +7,9 @@ luna_sdk_module_target("HID")
     elseif is_os("macosx") then 
         add_files("Source/Platform/MacOS/*.mm")
         add_frameworks("ApplicationServices", "AppKit")
+    elseif is_os("ios") then
+        add_files("Source/Platform/iOS/*.mm")
+        add_frameworks("GameController")
     end
     add_deps("Runtime")
 target_end()

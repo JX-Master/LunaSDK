@@ -11,6 +11,10 @@
 
 #ifdef LUNA_PLATFORM_WINDOWS
 #include "Windows/AppMainWindows.inl"
-#elif LUNA_PLATFORM_MACOS
+#elif defined(LUNA_PLATFORM_MACOS)
 #include "Cocoa/AppMainCocoa.inl"
+#elif defined(LUNA_PLATFORM_IOS)
+#include "UIKit/AppMainUIKit.inl"
+#elif defined(LUNA_PLATFORM_ANDROID)
+#include "Android/AppMainAndroid.inl"
 #endif

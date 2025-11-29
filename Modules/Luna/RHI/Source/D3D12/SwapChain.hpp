@@ -101,8 +101,14 @@ namespace Luna
             {
                 return m_desc;
             }
+            virtual SwapChainSurfaceTransform get_surface_transform() override { return SwapChainSurfaceTransform::identity; }
             virtual R<ITexture*> get_current_back_buffer() override;
             virtual RV present() override;
+            virtual bool reset_suggested() override
+            {
+                auto window_size = m_window->get_framebuffer_size();
+                return window_size.x != m_desc.width || window_size.y != m_desc.height;
+            }
             virtual RV reset(const SwapChainDesc& desc) override;
         };
     }

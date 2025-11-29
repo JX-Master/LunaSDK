@@ -42,9 +42,10 @@ namespace Luna
         {
             luiid("{234f4d10-340a-4633-9acc-d70d61f44d23}");
 
+#if defined(LUNA_PLATFORM_DESKTOP)
             //! Closes this window.
-            //! On single-window platforms, this causes the application to exit.
             virtual void close() = 0;
+#endif
 
             //! Checks whether the window is closed. The window handle is invalid when one window is closed.
             //! @return Returns `true` if the window is closed. Returns `false` otherwise.
@@ -58,12 +59,18 @@ namespace Luna
             //! @return Returns `true` if the window has mouse focus. Returns `false` otherwise.
             virtual bool has_mouse_focus() = 0;
 
+#if defined(LUNA_PLATFORM_DESKTOP)
+
             //! Brings this window to front and acquires input focus for the window.
             virtual RV set_foreground() = 0;
+
+#endif
 
             //! Checks whether the window is minimized.
             //! @return Returns `true` if the window is minimized. Returns `false` otherwise.
             virtual bool is_minimized() = 0;
+
+#if defined(LUNA_PLATFORM_DESKTOP)
 
             //! Checks whether the window is maximized.
             //! @return Returns `true` if the window is maximized. Returns `false` otherwise.
@@ -94,14 +101,20 @@ namespace Luna
 
             virtual RV set_style(WindowStyleFlag style) = 0;
 
+#endif
+
             //! Gets the position of the window client area in screen coordinates.
             //! @return Returns the position of the window client area in screen coordinates.
             virtual Int2U get_position() = 0;
+
+#if defined(LUNA_PLATFORM_DESKTOP)
 
             //! Sets the position of the window client area.
             //! @param[in] x The new X (left) position of the window client area in screen coordinates.
             //! @param[in] y The new Y (top) position of the window client area in screen coordinates.
             virtual RV set_position(i32 x, i32 y) = 0;
+
+#endif
 
             //! Gets the size of the content area of the window measured in screen coordinates.
             //! @return Returns the size of the content area of the window measured in screen coordinates.
@@ -109,10 +122,14 @@ namespace Luna
             //! use `get_framebuffer_size` instead.
             virtual UInt2U get_size() = 0;
 
+#if defined(LUNA_PLATFORM_DESKTOP)
+
             //! Sets the size of the content area of the window measured in screen coordinates.
             //! @param[in] width The width of the content area of the window measured in screen coordinates.
             //! @param[in] height The height of the content area of the window measured in screen coordinates.
             virtual RV set_size(u32 width, u32 height) = 0;
+
+#endif
 
             //! Gets the framebuffer size of the window context area in pixels.
             //! @return Returns the framebuffer size of the window context area in pixels.
@@ -123,11 +140,15 @@ namespace Luna
             //! @remark The DPI scale factor may be used if DPI scaling is enabled on the target display.
             virtual f32 get_dpi_scale_factor() = 0;
 
+#if defined(LUNA_PLATFORM_DESKTOP)
+
             //! Sets the window title.
             //! @param[in] title The title to set.
             //! @par Valid Usage
             //! * `title` must be one null-terminated UTF-8 string.
             virtual RV set_title(const c8* title) = 0;
+
+#endif
 
             //! Converts one screen coordinate to one client coordinate.
             virtual Int2U screen_to_client(const Int2U& point) = 0;
@@ -155,6 +176,8 @@ namespace Luna
             //! @return Returns `true` if text input is active, returns `false` otherwise.
             virtual bool is_text_input_active() = 0;
         };
+
+#ifdef LUNA_PLATFORM_DESKTOP
 
         //! Flags that specifies the initial state and style of the window.
         enum class WindowCreationFlag : u32
@@ -189,6 +212,18 @@ namespace Luna
             u32 height = 0,
             WindowStyleFlag style_flags = WindowStyleFlag::resizable,
             WindowCreationFlag creation_flags = WindowCreationFlag::none);
+
+#endif
+
+#if defined(LUNA_PLATFORM_MOBILE) || defined(LUNA_PLATFORM_CONSOLE)
+        //! Gets the window created by system when module initialization.
+        //! @return Returns the system window.
+        //! @remark On mobile and console platforms, the application can only
+        //! have one window and cannot create more windows. The system window
+        //! cannot be modified (moved, resized, set title and style, etc.) by 
+        //! the application either.
+        LUNA_WINDOW_API IWindow* get_system_window();
+#endif
         
         //! @}
     }

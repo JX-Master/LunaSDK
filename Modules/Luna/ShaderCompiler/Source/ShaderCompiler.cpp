@@ -15,18 +15,22 @@
 #endif
 
 #include "ShaderCompiler.hpp"
+#include <Luna/Runtime/Module.hpp>
+
+#if LUNA_SHADER_COMPILER_ENABLED
 #include <Luna/VariantUtils/JSON.hpp>
 #include <Luna/Runtime/HashSet.hpp>
-#include <Luna/Runtime/Module.hpp>
 #include <Luna/Runtime/File.hpp>
 #include <Luna/Runtime/Unicode.hpp>
 #include <spirv_cross/spirv_msl.hpp>
 #include <Luna/Runtime/StringUtils.hpp>
+#endif
 
 namespace Luna
 {
     namespace ShaderCompiler
     {
+#if LUNA_SHADER_COMPILER_ENABLED
         R<ShaderCompileResult> Compiler::compile_none(const ShaderCompileParameters& params)
         {
             ShaderCompileResult ret;
@@ -302,8 +306,10 @@ namespace Luna
             lucatchret;
             return r;
         }
+#endif
         R<ShaderCompileResult> Compiler::compile(const ShaderCompileParameters& params)
         {
+#if LUNA_SHADER_COMPILER_ENABLED
             lutsassert();
             ShaderCompileResult r;
             lutry
@@ -339,6 +345,9 @@ namespace Luna
             }
             lucatchret;
             return r;
+#else
+            return BasicError::not_supported();
+#endif
         }
 
         LUNA_SHADER_COMPILER_API Ref<ICompiler> new_compiler()

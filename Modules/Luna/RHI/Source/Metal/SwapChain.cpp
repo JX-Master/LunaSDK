@@ -13,19 +13,6 @@ namespace Luna
 {
     namespace RHI
     {
-        RV SwapChain::init_metal_layer(const SwapChainDesc& desc)
-        {
-            AutoreleasePool pool;
-            m_metal_layer = retain(CA::MetalLayer::layer());
-            m_metal_layer->setDevice(m_device->m_device.get());
-            m_metal_layer->setFramebufferOnly(true);
-            m_metal_layer->setPixelFormat(encode_pixel_format(desc.format));
-            CGSize size;
-            size.width = desc.width;
-            size.height = desc.height;
-            m_metal_layer->setDrawableSize(size);
-            return bind_layer_to_window(m_window, m_metal_layer.get(), desc.color_space, desc.buffer_count);
-        }
         RV SwapChain::init(u32 command_queue_index, Window::IWindow* window, const SwapChainDesc& desc)
         {
             m_window = window;
@@ -34,7 +21,8 @@ namespace Luna
             auto framebuffer_size = m_window->get_framebuffer_size();
             m_desc.width = m_desc.width == 0 ? framebuffer_size.x : m_desc.width;
             m_desc.height = m_desc.height == 0 ? framebuffer_size.y : m_desc.height;
-            m_desc.format = m_desc.format == Format::unknown ? Format::bgra8_unorm_srgb : m_desc.format;
+            m_desc.format = m_desc.format == Format::unknown ? Format::bgra8_unorm : m_desc.format;
+            m_desc.buffer_count = m_desc.buffer_count == 0 ? 2 : m_desc.buffer_count;
             return init_metal_layer(m_desc);
         }
         R<ITexture*> SwapChain::get_current_back_buffer()
@@ -90,6 +78,7 @@ namespace Luna
                 if(!new_desc.buffer_count) new_desc.buffer_count = m_desc.buffer_count;
                 if(new_desc.format == Format::unknown) new_desc.format = m_desc.format;
                 if(new_desc.color_space == ColorSpace::unspecified) new_desc.color_space = m_desc.color_space;
+                if(new_desc.buffer_count == 0) new_desc.buffer_count = m_desc.buffer_count;
                 if(new_desc.buffer_count == m_desc.buffer_count && 
                     new_desc.format == m_desc.format &&
                     new_desc.vertical_synchronized == m_desc.vertical_synchronized)

@@ -150,7 +150,7 @@ namespace Luna
                 {
                     for (u64 i = 0; i < file_sz; i += 16_mb)
                     {
-                        usize bytes_to_read = (usize)min(16_mb, file_sz - i);
+                        usize bytes_to_read = min<usize>(16_mb, file_sz - i);
                         usize bytes_read;
                         luexp(from_file->read(buf.data(), bytes_to_read, &bytes_read));
                         luassert(bytes_to_read == bytes_read);

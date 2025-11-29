@@ -127,7 +127,13 @@ namespace Luna
             Ref<Window::IWindow> dummy_window;
             lutry
             {
+#if defined(LUNA_PLATFORM_DESKTOP)
                 luset(dummy_window, Window::new_window("Dummy Window", 0, 0, 0, 0, Window::WindowStyleFlag::none,Window::WindowCreationFlag::hidden));
+#elif defined(LUNA_PLATFORM_MOBILE)
+                dummy_window = Window::get_system_window();
+#else
+#error "Unsupported platform"
+#endif
                 // Fetch surface for dummy window.
                 luset(dummy_surface, new_surface_from_window(g_vk_instance, dummy_window));
                 // Select physical device.

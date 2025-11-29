@@ -3,9 +3,9 @@
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
-* @file IWindowsWindow.hpp
+* @file CocoaWindow.hpp
 * @author JXMaster
-* @date 2022/4/5
+* @date 2025/10/5
 */
 #pragma once
 #include <Luna/Runtime/PlatformDefines.hpp>

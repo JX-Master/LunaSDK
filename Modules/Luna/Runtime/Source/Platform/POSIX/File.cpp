@@ -11,11 +11,9 @@
 #include <Luna/Runtime/Unicode.hpp>
 #include <Luna/Runtime/Algorithm.hpp>
 
-#ifdef LUNA_PLATFORM_LINUX
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <string.h>
-#endif
 
 #include <libgen.h>
 #include <errno.h>
@@ -24,8 +22,10 @@
 #include <unistd.h>
 #include <dirent.h>
 
-#ifdef LUNA_PLATFORM_MACOS
+#if defined(LUNA_PLATFORM_MACOS)
 #include <libproc.h>
+#elif defined(LUNA_PLATFORM_IOS)
+#include <mach-o/dyld.h>
 #endif
 
 namespace Luna
@@ -784,16 +784,24 @@ namespace Luna
 
         void file_init()
         {
-#ifdef LUNA_PLATFORM_LINUX
+#if defined(LUNA_PLATFORM_LINUX)
             char path[1024];
             luassert_always(readlink("/proc/self/exe", path, 1024) != -1);
             char* dir = dirname(path);
             strcpy(g_process_path, dir);
             g_process_path[1023] = 0;
-#else
+#elif defined(LUNA_PLATFORM_MACOS)
             pid_t pid = getpid();
             int ret = proc_pidpath(pid, g_process_path, sizeof(g_process_path));
             luassert_always(ret > 0);
+#elif defined(LUNA_PLATFORM_IOS)
+            char path[1024];
+            uint32_t size = sizeof(path);
+            int ret = _NSGetExecutablePath(path, &size);
+            luassert_always(ret == 0);
+            char* dir = dirname(path);
+            strncpy(g_process_path, dir, sizeof(g_process_path));
+            g_process_path[sizeof(g_process_path) - 1] = 0;
 #endif
         }
 

@@ -523,6 +523,8 @@ namespace Luna
             case Format::r32_uint:
             case Format::r32_sint:
                 index_type = VK_INDEX_TYPE_UINT32; break;
+            default:
+                lupanic_msg_always("Unsupported index format");
             }
             m_device->m_funcs.vkCmdBindIndexBuffer(m_command_buffer, res->m_buffer, view.offset, index_type);
         }

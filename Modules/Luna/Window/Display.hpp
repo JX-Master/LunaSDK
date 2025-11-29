@@ -23,6 +23,8 @@ namespace Luna
     {
         //! @addtogroup Window
         //! @{
+
+#if defined(LUNA_PLATFORM_DESKTOP)
         
         //! The opaque handle that represents one display screen.
         using display_t = opaque_t;
@@ -76,6 +78,8 @@ namespace Luna
         //! @param[in] display The display to query.
         //! @return Returns the name of the display.
         LUNA_WINDOW_API R<Name> get_display_name(display_t display);
+
+#endif
 
         //! @}
     }

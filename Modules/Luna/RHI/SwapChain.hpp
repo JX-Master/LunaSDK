@@ -89,6 +89,30 @@ namespace Luna
                 vertical_synchronized(vertical_synchronized) {}
         };
 
+        //! Describes the surface transform information of the swap chain.
+        //! The application may use this information to transform images presented on the screen.
+        enum class SwapChainSurfaceTransform : u32
+        {
+            //! The transform is unspecified.
+            unspecified = 0,
+            //! No transform is performed.
+            identity,
+            //! The image is rotated 90 degrees clockwise.
+            rotate_90,
+            //! The image is rotated 180 degrees clockwise.
+            rotate_180,
+            //! The image is rotated 270 degrees clockwise.
+            rotate_270,
+            //! The image is mirrored horizontally.
+            horizontal_mirror,
+            //! The image is mirrored horizontally, then rotated 90 degrees clockwise.
+            horizontal_mirror_rotate_90,
+            //! The image is mirrored horizontally, then rotated 180 degrees clockwise.
+            horizontal_mirror_rotate_180,
+            //! The image is mirrored horizontally, then rotated 270 degrees clockwise.
+            horizontal_mirror_rotate_270
+        };
+
         //! @interface ISwapChain
         //! Represents one swap chain used for presenting images to the screen.
         struct ISwapChain : virtual IDeviceChild
@@ -100,6 +124,10 @@ namespace Luna
 
             //! Gets the descriptor object.
             virtual SwapChainDesc get_desc() = 0;
+
+            //! Gets the swap chain transform information.
+            //! @return Returns the surface transform information.
+            virtual SwapChainSurfaceTransform get_surface_transform() = 0;
 
             //! Gets the current back buffer that is available for rendering.
             //! @return Returns the current back buffer that is available for rendering.
@@ -114,8 +142,11 @@ namespace Luna
             //! Submits the current back buffer to the bounding queue for presenting.
             //! @remark This function only enqueues the presentation command to the command queue and 
             //! returns immediately after the command is successfully enqueued.
-            //! The user must ensure that all writes to the current back buffer is completed before calling `present` to present the back buffer.
             virtual RV present() = 0;
+
+            //! Checks whether the swap chain format and window surface format is dismatched,
+            //! @return Returns `true` if the swap chain is suggested to be reset. Returns `false` otherwise.
+            virtual bool reset_suggested() = 0;
 
             //! Resets the swap chain.
             //! @param[in] desc The new swap chain descriptor object.

@@ -196,7 +196,7 @@ namespace Luna
                 for (usize index = common_head; index < after.size() - common_tail; ++index)
                 {
                     c8 buf[32];
-                    snprintf(buf, 32, "%llu", (u64)index);
+                    snprintf(buf, 32, "%llu", (unsigned long long)index);
                     Variant v(VariantType::array);
                     v.push_back(after[index]);
                     result[buf] = move(v);
@@ -209,7 +209,7 @@ namespace Luna
                 for (usize index = common_head; index < before.size() - common_tail; ++index)
                 {
                     c8 buf[32];
-                    snprintf(buf, 32, "_%llu", (u64)index);
+                    snprintf(buf, 32, "_%llu", (unsigned long long)index);
                     Variant v(VariantType::array);
                     v.push_back(before[index]);
                     v.push_back((u64)0);
@@ -227,7 +227,7 @@ namespace Luna
                 {
                     // Removed.
                     c8 buf[32];
-                    snprintf(buf, 32, "_%llu", (u64)index);
+                    snprintf(buf, 32, "_%llu", (unsigned long long)index);
                     Variant v(VariantType::array);
                     v.push_back(before[index]);
                     v.push_back((u64)0);
@@ -242,7 +242,7 @@ namespace Luna
                 {
                     // Added
                     c8 buf[32];
-                    snprintf(buf, 32, "%llu", (u64)index);
+                    snprintf(buf, 32, "%llu", (unsigned long long)index);
                     Variant v(VariantType::array);
                     v.push_back(after[index]);
                     result[buf] = move(v);
@@ -255,7 +255,7 @@ namespace Luna
                     if (diff_result.type() != VariantType::null)
                     {
                         c8 buf[32];
-                        snprintf(buf, 32, "%llu", (u64)index);
+                        snprintf(buf, 32, "%llu", (unsigned long long)index);
                         result[buf] = move(diff_result);
                     }
                 }
@@ -559,7 +559,7 @@ namespace Luna
                     // Array index.
                     delta["_t"] = "a";
                     c8 buf[32];
-                    snprintf(buf, 32, "%lld", iter->unum());
+                    snprintf(buf, 32, "%llu", (unsigned long long)iter->unum());
                     delta[buf] = move(child);
                 }
                 else
