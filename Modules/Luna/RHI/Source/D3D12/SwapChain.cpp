@@ -214,17 +214,13 @@ namespace Luna
             }
             m_back_buffers.clear();
             SwapChainDesc modified_desc = desc;
-            if (!modified_desc.width || !modified_desc.height)
+            if(!modified_desc.width)
             {
-                auto sz = m_window->get_size();
-                if (!modified_desc.width)
-                {
-                    modified_desc.width = sz.x;
-                }
-                if (!modified_desc.height)
-                {
-                    modified_desc.height = sz.y;
-                }
+                modified_desc.width = m_desc.width;
+            }
+            if(!modified_desc.height)
+            {
+                modified_desc.height = m_desc.height;
             }
             if (!modified_desc.buffer_count)
             {
