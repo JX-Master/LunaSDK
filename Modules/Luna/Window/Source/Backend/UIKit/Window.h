@@ -110,6 +110,10 @@ namespace Luna
             {
                 return m_window;
             }
+            virtual id get_uiview() override
+            {
+                return (UIView*)m_view;
+            }
         };
 
         extern Ref<UIKitWindow> g_window;

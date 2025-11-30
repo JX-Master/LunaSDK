@@ -45,7 +45,7 @@ Rasterizers are configured by the `rasterizer_state` property of `GraphicsPipeli
 
     The front face and back face of one triangle is determined by the winding order of three triangle vertices in NDC (looking from -Z to +Z) and `front_counter_clockwise` property of `RasterizerDesc`.
 1. `front_counter_clockwise`: If this is `true`, the rasterizer will regard one triangle as front-facing if its three vertices are wound in counter clockwise order; if this is `false`, the rasterizer will regard one triangle as front-facing if its three vertices are wound in clockwise order.
-1. `depth_clip_enable`: If this is `true`, the rasterizer will discard pixels whose depth value (`z` component of position after divided by `w`) goes beyond ; if this is `false`, the rasterizer will clamp the depth value of pixel to `1.0` if it is greater than `1.0`, and retain the coverage value, which may cause depth test produce incorrect results.
+1. `depth_clamp_enable`: If this is `true`, the rasterizer will clamp the depth value of pixel to `1.0` if it is greater than `1.0`, and retain the coverage value, which may cause depth test produce incorrect results. If this is `false`, the rasterizer will discard pixels whose depth value (`z` component of position after divided by `w`) goes beyond.
 1. `depth_bias`, `slope_scaled_depth_bias` and `depth_bias_clamp` are used to compute one **depth bias value** that will be added to the original depth value in depth bias step. The depth bias value is computed as:
 
     $$bias(depth) = clamp(C_{b} * E + C_{s} * slope(depth), -C_{clamp}, C_{clamp})$$

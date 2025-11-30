@@ -65,7 +65,7 @@ namespace Luna
             m_desc = desc;
             if (!m_desc.width || !m_desc.height)
             {
-                UInt2U sz = window->get_size();
+                UInt2U sz = window->get_framebuffer_size();
                 if (!m_desc.width)
                 {
                     m_desc.width = sz.x;
@@ -74,6 +74,14 @@ namespace Luna
                 {
                     m_desc.height = sz.y;
                 }
+            }
+            if(m_desc.format == Format::unknown)
+            {
+                m_desc.format = Format::bgra8_unorm;
+            }
+            if(m_desc.buffer_count == 0)
+            {
+                m_desc.buffer_count = 2;
             }
             DXGI_SWAP_CHAIN_DESC1 d;
             d.Width = m_desc.width;
@@ -199,32 +207,24 @@ namespace Luna
         RV SwapChain::reset(const SwapChainDesc& desc)
         {
             lutsassert();
-            SwapChainDesc modified_desc = desc;
-            if (!modified_desc.buffer_count)
-            {
-                modified_desc.buffer_count = m_desc.buffer_count;
-            }
-            if (modified_desc.format == Format::unknown)
-            {
-                modified_desc.format = m_desc.format;
-            }
             for (auto& back_buffer : m_back_buffers)
             {
                 WaitForSingleObject(back_buffer.m_event, INFINITE);
                 back_buffer.m_back_buffer->m_res.Reset();
             }
             m_back_buffers.clear();
-            if (!modified_desc.width || !modified_desc.height)
+            SwapChainDesc modified_desc = desc;
+            if(!modified_desc.width)
             {
-                auto sz = m_window->get_size();
-                if (!modified_desc.width)
-                {
-                    modified_desc.width = sz.x;
-                }
-                if (!modified_desc.height)
-                {
-                    modified_desc.height = sz.y;
-                }
+                modified_desc.width = m_desc.width;
+            }
+            if(!modified_desc.height)
+            {
+                modified_desc.height = m_desc.height;
+            }
+            if (!modified_desc.buffer_count)
+            {
+                modified_desc.buffer_count = m_desc.buffer_count;
             }
             if (modified_desc.format == Format::unknown)
             {

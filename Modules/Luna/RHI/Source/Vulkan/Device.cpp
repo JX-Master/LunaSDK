@@ -302,6 +302,9 @@ namespace Luna
             case DeviceFeature::structured_buffer_offset_alignment:
                 ret.structured_buffer_offset_alignment = (u32)m_physical_device_properties.limits.minStorageBufferOffsetAlignment;
                 break;
+            case DeviceFeature::rasterizer_depth_clamp:
+                ret.rasterizer_depth_clamp = m_physical_device_features.depthClamp == VK_TRUE;
+                break;
             default: lupanic();
             }
             return ret;

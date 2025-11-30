@@ -81,12 +81,12 @@ namespace Luna
 #elif defined(LUNA_PLATFORM_IOS)
                 Ref<Window::IUIKitWindow> uikitwindow = m_window;
                 luassert(uikitwindow);
-                UIWindow* uiwindow = uikitwindow->get_uiwindow();
-                if(![uiwindow.layer isKindOfClass:[CAMetalLayer class]])
+                UIView* uiview = uikitwindow->get_uiview();
+                if(![uiview.layer isKindOfClass:[CAMetalLayer class]])
                 {
                     return BasicError::not_supported();
                 }
-                CAMetalLayer* layer = (CAMetalLayer*)uiwindow.layer;
+                CAMetalLayer* layer = (CAMetalLayer*)uiview.layer;
                 m_metal_layer = retain((__bridge CA::MetalLayer*)layer);
                 m_metal_layer->setDevice(m_device->m_device.get());
                 auto r = set_metal_layer(layer, desc);

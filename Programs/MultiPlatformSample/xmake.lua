@@ -1,6 +1,15 @@
 target("MultiPlatformSample")
     set_luna_sdk_program()
     add_rules("luna.shader")
+    if is_plat("iphoneos") then 
+        add_rules("xcode.application")
+        add_files("Source/Info.plist")
+        add_values("xcode.bundle_identifier", "com.lunasdk.multiplatformsample")
+        -- Replace the following lines with your CodeSign identity, or pass them using command lines.
+        -- See: https://xmake.io/examples/other-languages/objc.html#codesign
+        -- add_values("xcode.codesign_identity", "Apple Development: xxx@gmail.com (T3NA4MRVPU)")
+        -- add_values("xcode.mobile_provision", "iOS Team Provisioning Profile: org.tboox.test")
+    end
     add_files("Source/**.cpp")
     add_deps("Runtime", "Window", "RHI", "RHIUtility", "ShaderCompiler", "Image")
     add_luna_shader("Source/BoxVert.hlsl", {type = "vertex"})

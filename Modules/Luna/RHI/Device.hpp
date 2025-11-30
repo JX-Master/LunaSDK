@@ -39,6 +39,8 @@ namespace Luna
             uniform_buffer_data_alignment,
             //! The alignment requirement for the offset (first_element * element_size) of one structured buffer view.
             structured_buffer_offset_alignment,
+            //! @ref RasterizerDesc::depth_clamp_enable is allowed to be set to `true`.
+            rasterizer_depth_clamp,
         };
 
         //! Represents the device feature check result.
@@ -54,6 +56,8 @@ namespace Luna
                 u32 uniform_buffer_data_alignment;
                 //! The feature check result of @ref DeviceFeature::structured_buffer_offset_alignment.
                 u32 structured_buffer_offset_alignment;
+                //! The feature check result of @ref DeviceFeature::rasterizer_depth_clamp.
+                bool rasterizer_depth_clamp;
             };
         };
 

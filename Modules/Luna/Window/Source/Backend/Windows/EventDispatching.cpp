@@ -124,7 +124,7 @@ LRESULT CALLBACK luna_window_win_proc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM
     using namespace Luna;
     using namespace Luna::Window;
     Luna::Window::Window* pw = (Luna::Window::Window*)::GetWindowLongPtrW(hWnd, GWLP_USERDATA);
-    if (!pw)
+    if (!pw || pw->m_destructing)
     {
         // If the window object is not ready, we simply do not handle all messages.
         return DefWindowProcW(hWnd, msg, wParam, lParam);

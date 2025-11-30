@@ -181,7 +181,7 @@ namespace Luna
             }
             d->setRenderTargetWidth(width);
             d->setRenderTargetHeight(height);
-            d->setDefaultRasterSampleCount(desc.sample_count);
+            d->setDefaultRasterSampleCount(desc.sample_count == 1 ? 0 : desc.sample_count);
             m_render = retain(m_buffer->renderCommandEncoder(d.get()));
             if(m_pipeline_statistics_query_heap && test_flags(m_device->m_counter_sampling_support_flags, CounterSamplingSupportFlag::draw))
             {
@@ -206,7 +206,15 @@ namespace Luna
             m_render->setDepthStencilState(p->m_dss.get());
             m_render->setFrontFacingWinding(p->m_front_counter_clockwise ? MTL::WindingCounterClockwise : MTL::WindingClockwise);
             m_render->setDepthBias(p->m_depth_bias, p->m_slope_scaled_depth_bias, p->m_depth_bias_clamp);
-            m_render->setDepthClipMode(p->m_depth_clip_mode);
+            auto res = m_device->check_feature(DeviceFeature::rasterizer_depth_clamp);
+            if(res.rasterizer_depth_clamp)
+            {
+                m_render->setDepthClipMode(p->m_depth_clip_mode);
+            }
+            else if(p->m_depth_clip_mode == MTL::DepthClipModeClamp)
+            {
+                lupanic_msg_always("DeviceFeature::rasterizer_depth_clamp is FALSE on the current device, RasterizerDesc::depth_clamp_enable must be set to `false`.");
+            }
             m_primitive_type = p->m_primitive_type;
         }
         void CommandBuffer::set_vertex_buffers(u32 start_slot, Span<const VertexBufferView> views)

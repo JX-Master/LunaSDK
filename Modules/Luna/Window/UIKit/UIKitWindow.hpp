@@ -30,6 +30,12 @@ namespace Luna
             //! The window handle is owned by the window object, the user cannot increase/decrease the reference
             //! counter of the window handle.
             virtual id get_uiwindow() = 0;
+
+            //! Gets UIView* handle of the window object.
+            //! @return Rerurns UIView* handle of the window object.
+            //! The handle is owned by the window object, the user cannot increase/decrease the reference
+            //! counter of the handle.
+            virtual id get_uiview() = 0;
         };
     }
 }

@@ -102,8 +102,8 @@ RV DemoApp::init()
             PipelineLayoutFlag::allow_input_assembler_input_layout)));
         GraphicsPipelineStateDesc ps_desc;
         ps_desc.primitive_topology = PrimitiveTopology::triangle_list;
-        ps_desc.rasterizer_state = RasterizerDesc ();
-        ps_desc.depth_stencil_state = DepthStencilDesc (true, true, CompareFunction::less_equal);
+        ps_desc.rasterizer_state = RasterizerDesc();
+        ps_desc.depth_stencil_state = DepthStencilDesc(true, true, CompareFunction::less_equal);
         ps_desc.ib_strip_cut_value = IndexBufferStripCutValue::disabled;
         InputAttributeDesc input_attributes[] = {
             InputAttributeDesc("POSITION", 0, 0, 0, 0, Format::rgb32_float),

@@ -27,8 +27,13 @@ namespace Luna
                 m_hwnd(nullptr) {}
             ~Window()
             {
+                // This flag skips all message handling in window proc.
                 m_destructing = true;
-                close();
+                if(m_hwnd)
+                {
+                    ::DestroyWindow(m_hwnd);
+                    m_hwnd = nullptr;
+                }
             }
             virtual void close() override;
             virtual bool is_closed() override;

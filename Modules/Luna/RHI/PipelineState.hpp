@@ -341,9 +341,10 @@ namespace Luna
             //! If this is `false`, triangles will be regarded as front-facing if its three vertices are wound 
             //! clockwisly order from view of camera.
             bool front_counter_clockwise;
-            //! Whether to discard fragments outside of the allowed depth range (0~1).
-            //! If this is `false`, outside fragments will have their depth values clamped to [`0`, `1`].
-            bool depth_clip_enable;
+            //! Whether to clamp fragments outside of depth range (0~1) in to the range.
+            //! If this is `false`, outside fragments will be clipped.
+            //! This can be set to `true` only if @ref DeviceFeature::rasterizer_depth_clamp is `true`.
+            bool depth_clamp_enable;
 
             RasterizerDesc(
                 FillMode fill_mode = FillMode::solid,
@@ -352,7 +353,7 @@ namespace Luna
                 f32 slope_scaled_depth_bias = 0.0f,
                 f32 depth_bias_clamp = 0.0f,
                 bool front_counter_clockwise = false,
-                bool depth_clip_enable = true
+                bool depth_clamp_enable = false
             ) :
                  depth_bias(depth_bias),
                 slope_scaled_depth_bias(slope_scaled_depth_bias),
@@ -360,7 +361,7 @@ namespace Luna
                 fill_mode(fill_mode),
                 cull_mode(cull_mode),
                 front_counter_clockwise(front_counter_clockwise),
-                depth_clip_enable(depth_clip_enable) {}
+                depth_clamp_enable(depth_clamp_enable) {}
         };
 
         //! Specifies the stencil operation to perform when stencil test passed or failed.
