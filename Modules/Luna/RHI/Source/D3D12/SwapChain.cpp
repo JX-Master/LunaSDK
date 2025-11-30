@@ -207,21 +207,13 @@ namespace Luna
         RV SwapChain::reset(const SwapChainDesc& desc)
         {
             lutsassert();
-            SwapChainDesc modified_desc = desc;
-            if (!modified_desc.buffer_count)
-            {
-                modified_desc.buffer_count = m_desc.buffer_count;
-            }
-            if (modified_desc.format == Format::unknown)
-            {
-                modified_desc.format = m_desc.format;
-            }
             for (auto& back_buffer : m_back_buffers)
             {
                 WaitForSingleObject(back_buffer.m_event, INFINITE);
                 back_buffer.m_back_buffer->m_res.Reset();
             }
             m_back_buffers.clear();
+            SwapChainDesc modified_desc = desc;
             if (!modified_desc.width || !modified_desc.height)
             {
                 auto sz = m_window->get_size();
@@ -233,6 +225,10 @@ namespace Luna
                 {
                     modified_desc.height = sz.y;
                 }
+            }
+            if (!modified_desc.buffer_count)
+            {
+                modified_desc.buffer_count = m_desc.buffer_count;
             }
             if (modified_desc.format == Format::unknown)
             {
