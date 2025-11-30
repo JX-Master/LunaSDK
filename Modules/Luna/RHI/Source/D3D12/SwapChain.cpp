@@ -65,7 +65,7 @@ namespace Luna
             m_desc = desc;
             if (!m_desc.width || !m_desc.height)
             {
-                UInt2U sz = window->get_size();
+                UInt2U sz = window->get_framebuffer_size();
                 if (!m_desc.width)
                 {
                     m_desc.width = sz.x;
@@ -74,6 +74,14 @@ namespace Luna
                 {
                     m_desc.height = sz.y;
                 }
+            }
+            if(m_desc.format == Format::unknown)
+            {
+                m_desc.format = Format::bgra8_unorm;
+            }
+            if(m_desc.buffer_count == 0)
+            {
+                m_desc.buffer_count = 2;
             }
             DXGI_SWAP_CHAIN_DESC1 d;
             d.Width = m_desc.width;
