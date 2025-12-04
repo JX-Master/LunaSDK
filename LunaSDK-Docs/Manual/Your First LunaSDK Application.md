@@ -573,10 +573,12 @@ The next thing to do is compiling shaders for the pipeline state object. LunaSDK
 
 ```c++
 const char vs_shader_code[] = R"(
-cbuffer vertexBuffer : register (b0)
+cbuffer vertexBuffer : register(b0)
 {
     float4x4 world_to_proj;
 };
+Texture2D tex : register(t1);
+SamplerState tex_sampler : register(s2);
 struct VS_INPUT
 {
     [[vk::location(0)]]
@@ -591,17 +593,21 @@ struct PS_INPUT
     [[vk::location(1)]]
     float2 texcoord : TEXCOORD;
 };
-PS_INPUT main (VS_INPUT input)
+PS_INPUT main(VS_INPUT input)
 {
     PS_INPUT output;
-    output. position = mul (world_to_proj, float4 (input. position, 1.0f));
-    output. texcoord = input. texcoord;
+    output.position = mul(world_to_proj, float4(input.position, 1.0f));
+    output.texcoord = input.texcoord;
     return output;
 })";
 
 const char ps_shader_code[] = R"(
-Texture2D tex : register (t1);
-SamplerState tex_sampler : register (s2);
+cbuffer vertexBuffer : register(b0)
+{
+    float4x4 world_to_proj;
+};
+Texture2D tex : register(t1);
+SamplerState tex_sampler : register(s2);
 struct PS_INPUT
 {
     [[vk::location(0)]]
@@ -610,9 +616,9 @@ struct PS_INPUT
     float2 texcoord : TEXCOORD;
 };
 [[vk::location(0)]]
-float4 main (PS_INPUT input) : SV_Target
+float4 main(PS_INPUT input) : SV_Target
 {
-    return float4 (tex.Sample (tex_sampler, input. texcoord));
+    return float4(tex.Sample(tex_sampler, input.texcoord));
 })";
 ```
 
