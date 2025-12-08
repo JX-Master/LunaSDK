@@ -8,6 +8,8 @@
 ### Android
 * Android Studio with Android SDK of your choice (Level 31 and newer is tested).
 * Install NDK (29.0.14206865 or newer) in `Tools -> SDK Manager` in Android Studio.
+### iOS/iPadOS
+* Install iOS/iPadOS SDK in XCode.
 
 ## Building
 

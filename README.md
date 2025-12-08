@@ -2,7 +2,7 @@
 
 # LunaSDK
 
-![LunaSDK LOGO](https://www.lunasdk.net/logo.png)
+![LunaSDK LOGO](./LunaSDK-Docs/Res/logo.png)
 
 [![windows-build](https://github.com/JX-Master/LunaSDK/actions/workflows/ci-windows-main.yml/badge.svg?branch=main)](https://github.com/JX-Master/LunaSDK/actions/workflows/ci-windows-main.yml)
 [![macos-build](https://github.com/JX-Master/LunaSDK/actions/workflows/ci-macos-main.yml/badge.svg?branch=main)](https://github.com/JX-Master/LunaSDK/actions/workflows/ci-macos-main.yml)
@@ -31,7 +31,7 @@ Designed target platforms:
 * macOS (Metal 2+)
 * Linux (Vulkan) (Not implemented yet.)
 * Android (Vulkan 1.0+)
-* iOS (Metal) (Not implemented yet.)
+* iOS (Metal 2+)
 
 ## System Requirements
 
@@ -57,6 +57,10 @@ The following requirements must be satisfied to run LunaSDK with Vulkan renderin
 
 * Android 11 (SDK Level 31) and later (older versions MAY run LunaSDK, but is not tested).
 
+### iOS
+
+* iOS 16 and later.
+
 ## Docs
 Docs are placed at `./LunaSDK-Docs` directory. Use [Obsidian](https://obsidian.md/) to open and read the docs.
 
@@ -76,11 +80,12 @@ LunaSDK uses the following third party SDKs:
 1. [Dear ImGui](https://github.com/ocornut/imgui) for GUI rendering (MIT License).
 1. [ImGuizmo](https://github.com/CedricGuillemet/ImGuizmo) for rendering gizmos using ImGui (MIT License).
 1. [DirectX Shader Compiler](https://github.com/microsoft/DirectXShaderCompiler) for compiling HLSL shaders (University of Illinois Open Source License).
-1. [GLFW](https://github.com/glfw/glfw) for window management on Windows, macOS and Linux (zlib License).
 1. [STB](https://github.com/nothings/stb) for image file reading/writing and ttf font file processing (public domain).
 1. [Vulkan Memory Allocator](https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator) for allocating device memory on Vulkan backend (MIT License).
+1. [Volk](https://github.com/zeux/volk.git) for dynamically loading Vulkan interfaces (MIT License).
 1. [D3D12 Memory Allocator](https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator) for allocating device memory on D3D12 backend (MIT License).
 1. [miniaudio](https://miniaud.io/index.html) for cross-platform low-level platform audio interface (public domain).
+1. [SPIRV-Cross](https://github.com/KhronosGroup/SPIRV-Cross.git) for generating metal shader code from SPIR-V.
 
 All SDKs are either embedded in the project, or can be fetched automatically by xmake scripts, the user does not need to install them manually.
 
@@ -103,7 +108,7 @@ LunaSDK is licensed under the zlib/libpng license, see [LICENSE.txt](./LICENSE.t
 
 ## Mascot
 
-![](https://www.lunasdk.net/luna-robot.png)
+![](./LunaSDK-Docs/Res/luna-robot.png)
 
 Say Hi to our mascot, a LunaSDK LOGO with two ellipses that look like eyes of one spherical robot.
 
