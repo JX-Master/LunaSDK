@@ -16,7 +16,7 @@ namespace Luna
     {
         {
             const c8* src =
-                u8"{ \n\
+                "{ \n\
     \"status\": \"0000\", \n\
     \"message\" : \"success\", \n\
     \"response\" : true, \n\

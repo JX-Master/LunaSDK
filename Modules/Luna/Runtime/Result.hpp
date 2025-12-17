@@ -252,12 +252,12 @@ namespace Luna
 
 //! Crashes the program if the specified result is failed.
 //! @param[in] _res The result to test.
-#define lupanic_if_failed(_res) {Luna::ErrCode _err = (_res).errcode(); if(_err.code != 0) Luna::assert_fail(Luna::explain(_err), luna_u8_string(__FILE__), (unsigned)(__LINE__)); }
+#define lupanic_if_failed(_res) {Luna::ErrCode _err = (_res).errcode(); if(_err.code != 0) [[unlikely]] Luna::assert_fail(Luna::explain(_err), luna_u8_string(__FILE__), (unsigned)(__LINE__)); }
 
 //! Crashes the program if the specified result is failed with custom message.
 //! @param[in] _res The result to test.
 //! @param[in] _msg The message to display.
-#define lupanic_if_failed_msg(_res, _msg) {Luna::ErrCode _err = (_res).errcode(); if(_err.code != 0) Luna::assert_fail(_msg, luna_u8_string(__FILE__), (unsigned)(__LINE__)); }
+#define lupanic_if_failed_msg(_res, _msg) {Luna::ErrCode _err = (_res).errcode(); if(_err.code != 0) [[unlikely]] Luna::assert_fail(_msg, luna_u8_string(__FILE__), (unsigned)(__LINE__)); }
 
 //! The error code used in `lucatch` block to identify the error.
 //! @par Valid Usage
@@ -278,24 +278,24 @@ namespace Luna
 //! Opens one catch block that handles errors thrown from try block.
 //! @par Valid Usage
 //! * This must be declared directly after the `lutry` block.
-#define lucatch _try_err: if((luerr).code)
+#define lucatch _try_err: if((luerr).code) [[unlikely]]
 //! Defines one catch block that returns the error code (if any) thrown from try block.
 //! @details This can be used if the error cannot be handled in this function.
 //! * This must be declared directly after the `lutry` block.
-#define lucatchret _try_err: if((luerr).code) { return luerr; }
+#define lucatchret _try_err: if((luerr).code) [[unlikely]] { return luerr; }
 //! Tests whether the specified expression returns one failed result, and throws the error code
 //! if failed.
 //! @param[in] _exp The expression to be evaluated.
-#define luexp(_exp) { luerr = (_exp).errcode(); if((luerr).code) { goto _try_err; } }
+#define luexp(_exp) { luerr = (_exp).errcode(); if((luerr).code) [[unlikely]] { goto _try_err; } }
 //! Assigns the return value of the specified expression to the specified variable if the return value is valid,
 //! and throws the error code if not.
 //! @param[in] _v The variable to be assigned.
 //! @param[in] _exp The expression to be evaluated.
-#define luset(_v, _exp)  { auto _res = (_exp); if(!_res.valid()) { luerr = _res.errcode(); goto _try_err; } (_v) = move(_res.get()); }
+#define luset(_v, _exp)  { auto _res = (_exp); if(!_res.valid()) [[unlikely]] { luerr = _res.errcode(); goto _try_err; } (_v) = move(_res.get()); }
 //! Creates one local variable to hold the return value of the specified expression if the return value is valid,
 //! and throws the error code if not.
 //! @param[in] _v The name of the local variable to be created.
 //! @param[in] _exp The expression to be evaluated.
-#define lulet(_v, _exp) auto _r_##_v = (_exp); if(!(_r_##_v).valid()) { luerr = _r_##_v.errcode(); goto _try_err; } auto& _v = _r_##_v.get();
+#define lulet(_v, _exp) auto _r_##_v = (_exp); if(!(_r_##_v).valid()) [[unlikely]] { luerr = _r_##_v.errcode(); goto _try_err; } auto& _v = _r_##_v.get();
 
 //@ }

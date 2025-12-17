@@ -12,7 +12,7 @@
 #include "Name.hpp"
 #include "Object.hpp"
 
-#define luiid(_guid) static constexpr Luna::Guid __guid { Luna::Guid(u8##_guid) };
+#define luiid(_guid) static constexpr Luna::Guid __guid { Luna::Guid(_guid) };
 #define luiimpl() virtual object_t get_object() override { return this; }
 
 namespace Luna

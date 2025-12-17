@@ -38,20 +38,20 @@ namespace Luna
     LUNA_RUNTIME_API void debug_break();
 }
 
-#define luna_u8_string_(s) u8 ## s
+#define luna_u8_string_(s) (const Luna::c8*) u8 ## s
 #define luna_u8_string(s) luna_u8_string_(s)
 
 //! Evaluates the given expression, and if the result value cannot pass `if` statement, calls `assert_fail`.
 //! This function works in all builds.
 #define luassert_always(_condition) (void)(                                                   \
             (!!(_condition)) ||                                                               \
-            (::Luna::assert_fail(u8###_condition, luna_u8_string(__FILE__), (unsigned)(__LINE__)), 0)       \
+            (::Luna::assert_fail((const Luna::c8*)u8###_condition, luna_u8_string(__FILE__), (unsigned)(__LINE__)), 0)       \
         )
 
 //! Same as @ref luassert_always, but displays a custom message instead of the expression.
 #define luassert_msg_always(_condition, _message) (void)(                                     \
             (!!(_condition)) ||                                                               \
-            (::Luna::assert_fail(u8##_message, luna_u8_string(__FILE__), (unsigned)(__LINE__)), 0)         \
+            (::Luna::assert_fail((const Luna::c8*)u8##_message, luna_u8_string(__FILE__), (unsigned)(__LINE__)), 0)         \
         )
 
 //! Triggers an assertion failure directly.

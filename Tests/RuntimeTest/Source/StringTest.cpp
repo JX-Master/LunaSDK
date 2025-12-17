@@ -20,62 +20,62 @@ namespace Luna
             lutest(str1.empty());
             lutest(str1.size() == 0);
             lutest(str1.data() == nullptr);
-            lutest(!strcmp(str1.c_str(), u8""));
+            lutest(!strcmp(str1.c_str(), ""));
 
             // usize count, value_type ch, allocator_type& alloc
             String str2(10, 'a');
             lutest(str2.size() == 10);
-            lutest(!strcmp(str2.c_str(), u8"aaaaaaaaaa"));
+            lutest(!strcmp(str2.c_str(), "aaaaaaaaaa"));
 
             // const value_type* s
-            String str3(u8"abcdefg");
-            lutest(!strcmp(str3.c_str(), u8"abcdefg"));
+            String str3("abcdefg");
+            lutest(!strcmp(str3.c_str(), "abcdefg"));
 
             // const value_type* s, usize count
-            String str4(u8"abcdefg", 5);
-            lutest(!strcmp(str4.c_str(), u8"abcde"));
+            String str4("abcdefg", 5);
+            lutest(!strcmp(str4.c_str(), "abcde"));
 
             // const BasicString& rhs, usize pos, usize count = npos
             String str5(str3, 3);
-            lutest(!strcmp(str5.c_str(), u8"defg"));
+            lutest(!strcmp(str5.c_str(), "defg"));
 
             // const BasicString& rhs
             String str6(str5);
-            lutest(!strcmp(str6.c_str(), u8"defg"));
+            lutest(!strcmp(str6.c_str(), "defg"));
 
             // BasicString&& rhs
             String str7(move(str6));
-            lutest(!strcmp(str7.c_str(), u8"defg"));
+            lutest(!strcmp(str7.c_str(), "defg"));
             lutest(str6.empty());
 
             // InitializerList<value_type> ilist
             String str8{ 'a', 'b', 'c', 'd' };
-            lutest(!strcmp(str8.c_str(), u8"abcd"));
+            lutest(!strcmp(str8.c_str(), "abcd"));
 
             // _InputIt first, _InputIt last
             constexpr c8 chars[] = { 'a', 'b', 'c', 'd', 'e', 'f', 'g' };
             constexpr usize num_chars = sizeof(chars) / sizeof(c8);
             String str9(chars, chars + num_chars);
-            lutest(!strcmp(str9.c_str(), u8"abcdefg"));
+            lutest(!strcmp(str9.c_str(), "abcdefg"));
 
             // operator=(const BasicString& rhs)
             str8 = str7;
-            lutest(!strcmp(str8.c_str(), u8"defg"));
-            lutest(!strcmp(str7.c_str(), u8"defg"));
+            lutest(!strcmp(str8.c_str(), "defg"));
+            lutest(!strcmp(str7.c_str(), "defg"));
 
             // operator=(BasicString&& rhs)
             str8 = move(str4);
-            lutest(!strcmp(str8.c_str(), u8"abcde"));
-            lutest(!strcmp(str4.c_str(), u8""));
+            lutest(!strcmp(str8.c_str(), "abcde"));
+            lutest(!strcmp(str4.c_str(), ""));
             lutest(str4.empty());
 
             // operator=(const value_type* s)
-            str8 = u8"Sample String";
-            lutest(!strcmp(str8.c_str(), u8"Sample String"));
+            str8 = "Sample String";
+            lutest(!strcmp(str8.c_str(), "Sample String"));
 
             // operator=(InitializerList<value_type> ilist)
             str8 = { 'e', 't', 'f' };
-            lutest(!strcmp(str8.c_str(), u8"etf"));
+            lutest(!strcmp(str8.c_str(), "etf"));
 
         }
 
@@ -86,7 +86,7 @@ namespace Luna
             
             String s;
             lutest(s.data() == nullptr);
-            lutest(!strcmp(s.c_str(), u8""));
+            lutest(!strcmp(s.c_str(), ""));
         }
 
         {
@@ -99,7 +99,7 @@ namespace Luna
             // reverse_iterator       rend();
             // const_reverse_iterator rend() const;
 
-            const c8* str = u8"Sample String";
+            const c8* str = "Sample String";
             String s = str;
             auto iter = s.begin();
             lutest(*iter == 'S');
@@ -139,7 +139,7 @@ namespace Luna
 
             String s;
             lutest(s.empty());
-            s = u8"Sample String";
+            s = "Sample String";
             lutest(s.size() == 13);
             lutest(s.length() == 13);
             lutest(s.capacity() >= s.size());
@@ -158,9 +158,9 @@ namespace Luna
             lutest(s.empty());
             s.resize(15, 'c');
             lutest(s.size() == 15);
-            lutest(!strcmp(s.c_str(), u8"ccccccccccccccc"));
+            lutest(!strcmp(s.c_str(), "ccccccccccccccc"));
             s.shrink_to_fit();
-            lutest(!strcmp(s.c_str(), u8"ccccccccccccccc"));
+            lutest(!strcmp(s.c_str(), "ccccccccccccccc"));
             lutest(s.capacity() == 15);
         }
 
@@ -174,7 +174,7 @@ namespace Luna
             // reference        back()
             // const_reference    back() const
 
-            String s = u8"Sample String";
+            String s = "Sample String";
             lutest(s[0] == 'S');
             lutest(s[3] == 'p');
             lutest(s.at(0) == 'S');
@@ -188,7 +188,7 @@ namespace Luna
             // void push_back(value_type ch)
             // void pop_back()
             
-            String s = u8"Sample String";
+            String s = "Sample String";
             auto sz = s.size();
             lutest(!s.empty());
             s.push_back('A');
@@ -211,30 +211,30 @@ namespace Luna
 
             String s;
             s.assign(10, 'c');
-            lutest(!strcmp(s.c_str(), u8"cccccccccc"));
+            lutest(!strcmp(s.c_str(), "cccccccccc"));
             lutest(s.size() == 10);
             String s2;
             s2.assign(s);
-            lutest(!strcmp(s2.c_str(), u8"cccccccccc"));
+            lutest(!strcmp(s2.c_str(), "cccccccccc"));
             lutest(s2.size() == 10);
             s = "abcde";
             s2.assign(s, 1, 2);
-            lutest(!strcmp(s2.c_str(), u8"bc"));
+            lutest(!strcmp(s2.c_str(), "bc"));
             lutest(s2.size() == 2);
             s2.assign(move(s));
-            lutest(!strcmp(s2.c_str(), u8"abcde"));
+            lutest(!strcmp(s2.c_str(), "abcde"));
             lutest(s.empty());
             lutest(s2.size() == 5);
-            s.assign(u8"aaaaaaaa", 3);
-            lutest(!strcmp(s.c_str(), u8"aaa"));
+            s.assign("aaaaaaaa", 3);
+            lutest(!strcmp(s.c_str(), "aaa"));
             lutest(s.size() == 3);
-            s.assign(u8"aaaaaaaa");
-            lutest(!strcmp(s.c_str(), u8"aaaaaaaa"));
+            s.assign("aaaaaaaa");
+            lutest(!strcmp(s.c_str(), "aaaaaaaa"));
             lutest(s.size() == 8);
             s2.assign(s.begin(), s.end());
-            lutest(!strcmp(s2.c_str(), u8"aaaaaaaa"));
+            lutest(!strcmp(s2.c_str(), "aaaaaaaa"));
             s2.assign({ 'a', 'b', 'c' });
-            lutest(!strcmp(s2.c_str(), u8"abc"));
+            lutest(!strcmp(s2.c_str(), "abc"));
             lutest(s2.size() == 3);
         }
     }

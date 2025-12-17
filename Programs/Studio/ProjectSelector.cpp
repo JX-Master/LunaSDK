@@ -24,7 +24,7 @@ namespace Luna
     {
         if (project_name.size() == 0)
         {
-            return set_error(BasicError::bad_arguments(), u8"Project name is empty.");
+            return set_error(BasicError::bad_arguments(), "Project name is empty.");
         }
         Path ret_path;
         lutry

@@ -170,7 +170,7 @@ namespace Luna
         //! @return Returns the internal string pointer of this name, returns one empty string if this is a null name.
         const c8* c_str() const
         {
-            return m_str ? m_str : u8"";
+            return m_str ? m_str : "";
         }
         //! Gets the size of the name string.
         //! @return Returns the size of the name string.

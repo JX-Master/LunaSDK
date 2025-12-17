@@ -22,7 +22,7 @@ namespace Luna
 {
     namespace Window
     {
-        constexpr wchar_t* WIN32_CLASS_NAME = L"LunaWindow";
+        constexpr const wchar_t* WIN32_CLASS_NAME = L"LunaWindow";
 
         RV platform_init()
         {

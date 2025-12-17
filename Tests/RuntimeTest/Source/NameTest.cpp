@@ -15,11 +15,11 @@ namespace Luna
     void name_test()
     {
         // name object test.
-        Name name1(u8"Thomas");
-        Name name2 = u8"Jack";
-        Name name3 = String(u8"Thomas");
-        Name name4(u8"Thomas", 3);
-        Name name5(String(u8"Thomas"), 0, 3);
+        Name name1("Thomas");
+        Name name2 = "Jack";
+        Name name3 = String("Thomas");
+        Name name4("Thomas", 3);
+        Name name5(String("Thomas"), 0, 3);
         lutest(name1 != name2);
         lutest(name1 == name3);
         lutest(name1 != name4);
@@ -35,12 +35,12 @@ namespace Luna
         Name names[1000];
         for (int i = 0; i < 500; ++i)
         {
-            snprintf(str, 16, u8"Name%d", i);
+            snprintf(str, 16, "Name%d", i);
             names[i] = str;
         }
         for (int i = 0; i < 500; ++i)
         {
-            snprintf(str, 16, u8"Name%d", i);
+            snprintf(str, 16, "Name%d", i);
             names[500 + i] = str;
         }
         for (int i = 0; i < 500; ++i)

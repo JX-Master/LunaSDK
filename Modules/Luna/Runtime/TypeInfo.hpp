@@ -234,7 +234,7 @@ namespace Luna
 //!     // other members...
 //! };
 //! ```
-#define lustruct(_name, _guid) static constexpr const Luna::c8* __name = _name; static constexpr Luna::Guid __guid { Luna::Guid(u8##_guid) };
+#define lustruct(_name, _guid) static constexpr const Luna::c8* __name = _name; static constexpr Luna::Guid __guid { Luna::Guid(_guid) };
 
 //! Declares one property used in @ref Luna::register_struct_type.
 //! @param[in] _struct The outer structure or class name.
@@ -247,7 +247,7 @@ namespace Luna
 //! @param[in] _type The enumeration type.
 //! @param[in] _name The name string of the type.
 //! @param[in] _guid The GUID string of the type.
-#define luenum(_type, _name, _guid) template <> struct EnumTypeInfo<_type> { static constexpr const Luna::c8* __name = _name; static constexpr Luna::Guid __guid { Luna::Guid(u8##_guid) }; }; template <> struct typeof_t<_type> { typeinfo_t operator()() const { return get_type_by_guid(EnumTypeInfo<_type>::__guid); } };
+#define luenum(_type, _name, _guid) template <> struct EnumTypeInfo<_type> { static constexpr const Luna::c8* __name = _name; static constexpr Luna::Guid __guid { Luna::Guid(_guid) }; }; template <> struct typeof_t<_type> { typeinfo_t operator()() const { return get_type_by_guid(EnumTypeInfo<_type>::__guid); } };
 
 //! Declares one option used in @ref Luna::register_enum_type.
 //! @param[in] _enum The outer enumeration type.

@@ -24,7 +24,7 @@ namespace Luna
         template <>
         struct StringTraits<c8>
         {
-            static constexpr const c8* null_string = u8"";
+            static constexpr const c8* null_string = "";
         };
 
         template <>

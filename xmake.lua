@@ -180,7 +180,7 @@ function set_luna_sdk_program()
 end
 
 add_includedirs("Modules")
-set_languages("c99", "cxx17")
+set_languages("c17", "cxx20")
 
 if is_os("windows") then 
     add_defines("_WINDOWS")
