@@ -40,7 +40,7 @@ namespace Luna
     //! Meanwhile, creating one spin lock does not need to allocate any dynamic memory, which makes it suitable for embedding into other objects.
     class SpinLock
     {
-        volatile u32 counter;
+        u32 counter;
     public:
         //! Constructs one spin lock. The spin lock is unlocked after creation.
         SpinLock() :
@@ -82,8 +82,8 @@ namespace Luna
     //! Similar to @ref SpinLock, but allows the lock to be obtained mutable times from the same thread.
     class RecursiveSpinLock
     {
-        volatile usize tid;
-        volatile u32 counter;
+        usize tid;
+        u32 counter;
     public:
         //! Constructs one spin lock. The spin lock is unlocked after creation.
         RecursiveSpinLock() :

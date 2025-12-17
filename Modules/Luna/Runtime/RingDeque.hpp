@@ -798,7 +798,7 @@ namespace Luna
         //! @param[in] first The iterator to the first element of the range.
         //! @param[in] last The iterator to the one-past-last element of the range.
         template <typename _InputIter>
-        void assign(_InputIter first, _InputIter last) requires !is_integral_v<_InputIter>
+        void assign(_InputIter first, _InputIter last) requires (!is_integral_v<_InputIter>)
         {
             clear();
             for (auto iter = first; iter != last; ++iter)
@@ -947,7 +947,7 @@ namespace Luna
         //! @par Valid Usage
         //! * If `pos != end()`, `pos` must points to a valid element in the queue.
         template <typename _InputIt>
-        iterator insert(const_iterator pos, _InputIt first, _InputIt last) requires !is_integral_v<_InputIt>
+        iterator insert(const_iterator pos, _InputIt first, _InputIt last) requires (!is_integral_v<_InputIt>)
         {
             luassert((pos >= begin()) && (pos <= end()));
             usize idx = (usize)(pos - begin());    // the place to insert the element.

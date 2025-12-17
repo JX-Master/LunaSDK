@@ -54,7 +54,7 @@ namespace Luna
     }
     template <typename _Ty, typename _Alloc>
     template <typename _InputIt>
-    inline List<_Ty, _Alloc>::List(_InputIt first, _InputIt last, const allocator_type& alloc) requires !is_integral_v<_InputIt> :
+    inline List<_Ty, _Alloc>::List(_InputIt first, _InputIt last, const allocator_type& alloc) requires (!is_integral_v<_InputIt>) :
         m_allocator_and_nodebase(alloc, ListImpl::NodeBase())
     {
         internal_assign_iterator_nocleanup<_InputIt>(first, last);
@@ -151,7 +151,7 @@ namespace Luna
     }
     template <typename _Ty, typename _Alloc>
     template <typename _InputIt>
-    inline void List<_Ty, _Alloc>::assign(_InputIt first, _InputIt last) requires !is_integral_v<_InputIt>
+    inline void List<_Ty, _Alloc>::assign(_InputIt first, _InputIt last) requires (!is_integral_v<_InputIt>)
     {
         internal_cleanup();
         internal_assign_iterator_nocleanup<_InputIt>(first, last);
@@ -314,7 +314,7 @@ namespace Luna
     }
     template <typename _Ty, typename _Alloc>
     template<typename _InputIt>
-    inline List<_Ty, _Alloc>::iterator List<_Ty, _Alloc>::insert(const_iterator pos, _InputIt first, _InputIt last) requires !is_integral_v<_InputIt>
+    inline List<_Ty, _Alloc>::iterator List<_Ty, _Alloc>::insert(const_iterator pos, _InputIt first, _InputIt last) requires (!is_integral_v<_InputIt>)
     {
         ListImpl::NodeBase* prev_node = pos.m_cur->m_prev;
         ListImpl::NodeBase* next_node = prev_node->m_next;

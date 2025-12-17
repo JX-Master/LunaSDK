@@ -57,12 +57,12 @@ namespace Luna
         //! Constructs one smart pointer by wrapping pointer `p` with custom object deletion function.
         //! @param p The pointer to wrap.
         //! @param d The object deletion function used for the pointer. The function object will be copied into the smart pointer.
-        UniquePtr(pointer p, const deleter_type& d) requires !is_reference_v<deleter_type> :
+        UniquePtr(pointer p, const deleter_type& d) requires (!is_reference_v<deleter_type>) :
             deleter_and_ptr(d, p) {}
         //! Constructs one smart pointer by wrapping pointer `p` with custom object deletion function.
         //! @param p The pointer to wrap.
         //! @param d The object deletion function used for the pointer. The function object will be moved into the smart pointer.
-        UniquePtr(pointer p, deleter_type&& d) requires !is_reference_v<deleter_type> :
+        UniquePtr(pointer p, deleter_type&& d) requires (!is_reference_v<deleter_type>) :
             deleter_and_ptr(move(d), p) {}
         UniquePtr(pointer p, remove_reference_t<deleter_type>& d) requires is_lvalue_reference_v<deleter_type> :
             deleter_and_ptr(d, p) {}
