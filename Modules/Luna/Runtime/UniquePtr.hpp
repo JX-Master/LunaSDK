@@ -57,20 +57,16 @@ namespace Luna
         //! Constructs one smart pointer by wrapping pointer `p` with custom object deletion function.
         //! @param p The pointer to wrap.
         //! @param d The object deletion function used for the pointer. The function object will be copied into the smart pointer.
-        template<typename _D2 = deleter_type, enable_if_t<negation_v<is_reference<_D2>>, int> = 0>
-        UniquePtr(pointer p, const deleter_type& d) :
+        UniquePtr(pointer p, const deleter_type& d) requires !is_reference_v<deleter_type> :
             deleter_and_ptr(d, p) {}
         //! Constructs one smart pointer by wrapping pointer `p` with custom object deletion function.
         //! @param p The pointer to wrap.
         //! @param d The object deletion function used for the pointer. The function object will be moved into the smart pointer.
-        template<typename _D2 = deleter_type, enable_if_t<negation_v<is_reference<_D2>>, int> = 0>
-        UniquePtr(pointer p, deleter_type&& d) :
+        UniquePtr(pointer p, deleter_type&& d) requires !is_reference_v<deleter_type> :
             deleter_and_ptr(move(d), p) {}
-        template<typename _D2 = deleter_type, enable_if_t<is_lvalue_reference_v<_D2>, int> = 0>
-        UniquePtr(pointer p, remove_reference_t<deleter_type>& d) :
+        UniquePtr(pointer p, remove_reference_t<deleter_type>& d) requires is_lvalue_reference_v<deleter_type> :
             deleter_and_ptr(d, p) {}
-        template<typename _D2 = deleter_type, enable_if_t<is_lvalue_reference_v<_D2>, int> = 0>
-        UniquePtr(pointer p, remove_reference_t<deleter_type>&& d) = delete;
+        UniquePtr(pointer p, remove_reference_t<deleter_type>&& d) requires is_lvalue_reference_v<deleter_type> = delete;
         //! Gets the underlying native pointer.
         //! @return Returns the underlying native pointer. The pointer may be `nullptr` if the smart pointer is null.
         pointer get() const

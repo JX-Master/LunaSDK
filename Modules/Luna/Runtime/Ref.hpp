@@ -309,8 +309,8 @@ namespace Luna
         //! If the assignment fails, this reference will be null after this operation.
         //! If the assignment succeeds, The strong reference counter of the new boxed object will be increased.
         //! @param[in] ptr The native pointer to set.
-        template <typename _Rty, typename _Enable = enable_if_t<is_base_of_v<Interface, _Rty>>>
-        Ref(_Rty* ptr)
+        template <typename _Rty>
+        Ref(_Rty* ptr) requires is_base_of_v<Interface, _Rty>
         {
             _Ty* v = ptr ? query_interface<_Ty>(ptr->get_object()) : nullptr;
             m_vtable = v;

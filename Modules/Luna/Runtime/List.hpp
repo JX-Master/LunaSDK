@@ -176,8 +176,8 @@ namespace Luna
         //! @param[in] first The iterator to the first element of the range.
         //! @param[in] last The iterator to the one-past-last element of the range.
         //! @param[in] alloc The allocator to use. The allocator object will be copy-constructed into the list.
-         template <typename _InputIt>
-        List(enable_if_t<!is_integral_v<_InputIt>, _InputIt> first, _InputIt last, const allocator_type& alloc = allocator_type());
+        template <typename _InputIt>
+        List(_InputIt first, _InputIt last, const allocator_type& alloc = allocator_type()) requires !is_integral_v<_InputIt>;
         //! Constructs a list by copying elements from another list.
         //! @param[in] rhs The list to copy elements from.
         List(const List& rhs);
@@ -217,7 +217,7 @@ namespace Luna
         //! @param[in] first The iterator to the first element of the range.
         //! @param[in] last The iterator to the one-past-last element of the range.
         template <typename _InputIt>
-        auto assign(_InputIt first, _InputIt last)->enable_if_t<!is_integral_v<_InputIt>, void>;
+        void assign(_InputIt first, _InputIt last) requires !is_integral_v<_InputIt>;
         //! Replaces elements of the list by elements from one initializer list.
         //! @param[in] ilist The initializer list.
         void assign(InitializerList<value_type> ilist);
@@ -319,7 +319,7 @@ namespace Luna
         //! @par Valid Usage
         //! * If `pos != end()`, `pos` must points to a valid element in the list.
         template<typename _InputIt>
-        auto insert(const_iterator pos, _InputIt first, _InputIt last)->enable_if_t<!is_integral_v<_InputIt>, List<_Ty, _Alloc>::iterator>;
+        iterator insert(const_iterator pos, _InputIt first, _InputIt last) requires !is_integral_v<_InputIt>;
         //! Inserts one range of elements specified by the initializer list to the list.
         //! @param[in] pos The iterator to the position to insert elements. The elements will be inserted before the element 
         //! pointed by this iterator. This can be `end()`, indicating that the element will be inserted at the end of the list.

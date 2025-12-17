@@ -58,7 +58,7 @@ namespace Luna
         //! @param[in] alloc The optioanl allocator instance bound to this vector. The allocator instance is copied into the vector type.
         //! @details This function creates a vector whose elements are copied from range `[first, last)`, the iterator parameters should support be input iterators.
         template <typename _InputIt>
-        Vector(enable_if_t<!is_integral_v<_InputIt>, _InputIt> first, _InputIt last, const allocator_type& alloc = allocator_type());
+        Vector(_InputIt first, _InputIt last, const allocator_type& alloc = allocator_type()) requires !is_integral_v<_InputIt>;
         //! Constructs a vector by copying elements from another vector.
         //! @param[in] rhs The vector to copy elements from.
         Vector(const Vector& rhs);
@@ -251,7 +251,7 @@ namespace Luna
         //! @param[in] first The iterator to the first element of the range.
         //! @param[in] last The iterator to the one-past-last element of the range.
         template <typename _InputIter>
-        auto assign(_InputIter first, _InputIter last) -> enable_if_t<!is_integral_v<_InputIter>, void>;
+        void assign(_InputIter first, _InputIter last) requires !is_integral_v<_InputIter>;
         //! Replaces elements of the vector by elements from one initializer vector.
         //! @param[in] ivector The initializer vector.
         void assign(InitializerList<value_type> il);
@@ -293,7 +293,7 @@ namespace Luna
         //! @par Valid Usage
         //! * If `pos != end()`, `pos` must points to a valid element in the vector.
         template <typename _InputIt>
-        auto insert(const_iterator pos, _InputIt first, _InputIt last) -> enable_if_t<!is_integral_v<_InputIt>, iterator>;
+        iterator insert(const_iterator pos, _InputIt first, _InputIt last) requires !is_integral_v<_InputIt>;
         //! Inserts one range of elements specified by the initializer list to the vector.
         //! @param[in] pos The iterator to the position to insert elements. The elements will be inserted before the element 
         //! pointed by this iterator. This can be `end()`, indicating that the element will be inserted at the end of the vector.
@@ -381,20 +381,20 @@ namespace Luna
         void internal_expand_reserve(usize new_least_cap);
 
         template <typename _Iter>
-        void internal_construct(enable_if_t<is_same_v<remove_cv_t<_Iter>, value_type*>, _Iter> first, _Iter last);
+        void internal_construct(_Iter first, _Iter last) requires is_same_v<remove_cv_t<_Iter>, value_type*>;
 
         template <typename _Iter>
-        void internal_construct(enable_if_t<!is_same_v<remove_cv_t<_Iter>, value_type*>, _Iter> first, _Iter last);
+        void internal_construct(_Iter first, _Iter last) requires !is_same_v<remove_cv_t<_Iter>, value_type*>;
 
         template <typename _InputIter>
-        auto internal_assign(_InputIter first, _InputIter last)->enable_if_t<is_same_v<remove_cv_t<_InputIter>, value_type*>, void>;
+        void internal_assign(_InputIter first, _InputIter last) requires is_same_v<remove_cv_t<_InputIter>, value_type*>;
         template <typename _InputIter>
-        auto internal_assign(_InputIter first, _InputIter last)->enable_if_t<!is_same_v<remove_cv_t<_InputIter>, value_type*>, void>;
+        void internal_assign(_InputIter first, _InputIter last) requires !is_same_v<remove_cv_t<_InputIter>, value_type*>;
     
         template <typename _InputIt>
-        auto internal_insert(const_iterator pos, _InputIt first, _InputIt last)->enable_if_t<is_same_v<remove_cv_t<_InputIt>, value_type*>, iterator>;
+        iterator internal_insert(const_iterator pos, _InputIt first, _InputIt last) requires is_same_v<remove_cv_t<_InputIt>, value_type*>;
         template <typename _InputIt>
-        auto internal_insert(const_iterator pos, _InputIt first, _InputIt last)->enable_if_t<!is_same_v<remove_cv_t<_InputIt>, value_type*>, iterator>;
+        iterator internal_insert(const_iterator pos, _InputIt first, _InputIt last) requires !is_same_v<remove_cv_t<_InputIt>, value_type*>;
     };
 
     //! Gets the type object of @ref Vector.

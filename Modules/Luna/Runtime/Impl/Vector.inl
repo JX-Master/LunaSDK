@@ -131,7 +131,7 @@ namespace Luna
     }
     template <typename _Ty, typename _Alloc>
     template <typename _Iter>
-    inline void Vector<_Ty, _Alloc>::internal_construct(enable_if_t<is_same_v<remove_cv_t<_Iter>, value_type*>, _Iter> first, _Iter last)
+    inline void Vector<_Ty, _Alloc>::internal_construct(_Iter first, _Iter last) requires is_same_v<remove_cv_t<_Iter>, value_type*>
     {
         usize count = last - first;
         if (count)
@@ -143,7 +143,7 @@ namespace Luna
     }
     template <typename _Ty, typename _Alloc>
     template <typename _Iter>
-    inline void Vector<_Ty, _Alloc>::internal_construct(enable_if_t<!is_same_v<remove_cv_t<_Iter>, value_type*>, _Iter> first, _Iter last)
+    inline void Vector<_Ty, _Alloc>::internal_construct(_Iter first, _Iter last) requires !is_same_v<remove_cv_t<_Iter>, value_type*>
     {
         for (; first != last; ++first)
         {
@@ -152,7 +152,7 @@ namespace Luna
     }
     template <typename _Ty, typename _Alloc>
     template <typename _InputIt>
-    inline Vector<_Ty, _Alloc>::Vector(enable_if_t<!is_integral_v<_InputIt>, _InputIt> first, _InputIt last, const allocator_type& alloc) :
+    inline Vector<_Ty, _Alloc>::Vector(_InputIt first, _InputIt last, const allocator_type& alloc) requires !is_integral_v<_InputIt> :
         m_allocator_buffer(alloc, nullptr),
         m_size(0),
         m_capacity(0)
@@ -430,7 +430,7 @@ namespace Luna
     }
     template <typename _Ty, typename _Alloc>
     template <typename _InputIter>
-    inline auto Vector<_Ty, _Alloc>::internal_assign(_InputIter first, _InputIter last) -> enable_if_t<is_same_v<remove_cv_t<_InputIter>, value_type*>, void>
+    inline void Vector<_Ty, _Alloc>::internal_assign(_InputIter first, _InputIter last) requires is_same_v<remove_cv_t<_InputIter>, value_type*>
     {
         usize count = last - first;
         clear();
@@ -440,7 +440,7 @@ namespace Luna
     }
     template <typename _Ty, typename _Alloc>
     template <typename _InputIter>
-    inline auto Vector<_Ty, _Alloc>::internal_assign(_InputIter first, _InputIter last) -> enable_if_t<!is_same_v<remove_cv_t<_InputIter>, value_type*>, void>
+    inline void Vector<_Ty, _Alloc>::internal_assign(_InputIter first, _InputIter last) requires !is_same_v<remove_cv_t<_InputIter>, value_type*>
     {
         clear();
         for (; first != last; ++first)
@@ -450,7 +450,7 @@ namespace Luna
     }
     template <typename _Ty, typename _Alloc>
     template <typename _InputIter>
-    inline auto Vector<_Ty, _Alloc>::assign(_InputIter first, _InputIter last) -> enable_if_t<!is_integral_v<_InputIter>, void>
+    inline void Vector<_Ty, _Alloc>::assign(_InputIter first, _InputIter last) requires !is_integral_v<_InputIter>
     {
         internal_assign(first, last);
     }
@@ -515,14 +515,14 @@ namespace Luna
     }
     template <typename _Ty, typename _Alloc>
     template <typename _InputIt>
-    inline auto Vector<_Ty, _Alloc>::internal_insert(const_iterator pos, _InputIt first, _InputIt last) -> enable_if_t<is_same_v<remove_cv_t<_InputIt>, value_type*>, Vector<_Ty, _Alloc>::iterator>
+    inline Vector<_Ty, _Alloc>::iterator Vector<_Ty, _Alloc>::internal_insert(const_iterator pos, _InputIt first, _InputIt last) requires is_same_v<remove_cv_t<_InputIt>, value_type*>
     {
         usize count = (last - first);
         return insert(pos, Span<remove_pointer_t<_InputIt>>(first, count));
     }
     template <typename _Ty, typename _Alloc>
     template <typename _InputIt>
-    inline auto Vector<_Ty, _Alloc>::internal_insert(const_iterator pos, _InputIt first, _InputIt last) -> enable_if_t<!is_same_v<remove_cv_t<_InputIt>, value_type*>, Vector<_Ty, _Alloc>::iterator>
+    inline Vector<_Ty, _Alloc>::iterator Vector<_Ty, _Alloc>::internal_insert(const_iterator pos, _InputIt first, _InputIt last) requires !is_same_v<remove_cv_t<_InputIt>, value_type*>
     {
         lucheck(((usize)pos >= (usize)m_allocator_buffer.second()) && ((usize)pos <= (usize)(m_allocator_buffer.second() + m_size)));
         usize index = pos - cbegin();
@@ -535,7 +535,7 @@ namespace Luna
     }
     template <typename _Ty, typename _Alloc>
     template <typename _InputIt>
-    inline auto Vector<_Ty, _Alloc>::insert(const_iterator pos, _InputIt first, _InputIt last) -> enable_if_t<!is_integral_v<_InputIt>, iterator>
+    inline typename Vector<_Ty, _Alloc>::iterator Vector<_Ty, _Alloc>::insert(const_iterator pos, _InputIt first, _InputIt last) requires !is_integral_v<_InputIt>
     {
         return internal_insert(pos, first, last);
     }

@@ -626,45 +626,45 @@ namespace Luna
     // but the users will not mess up with that.
 
     template <typename _Ty>
-    constexpr auto operator|(_Ty const left, _Ty const right) noexcept -> enable_if_t<is_enum_v<_Ty>, _Ty>
+    constexpr _Ty operator|(_Ty const left, _Ty const right) noexcept requires is_enum_v<_Ty>
     {
         return static_cast<_Ty>(static_cast<underlying_type_t<_Ty>>(left) | static_cast<underlying_type_t<_Ty>>(right));
     }
 
     template <typename _Ty>
-    constexpr auto operator|=(_Ty& left, _Ty const right) noexcept -> enable_if_t<is_enum_v<_Ty>, _Ty>
+    constexpr _Ty operator|=(_Ty& left, _Ty const right) noexcept requires is_enum_v<_Ty>
     {
         left = left | right;
         return left;
     }
 
     template <typename _Ty>
-    constexpr auto operator&(_Ty const left, _Ty const right) noexcept -> enable_if_t<is_enum_v<_Ty>, _Ty>
+    constexpr _Ty operator&(_Ty const left, _Ty const right) noexcept requires is_enum_v<_Ty>
     {
         return static_cast<_Ty>(static_cast<underlying_type_t<_Ty>>(left) & static_cast<underlying_type_t<_Ty>>(right));
     }
 
     template <typename _Ty>
-    constexpr auto operator&=(_Ty& left, _Ty const right) noexcept -> enable_if_t<is_enum_v<_Ty>, _Ty>
+    constexpr _Ty operator&=(_Ty& left, _Ty const right) noexcept requires is_enum_v<_Ty>
     {
         left = left & right;
         return left;
     }
 
     template <typename _Ty>
-    constexpr auto operator~(_Ty const value) noexcept -> enable_if_t<is_enum_v<_Ty>, _Ty>
+    constexpr _Ty operator~(_Ty const value) noexcept requires is_enum_v<_Ty>
     {
         return static_cast<_Ty>(~static_cast<underlying_type_t<_Ty>>(value));
     }
 
     template <typename _Ty>
-    constexpr auto operator^(_Ty const left, _Ty const right) noexcept -> enable_if_t<is_enum_v<_Ty>, _Ty>
+    constexpr _Ty operator^(_Ty const left, _Ty const right) noexcept requires is_enum_v<_Ty>
     {
         return static_cast<_Ty>(static_cast<underlying_type_t<_Ty>>(left) ^ static_cast<underlying_type_t<_Ty>>(right));
     }
 
     template <typename _Ty>
-    constexpr auto operator^=(_Ty& left, _Ty const right) noexcept -> enable_if_t<is_enum_v<_Ty>, _Ty>
+    constexpr _Ty operator^=(_Ty& left, _Ty const right) noexcept requires is_enum_v<_Ty>
     {
         left = left ^ right;
         return left;
@@ -675,7 +675,7 @@ namespace Luna
     //! @param[in] options A combination of flags to test.
     //! @return Returns `true` if all flags in the `options` combination are set in `flags`, returns `false` otherwise.
     template <typename _Ty>
-    inline constexpr auto test_flags(_Ty flags, _Ty options) -> enable_if_t<is_enum_v<_Ty>, bool>
+    inline constexpr bool test_flags(_Ty flags, _Ty options) requires is_enum_v<_Ty>
     {
         return static_cast<underlying_type_t<_Ty>>(flags & options) == static_cast<underlying_type_t<_Ty>>(options);
     }
@@ -684,7 +684,7 @@ namespace Luna
     //! @param[in] flags The flag variable to set.
     //! @param[in] options The options to set to 1.
     template <typename _Ty>
-    inline constexpr auto set_flags(_Ty& flags, _Ty options) -> enable_if_t<is_enum_v<_Ty>, void>
+    inline constexpr void set_flags(_Ty& flags, _Ty options) requires is_enum_v<_Ty>
     {
         flags = static_cast<_Ty>(static_cast<underlying_type_t<_Ty>>(flags) | static_cast<underlying_type_t<_Ty>>(options));
     }
@@ -693,7 +693,7 @@ namespace Luna
     //! @param[in] flags The flag variable to reset.
     //! @param[in] options The options to set to 0.
     template <typename _Ty>
-    inline constexpr auto reset_flags(_Ty& flags, _Ty options) -> enable_if_t<is_enum_v<_Ty>, void>
+    inline constexpr void reset_flags(_Ty& flags, _Ty options) requires is_enum_v<_Ty>
     {
         flags = static_cast<_Ty>(static_cast<underlying_type_t<_Ty>>(flags) & ~static_cast<underlying_type_t<_Ty>>(options));
     }
@@ -704,7 +704,7 @@ namespace Luna
     //! @param[in] value If this is `true`, all options specified will be set to 1, else they will be set to 0.
     //! @return Returns the enumeration after all options specified being set.
     template <typename _Ty>
-    inline constexpr auto set_flags(_Ty& flags, _Ty options, bool value) -> enable_if_t<is_enum_v<_Ty>, void>
+    inline constexpr void set_flags(_Ty& flags, _Ty options, bool value) requires is_enum_v<_Ty>
     {
         if(value)
         {
