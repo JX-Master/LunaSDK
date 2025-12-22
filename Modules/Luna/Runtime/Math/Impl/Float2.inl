@@ -607,12 +607,12 @@ namespace Luna
         return result;
 #else
         Float2 result;
-        f32 t2 = t * t;
-        f32 t3 = t2 * t;
-        f32 f1 = 2 * t3 - 3 * t2 + 1;
-        f32 f2 = t3 - 2 * t2 + t;
-        f32 f3 = -2 * t3 + 3 * t2;
-        f32 f4 = t3 - t2;
+        f32 tp2 = t * t;
+        f32 tp3 = tp2 * t;
+        f32 f1 = 2 * tp3 - 3 * tp2 + 1;
+        f32 f2 = tp3 - 2 * tp2 + t;
+        f32 f3 = -2 * tp3 + 3 * tp2;
+        f32 f4 = tp3 - tp2;
         result.x = 
             f1 * v1.x +
             f2 * t1.x +

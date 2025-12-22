@@ -396,23 +396,15 @@ namespace Luna
     //! object. Otherwise, this call does nothing, as described by C++ standard.
     //! ref: https://en.cppreference.com/w/cpp/language/default_initialization
     template <typename _Iter>
-    inline void default_construct_range(_Iter first, _Iter last) requires is_class_v<typename iterator_traits<_Iter>::value_type>
+    inline void default_construct_range(_Iter first, _Iter last) 
     {
-        for (; first != last; ++first)
+        if constexpr (is_class_v<typename iterator_traits<_Iter>::value_type>)
         {
-            default_construct(first);
+            for (; first != last; ++first)
+            {
+                default_construct(first);
+            }
         }
-    }
-    template <typename _Iter>
-    inline auto default_construct_range(_Iter first, _Iter last) requires (!is_class_v<typename iterator_traits<_Iter>::value_type>)
-    {
-        // do nothing.
-    }
-
-    namespace Impl
-    {
-        template <typename _Iter>
-        concept value_construct_range_is_value_type_trivial = is_pointer_v<_Iter> && !is_class_v<typename iterator_traits<_Iter>::value_type>;
     }
 
     //! Value-constructs a range of objects.
@@ -427,27 +419,19 @@ namespace Luna
     //! @todo For types that satisfy `is_trivially_constructible<typename iterator_traits<_Iter>::value_type>`, when 
     //! the iterator is a pointer, memzero can also be applied.
     template <typename _Iter>
-    inline void value_construct_range(_Iter* first, _Iter* last) requires Impl::value_construct_range_is_value_type_trivial<_Iter> // is a trivial type.
+    inline void value_construct_range(_Iter first, _Iter last)
     {
-        memzero(static_cast<void*>(first), (size_t)(last - first) * sizeof(_Iter));
-    }
-    template <typename _Iter>
-    inline void value_construct_range(_Iter first, _Iter last, false_type) requires (!Impl::value_construct_range_is_value_type_trivial<_Iter>) // is not a trivial type.
-    {
-        for (; first != last; ++first)
+        if constexpr (is_pointer_v<_Iter> && !is_class_v<typename iterator_traits<_Iter>::value_type>)
         {
-            value_construct(first);
+            memzero(static_cast<void*>(first), (usize)(last - first) * sizeof(typename iterator_traits<_Iter>::value_type));
         }
-    }
-
-    namespace Impl
-    {
-        template <typename _Iter1, typename _Iter2>
-        concept copy_construct_range_is_value_type_trivial = 
-            is_pointer_v<_Iter1> &&
-            is_pointer_v<_Iter2> &&
-            is_same_v<typename iterator_traits<_Iter1>::value_type, typename iterator_traits<_Iter2>::value_type> &&
-            is_trivially_copy_constructible_v<typename iterator_traits<_Iter1>::value_type>;
+        else
+        {
+            for (; first != last; ++first)
+            {
+                value_construct(first);
+            }
+        }
     }
 
     //! Copy-constructs a range of objects.
@@ -463,20 +447,26 @@ namespace Luna
     //! 2. `value_type` of `_Iter1` and `_Iter2` is same.
     //! 3. `value_type` is trivially copy constructible.
     //! Otherwise, the copy constructor is called for every object to construct objects in destination range.
-    template<typename _Iter1, typename _Iter2>
-    inline _Iter2 copy_construct_range(_Iter1 first, _Iter1 last, _Iter2 d_first) requires (!Impl::copy_construct_range_is_value_type_trivial<_Iter1, _Iter2>)
+    template <typename _Iter1, typename _Iter2>
+    inline _Iter2 copy_construct_range(_Iter1 first, _Iter1 last, _Iter2 d_first)
     {
-        for (; first != last; ++d_first, (void) ++first)
+        if constexpr (
+            is_pointer_v<_Iter1> &&
+            is_pointer_v<_Iter2> &&
+            is_same_v<typename iterator_traits<_Iter1>::value_type, typename iterator_traits<_Iter2>::value_type> &&
+            is_trivially_copy_constructible_v<typename iterator_traits<_Iter1>::value_type>)
         {
-            copy_construct(d_first, first);
+            memcpy(static_cast<void*>(d_first), static_cast<const void*>(first), (usize)(last - first) * sizeof(typename iterator_traits<_Iter2>::value_type));
+            return d_first + (last - first);
         }
-        return d_first;
-    }
-    template<typename _Ty1, typename _Ty2>
-    inline _Ty2* copy_construct_range(_Ty1* first, _Ty1* last, _Ty2* d_first) requires Impl::copy_construct_range_is_value_type_trivial<_Ty1*, _Ty2*>
-    {
-        memcpy(static_cast<void*>(d_first), static_cast<const void*>(first), (size_t)(last - first) * sizeof(_Ty2));
-        return d_first + (last - first);
+        else
+        {
+            for (; first != last; ++d_first, (void) ++first)
+            {
+                copy_construct(d_first, first);
+            }
+            return d_first;
+        }
     }
 
     //! Copy-constructs a range of objects. The range is provided by first object and object count.
@@ -492,29 +482,29 @@ namespace Luna
     //! 2. `value_type` of `_Iter1` and `_Iter2` is same.
     //! 3. `value_type` is trivially copy constructible.
     //! Otherwise, the copy constructor is called for every object to construct objects in destination range.
-    template<typename _Iter1, typename _Iter2>
-    inline _Iter2 copy_construct_range_n(_Iter1 first, usize count, _Iter2 d_first) requires (!Impl::copy_construct_range_is_value_type_trivial<_Iter1, _Iter2>)
+    template <typename _Iter1, typename _Iter2>
+    inline _Iter2 copy_construct_range_n(_Iter1 first, usize count, _Iter2 d_first)
     {
-        for (usize i = 0; i < count; ++i)
+        if constexpr (
+            is_pointer_v<_Iter1> &&
+            is_pointer_v<_Iter2> &&
+            is_same_v<typename iterator_traits<_Iter1>::value_type, typename iterator_traits<_Iter2>::value_type> &&
+            is_trivially_copy_constructible_v<typename iterator_traits<_Iter1>::value_type>)
         {
-            copy_construct(d_first, first);
-            ++d_first;
-            ++first;
+            _Iter1 last = first + count;
+            memcpy(static_cast<void*>(d_first), static_cast<const void*>(first), (usize)(last - first) * sizeof(typename iterator_traits<_Iter2>::value_type));
+            return d_first + (last - first);
         }
-        return d_first;
-    }
-    template<typename _Ty1, typename _Ty2>
-    inline _Ty2* copy_construct_range_n(_Ty1* first, usize count, _Ty2* d_first) requires Impl::copy_construct_range_is_value_type_trivial<_Ty1*, _Ty2*>
-    {
-        _Ty1* last = first + count;
-        memcpy(static_cast<void*>(d_first), static_cast<const void*>(first), (size_t)(last - first) * sizeof(_Ty2));
-        return d_first + (last - first);
-    }
-
-    namespace Impl
-    {
-        template<typename _Iter1, typename _Iter2>
-        concept move_construct_range_is_value_type_trivial = is_trivially_move_constructible_v<typename iterator_traits<_Iter1>::value_type>;
+        else
+        {
+            for (usize i = 0; i < count; ++i)
+            {
+                copy_construct(d_first, first);
+                ++d_first;
+                ++first;
+            }
+            return d_first;
+        }
     }
 
     //! Move-constructs a range of objects.
@@ -528,25 +518,21 @@ namespace Luna
     //! @remark If `value_type` of `_Iter2` is trivially move constructible, calls `copy_construct_range` to do the move
     //! construct.
     //! Otherwise, the move constructor is called for every object to construct objects in destination range.
-    template<typename _Iter1, typename _Iter2>
-    inline _Iter2 move_construct_range(_Iter1 first, _Iter1 last, _Iter2 d_first) requires Impl::move_construct_range_is_value_type_trivial<_Iter1, _Iter2>    // is trivially move constructible
+    template <typename _Iter1, typename _Iter2>
+    inline _Iter2 move_construct_range(_Iter1 first, _Iter1 last, _Iter2 d_first)
     {
-        return Luna::copy_construct_range(first, last, d_first);
-    }
-    template<typename _Iter1, typename _Iter2>
-    inline _Iter2 move_construct_range(_Iter1 first, _Iter1 last, _Iter2 d_first) requires (!Impl::move_construct_range_is_value_type_trivial<_Iter1, _Iter2>)    // is not trivially move constructible
-    {
-        for (; first != last; ++d_first, (void) ++first)
+        if constexpr (is_trivially_move_constructible_v<typename iterator_traits<_Iter1>::value_type>)
         {
-            move_construct(d_first, first);
+            return Luna::copy_construct_range(first, last, d_first);
         }
-        return d_first;
-    }
-
-    namespace Impl
-    {
-        template <typename _Iter>
-        concept destruct_range_is_value_type_trivial = is_trivially_destructible_v<typename iterator_traits<_Iter>::value_type>;
+        else
+        {
+            for (; first != last; ++d_first, (void) ++first)
+            {
+                move_construct(d_first, first);
+            }
+            return d_first;
+        }
     }
 
     //! Destructs every object in the range.
@@ -555,27 +541,15 @@ namespace Luna
     //! @remark If `value_type` is trivially destructible, do nothing.
     //! Else, calls the destructor for each object in the range.
     template <typename _Iter>
-    inline void destruct_range(_Iter first, _Iter last) requires Impl::destruct_range_is_value_type_trivial<_Iter>    // is_trivially_destructible
+    inline void destruct_range(_Iter first, _Iter last)
     {
-        // do nothing.
-    }
-    template <typename _Iter>
-    inline void destruct_range(_Iter first, _Iter last) requires (!Impl::destruct_range_is_value_type_trivial<_Iter>)// is_trivially_destructible
-    {
-        for (; first != last; ++first)
+        if constexpr (!is_trivially_destructible_v<typename iterator_traits<_Iter>::value_type>)
         {
-            destruct(first);
+            for (; first != last; ++first)
+            {
+                destruct(first);
+            }
         }
-    }
-
-    namespace Impl
-    {
-        template<typename _Iter1, typename _Iter2>
-        concept copy_assign_range_is_value_type_trivial = 
-            is_pointer_v<_Iter1> &&
-            is_pointer_v<_Iter2> &&
-            is_same_v<typename iterator_traits<_Iter1>::value_type, typename iterator_traits<_Iter2>::value_type> &&
-            is_trivially_copy_assignable_v<typename iterator_traits<_Iter1>::value_type>;
     }
 
     //! Performs copy assignment operation on every object in the destination range using the corresponding object in the source range.
@@ -591,38 +565,25 @@ namespace Luna
     //! 3. `value_type` is trivially copy assignable.
     //! Otherwise, the copy assignment operator is called for every object to copy assign objects in destination range.
     template<typename _Iter1, typename _Iter2>
-    inline _Iter2 copy_assign_range(_Iter1 first, _Iter1 last, _Iter2 d_first) requires (!Impl::copy_assign_range_is_value_type_trivial<_Iter1, _Iter2>)
+    inline _Iter2 copy_assign_range(_Iter1 first, _Iter1 last, _Iter2 d_first)
     {
-        for (; first != last; ++d_first, (void) ++first)
+        if constexpr (
+            is_pointer_v<_Iter1> &&
+            is_pointer_v<_Iter2> &&
+            is_same_v<typename iterator_traits<_Iter1>::value_type, typename iterator_traits<_Iter2>::value_type> &&
+            is_trivially_copy_assignable_v<typename iterator_traits<_Iter1>::value_type>)
         {
-            copy_assign(d_first, first);
+            memcpy(static_cast<void*>(d_first), static_cast<const void*>(first), (usize)(last - first) * sizeof(typename iterator_traits<_Iter2>::value_type));
+            return d_first + (last - first);
         }
-        return d_first;
-    }
-    template<typename _Ty1, typename _Ty2>
-    inline _Ty2* copy_assign_range(_Ty1* first, _Ty1* last, _Ty2* d_first) requires Impl::copy_assign_range_is_value_type_trivial<_Ty1*, _Ty2*>
-    {
-        memcpy(static_cast<void*>(d_first), static_cast<const void*>(first), (size_t)(last - first) * sizeof(_Ty2));
-        return d_first + (last - first);
-    }
-
-    namespace Impl
-    {
-        template<typename _Iter1, typename _Iter2>
-        concept move_assign_range_is_value_type_trivial =
-            is_pointer_v<_Iter1> &&
-            is_pointer_v<_Iter2> &&
-            is_same_v<typename iterator_traits<_Iter1>::value_type, typename iterator_traits<_Iter2>::value_type> &&
-            is_trivially_copy_assignable_v<typename iterator_traits<_Iter1>::value_type> &&
-            is_trivially_move_assignable_v<typename iterator_traits<_Iter1>::value_type>;
-
-        template<typename _Iter1, typename _Iter2>
-        concept move_assign_range_backward_is_value_type_trivial =
-            is_pointer_v<_Iter1> &&
-            is_pointer_v<_Iter2> &&
-            is_same_v<typename iterator_traits<_Iter1>::value_type, typename iterator_traits<_Iter2>::value_type> &&
-            is_trivially_copy_assignable_v<typename iterator_traits<_Iter1>::value_type> &&
-            is_trivially_move_assignable_v<typename iterator_traits<_Iter1>::value_type>;
+        else
+        {
+            for (; first != last; ++d_first, (void) ++first)
+            {
+                copy_assign(d_first, first);
+            }
+            return d_first;
+        }
     }
 
     //! Performs move assignment operation on every object in the destination range using the corresponding object in the source range.
@@ -638,19 +599,26 @@ namespace Luna
     //! behaves the same as the copy assignment operator.)
     //! Otherwise, the move assignment operator is called for every object to move assign objects in destination range.
     template<typename _Iter1, typename _Iter2>
-    inline _Iter2 move_assign_range(_Iter1 first, _Iter1 last, _Iter2 d_first) requires (!Impl::move_assign_range_is_value_type_trivial<_Iter1, _Iter2>)
+    inline _Iter2 move_assign_range(_Iter1 first, _Iter1 last, _Iter2 d_first)
     {
-        for (; first != last; ++d_first, (void) ++first)
+        if constexpr (
+            is_pointer_v<_Iter1> &&
+            is_pointer_v<_Iter2> &&
+            is_same_v<typename iterator_traits<_Iter1>::value_type, typename iterator_traits<_Iter2>::value_type> &&
+            is_trivially_copy_assignable_v<typename iterator_traits<_Iter1>::value_type> &&
+            is_trivially_move_assignable_v<typename iterator_traits<_Iter1>::value_type>)
         {
-            move_assign(d_first, first);
+            memmove(static_cast<void*>(d_first), static_cast<const void*>(first), (usize)(last - first) * sizeof(typename iterator_traits<_Iter2>::value_type));
+            return d_first + (last - first);
         }
-        return d_first;
-    }
-    template<typename _Ty1, typename _Ty2>
-    inline _Ty2* move_assign_range(_Ty1* first, _Ty1* last, _Ty2* d_first) requires Impl::move_assign_range_is_value_type_trivial<_Ty1*, _Ty2*>
-    {
-        memmove(static_cast<void*>(d_first), static_cast<const void*>(first), (size_t)(last - first) * sizeof(_Ty2));
-        return d_first + (last - first);
+        else
+        {
+            for (; first != last; ++d_first, (void) ++first)
+            {
+                move_assign(d_first, first);
+            }
+            return d_first;
+        }
     }
 
     //! Same as @ref move_assign_range, but performs the move assign from back to front.
@@ -660,22 +628,29 @@ namespace Luna
     //! @return Returns an iterator to the front object in the range to be assigned.
     //! @details The last element in destination range must not in the source range.
     template<typename _Iter1, typename _Iter2>
-    inline _Iter2 move_assign_range_backward(_Iter1 first, _Iter1 last, _Iter2 d_last) requires (!Impl::move_assign_range_backward_is_value_type_trivial<_Iter1, _Iter2>)
+    inline _Iter2 move_assign_range_backward(_Iter1 first, _Iter1 last, _Iter2 d_last)
     {
-        while (first != last)
+        if constexpr (
+            is_pointer_v<_Iter1> &&
+            is_pointer_v<_Iter2> &&
+            is_same_v<typename iterator_traits<_Iter1>::value_type, typename iterator_traits<_Iter2>::value_type> &&
+            is_trivially_copy_assignable_v<typename iterator_traits<_Iter1>::value_type> &&
+            is_trivially_move_assignable_v<typename iterator_traits<_Iter1>::value_type>)
         {
-            --d_last;
-            --last;
-            move_assign(d_last, last);
+            isize sz = (last - first);
+            memmove(static_cast<void*>(d_last - sz), static_cast<const void*>(first), (size_t)(sz) * sizeof(typename iterator_traits<_Iter2>::value_type));
+            return d_last - sz;
         }
-        return d_last;
-    }
-    template<typename _Ty1, typename _Ty2>
-    inline _Ty2* move_assign_range_backward(_Ty1* first, _Ty1* last, _Ty2* d_last) requires Impl::move_assign_range_backward_is_value_type_trivial<_Ty1*, _Ty2*>
-    {
-        ptrdiff_t sz = (last - first);
-        memmove(static_cast<void*>(d_last - sz), static_cast<const void*>(first), (size_t)(sz) * sizeof(_Ty2));
-        return d_last - sz;
+        else
+        {
+            while (first != last)
+            {
+                --d_last;
+                --last;
+                move_assign(d_last, last);
+            }
+            return d_last;
+        }
     }
 
     //! Performs copy construct on each of the object in the range by taking a copy of the provided object.
@@ -709,41 +684,6 @@ namespace Luna
         return first;
     }
 
-    namespace Impl
-    {
-        template <typename _Iter1, typename _Iter2>
-        concept copy_relocate_range_is_iterator_pointer = is_pointer_v<_Iter1> && is_pointer_v<_Iter2>;
-
-        template <typename _Ty1, typename _Ty2>
-        inline _Ty2* copy_relocate_range_trivial(_Ty1* first, _Ty1* last, _Ty2* d_first) requires copy_relocate_range_is_iterator_pointer<_Ty1*, _Ty2*> // is_pointer
-        {
-            memcpy(static_cast<void*>(d_first), static_cast<const void*>(first), (size_t)(last - first) * sizeof(_Ty2));
-            return d_first + (last - first);
-        }
-
-        template <typename _Iter1, typename _Iter2>
-        inline _Iter2 copy_relocate_range_trivial(_Iter1 first, _Iter1 last, _Iter2 d_first, false_type) requires (!copy_relocate_range_is_iterator_pointer<_Iter1, _Iter2>) // not is_pointer
-        {
-            for (; first != last; ++d_first, (void) ++first)
-            {
-                memcpy(static_cast<void*>(addressof(*d_first)), static_cast<const void*>(addressof(*first)), sizeof(typename iterator_traits<_Iter2>::value_type));
-            }
-            return d_first;
-        }
-
-        template <typename _Iter1, typename _Iter2>
-        concept copy_relocate_is_value_type_trivial = 
-            is_trivially_relocatable_v<typename iterator_traits<_Iter1>::value_type> &&
-            is_trivially_relocatable_v<typename iterator_traits<_Iter2>::value_type>;
-
-        template <typename _Iter1, typename _Iter2>
-        inline _Iter1 copy_relocate_trivial(_Iter1 dst, _Iter2 src)
-        {
-            memcpy(static_cast<void*>(addressof(*dst)), static_cast<const void*>(addressof(*src)), sizeof(typename iterator_traits<_Iter1>::value_type));
-            return dst;
-        }
-    }
-
     //! Relocates objects in the source range to a new range that is not overlap with the source range.
     //! @details After this call, the objects in the destination range behaves the same as the corresponding objects 
     //! formerly in the source range, except that the places(memory addresses) for objects are changed.
@@ -768,20 +708,37 @@ namespace Luna
     //! the move constructor will be called with the corresponding object in the source range passed in, then 
     //! the destructor of the corresponding object in the source range will be called.
     template <typename _Iter1, typename _Iter2>
-    inline _Iter2 copy_relocate_range(_Iter1 first, _Iter1 last, _Iter2 d_first) requires Impl::copy_relocate_is_value_type_trivial<_Iter1, _Iter2> // is_trivially_relocatable
+    inline _Iter2 copy_relocate_range(_Iter1 first, _Iter1 last, _Iter2 d_first)
     {
-        return Impl::copy_relocate_range_trivial(first, last, d_first);
-    }
-    template <typename _Iter1, typename _Iter2>
-    inline _Iter2 copy_relocate_range(_Iter1 first, _Iter1 last, _Iter2 d_first) requires (!Impl::copy_relocate_is_value_type_trivial<_Iter1, _Iter2>) // not is_trivially_relocatable
-    {
-        for (; first != last; ++d_first, (void) ++first)
+        if constexpr (
+            is_same_v<typename iterator_traits<_Iter1>::value_type, typename iterator_traits<_Iter2>::value_type> &&
+            is_trivially_relocatable_v<typename iterator_traits<_Iter1>::value_type>)
         {
-            move_construct(d_first, first);
-            destruct(first);
+            if constexpr (is_pointer_v<_Iter1> && is_pointer_v<_Iter2>)
+            {
+                memcpy(static_cast<void*>(d_first), static_cast<const void*>(first), (usize)(last - first) * sizeof(typename iterator_traits<_Iter2>::value_type));
+                return d_first + (last - first);
+            }
+            else
+            {
+                for (; first != last; ++d_first, (void) ++first)
+                {
+                    memcpy(static_cast<void*>(addressof(*d_first)), static_cast<const void*>(addressof(*first)), sizeof(typename iterator_traits<_Iter2>::value_type));
+                }
+                return d_first;
+            }
         }
-        return d_first;
+        else
+        {
+            for (; first != last; ++d_first, (void) ++first)
+            {
+                move_construct(d_first, first);
+                destruct(first);
+            }
+            return d_first;
+        }
     }
+
     //! Relocates one object.
     //! @details After this call, the object in the destination memory behaves the same as the object 
     //! formerly in the source memory, except that the place(memory address) for the object is changed.
@@ -789,44 +746,21 @@ namespace Luna
     //! @param[in] src An iterator to the object to be relocated.
     //! @return Returns `dst`.
     template <typename _Iter1, typename _Iter2>
-    inline _Iter1 copy_relocate(_Iter1 dst, _Iter2 src) requires Impl::copy_relocate_is_value_type_trivial<_Iter1, _Iter2> // is_trivially_relocatable
+    inline _Iter1 copy_relocate(_Iter1 dst, _Iter2 src)
     {
-        return Impl::copy_relocate_trivial(dst, src);
-    }
-    template <typename _Iter1, typename _Iter2>
-    inline _Iter1 copy_relocate(_Iter1 dst, _Iter2 src) requires (!Impl::copy_relocate_is_value_type_trivial<_Iter1, _Iter2>) // not is_trivially_relocatable
-    {
-        move_construct(dst, src);
-        destruct(src);
-        return dst;
-    }
-
-    namespace Impl
-    {
-        template <typename _Iter1, typename _Iter2>
-        concept move_relocate_range_is_iterator_pointer = is_pointer_v<_Iter1> && is_pointer_v<_Iter2>;
-
-        template <typename _Ty1, typename _Ty2>
-        inline _Ty2* move_relocate_range_trivial(_Ty1* first, _Ty1* last, _Ty2* d_first) requires move_relocate_range_is_iterator_pointer<_Ty1*, _Ty2*> // is_pointer
+        if constexpr (
+            is_same_v<typename iterator_traits<_Iter1>::value_type, typename iterator_traits<_Iter2>::value_type> &&
+            is_trivially_relocatable_v<typename iterator_traits<_Iter1>::value_type>)
         {
-            memmove(static_cast<void*>(d_first), static_cast<const void*>(first), (size_t)(last - first) * sizeof(_Ty2));
-            return d_first + (last - first);
+            memcpy(static_cast<void*>(addressof(*dst)), static_cast<const void*>(addressof(*src)), sizeof(typename iterator_traits<_Iter1>::value_type));
+            return dst;
         }
-
-        template <typename _Iter1, typename _Iter2>
-        inline _Iter2 move_relocate_range_trivial(_Iter1 first, _Iter1 last, _Iter2 d_first) requires (!move_relocate_range_is_iterator_pointer<_Iter1, _Iter2>) // not is_pointer
+        else
         {
-            for (; first != last; ++d_first, (void) ++first)
-            {
-                memcpy(static_cast<void*>(addressof(*d_first)), static_cast<const void*>(addressof(*first)), sizeof(typename iterator_traits<_Iter2>::value_type));
-            }
-            return d_first;
+            move_construct(dst, src);
+            destruct(src);
+            return dst;
         }
-
-        template <typename _Iter1, typename _Iter2>
-        concept move_relocate_is_value_type_trivial =
-            is_trivially_relocatable_v<typename iterator_traits<_Iter1>::value_type> &&
-            is_trivially_relocatable_v<typename iterator_traits<_Iter2>::value_type>;
     }
 
     //! Relocates objects in the source range to a new range.
@@ -838,50 +772,35 @@ namespace Luna
     //! @param[in] d_first An iterator to the first object to be relocated to.
     //! @return Returns an iterator to the one-past-last object to be relocated to.
     template <typename _Iter1, typename _Iter2>
-    inline _Iter2 move_relocate_range(_Iter1 first, _Iter1 last, _Iter2 d_first) requires Impl::move_relocate_is_value_type_trivial<_Iter1, _Iter2> // is_trivially_relocatable
+    inline _Iter2 move_relocate_range(_Iter1 first, _Iter1 last, _Iter2 d_first)
     {
-        return Impl::move_relocate_range_trivial(first, last, d_first);
-    }
-    template <typename _Iter1, typename _Iter2>
-    inline _Iter2 move_relocate_range(_Iter1 first, _Iter1 last, _Iter2 d_first) requires (!Impl::move_relocate_is_value_type_trivial<_Iter1, _Iter2>) // not is_trivially_relocatable
-    {
-        for (; first != last; ++d_first, (void) ++first)
-        {
-            move_construct(d_first, first);
-            destruct(first);
-        }
-        return d_first;
-    }
-
-    namespace Impl
-    {
-        template <typename _Iter1, typename _Iter2>
-        concept move_relocate_range_backward_is_iterator_pointer = is_pointer_v<_Iter1> && is_pointer_v<_Iter2>;
-
-        template <typename _Ty1, typename _Ty2>
-        inline _Ty2* move_relocate_range_backward_trivial(_Ty1* first, _Ty1* last, _Ty2* d_last) requires move_relocate_range_backward_is_iterator_pointer<_Ty1*, _Ty2*> // iterator is_pointer
-        {
-            isize sz = last - first;
-            memmove(static_cast<void*>(d_last - sz), static_cast<const void*>(first), (size_t)(sz) * sizeof(_Ty2));
-            return d_last - sz;
-        }
-
-        template <typename _Iter1, typename _Iter2>
-        inline _Iter2 move_relocate_range_backward_trivial(_Iter1 first, _Iter1 last, _Iter2 d_last) requires (!move_relocate_range_backward_is_iterator_pointer<_Iter1, _Iter2>) // iterator not is_pointer
-        {
-            while (first != last)
-            {
-                --last;
-                --d_last;
-                memcpy(static_cast<void*>(addressof(*d_last)), static_cast<const void*>(addressof(*last)), sizeof(typename iterator_traits<_Iter2>::value_type));
-            }
-            return d_last;
-        }
-
-        template <typename _Iter1, typename _Iter2>
-        concept move_relocate_backward_is_value_type_trivial = 
+        if constexpr (
             is_trivially_relocatable_v<typename iterator_traits<_Iter1>::value_type> &&
-            is_trivially_relocatable_v<typename iterator_traits<_Iter2>::value_type>;
+            is_trivially_relocatable_v<typename iterator_traits<_Iter2>::value_type>)
+        {
+            if constexpr (is_pointer_v<_Iter1> && is_pointer_v<_Iter2>)
+            {
+                memmove(static_cast<void*>(d_first), static_cast<const void*>(first), (usize)(last - first) * sizeof(typename iterator_traits<_Iter2>::value_type));
+                return d_first + (last - first);
+            }
+            else
+            {
+                for (; first != last; ++d_first, (void) ++first)
+                {
+                    memcpy(static_cast<void*>(addressof(*d_first)), static_cast<const void*>(addressof(*first)), sizeof(typename iterator_traits<_Iter2>::value_type));
+                }
+                return d_first;
+            }
+        }
+        else
+        {
+            for (; first != last; ++d_first, (void) ++first)
+            {
+                move_construct(d_first, first);
+                destruct(first);
+            }
+            return d_first;
+        }
     }
 
     //! Relocates objects in the source range to a new range.
@@ -893,21 +812,40 @@ namespace Luna
     //! @param[in] d_last An iterator to the one-past-last object to be relocated to.
     //! @return Returns an iterator to the front object to be relocated to in the destination range.
     template <typename _Iter1, typename _Iter2>
-    inline _Iter2 move_relocate_range_backward(_Iter1 first, _Iter1 last, _Iter2 d_last) requires Impl::move_relocate_backward_is_value_type_trivial<_Iter1, _Iter2> // is_trivially_relocatable
+    inline _Iter2 move_relocate_range_backward(_Iter1 first, _Iter1 last, _Iter2 d_last)
     {
-        return Impl::move_relocate_range_backward_trivial(first, last, d_last);
-    }
-    template <typename _Iter1, typename _Iter2>
-    inline _Iter2 move_relocate_range_backward(_Iter1 first, _Iter1 last, _Iter2 d_last) requires (!Impl::move_relocate_backward_is_value_type_trivial<_Iter1, _Iter2>) // not is_trivially_relocatable
-    {
-        while (first != last)
+        if constexpr (
+            is_trivially_relocatable_v<typename iterator_traits<_Iter1>::value_type> &&
+            is_trivially_relocatable_v<typename iterator_traits<_Iter2>::value_type>)
         {
-            --last;
-            --d_last;
-            move_construct(d_last, last);
-            destruct(last);
+            if constexpr (is_pointer_v<_Iter1> && is_pointer_v<_Iter2>)
+            {
+                isize sz = last - first;
+                memmove(static_cast<void*>(d_last - sz), static_cast<const void*>(first), (size_t)(sz) * sizeof(typename iterator_traits<_Iter2>::value_type));
+                return d_last - sz;
+            }
+            else
+            {
+                while (first != last)
+                {
+                    --last;
+                    --d_last;
+                    memcpy(static_cast<void*>(addressof(*d_last)), static_cast<const void*>(addressof(*last)), sizeof(typename iterator_traits<_Iter2>::value_type));
+                }
+                return d_last;
+            }
         }
-        return d_last;
+        else
+        {
+            while (first != last)
+            {
+                --last;
+                --d_last;
+                move_construct(d_last, last);
+                destruct(last);
+            }
+            return d_last;
+        }
     }
 
     //! Describes one member used by memory layouting algorithms.

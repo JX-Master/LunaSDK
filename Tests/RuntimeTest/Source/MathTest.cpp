@@ -246,7 +246,7 @@ namespace Luna
 
             }
             {
-                Float4 quat = Quaternion::from_euler_angles(PI / 2.0f, PI / 3.0f, PI / 5.0f);
+                Quaternion quat = Quaternion::from_euler_angles(PI / 2.0f, PI / 3.0f, PI / 5.0f);
                 Float4x4 mat = AffineMatrix::make(Float3(50.0f, 100.0f, 200.0f), quat, Float3(0.5f, 0.75f, 1.0f));
                 luasset_eq_float(mat.r[0].x, 0.456773f);
                 luasset_eq_float(mat.r[0].y, 0.000000f);
@@ -266,7 +266,7 @@ namespace Luna
                 luasset_eq_float(mat.r[3].w, 1.000000f);
             }
             {
-                Float4 quat = Quaternion::from_euler_angles(PI / 2.0f, PI / 3.0f, PI / 5.0f);
+                Quaternion quat = Quaternion::from_euler_angles(PI / 2.0f, PI / 3.0f, PI / 5.0f);
                 Float4x4 mat = AffineMatrix::make(Float3(50.0f, 100.0f, 200.0f), quat, Float3(0.5f, 0.75f, 1.0f));
                 mat = inverse(mat);
                 luasset_eq_float(mat.r[0].x, 1.827091f);
