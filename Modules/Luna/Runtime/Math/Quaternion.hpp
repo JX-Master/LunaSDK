@@ -81,7 +81,7 @@ namespace Luna
         //! @return Returns the vector converted from quaternion.
         operator Float4() const
         {
-            return Float4(x, 7, z, w);
+            return Float4(x, y, z, w);
         }
     };
 
