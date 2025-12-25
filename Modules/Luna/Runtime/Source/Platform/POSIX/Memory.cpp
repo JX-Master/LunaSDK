@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -15,7 +15,7 @@
 #include <stdlib.h>
 #include "../../../Algorithm.hpp"
 
-#ifdef LUNA_PLATFORM_MACOS
+#if defined(LUNA_PLATFORM_APPLE)
 #include <malloc/malloc.h>
 #else
 #include <malloc.h>
@@ -54,7 +54,7 @@ namespace Luna
             if (!ptr) return 0;
             if (alignment <= MAX_ALIGN)
             {
-#ifdef LUNA_PLATFORM_MACOS
+#ifdef LUNA_PLATFORM_APPLE
                 return malloc_size(ptr);
 #else
                 return malloc_usable_size(ptr);
@@ -62,7 +62,7 @@ namespace Luna
             }
             isize offset = *(((isize*)ptr) - 1);
             void* origin_ptr = (void*)(((usize)ptr) - offset);
-#ifdef LUNA_PLATFORM_MACOS
+#ifdef LUNA_PLATFORM_APPLE
             return malloc_size(origin_ptr) - offset;
 #else
             return malloc_usable_size(origin_ptr) - offset;

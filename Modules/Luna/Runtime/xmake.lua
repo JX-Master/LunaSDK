@@ -10,10 +10,10 @@ luna_sdk_module_target("Runtime")
         add_headerfiles("(Platform/Windows/**.hpp)", {prefixdir = "Luna/Runtime"})
         add_headerfiles("Source/Platform/Windows/*.hpp", {install = false})
         add_files("Source/Platform/Windows/*.cpp")
-    elseif is_plat("linux", "macosx", "android") then
+    elseif is_plat("linux", "macosx", "android", "iphoneos") then
         add_headerfiles("Source/Platform/POSIX/*.hpp", {install = false})
         add_files("Source/Platform/POSIX/*.cpp")
-        if is_plat("linux", "macosx") then
+        if is_plat("linux", "macosx", "iphoneos") then
             add_syslinks("pthread")
         end
     end

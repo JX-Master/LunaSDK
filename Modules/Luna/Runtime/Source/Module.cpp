@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -222,6 +222,12 @@ namespace Luna
         }
         lucatchret;
         return ok;
+    }
+    LUNA_RUNTIME_API bool is_module_initialized(Module* module)
+    {
+        auto iter = g_modules.find(module);
+        if(iter == g_modules.end()) return false;
+        return iter->second.m_initialized;
     }
     LUNA_RUNTIME_API RV init_modules()
     {

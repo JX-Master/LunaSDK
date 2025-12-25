@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -11,24 +11,40 @@
 #include <Luna/Runtime/Runtime.hpp>
 #include <Luna/Runtime/Module.hpp>
 #include <Luna/Runtime/Log.hpp>
+#include <Luna/Runtime/Thread.hpp>
+#include <Luna/Window/Event.hpp>
+#include <Luna/Window/AppMain.hpp>
 
 using namespace Luna;
 
-void run()
+int luna_main(int argc, const char* argv[])
 {
-    RHITestBed::run();
-}
-
-int main()
-{
-    if (!Luna::init()) return 0;
-    lupanic_if_failed(add_modules({module_rhi_test_bed()}));
-    auto r = init_modules();
-    if (failed(r))
+    if(!Luna::init()) return -1;
+    lutry
     {
-        log_error("RHITest", "%s", explain(r.errcode()));
+        luexp(add_modules({module_rhi_test_bed()}));
+        luexp(init_modules());
+        luexp(RHITestBed::init());
+        while(true)
+        {
+            Window::poll_events();
+            auto window = RHITestBed::get_window();
+            if(window->is_closed()) break;
+            if(window->is_minimized())
+            {
+                sleep(100);
+                continue;
+            }
+            luexp(RHITestBed::update());
+        }
+        RHITestBed::close();
     }
-    else run();
+    lucatch
+    {
+        log_error("RHITest", "%s", explain(luerr));
+        Luna::close();
+        return -1;
+    }
     Luna::close();
     return 0;
 }

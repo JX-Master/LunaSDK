@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -169,13 +169,13 @@ namespace Luna
     LUNA_RUNTIME_API R<Variant> serialize(typeinfo_t type, const void* inst)
     {
         SerializableTypeDesc* d = (SerializableTypeDesc*)get_type_private_data(type, serialization_data_guid);
-        if (!d) return BasicError::not_supported();
+        if (!d) return set_error(BasicError::not_supported(), "Type %s is not serializable.", get_type_name(type).c_str());
         return d->serialize_func(type, inst);
     }
     LUNA_RUNTIME_API RV deserialize(typeinfo_t type, void* inst, const Variant& data)
     {
         SerializableTypeDesc* d = (SerializableTypeDesc*)get_type_private_data(type, serialization_data_guid);
-        if (!d) return BasicError::not_supported();
+        if (!d) return set_error(BasicError::not_supported(), "Type %s is not serializable.", get_type_name(type).c_str());
         return d->deserialize_func(type, inst, data);
     }
 }

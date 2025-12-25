@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -17,6 +17,9 @@
 #include <Luna/VariantUtils/VariantUtils.hpp>
 #include <Luna/RG/RG.hpp>
 #include <Luna/JobSystem/JobSystem.hpp>
+#include <Luna/ECS/ECS.hpp>
+
+#include <Luna/Window/AppMain.hpp>
 
 namespace Luna
 {
@@ -70,7 +73,8 @@ namespace Luna
             module_obj_loader(),
             module_rg(),
             module_job_system(),
-            module_shader_compiler()}));
+            module_shader_compiler(),
+            module_ecs()}));
         auto r = init_modules();
         if (failed(r))
         {
@@ -107,7 +111,8 @@ namespace Luna
 
 using namespace Luna;
 
-int main(){
+int luna_main(int argc, const char* argv[])
+{
     luassert_always(Luna::init());
     set_current_dir_to_process_path();
     run_editor();

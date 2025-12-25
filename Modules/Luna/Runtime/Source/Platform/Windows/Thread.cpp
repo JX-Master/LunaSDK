@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -148,6 +148,10 @@ namespace Luna
         void detach_thread(opaque_t thread)
         {
             ::CloseHandle((HANDLE)thread);
+        }
+        usize get_current_thread_id()
+        {
+            return (usize)::GetCurrentThreadId();
         }
         opaque_t get_current_thread_handle()
         {

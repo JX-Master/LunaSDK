@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 *
@@ -23,7 +23,8 @@ namespace Luna
                 switch (desc.type)
                 {
                 case QueryType::occlusion: create_info.queryType = VK_QUERY_TYPE_OCCLUSION; break;
-                case QueryType::timestamp: create_info.queryType = VK_QUERY_TYPE_TIMESTAMP; break;
+                case QueryType::timestamp: 
+                case QueryType::timestamp_copy_queue: create_info.queryType = VK_QUERY_TYPE_TIMESTAMP; break;
                 case QueryType::pipeline_statistics: create_info.queryType = VK_QUERY_TYPE_PIPELINE_STATISTICS; break;
                 }
                 create_info.queryCount = desc.count;

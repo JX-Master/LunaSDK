@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -183,13 +183,13 @@ namespace Luna
                     case CullMode::front: m_cull_mode = MTL::CullModeFront; break;
                     case CullMode::back: m_cull_mode = MTL::CullModeBack; break;
                 }
-                if(desc.rasterizer_state.depth_clip_enable)
+                if(desc.rasterizer_state.depth_clamp_enable)
                 {
-                    m_depth_clip_mode = MTL::DepthClipModeClip;
+                    m_depth_clip_mode = MTL::DepthClipModeClamp;
                 }
                 else
                 {
-                    m_depth_clip_mode = MTL::DepthClipModeClamp;
+                    m_depth_clip_mode = MTL::DepthClipModeClip;
                 }
                 m_primitive_type = encode_primitive_type(desc.primitive_topology);
                 m_front_counter_clockwise = desc.rasterizer_state.front_counter_clockwise;

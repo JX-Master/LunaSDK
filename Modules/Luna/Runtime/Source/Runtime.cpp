@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -67,8 +67,8 @@ namespace Luna
     {
         if (g_initialized) return true;
         OS::init();
-        stack_allocator_init();
         profiler_init();
+        stack_allocator_init();
         error_init();
         name_init();
         type_registry_init();
@@ -79,13 +79,19 @@ namespace Luna
         log_init();
         std_io_init();
         module_init();
+        g_profiler_ready = true;
         g_initialized = true;
         return true;
+    }
+    LUNA_RUNTIME_API bool is_initialized()
+    {
+        return g_initialized;
     }
     LUNA_RUNTIME_API void close()
     {
         if (!g_initialized) return;
         module_close();
+        g_profiler_ready = false;
         std_io_close();
         log_close();
         random_close();
@@ -94,8 +100,8 @@ namespace Luna
         type_registry_close();
         name_close();
         error_close();
-        profiler_close();
         stack_allocator_close();
+        profiler_close();
         OS::close();
         g_initialized = false;
     }

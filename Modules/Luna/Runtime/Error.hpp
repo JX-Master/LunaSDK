@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -179,7 +179,7 @@ namespace Luna
            //! @{
 
         //! @name Basic errors
-        //! Contains core errors defined by Luna SDK. These errors can also be used by user modules.
+        //! Contains core errors defined by LunaSDK. These errors can also be used by user modules.
         //! @{
         
         //! Gets the error category object of `BasicError`.
@@ -272,7 +272,7 @@ namespace Luna
     //! @param[in] fmt The error message formatting syntax.
     //! @param[in] args The arguments for the error message.
     //! @return Returns @ref BasicError::error_object always, so you may chain this function with the return statement like `return set_error(...)`.
-    inline ErrCode set_error(ErrCode code, const c8* fmt, VarList args)
+    inline ErrCode set_error_v(ErrCode code, const c8* fmt, VarList args)
     {
         get_error() = Error(code, fmt, args);
         return BasicError::error_object();

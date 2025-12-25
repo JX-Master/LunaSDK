@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -10,6 +10,9 @@
 #pragma once
 #include "Scene.hpp"
 #include <Luna/RG/RenderGraph.hpp>
+#include "World.hpp"
+#include "Camera.hpp"
+#include "Model.hpp"
 namespace Luna
 {
     struct CameraCB
@@ -31,6 +34,24 @@ namespace Luna
         u32 type;
         Float3U position;
         f32 spot_attenuation_power;
+    };
+
+    struct MeshBuffer
+    {
+        Float4x4U model_to_world;
+        Float4x4U world_to_model;
+    };
+
+    struct MaterialParameters
+    {
+        f32 emissive_intensity;
+    };
+
+    struct MeshRenderParams
+    {
+        Float4x4U local_to_world_mat;
+        Float4x4U world_to_local_mat;
+        Ref<Model> model;
     };
 
     enum class SceneRendererMode : u8
@@ -55,16 +76,16 @@ namespace Luna
     {
         // The screen size.
         UInt2U screen_size;
-        // Whether to collect profiling data.
-        bool frame_profiling = false;
         // The rendering mode.
         SceneRendererMode mode = SceneRendererMode::lit;
+        // Whether to collect profiling data.
+        bool frame_profiling = false;
 
         bool operator==(const SceneRendererSettings& rhs) const
         {
             return screen_size == rhs.screen_size && 
-            frame_profiling == rhs.frame_profiling && 
-            mode == rhs.mode;
+            mode == rhs.mode &&
+            frame_profiling == rhs.frame_profiling;
         }
         bool operator!=(const SceneRendererSettings& rhs) const
         {
@@ -72,10 +93,30 @@ namespace Luna
         }
     };
 
+    struct SceneRendererParams
+    {
+        Float4x4U world_to_view;
+        Float4x4U view_to_world;
+        Float4x4U view_to_proj;
+
+        //Float3U environment_color;
+        RHI::ITexture* skybox = nullptr;
+        f32 camera_exposure = 1.0f;
+        f32 camera_fov;
+        CameraType camera_type;
+
+        f32 bloom_intensity = 1.0f;
+        f32 bloom_threshold = 1.0f;
+        bool camera_auto_exposure = false;
+    };
+
     struct SceneRenderer
     {
-        // The scene to be rendered.
-        Ref<Scene> scene = nullptr;
+        // The world to be rendered.
+        World* world = nullptr;
+
+        // The renderer parameters that can be updated at every frame.
+        SceneRendererParams params;
 
         // The command buffer used to render the scene.
         Ref<RHI::ICommandBuffer> command_buffer;
@@ -104,6 +145,7 @@ namespace Luna
         static constexpr usize BASE_COLOR_ROUGHNESS_BUFFER = 5;
         static constexpr usize NORMAL_METALLIC_BUFFER = 6;
         static constexpr usize EMISSIVE_BUFFER = 7;
+        static constexpr usize BLOOM_BUFFER = 8;
 
         // Passes.
         static constexpr usize WIREFRAME_PASS = 0;
@@ -111,13 +153,20 @@ namespace Luna
         static constexpr usize BUFFER_VIS_PASS = 2;
         static constexpr usize SKYBOX_PASS = 3;
         static constexpr usize DEFERRED_LIGHTING_PASS = 4;
-        static constexpr usize TONE_MAPPING_PASS = 5;
+        static constexpr usize BLOOM_PASS = 5;
+        static constexpr usize TONE_MAPPING_PASS = 6;
         Ref<RHI::IDevice> m_device;
         SceneRendererSettings m_settings;
         Ref<RG::IRenderGraph> m_render_graph;
         Ref<RHI::IBuffer> m_camera_cb;
+
+        u32 m_model_matrices_stride;
+        u32 m_material_parameter_stride;
+
         usize m_num_model_matrices = 0;
         Ref<RHI::IBuffer> m_model_matrices;
+        usize m_num_materials = 0;
+        Ref<RHI::IBuffer> m_material_parameters;
         usize m_num_lights = 0;
         Ref<RHI::IBuffer> m_lighting_params;
     };

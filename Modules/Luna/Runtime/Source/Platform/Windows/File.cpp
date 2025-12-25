@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -546,7 +546,7 @@ namespace Luna
             attribute.last_write_time = file_time_to_timestamp(d.ftLastWriteTime);
             return attribute;
         }
-        RV copy_file(const c8* from_path, const c8* to_path, FileCopyFlag flags)
+        RV copy_file(const c8* from_path, const c8* to_path)
         {
             lucheck(from_path && to_path);
             StackAllocator salloc;
@@ -556,12 +556,12 @@ namespace Luna
             wchar_t* toBuffer = (wchar_t*)salloc.allocate(sizeof(wchar_t) * to_size);
             utf8_to_utf16((char16_t*)fromBuffer, from_size, from_path);
             utf8_to_utf16((char16_t*)toBuffer, to_size, to_path);
-            BOOL r = CopyFileW(fromBuffer, toBuffer, test_flags(flags, FileCopyFlag::fail_if_exists));
+            BOOL r = CopyFileW(fromBuffer, toBuffer, TRUE);
             if(r) return ok;
             DWORD err = ::GetLastError();
             return translate_last_error(err);
         }
-        RV move_file(const c8* from_path, const c8* to_path, FileMoveFlag flags)
+        RV move_file(const c8* from_path, const c8* to_path)
         {
             lucheck(from_path && to_path);
             StackAllocator salloc;
@@ -571,12 +571,7 @@ namespace Luna
             wchar_t* toBuffer = (wchar_t*)salloc.allocate(sizeof(wchar_t) * to_size);
             utf8_to_utf16((char16_t*)fromBuffer, from_size, from_path);
             utf8_to_utf16((char16_t*)toBuffer, to_size, to_path);
-            DWORD dw = MOVEFILE_COPY_ALLOWED;
-            if(!test_flags(flags, FileMoveFlag::fail_if_exists))
-            {
-                dw |= MOVEFILE_REPLACE_EXISTING;
-            }
-            BOOL r = MoveFileExW(fromBuffer, toBuffer, dw);
+            BOOL r = MoveFileExW(fromBuffer, toBuffer, MOVEFILE_COPY_ALLOWED);
             if(r) return ok;
             DWORD err = ::GetLastError();
             return translate_last_error(err);

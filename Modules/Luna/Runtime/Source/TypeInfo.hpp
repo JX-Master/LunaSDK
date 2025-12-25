@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -65,6 +65,7 @@ namespace Luna
         Array<StructurePropertyDesc> property_descs;
         Array<StructureProperty> properties;
         bool trivially_relocatable;
+        bool abstract;
     };
     struct EnumerationTypeInfo : public NamedTypeInfo
     {
@@ -83,7 +84,7 @@ namespace Luna
     struct GenericStructureInstancedTypeInfo : public TypeInfo
     {
         GenericStructureTypeInfo* generic_type;
-        Array<typeinfo_t> generic_arguments;
+        Array<GenericArgument> generic_arguments;
         usize size;
         usize alignment;
         TypeInfo* base_type;

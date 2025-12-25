@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 *
@@ -11,6 +11,9 @@
 #include "Common.hpp"
 #include "Device.hpp"
 #include "Resource.hpp"
+#ifdef LUNA_PLATFORM_ANDROID
+#include <android/native_window.h>
+#endif
 namespace Luna
 {
     namespace RHI
@@ -27,6 +30,9 @@ namespace Luna
             SwapChainDesc m_desc;
             Ref<Window::IWindow> m_window;
             VkSurfaceKHR m_surface = VK_NULL_HANDLE;
+#ifdef LUNA_PLATFORM_ANDROID
+            ANativeWindow* m_native_window = nullptr;
+#endif
 
             VkSwapchainKHR m_swap_chain = VK_NULL_HANDLE;
             Vector<Ref<ImageResource>> m_swap_chain_images;
@@ -34,11 +40,12 @@ namespace Luna
             VkFence m_acqure_fence;
 
             u32 m_current_back_buffer;
+            bool m_reset_suggested = false;
             bool m_back_buffer_fetched = false;
 
             RV init(const CommandQueue& queue, Window::IWindow* window, const SwapChainDesc& desc);
             
-            void clean_up_swap_chain();
+            RV wait_until_queue_empty();
             RV create_swap_chain(const SwapChainDesc& desc);
             
             ~SwapChain();
@@ -47,8 +54,10 @@ namespace Luna
             virtual void set_name(const c8* name) override { m_name = name; }
             virtual Window::IWindow* get_window() override { return m_window; }
             virtual SwapChainDesc get_desc() override { return m_desc; }
+            virtual SwapChainSurfaceTransform get_surface_transform() override;
             virtual R<ITexture*> get_current_back_buffer() override;
             virtual RV present() override;
+            virtual bool reset_suggested() override;
             virtual RV reset(const SwapChainDesc& desc) override;
         };
     }

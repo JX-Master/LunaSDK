@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -23,10 +23,11 @@ namespace Luna
 
     }*/
 
-    void edit_enum(const c8* name, typeinfo_t type, void* obj)
+    bool edit_enum(const c8* name, typeinfo_t type, void* obj)
     {
         StackAllocator salloc;
         auto descs = get_enum_options(type);
+        bool edited = false;
         if (is_multienum_type(type))
         {
             // TODO.
@@ -46,21 +47,24 @@ namespace Luna
                     current_item = (int)i;
                 }
             }
-            ImGui::Combo(name, &current_item, options, (int)descs.size());
+            edited = ImGui::Combo(name, &current_item, options, (int)descs.size());
             value = descs[current_item].value;
             set_enum_instance_value(type, obj, value);
         }
+        return edited;
     }
 
-    static void edit_property(const c8* name, typeinfo_t object_type, typeinfo_t type, void* obj)
+    static bool edit_property(const c8* name, typeinfo_t object_type, typeinfo_t type, void* obj)
     {
         auto hide = get_property_attribute(object_type, name, "hide");
         if (hide.boolean())
         {
-            return;
+            return false;
         }
 
         ImGui::PushID((int)(usize)obj);
+
+        bool edited = false;
 
         // A very simple GUI implementation based on type reflection.
         if (is_primitive_type(type))
@@ -90,6 +94,7 @@ namespace Luna
                     if (ImGui::IsItemEdited())
                     {
                         *data = deg_to_rad(v_edit);
+                        edited = true;
                     }
                 }
                 else
@@ -99,24 +104,24 @@ namespace Luna
                     {
                         speed = (v_max - v_min) / 100.0f;
                     }
-                    ImGui::DragFloat(name, data, speed, v_min, v_max);
+                    edited = ImGui::DragFloat(name, data, speed, v_min, v_max);
                 }
             }
             else if (type == boolean_type())
             {
                 bool* data = (bool*)obj;
-                ImGui::Checkbox(name, data);
+                edited = ImGui::Checkbox(name, data);
             }
         }
         else if (is_enum_type(type))
         {
-            edit_enum(name, type, obj);
+            edited = edit_enum(name, type, obj);
         }
         // Only support common structure.
         else if (type == typeof<Float2>())
         {
             Float2* data = (Float2*)obj;
-            ImGui::DragFloat2(name, data->m);
+            edited = ImGui::DragFloat2(name, data->m);
         }
         else if (type == typeof<Float3>())
         {
@@ -124,12 +129,12 @@ namespace Luna
             if (color_gui == true)
             {
                 Float3* data = (Float3*)obj;
-                ImGui::ColorEdit3(name, data->m);
+                edited = ImGui::ColorEdit3(name, data->m);
             }
             else
             {
                 Float3* data = (Float3*)obj;
-                ImGui::DragFloat3(name, data->m);
+                edited = ImGui::DragFloat3(name, data->m);
             }
         }
         else if (type == typeof<Float4>())
@@ -147,6 +152,7 @@ namespace Luna
                 ImGui::DragFloat3(name, euler.m);
                 if (ImGui::IsItemEdited())
                 {
+                    edited = true;
                     euler *= PI / 180.0f;
                     *data = Quaternion::from_euler_angles(euler);
                 }
@@ -154,14 +160,13 @@ namespace Luna
             else
             {
                 Float4* data = (Float4*)obj;
-                ImGui::DragFloat4(name, data->m);
+                edited = ImGui::DragFloat4(name, data->m);
             }
-            
         }
         else if (type == typeof<Asset::asset_t>())
         {
             Asset::asset_t* asset = (Asset::asset_t*)obj;
-            edit_asset(name, *asset);
+            edited = edit_asset(name, *asset);
         }
         else if (type == typeof<Name>())
         {
@@ -170,28 +175,61 @@ namespace Luna
             if (ImGui::InputText(name, buf))
             {
                 *data = buf;
+                edited = true;
             }
         }
 
         ImGui::PopID();
+        return edited;
     }
 
-    void edit_object(object_t obj)
+    bool edit_object(typeinfo_t type, void* data)
     {
-        auto type = get_object_type(obj);
-        auto properties = get_struct_properties(type);
+        Vector<StructurePropertyDesc> properties;
+        get_struct_properties(type, properties);
+        bool edited = false;
         for (usize i = 0; i < properties.size(); ++i)
         {
             auto& desc = properties[i];
-            edit_property(desc.name.c_str(), type, desc.type, (void*)((usize)obj + desc.offset));
+            edited = edited || edit_property(desc.name.c_str(), type, desc.type, (void*)((usize)data + desc.offset));
+        }
+        return edited;
+    }
+
+    static bool edit_scene_object_property(World* world, const c8* name, typeinfo_t object_type, typeinfo_t type, void* obj)
+    {
+        if (type == typeof<ActorRef>())
+        {
+            ImGui::PushID((int)(usize)obj);
+            ActorRef* ref = (ActorRef*)obj;
+            bool edited = edit_actor_ref(name, world, *ref);
+            ImGui::PopID();
+            return edited;
+        }
+        else
+        {
+            return edit_property(name, object_type, type, obj);
         }
     }
 
-    void edit_asset(const c8* name, Asset::asset_t& asset)
+    bool edit_scene_object(World* world, typeinfo_t type, void* data)
+    {
+        Vector<StructurePropertyDesc> properties;
+        get_struct_properties(type, properties);
+        bool edited = false;
+        for (usize i = 0; i < properties.size(); ++i)
+        {
+            auto& desc = properties[i];
+            edited = edited || edit_scene_object_property(world, desc.name.c_str(), type, desc.type, (void*)((usize)data + desc.offset));
+        }
+        return edited;
+    }
+
+    bool edit_asset(const c8* name, Asset::asset_t& asset)
     {
         using namespace ImGui;
 
-        auto begin_pos = ImGui::GetCursorScreenPos();
+        bool edited = false;
 
         String label = "##";
         if (asset)
@@ -199,11 +237,6 @@ namespace Luna
             label.append(Asset::get_asset_type(asset).c_str());
         }
 
-        ImGui::Text(name);
-        ImGui::SameLine();
-
-        auto pos_before = ImGui::GetCursorScreenPos();
-        ImGui::SetCursorScreenPos({ pos_before.x, pos_before.y + 10 });
         ImGui::Button(label.c_str(), {100, 100});
 
         if (BeginDragDropTarget())
@@ -213,6 +246,7 @@ namespace Luna
             {
                 const Asset::asset_t* data = (const Asset::asset_t*)payload->Data;
                 asset = *data;
+                edited = true;
             }
             EndDragDropTarget();
         }
@@ -223,21 +257,62 @@ namespace Luna
 
             auto pos_after = ImGui::GetCursorScreenPos();
 
-            RectF draw_rect = RectF(pos_before.x, pos_before.y + 10, 100, 100);
+            auto pos = ImGui::GetItemRectMin();
+            auto size = ImGui::GetItemRectSize();
+            RectF draw_rect = RectF(pos.x, pos.y, size.x, size.y);
             draw_asset_tile(asset, draw_rect);
 
             ImGui::SetCursorScreenPos(pos_after);
             auto path = Asset::get_asset_path(asset);
-            Text(path.encode().c_str());
+            Text("%s", path.encode().c_str());
             SameLine();
             PushID(name);
             if (Button("Clear"))
             {
-                asset = nullptr;
+                asset.reset();
+                edited = true;
             }
             PopID();
         }
 
-        ImGui::SetCursorScreenPos({ begin_pos.x, begin_pos.y + 120 });
+        ImGui::SameLine();
+        ImGui::Text("%s", name);
+
+        return edited;
+    }
+
+    bool edit_actor_ref(const c8* name, World* world, ActorRef& ref)
+    {
+        using namespace ImGui;
+
+        bool edited = false;
+
+        const c8* actor_name = "(None)";
+        if(ref.guid != Guid(0, 0))
+        {
+            Actor* actor = world->get_actor(ref.guid);
+            if(actor)
+            {
+                actor_name = actor->get_actor_info()->name.c_str();
+            }
+        }
+
+        ImGui::Button(actor_name, {100.0f, ImGui::GetTextLineHeightWithSpacing()});
+
+        if (BeginDragDropTarget())
+        {
+            const ImGuiPayload* payload = AcceptDragDropPayload("Actor Ref");
+            if (payload)
+            {
+                const Guid* data = (const Guid*)payload->Data;
+                ref.guid = *data;
+                edited = true;
+            }
+            EndDragDropTarget();
+        }
+
+        ImGui::SameLine();
+        ImGui::Text("%s", name);
+        return edited;
     }
 }

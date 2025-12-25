@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -56,6 +56,10 @@ namespace Luna
     {
         IThread* th = (IThread*)OS::tls_get(g_tls_thread);
         return th;
+    }
+    LUNA_RUNTIME_API usize get_current_thread_id()
+    {
+        return OS::get_current_thread_id();
     }
     LUNA_RUNTIME_API IThread* get_main_thread()
     {

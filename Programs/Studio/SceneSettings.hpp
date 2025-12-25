@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -12,6 +12,7 @@
 #include <Luna/RHI/RHI.hpp>
 #include <Luna/Asset/Asset.hpp>
 #include <Luna/RG/RenderGraph.hpp>
+#include "Actor.hpp"
 namespace Luna
 {
     struct Entity;
@@ -19,7 +20,7 @@ namespace Luna
     {
         lustruct("SceneSettings", "{CE0188A0-C1A6-421E-A60C-8D4F260972A3}");
 
-        Name camera_entity;
+        ActorRef camera_actor;
 
         Asset::asset_t skybox;
 
@@ -28,5 +29,7 @@ namespace Luna
         f32 skybox_rotation = 0.0f;
         f32 exposure = 1.0f / 9.6f;
         bool auto_exposure = true;
+        f32 bloom_threshold = 1.0f;
+        f32 bloom_intensity = 1.0f;
     };
 }

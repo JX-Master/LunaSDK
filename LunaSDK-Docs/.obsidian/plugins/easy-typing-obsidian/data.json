@@ -1,0 +1,64 @@
+{
+  "Tabout": true,
+  "SelectionEnhance": true,
+  "IntrinsicSymbolPairs": true,
+  "BaseObEditEnhance": true,
+  "FW2HWEnhance": true,
+  "BetterCodeEdit": true,
+  "BetterBackspace": true,
+  "AutoFormat": true,
+  "ExcludeFiles": "_Database/",
+  "ChineseEnglishSpace": true,
+  "ChineseNumberSpace": true,
+  "EnglishNumberSpace": false,
+  "ChineseNoSpace": true,
+  "QuoteSpace": true,
+  "PunctuationSpace": true,
+  "AutoCapital": false,
+  "AutoCapitalMode": "typing",
+  "PunctuationSpaceMode": "global",
+  "InlineCodeSpaceMode": 1,
+  "InlineFormulaSpaceMode": 1,
+  "InlineLinkSpaceMode": 1,
+  "InlineLinkSmartSpace": true,
+  "UserDefinedRegSwitch": true,
+  "UserDefinedRegExp": "{{.*?}}|++\n#[\\u4e00-\\u9fa5\\w\\/]+|++\n\\[\\!.*?\\][-+]{0,1}|-+\n(https?:\\/\\/|ftp:\\/\\/|obsidian:\\/\\/|zotero:\\/\\/|www.)[^\\s（）《》。,，！？;；：“”‘’\\)\\(\\[\\]\\{\\}']+|++\n<%(.*?)%>|--",
+  "debug": false,
+  "userSelRepRuleTrigger": [
+    "-"
+  ],
+  "userSelRepRuleValue": [
+    {
+      "left": "~~",
+      "right": "~~"
+    }
+  ],
+  "userDeleteRulesStrList": [
+    [
+      "demo|",
+      "|"
+    ]
+  ],
+  "userConvertRulesStrList": [
+    [
+      "，yhl|",
+      "「|」"
+    ],
+    [
+      "，yhu|",
+      "『|』"
+    ]
+  ],
+  "userSelRuleSettingsOpen": true,
+  "userDelRuleSettingsOpen": true,
+  "userCvtRuleSettingsOpen": true,
+  "StrictModeEnter": false,
+  "StrictLineMode": "enter_twice",
+  "EnhanceModA": false,
+  "TryFixChineseIM": false,
+  "PuncRectify": false,
+  "FixMacOSContextMenu": false,
+  "TryFixMSIME": false,
+  "CollapsePersistentEnter": false,
+  "EnterTwice": false
+}

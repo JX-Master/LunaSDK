@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -7,9 +7,13 @@
 * @author JXMaster
 * @date 2022/6/14
 */
+#include "Luna/RHI/CommandBuffer.hpp"
+#include "Luna/RHIUtility/MipmapGenerationContext.hpp"
+#include "Luna/Runtime/Object.hpp"
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_IMGUI_API LUNA_EXPORT
 #include "../ImGui.hpp"
+#include "imgui.h"
 #include <Luna/Runtime/Result.hpp>
 #include <Luna/Runtime/Module.hpp>
 #include <Luna/Runtime/Time.hpp>
@@ -19,7 +23,12 @@
 #include <Luna/Runtime/Math/Matrix.hpp>
 #include <Luna/Font/Font.hpp>
 #include <Luna/RHI/ShaderCompileHelper.hpp>
-#include <Luna/RHI/Utility.hpp>
+#include <Luna/RHIUtility/RHIUtility.hpp>
+#include <Luna/RHIUtility/ResourceWriteContext.hpp>
+#include <Luna/Window/Event.hpp>
+#include "Luna/Window/Clipboard.hpp"
+#include <ImGuiVS.hpp>
+#include <ImGuiPS.hpp>
 namespace Luna
 {
     template<>
@@ -43,9 +52,6 @@ namespace Luna
         usize g_vb_size;
         usize g_ib_size;
 
-        ShaderCompiler::ShaderCompileResult g_vs_blob;
-        ShaderCompiler::ShaderCompileResult g_ps_blob;
-
         Ref<RHI::IDescriptorSetLayout> g_desc_layout;
         Ref<RHI::IPipelineLayout> g_playout;
         HashMap<RHI::Format, Ref<RHI::IPipelineState>> g_pso;
@@ -55,68 +61,39 @@ namespace Luna
 
         Ref<RHI::IBuffer> g_cb;
 
-        Ref<RHI::ITexture> g_font_tex;
+        struct SampledImage : ISampledImage
+        {
+            lustruct("ImGuiUtils::SampledImage", "29378bf1-b58e-4c8a-a30f-d29239f9a713");
+            luiimpl();
 
-        const c8 IMGUI_VS_SOURCE[] = R"(
-cbuffer vertexBuffer : register(b0) 
-{
-    float4x4 ProjectionMatrix; 
-};
-Texture2D texture0 : register(t1);
-SamplerState sampler0 : register(s2);
-struct VS_INPUT
-{
-    [[vk::location(0)]]
-    float2 pos : POSITION;
-    [[vk::location(1)]]
-    float2 uv  : TEXCOORD0;
-    [[vk::location(2)]]
-    float4 col : COLOR0;
-};
-struct PS_INPUT
-{
-    [[vk::location(0)]]
-    float4 pos : SV_POSITION;
-    [[vk::location(1)]]
-    float2 uv  : TEXCOORD0;
-    [[vk::location(2)]]
-    float4 col : COLOR0;
-};
-PS_INPUT main(VS_INPUT input)
-{
-    PS_INPUT output;
-    output.pos = mul( ProjectionMatrix, float4(input.pos.xy, 0.f, 1.f));
-    output.col = input.col;
-    output.uv  = input.uv;
-    return output;
-})";
-        const c8 IMGUI_PS_SOURCE[] = R"(
-struct PS_INPUT
-{
-    [[vk::location(0)]]
-    float4 pos : SV_POSITION;
-    [[vk::location(1)]]
-    float2 uv  : TEXCOORD0;
-    [[vk::location(2)]]
-    float4 col : COLOR0;
-};
-cbuffer vertexBuffer : register(b0)
-{
-    float4x4 ProjectionMatrix;
-};
-Texture2D texture0 : register(t1);
-SamplerState sampler0 : register(s2);
-[[vk::location(0)]]
-float4 main(PS_INPUT input) : SV_Target
-{
-    float4 out_col = input.col * texture0.Sample(sampler0, input.uv); 
-    return out_col; 
-}
-)";
+            Ref<RHI::ITexture> m_texture;
+            RHI::SamplerDesc m_sampler;
+
+            virtual RHI::ITexture* get_texture() override { return m_texture; }
+            virtual void set_texture(RHI::ITexture* texture) override { m_texture = texture; }
+            virtual RHI::SamplerDesc get_sampler() override { return m_sampler; }
+            virtual void set_sampler(const RHI::SamplerDesc& desc) override { m_sampler = desc; }
+        };
+
+        LUNA_IMGUI_API Ref<ISampledImage> new_sampled_image(RHI::ITexture* texture, const RHI::SamplerDesc& sampler_desc)
+        {
+            Ref<SampledImage> image = new_object<SampledImage>();
+            image->m_texture = texture;
+            image->m_sampler = sampler_desc;
+            return Ref<ISampledImage>(image);
+        }
+
+        struct ImGuiClipboardData
+        {
+            String text;
+        };
 
         static RV init()
         {
             using namespace RHI;
+            register_boxed_type<SampledImage>();
+            impl_interface_for_type<SampledImage, ISampledImage>();
+
             // Setup Dear ImGui context
             IMGUI_CHECKVERSION();
             ImGui::CreateContext();
@@ -154,30 +131,54 @@ float4 main(PS_INPUT input) : SV_Target
             io.BackendRendererName = "imgui_impl_luna_rhi";
             io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset;  // We can honor the ImDrawCmd::VtxOffset field, allowing for large meshes.
             io.BackendFlags |= ImGuiBackendFlags_RendererHasViewports;  // We can create multi-viewports on the Renderer side (optional)
+            io.BackendFlags |= ImGuiBackendFlags_RendererHasTextures;
+            
+            auto& platform_io = ImGui::GetPlatformIO();
+
+            platform_io.Platform_ClipboardUserData = memnew<ImGuiClipboardData>();
+            platform_io.Platform_GetClipboardTextFn = [](ImGuiContext* ctx) -> const char*
+            {
+                ImGuiClipboardData* data = (ImGuiClipboardData*)ImGui::GetPlatformIO().Platform_ClipboardUserData;
+                if(data)
+                {
+                    data->text.clear();
+                    auto r = Window::get_clipboard_text(data->text);
+                    return data->text.c_str();
+                }
+                return nullptr;
+            };
+            platform_io.Platform_SetClipboardTextFn = [](ImGuiContext* ctx, const char* text)
+            {
+                auto r = Window::set_clipboard_text(text);
+            };
+            platform_io.Platform_SetImeDataFn = [](ImGuiContext* ctx, ImGuiViewport* viewport, ImGuiPlatformImeData* data)
+            {
+                if(!g_active_window) return;
+                if ((!(data->WantVisible || data->WantTextInput) && g_active_window->is_text_input_active()))
+                {
+                    auto _ = g_active_window->end_text_input();
+                }
+                if (data->WantVisible)
+                {
+                    RectI r;
+                    r.offset_x = (int)(data->InputPos.x - viewport->Pos.x);
+                    r.offset_y = (int)(data->InputPos.y - viewport->Pos.y + data->InputLineHeight);
+                    r.width = 1;
+                    r.height = (int)data->InputLineHeight;
+                    auto _ = g_active_window->set_text_input_area(r, 0);
+                }
+                if (!g_active_window->is_text_input_active() && (data->WantVisible || data->WantTextInput))
+                {
+                    auto _ = g_active_window->begin_text_input();
+                }
+            };
+
+            add_default_font(18.0f);
 
             // Create render resources.
             lutry
             {
                 auto dev = get_main_device();
-
-                auto compiler = ShaderCompiler::new_compiler();
-                ShaderCompiler::ShaderCompileParameters params;
-                params.source = { IMGUI_VS_SOURCE, sizeof(IMGUI_VS_SOURCE) };
-                params.source_name = "ImGuiVS";
-                params.entry_point = "main";
-                params.target_format = get_current_platform_shader_target_format();
-                params.shader_type = ShaderCompiler::ShaderType::vertex;
-                params.shader_model = {6, 0};
-                params.optimization_level = ShaderCompiler::OptimizationLevel::full;
-                luset(g_vs_blob, compiler->compile(params));
-                params.source = { IMGUI_PS_SOURCE, sizeof(IMGUI_PS_SOURCE) };
-                params.source_name = "ImGuiPS";
-                params.entry_point = "main";
-                params.target_format = get_current_platform_shader_target_format();
-                params.shader_type = ShaderCompiler::ShaderType::pixel;
-                params.shader_model = {6, 0};
-                params.optimization_level = ShaderCompiler::OptimizationLevel::full;
-                luset(g_ps_blob, compiler->compile(params));
                 luset(g_desc_layout, dev->new_descriptor_set_layout(DescriptorSetLayoutDesc(
                     {
                         DescriptorSetLayoutBinding::uniform_buffer_view(0, 1, ShaderVisibilityFlag::vertex),
@@ -200,86 +201,30 @@ float4 main(PS_INPUT input) : SV_Target
             return ok;
         }
 
-        static RV rebuild_font(Font::IFontFile* font, f32 render_scale, f32 display_scale, Span<Pair<c16, c16>> ranges = {})
+        LUNA_IMGUI_API void add_default_font(f32 font_size)
         {
-            using namespace RHI;
-            lutry
-            {
-                ImGuiIO& io = ::ImGui::GetIO();
-                unsigned char* pixels;
-                int width, height;
-                io.Fonts->Clear();
-                if(!font)
-                {
-                    font = Font::get_default_font();
-                }
-                ImVector<ImWchar> build_ranges;
-                if(!ranges.empty())
-                {
-                    ImFontGlyphRangesBuilder builder;
-                    for(auto& range : ranges)
-                    {
-                        ImWchar r[4] = {(ImWchar)range.first, (ImWchar)range.second, 0, 0};
-                        builder.AddRanges(r);
-                    }
-                    builder.BuildRanges(&build_ranges);
-                }
-                usize font_size = font->get_data().size();
-                void* font_data = ImGui::MemAlloc(font_size);
-                memcpy(font_data, font->get_data().data(), font_size);
-                io.Fonts->AddFontFromMemoryTTF(const_cast<void*>(font_data), (int)font_size, 18.0f * render_scale, NULL, build_ranges.empty() ? NULL : build_ranges.Data);
-                io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
-                io.FontGlobalScale = display_scale;
-                auto dev = get_main_device();
-                luset(g_font_tex, dev->new_texture(MemoryType::local, TextureDesc::tex2d(Format::rgba8_unorm,
-                    TextureUsageFlag::read_texture | TextureUsageFlag::copy_dest, width, height, 1, 1)));
-                u32 src_row_pitch = (u32)width * 4;
-                {
-                    u32 copy_queue_index = U32_MAX;
-                    {
-                        // Prefer a dedicated copy queue if present.
-                        u32 num_queues = dev->get_num_command_queues();
-                        for (u32 i = 0; i < num_queues; ++i)
-                        {
-                            auto desc = dev->get_command_queue_desc(i);
-                            if (desc.type == CommandQueueType::graphics && copy_queue_index == U32_MAX)
-                            {
-                                copy_queue_index = i;
-                            }
-                            else if (desc.type == CommandQueueType::copy)
-                            {
-                                copy_queue_index = i;
-                                break;
-                            }
-                        }
-                    }
-                    lulet(upload_cmdbuf, dev->new_command_buffer(copy_queue_index));
-                    luexp(copy_resource_data(upload_cmdbuf, {CopyResourceData::write_texture(g_font_tex, SubresourceIndex(0, 0), 0, 0, 0, 
-                        pixels, src_row_pitch, src_row_pitch * height, width, height, 1)}));
-                }
-                io.Fonts->TexID = (ITexture*)(g_font_tex);
-            }
-            lucatchret;
-            return ok;
+            ImGuiIO& io = ::ImGui::GetIO();
+            Font::IFontFile* font = Font::get_default_font();
+            usize font_data_size = font->get_data().size();
+            void* font_data = ImGui::MemAlloc(font_data_size);
+            memcpy(font_data, font->get_data().data(), font_data_size);
+            io.Fonts->AddFontFromMemoryTTF(const_cast<void*>(font_data), (int)font_data_size, font_size, NULL, NULL);
         }
 
-        Ref<Font::IFontFile> g_font_file;
-
-        LUNA_IMGUI_API RV set_font(Font::IFontFile* font, f32 font_size, Span<Pair<c16, c16>> ranges)
+        static f32 get_font_render_scale()
         {
-            g_font_file = font;
-            if(!g_active_window)
-            {
-                return rebuild_font(g_font_file, 1.0f, 1.0f, ranges);
-            }
-            else
-            {
-                auto sz = g_active_window->get_size();
-                auto fb_sz = g_active_window->get_framebuffer_size();
-                f32 display_scale = (f32)sz.x / (f32)fb_sz.x;
-                return rebuild_font(g_font_file, g_active_window->get_dpi_scale_factor(), display_scale, ranges);
-            }
+            return g_active_window ? g_active_window->get_dpi_scale_factor() : 1.0f;
         }
+
+        static f32 get_font_display_scale()
+        {
+            if(!g_active_window) return 1.0;
+            auto sz = g_active_window->get_size();
+            auto fb_sz = g_active_window->get_framebuffer_size();
+            f32 display_scale = (f32)sz.x / (f32)fb_sz.x;
+            return display_scale;
+        }
+
         LUNA_IMGUI_API Vector<Pair<c16, c16>> get_glyph_ranges_default()
         {
             ImGuiIO& io = ::ImGui::GetIO();
@@ -292,118 +237,35 @@ float4 main(PS_INPUT input) : SV_Target
             }
             return r;
         }
-        LUNA_IMGUI_API Vector<Pair<c16, c16>> get_glyph_ranges_greek()
-        {
-            ImGuiIO& io = ::ImGui::GetIO();
-            const ImWchar* range = io.Fonts->GetGlyphRangesGreek();
-            Vector<Pair<c16, c16>> r;
-            while(*range)
-            {
-                r.push_back(make_pair(range[0], range[1]));
-                range += 2;
-            }
-            return r;
-        }
-        LUNA_IMGUI_API Vector<Pair<c16, c16>> get_glyph_ranges_korean()
-        {
-            ImGuiIO& io = ::ImGui::GetIO();
-            const ImWchar* range = io.Fonts->GetGlyphRangesKorean();
-            Vector<Pair<c16, c16>> r;
-            while(*range)
-            {
-                r.push_back(make_pair(range[0], range[1]));
-                range += 2;
-            }
-            return r;
-        }
-        LUNA_IMGUI_API Vector<Pair<c16, c16>> get_glyph_ranges_japanese()
-        {
-            ImGuiIO& io = ::ImGui::GetIO();
-            const ImWchar* range = io.Fonts->GetGlyphRangesJapanese();
-            Vector<Pair<c16, c16>> r;
-            while(*range)
-            {
-                r.push_back(make_pair(range[0], range[1]));
-                range += 2;
-            }
-            return r;
-        }
-        LUNA_IMGUI_API Vector<Pair<c16, c16>> get_glyph_ranges_chinese_full()
-        {
-            ImGuiIO& io = ::ImGui::GetIO();
-            const ImWchar* range = io.Fonts->GetGlyphRangesChineseFull();
-            Vector<Pair<c16, c16>> r;
-            while(*range)
-            {
-                r.push_back(make_pair(range[0], range[1]));
-                range += 2;
-            }
-            return r;
-        }
-        LUNA_IMGUI_API Vector<Pair<c16, c16>> get_glyph_ranges_chinese_simplified_common()
-        {
-            ImGuiIO& io = ::ImGui::GetIO();
-            const ImWchar* range = io.Fonts->GetGlyphRangesChineseSimplifiedCommon();
-            Vector<Pair<c16, c16>> r;
-            while(*range)
-            {
-                r.push_back(make_pair(range[0], range[1]));
-                range += 2;
-            }
-            return r;
-        }
-        LUNA_IMGUI_API Vector<Pair<c16, c16>> get_glyph_ranges_cyrillic()
-        {
-            ImGuiIO& io = ::ImGui::GetIO();
-            const ImWchar* range = io.Fonts->GetGlyphRangesCyrillic();
-            Vector<Pair<c16, c16>> r;
-            while(*range)
-            {
-                r.push_back(make_pair(range[0], range[1]));
-                range += 2;
-            }
-            return r;
-        }
-        LUNA_IMGUI_API Vector<Pair<c16, c16>> get_glyph_ranges_thai()
-        {
-            ImGuiIO& io = ::ImGui::GetIO();
-            const ImWchar* range = io.Fonts->GetGlyphRangesThai();
-            Vector<Pair<c16, c16>> r;
-            while(*range)
-            {
-                r.push_back(make_pair(range[0], range[1]));
-                range += 2;
-            }
-            return r;
-        }
-        LUNA_IMGUI_API Vector<Pair<c16, c16>> get_glyph_ranges_vietnamese()
-        {
-            ImGuiIO& io = ::ImGui::GetIO();
-            const ImWchar* range = io.Fonts->GetGlyphRangesVietnamese();
-            Vector<Pair<c16, c16>> r;
-            while(*range)
-            {
-                r.push_back(make_pair(range[0], range[1]));
-                range += 2;
-            }
-            return r;
-        }
         static void close()
         {
+            auto& platform_io = ImGui::GetPlatformIO();
+            ImGuiClipboardData* clipboard = (ImGuiClipboardData*)platform_io.Platform_ClipboardUserData;
+            if(clipboard)
+            {
+                memdelete(clipboard);
+                platform_io.Platform_ClipboardUserData = nullptr;
+            }
+            // Delete all imgui textures.
+            for (ImTextureData* tex : ImGui::GetPlatformIO().Textures)
+            {
+                if (tex->RefCount == 1 && tex->BackendUserData)
+                {
+                    object_t tex_id = (object_t)tex->BackendUserData;
+                    object_release(tex_id);
+                    tex->BackendUserData = nullptr;
+                    tex->SetTexID(ImTextureID_Invalid);
+                    tex->SetStatus(ImTextureStatus_Destroyed);
+                }
+            }
             ImGui::DestroyContext();
-            g_font_file = nullptr;
             g_vb = nullptr;
             g_ib = nullptr;
-            g_vs_blob.data.clear();
-            g_vs_blob.entry_point.reset();
-            g_ps_blob.data.clear();
-            g_ps_blob.entry_point.reset();
             g_active_window = nullptr;
             g_playout = nullptr;
             g_pso.clear();
             g_pso.shrink_to_fit();
             g_cb = nullptr;
-            g_font_tex = nullptr;
             g_desc_layout = nullptr;
             g_desc_sets.clear();
             g_desc_sets.shrink_to_fit();
@@ -521,58 +383,14 @@ float4 main(PS_INPUT input) : SV_Target
             }
         }
 
-        static void handle_mouse_move(Window::IWindow* window, i32 x, i32 y)
-        {
-            ImGuiIO& io = ImGui::GetIO();
-            if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
-            {
-                auto pos = g_active_window->client_to_screen(Int2U(x, y));
-                x = pos.x;
-                y = pos.y;
-            }
-            io.AddMousePosEvent((f32)x, (f32)y);
-        }
-
-        static void handle_mouse_down(Window::IWindow* window, Window::ModifierKeyFlag modifier_flags, HID::MouseButton button)
-        {
-            ImGuiIO& io = ImGui::GetIO();
-            int button_id = 0;
-            if (button == HID::MouseButton::left) button_id = 0;
-            else if (button == HID::MouseButton::right) button_id = 1;
-            else if (button == HID::MouseButton::middle) button_id = 2;
-            else if (button == HID::MouseButton::function1) button_id = 3;
-            else if (button == HID::MouseButton::function2) button_id = 4;
-            // TODO: Add capture API.
-            io.AddMouseButtonEvent(button_id, true);
-        }
-
-        static void handle_mouse_up(Window::IWindow* window, Window::ModifierKeyFlag modifier_flags, HID::MouseButton button)
-        {
-            ImGuiIO& io = ImGui::GetIO();
-            int button_id = 0;
-            if (button == HID::MouseButton::left) button_id = 0;
-            else if (button == HID::MouseButton::right) button_id = 1;
-            else if (button == HID::MouseButton::middle) button_id = 2;
-            else if (button == HID::MouseButton::function1) button_id = 3;
-            else if (button == HID::MouseButton::function2) button_id = 4;
-
-            io.AddMouseButtonEvent(button_id, false);
-        }
-
-        static void handle_mouse_wheel(Window::IWindow* window, f32 x_wheel_delta, f32 y_wheel_delta)
-        {
-            ImGuiIO& io = ImGui::GetIO();
-            io.AddMouseWheelEvent(x_wheel_delta, y_wheel_delta);
-        }
-
         static void handle_key_state_change(HID::KeyCode key, bool is_key_down)
         {
             ImGuiIO& io = ImGui::GetIO();
             // Submit modifiers
-            io.AddKeyEvent(ImGuiKey_ModCtrl, HID::get_key_state(HID::KeyCode::ctrl));
-            io.AddKeyEvent(ImGuiKey_ModShift, HID::get_key_state(HID::KeyCode::shift));
-            io.AddKeyEvent(ImGuiKey_ModAlt, HID::get_key_state(HID::KeyCode::menu));
-            io.AddKeyEvent(ImGuiKey_ModSuper, HID::get_key_state(HID::KeyCode::apps));
+            io.AddKeyEvent(ImGuiMod_Ctrl, HID::get_key_state(HID::KeyCode::ctrl));
+            io.AddKeyEvent(ImGuiMod_Shift, HID::get_key_state(HID::KeyCode::shift));
+            io.AddKeyEvent(ImGuiMod_Alt, HID::get_key_state(HID::KeyCode::menu));
+            io.AddKeyEvent(ImGuiMod_Super, HID::get_key_state(HID::KeyCode::l_system) || HID::get_key_state(HID::KeyCode::r_system));
             auto key_id = hid_key_to_imgui_key(key);
             if (key_id != ImGuiKey_None)
             {
@@ -594,86 +412,116 @@ float4 main(PS_INPUT input) : SV_Target
                 if (HID::get_key_state(HID::KeyCode::l_menu) == is_key_down) io.AddKeyEvent(ImGuiKey_LeftAlt, is_key_down);
                 if (HID::get_key_state(HID::KeyCode::r_menu) == is_key_down) io.AddKeyEvent(ImGuiKey_RightAlt, is_key_down);
             }
+            else if (key == HID::KeyCode::l_system || key == HID::KeyCode::r_system)
+            {
+                if (HID::get_key_state(HID::KeyCode::l_system) == is_key_down) io.AddKeyEvent(ImGuiKey_LeftSuper, is_key_down);
+                if (HID::get_key_state(HID::KeyCode::r_system) == is_key_down) io.AddKeyEvent(ImGuiKey_RightSuper, is_key_down);
+            }
         }
 
-        static void handle_key_down(Window::IWindow* window, HID::KeyCode key)
+        LUNA_IMGUI_API bool handle_window_event(object_t event)
         {
-            handle_key_state_change(key, true);
-        }
-
-        static void handle_key_up(Window::IWindow* window, HID::KeyCode key)
-        {
-            handle_key_state_change(key, false);
-        }
-
-        static void handle_focus(Window::IWindow* window)
-        {
+            using namespace Window;
+            if(ImGui::GetCurrentContext() == nullptr)
+            {
+                return false;
+            }
             ImGuiIO& io = ImGui::GetIO();
-            io.AddFocusEvent(true);
-        }
+            if(auto window_event = cast_object<WindowEvent>(event))
+            {
+                if(window_event->window != g_active_window) return false;
+                if(auto e = cast_object<WindowMouseMoveEvent>(event))
+                {
+                    i32 x = e->x;
+                    i32 y = e->y;
+                    if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+                    {
+                        auto pos = g_active_window->client_to_screen(Int2U(x, y));
+                        x = pos.x;
+                        y = pos.y;
+                    }
+                    io.AddMousePosEvent((f32)x, (f32)y);
+                    return true;
+                }
+                else if(auto e = cast_object<WindowMouseDownEvent>(event))
+                {
+                    int button_id = 0;
+                    if (e->button == HID::MouseButton::left) button_id = 0;
+                    else if (e->button == HID::MouseButton::right) button_id = 1;
+                    else if (e->button == HID::MouseButton::middle) button_id = 2;
+                    else if (e->button == HID::MouseButton::function1) button_id = 3;
+                    else if (e->button == HID::MouseButton::function2) button_id = 4;
+                    // TODO: Add capture API.
+                    io.AddMouseButtonEvent(button_id, true);
+                    return true;
+                }
+                else if(auto e = cast_object<WindowMouseUpEvent>(event))
+                {
+                    int button_id = 0;
+                    if (e->button == HID::MouseButton::left) button_id = 0;
+                    else if (e->button == HID::MouseButton::right) button_id = 1;
+                    else if (e->button == HID::MouseButton::middle) button_id = 2;
+                    else if (e->button == HID::MouseButton::function1) button_id = 3;
+                    else if (e->button == HID::MouseButton::function2) button_id = 4;
 
-        static void handle_lose_focus(Window::IWindow* window)
-        {
-            ImGuiIO& io = ImGui::GetIO();
-            io.AddFocusEvent(false);
+                    io.AddMouseButtonEvent(button_id, false);
+                    return true;
+                }
+                else if(auto e = cast_object<WindowScrollEvent>(event))
+                {
+                    io.AddMouseWheelEvent(e->scroll_x, e->scroll_y);
+                    return true;
+                }
+                else if(auto e = cast_object<WindowKeyDownEvent>(event))
+                {
+                    handle_key_state_change(e->key, true);
+                    return true;
+                }
+                else if(auto e = cast_object<WindowKeyUpEvent>(event))
+                {
+                    handle_key_state_change(e->key, false);
+                    return true;
+                }
+                else if(auto e = cast_object<WindowInputFocusEvent>(event))
+                {
+                    io.AddFocusEvent(true);
+                    return true;
+                }
+                else if(auto e = cast_object<WindowLoseInputFocusEvent>(event))
+                {
+                    io.AddFocusEvent(false);
+                    return true;
+                }
+                else if(auto e = cast_object<WindowInputTextEvent>(event))
+                {
+                    io.AddInputCharactersUTF8(e->text.c_str());
+                    return true;
+                }
+                else if(auto e = cast_object<WindowDPIScaleChangedEvent>(event))
+                {
+                    ImGuiIO& io = ::ImGui::GetIO();
+                    f32 render_scale = get_font_render_scale();
+                    f32 display_scale = get_font_display_scale();
+                    if(io.Fonts->Sources.Size == 0)
+                    {
+                        add_default_font(18.0f * render_scale);
+                    }
+                    // Modify font configs.
+                    for(auto& config : io.Fonts->Sources)
+                    {
+                        config.SizePixels = 18.0f * render_scale;
+                    }
+                    auto& style = ImGui::GetStyle();
+                    style.FontScaleMain = display_scale;
+                    return true;
+                }
+            }
+            return false;
         }
-
-        static void handle_input_character(Window::IWindow* window, c32 character)
-        {
-            ImGuiIO& io = ImGui::GetIO();
-            io.AddInputCharacterUTF16((c16)character);
-        }
-
-        static void handle_dpi_changed(Window::IWindow* window, f32 dpi_scale)
-        {
-            auto sz = window->get_size();
-            auto fb_sz = window->get_framebuffer_size();
-            f32 display_scale = (f32)sz.x / (f32)fb_sz.x;
-            auto _ = rebuild_font(g_font_file, dpi_scale, display_scale);
-        }
-
-        usize g_handle_mouse_move;
-        usize g_handle_mouse_down;
-        usize g_handle_mouse_up;
-        usize g_handle_mouse_wheel;
-        usize g_handle_key_down;
-        usize g_handle_key_up;
-        usize g_handle_focus;
-        usize g_handle_lose_focus;
-        usize g_handle_input_character;
-        usize g_handle_dpi_changed;
 
         LUNA_IMGUI_API void set_active_window(Window::IWindow* window)
         {
-            if (g_active_window)
-            {
-                // Unregister old callbacks.
-                g_active_window->get_mouse_move_event().remove_handler(g_handle_mouse_move);
-                g_active_window->get_mouse_down_event().remove_handler(g_handle_mouse_down);
-                g_active_window->get_mouse_up_event().remove_handler(g_handle_mouse_up);
-                g_active_window->get_mouse_wheel_event().remove_handler(g_handle_mouse_wheel);
-                g_active_window->get_key_down_event().remove_handler(g_handle_key_down);
-                g_active_window->get_key_up_event().remove_handler(g_handle_key_up);
-                g_active_window->get_focus_event().remove_handler(g_handle_focus);
-                g_active_window->get_lose_focus_event().remove_handler(g_handle_lose_focus);
-                g_active_window->get_input_character_event().remove_handler(g_handle_input_character);
-                g_active_window->get_dpi_changed_event().remove_handler(g_handle_dpi_changed);
-            }
             g_active_window = window;
-            if (g_active_window)
-            {
-                // Register new callbacks.
-                g_handle_mouse_move = g_active_window->get_mouse_move_event().add_handler(handle_mouse_move);
-                g_handle_mouse_down = g_active_window->get_mouse_down_event().add_handler(handle_mouse_down);
-                g_handle_mouse_up = g_active_window->get_mouse_up_event().add_handler(handle_mouse_up);
-                g_handle_mouse_wheel = g_active_window->get_mouse_wheel_event().add_handler(handle_mouse_wheel);
-                g_handle_key_down = g_active_window->get_key_down_event().add_handler(handle_key_down);
-                g_handle_key_up = g_active_window->get_key_up_event().add_handler(handle_key_up);
-                g_handle_focus = g_active_window->get_focus_event().add_handler(handle_focus);
-                g_handle_lose_focus = g_active_window->get_lose_focus_event().add_handler(handle_lose_focus);
-                g_handle_input_character = g_active_window->get_input_character_event().add_handler(handle_input_character);
-                g_handle_dpi_changed = g_active_window->get_dpi_changed_event().add_handler(handle_dpi_changed);
-            }
         }
 
         static void update_hid_mouse()
@@ -718,21 +566,6 @@ float4 main(PS_INPUT input) : SV_Target
             
             // Update OS mouse position
             update_hid_mouse();
-
-            if (!g_font_tex)
-            {
-                if (g_active_window)
-                {
-                    auto sz = g_active_window->get_size();
-                    auto fb_sz = g_active_window->get_framebuffer_size();
-                    f32 display_scale = (f32)sz.x / (f32)fb_sz.x;
-                    auto _ = rebuild_font(g_font_file, g_active_window->get_dpi_scale_factor(), display_scale);
-                }
-                else
-                {
-                    auto _ = rebuild_font(g_font_file, 1.0f, 1.0f);
-                }
-            }
         }
 
         static R<RHI::IPipelineState*> get_pso(RHI::Format rt_format)
@@ -759,8 +592,8 @@ float4 main(PS_INPUT input) : SV_Target
                 };
                 ps_desc.input_layout.bindings = { input_bindings, 1 };
                 ps_desc.input_layout.attributes = { input_attributes , 3 };
-                ps_desc.vs = get_shader_data_from_compile_result(g_vs_blob);
-                ps_desc.ps = get_shader_data_from_compile_result(g_ps_blob);
+                ps_desc.vs = LUNA_GET_SHADER_DATA(ImGuiVS);
+                ps_desc.ps = LUNA_GET_SHADER_DATA(ImGuiPS);
                 ps_desc.pipeline_layout = g_playout;
                 ps_desc.num_color_attachments = 1;
                 ps_desc.color_formats[0] = rt_format;
@@ -769,6 +602,85 @@ float4 main(PS_INPUT input) : SV_Target
             }
             lucatchret;
             return iter->second.get();
+        }
+        struct TextureUpdateContext
+        {
+            Ref<RHI::ICommandBuffer> m_cmd_buffer;
+            Ref<RHIUtility::IResourceWriteContext> m_writer;
+
+            RHIUtility::IResourceWriteContext* get_writer()
+            {
+                if(!m_writer)
+                {
+                    m_writer = RHIUtility::new_resource_write_context(m_cmd_buffer->get_device());
+                }
+                return m_writer;
+            }
+        };
+        static RV update_texture(ImTextureData* texture, TextureUpdateContext& ctx)
+        {
+            lutry
+            {
+                RHI::IDevice* dev = ctx.m_cmd_buffer->get_device();
+                if(texture->Status == ImTextureStatus_WantCreate)
+                {
+                    // Create and upload new texture to graphics system
+                    //IMGUI_DEBUG_LOG("UpdateTexture #%03d: WantCreate %dx%d\n", tex->UniqueID, tex->Width, tex->Height);
+                    IM_ASSERT(texture->TexID == 0 && texture->BackendUserData == nullptr);
+                    IM_ASSERT(texture->Format == ImTextureFormat_RGBA32);
+
+                    // Create texture
+                    // (Bilinear sampling is required by default. Set 'io.Fonts->Flags |= ImFontAtlasFlags_NoBakedLines' or 'style.AntiAliasedLinesUseTex = false' to allow point/nearest sampling)
+                    lulet(tex, dev->new_texture(RHI::MemoryType::local, RHI::TextureDesc::tex2d(
+                        RHI::Format::rgba8_unorm, 
+                        RHI::TextureUsageFlag::read_texture | RHI::TextureUsageFlag::copy_dest, 
+                        texture->Width, texture->Height, 1, 1)));
+                    
+                    auto writer = ctx.get_writer();
+                    u32 row_pitch, slice_pitch;
+                    lulet(mapped, writer->write_texture(tex, RHI::SubresourceIndex(0, 0), 0, 0, 0, texture->Width, texture->Height, 1, row_pitch, slice_pitch));
+                    memcpy_bitmap(mapped, texture->GetPixels(), 
+                        texture->GetPitch(), texture->Height, 
+                        row_pitch, texture->GetPitch());
+                    
+                    luexp(writer->commit(ctx.m_cmd_buffer, true));
+                    writer->reset();
+                    texture->SetTexID((ImTextureID)tex.object());
+                    texture->BackendUserData = tex.object();
+                    // For one reference from texture backend user data.
+                    object_retain(tex.object());
+                    texture->SetStatus(ImTextureStatus_OK);
+                }
+                else if(texture->Status == ImTextureStatus_WantUpdates)
+                {
+                    object_t tex_id = (object_t)texture->GetTexID();
+                    RHI::ITexture* dst_tex = query_interface<RHI::ITexture>(tex_id);
+                    luassert(dst_tex);
+                    auto writer = ctx.get_writer();
+                    u32 row_pitch, slice_pitch;
+                    auto r = texture->UpdateRect;
+                    lulet(mapped, writer->write_texture(
+                        dst_tex, RHI::SubresourceIndex(0, 0), 
+                        r.x, r.y, 0, 
+                        r.w, r.h, 1, row_pitch, slice_pitch));
+                    memcpy_bitmap(mapped, texture->GetPixelsAt(r.x, r.y), 
+                        r.w * texture->BytesPerPixel, r.h, row_pitch, texture->GetPitch());
+                    luexp(writer->commit(ctx.m_cmd_buffer, true));
+                    writer->reset();
+                    texture->SetStatus(ImTextureStatus_OK);
+                }
+                else if(texture->Status == ImTextureStatus_WantDestroy)
+                {
+                    object_t tex_id = (object_t)texture->BackendUserData;
+                    if(!tex_id) return ok;
+                    object_release(tex_id);
+                    texture->BackendUserData = nullptr;
+                    texture->SetTexID(ImTextureID_Invalid);
+                    texture->SetStatus(ImTextureStatus_Destroyed);
+                }
+            }
+            lucatchret;
+            return ok;
         }
 
         LUNA_IMGUI_API RV render_draw_data(ImDrawData* draw_data, RHI::ICommandBuffer* cmd_buffer, RHI::ITexture* render_target)
@@ -782,6 +694,20 @@ float4 main(PS_INPUT input) : SV_Target
                 int fb_height = (int)(io.DisplaySize.y * io.DisplayFramebufferScale.y);
                 if (fb_width == 0 || fb_height == 0)
                     return ok;
+
+                if(draw_data->Textures != nullptr)
+                {
+                    TextureUpdateContext ctx;
+                    ctx.m_cmd_buffer = cmd_buffer;
+                    for(ImTextureData* texture : *draw_data->Textures)
+                    {
+                        if(texture->Status != ImTextureStatus_OK)
+                        {
+                            luexp(update_texture(texture, ctx));
+                        }
+                    }
+                }
+
                 draw_data->ScaleClipRects(io.DisplayFramebufferScale);
                 
                 // Create and grow vertex/index buffers if needed
@@ -844,7 +770,14 @@ float4 main(PS_INPUT input) : SV_Target
                     for (i32 cmd_i = 0; cmd_i < cmd_list->CmdBuffer.Size; ++cmd_i)
                     {
                         const ImDrawCmd* pcmd = &cmd_list->CmdBuffer[cmd_i];
-                        barriers.push_back({ (ITexture*)pcmd->TextureId, TEXTURE_BARRIER_ALL_SUBRESOURCES, TextureStateFlag::automatic, TextureStateFlag::shader_read_ps, ResourceBarrierFlag::none });
+                        object_t tid = (object_t)pcmd->TexRef.GetTexID();
+                        ITexture* tex = query_interface<ITexture>(tid);
+                        if(!tex)
+                        {
+                            ISampledImage* img = query_interface<ISampledImage>(tid);
+                            tex = img->get_texture();
+                        }
+                        barriers.push_back({ tex, TEXTURE_BARRIER_ALL_SUBRESOURCES, TextureStateFlag::automatic, TextureStateFlag::shader_read_ps, ResourceBarrierFlag::none });
                     }
                 }
                 cmd_buffer->begin_event("ImGui");
@@ -899,11 +832,30 @@ float4 main(PS_INPUT input) : SV_Target
                             }
                             IDescriptorSet* vs = g_desc_sets[num_draw_calls];
                             usize cb_align = dev->check_feature(DeviceFeature::uniform_buffer_data_alignment).uniform_buffer_data_alignment;
-                            luexp(vs->update_descriptors({
-                                WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(g_cb)),
-                                WriteDescriptorSet::read_texture_view(1, TextureViewDesc::tex2d((ITexture*)pcmd->TextureId)),
-                                WriteDescriptorSet::sampler(2, SamplerDesc(Filter::linear, Filter::linear, Filter::linear, TextureAddressMode::clamp, TextureAddressMode::clamp, TextureAddressMode::clamp))
-                                }));
+                            object_t tex_object = (object_t)pcmd->TexRef.GetTexID();
+                            ITexture* tex1 = query_interface<ITexture>(tex_object);
+                            ISampledImage* sampled_tex = query_interface<ISampledImage>(tex_object);
+                            if(tex1)
+                            {
+                                luexp(vs->update_descriptors({
+                                    WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(g_cb)),
+                                    WriteDescriptorSet::read_texture_view(1, TextureViewDesc::tex2d(tex1)),
+                                    WriteDescriptorSet::sampler(2, SamplerDesc(Filter::linear, Filter::linear, Filter::linear, TextureAddressMode::clamp, TextureAddressMode::clamp, TextureAddressMode::clamp))
+                                    }));
+                            }
+                            else if(sampled_tex)
+                            {
+                                luexp(vs->update_descriptors({
+                                    WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(g_cb)),
+                                    WriteDescriptorSet::read_texture_view(1, TextureViewDesc::tex2d(sampled_tex->get_texture())),
+                                    WriteDescriptorSet::sampler(2, sampled_tex->get_sampler())
+                                    }));
+                            }
+                            else
+                            {
+                                // should not get here.
+                                lupanic();
+                            }
                             cmd_buffer->set_graphics_descriptor_sets(0, { &vs, 1 });
                             cmd_buffer->set_scissor_rect(r);
                             cmd_buffer->draw_indexed(pcmd->ElemCount, pcmd->IdxOffset + idx_offset, pcmd->VtxOffset + vtx_offset);
@@ -926,7 +878,7 @@ float4 main(PS_INPUT input) : SV_Target
             virtual const c8* get_name() override { return "ImGui"; }
             virtual RV on_register() override
             {
-                return add_dependency_modules(this, {module_rhi(), module_hid(), module_font(), module_shader_compiler(), module_window()} );
+                return add_dependency_modules(this, {module_rhi(), module_rhi_utility(), module_hid(), module_font(), module_window()} );
             }
             virtual RV on_init() override
             {
@@ -978,6 +930,22 @@ namespace ImGui
         return 0;
     }
 
+    LUNA_IMGUI_API void Image(Luna::RHI::ITexture* texture, const ImVec2& image_size, const ImVec2& uv0, const ImVec2& uv1)
+    {
+        Image(ImTextureRef((ImTextureID)texture->get_object()), image_size, uv0, uv1);
+    }
+    LUNA_IMGUI_API void Image(Luna::ImGuiUtils::ISampledImage* texture, const ImVec2& image_size, const ImVec2& uv0, const ImVec2& uv1)
+    {
+        Image(ImTextureRef((ImTextureID)texture->get_object()), image_size, uv0, uv1);
+    }
+    LUNA_IMGUI_API bool ImageButton(const char* str_id, Luna::RHI::ITexture* texture, const ImVec2& image_size, const ImVec2& uv0, const ImVec2& uv1, const ImVec4& bg_col, const ImVec4& tint_col)
+    {
+        return ImageButton(str_id, ImTextureRef((ImTextureID)texture->get_object()), image_size, uv0, uv1, bg_col, tint_col);
+    }
+    LUNA_IMGUI_API bool ImageButton(const char* str_id, Luna::ImGuiUtils::ISampledImage* texture, const ImVec2& image_size, const ImVec2& uv0, const ImVec2& uv1, const ImVec4& bg_col, const ImVec4& tint_col)
+    {
+        return ImageButton(str_id, ImTextureRef((ImTextureID)texture->get_object()), image_size, uv0, uv1, bg_col, tint_col);
+    }
     LUNA_IMGUI_API bool InputText(const char* label, Luna::String& buf, ImGuiInputTextFlags flags, ImGuiInputTextCallback callback, void* user_data)
     {
         IM_ASSERT(!(flags & ImGuiInputTextFlags_CallbackResize));

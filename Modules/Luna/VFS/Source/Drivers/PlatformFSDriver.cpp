@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -57,21 +57,21 @@ namespace Luna
             auto native_path = data->make_native_path_str(path);
             return Luna::get_file_attribute(native_path.c_str());
         }
-        static RV fs_copy_file(void* driver_data, void* from_mount_data, void* to_mount_data, const Path& from_path, const Path& to_path, FileCopyFlag flags)
+        static RV fs_copy_file(void* driver_data, void* from_mount_data, void* to_mount_data, const Path& from_path, const Path& to_path)
         {
             auto from_data = (PlatformFileSystemMountData*)from_mount_data;
             auto to_data = (PlatformFileSystemMountData*)to_mount_data;
             auto from = from_data->make_native_path_str(from_path);
             auto to = to_data->make_native_path_str(to_path);
-            return Luna::copy_file(from.c_str(), to.c_str(), flags);
+            return Luna::copy_file(from.c_str(), to.c_str());
         }
-        static RV fs_move_file(void* driver_data, void* from_mount_data, void* to_mount_data, const Path& from_path, const Path& to_path, FileMoveFlag flags)
+        static RV fs_move_file(void* driver_data, void* from_mount_data, void* to_mount_data, const Path& from_path, const Path& to_path)
         {
             auto from_data = (PlatformFileSystemMountData*)from_mount_data;
             auto to_data = (PlatformFileSystemMountData*)to_mount_data;
             auto from = from_data->make_native_path_str(from_path);
             auto to = to_data->make_native_path_str(to_path);
-            return Luna::move_file(from.c_str(), to.c_str(), flags);
+            return Luna::move_file(from.c_str(), to.c_str());
         }
         static RV fs_delete_file(void* driver_data, void* mount_data, const Path& path)
         {

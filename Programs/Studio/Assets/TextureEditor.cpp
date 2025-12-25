@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -59,7 +59,7 @@ namespace Luna
     {
         if (Asset::get_asset_state(asset) == Asset::AssetState::loaded)
         {
-            Ref<RHI::IResource> tex = get_asset_or_async_load_if_not_ready<RHI::IResource>(asset);
+            Ref<RHI::ITexture> tex = get_asset_or_async_load_if_not_ready<RHI::ITexture>(asset);
             if (tex)
             {
                 ImGui::SetCursorScreenPos({ draw_rect.offset_x, draw_rect.offset_y });

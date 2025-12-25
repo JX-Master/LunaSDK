@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -15,18 +15,22 @@
 #endif
 
 #include "ShaderCompiler.hpp"
-#include <Luna/VariantUtils/JSON.hpp>
-#include <locale>
-#include <codecvt>
-#include <Luna/Runtime/HashSet.hpp>
 #include <Luna/Runtime/Module.hpp>
+
+#if LUNA_SHADER_COMPILER_ENABLED
+#include <Luna/VariantUtils/JSON.hpp>
+#include <Luna/Runtime/HashSet.hpp>
 #include <Luna/Runtime/File.hpp>
+#include <Luna/Runtime/Unicode.hpp>
 #include <spirv_cross/spirv_msl.hpp>
+#include <Luna/Runtime/StringUtils.hpp>
+#endif
 
 namespace Luna
 {
     namespace ShaderCompiler
     {
+#if LUNA_SHADER_COMPILER_ENABLED
         R<ShaderCompileResult> Compiler::compile_none(const ShaderCompileParameters& params)
         {
             ShaderCompileResult ret;
@@ -37,16 +41,28 @@ namespace Luna
         }
         inline WString utf8_to_wstring(const c8* src, usize size = USIZE_MAX)
         {
-            size = (size == USIZE_MAX) ? strlen(src) : size;
-            std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
-            std::wstring ws = converter.from_bytes(src, src + size);
-            return WString(ws.begin(), ws.end());
+            usize utf16_size = utf8_to_utf16_len(src, size);
+            String16 str(utf16_size, '\0');
+            utf8_to_utf16(str.data(), str.size() + 1, src, size);
+            WString ws(utf16_size, '\0');
+            for(usize i = 0; i < str.size(); ++i)
+            {
+                ws[i] = (wchar_t)str[i];
+            }
+            return ws;
         }
         inline String wstring_to_utf8(LPCWSTR src)
         {
-            std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
-            std::string s = converter.to_bytes(src);
-            return String(s.begin(), s.end());
+            usize utf16_size = Luna::strlen(src);
+            String16 str(utf16_size, '\0');
+            for(usize i = 0; i < str.size(); ++i)
+            {
+                str[i] = (c16)src[i];
+            }
+            usize utf8_size = utf16_to_utf8_len(str.data(), str.size());
+            String ret(utf8_size, '\0');
+            utf16_to_utf8(ret.data(), ret.size() + 1, str.data(), str.size());
+            return ret;
         }
         class DxcIncludeHandler : public IDxcIncludeHandler
         {
@@ -290,8 +306,10 @@ namespace Luna
             lucatchret;
             return r;
         }
+#endif
         R<ShaderCompileResult> Compiler::compile(const ShaderCompileParameters& params)
         {
+#if LUNA_SHADER_COMPILER_ENABLED
             lutsassert();
             ShaderCompileResult r;
             lutry
@@ -327,6 +345,9 @@ namespace Luna
             }
             lucatchret;
             return r;
+#else
+            return BasicError::not_supported();
+#endif
         }
 
         LUNA_SHADER_COMPILER_API Ref<ICompiler> new_compiler()

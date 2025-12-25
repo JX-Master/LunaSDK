@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -15,6 +15,7 @@ namespace Luna
     namespace Window
     {
         extern StartupParams g_startup_params;
+        void register_events();
         RV platform_init();
         void platform_close();
     }

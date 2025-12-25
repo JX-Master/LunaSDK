@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -438,7 +438,7 @@ namespace Luna
         //! Gets one enumerator that can be used to enumerate all child variants of one array variant.
         //! @return Returns one enumerator that can be used to enumerate all child variants.
         //! Returns one enumerator with an empty range if @ref type of the variant is not @ref VariantType::array.
-        //! @remark The returned enumerator will have `begin` and `end` methods that can be used like all other containers in Luna SDK. You can
+        //! @remark The returned enumerator will have `begin` and `end` methods that can be used like all other containers in LunaSDK. You can
         //! also use the enumerator in a range-based for loop like so:
         //! ```
         //! for (auto i : variant.values())
@@ -450,7 +450,7 @@ namespace Luna
         //! Gets one enumerator that can be used to enumerate all child variants of one array variant.
         //! @return Returns one enumerator that can be used to enumerate all child variants.
         //! Returns one enumerator with an empty range if @ref type of the variant is not @ref VariantType::array.
-        //! @remark The returned enumerator will have `begin` and `end` methods that can be used like all other containers in Luna SDK. You can
+        //! @remark The returned enumerator will have `begin` and `end` methods that can be used like all other containers in LunaSDK. You can
         //! also use the enumerator in a range-based for loop like so:
         //! ```
         //! for (auto& i : variant.values())
@@ -462,7 +462,7 @@ namespace Luna
         //! Gets one enumerator to enumerate all child key-variant pairs of one object variant.
         //! @return Returns one enumerator to enumerate all child key-variant pairs.
         //! Returns one enumerator with an empty range if @ref type of the variant is not @ref VariantType::object.
-        //! @remark The returned enumerator will have `begin` and `end` methods that can be used like all other containers in Luna SDK. You can
+        //! @remark The returned enumerator will have `begin` and `end` methods that can be used like all other containers in LunaSDK. You can
         //! also use the enumerator in a range-based for loop like so:
         //! ```
         //! for (auto& i : variant.key_values())
@@ -475,7 +475,7 @@ namespace Luna
         //! Gets one enumerator to enumerate all child key-variant pairs of one object variant.
         //! @return Returns one enumerator to enumerate all child key-variant pairs.
         //! Returns one enumerator with an empty range if @ref type of the variant is not @ref VariantType::object.
-        //! @remark The returned enumerator will have `begin` and `end` methods that can be used like all other containers in Luna SDK. You can
+        //! @remark The returned enumerator will have `begin` and `end` methods that can be used like all other containers in LunaSDK. You can
         //! also use the enumerator in a range-based for loop like so:
         //! ```
         //! for (auto& i : variant.key_values())

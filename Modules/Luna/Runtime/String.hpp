@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -154,11 +154,6 @@ namespace Luna
         //! @par Valid Usage
         //! * `s` must points to a valid null-terminated string.
         BasicString& operator=(const value_type* s);
-        //! Assigns the string with the specified character. This operation behaves the same as 
-        //! `assign(1, ch)`.
-        //! @param[in] ch The character to assign.
-        //! @return Returns `*this`.
-        BasicString& operator=(value_type ch);
         //! Assigns the string by coping characters from the initializer list.
         //! @param[in] ilist The initializer list to copy characters from.
         //! @return Returns `*this`.
@@ -637,6 +632,16 @@ namespace Luna
         //! Gets the allocator of the string.
         //! @return Returns one copy of the allocator of the string.
         allocator_type get_allocator() const;
+        //! Creates one span that specifies the element buffer of this vector.
+        //! @return Returns the span that specifies the element buffer of this vector.
+        Span<value_type> span();
+        //! Creates one constant span that specifies the element buffer of this vector.
+        //! @return Returns the constant span that specifies the element buffer of this vector.
+        //! The return value of `data()` function of the returned span may be 
+        Span<const value_type> span() const;
+        //! Creates one constant span that specifies the element buffer of this vector.
+        //! @return Returns the constant span that specifies the element buffer of this vector.
+        Span<const value_type> cspan() const;
         //! Finds the first occurrence of the specified character sequence in the string.
         //! @param[in] str The string that holds the character sequence to search.
         //! @param[in] pos The index at which to start the search.
@@ -748,6 +753,41 @@ namespace Luna
     //! @return Returns the type object of @ref String.
     LUNA_RUNTIME_API typeinfo_t string_type();
     template <> struct typeof_t<String> { typeinfo_t operator()() const { return string_type(); } };
+
+    //! Creates one string that contains the formatted text.
+    //! @param[out] str The string instance to receive the formatted string.
+    //! If this instance is not empty, existing content will be overwritten.
+    //! @param[in] format The formatting syntax used to format the text.
+    //! @param[in] args The formatting arguments.
+    //! @return Returns the created string.
+    inline void vstrprintf(String& str, const c8* format, VarList args)
+    {
+        constexpr usize STACK_BUFFER_SIZE = 128;
+        c8 buf[STACK_BUFFER_SIZE];
+        i32 len = vsnprintf(buf, STACK_BUFFER_SIZE, format, args);
+        str.resize(len, 0);
+        if(len >= STACK_BUFFER_SIZE)
+        {
+            vsnprintf(str.data(), str.size() + 1, format, args);
+        }
+        else
+        {
+            strncpy(str.data(), buf, str.size() + 1);
+        }
+    }
+
+    //! Creates one string that contains the formatted text.
+    //! @param[out] str The string instance to receive the formatted string.
+    //! If this instance is not empty, existing content will be overwritten.
+    //! @param[in] format The formatting syntax used to format the text.
+    //! @return Returns the created string.
+    inline void strprintf(String& str, const c8* format, ...)
+    {
+        VarList args;
+        va_start(args, format);
+        vstrprintf(str, format, args);
+        va_end(args);
+    }
 
     //! @}
 }

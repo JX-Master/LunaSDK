@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -292,7 +292,7 @@ namespace Luna
                         {
                             return set_error(BasicError::format_error(), "Unexpected character. (line %d pos %d).", ctx.get_line(), ctx.get_pos());
                         }
-                        read_ch = read_ch << 4 + atohex(ch);
+                        read_ch = (read_ch << 4) + atohex(ch);
                         ctx.consume(ch);
                         ch = ctx.next_char();
                     }

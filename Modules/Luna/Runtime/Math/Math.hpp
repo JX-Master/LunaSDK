@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -11,6 +11,7 @@
 #pragma once
 #include "../Base.hpp"
 #include <cmath>
+#include "../TypeInfo.hpp"
 
 #ifdef LUNA_PLATFORM_WINDOWS
 #ifndef NOMINMAX
@@ -182,6 +183,17 @@ namespace Luna
     using OffsetRectU = OffsetRect<u32>;
     //! A instanced type of @ref OffsetRect that uses @ref f32 as value type.
     using OffsetRectF = OffsetRect<f32>;
+
+    //! Gets the type object of @ref Rect.
+    //! @return Returns the type object.
+    LUNA_RUNTIME_API typeinfo_t rect_type();
+    //! Gets the type object of @ref OffsetRect.
+    //! @return Returns the type object.
+    LUNA_RUNTIME_API typeinfo_t offset_rect_type();
+
+    template <typename _Ty> struct typeof_t<Rect<_Ty>> { typeinfo_t operator()() const { return get_generic_instanced_type(rect_type(), { typeof<_Ty>() }); } };
+    template <typename _Ty> struct typeof_t<OffsetRect<_Ty>> { typeinfo_t operator()() const { return get_generic_instanced_type(offset_rect_type(), { typeof<_Ty>() }); } };
+    
 
     //! Used to specify a 3D box region using position and size.
     //! @tparam _Ty The type that represents values of the box.

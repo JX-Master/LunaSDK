@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -12,14 +12,15 @@
 #include "ShapeRenderer.hpp"
 #include <Luna/Runtime/Math/Transform.hpp>
 #include <Luna/RHI/ShaderCompileHelper.hpp>
-#include <Luna/RHI/Utility.hpp>
+#include <Luna/RHIUtility/RHIUtility.hpp>
+#include <Luna/RHIUtility/ResourceWriteContext.hpp>
+#include <FillVS.hpp>
+#include <FillPS.hpp>
 
 namespace Luna
 {
     namespace VG
     {
-        ShaderCompiler::ShaderCompileResult g_fill_shader_vs;
-        ShaderCompiler::ShaderCompileResult g_fill_shader_ps;
         Ref<RHI::IDescriptorSetLayout> g_fill_desc_layout;
         Ref<RHI::IPipelineLayout> g_fill_playout;
         Ref<RHI::ITexture> g_white_tex;
@@ -31,29 +32,8 @@ namespace Luna
             lutry
             {
                 {
-                    auto compiler = ShaderCompiler::new_compiler();
-                    ShaderCompiler::ShaderCompileParameters params;
-                    params.source = { FILL_SHADER_SOURCE_VS, FILL_SHADER_SOURCE_VS_SIZE };
-                    params.source_name = "FillVS";
-                    params.entry_point = "main";
-                    params.target_format = RHI::get_current_platform_shader_target_format();
-                    params.shader_type = ShaderCompiler::ShaderType::vertex;
-                    params.shader_model = {6, 0};
-                    params.optimization_level = ShaderCompiler::OptimizationLevel::full;
-                    luset(g_fill_shader_vs, compiler->compile(params));
-
-                    params.source = { FILL_SHADER_SOURCE_PS, FILL_SHADER_SOURCE_PS_SIZE };
-                    params.source_name = "FillPS";
-                    params.entry_point = "main";
-                    params.target_format = RHI::get_current_platform_shader_target_format();
-                    params.shader_type = ShaderCompiler::ShaderType::pixel;
-                    params.shader_model = {6, 0};
-                    params.optimization_level = ShaderCompiler::OptimizationLevel::full;
-                    luset(g_fill_shader_ps, compiler->compile(params));
-                }
-                {
                     DescriptorSetLayoutBinding bindings[] = {
-                        DescriptorSetLayoutBinding::uniform_buffer_view(0, 1, ShaderVisibilityFlag::vertex),
+                        DescriptorSetLayoutBinding::uniform_buffer_view(0, 1, ShaderVisibilityFlag::all),
                         DescriptorSetLayoutBinding::read_buffer_view(1, 1, ShaderVisibilityFlag::all),
                         DescriptorSetLayoutBinding::read_texture_view(TextureViewType::tex2d, 2, 1, ShaderVisibilityFlag::pixel),
                         DescriptorSetLayoutBinding::sampler(3, 1, ShaderVisibilityFlag::pixel)
@@ -92,10 +72,11 @@ namespace Luna
                             }
                         }
                         lulet(upload_cmdbuf, dev->new_command_buffer(copy_queue_index));
-                        luexp(copy_resource_data(upload_cmdbuf, {
-                            CopyResourceData::write_texture(g_white_tex, SubresourceIndex(0, 0), 0, 0, 0, 
-                            &data, sizeof(data), sizeof(data), 1, 1, 1)
-                        }));
+                        auto writer = RHIUtility::new_resource_write_context(dev);
+                        u32 row_pitch, slice_pitch;
+                        lulet(mapped, writer->write_texture(g_white_tex, SubresourceIndex(0, 0), 0, 0, 0, 1, 1, 1, row_pitch, slice_pitch));
+                        memcpy_bitmap(mapped, &data, sizeof(data), 1, row_pitch, sizeof(data));
+                        luexp(writer->commit(upload_cmdbuf, true));
                     }
                 }
             }
@@ -104,10 +85,6 @@ namespace Luna
         }
         void deinit_render_resources()
         {
-            g_fill_shader_vs.data.clear();
-            g_fill_shader_vs.entry_point.reset();
-            g_fill_shader_ps.data.clear();
-            g_fill_shader_ps.entry_point.reset();
             g_fill_desc_layout = nullptr;
             g_fill_playout = nullptr;
             g_white_tex = nullptr;
@@ -125,14 +102,14 @@ namespace Luna
                     InputAttributeDesc("POSITION", 0, 0, 0, offsetof(Vertex, position), Format::rg32_float),
                     InputAttributeDesc("SHAPECOORD", 0, 1, 0, offsetof(Vertex, shapecoord), Format::rg32_float),
                     InputAttributeDesc("TEXCOORD", 0, 2, 0, offsetof(Vertex, texcoord), Format::rg32_float),
-                    InputAttributeDesc("COLOR", 0, 3, 0, offsetof(Vertex, color), Format::rgba8_unorm),
-                    InputAttributeDesc("COMMAND_OFFSET", 0, 4, 0, offsetof(Vertex, begin_command), Format::r32_uint),
-                    InputAttributeDesc("NUM_COMMANDS", 0, 5, 0, offsetof(Vertex, num_commands), Format::r32_uint)
+                    InputAttributeDesc("COMMAND_OFFSET", 0, 3, 0, offsetof(Vertex, begin_command), Format::r32_uint),
+                    InputAttributeDesc("NUM_COMMANDS", 0, 4, 0, offsetof(Vertex, num_commands), Format::r32_uint),
+                    InputAttributeDesc("COLOR", 0, 5, 0, offsetof(Vertex, color), Format::rgba32_float)
                 };
                 desc.input_layout = InputLayoutDesc({bindings, 1}, {attributes, 6});
                 desc.pipeline_layout = g_fill_playout;
-                desc.vs = get_shader_data_from_compile_result(g_fill_shader_vs);
-                desc.ps = get_shader_data_from_compile_result(g_fill_shader_ps);
+                desc.vs = LUNA_GET_SHADER_DATA(FillVS);
+                desc.ps = LUNA_GET_SHADER_DATA(FillPS);
                 desc.blend_state = BlendDesc({ AttachmentBlendDesc(true, BlendFactor::src_alpha, BlendFactor::one_minus_src_alpha, BlendOp::add, BlendFactor::zero,
                         BlendFactor::one, BlendOp::add, ColorWriteMask::all) });
                 desc.rasterizer_state = RasterizerDesc(FillMode::solid, CullMode::back, false, false, false, false, false);
@@ -144,43 +121,84 @@ namespace Luna
             lucatchret;
             return ok;
         }
-        RV FillShapeRenderer::init(RHI::ITexture* render_target)
-        {
-            return set_render_target(render_target);
-        }
-        RV FillShapeRenderer::set_render_target(RHI::ITexture* render_target)
+        RV FillShapeRenderer::begin(RHI::ITexture* render_target)
         {
             lutsassert();
-            auto desc = render_target->get_desc();
-            lutry
+            if(render_target)
             {
-                if (m_rt_format != desc.format)
+                auto desc = render_target->get_desc();
+                lutry
                 {
-                    luexp(create_pso(desc.format));
-                    m_rt_format = desc.format;
+                    if (m_rt_format != desc.format)
+                    {
+                        luexp(create_pso(desc.format));
+                        m_rt_format = desc.format;
+                    }
+                    m_render_target = render_target;
+                    m_screen_width = desc.width;
+                    m_screen_height = desc.height;
                 }
-                m_render_target = render_target;
-                m_screen_width = desc.width;
-                m_screen_height = desc.height;
+                lucatchret;
             }
-            lucatchret;
+            else 
+            {
+                m_render_target = nullptr;
+                m_screen_width = 0;
+                m_screen_height = 0;
+            }
+            m_draw_commands.clear();
+            m_draw_calls.clear();
             return ok;
         }
-        RV FillShapeRenderer::render(
-            RHI::ICommandBuffer* cmdbuf,
+        void FillShapeRenderer::draw(
             RHI::IBuffer* vertex_buffer,
             RHI::IBuffer* index_buffer,
             Span<const ShapeDrawCall> draw_calls,
             Float4x4U* transform_matrix
         )
         {
+            if(draw_calls.size() == 0)
+            {
+                return;
+            }
+            // Create draw command.
+            m_draw_commands.emplace_back();
+            DrawCommand& cmd = m_draw_commands.back();
+            cmd.vertex_buffer = vertex_buffer;
+            cmd.index_buffer = index_buffer;
+            cmd.num_draw_calls = draw_calls.size();
+            if (transform_matrix)
+            {
+                cmd.transform_matrix = *transform_matrix;
+            }
+            else
+            {
+                Float4x4 mat = ProjectionMatrix::make_orthographic_off_center(0.0f, (f32)m_screen_width, 0.0f, (f32)m_screen_height, 0.0f, 1.0f);
+                cmd.transform_matrix = mat;
+            }
+            // Create draw calls.
+            m_draw_calls.insert(m_draw_calls.end(), draw_calls);
+        }
+        struct CBData
+        {
+            Float4x4U transform;
+            Float4U clip_rect;
+        };
+        RV FillShapeRenderer::end()
+        {
             using namespace RHI;
             lutsassert();
+            lucheck_msg(m_render_target, "Call IShapeRenderer::begin() firstly before render()!");
             auto dev = get_main_device();
+            if(m_draw_calls.size() == 0)
+            {
+                return ok;
+            }
             lutry
             {
-                u32 cb_element_size = (u32)align_upper(sizeof(Float4x4U), dev->check_feature(DeviceFeature::uniform_buffer_data_alignment).uniform_buffer_data_alignment);
-                usize num_draw_calls = draw_calls.size();
+                // Creates one new render call.
+                u32 cb_element_size = (u32)align_upper(sizeof(CBData), dev->check_feature(DeviceFeature::uniform_buffer_data_alignment).uniform_buffer_data_alignment);
+                usize num_draw_calls = m_draw_calls.size();
                 u64 cb_size = cb_element_size * num_draw_calls;
                 // Build constant buffer.
                 if (num_draw_calls > m_cbs_capacity)
@@ -191,21 +209,20 @@ namespace Luna
                 }
                 void* cb_data = nullptr;
                 luexp(m_cbs_resource->map(0, 0, &cb_data));
-                for (usize i = 0; i < num_draw_calls; ++i)
+                usize dc_index = 0;
+                for(usize i = 0; i < m_draw_commands.size(); ++i)
                 {
-                    Float4x4U* dst = (Float4x4U*)(((usize)cb_data) + i * cb_element_size);
-                    Float4x4 transform = AffineMatrix::make_rotation_z(draw_calls[i].rotation / 180.0f * PI);
-                    transform = mul(transform, AffineMatrix::make_translation(Float3(draw_calls[i].origin_point.x, draw_calls[i].origin_point.y, 0.0f)));
-                    if (transform_matrix)
+                    auto& cmd = m_draw_commands[i];
+                    for(usize j = 0; j < cmd.num_draw_calls; ++j)
                     {
-                        transform = mul(transform, *transform_matrix);
+                        CBData* dst = (CBData*)(((usize)cb_data) + dc_index * cb_element_size);
+                        Float4x4 transform = m_draw_calls[dc_index].transform;
+                        transform = mul(transform, cmd.transform_matrix);
+                        dst->transform = transform;
+                        auto& clip_rect = m_draw_calls[dc_index].clip_rect;
+                        dst->clip_rect = Float4U{clip_rect.offset_x, clip_rect.offset_y, clip_rect.width, clip_rect.height};
+                        ++dc_index;
                     }
-                    else
-                    {
-                        Float4x4 mat = ProjectionMatrix::make_orthographic_off_center(0.0f, (f32)m_screen_width, 0.0f, (f32)m_screen_height, 0.0f, 1.0f);
-                        transform = mul(transform, mat);
-                    }
-                    *dst = transform;
                 }
                 m_cbs_resource->unmap(0, cb_size);
                 // Build view sets.
@@ -217,7 +234,7 @@ namespace Luna
                         m_desc_sets.push_back(desc_set);
                     }
                     auto& ds = m_desc_sets[i];
-                    auto& dc = draw_calls[i];
+                    auto& dc = m_draw_calls[i];
                     auto num_points = dc.shape_buffer->get_desc().size / sizeof(f32);
                     luexp(ds->update_descriptors({
                         WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(m_cbs_resource, i * cb_element_size)),
@@ -226,50 +243,56 @@ namespace Luna
                         WriteDescriptorSet::sampler(3, dc.sampler)
                         }));
                 }
-                // Build command buffer.
-                Vector<TextureBarrier> barriers;
-                barriers.push_back({ m_render_target, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::color_attachment_write, ResourceBarrierFlag::discard_content });
-                barriers.push_back({ g_white_tex, TEXTURE_BARRIER_ALL_SUBRESOURCES, TextureStateFlag::automatic, TextureStateFlag::shader_read_ps, ResourceBarrierFlag::none });
-                for (usize i = 0; i < num_draw_calls; ++i)
-                {
-                    if (draw_calls[i].texture)
-                    {
-                        barriers.push_back({ draw_calls[i].texture, TEXTURE_BARRIER_ALL_SUBRESOURCES, TextureStateFlag::automatic, TextureStateFlag::shader_read_ps, ResourceBarrierFlag::none });
-                    }
-                }
-                cmdbuf->resource_barrier({}, { barriers.data(), (u32)barriers.size()});
-                RenderPassDesc desc;
-                desc.color_attachments[0] = ColorAttachment(m_render_target, LoadOp::load, StoreOp::store);
-                cmdbuf->begin_render_pass(desc);
-                cmdbuf->set_graphics_pipeline_state(m_fill_pso);
-                cmdbuf->set_graphics_pipeline_layout(g_fill_playout);
-                auto num_vertices = vertex_buffer->get_desc().size / sizeof(Vertex);
-                auto view = VertexBufferView(vertex_buffer, 0, sizeof(Vertex) * num_vertices, sizeof(Vertex));
-                cmdbuf->set_vertex_buffers(0, { &view, 1 });
-                auto num_indices = index_buffer->get_desc().size / sizeof(u32);
-                cmdbuf->set_index_buffer({index_buffer, 0, (u32)num_indices * (u32)sizeof(u32), Format::r32_uint});
-                cmdbuf->set_viewport(Viewport(0.0f, 0.0f, (f32)m_screen_width, (f32)m_screen_height, 0.0f, 1.0f));
-                for (usize i = 0; i < num_draw_calls; ++i)
-                {
-                    IDescriptorSet* ds = m_desc_sets[i];
-                    cmdbuf->set_graphics_descriptor_sets(0, { &ds, 1 });
-                    cmdbuf->set_scissor_rect(RectI(0, 0, m_screen_width, m_screen_height));
-                    cmdbuf->draw_indexed(draw_calls[i].num_indices, draw_calls[i].base_index, 0);
-                }
-                cmdbuf->end_render_pass();
             }
             lucatchret;
             return ok;
         }
-        LUNA_VG_API R<Ref<IShapeRenderer>> new_fill_shape_renderer(RHI::ITexture* render_target)
+        void FillShapeRenderer::submit(RHI::ICommandBuffer* cmdbuf)
+        {
+            // Build command buffer.
+            using namespace RHI;
+            usize num_draw_calls = m_draw_calls.size();
+            Vector<TextureBarrier> barriers;
+            barriers.push_back({ m_render_target, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::color_attachment_write, ResourceBarrierFlag::discard_content });
+            barriers.push_back({ g_white_tex, TEXTURE_BARRIER_ALL_SUBRESOURCES, TextureStateFlag::automatic, TextureStateFlag::shader_read_ps, ResourceBarrierFlag::none });
+            for (usize i = 0; i < num_draw_calls; ++i)
+            {
+                if (m_draw_calls[i].texture)
+                {
+                    barriers.push_back({ m_draw_calls[i].texture, TEXTURE_BARRIER_ALL_SUBRESOURCES, TextureStateFlag::automatic, TextureStateFlag::shader_read_ps, ResourceBarrierFlag::none });
+                }
+            }
+            cmdbuf->resource_barrier({}, { barriers.data(), (u32)barriers.size()});
+            RenderPassDesc desc;
+            desc.color_attachments[0] = ColorAttachment(m_render_target, LoadOp::load, StoreOp::store);
+            cmdbuf->begin_render_pass(desc);
+            cmdbuf->set_graphics_pipeline_state(m_fill_pso);
+            cmdbuf->set_graphics_pipeline_layout(g_fill_playout);
+            cmdbuf->set_viewport(Viewport(0.0f, 0.0f, (f32)m_screen_width, (f32)m_screen_height, 0.0f, 1.0f));
+            cmdbuf->set_scissor_rect(RectI(0, 0, m_screen_width, m_screen_height));
+            usize dc_index = 0;
+            for(usize i = 0; i < m_draw_commands.size(); ++i)
+            {
+                auto& cmd = m_draw_commands[i];
+                auto num_vertices = cmd.vertex_buffer->get_desc().size / sizeof(Vertex);
+                auto view = VertexBufferView(cmd.vertex_buffer, 0, sizeof(Vertex) * num_vertices, sizeof(Vertex));
+                cmdbuf->set_vertex_buffers(0, { &view, 1 });
+                auto num_indices = cmd.index_buffer->get_desc().size / sizeof(u32);
+                cmdbuf->set_index_buffer({cmd.index_buffer, 0, (u32)num_indices * (u32)sizeof(u32), Format::r32_uint});
+                for (usize j = 0; j < cmd.num_draw_calls; ++j)
+                {
+                    IDescriptorSet* ds = m_desc_sets[dc_index];
+                    cmdbuf->set_graphics_descriptor_sets(0, { &ds, 1 });
+                    cmdbuf->draw_indexed(m_draw_calls[dc_index].num_indices, m_draw_calls[dc_index].base_index, 0);
+                    ++dc_index;
+                }
+            }
+            cmdbuf->end_render_pass();
+        }
+        LUNA_VG_API Ref<IShapeRenderer> new_fill_shape_renderer()
         {
             Ref<IShapeRenderer> ret;
             Ref<FillShapeRenderer> renderer = new_object<FillShapeRenderer>();
-            lutry
-            {
-                luexp(renderer->init(render_target));
-            }
-            lucatchret;
             ret = renderer;
             return ret;
         }

@@ -3,10 +3,15 @@ cbuffer g_cb : register(b0)
 {
     float g_exposure;
     uint g_auto_exposure;
+    uint g_dst_width;
+    uint g_dst_height;
+    float g_bloom_intensity;
 }
 Texture2D<float4> g_scene_tex : register(t1);
 Texture2D<float> g_lum_tex : register(t2);
-RWTexture2D<float4> g_dst_tex : register(u3);
+Texture2D<float> g_bloom_tex : register(t3);
+RWTexture2D<float4> g_dst_tex : register(u4);
+SamplerState g_sampler : register(s5);
 
 // @see: https://knarkowicz.wordpress.com/2016/01/06/aces-filmic-tone-mapping-curve/
 float3 aces_film(float3 x)
@@ -34,6 +39,10 @@ float3 gamma_correction(float3 color, float gamma)
 void main(int3 dispatch_thread_id : SV_DispatchThreadID)
 {
     float3 hdr_color = g_scene_tex[dispatch_thread_id.xy].xyz;
+    float2 texel_size = float2(1 / (float)g_dst_width, 1 / (float)g_dst_height);
+    float2 uv = texel_size * ((float2)dispatch_thread_id.xy + 0.5f);
+    float3 bloom_color = g_bloom_tex.SampleLevel(g_sampler, uv, 0.0f) * g_bloom_intensity;
+    hdr_color += bloom_color;
     float exposure;
     if(g_auto_exposure > 0)
     {

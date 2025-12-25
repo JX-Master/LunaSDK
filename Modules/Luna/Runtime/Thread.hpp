@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -64,6 +64,10 @@ namespace Luna
     //! Gets the thread object of current running thread.
     //! @return The thread object of the current thread.
     LUNA_RUNTIME_API IThread* get_current_thread();
+
+    //! Gets the thread ID of the current thread.
+    //! @return Returns the thread ID of the current thread.
+    LUNA_RUNTIME_API usize get_current_thread_id();
 
     //! Gets the thread object of the main thread.
     //! @return The thread object of the main thread.

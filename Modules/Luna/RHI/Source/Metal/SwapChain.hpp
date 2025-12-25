@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -31,7 +31,7 @@ namespace Luna
 
             u32 m_command_queue_index;
 
-            void init_metal_layer(const SwapChainDesc& desc);
+            RV init_metal_layer(const SwapChainDesc& desc);
 
             RV init(u32 command_queue_index, Window::IWindow* window, const SwapChainDesc& desc);
 
@@ -39,11 +39,15 @@ namespace Luna
             virtual void set_name(const c8* name) override  { }
             virtual Window::IWindow* get_window() override { return m_window; }
             virtual SwapChainDesc get_desc() override { return m_desc; }
+            virtual SwapChainSurfaceTransform get_surface_transform() override { return SwapChainSurfaceTransform::identity; }
             virtual R<ITexture*> get_current_back_buffer() override;
             virtual RV present() override;
+            virtual bool reset_suggested() override
+            {
+                auto window_size = m_window->get_framebuffer_size();
+                return window_size.x != m_desc.width || window_size.y != m_desc.height;
+            }
             virtual RV reset(const SwapChainDesc& desc) override;
         };
-
-        void bind_layer_to_window(Window::IWindow* window, CA::MetalLayer* layer, u32 buffer_count);
     }
 }

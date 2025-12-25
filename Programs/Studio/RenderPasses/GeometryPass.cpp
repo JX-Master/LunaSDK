@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -14,7 +14,10 @@
 #include "../Material.hpp"
 #include "../SceneRenderer.hpp"
 #include "../StudioHeader.hpp"
-#include <Luna/RHI/Utility.hpp>
+#include <Luna/RHIUtility/ResourceWriteContext.hpp>
+
+#include <GeometryVert.hpp>
+#include <GeometryPixel.hpp>
 
 namespace Luna
 {
@@ -31,14 +34,12 @@ namespace Luna
                 DescriptorSetLayoutBinding::read_texture_view(TextureViewType::tex2d, 4, 1, ShaderVisibilityFlag::pixel),
                 DescriptorSetLayoutBinding::read_texture_view(TextureViewType::tex2d, 5, 1, ShaderVisibilityFlag::pixel),
                 DescriptorSetLayoutBinding::read_texture_view(TextureViewType::tex2d, 6, 1, ShaderVisibilityFlag::pixel),
-                DescriptorSetLayoutBinding::sampler(7, 1, ShaderVisibilityFlag::pixel)
+                DescriptorSetLayoutBinding::sampler(7, 1, ShaderVisibilityFlag::pixel),
+                DescriptorSetLayoutBinding::read_buffer_view(8, 1, ShaderVisibilityFlag::pixel)
                 })));
             auto dl = m_geometry_pass_dlayout.get();
             luset(m_geometry_pass_playout, device->new_pipeline_layout(PipelineLayoutDesc({ &dl, 1 },
                 PipelineLayoutFlag::allow_input_assembler_input_layout)));
-
-            lulet(vs_blob, compile_shader("Shaders/GeometryVert.hlsl", ShaderCompiler::ShaderType::vertex));
-            lulet(ps_blob, compile_shader("Shaders/GeometryPixel.hlsl", ShaderCompiler::ShaderType::pixel));
 
             GraphicsPipelineStateDesc ps_desc;
             ps_desc.primitive_topology = PrimitiveTopology::triangle_list;
@@ -51,8 +52,8 @@ namespace Luna
             InputBindingDesc binding(0, sizeof(Vertex), InputRate::per_vertex);
             ps_desc.input_layout.attributes = { attributes.data(), attributes.size() };
             ps_desc.input_layout.bindings = { &binding, 1 };
-            ps_desc.vs = get_shader_data_from_compile_result(vs_blob);
-            ps_desc.ps = get_shader_data_from_compile_result(ps_blob);
+            ps_desc.vs = LUNA_GET_SHADER_DATA(GeometryVert);
+            ps_desc.ps = LUNA_GET_SHADER_DATA(GeometryPixel);
             ps_desc.pipeline_layout = m_geometry_pass_playout;
             ps_desc.num_color_attachments = 3;
             ps_desc.color_formats[0] = Format::rgba8_unorm;
@@ -79,12 +80,23 @@ namespace Luna
             u8 metallic_data = 0;
             u8 emissive_data[4] = { 0, 0, 0, 0 };
             lulet(upload_cmdbuf, device->new_command_buffer(g_env->async_copy_queue));
-            luexp(copy_resource_data(upload_cmdbuf, {
-                CopyResourceData::write_texture(m_default_base_color, SubresourceIndex(0, 0), 0, 0, 0, base_color_data, 4, 4, 1, 1, 1),
-                CopyResourceData::write_texture(m_default_roughness, SubresourceIndex(0, 0), 0, 0, 0, &roughness_data, 1, 1, 1, 1, 1),
-                CopyResourceData::write_texture(m_default_normal, SubresourceIndex(0, 0), 0, 0, 0, normal_data, 4, 4, 1, 1, 1),
-                CopyResourceData::write_texture(m_default_metallic, SubresourceIndex(0, 0), 0, 0, 0, &metallic_data, 1, 1, 1, 1, 1),
-                CopyResourceData::write_texture(m_default_emissive, SubresourceIndex(0, 0), 0, 0, 0, emissive_data, 4, 4, 1, 1, 1)}));
+            auto writer = RHIUtility::new_resource_write_context(g_env->device);
+            u32 row_pitch, slice_pitch;
+            void* mapped;
+            luset(mapped, writer->write_texture(m_default_base_color, SubresourceIndex(0, 0), 0, 0, 0, 1, 1, 1, row_pitch, slice_pitch));
+            memcpy(mapped, base_color_data, sizeof(base_color_data));
+            luset(mapped, writer->write_texture(m_default_roughness, SubresourceIndex(0, 0), 0, 0, 0, 1, 1, 1, row_pitch, slice_pitch));
+            memcpy(mapped, &roughness_data, sizeof(roughness_data));
+            luset(mapped, writer->write_texture(m_default_normal, SubresourceIndex(0, 0), 0, 0, 0, 1, 1, 1, row_pitch, slice_pitch));
+            memcpy(mapped, normal_data, sizeof(normal_data));
+            luset(mapped, writer->write_texture(m_default_metallic, SubresourceIndex(0, 0), 0, 0, 0, 1, 1, 1, row_pitch, slice_pitch));
+            memcpy(mapped, &metallic_data, sizeof(metallic_data));
+            luset(mapped, writer->write_texture(m_default_emissive, SubresourceIndex(0, 0), 0, 0, 0, 1, 1, 1, row_pitch, slice_pitch));
+            memcpy(mapped, emissive_data, sizeof(emissive_data));
+            luexp(writer->commit(upload_cmdbuf, true));
+            u32 sb_alignment = device->check_feature(RHI::DeviceFeature::structured_buffer_offset_alignment).structured_buffer_offset_alignment;
+            m_model_matrices_stride = (u32)align_upper(sizeof(MeshBuffer), sb_alignment);
+            m_material_parameter_stride = (u32)align_upper(sizeof(MaterialParameters), sb_alignment);
         }
         lucatchret;
         return ok;
@@ -120,9 +132,9 @@ namespace Luna
                     {emissive_tex, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::color_attachment_write, ResourceBarrierFlag::discard_content},
                     {depth_tex, SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::depth_stencil_attachment_write, ResourceBarrierFlag::discard_content} });
             
-            for (usize i = 0; i < ts.size(); ++i)
+            for (usize i = 0; i < mesh_render_params.size(); ++i)
             {
-                auto model = get_asset_or_async_load_if_not_ready<Model>(rs[i]->model);
+                auto model = mesh_render_params[i].model;
                 auto mesh = get_asset_or_async_load_if_not_ready<Mesh>(model->mesh);
 
                 u32 num_pieces = (u32)mesh->pieces.size();
@@ -198,16 +210,16 @@ namespace Luna
             cmdbuf->set_scissor_rect(RectI(0, 0, (i32)render_desc.width, (i32)render_desc.height));
 
             // Draw Meshes.
-            for (usize i = 0; i < ts.size(); ++i)
+            u32 first_material_element = 0;
+            for (usize i = 0; i < mesh_render_params.size(); ++i)
             {
-                auto model = get_asset_or_async_load_if_not_ready<Model>(rs[i]->model);
+                auto model = mesh_render_params[i].model;
                 auto mesh = get_asset_or_async_load_if_not_ready<Mesh>(model->mesh);
                 cmdbuf->set_vertex_buffers(0, { VertexBufferView(mesh->vb, 0,
                     mesh->vb_count * sizeof(Vertex), sizeof(Vertex)) });
                 cmdbuf->set_index_buffer({mesh->ib, 0, (u32)(mesh->ib_count * sizeof(u32)), Format::r32_uint});
 
                 u32 num_pieces = (u32)mesh->pieces.size();
-
                 for (u32 j = 0; j < num_pieces; ++j)
                 {
                     Ref<ITexture> base_color_tex = m_global_data->m_default_base_color;
@@ -252,18 +264,20 @@ namespace Luna
                     lulet(vs, device->new_descriptor_set(DescriptorSetDesc(m_global_data->m_geometry_pass_dlayout)));
                     luexp(vs->update_descriptors({
                         WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(camera_cb, 0, (u32)align_upper(sizeof(CameraCB), cb_align))),
-                        WriteDescriptorSet::read_buffer_view(1, BufferViewDesc::structured_buffer(model_matrices, i, 1, sizeof(Float4x4) * 2)),
+                        WriteDescriptorSet::read_buffer_view(1, BufferViewDesc::structured_buffer(model_matrices, i, 1, m_global_data->m_model_matrices_stride)),
                         WriteDescriptorSet::read_texture_view(2, TextureViewDesc::tex2d(base_color_tex)),
                         WriteDescriptorSet::read_texture_view(3, TextureViewDesc::tex2d(roughness_tex)),
                         WriteDescriptorSet::read_texture_view(4, TextureViewDesc::tex2d(normal_tex)),
                         WriteDescriptorSet::read_texture_view(5, TextureViewDesc::tex2d(metallic_tex)),
                         WriteDescriptorSet::read_texture_view(6, TextureViewDesc::tex2d(emissive_tex)),
-                        WriteDescriptorSet::sampler(7, SamplerDesc(Filter::linear, Filter::linear, Filter::linear, TextureAddressMode::repeat, TextureAddressMode::repeat, TextureAddressMode::repeat))
+                        WriteDescriptorSet::sampler(7, SamplerDesc(Filter::linear, Filter::linear, Filter::linear, TextureAddressMode::repeat, TextureAddressMode::repeat, TextureAddressMode::repeat)),
+                        WriteDescriptorSet::read_buffer_view(8, BufferViewDesc::structured_buffer(material_parameters, first_material_element + j, 1, m_global_data->m_material_parameter_stride))
                         }));
                     cmdbuf->set_graphics_descriptor_set(0, vs);
                     cmdbuf->attach_device_object(vs);
                     cmdbuf->draw_indexed(mesh->pieces[j].num_indices, mesh->pieces[j].first_index_offset, 0);
                 }
+                first_material_element += num_pieces;
             }
             cmdbuf->end_render_pass();
         }

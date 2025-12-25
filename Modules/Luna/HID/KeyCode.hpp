@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -152,6 +152,8 @@ namespace Luna
             l_menu,
             //! Right alt key on Windows, right option key on Mac.
             r_menu,
+            //! Windows key on Windows, command key on Mac.
+            system,
             //! Left Windows key on Windows, left command key on Mac.
             l_system,
             //! Right Windows key on Windows, right command key on Mac.

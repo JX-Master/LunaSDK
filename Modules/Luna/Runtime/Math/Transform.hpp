@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -67,7 +67,7 @@ namespace Luna
         //! @param[in] rotation The rotation quaternion.
         //! @param[in] scaling The scaling vector.
         //! @return Returns the result matrix. The matrix can be applied to one vector using `mul(vec, mat)`.
-        Float4x4 make(const Float3& translation, const Float4& rotation, const Float3& scaling);
+        Float4x4 make(const Float3& translation, const Quaternion& rotation, const Float3& scaling);
         //! Extracts the up direction from one 2D affine matrix.
         //! @details
         //! The returned vector is scaled by the Y factor of the scale component of the affine 
@@ -223,7 +223,7 @@ namespace Luna
         //! Constructs one 3D rotation matrix from one rotation Quaternion.
         //! @param[in] rotation The rotation quaternion.
         //! @return Returns the constructed matrix.
-        Float4x4 make_rotation(const Float4& rotation);
+        Float4x4 make_rotation(const Quaternion& rotation);
         //! Constructs one 3D rotation matrix that represents one rotation alone x axis.
         //! @param[in] rotation The rotation represected in radians.
         //! @return Returns the constructed matrix.

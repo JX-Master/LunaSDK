@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -85,37 +85,6 @@ namespace Luna
         }
         lucatchret;
         return ok;
-    }
-    inline R<ShaderCompiler::ShaderCompileResult> compile_shader(const Path& shader_file, ShaderCompiler::ShaderType shader_type)
-    {
-        ShaderCompiler::ShaderCompileResult ret;
-        lutry
-        {
-            lulet(f, open_file(shader_file.encode().c_str(), FileOpenFlag::read, FileCreationMode::open_existing));
-            auto file_size = f->get_size();
-            auto file_blob = Blob((usize)file_size);
-            luexp(f->read(file_blob.data(), file_blob.size()));
-            f.reset();
-            auto compiler = ShaderCompiler::new_compiler();
-            ShaderCompiler::ShaderCompileParameters params;
-            params.source = {(const c8*)file_blob.data(), file_blob.size()};
-            params.source_name = shader_file.filename();
-            params.source_file_path = shader_file;
-            params.entry_point = "main";
-            params.target_format = RHI::get_current_platform_shader_target_format();
-            params.shader_type = shader_type;
-            params.shader_model = {6, 0};
-#ifdef LUNA_DEBUG
-            params.optimization_level = ShaderCompiler::OptimizationLevel::none;
-            params.debug = true;
-#else
-            params.optimization_level = ShaderCompiler::OptimizationLevel::full;
-            params.debug = false;
-#endif
-            luset(ret, compiler->compile(params));
-        }
-        lucatchret;
-        return ret;
     }
     
     void async_load_asset(Asset::asset_t asset);

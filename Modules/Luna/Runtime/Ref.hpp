@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -312,7 +312,7 @@ namespace Luna
         template <typename _Rty, typename _Enable = enable_if_t<is_base_of_v<Interface, _Rty>>>
         Ref(_Rty* ptr)
         {
-            _Ty* v = query_interface<_Ty>(ptr->get_object());
+            _Ty* v = ptr ? query_interface<_Ty>(ptr->get_object()) : nullptr;
             m_vtable = v;
             internal_addref();
         }
@@ -669,7 +669,7 @@ namespace Luna
         //! Constructs one weak reference from one strong reference of the same type.
         //! @details The weak reference counter of the new boxed object, if not null, will be increased.
         //! @param[in] rhs The reference to set.
-        WeakRef(const Ref<_Ty>& rhs) : m_vtable(rhs.vtable()) { internal_addref(); }
+        WeakRef(const Ref<_Ty>& rhs) : m_vtable(rhs.get()) { internal_addref(); }
         //! Assigns this reference by coping the pointer from one strong reference of the same type.
         //! @details The weak reference counter of the new boxed object, if not null, will be increased.
         //! The weak reference counter of the original boxed object, if not null, will be decreased before assignment.

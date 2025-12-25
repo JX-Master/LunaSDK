@@ -1,11 +1,11 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
-* @file IWindowsWindow.hpp
+* @file CocoaWindow.hpp
 * @author JXMaster
-* @date 2022/4/5
+* @date 2025/10/5
 */
 #pragma once
 #include <Luna/Runtime/PlatformDefines.hpp>
@@ -27,6 +27,8 @@ namespace Luna
 
             //! Gets NSWindow* handle of the window object.
             //! @return Returns NSWindow* handle of the window object.
+            //! The window handle is owned by the window object, the user cannot increase/decrease the reference
+            //! counter of the window handle.
             virtual id get_nswindow() = 0;
         };
 

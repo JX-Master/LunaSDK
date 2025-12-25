@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -100,6 +100,8 @@ namespace Luna
     //! @param[in] data_alignment The alignment requirement of the data in bytes. Specify `0` to use the default alignment, 
     //! which is @ref MAX_ALIGN.
     //! @param[in] data_dtor One optional callback function that will be called when the data is going to be freed if specified.
+    //! @return Returns one pointer to the memory that contains the private data.
+    //! The memory is uninitialized when this function returns.
     //! @par Valid Usage
     //! * `type` must specify one valid type object.
     LUNA_RUNTIME_API void* set_type_private_data(typeinfo_t type, const Guid& data_guid, usize data_size, usize data_alignment = 0, void(*data_dtor)(void*) = nullptr);
@@ -243,7 +245,7 @@ namespace Luna
     //! @par Valid Usage
     //! * `type` must specify one valid type object and cannot be a generic structure type.
     //! * `dst` and `src` must specify one valid memory address.
-    LUNA_RUNTIME_API void copy_construct_type(typeinfo_t type, void* dst, void* src);
+    LUNA_RUNTIME_API void copy_construct_type(typeinfo_t type, void* dst, const void* src);
     //! Copy constructs one array of instances of the specified type.
     //! @details The construction is performed as follows:
     //! 1. If `type` is a trivially copy constructable type, use @ref memcpy to copy instance data.
@@ -257,7 +259,7 @@ namespace Luna
     //! @par Valid Usage
     //! * `type` must specify one valid type object and cannot be a generic structure type.
     //! * `dst` and `src` must specify one valid memory address.
-    LUNA_RUNTIME_API void copy_construct_type_range(typeinfo_t type, void* dst, void* src, usize count);
+    LUNA_RUNTIME_API void copy_construct_type_range(typeinfo_t type, void* dst, const void* src, usize count);
     //! Move constructs one instance of the specified type.
     //! @details The construction is performed as follows:
     //! 1. If `type` is a trivially move constructable type, use @ref memcpy to move instance data.
@@ -297,7 +299,7 @@ namespace Luna
     //! @par Valid Usage
     //! * `type` must specify one valid type object and cannot be a generic structure type.
     //! * `dst` and `src` must specify one valid memory address.
-    LUNA_RUNTIME_API void copy_assign_type(typeinfo_t type, void* dst, void* src);
+    LUNA_RUNTIME_API void copy_assign_type(typeinfo_t type, void* dst, const void* src);
     //! Copy assigns one array of instances of the specified type.
     //! @details The assignment is performed as follows:
     //! 1. If `type` is a trivially copy assignable type, use @ref memcpy to copy instance data.
@@ -311,7 +313,7 @@ namespace Luna
     //! @par Valid Usage
     //! * `type` must specify one valid type object and cannot be a generic structure type.
     //! * `dst` and `src` must specify one valid memory address.
-    LUNA_RUNTIME_API void copy_assign_type_range(typeinfo_t type, void* dst, void* src, usize count);
+    LUNA_RUNTIME_API void copy_assign_type_range(typeinfo_t type, void* dst, const void* src, usize count);
     //! Move assigns one instance of the specified type.
     //! @details The assignment is performed as follows:
     //! 1. If `type` is a trivially move assignable type, use @ref memcpy to move instance data.
@@ -557,7 +559,7 @@ namespace Luna
     //! @param[in] type The type of the instance.
     //! @param[in] dst The instance data to construct.
     //! @param[in] src The instance data to copy data from.
-    using structure_copy_ctor_t = void(typeinfo_t type, void* dst, void* src);
+    using structure_copy_ctor_t = void(typeinfo_t type, void* dst, const void* src);
     //! The structure move constructor used by the reflection system.
     //! @param[in] type The type of the instance.
     //! @param[in] dst The instance data to construct.
@@ -567,7 +569,7 @@ namespace Luna
     //! @param[in] type The type of the instance.
     //! @param[in] dst The instance data to assign.
     //! @param[in] src The instance data to copy data from.
-    using structure_copy_assign_t = void(typeinfo_t type, void* dst, void* src);
+    using structure_copy_assign_t = void(typeinfo_t type, void* dst, const void* src);
     //! The structure move assignment operator used by the reflection system.
     //! @param[in] type The type of the instance.
     //! @param[in] dst The instance data to assign.
@@ -615,6 +617,9 @@ namespace Luna
         //! moved to another memory address using @ref memcpy, and using the instance on new memory location behaves the same
         //! as the instance on old memory location.
         bool trivially_relocatable = true;
+        //! Whether this structure is abstract. One abstract structure cannot be used to construct instances, but can be used
+        //! as base class for derived structures.
+        bool abstract = false;
     };
 
     //! Describes the information of one generic structure instantiation operation.
@@ -652,7 +657,7 @@ namespace Luna
     //! required.
     //! @param[in] generic_type The generic type to instantiate.
     //! @param[in] generic_arguments Types that are used as arguments to instantiate one generic structure instanced type.
-    using generic_structure_instantiate_t = GenericStructureInstantiateInfo(typeinfo_t generic_type, Span<const typeinfo_t> generic_arguments);
+    using generic_structure_instantiate_t = GenericStructureInstantiateInfo(typeinfo_t generic_type, Span<const GenericArgument> generic_arguments);
 
     //! Describes one generic structure type.
     struct GenericStructureTypeDesc
@@ -720,14 +725,6 @@ namespace Luna
 
     //! Gets properties of the specified structure.
     //! @param[in] type The type to query.
-    //! @return Returns properties of the specified structure. The returned buffer is valid until SDK shutdown.
-    //! Returns one empty range if `type` is not a structure or generic structure instanced type.
-    //! @par Valid Usage
-    //! * `type` must specify one valid type object.
-    LUNA_RUNTIME_API Span<const StructurePropertyDesc> get_struct_properties(typeinfo_t type);
-
-    //! Gets properties of the specified structure.
-    //! @param[in] type The type to query.
     //! @param[out] out_properties Returns properties of the specified structure. Existing elements in the vector will not be modified.
     //! If `type` is not a structure or generic structure instanced type, this vector is not changed.
     //! @param[in] include_base_type Whether to query properties that belongs to the base type of this structure type if this structure type has
@@ -735,7 +732,7 @@ namespace Luna
     //! @par Valid Usage
     //! * `type` must specify one valid type object.
     LUNA_RUNTIME_API void get_struct_properties(typeinfo_t type, Vector<StructurePropertyDesc>& out_properties, bool include_base_type = true);
-    
+
     //! Gets the base type of the specified type.
     //! @param[in] type The type to query.
     //! @return Returns the base type of the specified type.
@@ -802,7 +799,7 @@ namespace Luna
     //! Returns one empty span if `type` is not a generic structure instanced type.
     //! @par Valid Usage
     //! * `type` must specify one valid type object.
-    LUNA_RUNTIME_API Span<const typeinfo_t> get_struct_generic_arguments(typeinfo_t type);
+    LUNA_RUNTIME_API Span<const GenericArgument> get_struct_generic_arguments(typeinfo_t type);
 
     //! Gets the generic parameter names of the specified type.
     //! @param[in] type The type to query.
@@ -842,9 +839,9 @@ namespace Luna
 
     //! The default copy constructor used by the reflection system.
     template <typename _Ty>
-    inline void default_copy_ctor(typeinfo_t type, void* dst, void* src)
+    inline void default_copy_ctor(typeinfo_t type, void* dst, const void* src)
     {
-        copy_construct((_Ty*)dst, (_Ty*)src);
+        copy_construct((_Ty*)dst, (const _Ty*)src);
     }
 
     //! The default move constructor used by the reflection system.
@@ -856,9 +853,9 @@ namespace Luna
 
     //! The default copy assignment function used by the reflection system.
     template <typename _Ty>
-    inline void default_copy_assign(typeinfo_t type, void* dst, void* src)
+    inline void default_copy_assign(typeinfo_t type, void* dst, const void* src)
     {
-        copy_assign((_Ty*)dst, (_Ty*)src);
+        copy_assign((_Ty*)dst, (const _Ty*)src);
     }
 
     //! The default move assignment function used by the reflection system.
@@ -892,6 +889,29 @@ namespace Luna
         desc.move_assign = is_trivially_move_assignable_v<_Ty> ? nullptr : default_move_assign<_Ty>;
         desc.properties = properties;
         desc.trivially_relocatable = is_trivially_relocatable_v<_Ty>;
+        desc.abstract = false;
+        return register_struct_type(desc);
+    }
+
+    template <typename _Ty>
+    typeinfo_t register_abstract_struct_type(Span<const StructurePropertyDesc> properties, typeinfo_t base_type = nullptr)
+    {
+        StructureTypeDesc desc;
+        desc.guid = _Ty::__guid;
+        desc.name = _Ty::__name;
+        desc.alias = Name();
+        desc.base_type = base_type;
+        desc.size = sizeof(_Ty);
+        desc.alignment = alignof(_Ty);
+        desc.ctor = nullptr;
+        desc.dtor = is_trivially_destructible_v<_Ty> ? nullptr : default_dtor<_Ty>;
+        desc.copy_ctor = nullptr;
+        desc.move_ctor = nullptr;
+        desc.copy_assign = is_trivially_copy_assignable_v<_Ty> ? nullptr : default_copy_assign<_Ty>;
+        desc.move_assign = is_trivially_move_assignable_v<_Ty> ? nullptr : default_move_assign<_Ty>;
+        desc.properties = properties;
+        desc.trivially_relocatable = is_trivially_relocatable_v<_Ty>;
+        desc.abstract = true;
         return register_struct_type(desc);
     }
 

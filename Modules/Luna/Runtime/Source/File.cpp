@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -13,7 +13,7 @@
 
 namespace Luna
 {
-    LUNA_RUNTIME_API R<Ref<IFile>>    open_file(const c8* filename, FileOpenFlag flags, FileCreationMode creation)
+    LUNA_RUNTIME_API R<Ref<IFile>> open_file(const c8* filename, FileOpenFlag flags, FileCreationMode creation)
     {
         Ref<IFile> ret;
         lutry
@@ -51,15 +51,15 @@ namespace Luna
     {
         return OS::get_file_attribute(filename);
     }
-    LUNA_RUNTIME_API RV    copy_file(const c8* from_path, const c8* to_path, FileCopyFlag flags)
+    LUNA_RUNTIME_API RV copy_file(const c8* from_path, const c8* to_path)
     {
-        return OS::copy_file(from_path, to_path, flags);
+        return OS::copy_file(from_path, to_path);
     }
-    LUNA_RUNTIME_API RV    move_file(const c8* from_path, const c8* to_path, FileMoveFlag flags)
+    LUNA_RUNTIME_API RV move_file(const c8* from_path, const c8* to_path)
     {
-        return OS::move_file(from_path, to_path, flags);
+        return OS::move_file(from_path, to_path);
     }
-    LUNA_RUNTIME_API RV    delete_file(const c8* filename)
+    LUNA_RUNTIME_API RV delete_file(const c8* filename)
     {
         return OS::delete_file(filename);
     }

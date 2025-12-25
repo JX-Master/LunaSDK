@@ -1,0 +1,5 @@
+target("LunaShader")
+    set_luna_sdk_program()
+    add_files("**.cpp")
+    add_deps("Runtime", "ShaderCompiler")
+target_end()

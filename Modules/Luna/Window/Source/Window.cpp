@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -16,7 +16,7 @@ namespace Luna
 {
     namespace Window
     {
-        StartupParams g_startup_params;
+        extern StartupParams g_startup_params;
         c8 g_name[260];
         Version g_version;
 
@@ -31,6 +31,7 @@ namespace Luna
                     memcpy(g_name, g_startup_params.name, min<usize>(len, 260));
                 }
                 g_version = g_startup_params.version;
+                register_events();
                 return platform_init();
             }
             virtual void on_close() override

@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -72,10 +72,6 @@ namespace Luna
             // operator=(const value_type* s)
             str8 = u8"Sample String";
             lutest(!strcmp(str8.c_str(), u8"Sample String"));
-
-            // operator=(value_type ch)
-            str8 = 'c';
-            lutest(!strcmp(str8.c_str(), u8"c"));
 
             // operator=(InitializerList<value_type> ilist)
             str8 = { 'e', 't', 'f' };

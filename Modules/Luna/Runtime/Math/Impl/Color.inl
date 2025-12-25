@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -30,6 +30,22 @@ namespace Luna
                 (u32(color.w * 255.0f));
 #endif
         }
+        inline constexpr u32 make_rgba8(u8 r, u8 g, u8 b, u8 a)
+        {
+#ifdef LUNA_PLATFORM_LITTLE_ENDIAN
+            return
+                (u32(r))  |
+                (u32(g) << 8) |
+                (u32(b) << 16) |
+                (u32(a) << 24);
+#else
+            return
+                (u32(r) << 24) |
+                (u32(g) << 16) |
+                (u32(b) << 8) |
+                (u32(a));
+#endif
+        }
         inline constexpr u32 to_argb8(const Float4& color)
         {
 #ifdef LUNA_PLATFORM_LITTLE_ENDIAN
@@ -44,6 +60,22 @@ namespace Luna
                 (u32(color.x * 255.0f) << 16) |
                 (u32(color.y * 255.0f) << 8) |
                 (u32(color.z * 255.0f));
+#endif
+        }
+        inline constexpr u32 make_argb8(u8 r, u8 g, u8 b, u8 a)
+        {
+#ifdef LUNA_PLATFORM_LITTLE_ENDIAN
+            return
+                (u32(a))  |
+                (u32(r) << 8) |
+                (u32(g) << 16) |
+                (u32(b) << 24);
+#else
+            return
+                (u32(a) << 24) |
+                (u32(r) << 16) |
+                (u32(g) << 8) |
+                (u32(b));
 #endif
         }
         inline constexpr u32 to_abgr8(const Float4& color)
@@ -62,6 +94,22 @@ namespace Luna
                 (u32(color.x * 255.0f));
 #endif
         }
+        inline constexpr u32 make_abgr8(u8 r, u8 g, u8 b, u8 a)
+        {
+#ifdef LUNA_PLATFORM_LITTLE_ENDIAN
+            return
+                (u32(a))  |
+                (u32(b) << 8) |
+                (u32(g) << 16) |
+                (u32(r) << 24);
+#else
+            return
+                (u32(a) << 24) |
+                (u32(b) << 16) |
+                (u32(g) << 8) |
+                (u32(r));
+#endif
+        }
         inline constexpr u32 to_bgra8(const Float4& color)
         {
 #ifdef LUNA_PLATFORM_LITTLE_ENDIAN
@@ -76,6 +124,22 @@ namespace Luna
                 (u32(color.y * 255.0f) << 16) |
                 (u32(color.x * 255.0f) << 8) |
                 (u32(color.w * 255.0f));
+#endif
+        }
+        inline constexpr u32 make_bgra8(u8 r, u8 g, u8 b, u8 a)
+        {
+#ifdef LUNA_PLATFORM_LITTLE_ENDIAN
+            return
+                (u32(b))  |
+                (u32(g) << 8) |
+                (u32(r) << 16) |
+                (u32(a) << 24);
+#else
+            return
+                (u32(b) << 24) |
+                (u32(g) << 16) |
+                (u32(r) << 8) |
+                (u32(a));
 #endif
         }
         namespace Impl

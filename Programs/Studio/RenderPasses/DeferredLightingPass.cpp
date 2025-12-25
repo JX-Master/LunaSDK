@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -11,7 +11,11 @@
 #include <Luna/Runtime/File.hpp>
 #include "../SceneRenderer.hpp"
 #include "../StudioHeader.hpp"
-#include <Luna/RHI/Utility.hpp>
+#include <Luna/RHIUtility/ResourceWriteContext.hpp>
+
+#include <DeferredLighting.hpp>
+#include <PrecomputeIntegrateBRDF.hpp>
+
 namespace Luna
 {
     RV DeferredLightingPassGlobalData::init(RHI::IDevice* device)
@@ -37,10 +41,8 @@ namespace Luna
                 PipelineLayoutFlag::deny_vertex_shader_access |
                 PipelineLayoutFlag::deny_pixel_shader_access)));
 
-            lulet(cs_blob, compile_shader("Shaders/DeferredLighting.hlsl", ShaderCompiler::ShaderType::compute));
-
             ComputePipelineStateDesc ps_desc;
-            fill_compute_pipeline_state_desc_from_compile_result(ps_desc, cs_blob);
+            LUNA_FILL_COMPUTE_SHADER_DATA(ps_desc, DeferredLighting);
             ps_desc.pipeline_layout = m_deferred_lighting_pass_playout;
             luset(m_deferred_lighting_pass_pso, device->new_compute_pipeline_state(ps_desc));
 
@@ -48,7 +50,11 @@ namespace Luna
                 TextureUsageFlag::read_texture | TextureUsageFlag::copy_dest, 1, 1, 1, 1)));
             u8 skybox_data[] = {0, 0, 0, 0};
             lulet(upload_cmdbuf, device->new_command_buffer(g_env->async_copy_queue));
-            luexp(copy_resource_data(upload_cmdbuf, {CopyResourceData::write_texture(m_default_skybox, SubresourceIndex(0, 0), 0, 0, 0, skybox_data, 4, 4, 1, 1, 1)}));
+            auto writer = RHIUtility::new_resource_write_context(g_env->device);
+            u32 row_pitch, slice_pitch;
+            lulet(mapped, writer->write_texture(m_default_skybox, SubresourceIndex(0, 0), 0, 0, 0, 1, 1, 1, row_pitch, slice_pitch));
+            memcpy_bitmap(mapped, skybox_data, 4, 1, row_pitch, 4);
+            luexp(writer->commit(upload_cmdbuf, true));
 
             // Generate integrate brdf.
             constexpr usize INTEGEATE_BRDF_SIZE = 256;
@@ -62,9 +68,8 @@ namespace Luna
                 lulet(playout, device->new_pipeline_layout(PipelineLayoutDesc({ &dl, 1 },
                     PipelineLayoutFlag::deny_vertex_shader_access |
                     PipelineLayoutFlag::deny_pixel_shader_access)));
-                lulet(cs_blob, compile_shader("Shaders/PrecomputeIntegrateBRDF.hlsl", ShaderCompiler::ShaderType::compute));
                 ComputePipelineStateDesc ps_desc;
-                fill_compute_pipeline_state_desc_from_compile_result(ps_desc, cs_blob);
+                LUNA_FILL_COMPUTE_SHADER_DATA(ps_desc, PrecomputeIntegrateBRDF);
                 ps_desc.pipeline_layout = playout;
                 lulet(pso, device->new_compute_pipeline_state(ps_desc));
                 lulet(compute_cmdbuf, device->new_command_buffer(g_env->async_compute_queue));
@@ -122,7 +127,6 @@ namespace Luna
         using namespace RHI;
         lutry
         {
-            u32 num_lights = light_ts.empty() ? 1 : (u32)light_ts.size();
             LightingParamsCB* mapped = nullptr;
             luexp(m_lighting_params_cb->map(0, 0, (void**)&mapped));
             mapped->lighting_mode = lighting_mode;
@@ -203,9 +207,9 @@ namespace Luna
             if(normal_metallic_texture == RG::INVALID_RESOURCE) return set_error(BasicError::bad_arguments(), "DeferredLightingPass: Input \"normal_metallic_texture\" is not specified.");
             if(emissive_texture == RG::INVALID_RESOURCE) return set_error(BasicError::bad_arguments(), "DeferredLightingPass: Input \"emissive_texture\" is not specified.");
             RG::ResourceDesc desc = compiler->get_resource_desc(scene_texture);
-            if (desc.texture.format != RHI::Format::rgba32_float)
+            if (desc.texture.format != RHI::Format::rgba16_float)
             {
-                return set_error(BasicError::bad_arguments(), "DeferredLightingPass: Invalid format for \"scene_texture\" is specified. \"scene_texture\" must be Format::rgba32_float.");
+                return set_error(BasicError::bad_arguments(), "DeferredLightingPass: Invalid format for \"scene_texture\" is specified. \"scene_texture\" must be Format::rgba16_float.");
             }
             desc.texture.usages |= RHI::TextureUsageFlag::read_write_texture;
             compiler->set_resource_desc(scene_texture, desc);

@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -19,10 +19,12 @@
 #include <Luna/Window/MessageBox.hpp>
 
 #include "Camera.hpp"
+#include "Transform.hpp"
 #include "Light.hpp"
 #include "SceneSettings.hpp"
 #include "ModelRenderer.hpp"
 #include <Luna/Runtime/Serialization.hpp>
+#include "World.hpp"
 #include "Scene.hpp"
 
 #include "RenderPasses/SkyBoxPass.hpp"
@@ -31,15 +33,61 @@
 #include "RenderPasses/GeometryPass.hpp"
 #include "RenderPasses/DeferredLightingPass.hpp"
 #include "RenderPasses/BufferVisualizationPass.hpp"
+#include "RenderPasses/BloomPass.hpp"
 
 #include "SceneRenderer.hpp"
 #include <Luna/Runtime/Log.hpp>
 #include <Luna/Runtime/Thread.hpp>
 #include <Luna/Runtime/Profiler.hpp>
+#include <Luna/Window/Event.hpp>
 
 namespace Luna
 {
     MainEditor* g_main_editor;
+
+    void MainEditor::draw_main_menu_bar()
+    {
+        // Main menu bar.
+        if(ImGui::BeginMainMenuBar())
+        {
+            if(ImGui::BeginMenu("File"))
+            {
+                if(ImGui::MenuItem("Save All"))
+                {
+                    auto _ = save_all();
+                }
+                ImGui::EndMenu();
+            }
+            if(ImGui::BeginMenu("Edit"))
+            {
+                if(ImGui::MenuItem("Undo", "Ctrl+Z", nullptr, can_undo()))
+                {
+                    undo();
+                }
+                if(ImGui::MenuItem("Redo", "Ctrl+Shift+Z", nullptr, can_redo()))
+                {
+                    redo();
+                }
+                ImGui::EndMenu();
+            }
+            if(ImGui::BeginMenu("View"))
+            {
+                if(ImGui::BeginMenu("Asset Browser"))
+                {
+                    for (usize i = 0; i < 4; ++i)
+                    {
+                        c8 buf[32];
+                        snprintf(buf, 32, "Asset Browser %u", (u32)i);
+                        ImGui::Checkbox(buf, &m_asset_browsers_enabled[i]);
+                    }
+                    ImGui::EndMenu();
+                }
+                ImGui::Checkbox("Memory Profiler", &m_memory_profiler_window_enabled);
+                ImGui::EndMenu();
+            }
+            ImGui::EndMainMenuBar();
+        }
+    }
 
     RV MainEditor::init(const Path& project_path)
     {
@@ -63,10 +111,41 @@ namespace Luna
             luexp(Asset::load_assets_meta("/"));
 
             // Create window and render objects.
-            snprintf(title, 256, "%s - Luna Studio", name.c_str());
-            luset(m_window, Window::new_window(title, Window::WindowDisplaySettings::as_windowed(), Window::WindowCreationFlag::resizable));
+            snprintf(title, 256, "%s - %s", name.c_str(), APP_NAME);
+            luset(m_window, Window::new_window(title));
 
-            m_window->get_close_event().add_handler([](Window::IWindow* window) {window->close(); });
+            Window::set_event_handler([](object_t event, void* userdata){
+                MainEditor* editor = (MainEditor*)userdata;
+                if(!ImGuiUtils::handle_window_event(event))
+                {
+                    if(auto e = cast_object<Window::WindowRequestCloseEvent>(event))
+                    {
+                        if(e->window == editor->m_window)
+                        {
+                            bool should_close = true;
+                            if(editor->has_any_unsaved_changes())
+                            {
+                                auto r = Window::message_box("Save changes before closing the current project?", APP_NAME, Window::MessageBoxType::yes_no_cancel, Window::MessageBoxIcon::question);
+                                luassert_always(succeeded(r));
+                                if(r.get() == Window::MessageBoxButton::cancel)
+                                {
+                                    should_close = false;
+                                }
+                                else if(r.get() == Window::MessageBoxButton::yes)
+                                {
+                                    // Save document.
+                                    RV ret = editor->save_all();
+                                    if(failed(ret))
+                                    {
+                                        should_close = false;
+                                    }
+                                }
+                            }
+                            e->do_close = should_close;
+                        }
+                    }
+                }
+            }, this);
 
             luset(m_swap_chain, g_env->device->new_swap_chain(g_env->graphics_queue, m_window, RHI::SwapChainDesc({0, 0, 2, RHI::Format::bgra8_unorm, true})));
             luset(m_cmdbuf, g_env->device->new_command_buffer(g_env->graphics_queue));
@@ -113,6 +192,7 @@ namespace Luna
             luexp(register_wireframe_pass());
             luexp(register_geometry_pass());
             luexp(register_deferred_lighting_pass());
+            luexp(register_bloom_pass());
             luexp(register_tone_mapping_pass());
             luexp(register_buffer_visualization_pass());
 
@@ -184,22 +264,7 @@ namespace Luna
             ImGui::End();
             ImGui::PopStyleVar(3);
 
-            // Draw Asset Browser.
-            if (ImGui::BeginMainMenuBar())
-            {
-                if (ImGui::BeginMenu("View"))
-                {
-                    for (usize i = 0; i < 4; ++i)
-                    {
-                        c8 buf[32];
-                        snprintf(buf, 32, "Asset Browser %u", (u32)i);
-                        ImGui::Checkbox(buf, &m_asset_browsers_enabled[i]);
-                    }
-                    ImGui::Checkbox("Memory Profiler", &m_memory_profiler_window_enabled);
-                    ImGui::EndMenu();
-                }
-                ImGui::EndMainMenuBar();
-            }
+            draw_main_menu_bar();
 
             for (usize i = 0; i < 4; ++i)
             {
@@ -252,6 +317,63 @@ namespace Luna
     {
         unregister_profiler_callback(m_memory_profiler_callback_handle);
     }
+    RV MainEditor::save_all()
+    {
+        RV ret = ok;
+        for(auto& asset : m_assets_version)
+        {
+            if(asset.second.edit_version != asset.second.save_version)
+            {
+                auto r = save_asset(asset.first);
+                if(failed(r))
+                {
+                    ret = r;
+                    String errmsg;
+                    strprintf(errmsg, "Failed to save asset %s: %s", Asset::get_asset_path(asset.first).encode().c_str(), explain(r.errcode()));
+                    auto _ = Window::message_box(errmsg.c_str(), APP_NAME, Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
+                }
+            }
+        }
+        return ret;
+    }
+    void MainEditor::execute(Operation* op)
+    {
+        luassert(op);
+        op->execute();
+        while(m_operations_stack_top < m_operations_stack.size())
+        {
+            m_operations_stack.pop_back();
+        }
+        // Keep memory usage reasonable for undo history.
+        while(m_operations_stack.size() > 256)
+        {
+            m_operations_stack.pop_front();
+        }
+        m_operations_stack.push_back(op);
+        m_operations_stack_top = m_operations_stack.size();
+    }
+    void MainEditor::undo()
+    {
+        luassert(can_undo());
+        m_operations_stack[m_operations_stack_top - 1]->revert();
+        m_operations_stack_top -= 1;
+    }
+    void MainEditor::redo()
+    {
+        luassert(can_redo());
+        m_operations_stack[m_operations_stack_top]->execute();
+        m_operations_stack_top += 1;
+    }
+    RV MainEditor::save_asset(Asset::asset_t asset)
+    {
+        lutry
+        {
+            luexp(Asset::save_asset(asset));
+            mark_asset_as_saved(asset);
+        }
+        lucatchret;
+        return ok;
+    }
 
     void register_components()
     {
@@ -275,34 +397,40 @@ namespace Luna
         set_property_attribute(typeof<Camera>(), "fov", "gui_min", (f64)deg_to_rad(60));
         set_property_attribute(typeof<Camera>(), "fov", "gui_max", (f64)deg_to_rad(160));
         set_property_attribute(typeof<Camera>(), "aspect_ratio", "hide", true);
+        
+        register_struct_type<ActorRef>({
+            luproperty(ActorRef, Guid, guid)
+        });
+        set_serializable<ActorRef>();
 
-        register_struct_type<DirectionalLight>({
-                luproperty(DirectionalLight, Float3, intensity),
-                luproperty(DirectionalLight, f32, intensity_multiplier)
+        register_struct_type<ActorInfo>({});
+
+        register_struct_type<Transform>({
+            luproperty(Transform, Float3, position),
+            luproperty(Transform, Quaternion, rotation),
+            luproperty(Transform, Float3, scale)
+        });
+        set_serializable<Transform>();
+
+        register_enum_type<LightType>({
+            luoption(LightType, directional),
+            luoption(LightType, point),
+            luoption(LightType, spot)
+        });
+
+        set_serializable<LightType>();
+
+        register_struct_type<Light>({
+            luproperty(Light, LightType, type),
+            luproperty(Light, Float3, intensity),
+            luproperty(Light, f32, intensity_multiplier),
+            luproperty(Light, f32, attenuation_power),
+            luproperty(Light, f32, spot_power)
             });
-        set_serializable<DirectionalLight>();
-        g_env->component_types.insert(typeof<DirectionalLight>());
+        set_serializable<Light>();
+        g_env->component_types.insert(typeof<Light>());
 
-        register_struct_type<PointLight>({
-            luproperty(PointLight, Float3, intensity),
-            luproperty(PointLight, f32, intensity_multiplier),
-            luproperty(PointLight, f32, attenuation_power)
-            });
-        set_serializable<PointLight>();
-        g_env->component_types.insert(typeof<PointLight>());
-
-        register_struct_type<SpotLight>({
-            luproperty(SpotLight, Float3, intensity),
-            luproperty(SpotLight, f32, intensity_multiplier),
-            luproperty(SpotLight, f32, attenuation_power),
-            luproperty(SpotLight, f32, spot_power)
-            });
-        set_serializable<SpotLight>();
-        g_env->component_types.insert(typeof<SpotLight>());
-
-        set_property_attribute(typeof<DirectionalLight>(), "intensity", "color_gui", true);
-        set_property_attribute(typeof<PointLight>(), "intensity", "color_gui", true);
-        set_property_attribute(typeof<SpotLight>(), "intensity", "color_gui", true);
+        set_property_attribute(typeof<Light>(), "intensity", "color_gui", true);
 
         register_struct_type<ModelRenderer>({
             luproperty(ModelRenderer, Asset::asset_t, model)
@@ -311,24 +439,33 @@ namespace Luna
         g_env->component_types.insert(typeof<ModelRenderer>());
 
         register_struct_type<SceneSettings>({
-            luproperty(SceneSettings, Name, camera_entity),
+            luproperty(SceneSettings, ActorRef, camera_actor),
             luproperty(SceneSettings, Asset::asset_t, skybox),
             luproperty(SceneSettings, Float3, environment_color),
             luproperty(SceneSettings, f32, skybox_rotation),
             luproperty(SceneSettings, f32, exposure),
-            luproperty(SceneSettings, bool, auto_exposure)
+            luproperty(SceneSettings, bool, auto_exposure),
+            luproperty(SceneSettings, f32, bloom_threshold),
+            luproperty(SceneSettings, f32, bloom_intensity)
             });
         set_serializable<SceneSettings>();
         g_env->scene_component_types.insert(typeof<SceneSettings>());
         set_property_attribute(typeof<SceneSettings>(), "environment_color", "color_gui", true);
         set_property_attribute(typeof<SceneSettings>(), "exposure", "gui_min", (f64)0.00001f);
         set_property_attribute(typeof<SceneSettings>(), "exposure", "gui_max", (f64)1.0f);
+        set_property_attribute(typeof<SceneSettings>(), "bloom_threshold", "gui_min", (f64)0.0f);
+        set_property_attribute(typeof<SceneSettings>(), "bloom_threshold", "gui_max", (f64)10.0f);
+        set_property_attribute(typeof<SceneSettings>(), "bloom_intensity", "gui_min", (f64)0.0f);
+        set_property_attribute(typeof<SceneSettings>(), "bloom_intensity", "gui_max", (f64)2.0f);
     }
 
     void run_main_editor(const Path& project_path)
     {
         register_boxed_type<MainEditor>();
         register_boxed_type<AssetBrowser>();
+        register_struct_type<Operation>({});
+        register_struct_type<AssetEditingOp>({}, typeof<Operation>());
+        register_struct_type<DiffAssetEditingOp>({}, typeof<AssetEditingOp>());
 
         Ref<MainEditor> main_editor = new_object<MainEditor>();
         g_main_editor = main_editor;

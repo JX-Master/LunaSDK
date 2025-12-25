@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -38,6 +38,7 @@ namespace Luna
         luiimpl();
 
         f32 exposure;
+        f32 bloom_intensity;
         bool auto_exposure;
 
         RV init(ToneMappingPassGlobalData* global_data);

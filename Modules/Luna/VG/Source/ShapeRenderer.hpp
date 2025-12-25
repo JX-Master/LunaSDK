@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -18,10 +18,13 @@ namespace Luna
         RV init_render_resources();
         void deinit_render_resources();
 
-        extern const c8 FILL_SHADER_SOURCE_VS[];
-        extern const c8 FILL_SHADER_SOURCE_PS[];
-        extern usize FILL_SHADER_SOURCE_VS_SIZE;
-        extern usize FILL_SHADER_SOURCE_PS_SIZE;
+        struct DrawCommand
+        {
+            Ref<RHI::IBuffer> vertex_buffer;
+            Ref<RHI::IBuffer> index_buffer;
+            usize num_draw_calls;
+            Float4x4U transform_matrix;
+        };
 
         struct FillShapeRenderer : IShapeRenderer
         {
@@ -36,6 +39,9 @@ namespace Luna
             Ref<RHI::IPipelineState> m_fill_pso;
             RHI::Format m_rt_format;
 
+            Vector<DrawCommand> m_draw_commands; // One per `draw()`.
+            Vector<ShapeDrawCall> m_draw_calls;
+
             Vector<Ref<RHI::IDescriptorSet>> m_desc_sets;
             Ref<RHI::IBuffer> m_cbs_resource;
             usize m_cbs_capacity;
@@ -48,17 +54,15 @@ namespace Luna
 
             RV create_pso(RHI::Format rt_format);
 
-            RV init(RHI::ITexture* render_target);
-
-            virtual RV set_render_target(RHI::ITexture* render_target) override;
-
-            virtual RV render(
-                RHI::ICommandBuffer* cmdbuf,
+            virtual RV begin(RHI::ITexture* render_target) override;
+            virtual void draw(
                 RHI::IBuffer* vertex_buffer,
                 RHI::IBuffer* index_buffer,
                 Span<const ShapeDrawCall> draw_calls,
                 Float4x4U* transform_matrix
             ) override;
+            virtual RV end() override;
+            virtual void submit(RHI::ICommandBuffer* cmdbuf) override;
         };
     }
 }

@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -11,6 +11,7 @@
 #include <Luna/Runtime/Serialization.hpp>
 #include <Luna/Runtime/HashMap.hpp>
 #include <Luna/Runtime/Tuple.hpp>
+#include <Luna/Runtime/Array.hpp>
 
 namespace Luna
 {
@@ -86,6 +87,51 @@ namespace Luna
             for (usize i = 0; i < v1.size(); ++i)
             {
                 lutest(v1[i] == v2[i]);
+            }
+        }
+
+        {
+            Array<i32> arr1 = { 1, 4, 2, 5, 3, 8, 6, 9, 0 };
+            Variant var = serialize(arr1).get();
+            Array<i32> arr2;
+            lupanic_if_failed(deserialize(arr2, var));
+            lutest(arr1.size() == arr2.size());
+            for (usize i = 0; i < arr1.size(); ++i)
+            {
+                lutest(arr1[i] == arr2[i]);
+            }
+        }
+
+        {
+            Array<i32, 9> arr1;
+            arr1[0] = 1;
+            arr1[1] = 4;
+            arr1[2] = 2;
+            arr1[3] = 5;
+            arr1[4] = 3;
+            arr1[5] = 8;
+            arr1[6] = 6;
+            arr1[7] = 9;
+            arr1[8] = 0;
+            Variant var = serialize(arr1).get();
+            Array<i32, 9> arr2;
+            lupanic_if_failed(deserialize(arr2, var));
+            lutest(arr1.size() == arr2.size());
+            for (usize i = 0; i < arr1.size(); ++i)
+            {
+                lutest(arr1[i] == arr2[i]);
+            }
+        }
+
+        {
+            Array<i32> arr1 = { 1, 4, 2, 5, 3, 8, 6, 9, 0 };
+            Variant var = serialize(arr1).get();
+            Array<i32, 9> arr2;
+            lupanic_if_failed(deserialize(arr2, var));
+            lutest(arr1.size() == arr2.size());
+            for (usize i = 0; i < arr1.size(); ++i)
+            {
+                lutest(arr1[i] == arr2[i]);
             }
         }
     }

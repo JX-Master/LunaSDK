@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -257,6 +257,12 @@ namespace Luna
                 break;
             case DeviceFeature::uniform_buffer_data_alignment:
                 ret.uniform_buffer_data_alignment = 256;
+                break;
+            case DeviceFeature::structured_buffer_offset_alignment:
+                ret.structured_buffer_offset_alignment = 1;
+                break;
+            case DeviceFeature::rasterizer_depth_clamp:
+                ret.rasterizer_depth_clamp = true;
                 break;
             default: lupanic();
             }

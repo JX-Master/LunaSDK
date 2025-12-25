@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -16,212 +16,45 @@
 #include <Luna/Runtime/Vector.hpp>
 #include <Luna/Runtime/Math/Transform.hpp>
 #include <Luna/Runtime/Result.hpp>
+#include "Transform.hpp"
+#include "SceneSettings.hpp"
 
 namespace Luna
 {
-    struct Entity
+    //! The actor used to save to asset.
+    struct SceneActor
     {
-        lustruct("Entity", "{183DB545-72F3-475C-9413-33F4B4E2BDBD}");
-
+        lustruct("SceneActor", "65d3c5ba-38ea-4bf8-a40a-26c496f445ad");
+        
+        Guid guid;
         Name name;
-        Entity* parent = nullptr;
-        Vector<Ref<Entity>> children;
-        Float3 position = Float3::zero();
-        Float4 rotation = Quaternion::identity();
-        Float3 scale = Float3::one();
-        HashMap<typeinfo_t, ObjRef> components;
-
-        void remove_child(usize index)
-        {
-            if (index < children.size())
-            {
-                children[index].get()->parent = nullptr;
-                children.erase(children.begin() + index);
-            }
-        }
-        void remove_child(Entity* child)
-        {
-            for (auto iter = children.begin(); iter != children.end(); ++iter)
-            {
-                if (*iter == child)
-                {
-                    child->parent = nullptr;
-                    children.erase(iter);
-                    break;
-                }
-            }
-        }
-        void add_child(Entity* child, usize index)
-        {
-            Ref<Entity> e = child;
-            if (e->parent)
-            {
-                e->parent->remove_child(e);
-            }
-            e->parent = this;
-            if (index >= children.size())
-            {
-                children.push_back(e);
-            }
-            else
-            {
-                children.insert(children.begin() + index, e);
-            }
-        }
-        Float4x4 this_to_parent_matrix() const
-        {
-            return AffineMatrix::make(position, rotation, scale);
-        }
-        Float4x4 parent_to_this_matrix() const
-        {
-            return inverse(this_to_parent_matrix());
-        }
-        Float4x4 local_to_world_matrix() const
-        {
-            if (parent)
-            {
-                return mul(this_to_parent_matrix(), parent->local_to_world_matrix());
-            }
-            else
-            {
-                return this_to_parent_matrix();
-            }
-        }
-        Float4x4 world_to_local_matrix() const
-        {
-            if (parent)
-            {
-                return mul(parent->world_to_local_matrix(), parent->parent_to_this_matrix());
-            }
-            else
-            {
-                return parent_to_this_matrix();
-            }
-        }
-        Float3 world_position() const
-        {
-            if (parent)
-            {
-                Float4x4 mat = parent->local_to_world_matrix();
-                Float4 pos = mul(Float4(position.x, position.y, position.z, 1.0f), mat);
-                return Float3(pos.x, pos.y, pos.z);
-            }
-            return position;
-        }
-        Float4 world_rotation() const
-        {
-            if (parent)
-            {
-                return rotation * parent->world_rotation();
-            }
-            return rotation;
-        }
-        void set_world_position(const Float3& position)
-        {
-            Float4 pos(position.x, position.y, position.z, 1.0f);
-            pos = mul(pos, world_to_local_matrix());
-            this->position = Float3(pos.x, pos.y, pos.z);
-        }
-        void set_this_to_parent_matrix(const Float4x4& mat)
-        {
-            position = AffineMatrix::translation(mat);
-            scale = AffineMatrix::scaling(mat);
-            Float3 eular_angles = AffineMatrix::euler_angles(AffineMatrix::rotation_matrix(mat));
-            rotation = Quaternion::from_euler_angles(Float3(eular_angles.x, eular_angles.y, eular_angles.z));
-        }
-        void set_parent_to_this_matrix(const Float4x4& mat)
-        {
-            set_this_to_parent_matrix(inverse(mat));
-        }
-        void set_local_to_world_matrix(const Float4x4& mat)
-        {
-            if (parent)
-            {
-                // We need to decompose the local-to-world matrix to this-to-parent matrix.
-                set_this_to_parent_matrix(mul(mat, parent->world_to_local_matrix()));
-            }
-            else
-            {
-                set_this_to_parent_matrix(mat);
-            }
-        }
-        void set_world_to_local_matrix(const Float4x4& mat)
-        {
-            if (parent)
-            {
-                set_parent_to_this_matrix(mul(parent->local_to_world_matrix(), mat));
-            }
-            else
-            {
-                set_parent_to_this_matrix(mat);
-            }
-        }
-        template <typename _Ty>
-        _Ty* get_component()
-        {
-            auto iter = components.find(typeof<_Ty>());
-            if (iter != components.end())
-            {
-                return Ref<_Ty>(iter->second).get();
-            }
-            return nullptr;
-        }
+        Transform transform;
+        Vector<Guid> children;
+        Vector<ObjRef> components;
     };
+
+    struct World;
 
     struct Scene
     {
         lustruct("Scene", "{7402c29e-780b-4bb8-8de4-ee83a006a3e8}");
 
-        Vector<Ref<Entity>> root_entities;
-        HashMap<typeinfo_t, ObjRef> scene_components;
+        SceneSettings settings;
+        Vector<SceneActor> actors;
 
-    private:
-        static Entity* find_entity(const Name& name, Vector<Ref<Entity>>& entities)
+        SceneActor* get_actor(const Guid& guid)
         {
-            for (auto& e : entities)
+            for(auto& actor : actors)
             {
-                if (e->name == name) return e;
-                auto child = find_entity(name, e->children);
-                if (child) return child;
+                if(actor.guid == guid)
+                {
+                    return &actor;
+                }
             }
             return nullptr;
         }
 
-    public:
-
-        Entity* find_entity(const Name& name)
-        {
-            return find_entity(name, root_entities);
-        }
-
-        R<Entity*> add_entity(const Name& name, Entity* parent = nullptr)
-        {
-            auto ent = find_entity(name);
-            if (ent) return BasicError::already_exists();
-            Ref<Entity> entity = new_object<Entity>();
-            entity->name = name;
-            if (parent)
-            {
-                entity->parent = parent;
-                parent->children.push_back(entity);
-            }
-            else
-            {
-                root_entities.push_back(entity);
-            }
-            return entity.get();
-        }
-
-        template <typename _Ty>
-        _Ty* get_scene_component()
-        {
-            auto iter = scene_components.find(typeof<_Ty>());
-            if (iter != scene_components.end())
-            {
-                return Ref<_Ty>(iter->second).get();
-            }
-            return nullptr;
-        }
-
+        void add_to_world(World* world);
+        void remove_from_world(World* world);
     };
 }

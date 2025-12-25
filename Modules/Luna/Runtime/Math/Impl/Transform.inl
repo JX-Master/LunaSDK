@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -34,7 +34,7 @@ namespace Luna
 #endif
             return affine_matrix;
         }
-        inline Float4x4 make(const Float3& translation, const Float4& rotation, const Float3& scaling)
+        inline Float4x4 make(const Float3& translation, const Quaternion& rotation, const Float3& scaling)
         {
             Float4x4 affine_matrix;
 #ifdef LUNA_SIMD
@@ -305,7 +305,7 @@ namespace Luna
 #endif
             return ret;
         }
-        inline Float4x4 make_rotation(const Float4& rotation)
+        inline Float4x4 make_rotation(const Quaternion& rotation)
         {
             Float4x4 ret;
 #ifdef LUNA_SIMD

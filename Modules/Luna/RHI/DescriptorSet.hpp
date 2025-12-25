@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -278,7 +278,7 @@ namespace Luna
             f32 max_lod;
 
             SamplerDesc() = default;
-            SamplerDesc(Filter min_filter,
+            constexpr SamplerDesc(Filter min_filter,
                 Filter mag_filter,
                 Filter mip_filter,
                 TextureAddressMode address_u,

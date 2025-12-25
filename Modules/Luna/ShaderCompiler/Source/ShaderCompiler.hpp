@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -8,6 +8,15 @@
 * @date 2022/10/15
 */
 #pragma once
+
+#if defined(LUNA_PLATFORM_WINDOWS) || defined(LUNA_PLATFORM_MACOS)
+#define LUNA_SHADER_COMPILER_ENABLED 1
+#endif
+
+#include <Luna/Runtime/TSAssert.hpp>
+#include "../ShaderCompiler.hpp"
+
+#if LUNA_SHADER_COMPILER_ENABLED
 #ifdef LUNA_PLATFORM_WINDOWS
 #include <dxc/Support/WinAdapter.h>
 #include <dxc/Support/WinIncludes.h>
@@ -16,14 +25,14 @@
 #include <dxc/dxcapi.h>
 #include <dxc/WinAdapter.h>
 #endif
-#include <Luna/Runtime/TSAssert.hpp>
-#include "../ShaderCompiler.hpp"
 #include <string>
+#endif
 
 namespace Luna
 {
     namespace ShaderCompiler
     {
+#if LUNA_SHADER_COMPILER_ENABLED
         template <typename _Ty>
         class ComPtr
         {
@@ -92,12 +101,15 @@ namespace Luna
             ComPtr<IDxcBlob> m_dxc_blob;
         };
 
+#endif
+
         struct Compiler : public ICompiler
         {
             lustruct("ShaderCompiler::Compiler", "{E89511FE-424E-4076-8478-6BE1254714E0}");
             luiimpl();
             lutsassert_lock();
 
+#if LUNA_SHADER_COMPILER_ENABLED
             // Context.
             const Path* m_source_file_path = nullptr;
             ComPtr<IDxcCompiler3> m_dxc_compiler;
@@ -107,6 +119,7 @@ namespace Luna
             R<ShaderCompileResult> compile_none(const ShaderCompileParameters& params);
             R<DxcCompileResult> dxc_compile(const ShaderCompileParameters& params, DxcTargetType target_type);
             R<ShaderCompileResult> spirv_compile(const ShaderCompileParameters& params, SpirvOutputType output_type);
+#endif
             virtual R<ShaderCompileResult> compile(const ShaderCompileParameters& params) override;
         };
     }

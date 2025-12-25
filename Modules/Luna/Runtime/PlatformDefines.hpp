@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -99,6 +99,7 @@
     #if defined(LUNA_PLATFORM_IOS)
         #define LUNA_PLATFORM_MOBILE    1
         #define LUNA_PLATFORM_APPLE     1
+        #define LUNA_PLATFORM_POSIX     1
     #endif
     #if defined(LUNA_PLATFORM_DURANGO)
         #define LUNA_PLATFORM_CONSOLE    1
@@ -163,7 +164,7 @@
 #endif // LUNA_MANUAL_CONFIG_CPP_STANDARD_VERSION
 
 #if !defined(LUNA_COMPILER_CPP14)
-    # error "Luna SDK needs CPP14 support to build."
+    # error "LunaSDK needs CPP14 support to build."
 #endif
 
 // Compiler Defines

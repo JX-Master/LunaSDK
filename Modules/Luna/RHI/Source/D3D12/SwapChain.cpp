@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -65,7 +65,7 @@ namespace Luna
             m_desc = desc;
             if (!m_desc.width || !m_desc.height)
             {
-                UInt2U sz = window->get_size();
+                UInt2U sz = window->get_framebuffer_size();
                 if (!m_desc.width)
                 {
                     m_desc.width = sz.x;
@@ -74,6 +74,14 @@ namespace Luna
                 {
                     m_desc.height = sz.y;
                 }
+            }
+            if(m_desc.format == Format::unknown)
+            {
+                m_desc.format = Format::bgra8_unorm;
+            }
+            if(m_desc.buffer_count == 0)
+            {
+                m_desc.buffer_count = 2;
             }
             DXGI_SWAP_CHAIN_DESC1 d;
             d.Width = m_desc.width;
@@ -97,6 +105,7 @@ namespace Luna
                     d.Flags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
                 }
                 luexp(encode_hresult(dxgifac->CreateSwapChainForHwnd(m_device->m_command_queues[queue_index]->m_command_queue.Get(), hwnd, &d, NULL, NULL, &m_sc)));
+                luexp(set_color_space(m_desc.color_space));
                 luexp(reset_back_buffer_resources());
             }
             lucatchret;
@@ -138,6 +147,37 @@ namespace Luna
             lucatchret;
             return ok;
         }
+        RV SwapChain::set_color_space(ColorSpace color_space)
+        {
+            lutry
+            {
+                ComPtr<IDXGISwapChain3> swap_chain;
+                m_sc->QueryInterface<IDXGISwapChain3>(&swap_chain);
+                if(!swap_chain)
+                {
+                    return RHIError::color_space_not_supported();
+                }
+                DXGI_COLOR_SPACE_TYPE type;
+                if(color_space == ColorSpace::unspecified) return ok;
+                switch(color_space)
+                {
+                    case ColorSpace::srgb:
+                    type = DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;
+                    break;
+                    case ColorSpace::scrgb_linear:
+                    type = DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709;
+                    break;
+                    case ColorSpace::bt2020:
+                    type = DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020;
+                    break;
+                    default:
+                    return RHIError::color_space_not_supported();
+                }
+                luexp(encode_hresult(swap_chain->SetColorSpace1(type)));
+            }
+            lucatchret;
+            return ok;
+        }
         R<ITexture*> SwapChain::get_current_back_buffer()
         {
             lutsassert();
@@ -167,7 +207,21 @@ namespace Luna
         RV SwapChain::reset(const SwapChainDesc& desc)
         {
             lutsassert();
+            for (auto& back_buffer : m_back_buffers)
+            {
+                WaitForSingleObject(back_buffer.m_event, INFINITE);
+                back_buffer.m_back_buffer->m_res.Reset();
+            }
+            m_back_buffers.clear();
             SwapChainDesc modified_desc = desc;
+            if(!modified_desc.width)
+            {
+                modified_desc.width = m_desc.width;
+            }
+            if(!modified_desc.height)
+            {
+                modified_desc.height = m_desc.height;
+            }
             if (!modified_desc.buffer_count)
             {
                 modified_desc.buffer_count = m_desc.buffer_count;
@@ -176,27 +230,9 @@ namespace Luna
             {
                 modified_desc.format = m_desc.format;
             }
-            for (auto& back_buffer : m_back_buffers)
+            if(modified_desc.color_space == ColorSpace::unspecified)
             {
-                WaitForSingleObject(back_buffer.m_event, INFINITE);
-                back_buffer.m_back_buffer->m_res.Reset();
-            }
-            m_back_buffers.clear();
-            if (!modified_desc.width || !modified_desc.height)
-            {
-                auto sz = m_window->get_size();
-                if (!modified_desc.width)
-                {
-                    modified_desc.width = sz.x;
-                }
-                if (!modified_desc.height)
-                {
-                    modified_desc.height = sz.y;
-                }
-            }
-            if (modified_desc.format == Format::unknown)
-            {
-                modified_desc.format = m_desc.format;
+                modified_desc.color_space = m_desc.color_space;
             }
             lutry
             {
@@ -207,6 +243,7 @@ namespace Luna
                 }
                 luexp(encode_hresult(m_sc->ResizeBuffers(modified_desc.buffer_count, modified_desc.width, modified_desc.height, encode_format(modified_desc.format), flags)));
                 m_desc = modified_desc;
+                luexp(set_color_space(m_desc.color_space));
                 luexp(reset_back_buffer_resources());
             }
             lucatchret;

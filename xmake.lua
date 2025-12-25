@@ -2,6 +2,63 @@ set_project("Luna")
 
 add_moduledirs("Tools/xmake/modules")
 
+rule("luna.shader")
+    set_extensions(".hlsl")
+    add_orders("luna.shader", "c++.build")
+    on_load(function (target) 
+        local headerdir = path.join(target:autogendir(), "shaders")
+        if not os.isdir(headerdir) then 
+            os.mkdir(headerdir)
+        end 
+        target:add("includedirs", headerdir)
+        
+        local cpp_rule = target:rule("c++.build"):clone()
+        cpp_rule:add("deps", "luna.shader", {order = true})
+        target:rule_add(cpp_rule)
+    end)
+    on_build_file(function (target, sourcefile, opt)
+        import("compile_shader")
+        import("utils.progress")
+        import("core.project.depend")
+
+        -- get object file
+        local headerdir = path.absolute(path.join(target:autogendir(), "shaders"))
+        local targetfile = path.join(headerdir, path.basename(sourcefile) .. ".hpp")
+        local configs = target:fileconfig(sourcefile) or {}
+
+        -- need build this object?
+        local dependfile = target:dependfile(targetfile)
+        local dependinfo = target:is_rebuilt() and {} or (depend.load(dependfile) or {})
+        if not depend.is_changed(dependinfo, {lastmtime = os.mtime(targetfile), values = configs}) then
+            return
+        end
+
+        -- trace progress info
+        progress.show(opt.progress, "${color.build.object}compiling.shader %s", sourcefile)
+
+        -- build this object.
+        configs.output = targetfile
+        configs.cpp_output = true
+        compile_shader.compile_shader(sourcefile, configs)
+
+        -- update files and values to the dependent file
+        dependinfo.files = {sourcefile}
+        dependinfo.values = configs
+        depend.save(dependinfo, dependfile)
+    end)
+rule_end()
+
+function add_luna_shader(file, config)
+    if is_config("rhi_api", "D3D12") then
+        config.target_format = "dxil"
+    elseif is_config("rhi_api", "Vulkan") then
+        config.target_format = "spir_v"
+    elseif is_config("rhi_api", "Metal") then
+        config.target_format = "msl"
+    end
+    add_files(file, config)
+end
+
 add_rules("mode.debug", "mode.profile", "mode.release")
 add_defines("LUNA_MANUAL_CONFIG_DEBUG_LEVEL")
 if is_mode("debug") then
@@ -19,7 +76,7 @@ option("shared")
     add_defines("LUNA_BUILD_SHARED_LIB")
 option_end()
 
-option("contract_assertion")
+option("api_validation")
     set_default(false)
     set_showmenu(true)
     set_description("Enables contract assertions. This is always enabled in debug build.")
@@ -35,33 +92,37 @@ option_end()
 option("build_tests")
     set_default(true)
     set_showmenu(true)
-    set_description("Whether to build tests for Luna SDK")
+    set_description("Whether to build tests for LunaSDK")
 option_end()
 
 option("memory_profiler")
-    set_default(true)
+    set_default(false)
     set_showmenu(true)
-    set_description("Whether to forcly enable memory profiler for Luna SDK. The memory profiler will still be enabled in Debug and Profile mode.")
+    set_description("Whether to forcly enable memory profiler for LunaSDK.")
     add_defines("LUNA_ENABLE_MEMORY_PROFILER")
 option_end()
 
 function get_default_rhi_api()
-    local default_rhi_api = false
-    if is_os("windows") then
+    local default_rhi_api = nil
+    if is_plat("windows") then
         default_rhi_api = "D3D12"
-    elseif is_os("macosx", "ios") then
+    elseif is_plat("macosx", "iphoneos") then
         default_rhi_api = "Metal"
-    elseif is_os("linux", "android") then
+    elseif is_plat("linux", "android") then
         default_rhi_api = "Vulkan"
-    end
-    if default_rhi_api == false then
-        raise("No Graphics API is present for the current platform!")
     end
     return default_rhi_api
 end
 
+function set_default_rhi_api()
+    local default_rhi = get_default_rhi_api();
+    if default_rhi then
+        set_default(default_rhi)
+    end
+end
+
 option("rhi_api")
-    set_default(get_default_rhi_api())
+    set_default_rhi_api()
     set_showmenu(true)
     if is_os("windows") then
         set_values("D3D12", "Vulkan")
@@ -70,7 +131,7 @@ option("rhi_api")
     elseif is_os("linux", "android") then
         set_values("Vulkan")
     end
-    set_description("The Graphics API to use for Luna SDK")
+    set_description("The Graphics API to use for LunaSDK")
 option_end()
 
 if is_config("rhi_api", "Vulkan") then 
@@ -81,10 +142,10 @@ elseif is_config("rhi_api", "D3D12") then
 end
 
 function add_luna_sdk_options()
-    add_options("shared", "contract_assertion", "thread_safe_assertion", "memory_profiler")
-    -- Contract assertion is always enabled in debug mode.
-    if has_config("contract_assertion") or is_mode("debug") then
-        add_defines("LUNA_ENABLE_CONTRACT_ASSERTION")
+    add_options("shared", "api_validation", "thread_safe_assertion", "memory_profiler", "rhi_api")
+    -- API validation is always enabled in debug mode.
+    if has_config("api_validation") or is_mode("debug") then
+        add_defines("LUNA_ENABLE_API_VALIDATION")
     end
 end
 
@@ -109,7 +170,13 @@ end
 function set_luna_sdk_program()
     add_luna_sdk_options()
     set_group("Programs")
-    set_kind("binary")
+    if is_plat("android") then
+        -- Android uses Java Activity as main entry point, the user program is provided as 
+        -- shared library for JNI invoking.
+        set_kind("shared")
+    else
+        set_kind("binary")
+    end
 end
 
 add_includedirs("Modules")

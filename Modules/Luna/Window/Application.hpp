@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -59,13 +59,13 @@ namespace Luna
         //! until this module is closed.
         //! @remark The application version is set by filling @ref StartupParams::name and calling @ref set_startup_params
         //! before Window module is initialized.
-        LUNA_WINDOW_API const c8* get_name();
+        LUNA_WINDOW_API const c8* get_app_name();
 
         //! Gets the application version.
         //! @return Returns the application version.
         //! @remark The application version is set by filling @ref StartupParams::version and calling @ref set_startup_params
         //! before Window module is initialized.
-        LUNA_WINDOW_API Version get_version();
+        LUNA_WINDOW_API Version get_app_version();
 
         //! @}
     }

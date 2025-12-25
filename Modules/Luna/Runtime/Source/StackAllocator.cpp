@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -81,9 +81,12 @@ namespace Luna
     }
     void stack_allocator_close()
     {
+        {
+            LockGuard guard(g_stack_allocator_ctxs_lock);
+            g_stack_allocator_ctxs.clear();
+            g_stack_allocator_ctxs.shrink_to_fit();
+        }
         tls_free(g_stack_allocator_tls);
-        g_stack_allocator_ctxs.clear();
-        g_stack_allocator_ctxs.shrink_to_fit();
     }
     StackAllocatorTLSContext* get_stack_allocator_ctx()
     {

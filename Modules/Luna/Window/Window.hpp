@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -12,9 +12,7 @@
 #include <Luna/Runtime/Result.hpp>
 #include <Luna/HID/KeyCode.hpp>
 #include <Luna/Runtime/Ref.hpp>
-#include <Luna/Runtime/Span.hpp>
-#include <Luna/Runtime/Event.hpp>
-#include "Monitor.hpp"
+#include "Display.hpp"
 #include <Luna/Runtime/Module.hpp>
 
 namespace Luna
@@ -24,172 +22,18 @@ namespace Luna
         //! @addtogroup Window Window
         //! The Window module provides window management functionalities of the underlying system.
         //! @{
-        
-        //! Identifies keys that are pressed in window mouse events.
-        enum class ModifierKeyFlag : u8
-        {
-            none = 0x00,
-            //! Ctrl key.
-            ctrl = 0x01,
-            //! Alt key.
-            menu = 0x02,
-            //! Shift key.
-            shift = 0x04,
-            //! Windows key on Windows, Command key on Mac.
-            system = 0x08,
-        };
-
-        struct IWindow;
-
-        //! The hanlder for window close event.
-        using window_close_event_handler_t = void(IWindow* window);
-
-        //! The handler for window focus event.
-        using window_focus_event_handler_t = void(IWindow* window);
-
-        //! The handler for window lose foucs event.
-        using window_lose_focus_event_handler_t = void(IWindow* window);
-
-        //! The handler for window show event.
-        using window_show_event_handler_t = void(IWindow* window);
-
-        //! The handler for window hide event.
-        using window_hide_event_handler_t = void(IWindow* window);
-
-        //! The handler for window resize event.
-        using window_resize_event_handler_t = void(IWindow* window, u32 width, u32 height);
-
-        //! The handler for window framebuffer resize event.
-        using window_framebuffer_resize_event_handler_t = void(IWindow* window, u32 width, u32 height);
-
-        //! The handler for window move resize event.
-        using window_move_event_handler_t = void(IWindow* window, i32 x, i32 y);
-
-        //! The handler for window begin resize move event.
-        using window_begin_resize_move_t = void(IWindow* window);
-
-        //! The handler for window end resize move event.
-        using window_end_resize_move_t = void(IWindow* window);
-
-        //! The handler for window dpi changed event.
-        using window_dpi_changed_event_handler_t = void(IWindow* window, f32 dpi_scale);
-
-        //! The handler for window key down event.
-        using window_key_down_event_handler_t = void(IWindow* window, HID::KeyCode key);
-
-        //! The handler for window key up event.
-        using window_key_up_event_handler_t = void(IWindow* window, HID::KeyCode key);
-
-        //! The handler for window input character event.
-        using window_input_character_event_handler_t = void(IWindow* window, c32 character);
-
-        //! The handler for mouse move event.
-        using window_mouse_move_event_handler_t = void(IWindow* window, i32 x, i32 y);
-
-        //! The handler for mouse down event.
-        using window_mouse_down_event_handler_t = void(IWindow* window, ModifierKeyFlag modifier_flags, HID::MouseButton button);
-
-        //! The handler for mouse up event.
-        using window_mouse_up_event_handler_t = void(IWindow* window, ModifierKeyFlag modifier_flags, HID::MouseButton button);
-        
-        //! The handler for mouse up event.
-        using window_mouse_wheel_event_handler_t = void(IWindow* window, f32 x_wheel_delta, f32 y_wheel_delta);
-
-        //! Identifies one touch point in one window touch event.
-        struct WindowEventTouchPoint
-        {
-            //! The unique ID that idenfity every touch point between touch events.
-            u32 id;
-            //! The position of the touch point, relative to the touch window.
-            Int2U position;
-        };
-
-        //! The handler for touch event.
-        //! @param[in] touches The span that includes all touch points for this event.
-        //! @param[in] changed_mask A bit-combined mask to identify whether every touch point is changed between multiple touch 
-        //! events. Use `(changed_mask & (1 << i))` to test the touch point `i`, where `i` is the index of `touches`.
-        using window_touch_event_handler_t = void(IWindow* window, Span<WindowEventTouchPoint> touches, u32 changed_mask);
-
-        //! The handler for drop file event.
-        using window_drop_file_event_handler_t = void(IWindow* window, i32 x, i32 y, Span<const c8*> paths);
 
         //! Specify this value as `x` or `y` of the window to let windowing system choose one suitable position for the window.
         constexpr i32 DEFAULT_POS = I32_MAX;
 
-        //! The window display settings.
-        struct WindowDisplaySettings
+        enum class WindowStyleFlag : u32
         {
-            //! The monitor that displays the window. 
-            //! 
-            //! On full screen mode, if this is `nullptr`, window will be displayed on the main monitor.
-            //! 
-            //! This must be `nullptr` if `full_screen` is `false`.
-            monitor_t monitor;
-            //! The X position of the window.
-            //! 
-            //! If @ref DEFAULT_POS is specified, the system will choose the most suitable position for the window.
-            //! 
-            //! This must be set to @ref DEFAULT_POS if `full_screen` is `true`.
-            i32 x;
-            //! The y position of the window.
-            //! 
-            //! If @ref DEFAULT_POS is specified, the system will choose the most suitable position for the window.
-            //! 
-            //! This must be set to @ref DEFAULT_POS if `full_screen` is `true`.
-            i32 y;
-            //! The width of the window.
-            //! 
-            //! If `0` is specified, the system will choose the suitable size for the window.
-            u32 width;
-            //! The height of the window.
-            //! 
-            //! If `0` is specified, the system will choose the suitable size for the window.
-            u32 height;
-            //! The refresh rate of the window.
-            //! 
-            //! If `0` is specified, the system will choose the suitable refresh rate for the window.
-            //! 
-            //! This must be set to `0` if `full_screen` is `false`.
-            u32 refresh_rate;
-            //! Whether this window is full screen.
-            bool full_screen;
-
-            //! Creates one window display settings structure that specifies one windowed window.
-            //! @param[in] x The X position of the window. If @ref DEFAULT_POS is specified, the system will choose the suitable position for the window.
-            //! @param[in] y The X position of the window. If @ref DEFAULT_POS is specified, the system will choose the suitable position for the window.
-            //! @param[in] width The width of the window. If `0` is specified, the system will choose the suitable size for the window.
-            //! @param[in] height The height of the window. If `0` is specified, the system will choose the suitable size for the window.
-            //! @return Returns the created structure.
-            static WindowDisplaySettings as_windowed(i32 x = DEFAULT_POS, i32 y = DEFAULT_POS, u32 width = 0, u32 height = 0)
-            {
-                WindowDisplaySettings ret;
-                ret.monitor = nullptr;
-                ret.x = x;
-                ret.y = y;
-                ret.width = width;
-                ret.height = height;
-                ret.refresh_rate = 0;
-                ret.full_screen = false;
-                return ret;
-            }
-            //! Creates one window display settings structure that specifies one full screen window.
-            //! @param[in] monitor The monitor that displays the window. If this is `nullptr`, window will be displayed on the main monitor.
-            //! @param[in] width The width of the window. If `0` is specified, the system will choose the suitable size for the window.
-            //! @param[in] height The height of the window. If `0` is specified, the system will choose the suitable size for the window.
-            //! @param[in] refresh_rate The refresh rate of the window. If `0` is specified, the system will choose the suitable refresh rate for the window.
-            //! @return Returns the created structure.
-            static WindowDisplaySettings as_full_screen(monitor_t monitor = nullptr, u32 width = 0, u32 height = 0, u32 refresh_rate = 0)
-            {
-                WindowDisplaySettings ret;
-                ret.monitor = monitor;
-                ret.x = DEFAULT_POS;
-                ret.y = DEFAULT_POS;
-                ret.width = width;
-                ret.height = height;
-                ret.refresh_rate = refresh_rate;
-                ret.full_screen = true;
-                return ret;
-            }
+            none = 0x00,
+            //! Whether this window is resizable by dragging the border of the window.
+            resizable = 0x01,
+            //! Disables all decorations for the window.
+            //! If this is set, `resizable` has no effect.
+            borderless = 0x02,
         };
 
         //! @interface IWindow
@@ -198,24 +42,35 @@ namespace Luna
         {
             luiid("{234f4d10-340a-4633-9acc-d70d61f44d23}");
 
+#if defined(LUNA_PLATFORM_DESKTOP)
             //! Closes this window.
-            //! On single-window platforms, this causes the application to exit.
             virtual void close() = 0;
+#endif
 
             //! Checks whether the window is closed. The window handle is invalid when one window is closed.
             //! @return Returns `true` if the window is closed. Returns `false` otherwise.
             virtual bool is_closed() = 0;
 
             //! Checks whether the window has input focus.
-            //! @return Returns `true` if the window is focused. Returns `false` otherwise.
-            virtual bool is_focused() = 0;
+            //! @return Returns `true` if the window has input focus. Returns `false` otherwise.
+            virtual bool has_input_focus() = 0;
+
+            //! Checks whether the window has mouse focus.
+            //! @return Returns `true` if the window has mouse focus. Returns `false` otherwise.
+            virtual bool has_mouse_focus() = 0;
+
+#if defined(LUNA_PLATFORM_DESKTOP)
 
             //! Brings this window to front and acquires input focus for the window.
-            virtual RV set_focus() = 0;
+            virtual RV set_foreground() = 0;
+
+#endif
 
             //! Checks whether the window is minimized.
             //! @return Returns `true` if the window is minimized. Returns `false` otherwise.
             virtual bool is_minimized() = 0;
+
+#if defined(LUNA_PLATFORM_DESKTOP)
 
             //! Checks whether the window is maximized.
             //! @return Returns `true` if the window is maximized. Returns `false` otherwise.
@@ -242,50 +97,50 @@ namespace Luna
             //! @param[in] visible The new visibility of the window (`true` for visible).
             virtual RV set_visible(bool visible) = 0;
 
-            //! Checks whether the window is resizable by dragging the border of the window.
-            //! @return Returns `true` if the window is resizable. Returns `false` otherwise.
-            virtual bool is_resizable() = 0;
+            virtual WindowStyleFlag get_style() = 0;
 
-            //! Sets the resizable state of the window.
-            //! @param[in] resizable The new resizable state of the window (`true` for resizable).
-            virtual RV set_resizable(bool resizable) = 0;
+            virtual RV set_style(WindowStyleFlag style) = 0;
 
-            //! Checks whether the window is frameless.
-            //! One frameless window does not have border, titlebar 
-            //! and close/minimize/maximize buttons.
-            virtual bool is_frameless() = 0;
+#endif
 
-            //! Sets the frameless state of the window.
-            virtual RV set_frameless(bool frameless) = 0;
-
-            //! Gets the position of the window client area.
+            //! Gets the position of the window client area in screen coordinates.
+            //! @return Returns the position of the window client area in screen coordinates.
             virtual Int2U get_position() = 0;
 
+#if defined(LUNA_PLATFORM_DESKTOP)
+
             //! Sets the position of the window client area.
+            //! @param[in] x The new X (left) position of the window client area in screen coordinates.
+            //! @param[in] y The new Y (top) position of the window client area in screen coordinates.
             virtual RV set_position(i32 x, i32 y) = 0;
 
+#endif
+
             //! Gets the size of the content area of the window measured in screen coordinates.
+            //! @return Returns the size of the content area of the window measured in screen coordinates.
             //! @remark The screen coordinates is not necessary measured in pixels. For pixel-related operations,
             //! use `get_framebuffer_size` instead.
             virtual UInt2U get_size() = 0;
 
+#if defined(LUNA_PLATFORM_DESKTOP)
+
             //! Sets the size of the content area of the window measured in screen coordinates.
+            //! @param[in] width The width of the content area of the window measured in screen coordinates.
+            //! @param[in] height The height of the content area of the window measured in screen coordinates.
             virtual RV set_size(u32 width, u32 height) = 0;
 
+#endif
+
             //! Gets the framebuffer size of the window context area in pixels.
+            //! @return Returns the framebuffer size of the window context area in pixels.
             virtual UInt2U get_framebuffer_size() = 0;
 
             //! Gets the DPI scaling factor, which is the ratio between the current DPI and the platform's default DPI.
             //! @return Returns the DPI scaling factor. The default (unscaled) DPI factor is 1.0.
-            //! @remark The DPI scale factor may be used if DPI scaling is enabled on the target monitor.
+            //! @remark The DPI scale factor may be used if DPI scaling is enabled on the target display.
             virtual f32 get_dpi_scale_factor() = 0;
 
-            //! Checks whether the window is full screen.
-            virtual bool is_full_screen() = 0;
-
-            //! Gets the monitor that one full screen window is attached to.
-            //! Returns `nullptr` if the window is not in full-screen mode.
-            virtual monitor_t get_monitor() = 0;
+#if defined(LUNA_PLATFORM_DESKTOP)
 
             //! Sets the window title.
             //! @param[in] title The title to set.
@@ -293,9 +148,7 @@ namespace Luna
             //! * `title` must be one null-terminated UTF-8 string.
             virtual RV set_title(const c8* title) = 0;
 
-            //! Sets the window display settings.
-            //! @param[in] display_settings The new window display settings.
-            virtual RV set_display_settings(const WindowDisplaySettings& display_settings) = 0;
+#endif
 
             //! Converts one screen coordinate to one client coordinate.
             virtual Int2U screen_to_client(const Int2U& point) = 0;
@@ -303,123 +156,74 @@ namespace Luna
             //! Converts one client coordinate to one screen coordinate.
             virtual Int2U client_to_screen(const Int2U& point) = 0;
 
-            //! Gets the close event of this window. 
-            //! @details Usually the user should close the window by calling @ref IWindow::close to respond this event.
-            //! This event will be emitted when the close button of the window is pressed.
-            //! @return Returns one reference of the event object.
-            virtual Event<window_close_event_handler_t>& get_close_event() = 0;
-            //! Gets the focus event of this window.
-            //! @details This event will be emitted when the window gains focus.
-            //! @return Returns one reference of the event object.
-            virtual Event<window_focus_event_handler_t>& get_focus_event() = 0;
-            //! Gets the lose focus event of this window.
-            //! This event will be emitted when the window loses focus.
-            //! @return Returns one reference of the event object.
-            virtual Event<window_lose_focus_event_handler_t>& get_lose_focus_event() = 0;
-            //! Gets the show event of this window.
-            //! @details This event will be emitted when the window is visible to the user.
-            //! The client code should continue receiving inputs from the window
-            //! and continue rendering to the window after receiving this event.
-            //! @return Returns one reference of the event object.
-            virtual Event<window_show_event_handler_t>& get_show_event() = 0;
-            //! Gets the hide event of this window.
-            //! @details This event will be emitted when the window is completly hidden from the user.
-            //! The client code should stop receiving inputs from the window 
-            //! and stop rendering to the window after receiving this event.
-            //! @return Returns one reference of the event object.
-            virtual Event<window_hide_event_handler_t>& get_hide_event() = 0;
-            //! Gets the resize event of this window.
-            //! @details This event will be emitted when the window size is changed.
-            //! The new size may be 0 if the window is minimized.
-            //! @return Returns one reference of the event object.
-            virtual Event<window_resize_event_handler_t>& get_resize_event() = 0;
-            //! Gets the framebuffer resize event of this window.
-            //! @details This event will be emitted when the window's framebuffer size is changed.
-            //! @return Returns one reference of the event object.
-            virtual Event<window_framebuffer_resize_event_handler_t>& get_framebuffer_resize_event() = 0;
-            //! Gets the move event of this window.
-            //! @details This event will be emitted when the window position is changed.
-            //! @return Returns one reference of the event object.
-            virtual Event<window_move_event_handler_t>& get_move_event() = 0;
-            //! Gets the begin resize move event of this window.
-            //! @details This event will be emitted when the user starts to change the window rect.
-            //! @return Returns one reference of the event object.
-            virtual Event<window_begin_resize_move_t>& get_begin_resize_move_event() = 0;
-            //! Gets the end resize move event of this window.
-            //! @details This event will be emitted when the user finishes changing the window rect.
-            //! @return Returns one reference of the event object.
-            virtual Event<window_end_resize_move_t>& get_end_resize_move_event() = 0;
-            //! Gets the end dpi changed event of this window.
-            //! @details This event will be emitted when the window DPI is changed. This may happen when the window is moved to another minitor
-            //! with different DPI settings.
-            //! @return Returns one reference of the event object.
-            virtual Event<window_dpi_changed_event_handler_t>& get_dpi_changed_event() = 0;
-            //! Gets the key down event of this window.
-            //! @details This event will be emitted when one keyboard key is pressed and the window has key focus.
-            //! @return Returns one reference of the event object.
-            virtual Event<window_key_down_event_handler_t>& get_key_down_event() = 0;
-            //! Gets the key up event of this window.
-            //! @details This event will be emitted when one keyboard key is released and the window has key focus.
-            //! @return Returns one reference of the event object.
-            virtual Event<window_key_up_event_handler_t>& get_key_up_event() = 0;
-            //! Gets the input character event of this window.
-            //! @details This event will be emitted when one character input is transmitted to this window.
-            //! @return Returns one reference of the event object.
-            virtual Event<window_input_character_event_handler_t>& get_input_character_event() = 0;
-            //! Gets the mouse move event of this window.
-            //! @details This event will be emitted when the mouse is moved and the window has mouse focus.
-            //! @return Returns one reference of the event object.
-            virtual Event<window_mouse_move_event_handler_t>& get_mouse_move_event() = 0;
-            //! Gets the mouse down event of this window.
-            //! @details This event will be emitted when one mouse button is pressed and the window has mouse focus.
-            //! @return Returns one reference of the event object.
-            virtual Event<window_mouse_down_event_handler_t>& get_mouse_down_event() = 0;
-            //! Gets the mouse up event of this window.
-            //! @details This event will be emitted when one mouse button is released and the window has mouse focus.
-            //! @return Returns one reference of the event object.
-            virtual Event<window_mouse_up_event_handler_t>& get_mouse_up_event() = 0;
-            //! Gets the mouse wheel event of this window.
-            //! @details This event will be emitted when the mouse wheel is scrolled and the window has mouse focus.
-            //! @return Returns one reference of the event object.
-            virtual Event<window_mouse_wheel_event_handler_t>& get_mouse_wheel_event() = 0;
-            //! Gets the touch event of this window.
-            //! @details This event will be emitted when the window is focused and touched.
-            //! @return Returns one reference of the event object.
-            virtual Event<window_touch_event_handler_t>& get_touch_event() = 0;
-            //! Gets the drop file event of this window.
-            //! @details This event will be emitted when one file is dropped on the window.
-            //! @return Returns one reference of the event object.
-            virtual Event<window_drop_file_event_handler_t>& get_drop_file_event() = 0; 
+            //! Starts receiving Unicode text input for this window.
+            //! @details `input_character` window event will be triggered only after this is called and before
+            //! @ref end_text_input is called.
+            //! 
+            //! On some platforms this call will bring up IME and on-screen virtual keyboard to let the user
+            //! input texts.
+            virtual RV begin_text_input() = 0;
+
+            //! Sets the text input area, so that platform may place an IME overlay next to this area.
+            //! @param[in] input_rect The input area in window coordinates.
+            //! @param[in] cursor The X offset of the cursor relative to `input_rect.offset_x`.
+            virtual RV set_text_input_area(const RectI& input_rect, i32 cursor) = 0;
+
+            //! Stops receiving Unicode text input for this window.
+            virtual RV end_text_input() = 0;
+
+            //! Checks whether the text input is active.
+            //! @return Returns `true` if text input is active, returns `false` otherwise.
+            virtual bool is_text_input_active() = 0;
         };
 
-        //! Processes window events for all windows created from the current thread.
-        //! @param[in] wait_events Whether to block the current thread until there are at least one event received.
-        LUNA_WINDOW_API void poll_events(bool wait_events = false);
+#ifdef LUNA_PLATFORM_DESKTOP
 
         //! Flags that specifies the initial state and style of the window.
         enum class WindowCreationFlag : u32
         {
             none = 0x00,
-            //! Whether this window is borderless. One borderless window does not have border, titlebar 
-            //! and close/minimize/maximize buttons.
-            borderless = 0x01,
-            //! Whether this window is resizable by dragging the border of the window.
-            //! This flag is effective in normal and borderless mode.
-            resizable = 0x02,
             //! Window does not displayed when being created.
-            hidden = 0x04,
+            hidden = 0x01,
         };
 
         //! Creates one new window. The new window will be displayed immediately unless @ref WindowCreationFlag::hidden is set.
         //! @param[in] title The title of the window.
-        //! @param[in] display_settings The initial display settings for the window.
-        //! @param[in] flags Additional window creation flags.
+        //! @param[in] x The X (left) position of the content area of window measured in screen coordinates.
+        //! 
+        //! If @ref DEFAULT_POS is specified, the system will choose the most suitable position for the window.
+        //! @param[in] y The Y (top) position of the content area of window measured in screen coordinates.
+        //! 
+        //! If @ref DEFAULT_POS is specified, the system will choose the most suitable position for the window.
+        //! @param[in] width The width of the window, measured in screen coordinates.
+        //! 
+        //! If `0` is specified, the system will choose the suitable size for the window.
+        //! @param[in] height The height of the window, measured in screen coordinates.
+        //! 
+        //! If `0` is specified, the system will choose the suitable size for the window.
+        //! @param[in] creation_flags Additional window creation flags.
         //! @return Returns the created window.
         //! @par Valid Usage
         //! * This function can only be called by the main thread.
         LUNA_WINDOW_API R<Ref<IWindow>> new_window(const c8* title, 
-            const WindowDisplaySettings& display_settings,
-            WindowCreationFlag flags = WindowCreationFlag::none);
+            i32 x = DEFAULT_POS,
+            i32 y = DEFAULT_POS,
+            u32 width = 0,
+            u32 height = 0,
+            WindowStyleFlag style_flags = WindowStyleFlag::resizable,
+            WindowCreationFlag creation_flags = WindowCreationFlag::none);
+
+#endif
+
+#if defined(LUNA_PLATFORM_MOBILE) || defined(LUNA_PLATFORM_CONSOLE)
+        //! Gets the window created by system when module initialization.
+        //! @return Returns the system window.
+        //! @remark On mobile and console platforms, the application can only
+        //! have one window and cannot create more windows. The system window
+        //! cannot be modified (moved, resized, set title and style, etc.) by 
+        //! the application either.
+        LUNA_WINDOW_API IWindow* get_system_window();
+#endif
         
         //! @}
     }

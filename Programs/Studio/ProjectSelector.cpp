@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -15,6 +15,7 @@
 #include <Luna/Window/FileDialog.hpp>
 #include <Luna/Window/MessageBox.hpp>
 #include <Luna/Runtime/Thread.hpp>
+#include <Luna/Window/Event.hpp>
 
 namespace Luna
 {
@@ -135,17 +136,20 @@ namespace Luna
         Path path;
         lutry
         {
-            lulet(window, Window::new_window("Luna Studio - Open Project", Window::WindowDisplaySettings::as_windowed(Window::DEFAULT_POS, Window::DEFAULT_POS, 1000, 500)));
+            lulet(window, Window::new_window("Luna Studio - Open Project", Window::DEFAULT_POS, Window::DEFAULT_POS, 1000, 500));
             lulet(swap_chain, g_env->device->new_swap_chain(g_env->graphics_queue, window, RHI::SwapChainDesc({0, 0, 2, RHI::Format::bgra8_unorm, true})));
             lulet(cmdbuf, g_env->device->new_command_buffer(g_env->graphics_queue));
-
-            window->get_close_event().add_handler([](Window::IWindow* window) { window->close(); });
 
             // Create back buffer.
             u32 w = 0, h = 0;
 
             // Create ImGui context.
             ImGuiUtils::set_active_window(window);
+
+            Window::set_event_handler([](object_t event, void* userdata)
+            {
+                ImGuiUtils::handle_window_event(event);
+            }, nullptr);
 
             auto new_solution_name = String();
 
@@ -243,7 +247,7 @@ namespace Luna
                             NextColumn();
                             NextColumn();
 
-                            SetColumnWidth(0, GetWindowContentRegionMax().x - GetWindowContentRegionMin().x - 430);
+                            SetColumnWidth(0, GetContentRegionAvail().x - 430);
                             SetColumnWidth(1, 250);
                             SetColumnWidth(2, 80);
                             SetColumnWidth(3, 100);
@@ -252,7 +256,7 @@ namespace Luna
                             while (iter != recents.end())
                             {
                                 DateTime dt = timestamp_to_datetime(utc_timestamp_to_local_timestamp(iter->m_last_use_time));
-                                Text(iter->m_path.encode().c_str());
+                                Text("%s", iter->m_path.encode().c_str());
                                 NextColumn();
                                 Text("%hu/%hu/%hu %02hu:%02hu", dt.year, dt.month, dt.day, dt.hour, dt.minute);
                                 NextColumn();

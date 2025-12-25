@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -14,4 +14,6 @@ namespace Luna
 {
     void profiler_init();
     void profiler_close();
+    // Used to disable profiler when LunaSDK Runtime is initializing or closing.
+    extern bool g_profiler_ready;
 }

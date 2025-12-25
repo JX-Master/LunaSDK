@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -8,10 +8,11 @@
 * @date 2022/9/27
 */
 #pragma once
-#include "Iterator.hpp"
+#include "Span.hpp"
 #include "Algorithm.hpp"
 #include "Memory.hpp"
 #include "MemoryUtils.hpp"
+#include "TypeInfo.hpp"
 
 namespace Luna
 {
@@ -117,6 +118,15 @@ namespace Luna
         //! Gets one constant reverse iterator to the one-before-first element of the array.
         //! @return Returns one constant reverse iterator to the one-before-first element of the array.
         constexpr const_reverse_iterator crend() const { return const_reverse_iterator(cbegin()); }
+        //! Creates one span that specifies elements of this array.
+        //! @return Returns the span that specifies elements of this array.
+        constexpr Span<_Ty, _Size> span() { return Span<_Ty, _Size>(m_elements); }
+        //! Creates one constant span that specifies elements of this array.
+        //! @return Returns the constant span that specifies elements of this array.
+        constexpr Span<const _Ty, _Size> span() const { return Span<const _Ty, _Size>(m_elements); }
+        //! Creates one constant span that specifies elements of this array.
+        //! @return Returns the constant span that specifies elements of this array.
+        constexpr Span<const _Ty, _Size> cspan() const { return Span<const _Ty, _Size>(m_elements); }
         //! Checks whether this array is empty, that is, the size of this array is `0`.
         //! @return Returns `true` if this array is empty, returns `false` otherwise.
         constexpr bool empty() const { return false; }
@@ -170,6 +180,9 @@ namespace Luna
         constexpr reverse_iterator rend() { return reverse_iterator(begin()); }
         constexpr const_reverse_iterator rend() const { return const_reverse_iterator(begin()); }
         constexpr const_reverse_iterator crend() const { return const_reverse_iterator(cbegin()); }
+        constexpr Span<_Ty> span() { return Span<_Ty>(); }
+        constexpr Span<const _Ty> span() const { return Span<const _Ty>(); }
+        constexpr Span<const _Ty> cspan() const { return Span<const _Ty>(); }
         constexpr bool empty() const { return true; }
         constexpr usize size() const { return 0; }
         constexpr void fill(const _Ty& value) {}
@@ -304,6 +317,9 @@ namespace Luna
         reverse_iterator rend() { return reverse_iterator(begin()); }
         const_reverse_iterator rend() const { return const_reverse_iterator(begin()); }
         const_reverse_iterator crend() const { return const_reverse_iterator(cbegin()); }
+        constexpr Span<_Ty> span() { return Span<_Ty>(m_elements, m_size); }
+        constexpr Span<const _Ty> span() const { return Span<const _Ty>(m_elements, m_size); }
+        constexpr Span<const _Ty> cspan() const { return Span<const _Ty>(m_elements, m_size); }
         bool empty() const { return m_size == 0; }
         usize size() const { return m_size; }
         void clear()
@@ -364,6 +380,27 @@ namespace Luna
         }
         _Ty* m_elements;
         usize m_size;
+    };
+
+    //! Gets the type object of @ref Array.
+    //! @return Returns the type object of @ref Array. The returned type is a generic type that can be
+    //! instantiated by providing the element type.
+    LUNA_RUNTIME_API typeinfo_t array_type();
+
+    template <typename _Ty, usize _Size>
+    struct typeof_t<Array<_Ty, _Size>>
+    {
+        typeinfo_t operator()() const 
+        {
+            if(_Size == DYNAMIC_ARRAY_SIZE)
+            {
+                return get_generic_instanced_type(array_type(), { typeof<_Ty>() });
+            }
+            else
+            {
+                return get_generic_instanced_type(array_type(), { typeof<_Ty>(), (i64)(_Size) });
+            }
+        }
     };
 
     //! @}

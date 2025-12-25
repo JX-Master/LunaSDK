@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -135,15 +135,13 @@ namespace Luna
     //! * @ref BasicError::not_found
     //! * @ref BasicError::not_directory
     //! * @ref BasicError::bad_platform_call for all errors that cannot be identified.
-    LUNA_RUNTIME_API R<Ref<IFile>>    open_file(const c8* path, FileOpenFlag flags, FileCreationMode creation);
-
+    LUNA_RUNTIME_API R<Ref<IFile>> open_file(const c8* path, FileOpenFlag flags, FileCreationMode creation);
     //! Returns the data in the specified file as a blob object.
     //! @param[in] file The file to read.
     //! @return Returns the data of the file.
     //! @par Valid Usage
     //! * `file` must be opened with @ref FileOpenFlag::read flag.
     LUNA_RUNTIME_API R<Blob> load_file_data(IFile* file);
-
     //! Gets the file attribute.
     //! @param[in] path The path of the file.
     //! @return Returns the file attribute structure.
@@ -153,49 +151,28 @@ namespace Luna
     //! * @ref BasicError::not_directory
     //! * @ref BasicError::bad_platform_call for all errors that cannot be identified.
     LUNA_RUNTIME_API R<FileAttribute> get_file_attribute(const c8* path);
-
-    //! Specify attributes for one file copy operation.
-    enum class FileCopyFlag : u32
-    {
-        none = 0x00,
-        //! If this is specified, the copy operation fails with @ref BasicError::already_exists if the destination file exists.
-        //! If this is not specified, the destination file will be overwritten by the source file in the copy operation.
-        fail_if_exists = 0x01,
-    };
-
     //! Copies the file or directory from the source path to the destination path.
-    //! @param[in] from_path Source file or directory path.
-    //! @param[in] to_path Destination file or directory path.
-    //! @param[in] flags The attributes for one file copy operation.
+    //! @param[in] from_path Source file or directory path. If `from_path` does not existm this operation failed with @ref BasicError::not_found.
+    //! @param[in] to_path Destination file or directory path. If `to_path` already exists, this operation fails with @ref BasicError::already_exists
+    //! and the existing file will not be modified.
     //! @par Possible Errors
     //! * @ref BasicError::bad_arguments
     //! * @ref BasicError::already_exists
     //! * @ref BasicError::access_denied
     //! * @ref BasicError::not_found
     //! * @ref BasicError::bad_platform_call for all errors that cannot be identified.
-    LUNA_RUNTIME_API RV    copy_file(const c8* from_path, const c8* to_path, FileCopyFlag flags = FileCopyFlag::none);
-
-    //! Specify attributes for one file move operation.
-    enum class FileMoveFlag : u32
-    {
-        none = 0x00,
-        //! If this is specified, the move operation fails with @ref BasicError::already_exists if the destination file exists.
-        //! If this is not specified, the destination file will be overwritten by the source file in the move operation.
-        fail_if_exists = 0x01,
-    };
-
+    LUNA_RUNTIME_API RV copy_file(const c8* from_path, const c8* to_path);
     //! Moves the file or directory from the source path to the destination path. This call can also be used to rename a file.
-    //! @param[in] from_path Source file or directory path.
-    //! @param[in] to_path Destination file or directory path.
-    //! @param[in] flags The attributes for one file move operation.
+    //! @param[in] from_path Source file or directory path. If `from_path` does not existm this operation failed with @ref BasicError::not_found.
+    //! @param[in] to_path Destination file or directory path. If `to_path` already exists, this operation fails with @ref BasicError::already_exists
+    //! and the existing file will not be modified.
     //! @par Possible Errors
     //! * @ref BasicError::bad_arguments
     //! * @ref BasicError::already_exists
     //! * @ref BasicError::access_denied
     //! * @ref BasicError::not_found
     //! * @ref BasicError::bad_platform_call for all errors that cannot be identified.
-    LUNA_RUNTIME_API RV    move_file(const c8* from_path, const c8* to_path, FileMoveFlag flags = FileMoveFlag::none);
-
+    LUNA_RUNTIME_API RV move_file(const c8* from_path, const c8* to_path);
     //! Deletes the specified file or directory.
     //! @param[in] file_path The file or directory to delete. If this is a non-empty directory, all its contexts will also be deleted.
     //! @par Possible Errors
@@ -203,7 +180,7 @@ namespace Luna
     //! * @ref BasicError::not_found
     //! * @ref BasicError::access_denied
     //! * @ref BasicError::bad_platform_call for all errors that cannot be identified.
-    LUNA_RUNTIME_API RV    delete_file(const c8* file_path);
+    LUNA_RUNTIME_API RV delete_file(const c8* file_path);
     //! Creates a file iterator that can be used to iterate all files in the specified directory.
     //! @param[in] path The directory path to open.
     //! @return Returns a file iterator object. 
@@ -231,7 +208,7 @@ namespace Luna
     LUNA_RUNTIME_API RV set_current_dir(const c8* path);
     //! Gets the full (absolute) path of the application's executable file.
     //! @return Returns the full (absolute) path of the application's executable file. 
-    //! The returned pointer is valid until Luna SDK is closed.
+    //! The returned pointer is valid until LunaSDK is closed.
     LUNA_RUNTIME_API const c8* get_process_path();
 
     //! @}

@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -12,6 +12,9 @@
 #include <Luna/Runtime/Module.hpp>
 #include <Luna/Runtime/Math/Color.hpp>
 #include <Luna/Runtime/Log.hpp>
+#include <Luna/Runtime/Thread.hpp>
+#include <Luna/Window/Event.hpp>
+#include <Luna/Window/AppMain.hpp>
 
 using namespace Luna;
 using namespace Luna::RHI;
@@ -44,25 +47,38 @@ void cleanup()
 {
 }
 
-void run_app()
+int luna_main(int argc, const char* argv[])
 {
-    register_init_func(start);
-    register_close_func(cleanup);
-    register_resize_func(resize);
-    register_draw_func(draw);
-    lupanic_if_failed(run());
-}
-
-int main()
-{
-    if (!Luna::init()) return 0;
-    lupanic_if_failed(add_modules({module_rhi_test_bed()}));
-    auto r = init_modules();
-    if (failed(r))
+    if(!Luna::init()) return -1;
+    lutry
     {
-        log_error("RHITest1_FillBackBuffer", "%s", explain(r.errcode()));
+        luexp(add_modules({module_rhi_test_bed()}));
+        luexp(init_modules());
+        register_init_func(start);
+        register_close_func(cleanup);
+        register_resize_func(resize);
+        register_draw_func(draw);
+        luexp(RHITestBed::init());
+        while(true)
+        {
+            Window::poll_events();
+            auto window = RHITestBed::get_window();
+            if(window->is_closed()) break;
+            if(window->is_minimized())
+            {
+                sleep(100);
+                continue;
+            }
+            luexp(RHITestBed::update());
+        }
+        RHITestBed::close();
     }
-    else run_app();
+    lucatch
+    {
+        log_error("RHITest", "%s", explain(luerr));
+        Luna::close();
+        return -1;
+    }
     Luna::close();
     return 0;
 }

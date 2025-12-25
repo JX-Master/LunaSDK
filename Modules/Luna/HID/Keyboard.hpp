@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -30,6 +30,12 @@ namespace Luna
         //! @param[in] key The key to check.
         //! @return Returns `true` if the specified key is pressed, `false` otherwise.
         //! If keyboard is not supported on the current platform, returns `false` always.
+        //! @remarks
+        //! The following key codes return `true` if any of the left or right side of the key is pressed:
+        //! * @ref KeyCode::ctrl
+        //! * @ref KeyCode::shift
+        //! * @ref KeyCode::menu
+        //! * @ref KeyCode::system
         LUNA_HID_API bool get_key_state(KeyCode key);
 
         //! @}

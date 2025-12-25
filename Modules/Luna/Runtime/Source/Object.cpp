@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -48,7 +48,7 @@ namespace Luna
         {
             if (!atom_exchange_u32(&expired, 1))
             {
-                // We use number 2 to identify the object is destroying, so present the calls to `destroy`
+                // We use number 2 to identify the object is destroying, so prevent the calls to `destroy`
                 // to free this object. This may happen when object A holds a strong
                 // reference to object B and object B holds a weak reference to A, when A is expiring, it
                 // releases the reference to B, so B is destroyed and releases the reference to A, and makes
@@ -63,11 +63,11 @@ namespace Luna
         {
             if (expired != 2)
             {
-                this->~ObjectHeader();
                 object_t obj = get_object();
                 usize alignment = get_type_alignment(type);
                 usize padded_size = get_padding_size(alignment);
                 void* raw_ptr = (void*)((usize)obj - padded_size);
+                this->~ObjectHeader();
                 memfree(raw_ptr, alignment);
             }
         }
@@ -95,7 +95,9 @@ namespace Luna
 
     LUNA_RUNTIME_API ref_count_t object_retain(object_t object_ptr)
     {
-        return atom_inc_i32(&(get_header(object_ptr)->ref_count));
+        ObjectHeader* header = get_header(object_ptr);
+        lucheck_msg(header->ref_count, "Cannot retain object whose reference counter is already 0");
+        return atom_inc_i32(&(header->ref_count));
     }
     LUNA_RUNTIME_API ref_count_t object_release(object_t object_ptr)
     {
@@ -153,6 +155,7 @@ namespace Luna
     }
     LUNA_RUNTIME_API bool object_is_type(object_t object_ptr, typeinfo_t type)
     {
+        lucheck_msg(object_ptr, "object_ptr is nullptr");
         if (!type) return false;
         typeinfo_t obj_type = get_object_type(object_ptr);
         while (obj_type)

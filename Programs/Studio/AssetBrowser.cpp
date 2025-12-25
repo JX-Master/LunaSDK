@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -394,6 +394,9 @@ namespace Luna
 
                 for (usize i = 0; i < num_assets; ++i)
                 {
+                    // Set cursor pos for next tile.
+                    ImGui::SetCursorPos(origin_pos + Float2(woff, hoff));
+
                     auto dl = ImGui::GetWindowDrawList();
 
                     auto tile_min = ImGui::GetCursorScreenPos() + padding;
@@ -562,7 +565,7 @@ namespace Luna
                                 to_path.push_back(m_asset_name_editing_buf);
                                 if(assets.get()[i].m_is_dir)
                                 {
-                                    auto r = VFS::move_file(from_path, to_path, FileMoveFlag::fail_if_exists);
+                                    auto r = VFS::move_file(from_path, to_path);
                                     if(succeeded(r))
                                     {
                                         r = Asset::load_assets_meta(to_path);
@@ -640,9 +643,6 @@ namespace Luna
                         woff = 0;
                         hoff += tile_height;
                     }
-
-                    // Set cursor pos for next tile.
-                    ImGui::SetCursorPos(origin_pos + Float2(woff, hoff));
                 }
 
                 if(ImGui::BeginPopup(asset_popup_id))

@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -46,7 +46,7 @@ namespace Luna
         virtual ~Module() {}
     };
 
-    //! @brief Adds one module to the module system. If this module is already added, this function does nothing.
+    //! Adds one module to the module system. If this module is already added, this function does nothing.
     //! @param[in] handle The module description structure pointer. This pointer shall be unique for every added module, the 
     //! module system uses this pointer to identify the module.
     //! @remark Adding one module to the module system does not initialize the module, the added module must be explicitly initialized 
@@ -55,7 +55,7 @@ namespace Luna
     //! * `handle` must point to one valid module instance.
     LUNA_RUNTIME_API RV add_module(Module* handle);
 
-    //! @brief Adds modules to the module system.
+    //! Adds modules to the module system.
     //! @param[in] handles The module description structure pointers. These pointers shall be unique for every added module, the 
     //! module system uses these pointers to identify modules.
     //! @remark See remarks of @ref add_module for details.
@@ -74,13 +74,13 @@ namespace Luna
         return ok;
     }
 
-    //! @brief Removes one module from the module system. This function cannot be called when the module is currently initialized.
+    //! Removes one module from the module system. This function cannot be called when the module is currently initialized.
     //! @param[in] handle The module description structure pointer of the module to remove.
     //! @par Valid Usage
     //! * `handle` must point to one module that is already registered by @ref add_module.
     LUNA_RUNTIME_API void remove_module(Module* handle);
 
-    //! @brief Adds one module as the dependency module of one module. This is usually called in module registration callback.
+    //! Adds one module as the dependency module of one module. This is usually called in module registration callback.
     //! @param[in] current The current module that depends on `dependency`.
     //! @param[in] dependency The dependency module. If this module is not added, it will be added to the module system firstly.
     //! @par Valid Usage
@@ -88,7 +88,7 @@ namespace Luna
     //! * `dependency` must point to one valid module instance.
     LUNA_RUNTIME_API RV add_dependency_module(Module* current, Module* dependency);
 
-    //! @brief Adds one span of modules as the dependency modules of one module.
+    //! Adds one span of modules as the dependency modules of one module.
     //! @param[in] current The current module that depends on `dependencies`.
     //! @param[in] dependencies The dependency modules. If these modules are not added, they will be added to the module system firstly.
     //! @par Valid Usage
@@ -107,12 +107,12 @@ namespace Luna
         return ok;
     }
 
-    //! @brief Gets the module pointer by its name. The module must be registered firstly.
+    //! Gets the module pointer by its name. The module must be registered firstly.
     //! @param[in] name The name of the module.
     //! @return Returns the registered module pointer, or `nullptr` if the module is not found.
     LUNA_RUNTIME_API Module* get_module_by_name(const Name& name);
 
-    //! @brief Initializes all dependency modules for the specified module, but leaves the specified module as uninitialized.
+    //! Initializes all dependency modules for the specified module, but leaves the specified module as uninitialized.
     //! You may use this API to perform some pre-init configurations for the module initialize process.
     //! @param[in] handle The module to initialize dependencies.
     //! @remark If the specified module is already initialized, this function does nothing and succeeds.
@@ -120,14 +120,19 @@ namespace Luna
     //! * `handle` must point to one module that is already registered by @ref add_module.
     LUNA_RUNTIME_API RV init_module_dependencies(Module* handle);
 
-    //! @brief Initializes the specified module and all dependency modules of the specified module.
+    //! Initializes the specified module and all dependency modules of the specified module.
     //! @param[in] handle The module to initialize.
     //! @remark If the specified module is already initialized, this function does nothing and succeeds.
     //! @par Valid Usage
     //! * `handle` must point to one module that is already registered by @ref add_module.
     LUNA_RUNTIME_API RV init_module(Module* handle);
 
-    //! @brief Initializes all uninitialized modules.
+    //! Checks whether the specified module is initialized.
+    //! @param[in] handle The module to check.
+    //! @return Returns `true` if the module is initialized. Returns `false` otherwise.
+    LUNA_RUNTIME_API bool is_module_initialized(Module* module);
+
+    //! Initializes all uninitialized modules.
     LUNA_RUNTIME_API RV init_modules();
     
     //! @}

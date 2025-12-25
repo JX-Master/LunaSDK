@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -21,8 +21,12 @@
 #include "../Camera.hpp"
 #include <Luna/Window/FileDialog.hpp>
 #include <Luna/Window/MessageBox.hpp>
-#include <Luna/RHI/Utility.hpp>
+#include <Luna/RHIUtility/ResourceReadContext.hpp>
+#include <Luna/RHIUtility/ResourceWriteContext.hpp>
 #include <Luna/Image/RHIHelper.hpp>
+#include <Luna/Runtime/Random.hpp>
+#include "../World.hpp"
+
 namespace Luna
 {
     struct SceneEditorUserData
@@ -49,17 +53,13 @@ namespace Luna
         Ref<SceneEditorUserData> m_type;
 
         Asset::asset_t m_scene;
+        World m_world;
+        bool m_world_initialized = false;
 
         SceneRenderer m_renderer;
 
-        // States for entity list.
-        i32 m_new_entity_current_item = 0;
-        u32 m_current_select_entity = 0;
-        bool m_name_editing = false;
-        String m_name_editing_buf;
-
-        // States for component grid.
-        WeakRef<Entity> m_current_entity;
+        // States for actor list.
+        Guid m_editing_actor_guid = Guid(0, 0);
 
         // States for scene viewport.
 
@@ -78,9 +78,19 @@ namespace Luna
 
         RV init();
 
-        void draw_entity_list();
-        void draw_scene_components_grid();
-        RV draw_scene();
+        void on_add_actor(usize actor_index);
+        void on_remove_actor(const Guid& guid);
+        void on_edit_actor_info(SceneActor& scene_actor);
+        void on_edit_actor_transform(SceneActor& scene_actor);
+        void on_actor_add_component(SceneActor& scene_actor, typeinfo_t component);
+        void on_actor_remove_component(SceneActor& scene_actor, typeinfo_t component);
+        void on_actor_edit_component(SceneActor& scene_actor, typeinfo_t component);
+
+        void edit_scene();
+        void draw_actor_list();
+        void draw_actor_tree_node(Actor* actor, bool& open_actor_list_popup);
+        void draw_scene_settings();
+        void draw_scene();
 
         void draw_components_grid();
 
@@ -111,105 +121,167 @@ namespace Luna
         return ok;
     }
 
-    void SceneEditor::draw_entity_list()
+    static void write_scene_actor(SceneActor& dst, const Actor* src)
+    {
+        const ActorInfo* info = src->get_component<ActorInfo>();
+        dst.guid = info->get_guid();
+        dst.name = info->name;
+        const Transform* transform = src->get_transform();
+        dst.transform = *transform;
+        dst.children.clear();
+        Vector<Actor*> children;
+        info->get_children(children);
+        for(auto& child : children)
+        {
+            dst.children.push_back(child->get_actor_info()->get_guid());
+        }
+        dst.components.clear();
+        auto addr = src->get_world()->get_entity_address(src->get_entity()).get();
+        auto components = ECS::get_cluster_components(addr.cluster);
+        for(typeinfo_t type : components)
+        {
+            if(type == typeof<ActorInfo>() || type == typeof<Transform>()) continue;
+            object_t obj = object_alloc(type);
+            const void* src = (const void*)ECS::get_cluster_components_data(addr.cluster, addr.index / ECS::CLUSTER_CHUNK_CAPACITY, type);
+            src = (const void*)((usize)src + get_type_size(type) * (addr.index % ECS::CLUSTER_CHUNK_CAPACITY));
+            copy_construct_type(type, obj, src);
+            ObjRef ref;
+            ref.attach(obj);
+            dst.components.push_back(move(ref));
+        }
+    }
+
+    void SceneEditor::on_add_actor(usize actor_index)
+    {
+        auto s = get_asset_or_async_load_if_not_ready<Scene>(m_scene);
+        auto& scene_actor = s->actors[actor_index];
+        Vector<typeinfo_t> components;
+        components.reserve(scene_actor.components.size());
+        for(auto& obj : scene_actor.components)
+        {
+            components.push_back(obj.type());
+        }
+        Actor* actor = m_world.add_actor(scene_actor.guid, components.cspan(), {s.get()});
+        auto info = actor->get_actor_info();
+        auto transform = actor->get_transform();
+        info->name = scene_actor.name;
+        *transform = scene_actor.transform;
+    }
+    void SceneEditor::on_remove_actor(const Guid& guid)
+    {
+        m_world.remove_actor(guid);
+    }
+    void SceneEditor::on_edit_actor_info(SceneActor& scene_actor)
+    {
+        Actor* actor = m_world.get_actor(scene_actor.guid);
+        auto info = actor->get_actor_info();
+        info->name = scene_actor.name;
+    }
+    void SceneEditor::on_edit_actor_transform(SceneActor& scene_actor)
+    {
+        Actor* actor = m_world.get_actor(scene_actor.guid);
+        auto transform = actor->get_transform();
+        *transform = scene_actor.transform;
+    }
+    void SceneEditor::on_actor_add_component(SceneActor& scene_actor, typeinfo_t component)
+    {
+        Actor* actor = m_world.get_actor(scene_actor.guid);
+        void* data = actor->add_component(component);
+        void* src = nullptr;
+        for(auto& obj : scene_actor.components)
+        {
+            if(obj.type() == component)
+            {
+                src = obj.get();
+                break;
+            }
+        }
+        luassert(src);
+        copy_assign_type(component, data, src);
+    }
+    void SceneEditor::on_actor_remove_component(SceneActor& scene_actor, typeinfo_t component)
+    {
+        Actor* actor = m_world.get_actor(scene_actor.guid);
+        actor->remove_component(component);
+    }
+    void SceneEditor::on_actor_edit_component(SceneActor& scene_actor, typeinfo_t component)
+    {
+        Actor* actor = m_world.get_actor(scene_actor.guid);
+        void* data = actor->get_component(component);
+        void* src = nullptr;
+        for(auto& obj : scene_actor.components)
+        {
+            if(obj.type() == component)
+            {
+                src = obj.get();
+                break;
+            }
+        }
+        luassert(src);
+        copy_assign_type(component, data, src);
+    }
+
+    void SceneEditor::draw_actor_list()
     {
         auto s = get_asset_or_async_load_if_not_ready<Scene>(m_scene);
 
-        // Draw entity list.
-        ImGui::Text("Entity List");
+        // Draw  list.
+        ImGui::Text("Actor List");
 
         ImGui::SameLine();
 
-        if (ImGui::Button("New Entity"))
+        if (ImGui::Button("New Actor"))
         {
-            char name[64];
-            strncpy(name, "New_Entity", 64);
-            auto entity = s->add_entity(Name(name));
-            if (entity.errcode() == BasicError::already_exists())
-            {
-                u32 index = 0;
-                // Append index.
-                while (failed(entity))
-                {
-                    snprintf(name, 64, "New_Entity_%u", index);
-                    entity = s->add_entity(Name(name));
-                    ++index;
-                }
-            }
+            auto iter = s->actors.emplace_back();
+            iter->guid = random_guid();
+            iter->name = "New Actor";
+            on_add_actor(s->actors.size() - 1);
         }
 
         auto avail = ImGui::GetContentRegionAvail();
 
         ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 5.0f);
-        ImGui::BeginChild("Entity List", Float2(avail.x, avail.y / 2.0f), true);
+        ImGui::BeginChild("Actor List", Float2(avail.x, avail.y / 2.0f), true);
 
-        if (s->root_entities.empty())
+        if (s->actors.empty())
         {
-            ImGui::Text("No entity in the scene.");
+            ImGui::Text("No actor in the scene.");
         }
         else
         {
-            const char* entity_popup_id = "Entity Popup";
+            const char* actor_popup_id = "Entity Popup";
 
-            Float2 sel_size{ ImGui::GetWindowWidth(), ImGui::GetTextLineHeight() };
+            bool open_actor_list_popup = false;
 
-            auto& entities = s->root_entities;
-
-            for (u32 i = 0; i < (u32)entities.size(); ++i)
+            for(auto& actor : s->actors)
             {
-                Float2 sel_pos = ImGui::GetCursorScreenPos();
-                if (in_bounds(ImGui::GetIO().MousePos, sel_pos, sel_pos + sel_size) && !ImGui::IsPopupOpen(entity_popup_id) &&
-                    (ImGui::IsMouseClicked(ImGuiMouseButton_Left) || ImGui::IsMouseClicked(ImGuiMouseButton_Right)))
+                Actor* a = m_world.get_actor(actor.guid);
+                if(a->get_actor_info()->get_parent() == nullptr)
                 {
-                    m_current_select_entity = i;
-                    m_current_entity = entities[i];
+                    draw_actor_tree_node(a, open_actor_list_popup);
                 }
-                if (i == m_current_select_entity && m_name_editing)
-                {
-                    ImGui::InputText("###NameEdit", m_name_editing_buf);
-                    if (!in_bounds(ImGui::GetIO().MousePos, sel_pos, sel_pos + sel_size) && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
-                    {
-                        for (usize i = 0; i < m_name_editing_buf.size(); ++i)
-                        {
-                            if (m_name_editing_buf.data()[i] == ' ')
-                            {
-                                m_name_editing_buf.data()[i] = '_';
-                            }
-                        }
-                        entities[i]->name = m_name_editing_buf.c_str();
-                        m_name_editing = false;
-                    }
-                }
-                else
-                {
-                    // Draw highlight.
-                    if (i == m_current_select_entity)
-                    {
-                        auto dl = ImGui::GetWindowDrawList();
-                        dl->AddRectFilled(sel_pos, sel_pos + sel_size,
-                            Color::to_rgba8(Float4(ImGui::GetStyle().Colors[(u32)ImGuiCol_Button])));
-                    }
-                    ImGui::Text("%s", entities[i]->name.c_str());
-                }
-
-                if (ImGui::IsWindowFocused() && in_bounds(ImGui::GetIO().MousePos, sel_pos, sel_pos + sel_size) && ImGui::IsMouseClicked(ImGuiMouseButton_Right))
-                {
-                    ImGui::OpenPopup(entity_popup_id);
-                }
-
             }
 
-            if (ImGui::BeginPopup(entity_popup_id))
+            if(open_actor_list_popup)
             {
-                if (ImGui::Selectable("Rename"))
-                {
-                    m_name_editing = true;
-                    m_name_editing_buf = s->root_entities[m_current_select_entity]->name.c_str();
-                    ImGui::CloseCurrentPopup();
-                }
+                ImGui::OpenPopup(actor_popup_id);
+            }
+
+            if (ImGui::BeginPopup(actor_popup_id))
+            {
                 if (ImGui::Selectable("Remove"))
                 {
-                    s->root_entities.erase(s->root_entities.begin() + m_current_select_entity);
+                    usize remove_index = 0;
+                    for(usize i = 0; i < s->actors.size(); ++i)
+                    {
+                        if(m_editing_actor_guid == s->actors[i].guid)
+                        {
+                            remove_index = i;
+                            break;
+                        }
+                    }
+                    on_remove_actor(m_editing_actor_guid);
+                    s->actors.erase(s->actors.begin() + remove_index);
                     ImGui::CloseCurrentPopup();
                 }
                 ImGui::EndPopup();
@@ -219,111 +291,136 @@ namespace Luna
         ImGui::EndChild();
         ImGui::PopStyleVar();
     }
-    void SceneEditor::draw_scene_components_grid()
+
+    void SceneEditor::draw_actor_tree_node(Actor* actor, bool& open_popup)
     {
-        ImGui::Text("Scene Components");
-
-        ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 5.0f);
-        ImGui::BeginChild("Scene Components", Float2(0.0f, 0.0f), true);
-
-        auto s = get_asset_or_async_load_if_not_ready<Scene>(m_scene);
-        auto& components = s->scene_components;
-        if (components.empty())
+        ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow;
+        ActorInfo* info = actor->get_actor_info();
+        if(info->get_guid() == m_editing_actor_guid)
         {
-            ImGui::Text("No Components");
+            flags |= ImGuiTreeNodeFlags_Selected;
+        }
+        String name(info->name);
+        Guid guid = info->get_guid();
+        usize hash = memhash(&guid, sizeof(Guid));
+        Vector<Actor*> children;
+        info->get_children(children);
+        if(children.empty())
+        {
+            flags |= ImGuiTreeNodeFlags_Leaf;
         }
         else
         {
-            auto iter = components.begin();
-            while (iter != components.end())
-            {
-                if (ImGui::CollapsingHeader(get_type_name(iter->first).c_str(), ImGuiTreeNodeFlags_DefaultOpen))
-                {
-                    edit_object(iter->second.get());
-                    
-                    ImGui::PushID(iter->first);
-
-                    if (ImGui::Button("Remove"))
-                    {
-                        iter = components.erase(iter);
-                    }
-                    else
-                    {
-                        ++iter;
-                    }
-
-                    ImGui::PopID();
-                }
-                else
-                {
-                    ++iter;
-                }
-            }
+            flags |= ImGuiTreeNodeFlags_DefaultOpen;
         }
-
-        const char* new_comp_popup = "NewSceneCompPopup";
-
-        if (ImGui::Button("New Scene Component"))
+        bool opened = ImGui::TreeNodeEx((void*)hash, flags, "%s", name.c_str());
+        if(ImGui::IsItemClicked())
         {
-            ImGui::OpenPopup(new_comp_popup);
+            m_editing_actor_guid = info->get_guid();
         }
-
-        if (ImGui::BeginPopup(new_comp_popup))
+        if(ImGui::IsItemClicked(ImGuiMouseButton_Right))
         {
-
-            for (auto& i : g_env->scene_component_types)
-            {
-                auto name = get_type_name(i);
-                auto exists = s->scene_components.contains(i);
-                if (!exists)
-                {
-                    // Show enabled.
-                    if (ImGui::Selectable(name.c_str()))
-                    {
-                        object_t comp = object_alloc(i);
-                        construct_type(i, comp);
-                        ObjRef comp_obj;
-                        comp_obj.attach(comp);
-                        components.insert(make_pair(i, move(comp_obj)));
-                        ImGui::CloseCurrentPopup();
-                    }
-                }
-                else
-                {
-                    // Show disabled.
-                    ImGui::Selectable(name.c_str(), false, ImGuiSelectableFlags_Disabled);
-                }
-            }
-            ImGui::EndPopup();
+            m_editing_actor_guid = info->get_guid();
+            open_popup = true;
         }
+        if(ImGui::BeginDragDropSource())
+        {
+            ImGui::SetDragDropPayload("Actor Ref", &m_editing_actor_guid, sizeof(Guid));
+            Actor* selected = m_world.get_actor(m_editing_actor_guid);
+            ImGui::Text("%s", selected->get_actor_info()->name.c_str());
+            ImGui::EndDragDropSource();
+        }
+        // if(ImGui::BeginDragDropTarget())
+        // {
+        //     // Actor ref.
+        //     {
+        //         const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("Actor Ref");
+        //         if(payload)
+        //         {
+        //             const Guid* actor_guid = (const Guid*)payload->Data;
+        //             Actor* root_actor = actor;
+        //             while(root_actor->parent)
+        //             {
+        //                 root_actor = root_actor->parent;
+        //             }
+        //             Actor* move_actor = root_actor->get_actor_by_guid(*actor_guid);
+        //             if(move_actor)
+        //             {
+        //                 on_drop_actor(move_actor, actor);
+        //             }
+        //         }
+        //     }
+        //     ImGui::EndDragDropTarget();
+        // }
+        if(opened)
+        {
+            for(Actor* child : children)
+            {
+                draw_actor_tree_node(child, open_popup);
+            }
+            ImGui::TreePop();
+        }
+    }
 
+    void SceneEditor::draw_scene_settings()
+    {
+        auto s = get_asset_or_async_load_if_not_ready<Scene>(m_scene);
+        ImGui::Text("Scene Settings");
+
+        ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 5.0f);
+        if(ImGui::BeginChild("Scene Settings", Float2(0.0f, 0.0f), true))
+        {
+            edit_scene_object(&m_world, typeof<SceneSettings>(), &(s->settings));
+        }
         ImGui::EndChild();
 
         ImGui::PopStyleVar();
     }
 
-    RV SceneEditor::draw_scene()
+    void SceneEditor::draw_scene()
     {
         lutry
         {
+            ImGui::Text("Scene");
+
+            Scene* s = get_asset_or_async_load_if_not_ready<Scene>(m_scene);
+
+            m_renderer.world = &m_world;
+            Actor* camera_actor = m_world.get_actor(s->settings.camera_actor.guid);
+            if(!camera_actor)
+            {
+                ImGui::Text("Set a camera in scene settings to start.");
+                return;
+            }
+            Camera* camera_component = camera_actor->get_component<Camera>();
+            if(!camera_component)
+            {
+                ImGui::Text("Actor camera actor does not have a camera component");
+                return;
+            }
+
+            auto& renderer_settings = m_renderer.get_settings();
+            camera_component->aspect_ratio = (f32)renderer_settings.screen_size.x / (f32)renderer_settings.screen_size.y;
+
             // Collect last frame profiling data.
             if(m_renderer.get_settings().frame_profiling)
             {
                 m_renderer.collect_frame_profiling_data();
             }
 
-            ImGui::Text("Scene");
+            auto& params = m_renderer.params;
+            params.world_to_view = camera_actor->get_world_to_local_matrix();
+            params.view_to_world = camera_actor->get_local_to_world_matrix();
+            params.view_to_proj = camera_component->get_projection_matrix();
+            params.skybox = get_asset_or_async_load_if_not_ready<RHI::ITexture>(s->settings.skybox);
+            params.camera_exposure = s->settings.exposure;
+            params.camera_fov = camera_component->fov;
+            params.camera_type = camera_component->type;
+            params.bloom_intensity = s->settings.bloom_intensity;
+            params.bloom_threshold = s->settings.bloom_threshold;
+            params.camera_auto_exposure = s->settings.auto_exposure;
 
-            Scene* s = get_asset_or_async_load_if_not_ready<Scene>(m_scene);
-
-            m_renderer.scene = s;
-
-            auto r = m_renderer.render();
-            if(failed(r))
-            {
-                ImGui::Text("%s", explain(r.errcode()));
-                return ok;
-            }
+            luexp(m_renderer.render());
 
             ImGui::BeginChild("Scene Viewport", Float2(0.0f, 0.0f), false, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar);
 
@@ -454,23 +551,24 @@ namespace Luna
 
             ImGui::Image(m_renderer.render_texture, scene_sz);
 
-            auto scene_renderer = s->get_scene_component<SceneSettings>();
-            auto camera_entity = s->find_entity(scene_renderer->camera_entity);
-            auto camera_component = camera_entity->get_component<Camera>();
+            auto& scene_settings = s->settings;
 
             // Draw GUI Overlays.
             {
                 // Draw gizmo.
-                auto e = m_current_entity.pin();
-                if (e && e != camera_entity)
+                Actor* actor = m_world.get_actor(m_editing_actor_guid);
+                if (actor && actor != camera_actor)
                 {
-                    Float4x4 world_mat = e->local_to_world_matrix();
+                    Float4x4 world_mat = actor->get_local_to_world_matrix();
                     bool edited = false;
-                    ImGui::Gizmo(world_mat, camera_entity->world_to_local_matrix(), camera_component->get_projection_matrix(),
+                    ImGui::Gizmo(world_mat, camera_actor->get_world_to_local_matrix(), camera_component->get_projection_matrix(),
                         RectF(scene_pos.x, scene_pos.y, scene_sz.x, scene_sz.y), m_gizmo_op, m_gizmo_mode, 0.0f, true, false, nullptr, nullptr, &edited);
                     if (edited)
                     {
-                        e->set_local_to_world_matrix(world_mat);
+                        actor->set_local_to_world_matrix(world_mat);
+                        // Write transform back to scene data.
+                        const Transform* transform = actor->get_transform();
+                        s->get_actor(m_editing_actor_guid)->transform = *transform;
                     }
                 }
 
@@ -498,12 +596,13 @@ namespace Luna
                 ImGui::SetCursorPos(backup_pos);
 
                 // Draw scene gizmos.
-                if(camera_entity)
+                if(camera_actor)
                 {
                     f32 gizmo_size = 50.0f;
                     f32 gizmo_len = gizmo_size;
 
-                    Float4x4 view_mat = inverse(AffineMatrix::make(camera_entity->position, camera_entity->rotation, Float3(1.0f)));
+                    Transform* camera_transform = camera_actor->get_transform();
+                    Float4x4 view_mat = inverse(AffineMatrix::make(camera_transform->position, camera_transform->rotation, Float3(1.0f)));
                     Float4 x_gizmo = mul(Float4(1.0f, 0.0f, 0.0f, 0.0f) * gizmo_len, view_mat);
                     Float4 y_gizmo = mul(Float4(0.0f, 1.0f, 0.0f, 0.0f) * gizmo_len, view_mat);
                     Float4 z_gizmo = mul(Float4(0.0f, 0.0f, 1.0f, 0.0f) * gizmo_len, view_mat);
@@ -555,7 +654,8 @@ namespace Luna
                 auto mouse_delta = mouse_pos - m_scene_click_pos;
                 m_scene_click_pos = mouse_pos;
                 // Rotate camera based on mouse delta.
-                auto rot = camera_entity->rotation;
+                Transform* camera_transform = camera_actor->get_transform();
+                auto rot = camera_transform->rotation;
                 auto rot_mat = AffineMatrix::make_rotation(rot);
 
                 // Key control.
@@ -565,39 +665,49 @@ namespace Luna
 
                 f32 camera_speed = m_camera_speed;
                 auto& io = ImGui::GetIO();
-                if (io.KeysDown[ImGuiKey_LeftShift])
+                if (ImGui::IsKeyDown(ImGuiKey_LeftShift))
                 {
                     camera_speed *= 2.0f;
                 }
 
-                if (io.KeysDown[ImGuiKey_W])
+                if (ImGui::IsKeyDown(ImGuiKey_W))
                 {
-                    camera_entity->position += forward * 0.1f * camera_speed;
+                    camera_transform->position += forward * 0.1f * camera_speed;
                 }
-                if (io.KeysDown[ImGuiKey_A])
+                if (ImGui::IsKeyDown(ImGuiKey_A))
                 {
-                    camera_entity->position += + left * 0.1f * camera_speed;
+                    camera_transform->position += + left * 0.1f * camera_speed;
                 }
-                if (io.KeysDown[ImGuiKey_S])
+                if (ImGui::IsKeyDown(ImGuiKey_S))
                 {
-                    camera_entity->position += - forward * 0.1f * camera_speed;
+                    camera_transform->position += - forward * 0.1f * camera_speed;
                 }
-                if (io.KeysDown[ImGuiKey_D])
+                if (ImGui::IsKeyDown(ImGuiKey_D))
                 {
-                    camera_entity->position += - left * 0.1f * camera_speed;
+                    camera_transform->position += - left * 0.1f * camera_speed;
                 }
-                if (io.KeysDown[ImGuiKey_Q])
+                if (ImGui::IsKeyDown(ImGuiKey_Q))
                 {
-                    camera_entity->position += - up * 0.1f * camera_speed;
+                    camera_transform->position += - up * 0.1f * camera_speed;
                 }
-                if (io.KeysDown[ImGuiKey_E])
+                if (ImGui::IsKeyDown(ImGuiKey_E))
                 {
-                    camera_entity->position += + up * 0.1f * camera_speed;
+                    camera_transform->position += + up * 0.1f * camera_speed;
                 }
                 auto eular = AffineMatrix::euler_angles(rot_mat);
                 eular += {deg_to_rad((f32)mouse_delta.y / 10.0f), deg_to_rad((f32)mouse_delta.x / 10.0f), 0.0f};
                 eular.x = clamp(eular.x, deg_to_rad(-85.0f), deg_to_rad(85.0f));
-                camera_entity->rotation = Quaternion::from_euler_angles(eular);
+                camera_transform->rotation = Quaternion::from_euler_angles(eular);
+
+                // Write camera transform back to scene.
+                for(auto& scene_actor : s->actors)
+                {
+                    if(scene_actor.guid == s->settings.camera_actor.guid)
+                    {
+                        scene_actor.transform = *camera_transform;
+                        break;
+                    }
+                }
             }
             m_renderer.command_buffer->wait();
             luassert_always(succeeded(m_renderer.command_buffer->reset()));
@@ -605,16 +715,20 @@ namespace Luna
             {
                 luexp(m_renderer.reset(settings));
             }
+            ImGui::Dummy(ImVec2(0, 0));
             ImGui::EndChild();
         }
-        lucatchret;
-        return ok;
-
+        lucatch
+        {
+            ImGui::Text("%s", explain(luerr));
+        }
     }
 
-    static void draw_transform(Entity* t)
+    static bool edit_transform(Transform* t)
     {
-        ImGui::DragFloat3("Position", t->position.m, 0.01f);
+        bool edited = false;
+
+        edited = edited || ImGui::DragFloat3("Position", t->position.m, 0.01f);
 
         auto euler = AffineMatrix::euler_angles(AffineMatrix::make_rotation(t->rotation));
         euler *= 180.0f / PI;
@@ -625,11 +739,14 @@ namespace Luna
         ImGui::DragFloat3("Rotation", euler.m);
         if (ImGui::IsItemEdited())
         {
+            edited = true;
             euler *= PI / 180.0f;
             t->rotation = Quaternion::from_euler_angles(euler);
         }
 
-        ImGui::DragFloat3("Scale", t->scale.m, 0.01f);
+        edited = edited || ImGui::DragFloat3("Scale", t->scale.m, 0.01f);
+
+        return edited;
     }
 
     void SceneEditor::draw_components_grid()
@@ -641,31 +758,52 @@ namespace Luna
         ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 5.0f);
         ImGui::BeginChild("Components Grid", Float2(0.0f, 0.0f), true);
 
-        auto current_entity = m_current_entity.pin();
+        Scene* s = get_asset_or_async_load_if_not_ready<Scene>(m_scene);
+        if(!s) return;
 
-        if (current_entity)
+        SceneActor* actor = s->get_actor(m_editing_actor_guid);
+
+        if (actor)
         {
+            // Draw name.
+            String name = actor->name;
+            if(ImGui::InputText("Name", name))
+            {
+                actor->name = name;
+                on_edit_actor_info(*actor);
+            }
             // Draw transform.
-            draw_transform(current_entity);
+            if(edit_transform(&actor->transform))
+            {
+                on_edit_actor_transform(*actor);
+            }
 
-            if (current_entity->components.empty())
+            auto& components = actor->components;
+
+            if (components.empty())
             {
                 ImGui::Text("No components");
             }
             else
             {
-                auto iter = current_entity->components.begin();
+                auto iter = components.begin();
 
-                while (iter != current_entity->components.end())
+                while (iter != components.end())
                 {
-                    if (ImGui::CollapsingHeader(get_type_name(iter->first).c_str(), ImGuiTreeNodeFlags_DefaultOpen))
+                    auto& obj = *iter;
+                    if (ImGui::CollapsingHeader(get_type_name(obj.type()).c_str(), ImGuiTreeNodeFlags_DefaultOpen))
                     {
-                        edit_object(iter->second.get());
-                        ImGui::PushID(iter->first);
+                        bool edited = edit_scene_object(&m_world, obj.type(), obj.get());
+                        if(edited)
+                        {
+                            on_actor_edit_component(*actor, obj.type());
+                        }
+                        ImGui::PushID(obj.type());
 
                         if (ImGui::Button("Remove"))
                         {
-                            iter = current_entity->components.erase(iter);
+                            on_actor_remove_component(*actor, obj.type());
+                            iter = components.erase(iter);
                         }
                         else
                         {
@@ -690,11 +828,18 @@ namespace Luna
 
             if (ImGui::BeginPopup(new_comp_popup))
             {
-
                 for (auto& i : g_env->component_types)
                 {
+                    auto exists = false;
+                    for(auto& c : components)
+                    {
+                        if(c.type() == i)
+                        {
+                            exists = true;
+                            break;
+                        }
+                    }
                     auto name = get_type_name(i);
-                    auto exists = current_entity->components.contains(i);
                     if (!exists)
                     {
                         // Show enabled.
@@ -704,7 +849,8 @@ namespace Luna
                             construct_type(i, comp);
                             ObjRef comp_obj;
                             comp_obj.attach(comp);
-                            current_entity->components.insert(make_pair(i, move(comp_obj)));
+                            components.push_back(move(comp_obj));
+                            on_actor_add_component(*actor, i);
                             ImGui::CloseCurrentPopup();
                         }
                     }
@@ -738,9 +884,14 @@ namespace Luna
             ImGui::End();
             return;
         }
+        if(!m_world_initialized)
+        {
+            s->add_to_world(&m_world);
+            m_world_initialized = true;
+        }
         if (Asset::get_asset_state(m_scene) == Asset::AssetState::unloaded)
         {
-            Asset::load_asset(m_scene);
+            auto _ = Asset::load_asset(m_scene);
         }
         if (Asset::get_asset_state(m_scene) != Asset::AssetState::loaded)
         {
@@ -792,17 +943,13 @@ namespace Luna
 
         ImGui::Columns(3, nullptr, true);
 
-        draw_entity_list();
+        draw_actor_list();
 
-        draw_scene_components_grid();
+        draw_scene_settings();
 
         ImGui::NextColumn();
 
-        RV r = draw_scene();
-        if(failed(r))
-        {
-            auto _ = Window::message_box(explain(r.errcode()), "Scene Editor Error", Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
-        }
+        draw_scene();
 
         ImGui::NextColumn();
 
@@ -829,8 +976,12 @@ namespace Luna
             usize slice_pitch = row_pitch * desc.height;
             Blob img_data(slice_pitch);
             lulet(readback_cmdbuf, device->new_command_buffer(g_env->async_copy_queue));
-            luexp(copy_resource_data(readback_cmdbuf, {CopyResourceData::read_texture(img_data.data(), (u32)row_pitch, (u32)slice_pitch, m_renderer.render_texture, SubresourceIndex(0, 0), 0, 0, 0,
-                desc.width, desc.height, 1)}));
+            auto reader = RHIUtility::new_resource_read_context(g_env->device);
+            usize op = reader->read_texture(m_renderer.render_texture, SubresourceIndex(0, 0), 0, 0, 0, desc.width, desc.height, 1);
+            luexp(reader->commit(readback_cmdbuf, true));
+            u32 src_row_pitch, src_slice_pitch;
+            lulet(mapped, reader->get_texture_data(op, src_row_pitch, src_slice_pitch));
+            memcpy_bitmap(img_data.data(), mapped, row_pitch, desc.height, row_pitch, src_row_pitch);
             Image::ImageDesc img_desc;
             img_desc.width = (u32)desc.width;
             img_desc.height = desc.height;
@@ -952,7 +1103,10 @@ namespace Luna
 
             // Upload grid vertex data.
             lulet(upload_cmdbuf, device->new_command_buffer(g_env->async_copy_queue));
-            luexp(copy_resource_data(upload_cmdbuf, {CopyResourceData::write_buffer(m_grid_vb, 0, grids, sizeof(grids))}));
+            auto writer = RHIUtility::new_resource_write_context(g_env->device);
+            lulet(mapped, writer->write_buffer(m_grid_vb, 0, sizeof(grids)));
+            memcpy(mapped, grids, sizeof(grids));
+            luexp(writer->commit(upload_cmdbuf, true));
         }
         lucatchret;
         return ok;

@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -11,6 +11,9 @@
 #include <Luna/Runtime/Math/Vector.hpp>
 #include <Luna/RHI/DescriptorSet.hpp>
 #include <Luna/Runtime/Ref.hpp>
+#include <Luna/Runtime/Math/Color.hpp>
+#include <Luna/Runtime/Math/Transform.hpp>
+#include "ShapeBuffer.hpp"
 
 #ifndef LUNA_VG_API
 #define LUNA_VG_API
@@ -34,12 +37,12 @@ namespace Luna
             //! The texture coordinate of the vertex for sampling
             //! the attached resources.
             Float2U texcoord;
-            //! An additional color that can be used to tint the vertex.
-            u32 color;
             //! The offset of the first command for this shape in the shape buffer.
             u32 begin_command;
             //! The number of commands (f32 values) used for this shape.
             u32 num_commands;
+            //! An additional color that can be used to tint the vertex.
+            Float4U color;
         };
 
         //! Describes one shape draw call.
@@ -51,14 +54,14 @@ namespace Luna
             Ref<RHI::ITexture> texture;
             //! The attached sampler for this draw call.
             RHI::SamplerDesc sampler;
+            //! The clip rectangle for this draw call.
+            RectF clip_rect;
             //! The fist index to draw for this draw call.
             u32 base_index;
             //! The number of indices to draw for this draw call.
             u32 num_indices;
-            //! The origin point for this draw call.
-            Float2U origin_point;
-            //! The rotation for this draw call.
-            f32 rotation;
+            //! The transform matrix for this draw call.
+            Float4x4U transform;
         };
 
         //! @interface IShapeDrawList
@@ -67,14 +70,13 @@ namespace Luna
         {
             luiid("{14F1CA71-7B2D-4072-A2EE-DFD64B62FCD5}");
 
+            //! Gets the bounded RHI device.
+            //! @return Returns the bounded RHI device.
+            virtual RHI::IDevice* get_device() = 0;
+
             //! Resets the draw list. The call clears all shapes recorded, but retains their memory
             //! and resources, so they can be reused for new shapes.
             virtual void reset() = 0;
-
-            //! Gets shape points that are recorded in internal shape buffer.
-            //! @return Returns one vector that contains the recorded shape points.
-            //! The user may add points to this vector manually.
-            virtual Vector<f32>& get_shape_points() = 0;
 
             //! Sets the shape buffer used for the following draw calls.
             //! @param[in] shape_buffer The shape buffer to set. If this is `nullptr`, the internal shape buffer will be set.
@@ -90,11 +92,11 @@ namespace Luna
             //! to create shape buffer herself, she can also pass `nullptr` to @ref set_shape_buffer to use the shape draw list's internal shape 
             //! buffer. The internal shape buffer is designed to draw contours that may change every frame, like the GUI widget that are generated 
             //! at runtime, and the data of the internal shape buffer will be cleared every time @ref reset is called.
-            virtual void set_shape_buffer(RHI::IBuffer* shape_buffer) = 0;
+            virtual void set_shape_buffer(IShapeBuffer* shape_buffer) = 0;
 
             //! Gets the current set shape buffer. See remarks of @ref set_shape_buffer for details.
-            //! @return Returns the current set shape buffer. Returns `nullptr` if the internal shape buffer is used.
-            virtual RHI::IBuffer* get_shape_buffer() = 0;
+            //! @return Returns the current set shape buffer.
+            virtual IShapeBuffer* get_shape_buffer() = 0;
 
             //! Sets the texture to be sampled when rendering the succeeding shapes.
             //! @param[in] tex The texture to set. Specify `nullptr` is allowed, which behaves the same as applying one white texture with all components set to
@@ -118,26 +120,23 @@ namespace Luna
             //! @return Returns the currently set sampler state.
             virtual RHI::SamplerDesc get_sampler() = 0;
 
-            //! Sets the origin point for the following draw calls.
-            //! @details The origin point is relative to the origin point of the canvas. 
-            //! The origin point of the canvas is at the bottom-left corner. The x axis points to right and the y axis points to up.
-            //! 
-            //! The initial origin point is (0,0) when the draw list has been reset.
+            //! Sets the transform matrix for the following draw calls.
+            //! @details The initial transform matrix is @ref Float4x4::identity when the draw list has been reset.
             //! @param[in] origin The origin point position to set.
-            virtual void set_origin(const Float2& origin) = 0;
+            virtual void set_transform(const Float4x4U& transform) = 0;
 
-            //! Gets the origin point for the following draw calls.
-            //! @return Returns the origin point for the following draw calls.
-            virtual Float2 get_origin() = 0;
+            //! Gets the transform matrix for the following draw calls.
+            //! @return Returns the transform matrix for the following draw calls.
+            virtual Float4x4U get_transform() = 0;
 
-            //! Sets the rotation for the following draw calls.
-            //! @details The rotation is relative to the set origin point.
-            //! @param[in] degrees The rotation to set in clockwise degrees.
-            virtual void set_rotation(f32 degrees) = 0;
+            //! Sets the clip rectangle for the following draw calls.
+            //! @param[in] clip_rect The clip rectangle to set.
+            //! Set clip rectangle to {0, 0, 0, 0} will disable the clip rectangle.
+            virtual void set_clip_rect(const RectF& clip_rect) = 0;
 
-            //! Gets the rotation for the following draw calls.
-            //! @return Returns the rotation for the following draw calls in clockwise degrees.
-            virtual f32 get_rotation() = 0;
+            //! Gets the clip rectangle for the following draw calls.
+            //! @return Returns the set clip rectangle.
+            virtual RectF get_clip_rect() = 0;
 
             //! Draws one shape by submitting vertices and indices directly.
             //! @param[in] vertices The draw vertices.
@@ -157,7 +156,7 @@ namespace Luna
             virtual void draw_shape(u32 begin_command, u32 num_commands,
                 const Float2U& min_position, const Float2U& max_position,
                 const Float2U& min_shapecoord, const Float2U& max_shapecoord,
-                u32 color = 0xFFFFFFFF,
+                const Float4U& color = Color::white(),
                 const Float2U& min_texcoord = Float2U(0.0f), const Float2U& max_texcoord = Float2U(0.0f)
                 ) = 0;
 
@@ -195,8 +194,27 @@ namespace Luna
             //! Gets an array of draw calls that should be invoked to draw glyphs in this draw list.
             //! @param[out] out_draw_calls Returns the compiled draw calls. Elements will be pushed to the end of the vector,
             //! and existing elements will not be modified.
-            virtual void get_draw_calls(Vector<ShapeDrawCall>& out_draw_calls) = 0;
+            virtual Span<const ShapeDrawCall> get_draw_calls() = 0;
         };
+
+        //! Generates vertices and indices used to draw one shape rectangle.
+        //! @param[out] out_vertices The buffer to write generated vertices to. 4 vertices will be written.
+        //! @param[out] out_indices The buffer to write generated indices to. 6 indices will be written.
+        //! @param[in] begin_command The index of the first command point of the glyph to draw in shape buffer.
+        //! @param[in] num_commands The number of command points of the glyph to draw.
+        //! @param[in] min_position The minimum position of the bounding rect of the shape.
+        //! @param[in] max_position The maximum position of the bounding rect of the shape.
+        //! @param[in] min_shapecoord The shape coordinate value that maps to the minimum position of the bounding rect of the shape.
+        //! @param[in] max_shapecoord The shape coordinate value that maps to the maximum position of the bounding rect of the shape.
+        //! @param[in] color The color to tint the shape in RGBA8 form.
+        //! @param[in] min_texcoord The texture coordinate value that maps to the minimum position of the bounding rect of the shape.
+        //! @param[in] max_shapecoord The texture coordinate value that maps to the maximum position of the bounding rect of the shape.
+        LUNA_VG_API void get_rect_shape_draw_vertices(Vertex out_vertices[4], u32 out_indices[6],
+            u32 begin_command, u32 num_commands,
+            const Float2U& min_position, const Float2U& max_position,
+            const Float2U& min_shapecoord, const Float2U& max_shapecoord,
+            const Float4U& color = Color::white(),
+            const Float2U& min_texcoord = Float2U(0.0f), const Float2U& max_texcoord = Float2U(0.0f));
 
         //! Creates a new shape draw list.
         //! @param[in] device The device used to render to the draw list. This is used to create 

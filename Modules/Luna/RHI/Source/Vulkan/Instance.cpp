@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 *
@@ -9,8 +9,15 @@
 */
 #include "Instance.hpp"
 #include <Luna/Runtime/Log.hpp>
-#include <Luna/Window/Vulkan/Vulkan.hpp>
 #include <Luna/Runtime/StackAllocator.hpp>
+
+#ifdef LUNA_PLATFORM_WINDOWS
+#include <vulkan/vulkan_win32.h>
+#endif
+
+#ifdef LUNA_PLATFORM_ANDROID
+#include <vulkan/vulkan_android.h>
+#endif
 
 namespace Luna
 {
@@ -122,22 +129,35 @@ namespace Luna
                 luexp(encode_vk_result(vkEnumerateInstanceVersion(&g_vk_version)));
                 VkApplicationInfo app_info{};
                 app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-                app_info.pApplicationName = "Luna SDK";
+                app_info.pApplicationName = "LunaSDK";
                 app_info.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
-                app_info.pEngineName = "Luna SDK";
+                app_info.pEngineName = "LunaSDK";
                 app_info.engineVersion = VK_MAKE_VERSION(0, 8, 0);
                 app_info.apiVersion = g_vk_version;
                 VkInstanceCreateInfo create_info{};
                 create_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
                 create_info.pApplicationInfo = &app_info;
                 u32 glfw_extensions_count = 0;
-                auto window_required_extensions = Window::get_required_vulkan_instance_extensions();
-                Vector<const c8*> extensions(window_required_extensions.begin(), window_required_extensions.end());
+                Vector<const c8*> extensions;
+                extensions.push_back(VK_KHR_SURFACE_EXTENSION_NAME);
+#ifdef LUNA_PLATFORM_WINDOWS
+                extensions.push_back(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
+#endif
+#ifdef LUNA_PLATFORM_ANDROID
+                extensions.push_back(VK_KHR_ANDROID_SURFACE_EXTENSION_NAME);
+#endif
                 g_enable_validation_layer = false;
 #if defined(LUNA_RHI_DEBUG) || defined(LUNA_DEBUG)
                 if (check_validation_layer_support())
                 {
                     g_enable_validation_layer = true;
+                }
+                else
+                {
+                    log_warning("RHI", "RHI module is built with rhi-debug is enabled, but Vulkan validate layer is not supported on the current environment. The debug layer will not be used.");
+#ifdef LUNA_PLATFORM_ANDROID
+                    log_warning("RHI", "Consult \"Vulkan validation layers on Android\" on how you can enable Vulkan validation layers on Android.");
+#endif
                 }
 #endif
                 if (g_enable_validation_layer)

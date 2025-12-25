@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -126,7 +126,17 @@ namespace Luna
                 ret.pixel_shader_write = true;
                 break;
             case DeviceFeature::uniform_buffer_data_alignment:
-                ret.uniform_buffer_data_alignment = 0;
+                ret.uniform_buffer_data_alignment = 1;
+                break;
+            case DeviceFeature::structured_buffer_offset_alignment:
+                ret.structured_buffer_offset_alignment = 1;
+                break;
+            case DeviceFeature::rasterizer_depth_clamp:
+#ifdef LUNA_PLATFORM_MACOS
+                ret.rasterizer_depth_clamp = true;
+#else
+                ret.rasterizer_depth_clamp = false; // TODO: depth clamp is supported on Metal 4 or later on iOS, which we are currently not supported.
+#endif
                 break;
             default: lupanic();
             }

@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 *
@@ -167,7 +167,7 @@ namespace Luna
                 // rasterization
                 VkPipelineRasterizationStateCreateInfo rasterizer{};
                 rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-                rasterizer.depthClampEnable = desc.rasterizer_state.depth_clip_enable ? VK_FALSE : VK_TRUE; // Enabling depth clamp will disable depth clip.
+                rasterizer.depthClampEnable = desc.rasterizer_state.depth_clamp_enable ? VK_TRUE : VK_FALSE; // Enabling depth clamp will disable depth clip.
                 rasterizer.rasterizerDiscardEnable = VK_FALSE;
                 switch (desc.rasterizer_state.fill_mode)
                 {

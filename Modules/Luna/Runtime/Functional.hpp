@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -147,6 +147,11 @@ namespace Luna
             return (usize)((u32)guid.low ^ ((u32)(guid.low >> 32)) ^ (u32)guid.high ^ ((u32)(guid.high >> 32)));
 #endif
         }
+    };
+
+    template <> struct hash<typeinfo_t>
+    {
+        usize operator()(typeinfo_t rhs) const { return (usize)rhs.handle; }
     };
 
     //! Wraps one reference to one copyable, assignable object.
@@ -493,19 +498,26 @@ namespace Luna
             else if (rhs.m_type == Type::object) rhs.m_callable = (ICallable*)data;
             else rhs.m_func = nullptr;
         }
-        //! Tests whether this function wrapper is empty.
-        //! @return Return `true` if this function wrapper is empty, that is, contains no callable object. 
+        //! Tests whether this function wrapper is valid.
+        //! @return Return `true` if this function wrapper is valid, that is, contains one callable object. 
         //! Return `false` otherwise.
-        bool empty() const
+        bool valid() const
         {
-            return m_type == Type::empty;
+            return m_type != Type::empty;
         }
-        //! Tests whether this function wrapper is non-empty.
-        //! @return Return `true` if this function wrapper is non-empty, that is, contains one callable object. 
+        //! Tests whether this function wrapper is valid.
+        //! @return Return `true` if this function wrapper is valid, that is, contains one callable object. 
         //! Return `false` otherwise.
         operator bool() const
         {
             return m_type != Type::empty;
+        }
+        //! Clears the function wrapper. The function wrapper contains no callable object after this operation.
+        void reset()
+        {
+            internal_clear();
+            m_type = Type::empty;
+            m_func = nullptr;
         }
         //! Invokes the function wrapper. This will invoke the callable object that is stored in the function.
         //! @param[in] args The arguments passed to the callable object.

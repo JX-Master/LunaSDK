@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -12,8 +12,10 @@
 #include "FontAtlas.hpp"
 #include "ShapeDrawList.hpp"
 #include "ShapeRenderer.hpp"
+#include "ShapeBuffer.hpp"
 #include <Luna/Runtime/Module.hpp>
 #include <Luna/RHI/RHI.hpp>
+#include <Luna/RHIUtility/RHIUtility.hpp>
 #include <Luna/ShaderCompiler/ShaderCompiler.hpp>
 
 namespace Luna
@@ -25,7 +27,7 @@ namespace Luna
             virtual const c8* get_name() override { return "VG"; }
             virtual RV on_register() override
             {
-                return add_dependency_modules(this, {module_rhi(), module_shader_compiler()});
+                return add_dependency_modules(this, {module_rhi(), module_rhi_utility(), module_shader_compiler()});
             }
             virtual RV on_init() override
             {
@@ -35,6 +37,8 @@ namespace Luna
                 impl_interface_for_type<ShapeDrawList, IShapeDrawList>();
                 register_boxed_type<FillShapeRenderer>();
                 impl_interface_for_type<FillShapeRenderer, IShapeRenderer>();
+                register_boxed_type<ShapeBuffer>();
+                impl_interface_for_type<ShapeBuffer, IShapeBuffer>();
                 return init_render_resources();
             }
             virtual void on_close() override

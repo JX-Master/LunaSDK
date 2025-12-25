@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 *
@@ -12,7 +12,7 @@
 #include "Adapter.hpp"
 #include "Instance.hpp"
 #include <Luna/Runtime/HashSet.hpp>
-#include <Luna/Window/Vulkan/Vulkan.hpp>
+#include "SurfaceBind.hpp"
 #include <Luna/Runtime/StackAllocator.hpp>
 namespace Luna
 {
@@ -54,8 +54,8 @@ namespace Luna
 
         static R<Vector<QueueFamily>> get_device_queue_families(VkPhysicalDevice device, VkSurfaceKHR check_surface)
         {
-            StackAllocator salloc;
             // Check device swap chain support.
+            StackAllocator salloc;
             bool device_swap_chain_supported = check_device_swap_chain_support(device, check_surface);
             uint32_t queue_family_count = 0;
             vkGetPhysicalDeviceQueueFamilyProperties(device, &queue_family_count, nullptr);
@@ -127,9 +127,15 @@ namespace Luna
             Ref<Window::IWindow> dummy_window;
             lutry
             {
-                luset(dummy_window, Window::new_window("Dummy Window", Window::WindowDisplaySettings::as_windowed(), Window::WindowCreationFlag::hidden));
+#if defined(LUNA_PLATFORM_DESKTOP)
+                luset(dummy_window, Window::new_window("Dummy Window", 0, 0, 0, 0, Window::WindowStyleFlag::none,Window::WindowCreationFlag::hidden));
+#elif defined(LUNA_PLATFORM_MOBILE)
+                dummy_window = Window::get_system_window();
+#else
+#error "Unsupported platform"
+#endif
                 // Fetch surface for dummy window.
-                luset(dummy_surface, Window::new_vulkan_surface_from_window(g_vk_instance, dummy_window));
+                luset(dummy_surface, new_surface_from_window(g_vk_instance, dummy_window));
                 // Select physical device.
                 for (usize i = 0; i < g_physical_devices.size(); ++i)
                 {

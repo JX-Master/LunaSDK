@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -13,6 +13,9 @@
 #include <Luna/Runtime/Module.hpp>
 #include <Luna/Runtime/Log.hpp>
 #include <Luna/Runtime/Thread.hpp>
+#include <Luna/Window/Event.hpp>
+
+#include <Luna/Window/AppMain.hpp>
 
 using namespace Luna;
 
@@ -21,105 +24,122 @@ void on_window_close(Window::IWindow* window)
     window->close();
 }
 
-void run()
+namespace Luna
 {
-    set_log_to_platform_enabled(true);
-    using namespace RHI;
-    using namespace Window;
-    Ref<IWindow> window = new_window("ImGui Demo", WindowDisplaySettings::as_windowed(), WindowCreationFlag::resizable).get();
-    window->get_close_event().add_handler(on_window_close);
-
-    Ref<IDevice> dev = get_main_device();
-
-    u32 queue = U32_MAX;
-    u32 num_queues = dev->get_num_command_queues();
-    for (u32 i = 0; i < num_queues; ++i)
+    struct App
     {
-        auto desc = dev->get_command_queue_desc(i);
-        if (desc.type == RHI::CommandQueueType::graphics)
-        {
-            queue = i;
-            break;
-        }
-    }
+        Ref<Window::IWindow> window;
+        Ref<RHI::ISwapChain> swap_chain;
+        Ref<RHI::ICommandBuffer> cmdbuf;
+        u32 width = 0;
+        u32 height = 0;
+    };
 
-    Ref<ISwapChain> swap_chain = dev->new_swap_chain(queue, window, SwapChainDesc({0, 0, 2, Format::bgra8_unorm, true})).get();
-
-    Ref<ICommandBuffer> cmdbuf = dev->new_command_buffer(queue).get();
-
-    // Create back buffer.
-    u32 w = 0, h = 0;
-
-    ImGuiUtils::set_active_window(window);
-
-    while (true)
+    RV run_app()
     {
-        poll_events();
-
-        if (window->is_closed())
+        lutry
         {
-            break;
+            luexp(add_modules({module_window(), module_rhi(), module_imgui()}));
+            luexp(init_modules());
+            set_log_to_platform_enabled(true);
+            using namespace RHI;
+            using namespace Window;
+
+            App app;
+
+            Window::set_event_handler([](object_t event, void* userdata)
+            {
+                ImGuiUtils::handle_window_event(event);
+            }, nullptr);
+
+            luset(app.window, new_window("ImGui Demo"));
+
+            Ref<IDevice> dev = get_main_device();
+
+            u32 queue = U32_MAX;
+            u32 num_queues = dev->get_num_command_queues();
+            for (u32 i = 0; i < num_queues; ++i)
+            {
+                auto desc = dev->get_command_queue_desc(i);
+                if (desc.type == RHI::CommandQueueType::graphics)
+                {
+                    queue = i;
+                    break;
+                }
+            }
+
+            luset(app.swap_chain, dev->new_swap_chain(queue, app.window, SwapChainDesc({0, 0, 2, Format::bgra8_unorm, true})));
+            luset(app.cmdbuf, dev->new_command_buffer(queue));
+
+            // Create back buffer.
+            u32 w = 0, h = 0;
+
+            ImGuiUtils::set_active_window(app.window);
+
+            while(true)
+            {
+                Window::poll_events();
+                if (app.window->is_closed()) break;
+                if (app.window->is_minimized())
+                {
+                    sleep(100);
+                    continue;
+                }
+                // Recreate the back buffer if needed.
+                auto sz = app.window->get_framebuffer_size();
+                auto ww = sz.x;
+                auto wh = sz.y;
+                if (ww != app.width || wh != app.height)
+                {
+                    luexp(app.swap_chain->reset({ww, wh, 2, Format::unknown, true}));
+                    f32 clear_color[] = { 0.0f, 0.0f, 0.0f, 1.0f };
+                    app.width = ww;
+                    app.height = wh;
+                }
+
+                ImGuiUtils::update_io();
+                ImGui::NewFrame();
+
+                ImGui::ShowDemoWindow();
+                
+                auto window_size = app.window->get_size();
+                ImGui::Text("Window Size: %ux%u", window_size.x, window_size.y);
+                ImGui::Text("Framebuffer Size: %ux%u", sz.x, sz.y);
+                ImGui::Text("DPI Scale: %f", app.window->get_dpi_scale_factor());
+
+                ImGui::Render();
+                
+                auto back_buffer = app.swap_chain->get_current_back_buffer().get();
+                RenderPassDesc desc;
+                desc.color_attachments[0] = ColorAttachment(back_buffer, LoadOp::clear, StoreOp::store, { 0.0f, 0.0f, 0.0f, 1.0f });
+                app.cmdbuf->begin_render_pass(desc);
+                app.cmdbuf->end_render_pass();
+                luexp(ImGuiUtils::render_draw_data(ImGui::GetDrawData(), app.cmdbuf, back_buffer));
+                app.cmdbuf->resource_barrier({},
+                {
+                    {app.swap_chain->get_current_back_buffer().get(), SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::present, ResourceBarrierFlag::none}
+                });
+                luexp(app.cmdbuf->submit({}, {}, true));
+                app.cmdbuf->wait();
+                luexp(app.swap_chain->present());
+                luexp(app.cmdbuf->reset());
+            }
         }
-        if (window->is_minimized())
-        {
-            sleep(100);
-            continue;
-        }
-        // Recreate the back buffer if needed.
-        auto sz = window->get_framebuffer_size();
-        auto ww = sz.x;
-        auto wh = sz.y;
-        if (ww != w || wh != h)
-        {
-            lupanic_if_failed(swap_chain->reset({ww, wh, 2, Format::unknown, true}));
-            f32 clear_color[] = { 0.0f, 0.0f, 0.0f, 1.0f };
-            w = ww;
-            h = wh;
-        }
-
-        ImGuiUtils::update_io();
-        ImGui::NewFrame();
-
-        ImGui::ShowDemoWindow();
-        
-        auto window_size = window->get_size();
-        ImGui::Text("Window Size: %ux%u", window_size.x, window_size.y);
-        ImGui::Text("Framebuffer Size: %ux%u", sz.x, sz.y);
-        ImGui::Text("DPI Scale: %f", window->get_dpi_scale_factor());
-
-        ImGui::Render();
-        
-        auto back_buffer = swap_chain->get_current_back_buffer().get();
-        RenderPassDesc desc;
-        desc.color_attachments[0] = ColorAttachment(back_buffer, LoadOp::clear, StoreOp::store, { 0.0f, 0.0f, 0.0f, 1.0f });
-        cmdbuf->begin_render_pass(desc);
-        cmdbuf->end_render_pass();
-        ImGuiUtils::render_draw_data(ImGui::GetDrawData(), cmdbuf, back_buffer);
-        cmdbuf->resource_barrier({},
-        {
-            {swap_chain->get_current_back_buffer().get(), SubresourceIndex(0, 0), TextureStateFlag::automatic, TextureStateFlag::present, ResourceBarrierFlag::none}
-        });
-        cmdbuf->submit({}, {}, true);
-        cmdbuf->wait();
-        swap_chain->present();
-        cmdbuf->reset();
+        lucatchret;
+        return ok;
     }
 }
 
-int main()
+int luna_main(int argc, const char* argv[])
 {
-    // Start modules.
-    Luna::init();
-    lupanic_if_failed(add_modules({module_window(), module_rhi(), module_imgui()}));
-    auto res = Luna::init_modules();
-    if (failed(res))
+    if(!Luna::init()) return -1;
+    auto r = Luna::run_app();
+    if(failed(r))
     {
-        log_error("ImGuiTest", "Module init error: %s\n", explain(res.errcode()));
-        lupanic();
+        Luna::log_error("ImGuiTest", "%s", Luna::explain(r.errcode()));
         Luna::close();
-        return 0;
+        return -1;
     }
-    run();
     Luna::close();
     return 0;
 }

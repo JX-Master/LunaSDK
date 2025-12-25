@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -23,8 +23,32 @@ namespace Luna
     //! @addtogroup RuntimeType
     //! @{
     
-    //! The opaque pointer that points to one type object.
-    using typeinfo_t = opaque_t;
+    //! Represents one handle to one type object.
+    struct typeinfo_t
+    {
+        opaque_t handle;
+
+        constexpr typeinfo_t() :
+            handle(nullptr) {}
+        constexpr typeinfo_t(opaque_t in_handle) :
+            handle(in_handle) {}
+        typeinfo_t(const typeinfo_t&) = default;
+        typeinfo_t(typeinfo_t&&) = default;
+        typeinfo_t& operator=(const typeinfo_t&) = default;
+        typeinfo_t& operator=(typeinfo_t&&) = default;
+        operator opaque_t() const
+        {
+            return handle;
+        }
+        bool operator==(const typeinfo_t& rhs) const
+        {
+            return handle == rhs.handle;
+        }
+        bool operator!=(const typeinfo_t& rhs) const
+        {
+            return handle != rhs.handle;
+        }
+    };
 
     //! Gets the type object from one type GUID.
     //! @param[in] guid The GUID of the type.
@@ -41,7 +65,7 @@ namespace Luna
     //! @return Returns the type object of the specified type. Returns `nullptr` if the type is not registered.
     //! @remark This function calls @ref typeof_t internally to get the type object of the specified type.
     template <typename _Ty>
-    inline typeinfo_t typeof() { return typeof_t<_Ty>()(); }
+    inline typeinfo_t typeof() { return typeof_t<decay_t<_Ty>>()(); }
 
     //! Gets the type object of `void` type.
     //! @return Returns the type object of `void` type.
@@ -94,6 +118,9 @@ namespace Luna
     //! Gets the type object of `bool` type.
     //! @return Returns the type object of `bool` type.
     LUNA_RUNTIME_API typeinfo_t boolean_type();
+    //! Gets the type object of `typeinfo_t` type.
+    //! @return Returns the type object of `typeinfo_t` type.
+    LUNA_RUNTIME_API typeinfo_t typeinfo_type();
 
     template <> struct typeof_t<u8> { typeinfo_t operator()() const { return u8_type(); } };
     template <> struct typeof_t<i8> { typeinfo_t operator()() const { return i8_type(); } };
@@ -109,6 +136,7 @@ namespace Luna
     template <> struct typeof_t<c16> { typeinfo_t operator()() const { return c16_type(); } };
     template <> struct typeof_t<c32> { typeinfo_t operator()() const { return c32_type(); } };
     template <> struct typeof_t<bool> { typeinfo_t operator()() const { return boolean_type(); } };
+    template <> struct typeof_t<typeinfo_t> { typeinfo_t operator()() const { return typeinfo_type(); }};
 
     //! Gets the type object of `Guid` type.
     //! @return Returns the type object of `Guid` type.
@@ -125,12 +153,66 @@ namespace Luna
     LUNA_RUNTIME_API typeinfo_t pair_type();
     template <typename _Ty1, typename _Ty2> struct typeof_t<Pair<_Ty1, _Ty2>> 
     { typeinfo_t operator()() const { return get_generic_instanced_type(pair_type(), {typeof<_Ty1>(), typeof<_Ty2>()}); } };
+
+    //! Specifies the type of one generic argument.
+    enum class GenericArgumentType : u8
+    {
+        //! This argument is not set.
+        none = 0,
+        //! This argument is a type.
+        type = 1,
+        //! This argument is a integer.
+        integer = 2,
+    };
+
+    //! Specifies one generic argument.
+    struct GenericArgument
+    {
+        //! The type of the argument.
+        GenericArgumentType argument_type;
+        union
+        {
+            //! The value of the argument if argument is a type.
+            typeinfo_t type;
+            //! The value of the argument if argument is an integer.
+            i64 integer;
+        };
+
+        GenericArgument() :
+            argument_type(GenericArgumentType::none),
+            type(nullptr) {}
+        GenericArgument(typeinfo_t type) :
+            argument_type(GenericArgumentType::type),
+            type(type) {}
+        GenericArgument(i64 integer) :
+            argument_type(GenericArgumentType::integer),
+            integer(integer) {}
+        GenericArgument(const GenericArgument&) = default;
+        GenericArgument(GenericArgument&&) = default;
+        GenericArgument& operator=(const GenericArgument&) = default;
+        GenericArgument& operator=(GenericArgument&&) = default;
+        bool operator==(const GenericArgument& rhs) const
+        {
+            if(argument_type != rhs.argument_type) return false;
+            switch(argument_type)
+            {
+                case GenericArgumentType::type: return type == rhs.type;
+                case GenericArgumentType::integer: return integer == rhs.integer;
+                default: lupanic();
+            }
+            return false;
+        }
+        bool operator!=(const GenericArgument& rhs) const
+        {
+            return !(*this == rhs);
+        }
+    };
     
     //! Gets one instanced type of one generic type.
     //! @param[in] generic_type The generic type.
     //! @param[in] generic_arguments The type arguments that are used to query the instanced type.
     //! @return Returns the instanced type requested.
-    LUNA_RUNTIME_API typeinfo_t get_generic_instanced_type(typeinfo_t generic_type, Span<const typeinfo_t> generic_arguments);
+    LUNA_RUNTIME_API typeinfo_t get_generic_instanced_type(typeinfo_t generic_type, Span<const GenericArgument> generic_arguments);
 
     template <typename _Ty>
     struct EnumTypeInfo {};

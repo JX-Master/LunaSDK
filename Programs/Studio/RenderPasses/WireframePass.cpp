@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -8,14 +8,15 @@
 * @date 2023/3/7
 */
 #include "WireframePass.hpp"
-#include <Luna/ShaderCompiler/ShaderCompiler.hpp>
-#include <Luna/RHI/ShaderCompileHelper.hpp>
 #include "../Mesh.hpp"
 #include "../Model.hpp"
 #include <Luna/Asset/Asset.hpp>
 #include "../SceneRenderer.hpp"
 #include <Luna/Runtime/File.hpp>
 #include "../StudioHeader.hpp"
+
+#include <WireframeVert.hpp>
+#include <WireframePixel.hpp>
 
 namespace Luna
 {
@@ -32,40 +33,6 @@ namespace Luna
             luset(m_debug_mesh_renderer_playout, device->new_pipeline_layout(PipelineLayoutDesc({ &dlayout, 1 },
                 PipelineLayoutFlag::allow_input_assembler_input_layout)));
 
-            lulet(vs_blob, compile_shader("Shaders/WireframeVert.hlsl", ShaderCompiler::ShaderType::vertex));
-
-            static const char* pixelShader =
-                R"(struct PS_INPUT
-                {
-                    [[vk::location(0)]]
-                    float4 position : SV_POSITION;
-                    [[vk::location(1)]]
-                    float3 normal : NORMAL;
-                    [[vk::location(2)]]
-                    float3 tangent : TANGENT;
-                    [[vk::location(3)]]
-                    float2 texcoord : TEXCOORD;
-                    [[vk::location(4)]]
-                    float4 color : COLOR;
-                    [[vk::location(5)]]
-                    float3 world_position : POSITION;
-                };
-                
-                float4 main(PS_INPUT input) : SV_Target
-                {
-                  return float4(1.0f, 1.0f, 1.0f, 1.0f);
-                })";
-            auto compiler = ShaderCompiler::new_compiler();
-            ShaderCompiler::ShaderCompileParameters params;
-            params.source = { pixelShader, strlen(pixelShader) };
-            params.source_name = "MeshDebugPS";
-            params.entry_point = "main";
-            params.target_format = get_current_platform_shader_target_format();
-            params.shader_type = ShaderCompiler::ShaderType::pixel;
-            params.shader_model = {6, 0};
-            params.optimization_level = ShaderCompiler::OptimizationLevel::full;
-            lulet(ps_blob, compiler->compile(params));
-
             GraphicsPipelineStateDesc ps_desc;
             ps_desc.primitive_topology = PrimitiveTopology::triangle_list;
             ps_desc.blend_state = BlendDesc({ AttachmentBlendDesc(true, BlendFactor::src_alpha,
@@ -78,12 +45,14 @@ namespace Luna
             InputBindingDesc binding(0, sizeof(Vertex), InputRate::per_vertex);
             ps_desc.input_layout.bindings = { &binding, 1 };
             ps_desc.input_layout.attributes = { attributes.data(), attributes.size() };
-            ps_desc.vs = get_shader_data_from_compile_result(vs_blob);
-            ps_desc.ps = get_shader_data_from_compile_result(ps_blob);
+            ps_desc.vs = LUNA_GET_SHADER_DATA(WireframeVert);
+            ps_desc.ps = LUNA_GET_SHADER_DATA(WireframePixel);
             ps_desc.pipeline_layout = m_debug_mesh_renderer_playout;
             ps_desc.num_color_attachments = 1;
             ps_desc.color_formats[0] = Format::rgba8_unorm;
             luset(m_debug_mesh_renderer_pso, device->new_graphics_pipeline_state(ps_desc));
+            u32 sb_alignment = device->check_feature(RHI::DeviceFeature::structured_buffer_offset_alignment).structured_buffer_offset_alignment;
+            m_model_matrices_stride = (u32)align_upper(sizeof(MeshBuffer), sb_alignment);
         }
         lucatchret;
         return ok;
@@ -125,19 +94,19 @@ namespace Luna
             cmdbuf->set_viewport(Viewport(0.0f, 0.0f, (f32)render_desc.width, (f32)render_desc.height, 0.0f, 1.0f));
             cmdbuf->set_scissor_rect(RectI(0, 0, (i32)render_desc.width, (i32)render_desc.height));
             // Draw Meshes.
-            for (usize i = 0; i < ts.size(); ++i)
+            for (usize i = 0; i < mesh_render_params.size(); ++i)
             {
                 auto vs = device->new_descriptor_set(DescriptorSetDesc(m_global_data->m_debug_mesh_renderer_dlayout)).get();
                 luexp(vs->update_descriptors({
                     WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(camera_cb, 0, (u32)align_upper(sizeof(CameraCB), cb_align))),
-                    WriteDescriptorSet::read_buffer_view(1, BufferViewDesc::structured_buffer(model_matrices, i, 1, sizeof(Float4x4) * 2))
+                    WriteDescriptorSet::read_buffer_view(1, BufferViewDesc::structured_buffer(model_matrices, i, 1, m_global_data->m_model_matrices_stride))
                     }));
                 IDescriptorSet* vs_d = vs.get();
                 cmdbuf->set_graphics_descriptor_sets(0, { &vs_d, 1 });
                 cmdbuf->attach_device_object(vs);
 
                 // Draw pieces.
-                auto mesh = get_asset_or_async_load_if_not_ready<Mesh>(get_asset_or_async_load_if_not_ready<Model>(rs[i]->model)->mesh);
+                auto mesh = get_asset_or_async_load_if_not_ready<Mesh>(mesh_render_params[i].model->mesh);
 
                 auto vb_view = VertexBufferView(mesh->vb, 0,
                     mesh->vb_count * sizeof(Vertex), sizeof(Vertex));

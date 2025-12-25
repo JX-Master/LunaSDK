@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -11,9 +11,14 @@
 #include <Luna/Runtime/Runtime.hpp>
 #include <Luna/Runtime/Module.hpp>
 #include <Luna/Runtime/Math/Color.hpp>
-#include <Luna/ShaderCompiler/ShaderCompiler.hpp>
 #include <Luna/Runtime/Log.hpp>
 #include <Luna/RHI/ShaderCompileHelper.hpp>
+#include <Luna/Runtime/Thread.hpp>
+#include <Luna/Window/Event.hpp>
+#include <Luna/Window/AppMain.hpp>
+
+#include <TestTriangleVS.hpp>
+#include <TestTrianglePS.hpp>
 
 using namespace Luna;
 using namespace Luna::RHI;
@@ -35,64 +40,6 @@ RV start()
     {
         // create pso
         {
-            const char vs_shader_code[] =
-                R"(
-                struct VS_INPUT
-                {
-                    [[vk::location(0)]]
-                    float2 pos : POSITION;
-                    [[vk::location(1)]]
-                    float4 col : COLOR0;
-                };
-                struct PS_INPUT
-                {
-                    [[vk::location(0)]]
-                    float4 pos : SV_POSITION;
-                    [[vk::location(1)]]
-                    float4 col  : COLOR0;
-                };
-                PS_INPUT main(VS_INPUT input)
-                {
-                    PS_INPUT output;
-                    output.pos = float4(input.pos.x, input.pos.y, 0.0f, 1.0f);
-                    output.col  = input.col;
-                    return output;
-                })";
-            auto compiler = ShaderCompiler::new_compiler();
-            ShaderCompiler::ShaderCompileParameters params;
-            params.source = { vs_shader_code, sizeof(vs_shader_code) };
-            params.source_name = "TestTriangleVS";
-            params.entry_point = "main";
-            params.target_format = RHI::get_current_platform_shader_target_format();
-            params.shader_type = ShaderCompiler::ShaderType::vertex;
-            params.shader_model = {6, 0};
-            params.optimization_level = ShaderCompiler::OptimizationLevel::full;
-
-            lulet(vs_data, compiler->compile(params));
-
-            const char ps_shader_code[] =
-                R"(struct PS_INPUT
-                {
-                    [[vk::location(0)]]
-                    float4 pos : SV_POSITION;
-                    [[vk::location(1)]]
-                    float4 col : COLOR0;
-                };
-                [[vk::location(0)]]
-                float4 main(PS_INPUT input) : SV_Target
-                {
-                    return input.col;
-                })";
-            params.source = { ps_shader_code, sizeof(ps_shader_code) };
-            params.source_name = "TestTrianglePS";
-            params.entry_point = "main";
-            params.target_format = RHI::get_current_platform_shader_target_format();
-            params.shader_type = ShaderCompiler::ShaderType::pixel;
-            params.shader_model = {6, 0};
-            params.optimization_level = ShaderCompiler::OptimizationLevel::full;
-
-            lulet(ps_data, compiler->compile(params));
-
             luset(pipeline_layout, get_main_device()->new_pipeline_layout(PipelineLayoutDesc({},
                 PipelineLayoutFlag::allow_input_assembler_input_layout |
                 PipelineLayoutFlag::deny_pixel_shader_access |
@@ -108,9 +55,9 @@ RV start()
             };
             desc.input_layout = InputLayoutDesc({bindings, 1}, {attributes, 2});
             desc.pipeline_layout = pipeline_layout;
-            desc.vs = get_shader_data_from_compile_result(vs_data);
-            desc.ps = get_shader_data_from_compile_result(ps_data);
-            desc.rasterizer_state.depth_clip_enable = false;
+            desc.vs = LUNA_GET_SHADER_DATA(TestTriangleVS);
+            desc.ps = LUNA_GET_SHADER_DATA(TestTrianglePS);
+            desc.rasterizer_state.depth_clamp_enable = true;
             desc.depth_stencil_state = DepthStencilDesc(false, false);
             desc.num_color_attachments = 1;
             desc.color_formats[0] = Format::bgra8_unorm;
@@ -167,25 +114,38 @@ void cleanup()
     vb.reset();
 }
 
-void run_app()
+int luna_main(int argc, const char* argv[])
 {
-    register_init_func(start);
-    register_close_func(cleanup);
-    register_resize_func(resize);
-    register_draw_func(draw);
-    lupanic_if_failed(run());
-}
-
-int main()
-{
-    if (!Luna::init()) return 0;
-    lupanic_if_failed(add_modules({module_rhi_test_bed(), module_shader_compiler()}));
-    auto r = init_modules();
-    if (failed(r))
+    if(!Luna::init()) return -1;
+    lutry
     {
-        log_error("%s", explain(r.errcode()));
+        luexp(add_modules({module_rhi_test_bed()}));
+        luexp(init_modules());
+        register_init_func(start);
+        register_close_func(cleanup);
+        register_resize_func(resize);
+        register_draw_func(draw);
+        luexp(RHITestBed::init());
+        while(true)
+        {
+            Window::poll_events();
+            auto window = RHITestBed::get_window();
+            if(window->is_closed()) break;
+            if(window->is_minimized())
+            {
+                sleep(100);
+                continue;
+            }
+            luexp(RHITestBed::update());
+        }
+        RHITestBed::close();
     }
-    else run_app();
+    lucatch
+    {
+        log_error("RHITest", "%s", explain(luerr));
+        Luna::close();
+        return -1;
+    }
     Luna::close();
     return 0;
 }

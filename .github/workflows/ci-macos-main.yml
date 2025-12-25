@@ -51,7 +51,7 @@ jobs:
           key: ${{ matrix.os }}-${{ matrix.arch }}-${{ steps.dep_hash.outputs.hash }}-W${{ steps.cache_key.outputs.key }}
           
       - name: Configure xmake debug
-        run: xmake f --mode=debug --contract_assertion=y --thread_safe_assertion=y --arch=${{ matrix.arch }} -c -y -v --rhi_debug=y --shared=${{ matrix.shared == 'shared' && 'y' || 'n'}}
+        run: xmake f --mode=debug --api_validation=y --thread_safe_assertion=y --arch=${{ matrix.arch }} -c -y -v --rhi_debug=y --shared=${{ matrix.shared == 'shared' && 'y' || 'n'}}
         
       - name: Build debug
         run: xmake build -y -v
@@ -60,7 +60,7 @@ jobs:
         run: xmake install -o ./install/${{ matrix.arch }}-debug
 
       - name: Configure xmake release
-        run: xmake f --mode=release --contract_assertion=n --thread_safe_assertion=n --arch=${{ matrix.arch }} -c -y -v --rhi_debug=n --shared=${{ matrix.shared == 'shared' && 'y' || 'n'}}
+        run: xmake f --mode=release --api_validation=n --thread_safe_assertion=n --arch=${{ matrix.arch }} -c -y -v --rhi_debug=n --shared=${{ matrix.shared == 'shared' && 'y' || 'n'}}
 
       - name: Build release
         run: xmake build -y -v

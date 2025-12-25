@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -13,7 +13,7 @@
 #include <Luna/VariantUtils/JSON.hpp>
 #include <Luna/Runtime/Serialization.hpp>
 #include "../StudioHeader.hpp"
-#include <Luna/RHI/Utility.hpp>
+#include <Luna/RHIUtility/ResourceWriteContext.hpp>
 namespace Luna
 {
     Name get_static_mesh_asset_type()
@@ -32,9 +32,13 @@ namespace Luna
             lulet(index_res, device->new_buffer(RHI::MemoryType::local, RHI::BufferDesc(
                 RHI::BufferUsageFlag::index_buffer | RHI::BufferUsageFlag::copy_dest, mesh_asset.index_data.size())));
             lulet(upload_cmdbuf, device->new_command_buffer(g_env->async_copy_queue));
-            luexp(RHI::copy_resource_data(upload_cmdbuf, {
-                RHI::CopyResourceData::write_buffer(vert_res, 0, mesh_asset.vertex_data.data(), mesh_asset.vertex_data.size()),
-                RHI::CopyResourceData::write_buffer(index_res, 0, mesh_asset.index_data.data(), mesh_asset.index_data.size())}));
+            auto writer = RHIUtility::new_resource_write_context(device);
+            void* mapped;
+            luset(mapped, writer->write_buffer(vert_res, 0, mesh_asset.vertex_data.size()));
+            memcpy(mapped, mesh_asset.vertex_data.data(), mesh_asset.vertex_data.size());
+            luset(mapped, writer->write_buffer(index_res, 0, mesh_asset.index_data.size()));
+            memcpy(mapped, mesh_asset.index_data.data(), mesh_asset.index_data.size());
+            luexp(writer->commit(upload_cmdbuf, true));
             mesh.pieces = mesh_asset.pieces;
             mesh.vb = vert_res;
             mesh.ib = index_res;

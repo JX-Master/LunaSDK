@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -19,7 +19,14 @@
 #include <Luna/Image/Image.hpp>
 #include <Luna/Runtime/File.hpp>
 #include <Luna/Runtime/Math/Transform.hpp>
-#include <Luna/RHI/Utility.hpp>
+#include <Luna/RHIUtility/ResourceWriteContext.hpp>
+#include <TestBoxVS.hpp>
+#include <TestBoxPS.hpp>
+#include <Luna/Runtime/Thread.hpp>
+#include <Luna/RHIUtility/RHIUtility.hpp>
+#include <Luna/Window/Event.hpp>
+
+#include <Luna/Window/AppMain.hpp>
 
 using namespace Luna;
 using namespace Luna::RHI;
@@ -56,75 +63,6 @@ RV start()
         })));
         luset(desc_set, dev->new_descriptor_set(DescriptorSetDesc(dlayout)));
 
-        const char vs_shader_code[] = R"(
-            cbuffer vertexBuffer : register(b0)
-            {
-                float4x4 world_to_proj;
-            };
-            Texture2D tex : register(t1);
-            SamplerState tex_sampler : register(s2);
-            struct VS_INPUT
-            {
-                [[vk::location(0)]]
-                float3 position : POSITION;
-                [[vk::location(1)]]
-                float2 texcoord : TEXCOORD;
-            };
-            struct PS_INPUT
-            {
-                [[vk::location(0)]]
-                float4 position : SV_POSITION;
-                [[vk::location(1)]]
-                float2 texcoord : TEXCOORD;
-            };
-            PS_INPUT main(VS_INPUT input)
-            {
-                PS_INPUT output;
-                output.position = mul(world_to_proj, float4(input.position, 1.0f));
-                output.texcoord = input.texcoord;
-                return output;
-            })";
-        const char ps_shader_code[] = R"(
-            cbuffer vertexBuffer : register(b0)
-            {
-                float4x4 world_to_proj;
-            };
-            Texture2D tex : register(t1);
-            SamplerState tex_sampler : register(s2);
-            struct PS_INPUT
-            {
-                [[vk::location(0)]]
-                float4 position : SV_POSITION;
-                [[vk::location(1)]]
-                float2 texcoord : TEXCOORD;
-            };
-            [[vk::location(0)]]
-            float4 main(PS_INPUT input) : SV_Target
-            {
-                return float4(tex.Sample(tex_sampler, input.texcoord));
-            })";
-        auto compiler = ShaderCompiler::new_compiler();
-        ShaderCompiler::ShaderCompileParameters params;
-        params.source = { vs_shader_code, sizeof(vs_shader_code) };
-        params.source_name = "TestBoxVS";
-        params.entry_point = "main";
-        params.target_format = RHI::get_current_platform_shader_target_format();
-        params.shader_type = ShaderCompiler::ShaderType::vertex;
-        params.shader_model = {6, 0};
-        params.optimization_level = ShaderCompiler::OptimizationLevel::full;
-        
-        lulet(vs_data, compiler->compile(params));
-
-        params.source = { ps_shader_code, sizeof(ps_shader_code) };
-        params.source_name = "TestBoxPS";
-        params.entry_point = "main";
-        params.target_format = RHI::get_current_platform_shader_target_format();
-        params.shader_type = ShaderCompiler::ShaderType::pixel;
-        params.shader_model = {6, 0};
-        params.optimization_level = ShaderCompiler::OptimizationLevel::full;
-
-        lulet(ps_data, compiler->compile(params));
-
         IDescriptorSetLayout* dl = dlayout;
 
         luset(playout, dev->new_pipeline_layout(PipelineLayoutDesc({&dl, 1}, 
@@ -142,8 +80,8 @@ RV start()
             InputAttributeDesc("TEXCOORD", 0, 1, 0, 12, Format::rg32_float)
         };
         ps_desc.input_layout = InputLayoutDesc({bindings, 1}, {attributes, 2});
-        ps_desc.vs = get_shader_data_from_compile_result(vs_data);
-        ps_desc.ps = get_shader_data_from_compile_result(ps_data);
+        ps_desc.vs = LUNA_GET_SHADER_DATA(TestBoxVS);
+        ps_desc.ps = LUNA_GET_SHADER_DATA(TestBoxPS);
         ps_desc.pipeline_layout = playout;
         ps_desc.num_color_attachments = 1;
         ps_desc.color_formats[0] = Format::bgra8_unorm;
@@ -196,12 +134,16 @@ RV start()
         
         u32 copy_queue_index = get_command_queue_index();
         lulet(upload_cmdbuf, dev->new_command_buffer(copy_queue_index));
-        luexp(copy_resource_data(upload_cmdbuf, {
-                CopyResourceData::write_buffer(vb, 0, vertices, sizeof(vertices)),
-                CopyResourceData::write_buffer(ib, 0, indices, sizeof(indices)),
-                CopyResourceData::write_texture(file_tex, SubresourceIndex(0, 0), 0, 0, 0, 
-                    image_data.data(), image_desc.width * 4, image_desc.width * image_desc.height * 4, 
-                    image_desc.width, image_desc.height, 1)}));
+        auto writer = RHIUtility::new_resource_write_context(dev);
+        void* mapped;
+        luset(mapped, writer->write_buffer(vb, 0, sizeof(vertices)));
+        memcpy(mapped, vertices, sizeof(vertices));
+        luset(mapped, writer->write_buffer(ib, 0, sizeof(indices)));
+        memcpy(mapped, indices, sizeof(indices));
+        u32 row_pitch, slice_pitch;
+        luset(mapped, writer->write_texture(file_tex, SubresourceIndex(0, 0), 0, 0, 0, image_desc.width, image_desc.height, 1, row_pitch, slice_pitch));
+        memcpy_bitmap(mapped, image_data.data(), image_desc.width * 4, image_desc.height, row_pitch, image_desc.width * 4);
+        luexp(writer->commit(upload_cmdbuf, true));
         luexp(desc_set->update_descriptors(
             {
                 WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(cb)),
@@ -293,25 +235,38 @@ void cleanup()
     file_tex.reset();
 }
 
-void run_app()
+int luna_main(int argc, const char* argv[])
 {
-    register_init_func(start);
-    register_close_func(cleanup);
-    register_resize_func(resize);
-    register_draw_func(draw);
-    lupanic_if_failed(run());
-}
-
-int main()
-{
-    if (!Luna::init()) return 0;
-    lupanic_if_failed(add_modules({module_rhi_test_bed(), module_shader_compiler(), module_image()}));
-    auto r = init_modules();
-    if (failed(r))
+    if(!Luna::init()) return -1;
+    lutry
     {
-        log_error("%s", explain(r.errcode()));
+        luexp(add_modules({module_rhi_test_bed()}));
+        luexp(init_modules());
+        register_init_func(start);
+        register_close_func(cleanup);
+        register_resize_func(resize);
+        register_draw_func(draw);
+        luexp(RHITestBed::init());
+        while(true)
+        {
+            Window::poll_events();
+            auto window = RHITestBed::get_window();
+            if(window->is_closed()) break;
+            if(window->is_minimized())
+            {
+                sleep(100);
+                continue;
+            }
+            luexp(RHITestBed::update());
+        }
+        RHITestBed::close();
     }
-    else run_app();
+    lucatch
+    {
+        log_error("RHITest", "%s", explain(luerr));
+        Luna::close();
+        return -1;
+    }
     Luna::close();
     return 0;
 }

@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -406,6 +406,7 @@ namespace Luna
                 Name new_file_name = to_path.back();
                 from_path.pop_back();
                 to_path.pop_back();
+                // Check existance first.
                 for (auto& f : files)
                 {
                     from_path.push_back(f);
@@ -415,7 +416,24 @@ namespace Luna
                     {
                         to_path.append_extension(f.c_str() + extension_begin);
                     }
-                    luexp(VFS::move_file(from_path, to_path, FileMoveFlag::fail_if_exists));
+                    auto attr = VFS::get_file_attribute(to_path);
+                    if(succeeded(attr))
+                    {
+                        luthrow(set_error(BasicError::already_exists(), "Cannot move asset file %s to %s: file already exists.", from_path.encode().c_str(), to_path.encode().c_str()));
+                    }
+                    from_path.pop_back();
+                    to_path.pop_back();
+                }
+                for (auto& f : files)
+                {
+                    from_path.push_back(f);
+                    to_path.push_back(new_file_name);
+                    const usize extension_begin = old_filename.size() + 1;
+                    if (f.size() > extension_begin)
+                    {
+                        to_path.append_extension(f.c_str() + extension_begin);
+                    }
+                    luexp(VFS::move_file(from_path, to_path));
                     from_path.pop_back();
                     to_path.pop_back();
                 }
@@ -434,6 +452,80 @@ namespace Luna
             }
             lucatchret;
             return ok;
+        }
+        LUNA_ASSET_API R<asset_t> copy_asset(asset_t asset, const Path& new_path, const Guid& guid)
+        {
+            lucheck_msg(asset.handle, "Asset handle must not be null!");
+            MutexGuard g1(g_assets_mutex);
+            {
+                auto iter = g_asset_path_mapping.find(new_path);
+                if (iter != g_asset_path_mapping.end()) return BasicError::already_exists();
+            }
+            asset_t ret;
+            lutry
+            {
+                // Copy files.
+                auto from_path = get_asset_path(asset);
+                auto to_path = new_path;
+                Vector<Name> files;
+                luexp(get_asset_files(asset, files));
+                Name old_filename = from_path.back();
+                Name new_file_name = to_path.back();
+                from_path.pop_back();
+                to_path.pop_back();
+                // Check existance first.
+                for (auto& f : files)
+                {
+                    from_path.push_back(f);
+                    to_path.push_back(new_file_name);
+                    const usize extension_begin = old_filename.size() + 1;
+                    if (f.size() > extension_begin)
+                    {
+                        to_path.append_extension(f.c_str() + extension_begin);
+                    }
+                    auto attr = VFS::get_file_attribute(to_path);
+                    if(succeeded(attr))
+                    {
+                        luthrow(set_error(BasicError::already_exists(), "Cannot copy asset file %s to %s: file already exists.", from_path.encode().c_str(), to_path.encode().c_str()));
+                    }
+                    from_path.pop_back();
+                    to_path.pop_back();
+                }
+                for (auto& f : files)
+                {
+                    from_path.push_back(f);
+                    to_path.push_back(new_file_name);
+                    const usize extension_begin = old_filename.size() + 1;
+                    if (f.size() > extension_begin)
+                    {
+                        to_path.append_extension(f.c_str() + extension_begin);
+                    }
+                    luexp(VFS::copy_file(from_path, to_path));
+                    from_path.pop_back();
+                    to_path.pop_back();
+                }
+                // Create asset.
+                ret = get_asset(guid);
+                // Set asset meta.
+                AssetEntry* entry = (AssetEntry*)ret.handle;
+                LockGuard guard(entry->lock);
+                if(!entry->path.empty())
+                {
+                    g_asset_path_mapping.erase(entry->path);
+                }
+                entry->type = get_asset_type(asset);
+                entry->path = new_path;
+                g_asset_path_mapping.insert(make_pair(entry->path, ret));
+                AssetMetaFile meta_file;
+                meta_file.type = entry->type;
+                meta_file.guid = entry->guid;
+                guard.unlock();
+                Path meta_path = new_path;
+                meta_path.append_extension("meta");
+                luexp(internal_save_asset_meta(meta_file, meta_path));
+            }
+            lucatchret;
+            return ret;
         }
         LUNA_ASSET_API ObjRef get_asset_data(asset_t asset)
         {
@@ -578,6 +670,20 @@ namespace Luna
             }
             lucatchret;
             return ok;
+        }
+        LUNA_ASSET_API void get_referred_assets(asset_t asset, Vector<asset_t>& out_referred_assets)
+        {
+            if(!asset.handle) return;
+            AssetEntry* entry = (AssetEntry*)asset.handle;
+            LockGuard g(entry->lock);
+            if (entry->type.empty()) return;
+            auto desc = get_asset_type_desc(entry->type);
+            if(failed(desc)) return;
+            g.unlock();
+            if(desc.get().on_get_referred_assets)
+            {
+                desc.get().on_get_referred_assets(desc.get().userdata.get(), asset, out_referred_assets);
+            }
         }
         LUNA_ASSET_API void close()
         {

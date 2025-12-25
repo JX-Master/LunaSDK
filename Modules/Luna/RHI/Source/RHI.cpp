@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -74,6 +74,11 @@ namespace Luna
         LUNA_RHI_API ErrCode swap_chain_out_of_date()
         {
             static ErrCode e = get_error_code_by_name("RHIError", "swap_chain_out_of_date");
+            return e;
+        }
+        LUNA_RHI_API ErrCode color_space_not_supported()
+        {
+            static ErrCode e = get_error_code_by_name("RHIError", "color_space_not_supported");
             return e;
         }
     }

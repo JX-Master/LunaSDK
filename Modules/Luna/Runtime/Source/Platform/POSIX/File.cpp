@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -11,11 +11,9 @@
 #include <Luna/Runtime/Unicode.hpp>
 #include <Luna/Runtime/Algorithm.hpp>
 
-#ifdef LUNA_PLATFORM_LINUX
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <string.h>
-#endif
 
 #include <libgen.h>
 #include <errno.h>
@@ -24,8 +22,10 @@
 #include <unistd.h>
 #include <dirent.h>
 
-#ifdef LUNA_PLATFORM_MACOS
+#if defined(LUNA_PLATFORM_MACOS)
 #include <libproc.h>
+#elif defined(LUNA_PLATFORM_IOS)
+#include <mach-o/dyld.h>
 #endif
 
 namespace Luna
@@ -539,7 +539,7 @@ namespace Luna
             }
             return attribute;
         }
-        RV copy_file(const c8* from_path, const c8* to_path, FileCopyFlag flags)
+        RV copy_file(const c8* from_path, const c8* to_path)
         {
             lucheck(from_path && to_path);
             constexpr u64 max_buffer_sz = 1_mb;
@@ -549,14 +549,7 @@ namespace Luna
             lutry
             {
                 luset(from_file, OS::open_file(from_path, FileOpenFlag::read, FileCreationMode::open_existing));
-                if (test_flags(flags, FileCopyFlag::fail_if_exists))
-                {
-                    luset(to_file, OS::open_file(to_path, FileOpenFlag::write, FileCreationMode::create_new));
-                }
-                else
-                {
-                    luset(to_file, OS::open_file(to_path, FileOpenFlag::write, FileCreationMode::create_always));
-                }
+                luset(to_file, OS::open_file(to_path, FileOpenFlag::write, FileCreationMode::create_new));
                 auto copy_size = OS::get_file_size(from_file);
                 u64 sz = copy_size;
                 while (sz)
@@ -599,10 +592,9 @@ namespace Luna
             }
             return ok;
         }
-        RV move_file(const c8* from_path, const c8* to_path, FileMoveFlag flags)
+        RV move_file(const c8* from_path, const c8* to_path)
         {
-            bool fail_if_exists = test_flags(flags, FileMoveFlag::fail_if_exists);
-            if (fail_if_exists && get_file_attribute(to_path).valid())
+            if (get_file_attribute(to_path).valid())
             {
                 return BasicError::already_exists();
             }
@@ -612,7 +604,7 @@ namespace Luna
                 // Try to copy&delete.
                 lutry
                 {
-                    luexp(OS::copy_file(from_path, to_path, fail_if_exists? FileCopyFlag::fail_if_exists : FileCopyFlag::none));
+                    luexp(OS::copy_file(from_path, to_path));
                     luexp(OS::delete_file(from_path));
                 }
                 lucatchret;
@@ -792,16 +784,24 @@ namespace Luna
 
         void file_init()
         {
-#ifdef LUNA_PLATFORM_LINUX
+#if defined(LUNA_PLATFORM_LINUX)
             char path[1024];
             luassert_always(readlink("/proc/self/exe", path, 1024) != -1);
             char* dir = dirname(path);
             strcpy(g_process_path, dir);
             g_process_path[1023] = 0;
-#else
+#elif defined(LUNA_PLATFORM_MACOS)
             pid_t pid = getpid();
             int ret = proc_pidpath(pid, g_process_path, sizeof(g_process_path));
             luassert_always(ret > 0);
+#elif defined(LUNA_PLATFORM_IOS)
+            char path[1024];
+            uint32_t size = sizeof(path);
+            int ret = _NSGetExecutablePath(path, &size);
+            luassert_always(ret == 0);
+            char* dir = dirname(path);
+            strncpy(g_process_path, dir, sizeof(g_process_path));
+            g_process_path[sizeof(g_process_path) - 1] = 0;
 #endif
         }
 

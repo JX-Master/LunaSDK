@@ -1,19 +1,19 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
 * @file Base.hpp
 * @author JXMaster
 * @date 2018/10/26
-* @brief Defines basic types and functions to be used in Luna SDK.
+* @brief Defines basic types and functions to be used in LunaSDK.
  */
 #pragma once
 
 #include "PlatformDefines.hpp"
 
 // Include C++ STD.
-// This is the only place where Luna SDK includes C++ STD. We only uses a minimum set of 
+// This is the only place where LunaSDK includes C++ STD. We only uses a minimum set of 
 // STD headers so that the SDK is portable to most platforms.
 #include <cstdint>
 #include <cfloat>
@@ -704,9 +704,16 @@ namespace Luna
     //! @param[in] value If this is `true`, all options specified will be set to 1, else they will be set to 0.
     //! @return Returns the enumeration after all options specified being set.
     template <typename _Ty>
-    inline constexpr auto set_flags(_Ty flags, _Ty options, bool value) -> enable_if_t<is_enum_v<_Ty>, _Ty>
+    inline constexpr auto set_flags(_Ty& flags, _Ty options, bool value) -> enable_if_t<is_enum_v<_Ty>, void>
     {
-        return value ? set_flags(flags, options) : reset_flags(flags, options);
+        if(value)
+        {
+            set_flags(flags, options);
+        }
+        else
+        {
+            reset_flags(flags, options);
+        }
     }
 
     //! Stores a pair of values. 

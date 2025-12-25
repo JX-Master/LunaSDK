@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -10,18 +10,23 @@
 #pragma once
 #include <Luna/Runtime/TypeInfo.hpp>
 #include <Luna/Asset/Asset.hpp>
+#include "World.hpp"
 
 namespace Luna
 {
-    void edit_enum(const c8* name, typeinfo_t type, void* obj);
+    bool edit_enum(const c8* name, typeinfo_t type, void* obj);
 
     template <typename _Ty>
-    void edit_enum(const c8* name, _Ty& obj)
+    bool edit_enum(const c8* name, _Ty& obj)
     {
-        edit_enum(name, typeof<_Ty>(), &obj);
+        return edit_enum(name, typeof<_Ty>(), &obj);
     }
 
-    void edit_asset(const c8* name, Asset::asset_t& asset);
+    bool edit_asset(const c8* name, Asset::asset_t& asset);
 
-    void edit_object(object_t obj);
+    bool edit_actor_ref(const c8* name, World* world, ActorRef& ref);
+
+    bool edit_object(typeinfo_t type, void* data);
+
+    bool edit_scene_object(World* world, typeinfo_t type, void* data);
 }

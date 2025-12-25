@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -33,5 +33,6 @@ namespace Luna
         Asset::asset_t normal;
         Asset::asset_t metallic;
         Asset::asset_t emissive;
+        f32 emissive_intensity = 1.0f;
     };
 }

@@ -1,12 +1,12 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
 * @file Runtime.hpp
 * @author JXMaster
 * @date 2020/7/22
-* @brief This header file contains APIs to initialize and close Luna SDK.
+* @brief This header file contains APIs to initialize and close LunaSDK.
 */
 #pragma once
 #include "Result.hpp"
@@ -18,7 +18,7 @@
 namespace Luna
 {
     //! @addtogroup Runtime Runtime
-    //! The Runtime module provides the runtime environment of Luna SDK and defines core functionalities that will be used by almost all modules.
+    //! The Runtime module provides the runtime environment of LunaSDK and defines core functionalities that will be used by almost all modules.
     //! @{
 
     //! @defgroup RuntimeInit SDK initialization and shutdown
@@ -28,17 +28,21 @@ namespace Luna
     //! @addtogroup RuntimeInit
     //! @{
 
-    //! Initializes Luna SDK.
-    //! @details Call this function to initialize Luna SDK. Most features provided by Luna SDK are only available after Luna SDK is initialized, 
-    //! so always initialize Luna SDK firstly on program startup. Calling this function when Luna SDK is already initialized does nothing and returns `true` directly.
+    //! Initializes LunaSDK.
+    //! @details Call this function to initialize LunaSDK. Most features provided by LunaSDK are only available after LunaSDK is initialized, 
+    //! so always initialize LunaSDK firstly on program startup. Calling this function when LunaSDK is already initialized does nothing and returns `true` directly.
     //! 
-    //! Note that modules registered to Luna SDK will not be initialized by this function, they should be initialized manually using functions like @ref init_modules.
-    //! @return Returns `true` if Luna SDK is succssfully initialized, returns `false` otherwise.
+    //! Note that modules registered to LunaSDK will not be initialized by this function, they should be initialized manually using functions like @ref init_modules.
+    //! @return Returns `true` if LunaSDK is succssfully initialized, returns `false` otherwise.
     LUNA_RUNTIME_API bool init();
 
-    //! Closes Luna SDK.
-    //! @details Call this function to close Luna SDK. Most features provided by Luna SDK are not available after Luna SDK is closed.
-    //! Calling this function when Luna SDK is not initialized or already closed does nothing and returns directly.
+    //! Checks whether LunaSDK is initialized.
+    //! @return Returns `true` if LunaSDK is initialized. Returns `false` otherwise.
+    LUNA_RUNTIME_API bool is_initialized();
+
+    //! Closes LunaSDK.
+    //! @details Call this function to close LunaSDK. Most features provided by LunaSDK are not available after LunaSDK is closed.
+    //! Calling this function when LunaSDK is not initialized or already closed does nothing and returns directly.
     //! 
     //! Initialized modules *will* be closed by this function in the reverse order of their initialization order, so they don't need to be closed manually.
     //! @remark All dynamic memory allocated from @ref memalloc, @ref memrealloc and @ref memnew must be freed before calling @ref close,

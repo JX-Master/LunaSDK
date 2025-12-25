@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -271,16 +271,6 @@ namespace Luna
         {
             m_allocator_and_buffer.second()[m_size] = (value_type)0;
         }
-        return *this;
-    }
-    template <typename _Char, typename _Alloc>
-    inline BasicString<_Char, _Alloc>& BasicString<_Char, _Alloc>::operator=(value_type ch)
-    {
-        clear();
-        reserve(1);
-        m_allocator_and_buffer.second()[0] = ch;
-        m_size = 1;
-        m_allocator_and_buffer.second()[m_size] = (value_type)0;
         return *this;
     }
     template <typename _Char, typename _Alloc>
@@ -1016,6 +1006,21 @@ namespace Luna
     inline typename BasicString<_Char, _Alloc>::allocator_type BasicString<_Char, _Alloc>::get_allocator() const
     {
         return m_allocator_and_buffer.first();
+    }
+    template <typename _Char, typename _Alloc>
+    inline Span<_Char> BasicString<_Char, _Alloc>::span()
+    {
+        return Span<_Char>(data(), size());
+    }
+    template <typename _Char, typename _Alloc>
+    inline Span<const _Char> BasicString<_Char, _Alloc>::span() const
+    {
+        return Span<const _Char>(data(), size());
+    }
+    template <typename _Char, typename _Alloc>
+    inline Span<const _Char> BasicString<_Char, _Alloc>::cspan() const
+    {
+        return Span<const _Char>(data(), size());
     }
     template <typename _Char, typename _Alloc>
     inline usize BasicString<_Char, _Alloc>::find(const BasicString& str, usize pos) const

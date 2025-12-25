@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -90,6 +90,7 @@ namespace Luna
             {
                 edit_asset("Emissive", mat->emissive);
             }
+            ImGui::DragFloat("Emissive Intensity", &mat->emissive_intensity);
         }
         ImGui::End();
     }

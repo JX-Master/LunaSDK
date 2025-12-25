@@ -1,5 +1,5 @@
 /*!
-* This file is a portion of Luna SDK.
+* This file is a portion of LunaSDK.
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
@@ -32,7 +32,8 @@ namespace Luna
             luproperty(Material, Asset::asset_t, roughness),
             luproperty(Material, Asset::asset_t, normal),
             luproperty(Material, Asset::asset_t, metallic),
-            luproperty(Material, Asset::asset_t, emissive)
+            luproperty(Material, Asset::asset_t, emissive),
+            luproperty(Material, f32, emissive_intensity)
             });
         set_serializable<Material>();
         Asset::AssetTypeDesc desc;
