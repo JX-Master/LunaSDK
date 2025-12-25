@@ -297,6 +297,9 @@ namespace Luna
             ImGui::Render();
             RHI::RenderPassDesc render_pass;
             lulet(back_buffer, m_swap_chain->get_current_back_buffer());
+            m_cmdbuf->resource_barrier({}, {
+                    {back_buffer, RHI::TEXTURE_BARRIER_ALL_SUBRESOURCES, RHI::TextureStateFlag::automatic, RHI::TextureStateFlag::color_attachment_write, RHI::ResourceBarrierFlag::none}
+                });
             render_pass.color_attachments[0] = RHI::ColorAttachment(back_buffer, RHI::LoadOp::clear, RHI::StoreOp::store,
                 { 0.0f, 0.0f, 0.0f, 1.0f });
             m_cmdbuf->begin_render_pass(render_pass);

@@ -169,7 +169,7 @@ namespace Luna
             luexp(m_ds->update_descriptors({
                 WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(camera_cb, 0, (u32)align_upper(sizeof(CameraCB), cb_align))),
                 WriteDescriptorSet::uniform_buffer_view(1, BufferViewDesc::uniform_buffer(m_lighting_params_cb, 0, (u32)align_upper(sizeof(LightingParamsCB), cb_align))),
-                WriteDescriptorSet::read_buffer_view(2, BufferViewDesc::structured_buffer(light_params, 0, num_lights, sizeof(LightingParams))),
+                WriteDescriptorSet::read_buffer_view(2, BufferViewDesc::structured_buffer(light_params, 0, max<u32>(num_lights, 1), sizeof(LightingParams))),
                 WriteDescriptorSet::read_texture_view(3, TextureViewDesc::tex2d(base_color_roughness_tex)),
                 WriteDescriptorSet::read_texture_view(4, TextureViewDesc::tex2d(normal_metallic_tex)),
                 WriteDescriptorSet::read_texture_view(5, TextureViewDesc::tex2d(emissive_tex)),
