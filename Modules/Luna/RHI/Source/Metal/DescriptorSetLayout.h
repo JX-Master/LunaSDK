@@ -3,13 +3,14 @@
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
-* @file DescriptorSetLayout.hpp
+* @file DescriptorSetLayout.h
 * @author JXMaster
 * @date 2023/7/13
 */
 #pragma once
-#include "Device.hpp"
+#include "Device.h"
 #include <Luna/Runtime/Array.hpp>
+
 namespace Luna
 {
     namespace RHI
@@ -26,7 +27,7 @@ namespace Luna
             Array<u64> m_argument_offsets;
             usize m_num_arguments;
             // The argument descriptors. Used for metal 2.
-            NSPtr<NS::Array> m_argument_descriptors;
+            NSArray<MTLArgumentDescriptor*>* m_argument_descriptors;
 
             RV init(const DescriptorSetLayoutDesc& desc);
 

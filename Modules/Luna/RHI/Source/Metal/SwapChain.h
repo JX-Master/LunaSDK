@@ -3,13 +3,16 @@
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
-* @file SwapChain.hpp
+* @file SwapChain.h
 * @author JXMaster
 * @date 2023/8/3
 */
 #pragma once
-#include "Device.hpp"
-#include "Resource.hpp"
+#include "Device.h"
+#include "Resource.h"
+
+#import <QuartzCore/QuartzCore.h>
+#import <QuartzCore/CAMetalLayer.h>
 
 namespace Luna
 {
@@ -22,12 +25,12 @@ namespace Luna
 
             Ref<Device> m_device;
 
-            NSPtr<CA::MetalLayer> m_metal_layer;
+            CAMetalLayer* m_metal_layer;
             Ref<Window::IWindow> m_window;
             SwapChainDesc m_desc;
 
             Ref<Texture> m_current_back_buffer;
-            NSPtr<CA::MetalDrawable> m_current_drawable;
+            id<CAMetalDrawable> m_current_drawable;
 
             u32 m_command_queue_index;
 

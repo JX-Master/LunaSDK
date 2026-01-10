@@ -3,23 +3,23 @@
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 *
-* @file MetalRHI.cpp
+* @file MetalRHI.mm
 * @author JXMaster
 * @date 2023/7/12
 */
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_RHI_API LUNA_EXPORT
 #include "../RHI.hpp"
-#include "Device.hpp"
-#include "Adapter.hpp"
-#include "CommandBuffer.hpp"
-#include "DescriptorSet.hpp"
-#include "Resource.hpp"
-#include "Fence.hpp"
-#include "PipelineState.hpp"
-#include "QueryHeap.hpp"
-#include "PipelineLayout.hpp"
-#include "SwapChain.hpp"
+#include "Device.h"
+#include "Adapter.h"
+#include "CommandBuffer.h"
+#include "DescriptorSet.h"
+#include "Resource.h"
+#include "Fence.h"
+#include "PipelineState.h"
+#include "QueryHeap.h"
+#include "PipelineLayout.h"
+#include "SwapChain.h"
 namespace Luna
 {
     namespace RHI

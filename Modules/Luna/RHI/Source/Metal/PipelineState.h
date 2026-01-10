@@ -3,12 +3,12 @@
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
-* @file PipelineState.hpp
+* @file PipelineState.h
 * @author JXMaster
 * @date 2023/7/25
 */
 #pragma once
-#include "Device.hpp"
+#include "Device.h"
 namespace Luna
 {
     namespace RHI
@@ -20,15 +20,15 @@ namespace Luna
             luiimpl();
 
             Ref<Device> m_device;
-            NSPtr<MTL::RenderPipelineState> m_pso;
-            NSPtr<MTL::DepthStencilState> m_dss;
+            id<MTLRenderPipelineState> m_pso;
+            id<MTLDepthStencilState> m_dss;
             f32 m_depth_bias;
             f32 m_slope_scaled_depth_bias;
             f32 m_depth_bias_clamp;
-            MTL::TriangleFillMode m_fill_mode = MTL::TriangleFillModeFill;
-            MTL::CullMode m_cull_mode = MTL::CullModeNone;
-            MTL::PrimitiveType m_primitive_type = MTL::PrimitiveTypeTriangle;
-            MTL::DepthClipMode m_depth_clip_mode = MTL::DepthClipModeClip;
+            MTLTriangleFillMode m_fill_mode = MTLTriangleFillModeFill;
+            MTLCullMode m_cull_mode = MTLCullModeNone;
+            MTLPrimitiveType m_primitive_type = MTLPrimitiveTypeTriangle;
+            MTLDepthClipMode m_depth_clip_mode = MTLDepthClipModeClip;
             bool m_front_counter_clockwise = false;
 
             RV init(const GraphicsPipelineStateDesc& desc);
@@ -43,7 +43,7 @@ namespace Luna
             luiimpl();
 
             Ref<Device> m_device;
-            NSPtr<MTL::ComputePipelineState> m_pso;
+            id<MTLComputePipelineState> m_pso;
             UInt3U m_num_threads_per_group;
 
             RV init(const ComputePipelineStateDesc& desc);

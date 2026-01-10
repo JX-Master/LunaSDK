@@ -3,12 +3,12 @@
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
-* @file QueryHeap.hpp
+* @file QueryHeap.h
 * @author JXMaster
 * @date 2023/8/1
 */
 #pragma once
-#include "Device.hpp"
+#include "Device.h"
 namespace Luna
 {
     namespace RHI
@@ -19,13 +19,13 @@ namespace Luna
             luiimpl();
 
             Ref<Device> m_device;
-            NSPtr<MTL::Buffer> m_buffer;
+            id<MTLBuffer> m_buffer;
             QueryHeapDesc m_desc;
 
             RV init(const QueryHeapDesc& desc);
 
             virtual IDevice* get_device() override { return m_device; }
-            virtual void set_name(const c8* name) override  { set_object_name(m_buffer.get(), name); }
+            virtual void set_name(const c8* name) override;
             virtual QueryHeapDesc get_desc() override { return m_desc; }
             virtual RV get_timestamp_values(u32 index, u32 count, u64* values) override { return BasicError::not_supported(); }
             virtual RV get_occlusion_values(u32 index, u32 count, u64* values) override;
@@ -38,7 +38,7 @@ namespace Luna
             luiimpl();
 
             Ref<Device> m_device;
-            NSPtr<MTL::CounterSampleBuffer> m_buffer;
+            id<MTLCounterSampleBuffer> m_buffer;
             QueryHeapDesc m_desc;
 
             RV init(const QueryHeapDesc& desc);

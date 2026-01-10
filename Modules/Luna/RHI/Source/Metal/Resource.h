@@ -3,14 +3,14 @@
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
-* @file Resource.hpp
+* @file Resource.h
 * @author JXMaster
 * @date 2023/7/12
 */
 #pragma once
-#include "DeviceMemory.hpp"
-#include "Device.hpp"
-#include "TextureView.hpp"
+#include "DeviceMemory.h"
+#include "Device.h"
+#include "TextureView.h"
 #include <Luna/Runtime/SpinLock.hpp>
 namespace Luna
 {
@@ -24,7 +24,7 @@ namespace Luna
             Ref<Device> m_device;
 
             BufferDesc m_desc;
-            NSPtr<MTL::Buffer> m_buffer;
+            id<MTLBuffer> m_buffer;
             Ref<DeviceMemory> m_memory;
 
             RV init_as_committed(MemoryType memory_type, const BufferDesc& desc);
@@ -32,7 +32,7 @@ namespace Luna
             ~Buffer();
 
             virtual IDevice* get_device() override { return m_device; }
-            virtual void set_name(const c8* name) override  { set_object_name(m_buffer.get(), name); }
+            virtual void set_name(const c8* name) override;
             virtual IDeviceMemory* get_memory() override { return m_memory; }
             virtual BufferDesc get_desc() override { return m_desc; }
             virtual RV map(usize read_begin, usize read_end, void** data) override;
@@ -46,7 +46,7 @@ namespace Luna
             Ref<Device> m_device;
 
             TextureDesc m_desc;
-            NSPtr<MTL::Texture> m_texture;
+            id<MTLTexture> m_texture;
             Ref<DeviceMemory> m_memory;
 
             // Texture views.
@@ -58,7 +58,7 @@ namespace Luna
             ~Texture();
 
             virtual IDevice* get_device() override { return m_device; }
-            virtual void set_name(const c8* name) override  { set_object_name(m_texture.get(), name); }
+            virtual void set_name(const c8* name) override;
             virtual IDeviceMemory* get_memory() override { return m_memory; }
             virtual TextureDesc get_desc() override { return m_desc; }
 

@@ -3,12 +3,12 @@
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
-* @file Device.hpp
+* @file Device.h
 * @author JXMaster
 * @date 2023/7/12
 */
 #pragma once
-#include "Common.hpp"
+#include "Common.h"
 #include "../../Device.hpp"
 namespace Luna
 {
@@ -16,10 +16,10 @@ namespace Luna
     {
         struct CommandQueue
         {
-            NSPtr<MTL::CommandQueue> queue;
+            id<MTLCommandQueue> queue;
             CommandQueueDesc desc;
 
-            RV init(MTL::Device* dev, const CommandQueueDesc& desc);
+            RV init(id<MTLDevice> dev, const CommandQueueDesc& desc);
         };
         enum class CounterSamplingSupportFlag : u8
         {
@@ -34,11 +34,11 @@ namespace Luna
             lustruct("RHI::Device", "{89ffffe6-a1d6-413e-bb30-3e0562dacddd}");
             luiimpl();
 
-            NSPtr<MTL::Device> m_device;
+            id<MTLDevice> m_device;
             Vector<CommandQueue> m_queues;
 
-            MTL::Timestamp m_start_cpu_time;
-            MTL::Timestamp m_start_gpu_time;
+            MTLTimestamp m_start_cpu_time;
+            MTLTimestamp m_start_gpu_time;
             f64 m_timestamp_frequency = 0.0;
             
             CounterSamplingSupportFlag m_counter_sampling_support_flags = CounterSamplingSupportFlag::none;
@@ -46,10 +46,10 @@ namespace Luna
 
             RV init();
 
-            MTL::SizeAndAlign get_buffer_size(MemoryType memory_type, const BufferDesc& desc);
-            MTL::SizeAndAlign get_texture_size(MemoryType memory_type, const TextureDesc& desc);
+            MTLSizeAndAlign get_buffer_size(MemoryType memory_type, const BufferDesc& desc);
+            MTLSizeAndAlign get_texture_size(MemoryType memory_type, const TextureDesc& desc);
 
-            R<NSPtr<MTL::HeapDescriptor>> get_heap_desc(MemoryType memory_type, Span<const BufferDesc> buffers, Span<const TextureDesc> textures);
+            R<MTLHeapDescriptor*> get_heap_desc(MemoryType memory_type, Span<const BufferDesc> buffers, Span<const TextureDesc> textures);
 
             virtual DeviceFeatureData check_feature(DeviceFeature feature) override;
             virtual void get_texture_data_placement_info(u32 width, u32 height, u32 depth, Format format,
