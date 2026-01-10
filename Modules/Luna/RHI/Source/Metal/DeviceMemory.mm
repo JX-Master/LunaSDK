@@ -8,6 +8,7 @@
 * @date 2023/7/12
 */
 #include "DeviceMemory.h"
+#include <Luna/Runtime/Profiler.hpp>
 
 namespace Luna
 {
@@ -32,8 +33,9 @@ namespace Luna
         DeviceMemory::~DeviceMemory()
         {
 #ifdef LUNA_MEMORY_PROFILER_ENABLED
-            if(m_heap) memory_profiler_deallocate(m_heap.get());
+            if(m_heap) memory_profiler_deallocate((__bridge void*)m_heap);
 #endif
+            m_heap = nil;
         }
         void DeviceMemory::set_name(const c8* name)
         {

@@ -146,6 +146,11 @@ namespace Luna
                     return RHIError::color_space_not_supported();
                 }
                 layer.colorspace = cs;
+                CGColorSpaceRelease(cs);
+            }
+            else
+            {
+                layer.colorspace = nil;
             }
             return ok;
         }

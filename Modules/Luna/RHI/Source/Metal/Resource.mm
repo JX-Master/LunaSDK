@@ -8,6 +8,7 @@
 * @date 2023/7/13
 */
 #include "Resource.h"
+#include <Luna/Runtime/Profiler.hpp>
 namespace Luna
 {
     namespace RHI
@@ -54,8 +55,9 @@ namespace Luna
         Buffer::~Buffer()
         {
 #ifdef LUNA_MEMORY_PROFILER_ENABLED
-            if(!m_memory->m_heap) memory_profiler_deallocate(m_buffer.get());
+            if(!m_memory->m_heap) memory_profiler_deallocate((__bridge void*)m_buffer);
 #endif
+            m_buffer = nil;
         }
         void Buffer::set_name(const c8* name)
         {
@@ -121,8 +123,9 @@ namespace Luna
         Texture::~Texture()
         {
 #ifdef LUNA_MEMORY_PROFILER_ENABLED
-            if(m_memory && !m_memory->m_heap) memory_profiler_deallocate(m_texture.get());
+            if(m_memory && !m_memory->m_heap) memory_profiler_deallocate((__bridge void*)m_texture);
 #endif
+            m_texture = nil;
         }
         void Texture::set_name(const c8* name)
         {

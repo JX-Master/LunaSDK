@@ -13,6 +13,10 @@
 
 #import <Metal/Metal.h>
 
+#if !__has_feature(objc_arc) 
+#error ARC is OFF 
+#endif
+
 namespace Luna
 {
     namespace RHI
