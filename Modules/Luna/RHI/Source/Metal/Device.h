@@ -49,7 +49,7 @@ namespace Luna
             MTLSizeAndAlign get_buffer_size(MemoryType memory_type, const BufferDesc& desc);
             MTLSizeAndAlign get_texture_size(MemoryType memory_type, const TextureDesc& desc);
 
-            R<MTLHeapDescriptor*> get_heap_desc(MemoryType memory_type, Span<const BufferDesc> buffers, Span<const TextureDesc> textures);
+            MTLHeapDescriptor* get_heap_desc(MemoryType memory_type, Span<const BufferDesc> buffers, Span<const TextureDesc> textures, ErrCode& err);
 
             virtual DeviceFeatureData check_feature(DeviceFeature feature) override;
             virtual void get_texture_data_placement_info(u32 width, u32 height, u32 depth, Format format,

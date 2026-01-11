@@ -91,11 +91,13 @@ namespace Luna
             auto tex_desc = encode_texture_desc(memory_type, desc);
             return [m_device heapTextureSizeAndAlignWithDescriptor:tex_desc];
         }
-        R<MTLHeapDescriptor*> Device::get_heap_desc(MemoryType memory_type, Span<const BufferDesc> buffers, Span<const TextureDesc> textures)
+        MTLHeapDescriptor* Device::get_heap_desc(MemoryType memory_type, Span<const BufferDesc> buffers, Span<const TextureDesc> textures, ErrCode& err)
         {
-            if(memory_type != MemoryType::local && !textures.empty())
+            err = ErrCode(0);
+            if (!is_resources_aliasing_compatible(memory_type, buffers, textures))
             {
-                return set_error(BasicError::not_supported(), "Textures cannot be created in upload or readback heaps.");
+                err = BasicError::not_supported();
+                return nil;
             }
             MTLHeapDescriptor* ret = [[MTLHeapDescriptor alloc]init];
             ret.type = MTLHeapTypeAutomatic;
@@ -183,23 +185,34 @@ namespace Luna
         }
         bool Device::is_resources_aliasing_compatible(MemoryType memory_type, Span<const BufferDesc> buffers, Span<const TextureDesc> textures)
         {
-            auto desc = get_heap_desc(memory_type, buffers, textures);
-            return succeeded(desc);
+            if(memory_type != MemoryType::local && !textures.empty())
+            {
+                return false;
+            }
+            return true;
         }
         R<Ref<IDeviceMemory>> Device::allocate_memory(MemoryType memory_type, Span<const BufferDesc> buffers, Span<const TextureDesc> textures)
         {
-            Ref<IDeviceMemory> ret;
-            lutry
+            @autoreleasepool
             {
-                lulet(desc, get_heap_desc(memory_type, buffers, textures));
-                Ref<DeviceMemory> memory = new_object<DeviceMemory>();
-                memory->m_device = this;
-                memory->m_memory_type = memory_type;
-                luexp(memory->init(desc));
-                ret = memory;
+                Ref<IDeviceMemory> ret;
+                lutry
+                {
+                    ErrCode err(0);
+                    MTLHeapDescriptor* desc = get_heap_desc(memory_type, buffers, textures, err);
+                    if(desc == nil)
+                    {
+                        return err;
+                    }
+                    Ref<DeviceMemory> memory = new_object<DeviceMemory>();
+                    memory->m_device = this;
+                    memory->m_memory_type = memory_type;
+                    luexp(memory->init(desc));
+                    ret = memory;
+                }
+                lucatchret;
+                return ret;
             }
-            lucatchret;
-            return ret;
         }
         R<Ref<IBuffer>> Device::new_aliasing_buffer(IDeviceMemory* device_memory, const BufferDesc& desc)
         {
