@@ -20,7 +20,7 @@ namespace Luna
         struct DescriptorSetBinding
         {
             // The resource being used in this binding.
-            Array<NSWrapper<id<MTLResource>>> m_resources;
+            NSMutableArray* m_resources = nil;
             MTLResourceUsage m_usages = 0;
             // Used if this is a descriptor set for render pipeline.
             MTLRenderStages m_render_stages = 0;
@@ -39,7 +39,9 @@ namespace Luna
             
             RV init(const DescriptorSetDesc& desc);
 
-            HashMap<u32, id<MTLSamplerState>> m_samplers;
+            ~DescriptorSet();
+
+            NSMutableDictionary<NSNumber*, id<MTLSamplerState>>* m_samplers = nil;
 
             usize calc_binding_index(u32 binding_slot) const;
             

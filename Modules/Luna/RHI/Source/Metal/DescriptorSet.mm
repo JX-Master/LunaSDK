@@ -10,6 +10,7 @@
 #include "DescriptorSet.h"
 #include "Resource.h"
 #include <Luna/Runtime/StackAllocator.hpp>
+#include <Luna/Runtime/Profiler.hpp>
 
 namespace Luna
 {
@@ -19,6 +20,7 @@ namespace Luna
         {
             @autoreleasepool
             {
+                m_samplers = [NSMutableDictionary dictionary];
                 m_layout = cast_object<DescriptorSetLayout>(desc.layout);
                 // Construct bindings.
                 m_bindings.assign(m_layout->m_bindings.size());
@@ -28,7 +30,14 @@ namespace Luna
                     auto& src = m_layout->m_bindings[i];
                     if(src.type != DescriptorType::sampler)
                     {
-                        dst.m_resources.assign(src.num_descs, nullptr);
+                        if(src.num_descs > 0)
+                        {
+                            dst.m_resources = [NSMutableArray arrayWithCapacity:src.num_descs];
+                            for(u32 i = 0; i < src.num_descs; ++i)
+                            {
+                                [dst.m_resources addObject:[NSNull null]];
+                            }
+                        }
                         switch(src.type)
                         {
                             case DescriptorType::uniform_buffer_view:
@@ -76,15 +85,28 @@ namespace Luna
                         return BasicError::bad_platform_call();
                     }
                     NSUInteger length = [m_encoder encodedLength];
-                    m_buffer = [m_device->m_device newBufferWithLength:length options:encode_resource_options(MemoryType::upload)];
+                    m_buffer = [m_device->m_device newBufferWithLength:length 
+                        options:encode_resource_options(MemoryType::upload)];
                     if(!m_buffer)
                     {
                         return BasicError::bad_platform_call();
                     }
                     [m_encoder setArgumentBuffer:m_buffer offset:0];
                 }
+#ifdef LUNA_MEMORY_PROFILER_ENABLED
+                memory_profiler_allocate((__bridge void*)m_buffer, [m_buffer allocatedSize]);
+                memory_profiler_set_memory_domain((__bridge void*)m_buffer, "GPU", 3);
+                memory_profiler_set_memory_type((__bridge void*)m_buffer, "Argument Buffer", 15);
+#endif
+
                 return ok;
             }
+        }
+        DescriptorSet::~DescriptorSet()
+        {
+#ifdef LUNA_MEMORY_PROFILER_ENABLED
+            if(m_buffer) memory_profiler_deallocate((__bridge void*)m_buffer);
+#endif
         }
         inline id<MTLSamplerState> new_sampler_state(id<MTLDevice> device, const SamplerDesc& view)
         {
@@ -229,7 +251,8 @@ namespace Luna
                                 const SamplerDesc& view = write.samplers[i];
                                 id<MTLSamplerState> sampler = new_sampler_state(m_device->m_device, view);
                                 if(!sampler) return BasicError::bad_platform_call();
-                                m_samplers.insert_or_assign(write.binding_slot + write.first_array_index + (u32)i, sampler);
+                                u32 key = write.binding_slot + write.first_array_index + (u32)i;
+                                m_samplers[@(key)] = sampler;
                                 ((MTLResourceID*)data)[argument_offset + i] = sampler.gpuResourceID;
                             }
                             break;
@@ -343,7 +366,8 @@ namespace Luna
                                 const SamplerDesc& view = write.samplers[0];
                                 id<MTLSamplerState> sampler = new_sampler_state(m_device->m_device, view);
                                 if(!sampler) return BasicError::bad_platform_call();
-                                m_samplers.insert_or_assign(write.binding_slot + write.first_array_index, sampler);
+                                u32 key = write.binding_slot + write.first_array_index;
+                                m_samplers[@(key)] = sampler;
                                 [m_encoder setSamplerState:sampler atIndex:write.binding_slot + write.first_array_index];
                             }
                             else
@@ -354,7 +378,8 @@ namespace Luna
                                     const SamplerDesc& view = write.samplers[i];
                                     id<MTLSamplerState> sampler = new_sampler_state(m_device->m_device, view);
                                     if(!sampler) return BasicError::bad_platform_call();
-                                    m_samplers.insert_or_assign(write.binding_slot + write.first_array_index + (u32)i, sampler);
+                                    u32 key = write.binding_slot + write.first_array_index + (u32)i;
+                                    m_samplers[@(key)] = sampler;
                                     samplers[i] = sampler;
                                 }
                                 NSRange range;

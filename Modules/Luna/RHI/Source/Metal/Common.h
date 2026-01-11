@@ -21,26 +21,6 @@ namespace Luna
 {
     namespace RHI
     {
-        template <typename _Ty>
-        struct NSWrapper
-        {
-            NSWrapper() :
-                m_obj(nil) {}
-            NSWrapper(const NSWrapper&) = default;
-            NSWrapper(NSWrapper&&) = default;
-            NSWrapper& operator=(const NSWrapper&) = default;
-            NSWrapper& operator=(NSWrapper&&) = default;
-            NSWrapper(_Ty obj) :
-                m_obj(obj) {}
-            ~NSWrapper() {}
-
-            operator _Ty()
-            {
-                return m_obj;
-            }
-        private:
-            _Ty m_obj;
-        };
         inline MTLPixelFormat encode_pixel_format(Format f)
         {
             switch(f)

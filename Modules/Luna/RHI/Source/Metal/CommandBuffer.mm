@@ -263,15 +263,16 @@ namespace Luna
             DescriptorSet* set = cast_object<DescriptorSet>(descriptor_set->get_object());
             for(auto& binding : set->m_bindings)
             {
-                if(binding.m_resources.empty()) continue;
+                if(binding.m_resources == nil) continue;
                 NSUInteger num_resources = 0;
                 id<MTLResource> __unsafe_unretained* resources = (id<MTLResource> __unsafe_unretained*)
-                    salloc.allocate(sizeof(id<MTLResource>) * binding.m_resources.size());
-                for(usize i = 0; i < binding.m_resources.size(); ++i)
+                    salloc.allocate(sizeof(id<MTLResource>) * binding.m_resources.count);
+                for(usize i = 0; i < binding.m_resources.count; ++i)
                 {
-                    if(binding.m_resources[i])
+                    if([binding.m_resources[i] conformsToProtocol:@protocol(MTLResource)])
                     {
-                        resources[num_resources] = binding.m_resources[i];
+                        id<MTLResource> res = (id<MTLResource>)binding.m_resources[i];
+                        resources[num_resources] = res;
                         ++num_resources;
                     }
                 }
@@ -294,15 +295,16 @@ namespace Luna
                 offsets[i] = 0;
                 for(auto& binding : set->m_bindings)
                 {
-                    if(binding.m_resources.empty()) continue;
+                    if(binding.m_resources == nil) continue;
                     id<MTLResource> __unsafe_unretained* resources = (id<MTLResource> __unsafe_unretained*)
-                        salloc.allocate(sizeof(id<MTLResource>) * binding.m_resources.size());
+                        salloc.allocate(sizeof(id<MTLResource>) * binding.m_resources.count);
                     NSUInteger num_resources = 0;
-                    for(usize i = 0; i < binding.m_resources.size(); ++i)
+                    for(usize i = 0; i < binding.m_resources.count; ++i)
                     {
-                        if(binding.m_resources[i])
+                        if([binding.m_resources[i] conformsToProtocol:@protocol(MTLResource)])
                         {
-                            resources[num_resources] = binding.m_resources[i];
+                            id<MTLResource> res = (id<MTLResource>)binding.m_resources[i];
+                            resources[num_resources] = res;
                             ++num_resources;
                         }
                     }
@@ -545,15 +547,16 @@ namespace Luna
             DescriptorSet* set = cast_object<DescriptorSet>(descriptor_set->get_object());
             for(auto& binding : set->m_bindings)
             {
-                if(binding.m_resources.empty()) continue;
+                if(binding.m_resources == nil) continue;
                 id<MTLResource> __unsafe_unretained* resources = (id<MTLResource> __unsafe_unretained*)
-                    salloc.allocate(sizeof(id<MTLResource>) * binding.m_resources.size());
+                    salloc.allocate(sizeof(id<MTLResource>) * binding.m_resources.count);
                 NSUInteger num_resources = 0;
-                for(usize i = 0; i < binding.m_resources.size(); ++i)
+                for(usize i = 0; i < binding.m_resources.count; ++i)
                 {
-                    if(binding.m_resources[i])
+                    if([binding.m_resources[i] conformsToProtocol:@protocol(MTLResource)])
                     {
-                        resources[num_resources] = binding.m_resources[i];
+                        id<MTLResource> res = (id<MTLResource>)binding.m_resources[i];
+                        resources[num_resources] = res;
                         ++num_resources;
                     }
                 }
@@ -574,15 +577,16 @@ namespace Luna
                 offsets[i] = 0;
                 for(auto& binding : set->m_bindings)
                 {
-                    if(binding.m_resources.empty()) continue;
+                    if(binding.m_resources == nil) continue;
                     id<MTLResource> __unsafe_unretained* resources = (id<MTLResource> __unsafe_unretained*)
-                        salloc.allocate(sizeof(id<MTLResource>) * binding.m_resources.size());
+                        salloc.allocate(sizeof(id<MTLResource>) * binding.m_resources.count);
                     NSUInteger num_resources = 0;
-                    for(usize i = 0; i < binding.m_resources.size(); ++i)
+                    for(usize i = 0; i < binding.m_resources.count; ++i)
                     {
-                        if(binding.m_resources[i])
+                        if([binding.m_resources[i] conformsToProtocol:@protocol(MTLResource)])
                         {
-                            resources[num_resources] = binding.m_resources[i];
+                            id<MTLResource> res = (id<MTLResource>)binding.m_resources[i];
+                            resources[num_resources] = res;
                             ++num_resources;
                         }
                     }
