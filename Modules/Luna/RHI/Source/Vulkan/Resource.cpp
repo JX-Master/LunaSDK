@@ -10,6 +10,7 @@
 #include "Resource.hpp"
 #include "Instance.hpp"
 #include "../RHI.hpp"
+#include <Luna/Runtime/Profiler.hpp>
 namespace Luna
 {
     namespace RHI

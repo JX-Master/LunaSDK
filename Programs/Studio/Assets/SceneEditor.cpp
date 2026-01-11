@@ -27,6 +27,9 @@
 #include <Luna/Runtime/Random.hpp>
 #include "../World.hpp"
 
+#include <GridVS.hpp>
+#include <GridPS.hpp>
+
 namespace Luna
 {
     struct SceneEditorUserData
@@ -1024,62 +1027,6 @@ namespace Luna
                 auto dl = m_grid_dlayout.get();
                 luset(m_grid_playout, device->new_pipeline_layout(PipelineLayoutDesc({ &dl, 1 },
                     PipelineLayoutFlag::allow_input_assembler_input_layout)));
-                static const char* vertexShader =
-                    R"(cbuffer vertexBuffer : register(b0)
-                        {
-                            float4x4 world_to_view;
-                            float4x4 view_to_proj;
-                            float4x4 world_to_proj;
-                            float4x4 view_to_world;
-                        };
-                        struct VS_INPUT
-                        {
-                          [[vk::location(0)]]
-                          float4 pos : POSITION;
-                        };
-                        
-                        struct PS_INPUT
-                        {
-                          [[vk::location(0)]]
-                          float4 pos : SV_POSITION;
-                        };
-                        
-                        PS_INPUT main(VS_INPUT input)
-                        {
-                          PS_INPUT output;
-                          output.pos = mul(world_to_proj, input.pos);
-                          return output;
-                        })";
-                auto compiler = ShaderCompiler::new_compiler();
-                ShaderCompiler::ShaderCompileParameters params;
-                params.source = { vertexShader, strlen(vertexShader) };
-                params.source_name = "GridVS";
-                params.entry_point = "main";
-                params.target_format = get_current_platform_shader_target_format();
-                params.shader_type = ShaderCompiler::ShaderType::vertex;
-                params.shader_model = {6, 0};
-                params.optimization_level = ShaderCompiler::OptimizationLevel::full;
-                lulet(vs_blob, compiler->compile(params));
-                static const char* pixelShader =
-                    R"(struct PS_INPUT
-                    {
-                        [[vk::location(0)]]
-                        float4 pos : SV_POSITION;
-                    };
-                    [[vk::location(0)]]
-                    float4 main(PS_INPUT input) : SV_Target
-                    {
-                        return float4(1.0f, 1.0f, 1.0f, 1.0f);
-                    })";
-
-                params.source = { pixelShader, strlen(pixelShader) };
-                params.source_name = "GridPS";
-                params.entry_point = "main";
-                params.target_format = get_current_platform_shader_target_format();
-                params.shader_type = ShaderCompiler::ShaderType::pixel;
-                params.shader_model = {6, 0};
-                params.optimization_level = ShaderCompiler::OptimizationLevel::full;
-                lulet(ps_blob, compiler->compile(params));
 
                 GraphicsPipelineStateDesc ps_desc;
                 ps_desc.primitive_topology = PrimitiveTopology::line_list;
@@ -1093,8 +1040,8 @@ namespace Luna
                 ps_desc.input_layout.attributes = { &attribute, 1 };
                 ps_desc.input_layout.bindings = { &binding, 1 };
                 ps_desc.pipeline_layout = m_grid_playout;
-                ps_desc.vs = get_shader_data_from_compile_result(vs_blob);
-                ps_desc.ps = get_shader_data_from_compile_result(ps_blob);
+                ps_desc.vs = LUNA_GET_SHADER_DATA(GridVS);
+                ps_desc.ps = LUNA_GET_SHADER_DATA(GridPS);
                 ps_desc.num_color_attachments = 1;
                 ps_desc.color_formats[0] = Format::rgba8_unorm;
 

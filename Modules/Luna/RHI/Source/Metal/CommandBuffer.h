@@ -3,13 +3,13 @@
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
-* @file CommandBuffer.hpp
+* @file CommandBuffer.h
 * @author JXMaster
 * @date 2023/7/13
 */
 #pragma once
-#include "Device.hpp"
-#include "QueryHeap.hpp"
+#include "Device.h"
+#include "QueryHeap.h"
 
 namespace Luna
 {
@@ -21,18 +21,18 @@ namespace Luna
             luiimpl();
 
             Ref<Device> m_device;
-            NSPtr<MTL::CommandBuffer> m_buffer;
+            id<MTLCommandBuffer> m_buffer = nil;
             u32 m_command_queue_index;
 
             // The attached graphic objects.
             Vector<Ref<IDeviceChild>> m_objs;
 
-            NSPtr<MTL::RenderCommandEncoder> m_render;
-            NSPtr<MTL::ComputeCommandEncoder> m_compute;
-            NSPtr<MTL::BlitCommandEncoder> m_blit;
+            id<MTLRenderCommandEncoder> m_render = nil;
+            id<MTLComputeCommandEncoder> m_compute = nil;
+            id<MTLBlitCommandEncoder> m_blit = nil;
 
             IndexBufferView m_index_buffer_view;
-            MTL::PrimitiveType m_primitive_type;
+            MTLPrimitiveType m_primitive_type;
 
             UInt3U m_num_threads_per_group;
             
@@ -68,7 +68,7 @@ namespace Luna
             }
 
             virtual IDevice* get_device() override { return m_device; }
-            virtual void set_name(const c8* name) override  { set_object_name(m_buffer.get(), name); }
+            virtual void set_name(const c8* name) override;
             virtual void wait() override;
             virtual bool try_wait() override;
             virtual u32 get_command_queue_index() override { return m_command_queue_index; }

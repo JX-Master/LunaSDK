@@ -3,11 +3,12 @@
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
-* @file Resource.cpp
+* @file Resource.mm
 * @author JXMaster
 * @date 2023/7/13
 */
-#include "Resource.hpp"
+#include "Resource.h"
+#include <Luna/Runtime/Profiler.hpp>
 namespace Luna
 {
     namespace RHI
@@ -24,16 +25,16 @@ namespace Luna
                 else
                 {
                     m_desc = desc;
-                    m_buffer = box(m_device->m_device->newBuffer(desc.size, encode_resource_options(memory_type)));
+                    m_buffer = [m_device->m_device newBufferWithLength:desc.size options:encode_resource_options(memory_type)];
                     if(!m_buffer) return BasicError::bad_platform_call();
                     m_memory = new_object<DeviceMemory>();
                     m_memory->m_device = m_device;
                     m_memory->m_memory_type = memory_type;
-                    m_memory->m_size = m_buffer->allocatedSize();
+                    m_memory->m_size = [m_buffer allocatedSize];
 #ifdef LUNA_MEMORY_PROFILER_ENABLED
-                    memory_profiler_allocate(m_buffer.get(), m_memory->get_size());
-                    memory_profiler_set_memory_domain(m_buffer.get(), "GPU", 3);
-                    memory_profiler_set_memory_type(m_buffer.get(), "Buffer", 6);
+                    memory_profiler_allocate((__bridge void*)m_buffer, m_memory->get_size());
+                    memory_profiler_set_memory_domain((__bridge void*)m_buffer, "GPU", 3);
+                    memory_profiler_set_memory_type((__bridge void*)m_buffer, "Buffer", 6);
 #endif
                 }
             }
@@ -45,21 +46,30 @@ namespace Luna
             DeviceMemory* m = cast_object<DeviceMemory>(memory->get_object());
             if(!m->m_heap) return BasicError::not_supported();
             m_desc = desc;
-            m_buffer = box(m->m_heap->newBuffer(desc.size, encode_resource_options(m->m_memory_type)));
+            m_buffer = [m->m_heap newBufferWithLength:desc.size options:encode_resource_options(m->m_memory_type)];
             if(!m_buffer) return BasicError::bad_platform_call();
             m_memory = m;
-            m_buffer->makeAliasable();
+            [m_buffer makeAliasable];
             return ok;
         }
         Buffer::~Buffer()
         {
 #ifdef LUNA_MEMORY_PROFILER_ENABLED
-            if(!m_memory->m_heap) memory_profiler_deallocate(m_buffer.get());
+            if(!m_memory->m_heap) memory_profiler_deallocate((__bridge void*)m_buffer);
 #endif
+            m_buffer = nil;
+        }
+        void Buffer::set_name(const c8* name)
+        {
+            @autoreleasepool
+            {
+                NSString* label = [NSString stringWithUTF8String:name];
+                m_buffer.label = label;
+            }
         }
         RV Buffer::map(usize read_begin, usize read_end, void** data)
         {
-            void* d = m_buffer->contents();
+            void* d = [m_buffer contents];
             if(data) *data = d;
             return d ? ok : BasicError::not_supported();
         }
@@ -77,16 +87,16 @@ namespace Luna
                     m_desc = desc;
                     luexp(validate_texture_desc(m_desc));
                     auto d = encode_texture_desc(memory_type, m_desc);
-                    m_texture = box(m_device->m_device->newTexture(d.get()));
+                    m_texture = [m_device->m_device newTextureWithDescriptor:d];
                     if(!m_texture) return BasicError::bad_platform_call();
                     m_memory = new_object<DeviceMemory>();
                     m_memory->m_device = m_device;
                     m_memory->m_memory_type = memory_type;
-                    m_memory->m_size = m_texture->allocatedSize();
+                    m_memory->m_size = [m_texture allocatedSize];
 #ifdef LUNA_MEMORY_PROFILER_ENABLED
-                    memory_profiler_allocate(m_texture.get(), m_memory->get_size());
-                    memory_profiler_set_memory_domain(m_texture.get(), "GPU", 3);
-                    memory_profiler_set_memory_type(m_texture.get(), "Texture", 7);
+                    memory_profiler_allocate((__bridge void*)m_texture, m_memory->get_size());
+                    memory_profiler_set_memory_domain((__bridge void*)m_texture, "GPU", 3);
+                    memory_profiler_set_memory_type((__bridge void*)m_texture, "Texture", 7);
 #endif
                 }
             }
@@ -102,10 +112,10 @@ namespace Luna
                 m_desc = desc;
                 luexp(validate_texture_desc(m_desc));
                 auto d = encode_texture_desc(m->m_memory_type, m_desc);
-                m_texture = box(m->m_heap->newTexture(d.get()));
+                m_texture = [m->m_heap newTextureWithDescriptor:d];
                 if(!m_texture) return BasicError::bad_platform_call();
                 m_memory = m;
-                m_texture->makeAliasable();
+                [m_texture makeAliasable];
             }
             lucatchret;
             return ok;
@@ -113,8 +123,17 @@ namespace Luna
         Texture::~Texture()
         {
 #ifdef LUNA_MEMORY_PROFILER_ENABLED
-            if(m_memory && !m_memory->m_heap) memory_profiler_deallocate(m_texture.get());
+            if(m_memory && !m_memory->m_heap) memory_profiler_deallocate((__bridge void*)m_texture);
 #endif
+            m_texture = nil;
+        }
+        void Texture::set_name(const c8* name)
+        {
+            @autoreleasepool
+            {
+                NSString* label = [NSString stringWithUTF8String:name];
+                m_texture.label = label;
+            }
         }
         bool compare_texture_view_desc(const TextureViewDesc& lhs, const TextureViewDesc& rhs)
         {

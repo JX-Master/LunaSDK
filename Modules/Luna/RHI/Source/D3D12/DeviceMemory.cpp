@@ -8,6 +8,7 @@
 * @date 2023/5/16
 */
 #include "DeviceMemory.hpp"
+#include <Luna/Runtime/Profiler.hpp>
 
 namespace Luna
 {

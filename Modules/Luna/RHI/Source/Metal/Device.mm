@@ -3,103 +3,107 @@
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
-* @file Device.cpp
+* @file Device.mm
 * @author JXMaster
 * @date 2023/7/12
 */
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_RHI_API LUNA_EXPORT
-#include "Device.hpp"
-#include "Adapter.hpp"
-#include "DeviceMemory.hpp"
-#include "Resource.hpp"
-#include "CommandBuffer.hpp"
-#include "PipelineLayout.hpp"
-#include "PipelineState.hpp"
-#include "DescriptorSet.hpp"
-#include "QueryHeap.hpp"
-#include "Fence.hpp"
-#include "SwapChain.hpp"
+#include "Device.h"
+#include "Adapter.h"
+#include "DeviceMemory.h"
+#include "Resource.h"
+#include "CommandBuffer.h"
+#include "PipelineLayout.h"
+#include "PipelineState.h"
+#include "DescriptorSet.h"
+#include "QueryHeap.h"
+#include "Fence.h"
+#include "SwapChain.h"
 namespace Luna
 {
     namespace RHI
     {
-        RV CommandQueue::init(MTL::Device* dev, const CommandQueueDesc& desc)
+        RV CommandQueue::init(id<MTLDevice> dev, const CommandQueueDesc& desc)
         {
             this->desc = desc;
-            this->queue = box(dev->newCommandQueue());
+            this->queue = [dev newCommandQueue];
             if(!this->queue) return BasicError::bad_platform_call();
             return ok;
         }
         RV Device::init()
         {
-            lutry
+            @autoreleasepool
             {
-                AutoreleasePool pool;
-                m_device->sampleTimestamps(&m_start_cpu_time, &m_start_gpu_time);
-                CommandQueueDesc desc;
-                desc.type = CommandQueueType::graphics;
-                desc.flags = CommandQueueFlag::presenting;
-                CommandQueue queue;
-                luexp(queue.init(m_device.get(), desc));
-                set_object_name(queue.queue.get(), "Render Queue");
-                m_queues.push_back(move(queue));
-                desc.type = CommandQueueType::compute;
-                desc.flags = CommandQueueFlag::none;
-                luexp(queue.init(m_device.get(), desc));
-                set_object_name(queue.queue.get(), "Compute Queue");
-                m_queues.push_back(move(queue));
-                luexp(queue.init(m_device.get(), desc));
-                set_object_name(queue.queue.get(), "Compute Queue");
-                m_queues.push_back(move(queue));
-                desc.type = CommandQueueType::copy;
-                luexp(queue.init(m_device.get(), desc));
-                set_object_name(queue.queue.get(), "Blit Queue");
-                m_queues.push_back(move(queue));
-                luexp(queue.init(m_device.get(), desc));
-                set_object_name(queue.queue.get(), "Blit Queue");
-                m_queues.push_back(move(queue));
-                if(m_device->supportsCounterSampling(MTL::CounterSamplingPointAtStageBoundary))
+                lutry
                 {
-                    m_counter_sampling_support_flags |= CounterSamplingSupportFlag::stage;
+                    [m_device sampleTimestamps:&m_start_cpu_time gpuTimestamp:&m_start_gpu_time];
+                    CommandQueueDesc desc;
+                    desc.type = CommandQueueType::graphics;
+                    desc.flags = CommandQueueFlag::presenting;
+                    CommandQueue queue;
+                    luexp(queue.init(m_device, desc));
+                    queue.queue.label = @"Render Queue";
+                    m_queues.push_back(move(queue));
+                    desc.type = CommandQueueType::compute;
+                    desc.flags = CommandQueueFlag::none;
+                    luexp(queue.init(m_device, desc));
+                    queue.queue.label = @"Compute Queue";
+                    m_queues.push_back(move(queue));
+                    luexp(queue.init(m_device, desc));
+                    queue.queue.label = @"Compute Queue";
+                    m_queues.push_back(move(queue));
+                    desc.type = CommandQueueType::copy;
+                    luexp(queue.init(m_device, desc));
+                    queue.queue.label = @"Blit Queue";
+                    m_queues.push_back(move(queue));
+                    luexp(queue.init(m_device, desc));
+                    queue.queue.label = @"Blit Queue";
+                    m_queues.push_back(move(queue));
+                    if([m_device supportsCounterSampling:MTLCounterSamplingPointAtStageBoundary])
+                    {
+                        m_counter_sampling_support_flags |= CounterSamplingSupportFlag::stage;
+                    }
+                    if([m_device supportsCounterSampling:MTLCounterSamplingPointAtDrawBoundary])
+                    {
+                        m_counter_sampling_support_flags |= CounterSamplingSupportFlag::draw;
+                    }
+                    if([m_device supportsCounterSampling:MTLCounterSamplingPointAtBlitBoundary])
+                    {
+                        m_counter_sampling_support_flags |= CounterSamplingSupportFlag::blit;
+                    }
+                    if([m_device supportsCounterSampling:MTLCounterSamplingPointAtDispatchBoundary])
+                    {
+                        m_counter_sampling_support_flags |= CounterSamplingSupportFlag::dispatch;
+                    }
+                    m_support_metal_3_family = [m_device supportsFamily:MTLGPUFamilyMetal3];
                 }
-                if(m_device->supportsCounterSampling(MTL::CounterSamplingPointAtDrawBoundary))
-                {
-                    m_counter_sampling_support_flags |= CounterSamplingSupportFlag::draw;
-                }
-                if(m_device->supportsCounterSampling(MTL::CounterSamplingPointAtBlitBoundary))
-                {
-                    m_counter_sampling_support_flags |= CounterSamplingSupportFlag::blit;
-                }
-                if(m_device->supportsCounterSampling(MTL::CounterSamplingPointAtDispatchBoundary))
-                {
-                    m_counter_sampling_support_flags |= CounterSamplingSupportFlag::dispatch;
-                }
-                m_support_metal_3_family = m_device->supportsFamily(MTL::GPUFamilyMetal3);
+                lucatchret;
+                return ok;
             }
-            lucatchret;
-            return ok;
         }
-        MTL::SizeAndAlign Device::get_buffer_size(MemoryType memory_type, const BufferDesc& desc)
+        MTLSizeAndAlign Device::get_buffer_size(MemoryType memory_type, const BufferDesc& desc)
         {
-            return m_device->heapBufferSizeAndAlign(desc.size, encode_resource_options(memory_type));
+            return [m_device heapBufferSizeAndAlignWithLength:desc.size options:encode_resource_options(memory_type)];
         }
-        MTL::SizeAndAlign Device::get_texture_size(MemoryType memory_type, const TextureDesc& desc)
+        MTLSizeAndAlign Device::get_texture_size(MemoryType memory_type, const TextureDesc& desc)
         {
             auto tex_desc = encode_texture_desc(memory_type, desc);
-            return m_device->heapTextureSizeAndAlign(tex_desc.get());
+            return [m_device heapTextureSizeAndAlignWithDescriptor:tex_desc];
         }
-        R<NSPtr<MTL::HeapDescriptor>> Device::get_heap_desc(MemoryType memory_type, Span<const BufferDesc> buffers, Span<const TextureDesc> textures)
+        MTLHeapDescriptor* Device::get_heap_desc(MemoryType memory_type, Span<const BufferDesc> buffers, Span<const TextureDesc> textures, ErrCode& err)
         {
-            if(memory_type != MemoryType::local && !textures.empty())
+            err = ErrCode(0);
+            if (!is_resources_aliasing_compatible(memory_type, buffers, textures))
             {
-                return set_error(BasicError::not_supported(), "Textures cannot be created in upload or readback heaps.");
+                err = BasicError::not_supported();
+                return nil;
             }
-            NSPtr<MTL::HeapDescriptor> ret = box(MTL::HeapDescriptor::alloc()->init());
-            ret->setType(MTL::HeapTypeAutomatic);
-            ret->setStorageMode(encode_storage_mode(memory_type));
-            ret->setCpuCacheMode(encode_cpu_cache_mode(memory_type));
-            ret->setResourceOptions(encode_resource_options(memory_type));
+            MTLHeapDescriptor* ret = [[MTLHeapDescriptor alloc]init];
+            ret.type = MTLHeapTypeAutomatic;
+            ret.storageMode = encode_storage_mode(memory_type);
+            ret.cpuCacheMode = encode_cpu_cache_mode(memory_type);
+            ret.resourceOptions = encode_resource_options(memory_type);
             usize size = 0;
             for(auto& buffer : buffers)
             {
@@ -111,7 +115,7 @@ namespace Luna
                 auto sz = get_texture_size(memory_type, texture);
                 size = max<usize>(size, sz.size);
             }
-            ret->setSize(size);
+            ret.size = size;
             return ret;
         }
         DeviceFeatureData Device::check_feature(DeviceFeature feature)
@@ -181,23 +185,34 @@ namespace Luna
         }
         bool Device::is_resources_aliasing_compatible(MemoryType memory_type, Span<const BufferDesc> buffers, Span<const TextureDesc> textures)
         {
-            auto desc = get_heap_desc(memory_type, buffers, textures);
-            return succeeded(desc);
+            if(memory_type != MemoryType::local && !textures.empty())
+            {
+                return false;
+            }
+            return true;
         }
         R<Ref<IDeviceMemory>> Device::allocate_memory(MemoryType memory_type, Span<const BufferDesc> buffers, Span<const TextureDesc> textures)
         {
-            Ref<IDeviceMemory> ret;
-            lutry
+            @autoreleasepool
             {
-                lulet(desc, get_heap_desc(memory_type, buffers, textures));
-                Ref<DeviceMemory> memory = new_object<DeviceMemory>();
-                memory->m_device = this;
-                memory->m_memory_type = memory_type;
-                luexp(memory->init(desc.get()));
-                ret = memory;
+                Ref<IDeviceMemory> ret;
+                lutry
+                {
+                    ErrCode err(0);
+                    MTLHeapDescriptor* desc = get_heap_desc(memory_type, buffers, textures, err);
+                    if(desc == nil)
+                    {
+                        return err;
+                    }
+                    Ref<DeviceMemory> memory = new_object<DeviceMemory>();
+                    memory->m_device = this;
+                    memory->m_memory_type = memory_type;
+                    luexp(memory->init(desc));
+                    ret = memory;
+                }
+                lucatchret;
+                return ret;
             }
-            lucatchret;
-            return ret;
         }
         R<Ref<IBuffer>> Device::new_aliasing_buffer(IDeviceMemory* device_memory, const BufferDesc& desc)
         {
@@ -315,9 +330,9 @@ namespace Luna
         {
             if(m_timestamp_frequency == 0.0)
             {
-                MTL::Timestamp cpu_time;
-                MTL::Timestamp gpu_time;
-                m_device->sampleTimestamps(&cpu_time, &gpu_time);
+                MTLTimestamp cpu_time;
+                MTLTimestamp gpu_time;
+                [m_device sampleTimestamps:&cpu_time gpuTimestamp:&gpu_time];
                 u64 cpu_span = cpu_time - m_start_cpu_time;
                 u64 gpu_span = gpu_time - m_start_gpu_time;
                 f64 ret = 1000000000.0 / (f64)cpu_span * (f64)gpu_span;
@@ -380,7 +395,6 @@ namespace Luna
         }
         LUNA_RHI_API R<Ref<IDevice>> new_device(IAdapter* adapter)
         {
-            AutoreleasePool pool;
             Adapter* ada = cast_object<Adapter>(adapter->get_object());
             Ref<Device> dev = new_object<Device>();
             dev->m_device = ada->m_device;
@@ -398,7 +412,7 @@ namespace Luna
             if(!g_main_device)
             {
                 Ref<Device> dev = new_object<Device>();
-                dev->m_device = box(MTL::CreateSystemDefaultDevice());
+                dev->m_device = MTLCreateSystemDefaultDevice();
                 if(!dev->m_device) return BasicError::bad_platform_call();
                 auto r = dev->init();
                 if(failed(r)) return r;
