@@ -94,54 +94,55 @@ namespace Luna
         }
         return nullptr;
     }
-    static R<Vector<Module*>> get_module_init_queue()
+    static RV visit_module(
+        Module* m,
+        HashSet<Module*>& visited,
+        HashSet<Module*>& visiting,
+        Vector<Module*>& out_init_queue
+    )
     {
-        HashSet<Module*> unresolved_modules;
-        for(auto& m : g_modules)
+        lutry
         {
-            if(!m.second.m_initialized)
-            {
-                unresolved_modules.insert(m.first);
-            }
-        }
-        Vector<Module*> init_queue;
-        // Loop until all modules are resolved and pushed into the queue.
-        while (!unresolved_modules.empty())
-        {
-            bool any_removed = false;
-            auto iter = unresolved_modules.begin();
-            while (iter != unresolved_modules.end())
-            {
-                bool can_init = true;    // If this module can be initialized.
-                // Check dependencies.
-                auto module_iter = g_modules.find(*iter);
-                luassert(module_iter != g_modules.end());
-                Vector<Module*>& dependencies = module_iter->second.m_dependencies;
-                for (Module* dep : dependencies)
-                {
-                    if (unresolved_modules.contains(dep))
-                    {
-                        // The dependency is not initialized.
-                        can_init = false;
-                        break;
-                    }
-                }
-                if (can_init)
-                {
-                    // Remove this.
-                    init_queue.push_back(*iter);
-                    any_removed = true;
-                    iter = unresolved_modules.erase(iter);
-                }
-                else
-                {
-                    ++iter; // Skip this, leave to next roll.
-                }
-            }
-            if (!any_removed)
+            if(visiting.contains(m))
             {
                 // Cycle reference detected.
                 return set_error(BasicError::bad_arguments(), "Cycling module dependencies detected.");
+            }
+            if(!visited.insert(m).second)
+            {
+                // This node is already visited.
+                return ok;
+            }
+            auto iter = g_modules.find(m);
+            luassert(iter != g_modules.end());
+            if(iter->second.m_initialized)
+            {
+                // Skip modules that are already initialized.
+                return ok;
+            }
+            const Vector<Module*>& dependencies = iter->second.m_dependencies;
+            visiting.insert(m);
+            for(Module* dep : dependencies)
+            {
+                luexp(visit_module(dep, visited, visiting, out_init_queue));
+            }
+            visiting.erase(m);
+            out_init_queue.push_back(m);
+        }
+        lucatchret;
+        return ok;
+    }
+    static R<Vector<Module*>> get_module_init_queue()
+    {
+        Vector<Module*> init_queue;
+        HashSet<Module*> visited;
+        HashSet<Module*> visiting;
+        for(auto& m : g_modules)
+        {
+            auto r = visit_module(m.first, visited, visiting, init_queue);
+            if(failed(r))
+            {
+                return r.errcode();
             }
         }
         return init_queue;
