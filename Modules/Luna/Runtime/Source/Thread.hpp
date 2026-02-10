@@ -20,6 +20,7 @@ namespace Luna
         opaque_t m_handle;
         void(*m_entry)(void*);
         void* m_params;
+        Ref<IFiber> m_native_fiber;
 
         Thread() :
             m_handle(nullptr) {}
@@ -67,6 +68,16 @@ namespace Luna
         {
             OS::set_thread_priority(m_handle, priority);
         }
+    };
+    struct Fiber : IFiber
+    {
+        lustruct("Fiber", "{c07ce059-34ec-4df8-9699-02c3110be31b}");
+        luiimpl();
+
+        OS::FiberContext m_context;
+        bool m_should_delete = false;
+
+        ~Fiber();
     };
     void thread_init();
     void thread_close();

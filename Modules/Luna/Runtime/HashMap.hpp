@@ -257,6 +257,28 @@ namespace Luna
         {
             return m_base.find(key);
         }
+        //! Gets the value with the specified key.
+        //! @param[in] key The key of the element to get.
+        //! @return Returns reference to the found value.
+        //! @par Valid Usage
+        //! * `key` must specifies one existing element in the map.
+        mapped_type& operator[](const key_type& key)
+        {
+            auto iter = find(key);
+            luassert(iter != end());
+            return iter->second;
+        }
+        //! Gets the value with the specified key.
+        //! @param[in] key The key of the element to get.
+        //! @return Returns reference to the found value.
+        //! @par Valid Usage
+        //! * `key` must specifies one existing element in the map.
+        const mapped_type& operator[](const key_type& key) const
+        {
+            auto iter = find(key);
+            luassert(iter != end());
+            return iter->second;
+        }
         //! Gets the number of elements whose key is equal to the specified key.
         //! @param[in] key The key of the element to count.
         //! @return Returns the number of elements whose key is equal to the specified key.

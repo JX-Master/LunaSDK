@@ -53,6 +53,8 @@ namespace Luna
         impl_interface_for_type<FileIterator, IFileIterator>();
         register_boxed_type<Thread>();
         impl_interface_for_type<Thread, IWaitable, IThread>();
+        register_boxed_type<Fiber>();
+        impl_interface_for_type<Fiber, IFiber>();
         register_boxed_type<MainThread>();
         impl_interface_for_type<MainThread, IWaitable, IThread>();
         register_boxed_type<ReadWriteLock>();
