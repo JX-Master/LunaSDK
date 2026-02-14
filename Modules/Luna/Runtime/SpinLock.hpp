@@ -57,11 +57,7 @@ namespace Luna
         {
             while (atom_compare_exchange_u32(&counter, 1, 0) != 0)
             {
-#if defined(LUNA_PLATFORM_X86) || defined(LUNA_PLATFORM_X86_64)
-                _mm_pause(); // not_ready-waiting.
-#elif defined(LUNA_PLATFORM_ARM64) || defined(LUNA_PLATFORM_ARM32)
-                __yield();
-#endif
+                processor_pause();
             }
         }
         //! Tries to lock the spin lock.
@@ -104,11 +100,7 @@ namespace Luna
             }
             while (atom_compare_exchange_usize(&tid, current_tid, 0) != 0)
             {
-#if defined(LUNA_PLATFORM_X86) || defined(LUNA_PLATFORM_X86_64)
-                _mm_pause(); // not_ready-waiting.
-#elif defined(LUNA_PLATFORM_ARM64) || defined(LUNA_PLATFORM_ARM32)
-                __yield();
-#endif
+                processor_pause();
             }
         }
         //! Tries to lock the spin lock.

@@ -8,7 +8,7 @@
 * @date 2022/7/7
 */
 #pragma once
-#include <Luna/Runtime/Base.hpp>
+#include <Luna/Runtime/Span.hpp>
 #ifndef LUNA_JOBSYSTEM_API
 #define LUNA_JOBSYSTEM_API
 #endif
@@ -27,10 +27,6 @@ namespace Luna
         //! A special ID that identifies one invalid job.
         constexpr job_id_t INVALID_JOB_ID = 0;
 
-        //! The callback function of one job.
-        //! @param[in] params The parameter passed to @ref submit_job.
-        using job_func_t = void(void* params);
-
         //! Allocates one job ID, so that other threads can wait for it by calling @ref wait_job.
         //! @return Returns the allocated job ID.
         //! @remark This function is called internally by the job system for all jobs submitted by @ref submit_job, so the user doesn't need to call this function manually.
@@ -46,38 +42,28 @@ namespace Luna
         //! See remarks of @ref allocate_job_id for details.
         LUNA_JOBSYSTEM_API void finish_job_id(job_id_t job);
 
-        //! Creates a new job.
-        //! @param[in] func The job callback function to invoke.
-        //! @param[in] param_size The size of the parameter block.
-        //! @param[in] param_alignment The alignment of the parameter block.
-        //! @param[in] parent The optional parameter pointer of the parent job. If this is not `nullptr`, all waits for the parent
-        //! job will wait this job as well.
-        //! @return Returns the parameter block pointer of the created job. The parameter block data is uninitialized and should be 
-        //! initialized by the user.
-        LUNA_JOBSYSTEM_API void* new_job(job_func_t* func, usize param_size, usize param_alignment, void* parent = nullptr);
+        //! Checks whether the specified job is finished.
+        //! @param[in] job The job ID to check. If this is @ref INVALID_JOB_ID, this call always return `true`.
+        //! @return Returns `true` if the job is finished, `false` otherwise.
+        LUNA_JOBSYSTEM_API bool is_job_finished(job_id_t job);
 
-        //! Submits the job to the job system.
-        //! @param[in] params The parameter block pointer of the job. Every job can only be submitted once.
-        //! If the parameter block is not trivially destructable, the user must destruct the parameter block manually at the end of the
-        //! job callback function.
+        //! Submits one job to the job system.
+        //! @param[in] func The job function to invoke.
+        //! @param[in] params The opaque pointer that will be passed to job function as parameter.
         //! @return Returns the job ID for the submitted job, which can be used to wait for the job using @ref wait_job, or check whether
         //! the job is finished using @ref is_job_finished.
-        LUNA_JOBSYSTEM_API job_id_t submit_job(void* params);
-
-        //! Fetches the job ID assigned with the specified job.
-        //! @param[in] params The parameter block pointer of the job.
-        //! @return Returns the assigned job ID for the job.
-        //! Returns @ref INVALID_JOB_ID if the job is not submitted yet.
-        LUNA_JOBSYSTEM_API job_id_t get_current_job_id(void* params);
+        LUNA_JOBSYSTEM_API job_id_t submit_job(void (*func)(void* params), void* params);
 
         //! Blocks the current thread to wait for the job to finish.
         //! @param[in] job The job ID to wait. If this is @ref INVALID_JOB_ID, this call returns immediately.
         LUNA_JOBSYSTEM_API void wait_job(job_id_t job);
 
-        //! Checks whether the specified job is finished.
-        //! @param[in] job The job ID to check. If this is @ref INVALID_JOB_ID, this call always return `true`.
-        //! @return Returns `true` if the job is finished, `false` otherwise.
-        LUNA_JOBSYSTEM_API bool is_job_finished(job_id_t job);
+        //! Blocks the current thread to wait for all jobs to finish.
+        //! @details Call this function instead of repeatly call @ref wait_job if you need to wait for 
+        //! many jobs, since every @ref wait_job call will trigger a job schedule operation, but this function
+        //! only use one job schedule operation to submit all job dependencies, thus improves performance.
+        //! @param[in] jobs A span of jobs to wait.
+        LUNA_JOBSYSTEM_API void wait_jobs(Span<const job_id_t> jobs);
 
         //! @}
     }

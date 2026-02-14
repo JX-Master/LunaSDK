@@ -745,11 +745,12 @@ namespace Luna
         {
             log_error("Studio", "Failed to load asset %s: %s", Asset::get_asset_path(task->asset).encode().c_str(), explain(r.errcode()));
         }
+        memdelete(task);
     }
     void async_load_asset(Asset::asset_t asset)
     {
-        AssetLoadTask* task = (AssetLoadTask*)JobSystem::new_job(async_load_asset_func, sizeof(AssetLoadTask), alignof(AssetLoadTask));
+        AssetLoadTask* task = memnew<AssetLoadTask>();
         task->asset = asset;
-        JobSystem::submit_job(task);
+        JobSystem::submit_job(async_load_asset_func, task);
     }
 }

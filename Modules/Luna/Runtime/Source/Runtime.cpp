@@ -20,6 +20,7 @@
 #include "Semaphore.hpp"
 #include "File.hpp"
 #include "Thread.hpp"
+#include "Coroutine.hpp"
 #include "TypeInfo.hpp"
 #include "Interface.hpp"
 #include "Random.hpp"
@@ -51,11 +52,15 @@ namespace Luna
         impl_interface_for_type<File, IFile, ISeekableStream, IStream>();
         register_boxed_type<FileIterator>();
         impl_interface_for_type<FileIterator, IFileIterator>();
-        register_boxed_type<Thread>();
+        auto thread_base_type = register_boxed_type<ThreadBase>();
+        impl_interface_for_type<ThreadBase, IThread>();
+        register_struct_type<Thread>({}, thread_base_type);
         impl_interface_for_type<Thread, IWaitable, IThread>();
         register_boxed_type<Fiber>();
         impl_interface_for_type<Fiber, IFiber>();
-        register_boxed_type<MainThread>();
+        register_boxed_type<Coroutine>();
+        impl_interface_for_type<Coroutine, ICoroutine>();
+        register_struct_type<MainThread>({}, thread_base_type);
         impl_interface_for_type<MainThread, IWaitable, IThread>();
         register_boxed_type<ReadWriteLock>();
         impl_interface_for_type<ReadWriteLock, IReadWriteLock>();
@@ -77,6 +82,7 @@ namespace Luna
         add_builtin_typeinfo();
         register_types_and_interfaces();
         thread_init();
+        coroutine_init();
         random_init();
         log_init();
         std_io_init();
@@ -97,6 +103,7 @@ namespace Luna
         std_io_close();
         log_close();
         random_close();
+        coroutine_close();
         thread_close();
         object_close();
         type_registry_close();

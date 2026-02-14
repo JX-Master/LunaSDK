@@ -37,15 +37,18 @@ namespace Luna
         else
         {
             job_id_t ids[TASKS_PER_JOB];
+            JobData* subjobs[TASKS_PER_JOB];
             for (u32 i = 0; i < TASKS_PER_JOB; ++i)
             {
-                JobData* subjob = (JobData*)new_job(test_func_2, sizeof(JobData), alignof(JobData), params);
+                JobData* subjob = memnew<JobData>();
                 subjob->recursive_depth = job_data->recursive_depth - 1;
-                ids[i] = submit_job(subjob);
+                ids[i] = submit_job(test_func_2, subjob);
+                subjobs[i] = subjob;
             }
+            wait_jobs(Span<const JobSystem::job_id_t>(ids, TASKS_PER_JOB));
             for (u32 i = 0; i < TASKS_PER_JOB; ++i)
             {
-                wait_job(ids[i]);
+                memdelete(subjobs[i]);
             }
         }
     }
@@ -58,25 +61,25 @@ namespace Luna
             job_id_t jobs[N];
             for (usize i = 0; i < N; ++i)
             {
-                void* job = new_job(test_func_1, 0, 0);
-                jobs[i] = submit_job(job);
+                jobs[i] = submit_job(test_func_1, nullptr);
             }
             for(usize i = 0; i < N; ++i)
             {
                 wait_job(jobs[i]);
             }
             u64 end_time = get_ticks();
-            printf("Jon System Test 1: %u jobs finished in %f milliseconds.\n", (u32)N, (f64)(end_time - begin_time) / get_ticks_per_second() * 1000.0);
+            printf("Job System Test 1: %u jobs finished in %f milliseconds.\n", (u32)N, (f64)(end_time - begin_time) / get_ticks_per_second() * 1000.0);
         }
         {
             constexpr u32 RECURSIVE_DEPTH = 10;
-            u64 begin_time = get_ticks();
-            JobData* root = (JobData*)new_job(test_func_2, sizeof(JobData), alignof(JobData));
+            JobData* root = memnew<JobData>();
             root->recursive_depth = RECURSIVE_DEPTH;
-            job_id_t id = submit_job(root);
+            u64 begin_time = get_ticks();
+            job_id_t id = submit_job(test_func_2, root);
             wait_job(id);
             u64 end_time = get_ticks();
-            printf("Jon System Test 1: %u levels of jobs finished in %f milliseconds.\n", RECURSIVE_DEPTH, (f64)(end_time - begin_time) / get_ticks_per_second() * 1000.0);
+            printf("Job System Test 2: %u levels of jobs finished in %f milliseconds.\n", RECURSIVE_DEPTH, (f64)(end_time - begin_time) / get_ticks_per_second() * 1000.0);
+            memdelete(root);
         }
     }
 }

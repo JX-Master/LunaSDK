@@ -48,6 +48,11 @@ namespace Luna
         //! Sets thread priority.
         //! @param[in] priority The new priority of the thread.
         virtual void set_priority(ThreadPriority priority) = 0;
+
+        //! Gets the fiber context of the thread created by @ref convert_fiber_to_thread.
+        //! @return Returns the fiber context of the thread. 
+        //! Returns `nullptr` if @ref convert_thread_to_fiber is not called for this thread.
+        virtual IFiber* get_fiber() = 0;
     };
 
     //! Gets the number of logical processors on the platform.
@@ -75,7 +80,7 @@ namespace Luna
     //! @return The thread object of the main thread.
     LUNA_RUNTIME_API IThread* get_main_thread();
 
-        //! @interface IFiber
+    //! @interface IFiber
     //! Represents a thread executing context that can be switched to 
     //! for a specified thread.
     struct IFiber : virtual Interface
@@ -110,13 +115,28 @@ namespace Luna
     LUNA_RUNTIME_API void sleep(u32 time_milliseconds);
 
     //! Delays the execution of this thread for a very shout time by yielding this thread several times.
-    //! @details This is more accurate to `sleep` method and will not suspend current thread unless the specified time is larger than several milliseconds.
+    //! @details This is more accurate to `sleep` method and will not suspend current thread unless the specified time 
+    //! is larger than several milliseconds.
     //! @param[in] time_microseconds The time, in microseconds, that this thread needs to delay.
     LUNA_RUNTIME_API void fast_sleep(u32 time_microseconds);
 
     //! Yields the remain time slice of the current thread and let OS to schedule other threads.
-    //! @details There is no way to resume a thread from user mode, since threads are scheduled by OS automatically.
+    //! @details Yielding a thread may introduce significant delay on some platform since the platform 
+    //! will lower the scheduling priority of one thread if it yields too many times. A good practice is to only
+    //! yield background and worker threads, not the main thread (UI thread).
     LUNA_RUNTIME_API void yield_current_thread();
+
+    //! Pauses the processor for a short time (usually ~100 nanoseconds).
+    //! This can be used if the code is in a spin-wait loop. This instruction helps reduce power consumption and 
+    //！improves performance on processors with Hyper-Threading or similar technologies.
+    LUNA_FORCEINLINE void processor_pause()
+    {
+#if defined(LUNA_PLATFORM_X86) || defined(LUNA_PLATFORM_X86_64)
+                _mm_pause();
+#elif defined(LUNA_PLATFORM_ARM64) || defined(LUNA_PLATFORM_ARM32)
+                __yield();
+#endif
+    }
 
     //! Allocates one thread local storage (TLS) slot.
     //! @details The TLS slot is allocated for every thread running in this process, including the thread that is currently not being 

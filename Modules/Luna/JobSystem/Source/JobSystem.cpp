@@ -10,6 +10,7 @@
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_JOBSYSTEM_API LUNA_EXPORT
 #include "JobStateMap.hpp"
+#include "JobContext.hpp"
 #include <Luna/Runtime/RingDeque.hpp>
 #include <Luna/Runtime/SpinLock.hpp>
 #include <Luna/Runtime/Signal.hpp>
@@ -20,62 +21,20 @@ namespace Luna
 {
     namespace JobSystem
     {
-        struct JobHeader
-        {
-            job_id_t m_id;
-            job_func_t* m_func;
-            JobHeader* m_parent;
-            usize m_alignment;
-            volatile u32 m_unfinished_jobs;
-
-            bool is_completed() const
-            {
-                return m_unfinished_jobs == 0;
-            }
-            void* get_params() const
-            {
-                return (void*)((usize)this + sizeof(JobHeader));
-            }
-            static usize get_padding_size(usize alignment)
-            {
-                usize padding_count = sizeof(JobHeader) / alignment + ((sizeof(JobHeader) % alignment) ? 1 : 0);
-                return padding_count * alignment;
-            }
-        };
-
-        inline JobHeader* get_job_header(void* params)
-        {
-            return (JobHeader*)(((usize)params) - sizeof(JobHeader));
-        }
-
-        LUNA_JOBSYSTEM_API void* new_job(job_func_t* func, usize param_size, usize param_alignment, void* parent)
-        {
-            // Allocate extra padding space for storing job header.
-            param_alignment = max(param_alignment, MAX_ALIGN);
-            usize padding_size = JobHeader::get_padding_size(param_alignment);
-            void* mem = memalloc(param_size + padding_size, param_alignment);
-            void* params = (void*)((usize)mem + padding_size);
-            JobHeader* job = get_job_header(params);
-            new (job) JobHeader();
-            job->m_id = INVALID_JOB_ID;
-            job->m_func = func;
-            job->m_parent = nullptr;
-            job->m_alignment = param_alignment;
-            job->m_unfinished_jobs = 1;
-            if (parent)
-            {
-                job->m_parent = get_job_header(parent);
-                atom_inc_u32(&(job->m_parent->m_unfinished_jobs));
-            }
-            return params;
-        }
-
         struct WorkerThreadContext
         {
             SpinLock m_lock;
-            RingDeque<JobHeader*> m_jobs;
+            RingDeque<JobContext*> m_jobs; // jobs that is waiting for executing.
+            Vector<JobContext*> m_waiting_jobs; // jobs that are blocked because they are waiting for other jobs.
+            JobContext* m_current_job = nullptr; // The current executing job. Only valid when this is a worker thread.
             Ref<ISignal> m_wake_signal;
-            bool m_thread_dead = false;
+            Ref<IFiber> m_worker_thread_fiber; // null if this thread is not a worker thread.
+            bool m_thread_dead = false; // Set to true when thread returns.
+
+            bool is_worker_thread() const
+            {
+                return m_worker_thread_fiber.valid();
+            }
         };
 
         static SpinLock g_worker_thread_contexts_lock;
@@ -101,7 +60,7 @@ namespace Luna
             g_worker_thread_tls = tls_alloc(worker_thread_tls_dtor);
             // Emit worker threads.
             u32 processor_count = get_processors_count();
-            for (u32 i = 0; i < processor_count - 1; ++i)
+            for (u32 i = 0; i < processor_count; ++i)
             {
                 Ref<IThread> worker = new_thread(worker_thread_run, nullptr);
                 g_worker_threads.push_back(worker);
@@ -134,6 +93,7 @@ namespace Luna
             g_worker_thread_contexts_lock.unlock();
             g_sleep_worker_threads.clear();
             g_sleep_worker_threads.shrink_to_fit();
+            clean_up_job_contexts();
             close_job_state_map();
         }
         static WorkerThreadContext* get_current_thread_worker_context()
@@ -141,7 +101,8 @@ namespace Luna
             WorkerThreadContext* ctx = (WorkerThreadContext*)tls_get(g_worker_thread_tls);
             if (!ctx)
             {
-                // For working on user-created threads.
+                // We create context here so that user-created threads can also have a 
+                // worker context.
                 ctx = memnew<WorkerThreadContext>();
                 tls_set(g_worker_thread_tls, ctx);
                 g_worker_thread_contexts_lock.lock();
@@ -150,12 +111,13 @@ namespace Luna
             }
             return ctx;
         }
-        inline JobHeader* steal_job(WorkerThreadContext* current_ctx)
+        inline JobContext* steal_job(WorkerThreadContext* current_ctx)
         {
             LockGuard guard(g_worker_thread_contexts_lock);
             if (g_worker_thread_contexts.empty()) return nullptr;
             u32 rand_index = random_u32() % (u32)g_worker_thread_contexts.size();
             usize i = 0;
+            // Iterate all thread contexts, starting from index i.
             while (i < g_worker_thread_contexts.size())
             {
                 u32 index = (rand_index + i) % (u32)g_worker_thread_contexts.size();
@@ -175,7 +137,7 @@ namespace Luna
                 }
                 else
                 {
-                    JobHeader* job = nullptr;
+                    JobContext* job = nullptr;
                     if (!steal_ctx->m_jobs.empty())
                     {
                         job = steal_ctx->m_jobs.front();
@@ -188,15 +150,14 @@ namespace Luna
             }
             return nullptr;
         }
-        static JobHeader* consume_job()
+        static JobContext* consume_job(WorkerThreadContext* ctx)
         {
-            WorkerThreadContext* ctx = get_current_thread_worker_context();
             ctx->m_lock.lock();
             if (ctx->m_jobs.empty())
             {
                 ctx->m_lock.unlock();
                 // Steal jobs from other threads.
-                JobHeader* job = steal_job(ctx);
+                JobContext* job = steal_job(ctx);
                 if (!job)
                 {
                     yield_current_thread();
@@ -206,37 +167,33 @@ namespace Luna
             }
             else
             {
-                JobHeader* job = ctx->m_jobs.back();
+                JobContext* job = ctx->m_jobs.back();
                 ctx->m_jobs.pop_back();
                 ctx->m_lock.unlock();
                 return job;
             }
         }
-        static void finish_job(JobHeader* job)
+        static void finish_job(JobContext* job)
         {
-            u32 unfinished_jobs = atom_dec_u32(&(job->m_unfinished_jobs));
-            if (unfinished_jobs == 0)
+            job->m_finished = true;
+            finish_job_id(job->m_id);
+        }
+
+        void job_entry(void* params)
+        {
+            JobContext* job = (JobContext*)params;
+            while(!g_job_system_exiting)
             {
-                if (job->m_parent)
-                {
-                    finish_job(job->m_parent);
-                }
-                finish_job_id(job->m_id);
-                usize alignment = job->m_alignment;
-                usize padding_size = JobHeader::get_padding_size(alignment);
-                void* raw_ptr = (void*)((usize)job->get_params() - padding_size);
-                job->~JobHeader();
-                memfree(raw_ptr, alignment);
+                // Process the current job.
+                job->m_func(job->m_params);
+                finish_job(job);
+                // One job is finished, give control back to root coroutine.
+                yield_coroutine();
             }
         }
-        static void execute_job(JobHeader* job)
+
+        static void worker_thread_sleep(WorkerThreadContext* ctx)
         {
-            job->m_func(job->get_params());
-            finish_job(job);
-        }
-        static void worker_thread_sleep()
-        {
-            WorkerThreadContext* ctx = get_current_thread_worker_context();
             if (!ctx->m_wake_signal) ctx->m_wake_signal = new_signal(false);
             // Add the current thread to sleep list.
             g_sleep_worker_threads_lock.lock();
@@ -244,26 +201,76 @@ namespace Luna
             g_sleep_worker_threads_lock.unlock();
             ctx->m_wake_signal->wait();
         }
-        static void worker_thread_run(void* params)
+        static void resume_job(WorkerThreadContext* ctx, JobContext* job)
         {
-            while (!g_job_system_exiting)
+            // Set up job context.
+            ctx->m_current_job = job;
+            // Resume job.
+            resume_coroutine(job->m_coroutine);
+            ctx->m_current_job = nullptr;
+            if(job->m_finished)
             {
-                JobHeader* job = consume_job();
-                if (job)
-                {
-                    execute_job(job);
-                }
-                else
-                {
-                    worker_thread_sleep();
-                }
+                free_job_context(job);
             }
         }
-        LUNA_JOBSYSTEM_API job_id_t submit_job(void* params)
+        static void worker_thread_run(void* params)
         {
-            JobHeader* job = get_job_header(params);
+            WorkerThreadContext* ctx = get_current_thread_worker_context();
+            auto fiber = convert_thread_to_fiber();
+            if(failed(fiber))
+            {
+                lupanic_msg_always("failed to create fiber context for worker thread.");
+            }
+            ctx->m_worker_thread_fiber = fiber.get();
+            // Root coroutine.
+            while (!g_job_system_exiting)
+            {
+                // Checks for all waiting jobs.
+                bool any_waiting_job_resumed = false;
+                {
+                    auto iter = ctx->m_waiting_jobs.begin();
+                    while(iter != ctx->m_waiting_jobs.end())
+                    {
+                        JobContext* job = *iter;
+                        if(job->is_job_ready_to_resume())
+                        {
+                            iter = ctx->m_waiting_jobs.swap_erase(iter);
+                            resume_job(ctx, job);
+                            any_waiting_job_resumed = true;
+                        }
+                        else
+                        {
+                            ++iter;
+                        }
+                    }
+                }
+                if(!any_waiting_job_resumed)
+                {
+                    // If no job needs to be resumed, we can process new jobs.
+                    JobContext* job = consume_job(ctx);
+                    if (job)
+                    {
+                        resume_job(ctx, job);
+                    }
+                    else if(ctx->m_waiting_jobs.empty())
+                    {
+                        // We have processed all jobs, put this thread to sleep.
+                        worker_thread_sleep(ctx);
+                    }
+                }
+            }
+            ctx->m_worker_thread_fiber.reset();
+            lupanic_if_failed(convert_fiber_to_thread());
+        }
+        LUNA_JOBSYSTEM_API job_id_t submit_job(void (*func)(void* params), void* params)
+        {
+            JobContext* job = allocate_job_context();
             job_id_t id = allocate_job_id();
             job->m_id = id;
+            job->m_func = func;
+            job->m_params = params;
+            job->m_finished = false;
+            // Push the job to the job queue of the current thread.
             WorkerThreadContext* ctx = get_current_thread_worker_context();
             LockGuard lock(ctx->m_lock);
             ctx->m_jobs.push_back(job);
@@ -278,20 +285,72 @@ namespace Luna
             g_sleep_worker_threads_lock.unlock();
             return id;
         }
-        LUNA_JOBSYSTEM_API job_id_t get_current_job_id(void* params)
-        {
-            JobHeader* job = get_job_header(params);
-            return job->m_id;
-        }
         LUNA_JOBSYSTEM_API void wait_job(job_id_t job)
         {
-            while (!is_job_finished(job))
+            WorkerThreadContext* ctx = get_current_thread_worker_context();
+            if(!ctx->is_worker_thread())
             {
-                JobHeader* next_job = consume_job();
-                if (next_job)
+                // Spin-waiting loop.
+                while(!is_job_finished(job))
                 {
-                    execute_job(next_job);
+                    processor_pause();
                 }
+            }
+            else
+            {
+                if(is_job_finished(job)) return;
+                ctx->m_current_job->m_wait_jobs.clear();
+                ctx->m_current_job->m_wait_jobs.push_back(job);
+                ctx->m_waiting_jobs.push_back(ctx->m_current_job);
+                yield_coroutine(); // Give control back to the root coroutine.
+                // When this coroutine is resumed, all waiting jobs should be completed, so just return here.
+            }
+        }
+        LUNA_JOBSYSTEM_API void wait_jobs(Span<const job_id_t> jobs)
+        {
+            WorkerThreadContext* ctx = get_current_thread_worker_context();
+            if(!ctx->is_worker_thread())
+            {
+                // Non-worker thread will not execute jobs, they just busy-waiting for jobs.
+                // This is a design purpose, so that important threads (like main thread) will
+                // not be accidentally blocked by long-term jobs. Generally you should minimize
+                // waiting from main thread since it breaks parallelism and may introduce significant 
+                // delay.
+                bool finished;
+                do
+                {
+                    finished = true;
+                    for(auto& job : jobs)
+                    {
+                        if(!is_job_finished(job))
+                        {
+                            finished = false;
+                            break;
+                        }
+                    }
+                    if(!finished)
+                    {
+                        processor_pause();
+                    }
+                } while (!finished);
+            }
+            else
+            {
+                ctx->m_current_job->m_wait_jobs.clear();
+                for(job_id_t job : jobs)
+                {
+                    if(!is_job_finished(job))
+                    {
+                        ctx->m_current_job->m_wait_jobs.push_back(job);
+                    }
+                }
+                if(ctx->m_current_job->m_wait_jobs.empty())
+                {
+                    return;
+                }
+                ctx->m_waiting_jobs.push_back(ctx->m_current_job);
+                yield_coroutine(); // Give control back to the root coroutine.
+                // When this coroutine is resumed, all waiting jobs should be completed, so just return here.
             }
         }
 

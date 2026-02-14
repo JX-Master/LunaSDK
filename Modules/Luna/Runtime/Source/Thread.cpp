@@ -83,7 +83,7 @@ namespace Luna
     }
     LUNA_RUNTIME_API R<Ref<IFiber>> convert_thread_to_fiber()
     {
-        Thread* t = cast_object<Thread>(get_current_thread()->get_object());
+        ThreadBase* t = cast_object<ThreadBase>(get_current_thread()->get_object());
         if(t->m_native_fiber) return t->m_native_fiber;
         Ref<Fiber> f = new_object<Fiber>();
         auto r = OS::convert_thread_to_fiber(f->m_context);
@@ -93,7 +93,11 @@ namespace Luna
     }
     LUNA_RUNTIME_API RV convert_fiber_to_thread()
     {
-        return OS::convert_fiber_to_thread();
+        auto r = OS::convert_fiber_to_thread();
+        if(failed(r)) return r;
+        ThreadBase* t = cast_object<ThreadBase>(get_current_thread()->get_object());
+        t->m_native_fiber.reset();
+        return ok;
     }
     LUNA_RUNTIME_API void switch_to_fiber(IFiber* fiber)
     {
