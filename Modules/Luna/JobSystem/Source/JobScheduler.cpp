@@ -221,7 +221,6 @@ namespace Luna
                 JobInfo* job = steal_job(ctx);
                 if (!job)
                 {
-                    yield_current_thread();
                     return nullptr;
                 }
                 return job;
