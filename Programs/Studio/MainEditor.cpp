@@ -102,6 +102,8 @@ namespace Luna
             char title[256];
             auto name = project_path.filename();
 
+            luset(m_job_scheduler, JobSystem::new_job_scheduler());
+
             // Mount Data folder.
             auto mount_path = project_path;
             mount_path.push_back("Data");

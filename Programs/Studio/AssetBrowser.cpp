@@ -737,7 +737,7 @@ namespace Luna
     {
         Asset::asset_t asset;
     };
-    void async_load_asset_func(void* params)
+    void async_load_asset_func(JobSystem::IJobScheduler* scheduler, void* params)
     {
         AssetLoadTask* task = (AssetLoadTask*)params;
         auto r = Asset::load_asset(task->asset);
@@ -751,6 +751,6 @@ namespace Luna
     {
         AssetLoadTask* task = memnew<AssetLoadTask>();
         task->asset = asset;
-        JobSystem::submit_job(async_load_asset_func, task);
+        g_main_editor->m_job_scheduler->submit_job(async_load_asset_func, task);
     }
 }

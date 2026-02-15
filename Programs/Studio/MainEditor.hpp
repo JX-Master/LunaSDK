@@ -14,6 +14,7 @@
 #include <Luna/Runtime/HashMap.hpp>
 #include "Operation.hpp"
 #include <Luna/Runtime/RingDeque.hpp>
+#include <Luna/JobSystem/JobScheduler.hpp>
 
 namespace Luna
 {
@@ -37,6 +38,8 @@ namespace Luna
         MemoryProfiler m_memory_profiler;
         usize m_memory_profiler_callback_handle;
         bool m_memory_profiler_window_enabled = false;
+
+        Ref<JobSystem::IJobScheduler> m_job_scheduler;
 
         //u32 m_next_asset_browser_index;
 
