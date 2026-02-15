@@ -293,17 +293,17 @@ namespace Luna
             while (!owner->m_job_system_exiting)
             {
                 // Checks for all waiting jobs.
-                bool any_waitinm_job_resumed = false;
+                bool any_waiting_job_resumed = false;
                 {
-                    auto iter = ctx->m_waitinm_jobs.begin();
-                    while(iter != ctx->m_waitinm_jobs.end())
+                    auto iter = ctx->m_waiting_jobs.begin();
+                    while(iter != ctx->m_waiting_jobs.end())
                     {
                         JobContext* job = *iter;
                         if(job->is_job_ready_to_resume())
                         {
-                            iter = ctx->m_waitinm_jobs.swap_erase(iter);
+                            iter = ctx->m_waiting_jobs.swap_erase(iter);
                             owner->resume_job(ctx, job);
-                            any_waitinm_job_resumed = true;
+                            any_waiting_job_resumed = true;
                         }
                         else
                         {
@@ -311,7 +311,7 @@ namespace Luna
                         }
                     }
                 }
-                if(!any_waitinm_job_resumed)
+                if(!any_waiting_job_resumed)
                 {
                     // If no job needs to be resumed, we can process new jobs.
                     JobInfo* job = owner->consume_job(ctx);
@@ -321,7 +321,7 @@ namespace Luna
                         job_ctx->m_job = job;
                         owner->resume_job(ctx, job_ctx);
                     }
-                    else if(ctx->m_waitinm_jobs.empty())
+                    else if(ctx->m_waiting_jobs.empty())
                     {
                         // We have processed all jobs, put this thread to sleep.
                         owner->worker_thread_sleep(ctx);
@@ -384,7 +384,7 @@ namespace Luna
                 if(is_job_finished(job)) return;
                 ctx->m_current_job->m_wait_jobs.clear();
                 ctx->m_current_job->m_wait_jobs.push_back(job);
-                ctx->m_waitinm_jobs.push_back(ctx->m_current_job);
+                ctx->m_waiting_jobs.push_back(ctx->m_current_job);
                 yield_coroutine(); // Give control back to the root coroutine.
                 // When this coroutine is resumed, all waiting jobs should be completed, so just return here.
             }
@@ -431,7 +431,7 @@ namespace Luna
                 {
                     return;
                 }
-                ctx->m_waitinm_jobs.push_back(ctx->m_current_job);
+                ctx->m_waiting_jobs.push_back(ctx->m_current_job);
                 yield_coroutine(); // Give control back to the root coroutine.
                 // When this coroutine is resumed, all waiting jobs should be completed, so just return here.
             }

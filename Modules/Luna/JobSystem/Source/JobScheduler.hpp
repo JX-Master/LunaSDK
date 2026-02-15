@@ -23,7 +23,7 @@ namespace Luna
             JobScheduler* m_owner = nullptr;
             SpinLock m_lock;
             RingDeque<JobInfo*> m_jobs; // jobs that is waiting for executing.
-            Vector<JobContext*> m_waitinm_jobs; // jobs that are blocked because they are waiting for other jobs.
+            Vector<JobContext*> m_waiting_jobs; // jobs that are blocked because they are waiting for other jobs.
             JobContext* m_current_job = nullptr; // The current executing job. Only valid when this is a worker thread.
             Ref<ISignal> m_wake_signal;
             Ref<IFiber> m_worker_thread_fiber;
