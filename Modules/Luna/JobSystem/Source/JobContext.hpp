@@ -15,18 +15,21 @@ namespace Luna
 {
     namespace JobSystem
     {
-        struct JobHeader;
+        struct JobInfo
+        {
+            job_id_t m_id = INVALID_JOB_ID;
+            void (*m_func)(void* params) = nullptr;
+            void* m_params = nullptr;
+            bool m_finished = false;
+        };
 
         // The job executing context.
         // This will be reused across different jobs.
         struct JobContext
         {
             Ref<ICoroutine> m_coroutine;
-            job_id_t m_id = INVALID_JOB_ID;
-            void (*m_func)(void* params) = nullptr;
-            void* m_params = nullptr;
             Vector<job_id_t> m_wait_jobs;
-            bool m_finished = false;
+            JobInfo* m_job = nullptr;
 
             bool is_job_ready_to_resume() const
             {
