@@ -22,6 +22,8 @@ namespace Luna
 
         ThreadBase() :
             m_handle(nullptr) {}
+
+        virtual ~ThreadBase() {}
         
         virtual void set_priority(ThreadPriority priority)  override
         {

@@ -12,14 +12,6 @@
 #include "Atomic.hpp"
 #include "Thread.hpp"
 
-#if defined(LUNA_PLATFORM_X86) || defined(LUNA_PLATFORM_X86_64)
-#include <emmintrin.h>
-#endif
-
-#if defined(LUNA_PLATFORM_ARM64) || defined(LUNA_PLATFORM_ARM32)
-#include <arm_acle.h>
-#endif
-
 namespace Luna
 {
     //! @addtogroup RuntimeThread
