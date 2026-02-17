@@ -20,6 +20,7 @@
 #include "Semaphore.hpp"
 #include "File.hpp"
 #include "Thread.hpp"
+#include "Fiber.hpp"
 #include "Coroutine.hpp"
 #include "TypeInfo.hpp"
 #include "Interface.hpp"

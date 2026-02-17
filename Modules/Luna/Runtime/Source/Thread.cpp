@@ -65,45 +65,7 @@ namespace Luna
     {
         return g_main_thread_ref;
     }
-    Fiber::~Fiber()
-    {
-        if(m_should_delete)
-        {
-            OS::delete_fiber(m_context);
-        }
-    }
-    LUNA_RUNTIME_API R<Ref<IFiber>> new_fiber(usize stack_size, void(*entry_func)(void* param), void* param)
-    {
-        luassert(entry_func && stack_size);
-        Ref<Fiber> f = new_object<Fiber>();
-        auto r = OS::new_fiber(stack_size, entry_func, param, f->m_context);
-        if(failed(r)) return r.errcode();
-        f->m_should_delete = true;
-        return Ref<IFiber>(f);
-    }
-    LUNA_RUNTIME_API R<Ref<IFiber>> convert_thread_to_fiber()
-    {
-        ThreadBase* t = cast_object<ThreadBase>(get_current_thread()->get_object());
-        if(t->m_native_fiber) return t->m_native_fiber;
-        Ref<Fiber> f = new_object<Fiber>();
-        auto r = OS::convert_thread_to_fiber(f->m_context);
-        if(failed(r)) return r.errcode();
-        t->m_native_fiber = f;
-        return Ref<IFiber>(f);
-    }
-    LUNA_RUNTIME_API RV convert_fiber_to_thread()
-    {
-        auto r = OS::convert_fiber_to_thread();
-        if(failed(r)) return r;
-        ThreadBase* t = cast_object<ThreadBase>(get_current_thread()->get_object());
-        t->m_native_fiber.reset();
-        return ok;
-    }
-    LUNA_RUNTIME_API void switch_to_fiber(IFiber* fiber)
-    {
-        Fiber* f = cast_object<Fiber>(fiber->get_object());
-        OS::switch_to_fiber(f->m_context);
-    }
+    
     LUNA_RUNTIME_API void sleep(u32 time_milliseconds)
     {
         OS::sleep(time_milliseconds);

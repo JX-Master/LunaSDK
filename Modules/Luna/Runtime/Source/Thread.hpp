@@ -9,6 +9,7 @@
 */
 #pragma once
 #include "../Thread.hpp"
+#include "../Fiber.hpp"
 #include "OS.hpp"
 namespace Luna
 {
@@ -19,6 +20,7 @@ namespace Luna
 
         opaque_t m_handle;
         Ref<IFiber> m_native_fiber;
+        Ref<IFiber> m_current_fiber;
 
         ThreadBase() :
             m_handle(nullptr) {}
@@ -73,16 +75,6 @@ namespace Luna
             // The main thread cannot be waited.
             return false;
         }
-    };
-    struct Fiber : IFiber
-    {
-        lustruct("Fiber", "{c07ce059-34ec-4df8-9699-02c3110be31b}");
-        luiimpl();
-
-        OS::FiberContext m_context;
-        bool m_should_delete = false;
-
-        ~Fiber();
     };
     void thread_init();
     void thread_close();

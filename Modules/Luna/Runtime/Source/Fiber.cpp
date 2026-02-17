@@ -1,0 +1,65 @@
+/*!
+* This file is a portion of LunaSDK.
+* For conditions of distribution and use, see the disclaimer
+* and license in LICENSE.txt
+* 
+* @file Fiber.cpp
+* @author JXMaster
+* @date 2026/2/17
+*/
+#include "../PlatformDefines.hpp"
+#define LUNA_RUNTIME_API LUNA_EXPORT
+#include "Thread.hpp"
+#include "Fiber.hpp"
+
+namespace Luna
+{
+    Fiber::~Fiber()
+    {
+        if(m_should_delete)
+        {
+            OS::delete_fiber(m_context);
+        }
+    }
+    LUNA_RUNTIME_API R<Ref<IFiber>> new_fiber(usize stack_size, void(*entry_func)(void* param), void* param)
+    {
+        luassert(entry_func && stack_size);
+        Ref<Fiber> f = new_object<Fiber>();
+        auto r = OS::new_fiber(stack_size, entry_func, param, f->m_context);
+        if(failed(r)) return r.errcode();
+        f->m_should_delete = true;
+        return Ref<IFiber>(f);
+    }
+    LUNA_RUNTIME_API R<Ref<IFiber>> convert_thread_to_fiber()
+    {
+        ThreadBase* t = cast_object<ThreadBase>(get_current_thread()->get_object());
+        if(t->m_native_fiber) return t->m_native_fiber;
+        Ref<Fiber> f = new_object<Fiber>();
+        auto r = OS::convert_thread_to_fiber(f->m_context);
+        if(failed(r)) return r.errcode();
+        t->m_native_fiber = f;
+        t->m_current_fiber = f;
+        return Ref<IFiber>(f);
+    }
+    LUNA_RUNTIME_API RV convert_fiber_to_thread()
+    {
+        auto r = OS::convert_fiber_to_thread();
+        if(failed(r)) return r;
+        ThreadBase* t = cast_object<ThreadBase>(get_current_thread()->get_object());
+        t->m_native_fiber.reset();
+        t->m_current_fiber.reset();
+        return ok;
+    }
+    LUNA_RUNTIME_API void switch_to_fiber(IFiber* fiber)
+    {
+        ThreadBase* t = cast_object<ThreadBase>(get_current_thread()->get_object());
+        t->m_current_fiber = fiber;
+        Fiber* f = cast_object<Fiber>(fiber->get_object());
+        OS::switch_to_fiber(f->m_context);
+    }
+    LUNA_RUNTIME_API IFiber* get_current_fiber()
+    {
+        ThreadBase* t = cast_object<ThreadBase>(get_current_thread()->get_object());
+        return t->m_current_fiber.get();
+    }
+}
