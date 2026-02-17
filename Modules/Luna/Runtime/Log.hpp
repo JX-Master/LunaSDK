@@ -48,13 +48,85 @@ namespace Luna
     //! @param[in] message_length The message length.
     using log_callback_t = void(LogVerbosity verbosity, const c8* tag, usize tag_length, const c8* message, usize message_length);
 
-    //! Logs one message.
+    //! Represents one entity that can accept logs.
+    using LogHandler = Function<log_callback_t>;
+
+    //! Logs one message to the specified handler.
+    //! @param[in] handler The handler that accepts the log.
+    //! @param[in] verbosity The log verbosity.
+    //! @param[in] tag The log tag. Used by the implementation to filter logs.
+    //! @param[in] format The log message format.
+    LUNA_RUNTIME_API void log(LogHandler& handler, LogVerbosity verbosity, const c8* tag, const c8* format, ...);
+
+    //! Logs one message to the specified handler.
+    //! @param[in] handler The handler that accepts the log.
+    //! @param[in] verbosity The log verbosity.
+    //! @param[in] tag The log tag. Used by the implementation to filter logs.
+    //! @param[in] format The log message format.
+    //! @param[in] args Arguments used to format the log message.
+    LUNA_RUNTIME_API void logv(LogHandler& handler, LogVerbosity verbosity, const c8* tag, const c8* format, VarList args);
+
+    //! Outputs one log message with @ref LogVerbosity::verbose verbosity to the specified handler.
+    //! @param[in] tag The log tag. Used by the implementation to filter logs.
+    //! @param[in] format The formatting syntax used to format the log message.
+    LUNA_RUNTIME_API void log_verbose(LogHandler& handler, const c8* tag, const c8* format, ...);
+    //! Outputs one log message with @ref LogVerbosity::verbose verbosity to the specified handler.
+    //! @param[in] tag The log tag. Used by the implementation to filter logs.
+    //! @param[in] format The formatting syntax used to format the log message.
+    //! @param[in] args Arguments used to format the log message.
+    LUNA_RUNTIME_API void logv_verbose(LogHandler& handler, const c8* tag, const c8* format, VarList args);
+    //! Outputs one log message with @ref LogVerbosity::debug verbosity to the specified handler.
+    //! @param[in] tag The log tag. Used by the implementation to filter logs.
+    //! @param[in] format The formatting syntax used to format the log message.
+    LUNA_RUNTIME_API void log_debug(LogHandler& handler, const c8* tag, const c8* format, ...);
+    //! Outputs one log message with @ref LogVerbosity::debug verbosity to the specified handler.
+    //! @param[in] tag The log tag. Used by the implementation to filter logs.
+    //! @param[in] format The formatting syntax used to format the log message.
+    //! @param[in] args Arguments used to format the log message.
+    LUNA_RUNTIME_API void logv_debug(LogHandler& handler, const c8* tag, const c8* format, VarList args);
+    //! Outputs one log message with @ref LogVerbosity::info verbosity to the specified handler.
+    //! @param[in] tag The log tag. Used by the implementation to filter logs.
+    //! @param[in] format The formatting syntax used to format the log message.
+    LUNA_RUNTIME_API void log_info(LogHandler& handler, const c8* tag, const c8* format, ...);
+    //! Outputs one log message with @ref LogVerbosity::info verbosity to the specified handler.
+    //! @param[in] tag The log tag. Used by the implementation to filter logs.
+    //! @param[in] format The formatting syntax used to format the log message.
+    //! @param[in] args Arguments used to format the log message.
+    LUNA_RUNTIME_API void logv_info(LogHandler& handler, const c8* tag, const c8* format, VarList args);
+    //! Outputs one log message with @ref LogVerbosity::warning verbosity to the specified handler.
+    //! @param[in] tag The log tag. Used by the implementation to filter logs.
+    //! @param[in] format The formatting syntax used to format the log message.
+    LUNA_RUNTIME_API void log_warning(LogHandler& handler, const c8* tag, const c8* format, ...);
+    //! Outputs one log message with @ref LogVerbosity::warning verbosity to the specified handler.
+    //! @param[in] tag The log tag. Used by the implementation to filter logs.
+    //! @param[in] format The formatting syntax used to format the log message.
+    //! @param[in] args Arguments used to format the log message.
+    LUNA_RUNTIME_API void logv_warning(LogHandler& handler, const c8* tag, const c8* format, VarList args);
+    //! Outputs one log message with @ref LogVerbosity::error verbosity to the specified handler.
+    //! @param[in] tag The log tag. Used by the implementation to filter logs.
+    //! @param[in] format The formatting syntax used to format the log message.
+    LUNA_RUNTIME_API void log_error(LogHandler& handler, const c8* tag, const c8* format, ...);
+    //! Outputs one log message with @ref LogVerbosity::error verbosity to the specified handler.
+    //! @param[in] tag The log tag. Used by the implementation to filter logs.
+    //! @param[in] format The formatting syntax used to format the log message.
+    //! @param[in] args Arguments used to format the log message.
+    LUNA_RUNTIME_API void logv_error(LogHandler& handler, const c8* tag, const c8* format, VarList args);
+
+    //! Logs one message without formatting message.
+    //! @param[in] verbosity The log verbosity.
+    //! @param[in] tag The log tag. Used by the implementation to filter logs.
+    //! @param[in] tag_len The length of the tag string.
+    //! @param[in] message The log message.
+    //! @param[in] message_length The message length.
+    LUNA_RUNTIME_API void log_unformatted(LogVerbosity verbosity, const c8* tag, usize tag_length, const c8* message, usize message_length);
+
+    //! Logs one message to all registered global handlers.
     //! @param[in] verbosity The log verbosity.
     //! @param[in] tag The log tag. Used by the implementation to filter logs.
     //! @param[in] format The log message format.
     LUNA_RUNTIME_API void log(LogVerbosity verbosity, const c8* tag, const c8* format, ...);
 
-    //! Logs one message.
+    //! Logs one message to all registered global handlers.
     //! @param[in] verbosity The log verbosity.
     //! @param[in] tag The log tag. Used by the implementation to filter logs.
     //! @param[in] format The log message format.
@@ -110,7 +182,7 @@ namespace Luna
     //! Registers one custom log handler that will be called when a new log message is spawned.
     //! @param[in] handler The handler to register.
     //! @return Returns one handler identifier that can be used to register the handler.
-    LUNA_RUNTIME_API usize register_log_handler(const Function<log_callback_t>& handler);
+    LUNA_RUNTIME_API usize register_log_handler(const LogHandler& handler);
     //! Unregisters one registered log handler.
     //! @param[in] handler_id The handler identifier returned by @ref register_log_handler for the handler to be unregistered.
     LUNA_RUNTIME_API void unregister_log_handler(usize handler_id);
