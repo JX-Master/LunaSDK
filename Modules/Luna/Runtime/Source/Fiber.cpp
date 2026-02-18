@@ -18,15 +18,15 @@ namespace Luna
     {
         if(m_should_delete)
         {
-            OS::delete_fiber(m_context);
+            Platform::delete_fiber(m_fiber);
         }
     }
     LUNA_RUNTIME_API R<Ref<IFiber>> new_fiber(usize stack_size, void(*entry_func)(void* param), void* param)
     {
         luassert(entry_func && stack_size);
         Ref<Fiber> f = new_object<Fiber>();
-        auto r = OS::new_fiber(stack_size, entry_func, param, f->m_context);
-        if(failed(r)) return r.errcode();
+        auto r = Platform::new_fiber(stack_size, entry_func, param, f->m_fiber);
+        if(r != Platform::Result::success) return encode_platform_result(r).errcode();
         f->m_should_delete = true;
         return Ref<IFiber>(f);
     }
@@ -35,16 +35,16 @@ namespace Luna
         ThreadBase* t = cast_object<ThreadBase>(get_current_thread()->get_object());
         if(t->m_native_fiber) return t->m_native_fiber;
         Ref<Fiber> f = new_object<Fiber>();
-        auto r = OS::convert_thread_to_fiber(f->m_context);
-        if(failed(r)) return r.errcode();
+        auto r = Platform::convert_thread_to_fiber(f->m_fiber);
+        if(r != Platform::Result::success) return encode_platform_result(r).errcode();
         t->m_native_fiber = f;
         t->m_current_fiber = f;
         return Ref<IFiber>(f);
     }
     LUNA_RUNTIME_API RV convert_fiber_to_thread()
     {
-        auto r = OS::convert_fiber_to_thread();
-        if(failed(r)) return r;
+        auto r = Platform::convert_fiber_to_thread();
+        if(r != Platform::Result::success) return encode_platform_result(r);
         ThreadBase* t = cast_object<ThreadBase>(get_current_thread()->get_object());
         t->m_native_fiber.reset();
         t->m_current_fiber.reset();
@@ -55,7 +55,7 @@ namespace Luna
         ThreadBase* t = cast_object<ThreadBase>(get_current_thread()->get_object());
         t->m_current_fiber = fiber;
         Fiber* f = cast_object<Fiber>(fiber->get_object());
-        OS::switch_to_fiber(f->m_context);
+        Platform::switch_to_fiber(f->m_fiber);
     }
     LUNA_RUNTIME_API IFiber* get_current_fiber()
     {

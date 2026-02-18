@@ -7,7 +7,7 @@
 * @author JXMaster
 * @date 2020/9/23
 */
-#include "../../OS.hpp"
+#include "../Time.hpp"
 #include <stdint.h>
 #include <time.h>
 #include <sys/time.h>
@@ -18,7 +18,7 @@
 
 namespace Luna
 {
-    namespace OS
+    namespace Platform
     {
 #ifdef LUNA_PLATFORM_MACOS
         f64 g_ticks_per_second;

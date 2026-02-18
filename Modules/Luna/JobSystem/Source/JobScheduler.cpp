@@ -22,19 +22,23 @@ namespace Luna
 
         RV JobScheduler::init(u32 num_worker_threads)
         {
-            m_next_job_id = 0;
-            m_job_state_map_offset = 0;
-            m_job_system_exiting = false;
-            // Emit worker threads.
-            num_worker_threads = num_worker_threads == 0 ? get_processors_count() : num_worker_threads;
-            for (u32 i = 0; i < num_worker_threads; ++i)
+            lutry
             {
-                Ref<IThread> worker = new_thread(worker_thread_entry, this);
-                m_worker_threads.push_back(worker);
-            }   
-            // Consume job id 0, so any valid job will never have ID 0.
-            job_id_t dummy = allocate_job_id();
-            finish_job_id(dummy);
+                m_next_job_id = 0;
+                m_job_state_map_offset = 0;
+                m_job_system_exiting = false;
+                // Emit worker threads.
+                num_worker_threads = num_worker_threads == 0 ? get_processors_count() : num_worker_threads;
+                for (u32 i = 0; i < num_worker_threads; ++i)
+                {
+                    lulet(worker, new_thread(worker_thread_entry, this));
+                    m_worker_threads.push_back(worker);
+                }   
+                // Consume job id 0, so any valid job will never have ID 0.
+                job_id_t dummy = allocate_job_id();
+                finish_job_id(dummy);
+            }
+            lucatchret;
             return ok;
         }
         JobScheduler::~JobScheduler()

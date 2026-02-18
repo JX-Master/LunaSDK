@@ -7,7 +7,7 @@
 * @author JXMaster
 * @date 2023/11/24
  */
-#include "../../OS.hpp"
+#include "../Debug.hpp"
 #if defined(LUNA_PLATFORM_ANDROID)
 #include <unwind.h>
 #include <stdlib.h>
@@ -18,7 +18,7 @@
 
 namespace Luna
 {
-    namespace OS
+    namespace Platform
     {
 #if defined(LUNA_PLATFORM_ANDROID)
         struct BacktraceState

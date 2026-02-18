@@ -12,9 +12,9 @@
 #define LUNA_RUNTIME_API LUNA_EXPORT
 
 #include "../Memory.hpp"
-#include "OS.hpp"
 #include "../Atomic.hpp"
 #include "Memory.hpp"
+#include "Platform/Memory.hpp"
 #include "../Profiler.hpp"
 
 namespace Luna
@@ -22,9 +22,9 @@ namespace Luna
     LUNA_RUNTIME_API void* memalloc(usize size, usize alignment)
     {
         if(!size) return nullptr;
-        void* mem = OS::memalloc(size, alignment);
+        void* mem = Platform::memalloc(size, alignment);
 #ifdef LUNA_MEMORY_PROFILER_ENABLED
-        usize allocated = OS::memsize(mem, alignment);
+        usize allocated = Platform::memsize(mem, alignment);
         memory_profiler_allocate(mem, allocated);
 #endif
         return mem;
@@ -53,10 +53,10 @@ namespace Luna
 #ifdef LUNA_MEMORY_PROFILER_ENABLED
         memory_profiler_deallocate(ptr);
 #endif
-        OS::memfree(ptr, alignment);
+        Platform::memfree(ptr, alignment);
     }
     LUNA_RUNTIME_API usize memsize(void* ptr, usize alignment)
     {
-        return OS::memsize(ptr, alignment);
+        return Platform::memsize(ptr, alignment);
     }
 }

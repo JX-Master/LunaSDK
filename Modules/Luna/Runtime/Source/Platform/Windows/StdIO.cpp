@@ -7,13 +7,13 @@
 * @author JXMaster
 * @date 2023/2/28
 */
-#include "../../OS.hpp"
+#include "../StdIO.hpp"
 #include "../../../Platform/Windows/MiniWin.hpp"
 #include "../../../Unicode.hpp"
 
 namespace Luna
 {
-    namespace OS
+    namespace Platform
     {
         c32 g_input_buffer = 0;
         CRITICAL_SECTION g_std_io_mtx;
@@ -37,7 +37,7 @@ namespace Luna
             DeleteCriticalSection(&g_std_io_mtx);
         }
 
-        RV std_input(c8* buffer, usize size, usize* read_bytes)
+        Result std_input(c8* buffer, usize size, usize* read_bytes)
         {
             EnterCriticalSection(&g_std_io_mtx);
             c8* cur = buffer;
@@ -55,7 +55,7 @@ namespace Luna
                 {
                     LeaveCriticalSection(&g_std_io_mtx);
                     if(read_bytes) *read_bytes = 0;
-                    return ok;
+                    return Result::success;
                 }
             }
             c8 ch[6];
@@ -86,11 +86,11 @@ namespace Luna
             LeaveCriticalSection(&g_std_io_mtx);
             *cur = 0;
             if(read_bytes) *read_bytes = cur - buffer;
-            if(ch[0] == EOF) return feof(stdin) ? ok : BasicError::bad_platform_call();
-            return ok;
+            if(ch[0] == EOF) return feof(stdin) ? Result::success : Result::bad_platform_call;
+            return Result::success;
         }
 
-        RV std_output(const c8* buffer, usize size, usize* write_bytes)
+        Result std_output(const c8* buffer, usize size, usize* write_bytes)
         {
             EnterCriticalSection(&g_std_io_mtx);
             const c8* cur = buffer;
@@ -107,7 +107,7 @@ namespace Luna
             }
             LeaveCriticalSection(&g_std_io_mtx);
             if(write_bytes) *write_bytes = cur - buffer;
-            return ok;
+            return Result::success;
         }
     }
 }

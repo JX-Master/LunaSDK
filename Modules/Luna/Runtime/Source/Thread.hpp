@@ -10,7 +10,8 @@
 #pragma once
 #include "../Thread.hpp"
 #include "../Fiber.hpp"
-#include "OS.hpp"
+#include "Platform/Thread.hpp"
+#include "Error.hpp"
 namespace Luna
 {
     struct ThreadBase : IThread
@@ -18,18 +19,15 @@ namespace Luna
         lustruct("ThreadBase", "{3a99cfa4-5857-4135-82dc-f0dfb4ac5272}");
         luiimpl();
 
-        opaque_t m_handle;
+        Platform::Thread m_thread;
         Ref<IFiber> m_native_fiber;
         Ref<IFiber> m_current_fiber;
 
-        ThreadBase() :
-            m_handle(nullptr) {}
-
         virtual ~ThreadBase() {}
         
-        virtual void set_priority(ThreadPriority priority)  override
+        virtual RV set_priority(ThreadPriority priority)  override
         {
-            OS::set_thread_priority(m_handle, priority);
+            return encode_platform_result(Platform::set_thread_priority(m_thread, priority));
         }
         virtual IFiber* get_fiber() override
         {
@@ -46,18 +44,18 @@ namespace Luna
 
         virtual void wait() override
         {
-            OS::wait_thread(m_handle);
+            Platform::wait_thread(m_thread);
         }
         virtual bool try_wait() override
         {
-            return OS::try_wait_thread(m_handle);
+            return Platform::try_wait_thread(m_thread);
         }
         ~Thread()
         {
-            if (m_handle)
+            if (m_thread.valid())
             {
                 wait();
-                OS::detach_thread(m_handle);
+                Platform::detach_thread(m_thread);
             }
         }
     };
@@ -76,6 +74,6 @@ namespace Luna
             return false;
         }
     };
-    void thread_init();
+    bool thread_init();
     void thread_close();
 }

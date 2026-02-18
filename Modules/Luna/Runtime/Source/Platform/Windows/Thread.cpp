@@ -7,134 +7,134 @@
 * @author JXMaster
 * @date 2020/7/30
 */
-#include "../../OS.hpp"
-#include "../../../Platform/Windows/MiniWin.hpp"
+#include "../Thread.hpp"
 #include <Luna/Runtime/HashMap.hpp>
 #include "../../../SpinLock.hpp"
 #include "../../../Unicode.hpp"
 #include "Utils.hpp"
+#include "../Memory.hpp"
+#include "ErrCode.hpp"
 
 namespace Luna
 {
-    namespace OS
+    namespace Platform
     {
         using tls_destructor = void(void*);
-        Unconstructed<HashMap<DWORD, tls_destructor*, hash<DWORD>, equal_to<DWORD>, OSAllocator>> g_allocated_tls;
+        Unconstructed<HashMap<DWORD, tls_destructor*, hash<DWORD>, equal_to<DWORD>, Platform::Allocator>> g_allocated_tls;
         SpinLock g_allocated_tls_mtx;
-        struct Thread
+        struct ThreadContext
         {
             HANDLE m_handle;
             thread_callback_func_t* m_func;
             void* m_params;
         };
-        HANDLE m_main_thread_handle = NULL;
-        DWORD m_current_thread_handle_tls = 0;
+        HANDLE g_main_thread_handle = NULL;
     }
 }
 DWORD WINAPI WinThreadEntry(LPVOID cookie)
 {
     using namespace Luna;
-    using namespace Luna::OS;
-    Thread* ctx = (Thread*)cookie;
-    ::TlsSetValue(m_current_thread_handle_tls, ctx->m_handle);
+    Platform::ThreadContext* ctx = (Platform::ThreadContext*)cookie;
     ctx->m_func(ctx->m_params);
     // Clean up all tls.
-    g_allocated_tls_mtx.lock();
-    auto& tls = g_allocated_tls.get();
+    Platform::g_allocated_tls_mtx.lock();
+    auto& tls = Platform::g_allocated_tls.get();
     for (auto& i : tls)
     {
-        void* p = OS::tls_get(opaque_t((usize)i.first));
+        void* p = ::TlsGetValue(i.first);
         if (p)
         {
-            OS::tls_set(opaque_t((usize)i.first), nullptr);
+            ::TlsSetValue(i.first, nullptr);
             i.second(p);
         }
     }
-    g_allocated_tls_mtx.unlock();
+    Platform::g_allocated_tls_mtx.unlock();
     Luna::memdelete(ctx);
     return 0;
 }
 namespace Luna
 {
-    namespace OS
+    namespace Platform
     {
-        void thread_init()
+        Result thread_init()
         {
             g_allocated_tls.construct();
-            m_current_thread_handle_tls = ::TlsAlloc();
-            luassert_always(m_current_thread_handle_tls != TLS_OUT_OF_INDEXES);
-            m_main_thread_handle = ::OpenThread(THREAD_ALL_ACCESS, FALSE, ::GetCurrentThreadId());
-            luassert_always(m_main_thread_handle);
-            ::TlsSetValue(m_current_thread_handle_tls, m_main_thread_handle);
+            g_main_thread_handle = ::OpenThread(THREAD_ALL_ACCESS, FALSE, ::GetCurrentThreadId());
+            if(!g_main_thread_handle) return Result::bad_platform_call;
+            return Result::success;
         }
         void thread_close()
         {
-            ::CloseHandle(m_main_thread_handle);
-            m_main_thread_handle = NULL;
-            ::TlsFree(m_current_thread_handle_tls);
+            ::CloseHandle(g_main_thread_handle);
+            g_main_thread_handle = NULL;
             g_allocated_tls.destruct();
         }
-        opaque_t new_thread(thread_callback_func_t* callback, void* params, const c8* name, usize stack_size)
+        Result new_thread(thread_callback_func_t* callback, void* params, const c8* name, usize stack_size, Thread& out_thread)
         {
             luassert(callback);
-            Thread* t = Luna::memnew<Thread>();
+            ThreadContext* t = Luna::memnew<ThreadContext>();
             t->m_func = callback;
             t->m_params = params;
             DWORD tid;
             HANDLE h = ::CreateThread(NULL, stack_size, &WinThreadEntry, t, CREATE_SUSPENDED, &tid);
             if (!h)
             {
-                DWORD dw = ::GetLastError();
+                DWORD err = ::GetLastError();
                 Luna::memdelete(t);
-                lupanic_msg_always("CreateThread failed.");
+                return translate_last_error(err);
             }
             t->m_handle = h;
             if (name)
             {
                 wchar_t* buf = utf8_to_wchar_buffered(name);
                 auto r = SetThreadDescription(h, buf);
+                memfree(buf);
                 if (FAILED(r))
                 {
-                    lupanic_msg_always("SetThreadDescription failed.");
+                    t->m_handle = NULL;
+                    ::CloseHandle(h);
+                    return Result::bad_platform_call;
                 }
-                memfree(buf);
             }
             ::ResumeThread(h);
-            return h;
+            out_thread.m_handle = h;
+            return Result::success;
         }
-        void set_thread_priority(opaque_t thread, ThreadPriority priority)
+        Result set_thread_priority(Thread& thread, ThreadPriority priority)
         {
             BOOL r;
             switch (priority)
             {
             case ThreadPriority::low:
-                r = ::SetThreadPriority((HANDLE)thread, THREAD_PRIORITY_LOWEST);
+                r = ::SetThreadPriority(thread.m_handle, THREAD_PRIORITY_LOWEST);
                 break;
             case ThreadPriority::normal:
-                r = ::SetThreadPriority((HANDLE)thread, THREAD_PRIORITY_NORMAL);
+                r = ::SetThreadPriority(thread.m_handle, THREAD_PRIORITY_NORMAL);
                 break;
             case ThreadPriority::high:
-                r = ::SetThreadPriority((HANDLE)thread, THREAD_PRIORITY_HIGHEST);
+                r = ::SetThreadPriority(thread.m_handle, THREAD_PRIORITY_HIGHEST);
                 break;
             case ThreadPriority::critical:
-                r = ::SetThreadPriority((HANDLE)thread, THREAD_PRIORITY_TIME_CRITICAL);
+                r = ::SetThreadPriority(thread.m_handle, THREAD_PRIORITY_TIME_CRITICAL);
                 break;
             }
             if (!r)
             {
-                lupanic_msg_always("SetThreadPriority failed for thread object");
+                DWORD err = ::GetLastError();
+                return translate_last_error(err);
             }
+            return Result::success;
         }
-        void wait_thread(opaque_t thread)
+        void wait_thread(Thread& thread)
         {
-            if (::WaitForSingleObject((HANDLE)thread, INFINITE) != WAIT_OBJECT_0)
+            if (::WaitForSingleObject(thread.m_handle, INFINITE) != WAIT_OBJECT_0)
             {
                 lupanic_msg_always("WaitForSingleObject failed for thread object");
             }
         }
-        bool try_wait_thread(opaque_t thread)
+        bool try_wait_thread(Thread& thread)
         {
-            DWORD r = ::WaitForSingleObject((HANDLE)thread, 0);
+            DWORD r = ::WaitForSingleObject(thread.m_handle, 0);
             if (r == WAIT_OBJECT_0)
             {
                 return true;
@@ -145,17 +145,17 @@ namespace Luna
             }
             return false;
         }
-        void detach_thread(opaque_t thread)
+        void detach_thread(Thread& thread)
         {
-            ::CloseHandle((HANDLE)thread);
+            ::CloseHandle(thread.m_handle);
         }
         usize get_current_thread_id()
         {
             return (usize)::GetCurrentThreadId();
         }
-        opaque_t get_current_thread_handle()
+        void get_main_thread(Thread& out_thread)
         {
-            return opaque_t(::TlsGetValue(m_current_thread_handle_tls));
+            out_thread.m_handle = g_main_thread_handle;
         }
         void sleep(u32 time_milliseconds)
         {
@@ -175,22 +175,24 @@ namespace Luna
             ::QueryPerformanceCounter(&currentTime);
             while ((u64)(currentTime.QuadPart) < endTime)
             {
-                ::SwitchToThread();
-                ::SwitchToThread();
-                ::SwitchToThread();
-                ::SwitchToThread();
+                processor_pause();
+                processor_pause();
+                processor_pause();
+                processor_pause();
+                ::QueryPerformanceCounter(&currentTime);
             }
         }
         void yield_current_thread()
         {
             SwitchToThread();
         }
-        opaque_t tls_alloc(void (*destructor)(void*))
+        Result tls_alloc(void (*destructor)(void*), opaque_t& out_handle)
         {
             DWORD index = TlsAlloc();
             if (index == TLS_OUT_OF_INDEXES)
             {
-                lupanic_msg_always("TlsAlloc failed with TLS_OUT_OF_INDEXES.");
+                DWORD err = GetLastError();
+                return translate_last_error(err);
             }
             if (destructor)
             {
@@ -198,14 +200,16 @@ namespace Luna
                 g_allocated_tls.get().insert(make_pair(index, destructor));
                 g_allocated_tls_mtx.unlock();
             }
-            return opaque_t((usize)index);
+            out_handle = (opaque_t)(usize)index;
+            return Result::success;
         }
         void tls_free(opaque_t handle)
         {
-            if (TlsFree((DWORD)(usize)(usize)handle))
+            DWORD index = (DWORD)(usize)handle;
+            if (TlsFree(index))
             {
                 g_allocated_tls_mtx.lock();
-                g_allocated_tls.get().erase((DWORD)(usize)handle);
+                g_allocated_tls.get().erase(index);
                 g_allocated_tls_mtx.unlock();
             }
         }
@@ -219,6 +223,13 @@ namespace Luna
         void* tls_get(opaque_t handle)
         {
             return ::TlsGetValue((DWORD)(usize)handle);
+        }
+        u32 get_num_processors()
+        {
+            SYSTEM_INFO si;
+            memzero(&si, sizeof(SYSTEM_INFO));
+            ::GetSystemInfo(&si);
+            return si.dwNumberOfProcessors;
         }
     }
 }

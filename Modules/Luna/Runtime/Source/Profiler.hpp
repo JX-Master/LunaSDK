@@ -12,7 +12,7 @@
 
 namespace Luna
 {
-    void profiler_init();
+    bool profiler_init();
     void profiler_close();
     // Used to disable profiler when LunaSDK Runtime is initializing or closing.
     extern bool g_profiler_ready;

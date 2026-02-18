@@ -16,8 +16,6 @@
 #include <ws2tcpip.h>
 #pragma comment(lib, "ws2_32.lib")
 
-#include <Luna/Runtime/StackAllocator.hpp>
-
 namespace Luna
 {
     namespace Network
@@ -320,7 +318,6 @@ namespace Luna
 
         LUNA_NETWORK_API RV getaddrinfo(const c8* node, const c8* service, const AddressInfo* hints, Vector<AddressInfo>& out_result)
         {
-            StackAllocator salloc;
             ADDRINFOW d_hints;
             memzero(&d_hints, sizeof(ADDRINFOW));
             if(hints)
@@ -338,14 +335,10 @@ namespace Luna
                 d_hints.ai_family = AF_UNSPEC;
             }
             d_hints.ai_flags |= AI_CANONNAME;
-            usize node_len = utf8_to_utf16_len(node);
-            usize service_len = utf8_to_utf16_len(service);
-            wchar_t* wnode = (wchar_t*)salloc.allocate(sizeof(wchar_t) * (node_len + 1));
-            wchar_t* wservice = (wchar_t*)salloc.allocate(sizeof(wchar_t) * (service_len + 1));
-            utf8_to_utf16((c16*)wnode, node_len + 1, node);
-            utf8_to_utf16((c16*)wservice, service_len + 1, service);
+            auto wnode = utf8_to_utf16_arr(node);
+            auto wservice = utf8_to_utf16_arr(service);
             ADDRINFOW* result = nullptr;
-            auto err = GetAddrInfoW(wnode, wservice, &d_hints, &result);
+            auto err = GetAddrInfoW((wchar_t*)wnode.data(), (wchar_t*)wservice.data(), &d_hints, &result);
             if(err)
             {
                 return translate_error(err);

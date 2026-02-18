@@ -7,14 +7,14 @@
 * @author JXMaster
 * @date 2023/2/28
 */
-#include "../../OS.hpp"
+#include "../StdIO.hpp"
 #include "../../../Unicode.hpp"
 #include <cstdio>
 #include <pthread.h>
 
 namespace Luna
 {
-    namespace OS
+    namespace Platform
     {
         c32 g_input_buffer = 0;
         pthread_mutex_t g_std_io_mtx;

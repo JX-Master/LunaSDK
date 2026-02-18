@@ -49,7 +49,10 @@ RV start()
 {
     lutry
     {
-        Path p = get_process_path();
+        usize len = get_process_path(nullptr, 0);
+        Array<c8> path(len);
+        get_process_path(path.data(), path.size());
+        Path p = path.data();
         p.pop_back();
         luexp(set_current_dir(p.encode().c_str()));
         auto device = get_main_device();

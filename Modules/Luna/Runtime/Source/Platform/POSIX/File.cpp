@@ -7,7 +7,7 @@
 * @author JXMaster
 * @date 2020/9/27
 */
-#include "../../OS.hpp"
+#include "../File.hpp"
 #include <Luna/Runtime/Unicode.hpp>
 #include <Luna/Runtime/Algorithm.hpp>
 
@@ -30,7 +30,7 @@
 
 namespace Luna
 {
-    namespace OS
+    namespace Platform
     {
         struct File
         {
@@ -548,9 +548,9 @@ namespace Luna
             opaque_t to_file = nullptr;
             lutry
             {
-                luset(from_file, OS::open_file(from_path, FileOpenFlag::read, FileCreationMode::open_existing));
-                luset(to_file, OS::open_file(to_path, FileOpenFlag::write, FileCreationMode::create_new));
-                auto copy_size = OS::get_file_size(from_file);
+                luset(from_file, Platform::open_file(from_path, FileOpenFlag::read, FileCreationMode::open_existing));
+                luset(to_file, Platform::open_file(to_path, FileOpenFlag::write, FileCreationMode::create_new));
+                auto copy_size = Platform::get_file_size(from_file);
                 u64 sz = copy_size;
                 while (sz)
                 {
@@ -604,8 +604,8 @@ namespace Luna
                 // Try to copy&delete.
                 lutry
                 {
-                    luexp(OS::copy_file(from_path, to_path));
-                    luexp(OS::delete_file(from_path));
+                    luexp(Platform::copy_file(from_path, to_path));
+                    luexp(Platform::delete_file(from_path));
                 }
                 lucatchret;
             }

@@ -7,25 +7,25 @@
 * @author JXMaster
 * @date 2026/2/10
 */
-#include "../../OS.hpp"
+#include "../Fiber.hpp"
 #include "ErrCode.hpp"
 #include "../../../Platform/Windows/MiniWin.hpp"
 
 namespace Luna
 {
-    namespace OS
+    namespace Platform
     {
-        RV new_fiber(usize stack_size, void(*entry_func)(void* param), void* param, FiberContext& out_fiber)
+        Result new_fiber(usize stack_size, void(*entry_func)(void* param), void* param, Fiber& out_fiber)
         {
             out_fiber.fiber = CreateFiber(stack_size, entry_func, param);
             if(out_fiber.fiber == NULL)
             {
                 return translate_last_error(GetLastError());
             }
-            return ok;
+            return Result::success;
         }
 
-        void delete_fiber(FiberContext& fiber)
+        void delete_fiber(Fiber& fiber)
         {
             if(fiber.fiber)
             {
@@ -34,26 +34,26 @@ namespace Luna
             }
         }
 
-        RV convert_thread_to_fiber(FiberContext& out_fiber)
+        Result convert_thread_to_fiber(Fiber& out_fiber)
         {
             out_fiber.fiber = ConvertThreadToFiber(NULL);
             if(out_fiber.fiber == NULL)
             {
                 return translate_last_error(GetLastError());
             }
-            return ok;
+            return Result::success;
         }
 
-        RV convert_fiber_to_thread()
+        Result convert_fiber_to_thread()
         {
             if(!ConvertFiberToThread())
             {
                 return translate_last_error(GetLastError());
             }
-            return ok;
+            return Result::success;
         }
 
-        void switch_to_fiber(FiberContext& fiber)
+        void switch_to_fiber(Fiber& fiber)
         {
             SwitchToFiber(fiber.fiber);
         }

@@ -10,7 +10,6 @@
 #include "CommandBuffer.hpp"
 #include "QueryHeap.hpp"
 #include "Fence.hpp"
-#include <Luna/Runtime/StackAllocator.hpp>
 
 namespace Luna
 {
@@ -455,20 +454,19 @@ namespace Luna
         {
             lutsassert();
             assert_graphcis_context();
-            StackAllocator salloc;
             m_vbs.resize(start_slot + views.size());
             for (u32 i = start_slot; i < views.size(); ++i)
             {
                 m_vbs[i] = views[i - start_slot];
             }
-            D3D12_VERTEX_BUFFER_VIEW* vbv = (D3D12_VERTEX_BUFFER_VIEW*)salloc.allocate(sizeof(D3D12_VERTEX_BUFFER_VIEW) * views.size());
+            Array<D3D12_VERTEX_BUFFER_VIEW> vbv(views.size());
             for (u32 i = 0; i < views.size(); ++i)
             {
                 vbv[i].BufferLocation = cast_object<BufferResource>(views[i].buffer->get_object())->m_res->GetGPUVirtualAddress() + views[i].offset;
                 vbv[i].SizeInBytes = views[i].size;
                 vbv[i].StrideInBytes = views[i].element_size;
             }
-            m_li->IASetVertexBuffers(start_slot, (UINT)views.size(), vbv);
+            m_li->IASetVertexBuffers(start_slot, (UINT)views.size(), vbv.data());
         }
         void CommandBuffer::set_index_buffer(const IndexBufferView& desc)
         {
@@ -527,8 +525,7 @@ namespace Luna
         {
             lutsassert();
             assert_graphcis_context();
-            StackAllocator salloc;
-            D3D12_VIEWPORT* vs = (D3D12_VIEWPORT*)salloc.allocate(sizeof(D3D12_VIEWPORT) * viewports.size());
+            Array<D3D12_VIEWPORT> vs(viewports.size());
             for (u32 i = 0; i < viewports.size(); ++i)
             {
                 vs[i].Height = viewports[i].height;
@@ -538,14 +535,13 @@ namespace Luna
                 vs[i].TopLeftY =  viewports[i].top_left_y;
                 vs[i].Width = viewports[i].width;
             }
-            m_li->RSSetViewports((UINT)viewports.size(), vs);
+            m_li->RSSetViewports((UINT)viewports.size(), vs.data());
         }
         void CommandBuffer::set_scissor_rects(Span<const RectI> rects)
         {
             lutsassert();
             assert_graphcis_context();
-            StackAllocator salloc;
-            D3D12_RECT* rs = (D3D12_RECT*)salloc.allocate(sizeof(D3D12_RECT) * rects.size());
+            Array<D3D12_RECT> rs(rects.size());
             auto tex_sz = m_render_pass_context.m_tex_size;
             for (u32 i = 0; i < rects.size(); ++i)
             {
@@ -554,7 +550,7 @@ namespace Luna
                 rs[i].top = rects[i].offset_y;
                 rs[i].bottom = rects[i].offset_y + rects[i].height;
             }
-            m_li->RSSetScissorRects((UINT)rects.size(), rs);
+            m_li->RSSetScissorRects((UINT)rects.size(), rs.data());
         }
         void CommandBuffer::set_blend_factor(const Float4U& blend_factor)
         {

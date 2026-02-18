@@ -12,7 +12,7 @@
 #define LUNA_RUNTIME_API LUNA_EXPORT
 #include <Luna/Runtime/Error.hpp>
 #include <Luna/Runtime/HashMap.hpp>
-#include "OS.hpp"
+#include "Platform/Thread.hpp"
 #include "../SpinLock.hpp"
 namespace Luna
 {
@@ -30,6 +30,7 @@ namespace Luna
             usize l = strlen(name);
             c8* str = (c8*)memalloc((l + 1) * sizeof(c8));
             memcpy(str, name, (l + 1) * sizeof(c8));
+
             this->name = str;
         }
         ErrCodeRegistry(const ErrCodeRegistry&) = delete;
@@ -92,22 +93,23 @@ namespace Luna
         memdelete(err);
     }
 
-    void error_init()
+    bool error_init()
     {
         g_errcat_registry.construct();
         g_errcode_registry.construct();
-        g_error_tls = OS::tls_alloc(error_destructor);
+        auto r =  Platform::tls_alloc(error_destructor, g_error_tls);
+        return r == Platform::Result::success;
     }
 
     void error_close()
     {
-        Error* err = (Error*)OS::tls_get(g_error_tls);
+        Error* err = (Error*)Platform::tls_get(g_error_tls);
         if (err)
         {
             memdelete(err);
-            OS::tls_set(g_error_tls, nullptr);
+            Platform::tls_set(g_error_tls, nullptr);
         }
-        OS::tls_free(g_error_tls);
+        Platform::tls_free(g_error_tls);
         g_errcode_registry.destruct();
         g_errcat_registry.destruct();
     }
@@ -241,11 +243,11 @@ namespace Luna
 
     LUNA_RUNTIME_API Error& get_error()
     {
-        Error* err = (Error*)OS::tls_get(g_error_tls);
+        Error* err = (Error*)Platform::tls_get(g_error_tls);
         if (!err)
         {
             err = memnew<Error>();
-            OS::tls_set(g_error_tls, err);
+            Platform::tls_set(g_error_tls, err);
         }
         return *err;
     }

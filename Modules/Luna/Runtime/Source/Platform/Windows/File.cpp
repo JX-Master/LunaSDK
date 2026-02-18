@@ -10,27 +10,22 @@
 #include "../../../Platform/Windows/MiniWin.hpp"
 #include <io.h>
 #include <Luna/Runtime/Unicode.hpp>
-#include "../../OS.hpp"
+#include "../File.hpp"
 #include <shellapi.h>
 #include "ErrCode.hpp"
-#include "../../../Path.hpp"
-#include "../../../StackAllocator.hpp"
+#include "Utils.hpp"
 
 #pragma comment(lib, "Shell32.lib")
 
 namespace Luna
 {
-    namespace OS
+    namespace Platform
     {
-        R<opaque_t> open_unbuffered_file(const c8* path, FileOpenFlag flags, FileCreationMode creation)
+        Result open_unbuffered_file(const c8* path, FileOpenFlag flags, FileCreationMode creation, HANDLE& out_handle)
         {
             lucheck(path);
 
-            StackAllocator salloc;
-            usize buffer_size = utf8_to_utf16_len(path) + 1;
-            wchar_t* pathbuffer = (wchar_t*)salloc.allocate(sizeof(wchar_t) * buffer_size);
-            utf8_to_utf16((char16_t*)pathbuffer, buffer_size, path);
-
+            wchar_t* pathbuffer = utf8_to_wchar_buffered(path);
             DWORD dw_access = 0;
             DWORD dw_creation = 0;
             if ((flags & FileOpenFlag::read) != FileOpenFlag::none)
@@ -62,19 +57,20 @@ namespace Luna
                 lupanic();
                 break;
             }
-            HANDLE fileHandle = ::CreateFileW(pathbuffer, dw_access, FILE_SHARE_READ, nullptr, dw_creation, FILE_ATTRIBUTE_NORMAL, nullptr);
-            if (fileHandle == INVALID_HANDLE_VALUE)
+            out_handle = ::CreateFileW(pathbuffer, dw_access, FILE_SHARE_READ, nullptr, dw_creation, FILE_ATTRIBUTE_NORMAL, nullptr);
+            memfree(pathbuffer);
+            if (out_handle == INVALID_HANDLE_VALUE)
             {
                 DWORD dw = ::GetLastError();
                 return translate_last_error(dw);
             }
-            return fileHandle;
+            return Result::success;
         }
-        void close_unbuffered_file(opaque_t file)
+        void close_unbuffered_file(HANDLE file)
         {
-            ::CloseHandle((HANDLE)file);
+            ::CloseHandle(file);
         }
-        RV read_unbuffered_file(opaque_t file, void* buffer, usize size, usize* read_bytes)
+        Result read_unbuffered_file(HANDLE file, void* buffer, usize size, usize* read_bytes)
         {
             luassert(file);
             DWORD actual = 0;
@@ -85,12 +81,12 @@ namespace Luna
             }
             if (s)
             {
-                return ok;
+                return Result::success;
             }
             DWORD err = ::GetLastError();
             return translate_last_error(err);
         }
-        RV write_unbuffered_file(opaque_t file, const void* buffer, usize size, usize* write_bytes)
+        Result write_unbuffered_file(HANDLE file, const void* buffer, usize size, usize* write_bytes)
         {
             luassert(file);
             DWORD actual;
@@ -101,12 +97,12 @@ namespace Luna
             }
             if (s)
             {
-                return ok;
+                return Result::success;
             }
             DWORD err = ::GetLastError();
             return translate_last_error(err);
         }
-        u64 get_unbuffered_file_size(opaque_t file)
+        u64 get_unbuffered_file_size(HANDLE file)
         {
             luassert(file);
             LARGE_INTEGER size;
@@ -116,7 +112,7 @@ namespace Luna
             }
             return 0;
         }
-        RV set_unbuffered_file_size(opaque_t file, u64 sz)
+        Result set_unbuffered_file_size(HANDLE file, u64 sz)
         {
             luassert(file);
             LARGE_INTEGER old_cursor;
@@ -144,9 +140,9 @@ namespace Luna
                 DWORD err = ::GetLastError();
                 return translate_last_error(err);
             }
-            return ok;
+            return Result::success;
         }
-        R<u64> get_unbuffered_file_cursor(opaque_t file)
+        Result get_unbuffered_file_cursor(HANDLE file, u64& out_cursor)
         {
             luassert(file);
             LARGE_INTEGER cursor;
@@ -157,9 +153,10 @@ namespace Luna
                 DWORD err = ::GetLastError();
                 return translate_last_error(err);
             }
-            return cursor.QuadPart;
+            out_cursor = cursor.QuadPart;
+            return Result::success;
         }
-        RV set_unbuffered_file_cursor(opaque_t file, i64 offset, SeekMode mode)
+        Result set_unbuffered_file_cursor(HANDLE file, i64 offset, SeekMode mode)
         {
             luassert(file != INVALID_HANDLE_VALUE);
             LARGE_INTEGER cursor;
@@ -183,27 +180,25 @@ namespace Luna
                 DWORD err = ::GetLastError();
                 return translate_last_error(err);
             }
-            return ok;
+            return Result::success;
         }
-        void flush_unbuffered_file(opaque_t file)
+        void flush_unbuffered_file(HANDLE file)
         {
             luassert(file);
             ::FlushFileBuffers(file);
         }
-        R<opaque_t> open_buffered_file(const c8* path, FileOpenFlag flags, FileCreationMode creation)
+        Result open_buffered_file(const c8* path, FileOpenFlag flags, FileCreationMode creation, FILE*& out_file)
         {
             lucheck(path);
 
-            StackAllocator salloc;
-            usize buffer_size = utf8_to_utf16_len(path) + 1;
-            wchar_t* pathbuffer = (wchar_t*)salloc.allocate(sizeof(wchar_t) * buffer_size);
-            utf8_to_utf16((char16_t*)pathbuffer, buffer_size, path);
+            wchar_t* pathbuffer = utf8_to_wchar_buffered(path);
             const wchar_t* mode;
             FILE* f = NULL;
             errno_t err;
             if (((flags & FileOpenFlag::read) != FileOpenFlag::none) && ((flags & FileOpenFlag::write) != FileOpenFlag::none))
             {
                 // update mode.
+                FileAttribute attr;
                 switch (creation)
                 {
                 case FileCreationMode::create_always:
@@ -211,15 +206,16 @@ namespace Luna
                     err = _wfopen_s(&f, pathbuffer, mode);
                     break;
                 case FileCreationMode::create_new:
-                    if (get_file_attribute(path).valid())
+                    if (get_file_attribute(path, attr) == Result::success)
                     {
-                        return BasicError::already_exists();
+                        memfree(pathbuffer);
+                        return Result::already_exists;
                     }
                     mode = L"w+b";
                     err = _wfopen_s(&f, pathbuffer, mode);
                     break;
                 case FileCreationMode::open_always:
-                    if (get_file_attribute(path).valid())
+                    if (get_file_attribute(path, attr) == Result::success)
                     {
                         mode = L"r+b";
                         err = _wfopen_s(&f, pathbuffer, mode);
@@ -235,14 +231,15 @@ namespace Luna
                     err = _wfopen_s(&f, pathbuffer, mode);
                     break;
                 case FileCreationMode::open_existing_as_new:
-                    if ((get_file_attribute(path).valid()))
+                    if ((get_file_attribute(path, attr) == Result::success))
                     {
                         mode = L"w+b";
                         err = _wfopen_s(&f, pathbuffer, mode);
                     }
                     else
                     {
-                        return BasicError::not_found();
+                        memfree(pathbuffer);
+                        return Result::not_found;
                     }
                     break;
                 default:
@@ -259,7 +256,8 @@ namespace Luna
                 case FileCreationMode::create_new:
                 case FileCreationMode::open_existing_as_new:
                 case FileCreationMode::open_always:
-                    return BasicError::not_supported();    // Creates a new empty file and read-only from it has no meaning.
+                    memfree(pathbuffer);
+                    return Result::not_supported;    // Creates a new empty file and read-only from it has no meaning.
                     break;
                 case FileCreationMode::open_existing:
                     mode = L"rb";
@@ -273,6 +271,7 @@ namespace Luna
             else if (((flags & FileOpenFlag::write) != FileOpenFlag::none))
             {
                 // write only mode.
+                FileAttribute attr;
                 switch (creation)
                 {
                 case FileCreationMode::create_always:
@@ -280,15 +279,16 @@ namespace Luna
                     err = _wfopen_s(&f, pathbuffer, mode);
                     break;
                 case FileCreationMode::create_new:
-                    if (get_file_attribute(path).valid())
+                    if (get_file_attribute(path, attr) == Result::success)
                     {
-                        return BasicError::already_exists();
+                        memfree(pathbuffer);
+                        return Result::already_exists;
                     }
                     mode = L"wb";
                     err = _wfopen_s(&f, pathbuffer, mode);
                     break;
                 case FileCreationMode::open_always:
-                    if (get_file_attribute(path).valid())
+                    if (get_file_attribute(path, attr) == Result::success)
                     {
                         mode = L"r+b";
                         err = _wfopen_s(&f, pathbuffer, mode);
@@ -304,14 +304,15 @@ namespace Luna
                     err = _wfopen_s(&f, pathbuffer, mode);
                     break;
                 case FileCreationMode::open_existing_as_new:
-                    if (get_file_attribute(path).valid())
+                    if (get_file_attribute(path, attr) == Result::success)
                     {
                         mode = L"wb";
                         err = _wfopen_s(&f, pathbuffer, mode);
                     }
                     else
                     {
-                        return BasicError::not_found();
+                        memfree(pathbuffer);
+                        return Result::not_found;
                     }
                     break;
                 default:
@@ -319,63 +320,65 @@ namespace Luna
                     break;
                 }
             }
+            memfree(pathbuffer);
             if (!f || err)
             {
                 switch (err)
                 {
                 case EPERM:
-                    return BasicError::access_denied();
+                    return Result::access_denied;
                 case ENOENT:
-                    return BasicError::not_found();
+                    return Result::not_found;
                 default:
-                    return BasicError::bad_platform_call();
+                    return Result::bad_platform_call;
                 }
             }
-            return f;
+            out_file = f;
+            return Result::success;
         }
-        void close_buffered_file(opaque_t file)
+        void close_buffered_file(FILE* file)
         {
-            fclose((FILE*)file);
+            fclose(file);
         }
-        RV read_buffered_file(opaque_t file, void* buffer, usize size, usize* read_bytes)
+        Result read_buffered_file(FILE* file, void* buffer, usize size, usize* read_bytes)
         {
             lucheck(file);
-            usize sz = _fread_nolock(buffer, 1, size, (FILE*)file);
+            usize sz = _fread_nolock(buffer, 1, size, file);
             if (read_bytes)
             {
                 *read_bytes = sz;
             }
             if (sz != size)
             {
-                if (feof((FILE*)file))
+                if (feof(file))
                 {
-                    clearerr((FILE*)file);
-                    return ok;
+                    clearerr(file);
+                    return Result::success;
                 }
-                clearerr((FILE*)file);
-                return BasicError::bad_platform_call();
+                clearerr(file);
+                return Result::bad_platform_call;
             }
-            return ok;
+            return Result::success;
         }
-        RV write_buffered_file(opaque_t file, const void* buffer, usize size, usize* write_bytes)
+        Result write_buffered_file(FILE* file, const void* buffer, usize size, usize* write_bytes)
         {
             lucheck(file);
-            usize sz = _fwrite_nolock(buffer, 1, size, (FILE*)file);
+            usize sz = _fwrite_nolock(buffer, 1, size, file);
             if (write_bytes)
             {
                 *write_bytes = sz;
             }
             if (sz != size)
             {
-                clearerr((FILE*)file);
-                return BasicError::bad_platform_call();
+                clearerr(file);
+                return Result::bad_platform_call;
             }
-            return ok;
+            return Result::success;
         }
-        u64 get_buffered_file_size(opaque_t file)
+        u64 get_buffered_file_size(FILE* file)
         {
             lucheck(file);
-            HANDLE h = (HANDLE)_get_osfhandle(_fileno((FILE*)file));
+            HANDLE h = (HANDLE)_get_osfhandle(_fileno(file));
             LARGE_INTEGER size;
             if (::GetFileSizeEx(h, &size))
             {
@@ -383,24 +386,25 @@ namespace Luna
             }
             return 0;
         }
-        RV set_buffered_file_size(opaque_t file, u64 sz)
+        Result set_buffered_file_size(FILE* file, u64 sz)
         {
             lucheck(file);
-            HANDLE h = (HANDLE)_get_osfhandle(_fileno((FILE*)file));
-            return set_file_size(h, sz);
+            HANDLE h = (HANDLE)_get_osfhandle(_fileno(file));
+            return set_unbuffered_file_size(h, sz);
         }
-        R<u64> get_buffered_file_cursor(opaque_t file)
+        Result get_buffered_file_cursor(FILE* file, u64& out_cursor)
         {
             lucheck(file);
-            __int64 cur = _ftelli64_nolock((FILE*)file);
+            __int64 cur = _ftelli64_nolock(file);
             if (cur < 0)
             {
-                clearerr((FILE*)file);
-                return BasicError::bad_platform_call();
+                clearerr(file);
+                return Result::bad_platform_call;
             }
-            return (u64)cur;
+            out_cursor = cur;
+            return Result::success;
         }
-        RV set_buffered_file_cursor(opaque_t file, i64 offset, SeekMode mode)
+        Result set_buffered_file_cursor(FILE* file, i64 offset, SeekMode mode)
         {
             lucheck(file);
             int origin;
@@ -419,92 +423,84 @@ namespace Luna
                 lupanic();
                 break;
             }
-            if (_fseeki64_nolock((FILE*)file, offset, origin))
+            if (_fseeki64_nolock(file, offset, origin))
             {
-                clearerr((FILE*)file);
-                return BasicError::bad_platform_call();
+                clearerr(file);
+                return Result::bad_platform_call;
             }
-            return ok;
+            return Result::success;
         }
-        void flush_buffered_file(opaque_t file)
+        void flush_buffered_file(FILE* file)
         {
             lucheck(file);
-            if (_fflush_nolock((FILE*)file))
+            if (_fflush_nolock(file))
             {
-                clearerr((FILE*)file);
+                clearerr(file);
             }
         }
 
-        struct File
-        {
-            opaque_t handle;
-            bool buffered;
-        };
-        R<opaque_t> open_file(const c8* path, FileOpenFlag flags, FileCreationMode creation)
+        Result open_file(const c8* path, FileOpenFlag flags, FileCreationMode creation, File& out_file)
         {
             bool buffered = test_flags(flags, FileOpenFlag::user_buffering);
-            R<opaque_t> f = nullptr;
             if (buffered)
             {
-                f = open_buffered_file(path, flags, creation);
+                FILE* f;
+                auto r = open_buffered_file(path, flags, creation, f);
+                if (r != Result::success)
+                {
+                    return r;
+                }
+                out_file.m_handle = (opaque_t)f;
             }
             else
             {
-                f = open_unbuffered_file(path, flags, creation);
+                HANDLE f;
+                auto r = open_unbuffered_file(path, flags, creation, f);
+                if (r != Result::success)
+                {
+                    return r;
+                }
+                out_file.m_handle = (opaque_t)f;
             }
-            if (failed(f))
-            {
-                return f;
-            }
-            File* ret = Luna::memnew<File>();
-            ret->buffered = buffered;
-            ret->handle = f.get();
-            return ret;
+            out_file.m_buffered = buffered;
+            return Result::success;
         }
-        void close_file(opaque_t file)
+        void close_file(File& file)
         {
-            File* f = (File*)file;
-            if (f->buffered) close_buffered_file(f->handle);
-            else close_unbuffered_file(f->handle);
-            Luna::memdelete(f);
+            if (file.m_buffered) close_buffered_file((FILE*)file.m_handle);
+            else close_unbuffered_file((HANDLE)file.m_handle);
+            file.m_handle = nullptr;
         }
-        RV read_file(opaque_t file, void* buffer, usize size, usize* read_bytes)
+        Result read_file(File& file, void* buffer, usize size, usize* read_bytes)
         {
-            File* f = (File*)file;
-            return f->buffered ? read_buffered_file(f->handle, buffer, size, read_bytes) :
-                read_unbuffered_file(f->handle, buffer, size, read_bytes);
+            return file.m_buffered ? read_buffered_file((FILE*)file.m_handle, buffer, size, read_bytes) :
+                read_unbuffered_file((HANDLE)file.m_handle, buffer, size, read_bytes);
         }
-        RV write_file(opaque_t file, const void* buffer, usize size, usize* write_bytes)
+        Result write_file(File& file, const void* buffer, usize size, usize* write_bytes)
         {
-            File* f = (File*)file;
-            return f->buffered ? write_buffered_file(f->handle, buffer, size, write_bytes) :
-                write_unbuffered_file(f->handle, buffer, size, write_bytes);
+            return file.m_buffered ? write_buffered_file((FILE*)file.m_handle, buffer, size, write_bytes) :
+                write_unbuffered_file((HANDLE)file.m_handle, buffer, size, write_bytes);
         }
-        u64 get_file_size(opaque_t file)
+        u64 get_file_size(File& file)
         {
-            File* f = (File*)file;
-            return f->buffered ? get_buffered_file_size(f->handle) : get_unbuffered_file_size(f->handle);
+            return file.m_buffered ? get_buffered_file_size((FILE*)file.m_handle) : get_unbuffered_file_size((HANDLE)file.m_handle);
         }
-        RV set_file_size(opaque_t file, u64 sz)
+        Result set_file_size(File& file, u64 sz)
         {
-            File* f = (File*)file;
-            return f->buffered ? set_buffered_file_size(f->handle, sz) : set_unbuffered_file_size(f->handle, sz);
+            return file.m_buffered ? set_buffered_file_size((FILE*)file.m_handle, sz) : set_unbuffered_file_size((HANDLE)file.m_handle, sz);
         }
-        R<u64> get_file_cursor(opaque_t file)
+        Result get_file_cursor(File& file, u64& out_cursor)
         {
-            File* f = (File*)file;
-            return f->buffered ? get_buffered_file_cursor(f->handle) : get_unbuffered_file_cursor(f->handle);
+            return file.m_buffered ? get_buffered_file_cursor((FILE*)file.m_handle, out_cursor) : get_unbuffered_file_cursor((HANDLE)file.m_handle, out_cursor);
         }
-        RV set_file_cursor(opaque_t file, i64 offset, SeekMode mode)
+        Result set_file_cursor(File& file, i64 offset, SeekMode mode)
         {
-            File* f = (File*)file;
-            return f->buffered ? set_buffered_file_cursor(f->handle, offset, mode) : set_unbuffered_file_cursor(f->handle, offset, mode);
+            return file.m_buffered ? set_buffered_file_cursor((FILE*)file.m_handle, offset, mode) : set_unbuffered_file_cursor((HANDLE)file.m_handle, offset, mode);
         }
-        void flush_file(opaque_t file)
+        void flush_file(File& file)
         {
-            File* f = (File*)file;
-            if (f->buffered) flush_buffered_file(f->handle);
-            else flush_unbuffered_file(f->handle);
+            if (file.m_buffered) flush_buffered_file((FILE*)file.m_handle);
+            else flush_unbuffered_file((HANDLE)file.m_handle);
         }
         inline i64 file_time_to_timestamp(const FILETIME& filetime)
         {
@@ -514,156 +510,135 @@ namespace Luna
 
             return ((LONGLONG)(ui.QuadPart - 116444736000000000) / 10000000);
         }
-        R<FileAttribute> get_file_attribute(const c8* path)
+        Result get_file_attribute(const c8* path, FileAttribute& out_attribute)
         {
             lucheck(path);
-            StackAllocator salloc;
-            usize buffer_size = utf8_to_utf16_len(path) + 1;
-            wchar_t* pathbuffer = (wchar_t*)salloc.allocate(sizeof(wchar_t) * buffer_size);
-            utf8_to_utf16((char16_t*)pathbuffer, buffer_size, path);
+            wchar_t* pathbuffer = utf8_to_wchar_buffered(path);
             WIN32_FILE_ATTRIBUTE_DATA d;
-            if (!::GetFileAttributesExW(pathbuffer, GetFileExInfoStandard, &d))
+            BOOL r = ::GetFileAttributesExW(pathbuffer, GetFileExInfoStandard, &d);
+            memfree(pathbuffer);
+            if (!r)
             {
-                return BasicError::bad_platform_call();
+                DWORD err = ::GetLastError();
+                return translate_last_error(err);
             }
-            FileAttribute attribute;
-            attribute.attributes = FileAttributeFlag::none;
+            out_attribute.attributes = FileAttributeFlag::none;
             if (d.dwFileAttributes & FILE_ATTRIBUTE_HIDDEN)
             {
-                attribute.attributes |= FileAttributeFlag::hidden;
+                out_attribute.attributes |= FileAttributeFlag::hidden;
             }
             if (d.dwFileAttributes & FILE_ATTRIBUTE_READONLY)
             {
-                attribute.attributes |= FileAttributeFlag::read_only;
+                out_attribute.attributes |= FileAttributeFlag::read_only;
             }
             if (d.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
             {
-                attribute.attributes |= FileAttributeFlag::directory;
+                out_attribute.attributes |= FileAttributeFlag::directory;
             }
-            attribute.size = ((u64)d.nFileSizeHigh << 32) + (u64)d.nFileSizeLow;
-            attribute.creation_time = file_time_to_timestamp(d.ftCreationTime);
-            attribute.last_access_time = file_time_to_timestamp(d.ftLastAccessTime);
-            attribute.last_write_time = file_time_to_timestamp(d.ftLastWriteTime);
-            return attribute;
+            out_attribute.size = ((u64)d.nFileSizeHigh << 32) + (u64)d.nFileSizeLow;
+            out_attribute.creation_time = file_time_to_timestamp(d.ftCreationTime);
+            out_attribute.last_access_time = file_time_to_timestamp(d.ftLastAccessTime);
+            out_attribute.last_write_time = file_time_to_timestamp(d.ftLastWriteTime);
+            return Result::success;
         }
-        RV copy_file(const c8* from_path, const c8* to_path)
+        Result copy_file(const c8* from_path, const c8* to_path)
         {
             lucheck(from_path && to_path);
-            StackAllocator salloc;
-            usize from_size = utf8_to_utf16_len(from_path) + 1;
-            usize to_size = utf8_to_utf16_len(to_path) + 1;
-            wchar_t* fromBuffer = (wchar_t*)salloc.allocate(sizeof(wchar_t) * from_size);
-            wchar_t* toBuffer = (wchar_t*)salloc.allocate(sizeof(wchar_t) * to_size);
-            utf8_to_utf16((char16_t*)fromBuffer, from_size, from_path);
-            utf8_to_utf16((char16_t*)toBuffer, to_size, to_path);
-            BOOL r = CopyFileW(fromBuffer, toBuffer, TRUE);
-            if(r) return ok;
-            DWORD err = ::GetLastError();
-            return translate_last_error(err);
+            wchar_t* from_buffer = utf8_to_wchar_buffered(from_path);
+            wchar_t* to_buffer = utf8_to_wchar_buffered(to_path);
+            BOOL r = CopyFileW(from_buffer, to_buffer, TRUE);
+            memfree(from_buffer);
+            memfree(to_buffer);
+            if(!r)
+            {
+                DWORD err = ::GetLastError();
+                return translate_last_error(err);
+            }
+            return Result::success;
         }
-        RV move_file(const c8* from_path, const c8* to_path)
+        Result move_file(const c8* from_path, const c8* to_path)
         {
             lucheck(from_path && to_path);
-            StackAllocator salloc;
-            usize from_size = utf8_to_utf16_len(from_path) + 1;
-            usize to_size = utf8_to_utf16_len(to_path) + 1;
-            wchar_t* fromBuffer = (wchar_t*)salloc.allocate(sizeof(wchar_t) * from_size);
-            wchar_t* toBuffer = (wchar_t*)salloc.allocate(sizeof(wchar_t) * to_size);
-            utf8_to_utf16((char16_t*)fromBuffer, from_size, from_path);
-            utf8_to_utf16((char16_t*)toBuffer, to_size, to_path);
-            BOOL r = MoveFileExW(fromBuffer, toBuffer, MOVEFILE_COPY_ALLOWED);
-            if(r) return ok;
-            DWORD err = ::GetLastError();
-            return translate_last_error(err);
+            wchar_t* from_buffer = utf8_to_wchar_buffered(from_path);
+            wchar_t* to_buffer = utf8_to_wchar_buffered(to_path);
+            BOOL r = MoveFileExW(from_buffer, to_buffer, MOVEFILE_COPY_ALLOWED);
+            memfree(from_buffer);
+            memfree(to_buffer);
+            if(!r)
+            {
+                DWORD err = ::GetLastError();
+                return translate_last_error(err);
+            }
+            return Result::success;
         }
-        static RV delete_single_file(const c8* path)
+        static Result delete_single_file(const c8* path)
         {
-            StackAllocator salloc;
-            usize buffer_size = utf8_to_utf16_len(path) + 1;
-            wchar_t* pathbuffer = (wchar_t*)salloc.allocate(sizeof(wchar_t) * buffer_size);
-            utf8_to_utf16((char16_t*)pathbuffer, buffer_size, path);
+            wchar_t* pathbuffer = utf8_to_wchar_buffered(path);
             BOOL r = DeleteFileW(pathbuffer);
-            if(r) return ok;
-            DWORD err = ::GetLastError();
-            return translate_last_error(err);
+            memfree(pathbuffer);
+            if(!r)
+            {
+                DWORD err = ::GetLastError();
+                return translate_last_error(err);
+            }
+            return Result::success;
         }
-        static RV delete_empty_directory(const c8* path)
+        static Result delete_empty_directory(const c8* path)
         {
-            StackAllocator salloc;
-            usize buffer_size = utf8_to_utf16_len(path) + 1;
-            wchar_t* pathbuffer = (wchar_t*)salloc.allocate(sizeof(wchar_t) * buffer_size);
-            utf8_to_utf16((char16_t*)pathbuffer, buffer_size, path);
+            wchar_t* pathbuffer = utf8_to_wchar_buffered(path);
             BOOL r = RemoveDirectoryW(pathbuffer);
-            if(r) return ok;
-            DWORD err = ::GetLastError();
-            return translate_last_error(err);
+            memfree(pathbuffer);
+            if(!r)
+            {
+                DWORD err = ::GetLastError();
+                return translate_last_error(err);
+            }
+            return Result::success;
         }
-        RV delete_file(const c8* path)
+        Result delete_file(const c8* path)
         {
             lucheck(path);
-            lutry
+            FileAttribute attr;
+            Result r = get_file_attribute(path, attr);
+            if(r != Result::success) return r;
+            if(test_flags(attr.attributes, FileAttributeFlag::directory))
             {
-                lulet(attr, get_file_attribute(path));
-                if(test_flags(attr.attributes, FileAttributeFlag::directory))
+                // Remove all files in directory.
+                Vector<String> files;
+                FileIterator iter;
+                r = open_dir(path, iter);
+                if(r != Result::success) return r;
+                for(;dir_iterator_is_valid(iter); dir_iterator_move_next(iter))
                 {
-                    // Remove all files in directory.
-                    Vector<String> files;
-                    lulet(iter, open_dir(path));
-                    for(;dir_iterator_is_valid(iter); dir_iterator_move_next(iter))
-                    {
-                        const c8* filename = dir_iterator_get_filename(iter);
-                        files.push_back(filename);
-                    }
-                    close_dir(iter);
-                    String dir_path = path;
-                    usize dir_size = dir_path.size();
-                    for(auto& f : files)
-                    {
-                        dir_path.push_back('\\');
-                        dir_path.append(f.c_str());
-                        luexp(delete_file(dir_path.c_str()));
-                        dir_path.erase(dir_path.begin() + dir_size, dir_path.end());
-                    }
-                    // Delete empty directory.
-                    luexp(delete_empty_directory(path));
+                    const c8* filename = dir_iterator_get_filename(iter);
+                    files.push_back(filename);
                 }
-                else
+                close_dir(iter);
+                String dir_path = path;
+                usize dir_size = dir_path.size();
+                for(auto& f : files)
                 {
-                    luexp(delete_single_file(path));
+                    dir_path.push_back('\\');
+                    dir_path.append(f.c_str());
+                    r = delete_file(dir_path.c_str());
+                    if(r != Result::success) return r;
+                    dir_path.erase(dir_path.begin() + dir_size, dir_path.end());
                 }
+                // Delete empty directory.
+                r = delete_empty_directory(path);
+                if(r != Result::success) return r;
             }
-            lucatchret;
-            return ok;
+            else
+            {
+                r = delete_single_file(path);
+                if(r != Result::success) return r;
+            }
+            return Result::success;
         }
-        struct FileData
+        Result open_dir(const c8* path, FileIterator& out_dir_iter)
         {
-            WIN32_FIND_DATAW m_data;
-            HANDLE m_h;
-            const char* m_filename_ptr;
-            char m_file_name[512];    // Buffer to store the file name in UTF-8 format.
-            bool m_allocated;
-
-            FileData() :
-                m_allocated(true),
-                m_h(INVALID_HANDLE_VALUE)
-            {
-                m_file_name[0] = 0;
-                m_filename_ptr = m_file_name;
-            }
-            ~FileData()
-            {
-                if (m_h != INVALID_HANDLE_VALUE)
-                {
-                    ::FindClose(m_h);
-                    m_h = INVALID_HANDLE_VALUE;
-                }
-            }
-        };
-        R<opaque_t> open_dir(const c8* path)
-        {
-            StackAllocator salloc;
             usize buffer_size = utf8_to_utf16_len(path) + 3;    // for possible "/*" and null terminator.
-            wchar_t* pathbuffer = (wchar_t*)salloc.allocate(sizeof(wchar_t) * buffer_size);
+            wchar_t* pathbuffer = (wchar_t*)memalloc(sizeof(wchar_t) * buffer_size);
             utf8_to_utf16((char16_t*)pathbuffer, buffer_size, path);
             // Append "\\*"
             if (pathbuffer[buffer_size - 4] == '/' || pathbuffer[buffer_size - 4] == '\\')
@@ -677,59 +652,56 @@ namespace Luna
                 pathbuffer[buffer_size - 2] = '*';
                 pathbuffer[buffer_size - 1] = 0;
             }
-            FileData* data = Luna::memnew<FileData>();
-            
-            data->m_h = ::FindFirstFileW(pathbuffer, &(data->m_data));
-            if (data->m_h == INVALID_HANDLE_VALUE)
+            memzero(&out_dir_iter.m_data);
+            out_dir_iter.m_allocated = true;
+            out_dir_iter.m_file_name[0] = 0;
+            out_dir_iter.m_h = ::FindFirstFileW(pathbuffer, &(out_dir_iter.m_data));
+            memfree(pathbuffer);
+            if (out_dir_iter.m_h == INVALID_HANDLE_VALUE)
             {
-                Luna::memdelete(data);
                 DWORD err = ::GetLastError();
                 if (err == ERROR_FILE_NOT_FOUND)
                 {
-                    return BasicError::not_found();
+                    return Result::not_found;
                 }
                 else
                 {
-                    return BasicError::bad_platform_call();
+                    return Result::bad_platform_call;
                 }
             }
-            utf16_to_utf8(data->m_file_name, 512, (char16_t*)data->m_data.cFileName);
-            // Skip "." and "..".
-            while(dir_iterator_is_valid(data))
+            utf16_to_utf8(out_dir_iter.m_file_name, 512, (char16_t*)out_dir_iter.m_data.cFileName);
+            return Result::success;
+        }
+        void close_dir(FileIterator& dir_iter)
+        {
+            if (dir_iter.m_h != INVALID_HANDLE_VALUE)
             {
-                const c8* filename = dir_iterator_get_filename(data);
-                if(strcmp(filename, ".") && strcmp(filename, "..")) break;
-                dir_iterator_move_next(data);
+                ::FindClose(dir_iter.m_h);
+                dir_iter.m_h = INVALID_HANDLE_VALUE;
             }
-            return data;
         }
-        void close_dir(opaque_t dir_iter)
+        bool dir_iterator_is_valid(FileIterator& dir_iter)
         {
-            Luna::memdelete((FileData*)dir_iter);
+            return dir_iter.m_allocated;
         }
-        bool dir_iterator_is_valid(opaque_t dir_iter)
+        const c8* dir_iterator_get_filename(FileIterator& dir_iter)
         {
-            return ((FileData*)dir_iter)->m_allocated;
-        }
-        const c8* dir_iterator_get_filename(opaque_t dir_iter)
-        {
-            if (((FileData*)dir_iter)->m_allocated)
+            if (dir_iter.m_allocated)
             {
-                return ((FileData*)dir_iter)->m_filename_ptr;
+                return dir_iter.m_file_name;
             }
             else
             {
                 return nullptr;
             }
         }
-        FileAttributeFlag dir_iterator_get_attributes(opaque_t dir_iter)
+        FileAttributeFlag dir_iterator_get_attributes(FileIterator& dir_iter)
         {
-            FileData* f = (FileData*)dir_iter;
             if (!dir_iterator_is_valid(dir_iter))
             {
                 return FileAttributeFlag::none;
             }
-            DWORD attrs = f->m_data.dwFileAttributes;
+            DWORD attrs = dir_iter.m_data.dwFileAttributes;
             FileAttributeFlag r = FileAttributeFlag::none;
             if (attrs & FILE_ATTRIBUTE_HIDDEN)
             {
@@ -745,107 +717,110 @@ namespace Luna
             }
             return r;
         }
-        bool internal_dir_iterator_move_next(opaque_t dir_iter)
+        bool dir_iterator_move_next(FileIterator& dir_iter)
         {
-            FileData* f = (FileData*)dir_iter;
             if (!dir_iterator_is_valid(dir_iter))
             {
                 return false;
             }
-            if (::FindNextFileW(f->m_h, &f->m_data) == 0)
+            if (::FindNextFileW(dir_iter.m_h, &dir_iter.m_data) == 0)
             {
-                f->m_allocated = false;
+                dir_iter.m_allocated = false;
                 return false;
             }
-            utf16_to_utf8(f->m_file_name, 512, (char16_t*)f->m_data.cFileName);
-            f->m_allocated = true;
+            utf16_to_utf8(dir_iter.m_file_name, 512, (char16_t*)dir_iter.m_data.cFileName);
+            dir_iter.m_allocated = true;
             return true;
         }
-        bool dir_iterator_move_next(opaque_t dir_iter)
+        Result create_dir(const c8* path)
         {
-            bool r = internal_dir_iterator_move_next(dir_iter);
-            // Skip . and ..
-            while(r)
-            {
-                const c8* filename = dir_iterator_get_filename(dir_iter);
-                if(strcmp(filename, ".") && strcmp(filename, "..")) break;
-                r = internal_dir_iterator_move_next(dir_iter);
-            }
-            return r;
-        }
-        RV create_dir(const c8* path)
-        {
-            StackAllocator salloc;
-            usize buffer_size = utf8_to_utf16_len(path) + 1;
-            wchar_t* pathbuffer = (wchar_t*)salloc.allocate(sizeof(wchar_t) * buffer_size);
-            utf8_to_utf16((char16_t*)pathbuffer, buffer_size, path);
+            wchar_t* pathbuffer = utf8_to_wchar_buffered(path);
             BOOL r = ::CreateDirectoryW(pathbuffer, 0);
+            memfree(pathbuffer);
             if (!r)
             {
                 DWORD err = ::GetLastError();
                 if (err == ERROR_ALREADY_EXISTS)
                 {
-                    return BasicError::already_exists();
+                    return Result::already_exists;
                 }
                 if (err == ERROR_PATH_NOT_FOUND)
                 {
-                    return BasicError::not_found();
+                    return Result::not_found;
                 }
-                return BasicError::bad_platform_call();
+                return Result::bad_platform_call;
             }
-            return ok;
+            return Result::success;
         }
-        RV remove_dir(const c8* path)
+        Result remove_dir(const c8* path)
         {
-            StackAllocator salloc;
-            usize buffer_size = utf8_to_utf16_len(path) + 1;
-            wchar_t* pathbuffer = (wchar_t*)salloc.allocate(sizeof(wchar_t) * buffer_size);
-            utf8_to_utf16((char16_t*)pathbuffer, buffer_size, path);
+            wchar_t* pathbuffer = utf8_to_wchar_buffered(path);
             BOOL r = ::RemoveDirectoryW(pathbuffer);
+            memfree(pathbuffer);
             if (!r)
             {
                 DWORD err = ::GetLastError();
-                return BasicError::bad_platform_call();
+                return translate_last_error(err);
             }
-            return ok;
+            return Result::success;
         }
-        u32 get_current_dir(u32 buffer_length, c8* buffer)
+        usize get_current_dir(c8* buffer, usize buffer_size)
         {
-            StackAllocator salloc;
             DWORD sz = ::GetCurrentDirectoryW(0, NULL);
-            wchar_t* path = (wchar_t*)salloc.allocate(sizeof(wchar_t) * sz);
+            wchar_t* path = (wchar_t*)memalloc(sizeof(wchar_t) * sz);
             ::GetCurrentDirectoryW(sz, path);
-            if (buffer && buffer_length)
+            if (buffer && buffer_size)
             {
-                utf16_to_utf8(buffer, buffer_length, (char16_t*)path);
+                usize len = utf16_to_utf8(buffer, buffer_size, (char16_t*)path) + 1;
+                memfree(path);
+                return len;
             }
-            return (u32)utf16_to_utf8_len((char16_t*)path) + 1;
-        }
-        RV set_current_dir(const c8* path)
-        {
-            StackAllocator salloc;
-            usize u16len = utf8_to_utf16_len(path);
-            wchar_t* dpath = (wchar_t*)salloc.allocate(sizeof(wchar_t) * (u16len + 1));
-            utf8_to_utf16((char16_t*)dpath, u16len + 1, path);
-            if (FAILED(::SetCurrentDirectoryW(dpath)))
+            else
             {
-                return BasicError::bad_platform_call();
+                usize len = utf16_to_utf8_len((char16_t*)path) + 1;
+                memfree(path);
+                return len;
             }
-            return ok;
         }
-
-        c8 g_process_path[1024];
-
-        void file_init()
+        Result set_current_dir(const c8* path)
         {
-            wchar_t pathbuffer[1024];
-            DWORD size = ::GetModuleFileNameW(NULL, pathbuffer, 1024);
-            utf16_to_utf8(g_process_path, 1024, (char16_t*)pathbuffer);
+            wchar_t* dpath = utf8_to_wchar_buffered(path);
+            BOOL r = ::SetCurrentDirectoryW(dpath);
+            memfree(dpath);
+            if(!r)
+            {
+                DWORD err = ::GetLastError();
+                return translate_last_error(err);
+            }
+            return Result::success;
         }
-
-        const c8* get_process_path()
+        usize get_process_path(c8* buffer, usize buffer_size)
         {
-            return g_process_path;
+            DWORD buf_size = MAX_PATH;
+            wchar_t* buf = (wchar_t*)memalloc(sizeof(wchar_t) * buf_size);
+            DWORD sz = ::GetModuleFileNameW(NULL, buf, buf_size);
+            while(sz == buf_size && ::GetLastError() == ERROR_INSUFFICIENT_BUFFER)
+            {
+                buf_size += MAX_PATH;
+                buf = (wchar_t*)memrealloc(buf, sizeof(wchar_t) * buf_size);
+                sz = ::GetModuleFileNameW(NULL, buf, buf_size);
+            }
+            if(sz == 0)
+            {
+                lupanic_msg("GetModuleFileNameW failed");
+            }
+            if(buffer && buffer_size)
+            {
+                usize len = utf16_to_utf8(buffer, buffer_size, (char16_t*)buf) + 1;
+                memfree(buf);
+                return len;
+            }
+            else
+            {
+                usize len = utf16_to_utf8_len((char16_t*)buf) + 1;
+                memfree(buf);
+                return len;
+            }
         }
     }
 

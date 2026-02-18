@@ -10,20 +10,27 @@
 #include "../PlatformDefines.hpp"
 #define LUNA_RUNTIME_API LUNA_EXPORT
 #include "../DLL.hpp"
-#include "OS.hpp"
+#include "Platform/DLL.hpp"
+#include "Error.hpp"
 
 namespace Luna
 {
     LUNA_RUNTIME_API R<opaque_t> load_library(const c8* path)
     {
-        return OS::load_library(path);
+        opaque_t handle = nullptr;
+        auto r = Platform::load_library(path, handle);
+        if(r != Platform::Result::success) return encode_platform_result(r).errcode();
+        return handle;
     }
     LUNA_RUNTIME_API void free_library(opaque_t handle)
     {
-        OS::free_library(handle);
+        Platform::free_library(handle);
     }
     LUNA_RUNTIME_API R<void*> get_library_function(opaque_t handle, const c8* symbol)
     {
-        return OS::get_library_function(handle, symbol);
+        void* addr = nullptr;
+        auto r = Platform::get_library_function(handle, symbol, addr);
+        if(r != Platform::Result::success) return encode_platform_result(r).errcode();
+        return addr;
     }
 }

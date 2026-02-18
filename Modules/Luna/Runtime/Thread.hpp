@@ -55,7 +55,7 @@ namespace Luna
 
         //! Sets thread priority.
         //! @param[in] priority The new priority of the thread.
-        virtual void set_priority(ThreadPriority priority) = 0;
+        virtual RV set_priority(ThreadPriority priority) = 0;
 
         //! Gets the fiber context of the thread created by @ref convert_fiber_to_thread.
         //! @return Returns the fiber context of the thread. 
@@ -74,7 +74,7 @@ namespace Luna
     //! @param[in] name The name of the thread. This is usually for debug purpose.
     //! @param[in] stack_size The stack size for new thread's call stack.
     //! @return Returns an interface representing the new created thread.
-    LUNA_RUNTIME_API Ref<IThread> new_thread(void(*entry_func)(void* params), void* params, const c8* name = nullptr, u32 stack_size = 0);
+    LUNA_RUNTIME_API R<Ref<IThread>> new_thread(void(*entry_func)(void* params), void* params, const c8* name = nullptr, u32 stack_size = 0);
 
     //! Gets the thread object of current running thread.
     //! @return The thread object of the current thread.
@@ -130,7 +130,7 @@ namespace Luna
     //! be repeated several times until the TLS value is `nullptr` after the destructor returns.
     //! 
     //! @return Returns the handle to the TLS slot.
-    LUNA_RUNTIME_API opaque_t tls_alloc(void (*destructor)(void* ptr) = nullptr);
+    LUNA_RUNTIME_API R<opaque_t> tls_alloc(void (*destructor)(void* ptr) = nullptr);
 
     //! Frees the TLS slot allocated by `tls_alloc`. 
     //! @details The handle will be invalid after this call and the pointer stored for every 

@@ -10,6 +10,7 @@
 #include "../PlatformDefines.hpp"
 #define LUNA_RUNTIME_API LUNA_EXPORT
 #include "StdIO.hpp"
+#include "../Ref.hpp"
 
 namespace Luna
 {

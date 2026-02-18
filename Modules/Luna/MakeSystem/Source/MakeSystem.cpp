@@ -22,13 +22,12 @@ namespace Luna
         {
             lutry
             {
-                StackAllocator alloc;
                 if(build_dir.empty())
                 {
-                    u32 buf_size = get_current_dir(0, nullptr);
-                    c8* buf = (c8*)alloc.allocate(buf_size * sizeof(c8));
-                    get_current_dir(buf_size, buf);
-                    m_build_dir = buf;
+                    u32 buf_size = get_current_dir(nullptr, 0);
+                    Array<c8> buf(buf_size);
+                    get_current_dir(buf.data(), buf_size);
+                    m_build_dir = buf.data();
                     m_build_dir.push_back("build");
                 }
                 else

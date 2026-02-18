@@ -10,7 +10,7 @@
 */
 #pragma once
 #include "../Mutex.hpp"
-#include "OS.hpp"
+#include "Platform/Mutex.hpp"
 namespace Luna
 {
     struct Mutex : IMutex
@@ -18,27 +18,27 @@ namespace Luna
         lustruct("Mutex", "{0df3d468-0d98-4aee-b11d-905ad291def2}");
         luiimpl();
 
-        opaque_t m_handle;
+        Platform::Mutex m_data;
 
         Mutex()
         {
-            m_handle = OS::new_mutex();
+            Platform::new_mutex(m_data);
         }
         ~Mutex()
         {
-            OS::delete_mutex(m_handle);
+            Platform::delete_mutex(m_data);
         }
         virtual void wait() override
         {
-            OS::lock_mutex(m_handle);
+            Platform::lock_mutex(m_data);
         }
         virtual bool try_wait() override
         {
-            return OS::try_lock_mutex(m_handle);
+            return Platform::try_lock_mutex(m_data);
         }
         virtual void unlock() override
         {
-            OS::unlock_mutex(m_handle);
+            Platform::unlock_mutex(m_data);
         }
     };
 }

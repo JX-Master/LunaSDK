@@ -15,7 +15,6 @@
 #include <Luna/Runtime/Unicode.hpp>
 #include "../RHI.hpp"
 #include <D3D12MemAlloc.h>
-#include <Luna/Runtime/StackAllocator.hpp>
 
 namespace Luna
 {
@@ -241,11 +240,8 @@ namespace Luna
         }
         inline void set_object_name(ID3D12Object* object, const c8* name)
         {
-            StackAllocator salloc;
-            usize len = utf8_to_utf16_len(name);
-            wchar_t* buf = (wchar_t*)salloc.allocate(sizeof(wchar_t) * (len + 1));
-            utf8_to_utf16((c16*)buf, len + 1, name);
-            object->SetName(buf);
+            auto buf = utf8_to_utf16_arr(name);
+            object->SetName((wchar_t*)buf.data());
         }
         inline RV encode_hresult(HRESULT code)
         {

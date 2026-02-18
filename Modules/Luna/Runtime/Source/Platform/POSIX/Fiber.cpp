@@ -7,7 +7,7 @@
 * @author JXMaster
 * @date 2026/2/10
 */
-#include "../../OS.hpp"
+#include "../Fiber.hpp"
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
@@ -15,7 +15,7 @@
 
 namespace Luna
 {
-    namespace OS
+    namespace Platform
     {
         union FiberArgs
         {

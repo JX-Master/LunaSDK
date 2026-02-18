@@ -9,7 +9,6 @@
 */
 #include "PipelineLayout.hpp"
 #include "DescriptorSetLayout.hpp"
-#include <Luna/Runtime/StackAllocator.hpp>
 
 namespace Luna
 {
@@ -17,12 +16,12 @@ namespace Luna
     {
         RV PipelineLayout::init(const PipelineLayoutDesc& desc)
         {
-            StackAllocator salloc;
             D3D12_ROOT_SIGNATURE_DESC d;
             d.NumStaticSamplers = 0;
             d.pStaticSamplers = nullptr;
 
             Vector<D3D12_ROOT_PARAMETER> parameters;
+            Vector<D3D12_DESCRIPTOR_RANGE*> alloc_ranges;
 
             for (u32 i = 0; i < desc.descriptor_set_layouts.size(); ++i)
             {
@@ -35,7 +34,8 @@ namespace Luna
                     param.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
                     param.ShaderVisibility = root.m_shader_visibility;
                     param.DescriptorTable.NumDescriptorRanges = (UINT)root.m_ranges.size();
-                    D3D12_DESCRIPTOR_RANGE* ranges = (D3D12_DESCRIPTOR_RANGE*)salloc.allocate(sizeof(D3D12_DESCRIPTOR_RANGE) * root.m_ranges.size());
+                    D3D12_DESCRIPTOR_RANGE* ranges = (D3D12_DESCRIPTOR_RANGE*)memalloc(sizeof(D3D12_DESCRIPTOR_RANGE) * root.m_ranges.size());
+                    alloc_ranges.push_back(ranges);
                     param.DescriptorTable.pDescriptorRanges = ranges;
                     for (usize j = 0; j < root.m_ranges.size(); ++j)
                     {
@@ -72,6 +72,10 @@ namespace Luna
             ComPtr<ID3DBlob> b;
             ComPtr<ID3DBlob> err;
             HRESULT hr = D3D12SerializeRootSignature(&d, D3D_ROOT_SIGNATURE_VERSION_1_0, b.GetAddressOf(), err.GetAddressOf());
+            for(auto i : alloc_ranges)
+            {
+                memfree(i);
+            }
             if (FAILED(hr))
             {
                 return set_error(encode_hresult(hr).errcode(), "Failed to create D3D12 root signature: %s", err->GetBufferPointer());

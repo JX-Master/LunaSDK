@@ -9,7 +9,7 @@
 */
 #pragma once
 #include "../Fiber.hpp"
-#include "OS.hpp"
+#include "Platform/Fiber.hpp"
 namespace Luna
 {
     struct Fiber : IFiber
@@ -17,7 +17,7 @@ namespace Luna
         lustruct("Fiber", "{c07ce059-34ec-4df8-9699-02c3110be31b}");
         luiimpl();
 
-        OS::FiberContext m_context;
+        Platform::Fiber m_fiber;
         bool m_should_delete = false;
 
         ~Fiber();

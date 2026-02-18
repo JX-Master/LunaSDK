@@ -20,7 +20,6 @@
 #include "../Math/Quaternion.hpp"
 #include "../Math/Color.hpp"
 #include "../Any.hpp"
-#include <Luna/Runtime/StackAllocator.hpp>
 
 namespace Luna
 {
@@ -426,13 +425,11 @@ namespace Luna
     inline usize robinhood_insert(usize h, typeinfo_t value_type, usize value_size, usize value_alignment, void* src_buf, void* value_buf, RobinHoodHashing::ControlBlock* cb_buf, usize buffer_size)
     {
         luassert(h != RobinHoodHashing::EMPTY_SLOT && !RobinHoodHashing::is_tombstone(h));
-        StackAllocator salloc;
         // Extract current data.
         usize pos = h % buffer_size;
         usize dist = 0;
         usize ret_pos = USIZE_MAX;
-        void* temp_v = salloc.allocate(value_size + value_alignment);
-        temp_v = (void*)align_upper((usize)temp_v, value_alignment);
+        void* temp_v = nullptr;
         while (true)
         {
             if (cb_buf[pos].m_hash == RobinHoodHashing::EMPTY_SLOT)
@@ -458,6 +455,7 @@ namespace Luna
                 cb_buf[pos].m_hash = h;
                 h = temp_h;
                 void* dst = (void*)((usize)value_buf + pos * value_size);
+                if(!temp_v) temp_v = memalloc(value_size, value_alignment);
                 relocate_type(value_type, temp_v, dst);
                 relocate_type(value_type, dst, src_buf);
                 relocate_type(value_type, src_buf, temp_v);
@@ -469,6 +467,7 @@ namespace Luna
             if (pos == buffer_size)
                 pos = 0;
         }
+        if(temp_v) memfree(temp_v, value_alignment);
         return ret_pos;
     }
     struct HashTableData
@@ -681,30 +680,31 @@ namespace Luna
     }
     static RV hashmap_deserialize(typeinfo_t type, void* inst, const Variant& data)
     {
-        StackAllocator salloc;
-        lutry
+        HashTableData* d = (HashTableData*)inst;
+        Span<const GenericArgument> generic_arguments = get_struct_generic_arguments(type);
+        typeinfo_t key_type = generic_arguments[0].type;
+        typeinfo_t value_type = make_hashmap_value_type(key_type, generic_arguments[1].type);
+        d->clear_and_free_table(value_type);
+        usize value_size = get_type_size(value_type);
+        usize value_alignment = get_type_alignment(value_type);
+        void* value_buffer = memalloc(value_size, value_alignment);
+        for (auto& v : data.values())
         {
-            HashTableData* d = (HashTableData*)inst;
-            Span<const GenericArgument> generic_arguments = get_struct_generic_arguments(type);
-            typeinfo_t key_type = generic_arguments[0].type;
-            typeinfo_t value_type = make_hashmap_value_type(key_type, generic_arguments[1].type);
-            d->clear_and_free_table(value_type);
-            usize value_size = get_type_size(value_type);
-            usize value_alignment = get_type_alignment(value_type);
-            void* value_buffer = salloc.allocate(value_size + value_alignment);
-            value_buffer = (void*)align_upper((usize)value_buffer, value_alignment);
-            for (auto& v : data.values())
+            construct_type(value_type, value_buffer);
+            auto r = deserialize(value_type, value_buffer, v);
+            if(failed(r))
             {
-                construct_type(value_type, value_buffer);
-                luexp(deserialize(value_type, value_buffer, v));
-                // Extract key type.
-                usize h = alter_hash(hash_type(key_type, value_buffer));
-                d->increment_reserve(value_type, d->m_size + 1);
-                robinhood_insert(h, value_type, value_size, value_alignment, value_buffer, d->m_value_buffer, d->m_cb_buffer, d->m_buffer_size);
-                ++d->m_size;
+                destruct_type(value_type, value_buffer);
+                memfree(value_buffer);
+                return r;
             }
+            // Extract key type.
+            usize h = alter_hash(hash_type(key_type, value_buffer));
+            d->increment_reserve(value_type, d->m_size + 1);
+            robinhood_insert(h, value_type, value_size, value_alignment, value_buffer, d->m_value_buffer, d->m_cb_buffer, d->m_buffer_size);
+            ++d->m_size;
         }
-        lucatchret;
+        memfree(value_buffer);
         return ok;
     }
     static R<Variant> hashset_serialize(typeinfo_t type, const void* inst)
@@ -715,28 +715,30 @@ namespace Luna
     }
     static RV hashset_deserialize(typeinfo_t type, void* inst, const Variant& data)
     {
-        StackAllocator salloc;
-        lutry
+        HashTableData* d = (HashTableData*)inst;
+        typeinfo_t value_type = get_struct_generic_arguments(type)[0].type;
+        d->clear_and_free_table(value_type);
+        usize value_size = get_type_size(value_type);
+        usize value_alignment = get_type_alignment(value_type);
+        void* value_buffer = memalloc(value_size, value_alignment);
+        value_buffer = (void*)align_upper((usize)value_buffer, value_alignment);
+        for (auto& v : data.values())
         {
-            HashTableData* d = (HashTableData*)inst;
-            typeinfo_t value_type = get_struct_generic_arguments(type)[0].type;
-            d->clear_and_free_table(value_type);
-            usize value_size = get_type_size(value_type);
-            usize value_alignment = get_type_alignment(value_type);
-            void* value_buffer = salloc.allocate(value_size + value_alignment);
-            value_buffer = (void*)align_upper((usize)value_buffer, value_alignment);
-            for (auto& v : data.values())
+            construct_type(value_type, value_buffer);
+            auto r = deserialize(value_type, value_buffer, v);
+            if(failed(r))
             {
-                construct_type(value_type, value_buffer);
-                luexp(deserialize(value_type, value_buffer, v));
-                // Extract key type.
-                usize h = alter_hash(hash_type(value_type, value_buffer));
-                d->increment_reserve(value_type, d->m_size + 1);
-                robinhood_insert(h, value_type, value_size, value_alignment, value_buffer, d->m_value_buffer, d->m_cb_buffer, d->m_buffer_size);
-                ++d->m_size;
+                destruct_type(value_type, value_buffer);
+                memfree(value_buffer);
+                return r;
             }
+            // Extract key type.
+            usize h = alter_hash(hash_type(value_type, value_buffer));
+            d->increment_reserve(value_type, d->m_size + 1);
+            robinhood_insert(h, value_type, value_size, value_alignment, value_buffer, d->m_value_buffer, d->m_cb_buffer, d->m_buffer_size);
+            ++d->m_size;
         }
-        lucatchret;
+        memfree(value_buffer);
         return ok;
     }
     static GenericStructureInstantiateInfo hashmap_instantiate(typeinfo_t base_type, Span<const GenericArgument> generic_arguments)

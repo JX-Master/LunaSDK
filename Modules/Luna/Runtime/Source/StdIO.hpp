@@ -8,7 +8,8 @@
 * @date 2023/2/28
 */
 #include "../StdIO.hpp"
-#include "OS.hpp"
+#include "Platform/StdIO.hpp"
+#include "Error.hpp"
 namespace Luna
 {
     struct StdIOStream : IStream
@@ -18,12 +19,12 @@ namespace Luna
         
         virtual RV read(void* buffer, usize size, usize* read_bytes) override
         {
-            return OS::std_input((c8*)buffer, size / sizeof(c8), read_bytes);
+            return encode_platform_result(Platform::std_input((c8*)buffer, size / sizeof(c8), read_bytes));
         }
 
         virtual RV write(const void* buffer, usize size, usize* write_bytes) override
         {
-            return OS::std_output((const c8*)buffer, size / sizeof(c8), write_bytes);
+            return encode_platform_result(Platform::std_output((const c8*)buffer, size / sizeof(c8), write_bytes));
         }
     };
 

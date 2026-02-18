@@ -8,14 +8,14 @@
 * @date 2023/11/26
 */
 #include "../../../Platform/Windows/MiniWin.hpp"
-#include "../../OS.hpp"
+#include "../DLL.hpp"
 #include "ErrCode.hpp"
 
 namespace Luna
 {
-    namespace OS
+    namespace Platform
     {
-        R<opaque_t> load_library(const c8* path)
+        Result load_library(const c8* path, opaque_t& out_handle)
         {
             HMODULE h = LoadLibraryA(path);
             if(!h)
@@ -23,13 +23,14 @@ namespace Luna
                 DWORD err = GetLastError();
                 return translate_last_error(err);
             }
-            return (opaque_t)h;
+            out_handle = h;
+            return Result::success;
         }
         void free_library(opaque_t handle)
         {
             FreeLibrary((HMODULE)handle);
         }
-        R<void*> get_library_function(opaque_t handle, const c8* symbol)
+        Result get_library_function(opaque_t handle, const c8* symbol, void*& out_addr)
         {
             FARPROC proc = GetProcAddress((HMODULE)handle, symbol);
             if(!proc)
@@ -37,7 +38,8 @@ namespace Luna
                 DWORD err = GetLastError();
                 return translate_last_error(err);
             }
-            return (void*)proc;
+            out_addr = (void*)proc;
+            return Result::success;
         }
     }
 }

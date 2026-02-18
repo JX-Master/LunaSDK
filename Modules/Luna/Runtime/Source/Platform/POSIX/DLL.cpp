@@ -7,13 +7,13 @@
 * @author JXMaster
 * @date 2023/11/26
 */
-#include "../../OS.hpp"
+#include "../DLL.hpp"
 #include <dlfcn.h>
 #include "../../../Error.hpp"
 
 namespace Luna
 {
-    namespace OS
+    namespace Platform
     {
         R<opaque_t> load_library(const c8* path)
         {

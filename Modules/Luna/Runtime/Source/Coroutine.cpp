@@ -10,18 +10,21 @@
 #include "../PlatformDefines.hpp"
 #define LUNA_RUNTIME_API LUNA_EXPORT
 #include "Coroutine.hpp"
+#include "Platform/Thread.hpp"
 
 namespace Luna
 {
     opaque_t g_current_coroutine_tls;
 
-    void coroutine_init()
+    bool coroutine_init()
     {
-        g_current_coroutine_tls = tls_alloc();
+        auto r = Platform::tls_alloc(nullptr, g_current_coroutine_tls);
+        if(r != Platform::Result::success) return false;
+        return true;
     }
     void coroutine_close()
     {
-        tls_free(g_current_coroutine_tls);
+        Platform::tls_free(g_current_coroutine_tls);
     }
     static void coroutine_entry(void* params)
     {
@@ -34,7 +37,7 @@ namespace Luna
     }
     LUNA_RUNTIME_API ICoroutine* get_current_coroutine()
     {
-        Coroutine* coro = (Coroutine*)tls_get(g_current_coroutine_tls);
+        Coroutine* coro = (Coroutine*)Platform::tls_get(g_current_coroutine_tls);
         return coro;
     }
     LUNA_RUNTIME_API R<Ref<ICoroutine>> new_coroutine(usize stack_size, void(*entry_func)(void* param), void* param)
@@ -55,16 +58,16 @@ namespace Luna
     LUNA_RUNTIME_API void resume_coroutine(ICoroutine* coroutine)
     {
         Coroutine* coro = cast_object<Coroutine>(coroutine->get_object());
-        Coroutine* parent_coroutine = (Coroutine*)tls_get(g_current_coroutine_tls);
+        Coroutine* parent_coroutine = (Coroutine*)Platform::tls_get(g_current_coroutine_tls);
         coro->m_parent = parent_coroutine ? parent_coroutine->get_fiber() : get_current_thread()->get_fiber();
         luassert_msg_always(coro->m_parent, "resume_coroutine must be called in a fiber context");
-        tls_set(g_current_coroutine_tls, coro);
+        Platform::tls_set(g_current_coroutine_tls, coro);
         switch_to_fiber(coro->m_fiber);
-        tls_set(g_current_coroutine_tls, parent_coroutine);
+        Platform::tls_set(g_current_coroutine_tls, parent_coroutine);
     }
     LUNA_RUNTIME_API void yield_coroutine()
     {
-        Coroutine* coro = (Coroutine*)tls_get(g_current_coroutine_tls);
+        Coroutine* coro = (Coroutine*)Platform::tls_get(g_current_coroutine_tls);
         if(!coro) [[unlikely]]
         {
             lupanic_msg_always("yield_coroutine is called from a non-coroutine context");

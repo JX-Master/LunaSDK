@@ -7,7 +7,7 @@
 * @author JXMaster
 * @date 2020/9/22
  */
-#include "../../OS.hpp"
+#include "../Memory.hpp"
 #include <sys/mman.h>
 #include "Errno.hpp"
 #include "../../../Error.hpp"
@@ -23,7 +23,7 @@
 
 namespace Luna
 {
-    namespace OS
+    namespace Platform
     {
         void* memalloc(usize size, usize alignment /* = 0 */)
         {

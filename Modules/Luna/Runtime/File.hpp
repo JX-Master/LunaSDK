@@ -197,19 +197,22 @@ namespace Luna
     LUNA_RUNTIME_API RV    create_dir(const c8* path);
     //! Gets the current working directory path for the underlying system.
     //! @details The default current working directory is set to the path that contains the executable file.
-    //! @param[in] buffer_length The length of the buffer for the current directory string, including the null terminator.
-    //! @param[in] buffer A pointer to the buffer that receives the current directory string. To gets the required buffer size, specify
-    //! @ref buffer to `nullptr` and @ref buffer_length to 0.
-    //! @return Returns the number of characters copied into the buffer, including the null terminator. The copied string is always null-terminated.
-    //! If @ref buffer_length is `0` and @ref buffer is `nullptr`, returns the required buffer size to fetch the current directory, including the null terminator. 
-    LUNA_RUNTIME_API u32 get_current_dir(u32 buffer_length, c8* buffer);
+    //! @param[out] buffer A pointer to the buffer that receives the current directory string. To gets the required buffer size, specify
+    //! `buffer` to `nullptr` and `buffer_size` to 0.
+    //! @param[in] buffer_size The length of the buffer for the current directory string, including the null terminator.
+    //! @return The number of `c8` characters copied into the buffer, including the null terminator. If `buffer_size` is 0 and
+    //! `buffer` is `nullptr`, returns the required buffer size to fetch the current directory, including the null terminator. 
+    LUNA_RUNTIME_API usize get_current_dir(c8* buffer, usize buffer_size);
     //! Sets the current working directory path for the underlying system. The current directory will be set for the process scope.
     //! @param[in] path The current working directory path to set.
     LUNA_RUNTIME_API RV set_current_dir(const c8* path);
     //! Gets the full (absolute) path of the application's executable file.
-    //! @return Returns the full (absolute) path of the application's executable file. 
-    //! The returned pointer is valid until LunaSDK is closed.
-    LUNA_RUNTIME_API const c8* get_process_path();
+    //! @param[out] buffer A pointer to the buffer that receives the path string. To gets the required buffer size, specify
+    //! `buffer` to `nullptr` and `buffer_size` to 0.
+    //! @param[in] buffer_size The length of the buffer for the path string, including the null terminator.
+    //! @return The number of `c8` characters copied into the buffer, including the null terminator. If `buffer_size` is 0 and
+    //! `buffer` is `nullptr`, returns the required buffer size to fetch the path, including the null terminator. 
+    LUNA_RUNTIME_API usize get_process_path(c8* buffer, usize buffer_size);
 
     //! @}
 }

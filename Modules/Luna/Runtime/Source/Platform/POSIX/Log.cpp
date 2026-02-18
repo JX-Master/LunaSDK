@@ -7,7 +7,7 @@
 * @author JXMaster
 * @date 2023/9/7
 */
-#include "../../OS.hpp"
+#include "../Log.hpp"
 #include <unistd.h>
 #if defined(LUNA_PLATFORM_ANDROID)
 #include <android/log.h>
@@ -15,7 +15,7 @@
 
 namespace Luna
 {
-    namespace OS
+    namespace Platform
     {
         inline const char* print_verbosity(LogVerbosity verbosity, usize& len)
         {

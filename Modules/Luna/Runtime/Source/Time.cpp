@@ -9,39 +9,39 @@
 */
 #include "../PlatformDefines.hpp"
 #define LUNA_RUNTIME_API LUNA_EXPORT
-#include "OS.hpp"
+#include "Platform/Time.hpp"
 namespace Luna
 {
     LUNA_RUNTIME_API u64 get_ticks()
     {
-        return OS::get_ticks();
+        return Platform::get_ticks();
     }
     LUNA_RUNTIME_API f64 get_ticks_per_second()
     {
-        return OS::get_ticks_per_second();
+        return Platform::get_ticks_per_second();
     }
     LUNA_RUNTIME_API i64 get_utc_timestamp()
     {
-        return OS::get_utc_timestamp();
+        return Platform::get_utc_timestamp();
     }
     LUNA_RUNTIME_API i64 get_local_timestamp()
     {
-        return OS::get_local_timestamp();
+        return Platform::get_local_timestamp();
     }
     LUNA_RUNTIME_API i64 local_timestamp_to_utc_timestamp(i64 local_ts)
     {
-        return OS::local_timestamp_to_utc_timestamp(local_ts);
+        return Platform::local_timestamp_to_utc_timestamp(local_ts);
     }
     LUNA_RUNTIME_API i64 utc_timestamp_to_local_timestamp(i64 utc_ts)
     {
-        return OS::utc_timestamp_to_local_timestamp(utc_ts);
+        return Platform::utc_timestamp_to_local_timestamp(utc_ts);
     }
     LUNA_RUNTIME_API DateTime timestamp_to_datetime(i64 timestamp)
     {
-        return OS::timestamp_to_datetime(timestamp);
+        return Platform::timestamp_to_datetime(timestamp);
     }
     LUNA_RUNTIME_API i64 datetime_to_timestamp(const DateTime& datetime)
     {
-        return OS::datetime_to_timestamp(datetime);
+        return Platform::datetime_to_timestamp(datetime);
     }
 }

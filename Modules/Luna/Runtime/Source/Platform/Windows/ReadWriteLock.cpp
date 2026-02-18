@@ -7,46 +7,43 @@
 * @author JXMaster
 * @date 2022/8/29
 */
-#include "../../OS.hpp"
-#include "../../../Platform/Windows/MiniWin.hpp"
+#include "../ReadWriteLock.hpp"
 
 namespace Luna
 {
-    namespace OS
+    namespace Platform
     {
-        opaque_t new_read_write_lock()
+        void new_read_write_lock(ReadWriteLock& out_lock)
         {
-            SRWLOCK* srw = (SRWLOCK*)Luna::memalloc(sizeof(SRWLOCK), alignof(SRWLOCK));
-            InitializeSRWLock(srw);
-            return srw;
+            InitializeSRWLock(&out_lock.m_lock);
         }
-        void delete_read_write_lock(opaque_t lock)
+        void delete_read_write_lock(ReadWriteLock& lock)
         {
-            Luna::memfree(lock, alignof(SRWLOCK));
+            
         }
-        void acquire_read_lock(opaque_t lock)
+        void acquire_read_lock(ReadWriteLock& lock)
         {
-            AcquireSRWLockShared((SRWLOCK*)lock);
+            AcquireSRWLockShared(&lock.m_lock);
         }
-        void acquire_write_lock(opaque_t lock)
+        void acquire_write_lock(ReadWriteLock& lock)
         {
-            AcquireSRWLockExclusive((SRWLOCK*)lock);
+            AcquireSRWLockExclusive(&lock.m_lock);
         }
-        bool try_acquire_read_lock(opaque_t lock)
+        bool try_acquire_read_lock(ReadWriteLock& lock)
         {
-            return TryAcquireSRWLockShared((SRWLOCK*)lock);
+            return TryAcquireSRWLockShared(&lock.m_lock);
         }
-        bool try_acquire_write_lock(opaque_t lock)
+        bool try_acquire_write_lock(ReadWriteLock& lock)
         {
-            return TryAcquireSRWLockExclusive((SRWLOCK*)lock);
+            return TryAcquireSRWLockExclusive(&lock.m_lock);
         }
-        void release_read_lock(opaque_t lock)
+        void release_read_lock(ReadWriteLock& lock)
         {
-            ReleaseSRWLockShared((SRWLOCK*)lock);
+            ReleaseSRWLockShared(&lock.m_lock);
         }
-        void release_write_lock(opaque_t lock)
+        void release_write_lock(ReadWriteLock& lock)
         {
-            ReleaseSRWLockExclusive((SRWLOCK*)lock);
+            ReleaseSRWLockExclusive(&lock.m_lock);
         }
     }
 }

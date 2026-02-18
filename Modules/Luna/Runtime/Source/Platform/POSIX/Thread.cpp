@@ -7,7 +7,7 @@
 * @author JXMaster
 * @date 2020/9/28
 */
-#include "../../OS.hpp"
+#include "../Thread.hpp"
 #include "../../../Base.hpp"
 #include "../../../Assert.hpp"
 
@@ -21,7 +21,7 @@
 
 namespace Luna
 {
-    namespace OS
+    namespace Platform
     {
         struct Thread
         {
@@ -227,6 +227,25 @@ namespace Luna
             pthread_key_t key = (pthread_key_t)(usize)handle;
             void* k = pthread_getspecific(key);
             return k;
+        }
+        u32 get_num_processors()
+        {
+#ifdef LUNA_PLATFORM_MACOS
+            size_t size;
+            int name[2];
+            size = 4;
+            name[0] = CTL_HW;
+            name[1] = HW_NCPU;
+            int processor_count;
+            if (sysctl(name, 2, &processor_count, &size, nullptr, 0) != 0)
+            {
+                processor_count = 1;
+            }
+            return (u32)processor_count;
+#else
+            int processor_count = max<int>(sysconf(_SC_NPROCESSORS_ONLN), 1);
+            return (u32)processor_count;
+#endif
         }
     }
 }

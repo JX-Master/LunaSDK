@@ -124,11 +124,9 @@ namespace Luna
             info.cbSize = sizeof(MONITORINFOEXW);
             BOOL r = ::GetMonitorInfoW((HMONITOR)display, &info);
             if(!r) return BasicError::bad_platform_call();
-            usize len = utf16_to_utf8_len((c16*)info.szDevice);
-            StackAllocator alloc;
-            c8* buf = (c8*)alloc.allocate(len + 1);
-            utf16_to_utf8(buf, len + 1, (c16*)info.szDevice, CCHDEVICENAME);
-            return Name(buf);
+
+            auto buf = utf16_to_utf8_arr((c16*)info.szDevice, CCHDEVICENAME);
+            return Name(buf.data());
         }
     }
 }

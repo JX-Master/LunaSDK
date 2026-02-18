@@ -34,7 +34,11 @@ namespace Luna
         {
             register_boxed_type<JobScheduler>();
             impl_interface_for_type<JobScheduler, IJobScheduler>();
-            g_worker_thread_tls = tls_alloc(worker_thread_tls_dtor);
+            lutry
+            {
+                luset(g_worker_thread_tls, tls_alloc(worker_thread_tls_dtor));
+            }
+            lucatchret;
             return ok;
         }
         void job_system_close()

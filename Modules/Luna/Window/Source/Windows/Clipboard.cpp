@@ -41,12 +41,7 @@ namespace Luna
                 return set_error(BasicError::bad_platform_call(), "GlobalLock failed: %d", error);
             }
             
-            // Convert UTF-16 to UTF-8
-            usize utf8_size = utf16_to_utf8_len((const char16_t*)pszText);
-            StackAllocator alloc;
-            c8* buf = (c8*)alloc.allocate(utf8_size + 1);
-            utf16_to_utf8(buf, utf8_size + 1, (const char16_t*)pszText);
-            out_text.append(buf);
+            utf16_to_utf8_str(out_text, (const c16*)pszText);
             GlobalUnlock(hData);
             CloseClipboard();
             

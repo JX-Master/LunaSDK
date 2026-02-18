@@ -12,7 +12,7 @@
 
 namespace Luna
 {
-    namespace OS
+    namespace Platform
     {
         inline const c8* display_errno(int err)
         {

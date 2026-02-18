@@ -7,105 +7,90 @@
 * @author JXMaster
 * @date 2022/3/10
 */
-#include "../../OS.hpp"
-#include "../../../Platform/Windows/MiniWin.hpp"
+#include "../Signal.hpp"
+#include "../../../Assert.hpp"
 
 namespace Luna
 {
-    namespace OS
+    namespace Platform
     {
-        struct Signal
+        void new_signal(bool manual_reset, Signal& out_signal)
         {
-            CRITICAL_SECTION m_cs;
-            CONDITION_VARIABLE m_cv;
-            volatile bool m_signaled;
-            volatile bool m_manual_reset;
-        };
-        opaque_t new_signal(bool manual_reset)
-        {
-            Signal* ret = Luna::memnew<Signal>();
-            ::InitializeCriticalSection(&(ret->m_cs));
-            ::InitializeConditionVariable(&(ret->m_cv));
-            ret->m_signaled = false;
-            ret->m_manual_reset = manual_reset;
-            return ret;
+            ::InitializeCriticalSection(&(out_signal.m_cs));
+            ::InitializeConditionVariable(&(out_signal.m_cv));
+            out_signal.m_signaled = false;
+            out_signal.m_manual_reset = manual_reset;
         }
-        void delete_signal(opaque_t signal)
+        void delete_signal(Signal& signal)
         {
-            Signal* sig = (Signal*)signal;
-            ::DeleteCriticalSection(&(sig->m_cs));
-            Luna::memdelete(sig);
+            ::DeleteCriticalSection(&(signal.m_cs));
         }
-        void wait_signal(opaque_t signal)
+        void wait_signal(Signal& signal)
         {
-            Signal* sig = (Signal*)signal;
-            ::EnterCriticalSection(&(sig->m_cs));
+            ::EnterCriticalSection(&(signal.m_cs));
             // If the signal is not signaled, waits until it gets signaled.
-            while (!sig->m_signaled)
+            while (!signal.m_signaled)
             {
-                if (!::SleepConditionVariableCS(&(sig->m_cv), &(sig->m_cs), INFINITE))
+                if (!::SleepConditionVariableCS(&(signal.m_cv), &(signal.m_cs), INFINITE))
                 {
                     // Failed to wait. This should never happen if the wait time is INFINITE.
-                    ::LeaveCriticalSection(&(sig->m_cs));
+                    ::LeaveCriticalSection(&(signal.m_cs));
                     lupanic_always();
                 }
             }
             // If not manual reset, consumes the signal so that other waiting threads
             // can not go here.
-            if (!sig->m_manual_reset)
+            if (!signal.m_manual_reset)
             {
-                sig->m_signaled = false;
+                signal.m_signaled = false;
             }
-            ::LeaveCriticalSection(&(sig->m_cs));
+            ::LeaveCriticalSection(&(signal.m_cs));
         }
-        bool try_wait_signal(opaque_t signal)
+        bool try_wait_signal(Signal& signal)
         {
-            Signal* sig = (Signal*)signal;
-            if (!::TryEnterCriticalSection(&(sig->m_cs)))
+            if (!::TryEnterCriticalSection(&(signal.m_cs)))
             {
                 return false;
             }
-            if (!sig->m_signaled)
+            if (!signal.m_signaled)
             {
-                if (!::SleepConditionVariableCS(&(sig->m_cv), &(sig->m_cs), 0))
+                if (!::SleepConditionVariableCS(&(signal.m_cv), &(signal.m_cs), 0))
                 {
                     // Failed to wait.
-                    ::LeaveCriticalSection(&(sig->m_cs));
+                    ::LeaveCriticalSection(&(signal.m_cs));
                     return false;
                 }
             }
             // If not manual reset, consumes the signal so that other waiting threads
             // can not go here.
-            if (!sig->m_manual_reset)
+            if (!signal.m_manual_reset)
             {
-                sig->m_signaled = false;
+                signal.m_signaled = false;
             }
-            ::LeaveCriticalSection(&(sig->m_cs));
+            ::LeaveCriticalSection(&(signal.m_cs));
             return true;
         }
-        void trigger_signal(opaque_t signal)
+        void trigger_signal(Signal& signal)
         {
-            Signal* sig = (Signal*)signal;
-            ::EnterCriticalSection(&(sig->m_cs));
-            sig->m_signaled = true;
-            if (sig->m_manual_reset)
+            ::EnterCriticalSection(&(signal.m_cs));
+            signal.m_signaled = true;
+            if (signal.m_manual_reset)
             {
                 // Wake all threads.
-                ::WakeAllConditionVariable(&(sig->m_cv));
+                ::WakeAllConditionVariable(&(signal.m_cv));
             }
             else
             {
                 // Wake exactly one thread.
-                ::WakeConditionVariable(&(sig->m_cv));
+                ::WakeConditionVariable(&(signal.m_cv));
             }
-            ::LeaveCriticalSection(&(sig->m_cs));
+            ::LeaveCriticalSection(&(signal.m_cs));
         }
-        void reset_signal(opaque_t signal)
+        void reset_signal(Signal& signal)
         {
-            Signal* sig = (Signal*)signal;
-            ::EnterCriticalSection(&(sig->m_cs));
-            sig->m_signaled = false;
-            ::LeaveCriticalSection(&(sig->m_cs));
+            ::EnterCriticalSection(&(signal.m_cs));
+            signal.m_signaled = false;
+            ::LeaveCriticalSection(&(signal.m_cs));
         }
     }
 }

@@ -7,44 +7,43 @@
 * @author JXMaster
 * @date 2022/3/10
 */
-#include "../../OS.hpp"
-#include "../../../Platform/Windows/MiniWin.hpp"
+#include "../Semaphore.hpp"
+#include "../../../Assert.hpp"
 
 namespace Luna
 {
-    namespace OS
+    namespace Platform
     {
-        opaque_t new_semaphore(i32 initial_count, i32 max_count)
+        void new_semaphore(i32 initial_count, i32 max_count, Semaphore& out_sema)
         {
-            HANDLE ret = ::CreateSemaphoreW(NULL, initial_count, max_count, NULL);
-            if (!ret)
+            out_sema.m_handle = ::CreateSemaphoreW(NULL, initial_count, max_count, NULL);
+            if (!out_sema.m_handle)
             {
                 lupanic_msg_always("CreateSemaphoreW failed.");
             }
-            return ret;
         }
-        void delete_semaphore(opaque_t sema)
+        void delete_semaphore(Semaphore& sema)
         {
-            ::CloseHandle(sema);
+            ::CloseHandle(sema.m_handle);
         }
-        void acquire_semaphore(opaque_t signal)
+        void acquire_semaphore(Semaphore& sema)
         {
-            if (::WaitForSingleObject(signal, INFINITE) != WAIT_OBJECT_0)
+            if (::WaitForSingleObject(sema.m_handle, INFINITE) != WAIT_OBJECT_0)
             {
                 lupanic_always();
             }
         }
-        bool try_acquire_semaphore(opaque_t signal)
+        bool try_acquire_semaphore(Semaphore& sema)
         {
-            if (::WaitForSingleObject(signal, 0) == WAIT_OBJECT_0)
+            if (::WaitForSingleObject(sema.m_handle, 0) == WAIT_OBJECT_0)
             {
                 return true;
             }
             return false;
         }
-        void release_semaphore(opaque_t signal)
+        void release_semaphore(Semaphore& sema)
         {
-            ::ReleaseSemaphore(signal, 1, NULL);
+            ::ReleaseSemaphore(sema.m_handle, 1, NULL);
         }
     }
 }

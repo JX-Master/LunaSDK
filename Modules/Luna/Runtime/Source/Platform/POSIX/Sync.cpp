@@ -7,7 +7,10 @@
 * @author JXMaster
 * @date 2020/9/22
  */
-#include "../../OS.hpp"
+#include "../Signal.hpp"
+#include "../Mutex.hpp"
+#include "../Semaphore.hpp"
+#include "../ReadWriteLock.hpp"
 #include <pthread.h>
 #include <sys/time.h>
 #include <unistd.h>
@@ -16,7 +19,7 @@
 
 namespace Luna
 {
-    namespace OS
+    namespace Platform
     {
         struct Signal
         {

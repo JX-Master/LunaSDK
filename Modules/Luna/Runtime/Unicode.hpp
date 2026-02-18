@@ -8,7 +8,8 @@
 * @date 2018/10/26
  */
 #pragma once
-#include "Base.hpp"
+#include "Array.hpp"
+#include "String.hpp"
 
 #ifndef LUNA_RUNTIME_API
 #define LUNA_RUNTIME_API
@@ -258,16 +259,31 @@ namespace Luna
     //! @param[in] dst The buffer to hold the output string.
     //! @param[in] dst_max_chars The maximum characters the `dst` buffer can hold, including the null-terminator.
     //! @param[in] src The buffer holding the source string.
-    //! @param[in] src_chars The maximum characters to read. Specify `USIZE_MAX` to read till the end of the 
+    //! @param[in] src_chars The maximum characters to read. Specify @ref USIZE_MAX to read till the end of the 
     //! string. The conversion process will stop on first null terminator, or when `src_chars` is reached.
     //! @return Returns the number of characters outputted to the `dst` buffer, not including the null-terminator.
     //! @par Valid Usage
     //! * `src` must be a valid UTF-16 string.
     LUNA_RUNTIME_API usize utf16_to_utf8(c8* dst, usize dst_max_chars, const c16* src, usize src_chars = USIZE_MAX);
 
+    //! Sames as @ref utf16_to_utf8, but writes to the destination string.
+    //! @param[in] dst The output string.
+    //! @param[in] src The buffer holding the source string.
+    //! @param[in] src_chars The maximum characters to read. Specify @ref USIZE_MAX to read till the end of the 
+    //! string. The conversion process will stop on first null terminator, or when `src_chars` is reached.
+    //! @return Returns the number of characters outputted to the `dst` buffer, not including the null-terminator.
+    LUNA_RUNTIME_API usize utf16_to_utf8_str(String& dst, const c16* src, usize src_chars = USIZE_MAX);
+
+    //! Sames as @ref utf16_to_utf8, but writes to the destination array.
+    //! @param[in] src The buffer holding the source string.
+    //! @param[in] src_chars The maximum characters to read. Specify @ref USIZE_MAX to read till the end of the 
+    //! string. The conversion process will stop on first null terminator, or when `src_chars` is reached.
+    //! @return Returns the array that contains the converted string.
+    LUNA_RUNTIME_API Array<c8> utf16_to_utf8_arr(const c16* src, usize src_chars = USIZE_MAX);
+
     //! Determines the length of the corresponding UTF-8 string for a UTF-16 string, not include the null-terminator.
     //! @param[in] src The UTF-16 string to check.
-    //! @param[in] src_chars The maximum characters to read. Specify `USIZE_MAX` to read till the end of the 
+    //! @param[in] src_chars The maximum characters to read. Specify @ref USIZE_MAX to read till the end of the 
     //! string. The checking process will stop on first null terminator, or when `src_chars` is reached.
     //! @return Returns the length of the corresponding UTF-8 string for a UTF-16 string, not include the null-terminator.
     LUNA_RUNTIME_API usize utf16_to_utf8_len(const c16* src, usize src_chars = USIZE_MAX);
@@ -275,17 +291,32 @@ namespace Luna
     //! Converts a UTF-8 string to UTF-16 string.
     //! @param[in] dst The buffer to hold the output string.
     //! @param[in] dst_max_chars The maximum characters the `dst` buffer can hold, including the null-terminator.
-    //! @param[in] src The holding the source string.
-    //! @param[in] src_chars The maximum characters to read. Specify `USIZE_MAX` to read till the end of the 
+    //! @param[in] src The buffer holding the source string.
+    //! @param[in] src_chars The maximum characters to read. Specify @ref USIZE_MAX to read till the end of the 
     //! string. The conversion process will stop on first null terminator, or when `src_chars` is reached.
     //! @return Returns the number of characters outputted to the `dst` buffer, not including the null-terminator.
     //! @par Valid Usage
     //! * `src` must be a valid UTF-8 string.
     LUNA_RUNTIME_API usize utf8_to_utf16(c16* dst, usize dst_max_chars, const c8* src, usize src_chars = USIZE_MAX);
 
+    //! Sames as @ref utf8_to_utf16, but writes to the destination string.
+    //! @param[in] dst The output string.
+    //! @param[in] src The buffer holding the source string.
+    //! @param[in] src_chars The maximum characters to read. Specify @ref USIZE_MAX to read till the end of the 
+    //! string. The conversion process will stop on first null terminator, or when `src_chars` is reached.
+    //! @return Returns the number of characters outputted to `dst`, not including the null-terminator.
+    LUNA_RUNTIME_API usize utf8_to_utf16_str(String16& dst, const c8* src, usize src_chars = USIZE_MAX);
+
+    //! Sames as @ref utf8_to_utf16, but writes to the destination array.
+    //! @param[in] src The buffer holding the source string.
+    //! @param[in] src_chars The maximum characters to read. Specify @ref USIZE_MAX to read till the end of the 
+    //! string. The conversion process will stop on first null terminator, or when `src_chars` is reached.
+    //! @return Returns the array that contains the converted string.
+    LUNA_RUNTIME_API Array<c16> utf8_to_utf16_arr(const c8* src, usize src_chars = USIZE_MAX);
+
     //! Determines the length of the corresponding UTF-16 string for a UTF-8 string, not include the null-terminator.
     //! @param[in] src The UTF-8 string to check.
-    //! @param[in] src_chars The maximum characters to read. Specify `USIZE_MAX` to read till the end of the 
+    //! @param[in] src_chars The maximum characters to read. Specify @ref USIZE_MAX to read till the end of the 
     //! string. The checking process will stop on first null terminator, or when `src_chars` is reached.
     //! @return Returns the length of the corresponding UTF-16 string for a UTF-8 string, not include the null-terminator.
     LUNA_RUNTIME_API usize utf8_to_utf16_len(const c8* src, usize src_chars = USIZE_MAX);

@@ -13,7 +13,7 @@
 #include "../Mutex.hpp"
 #include "../File.hpp"
 #include "../Event.hpp"
-#include "OS.hpp"
+#include "Platform/Log.hpp"
 
 namespace Luna
 {    
@@ -45,7 +45,7 @@ namespace Luna
     {
         if (g_platform_log.enabled && (u8)verbosity <= (u8)g_platform_log.verbosity)
         {
-            OS::log(verbosity, tag, tag_length, message, message_length);
+            Platform::log(verbosity, tag, tag_length, message, message_length);
         }
     }
 

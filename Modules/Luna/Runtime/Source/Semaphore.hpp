@@ -10,7 +10,7 @@
 */
 #pragma once
 #include "../Semaphore.hpp"
-#include "OS.hpp"
+#include "Platform/Semaphore.hpp"
 
 namespace Luna
 {
@@ -19,27 +19,27 @@ namespace Luna
         lustruct("Semaphore", "{4d155da3-acdb-4ac6-aecb-70e43a5faedf}");
         luiimpl();
 
-        opaque_t m_handle;
+        Platform::Semaphore m_data;
 
         Semaphore(i32 initial_count, i32 max_count)
         {
-            m_handle = OS::new_semaphore(initial_count, max_count);
+            Platform::new_semaphore(initial_count, max_count, m_data);
         }
         ~Semaphore()
         {
-            OS::delete_semaphore(m_handle);
+            Platform::delete_semaphore(m_data);
         }
         virtual void wait() override
         {
-            OS::acquire_semaphore(m_handle);
+            Platform::acquire_semaphore(m_data);
         }
         virtual bool try_wait() override
         {
-            return OS::try_acquire_semaphore(m_handle);
+            return Platform::try_acquire_semaphore(m_data);
         }
         virtual void release() override
         {
-            OS::release_semaphore(m_handle);
+            Platform::release_semaphore(m_data);
         }
     };
 }

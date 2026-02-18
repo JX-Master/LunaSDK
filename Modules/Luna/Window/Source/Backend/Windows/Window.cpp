@@ -265,12 +265,8 @@ namespace Luna
             lutsassert_main_thread();
             if (is_closed()) return BasicError::bad_calling_time();
             
-            usize title_len = utf8_to_utf16_len(title);
-            StackAllocator alloc;
-            c16* buf = (c16*)alloc.allocate(sizeof(c16) * (title_len + 1));
-            utf8_to_utf16(buf, title_len + 1, title);
-            
-            if (!SetWindowTextW(m_hwnd, (LPCWSTR)buf))
+            auto buf = utf8_to_utf16_arr(title);
+            if (!SetWindowTextW(m_hwnd, (LPCWSTR)buf.data()))
             {
                 return set_error(BasicError::bad_platform_call(), "SetWindowTextW failed");
             }
@@ -384,11 +380,8 @@ namespace Luna
                     width = rect.right - rect.left;
                     height = rect.bottom - rect.top;
                 }
-                usize title_sz = utf8_to_utf16_len(title);
-                StackAllocator alloc;
-                wchar_t* window_namew = (wchar_t*)alloc.allocate(sizeof(wchar_t) * (title_sz + 1));
-                utf8_to_utf16((c16*)window_namew, title_sz + 1, title);
-                HWND hwnd = CreateWindowExW(WS_EX_APPWINDOW, WIN32_CLASS_NAME, window_namew, style, x, y, width, height,
+                auto window_namew = utf8_to_utf16_arr(title);
+                HWND hwnd = CreateWindowExW(WS_EX_APPWINDOW, WIN32_CLASS_NAME, (wchar_t*)window_namew.data(), style, x, y, width, height,
                     nullptr, nullptr, g_startup_params.hInstance, nullptr);
                 if (!hwnd)
                 {
