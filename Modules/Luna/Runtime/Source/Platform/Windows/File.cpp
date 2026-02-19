@@ -743,23 +743,20 @@ namespace Luna
             }
             return Result::success;
         }
-        usize get_current_dir(c8* buffer, usize buffer_size)
+        const c8* get_current_dir()
         {
             DWORD sz = ::GetCurrentDirectoryW(0, NULL);
             wchar_t* path = (wchar_t*)memalloc(sizeof(wchar_t) * sz);
             ::GetCurrentDirectoryW(sz, path);
-            if (buffer && buffer_size)
-            {
-                usize len = utf16_to_utf8(buffer, buffer_size, (char16_t*)path) + 1;
-                memfree(path);
-                return len;
-            }
-            else
-            {
-                usize len = utf16_to_utf8_len((char16_t*)path) + 1;
-                memfree(path);
-                return len;
-            }
+            usize len = utf16_to_utf8_len((char16_t*)path) + 1;
+            c8* ret = (c8*)memalloc(sizeof(c8) * len);
+            utf16_to_utf8(ret, len, (char16_t*)path);
+            memfree(path);
+            return ret;
+        }
+        void release_current_dir(const c8* dir)
+        {
+            memfree((c8*)dir);
         }
         Result set_current_dir(const c8* path)
         {
@@ -773,7 +770,7 @@ namespace Luna
             }
             return Result::success;
         }
-        usize get_process_path(c8* buffer, usize buffer_size)
+        const c8* get_process_path()
         {
             DWORD buf_size = MAX_PATH;
             wchar_t* buf = (wchar_t*)memalloc(sizeof(wchar_t) * buf_size);
@@ -788,20 +785,15 @@ namespace Luna
             {
                 lupanic_msg("GetModuleFileNameW failed");
             }
-            if(buffer && buffer_size)
-            {
-                usize len = utf16_to_utf8(buffer, buffer_size, (char16_t*)buf) + 1;
-                memfree(buf);
-                return len;
-            }
-            else
-            {
-                usize len = utf16_to_utf8_len((char16_t*)buf) + 1;
-                memfree(buf);
-                return len;
-            }
+            usize len = utf16_to_utf8_len((char16_t*)buf) + 1;
+            c8* ret = (c8*)memalloc(sizeof(c8) * len);
+            utf16_to_utf8(ret, len, (char16_t*)buf);
+            memfree(buf);
+            return ret;
+        }
+        void release_process_path(const c8* path)
+        {
+            memfree((c8*)path);
         }
     }
-
-
 }
