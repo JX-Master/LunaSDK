@@ -92,7 +92,8 @@ All SDKs are either embedded in the project, or can be fetched automatically by 
 The following SDKs are not directly used LunaSDK, but part of their design and implementation is referred when developing similar functionalities in LunaSDK:
 
 1. [jsondiffpatch.net](https://github.com/wbish/jsondiffpatch.net) when developing the variant differential library (MIT License).
-2. [DirectXMath](https://github.com/microsoft/DirectXMath) when developing the math library (MIT License).
+1. [DirectXMath](https://github.com/microsoft/DirectXMath) when developing the math library (MIT License).
+1. [Marl](https://github.com/google/marl) when implementing fibers on POSIX system (Apache-2.0 License).
 
 ## Alternatives
 

@@ -14,8 +14,7 @@
 #ifdef LUNA_PLATFORM_WINDOWS
 #include "../../Platform/Windows/MiniWin.hpp"
 #elif defined(LUNA_PLATFORM_POSIX)
-#define _XOPEN_SOURCE
-#include <ucontext.h>
+#include "POSIX/FiberContext.hpp"
 #endif
 
 namespace Luna
@@ -27,7 +26,7 @@ namespace Luna
 #if defined(LUNA_PLATFORM_WINDOWS)
             LPVOID fiber = NULL;
 #elif defined(LUNA_PLATFORM_POSIX)
-            ucontext_t context;
+            FiberContext context;
             void* stack = nullptr;
             usize stack_size = 0;
             void(*entry_func)(void*) = nullptr;
