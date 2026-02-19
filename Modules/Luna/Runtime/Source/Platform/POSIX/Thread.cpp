@@ -10,36 +10,34 @@
 #include "../Thread.hpp"
 #include "../../../Base.hpp"
 #include "../../../Assert.hpp"
+#include "../Time.hpp"
+#include "Errno.hpp"
 
 #include <cstdint>
 #include <unistd.h>
-#include <pthread.h>
 
 #ifdef LUNA_PLATFORM_LINUX
 #include <sys/types.h>
+#endif
+
+#ifdef LUNA_PLATFORM_MACOS
+#include <sys/sysctl.h>
 #endif
 
 namespace Luna
 {
     namespace Platform
     {
-        struct Thread
+        static pthread_t g_main_thread_handle;
+
+        struct ThreadContext
         {
-            pthread_t m_handle;        // Thread handle.
-            int m_sched_policy;
-            sched_param m_sched_param;
-
-            // The following params are used only for non-main thread.
-
+            Thread* m_owner;
             thread_callback_func_t* m_func = nullptr;
             void* m_params = nullptr;
-            opaque_t m_finish_signal = nullptr;
-
-            bool m_detached = false;
-            
             c8* m_name_buf = nullptr;
-            
-            ~Thread()
+
+            ~ThreadContext()
             {
                 if(m_name_buf)
                 {
@@ -48,13 +46,9 @@ namespace Luna
             }
         };
 
-        static thread_local Thread* tls_current_thread;
-        static Thread main_thread_handle;
-
         static void* posix_thread_main(void* cookie)
         {
-            Thread* t = (Thread*)cookie;
-            tls_current_thread = t;
+            ThreadContext* t = (ThreadContext*)cookie;
             if(t->m_name_buf)
             {
 #if defined(LUNA_PLATFORM_MACOS) || defined(LUNA_PLATFORM_IOS)
@@ -64,92 +58,90 @@ namespace Luna
 #else
 #error "Unrecognized Platform"
 #endif
+                memfree(t->m_name_buf);
+                t->m_name_buf = nullptr;
             }
             t->m_func(t->m_params);
-            trigger_signal(t->m_finish_signal);
-            while (!t->m_detached)
-            {
-                yield_current_thread();
-            }
+            trigger_signal(t->m_owner->m_finish_signal);
             memdelete(t);
             return 0;
         }
 
         void thread_init()
         {
-            main_thread_handle.m_handle = pthread_self();
-            int r = pthread_getschedparam(main_thread_handle.m_handle, &main_thread_handle.m_sched_policy, &main_thread_handle.m_sched_param);
-            luassert_msg_always(r == 0, "pthread_getschedparam failed");
-            tls_current_thread = &main_thread_handle;
+            g_main_thread_handle = pthread_self();
         }
 
-        opaque_t new_thread(thread_callback_func_t* callback, void* params, const c8* name, usize stack_size)
+        Result new_thread(thread_callback_func_t* callback, void* params, const c8* name, usize stack_size, Thread& out_thread)
         {
-            Thread* t = memnew<Thread>();
+            ThreadContext* t = memnew<ThreadContext>();
             t->m_func = callback;
             t->m_params = params;
-            t->m_finish_signal = new_signal(true);
-            if (stack_size == 0)
-            {
-                stack_size = 2_mb;
-            }
+            t->m_owner = &out_thread;
             if(name)
             {
                 t->m_name_buf = (c8*)memalloc(sizeof(c8) * (strlen(name) + 1));
                 memcpy(t->m_name_buf, name, sizeof(c8) * (strlen(name) + 1));
+            }
+            new_signal(true, out_thread.m_finish_signal);
+            if (stack_size == 0)
+            {
+                stack_size = 2_mb;
             }
             pthread_attr_t attr;
             pthread_attr_init(&attr);
 
             pthread_attr_setstacksize(&attr, stack_size);
             pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-            pthread_attr_getschedpolicy(&attr, &(t->m_sched_policy));
-            pthread_attr_getschedparam(&attr, &(t->m_sched_param));
+            pthread_attr_getschedpolicy(&attr, &(out_thread.m_sched_policy));
+            pthread_attr_getschedparam(&attr, &(out_thread.m_sched_param));
 
-            int r = pthread_create(&(t->m_handle), &attr, &posix_thread_main, t);
+            int r = pthread_create(&(out_thread.m_handle), &attr, &posix_thread_main, t);
             pthread_attr_destroy(&attr);
             if (r != 0)
             {
                 memdelete(t);
-                lupanic_msg_always("pthread_create failed.");
+                delete_signal(out_thread.m_finish_signal);
+                return encode_errno(r);
             }
-            return t;
+            out_thread.m_valid = true;
+            return Result::success;
         }
-        void set_thread_priority(opaque_t thread, ThreadPriority priority)
+        Result set_thread_priority(Thread& thread, ThreadPriority priority)
         {
-            Thread* t = (Thread*)thread;
-            sched_param param = t->m_sched_param;
+            sched_param param = thread.m_sched_param;
             switch (priority)
             {
             case ThreadPriority::low:
-                param.sched_priority = (param.sched_priority + sched_get_priority_min(t->m_sched_policy)) >> 1;
+                param.sched_priority = (param.sched_priority + sched_get_priority_min(thread.m_sched_policy)) >> 1;
                 break;
             case ThreadPriority::high:
-                param.sched_priority = (param.sched_priority + sched_get_priority_max(t->m_sched_policy)) >> 1;
+                param.sched_priority = (param.sched_priority + sched_get_priority_max(thread.m_sched_policy)) >> 1;
                 break;
             case ThreadPriority::critical:
-                param.sched_priority = sched_get_priority_max(t->m_sched_policy);
+                param.sched_priority = sched_get_priority_max(thread.m_sched_policy);
                 break;
             default: break;
             }
-            int r = pthread_setschedparam(t->m_handle, t->m_sched_policy, &param);
-            luassert_msg_always(r == 0, "pthread_setschedparam failed");
+            int r = pthread_setschedparam(thread.m_handle, thread.m_sched_policy, &param);
+            if(r != 0)
+            {
+                return encode_errno(r);
+            }
+            return Result::success;
         }
-        void wait_thread(opaque_t thread)
+        void wait_thread(Thread& thread)
         {
-            Thread* t = (Thread*)thread;
-            wait_signal(t->m_finish_signal);
+            wait_signal(thread.m_finish_signal);
         }
-        bool try_wait_thread(opaque_t thread)
+        bool try_wait_thread(Thread& thread)
         {
-            Thread* t = (Thread*)thread;
-            return try_wait_signal(t->m_finish_signal);
+            return try_wait_signal(thread.m_finish_signal);
         }
-        void detach_thread(opaque_t thread)
+        void detach_thread(Thread& thread)
         {
-            Thread* t = (Thread*)thread;
-            pthread_detach(t->m_handle);
-            t->m_detached = true;
+            pthread_detach(thread.m_handle);
+            thread.m_valid = false;
         }
         usize get_current_thread_id()
         {
@@ -167,9 +159,12 @@ namespace Luna
 #endif
             return id;
         }
-        opaque_t get_current_thread_handle()
+        void get_main_thread(Thread& out_thread)
         {
-            return tls_current_thread;
+            out_thread.m_handle = g_main_thread_handle;
+            int r = pthread_getschedparam(g_main_thread_handle, &out_thread.m_sched_policy, &out_thread.m_sched_param);
+            luassert_msg_always(r == 0, "pthread_getschedparam failed");
+            out_thread.m_valid = true;
         }
         void sleep(u32 time_milliseconds)
         {
@@ -198,15 +193,16 @@ namespace Luna
         {
             ::sched_yield();
         }
-        opaque_t tls_alloc(void (*destructor)(void*))
+        Result tls_alloc(void (*destructor)(void*), opaque_t& out_handle)
         {
             pthread_key_t key;
             int r = pthread_key_create(&key, destructor);
             if (r)
             {
-                lupanic_msg_always("pthread_key_create failed.");
+                return encode_errno(r);
             }
-            return (opaque_t)(usize)key;
+            out_handle = (opaque_t)(usize)key;
+            return Result::success;
         }
         void tls_free(opaque_t handle)
         {

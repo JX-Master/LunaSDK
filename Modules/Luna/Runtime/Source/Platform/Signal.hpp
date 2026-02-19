@@ -12,7 +12,7 @@
 #if defined(LUNA_PLATFORM_WINDOWS)
 #include "../../Platform/Windows/MiniWin.hpp"
 #elif defined(LUNA_PLATFORM_POSIX)
-
+#include <pthread.h>
 #endif
 
 namespace Luna
@@ -27,7 +27,10 @@ namespace Luna
             bool m_signaled;
             bool m_manual_reset;
 #elif defined(LUNA_PLATFORM_POSIX)
-
+            pthread_cond_t m_cond;
+            pthread_mutex_t m_mutex;
+            bool m_signaled;
+            bool m_manual_reset;
 #endif
         };
         //! Creates one signal object.

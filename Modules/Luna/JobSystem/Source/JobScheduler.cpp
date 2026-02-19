@@ -29,6 +29,8 @@ namespace Luna
                 m_job_system_exiting = false;
                 // Emit worker threads.
                 num_worker_threads = num_worker_threads == 0 ? get_processors_count() : num_worker_threads;
+                m_worker_threads.reserve(num_worker_threads);
+                m_worker_thread_contexts.reserve(num_worker_threads);
                 for (u32 i = 0; i < num_worker_threads; ++i)
                 {
                     lulet(worker, new_thread(worker_thread_entry, this));

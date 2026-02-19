@@ -29,6 +29,16 @@ namespace Luna
         //! @return Returns a pointer to the first available memory address allocated, or `nullptr` if failed to allocate one from this allocator.
         void* memalloc(usize size, usize alignment = 0);
 
+        //! Reallocates memory allocated by `Platform::memalloc` or `Platform::memrealloc`.
+        //! @param[in] ptr The pointer returned by `Platform::memalloc` or `Platform::memrealloc` method. If this is `nullptr`, this function behaves the same as 
+        //! @ref memalloc.
+        //! @param[in] size The number of bytes to allocate. If this is 0, no memory will be allocated and the return value will be `nullptr`.
+        //! @param[in] alignment Optional. The required alignment of the allocated memory block. This applies to both `ptr` and new allocated memory block.
+        //! @return Returns a pointer to the first available memory address allocated, or `nullptr` if failed to allocate one from this allocator.
+        //! @remarks Use `memrealloc` instead of `memalloc` + `memfree` gives the platform a hint that the new memory block will take the same role as the old
+        //! memory block, so the platform can perform potectial optimization for allocating new blocks.
+        void* memrealloc(void* ptr, usize size, usize alignment = 0);
+
         //! Frees memory blocks allocated by `Platform::memalloc` or `Platform::memrealloc`.
         //! @param[in] ptr The pointer returned by `Platform::memalloc` or `Platform::memrealloc` method. If this is `nullptr`, this function does nothing.
         //! @param[in] alignment Optional. The alignment requirement specified when allocating the memory block. Default is 0.

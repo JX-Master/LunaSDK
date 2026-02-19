@@ -24,7 +24,6 @@ namespace Luna
         SpinLock g_allocated_tls_mtx;
         struct ThreadContext
         {
-            HANDLE m_handle;
             thread_callback_func_t* m_func;
             void* m_params;
         };
@@ -83,7 +82,6 @@ namespace Luna
                 Luna::memdelete(t);
                 return translate_last_error(err);
             }
-            t->m_handle = h;
             if (name)
             {
                 wchar_t* buf = utf8_to_wchar_buffered(name);
@@ -91,9 +89,7 @@ namespace Luna
                 memfree(buf);
                 if (FAILED(r))
                 {
-                    t->m_handle = NULL;
-                    ::CloseHandle(h);
-                    return Result::bad_platform_call;
+                    lupanic();
                 }
             }
             ::ResumeThread(h);

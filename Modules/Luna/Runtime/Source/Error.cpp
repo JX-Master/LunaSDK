@@ -344,9 +344,9 @@ namespace Luna
             static ErrCode e = get_error_code_by_name("BasicError", "timeout");
             return e;
         }
-        LUNA_RUNTIME_API ErrCode data_too_long()
+        LUNA_RUNTIME_API ErrCode data_too_big()
         {
-            static ErrCode e = get_error_code_by_name("BasicError", "data_too_long");
+            static ErrCode e = get_error_code_by_name("BasicError", "data_too_big");
             return e;
         }
         LUNA_RUNTIME_API ErrCode insufficient_user_buffer()
@@ -429,14 +429,49 @@ namespace Luna
             static ErrCode e = get_error_code_by_name("BasicError", "bad_data");
             return e;
         }
-        LUNA_RUNTIME_API ErrCode bad_address()
+        LUNA_RUNTIME_API ErrCode bad_memory_address()
         {
-            static ErrCode e = get_error_code_by_name("BasicError", "bad_address");
+            static ErrCode e = get_error_code_by_name("BasicError", "bad_memory_address");
             return e;
         }
         LUNA_RUNTIME_API ErrCode deadlock()
         {
             static ErrCode e = get_error_code_by_name("BasicError", "deadlock");
+            return e;
+        }
+        LUNA_RUNTIME_API ErrCode not_permitted()
+        {
+            static ErrCode e = get_error_code_by_name("BasicError", "not_permitted");
+            return e;
+        }
+        LUNA_RUNTIME_API ErrCode busy()
+        {
+            static ErrCode e = get_error_code_by_name("BasicError", "busy");
+            return e;
+        }
+        LUNA_RUNTIME_API ErrCode file_to_big()
+        {
+            static ErrCode e = get_error_code_by_name("BasicError", "file_to_big");
+            return e;
+        }
+        LUNA_RUNTIME_API ErrCode not_configured()
+        {
+            static ErrCode e = get_error_code_by_name("BasicError", "not_configured");
+            return e;
+        }
+        LUNA_RUNTIME_API ErrCode bad_pipe()
+        {
+            static ErrCode e = get_error_code_by_name("BasicError", "bad_pipe");
+            return e;
+        }
+        LUNA_RUNTIME_API ErrCode path_too_long()
+        {
+            static ErrCode e = get_error_code_by_name("BasicError", "path_too_long");
+            return e;
+        }
+        LUNA_RUNTIME_API ErrCode loop()
+        {
+            static ErrCode e = get_error_code_by_name("BasicError", "loop");
             return e;
         }
     }

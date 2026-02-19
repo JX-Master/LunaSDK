@@ -21,20 +21,27 @@ namespace Luna
     {
         void time_init();
         void thread_init();
-        void file_init();
+        Result fiber_init();
         void std_io_init();
         void std_io_close();
+        void fiber_close();
 
-        void init()
+        Result init()
         {
             time_init();
             thread_init();
-            file_init();
+            auto r = fiber_init();
+            if(r != Result::success)
+            {
+                return r;
+            }
             std_io_init();
+            return Result::success;
         }
 
         void close()
         {
+            fiber_close();
             std_io_close();
         }
     }

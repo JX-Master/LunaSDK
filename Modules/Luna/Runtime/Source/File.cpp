@@ -72,16 +72,24 @@ namespace Luna
     {
         return encode_platform_result(Platform::create_dir(pathname));
     }
-    LUNA_RUNTIME_API usize get_current_dir(c8* buffer, usize buffer_size)
+    LUNA_RUNTIME_API const c8* get_current_dir()
     {
-        return Platform::get_current_dir(buffer, buffer_size);
+        return Platform::get_current_dir();
+    }
+    LUNA_RUNTIME_API void release_current_dir(const c8* path)
+    {
+        Platform::release_current_dir(path);
     }
     LUNA_RUNTIME_API RV set_current_dir(const c8* path)
     {
         return encode_platform_result(Platform::set_current_dir(path));
     }
-    LUNA_RUNTIME_API usize get_process_path(c8* buffer, usize buffer_size)
+    LUNA_RUNTIME_API const c8* get_process_path()
     {
-        return Platform::get_process_path(buffer, buffer_size);
+        return Platform::get_process_path();
+    }
+    LUNA_RUNTIME_API void release_process_path(const c8* path)
+    {
+        Platform::release_process_path(path);
     }
 }

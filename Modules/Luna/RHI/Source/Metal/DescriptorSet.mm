@@ -9,7 +9,6 @@
 */
 #include "DescriptorSet.h"
 #include "Resource.h"
-#include <Luna/Runtime/StackAllocator.hpp>
 #include <Luna/Runtime/Profiler.hpp>
 
 namespace Luna
@@ -181,7 +180,6 @@ namespace Luna
         }
         RV DescriptorSet::update_descriptors(Span<const WriteDescriptorSet> writes)
         {
-            StackAllocator salloc;
             lutry
             {
                 u64* data = nullptr;
@@ -272,8 +270,8 @@ namespace Luna
                             }
                             else
                             {
-                                id<MTLBuffer> __unsafe_unretained* buffers = (id<MTLBuffer> __unsafe_unretained*)salloc.allocate(sizeof(id<MTLBuffer>) * write.num_descs);
-                                NSUInteger* offsets = (NSUInteger*)salloc.allocate(sizeof(NSUInteger) * write.num_descs);
+                                id<MTLBuffer> __unsafe_unretained* buffers = (id<MTLBuffer> __unsafe_unretained*)memalloc(sizeof(id<MTLBuffer>) * write.num_descs);
+                                Array<NSUInteger> offsets(write.num_descs);
                                 for(usize i = 0; i < write.num_descs; ++i)
                                 {
                                     auto& view = write.buffer_views[i];
@@ -285,7 +283,8 @@ namespace Luna
                                 NSRange range;
                                 range.location = write.binding_slot + write.first_array_index;
                                 range.length = write.num_descs;
-                                [m_encoder setBuffers:buffers offsets:offsets withRange:range];
+                                [m_encoder setBuffers:buffers offsets:offsets.data() withRange:range];
+                                memfree(buffers);
                             }
                             break;
                             case DescriptorType::read_buffer_view:
@@ -300,8 +299,8 @@ namespace Luna
                             }
                             else
                             {
-                                id<MTLBuffer> __unsafe_unretained* buffers = (id<MTLBuffer> __unsafe_unretained*)salloc.allocate(sizeof(id<MTLBuffer>) * write.num_descs);
-                                NSUInteger* offsets = (NSUInteger*)salloc.allocate(sizeof(NSUInteger) * write.num_descs);
+                                id<MTLBuffer> __unsafe_unretained* buffers = (id<MTLBuffer> __unsafe_unretained*)memalloc(sizeof(id<MTLBuffer>) * write.num_descs);
+                                Array<NSUInteger> offsets(write.num_descs);
                                 for(usize i = 0; i < write.num_descs; ++i)
                                 {
                                     auto& view = write.buffer_views[i];
@@ -314,7 +313,8 @@ namespace Luna
                                 NSRange range;
                                 range.location = write.binding_slot + write.first_array_index;
                                 range.length = write.num_descs;
-                                [m_encoder setBuffers:buffers offsets:offsets withRange:range];
+                                [m_encoder setBuffers:buffers offsets:offsets.data() withRange:range];
+                                memfree(buffers);
                             }
                             break;
                             case DescriptorType::read_texture_view:
@@ -337,7 +337,7 @@ namespace Luna
                             }
                             else
                             {
-                                id<MTLTexture> __unsafe_unretained* textures = (id<MTLTexture> __unsafe_unretained*)salloc.allocate(sizeof(id<MTLTexture>) * write.num_descs);
+                                id<MTLTexture> __unsafe_unretained* textures = (id<MTLTexture> __unsafe_unretained*)memalloc(sizeof(id<MTLTexture>) * write.num_descs);
                                 for(usize i = 0; i < write.num_descs; ++i)
                                 {
                                     auto view = write.texture_views[i];
@@ -358,6 +358,7 @@ namespace Luna
                                 range.location = write.binding_slot + write.first_array_index;
                                 range.length = write.num_descs;
                                 [m_encoder setTextures:textures withRange:range];
+                                memfree(textures);
                             }
                             break;
                             case DescriptorType::sampler:
@@ -372,7 +373,7 @@ namespace Luna
                             }
                             else
                             {
-                                id<MTLSamplerState> __unsafe_unretained* samplers = (id<MTLSamplerState> __unsafe_unretained*)salloc.allocate(sizeof(id<MTLSamplerState>) * write.num_descs);
+                                id<MTLSamplerState> __unsafe_unretained* samplers = (id<MTLSamplerState> __unsafe_unretained*)memalloc(sizeof(id<MTLSamplerState>) * write.num_descs);
                                 for(usize i = 0; i < write.num_descs; ++i)
                                 {
                                     const SamplerDesc& view = write.samplers[i];
@@ -386,6 +387,7 @@ namespace Luna
                                 range.location = write.binding_slot + write.first_array_index;
                                 range.length = write.num_descs;
                                 [m_encoder setSamplerStates:samplers withRange:range];
+                                memfree(samplers);
                             }
                             break;
                         }

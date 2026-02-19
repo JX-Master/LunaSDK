@@ -12,7 +12,7 @@
 #if defined(LUNA_PLATFORM_WINDOWS)
 #include "../../Platform/Windows/MiniWin.hpp"
 #elif defined(LUNA_PLATFORM_POSIX)
-
+#include <pthread.h>
 #endif
 
 namespace Luna
@@ -24,7 +24,10 @@ namespace Luna
 #if defined(LUNA_PLATFORM_WINDOWS)
             HANDLE m_handle;
 #elif defined(LUNA_PLATFORM_POSIX)
-
+            pthread_mutex_t m_mutex;
+            pthread_cond_t m_cond;
+            i32 m_counter;
+            i32 m_max_count;
 #endif
         };
 

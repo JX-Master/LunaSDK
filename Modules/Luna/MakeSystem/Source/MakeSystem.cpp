@@ -24,11 +24,10 @@ namespace Luna
             {
                 if(build_dir.empty())
                 {
-                    u32 buf_size = get_current_dir(nullptr, 0);
-                    Array<c8> buf(buf_size);
-                    get_current_dir(buf.data(), buf_size);
-                    m_build_dir = buf.data();
+                    const c8* buf = get_current_dir();
+                    m_build_dir = buf;
                     m_build_dir.push_back("build");
+                    release_current_dir(buf);
                 }
                 else
                 {
@@ -43,7 +42,7 @@ namespace Luna
             return ok;
         }
 
-        RV visit_node(MakeNode* node, HashSet<MakeNode*>& visited, HashSet<MakeNode*>& visiting, Vector<MakeNode*>& ordered);
+        static RV visit_node(MakeNode* node, HashSet<MakeNode*>& visited, HashSet<MakeNode*>& visiting, Vector<MakeNode*>& ordered);
 
         static R<Vector<MakeNode*>> collect_nodes(Span<MakeNode*> targets)
         {

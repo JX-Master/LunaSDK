@@ -224,7 +224,7 @@ namespace Luna
         //! The time limit is reached before this operation succeeds.
         LUNA_RUNTIME_API ErrCode timeout();
         //! The provided data or string is too long.
-        LUNA_RUNTIME_API ErrCode data_too_long();
+        LUNA_RUNTIME_API ErrCode data_too_big();
         //! The buffer provided by the user is not large enough to contain all returned data.
         LUNA_RUNTIME_API ErrCode insufficient_user_buffer();
         //! The service provider is not ready to handle this call at this moment.
@@ -256,10 +256,24 @@ namespace Luna
         LUNA_RUNTIME_API ErrCode no_data();
         //! The data validation is failed.
         LUNA_RUNTIME_API ErrCode bad_data();
-        //! The address is not valid.
-        LUNA_RUNTIME_API ErrCode bad_address();
+        //! The memory address is not valid.
+        LUNA_RUNTIME_API ErrCode bad_memory_address();
         //! One deadlock is detected.
         LUNA_RUNTIME_API ErrCode deadlock();
+        //! Operation is not permitted.
+        LUNA_RUNTIME_API ErrCode not_permitted();
+        //! The operation is discarded because target device is too busy.
+        LUNA_RUNTIME_API ErrCode busy();
+        //! The file is too big.
+        LUNA_RUNTIME_API ErrCode file_to_big();
+        //! The device or service is not properly configured.
+        LUNA_RUNTIME_API ErrCode not_configured();
+        //! POSIX pipe error.
+        LUNA_RUNTIME_API ErrCode bad_pipe();
+        //! Path is too long.
+        LUNA_RUNTIME_API ErrCode path_too_long();
+        //! Loops or circular references were detected.
+        LUNA_RUNTIME_API ErrCode loop();
 
         //! @}
 

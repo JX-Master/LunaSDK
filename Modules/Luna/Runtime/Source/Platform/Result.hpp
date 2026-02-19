@@ -14,6 +14,7 @@ namespace Luna
 {
     namespace Platform
     {
+        //! Maps to most system error codes.
         enum class Result : i32
         {
             success = 0,
@@ -32,7 +33,7 @@ namespace Luna
             bad_file,
             io_error,
             timeout,
-            data_too_long,
+            data_too_big,
             insufficient_user_buffer,
             not_ready,
             out_of_range,
@@ -47,8 +48,15 @@ namespace Luna
             version_dismatch,
             no_data,
             bad_data,
-            bad_address,
-            deadlock
+            bad_memory_address,
+            deadlock,
+            not_permitted,
+            busy,
+            file_to_big,
+            not_configured,
+            bad_pipe,
+            path_too_long,
+            loop,
         };
     }
 }

@@ -57,7 +57,7 @@ namespace Luna
             case WSAEINTR: return BasicError::interrupted();
             case WSAEINPROGRESS: return BasicError::in_progress();
             case WSAENETRESET: return NetworkError::network_reset();
-            case WSAEMSGSIZE: return BasicError::data_too_long();
+            case WSAEMSGSIZE: return BasicError::data_too_big();
             case WSAEINVAL: return BasicError::bad_arguments();
             case WSAECONNABORTED: return NetworkError::connection_aborted();
             case WSAETIMEDOUT: return BasicError::timeout();

@@ -220,7 +220,7 @@ namespace Luna
                 }
                 else if(err_code == 0x3003) // FNERR_BUFFERTOOSMALL
                 {
-                    return set_error(BasicError::data_too_long(), "Too many files are selected.");
+                    return set_error(BasicError::data_too_big(), "Too many files are selected.");
                 }
                 return set_error(BasicError::bad_platform_call(), "Open File Dialog (common dialog box) reports failure, error code: %u", err_code);
             }

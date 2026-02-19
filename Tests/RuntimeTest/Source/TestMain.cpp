@@ -35,6 +35,9 @@ void run()
     invoke_test();
     function_test();
     unicode_test();
+    thread_test();
+    fiber_test();
+    
     unregister_profiler_callback(handle);
 }
 

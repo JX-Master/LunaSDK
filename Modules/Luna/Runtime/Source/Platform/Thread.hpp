@@ -13,7 +13,8 @@
 #if defined(LUNA_PLATFORM_WINDOWS)
 #include "../../Platform/Windows/MiniWin.hpp"
 #elif defined(LUNA_PLATFORM_POSIX)
-
+#include <pthread.h>
+#include "Signal.hpp"
 #endif
 
 namespace Luna
@@ -27,14 +28,20 @@ namespace Luna
 #if defined(LUNA_PLATFORM_WINDOWS)
             HANDLE m_handle = NULL;
 #elif defined(LUNA_PLATFORM_POSIX)
+            pthread_t m_handle;        // Thread handle.
+            int m_sched_policy;
+            sched_param m_sched_param;
+            bool m_valid = false;
 
+            // The following variables are valid only for non-main threads.
+            Signal m_finish_signal;
 #endif
             bool valid() const
             {
 #if defined(LUNA_PLATFORM_WINDOWS)
                 return m_handle != NULL;
 #elif defined(LUNA_PLATFORM_POSIX)
-
+                return m_valid;
 #endif
             }
         };
@@ -58,6 +65,8 @@ namespace Luna
         bool try_wait_thread(Thread& thread);
 
         //! Closes the thread handle. 
+        //! This frees all resources attached to `thread`. This must be called after
+        //! the thread is finished.
         void detach_thread(Thread& thread);
 
         //! Gets the thrad ID of the current thread.

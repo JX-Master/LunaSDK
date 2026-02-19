@@ -603,27 +603,6 @@ namespace Luna
             if(r != Result::success) return r;
             if(test_flags(attr.attributes, FileAttributeFlag::directory))
             {
-                // Remove all files in directory.
-                Vector<String> files;
-                FileIterator iter;
-                r = open_dir(path, iter);
-                if(r != Result::success) return r;
-                for(;dir_iterator_is_valid(iter); dir_iterator_move_next(iter))
-                {
-                    const c8* filename = dir_iterator_get_filename(iter);
-                    files.push_back(filename);
-                }
-                close_dir(iter);
-                String dir_path = path;
-                usize dir_size = dir_path.size();
-                for(auto& f : files)
-                {
-                    dir_path.push_back('\\');
-                    dir_path.append(f.c_str());
-                    r = delete_file(dir_path.c_str());
-                    if(r != Result::success) return r;
-                    dir_path.erase(dir_path.begin() + dir_size, dir_path.end());
-                }
                 // Delete empty directory.
                 r = delete_empty_directory(path);
                 if(r != Result::success) return r;

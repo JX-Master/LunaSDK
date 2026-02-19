@@ -106,7 +106,7 @@ namespace Luna
             if(visiting.contains(m))
             {
                 // Cycle reference detected.
-                return set_error(BasicError::bad_arguments(), "Cycling module dependencies detected.");
+                return set_error(BasicError::loop(), "Cycling module dependencies detected.");
             }
             if(!visited.insert(m).second)
             {

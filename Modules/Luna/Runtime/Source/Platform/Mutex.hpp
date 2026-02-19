@@ -12,7 +12,7 @@
 #if defined(LUNA_PLATFORM_WINDOWS)
 #include "../../Platform/Windows/MiniWin.hpp"
 #elif defined(LUNA_PLATFORM_POSIX)
-
+#include <pthread.h>
 #endif
 
 namespace Luna
@@ -24,7 +24,7 @@ namespace Luna
 #if defined(LUNA_PLATFORM_WINDOWS)
             CRITICAL_SECTION m_sec;
 #elif defined(LUNA_PLATFORM_POSIX)
-
+            pthread_mutex_t m_mtx;
 #endif
         };
 
