@@ -8,6 +8,7 @@
 * @date 2026/2/19
 */
 #include "FiberContext.hpp"
+#include "../../../Assert.hpp"
 
 using namespace Luna;
 
@@ -47,4 +48,5 @@ extern "C" void luna_fiber_set_target(Luna::FiberContext* ctx, void* stack, uint
 extern "C" void luna_fiber_entry(void (*target)(void*), void* arg)
 {
     target(arg);
+    lupanic_msg_always("Fiber entry function should not return.");
 }
