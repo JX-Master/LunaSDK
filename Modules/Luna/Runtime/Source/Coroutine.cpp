@@ -18,7 +18,7 @@ namespace Luna
 
     bool coroutine_init()
     {
-        auto r = Platform::tls_alloc(nullptr, g_current_coroutine_tls);
+        auto r = Platform::tls_alloc(g_current_coroutine_tls);
         if(r != Platform::Result::success) return false;
         return true;
     }

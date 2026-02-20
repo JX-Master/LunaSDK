@@ -62,4 +62,26 @@ namespace Luna
         ThreadBase* t = cast_object<ThreadBase>(get_current_thread()->get_object());
         return t->m_current_fiber.get();
     }
+    LUNA_RUNTIME_API R<opaque_t> fls_alloc(void(*destructor)(void* ptr))
+    {
+        opaque_t handle;
+        auto r = Platform::fls_alloc(destructor, handle);
+        if(r != Platform::Result::success)
+        {
+            return encode_platform_result(r).errcode();
+        }
+        return handle;
+    }
+    LUNA_RUNTIME_API void fls_free(opaque_t handle)
+    {
+        Platform::fls_free(handle);
+    }
+    LUNA_RUNTIME_API void fls_set(opaque_t handle, void* ptr)
+    {
+        Platform::fls_set(handle, ptr);
+    }
+    LUNA_RUNTIME_API void* fls_get(opaque_t handle)
+    {
+        return Platform::fls_get(handle);
+    }
 }

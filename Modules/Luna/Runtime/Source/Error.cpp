@@ -12,7 +12,7 @@
 #define LUNA_RUNTIME_API LUNA_EXPORT
 #include <Luna/Runtime/Error.hpp>
 #include <Luna/Runtime/HashMap.hpp>
-#include "Platform/Thread.hpp"
+#include "Platform/Fiber.hpp"
 #include "../SpinLock.hpp"
 namespace Luna
 {
@@ -97,19 +97,19 @@ namespace Luna
     {
         g_errcat_registry.construct();
         g_errcode_registry.construct();
-        auto r =  Platform::tls_alloc(error_destructor, g_error_tls);
+        auto r =  Platform::fls_alloc(error_destructor, g_error_tls);
         return r == Platform::Result::success;
     }
 
     void error_close()
     {
-        Error* err = (Error*)Platform::tls_get(g_error_tls);
+        Error* err = (Error*)Platform::fls_get(g_error_tls);
         if (err)
         {
             memdelete(err);
-            Platform::tls_set(g_error_tls, nullptr);
+            Platform::fls_set(g_error_tls, nullptr);
         }
-        Platform::tls_free(g_error_tls);
+        Platform::fls_free(g_error_tls);
         g_errcode_registry.destruct();
         g_errcat_registry.destruct();
     }
@@ -243,11 +243,11 @@ namespace Luna
 
     LUNA_RUNTIME_API Error& get_error()
     {
-        Error* err = (Error*)Platform::tls_get(g_error_tls);
+        Error* err = (Error*)Platform::fls_get(g_error_tls);
         if (!err)
         {
             err = memnew<Error>();
-            Platform::tls_set(g_error_tls, err);
+            Platform::fls_set(g_error_tls, err);
         }
         return *err;
     }

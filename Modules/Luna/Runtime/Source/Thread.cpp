@@ -23,7 +23,7 @@ namespace Luna
         g_main_thread = new_object<MainThread>();
         g_main_thread_ref = query_interface<IThread>(g_main_thread.object());
         Platform::get_main_thread(g_main_thread->m_thread);
-        auto r = Platform::tls_alloc(nullptr, g_tls_thread);
+        auto r = Platform::tls_alloc(g_tls_thread);
         if(r != Platform::Result::success) return false;
         Platform::tls_set(g_tls_thread, g_main_thread_ref);
         return true;
@@ -82,10 +82,10 @@ namespace Luna
     {
         Platform::yield_current_thread();
     }
-    LUNA_RUNTIME_API R<opaque_t> tls_alloc(void (*destructor)(void*))
+    LUNA_RUNTIME_API R<opaque_t> tls_alloc()
     {
         opaque_t handle;
-        auto r = Platform::tls_alloc(destructor, handle);
+        auto r = Platform::tls_alloc(handle);
         if(r != Platform::Result::success) return encode_platform_result(r).errcode();
         return handle;
     }

@@ -96,17 +96,8 @@ namespace Luna
         //! 
         //! The allocated slot is large enough to store one pointer to the real thread-local data. The pointer is `nullptr` for every thread before it 
         //! is firstly modified by that thread.
-        //! @param[in] destructor The optional destructor to use for this TLS slot. If this is not `nullptr`, this destructor will be called on one thread
-        //! when that thread exits and the TLS pointer value of this slot for that thread is not `nullptr`.
-        //! 
-        //! When the destructor is called, the system resets the TLS value to `nullptr` and passes the original TLS value to the destructor. This process may
-        //! be repeated several times until the TLS value is `nullptr` after the destructor returns.
-        //! 
-        //! If multi-thread is not supported on the target platform, TLS can be mimicked using one global TLS table
-        //! for the only one thread.
-        //! 
         //! @param[out] out_handle The handle to the TLS slot, or error code if failed.
-        Result tls_alloc(void (*destructor)(void*), opaque_t& out_handle);
+        Result tls_alloc(opaque_t& out_handle);
 
         //! Free the TLS slot allocated by `tls_alloc`. The handle will be invalid after this call and the pointer stored for every 
         //! thread will be discarded.

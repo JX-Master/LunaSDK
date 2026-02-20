@@ -16,7 +16,7 @@ namespace Luna
 
         Result fiber_init()
         {
-            return tls_alloc(nullptr, g_fiber_params_tls);
+            return tls_alloc(g_fiber_params_tls);
         }
 
         void fiber_close()

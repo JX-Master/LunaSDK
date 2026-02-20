@@ -193,10 +193,10 @@ namespace Luna
         {
             ::sched_yield();
         }
-        Result tls_alloc(void (*destructor)(void*), opaque_t& out_handle)
+        Result tls_alloc(opaque_t& out_handle)
         {
             pthread_key_t key;
-            int r = pthread_key_create(&key, destructor);
+            int r = pthread_key_create(&key, nullptr);
             if (r)
             {
                 return encode_errno(r);

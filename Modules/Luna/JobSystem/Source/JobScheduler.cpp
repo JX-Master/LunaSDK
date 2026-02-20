@@ -334,6 +334,7 @@ namespace Luna
                 }
             }
             ctx->m_worker_thread_fiber.reset();
+            ctx->m_thread_dead = true;
             lupanic_if_failed(convert_fiber_to_thread());
         }
         job_id_t JobScheduler::submit_job(void (*func)(IJobScheduler* scheduler, void* params), void* params)

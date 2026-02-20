@@ -16,7 +16,7 @@
 #include "../Thread.hpp"
 #include "Platform/Memory.hpp"
 #include "Platform/ReadWriteLock.hpp"
-#include "Platform/Thread.hpp"
+#include "Platform/Fiber.hpp"
 #include "Platform/Time.hpp"
 #include "../Vector.hpp"
 
@@ -133,17 +133,17 @@ namespace Luna
     }
     ProfilerThreadContext* get_profiler_thread_context()
     {
-        ProfilerThreadContext* ctx = (ProfilerThreadContext*)Platform::tls_get(g_profiler_thread_context_tls);
+        ProfilerThreadContext* ctx = (ProfilerThreadContext*)Platform::fls_get(g_profiler_thread_context_tls);
         if(!ctx)
         {
             ctx = Platform::memnew<ProfilerThreadContext>();
-            Platform::tls_set(g_profiler_thread_context_tls, ctx);
+            Platform::fls_set(g_profiler_thread_context_tls, ctx);
         }
         return ctx;
     }
     bool profiler_init()
     {
-        auto r = Platform::tls_alloc(profiler_thread_context_dtor, g_profiler_thread_context_tls);
+        auto r = Platform::fls_alloc(profiler_thread_context_dtor, g_profiler_thread_context_tls);
         if(r != Platform::Result::success) return false;
         Platform::new_read_write_lock(g_profiler_callbacks_lock);
         return true;
@@ -152,7 +152,7 @@ namespace Luna
     {
         g_profiler_callbacks.clear();
         Platform::delete_read_write_lock(g_profiler_callbacks_lock);
-        Platform::tls_free(g_profiler_thread_context_tls);
+        Platform::fls_free(g_profiler_thread_context_tls);
     }
     LUNA_RUNTIME_API void* allocate_profiler_event_data(usize size, usize alignment, void(*dtor)(void*))
     {

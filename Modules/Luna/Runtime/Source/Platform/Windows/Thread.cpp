@@ -19,9 +19,6 @@ namespace Luna
 {
     namespace Platform
     {
-        using tls_destructor = void(void*);
-        Unconstructed<HashMap<DWORD, tls_destructor*, hash<DWORD>, equal_to<DWORD>, Platform::Allocator>> g_allocated_tls;
-        SpinLock g_allocated_tls_mtx;
         struct ThreadContext
         {
             thread_callback_func_t* m_func;
@@ -35,19 +32,6 @@ DWORD WINAPI WinThreadEntry(LPVOID cookie)
     using namespace Luna;
     Platform::ThreadContext* ctx = (Platform::ThreadContext*)cookie;
     ctx->m_func(ctx->m_params);
-    // Clean up all tls.
-    Platform::g_allocated_tls_mtx.lock();
-    auto& tls = Platform::g_allocated_tls.get();
-    for (auto& i : tls)
-    {
-        void* p = ::TlsGetValue(i.first);
-        if (p)
-        {
-            ::TlsSetValue(i.first, nullptr);
-            i.second(p);
-        }
-    }
-    Platform::g_allocated_tls_mtx.unlock();
     Luna::memdelete(ctx);
     return 0;
 }
@@ -57,7 +41,6 @@ namespace Luna
     {
         Result thread_init()
         {
-            g_allocated_tls.construct();
             g_main_thread_handle = ::OpenThread(THREAD_ALL_ACCESS, FALSE, ::GetCurrentThreadId());
             if(!g_main_thread_handle) return Result::bad_platform_call;
             return Result::success;
@@ -66,7 +49,6 @@ namespace Luna
         {
             ::CloseHandle(g_main_thread_handle);
             g_main_thread_handle = NULL;
-            g_allocated_tls.destruct();
         }
         Result new_thread(thread_callback_func_t* callback, void* params, const c8* name, usize stack_size, Thread& out_thread)
         {
@@ -182,7 +164,7 @@ namespace Luna
         {
             SwitchToThread();
         }
-        Result tls_alloc(void (*destructor)(void*), opaque_t& out_handle)
+        Result tls_alloc(opaque_t& out_handle)
         {
             DWORD index = TlsAlloc();
             if (index == TLS_OUT_OF_INDEXES)
@@ -190,24 +172,13 @@ namespace Luna
                 DWORD err = GetLastError();
                 return translate_last_error(err);
             }
-            if (destructor)
-            {
-                g_allocated_tls_mtx.lock();
-                g_allocated_tls.get().insert(make_pair(index, destructor));
-                g_allocated_tls_mtx.unlock();
-            }
             out_handle = (opaque_t)(usize)index;
             return Result::success;
         }
         void tls_free(opaque_t handle)
         {
             DWORD index = (DWORD)(usize)handle;
-            if (TlsFree(index))
-            {
-                g_allocated_tls_mtx.lock();
-                g_allocated_tls.get().erase(index);
-                g_allocated_tls_mtx.unlock();
-            }
+            TlsFree(index);
         }
         void tls_set(opaque_t handle, void* ptr)
         {

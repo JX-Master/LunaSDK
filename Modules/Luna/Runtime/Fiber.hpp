@@ -45,4 +45,26 @@ namespace Luna
     //! @return Returns the fiber context of the current thread. Returns `nullptr` if the current thread 
     //! is not converted to a fiber.
     LUNA_RUNTIME_API IFiber* get_current_fiber();
+
+    //! Allocates fiber local storage.
+    //! Fiber local storage is similar to thread local storage, but it will be switched when the fiber is switched.
+    //! If the current thread is not converted to fiber, this behaves the same as thread local storage.
+    //! @param[in] destructor The optional destructor to use for this slot. If this is not `nullptr`, this destructor will be called 
+    //! one fiber is deleted, one thread is returned, or @ref fls_free for that slot is called and the value of this slot for that thread is not `nullptr`.
+    //! 
+    //! @return Returns the handle to the allocated slot.
+    LUNA_RUNTIME_API R<opaque_t> fls_alloc(void(*destructor)(void* ptr));
+
+    //! Frees fiber local storage.
+    LUNA_RUNTIME_API void fls_free(opaque_t handle);
+
+    //! Set the data bound to the current thread's FLS slot specified by `handle`.
+    //! @param[in] handle The handle of the slot specified. The handle must be allocated first by @ref fls_alloc.
+    //! @param[in] ptr The pointer value to set to this slot.
+    LUNA_RUNTIME_API void fls_set(opaque_t handle, void* ptr);
+
+    //! Get the value bound to the FLS slot of current thread.
+    //! @param[in] handle The handle of the slot to query.
+    //! @return Returns the pointer set, or `nullptr` if no pointer is set to this slot.
+    LUNA_RUNTIME_API void* fls_get(opaque_t handle);
 }
