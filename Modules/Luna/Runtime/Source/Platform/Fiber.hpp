@@ -15,6 +15,7 @@
 #include "../../Platform/Windows/MiniWin.hpp"
 #elif defined(LUNA_PLATFORM_POSIX)
 #include "POSIX/FiberContext.hpp"
+#include "POSIX/FLSContext.hpp"
 #endif
 
 namespace Luna
@@ -27,6 +28,8 @@ namespace Luna
             LPVOID fiber = NULL;
 #elif defined(LUNA_PLATFORM_POSIX)
             FiberContext context;
+            //! Holds fls when it is not set to TLS.
+            FLSContext* fls = nullptr;
             void* stack = nullptr;
             usize stack_size = 0;
             void(*entry_func)(void*) = nullptr;
