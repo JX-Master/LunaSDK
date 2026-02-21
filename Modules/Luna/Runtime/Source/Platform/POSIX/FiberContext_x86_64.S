@@ -36,5 +36,3 @@ LUNA_ASM_SYMBOL(luna_fiber_swap):
     movq    LUNA_REG_RSP(%r8), %rsp
     movq    LUNA_REG_RIP(%r8), %rcx
     jmp     *%rcx
-
-#endif
