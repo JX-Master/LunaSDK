@@ -15,6 +15,7 @@
 #include "DescriptorSet.hpp"
 #include "PipelineState.hpp"
 #include "PipelineLayout.hpp"
+#include <Luna/Runtime/StackAllocator.hpp>
 
 namespace Luna
 {
@@ -242,8 +243,11 @@ namespace Luna
             }
             virtual void begin_event(const c8* event_name) override
             {
-                auto buf = utf8_to_utf16_arr(event_name);
-                m_li->BeginEvent(0, buf.data(), buf.size());
+                StackAllocator salloc;
+                usize len = utf8_to_utf16_len(event_name);
+                wchar_t* buf = (wchar_t*)salloc.allocate(sizeof(wchar_t) * (len + 1));
+                utf8_to_utf16((c16*)buf, len + 1, event_name);
+                m_li->BeginEvent(0, buf, sizeof(wchar_t) * (len + 1));
             }
             virtual void end_event() override
             {

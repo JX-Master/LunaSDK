@@ -13,6 +13,7 @@
 #include "Device.hpp"
 #include <Luna/Runtime/Array.hpp>
 #include <Luna/Runtime/Math/Math.hpp>
+#include <Luna/Runtime/StackAllocator.hpp>
 
 namespace Luna
 {
@@ -152,6 +153,7 @@ namespace Luna
         }
         void data_callback(ma_device* pDevice, void* pOutput, const void* pInput, ma_uint32 frameCount)
         {
+            StackAllocator salloc;
             Device* device = (Device*)pDevice->pUserData;
             if(test_flags(device->m_flags, DeviceFlag::playback))
             {
@@ -162,7 +164,7 @@ namespace Luna
                 format.bit_depth = device->get_playback_bit_depth();
                 usize buffer_size = get_frame_size(format.bit_depth, format.num_channels) * (usize)frameCount;
                 usize num_mix_buffers = device->m_audio_sources.size();
-                Array<MixBuffer> mix_buffers(num_mix_buffers);
+                MixBuffer* mix_buffers = (MixBuffer*)salloc.allocate(sizeof(MixBuffer) * num_mix_buffers);
                 for(usize i = 0; i < device->m_audio_sources.size(); ++i)
                 {
                     auto& dst = device->m_audio_sources[i];
@@ -174,19 +176,19 @@ namespace Luna
                 switch(format.bit_depth)
                 {
                 case BitDepth::u8:
-                    mix_u8((u8*)pOutput, format.num_channels, frameCount, mix_buffers.span());
+                    mix_u8((u8*)pOutput, format.num_channels, frameCount, {mix_buffers, num_mix_buffers});
                     break;
                 case BitDepth::s16:
-                    mix_s16((i16*)pOutput, format.num_channels, frameCount, mix_buffers.span());
+                    mix_s16((i16*)pOutput, format.num_channels, frameCount, {mix_buffers, num_mix_buffers});
                     break;
                 case BitDepth::s24:
-                    mix_s24((u8*)pOutput, format.num_channels, frameCount, mix_buffers.span());
+                    mix_s24((u8*)pOutput, format.num_channels, frameCount, {mix_buffers, num_mix_buffers});
                     break;
                 case BitDepth::s32:
-                    mix_s32((i32*)pOutput, format.num_channels, frameCount, mix_buffers.span());
+                    mix_s32((i32*)pOutput, format.num_channels, frameCount, {mix_buffers, num_mix_buffers});
                     break;
                 case BitDepth::f32:
-                    mix_f32((f32*)pOutput, format.num_channels, frameCount, mix_buffers.span());
+                    mix_f32((f32*)pOutput, format.num_channels, frameCount, {mix_buffers, num_mix_buffers});
                     break;
                 default: lupanic();
                 }

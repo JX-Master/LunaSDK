@@ -13,6 +13,7 @@
 #include "../../../Display.hpp"
 #import <AppKit/AppKit.h>
 #import <CoreGraphics/CoreGraphics.h>
+#include <Luna/Runtime/StackAllocator.hpp>
 
 namespace Luna
 {
@@ -29,8 +30,9 @@ namespace Luna
         {
             uint32_t num_displays = 0;
             CGGetOnlineDisplayList(0, nullptr, &num_displays);
-            Array<CGDirectDisplayID> display_ids(num_displays);
-            CGGetOnlineDisplayList(num_displays, display_ids.data(), &num_displays);
+            StackAllocator alloc;
+            CGDirectDisplayID* display_ids = (CGDirectDisplayID*)alloc.allocate(sizeof(CGDirectDisplayID) * num_displays);
+            CGGetOnlineDisplayList(num_displays, display_ids, &num_displays);
             out_displays.reserve(out_displays.size() + num_displays);
             for(u32 i = 0; i < num_displays; ++i)
             {

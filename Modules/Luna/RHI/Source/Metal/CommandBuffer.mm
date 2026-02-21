@@ -13,6 +13,7 @@
 #include "DescriptorSet.h"
 #include "QueryHeap.h"
 #include "Fence.h"
+#include <Luna/Runtime/StackAllocator.hpp>
 
 namespace Luna
 {
@@ -234,8 +235,9 @@ namespace Luna
         void CommandBuffer::set_vertex_buffers(u32 start_slot, Span<const VertexBufferView> views)
         {
             assert_graphcis_context();
-            id<MTLBuffer> __unsafe_unretained* buffers = (id<MTLBuffer> __unsafe_unretained*)memalloc(sizeof(id<MTLBuffer>) * views.size());
-            Array<NSUInteger> offsets(views.size());
+            StackAllocator salloc;
+            id<MTLBuffer> __unsafe_unretained* buffers = (id<MTLBuffer> __unsafe_unretained*)salloc.allocate(sizeof(id<MTLBuffer>) * views.size());
+            NSUInteger* offsets = (NSUInteger*)salloc.allocate(sizeof(NSUInteger) * views.size());
             for(usize i = 0; i < views.size(); ++i)
             {
                 const VertexBufferView& view = views[i];
@@ -246,8 +248,7 @@ namespace Luna
             NSRange range;
             range.location = VERTEX_BUFFER_SLOT_OFFSET + start_slot;
             range.length = (NSUInteger)views.size();
-            [m_render setVertexBuffers:buffers offsets:offsets.data() withRange:range];
-            memfree(buffers);
+            [m_render setVertexBuffers:buffers offsets:offsets withRange:range];
         }
         void CommandBuffer::set_index_buffer(const IndexBufferView& view)
         {
@@ -258,13 +259,14 @@ namespace Luna
         {
             lucheck_msg(index < 16, "Invalid descriptor set index range. Descriptor set index range must be in [0, 16) on Metal.");
             assert_graphcis_context();
+            StackAllocator salloc;
             DescriptorSet* set = cast_object<DescriptorSet>(descriptor_set->get_object());
             for(auto& binding : set->m_bindings)
             {
                 if(binding.m_resources == nil) continue;
                 NSUInteger num_resources = 0;
                 id<MTLResource> __unsafe_unretained* resources = (id<MTLResource> __unsafe_unretained*)
-                    memalloc(sizeof(id<MTLResource>) * binding.m_resources.count);
+                    salloc.allocate(sizeof(id<MTLResource>) * binding.m_resources.count);
                 for(usize i = 0; i < binding.m_resources.count; ++i)
                 {
                     if([binding.m_resources[i] conformsToProtocol:@protocol(MTLResource)])
@@ -275,7 +277,6 @@ namespace Luna
                     }
                 }
                 [m_render useResources:resources count:num_resources usage:binding.m_usages stages:binding.m_render_stages];
-                memfree(resources);
             }
             [m_render setVertexBuffer:set->m_buffer offset:0 atIndex:index];
             [m_render setFragmentBuffer:set->m_buffer offset:0 atIndex:index];
@@ -284,8 +285,9 @@ namespace Luna
         {
             lucheck_msg(start_index + descriptor_sets.size() < 16, "Invalid descriptor set index range. Descriptor set index range must be in [0, 16) on Metal.");
             assert_graphcis_context();
-            id<MTLBuffer> __unsafe_unretained* buffers = (id<MTLBuffer> __unsafe_unretained*)memalloc(sizeof(id<MTLBuffer>) * descriptor_sets.size());
-            Array<NSUInteger> offsets(descriptor_sets.size());
+            StackAllocator salloc;
+            id<MTLBuffer> __unsafe_unretained* buffers = (id<MTLBuffer> __unsafe_unretained*)salloc.allocate(sizeof(id<MTLBuffer>) * descriptor_sets.size());
+            NSUInteger* offsets = (NSUInteger*)salloc.allocate(sizeof(NSUInteger) * descriptor_sets.size());
             for(usize i = 0; i < descriptor_sets.size(); ++i)
             {
                 DescriptorSet* set = cast_object<DescriptorSet>(descriptor_sets[i]->get_object());
@@ -295,7 +297,7 @@ namespace Luna
                 {
                     if(binding.m_resources == nil) continue;
                     id<MTLResource> __unsafe_unretained* resources = (id<MTLResource> __unsafe_unretained*)
-                        memalloc(sizeof(id<MTLResource>) * binding.m_resources.count);
+                        salloc.allocate(sizeof(id<MTLResource>) * binding.m_resources.count);
                     NSUInteger num_resources = 0;
                     for(usize i = 0; i < binding.m_resources.count; ++i)
                     {
@@ -307,15 +309,13 @@ namespace Luna
                         }
                     }
                     [m_render useResources:resources count:num_resources usage:binding.m_usages stages:binding.m_render_stages];
-                    memfree(resources);
                 }
             }
             NSRange range;
             range.location = start_index;
             range.length = (NSUInteger)descriptor_sets.size();
-            [m_render setVertexBuffers:buffers offsets:offsets.data() withRange:range];
-            [m_render setFragmentBuffers:buffers offsets:offsets.data() withRange:range];
-            memfree(buffers);
+            [m_render setVertexBuffers:buffers offsets:offsets withRange:range];
+            [m_render setFragmentBuffers:buffers offsets:offsets withRange:range];
         }
         void CommandBuffer::set_viewport(const Viewport& viewport)
         {
@@ -332,7 +332,8 @@ namespace Luna
         void CommandBuffer::set_viewports(Span<const Viewport> viewports)
         {
             assert_graphcis_context();
-            Array<MTLViewport> vps(viewports.size());
+            StackAllocator salloc;
+            MTLViewport* vps = (MTLViewport*)salloc.allocate(sizeof(MTLViewport) * viewports.size());
             for(usize i = 0; i < viewports.size(); ++i)
             {
                 MTLViewport& dst = vps[i];
@@ -344,7 +345,7 @@ namespace Luna
                 dst.znear = src.min_depth;
                 dst.zfar = src.max_depth;
             }
-            [m_render setViewports:vps.data() count:(NSUInteger)viewports.size()];
+            [m_render setViewports:vps count:(NSUInteger)viewports.size()];
         }
         void CommandBuffer::set_scissor_rect(const RectI& rect)
         {
@@ -359,7 +360,8 @@ namespace Luna
         void CommandBuffer::set_scissor_rects(Span<const RectI> rects)
         {
             assert_graphcis_context();
-            Array<MTLScissorRect> dsts(rects.size());
+            StackAllocator salloc;
+            MTLScissorRect* dsts = (MTLScissorRect*)salloc.allocate(sizeof(MTLScissorRect) * rects.size());
             for(usize i = 0; i < rects.size(); ++i)
             {
                 MTLScissorRect& dst = dsts[i];
@@ -369,7 +371,7 @@ namespace Luna
                 dst.x = src.offset_x;
                 dst.y = src.offset_y;
             }
-            [m_render setScissorRects:dsts.data() count:(NSUInteger)rects.size()];
+            [m_render setScissorRects:dsts count:(NSUInteger)rects.size()];
         }
         void CommandBuffer::set_blend_factor(const Float4U& blend_factor)
         {
@@ -541,12 +543,13 @@ namespace Luna
         void CommandBuffer::set_compute_descriptor_set(u32 index, IDescriptorSet* descriptor_set)
         {
             assert_compute_context();
+            StackAllocator salloc;
             DescriptorSet* set = cast_object<DescriptorSet>(descriptor_set->get_object());
             for(auto& binding : set->m_bindings)
             {
                 if(binding.m_resources == nil) continue;
                 id<MTLResource> __unsafe_unretained* resources = (id<MTLResource> __unsafe_unretained*)
-                    memalloc(sizeof(id<MTLResource>) * binding.m_resources.count);
+                    salloc.allocate(sizeof(id<MTLResource>) * binding.m_resources.count);
                 NSUInteger num_resources = 0;
                 for(usize i = 0; i < binding.m_resources.count; ++i)
                 {
@@ -558,15 +561,15 @@ namespace Luna
                     }
                 }
                 [m_compute useResources:resources count:num_resources usage:binding.m_usages];
-                memfree(resources);
             }
             [m_compute setBuffer:set->m_buffer offset:0 atIndex:index];
         }
         void CommandBuffer::set_compute_descriptor_sets(u32 start_index, Span<IDescriptorSet*> descriptor_sets)
         {
             assert_compute_context();
-            id<MTLBuffer> __unsafe_unretained* buffers = (id<MTLBuffer> __unsafe_unretained*)memalloc(sizeof(id<MTLBuffer>) * descriptor_sets.size());
-            Array<NSUInteger> offsets(descriptor_sets.size());
+            StackAllocator salloc;
+            id<MTLBuffer> __unsafe_unretained* buffers = (id<MTLBuffer> __unsafe_unretained*)salloc.allocate(sizeof(id<MTLBuffer>) * descriptor_sets.size());
+            NSUInteger* offsets = (NSUInteger*)salloc.allocate(sizeof(NSUInteger) * descriptor_sets.size());
             for(usize i = 0; i < descriptor_sets.size(); ++i)
             {
                 DescriptorSet* set = cast_object<DescriptorSet>(descriptor_sets[i]->get_object());
@@ -576,7 +579,7 @@ namespace Luna
                 {
                     if(binding.m_resources == nil) continue;
                     id<MTLResource> __unsafe_unretained* resources = (id<MTLResource> __unsafe_unretained*)
-                        memalloc(sizeof(id<MTLResource>) * binding.m_resources.count);
+                        salloc.allocate(sizeof(id<MTLResource>) * binding.m_resources.count);
                     NSUInteger num_resources = 0;
                     for(usize i = 0; i < binding.m_resources.count; ++i)
                     {
@@ -588,14 +591,12 @@ namespace Luna
                         }
                     }
                     [m_compute useResources:resources count:num_resources usage:binding.m_usages];
-                    memfree(resources);
                 }
             }
             NSRange range;
             range.location = start_index;
             range.length = (NSUInteger)descriptor_sets.size();
-            [m_compute setBuffers:buffers offsets:offsets.data() withRange:range];
-            memfree(buffers);
+            [m_compute setBuffers:buffers offsets:offsets withRange:range];
         }
         void CommandBuffer::dispatch(u32 thread_group_count_x, u32 thread_group_count_y, u32 thread_group_count_z)
         {
@@ -801,10 +802,11 @@ namespace Luna
         }
         void CommandBuffer::resource_barrier(Span<const BufferBarrier> buffer_barriers, Span<const TextureBarrier> texture_barriers)
         {
+            StackAllocator salloc;
             if(m_compute)
             {
                 usize num_resources = buffer_barriers.size() + texture_barriers.size();
-                id<MTLResource> __unsafe_unretained* resources = (id<MTLResource> __unsafe_unretained*)memalloc(sizeof(id<MTLResource>) * num_resources);
+                id<MTLResource> __unsafe_unretained* resources = (id<MTLResource> __unsafe_unretained*)salloc.allocate(sizeof(id<MTLResource>) * num_resources);
                 NSUInteger i = 0;
                 for(const BufferBarrier& barrier : buffer_barriers)
                 {
@@ -819,7 +821,6 @@ namespace Luna
                     ++i;
                 }
                 [m_compute memoryBarrierWithResources:resources count:i];
-                memfree(resources);
             }
         }
         RV CommandBuffer::submit(Span<IFence*> wait_fences, Span<IFence*> signal_fences, bool allow_host_waiting)

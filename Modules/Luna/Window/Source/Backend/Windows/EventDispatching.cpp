@@ -16,6 +16,7 @@
 #include "../../../Event.hpp"
 #include "../../Event.hpp"
 #include <Luna/Runtime/TSAssert.hpp>
+#include <Luna/Runtime/StackAllocator.hpp>
 
 #pragma comment(lib, "Shell32.lib")
 
@@ -405,15 +406,18 @@ LRESULT CALLBACK luna_window_win_proc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM
         HDROP hdrop = (HDROP)wParam;
         UINT file_count = DragQueryFileW(hdrop, 0xFFFFFFFF, NULL, 0);
 
+        StackAllocator alloc;
         Array<String> files(file_count);
         
         for (UINT i = 0; i < file_count; ++i)
         {
             UINT path_len = DragQueryFileW(hdrop, i, NULL, 0);
-            Array<WCHAR> buf(path_len + 1);
-            DragQueryFileW(hdrop, i, buf.data(), path_len + 1);
-            auto buf_2 = utf16_to_utf8_arr((const c16*)buf.data());
-            files[i] = buf_2.data();
+            WCHAR* buf = (WCHAR*)alloc.allocate(sizeof(WCHAR) * (path_len + 1));
+            DragQueryFileW(hdrop, i, buf, path_len + 1);
+            usize utf8_len = utf16_to_utf8_len((const c16*)buf);
+            c8* buf_2 = (c8*)alloc.allocate(sizeof(c8) * (utf8_len + 1));
+            utf16_to_utf8(buf_2, utf8_len + 1, (const c16*)buf);
+            files[i] = buf_2;
         }
 
         POINT pt = {0, 0};

@@ -12,6 +12,7 @@
 #include <Luna/ImGui/ImGui.hpp>
 #include <Luna/Runtime/Math/Color.hpp>
 #include <Luna/Runtime/Math/Transform.hpp>
+#include <Luna/Runtime/StackAllocator.hpp>
 #include "MainEditor.hpp"
 
 namespace Luna
@@ -24,6 +25,7 @@ namespace Luna
 
     bool edit_enum(const c8* name, typeinfo_t type, void* obj)
     {
+        StackAllocator salloc;
         auto descs = get_enum_options(type);
         bool edited = false;
         if (is_multienum_type(type))
@@ -33,7 +35,7 @@ namespace Luna
         }
         else
         {
-            Array<const c8*> options(descs.size());
+            const c8** options = (const c8**)salloc.allocate(sizeof(const c8*) * descs.size());
             i64 value = get_enum_instance_value(type, obj);
             int current_item = -1;
             for (usize i = 0; i < descs.size(); ++i)
@@ -45,7 +47,7 @@ namespace Luna
                     current_item = (int)i;
                 }
             }
-            edited = ImGui::Combo(name, &current_item, options.data(), (int)descs.size());
+            edited = ImGui::Combo(name, &current_item, options, (int)descs.size());
             value = descs[current_item].value;
             set_enum_instance_value(type, obj, value);
         }

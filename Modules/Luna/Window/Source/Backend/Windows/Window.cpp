@@ -14,6 +14,7 @@
 #include <Luna/Runtime/Unicode.hpp>
 #include "../../Window.hpp"
 #include <shellapi.h>
+#include <Luna/Runtime/StackAllocator.hpp>
 
 #pragma comment(lib, "Gdi32.lib")
 #pragma comment(lib, "Imm32.lib")
@@ -265,8 +266,12 @@ namespace Luna
             lutsassert_main_thread();
             if (is_closed()) return BasicError::bad_calling_time();
             
-            auto buf = utf8_to_utf16_arr(title);
-            if (!SetWindowTextW(m_hwnd, (LPCWSTR)buf.data()))
+            usize title_len = utf8_to_utf16_len(title);
+            StackAllocator alloc;
+            c16* buf = (c16*)alloc.allocate(sizeof(c16) * (title_len + 1));
+            utf8_to_utf16(buf, title_len + 1, title);
+            
+            if (!SetWindowTextW(m_hwnd, (LPCWSTR)buf))
             {
                 return set_error(BasicError::bad_platform_call(), "SetWindowTextW failed");
             }
@@ -380,8 +385,11 @@ namespace Luna
                     width = rect.right - rect.left;
                     height = rect.bottom - rect.top;
                 }
-                auto window_namew = utf8_to_utf16_arr(title);
-                HWND hwnd = CreateWindowExW(WS_EX_APPWINDOW, WIN32_CLASS_NAME, (wchar_t*)window_namew.data(), style, x, y, width, height,
+                usize title_sz = utf8_to_utf16_len(title);
+                StackAllocator alloc;
+                wchar_t* window_namew = (wchar_t*)alloc.allocate(sizeof(wchar_t) * (title_sz + 1));
+                utf8_to_utf16((c16*)window_namew, title_sz + 1, title);
+                HWND hwnd = CreateWindowExW(WS_EX_APPWINDOW, WIN32_CLASS_NAME, window_namew, style, x, y, width, height,
                     nullptr, nullptr, g_startup_params.hInstance, nullptr);
                 if (!hwnd)
                 {

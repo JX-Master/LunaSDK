@@ -34,9 +34,11 @@ namespace Luna
     void error_close();
     void object_close();
     void add_builtin_typeinfo();
+    bool stack_allocator_init();
 
     void log_init();
     void log_close();
+    void stack_allocator_close();
 
     void register_types_and_interfaces()
     {
@@ -109,6 +111,18 @@ namespace Luna
             Platform::close();
             return false;
         }
+        if(!stack_allocator_init()) [[unlikely]]
+        {
+            coroutine_close();
+            thread_close();
+            object_close();
+            type_registry_close();
+            name_close();
+            error_close();
+            profiler_close();
+            Platform::close();
+            return false;
+        }
         random_init();
         log_init();
         std_io_init();
@@ -129,6 +143,7 @@ namespace Luna
         std_io_close();
         log_close();
         random_close();
+        stack_allocator_close();
         coroutine_close();
         thread_close();
         object_close();
