@@ -8,7 +8,7 @@
 * @date 2023/11/24
 */
 #include "../../../Platform/Windows/MiniWin.hpp"
-#include "../../OS.hpp"
+#include "../Debug.hpp"
 #include "../../../SpinLock.hpp"
 #include <DbgHelp.h>
 
@@ -16,7 +16,7 @@
 
 namespace Luna
 {
-    namespace OS
+    namespace Platform
     {
         HANDLE g_debug_process;
         SpinLock g_stack_backtrace_lock;

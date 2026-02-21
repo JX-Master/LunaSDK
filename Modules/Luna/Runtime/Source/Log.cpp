@@ -13,7 +13,7 @@
 #include "../Mutex.hpp"
 #include "../File.hpp"
 #include "../Event.hpp"
-#include "OS.hpp"
+#include "Platform/Log.hpp"
 
 namespace Luna
 {    
@@ -45,7 +45,7 @@ namespace Luna
     {
         if (g_platform_log.enabled && (u8)verbosity <= (u8)g_platform_log.verbosity)
         {
-            OS::log(verbosity, tag, tag_length, message, message_length);
+            Platform::log(verbosity, tag, tag_length, message, message_length);
         }
     }
 
@@ -112,6 +112,89 @@ namespace Luna
         g_log_callbacks.clear();
         g_log_mutex = nullptr;
     }
+    LUNA_RUNTIME_API void log(LogHandler& handler, LogVerbosity verbosity, const c8* tag, const c8* format, ...)
+    {
+        VarList args;
+        va_start(args, format);
+        logv(handler, verbosity, tag, format, args);
+        va_end(args);
+    }
+    constexpr usize LOG_STACK_BUFFER_SIZE = 256;
+    LUNA_RUNTIME_API void logv(LogHandler& handler, LogVerbosity verbosity, const c8* tag, const c8* format, VarList args)
+    {
+        c8 buf[LOG_STACK_BUFFER_SIZE];
+        c8* abuf = nullptr;
+        i32 len = vsnprintf(buf, LOG_STACK_BUFFER_SIZE, format, args);
+        if (len >= LOG_STACK_BUFFER_SIZE)
+        {
+            abuf = (c8*)memalloc(sizeof(c8) * (len + 1));
+            len = vsnprintf(abuf, len + 1, format, args);
+        }
+        c8* use_buf = abuf ? abuf : buf;
+        if(!tag) tag = "";
+        handler(verbosity, tag, strlen(tag), use_buf, len);
+        if (abuf) memfree(abuf);
+    }
+    LUNA_RUNTIME_API void log_verbose(LogHandler& handler, const c8* tag, const c8* format, ...)
+    {
+        VarList args;
+        va_start(args, format);
+        logv_verbose(handler, tag, format, args);
+        va_end(args);
+    }
+    LUNA_RUNTIME_API void logv_verbose(LogHandler& handler, const c8* tag, const c8* format, VarList args)
+    {
+        logv(handler, LogVerbosity::verbose, tag, format, args);
+    }
+    LUNA_RUNTIME_API void log_debug(LogHandler& handler, const c8* tag, const c8* format, ...)
+    {
+        VarList args;
+        va_start(args, format);
+        logv_debug(handler, tag, format, args);
+        va_end(args);
+    }
+    LUNA_RUNTIME_API void logv_debug(LogHandler& handler, const c8* tag, const c8* format, VarList args)
+    {
+        logv(handler, LogVerbosity::debug, tag, format, args);
+    }
+    LUNA_RUNTIME_API void log_info(LogHandler& handler, const c8* tag, const c8* format, ...)
+    {
+        VarList args;
+        va_start(args, format);
+        logv_info(handler, tag, format, args);
+        va_end(args);
+    }
+    LUNA_RUNTIME_API void logv_info(LogHandler& handler, const c8* tag, const c8* format, VarList args)
+    {
+        logv(handler, LogVerbosity::info, tag, format, args);
+    }
+    LUNA_RUNTIME_API void log_warning(LogHandler& handler, const c8* tag, const c8* format, ...)
+    {
+        VarList args;
+        va_start(args, format);
+        logv_warning(handler, tag, format, args);
+        va_end(args);
+    }
+    LUNA_RUNTIME_API void logv_warning(LogHandler& handler, const c8* tag, const c8* format, VarList args)
+    {
+        logv(handler, LogVerbosity::warning, tag, format, args);
+    }
+    LUNA_RUNTIME_API void log_error(LogHandler& handler, const c8* tag, const c8* format, ...)
+    {
+        VarList args;
+        va_start(args, format);
+        logv_error(handler, tag, format, args);
+        va_end(args);
+    }
+    LUNA_RUNTIME_API void logv_error(LogHandler& handler, const c8* tag, const c8* format, VarList args)
+    {
+        logv(handler, LogVerbosity::error, tag, format, args);
+    }
+    LUNA_RUNTIME_API void log_unformatted(LogVerbosity verbosity, const c8* tag, usize tag_length, const c8* message, usize message_length)
+    {
+        MutexGuard guard(g_log_mutex);
+        g_log_callbacks(verbosity, tag, tag_length, message, message_length);
+    }
     LUNA_RUNTIME_API void log(LogVerbosity verbosity, const c8* tag, const c8* format, ...)
     {
         VarList args;
@@ -119,7 +202,6 @@ namespace Luna
         logv(verbosity, tag, format, args);
         va_end(args);
     }
-    constexpr usize LOG_STACK_BUFFER_SIZE = 256;
     LUNA_RUNTIME_API void logv(LogVerbosity verbosity, const c8* tag, const c8* format, VarList args)
     {
         c8 buf[LOG_STACK_BUFFER_SIZE];
@@ -131,10 +213,8 @@ namespace Luna
             len = vsnprintf(abuf, len + 1, format, args);
         }
         c8* use_buf = abuf ? abuf : buf;
-        MutexGuard guard(g_log_mutex);
         if(!tag) tag = "";
-        g_log_callbacks(verbosity, tag, strlen(tag), use_buf, len);
-        guard.unlock();
+        log_unformatted(verbosity, tag, strlen(tag), use_buf, len);
         if (abuf) memfree(abuf);
     }
     LUNA_RUNTIME_API usize register_log_handler(const Function<log_callback_t>& handler)

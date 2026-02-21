@@ -3,33 +3,38 @@
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
-* @file OS.cpp
+* @file Init.cpp
 * @author JXMaster
 * @date 2020/12/9
 */
-#include "../../OS.hpp"
+#include "../Init.hpp"
 #include "../../../Platform/Windows/MiniWin.hpp"
 
 namespace Luna
 {
-    namespace OS
+    namespace Platform
     {
         void time_init();
-        void thread_init();
+        Result thread_init();
         void thread_close();
-        void file_init();
         void std_io_init();
         void std_io_close();
         void debug_init();
         void debug_close();
 
-        void init()
+        Result init()
         {
+            Result r;
             debug_init();
             time_init();
-            thread_init();
-            file_init();
+            r = thread_init();
+            if(r != Result::success)
+            {
+                debug_close();
+                return r;
+            }
             std_io_init();
+            return Result::success;
         }
 
         void close() 
@@ -37,14 +42,6 @@ namespace Luna
             std_io_close();
             thread_close();
             debug_close();
-        }
-
-        u32 get_num_processors()
-        {
-            SYSTEM_INFO si;
-            memzero(&si, sizeof(SYSTEM_INFO));
-            ::GetSystemInfo(&si);
-            return si.dwNumberOfProcessors;
         }
     }
 }

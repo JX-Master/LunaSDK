@@ -9,91 +9,96 @@
  */
 #pragma once
 #include <errno.h>
+#include "../Result.hpp"
 
 namespace Luna
 {
-    namespace OS
+    namespace Platform
     {
-        inline const c8* display_errno(int err)
+        inline Result encode_errno(int err)
         {
             switch(err)
             {
                 case EPERM:
-                    return "EPERM Operation not permitted";
+                    return Result::not_permitted;
                 case ENOENT:
-                    return "ENOENT No such file or directory";
+                    return Result::not_found;
                 case ESRCH:
-                    return "ESRCH No such process";
+                    return Result::not_found;
                 case EINTR:
-                    return "EINTR Interrupted system call";
+                    return Result::interrupted;
                 case EIO:
-                    return "EIO Input/output error";
+                    return Result::io_error;
                 case ENXIO:
-                    return "ENXIO Device not configured";
+                    return Result::not_configured;
                 case E2BIG:
-                    return "E2BIG Argument list too long";
+                    return Result::data_too_big;
                 case ENOEXEC:
-                    return "ENOEXEC Exec format error";
+                    return Result::not_found;
                 case EBADF:
-                    return "EBADF Bad file descriptor";
+                    return Result::bad_file;
                 case ECHILD:
-                    return "ECHILD No child processes";
+                    return Result::not_found;
                 case EDEADLK:
-                    return "Resource deadlock avoided";
+                    return Result::deadlock;
                 case ENOMEM:
-                    return "ENOMEM Cannot allocate memory";
+                    return Result::out_of_memory;
                 case EACCES:
-                    return "EACCES Permission denied";
+                    return Result::access_denied;
                 case EFAULT:
-                    return "EFAULT Bad address";
+                    return Result::bad_memory_address;
                 case ENOTBLK:
-                    return "ENOTBLK Block device required";
+                    return Result::bad_calling_time;
                 case EBUSY:
-                    return "EBUSY Device / Resource busy";
+                    return Result::busy;
                 case EEXIST:
-                    return "EEXIST File exists";
+                    return Result::already_exists;
                 case EXDEV:
-                    return "EXDEV Cross-device link";
+                    return Result::not_supported;
                 case ENODEV:
-                    return "ENODEV Operation not supported by device";
+                    return Result::not_supported;
                 case ENOTDIR:
-                    return "ENOTDIR Not a directory";
+                    return Result::not_directory;
                 case EISDIR:
-                    return "EISDIR Is a directory";
+                    return Result::is_directory;
                 case EINVAL:
-                    return "EINVAL Invalid argument";
+                    return Result::bad_arguments;
                 case ENFILE:
-                    return "ENFILE Too many open files in system";
+                    return Result::out_of_resource;
                 case EMFILE:
-                    return "EMFILE Too many open files";
+                    return Result::out_of_resource;
                 case ENOTTY:
-                    return "ENOTTY Inappropriate ioctl for device";
+                    return Result::not_supported;
                 case ETXTBSY:
-                    return "ETXTBSY Text file busy";
+                    return Result::busy;
                 case EFBIG:
-                    return "EFBIG File too large";
+                    return Result::file_to_big;
                 case ENOSPC:
-                    return "ENOSPC No space left on device";
+                    return Result::out_of_resource;
                 case ESPIPE:
-                    return "ESPIPE Illegal seek";
+                    return Result::bad_arguments;
                 case EROFS:
-                    return "EROFS Read-only file system";
+                    return Result::not_supported;
                 case EMLINK:
-                    return "EMLINK Too many links";
+                    return Result::out_of_resource;
                 case EPIPE:
-                    return "EPIPE Broken pipe";
+                    return Result::bad_pipe;
                 case EDOM:
-                    return "EDOM Numerical argument out of domain";
+                    return Result::out_of_range;
                 case ERANGE:
-                    return "ERANGE Result too large";
+                    return Result::out_of_range;
                 case EAGAIN:
-                    return "EAGAIN|EWOULDBLOCK Resource temporarily unavailable / Operation would block";
+                    return Result::not_ready;
                 case EINPROGRESS:
-                    return "EINPROGRESS Operation now in progress";
+                    return Result::in_progress;
                 case EALREADY:
-                    return "EALREADY Operation already in progress";
+                    return Result::in_progress;
+                case ENAMETOOLONG:
+                    return Result::path_too_long;
+                case ELOOP:
+                    return Result::loop;
                 default:
-                    return "Undefined Error Code";
+                    return Result::bad_platform_call;
             }
         }
     }

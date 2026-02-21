@@ -12,7 +12,7 @@
 #define LUNA_RUNTIME_API LUNA_EXPORT
 #include <Luna/Runtime/Error.hpp>
 #include <Luna/Runtime/HashMap.hpp>
-#include "OS.hpp"
+#include "Platform/Fiber.hpp"
 #include "../SpinLock.hpp"
 namespace Luna
 {
@@ -30,6 +30,7 @@ namespace Luna
             usize l = strlen(name);
             c8* str = (c8*)memalloc((l + 1) * sizeof(c8));
             memcpy(str, name, (l + 1) * sizeof(c8));
+
             this->name = str;
         }
         ErrCodeRegistry(const ErrCodeRegistry&) = delete;
@@ -92,22 +93,23 @@ namespace Luna
         memdelete(err);
     }
 
-    void error_init()
+    bool error_init()
     {
         g_errcat_registry.construct();
         g_errcode_registry.construct();
-        g_error_tls = OS::tls_alloc(error_destructor);
+        auto r =  Platform::fls_alloc(error_destructor, g_error_tls);
+        return r == Platform::Result::success;
     }
 
     void error_close()
     {
-        Error* err = (Error*)OS::tls_get(g_error_tls);
+        Error* err = (Error*)Platform::fls_get(g_error_tls);
         if (err)
         {
             memdelete(err);
-            OS::tls_set(g_error_tls, nullptr);
+            Platform::fls_set(g_error_tls, nullptr);
         }
-        OS::tls_free(g_error_tls);
+        Platform::fls_free(g_error_tls);
         g_errcode_registry.destruct();
         g_errcat_registry.destruct();
     }
@@ -241,11 +243,11 @@ namespace Luna
 
     LUNA_RUNTIME_API Error& get_error()
     {
-        Error* err = (Error*)OS::tls_get(g_error_tls);
+        Error* err = (Error*)Platform::fls_get(g_error_tls);
         if (!err)
         {
             err = memnew<Error>();
-            OS::tls_set(g_error_tls, err);
+            Platform::fls_set(g_error_tls, err);
         }
         return *err;
     }
@@ -342,9 +344,9 @@ namespace Luna
             static ErrCode e = get_error_code_by_name("BasicError", "timeout");
             return e;
         }
-        LUNA_RUNTIME_API ErrCode data_too_long()
+        LUNA_RUNTIME_API ErrCode data_too_big()
         {
-            static ErrCode e = get_error_code_by_name("BasicError", "data_too_long");
+            static ErrCode e = get_error_code_by_name("BasicError", "data_too_big");
             return e;
         }
         LUNA_RUNTIME_API ErrCode insufficient_user_buffer()
@@ -427,14 +429,49 @@ namespace Luna
             static ErrCode e = get_error_code_by_name("BasicError", "bad_data");
             return e;
         }
-        LUNA_RUNTIME_API ErrCode bad_address()
+        LUNA_RUNTIME_API ErrCode bad_memory_address()
         {
-            static ErrCode e = get_error_code_by_name("BasicError", "bad_address");
+            static ErrCode e = get_error_code_by_name("BasicError", "bad_memory_address");
             return e;
         }
         LUNA_RUNTIME_API ErrCode deadlock()
         {
             static ErrCode e = get_error_code_by_name("BasicError", "deadlock");
+            return e;
+        }
+        LUNA_RUNTIME_API ErrCode not_permitted()
+        {
+            static ErrCode e = get_error_code_by_name("BasicError", "not_permitted");
+            return e;
+        }
+        LUNA_RUNTIME_API ErrCode busy()
+        {
+            static ErrCode e = get_error_code_by_name("BasicError", "busy");
+            return e;
+        }
+        LUNA_RUNTIME_API ErrCode file_to_big()
+        {
+            static ErrCode e = get_error_code_by_name("BasicError", "file_to_big");
+            return e;
+        }
+        LUNA_RUNTIME_API ErrCode not_configured()
+        {
+            static ErrCode e = get_error_code_by_name("BasicError", "not_configured");
+            return e;
+        }
+        LUNA_RUNTIME_API ErrCode bad_pipe()
+        {
+            static ErrCode e = get_error_code_by_name("BasicError", "bad_pipe");
+            return e;
+        }
+        LUNA_RUNTIME_API ErrCode path_too_long()
+        {
+            static ErrCode e = get_error_code_by_name("BasicError", "path_too_long");
+            return e;
+        }
+        LUNA_RUNTIME_API ErrCode loop()
+        {
+            static ErrCode e = get_error_code_by_name("BasicError", "loop");
             return e;
         }
     }

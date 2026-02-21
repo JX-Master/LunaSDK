@@ -135,6 +135,23 @@ namespace Luna
         return wi;
     }
 
+    LUNA_RUNTIME_API usize utf16_to_utf8_str(String& dst, const c16* src, usize src_chars)
+    {
+        usize len = utf16_to_utf8_len(src, src_chars);
+        usize pos = dst.size();
+        dst.resize(pos + len, 0);
+        utf16_to_utf8(dst.data() + pos, len + 1, src, src_chars);
+        return len;
+    }
+
+    LUNA_RUNTIME_API Array<c8> utf16_to_utf8_arr(const c16* src, usize src_chars)
+    {
+        usize len = utf16_to_utf8_len(src, src_chars);
+        Array<c8> arr(len + 1);
+        utf16_to_utf8(arr.data(), len + 1, src, src_chars);
+        return arr;
+    }
+
     LUNA_RUNTIME_API usize utf16_to_utf8_len(const c16* src, usize src_chars)
     {
         usize ri{ 0 };
@@ -165,6 +182,23 @@ namespace Luna
         }
         dst[wi] = '\0';
         return wi;
+    }
+
+    LUNA_RUNTIME_API usize utf8_to_utf16_str(String16& dst, const c8* src, usize src_chars)
+    {
+        usize len = utf8_to_utf16_len(src, src_chars);
+        usize pos = dst.size();
+        dst.resize(pos + len, 0);
+        utf8_to_utf16(dst.data() + pos, len + 1, src, src_chars);
+        return len;
+    }
+
+    LUNA_RUNTIME_API Array<c16> utf8_to_utf16_arr(const c8* src, usize src_chars)
+    {
+        usize len = utf8_to_utf16_len(src, src_chars);
+        Array<c16> arr(len + 1);
+        utf8_to_utf16(arr.data(), len + 1, src, src_chars);
+        return arr;
     }
 
     LUNA_RUNTIME_API usize utf8_to_utf16_len(const c8* src, usize src_max_chars)

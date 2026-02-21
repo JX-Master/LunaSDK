@@ -49,7 +49,9 @@ RV start()
 {
     lutry
     {
-        Path p = get_process_path();
+        const c8* path = get_process_path();
+        Path p = path;
+        release_process_path(path);
         p.pop_back();
         luexp(set_current_dir(p.encode().c_str()));
         auto device = get_main_device();

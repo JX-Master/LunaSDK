@@ -66,9 +66,10 @@ namespace Luna
         //! * BasicError::not_directory
         //! * BasicError::bad_platform_call for all errors that cannot be identified.
         LUNA_VFS_API R<FileAttribute> get_file_attribute(const Path& path);
-        //! Copies the file or directory from the source path to the destination path.
-        //! @param[in] from_path Source file or directory path.
-        //! @param[in] to_path Destination file or directory path.
+        //! Copies the file from the source path to the destination path.
+        //! This function cannot copy directories.
+        //! @param[in] from_path Source file path.
+        //! @param[in] to_path Destination file path.
         //! @par Possible Errors:
         //! * BasicError::bad_arguments
         //! * BasicError::already_exists
@@ -86,12 +87,14 @@ namespace Luna
         //! * BasicError::not_found
         //! * BasicError::bad_platform_call for all errors that cannot be identified.
         LUNA_VFS_API RV move_file(const Path& from_path, const Path& to_path);
-        //! Deletes the specified file.
+        //! Deletes the specified file or directory
         //! @param[in] path The file to delete.
+        //! If this specifies one directory, the directory must be empty.
         //! @par Possible Errors:
         //! * BasicError::bad_arguments
         //! * BasicError::not_found
         //! * BasicError::access_denied
+        //! * BasicError::directory_not_empty
         //! * BasicError::bad_platform_call for all errors that cannot be identified.
         LUNA_VFS_API RV delete_file(const Path& path);
         //! Creates a file iterator that can be used to iterate all files in the specified directory.

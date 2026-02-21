@@ -10,28 +10,28 @@
 #include "../PlatformDefines.hpp"
 #define LUNA_RUNTIME_API LUNA_EXPORT
 #include "../StackAllocator.hpp"
-#include "../Thread.hpp"
+#include "../Fiber.hpp"
 #include "../UniquePtr.hpp"
 #include "../SpinLock.hpp"
 
 namespace Luna
 {
-    opaque_t g_stack_allocator_tls;
+    opaque_t g_stack_allocator_fls;
 
     // Allocators for all threads.
-    struct StackAllocatorTLSContext
+    struct StackAllocatorFLSContext
     {
         byte_t* data;
         byte_t* cursor;
 
         static constexpr usize STACK_ALLOC_SIZE = 4_mb;
 
-        StackAllocatorTLSContext()
+        StackAllocatorFLSContext()
         {
             data = (byte_t*)memalloc(STACK_ALLOC_SIZE);
             cursor = data;
         }
-        ~StackAllocatorTLSContext()
+        ~StackAllocatorFLSContext()
         {
             memfree(data);
         }
@@ -60,14 +60,14 @@ namespace Luna
         }
     };
     
-    Vector<UniquePtr<StackAllocatorTLSContext>> g_stack_allocator_ctxs;
+    Vector<UniquePtr<StackAllocatorFLSContext>> g_stack_allocator_ctxs;
     SpinLock g_stack_allocator_ctxs_lock;
 
-    void stack_allocator_init()
+    bool stack_allocator_init()
     {
-        g_stack_allocator_tls = tls_alloc([](void* ptr)
+        auto r = fls_alloc([](void* ptr)
         {
-            StackAllocatorTLSContext* ctx = (StackAllocatorTLSContext*)ptr;
+            StackAllocatorFLSContext* ctx = (StackAllocatorFLSContext*)ptr;
             LockGuard guard(g_stack_allocator_ctxs_lock);
             for(auto iter = g_stack_allocator_ctxs.begin(); iter != g_stack_allocator_ctxs.end(); ++iter)
             {
@@ -78,6 +78,9 @@ namespace Luna
                 }
             }
         });
+        if(failed(r)) return false;
+        g_stack_allocator_fls = r.get();
+        return true;
     }
     void stack_allocator_close()
     {
@@ -86,17 +89,17 @@ namespace Luna
             g_stack_allocator_ctxs.clear();
             g_stack_allocator_ctxs.shrink_to_fit();
         }
-        tls_free(g_stack_allocator_tls);
+        fls_free(g_stack_allocator_fls);
     }
-    StackAllocatorTLSContext* get_stack_allocator_ctx()
+    StackAllocatorFLSContext* get_stack_allocator_ctx()
     {
-        StackAllocatorTLSContext* ctx = (StackAllocatorTLSContext*)tls_get(g_stack_allocator_tls);
+        StackAllocatorFLSContext* ctx = (StackAllocatorFLSContext*)fls_get(g_stack_allocator_fls);
         if(!ctx)
         {
             LockGuard guard(g_stack_allocator_ctxs_lock);
-            g_stack_allocator_ctxs.emplace_back(memnew<StackAllocatorTLSContext>());
+            g_stack_allocator_ctxs.emplace_back(memnew<StackAllocatorFLSContext>());
             ctx = g_stack_allocator_ctxs.back().get();
-            tls_set(g_stack_allocator_tls, ctx);
+            fls_set(g_stack_allocator_fls, ctx);
         }
         return ctx;
     }

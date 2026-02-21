@@ -14,13 +14,16 @@
 #include "../ReadWriteLock.hpp"
 #include "../Time.hpp"
 #include "../Thread.hpp"
-#include "OS.hpp"
+#include "Platform/Memory.hpp"
+#include "Platform/ReadWriteLock.hpp"
+#include "Platform/Fiber.hpp"
+#include "Platform/Time.hpp"
 #include "../Vector.hpp"
 
 namespace Luna
 {
-    Event<on_profiler_event_t, OSAllocator> g_profiler_callbacks;
-    opaque_t g_profiler_callbacks_lock;
+    Event<on_profiler_event_t, Platform::Allocator> g_profiler_callbacks;
+    Platform::ReadWriteLock g_profiler_callbacks_lock;
     opaque_t g_profiler_thread_context_tls;
     bool g_profiler_ready = false;
 
@@ -41,17 +44,17 @@ namespace Luna
             capacity(capacity),
             size(0)
         {
-            data = OS::memalloc(capacity);
+            data = Platform::memalloc(capacity);
         }
         ~ProfilerDataBuffer()
         {
-            OS::memfree(data);
+            Platform::memfree(data);
         }
     };
     struct ProfilerThreadContext
     {
-        Vector<ProfilerEventEntry, OSAllocator> m_events;
-        Vector<ProfilerDataBuffer, OSAllocator> m_event_data_buffers;
+        Vector<ProfilerEventEntry, Platform::Allocator> m_events;
+        Vector<ProfilerDataBuffer, Platform::Allocator> m_event_data_buffers;
         ProfilerEventEntry m_next_entry;
 
         bool m_thread_locked_callbacks = false;
@@ -62,7 +65,7 @@ namespace Luna
     };
     void profiler_thread_context_dtor(void* data)
     {
-        if(data) OS::memdelete((ProfilerThreadContext*)data);
+        if(data) Platform::memdelete((ProfilerThreadContext*)data);
     }
     void* ProfilerThreadContext::allocate_data_buffer(usize size, usize alignment, void(*dtor)(void*))
     {
@@ -117,9 +120,9 @@ namespace Luna
             dst.id = src.id;
             dst.timestamp = src.timestamp;
             dst.thread = get_current_thread();
-            OS::acquire_read_lock(g_profiler_callbacks_lock);
+            Platform::acquire_read_lock(g_profiler_callbacks_lock);
             g_profiler_callbacks(dst);
-            OS::release_read_lock(g_profiler_callbacks_lock);
+            Platform::release_read_lock(g_profiler_callbacks_lock);
         }
         for(auto& e : m_events)
         {
@@ -130,24 +133,26 @@ namespace Luna
     }
     ProfilerThreadContext* get_profiler_thread_context()
     {
-        ProfilerThreadContext* ctx = (ProfilerThreadContext*)OS::tls_get(g_profiler_thread_context_tls);
+        ProfilerThreadContext* ctx = (ProfilerThreadContext*)Platform::fls_get(g_profiler_thread_context_tls);
         if(!ctx)
         {
-            ctx = OS::memnew<ProfilerThreadContext>();
-            OS::tls_set(g_profiler_thread_context_tls, ctx);
+            ctx = Platform::memnew<ProfilerThreadContext>();
+            Platform::fls_set(g_profiler_thread_context_tls, ctx);
         }
         return ctx;
     }
-    void profiler_init()
+    bool profiler_init()
     {
-        g_profiler_thread_context_tls = OS::tls_alloc(profiler_thread_context_dtor);
-        g_profiler_callbacks_lock = OS::new_read_write_lock();
+        auto r = Platform::fls_alloc(profiler_thread_context_dtor, g_profiler_thread_context_tls);
+        if(r != Platform::Result::success) return false;
+        Platform::new_read_write_lock(g_profiler_callbacks_lock);
+        return true;
     }
     void profiler_close()
     {
         g_profiler_callbacks.clear();
-        OS::delete_read_write_lock(g_profiler_callbacks_lock);
-        OS::tls_free(g_profiler_thread_context_tls);
+        Platform::delete_read_write_lock(g_profiler_callbacks_lock);
+        Platform::fls_free(g_profiler_thread_context_tls);
     }
     LUNA_RUNTIME_API void* allocate_profiler_event_data(usize size, usize alignment, void(*dtor)(void*))
     {
@@ -158,7 +163,7 @@ namespace Luna
     {
         if(!g_profiler_ready) return;
         auto ctx = get_profiler_thread_context();
-        ctx->m_next_entry.timestamp = OS::get_ticks();
+        ctx->m_next_entry.timestamp = Platform::get_ticks();
         ctx->m_next_entry.id = event_id;
         ctx->m_events.push_back(ctx->m_next_entry);
         ctx->m_next_entry = ProfilerEventEntry();
@@ -173,11 +178,11 @@ namespace Luna
         auto ctx = get_profiler_thread_context();
         auto move_handler = handler;
         // Any events that occur in write scope will trigger dead lock, so we use m_thread_locked_callbacks to prevent dispatching events in write scope.
-        OS::acquire_write_lock(g_profiler_callbacks_lock);
+        Platform::acquire_write_lock(g_profiler_callbacks_lock);
         ctx->m_thread_locked_callbacks = true;
         usize r = g_profiler_callbacks.add_handler(move(move_handler));
         ctx->m_thread_locked_callbacks = false;
-        OS::release_write_lock(g_profiler_callbacks_lock);
+        Platform::release_write_lock(g_profiler_callbacks_lock);
         // Dispatch any events that occur during registration.
         if(!ctx->m_events.empty())
         {
@@ -189,11 +194,11 @@ namespace Luna
     {
         auto ctx = get_profiler_thread_context();
         // Any events that occur in write scope will trigger dead lock, so we use m_thread_locked_callbacks to prevent dispatching events in write scope.
-        OS::acquire_write_lock(g_profiler_callbacks_lock);
+        Platform::acquire_write_lock(g_profiler_callbacks_lock);
         ctx->m_thread_locked_callbacks = true;
         g_profiler_callbacks.remove_handler(handler_id);
         ctx->m_thread_locked_callbacks = false;
-        OS::release_write_lock(g_profiler_callbacks_lock);
+        Platform::release_write_lock(g_profiler_callbacks_lock);
         // Dispatch any events that occur during unregistration.
         if(!ctx->m_events.empty())
         {

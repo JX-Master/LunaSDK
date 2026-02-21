@@ -356,6 +356,40 @@ namespace Luna
         lucatchret;
         return ok;
     }
+    static RV remove_dir(Path& dir)
+    {
+        lutry
+        {
+            // Remove all files in directory.
+            Vector<Name> files;
+            lulet(iter, VFS::open_dir(dir));
+            for(;iter->is_valid(); iter->move_next())
+            {
+                const c8* filename = iter->get_filename();
+                if(!strcmp(filename, ".") || !strcmp(filename, "..")) continue;
+                files.push_back(filename);
+            }
+            iter.reset();
+            for(auto& f : files)
+            {
+                dir.push_back(f);
+                lulet(attr, VFS::get_file_attribute(dir));
+                if(test_flags(attr.attributes, FileAttributeFlag::directory))
+                {
+                    luexp(remove_dir(dir));
+                }
+                else
+                {
+                    luexp(VFS::delete_file(dir));
+                }
+                dir.pop_back();
+            }
+            // Delete empty directory.
+            luexp(VFS::delete_file(dir));
+        }
+        lucatchret;
+        return ok;
+    }
     void AssetBrowser::tile_context()
     {
         // Draw content.
@@ -666,7 +700,7 @@ namespace Luna
                             {
                                 auto _ = Window::message_box(explain(r.errcode()), "Delete directory failed", Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
                             }
-                            r = VFS::delete_file(path);
+                            r = remove_dir(path);
                             if(failed(r))
                             {
                                 auto _ = Window::message_box(explain(r.errcode()), "Delete directory failed", Window::MessageBoxType::ok, Window::MessageBoxIcon::error);

@@ -7,39 +7,35 @@
 * @author JXMaster
 * @date 2022/3/2
 */
-#include "../../OS.hpp"
-#include "../../../Platform/Windows/MiniWin.hpp"
+#include "../Mutex.hpp"
 
 namespace Luna
 {
-    namespace OS
+    namespace Platform
     {
-        opaque_t new_mutex()
+        void new_mutex(Mutex& out_mutex)
         {
-            CRITICAL_SECTION* ret = (CRITICAL_SECTION*)Luna::memalloc(sizeof(CRITICAL_SECTION), alignof(CRITICAL_SECTION));
-            InitializeCriticalSection(ret);
-            return ret;
+            InitializeCriticalSection(&out_mutex.m_sec);
         }
 
-        void delete_mutex(opaque_t mutex)
+        void delete_mutex(Mutex& mutex)
         {
-            DeleteCriticalSection((CRITICAL_SECTION*)mutex);
-            Luna::memfree(mutex, alignof(CRITICAL_SECTION));
+            DeleteCriticalSection(&mutex.m_sec);
         }
 
-        void lock_mutex(opaque_t mutex)
+        void lock_mutex(Mutex& mutex)
         {
-            EnterCriticalSection((CRITICAL_SECTION*)mutex);
+            EnterCriticalSection(&mutex.m_sec);
         }
 
-        bool try_lock_mutex(opaque_t mutex)
+        bool try_lock_mutex(Mutex& mutex)
         {
-            return TryEnterCriticalSection((CRITICAL_SECTION*)mutex);
+            return TryEnterCriticalSection(&mutex.m_sec);
         }
 
-        void unlock_mutex(opaque_t mutex)
+        void unlock_mutex(Mutex& mutex)
         {
-            LeaveCriticalSection((CRITICAL_SECTION*)mutex);
+            LeaveCriticalSection(&mutex.m_sec);
         }
     }
 }

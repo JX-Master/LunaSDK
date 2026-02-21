@@ -16,6 +16,7 @@
 #include "../../../Event.hpp"
 #include "../../Event.hpp"
 #include <Luna/Runtime/TSAssert.hpp>
+#include <Luna/Runtime/StackAllocator.hpp>
 
 #pragma comment(lib, "Shell32.lib")
 

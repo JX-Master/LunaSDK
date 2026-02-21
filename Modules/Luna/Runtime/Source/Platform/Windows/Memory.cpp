@@ -9,12 +9,12 @@
 */
 #include <Luna/Runtime/Assert.hpp>
 #include "../../../Platform/Windows/MiniWin.hpp"
-#include "../../OS.hpp"
+#include "../Memory.hpp"
 #include <Luna/Runtime/Result.hpp>
 
 namespace Luna
 {
-    namespace OS
+    namespace Platform
     {
         void* memalloc(usize size, usize alignment /* = 0 */)
         {

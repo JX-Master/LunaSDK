@@ -17,8 +17,6 @@
 #include "../SpinLock.hpp"
 #include "../Profiler.hpp"
 
-#include "OS.hpp"
-
 namespace Luna
 {
     struct ObjectHeader

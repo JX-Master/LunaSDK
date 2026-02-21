@@ -7,13 +7,13 @@
 * @author JXMaster
 * @date 2020/9/22
  */
-#include "../../OS.hpp"
+#include "../Assert.hpp"
 #include <Luna/Runtime/Unicode.hpp>
 #include <assert.h>
 
 namespace Luna
 {
-    namespace OS
+    namespace Platform
     {
         void assert_fail(const c8* msg, const c8* file, u32 line)
         {

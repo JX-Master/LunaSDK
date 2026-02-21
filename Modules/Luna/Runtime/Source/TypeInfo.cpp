@@ -12,12 +12,12 @@
 #include "TypeInfo.hpp"
 #include "../UnorderedMultiMap.hpp"
 #include "../HashMap.hpp"
-#include "OS.hpp"
+#include "Platform/Mutex.hpp"
 
 namespace Luna
 {
     Vector<UniquePtr<TypeInfo>> g_type_registry;
-    opaque_t g_type_registry_lock;
+    Platform::Mutex g_type_registry_lock;
 
     UnorderedMultiMap<Name, NamedTypeInfo*> g_type_name_map;
     HashMap<Guid, NamedTypeInfo*> g_type_guid_map;
@@ -86,7 +86,7 @@ namespace Luna
 
     void type_registry_init()
     {
-        g_type_registry_lock = OS::new_mutex();
+        Platform::new_mutex(g_type_registry_lock);
         g_void_type = add_primitive_typeinfo("void", Guid("{3A153D8F-8C16-4D68-9743-C8FC675BF5E4}"), 0, 0);
         g_u8_type = add_primitive_typeinfo("u8", Guid("{23A6E98D-BB1A-469D-99D2-D2915CBAACBA}"), sizeof(u8), alignof(u8));
         g_i8_type = add_primitive_typeinfo("i8", Guid("{2624AF5D-B874-4E8F-898D-2A17D875EB9A}"), sizeof(i8), alignof(i8));
@@ -130,7 +130,7 @@ namespace Luna
         g_type_name_map.clear();
         g_type_guid_map.clear();
         g_type_guid_map.shrink_to_fit();
-        OS::delete_mutex(g_type_registry_lock);
+        Platform::delete_mutex(g_type_registry_lock);
     }
     static void structure_default_construct(typeinfo_t type, void* data)
     {
@@ -221,7 +221,7 @@ namespace Luna
     }
     LUNA_RUNTIME_API typeinfo_t register_struct_type(const StructureTypeDesc& desc)
     {
-        OSMutexGuard guard(g_type_registry_lock);
+        Platform::MutexGuard guard(g_type_registry_lock);
         typeinfo_t type = get_type_by_guid(desc.guid);
         if (type) return type;
         type = get_type_by_name(desc.name, desc.alias);
@@ -275,7 +275,7 @@ namespace Luna
     }
     LUNA_RUNTIME_API typeinfo_t register_generic_struct_type(const GenericStructureTypeDesc& desc)
     {
-        OSMutexGuard guard(g_type_registry_lock);
+        Platform::MutexGuard guard(g_type_registry_lock);
         typeinfo_t type = get_type_by_guid(desc.guid);
         if (type) return type;
         type = get_type_by_name(desc.name, desc.alias);
@@ -296,7 +296,7 @@ namespace Luna
     }
     LUNA_RUNTIME_API typeinfo_t register_enum_type(const EnumerationTypeDesc& desc)
     {
-        OSMutexGuard guard(g_type_registry_lock);
+        Platform::MutexGuard guard(g_type_registry_lock);
         typeinfo_t type = get_type_by_guid(desc.guid);
         if (type) return type;
         type = get_type_by_name(desc.name, desc.alias);
@@ -441,7 +441,7 @@ namespace Luna
     }
     LUNA_RUNTIME_API typeinfo_t get_type_by_name(const Name& name, const Name& alias)
     {
-        OSMutexGuard guard(g_type_registry_lock);
+        Platform::MutexGuard guard(g_type_registry_lock);
         auto range = g_type_name_map.equal_range(name);
         if (range.first == range.second) return nullptr;
         for (auto iter = range.first; iter != range.second; ++iter)
@@ -454,14 +454,14 @@ namespace Luna
     }
     LUNA_RUNTIME_API typeinfo_t get_type_by_guid(const Guid& guid)
     {
-        OSMutexGuard guard(g_type_registry_lock);
+        Platform::MutexGuard guard(g_type_registry_lock);
         auto iter = g_type_guid_map.find(guid);
         if (iter == g_type_guid_map.end()) return nullptr;
         return (typeinfo_t)(iter->second);
     }
     LUNA_RUNTIME_API typeinfo_t get_generic_instanced_type(typeinfo_t generic_type, Span<const GenericArgument> generic_arguments)
     {
-        OSMutexGuard guard(g_type_registry_lock);
+        Platform::MutexGuard guard(g_type_registry_lock);
         if (((TypeInfo*)generic_type.handle)->kind != TypeKind::generic_structure) return nullptr;
         GenericStructureTypeInfo* st = (GenericStructureTypeInfo*)generic_type.handle;
         for (GenericStructureInstancedTypeInfo* gt : st->generic_instanced_types)

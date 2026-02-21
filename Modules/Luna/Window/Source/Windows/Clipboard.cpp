@@ -12,6 +12,7 @@
 #include "../../Clipboard.hpp"
 #include <Luna/Runtime/Unicode.hpp>
 #include <Luna/Runtime/Platform/Windows/MiniWin.hpp>
+#include <Luna/Runtime/StackAllocator.hpp>
 
 namespace Luna
 {

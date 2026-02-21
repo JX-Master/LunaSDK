@@ -10,6 +10,7 @@
 #include "../PlatformDefines.hpp"
 #define LUNA_RUNTIME_API LUNA_EXPORT
 #include "Thread.hpp"
+#include "Error.hpp"
 
 namespace Luna
 {
@@ -17,119 +18,87 @@ namespace Luna
     IThread* g_main_thread_ref;
     opaque_t g_tls_thread;
 
-    void thread_init()
+    bool thread_init()
     {
         g_main_thread = new_object<MainThread>();
         g_main_thread_ref = query_interface<IThread>(g_main_thread.object());
-        g_main_thread->m_handle = OS::get_current_thread_handle();
-        g_tls_thread = OS::tls_alloc(nullptr);
-        OS::tls_set(g_tls_thread, g_main_thread_ref);
+        Platform::get_main_thread(g_main_thread->m_thread);
+        auto r = Platform::tls_alloc(g_tls_thread);
+        if(r != Platform::Result::success) return false;
+        Platform::tls_set(g_tls_thread, g_main_thread_ref);
+        return true;
     }
     void thread_close()
     {
-        OS::tls_set(g_tls_thread, nullptr);
+        Platform::tls_set(g_tls_thread, nullptr);
         g_main_thread_ref = nullptr;
         g_main_thread = nullptr;
-        OS::tls_free(g_tls_thread);
+        Platform::tls_free(g_tls_thread);
     }
     static void thread_entry(void* data)
     {
         Thread* th = (Thread*)data;
         IThread* i = query_interface<IThread>(th);
-        OS::tls_set(g_tls_thread, i);
+        Platform::tls_set(g_tls_thread, i);
         th->m_entry(th->m_params);
     }
     LUNA_RUNTIME_API u32 get_processors_count()
     {
-        return OS::get_num_processors();
+        return Platform::get_num_processors();
     }
-    LUNA_RUNTIME_API Ref<IThread> new_thread(void(*entry_func)(void* params), void* params, const c8* name, u32 stack_size)
+    LUNA_RUNTIME_API R<Ref<IThread>> new_thread(void(*entry_func)(void* params), void* params, const c8* name, u32 stack_size)
     {
         luassert(entry_func);
         Ref<Thread> t = new_object<Thread>();
         t->m_entry = entry_func;
         t->m_params = params;
-        t->m_handle = OS::new_thread(thread_entry, t.object(), name, stack_size);
-        return t;
+        auto r = Platform::new_thread(thread_entry, t.object(), name, stack_size, t->m_thread);
+        if(r != Platform::Result::success) return encode_platform_result(r).errcode();
+        return Ref<IThread>(t);
     }
     LUNA_RUNTIME_API IThread* get_current_thread()
     {
-        IThread* th = (IThread*)OS::tls_get(g_tls_thread);
+        IThread* th = (IThread*)Platform::tls_get(g_tls_thread);
         return th;
     }
     LUNA_RUNTIME_API usize get_current_thread_id()
     {
-        return OS::get_current_thread_id();
+        return Platform::get_current_thread_id();
     }
     LUNA_RUNTIME_API IThread* get_main_thread()
     {
         return g_main_thread_ref;
     }
-    Fiber::~Fiber()
-    {
-        if(m_should_delete)
-        {
-            OS::delete_fiber(m_context);
-        }
-    }
-    LUNA_RUNTIME_API R<Ref<IFiber>> new_fiber(usize stack_size, void(*entry_func)(void* param), void* param)
-    {
-        luassert(entry_func && stack_size);
-        Ref<Fiber> f = new_object<Fiber>();
-        auto r = OS::new_fiber(stack_size, entry_func, param, f->m_context);
-        if(failed(r)) return r.errcode();
-        f->m_should_delete = true;
-        return Ref<IFiber>(f);
-    }
-    LUNA_RUNTIME_API R<Ref<IFiber>> convert_thread_to_fiber()
-    {
-        ThreadBase* t = cast_object<ThreadBase>(get_current_thread()->get_object());
-        if(t->m_native_fiber) return t->m_native_fiber;
-        Ref<Fiber> f = new_object<Fiber>();
-        auto r = OS::convert_thread_to_fiber(f->m_context);
-        if(failed(r)) return r.errcode();
-        t->m_native_fiber = f;
-        return Ref<IFiber>(f);
-    }
-    LUNA_RUNTIME_API RV convert_fiber_to_thread()
-    {
-        auto r = OS::convert_fiber_to_thread();
-        if(failed(r)) return r;
-        ThreadBase* t = cast_object<ThreadBase>(get_current_thread()->get_object());
-        t->m_native_fiber.reset();
-        return ok;
-    }
-    LUNA_RUNTIME_API void switch_to_fiber(IFiber* fiber)
-    {
-        Fiber* f = cast_object<Fiber>(fiber->get_object());
-        OS::switch_to_fiber(f->m_context);
-    }
+    
     LUNA_RUNTIME_API void sleep(u32 time_milliseconds)
     {
-        OS::sleep(time_milliseconds);
+        Platform::sleep(time_milliseconds);
     }
     LUNA_RUNTIME_API void fast_sleep(u32 time_microseconds)
     {
-        OS::fast_sleep(time_microseconds);
+        Platform::fast_sleep(time_microseconds);
     }
     LUNA_RUNTIME_API void yield_current_thread()
     {
-        OS::yield_current_thread();
+        Platform::yield_current_thread();
     }
-    LUNA_RUNTIME_API opaque_t tls_alloc(void (*destructor)(void*))
+    LUNA_RUNTIME_API R<opaque_t> tls_alloc()
     {
-        return OS::tls_alloc(destructor);
+        opaque_t handle;
+        auto r = Platform::tls_alloc(handle);
+        if(r != Platform::Result::success) return encode_platform_result(r).errcode();
+        return handle;
     }
     LUNA_RUNTIME_API void tls_free(opaque_t handle)
     {
-        OS::tls_free(handle);
+        Platform::tls_free(handle);
     }
     LUNA_RUNTIME_API void tls_set(opaque_t handle, void* ptr)
     {
-        return OS::tls_set(handle, ptr);
+        Platform::tls_set(handle, ptr);
     }
     LUNA_RUNTIME_API void* tls_get(opaque_t handle)
     {
-        return OS::tls_get(handle);
+        return Platform::tls_get(handle);
     }
 }

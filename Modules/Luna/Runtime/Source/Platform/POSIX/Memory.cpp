@@ -7,7 +7,7 @@
 * @author JXMaster
 * @date 2020/9/22
  */
-#include "../../OS.hpp"
+#include "../Memory.hpp"
 #include <sys/mman.h>
 #include "Errno.hpp"
 #include "../../../Error.hpp"
@@ -23,7 +23,7 @@
 
 namespace Luna
 {
-    namespace OS
+    namespace Platform
     {
         void* memalloc(usize size, usize alignment /* = 0 */)
         {
@@ -33,6 +33,22 @@ namespace Luna
             usize aligned_ptr = align_upper(ptr + 1, alignment);
             isize offset = aligned_ptr - ptr;
             *((isize*)(aligned_ptr)-1) = offset;
+            return (void*)aligned_ptr;
+        }
+        void* memrealloc(void* ptr, usize size, usize alignment /* = 0 */)
+        {
+            if(!ptr) return memalloc(size, alignment);
+            if(!size) memfree(ptr, alignment);
+            if(alignment <= MAX_ALIGN)
+            {
+                return realloc(ptr, size);
+            }
+            isize offset = *(((isize*)ptr) - 1);
+            void* origin_ptr = (void*)(((usize)ptr) - offset);
+            usize new_ptr = (usize)realloc(origin_ptr, size + alignment);
+            usize aligned_ptr = align_upper(new_ptr + 1, alignment);
+            isize new_offset = aligned_ptr - new_ptr;
+            *((isize*)(aligned_ptr)-1) = new_offset;
             return (void*)aligned_ptr;
         }
         void memfree(void* ptr, usize alignment /* = 0 */)

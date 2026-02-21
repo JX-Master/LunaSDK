@@ -35,9 +35,9 @@ namespace Luna
                 case MA_ALREADY_EXISTS: return BasicError::already_exists();
                 case MA_TOO_MANY_OPEN_FILES: return BasicError::out_of_resource();
                 case MA_INVALID_FILE: return BasicError::bad_file();
-                case MA_TOO_BIG: return BasicError::data_too_long();
-                case MA_PATH_TOO_LONG: return BasicError::data_too_long();
-                case MA_NAME_TOO_LONG: return BasicError::data_too_long();
+                case MA_TOO_BIG: return BasicError::data_too_big();
+                case MA_PATH_TOO_LONG: return BasicError::data_too_big();
+                case MA_NAME_TOO_LONG: return BasicError::data_too_big();
                 case MA_NOT_DIRECTORY: return BasicError::not_directory();
                 case MA_IS_DIRECTORY: return BasicError::is_directory();
                 case MA_DIRECTORY_NOT_EMPTY: return BasicError::directory_not_empty();
@@ -47,7 +47,7 @@ namespace Luna
                 case MA_IO_ERROR: return BasicError::io_error();
                 case MA_INTERRUPT: return BasicError::interrupted();
                 case MA_UNAVAILABLE: return BasicError::not_supported();
-                case MA_BAD_ADDRESS: return BasicError::bad_address();
+                case MA_BAD_ADDRESS: return BasicError::bad_memory_address();
                 case MA_DEADLOCK: return BasicError::deadlock();
                 case MA_TOO_MANY_LINKS: return BasicError::out_of_resource();
                 case MA_NOT_IMPLEMENTED: return BasicError::not_supported();

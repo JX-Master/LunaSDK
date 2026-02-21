@@ -27,6 +27,6 @@ namespace Luna
         }
     };
 
-    void coroutine_init();
+    bool coroutine_init();
     void coroutine_close();
 }

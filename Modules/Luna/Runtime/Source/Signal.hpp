@@ -10,7 +10,7 @@
 */
 #pragma once
 #include "../Signal.hpp"
-#include "OS.hpp"
+#include "Platform/Signal.hpp"
 #include "../Interface.hpp"
 namespace Luna
 {
@@ -19,31 +19,31 @@ namespace Luna
         lustruct("Signal", "{95a2e5b2-d48a-4f19-bfb8-22c273c0ad4b}");
         luiimpl();
 
-        opaque_t m_handle;
+        Platform::Signal m_data;
 
         Signal(bool manual_reset)
         {
-            m_handle = OS::new_signal(manual_reset);
+            Platform::new_signal(manual_reset, m_data);
         }
         ~Signal()
         {
-            OS::delete_signal(m_handle);
+            Platform::delete_signal(m_data);
         }
         virtual void wait() override
         {
-            OS::wait_signal(m_handle);
+            Platform::wait_signal(m_data);
         }
         virtual bool try_wait() override
         {
-            return OS::try_wait_signal(m_handle);
+            return Platform::try_wait_signal(m_data);
         }
         virtual void trigger() override
         {
-            OS::trigger_signal(m_handle);
+            Platform::trigger_signal(m_data);
         }
         virtual void reset() override
         {
-            OS::reset_signal(m_handle);
+            Platform::reset_signal(m_data);
         }
     };
 }

@@ -102,7 +102,9 @@ namespace Luna
 
     void set_current_dir_to_process_path()
     {
-        Path p = get_process_path();
+        const c8* path = get_process_path();
+        Path p = path;
+        release_process_path(path);
         p.pop_back();
         luassert_always(succeeded(set_current_dir(p.encode().c_str())));
     }

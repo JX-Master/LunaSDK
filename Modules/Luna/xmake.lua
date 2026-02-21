@@ -16,5 +16,6 @@ includes("ObjLoader")
 includes("RG")
 includes("AHI")
 includes("ECS")
+includes("MakeSystem")
 
 includes("Experimental") -- For modules that is not ready for production use.

@@ -7,9 +7,10 @@
 * @author JXMaster
 * @date 2020/9/27
 */
-#include "../../OS.hpp"
+#include "../File.hpp"
 #include <Luna/Runtime/Unicode.hpp>
 #include <Luna/Runtime/Algorithm.hpp>
+#include "Errno.hpp"
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -19,26 +20,21 @@
 #include <errno.h>
 
 #include <fcntl.h>
+#if defined(LUNA_PLATFORM_LINUX) || defined(LUNA_PLATFORM_ANDROID)
+#define _GNU_SOURCE
+#endif
 #include <unistd.h>
-#include <dirent.h>
 
-#if defined(LUNA_PLATFORM_MACOS)
-#include <libproc.h>
-#elif defined(LUNA_PLATFORM_IOS)
+#if defined(LUNA_PLATFORM_APPLE)
+#include <copyfile.h>
 #include <mach-o/dyld.h>
 #endif
 
 namespace Luna
 {
-    namespace OS
+    namespace Platform
     {
-        struct File
-        {
-            opaque_t handle;
-            bool buffered;
-        };
-
-        R<opaque_t> open_unbuffered_file(const c8* path, FileOpenFlag flags, FileCreationMode creation)
+        Result open_unbuffered_file(const c8* path, FileOpenFlag flags, FileCreationMode creation, int& out_fd)
         {
             lucheck(path);
             int f = 0;
@@ -61,7 +57,7 @@ namespace Luna
                 }
                 else
                 {
-                    return BasicError::bad_arguments();
+                    return Result::bad_arguments;
                 }
             }
             int fd;
@@ -72,12 +68,15 @@ namespace Luna
                 fd = open(path, f, 0666);
                 break;
             case FileCreationMode::create_new:
-                if (get_file_attribute(path).valid())
                 {
-                    return BasicError::already_exists();
+                    FileAttribute attr;
+                    if (get_file_attribute(path, attr) == Result::success)
+                    {
+                        return Result::already_exists;
+                    }
+                    f |= O_CREAT;
+                    fd = open(path, f, 0666);
                 }
-                f |= O_CREAT;
-                fd = open(path, f, 0666);
                 break;
             case FileCreationMode::open_always:
                 f |= O_CREAT;
@@ -93,27 +92,17 @@ namespace Luna
             }
             if (fd == -1)
             {
-                auto err = errno;
-                switch (err)
-                {
-                case EPERM:
-                    return BasicError::access_denied();
-                case ENOENT:
-                    return BasicError::not_found();
-                default:
-                    return BasicError::bad_platform_call();
-                }
+                return encode_errno(errno);
             }
-            return (opaque_t)(usize)fd;
+            out_fd = fd;
+            return Result::success;
         }
-        void close_unbuffered_file(opaque_t file)
+        void close_unbuffered_file(int fd)
         {
-            int fd = (int)(usize)file;
             ::close(fd);
         }
-        RV read_unbuffered_file(opaque_t file, void* buffer, usize size, usize* read_bytes)
+        Result read_unbuffered_file(int fd, void* buffer, usize size, usize* read_bytes)
         {
-            int fd = (int)(usize)file;
             isize sz = ::read(fd, buffer, size);
             if (sz == -1)
             {
@@ -121,17 +110,16 @@ namespace Luna
                 {
                     *read_bytes = 0;
                 }
-                return BasicError::bad_platform_call();
+                return Result::bad_platform_call;
             }
             if (read_bytes)
             {
                 *read_bytes = sz;
             }
-            return ok;
+            return Result::success;
         }
-        RV write_unbuffered_file(opaque_t file, const void* buffer, usize size, usize* write_bytes)
+        Result write_unbuffered_file(int fd, const void* buffer, usize size, usize* write_bytes)
         {
-            int fd = (int)(usize)file;
             isize sz = ::write(fd, buffer, size);
             if (sz == -1)
             {
@@ -139,17 +127,16 @@ namespace Luna
                 {
                     *write_bytes = 0;
                 }
-                return BasicError::bad_platform_call();
+                return Result::bad_platform_call;
             }
             if (write_bytes)
             {
                 *write_bytes = sz;
             }
-            return ok;
+            return Result::success;
         }
-        u64 get_unbuffered_file_size(opaque_t file)
+        u64 get_unbuffered_file_size(int fd)
         {
-            int fd = (int)(usize)file;
             struct stat st;
             if (!fstat(fd, &st))
             {
@@ -158,24 +145,22 @@ namespace Luna
             lupanic_msg_always("fstat failed.");
             return 0;
         }
-        RV set_unbuffered_file_size(opaque_t file, u64 sz)
+        Result set_unbuffered_file_size(int fd, u64 sz)
         {
-            int fd = (int)(usize)file;
-            return ftruncate(fd, sz) ? BasicError::bad_platform_call() : RV();
+            return ftruncate(fd, sz) ? Result::bad_platform_call : Result::success;
         }
-        R<u64> get_unbuffered_file_cursor(opaque_t file)
+        Result get_unbuffered_file_cursor(int fd, u64& out_cursor)
         {
-            int fd = (int)(usize)file;
             off_t r = lseek(fd, 0, SEEK_CUR);
             if (r == (off_t)-1)
             {
-                return BasicError::bad_platform_call();
+                return Result::bad_platform_call;
             }
-            return(u64)r;
+            out_cursor = (u64)r;
+            return Result::success;
         }
-        RV set_unbuffered_file_cursor(opaque_t file, i64 offset, SeekMode mode)
+        Result set_unbuffered_file_cursor(int fd, i64 offset, SeekMode mode)
         {
-            int fd = (int)(usize)file;
             int origin;
             switch (mode)
             {
@@ -192,21 +177,20 @@ namespace Luna
             off_t r = lseek(fd, offset, origin);
             if (r == (off_t)-1)
             {
-                return BasicError::bad_platform_call();
+                return Result::bad_platform_call;
             }
-            return ok;
+            return Result::success;
         }
-        void flush_unbuffered_file(opaque_t file)
+        void flush_unbuffered_file(int fd)
         {
-            int fd = (int)(usize)file;
             fsync(fd);
         }
-        R<opaque_t> open_buffered_file(const c8* path, FileOpenFlag flags, FileCreationMode creation)
+        Result open_buffered_file(const c8* path, FileOpenFlag flags, FileCreationMode creation, FILE*& out_file)
         {
             // use buffered version.
             const char* mode;
             FILE* f = NULL;
-            auto err = errno;
+            FileAttribute attr;
             if (((flags & FileOpenFlag::read) != FileOpenFlag::none) && ((flags & FileOpenFlag::write) != FileOpenFlag::none))
             {
                 // update mode.
@@ -217,15 +201,15 @@ namespace Luna
                     f = fopen(path, mode);
                     break;
                 case FileCreationMode::create_new:
-                    if (get_file_attribute(path).valid())
+                    if (get_file_attribute(path, attr) == Result::success)
                     {
-                        return BasicError::already_exists();
+                        return Result::already_exists;
                     }
                     mode = "w+b";
                     f = fopen(path, mode);
                     break;
                 case FileCreationMode::open_always:
-                    if (get_file_attribute(path).valid())
+                    if (get_file_attribute(path, attr) == Result::success)
                     {
                         mode = "r+b";
                         f = fopen(path, mode);
@@ -241,14 +225,14 @@ namespace Luna
                     f = fopen(path, mode);
                     break;
                 case FileCreationMode::open_existing_as_new:
-                    if (get_file_attribute(path).valid())
+                    if (get_file_attribute(path, attr) == Result::success)
                     {
                         mode = "w+b";
                         f = fopen(path, mode);
                     }
                     else
                     {
-                        return BasicError::not_found();
+                        return Result::not_found;
                     }
                     break;
                 default:
@@ -265,7 +249,7 @@ namespace Luna
                 case FileCreationMode::create_new:
                 case FileCreationMode::open_existing_as_new:
                 case FileCreationMode::open_always:
-                    return BasicError::bad_arguments();    // Creates a new empty file and read-only from it has no meaning.
+                    return Result::bad_arguments;    // Creates a new empty file and read-only from it has no meaning.
                     break;
                 case FileCreationMode::open_existing:
                     mode = "rb";
@@ -286,15 +270,15 @@ namespace Luna
                     f = fopen(path, mode);
                     break;
                 case FileCreationMode::create_new:
-                    if (get_file_attribute(path).valid())
+                    if (get_file_attribute(path, attr) == Result::success)
                     {
-                        return BasicError::already_exists();
+                        return Result::already_exists;
                     }
                     mode = "wb";
                     f = fopen(path, mode);
                     break;
                 case FileCreationMode::open_always:
-                    if (get_file_attribute(path).valid())
+                    if (get_file_attribute(path, attr) == Result::success)
                     {
                         mode = "r+b";
                         f = fopen(path, mode);
@@ -310,14 +294,14 @@ namespace Luna
                     f = fopen(path, mode);
                     break;
                 case FileCreationMode::open_existing_as_new:
-                    if (get_file_attribute(path).valid())
+                    if (get_file_attribute(path, attr) == Result::success)
                     {
                         mode = "wb";
                         f = fopen(path, mode);
                     }
                     else
                     {
-                        return BasicError::not_found();
+                        return Result::not_found;
                     }
                     break;
                 default:
@@ -327,28 +311,17 @@ namespace Luna
             }
             if (!f)
             {
-                err = errno;
-                switch (err)
-                {
-                case EPERM:
-                    return BasicError::access_denied();
-                case ENOENT:
-                    return BasicError::not_found();
-                default:
-                    //get_error().set(e_bad_system_call, "fopen failed with err code %d", err);
-                    return BasicError::bad_platform_call();
-                }
+                return encode_errno(errno);
             }
-            return f;
+            out_file = f;
+            return Result::success;
         }
-        void close_buffered_file(opaque_t file)
+        void close_buffered_file(FILE* f)
         {
-            FILE* f = (FILE*)file;
             fclose(f);
         }
-        RV read_buffered_file(opaque_t file, void* buffer, usize size, usize* read_bytes)
+        Result read_buffered_file(FILE* f, void* buffer, usize size, usize* read_bytes)
         {
-            FILE* f = (FILE*)file;
             usize sz = fread(buffer, 1, size, f);
             if (read_bytes)
             {
@@ -359,16 +332,15 @@ namespace Luna
                 if (feof(f))
                 {
                     clearerr(f);
-                    return ok;
+                    return Result::success;
                 }
                 clearerr(f);
-                return BasicError::bad_platform_call();
+                return Result::bad_platform_call;
             }
-            return ok;
+            return Result::success;
         }
-        RV write_buffered_file(opaque_t file, const void* buffer, usize size, usize* write_bytes)
+        Result write_buffered_file(FILE* f, const void* buffer, usize size, usize* write_bytes)
         {
-            FILE* f = (FILE*)file;
             usize sz = fwrite(buffer, 1, size, f);
             if (write_bytes)
             {
@@ -377,13 +349,12 @@ namespace Luna
             if (sz != size)
             {
                 clearerr(f);
-                return BasicError::bad_platform_call();
+                return Result::bad_platform_call;
             }
-            return ok;
+            return Result::success;
         }
-        u64 get_buffered_file_size(opaque_t file)
+        u64 get_buffered_file_size(FILE* f)
         {
-            FILE* f = (FILE*)file;
             int fd = fileno(f);
             struct stat st;
             if (!fstat(fd, &st))
@@ -393,26 +364,24 @@ namespace Luna
             lupanic_msg_always("fstat failed");
             return 0;
         }
-        RV set_buffered_file_size(opaque_t file, u64 sz)
+        Result set_buffered_file_size(FILE* f, u64 sz)
         {
-            FILE* f = (FILE*)file;
             int fd = fileno(f);
-            return ftruncate(fd, sz) ? BasicError::bad_platform_call() : RV();
+            return ftruncate(fd, sz) ? Result::bad_platform_call : Result();
         }
-        R<u64> get_buffered_file_cursor(opaque_t file)
+        Result get_buffered_file_cursor(FILE* f, u64& out_cursor)
         {
-            FILE* f = (FILE*)file;
             long r = ftell(f);
             if (r < 0)
             {
                 clearerr(f);
-                return BasicError::bad_platform_call();
+                return Result::bad_platform_call;
             }
-            return (u64)r;
+            out_cursor = (u64)r;
+            return Result::success;
         }
-        RV set_buffered_file_cursor(opaque_t file, i64 offset, SeekMode mode)
+        Result set_buffered_file_cursor(FILE* f, i64 offset, SeekMode mode)
         {
-            FILE* f = (FILE*)file;
             int origin;
             switch (mode)
             {
@@ -429,385 +398,316 @@ namespace Luna
             if (fseek(f, offset, origin))
             {
                 clearerr(f);
-                return BasicError::bad_platform_call();
+                return Result::bad_platform_call;
             }
-            return ok;
+            return Result::success;
         }
-        void flush_buffered_file(opaque_t file)
+        void flush_buffered_file(FILE* f)
         {
-            FILE* f = (FILE*)file;
             if (fflush(f))
             {
                 lupanic_msg_always("fflush failed.");
             }
         }
-        R<opaque_t> open_file(const c8* path, FileOpenFlag flags, FileCreationMode creation)
+        Result open_file(const c8* path, FileOpenFlag flags, FileCreationMode creation, File& out_file)
         {
             bool buffered = test_flags(flags, FileOpenFlag::user_buffering);
-            R<opaque_t> f = nullptr;
+            out_file.m_buffered = buffered;
+            Result r;
             if (buffered)
             {
-                f = open_buffered_file(path, flags, creation);
+                FILE* f = nullptr;
+                r = open_buffered_file(path, flags, creation, f);
+                out_file.m_file = f;
             }
             else
             {
-                f = open_unbuffered_file(path, flags, creation);
+                int fd = 0;
+                r = open_unbuffered_file(path, flags, creation, fd);
+                out_file.m_fd = fd;
             }
-            if (failed(f))
-            {
-                return f;
-            }
-            File* ret = Luna::memnew<File>();
-            ret->buffered = buffered;
-            ret->handle = f.get();
-            return ret;
+            return r;
         }
-        void close_file(opaque_t file)
+        void close_file(File& file)
         {
-            File* f = (File*)file;
-            if (f->buffered) close_buffered_file(f->handle);
-            else close_unbuffered_file(f->handle);
-            Luna::memdelete(f);
+            if (file.m_buffered) close_buffered_file(file.m_file);
+            else close_unbuffered_file(file.m_fd);
         }
-        RV read_file(opaque_t file, void* buffer, usize size, usize* read_bytes)
+        Result read_file(File& file, void* buffer, usize size, usize* read_bytes)
         {
-            File* f = (File*)file;
-            return f->buffered ? read_buffered_file(f->handle, buffer, size, read_bytes) :
-                read_unbuffered_file(f->handle, buffer, size, read_bytes);
+            return file.m_buffered ? read_buffered_file(file.m_file, buffer, size, read_bytes) :
+                read_unbuffered_file(file.m_fd, buffer, size, read_bytes);
         }
-        RV write_file(opaque_t file, const void* buffer, usize size, usize* write_bytes)
+        Result write_file(File& file, const void* buffer, usize size, usize* write_bytes)
         {
-            File* f = (File*)file;
-            return f->buffered ? write_buffered_file(f->handle, buffer, size, write_bytes) :
-                write_unbuffered_file(f->handle, buffer, size, write_bytes);
+            return file.m_buffered ? write_buffered_file(file.m_file, buffer, size, write_bytes) :
+                write_unbuffered_file(file.m_fd, buffer, size, write_bytes);
         }
-        u64 get_file_size(opaque_t file)
+        u64 get_file_size(File& file)
         {
-            File* f = (File*)file;
-            return f->buffered ? get_buffered_file_size(f->handle) : get_unbuffered_file_size(f->handle);
+            return file.m_buffered ? get_buffered_file_size(file.m_file) : get_unbuffered_file_size(file.m_fd);
         }
-        RV set_file_size(opaque_t file, u64 sz)
+        Result set_file_size(File& file, u64 sz)
         {
-            File* f = (File*)file;
-            return f->buffered ? set_buffered_file_size(f->handle, sz) : set_unbuffered_file_size(f->handle, sz);
+            return file.m_buffered ? set_buffered_file_size(file.m_file, sz) : set_unbuffered_file_size(file.m_fd, sz);
         }
-        R<u64> get_file_cursor(opaque_t file)
+        Result get_file_cursor(File& file, u64& out_cursor)
         {
-            File* f = (File*)file;
-            return f->buffered ? get_buffered_file_cursor(f->handle) : get_unbuffered_file_cursor(f->handle);
+            return file.m_buffered ? get_buffered_file_cursor(file.m_file, out_cursor) : get_unbuffered_file_cursor(file.m_fd, out_cursor);
         }
-        RV set_file_cursor(opaque_t file, i64 offset, SeekMode mode)
+        Result set_file_cursor(File& file, i64 offset, SeekMode mode)
         {
-            File* f = (File*)file;
-            return f->buffered ? set_buffered_file_cursor(f->handle, offset, mode) : set_unbuffered_file_cursor(f->handle, offset, mode);
+            return file.m_buffered ? set_buffered_file_cursor(file.m_file, offset, mode) : set_unbuffered_file_cursor(file.m_fd, offset, mode);
         }
-        void flush_file(opaque_t file)
+        void flush_file(File& file)
         {
-            File* f = (File*)file;
-            if (f->buffered) flush_buffered_file(f->handle);
-            else flush_unbuffered_file(f->handle);
+            if (file.m_buffered) flush_buffered_file(file.m_file);
+            else flush_unbuffered_file(file.m_fd);
         }
-        R<FileAttribute> get_file_attribute(const c8* path)
+        Result get_file_attribute(const c8* path, FileAttribute& out_attribute)
         {
             struct stat s;
             int r = stat(path, &s);
             if (r != 0)
             {
-                return BasicError::bad_platform_call();
+                return Result::bad_platform_call;
             }
-            FileAttribute attribute;
-            attribute.size = s.st_size;
-            attribute.last_access_time = s.st_atime;
-            attribute.last_write_time = s.st_mtime;
+            out_attribute.size = s.st_size;
+            out_attribute.last_access_time = s.st_atime;
+            out_attribute.last_write_time = s.st_mtime;
 #ifdef LUNA_PLATFORM_MACOS
-            attribute.creation_time = s.st_birthtime;
+            out_attribute.creation_time = s.st_birthtime;
 #else
-            attribute.creation_time = 0;
+            out_attribute.creation_time = 0;
 #endif
-            attribute.attributes = FileAttributeFlag::none;
+            out_attribute.attributes = FileAttributeFlag::none;
             if (S_ISDIR(s.st_mode))
             {
-                attribute.attributes |= FileAttributeFlag::directory;
+                out_attribute.attributes |= FileAttributeFlag::directory;
             }
             if (S_ISCHR(s.st_mode))
             {
-                attribute.attributes |= FileAttributeFlag::character_special;
+                out_attribute.attributes |= FileAttributeFlag::character_special;
             }
             if (S_ISBLK(s.st_mode))
             {
-                attribute.attributes |= FileAttributeFlag::block_special;
+                out_attribute.attributes |= FileAttributeFlag::block_special;
             }
-            return attribute;
+            return Result::success;
         }
-        RV copy_file(const c8* from_path, const c8* to_path)
+        Result copy_file(const c8* from_path, const c8* to_path)
         {
             lucheck(from_path && to_path);
-            constexpr u64 max_buffer_sz = 1_mb;
-            u8* buf = (u8*)memalloc(max_buffer_sz);
-            opaque_t from_file = nullptr;
-            opaque_t to_file = nullptr;
-            lutry
+            FileAttribute attr;
+            if (get_file_attribute(from_path, attr) != Result::success)
             {
-                luset(from_file, OS::open_file(from_path, FileOpenFlag::read, FileCreationMode::open_existing));
-                luset(to_file, OS::open_file(to_path, FileOpenFlag::write, FileCreationMode::create_new));
-                auto copy_size = OS::get_file_size(from_file);
-                u64 sz = copy_size;
-                while (sz)
-                {
-                    usize copy_size_onetime = min<usize>(sz, max_buffer_sz);
-                    luexp(read_file(from_file, buf, copy_size_onetime, nullptr));
-                    luexp(write_file(to_file, buf, copy_size_onetime, nullptr));
-                    sz -= copy_size_onetime;
-                }
+                return Result::not_found;
             }
-            lucatch
+            if ((attr.attributes & FileAttributeFlag::directory) != FileAttributeFlag::none)
             {
-                if (buf)
-                {
-                    memfree(buf);
-                    buf = nullptr;
-                }
-                if (from_file)
-                {
-                    close_file(from_file);
-                }
-                if (to_file)
-                {
-                    close_file(to_file);
-                }
-                return luerr;
+                return Result::is_directory;
             }
-                if (buf)
-                {
-                    memfree(buf);
-                    buf = nullptr;
-                }
-            if (from_file)
+            if (get_file_attribute(to_path, attr) == Result::success)
             {
-                close_file(from_file);
+                return Result::already_exists;
             }
-            if (to_file)
+            int src_fd = open(from_path, O_RDONLY, 0);
+            if (src_fd == -1)
             {
-                close_file(to_file);
+                return encode_errno(errno);
             }
-            return ok;
+            int dst_fd = open(to_path, O_WRONLY | O_CREAT | O_TRUNC, 0666);
+            if (dst_fd == -1)
+            {
+                close(src_fd);
+                return encode_errno(errno);
+            }
+            Result res = Result::success;
+#if defined(LUNA_PLATFORM_LINUX) || defined(LUNA_PLATFORM_ANDROID)
+            // copy_file_range: in-kernel copy, no user-space round-trip (Linux 4.5+, glibc 2.27+ / bionic)
+            u64 total_copied = 0;
+            u64 file_size = attr.size;
+            while (total_copied < file_size)
+            {
+                size_t remaining = (size_t)(file_size - total_copied);
+                if (file_size - total_copied > (u64)(size_t)-1)
+                    remaining = (size_t)-1;
+                ssize_t n = copy_file_range(src_fd, nullptr, dst_fd, nullptr, remaining, 0);
+                if (n < 0)
+                {
+                    res = encode_errno(errno);
+                    break;
+                }
+                if (n == 0)
+                    break;
+                total_copied += (u64)n;
+            }
+#elif defined(LUNA_PLATFORM_APPLE)
+            // fcopyfile: native copy on macOS/iOS (copyfile.h)
+            if (fcopyfile(src_fd, dst_fd, nullptr, COPYFILE_DATA) != 0)
+            {
+                res = encode_errno(errno);
+            }
+#else
+#error "copy_file: unsupported POSIX platform (only Linux, Android, macOS, iOS are supported)"
+#endif
+            close(src_fd);
+            close(dst_fd);
+            if (res != Result::success)
+            {
+                ::remove(to_path);
+            }
+            return res;
         }
-        RV move_file(const c8* from_path, const c8* to_path)
+        Result move_file(const c8* from_path, const c8* to_path)
         {
-            if (get_file_attribute(to_path).valid())
+            FileAttribute attr;
+            if (get_file_attribute(to_path, attr) == Result::success)
             {
-                return BasicError::already_exists();
+                return Result::already_exists;
             }
             int res = ::rename(from_path, to_path);
-            if (res != 0)
+            if(res != 0)
             {
-                // Try to copy&delete.
-                lutry
-                {
-                    luexp(OS::copy_file(from_path, to_path));
-                    luexp(OS::delete_file(from_path));
-                }
-                lucatchret;
+                return encode_errno(errno);
             }
-            return ok;
+            return Result::success;
         }
-        RV delete_file(const c8* path)
+        Result delete_file(const c8* path)
         {
             int res = ::remove(path);
-            return (res == 0) ? RV() : BasicError::bad_platform_call();
+            if(res != 0)
+            {
+                return encode_errno(errno);
+            }
+            return Result::success;
         }
-        struct FileData
-        {
-            DIR* m_dir;
-            struct dirent* m_dirent;
-        };
-        R<opaque_t> open_dir(const c8* path)
+        Result open_dir(const c8* path, FileIterator& out_dir_iter)
         {
             DIR* dir = ::opendir(path);
             if (dir == NULL)
             {
-                auto err = errno;
-                switch (err)
-                {
-                case EACCES:
-                    return BasicError::access_denied();
-                case EMFILE:
-                case ENFILE:
-                    return BasicError::out_of_resource();
-                case ENOENT:
-                    return BasicError::not_found();
-                case ENOMEM:
-                    return BasicError::out_of_memory();
-                case ENOTDIR:
-                    return BasicError::not_directory();
-                default:
-                    return BasicError::bad_platform_call();
-                }
+                return encode_errno(errno);
             }
-            FileData* iter = memnew<FileData>();
-            iter->m_dir = dir;
-            iter->m_dirent = ::readdir(dir);
-            return iter;
+            out_dir_iter.m_dir = dir;
+            out_dir_iter.m_dirent = ::readdir(dir);
+            return Result::success;
         }
-        void close_dir(opaque_t dir_iter)
+        void close_dir(FileIterator& dir_iter)
         {
-            FileData* data = (FileData*)dir_iter;
-            closedir(data->m_dir);
-            memdelete(data);
+            closedir(dir_iter.m_dir);
+            dir_iter.m_dir = nullptr;
         }
-        bool dir_iterator_is_valid(opaque_t dir_iter)
+        bool dir_iterator_is_valid(FileIterator& dir_iter)
         {
-            FileData* data = (FileData*)dir_iter;
-            return data->m_dirent != nullptr;
+            return dir_iter.m_dirent != nullptr;
         }
-        const c8* dir_iterator_get_filename(opaque_t dir_iter)
+        const c8* dir_iterator_get_filename(FileIterator& dir_iter)
         {
-            FileData* data = (FileData*)dir_iter;
-            if (data->m_dirent)
+            if (dir_iter.m_dirent)
             {
-                return data->m_dirent->d_name;
+                return dir_iter.m_dirent->d_name;
             }
             return nullptr;
         }
-        FileAttributeFlag dir_iterator_get_attributes(opaque_t dir_iter)
+        FileAttributeFlag dir_iterator_get_attributes(FileIterator& dir_iter)
         {
-            FileData* data = (FileData*)dir_iter;
             FileAttributeFlag flags = FileAttributeFlag::none;
-            if (data->m_dirent)
+            if (dir_iter.m_dirent)
             {
-                if (DT_BLK & data->m_dirent->d_type)
+                if (DT_BLK & dir_iter.m_dirent->d_type)
                 {
                     flags |= FileAttributeFlag::block_special;
                 }
-                if (DT_CHR & data->m_dirent->d_type)
+                if (DT_CHR & dir_iter.m_dirent->d_type)
                 {
                     flags |= FileAttributeFlag::character_special;
                 }
-                if (DT_DIR & data->m_dirent->d_type)
+                if (DT_DIR & dir_iter.m_dirent->d_type)
                 {
                     flags |= FileAttributeFlag::directory;
                 }    
             }
             return flags;
         }
-        bool dir_iterator_move_next(opaque_t dir_iter)
+        bool dir_iterator_move_next(FileIterator& dir_iter)
         {
-            FileData* data = (FileData*)dir_iter;
-            if (data->m_dirent)
+            if (dir_iter.m_dirent)
             {
-                data->m_dirent = ::readdir(data->m_dir);
+                dir_iter.m_dirent = ::readdir(dir_iter.m_dir);
             }
-            return data->m_dirent != nullptr;
+            return dir_iter.m_dirent != nullptr;
         }
-        RV create_dir(const c8* path)
+        Result create_dir(const c8* path)
         {
             int r = mkdir(path, 0755);
             if (r != 0)
             {
-                auto err = errno;
-                switch (errno)
-                {
-                case EACCES:
-                    return BasicError::access_denied();
-                case EEXIST:
-                    return BasicError::already_exists();
-                case ENAMETOOLONG:
-                    return BasicError::data_too_long();
-                case ENOENT:
-                    return BasicError::not_found();
-                case ENOTDIR:
-                    return BasicError::not_directory();
-                default:
-                    return BasicError::bad_platform_call();
-                }
+                return encode_errno(errno);
             }
-            return ok;
+            return Result::success;
         }
-        RV remove_dir(const c8* path)
+        Result remove_dir(const c8* path)
         {
             int r = rmdir(path);
             if (r != 0)
             {
-                auto err = errno;
-                switch (errno)
-                {
-                case EACCES:
-                    return BasicError::access_denied();
-                case EBUSY:
-                    return BasicError::not_ready();
-                case ENAMETOOLONG:
-                    return BasicError::data_too_long();
-                case ENOENT:
-                    return BasicError::not_found();
-                case ENOTDIR:
-                    return BasicError::not_directory();
-                default:
-                    return BasicError::bad_platform_call();
-                }
+                return encode_errno(errno);
             }
-            return ok;
+            return Result::success;
         }
-        u32 get_current_dir(u32 buffer_length, c8* buffer)
+        const c8* get_current_dir()
         {
-            char* path = ::getcwd(nullptr, 0);
-            u32 len = (u32)strlen(path);
-            if (buffer && buffer_length)
-            {
-                strncpy(buffer, path, buffer_length);
-            }
-            ::free(path);
-            return len;
+            return ::getcwd(nullptr, 0);
         }
-        RV set_current_dir(const c8* path)
+        void release_current_dir(const c8* path)
+        {
+            ::free((void*)path);
+        }
+        Result set_current_dir(const c8* path)
         {
             int r = ::chdir(path);
             if (r != 0)
             {
-                auto err = errno;
-                switch (errno)
-                {
-                case EACCES:
-                    return BasicError::access_denied();
-                case ENAMETOOLONG:
-                    return BasicError::data_too_long();
-                case ENOENT:
-                    return BasicError::not_found();
-                case ENOTDIR:
-                    return BasicError::not_directory();
-                default:
-                    return BasicError::bad_platform_call();
-                }
+                return encode_errno(errno);
             }
-            return ok;
-        }
-        c8 g_process_path[1024];
-
-        void file_init()
-        {
-#if defined(LUNA_PLATFORM_LINUX)
-            char path[1024];
-            luassert_always(readlink("/proc/self/exe", path, 1024) != -1);
-            char* dir = dirname(path);
-            strcpy(g_process_path, dir);
-            g_process_path[1023] = 0;
-#elif defined(LUNA_PLATFORM_MACOS)
-            pid_t pid = getpid();
-            int ret = proc_pidpath(pid, g_process_path, sizeof(g_process_path));
-            luassert_always(ret > 0);
-#elif defined(LUNA_PLATFORM_IOS)
-            char path[1024];
-            uint32_t size = sizeof(path);
-            int ret = _NSGetExecutablePath(path, &size);
-            luassert_always(ret == 0);
-            char* dir = dirname(path);
-            strncpy(g_process_path, dir, sizeof(g_process_path));
-            g_process_path[sizeof(g_process_path) - 1] = 0;
-#endif
+            return Result::success;
         }
 
         const c8* get_process_path()
         {
-            return g_process_path;
+#if defined(LUNA_PLATFORM_LINUX)
+            static_assert(sizeof(c8) == sizeof(char), "Unsupported char size");
+            usize buf_size = 128;
+            usize read_size = 0;
+            char* path = (char*)memalloc(buf_size);
+            while(true)
+            {
+                auto r = readlink("/proc/self/exe", path, buf_size);
+                luassert_msg_always(r != -1, "readlink failed");
+                read_size = (usize)r;
+                if(read_size < buf_size)
+                {
+                    break;
+                }
+                buf_size += 128;
+                path = (char*)memrealloc(path, buf_size);
+            }
+            path[read_size] = 0;
+            return path;
+#elif defined(LUNA_PLATFORM_APPLE)
+            uint32_t buf_size = 0;
+            _NSGetExecutablePath(NULL, &buf_size);
+            c8* path = (c8*)memalloc(buf_size);
+            int r = _NSGetExecutablePath(path, &buf_size);
+            luassert_msg_always(r == 0, "_NSGetExecutablePath failed");
+            return path;
+#endif
+        }
+
+        void release_process_path(const c8* path)
+        {
+            memfree((void*)path);
         }
     }
 }

@@ -9,7 +9,7 @@
 */
 #pragma once
 #include "../ReadWriteLock.hpp"
-#include "OS.hpp"
+#include "Platform/ReadWriteLock.hpp"
 
 namespace Luna
 {
@@ -18,39 +18,39 @@ namespace Luna
         lustruct("ReadWriteLock", "{CF24C77D-6022-4777-9D68-A454DA2E209F}");
         luiimpl();
 
-        opaque_t m_handle;
+        Platform::ReadWriteLock m_lock;
 
         ReadWriteLock()
         {
-            m_handle = OS::new_read_write_lock();
+            Platform::new_read_write_lock(m_lock);
         }
         ~ReadWriteLock()
         {
-            OS::delete_read_write_lock(m_handle);
+            Platform::delete_read_write_lock(m_lock);
         }
         virtual void acquire_read() override
         {
-            OS::acquire_read_lock(m_handle);
+            Platform::acquire_read_lock(m_lock);
         }
         virtual void acquire_write() override
         {
-            OS::acquire_write_lock(m_handle);
+            Platform::acquire_write_lock(m_lock);
         }
         virtual bool try_acquire_read() override
         {
-            return OS::try_acquire_read_lock(m_handle);
+            return Platform::try_acquire_read_lock(m_lock);
         }
         virtual bool try_acquire_write() override
         {
-            return OS::try_acquire_write_lock(m_handle);
+            return Platform::try_acquire_write_lock(m_lock);
         }
         virtual void release_read() override
         {
-            OS::release_read_lock(m_handle);
+            Platform::release_read_lock(m_lock);
         }
         virtual void release_write() override
         {
-            OS::release_write_lock(m_handle);
+            Platform::release_write_lock(m_lock);
         }
     };
 }

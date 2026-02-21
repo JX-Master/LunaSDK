@@ -75,11 +75,10 @@ RV gen_markdown(int argc, const char* argv[])
         }
         Path current_dir;
         {
-            u32 current_dir_len = get_current_dir(0, nullptr);
-            Vector<c8> current_dir_str(current_dir_len, 0);
-            get_current_dir(current_dir_len, current_dir_str.data());
-            log_verbose("LunaDoc", "Current directory: %s", current_dir_str.data());
-            current_dir = current_dir_str.data();
+            const c8* dir = get_current_dir();
+            log_verbose("LunaDoc", "Current directory: %s", dir);
+            current_dir = dir;
+            release_current_dir(dir);
         }
         if(!test_flags(input_dir.flags(), PathFlag::absolute))
         {

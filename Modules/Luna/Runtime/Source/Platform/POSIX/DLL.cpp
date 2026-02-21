@@ -7,37 +7,39 @@
 * @author JXMaster
 * @date 2023/11/26
 */
-#include "../../OS.hpp"
+#include "../DLL.hpp"
 #include <dlfcn.h>
 #include "../../../Error.hpp"
 
 namespace Luna
 {
-    namespace OS
+    namespace Platform
     {
-        R<opaque_t> load_library(const c8* path)
+        Result load_library(const c8* path, opaque_t& out_handle)
         {
             void* h = dlopen(path, RTLD_LAZY);
             if(!h)
             {
-                return set_error(BasicError::bad_platform_call(), "%s", dlerror());
+                return Result::bad_platform_call;
             }
-            return (opaque_t)h;
+            out_handle = h;
+            return Result::success;
         }
         void free_library(opaque_t handle)
         {
             dlclose((void*)handle);
         }
-        R<void*> get_library_function(opaque_t handle, const c8* symbol)
+        Result get_library_function(opaque_t handle, const c8* symbol, void*& out_addr)
         {
             dlerror(); // clear old error.
             void* proc = dlsym((void*)handle, symbol);
             auto err = dlerror();
             if(err)
             {
-                return set_error(BasicError::bad_platform_call(), "%s", dlerror());
+                return Result::bad_platform_call;
             }
-            return proc;
+            out_addr = proc;
+            return Result::success;
         }
     }
 }

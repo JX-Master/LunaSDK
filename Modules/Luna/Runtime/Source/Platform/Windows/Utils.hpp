@@ -10,16 +10,25 @@
 #pragma once
 #include "../../../Platform/Windows/MiniWin.hpp"
 #include "../../../Unicode.hpp"
-#include "../../OS.hpp"
 namespace Luna
 {
-    namespace OS
+    namespace Platform
     {
-        inline wchar_t* utf8_to_wchar_buffered(const c8* src)
+        inline wchar_t* utf8_to_wchar_buffered(const c8* src, usize* out_len = nullptr)
         {
             usize len = utf8_to_utf16_len(src) + 1;
             wchar_t* buf = (wchar_t*)memalloc(sizeof(wchar_t) * len);
-            utf8_to_utf16((c16*)buf, len, src);
+            usize len2 = utf8_to_utf16((c16*)buf, len, src);
+            if(out_len) *out_len = len2;
+            return buf;
+        }
+
+        inline wchar_t* utf8_to_wchar_buffered(const c8* src, usize src_len, usize* out_len = nullptr)
+        {
+            usize len = utf8_to_utf16_len(src, src_len) + 1;
+            wchar_t* buf = (wchar_t*)memalloc(sizeof(wchar_t) * len);
+            usize len2 = utf8_to_utf16((c16*)buf, len, src);
+            if(out_len) *out_len = len2;
             return buf;
         }
     }

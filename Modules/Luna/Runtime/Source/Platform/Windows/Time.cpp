@@ -7,14 +7,14 @@
 * @author JXMaster
 * @date 2020/8/16
 */
-#include "../../OS.hpp"
+#include "../Time.hpp"
 #include "../../../Platform/Windows/MiniWin.hpp"
 
 #include <time.h>
 
 namespace Luna
 {
-    namespace OS
+    namespace Platform
     {
         LARGE_INTEGER g_ticks_per_second;
         void time_init()
@@ -39,7 +39,7 @@ namespace Luna
         i64 get_local_timestamp()
         {
             i64 t = _time64(NULL);
-            return OS::utc_timestamp_to_local_timestamp(t);
+            return Platform::utc_timestamp_to_local_timestamp(t);
         }
         i64 local_timestamp_to_utc_timestamp(i64 local_ts)
         {

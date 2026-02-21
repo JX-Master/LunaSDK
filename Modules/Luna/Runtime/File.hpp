@@ -151,15 +151,16 @@ namespace Luna
     //! * @ref BasicError::not_directory
     //! * @ref BasicError::bad_platform_call for all errors that cannot be identified.
     LUNA_RUNTIME_API R<FileAttribute> get_file_attribute(const c8* path);
-    //! Copies the file or directory from the source path to the destination path.
-    //! @param[in] from_path Source file or directory path. If `from_path` does not existm this operation failed with @ref BasicError::not_found.
-    //! @param[in] to_path Destination file or directory path. If `to_path` already exists, this operation fails with @ref BasicError::already_exists
+    //! Copies the file from the source path to the destination path. This function cannot copy directories.
+    //! @param[in] from_path Source file path. If `from_path` does not existm this operation failed with @ref BasicError::not_found.
+    //! @param[in] to_path Destination file or path. If `to_path` already exists, this operation fails with @ref BasicError::already_exists
     //! and the existing file will not be modified.
     //! @par Possible Errors
     //! * @ref BasicError::bad_arguments
     //! * @ref BasicError::already_exists
     //! * @ref BasicError::access_denied
     //! * @ref BasicError::not_found
+    //! * @ref BasicError::is_directory
     //! * @ref BasicError::bad_platform_call for all errors that cannot be identified.
     LUNA_RUNTIME_API RV copy_file(const c8* from_path, const c8* to_path);
     //! Moves the file or directory from the source path to the destination path. This call can also be used to rename a file.
@@ -174,11 +175,13 @@ namespace Luna
     //! * @ref BasicError::bad_platform_call for all errors that cannot be identified.
     LUNA_RUNTIME_API RV move_file(const c8* from_path, const c8* to_path);
     //! Deletes the specified file or directory.
-    //! @param[in] file_path The file or directory to delete. If this is a non-empty directory, all its contexts will also be deleted.
+    //! @param[in] file_path The file or directory to delete.
+    //! If this is a directory, it must be empty.
     //! @par Possible Errors
     //! * @ref BasicError::bad_arguments
     //! * @ref BasicError::not_found
     //! * @ref BasicError::access_denied
+    //! * @ref BasicError::directory_not_empty
     //! * @ref BasicError::bad_platform_call for all errors that cannot be identified.
     LUNA_RUNTIME_API RV delete_file(const c8* file_path);
     //! Creates a file iterator that can be used to iterate all files in the specified directory.
@@ -194,22 +197,21 @@ namespace Luna
     //! * @ref BasicError::already_exists
     //! * @ref BasicError::not_found
     //! * @ref BasicError::bad_platform_call for all errors that cannot be identified.
-    LUNA_RUNTIME_API RV    create_dir(const c8* path);
-    //! Gets the current working directory path for the underlying system.
-    //! @details The default current working directory is set to the path that contains the executable file.
-    //! @param[in] buffer_length The length of the buffer for the current directory string, including the null terminator.
-    //! @param[in] buffer A pointer to the buffer that receives the current directory string. To gets the required buffer size, specify
-    //! @ref buffer to `nullptr` and @ref buffer_length to 0.
-    //! @return Returns the number of characters copied into the buffer, including the null terminator. The copied string is always null-terminated.
-    //! If @ref buffer_length is `0` and @ref buffer is `nullptr`, returns the required buffer size to fetch the current directory, including the null terminator. 
-    LUNA_RUNTIME_API u32 get_current_dir(u32 buffer_length, c8* buffer);
+    LUNA_RUNTIME_API RV create_dir(const c8* path);
+    //! Get the current working directory path for the underlying system.
+    //! @return Returns the current working directory path. The path should be freed by @ref release_current_dir.
+    LUNA_RUNTIME_API const c8* get_current_dir();
+    //! Releases the current work directory string returned by @ref get_current_dir.
+    LUNA_RUNTIME_API void release_current_dir(const c8* path);
     //! Sets the current working directory path for the underlying system. The current directory will be set for the process scope.
     //! @param[in] path The current working directory path to set.
     LUNA_RUNTIME_API RV set_current_dir(const c8* path);
-    //! Gets the full (absolute) path of the application's executable file.
-    //! @return Returns the full (absolute) path of the application's executable file. 
-    //! The returned pointer is valid until LunaSDK is closed.
+    //! Get the application executable file's absolute path.
+    //! @return Returns the application executable file's absolute path.
+    //! The returned string shall be freed by calling @ref release_process_path.
     LUNA_RUNTIME_API const c8* get_process_path();
+    //! Releases the path string returned by @ref get_process_path.
+    LUNA_RUNTIME_API void release_process_path(const c8* path);
 
-    //! @}
+    //! @}s
 }

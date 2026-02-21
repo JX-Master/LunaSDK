@@ -7,14 +7,14 @@
 * @author JXMaster
 * @date 2023/2/28
 */
-#include "../../OS.hpp"
+#include "../StdIO.hpp"
 #include "../../../Unicode.hpp"
 #include <cstdio>
 #include <pthread.h>
 
 namespace Luna
 {
-    namespace OS
+    namespace Platform
     {
         c32 g_input_buffer = 0;
         pthread_mutex_t g_std_io_mtx;
@@ -29,13 +29,13 @@ namespace Luna
             pthread_mutex_destroy(&g_std_io_mtx);
         }
 
-        RV std_input(c8* buffer, usize size, usize* read_bytes)
+        Result std_input(c8* buffer, usize size, usize* read_bytes)
         {
             luassert_msg_always(pthread_mutex_lock(&g_std_io_mtx) == 0, "pthread_mutex_lock failed.");
             if (size == 0)
             {
                 if (read_bytes) *read_bytes = 0;
-                return ok;
+                return Result::success;
             }
             c8* cur = buffer;
             if(g_input_buffer)
@@ -52,7 +52,7 @@ namespace Luna
                 {
                     luassert_msg_always(pthread_mutex_unlock(&g_std_io_mtx) == 0, "pthread_mutex_unlock failed.");
                     if(read_bytes) *read_bytes = 0;
-                    return ok;
+                    return Result::success;
                 }
             }
             c8 ch[6];
@@ -87,11 +87,11 @@ namespace Luna
             luassert_msg_always(pthread_mutex_unlock(&g_std_io_mtx) == 0, "pthread_mutex_unlock failed.");
             *cur = 0;
             if(read_bytes) *read_bytes = cur - buffer;
-            if(input_ch == EOF) return feof(stdin) ? ok : BasicError::bad_platform_call();
-            return ok;
+            if(input_ch == EOF) return feof(stdin) ? Result::success : Result::bad_platform_call;
+            return Result::success;
         }
 
-        RV std_output(const c8* buffer, usize size, usize* write_bytes)
+        Result std_output(const c8* buffer, usize size, usize* write_bytes)
         {
             luassert_msg_always(pthread_mutex_lock(&g_std_io_mtx) == 0, "pthread_mutex_lock failed.");
             const c8* cur = buffer;
@@ -108,7 +108,7 @@ namespace Luna
             }
             luassert_msg_always(pthread_mutex_unlock(&g_std_io_mtx) == 0, "pthread_mutex_unlock failed.");
             if(write_bytes) *write_bytes = cur - buffer;
-            return ok;
+            return Result::success;
         }
     }
 }

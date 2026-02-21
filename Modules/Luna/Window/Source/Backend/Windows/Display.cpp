@@ -14,6 +14,7 @@
 #include <Luna/Runtime/Platform/Windows/MiniWin.hpp>
 #include <shellscalingapi.h>
 #include <Luna/Runtime/Unicode.hpp>
+#include <Luna/Runtime/StackAllocator.hpp>
 
 #pragma comment(lib, "User32.lib")
 

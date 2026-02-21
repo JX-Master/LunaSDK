@@ -55,7 +55,7 @@ namespace Luna
 
         //! Sets thread priority.
         //! @param[in] priority The new priority of the thread.
-        virtual void set_priority(ThreadPriority priority) = 0;
+        virtual RV set_priority(ThreadPriority priority) = 0;
 
         //! Gets the fiber context of the thread created by @ref convert_fiber_to_thread.
         //! @return Returns the fiber context of the thread. 
@@ -74,7 +74,7 @@ namespace Luna
     //! @param[in] name The name of the thread. This is usually for debug purpose.
     //! @param[in] stack_size The stack size for new thread's call stack.
     //! @return Returns an interface representing the new created thread.
-    LUNA_RUNTIME_API Ref<IThread> new_thread(void(*entry_func)(void* params), void* params, const c8* name = nullptr, u32 stack_size = 0);
+    LUNA_RUNTIME_API R<Ref<IThread>> new_thread(void(*entry_func)(void* params), void* params, const c8* name = nullptr, u32 stack_size = 0);
 
     //! Gets the thread object of current running thread.
     //! @return The thread object of the current thread.
@@ -87,35 +87,6 @@ namespace Luna
     //! Gets the thread object of the main thread.
     //! @return The thread object of the main thread.
     LUNA_RUNTIME_API IThread* get_main_thread();
-
-    //! @interface IFiber
-    //! Represents a thread executing context that can be switched to 
-    //! for a specified thread.
-    struct IFiber : virtual Interface
-    {
-        luiid("{86a46fbf-43fd-40f3-9aa4-3aa10fa7d6f9}");
-
-    };
-
-    //! Creates a new fiber object.
-    //! @param[in] stack_size The stack size in bytes of the new fiber object.
-    //! @param[in] entry_func The entry function of the fiber.
-    //! @param[in] param The parameter that will be passed to `entry_func` when the fiber is 
-    //! activated.
-    LUNA_RUNTIME_API R<Ref<IFiber>> new_fiber(usize stack_size, void(*entry_func)(void* param), void* param);
-
-    //! Creates a fiber context for current thread.
-    //! @return Returns the fiber context created for the current thread.
-    //! Calling this function multiple times on the same thread does not create multiple fiber contexts, 
-    //! instead the same fiber context will be returned.
-    LUNA_RUNTIME_API R<Ref<IFiber>> convert_thread_to_fiber();
-
-    //! Frees the fiber context for the current thread.
-    LUNA_RUNTIME_API RV convert_fiber_to_thread();
-
-    //! Sets the context of the current thread to the specified fiber.
-    //! @param[in] fiber The fiber to switch to.
-    LUNA_RUNTIME_API void switch_to_fiber(IFiber* fiber);
 
     //! Suspends current thread for a specific period of time. 
     //! @details The actual suspended time may be longer than required.
@@ -152,14 +123,8 @@ namespace Luna
     //! 
     //! The allocated slot is large enough to store one pointer to the real thread-local data. The pointer is `nullptr` for every thread before it 
     //! is firstly modified by that thread.
-    //! @param[in] destructor The optional destructor to use for this TLS slot. If this is not `nullptr`, this destructor will be called on one thread
-    //! when that thread exits and the TLS pointer value of this slot for that thread is not `nullptr`.
-    //! 
-    //! When the destructor is called, the system resets the TLS value to `nullptr` and passes the original TLS value to the destructor. This process may
-    //! be repeated several times until the TLS value is `nullptr` after the destructor returns.
-    //! 
     //! @return Returns the handle to the TLS slot.
-    LUNA_RUNTIME_API opaque_t tls_alloc(void (*destructor)(void* ptr) = nullptr);
+    LUNA_RUNTIME_API R<opaque_t> tls_alloc();
 
     //! Frees the TLS slot allocated by `tls_alloc`. 
     //! @details The handle will be invalid after this call and the pointer stored for every 

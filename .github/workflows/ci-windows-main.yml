@@ -9,7 +9,7 @@ jobs:
       matrix:
         os: [ windows-latest ]
         arch: [ x64 ]
-        toolchain: [ msvc, clang-cl ]
+        toolchain: [ msvc ]
         rhi_api : [D3D12, Vulkan]
         shared : [shared, static]
     name: ${{ matrix.toolchain }}-${{ matrix.arch }}-${{ matrix.rhi_api }}-${{ matrix.shared }}

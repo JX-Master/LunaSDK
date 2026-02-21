@@ -12,7 +12,7 @@
 #include "../Runtime.hpp"
 #include "Name.hpp"
 #include "Module.hpp"
-#include "OS.hpp"
+#include "Platform/Init.hpp"
 #include "Memory.hpp"
 #include "../Waitable.hpp"
 #include "Signal.hpp"
@@ -20,6 +20,7 @@
 #include "Semaphore.hpp"
 #include "File.hpp"
 #include "Thread.hpp"
+#include "Fiber.hpp"
 #include "Coroutine.hpp"
 #include "TypeInfo.hpp"
 #include "Interface.hpp"
@@ -29,15 +30,14 @@
 #include "Profiler.hpp"
 namespace Luna
 {
-    void error_init();
+    bool error_init();
     void error_close();
     void object_close();
     void add_builtin_typeinfo();
+    bool stack_allocator_init();
 
     void log_init();
     void log_close();
-
-    void stack_allocator_init();
     void stack_allocator_close();
 
     void register_types_and_interfaces()
@@ -73,16 +73,56 @@ namespace Luna
     LUNA_RUNTIME_API bool init()
     {
         if (g_initialized) return true;
-        OS::init();
-        profiler_init();
-        stack_allocator_init();
-        error_init();
+        auto r = Platform::init();
+        if(r != Platform::Result::success) [[unlikely]] return false;
+        if(!profiler_init()) [[unlikely]]
+        {
+            Platform::close();
+            return false;
+        }
+        if(!error_init()) [[unlikely]]
+        {
+            profiler_close();
+            Platform::close();
+            return false;
+        }
         name_init();
         type_registry_init();
         add_builtin_typeinfo();
         register_types_and_interfaces();
-        thread_init();
-        coroutine_init();
+        if(!thread_init()) [[unlikely]]
+        {
+            object_close();
+            type_registry_close();
+            name_close();
+            error_close();
+            profiler_close();
+            Platform::close();
+            return false;
+        }
+        if(!coroutine_init()) [[unlikely]]
+        {
+            thread_close();
+            object_close();
+            type_registry_close();
+            name_close();
+            error_close();
+            profiler_close();
+            Platform::close();
+            return false;
+        }
+        if(!stack_allocator_init()) [[unlikely]]
+        {
+            coroutine_close();
+            thread_close();
+            object_close();
+            type_registry_close();
+            name_close();
+            error_close();
+            profiler_close();
+            Platform::close();
+            return false;
+        }
         random_init();
         log_init();
         std_io_init();
@@ -103,15 +143,15 @@ namespace Luna
         std_io_close();
         log_close();
         random_close();
+        stack_allocator_close();
         coroutine_close();
         thread_close();
         object_close();
         type_registry_close();
         name_close();
         error_close();
-        stack_allocator_close();
         profiler_close();
-        OS::close();
+        Platform::close();
         g_initialized = false;
     }
 }

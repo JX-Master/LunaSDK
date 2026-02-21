@@ -9,7 +9,7 @@
  */
 #include "../PlatformDefines.hpp"
 #define LUNA_RUNTIME_API LUNA_EXPORT
-#include "OS.hpp"
+#include "Platform/Assert.hpp"
 #include "../Assert.hpp"
 #include "../Log.hpp"
 #include "../Debug.hpp"
@@ -29,10 +29,10 @@ namespace Luna
         //     else log(LogVerbosity::fatal_error, nullptr, "[Unnamed function]");
         // }
         // free_backtrace_symbols(symbols);
-        OS::assert_fail(msg, file, line);
+        Platform::assert_fail(msg, file, line);
     }
     LUNA_RUNTIME_API void debug_break()
     {
-        OS::debug_break();
+        Platform::debug_break();
     }
 }

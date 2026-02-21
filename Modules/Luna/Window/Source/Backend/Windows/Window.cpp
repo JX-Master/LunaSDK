@@ -14,6 +14,7 @@
 #include <Luna/Runtime/Unicode.hpp>
 #include "../../Window.hpp"
 #include <shellapi.h>
+#include <Luna/Runtime/StackAllocator.hpp>
 
 #pragma comment(lib, "Gdi32.lib")
 #pragma comment(lib, "Imm32.lib")
