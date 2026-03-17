@@ -12,3 +12,5 @@ Thanks for using LunaSDK. This user manual provides a comprehensive explanation 
 ![[Window Management]]
 ## Rendering
 ![[Rendering]]
+## Application as a Service (AaaS)
+![[Application as a Service]]

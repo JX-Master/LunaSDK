@@ -20,126 +20,7 @@ namespace Luna
 {
     namespace Frontend
     {
-        // -----------------------------------------------------------------------
-        // Built-in function URLs
-        // -----------------------------------------------------------------------
-
-        static const Path k_builtin_get_type("/__builtin__/get_type");
-        static const Path k_builtin_get     ("/__builtin__/get");
-        static const Path k_builtin_set     ("/__builtin__/set");
-        static const Path k_builtin_delete  ("/__builtin__/delete");
-
-        // -----------------------------------------------------------------------
-        // Frontend::init
-        // -----------------------------------------------------------------------
-
-        void Frontend::init()
-        {
-            register_builtin_functions();
-        }
-
-        // -----------------------------------------------------------------------
-        // Built-in functions
-        // -----------------------------------------------------------------------
-
-        static R<Variant> builtin_get_type(IFrontend* frontend, const Variant& params, const Variant& id)
-        {
-            auto& url_v = params["url"];
-            if (!url_v.valid() || url_v.type() != VariantType::string)
-            {
-                return make_frontend_error(
-                    Name("FrontendError"), Name("invalid_params"),
-                    Name("'url' parameter is required and must be a string"));
-            }
-            Path url(url_v.c_str());
-            ResourceType t = frontend->get_resource_type(url);
-            const c8* type_str = "null";
-            switch (t)
-            {
-            case ResourceType::function: type_str = "function"; break;
-            case ResourceType::data:     type_str = "data";     break;
-            case ResourceType::userdata: type_str = "userdata"; break;
-            default: break;
-            }
-            return Variant(Name(type_str));
-        }
-
-        static R<Variant> builtin_get(IFrontend* frontend, const Variant& params, const Variant& id)
-        {
-            auto& url_v = params["url"];
-            if (!url_v.valid() || url_v.type() != VariantType::string)
-            {
-                return make_frontend_error(
-                    Name("FrontendError"), Name("invalid_params"),
-                    Name("'url' parameter is required and must be a string"));
-            }
-            Path url(url_v.c_str());
-            return frontend->get_data(url);
-        }
-
-        static R<Variant> builtin_set(IFrontend* frontend, const Variant& params, const Variant& id)
-        {
-            auto& url_v  = params["url"];
-            Variant data_v = params["data"];
-            if (!url_v.valid() || url_v.type() != VariantType::string)
-            {
-                return make_frontend_error(
-                    Name("FrontendError"), Name("invalid_params"),
-                    Name("'url' parameter is required and must be a string"));
-            }
-            Path url(url_v.c_str());
-            bool overwrite = false;
-            auto& ow_v = params["overwrite"];
-            if (ow_v.valid() && ow_v.type() == VariantType::boolean)
-            {
-                overwrite = ow_v.boolean();
-            }
-            lutry
-            {
-                luexp(frontend->set_data(url, move(data_v), overwrite));
-            }
-            lucatchret;
-            return Variant(true);
-        }
-
-        static R<Variant> builtin_delete(IFrontend* frontend, const Variant& params, const Variant& id)
-        {
-            auto& url_v = params["url"];
-            if (!url_v.valid() || url_v.type() != VariantType::string)
-            {
-                return make_frontend_error(
-                    Name("FrontendError"), Name("invalid_params"),
-                    Name("'url' parameter is required and must be a string"));
-            }
-            Path url(url_v.c_str());
-            frontend->remove_resource(url);
-            return Variant(true);
-        }
-
-        void Frontend::register_builtin_functions()
-        {
-            // /__builtin__/get_type
-            // params: { "url": string }
-            // returns: string ("function" | "data" | "userdata" | "null")
-            lupanic_if_failed(set_function(k_builtin_get_type, builtin_get_type, true));
-
-            // /__builtin__/get
-            // params: { "url": string }
-            // returns: Variant data stored at url
-            lupanic_if_failed(set_function(k_builtin_get, builtin_get, true));
-
-            // /__builtin__/set
-            // params: { "url": string, "data": Variant, "overwrite": bool (optional, default false) }
-            // returns: true on success
-            lupanic_if_failed(set_function(k_builtin_set, builtin_set, true));
-
-            // /__builtin__/delete
-            // params: { "url": string }
-            // returns: true on success
-            lupanic_if_failed(set_function(k_builtin_delete, builtin_delete, true));
-        }
-
-        RV Frontend::set_function(const Path& url, FunctionHandler&& handler, bool overwrite)
+        RV Frontend::set_resource_function(const Name& url, FunctionHandler&& handler, bool overwrite)
         {
             auto res = m_registry.emplace(make_pair(url, ResourceEntry()));
             if(!res.second && !overwrite) return BasicError::already_exists();
@@ -149,7 +30,7 @@ namespace Luna
             return ok;
         }
 
-        RV Frontend::set_data(const Path& url, Variant&& data, bool overwrite)
+        RV Frontend::set_resource_data(const Name& url, Variant&& data, bool overwrite)
         {
             auto res = m_registry.emplace(make_pair(url, ResourceEntry()));
             if(!res.second && !overwrite) return BasicError::already_exists();
@@ -159,8 +40,8 @@ namespace Luna
             return ok;
         }
 
-        RV Frontend::set_userdata(
-            const Path& url,
+        RV Frontend::set_resource_userdata(
+            const Name& url,
             void* data,
             void (*dtor)(void*),
             bool overwrite)
@@ -174,7 +55,7 @@ namespace Luna
             return ok;
         }
 
-        ResourceType Frontend::get_resource_type(const Path& url)
+        ResourceType Frontend::get_resource_type(const Name& url)
         {
             auto iter = m_registry.find(url);
             if (iter == m_registry.end())
@@ -184,7 +65,7 @@ namespace Luna
             return iter->second.type;
         }
 
-        R<Variant> Frontend::get_data(const Path& url)
+        R<Variant> Frontend::get_resource_data(const Name& url)
         {
             auto iter = m_registry.find(url);
             if (iter == m_registry.end())
@@ -198,20 +79,14 @@ namespace Luna
             return iter->second.data;
         }
 
-        void Frontend::remove_resource(const Path& url)
+        void Frontend::remove_resource(const Name& url)
         {
             m_registry.erase(url);
         }
 
-        Variant Frontend::invoke(const Path& url, const Variant& params, const Variant& id)
+        Variant Frontend::invoke(const Name& url, const Variant& params)
         {
-            auto result = invoke_impl(url, params, id);
-
-            // Null or absent id -> notification, discard response.
-            if (!id.valid())
-            {
-                return Variant();
-            }
+            auto result = invoke_impl(url, params);
 
             if (failed(result))
             {
@@ -228,20 +103,19 @@ namespace Luna
                 Name cat_name  = get_error_category_name(get_error_code_category(err.code));
                 Name code_name = get_error_code_name(err.code);
                 Name message = err.message.c_str();
-                return make_error_response(id,
-                    make_frontend_error(cat_name, code_name, message, err.info));
+                return make_error_response(make_frontend_error(cat_name, code_name, message, err.info));
             }
-            return make_response(id, result.get());
+            return make_response(result.get());
         }
 
-        R<Variant> Frontend::invoke_impl(const Path& url, const Variant& params, const Variant& id)
+        R<Variant> Frontend::invoke_impl(const Name& url, const Variant& params)
         {
             auto iter = m_registry.find(url);
             if (iter == m_registry.end() || iter->second.type != ResourceType::function)
             {
                 return FrontendError::method_not_found();
             }
-            return iter->second.function(this, params, id);
+            return iter->second.function(this, params);
         }
 
         // -----------------------------------------------------------------------
@@ -266,19 +140,17 @@ namespace Luna
             return msg;
         }
 
-        LUNA_FRONTEND_API Variant make_response(const Variant& id, const Variant& result)
+        LUNA_FRONTEND_API Variant make_response(const Variant& result)
         {
             Variant msg(VariantType::object);
-            msg["id"]     = move(id);
             msg["result"] = move(result);
             msg["error"]  = Variant();
             return msg;
         }
 
-        LUNA_FRONTEND_API Variant make_error_response(const Variant& id, const Variant& error)
+        LUNA_FRONTEND_API Variant make_error_response(const Variant& error)
         {
             Variant msg(VariantType::object);
-            msg["id"]     = move(id);
             msg["result"] = Variant();
             msg["error"]  = move(error);
             return msg;
@@ -307,7 +179,6 @@ namespace Luna
         LUNA_FRONTEND_API Ref<IFrontend> new_frontend()
         {
             Ref<Frontend> o = new_object<Frontend>();
-            o->init();
             return Ref<IFrontend>(o);
         }
 

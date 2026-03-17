@@ -11,7 +11,6 @@
 #pragma once
 #include <Luna/Runtime/Module.hpp>
 #include <Luna/Runtime/Name.hpp>
-#include <Luna/Runtime/Path.hpp>
 #include <Luna/Runtime/Interface.hpp>
 #include <Luna/Runtime/Ref.hpp>
 
@@ -29,7 +28,7 @@ namespace Luna
         //! @{
 
         //! Defines the type of a resource stored in the resource registry.
-        enum class ResourceType : u8
+        enum class ResourceType : u32
         {
             //! The resource does not exist.
             null     = 0,
@@ -47,7 +46,7 @@ namespace Luna
         //! @details The handler receives the `params` field of the request message and returns
         //! either a result Variant on success, or an ErrCode on failure.
         //! The ErrCode will be converted to a Frontend error object by IFrontend.
-        using FunctionHandler = Function<R<Variant>(IFrontend* frontend, const Variant& params, const Variant& id)>;
+        using FunctionHandler = Function<R<Variant>(IFrontend* frontend, const Variant& params)>;
 
         //! @interface IFrontend
         //! The main interface of the Frontend module.
@@ -61,10 +60,9 @@ namespace Luna
             //! Calls one registered function in this frontend.
             //! @param[in] url The URL identifying the function.
             //! @param[in] params The parameter to pass to the function.
-            //! @param[in] id The ID of the message. If this is null, this function call is a notification.
             //! @return Returns the function calling result. If the call is a notification, returns 
             //! an empty object.
-            virtual Variant invoke(const Path& url, const Variant& params, const Variant& id) = 0;
+            virtual Variant invoke(const Name& url, const Variant& params) = 0;
 
             //! Sets a function resource at the given URL.
             //! @param[in] url The URL identifying the resource.
@@ -72,7 +70,7 @@ namespace Luna
             //! @param[in] overwrite If `false` (default), returns @ref BasicError::already_exists
             //!            if a resource already exists at the URL.
             //!            If `true`, the existing resource is replaced.
-            virtual RV set_function(const Path& url, FunctionHandler&& handler, bool overwrite = false) = 0;
+            virtual RV set_resource_function(const Name& url, FunctionHandler&& handler, bool overwrite = false) = 0;
 
             //! Sets a Variant data resource at the given URL.
             //! @details This call serves as both register and modify: it creates the resource if it
@@ -81,7 +79,7 @@ namespace Luna
             //! @param[in] data The Variant value to store.
             //! @param[in] overwrite If `false` (default), returns @ref BasicError::already_exists
             //!            if a resource already exists at the URL.
-            virtual RV set_data(const Path& url, Variant&& data, bool overwrite = false) = 0;
+            virtual RV set_resource_data(const Name& url, Variant&& data, bool overwrite = false) = 0;
 
             //! Sets a userdata resource at the given URL.
             //! @param[in] url The URL identifying the resource.
@@ -89,8 +87,8 @@ namespace Luna
             //! @param[in] dtor Optional destructor called when the resource is removed or overwritten.
             //! @param[in] overwrite If `false` (default), returns @ref BasicError::already_exists
             //!            if a resource already exists at the URL.
-            virtual RV set_userdata(
-                const Path& url,
+            virtual RV set_resource_userdata(
+                const Name& url,
                 void* data,
                 void (*dtor)(void*) = nullptr,
                 bool overwrite = false
@@ -98,16 +96,16 @@ namespace Luna
 
             //! Returns the type of the resource at the given URL.
             //! @return @ref ResourceType::null if no resource exists at the URL.
-            virtual ResourceType get_resource_type(const Path& url) = 0;
+            virtual ResourceType get_resource_type(const Name& url) = 0;
 
             //! Returns the Variant data of the resource at the given URL.
             //! @return Returns @ref FrontendError::resource_not_found if no resource exists,
             //!         or @ref FrontendError::type_mismatch if the resource is not a data resource.
-            virtual R<Variant> get_data(const Path& url) = 0;
+            virtual R<Variant> get_resource_data(const Name& url) = 0;
 
             //! Removes the resource at the given URL.
             //! @param[in] url The resource to remove.
-            virtual void remove_resource(const Path& url) = 0;
+            virtual void remove_resource(const Name& url) = 0;
         };
 
         
@@ -123,10 +121,8 @@ namespace Luna
         //! Constructs a request message Variant.
         //! @param[in] method The URL of the function resource to call.
         //! @param[in] params The parameters for the function call. Must be an array, object, or null Variant.
-        //! @param[in] id An integer or string that uniquely identifies this request within the client session.
-        //!            Pass a null Variant to create a notification (no response expected).
         //! @return A Variant object representing the request message.
-        LUNA_FRONTEND_API Variant make_request(const Name& method, const Variant& params, const Variant& id);
+        LUNA_FRONTEND_API Variant make_request(const Name& method, const Variant& params);
 
         //! Constructs a notification message Variant (a request with a null id).
         //! @details Notification messages do not generate a response from the server.
@@ -136,16 +132,14 @@ namespace Luna
         LUNA_FRONTEND_API Variant make_notification(const Name& method, const Variant& params);
 
         //! Constructs a successful response message Variant.
-        //! @param[in] id The id copied from the corresponding request message.
         //! @param[in] result The return value of the function call. Must not be a null Variant.
         //! @return A Variant object representing the response message.
-        LUNA_FRONTEND_API Variant make_response(const Variant& id, const Variant& result);
+        LUNA_FRONTEND_API Variant make_response(const Variant& result);
 
         //! Constructs an error response message Variant.
-        //! @param[in] id The id copied from the corresponding request message.
         //! @param[in] error An error object Variant, typically created with @ref make_frontend_error.
         //! @return A Variant object representing the error response message.
-        LUNA_FRONTEND_API Variant make_error_response(const Variant& id, const Variant& error);
+        LUNA_FRONTEND_API Variant make_error_response(const Variant& error);
 
         //! Constructs a Frontend error object Variant.
         //! @param[in] category The error category name (e.g., "FrontendError").

@@ -112,29 +112,24 @@ namespace Luna
             lustruct("Luna::Frontend::Frontend", "{F0E1D2C3-B4A5-6789-0DEF-1A2B3C4D5E6F}");
             luiimpl();
 
-            HashMap<Path, ResourceEntry> m_registry;
+            HashMap<Name, ResourceEntry> m_registry;
 
-            void init();
-
-            virtual Variant invoke(const Path& url, const Variant& params, const Variant& id) override;
-            virtual RV set_function(const Path& url, FunctionHandler&& handler, bool overwrite = false) override;
-            virtual RV set_data(const Path& url, Variant&& data, bool overwrite = false) override;
-            virtual RV set_userdata(
-                const Path& url,
+            virtual Variant invoke(const Name& url, const Variant& params) override;
+            virtual RV set_resource_function(const Name& url, FunctionHandler&& handler, bool overwrite = false) override;
+            virtual RV set_resource_data(const Name& url, Variant&& data, bool overwrite = false) override;
+            virtual RV set_resource_userdata(
+                const Name& url,
                 void*       data,
                 void (*destructor)(void*) = nullptr,
                 bool        overwrite    = false
             ) override;
-            virtual ResourceType get_resource_type(const Path& url) override;
-            virtual R<Variant> get_data(const Path& url) override;
-            virtual void remove_resource(const Path& url) override;
+            virtual ResourceType get_resource_type(const Name& url) override;
+            virtual R<Variant> get_resource_data(const Name& url) override;
+            virtual void remove_resource(const Name& url) override;
 
         private:
 
-            //! Registers the built-in resource functions into m_registry.
-            void register_builtin_functions();
-
-            R<Variant> invoke_impl(const Path& url, const Variant& params, const Variant& id);
+            R<Variant> invoke_impl(const Name& url, const Variant& params);
         };
     }
 }
