@@ -19,7 +19,7 @@ namespace Luna
     {
         LUNA_LUA_API LuaStatePtr newstate(Alloc* f, void* ud)
         {
-            return (LuaStatePtr)lua_newstate(f, ud);
+            return (LuaStatePtr)lua_newstate(f, ud, luaL_makeseed(NULL));
         }
         LUNA_LUA_API void close(LuaStatePtr state)
         {
@@ -32,6 +32,10 @@ namespace Luna
         LUNA_LUA_API int closethread(LuaStatePtr L, LuaStatePtr from)
         {
             return lua_closethread((lua_State*)L, (lua_State*)from);
+        }
+        LUNA_LUA_API CFunction* atpanic(LuaStatePtr L, CFunction* panicf)
+        {
+            return (CFunction*)lua_atpanic((lua_State*)L, (lua_CFunction)panicf);
         }
         LUNA_LUA_API Version version(LuaStatePtr L)
         {
@@ -170,6 +174,10 @@ namespace Luna
         LUNA_LUA_API const char* pushlstring(LuaStatePtr L, const char* s, usize len)
         {
             return lua_pushlstring((lua_State*)L, s, len);
+        }
+        LUNA_LUA_API const char* pushexternalstring(LuaStatePtr L, const char* s, usize len, Alloc* falloc, void* ud)
+        {
+            return lua_pushexternalstring((lua_State*)L, s, len, (lua_Alloc)falloc, ud);
         }
         LUNA_LUA_API const char* pushstring(LuaStatePtr L, const char* s)
         {
@@ -339,6 +347,10 @@ namespace Luna
         {
             return lua_gc((lua_State*)L, (int)what);
         }
+        LUNA_LUA_API int gcparam(LuaStatePtr L, GCParam param, int value)
+        {
+            return lua_gc((lua_State*)L, LUA_GCPARAM, (int)param, value);
+        }
         LUNA_LUA_API int gcstep(LuaStatePtr L, usize n)
         {
             return lua_gc((lua_State*)L, LUA_GCSTEP, (int)n);
@@ -372,6 +384,10 @@ namespace Luna
         {
             return lua_stringtonumber((lua_State*)L, s);
         }
+        LUNA_LUA_API unsigned numbertocstring(LuaStatePtr L, int idx, char* buff)
+        {
+            return lua_numbertocstring((lua_State*)L, idx, buff);
+        }
         LUNA_LUA_API Alloc* getallocf(LuaStatePtr L, void** ud)
         {
             return (Alloc*)lua_getallocf((lua_State*)L, ud);
@@ -387,6 +403,14 @@ namespace Luna
         LUNA_LUA_API void closeslot(LuaStatePtr L, int idx)
         {
             lua_closeslot((lua_State*)L, idx);
+        }
+        LUNA_LUA_API void* upvalueid(LuaStatePtr L, int fidx, int n)
+        {
+            return lua_upvalueid((lua_State*)L, fidx, n);
+        }
+        LUNA_LUA_API void upvaluejoin(LuaStatePtr L, int fidx1, int n1, int fidx2, int n2)
+        {
+            lua_upvaluejoin((lua_State*)L, fidx1, n1, fidx2, n2);
         }
 
         struct LuaModule : public Module

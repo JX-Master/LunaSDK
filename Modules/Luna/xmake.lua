@@ -17,5 +17,6 @@ includes("RG")
 includes("AHI")
 includes("ECS")
 includes("MakeSystem")
+includes("Lua")
 
 includes("Experimental") -- For modules that is not ready for production use.

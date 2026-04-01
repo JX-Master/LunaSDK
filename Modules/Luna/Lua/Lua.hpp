@@ -37,6 +37,14 @@ namespace Luna
 
         constexpr int MULTRET = -1;
         constexpr int REGISTRYINDEX = -(INT_MAX/2 + 1000);
+        constexpr int OK = 0;
+        constexpr int YIELD = 1;
+        constexpr int ERRRUN = 2;
+        constexpr int ERRSYNTAX = 3;
+        constexpr int ERRMEM = 4;
+        constexpr int ERRERR = 5;
+        constexpr int MINSTACK = 20;
+        constexpr usize N2SBUFFSZ = 64;
 
         inline int upvalueindex(int idx)
         {
@@ -70,6 +78,7 @@ namespace Luna
         LUNA_LUA_API void close(LuaStatePtr state);
         LUNA_LUA_API LuaStatePtr newthread(LuaStatePtr L);
         LUNA_LUA_API int closethread(LuaStatePtr L, LuaStatePtr from);
+        LUNA_LUA_API CFunction* atpanic(LuaStatePtr L, CFunction* panicf);
         LUNA_LUA_API Version version(LuaStatePtr L);
 
         /*
@@ -149,6 +158,7 @@ namespace Luna
         LUNA_LUA_API void         pushnumber(LuaStatePtr L, number n);
         LUNA_LUA_API void         pushinteger(LuaStatePtr L, integer n);
         LUNA_LUA_API const char * pushlstring(LuaStatePtr L, const char *s, usize len);
+        LUNA_LUA_API const char * pushexternalstring(LuaStatePtr L, const char* s, usize len, Alloc* falloc, void* ud);
         LUNA_LUA_API const char * pushstring(LuaStatePtr L, const char *s);
         LUNA_LUA_API const char * pushvfstring(LuaStatePtr L, const char *fmt,
                                                             va_list argp);
@@ -205,7 +215,7 @@ namespace Luna
 
         inline int pcall(LuaStatePtr L, int nargs, int nresults, int errfunc)
         {
-            pcallk(L, nargs, nresults, errfunc, 0, nullptr);
+            return pcallk(L, nargs, nresults, errfunc, 0, nullptr);
         }
 
         LUNA_LUA_API int load(LuaStatePtr L, Reader* reader, void *dt,
@@ -270,6 +280,7 @@ namespace Luna
         };
 
         LUNA_LUA_API int gc(LuaStatePtr L, GCOp what);
+        LUNA_LUA_API int gcparam(LuaStatePtr L, GCParam param, int value);
 
         LUNA_LUA_API int gcstep(LuaStatePtr L, usize n);
 
@@ -294,12 +305,33 @@ namespace Luna
         LUNA_LUA_API void len(LuaStatePtr L, int idx);
 
         LUNA_LUA_API usize stringtonumber(LuaStatePtr L, const char *s);
+        LUNA_LUA_API unsigned numbertocstring(LuaStatePtr L, int idx, char* buff);
 
         LUNA_LUA_API Alloc* getallocf(LuaStatePtr L, void **ud);
         LUNA_LUA_API void setallocf(LuaStatePtr L, Alloc* f, void *ud);
 
         LUNA_LUA_API void toclose(LuaStatePtr L, int idx);
         LUNA_LUA_API void closeslot(LuaStatePtr L, int idx);
+        LUNA_LUA_API void* upvalueid(LuaStatePtr L, int fidx, int n);
+        LUNA_LUA_API void upvaluejoin(LuaStatePtr L, int fidx1, int n1, int fidx2, int n2);
+
+        inline int resetthread(LuaStatePtr L)
+        {
+            return closethread(L, nullptr);
+        }
+
+        inline void* newuserdata(LuaStatePtr L, usize sz)
+        {
+            return newuserdatauv(L, sz, 1);
+        }
+        inline int getuservalue(LuaStatePtr L, int idx)
+        {
+            return getiuservalue(L, idx, 1);
+        }
+        inline int setuservalue(LuaStatePtr L, int idx)
+        {
+            return setiuservalue(L, idx, 1);
+        }
 
 
         /*
