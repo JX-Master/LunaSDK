@@ -1,0 +1,7 @@
+target("Luna.Window")
+    set_kind("shared")
+    add_files("*.cs")
+    add_files("Internal/*.cs")
+    add_deps("Luna.Runtime", "WindowC")
+    set_luna_sdk_csharp_options()
+target_end()

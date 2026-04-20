@@ -12,5 +12,7 @@ Thanks for using LunaSDK. This user manual provides a comprehensive explanation 
 ![[Window Management]]
 ## Rendering
 ![[Rendering]]
+## C# scripting
+![[C Sharp scripting]]
 ## Application as a Service (AaaS)
 ![[Application as a Service]]

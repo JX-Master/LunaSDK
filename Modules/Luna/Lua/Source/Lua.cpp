@@ -123,7 +123,7 @@ namespace Luna
         }
         LUNA_LUA_API const char* tolstring(LuaStatePtr L, int idx, usize* len)
         {
-            return lua_tolstring((lua_State*)L, idx, len);
+            return lua_tolstring((lua_State*)L, idx, (size_t*)len);
         }
         LUNA_LUA_API unsigned_integer rawlen(LuaStatePtr L, int idx)
         {

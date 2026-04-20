@@ -29,6 +29,7 @@ namespace Luna
     }
     LUNA_RUNTIME_API void* query_interface(object_t object, const Guid& iid)
     {
+        lucheck_msg(object, "query_interface: object is nullptr.");
         typeinfo_t type = get_object_type(object);
         InterfaceImplEntry* entry = (InterfaceImplEntry*)get_type_private_data(type, iid);
         if (!entry) return nullptr;

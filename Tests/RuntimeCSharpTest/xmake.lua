@@ -1,0 +1,8 @@
+target("RuntimeCSharpTest")
+    set_kind("binary")
+    set_group("Tests")
+    add_files("Main.cs")
+    add_deps("Luna.Runtime")
+    set_values("csharp.target_framework", "net10.0")
+    set_values("csharp.nullable", "enable")
+target_end()

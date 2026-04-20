@@ -9,6 +9,7 @@
 */
 #pragma once
 #include <Luna/Runtime/Base.hpp>
+#include <limits.h>
 #ifndef LUNA_LUA_API
 #define LUNA_LUA_API
 #endif
@@ -22,7 +23,7 @@ namespace Luna
 
         using CFunction = int(LuaStatePtr);
         using KFunction = int(LuaStatePtr L, int status, KContext ctx);
-        using Alloc = void*(void* ud, void* ptr, usize osize, usize nsize);
+        using Alloc = void*(void* ud, void* ptr, size_t osize, size_t nsize);
 
         using Reader = const char*(LuaStatePtr L, void* ud, usize* sz);
         using Writer = int(LuaStatePtr L, const void* p, usize sz, void* ud);
