@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <NuGetAudit>false</NuGetAudit>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="ClangSharp" Version="20.1.2" />
+    <PackageReference Include="libclang.runtime.osx-arm64" Version="20.1.2" />
+    <PackageReference Include="libClangSharp.runtime.osx-arm64" Version="20.1.2" />
+  </ItemGroup>
+</Project>
