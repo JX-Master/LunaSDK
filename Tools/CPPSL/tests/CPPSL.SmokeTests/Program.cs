@@ -42,9 +42,12 @@ if (result.Artifacts is null ||
 
 var irText = File.ReadAllText(result.Artifacts.IrPath);
 var reflectionText = File.ReadAllText(result.Artifacts.GetOutputPath(CppslOutputTarget.Reflection));
+var hlslText = File.ReadAllText(result.Artifacts.GetOutputPath(CppslOutputTarget.Hlsl));
+var glslText = File.ReadAllText(result.Artifacts.GetOutputPath(CppslOutputTarget.Glsl));
+var mslText = File.ReadAllText(result.Artifacts.GetOutputPath(CppslOutputTarget.Msl));
 if (!irText.Contains("main_vs", StringComparison.Ordinal) ||
     !irText.Contains("\"frontendProvider\": \"Native\"", StringComparison.Ordinal) ||
-    !irText.Contains("\"frontendModelVersion\": 1", StringComparison.Ordinal) ||
+    !irText.Contains("\"frontendModelVersion\": 2", StringComparison.Ordinal) ||
     !irText.Contains("\"frontendAst\"", StringComparison.Ordinal) ||
     !irText.Contains("\"outputTargets\"", StringComparison.Ordinal) ||
     !irText.Contains("\"Kind\": \"Function\"", StringComparison.Ordinal) ||
@@ -60,10 +63,19 @@ if (!irText.Contains("main_vs", StringComparison.Ordinal) ||
     !irText.Contains("\"TemplateArguments\"", StringComparison.Ordinal) ||
     !irText.Contains("\"Spelling\": \"Camera\"", StringComparison.Ordinal) ||
     !irText.Contains("\"ResultTypeInfo\": {", StringComparison.Ordinal) ||
+    !irText.Contains("\"Kind\": \"CompoundStatement\"", StringComparison.Ordinal) ||
+    !irText.Contains("\"Kind\": \"DeclarationStatement\"", StringComparison.Ordinal) ||
+    !irText.Contains("\"Kind\": \"LocalVariable\"", StringComparison.Ordinal) ||
+    !irText.Contains("\"Spelling\": \"output\"", StringComparison.Ordinal) ||
+    !irText.Contains("\"Kind\": \"CallExpression\"", StringComparison.Ordinal) ||
+    !irText.Contains("\"DisplayName\": \"mul\"", StringComparison.Ordinal) ||
+    !irText.Contains("\"Kind\": \"MemberExpression\"", StringComparison.Ordinal) ||
+    !irText.Contains("\"Kind\": \"DeclRefExpression\"", StringComparison.Ordinal) ||
+    !irText.Contains("\"Kind\": \"ReturnStatement\"", StringComparison.Ordinal) ||
     !irText.Contains("cppslSemanticModel", StringComparison.Ordinal) ||
     !irText.Contains("cppslIr", StringComparison.Ordinal) ||
     !irText.Contains("\"Schema\": \"cppsl.ir\"", StringComparison.Ordinal) ||
-    !irText.Contains("\"Version\": 0", StringComparison.Ordinal) ||
+    !irText.Contains("\"Version\": 1", StringComparison.Ordinal) ||
     !irText.Contains("constant_buffer", StringComparison.Ordinal) ||
     !irText.Contains("\"IsEntryPoint\": true", StringComparison.Ordinal) ||
     !irText.Contains("\"Name\": \"set\"", StringComparison.Ordinal) ||
@@ -77,7 +89,15 @@ if (!irText.Contains("main_vs", StringComparison.Ordinal) ||
     !irText.Contains("\"IsPosition\": true", StringComparison.Ordinal) ||
     !irText.Contains("\"DeclaredStage\": \"vertex\"", StringComparison.Ordinal))
 {
-    Console.Error.WriteLine("error: expected frontend AST facts were not written to the IR placeholder.");
+    Console.Error.WriteLine("error: expected frontend, semantic, or IR facts were not written.");
+    return 1;
+}
+if (!Regex.IsMatch(
+        irText,
+        "\"cppslIr\"\\s*:\\s*\\{.*?\"Version\"\\s*:\\s*1.*?\"EntryPoints\"\\s*:\\s*\\[.*?\"Name\"\\s*:\\s*\"main_vs\".*?\"Body\"\\s*:\\s*\\{.*?\"Kind\"\\s*:\\s*\"CompoundStatement\".*?\"Kind\"\\s*:\\s*\"LocalVariable\".*?\"DisplayName\"\\s*:\\s*\"mul\".*?\"Kind\"\\s*:\\s*\"ReturnStatement\"",
+        RegexOptions.Singleline))
+{
+    Console.Error.WriteLine("error: expected entry point body AST skeleton was not written to CPPSL IR.");
     return 1;
 }
 if (!reflectionText.Contains("\"Schema\": \"cppsl.reflection\"", StringComparison.Ordinal) ||
@@ -107,14 +127,29 @@ if (!Regex.IsMatch(irText, "\"Name\": \"input\".*?\"Attributes\": \\[\\s*\\]", R
     Console.Error.WriteLine("error: function parameters must not inherit function attributes.");
     return 1;
 }
+if (!hlslText.Contains("struct VSInput", StringComparison.Ordinal) ||
+    !hlslText.Contains("float4 position : SV_Position", StringComparison.Ordinal) ||
+    !hlslText.Contains("ConstantBuffer<Camera> camera : register(b0, space0);", StringComparison.Ordinal) ||
+    !hlslText.Contains("VSOutput main_vs(VSInput input)", StringComparison.Ordinal) ||
+    !glslText.Contains("#version 450", StringComparison.Ordinal) ||
+    !glslText.Contains("mat4 world_to_proj", StringComparison.Ordinal) ||
+    !glslText.Contains("layout(set = 0, binding = 0) uniform camera_Block", StringComparison.Ordinal) ||
+    !glslText.Contains("return VSOutput(vec4(0.0), vec2(0.0));", StringComparison.Ordinal) ||
+    !mslText.Contains("#include <metal_stdlib>", StringComparison.Ordinal) ||
+    !mslText.Contains("float4 position [[position]]", StringComparison.Ordinal) ||
+    !mslText.Contains("constant Camera& camera [[buffer(0)]]", StringComparison.Ordinal) ||
+    !mslText.Contains("vertex VSOutput main_vs", StringComparison.Ordinal))
+{
+    Console.Error.WriteLine("error: expected CPPSL shader source targets were not emitted.");
+    return 1;
+}
 
 var textureResult = compiler.Compile(new CppslCompileOptions(
     textureBasicShader,
     Path.Combine(outputDir, "texture-basic"),
     new[] { stdRoot },
     "main_ps",
-    ShaderStage.Fragment,
-    new[] { CppslOutputTarget.Reflection }));
+    ShaderStage.Fragment));
 
 if (!textureResult.Succeeded || textureResult.Artifacts is null)
 {
@@ -127,12 +162,26 @@ if (!textureResult.Succeeded || textureResult.Artifacts is null)
 }
 
 var textureReflectionText = File.ReadAllText(textureResult.Artifacts.GetOutputPath(CppslOutputTarget.Reflection));
+var textureHlslText = File.ReadAllText(textureResult.Artifacts.GetOutputPath(CppslOutputTarget.Hlsl));
+var textureGlslText = File.ReadAllText(textureResult.Artifacts.GetOutputPath(CppslOutputTarget.Glsl));
+var textureMslText = File.ReadAllText(textureResult.Artifacts.GetOutputPath(CppslOutputTarget.Msl));
 if (!textureReflectionText.Contains("\"Name\": \"color_texture\"", StringComparison.Ordinal) ||
     !textureReflectionText.Contains("\"ResourceKind\": \"texture\"", StringComparison.Ordinal) ||
     !textureReflectionText.Contains("\"Name\": \"linear_sampler\"", StringComparison.Ordinal) ||
     !textureReflectionText.Contains("\"ResourceKind\": \"sampler\"", StringComparison.Ordinal))
 {
     Console.Error.WriteLine("error: expected texture_basic reflection resources were not written.");
+    return 1;
+}
+if (!textureHlslText.Contains("Texture2D<float4> color_texture : register(t0, space0);", StringComparison.Ordinal) ||
+    !textureHlslText.Contains("SamplerState linear_sampler : register(s1, space0);", StringComparison.Ordinal) ||
+    !textureGlslText.Contains("uniform texture2D color_texture", StringComparison.Ordinal) ||
+    !textureGlslText.Contains("uniform sampler linear_sampler", StringComparison.Ordinal) ||
+    !textureMslText.Contains("fragment PSOutput main_ps", StringComparison.Ordinal) ||
+    !textureMslText.Contains("texture2d<float> color_texture [[texture(0)]]", StringComparison.Ordinal) ||
+    !textureMslText.Contains("sampler linear_sampler [[sampler(1)]]", StringComparison.Ordinal))
+{
+    Console.Error.WriteLine("error: expected texture_basic shader source resources were not emitted.");
     return 1;
 }
 

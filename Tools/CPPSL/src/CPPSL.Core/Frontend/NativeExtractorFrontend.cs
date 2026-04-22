@@ -7,7 +7,7 @@ namespace CPPSL.Core.Frontend;
 
 public sealed class NativeExtractorFrontend : ICppslFrontend
 {
-    public const int ModelVersion = 1;
+    public const int ModelVersion = 2;
 
     private readonly string _extractorPath;
 

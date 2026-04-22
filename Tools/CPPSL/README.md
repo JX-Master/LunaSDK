@@ -15,9 +15,12 @@ Current scope:
 - Validate entry point stage attributes, resource `set` / `binding` metadata,
   duplicate resource bindings, attribute target rules, and duplicate struct
   locations.
-- Emit declaration-level `cppsl.ir` v0 plus multiple output targets from a
-  single frontend parse.
+- Emit `cppsl.ir` v1 with declarations and an entry-point function body AST
+  skeleton, plus multiple output targets from a single frontend parse.
 - Treat HLSL, GLSL, MSL, and reflection as peer output targets.
+- Emit phase 0 HLSL, GLSL, and MSL source stubs with platform-specific
+  structs, resource declarations, entry signatures, and conservative default
+  entry bodies.
 - Emit versioned reflection JSON.
 
 The frontend is native-only. The extractor lives in `Tools/CPPSL/native`, links
@@ -60,6 +63,6 @@ dotnet run --project Tools/CPPSL/tests/CPPSL.SmokeTests
 ```
 
 Smoke fixtures live under `Tools/CPPSL/tests/fixtures`. They currently cover
-box-style vertex IO, texture/sampler reflection, and invalid language cases.
-They are intentionally file-based so the native extractor and later pipeline
-stages can run the same language contract tests.
+box-style vertex IO, texture/sampler reflection and source emission, and
+invalid language cases. They are intentionally file-based so the native
+extractor and later pipeline stages can run the same language contract tests.

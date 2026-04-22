@@ -2,6 +2,7 @@
 #include <clang/AST/DeclCXX.h>
 #include <clang/Basic/Diagnostic.h>
 #include <clang/Frontend/ASTUnit.h>
+#include <clang/Lex/Lexer.h>
 #include <clang/Tooling/Tooling.h>
 
 #include <filesystem>
@@ -238,10 +239,16 @@ std::string KindForDecl(const clang::Decl* decl)
     if (llvm::isa<clang::FunctionTemplateDecl>(decl)) return "FunctionTemplate";
     if (llvm::isa<clang::ClassTemplateDecl>(decl)) return "ClassTemplate";
     if (llvm::isa<clang::ParmVarDecl>(decl)) return "Parameter";
-    if (llvm::isa<clang::FunctionDecl>(decl)) return "Function";
-    if (llvm::isa<clang::VarDecl>(decl)) return "GlobalVariable";
     if (llvm::isa<clang::CXXConstructorDecl>(decl)) return "Constructor";
     if (llvm::isa<clang::CXXMethodDecl>(decl)) return "Method";
+    if (llvm::isa<clang::FunctionDecl>(decl)) return "Function";
+    if (const auto* variable = llvm::dyn_cast<clang::VarDecl>(decl))
+    {
+        const auto* context = variable->getDeclContext();
+        return llvm::isa<clang::TranslationUnitDecl>(context) || llvm::isa<clang::NamespaceDecl>(context)
+            ? "GlobalVariable"
+            : "LocalVariable";
+    }
     return "Unknown";
 }
 
@@ -338,6 +345,94 @@ std::optional<TypeInfo> MakeTypeInfo(const clang::ASTContext& ast_context, clang
     return info;
 }
 
+std::string GetSourceText(const clang::ASTContext& ast_context, clang::SourceRange range)
+{
+    if (range.isInvalid())
+    {
+        return {};
+    }
+
+    const auto& source_manager = ast_context.getSourceManager();
+    auto char_range = clang::CharSourceRange::getTokenRange(range);
+    bool invalid = false;
+    auto text = clang::Lexer::getSourceText(char_range, source_manager, ast_context.getLangOpts(), &invalid);
+    return invalid ? std::string() : text.str();
+}
+
+std::string KindForStmt(const clang::Stmt* stmt)
+{
+    if (llvm::isa<clang::CompoundStmt>(stmt)) return "CompoundStatement";
+    if (llvm::isa<clang::DeclStmt>(stmt)) return "DeclarationStatement";
+    if (llvm::isa<clang::ReturnStmt>(stmt)) return "ReturnStatement";
+    if (llvm::isa<clang::CompoundAssignOperator>(stmt) || llvm::isa<clang::BinaryOperator>(stmt)) return "BinaryOperator";
+    if (llvm::isa<clang::UnaryOperator>(stmt)) return "UnaryOperator";
+    if (llvm::isa<clang::CXXOperatorCallExpr>(stmt)) return "OperatorCallExpression";
+    if (llvm::isa<clang::CXXConstructExpr>(stmt)) return "ConstructorCallExpression";
+    if (llvm::isa<clang::CXXFunctionalCastExpr>(stmt)) return "FunctionalCastExpression";
+    if (llvm::isa<clang::CallExpr>(stmt)) return "CallExpression";
+    if (llvm::isa<clang::MemberExpr>(stmt)) return "MemberExpression";
+    if (llvm::isa<clang::DeclRefExpr>(stmt)) return "DeclRefExpression";
+    if (llvm::isa<clang::IntegerLiteral>(stmt)) return "IntegerLiteral";
+    if (llvm::isa<clang::FloatingLiteral>(stmt)) return "FloatingLiteral";
+    if (llvm::isa<clang::CXXBoolLiteralExpr>(stmt)) return "BooleanLiteral";
+    if (llvm::isa<clang::StringLiteral>(stmt)) return "StringLiteral";
+    if (llvm::isa<clang::InitListExpr>(stmt)) return "InitializerListExpression";
+    if (llvm::isa<clang::ImplicitCastExpr>(stmt)) return "ImplicitCastExpression";
+    if (llvm::isa<clang::ParenExpr>(stmt)) return "ParenExpression";
+    if (llvm::isa<clang::ArraySubscriptExpr>(stmt)) return "ArraySubscriptExpression";
+    return "Unknown";
+}
+
+bool IsInterestingStmt(const clang::Stmt* stmt)
+{
+    return llvm::isa<clang::CompoundStmt>(stmt) ||
+        llvm::isa<clang::DeclStmt>(stmt) ||
+        llvm::isa<clang::ReturnStmt>(stmt) ||
+        llvm::isa<clang::BinaryOperator>(stmt) ||
+        llvm::isa<clang::UnaryOperator>(stmt) ||
+        llvm::isa<clang::CallExpr>(stmt) ||
+        llvm::isa<clang::CXXConstructExpr>(stmt) ||
+        llvm::isa<clang::CXXFunctionalCastExpr>(stmt) ||
+        llvm::isa<clang::MemberExpr>(stmt) ||
+        llvm::isa<clang::DeclRefExpr>(stmt) ||
+        llvm::isa<clang::IntegerLiteral>(stmt) ||
+        llvm::isa<clang::FloatingLiteral>(stmt) ||
+        llvm::isa<clang::CXXBoolLiteralExpr>(stmt) ||
+        llvm::isa<clang::StringLiteral>(stmt) ||
+        llvm::isa<clang::InitListExpr>(stmt) ||
+        llvm::isa<clang::ImplicitCastExpr>(stmt) ||
+        llvm::isa<clang::ParenExpr>(stmt) ||
+        llvm::isa<clang::ArraySubscriptExpr>(stmt);
+}
+
+std::string GetStmtDisplayName(const clang::Stmt* stmt)
+{
+    if (const auto* binary = llvm::dyn_cast<clang::BinaryOperator>(stmt))
+    {
+        return binary->getOpcodeStr().str();
+    }
+    if (const auto* unary = llvm::dyn_cast<clang::UnaryOperator>(stmt))
+    {
+        return std::string(clang::UnaryOperator::getOpcodeStr(unary->getOpcode()));
+    }
+    if (const auto* member = llvm::dyn_cast<clang::MemberExpr>(stmt))
+    {
+        return member->getMemberNameInfo().getAsString();
+    }
+    if (const auto* decl_ref = llvm::dyn_cast<clang::DeclRefExpr>(stmt))
+    {
+        return decl_ref->getNameInfo().getAsString();
+    }
+    if (const auto* call = llvm::dyn_cast<clang::CallExpr>(stmt))
+    {
+        if (const auto* callee = call->getDirectCallee())
+        {
+            return callee->getNameAsString();
+        }
+    }
+    return {};
+}
+
 void WriteTypeInfo(std::ostream& os, const std::optional<TypeInfo>& type_info)
 {
     if (!type_info)
@@ -362,6 +457,27 @@ void WriteTypeInfo(std::ostream& os, const std::optional<TypeInfo>& type_info)
 }
 
 AstNode MakeNode(const clang::Decl* decl, const clang::ASTContext& ast_context);
+AstNode MakeStmtNode(const clang::Stmt* stmt, const clang::ASTContext& ast_context);
+
+void AppendStmtChildren(std::vector<AstNode>& children, const clang::Stmt* stmt, const clang::ASTContext& ast_context)
+{
+    for (const auto* child : stmt->children())
+    {
+        if (!child)
+        {
+            continue;
+        }
+
+        if (IsInterestingStmt(child))
+        {
+            children.push_back(MakeStmtNode(child, ast_context));
+        }
+        else
+        {
+            AppendStmtChildren(children, child, ast_context);
+        }
+    }
+}
 
 std::vector<AstNode> MakeChildren(const clang::Decl* decl, const clang::ASTContext& ast_context)
 {
@@ -371,6 +487,19 @@ std::vector<AstNode> MakeChildren(const clang::Decl* decl, const clang::ASTConte
         for (const auto* parameter : function->parameters())
         {
             children.push_back(MakeNode(parameter, ast_context));
+        }
+        if (const auto* body = function->getBody())
+        {
+            children.push_back(MakeStmtNode(body, ast_context));
+        }
+        return children;
+    }
+
+    if (const auto* variable = llvm::dyn_cast<clang::VarDecl>(decl))
+    {
+        if (const auto* initializer = variable->getInit())
+        {
+            children.push_back(MakeStmtNode(initializer, ast_context));
         }
         return children;
     }
@@ -391,6 +520,40 @@ std::vector<AstNode> MakeChildren(const clang::Decl* decl, const clang::ASTConte
         }
     }
     return children;
+}
+
+AstNode MakeStmtNode(const clang::Stmt* stmt, const clang::ASTContext& ast_context)
+{
+    const auto& source_manager = ast_context.getSourceManager();
+    AstNode node;
+    node.kind = KindForStmt(stmt);
+    node.provider_kind = stmt->getStmtClassName();
+    node.spelling = GetSourceText(ast_context, stmt->getSourceRange());
+    node.display_name = GetStmtDisplayName(stmt);
+    node.location = GetLocation(source_manager, stmt->getBeginLoc());
+    node.range = GetRange(source_manager, stmt->getSourceRange());
+
+    if (const auto* expression = llvm::dyn_cast<clang::Expr>(stmt))
+    {
+        auto type = expression->getType();
+        node.type_name = type.getAsString();
+        node.type_info = MakeTypeInfo(ast_context, type);
+    }
+
+    if (const auto* declaration_statement = llvm::dyn_cast<clang::DeclStmt>(stmt))
+    {
+        for (const auto* declaration : declaration_statement->decls())
+        {
+            if (declaration && IsInterestingDecl(declaration))
+            {
+                node.children.push_back(MakeNode(declaration, ast_context));
+            }
+        }
+        return node;
+    }
+
+    AppendStmtChildren(node.children, stmt, ast_context);
+    return node;
 }
 
 AstNode MakeNode(const clang::Decl* decl, const clang::ASTContext& ast_context)
@@ -501,7 +664,7 @@ void WriteResult(
     const std::vector<DiagnosticInfo>& diagnostics)
 {
     os << "{\"Succeeded\":" << (succeeded ? "true" : "false");
-    os << ",\"Provider\":\"Native\",\"ModelVersion\":1,\"Diagnostics\":[";
+    os << ",\"Provider\":\"Native\",\"ModelVersion\":2,\"Diagnostics\":[";
     for (size_t i = 0; i < diagnostics.size(); ++i)
     {
         if (i != 0) os << ",";

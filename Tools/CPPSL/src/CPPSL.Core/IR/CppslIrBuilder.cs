@@ -1,4 +1,5 @@
 using CPPSL.Core.Compiler;
+using CPPSL.Core.Frontend;
 using CPPSL.Core.Semantics;
 
 namespace CPPSL.Core.IR;
@@ -6,10 +7,15 @@ namespace CPPSL.Core.IR;
 public sealed class CppslIrBuilder
 {
     public const string SchemaName = "cppsl.ir";
-    public const int SchemaVersion = 0;
+    public const int SchemaVersion = 1;
 
-    public CppslIrModule Build(CppslCompileOptions options, string sourcePath, CppslSemanticModel semanticModel)
+    public CppslIrModule Build(
+        CppslCompileOptions options,
+        string sourcePath,
+        CppslSemanticModel semanticModel,
+        IReadOnlyList<CppslAstNode> astNodes)
     {
+        sourcePath = Path.GetFullPath(sourcePath);
         return new CppslIrModule(
             SchemaName,
             SchemaVersion,
@@ -36,7 +42,68 @@ public sealed class CppslIrBuilder
                     options.Stage.ToString(),
                     function.DeclaredStage,
                     function.ReturnType,
-                    function.Parameters.Select(static parameter => new CppslIrParameter(parameter.Name, parameter.Type)).ToArray())).ToArray());
+                    function.Parameters.Select(static parameter => new CppslIrParameter(parameter.Name, parameter.Type)).ToArray(),
+                    FindEntryPointBody(sourcePath, astNodes, function.Name))).ToArray());
+    }
+
+    private static CppslIrNode? FindEntryPointBody(string sourcePath, IReadOnlyList<CppslAstNode> astNodes, string functionName)
+    {
+        var functionNode = astNodes.FirstOrDefault(node =>
+            node.Kind == CppslAstNodeKind.Function &&
+            node.Spelling == functionName &&
+            node.Location?.File is not null &&
+            Path.GetFullPath(node.Location.File) == sourcePath);
+
+        var bodyNode = functionNode?.Children.FirstOrDefault(static child => child.Kind == CppslAstNodeKind.CompoundStatement);
+        return bodyNode is null ? null : ToIrNode(bodyNode);
+    }
+
+    private static CppslIrNode ToIrNode(CppslAstNode node)
+    {
+        return new CppslIrNode(
+            node.Kind.ToString(),
+            node.Spelling,
+            node.DisplayName,
+            node.TypeName,
+            node.TypeInfo is null ? null : ToIrType(node.TypeInfo),
+            node.Children
+                .Where(static child => IsBodyNode(child.Kind))
+                .Select(ToIrNode)
+                .ToArray());
+    }
+
+    private static CppslIrType ToIrType(CppslTypeInfo type)
+    {
+        return new CppslIrType(
+            type.Spelling,
+            type.CanonicalName,
+            type.DesugaredName,
+            type.TemplateArguments.Select(ToIrType).ToArray());
+    }
+
+    private static bool IsBodyNode(CppslAstNodeKind kind)
+    {
+        return kind is
+            CppslAstNodeKind.CompoundStatement or
+            CppslAstNodeKind.DeclarationStatement or
+            CppslAstNodeKind.LocalVariable or
+            CppslAstNodeKind.ReturnStatement or
+            CppslAstNodeKind.BinaryOperator or
+            CppslAstNodeKind.UnaryOperator or
+            CppslAstNodeKind.CallExpression or
+            CppslAstNodeKind.OperatorCallExpression or
+            CppslAstNodeKind.ConstructorCallExpression or
+            CppslAstNodeKind.FunctionalCastExpression or
+            CppslAstNodeKind.MemberExpression or
+            CppslAstNodeKind.DeclRefExpression or
+            CppslAstNodeKind.IntegerLiteral or
+            CppslAstNodeKind.FloatingLiteral or
+            CppslAstNodeKind.BooleanLiteral or
+            CppslAstNodeKind.StringLiteral or
+            CppslAstNodeKind.InitializerListExpression or
+            CppslAstNodeKind.ImplicitCastExpression or
+            CppslAstNodeKind.ParenExpression or
+            CppslAstNodeKind.ArraySubscriptExpression;
     }
 }
 
@@ -70,8 +137,23 @@ public sealed record CppslIrEntryPoint(
     string Stage,
     string? DeclaredStage,
     string? ReturnType,
-    IReadOnlyList<CppslIrParameter> Parameters);
+    IReadOnlyList<CppslIrParameter> Parameters,
+    CppslIrNode? Body);
 
 public sealed record CppslIrParameter(
     string Name,
     string Type);
+
+public sealed record CppslIrNode(
+    string Kind,
+    string Spelling,
+    string? DisplayName,
+    string? Type,
+    CppslIrType? TypeInfo,
+    IReadOnlyList<CppslIrNode> Children);
+
+public sealed record CppslIrType(
+    string Spelling,
+    string CanonicalName,
+    string DesugaredName,
+    IReadOnlyList<CppslIrType> TemplateArguments);

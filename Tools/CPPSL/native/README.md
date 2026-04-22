@@ -13,6 +13,9 @@ Current scope:
   parameters.
 - Emit source ranges, structured type info, return type info, and type template
   arguments for declaration nodes.
+- Emit the first function body AST slice: compound statements, declaration
+  statements, local variables, returns, calls, member accesses, declaration
+  references, constructor calls, operators, and basic literals.
 - Return structured Clang diagnostics with file, line, and column information.
 
 The extractor currently links against the local LLVM SDK:
