@@ -8,14 +8,14 @@ struct Camera
     float4x4 world_to_proj;
 };
 
+[[cppsl::set(0), cppsl::binding(15)]]
+SamplerState tex_sampler;
+
 [[cppsl::cbuffer, cppsl::set(0), cppsl::binding(0)]]
 Camera vertexBuffer;
 
-[[cppsl::set(0), cppsl::binding(1)]]
+[[cppsl::set(0), cppsl::binding(8)]]
 Texture2D<float4> tex;
-
-[[cppsl::set(0), cppsl::binding(2)]]
-SamplerState tex_sampler;
 
 struct PS_INPUT
 {

@@ -198,9 +198,9 @@ namespace Luna
                         return set_error(BasicError::bad_arguments(), "The specified binding number %d is not specified in the descriptor set layout.", write.binding_slot);
                     }
                     auto& binding = m_bindings[binding_index];
+                    u64 argument_offset = m_layout->m_argument_offsets[binding_index] + write.first_array_index;
                     if (m_device->m_support_metal_3_family)
                     {
-                        u64 argument_offset = m_layout->m_argument_offsets[binding_index] + write.first_array_index;
                         switch(write.type)
                         {
                             case DescriptorType::uniform_buffer_view:
@@ -267,7 +267,7 @@ namespace Luna
                             {
                                 auto& view = write.buffer_views[0];
                                 Buffer* buffer = cast_object<Buffer>(view.buffer->get_object());
-                                [m_encoder setBuffer:buffer->m_buffer offset:view.first_element atIndex:write.binding_slot + write.first_array_index];
+                                [m_encoder setBuffer:buffer->m_buffer offset:view.first_element atIndex:argument_offset];
                                 binding.m_resources[write.first_array_index] = buffer->m_buffer;
                             }
                             else
@@ -283,7 +283,7 @@ namespace Luna
                                     binding.m_resources[write.first_array_index + i] = buffer->m_buffer;
                                 }
                                 NSRange range;
-                                range.location = write.binding_slot + write.first_array_index;
+                                range.location = argument_offset;
                                 range.length = write.num_descs;
                                 [m_encoder setBuffers:buffers offsets:offsets withRange:range];
                             }
@@ -295,7 +295,7 @@ namespace Luna
                                 auto& view = write.buffer_views[0];
                                 Buffer* buffer = cast_object<Buffer>(view.buffer->get_object());
                                 u64 data_offset = view.element_size * view.first_element;
-                                [m_encoder setBuffer:buffer->m_buffer offset:data_offset atIndex:write.binding_slot + write.first_array_index];
+                                [m_encoder setBuffer:buffer->m_buffer offset:data_offset atIndex:argument_offset];
                                 binding.m_resources[write.first_array_index] = buffer->m_buffer;
                             }
                             else
@@ -312,7 +312,7 @@ namespace Luna
                                     binding.m_resources[write.first_array_index + i] = buffer->m_buffer;
                                 }
                                 NSRange range;
-                                range.location = write.binding_slot + write.first_array_index;
+                                range.location = argument_offset;
                                 range.length = write.num_descs;
                                 [m_encoder setBuffers:buffers offsets:offsets withRange:range];
                             }
@@ -327,11 +327,11 @@ namespace Luna
                                 if(require_view_object(tex->m_desc, view))
                                 {
                                     lulet(tex_view, tex->get_texture_view(view));
-                                    [m_encoder setTexture:tex_view->m_texture atIndex:write.binding_slot + write.first_array_index];
+                                    [m_encoder setTexture:tex_view->m_texture atIndex:argument_offset];
                                 }
                                 else
                                 {
-                                    [m_encoder setTexture:tex->m_texture atIndex:write.binding_slot + write.first_array_index];
+                                    [m_encoder setTexture:tex->m_texture atIndex:argument_offset];
                                 }
                                 binding.m_resources[write.first_array_index] = tex->m_texture;
                             }
@@ -355,7 +355,7 @@ namespace Luna
                                     binding.m_resources[write.first_array_index + i] = tex->m_texture;
                                 }
                                 NSRange range;
-                                range.location = write.binding_slot + write.first_array_index;
+                                range.location = argument_offset;
                                 range.length = write.num_descs;
                                 [m_encoder setTextures:textures withRange:range];
                             }
@@ -368,7 +368,7 @@ namespace Luna
                                 if(!sampler) return BasicError::bad_platform_call();
                                 u32 key = write.binding_slot + write.first_array_index;
                                 m_samplers[@(key)] = sampler;
-                                [m_encoder setSamplerState:sampler atIndex:write.binding_slot + write.first_array_index];
+                                [m_encoder setSamplerState:sampler atIndex:argument_offset];
                             }
                             else
                             {
@@ -383,7 +383,7 @@ namespace Luna
                                     samplers[i] = sampler;
                                 }
                                 NSRange range;
-                                range.location = write.binding_slot + write.first_array_index;
+                                range.location = argument_offset;
                                 range.length = write.num_descs;
                                 [m_encoder setSamplerStates:samplers withRange:range];
                             }

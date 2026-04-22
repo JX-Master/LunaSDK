@@ -227,11 +227,11 @@ if (!resourceReflectionText.Contains("\"Name\": \"camera\"", StringComparison.Or
     !resourceReflectionText.Contains("\"Name\": \"output_values\"", StringComparison.Ordinal) ||
     !resourceReflectionText.Contains("\"ResourceKind\": \"rw_structured_buffer\"", StringComparison.Ordinal) ||
     !resourceHlslText.Contains("ConstantBuffer<Camera> camera : register(b0, space0);", StringComparison.Ordinal) ||
-    !resourceHlslText.Contains("StructuredBuffer<float> values : register(t1, space0);", StringComparison.Ordinal) ||
-    !resourceHlslText.Contains("RWStructuredBuffer<float> output_values : register(u2, space0);", StringComparison.Ordinal) ||
+    !resourceHlslText.Contains("StructuredBuffer<float> values : register(t8, space0);", StringComparison.Ordinal) ||
+    !resourceHlslText.Contains("RWStructuredBuffer<float> output_values : register(u15, space0);", StringComparison.Ordinal) ||
     !resourceGlslText.Contains("layout(set = 0, binding = 0) uniform camera_Block", StringComparison.Ordinal) ||
-    !resourceGlslText.Contains("layout(set = 0, binding = 1) buffer values_Block", StringComparison.Ordinal) ||
-    !resourceGlslText.Contains("layout(set = 0, binding = 2) buffer output_values_Block", StringComparison.Ordinal) ||
+    !resourceGlslText.Contains("layout(set = 0, binding = 8) buffer values_Block", StringComparison.Ordinal) ||
+    !resourceGlslText.Contains("layout(set = 0, binding = 15) buffer output_values_Block", StringComparison.Ordinal) ||
     !resourceMslText.Contains("constant Camera* camera [[id(0)]]", StringComparison.Ordinal) ||
     !resourceMslText.Contains("device const float* values [[id(1)]]", StringComparison.Ordinal) ||
     !resourceMslText.Contains("device float* output_values [[id(2)]]", StringComparison.Ordinal) ||

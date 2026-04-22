@@ -105,27 +105,29 @@ internal sealed class MslShaderSourceEmitter : CppslShaderSourceEmitterBase
         {
             builder.AppendLine($"struct {DescriptorSetStructName(descriptorSetGroup.Key)}");
             builder.AppendLine("{");
+            var metalArgumentIndex = 0;
             foreach (var global in descriptorSetGroup.OrderBy(static global => global.Binding ?? 0))
             {
                 builder.Append("    ");
-                builder.Append(ArgumentBufferField(global));
+                builder.Append(ArgumentBufferField(global, metalArgumentIndex));
                 builder.AppendLine(";");
+                ++metalArgumentIndex;
             }
             builder.AppendLine("};");
             builder.AppendLine();
         }
     }
 
-    private string ArgumentBufferField(CppslGlobal global)
+    private string ArgumentBufferField(CppslGlobal global, int metalArgumentIndex)
     {
         return global.ResourceKind switch
         {
-            "constant_buffer" => $"constant {MapValueType(ResourceElementType(global))}* {global.Name} [[id({global.Binding})]]",
-            "structured_buffer" => $"device const {MapValueType(ResourceElementType(global))}* {global.Name} [[id({global.Binding})]]",
-            "rw_structured_buffer" => $"device {MapValueType(ResourceElementType(global))}* {global.Name} [[id({global.Binding})]]",
-            "texture" => $"texture2d<float> {global.Name} [[id({global.Binding})]]",
-            "rw_texture" => $"texture2d<float, access::write> {global.Name} [[id({global.Binding})]]",
-            "sampler" => $"sampler {global.Name} [[id({global.Binding})]]",
+            "constant_buffer" => $"constant {MapValueType(ResourceElementType(global))}* {global.Name} [[id({metalArgumentIndex})]]",
+            "structured_buffer" => $"device const {MapValueType(ResourceElementType(global))}* {global.Name} [[id({metalArgumentIndex})]]",
+            "rw_structured_buffer" => $"device {MapValueType(ResourceElementType(global))}* {global.Name} [[id({metalArgumentIndex})]]",
+            "texture" => $"texture2d<float> {global.Name} [[id({metalArgumentIndex})]]",
+            "rw_texture" => $"texture2d<float, access::write> {global.Name} [[id({metalArgumentIndex})]]",
+            "sampler" => $"sampler {global.Name} [[id({metalArgumentIndex})]]",
             _ => $"{global.Type} {global.Name}"
         };
     }

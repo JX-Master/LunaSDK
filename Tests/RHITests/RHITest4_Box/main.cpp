@@ -57,9 +57,9 @@ RV start()
 
         using namespace RHI;
         luset(dlayout, dev->new_descriptor_set_layout(DescriptorSetLayoutDesc({
-            DescriptorSetLayoutBinding::uniform_buffer_view(0, 1, ShaderVisibilityFlag::vertex),
-            DescriptorSetLayoutBinding::read_texture_view(TextureViewType::tex2d, 1, 1, ShaderVisibilityFlag::pixel),
-            DescriptorSetLayoutBinding::sampler(2, 1, ShaderVisibilityFlag::pixel)
+            DescriptorSetLayoutBinding::sampler(15, 1, ShaderVisibilityFlag::pixel),
+            DescriptorSetLayoutBinding::read_texture_view(TextureViewType::tex2d, 8, 1, ShaderVisibilityFlag::pixel),
+            DescriptorSetLayoutBinding::uniform_buffer_view(0, 1, ShaderVisibilityFlag::vertex)
         })));
         luset(desc_set, dev->new_descriptor_set(DescriptorSetDesc(dlayout)));
 
@@ -146,10 +146,10 @@ RV start()
         luexp(writer->commit(upload_cmdbuf, true));
         luexp(desc_set->update_descriptors(
             {
+                WriteDescriptorSet::sampler(15, SamplerDesc(Filter::linear, Filter::linear, Filter::linear, TextureAddressMode::clamp,
+                        TextureAddressMode::clamp, TextureAddressMode::clamp)),
                 WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(cb)),
-                WriteDescriptorSet::read_texture_view(1, TextureViewDesc::tex2d(file_tex)),
-                WriteDescriptorSet::sampler(2, SamplerDesc(Filter::linear, Filter::linear, Filter::linear, TextureAddressMode::clamp,
-                        TextureAddressMode::clamp, TextureAddressMode::clamp))
+                WriteDescriptorSet::read_texture_view(8, TextureViewDesc::tex2d(file_tex))
             }));
     }
     lucatchret;
