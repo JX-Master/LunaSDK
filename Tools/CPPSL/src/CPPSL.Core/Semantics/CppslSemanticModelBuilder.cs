@@ -69,7 +69,7 @@ public sealed class CppslSemanticModelBuilder
         return new CppslGlobal(
             node.Spelling,
             type,
-            ClassifyResourceKind(type),
+            ClassifyResourceKind(type, attributes),
             attributes,
             attributes.FindAttribute("set").FirstIntArgument(),
             attributes.FindAttribute("binding").FirstIntArgument(),
@@ -112,8 +112,15 @@ public sealed class CppslSemanticModelBuilder
             node.Location?.Column);
     }
 
-    private static string? ClassifyResourceKind(string type)
+    private static string? ClassifyResourceKind(string type, IReadOnlyList<CppslAttribute> attributes)
     {
+        if (attributes.FindAttribute("cbuffer") is not null) return "constant_buffer";
+        if (attributes.FindAttribute("structured_buffer") is not null ||
+            attributes.FindAttribute("sbuffer") is not null) return "structured_buffer";
+        if (attributes.FindAttribute("rwstructured_buffer") is not null ||
+            attributes.FindAttribute("rw_structured_buffer") is not null ||
+            attributes.FindAttribute("rwsbuffer") is not null) return "rw_structured_buffer";
+
         if (type.StartsWith("ConstantBuffer<", StringComparison.Ordinal)) return "constant_buffer";
         if (type.StartsWith("StructuredBuffer<", StringComparison.Ordinal)) return "structured_buffer";
         if (type.StartsWith("RWStructuredBuffer<", StringComparison.Ordinal)) return "rw_structured_buffer";

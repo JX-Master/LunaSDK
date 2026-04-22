@@ -27,7 +27,13 @@ public sealed class CppslSemanticValidator
         "location",
         "position",
         "builtin",
-        "group_shared"
+        "group_shared",
+        "cbuffer",
+        "structured_buffer",
+        "sbuffer",
+        "rwstructured_buffer",
+        "rw_structured_buffer",
+        "rwsbuffer"
     };
 
     public IReadOnlyList<CppslDiagnostic> Validate(CppslCompileOptions options, CppslSemanticModel model)
@@ -55,7 +61,12 @@ public sealed class CppslSemanticValidator
 
         foreach (var global in model.Globals)
         {
-            ValidateAttributeSet("global", global.Name, global.Attributes, new[] { "set", "binding", "group_shared" }, diagnostics);
+            ValidateAttributeSet(
+                "global",
+                global.Name,
+                global.Attributes,
+                new[] { "set", "binding", "group_shared", "cbuffer", "structured_buffer", "sbuffer", "rwstructured_buffer", "rw_structured_buffer", "rwsbuffer" },
+                diagnostics);
             if (global.ResourceKind is null &&
                 (global.Attributes.FindAttribute("set") is not null || global.Attributes.FindAttribute("binding") is not null))
             {
@@ -154,6 +165,8 @@ public sealed class CppslSemanticValidator
                     global.Line,
                     global.Column));
             }
+
+            ValidateResourceType(global, diagnostics);
         }
 
         foreach (var duplicateGroup in model.Globals
@@ -170,6 +183,54 @@ public sealed class CppslSemanticValidator
                     global.Column));
             }
         }
+    }
+
+    private static void ValidateResourceType(CppslGlobal global, List<CppslDiagnostic> diagnostics)
+    {
+        switch (global.ResourceKind)
+        {
+            case "structured_buffer":
+                if (!IsConstPointerType(global.Type))
+                {
+                    diagnostics.Add(CppslDiagnostic.Error(
+                        $"CPPSL structured buffer `{global.Name}` must be declared as `const T*`.",
+                        global.File,
+                        global.Line,
+                        global.Column));
+                }
+                break;
+            case "rw_structured_buffer":
+                if (!IsMutablePointerType(global.Type))
+                {
+                    diagnostics.Add(CppslDiagnostic.Error(
+                        $"CPPSL RW structured buffer `{global.Name}` must be declared as `T*`.",
+                        global.File,
+                        global.Line,
+                        global.Column));
+                }
+                break;
+        }
+    }
+
+    private static bool IsConstPointerType(string type)
+    {
+        var normalized = NormalizeType(type);
+        return normalized.EndsWith("*", StringComparison.Ordinal) &&
+            (normalized.StartsWith("const ", StringComparison.Ordinal) ||
+             normalized.Contains(" const ", StringComparison.Ordinal));
+    }
+
+    private static bool IsMutablePointerType(string type)
+    {
+        var normalized = NormalizeType(type);
+        return normalized.EndsWith("*", StringComparison.Ordinal) &&
+            !normalized.StartsWith("const ", StringComparison.Ordinal) &&
+            !normalized.Contains(" const ", StringComparison.Ordinal);
+    }
+
+    private static string NormalizeType(string type)
+    {
+        return string.Join(' ', type.Replace("*", " *", StringComparison.Ordinal).Split(' ', StringSplitOptions.RemoveEmptyEntries));
     }
 
     private static void ValidateStructLocations(CppslSemanticModel model, List<CppslDiagnostic> diagnostics)

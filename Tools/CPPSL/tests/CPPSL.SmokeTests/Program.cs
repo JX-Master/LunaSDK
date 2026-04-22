@@ -11,6 +11,7 @@ var outputDir = Path.Combine(repoRoot, "build", "cppsl-smoke");
 var compiler = new CppslCompiler();
 var boxShader = Path.Combine(fixturesRoot, "valid", "box", "Box.cxx");
 var textureBasicShader = Path.Combine(fixturesRoot, "valid", "texture_basic", "TextureBasic.cxx");
+var resourceAttributesShader = Path.Combine(fixturesRoot, "valid", "resource_attributes", "ResourceAttributes.cxx");
 
 var result = compiler.Compile(new CppslCompileOptions(
     boxShader,
@@ -59,7 +60,6 @@ if (!irText.Contains("main_vs", StringComparison.Ordinal) ||
     !irText.Contains("\"ProviderKind\": \"ParmVar\"", StringComparison.Ordinal) ||
     !irText.Contains("\"Range\": {", StringComparison.Ordinal) ||
     !irText.Contains("\"TypeInfo\": {", StringComparison.Ordinal) ||
-    !irText.Contains("\"CanonicalName\": \"struct cppsl::ConstantBuffer", StringComparison.Ordinal) ||
     !irText.Contains("\"TemplateArguments\"", StringComparison.Ordinal) ||
     !irText.Contains("\"Spelling\": \"Camera\"", StringComparison.Ordinal) ||
     !irText.Contains("\"ResultTypeInfo\": {", StringComparison.Ordinal) ||
@@ -80,6 +80,7 @@ if (!irText.Contains("main_vs", StringComparison.Ordinal) ||
     !irText.Contains("\"IsEntryPoint\": true", StringComparison.Ordinal) ||
     !irText.Contains("\"Name\": \"set\"", StringComparison.Ordinal) ||
     !irText.Contains("\"Name\": \"binding\"", StringComparison.Ordinal) ||
+    !irText.Contains("\"Name\": \"cbuffer\"", StringComparison.Ordinal) ||
     !irText.Contains("\"Name\": \"location\"", StringComparison.Ordinal) ||
     !irText.Contains("\"Name\": \"position\"", StringComparison.Ordinal) ||
     !irText.Contains("\"Name\": \"vertex\"", StringComparison.Ordinal) ||
@@ -105,6 +106,7 @@ if (!reflectionText.Contains("\"Schema\": \"cppsl.reflection\"", StringCompariso
     !reflectionText.Contains("\"EntryPoint\": \"main_vs\"", StringComparison.Ordinal) ||
     !reflectionText.Contains("\"Descriptors\"", StringComparison.Ordinal) ||
     !reflectionText.Contains("\"Name\": \"camera\"", StringComparison.Ordinal) ||
+    !reflectionText.Contains("\"Type\": \"Camera\"", StringComparison.Ordinal) ||
     !reflectionText.Contains("\"ResourceKind\": \"constant_buffer\"", StringComparison.Ordinal) ||
     !reflectionText.Contains("\"Set\": 0", StringComparison.Ordinal) ||
     !reflectionText.Contains("\"Binding\": 0", StringComparison.Ordinal) ||
@@ -143,9 +145,11 @@ if (!hlslText.Contains("struct VSInput", StringComparison.Ordinal) ||
     !mslText.Contains("#include <metal_stdlib>", StringComparison.Ordinal) ||
     !mslText.Contains("float3 position [[attribute(0)]]", StringComparison.Ordinal) ||
     !mslText.Contains("float4 position [[position]]", StringComparison.Ordinal) ||
-    !mslText.Contains("constant Camera& camera [[buffer(0)]]", StringComparison.Ordinal) ||
+    !mslText.Contains("struct spvDescriptorSetBuffer0", StringComparison.Ordinal) ||
+    !mslText.Contains("constant Camera* camera [[id(0)]]", StringComparison.Ordinal) ||
+    !mslText.Contains("constant spvDescriptorSetBuffer0& spvDescriptorSet0 [[buffer(0)]]", StringComparison.Ordinal) ||
     !mslText.Contains("vertex VSOutput main_vs", StringComparison.Ordinal) ||
-    !mslText.Contains("output.position = (camera.world_to_proj * float4(input.position.x, input.position.y, input.position.z, 1.0f));", StringComparison.Ordinal) ||
+    !mslText.Contains("output.position = ((*spvDescriptorSet0.camera).world_to_proj * float4(input.position.x, input.position.y, input.position.z, 1.0f));", StringComparison.Ordinal) ||
     !mslText.Contains("return output;", StringComparison.Ordinal))
 {
     Console.Error.WriteLine("error: expected CPPSL shader source targets were not emitted.");
@@ -186,10 +190,55 @@ if (!textureHlslText.Contains("Texture2D<float4> color_texture : register(t0, sp
     !textureGlslText.Contains("uniform texture2D color_texture", StringComparison.Ordinal) ||
     !textureGlslText.Contains("uniform sampler linear_sampler", StringComparison.Ordinal) ||
     !textureMslText.Contains("fragment PSOutput main_ps", StringComparison.Ordinal) ||
-    !textureMslText.Contains("texture2d<float> color_texture [[texture(0)]]", StringComparison.Ordinal) ||
-    !textureMslText.Contains("sampler linear_sampler [[sampler(1)]]", StringComparison.Ordinal))
+    !textureMslText.Contains("texture2d<float> color_texture [[id(0)]]", StringComparison.Ordinal) ||
+    !textureMslText.Contains("sampler linear_sampler [[id(1)]]", StringComparison.Ordinal) ||
+    !textureMslText.Contains("constant spvDescriptorSetBuffer0& spvDescriptorSet0 [[buffer(0)]]", StringComparison.Ordinal) ||
+    !textureMslText.Contains("spvDescriptorSet0.color_texture.sample(spvDescriptorSet0.linear_sampler", StringComparison.Ordinal))
 {
     Console.Error.WriteLine("error: expected texture_basic shader source resources were not emitted.");
+    return 1;
+}
+
+var resourceAttributesResult = compiler.Compile(new CppslCompileOptions(
+    resourceAttributesShader,
+    Path.Combine(outputDir, "resource-attributes"),
+    new[] { stdRoot },
+    "main_vs",
+    ShaderStage.Vertex));
+
+if (!resourceAttributesResult.Succeeded || resourceAttributesResult.Artifacts is null)
+{
+    Console.Error.WriteLine("error: expected resource_attributes fixture to compile.");
+    foreach (var diagnostic in resourceAttributesResult.Diagnostics)
+    {
+        Console.Error.WriteLine(diagnostic.ToDisplayString());
+    }
+    return 1;
+}
+
+var resourceReflectionText = File.ReadAllText(resourceAttributesResult.Artifacts.GetOutputPath(CppslOutputTarget.Reflection));
+var resourceHlslText = File.ReadAllText(resourceAttributesResult.Artifacts.GetOutputPath(CppslOutputTarget.Hlsl));
+var resourceGlslText = File.ReadAllText(resourceAttributesResult.Artifacts.GetOutputPath(CppslOutputTarget.Glsl));
+var resourceMslText = File.ReadAllText(resourceAttributesResult.Artifacts.GetOutputPath(CppslOutputTarget.Msl));
+if (!resourceReflectionText.Contains("\"Name\": \"camera\"", StringComparison.Ordinal) ||
+    !resourceReflectionText.Contains("\"ResourceKind\": \"constant_buffer\"", StringComparison.Ordinal) ||
+    !resourceReflectionText.Contains("\"Name\": \"values\"", StringComparison.Ordinal) ||
+    !resourceReflectionText.Contains("\"ResourceKind\": \"structured_buffer\"", StringComparison.Ordinal) ||
+    !resourceReflectionText.Contains("\"Name\": \"output_values\"", StringComparison.Ordinal) ||
+    !resourceReflectionText.Contains("\"ResourceKind\": \"rw_structured_buffer\"", StringComparison.Ordinal) ||
+    !resourceHlslText.Contains("ConstantBuffer<Camera> camera : register(b0, space0);", StringComparison.Ordinal) ||
+    !resourceHlslText.Contains("StructuredBuffer<float> values : register(t1, space0);", StringComparison.Ordinal) ||
+    !resourceHlslText.Contains("RWStructuredBuffer<float> output_values : register(u2, space0);", StringComparison.Ordinal) ||
+    !resourceGlslText.Contains("layout(set = 0, binding = 0) uniform camera_Block", StringComparison.Ordinal) ||
+    !resourceGlslText.Contains("layout(set = 0, binding = 1) buffer values_Block", StringComparison.Ordinal) ||
+    !resourceGlslText.Contains("layout(set = 0, binding = 2) buffer output_values_Block", StringComparison.Ordinal) ||
+    !resourceMslText.Contains("constant Camera* camera [[id(0)]]", StringComparison.Ordinal) ||
+    !resourceMslText.Contains("device const float* values [[id(1)]]", StringComparison.Ordinal) ||
+    !resourceMslText.Contains("device float* output_values [[id(2)]]", StringComparison.Ordinal) ||
+    !resourceMslText.Contains("constant spvDescriptorSetBuffer0& spvDescriptorSet0 [[buffer(0)]]", StringComparison.Ordinal) ||
+    !resourceMslText.Contains("spvDescriptorSet0.output_values[0] = spvDescriptorSet0.values[0];", StringComparison.Ordinal))
+{
+    Console.Error.WriteLine("error: expected CPPSL resource attribute declarations to be emitted.");
     return 1;
 }
 
@@ -201,7 +250,9 @@ var invalidFixtures = new[]
     new InvalidFixture("duplicate_location", "DuplicateLocation.cxx", "main_vs", ShaderStage.Vertex, "duplicate location"),
     new InvalidFixture("unknown_attribute", "UnknownAttribute.cxx", "main_vs", ShaderStage.Vertex, "unknown CPPSL attribute"),
     new InvalidFixture("duplicate_binding", "DuplicateBinding.cxx", "main_vs", ShaderStage.Vertex, "duplicate resource binding"),
-    new InvalidFixture("invalid_attribute_target", "InvalidAttributeTarget.cxx", "main_vs", ShaderStage.Vertex, "cannot be used on field")
+    new InvalidFixture("invalid_attribute_target", "InvalidAttributeTarget.cxx", "main_vs", ShaderStage.Vertex, "cannot be used on field"),
+    new InvalidFixture("structured_buffer_requires_const_pointer", "StructuredBufferRequiresConstPointer.cxx", "main_vs", ShaderStage.Vertex, "must be declared as `const T*`"),
+    new InvalidFixture("rwstructured_buffer_requires_mutable_pointer", "RWStructuredBufferRequiresMutablePointer.cxx", "main_vs", ShaderStage.Vertex, "must be declared as `T*`")
 };
 
 foreach (var fixture in invalidFixtures)

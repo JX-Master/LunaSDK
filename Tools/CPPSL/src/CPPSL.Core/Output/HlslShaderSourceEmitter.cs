@@ -12,14 +12,21 @@ internal sealed class HlslShaderSourceEmitter : CppslShaderSourceEmitterBase
         var builder = new StringBuilder();
         WriteHeader(builder, "HLSL", options);
         var entryPoint = FindEntryPoint(options, model);
-        WriteStructs(builder, model);
+        WriteStructs(builder, options, model, entryPoint);
         WriteResources(builder, model);
         WriteEntryPoint(builder, entryPoint, model, irModule);
         return builder.ToString();
     }
 
-    private void WriteStructs(StringBuilder builder, CppslSemanticModel model)
+    private void WriteStructs(
+        StringBuilder builder,
+        CppslCompileOptions options,
+        CppslSemanticModel model,
+        CppslFunction? entryPoint)
     {
+        var inputStructNames = entryPoint?.Parameters.Select(static parameter => parameter.Type).ToHashSet(StringComparer.Ordinal) ??
+            new HashSet<string>(StringComparer.Ordinal);
+        var outputStructName = entryPoint?.ReturnType;
         foreach (var structure in model.Structs)
         {
             builder.AppendLine($"struct {structure.Name}");
@@ -30,7 +37,10 @@ internal sealed class HlslShaderSourceEmitter : CppslShaderSourceEmitterBase
                 builder.Append(MapValueType(field.Type));
                 builder.Append(' ');
                 builder.Append(field.Name);
-                builder.Append(FieldSemantic(field));
+                var role = structure.Name == outputStructName
+                    ? StructRole.StageOutput
+                    : inputStructNames.Contains(structure.Name) ? StructRole.StageInput : StructRole.Plain;
+                builder.Append(FieldSemantic(field, role, options.Stage));
                 builder.AppendLine(";");
             }
             builder.AppendLine("};");
@@ -44,9 +54,9 @@ internal sealed class HlslShaderSourceEmitter : CppslShaderSourceEmitterBase
         {
             var declaration = global.ResourceKind switch
             {
-                "constant_buffer" => $"ConstantBuffer<{UnwrapTemplateArgument(global.Type)}> {global.Name}",
-                "structured_buffer" => $"StructuredBuffer<{UnwrapTemplateArgument(global.Type)}> {global.Name}",
-                "rw_structured_buffer" => $"RWStructuredBuffer<{UnwrapTemplateArgument(global.Type)}> {global.Name}",
+                "constant_buffer" => $"ConstantBuffer<{ResourceElementType(global)}> {global.Name}",
+                "structured_buffer" => $"StructuredBuffer<{ResourceElementType(global)}> {global.Name}",
+                "rw_structured_buffer" => $"RWStructuredBuffer<{ResourceElementType(global)}> {global.Name}",
                 "texture" => $"{global.Type} {global.Name}",
                 "rw_texture" => $"{global.Type} {global.Name}",
                 "sampler" => $"SamplerState {global.Name}",
@@ -106,14 +116,24 @@ internal sealed class HlslShaderSourceEmitter : CppslShaderSourceEmitterBase
         return $"({mappedType})0";
     }
 
-    private static string FieldSemantic(CppslField field)
+    private static string FieldSemantic(CppslField field, StructRole role, ShaderStage stage)
     {
         if (field.IsPosition)
         {
             return " : SV_Position";
         }
 
-        return field.Location is { } location ? $" : TEXCOORD{location}" : string.Empty;
+        if (field.Location is not { } location)
+        {
+            return string.Empty;
+        }
+
+        if (role == StructRole.StageOutput && (stage == ShaderStage.Fragment || stage == ShaderStage.Pixel))
+        {
+            return location == 0 ? " : SV_Target" : $" : SV_Target{location}";
+        }
+
+        return $" : TEXCOORD{location}";
     }
 
     private static string RegisterPrefix(string? resourceKind)
@@ -125,5 +145,12 @@ internal sealed class HlslShaderSourceEmitter : CppslShaderSourceEmitterBase
             "sampler" => "s",
             _ => "t"
         };
+    }
+
+    private enum StructRole
+    {
+        Plain,
+        StageInput,
+        StageOutput
     }
 }

@@ -3,7 +3,7 @@ set_project("Luna")
 add_moduledirs("Tools/xmake/modules")
 
 rule("luna.shader")
-    set_extensions(".hlsl")
+    set_extensions(".hlsl", ".cxx")
     add_orders("luna.shader", "c++.build")
     on_load(function (target) 
         local headerdir = path.join(target:autogendir(), "shaders")
@@ -17,7 +17,6 @@ rule("luna.shader")
         target:rule_add(cpp_rule)
     end)
     on_build_file(function (target, sourcefile, opt)
-        import("compile_shader")
         import("utils.progress")
         import("core.project.depend")
 
@@ -29,7 +28,7 @@ rule("luna.shader")
         -- need build this object?
         local dependfile = target:dependfile(targetfile)
         local dependinfo = target:is_rebuilt() and {} or (depend.load(dependfile) or {})
-        if not depend.is_changed(dependinfo, {lastmtime = os.mtime(targetfile), values = configs}) then
+        if not depend.is_changed(dependinfo, {lastmtime = os.mtime(targetfile), values = configs, files = {sourcefile}}) then
             return
         end
 
@@ -39,7 +38,13 @@ rule("luna.shader")
         -- build this object.
         configs.output = targetfile
         configs.cpp_output = true
-        compile_shader.compile_shader(sourcefile, configs)
+        if path.extension(sourcefile) == ".cxx" then
+            import("compile_cppsl")
+            compile_cppsl.compile_cppsl(sourcefile, configs)
+        else
+            import("compile_shader")
+            compile_shader.compile_shader(sourcefile, configs)
+        end
 
         -- update files and values to the dependent file
         dependinfo.files = {sourcefile}

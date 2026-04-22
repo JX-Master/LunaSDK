@@ -58,7 +58,7 @@ internal sealed class GlslShaderSourceEmitter : CppslShaderSourceEmitterBase
                 default:
                     builder.AppendLine($"{layout} buffer {global.Name}_Block");
                     builder.AppendLine("{");
-                    builder.AppendLine($"    {MapValueType(UnwrapTemplateArgument(global.Type))} {global.Name}[];");
+                    builder.AppendLine($"    {MapValueType(ResourceElementType(global))} {global.Name}[];");
                     builder.AppendLine("};");
                     break;
             }
@@ -76,7 +76,7 @@ internal sealed class GlslShaderSourceEmitter : CppslShaderSourceEmitterBase
         CppslGlobal global,
         CppslSemanticModel model)
     {
-        var elementType = UnwrapTemplateArgument(global.Type);
+        var elementType = ResourceElementType(global);
         var structure = model.Structs.FirstOrDefault(candidate => candidate.Name == elementType);
         builder.AppendLine($"{layout} uniform {global.Name}_Block");
         builder.AppendLine("{");
@@ -204,6 +204,16 @@ internal sealed class GlslShaderSourceEmitter : CppslShaderSourceEmitterBase
         return spelling.EndsWith('f') || spelling.EndsWith('F')
             ? spelling[..^1]
             : spelling;
+    }
+
+    protected override string LowerMemberCall(string receiver, string memberName, IReadOnlyList<string> arguments)
+    {
+        if (memberName == "Sample" && arguments.Count == 2)
+        {
+            return $"texture(sampler2D({receiver}, {arguments[0]}), {arguments[1]})";
+        }
+
+        return base.LowerMemberCall(receiver, memberName, arguments);
     }
 
     protected override string MapValueType(string type)

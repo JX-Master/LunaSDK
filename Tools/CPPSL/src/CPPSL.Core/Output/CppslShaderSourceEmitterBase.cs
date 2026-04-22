@@ -34,6 +34,37 @@ internal abstract class CppslShaderSourceEmitterBase
         return type.Substring(open + 1, close - open - 1).Trim();
     }
 
+    protected static string ResourceElementType(CppslGlobal global)
+    {
+        return global.ResourceKind switch
+        {
+            "constant_buffer" or "structured_buffer" or "rw_structured_buffer"
+                when global.Type.Contains('<', StringComparison.Ordinal) => UnwrapTemplateArgument(global.Type),
+            "structured_buffer" or "rw_structured_buffer" => TrimTopLevelConst(TrimPointerOrArrayType(global.Type)),
+            _ => global.Type
+        };
+    }
+
+    private static string TrimPointerOrArrayType(string type)
+    {
+        var trimmed = type.Trim();
+        while (trimmed.EndsWith('*'))
+        {
+            trimmed = trimmed[..^1].TrimEnd();
+        }
+
+        var arrayIndex = trimmed.IndexOf('[');
+        return arrayIndex < 0 ? trimmed : trimmed[..arrayIndex].TrimEnd();
+    }
+
+    private static string TrimTopLevelConst(string type)
+    {
+        var trimmed = type.Trim();
+        return trimmed.StartsWith("const ", StringComparison.Ordinal)
+            ? trimmed["const ".Length..].TrimStart()
+            : trimmed;
+    }
+
     protected void WriteFunctionBody(
         StringBuilder builder,
         CppslFunction entryPoint,
@@ -75,6 +106,9 @@ internal abstract class CppslShaderSourceEmitterBase
             case "OperatorCallExpression" when node.DisplayName == "operator=" && node.Children.Count >= 3:
                 builder.AppendLine($"{prefix}{LowerExpression(node.Children[1])} = {LowerExpression(node.Children[2])};");
                 break;
+            case "BinaryOperator" when node.DisplayName == "=" && node.Children.Count >= 2:
+                builder.AppendLine($"{prefix}{LowerExpression(node.Children[0])} = {LowerExpression(node.Children[1])};");
+                break;
             case "ReturnStatement" when node.Children.Count != 0:
                 builder.AppendLine($"{prefix}return {LowerExpression(node.Children[^1])};");
                 break;
@@ -87,7 +121,7 @@ internal abstract class CppslShaderSourceEmitterBase
         }
     }
 
-    protected string LowerExpression(CppslIrNode node)
+    protected virtual string LowerExpression(CppslIrNode node)
     {
         return node.Kind switch
         {
@@ -96,8 +130,12 @@ internal abstract class CppslShaderSourceEmitterBase
             "DeclRefExpression" => node.DisplayName ?? node.Spelling,
             "MemberExpression" when node.Children.Count == 1 =>
                 $"{LowerExpression(node.Children[0])}.{node.DisplayName}",
+            "ArraySubscriptExpression" when node.Children.Count >= 2 =>
+                $"{LowerExpression(node.Children[0])}[{LowerExpression(node.Children[1])}]",
             "OperatorCallExpression" when node.DisplayName == "operator->" && node.Children.Count >= 2 =>
                 LowerExpression(node.Children[^1]),
+            "BinaryOperator" when node.DisplayName is "=" && node.Children.Count >= 2 =>
+                $"{LowerExpression(node.Children[0])} = {LowerExpression(node.Children[1])}",
             "OperatorCallExpression" when node.DisplayName is "operator=" && node.Children.Count >= 3 =>
                 $"{LowerExpression(node.Children[1])} = {LowerExpression(node.Children[2])}",
             "CallExpression" => LowerCallExpression(node),
@@ -112,6 +150,11 @@ internal abstract class CppslShaderSourceEmitterBase
 
     protected virtual string LowerCallExpression(CppslIrNode node)
     {
+        if (TryGetMemberCall(node, out var receiver, out var memberName, out var memberArguments))
+        {
+            return LowerMemberCall(receiver, memberName, memberArguments);
+        }
+
         var name = node.DisplayName ?? node.Spelling;
         var arguments = node.Children
             .Skip(IsCalleeReference(node.Children.FirstOrDefault(), name) ? 1 : 0)
@@ -124,6 +167,11 @@ internal abstract class CppslShaderSourceEmitterBase
         }
 
         return $"{name}({string.Join(", ", arguments)})";
+    }
+
+    protected virtual string LowerMemberCall(string receiver, string memberName, IReadOnlyList<string> arguments)
+    {
+        return $"{receiver}.{memberName}({string.Join(", ", arguments)})";
     }
 
     protected virtual string LowerFunctionalCast(CppslIrNode node)
@@ -196,6 +244,29 @@ internal abstract class CppslShaderSourceEmitterBase
         }
 
         return node.Children.Count == 1 && IsCalleeReference(node.Children[0], calleeName);
+    }
+
+    private bool TryGetMemberCall(
+        CppslIrNode node,
+        out string receiver,
+        out string memberName,
+        out IReadOnlyList<string> arguments)
+    {
+        receiver = string.Empty;
+        memberName = string.Empty;
+        arguments = Array.Empty<string>();
+
+        if (node.Children.FirstOrDefault() is not { Kind: "MemberExpression" } member ||
+            member.DisplayName is null ||
+            member.Children.Count != 1)
+        {
+            return false;
+        }
+
+        receiver = LowerExpression(member.Children[0]);
+        memberName = member.DisplayName;
+        arguments = node.Children.Skip(1).Select(LowerExpression).ToArray();
+        return true;
     }
 
     private static bool IsExpressionNode(CppslIrNode node)
