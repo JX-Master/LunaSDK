@@ -2,6 +2,7 @@ using System.Text.Json;
 using CPPSL.Core.Artifacts;
 using CPPSL.Core.Diagnostics;
 using CPPSL.Core.Frontend;
+using CPPSL.Core.Semantics;
 
 namespace CPPSL.Core.Compiler;
 
@@ -49,6 +50,7 @@ public sealed class CppslCompiler
         {
             return new CppslCompileResult(false, diagnostics, null);
         }
+        var semanticModel = new CppslSemanticModelBuilder().Build(options, sourcePath, clangResult.AstNodes);
 
         Directory.CreateDirectory(outputDirectory);
 
@@ -60,7 +62,7 @@ public sealed class CppslCompiler
             Path.Combine(outputDirectory, baseName + ".glsl"),
             Path.Combine(outputDirectory, baseName + ".msl"));
 
-        WritePlaceholderArtifacts(options, sourcePath, includeResult.Files, clangResult.Declarations, artifacts);
+        WritePlaceholderArtifacts(options, sourcePath, includeResult.Files, clangResult.Declarations, clangResult.AstNodes, semanticModel, artifacts);
         diagnostics.Add(CppslDiagnostic.Info("CPPSL phase 0 validation completed.", sourcePath));
         return new CppslCompileResult(true, diagnostics, artifacts);
     }
@@ -70,6 +72,8 @@ public sealed class CppslCompiler
         string sourcePath,
         IReadOnlyList<string> files,
         IReadOnlyList<ClangDeclaration> declarations,
+        IReadOnlyList<ClangAstNode> astNodes,
+        CppslSemanticModel semanticModel,
         CppslArtifacts artifacts)
     {
         var artifactModel = new
@@ -81,6 +85,8 @@ public sealed class CppslCompiler
             stage = options.Stage.ToString(),
             files,
             clangDeclarations = declarations,
+            clangAst = astNodes,
+            cppslSemanticModel = semanticModel,
             note = "Placeholder artifact. Luna Shader IR lowering is not implemented yet."
         };
 

@@ -20,6 +20,14 @@ The current macOS arm64 prototype uses these NuGet packages:
 Native Clang extraction is intentionally deferred until ClangSharp proves
 insufficient for a concrete semantic requirement.
 
+Open `CPPSL.sln` in Rider or Visual Studio to inspect the tool projects.
+
+Build the solution from command line:
+
+```sh
+dotnet build Tools/CPPSL/CPPSL.sln -m:1 /nr:false
+```
+
 Run the sample:
 
 ```sh

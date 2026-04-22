@@ -9,6 +9,7 @@ public sealed class ClangSharpFrontend
     {
         var diagnostics = new List<CppslDiagnostic>();
         var declarations = new List<ClangDeclaration>();
+        var astNodes = new List<ClangAstNode>();
         var commandLineArgs = BuildCommandLineArgs(includeRoots);
 
         var index = CXIndex.Create(excludeDeclarationsFromPch: false, displayDiagnostics: false);
@@ -24,7 +25,8 @@ public sealed class ClangSharpFrontend
             try
             {
                 CollectDiagnostics(translationUnit, diagnostics);
-                CollectTopLevelDeclarations(translationUnit.Cursor, declarations);
+                CollectAstNodes(translationUnit.Cursor, astNodes);
+                CollectTopLevelDeclarations(astNodes, declarations);
             }
             finally
             {
@@ -41,7 +43,7 @@ public sealed class ClangSharpFrontend
         }
 
         var succeeded = !diagnostics.Any(static d => d.Severity == DiagnosticSeverity.Error);
-        return new ClangFrontendResult(succeeded, diagnostics, declarations);
+        return new ClangFrontendResult(succeeded, diagnostics, declarations, astNodes);
     }
 
     private static string[] BuildCommandLineArgs(IReadOnlyList<string> includeRoots)
@@ -86,38 +88,111 @@ public sealed class ClangSharpFrontend
         }
     }
 
-    private static unsafe void CollectTopLevelDeclarations(CXCursor root, List<ClangDeclaration> declarations)
+    private static void CollectTopLevelDeclarations(IReadOnlyList<ClangAstNode> astNodes, List<ClangDeclaration> declarations)
+    {
+        foreach (var node in astNodes)
+        {
+            if (!IsInterestingDeclaration(node.Kind))
+            {
+                continue;
+            }
+
+            declarations.Add(new ClangDeclaration(
+                node.Kind,
+                node.Spelling,
+                node.DisplayName,
+                node.File,
+                node.Line,
+                node.Column));
+        }
+    }
+
+    private static unsafe void CollectAstNodes(CXCursor root, List<ClangAstNode> nodes)
     {
         root.VisitChildren((cursor, _, _) =>
         {
-            if (!IsInterestingDeclaration(cursor.kind))
+            if (!ShouldRecordNode(cursor.kind))
             {
-                return CXChildVisitResult.CXChildVisit_Continue;
+                return CXChildVisitResult.CXChildVisit_Recurse;
             }
 
-            cursor.Location.GetSpellingLocation(out var file, out var line, out var column, out _);
-            var fileName = file.ToString();
-            declarations.Add(new ClangDeclaration(
-                cursor.kind.ToString(),
-                cursor.Spelling.ToString(),
-                cursor.DisplayName.ToString(),
-                string.IsNullOrEmpty(fileName) ? null : fileName,
-                checked((int)line),
-                checked((int)column)));
+            nodes.Add(CreateNode(cursor));
             return CXChildVisitResult.CXChildVisit_Continue;
         }, default);
     }
 
-    private static bool IsInterestingDeclaration(CXCursorKind kind)
+    private static unsafe ClangAstNode CreateNode(CXCursor cursor)
+    {
+        var children = new List<ClangAstNode>();
+        cursor.VisitChildren((child, _, _) =>
+        {
+            if (!ShouldRecordNode(child.kind))
+            {
+                return CXChildVisitResult.CXChildVisit_Recurse;
+            }
+
+            children.Add(CreateNode(child));
+            return CXChildVisitResult.CXChildVisit_Continue;
+        }, default);
+
+        cursor.Location.GetSpellingLocation(out var file, out var line, out var column, out _);
+        var fileName = file.ToString();
+        return new ClangAstNode(
+            cursor.kind.ToString(),
+            cursor.Spelling.ToString(),
+            cursor.DisplayName.ToString(),
+            GetTypeSpelling(cursor),
+            GetResultTypeSpelling(cursor),
+            string.IsNullOrEmpty(fileName) ? null : fileName,
+            checked((int)line),
+            checked((int)column),
+            children);
+    }
+
+    private static bool IsInterestingDeclaration(string kind)
+    {
+        return kind is
+            "CXCursor_Namespace" or
+            "CXCursor_StructDecl" or
+            "CXCursor_ClassDecl" or
+            "CXCursor_EnumDecl" or
+            "CXCursor_FunctionDecl" or
+            "CXCursor_FunctionTemplate" or
+            "CXCursor_ClassTemplate" or
+            "CXCursor_VarDecl";
+    }
+
+    private static bool ShouldRecordNode(CXCursorKind kind)
     {
         return kind is
             CXCursorKind.CXCursor_Namespace or
             CXCursorKind.CXCursor_StructDecl or
             CXCursorKind.CXCursor_ClassDecl or
             CXCursorKind.CXCursor_EnumDecl or
+            CXCursorKind.CXCursor_FieldDecl or
             CXCursorKind.CXCursor_FunctionDecl or
             CXCursorKind.CXCursor_FunctionTemplate or
             CXCursorKind.CXCursor_ClassTemplate or
-            CXCursorKind.CXCursor_VarDecl;
+            CXCursorKind.CXCursor_VarDecl or
+            CXCursorKind.CXCursor_ParmDecl or
+            CXCursorKind.CXCursor_Constructor or
+            CXCursorKind.CXCursor_CXXMethod;
+    }
+
+    private static string? GetTypeSpelling(CXCursor cursor)
+    {
+        var spelling = cursor.Type.Spelling.ToString();
+        return string.IsNullOrEmpty(spelling) ? null : spelling;
+    }
+
+    private static string? GetResultTypeSpelling(CXCursor cursor)
+    {
+        if (cursor.kind is not (CXCursorKind.CXCursor_FunctionDecl or CXCursorKind.CXCursor_FunctionTemplate or CXCursorKind.CXCursor_CXXMethod))
+        {
+            return null;
+        }
+
+        var spelling = cursor.ResultType.Spelling.ToString();
+        return string.IsNullOrEmpty(spelling) ? null : spelling;
     }
 }

@@ -5,4 +5,5 @@ namespace CPPSL.Core.Frontend;
 public sealed record ClangFrontendResult(
     bool Succeeded,
     IReadOnlyList<CppslDiagnostic> Diagnostics,
-    IReadOnlyList<ClangDeclaration> Declarations);
+    IReadOnlyList<ClangDeclaration> Declarations,
+    IReadOnlyList<ClangAstNode> AstNodes);

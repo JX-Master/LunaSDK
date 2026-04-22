@@ -36,9 +36,20 @@ if (result.Artifacts is null ||
 
 var irText = File.ReadAllText(result.Artifacts.IrPath);
 if (!irText.Contains("main_vs", StringComparison.Ordinal) ||
-    !irText.Contains("CXCursor_FunctionDecl", StringComparison.Ordinal))
+    !irText.Contains("CXCursor_FunctionDecl", StringComparison.Ordinal) ||
+    !irText.Contains("CXCursor_FieldDecl", StringComparison.Ordinal) ||
+    !irText.Contains("world_to_proj", StringComparison.Ordinal) ||
+    !irText.Contains("CXCursor_ParmDecl", StringComparison.Ordinal) ||
+    !irText.Contains("cppslSemanticModel", StringComparison.Ordinal) ||
+    !irText.Contains("constant_buffer", StringComparison.Ordinal) ||
+    !irText.Contains("\"IsEntryPoint\": true", StringComparison.Ordinal))
 {
-    Console.Error.WriteLine("error: expected ClangSharp declarations were not written to the IR placeholder.");
+    Console.Error.WriteLine("error: expected ClangSharp AST facts were not written to the IR placeholder.");
+    return 1;
+}
+if (irText.Contains("\"Name\": \"output\"", StringComparison.Ordinal))
+{
+    Console.Error.WriteLine("error: local variables must not be classified as CPPSL globals.");
     return 1;
 }
 
