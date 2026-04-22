@@ -5,4 +5,5 @@ public sealed record CppslStruct(
     string? File,
     int? Line,
     int? Column,
+    IReadOnlyList<CppslAttribute> Attributes,
     IReadOnlyList<CppslField> Fields);

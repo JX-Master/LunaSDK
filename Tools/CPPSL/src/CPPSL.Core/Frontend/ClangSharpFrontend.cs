@@ -3,21 +3,23 @@ using CPPSL.Core.Diagnostics;
 
 namespace CPPSL.Core.Frontend;
 
-public sealed class ClangSharpFrontend
+public sealed class ClangSharpFrontend : ICppslFrontend
 {
-    public ClangFrontendResult Parse(string sourcePath, IReadOnlyList<string> includeRoots)
+    public const string ProviderName = "ClangSharp";
+
+    public CppslFrontendResult Parse(CppslFrontendOptions options)
     {
         var diagnostics = new List<CppslDiagnostic>();
-        var declarations = new List<ClangDeclaration>();
-        var astNodes = new List<ClangAstNode>();
-        var commandLineArgs = BuildCommandLineArgs(includeRoots);
+        var declarations = new List<CppslDeclaration>();
+        var astNodes = new List<CppslAstNode>();
+        var commandLineArgs = BuildCommandLineArgs(options.IncludeRoots);
 
         var index = CXIndex.Create(excludeDeclarationsFromPch: false, displayDiagnostics: false);
         try
         {
             var translationUnit = CXTranslationUnit.Parse(
                 index,
-                sourcePath,
+                options.SourcePath,
                 commandLineArgs,
                 Array.Empty<CXUnsavedFile>(),
                 CXTranslationUnit_Flags.CXTranslationUnit_None);
@@ -35,7 +37,7 @@ public sealed class ClangSharpFrontend
         }
         catch (Exception ex)
         {
-            diagnostics.Add(CppslDiagnostic.Error($"ClangSharp failed to parse CPPSL source: {ex.Message}", sourcePath));
+            diagnostics.Add(CppslDiagnostic.Error($"ClangSharp failed to parse CPPSL source: {ex.Message}", options.SourcePath));
         }
         finally
         {
@@ -43,7 +45,7 @@ public sealed class ClangSharpFrontend
         }
 
         var succeeded = !diagnostics.Any(static d => d.Severity == DiagnosticSeverity.Error);
-        return new ClangFrontendResult(succeeded, diagnostics, declarations, astNodes);
+        return new CppslFrontendResult(succeeded, ProviderName, diagnostics, declarations, astNodes);
     }
 
     private static string[] BuildCommandLineArgs(IReadOnlyList<string> includeRoots)
@@ -88,7 +90,7 @@ public sealed class ClangSharpFrontend
         }
     }
 
-    private static void CollectTopLevelDeclarations(IReadOnlyList<ClangAstNode> astNodes, List<ClangDeclaration> declarations)
+    private static void CollectTopLevelDeclarations(IReadOnlyList<CppslAstNode> astNodes, List<CppslDeclaration> declarations)
     {
         foreach (var node in astNodes)
         {
@@ -97,7 +99,7 @@ public sealed class ClangSharpFrontend
                 continue;
             }
 
-            declarations.Add(new ClangDeclaration(
+            declarations.Add(new CppslDeclaration(
                 node.Kind,
                 node.Spelling,
                 node.DisplayName,
@@ -107,7 +109,7 @@ public sealed class ClangSharpFrontend
         }
     }
 
-    private static unsafe void CollectAstNodes(CXCursor root, List<ClangAstNode> nodes)
+    private static unsafe void CollectAstNodes(CXCursor root, List<CppslAstNode> nodes)
     {
         root.VisitChildren((cursor, _, _) =>
         {
@@ -121,9 +123,9 @@ public sealed class ClangSharpFrontend
         }, default);
     }
 
-    private static unsafe ClangAstNode CreateNode(CXCursor cursor)
+    private static unsafe CppslAstNode CreateNode(CXCursor cursor)
     {
-        var children = new List<ClangAstNode>();
+        var children = new List<CppslAstNode>();
         cursor.VisitChildren((child, _, _) =>
         {
             if (!ShouldRecordNode(child.kind))
@@ -137,7 +139,7 @@ public sealed class ClangSharpFrontend
 
         cursor.Location.GetSpellingLocation(out var file, out var line, out var column, out _);
         var fileName = file.ToString();
-        return new ClangAstNode(
+        return new CppslAstNode(
             cursor.kind.ToString(),
             cursor.Spelling.ToString(),
             cursor.DisplayName.ToString(),
@@ -146,7 +148,32 @@ public sealed class ClangSharpFrontend
             string.IsNullOrEmpty(fileName) ? null : fileName,
             checked((int)line),
             checked((int)column),
+            CollectAttributes(cursor),
             children);
+    }
+
+    private static IReadOnlyList<CppslFrontendAttribute> CollectAttributes(CXCursor cursor)
+    {
+        if (!cursor.HasAttrs)
+        {
+            return Array.Empty<CppslFrontendAttribute>();
+        }
+
+        var attributes = new List<CppslFrontendAttribute>();
+        for (var i = 0; i < cursor.NumAttrs; ++i)
+        {
+            var attr = cursor.GetAttr((uint)i);
+            attr.Location.GetSpellingLocation(out var file, out var line, out var column, out _);
+            var fileName = file.ToString();
+            attributes.Add(new CppslFrontendAttribute(
+                attr.kind.ToString(),
+                attr.Spelling.ToString(),
+                attr.DisplayName.ToString(),
+                string.IsNullOrEmpty(fileName) ? null : fileName,
+                checked((int)line),
+                checked((int)column)));
+        }
+        return attributes;
     }
 
     private static bool IsInterestingDeclaration(string kind)

@@ -8,8 +8,12 @@ Current scope:
 - Validate `.cxx` shader entry files.
 - Validate CPPSL include boundaries.
 - Keep CPPSL `.hxx` headers separate from LunaSDK C++ headers.
-- Parse CPPSL sources through ClangSharp and record top-level declarations.
-- Emit placeholder artifacts for the future IR, reflection, and backend source generators.
+- Parse CPPSL sources through ClangSharp and record AST facts.
+- Extract a first CPPSL semantic model from source-level attributes.
+- Validate entry point stage attributes, resource `set` / `binding` metadata,
+  and duplicate struct locations.
+- Emit placeholder IR plus early reflection data for descriptors, entry point
+  parameters, stage inputs, and stage outputs.
 
 The current macOS arm64 prototype uses these NuGet packages:
 
@@ -19,6 +23,11 @@ The current macOS arm64 prototype uses these NuGet packages:
 
 Native Clang extraction is intentionally deferred until ClangSharp proves
 insufficient for a concrete semantic requirement.
+
+The compiler pipeline depends on `ICppslFrontend`, not directly on
+`ClangSharpFrontend`. This keeps the current phase 0 implementation fast while
+leaving room for a later native Clang extractor to emit the same CPPSL frontend
+model.
 
 Open `CPPSL.sln` in Rider or Visual Studio to inspect the tool projects.
 

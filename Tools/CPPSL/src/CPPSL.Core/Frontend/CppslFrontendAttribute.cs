@@ -1,6 +1,6 @@
 namespace CPPSL.Core.Frontend;
 
-public sealed record ClangDeclaration(
+public sealed record CppslFrontendAttribute(
     string Kind,
     string Spelling,
     string? DisplayName,

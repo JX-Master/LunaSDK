@@ -1,6 +1,6 @@
 namespace CPPSL.Core.Frontend;
 
-public sealed record ClangAstNode(
+public sealed record CppslAstNode(
     string Kind,
     string Spelling,
     string? DisplayName,
@@ -9,4 +9,5 @@ public sealed record ClangAstNode(
     string? File,
     int? Line,
     int? Column,
-    IReadOnlyList<ClangAstNode> Children);
+    IReadOnlyList<CppslFrontendAttribute> Attributes,
+    IReadOnlyList<CppslAstNode> Children);

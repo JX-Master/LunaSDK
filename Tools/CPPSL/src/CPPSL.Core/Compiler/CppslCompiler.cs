@@ -2,12 +2,25 @@ using System.Text.Json;
 using CPPSL.Core.Artifacts;
 using CPPSL.Core.Diagnostics;
 using CPPSL.Core.Frontend;
+using CPPSL.Core.Reflection;
 using CPPSL.Core.Semantics;
 
 namespace CPPSL.Core.Compiler;
 
 public sealed class CppslCompiler
 {
+    private readonly ICppslFrontend _frontend;
+
+    public CppslCompiler()
+        : this(new ClangSharpFrontend())
+    {
+    }
+
+    public CppslCompiler(ICppslFrontend frontend)
+    {
+        _frontend = frontend;
+    }
+
     public CppslCompileResult Compile(CppslCompileOptions options)
     {
         var diagnostics = new List<CppslDiagnostic>();
@@ -43,14 +56,18 @@ public sealed class CppslCompiler
             return new CppslCompileResult(false, diagnostics, null);
         }
 
-        var clangFrontend = new ClangSharpFrontend();
-        var clangResult = clangFrontend.Parse(sourcePath, includeRoots);
-        diagnostics.AddRange(clangResult.Diagnostics);
-        if (!clangResult.Succeeded)
+        var frontendResult = _frontend.Parse(new CppslFrontendOptions(sourcePath, includeRoots));
+        diagnostics.AddRange(frontendResult.Diagnostics);
+        if (!frontendResult.Succeeded)
         {
             return new CppslCompileResult(false, diagnostics, null);
         }
-        var semanticModel = new CppslSemanticModelBuilder().Build(options, sourcePath, clangResult.AstNodes);
+        var semanticModel = new CppslSemanticModelBuilder().Build(options, sourcePath, frontendResult.AstNodes);
+        diagnostics.AddRange(new CppslSemanticValidator().Validate(options, semanticModel));
+        if (diagnostics.Any(static d => d.Severity == DiagnosticSeverity.Error))
+        {
+            return new CppslCompileResult(false, diagnostics, null);
+        }
 
         Directory.CreateDirectory(outputDirectory);
 
@@ -62,7 +79,8 @@ public sealed class CppslCompiler
             Path.Combine(outputDirectory, baseName + ".glsl"),
             Path.Combine(outputDirectory, baseName + ".msl"));
 
-        WritePlaceholderArtifacts(options, sourcePath, includeResult.Files, clangResult.Declarations, clangResult.AstNodes, semanticModel, artifacts);
+        var reflection = new CppslReflectionBuilder().Build(options, sourcePath, semanticModel);
+        WritePlaceholderArtifacts(options, sourcePath, includeResult.Files, frontendResult, semanticModel, reflection, artifacts);
         diagnostics.Add(CppslDiagnostic.Info("CPPSL phase 0 validation completed.", sourcePath));
         return new CppslCompileResult(true, diagnostics, artifacts);
     }
@@ -71,9 +89,9 @@ public sealed class CppslCompiler
         CppslCompileOptions options,
         string sourcePath,
         IReadOnlyList<string> files,
-        IReadOnlyList<ClangDeclaration> declarations,
-        IReadOnlyList<ClangAstNode> astNodes,
+        CppslFrontendResult frontendResult,
         CppslSemanticModel semanticModel,
+        CppslReflectionModel reflection,
         CppslArtifacts artifacts)
     {
         var artifactModel = new
@@ -83,23 +101,17 @@ public sealed class CppslCompiler
             source = sourcePath,
             entryPoint = options.EntryPoint,
             stage = options.Stage.ToString(),
+            frontendProvider = frontendResult.Provider,
             files,
-            clangDeclarations = declarations,
-            clangAst = astNodes,
+            frontendDeclarations = frontendResult.Declarations,
+            frontendAst = frontendResult.AstNodes,
             cppslSemanticModel = semanticModel,
             note = "Placeholder artifact. Luna Shader IR lowering is not implemented yet."
         };
 
         var jsonOptions = new JsonSerializerOptions { WriteIndented = true };
         File.WriteAllText(artifacts.IrPath, JsonSerializer.Serialize(artifactModel, jsonOptions));
-        File.WriteAllText(artifacts.ReflectionPath, JsonSerializer.Serialize(new
-        {
-            source = sourcePath,
-            entryPoint = options.EntryPoint,
-            stage = options.Stage.ToString(),
-            descriptors = Array.Empty<object>(),
-            features = Array.Empty<string>()
-        }, jsonOptions));
+        File.WriteAllText(artifacts.ReflectionPath, JsonSerializer.Serialize(reflection, jsonOptions));
 
         File.WriteAllText(artifacts.HlslPath, MakePlaceholderSource("HLSL", options));
         File.WriteAllText(artifacts.GlslPath, MakePlaceholderSource("GLSL", options));

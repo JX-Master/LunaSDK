@@ -1,9 +1,8 @@
 namespace CPPSL.Core.Semantics;
 
-public sealed record CppslParameter(
+public sealed record CppslAttribute(
     string Name,
-    string Type,
-    IReadOnlyList<CppslAttribute> Attributes,
+    IReadOnlyList<string> Arguments,
     string? File,
     int? Line,
     int? Column);
