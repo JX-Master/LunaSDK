@@ -7,7 +7,7 @@ LLVM_SDK="$REPO_ROOT/SDKs/llvm-21.1.1-release-macosx-arm64"
 
 mkdir -p "$SCRIPT_DIR/bin"
 
-clang++ -std=c++20 \
+clang++ -std=c++20 -fno-rtti \
   -I "$LLVM_SDK/include" \
   "$SCRIPT_DIR/src/main.cpp" \
   -L "$LLVM_SDK/lib" \

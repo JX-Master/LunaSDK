@@ -14,7 +14,7 @@ public sealed class CppslCompiler
     private readonly ICppslFrontend _frontend;
 
     public CppslCompiler()
-        : this(new ClangSharpFrontend())
+        : this(new NativeExtractorFrontend())
     {
     }
 

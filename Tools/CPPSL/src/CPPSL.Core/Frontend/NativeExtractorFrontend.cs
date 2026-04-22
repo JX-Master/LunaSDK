@@ -7,7 +7,14 @@ namespace CPPSL.Core.Frontend;
 
 public sealed class NativeExtractorFrontend : ICppslFrontend
 {
+    public const int ModelVersion = 1;
+
     private readonly string _extractorPath;
+
+    public NativeExtractorFrontend()
+        : this(FindDefaultNativeExtractorPath())
+    {
+    }
 
     public NativeExtractorFrontend(string extractorPath)
     {
@@ -89,7 +96,7 @@ public sealed class NativeExtractorFrontend : ICppslFrontend
         return new CppslFrontendResult(
             false,
             "Native",
-            0,
+            ModelVersion,
             new[] { CppslDiagnostic.Error(message, sourcePath) },
             Array.Empty<CppslDeclaration>(),
             Array.Empty<CppslAstNode>());
@@ -108,6 +115,21 @@ public sealed class NativeExtractorFrontend : ICppslFrontend
             current = current.Parent;
         }
         return null;
+    }
+
+    private static string FindDefaultNativeExtractorPath()
+    {
+        var current = new DirectoryInfo(AppContext.BaseDirectory);
+        while (current is not null)
+        {
+            var candidate = Path.Combine(current.FullName, "Tools", "CPPSL", "native", "bin", "cppsl-native-extractor");
+            if (File.Exists(candidate))
+            {
+                return candidate;
+            }
+            current = current.Parent;
+        }
+        return Path.Combine("Tools", "CPPSL", "native", "bin", "cppsl-native-extractor");
     }
 
     private static string AppendPath(string? existing, string path)

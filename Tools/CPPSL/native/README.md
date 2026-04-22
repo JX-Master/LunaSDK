@@ -11,6 +11,9 @@ Current scope:
 - Keep provider-specific Clang declaration kinds as debug metadata.
 - Extract declaration-level structs, resources, entry functions, fields, and
   parameters.
+- Emit source ranges, structured type info, return type info, and type template
+  arguments for declaration nodes.
+- Return structured Clang diagnostics with file, line, and column information.
 
 The extractor currently links against the local LLVM SDK:
 
@@ -51,6 +54,5 @@ dotnet run --project Tools/CPPSL/src/CPPSL.Cli -- \
   --include Tools/CPPSL/std \
   --out build/cppsl/BoxNative \
   --target reflection \
-  --frontend native \
   --native-extractor Tools/CPPSL/native/bin/cppsl-native-extractor
 ```

@@ -1,5 +1,6 @@
 #include <clang/AST/AST.h>
 #include <clang/AST/DeclCXX.h>
+#include <clang/Basic/Diagnostic.h>
 #include <clang/Frontend/ASTUnit.h>
 #include <clang/Tooling/Tooling.h>
 
@@ -28,6 +29,31 @@ struct SourceLocationInfo
     unsigned column = 0;
 };
 
+struct SourceRangeInfo
+{
+    std::optional<SourceLocationInfo> start;
+    std::optional<SourceLocationInfo> end;
+};
+
+struct TypeInfo
+{
+    std::string spelling;
+    std::string canonical_name;
+    std::string desugared_name;
+    std::vector<TypeInfo> template_arguments;
+};
+
+struct DiagnosticInfo
+{
+    std::string severity;
+    std::string message;
+    std::string file;
+    std::optional<unsigned> line;
+    std::optional<unsigned> column;
+};
+
+std::optional<SourceLocationInfo> GetLocation(const clang::SourceManager& source_manager, clang::SourceLocation location);
+
 struct AstNode
 {
     std::string kind;
@@ -37,7 +63,57 @@ struct AstNode
     std::string type_name;
     std::string result_type_name;
     std::optional<SourceLocationInfo> location;
+    std::optional<SourceRangeInfo> range;
+    std::optional<TypeInfo> type_info;
+    std::optional<TypeInfo> result_type_info;
     std::vector<AstNode> children;
+};
+
+class JsonDiagnosticConsumer final : public clang::DiagnosticConsumer
+{
+public:
+    void HandleDiagnostic(clang::DiagnosticsEngine::Level level, const clang::Diagnostic& diagnostic) override
+    {
+        clang::SmallString<256> message;
+        diagnostic.FormatDiagnostic(message);
+
+        DiagnosticInfo info;
+        info.severity = SeverityName(level);
+        info.message = std::string(message.str());
+        if (diagnostic.hasSourceManager())
+        {
+            auto location = GetLocation(diagnostic.getSourceManager(), diagnostic.getLocation());
+            if (location)
+            {
+                info.file = location->file;
+                info.line = location->line;
+                info.column = location->column;
+            }
+        }
+        diagnostics_.push_back(std::move(info));
+    }
+
+    const std::vector<DiagnosticInfo>& Diagnostics() const
+    {
+        return diagnostics_;
+    }
+
+private:
+    static std::string SeverityName(clang::DiagnosticsEngine::Level level)
+    {
+        switch (level)
+        {
+        case clang::DiagnosticsEngine::Warning: return "Warning";
+        case clang::DiagnosticsEngine::Error:
+        case clang::DiagnosticsEngine::Fatal: return "Error";
+        case clang::DiagnosticsEngine::Ignored: return "Info";
+        case clang::DiagnosticsEngine::Note:
+        case clang::DiagnosticsEngine::Remark: return "Info";
+        }
+        return "Info";
+    }
+
+    std::vector<DiagnosticInfo> diagnostics_;
 };
 
 std::string JsonEscape(std::string_view value)
@@ -86,6 +162,20 @@ void WriteLocation(std::ostream& os, const std::optional<SourceLocationInfo>& lo
     os << ",\"Line\":" << location->line << ",\"Column\":" << location->column << "}";
 }
 
+void WriteRange(std::ostream& os, const std::optional<SourceRangeInfo>& range)
+{
+    if (!range)
+    {
+        os << "null";
+        return;
+    }
+    os << "{\"Start\":";
+    WriteLocation(os, range->start);
+    os << ",\"End\":";
+    WriteLocation(os, range->end);
+    os << "}";
+}
+
 std::optional<SourceLocationInfo> GetLocation(const clang::SourceManager& source_manager, clang::SourceLocation location)
 {
     if (location.isInvalid())
@@ -109,6 +199,29 @@ std::optional<SourceLocationInfo> GetLocation(const clang::SourceManager& source
         std::string(file_entry->tryGetRealPathName()),
         source_manager.getSpellingLineNumber(spelling_location),
         source_manager.getSpellingColumnNumber(spelling_location)};
+}
+
+std::optional<SourceRangeInfo> GetRange(const clang::SourceManager& source_manager, clang::SourceRange range)
+{
+    if (range.isInvalid())
+    {
+        return std::nullopt;
+    }
+    return SourceRangeInfo{
+        GetLocation(source_manager, range.getBegin()),
+        GetLocation(source_manager, range.getEnd())};
+}
+
+bool HasErrorDiagnostics(const std::vector<DiagnosticInfo>& diagnostics)
+{
+    for (const auto& diagnostic : diagnostics)
+    {
+        if (diagnostic.severity == "Error")
+        {
+            return true;
+        }
+    }
+    return false;
 }
 
 std::string KindForDecl(const clang::Decl* decl)
@@ -173,16 +286,91 @@ std::string GetDisplayName(const clang::NamedDecl* decl)
     return decl->getNameAsString();
 }
 
-AstNode MakeNode(const clang::Decl* decl, const clang::SourceManager& source_manager);
+std::optional<TypeInfo> MakeTypeInfo(const clang::ASTContext& ast_context, clang::QualType type, unsigned depth = 0)
+{
+    if (type.isNull())
+    {
+        return std::nullopt;
+    }
 
-std::vector<AstNode> MakeChildren(const clang::Decl* decl, const clang::SourceManager& source_manager)
+    TypeInfo info;
+    info.spelling = type.getAsString();
+    info.canonical_name = type.getCanonicalType().getAsString();
+    info.desugared_name = type.getDesugaredType(ast_context).getAsString();
+
+    if (depth >= 4)
+    {
+        return info;
+    }
+
+    if (const auto* specialization_type = type->getAs<clang::TemplateSpecializationType>())
+    {
+        for (const auto& argument : specialization_type->template_arguments())
+        {
+            if (argument.getKind() == clang::TemplateArgument::Type)
+            {
+                if (auto argument_info = MakeTypeInfo(ast_context, argument.getAsType(), depth + 1))
+                {
+                    info.template_arguments.push_back(std::move(*argument_info));
+                }
+            }
+        }
+        return info;
+    }
+
+    if (const auto* record = type->getAsCXXRecordDecl())
+    {
+        if (const auto* specialization = llvm::dyn_cast<clang::ClassTemplateSpecializationDecl>(record))
+        {
+            for (const auto& argument : specialization->getTemplateArgs().asArray())
+            {
+                if (argument.getKind() == clang::TemplateArgument::Type)
+                {
+                    if (auto argument_info = MakeTypeInfo(ast_context, argument.getAsType(), depth + 1))
+                    {
+                        info.template_arguments.push_back(std::move(*argument_info));
+                    }
+                }
+            }
+        }
+    }
+
+    return info;
+}
+
+void WriteTypeInfo(std::ostream& os, const std::optional<TypeInfo>& type_info)
+{
+    if (!type_info)
+    {
+        os << "null";
+        return;
+    }
+
+    os << "{\"Spelling\":";
+    WriteString(os, type_info->spelling);
+    os << ",\"CanonicalName\":";
+    WriteString(os, type_info->canonical_name);
+    os << ",\"DesugaredName\":";
+    WriteString(os, type_info->desugared_name);
+    os << ",\"TemplateArguments\":[";
+    for (size_t i = 0; i < type_info->template_arguments.size(); ++i)
+    {
+        if (i != 0) os << ",";
+        WriteTypeInfo(os, type_info->template_arguments[i]);
+    }
+    os << "]}";
+}
+
+AstNode MakeNode(const clang::Decl* decl, const clang::ASTContext& ast_context);
+
+std::vector<AstNode> MakeChildren(const clang::Decl* decl, const clang::ASTContext& ast_context)
 {
     std::vector<AstNode> children;
     if (const auto* function = llvm::dyn_cast<clang::FunctionDecl>(decl))
     {
         for (const auto* parameter : function->parameters())
         {
-            children.push_back(MakeNode(parameter, source_manager));
+            children.push_back(MakeNode(parameter, ast_context));
         }
         return children;
     }
@@ -199,14 +387,15 @@ std::vector<AstNode> MakeChildren(const clang::Decl* decl, const clang::SourceMa
             {
                 continue;
             }
-            children.push_back(MakeNode(child, source_manager));
+            children.push_back(MakeNode(child, ast_context));
         }
     }
     return children;
 }
 
-AstNode MakeNode(const clang::Decl* decl, const clang::SourceManager& source_manager)
+AstNode MakeNode(const clang::Decl* decl, const clang::ASTContext& ast_context)
 {
+    const auto& source_manager = ast_context.getSourceManager();
     const auto* named_decl = llvm::dyn_cast<clang::NamedDecl>(decl);
     AstNode node;
     node.kind = KindForDecl(decl);
@@ -214,17 +403,22 @@ AstNode MakeNode(const clang::Decl* decl, const clang::SourceManager& source_man
     node.spelling = GetDeclName(named_decl);
     node.display_name = GetDisplayName(named_decl);
     node.location = GetLocation(source_manager, decl->getLocation());
+    node.range = GetRange(source_manager, decl->getSourceRange());
 
     if (const auto* value_decl = llvm::dyn_cast<clang::ValueDecl>(decl))
     {
-        node.type_name = value_decl->getType().getAsString();
+        auto type = value_decl->getType();
+        node.type_name = type.getAsString();
+        node.type_info = MakeTypeInfo(ast_context, type);
     }
     if (const auto* function = llvm::dyn_cast<clang::FunctionDecl>(decl))
     {
-        node.result_type_name = function->getReturnType().getAsString();
+        auto result_type = function->getReturnType();
+        node.result_type_name = result_type.getAsString();
+        node.result_type_info = MakeTypeInfo(ast_context, result_type);
     }
 
-    node.children = MakeChildren(decl, source_manager);
+    node.children = MakeChildren(decl, ast_context);
     return node;
 }
 
@@ -244,7 +438,13 @@ void WriteNode(std::ostream& os, const AstNode& node)
     WriteNullableString(os, node.result_type_name);
     os << ",\"Location\":";
     WriteLocation(os, node.location);
-    os << ",\"Range\":null,\"Attributes\":[],\"Children\":[";
+    os << ",\"Range\":";
+    WriteRange(os, node.range);
+    os << ",\"TypeInfo\":";
+    WriteTypeInfo(os, node.type_info);
+    os << ",\"ResultTypeInfo\":";
+    WriteTypeInfo(os, node.result_type_info);
+    os << ",\"Attributes\":[],\"Children\":[";
     for (size_t i = 0; i < node.children.size(); ++i)
     {
         if (i != 0) os << ",";
@@ -268,15 +468,28 @@ void WriteDeclaration(std::ostream& os, const AstNode& node)
     os << "}";
 }
 
-void WriteDiagnostic(std::ostream& os, std::string_view severity, std::string_view message, std::string_view file)
+void WriteDiagnostic(std::ostream& os, const DiagnosticInfo& diagnostic)
 {
     os << "{\"Severity\":";
-    WriteString(os, severity);
+    WriteString(os, diagnostic.severity);
     os << ",\"Message\":";
-    WriteString(os, message);
+    WriteString(os, diagnostic.message);
     os << ",\"File\":";
-    WriteString(os, file);
-    os << ",\"Line\":null,\"Column\":null}";
+    if (!diagnostic.file.empty())
+    {
+        WriteString(os, diagnostic.file);
+    }
+    else
+    {
+        os << "null";
+    }
+    os << ",\"Line\":";
+    if (diagnostic.line) os << *diagnostic.line;
+    else os << "null";
+    os << ",\"Column\":";
+    if (diagnostic.column) os << *diagnostic.column;
+    else os << "null";
+    os << "}";
 }
 
 void WriteResult(
@@ -285,14 +498,14 @@ void WriteResult(
     const std::string& source_path,
     const std::vector<AstNode>& declarations,
     const std::vector<AstNode>& ast_nodes,
-    const std::vector<std::string>& errors)
+    const std::vector<DiagnosticInfo>& diagnostics)
 {
     os << "{\"Succeeded\":" << (succeeded ? "true" : "false");
-    os << ",\"Provider\":\"Native\",\"ModelVersion\":0,\"Diagnostics\":[";
-    for (size_t i = 0; i < errors.size(); ++i)
+    os << ",\"Provider\":\"Native\",\"ModelVersion\":1,\"Diagnostics\":[";
+    for (size_t i = 0; i < diagnostics.size(); ++i)
     {
         if (i != 0) os << ",";
-        WriteDiagnostic(os, "Error", errors[i], source_path);
+        WriteDiagnostic(os, diagnostics[i]);
     }
     os << "],\"Declarations\":[";
     for (size_t i = 0; i < declarations.size(); ++i)
@@ -326,6 +539,15 @@ Options ParseOptions(int argc, char** argv)
     }
     return options;
 }
+
+DiagnosticInfo ErrorDiagnostic(std::string message, const std::string& source_path = {})
+{
+    DiagnosticInfo diagnostic;
+    diagnostic.severity = "Error";
+    diagnostic.message = std::move(message);
+    diagnostic.file = source_path;
+    return diagnostic;
+}
 }
 
 int main(int argc, char** argv)
@@ -333,14 +555,14 @@ int main(int argc, char** argv)
     auto options = ParseOptions(argc, argv);
     if (options.source_path.empty())
     {
-        WriteResult(std::cout, false, {}, {}, {}, {"missing --source"});
+        WriteResult(std::cout, false, {}, {}, {}, {ErrorDiagnostic("missing --source")});
         return 2;
     }
 
     std::ifstream source_stream(options.source_path);
     if (!source_stream)
     {
-        WriteResult(std::cout, false, options.source_path, {}, {}, {"source file does not exist"});
+        WriteResult(std::cout, false, options.source_path, {}, {}, {ErrorDiagnostic("source file does not exist", options.source_path)});
         return 2;
     }
     std::stringstream source_buffer;
@@ -360,19 +582,31 @@ int main(int argc, char** argv)
         args.push_back("-I" + include_root);
     }
 
+    JsonDiagnosticConsumer diagnostic_consumer;
     auto ast_unit = clang::tooling::buildASTFromCodeWithArgs(
         source_buffer.str(),
         args,
-        options.source_path);
+        options.source_path,
+        "cppsl-native-extractor",
+        std::make_shared<clang::PCHContainerOperations>(),
+        clang::tooling::getClangStripDependencyFileAdjuster(),
+        clang::tooling::FileContentMappings(),
+        &diagnostic_consumer);
     if (!ast_unit)
     {
-        WriteResult(std::cout, false, options.source_path, {}, {}, {"Clang native extractor failed to build AST"});
+        auto diagnostics = diagnostic_consumer.Diagnostics();
+        std::vector<DiagnosticInfo> fallback_diagnostics(diagnostics.begin(), diagnostics.end());
+        if (fallback_diagnostics.empty())
+        {
+            fallback_diagnostics.push_back(ErrorDiagnostic("Clang native extractor failed to build AST", options.source_path));
+        }
+        WriteResult(std::cout, false, options.source_path, {}, {}, fallback_diagnostics);
         return 1;
     }
 
     std::vector<AstNode> ast_nodes;
-    const auto& source_manager = ast_unit->getSourceManager();
-    for (const auto* decl : ast_unit->getASTContext().getTranslationUnitDecl()->decls())
+    const auto& ast_context = ast_unit->getASTContext();
+    for (const auto* decl : ast_context.getTranslationUnitDecl()->decls())
     {
         if (decl->isImplicit() || !IsInterestingDecl(decl))
         {
@@ -382,7 +616,7 @@ int main(int argc, char** argv)
         {
             continue;
         }
-        ast_nodes.push_back(MakeNode(decl, source_manager));
+        ast_nodes.push_back(MakeNode(decl, ast_context));
     }
 
     std::vector<AstNode> declarations;
@@ -401,6 +635,8 @@ int main(int argc, char** argv)
         }
     }
 
-    WriteResult(std::cout, true, options.source_path, declarations, ast_nodes, {});
-    return 0;
+    const auto& diagnostics = diagnostic_consumer.Diagnostics();
+    const bool has_errors = HasErrorDiagnostics(diagnostics);
+    WriteResult(std::cout, !has_errors, options.source_path, declarations, ast_nodes, diagnostics);
+    return has_errors ? 1 : 0;
 }

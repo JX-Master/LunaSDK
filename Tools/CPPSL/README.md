@@ -8,8 +8,8 @@ Current scope:
 - Validate `.cxx` shader entry files.
 - Validate CPPSL include boundaries.
 - Keep CPPSL `.hxx` headers separate from LunaSDK C++ headers.
-- Parse CPPSL sources through ClangSharp and record AST facts.
-- Expose a CPPSL-owned frontend model with provider-specific Clang cursor names
+- Parse CPPSL sources through the native Clang extractor and record AST facts.
+- Expose a CPPSL-owned frontend model with provider-specific Clang declaration names
   kept only as debug metadata.
 - Extract a first CPPSL semantic model from source-level attributes.
 - Validate entry point stage attributes, resource `set` / `binding` metadata,
@@ -20,23 +20,9 @@ Current scope:
 - Treat HLSL, GLSL, MSL, and reflection as peer output targets.
 - Emit versioned reflection JSON.
 
-The current macOS arm64 prototype uses these NuGet packages:
-
-- `ClangSharp`
-- `libclang.runtime.osx-arm64`
-- `libClangSharp.runtime.osx-arm64`
-
-The phase 0 frontend still defaults to ClangSharp, and the first native Clang
-extractor is available as an alternate frontend for cases where ClangSharp does
-not expose enough semantic AST detail.
-
-The compiler pipeline depends on `ICppslFrontend`, not directly on
-`ClangSharpFrontend`. This keeps the current phase 0 implementation fast while
-leaving room for a later native Clang extractor to emit the same CPPSL frontend
-model.
-
-An initial native extractor lives in `Tools/CPPSL/native`. It runs as a separate
-process and emits the same frontend JSON contract as the ClangSharp frontend.
+The frontend is native-only. The extractor lives in `Tools/CPPSL/native`, links
+against the LLVM SDK under `SDKs`, and runs as a separate process that emits the
+frontend JSON contract consumed by the C# pipeline.
 
 Open `CPPSL.sln` in Rider or Visual Studio to inspect the tool projects.
 
@@ -44,6 +30,13 @@ Build the solution from command line:
 
 ```sh
 dotnet build Tools/CPPSL/CPPSL.sln -m:1 /nr:false
+```
+
+Build the native extractor before running the compiler:
+
+```sh
+xmake f --plat=macosx --arch=arm64 --mode=debug
+xmake build cppsl-native-extractor
 ```
 
 Run the sample:
@@ -68,5 +61,5 @@ dotnet run --project Tools/CPPSL/tests/CPPSL.SmokeTests
 
 Smoke fixtures live under `Tools/CPPSL/tests/fixtures`. They currently cover
 box-style vertex IO, texture/sampler reflection, and invalid language cases.
-They are intentionally file-based so ClangSharp and the native extractor can run
-the same language contract tests.
+They are intentionally file-based so the native extractor and later pipeline
+stages can run the same language contract tests.

@@ -43,17 +43,23 @@ if (result.Artifacts is null ||
 var irText = File.ReadAllText(result.Artifacts.IrPath);
 var reflectionText = File.ReadAllText(result.Artifacts.GetOutputPath(CppslOutputTarget.Reflection));
 if (!irText.Contains("main_vs", StringComparison.Ordinal) ||
-    !irText.Contains("\"frontendProvider\": \"ClangSharp\"", StringComparison.Ordinal) ||
-    !irText.Contains("\"frontendModelVersion\": 0", StringComparison.Ordinal) ||
+    !irText.Contains("\"frontendProvider\": \"Native\"", StringComparison.Ordinal) ||
+    !irText.Contains("\"frontendModelVersion\": 1", StringComparison.Ordinal) ||
     !irText.Contains("\"frontendAst\"", StringComparison.Ordinal) ||
     !irText.Contains("\"outputTargets\"", StringComparison.Ordinal) ||
     !irText.Contains("\"Kind\": \"Function\"", StringComparison.Ordinal) ||
-    !irText.Contains("\"ProviderKind\": \"CXCursor_FunctionDecl\"", StringComparison.Ordinal) ||
+    !irText.Contains("\"ProviderKind\": \"Function\"", StringComparison.Ordinal) ||
     !irText.Contains("\"Kind\": \"Field\"", StringComparison.Ordinal) ||
-    !irText.Contains("\"ProviderKind\": \"CXCursor_FieldDecl\"", StringComparison.Ordinal) ||
+    !irText.Contains("\"ProviderKind\": \"Field\"", StringComparison.Ordinal) ||
     !irText.Contains("world_to_proj", StringComparison.Ordinal) ||
     !irText.Contains("\"Kind\": \"Parameter\"", StringComparison.Ordinal) ||
-    !irText.Contains("\"ProviderKind\": \"CXCursor_ParmDecl\"", StringComparison.Ordinal) ||
+    !irText.Contains("\"ProviderKind\": \"ParmVar\"", StringComparison.Ordinal) ||
+    !irText.Contains("\"Range\": {", StringComparison.Ordinal) ||
+    !irText.Contains("\"TypeInfo\": {", StringComparison.Ordinal) ||
+    !irText.Contains("\"CanonicalName\": \"struct cppsl::ConstantBuffer", StringComparison.Ordinal) ||
+    !irText.Contains("\"TemplateArguments\"", StringComparison.Ordinal) ||
+    !irText.Contains("\"Spelling\": \"Camera\"", StringComparison.Ordinal) ||
+    !irText.Contains("\"ResultTypeInfo\": {", StringComparison.Ordinal) ||
     !irText.Contains("cppslSemanticModel", StringComparison.Ordinal) ||
     !irText.Contains("cppslIr", StringComparison.Ordinal) ||
     !irText.Contains("\"Schema\": \"cppsl.ir\"", StringComparison.Ordinal) ||
@@ -170,36 +176,29 @@ if (!reflectionOnlyResult.Succeeded ||
     return 1;
 }
 
-var nativeExtractorPath = Path.Combine(repoRoot, "Tools", "CPPSL", "native", "bin", "cppsl-native-extractor");
-if (File.Exists(nativeExtractorPath))
+var nativeSyntaxErrorShader = Path.Combine(fixturesRoot, "invalid", "syntax_error", "SyntaxError.cxx");
+var nativeSyntaxErrorResult = compiler.Compile(new CppslCompileOptions(
+    nativeSyntaxErrorShader,
+    Path.Combine(outputDir, "native-syntax-error"),
+    new[] { stdRoot },
+    "main_vs",
+    ShaderStage.Vertex,
+    new[] { CppslOutputTarget.Reflection }));
+
+if (nativeSyntaxErrorResult.Succeeded ||
+    !nativeSyntaxErrorResult.Diagnostics.Any(static diagnostic =>
+        diagnostic.Severity == DiagnosticSeverity.Error &&
+        diagnostic.Message.Contains("expected", StringComparison.OrdinalIgnoreCase) &&
+        diagnostic.File is not null &&
+        diagnostic.Line is not null &&
+        diagnostic.Column is not null))
 {
-    var nativeCompiler = new CppslCompiler(new CPPSL.Core.Frontend.NativeExtractorFrontend(nativeExtractorPath));
-    var nativeResult = nativeCompiler.Compile(new CppslCompileOptions(
-        boxShader,
-        Path.Combine(outputDir, "native-box"),
-        new[] { stdRoot },
-        "main_vs",
-        ShaderStage.Vertex,
-        new[] { CppslOutputTarget.Reflection }));
-
-    if (!nativeResult.Succeeded || nativeResult.Artifacts is null)
+    Console.Error.WriteLine("error: expected native extractor frontend to report structured Clang diagnostics.");
+    foreach (var diagnostic in nativeSyntaxErrorResult.Diagnostics)
     {
-        Console.Error.WriteLine("error: expected native extractor frontend to compile box fixture.");
-        foreach (var diagnostic in nativeResult.Diagnostics)
-        {
-            Console.Error.WriteLine(diagnostic.ToDisplayString());
-        }
-        return 1;
+        Console.Error.WriteLine(diagnostic.ToDisplayString());
     }
-
-    var nativeIrText = File.ReadAllText(nativeResult.Artifacts.IrPath);
-    if (!nativeIrText.Contains("\"frontendProvider\": \"Native\"", StringComparison.Ordinal) ||
-        !nativeIrText.Contains("\"Kind\": \"Parameter\"", StringComparison.Ordinal) ||
-        nativeIrText.Contains("\"Spelling\": \"output\"", StringComparison.Ordinal))
-    {
-        Console.Error.WriteLine("error: native extractor frontend did not emit the expected declaration-level frontend model.");
-        return 1;
-    }
+    return 1;
 }
 
 Console.WriteLine("CPPSL smoke tests passed.");
