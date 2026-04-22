@@ -4,10 +4,10 @@
 
 using namespace cppsl;
 
-[[cppsl::set(0), cppsl::binding(0)]]
+[[cppsl::desc_set(0), cppsl::binding(0)]]
 Texture2D<float4> color_texture;
 
-[[cppsl::set(0), cppsl::binding(1)]]
+[[cppsl::desc_set(0), cppsl::binding(1)]]
 SamplerState linear_sampler;
 
 struct PSInput

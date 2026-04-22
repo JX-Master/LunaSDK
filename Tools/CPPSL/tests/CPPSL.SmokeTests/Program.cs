@@ -78,7 +78,7 @@ if (!irText.Contains("main_vs", StringComparison.Ordinal) ||
     !irText.Contains("\"Version\": 1", StringComparison.Ordinal) ||
     !irText.Contains("constant_buffer", StringComparison.Ordinal) ||
     !irText.Contains("\"IsEntryPoint\": true", StringComparison.Ordinal) ||
-    !irText.Contains("\"Name\": \"set\"", StringComparison.Ordinal) ||
+    !irText.Contains("\"Name\": \"desc_set\"", StringComparison.Ordinal) ||
     !irText.Contains("\"Name\": \"binding\"", StringComparison.Ordinal) ||
     !irText.Contains("\"Name\": \"cbuffer\"", StringComparison.Ordinal) ||
     !irText.Contains("\"Name\": \"location\"", StringComparison.Ordinal) ||

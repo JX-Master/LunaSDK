@@ -2,7 +2,7 @@
 
 using namespace cppsl;
 
-[[cppsl::rwstructured_buffer, cppsl::set(0), cppsl::binding(0)]]
+[[cppsl::rwstructured_buffer, cppsl::desc_set(0), cppsl::binding(0)]]
 const float* values;
 
 [[cppsl::vertex]]

@@ -5,7 +5,7 @@ using namespace cppsl;
 
 struct Camera
 {
-    [[cppsl::set(0)]] float4x4 world_to_proj;
+    [[cppsl::desc_set(0)]] float4x4 world_to_proj;
 };
 
 [[cppsl::vertex]]

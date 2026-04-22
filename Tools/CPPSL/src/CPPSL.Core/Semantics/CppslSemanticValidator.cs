@@ -22,7 +22,7 @@ public sealed class CppslSemanticValidator
 
     private static readonly HashSet<string> KnownAttributes = new(StringComparer.Ordinal)
     {
-        "set",
+        "desc_set",
         "binding",
         "location",
         "position",
@@ -65,10 +65,10 @@ public sealed class CppslSemanticValidator
                 "global",
                 global.Name,
                 global.Attributes,
-                new[] { "set", "binding", "group_shared", "cbuffer", "structured_buffer", "sbuffer", "rwstructured_buffer", "rw_structured_buffer", "rwsbuffer" },
+                new[] { "desc_set", "binding", "group_shared", "cbuffer", "structured_buffer", "sbuffer", "rwstructured_buffer", "rw_structured_buffer", "rwsbuffer" },
                 diagnostics);
             if (global.ResourceKind is null &&
-                (global.Attributes.FindAttribute("set") is not null || global.Attributes.FindAttribute("binding") is not null))
+                (global.Attributes.FindAttribute("desc_set") is not null || global.Attributes.FindAttribute("binding") is not null))
             {
                 diagnostics.Add(CppslDiagnostic.Error(
                     $"CPPSL global `{global.Name}` uses resource binding attributes but is not a CPPSL resource type.",
@@ -152,7 +152,7 @@ public sealed class CppslSemanticValidator
             if (global.DescriptorSet is null)
             {
                 diagnostics.Add(CppslDiagnostic.Error(
-                    $"CPPSL resource `{global.Name}` must declare `cppsl::set(...)`.",
+                    $"CPPSL resource `{global.Name}` must declare `cppsl::desc_set(...)`.",
                     global.File,
                     global.Line,
                     global.Column));

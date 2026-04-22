@@ -71,7 +71,7 @@ public sealed class CppslSemanticModelBuilder
             type,
             ClassifyResourceKind(type, attributes),
             attributes,
-            attributes.FindAttribute("set").FirstIntArgument(),
+            attributes.FindAttribute("desc_set").FirstIntArgument(),
             attributes.FindAttribute("binding").FirstIntArgument(),
             node.Location?.File,
             node.Location?.Line,
