@@ -1,7 +1,9 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using CPPSL.Core.Artifacts;
 using CPPSL.Core.Diagnostics;
 using CPPSL.Core.Frontend;
+using CPPSL.Core.IR;
 using CPPSL.Core.Reflection;
 using CPPSL.Core.Semantics;
 
@@ -80,7 +82,8 @@ public sealed class CppslCompiler
             Path.Combine(outputDirectory, baseName + ".ir.json"),
             outputs);
 
-        WriteArtifacts(options, sourcePath, includeResult.Files, frontendResult, semanticModel, targets, artifacts);
+        var irModule = new CppslIrBuilder().Build(options, sourcePath, semanticModel);
+        WriteArtifacts(options, sourcePath, includeResult.Files, frontendResult, semanticModel, irModule, targets, artifacts);
         diagnostics.Add(CppslDiagnostic.Info("CPPSL phase 0 validation completed.", sourcePath));
         return new CppslCompileResult(true, diagnostics, artifacts);
     }
@@ -91,6 +94,7 @@ public sealed class CppslCompiler
         IReadOnlyList<string> files,
         CppslFrontendResult frontendResult,
         CppslSemanticModel semanticModel,
+        CppslIrModule irModule,
         IReadOnlyList<CppslOutputTarget> targets,
         CppslArtifacts artifacts)
     {
@@ -102,15 +106,17 @@ public sealed class CppslCompiler
             entryPoint = options.EntryPoint,
             stage = options.Stage.ToString(),
             frontendProvider = frontendResult.Provider,
+            frontendModelVersion = frontendResult.ModelVersion,
             outputTargets = targets.Select(static target => target.ToString()).ToArray(),
             files,
             frontendDeclarations = frontendResult.Declarations,
             frontendAst = frontendResult.AstNodes,
+            cppslIr = irModule,
             cppslSemanticModel = semanticModel,
-            note = "Placeholder artifact. Luna Shader IR lowering is not implemented yet."
+            note = "Phase 0 artifact. Function body IR lowering is not implemented yet."
         };
 
-        var jsonOptions = new JsonSerializerOptions { WriteIndented = true };
+        var jsonOptions = CreateJsonOptions();
         File.WriteAllText(artifacts.IrPath, JsonSerializer.Serialize(artifactModel, jsonOptions));
 
         foreach (var target in targets)
@@ -133,6 +139,13 @@ public sealed class CppslCompiler
         }
 
         return MakePlaceholderSource(target, options);
+    }
+
+    private static JsonSerializerOptions CreateJsonOptions()
+    {
+        var options = new JsonSerializerOptions { WriteIndented = true };
+        options.Converters.Add(new JsonStringEnumConverter());
+        return options;
     }
 
     private static string MakePlaceholderSource(CppslOutputTarget target, CppslCompileOptions options)

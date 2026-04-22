@@ -1,9 +1,8 @@
 namespace CPPSL.Core.Frontend;
 
 public sealed record CppslDeclaration(
-    string Kind,
+    CppslAstNodeKind Kind,
+    string ProviderKind,
     string Spelling,
     string? DisplayName,
-    string? File,
-    int? Line,
-    int? Column);
+    CppslSourceLocation? Location);

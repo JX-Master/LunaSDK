@@ -5,6 +5,9 @@ namespace CPPSL.Core.Reflection;
 
 public sealed class CppslReflectionBuilder
 {
+    public const string SchemaName = "cppsl.reflection";
+    public const int SchemaVersion = 0;
+
     public CppslReflectionModel Build(CppslCompileOptions options, string sourcePath, CppslSemanticModel semanticModel)
     {
         var entryPoint = semanticModel.Functions.FirstOrDefault(function => function.IsEntryPoint);
@@ -35,6 +38,8 @@ public sealed class CppslReflectionBuilder
                 .ToArray() ?? Array.Empty<CppslStageIoReflection>();
 
         return new CppslReflectionModel(
+            SchemaName,
+            SchemaVersion,
             sourcePath,
             options.EntryPoint,
             options.Stage.ToString(),
@@ -72,6 +77,8 @@ public sealed class CppslReflectionBuilder
 }
 
 public sealed record CppslReflectionModel(
+    string Schema,
+    int Version,
     string Source,
     string EntryPoint,
     string Stage,

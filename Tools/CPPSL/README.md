@@ -9,11 +9,16 @@ Current scope:
 - Validate CPPSL include boundaries.
 - Keep CPPSL `.hxx` headers separate from LunaSDK C++ headers.
 - Parse CPPSL sources through ClangSharp and record AST facts.
+- Expose a CPPSL-owned frontend model with provider-specific Clang cursor names
+  kept only as debug metadata.
 - Extract a first CPPSL semantic model from source-level attributes.
 - Validate entry point stage attributes, resource `set` / `binding` metadata,
-  and duplicate struct locations.
-- Emit placeholder IR plus multiple output targets from a single frontend parse.
+  duplicate resource bindings, attribute target rules, and duplicate struct
+  locations.
+- Emit declaration-level `cppsl.ir` v0 plus multiple output targets from a
+  single frontend parse.
 - Treat HLSL, GLSL, MSL, and reflection as peer output targets.
+- Emit versioned reflection JSON.
 
 The current macOS arm64 prototype uses these NuGet packages:
 
@@ -56,3 +61,8 @@ Run smoke tests:
 ```sh
 dotnet run --project Tools/CPPSL/tests/CPPSL.SmokeTests
 ```
+
+Smoke fixtures live under `Tools/CPPSL/tests/fixtures`. They currently cover
+box-style vertex IO, texture/sampler reflection, and invalid language cases.
+They are intentionally file-based so ClangSharp and a future native extractor
+can run the same language contract tests.

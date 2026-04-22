@@ -11,21 +11,21 @@ public sealed class CppslSemanticModelBuilder
     {
         sourcePath = Path.GetFullPath(sourcePath);
         var sourceTopLevelNodes = astNodes
-            .Where(node => node.File is not null && Path.GetFullPath(node.File) == sourcePath)
+            .Where(node => node.Location?.File is not null && Path.GetFullPath(node.Location.File) == sourcePath)
             .ToArray();
 
         var structs = sourceTopLevelNodes
-            .Where(static node => node.Kind == "CXCursor_StructDecl")
+            .Where(static node => node.Kind == CppslAstNodeKind.Struct)
             .Select(ToStruct)
             .ToArray();
 
         var globals = sourceTopLevelNodes
-            .Where(static node => node.Kind == "CXCursor_VarDecl")
+            .Where(static node => node.Kind == CppslAstNodeKind.GlobalVariable)
             .Select(ToGlobal)
             .ToArray();
 
         var functions = sourceTopLevelNodes
-            .Where(static node => node.Kind == "CXCursor_FunctionDecl")
+            .Where(static node => node.Kind == CppslAstNodeKind.Function)
             .Select(node => ToFunction(node, options.EntryPoint, options.Stage.ToString()))
             .ToArray();
 
@@ -35,15 +35,15 @@ public sealed class CppslSemanticModelBuilder
     private CppslStruct ToStruct(CppslAstNode node)
     {
         var fields = node.Children
-            .Where(static child => child.Kind == "CXCursor_FieldDecl")
+            .Where(static child => child.Kind == CppslAstNodeKind.Field)
             .Select(ToField)
             .ToArray();
 
         return new CppslStruct(
             node.Spelling,
-            node.File,
-            node.Line,
-            node.Column,
+            node.Location?.File,
+            node.Location?.Line,
+            node.Location?.Column,
             _attributeParser.GetAttributes(node),
             fields);
     }
@@ -53,18 +53,18 @@ public sealed class CppslSemanticModelBuilder
         var attributes = _attributeParser.GetAttributes(node);
         return new CppslField(
             node.Spelling,
-            node.Type ?? string.Empty,
+            node.TypeName ?? string.Empty,
             attributes,
             attributes.FindAttribute("location").FirstIntArgument(),
             attributes.FindAttribute("position") is not null,
-            node.File,
-            node.Line,
-            node.Column);
+            node.Location?.File,
+            node.Location?.Line,
+            node.Location?.Column);
     }
 
     private CppslGlobal ToGlobal(CppslAstNode node)
     {
-        var type = node.Type ?? string.Empty;
+        var type = node.TypeName ?? string.Empty;
         var attributes = _attributeParser.GetAttributes(node);
         return new CppslGlobal(
             node.Spelling,
@@ -73,16 +73,16 @@ public sealed class CppslSemanticModelBuilder
             attributes,
             attributes.FindAttribute("set").FirstIntArgument(),
             attributes.FindAttribute("binding").FirstIntArgument(),
-            node.File,
-            node.Line,
-            node.Column);
+            node.Location?.File,
+            node.Location?.Line,
+            node.Location?.Column);
     }
 
     private CppslFunction ToFunction(CppslAstNode node, string entryPoint, string stage)
     {
         var attributes = _attributeParser.GetAttributes(node);
         var parameters = node.Children
-            .Where(static child => child.Kind == "CXCursor_ParmDecl")
+            .Where(static child => child.Kind == CppslAstNodeKind.Parameter)
             .Select(ToParameter)
             .ToArray();
 
@@ -90,26 +90,26 @@ public sealed class CppslSemanticModelBuilder
         return new CppslFunction(
             node.Spelling,
             node.DisplayName,
-            node.ResultType,
+            node.ResultTypeName,
             parameters,
             attributes,
             isEntryPoint,
             isEntryPoint ? stage : null,
             FindDeclaredStage(attributes),
-            node.File,
-            node.Line,
-            node.Column);
+            node.Location?.File,
+            node.Location?.Line,
+            node.Location?.Column);
     }
 
     private CppslParameter ToParameter(CppslAstNode node)
     {
         return new CppslParameter(
             node.Spelling,
-            node.Type ?? string.Empty,
+            node.TypeName ?? string.Empty,
             _attributeParser.GetAttributes(node, includeLeadingLines: false),
-            node.File,
-            node.Line,
-            node.Column);
+            node.Location?.File,
+            node.Location?.Line,
+            node.Location?.Column);
     }
 
     private static string? ClassifyResourceKind(string type)

@@ -1,13 +1,13 @@
 namespace CPPSL.Core.Frontend;
 
 public sealed record CppslAstNode(
-    string Kind,
+    CppslAstNodeKind Kind,
+    string ProviderKind,
     string Spelling,
     string? DisplayName,
-    string? Type,
-    string? ResultType,
-    string? File,
-    int? Line,
-    int? Column,
+    string? TypeName,
+    string? ResultTypeName,
+    CppslSourceLocation? Location,
+    CppslSourceRange? Range,
     IReadOnlyList<CppslFrontendAttribute> Attributes,
     IReadOnlyList<CppslAstNode> Children);

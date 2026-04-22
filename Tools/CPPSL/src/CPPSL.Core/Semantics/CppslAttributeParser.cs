@@ -9,13 +9,13 @@ public sealed partial class CppslAttributeParser
 
     public IReadOnlyList<CppslAttribute> GetAttributes(CppslAstNode node, bool includeLeadingLines = true)
     {
-        if (node.File is null || node.Line is null)
+        if (node.Location is null)
         {
             return Array.Empty<CppslAttribute>();
         }
 
-        var lines = GetSourceLines(node.File);
-        var lineIndex = node.Line.Value - 1;
+        var lines = GetSourceLines(node.Location.File);
+        var lineIndex = node.Location.Line - 1;
         if (lineIndex < 0 || lineIndex >= lines.Length)
         {
             return Array.Empty<CppslAttribute>();
@@ -24,9 +24,7 @@ public sealed partial class CppslAttributeParser
         var chunks = new List<(string Text, int Line, int ColumnBase)>();
 
         var currentLine = lines[lineIndex];
-        var prefixLength = node.Column is null
-            ? currentLine.Length
-            : Math.Clamp(node.Column.Value - 1, 0, currentLine.Length);
+        var prefixLength = Math.Clamp(node.Location.Column - 1, 0, currentLine.Length);
         var currentPrefix = currentLine[..prefixLength];
         if (currentPrefix.Contains("[[", StringComparison.Ordinal))
         {
@@ -35,7 +33,7 @@ public sealed partial class CppslAttributeParser
 
         if (!includeLeadingLines)
         {
-            return chunks.SelectMany(chunk => ParseChunk(chunk.Text, node.File, chunk.Line, chunk.ColumnBase)).ToArray();
+            return chunks.SelectMany(chunk => ParseChunk(chunk.Text, node.Location.File, chunk.Line, chunk.ColumnBase)).ToArray();
         }
 
         for (var i = lineIndex - 1; i >= 0; --i)
@@ -54,7 +52,7 @@ public sealed partial class CppslAttributeParser
         }
 
         chunks.Reverse();
-        return chunks.SelectMany(chunk => ParseChunk(chunk.Text, node.File, chunk.Line, chunk.ColumnBase)).ToArray();
+        return chunks.SelectMany(chunk => ParseChunk(chunk.Text, node.Location.File, chunk.Line, chunk.ColumnBase)).ToArray();
     }
 
     private string[] GetSourceLines(string path)

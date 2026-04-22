@@ -6,15 +6,75 @@ namespace CPPSL.Core.Semantics;
 
 public sealed class CppslSemanticValidator
 {
+    private static readonly HashSet<string> StageAttributes = new(StringComparer.Ordinal)
+    {
+        "vertex",
+        "fragment",
+        "pixel",
+        "compute",
+        "raygen",
+        "miss",
+        "closest_hit",
+        "any_hit",
+        "intersection",
+        "callable"
+    };
+
+    private static readonly HashSet<string> KnownAttributes = new(StringComparer.Ordinal)
+    {
+        "set",
+        "binding",
+        "location",
+        "position",
+        "builtin",
+        "group_shared"
+    };
+
     public IReadOnlyList<CppslDiagnostic> Validate(CppslCompileOptions options, CppslSemanticModel model)
     {
         var diagnostics = new List<CppslDiagnostic>();
 
+        ValidateAttributes(model, diagnostics);
         ValidateEntryPoint(options, model, diagnostics);
         ValidateResources(model, diagnostics);
         ValidateStructLocations(model, diagnostics);
 
         return diagnostics;
+    }
+
+    private static void ValidateAttributes(CppslSemanticModel model, List<CppslDiagnostic> diagnostics)
+    {
+        foreach (var structure in model.Structs)
+        {
+            ValidateAttributeSet("struct", structure.Name, structure.Attributes, Array.Empty<string>(), diagnostics);
+            foreach (var field in structure.Fields)
+            {
+                ValidateAttributeSet("field", field.Name, field.Attributes, new[] { "location", "position", "builtin" }, diagnostics);
+            }
+        }
+
+        foreach (var global in model.Globals)
+        {
+            ValidateAttributeSet("global", global.Name, global.Attributes, new[] { "set", "binding", "group_shared" }, diagnostics);
+            if (global.ResourceKind is null &&
+                (global.Attributes.FindAttribute("set") is not null || global.Attributes.FindAttribute("binding") is not null))
+            {
+                diagnostics.Add(CppslDiagnostic.Error(
+                    $"CPPSL global `{global.Name}` uses resource binding attributes but is not a CPPSL resource type.",
+                    global.File,
+                    global.Line,
+                    global.Column));
+            }
+        }
+
+        foreach (var function in model.Functions)
+        {
+            ValidateAttributeSet("function", function.Name, function.Attributes, StageAttributes, diagnostics);
+            foreach (var parameter in function.Parameters)
+            {
+                ValidateAttributeSet("parameter", parameter.Name, parameter.Attributes, new[] { "location", "builtin" }, diagnostics);
+            }
+        }
     }
 
     private static void ValidateEntryPoint(
@@ -48,6 +108,30 @@ public sealed class CppslSemanticValidator
                 entryPoint.Line,
                 entryPoint.Column));
         }
+
+        var structNames = model.Structs.Select(static structure => structure.Name).ToHashSet(StringComparer.Ordinal);
+        if (entryPoint.ReturnType is not null &&
+            entryPoint.ReturnType != "void" &&
+            !structNames.Contains(entryPoint.ReturnType))
+        {
+            diagnostics.Add(CppslDiagnostic.Error(
+                $"CPPSL entry point `{entryPoint.Name}` return type `{entryPoint.ReturnType}` must be `void` or a CPPSL struct.",
+                entryPoint.File,
+                entryPoint.Line,
+                entryPoint.Column));
+        }
+
+        foreach (var parameter in entryPoint.Parameters)
+        {
+            if (!structNames.Contains(parameter.Type))
+            {
+                diagnostics.Add(CppslDiagnostic.Error(
+                    $"CPPSL entry point parameter `{parameter.Name}` type `{parameter.Type}` must be a CPPSL struct.",
+                    parameter.File,
+                    parameter.Line,
+                    parameter.Column));
+            }
+        }
     }
 
     private static void ValidateResources(CppslSemanticModel model, List<CppslDiagnostic> diagnostics)
@@ -66,6 +150,21 @@ public sealed class CppslSemanticValidator
             {
                 diagnostics.Add(CppslDiagnostic.Error(
                     $"CPPSL resource `{global.Name}` must declare `cppsl::binding(...)`.",
+                    global.File,
+                    global.Line,
+                    global.Column));
+            }
+        }
+
+        foreach (var duplicateGroup in model.Globals
+            .Where(static global => global.ResourceKind is not null && global.DescriptorSet is not null && global.Binding is not null)
+            .GroupBy(static global => (Set: global.DescriptorSet!.Value, Binding: global.Binding!.Value))
+            .Where(static group => group.Count() > 1))
+        {
+            foreach (var global in duplicateGroup.Skip(1))
+            {
+                diagnostics.Add(CppslDiagnostic.Error(
+                    $"CPPSL declares duplicate resource binding set `{duplicateGroup.Key.Set}` binding `{duplicateGroup.Key.Binding}`.",
                     global.File,
                     global.Line,
                     global.Column));
@@ -128,5 +227,36 @@ public sealed class CppslSemanticValidator
             ShaderStage.Callable => "callable",
             _ => stage.ToString().ToLowerInvariant()
         };
+    }
+
+    private static void ValidateAttributeSet(
+        string targetKind,
+        string targetName,
+        IReadOnlyList<CppslAttribute> attributes,
+        IEnumerable<string> allowedAttributes,
+        List<CppslDiagnostic> diagnostics)
+    {
+        var allowed = allowedAttributes.ToHashSet(StringComparer.Ordinal);
+        foreach (var attribute in attributes)
+        {
+            if (!KnownAttributes.Contains(attribute.Name) && !StageAttributes.Contains(attribute.Name))
+            {
+                diagnostics.Add(CppslDiagnostic.Error(
+                    $"Unknown CPPSL attribute `cppsl::{attribute.Name}`.",
+                    attribute.File,
+                    attribute.Line,
+                    attribute.Column));
+                continue;
+            }
+
+            if (!allowed.Contains(attribute.Name))
+            {
+                diagnostics.Add(CppslDiagnostic.Error(
+                    $"CPPSL attribute `cppsl::{attribute.Name}` cannot be used on {targetKind} `{targetName}`.",
+                    attribute.File,
+                    attribute.Line,
+                    attribute.Column));
+            }
+        }
     }
 }

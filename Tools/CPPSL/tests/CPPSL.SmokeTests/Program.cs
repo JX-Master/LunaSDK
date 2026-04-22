@@ -5,13 +5,17 @@ using CPPSL.Core.IR;
 using System.Text.RegularExpressions;
 
 var repoRoot = FindRepoRoot(AppContext.BaseDirectory);
+var fixturesRoot = Path.Combine(repoRoot, "Tools", "CPPSL", "tests", "fixtures");
+var stdRoot = Path.Combine(repoRoot, "Tools", "CPPSL", "std");
 var outputDir = Path.Combine(repoRoot, "build", "cppsl-smoke");
 var compiler = new CppslCompiler();
+var boxShader = Path.Combine(fixturesRoot, "valid", "box", "Box.cxx");
+var textureBasicShader = Path.Combine(fixturesRoot, "valid", "texture_basic", "TextureBasic.cxx");
 
 var result = compiler.Compile(new CppslCompileOptions(
-    Path.Combine(repoRoot, "Tools", "CPPSL", "samples", "Box.cxx"),
+    boxShader,
     outputDir,
-    new[] { Path.Combine(repoRoot, "Tools", "CPPSL", "std") },
+    new[] { stdRoot },
     "main_vs",
     ShaderStage.Vertex));
 
@@ -40,13 +44,20 @@ var irText = File.ReadAllText(result.Artifacts.IrPath);
 var reflectionText = File.ReadAllText(result.Artifacts.GetOutputPath(CppslOutputTarget.Reflection));
 if (!irText.Contains("main_vs", StringComparison.Ordinal) ||
     !irText.Contains("\"frontendProvider\": \"ClangSharp\"", StringComparison.Ordinal) ||
+    !irText.Contains("\"frontendModelVersion\": 0", StringComparison.Ordinal) ||
     !irText.Contains("\"frontendAst\"", StringComparison.Ordinal) ||
     !irText.Contains("\"outputTargets\"", StringComparison.Ordinal) ||
-    !irText.Contains("CXCursor_FunctionDecl", StringComparison.Ordinal) ||
-    !irText.Contains("CXCursor_FieldDecl", StringComparison.Ordinal) ||
+    !irText.Contains("\"Kind\": \"Function\"", StringComparison.Ordinal) ||
+    !irText.Contains("\"ProviderKind\": \"CXCursor_FunctionDecl\"", StringComparison.Ordinal) ||
+    !irText.Contains("\"Kind\": \"Field\"", StringComparison.Ordinal) ||
+    !irText.Contains("\"ProviderKind\": \"CXCursor_FieldDecl\"", StringComparison.Ordinal) ||
     !irText.Contains("world_to_proj", StringComparison.Ordinal) ||
-    !irText.Contains("CXCursor_ParmDecl", StringComparison.Ordinal) ||
+    !irText.Contains("\"Kind\": \"Parameter\"", StringComparison.Ordinal) ||
+    !irText.Contains("\"ProviderKind\": \"CXCursor_ParmDecl\"", StringComparison.Ordinal) ||
     !irText.Contains("cppslSemanticModel", StringComparison.Ordinal) ||
+    !irText.Contains("cppslIr", StringComparison.Ordinal) ||
+    !irText.Contains("\"Schema\": \"cppsl.ir\"", StringComparison.Ordinal) ||
+    !irText.Contains("\"Version\": 0", StringComparison.Ordinal) ||
     !irText.Contains("constant_buffer", StringComparison.Ordinal) ||
     !irText.Contains("\"IsEntryPoint\": true", StringComparison.Ordinal) ||
     !irText.Contains("\"Name\": \"set\"", StringComparison.Ordinal) ||
@@ -63,7 +74,9 @@ if (!irText.Contains("main_vs", StringComparison.Ordinal) ||
     Console.Error.WriteLine("error: expected frontend AST facts were not written to the IR placeholder.");
     return 1;
 }
-if (!reflectionText.Contains("\"EntryPoint\": \"main_vs\"", StringComparison.Ordinal) ||
+if (!reflectionText.Contains("\"Schema\": \"cppsl.reflection\"", StringComparison.Ordinal) ||
+    !reflectionText.Contains("\"Version\": 0", StringComparison.Ordinal) ||
+    !reflectionText.Contains("\"EntryPoint\": \"main_vs\"", StringComparison.Ordinal) ||
     !reflectionText.Contains("\"Descriptors\"", StringComparison.Ordinal) ||
     !reflectionText.Contains("\"Name\": \"camera\"", StringComparison.Ordinal) ||
     !reflectionText.Contains("\"ResourceKind\": \"constant_buffer\"", StringComparison.Ordinal) ||
@@ -89,107 +102,58 @@ if (!Regex.IsMatch(irText, "\"Name\": \"input\".*?\"Attributes\": \\[\\s*\\]", R
     return 1;
 }
 
-var stdRoot = Path.Combine(repoRoot, "Tools", "CPPSL", "std");
-if (!ExpectFailure(
-        compiler,
-        outputDir,
-        stdRoot,
-        "BadInclude.cxx",
-        "#include <Luna/RHI/RHI.hpp>\n",
-        "main",
-        ShaderStage.Vertex,
-        "bad include"))
+var textureResult = compiler.Compile(new CppslCompileOptions(
+    textureBasicShader,
+    Path.Combine(outputDir, "texture-basic"),
+    new[] { stdRoot },
+    "main_ps",
+    ShaderStage.Fragment,
+    new[] { CppslOutputTarget.Reflection }));
+
+if (!textureResult.Succeeded || textureResult.Artifacts is null)
 {
+    Console.Error.WriteLine("error: expected texture_basic fixture to compile.");
+    foreach (var diagnostic in textureResult.Diagnostics)
+    {
+        Console.Error.WriteLine(diagnostic.ToDisplayString());
+    }
     return 1;
 }
 
-if (!ExpectFailure(
-        compiler,
-        outputDir,
-        stdRoot,
-        "StageMismatch.cxx",
-        """
-        #include <cppsl/core.hxx>
-
-        using namespace cppsl;
-
-        [[cppsl::compute]]
-        void main_vs()
-        {
-        }
-        """,
-        "main_vs",
-        ShaderStage.Vertex,
-        "stage mismatch"))
+var textureReflectionText = File.ReadAllText(textureResult.Artifacts.GetOutputPath(CppslOutputTarget.Reflection));
+if (!textureReflectionText.Contains("\"Name\": \"color_texture\"", StringComparison.Ordinal) ||
+    !textureReflectionText.Contains("\"ResourceKind\": \"texture\"", StringComparison.Ordinal) ||
+    !textureReflectionText.Contains("\"Name\": \"linear_sampler\"", StringComparison.Ordinal) ||
+    !textureReflectionText.Contains("\"ResourceKind\": \"sampler\"", StringComparison.Ordinal))
 {
+    Console.Error.WriteLine("error: expected texture_basic reflection resources were not written.");
     return 1;
 }
 
-if (!ExpectFailure(
-        compiler,
-        outputDir,
-        stdRoot,
-        "MissingBinding.cxx",
-        """
-        #include <cppsl/core.hxx>
-        #include <cppsl/resource.hxx>
-
-        using namespace cppsl;
-
-        struct Camera
-        {
-            float4x4 world_to_proj;
-        };
-
-        [[cppsl::set(0)]]
-        ConstantBuffer<Camera> camera;
-
-        [[cppsl::vertex]]
-        void main_vs()
-        {
-        }
-        """,
-        "main_vs",
-        ShaderStage.Vertex,
-        "missing resource binding"))
+var invalidFixtures = new[]
 {
-    return 1;
-}
+    new InvalidFixture("forbidden_include", "ForbiddenInclude.cxx", "main", ShaderStage.Vertex, "include"),
+    new InvalidFixture("stage_mismatch", "StageMismatch.cxx", "main_vs", ShaderStage.Vertex, "declares `compute`"),
+    new InvalidFixture("missing_binding", "MissingBinding.cxx", "main_vs", ShaderStage.Vertex, "binding"),
+    new InvalidFixture("duplicate_location", "DuplicateLocation.cxx", "main_vs", ShaderStage.Vertex, "duplicate location"),
+    new InvalidFixture("unknown_attribute", "UnknownAttribute.cxx", "main_vs", ShaderStage.Vertex, "unknown CPPSL attribute"),
+    new InvalidFixture("duplicate_binding", "DuplicateBinding.cxx", "main_vs", ShaderStage.Vertex, "duplicate resource binding"),
+    new InvalidFixture("invalid_attribute_target", "InvalidAttributeTarget.cxx", "main_vs", ShaderStage.Vertex, "cannot be used on field")
+};
 
-if (!ExpectFailure(
-        compiler,
-        outputDir,
-        stdRoot,
-        "DuplicateLocation.cxx",
-        """
-        #include <cppsl/core.hxx>
-        #include <cppsl/math.hxx>
-
-        using namespace cppsl;
-
-        struct VSInput
-        {
-            [[cppsl::location(0)]] float3 position;
-            [[cppsl::location(0)]] float2 texcoord;
-        };
-
-        [[cppsl::vertex]]
-        void main_vs(VSInput input)
-        {
-        }
-        """,
-        "main_vs",
-        ShaderStage.Vertex,
-        "duplicate struct location"))
+foreach (var fixture in invalidFixtures)
 {
-    return 1;
+    if (!ExpectFixtureFailure(compiler, fixturesRoot, outputDir, stdRoot, fixture))
+    {
+        return 1;
+    }
 }
 
 var reflectionOnlyDir = Path.Combine(outputDir, "reflection-only");
 var reflectionOnlyResult = compiler.Compile(new CppslCompileOptions(
-    Path.Combine(repoRoot, "Tools", "CPPSL", "samples", "Box.cxx"),
+    boxShader,
     reflectionOnlyDir,
-    new[] { Path.Combine(repoRoot, "Tools", "CPPSL", "std") },
+    new[] { stdRoot },
     "main_vs",
     ShaderStage.Vertex,
     new[] { CppslOutputTarget.Reflection }));
@@ -209,32 +173,35 @@ if (!reflectionOnlyResult.Succeeded ||
 Console.WriteLine("CPPSL smoke tests passed.");
 return 0;
 
-static bool ExpectFailure(
+static bool ExpectFixtureFailure(
     CppslCompiler compiler,
+    string fixturesRoot,
     string outputDir,
     string stdRoot,
-    string fileName,
-    string source,
-    string entryPoint,
-    ShaderStage stage,
-    string caseName)
+    InvalidFixture fixture)
 {
-    var badCaseDir = Path.Combine(outputDir, "bad");
-    Directory.CreateDirectory(badCaseDir);
-    var shaderPath = Path.Combine(badCaseDir, fileName);
-    File.WriteAllText(shaderPath, source);
-
+    var shaderPath = Path.Combine(fixturesRoot, "invalid", fixture.Directory, fixture.FileName);
     var result = compiler.Compile(new CppslCompileOptions(
         shaderPath,
-        Path.Combine(outputDir, "bad-out", Path.GetFileNameWithoutExtension(fileName)),
+        Path.Combine(outputDir, "invalid", fixture.Directory),
         new[] { stdRoot },
-        entryPoint,
-        stage));
+        fixture.EntryPoint,
+        fixture.Stage));
 
     if (result.Succeeded ||
         !result.Diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error))
     {
-        Console.Error.WriteLine($"error: expected {caseName} to fail CPPSL validation.");
+        Console.Error.WriteLine($"error: expected fixture `{fixture.Directory}` to fail CPPSL validation.");
+        return false;
+    }
+
+    if (!result.Diagnostics.Any(d => d.Message.Contains(fixture.ExpectedDiagnosticFragment, StringComparison.OrdinalIgnoreCase)))
+    {
+        Console.Error.WriteLine($"error: fixture `{fixture.Directory}` did not report expected diagnostic fragment `{fixture.ExpectedDiagnosticFragment}`.");
+        foreach (var diagnostic in result.Diagnostics)
+        {
+            Console.Error.WriteLine(diagnostic.ToDisplayString());
+        }
         return false;
     }
 
@@ -255,3 +222,10 @@ static string FindRepoRoot(string start)
     }
     throw new InvalidOperationException("Could not find LunaSDK repository root.");
 }
+
+internal sealed record InvalidFixture(
+    string Directory,
+    string FileName,
+    string EntryPoint,
+    ShaderStage Stage,
+    string ExpectedDiagnosticFragment);

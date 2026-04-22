@@ -6,6 +6,7 @@ namespace CPPSL.Core.Frontend;
 public sealed class ClangSharpFrontend : ICppslFrontend
 {
     public const string ProviderName = "ClangSharp";
+    public const int ModelVersion = 0;
 
     public CppslFrontendResult Parse(CppslFrontendOptions options)
     {
@@ -45,7 +46,7 @@ public sealed class ClangSharpFrontend : ICppslFrontend
         }
 
         var succeeded = !diagnostics.Any(static d => d.Severity == DiagnosticSeverity.Error);
-        return new CppslFrontendResult(succeeded, ProviderName, diagnostics, declarations, astNodes);
+        return new CppslFrontendResult(succeeded, ProviderName, ModelVersion, diagnostics, declarations, astNodes);
     }
 
     private static string[] BuildCommandLineArgs(IReadOnlyList<string> includeRoots)
@@ -101,11 +102,10 @@ public sealed class ClangSharpFrontend : ICppslFrontend
 
             declarations.Add(new CppslDeclaration(
                 node.Kind,
+                node.ProviderKind,
                 node.Spelling,
                 node.DisplayName,
-                node.File,
-                node.Line,
-                node.Column));
+                node.Location));
         }
     }
 
@@ -137,17 +137,18 @@ public sealed class ClangSharpFrontend : ICppslFrontend
             return CXChildVisitResult.CXChildVisit_Continue;
         }, default);
 
-        cursor.Location.GetSpellingLocation(out var file, out var line, out var column, out _);
-        var fileName = file.ToString();
+        var location = GetSourceLocation(cursor.Location);
+        var rangeStart = GetSourceLocation(cursor.Extent.Start);
+        var rangeEnd = GetSourceLocation(cursor.Extent.End);
         return new CppslAstNode(
+            MapKind(cursor.kind),
             cursor.kind.ToString(),
             cursor.Spelling.ToString(),
             cursor.DisplayName.ToString(),
             GetTypeSpelling(cursor),
             GetResultTypeSpelling(cursor),
-            string.IsNullOrEmpty(fileName) ? null : fileName,
-            checked((int)line),
-            checked((int)column),
+            location,
+            new CppslSourceRange(rangeStart, rangeEnd),
             CollectAttributes(cursor),
             children);
     }
@@ -176,17 +177,17 @@ public sealed class ClangSharpFrontend : ICppslFrontend
         return attributes;
     }
 
-    private static bool IsInterestingDeclaration(string kind)
+    private static bool IsInterestingDeclaration(CppslAstNodeKind kind)
     {
         return kind is
-            "CXCursor_Namespace" or
-            "CXCursor_StructDecl" or
-            "CXCursor_ClassDecl" or
-            "CXCursor_EnumDecl" or
-            "CXCursor_FunctionDecl" or
-            "CXCursor_FunctionTemplate" or
-            "CXCursor_ClassTemplate" or
-            "CXCursor_VarDecl";
+            CppslAstNodeKind.Namespace or
+            CppslAstNodeKind.Struct or
+            CppslAstNodeKind.Class or
+            CppslAstNodeKind.Enum or
+            CppslAstNodeKind.Function or
+            CppslAstNodeKind.FunctionTemplate or
+            CppslAstNodeKind.ClassTemplate or
+            CppslAstNodeKind.GlobalVariable;
     }
 
     private static bool ShouldRecordNode(CXCursorKind kind)
@@ -204,6 +205,37 @@ public sealed class ClangSharpFrontend : ICppslFrontend
             CXCursorKind.CXCursor_ParmDecl or
             CXCursorKind.CXCursor_Constructor or
             CXCursorKind.CXCursor_CXXMethod;
+    }
+
+    private static CppslAstNodeKind MapKind(CXCursorKind kind)
+    {
+        return kind switch
+        {
+            CXCursorKind.CXCursor_Namespace => CppslAstNodeKind.Namespace,
+            CXCursorKind.CXCursor_StructDecl => CppslAstNodeKind.Struct,
+            CXCursorKind.CXCursor_ClassDecl => CppslAstNodeKind.Class,
+            CXCursorKind.CXCursor_EnumDecl => CppslAstNodeKind.Enum,
+            CXCursorKind.CXCursor_FieldDecl => CppslAstNodeKind.Field,
+            CXCursorKind.CXCursor_FunctionDecl => CppslAstNodeKind.Function,
+            CXCursorKind.CXCursor_FunctionTemplate => CppslAstNodeKind.FunctionTemplate,
+            CXCursorKind.CXCursor_ClassTemplate => CppslAstNodeKind.ClassTemplate,
+            CXCursorKind.CXCursor_VarDecl => CppslAstNodeKind.GlobalVariable,
+            CXCursorKind.CXCursor_ParmDecl => CppslAstNodeKind.Parameter,
+            CXCursorKind.CXCursor_Constructor => CppslAstNodeKind.Constructor,
+            CXCursorKind.CXCursor_CXXMethod => CppslAstNodeKind.Method,
+            _ => CppslAstNodeKind.Unknown
+        };
+    }
+
+    private static CppslSourceLocation? GetSourceLocation(CXSourceLocation sourceLocation)
+    {
+        sourceLocation.GetSpellingLocation(out var file, out var line, out var column, out _);
+        var fileName = file.ToString();
+        if (string.IsNullOrEmpty(fileName))
+        {
+            return null;
+        }
+        return new CppslSourceLocation(fileName, checked((int)line), checked((int)column));
     }
 
     private static string? GetTypeSpelling(CXCursor cursor)
