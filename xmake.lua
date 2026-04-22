@@ -192,6 +192,7 @@ end
 
 includes("Modules")
 includes("Programs")
+includes("Tools/CPPSL/native")
 
 if has_config("build_tests") then
     includes("Tests")

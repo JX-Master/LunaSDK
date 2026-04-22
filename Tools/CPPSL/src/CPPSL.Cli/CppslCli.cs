@@ -1,5 +1,6 @@
 using CPPSL.Core.Compiler;
 using CPPSL.Core.Diagnostics;
+using CPPSL.Core.Frontend;
 using CPPSL.Core.IR;
 using CPPSL.Core.Artifacts;
 
@@ -28,7 +29,7 @@ public static class CppslCli
             return 2;
         }
 
-        var compiler = new CppslCompiler();
+        var compiler = new CppslCompiler(CreateFrontend(parsed.FrontendKind, parsed.NativeExtractorPath));
         var result = compiler.Compile(parsed.Options);
         WriteDiagnostics(result.Diagnostics);
         return result.Succeeded ? 0 : 1;
@@ -40,6 +41,8 @@ public static class CppslCli
         string? outputDirectory = null;
         string entryPoint = "main";
         ShaderStage stage = ShaderStage.Vertex;
+        CppslFrontendKind frontendKind = CppslFrontendKind.ClangSharp;
+        string? nativeExtractorPath = null;
         var includeRoots = new List<string>();
         var targets = new List<CppslOutputTarget>();
         var diagnostics = new List<CppslDiagnostic>();
@@ -79,6 +82,16 @@ public static class CppslCli
                         AddTargets(targetValue, targets, diagnostics);
                     }
                     break;
+                case "--frontend":
+                    var frontendValue = ReadValue(args, ref i, "--frontend", diagnostics);
+                    if (frontendValue is not null && !Enum.TryParse(frontendValue, ignoreCase: true, out frontendKind))
+                    {
+                        diagnostics.Add(CppslDiagnostic.Error($"Unknown CPPSL frontend '{frontendValue}'."));
+                    }
+                    break;
+                case "--native-extractor":
+                    nativeExtractorPath = ReadValue(args, ref i, "--native-extractor", diagnostics) ?? nativeExtractorPath;
+                    break;
                 default:
                     if (arg.StartsWith('-'))
                     {
@@ -117,7 +130,32 @@ public static class CppslCli
             stage,
             targets);
 
-        return new ParseResult(options, diagnostics);
+        return new ParseResult(options, diagnostics, frontendKind, nativeExtractorPath);
+    }
+
+    private static ICppslFrontend CreateFrontend(CppslFrontendKind frontendKind, string? nativeExtractorPath)
+    {
+        return frontendKind switch
+        {
+            CppslFrontendKind.ClangSharp => new ClangSharpFrontend(),
+            CppslFrontendKind.Native => new NativeExtractorFrontend(nativeExtractorPath ?? FindDefaultNativeExtractorPath()),
+            _ => new ClangSharpFrontend()
+        };
+    }
+
+    private static string FindDefaultNativeExtractorPath()
+    {
+        var current = new DirectoryInfo(AppContext.BaseDirectory);
+        while (current is not null)
+        {
+            var candidate = Path.Combine(current.FullName, "Tools", "CPPSL", "native", "bin", "cppsl-native-extractor");
+            if (File.Exists(candidate))
+            {
+                return candidate;
+            }
+            current = current.Parent;
+        }
+        return Path.Combine("Tools", "CPPSL", "native", "bin", "cppsl-native-extractor");
     }
 
     private static string? ReadValue(string[] args, ref int index, string option, List<CppslDiagnostic> diagnostics)
@@ -169,7 +207,7 @@ public static class CppslCli
         cppslc - CPPSL compiler prototype
 
         Usage:
-          cppslc compile <shader.cxx> --stage <stage> --entry <name> --include <dir> --out <dir> [--target <target>]
+          cppslc compile <shader.cxx> --stage <stage> --entry <name> --include <dir> --out <dir> [--target <target>] [--frontend <frontend>]
 
         Stages:
           vertex, fragment, pixel, compute, raygen, miss, closesthit, anyhit, intersection, callable
@@ -177,8 +215,15 @@ public static class CppslCli
         Targets:
           hlsl, glsl, msl, reflection. Pass --target multiple times or use comma-separated values.
           If omitted, all targets are emitted from one frontend parse.
+
+        Frontends:
+          clangsharp, native. Use --native-extractor <path> to override the native extractor executable.
         """);
     }
 
-    private sealed record ParseResult(CppslCompileOptions Options, List<CppslDiagnostic> Diagnostics);
+    private sealed record ParseResult(
+        CppslCompileOptions Options,
+        List<CppslDiagnostic> Diagnostics,
+        CppslFrontendKind FrontendKind,
+        string? NativeExtractorPath);
 }

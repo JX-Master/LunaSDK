@@ -26,13 +26,17 @@ The current macOS arm64 prototype uses these NuGet packages:
 - `libclang.runtime.osx-arm64`
 - `libClangSharp.runtime.osx-arm64`
 
-Native Clang extraction is intentionally deferred until ClangSharp proves
-insufficient for a concrete semantic requirement.
+The phase 0 frontend still defaults to ClangSharp, and the first native Clang
+extractor is available as an alternate frontend for cases where ClangSharp does
+not expose enough semantic AST detail.
 
 The compiler pipeline depends on `ICppslFrontend`, not directly on
 `ClangSharpFrontend`. This keeps the current phase 0 implementation fast while
 leaving room for a later native Clang extractor to emit the same CPPSL frontend
 model.
+
+An initial native extractor lives in `Tools/CPPSL/native`. It runs as a separate
+process and emits the same frontend JSON contract as the ClangSharp frontend.
 
 Open `CPPSL.sln` in Rider or Visual Studio to inspect the tool projects.
 
@@ -64,5 +68,5 @@ dotnet run --project Tools/CPPSL/tests/CPPSL.SmokeTests
 
 Smoke fixtures live under `Tools/CPPSL/tests/fixtures`. They currently cover
 box-style vertex IO, texture/sampler reflection, and invalid language cases.
-They are intentionally file-based so ClangSharp and a future native extractor
-can run the same language contract tests.
+They are intentionally file-based so ClangSharp and the native extractor can run
+the same language contract tests.

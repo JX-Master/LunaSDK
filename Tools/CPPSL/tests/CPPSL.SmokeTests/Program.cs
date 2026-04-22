@@ -170,6 +170,38 @@ if (!reflectionOnlyResult.Succeeded ||
     return 1;
 }
 
+var nativeExtractorPath = Path.Combine(repoRoot, "Tools", "CPPSL", "native", "bin", "cppsl-native-extractor");
+if (File.Exists(nativeExtractorPath))
+{
+    var nativeCompiler = new CppslCompiler(new CPPSL.Core.Frontend.NativeExtractorFrontend(nativeExtractorPath));
+    var nativeResult = nativeCompiler.Compile(new CppslCompileOptions(
+        boxShader,
+        Path.Combine(outputDir, "native-box"),
+        new[] { stdRoot },
+        "main_vs",
+        ShaderStage.Vertex,
+        new[] { CppslOutputTarget.Reflection }));
+
+    if (!nativeResult.Succeeded || nativeResult.Artifacts is null)
+    {
+        Console.Error.WriteLine("error: expected native extractor frontend to compile box fixture.");
+        foreach (var diagnostic in nativeResult.Diagnostics)
+        {
+            Console.Error.WriteLine(diagnostic.ToDisplayString());
+        }
+        return 1;
+    }
+
+    var nativeIrText = File.ReadAllText(nativeResult.Artifacts.IrPath);
+    if (!nativeIrText.Contains("\"frontendProvider\": \"Native\"", StringComparison.Ordinal) ||
+        !nativeIrText.Contains("\"Kind\": \"Parameter\"", StringComparison.Ordinal) ||
+        nativeIrText.Contains("\"Spelling\": \"output\"", StringComparison.Ordinal))
+    {
+        Console.Error.WriteLine("error: native extractor frontend did not emit the expected declaration-level frontend model.");
+        return 1;
+    }
+}
+
 Console.WriteLine("CPPSL smoke tests passed.");
 return 0;
 
