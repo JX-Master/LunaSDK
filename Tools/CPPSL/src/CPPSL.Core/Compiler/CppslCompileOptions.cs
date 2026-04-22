@@ -1,3 +1,4 @@
+using CPPSL.Core.Artifacts;
 using CPPSL.Core.IR;
 
 namespace CPPSL.Core.Compiler;
@@ -7,4 +8,5 @@ public sealed record CppslCompileOptions(
     string OutputDirectory,
     IReadOnlyList<string> IncludeRoots,
     string EntryPoint,
-    ShaderStage Stage);
+    ShaderStage Stage,
+    IReadOnlyList<CppslOutputTarget>? Targets = null);

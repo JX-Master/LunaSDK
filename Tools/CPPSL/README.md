@@ -12,8 +12,8 @@ Current scope:
 - Extract a first CPPSL semantic model from source-level attributes.
 - Validate entry point stage attributes, resource `set` / `binding` metadata,
   and duplicate struct locations.
-- Emit placeholder IR plus early reflection data for descriptors, entry point
-  parameters, stage inputs, and stage outputs.
+- Emit placeholder IR plus multiple output targets from a single frontend parse.
+- Treat HLSL, GLSL, MSL, and reflection as peer output targets.
 
 The current macOS arm64 prototype uses these NuGet packages:
 
@@ -45,8 +45,11 @@ dotnet run --project Tools/CPPSL/src/CPPSL.Cli -- \
   --stage vertex \
   --entry main_vs \
   --include Tools/CPPSL/std \
-  --out build/cppsl/Box
+  --out build/cppsl/Box \
+  --target hlsl,glsl,msl,reflection
 ```
+
+If `--target` is omitted, all targets are emitted.
 
 Run smoke tests:
 

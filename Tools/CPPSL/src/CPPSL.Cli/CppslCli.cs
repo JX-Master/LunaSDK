@@ -1,6 +1,7 @@
 using CPPSL.Core.Compiler;
 using CPPSL.Core.Diagnostics;
 using CPPSL.Core.IR;
+using CPPSL.Core.Artifacts;
 
 namespace CPPSL.Cli;
 
@@ -40,6 +41,7 @@ public static class CppslCli
         string entryPoint = "main";
         ShaderStage stage = ShaderStage.Vertex;
         var includeRoots = new List<string>();
+        var targets = new List<CppslOutputTarget>();
         var diagnostics = new List<CppslDiagnostic>();
 
         for (var i = 0; i < args.Length; ++i)
@@ -68,6 +70,14 @@ public static class CppslCli
                 case "--out":
                 case "-o":
                     outputDirectory = ReadValue(args, ref i, arg, diagnostics);
+                    break;
+                case "--target":
+                case "-t":
+                    var targetValue = ReadValue(args, ref i, arg, diagnostics);
+                    if (targetValue is not null)
+                    {
+                        AddTargets(targetValue, targets, diagnostics);
+                    }
                     break;
                 default:
                     if (arg.StartsWith('-'))
@@ -104,7 +114,8 @@ public static class CppslCli
             outputDirectory ?? string.Empty,
             includeRoots,
             entryPoint,
-            stage);
+            stage,
+            targets);
 
         return new ParseResult(options, diagnostics);
     }
@@ -117,6 +128,31 @@ public static class CppslCli
             return null;
         }
         return args[++index];
+    }
+
+    private static void AddTargets(string value, List<CppslOutputTarget> targets, List<CppslDiagnostic> diagnostics)
+    {
+        foreach (var part in value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            if (TryParseTarget(part, out var target))
+            {
+                targets.Add(target);
+            }
+            else
+            {
+                diagnostics.Add(CppslDiagnostic.Error($"Unknown output target '{part}'."));
+            }
+        }
+    }
+
+    private static bool TryParseTarget(string value, out CppslOutputTarget target)
+    {
+        if (value.Equals("reflect", StringComparison.OrdinalIgnoreCase))
+        {
+            target = CppslOutputTarget.Reflection;
+            return true;
+        }
+        return Enum.TryParse(value, ignoreCase: true, out target);
     }
 
     private static void WriteDiagnostics(IEnumerable<CppslDiagnostic> diagnostics)
@@ -133,10 +169,14 @@ public static class CppslCli
         cppslc - CPPSL compiler prototype
 
         Usage:
-          cppslc compile <shader.cxx> --stage <stage> --entry <name> --include <dir> --out <dir>
+          cppslc compile <shader.cxx> --stage <stage> --entry <name> --include <dir> --out <dir> [--target <target>]
 
         Stages:
           vertex, fragment, pixel, compute, raygen, miss, closesthit, anyhit, intersection, callable
+
+        Targets:
+          hlsl, glsl, msl, reflection. Pass --target multiple times or use comma-separated values.
+          If omitted, all targets are emitted from one frontend parse.
         """);
     }
 

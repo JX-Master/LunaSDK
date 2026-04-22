@@ -1,3 +1,4 @@
+using CPPSL.Core.Artifacts;
 using CPPSL.Core.Compiler;
 using CPPSL.Core.Diagnostics;
 using CPPSL.Core.IR;
@@ -26,20 +27,21 @@ if (!result.Succeeded)
 
 if (result.Artifacts is null ||
     !File.Exists(result.Artifacts.IrPath) ||
-    !File.Exists(result.Artifacts.ReflectionPath) ||
-    !File.Exists(result.Artifacts.HlslPath) ||
-    !File.Exists(result.Artifacts.GlslPath) ||
-    !File.Exists(result.Artifacts.MslPath))
+    !File.Exists(result.Artifacts.GetOutputPath(CppslOutputTarget.Reflection)) ||
+    !File.Exists(result.Artifacts.GetOutputPath(CppslOutputTarget.Hlsl)) ||
+    !File.Exists(result.Artifacts.GetOutputPath(CppslOutputTarget.Glsl)) ||
+    !File.Exists(result.Artifacts.GetOutputPath(CppslOutputTarget.Msl)))
 {
     Console.Error.WriteLine("error: expected CPPSL smoke artifacts were not generated.");
     return 1;
 }
 
 var irText = File.ReadAllText(result.Artifacts.IrPath);
-var reflectionText = File.ReadAllText(result.Artifacts.ReflectionPath);
+var reflectionText = File.ReadAllText(result.Artifacts.GetOutputPath(CppslOutputTarget.Reflection));
 if (!irText.Contains("main_vs", StringComparison.Ordinal) ||
     !irText.Contains("\"frontendProvider\": \"ClangSharp\"", StringComparison.Ordinal) ||
     !irText.Contains("\"frontendAst\"", StringComparison.Ordinal) ||
+    !irText.Contains("\"outputTargets\"", StringComparison.Ordinal) ||
     !irText.Contains("CXCursor_FunctionDecl", StringComparison.Ordinal) ||
     !irText.Contains("CXCursor_FieldDecl", StringComparison.Ordinal) ||
     !irText.Contains("world_to_proj", StringComparison.Ordinal) ||
@@ -180,6 +182,27 @@ if (!ExpectFailure(
         ShaderStage.Vertex,
         "duplicate struct location"))
 {
+    return 1;
+}
+
+var reflectionOnlyDir = Path.Combine(outputDir, "reflection-only");
+var reflectionOnlyResult = compiler.Compile(new CppslCompileOptions(
+    Path.Combine(repoRoot, "Tools", "CPPSL", "samples", "Box.cxx"),
+    reflectionOnlyDir,
+    new[] { Path.Combine(repoRoot, "Tools", "CPPSL", "std") },
+    "main_vs",
+    ShaderStage.Vertex,
+    new[] { CppslOutputTarget.Reflection }));
+
+if (!reflectionOnlyResult.Succeeded ||
+    reflectionOnlyResult.Artifacts is null ||
+    !File.Exists(reflectionOnlyResult.Artifacts.IrPath) ||
+    !File.Exists(reflectionOnlyResult.Artifacts.GetOutputPath(CppslOutputTarget.Reflection)) ||
+    reflectionOnlyResult.Artifacts.Outputs.ContainsKey(CppslOutputTarget.Hlsl) ||
+    reflectionOnlyResult.Artifacts.Outputs.ContainsKey(CppslOutputTarget.Glsl) ||
+    reflectionOnlyResult.Artifacts.Outputs.ContainsKey(CppslOutputTarget.Msl))
+{
+    Console.Error.WriteLine("error: expected CPPSL reflection-only target emission to work.");
     return 1;
 }
 
