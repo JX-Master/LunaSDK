@@ -131,14 +131,22 @@ if (!hlslText.Contains("struct VSInput", StringComparison.Ordinal) ||
     !hlslText.Contains("float4 position : SV_Position", StringComparison.Ordinal) ||
     !hlslText.Contains("ConstantBuffer<Camera> camera : register(b0, space0);", StringComparison.Ordinal) ||
     !hlslText.Contains("VSOutput main_vs(VSInput input)", StringComparison.Ordinal) ||
+    !hlslText.Contains("output.position = mul(camera.world_to_proj, float4(input.position.x, input.position.y, input.position.z, 1.0f));", StringComparison.Ordinal) ||
+    !hlslText.Contains("output.texcoord = input.texcoord;", StringComparison.Ordinal) ||
+    !hlslText.Contains("return output;", StringComparison.Ordinal) ||
     !glslText.Contains("#version 450", StringComparison.Ordinal) ||
     !glslText.Contains("mat4 world_to_proj", StringComparison.Ordinal) ||
     !glslText.Contains("layout(set = 0, binding = 0) uniform camera_Block", StringComparison.Ordinal) ||
-    !glslText.Contains("return VSOutput(vec4(0.0), vec2(0.0));", StringComparison.Ordinal) ||
+    !glslText.Contains("output.position = (camera.world_to_proj * vec4(input.position.x, input.position.y, input.position.z, 1.0));", StringComparison.Ordinal) ||
+    !glslText.Contains("void main()", StringComparison.Ordinal) ||
+    !glslText.Contains("gl_Position = cppsl_output.position;", StringComparison.Ordinal) ||
     !mslText.Contains("#include <metal_stdlib>", StringComparison.Ordinal) ||
+    !mslText.Contains("float3 position [[attribute(0)]]", StringComparison.Ordinal) ||
     !mslText.Contains("float4 position [[position]]", StringComparison.Ordinal) ||
     !mslText.Contains("constant Camera& camera [[buffer(0)]]", StringComparison.Ordinal) ||
-    !mslText.Contains("vertex VSOutput main_vs", StringComparison.Ordinal))
+    !mslText.Contains("vertex VSOutput main_vs", StringComparison.Ordinal) ||
+    !mslText.Contains("output.position = (camera.world_to_proj * float4(input.position.x, input.position.y, input.position.z, 1.0f));", StringComparison.Ordinal) ||
+    !mslText.Contains("return output;", StringComparison.Ordinal))
 {
     Console.Error.WriteLine("error: expected CPPSL shader source targets were not emitted.");
     return 1;

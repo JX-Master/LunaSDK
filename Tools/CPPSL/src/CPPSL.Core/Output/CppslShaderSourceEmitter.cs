@@ -1,53 +1,59 @@
 using System.Text;
 using CPPSL.Core.Artifacts;
 using CPPSL.Core.Compiler;
+using CPPSL.Core.IR;
 using CPPSL.Core.Semantics;
 
 namespace CPPSL.Core.Output;
 
 public sealed class CppslShaderSourceEmitter
 {
-    public string Emit(CppslOutputTarget target, CppslCompileOptions options, CppslSemanticModel model)
+    public string Emit(CppslOutputTarget target, CppslCompileOptions options, CppslSemanticModel model, CppslIrModule irModule)
     {
         return target switch
         {
-            CppslOutputTarget.Hlsl => EmitHlsl(options, model),
-            CppslOutputTarget.Glsl => EmitGlsl(options, model),
-            CppslOutputTarget.Msl => EmitMsl(options, model),
+            CppslOutputTarget.Hlsl => EmitHlsl(options, model, irModule),
+            CppslOutputTarget.Glsl => EmitGlsl(options, model, irModule),
+            CppslOutputTarget.Msl => EmitMsl(options, model, irModule),
             _ => throw new ArgumentOutOfRangeException(nameof(target), target, null)
         };
     }
 
-    private static string EmitHlsl(CppslCompileOptions options, CppslSemanticModel model)
+    private static string EmitHlsl(CppslCompileOptions options, CppslSemanticModel model, CppslIrModule irModule)
     {
         var builder = new StringBuilder();
         WriteHeader(builder, "HLSL", options);
-        WriteStructs(builder, model, TargetSyntax.Hlsl);
+        var entryPoint = FindEntryPoint(options, model);
+        WriteStructs(builder, model, TargetSyntax.Hlsl, entryPoint);
         WriteHlslResources(builder, model);
-        WriteEntryPoint(builder, options, model, TargetSyntax.Hlsl);
+        WriteEntryPoint(builder, options, model, irModule, TargetSyntax.Hlsl);
         return builder.ToString();
     }
 
-    private static string EmitGlsl(CppslCompileOptions options, CppslSemanticModel model)
+    private static string EmitGlsl(CppslCompileOptions options, CppslSemanticModel model, CppslIrModule irModule)
     {
         var builder = new StringBuilder();
         builder.AppendLine("#version 450");
         WriteHeader(builder, "GLSL", options);
-        WriteStructs(builder, model, TargetSyntax.Glsl);
+        var entryPoint = FindEntryPoint(options, model);
+        WriteStructs(builder, model, TargetSyntax.Glsl, entryPoint);
         WriteGlslResources(builder, model);
-        WriteEntryPoint(builder, options, model, TargetSyntax.Glsl);
+        WriteGlslStageIo(builder, entryPoint, model);
+        WriteEntryPoint(builder, options, model, irModule, TargetSyntax.Glsl);
+        WriteGlslMain(builder, entryPoint, model);
         return builder.ToString();
     }
 
-    private static string EmitMsl(CppslCompileOptions options, CppslSemanticModel model)
+    private static string EmitMsl(CppslCompileOptions options, CppslSemanticModel model, CppslIrModule irModule)
     {
         var builder = new StringBuilder();
         builder.AppendLine("#include <metal_stdlib>");
         builder.AppendLine("using namespace metal;");
         builder.AppendLine();
         WriteHeader(builder, "MSL", options);
-        WriteStructs(builder, model, TargetSyntax.Msl);
-        WriteEntryPoint(builder, options, model, TargetSyntax.Msl);
+        var entryPoint = FindEntryPoint(options, model);
+        WriteStructs(builder, model, TargetSyntax.Msl, entryPoint);
+        WriteEntryPoint(builder, options, model, irModule, TargetSyntax.Msl);
         return builder.ToString();
     }
 
@@ -57,12 +63,19 @@ public sealed class CppslShaderSourceEmitter
         builder.AppendLine($"// Target: {targetName}");
         builder.AppendLine($"// Entry: {options.EntryPoint}");
         builder.AppendLine($"// Stage: {options.Stage}");
-        builder.AppendLine("// Function body lowering is pending; entry bodies return default values.");
+        builder.AppendLine("// Function body was lowered from CPPSL IR phase 0.");
         builder.AppendLine();
     }
 
-    private static void WriteStructs(StringBuilder builder, CppslSemanticModel model, TargetSyntax syntax)
+    private static void WriteStructs(
+        StringBuilder builder,
+        CppslSemanticModel model,
+        TargetSyntax syntax,
+        CppslFunction? entryPoint)
     {
+        var inputStructNames = entryPoint?.Parameters.Select(static parameter => parameter.Type).ToHashSet(StringComparer.Ordinal) ??
+            new HashSet<string>(StringComparer.Ordinal);
+        var outputStructName = entryPoint?.ReturnType;
         foreach (var structure in model.Structs)
         {
             builder.AppendLine($"struct {structure.Name}");
@@ -70,7 +83,10 @@ public sealed class CppslShaderSourceEmitter
             foreach (var field in structure.Fields)
             {
                 var type = MapValueType(field.Type, syntax);
-                var semantic = FieldSemantic(field, syntax);
+                var role = structure.Name == outputStructName
+                    ? StructRole.StageOutput
+                    : inputStructNames.Contains(structure.Name) ? StructRole.StageInput : StructRole.Plain;
+                var semantic = FieldSemantic(field, syntax, role);
                 builder.Append("    ");
                 builder.Append(type);
                 builder.Append(' ');
@@ -115,10 +131,7 @@ public sealed class CppslShaderSourceEmitter
             switch (global.ResourceKind)
             {
                 case "constant_buffer":
-                    builder.AppendLine($"{layout} uniform {global.Name}_Block");
-                    builder.AppendLine("{");
-                    builder.AppendLine($"    {MapValueType(UnwrapTemplateArgument(global.Type), TargetSyntax.Glsl)} {global.Name};");
-                    builder.AppendLine("};");
+                    WriteGlslConstantBuffer(builder, layout, global, model);
                     break;
                 case "texture":
                     builder.AppendLine($"{layout} uniform texture2D {global.Name};");
@@ -148,14 +161,16 @@ public sealed class CppslShaderSourceEmitter
         StringBuilder builder,
         CppslCompileOptions options,
         CppslSemanticModel model,
+        CppslIrModule irModule,
         TargetSyntax syntax)
     {
-        var entryPoint = model.Functions.FirstOrDefault(function => function.Name == options.EntryPoint);
+        var entryPoint = FindEntryPoint(options, model);
         if (entryPoint is null)
         {
             return;
         }
 
+        var irEntryPoint = irModule.EntryPoints.FirstOrDefault(entry => entry.Name == entryPoint.Name);
         var returnType = MapValueType(entryPoint.ReturnType ?? "void", syntax);
         builder.Append(StagePrefix(options, syntax));
         builder.Append(returnType);
@@ -165,9 +180,243 @@ public sealed class CppslShaderSourceEmitter
         builder.Append(string.Join(", ", BuildEntryParameters(entryPoint, model, syntax)));
         builder.AppendLine(")");
         builder.AppendLine("{");
-        builder.AppendLine("    // TODO: lower CPPSL IR body.");
-        WriteDefaultReturn(builder, entryPoint.ReturnType ?? "void", model, syntax);
+        if (irEntryPoint?.Body is null)
+        {
+            WriteDefaultReturn(builder, entryPoint.ReturnType ?? "void", model, syntax);
+        }
+        else
+        {
+            WriteStatementChildren(builder, irEntryPoint.Body, model, syntax, 1);
+        }
         builder.AppendLine("}");
+    }
+
+    private static void WriteGlslConstantBuffer(
+        StringBuilder builder,
+        string layout,
+        CppslGlobal global,
+        CppslSemanticModel model)
+    {
+        var elementType = UnwrapTemplateArgument(global.Type);
+        var structure = model.Structs.FirstOrDefault(candidate => candidate.Name == elementType);
+        builder.AppendLine($"{layout} uniform {global.Name}_Block");
+        builder.AppendLine("{");
+        if (structure is null)
+        {
+            builder.AppendLine($"    {MapValueType(elementType, TargetSyntax.Glsl)} value;");
+        }
+        else
+        {
+            foreach (var field in structure.Fields)
+            {
+                builder.AppendLine($"    {MapValueType(field.Type, TargetSyntax.Glsl)} {field.Name};");
+            }
+        }
+        builder.AppendLine($"}} {global.Name};");
+    }
+
+    private static void WriteGlslStageIo(StringBuilder builder, CppslFunction? entryPoint, CppslSemanticModel model)
+    {
+        if (entryPoint is null)
+        {
+            return;
+        }
+
+        foreach (var parameter in entryPoint.Parameters)
+        {
+            var inputStruct = model.Structs.FirstOrDefault(structure => structure.Name == parameter.Type);
+            if (inputStruct is null)
+            {
+                continue;
+            }
+
+            foreach (var field in inputStruct.Fields.Where(static field => field.Location is not null))
+            {
+                builder.AppendLine($"layout(location = {field.Location}) in {MapValueType(field.Type, TargetSyntax.Glsl)} cppsl_in_{field.Name};");
+            }
+        }
+
+        var outputStruct = model.Structs.FirstOrDefault(structure => structure.Name == entryPoint.ReturnType);
+        if (outputStruct is not null)
+        {
+            foreach (var field in outputStruct.Fields.Where(static field => field.Location is not null))
+            {
+                builder.AppendLine($"layout(location = {field.Location}) out {MapValueType(field.Type, TargetSyntax.Glsl)} cppsl_out_{field.Name};");
+            }
+        }
+
+        builder.AppendLine();
+    }
+
+    private static void WriteGlslMain(StringBuilder builder, CppslFunction? entryPoint, CppslSemanticModel model)
+    {
+        if (entryPoint is null)
+        {
+            return;
+        }
+
+        builder.AppendLine();
+        builder.AppendLine("void main()");
+        builder.AppendLine("{");
+        foreach (var parameter in entryPoint.Parameters)
+        {
+            var inputStruct = model.Structs.FirstOrDefault(structure => structure.Name == parameter.Type);
+            if (inputStruct is null)
+            {
+                continue;
+            }
+
+            builder.AppendLine($"    {parameter.Type} {parameter.Name};");
+            foreach (var field in inputStruct.Fields.Where(static field => field.Location is not null))
+            {
+                builder.AppendLine($"    {parameter.Name}.{field.Name} = cppsl_in_{field.Name};");
+            }
+        }
+
+        if (entryPoint.ReturnType is not null && entryPoint.ReturnType != "void")
+        {
+            builder.AppendLine($"    {entryPoint.ReturnType} cppsl_output = {entryPoint.Name}({string.Join(", ", entryPoint.Parameters.Select(static parameter => parameter.Name))});");
+            var outputStruct = model.Structs.FirstOrDefault(structure => structure.Name == entryPoint.ReturnType);
+            if (outputStruct is not null)
+            {
+                foreach (var field in outputStruct.Fields)
+                {
+                    if (field.IsPosition)
+                    {
+                        builder.AppendLine($"    gl_Position = cppsl_output.{field.Name};");
+                    }
+                    else if (field.Location is not null)
+                    {
+                        builder.AppendLine($"    cppsl_out_{field.Name} = cppsl_output.{field.Name};");
+                    }
+                }
+            }
+        }
+        else
+        {
+            builder.AppendLine($"    {entryPoint.Name}({string.Join(", ", entryPoint.Parameters.Select(static parameter => parameter.Name))});");
+        }
+
+        builder.AppendLine("}");
+    }
+
+    private static void WriteStatementChildren(
+        StringBuilder builder,
+        CppslIrNode node,
+        CppslSemanticModel model,
+        TargetSyntax syntax,
+        int indent)
+    {
+        foreach (var child in node.Children)
+        {
+            WriteStatement(builder, child, model, syntax, indent);
+        }
+    }
+
+    private static void WriteStatement(
+        StringBuilder builder,
+        CppslIrNode node,
+        CppslSemanticModel model,
+        TargetSyntax syntax,
+        int indent)
+    {
+        var prefix = new string(' ', indent * 4);
+        switch (node.Kind)
+        {
+            case "DeclarationStatement":
+                foreach (var child in node.Children.Where(static child => child.Kind == "LocalVariable"))
+                {
+                    builder.AppendLine($"{prefix}{MapValueType(child.Type ?? string.Empty, syntax)} {child.Spelling};");
+                }
+                break;
+            case "OperatorCallExpression" when node.DisplayName == "operator=" && node.Children.Count >= 3:
+                builder.AppendLine($"{prefix}{LowerExpression(node.Children[1], model, syntax)} = {LowerExpression(node.Children[2], model, syntax)};");
+                break;
+            case "ReturnStatement" when node.Children.Count != 0:
+                builder.AppendLine($"{prefix}return {LowerExpression(node.Children[^1], model, syntax)};");
+                break;
+            default:
+                if (IsExpressionNode(node))
+                {
+                    builder.AppendLine($"{prefix}{LowerExpression(node, model, syntax)};");
+                }
+                break;
+        }
+    }
+
+    private static string LowerExpression(CppslIrNode node, CppslSemanticModel model, TargetSyntax syntax)
+    {
+        return node.Kind switch
+        {
+            "ImplicitCastExpression" or "ParenExpression" or "ConstructorCallExpression" when node.Children.Count == 1 =>
+                LowerExpression(node.Children[0], model, syntax),
+            "DeclRefExpression" => node.DisplayName ?? node.Spelling,
+            "MemberExpression" when node.Children.Count == 1 =>
+                $"{LowerExpression(node.Children[0], model, syntax)}.{node.DisplayName}",
+            "OperatorCallExpression" when node.DisplayName == "operator->" && node.Children.Count >= 2 =>
+                LowerExpression(node.Children[^1], model, syntax),
+            "OperatorCallExpression" when node.DisplayName is "operator=" && node.Children.Count >= 3 =>
+                $"{LowerExpression(node.Children[1], model, syntax)} = {LowerExpression(node.Children[2], model, syntax)}",
+            "CallExpression" => LowerCallExpression(node, model, syntax),
+            "FunctionalCastExpression" => LowerFunctionalCast(node, model, syntax),
+            "InitializerListExpression" => string.Join(", ", node.Children.Select(child => LowerExpression(child, model, syntax))),
+            "FloatingLiteral" => syntax == TargetSyntax.Glsl ? StripFloatSuffix(node.Spelling) : node.Spelling,
+            "IntegerLiteral" or "BooleanLiteral" or "StringLiteral" => node.Spelling,
+            _ when node.Children.Count == 1 => LowerExpression(node.Children[0], model, syntax),
+            _ => node.Spelling
+        };
+    }
+
+    private static string LowerCallExpression(CppslIrNode node, CppslSemanticModel model, TargetSyntax syntax)
+    {
+        var name = node.DisplayName ?? node.Spelling;
+        var arguments = node.Children
+            .Skip(IsCalleeReference(node.Children.FirstOrDefault(), name) ? 1 : 0)
+            .Select(child => LowerExpression(child, model, syntax))
+            .ToArray();
+
+        if (name == "mul" && arguments.Length == 2)
+        {
+            return syntax == TargetSyntax.Hlsl
+                ? $"mul({arguments[0]}, {arguments[1]})"
+                : $"({arguments[0]} * {arguments[1]})";
+        }
+
+        return $"{name}({string.Join(", ", arguments)})";
+    }
+
+    private static string LowerFunctionalCast(CppslIrNode node, CppslSemanticModel model, TargetSyntax syntax)
+    {
+        var type = MapValueType(node.Type ?? node.TypeInfo?.Spelling ?? node.Spelling, syntax);
+        var argumentList = node.Children.Count == 1 && node.Children[0].Kind == "InitializerListExpression"
+            ? LowerExpression(node.Children[0], model, syntax)
+            : string.Join(", ", node.Children.Select(child => LowerExpression(child, model, syntax)));
+        return $"{type}({argumentList})";
+    }
+
+    private static bool IsCalleeReference(CppslIrNode? node, string calleeName)
+    {
+        if (node is null)
+        {
+            return false;
+        }
+
+        if (node.Kind == "DeclRefExpression" && node.DisplayName == calleeName)
+        {
+            return true;
+        }
+
+        return node.Children.Count == 1 && IsCalleeReference(node.Children[0], calleeName);
+    }
+
+    private static bool IsExpressionNode(CppslIrNode node)
+    {
+        return node.Kind.EndsWith("Expression", StringComparison.Ordinal) ||
+            node.Kind.EndsWith("Literal", StringComparison.Ordinal) ||
+            node.Kind == "DeclRefExpression" ||
+            node.Kind == "MemberExpression" ||
+            node.Kind == "OperatorCallExpression" ||
+            node.Kind == "CallExpression";
     }
 
     private static IEnumerable<string> BuildEntryParameters(
@@ -248,7 +497,7 @@ public sealed class CppslShaderSourceEmitter
         };
     }
 
-    private static string FieldSemantic(CppslField field, TargetSyntax syntax)
+    private static string FieldSemantic(CppslField field, TargetSyntax syntax, StructRole role)
     {
         if (syntax == TargetSyntax.Glsl)
         {
@@ -262,7 +511,12 @@ public sealed class CppslShaderSourceEmitter
 
         if (field.Location is { } location)
         {
-            return syntax == TargetSyntax.Hlsl ? $" : TEXCOORD{location}" : $" [[user(locn{location})]]";
+            if (syntax == TargetSyntax.Hlsl)
+            {
+                return $" : TEXCOORD{location}";
+            }
+
+            return role == StructRole.StageInput ? $" [[attribute({location})]]" : $" [[user(locn{location})]]";
         }
 
         return string.Empty;
@@ -300,10 +554,23 @@ public sealed class CppslShaderSourceEmitter
             },
             _ => type switch
             {
+                "float4x4" when syntax == TargetSyntax.Msl => "float4x4",
                 "bool_t" => "bool",
                 _ => type
             }
         };
+    }
+
+    private static CppslFunction? FindEntryPoint(CppslCompileOptions options, CppslSemanticModel model)
+    {
+        return model.Functions.FirstOrDefault(function => function.Name == options.EntryPoint);
+    }
+
+    private static string StripFloatSuffix(string spelling)
+    {
+        return spelling.EndsWith('f') || spelling.EndsWith('F')
+            ? spelling[..^1]
+            : spelling;
     }
 
     private static string HlslRegisterPrefix(string? resourceKind)
@@ -334,5 +601,12 @@ public sealed class CppslShaderSourceEmitter
         Hlsl,
         Glsl,
         Msl
+    }
+
+    private enum StructRole
+    {
+        Plain,
+        StageInput,
+        StageOutput
     }
 }

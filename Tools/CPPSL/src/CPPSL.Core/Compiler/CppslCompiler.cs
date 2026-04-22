@@ -122,7 +122,7 @@ public sealed class CppslCompiler
 
         foreach (var target in targets)
         {
-            File.WriteAllText(artifacts.GetOutputPath(target), EmitTarget(target, options, sourcePath, semanticModel, jsonOptions));
+            File.WriteAllText(artifacts.GetOutputPath(target), EmitTarget(target, options, sourcePath, semanticModel, irModule, jsonOptions));
         }
     }
 
@@ -131,6 +131,7 @@ public sealed class CppslCompiler
         CppslCompileOptions options,
         string sourcePath,
         CppslSemanticModel semanticModel,
+        CppslIrModule irModule,
         JsonSerializerOptions jsonOptions)
     {
         if (target == CppslOutputTarget.Reflection)
@@ -139,7 +140,7 @@ public sealed class CppslCompiler
             return JsonSerializer.Serialize(reflection, jsonOptions);
         }
 
-        return new CppslShaderSourceEmitter().Emit(target, options, semanticModel);
+        return new CppslShaderSourceEmitter().Emit(target, options, semanticModel, irModule);
     }
 
     private static JsonSerializerOptions CreateJsonOptions()
