@@ -50,12 +50,20 @@ public sealed class CppslSemanticValidator
 
     private static void ValidateAttributes(CppslSemanticModel model, List<CppslDiagnostic> diagnostics)
     {
+        var descriptorSetLayoutNames = model.Globals
+            .Where(static global => global.IsDescriptorSet)
+            .Select(static global => global.Type)
+            .ToHashSet(StringComparer.Ordinal);
+
         foreach (var structure in model.Structs)
         {
             ValidateAttributeSet("struct", structure.Name, structure.Attributes, Array.Empty<string>(), diagnostics);
             foreach (var field in structure.Fields)
             {
-                ValidateAttributeSet("field", field.Name, field.Attributes, new[] { "location", "position", "builtin" }, diagnostics);
+                var allowed = descriptorSetLayoutNames.Contains(structure.Name)
+                    ? new[] { "binding", "cbuffer", "structured_buffer", "sbuffer", "rwstructured_buffer", "rw_structured_buffer", "rwsbuffer" }
+                    : new[] { "location", "position", "builtin" };
+                ValidateAttributeSet("field", field.Name, field.Attributes, allowed, diagnostics);
             }
         }
 
@@ -68,6 +76,7 @@ public sealed class CppslSemanticValidator
                 new[] { "desc_set", "binding", "group_shared", "cbuffer", "structured_buffer", "sbuffer", "rwstructured_buffer", "rw_structured_buffer", "rwsbuffer" },
                 diagnostics);
             if (global.ResourceKind is null &&
+                !global.IsDescriptorSet &&
                 (global.Attributes.FindAttribute("desc_set") is not null || global.Attributes.FindAttribute("binding") is not null))
             {
                 diagnostics.Add(CppslDiagnostic.Error(
@@ -134,7 +143,7 @@ public sealed class CppslSemanticValidator
 
         foreach (var parameter in entryPoint.Parameters)
         {
-            if (!structNames.Contains(parameter.Type))
+            if (!structNames.Contains(parameter.Type) && !IsAllowedBuiltinParameter(options.Stage, parameter))
             {
                 diagnostics.Add(CppslDiagnostic.Error(
                     $"CPPSL entry point parameter `{parameter.Name}` type `{parameter.Type}` must be a CPPSL struct.",
@@ -145,8 +154,21 @@ public sealed class CppslSemanticValidator
         }
     }
 
+    private static bool IsAllowedBuiltinParameter(ShaderStage stage, CppslParameter parameter)
+    {
+        if (stage != ShaderStage.Compute)
+        {
+            return false;
+        }
+
+        var builtin = parameter.Attributes.FindAttribute("builtin");
+        return builtin?.Arguments.FirstOrDefault() is "dispatch_thread_id" or "group_index";
+    }
+
     private static void ValidateResources(CppslSemanticModel model, List<CppslDiagnostic> diagnostics)
     {
+        ValidateDescriptorSetLayouts(model, diagnostics);
+
         foreach (var global in model.Globals.Where(static global => global.ResourceKind is not null))
         {
             if (global.DescriptorSet is null)
@@ -182,6 +204,125 @@ public sealed class CppslSemanticValidator
                     global.Line,
                     global.Column));
             }
+        }
+    }
+
+    private static void ValidateDescriptorSetLayouts(CppslSemanticModel model, List<CppslDiagnostic> diagnostics)
+    {
+        foreach (var descriptorSet in model.Globals.Where(static global => global.IsDescriptorSet))
+        {
+            if (descriptorSet.DescriptorSet is null)
+            {
+                diagnostics.Add(CppslDiagnostic.Error(
+                    $"CPPSL descriptor set `{descriptorSet.Name}` must declare `cppsl::desc_set(...)`.",
+                    descriptorSet.File,
+                    descriptorSet.Line,
+                    descriptorSet.Column));
+            }
+            if (descriptorSet.Binding is not null)
+            {
+                diagnostics.Add(CppslDiagnostic.Error(
+                    $"CPPSL descriptor set `{descriptorSet.Name}` must not declare `cppsl::binding(...)`; bindings belong to descriptor fields.",
+                    descriptorSet.File,
+                    descriptorSet.Line,
+                    descriptorSet.Column));
+            }
+
+            var layout = model.Structs.FirstOrDefault(structure => structure.Name == descriptorSet.Type);
+            if (layout is null)
+            {
+                diagnostics.Add(CppslDiagnostic.Error(
+                    $"CPPSL descriptor set `{descriptorSet.Name}` uses unknown layout type `{descriptorSet.Type}`.",
+                    descriptorSet.File,
+                    descriptorSet.Line,
+                    descriptorSet.Column));
+                continue;
+            }
+
+            foreach (var field in layout.Fields)
+            {
+                var resourceKind = DescriptorSetFieldResourceKind(field);
+                if (resourceKind is null)
+                {
+                    diagnostics.Add(CppslDiagnostic.Error(
+                        $"CPPSL descriptor set layout `{layout.Name}` field `{field.Name}` must be a descriptor field.",
+                        field.File,
+                        field.Line,
+                        field.Column));
+                    continue;
+                }
+                if (field.Attributes.FindAttribute("binding") is null)
+                {
+                    diagnostics.Add(CppslDiagnostic.Error(
+                        $"CPPSL descriptor set layout `{layout.Name}` field `{field.Name}` must declare `cppsl::binding(...)`.",
+                        field.File,
+                        field.Line,
+                        field.Column));
+                }
+
+                ValidateDescriptorSetFieldType(layout.Name, field, resourceKind, diagnostics);
+            }
+
+            foreach (var duplicateGroup in layout.Fields
+                .Where(static field => field.Attributes.FindAttribute("binding").FirstIntArgument() is not null)
+                .GroupBy(static field => field.Attributes.FindAttribute("binding").FirstIntArgument()!.Value)
+                .Where(static group => group.Count() > 1))
+            {
+                foreach (var field in duplicateGroup.Skip(1))
+                {
+                    diagnostics.Add(CppslDiagnostic.Error(
+                        $"CPPSL descriptor set layout `{layout.Name}` declares duplicate binding `{duplicateGroup.Key}`.",
+                        field.File,
+                        field.Line,
+                        field.Column));
+                }
+            }
+        }
+    }
+
+    private static string? DescriptorSetFieldResourceKind(CppslField field)
+    {
+        if (field.Attributes.FindAttribute("cbuffer") is not null) return "constant_buffer";
+        if (field.Attributes.FindAttribute("structured_buffer") is not null ||
+            field.Attributes.FindAttribute("sbuffer") is not null) return "structured_buffer";
+        if (field.Attributes.FindAttribute("rwstructured_buffer") is not null ||
+            field.Attributes.FindAttribute("rw_structured_buffer") is not null ||
+            field.Attributes.FindAttribute("rwsbuffer") is not null) return "rw_structured_buffer";
+        if (field.Type.StartsWith("Texture", StringComparison.Ordinal)) return "texture";
+        if (field.Type.StartsWith("RWTexture", StringComparison.Ordinal)) return "rw_texture";
+        if (field.Type == "SamplerState") return "sampler";
+        if (field.Type == "AccelerationStructure") return "acceleration_structure";
+        return null;
+    }
+
+    private static void ValidateDescriptorSetFieldType(
+        string layoutName,
+        CppslField field,
+        string resourceKind,
+        List<CppslDiagnostic> diagnostics)
+    {
+        switch (resourceKind)
+        {
+            case "structured_buffer":
+                if (!IsConstPointerType(field.Type) && !IsConstArrayType(field.Type))
+                {
+                    diagnostics.Add(CppslDiagnostic.Error(
+                        $"CPPSL descriptor set layout `{layoutName}` structured buffer field `{field.Name}` must be declared as `const T*`.",
+                        field.File,
+                        field.Line,
+                        field.Column));
+                }
+                break;
+            case "rw_structured_buffer":
+                if (!IsMutablePointerType(field.Type) && !IsMutableArrayType(field.Type))
+                {
+                    diagnostics.Add(CppslDiagnostic.Error(
+                        $"CPPSL descriptor set layout `{layoutName}` RW structured buffer field `{field.Name}` must be declared as `T*`.",
+                        field.File,
+                        field.Line,
+                        field.Column));
+                }
+                break;
         }
     }
 
@@ -224,6 +365,22 @@ public sealed class CppslSemanticValidator
     {
         var normalized = NormalizeType(type);
         return normalized.EndsWith("*", StringComparison.Ordinal) &&
+            !normalized.StartsWith("const ", StringComparison.Ordinal) &&
+            !normalized.Contains(" const ", StringComparison.Ordinal);
+    }
+
+    private static bool IsConstArrayType(string type)
+    {
+        var normalized = NormalizeType(type);
+        return normalized.EndsWith("[]", StringComparison.Ordinal) &&
+            (normalized.StartsWith("const ", StringComparison.Ordinal) ||
+             normalized.Contains(" const ", StringComparison.Ordinal));
+    }
+
+    private static bool IsMutableArrayType(string type)
+    {
+        var normalized = NormalizeType(type);
+        return normalized.EndsWith("[]", StringComparison.Ordinal) &&
             !normalized.StartsWith("const ", StringComparison.Ordinal) &&
             !normalized.Contains(" const ", StringComparison.Ordinal);
     }

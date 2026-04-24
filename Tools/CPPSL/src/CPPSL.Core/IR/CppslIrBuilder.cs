@@ -36,6 +36,12 @@ public sealed class CppslIrBuilder
                     global.DescriptorSet!.Value,
                     global.Binding!.Value)).ToArray(),
             semanticModel.Functions
+                .Select(function => new CppslIrFunction(
+                    function.Name,
+                    function.ReturnType,
+                    function.Parameters.Select(static parameter => new CppslIrParameter(parameter.Name, parameter.Type)).ToArray(),
+                    FindFunctionBody(astNodes, function.Name))).ToArray(),
+            semanticModel.Functions
                 .Where(static function => function.IsEntryPoint)
                 .Select(function => new CppslIrEntryPoint(
                     function.Name,
@@ -43,16 +49,15 @@ public sealed class CppslIrBuilder
                     function.DeclaredStage,
                     function.ReturnType,
                     function.Parameters.Select(static parameter => new CppslIrParameter(parameter.Name, parameter.Type)).ToArray(),
-                    FindEntryPointBody(sourcePath, astNodes, function.Name))).ToArray());
+                    FindFunctionBody(astNodes, function.Name))).ToArray());
     }
 
-    private static CppslIrNode? FindEntryPointBody(string sourcePath, IReadOnlyList<CppslAstNode> astNodes, string functionName)
+    private static CppslIrNode? FindFunctionBody(IReadOnlyList<CppslAstNode> astNodes, string functionName)
     {
         var functionNode = astNodes.FirstOrDefault(node =>
             node.Kind == CppslAstNodeKind.Function &&
             node.Spelling == functionName &&
-            node.Location?.File is not null &&
-            Path.GetFullPath(node.Location.File) == sourcePath);
+            node.Children.Any(static child => child.Kind == CppslAstNodeKind.CompoundStatement));
 
         var bodyNode = functionNode?.Children.FirstOrDefault(static child => child.Kind == CppslAstNodeKind.CompoundStatement);
         return bodyNode is null ? null : ToIrNode(bodyNode);
@@ -88,12 +93,19 @@ public sealed class CppslIrBuilder
             CppslAstNodeKind.DeclarationStatement or
             CppslAstNodeKind.LocalVariable or
             CppslAstNodeKind.ReturnStatement or
+            CppslAstNodeKind.IfStatement or
+            CppslAstNodeKind.WhileStatement or
+            CppslAstNodeKind.ForStatement or
+            CppslAstNodeKind.ContinueStatement or
+            CppslAstNodeKind.BreakStatement or
             CppslAstNodeKind.BinaryOperator or
             CppslAstNodeKind.UnaryOperator or
+            CppslAstNodeKind.ConditionalOperator or
             CppslAstNodeKind.CallExpression or
             CppslAstNodeKind.OperatorCallExpression or
             CppslAstNodeKind.ConstructorCallExpression or
             CppslAstNodeKind.FunctionalCastExpression or
+            CppslAstNodeKind.CStyleCastExpression or
             CppslAstNodeKind.MemberExpression or
             CppslAstNodeKind.DeclRefExpression or
             CppslAstNodeKind.IntegerLiteral or
@@ -113,6 +125,7 @@ public sealed record CppslIrModule(
     string Source,
     IReadOnlyList<CppslIrStruct> Structs,
     IReadOnlyList<CppslIrResource> Resources,
+    IReadOnlyList<CppslIrFunction> Functions,
     IReadOnlyList<CppslIrEntryPoint> EntryPoints);
 
 public sealed record CppslIrStruct(
@@ -136,6 +149,12 @@ public sealed record CppslIrEntryPoint(
     string Name,
     string Stage,
     string? DeclaredStage,
+    string? ReturnType,
+    IReadOnlyList<CppslIrParameter> Parameters,
+    CppslIrNode? Body);
+
+public sealed record CppslIrFunction(
+    string Name,
     string? ReturnType,
     IReadOnlyList<CppslIrParameter> Parameters,
     CppslIrNode? Body);

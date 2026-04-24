@@ -1,0 +1,34 @@
+#include <cppsl/core.hxx>
+#include <cppsl/math.hxx>
+#include <cppsl/texture.hxx>
+
+using namespace cppsl;
+
+struct MipmapCB
+{
+    float3 texel_size;
+};
+
+[[cppsl::cbuffer, cppsl::desc_set(0), cppsl::binding(0)]]
+MipmapCB g_cb;
+
+[[cppsl::desc_set(0), cppsl::binding(1)]]
+Texture3D<float4> g_src_tex;
+
+[[cppsl::desc_set(0), cppsl::binding(2)]]
+RWTexture3D<float4> g_dst_tex;
+
+[[cppsl::desc_set(0), cppsl::binding(3)]]
+SamplerState g_sampler;
+
+[[cppsl::compute(8, 8, 8)]]
+void cs_main([[cppsl::builtin(dispatch_thread_id)]] uint3 dispatch_thread_id)
+{
+    float3 texcoords;
+    texcoords = g_cb.texel_size * float3{dispatch_thread_id.x + 0.5f, dispatch_thread_id.y + 0.5f, dispatch_thread_id.z + 0.5f};
+
+    float4 color;
+    color = g_src_tex.SampleLevel(g_sampler, texcoords, 0.0f);
+
+    g_dst_tex.Store(uint3{dispatch_thread_id.x, dispatch_thread_id.y, dispatch_thread_id.z}, color);
+}

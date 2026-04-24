@@ -9,4 +9,7 @@ public sealed record CppslGlobal(
     int? Binding,
     string? File,
     int? Line,
-    int? Column);
+    int? Column,
+    string? AccessPath = null,
+    string? LayoutType = null,
+    bool IsDescriptorSet = false);

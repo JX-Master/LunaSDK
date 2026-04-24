@@ -364,11 +364,18 @@ std::string KindForStmt(const clang::Stmt* stmt)
     if (llvm::isa<clang::CompoundStmt>(stmt)) return "CompoundStatement";
     if (llvm::isa<clang::DeclStmt>(stmt)) return "DeclarationStatement";
     if (llvm::isa<clang::ReturnStmt>(stmt)) return "ReturnStatement";
+    if (llvm::isa<clang::IfStmt>(stmt)) return "IfStatement";
+    if (llvm::isa<clang::WhileStmt>(stmt)) return "WhileStatement";
+    if (llvm::isa<clang::ForStmt>(stmt)) return "ForStatement";
+    if (llvm::isa<clang::ContinueStmt>(stmt)) return "ContinueStatement";
+    if (llvm::isa<clang::BreakStmt>(stmt)) return "BreakStatement";
     if (llvm::isa<clang::CompoundAssignOperator>(stmt) || llvm::isa<clang::BinaryOperator>(stmt)) return "BinaryOperator";
     if (llvm::isa<clang::UnaryOperator>(stmt)) return "UnaryOperator";
+    if (llvm::isa<clang::ConditionalOperator>(stmt)) return "ConditionalOperator";
     if (llvm::isa<clang::CXXOperatorCallExpr>(stmt)) return "OperatorCallExpression";
     if (llvm::isa<clang::CXXConstructExpr>(stmt)) return "ConstructorCallExpression";
     if (llvm::isa<clang::CXXFunctionalCastExpr>(stmt)) return "FunctionalCastExpression";
+    if (llvm::isa<clang::CStyleCastExpr>(stmt)) return "CStyleCastExpression";
     if (llvm::isa<clang::CallExpr>(stmt)) return "CallExpression";
     if (llvm::isa<clang::MemberExpr>(stmt)) return "MemberExpression";
     if (llvm::isa<clang::DeclRefExpr>(stmt)) return "DeclRefExpression";
@@ -388,11 +395,18 @@ bool IsInterestingStmt(const clang::Stmt* stmt)
     return llvm::isa<clang::CompoundStmt>(stmt) ||
         llvm::isa<clang::DeclStmt>(stmt) ||
         llvm::isa<clang::ReturnStmt>(stmt) ||
+        llvm::isa<clang::IfStmt>(stmt) ||
+        llvm::isa<clang::WhileStmt>(stmt) ||
+        llvm::isa<clang::ForStmt>(stmt) ||
+        llvm::isa<clang::ContinueStmt>(stmt) ||
+        llvm::isa<clang::BreakStmt>(stmt) ||
         llvm::isa<clang::BinaryOperator>(stmt) ||
         llvm::isa<clang::UnaryOperator>(stmt) ||
+        llvm::isa<clang::ConditionalOperator>(stmt) ||
         llvm::isa<clang::CallExpr>(stmt) ||
         llvm::isa<clang::CXXConstructExpr>(stmt) ||
         llvm::isa<clang::CXXFunctionalCastExpr>(stmt) ||
+        llvm::isa<clang::CStyleCastExpr>(stmt) ||
         llvm::isa<clang::MemberExpr>(stmt) ||
         llvm::isa<clang::DeclRefExpr>(stmt) ||
         llvm::isa<clang::IntegerLiteral>(stmt) ||

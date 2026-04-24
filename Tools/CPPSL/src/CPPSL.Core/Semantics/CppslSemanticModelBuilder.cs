@@ -11,7 +11,7 @@ public sealed class CppslSemanticModelBuilder
     {
         sourcePath = Path.GetFullPath(sourcePath);
         var sourceTopLevelNodes = astNodes
-            .Where(node => node.Location?.File is not null && Path.GetFullPath(node.Location.File) == sourcePath)
+            .Where(node => IsUserSourceNode(sourcePath, node))
             .ToArray();
 
         var structs = sourceTopLevelNodes
@@ -19,10 +19,11 @@ public sealed class CppslSemanticModelBuilder
             .Select(ToStruct)
             .ToArray();
 
-        var globals = sourceTopLevelNodes
+        var rawGlobals = sourceTopLevelNodes
             .Where(static node => node.Kind == CppslAstNodeKind.GlobalVariable)
             .Select(ToGlobal)
             .ToArray();
+        var globals = ExpandDescriptorSetGlobals(rawGlobals, structs).ToArray();
 
         var functions = sourceTopLevelNodes
             .Where(static node => node.Kind == CppslAstNodeKind.Function)
@@ -30,6 +31,28 @@ public sealed class CppslSemanticModelBuilder
             .ToArray();
 
         return new CppslSemanticModel(structs, globals, functions);
+    }
+
+    private static bool IsUserSourceNode(string sourcePath, CppslAstNode node)
+    {
+        if (node.Location?.File is null)
+        {
+            return false;
+        }
+
+        var file = Path.GetFullPath(node.Location.File);
+        if (file == sourcePath)
+        {
+            return true;
+        }
+
+        var normalized = file.Replace('\\', '/');
+        if (normalized.Contains("/Tools/CPPSL/std/", StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        return Path.GetExtension(file).Equals(".hxx", StringComparison.OrdinalIgnoreCase);
     }
 
     private CppslStruct ToStruct(CppslAstNode node)
@@ -66,16 +89,64 @@ public sealed class CppslSemanticModelBuilder
     {
         var type = node.TypeName ?? string.Empty;
         var attributes = _attributeParser.GetAttributes(node);
+        var resourceKind = ClassifyResourceKind(type, attributes);
+        var descriptorSet = attributes.FindAttribute("desc_set").FirstIntArgument();
         return new CppslGlobal(
             node.Spelling,
             type,
-            ClassifyResourceKind(type, attributes),
+            resourceKind,
             attributes,
-            attributes.FindAttribute("desc_set").FirstIntArgument(),
+            descriptorSet,
             attributes.FindAttribute("binding").FirstIntArgument(),
             node.Location?.File,
             node.Location?.Line,
-            node.Location?.Column);
+            node.Location?.Column,
+            node.Spelling,
+            resourceKind is null && descriptorSet is not null ? type : null,
+            resourceKind is null && descriptorSet is not null);
+    }
+
+    private static IEnumerable<CppslGlobal> ExpandDescriptorSetGlobals(
+        IReadOnlyList<CppslGlobal> rawGlobals,
+        IReadOnlyList<CppslStruct> structs)
+    {
+        foreach (var global in rawGlobals)
+        {
+            yield return global;
+            if (!global.IsDescriptorSet || global.DescriptorSet is null)
+            {
+                continue;
+            }
+
+            var layout = structs.FirstOrDefault(candidate => candidate.Name == global.Type);
+            if (layout is null)
+            {
+                continue;
+            }
+
+            foreach (var field in layout.Fields)
+            {
+                var resourceKind = ClassifyDescriptorSetFieldResourceKind(field.Type, field.Attributes);
+                if (resourceKind is null)
+                {
+                    continue;
+                }
+
+                yield return new CppslGlobal(
+                    $"{global.Name}_{field.Name}",
+                    field.Type,
+                    resourceKind,
+                    field.Attributes,
+                    global.DescriptorSet,
+                    field.Attributes.FindAttribute("binding").FirstIntArgument(),
+                    field.File,
+                    field.Line,
+                    field.Column,
+                    $"{global.Name}.{field.Name}",
+                    global.Type,
+                    false);
+            }
+        }
     }
 
     private CppslFunction ToFunction(CppslAstNode node, string entryPoint, string stage)
@@ -124,6 +195,21 @@ public sealed class CppslSemanticModelBuilder
         if (type.StartsWith("ConstantBuffer<", StringComparison.Ordinal)) return "constant_buffer";
         if (type.StartsWith("StructuredBuffer<", StringComparison.Ordinal)) return "structured_buffer";
         if (type.StartsWith("RWStructuredBuffer<", StringComparison.Ordinal)) return "rw_structured_buffer";
+        if (type.StartsWith("Texture", StringComparison.Ordinal)) return "texture";
+        if (type.StartsWith("RWTexture", StringComparison.Ordinal)) return "rw_texture";
+        if (type == "SamplerState") return "sampler";
+        if (type == "AccelerationStructure") return "acceleration_structure";
+        return null;
+    }
+
+    private static string? ClassifyDescriptorSetFieldResourceKind(string type, IReadOnlyList<CppslAttribute> attributes)
+    {
+        if (attributes.FindAttribute("cbuffer") is not null) return "constant_buffer";
+        if (attributes.FindAttribute("structured_buffer") is not null ||
+            attributes.FindAttribute("sbuffer") is not null) return "structured_buffer";
+        if (attributes.FindAttribute("rwstructured_buffer") is not null ||
+            attributes.FindAttribute("rw_structured_buffer") is not null ||
+            attributes.FindAttribute("rwsbuffer") is not null) return "rw_structured_buffer";
         if (type.StartsWith("Texture", StringComparison.Ordinal)) return "texture";
         if (type.StartsWith("RWTexture", StringComparison.Ordinal)) return "rw_texture";
         if (type == "SamplerState") return "sampler";

@@ -45,6 +45,80 @@ internal abstract class CppslShaderSourceEmitterBase
         };
     }
 
+    protected static bool TryGetTextureValueType(CppslIrNode node, out string valueType)
+    {
+        foreach (var candidate in EnumerateNodeTypeCandidates(node))
+        {
+            if (TryExtractTextureValueType(candidate, out valueType))
+            {
+                return true;
+            }
+        }
+
+        foreach (var child in node.Children)
+        {
+            if (TryGetTextureValueType(child, out valueType))
+            {
+                return true;
+            }
+        }
+
+        valueType = string.Empty;
+        return false;
+    }
+
+    protected static string NormalizeShaderTypeName(string type)
+    {
+        return type
+            .Replace("const ", string.Empty, StringComparison.Ordinal)
+            .Replace("struct ", string.Empty, StringComparison.Ordinal)
+            .Replace("class ", string.Empty, StringComparison.Ordinal)
+            .Replace("cppsl::", string.Empty, StringComparison.Ordinal)
+            .Trim();
+    }
+
+    protected static IReadOnlySet<string> DescriptorSetLayoutStructNames(CppslSemanticModel model)
+    {
+        return model.Globals
+            .Where(static global => global.IsDescriptorSet)
+            .Select(static global => global.Type)
+            .ToHashSet(StringComparer.Ordinal);
+    }
+
+    protected static bool TryGetAccessPath(CppslIrNode node, out string accessPath)
+    {
+        if (node.Kind == "DeclRefExpression")
+        {
+            accessPath = node.DisplayName ?? node.Spelling;
+            return accessPath.Length != 0;
+        }
+
+        if (node.Kind == "MemberExpression" &&
+            node.DisplayName is not null &&
+            node.Children.Count == 1 &&
+            TryGetAccessPath(node.Children[0], out var receiver))
+        {
+            accessPath = $"{receiver}.{node.DisplayName}";
+            return true;
+        }
+
+        accessPath = string.Empty;
+        return false;
+    }
+
+    protected static string FormatVariableDeclaration(string mappedType, string name)
+    {
+        var bracketIndex = mappedType.IndexOf('[');
+        if (bracketIndex < 0)
+        {
+            return $"{mappedType} {name}";
+        }
+
+        var baseType = mappedType[..bracketIndex].TrimEnd();
+        var suffix = mappedType[bracketIndex..];
+        return $"{baseType} {name}{suffix}";
+    }
+
     private static string TrimPointerOrArrayType(string type)
     {
         var trimmed = type.Trim();
@@ -63,6 +137,44 @@ internal abstract class CppslShaderSourceEmitterBase
         return trimmed.StartsWith("const ", StringComparison.Ordinal)
             ? trimmed["const ".Length..].TrimStart()
             : trimmed;
+    }
+
+    private static IEnumerable<string> EnumerateNodeTypeCandidates(CppslIrNode node)
+    {
+        if (!string.IsNullOrWhiteSpace(node.Type))
+        {
+            yield return node.Type!;
+        }
+        if (!string.IsNullOrWhiteSpace(node.TypeInfo?.Spelling))
+        {
+            yield return node.TypeInfo!.Spelling;
+        }
+        if (!string.IsNullOrWhiteSpace(node.TypeInfo?.CanonicalName))
+        {
+            yield return node.TypeInfo!.CanonicalName;
+        }
+        if (!string.IsNullOrWhiteSpace(node.TypeInfo?.DesugaredName))
+        {
+            yield return node.TypeInfo!.DesugaredName;
+        }
+    }
+
+    private static bool TryExtractTextureValueType(string typeName, out string valueType)
+    {
+        var normalized = NormalizeShaderTypeName(typeName);
+        if (normalized.Contains("Texture1D<", StringComparison.Ordinal) ||
+            normalized.Contains("Texture2D<", StringComparison.Ordinal) ||
+            normalized.Contains("Texture3D<", StringComparison.Ordinal) ||
+            normalized.Contains("RWTexture1D<", StringComparison.Ordinal) ||
+            normalized.Contains("RWTexture2D<", StringComparison.Ordinal) ||
+            normalized.Contains("RWTexture3D<", StringComparison.Ordinal))
+        {
+            valueType = NormalizeShaderTypeName(UnwrapTemplateArgument(normalized));
+            return true;
+        }
+
+        valueType = string.Empty;
+        return false;
     }
 
     protected void WriteFunctionBody(
@@ -84,6 +196,24 @@ internal abstract class CppslShaderSourceEmitterBase
         builder.AppendLine("}");
     }
 
+    protected void WriteFunctionBody(
+        StringBuilder builder,
+        CppslFunction function,
+        CppslSemanticModel model,
+        CppslIrNode? body)
+    {
+        builder.AppendLine("{");
+        if (body is null)
+        {
+            WriteDefaultReturn(builder, function.ReturnType ?? "void", model, 1);
+        }
+        else
+        {
+            WriteStatementChildren(builder, body, 1);
+        }
+        builder.AppendLine("}");
+    }
+
     protected void WriteStatementChildren(StringBuilder builder, CppslIrNode node, int indent)
     {
         foreach (var child in node.Children)
@@ -97,20 +227,57 @@ internal abstract class CppslShaderSourceEmitterBase
         var prefix = new string(' ', indent * 4);
         switch (node.Kind)
         {
+            case "CompoundStatement":
+                builder.AppendLine($"{prefix}{{");
+                WriteStatementChildren(builder, node, indent + 1);
+                builder.AppendLine($"{prefix}}}");
+                break;
             case "DeclarationStatement":
                 foreach (var child in node.Children.Where(static child => child.Kind == "LocalVariable"))
                 {
-                    builder.AppendLine($"{prefix}{MapValueType(child.Type ?? string.Empty)} {child.Spelling};");
+                    var initializerNode = child.Children.LastOrDefault();
+                    var hasExplicitInitializer = initializerNode is not null &&
+                        !(initializerNode.Kind == "ConstructorCallExpression" && initializerNode.Children.Count == 0);
+                    var initializer = !hasExplicitInitializer
+                        ? string.Empty
+                        : $" = {LowerExpression(initializerNode!)}";
+                    builder.AppendLine($"{prefix}{MapValueType(child.Type ?? string.Empty)} {child.Spelling}{initializer};");
                 }
                 break;
-            case "OperatorCallExpression" when node.DisplayName == "operator=" && node.Children.Count >= 3:
-                builder.AppendLine($"{prefix}{LowerExpression(node.Children[1])} = {LowerExpression(node.Children[2])};");
+            case "OperatorCallExpression" when TryMapAssignmentOperator(node.DisplayName, out var op) && node.Children.Count >= 3:
+                builder.AppendLine($"{prefix}{LowerExpression(node.Children[1])} {op} {LowerExpression(node.Children[2])};");
                 break;
-            case "BinaryOperator" when node.DisplayName == "=" && node.Children.Count >= 2:
-                builder.AppendLine($"{prefix}{LowerExpression(node.Children[0])} = {LowerExpression(node.Children[1])};");
+            case "BinaryOperator" when IsAssignmentOperator(node.DisplayName) && node.Children.Count >= 2:
+                builder.AppendLine($"{prefix}{LowerExpression(node.Children[0])} {node.DisplayName} {LowerExpression(node.Children[1])};");
                 break;
             case "ReturnStatement" when node.Children.Count != 0:
                 builder.AppendLine($"{prefix}return {LowerExpression(node.Children[^1])};");
+                break;
+            case "ReturnStatement":
+                builder.AppendLine($"{prefix}return;");
+                break;
+            case "IfStatement" when node.Children.Count >= 2:
+                builder.AppendLine($"{prefix}if ({LowerExpression(node.Children[0])})");
+                WriteEmbeddedStatement(builder, node.Children[1], indent);
+                if (node.Children.Count >= 3)
+                {
+                    builder.AppendLine($"{prefix}else");
+                    WriteEmbeddedStatement(builder, node.Children[2], indent);
+                }
+                break;
+            case "WhileStatement" when node.Children.Count >= 2:
+                builder.AppendLine($"{prefix}while ({LowerExpression(node.Children[0])})");
+                WriteEmbeddedStatement(builder, node.Children[1], indent);
+                break;
+            case "ForStatement" when node.Children.Count >= 4:
+                builder.AppendLine($"{prefix}for ({LowerForInitializer(node.Children[0])}; {LowerExpression(node.Children[1])}; {LowerExpression(node.Children[2])})");
+                WriteEmbeddedStatement(builder, node.Children[3], indent);
+                break;
+            case "ContinueStatement":
+                builder.AppendLine($"{prefix}continue;");
+                break;
+            case "BreakStatement":
+                builder.AppendLine($"{prefix}break;");
                 break;
             default:
                 if (IsExpressionNode(node))
@@ -121,12 +288,28 @@ internal abstract class CppslShaderSourceEmitterBase
         }
     }
 
+    private void WriteEmbeddedStatement(StringBuilder builder, CppslIrNode node, int indent)
+    {
+        if (node.Kind == "CompoundStatement")
+        {
+            WriteStatement(builder, node, indent);
+            return;
+        }
+
+        var prefix = new string(' ', indent * 4);
+        builder.AppendLine($"{prefix}{{");
+        WriteStatement(builder, node, indent + 1);
+        builder.AppendLine($"{prefix}}}");
+    }
+
     protected virtual string LowerExpression(CppslIrNode node)
     {
         return node.Kind switch
         {
             "ImplicitCastExpression" or "ParenExpression" or "ConstructorCallExpression" when node.Children.Count == 1 =>
                 LowerExpression(node.Children[0]),
+            "CStyleCastExpression" when node.Children.Count == 1 =>
+                $"({MapValueType(node.Type ?? node.TypeInfo?.Spelling ?? string.Empty)}){LowerExpression(node.Children[0])}",
             "DeclRefExpression" => node.DisplayName ?? node.Spelling,
             "MemberExpression" when node.Children.Count == 1 =>
                 $"{LowerExpression(node.Children[0])}.{node.DisplayName}",
@@ -136,11 +319,23 @@ internal abstract class CppslShaderSourceEmitterBase
                 LowerExpression(node.Children[^1]),
             "BinaryOperator" when node.DisplayName is "=" && node.Children.Count >= 2 =>
                 $"{LowerExpression(node.Children[0])} = {LowerExpression(node.Children[1])}",
+            "BinaryOperator" when IsAssignmentOperator(node.DisplayName) && node.Children.Count >= 2 =>
+                $"{LowerExpression(node.Children[0])} {node.DisplayName} {LowerExpression(node.Children[1])}",
+            "BinaryOperator" when node.Children.Count >= 2 && IsBinaryOperator(node.DisplayName) =>
+                $"({LowerExpression(node.Children[0])} {node.DisplayName} {LowerExpression(node.Children[1])})",
+            "ConditionalOperator" when node.Children.Count >= 3 =>
+                $"({LowerExpression(node.Children[0])} ? {LowerExpression(node.Children[1])} : {LowerExpression(node.Children[2])})",
+            "OperatorCallExpression" when TryMapBinaryOperator(node.DisplayName, out var op) && node.Children.Count >= 3 =>
+                $"({LowerExpression(node.Children[1])} {op} {LowerExpression(node.Children[2])})",
             "OperatorCallExpression" when node.DisplayName is "operator=" && node.Children.Count >= 3 =>
                 $"{LowerExpression(node.Children[1])} = {LowerExpression(node.Children[2])}",
+            "UnaryOperator" when node.Children.Count >= 1 && IsIncrementOperator(node.DisplayName) =>
+                node.Spelling,
+            "UnaryOperator" when node.Children.Count >= 1 && IsPrefixUnaryOperator(node.DisplayName) =>
+                $"{node.DisplayName}{LowerExpression(node.Children[0])}",
             "CallExpression" => LowerCallExpression(node),
             "FunctionalCastExpression" => LowerFunctionalCast(node),
-            "InitializerListExpression" => string.Join(", ", node.Children.Select(LowerExpression)),
+            "InitializerListExpression" => LowerInitializerList(node),
             "FloatingLiteral" => FormatFloatingLiteral(node.Spelling),
             "IntegerLiteral" or "BooleanLiteral" or "StringLiteral" => node.Spelling,
             _ when node.Children.Count == 1 => LowerExpression(node.Children[0]),
@@ -169,18 +364,119 @@ internal abstract class CppslShaderSourceEmitterBase
         return $"{name}({string.Join(", ", arguments)})";
     }
 
+    private static bool IsBinaryOperator(string? displayName)
+    {
+        return displayName is "+" or "-" or "*" or "/" or "%" or
+            "==" or "!=" or "<" or ">" or "<=" or ">=" or
+            "&&" or "||" or "&" or "|" or "^" or "<<" or ">>";
+    }
+
+    private static bool IsAssignmentOperator(string? displayName)
+    {
+        return displayName is "=" or "+=" or "-=" or "*=" or "/=" or "%=" or "&=" or "|=" or "^=" or "<<=" or ">>=";
+    }
+
+    private static bool IsPrefixUnaryOperator(string? displayName)
+    {
+        return displayName is "+" or "-" or "!" or "~";
+    }
+
+    private static bool IsIncrementOperator(string? displayName)
+    {
+        return displayName is "++" or "--";
+    }
+
+    private static bool TryMapBinaryOperator(string? displayName, out string op)
+    {
+        op = displayName switch
+        {
+            "operator+" => "+",
+            "operator-" => "-",
+            "operator*" => "*",
+            "operator/" => "/",
+            "operator%" => "%",
+            "operator==" => "==",
+            "operator!=" => "!=",
+            "operator<" => "<",
+            "operator>" => ">",
+            "operator<=" => "<=",
+            "operator>=" => ">=",
+            "operator&&" => "&&",
+            "operator||" => "||",
+            "operator&" => "&",
+            "operator|" => "|",
+            "operator^" => "^",
+            "operator<<" => "<<",
+            "operator>>" => ">>",
+            _ => string.Empty
+        };
+        return op.Length != 0;
+    }
+
+    private static bool TryMapAssignmentOperator(string? displayName, out string op)
+    {
+        op = displayName switch
+        {
+            "operator=" => "=",
+            "operator+=" => "+=",
+            "operator-=" => "-=",
+            "operator*=" => "*=",
+            "operator/=" => "/=",
+            "operator%=" => "%=",
+            "operator&=" => "&=",
+            "operator|=" => "|=",
+            "operator^=" => "^=",
+            "operator<<=" => "<<=",
+            "operator>>=" => ">>=",
+            _ => string.Empty
+        };
+        return op.Length != 0;
+    }
+
     protected virtual string LowerMemberCall(string receiver, string memberName, IReadOnlyList<string> arguments)
     {
         return $"{receiver}.{memberName}({string.Join(", ", arguments)})";
+    }
+
+    private string LowerForInitializer(CppslIrNode node)
+    {
+        if (node.Kind == "DeclarationStatement")
+        {
+            var declarations = node.Children
+                .Where(static child => child.Kind == "LocalVariable")
+                .Select(child =>
+                {
+                    var initializerNode = child.Children.LastOrDefault();
+                    var hasExplicitInitializer = initializerNode is not null &&
+                        !(initializerNode.Kind == "ConstructorCallExpression" && initializerNode.Children.Count == 0);
+                    var initializer = !hasExplicitInitializer
+                        ? string.Empty
+                        : $" = {LowerExpression(initializerNode!)}";
+                    return $"{MapValueType(child.Type ?? string.Empty)} {child.Spelling}{initializer}";
+                })
+                .ToArray();
+            return string.Join(", ", declarations);
+        }
+
+        return LowerExpression(node);
     }
 
     protected virtual string LowerFunctionalCast(CppslIrNode node)
     {
         var type = MapValueType(node.Type ?? node.TypeInfo?.Spelling ?? node.Spelling);
         var argumentList = node.Children.Count == 1 && node.Children[0].Kind == "InitializerListExpression"
-            ? LowerExpression(node.Children[0])
+            ? string.Join(", ", node.Children[0].Children.Select(LowerExpression))
             : string.Join(", ", node.Children.Select(LowerExpression));
         return $"{type}({argumentList})";
+    }
+
+    protected virtual string LowerInitializerList(CppslIrNode node)
+    {
+        var argumentList = string.Join(", ", node.Children.Select(LowerExpression));
+        var type = node.Type ?? node.TypeInfo?.Spelling;
+        return string.IsNullOrWhiteSpace(type)
+            ? argumentList
+            : $"{MapValueType(type)}({argumentList})";
     }
 
     protected virtual string LowerMul(string left, string right)
@@ -231,7 +527,7 @@ internal abstract class CppslShaderSourceEmitterBase
 
     protected abstract string DefaultAggregateValue(string mappedType);
 
-    private static bool IsCalleeReference(CppslIrNode? node, string calleeName)
+    protected static bool IsCalleeReference(CppslIrNode? node, string calleeName)
     {
         if (node is null)
         {

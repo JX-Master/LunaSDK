@@ -7,15 +7,46 @@ namespace CPPSL.Core.Output;
 
 internal sealed class HlslShaderSourceEmitter : CppslShaderSourceEmitterBase
 {
+    private Dictionary<string, string> _resourceAccessByPath = new(StringComparer.Ordinal);
+
     public string Emit(CppslCompileOptions options, CppslSemanticModel model, CppslIrModule irModule)
     {
         var builder = new StringBuilder();
         WriteHeader(builder, "HLSL", options);
         var entryPoint = FindEntryPoint(options, model);
+        _resourceAccessByPath = BuildResourceAccessMap(model);
         WriteStructs(builder, options, model, entryPoint);
+        WriteGroupSharedGlobals(builder, model);
         WriteResources(builder, model);
+        WriteFunctions(builder, entryPoint, model, irModule);
         WriteEntryPoint(builder, entryPoint, model, irModule);
+        _resourceAccessByPath = new Dictionary<string, string>(StringComparer.Ordinal);
         return builder.ToString();
+    }
+
+    private void WriteFunctions(
+        StringBuilder builder,
+        CppslFunction? entryPoint,
+        CppslSemanticModel model,
+        CppslIrModule irModule)
+    {
+        foreach (var function in model.Functions.Where(function => function.Name != entryPoint?.Name))
+        {
+            var irFunction = irModule.Functions.FirstOrDefault(candidate => candidate.Name == function.Name);
+            if (irFunction?.Body is null)
+            {
+                continue;
+            }
+
+            builder.Append(MapValueType(function.ReturnType ?? "void"));
+            builder.Append(' ');
+            builder.Append(function.Name);
+            builder.Append('(');
+            builder.Append(string.Join(", ", function.Parameters.Select(parameter => $"{MapValueType(parameter.Type)} {parameter.Name}")));
+            builder.AppendLine(")");
+            WriteFunctionBody(builder, function, model, irFunction.Body);
+            builder.AppendLine();
+        }
     }
 
     private void WriteStructs(
@@ -27,7 +58,8 @@ internal sealed class HlslShaderSourceEmitter : CppslShaderSourceEmitterBase
         var inputStructNames = entryPoint?.Parameters.Select(static parameter => parameter.Type).ToHashSet(StringComparer.Ordinal) ??
             new HashSet<string>(StringComparer.Ordinal);
         var outputStructName = entryPoint?.ReturnType;
-        foreach (var structure in model.Structs)
+        var descriptorSetLayouts = DescriptorSetLayoutStructNames(model);
+        foreach (var structure in model.Structs.Where(structure => !descriptorSetLayouts.Contains(structure.Name)))
         {
             builder.AppendLine($"struct {structure.Name}");
             builder.AppendLine("{");
@@ -72,6 +104,19 @@ internal sealed class HlslShaderSourceEmitter : CppslShaderSourceEmitterBase
         }
     }
 
+    private void WriteGroupSharedGlobals(StringBuilder builder, CppslSemanticModel model)
+    {
+        foreach (var global in model.Globals.Where(static global => global.Attributes.FindAttribute("group_shared") is not null))
+        {
+            builder.AppendLine($"groupshared {FormatVariableDeclaration(MapValueType(global.Type), global.Name)};");
+        }
+
+        if (model.Globals.Any(static global => global.Attributes.FindAttribute("group_shared") is not null))
+        {
+            builder.AppendLine();
+        }
+    }
+
     private void WriteEntryPoint(
         StringBuilder builder,
         CppslFunction? entryPoint,
@@ -83,11 +128,15 @@ internal sealed class HlslShaderSourceEmitter : CppslShaderSourceEmitterBase
             return;
         }
 
+        if (entryPoint.Attributes.FindAttribute("compute") is { Arguments.Count: >= 3 } compute)
+        {
+            builder.AppendLine($"[numthreads({compute.Arguments[0]}, {compute.Arguments[1]}, {compute.Arguments[2]})]");
+        }
         builder.Append(MapValueType(entryPoint.ReturnType ?? "void"));
         builder.Append(' ');
         builder.Append(entryPoint.Name);
         builder.Append('(');
-        builder.Append(string.Join(", ", entryPoint.Parameters.Select(parameter => $"{MapValueType(parameter.Type)} {parameter.Name}")));
+        builder.Append(string.Join(", ", entryPoint.Parameters.Select(parameter => $"{MapValueType(parameter.Type)} {parameter.Name}{ParameterSemantic(parameter)}")));
         builder.AppendLine(")");
         WriteFunctionBody(builder, entryPoint, model, irModule);
     }
@@ -97,10 +146,47 @@ internal sealed class HlslShaderSourceEmitter : CppslShaderSourceEmitterBase
         return $"mul({left}, {right})";
     }
 
+    protected override string LowerExpression(CppslIrNode node)
+    {
+        if (TryGetAccessPath(node, out var accessPath) &&
+            _resourceAccessByPath.TryGetValue(accessPath, out var resourceAccess))
+        {
+            return resourceAccess;
+        }
+
+        return base.LowerExpression(node);
+    }
+
+    protected override string LowerMemberCall(string receiver, string memberName, IReadOnlyList<string> arguments)
+    {
+        if (memberName == "Load" && arguments.Count == 1)
+        {
+            return $"{receiver}.Load(int3({arguments[0]}, 0))";
+        }
+        if (memberName == "Store" && arguments.Count == 2)
+        {
+            return $"{receiver}[{arguments[0]}] = {arguments[1]}";
+        }
+
+        return base.LowerMemberCall(receiver, memberName, arguments);
+    }
+
+    protected override string LowerCallExpression(CppslIrNode node)
+    {
+        var name = node.DisplayName ?? node.Spelling;
+        if (name == "discard_fragment")
+        {
+            return "clip(-1.0)";
+        }
+
+        return base.LowerCallExpression(node);
+    }
+
     protected override string MapValueType(string type)
     {
         return type switch
         {
+            "_Bool" => "bool",
             "bool_t" => "bool",
             _ => type
         };
@@ -144,6 +230,26 @@ internal sealed class HlslShaderSourceEmitter : CppslShaderSourceEmitterBase
             "rw_structured_buffer" or "rw_texture" => "u",
             "sampler" => "s",
             _ => "t"
+        };
+    }
+
+    private static Dictionary<string, string> BuildResourceAccessMap(CppslSemanticModel model)
+    {
+        var map = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var global in model.Globals.Where(static global => global.ResourceKind is not null && global.AccessPath is not null))
+        {
+            map[global.AccessPath!] = global.Name;
+        }
+        return map;
+    }
+
+    private static string ParameterSemantic(CppslParameter parameter)
+    {
+        return parameter.Attributes.FindAttribute("builtin")?.Arguments.FirstOrDefault() switch
+        {
+            "dispatch_thread_id" => " : SV_DispatchThreadID",
+            "group_index" => " : SV_GroupIndex",
+            _ => string.Empty
         };
     }
 

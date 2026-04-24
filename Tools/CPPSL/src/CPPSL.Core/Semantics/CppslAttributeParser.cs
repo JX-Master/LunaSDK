@@ -26,6 +26,15 @@ public sealed partial class CppslAttributeParser
         var currentLine = lines[lineIndex];
         var prefixLength = Math.Clamp(node.Location.Column - 1, 0, currentLine.Length);
         var currentPrefix = currentLine[..prefixLength];
+        if (!includeLeadingLines)
+        {
+            var lastComma = currentPrefix.LastIndexOf(',');
+            if (lastComma >= 0)
+            {
+                currentPrefix = currentPrefix[(lastComma + 1)..];
+                prefixLength = currentPrefix.Length;
+            }
+        }
         if (currentPrefix.Contains("[[", StringComparison.Ordinal))
         {
             chunks.Add((currentPrefix, lineIndex + 1, 1));

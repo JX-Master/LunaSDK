@@ -11,7 +11,10 @@ var outputDir = Path.Combine(repoRoot, "build", "cppsl-smoke");
 var compiler = new CppslCompiler();
 var boxShader = Path.Combine(fixturesRoot, "valid", "box", "Box.cxx");
 var textureBasicShader = Path.Combine(fixturesRoot, "valid", "texture_basic", "TextureBasic.cxx");
+var texture1DSampleLevelShader = Path.Combine(fixturesRoot, "valid", "texture1d_sample_level", "Texture1DSampleLevel.cxx");
+var textureScalarShader = Path.Combine(fixturesRoot, "valid", "texture_scalar", "TextureScalar.cxx");
 var resourceAttributesShader = Path.Combine(fixturesRoot, "valid", "resource_attributes", "ResourceAttributes.cxx");
+var descriptorSetShader = Path.Combine(fixturesRoot, "valid", "descriptor_set", "DescriptorSet.cxx");
 
 var result = compiler.Compile(new CppslCompileOptions(
     boxShader,
@@ -199,6 +202,63 @@ if (!textureHlslText.Contains("Texture2D<float4> color_texture : register(t0, sp
     return 1;
 }
 
+var texture1DSampleLevelResult = compiler.Compile(new CppslCompileOptions(
+    texture1DSampleLevelShader,
+    Path.Combine(outputDir, "texture1d-sample-level"),
+    new[] { stdRoot },
+    "main_cs",
+    ShaderStage.Compute));
+
+if (!texture1DSampleLevelResult.Succeeded || texture1DSampleLevelResult.Artifacts is null)
+{
+    Console.Error.WriteLine("error: expected texture1d_sample_level fixture to compile.");
+    foreach (var diagnostic in texture1DSampleLevelResult.Diagnostics)
+    {
+        Console.Error.WriteLine(diagnostic.ToDisplayString());
+    }
+    return 1;
+}
+
+var texture1DSampleLevelMslText = File.ReadAllText(texture1DSampleLevelResult.Artifacts.GetOutputPath(CppslOutputTarget.Msl));
+if (!texture1DSampleLevelMslText.Contains("texture1d<float> src_texture [[id(0)]]", StringComparison.Ordinal) ||
+    !texture1DSampleLevelMslText.Contains("texture1d<float, access::write> dst_texture [[id(1)]]", StringComparison.Ordinal) ||
+    !texture1DSampleLevelMslText.Contains("spvDescriptorSet0.src_texture.sample(spvDescriptorSet0.linear_sampler, uv)", StringComparison.Ordinal) ||
+    texture1DSampleLevelMslText.Contains("src_texture.sample(spvDescriptorSet0.linear_sampler, uv, level(", StringComparison.Ordinal))
+{
+    Console.Error.WriteLine("error: expected Texture1D SampleLevel to lower to a Metal 1D sample without explicit level.");
+    return 1;
+}
+
+var textureScalarResult = compiler.Compile(new CppslCompileOptions(
+    textureScalarShader,
+    Path.Combine(outputDir, "texture-scalar"),
+    new[] { stdRoot },
+    "main_cs",
+    ShaderStage.Compute));
+
+if (!textureScalarResult.Succeeded || textureScalarResult.Artifacts is null)
+{
+    Console.Error.WriteLine("error: expected texture_scalar fixture to compile.");
+    foreach (var diagnostic in textureScalarResult.Diagnostics)
+    {
+        Console.Error.WriteLine(diagnostic.ToDisplayString());
+    }
+    return 1;
+}
+
+var textureScalarGlslText = File.ReadAllText(textureScalarResult.Artifacts.GetOutputPath(CppslOutputTarget.Glsl));
+var textureScalarMslText = File.ReadAllText(textureScalarResult.Artifacts.GetOutputPath(CppslOutputTarget.Msl));
+if (!textureScalarMslText.Contains("float sampled = spvDescriptorSet0.src_tex.sample(spvDescriptorSet0.linear_sampler, uv, level(0.0f)).x;", StringComparison.Ordinal) ||
+    !textureScalarMslText.Contains("float depth = spvDescriptorSet0.depth_tex.read(pixel).x;", StringComparison.Ordinal) ||
+    !textureScalarMslText.Contains("spvDescriptorSet0.dst_tex.write(float4(sampled), pixel);", StringComparison.Ordinal) ||
+    !textureScalarGlslText.Contains("float sampled = textureLod(sampler2D(src_tex, linear_sampler), uv, 0.0).x;", StringComparison.Ordinal) ||
+    !textureScalarGlslText.Contains("float depth = texelFetch(sampler2D(depth_tex, sampler()), ivec2(pixel), 0).x;", StringComparison.Ordinal) ||
+    !textureScalarGlslText.Contains("imageStore(dst_tex, ivec2(pixel), vec4(sampled));", StringComparison.Ordinal))
+{
+    Console.Error.WriteLine("error: expected scalar texture operations to lower with channel extraction/expansion.");
+    return 1;
+}
+
 var resourceAttributesResult = compiler.Compile(new CppslCompileOptions(
     resourceAttributesShader,
     Path.Combine(outputDir, "resource-attributes"),
@@ -239,6 +299,58 @@ if (!resourceReflectionText.Contains("\"Name\": \"camera\"", StringComparison.Or
     !resourceMslText.Contains("spvDescriptorSet0.output_values[0] = spvDescriptorSet0.values[0];", StringComparison.Ordinal))
 {
     Console.Error.WriteLine("error: expected CPPSL resource attribute declarations to be emitted.");
+    return 1;
+}
+
+var descriptorSetResult = compiler.Compile(new CppslCompileOptions(
+    descriptorSetShader,
+    Path.Combine(outputDir, "descriptor-set"),
+    new[] { stdRoot },
+    "main_vs",
+    ShaderStage.Vertex));
+
+if (!descriptorSetResult.Succeeded || descriptorSetResult.Artifacts is null)
+{
+    Console.Error.WriteLine("error: expected descriptor_set fixture to compile.");
+    foreach (var diagnostic in descriptorSetResult.Diagnostics)
+    {
+        Console.Error.WriteLine(diagnostic.ToDisplayString());
+    }
+    return 1;
+}
+
+var descriptorSetReflectionText = File.ReadAllText(descriptorSetResult.Artifacts.GetOutputPath(CppslOutputTarget.Reflection));
+var descriptorSetHlslText = File.ReadAllText(descriptorSetResult.Artifacts.GetOutputPath(CppslOutputTarget.Hlsl));
+var descriptorSetGlslText = File.ReadAllText(descriptorSetResult.Artifacts.GetOutputPath(CppslOutputTarget.Glsl));
+var descriptorSetMslText = File.ReadAllText(descriptorSetResult.Artifacts.GetOutputPath(CppslOutputTarget.Msl));
+if (!descriptorSetReflectionText.Contains("\"Name\": \"frame_camera\"", StringComparison.Ordinal) ||
+    !descriptorSetReflectionText.Contains("\"Name\": \"frame_items\"", StringComparison.Ordinal) ||
+    !descriptorSetReflectionText.Contains("\"Name\": \"frame_output_values\"", StringComparison.Ordinal) ||
+    !descriptorSetReflectionText.Contains("\"Name\": \"frame_color_texture\"", StringComparison.Ordinal) ||
+    descriptorSetHlslText.Contains("struct FrameSet", StringComparison.Ordinal) ||
+    !descriptorSetHlslText.Contains("ConstantBuffer<Camera> frame_camera : register(b0, space0);", StringComparison.Ordinal) ||
+    !descriptorSetHlslText.Contains("StructuredBuffer<Item> frame_items : register(t1, space0);", StringComparison.Ordinal) ||
+    !descriptorSetHlslText.Contains("RWStructuredBuffer<float> frame_output_values : register(u2, space0);", StringComparison.Ordinal) ||
+    !descriptorSetHlslText.Contains("Texture2D<float4> frame_color_texture : register(t3, space0);", StringComparison.Ordinal) ||
+    !descriptorSetHlslText.Contains("SamplerState frame_color_sampler : register(s4, space0);", StringComparison.Ordinal) ||
+    !descriptorSetHlslText.Contains("frame_camera.world_to_proj", StringComparison.Ordinal) ||
+    !descriptorSetHlslText.Contains("frame_color_texture.Sample(frame_color_sampler", StringComparison.Ordinal) ||
+    !descriptorSetHlslText.Contains("frame_items[0].value", StringComparison.Ordinal) ||
+    !descriptorSetHlslText.Contains("frame_output_values[0] = output.color.x;", StringComparison.Ordinal) ||
+    descriptorSetGlslText.Contains("struct FrameSet", StringComparison.Ordinal) ||
+    !descriptorSetGlslText.Contains("layout(set = 0, binding = 0) uniform frame_camera_Block", StringComparison.Ordinal) ||
+    !descriptorSetGlslText.Contains("layout(set = 0, binding = 1) buffer frame_items_Block", StringComparison.Ordinal) ||
+    !descriptorSetMslText.Contains("constant Camera* frame_camera [[id(0)]]", StringComparison.Ordinal) ||
+    !descriptorSetMslText.Contains("device const Item* frame_items [[id(1)]]", StringComparison.Ordinal) ||
+    !descriptorSetMslText.Contains("device float* frame_output_values [[id(2)]]", StringComparison.Ordinal) ||
+    !descriptorSetMslText.Contains("texture2d<float> frame_color_texture [[id(3)]]", StringComparison.Ordinal) ||
+    !descriptorSetMslText.Contains("sampler frame_color_sampler [[id(4)]]", StringComparison.Ordinal) ||
+    !descriptorSetMslText.Contains("(*spvDescriptorSet0.frame_camera).world_to_proj", StringComparison.Ordinal) ||
+    !descriptorSetMslText.Contains("spvDescriptorSet0.frame_color_texture.sample(spvDescriptorSet0.frame_color_sampler", StringComparison.Ordinal) ||
+    !descriptorSetMslText.Contains("spvDescriptorSet0.frame_items[0].value", StringComparison.Ordinal) ||
+    !descriptorSetMslText.Contains("spvDescriptorSet0.frame_output_values[0] = output.color.x;", StringComparison.Ordinal))
+{
+    Console.Error.WriteLine("error: expected descriptor set resources and accesses to be emitted.");
     return 1;
 }
 

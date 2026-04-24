@@ -7,23 +7,55 @@ namespace CPPSL.Core.Output;
 
 internal sealed class GlslShaderSourceEmitter : CppslShaderSourceEmitterBase
 {
+    private Dictionary<string, string> _resourceAccessByPath = new(StringComparer.Ordinal);
+
     public string Emit(CppslCompileOptions options, CppslSemanticModel model, CppslIrModule irModule)
     {
         var builder = new StringBuilder();
         builder.AppendLine("#version 450");
         WriteHeader(builder, "GLSL", options);
         var entryPoint = FindEntryPoint(options, model);
+        _resourceAccessByPath = BuildResourceAccessMap(model);
         WriteStructs(builder, model);
+        WriteGroupSharedGlobals(builder, model);
         WriteResources(builder, model);
         WriteStageIo(builder, entryPoint, model);
+        WriteFunctions(builder, entryPoint, model, irModule);
         WriteEntryPointHelper(builder, entryPoint, model, irModule);
         WriteMain(builder, entryPoint, model);
+        _resourceAccessByPath = new Dictionary<string, string>(StringComparer.Ordinal);
         return builder.ToString();
+    }
+
+    private void WriteFunctions(
+        StringBuilder builder,
+        CppslFunction? entryPoint,
+        CppslSemanticModel model,
+        CppslIrModule irModule)
+    {
+        foreach (var function in model.Functions.Where(function => function.Name != entryPoint?.Name))
+        {
+            var irFunction = irModule.Functions.FirstOrDefault(candidate => candidate.Name == function.Name);
+            if (irFunction?.Body is null)
+            {
+                continue;
+            }
+
+            builder.Append(MapValueType(function.ReturnType ?? "void"));
+            builder.Append(' ');
+            builder.Append(function.Name);
+            builder.Append('(');
+            builder.Append(string.Join(", ", function.Parameters.Select(parameter => $"{MapValueType(parameter.Type)} {parameter.Name}")));
+            builder.AppendLine(")");
+            WriteFunctionBody(builder, function, model, irFunction.Body);
+            builder.AppendLine();
+        }
     }
 
     private void WriteStructs(StringBuilder builder, CppslSemanticModel model)
     {
-        foreach (var structure in model.Structs)
+        var descriptorSetLayouts = DescriptorSetLayoutStructNames(model);
+        foreach (var structure in model.Structs.Where(structure => !descriptorSetLayouts.Contains(structure.Name)))
         {
             builder.AppendLine($"struct {structure.Name}");
             builder.AppendLine("{");
@@ -65,6 +97,19 @@ internal sealed class GlslShaderSourceEmitter : CppslShaderSourceEmitterBase
         }
 
         if (model.Globals.Any(static global => global.ResourceKind is not null))
+        {
+            builder.AppendLine();
+        }
+    }
+
+    private void WriteGroupSharedGlobals(StringBuilder builder, CppslSemanticModel model)
+    {
+        foreach (var global in model.Globals.Where(static global => global.Attributes.FindAttribute("group_shared") is not null))
+        {
+            builder.AppendLine($"shared {FormatVariableDeclaration(MapValueType(global.Type), global.Name)};");
+        }
+
+        if (model.Globals.Any(static global => global.Attributes.FindAttribute("group_shared") is not null))
         {
             builder.AppendLine();
         }
@@ -206,14 +251,155 @@ internal sealed class GlslShaderSourceEmitter : CppslShaderSourceEmitterBase
             : spelling;
     }
 
+    protected override string LowerExpression(CppslIrNode node)
+    {
+        if (TryGetAccessPath(node, out var accessPath) &&
+            _resourceAccessByPath.TryGetValue(accessPath, out var resourceAccess))
+        {
+            return resourceAccess;
+        }
+
+        return base.LowerExpression(node);
+    }
+
     protected override string LowerMemberCall(string receiver, string memberName, IReadOnlyList<string> arguments)
     {
         if (memberName == "Sample" && arguments.Count == 2)
         {
             return $"texture(sampler2D({receiver}, {arguments[0]}), {arguments[1]})";
         }
+        if (memberName == "SampleLevel" && arguments.Count == 3)
+        {
+            return $"textureLod(sampler2D({receiver}, {arguments[0]}), {arguments[1]}, {arguments[2]})";
+        }
+        if (memberName == "Load" && arguments.Count == 1)
+        {
+            return $"texelFetch(sampler2D({receiver}, sampler()), ivec2({arguments[0]}), 0)";
+        }
+        if (memberName == "Store" && arguments.Count == 2)
+        {
+            return $"imageStore({receiver}, ivec2({arguments[0]}), {arguments[1]})";
+        }
 
         return base.LowerMemberCall(receiver, memberName, arguments);
+    }
+
+    protected override string LowerCallExpression(CppslIrNode node)
+    {
+        if (TryGetGlslMemberCall(node, out var receiverNode, out var receiver, out var memberName, out var memberArguments))
+        {
+            if (memberName == "Sample" && memberArguments.Count == 2)
+            {
+                return AdaptTextureReadExpression(
+                    receiverNode,
+                    $"texture(sampler2D({receiver}, {memberArguments[0]}), {memberArguments[1]})");
+            }
+            if (memberName == "SampleLevel" && memberArguments.Count == 3)
+            {
+                return AdaptTextureReadExpression(
+                    receiverNode,
+                    $"textureLod(sampler2D({receiver}, {memberArguments[0]}), {memberArguments[1]}, {memberArguments[2]})");
+            }
+            if (memberName == "Load" && memberArguments.Count == 1)
+            {
+                return AdaptTextureReadExpression(
+                    receiverNode,
+                    $"texelFetch(sampler2D({receiver}, sampler()), ivec2({memberArguments[0]}), 0)");
+            }
+            if (memberName == "Store" && memberArguments.Count == 2)
+            {
+                return $"imageStore({receiver}, ivec2({memberArguments[0]}), {AdaptTextureStoreValue(receiverNode, memberArguments[1])})";
+            }
+        }
+
+        var name = node.DisplayName ?? node.Spelling;
+        var arguments = node.Children
+            .Skip(IsCalleeReference(node.Children.FirstOrDefault(), name) ? 1 : 0)
+            .Select(LowerExpression)
+            .ToArray();
+
+        if (name == "GroupMemoryBarrierWithGroupSync" && arguments.Length == 0)
+        {
+            return "barrier()";
+        }
+        if (name == "discard_fragment" && arguments.Length == 0)
+        {
+            return "discard";
+        }
+        if (name == "InterlockedAdd" && arguments.Length == 2)
+        {
+            return $"atomicAdd({arguments[0]}, {arguments[1]})";
+        }
+        if (name == "lerp" && arguments.Length == 3)
+        {
+            return $"mix({arguments[0]}, {arguments[1]}, {arguments[2]})";
+        }
+
+        return base.LowerCallExpression(node);
+    }
+
+    private static string AdaptTextureReadExpression(CppslIrNode receiverNode, string expression)
+    {
+        if (!TryGetTextureValueType(receiverNode, out var valueType))
+        {
+            return expression;
+        }
+
+        return NormalizeShaderTypeName(valueType) switch
+        {
+            "float" or "int" or "uint" => $"{expression}.x",
+            "float2" or "int2" or "uint2" => $"{expression}.xy",
+            "float3" or "int3" or "uint3" => $"{expression}.xyz",
+            _ => expression
+        };
+    }
+
+    private string AdaptTextureStoreValue(CppslIrNode receiverNode, string value)
+    {
+        if (!TryGetTextureValueType(receiverNode, out var valueType))
+        {
+            return value;
+        }
+
+        return NormalizeShaderTypeName(valueType) switch
+        {
+            "float" => $"vec4({value})",
+            "float2" => $"vec4({value}, 0.0, 0.0)",
+            "float3" => $"vec4({value}, 0.0)",
+            "int" => $"ivec4({value})",
+            "int2" => $"ivec4({value}, 0, 0)",
+            "int3" => $"ivec4({value}, 0)",
+            "uint" => $"uvec4({value})",
+            "uint2" => $"uvec4({value}, 0u, 0u)",
+            "uint3" => $"uvec4({value}, 0u)",
+            _ => value
+        };
+    }
+
+    private bool TryGetGlslMemberCall(
+        CppslIrNode node,
+        out CppslIrNode receiverNode,
+        out string receiver,
+        out string memberName,
+        out IReadOnlyList<string> arguments)
+    {
+        receiverNode = node;
+        receiver = string.Empty;
+        memberName = string.Empty;
+        arguments = Array.Empty<string>();
+
+        if (node.Children.FirstOrDefault() is not { Kind: "MemberExpression" } member ||
+            member.DisplayName is null ||
+            member.Children.Count != 1)
+        {
+            return false;
+        }
+
+        receiverNode = member.Children[0];
+        receiver = LowerExpression(receiverNode);
+        memberName = member.DisplayName;
+        arguments = node.Children.Skip(1).Select(LowerExpression).ToArray();
+        return true;
     }
 
     protected override string MapValueType(string type)
@@ -224,7 +410,14 @@ internal sealed class GlslShaderSourceEmitter : CppslShaderSourceEmitterBase
             "float3" => "vec3",
             "float4" => "vec4",
             "float4x4" => "mat4",
+            "int2" => "ivec2",
+            "int3" => "ivec3",
+            "int4" => "ivec4",
+            "uint2" => "uvec2",
+            "uint3" => "uvec3",
+            "uint4" => "uvec4",
             "uint" => "uint",
+            "_Bool" => "bool",
             "bool_t" => "bool",
             _ => type
         };
@@ -238,5 +431,15 @@ internal sealed class GlslShaderSourceEmitter : CppslShaderSourceEmitterBase
     protected override string DefaultAggregateValue(string mappedType)
     {
         return $"{mappedType}(0.0)";
+    }
+
+    private static Dictionary<string, string> BuildResourceAccessMap(CppslSemanticModel model)
+    {
+        var map = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var global in model.Globals.Where(static global => global.ResourceKind is not null && global.AccessPath is not null))
+        {
+            map[global.AccessPath!] = global.Name;
+        }
+        return map;
     }
 }

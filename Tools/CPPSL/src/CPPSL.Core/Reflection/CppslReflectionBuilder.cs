@@ -48,7 +48,8 @@ public sealed class CppslReflectionBuilder
                 entryPoint.DisplayName,
                 entryPoint.ReturnType,
                 entryPoint.DeclaredStage,
-                entryPoint.Parameters.Select(static parameter => new CppslParameterReflection(parameter.Name, parameter.Type)).ToArray()),
+                entryPoint.Parameters.Select(static parameter => new CppslParameterReflection(parameter.Name, parameter.Type)).ToArray(),
+                WorkgroupSize(entryPoint)),
             descriptors,
             stageInputs,
             stageOutputs,
@@ -74,6 +75,20 @@ public sealed class CppslReflectionBuilder
             field.Location,
             field.IsPosition);
     }
+
+    private static IReadOnlyList<int>? WorkgroupSize(CppslFunction entryPoint)
+    {
+        var compute = entryPoint.Attributes.FindAttribute("compute");
+        if (compute is null || compute.Arguments.Count < 3)
+        {
+            return null;
+        }
+
+        var values = compute.Arguments.Take(3)
+            .Select(static argument => int.TryParse(argument, out var value) ? value : 0)
+            .ToArray();
+        return values.All(static value => value > 0) ? values : null;
+    }
 }
 
 public sealed record CppslReflectionModel(
@@ -93,7 +108,8 @@ public sealed record CppslEntryPointReflection(
     string? DisplayName,
     string? ReturnType,
     string? DeclaredStage,
-    IReadOnlyList<CppslParameterReflection> Parameters);
+    IReadOnlyList<CppslParameterReflection> Parameters,
+    IReadOnlyList<int>? WorkgroupSize);
 
 public sealed record CppslParameterReflection(
     string Name,
