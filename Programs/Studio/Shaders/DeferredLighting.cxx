@@ -49,7 +49,7 @@ struct DescSet0
     Texture2D<float4> g_emissive;
 
     [[cppsl::binding(6)]]
-    Texture2D<float> g_depth;
+    DepthTexture2D<float> g_depth;
 
     [[cppsl::binding(7)]]
     Texture2D<float4> g_skybox;
@@ -73,14 +73,14 @@ void cs_main([[cppsl::builtin(dispatch_thread_id)]] uint3 dispatch_thread_id)
     uint2 pixel = xy_u(dispatch_thread_id);
     float4 base_color_roughness = g_set0.g_base_color_roughness.Load(pixel);
     float3 base_color = xyz(base_color_roughness);
-    float roughness = base_color_roughness.w;
+    float roughness = max(base_color_roughness.w, 0.001f);
     float4 normal_metallic = g_set0.g_normal_metallic.Load(pixel);
     float3 normal = normalize(xyz(normal_metallic) * 2.0f - 1.0f);
     float metallic = normal_metallic.w;
     float3 emissive = xyz(g_set0.g_emissive.Load(pixel));
 
     float depth = g_set0.g_depth.Load(pixel);
-    if (depth == 1.0f)
+    if (depth >= 0.999f)
     {
         return;
     }
@@ -99,7 +99,7 @@ void cs_main([[cppsl::builtin(dispatch_thread_id)]] uint3 dispatch_thread_id)
 
     float3 specular_color = lerp(float3{0.04f, 0.08f, 0.08f}, base_color, metallic);
     float3 diffuse_color = base_color * (1.0f - metallic);
-    float nv = dot(normal, view_dir);
+    float nv = max(dot(normal, view_dir), 0.000001f);
     float3 final_color = float3{0.0f, 0.0f, 0.0f};
 
     if (g_set0.lighting_params.lighting_mode == 0u ||
@@ -139,8 +139,8 @@ void cs_main([[cppsl::builtin(dispatch_thread_id)]] uint3 dispatch_thread_id)
             {
                 continue;
             }
-            float nh = dot(normal, half_dir);
-            float vh = dot(view_dir, half_dir);
+            float nh = max(dot(normal, half_dir), 0.0f);
+            float vh = max(dot(view_dir, half_dir), 0.0f);
 
             float3 diffuse = light_diffuse_term(diffuse_color, specular_color);
             float3 specular = light_specular_term(specular_color, nl, nv, nh, vh, roughness);

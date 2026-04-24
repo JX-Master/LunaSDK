@@ -1,4 +1,4 @@
-#include "StudioCommon.hxx"
+#include "GeometryDescSet.hxx"
 
 struct MeshVertex
 {
@@ -8,36 +8,6 @@ struct MeshVertex
     [[cppsl::location(3)]] float2 texcoord;
     [[cppsl::location(4)]] float4 color;
 };
-
-struct MeshBuffer
-{
-    float4x4 model_to_world;
-    float4x4 world_to_model;
-};
-
-struct CBParam
-{
-    float4x4 world_to_view;
-    float4x4 view_to_proj;
-    float4x4 world_to_proj;
-    float4x4 proj_to_world;
-    float4x4 view_to_world;
-    float4 env_light_color;
-    uint screen_width;
-    uint screen_height;
-};
-
-struct DescSet0
-{
-    [[cppsl::cbuffer, cppsl::binding(0)]]
-    CBParam cb_param;
-
-    [[cppsl::structured_buffer, cppsl::binding(1)]]
-    const MeshBuffer* g_MeshBuffer;
-};
-
-[[cppsl::desc_set(0)]]
-DescSet0 g_set0;
 
 struct PS_INPUT
 {

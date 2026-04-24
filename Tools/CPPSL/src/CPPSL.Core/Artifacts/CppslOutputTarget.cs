@@ -34,7 +34,7 @@ public static class CppslOutputTargets
         {
             CppslOutputTarget.Hlsl => ".hlsl",
             CppslOutputTarget.Glsl => ".glsl",
-            CppslOutputTarget.Msl => ".msl",
+            CppslOutputTarget.Msl => ".metal",
             CppslOutputTarget.Reflection => ".reflection.json",
             _ => throw new ArgumentOutOfRangeException(nameof(target), target, null)
         };

@@ -90,7 +90,7 @@ internal sealed class HlslShaderSourceEmitter : CppslShaderSourceEmitterBase
                 "constant_buffer" => $"ConstantBuffer<{ResourceElementType(global)}> {global.Name}",
                 "structured_buffer" => $"StructuredBuffer<{ResourceElementType(global)}> {global.Name}",
                 "rw_structured_buffer" => $"RWStructuredBuffer<{ResourceElementType(global)}> {global.Name}",
-                "texture" => $"{global.Type} {global.Name}",
+                "texture" => $"{MapResourceType(global.Type)} {global.Name}",
                 "rw_texture" => $"{global.Type} {global.Name}",
                 "sampler" => $"SamplerState {global.Name}",
                 _ => $"{global.Type} {global.Name}"
@@ -189,8 +189,16 @@ internal sealed class HlslShaderSourceEmitter : CppslShaderSourceEmitterBase
         {
             "_Bool" => "bool",
             "bool_t" => "bool",
+            _ when type.StartsWith("DepthTexture2D<", StringComparison.Ordinal) => $"Texture2D<{UnwrapTemplateArgument(type)}>",
             _ => type
         };
+    }
+
+    private static string MapResourceType(string type)
+    {
+        return type.StartsWith("DepthTexture2D<", StringComparison.Ordinal)
+            ? $"Texture2D<{UnwrapTemplateArgument(type)}>"
+            : type;
     }
 
     protected override string DefaultStructValue(CppslStruct structure, CppslSemanticModel model)

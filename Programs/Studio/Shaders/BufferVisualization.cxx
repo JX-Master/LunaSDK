@@ -18,7 +18,7 @@ struct DescSet0
     Texture2D<float4> g_normal_metallic;
 
     [[cppsl::binding(3)]]
-    Texture2D<float> g_depth;
+    DepthTexture2D<float> g_depth;
 
     [[cppsl::binding(4)]]
     RWTexture2D<float4> g_dst;

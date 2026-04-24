@@ -22,6 +22,12 @@ namespace cppsl
     };
 
     template <typename T>
+    struct DepthTexture2D
+    {
+        T Load(uint2 pixel) const;
+    };
+
+    template <typename T>
     struct Texture3D
     {
         T Sample(SamplerState sampler, float3 uv) const;

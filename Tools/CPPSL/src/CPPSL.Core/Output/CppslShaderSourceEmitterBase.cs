@@ -179,6 +179,7 @@ internal abstract class CppslShaderSourceEmitterBase
         var normalized = NormalizeShaderTypeName(typeName);
         if (normalized.Contains("Texture1D<", StringComparison.Ordinal) ||
             normalized.Contains("Texture2D<", StringComparison.Ordinal) ||
+            normalized.Contains("DepthTexture2D<", StringComparison.Ordinal) ||
             normalized.Contains("Texture3D<", StringComparison.Ordinal) ||
             normalized.Contains("RWTexture1D<", StringComparison.Ordinal) ||
             normalized.Contains("RWTexture2D<", StringComparison.Ordinal) ||

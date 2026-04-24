@@ -14,6 +14,13 @@ namespace Luna
 {
     namespace RHI
     {
+        inline MTLCompileOptions* new_msl_compile_options()
+        {
+            MTLCompileOptions* options = [[MTLCompileOptions alloc]init];
+            options.languageVersion = MTLLanguageVersion3_2;
+            return options;
+        }
+
         RV RenderPipelineState::init(const GraphicsPipelineStateDesc& desc)
         {
             @autoreleasepool
@@ -29,7 +36,7 @@ namespace Luna
                     {
                         if(desc.vs.format == ShaderDataFormat::msl)
                         {
-                            MTLCompileOptions* options = [[MTLCompileOptions alloc]init];
+                            MTLCompileOptions* options = new_msl_compile_options();
                             String source_string((const c8*)desc.vs.data.data(), desc.vs.data.size());
                             NSString* source = [NSString stringWithUTF8String:source_string.c_str()];
                             vs = [m_device->m_device newLibraryWithSource:source options:options error:&err];
@@ -61,7 +68,7 @@ namespace Luna
                     {
                         if(desc.ps.format == ShaderDataFormat::msl)
                         {
-                            MTLCompileOptions* options = [[MTLCompileOptions alloc]init];
+                            MTLCompileOptions* options = new_msl_compile_options();
                             String source_string((const c8*)desc.ps.data.data(), desc.ps.data.size());
                             NSString* source = [NSString stringWithUTF8String:source_string.c_str()];
                             ps = [m_device->m_device newLibraryWithSource:source options:options error:&err];
@@ -243,7 +250,7 @@ namespace Luna
                     id<MTLFunction> cs_func;
                     if(desc.cs.format == ShaderDataFormat::msl)
                     {
-                        MTLCompileOptions* options = [[MTLCompileOptions alloc]init];
+                        MTLCompileOptions* options = new_msl_compile_options();
                         String source_string((const c8*)desc.cs.data.data(), desc.cs.data.size());
                         NSString* source = [NSString  stringWithUTF8String:source_string.c_str()];
                         cs = [m_device->m_device newLibraryWithSource:source options:options error:&err];

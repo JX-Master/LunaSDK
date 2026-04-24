@@ -10,7 +10,7 @@ struct TextureSet
     Texture2D<float> src_tex;
 
     [[cppsl::binding(1)]]
-    Texture2D<float> depth_tex;
+    DepthTexture2D<float> depth_tex;
 
     [[cppsl::binding(2)]]
     RWTexture2D<float> dst_tex;

@@ -9,8 +9,6 @@ namespace CPPSL.Core.Output;
 internal sealed class MslShaderSourceEmitter : CppslShaderSourceEmitterBase
 {
     private Dictionary<string, string> _resourceAccessByName = new(StringComparer.Ordinal);
-    private HashSet<string> _userFunctionNames = new(StringComparer.Ordinal);
-    private int[] _descriptorSets = Array.Empty<int>();
 
     public string Emit(CppslCompileOptions options, CppslSemanticModel model, CppslIrModule irModule)
     {
@@ -20,23 +18,13 @@ internal sealed class MslShaderSourceEmitter : CppslShaderSourceEmitterBase
         builder.AppendLine();
         WriteHeader(builder, "MSL", options);
         var entryPoint = FindEntryPoint(options, model);
-        _userFunctionNames = model.Functions.Select(static function => function.Name).ToHashSet(StringComparer.Ordinal);
-        _descriptorSets = model.Globals
-            .Where(static global => global.ResourceKind is not null)
-            .Select(static global => global.DescriptorSet)
-            .Where(static set => set is not null)
-            .Cast<int>()
-            .Distinct()
-            .Order()
-            .ToArray();
         WriteStructs(builder, options, model, entryPoint);
         WriteArgumentBufferStructs(builder, model);
+        WriteGlobalArgumentBuffers(builder, model);
         _resourceAccessByName = BuildResourceAccessMap(model);
         WriteFunctions(builder, entryPoint, model, irModule);
         WriteEntryPoint(builder, options, entryPoint, model, irModule);
         _resourceAccessByName = new Dictionary<string, string>(StringComparer.Ordinal);
-        _userFunctionNames = new HashSet<string>(StringComparer.Ordinal);
-        _descriptorSets = Array.Empty<int>();
         return RewriteResidualResourceAccesses(builder.ToString(), model);
     }
 
@@ -58,7 +46,7 @@ internal sealed class MslShaderSourceEmitter : CppslShaderSourceEmitterBase
             builder.Append(' ');
             builder.Append(function.Name);
             builder.Append('(');
-            builder.Append(string.Join(", ", BuildFunctionParameters(function)));
+            builder.Append(string.Join(", ", function.Parameters.Select(parameter => $"{MapValueType(parameter.Type)} {parameter.Name}")));
             builder.AppendLine(")");
             WriteFunctionBody(builder, function, model, irFunction.Body);
             builder.AppendLine();
@@ -75,6 +63,7 @@ internal sealed class MslShaderSourceEmitter : CppslShaderSourceEmitterBase
         var inputStructNames = entryPoint?.Parameters.Select(static parameter => parameter.Type).ToHashSet(StringComparer.Ordinal) ??
             new HashSet<string>(StringComparer.Ordinal);
         var outputStructName = entryPoint?.ReturnType;
+        var packedStructs = StructuredBufferElementStructNames(model);
         foreach (var structure in model.Structs.Where(structure => !descriptorSetLayouts.Contains(structure.Name)))
         {
             builder.AppendLine($"struct {structure.Name}");
@@ -85,7 +74,9 @@ internal sealed class MslShaderSourceEmitter : CppslShaderSourceEmitterBase
                     ? StructRole.StageOutput
                     : inputStructNames.Contains(structure.Name) ? StructRole.StageInput : StructRole.Plain;
                 builder.Append("    ");
-                builder.Append(MapValueType(field.Type));
+                builder.Append(packedStructs.Contains(structure.Name)
+                    ? MapStructuredBufferFieldType(field.Type)
+                    : MapValueType(field.Type));
                 builder.Append(' ');
                 builder.Append(field.Name);
                 builder.Append(FieldAttribute(field, role, options.Stage));
@@ -136,43 +127,50 @@ internal sealed class MslShaderSourceEmitter : CppslShaderSourceEmitterBase
             }
         }
 
-        foreach (var descriptorSet in _descriptorSets)
-        {
-            yield return $"constant {DescriptorSetStructName(descriptorSet)}& {DescriptorSetParameterName(descriptorSet)} [[buffer({descriptorSet})]]";
-        }
     }
 
-    private IEnumerable<string> BuildFunctionParameters(CppslFunction function)
-    {
-        foreach (var parameter in function.Parameters)
-        {
-            yield return $"{MapValueType(parameter.Type)} {parameter.Name}";
-        }
-
-        foreach (var descriptorSet in _descriptorSets)
-        {
-            yield return $"constant {DescriptorSetStructName(descriptorSet)}& {DescriptorSetParameterName(descriptorSet)}";
-        }
-    }
-
-    private void WriteArgumentBufferStructs(StringBuilder builder, CppslSemanticModel model)
+    private void WriteArgumentBufferStructs(
+        StringBuilder builder,
+        CppslSemanticModel model)
     {
         foreach (var descriptorSetGroup in model.Globals
             .Where(static global => global.ResourceKind is not null && global.DescriptorSet is not null)
             .GroupBy(static global => global.DescriptorSet!.Value)
             .OrderBy(static group => group.Key))
         {
+            var orderedGlobals = descriptorSetGroup
+                .OrderBy(static global => global.Binding ?? 0)
+                .ThenBy(static global => global.Name, StringComparer.Ordinal)
+                .ToArray();
             builder.AppendLine($"struct {DescriptorSetStructName(descriptorSetGroup.Key)}");
             builder.AppendLine("{");
-            var metalArgumentIndex = 0;
-            foreach (var global in descriptorSetGroup.OrderBy(static global => global.Binding ?? 0))
+            for (var metalArgumentIndex = 0; metalArgumentIndex < orderedGlobals.Length; ++metalArgumentIndex)
             {
+                var global = orderedGlobals[metalArgumentIndex];
                 builder.Append("    ");
                 builder.Append(ArgumentBufferField(global, metalArgumentIndex));
                 builder.AppendLine(";");
-                ++metalArgumentIndex;
             }
             builder.AppendLine("};");
+            builder.AppendLine();
+        }
+    }
+
+    private void WriteGlobalArgumentBuffers(
+        StringBuilder builder,
+        CppslSemanticModel model)
+    {
+        foreach (var descriptorSet in model.Globals
+            .Where(static global => global.ResourceKind is not null && global.DescriptorSet is not null)
+            .Select(static global => global.DescriptorSet!.Value)
+            .Distinct()
+            .Order())
+        {
+            builder.AppendLine($"constant {DescriptorSetStructName(descriptorSet)}* constant {DescriptorSetParameterName(descriptorSet)} [[buffer({descriptorSet})]];");
+        }
+
+        if (model.Globals.Any(static global => global.ResourceKind is not null && global.DescriptorSet is not null))
+        {
             builder.AppendLine();
         }
     }
@@ -215,12 +213,29 @@ internal sealed class MslShaderSourceEmitter : CppslShaderSourceEmitterBase
         };
     }
 
+    private static HashSet<string> StructuredBufferElementStructNames(CppslSemanticModel model)
+    {
+        return model.Globals
+            .Where(static global => global.ResourceKind is "structured_buffer" or "rw_structured_buffer")
+            .Select(static global => NormalizeShaderTypeName(ResourceElementType(global)))
+            .ToHashSet(StringComparer.Ordinal);
+    }
+
+    private string MapStructuredBufferFieldType(string type)
+    {
+        return NormalizeShaderTypeName(type) switch
+        {
+            "float3" => "packed_float3",
+            _ => MapValueType(type)
+        };
+    }
+
     private static Dictionary<string, string> BuildResourceAccessMap(CppslSemanticModel model)
     {
         var map = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (var global in model.Globals.Where(static global => global.ResourceKind is not null && global.DescriptorSet is not null))
         {
-            var descriptorSet = DescriptorSetParameterName(global.DescriptorSet!.Value);
+            var descriptorSet = $"(*{DescriptorSetParameterName(global.DescriptorSet!.Value)})";
             var accessPath = global.AccessPath ?? global.Name;
             var access = $"{descriptorSet}.{global.Name}";
             map[accessPath] = global.ResourceKind == "constant_buffer"
@@ -321,21 +336,21 @@ internal sealed class MslShaderSourceEmitter : CppslShaderSourceEmitterBase
 
         if (name == "InterlockedAdd" && arguments.Length == 2)
         {
-            return $"atomic_fetch_add_explicit((threadgroup atomic_uint*)&{arguments[0]}, {arguments[1]}, memory_order_relaxed)";
+            var addressSpace = AtomicTargetAddressSpace(arguments[0]);
+            return $"atomic_fetch_add_explicit(({addressSpace} atomic_uint*)&{arguments[0]}, {arguments[1]}, memory_order_relaxed)";
         }
         if (name == "lerp" && arguments.Length == 3)
         {
             return $"mix({arguments[0]}, {arguments[1]}, {arguments[2]})";
         }
-        if (_userFunctionNames.Contains(name))
-        {
-            var forwardedArguments = arguments
-                .Concat(_descriptorSets.Select(DescriptorSetParameterName))
-                .ToArray();
-            return $"{name}({string.Join(", ", forwardedArguments)})";
-        }
-
         return base.LowerCallExpression(node);
+    }
+
+    private static string AtomicTargetAddressSpace(string target)
+    {
+        return target.Contains("spvDescriptorSet", StringComparison.Ordinal)
+            ? "device"
+            : "threadgroup";
     }
 
     private static string RewriteResidualResourceAccesses(string source, CppslSemanticModel model)
@@ -345,7 +360,7 @@ internal sealed class MslShaderSourceEmitter : CppslShaderSourceEmitterBase
             model,
             static global =>
             {
-                var access = $"{DescriptorSetParameterName(global.DescriptorSet!.Value)}.{global.Name}";
+                var access = $"(*{DescriptorSetParameterName(global.DescriptorSet!.Value)}).{global.Name}";
                 return global.ResourceKind == "constant_buffer"
                     ? $"(*{access})"
                     : access;
@@ -353,7 +368,7 @@ internal sealed class MslShaderSourceEmitter : CppslShaderSourceEmitterBase
 
         foreach (var global in model.Globals.Where(static global => global.ResourceKind is not null && global.DescriptorSet is not null))
         {
-            var access = $"{DescriptorSetParameterName(global.DescriptorSet!.Value)}.{global.Name}";
+            var access = $"(*{DescriptorSetParameterName(global.DescriptorSet!.Value)}).{global.Name}";
             var replacement = global.ResourceKind == "constant_buffer"
                 ? $"(*{access})"
                 : access;
@@ -367,6 +382,10 @@ internal sealed class MslShaderSourceEmitter : CppslShaderSourceEmitterBase
     private static string AdaptTextureReadExpression(CppslIrNode receiverNode, string expression)
     {
         if (!TryGetTextureValueType(receiverNode, out var valueType))
+        {
+            return expression;
+        }
+        if (IsDepthTextureReceiver(receiverNode))
         {
             return expression;
         }
@@ -447,6 +466,25 @@ internal sealed class MslShaderSourceEmitter : CppslShaderSourceEmitterBase
             type.Contains("Texture1D", StringComparison.Ordinal);
     }
 
+    private static bool IsDepthTextureReceiver(CppslIrNode node)
+    {
+        if (ContainsDepthTextureType(node.Type) ||
+            ContainsDepthTextureType(node.TypeInfo?.Spelling) ||
+            ContainsDepthTextureType(node.TypeInfo?.CanonicalName) ||
+            ContainsDepthTextureType(node.TypeInfo?.DesugaredName))
+        {
+            return true;
+        }
+
+        return node.Children.Any(IsDepthTextureReceiver);
+    }
+
+    private static bool ContainsDepthTextureType(string? type)
+    {
+        return type is not null &&
+            type.Contains("DepthTexture2D", StringComparison.Ordinal);
+    }
+
     protected override string DefaultStructValue(CppslStruct structure, CppslSemanticModel model)
     {
         return $"{structure.Name}{{}}";
@@ -506,13 +544,14 @@ internal sealed class MslShaderSourceEmitter : CppslShaderSourceEmitterBase
         {
             _ when type.StartsWith("Texture1D<", StringComparison.Ordinal) ||
                    type.StartsWith("RWTexture1D<", StringComparison.Ordinal) => "texture1d",
+            _ when type.StartsWith("DepthTexture2D<", StringComparison.Ordinal) => "depth2d",
             _ when type.StartsWith("Texture3D<", StringComparison.Ordinal) ||
                    type.StartsWith("RWTexture3D<", StringComparison.Ordinal) => "texture3d",
             _ => "texture2d"
         };
 
         return writable
-            ? $"{shape}<float, access::write>"
+            ? $"{shape}<float, access::read_write>"
             : $"{shape}<float>";
     }
 

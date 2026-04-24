@@ -18,7 +18,7 @@ struct DescSet0
     Texture2D<float4> g_skybox;
 
     [[cppsl::binding(2)]]
-    Texture2D<float> g_depth;
+    DepthTexture2D<float> g_depth;
 
     [[cppsl::binding(3)]]
     RWTexture2D<float4> g_lighting_tex;
@@ -34,7 +34,8 @@ DescSet0 g_set0;
 void cs_main([[cppsl::builtin(dispatch_thread_id)]] uint3 dispatch_thread_id)
 {
     uint2 pixel = xy_u(dispatch_thread_id);
-    if (g_set0.g_depth.Load(pixel) != 1.0f)
+
+    if (g_set0.g_depth.Load(pixel) < 0.999f)
     {
         return;
     }

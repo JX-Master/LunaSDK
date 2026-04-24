@@ -331,7 +331,8 @@ public sealed class CppslSemanticValidator
     private static bool IsTextureType(string type)
     {
         var normalized = type.Trim();
-        return normalized.StartsWith("Texture", StringComparison.Ordinal) &&
+        return (normalized.StartsWith("Texture", StringComparison.Ordinal) ||
+            normalized.StartsWith("DepthTexture", StringComparison.Ordinal)) &&
             normalized.Contains('<', StringComparison.Ordinal);
     }
 

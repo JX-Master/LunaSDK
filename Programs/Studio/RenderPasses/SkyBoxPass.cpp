@@ -108,7 +108,7 @@ namespace Luna
                 luexp(m_ds->update_descriptors({
                     WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(m_skybox_params_cb, 0, (u32)align_upper(sizeof(SkyboxParams), cb_align))),
                     WriteDescriptorSet::read_texture_view(1, TextureViewDesc::tex2d(skybox)),
-                    WriteDescriptorSet::read_texture_view(2, TextureViewDesc::tex2d(depth_tex)),
+                    WriteDescriptorSet::read_texture_view(2, TextureViewDesc::tex2d(depth_tex, Format::d32_float, 0, 1)),
                     WriteDescriptorSet::read_write_texture_view(3, TextureViewDesc::tex2d(output_tex)),
                     WriteDescriptorSet::sampler(4, SamplerDesc(Filter::linear, Filter::linear, Filter::linear, TextureAddressMode::repeat, TextureAddressMode::repeat, TextureAddressMode::repeat))
                     }));

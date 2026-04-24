@@ -115,7 +115,8 @@ public sealed class CppslIrBuilder
             CppslAstNodeKind.InitializerListExpression or
             CppslAstNodeKind.ImplicitCastExpression or
             CppslAstNodeKind.ParenExpression or
-            CppslAstNodeKind.ArraySubscriptExpression;
+            CppslAstNodeKind.ArraySubscriptExpression or
+            CppslAstNodeKind.Unknown;
     }
 }
 

@@ -18,7 +18,7 @@ Current scope:
 - Emit `cppsl.ir` v1 with declarations and an entry-point function body AST
   skeleton, plus multiple output targets from a single frontend parse.
 - Treat HLSL, GLSL, MSL, and reflection as peer output targets.
-- Emit phase 0 HLSL, GLSL, and MSL sources with platform-specific structs,
+- Emit phase 0 HLSL, GLSL, and Metal sources with platform-specific structs,
   resource declarations, entry signatures, and the first lowered Box-style
   statement/expression subset.
 - Emit versioned reflection JSON.
