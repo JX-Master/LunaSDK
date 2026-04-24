@@ -10,17 +10,23 @@ struct TransformParams
     float4 clip_rect;
 };
 
-[[cppsl::cbuffer, cppsl::desc_set(0), cppsl::binding(0)]]
-TransformParams g_cbuffer;
+struct DescSet0
+{
+    [[cppsl::cbuffer, cppsl::binding(0)]]
+    TransformParams g_cbuffer;
 
-[[cppsl::structured_buffer, cppsl::desc_set(0), cppsl::binding(1)]]
-const float* g_commands;
+    [[cppsl::structured_buffer, cppsl::binding(1)]]
+    const float* g_commands;
 
-[[cppsl::desc_set(0), cppsl::binding(2)]]
-Texture2D<float4> g_tex;
+    [[cppsl::binding(2)]]
+    Texture2D<float4> g_tex;
 
-[[cppsl::desc_set(0), cppsl::binding(3)]]
-SamplerState g_sampler;
+    [[cppsl::binding(3)]]
+    SamplerState g_sampler;
+};
+
+[[cppsl::desc_set(0)]]
+DescSet0 g_set0;
 
 struct VSIn
 {
@@ -48,7 +54,7 @@ VSOut vs_main(VSIn v)
 {
     float4 pos;
     pos = float4{v.position.x, v.position.y, 0.0f, 1.0f};
-    pos = mul(g_cbuffer.transform, pos);
+    pos = mul(g_set0.g_cbuffer.transform, pos);
 
     VSOut o;
     o.position = pos;

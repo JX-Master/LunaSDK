@@ -3,11 +3,17 @@
 
 using namespace cppsl;
 
-[[cppsl::desc_set(0), cppsl::binding(0)]]
-Texture2D<float4> g_src_tex;
+struct DescSet0
+{
+    [[cppsl::binding(0)]]
+    Texture2D<float4> g_src_tex;
 
-[[cppsl::desc_set(0), cppsl::binding(1)]]
-SamplerState g_sampler;
+    [[cppsl::binding(1)]]
+    SamplerState g_sampler;
+};
+
+[[cppsl::desc_set(0)]]
+DescSet0 g_set0;
 
 struct PSInput
 {
@@ -24,6 +30,6 @@ struct PSOutput
 PSOutput ps_main(PSInput input)
 {
     PSOutput output;
-    output.color = g_src_tex.Sample(g_sampler, input.texcoord);
+    output.color = g_set0.g_src_tex.Sample(g_set0.g_sampler, input.texcoord);
     return output;
 }

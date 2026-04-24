@@ -11,20 +11,26 @@ struct LumHistogramCB
     float bloom_intensity;
 };
 
-[[cppsl::cbuffer, cppsl::desc_set(0), cppsl::binding(0)]]
-LumHistogramCB cb;
+struct DescSet0
+{
+    [[cppsl::cbuffer, cppsl::binding(0)]]
+    LumHistogramCB cb;
 
-[[cppsl::desc_set(0), cppsl::binding(1)]]
-Texture2D<float4> g_src_tex;
+    [[cppsl::binding(1)]]
+    Texture2D<float4> g_src_tex;
 
-[[cppsl::desc_set(0), cppsl::binding(2)]]
-Texture2D<float4> g_bloom_tex;
+    [[cppsl::binding(2)]]
+    Texture2D<float4> g_bloom_tex;
 
-[[cppsl::rwstructured_buffer, cppsl::desc_set(0), cppsl::binding(3)]]
-uint* g_dst_buffer;
+    [[cppsl::rwstructured_buffer, cppsl::binding(3)]]
+    uint* g_dst_buffer;
 
-[[cppsl::desc_set(0), cppsl::binding(4)]]
-SamplerState g_sampler;
+    [[cppsl::binding(4)]]
+    SamplerState g_sampler;
+};
+
+[[cppsl::desc_set(0)]]
+DescSet0 g_set0;
 
 [[cppsl::group_shared]]
 uint histogram_shared[256];
@@ -49,18 +55,18 @@ void cs_main([[cppsl::builtin(dispatch_thread_id)]] uint3 dispatch_thread_id, [[
     histogram_shared[group_index] = 0u;
     GroupMemoryBarrierWithGroupSync();
 
-    if (dispatch_thread_id.x < cb.src_width && dispatch_thread_id.y < cb.src_height)
+    if (dispatch_thread_id.x < g_set0.cb.src_width && dispatch_thread_id.y < g_set0.cb.src_height)
     {
         uint2 pixel = xy_u(dispatch_thread_id);
-        float3 hdr_color = xyz(g_src_tex.Load(pixel));
-        float2 texel_size = float2{2.0f / float(cb.src_width), 2.0f / float(cb.src_height)};
+        float3 hdr_color = xyz(g_set0.g_src_tex.Load(pixel));
+        float2 texel_size = float2{2.0f / float(g_set0.cb.src_width), 2.0f / float(g_set0.cb.src_height)};
         float2 uv = texel_size * (xy(dispatch_thread_id) + 0.5f);
-        float3 bloom_color = xyz(g_bloom_tex.SampleLevel(g_sampler, uv, 0.0f)) * cb.bloom_intensity;
+        float3 bloom_color = xyz(g_set0.g_bloom_tex.SampleLevel(g_set0.g_sampler, uv, 0.0f)) * g_set0.cb.bloom_intensity;
         hdr_color += bloom_color;
-        uint bin_index = color_to_bin(hdr_color, cb.min_brightness, cb.max_brightness);
+        uint bin_index = color_to_bin(hdr_color, g_set0.cb.min_brightness, g_set0.cb.max_brightness);
         InterlockedAdd(histogram_shared[bin_index], 1u);
     }
 
     GroupMemoryBarrierWithGroupSync();
-    InterlockedAdd(g_dst_buffer[group_index], histogram_shared[group_index]);
+    InterlockedAdd(g_set0.g_dst_buffer[group_index], histogram_shared[group_index]);
 }

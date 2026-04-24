@@ -8,8 +8,14 @@ struct Camera
     float4x4 world_to_proj;
 };
 
-[[cppsl::cbuffer, cppsl::desc_set(0)]]
-Camera camera;
+struct FrameSet
+{
+    [[cppsl::cbuffer]]
+    Camera camera;
+};
+
+[[cppsl::desc_set(0)]]
+FrameSet frame;
 
 [[cppsl::vertex]]
 void main_vs()

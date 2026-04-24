@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.RegularExpressions;
 using CPPSL.Core.Compiler;
 using CPPSL.Core.IR;
 using CPPSL.Core.Semantics;
@@ -8,6 +9,8 @@ namespace CPPSL.Core.Output;
 internal sealed class MslShaderSourceEmitter : CppslShaderSourceEmitterBase
 {
     private Dictionary<string, string> _resourceAccessByName = new(StringComparer.Ordinal);
+    private HashSet<string> _userFunctionNames = new(StringComparer.Ordinal);
+    private int[] _descriptorSets = Array.Empty<int>();
 
     public string Emit(CppslCompileOptions options, CppslSemanticModel model, CppslIrModule irModule)
     {
@@ -17,13 +20,24 @@ internal sealed class MslShaderSourceEmitter : CppslShaderSourceEmitterBase
         builder.AppendLine();
         WriteHeader(builder, "MSL", options);
         var entryPoint = FindEntryPoint(options, model);
+        _userFunctionNames = model.Functions.Select(static function => function.Name).ToHashSet(StringComparer.Ordinal);
+        _descriptorSets = model.Globals
+            .Where(static global => global.ResourceKind is not null)
+            .Select(static global => global.DescriptorSet)
+            .Where(static set => set is not null)
+            .Cast<int>()
+            .Distinct()
+            .Order()
+            .ToArray();
         WriteStructs(builder, options, model, entryPoint);
         WriteArgumentBufferStructs(builder, model);
         _resourceAccessByName = BuildResourceAccessMap(model);
         WriteFunctions(builder, entryPoint, model, irModule);
         WriteEntryPoint(builder, options, entryPoint, model, irModule);
         _resourceAccessByName = new Dictionary<string, string>(StringComparer.Ordinal);
-        return builder.ToString();
+        _userFunctionNames = new HashSet<string>(StringComparer.Ordinal);
+        _descriptorSets = Array.Empty<int>();
+        return RewriteResidualResourceAccesses(builder.ToString(), model);
     }
 
     private void WriteFunctions(
@@ -44,7 +58,7 @@ internal sealed class MslShaderSourceEmitter : CppslShaderSourceEmitterBase
             builder.Append(' ');
             builder.Append(function.Name);
             builder.Append('(');
-            builder.Append(string.Join(", ", function.Parameters.Select(parameter => $"{MapValueType(parameter.Type)} {parameter.Name}")));
+            builder.Append(string.Join(", ", BuildFunctionParameters(function)));
             builder.AppendLine(")");
             WriteFunctionBody(builder, function, model, irFunction.Body);
             builder.AppendLine();
@@ -122,15 +136,22 @@ internal sealed class MslShaderSourceEmitter : CppslShaderSourceEmitterBase
             }
         }
 
-        foreach (var descriptorSet in model.Globals
-            .Where(static global => global.ResourceKind is not null)
-            .Select(static global => global.DescriptorSet)
-            .Where(static set => set is not null)
-            .Cast<int>()
-            .Distinct()
-            .Order())
+        foreach (var descriptorSet in _descriptorSets)
         {
             yield return $"constant {DescriptorSetStructName(descriptorSet)}& {DescriptorSetParameterName(descriptorSet)} [[buffer({descriptorSet})]]";
+        }
+    }
+
+    private IEnumerable<string> BuildFunctionParameters(CppslFunction function)
+    {
+        foreach (var parameter in function.Parameters)
+        {
+            yield return $"{MapValueType(parameter.Type)} {parameter.Name}";
+        }
+
+        foreach (var descriptorSet in _descriptorSets)
+        {
+            yield return $"constant {DescriptorSetStructName(descriptorSet)}& {DescriptorSetParameterName(descriptorSet)}";
         }
     }
 
@@ -302,8 +323,45 @@ internal sealed class MslShaderSourceEmitter : CppslShaderSourceEmitterBase
         {
             return $"atomic_fetch_add_explicit((threadgroup atomic_uint*)&{arguments[0]}, {arguments[1]}, memory_order_relaxed)";
         }
+        if (name == "lerp" && arguments.Length == 3)
+        {
+            return $"mix({arguments[0]}, {arguments[1]}, {arguments[2]})";
+        }
+        if (_userFunctionNames.Contains(name))
+        {
+            var forwardedArguments = arguments
+                .Concat(_descriptorSets.Select(DescriptorSetParameterName))
+                .ToArray();
+            return $"{name}({string.Join(", ", forwardedArguments)})";
+        }
 
         return base.LowerCallExpression(node);
+    }
+
+    private static string RewriteResidualResourceAccesses(string source, CppslSemanticModel model)
+    {
+        source = RewriteResidualResourceAccessPaths(
+            source,
+            model,
+            static global =>
+            {
+                var access = $"{DescriptorSetParameterName(global.DescriptorSet!.Value)}.{global.Name}";
+                return global.ResourceKind == "constant_buffer"
+                    ? $"(*{access})"
+                    : access;
+            });
+
+        foreach (var global in model.Globals.Where(static global => global.ResourceKind is not null && global.DescriptorSet is not null))
+        {
+            var access = $"{DescriptorSetParameterName(global.DescriptorSet!.Value)}.{global.Name}";
+            var replacement = global.ResourceKind == "constant_buffer"
+                ? $"(*{access})"
+                : access;
+            var pattern = $@"(?<![A-Za-z0-9_\.]){Regex.Escape(global.Name)}(?=(?:\[[^\]]+\])?\.)";
+            source = Regex.Replace(source, pattern, replacement);
+        }
+
+        return source;
     }
 
     private static string AdaptTextureReadExpression(CppslIrNode receiverNode, string expression)

@@ -21,11 +21,17 @@ struct MeshBuffer
     float4x4 world_to_model;
 };
 
-[[cppsl::cbuffer, cppsl::desc_set(0), cppsl::binding(0)]]
-CameraCB g_cb;
+struct DescSet0
+{
+    [[cppsl::cbuffer, cppsl::binding(0)]]
+    CameraCB g_cb;
 
-[[cppsl::structured_buffer, cppsl::desc_set(0), cppsl::binding(1)]]
-const MeshBuffer* g_MeshBuffer;
+    [[cppsl::structured_buffer, cppsl::binding(1)]]
+    const MeshBuffer* g_MeshBuffer;
+};
+
+[[cppsl::desc_set(0)]]
+DescSet0 g_set0;
 
 struct PS_INPUT
 {

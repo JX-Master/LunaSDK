@@ -20,8 +20,9 @@ internal sealed class HlslShaderSourceEmitter : CppslShaderSourceEmitterBase
         WriteResources(builder, model);
         WriteFunctions(builder, entryPoint, model, irModule);
         WriteEntryPoint(builder, entryPoint, model, irModule);
+        var source = RewriteResidualResourceAccessPaths(builder.ToString(), model, static global => global.Name);
         _resourceAccessByPath = new Dictionary<string, string>(StringComparer.Ordinal);
-        return builder.ToString();
+        return source;
     }
 
     private void WriteFunctions(

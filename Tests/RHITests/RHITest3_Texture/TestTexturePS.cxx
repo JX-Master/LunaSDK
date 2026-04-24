@@ -4,11 +4,17 @@
 
 using namespace cppsl;
 
-[[cppsl::desc_set(0), cppsl::binding(0)]]
-Texture2D<float4> texture0;
+struct DescSet0
+{
+    [[cppsl::binding(0)]]
+    Texture2D<float4> texture0;
 
-[[cppsl::desc_set(0), cppsl::binding(1)]]
-SamplerState sampler0;
+    [[cppsl::binding(1)]]
+    SamplerState sampler0;
+};
+
+[[cppsl::desc_set(0)]]
+DescSet0 g_set0;
 
 struct PS_INPUT
 {
@@ -25,7 +31,7 @@ PS_OUTPUT ps_main(PS_INPUT input)
 {
     PS_OUTPUT output;
     output.color = clamp(
-        texture0.Sample(sampler0, input.uv),
+        g_set0.texture0.Sample(g_set0.sampler0, input.uv),
         float4{0.0f, 0.0f, 0.0f, 0.0f},
         float4{1.0f, 1.0f, 1.0f, 1.0f});
     return output;

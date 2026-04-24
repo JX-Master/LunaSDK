@@ -10,14 +10,20 @@ struct Camera
     float4x4 world_to_proj;
 };
 
-[[cppsl::desc_set(0), cppsl::binding(15)]]
-SamplerState tex_sampler;
+struct DescSet0
+{
+    [[cppsl::binding(15)]]
+    SamplerState tex_sampler;
 
-[[cppsl::cbuffer, cppsl::desc_set(0), cppsl::binding(0)]]
-Camera vertexBuffer;
+    [[cppsl::cbuffer, cppsl::binding(0)]]
+    Camera vertexBuffer;
 
-[[cppsl::desc_set(0), cppsl::binding(8)]]
-Texture2D<float4> tex;
+    [[cppsl::binding(8)]]
+    Texture2D<float4> tex;
+};
+
+[[cppsl::desc_set(0)]]
+DescSet0 g_set0;
 
 struct VS_INPUT
 {
@@ -35,7 +41,7 @@ struct PS_INPUT
 PS_INPUT vs_main(VS_INPUT input)
 {
     PS_INPUT output;
-    output.position = mul(vertexBuffer.world_to_proj, float4{input.position.x, input.position.y, input.position.z, 1.0f});
+    output.position = mul(g_set0.vertexBuffer.world_to_proj, float4{input.position.x, input.position.y, input.position.z, 1.0f});
     output.texcoord = input.texcoord;
     return output;
 }

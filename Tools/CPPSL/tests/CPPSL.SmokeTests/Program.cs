@@ -13,6 +13,8 @@ var boxShader = Path.Combine(fixturesRoot, "valid", "box", "Box.cxx");
 var textureBasicShader = Path.Combine(fixturesRoot, "valid", "texture_basic", "TextureBasic.cxx");
 var texture1DSampleLevelShader = Path.Combine(fixturesRoot, "valid", "texture1d_sample_level", "Texture1DSampleLevel.cxx");
 var textureScalarShader = Path.Combine(fixturesRoot, "valid", "texture_scalar", "TextureScalar.cxx");
+var structuredBufferAccessShader = Path.Combine(fixturesRoot, "valid", "structured_buffer_access", "StructuredBufferAccess.cxx");
+var helperResourceAccessShader = Path.Combine(fixturesRoot, "valid", "helper_resource_access", "HelperResourceAccess.cxx");
 var resourceAttributesShader = Path.Combine(fixturesRoot, "valid", "resource_attributes", "ResourceAttributes.cxx");
 var descriptorSetShader = Path.Combine(fixturesRoot, "valid", "descriptor_set", "DescriptorSet.cxx");
 
@@ -108,7 +110,7 @@ if (!reflectionText.Contains("\"Schema\": \"cppsl.reflection\"", StringCompariso
     !reflectionText.Contains("\"Version\": 0", StringComparison.Ordinal) ||
     !reflectionText.Contains("\"EntryPoint\": \"main_vs\"", StringComparison.Ordinal) ||
     !reflectionText.Contains("\"Descriptors\"", StringComparison.Ordinal) ||
-    !reflectionText.Contains("\"Name\": \"camera\"", StringComparison.Ordinal) ||
+    !reflectionText.Contains("\"Name\": \"frame_camera\"", StringComparison.Ordinal) ||
     !reflectionText.Contains("\"Type\": \"Camera\"", StringComparison.Ordinal) ||
     !reflectionText.Contains("\"ResourceKind\": \"constant_buffer\"", StringComparison.Ordinal) ||
     !reflectionText.Contains("\"Set\": 0", StringComparison.Ordinal) ||
@@ -134,25 +136,25 @@ if (!Regex.IsMatch(irText, "\"Name\": \"input\".*?\"Attributes\": \\[\\s*\\]", R
 }
 if (!hlslText.Contains("struct VSInput", StringComparison.Ordinal) ||
     !hlslText.Contains("float4 position : SV_Position", StringComparison.Ordinal) ||
-    !hlslText.Contains("ConstantBuffer<Camera> camera : register(b0, space0);", StringComparison.Ordinal) ||
+    !hlslText.Contains("ConstantBuffer<Camera> frame_camera : register(b0, space0);", StringComparison.Ordinal) ||
     !hlslText.Contains("VSOutput main_vs(VSInput input)", StringComparison.Ordinal) ||
-    !hlslText.Contains("output.position = mul(camera.world_to_proj, float4(input.position.x, input.position.y, input.position.z, 1.0f));", StringComparison.Ordinal) ||
+    !hlslText.Contains("output.position = mul(frame_camera.world_to_proj, float4(input.position.x, input.position.y, input.position.z, 1.0f));", StringComparison.Ordinal) ||
     !hlslText.Contains("output.texcoord = input.texcoord;", StringComparison.Ordinal) ||
     !hlslText.Contains("return output;", StringComparison.Ordinal) ||
     !glslText.Contains("#version 450", StringComparison.Ordinal) ||
     !glslText.Contains("mat4 world_to_proj", StringComparison.Ordinal) ||
-    !glslText.Contains("layout(set = 0, binding = 0) uniform camera_Block", StringComparison.Ordinal) ||
-    !glslText.Contains("output.position = (camera.world_to_proj * vec4(input.position.x, input.position.y, input.position.z, 1.0));", StringComparison.Ordinal) ||
+    !glslText.Contains("layout(set = 0, binding = 0) uniform frame_camera_Block", StringComparison.Ordinal) ||
+    !glslText.Contains("output.position = (frame_camera.world_to_proj * vec4(input.position.x, input.position.y, input.position.z, 1.0));", StringComparison.Ordinal) ||
     !glslText.Contains("void main()", StringComparison.Ordinal) ||
     !glslText.Contains("gl_Position = cppsl_output.position;", StringComparison.Ordinal) ||
     !mslText.Contains("#include <metal_stdlib>", StringComparison.Ordinal) ||
     !mslText.Contains("float3 position [[attribute(0)]]", StringComparison.Ordinal) ||
     !mslText.Contains("float4 position [[position]]", StringComparison.Ordinal) ||
     !mslText.Contains("struct spvDescriptorSetBuffer0", StringComparison.Ordinal) ||
-    !mslText.Contains("constant Camera* camera [[id(0)]]", StringComparison.Ordinal) ||
+    !mslText.Contains("constant Camera* frame_camera [[id(0)]]", StringComparison.Ordinal) ||
     !mslText.Contains("constant spvDescriptorSetBuffer0& spvDescriptorSet0 [[buffer(0)]]", StringComparison.Ordinal) ||
     !mslText.Contains("vertex VSOutput main_vs", StringComparison.Ordinal) ||
-    !mslText.Contains("output.position = ((*spvDescriptorSet0.camera).world_to_proj * float4(input.position.x, input.position.y, input.position.z, 1.0f));", StringComparison.Ordinal) ||
+    !mslText.Contains("output.position = ((*spvDescriptorSet0.frame_camera).world_to_proj * float4(input.position.x, input.position.y, input.position.z, 1.0f));", StringComparison.Ordinal) ||
     !mslText.Contains("return output;", StringComparison.Ordinal))
 {
     Console.Error.WriteLine("error: expected CPPSL shader source targets were not emitted.");
@@ -180,23 +182,23 @@ var textureReflectionText = File.ReadAllText(textureResult.Artifacts.GetOutputPa
 var textureHlslText = File.ReadAllText(textureResult.Artifacts.GetOutputPath(CppslOutputTarget.Hlsl));
 var textureGlslText = File.ReadAllText(textureResult.Artifacts.GetOutputPath(CppslOutputTarget.Glsl));
 var textureMslText = File.ReadAllText(textureResult.Artifacts.GetOutputPath(CppslOutputTarget.Msl));
-if (!textureReflectionText.Contains("\"Name\": \"color_texture\"", StringComparison.Ordinal) ||
+if (!textureReflectionText.Contains("\"Name\": \"textures_color_texture\"", StringComparison.Ordinal) ||
     !textureReflectionText.Contains("\"ResourceKind\": \"texture\"", StringComparison.Ordinal) ||
-    !textureReflectionText.Contains("\"Name\": \"linear_sampler\"", StringComparison.Ordinal) ||
+    !textureReflectionText.Contains("\"Name\": \"textures_linear_sampler\"", StringComparison.Ordinal) ||
     !textureReflectionText.Contains("\"ResourceKind\": \"sampler\"", StringComparison.Ordinal))
 {
     Console.Error.WriteLine("error: expected texture_basic reflection resources were not written.");
     return 1;
 }
-if (!textureHlslText.Contains("Texture2D<float4> color_texture : register(t0, space0);", StringComparison.Ordinal) ||
-    !textureHlslText.Contains("SamplerState linear_sampler : register(s1, space0);", StringComparison.Ordinal) ||
-    !textureGlslText.Contains("uniform texture2D color_texture", StringComparison.Ordinal) ||
-    !textureGlslText.Contains("uniform sampler linear_sampler", StringComparison.Ordinal) ||
+if (!textureHlslText.Contains("Texture2D<float4> textures_color_texture : register(t0, space0);", StringComparison.Ordinal) ||
+    !textureHlslText.Contains("SamplerState textures_linear_sampler : register(s1, space0);", StringComparison.Ordinal) ||
+    !textureGlslText.Contains("uniform texture2D textures_color_texture", StringComparison.Ordinal) ||
+    !textureGlslText.Contains("uniform sampler textures_linear_sampler", StringComparison.Ordinal) ||
     !textureMslText.Contains("fragment PSOutput main_ps", StringComparison.Ordinal) ||
-    !textureMslText.Contains("texture2d<float> color_texture [[id(0)]]", StringComparison.Ordinal) ||
-    !textureMslText.Contains("sampler linear_sampler [[id(1)]]", StringComparison.Ordinal) ||
+    !textureMslText.Contains("texture2d<float> textures_color_texture [[id(0)]]", StringComparison.Ordinal) ||
+    !textureMslText.Contains("sampler textures_linear_sampler [[id(1)]]", StringComparison.Ordinal) ||
     !textureMslText.Contains("constant spvDescriptorSetBuffer0& spvDescriptorSet0 [[buffer(0)]]", StringComparison.Ordinal) ||
-    !textureMslText.Contains("spvDescriptorSet0.color_texture.sample(spvDescriptorSet0.linear_sampler", StringComparison.Ordinal))
+    !textureMslText.Contains("spvDescriptorSet0.textures_color_texture.sample(spvDescriptorSet0.textures_linear_sampler", StringComparison.Ordinal))
 {
     Console.Error.WriteLine("error: expected texture_basic shader source resources were not emitted.");
     return 1;
@@ -220,10 +222,10 @@ if (!texture1DSampleLevelResult.Succeeded || texture1DSampleLevelResult.Artifact
 }
 
 var texture1DSampleLevelMslText = File.ReadAllText(texture1DSampleLevelResult.Artifacts.GetOutputPath(CppslOutputTarget.Msl));
-if (!texture1DSampleLevelMslText.Contains("texture1d<float> src_texture [[id(0)]]", StringComparison.Ordinal) ||
-    !texture1DSampleLevelMslText.Contains("texture1d<float, access::write> dst_texture [[id(1)]]", StringComparison.Ordinal) ||
-    !texture1DSampleLevelMslText.Contains("spvDescriptorSet0.src_texture.sample(spvDescriptorSet0.linear_sampler, uv)", StringComparison.Ordinal) ||
-    texture1DSampleLevelMslText.Contains("src_texture.sample(spvDescriptorSet0.linear_sampler, uv, level(", StringComparison.Ordinal))
+if (!texture1DSampleLevelMslText.Contains("texture1d<float> textures_src_texture [[id(0)]]", StringComparison.Ordinal) ||
+    !texture1DSampleLevelMslText.Contains("texture1d<float, access::write> textures_dst_texture [[id(1)]]", StringComparison.Ordinal) ||
+    !texture1DSampleLevelMslText.Contains("spvDescriptorSet0.textures_src_texture.sample(spvDescriptorSet0.textures_linear_sampler, uv)", StringComparison.Ordinal) ||
+    texture1DSampleLevelMslText.Contains("textures_src_texture.sample(spvDescriptorSet0.textures_linear_sampler, uv, level(", StringComparison.Ordinal))
 {
     Console.Error.WriteLine("error: expected Texture1D SampleLevel to lower to a Metal 1D sample without explicit level.");
     return 1;
@@ -248,14 +250,67 @@ if (!textureScalarResult.Succeeded || textureScalarResult.Artifacts is null)
 
 var textureScalarGlslText = File.ReadAllText(textureScalarResult.Artifacts.GetOutputPath(CppslOutputTarget.Glsl));
 var textureScalarMslText = File.ReadAllText(textureScalarResult.Artifacts.GetOutputPath(CppslOutputTarget.Msl));
-if (!textureScalarMslText.Contains("float sampled = spvDescriptorSet0.src_tex.sample(spvDescriptorSet0.linear_sampler, uv, level(0.0f)).x;", StringComparison.Ordinal) ||
-    !textureScalarMslText.Contains("float depth = spvDescriptorSet0.depth_tex.read(pixel).x;", StringComparison.Ordinal) ||
-    !textureScalarMslText.Contains("spvDescriptorSet0.dst_tex.write(float4(sampled), pixel);", StringComparison.Ordinal) ||
-    !textureScalarGlslText.Contains("float sampled = textureLod(sampler2D(src_tex, linear_sampler), uv, 0.0).x;", StringComparison.Ordinal) ||
-    !textureScalarGlslText.Contains("float depth = texelFetch(sampler2D(depth_tex, sampler()), ivec2(pixel), 0).x;", StringComparison.Ordinal) ||
-    !textureScalarGlslText.Contains("imageStore(dst_tex, ivec2(pixel), vec4(sampled));", StringComparison.Ordinal))
+if (!textureScalarMslText.Contains("float sampled = spvDescriptorSet0.textures_src_tex.sample(spvDescriptorSet0.textures_linear_sampler, uv, level(0.0f)).x;", StringComparison.Ordinal) ||
+    !textureScalarMslText.Contains("float depth = spvDescriptorSet0.textures_depth_tex.read(pixel).x;", StringComparison.Ordinal) ||
+    !textureScalarMslText.Contains("spvDescriptorSet0.textures_dst_tex.write(float4(sampled), pixel);", StringComparison.Ordinal) ||
+    !textureScalarGlslText.Contains("float sampled = textureLod(sampler2D(textures_src_tex, textures_linear_sampler), uv, 0.0).x;", StringComparison.Ordinal) ||
+    !textureScalarGlslText.Contains("float depth = texelFetch(sampler2D(textures_depth_tex, sampler()), ivec2(pixel), 0).x;", StringComparison.Ordinal) ||
+    !textureScalarGlslText.Contains("imageStore(textures_dst_tex, ivec2(pixel), vec4(sampled));", StringComparison.Ordinal))
 {
     Console.Error.WriteLine("error: expected scalar texture operations to lower with channel extraction/expansion.");
+    return 1;
+}
+
+var structuredBufferAccessResult = compiler.Compile(new CppslCompileOptions(
+    structuredBufferAccessShader,
+    Path.Combine(outputDir, "structured-buffer-access"),
+    new[] { stdRoot },
+    "main_cs",
+    ShaderStage.Compute));
+
+if (!structuredBufferAccessResult.Succeeded || structuredBufferAccessResult.Artifacts is null)
+{
+    Console.Error.WriteLine("error: expected structured_buffer_access fixture to compile.");
+    foreach (var diagnostic in structuredBufferAccessResult.Diagnostics)
+    {
+        Console.Error.WriteLine(diagnostic.ToDisplayString());
+    }
+    return 1;
+}
+
+var structuredBufferAccessMslText = File.ReadAllText(structuredBufferAccessResult.Artifacts.GetOutputPath(CppslOutputTarget.Msl));
+if (!structuredBufferAccessMslText.Contains("-normalize(spvDescriptorSet0.light_set_lights[index].direction)", StringComparison.Ordinal) ||
+    !structuredBufferAccessMslText.Contains("-normalize(world_position - spvDescriptorSet0.light_set_lights[index].position)", StringComparison.Ordinal) ||
+    !structuredBufferAccessMslText.Contains("mix(direction, to_light, 0.5f)", StringComparison.Ordinal))
+{
+    Console.Error.WriteLine("error: expected structured buffer resource accesses and lerp lowering to emit correctly in MSL.");
+    return 1;
+}
+
+var helperResourceAccessResult = compiler.Compile(new CppslCompileOptions(
+    helperResourceAccessShader,
+    Path.Combine(outputDir, "helper-resource-access"),
+    new[] { stdRoot },
+    "main_cs",
+    ShaderStage.Compute));
+
+if (!helperResourceAccessResult.Succeeded || helperResourceAccessResult.Artifacts is null)
+{
+    Console.Error.WriteLine("error: expected helper_resource_access fixture to compile.");
+    foreach (var diagnostic in helperResourceAccessResult.Diagnostics)
+    {
+        Console.Error.WriteLine(diagnostic.ToDisplayString());
+    }
+    return 1;
+}
+
+var helperResourceAccessMslText = File.ReadAllText(helperResourceAccessResult.Artifacts.GetOutputPath(CppslOutputTarget.Msl));
+if (!helperResourceAccessMslText.Contains("float4 helper_sample(float2 uv, constant spvDescriptorSetBuffer0& spvDescriptorSet0)", StringComparison.Ordinal) ||
+    !helperResourceAccessMslText.Contains("main_set_src_tex.sample(spvDescriptorSet0.main_set_linear_sampler, uv, level(0.0f))", StringComparison.Ordinal) ||
+    !helperResourceAccessMslText.Contains("if ((color.x < (*spvDescriptorSet0.main_set_params).threshold))", StringComparison.Ordinal) ||
+    !helperResourceAccessMslText.Contains("float4 color = helper_sample(uv, spvDescriptorSet0);", StringComparison.Ordinal))
+{
+    Console.Error.WriteLine("error: expected helper function resource accesses to receive forwarded descriptor set parameters in MSL.");
     return 1;
 }
 
@@ -280,23 +335,23 @@ var resourceReflectionText = File.ReadAllText(resourceAttributesResult.Artifacts
 var resourceHlslText = File.ReadAllText(resourceAttributesResult.Artifacts.GetOutputPath(CppslOutputTarget.Hlsl));
 var resourceGlslText = File.ReadAllText(resourceAttributesResult.Artifacts.GetOutputPath(CppslOutputTarget.Glsl));
 var resourceMslText = File.ReadAllText(resourceAttributesResult.Artifacts.GetOutputPath(CppslOutputTarget.Msl));
-if (!resourceReflectionText.Contains("\"Name\": \"camera\"", StringComparison.Ordinal) ||
+if (!resourceReflectionText.Contains("\"Name\": \"resources_camera\"", StringComparison.Ordinal) ||
     !resourceReflectionText.Contains("\"ResourceKind\": \"constant_buffer\"", StringComparison.Ordinal) ||
-    !resourceReflectionText.Contains("\"Name\": \"values\"", StringComparison.Ordinal) ||
+    !resourceReflectionText.Contains("\"Name\": \"resources_values\"", StringComparison.Ordinal) ||
     !resourceReflectionText.Contains("\"ResourceKind\": \"structured_buffer\"", StringComparison.Ordinal) ||
-    !resourceReflectionText.Contains("\"Name\": \"output_values\"", StringComparison.Ordinal) ||
+    !resourceReflectionText.Contains("\"Name\": \"resources_output_values\"", StringComparison.Ordinal) ||
     !resourceReflectionText.Contains("\"ResourceKind\": \"rw_structured_buffer\"", StringComparison.Ordinal) ||
-    !resourceHlslText.Contains("ConstantBuffer<Camera> camera : register(b0, space0);", StringComparison.Ordinal) ||
-    !resourceHlslText.Contains("StructuredBuffer<float> values : register(t8, space0);", StringComparison.Ordinal) ||
-    !resourceHlslText.Contains("RWStructuredBuffer<float> output_values : register(u15, space0);", StringComparison.Ordinal) ||
-    !resourceGlslText.Contains("layout(set = 0, binding = 0) uniform camera_Block", StringComparison.Ordinal) ||
-    !resourceGlslText.Contains("layout(set = 0, binding = 8) buffer values_Block", StringComparison.Ordinal) ||
-    !resourceGlslText.Contains("layout(set = 0, binding = 15) buffer output_values_Block", StringComparison.Ordinal) ||
-    !resourceMslText.Contains("constant Camera* camera [[id(0)]]", StringComparison.Ordinal) ||
-    !resourceMslText.Contains("device const float* values [[id(1)]]", StringComparison.Ordinal) ||
-    !resourceMslText.Contains("device float* output_values [[id(2)]]", StringComparison.Ordinal) ||
+    !resourceHlslText.Contains("ConstantBuffer<Camera> resources_camera : register(b0, space0);", StringComparison.Ordinal) ||
+    !resourceHlslText.Contains("StructuredBuffer<float> resources_values : register(t8, space0);", StringComparison.Ordinal) ||
+    !resourceHlslText.Contains("RWStructuredBuffer<float> resources_output_values : register(u15, space0);", StringComparison.Ordinal) ||
+    !resourceGlslText.Contains("layout(set = 0, binding = 0) uniform resources_camera_Block", StringComparison.Ordinal) ||
+    !resourceGlslText.Contains("layout(set = 0, binding = 8) buffer resources_values_Block", StringComparison.Ordinal) ||
+    !resourceGlslText.Contains("layout(set = 0, binding = 15) buffer resources_output_values_Block", StringComparison.Ordinal) ||
+    !resourceMslText.Contains("constant Camera* resources_camera [[id(0)]]", StringComparison.Ordinal) ||
+    !resourceMslText.Contains("device const float* resources_values [[id(1)]]", StringComparison.Ordinal) ||
+    !resourceMslText.Contains("device float* resources_output_values [[id(2)]]", StringComparison.Ordinal) ||
     !resourceMslText.Contains("constant spvDescriptorSetBuffer0& spvDescriptorSet0 [[buffer(0)]]", StringComparison.Ordinal) ||
-    !resourceMslText.Contains("spvDescriptorSet0.output_values[0] = spvDescriptorSet0.values[0];", StringComparison.Ordinal))
+    !resourceMslText.Contains("spvDescriptorSet0.resources_output_values[0] = spvDescriptorSet0.resources_values[0];", StringComparison.Ordinal))
 {
     Console.Error.WriteLine("error: expected CPPSL resource attribute declarations to be emitted.");
     return 1;
@@ -364,7 +419,8 @@ var invalidFixtures = new[]
     new InvalidFixture("duplicate_binding", "DuplicateBinding.cxx", "main_vs", ShaderStage.Vertex, "duplicate resource binding"),
     new InvalidFixture("invalid_attribute_target", "InvalidAttributeTarget.cxx", "main_vs", ShaderStage.Vertex, "cannot be used on field"),
     new InvalidFixture("structured_buffer_requires_const_pointer", "StructuredBufferRequiresConstPointer.cxx", "main_vs", ShaderStage.Vertex, "must be declared as `const T*`"),
-    new InvalidFixture("rwstructured_buffer_requires_mutable_pointer", "RWStructuredBufferRequiresMutablePointer.cxx", "main_vs", ShaderStage.Vertex, "must be declared as `T*`")
+    new InvalidFixture("rwstructured_buffer_requires_mutable_pointer", "RWStructuredBufferRequiresMutablePointer.cxx", "main_vs", ShaderStage.Vertex, "must be declared as `T*`"),
+    new InvalidFixture("legacy_resource_global", "LegacyResourceGlobal.cxx", "main_vs", ShaderStage.Vertex, "resource global")
 };
 
 foreach (var fixture in invalidFixtures)

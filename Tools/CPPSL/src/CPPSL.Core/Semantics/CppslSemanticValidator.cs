@@ -69,14 +69,26 @@ public sealed class CppslSemanticValidator
 
         foreach (var global in model.Globals)
         {
+            if (global.ResourceKind is not null)
+            {
+                continue;
+            }
+
             ValidateAttributeSet(
                 "global",
                 global.Name,
                 global.Attributes,
-                new[] { "desc_set", "binding", "group_shared", "cbuffer", "structured_buffer", "sbuffer", "rwstructured_buffer", "rw_structured_buffer", "rwsbuffer" },
+                new[] { "desc_set", "group_shared" },
                 diagnostics);
-            if (global.ResourceKind is null &&
-                !global.IsDescriptorSet &&
+            if (!global.IsDescriptorSet && IsLegacyResourceGlobal(global))
+            {
+                diagnostics.Add(CppslDiagnostic.Error(
+                    $"CPPSL resource global `{global.Name}` is not supported; declare resources as fields in a descriptor set layout struct.",
+                    global.File,
+                    global.Line,
+                    global.Column));
+            }
+            else if (!global.IsDescriptorSet &&
                 (global.Attributes.FindAttribute("desc_set") is not null || global.Attributes.FindAttribute("binding") is not null))
             {
                 diagnostics.Add(CppslDiagnostic.Error(
@@ -288,11 +300,46 @@ public sealed class CppslSemanticValidator
         if (field.Attributes.FindAttribute("rwstructured_buffer") is not null ||
             field.Attributes.FindAttribute("rw_structured_buffer") is not null ||
             field.Attributes.FindAttribute("rwsbuffer") is not null) return "rw_structured_buffer";
-        if (field.Type.StartsWith("Texture", StringComparison.Ordinal)) return "texture";
-        if (field.Type.StartsWith("RWTexture", StringComparison.Ordinal)) return "rw_texture";
+        if (IsTextureType(field.Type)) return "texture";
+        if (IsRwTextureType(field.Type)) return "rw_texture";
         if (field.Type == "SamplerState") return "sampler";
         if (field.Type == "AccelerationStructure") return "acceleration_structure";
         return null;
+    }
+
+    private static bool IsLegacyResourceGlobal(CppslGlobal global)
+    {
+        if (global.Attributes.FindAttribute("cbuffer") is not null ||
+            global.Attributes.FindAttribute("structured_buffer") is not null ||
+            global.Attributes.FindAttribute("sbuffer") is not null ||
+            global.Attributes.FindAttribute("rwstructured_buffer") is not null ||
+            global.Attributes.FindAttribute("rw_structured_buffer") is not null ||
+            global.Attributes.FindAttribute("rwsbuffer") is not null)
+        {
+            return true;
+        }
+
+        return global.Type.StartsWith("ConstantBuffer<", StringComparison.Ordinal) ||
+            global.Type.StartsWith("StructuredBuffer<", StringComparison.Ordinal) ||
+            global.Type.StartsWith("RWStructuredBuffer<", StringComparison.Ordinal) ||
+            IsTextureType(global.Type) ||
+            IsRwTextureType(global.Type) ||
+            global.Type == "SamplerState" ||
+            global.Type == "AccelerationStructure";
+    }
+
+    private static bool IsTextureType(string type)
+    {
+        var normalized = type.Trim();
+        return normalized.StartsWith("Texture", StringComparison.Ordinal) &&
+            normalized.Contains('<', StringComparison.Ordinal);
+    }
+
+    private static bool IsRwTextureType(string type)
+    {
+        var normalized = type.Trim();
+        return normalized.StartsWith("RWTexture", StringComparison.Ordinal) &&
+            normalized.Contains('<', StringComparison.Ordinal);
     }
 
     private static void ValidateDescriptorSetFieldType(
@@ -331,7 +378,7 @@ public sealed class CppslSemanticValidator
         switch (global.ResourceKind)
         {
             case "structured_buffer":
-                if (!IsConstPointerType(global.Type))
+                if (!IsConstPointerType(global.Type) && !IsConstArrayType(global.Type))
                 {
                     diagnostics.Add(CppslDiagnostic.Error(
                         $"CPPSL structured buffer `{global.Name}` must be declared as `const T*`.",
@@ -341,7 +388,7 @@ public sealed class CppslSemanticValidator
                 }
                 break;
             case "rw_structured_buffer":
-                if (!IsMutablePointerType(global.Type))
+                if (!IsMutablePointerType(global.Type) && !IsMutableArrayType(global.Type))
                 {
                     diagnostics.Add(CppslDiagnostic.Error(
                         $"CPPSL RW structured buffer `{global.Name}` must be declared as `T*`.",

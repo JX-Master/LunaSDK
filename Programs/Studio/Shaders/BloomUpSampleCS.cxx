@@ -10,20 +10,26 @@ struct CB
     float up_sample_radius;
 };
 
-[[cppsl::cbuffer, cppsl::desc_set(0), cppsl::binding(0)]]
-CB cb;
+struct DescSet0
+{
+    [[cppsl::cbuffer, cppsl::binding(0)]]
+    CB cb;
 
-[[cppsl::desc_set(0), cppsl::binding(1)]]
-Texture2D<float4> g_upsample_tex;
+    [[cppsl::binding(1)]]
+    Texture2D<float4> g_upsample_tex;
 
-[[cppsl::desc_set(0), cppsl::binding(2)]]
-Texture2D<float4> g_bloom_tex;
+    [[cppsl::binding(2)]]
+    Texture2D<float4> g_bloom_tex;
 
-[[cppsl::desc_set(0), cppsl::binding(3)]]
-RWTexture2D<float4> g_dst_tex;
+    [[cppsl::binding(3)]]
+    RWTexture2D<float4> g_dst_tex;
 
-[[cppsl::desc_set(0), cppsl::binding(4)]]
-SamplerState g_sampler;
+    [[cppsl::binding(4)]]
+    SamplerState g_sampler;
+};
+
+[[cppsl::desc_set(0)]]
+DescSet0 g_set0;
 
 uint clamp_u(uint value, uint max_value)
 {
@@ -39,15 +45,15 @@ float3 filter_upsample(uint2 pos, uint2 tex_size)
     uint down = clamp_u(pos.y + 1u, max_pos.y);
 
     float3 color = float3{0.0f, 0.0f, 0.0f};
-    color += xyz(g_upsample_tex.Load(pos)) * 4.0f;
-    color += xyz(g_upsample_tex.Load(uint2{right, pos.y})) * 2.0f;
-    color += xyz(g_upsample_tex.Load(uint2{left, pos.y})) * 2.0f;
-    color += xyz(g_upsample_tex.Load(uint2{pos.x, down})) * 2.0f;
-    color += xyz(g_upsample_tex.Load(uint2{pos.x, up})) * 2.0f;
-    color += xyz(g_upsample_tex.Load(uint2{right, down}));
-    color += xyz(g_upsample_tex.Load(uint2{right, up}));
-    color += xyz(g_upsample_tex.Load(uint2{left, down}));
-    color += xyz(g_upsample_tex.Load(uint2{left, up}));
+    color += xyz(g_set0.g_upsample_tex.Load(pos)) * 4.0f;
+    color += xyz(g_set0.g_upsample_tex.Load(uint2{right, pos.y})) * 2.0f;
+    color += xyz(g_set0.g_upsample_tex.Load(uint2{left, pos.y})) * 2.0f;
+    color += xyz(g_set0.g_upsample_tex.Load(uint2{pos.x, down})) * 2.0f;
+    color += xyz(g_set0.g_upsample_tex.Load(uint2{pos.x, up})) * 2.0f;
+    color += xyz(g_set0.g_upsample_tex.Load(uint2{right, down}));
+    color += xyz(g_set0.g_upsample_tex.Load(uint2{right, up}));
+    color += xyz(g_set0.g_upsample_tex.Load(uint2{left, down}));
+    color += xyz(g_set0.g_upsample_tex.Load(uint2{left, up}));
     return color / 16.0f;
 }
 
@@ -60,15 +66,15 @@ float3 filter_bloom(uint2 pos, uint2 tex_size)
     uint down = clamp_u(pos.y + 1u, max_pos.y);
 
     float3 color = float3{0.0f, 0.0f, 0.0f};
-    color += xyz(g_bloom_tex.Load(pos)) * 4.0f;
-    color += xyz(g_bloom_tex.Load(uint2{right, pos.y})) * 2.0f;
-    color += xyz(g_bloom_tex.Load(uint2{left, pos.y})) * 2.0f;
-    color += xyz(g_bloom_tex.Load(uint2{pos.x, down})) * 2.0f;
-    color += xyz(g_bloom_tex.Load(uint2{pos.x, up})) * 2.0f;
-    color += xyz(g_bloom_tex.Load(uint2{right, down}));
-    color += xyz(g_bloom_tex.Load(uint2{right, up}));
-    color += xyz(g_bloom_tex.Load(uint2{left, down}));
-    color += xyz(g_bloom_tex.Load(uint2{left, up}));
+    color += xyz(g_set0.g_bloom_tex.Load(pos)) * 4.0f;
+    color += xyz(g_set0.g_bloom_tex.Load(uint2{right, pos.y})) * 2.0f;
+    color += xyz(g_set0.g_bloom_tex.Load(uint2{left, pos.y})) * 2.0f;
+    color += xyz(g_set0.g_bloom_tex.Load(uint2{pos.x, down})) * 2.0f;
+    color += xyz(g_set0.g_bloom_tex.Load(uint2{pos.x, up})) * 2.0f;
+    color += xyz(g_set0.g_bloom_tex.Load(uint2{right, down}));
+    color += xyz(g_set0.g_bloom_tex.Load(uint2{right, up}));
+    color += xyz(g_set0.g_bloom_tex.Load(uint2{left, down}));
+    color += xyz(g_set0.g_bloom_tex.Load(uint2{left, up}));
     return color / 16.0f;
 }
 
@@ -76,7 +82,7 @@ float3 filter_bloom(uint2 pos, uint2 tex_size)
 void cs_main([[cppsl::builtin(dispatch_thread_id)]] uint3 dispatch_thread_id)
 {
     uint2 pixel = xy_u(dispatch_thread_id);
-    float3 prev_mip = filter_upsample(uint2{dispatch_thread_id.x / 2u, dispatch_thread_id.y / 2u}, uint2{cb.src_tex_width, cb.src_tex_height});
-    float3 current_mip = filter_bloom(pixel, uint2{cb.dst_tex_width, cb.dst_tex_height});
-    g_dst_tex.Store(pixel, make_float4(prev_mip + current_mip, 1.0f));
+    float3 prev_mip = filter_upsample(uint2{dispatch_thread_id.x / 2u, dispatch_thread_id.y / 2u}, uint2{g_set0.cb.src_tex_width, g_set0.cb.src_tex_height});
+    float3 current_mip = filter_bloom(pixel, uint2{g_set0.cb.dst_tex_width, g_set0.cb.dst_tex_height});
+    g_set0.g_dst_tex.Store(pixel, make_float4(prev_mip + current_mip, 1.0f));
 }

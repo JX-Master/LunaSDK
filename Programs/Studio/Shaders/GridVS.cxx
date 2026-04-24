@@ -11,8 +11,14 @@ struct CameraCB
     float4x4 view_to_world;
 };
 
-[[cppsl::cbuffer, cppsl::desc_set(0), cppsl::binding(0)]]
-CameraCB vertexBuffer;
+struct DescSet0
+{
+    [[cppsl::cbuffer, cppsl::binding(0)]]
+    CameraCB vertexBuffer;
+};
+
+[[cppsl::desc_set(0)]]
+DescSet0 g_set0;
 
 struct VS_INPUT
 {
@@ -28,6 +34,6 @@ struct PS_INPUT
 PS_INPUT vs_main(VS_INPUT input)
 {
     PS_INPUT output;
-    output.pos = mul(vertexBuffer.world_to_proj, input.pos);
+    output.pos = mul(g_set0.vertexBuffer.world_to_proj, input.pos);
     return output;
 }

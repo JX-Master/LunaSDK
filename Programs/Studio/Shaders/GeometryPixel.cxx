@@ -20,29 +20,35 @@ struct MaterialParameters
     float emissive_intensity;
 };
 
-[[cppsl::cbuffer, cppsl::desc_set(0), cppsl::binding(0)]]
-CBParam cb_param;
+struct DescSet0
+{
+    [[cppsl::cbuffer, cppsl::binding(0)]]
+    CBParam cb_param;
 
-[[cppsl::desc_set(0), cppsl::binding(2)]]
-Texture2D<float4> g_base_color;
+    [[cppsl::binding(2)]]
+    Texture2D<float4> g_base_color;
 
-[[cppsl::desc_set(0), cppsl::binding(3)]]
-Texture2D<float4> g_roughness;
+    [[cppsl::binding(3)]]
+    Texture2D<float4> g_roughness;
 
-[[cppsl::desc_set(0), cppsl::binding(4)]]
-Texture2D<float4> g_normal;
+    [[cppsl::binding(4)]]
+    Texture2D<float4> g_normal;
 
-[[cppsl::desc_set(0), cppsl::binding(5)]]
-Texture2D<float4> g_metallic;
+    [[cppsl::binding(5)]]
+    Texture2D<float4> g_metallic;
 
-[[cppsl::desc_set(0), cppsl::binding(6)]]
-Texture2D<float4> g_emissive;
+    [[cppsl::binding(6)]]
+    Texture2D<float4> g_emissive;
 
-[[cppsl::desc_set(0), cppsl::binding(7)]]
-SamplerState g_sampler;
+    [[cppsl::binding(7)]]
+    SamplerState g_sampler;
 
-[[cppsl::structured_buffer, cppsl::desc_set(0), cppsl::binding(8)]]
-const MaterialParameters* g_material_params;
+    [[cppsl::structured_buffer, cppsl::binding(8)]]
+    const MaterialParameters* g_material_params;
+};
+
+[[cppsl::desc_set(0)]]
+DescSet0 g_set0;
 
 struct PSInput
 {
@@ -73,16 +79,16 @@ float3 normal_tangent_to_world(float3 normal_map, float3 normal_world, float3 ta
 PSOutput ps_main(PSInput i)
 {
     float2 texcoord = float2{i.texcoord.x, 1.0f - i.texcoord.y};
-    float4 base_color = g_base_color.Sample(g_sampler, texcoord);
+    float4 base_color = g_set0.g_base_color.Sample(g_set0.g_sampler, texcoord);
     if (base_color.w < 0.1f)
     {
         discard_fragment();
     }
 
-    float roughness = g_roughness.Sample(g_sampler, texcoord).x;
-    float3 normal = normalize(xyz(g_normal.Sample(g_sampler, texcoord)) - 0.5f);
-    float metallic = g_metallic.Sample(g_sampler, texcoord).x;
-    float4 emissive = g_emissive.Sample(g_sampler, texcoord);
+    float roughness = g_set0.g_roughness.Sample(g_set0.g_sampler, texcoord).x;
+    float3 normal = normalize(xyz(g_set0.g_normal.Sample(g_set0.g_sampler, texcoord)) - 0.5f);
+    float metallic = g_set0.g_metallic.Sample(g_set0.g_sampler, texcoord).x;
+    float4 emissive = g_set0.g_emissive.Sample(g_set0.g_sampler, texcoord);
 
     float3 base_normal = normalize(i.normal);
     float3 base_tangent = normalize(i.tangent);
@@ -93,9 +99,9 @@ PSOutput ps_main(PSInput i)
     float3 encoded_normal = max(normal * 0.5f + 0.5f, 0.0f);
     o.normal_metallic = float4{encoded_normal.x, encoded_normal.y, encoded_normal.z, metallic};
     o.emissive = float4{
-        emissive.x * g_material_params[0].emissive_intensity,
-        emissive.y * g_material_params[0].emissive_intensity,
-        emissive.z * g_material_params[0].emissive_intensity,
+        emissive.x * g_set0.g_material_params[0].emissive_intensity,
+        emissive.y * g_set0.g_material_params[0].emissive_intensity,
+        emissive.z * g_set0.g_material_params[0].emissive_intensity,
         0.0f};
     return o;
 }

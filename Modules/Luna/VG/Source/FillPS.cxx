@@ -10,17 +10,23 @@ struct TransformParams
     float4 clip_rect;
 };
 
-[[cppsl::cbuffer, cppsl::desc_set(0), cppsl::binding(0)]]
-TransformParams g_cbuffer;
+struct DescSet0
+{
+    [[cppsl::cbuffer, cppsl::binding(0)]]
+    TransformParams g_cbuffer;
 
-[[cppsl::structured_buffer, cppsl::desc_set(0), cppsl::binding(1)]]
-const float* g_commands;
+    [[cppsl::structured_buffer, cppsl::binding(1)]]
+    const float* g_commands;
 
-[[cppsl::desc_set(0), cppsl::binding(2)]]
-Texture2D<float4> g_tex;
+    [[cppsl::binding(2)]]
+    Texture2D<float4> g_tex;
 
-[[cppsl::desc_set(0), cppsl::binding(3)]]
-SamplerState g_sampler;
+    [[cppsl::binding(3)]]
+    SamplerState g_sampler;
+};
+
+[[cppsl::desc_set(0)]]
+DescSet0 g_set0;
 
 struct PSIn
 {
@@ -206,16 +212,16 @@ PSOut ps_main(PSIn v)
 
     while (i < command_end)
     {
-        float command = g_commands[i];
+        float command = g_set0.g_commands[i];
         if (command == 1.0f)
         {
-            last_point = float2{g_commands[i + 1], g_commands[i + 2]};
+            last_point = float2{g_set0.g_commands[i + 1], g_set0.g_commands[i + 2]};
             i += 3;
         }
         else if (command == 2.0f)
         {
             float2 v0 = last_point - v.shapecoord;
-            last_point = float2{g_commands[i + 1], g_commands[i + 2]};
+            last_point = float2{g_set0.g_commands[i + 1], g_set0.g_commands[i + 2]};
             float2 v1 = last_point - v.shapecoord;
             coverage_x += line_test_x_axis(v0, v1, pixels_per_unit);
             coverage_y += line_test_y_axis(v0, v1, pixels_per_unit);
@@ -224,8 +230,8 @@ PSOut ps_main(PSIn v)
         else if (command == 3.0f)
         {
             float2 v0 = last_point - v.shapecoord;
-            float2 v1 = float2{g_commands[i + 1], g_commands[i + 2]} - v.shapecoord;
-            last_point = float2{g_commands[i + 3], g_commands[i + 4]};
+            float2 v1 = float2{g_set0.g_commands[i + 1], g_set0.g_commands[i + 2]} - v.shapecoord;
+            last_point = float2{g_set0.g_commands[i + 3], g_set0.g_commands[i + 4]};
             float2 v2 = last_point - v.shapecoord;
             coverage_x += curve_test_x_axis(v0, v1, v2, pixels_per_unit);
             coverage_y += curve_test_y_axis(v0, v1, v2, pixels_per_unit);
@@ -234,9 +240,9 @@ PSOut ps_main(PSIn v)
         else if (command >= 4.0f && command <= 7.0f)
         {
             float2 v0 = last_point - v.shapecoord;
-            float radius = g_commands[i + 1];
-            float begin = g_commands[i + 2];
-            float command_arc_end = g_commands[i + 3];
+            float radius = g_set0.g_commands[i + 1];
+            float begin = g_set0.g_commands[i + 2];
+            float command_arc_end = g_set0.g_commands[i + 3];
             float2 center = circle_get_point(last_point, radius, 180.0f + begin);
             last_point = circle_get_point(center, radius, command_arc_end);
             float2 v1 = last_point - v.shapecoord;
@@ -248,11 +254,11 @@ PSOut ps_main(PSIn v)
         else if (command >= 8.0f && command <= 11.0f)
         {
             float2 v0 = last_point - v.shapecoord;
-            float rx = g_commands[i + 1];
-            float ry = g_commands[i + 2];
+            float rx = g_set0.g_commands[i + 1];
+            float ry = g_set0.g_commands[i + 2];
             float2 radius = float2{rx, ry};
-            float begin = g_commands[i + 3];
-            float command_arc_end = g_commands[i + 4];
+            float begin = g_set0.g_commands[i + 3];
+            float command_arc_end = g_set0.g_commands[i + 4];
             float2 center = ellipse_get_point(last_point, radius, 180.0f + begin);
             last_point = ellipse_get_point(center, radius, command_arc_end);
             float2 v1 = last_point - v.shapecoord;
@@ -266,15 +272,15 @@ PSOut ps_main(PSIn v)
     float weight_x = 1.0f - abs(abs(coverage_x) * 2.0f - 1.0f);
     float weight_y = 1.0f - abs(abs(coverage_y) * 2.0f - 1.0f);
     float coverage = max(abs(coverage_x * weight_x + coverage_y * weight_y) / max(weight_x + weight_y, 0.0001220703125f), min(abs(coverage_x), abs(coverage_y)));
-    if (any(g_cbuffer.clip_rect != float4{0.0f, 0.0f, 0.0f, 0.0f}))
+    if (any(g_set0.g_cbuffer.clip_rect != float4{0.0f, 0.0f, 0.0f, 0.0f}))
     {
         float2 pos_units_per_pixel = fwidth(v.position_2d);
         float2 pixels_per_pos_unit = 1.0f / pos_units_per_pixel;
-        coverage *= clip_rect_test(v.position_2d, g_cbuffer.clip_rect, pixels_per_pos_unit);
+        coverage *= clip_rect_test(v.position_2d, g_set0.g_cbuffer.clip_rect, pixels_per_pos_unit);
     }
 
     PSOut output;
-    float4 col = g_tex.Sample(g_sampler, v.texcoord);
+    float4 col = g_set0.g_tex.Sample(g_set0.g_sampler, v.texcoord);
     col *= v.color;
     col.w *= coverage;
     output.color = col;

@@ -3,11 +3,17 @@
 
 using namespace cppsl;
 
-[[cppsl::desc_set(0), cppsl::binding(0)]]
-Texture2D<float4> g_src_tex;
+struct DescSet0
+{
+    [[cppsl::binding(0)]]
+    Texture2D<float4> g_src_tex;
 
-[[cppsl::desc_set(0), cppsl::binding(1)]]
-SamplerState g_sampler;
+    [[cppsl::binding(1)]]
+    SamplerState g_sampler;
+};
+
+[[cppsl::desc_set(0)]]
+DescSet0 g_set0;
 
 struct VSInput
 {

@@ -2,8 +2,14 @@
 
 using namespace cppsl;
 
-[[cppsl::rwstructured_buffer, cppsl::desc_set(0), cppsl::binding(0)]]
-const float* values;
+struct FrameSet
+{
+    [[cppsl::rwstructured_buffer, cppsl::binding(0)]]
+    const float* values;
+};
+
+[[cppsl::desc_set(0)]]
+FrameSet frame;
 
 [[cppsl::vertex]]
 void main_vs()

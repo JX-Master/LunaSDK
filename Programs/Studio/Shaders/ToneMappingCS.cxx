@@ -10,23 +10,29 @@ struct ToneMappingParams
     float g_bloom_intensity;
 };
 
-[[cppsl::cbuffer, cppsl::desc_set(0), cppsl::binding(0)]]
-ToneMappingParams tone_mapping_params;
+struct DescSet0
+{
+    [[cppsl::cbuffer, cppsl::binding(0)]]
+    ToneMappingParams tone_mapping_params;
 
-[[cppsl::desc_set(0), cppsl::binding(1)]]
-Texture2D<float4> g_scene_tex;
+    [[cppsl::binding(1)]]
+    Texture2D<float4> g_scene_tex;
 
-[[cppsl::desc_set(0), cppsl::binding(2)]]
-Texture2D<float> g_lum_tex;
+    [[cppsl::binding(2)]]
+    Texture2D<float> g_lum_tex;
 
-[[cppsl::desc_set(0), cppsl::binding(3)]]
-Texture2D<float> g_bloom_tex;
+    [[cppsl::binding(3)]]
+    Texture2D<float> g_bloom_tex;
 
-[[cppsl::desc_set(0), cppsl::binding(4)]]
-RWTexture2D<float4> g_dst_tex;
+    [[cppsl::binding(4)]]
+    RWTexture2D<float4> g_dst_tex;
 
-[[cppsl::desc_set(0), cppsl::binding(5)]]
-SamplerState g_sampler;
+    [[cppsl::binding(5)]]
+    SamplerState g_sampler;
+};
+
+[[cppsl::desc_set(0)]]
+DescSet0 g_set0;
 
 float3 aces_film(float3 x)
 {
@@ -53,24 +59,24 @@ float3 gamma_correction(float3 color, float gamma)
 void cs_main([[cppsl::builtin(dispatch_thread_id)]] uint3 dispatch_thread_id)
 {
     uint2 pixel = xy_u(dispatch_thread_id);
-    float3 hdr_color = xyz(g_scene_tex.Load(pixel));
-    float2 texel_size = float2{1.0f / float(tone_mapping_params.g_dst_width), 1.0f / float(tone_mapping_params.g_dst_height)};
+    float3 hdr_color = xyz(g_set0.g_scene_tex.Load(pixel));
+    float2 texel_size = float2{1.0f / float(g_set0.tone_mapping_params.g_dst_width), 1.0f / float(g_set0.tone_mapping_params.g_dst_height)};
     float2 uv = texel_size * (xy(dispatch_thread_id) + 0.5f);
-    float bloom_color = g_bloom_tex.SampleLevel(g_sampler, uv, 0.0f) * tone_mapping_params.g_bloom_intensity;
+    float bloom_color = g_set0.g_bloom_tex.SampleLevel(g_set0.g_sampler, uv, 0.0f) * g_set0.tone_mapping_params.g_bloom_intensity;
     hdr_color += bloom_color;
 
     float exposure;
-    if (tone_mapping_params.g_auto_exposure > 0u)
+    if (g_set0.tone_mapping_params.g_auto_exposure > 0u)
     {
-        float average_luminance = g_lum_tex.Load(uint2{0u, 0u});
-        exposure = tone_mapping_params.g_exposure / max(0.0001f, average_luminance);
+        float average_luminance = g_set0.g_lum_tex.Load(uint2{0u, 0u});
+        exposure = g_set0.tone_mapping_params.g_exposure / max(0.0001f, average_luminance);
     }
     else
     {
-        exposure = tone_mapping_params.g_exposure;
+        exposure = g_set0.tone_mapping_params.g_exposure;
     }
 
     float3 ldr_color = tonemap(hdr_color, exposure);
     float3 final_color = gamma_correction(ldr_color, 2.2f);
-    g_dst_tex.Store(pixel, make_float4(saturate(final_color), 1.0f));
+    g_set0.g_dst_tex.Store(pixel, make_float4(saturate(final_color), 1.0f));
 }

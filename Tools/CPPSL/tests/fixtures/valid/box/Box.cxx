@@ -9,8 +9,14 @@ struct Camera
     float4x4 world_to_proj;
 };
 
-[[cppsl::cbuffer, cppsl::desc_set(0), cppsl::binding(0)]]
-Camera camera;
+struct FrameSet
+{
+    [[cppsl::cbuffer, cppsl::binding(0)]]
+    Camera camera;
+};
+
+[[cppsl::desc_set(0)]]
+FrameSet frame;
 
 struct VSInput
 {
@@ -28,7 +34,7 @@ struct VSOutput
 VSOutput main_vs(VSInput input)
 {
     VSOutput output;
-    output.position = mul(camera.world_to_proj, float4{input.position.x, input.position.y, input.position.z, 1.0f});
+    output.position = mul(frame.camera.world_to_proj, float4{input.position.x, input.position.y, input.position.z, 1.0f});
     output.texcoord = input.texcoord;
     return output;
 }

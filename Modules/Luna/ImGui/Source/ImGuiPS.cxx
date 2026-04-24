@@ -9,14 +9,20 @@ struct VertexBuffer
     float4x4 ProjectionMatrix;
 };
 
-[[cppsl::cbuffer, cppsl::desc_set(0), cppsl::binding(0)]]
-VertexBuffer vertexBuffer;
+struct DescSet0
+{
+    [[cppsl::cbuffer, cppsl::binding(0)]]
+    VertexBuffer vertexBuffer;
 
-[[cppsl::desc_set(0), cppsl::binding(1)]]
-Texture2D<float4> texture0;
+    [[cppsl::binding(1)]]
+    Texture2D<float4> texture0;
 
-[[cppsl::desc_set(0), cppsl::binding(2)]]
-SamplerState sampler0;
+    [[cppsl::binding(2)]]
+    SamplerState sampler0;
+};
+
+[[cppsl::desc_set(0)]]
+DescSet0 g_set0;
 
 struct PS_INPUT
 {
@@ -34,6 +40,6 @@ struct PS_OUTPUT
 PS_OUTPUT ps_main(PS_INPUT input)
 {
     PS_OUTPUT output;
-    output.color = input.col * texture0.Sample(sampler0, input.uv);
+    output.color = input.col * g_set0.texture0.Sample(g_set0.sampler0, input.uv);
     return output;
 }

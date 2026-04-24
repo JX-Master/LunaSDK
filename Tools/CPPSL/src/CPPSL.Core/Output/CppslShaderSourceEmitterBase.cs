@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.RegularExpressions;
 using CPPSL.Core.Compiler;
 using CPPSL.Core.IR;
 using CPPSL.Core.Semantics;
@@ -104,6 +105,20 @@ internal abstract class CppslShaderSourceEmitterBase
 
         accessPath = string.Empty;
         return false;
+    }
+
+    protected static string RewriteResidualResourceAccessPaths(
+        string source,
+        CppslSemanticModel model,
+        Func<CppslGlobal, string> replacementFactory)
+    {
+        foreach (var global in model.Globals.Where(static global => global.ResourceKind is not null && global.AccessPath is not null))
+        {
+            var pattern = $@"(?<![A-Za-z0-9_\.]){Regex.Escape(global.AccessPath!)}(?![A-Za-z0-9_])";
+            source = Regex.Replace(source, pattern, replacementFactory(global));
+        }
+
+        return source;
     }
 
     protected static string FormatVariableDeclaration(string mappedType, string name)

@@ -27,11 +27,17 @@ struct CBParam
     uint screen_height;
 };
 
-[[cppsl::cbuffer, cppsl::desc_set(0), cppsl::binding(0)]]
-CBParam cb_param;
+struct DescSet0
+{
+    [[cppsl::cbuffer, cppsl::binding(0)]]
+    CBParam cb_param;
 
-[[cppsl::structured_buffer, cppsl::desc_set(0), cppsl::binding(1)]]
-const MeshBuffer* g_MeshBuffer;
+    [[cppsl::structured_buffer, cppsl::binding(1)]]
+    const MeshBuffer* g_MeshBuffer;
+};
+
+[[cppsl::desc_set(0)]]
+DescSet0 g_set0;
 
 struct PS_INPUT
 {
@@ -47,11 +53,11 @@ struct PS_INPUT
 PS_INPUT vs_main(MeshVertex input)
 {
     PS_INPUT output;
-    float4 world_position = mul(g_MeshBuffer[0].model_to_world, float4{input.position.x, input.position.y, input.position.z, 1.0f});
+    float4 world_position = mul(g_set0.g_MeshBuffer[0].model_to_world, float4{input.position.x, input.position.y, input.position.z, 1.0f});
     output.world_position = xyz(world_position);
-    output.position = mul(cb_param.world_to_proj, float4{output.world_position.x, output.world_position.y, output.world_position.z, 1.0f});
-    output.normal = xyz(mul(float4{input.normal.x, input.normal.y, input.normal.z, 0.0f}, g_MeshBuffer[0].world_to_model));
-    output.tangent = xyz(mul(float4{input.tangent.x, input.tangent.y, input.tangent.z, 0.0f}, g_MeshBuffer[0].world_to_model));
+    output.position = mul(g_set0.cb_param.world_to_proj, float4{output.world_position.x, output.world_position.y, output.world_position.z, 1.0f});
+    output.normal = xyz(mul(float4{input.normal.x, input.normal.y, input.normal.z, 0.0f}, g_set0.g_MeshBuffer[0].world_to_model));
+    output.tangent = xyz(mul(float4{input.tangent.x, input.tangent.y, input.tangent.z, 0.0f}, g_set0.g_MeshBuffer[0].world_to_model));
     output.texcoord = input.texcoord;
     output.color = input.color;
     return output;

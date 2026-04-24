@@ -7,17 +7,23 @@ struct Camera
     float4x4 world_to_proj;
 };
 
-[[cppsl::rwstructured_buffer, cppsl::desc_set(0), cppsl::binding(15)]]
-float* output_values;
+struct ResourceSet
+{
+    [[cppsl::rwstructured_buffer, cppsl::binding(15)]]
+    float* output_values;
 
-[[cppsl::cbuffer, cppsl::desc_set(0), cppsl::binding(0)]]
-Camera camera;
+    [[cppsl::cbuffer, cppsl::binding(0)]]
+    Camera camera;
 
-[[cppsl::structured_buffer, cppsl::desc_set(0), cppsl::binding(8)]]
-const float* values;
+    [[cppsl::structured_buffer, cppsl::binding(8)]]
+    const float* values;
+};
+
+[[cppsl::desc_set(0)]]
+ResourceSet resources;
 
 [[cppsl::vertex]]
 void main_vs()
 {
-    output_values[0] = values[0];
+    resources.output_values[0] = resources.values[0];
 }
