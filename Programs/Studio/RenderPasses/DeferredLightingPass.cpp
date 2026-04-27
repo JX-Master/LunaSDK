@@ -42,7 +42,7 @@ namespace Luna
                 PipelineLayoutFlag::deny_pixel_shader_access)));
 
             ComputePipelineStateDesc ps_desc;
-            LUNA_FILL_COMPUTE_SHADER_DATA(ps_desc, DeferredLighting);
+            LUNA_CPPSL_FILL_COMPUTE_SHADER_DATA(ps_desc, DeferredLighting);
             ps_desc.pipeline_layout = m_deferred_lighting_pass_playout;
             luset(m_deferred_lighting_pass_pso, device->new_compute_pipeline_state(ps_desc));
 
@@ -69,7 +69,7 @@ namespace Luna
                     PipelineLayoutFlag::deny_vertex_shader_access |
                     PipelineLayoutFlag::deny_pixel_shader_access)));
                 ComputePipelineStateDesc ps_desc;
-                LUNA_FILL_COMPUTE_SHADER_DATA(ps_desc, PrecomputeIntegrateBRDF);
+                LUNA_CPPSL_FILL_COMPUTE_SHADER_DATA(ps_desc, PrecomputeIntegrateBRDF);
                 ps_desc.pipeline_layout = playout;
                 lulet(pso, device->new_compute_pipeline_state(ps_desc));
                 lulet(compute_cmdbuf, device->new_command_buffer(g_env->async_compute_queue));

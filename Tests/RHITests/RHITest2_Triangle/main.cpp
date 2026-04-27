@@ -12,7 +12,6 @@
 #include <Luna/Runtime/Module.hpp>
 #include <Luna/Runtime/Math/Color.hpp>
 #include <Luna/Runtime/Log.hpp>
-#include <Luna/RHI/ShaderCompileHelper.hpp>
 #include <Luna/Runtime/Thread.hpp>
 #include <Luna/Window/Event.hpp>
 #include <Luna/Window/AppMain.hpp>
@@ -55,8 +54,8 @@ RV start()
             };
             desc.input_layout = InputLayoutDesc({bindings, 1}, {attributes, 2});
             desc.pipeline_layout = pipeline_layout;
-            desc.vs = LUNA_GET_SHADER_DATA(TestTriangleVS);
-            desc.ps = LUNA_GET_SHADER_DATA(TestTrianglePS);
+            desc.vs = LUNA_CPPSL_GET_SHADER_DATA(TestTriangleVS);
+            desc.ps = LUNA_CPPSL_GET_SHADER_DATA(TestTrianglePS);
             desc.rasterizer_state.depth_clamp_enable = true;
             desc.depth_stencil_state = DepthStencilDesc(false, false);
             desc.num_color_attachments = 1;

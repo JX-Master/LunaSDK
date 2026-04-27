@@ -11,8 +11,6 @@
 #include "../SceneRenderer.hpp"
 #include "../MainEditor.hpp"
 #include "../Scene.hpp"
-#include <Luna/ShaderCompiler/ShaderCompiler.hpp>
-#include <Luna/RHI/ShaderCompileHelper.hpp>
 #include <Luna/Runtime/Math/Color.hpp>
 #include <Luna/Window/MessageBox.hpp>
 #include <Luna/HID/Mouse.hpp>
@@ -1040,8 +1038,8 @@ namespace Luna
                 ps_desc.input_layout.attributes = { &attribute, 1 };
                 ps_desc.input_layout.bindings = { &binding, 1 };
                 ps_desc.pipeline_layout = m_grid_playout;
-                ps_desc.vs = LUNA_GET_SHADER_DATA(GridVS);
-                ps_desc.ps = LUNA_GET_SHADER_DATA(GridPS);
+                ps_desc.vs = LUNA_CPPSL_GET_SHADER_DATA(GridVS);
+                ps_desc.ps = LUNA_CPPSL_GET_SHADER_DATA(GridPS);
                 ps_desc.num_color_attachments = 1;
                 ps_desc.color_formats[0] = Format::rgba8_unorm;
 

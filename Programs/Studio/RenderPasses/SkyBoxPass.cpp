@@ -13,7 +13,6 @@
 #include <Luna/Runtime/File.hpp>
 #include <Luna/Asset/Asset.hpp>
 #include <Luna/Runtime/Math/Matrix.hpp>
-#include <Luna/RHI/ShaderCompileHelper.hpp>
 #include <SkyboxCS.hpp>
 
 namespace Luna
@@ -35,7 +34,7 @@ namespace Luna
                 PipelineLayoutFlag::deny_vertex_shader_access |
                 PipelineLayoutFlag::deny_pixel_shader_access)));
             ComputePipelineStateDesc ps_desc;
-            LUNA_FILL_COMPUTE_SHADER_DATA(ps_desc, SkyboxCS);
+            LUNA_CPPSL_FILL_COMPUTE_SHADER_DATA(ps_desc, SkyboxCS);
             ps_desc.pipeline_layout = m_skybox_pass_playout;
             luset(m_skybox_pass_pso, device->new_compute_pipeline_state(ps_desc));
         }

@@ -11,7 +11,7 @@ target("MultiPlatformSample")
         -- add_values("xcode.mobile_provision", "iOS Team Provisioning Profile: org.tboox.test")
     end
     add_files("Source/**.cpp")
-    add_deps("Runtime", "Window", "RHI", "RHIUtility", "ShaderCompiler", "Image")
+    add_deps("Runtime", "Window", "RHI", "RHIUtility", "Image")
     add_luna_shader("Source/BoxVert.cxx", {type = "vertex", entry_point = "vs_main"})
     add_luna_shader("Source/BoxPixel.cxx", {type = "pixel", entry_point = "ps_main"})
     if is_plat("android") then 

@@ -22,7 +22,6 @@
 #include <Luna/HID/Mouse.hpp>
 #include <Luna/Runtime/Math/Matrix.hpp>
 #include <Luna/Font/Font.hpp>
-#include <Luna/RHI/ShaderCompileHelper.hpp>
 #include <Luna/RHIUtility/RHIUtility.hpp>
 #include <Luna/RHIUtility/ResourceWriteContext.hpp>
 #include <Luna/Window/Event.hpp>
@@ -592,8 +591,8 @@ namespace Luna
                 };
                 ps_desc.input_layout.bindings = { input_bindings, 1 };
                 ps_desc.input_layout.attributes = { input_attributes , 3 };
-                ps_desc.vs = LUNA_GET_SHADER_DATA(ImGuiVS);
-                ps_desc.ps = LUNA_GET_SHADER_DATA(ImGuiPS);
+                ps_desc.vs = LUNA_CPPSL_GET_SHADER_DATA(ImGuiVS);
+                ps_desc.ps = LUNA_CPPSL_GET_SHADER_DATA(ImGuiPS);
                 ps_desc.pipeline_layout = g_playout;
                 ps_desc.num_color_attachments = 1;
                 ps_desc.color_formats[0] = rt_format;

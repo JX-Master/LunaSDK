@@ -11,7 +11,6 @@
 #define LUNA_VG_API LUNA_EXPORT
 #include "ShapeRenderer.hpp"
 #include <Luna/Runtime/Math/Transform.hpp>
-#include <Luna/RHI/ShaderCompileHelper.hpp>
 #include <Luna/RHIUtility/RHIUtility.hpp>
 #include <Luna/RHIUtility/ResourceWriteContext.hpp>
 #include <FillVS.hpp>
@@ -108,8 +107,8 @@ namespace Luna
                 };
                 desc.input_layout = InputLayoutDesc({bindings, 1}, {attributes, 6});
                 desc.pipeline_layout = g_fill_playout;
-                desc.vs = LUNA_GET_SHADER_DATA(FillVS);
-                desc.ps = LUNA_GET_SHADER_DATA(FillPS);
+                desc.vs = LUNA_CPPSL_GET_SHADER_DATA(FillVS);
+                desc.ps = LUNA_CPPSL_GET_SHADER_DATA(FillPS);
                 desc.blend_state = BlendDesc({ AttachmentBlendDesc(true, BlendFactor::src_alpha, BlendFactor::one_minus_src_alpha, BlendOp::add, BlendFactor::zero,
                         BlendFactor::one, BlendOp::add, ColorWriteMask::all) });
                 desc.rasterizer_state = RasterizerDesc(FillMode::solid, CullMode::back, false, false, false, false, false);

@@ -8,7 +8,6 @@
 * @date 2024/4/24
 */
 #include "BloomPass.hpp"
-#include <Luna/RHI/ShaderCompileHelper.hpp>
 #include <BloomSetupCS.hpp>
 #include <BloomDownSampleCS.hpp>
 #include <BloomUpSampleCS.hpp>
@@ -22,7 +21,7 @@ namespace Luna
         {
             {
                 ComputePipelineStateDesc desc;
-                LUNA_FILL_COMPUTE_SHADER_DATA(desc, BloomSetupCS);
+                LUNA_CPPSL_FILL_COMPUTE_SHADER_DATA(desc, BloomSetupCS);
                 luset(m_bloom_setup_pass_dlayout, device->new_descriptor_set_layout(DescriptorSetLayoutDesc({
                     DescriptorSetLayoutBinding::uniform_buffer_view(0, 1, ShaderVisibilityFlag::compute),
                     DescriptorSetLayoutBinding::read_texture_view(TextureViewType::tex2d, 1, 1, ShaderVisibilityFlag::compute),
@@ -35,7 +34,7 @@ namespace Luna
             }
             {
                 ComputePipelineStateDesc desc;
-                LUNA_FILL_COMPUTE_SHADER_DATA(desc, BloomDownSampleCS);
+                LUNA_CPPSL_FILL_COMPUTE_SHADER_DATA(desc, BloomDownSampleCS);
                 luset(m_bloom_downsample_pass_dlayout, device->new_descriptor_set_layout(DescriptorSetLayoutDesc({
                     DescriptorSetLayoutBinding::uniform_buffer_view(0, 1, ShaderVisibilityFlag::compute),
                     DescriptorSetLayoutBinding::read_texture_view(TextureViewType::tex2d, 1, 1, ShaderVisibilityFlag::compute),
@@ -48,7 +47,7 @@ namespace Luna
             }
             {
                 ComputePipelineStateDesc desc;
-                LUNA_FILL_COMPUTE_SHADER_DATA(desc, BloomUpSampleCS);
+                LUNA_CPPSL_FILL_COMPUTE_SHADER_DATA(desc, BloomUpSampleCS);
                 luset(m_bloom_upsample_pass_dlayout, device->new_descriptor_set_layout(DescriptorSetLayoutDesc({
                     DescriptorSetLayoutBinding::uniform_buffer_view(0, 1, ShaderVisibilityFlag::compute),
                     DescriptorSetLayoutBinding::read_texture_view(TextureViewType::tex2d, 1, 1, ShaderVisibilityFlag::compute),

@@ -12,9 +12,7 @@
 #include <Luna/Runtime/Runtime.hpp>
 #include <Luna/Runtime/Module.hpp>
 #include <Luna/Runtime/Math/Color.hpp>
-#include <Luna/ShaderCompiler/ShaderCompiler.hpp>
 #include <Luna/Runtime/Log.hpp>
-#include <Luna/RHI/ShaderCompileHelper.hpp>
 #include <Luna/Runtime/Math/Matrix.hpp>
 #include <Luna/Image/Image.hpp>
 #include <Luna/Runtime/File.hpp>
@@ -80,8 +78,8 @@ RV start()
             InputAttributeDesc("TEXCOORD", 0, 1, 0, 12, Format::rg32_float)
         };
         ps_desc.input_layout = InputLayoutDesc({bindings, 1}, {attributes, 2});
-        ps_desc.vs = LUNA_GET_SHADER_DATA(TestBoxVS);
-        ps_desc.ps = LUNA_GET_SHADER_DATA(TestBoxPS);
+        ps_desc.vs = LUNA_CPPSL_GET_SHADER_DATA(TestBoxVS);
+        ps_desc.ps = LUNA_CPPSL_GET_SHADER_DATA(TestBoxPS);
         ps_desc.pipeline_layout = playout;
         ps_desc.num_color_attachments = 1;
         ps_desc.color_formats[0] = Format::bgra8_unorm;

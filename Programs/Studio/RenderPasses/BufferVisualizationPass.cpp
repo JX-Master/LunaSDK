@@ -34,7 +34,7 @@ namespace Luna
                 PipelineLayoutFlag::deny_pixel_shader_access)));
 
             ComputePipelineStateDesc ps_desc;
-            LUNA_FILL_COMPUTE_SHADER_DATA(ps_desc, BufferVisualization);
+            LUNA_CPPSL_FILL_COMPUTE_SHADER_DATA(ps_desc, BufferVisualization);
             ps_desc.pipeline_layout = m_buffer_visualization_pass_playout;
             luset(m_buffer_visualization_pass_pso, device->new_compute_pipeline_state(ps_desc));
         }
