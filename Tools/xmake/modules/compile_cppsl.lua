@@ -136,6 +136,11 @@ local function vulkan_tool_path(projectdir, executable)
     local bin_dir = ""
     if os.host() == "macosx" and os.arch() == "arm64" then
         bin_dir = path.join(projectdir, "SDKs", "vulkan-tools", "macosx", "arm64", "bin")
+    elseif os.host() == "windows" then
+        bin_dir = path.join(projectdir, "SDKs", "vulkan-tools", "windows", "x64", "bin")
+        if not executable:endswith(".exe") then
+            executable = executable .. ".exe"
+        end
     end
     if bin_dir == "" then
         os.raise("CPPSL Vulkan shader binary generation is not supported on this host yet: " .. os.host() .. "." .. os.arch())
