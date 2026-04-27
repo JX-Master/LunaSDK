@@ -38,7 +38,7 @@ PSOutput ps_main(PSInput i)
     }
 
     float roughness = g_set0.g_roughness.Sample(g_set0.g_sampler, texcoord).x;
-    float3 normal = normalize(xyz(g_set0.g_normal.Sample(g_set0.g_sampler, texcoord)) - 0.5f);
+    float3 normal = normalize(g_set0.g_normal.Sample(g_set0.g_sampler, texcoord).xyz - 0.5f);
     float metallic = g_set0.g_metallic.Sample(g_set0.g_sampler, texcoord).x;
     float4 emissive = g_set0.g_emissive.Sample(g_set0.g_sampler, texcoord);
 

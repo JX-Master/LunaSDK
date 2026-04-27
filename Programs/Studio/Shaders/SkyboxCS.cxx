@@ -33,7 +33,7 @@ DescSet0 g_set0;
 [[cppsl::compute(8, 8, 1)]]
 void cs_main([[cppsl::builtin(dispatch_thread_id)]] uint3 dispatch_thread_id)
 {
-    uint2 pixel = xy_u(dispatch_thread_id);
+    uint2 pixel = dispatch_thread_id.xy;
 
     if (g_set0.g_depth.Load(pixel) < 0.999f)
     {
@@ -45,7 +45,7 @@ void cs_main([[cppsl::builtin(dispatch_thread_id)]] uint3 dispatch_thread_id)
         float(dispatch_thread_id.x) - float(g_set0.skybox_params.g_width / 2u),
         -(float(dispatch_thread_id.y) - float(g_set0.skybox_params.g_height / 2u)),
         focus_len});
-    world_dir = xyz(mul(g_set0.skybox_params.g_view_to_world, float4{world_dir.x, world_dir.y, world_dir.z, 0.0f}));
+    world_dir = mul(g_set0.skybox_params.g_view_to_world, float4{world_dir.x, world_dir.y, world_dir.z, 0.0f}).xyz;
 
     float2 env_uv = get_latlong_from_dir(world_dir);
     float4 src_color = g_set0.g_skybox.SampleLevel(g_set0.g_sampler, env_uv, 0.0f);

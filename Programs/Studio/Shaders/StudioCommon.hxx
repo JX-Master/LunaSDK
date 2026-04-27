@@ -6,7 +6,7 @@ using namespace cppsl;
 
 float3 xyz(float4 value)
 {
-    return float3{value.x, value.y, value.z};
+    return value.xyz;
 }
 
 float2 xy(uint3 value)
@@ -16,7 +16,7 @@ float2 xy(uint3 value)
 
 uint2 xy_u(uint3 value)
 {
-    return uint2{value.x, value.y};
+    return value.xy;
 }
 
 float4 make_float4(float3 value, float w)

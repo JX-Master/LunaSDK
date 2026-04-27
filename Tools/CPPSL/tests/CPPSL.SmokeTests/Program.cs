@@ -18,6 +18,7 @@ var structuredBufferAccessShader = Path.Combine(fixturesRoot, "valid", "structur
 var helperResourceAccessShader = Path.Combine(fixturesRoot, "valid", "helper_resource_access", "HelperResourceAccess.cxx");
 var resourceAttributesShader = Path.Combine(fixturesRoot, "valid", "resource_attributes", "ResourceAttributes.cxx");
 var descriptorSetShader = Path.Combine(fixturesRoot, "valid", "descriptor_set", "DescriptorSet.cxx");
+var vectorSwizzleShader = Path.Combine(fixturesRoot, "valid", "vector_swizzle", "VectorSwizzle.cxx");
 
 var result = compiler.Compile(new CppslCompileOptions(
     boxShader,
@@ -159,6 +160,47 @@ if (!hlslText.Contains("struct VSInput", StringComparison.Ordinal) ||
     !mslText.Contains("return output;", StringComparison.Ordinal))
 {
     Console.Error.WriteLine("error: expected CPPSL shader source targets were not emitted.");
+    return 1;
+}
+
+var vectorSwizzleResult = compiler.Compile(new CppslCompileOptions(
+    vectorSwizzleShader,
+    Path.Combine(outputDir, "vector-swizzle"),
+    new[] { stdRoot },
+    "main_vs",
+    ShaderStage.Vertex));
+
+if (!vectorSwizzleResult.Succeeded || vectorSwizzleResult.Artifacts is null)
+{
+    Console.Error.WriteLine("error: expected vector_swizzle fixture to compile.");
+    foreach (var diagnostic in vectorSwizzleResult.Diagnostics)
+    {
+        Console.Error.WriteLine(diagnostic.ToDisplayString());
+    }
+    return 1;
+}
+
+var vectorSwizzleIrText = File.ReadAllText(vectorSwizzleResult.Artifacts.IrPath);
+var vectorSwizzleHlslText = File.ReadAllText(vectorSwizzleResult.Artifacts.GetOutputPath(CppslOutputTarget.Hlsl));
+var vectorSwizzleGlslText = File.ReadAllText(vectorSwizzleResult.Artifacts.GetOutputPath(CppslOutputTarget.Glsl));
+var vectorSwizzleMslText = File.ReadAllText(vectorSwizzleResult.Artifacts.GetOutputPath(CppslOutputTarget.Msl));
+if (!vectorSwizzleIrText.Contains("\"DisplayName\": \"xyz\"", StringComparison.Ordinal) ||
+    !vectorSwizzleIrText.Contains("\"DisplayName\": \"rgb\"", StringComparison.Ordinal) ||
+    !vectorSwizzleIrText.Contains("\"DisplayName\": \"zwx\"", StringComparison.Ordinal) ||
+    !vectorSwizzleHlslText.Contains("float3 xyz = input.color.xyz;", StringComparison.Ordinal) ||
+    !vectorSwizzleHlslText.Contains("float3 rgb = input.color.rgb;", StringComparison.Ordinal) ||
+    !vectorSwizzleHlslText.Contains("float3 zwx = input.color.zwx;", StringComparison.Ordinal) ||
+    !vectorSwizzleHlslText.Contains("float2 zw = input.color.zw;", StringComparison.Ordinal) ||
+    !vectorSwizzleHlslText.Contains("float4 reversed = input.color.wzyx;", StringComparison.Ordinal) ||
+    !vectorSwizzleHlslText.Contains("float4 repeated = input.normal.xyyz;", StringComparison.Ordinal) ||
+    !vectorSwizzleGlslText.Contains("vec3 xyz = input.color.xyz;", StringComparison.Ordinal) ||
+    !vectorSwizzleGlslText.Contains("vec3 rgb = input.color.rgb;", StringComparison.Ordinal) ||
+    !vectorSwizzleGlslText.Contains("vec3 zwx = input.color.zwx;", StringComparison.Ordinal) ||
+    !vectorSwizzleMslText.Contains("float3 xyz = input.color.xyz;", StringComparison.Ordinal) ||
+    !vectorSwizzleMslText.Contains("float3 rgb = input.color.rgb;", StringComparison.Ordinal) ||
+    !vectorSwizzleMslText.Contains("float3 zwx = input.color.zwx;", StringComparison.Ordinal))
+{
+    Console.Error.WriteLine("error: expected vector swizzle members to type-check and lower as source swizzles.");
     return 1;
 }
 

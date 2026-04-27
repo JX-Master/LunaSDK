@@ -32,7 +32,7 @@ DescSet0 g_set0;
 void cs_main([[cppsl::builtin(dispatch_thread_id)]] uint3 dispatch_thread_id)
 {
     const float PI = 3.1415926f;
-    uint2 pixel = xy_u(dispatch_thread_id);
+    uint2 pixel = dispatch_thread_id.xy;
     float2 texcoords = float2{1.0f / float(g_set0.cb.tex_width), 1.0f / float(g_set0.cb.tex_height)} * (xy(dispatch_thread_id) + 0.5f);
     float3 normal = get_dir_from_latlong(texcoords);
 
@@ -55,7 +55,7 @@ void cs_main([[cppsl::builtin(dispatch_thread_id)]] uint3 dispatch_thread_id)
             float sample_omega = 2.0f * PI / (pdf * float(num_samples));
             float sample_pixels = pixels_per_omega * sample_omega;
             float mip_level = 0.5f * log2(sample_pixels);
-            float3 radiance = xyz(g_set0.g_src_mip.SampleLevel(g_set0.g_sampler, get_latlong_from_dir(l), mip_level));
+            float3 radiance = g_set0.g_src_mip.SampleLevel(g_set0.g_sampler, get_latlong_from_dir(l), mip_level).xyz;
             prefilter_color += radiance * n_dot_l;
             total_weight += n_dot_l;
         }

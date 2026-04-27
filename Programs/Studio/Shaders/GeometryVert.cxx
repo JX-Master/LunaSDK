@@ -24,10 +24,10 @@ PS_INPUT vs_main(MeshVertex input)
 {
     PS_INPUT output;
     float4 world_position = mul(g_set0.g_MeshBuffer[0].model_to_world, float4{input.position.x, input.position.y, input.position.z, 1.0f});
-    output.world_position = xyz(world_position);
+    output.world_position = world_position.xyz;
     output.position = mul(g_set0.cb_param.world_to_proj, float4{output.world_position.x, output.world_position.y, output.world_position.z, 1.0f});
-    output.normal = xyz(mul(float4{input.normal.x, input.normal.y, input.normal.z, 0.0f}, g_set0.g_MeshBuffer[0].world_to_model));
-    output.tangent = xyz(mul(float4{input.tangent.x, input.tangent.y, input.tangent.z, 0.0f}, g_set0.g_MeshBuffer[0].world_to_model));
+    output.normal = mul(float4{input.normal.x, input.normal.y, input.normal.z, 0.0f}, g_set0.g_MeshBuffer[0].world_to_model).xyz;
+    output.tangent = mul(float4{input.tangent.x, input.tangent.y, input.tangent.z, 0.0f}, g_set0.g_MeshBuffer[0].world_to_model).xyz;
     output.texcoord = input.texcoord;
     output.color = input.color;
     return output;

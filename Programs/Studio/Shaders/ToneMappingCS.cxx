@@ -58,8 +58,8 @@ float3 gamma_correction(float3 color, float gamma)
 [[cppsl::compute(8, 8, 1)]]
 void cs_main([[cppsl::builtin(dispatch_thread_id)]] uint3 dispatch_thread_id)
 {
-    uint2 pixel = xy_u(dispatch_thread_id);
-    float3 hdr_color = xyz(g_set0.g_scene_tex.Load(pixel));
+    uint2 pixel = dispatch_thread_id.xy;
+    float3 hdr_color = g_set0.g_scene_tex.Load(pixel).xyz;
     float2 texel_size = float2{1.0f / float(g_set0.tone_mapping_params.g_dst_width), 1.0f / float(g_set0.tone_mapping_params.g_dst_height)};
     float2 uv = texel_size * (xy(dispatch_thread_id) + 0.5f);
     float bloom_color = g_set0.g_bloom_tex.SampleLevel(g_set0.g_sampler, uv, 0.0f) * g_set0.tone_mapping_params.g_bloom_intensity;

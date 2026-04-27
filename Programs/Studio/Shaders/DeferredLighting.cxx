@@ -70,14 +70,14 @@ DescSet0 g_set0;
 [[cppsl::compute(8, 8, 1)]]
 void cs_main([[cppsl::builtin(dispatch_thread_id)]] uint3 dispatch_thread_id)
 {
-    uint2 pixel = xy_u(dispatch_thread_id);
+    uint2 pixel = dispatch_thread_id.xy;
     float4 base_color_roughness = g_set0.g_base_color_roughness.Load(pixel);
-    float3 base_color = xyz(base_color_roughness);
+    float3 base_color = base_color_roughness.xyz;
     float roughness = max(base_color_roughness.w, 0.001f);
     float4 normal_metallic = g_set0.g_normal_metallic.Load(pixel);
-    float3 normal = normalize(xyz(normal_metallic) * 2.0f - 1.0f);
+    float3 normal = normalize(normal_metallic.xyz * 2.0f - 1.0f);
     float metallic = normal_metallic.w;
-    float3 emissive = xyz(g_set0.g_emissive.Load(pixel));
+    float3 emissive = g_set0.g_emissive.Load(pixel).xyz;
 
     float depth = g_set0.g_depth.Load(pixel);
     if (depth >= 0.999f)
@@ -92,10 +92,10 @@ void cs_main([[cppsl::builtin(dispatch_thread_id)]] uint3 dispatch_thread_id)
         1.0f};
 
     proj_space_position = mul(g_set0.camera_params.proj_to_world, proj_space_position);
-    float3 world_position = xyz(proj_space_position) / proj_space_position.w;
+    float3 world_position = proj_space_position.xyz / proj_space_position.w;
 
     float4 camera_pos_world = mul(g_set0.camera_params.view_to_world, float4{0.0f, 0.0f, 0.0f, 1.0f});
-    float3 view_dir = normalize(xyz(camera_pos_world) - world_position);
+    float3 view_dir = normalize(camera_pos_world.xyz - world_position);
 
     float3 specular_color = lerp(float3{0.04f, 0.08f, 0.08f}, base_color, metallic);
     float3 diffuse_color = base_color * (1.0f - metallic);
@@ -163,12 +163,12 @@ void cs_main([[cppsl::builtin(dispatch_thread_id)]] uint3 dispatch_thread_id)
 
     const float SKY_BOX_MIPS = 5.0f;
     float2 ibl_irradiance_uv = get_latlong_from_dir(normal);
-    float3 ibl_irradiance = xyz(g_set0.g_skybox.SampleLevel(g_set0.g_sampler, ibl_irradiance_uv, SKY_BOX_MIPS - 1.0f));
+    float3 ibl_irradiance = g_set0.g_skybox.SampleLevel(g_set0.g_sampler, ibl_irradiance_uv, SKY_BOX_MIPS - 1.0f).xyz;
     float3 ibl_diffuse = ibl_irradiance * diffuse_color;
 
     float3 refl_dir = reflect(-view_dir, normal);
     float2 env_uv = get_latlong_from_dir(refl_dir);
-    float3 env_color = xyz(g_set0.g_skybox.SampleLevel(g_set0.g_sampler, env_uv, roughness * (SKY_BOX_MIPS - 1.0f)));
+    float3 env_color = g_set0.g_skybox.SampleLevel(g_set0.g_sampler, env_uv, roughness * (SKY_BOX_MIPS - 1.0f)).xyz;
     float4 integrate_brdf_sample = g_set0.g_integrate_brdf.SampleLevel(g_set0.g_sampler, float2{nv, roughness}, 0.0f);
     float3 ibl_specular = env_color * (specular_color * integrate_brdf_sample.x + integrate_brdf_sample.y);
 

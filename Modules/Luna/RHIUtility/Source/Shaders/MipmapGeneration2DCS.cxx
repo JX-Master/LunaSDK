@@ -36,5 +36,5 @@ void cs_main([[cppsl::builtin(dispatch_thread_id)]] uint3 dispatch_thread_id)
     float4 color;
     color = g_set0.g_src_tex.SampleLevel(g_set0.g_sampler, texcoords, 0.0f);
 
-    g_set0.g_dst_tex.Store(uint2{dispatch_thread_id.x, dispatch_thread_id.y}, color);
+    g_set0.g_dst_tex.Store(dispatch_thread_id.xy, color);
 }

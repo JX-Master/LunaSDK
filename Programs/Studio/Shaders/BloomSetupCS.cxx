@@ -28,7 +28,7 @@ DescSet0 g_set0;
 
 float4 setup_sample(float2 uv)
 {
-    float3 color = xyz(g_set0.g_src_tex.SampleLevel(g_set0.g_sampler, uv, 0.0f));
+    float3 color = g_set0.g_src_tex.SampleLevel(g_set0.g_sampler, uv, 0.0f).xyz;
     float lum = luminance(color);
     if (lum < g_set0.cb.lum_threshold)
     {
@@ -43,7 +43,7 @@ float4 setup_sample(float2 uv)
 [[cppsl::compute(8, 8, 1)]]
 void cs_main([[cppsl::builtin(dispatch_thread_id)]] uint3 dispatch_thread_id)
 {
-    uint2 pixel = xy_u(dispatch_thread_id);
+    uint2 pixel = dispatch_thread_id.xy;
     float4 color = float4{0.0f, 0.0f, 0.0f, 0.0f};
     float2 texel_size = float2{1.0f / float(g_set0.cb.dst_tex_width), 1.0f / float(g_set0.cb.dst_tex_height)};
     float2 uv = texel_size * (xy(dispatch_thread_id) + 0.5f);

@@ -361,6 +361,11 @@ internal abstract class CppslShaderSourceEmitterBase
 
     protected virtual string LowerCallExpression(CppslIrNode node)
     {
+        if (TryGetSwizzleConversionOperand(node, out var swizzleOperand))
+        {
+            return LowerExpression(swizzleOperand);
+        }
+
         if (TryGetMemberCall(node, out var receiver, out var memberName, out var memberArguments))
         {
             return LowerMemberCall(receiver, memberName, memberArguments);
@@ -378,6 +383,40 @@ internal abstract class CppslShaderSourceEmitterBase
         }
 
         return $"{name}({string.Join(", ", arguments)})";
+    }
+
+    protected static bool TryGetSwizzleConversionOperand(CppslIrNode node, out CppslIrNode swizzleOperand)
+    {
+        swizzleOperand = null!;
+        if (node.Kind != "CallExpression" ||
+            node.DisplayName?.StartsWith("operator ", StringComparison.Ordinal) != true ||
+            node.Children.FirstOrDefault() is not { Kind: "MemberExpression" } conversionMember ||
+            conversionMember.DisplayName?.StartsWith("operator ", StringComparison.Ordinal) != true ||
+            conversionMember.Children.Count != 1)
+        {
+            return false;
+        }
+
+        var operand = conversionMember.Children[0];
+        while ((operand.Kind == "ImplicitCastExpression" || operand.Kind == "ParenExpression") &&
+               operand.Children.Count == 1)
+        {
+            operand = operand.Children[0];
+        }
+
+        if (operand.Kind == "MemberExpression" && IsSwizzleType(operand.Type ?? operand.TypeInfo?.Spelling))
+        {
+            swizzleOperand = operand;
+            return true;
+        }
+
+        return false;
+    }
+
+    private static bool IsSwizzleType(string? type)
+    {
+        var normalized = NormalizeShaderTypeName(type ?? string.Empty);
+        return normalized.StartsWith("detail::swizzle<", StringComparison.Ordinal);
     }
 
     private static bool IsBinaryOperator(string? displayName)
@@ -481,18 +520,55 @@ internal abstract class CppslShaderSourceEmitterBase
     {
         var type = MapValueType(node.Type ?? node.TypeInfo?.Spelling ?? node.Spelling);
         var argumentList = node.Children.Count == 1 && node.Children[0].Kind == "InitializerListExpression"
-            ? string.Join(", ", node.Children[0].Children.Select(LowerExpression))
+            ? string.Join(", ", TrimInitializerChildren(node.Children[0], node.Type ?? node.TypeInfo?.Spelling).Select(LowerExpression))
             : string.Join(", ", node.Children.Select(LowerExpression));
         return $"{type}({argumentList})";
     }
 
     protected virtual string LowerInitializerList(CppslIrNode node)
     {
-        var argumentList = string.Join(", ", node.Children.Select(LowerExpression));
         var type = node.Type ?? node.TypeInfo?.Spelling;
+        var children = TrimInitializerChildren(node, type);
+        var argumentList = string.Join(", ", children.Select(LowerExpression));
         return string.IsNullOrWhiteSpace(type)
             ? argumentList
             : $"{MapValueType(type)}({argumentList})";
+    }
+
+    private static IReadOnlyList<CppslIrNode> TrimInitializerChildren(CppslIrNode node, string? type)
+    {
+        if (TryGetVectorComponentCount(type, out var componentCount) &&
+            node.Children.Count > componentCount &&
+            node.Children.Skip(componentCount).All(IsDefaultSwizzleInitializer))
+        {
+            return node.Children.Take(componentCount).ToList();
+        }
+
+        return node.Children;
+    }
+
+    private static bool TryGetVectorComponentCount(string? type, out int componentCount)
+    {
+        var normalized = NormalizeShaderTypeName(type ?? string.Empty);
+        componentCount = normalized switch
+        {
+            "float2" or "bool2" or "int2" or "uint2" => 2,
+            "float3" or "bool3" or "int3" or "uint3" => 3,
+            "float4" or "bool4" or "int4" or "uint4" => 4,
+            _ => 0
+        };
+        return componentCount != 0;
+    }
+
+    private static bool IsDefaultSwizzleInitializer(CppslIrNode node)
+    {
+        if (node.Kind != "InitializerListExpression" || node.Children.Count != 0)
+        {
+            return false;
+        }
+
+        var type = NormalizeShaderTypeName(node.Type ?? node.TypeInfo?.Spelling ?? string.Empty);
+        return type.StartsWith("detail::swizzle<", StringComparison.Ordinal);
     }
 
     protected virtual string LowerMul(string left, string right)

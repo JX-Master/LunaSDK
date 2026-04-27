@@ -290,6 +290,11 @@ internal sealed class MslShaderSourceEmitter : CppslShaderSourceEmitterBase
 
     protected override string LowerCallExpression(CppslIrNode node)
     {
+        if (TryGetSwizzleConversionOperand(node, out var swizzleOperand))
+        {
+            return LowerExpression(swizzleOperand);
+        }
+
         if (TryGetMslMemberCall(node, out var receiverNode, out var receiver, out var memberName, out var memberArguments))
         {
             if (memberName == "Sample" && memberArguments.Count == 2)
