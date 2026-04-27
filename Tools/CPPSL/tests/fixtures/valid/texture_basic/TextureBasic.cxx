@@ -27,9 +27,9 @@ struct PSOutput
 };
 
 [[cppsl::fragment]]
-PSOutput main_ps(PSInput input)
+PSOutput main_ps(PSInput v)
 {
-    PSOutput output;
-    output.color = textures.color_texture.Sample(textures.linear_sampler, input.uv);
-    return output;
+    PSOutput o;
+    o.color = textures.color_texture.Sample(textures.linear_sampler, v.uv);
+    return o;
 }

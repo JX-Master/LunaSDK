@@ -31,9 +31,9 @@ struct PS_INPUT
 };
 
 [[cppsl::vertex]]
-PS_INPUT vs_main(VS_INPUT input)
+PS_INPUT vs_main(VS_INPUT v)
 {
-    PS_INPUT output;
-    output.pos = mul(g_set0.vertexBuffer.world_to_proj, input.pos);
-    return output;
+    PS_INPUT o;
+    o.pos = mul(g_set0.vertexBuffer.world_to_proj, v.pos);
+    return o;
 }

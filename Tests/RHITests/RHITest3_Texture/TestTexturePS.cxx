@@ -27,12 +27,12 @@ struct PS_OUTPUT
 };
 
 [[cppsl::fragment]]
-PS_OUTPUT ps_main(PS_INPUT input)
+PS_OUTPUT ps_main(PS_INPUT v)
 {
-    PS_OUTPUT output;
-    output.color = clamp(
-        g_set0.texture0.Sample(g_set0.sampler0, input.uv),
+    PS_OUTPUT o;
+    o.color = clamp(
+        g_set0.texture0.Sample(g_set0.sampler0, v.uv),
         float4{0.0f, 0.0f, 0.0f, 0.0f},
         float4{1.0f, 1.0f, 1.0f, 1.0f});
-    return output;
+    return o;
 }

@@ -36,6 +36,12 @@ public sealed class CppslSemanticValidator
         "rwsbuffer"
     };
 
+    private static readonly HashSet<string> ReservedUserIdentifiers = new(StringComparer.Ordinal)
+    {
+        "input",
+        "output"
+    };
+
     public IReadOnlyList<CppslDiagnostic> Validate(CppslCompileOptions options, CppslSemanticModel model)
     {
         var diagnostics = new List<CppslDiagnostic>();
@@ -45,6 +51,20 @@ public sealed class CppslSemanticValidator
         ValidateResources(model, diagnostics);
         ValidateStructLocations(model, diagnostics);
 
+        return diagnostics;
+    }
+
+    public IReadOnlyList<CppslDiagnostic> ValidateIr(CppslIrModule irModule)
+    {
+        var diagnostics = new List<CppslDiagnostic>();
+        foreach (var entryPoint in irModule.EntryPoints)
+        {
+            ValidateReservedLocalIdentifiers(entryPoint.Body, diagnostics);
+        }
+        foreach (var function in irModule.Functions)
+        {
+            ValidateReservedLocalIdentifiers(function.Body, diagnostics);
+        }
         return diagnostics;
     }
 
@@ -105,7 +125,34 @@ public sealed class CppslSemanticValidator
             foreach (var parameter in function.Parameters)
             {
                 ValidateAttributeSet("parameter", parameter.Name, parameter.Attributes, new[] { "location", "builtin" }, diagnostics);
+                if (ReservedUserIdentifiers.Contains(parameter.Name))
+                {
+                    diagnostics.Add(CppslDiagnostic.Error(
+                        $"CPPSL function parameter name `{parameter.Name}` is reserved; choose an explicit semantic name instead.",
+                        parameter.File,
+                        parameter.Line,
+                        parameter.Column));
+                }
             }
+        }
+    }
+
+    private static void ValidateReservedLocalIdentifiers(CppslIrNode? node, List<CppslDiagnostic> diagnostics)
+    {
+        if (node is null)
+        {
+            return;
+        }
+
+        if (node.Kind == "LocalVariable" && ReservedUserIdentifiers.Contains(node.Spelling))
+        {
+            diagnostics.Add(CppslDiagnostic.Error(
+                $"CPPSL local variable name `{node.Spelling}` is reserved; choose an explicit semantic name instead."));
+        }
+
+        foreach (var child in node.Children)
+        {
+            ValidateReservedLocalIdentifiers(child, diagnostics);
         }
     }
 

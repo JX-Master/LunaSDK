@@ -20,15 +20,15 @@ struct PS_INPUT
 };
 
 [[cppsl::vertex]]
-PS_INPUT vs_main(MeshVertex input)
+PS_INPUT vs_main(MeshVertex v)
 {
-    PS_INPUT output;
-    float4 world_position = mul(g_set0.g_MeshBuffer[0].model_to_world, float4{input.position, 1.0f});
-    output.world_position = world_position.xyz;
-    output.position = mul(g_set0.cb_param.world_to_proj, float4{output.world_position, 1.0f});
-    output.normal = mul(float4{input.normal, 0.0f}, g_set0.g_MeshBuffer[0].world_to_model).xyz;
-    output.tangent = mul(float4{input.tangent, 0.0f}, g_set0.g_MeshBuffer[0].world_to_model).xyz;
-    output.texcoord = input.texcoord;
-    output.color = input.color;
-    return output;
+    PS_INPUT o;
+    float4 world_position = mul(g_set0.g_MeshBuffer[0].model_to_world, float4{v.position, 1.0f});
+    o.world_position = world_position.xyz;
+    o.position = mul(g_set0.cb_param.world_to_proj, float4{o.world_position, 1.0f});
+    o.normal = mul(float4{v.normal, 0.0f}, g_set0.g_MeshBuffer[0].world_to_model).xyz;
+    o.tangent = mul(float4{v.tangent, 0.0f}, g_set0.g_MeshBuffer[0].world_to_model).xyz;
+    o.texcoord = v.texcoord;
+    o.color = v.color;
+    return o;
 }

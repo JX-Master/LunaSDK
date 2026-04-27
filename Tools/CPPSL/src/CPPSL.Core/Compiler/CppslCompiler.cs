@@ -73,6 +73,13 @@ public sealed class CppslCompiler
             return new CppslCompileResult(false, diagnostics, null);
         }
 
+        var irModule = new CppslIrBuilder().Build(options, sourcePath, semanticModel, frontendResult.AstNodes);
+        diagnostics.AddRange(new CppslSemanticValidator().ValidateIr(irModule));
+        if (diagnostics.Any(static d => d.Severity == DiagnosticSeverity.Error))
+        {
+            return new CppslCompileResult(false, diagnostics, null);
+        }
+
         Directory.CreateDirectory(outputDirectory);
 
         var baseName = Path.GetFileNameWithoutExtension(sourcePath);
@@ -83,7 +90,6 @@ public sealed class CppslCompiler
             Path.Combine(outputDirectory, baseName + ".ir.json"),
             outputs);
 
-        var irModule = new CppslIrBuilder().Build(options, sourcePath, semanticModel, frontendResult.AstNodes);
         WriteArtifacts(options, sourcePath, includeResult.Files, frontendResult, semanticModel, irModule, targets, artifacts);
         diagnostics.Add(CppslDiagnostic.Info("CPPSL phase 0 validation completed.", sourcePath));
         return new CppslCompileResult(true, diagnostics, artifacts);

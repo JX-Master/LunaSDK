@@ -13,9 +13,9 @@ struct PS_OUTPUT
 };
 
 [[cppsl::fragment]]
-PS_OUTPUT ps_main(PS_INPUT input)
+PS_OUTPUT ps_main(PS_INPUT v)
 {
-    PS_OUTPUT output;
-    output.color = float4{1.0f, 1.0f, 1.0f, 1.0f};
-    return output;
+    PS_OUTPUT o;
+    o.color = float4{1.0f, 1.0f, 1.0f, 1.0f};
+    return o;
 }

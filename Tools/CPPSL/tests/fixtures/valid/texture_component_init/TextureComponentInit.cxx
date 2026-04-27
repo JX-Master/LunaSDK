@@ -28,10 +28,10 @@ struct PSOutput
 };
 
 [[cppsl::pixel]]
-PSOutput main_ps(PSInput input)
+PSOutput main_ps(PSInput v)
 {
-    float sampled = textures.src_tex.Sample(textures.linear_sampler, input.uv).x;
-    PSOutput output;
-    output.color = float4{sampled, sampled, sampled, 1.0f};
-    return output;
+    float sampled = textures.src_tex.Sample(textures.linear_sampler, v.uv).x;
+    PSOutput o;
+    o.color = float4{sampled, sampled, sampled, 1.0f};
+    return o;
 }

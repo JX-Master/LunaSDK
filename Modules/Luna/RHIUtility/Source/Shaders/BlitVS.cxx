@@ -28,10 +28,10 @@ struct PSInput
 };
 
 [[cppsl::vertex]]
-PSInput vs_main(VSInput input)
+PSInput vs_main(VSInput v)
 {
-    PSInput output;
-    output.position = float4{input.position, 0.0f, 1.0f};
-    output.texcoord = input.texcoord;
-    return output;
+    PSInput o;
+    o.position = float4{v.position, 0.0f, 1.0f};
+    o.texcoord = v.texcoord;
+    return o;
 }

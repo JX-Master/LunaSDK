@@ -13,13 +13,15 @@ internal sealed class GlslShaderSourceEmitter : CppslShaderSourceEmitterBase
     {
         var builder = new StringBuilder();
         builder.AppendLine("#version 450");
+        builder.AppendLine("#extension GL_EXT_samplerless_texture_functions : require");
         WriteHeader(builder, "GLSL", options);
         var entryPoint = FindEntryPoint(options, model);
         _resourceAccessByPath = BuildResourceAccessMap(model);
         WriteStructs(builder, model);
+        WriteComputeLayout(builder, entryPoint);
         WriteGroupSharedGlobals(builder, model);
         WriteResources(builder, model);
-        WriteStageIo(builder, entryPoint, model);
+        WriteStageIo(builder, entryPoint, model, options.Stage);
         WriteFunctions(builder, entryPoint, model, irModule);
         WriteEntryPointHelper(builder, entryPoint, model, irModule);
         WriteMain(builder, entryPoint, model);
@@ -80,10 +82,10 @@ internal sealed class GlslShaderSourceEmitter : CppslShaderSourceEmitterBase
                     WriteConstantBuffer(builder, layout, global, model);
                     break;
                 case "texture":
-                    builder.AppendLine($"{layout} uniform texture2D {global.Name};");
+                    builder.AppendLine($"{layout} uniform {GlslTextureType(global.Type)} {global.Name};");
                     break;
                 case "rw_texture":
-                    builder.AppendLine($"{layout} uniform image2D {global.Name};");
+                    builder.AppendLine($"layout(set = {global.DescriptorSet}, binding = {global.Binding}, {GlslImageFormat(global)}) uniform {GlslImageType(global)} {global.Name};");
                     break;
                 case "sampler":
                     builder.AppendLine($"{layout} uniform sampler {global.Name};");
@@ -101,6 +103,17 @@ internal sealed class GlslShaderSourceEmitter : CppslShaderSourceEmitterBase
         {
             builder.AppendLine();
         }
+    }
+
+    private static void WriteComputeLayout(StringBuilder builder, CppslFunction? entryPoint)
+    {
+        if (entryPoint?.Attributes.FindAttribute("compute") is not { Arguments.Count: >= 3 } compute)
+        {
+            return;
+        }
+
+        builder.AppendLine($"layout(local_size_x = {compute.Arguments[0]}, local_size_y = {compute.Arguments[1]}, local_size_z = {compute.Arguments[2]}) in;");
+        builder.AppendLine();
     }
 
     private void WriteGroupSharedGlobals(StringBuilder builder, CppslSemanticModel model)
@@ -140,7 +153,11 @@ internal sealed class GlslShaderSourceEmitter : CppslShaderSourceEmitterBase
         builder.AppendLine($"}} {global.Name};");
     }
 
-    private void WriteStageIo(StringBuilder builder, CppslFunction? entryPoint, CppslSemanticModel model)
+    private void WriteStageIo(
+        StringBuilder builder,
+        CppslFunction? entryPoint,
+        CppslSemanticModel model,
+        ShaderStage stage)
     {
         if (entryPoint is null)
         {
@@ -157,7 +174,7 @@ internal sealed class GlslShaderSourceEmitter : CppslShaderSourceEmitterBase
 
             foreach (var field in inputStruct.Fields.Where(static field => field.Location is not null))
             {
-                builder.AppendLine($"layout(location = {field.Location}) in {MapValueType(field.Type)} cppsl_in_{field.Name};");
+                builder.AppendLine($"layout(location = {field.Location}) {StageInputQualifier(stage, field.Type)}in {MapValueType(field.Type)} cppsl_in_{field.Name};");
             }
         }
 
@@ -166,11 +183,41 @@ internal sealed class GlslShaderSourceEmitter : CppslShaderSourceEmitterBase
         {
             foreach (var field in outputStruct.Fields.Where(static field => field.Location is not null))
             {
-                builder.AppendLine($"layout(location = {field.Location}) out {MapValueType(field.Type)} cppsl_out_{field.Name};");
+                builder.AppendLine($"layout(location = {field.Location}) {StageOutputQualifier(stage, field.Type)}out {MapValueType(field.Type)} cppsl_out_{field.Name};");
             }
         }
 
         builder.AppendLine();
+    }
+
+    private static string StageInputQualifier(ShaderStage stage, string type)
+    {
+        return (stage == ShaderStage.Fragment || stage == ShaderStage.Pixel) && IsIntegerLikeStageIoType(type)
+            ? "flat "
+            : string.Empty;
+    }
+
+    private static string StageOutputQualifier(ShaderStage stage, string type)
+    {
+        return stage == ShaderStage.Vertex && IsIntegerLikeStageIoType(type)
+            ? "flat "
+            : string.Empty;
+    }
+
+    private static bool IsIntegerLikeStageIoType(string type)
+    {
+        return NormalizeShaderTypeName(type) switch
+        {
+            "bool" or "bool_t" or "bool2" or "bool3" or "bool4" => true,
+            "int" or "int2" or "int3" or "int4" => true,
+            "uint" or "uint2" or "uint3" or "uint4" => true,
+            _ => false
+        };
+    }
+
+    private static bool IsBoolVectorType(string? type)
+    {
+        return NormalizeShaderTypeName(type ?? string.Empty) is "bool2" or "bool3" or "bool4";
     }
 
     private void WriteEntryPointHelper(
@@ -203,24 +250,35 @@ internal sealed class GlslShaderSourceEmitter : CppslShaderSourceEmitterBase
         builder.AppendLine();
         builder.AppendLine("void main()");
         builder.AppendLine("{");
+        var entryArguments = new List<string>();
         foreach (var parameter in entryPoint.Parameters)
         {
+            var parameterName = parameter.Name;
             var inputStruct = model.Structs.FirstOrDefault(structure => structure.Name == parameter.Type);
-            if (inputStruct is null)
+            if (inputStruct is not null)
             {
+                builder.AppendLine($"    {parameter.Type} {parameterName};");
+                foreach (var field in inputStruct.Fields.Where(static field => field.Location is not null))
+                {
+                    builder.AppendLine($"    {parameterName}.{field.Name} = cppsl_in_{field.Name};");
+                }
+                entryArguments.Add(parameterName);
                 continue;
             }
 
-            builder.AppendLine($"    {parameter.Type} {parameter.Name};");
-            foreach (var field in inputStruct.Fields.Where(static field => field.Location is not null))
+            if (TryGetBuiltinExpression(parameter, out var builtinExpression))
             {
-                builder.AppendLine($"    {parameter.Name}.{field.Name} = cppsl_in_{field.Name};");
+                builder.AppendLine($"    {MapValueType(parameter.Type)} {parameterName} = {builtinExpression};");
+                entryArguments.Add(parameterName);
+                continue;
             }
+
+            entryArguments.Add(parameterName);
         }
 
         if (entryPoint.ReturnType is not null && entryPoint.ReturnType != "void")
         {
-            builder.AppendLine($"    {entryPoint.ReturnType} cppsl_output = {entryPoint.Name}({string.Join(", ", entryPoint.Parameters.Select(static parameter => parameter.Name))});");
+            builder.AppendLine($"    {entryPoint.ReturnType} cppsl_output = {entryPoint.Name}({string.Join(", ", entryArguments)});");
             var outputStruct = model.Structs.FirstOrDefault(structure => structure.Name == entryPoint.ReturnType);
             if (outputStruct is not null)
             {
@@ -239,7 +297,7 @@ internal sealed class GlslShaderSourceEmitter : CppslShaderSourceEmitterBase
         }
         else
         {
-            builder.AppendLine($"    {entryPoint.Name}({string.Join(", ", entryPoint.Parameters.Select(static parameter => parameter.Name))});");
+            builder.AppendLine($"    {entryPoint.Name}({string.Join(", ", entryArguments)});");
         }
 
         builder.AppendLine("}");
@@ -254,6 +312,31 @@ internal sealed class GlslShaderSourceEmitter : CppslShaderSourceEmitterBase
 
     protected override string LowerExpression(CppslIrNode node)
     {
+        if (node.Kind == "CStyleCastExpression" &&
+            NormalizeShaderTypeName(node.Type ?? node.TypeInfo?.Spelling ?? string.Empty) == "void" &&
+            node.Children.Count == 1)
+        {
+            return LowerExpression(node.Children[0]);
+        }
+
+        if (node.Kind == "BinaryOperator" &&
+            node.DisplayName is "==" or "!=" &&
+            node.Children.Count >= 2 &&
+            IsBoolVectorType(node.Type ?? node.TypeInfo?.Spelling))
+        {
+            var functionName = node.DisplayName == "==" ? "equal" : "notEqual";
+            return $"{functionName}({LowerExpression(node.Children[0])}, {LowerExpression(node.Children[1])})";
+        }
+
+        if (node.Kind == "OperatorCallExpression" &&
+            node.DisplayName is "operator==" or "operator!=" &&
+            node.Children.Count >= 3 &&
+            IsBoolVectorType(node.Type ?? node.TypeInfo?.Spelling))
+        {
+            var functionName = node.DisplayName == "operator==" ? "equal" : "notEqual";
+            return $"{functionName}({LowerExpression(node.Children[1])}, {LowerExpression(node.Children[2])})";
+        }
+
         if (TryGetAccessPath(node, out var accessPath) &&
             _resourceAccessByPath.TryGetValue(accessPath, out var resourceAccess))
         {
@@ -275,11 +358,11 @@ internal sealed class GlslShaderSourceEmitter : CppslShaderSourceEmitterBase
         }
         if (memberName == "Load" && arguments.Count == 1)
         {
-            return $"texelFetch(sampler2D({receiver}, sampler()), ivec2({arguments[0]}), 0)";
+            return $"texelFetch({receiver}, {GlslTexelCoordinate(2, arguments[0])}, 0)";
         }
         if (memberName == "Store" && arguments.Count == 2)
         {
-            return $"imageStore({receiver}, ivec2({arguments[0]}), {arguments[1]})";
+            return $"imageStore({receiver}, {GlslTexelCoordinate(2, arguments[0])}, {arguments[1]})";
         }
 
         return base.LowerMemberCall(receiver, memberName, arguments);
@@ -291,25 +374,37 @@ internal sealed class GlslShaderSourceEmitter : CppslShaderSourceEmitterBase
         {
             if (memberName == "Sample" && memberArguments.Count == 2)
             {
+                var dimension = TextureDimension(receiverNode);
                 return AdaptTextureReadExpression(
                     receiverNode,
-                    $"texture(sampler2D({receiver}, {memberArguments[0]}), {memberArguments[1]})");
+                    $"texture({GlslSamplerConstructor(dimension, receiver, memberArguments[0])}, {memberArguments[1]})");
             }
             if (memberName == "SampleLevel" && memberArguments.Count == 3)
             {
+                var dimension = TextureDimension(receiverNode);
                 return AdaptTextureReadExpression(
                     receiverNode,
-                    $"textureLod(sampler2D({receiver}, {memberArguments[0]}), {memberArguments[1]}, {memberArguments[2]})");
+                    $"textureLod({GlslSamplerConstructor(dimension, receiver, memberArguments[0])}, {memberArguments[1]}, {memberArguments[2]})");
             }
             if (memberName == "Load" && memberArguments.Count == 1)
             {
+                var dimension = TextureDimension(receiverNode);
+                var coordinate = GlslTexelCoordinate(dimension, memberArguments[0]);
+                if (IsStorageTexture(receiverNode))
+                {
+                    return AdaptTextureReadExpression(
+                        receiverNode,
+                        $"imageLoad({receiver}, {coordinate})");
+                }
+
                 return AdaptTextureReadExpression(
                     receiverNode,
-                    $"texelFetch(sampler2D({receiver}, sampler()), ivec2({memberArguments[0]}), 0)");
+                    $"texelFetch({receiver}, {coordinate}, 0)");
             }
             if (memberName == "Store" && memberArguments.Count == 2)
             {
-                return $"imageStore({receiver}, ivec2({memberArguments[0]}), {AdaptTextureStoreValue(receiverNode, memberArguments[1])})";
+                var dimension = TextureDimension(receiverNode);
+                return $"imageStore({receiver}, {GlslTexelCoordinate(dimension, memberArguments[0])}, {AdaptTextureStoreValue(receiverNode, memberArguments[1])})";
             }
         }
 
@@ -334,6 +429,14 @@ internal sealed class GlslShaderSourceEmitter : CppslShaderSourceEmitterBase
         if (name == "lerp" && arguments.Length == 3)
         {
             return $"mix({arguments[0]}, {arguments[1]}, {arguments[2]})";
+        }
+        if (name == "atan2" && arguments.Length == 2)
+        {
+            return $"atan({arguments[0]}, {arguments[1]})";
+        }
+        if (name == "saturate" && arguments.Length == 1)
+        {
+            return $"clamp({arguments[0]}, 0.0, 1.0)";
         }
 
         return base.LowerCallExpression(node);
@@ -414,6 +517,9 @@ internal sealed class GlslShaderSourceEmitter : CppslShaderSourceEmitterBase
             "int2" => "ivec2",
             "int3" => "ivec3",
             "int4" => "ivec4",
+            "bool2" => "bvec2",
+            "bool3" => "bvec3",
+            "bool4" => "bvec4",
             "uint2" => "uvec2",
             "uint3" => "uvec3",
             "uint4" => "uvec4",
@@ -442,5 +548,183 @@ internal sealed class GlslShaderSourceEmitter : CppslShaderSourceEmitterBase
             map[global.AccessPath!] = global.Name;
         }
         return map;
+    }
+
+    private static bool TryGetBuiltinExpression(CppslParameter parameter, out string expression)
+    {
+        expression = parameter.Attributes.FindAttribute("builtin")?.Arguments.FirstOrDefault() switch
+        {
+            "dispatch_thread_id" => "uvec3(gl_GlobalInvocationID)",
+            "group_index" => "uint(gl_LocalInvocationIndex)",
+            _ => string.Empty
+        };
+        return expression.Length != 0;
+    }
+
+    private static string GlslTextureType(string type)
+    {
+        return TextureDimension(type) switch
+        {
+            1 => "texture1D",
+            3 => "texture3D",
+            _ => "texture2D"
+        };
+    }
+
+    private static string GlslImageType(CppslGlobal global)
+    {
+        var prefix = TextureElementType(global) switch
+        {
+            "int" or "int2" or "int3" or "int4" => "i",
+            "uint" or "uint2" or "uint3" or "uint4" => "u",
+            _ => string.Empty
+        };
+        return TextureDimension(global.Type) switch
+        {
+            1 => $"{prefix}image1D",
+            3 => $"{prefix}image3D",
+            _ => $"{prefix}image2D"
+        };
+    }
+
+    private static string GlslImageFormat(CppslGlobal global)
+    {
+        return TextureElementType(global) switch
+        {
+            "float" => "r32f",
+            "float2" => "rg32f",
+            "float3" or "float4" => "rgba32f",
+            "int" => "r32i",
+            "int2" => "rg32i",
+            "int3" or "int4" => "rgba32i",
+            "uint" => "r32ui",
+            "uint2" => "rg32ui",
+            "uint3" or "uint4" => "rgba32ui",
+            _ => "rgba32f"
+        };
+    }
+
+    private static string TextureElementType(CppslGlobal global)
+    {
+        return global.Type.Contains('<', StringComparison.Ordinal)
+            ? NormalizeShaderTypeName(UnwrapTemplateArgument(global.Type))
+            : NormalizeShaderTypeName(global.Type);
+    }
+
+    private static int TextureDimension(CppslIrNode node)
+    {
+        return TryGetTextureDimension(node, out var dimension) ? dimension : 2;
+    }
+
+    private static int TextureDimension(string type)
+    {
+        if (TryGetTextureDimension(type, out var dimension))
+        {
+            return dimension;
+        }
+        return 2;
+    }
+
+    private static bool TryGetTextureDimension(CppslIrNode node, out int dimension)
+    {
+        foreach (var candidate in NodeTypeCandidates(node))
+        {
+            if (TryGetTextureDimension(candidate, out dimension))
+            {
+                return true;
+            }
+        }
+
+        foreach (var child in node.Children)
+        {
+            if (TryGetTextureDimension(child, out dimension))
+            {
+                return true;
+            }
+        }
+
+        dimension = 0;
+        return false;
+    }
+
+    private static bool TryGetTextureDimension(string type, out int dimension)
+    {
+        var normalized = NormalizeShaderTypeName(type);
+        if (normalized.Contains("Texture1D<", StringComparison.Ordinal) ||
+            normalized.Contains("RWTexture1D<", StringComparison.Ordinal))
+        {
+            dimension = 1;
+            return true;
+        }
+        if (normalized.Contains("Texture3D<", StringComparison.Ordinal) ||
+            normalized.Contains("RWTexture3D<", StringComparison.Ordinal))
+        {
+            dimension = 3;
+            return true;
+        }
+        if (normalized.Contains("Texture2D<", StringComparison.Ordinal) ||
+            normalized.Contains("DepthTexture2D<", StringComparison.Ordinal) ||
+            normalized.Contains("RWTexture2D<", StringComparison.Ordinal))
+        {
+            dimension = 2;
+            return true;
+        }
+
+        dimension = 0;
+        return false;
+    }
+
+    private static bool IsStorageTexture(CppslIrNode node)
+    {
+        foreach (var candidate in NodeTypeCandidates(node))
+        {
+            if (NormalizeShaderTypeName(candidate).Contains("RWTexture", StringComparison.Ordinal))
+            {
+                return true;
+            }
+        }
+
+        return node.Children.Any(IsStorageTexture);
+    }
+
+    private static string GlslSamplerConstructor(int dimension, string texture, string sampler)
+    {
+        var samplerType = dimension switch
+        {
+            1 => "sampler1D",
+            3 => "sampler3D",
+            _ => "sampler2D"
+        };
+        return $"{samplerType}({texture}, {sampler})";
+    }
+
+    private static string GlslTexelCoordinate(int dimension, string coordinate)
+    {
+        return dimension switch
+        {
+            1 => $"int({coordinate})",
+            3 => $"ivec3({coordinate})",
+            _ => $"ivec2({coordinate})"
+        };
+    }
+
+    private static IEnumerable<string> NodeTypeCandidates(CppslIrNode node)
+    {
+        if (!string.IsNullOrWhiteSpace(node.Type))
+        {
+            yield return node.Type!;
+        }
+        if (!string.IsNullOrWhiteSpace(node.TypeInfo?.Spelling))
+        {
+            yield return node.TypeInfo!.Spelling;
+        }
+        if (!string.IsNullOrWhiteSpace(node.TypeInfo?.CanonicalName))
+        {
+            yield return node.TypeInfo!.CanonicalName;
+        }
+        if (!string.IsNullOrWhiteSpace(node.TypeInfo?.DesugaredName))
+        {
+            yield return node.TypeInfo!.DesugaredName;
+        }
     }
 }

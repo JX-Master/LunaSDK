@@ -21,16 +21,16 @@ struct VSOutput
 };
 
 [[cppsl::vertex]]
-VSOutput main_vs(VSInput input)
+VSOutput main_vs(VSInput v)
 {
-    VSOutput output;
-    output.xy = float2{input.color.x, input.color.y};
-    output.xyz = float3{input.color.xy, input.color.z};
-    output.yzw = float3{input.color.y, input.color.zw};
-    output.rgba = float4{input.color.rgb, input.weight};
-    output.xgba = float4{input.color.x, input.color.gba};
-    output.xyzw = float4{input.color.xy, input.color.zw};
-    output.splat = float4{input.weight};
-    output.position = output.rgba;
-    return output;
+    VSOutput o;
+    o.xy = float2{v.color.x, v.color.y};
+    o.xyz = float3{v.color.xy, v.color.z};
+    o.yzw = float3{v.color.y, v.color.zw};
+    o.rgba = float4{v.color.rgb, v.weight};
+    o.xgba = float4{v.color.x, v.color.gba};
+    o.xyzw = float4{v.color.xy, v.color.zw};
+    o.splat = float4{v.weight};
+    o.position = o.rgba;
+    return o;
 }

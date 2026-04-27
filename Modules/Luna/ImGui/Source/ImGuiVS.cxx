@@ -39,11 +39,11 @@ struct PS_INPUT
 };
 
 [[cppsl::vertex]]
-PS_INPUT vs_main(VS_INPUT input)
+PS_INPUT vs_main(VS_INPUT v)
 {
-    PS_INPUT output;
-    output.pos = mul(g_set0.vertexBuffer.ProjectionMatrix, float4{input.pos, 0.0f, 1.0f});
-    output.col = input.col;
-    output.uv = input.uv;
-    return output;
+    PS_INPUT o;
+    o.pos = mul(g_set0.vertexBuffer.ProjectionMatrix, float4{v.pos, 0.0f, 1.0f});
+    o.col = v.col;
+    o.uv = v.uv;
+    return o;
 }

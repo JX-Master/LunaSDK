@@ -10,6 +10,6 @@ struct VSInput
 };
 
 [[cppsl::vertex]]
-void main_vs(VSInput input)
+void main_vs(VSInput v)
 {
 }

@@ -279,10 +279,10 @@ PSOut ps_main(PSIn v)
         coverage *= clip_rect_test(v.position_2d, g_set0.g_cbuffer.clip_rect, pixels_per_pos_unit);
     }
 
-    PSOut output;
+    PSOut o;
     float4 col = g_set0.g_tex.Sample(g_set0.g_sampler, v.texcoord);
     col *= v.color;
     col.w *= coverage;
-    output.color = col;
-    return output;
+    o.color = col;
+    return o;
 }

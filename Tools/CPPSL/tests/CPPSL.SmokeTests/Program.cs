@@ -74,7 +74,7 @@ if (!irText.Contains("main_vs", StringComparison.Ordinal) ||
     !irText.Contains("\"Kind\": \"CompoundStatement\"", StringComparison.Ordinal) ||
     !irText.Contains("\"Kind\": \"DeclarationStatement\"", StringComparison.Ordinal) ||
     !irText.Contains("\"Kind\": \"LocalVariable\"", StringComparison.Ordinal) ||
-    !irText.Contains("\"Spelling\": \"output\"", StringComparison.Ordinal) ||
+    !irText.Contains("\"Spelling\": \"o\"", StringComparison.Ordinal) ||
     !irText.Contains("\"Kind\": \"CallExpression\"", StringComparison.Ordinal) ||
     !irText.Contains("\"DisplayName\": \"mul\"", StringComparison.Ordinal) ||
     !irText.Contains("\"Kind\": \"MemberExpression\"", StringComparison.Ordinal) ||
@@ -132,7 +132,7 @@ if (irText.Contains("\"Name\": \"output\"", StringComparison.Ordinal))
     Console.Error.WriteLine("error: local variables must not be classified as CPPSL globals.");
     return 1;
 }
-if (!Regex.IsMatch(irText, "\"Name\": \"input\".*?\"Attributes\": \\[\\s*\\]", RegexOptions.Singleline))
+if (!Regex.IsMatch(irText, "\"Name\": \"v\".*?\"Attributes\": \\[\\s*\\]", RegexOptions.Singleline))
 {
     Console.Error.WriteLine("error: function parameters must not inherit function attributes.");
     return 1;
@@ -140,14 +140,14 @@ if (!Regex.IsMatch(irText, "\"Name\": \"input\".*?\"Attributes\": \\[\\s*\\]", R
 if (!hlslText.Contains("struct VSInput", StringComparison.Ordinal) ||
     !hlslText.Contains("float4 position : SV_Position", StringComparison.Ordinal) ||
     !hlslText.Contains("ConstantBuffer<Camera> frame_camera : register(b0, space0);", StringComparison.Ordinal) ||
-    !hlslText.Contains("VSOutput main_vs(VSInput input)", StringComparison.Ordinal) ||
-    !hlslText.Contains("output.position = mul(frame_camera.world_to_proj, float4(input.position.x, input.position.y, input.position.z, 1.0f));", StringComparison.Ordinal) ||
-    !hlslText.Contains("output.texcoord = input.texcoord;", StringComparison.Ordinal) ||
-    !hlslText.Contains("return output;", StringComparison.Ordinal) ||
+    !hlslText.Contains("VSOutput main_vs(VSInput v)", StringComparison.Ordinal) ||
+    !hlslText.Contains("o.position = mul(frame_camera.world_to_proj, float4(v.position.x, v.position.y, v.position.z, 1.0f));", StringComparison.Ordinal) ||
+    !hlslText.Contains("o.texcoord = v.texcoord;", StringComparison.Ordinal) ||
+    !hlslText.Contains("return o;", StringComparison.Ordinal) ||
     !glslText.Contains("#version 450", StringComparison.Ordinal) ||
     !glslText.Contains("mat4 world_to_proj", StringComparison.Ordinal) ||
     !glslText.Contains("layout(set = 0, binding = 0) uniform frame_camera_Block", StringComparison.Ordinal) ||
-    !glslText.Contains("output.position = (frame_camera.world_to_proj * vec4(input.position.x, input.position.y, input.position.z, 1.0));", StringComparison.Ordinal) ||
+    !glslText.Contains("o.position = (frame_camera.world_to_proj * vec4(v.position.x, v.position.y, v.position.z, 1.0));", StringComparison.Ordinal) ||
     !glslText.Contains("void main()", StringComparison.Ordinal) ||
     !glslText.Contains("gl_Position = cppsl_output.position;", StringComparison.Ordinal) ||
     !mslText.Contains("#include <metal_stdlib>", StringComparison.Ordinal) ||
@@ -157,8 +157,8 @@ if (!hlslText.Contains("struct VSInput", StringComparison.Ordinal) ||
     !mslText.Contains("constant Camera* frame_camera [[id(0)]]", StringComparison.Ordinal) ||
     !mslText.Contains("constant spvDescriptorSetBuffer0* constant spvDescriptorSet0 [[buffer(0)]]", StringComparison.Ordinal) ||
     !mslText.Contains("vertex VSOutput main_vs", StringComparison.Ordinal) ||
-    !mslText.Contains("output.position = ((*(*spvDescriptorSet0).frame_camera).world_to_proj * float4(input.position.x, input.position.y, input.position.z, 1.0f));", StringComparison.Ordinal) ||
-    !mslText.Contains("return output;", StringComparison.Ordinal))
+    !mslText.Contains("o.position = ((*(*spvDescriptorSet0).frame_camera).world_to_proj * float4(v.position.x, v.position.y, v.position.z, 1.0f));", StringComparison.Ordinal) ||
+    !mslText.Contains("return o;", StringComparison.Ordinal))
 {
     Console.Error.WriteLine("error: expected CPPSL shader source targets were not emitted.");
     return 1;
@@ -188,18 +188,18 @@ var vectorSwizzleMslText = File.ReadAllText(vectorSwizzleResult.Artifacts.GetOut
 if (!vectorSwizzleIrText.Contains("\"DisplayName\": \"xyz\"", StringComparison.Ordinal) ||
     !vectorSwizzleIrText.Contains("\"DisplayName\": \"rgb\"", StringComparison.Ordinal) ||
     !vectorSwizzleIrText.Contains("\"DisplayName\": \"zwx\"", StringComparison.Ordinal) ||
-    !vectorSwizzleHlslText.Contains("float3 xyz = input.color.xyz;", StringComparison.Ordinal) ||
-    !vectorSwizzleHlslText.Contains("float3 rgb = input.color.rgb;", StringComparison.Ordinal) ||
-    !vectorSwizzleHlslText.Contains("float3 zwx = input.color.zwx;", StringComparison.Ordinal) ||
-    !vectorSwizzleHlslText.Contains("float2 zw = input.color.zw;", StringComparison.Ordinal) ||
-    !vectorSwizzleHlslText.Contains("float4 reversed = input.color.wzyx;", StringComparison.Ordinal) ||
-    !vectorSwizzleHlslText.Contains("float4 repeated = input.normal.xyyz;", StringComparison.Ordinal) ||
-    !vectorSwizzleGlslText.Contains("vec3 xyz = input.color.xyz;", StringComparison.Ordinal) ||
-    !vectorSwizzleGlslText.Contains("vec3 rgb = input.color.rgb;", StringComparison.Ordinal) ||
-    !vectorSwizzleGlslText.Contains("vec3 zwx = input.color.zwx;", StringComparison.Ordinal) ||
-    !vectorSwizzleMslText.Contains("float3 xyz = input.color.xyz;", StringComparison.Ordinal) ||
-    !vectorSwizzleMslText.Contains("float3 rgb = input.color.rgb;", StringComparison.Ordinal) ||
-    !vectorSwizzleMslText.Contains("float3 zwx = input.color.zwx;", StringComparison.Ordinal))
+    !vectorSwizzleHlslText.Contains("float3 xyz = v.color.xyz;", StringComparison.Ordinal) ||
+    !vectorSwizzleHlslText.Contains("float3 rgb = v.color.rgb;", StringComparison.Ordinal) ||
+    !vectorSwizzleHlslText.Contains("float3 zwx = v.color.zwx;", StringComparison.Ordinal) ||
+    !vectorSwizzleHlslText.Contains("float2 zw = v.color.zw;", StringComparison.Ordinal) ||
+    !vectorSwizzleHlslText.Contains("float4 reversed = v.color.wzyx;", StringComparison.Ordinal) ||
+    !vectorSwizzleHlslText.Contains("float4 repeated = v.normal.xyyz;", StringComparison.Ordinal) ||
+    !vectorSwizzleGlslText.Contains("vec3 xyz = v.color.xyz;", StringComparison.Ordinal) ||
+    !vectorSwizzleGlslText.Contains("vec3 rgb = v.color.rgb;", StringComparison.Ordinal) ||
+    !vectorSwizzleGlslText.Contains("vec3 zwx = v.color.zwx;", StringComparison.Ordinal) ||
+    !vectorSwizzleMslText.Contains("float3 xyz = v.color.xyz;", StringComparison.Ordinal) ||
+    !vectorSwizzleMslText.Contains("float3 rgb = v.color.rgb;", StringComparison.Ordinal) ||
+    !vectorSwizzleMslText.Contains("float3 zwx = v.color.zwx;", StringComparison.Ordinal))
 {
     Console.Error.WriteLine("error: expected vector swizzle members to type-check and lower as source swizzles.");
     return 1;
@@ -225,16 +225,16 @@ if (!vectorConstructorResult.Succeeded || vectorConstructorResult.Artifacts is n
 var vectorConstructorHlslText = File.ReadAllText(vectorConstructorResult.Artifacts.GetOutputPath(CppslOutputTarget.Hlsl));
 var vectorConstructorGlslText = File.ReadAllText(vectorConstructorResult.Artifacts.GetOutputPath(CppslOutputTarget.Glsl));
 var vectorConstructorMslText = File.ReadAllText(vectorConstructorResult.Artifacts.GetOutputPath(CppslOutputTarget.Msl));
-if (!vectorConstructorHlslText.Contains("output.rgba = float4(input.color.rgb, input.weight);", StringComparison.Ordinal) ||
-    !vectorConstructorHlslText.Contains("output.xgba = float4(input.color.x, input.color.gba);", StringComparison.Ordinal) ||
-    !vectorConstructorHlslText.Contains("output.xyzw = float4(input.color.xy, input.color.zw);", StringComparison.Ordinal) ||
-    !vectorConstructorHlslText.Contains("output.splat = float4(input.weight);", StringComparison.Ordinal) ||
-    !vectorConstructorGlslText.Contains("output.rgba = vec4(input.color.rgb, input.weight);", StringComparison.Ordinal) ||
-    !vectorConstructorGlslText.Contains("output.xgba = vec4(input.color.x, input.color.gba);", StringComparison.Ordinal) ||
-    !vectorConstructorGlslText.Contains("output.xyzw = vec4(input.color.xy, input.color.zw);", StringComparison.Ordinal) ||
-    !vectorConstructorMslText.Contains("output.rgba = float4(input.color.rgb, input.weight);", StringComparison.Ordinal) ||
-    !vectorConstructorMslText.Contains("output.xgba = float4(input.color.x, input.color.gba);", StringComparison.Ordinal) ||
-    !vectorConstructorMslText.Contains("output.xyzw = float4(input.color.xy, input.color.zw);", StringComparison.Ordinal))
+if (!vectorConstructorHlslText.Contains("o.rgba = float4(v.color.rgb, v.weight);", StringComparison.Ordinal) ||
+    !vectorConstructorHlslText.Contains("o.xgba = float4(v.color.x, v.color.gba);", StringComparison.Ordinal) ||
+    !vectorConstructorHlslText.Contains("o.xyzw = float4(v.color.xy, v.color.zw);", StringComparison.Ordinal) ||
+    !vectorConstructorHlslText.Contains("o.splat = float4(v.weight);", StringComparison.Ordinal) ||
+    !vectorConstructorGlslText.Contains("o.rgba = vec4(v.color.rgb, v.weight);", StringComparison.Ordinal) ||
+    !vectorConstructorGlslText.Contains("o.xgba = vec4(v.color.x, v.color.gba);", StringComparison.Ordinal) ||
+    !vectorConstructorGlslText.Contains("o.xyzw = vec4(v.color.xy, v.color.zw);", StringComparison.Ordinal) ||
+    !vectorConstructorMslText.Contains("o.rgba = float4(v.color.rgb, v.weight);", StringComparison.Ordinal) ||
+    !vectorConstructorMslText.Contains("o.xgba = float4(v.color.x, v.color.gba);", StringComparison.Ordinal) ||
+    !vectorConstructorMslText.Contains("o.xyzw = float4(v.color.xy, v.color.zw);", StringComparison.Ordinal))
 {
     Console.Error.WriteLine("error: expected vector constructors to type-check and lower as shader constructors.");
     return 1;
@@ -324,7 +324,7 @@ if (!textureComponentInitResult.Succeeded || textureComponentInitResult.Artifact
 }
 
 var textureComponentInitMslText = File.ReadAllText(textureComponentInitResult.Artifacts.GetOutputPath(CppslOutputTarget.Msl));
-if (!textureComponentInitMslText.Contains("float sampled = (*spvDescriptorSet0).textures_src_tex.sample((*spvDescriptorSet0).textures_linear_sampler, input.uv).x;", StringComparison.Ordinal))
+if (!textureComponentInitMslText.Contains("float sampled = (*spvDescriptorSet0).textures_src_tex.sample((*spvDescriptorSet0).textures_linear_sampler, v.uv).x;", StringComparison.Ordinal))
 {
     Console.Error.WriteLine("error: expected texture component initializer to keep the sampled expression in MSL.");
     return 1;
@@ -354,7 +354,7 @@ if (!textureScalarMslText.Contains("float sampled = (*spvDescriptorSet0).texture
     !textureScalarMslText.Contains("float depth = (*spvDescriptorSet0).textures_depth_tex.read(pixel);", StringComparison.Ordinal) ||
     !textureScalarMslText.Contains("(*spvDescriptorSet0).textures_dst_tex.write(float4(sampled), pixel);", StringComparison.Ordinal) ||
     !textureScalarGlslText.Contains("float sampled = textureLod(sampler2D(textures_src_tex, textures_linear_sampler), uv, 0.0).x;", StringComparison.Ordinal) ||
-    !textureScalarGlslText.Contains("float depth = texelFetch(sampler2D(textures_depth_tex, sampler()), ivec2(pixel), 0).x;", StringComparison.Ordinal) ||
+    !textureScalarGlslText.Contains("float depth = texelFetch(textures_depth_tex, ivec2(pixel), 0).x;", StringComparison.Ordinal) ||
     !textureScalarGlslText.Contains("imageStore(textures_dst_tex, ivec2(pixel), vec4(sampled));", StringComparison.Ordinal))
 {
     Console.Error.WriteLine("error: expected scalar texture operations to lower with channel extraction/expansion.");
@@ -493,7 +493,7 @@ if (!descriptorSetReflectionText.Contains("\"Name\": \"frame_camera\"", StringCo
     !descriptorSetHlslText.Contains("frame_camera.world_to_proj", StringComparison.Ordinal) ||
     !descriptorSetHlslText.Contains("frame_color_texture.Sample(frame_color_sampler", StringComparison.Ordinal) ||
     !descriptorSetHlslText.Contains("frame_items[0].value", StringComparison.Ordinal) ||
-    !descriptorSetHlslText.Contains("frame_output_values[0] = output.color.x;", StringComparison.Ordinal) ||
+    !descriptorSetHlslText.Contains("frame_output_values[0] = o.color.x;", StringComparison.Ordinal) ||
     descriptorSetGlslText.Contains("struct FrameSet", StringComparison.Ordinal) ||
     !descriptorSetGlslText.Contains("layout(set = 0, binding = 0) uniform frame_camera_Block", StringComparison.Ordinal) ||
     !descriptorSetGlslText.Contains("layout(set = 0, binding = 1) buffer frame_items_Block", StringComparison.Ordinal) ||
@@ -505,7 +505,7 @@ if (!descriptorSetReflectionText.Contains("\"Name\": \"frame_camera\"", StringCo
     !descriptorSetMslText.Contains("(*(*spvDescriptorSet0).frame_camera).world_to_proj", StringComparison.Ordinal) ||
     !descriptorSetMslText.Contains("(*spvDescriptorSet0).frame_color_texture.sample((*spvDescriptorSet0).frame_color_sampler", StringComparison.Ordinal) ||
     !descriptorSetMslText.Contains("(*spvDescriptorSet0).frame_items[0].value", StringComparison.Ordinal) ||
-    !descriptorSetMslText.Contains("(*spvDescriptorSet0).frame_output_values[0] = output.color.x;", StringComparison.Ordinal))
+    !descriptorSetMslText.Contains("(*spvDescriptorSet0).frame_output_values[0] = o.color.x;", StringComparison.Ordinal))
 {
     Console.Error.WriteLine("error: expected descriptor set resources and accesses to be emitted.");
     return 1;
@@ -522,7 +522,9 @@ var invalidFixtures = new[]
     new InvalidFixture("invalid_attribute_target", "InvalidAttributeTarget.cxx", "main_vs", ShaderStage.Vertex, "cannot be used on field"),
     new InvalidFixture("structured_buffer_requires_const_pointer", "StructuredBufferRequiresConstPointer.cxx", "main_vs", ShaderStage.Vertex, "must be declared as `const T*`"),
     new InvalidFixture("rwstructured_buffer_requires_mutable_pointer", "RWStructuredBufferRequiresMutablePointer.cxx", "main_vs", ShaderStage.Vertex, "must be declared as `T*`"),
-    new InvalidFixture("legacy_resource_global", "LegacyResourceGlobal.cxx", "main_vs", ShaderStage.Vertex, "resource global")
+    new InvalidFixture("legacy_resource_global", "LegacyResourceGlobal.cxx", "main_vs", ShaderStage.Vertex, "resource global"),
+    new InvalidFixture("reserved_parameter_name", "ReservedParameterName.cxx", "main_vs", ShaderStage.Vertex, "parameter name `input` is reserved"),
+    new InvalidFixture("reserved_local_name", "ReservedLocalName.cxx", "main_cs", ShaderStage.Compute, "local variable name `output` is reserved")
 };
 
 foreach (var fixture in invalidFixtures)

@@ -20,23 +20,23 @@ struct PS_INPUT
 };
 
 [[cppsl::vertex]]
-PS_INPUT vs_main(MeshVertex input)
+PS_INPUT vs_main(MeshVertex v)
 {
-    PS_INPUT output;
+    PS_INPUT o;
     float4 world_position4;
-    world_position4 = mul(g_set0.g_MeshBuffer[0].model_to_world, float4{input.position, 1.0f});
-    output.world_position = world_position4.xyz;
-    output.position = mul(g_set0.g_cb.world_to_proj, float4{output.world_position, 1.0f});
+    world_position4 = mul(g_set0.g_MeshBuffer[0].model_to_world, float4{v.position, 1.0f});
+    o.world_position = world_position4.xyz;
+    o.position = mul(g_set0.g_cb.world_to_proj, float4{o.world_position, 1.0f});
 
     float4 normal4;
-    normal4 = mul(float4{input.normal, 0.0f}, g_set0.g_MeshBuffer[0].world_to_model);
-    output.normal = normal4.xyz;
+    normal4 = mul(float4{v.normal, 0.0f}, g_set0.g_MeshBuffer[0].world_to_model);
+    o.normal = normal4.xyz;
 
     float4 tangent4;
-    tangent4 = mul(float4{input.tangent, 0.0f}, g_set0.g_MeshBuffer[0].world_to_model);
-    output.tangent = tangent4.xyz;
+    tangent4 = mul(float4{v.tangent, 0.0f}, g_set0.g_MeshBuffer[0].world_to_model);
+    o.tangent = tangent4.xyz;
 
-    output.texcoord = input.texcoord;
-    output.color = input.color;
-    return output;
+    o.texcoord = v.texcoord;
+    o.color = v.color;
+    return o;
 }

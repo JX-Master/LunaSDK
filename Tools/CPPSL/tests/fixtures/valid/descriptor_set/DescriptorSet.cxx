@@ -52,11 +52,11 @@ struct VSOutput
 };
 
 [[cppsl::vertex]]
-VSOutput main_vs(VSInput input)
+VSOutput main_vs(VSInput v)
 {
-    VSOutput output;
-    output.position = mul(frame.camera.world_to_proj, float4{input.position.x, input.position.y, input.position.z, 1.0f});
-    output.color = frame.color_texture.Sample(frame.color_sampler, input.texcoord) * frame.items[0].value;
-    frame.output_values[0] = output.color.x;
-    return output;
+    VSOutput o;
+    o.position = mul(frame.camera.world_to_proj, float4{v.position.x, v.position.y, v.position.z, 1.0f});
+    o.color = frame.color_texture.Sample(frame.color_sampler, v.texcoord) * frame.items[0].value;
+    frame.output_values[0] = o.color.x;
+    return o;
 }

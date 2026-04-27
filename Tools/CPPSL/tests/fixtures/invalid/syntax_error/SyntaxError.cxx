@@ -8,6 +8,6 @@ struct BrokenInput
 };
 
 [[cppsl::vertex]]
-void main_vs(BrokenInput input)
+void main_vs(BrokenInput v)
 {
 }

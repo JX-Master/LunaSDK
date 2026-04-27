@@ -18,20 +18,20 @@ struct VSOutput
 };
 
 [[cppsl::vertex]]
-VSOutput main_vs(VSInput input)
+VSOutput main_vs(VSInput v)
 {
-    float3 xyz = input.color.xyz;
-    float3 rgb = input.color.rgb;
-    float3 zwx = input.color.zwx;
-    float2 zw = input.color.zw;
-    float4 reversed = input.color.wzyx;
-    float4 repeated = input.normal.xyyz;
+    float3 xyz = v.color.xyz;
+    float3 rgb = v.color.rgb;
+    float3 zwx = v.color.zwx;
+    float2 zw = v.color.zw;
+    float4 reversed = v.color.wzyx;
+    float4 repeated = v.normal.xyyz;
 
-    VSOutput output;
-    output.position = float4{xyz.x, rgb.y, zwx.z, 1.0f};
-    output.rgb = rgb;
-    output.zw = zw;
-    output.reversed = reversed;
-    output.repeated = repeated;
-    return output;
+    VSOutput o;
+    o.position = float4{xyz.x, rgb.y, zwx.z, 1.0f};
+    o.rgb = rgb;
+    o.zw = zw;
+    o.reversed = reversed;
+    o.repeated = repeated;
+    return o;
 }

@@ -27,9 +27,9 @@ struct PSOutput
 };
 
 [[cppsl::fragment]]
-PSOutput ps_main(PSInput input)
+PSOutput ps_main(PSInput v)
 {
-    PSOutput output;
-    output.color = g_set0.g_src_tex.Sample(g_set0.g_sampler, input.texcoord);
-    return output;
+    PSOutput o;
+    o.color = g_set0.g_src_tex.Sample(g_set0.g_sampler, v.texcoord);
+    return o;
 }
