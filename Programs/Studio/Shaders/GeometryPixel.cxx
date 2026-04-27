@@ -47,13 +47,9 @@ PSOutput ps_main(PSInput i)
     normal = normal_tangent_to_world(normal, base_normal, base_tangent);
 
     PSOutput o;
-    o.base_color_roughness = float4{base_color.x, base_color.y, base_color.z, roughness};
+    o.base_color_roughness = float4{base_color.xyz, roughness};
     float3 encoded_normal = max(normal * 0.5f + 0.5f, 0.0f);
-    o.normal_metallic = float4{encoded_normal.x, encoded_normal.y, encoded_normal.z, metallic};
-    o.emissive = float4{
-        emissive.x * g_set0.g_material_params[0].emissive_intensity,
-        emissive.y * g_set0.g_material_params[0].emissive_intensity,
-        emissive.z * g_set0.g_material_params[0].emissive_intensity,
-        0.0f};
+    o.normal_metallic = float4{encoded_normal, metallic};
+    o.emissive = float4{emissive.xyz * g_set0.g_material_params[0].emissive_intensity, 0.0f};
     return o;
 }

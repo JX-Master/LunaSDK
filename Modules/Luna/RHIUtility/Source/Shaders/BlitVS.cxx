@@ -31,7 +31,7 @@ struct PSInput
 PSInput vs_main(VSInput input)
 {
     PSInput output;
-    output.position = float4{input.position.x, input.position.y, 0.0f, 1.0f};
+    output.position = float4{input.position, 0.0f, 1.0f};
     output.texcoord = input.texcoord;
     return output;
 }

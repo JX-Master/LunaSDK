@@ -40,7 +40,7 @@ struct PS_INPUT
 PS_INPUT vs_main(VS_INPUT input)
 {
     PS_INPUT output;
-    output.position = mul(g_set0.vertexBuffer.world_to_proj, float4{input.position.x, input.position.y, input.position.z, 1.0f});
+    output.position = mul(g_set0.vertexBuffer.world_to_proj, float4{input.position, 1.0f});
     output.texcoord = input.texcoord;
     return output;
 }

@@ -53,7 +53,7 @@ struct VSOut
 VSOut vs_main(VSIn v)
 {
     float4 pos;
-    pos = float4{v.position.x, v.position.y, 0.0f, 1.0f};
+    pos = float4{v.position, 0.0f, 1.0f};
     pos = mul(g_set0.g_cbuffer.transform, pos);
 
     VSOut o;

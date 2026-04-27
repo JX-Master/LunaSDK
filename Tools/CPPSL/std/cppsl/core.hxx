@@ -160,6 +160,9 @@ namespace cppsl
 #define CPPSL_DEFINE_VECTOR2(_name, _scalar, _vec2, _vec3, _vec4) \
     struct _name \
     { \
+        _name(); \
+        _name(_scalar value); \
+        _name(_scalar x, _scalar y); \
         _scalar x; \
         _scalar y; \
         _scalar r; \
@@ -171,6 +174,11 @@ namespace cppsl
 #define CPPSL_DEFINE_VECTOR3(_name, _scalar, _vec2, _vec3, _vec4) \
     struct _name \
     { \
+        _name(); \
+        _name(_scalar value); \
+        _name(_scalar x, _scalar y, _scalar z); \
+        _name(_vec2 xy, _scalar z); \
+        _name(_scalar x, _vec2 yz); \
         _scalar x; \
         _scalar y; \
         _scalar z; \
@@ -184,6 +192,15 @@ namespace cppsl
 #define CPPSL_DEFINE_VECTOR4(_name, _scalar, _vec2, _vec3, _vec4) \
     struct _name \
     { \
+        _name(); \
+        _name(_scalar value); \
+        _name(_scalar x, _scalar y, _scalar z, _scalar w); \
+        _name(_vec2 xy, _scalar z, _scalar w); \
+        _name(_scalar x, _vec2 yz, _scalar w); \
+        _name(_scalar x, _scalar y, _vec2 zw); \
+        _name(_vec2 xy, _vec2 zw); \
+        _name(_vec3 xyz, _scalar w); \
+        _name(_scalar x, _vec3 yzw); \
         _scalar x; \
         _scalar y; \
         _scalar z; \

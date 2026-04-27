@@ -37,7 +37,7 @@ float4 setup_sample(float2 uv)
     color *= (lum - g_set0.cb.lum_threshold) / lum;
     lum = luminance(color);
     float w = 1.0f / (1.0f + lum);
-    return make_float4(color, 1.0f) * w;
+    return float4{color, 1.0f} * w;
 }
 
 [[cppsl::compute(8, 8, 1)]]

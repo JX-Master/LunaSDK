@@ -40,11 +40,11 @@ void cs_main([[cppsl::builtin(dispatch_thread_id)]] uint3 dispatch_thread_id)
 
     if (g_set0.visualization_params.vis_type == 0u)
     {
-        g_set0.g_dst.Store(pixel, make_float4(base_color, 1.0f));
+        g_set0.g_dst.Store(pixel, float4{base_color, 1.0f});
     }
     else if (g_set0.visualization_params.vis_type == 1u)
     {
-        g_set0.g_dst.Store(pixel, float4{normal_metallic.x, normal_metallic.y, normal_metallic.z, 1.0f});
+        g_set0.g_dst.Store(pixel, float4{normal_metallic.xyz, 1.0f});
     }
     else if (g_set0.visualization_params.vis_type == 2u)
     {

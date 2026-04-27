@@ -78,5 +78,5 @@ void cs_main([[cppsl::builtin(dispatch_thread_id)]] uint3 dispatch_thread_id)
 
     float3 ldr_color = tonemap(hdr_color, exposure);
     float3 final_color = gamma_correction(ldr_color, 2.2f);
-    g_set0.g_dst_tex.Store(pixel, make_float4(saturate(final_color), 1.0f));
+    g_set0.g_dst_tex.Store(pixel, float4{saturate(final_color), 1.0f});
 }

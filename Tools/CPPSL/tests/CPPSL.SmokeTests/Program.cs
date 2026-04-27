@@ -19,6 +19,7 @@ var helperResourceAccessShader = Path.Combine(fixturesRoot, "valid", "helper_res
 var resourceAttributesShader = Path.Combine(fixturesRoot, "valid", "resource_attributes", "ResourceAttributes.cxx");
 var descriptorSetShader = Path.Combine(fixturesRoot, "valid", "descriptor_set", "DescriptorSet.cxx");
 var vectorSwizzleShader = Path.Combine(fixturesRoot, "valid", "vector_swizzle", "VectorSwizzle.cxx");
+var vectorConstructorShader = Path.Combine(fixturesRoot, "valid", "vector_constructor", "VectorConstructor.cxx");
 
 var result = compiler.Compile(new CppslCompileOptions(
     boxShader,
@@ -201,6 +202,41 @@ if (!vectorSwizzleIrText.Contains("\"DisplayName\": \"xyz\"", StringComparison.O
     !vectorSwizzleMslText.Contains("float3 zwx = input.color.zwx;", StringComparison.Ordinal))
 {
     Console.Error.WriteLine("error: expected vector swizzle members to type-check and lower as source swizzles.");
+    return 1;
+}
+
+var vectorConstructorResult = compiler.Compile(new CppslCompileOptions(
+    vectorConstructorShader,
+    Path.Combine(outputDir, "vector-constructor"),
+    new[] { stdRoot },
+    "main_vs",
+    ShaderStage.Vertex));
+
+if (!vectorConstructorResult.Succeeded || vectorConstructorResult.Artifacts is null)
+{
+    Console.Error.WriteLine("error: expected vector_constructor fixture to compile.");
+    foreach (var diagnostic in vectorConstructorResult.Diagnostics)
+    {
+        Console.Error.WriteLine(diagnostic.ToDisplayString());
+    }
+    return 1;
+}
+
+var vectorConstructorHlslText = File.ReadAllText(vectorConstructorResult.Artifacts.GetOutputPath(CppslOutputTarget.Hlsl));
+var vectorConstructorGlslText = File.ReadAllText(vectorConstructorResult.Artifacts.GetOutputPath(CppslOutputTarget.Glsl));
+var vectorConstructorMslText = File.ReadAllText(vectorConstructorResult.Artifacts.GetOutputPath(CppslOutputTarget.Msl));
+if (!vectorConstructorHlslText.Contains("output.rgba = float4(input.color.rgb, input.weight);", StringComparison.Ordinal) ||
+    !vectorConstructorHlslText.Contains("output.xgba = float4(input.color.x, input.color.gba);", StringComparison.Ordinal) ||
+    !vectorConstructorHlslText.Contains("output.xyzw = float4(input.color.xy, input.color.zw);", StringComparison.Ordinal) ||
+    !vectorConstructorHlslText.Contains("output.splat = float4(input.weight);", StringComparison.Ordinal) ||
+    !vectorConstructorGlslText.Contains("output.rgba = vec4(input.color.rgb, input.weight);", StringComparison.Ordinal) ||
+    !vectorConstructorGlslText.Contains("output.xgba = vec4(input.color.x, input.color.gba);", StringComparison.Ordinal) ||
+    !vectorConstructorGlslText.Contains("output.xyzw = vec4(input.color.xy, input.color.zw);", StringComparison.Ordinal) ||
+    !vectorConstructorMslText.Contains("output.rgba = float4(input.color.rgb, input.weight);", StringComparison.Ordinal) ||
+    !vectorConstructorMslText.Contains("output.xgba = float4(input.color.x, input.color.gba);", StringComparison.Ordinal) ||
+    !vectorConstructorMslText.Contains("output.xyzw = float4(input.color.xy, input.color.zw);", StringComparison.Ordinal))
+{
+    Console.Error.WriteLine("error: expected vector constructors to type-check and lower as shader constructors.");
     return 1;
 }
 

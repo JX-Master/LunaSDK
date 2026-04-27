@@ -84,5 +84,5 @@ void cs_main([[cppsl::builtin(dispatch_thread_id)]] uint3 dispatch_thread_id)
     uint2 pixel = dispatch_thread_id.xy;
     float3 prev_mip = filter_upsample(uint2{dispatch_thread_id.x / 2u, dispatch_thread_id.y / 2u}, uint2{g_set0.cb.src_tex_width, g_set0.cb.src_tex_height});
     float3 current_mip = filter_bloom(pixel, uint2{g_set0.cb.dst_tex_width, g_set0.cb.dst_tex_height});
-    g_set0.g_dst_tex.Store(pixel, make_float4(prev_mip + current_mip, 1.0f));
+    g_set0.g_dst_tex.Store(pixel, float4{prev_mip + current_mip, 1.0f});
 }

@@ -19,10 +19,6 @@ uint2 xy_u(uint3 value)
     return value.xy;
 }
 
-float4 make_float4(float3 value, float w)
-{
-    return float4{value.x, value.y, value.z, w};
-}
 
 float luminance(float3 value)
 {

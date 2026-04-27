@@ -24,5 +24,5 @@ void cs_main([[cppsl::builtin(dispatch_thread_id)]] uint3 dispatch_thread_id)
     uint2 pixel = dispatch_thread_id.xy;
     float2 texcoords = g_set0.cb.texel_size * (xy(dispatch_thread_id) + 0.5f);
     float3 value = get_integrate_brdf(texcoords.x, texcoords.y);
-    g_set0.g_dst_tex.Store(pixel, make_float4(value, 1.0f));
+    g_set0.g_dst_tex.Store(pixel, float4{value, 1.0f});
 }

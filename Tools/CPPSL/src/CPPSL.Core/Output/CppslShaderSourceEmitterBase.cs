@@ -322,8 +322,9 @@ internal abstract class CppslShaderSourceEmitterBase
     {
         return node.Kind switch
         {
-            "ImplicitCastExpression" or "ParenExpression" or "ConstructorCallExpression" when node.Children.Count == 1 =>
+            "ImplicitCastExpression" or "ParenExpression" when node.Children.Count == 1 =>
                 LowerExpression(node.Children[0]),
+            "ConstructorCallExpression" => LowerConstructorCall(node),
             "CStyleCastExpression" when node.Children.Count == 1 =>
                 $"({MapValueType(node.Type ?? node.TypeInfo?.Spelling ?? string.Empty)}){LowerExpression(node.Children[0])}",
             "DeclRefExpression" => node.DisplayName ?? node.Spelling,
@@ -525,6 +526,18 @@ internal abstract class CppslShaderSourceEmitterBase
         return $"{type}({argumentList})";
     }
 
+    protected virtual string LowerConstructorCall(CppslIrNode node)
+    {
+        if (node.Children.Count == 1 && HasMatchingShaderType(node, node.Children[0]))
+        {
+            return LowerExpression(node.Children[0]);
+        }
+
+        var type = MapValueType(node.Type ?? node.TypeInfo?.Spelling ?? node.Spelling);
+        var argumentList = string.Join(", ", node.Children.Select(LowerExpression));
+        return $"{type}({argumentList})";
+    }
+
     protected virtual string LowerInitializerList(CppslIrNode node)
     {
         var type = node.Type ?? node.TypeInfo?.Spelling;
@@ -558,6 +571,18 @@ internal abstract class CppslShaderSourceEmitterBase
             _ => 0
         };
         return componentCount != 0;
+    }
+
+    private static bool HasMatchingShaderType(CppslIrNode left, CppslIrNode right)
+    {
+        var leftTypes = EnumerateNodeTypeCandidates(left)
+            .Select(NormalizeShaderTypeName)
+            .Where(static type => type.Length != 0)
+            .ToHashSet(StringComparer.Ordinal);
+
+        return EnumerateNodeTypeCandidates(right)
+            .Select(NormalizeShaderTypeName)
+            .Any(leftTypes.Contains);
     }
 
     private static bool IsDefaultSwizzleInitializer(CppslIrNode node)

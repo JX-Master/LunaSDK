@@ -186,14 +186,14 @@ float ellipse_test_y_axis(float2 v0, float2 v1, float2 center, float2 radius, bo
 
 float clip_rect_test(float2 pos, float4 clip_rect, float2 pixels_per_unit)
 {
-    float4 rect = float4{clip_rect.x, clip_rect.y, clip_rect.x + clip_rect.z, clip_rect.y + clip_rect.w};
-    rect -= float4{pos.x, pos.y, pos.x, pos.y};
+    float4 rect = float4{clip_rect.xy, clip_rect.xy + clip_rect.zw};
+    rect -= float4{pos, pos};
     if (rect.x > 0.0f || rect.y > 0.0f || rect.z < 0.0f || rect.w < 0.0f)
     {
         return 0.0f;
     }
-    float2 dist0 = float2{abs(rect.x), abs(rect.y)};
-    float2 dist1 = float2{abs(rect.z), abs(rect.w)};
+    float2 dist0 = abs(rect.xy);
+    float2 dist1 = abs(rect.zw);
     float2 dist = min(dist0, dist1);
     dist = saturate(dist * pixels_per_unit);
     return min(dist.x, dist.y);

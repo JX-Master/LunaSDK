@@ -38,5 +38,5 @@ void cs_main([[cppsl::builtin(dispatch_thread_id)]] uint3 dispatch_thread_id)
     color += g_set0.g_src_tex.SampleLevel(g_set0.g_sampler, uv + float2{stride.x, -stride.y}, 0.0f).xyz * 0.125f;
     color += g_set0.g_src_tex.SampleLevel(g_set0.g_sampler, uv + float2{-stride.x, stride.y}, 0.0f).xyz * 0.125f;
     color += g_set0.g_src_tex.SampleLevel(g_set0.g_sampler, uv, 0.0f).xyz * 0.5f;
-    g_set0.g_dst_tex.Store(pixel, make_float4(color, 1.0f));
+    g_set0.g_dst_tex.Store(pixel, float4{color, 1.0f});
 }

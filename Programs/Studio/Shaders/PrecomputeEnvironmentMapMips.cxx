@@ -62,5 +62,5 @@ void cs_main([[cppsl::builtin(dispatch_thread_id)]] uint3 dispatch_thread_id)
     }
 
     prefilter_color /= total_weight;
-    g_set0.g_dst_mip.Store(pixel, make_float4(prefilter_color, 1.0f));
+    g_set0.g_dst_mip.Store(pixel, float4{prefilter_color, 1.0f});
 }

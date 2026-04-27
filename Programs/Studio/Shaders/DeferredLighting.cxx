@@ -189,5 +189,5 @@ void cs_main([[cppsl::builtin(dispatch_thread_id)]] uint3 dispatch_thread_id)
         final_color = ibl_specular;
     }
 
-    g_set0.g_light_buffer.Store(pixel, make_float4(final_color, 1.0f));
+    g_set0.g_light_buffer.Store(pixel, float4{final_color, 1.0f});
 }
