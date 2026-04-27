@@ -11,6 +11,7 @@ rule("luna.shader")
             os.mkdir(headerdir)
         end 
         target:add("includedirs", headerdir)
+        target:add("deps", "CPPSL", {order = true})
         
         local cpp_rule = target:rule("c++.build"):clone()
         cpp_rule:add("deps", "luna.shader", {order = true})
@@ -195,9 +196,27 @@ if is_os("windows") then
     add_defines("_CRT_SECURE_NO_WARNINGS")
 end
 
+includes("Tools/CPPSL/native")
+
+target("CPPSL")
+    set_default(false)
+    set_group("Tools/CPPSL")
+    set_kind("phony")
+    add_deps("cppsl-native-extractor")
+    on_build(function ()
+        local cli_project = path.join(os.projectdir(), "Tools", "CPPSL", "src", "CPPSL.Cli", "CPPSL.Cli.csproj")
+        os.runv("dotnet", {
+            "build",
+            cli_project,
+            "-m:1",
+            "/nr:false",
+            "--nologo",
+            "-p:UseSharedCompilation=false"
+        })
+    end)
+
 includes("Modules")
 includes("Programs")
-includes("Tools/CPPSL/native")
 
 if has_config("build_tests") then
     includes("Tests")

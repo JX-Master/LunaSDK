@@ -218,6 +218,11 @@ local function acquire_build_lock(projectdir)
 end
 
 local function build_cppslc(projectdir)
+    local tool = path.join(projectdir, "Tools", "CPPSL", "src", "CPPSL.Cli", "bin", "Debug", "net9.0", cppslc_executable_name())
+    if os.isfile(tool) then
+        return tool
+    end
+
     local release_lock = acquire_build_lock(projectdir)
     local cli_project = path.join(projectdir, "Tools", "CPPSL", "src", "CPPSL.Cli", "CPPSL.Cli.csproj")
     local ok, errors = try {
@@ -237,7 +242,7 @@ local function build_cppslc(projectdir)
     if not ok then
         os.raise(errors)
     end
-    return path.join(projectdir, "Tools", "CPPSL", "src", "CPPSL.Cli", "bin", "Debug", "net9.0", cppslc_executable_name())
+    return tool
 end
 
 local function cppsl_target_from_format(target_format)
