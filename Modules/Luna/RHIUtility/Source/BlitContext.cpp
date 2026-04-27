@@ -46,8 +46,8 @@ namespace Luna
                     InputBindingDesc(0, sizeof(BlitVertex), InputRate::per_vertex)
                 };
                 InputAttributeDesc input_attributes[] = {
-                    InputAttributeDesc("POSITION", 0, 0, 0, 0, Format::rg32_float),
-                    InputAttributeDesc("TEXCOORD", 0, 1, 0, 8, Format::rg32_float)
+                    InputAttributeDesc(0, 0, 0, Format::rg32_float),
+                    InputAttributeDesc(1, 0, 8, Format::rg32_float)
                 };
                 ps_desc.input_layout.bindings = { input_bindings, 1 };
                 ps_desc.input_layout.attributes = { input_attributes , 2 };

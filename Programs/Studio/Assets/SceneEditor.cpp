@@ -1033,7 +1033,7 @@ namespace Luna
                 ps_desc.rasterizer_state = RasterizerDesc(FillMode::wireframe, CullMode::none, 0.0f, 0.0f, 0.0f, false, true);
                 ps_desc.depth_stencil_state = DepthStencilDesc(false, false, CompareFunction::always, false, 0x00, 0x00, DepthStencilOpDesc(), DepthStencilOpDesc());
                 ps_desc.ib_strip_cut_value = IndexBufferStripCutValue::disabled;
-                auto attribute = InputAttributeDesc("POSITION", 0, 0, 0, 0, Format::rgba32_float);
+                auto attribute = InputAttributeDesc(0, 0, 0, Format::rgba32_float);
                 auto binding = InputBindingDesc(0, sizeof(Float4U), InputRate::per_vertex);
                 ps_desc.input_layout.attributes = { &attribute, 1 };
                 ps_desc.input_layout.bindings = { &binding, 1 };

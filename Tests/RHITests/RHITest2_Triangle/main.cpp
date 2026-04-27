@@ -49,8 +49,8 @@ RV start()
                 InputBindingDesc(0, sizeof(VertexData), InputRate::per_vertex)
             };
             const InputAttributeDesc attributes[] = {
-                InputAttributeDesc("POSITION", 0, 0, 0, 0, Format::rg32_float),
-                InputAttributeDesc("COLOR", 0, 1, 0, 8, Format::rgba32_float)
+                InputAttributeDesc(0, 0, 0, Format::rg32_float),
+                InputAttributeDesc(1, 0, 8, Format::rgba32_float)
             };
             desc.input_layout = InputLayoutDesc({bindings, 1}, {attributes, 2});
             desc.pipeline_layout = pipeline_layout;

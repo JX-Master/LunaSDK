@@ -585,9 +585,9 @@ namespace Luna
                     InputBindingDesc(0, sizeof(ImDrawVert), InputRate::per_vertex)
                 };
                 InputAttributeDesc input_attributes[] = {
-                    InputAttributeDesc("POSITION", 0, 0, 0, 0, Format::rg32_float),
-                    InputAttributeDesc("TEXCOORD", 0, 1, 0, 8, Format::rg32_float),
-                    InputAttributeDesc("COLOR", 0, 2, 0, 16, Format::rgba8_unorm)
+                    InputAttributeDesc(0, 0, 0, Format::rg32_float),
+                    InputAttributeDesc(1, 0, 8, Format::rg32_float),
+                    InputAttributeDesc(2, 0, 16, Format::rgba8_unorm)
                 };
                 ps_desc.input_layout.bindings = { input_bindings, 1 };
                 ps_desc.input_layout.attributes = { input_attributes , 3 };

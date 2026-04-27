@@ -104,8 +104,8 @@ RV DemoApp::init()
         ps_desc.depth_stencil_state = DepthStencilDesc(true, true, CompareFunction::less_equal);
         ps_desc.ib_strip_cut_value = IndexBufferStripCutValue::disabled;
         InputAttributeDesc input_attributes[] = {
-            InputAttributeDesc("POSITION", 0, 0, 0, 0, Format::rgb32_float),
-            InputAttributeDesc("TEXCOORD", 0, 1, 0, 12, Format::rg32_float)
+            InputAttributeDesc(0, 0, 0, Format::rgb32_float),
+            InputAttributeDesc(1, 0, 12, Format::rg32_float)
         };
         InputBindingDesc input_bindings[] = {
             InputBindingDesc(0, 20, InputRate::per_vertex)

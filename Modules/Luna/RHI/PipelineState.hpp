@@ -92,11 +92,6 @@ namespace Luna
         //! Describes one attribute in the input layout.
         struct InputAttributeDesc
         {
-            //! The semantic name of this attribute. For exmaple, "COLOR", "TEXCOORD", etc.
-            const c8* semantic_name;
-            //! The semantic index of this attribute. Use this to differentiate attributes with the same 
-            //! semantic name.
-            u32 semantic_index;
             //! The location of this input attribute in the shader.
             u32 location;
             //! The belonging binding slot of this attribute.
@@ -107,15 +102,11 @@ namespace Luna
             Format format;
             InputAttributeDesc() = default;
             InputAttributeDesc(
-                const c8* semantic_name,
-                u32 semantic_index,
                 u32 location,
                 u32 binding_slot,
                 u32 offset,
                 Format format
             ) :
-                semantic_name(semantic_name),
-                semantic_index(semantic_index),
                 location(location),
                 binding_slot(binding_slot),
                 offset(offset),

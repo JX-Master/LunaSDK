@@ -13,6 +13,7 @@
 #include <Luna/Runtime/Math/Color.hpp>
 #include <Luna/Runtime/Log.hpp>
 #include <Luna/Runtime/File.hpp>
+#include <Luna/Runtime/Path.hpp>
 #include <Luna/Image/Image.hpp>
 #include <Luna/RHIUtility/ResourceWriteContext.hpp>
 #include <TestTextureVS.hpp>
@@ -71,8 +72,8 @@ RV start()
                 InputBindingDesc(0, sizeof(VertexData), InputRate::per_vertex)
             };
             InputAttributeDesc input_attributes[] = {
-                InputAttributeDesc("POSITION", 0, 0, 0, 0, Format::rg32_float),
-                InputAttributeDesc("TEXCOORD", 0, 1, 0, 8, Format::rg32_float)
+                InputAttributeDesc(0, 0, 0, Format::rg32_float),
+                InputAttributeDesc(1, 0, 8, Format::rg32_float)
             };
             desc.input_layout = InputLayoutDesc({input_bindings, 1}, {input_attributes, 2});
             desc.vs = LUNA_CPPSL_GET_SHADER_DATA(TestTextureVS);

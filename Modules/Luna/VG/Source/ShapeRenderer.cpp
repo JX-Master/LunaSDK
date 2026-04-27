@@ -98,12 +98,12 @@ namespace Luna
                     InputBindingDesc(0, sizeof(Vertex), InputRate::per_vertex)
                 };
                 InputAttributeDesc attributes[] = {
-                    InputAttributeDesc("POSITION", 0, 0, 0, offsetof(Vertex, position), Format::rg32_float),
-                    InputAttributeDesc("SHAPECOORD", 0, 1, 0, offsetof(Vertex, shapecoord), Format::rg32_float),
-                    InputAttributeDesc("TEXCOORD", 0, 2, 0, offsetof(Vertex, texcoord), Format::rg32_float),
-                    InputAttributeDesc("COMMAND_OFFSET", 0, 3, 0, offsetof(Vertex, begin_command), Format::r32_uint),
-                    InputAttributeDesc("NUM_COMMANDS", 0, 4, 0, offsetof(Vertex, num_commands), Format::r32_uint),
-                    InputAttributeDesc("COLOR", 0, 5, 0, offsetof(Vertex, color), Format::rgba32_float)
+                    InputAttributeDesc(0, 0, offsetof(Vertex, position), Format::rg32_float),
+                    InputAttributeDesc(1, 0, offsetof(Vertex, shapecoord), Format::rg32_float),
+                    InputAttributeDesc(2, 0, offsetof(Vertex, texcoord), Format::rg32_float),
+                    InputAttributeDesc(3, 0, offsetof(Vertex, begin_command), Format::r32_uint),
+                    InputAttributeDesc(4, 0, offsetof(Vertex, num_commands), Format::r32_uint),
+                    InputAttributeDesc(5, 0, offsetof(Vertex, color), Format::rgba32_float)
                 };
                 desc.input_layout = InputLayoutDesc({bindings, 1}, {attributes, 6});
                 desc.pipeline_layout = g_fill_playout;

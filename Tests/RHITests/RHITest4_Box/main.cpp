@@ -74,8 +74,8 @@ RV start()
         ps_desc.ib_strip_cut_value = IndexBufferStripCutValue::disabled;
         InputBindingDesc bindings[] = {InputBindingDesc(0, sizeof(Vertex), InputRate::per_vertex)};
         InputAttributeDesc attributes[] = {
-            InputAttributeDesc("POSITION", 0, 0, 0, 0, Format::rgb32_float),
-            InputAttributeDesc("TEXCOORD", 0, 1, 0, 12, Format::rg32_float)
+            InputAttributeDesc(0, 0, 0, Format::rgb32_float),
+            InputAttributeDesc(1, 0, 12, Format::rg32_float)
         };
         ps_desc.input_layout = InputLayoutDesc({bindings, 1}, {attributes, 2});
         ps_desc.vs = LUNA_CPPSL_GET_SHADER_DATA(TestBoxVS);
