@@ -28,8 +28,6 @@ namespace Luna
             dxil,
             //! SPIR-V format. Used only for Vulkan backend.
             spirv,
-            //! Metal shading language source form. Used only for Metal backend.
-            msl,
             //! Metal library. Used only for Metal backend.
             metallib
         };

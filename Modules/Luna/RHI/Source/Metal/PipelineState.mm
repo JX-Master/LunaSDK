@@ -14,13 +14,6 @@ namespace Luna
 {
     namespace RHI
     {
-        inline MTLCompileOptions* new_msl_compile_options()
-        {
-            MTLCompileOptions* options = [[MTLCompileOptions alloc]init];
-            options.languageVersion = MTLLanguageVersion3_2;
-            return options;
-        }
-
         RV RenderPipelineState::init(const GraphicsPipelineStateDesc& desc)
         {
             @autoreleasepool
@@ -34,21 +27,14 @@ namespace Luna
                     id<MTLFunction> ps_func;
                     if(desc.vs.format != ShaderDataFormat::none)
                     {
-                        if(desc.vs.format == ShaderDataFormat::msl)
-                        {
-                            MTLCompileOptions* options = new_msl_compile_options();
-                            String source_string((const c8*)desc.vs.data.data(), desc.vs.data.size());
-                            NSString* source = [NSString stringWithUTF8String:source_string.c_str()];
-                            vs = [m_device->m_device newLibraryWithSource:source options:options error:&err];
-                        }
-                        else if(desc.vs.format == ShaderDataFormat::metallib)
+                        if(desc.vs.format == ShaderDataFormat::metallib)
                         {
                             dispatch_data_t data = dispatch_data_create(desc.vs.data.data(), desc.vs.data.size(), nullptr, DISPATCH_DATA_DESTRUCTOR_DEFAULT);
                             vs = [m_device->m_device newLibraryWithData:data error:&err];
                         }
                         else
                         {
-                            return set_error(BasicError::bad_arguments(), "The vertex shader format must be ShaderDataFormat::msl for Metal backend.");
+                            return set_error(BasicError::bad_arguments(), "The vertex shader format must be ShaderDataFormat::metallib for Metal backend.");
                         }
                         if(!vs)
                         {
@@ -66,21 +52,14 @@ namespace Luna
                     }
                     if(desc.ps.format != ShaderDataFormat::none)
                     {
-                        if(desc.ps.format == ShaderDataFormat::msl)
-                        {
-                            MTLCompileOptions* options = new_msl_compile_options();
-                            String source_string((const c8*)desc.ps.data.data(), desc.ps.data.size());
-                            NSString* source = [NSString stringWithUTF8String:source_string.c_str()];
-                            ps = [m_device->m_device newLibraryWithSource:source options:options error:&err];
-                        }
-                        else if(desc.ps.format == ShaderDataFormat::metallib)
+                        if(desc.ps.format == ShaderDataFormat::metallib)
                         {
                             dispatch_data_t data = dispatch_data_create(desc.ps.data.data(), desc.ps.data.size(), nullptr, DISPATCH_DATA_DESTRUCTOR_DEFAULT);
                             ps = [m_device->m_device newLibraryWithData:data error:&err];
                         }
                         else
                         {
-                            return set_error(BasicError::bad_arguments(), "The pixel shader format must be ShaderDataFormat::msl for Metal backend.");
+                            return set_error(BasicError::bad_arguments(), "The pixel shader format must be ShaderDataFormat::metallib for Metal backend.");
                         }
                         if(!ps)
                         {
@@ -248,21 +227,14 @@ namespace Luna
                     NSError* err = nullptr;
                     id<MTLLibrary> cs;
                     id<MTLFunction> cs_func;
-                    if(desc.cs.format == ShaderDataFormat::msl)
-                    {
-                        MTLCompileOptions* options = new_msl_compile_options();
-                        String source_string((const c8*)desc.cs.data.data(), desc.cs.data.size());
-                        NSString* source = [NSString  stringWithUTF8String:source_string.c_str()];
-                        cs = [m_device->m_device newLibraryWithSource:source options:options error:&err];
-                    }
-                    else if(desc.cs.format == ShaderDataFormat::metallib)
+                    if(desc.cs.format == ShaderDataFormat::metallib)
                     {
                         dispatch_data_t data = dispatch_data_create(desc.cs.data.data(), desc.cs.data.size(), nullptr, DISPATCH_DATA_DESTRUCTOR_DEFAULT);
                         cs = [m_device->m_device newLibraryWithData:data error:&err];
                     }
                     else
                     {
-                        return set_error(BasicError::bad_arguments(), "The compute shader format must be ShaderDataFormat::msl for Metal backend.");
+                        return set_error(BasicError::bad_arguments(), "The compute shader format must be ShaderDataFormat::metallib for Metal backend.");
                     }
                     if(!cs)
                     {

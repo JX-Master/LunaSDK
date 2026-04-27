@@ -30,7 +30,7 @@ namespace Luna
             case BackendType::vulkan:
                 return ShaderCompiler::TargetFormat::spir_v;
             case BackendType::metal:
-                return ShaderCompiler::TargetFormat::msl;
+                return ShaderCompiler::TargetFormat::metallib;
             }
             lupanic();
             return ShaderCompiler::TargetFormat::none;
@@ -46,6 +46,7 @@ namespace Luna
                 case ShaderCompiler::TargetFormat::dxil: return ShaderDataFormat::dxil; break;
                 case ShaderCompiler::TargetFormat::spir_v: return ShaderDataFormat::spirv; break;
                 case ShaderCompiler::TargetFormat::msl: return ShaderDataFormat::msl; break;
+                case ShaderCompiler::TargetFormat::metallib: return ShaderDataFormat::metallib; break;
                 default: break;
             }
             return ShaderDataFormat::none;
