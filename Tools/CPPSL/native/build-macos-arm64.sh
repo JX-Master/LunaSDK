@@ -3,7 +3,7 @@ set -eu
 
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 REPO_ROOT=$(CDPATH= cd -- "$SCRIPT_DIR/../../.." && pwd)
-LLVM_SDK="$REPO_ROOT/SDKs/llvm-21.1.1-release-macosx-arm64"
+LLVM_SDK="$REPO_ROOT/SDKs/llvm-21.1.1/macosx/arm64"
 
 mkdir -p "$SCRIPT_DIR/bin"
 

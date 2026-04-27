@@ -48,6 +48,11 @@ public sealed class NativeExtractorFrontend : ICppslFrontend
         {
             startInfo.Environment["DYLD_LIBRARY_PATH"] = AppendPath(startInfo.Environment.TryGetValue("DYLD_LIBRARY_PATH", out var existing) ? existing : null, sdkLibPath);
         }
+        var sdkBinPath = FindLlvmSdkBinPath();
+        if (sdkBinPath is not null)
+        {
+            startInfo.Environment["PATH"] = AppendPath(startInfo.Environment.TryGetValue("PATH", out var existing) ? existing : null, sdkBinPath);
+        }
 
         try
         {
@@ -104,10 +109,35 @@ public sealed class NativeExtractorFrontend : ICppslFrontend
 
     private static string? FindLlvmSdkLibPath()
     {
+        if (!OperatingSystem.IsMacOS())
+        {
+            return null;
+        }
+
         var current = new DirectoryInfo(AppContext.BaseDirectory);
         while (current is not null)
         {
-            var candidate = Path.Combine(current.FullName, "SDKs", "llvm-21.1.1-release-macosx-arm64", "lib");
+            var candidate = Path.Combine(current.FullName, "SDKs", "llvm-21.1.1", "macosx", "arm64", "lib");
+            if (Directory.Exists(candidate))
+            {
+                return candidate;
+            }
+            current = current.Parent;
+        }
+        return null;
+    }
+
+    private static string? FindLlvmSdkBinPath()
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            return null;
+        }
+
+        var current = new DirectoryInfo(AppContext.BaseDirectory);
+        while (current is not null)
+        {
+            var candidate = Path.Combine(current.FullName, "SDKs", "llvm-21.1.1", "windows", "x64", "bin");
             if (Directory.Exists(candidate))
             {
                 return candidate;
@@ -119,17 +149,20 @@ public sealed class NativeExtractorFrontend : ICppslFrontend
 
     private static string FindDefaultNativeExtractorPath()
     {
+        var executableName = OperatingSystem.IsWindows()
+            ? "cppsl-native-extractor.exe"
+            : "cppsl-native-extractor";
         var current = new DirectoryInfo(AppContext.BaseDirectory);
         while (current is not null)
         {
-            var candidate = Path.Combine(current.FullName, "Tools", "CPPSL", "native", "bin", "cppsl-native-extractor");
+            var candidate = Path.Combine(current.FullName, "Tools", "CPPSL", "native", "bin", executableName);
             if (File.Exists(candidate))
             {
                 return candidate;
             }
             current = current.Parent;
         }
-        return Path.Combine("Tools", "CPPSL", "native", "bin", "cppsl-native-extractor");
+        return Path.Combine("Tools", "CPPSL", "native", "bin", executableName);
     }
 
     private static string AppendPath(string? existing, string path)

@@ -87,6 +87,8 @@ LunaSDK uses the following third party SDKs:
 1. [miniaudio](https://miniaud.io/index.html) for cross-platform low-level platform audio interface (public domain).
 1. [SPIRV-Cross](https://github.com/KhronosGroup/SPIRV-Cross.git) for generating metal shader code from SPIR-V (Apache-2.0 License).
 1. [Lua](https://www.lua.org/about.html) for Lua scripting environment (MIT License).
+1. [.NET](https://dotnet.microsoft.com) for implementing CPPSL (Cpp Shader Language) compiler (MIT License).
+1. [LLVM](https://llvm.org) for implementing CPPSL (Cpp Shader Language) compiler (Apache-2.0 License).
 
 All SDKs are either embedded in the project, or can be fetched automatically by xmake scripts, the user does not need to install them manually.
 

@@ -21,19 +21,27 @@ Current scope:
 The extractor currently links against the local LLVM SDK:
 
 ```text
-SDKs/llvm-21.1.1-release-macosx-arm64
+SDKs/llvm-21.1.1/macosx/arm64
+SDKs/llvm-21.1.1/windows/x64
 ```
 
 If macOS rejects the downloaded SDK dylibs, remove the quarantine attribute:
 
 ```sh
-xattr -dr com.apple.quarantine SDKs/llvm-21.1.1-release-macosx-arm64
+xattr -dr com.apple.quarantine SDKs/llvm-21.1.1/macosx/arm64
 ```
 
 Build locally on macOS arm64 with xmake:
 
 ```sh
 xmake f --plat=macosx --arch=arm64 --mode=debug -vD
+xmake build -vD cppsl-native-extractor
+```
+
+Build locally on Windows x64 with xmake:
+
+```sh
+xmake f --plat=windows --arch=x64 --mode=debug -vD
 xmake build -vD cppsl-native-extractor
 ```
 
