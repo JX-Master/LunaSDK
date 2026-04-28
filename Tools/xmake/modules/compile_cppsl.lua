@@ -166,6 +166,109 @@ local function vulkan_tool_path(projectdir, executable)
     return tool
 end
 
+local function dxc_tool_path(projectdir)
+    local tool = ""
+    if os.host() == "macosx" and os.arch() == "arm64" then
+        tool = path.join(projectdir, "SDKs", "vulkan-tools", "macosx", "arm64", "bin", "dxc")
+    elseif os.host() == "windows" then
+        tool = path.join(projectdir, "SDKs", "vulkan-tools", "windows", "x64", "bin", "dxc.exe")
+    end
+    if tool == "" then
+        os.raise("CPPSL DXIL shader binary generation is not supported on this host yet: " .. os.host() .. "." .. os.arch())
+    end
+    if not os.isfile(tool) then
+        os.raise("CPPSL DXIL shader binary generation requires DXC from the Vulkan SDK at: " .. tool)
+    end
+    return tool
+end
+
+local function dxc_stage_profile(stage, configs)
+    local prefix = nil
+    if stage == "vertex" then
+        prefix = "vs"
+    elseif stage == "fragment" or stage == "pixel" then
+        prefix = "ps"
+    elseif stage == "compute" then
+        prefix = "cs"
+    end
+    if not prefix then
+        os.raise("unsupported DXIL shader stage for dxc: " .. tostring(stage))
+    end
+    return prefix .. "_" .. tostring((configs and configs.shader_model) or "6_0")
+end
+
+local function append_dxc_definitions(args, definitions)
+    if not definitions then
+        return
+    end
+    for _, definition in ipairs(definitions) do
+        table.insert(args, "-D")
+        table.insert(args, definition)
+    end
+end
+
+local function append_dxc_include_paths(args, include_paths)
+    if not include_paths then
+        return
+    end
+    for _, include_path in ipairs(include_paths) do
+        table.insert(args, "-I")
+        table.insert(args, include_path)
+    end
+end
+
+local function append_dxc_optimization_args(args, configs)
+    local optimize = configs and configs.optimize or nil
+    if optimize == "none" then
+        table.insert(args, "-Od")
+    elseif optimize == "1" or optimize == 1 then
+        table.insert(args, "-O1")
+    elseif optimize == "2" or optimize == 2 or optimize == nil then
+        table.insert(args, "-O3")
+    else
+        os.raise("unsupported DXC optimization level: " .. tostring(optimize))
+    end
+end
+
+local function append_dxc_debug_args(args, configs)
+    if is_debug_enabled(configs) then
+        table.insert(args, "-Zi")
+        table.insert(args, "-Qembed_debug")
+        table.insert(args, "-Qsource_in_debug_module")
+    end
+end
+
+local function append_dxc_matrix_pack_args(args, configs)
+    if configs and configs.matrix_pack == "row" then
+        table.insert(args, "-Zpr")
+    else
+        table.insert(args, "-Zpc")
+    end
+end
+
+local function compile_hlsl_to_dxil(projectdir, source_file, generated_dir, source_name, stage, entry_point, configs)
+    local dxil_file = path.join(generated_dir, source_name .. ".dxil")
+    local args = {
+        "-E",
+        entry_point,
+        "-T",
+        dxc_stage_profile(stage, configs),
+        "-Fo",
+        dxil_file
+    }
+    append_dxc_optimization_args(args, configs)
+    append_dxc_debug_args(args, configs)
+    append_dxc_matrix_pack_args(args, configs)
+    if configs and configs.skip_validation == true then
+        table.insert(args, "-Vd")
+    end
+    append_dxc_include_paths(args, configs and configs.include_paths or nil)
+    append_dxc_definitions(args, configs and configs.definitions or nil)
+    table.insert(args, source_file)
+    os.runv(dxc_tool_path(projectdir), args)
+    return dxil_file
+end
+
 local function compile_glsl_to_spirv(projectdir, source_file, generated_dir, source_name, stage, configs)
     local spirv_file = path.join(generated_dir, source_name .. ".spv")
     local args = {
@@ -344,12 +447,7 @@ function compile_cppsl(shader_file, configs)
     end
 
     if target_format == "dxil" then
-        import("compile_shader")
-        local compiled_shader = path.join(generated_dir, source_name .. ".dxil")
-        local hlsl_configs = table.clone(configs)
-        hlsl_configs.cpp_output = false
-        hlsl_configs.output = compiled_shader
-        compile_shader.compile_shader(generated_source, hlsl_configs)
+        local compiled_shader = compile_hlsl_to_dxil(projectdir, generated_source, generated_dir, source_name, stage, entry_point, configs)
         write_shader_header(source_name, compiled_shader, "dxil", entry_point, output_file, 0, 0, 0)
         return
     end

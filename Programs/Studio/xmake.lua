@@ -29,11 +29,5 @@ target("Studio")
     add_luna_shader("Shaders/BloomUpSampleCS.cxx", {type = "compute", entry_point = "cs_main"})
     add_luna_shader("Shaders/GridVS.cxx", {type = "vertex", entry_point = "vs_main"})
     add_luna_shader("Shaders/GridPS.cxx", {type = "pixel", entry_point = "ps_main"})
-    add_headerfiles("Shaders/Common.hlsl",
-            "Shaders/BRDF.hlsl",
-            "Shaders/CameraParams.hlsl",
-            "Shaders/CommonVertex.hlsl",
-            "Shaders/IBLCommon.hlsl",
-            "Shaders/GeometryCommon.hlsl",
-            "Shaders/MeshBuffer.hlsl", {install = false})
+    add_headerfiles("Shaders/*.hxx", {install = false})
 target_end()

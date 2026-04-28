@@ -3,7 +3,7 @@ set_project("Luna")
 add_moduledirs("Tools/xmake/modules")
 
 rule("luna.shader")
-    set_extensions(".hlsl", ".cxx")
+    set_extensions(".cxx")
     add_orders("luna.shader", "c++.build")
     on_load(function (target) 
         local headerdir = path.join(target:autogendir(), "shaders")
@@ -44,13 +44,8 @@ rule("luna.shader")
         -- build this object.
         configs.output = targetfile
         configs.cpp_output = true
-        if path.extension(sourcefile) == ".cxx" then
-            import("compile_cppsl")
-            compile_cppsl.compile_cppsl(sourcefile, configs)
-        else
-            import("compile_shader")
-            compile_shader.compile_shader(sourcefile, configs)
-        end
+        import("compile_cppsl")
+        compile_cppsl.compile_cppsl(sourcefile, configs)
 
         -- update files and values to the dependent file
         dependinfo.files = {sourcefile}
@@ -60,6 +55,9 @@ rule("luna.shader")
 rule_end()
 
 function add_luna_shader(file, config)
+    if path.extension(file) ~= ".cxx" then
+        os.raise("add_luna_shader only accepts CPPSL .cxx shader files: " .. file)
+    end
     if is_config("rhi_api", "D3D12") then
         config.target_format = "dxil"
     elseif is_config("rhi_api", "Vulkan") then
