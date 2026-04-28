@@ -4,13 +4,13 @@
 #include <Luna/Runtime/UniquePtr.hpp>
 #include <Luna/Window/Window.hpp>
 #include <Luna/RHI/RHI.hpp>
-#include <Luna/ShaderCompiler/ShaderCompiler.hpp>
-#include <Luna/RHI/ShaderCompileHelper.hpp>
 #include <Luna/Runtime/Math/Matrix.hpp>
 #include <Luna/RHI/Utility.hpp>
 #include <Luna/Runtime/File.hpp>
 #include <Luna/Image/Image.hpp>
 #include <Luna/Runtime/Math/Transform.hpp>
+#include <DemoAppVS.hpp>
+#include <DemoAppPS.hpp>
 using namespace Luna;
 struct DemoApp
 {
@@ -72,63 +72,6 @@ RV DemoApp::init()
             DescriptorSetLayoutBinding::sampler(2, 1, ShaderVisibilityFlag::pixel)
         })));
         luset(desc_set, dev->new_descriptor_set(DescriptorSetDesc(dlayout)));
-        const char vs_shader_code[] = R"(
-cbuffer vertexBuffer : register(b0)
-{
-    float4x4 world_to_proj;
-};
-struct VS_INPUT
-{
-    [[vk::location(0)]]
-    float3 position : POSITION;
-    [[vk::location(1)]]
-    float2 texcoord : TEXCOORD;
-};
-struct PS_INPUT
-{
-    [[vk::location(0)]]
-    float4 position : SV_POSITION;
-    [[vk::location(1)]]
-    float2 texcoord : TEXCOORD;
-};
-PS_INPUT main(VS_INPUT input)
-{
-    PS_INPUT output;
-    output.position = mul(world_to_proj, float4(input.position, 1.0f));
-    output.texcoord = input.texcoord;
-    return output;
-})";
-
-        const char ps_shader_code[] = R"(
-Texture2D tex : register(t1);
-SamplerState tex_sampler : register(s2);
-struct PS_INPUT
-{
-    [[vk::location(0)]]
-    float4 position : SV_POSITION;
-    [[vk::location(1)]]
-    float2 texcoord : TEXCOORD;
-};
-[[vk::location(0)]]
-float4 main(PS_INPUT input) : SV_Target
-{
-    return float4(tex.Sample(tex_sampler, input.texcoord));
-})";
-        auto compiler = ShaderCompiler::new_compiler();
-        ShaderCompiler::ShaderCompileParameters params;
-        params.source = { vs_shader_code, strlen(vs_shader_code) };
-        params.source_name = "DemoAppVS";
-        params.entry_point = "main";
-        params.target_format = RHI::get_current_platform_shader_target_format();
-        params.shader_type = ShaderCompiler::ShaderType::vertex;
-        params.shader_model = {6, 0};
-        params.optimization_level = ShaderCompiler::OptimizationLevel::full;
-        lulet(vs_data, compiler->compile(params));
-        params.source = { ps_shader_code, strlen(ps_shader_code) };
-        params.source_name = "DemoAppPS";
-        params.shader_type = ShaderCompiler::ShaderType::pixel;
-        lulet(ps_data, compiler->compile(params));
-
         luset(playout, dev->new_pipeline_layout(PipelineLayoutDesc({dlayout}, 
             PipelineLayoutFlag::allow_input_assembler_input_layout)));
 
@@ -146,8 +89,8 @@ float4 main(PS_INPUT input) : SV_Target
         };
         ps_desc.input_layout.attributes = {input_attributes, 2};
         ps_desc.input_layout.bindings = {input_bindings, 1};
-        ps_desc.vs = get_shader_data_from_compile_result(vs_data);
-        ps_desc.ps = get_shader_data_from_compile_result(ps_data);
+        ps_desc.vs = LUNA_CPPSL_GET_SHADER_DATA(DemoAppVS);
+        ps_desc.ps = LUNA_CPPSL_GET_SHADER_DATA(DemoAppPS);
         ps_desc.pipeline_layout = playout;
         ps_desc.num_color_attachments = 1;
         ps_desc.color_formats[0] = Format::rgba8_unorm;
@@ -284,8 +227,7 @@ RV run_app()
 {
     auto result = add_modules({
         module_window(),
-        module_rhi(),
-        module_shader_compiler()
+        module_rhi()
     });
     if(failed(result)) return result;
     result = init_modules();
