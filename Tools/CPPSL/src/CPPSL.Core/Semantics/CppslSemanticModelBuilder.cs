@@ -89,7 +89,7 @@ public sealed class CppslSemanticModelBuilder
     {
         var type = node.TypeName ?? string.Empty;
         var attributes = _attributeParser.GetAttributes(node);
-        var legacyResourceKind = ClassifyGlobalResourceKind(type, attributes);
+        var legacyResourceKind = CppslResourceClassifier.ClassifyGlobal(type, attributes);
         var descriptorSet = attributes.FindAttribute("desc_set").FirstIntArgument();
         var isDescriptorSet = descriptorSet is not null && legacyResourceKind is null;
         return new CppslGlobal(
@@ -127,7 +127,7 @@ public sealed class CppslSemanticModelBuilder
 
             foreach (var field in layout.Fields)
             {
-                var resourceKind = ClassifyDescriptorSetFieldResourceKind(field.Type, field.Attributes);
+                var resourceKind = CppslResourceClassifier.ClassifyDescriptorSetField(field.Type, field.Attributes);
                 if (resourceKind is null)
                 {
                     continue;
@@ -182,55 +182,6 @@ public sealed class CppslSemanticModelBuilder
             node.Location?.File,
             node.Location?.Line,
             node.Location?.Column);
-    }
-
-    private static string? ClassifyGlobalResourceKind(string type, IReadOnlyList<CppslAttribute> attributes)
-    {
-        if (attributes.FindAttribute("cbuffer") is not null) return "constant_buffer";
-        if (attributes.FindAttribute("structured_buffer") is not null ||
-            attributes.FindAttribute("sbuffer") is not null) return "structured_buffer";
-        if (attributes.FindAttribute("rwstructured_buffer") is not null ||
-            attributes.FindAttribute("rw_structured_buffer") is not null ||
-            attributes.FindAttribute("rwsbuffer") is not null) return "rw_structured_buffer";
-
-        if (type.StartsWith("ConstantBuffer<", StringComparison.Ordinal)) return "constant_buffer";
-        if (type.StartsWith("StructuredBuffer<", StringComparison.Ordinal)) return "structured_buffer";
-        if (type.StartsWith("RWStructuredBuffer<", StringComparison.Ordinal)) return "rw_structured_buffer";
-        if (IsTextureType(type)) return "texture";
-        if (IsRwTextureType(type)) return "rw_texture";
-        if (type == "SamplerState") return "sampler";
-        if (type == "AccelerationStructure") return "acceleration_structure";
-        return null;
-    }
-
-    private static string? ClassifyDescriptorSetFieldResourceKind(string type, IReadOnlyList<CppslAttribute> attributes)
-    {
-        if (attributes.FindAttribute("cbuffer") is not null) return "constant_buffer";
-        if (attributes.FindAttribute("structured_buffer") is not null ||
-            attributes.FindAttribute("sbuffer") is not null) return "structured_buffer";
-        if (attributes.FindAttribute("rwstructured_buffer") is not null ||
-            attributes.FindAttribute("rw_structured_buffer") is not null ||
-            attributes.FindAttribute("rwsbuffer") is not null) return "rw_structured_buffer";
-        if (IsTextureType(type)) return "texture";
-        if (IsRwTextureType(type)) return "rw_texture";
-        if (type == "SamplerState") return "sampler";
-        if (type == "AccelerationStructure") return "acceleration_structure";
-        return null;
-    }
-
-    private static bool IsTextureType(string type)
-    {
-        var normalized = type.Trim();
-        return (normalized.StartsWith("Texture", StringComparison.Ordinal) ||
-            normalized.StartsWith("DepthTexture", StringComparison.Ordinal)) &&
-            normalized.Contains('<', StringComparison.Ordinal);
-    }
-
-    private static bool IsRwTextureType(string type)
-    {
-        var normalized = type.Trim();
-        return normalized.StartsWith("RWTexture", StringComparison.Ordinal) &&
-            normalized.Contains('<', StringComparison.Ordinal);
     }
 
     private static string? FindDeclaredStage(IReadOnlyList<CppslAttribute> attributes)

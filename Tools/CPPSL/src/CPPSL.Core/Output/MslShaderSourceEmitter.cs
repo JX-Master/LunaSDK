@@ -1,5 +1,4 @@
 using System.Text;
-using System.Text.RegularExpressions;
 using CPPSL.Core.Compiler;
 using CPPSL.Core.ShaderModel;
 using CPPSL.Core.Semantics;
@@ -21,11 +20,14 @@ internal sealed class MslShaderSourceEmitter : CppslShaderSourceEmitterBase
         WriteStructs(builder, options, model, entryPoint);
         WriteArgumentBufferStructs(builder, model);
         WriteGlobalArgumentBuffers(builder, model);
-        _resourceAccessByName = BuildResourceAccessMap(model);
+        _resourceAccessByName = BuildResourceAccessMap(
+            model,
+            static global => global.ResourceKind is not null && global.DescriptorSet is not null,
+            static global => MslResourceAccess(global));
         WriteFunctions(builder, entryPoint, model, shaderModel);
         WriteEntryPoint(builder, options, entryPoint, model, shaderModel);
         _resourceAccessByName = new Dictionary<string, string>(StringComparer.Ordinal);
-        return RewriteResidualResourceAccesses(builder.ToString(), model);
+        return builder.ToString();
     }
 
     private void WriteFunctions(
@@ -230,25 +232,9 @@ internal sealed class MslShaderSourceEmitter : CppslShaderSourceEmitterBase
         };
     }
 
-    private static Dictionary<string, string> BuildResourceAccessMap(CppslSemanticModel model)
-    {
-        var map = new Dictionary<string, string>(StringComparer.Ordinal);
-        foreach (var global in model.Globals.Where(static global => global.ResourceKind is not null && global.DescriptorSet is not null))
-        {
-            var descriptorSet = $"(*{DescriptorSetParameterName(global.DescriptorSet!.Value)})";
-            var accessPath = global.AccessPath ?? global.Name;
-            var access = $"{descriptorSet}.{global.Name}";
-            map[accessPath] = global.ResourceKind == "constant_buffer"
-                ? $"(*{access})"
-                : access;
-        }
-        return map;
-    }
-
     protected override string LowerExpression(CppslShaderModelNode node)
     {
-        if (TryGetAccessPath(node, out var accessPath) &&
-            _resourceAccessByName.TryGetValue(accessPath, out var resourceAccess))
+        if (TryGetMappedResourceAccess(node, _resourceAccessByName, out var resourceAccess))
         {
             return resourceAccess;
         }
@@ -295,30 +281,32 @@ internal sealed class MslShaderSourceEmitter : CppslShaderSourceEmitterBase
             return LowerExpression(swizzleOperand);
         }
 
-        if (TryGetMslMemberCall(node, out var receiverNode, out var receiver, out var memberName, out var memberArguments))
+        if (TryGetMemberCall(node, out var receiverNode, out var receiver, out var memberName, out var memberArguments))
         {
             if (memberName == "Sample" && memberArguments.Count == 2)
             {
                 return AdaptTextureReadExpression(
                     receiverNode,
-                    $"{receiver}.sample({memberArguments[0]}, {memberArguments[1]})");
+                    $"{receiver}.sample({memberArguments[0]}, {memberArguments[1]})",
+                    preserveDepthTextureScalar: true);
             }
             if (memberName == "SampleLevel" && memberArguments.Count == 3)
             {
                 var expression = IsTexture1DReceiver(receiverNode)
                     ? $"{receiver}.sample({memberArguments[0]}, {memberArguments[1]})"
                     : $"{receiver}.sample({memberArguments[0]}, {memberArguments[1]}, level({memberArguments[2]}))";
-                return AdaptTextureReadExpression(receiverNode, expression);
+                return AdaptTextureReadExpression(receiverNode, expression, preserveDepthTextureScalar: true);
             }
             if (memberName == "Load" && memberArguments.Count == 1)
             {
                 return AdaptTextureReadExpression(
                     receiverNode,
-                    $"{receiver}.read({memberArguments[0]})");
+                    $"{receiver}.read({memberArguments[0]})",
+                    preserveDepthTextureScalar: true);
             }
             if (memberName == "Store" && memberArguments.Count == 2)
             {
-                return $"{receiver}.write({AdaptTextureStoreValue(receiverNode, memberArguments[1])}, {memberArguments[0]})";
+                return $"{receiver}.write({AdaptTextureStoreValue(receiverNode, memberArguments[1], "float4", "int4", "uint4", "0.0f")}, {memberArguments[0]})";
             }
 
             return LowerMemberCall(receiver, memberName, memberArguments);
@@ -338,7 +326,6 @@ internal sealed class MslShaderSourceEmitter : CppslShaderSourceEmitterBase
         {
             return "discard_fragment()";
         }
-
         if (name == "InterlockedAdd" && arguments.Length == 2)
         {
             var addressSpace = AtomicTargetAddressSpace(arguments[0]);
@@ -358,136 +345,17 @@ internal sealed class MslShaderSourceEmitter : CppslShaderSourceEmitterBase
             : "threadgroup";
     }
 
-    private static string RewriteResidualResourceAccesses(string source, CppslSemanticModel model)
+    private static string MslResourceAccess(CppslGlobal global)
     {
-        source = RewriteResidualResourceAccessPaths(
-            source,
-            model,
-            static global =>
-            {
-                var access = $"(*{DescriptorSetParameterName(global.DescriptorSet!.Value)}).{global.Name}";
-                return global.ResourceKind == "constant_buffer"
-                    ? $"(*{access})"
-                    : access;
-            });
-
-        foreach (var global in model.Globals.Where(static global => global.ResourceKind is not null && global.DescriptorSet is not null))
-        {
-            var access = $"(*{DescriptorSetParameterName(global.DescriptorSet!.Value)}).{global.Name}";
-            var replacement = global.ResourceKind == "constant_buffer"
-                ? $"(*{access})"
-                : access;
-            var pattern = $@"(?<![A-Za-z0-9_\.]){Regex.Escape(global.Name)}(?=(?:\[[^\]]+\])?\.)";
-            source = Regex.Replace(source, pattern, replacement);
-        }
-
-        return source;
-    }
-
-    private static string AdaptTextureReadExpression(CppslShaderModelNode receiverNode, string expression)
-    {
-        if (!TryGetTextureValueType(receiverNode, out var valueType))
-        {
-            return expression;
-        }
-        if (IsDepthTextureReceiver(receiverNode))
-        {
-            return expression;
-        }
-
-        return NormalizeShaderTypeName(valueType) switch
-        {
-            "float" or "int" or "uint" => $"{expression}.x",
-            "float2" or "int2" or "uint2" => $"{expression}.xy",
-            "float3" or "int3" or "uint3" => $"{expression}.xyz",
-            _ => expression
-        };
-    }
-
-    private static string AdaptTextureStoreValue(CppslShaderModelNode receiverNode, string value)
-    {
-        if (!TryGetTextureValueType(receiverNode, out var valueType))
-        {
-            return value;
-        }
-
-        return NormalizeShaderTypeName(valueType) switch
-        {
-            "float" => $"float4({value})",
-            "float2" => $"float4({value}, 0.0f, 0.0f)",
-            "float3" => $"float4({value}, 0.0f)",
-            "int" => $"int4({value})",
-            "int2" => $"int4({value}, 0, 0)",
-            "int3" => $"int4({value}, 0)",
-            "uint" => $"uint4({value})",
-            "uint2" => $"uint4({value}, 0u, 0u)",
-            "uint3" => $"uint4({value}, 0u)",
-            _ => value
-        };
-    }
-
-    private bool TryGetMslMemberCall(
-        CppslShaderModelNode node,
-        out CppslShaderModelNode receiverNode,
-        out string receiver,
-        out string memberName,
-        out IReadOnlyList<string> arguments)
-    {
-        receiverNode = node;
-        receiver = string.Empty;
-        memberName = string.Empty;
-        arguments = Array.Empty<string>();
-
-        if (node.Children.FirstOrDefault() is not { Kind: "MemberExpression" } member ||
-            member.DisplayName is null ||
-            member.Children.Count != 1)
-        {
-            return false;
-        }
-
-        receiverNode = member.Children[0];
-        receiver = LowerExpression(receiverNode);
-        memberName = member.DisplayName;
-        arguments = node.Children.Skip(1).Select(LowerExpression).ToArray();
-        return true;
+        var access = $"(*{DescriptorSetParameterName(global.DescriptorSet!.Value)}).{global.Name}";
+        return global.ResourceKind == "constant_buffer"
+            ? $"(*{access})"
+            : access;
     }
 
     private static bool IsTexture1DReceiver(CppslShaderModelNode node)
     {
-        if (ContainsTexture1DType(node.Type) ||
-            ContainsTexture1DType(node.TypeInfo?.Spelling) ||
-            ContainsTexture1DType(node.TypeInfo?.CanonicalName) ||
-            ContainsTexture1DType(node.TypeInfo?.DesugaredName))
-        {
-            return true;
-        }
-
-        return node.Children.Any(IsTexture1DReceiver);
-    }
-
-    private static bool ContainsTexture1DType(string? type)
-    {
-        return type is not null &&
-            type.Contains("Texture1D", StringComparison.Ordinal);
-    }
-
-    private static bool IsDepthTextureReceiver(CppslShaderModelNode node)
-    {
-        if (ContainsDepthTextureType(node.Type) ||
-            ContainsDepthTextureType(node.TypeInfo?.Spelling) ||
-            ContainsDepthTextureType(node.TypeInfo?.CanonicalName) ||
-            ContainsDepthTextureType(node.TypeInfo?.DesugaredName))
-        {
-            return true;
-        }
-
-        return node.Children.Any(IsDepthTextureReceiver);
-    }
-
-    private static bool ContainsDepthTextureType(string? type)
-    {
-        return type is not null &&
-            type.Contains("DepthTexture2D", StringComparison.Ordinal);
+        return TryGetTextureInfo(node, out var textureInfo) && textureInfo.Dimension == 1;
     }
 
     protected override string DefaultStructValue(CppslStruct structure, CppslSemanticModel model)

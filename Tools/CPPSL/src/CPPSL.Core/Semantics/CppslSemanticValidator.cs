@@ -144,7 +144,7 @@ public sealed class CppslSemanticValidator
             return;
         }
 
-        if (node.Kind == "LocalVariable" && ReservedUserIdentifiers.Contains(node.Spelling))
+        if (node.Kind == CppslShaderModelNodeKind.LocalVariable && ReservedUserIdentifiers.Contains(node.Spelling))
         {
             diagnostics.Add(CppslDiagnostic.Error(
                 $"CPPSL local variable name `{node.Spelling}` is reserved; choose an explicit semantic name instead."));
@@ -300,7 +300,7 @@ public sealed class CppslSemanticValidator
 
             foreach (var field in layout.Fields)
             {
-                var resourceKind = DescriptorSetFieldResourceKind(field);
+                var resourceKind = CppslResourceClassifier.ClassifyDescriptorSetField(field.Type, field.Attributes);
                 if (resourceKind is null)
                 {
                     diagnostics.Add(CppslDiagnostic.Error(
@@ -339,55 +339,9 @@ public sealed class CppslSemanticValidator
         }
     }
 
-    private static string? DescriptorSetFieldResourceKind(CppslField field)
-    {
-        if (field.Attributes.FindAttribute("cbuffer") is not null) return "constant_buffer";
-        if (field.Attributes.FindAttribute("structured_buffer") is not null ||
-            field.Attributes.FindAttribute("sbuffer") is not null) return "structured_buffer";
-        if (field.Attributes.FindAttribute("rwstructured_buffer") is not null ||
-            field.Attributes.FindAttribute("rw_structured_buffer") is not null ||
-            field.Attributes.FindAttribute("rwsbuffer") is not null) return "rw_structured_buffer";
-        if (IsTextureType(field.Type)) return "texture";
-        if (IsRwTextureType(field.Type)) return "rw_texture";
-        if (field.Type == "SamplerState") return "sampler";
-        if (field.Type == "AccelerationStructure") return "acceleration_structure";
-        return null;
-    }
-
     private static bool IsLegacyResourceGlobal(CppslGlobal global)
     {
-        if (global.Attributes.FindAttribute("cbuffer") is not null ||
-            global.Attributes.FindAttribute("structured_buffer") is not null ||
-            global.Attributes.FindAttribute("sbuffer") is not null ||
-            global.Attributes.FindAttribute("rwstructured_buffer") is not null ||
-            global.Attributes.FindAttribute("rw_structured_buffer") is not null ||
-            global.Attributes.FindAttribute("rwsbuffer") is not null)
-        {
-            return true;
-        }
-
-        return global.Type.StartsWith("ConstantBuffer<", StringComparison.Ordinal) ||
-            global.Type.StartsWith("StructuredBuffer<", StringComparison.Ordinal) ||
-            global.Type.StartsWith("RWStructuredBuffer<", StringComparison.Ordinal) ||
-            IsTextureType(global.Type) ||
-            IsRwTextureType(global.Type) ||
-            global.Type == "SamplerState" ||
-            global.Type == "AccelerationStructure";
-    }
-
-    private static bool IsTextureType(string type)
-    {
-        var normalized = type.Trim();
-        return (normalized.StartsWith("Texture", StringComparison.Ordinal) ||
-            normalized.StartsWith("DepthTexture", StringComparison.Ordinal)) &&
-            normalized.Contains('<', StringComparison.Ordinal);
-    }
-
-    private static bool IsRwTextureType(string type)
-    {
-        var normalized = type.Trim();
-        return normalized.StartsWith("RWTexture", StringComparison.Ordinal) &&
-            normalized.Contains('<', StringComparison.Ordinal);
+        return CppslResourceClassifier.IsResourceTypeOrAttribute(global.Type, global.Attributes);
     }
 
     private static void ValidateDescriptorSetFieldType(

@@ -48,9 +48,21 @@ internal abstract class CppslShaderSourceEmitterBase
 
     protected static bool TryGetTextureValueType(CppslShaderModelNode node, out string valueType)
     {
+        if (TryGetTextureInfo(node, out var textureInfo))
+        {
+            valueType = textureInfo.ValueType;
+            return true;
+        }
+
+        valueType = string.Empty;
+        return false;
+    }
+
+    protected static bool TryGetTextureInfo(CppslShaderModelNode node, out CppslTextureInfo textureInfo)
+    {
         foreach (var candidate in EnumerateNodeTypeCandidates(node))
         {
-            if (TryExtractTextureValueType(candidate, out valueType))
+            if (TryGetTextureInfo(candidate, out textureInfo))
             {
                 return true;
             }
@@ -58,14 +70,46 @@ internal abstract class CppslShaderSourceEmitterBase
 
         foreach (var child in node.Children)
         {
-            if (TryGetTextureValueType(child, out valueType))
+            if (TryGetTextureInfo(child, out textureInfo))
             {
                 return true;
             }
         }
 
-        valueType = string.Empty;
+        textureInfo = default;
         return false;
+    }
+
+    protected static bool TryGetTextureInfo(string typeName, out CppslTextureInfo textureInfo)
+    {
+        var normalized = NormalizeShaderTypeName(typeName);
+        var storage = normalized.Contains("RWTexture", StringComparison.Ordinal);
+        var depth = normalized.Contains("DepthTexture", StringComparison.Ordinal);
+        var dimension =
+            normalized.Contains("Texture1D<", StringComparison.Ordinal) ||
+            normalized.Contains("RWTexture1D<", StringComparison.Ordinal)
+                ? 1
+                : normalized.Contains("Texture3D<", StringComparison.Ordinal) ||
+                  normalized.Contains("RWTexture3D<", StringComparison.Ordinal)
+                    ? 3
+                    : normalized.Contains("Texture2D<", StringComparison.Ordinal) ||
+                      normalized.Contains("DepthTexture2D<", StringComparison.Ordinal) ||
+                      normalized.Contains("RWTexture2D<", StringComparison.Ordinal)
+                        ? 2
+                        : 0;
+
+        if (dimension == 0)
+        {
+            textureInfo = default;
+            return false;
+        }
+
+        textureInfo = new CppslTextureInfo(
+            dimension,
+            NormalizeShaderTypeName(UnwrapTemplateArgument(normalized)),
+            storage,
+            depth);
+        return true;
     }
 
     protected static string NormalizeShaderTypeName(string type)
@@ -88,13 +132,21 @@ internal abstract class CppslShaderSourceEmitterBase
 
     protected static bool TryGetAccessPath(CppslShaderModelNode node, out string accessPath)
     {
-        if (node.Kind == "DeclRefExpression")
+        if ((node.Kind is CppslShaderModelNodeKind.ImplicitCastExpression or
+                CppslShaderModelNodeKind.ParenExpression or
+                CppslShaderModelNodeKind.ConstructorCallExpression) &&
+            node.Children.Count == 1)
+        {
+            return TryGetAccessPath(node.Children[0], out accessPath);
+        }
+
+        if (node.Kind == CppslShaderModelNodeKind.DeclRefExpression)
         {
             accessPath = node.DisplayName ?? node.Spelling;
             return accessPath.Length != 0;
         }
 
-        if (node.Kind == "MemberExpression" &&
+        if (node.Kind == CppslShaderModelNodeKind.MemberExpression &&
             node.DisplayName is not null &&
             node.Children.Count == 1 &&
             TryGetAccessPath(node.Children[0], out var receiver))
@@ -119,6 +171,19 @@ internal abstract class CppslShaderSourceEmitterBase
         }
 
         return source;
+    }
+
+    protected static Dictionary<string, string> BuildResourceAccessMap(
+        CppslSemanticModel model,
+        Func<CppslGlobal, bool> predicate,
+        Func<CppslGlobal, string> replacementFactory)
+    {
+        var map = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var global in model.Globals.Where(predicate))
+        {
+            map[global.AccessPath ?? global.Name] = replacementFactory(global);
+        }
+        return map;
     }
 
     protected static string FormatVariableDeclaration(string mappedType, string name)
@@ -154,7 +219,7 @@ internal abstract class CppslShaderSourceEmitterBase
             : trimmed;
     }
 
-    private static IEnumerable<string> EnumerateNodeTypeCandidates(CppslShaderModelNode node)
+    protected static IEnumerable<string> EnumerateNodeTypeCandidates(CppslShaderModelNode node)
     {
         if (!string.IsNullOrWhiteSpace(node.Type))
         {
@@ -174,23 +239,52 @@ internal abstract class CppslShaderSourceEmitterBase
         }
     }
 
-    private static bool TryExtractTextureValueType(string typeName, out string valueType)
+    protected static string AdaptTextureReadExpression(
+        CppslShaderModelNode receiverNode,
+        string expression,
+        bool preserveDepthTextureScalar = false)
     {
-        var normalized = NormalizeShaderTypeName(typeName);
-        if (normalized.Contains("Texture1D<", StringComparison.Ordinal) ||
-            normalized.Contains("Texture2D<", StringComparison.Ordinal) ||
-            normalized.Contains("DepthTexture2D<", StringComparison.Ordinal) ||
-            normalized.Contains("Texture3D<", StringComparison.Ordinal) ||
-            normalized.Contains("RWTexture1D<", StringComparison.Ordinal) ||
-            normalized.Contains("RWTexture2D<", StringComparison.Ordinal) ||
-            normalized.Contains("RWTexture3D<", StringComparison.Ordinal))
+        if (!TryGetTextureInfo(receiverNode, out var textureInfo) ||
+            preserveDepthTextureScalar && textureInfo.IsDepth)
         {
-            valueType = NormalizeShaderTypeName(UnwrapTemplateArgument(normalized));
-            return true;
+            return expression;
         }
 
-        valueType = string.Empty;
-        return false;
+        return NormalizeShaderTypeName(textureInfo.ValueType) switch
+        {
+            "float" or "int" or "uint" => $"{expression}.x",
+            "float2" or "int2" or "uint2" => $"{expression}.xy",
+            "float3" or "int3" or "uint3" => $"{expression}.xyz",
+            _ => expression
+        };
+    }
+
+    protected static string AdaptTextureStoreValue(
+        CppslShaderModelNode receiverNode,
+        string value,
+        string floatVectorConstructor,
+        string intVectorConstructor,
+        string uintVectorConstructor,
+        string floatZeroLiteral)
+    {
+        if (!TryGetTextureInfo(receiverNode, out var textureInfo))
+        {
+            return value;
+        }
+
+        return NormalizeShaderTypeName(textureInfo.ValueType) switch
+        {
+            "float" => $"{floatVectorConstructor}({value})",
+            "float2" => $"{floatVectorConstructor}({value}, {floatZeroLiteral}, {floatZeroLiteral})",
+            "float3" => $"{floatVectorConstructor}({value}, {floatZeroLiteral})",
+            "int" => $"{intVectorConstructor}({value})",
+            "int2" => $"{intVectorConstructor}({value}, 0, 0)",
+            "int3" => $"{intVectorConstructor}({value}, 0)",
+            "uint" => $"{uintVectorConstructor}({value})",
+            "uint2" => $"{uintVectorConstructor}({value}, 0u, 0u)",
+            "uint3" => $"{uintVectorConstructor}({value}, 0u)",
+            _ => value
+        };
     }
 
     protected void WriteFunctionBody(
@@ -243,36 +337,36 @@ internal abstract class CppslShaderSourceEmitterBase
         var prefix = new string(' ', indent * 4);
         switch (node.Kind)
         {
-            case "CompoundStatement":
+            case CppslShaderModelNodeKind.CompoundStatement:
                 builder.AppendLine($"{prefix}{{");
                 WriteStatementChildren(builder, node, indent + 1);
                 builder.AppendLine($"{prefix}}}");
                 break;
-            case "DeclarationStatement":
-                foreach (var child in node.Children.Where(static child => child.Kind == "LocalVariable"))
+            case CppslShaderModelNodeKind.DeclarationStatement:
+                foreach (var child in node.Children.Where(static child => child.Kind == CppslShaderModelNodeKind.LocalVariable))
                 {
                     var initializerNode = child.Children.LastOrDefault();
                     var hasExplicitInitializer = initializerNode is not null &&
-                        !(initializerNode.Kind == "ConstructorCallExpression" && initializerNode.Children.Count == 0);
+                        !(initializerNode.Kind == CppslShaderModelNodeKind.ConstructorCallExpression && initializerNode.Children.Count == 0);
                     var initializer = !hasExplicitInitializer
                         ? string.Empty
                         : $" = {LowerExpression(initializerNode!)}";
                     builder.AppendLine($"{prefix}{MapValueType(child.Type ?? string.Empty)} {child.Spelling}{initializer};");
                 }
                 break;
-            case "OperatorCallExpression" when TryMapAssignmentOperator(node.DisplayName, out var op) && node.Children.Count >= 3:
+            case CppslShaderModelNodeKind.OperatorCallExpression when TryMapAssignmentOperator(node.DisplayName, out var op) && node.Children.Count >= 3:
                 builder.AppendLine($"{prefix}{LowerExpression(node.Children[1])} {op} {LowerExpression(node.Children[2])};");
                 break;
-            case "BinaryOperator" when IsAssignmentOperator(node.DisplayName) && node.Children.Count >= 2:
+            case CppslShaderModelNodeKind.BinaryOperator when IsAssignmentOperator(node.DisplayName) && node.Children.Count >= 2:
                 builder.AppendLine($"{prefix}{LowerExpression(node.Children[0])} {node.DisplayName} {LowerExpression(node.Children[1])};");
                 break;
-            case "ReturnStatement" when node.Children.Count != 0:
+            case CppslShaderModelNodeKind.ReturnStatement when node.Children.Count != 0:
                 builder.AppendLine($"{prefix}return {LowerExpression(node.Children[^1])};");
                 break;
-            case "ReturnStatement":
+            case CppslShaderModelNodeKind.ReturnStatement:
                 builder.AppendLine($"{prefix}return;");
                 break;
-            case "IfStatement" when node.Children.Count >= 2:
+            case CppslShaderModelNodeKind.IfStatement when node.Children.Count >= 2:
                 builder.AppendLine($"{prefix}if ({LowerExpression(node.Children[0])})");
                 WriteEmbeddedStatement(builder, node.Children[1], indent);
                 if (node.Children.Count >= 3)
@@ -281,18 +375,18 @@ internal abstract class CppslShaderSourceEmitterBase
                     WriteEmbeddedStatement(builder, node.Children[2], indent);
                 }
                 break;
-            case "WhileStatement" when node.Children.Count >= 2:
+            case CppslShaderModelNodeKind.WhileStatement when node.Children.Count >= 2:
                 builder.AppendLine($"{prefix}while ({LowerExpression(node.Children[0])})");
                 WriteEmbeddedStatement(builder, node.Children[1], indent);
                 break;
-            case "ForStatement" when node.Children.Count >= 4:
+            case CppslShaderModelNodeKind.ForStatement when node.Children.Count >= 4:
                 builder.AppendLine($"{prefix}for ({LowerForInitializer(node.Children[0])}; {LowerExpression(node.Children[1])}; {LowerExpression(node.Children[2])})");
                 WriteEmbeddedStatement(builder, node.Children[3], indent);
                 break;
-            case "ContinueStatement":
+            case CppslShaderModelNodeKind.ContinueStatement:
                 builder.AppendLine($"{prefix}continue;");
                 break;
-            case "BreakStatement":
+            case CppslShaderModelNodeKind.BreakStatement:
                 builder.AppendLine($"{prefix}break;");
                 break;
             default:
@@ -306,7 +400,7 @@ internal abstract class CppslShaderSourceEmitterBase
 
     private void WriteEmbeddedStatement(StringBuilder builder, CppslShaderModelNode node, int indent)
     {
-        if (node.Kind == "CompoundStatement")
+        if (node.Kind == CppslShaderModelNodeKind.CompoundStatement)
         {
             WriteStatement(builder, node, indent);
             return;
@@ -322,39 +416,41 @@ internal abstract class CppslShaderSourceEmitterBase
     {
         return node.Kind switch
         {
-            "ImplicitCastExpression" or "ParenExpression" when node.Children.Count == 1 =>
+            CppslShaderModelNodeKind.ImplicitCastExpression or CppslShaderModelNodeKind.ParenExpression when node.Children.Count == 1 =>
                 LowerExpression(node.Children[0]),
-            "ConstructorCallExpression" => LowerConstructorCall(node),
-            "CStyleCastExpression" when node.Children.Count == 1 =>
+            CppslShaderModelNodeKind.ConstructorCallExpression => LowerConstructorCall(node),
+            CppslShaderModelNodeKind.CStyleCastExpression when node.Children.Count == 1 =>
                 $"({MapValueType(node.Type ?? node.TypeInfo?.Spelling ?? string.Empty)}){LowerExpression(node.Children[0])}",
-            "DeclRefExpression" => node.DisplayName ?? node.Spelling,
-            "MemberExpression" when node.Children.Count == 1 =>
+            CppslShaderModelNodeKind.DeclRefExpression => node.DisplayName ?? node.Spelling,
+            CppslShaderModelNodeKind.MemberExpression when node.Children.Count == 1 =>
                 $"{LowerExpression(node.Children[0])}.{node.DisplayName}",
-            "ArraySubscriptExpression" when node.Children.Count >= 2 =>
+            CppslShaderModelNodeKind.ArraySubscriptExpression when node.Children.Count >= 2 =>
                 $"{LowerExpression(node.Children[0])}[{LowerExpression(node.Children[1])}]",
-            "OperatorCallExpression" when node.DisplayName == "operator->" && node.Children.Count >= 2 =>
+            CppslShaderModelNodeKind.OperatorCallExpression when node.DisplayName == "operator->" && node.Children.Count >= 2 =>
                 LowerExpression(node.Children[^1]),
-            "BinaryOperator" when node.DisplayName is "=" && node.Children.Count >= 2 =>
+            CppslShaderModelNodeKind.BinaryOperator when node.DisplayName is "=" && node.Children.Count >= 2 =>
                 $"{LowerExpression(node.Children[0])} = {LowerExpression(node.Children[1])}",
-            "BinaryOperator" when IsAssignmentOperator(node.DisplayName) && node.Children.Count >= 2 =>
+            CppslShaderModelNodeKind.BinaryOperator when IsAssignmentOperator(node.DisplayName) && node.Children.Count >= 2 =>
                 $"{LowerExpression(node.Children[0])} {node.DisplayName} {LowerExpression(node.Children[1])}",
-            "BinaryOperator" when node.Children.Count >= 2 && IsBinaryOperator(node.DisplayName) =>
+            CppslShaderModelNodeKind.BinaryOperator when node.Children.Count >= 2 && IsBinaryOperator(node.DisplayName) =>
                 $"({LowerExpression(node.Children[0])} {node.DisplayName} {LowerExpression(node.Children[1])})",
-            "ConditionalOperator" when node.Children.Count >= 3 =>
+            CppslShaderModelNodeKind.ConditionalOperator when node.Children.Count >= 3 =>
                 $"({LowerExpression(node.Children[0])} ? {LowerExpression(node.Children[1])} : {LowerExpression(node.Children[2])})",
-            "OperatorCallExpression" when TryMapBinaryOperator(node.DisplayName, out var op) && node.Children.Count >= 3 =>
+            CppslShaderModelNodeKind.OperatorCallExpression when TryMapPrefixUnaryOperator(node.DisplayName, out var unaryOp) && node.Children.Count == 2 =>
+                LowerPrefixUnaryExpression(unaryOp, node.Children[^1]),
+            CppslShaderModelNodeKind.OperatorCallExpression when TryMapBinaryOperator(node.DisplayName, out var op) && node.Children.Count >= 3 =>
                 $"({LowerExpression(node.Children[1])} {op} {LowerExpression(node.Children[2])})",
-            "OperatorCallExpression" when node.DisplayName is "operator=" && node.Children.Count >= 3 =>
+            CppslShaderModelNodeKind.OperatorCallExpression when node.DisplayName is "operator=" && node.Children.Count >= 3 =>
                 $"{LowerExpression(node.Children[1])} = {LowerExpression(node.Children[2])}",
-            "UnaryOperator" when node.Children.Count >= 1 && IsIncrementOperator(node.DisplayName) =>
+            CppslShaderModelNodeKind.UnaryOperator when node.Children.Count >= 1 && IsIncrementOperator(node.DisplayName) =>
                 node.Spelling,
-            "UnaryOperator" when node.Children.Count >= 1 && IsPrefixUnaryOperator(node.DisplayName) =>
-                $"{node.DisplayName}{LowerExpression(node.Children[0])}",
-            "CallExpression" => LowerCallExpression(node),
-            "FunctionalCastExpression" => LowerFunctionalCast(node),
-            "InitializerListExpression" => LowerInitializerList(node),
-            "FloatingLiteral" => FormatFloatingLiteral(node.Spelling),
-            "IntegerLiteral" or "BooleanLiteral" or "StringLiteral" => node.Spelling,
+            CppslShaderModelNodeKind.UnaryOperator when node.Children.Count >= 1 && IsPrefixUnaryOperator(node.DisplayName) =>
+                LowerPrefixUnaryExpression(node.DisplayName!, node.Children[0]),
+            CppslShaderModelNodeKind.CallExpression => LowerCallExpression(node),
+            CppslShaderModelNodeKind.FunctionalCastExpression => LowerFunctionalCast(node),
+            CppslShaderModelNodeKind.InitializerListExpression => LowerInitializerList(node),
+            CppslShaderModelNodeKind.FloatingLiteral => FormatFloatingLiteral(node.Spelling),
+            CppslShaderModelNodeKind.IntegerLiteral or CppslShaderModelNodeKind.BooleanLiteral or CppslShaderModelNodeKind.StringLiteral => node.Spelling,
             _ when node.Children.Count == 1 => LowerExpression(node.Children[0]),
             _ => node.Spelling
         };
@@ -367,7 +463,7 @@ internal abstract class CppslShaderSourceEmitterBase
             return LowerExpression(swizzleOperand);
         }
 
-        if (TryGetMemberCall(node, out var receiver, out var memberName, out var memberArguments))
+        if (TryGetMemberCall(node, out _, out var receiver, out var memberName, out var memberArguments))
         {
             return LowerMemberCall(receiver, memberName, memberArguments);
         }
@@ -386,12 +482,64 @@ internal abstract class CppslShaderSourceEmitterBase
         return $"{name}({string.Join(", ", arguments)})";
     }
 
+    private string LowerPrefixUnaryExpression(string op, CppslShaderModelNode operand)
+    {
+        if (operand.Kind == CppslShaderModelNodeKind.CallExpression &&
+            (operand.DisplayName ?? operand.Spelling) == "normalize")
+        {
+            var arguments = operand.Children
+                .Skip(IsCalleeReference(operand.Children.FirstOrDefault(), "normalize") ? 1 : 0)
+                .Select(LowerExpression)
+                .ToArray();
+            if (arguments.Length == 1)
+            {
+                return $"{op}normalize({TrimOuterParentheses(arguments[0])})";
+            }
+        }
+
+        return $"{op}{LowerExpression(operand)}";
+    }
+
+    protected static string TrimOuterParentheses(string expression)
+    {
+        if (expression.Length < 2 ||
+            expression[0] != '(' ||
+            expression[^1] != ')' ||
+            !WrapsWholeExpression(expression))
+        {
+            return expression;
+        }
+
+        return expression[1..^1];
+    }
+
+    private static bool WrapsWholeExpression(string expression)
+    {
+        var depth = 0;
+        for (var i = 0; i < expression.Length; ++i)
+        {
+            depth += expression[i] switch
+            {
+                '(' => 1,
+                ')' => -1,
+                _ => 0
+            };
+
+            if (depth == 0 && i != expression.Length - 1)
+            {
+                return false;
+            }
+        }
+
+        return depth == 0;
+    }
+
     protected static bool TryGetSwizzleConversionOperand(CppslShaderModelNode node, out CppslShaderModelNode swizzleOperand)
     {
         swizzleOperand = null!;
-        if (node.Kind != "CallExpression" ||
+        if (node.Kind != CppslShaderModelNodeKind.CallExpression ||
             node.DisplayName?.StartsWith("operator ", StringComparison.Ordinal) != true ||
-            node.Children.FirstOrDefault() is not { Kind: "MemberExpression" } conversionMember ||
+            node.Children.FirstOrDefault() is not { Kind: CppslShaderModelNodeKind.MemberExpression } conversionMember ||
             conversionMember.DisplayName?.StartsWith("operator ", StringComparison.Ordinal) != true ||
             conversionMember.Children.Count != 1)
         {
@@ -399,13 +547,13 @@ internal abstract class CppslShaderSourceEmitterBase
         }
 
         var operand = conversionMember.Children[0];
-        while ((operand.Kind == "ImplicitCastExpression" || operand.Kind == "ParenExpression") &&
+        while ((operand.Kind == CppslShaderModelNodeKind.ImplicitCastExpression || operand.Kind == CppslShaderModelNodeKind.ParenExpression) &&
                operand.Children.Count == 1)
         {
             operand = operand.Children[0];
         }
 
-        if (operand.Kind == "MemberExpression" && IsSwizzleType(operand.Type ?? operand.TypeInfo?.Spelling))
+        if (operand.Kind == CppslShaderModelNodeKind.MemberExpression && IsSwizzleType(operand.Type ?? operand.TypeInfo?.Spelling))
         {
             swizzleOperand = operand;
             return true;
@@ -489,22 +637,50 @@ internal abstract class CppslShaderSourceEmitterBase
         return op.Length != 0;
     }
 
+    private static bool TryMapPrefixUnaryOperator(string? displayName, out string op)
+    {
+        op = displayName switch
+        {
+            "operator+" => "+",
+            "operator-" => "-",
+            "operator!" => "!",
+            "operator~" => "~",
+            _ => string.Empty
+        };
+        return op.Length != 0;
+    }
+
     protected virtual string LowerMemberCall(string receiver, string memberName, IReadOnlyList<string> arguments)
     {
         return $"{receiver}.{memberName}({string.Join(", ", arguments)})";
     }
 
+    protected bool TryGetMappedResourceAccess(
+        CppslShaderModelNode node,
+        IReadOnlyDictionary<string, string> resourceAccessByPath,
+        out string resourceAccess)
+    {
+        if (TryGetAccessPath(node, out var accessPath) &&
+            resourceAccessByPath.TryGetValue(accessPath, out resourceAccess!))
+        {
+            return true;
+        }
+
+        resourceAccess = string.Empty;
+        return false;
+    }
+
     private string LowerForInitializer(CppslShaderModelNode node)
     {
-        if (node.Kind == "DeclarationStatement")
+        if (node.Kind == CppslShaderModelNodeKind.DeclarationStatement)
         {
             var declarations = node.Children
-                .Where(static child => child.Kind == "LocalVariable")
+                .Where(static child => child.Kind == CppslShaderModelNodeKind.LocalVariable)
                 .Select(child =>
                 {
                     var initializerNode = child.Children.LastOrDefault();
                     var hasExplicitInitializer = initializerNode is not null &&
-                        !(initializerNode.Kind == "ConstructorCallExpression" && initializerNode.Children.Count == 0);
+                        !(initializerNode.Kind == CppslShaderModelNodeKind.ConstructorCallExpression && initializerNode.Children.Count == 0);
                     var initializer = !hasExplicitInitializer
                         ? string.Empty
                         : $" = {LowerExpression(initializerNode!)}";
@@ -520,7 +696,7 @@ internal abstract class CppslShaderSourceEmitterBase
     protected virtual string LowerFunctionalCast(CppslShaderModelNode node)
     {
         var type = MapValueType(node.Type ?? node.TypeInfo?.Spelling ?? node.Spelling);
-        var argumentList = node.Children.Count == 1 && node.Children[0].Kind == "InitializerListExpression"
+        var argumentList = node.Children.Count == 1 && node.Children[0].Kind == CppslShaderModelNodeKind.InitializerListExpression
             ? string.Join(", ", TrimInitializerChildren(node.Children[0], node.Type ?? node.TypeInfo?.Spelling).Select(LowerExpression))
             : string.Join(", ", node.Children.Select(LowerExpression));
         return $"{type}({argumentList})";
@@ -587,7 +763,7 @@ internal abstract class CppslShaderSourceEmitterBase
 
     private static bool IsDefaultSwizzleInitializer(CppslShaderModelNode node)
     {
-        if (node.Kind != "InitializerListExpression" || node.Children.Count != 0)
+        if (node.Kind != CppslShaderModelNodeKind.InitializerListExpression || node.Children.Count != 0)
         {
             return false;
         }
@@ -651,7 +827,7 @@ internal abstract class CppslShaderSourceEmitterBase
             return false;
         }
 
-        if (node.Kind == "DeclRefExpression" && node.DisplayName == calleeName)
+        if (node.Kind == CppslShaderModelNodeKind.DeclRefExpression && node.DisplayName == calleeName)
         {
             return true;
         }
@@ -659,24 +835,27 @@ internal abstract class CppslShaderSourceEmitterBase
         return node.Children.Count == 1 && IsCalleeReference(node.Children[0], calleeName);
     }
 
-    private bool TryGetMemberCall(
+    protected bool TryGetMemberCall(
         CppslShaderModelNode node,
+        out CppslShaderModelNode receiverNode,
         out string receiver,
         out string memberName,
         out IReadOnlyList<string> arguments)
     {
+        receiverNode = node;
         receiver = string.Empty;
         memberName = string.Empty;
         arguments = Array.Empty<string>();
 
-        if (node.Children.FirstOrDefault() is not { Kind: "MemberExpression" } member ||
+        if (node.Children.FirstOrDefault() is not { Kind: CppslShaderModelNodeKind.MemberExpression } member ||
             member.DisplayName is null ||
             member.Children.Count != 1)
         {
             return false;
         }
 
-        receiver = LowerExpression(member.Children[0]);
+        receiverNode = member.Children[0];
+        receiver = LowerExpression(receiverNode);
         memberName = member.DisplayName;
         arguments = node.Children.Skip(1).Select(LowerExpression).ToArray();
         return true;
@@ -684,11 +863,30 @@ internal abstract class CppslShaderSourceEmitterBase
 
     private static bool IsExpressionNode(CppslShaderModelNode node)
     {
-        return node.Kind.EndsWith("Expression", StringComparison.Ordinal) ||
-            node.Kind.EndsWith("Literal", StringComparison.Ordinal) ||
-            node.Kind == "DeclRefExpression" ||
-            node.Kind == "MemberExpression" ||
-            node.Kind == "OperatorCallExpression" ||
-            node.Kind == "CallExpression";
+        return node.Kind is
+            CppslShaderModelNodeKind.BinaryOperator or
+            CppslShaderModelNodeKind.UnaryOperator or
+            CppslShaderModelNodeKind.ConditionalOperator or
+            CppslShaderModelNodeKind.CallExpression or
+            CppslShaderModelNodeKind.OperatorCallExpression or
+            CppslShaderModelNodeKind.ConstructorCallExpression or
+            CppslShaderModelNodeKind.FunctionalCastExpression or
+            CppslShaderModelNodeKind.CStyleCastExpression or
+            CppslShaderModelNodeKind.MemberExpression or
+            CppslShaderModelNodeKind.DeclRefExpression or
+            CppslShaderModelNodeKind.IntegerLiteral or
+            CppslShaderModelNodeKind.FloatingLiteral or
+            CppslShaderModelNodeKind.BooleanLiteral or
+            CppslShaderModelNodeKind.StringLiteral or
+            CppslShaderModelNodeKind.InitializerListExpression or
+            CppslShaderModelNodeKind.ImplicitCastExpression or
+            CppslShaderModelNodeKind.ParenExpression or
+            CppslShaderModelNodeKind.ArraySubscriptExpression;
     }
+
+    protected readonly record struct CppslTextureInfo(
+        int Dimension,
+        string ValueType,
+        bool IsStorage,
+        bool IsDepth);
 }

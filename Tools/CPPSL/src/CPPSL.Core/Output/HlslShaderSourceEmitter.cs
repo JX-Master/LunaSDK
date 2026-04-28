@@ -16,7 +16,10 @@ internal sealed class HlslShaderSourceEmitter : CppslShaderSourceEmitterBase
         builder.AppendLine("#pragma pack_matrix(column_major)");
         builder.AppendLine();
         var entryPoint = FindEntryPoint(options, model);
-        _resourceAccessByPath = BuildResourceAccessMap(model);
+        _resourceAccessByPath = BuildResourceAccessMap(
+            model,
+            static global => global.ResourceKind is not null && global.AccessPath is not null,
+            static global => global.Name);
         WriteStructs(builder, options, model, entryPoint);
         WriteGroupSharedGlobals(builder, model);
         WriteResources(builder, model);
@@ -151,8 +154,7 @@ internal sealed class HlslShaderSourceEmitter : CppslShaderSourceEmitterBase
 
     protected override string LowerExpression(CppslShaderModelNode node)
     {
-        if (TryGetAccessPath(node, out var accessPath) &&
-            _resourceAccessByPath.TryGetValue(accessPath, out var resourceAccess))
+        if (TryGetMappedResourceAccess(node, _resourceAccessByPath, out var resourceAccess))
         {
             return resourceAccess;
         }
@@ -256,16 +258,6 @@ internal sealed class HlslShaderSourceEmitter : CppslShaderSourceEmitterBase
             "sampler" => "s",
             _ => "t"
         };
-    }
-
-    private static Dictionary<string, string> BuildResourceAccessMap(CppslSemanticModel model)
-    {
-        var map = new Dictionary<string, string>(StringComparer.Ordinal);
-        foreach (var global in model.Globals.Where(static global => global.ResourceKind is not null && global.AccessPath is not null))
-        {
-            map[global.AccessPath!] = global.Name;
-        }
-        return map;
     }
 
     private static string ParameterSemantic(CppslParameter parameter)

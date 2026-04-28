@@ -54,51 +54,56 @@ var reflectionText = File.ReadAllText(result.Artifacts.GetOutputPath(CppslOutput
 var hlslText = File.ReadAllText(result.Artifacts.GetOutputPath(CppslOutputTarget.Hlsl));
 var glslText = File.ReadAllText(result.Artifacts.GetOutputPath(CppslOutputTarget.Glsl));
 var mslText = File.ReadAllText(result.Artifacts.GetOutputPath(CppslOutputTarget.Msl));
-if (!shaderModelText.Contains("main_vs", StringComparison.Ordinal) ||
-    !shaderModelText.Contains("\"frontendProvider\": \"Native\"", StringComparison.Ordinal) ||
-    !shaderModelText.Contains("\"frontendModelVersion\": 2", StringComparison.Ordinal) ||
-    !shaderModelText.Contains("\"frontendAst\"", StringComparison.Ordinal) ||
-    !shaderModelText.Contains("\"outputTargets\"", StringComparison.Ordinal) ||
-    !shaderModelText.Contains("\"Kind\": \"Function\"", StringComparison.Ordinal) ||
-    !shaderModelText.Contains("\"ProviderKind\": \"Function\"", StringComparison.Ordinal) ||
-    !shaderModelText.Contains("\"Kind\": \"Field\"", StringComparison.Ordinal) ||
-    !shaderModelText.Contains("\"ProviderKind\": \"Field\"", StringComparison.Ordinal) ||
-    !shaderModelText.Contains("world_to_proj", StringComparison.Ordinal) ||
-    !shaderModelText.Contains("\"Kind\": \"Parameter\"", StringComparison.Ordinal) ||
-    !shaderModelText.Contains("\"ProviderKind\": \"ParmVar\"", StringComparison.Ordinal) ||
-    !shaderModelText.Contains("\"Range\": {", StringComparison.Ordinal) ||
-    !shaderModelText.Contains("\"TypeInfo\": {", StringComparison.Ordinal) ||
-    !shaderModelText.Contains("\"TemplateArguments\"", StringComparison.Ordinal) ||
-    !shaderModelText.Contains("\"Spelling\": \"Camera\"", StringComparison.Ordinal) ||
-    !shaderModelText.Contains("\"ResultTypeInfo\": {", StringComparison.Ordinal) ||
-    !shaderModelText.Contains("\"Kind\": \"CompoundStatement\"", StringComparison.Ordinal) ||
-    !shaderModelText.Contains("\"Kind\": \"DeclarationStatement\"", StringComparison.Ordinal) ||
-    !shaderModelText.Contains("\"Kind\": \"LocalVariable\"", StringComparison.Ordinal) ||
-    !shaderModelText.Contains("\"Spelling\": \"o\"", StringComparison.Ordinal) ||
-    !shaderModelText.Contains("\"Kind\": \"CallExpression\"", StringComparison.Ordinal) ||
-    !shaderModelText.Contains("\"DisplayName\": \"mul\"", StringComparison.Ordinal) ||
-    !shaderModelText.Contains("\"Kind\": \"MemberExpression\"", StringComparison.Ordinal) ||
-    !shaderModelText.Contains("\"Kind\": \"DeclRefExpression\"", StringComparison.Ordinal) ||
-    !shaderModelText.Contains("\"Kind\": \"ReturnStatement\"", StringComparison.Ordinal) ||
-    !shaderModelText.Contains("cppslSemanticModel", StringComparison.Ordinal) ||
-    !shaderModelText.Contains("cppslShaderModel", StringComparison.Ordinal) ||
-    !shaderModelText.Contains("\"Schema\": \"cppsl.shader_model\"", StringComparison.Ordinal) ||
-    !shaderModelText.Contains("\"Version\": 1", StringComparison.Ordinal) ||
-    !shaderModelText.Contains("constant_buffer", StringComparison.Ordinal) ||
-    !shaderModelText.Contains("\"IsEntryPoint\": true", StringComparison.Ordinal) ||
-    !shaderModelText.Contains("\"Name\": \"desc_set\"", StringComparison.Ordinal) ||
-    !shaderModelText.Contains("\"Name\": \"binding\"", StringComparison.Ordinal) ||
-    !shaderModelText.Contains("\"Name\": \"cbuffer\"", StringComparison.Ordinal) ||
-    !shaderModelText.Contains("\"Name\": \"location\"", StringComparison.Ordinal) ||
-    !shaderModelText.Contains("\"Name\": \"position\"", StringComparison.Ordinal) ||
-    !shaderModelText.Contains("\"Name\": \"vertex\"", StringComparison.Ordinal) ||
-    !shaderModelText.Contains("\"DescriptorSet\": 0", StringComparison.Ordinal) ||
-    !shaderModelText.Contains("\"Binding\": 0", StringComparison.Ordinal) ||
-    !shaderModelText.Contains("\"Location\": 0", StringComparison.Ordinal) ||
-    !shaderModelText.Contains("\"IsPosition\": true", StringComparison.Ordinal) ||
-    !shaderModelText.Contains("\"DeclaredStage\": \"vertex\"", StringComparison.Ordinal))
+if (!AssertContainsAll(
+        shaderModelText,
+        new[]
+        {
+            "main_vs",
+            "\"frontendProvider\": \"Native\"",
+            "\"frontendModelVersion\": 2",
+            "\"frontendAst\"",
+            "\"outputTargets\"",
+            "\"Kind\": \"Function\"",
+            "\"ProviderKind\": \"Function\"",
+            "\"Kind\": \"Field\"",
+            "\"ProviderKind\": \"Field\"",
+            "world_to_proj",
+            "\"Kind\": \"Parameter\"",
+            "\"ProviderKind\": \"ParmVar\"",
+            "\"Range\": {",
+            "\"TypeInfo\": {",
+            "\"TemplateArguments\"",
+            "\"Spelling\": \"Camera\"",
+            "\"ResultTypeInfo\": {",
+            "\"Kind\": \"CompoundStatement\"",
+            "\"Kind\": \"DeclarationStatement\"",
+            "\"Kind\": \"LocalVariable\"",
+            "\"Spelling\": \"o\"",
+            "\"Kind\": \"CallExpression\"",
+            "\"DisplayName\": \"mul\"",
+            "\"Kind\": \"MemberExpression\"",
+            "\"Kind\": \"DeclRefExpression\"",
+            "\"Kind\": \"ReturnStatement\"",
+            "cppslSemanticModel",
+            "cppslShaderModel",
+            "\"Schema\": \"cppsl.shader_model\"",
+            "\"Version\": 1",
+            "constant_buffer",
+            "\"IsEntryPoint\": true",
+            "\"Name\": \"desc_set\"",
+            "\"Name\": \"binding\"",
+            "\"Name\": \"cbuffer\"",
+            "\"Name\": \"location\"",
+            "\"Name\": \"position\"",
+            "\"Name\": \"vertex\"",
+            "\"DescriptorSet\": 0",
+            "\"Binding\": 0",
+            "\"Location\": 0",
+            "\"IsPosition\": true",
+            "\"DeclaredStage\": \"vertex\""
+        },
+        "expected frontend, semantic, or shader model facts were not written."))
 {
-    Console.Error.WriteLine("error: expected frontend, semantic, or shader model facts were not written.");
     return 1;
 }
 if (!Regex.IsMatch(
@@ -109,31 +114,34 @@ if (!Regex.IsMatch(
     Console.Error.WriteLine("error: expected entry point body was not written to CPPSL shader model.");
     return 1;
 }
-if (shaderModelText.Contains("cppsl" + "Ir", StringComparison.Ordinal) ||
-    shaderModelText.Contains("cppsl." + "ir", StringComparison.Ordinal) ||
-    shaderModelText.Contains("\"phase\"", StringComparison.OrdinalIgnoreCase) ||
-    shaderModelText.Contains("phase " + "0", StringComparison.OrdinalIgnoreCase) ||
-    shaderModelText.Contains("CPPSL " + "IR", StringComparison.Ordinal))
+if (!AssertNotContainsAny(
+        shaderModelText,
+        new[] { "cppsl" + "Ir", "cppsl." + "ir", "\"phase\"", "phase " + "0", "CPPSL " + "IR" },
+        "shader model artifact must not contain legacy intermediate-form or prototype metadata."))
 {
-    Console.Error.WriteLine("error: shader model artifact must not contain legacy intermediate-form or prototype metadata.");
     return 1;
 }
-if (!reflectionText.Contains("\"Schema\": \"cppsl.reflection\"", StringComparison.Ordinal) ||
-    !reflectionText.Contains("\"Version\": 0", StringComparison.Ordinal) ||
-    !reflectionText.Contains("\"EntryPoint\": \"main_vs\"", StringComparison.Ordinal) ||
-    !reflectionText.Contains("\"Descriptors\"", StringComparison.Ordinal) ||
-    !reflectionText.Contains("\"Name\": \"frame_camera\"", StringComparison.Ordinal) ||
-    !reflectionText.Contains("\"Type\": \"Camera\"", StringComparison.Ordinal) ||
-    !reflectionText.Contains("\"ResourceKind\": \"constant_buffer\"", StringComparison.Ordinal) ||
-    !reflectionText.Contains("\"Set\": 0", StringComparison.Ordinal) ||
-    !reflectionText.Contains("\"Binding\": 0", StringComparison.Ordinal) ||
-    !reflectionText.Contains("\"StageInputs\"", StringComparison.Ordinal) ||
-    !reflectionText.Contains("\"Struct\": \"VSInput\"", StringComparison.Ordinal) ||
-    !reflectionText.Contains("\"StageOutputs\"", StringComparison.Ordinal) ||
-    !reflectionText.Contains("\"Struct\": \"VSOutput\"", StringComparison.Ordinal) ||
-    !reflectionText.Contains("\"IsPosition\": true", StringComparison.Ordinal))
+if (!AssertContainsAll(
+        reflectionText,
+        new[]
+        {
+            "\"Schema\": \"cppsl.reflection\"",
+            "\"Version\": 0",
+            "\"EntryPoint\": \"main_vs\"",
+            "\"Descriptors\"",
+            "\"Name\": \"frame_camera\"",
+            "\"Type\": \"Camera\"",
+            "\"ResourceKind\": \"constant_buffer\"",
+            "\"Set\": 0",
+            "\"Binding\": 0",
+            "\"StageInputs\"",
+            "\"Struct\": \"VSInput\"",
+            "\"StageOutputs\"",
+            "\"Struct\": \"VSOutput\"",
+            "\"IsPosition\": true"
+        },
+        "expected CPPSL reflection facts were not written."))
 {
-    Console.Error.WriteLine("error: expected CPPSL reflection facts were not written.");
     return 1;
 }
 if (shaderModelText.Contains("\"Name\": \"output\"", StringComparison.Ordinal))
@@ -146,31 +154,48 @@ if (!Regex.IsMatch(shaderModelText, "\"Name\": \"v\".*?\"Attributes\": \\[\\s*\\
     Console.Error.WriteLine("error: function parameters must not inherit function attributes.");
     return 1;
 }
-if (!hlslText.Contains("struct VSInput", StringComparison.Ordinal) ||
-    !hlslText.Contains("#pragma pack_matrix(column_major)", StringComparison.Ordinal) ||
-    !hlslText.Contains("float4 position : SV_Position", StringComparison.Ordinal) ||
-    !hlslText.Contains("ConstantBuffer<Camera> frame_camera : register(b0, space0);", StringComparison.Ordinal) ||
-    !hlslText.Contains("VSOutput main_vs(VSInput v)", StringComparison.Ordinal) ||
-    !hlslText.Contains("o.position = mul(frame_camera.world_to_proj, float4(v.position.x, v.position.y, v.position.z, 1.0f));", StringComparison.Ordinal) ||
-    !hlslText.Contains("o.texcoord = v.texcoord;", StringComparison.Ordinal) ||
-    !hlslText.Contains("return o;", StringComparison.Ordinal) ||
-    !glslText.Contains("#version 450", StringComparison.Ordinal) ||
-    !glslText.Contains("mat4 world_to_proj", StringComparison.Ordinal) ||
-    !glslText.Contains("layout(set = 0, binding = 0, std140, column_major) uniform frame_camera_Block", StringComparison.Ordinal) ||
-    !glslText.Contains("o.position = (frame_camera.world_to_proj * vec4(v.position.x, v.position.y, v.position.z, 1.0));", StringComparison.Ordinal) ||
-    !glslText.Contains("void main()", StringComparison.Ordinal) ||
-    !glslText.Contains("gl_Position = cppsl_output.position;", StringComparison.Ordinal) ||
-    !mslText.Contains("#include <metal_stdlib>", StringComparison.Ordinal) ||
-    !mslText.Contains("float3 position [[attribute(0)]]", StringComparison.Ordinal) ||
-    !mslText.Contains("float4 position [[position]]", StringComparison.Ordinal) ||
-    !mslText.Contains("struct spvDescriptorSetBuffer0", StringComparison.Ordinal) ||
-    !mslText.Contains("constant Camera* frame_camera [[id(0)]]", StringComparison.Ordinal) ||
-    !mslText.Contains("constant spvDescriptorSetBuffer0* constant spvDescriptorSet0 [[buffer(0)]]", StringComparison.Ordinal) ||
-    !mslText.Contains("vertex VSOutput main_vs", StringComparison.Ordinal) ||
-    !mslText.Contains("o.position = ((*(*spvDescriptorSet0).frame_camera).world_to_proj * float4(v.position.x, v.position.y, v.position.z, 1.0f));", StringComparison.Ordinal) ||
-    !mslText.Contains("return o;", StringComparison.Ordinal))
+if (!AssertContainsAll(
+        hlslText,
+        new[]
+        {
+            "struct VSInput",
+            "#pragma pack_matrix(column_major)",
+            "float4 position : SV_Position",
+            "ConstantBuffer<Camera> frame_camera : register(b0, space0);",
+            "VSOutput main_vs(VSInput v)",
+            "o.position = mul(frame_camera.world_to_proj, float4(v.position.x, v.position.y, v.position.z, 1.0f));",
+            "o.texcoord = v.texcoord;",
+            "return o;"
+        },
+        "expected HLSL Box source facts were not emitted.") ||
+    !AssertContainsAll(
+        glslText,
+        new[]
+        {
+            "#version 450",
+            "mat4 world_to_proj",
+            "layout(set = 0, binding = 0, std140, column_major) uniform frame_camera_Block",
+            "o.position = (frame_camera.world_to_proj * vec4(v.position.x, v.position.y, v.position.z, 1.0));",
+            "void main()",
+            "gl_Position = cppsl_output.position;"
+        },
+        "expected GLSL Box source facts were not emitted.") ||
+    !AssertContainsAll(
+        mslText,
+        new[]
+        {
+            "#include <metal_stdlib>",
+            "float3 position [[attribute(0)]]",
+            "float4 position [[position]]",
+            "struct spvDescriptorSetBuffer0",
+            "constant Camera* frame_camera [[id(0)]]",
+            "constant spvDescriptorSetBuffer0* constant spvDescriptorSet0 [[buffer(0)]]",
+            "vertex VSOutput main_vs",
+            "o.position = ((*(*spvDescriptorSet0).frame_camera).world_to_proj * float4(v.position.x, v.position.y, v.position.z, 1.0f));",
+            "return o;"
+        },
+        "expected MSL Box source facts were not emitted."))
 {
-    Console.Error.WriteLine("error: expected CPPSL shader source targets were not emitted.");
     return 1;
 }
 
@@ -593,6 +618,42 @@ if (nativeSyntaxErrorResult.Succeeded ||
 
 Console.WriteLine("CPPSL smoke tests passed.");
 return 0;
+
+static bool AssertContainsAll(string text, IEnumerable<string> fragments, string message)
+{
+    var missing = fragments
+        .Where(fragment => !text.Contains(fragment, StringComparison.Ordinal))
+        .ToArray();
+    if (missing.Length == 0)
+    {
+        return true;
+    }
+
+    Console.Error.WriteLine($"error: {message}");
+    foreach (var fragment in missing)
+    {
+        Console.Error.WriteLine($"  missing: {fragment}");
+    }
+    return false;
+}
+
+static bool AssertNotContainsAny(string text, IEnumerable<string> fragments, string message)
+{
+    var unexpected = fragments
+        .Where(fragment => text.Contains(fragment, StringComparison.Ordinal))
+        .ToArray();
+    if (unexpected.Length == 0)
+    {
+        return true;
+    }
+
+    Console.Error.WriteLine($"error: {message}");
+    foreach (var fragment in unexpected)
+    {
+        Console.Error.WriteLine($"  unexpected: {fragment}");
+    }
+    return false;
+}
 
 static bool ExpectFixtureFailure(
     CppslCompiler compiler,
