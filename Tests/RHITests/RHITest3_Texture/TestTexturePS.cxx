@@ -18,6 +18,7 @@ DescSet0 g_set0;
 
 struct PS_INPUT
 {
+    [[cppsl::position]] float4 pos;
     [[cppsl::location(1)]] float2 uv;
 };
 

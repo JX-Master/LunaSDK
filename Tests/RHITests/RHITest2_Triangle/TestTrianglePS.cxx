@@ -4,6 +4,7 @@ using namespace cppsl;
 
 struct PS_INPUT
 {
+    [[cppsl::position]] float4 pos;
     [[cppsl::location(1)]] float4 col;
 };
 

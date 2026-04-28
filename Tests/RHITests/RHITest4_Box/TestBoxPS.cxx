@@ -25,6 +25,7 @@ DescSet0 g_set0;
 
 struct PS_INPUT
 {
+    [[cppsl::position]] float4 position;
     [[cppsl::location(1)]] float2 texcoord;
 };
 
