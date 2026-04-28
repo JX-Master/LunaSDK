@@ -18,14 +18,17 @@
 
 #if LUNA_SHADER_COMPILER_ENABLED
 #ifdef LUNA_PLATFORM_WINDOWS
-#if __has_include(<dxc/WinAdapter.h>)
-#include <dxc/WinAdapter.h>
-#elif __has_include(<dxc/Support/WinAdapter.h>)
-#include <dxc/Support/WinAdapter.h>
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
 #endif
-#if __has_include(<dxc/Support/WinIncludes.h>)
-#include <dxc/Support/WinIncludes.h>
+#ifndef NOMINMAX
+#define NOMINMAX
 #endif
+#include <Windows.h>
+#include <Unknwn.h>
+#include <ObjIdl.h>
+#include <combaseapi.h>
+#include <OleAuto.h>
 #include <dxc/dxcapi.h>
 #else
 #include <dxc/dxcapi.h>
