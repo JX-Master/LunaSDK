@@ -64,6 +64,18 @@ float4 reversed = color.wzyx;
 
 Do not mix swizzle naming sets. For example, prefer not to write `color.xgb`.
 
+## Matrix ABI
+
+CPPSL defines its cross-platform matrix ABI as shader-side column-major. Matrix fields written through `ConstantBuffer`, `StructuredBuffer`, and `RWStructuredBuffer` must be interpreted consistently by the HLSL, Vulkan GLSL, and Metal backends. The generated shader source must not depend on a platform compiler's implicit matrix packing default.
+
+Backend rules:
+
+- HLSL emits `#pragma pack_matrix(column_major)` and preserves CPPSL `mul(a, b)` calls.
+- Vulkan GLSL emits `layout(std140, column_major)` for uniform buffers and `layout(std430, column_major)` for storage buffers.
+- Metal uses MSL `float4x4` and follows the same CPPSL shader-side column-major contract.
+
+Host code must follow LunaSDK's existing matrix upload convention. CPPSL does not implicitly transpose matrices in generated shader code, and it does not change the semantic direction of `mul(matrix, vector)` or `mul(vector, matrix)`.
+
 ## Stage Entry Points
 
 Entry point functions must be marked with a stage attribute. Common stages:

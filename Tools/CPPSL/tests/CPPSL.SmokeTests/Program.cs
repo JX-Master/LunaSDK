@@ -138,6 +138,7 @@ if (!Regex.IsMatch(irText, "\"Name\": \"v\".*?\"Attributes\": \\[\\s*\\]", Regex
     return 1;
 }
 if (!hlslText.Contains("struct VSInput", StringComparison.Ordinal) ||
+    !hlslText.Contains("#pragma pack_matrix(column_major)", StringComparison.Ordinal) ||
     !hlslText.Contains("float4 position : SV_Position", StringComparison.Ordinal) ||
     !hlslText.Contains("ConstantBuffer<Camera> frame_camera : register(b0, space0);", StringComparison.Ordinal) ||
     !hlslText.Contains("VSOutput main_vs(VSInput v)", StringComparison.Ordinal) ||
@@ -146,7 +147,7 @@ if (!hlslText.Contains("struct VSInput", StringComparison.Ordinal) ||
     !hlslText.Contains("return o;", StringComparison.Ordinal) ||
     !glslText.Contains("#version 450", StringComparison.Ordinal) ||
     !glslText.Contains("mat4 world_to_proj", StringComparison.Ordinal) ||
-    !glslText.Contains("layout(set = 0, binding = 0) uniform frame_camera_Block", StringComparison.Ordinal) ||
+    !glslText.Contains("layout(set = 0, binding = 0, std140, column_major) uniform frame_camera_Block", StringComparison.Ordinal) ||
     !glslText.Contains("o.position = (frame_camera.world_to_proj * vec4(v.position.x, v.position.y, v.position.z, 1.0));", StringComparison.Ordinal) ||
     !glslText.Contains("void main()", StringComparison.Ordinal) ||
     !glslText.Contains("gl_Position = cppsl_output.position;", StringComparison.Ordinal) ||
@@ -446,9 +447,9 @@ if (!resourceReflectionText.Contains("\"Name\": \"resources_camera\"", StringCom
     !resourceHlslText.Contains("ConstantBuffer<Camera> resources_camera : register(b0, space0);", StringComparison.Ordinal) ||
     !resourceHlslText.Contains("StructuredBuffer<float> resources_values : register(t8, space0);", StringComparison.Ordinal) ||
     !resourceHlslText.Contains("RWStructuredBuffer<float> resources_output_values : register(u15, space0);", StringComparison.Ordinal) ||
-    !resourceGlslText.Contains("layout(set = 0, binding = 0) uniform resources_camera_Block", StringComparison.Ordinal) ||
-    !resourceGlslText.Contains("layout(set = 0, binding = 8) buffer resources_values_Block", StringComparison.Ordinal) ||
-    !resourceGlslText.Contains("layout(set = 0, binding = 15) buffer resources_output_values_Block", StringComparison.Ordinal) ||
+    !resourceGlslText.Contains("layout(set = 0, binding = 0, std140, column_major) uniform resources_camera_Block", StringComparison.Ordinal) ||
+    !resourceGlslText.Contains("layout(set = 0, binding = 8, std430, column_major) buffer resources_values_Block", StringComparison.Ordinal) ||
+    !resourceGlslText.Contains("layout(set = 0, binding = 15, std430, column_major) buffer resources_output_values_Block", StringComparison.Ordinal) ||
     !resourceMslText.Contains("constant Camera* resources_camera [[id(0)]]", StringComparison.Ordinal) ||
     !resourceMslText.Contains("device const float* resources_values [[id(1)]]", StringComparison.Ordinal) ||
     !resourceMslText.Contains("device float* resources_output_values [[id(2)]]", StringComparison.Ordinal) ||
@@ -495,8 +496,8 @@ if (!descriptorSetReflectionText.Contains("\"Name\": \"frame_camera\"", StringCo
     !descriptorSetHlslText.Contains("frame_items[0].value", StringComparison.Ordinal) ||
     !descriptorSetHlslText.Contains("frame_output_values[0] = o.color.x;", StringComparison.Ordinal) ||
     descriptorSetGlslText.Contains("struct FrameSet", StringComparison.Ordinal) ||
-    !descriptorSetGlslText.Contains("layout(set = 0, binding = 0) uniform frame_camera_Block", StringComparison.Ordinal) ||
-    !descriptorSetGlslText.Contains("layout(set = 0, binding = 1) buffer frame_items_Block", StringComparison.Ordinal) ||
+    !descriptorSetGlslText.Contains("layout(set = 0, binding = 0, std140, column_major) uniform frame_camera_Block", StringComparison.Ordinal) ||
+    !descriptorSetGlslText.Contains("layout(set = 0, binding = 1, std430, column_major) buffer frame_items_Block", StringComparison.Ordinal) ||
     !descriptorSetMslText.Contains("constant Camera* frame_camera [[id(0)]]", StringComparison.Ordinal) ||
     !descriptorSetMslText.Contains("device const Item* frame_items [[id(1)]]", StringComparison.Ordinal) ||
     !descriptorSetMslText.Contains("device float* frame_output_values [[id(2)]]", StringComparison.Ordinal) ||

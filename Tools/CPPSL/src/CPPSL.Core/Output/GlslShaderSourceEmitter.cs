@@ -75,23 +75,22 @@ internal sealed class GlslShaderSourceEmitter : CppslShaderSourceEmitterBase
     {
         foreach (var global in model.Globals.Where(static global => global.ResourceKind is not null))
         {
-            var layout = $"layout(set = {global.DescriptorSet}, binding = {global.Binding})";
             switch (global.ResourceKind)
             {
                 case "constant_buffer":
-                    WriteConstantBuffer(builder, layout, global, model);
+                    WriteConstantBuffer(builder, GlslBufferLayout(global, "std140"), global, model);
                     break;
                 case "texture":
-                    builder.AppendLine($"{layout} uniform {GlslTextureType(global.Type)} {global.Name};");
+                    builder.AppendLine($"{GlslResourceLayout(global)} uniform {GlslTextureType(global.Type)} {global.Name};");
                     break;
                 case "rw_texture":
                     builder.AppendLine($"layout(set = {global.DescriptorSet}, binding = {global.Binding}, {GlslImageFormat(global)}) uniform {GlslImageType(global)} {global.Name};");
                     break;
                 case "sampler":
-                    builder.AppendLine($"{layout} uniform sampler {global.Name};");
+                    builder.AppendLine($"{GlslResourceLayout(global)} uniform sampler {global.Name};");
                     break;
                 default:
-                    builder.AppendLine($"{layout} buffer {global.Name}_Block");
+                    builder.AppendLine($"{GlslBufferLayout(global, "std430")} buffer {global.Name}_Block");
                     builder.AppendLine("{");
                     builder.AppendLine($"    {MapValueType(ResourceElementType(global))} {global.Name}[];");
                     builder.AppendLine("};");
@@ -103,6 +102,16 @@ internal sealed class GlslShaderSourceEmitter : CppslShaderSourceEmitterBase
         {
             builder.AppendLine();
         }
+    }
+
+    private static string GlslResourceLayout(CppslGlobal global)
+    {
+        return $"layout(set = {global.DescriptorSet}, binding = {global.Binding})";
+    }
+
+    private static string GlslBufferLayout(CppslGlobal global, string packing)
+    {
+        return $"layout(set = {global.DescriptorSet}, binding = {global.Binding}, {packing}, column_major)";
     }
 
     private static void WriteComputeLayout(StringBuilder builder, CppslFunction? entryPoint)

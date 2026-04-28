@@ -13,6 +13,8 @@ internal sealed class HlslShaderSourceEmitter : CppslShaderSourceEmitterBase
     {
         var builder = new StringBuilder();
         WriteHeader(builder, "HLSL", options);
+        builder.AppendLine("#pragma pack_matrix(column_major)");
+        builder.AppendLine();
         var entryPoint = FindEntryPoint(options, model);
         _resourceAccessByPath = BuildResourceAccessMap(model);
         WriteStructs(builder, options, model, entryPoint);
