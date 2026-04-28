@@ -25,11 +25,19 @@ target("cppsl-native-extractor")
         add_rpathdirs(path.join(llvm_sdk, "lib"))
         add_frameworks("CoreServices", "CoreFoundation")
     elseif os.host() == "windows" then
+        -- The bundled Windows LLVM SDK is built with the release MSVC runtime
+        -- and MSVC STL iterator debugging disabled. Keep this tool target on
+        -- the same ABI even when the outer LunaSDK build is configured as
+        -- debug, otherwise link.exe reports RuntimeLibrary and
+        -- _ITERATOR_DEBUG_LEVEL mismatches.
+        set_runtimes("MD")
+        add_defines("NDEBUG", "_ITERATOR_DEBUG_LEVEL=0")
+        add_undefines("_DEBUG")
         for _, lib in ipairs(os.files(path.join(llvm_sdk, "lib", "clang*.lib"))) do
             add_links(path.basename(lib))
         end
         for _, lib in ipairs(os.files(path.join(llvm_sdk, "lib", "LLVM*.lib"))) do
             add_links(path.basename(lib))
         end
-        add_syslinks("advapi32", "bcrypt", "dbghelp", "ole32", "shell32", "user32", "version", "ws2_32")
+        add_syslinks("advapi32", "bcrypt", "dbghelp", "ntdll", "ole32", "shell32", "user32", "version", "ws2_32")
     end
