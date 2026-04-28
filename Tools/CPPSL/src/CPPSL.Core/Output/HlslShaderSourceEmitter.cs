@@ -228,6 +228,20 @@ internal sealed class HlslShaderSourceEmitter : CppslShaderSourceEmitterBase
             return location == 0 ? " : SV_Target" : $" : SV_Target{location}";
         }
 
+        if (role == StructRole.StageInput && stage == ShaderStage.Vertex)
+        {
+            return $" : TEXCOORD{location}";
+        }
+
+        // CPPSL stage varyings use location(1) for the first user value because
+        // the raster position is represented by cppsl::position. HLSL stage
+        // linkage, however, expects the user registers to be packed from
+        // TEXCOORD0, especially when the pixel shader omits SV_Position.
+        if (role is StructRole.StageInput or StructRole.StageOutput)
+        {
+            return $" : TEXCOORD{Math.Max(location - 1, 0)}";
+        }
+
         return $" : TEXCOORD{location}";
     }
 
