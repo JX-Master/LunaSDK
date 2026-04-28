@@ -198,12 +198,33 @@ local function cppslc_executable_name()
     return executable
 end
 
+local function cppsl_tool_platform_dir(projectdir)
+    if os.host() == "windows" and os.arch() == "x64" then
+        return path.join(projectdir, "SDKs", "CPPSL", "windows", "x64", "bin")
+    elseif os.host() == "macosx" then
+        if os.arch() == "arm64" then
+            return path.join(projectdir, "SDKs", "CPPSL", "macosx", "arm64", "bin")
+        elseif os.arch() == "x86_64" then
+            return path.join(projectdir, "SDKs", "CPPSL", "macosx", "x86_64", "bin")
+        end
+    end
+    os.raise("CPPSL tools are not supported on the current platform: " .. os.host() .. "." .. os.arch())
+end
+
 local function cppslc_path(projectdir)
-    local tool = path.join(projectdir, "Tools", "CPPSL", "src", "CPPSL.Cli", "bin", "Debug", "net9.0", cppslc_executable_name())
+    local tool = nil
+    if has_config("build_cppsl_tools") then
+        tool = path.join(projectdir, "Tools", "CPPSL", "src", "CPPSL.Cli", "bin", "Debug", "net9.0", cppslc_executable_name())
+    else
+        tool = path.join(cppsl_tool_platform_dir(projectdir), cppslc_executable_name())
+    end
     if os.isfile(tool) then
         return tool
     end
-    os.raise("cppslc was not built: " .. tool .. "\nBuild the CPPSL target before compiling CPPSL shaders.")
+    if has_config("build_cppsl_tools") then
+        os.raise("cppslc was not built: " .. tool .. "\nBuild the CPPSL target before compiling CPPSL shaders.")
+    end
+    os.raise("CPPSL SDK tool is missing: " .. tool .. "\nRun setup to install the SDK package, or configure with --build_cppsl_tools=true and build the CPPSL target.")
 end
 
 local function native_extractor_executable_name()
@@ -215,11 +236,19 @@ local function native_extractor_executable_name()
 end
 
 local function native_extractor_path(projectdir)
-    local tool = path.join(projectdir, "Tools", "CPPSL", "native", "bin", native_extractor_executable_name())
+    local tool = nil
+    if has_config("build_cppsl_tools") then
+        tool = path.join(projectdir, "Tools", "CPPSL", "native", "bin", native_extractor_executable_name())
+    else
+        tool = path.join(cppsl_tool_platform_dir(projectdir), native_extractor_executable_name())
+    end
     if os.isfile(tool) then
         return tool
     end
-    os.raise("CPPSL native extractor was not built: " .. tool .. "\nBuild the CPPSL target before compiling CPPSL shaders.")
+    if has_config("build_cppsl_tools") then
+        os.raise("CPPSL native extractor was not built: " .. tool .. "\nBuild the CPPSL target before compiling CPPSL shaders.")
+    end
+    os.raise("CPPSL SDK tool is missing: " .. tool .. "\nRun setup to install the SDK package, or configure with --build_cppsl_tools=true and build the CPPSL target.")
 end
 
 local function cppsl_target_from_format(target_format)

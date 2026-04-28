@@ -27,7 +27,25 @@ The frontend is native-only. The extractor lives in `Tools/CPPSL/native`, links
 against the LLVM SDK under `SDKs`, and runs as a separate process that emits the
 frontend JSON contract consumed by the C# pipeline.
 
+Normal LunaSDK builds do not build CPPSL from source. They consume prebuilt
+tools from the SDK package:
+
+```text
+SDKs/CPPSL/<platform>/<arch>/bin/cppslc
+SDKs/CPPSL/<platform>/<arch>/bin/cppsl-native-extractor
+```
+
+On Windows the executables use the `.exe` suffix. Update the third-party SDK
+archives whenever CPPSL compiler changes must be distributed to normal users.
+
 Open `CPPSL.sln` in Rider or Visual Studio to inspect the tool projects.
+
+Enable CPPSL source-tool targets only when developing the compiler:
+
+```sh
+xmake f --build_cppsl_tools=true
+xmake build CPPSL
+```
 
 Build the solution from command line:
 
@@ -39,6 +57,7 @@ Build the native extractor before running the compiler:
 
 ```sh
 xmake f --plat=macosx --arch=arm64 --mode=debug
+xmake f --build_cppsl_tools=true
 xmake build cppsl-native-extractor
 ```
 
