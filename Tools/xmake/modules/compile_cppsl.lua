@@ -198,51 +198,12 @@ local function cppslc_executable_name()
     return executable
 end
 
-local function acquire_build_lock(projectdir)
-    local lock_dir = path.join(projectdir, "build", ".cppslc-build.lock")
-    for _ = 1, 600 do
-        local ok = try {
-            function ()
-                os.runv("mkdir", {lock_dir})
-                return true
-            end
-        }
-        if ok then
-            return function ()
-                os.rm(lock_dir)
-            end
-        end
-        os.sleep(100)
-    end
-    os.raise("timed out while waiting for cppslc build lock: " .. lock_dir)
-end
-
-local function build_cppslc(projectdir)
+local function cppslc_path(projectdir)
     local tool = path.join(projectdir, "Tools", "CPPSL", "src", "CPPSL.Cli", "bin", "Debug", "net9.0", cppslc_executable_name())
     if os.isfile(tool) then
         return tool
     end
-
-    local release_lock = acquire_build_lock(projectdir)
-    local cli_project = path.join(projectdir, "Tools", "CPPSL", "src", "CPPSL.Cli", "CPPSL.Cli.csproj")
-    local ok, errors = try {
-        function ()
-            os.runv("dotnet", {
-                "build",
-                cli_project,
-                "-m:1",
-                "/nr:false",
-                "--nologo",
-                "-p:UseSharedCompilation=false"
-            })
-            return true
-        end
-    }
-    release_lock()
-    if not ok then
-        os.raise(errors)
-    end
-    return tool
+    os.raise("cppslc was not built: " .. tool .. "\nBuild the CPPSL target before compiling CPPSL shaders.")
 end
 
 local function cppsl_target_from_format(target_format)
@@ -284,10 +245,7 @@ function compile_cppsl(shader_file, configs)
     local source_name = path.basename(shader_file)
     local generated_dir = path.join(path.directory(output_file), ".cppsl", source_name)
 
-    local tool = build_cppslc(projectdir)
-    if not os.isfile(tool) then
-        os.raise("cppslc was not built: " .. tool)
-    end
+    local tool = cppslc_path(projectdir)
 
     local requested_target = cppsl_target
     if target_format == "msl" then
