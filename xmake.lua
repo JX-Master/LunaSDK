@@ -2,94 +2,6 @@ set_project("Luna")
 
 add_moduledirs("Tools/xmake/modules")
 
-function cppslc_executable_name()
-    return is_host("windows") and "cppslc.exe" or "cppslc"
-end
-
-function cppsl_native_extractor_executable_name()
-    return is_host("windows") and "cppsl-native-extractor.exe" or "cppsl-native-extractor"
-end
-
-function cppslc_path()
-    return path.join(os.projectdir(), "Tools", "CPPSL", "src", "CPPSL.Cli", "bin", "Debug", "net9.0", cppslc_executable_name())
-end
-
-function cppsl_native_extractor_path()
-    return path.join(os.projectdir(), "Tools", "CPPSL", "native", "bin", cppsl_native_extractor_executable_name())
-end
-
-function build_cppsl_cli()
-    local cli_project = path.join(os.projectdir(), "Tools", "CPPSL", "src", "CPPSL.Cli", "CPPSL.Cli.csproj")
-    os.runv("dotnet", {
-        "build",
-        cli_project,
-        "-m:1",
-        "/nr:false",
-        "--nologo",
-        "-p:UseSharedCompilation=false"
-    })
-end
-
-function acquire_cppsl_tools_lock()
-    local lock_dir = path.join(os.projectdir(), "build", ".cppsl-tools-build.lock")
-    for _ = 1, 6000 do
-        if os.isfile(cppslc_path()) and os.isfile(cppsl_native_extractor_path()) then
-            return nil
-        end
-
-        local ok = try {
-            function ()
-                if is_host("windows") then
-                    os.runv("cmd", {"/c", "mkdir", lock_dir})
-                else
-                    os.runv("mkdir", {lock_dir})
-                end
-                return true
-            end
-        }
-        if ok then
-            return function ()
-                os.rm(lock_dir)
-            end
-        end
-        os.sleep(100)
-    end
-    os.raise("timed out while waiting for CPPSL tool build lock: " .. lock_dir)
-end
-
-function ensure_cppsl_tools()
-    if os.isfile(cppslc_path()) and os.isfile(cppsl_native_extractor_path()) then
-        return
-    end
-
-    local release_lock = acquire_cppsl_tools_lock()
-    if release_lock == nil then
-        return
-    end
-    local ok, errors = try {
-        function ()
-            if not os.isfile(cppsl_native_extractor_path()) then
-                os.runv("xmake", {"-b", "cppsl-native-extractor"})
-            end
-            if not os.isfile(cppslc_path()) then
-                build_cppsl_cli()
-            end
-            return true
-        end
-    }
-    release_lock()
-    if not ok then
-        os.raise(errors)
-    end
-
-    if not os.isfile(cppslc_path()) then
-        os.raise("CPPSL CLI build did not produce: " .. cppslc_path())
-    end
-    if not os.isfile(cppsl_native_extractor_path()) then
-        os.raise("CPPSL native extractor build did not produce: " .. cppsl_native_extractor_path())
-    end
-end
-
 rule("luna.shader")
     set_extensions(".hlsl", ".cxx")
     add_orders("luna.shader", "c++.build")
@@ -107,9 +19,89 @@ rule("luna.shader")
         target:rule_add(cpp_rule)
     end)
     before_build(function (target)
+        local function cppslc_path()
+            return path.join(os.projectdir(), "Tools", "CPPSL", "src", "CPPSL.Cli", "bin", "Debug", "net9.0", is_host("windows") and "cppslc.exe" or "cppslc")
+        end
+
+        local function native_extractor_path()
+            return path.join(os.projectdir(), "Tools", "CPPSL", "native", "bin", is_host("windows") and "cppsl-native-extractor.exe" or "cppsl-native-extractor")
+        end
+
+        local function build_cppsl_cli()
+            local cli_project = path.join(os.projectdir(), "Tools", "CPPSL", "src", "CPPSL.Cli", "CPPSL.Cli.csproj")
+            os.runv("dotnet", {
+                "build",
+                cli_project,
+                "-m:1",
+                "/nr:false",
+                "--nologo",
+                "-p:UseSharedCompilation=false"
+            })
+        end
+
+        local function acquire_tools_lock()
+            local lock_dir = path.join(os.projectdir(), "build", ".cppsl-tools-build.lock")
+            for _ = 1, 6000 do
+                if os.isfile(cppslc_path()) and os.isfile(native_extractor_path()) then
+                    return nil
+                end
+
+                local ok = try {
+                    function ()
+                        if is_host("windows") then
+                            os.runv("cmd", {"/c", "mkdir", lock_dir})
+                        else
+                            os.runv("mkdir", {lock_dir})
+                        end
+                        return true
+                    end
+                }
+                if ok then
+                    return function ()
+                        os.rm(lock_dir)
+                    end
+                end
+                os.sleep(100)
+            end
+            os.raise("timed out while waiting for CPPSL tool build lock: " .. lock_dir)
+        end
+
+        local function ensure_tools()
+            if os.isfile(cppslc_path()) and os.isfile(native_extractor_path()) then
+                return
+            end
+
+            local release_lock = acquire_tools_lock()
+            if release_lock == nil then
+                return
+            end
+            local ok, errors = try {
+                function ()
+                    if not os.isfile(native_extractor_path()) then
+                        os.runv("xmake", {"-b", "cppsl-native-extractor"})
+                    end
+                    if not os.isfile(cppslc_path()) then
+                        build_cppsl_cli()
+                    end
+                    return true
+                end
+            }
+            release_lock()
+            if not ok then
+                os.raise(errors)
+            end
+
+            if not os.isfile(cppslc_path()) then
+                os.raise("CPPSL CLI build did not produce: " .. cppslc_path())
+            end
+            if not os.isfile(native_extractor_path()) then
+                os.raise("CPPSL native extractor build did not produce: " .. native_extractor_path())
+            end
+        end
+
         for _, sourcefile in ipairs(target:sourcefiles()) do
             if path.extension(sourcefile) == ".cxx" then
-                ensure_cppsl_tools()
+                ensure_tools()
                 break
             end
         end
@@ -301,12 +293,22 @@ target("CPPSL")
     set_kind("phony")
     add_deps("cppsl-native-extractor")
     on_build(function ()
-        build_cppsl_cli()
-        if not os.isfile(cppslc_path()) then
-            os.raise("CPPSL CLI build did not produce: " .. cppslc_path())
+        local cppslc = path.join(os.projectdir(), "Tools", "CPPSL", "src", "CPPSL.Cli", "bin", "Debug", "net9.0", is_host("windows") and "cppslc.exe" or "cppslc")
+        local native_extractor = path.join(os.projectdir(), "Tools", "CPPSL", "native", "bin", is_host("windows") and "cppsl-native-extractor.exe" or "cppsl-native-extractor")
+        local cli_project = path.join(os.projectdir(), "Tools", "CPPSL", "src", "CPPSL.Cli", "CPPSL.Cli.csproj")
+        os.runv("dotnet", {
+            "build",
+            cli_project,
+            "-m:1",
+            "/nr:false",
+            "--nologo",
+            "-p:UseSharedCompilation=false"
+        })
+        if not os.isfile(cppslc) then
+            os.raise("CPPSL CLI build did not produce: " .. cppslc)
         end
-        if not os.isfile(cppsl_native_extractor_path()) then
-            os.raise("CPPSL native extractor build did not produce: " .. cppsl_native_extractor_path())
+        if not os.isfile(native_extractor) then
+            os.raise("CPPSL native extractor build did not produce: " .. native_extractor)
         end
     end)
 
