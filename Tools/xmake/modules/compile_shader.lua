@@ -216,6 +216,17 @@ local function copy_configs(configs)
     return copied
 end
 
+local function is_debug_enabled(configs)
+    return configs and configs.debug == true
+end
+
+local function append_metal_debug_args(args, configs)
+    if is_debug_enabled(configs) then
+        table.insert(args, "-gline-tables-only")
+        table.insert(args, "-frecord-sources")
+    end
+end
+
 local function compile_metal_library(source_file, air_file, metallib_file, configs)
     local sdk = metal_sdk(configs)
     local metal_path, metallib_path = metal_tool_paths(sdk)
@@ -223,7 +234,7 @@ local function compile_metal_library(source_file, air_file, metallib_file, confi
     if not os.isdir(module_cache) then
         os.mkdir(module_cache)
     end
-    os.runv(metal_path, {
+    local args = {
         "-std=metal3.2",
         "-fmodules-cache-path=" .. module_cache,
         "-x",
@@ -232,7 +243,9 @@ local function compile_metal_library(source_file, air_file, metallib_file, confi
         source_file,
         "-o",
         air_file
-    })
+    }
+    append_metal_debug_args(args, configs)
+    os.runv(metal_path, args)
     os.runv(metallib_path, {
         air_file,
         "-o",

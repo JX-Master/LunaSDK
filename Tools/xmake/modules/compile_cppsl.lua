@@ -94,6 +94,17 @@ local function metal_tool_paths(sdk)
     return metal_path, metallib_path
 end
 
+local function is_debug_enabled(configs)
+    return configs and configs.debug == true
+end
+
+local function append_metal_debug_args(args, configs)
+    if is_debug_enabled(configs) then
+        table.insert(args, "-gline-tables-only")
+        table.insert(args, "-frecord-sources")
+    end
+end
+
 local function compile_metal_library(projectdir, source_file, generated_dir, source_name, configs)
     local sdk = metal_sdk(configs)
     local metal_path, metallib_path = metal_tool_paths(sdk)
@@ -103,7 +114,7 @@ local function compile_metal_library(projectdir, source_file, generated_dir, sou
     end
     local air_file = path.join(generated_dir, source_name .. ".air")
     local metallib_file = path.join(generated_dir, source_name .. ".metallib")
-    os.runv(metal_path, {
+    local args = {
         "-std=metal3.2",
         "-fmodules-cache-path=" .. module_cache,
         "-x",
@@ -112,7 +123,9 @@ local function compile_metal_library(projectdir, source_file, generated_dir, sou
         source_file,
         "-o",
         air_file
-    })
+    }
+    append_metal_debug_args(args, configs)
+    os.runv(metal_path, args)
     os.runv(metallib_path, {
         air_file,
         "-o",
@@ -153,9 +166,9 @@ local function vulkan_tool_path(projectdir, executable)
     return tool
 end
 
-local function compile_glsl_to_spirv(projectdir, source_file, generated_dir, source_name, stage)
+local function compile_glsl_to_spirv(projectdir, source_file, generated_dir, source_name, stage, configs)
     local spirv_file = path.join(generated_dir, source_name .. ".spv")
-    os.runv(vulkan_tool_path(projectdir, "glslang"), {
+    local args = {
         "-V",
         "--target-env",
         "vulkan1.4",
@@ -167,7 +180,11 @@ local function compile_glsl_to_spirv(projectdir, source_file, generated_dir, sou
         "-o",
         spirv_file,
         source_file
-    })
+    }
+    if is_debug_enabled(configs) then
+        table.insert(args, 1, "-gVS")
+    end
+    os.runv(vulkan_tool_path(projectdir, "glslang"), args)
     return spirv_file
 end
 
@@ -338,7 +355,7 @@ function compile_cppsl(shader_file, configs)
     end
 
     if target_format == "spir_v" then
-        local compiled_shader = compile_glsl_to_spirv(projectdir, generated_source, generated_dir, source_name, stage)
+        local compiled_shader = compile_glsl_to_spirv(projectdir, generated_source, generated_dir, source_name, stage, configs)
         write_shader_header(source_name, compiled_shader, "spirv", "main", output_file, 0, 0, 0)
         return
     end

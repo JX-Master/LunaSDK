@@ -24,6 +24,12 @@ rule("luna.shader")
         local headerdir = path.absolute(path.join(target:autogendir(), "shaders"))
         local targetfile = path.join(headerdir, path.basename(sourcefile) .. ".hpp")
         local configs = target:fileconfig(sourcefile) or {}
+        if configs.debug == nil and is_mode("debug") then
+            configs.debug = true
+        end
+        if configs.debug == true and configs.optimize == nil then
+            configs.optimize = "none"
+        end
 
         -- need build this object?
         local dependfile = target:dependfile(targetfile)

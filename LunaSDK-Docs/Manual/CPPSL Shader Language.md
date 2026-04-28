@@ -323,4 +323,16 @@ target("MyProgram")
 - Vulkan: SPIR-V
 - Metal: metallib
 
+Shader debug information is enabled automatically in `mode.debug` builds. You can override it per shader:
+
+```lua
+add_luna_shader("Shaders/MyPS.cxx", {
+    type = "pixel",
+    entry_point = "ps_main",
+    debug = true
+})
+```
+
+When debug is enabled, D3D12 keeps DXIL debug information, Vulkan emits SPIR-V nonsemantic debug information with embedded source for tools such as RenderDoc, and Metal emits source line information and records source text in the Metal compilation output.
+
 The project build prepares the CPPSL compiler and native extractor before compiling shader files, so shader compilation does not fail because `cppslc` or `cppsl-native-extractor` is missing.
