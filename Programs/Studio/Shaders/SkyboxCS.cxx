@@ -35,7 +35,7 @@ void cs_main([[cppsl::builtin(dispatch_thread_id)]] uint3 dispatch_thread_id)
 {
     uint2 pixel = dispatch_thread_id.xy;
 
-    if (g_set0.g_depth.Load(pixel) < 0.999f)
+    if (g_set0.g_depth.Load(pixel) != 1.0f)
     {
         return;
     }

@@ -80,7 +80,7 @@ void cs_main([[cppsl::builtin(dispatch_thread_id)]] uint3 dispatch_thread_id)
     float3 emissive = g_set0.g_emissive.Load(pixel).xyz;
 
     float depth = g_set0.g_depth.Load(pixel);
-    if (depth >= 0.999f)
+    if (depth == 1.0f)
     {
         return;
     }
