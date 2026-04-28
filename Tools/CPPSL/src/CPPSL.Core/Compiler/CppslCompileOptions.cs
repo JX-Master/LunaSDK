@@ -1,5 +1,5 @@
 using CPPSL.Core.Artifacts;
-using CPPSL.Core.IR;
+using CPPSL.Core.ShaderModel;
 
 namespace CPPSL.Core.Compiler;
 

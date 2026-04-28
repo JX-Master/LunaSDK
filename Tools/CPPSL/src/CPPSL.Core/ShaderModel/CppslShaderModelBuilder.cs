@@ -2,57 +2,57 @@ using CPPSL.Core.Compiler;
 using CPPSL.Core.Frontend;
 using CPPSL.Core.Semantics;
 
-namespace CPPSL.Core.IR;
+namespace CPPSL.Core.ShaderModel;
 
-public sealed class CppslIrBuilder
+public sealed class CppslShaderModelBuilder
 {
-    public const string SchemaName = "cppsl.ir";
+    public const string SchemaName = "cppsl.shader_model";
     public const int SchemaVersion = 1;
 
-    public CppslIrModule Build(
+    public CppslShaderModel Build(
         CppslCompileOptions options,
         string sourcePath,
         CppslSemanticModel semanticModel,
         IReadOnlyList<CppslAstNode> astNodes)
     {
         sourcePath = Path.GetFullPath(sourcePath);
-        return new CppslIrModule(
+        return new CppslShaderModel(
             SchemaName,
             SchemaVersion,
             sourcePath,
-            semanticModel.Structs.Select(static structure => new CppslIrStruct(
+            semanticModel.Structs.Select(static structure => new CppslShaderModelStruct(
                 structure.Name,
-                structure.Fields.Select(static field => new CppslIrField(
+                structure.Fields.Select(static field => new CppslShaderModelField(
                     field.Name,
                     field.Type,
                     field.Location,
                     field.IsPosition)).ToArray())).ToArray(),
             semanticModel.Globals
                 .Where(static global => global.ResourceKind is not null)
-                .Select(static global => new CppslIrResource(
+                .Select(static global => new CppslShaderModelResource(
                     global.Name,
                     global.Type,
                     global.ResourceKind!,
                     global.DescriptorSet!.Value,
                     global.Binding!.Value)).ToArray(),
             semanticModel.Functions
-                .Select(function => new CppslIrFunction(
+                .Select(function => new CppslShaderModelFunction(
                     function.Name,
                     function.ReturnType,
-                    function.Parameters.Select(static parameter => new CppslIrParameter(parameter.Name, parameter.Type)).ToArray(),
+                    function.Parameters.Select(static parameter => new CppslShaderModelParameter(parameter.Name, parameter.Type)).ToArray(),
                     FindFunctionBody(astNodes, function.Name))).ToArray(),
             semanticModel.Functions
                 .Where(static function => function.IsEntryPoint)
-                .Select(function => new CppslIrEntryPoint(
+                .Select(function => new CppslShaderModelEntryPoint(
                     function.Name,
                     options.Stage.ToString(),
                     function.DeclaredStage,
                     function.ReturnType,
-                    function.Parameters.Select(static parameter => new CppslIrParameter(parameter.Name, parameter.Type)).ToArray(),
+                    function.Parameters.Select(static parameter => new CppslShaderModelParameter(parameter.Name, parameter.Type)).ToArray(),
                     FindFunctionBody(astNodes, function.Name))).ToArray());
     }
 
-    private static CppslIrNode? FindFunctionBody(IReadOnlyList<CppslAstNode> astNodes, string functionName)
+    private static CppslShaderModelNode? FindFunctionBody(IReadOnlyList<CppslAstNode> astNodes, string functionName)
     {
         var functionNode = astNodes.FirstOrDefault(node =>
             node.Kind == CppslAstNodeKind.Function &&
@@ -60,30 +60,30 @@ public sealed class CppslIrBuilder
             node.Children.Any(static child => child.Kind == CppslAstNodeKind.CompoundStatement));
 
         var bodyNode = functionNode?.Children.FirstOrDefault(static child => child.Kind == CppslAstNodeKind.CompoundStatement);
-        return bodyNode is null ? null : ToIrNode(bodyNode);
+        return bodyNode is null ? null : ToShaderModelNode(bodyNode);
     }
 
-    private static CppslIrNode ToIrNode(CppslAstNode node)
+    private static CppslShaderModelNode ToShaderModelNode(CppslAstNode node)
     {
-        return new CppslIrNode(
+        return new CppslShaderModelNode(
             node.Kind.ToString(),
             node.Spelling,
             node.DisplayName,
             node.TypeName,
-            node.TypeInfo is null ? null : ToIrType(node.TypeInfo),
+            node.TypeInfo is null ? null : ToShaderModelType(node.TypeInfo),
             node.Children
                 .Where(static child => IsBodyNode(child.Kind))
-                .Select(ToIrNode)
+                .Select(ToShaderModelNode)
                 .ToArray());
     }
 
-    private static CppslIrType ToIrType(CppslTypeInfo type)
+    private static CppslShaderModelType ToShaderModelType(CppslTypeInfo type)
     {
-        return new CppslIrType(
+        return new CppslShaderModelType(
             type.Spelling,
             type.CanonicalName,
             type.DesugaredName,
-            type.TemplateArguments.Select(ToIrType).ToArray());
+            type.TemplateArguments.Select(ToShaderModelType).ToArray());
     }
 
     private static bool IsBodyNode(CppslAstNodeKind kind)
@@ -120,60 +120,60 @@ public sealed class CppslIrBuilder
     }
 }
 
-public sealed record CppslIrModule(
+public sealed record CppslShaderModel(
     string Schema,
     int Version,
     string Source,
-    IReadOnlyList<CppslIrStruct> Structs,
-    IReadOnlyList<CppslIrResource> Resources,
-    IReadOnlyList<CppslIrFunction> Functions,
-    IReadOnlyList<CppslIrEntryPoint> EntryPoints);
+    IReadOnlyList<CppslShaderModelStruct> Structs,
+    IReadOnlyList<CppslShaderModelResource> Resources,
+    IReadOnlyList<CppslShaderModelFunction> Functions,
+    IReadOnlyList<CppslShaderModelEntryPoint> EntryPoints);
 
-public sealed record CppslIrStruct(
+public sealed record CppslShaderModelStruct(
     string Name,
-    IReadOnlyList<CppslIrField> Fields);
+    IReadOnlyList<CppslShaderModelField> Fields);
 
-public sealed record CppslIrField(
+public sealed record CppslShaderModelField(
     string Name,
     string Type,
     int? Location,
     bool IsPosition);
 
-public sealed record CppslIrResource(
+public sealed record CppslShaderModelResource(
     string Name,
     string Type,
     string ResourceKind,
     int Set,
     int Binding);
 
-public sealed record CppslIrEntryPoint(
+public sealed record CppslShaderModelEntryPoint(
     string Name,
     string Stage,
     string? DeclaredStage,
     string? ReturnType,
-    IReadOnlyList<CppslIrParameter> Parameters,
-    CppslIrNode? Body);
+    IReadOnlyList<CppslShaderModelParameter> Parameters,
+    CppslShaderModelNode? Body);
 
-public sealed record CppslIrFunction(
+public sealed record CppslShaderModelFunction(
     string Name,
     string? ReturnType,
-    IReadOnlyList<CppslIrParameter> Parameters,
-    CppslIrNode? Body);
+    IReadOnlyList<CppslShaderModelParameter> Parameters,
+    CppslShaderModelNode? Body);
 
-public sealed record CppslIrParameter(
+public sealed record CppslShaderModelParameter(
     string Name,
     string Type);
 
-public sealed record CppslIrNode(
+public sealed record CppslShaderModelNode(
     string Kind,
     string Spelling,
     string? DisplayName,
     string? Type,
-    CppslIrType? TypeInfo,
-    IReadOnlyList<CppslIrNode> Children);
+    CppslShaderModelType? TypeInfo,
+    IReadOnlyList<CppslShaderModelNode> Children);
 
-public sealed record CppslIrType(
+public sealed record CppslShaderModelType(
     string Spelling,
     string CanonicalName,
     string DesugaredName,
-    IReadOnlyList<CppslIrType> TemplateArguments);
+    IReadOnlyList<CppslShaderModelType> TemplateArguments);

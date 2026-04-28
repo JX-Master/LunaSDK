@@ -1,7 +1,7 @@
 using System.Text;
 using System.Text.RegularExpressions;
 using CPPSL.Core.Compiler;
-using CPPSL.Core.IR;
+using CPPSL.Core.ShaderModel;
 using CPPSL.Core.Semantics;
 
 namespace CPPSL.Core.Output;
@@ -10,7 +10,7 @@ internal sealed class MslShaderSourceEmitter : CppslShaderSourceEmitterBase
 {
     private Dictionary<string, string> _resourceAccessByName = new(StringComparer.Ordinal);
 
-    public string Emit(CppslCompileOptions options, CppslSemanticModel model, CppslIrModule irModule)
+    public string Emit(CppslCompileOptions options, CppslSemanticModel model, CppslShaderModel shaderModel)
     {
         var builder = new StringBuilder();
         builder.AppendLine("#include <metal_stdlib>");
@@ -22,8 +22,8 @@ internal sealed class MslShaderSourceEmitter : CppslShaderSourceEmitterBase
         WriteArgumentBufferStructs(builder, model);
         WriteGlobalArgumentBuffers(builder, model);
         _resourceAccessByName = BuildResourceAccessMap(model);
-        WriteFunctions(builder, entryPoint, model, irModule);
-        WriteEntryPoint(builder, options, entryPoint, model, irModule);
+        WriteFunctions(builder, entryPoint, model, shaderModel);
+        WriteEntryPoint(builder, options, entryPoint, model, shaderModel);
         _resourceAccessByName = new Dictionary<string, string>(StringComparer.Ordinal);
         return RewriteResidualResourceAccesses(builder.ToString(), model);
     }
@@ -32,12 +32,12 @@ internal sealed class MslShaderSourceEmitter : CppslShaderSourceEmitterBase
         StringBuilder builder,
         CppslFunction? entryPoint,
         CppslSemanticModel model,
-        CppslIrModule irModule)
+        CppslShaderModel shaderModel)
     {
         foreach (var function in model.Functions.Where(function => function.Name != entryPoint?.Name))
         {
-            var irFunction = irModule.Functions.FirstOrDefault(candidate => candidate.Name == function.Name);
-            if (irFunction?.Body is null)
+            var shaderModelFunction = shaderModel.Functions.FirstOrDefault(candidate => candidate.Name == function.Name);
+            if (shaderModelFunction?.Body is null)
             {
                 continue;
             }
@@ -48,7 +48,7 @@ internal sealed class MslShaderSourceEmitter : CppslShaderSourceEmitterBase
             builder.Append('(');
             builder.Append(string.Join(", ", function.Parameters.Select(parameter => $"{MapValueType(parameter.Type)} {parameter.Name}")));
             builder.AppendLine(")");
-            WriteFunctionBody(builder, function, model, irFunction.Body);
+            WriteFunctionBody(builder, function, model, shaderModelFunction.Body);
             builder.AppendLine();
         }
     }
@@ -92,7 +92,7 @@ internal sealed class MslShaderSourceEmitter : CppslShaderSourceEmitterBase
         CppslCompileOptions options,
         CppslFunction? entryPoint,
         CppslSemanticModel model,
-        CppslIrModule irModule)
+        CppslShaderModel shaderModel)
     {
         if (entryPoint is null)
         {
@@ -106,7 +106,7 @@ internal sealed class MslShaderSourceEmitter : CppslShaderSourceEmitterBase
         builder.Append('(');
         builder.Append(string.Join(", ", BuildEntryParameters(entryPoint, model)));
         builder.AppendLine(")");
-        WriteEntryFunctionBody(builder, entryPoint, model, irModule);
+        WriteEntryFunctionBody(builder, entryPoint, model, shaderModel);
     }
 
     private IEnumerable<string> BuildEntryParameters(CppslFunction entryPoint, CppslSemanticModel model)
@@ -179,7 +179,7 @@ internal sealed class MslShaderSourceEmitter : CppslShaderSourceEmitterBase
         StringBuilder builder,
         CppslFunction entryPoint,
         CppslSemanticModel model,
-        CppslIrModule irModule)
+        CppslShaderModel shaderModel)
     {
         builder.AppendLine("{");
         foreach (var global in model.Globals.Where(static global => global.Attributes.FindAttribute("group_shared") is not null))
@@ -187,14 +187,14 @@ internal sealed class MslShaderSourceEmitter : CppslShaderSourceEmitterBase
             builder.AppendLine($"    threadgroup {FormatVariableDeclaration(MapValueType(global.Type), global.Name)};");
         }
 
-        var irEntryPoint = irModule.EntryPoints.FirstOrDefault(entry => entry.Name == entryPoint.Name);
-        if (irEntryPoint?.Body is null)
+        var shaderModelEntryPoint = shaderModel.EntryPoints.FirstOrDefault(entry => entry.Name == entryPoint.Name);
+        if (shaderModelEntryPoint?.Body is null)
         {
             WriteDefaultReturn(builder, entryPoint.ReturnType ?? "void", model, 1);
         }
         else
         {
-            WriteStatementChildren(builder, irEntryPoint.Body, 1);
+            WriteStatementChildren(builder, shaderModelEntryPoint.Body, 1);
         }
         builder.AppendLine("}");
     }
@@ -245,7 +245,7 @@ internal sealed class MslShaderSourceEmitter : CppslShaderSourceEmitterBase
         return map;
     }
 
-    protected override string LowerExpression(CppslIrNode node)
+    protected override string LowerExpression(CppslShaderModelNode node)
     {
         if (TryGetAccessPath(node, out var accessPath) &&
             _resourceAccessByName.TryGetValue(accessPath, out var resourceAccess))
@@ -288,7 +288,7 @@ internal sealed class MslShaderSourceEmitter : CppslShaderSourceEmitterBase
         return base.LowerMemberCall(receiver, memberName, arguments);
     }
 
-    protected override string LowerCallExpression(CppslIrNode node)
+    protected override string LowerCallExpression(CppslShaderModelNode node)
     {
         if (TryGetSwizzleConversionOperand(node, out var swizzleOperand))
         {
@@ -384,7 +384,7 @@ internal sealed class MslShaderSourceEmitter : CppslShaderSourceEmitterBase
         return source;
     }
 
-    private static string AdaptTextureReadExpression(CppslIrNode receiverNode, string expression)
+    private static string AdaptTextureReadExpression(CppslShaderModelNode receiverNode, string expression)
     {
         if (!TryGetTextureValueType(receiverNode, out var valueType))
         {
@@ -404,7 +404,7 @@ internal sealed class MslShaderSourceEmitter : CppslShaderSourceEmitterBase
         };
     }
 
-    private static string AdaptTextureStoreValue(CppslIrNode receiverNode, string value)
+    private static string AdaptTextureStoreValue(CppslShaderModelNode receiverNode, string value)
     {
         if (!TryGetTextureValueType(receiverNode, out var valueType))
         {
@@ -427,8 +427,8 @@ internal sealed class MslShaderSourceEmitter : CppslShaderSourceEmitterBase
     }
 
     private bool TryGetMslMemberCall(
-        CppslIrNode node,
-        out CppslIrNode receiverNode,
+        CppslShaderModelNode node,
+        out CppslShaderModelNode receiverNode,
         out string receiver,
         out string memberName,
         out IReadOnlyList<string> arguments)
@@ -452,7 +452,7 @@ internal sealed class MslShaderSourceEmitter : CppslShaderSourceEmitterBase
         return true;
     }
 
-    private static bool IsTexture1DReceiver(CppslIrNode node)
+    private static bool IsTexture1DReceiver(CppslShaderModelNode node)
     {
         if (ContainsTexture1DType(node.Type) ||
             ContainsTexture1DType(node.TypeInfo?.Spelling) ||
@@ -471,7 +471,7 @@ internal sealed class MslShaderSourceEmitter : CppslShaderSourceEmitterBase
             type.Contains("Texture1D", StringComparison.Ordinal);
     }
 
-    private static bool IsDepthTextureReceiver(CppslIrNode node)
+    private static bool IsDepthTextureReceiver(CppslShaderModelNode node)
     {
         if (ContainsDepthTextureType(node.Type) ||
             ContainsDepthTextureType(node.TypeInfo?.Spelling) ||

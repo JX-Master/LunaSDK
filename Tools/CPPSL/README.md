@@ -11,16 +11,16 @@ Current scope:
 - Parse CPPSL sources through the native Clang extractor and record AST facts.
 - Expose a CPPSL-owned frontend model with provider-specific Clang declaration names
   kept only as debug metadata.
-- Extract a first CPPSL semantic model from source-level attributes.
+- Build the CPPSL semantic model from source-level attributes.
 - Validate entry point stage attributes, resource `set` / `binding` metadata,
   duplicate resource bindings, attribute target rules, and duplicate struct
   locations.
-- Emit `cppsl.ir` v1 with declarations and an entry-point function body AST
-  skeleton, plus multiple output targets from a single frontend parse.
+- Emit `cppsl.shader_model` v1 with declarations and source-level function
+  bodies, plus multiple output targets from a single frontend parse.
 - Treat HLSL, GLSL, MSL, and reflection as peer output targets.
-- Emit phase 0 HLSL, GLSL, and Metal sources with platform-specific structs,
-  resource declarations, entry signatures, and the first lowered Box-style
-  statement/expression subset.
+- Emit HLSL, GLSL, and Metal sources with platform-specific structs,
+  resource declarations, entry signatures, and supported statement/expression
+  lowering.
 - Emit versioned reflection JSON.
 
 The frontend is native-only. The extractor lives in `Tools/CPPSL/native`, links

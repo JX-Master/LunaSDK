@@ -1,7 +1,7 @@
 using CPPSL.Core.Artifacts;
 using CPPSL.Core.Compiler;
 using CPPSL.Core.Diagnostics;
-using CPPSL.Core.IR;
+using CPPSL.Core.ShaderModel;
 using System.Text.RegularExpressions;
 
 var repoRoot = FindRepoRoot(AppContext.BaseDirectory);
@@ -39,7 +39,7 @@ if (!result.Succeeded)
 }
 
 if (result.Artifacts is null ||
-    !File.Exists(result.Artifacts.IrPath) ||
+    !File.Exists(result.Artifacts.ShaderModelPath) ||
     !File.Exists(result.Artifacts.GetOutputPath(CppslOutputTarget.Reflection)) ||
     !File.Exists(result.Artifacts.GetOutputPath(CppslOutputTarget.Hlsl)) ||
     !File.Exists(result.Artifacts.GetOutputPath(CppslOutputTarget.Glsl)) ||
@@ -49,64 +49,73 @@ if (result.Artifacts is null ||
     return 1;
 }
 
-var irText = File.ReadAllText(result.Artifacts.IrPath);
+var shaderModelText = File.ReadAllText(result.Artifacts.ShaderModelPath);
 var reflectionText = File.ReadAllText(result.Artifacts.GetOutputPath(CppslOutputTarget.Reflection));
 var hlslText = File.ReadAllText(result.Artifacts.GetOutputPath(CppslOutputTarget.Hlsl));
 var glslText = File.ReadAllText(result.Artifacts.GetOutputPath(CppslOutputTarget.Glsl));
 var mslText = File.ReadAllText(result.Artifacts.GetOutputPath(CppslOutputTarget.Msl));
-if (!irText.Contains("main_vs", StringComparison.Ordinal) ||
-    !irText.Contains("\"frontendProvider\": \"Native\"", StringComparison.Ordinal) ||
-    !irText.Contains("\"frontendModelVersion\": 2", StringComparison.Ordinal) ||
-    !irText.Contains("\"frontendAst\"", StringComparison.Ordinal) ||
-    !irText.Contains("\"outputTargets\"", StringComparison.Ordinal) ||
-    !irText.Contains("\"Kind\": \"Function\"", StringComparison.Ordinal) ||
-    !irText.Contains("\"ProviderKind\": \"Function\"", StringComparison.Ordinal) ||
-    !irText.Contains("\"Kind\": \"Field\"", StringComparison.Ordinal) ||
-    !irText.Contains("\"ProviderKind\": \"Field\"", StringComparison.Ordinal) ||
-    !irText.Contains("world_to_proj", StringComparison.Ordinal) ||
-    !irText.Contains("\"Kind\": \"Parameter\"", StringComparison.Ordinal) ||
-    !irText.Contains("\"ProviderKind\": \"ParmVar\"", StringComparison.Ordinal) ||
-    !irText.Contains("\"Range\": {", StringComparison.Ordinal) ||
-    !irText.Contains("\"TypeInfo\": {", StringComparison.Ordinal) ||
-    !irText.Contains("\"TemplateArguments\"", StringComparison.Ordinal) ||
-    !irText.Contains("\"Spelling\": \"Camera\"", StringComparison.Ordinal) ||
-    !irText.Contains("\"ResultTypeInfo\": {", StringComparison.Ordinal) ||
-    !irText.Contains("\"Kind\": \"CompoundStatement\"", StringComparison.Ordinal) ||
-    !irText.Contains("\"Kind\": \"DeclarationStatement\"", StringComparison.Ordinal) ||
-    !irText.Contains("\"Kind\": \"LocalVariable\"", StringComparison.Ordinal) ||
-    !irText.Contains("\"Spelling\": \"o\"", StringComparison.Ordinal) ||
-    !irText.Contains("\"Kind\": \"CallExpression\"", StringComparison.Ordinal) ||
-    !irText.Contains("\"DisplayName\": \"mul\"", StringComparison.Ordinal) ||
-    !irText.Contains("\"Kind\": \"MemberExpression\"", StringComparison.Ordinal) ||
-    !irText.Contains("\"Kind\": \"DeclRefExpression\"", StringComparison.Ordinal) ||
-    !irText.Contains("\"Kind\": \"ReturnStatement\"", StringComparison.Ordinal) ||
-    !irText.Contains("cppslSemanticModel", StringComparison.Ordinal) ||
-    !irText.Contains("cppslIr", StringComparison.Ordinal) ||
-    !irText.Contains("\"Schema\": \"cppsl.ir\"", StringComparison.Ordinal) ||
-    !irText.Contains("\"Version\": 1", StringComparison.Ordinal) ||
-    !irText.Contains("constant_buffer", StringComparison.Ordinal) ||
-    !irText.Contains("\"IsEntryPoint\": true", StringComparison.Ordinal) ||
-    !irText.Contains("\"Name\": \"desc_set\"", StringComparison.Ordinal) ||
-    !irText.Contains("\"Name\": \"binding\"", StringComparison.Ordinal) ||
-    !irText.Contains("\"Name\": \"cbuffer\"", StringComparison.Ordinal) ||
-    !irText.Contains("\"Name\": \"location\"", StringComparison.Ordinal) ||
-    !irText.Contains("\"Name\": \"position\"", StringComparison.Ordinal) ||
-    !irText.Contains("\"Name\": \"vertex\"", StringComparison.Ordinal) ||
-    !irText.Contains("\"DescriptorSet\": 0", StringComparison.Ordinal) ||
-    !irText.Contains("\"Binding\": 0", StringComparison.Ordinal) ||
-    !irText.Contains("\"Location\": 0", StringComparison.Ordinal) ||
-    !irText.Contains("\"IsPosition\": true", StringComparison.Ordinal) ||
-    !irText.Contains("\"DeclaredStage\": \"vertex\"", StringComparison.Ordinal))
+if (!shaderModelText.Contains("main_vs", StringComparison.Ordinal) ||
+    !shaderModelText.Contains("\"frontendProvider\": \"Native\"", StringComparison.Ordinal) ||
+    !shaderModelText.Contains("\"frontendModelVersion\": 2", StringComparison.Ordinal) ||
+    !shaderModelText.Contains("\"frontendAst\"", StringComparison.Ordinal) ||
+    !shaderModelText.Contains("\"outputTargets\"", StringComparison.Ordinal) ||
+    !shaderModelText.Contains("\"Kind\": \"Function\"", StringComparison.Ordinal) ||
+    !shaderModelText.Contains("\"ProviderKind\": \"Function\"", StringComparison.Ordinal) ||
+    !shaderModelText.Contains("\"Kind\": \"Field\"", StringComparison.Ordinal) ||
+    !shaderModelText.Contains("\"ProviderKind\": \"Field\"", StringComparison.Ordinal) ||
+    !shaderModelText.Contains("world_to_proj", StringComparison.Ordinal) ||
+    !shaderModelText.Contains("\"Kind\": \"Parameter\"", StringComparison.Ordinal) ||
+    !shaderModelText.Contains("\"ProviderKind\": \"ParmVar\"", StringComparison.Ordinal) ||
+    !shaderModelText.Contains("\"Range\": {", StringComparison.Ordinal) ||
+    !shaderModelText.Contains("\"TypeInfo\": {", StringComparison.Ordinal) ||
+    !shaderModelText.Contains("\"TemplateArguments\"", StringComparison.Ordinal) ||
+    !shaderModelText.Contains("\"Spelling\": \"Camera\"", StringComparison.Ordinal) ||
+    !shaderModelText.Contains("\"ResultTypeInfo\": {", StringComparison.Ordinal) ||
+    !shaderModelText.Contains("\"Kind\": \"CompoundStatement\"", StringComparison.Ordinal) ||
+    !shaderModelText.Contains("\"Kind\": \"DeclarationStatement\"", StringComparison.Ordinal) ||
+    !shaderModelText.Contains("\"Kind\": \"LocalVariable\"", StringComparison.Ordinal) ||
+    !shaderModelText.Contains("\"Spelling\": \"o\"", StringComparison.Ordinal) ||
+    !shaderModelText.Contains("\"Kind\": \"CallExpression\"", StringComparison.Ordinal) ||
+    !shaderModelText.Contains("\"DisplayName\": \"mul\"", StringComparison.Ordinal) ||
+    !shaderModelText.Contains("\"Kind\": \"MemberExpression\"", StringComparison.Ordinal) ||
+    !shaderModelText.Contains("\"Kind\": \"DeclRefExpression\"", StringComparison.Ordinal) ||
+    !shaderModelText.Contains("\"Kind\": \"ReturnStatement\"", StringComparison.Ordinal) ||
+    !shaderModelText.Contains("cppslSemanticModel", StringComparison.Ordinal) ||
+    !shaderModelText.Contains("cppslShaderModel", StringComparison.Ordinal) ||
+    !shaderModelText.Contains("\"Schema\": \"cppsl.shader_model\"", StringComparison.Ordinal) ||
+    !shaderModelText.Contains("\"Version\": 1", StringComparison.Ordinal) ||
+    !shaderModelText.Contains("constant_buffer", StringComparison.Ordinal) ||
+    !shaderModelText.Contains("\"IsEntryPoint\": true", StringComparison.Ordinal) ||
+    !shaderModelText.Contains("\"Name\": \"desc_set\"", StringComparison.Ordinal) ||
+    !shaderModelText.Contains("\"Name\": \"binding\"", StringComparison.Ordinal) ||
+    !shaderModelText.Contains("\"Name\": \"cbuffer\"", StringComparison.Ordinal) ||
+    !shaderModelText.Contains("\"Name\": \"location\"", StringComparison.Ordinal) ||
+    !shaderModelText.Contains("\"Name\": \"position\"", StringComparison.Ordinal) ||
+    !shaderModelText.Contains("\"Name\": \"vertex\"", StringComparison.Ordinal) ||
+    !shaderModelText.Contains("\"DescriptorSet\": 0", StringComparison.Ordinal) ||
+    !shaderModelText.Contains("\"Binding\": 0", StringComparison.Ordinal) ||
+    !shaderModelText.Contains("\"Location\": 0", StringComparison.Ordinal) ||
+    !shaderModelText.Contains("\"IsPosition\": true", StringComparison.Ordinal) ||
+    !shaderModelText.Contains("\"DeclaredStage\": \"vertex\"", StringComparison.Ordinal))
 {
-    Console.Error.WriteLine("error: expected frontend, semantic, or IR facts were not written.");
+    Console.Error.WriteLine("error: expected frontend, semantic, or shader model facts were not written.");
     return 1;
 }
 if (!Regex.IsMatch(
-        irText,
-        "\"cppslIr\"\\s*:\\s*\\{.*?\"Version\"\\s*:\\s*1.*?\"EntryPoints\"\\s*:\\s*\\[.*?\"Name\"\\s*:\\s*\"main_vs\".*?\"Body\"\\s*:\\s*\\{.*?\"Kind\"\\s*:\\s*\"CompoundStatement\".*?\"Kind\"\\s*:\\s*\"LocalVariable\".*?\"DisplayName\"\\s*:\\s*\"mul\".*?\"Kind\"\\s*:\\s*\"ReturnStatement\"",
+        shaderModelText,
+        "\"cppslShaderModel\"\\s*:\\s*\\{.*?\"Version\"\\s*:\\s*1.*?\"EntryPoints\"\\s*:\\s*\\[.*?\"Name\"\\s*:\\s*\"main_vs\".*?\"Body\"\\s*:\\s*\\{.*?\"Kind\"\\s*:\\s*\"CompoundStatement\".*?\"Kind\"\\s*:\\s*\"LocalVariable\".*?\"DisplayName\"\\s*:\\s*\"mul\".*?\"Kind\"\\s*:\\s*\"ReturnStatement\"",
         RegexOptions.Singleline))
 {
-    Console.Error.WriteLine("error: expected entry point body AST skeleton was not written to CPPSL IR.");
+    Console.Error.WriteLine("error: expected entry point body was not written to CPPSL shader model.");
+    return 1;
+}
+if (shaderModelText.Contains("cppsl" + "Ir", StringComparison.Ordinal) ||
+    shaderModelText.Contains("cppsl." + "ir", StringComparison.Ordinal) ||
+    shaderModelText.Contains("\"phase\"", StringComparison.OrdinalIgnoreCase) ||
+    shaderModelText.Contains("phase " + "0", StringComparison.OrdinalIgnoreCase) ||
+    shaderModelText.Contains("CPPSL " + "IR", StringComparison.Ordinal))
+{
+    Console.Error.WriteLine("error: shader model artifact must not contain legacy intermediate-form or prototype metadata.");
     return 1;
 }
 if (!reflectionText.Contains("\"Schema\": \"cppsl.reflection\"", StringComparison.Ordinal) ||
@@ -127,12 +136,12 @@ if (!reflectionText.Contains("\"Schema\": \"cppsl.reflection\"", StringCompariso
     Console.Error.WriteLine("error: expected CPPSL reflection facts were not written.");
     return 1;
 }
-if (irText.Contains("\"Name\": \"output\"", StringComparison.Ordinal))
+if (shaderModelText.Contains("\"Name\": \"output\"", StringComparison.Ordinal))
 {
     Console.Error.WriteLine("error: local variables must not be classified as CPPSL globals.");
     return 1;
 }
-if (!Regex.IsMatch(irText, "\"Name\": \"v\".*?\"Attributes\": \\[\\s*\\]", RegexOptions.Singleline))
+if (!Regex.IsMatch(shaderModelText, "\"Name\": \"v\".*?\"Attributes\": \\[\\s*\\]", RegexOptions.Singleline))
 {
     Console.Error.WriteLine("error: function parameters must not inherit function attributes.");
     return 1;
@@ -182,13 +191,13 @@ if (!vectorSwizzleResult.Succeeded || vectorSwizzleResult.Artifacts is null)
     return 1;
 }
 
-var vectorSwizzleIrText = File.ReadAllText(vectorSwizzleResult.Artifacts.IrPath);
+var vectorSwizzleShaderModelText = File.ReadAllText(vectorSwizzleResult.Artifacts.ShaderModelPath);
 var vectorSwizzleHlslText = File.ReadAllText(vectorSwizzleResult.Artifacts.GetOutputPath(CppslOutputTarget.Hlsl));
 var vectorSwizzleGlslText = File.ReadAllText(vectorSwizzleResult.Artifacts.GetOutputPath(CppslOutputTarget.Glsl));
 var vectorSwizzleMslText = File.ReadAllText(vectorSwizzleResult.Artifacts.GetOutputPath(CppslOutputTarget.Msl));
-if (!vectorSwizzleIrText.Contains("\"DisplayName\": \"xyz\"", StringComparison.Ordinal) ||
-    !vectorSwizzleIrText.Contains("\"DisplayName\": \"rgb\"", StringComparison.Ordinal) ||
-    !vectorSwizzleIrText.Contains("\"DisplayName\": \"zwx\"", StringComparison.Ordinal) ||
+if (!vectorSwizzleShaderModelText.Contains("\"DisplayName\": \"xyz\"", StringComparison.Ordinal) ||
+    !vectorSwizzleShaderModelText.Contains("\"DisplayName\": \"rgb\"", StringComparison.Ordinal) ||
+    !vectorSwizzleShaderModelText.Contains("\"DisplayName\": \"zwx\"", StringComparison.Ordinal) ||
     !vectorSwizzleHlslText.Contains("float3 xyz = v.color.xyz;", StringComparison.Ordinal) ||
     !vectorSwizzleHlslText.Contains("float3 rgb = v.color.rgb;", StringComparison.Ordinal) ||
     !vectorSwizzleHlslText.Contains("float3 zwx = v.color.zwx;", StringComparison.Ordinal) ||
@@ -547,7 +556,7 @@ var reflectionOnlyResult = compiler.Compile(new CppslCompileOptions(
 
 if (!reflectionOnlyResult.Succeeded ||
     reflectionOnlyResult.Artifacts is null ||
-    !File.Exists(reflectionOnlyResult.Artifacts.IrPath) ||
+    !File.Exists(reflectionOnlyResult.Artifacts.ShaderModelPath) ||
     !File.Exists(reflectionOnlyResult.Artifacts.GetOutputPath(CppslOutputTarget.Reflection)) ||
     reflectionOnlyResult.Artifacts.Outputs.ContainsKey(CppslOutputTarget.Hlsl) ||
     reflectionOnlyResult.Artifacts.Outputs.ContainsKey(CppslOutputTarget.Glsl) ||

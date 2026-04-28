@@ -1,6 +1,6 @@
 using CPPSL.Core.Compiler;
 using CPPSL.Core.Diagnostics;
-using CPPSL.Core.IR;
+using CPPSL.Core.ShaderModel;
 
 namespace CPPSL.Core.Semantics;
 
@@ -54,14 +54,14 @@ public sealed class CppslSemanticValidator
         return diagnostics;
     }
 
-    public IReadOnlyList<CppslDiagnostic> ValidateIr(CppslIrModule irModule)
+    public IReadOnlyList<CppslDiagnostic> ValidateShaderModel(CppslShaderModel shaderModel)
     {
         var diagnostics = new List<CppslDiagnostic>();
-        foreach (var entryPoint in irModule.EntryPoints)
+        foreach (var entryPoint in shaderModel.EntryPoints)
         {
             ValidateReservedLocalIdentifiers(entryPoint.Body, diagnostics);
         }
-        foreach (var function in irModule.Functions)
+        foreach (var function in shaderModel.Functions)
         {
             ValidateReservedLocalIdentifiers(function.Body, diagnostics);
         }
@@ -137,7 +137,7 @@ public sealed class CppslSemanticValidator
         }
     }
 
-    private static void ValidateReservedLocalIdentifiers(CppslIrNode? node, List<CppslDiagnostic> diagnostics)
+    private static void ValidateReservedLocalIdentifiers(CppslShaderModelNode? node, List<CppslDiagnostic> diagnostics)
     {
         if (node is null)
         {

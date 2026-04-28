@@ -1,6 +1,6 @@
 using System.Text;
 using CPPSL.Core.Compiler;
-using CPPSL.Core.IR;
+using CPPSL.Core.ShaderModel;
 using CPPSL.Core.Semantics;
 
 namespace CPPSL.Core.Output;
@@ -9,7 +9,7 @@ internal sealed class HlslShaderSourceEmitter : CppslShaderSourceEmitterBase
 {
     private Dictionary<string, string> _resourceAccessByPath = new(StringComparer.Ordinal);
 
-    public string Emit(CppslCompileOptions options, CppslSemanticModel model, CppslIrModule irModule)
+    public string Emit(CppslCompileOptions options, CppslSemanticModel model, CppslShaderModel shaderModel)
     {
         var builder = new StringBuilder();
         WriteHeader(builder, "HLSL", options);
@@ -20,8 +20,8 @@ internal sealed class HlslShaderSourceEmitter : CppslShaderSourceEmitterBase
         WriteStructs(builder, options, model, entryPoint);
         WriteGroupSharedGlobals(builder, model);
         WriteResources(builder, model);
-        WriteFunctions(builder, entryPoint, model, irModule);
-        WriteEntryPoint(builder, entryPoint, model, irModule);
+        WriteFunctions(builder, entryPoint, model, shaderModel);
+        WriteEntryPoint(builder, entryPoint, model, shaderModel);
         var source = RewriteResidualResourceAccessPaths(builder.ToString(), model, static global => global.Name);
         _resourceAccessByPath = new Dictionary<string, string>(StringComparer.Ordinal);
         return source;
@@ -31,12 +31,12 @@ internal sealed class HlslShaderSourceEmitter : CppslShaderSourceEmitterBase
         StringBuilder builder,
         CppslFunction? entryPoint,
         CppslSemanticModel model,
-        CppslIrModule irModule)
+        CppslShaderModel shaderModel)
     {
         foreach (var function in model.Functions.Where(function => function.Name != entryPoint?.Name))
         {
-            var irFunction = irModule.Functions.FirstOrDefault(candidate => candidate.Name == function.Name);
-            if (irFunction?.Body is null)
+            var shaderModelFunction = shaderModel.Functions.FirstOrDefault(candidate => candidate.Name == function.Name);
+            if (shaderModelFunction?.Body is null)
             {
                 continue;
             }
@@ -47,7 +47,7 @@ internal sealed class HlslShaderSourceEmitter : CppslShaderSourceEmitterBase
             builder.Append('(');
             builder.Append(string.Join(", ", function.Parameters.Select(parameter => $"{MapValueType(parameter.Type)} {parameter.Name}")));
             builder.AppendLine(")");
-            WriteFunctionBody(builder, function, model, irFunction.Body);
+            WriteFunctionBody(builder, function, model, shaderModelFunction.Body);
             builder.AppendLine();
         }
     }
@@ -124,7 +124,7 @@ internal sealed class HlslShaderSourceEmitter : CppslShaderSourceEmitterBase
         StringBuilder builder,
         CppslFunction? entryPoint,
         CppslSemanticModel model,
-        CppslIrModule irModule)
+        CppslShaderModel shaderModel)
     {
         if (entryPoint is null)
         {
@@ -141,7 +141,7 @@ internal sealed class HlslShaderSourceEmitter : CppslShaderSourceEmitterBase
         builder.Append('(');
         builder.Append(string.Join(", ", entryPoint.Parameters.Select(parameter => $"{MapValueType(parameter.Type)} {parameter.Name}{ParameterSemantic(parameter)}")));
         builder.AppendLine(")");
-        WriteFunctionBody(builder, entryPoint, model, irModule);
+        WriteFunctionBody(builder, entryPoint, model, shaderModel);
     }
 
     protected override string LowerMul(string left, string right)
@@ -149,7 +149,7 @@ internal sealed class HlslShaderSourceEmitter : CppslShaderSourceEmitterBase
         return $"mul({left}, {right})";
     }
 
-    protected override string LowerExpression(CppslIrNode node)
+    protected override string LowerExpression(CppslShaderModelNode node)
     {
         if (TryGetAccessPath(node, out var accessPath) &&
             _resourceAccessByPath.TryGetValue(accessPath, out var resourceAccess))
@@ -174,7 +174,7 @@ internal sealed class HlslShaderSourceEmitter : CppslShaderSourceEmitterBase
         return base.LowerMemberCall(receiver, memberName, arguments);
     }
 
-    protected override string LowerCallExpression(CppslIrNode node)
+    protected override string LowerCallExpression(CppslShaderModelNode node)
     {
         var name = node.DisplayName ?? node.Spelling;
         if (name == "discard_fragment")

@@ -1,7 +1,7 @@
 using CPPSL.Core.Compiler;
 using CPPSL.Core.Diagnostics;
 using CPPSL.Core.Frontend;
-using CPPSL.Core.IR;
+using CPPSL.Core.ShaderModel;
 using CPPSL.Core.Artifacts;
 
 namespace CPPSL.Cli;
@@ -178,7 +178,7 @@ public static class CppslCli
     private static void PrintUsage()
     {
         Console.WriteLine("""
-        cppslc - CPPSL compiler prototype
+        cppslc - CPPSL shader compiler
 
         Usage:
           cppslc compile <shader.cxx> --stage <stage> --entry <name> --include <dir> --out <dir> [--target <target>] [--native-extractor <path>]

@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 using CPPSL.Core.Artifacts;
 using CPPSL.Core.Diagnostics;
 using CPPSL.Core.Frontend;
-using CPPSL.Core.IR;
+using CPPSL.Core.ShaderModel;
 using CPPSL.Core.Output;
 using CPPSL.Core.Reflection;
 using CPPSL.Core.Semantics;
@@ -73,8 +73,8 @@ public sealed class CppslCompiler
             return new CppslCompileResult(false, diagnostics, null);
         }
 
-        var irModule = new CppslIrBuilder().Build(options, sourcePath, semanticModel, frontendResult.AstNodes);
-        diagnostics.AddRange(new CppslSemanticValidator().ValidateIr(irModule));
+        var shaderModel = new CppslShaderModelBuilder().Build(options, sourcePath, semanticModel, frontendResult.AstNodes);
+        diagnostics.AddRange(new CppslSemanticValidator().ValidateShaderModel(shaderModel));
         if (diagnostics.Any(static d => d.Severity == DiagnosticSeverity.Error))
         {
             return new CppslCompileResult(false, diagnostics, null);
@@ -87,11 +87,11 @@ public sealed class CppslCompiler
             static target => target,
             target => Path.Combine(outputDirectory, baseName + target.GetFileExtension()));
         var artifacts = new CppslArtifacts(
-            Path.Combine(outputDirectory, baseName + ".ir.json"),
+            Path.Combine(outputDirectory, baseName + ".shader-model.json"),
             outputs);
 
-        WriteArtifacts(options, sourcePath, includeResult.Files, frontendResult, semanticModel, irModule, targets, artifacts);
-        diagnostics.Add(CppslDiagnostic.Info("CPPSL phase 0 validation completed.", sourcePath));
+        WriteArtifacts(options, sourcePath, includeResult.Files, frontendResult, semanticModel, shaderModel, targets, artifacts);
+        diagnostics.Add(CppslDiagnostic.Info("CPPSL compilation completed.", sourcePath));
         return new CppslCompileResult(true, diagnostics, artifacts);
     }
 
@@ -101,14 +101,13 @@ public sealed class CppslCompiler
         IReadOnlyList<string> files,
         CppslFrontendResult frontendResult,
         CppslSemanticModel semanticModel,
-        CppslIrModule irModule,
+        CppslShaderModel shaderModel,
         IReadOnlyList<CppslOutputTarget> targets,
         CppslArtifacts artifacts)
     {
         var artifactModel = new
         {
             language = "CPPSL",
-            phase = 0,
             source = sourcePath,
             entryPoint = options.EntryPoint,
             stage = options.Stage.ToString(),
@@ -118,17 +117,16 @@ public sealed class CppslCompiler
             files,
             frontendDeclarations = frontendResult.Declarations,
             frontendAst = frontendResult.AstNodes,
-            cppslIr = irModule,
-            cppslSemanticModel = semanticModel,
-            note = "Phase 0 artifact. Function body IR is a source-level AST skeleton, not a lowered backend IR yet."
+            cppslShaderModel = shaderModel,
+            cppslSemanticModel = semanticModel
         };
 
         var jsonOptions = CreateJsonOptions();
-        File.WriteAllText(artifacts.IrPath, JsonSerializer.Serialize(artifactModel, jsonOptions));
+        File.WriteAllText(artifacts.ShaderModelPath, JsonSerializer.Serialize(artifactModel, jsonOptions));
 
         foreach (var target in targets)
         {
-            File.WriteAllText(artifacts.GetOutputPath(target), EmitTarget(target, options, sourcePath, semanticModel, irModule, jsonOptions));
+            File.WriteAllText(artifacts.GetOutputPath(target), EmitTarget(target, options, sourcePath, semanticModel, shaderModel, jsonOptions));
         }
     }
 
@@ -137,7 +135,7 @@ public sealed class CppslCompiler
         CppslCompileOptions options,
         string sourcePath,
         CppslSemanticModel semanticModel,
-        CppslIrModule irModule,
+        CppslShaderModel shaderModel,
         JsonSerializerOptions jsonOptions)
     {
         if (target == CppslOutputTarget.Reflection)
@@ -146,7 +144,7 @@ public sealed class CppslCompiler
             return JsonSerializer.Serialize(reflection, jsonOptions);
         }
 
-        return new CppslShaderSourceEmitter().Emit(target, options, semanticModel, irModule);
+        return new CppslShaderSourceEmitter().Emit(target, options, semanticModel, shaderModel);
     }
 
     private static JsonSerializerOptions CreateJsonOptions()

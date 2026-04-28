@@ -1,4 +1,4 @@
-namespace CPPSL.Core.IR;
+namespace CPPSL.Core.ShaderModel;
 
 public enum ShaderStage
 {
