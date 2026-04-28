@@ -11,8 +11,6 @@ rule("luna.shader")
             os.mkdir(headerdir)
         end 
         target:add("includedirs", headerdir)
-        target:add("deps", "cppsl-native-extractor", {order = true})
-        target:add("deps", "CPPSL", {order = true})
         
         local cpp_rule = target:rule("c++.build"):clone()
         cpp_rule:add("deps", "luna.shader", {order = true})

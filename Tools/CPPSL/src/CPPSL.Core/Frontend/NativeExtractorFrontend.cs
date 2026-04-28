@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -56,7 +57,7 @@ public sealed class NativeExtractorFrontend : ICppslFrontend
 
         try
         {
-            using var process = Process.Start(startInfo);
+            using var process = StartNativeExtractor(startInfo);
             if (process is null)
             {
                 return Failed("CPPSL native extractor process could not be started.", options.SourcePath);
@@ -94,6 +95,41 @@ public sealed class NativeExtractorFrontend : ICppslFrontend
         {
             return Failed($"CPPSL native extractor failed: {ex.Message}", options.SourcePath);
         }
+    }
+
+    private static Process? StartNativeExtractor(ProcessStartInfo startInfo)
+    {
+        Exception? lastException = null;
+        const int maxAttempts = 50;
+        for (var attempt = 0; attempt < maxAttempts; ++attempt)
+        {
+            try
+            {
+                return Process.Start(startInfo);
+            }
+            catch (Exception ex) when (IsTransientStartFailure(ex) && attempt + 1 < maxAttempts)
+            {
+                lastException = ex;
+                Thread.Sleep(100);
+            }
+        }
+
+        if (lastException is not null)
+        {
+            throw lastException;
+        }
+        return Process.Start(startInfo);
+    }
+
+    private static bool IsTransientStartFailure(Exception exception)
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            return false;
+        }
+
+        return exception is Win32Exception { NativeErrorCode: 32 } ||
+            exception is IOException { HResult: var hresult } && (hresult & 0xffff) == 32;
     }
 
     private static CppslFrontendResult Failed(string message, string sourcePath)
