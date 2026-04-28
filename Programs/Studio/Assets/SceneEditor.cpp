@@ -11,8 +11,6 @@
 #include "../SceneRenderer.hpp"
 #include "../MainEditor.hpp"
 #include "../Scene.hpp"
-#include <Luna/ShaderCompiler/ShaderCompiler.hpp>
-#include <Luna/RHI/ShaderCompileHelper.hpp>
 #include <Luna/Runtime/Math/Color.hpp>
 #include <Luna/Window/MessageBox.hpp>
 #include <Luna/HID/Mouse.hpp>
@@ -1035,13 +1033,13 @@ namespace Luna
                 ps_desc.rasterizer_state = RasterizerDesc(FillMode::wireframe, CullMode::none, 0.0f, 0.0f, 0.0f, false, true);
                 ps_desc.depth_stencil_state = DepthStencilDesc(false, false, CompareFunction::always, false, 0x00, 0x00, DepthStencilOpDesc(), DepthStencilOpDesc());
                 ps_desc.ib_strip_cut_value = IndexBufferStripCutValue::disabled;
-                auto attribute = InputAttributeDesc("POSITION", 0, 0, 0, 0, Format::rgba32_float);
+                auto attribute = InputAttributeDesc(0, 0, 0, Format::rgba32_float);
                 auto binding = InputBindingDesc(0, sizeof(Float4U), InputRate::per_vertex);
                 ps_desc.input_layout.attributes = { &attribute, 1 };
                 ps_desc.input_layout.bindings = { &binding, 1 };
                 ps_desc.pipeline_layout = m_grid_playout;
-                ps_desc.vs = LUNA_GET_SHADER_DATA(GridVS);
-                ps_desc.ps = LUNA_GET_SHADER_DATA(GridPS);
+                ps_desc.vs = LUNA_CPPSL_GET_SHADER_DATA(GridVS);
+                ps_desc.ps = LUNA_CPPSL_GET_SHADER_DATA(GridPS);
                 ps_desc.num_color_attachments = 1;
                 ps_desc.color_formats[0] = Format::rgba8_unorm;
 

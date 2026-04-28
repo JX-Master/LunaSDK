@@ -22,7 +22,6 @@
 #include <Luna/HID/Mouse.hpp>
 #include <Luna/Runtime/Math/Matrix.hpp>
 #include <Luna/Font/Font.hpp>
-#include <Luna/RHI/ShaderCompileHelper.hpp>
 #include <Luna/RHIUtility/RHIUtility.hpp>
 #include <Luna/RHIUtility/ResourceWriteContext.hpp>
 #include <Luna/Window/Event.hpp>
@@ -586,14 +585,14 @@ namespace Luna
                     InputBindingDesc(0, sizeof(ImDrawVert), InputRate::per_vertex)
                 };
                 InputAttributeDesc input_attributes[] = {
-                    InputAttributeDesc("POSITION", 0, 0, 0, 0, Format::rg32_float),
-                    InputAttributeDesc("TEXCOORD", 0, 1, 0, 8, Format::rg32_float),
-                    InputAttributeDesc("COLOR", 0, 2, 0, 16, Format::rgba8_unorm)
+                    InputAttributeDesc(0, 0, 0, Format::rg32_float),
+                    InputAttributeDesc(1, 0, 8, Format::rg32_float),
+                    InputAttributeDesc(2, 0, 16, Format::rgba8_unorm)
                 };
                 ps_desc.input_layout.bindings = { input_bindings, 1 };
                 ps_desc.input_layout.attributes = { input_attributes , 3 };
-                ps_desc.vs = LUNA_GET_SHADER_DATA(ImGuiVS);
-                ps_desc.ps = LUNA_GET_SHADER_DATA(ImGuiPS);
+                ps_desc.vs = LUNA_CPPSL_GET_SHADER_DATA(ImGuiVS);
+                ps_desc.ps = LUNA_CPPSL_GET_SHADER_DATA(ImGuiPS);
                 ps_desc.pipeline_layout = g_playout;
                 ps_desc.num_color_attachments = 1;
                 ps_desc.color_formats[0] = rt_format;

@@ -12,9 +12,7 @@
 #include <Luna/Runtime/Runtime.hpp>
 #include <Luna/Runtime/Module.hpp>
 #include <Luna/Runtime/Math/Color.hpp>
-#include <Luna/ShaderCompiler/ShaderCompiler.hpp>
 #include <Luna/Runtime/Log.hpp>
-#include <Luna/RHI/ShaderCompileHelper.hpp>
 #include <Luna/Runtime/Math/Matrix.hpp>
 #include <Luna/Image/Image.hpp>
 #include <Luna/Runtime/File.hpp>
@@ -57,9 +55,9 @@ RV start()
 
         using namespace RHI;
         luset(dlayout, dev->new_descriptor_set_layout(DescriptorSetLayoutDesc({
-            DescriptorSetLayoutBinding::uniform_buffer_view(0, 1, ShaderVisibilityFlag::vertex),
-            DescriptorSetLayoutBinding::read_texture_view(TextureViewType::tex2d, 1, 1, ShaderVisibilityFlag::pixel),
-            DescriptorSetLayoutBinding::sampler(2, 1, ShaderVisibilityFlag::pixel)
+            DescriptorSetLayoutBinding::sampler(15, 1, ShaderVisibilityFlag::pixel),
+            DescriptorSetLayoutBinding::read_texture_view(TextureViewType::tex2d, 8, 1, ShaderVisibilityFlag::pixel),
+            DescriptorSetLayoutBinding::uniform_buffer_view(0, 1, ShaderVisibilityFlag::vertex)
         })));
         luset(desc_set, dev->new_descriptor_set(DescriptorSetDesc(dlayout)));
 
@@ -76,12 +74,12 @@ RV start()
         ps_desc.ib_strip_cut_value = IndexBufferStripCutValue::disabled;
         InputBindingDesc bindings[] = {InputBindingDesc(0, sizeof(Vertex), InputRate::per_vertex)};
         InputAttributeDesc attributes[] = {
-            InputAttributeDesc("POSITION", 0, 0, 0, 0, Format::rgb32_float),
-            InputAttributeDesc("TEXCOORD", 0, 1, 0, 12, Format::rg32_float)
+            InputAttributeDesc(0, 0, 0, Format::rgb32_float),
+            InputAttributeDesc(1, 0, 12, Format::rg32_float)
         };
         ps_desc.input_layout = InputLayoutDesc({bindings, 1}, {attributes, 2});
-        ps_desc.vs = LUNA_GET_SHADER_DATA(TestBoxVS);
-        ps_desc.ps = LUNA_GET_SHADER_DATA(TestBoxPS);
+        ps_desc.vs = LUNA_CPPSL_GET_SHADER_DATA(TestBoxVS);
+        ps_desc.ps = LUNA_CPPSL_GET_SHADER_DATA(TestBoxPS);
         ps_desc.pipeline_layout = playout;
         ps_desc.num_color_attachments = 1;
         ps_desc.color_formats[0] = Format::bgra8_unorm;
@@ -146,10 +144,10 @@ RV start()
         luexp(writer->commit(upload_cmdbuf, true));
         luexp(desc_set->update_descriptors(
             {
+                WriteDescriptorSet::sampler(15, SamplerDesc(Filter::linear, Filter::linear, Filter::linear, TextureAddressMode::clamp,
+                        TextureAddressMode::clamp, TextureAddressMode::clamp)),
                 WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(cb)),
-                WriteDescriptorSet::read_texture_view(1, TextureViewDesc::tex2d(file_tex)),
-                WriteDescriptorSet::sampler(2, SamplerDesc(Filter::linear, Filter::linear, Filter::linear, TextureAddressMode::clamp,
-                        TextureAddressMode::clamp, TextureAddressMode::clamp))
+                WriteDescriptorSet::read_texture_view(8, TextureViewDesc::tex2d(file_tex))
             }));
     }
     lucatchret;

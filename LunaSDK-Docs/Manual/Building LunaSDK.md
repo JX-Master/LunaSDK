@@ -1,10 +1,12 @@
 ## Prerequisites
 ### Common
 * xmake building system, check [here](https://xmake.io/#/guide/installation) for installation instructions.
+* .NET 10, check [here](https://dotnet.microsoft.com/download) for installation instructions.
 ### Windows
-* Visual Studio 2019 or later (Choose C++ desktop development & C++ game development workload).
+* Visual Studio 2022 or later (Choose C++ desktop development & C++ game development workload).
 ### macOS
 * XCode and Command Line Tool.
+* Metal toolchain (`xcodebuild -downloadComponent MetalToolchain`).
 ### Android
 * Android Studio with Android SDK of your choice (Level 31 and newer is tested).
 * Install NDK (29.0.14206865 or newer) in `Tools -> SDK Manager` in Android Studio.
@@ -112,10 +114,10 @@ After you setup LLDB DAP, you can create a `launch.json` file in `.vscode` to st
 ### Visual Studio
 1. Clone or download this project.
 2. Double click `setup.bat` to perform project setup.
-3. Double click `gen_vs2019.bat` or execute the following commands:
-    ``` xmake project  -y -k vsxmake2019 -m "debug;profile;release" Solution ```
-    if you user other Visual Studio versions, change `vsxmake2019` to your version, like `vsxmake2021`.
-4. Open solution file in `/Solution/vsxmake2019/Luna.sln`
+3. Double click `gen_vs2022.bat` or execute the following commands:
+    ``` xmake project  -y -k vsxmake2022 -m "debug;profile;release" Solution ```
+    if you user other Visual Studio versions, change `vsxmake2022` to your version, like `vsxmake2026`.
+4. Open solution file in `/Solution/vsxmake2022/Luna.sln`
 5. Build solution in Visual Studio.
 
 ### XCode

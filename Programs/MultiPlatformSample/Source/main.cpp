@@ -6,8 +6,6 @@
 #include <Luna/Window/Event.hpp>
 #include <Luna/RHI/RHI.hpp>
 #include <Luna/RHIUtility/RHIUtility.hpp>
-#include <Luna/ShaderCompiler/ShaderCompiler.hpp>
-#include <Luna/RHI/ShaderCompileHelper.hpp>
 #include <Luna/RHI/RHI.hpp>
 #include <Luna/Runtime/Math/Matrix.hpp>
 #include <Luna/RHIUtility/ResourceWriteContext.hpp>
@@ -106,16 +104,16 @@ RV DemoApp::init()
         ps_desc.depth_stencil_state = DepthStencilDesc(true, true, CompareFunction::less_equal);
         ps_desc.ib_strip_cut_value = IndexBufferStripCutValue::disabled;
         InputAttributeDesc input_attributes[] = {
-            InputAttributeDesc("POSITION", 0, 0, 0, 0, Format::rgb32_float),
-            InputAttributeDesc("TEXCOORD", 0, 1, 0, 12, Format::rg32_float)
+            InputAttributeDesc(0, 0, 0, Format::rgb32_float),
+            InputAttributeDesc(1, 0, 12, Format::rg32_float)
         };
         InputBindingDesc input_bindings[] = {
             InputBindingDesc(0, 20, InputRate::per_vertex)
         };
         ps_desc.input_layout.attributes = {input_attributes, 2};
         ps_desc.input_layout.bindings = {input_bindings, 1};
-        ps_desc.vs = LUNA_GET_SHADER_DATA(BoxVert);
-        ps_desc.ps = LUNA_GET_SHADER_DATA(BoxPixel);
+        ps_desc.vs = LUNA_CPPSL_GET_SHADER_DATA(BoxVert);
+        ps_desc.ps = LUNA_CPPSL_GET_SHADER_DATA(BoxPixel);
         ps_desc.pipeline_layout = playout;
         ps_desc.num_color_attachments = 1;
         ps_desc.color_formats[0] = Format::rgba8_unorm;
@@ -322,8 +320,7 @@ RV run_app()
     auto result = add_modules({
         module_window(),
         module_rhi(),
-        module_rhi_utility(),
-        module_shader_compiler()
+        module_rhi_utility()
     });
     if(failed(result)) return result;
     result = init_modules();

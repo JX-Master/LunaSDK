@@ -45,8 +45,8 @@ namespace Luna
             InputBindingDesc binding(0, sizeof(Vertex), InputRate::per_vertex);
             ps_desc.input_layout.bindings = { &binding, 1 };
             ps_desc.input_layout.attributes = { attributes.data(), attributes.size() };
-            ps_desc.vs = LUNA_GET_SHADER_DATA(WireframeVert);
-            ps_desc.ps = LUNA_GET_SHADER_DATA(WireframePixel);
+            ps_desc.vs = LUNA_CPPSL_GET_SHADER_DATA(WireframeVert);
+            ps_desc.ps = LUNA_CPPSL_GET_SHADER_DATA(WireframePixel);
             ps_desc.pipeline_layout = m_debug_mesh_renderer_playout;
             ps_desc.num_color_attachments = 1;
             ps_desc.color_formats[0] = Format::rgba8_unorm;

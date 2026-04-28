@@ -34,7 +34,7 @@ namespace Luna
                 PipelineLayoutFlag::deny_pixel_shader_access)));
 
             ComputePipelineStateDesc ps_desc;
-            LUNA_FILL_COMPUTE_SHADER_DATA(ps_desc, BufferVisualization);
+            LUNA_CPPSL_FILL_COMPUTE_SHADER_DATA(ps_desc, BufferVisualization);
             ps_desc.pipeline_layout = m_buffer_visualization_pass_playout;
             luset(m_buffer_visualization_pass_pso, device->new_compute_pipeline_state(ps_desc));
         }
@@ -95,7 +95,7 @@ namespace Luna
                 WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(m_vis_params, 0, (u32)align_upper(sizeof(u32), cb_align))),
                 WriteDescriptorSet::read_texture_view(1, TextureViewDesc::tex2d(base_color_roughness_tex)),
                 WriteDescriptorSet::read_texture_view(2, TextureViewDesc::tex2d(normal_metallic_tex)),
-                WriteDescriptorSet::read_texture_view(3, TextureViewDesc::tex2d(depth_tex)),
+                WriteDescriptorSet::read_texture_view(3, TextureViewDesc::tex2d(depth_tex, Format::d32_float, 0, 1)),
                 WriteDescriptorSet::read_write_texture_view(4, TextureViewDesc::tex2d(scene_tex))
                 }));
             auto scene_desc = scene_tex->get_desc();

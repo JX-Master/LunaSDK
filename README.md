@@ -17,7 +17,7 @@ Specifications:
 * Job system and thread pool for asynchronous computing.
 * Render Hardware Interface (RHI) targeting Direct3D 12, Vulkan and Metal.
 * Window management API.
-* Shader compiling APIs that compile HLSL shaders to DXIL, SPIR-V and Metal.
+* CPPSL shader compilation pipeline targeting DXIL, SPIR-V and Metal.
 * Low-latency Audio Hardware Interface (AHI).
 * Human Interface Device API providing APIs to access input / output devices.
 * Asset system and virtual file system for managing assets at runtime.
@@ -28,10 +28,10 @@ Specifications:
 Designed target platforms:
 
 * Windows (Direct3D 12+/Vulkan 1.0+)
-* macOS (Metal 2+)
+* macOS (Metal 3.2+)
 * Linux (Vulkan) (Not implemented yet.)
 * Android (Vulkan 1.0+)
-* iOS (Metal 2+)
+* iOS (Metal 3.2+)
 
 ## System Requirements
 
@@ -79,14 +79,16 @@ Docs are placed at `./LunaSDK-Docs` directory. Use [Obsidian](https://obsidian.m
 LunaSDK uses the following third party SDKs:
 1. [Dear ImGui](https://github.com/ocornut/imgui) for GUI rendering (MIT License).
 1. [ImGuizmo](https://github.com/CedricGuillemet/ImGuizmo) for rendering gizmos using ImGui (MIT License).
-1. [DirectX Shader Compiler](https://github.com/microsoft/DirectXShaderCompiler) for compiling HLSL shaders (University of Illinois Open Source License).
+1. [DirectX Shader Compiler](https://github.com/microsoft/DirectXShaderCompiler) for compiling CPPSL-generated HLSL to DXIL (University of Illinois Open Source License).
 1. [STB](https://github.com/nothings/stb) for image file reading/writing and ttf font file processing (public domain).
 1. [Vulkan Memory Allocator](https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator) for allocating device memory on Vulkan backend (MIT License).
 1. [Volk](https://github.com/zeux/volk.git) for dynamically loading Vulkan interfaces (MIT License).
 1. [D3D12 Memory Allocator](https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator) for allocating device memory on D3D12 backend (MIT License).
 1. [miniaudio](https://miniaud.io/index.html) for cross-platform low-level platform audio interface (public domain).
-1. [SPIRV-Cross](https://github.com/KhronosGroup/SPIRV-Cross.git) for generating metal shader code from SPIR-V (Apache-2.0 License).
+1. [Khronos glslang](https://github.com/KhronosGroup/glslang) for compiling CPPSL-generated GLSL to SPIR-V (Apache-2.0 License).
 1. [Lua](https://www.lua.org/about.html) for Lua scripting environment (MIT License).
+1. [.NET](https://dotnet.microsoft.com) for implementing CPPSL (Cpp Shader Language) compiler (MIT License).
+1. [LLVM](https://llvm.org) for implementing CPPSL (Cpp Shader Language) compiler (Apache-2.0 License).
 
 All SDKs are either embedded in the project, or can be fetched automatically by xmake scripts, the user does not need to install them manually.
 
@@ -113,4 +115,3 @@ LunaSDK is licensed under the zlib/libpng license, see [LICENSE.txt](./LICENSE.t
 ![](./LunaSDK-Docs/Res/luna-robot.png)
 
 Say Hi to our mascot, a LunaSDK LOGO with two ellipses that look like eyes of one spherical robot.
-

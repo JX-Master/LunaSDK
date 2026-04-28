@@ -255,8 +255,8 @@ namespace Luna
                 {
                     D3D12_INPUT_ELEMENT_DESC& e = input_elements[i];
                     auto& se = desc.input_layout.attributes[i];
-                    e.SemanticName = se.semantic_name;
-                    e.SemanticIndex = se.semantic_index;
+                    e.SemanticName = "TEXCOORD";
+                    e.SemanticIndex = se.location;
                     e.Format = encode_format(se.format);
                     e.InputSlot = se.binding_slot;
                     e.AlignedByteOffset = se.offset;

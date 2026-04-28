@@ -44,29 +44,29 @@ namespace Luna
         {
             @autoreleasepool
             {
-                m_bindings.assign_n(desc.bindings.data(), desc.bindings.size());
+                Array<DescriptorSetLayoutBinding> desc_bindings(desc.bindings.data(), desc.bindings.size());
+                sort(desc_bindings.begin(), desc_bindings.end(),
+                    [](const DescriptorSetLayoutBinding& lhs, const DescriptorSetLayoutBinding& rhs) { return lhs.binding_slot < rhs.binding_slot; });
+                m_bindings.assign_n(desc_bindings.data(), desc_bindings.size());
                 m_flags = desc.flags;
-                if(m_device->m_support_metal_3_family)
+                m_argument_offsets.assign(m_bindings.size());
+                m_num_arguments = 0;
+                for(usize i = 0; i < m_bindings.size(); ++i)
                 {
-                    m_argument_offsets.assign(m_bindings.size());
-                    m_num_arguments = 0;
-                    for(usize i = 0; i < m_bindings.size(); ++i)
+                    m_argument_offsets[i] = m_num_arguments;
+                    if(!(test_flags(m_flags, DescriptorSetLayoutFlag::variable_descriptors) && i == m_bindings.size() - 1))
                     {
-                        m_argument_offsets[i] = m_num_arguments;
-                        if(!(test_flags(m_flags, DescriptorSetLayoutFlag::variable_descriptors) && i == m_bindings.size() - 1))
-                        {
-                            m_num_arguments += m_bindings[i].num_descs;
-                        }
+                        m_num_arguments += m_bindings[i].num_descs;
                     }
                 }
-                else
+                if(!m_device->m_support_metal_3_family)
                 {
                     NSMutableArray<MTLArgumentDescriptor*>* argument_descriptors = [NSMutableArray arrayWithCapacity: m_bindings.size()];
                     for(usize i = 0; i < m_bindings.size(); ++i)
                     {
                         MTLArgumentDescriptor* dst = [[MTLArgumentDescriptor alloc]init];
                         const DescriptorSetLayoutBinding& src = m_bindings[i];
-                        dst.index = src.binding_slot;
+                        dst.index = m_argument_offsets[i];
                         dst.arrayLength = src.num_descs;
                         switch(src.type)
                         {

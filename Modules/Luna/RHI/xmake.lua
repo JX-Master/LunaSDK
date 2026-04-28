@@ -7,7 +7,25 @@ option_end()
 
 luna_sdk_module_target("RHI")
     add_options("rhi_api", "rhi_debug")
-    add_headerfiles("*.hpp", {prefixdir = "Luna/RHI"})
+    add_headerfiles(
+        "Adapter.hpp",
+        "Buffer.hpp",
+        "CommandBuffer.hpp",
+        "CppslShaderHelper.hpp",
+        "DescriptorSet.hpp",
+        "DescriptorSetLayout.hpp",
+        "Device.hpp",
+        "DeviceChild.hpp",
+        "DeviceMemory.hpp",
+        "Fence.hpp",
+        "PipelineLayout.hpp",
+        "PipelineState.hpp",
+        "QueryHeap.hpp",
+        "Resource.hpp",
+        "RHI.hpp",
+        "SwapChain.hpp",
+        "Texture.hpp",
+        {prefixdir = "Luna/RHI"})
     add_headerfiles("Source/*.hpp", {install = false})
     add_files("Source/*.cpp")
     if is_config("rhi_api", "D3D12") then
@@ -29,4 +47,3 @@ luna_sdk_module_target("RHI")
     end
     add_deps("Runtime", "Window")
 target_end()
-
