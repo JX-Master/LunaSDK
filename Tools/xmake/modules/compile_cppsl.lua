@@ -206,6 +206,22 @@ local function cppslc_path(projectdir)
     os.raise("cppslc was not built: " .. tool .. "\nBuild the CPPSL target before compiling CPPSL shaders.")
 end
 
+local function native_extractor_executable_name()
+    local executable = "cppsl-native-extractor"
+    if is_host("windows") then
+        executable = executable .. ".exe"
+    end
+    return executable
+end
+
+local function native_extractor_path(projectdir)
+    local tool = path.join(projectdir, "Tools", "CPPSL", "native", "bin", native_extractor_executable_name())
+    if os.isfile(tool) then
+        return tool
+    end
+    os.raise("CPPSL native extractor was not built: " .. tool .. "\nBuild the CPPSL target before compiling CPPSL shaders.")
+end
+
 local function cppsl_target_from_format(target_format)
     if target_format == "dxil" then
         return "hlsl"
@@ -246,6 +262,7 @@ function compile_cppsl(shader_file, configs)
     local generated_dir = path.join(path.directory(output_file), ".cppsl", source_name)
 
     local tool = cppslc_path(projectdir)
+    local native_extractor = native_extractor_path(projectdir)
 
     local requested_target = cppsl_target
     if target_format == "msl" then
@@ -266,7 +283,9 @@ function compile_cppsl(shader_file, configs)
         "--out",
         generated_dir,
         "--target",
-        requested_target
+        requested_target,
+        "--native-extractor",
+        native_extractor
     }
     os.runv(tool, args)
 

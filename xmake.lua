@@ -11,6 +11,7 @@ rule("luna.shader")
             os.mkdir(headerdir)
         end 
         target:add("includedirs", headerdir)
+        target:add("deps", "cppsl-native-extractor", {order = true})
         target:add("deps", "CPPSL", {order = true})
         
         local cpp_rule = target:rule("c++.build"):clone()
@@ -204,7 +205,8 @@ target("CPPSL")
     set_kind("phony")
     add_deps("cppsl-native-extractor")
     on_build(function ()
-        local cli_project = path.join(os.projectdir(), "Tools", "CPPSL", "src", "CPPSL.Cli", "CPPSL.Cli.csproj")
+        local projectdir = os.projectdir()
+        local cli_project = path.join(projectdir, "Tools", "CPPSL", "src", "CPPSL.Cli", "CPPSL.Cli.csproj")
         os.runv("dotnet", {
             "build",
             cli_project,
@@ -213,6 +215,14 @@ target("CPPSL")
             "--nologo",
             "-p:UseSharedCompilation=false"
         })
+        local cppslc = path.join(projectdir, "Tools", "CPPSL", "src", "CPPSL.Cli", "bin", "Debug", "net9.0", is_host("windows") and "cppslc.exe" or "cppslc")
+        if not os.isfile(cppslc) then
+            os.raise("CPPSL CLI build did not produce: " .. cppslc)
+        end
+        local native_extractor = path.join(projectdir, "Tools", "CPPSL", "native", "bin", is_host("windows") and "cppsl-native-extractor.exe" or "cppsl-native-extractor")
+        if not os.isfile(native_extractor) then
+            os.raise("CPPSL native extractor build did not produce: " .. native_extractor)
+        end
     end)
 
 includes("Modules")
