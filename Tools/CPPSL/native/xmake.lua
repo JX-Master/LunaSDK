@@ -23,6 +23,8 @@ target("cppsl-native-extractor")
         add_cxxflags("-fno-rtti")
         add_links("clang-cpp")
         add_rpathdirs(path.join(llvm_sdk, "lib"))
+        add_rpathdirs("@loader_path/../../../../llvm-21.1.1/macosx/arm64/lib")
+        add_ldflags("-Wl,-headerpad_max_install_names")
         add_frameworks("CoreServices", "CoreFoundation")
     elseif os.host() == "windows" then
         -- The bundled Windows LLVM SDK is built with the release MSVC runtime
