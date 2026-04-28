@@ -17,9 +17,11 @@ luna_sdk_module_target("ShaderCompiler")
         if is_os("windows") then 
             add_includedirs("$(projectdir)/SDKs/vulkan-tools/windows/include")
             if is_arch("x64") then 
+                add_includedirs("$(projectdir)/SDKs/vulkan-tools/windows/x64/include")
                 add_linkdirs("$(projectdir)/SDKs/vulkan-tools/windows/x64/lib")
                 add_installfiles("$(projectdir)/SDKs/vulkan-tools/windows/x64/bin/dxcompiler.dll", {prefixdir = "bin", public = true})
             elseif is_arch("arm64") then 
+                add_includedirs("$(projectdir)/SDKs/vulkan-tools/windows/arm64/include")
                 add_linkdirs("$(projectdir)/SDKs/vulkan-tools/windows/arm64/lib")
                 add_installfiles("$(projectdir)/SDKs/vulkan-tools/windows/arm64/bin/dxcompiler.dll", {prefixdir = "bin", public = true})
             end
