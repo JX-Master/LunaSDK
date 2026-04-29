@@ -20,7 +20,7 @@ public sealed class CppslSemanticModelBuilder
             .ToArray();
 
         var rawGlobals = sourceTopLevelNodes
-            .Where(static node => node.Kind == CppslAstNodeKind.GlobalVariable)
+            .Where(static node => node.Kind == CppslAstNodeKind.GlobalVariable && !node.IsConstexpr)
             .Select(ToGlobal)
             .ToArray();
         var globals = ExpandDescriptorSetGlobals(rawGlobals, structs).ToArray();

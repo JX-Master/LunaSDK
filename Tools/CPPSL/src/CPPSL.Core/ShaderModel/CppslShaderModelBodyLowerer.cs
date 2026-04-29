@@ -46,7 +46,7 @@ internal sealed class CppslShaderModelBodyLowerer
             node.Children.Any(static child => child.Kind == CppslAstNodeKind.CompoundStatement));
 
         var bodyNode = functionNode?.Children.FirstOrDefault(static child => child.Kind == CppslAstNodeKind.CompoundStatement);
-        return bodyNode is null ? null : LowerNode(bodyNode);
+        return bodyNode is null ? null : LowerNode(bodyNode, BuildConstantMap(astNodes));
     }
 
     public CppslShaderModelNode? LowerMethodBody(IReadOnlyList<CppslAstNode> astNodes, string? methodDeclId, string ownerType, string methodName)
@@ -61,11 +61,23 @@ internal sealed class CppslShaderModelBodyLowerer
             node.Children.Any(static child => child.Kind == CppslAstNodeKind.CompoundStatement));
 
         var bodyNode = methodNode?.Children.FirstOrDefault(static child => child.Kind == CppslAstNodeKind.CompoundStatement);
-        return bodyNode is null ? null : LowerNode(bodyNode);
+        return bodyNode is null ? null : LowerNode(bodyNode, BuildConstantMap(astNodes));
     }
 
-    private static CppslShaderModelNode LowerNode(CppslAstNode node)
+    private static CppslShaderModelNode LowerNode(
+        CppslAstNode node,
+        IReadOnlyDictionary<string, ConstantInfo> constantsByDeclId)
     {
+        var constantValue = node.ConstantValue;
+        var isConstexpr = node.IsConstexpr;
+        if (node.Kind == CppslAstNodeKind.DeclRefExpression &&
+            node.ReferencedDeclId is not null &&
+            constantsByDeclId.TryGetValue(node.ReferencedDeclId, out var constant))
+        {
+            constantValue = constant.Value;
+            isConstexpr = true;
+        }
+
         return new CppslShaderModelNode(
             LowerKind(node.Kind),
             node.Spelling,
@@ -75,15 +87,45 @@ internal sealed class CppslShaderModelBodyLowerer
             node.ReferencedDeclId,
             node.DirectCalleeDeclId,
             node.TemplatePatternDeclId,
-            node.IsConstexpr,
+            isConstexpr,
             node.IsTemplateInstantiation,
             node.UsesDefaultArgument,
-            node.ConstantValue,
+            constantValue,
             node.TemplateArguments.Select(LowerTemplateArgument).ToArray(),
             node.Children
                 .Where(static child => TryLowerKind(child.Kind, out _))
-                .Select(LowerNode)
+                .Select(child => LowerNode(child, constantsByDeclId))
                 .ToArray());
+    }
+
+    private static IReadOnlyDictionary<string, ConstantInfo> BuildConstantMap(IReadOnlyList<CppslAstNode> astNodes)
+    {
+        var constants = new Dictionary<string, ConstantInfo>(StringComparer.Ordinal);
+        foreach (var node in Flatten(astNodes))
+        {
+            if (node.Kind is not (CppslAstNodeKind.GlobalVariable or CppslAstNodeKind.LocalVariable) ||
+                !node.IsConstexpr ||
+                string.IsNullOrWhiteSpace(node.CanonicalDeclId) ||
+                string.IsNullOrWhiteSpace(node.ConstantValue))
+            {
+                continue;
+            }
+
+            constants[node.CanonicalDeclId] = new ConstantInfo(node.ConstantValue!);
+        }
+        return constants;
+    }
+
+    private static IEnumerable<CppslAstNode> Flatten(IEnumerable<CppslAstNode> nodes)
+    {
+        foreach (var node in nodes)
+        {
+            yield return node;
+            foreach (var child in Flatten(node.Children))
+            {
+                yield return child;
+            }
+        }
     }
 
     private static CppslShaderModelType LowerType(CppslTypeInfo type)
@@ -121,4 +163,6 @@ internal sealed class CppslShaderModelBodyLowerer
 
         return Enum.TryParse(kind.ToString(), out shaderModelKind);
     }
+
+    private sealed record ConstantInfo(string Value);
 }

@@ -25,8 +25,50 @@ var structMethodShader = Path.Combine(fixturesRoot, "valid", "struct_method", "S
 var nonConstStructMethodShader = Path.Combine(fixturesRoot, "valid", "non_const_struct_method", "NonConstStructMethod.cxx");
 var schemaV3Shader = Path.Combine(fixturesRoot, "valid", "schema_v3", "SchemaV3.cxx");
 var defaultArgumentsOverloadShader = Path.Combine(fixturesRoot, "valid", "default_arguments_overload", "DefaultArgumentsOverload.cxx");
+var constexprEvaluationShader = Path.Combine(fixturesRoot, "valid", "constexpr_evaluation", "ConstexprEvaluation.cxx");
 
 if (!ExpectSchemaV3Facts(schemaV3Shader, stdRoot))
+{
+    return 1;
+}
+
+var constexprEvaluationResult = compiler.Compile(new CppslCompileOptions(
+    constexprEvaluationShader,
+    Path.Combine(outputDir, "constexpr-evaluation"),
+    new[] { stdRoot },
+    "main_vs",
+    ShaderStage.Vertex));
+if (!constexprEvaluationResult.Succeeded || constexprEvaluationResult.Artifacts is null)
+{
+    Console.Error.WriteLine("error: expected constexpr_evaluation fixture to compile.");
+    foreach (var diagnostic in constexprEvaluationResult.Diagnostics)
+    {
+        Console.Error.WriteLine(diagnostic.ToDisplayString());
+    }
+    return 1;
+}
+
+var constexprEvaluationHlslText = File.ReadAllText(constexprEvaluationResult.Artifacts.GetOutputPath(CppslOutputTarget.Hlsl));
+var constexprEvaluationGlslText = File.ReadAllText(constexprEvaluationResult.Artifacts.GetOutputPath(CppslOutputTarget.Glsl));
+var constexprEvaluationMslText = File.ReadAllText(constexprEvaluationResult.Artifacts.GetOutputPath(CppslOutputTarget.Msl));
+if (!AssertNotContainsAny(
+        constexprEvaluationHlslText + constexprEvaluationGlslText + constexprEvaluationMslText,
+        new[] { "kSteps", "kBias", "kUseBias", "999.0" },
+        "expected constexpr globals and discarded branches to be folded away."))
+{
+    return 1;
+}
+if (!AssertContainsAll(
+        constexprEvaluationGlslText,
+        new[] { "float ApplyConstexpr(float value)", "return ((value + 1.25) + 4.0);", "vec4(ApplyConstexpr(v.weight), 4.0, 0.625, 1.0)" },
+        "expected GLSL constexpr values to be folded into scalar literals."))
+{
+    return 1;
+}
+if (!AssertNotContainsAny(
+        constexprEvaluationHlslText + constexprEvaluationGlslText + constexprEvaluationMslText,
+        new[] { "local_scale" },
+        "expected constexpr local declarations to be folded away."))
 {
     return 1;
 }

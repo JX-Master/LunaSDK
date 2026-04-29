@@ -384,7 +384,7 @@ internal abstract class CppslShaderSourceEmitterBase
                 builder.AppendLine($"{prefix}}}");
                 break;
             case CppslShaderModelNodeKind.DeclarationStatement:
-                foreach (var child in node.Children.Where(static child => child.Kind == CppslShaderModelNodeKind.LocalVariable))
+                foreach (var child in node.Children.Where(static child => child.Kind == CppslShaderModelNodeKind.LocalVariable && !child.IsConstexpr))
                 {
                     var initializerNode = child.Children.LastOrDefault();
                     var hasExplicitInitializer = initializerNode is not null &&
@@ -406,6 +406,9 @@ internal abstract class CppslShaderSourceEmitterBase
                 break;
             case CppslShaderModelNodeKind.ReturnStatement:
                 builder.AppendLine($"{prefix}return;");
+                break;
+            case CppslShaderModelNodeKind.IfStatement when node.IsConstexpr && TryGetBooleanConstant(node.Children.FirstOrDefault(), out var condition):
+                WriteConstexprBranch(builder, node, condition, indent);
                 break;
             case CppslShaderModelNodeKind.IfStatement when node.Children.Count >= 2:
                 builder.AppendLine($"{prefix}if ({LowerExpression(node.Children[0])})");
@@ -455,6 +458,11 @@ internal abstract class CppslShaderSourceEmitterBase
 
     protected virtual string LowerExpression(CppslShaderModelNode node)
     {
+        if (TryFormatConstantExpression(node, out var constantExpression))
+        {
+            return constantExpression;
+        }
+
         return node.Kind switch
         {
             CppslShaderModelNodeKind.ImplicitCastExpression or CppslShaderModelNodeKind.ParenExpression when node.Children.Count == 1 =>
@@ -495,6 +503,112 @@ internal abstract class CppslShaderSourceEmitterBase
             _ when node.Children.Count == 1 => LowerExpression(node.Children[0]),
             _ => node.Spelling
         };
+    }
+
+    private void WriteConstexprBranch(StringBuilder builder, CppslShaderModelNode node, bool condition, int indent)
+    {
+        var selected = condition
+            ? node.Children.ElementAtOrDefault(1)
+            : node.Children.ElementAtOrDefault(2);
+        if (selected is null)
+        {
+            return;
+        }
+
+        if (selected.Kind == CppslShaderModelNodeKind.CompoundStatement)
+        {
+            WriteStatementChildren(builder, selected, indent);
+        }
+        else
+        {
+            WriteStatement(builder, selected, indent);
+        }
+    }
+
+    private static bool TryGetBooleanConstant(CppslShaderModelNode? node, out bool value)
+    {
+        value = false;
+        if (node is null)
+        {
+            return false;
+        }
+
+        var constant = node.ConstantValue;
+        if (string.IsNullOrWhiteSpace(constant) && node.Children.Count == 1)
+        {
+            return TryGetBooleanConstant(node.Children[0], out value);
+        }
+
+        if (string.Equals(constant, "true", StringComparison.OrdinalIgnoreCase) || constant == "1")
+        {
+            value = true;
+            return true;
+        }
+        if (string.Equals(constant, "false", StringComparison.OrdinalIgnoreCase) || constant == "0")
+        {
+            value = false;
+            return true;
+        }
+        return false;
+    }
+
+    private bool TryFormatConstantExpression(CppslShaderModelNode node, out string expression)
+    {
+        expression = string.Empty;
+        if (string.IsNullOrWhiteSpace(node.ConstantValue) ||
+            node.Kind is CppslShaderModelNodeKind.IntegerLiteral or
+                CppslShaderModelNodeKind.FloatingLiteral or
+                CppslShaderModelNodeKind.BooleanLiteral or
+                CppslShaderModelNodeKind.StringLiteral or
+                CppslShaderModelNodeKind.LocalVariable)
+        {
+            return false;
+        }
+
+        var type = NormalizeShaderTypeName(node.Type ?? node.TypeInfo?.Spelling ?? string.Empty);
+        switch (type)
+        {
+            case "bool":
+            case "_Bool":
+                if (string.Equals(node.ConstantValue, "true", StringComparison.OrdinalIgnoreCase) || node.ConstantValue == "1")
+                {
+                    expression = "true";
+                    return true;
+                }
+                if (string.Equals(node.ConstantValue, "false", StringComparison.OrdinalIgnoreCase) || node.ConstantValue == "0")
+                {
+                    expression = "false";
+                    return true;
+                }
+                return false;
+            case "float":
+                expression = FormatFloatingLiteral(EnsureFloatingLiteral(node.ConstantValue));
+                return true;
+            case "uint":
+            case "unsigned int":
+                expression = node.ConstantValue.EndsWith('u') || node.ConstantValue.EndsWith('U')
+                    ? node.ConstantValue
+                    : node.ConstantValue + "u";
+                return true;
+            case "int":
+                expression = node.ConstantValue;
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    private static string EnsureFloatingLiteral(string value)
+    {
+        if (value.Contains('.') ||
+            value.IndexOf('e') >= 0 ||
+            value.IndexOf('E') >= 0 ||
+            value.EndsWith('f') ||
+            value.EndsWith('F'))
+        {
+            return value;
+        }
+        return value + ".0";
     }
 
     protected virtual string LowerCallExpression(CppslShaderModelNode node)
@@ -716,7 +830,7 @@ internal abstract class CppslShaderSourceEmitterBase
         if (node.Kind == CppslShaderModelNodeKind.DeclarationStatement)
         {
             var declarations = node.Children
-                .Where(static child => child.Kind == CppslShaderModelNodeKind.LocalVariable)
+                .Where(static child => child.Kind == CppslShaderModelNodeKind.LocalVariable && !child.IsConstexpr)
                 .Select(child =>
                 {
                     var initializerNode = child.Children.LastOrDefault();

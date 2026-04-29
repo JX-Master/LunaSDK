@@ -504,6 +504,10 @@ std::string TryEvaluateConstantValue(const clang::ASTContext& ast_context, const
     switch (result.Val.getKind())
     {
     case clang::APValue::Int:
+        if (expression->getType()->isBooleanType())
+        {
+            return result.Val.getInt().isZero() ? "false" : "true";
+        }
         return APSIntToString(result.Val.getInt());
     case clang::APValue::Float:
     {
@@ -735,6 +739,10 @@ AstNode MakeStmtNode(const clang::Stmt* stmt, const clang::ASTContext& ast_conte
     node.location = GetLocation(source_manager, stmt->getBeginLoc());
     node.range = GetRange(source_manager, stmt->getSourceRange());
     node.uses_default_argument = llvm::isa<clang::CXXDefaultArgExpr>(stmt);
+    if (const auto* if_statement = llvm::dyn_cast<clang::IfStmt>(stmt))
+    {
+        node.is_constexpr = if_statement->isConstexpr();
+    }
 
     if (const auto* expression = llvm::dyn_cast<clang::Expr>(stmt))
     {
