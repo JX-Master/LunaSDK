@@ -82,6 +82,9 @@ struct AstNode
     bool is_constexpr = false;
     bool is_template_instantiation = false;
     bool uses_default_argument = false;
+    bool has_base_classes = false;
+    bool is_virtual = false;
+    bool is_user_defined_operator = false;
     std::string constant_value;
     std::optional<SourceLocationInfo> location;
     std::optional<SourceRangeInfo> range;
@@ -261,6 +264,7 @@ std::string KindForDecl(const clang::Decl* decl)
     if (llvm::isa<clang::ClassTemplateDecl>(decl)) return "ClassTemplate";
     if (llvm::isa<clang::ParmVarDecl>(decl)) return "Parameter";
     if (llvm::isa<clang::CXXConstructorDecl>(decl)) return "Constructor";
+    if (llvm::isa<clang::CXXDestructorDecl>(decl)) return "Destructor";
     if (llvm::isa<clang::CXXMethodDecl>(decl)) return "Method";
     if (llvm::isa<clang::FunctionDecl>(decl)) return "Function";
     if (const auto* variable = llvm::dyn_cast<clang::VarDecl>(decl))
@@ -849,6 +853,19 @@ AstNode MakeNode(const clang::Decl* decl, const clang::ASTContext& ast_context)
     node.owner_decl_id = OwnerDeclId(decl);
     node.is_implicit = decl->isImplicit();
 
+    if (const auto* record = llvm::dyn_cast<clang::CXXRecordDecl>(decl))
+    {
+        node.has_base_classes = record->getNumBases() != 0;
+    }
+    if (const auto* method = llvm::dyn_cast<clang::CXXMethodDecl>(decl))
+    {
+        node.is_virtual = method->isVirtual();
+        const auto name_kind = method->getDeclName().getNameKind();
+        node.is_user_defined_operator =
+            method->isOverloadedOperator() ||
+            name_kind == clang::DeclarationName::CXXConversionFunctionName;
+    }
+
     if (const auto* value_decl = llvm::dyn_cast<clang::ValueDecl>(decl))
     {
         auto type = value_decl->getType();
@@ -920,6 +937,9 @@ void WriteNode(std::ostream& os, const AstNode& node)
     os << ",\"IsConstexpr\":" << (node.is_constexpr ? "true" : "false");
     os << ",\"IsTemplateInstantiation\":" << (node.is_template_instantiation ? "true" : "false");
     os << ",\"UsesDefaultArgument\":" << (node.uses_default_argument ? "true" : "false");
+    os << ",\"HasBaseClasses\":" << (node.has_base_classes ? "true" : "false");
+    os << ",\"IsVirtual\":" << (node.is_virtual ? "true" : "false");
+    os << ",\"IsUserDefinedOperator\":" << (node.is_user_defined_operator ? "true" : "false");
     os << ",\"ConstantValue\":";
     WriteNullableString(os, node.constant_value);
     os << ",\"Location\":";
@@ -965,6 +985,9 @@ void WriteDeclaration(std::ostream& os, const AstNode& node)
     os << ",\"IsImplicit\":" << (node.is_implicit ? "true" : "false");
     os << ",\"IsConstexpr\":" << (node.is_constexpr ? "true" : "false");
     os << ",\"IsTemplateInstantiation\":" << (node.is_template_instantiation ? "true" : "false");
+    os << ",\"HasBaseClasses\":" << (node.has_base_classes ? "true" : "false");
+    os << ",\"IsVirtual\":" << (node.is_virtual ? "true" : "false");
+    os << ",\"IsUserDefinedOperator\":" << (node.is_user_defined_operator ? "true" : "false");
     os << ",\"TemplatePatternDeclId\":";
     WriteNullableString(os, node.template_pattern_decl_id);
     os << ",\"TemplateArguments\":[";

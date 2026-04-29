@@ -66,15 +66,22 @@ public sealed class CppslCompiler
         {
             return new CppslCompileResult(false, diagnostics, null);
         }
+        var validator = new CppslSemanticValidator();
+        diagnostics.AddRange(validator.ValidateAst(sourcePath, frontendResult.AstNodes));
+        if (diagnostics.Any(static d => d.Severity == DiagnosticSeverity.Error))
+        {
+            return new CppslCompileResult(false, diagnostics, null);
+        }
+
         var semanticModel = new CppslSemanticModelBuilder().Build(options, sourcePath, frontendResult.AstNodes);
-        diagnostics.AddRange(new CppslSemanticValidator().Validate(options, semanticModel));
+        diagnostics.AddRange(validator.Validate(options, semanticModel));
         if (diagnostics.Any(static d => d.Severity == DiagnosticSeverity.Error))
         {
             return new CppslCompileResult(false, diagnostics, null);
         }
 
         var shaderModel = new CppslShaderModelBuilder().Build(options, sourcePath, semanticModel, frontendResult.AstNodes);
-        diagnostics.AddRange(new CppslSemanticValidator().ValidateShaderModel(shaderModel));
+        diagnostics.AddRange(validator.ValidateShaderModel(shaderModel));
         if (diagnostics.Any(static d => d.Severity == DiagnosticSeverity.Error))
         {
             return new CppslCompileResult(false, diagnostics, null);

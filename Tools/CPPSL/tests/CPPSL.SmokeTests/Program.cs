@@ -946,7 +946,12 @@ var invalidFixtures = new[]
     new InvalidFixture("rwstructured_buffer_requires_mutable_pointer", "RWStructuredBufferRequiresMutablePointer.cxx", "main_vs", ShaderStage.Vertex, "must be declared as `T*`"),
     new InvalidFixture("legacy_resource_global", "LegacyResourceGlobal.cxx", "main_vs", ShaderStage.Vertex, "resource global"),
     new InvalidFixture("reserved_parameter_name", "ReservedParameterName.cxx", "main_vs", ShaderStage.Vertex, "parameter name `input` is reserved"),
-    new InvalidFixture("reserved_local_name", "ReservedLocalName.cxx", "main_cs", ShaderStage.Compute, "local variable name `output` is reserved")
+    new InvalidFixture("reserved_local_name", "ReservedLocalName.cxx", "main_cs", ShaderStage.Compute, "local variable name `output` is reserved"),
+    new InvalidFixture("inheritance", "Inheritance.cxx", "main_vs", ShaderStage.Vertex, "must not use inheritance"),
+    new InvalidFixture("virtual_method", "VirtualMethod.cxx", "main_vs", ShaderStage.Vertex, "must not be virtual"),
+    new InvalidFixture("constructor", "Constructor.cxx", "main_vs", ShaderStage.Vertex, "must not declare constructors"),
+    new InvalidFixture("destructor", "Destructor.cxx", "main_vs", ShaderStage.Vertex, "must not declare destructors"),
+    new InvalidFixture("custom_operator", "CustomOperator.cxx", "main_vs", ShaderStage.Vertex, "must not declare custom operators")
 };
 
 foreach (var fixture in invalidFixtures)

@@ -15,6 +15,7 @@ public enum CppslAstNodeKind
     LocalVariable,
     Parameter,
     Constructor,
+    Destructor,
     Method,
     CompoundStatement,
     DeclarationStatement,
