@@ -61,6 +61,10 @@ public sealed class CppslSemanticModelBuilder
             .Where(static child => child.Kind == CppslAstNodeKind.Field)
             .Select(ToField)
             .ToArray();
+        var methods = node.Children
+            .Where(static child => child.Kind == CppslAstNodeKind.Method)
+            .Select(child => ToMethod(node.Spelling, child))
+            .ToArray();
 
         return new CppslStruct(
             node.Spelling,
@@ -68,7 +72,8 @@ public sealed class CppslSemanticModelBuilder
             node.Location?.Line,
             node.Location?.Column,
             _attributeParser.GetAttributes(node),
-            fields);
+            fields,
+            methods);
     }
 
     private CppslField ToField(CppslAstNode node)
@@ -173,6 +178,26 @@ public sealed class CppslSemanticModelBuilder
             node.Location?.Column);
     }
 
+    private CppslMethod ToMethod(string ownerType, CppslAstNode node)
+    {
+        var parameters = node.Children
+            .Where(static child => child.Kind == CppslAstNodeKind.Parameter)
+            .Select(ToParameter)
+            .ToArray();
+
+        return new CppslMethod(
+            ownerType,
+            node.Spelling,
+            node.DisplayName,
+            node.ResultTypeName,
+            parameters,
+            _attributeParser.GetAttributes(node),
+            IsConstMethodType(node.TypeName),
+            node.Location?.File,
+            node.Location?.Line,
+            node.Location?.Column);
+    }
+
     private CppslParameter ToParameter(CppslAstNode node)
     {
         return new CppslParameter(
@@ -194,5 +219,11 @@ public sealed class CppslSemanticModelBuilder
             }
         }
         return null;
+    }
+
+    private static bool IsConstMethodType(string? typeName)
+    {
+        return typeName?.Contains(") const", StringComparison.Ordinal) == true ||
+            typeName?.EndsWith(" const", StringComparison.Ordinal) == true;
     }
 }

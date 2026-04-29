@@ -21,13 +21,21 @@ public sealed class CppslShaderModelBuilder
             SchemaName,
             SchemaVersion,
             sourcePath,
-            semanticModel.Structs.Select(static structure => new CppslShaderModelStruct(
+            semanticModel.Structs.Select(structure => new CppslShaderModelStruct(
                 structure.Name,
                 structure.Fields.Select(static field => new CppslShaderModelField(
                     field.Name,
                     field.Type,
                     field.Location,
-                    field.IsPosition)).ToArray())).ToArray(),
+                    field.IsPosition)).ToArray(),
+                structure.Methods.Select(method => new CppslShaderModelMethod(
+                    method.OwnerType,
+                    method.Name,
+                    method.DisplayName,
+                    method.ReturnType,
+                    method.Parameters.Select(static parameter => new CppslShaderModelParameter(parameter.Name, parameter.Type)).ToArray(),
+                    method.IsConst,
+                    _bodyLowerer.LowerMethodBody(astNodes, structure.Name, method.Name))).ToArray())).ToArray(),
             semanticModel.Globals
                 .Where(static global => global.ResourceKind is not null)
                 .Select(static global => new CppslShaderModelResource(
@@ -65,7 +73,8 @@ public sealed record CppslShaderModel(
 
 public sealed record CppslShaderModelStruct(
     string Name,
-    IReadOnlyList<CppslShaderModelField> Fields);
+    IReadOnlyList<CppslShaderModelField> Fields,
+    IReadOnlyList<CppslShaderModelMethod> Methods);
 
 public sealed record CppslShaderModelField(
     string Name,
@@ -92,6 +101,15 @@ public sealed record CppslShaderModelFunction(
     string Name,
     string? ReturnType,
     IReadOnlyList<CppslShaderModelParameter> Parameters,
+    CppslShaderModelNode? Body);
+
+public sealed record CppslShaderModelMethod(
+    string OwnerType,
+    string Name,
+    string? DisplayName,
+    string? ReturnType,
+    IReadOnlyList<CppslShaderModelParameter> Parameters,
+    bool IsConst,
     CppslShaderModelNode? Body);
 
 public sealed record CppslShaderModelParameter(

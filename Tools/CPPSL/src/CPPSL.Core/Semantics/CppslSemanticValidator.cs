@@ -65,6 +65,13 @@ public sealed class CppslSemanticValidator
         {
             ValidateReservedLocalIdentifiers(function.Body, diagnostics);
         }
+        foreach (var structure in shaderModel.Structs)
+        {
+            foreach (var method in structure.Methods)
+            {
+                ValidateReservedLocalIdentifiers(method.Body, diagnostics);
+            }
+        }
         return diagnostics;
     }
 
@@ -84,6 +91,36 @@ public sealed class CppslSemanticValidator
                     ? new[] { "binding", "cbuffer", "structured_buffer", "sbuffer", "rwstructured_buffer", "rw_structured_buffer", "rwsbuffer" }
                     : new[] { "location", "position", "builtin" };
                 ValidateAttributeSet("field", field.Name, field.Attributes, allowed, diagnostics);
+            }
+            foreach (var method in structure.Methods)
+            {
+                ValidateAttributeSet("method", method.Name, method.Attributes, Array.Empty<string>(), diagnostics);
+                foreach (var parameter in method.Parameters)
+                {
+                    ValidateAttributeSet("parameter", parameter.Name, parameter.Attributes, Array.Empty<string>(), diagnostics);
+                    if (ReservedUserIdentifiers.Contains(parameter.Name))
+                    {
+                        diagnostics.Add(CppslDiagnostic.Error(
+                            $"CPPSL method parameter name `{parameter.Name}` is reserved; choose an explicit semantic name instead.",
+                            parameter.File,
+                            parameter.Line,
+                            parameter.Column));
+                    }
+                }
+            }
+
+            foreach (var duplicateGroup in structure.Methods
+                .GroupBy(static method => method.Name, StringComparer.Ordinal)
+                .Where(static group => group.Count() > 1))
+            {
+                foreach (var method in duplicateGroup.Skip(1))
+                {
+                    diagnostics.Add(CppslDiagnostic.Error(
+                        $"CPPSL struct `{structure.Name}` declares duplicate method `{duplicateGroup.Key}`.",
+                        method.File,
+                        method.Line,
+                        method.Column));
+                }
             }
         }
 

@@ -20,6 +20,8 @@ var resourceAttributesShader = Path.Combine(fixturesRoot, "valid", "resource_att
 var descriptorSetShader = Path.Combine(fixturesRoot, "valid", "descriptor_set", "DescriptorSet.cxx");
 var vectorSwizzleShader = Path.Combine(fixturesRoot, "valid", "vector_swizzle", "VectorSwizzle.cxx");
 var vectorConstructorShader = Path.Combine(fixturesRoot, "valid", "vector_constructor", "VectorConstructor.cxx");
+var structMethodShader = Path.Combine(fixturesRoot, "valid", "struct_method", "StructMethod.cxx");
+var nonConstStructMethodShader = Path.Combine(fixturesRoot, "valid", "non_const_struct_method", "NonConstStructMethod.cxx");
 
 var result = compiler.Compile(new CppslCompileOptions(
     boxShader,
@@ -272,6 +274,84 @@ if (!vectorConstructorHlslText.Contains("o.rgba = float4(v.color.rgb, v.weight);
     !vectorConstructorMslText.Contains("o.xyzw = float4(v.color.xy, v.color.zw);", StringComparison.Ordinal))
 {
     Console.Error.WriteLine("error: expected vector constructors to type-check and lower as shader constructors.");
+    return 1;
+}
+
+var structMethodResult = compiler.Compile(new CppslCompileOptions(
+    structMethodShader,
+    Path.Combine(outputDir, "struct-method"),
+    new[] { stdRoot },
+    "main_vs",
+    ShaderStage.Vertex));
+
+if (!structMethodResult.Succeeded || structMethodResult.Artifacts is null)
+{
+    Console.Error.WriteLine("error: expected struct_method fixture to compile.");
+    foreach (var diagnostic in structMethodResult.Diagnostics)
+    {
+        Console.Error.WriteLine(diagnostic.ToDisplayString());
+    }
+    return 1;
+}
+
+var structMethodShaderModelText = File.ReadAllText(structMethodResult.Artifacts.ShaderModelPath);
+var structMethodHlslText = File.ReadAllText(structMethodResult.Artifacts.GetOutputPath(CppslOutputTarget.Hlsl));
+var structMethodGlslText = File.ReadAllText(structMethodResult.Artifacts.GetOutputPath(CppslOutputTarget.Glsl));
+var structMethodMslText = File.ReadAllText(structMethodResult.Artifacts.GetOutputPath(CppslOutputTarget.Msl));
+if (!structMethodShaderModelText.Contains("\"Methods\": [", StringComparison.Ordinal) ||
+    !structMethodShaderModelText.Contains("\"Name\": \"Apply\"", StringComparison.Ordinal) ||
+    !structMethodHlslText.Contains("float3 Apply(float3 color)", StringComparison.Ordinal) ||
+    !structMethodHlslText.Contains("return ((color * exposure) + float3(0.25f, 0.25f, 0.25f));", StringComparison.Ordinal) ||
+    !structMethodHlslText.Contains("o.color = float4(mapper.Apply(v.color.rgb), 1.0f);", StringComparison.Ordinal) ||
+    !structMethodMslText.Contains("float3 Apply(float3 color)", StringComparison.Ordinal) ||
+    !structMethodMslText.Contains("return ((color * exposure) + float3(0.25f, 0.25f, 0.25f));", StringComparison.Ordinal) ||
+    !structMethodMslText.Contains("o.color = float4(mapper.Apply(v.color.rgb), 1.0f);", StringComparison.Ordinal) ||
+    !structMethodGlslText.Contains("vec3 ToneMapper_Apply(ToneMapper self, vec3 color)", StringComparison.Ordinal) ||
+    !structMethodGlslText.Contains("return ((color * self.exposure) + vec3(0.25, 0.25, 0.25));", StringComparison.Ordinal) ||
+    !structMethodGlslText.Contains("o.color = vec4(ToneMapper_Apply(mapper, v.color.rgb), 1.0);", StringComparison.Ordinal))
+{
+    Console.Error.WriteLine("error: expected struct methods to stay as methods in HLSL/MSL and lower to free functions in GLSL.");
+    return 1;
+}
+
+var nonConstStructMethodResult = compiler.Compile(new CppslCompileOptions(
+    nonConstStructMethodShader,
+    Path.Combine(outputDir, "non-const-struct-method"),
+    new[] { stdRoot },
+    "main_vs",
+    ShaderStage.Vertex));
+
+if (!nonConstStructMethodResult.Succeeded || nonConstStructMethodResult.Artifacts is null)
+{
+    Console.Error.WriteLine("error: expected non_const_struct_method fixture to compile.");
+    foreach (var diagnostic in nonConstStructMethodResult.Diagnostics)
+    {
+        Console.Error.WriteLine(diagnostic.ToDisplayString());
+    }
+    return 1;
+}
+
+var nonConstStructMethodShaderModelText = File.ReadAllText(nonConstStructMethodResult.Artifacts.ShaderModelPath);
+var nonConstStructMethodHlslText = File.ReadAllText(nonConstStructMethodResult.Artifacts.GetOutputPath(CppslOutputTarget.Hlsl));
+var nonConstStructMethodGlslText = File.ReadAllText(nonConstStructMethodResult.Artifacts.GetOutputPath(CppslOutputTarget.Glsl));
+var nonConstStructMethodMslText = File.ReadAllText(nonConstStructMethodResult.Artifacts.GetOutputPath(CppslOutputTarget.Msl));
+if (!nonConstStructMethodShaderModelText.Contains("\"Name\": \"Add\"", StringComparison.Ordinal) ||
+    !nonConstStructMethodShaderModelText.Contains("\"IsConst\": false", StringComparison.Ordinal) ||
+    !nonConstStructMethodShaderModelText.Contains("\"Name\": \"Read\"", StringComparison.Ordinal) ||
+    !nonConstStructMethodShaderModelText.Contains("\"IsConst\": true", StringComparison.Ordinal) ||
+    !nonConstStructMethodHlslText.Contains("void Add(float delta)", StringComparison.Ordinal) ||
+    !nonConstStructMethodHlslText.Contains("value += delta;", StringComparison.Ordinal) ||
+    !nonConstStructMethodHlslText.Contains("accumulator.Add(v.value);", StringComparison.Ordinal) ||
+    !nonConstStructMethodMslText.Contains("void Add(float delta)", StringComparison.Ordinal) ||
+    !nonConstStructMethodMslText.Contains("value += delta;", StringComparison.Ordinal) ||
+    !nonConstStructMethodMslText.Contains("accumulator.Add(v.value);", StringComparison.Ordinal) ||
+    !nonConstStructMethodGlslText.Contains("void Accumulator_Add(inout Accumulator self, float delta)", StringComparison.Ordinal) ||
+    !nonConstStructMethodGlslText.Contains("self.value += delta;", StringComparison.Ordinal) ||
+    !nonConstStructMethodGlslText.Contains("float Accumulator_Read(Accumulator self)", StringComparison.Ordinal) ||
+    !nonConstStructMethodGlslText.Contains("Accumulator_Add(accumulator, v.value);", StringComparison.Ordinal) ||
+    !nonConstStructMethodGlslText.Contains("o.value = Accumulator_Read(accumulator);", StringComparison.Ordinal))
+{
+    Console.Error.WriteLine("error: expected non-const struct methods to lower to GLSL inout self and stay as methods in HLSL/MSL.");
     return 1;
 }
 

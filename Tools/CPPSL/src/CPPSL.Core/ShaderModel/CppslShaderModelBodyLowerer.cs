@@ -47,6 +47,20 @@ internal sealed class CppslShaderModelBodyLowerer
         return bodyNode is null ? null : LowerNode(bodyNode);
     }
 
+    public CppslShaderModelNode? LowerMethodBody(IReadOnlyList<CppslAstNode> astNodes, string ownerType, string methodName)
+    {
+        var structNode = astNodes.FirstOrDefault(node =>
+            node.Kind == CppslAstNodeKind.Struct &&
+            node.Spelling == ownerType);
+        var methodNode = structNode?.Children.FirstOrDefault(node =>
+            node.Kind == CppslAstNodeKind.Method &&
+            node.Spelling == methodName &&
+            node.Children.Any(static child => child.Kind == CppslAstNodeKind.CompoundStatement));
+
+        var bodyNode = methodNode?.Children.FirstOrDefault(static child => child.Kind == CppslAstNodeKind.CompoundStatement);
+        return bodyNode is null ? null : LowerNode(bodyNode);
+    }
+
     private static CppslShaderModelNode LowerNode(CppslAstNode node)
     {
         return new CppslShaderModelNode(

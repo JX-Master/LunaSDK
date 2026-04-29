@@ -8,6 +8,8 @@ namespace CPPSL.Core.Output;
 internal sealed class GlslShaderSourceEmitter : CppslShaderSourceEmitterBase
 {
     private Dictionary<string, string> _resourceAccessByPath = new(StringComparer.Ordinal);
+    private Dictionary<string, CppslMethod> _methodsByOwnerAndName = new(StringComparer.Ordinal);
+    private HashSet<string>? _currentMethodFields;
 
     public string Emit(CppslCompileOptions options, CppslSemanticModel model, CppslShaderModel shaderModel)
     {
@@ -20,7 +22,9 @@ internal sealed class GlslShaderSourceEmitter : CppslShaderSourceEmitterBase
             model,
             static global => global.ResourceKind is not null && global.AccessPath is not null,
             static global => global.Name);
+        _methodsByOwnerAndName = BuildMethodMap(model);
         WriteStructs(builder, model);
+        WriteMethods(builder, model, shaderModel);
         WriteComputeLayout(builder, entryPoint);
         WriteGroupSharedGlobals(builder, model);
         WriteResources(builder, model);
@@ -30,6 +34,8 @@ internal sealed class GlslShaderSourceEmitter : CppslShaderSourceEmitterBase
         WriteMain(builder, entryPoint, model);
         var source = RewriteResidualResourceAccessPaths(builder.ToString(), model, static global => global.Name);
         _resourceAccessByPath = new Dictionary<string, string>(StringComparer.Ordinal);
+        _methodsByOwnerAndName = new Dictionary<string, CppslMethod>(StringComparer.Ordinal);
+        _currentMethodFields = null;
         return source;
     }
 
@@ -71,6 +77,42 @@ internal sealed class GlslShaderSourceEmitter : CppslShaderSourceEmitterBase
             }
             builder.AppendLine("};");
             builder.AppendLine();
+        }
+    }
+
+    private void WriteMethods(StringBuilder builder, CppslSemanticModel model, CppslShaderModel shaderModel)
+    {
+        var descriptorSetLayouts = DescriptorSetLayoutStructNames(model);
+        foreach (var structure in model.Structs.Where(structure => !descriptorSetLayouts.Contains(structure.Name)))
+        {
+            foreach (var method in structure.Methods)
+            {
+                var shaderModelMethod = shaderModel.Structs
+                    .FirstOrDefault(candidate => candidate.Name == structure.Name)?
+                    .Methods
+                    .FirstOrDefault(candidate => candidate.Name == method.Name);
+                if (shaderModelMethod?.Body is null)
+                {
+                    continue;
+                }
+
+                builder.Append(MapValueType(method.ReturnType ?? "void"));
+                builder.Append(' ');
+                builder.Append(GlslMethodName(structure.Name, method.Name));
+                builder.Append('(');
+                var parameters = new List<string>
+                {
+                    $"{(method.IsConst ? string.Empty : "inout ")}{structure.Name} self"
+                };
+                parameters.AddRange(method.Parameters.Select(parameter => $"{MapValueType(parameter.Type)} {parameter.Name}"));
+                builder.Append(string.Join(", ", parameters));
+                builder.AppendLine(")");
+
+                _currentMethodFields = structure.Fields.Select(static field => field.Name).ToHashSet(StringComparer.Ordinal);
+                WriteMethodBody(builder, method, model, shaderModelMethod.Body);
+                _currentMethodFields = null;
+                builder.AppendLine();
+            }
         }
     }
 
@@ -324,6 +366,14 @@ internal sealed class GlslShaderSourceEmitter : CppslShaderSourceEmitterBase
 
     protected override string LowerExpression(CppslShaderModelNode node)
     {
+        if (node.Kind == CppslShaderModelNodeKind.MemberExpression &&
+            node.Children.Count == 0 &&
+            node.DisplayName is { } fieldName &&
+            _currentMethodFields?.Contains(fieldName) == true)
+        {
+            return $"self.{fieldName}";
+        }
+
         if (node.Kind == CppslShaderModelNodeKind.CStyleCastExpression &&
             NormalizeShaderTypeName(node.Type ?? node.TypeInfo?.Spelling ?? string.Empty) == "void" &&
             node.Children.Count == 1)
@@ -383,6 +433,10 @@ internal sealed class GlslShaderSourceEmitter : CppslShaderSourceEmitterBase
     {
         if (TryGetMemberCall(node, out var receiverNode, out var receiver, out var memberName, out var memberArguments))
         {
+            if (TryGetMethodOwner(receiverNode, memberName, out var ownerType))
+            {
+                return $"{GlslMethodName(ownerType, memberName)}({receiver}{(memberArguments.Count == 0 ? string.Empty : ", ")}{string.Join(", ", memberArguments)})";
+            }
             if (memberName == "Sample" && memberArguments.Count == 2)
             {
                 var dimension = TextureDimension(receiverNode);
@@ -451,6 +505,44 @@ internal sealed class GlslShaderSourceEmitter : CppslShaderSourceEmitterBase
         }
 
         return base.LowerCallExpression(node);
+    }
+
+    private static Dictionary<string, CppslMethod> BuildMethodMap(CppslSemanticModel model)
+    {
+        var map = new Dictionary<string, CppslMethod>(StringComparer.Ordinal);
+        foreach (var structure in model.Structs)
+        {
+            foreach (var method in structure.Methods)
+            {
+                map[MethodKey(structure.Name, method.Name)] = method;
+            }
+        }
+        return map;
+    }
+
+    private bool TryGetMethodOwner(CppslShaderModelNode receiverNode, string methodName, out string ownerType)
+    {
+        foreach (var candidate in EnumerateNodeTypeCandidates(receiverNode).Select(NormalizeShaderTypeName))
+        {
+            if (_methodsByOwnerAndName.ContainsKey(MethodKey(candidate, methodName)))
+            {
+                ownerType = candidate;
+                return true;
+            }
+        }
+
+        ownerType = string.Empty;
+        return false;
+    }
+
+    private static string MethodKey(string ownerType, string methodName)
+    {
+        return $"{NormalizeShaderTypeName(ownerType)}.{methodName}";
+    }
+
+    private static string GlslMethodName(string ownerType, string methodName)
+    {
+        return $"{NormalizeShaderTypeName(ownerType)}_{methodName}";
     }
 
     protected override string MapValueType(string type)

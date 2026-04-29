@@ -20,7 +20,7 @@ internal sealed class HlslShaderSourceEmitter : CppslShaderSourceEmitterBase
             model,
             static global => global.ResourceKind is not null && global.AccessPath is not null,
             static global => global.Name);
-        WriteStructs(builder, options, model, entryPoint);
+        WriteStructs(builder, options, model, shaderModel, entryPoint);
         WriteGroupSharedGlobals(builder, model);
         WriteResources(builder, model);
         WriteFunctions(builder, entryPoint, model, shaderModel);
@@ -59,6 +59,7 @@ internal sealed class HlslShaderSourceEmitter : CppslShaderSourceEmitterBase
         StringBuilder builder,
         CppslCompileOptions options,
         CppslSemanticModel model,
+        CppslShaderModel shaderModel,
         CppslFunction? entryPoint)
     {
         var inputStructNames = entryPoint?.Parameters.Select(static parameter => parameter.Type).ToHashSet(StringComparer.Ordinal) ??
@@ -80,6 +81,26 @@ internal sealed class HlslShaderSourceEmitter : CppslShaderSourceEmitterBase
                     : inputStructNames.Contains(structure.Name) ? StructRole.StageInput : StructRole.Plain;
                 builder.Append(FieldSemantic(field, role, options.Stage));
                 builder.AppendLine(";");
+            }
+            foreach (var method in structure.Methods)
+            {
+                var shaderModelMethod = shaderModel.Structs
+                    .FirstOrDefault(candidate => candidate.Name == structure.Name)?
+                    .Methods
+                    .FirstOrDefault(candidate => candidate.Name == method.Name);
+                if (shaderModelMethod?.Body is null)
+                {
+                    continue;
+                }
+
+                builder.Append("    ");
+                builder.Append(MapValueType(method.ReturnType ?? "void"));
+                builder.Append(' ');
+                builder.Append(method.Name);
+                builder.Append('(');
+                builder.Append(string.Join(", ", method.Parameters.Select(parameter => $"{MapValueType(parameter.Type)} {parameter.Name}")));
+                builder.AppendLine(")");
+                WriteIndentedMethodBody(builder, method, model, shaderModelMethod.Body, 1);
             }
             builder.AppendLine("};");
             builder.AppendLine();

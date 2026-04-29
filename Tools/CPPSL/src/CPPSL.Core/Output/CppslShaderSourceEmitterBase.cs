@@ -324,6 +324,47 @@ internal abstract class CppslShaderSourceEmitterBase
         builder.AppendLine("}");
     }
 
+    protected void WriteMethodBody(
+        StringBuilder builder,
+        CppslMethod method,
+        CppslSemanticModel model,
+        CppslShaderModelNode? body)
+    {
+        builder.AppendLine("{");
+        if (body is null)
+        {
+            WriteDefaultReturn(builder, method.ReturnType ?? "void", model, 1);
+        }
+        else
+        {
+            WriteStatementChildren(builder, body, 1);
+        }
+        builder.AppendLine("}");
+    }
+
+    protected void WriteIndentedMethodBody(
+        StringBuilder builder,
+        CppslMethod method,
+        CppslSemanticModel model,
+        CppslShaderModelNode? body,
+        int indent)
+    {
+        var before = builder.Length;
+        WriteMethodBody(builder, method, model, body);
+        var text = builder.ToString(before, builder.Length - before);
+        builder.Length = before;
+        var prefix = new string(' ', indent * 4);
+        foreach (var line in text.Split('\n'))
+        {
+            if (line.Length == 0)
+            {
+                continue;
+            }
+            builder.Append(prefix);
+            builder.AppendLine(line.TrimEnd('\r'));
+        }
+    }
+
     protected void WriteStatementChildren(StringBuilder builder, CppslShaderModelNode node, int indent)
     {
         foreach (var child in node.Children)
