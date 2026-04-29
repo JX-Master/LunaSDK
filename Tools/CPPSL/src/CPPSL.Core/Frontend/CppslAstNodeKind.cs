@@ -41,5 +41,6 @@ public enum CppslAstNodeKind
     InitializerListExpression,
     ImplicitCastExpression,
     ParenExpression,
+    DefaultArgumentExpression,
     ArraySubscriptExpression
 }

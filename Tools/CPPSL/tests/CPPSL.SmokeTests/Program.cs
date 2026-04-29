@@ -1,6 +1,7 @@
 using CPPSL.Core.Artifacts;
 using CPPSL.Core.Compiler;
 using CPPSL.Core.Diagnostics;
+using CPPSL.Core.Frontend;
 using CPPSL.Core.ShaderModel;
 using System.Text.RegularExpressions;
 
@@ -22,6 +23,12 @@ var vectorSwizzleShader = Path.Combine(fixturesRoot, "valid", "vector_swizzle", 
 var vectorConstructorShader = Path.Combine(fixturesRoot, "valid", "vector_constructor", "VectorConstructor.cxx");
 var structMethodShader = Path.Combine(fixturesRoot, "valid", "struct_method", "StructMethod.cxx");
 var nonConstStructMethodShader = Path.Combine(fixturesRoot, "valid", "non_const_struct_method", "NonConstStructMethod.cxx");
+var schemaV3Shader = Path.Combine(fixturesRoot, "valid", "schema_v3", "SchemaV3.cxx");
+
+if (!ExpectSchemaV3Facts(schemaV3Shader, stdRoot))
+{
+    return 1;
+}
 
 var result = compiler.Compile(new CppslCompileOptions(
     boxShader,
@@ -62,16 +69,19 @@ if (!AssertContainsAll(
         {
             "main_vs",
             "\"frontendProvider\": \"Native\"",
-            "\"frontendModelVersion\": 2",
+            "\"frontendModelVersion\": 3",
             "\"frontendAst\"",
             "\"outputTargets\"",
             "\"Kind\": \"Function\"",
             "\"ProviderKind\": \"Function\"",
+            "\"DeclId\":",
+            "\"CanonicalDeclId\":",
             "\"Kind\": \"Field\"",
             "\"ProviderKind\": \"Field\"",
             "world_to_proj",
             "\"Kind\": \"Parameter\"",
             "\"ProviderKind\": \"ParmVar\"",
+            "\"OwnerDeclId\":",
             "\"Range\": {",
             "\"TypeInfo\": {",
             "\"TemplateArguments\"",
@@ -83,8 +93,11 @@ if (!AssertContainsAll(
             "\"Spelling\": \"o\"",
             "\"Kind\": \"CallExpression\"",
             "\"DisplayName\": \"mul\"",
+            "\"DirectCalleeDeclId\":",
             "\"Kind\": \"MemberExpression\"",
+            "\"ReferencedDeclId\":",
             "\"Kind\": \"DeclRefExpression\"",
+            "\"ConstantValue\":",
             "\"Kind\": \"ReturnStatement\"",
             "cppslSemanticModel",
             "cppslShaderModel",
@@ -768,6 +781,73 @@ static bool ExpectFixtureFailure(
     }
 
     return true;
+}
+
+static bool ExpectSchemaV3Facts(string shaderPath, string stdRoot)
+{
+    var frontend = new NativeExtractorFrontend();
+    var result = frontend.Parse(new CppslFrontendOptions(shaderPath, new[] { stdRoot }));
+    foreach (var diagnostic in result.Diagnostics)
+    {
+        Console.Error.WriteLine(diagnostic.ToDisplayString());
+    }
+
+    if (!result.Succeeded || result.ModelVersion != NativeExtractorFrontend.ModelVersion)
+    {
+        Console.Error.WriteLine("error: expected native extractor schema v3 fixture to parse.");
+        return false;
+    }
+
+    var nodes = Flatten(result.AstNodes).ToArray();
+    if (!nodes.Any(node => node.Kind == CppslAstNodeKind.GlobalVariable &&
+                           node.Spelling == "kBias" &&
+                           node.IsConstexpr &&
+                           !string.IsNullOrWhiteSpace(node.ConstantValue)))
+    {
+        Console.Error.WriteLine("error: expected constexpr declarations to carry evaluated constant values.");
+        return false;
+    }
+
+    if (!nodes.Any(node => node.Kind == CppslAstNodeKind.CallExpression &&
+                           node.DisplayName == "AddDefault" &&
+                           !string.IsNullOrWhiteSpace(node.DirectCalleeDeclId) &&
+                           node.Children.Any(static child => child.UsesDefaultArgument)))
+    {
+        Console.Error.WriteLine("error: expected default-argument calls to expose direct callee IDs and default argument nodes.");
+        return false;
+    }
+
+    if (!nodes.Any(node => node.Kind == CppslAstNodeKind.CallExpression &&
+                           node.DisplayName == "Identity" &&
+                           node.IsTemplateInstantiation &&
+                           !string.IsNullOrWhiteSpace(node.TemplatePatternDeclId) &&
+                           node.TemplateArguments.Count != 0))
+    {
+        Console.Error.WriteLine("error: expected template calls to expose pattern IDs and template arguments.");
+        return false;
+    }
+
+    if (!nodes.Any(node => node.Kind == CppslAstNodeKind.MemberExpression &&
+                           node.DisplayName == "bias" &&
+                           !string.IsNullOrWhiteSpace(node.ReferencedDeclId)))
+    {
+        Console.Error.WriteLine("error: expected member expressions to expose referenced declaration IDs.");
+        return false;
+    }
+
+    return true;
+}
+
+static IEnumerable<CppslAstNode> Flatten(IEnumerable<CppslAstNode> nodes)
+{
+    foreach (var node in nodes)
+    {
+        yield return node;
+        foreach (var child in Flatten(node.Children))
+        {
+            yield return child;
+        }
+    }
 }
 
 static string FindRepoRoot(string start)

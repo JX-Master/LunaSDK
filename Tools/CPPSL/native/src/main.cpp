@@ -2,6 +2,7 @@
 #include <clang/AST/DeclCXX.h>
 #include <clang/Basic/Diagnostic.h>
 #include <clang/Frontend/ASTUnit.h>
+#include <clang/Index/USRGeneration.h>
 #include <clang/Lex/Lexer.h>
 #include <clang/Tooling/Tooling.h>
 
@@ -44,6 +45,14 @@ struct TypeInfo
     std::vector<TypeInfo> template_arguments;
 };
 
+struct TemplateArgumentInfo
+{
+    std::string kind;
+    std::string spelling;
+    std::string value;
+    std::optional<TypeInfo> type_info;
+};
+
 struct DiagnosticInfo
 {
     std::string severity;
@@ -63,10 +72,22 @@ struct AstNode
     std::string display_name;
     std::string type_name;
     std::string result_type_name;
+    std::string decl_id;
+    std::string canonical_decl_id;
+    std::string referenced_decl_id;
+    std::string direct_callee_decl_id;
+    std::string owner_decl_id;
+    std::string template_pattern_decl_id;
+    bool is_implicit = false;
+    bool is_constexpr = false;
+    bool is_template_instantiation = false;
+    bool uses_default_argument = false;
+    std::string constant_value;
     std::optional<SourceLocationInfo> location;
     std::optional<SourceRangeInfo> range;
     std::optional<TypeInfo> type_info;
     std::optional<TypeInfo> result_type_info;
+    std::vector<TemplateArgumentInfo> template_arguments;
     std::vector<AstNode> children;
 };
 
@@ -270,6 +291,56 @@ std::string GetDeclName(const clang::NamedDecl* decl)
     return decl ? decl->getNameAsString() : std::string();
 }
 
+std::string DeclId(const clang::Decl* decl)
+{
+    if (!decl)
+    {
+        return {};
+    }
+
+    llvm::SmallString<128> usr;
+    if (!clang::index::generateUSRForDecl(decl, usr) && !usr.empty())
+    {
+        return "decl:" + std::string(usr);
+    }
+
+    const auto& source_manager = decl->getASTContext().getSourceManager();
+    auto location = GetLocation(source_manager, decl->getLocation());
+    std::string result;
+    llvm::raw_string_ostream stream(result);
+    stream << "decl:fallback:";
+    if (location)
+    {
+        stream << location->file << ":" << location->line << ":" << location->column;
+    }
+    else
+    {
+        stream << "unknown";
+    }
+    stream << ":" << decl->getDeclKindName();
+    if (const auto* named_decl = llvm::dyn_cast<clang::NamedDecl>(decl))
+    {
+        stream << ":" << named_decl->getNameAsString();
+    }
+    return result;
+}
+
+std::string CanonicalDeclId(const clang::Decl* decl)
+{
+    return decl ? DeclId(decl->getCanonicalDecl()) : std::string();
+}
+
+std::string OwnerDeclId(const clang::Decl* decl)
+{
+    if (!decl)
+    {
+        return {};
+    }
+
+    const auto* context_decl = llvm::dyn_cast_or_null<clang::Decl>(decl->getDeclContext());
+    return CanonicalDeclId(context_decl);
+}
+
 std::string GetDisplayName(const clang::NamedDecl* decl)
 {
     if (!decl)
@@ -291,6 +362,54 @@ std::string GetDisplayName(const clang::NamedDecl* decl)
         return result;
     }
     return decl->getNameAsString();
+}
+
+std::string TemplateArgumentKindName(clang::TemplateArgument::ArgKind kind)
+{
+    switch (kind)
+    {
+    case clang::TemplateArgument::Null: return "Null";
+    case clang::TemplateArgument::Type: return "Type";
+    case clang::TemplateArgument::Declaration: return "Declaration";
+    case clang::TemplateArgument::NullPtr: return "NullPointer";
+    case clang::TemplateArgument::Integral: return "Integral";
+    case clang::TemplateArgument::Template: return "Template";
+    case clang::TemplateArgument::TemplateExpansion: return "TemplateExpansion";
+    case clang::TemplateArgument::Expression: return "Expression";
+    case clang::TemplateArgument::Pack: return "Pack";
+    case clang::TemplateArgument::StructuralValue: return "StructuralValue";
+    }
+    return "Unknown";
+}
+
+std::string APSIntToString(const llvm::APSInt& value)
+{
+    llvm::SmallString<64> result;
+    value.toString(result, 10);
+    return std::string(result);
+}
+
+std::string TemplateArgumentValueString(const clang::TemplateArgument& argument)
+{
+    switch (argument.getKind())
+    {
+    case clang::TemplateArgument::Integral:
+        return APSIntToString(argument.getAsIntegral());
+    case clang::TemplateArgument::Declaration:
+        return CanonicalDeclId(argument.getAsDecl());
+    case clang::TemplateArgument::NullPtr:
+        return "nullptr";
+    default:
+        return {};
+    }
+}
+
+std::string TemplateArgumentSpellingString(const clang::ASTContext& ast_context, const clang::TemplateArgument& argument)
+{
+    std::string result;
+    llvm::raw_string_ostream stream(result);
+    argument.print(ast_context.getPrintingPolicy(), stream, true);
+    return result;
 }
 
 std::optional<TypeInfo> MakeTypeInfo(const clang::ASTContext& ast_context, clang::QualType type, unsigned depth = 0)
@@ -345,6 +464,60 @@ std::optional<TypeInfo> MakeTypeInfo(const clang::ASTContext& ast_context, clang
     return info;
 }
 
+TemplateArgumentInfo MakeTemplateArgumentInfo(const clang::ASTContext& ast_context, const clang::TemplateArgument& argument)
+{
+    TemplateArgumentInfo info;
+    info.kind = TemplateArgumentKindName(argument.getKind());
+    info.spelling = TemplateArgumentSpellingString(ast_context, argument);
+    info.value = TemplateArgumentValueString(argument);
+    if (argument.getKind() == clang::TemplateArgument::Type)
+    {
+        info.type_info = MakeTypeInfo(ast_context, argument.getAsType());
+    }
+    return info;
+}
+
+void AppendTemplateArguments(
+    std::vector<TemplateArgumentInfo>& arguments,
+    const clang::ASTContext& ast_context,
+    const clang::TemplateArgumentList& argument_list)
+{
+    for (const auto& argument : argument_list.asArray())
+    {
+        arguments.push_back(MakeTemplateArgumentInfo(ast_context, argument));
+    }
+}
+
+std::string TryEvaluateConstantValue(const clang::ASTContext& ast_context, const clang::Expr* expression)
+{
+    if (!expression || expression->isValueDependent())
+    {
+        return {};
+    }
+
+    clang::Expr::EvalResult result;
+    if (!expression->EvaluateAsRValue(result, ast_context))
+    {
+        return {};
+    }
+
+    switch (result.Val.getKind())
+    {
+    case clang::APValue::Int:
+        return APSIntToString(result.Val.getInt());
+    case clang::APValue::Float:
+    {
+        llvm::SmallString<64> value;
+        result.Val.getFloat().toString(value);
+        return std::string(value);
+    }
+    case clang::APValue::LValue:
+        return result.Val.isNullPointer() ? "nullptr" : std::string();
+    default:
+        return {};
+    }
+}
+
 std::string GetSourceText(const clang::ASTContext& ast_context, clang::SourceRange range)
 {
     if (range.isInvalid())
@@ -386,6 +559,7 @@ std::string KindForStmt(const clang::Stmt* stmt)
     if (llvm::isa<clang::InitListExpr>(stmt)) return "InitializerListExpression";
     if (llvm::isa<clang::ImplicitCastExpr>(stmt)) return "ImplicitCastExpression";
     if (llvm::isa<clang::ParenExpr>(stmt)) return "ParenExpression";
+    if (llvm::isa<clang::CXXDefaultArgExpr>(stmt)) return "DefaultArgumentExpression";
     if (llvm::isa<clang::ArraySubscriptExpr>(stmt)) return "ArraySubscriptExpression";
     return "Unknown";
 }
@@ -416,6 +590,7 @@ bool IsInterestingStmt(const clang::Stmt* stmt)
         llvm::isa<clang::InitListExpr>(stmt) ||
         llvm::isa<clang::ImplicitCastExpr>(stmt) ||
         llvm::isa<clang::ParenExpr>(stmt) ||
+        llvm::isa<clang::CXXDefaultArgExpr>(stmt) ||
         llvm::isa<clang::ArraySubscriptExpr>(stmt);
 }
 
@@ -468,6 +643,19 @@ void WriteTypeInfo(std::ostream& os, const std::optional<TypeInfo>& type_info)
         WriteTypeInfo(os, type_info->template_arguments[i]);
     }
     os << "]}";
+}
+
+void WriteTemplateArgumentInfo(std::ostream& os, const TemplateArgumentInfo& argument)
+{
+    os << "{\"Kind\":";
+    WriteString(os, argument.kind);
+    os << ",\"Spelling\":";
+    WriteNullableString(os, argument.spelling);
+    os << ",\"Value\":";
+    WriteNullableString(os, argument.value);
+    os << ",\"TypeInfo\":";
+    WriteTypeInfo(os, argument.type_info);
+    os << "}";
 }
 
 AstNode MakeNode(const clang::Decl* decl, const clang::ASTContext& ast_context);
@@ -546,12 +734,43 @@ AstNode MakeStmtNode(const clang::Stmt* stmt, const clang::ASTContext& ast_conte
     node.display_name = GetStmtDisplayName(stmt);
     node.location = GetLocation(source_manager, stmt->getBeginLoc());
     node.range = GetRange(source_manager, stmt->getSourceRange());
+    node.uses_default_argument = llvm::isa<clang::CXXDefaultArgExpr>(stmt);
 
     if (const auto* expression = llvm::dyn_cast<clang::Expr>(stmt))
     {
         auto type = expression->getType();
         node.type_name = type.getAsString();
         node.type_info = MakeTypeInfo(ast_context, type);
+        node.constant_value = TryEvaluateConstantValue(ast_context, expression);
+    }
+
+    if (const auto* decl_ref = llvm::dyn_cast<clang::DeclRefExpr>(stmt))
+    {
+        node.referenced_decl_id = CanonicalDeclId(decl_ref->getDecl());
+    }
+    if (const auto* member = llvm::dyn_cast<clang::MemberExpr>(stmt))
+    {
+        node.referenced_decl_id = CanonicalDeclId(member->getMemberDecl());
+    }
+    if (const auto* call = llvm::dyn_cast<clang::CallExpr>(stmt))
+    {
+        if (const auto* callee = call->getDirectCallee())
+        {
+            node.direct_callee_decl_id = CanonicalDeclId(callee);
+            if (const auto* specialization = callee->getTemplateSpecializationInfo())
+            {
+                node.is_template_instantiation = true;
+                node.template_pattern_decl_id = CanonicalDeclId(specialization->getTemplate());
+                if (const auto* arguments = specialization->TemplateArguments)
+                {
+                    AppendTemplateArguments(node.template_arguments, ast_context, *arguments);
+                }
+            }
+        }
+    }
+    if (const auto* constructor = llvm::dyn_cast<clang::CXXConstructExpr>(stmt))
+    {
+        node.direct_callee_decl_id = CanonicalDeclId(constructor->getConstructor());
     }
 
     if (const auto* declaration_statement = llvm::dyn_cast<clang::DeclStmt>(stmt))
@@ -581,6 +800,10 @@ AstNode MakeNode(const clang::Decl* decl, const clang::ASTContext& ast_context)
     node.display_name = GetDisplayName(named_decl);
     node.location = GetLocation(source_manager, decl->getLocation());
     node.range = GetRange(source_manager, decl->getSourceRange());
+    node.decl_id = DeclId(decl);
+    node.canonical_decl_id = CanonicalDeclId(decl);
+    node.owner_decl_id = OwnerDeclId(decl);
+    node.is_implicit = decl->isImplicit();
 
     if (const auto* value_decl = llvm::dyn_cast<clang::ValueDecl>(decl))
     {
@@ -588,11 +811,35 @@ AstNode MakeNode(const clang::Decl* decl, const clang::ASTContext& ast_context)
         node.type_name = type.getAsString();
         node.type_info = MakeTypeInfo(ast_context, type);
     }
+    if (const auto* variable = llvm::dyn_cast<clang::VarDecl>(decl))
+    {
+        node.is_constexpr = variable->isConstexpr();
+        if (const auto* initializer = variable->getInit())
+        {
+            node.constant_value = TryEvaluateConstantValue(ast_context, initializer);
+        }
+    }
     if (const auto* function = llvm::dyn_cast<clang::FunctionDecl>(decl))
     {
         auto result_type = function->getReturnType();
         node.result_type_name = result_type.getAsString();
         node.result_type_info = MakeTypeInfo(ast_context, result_type);
+        node.is_constexpr = function->isConstexpr();
+        if (const auto* specialization = function->getTemplateSpecializationInfo())
+        {
+            node.is_template_instantiation = true;
+            node.template_pattern_decl_id = CanonicalDeclId(specialization->getTemplate());
+            if (const auto* arguments = specialization->TemplateArguments)
+            {
+                AppendTemplateArguments(node.template_arguments, ast_context, *arguments);
+            }
+        }
+    }
+    if (const auto* specialization = llvm::dyn_cast<clang::ClassTemplateSpecializationDecl>(decl))
+    {
+        node.is_template_instantiation = true;
+        node.template_pattern_decl_id = CanonicalDeclId(specialization->getSpecializedTemplate());
+        AppendTemplateArguments(node.template_arguments, ast_context, specialization->getTemplateArgs());
     }
 
     node.children = MakeChildren(decl, ast_context);
@@ -613,6 +860,24 @@ void WriteNode(std::ostream& os, const AstNode& node)
     WriteNullableString(os, node.type_name);
     os << ",\"ResultTypeName\":";
     WriteNullableString(os, node.result_type_name);
+    os << ",\"DeclId\":";
+    WriteNullableString(os, node.decl_id);
+    os << ",\"CanonicalDeclId\":";
+    WriteNullableString(os, node.canonical_decl_id);
+    os << ",\"ReferencedDeclId\":";
+    WriteNullableString(os, node.referenced_decl_id);
+    os << ",\"DirectCalleeDeclId\":";
+    WriteNullableString(os, node.direct_callee_decl_id);
+    os << ",\"OwnerDeclId\":";
+    WriteNullableString(os, node.owner_decl_id);
+    os << ",\"TemplatePatternDeclId\":";
+    WriteNullableString(os, node.template_pattern_decl_id);
+    os << ",\"IsImplicit\":" << (node.is_implicit ? "true" : "false");
+    os << ",\"IsConstexpr\":" << (node.is_constexpr ? "true" : "false");
+    os << ",\"IsTemplateInstantiation\":" << (node.is_template_instantiation ? "true" : "false");
+    os << ",\"UsesDefaultArgument\":" << (node.uses_default_argument ? "true" : "false");
+    os << ",\"ConstantValue\":";
+    WriteNullableString(os, node.constant_value);
     os << ",\"Location\":";
     WriteLocation(os, node.location);
     os << ",\"Range\":";
@@ -621,6 +886,13 @@ void WriteNode(std::ostream& os, const AstNode& node)
     WriteTypeInfo(os, node.type_info);
     os << ",\"ResultTypeInfo\":";
     WriteTypeInfo(os, node.result_type_info);
+    os << ",\"TemplateArguments\":[";
+    for (size_t i = 0; i < node.template_arguments.size(); ++i)
+    {
+        if (i != 0) os << ",";
+        WriteTemplateArgumentInfo(os, node.template_arguments[i]);
+    }
+    os << "]";
     os << ",\"Attributes\":[],\"Children\":[";
     for (size_t i = 0; i < node.children.size(); ++i)
     {
@@ -640,6 +912,24 @@ void WriteDeclaration(std::ostream& os, const AstNode& node)
     WriteString(os, node.spelling);
     os << ",\"DisplayName\":";
     WriteNullableString(os, node.display_name);
+    os << ",\"DeclId\":";
+    WriteNullableString(os, node.decl_id);
+    os << ",\"CanonicalDeclId\":";
+    WriteNullableString(os, node.canonical_decl_id);
+    os << ",\"OwnerDeclId\":";
+    WriteNullableString(os, node.owner_decl_id);
+    os << ",\"IsImplicit\":" << (node.is_implicit ? "true" : "false");
+    os << ",\"IsConstexpr\":" << (node.is_constexpr ? "true" : "false");
+    os << ",\"IsTemplateInstantiation\":" << (node.is_template_instantiation ? "true" : "false");
+    os << ",\"TemplatePatternDeclId\":";
+    WriteNullableString(os, node.template_pattern_decl_id);
+    os << ",\"TemplateArguments\":[";
+    for (size_t i = 0; i < node.template_arguments.size(); ++i)
+    {
+        if (i != 0) os << ",";
+        WriteTemplateArgumentInfo(os, node.template_arguments[i]);
+    }
+    os << "]";
     os << ",\"Location\":";
     WriteLocation(os, node.location);
     os << "}";
@@ -678,7 +968,7 @@ void WriteResult(
     const std::vector<DiagnosticInfo>& diagnostics)
 {
     os << "{\"Succeeded\":" << (succeeded ? "true" : "false");
-    os << ",\"Provider\":\"Native\",\"ModelVersion\":2,\"Diagnostics\":[";
+    os << ",\"Provider\":\"Native\",\"ModelVersion\":3,\"Diagnostics\":[";
     for (size_t i = 0; i < diagnostics.size(); ++i)
     {
         if (i != 0) os << ",";

@@ -122,6 +122,14 @@ public sealed record CppslShaderModelNode(
     string? DisplayName,
     string? Type,
     CppslShaderModelType? TypeInfo,
+    string? ReferencedDeclId,
+    string? DirectCalleeDeclId,
+    string? TemplatePatternDeclId,
+    bool IsConstexpr,
+    bool IsTemplateInstantiation,
+    bool UsesDefaultArgument,
+    string? ConstantValue,
+    IReadOnlyList<CppslShaderModelTemplateArgument> TemplateArguments,
     IReadOnlyList<CppslShaderModelNode> Children);
 
 public sealed record CppslShaderModelType(
@@ -129,3 +137,9 @@ public sealed record CppslShaderModelType(
     string CanonicalName,
     string DesugaredName,
     IReadOnlyList<CppslShaderModelType> TemplateArguments);
+
+public sealed record CppslShaderModelTemplateArgument(
+    string Kind,
+    string? Spelling,
+    string? Value,
+    CppslShaderModelType? TypeInfo);

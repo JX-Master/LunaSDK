@@ -32,6 +32,7 @@ internal sealed class CppslShaderModelBodyLowerer
         CppslAstNodeKind.InitializerListExpression,
         CppslAstNodeKind.ImplicitCastExpression,
         CppslAstNodeKind.ParenExpression,
+        CppslAstNodeKind.DefaultArgumentExpression,
         CppslAstNodeKind.ArraySubscriptExpression,
         CppslAstNodeKind.Unknown
     };
@@ -69,6 +70,14 @@ internal sealed class CppslShaderModelBodyLowerer
             node.DisplayName,
             node.TypeName,
             node.TypeInfo is null ? null : LowerType(node.TypeInfo),
+            node.ReferencedDeclId,
+            node.DirectCalleeDeclId,
+            node.TemplatePatternDeclId,
+            node.IsConstexpr,
+            node.IsTemplateInstantiation,
+            node.UsesDefaultArgument,
+            node.ConstantValue,
+            node.TemplateArguments.Select(LowerTemplateArgument).ToArray(),
             node.Children
                 .Where(static child => TryLowerKind(child.Kind, out _))
                 .Select(LowerNode)
@@ -82,6 +91,15 @@ internal sealed class CppslShaderModelBodyLowerer
             type.CanonicalName,
             type.DesugaredName,
             type.TemplateArguments.Select(LowerType).ToArray());
+    }
+
+    private static CppslShaderModelTemplateArgument LowerTemplateArgument(CppslTemplateArgumentInfo argument)
+    {
+        return new CppslShaderModelTemplateArgument(
+            argument.Kind,
+            argument.Spelling,
+            argument.Value,
+            argument.TypeInfo is null ? null : LowerType(argument.TypeInfo));
     }
 
     private static CppslShaderModelNodeKind LowerKind(CppslAstNodeKind kind)

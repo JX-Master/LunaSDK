@@ -29,5 +29,6 @@ public enum CppslShaderModelNodeKind
     InitializerListExpression,
     ImplicitCastExpression,
     ParenExpression,
+    DefaultArgumentExpression,
     ArraySubscriptExpression
 }
