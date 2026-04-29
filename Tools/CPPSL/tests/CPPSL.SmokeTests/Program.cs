@@ -26,6 +26,9 @@ var nonConstStructMethodShader = Path.Combine(fixturesRoot, "valid", "non_const_
 var schemaV3Shader = Path.Combine(fixturesRoot, "valid", "schema_v3", "SchemaV3.cxx");
 var defaultArgumentsOverloadShader = Path.Combine(fixturesRoot, "valid", "default_arguments_overload", "DefaultArgumentsOverload.cxx");
 var constexprEvaluationShader = Path.Combine(fixturesRoot, "valid", "constexpr_evaluation", "ConstexprEvaluation.cxx");
+var functionTemplateShader = Path.Combine(fixturesRoot, "valid", "function_template", "FunctionTemplate.cxx");
+var templateMemberFunctionShader = Path.Combine(fixturesRoot, "valid", "template_member_function", "TemplateMemberFunction.cxx");
+var templateStructShader = Path.Combine(fixturesRoot, "valid", "template_struct", "TemplateStruct.cxx");
 
 if (!ExpectSchemaV3Facts(schemaV3Shader, stdRoot))
 {
@@ -110,6 +113,213 @@ if (!AssertContainsAll(
         defaultArgumentsOverloadGlslText,
         new[] { "float MixValue(float value, float bias)", "vec2 MixValue(vec2 value, float bias)", "float Mixer_Apply_ov_", "vec3 Mixer_Apply_ov_", "MixValue(v.weight, 0.25" },
         "expected GLSL default arguments and method overload lowering to be emitted."))
+{
+    return 1;
+}
+
+var functionTemplateResult = compiler.Compile(new CppslCompileOptions(
+    functionTemplateShader,
+    Path.Combine(outputDir, "function-template"),
+    new[] { stdRoot },
+    "main_vs",
+    ShaderStage.Vertex));
+if (!functionTemplateResult.Succeeded || functionTemplateResult.Artifacts is null)
+{
+    Console.Error.WriteLine("error: expected function_template fixture to compile.");
+    foreach (var diagnostic in functionTemplateResult.Diagnostics)
+    {
+        Console.Error.WriteLine(diagnostic.ToDisplayString());
+    }
+    return 1;
+}
+
+var functionTemplateShaderModelText = File.ReadAllText(functionTemplateResult.Artifacts.ShaderModelPath);
+var functionTemplateHlslText = File.ReadAllText(functionTemplateResult.Artifacts.GetOutputPath(CppslOutputTarget.Hlsl));
+var functionTemplateGlslText = File.ReadAllText(functionTemplateResult.Artifacts.GetOutputPath(CppslOutputTarget.Glsl));
+var functionTemplateMslText = File.ReadAllText(functionTemplateResult.Artifacts.GetOutputPath(CppslOutputTarget.Msl));
+if (!AssertContainsAll(
+        functionTemplateShaderModelText,
+        new[] { "\"IsTemplateInstantiation\": true", "\"EmittedName\": \"AddBias_tpl_float\"", "\"EmittedName\": \"AddBias_tpl_float3\"", "\"EmittedName\": \"SelectValue_tpl_float\"" },
+        "expected shader model to include concrete function template instantiations."))
+{
+    return 1;
+}
+if (!AssertContainsAll(
+        functionTemplateHlslText,
+        new[] { "float AddBias_tpl_float(float value, float bias)", "float3 AddBias_tpl_float3(float3 value, float3 bias)", "float SelectValue_tpl_float(bool use_left, float left, float right)", "AddBias_tpl_float(v.weight, 0.25f)", "AddBias_tpl_float3(v.position, float3(0.5f, 0.5f, 0.5f))", "SelectValue_tpl_float(true, scalar, v.weight)" },
+        "expected HLSL function template specializations and rewritten calls to be emitted."))
+{
+    return 1;
+}
+if (!AssertContainsAll(
+        functionTemplateGlslText,
+        new[] { "float AddBias_tpl_float(float value, float bias)", "vec3 AddBias_tpl_float3(vec3 value, vec3 bias)", "float SelectValue_tpl_float(bool use_left, float left, float right)", "AddBias_tpl_float(v.weight, 0.25)", "AddBias_tpl_float3(v.position, vec3(0.5, 0.5, 0.5))", "SelectValue_tpl_float(true, scalar, v.weight)" },
+        "expected GLSL function template specializations and rewritten calls to be emitted."))
+{
+    return 1;
+}
+if (!AssertContainsAll(
+        functionTemplateMslText,
+        new[] { "float AddBias_tpl_float(float value, float bias)", "float3 AddBias_tpl_float3(float3 value, float3 bias)", "float SelectValue_tpl_float(bool use_left, float left, float right)", "AddBias_tpl_float(v.weight, 0.25f)", "AddBias_tpl_float3(v.position, float3(0.5f, 0.5f, 0.5f))", "SelectValue_tpl_float(true, scalar, v.weight)" },
+        "expected MSL function template specializations and rewritten calls to be emitted."))
+{
+    return 1;
+}
+var combineTemplateNames = Regex.Matches(functionTemplateHlslText, "\\bCombine_tpl_float_[0-9a-f]{8}\\b")
+    .Select(static match => match.Value)
+    .Distinct(StringComparer.Ordinal)
+    .ToArray();
+if (combineTemplateNames.Length != 2 ||
+    combineTemplateNames.Any(name =>
+        !functionTemplateShaderModelText.Contains($"\"EmittedName\": \"{name}\"", StringComparison.Ordinal) ||
+        !functionTemplateHlslText.Contains($"float {name}(", StringComparison.Ordinal) ||
+        !functionTemplateGlslText.Contains($"float {name}(", StringComparison.Ordinal) ||
+        !functionTemplateMslText.Contains($"float {name}(", StringComparison.Ordinal)))
+{
+    Console.Error.WriteLine("error: expected overloaded function template instantiations to receive stable unique names.");
+    foreach (var name in combineTemplateNames)
+    {
+        Console.Error.WriteLine($"  observed: {name}");
+    }
+    return 1;
+}
+if (!AssertNotContainsAny(
+        functionTemplateHlslText + functionTemplateGlslText + functionTemplateMslText,
+        new[] { "template <", "template<" },
+        "target shader sources must contain only concrete function template specializations."))
+{
+    return 1;
+}
+
+var templateMemberFunctionResult = compiler.Compile(new CppslCompileOptions(
+    templateMemberFunctionShader,
+    Path.Combine(outputDir, "template-member-function"),
+    new[] { stdRoot },
+    "main_vs",
+    ShaderStage.Vertex));
+if (!templateMemberFunctionResult.Succeeded || templateMemberFunctionResult.Artifacts is null)
+{
+    Console.Error.WriteLine("error: expected template_member_function fixture to compile.");
+    foreach (var diagnostic in templateMemberFunctionResult.Diagnostics)
+    {
+        Console.Error.WriteLine(diagnostic.ToDisplayString());
+    }
+    return 1;
+}
+
+var templateMemberFunctionShaderModelText = File.ReadAllText(templateMemberFunctionResult.Artifacts.ShaderModelPath);
+var templateMemberFunctionHlslText = File.ReadAllText(templateMemberFunctionResult.Artifacts.GetOutputPath(CppslOutputTarget.Hlsl));
+var templateMemberFunctionGlslText = File.ReadAllText(templateMemberFunctionResult.Artifacts.GetOutputPath(CppslOutputTarget.Glsl));
+var templateMemberFunctionMslText = File.ReadAllText(templateMemberFunctionResult.Artifacts.GetOutputPath(CppslOutputTarget.Msl));
+if (!AssertContainsAll(
+        templateMemberFunctionShaderModelText,
+        new[] { "\"IsTemplateInstantiation\": true", "\"EmittedName\": \"Add_tpl_float\"", "\"EmittedName\": \"Add_tpl_float3\"" },
+        "expected shader model to include concrete method template instantiations."))
+{
+    return 1;
+}
+if (!AssertContainsAll(
+        templateMemberFunctionHlslText,
+        new[] { "float Add_tpl_float(float value, float bias)", "float3 Add_tpl_float3(float3 value, float3 bias)", "biaser.Add_tpl_float(v.weight, biaser.base)", "biaser.Add_tpl_float3(v.position, float3(0.5f, 0.5f, 0.5f))" },
+        "expected HLSL method template specializations and rewritten member calls to be emitted."))
+{
+    return 1;
+}
+if (!AssertContainsAll(
+        templateMemberFunctionGlslText,
+        new[] { "float Biaser_Add_tpl_float(Biaser self, float value, float bias)", "vec3 Biaser_Add_tpl_float3(Biaser self, vec3 value, vec3 bias)", "Biaser_Add_tpl_float(biaser, v.weight, biaser.base)", "Biaser_Add_tpl_float3(biaser, v.position, vec3(0.5, 0.5, 0.5))" },
+        "expected GLSL method template specializations to lower to free functions and rewritten calls."))
+{
+    return 1;
+}
+if (!AssertContainsAll(
+        templateMemberFunctionMslText,
+        new[] { "float Add_tpl_float(float value, float bias)", "float3 Add_tpl_float3(float3 value, float3 bias)", "biaser.Add_tpl_float(v.weight, biaser.base)", "biaser.Add_tpl_float3(v.position, float3(0.5f, 0.5f, 0.5f))" },
+        "expected MSL method template specializations and rewritten member calls to be emitted."))
+{
+    return 1;
+}
+var combineMethodNames = Regex.Matches(templateMemberFunctionHlslText, "\\bCombine_tpl_float_[0-9a-f]{8}\\b")
+    .Select(static match => match.Value)
+    .Distinct(StringComparer.Ordinal)
+    .ToArray();
+if (combineMethodNames.Length != 2 ||
+    combineMethodNames.Any(name =>
+        !templateMemberFunctionShaderModelText.Contains($"\"EmittedName\": \"{name}\"", StringComparison.Ordinal) ||
+        !templateMemberFunctionHlslText.Contains($"float {name}(", StringComparison.Ordinal) ||
+        !templateMemberFunctionHlslText.Contains($"biaser.{name}(", StringComparison.Ordinal) ||
+        !templateMemberFunctionGlslText.Contains($"float Biaser_{name}(", StringComparison.Ordinal) ||
+        !templateMemberFunctionGlslText.Contains($"Biaser_{name}(biaser", StringComparison.Ordinal) ||
+        !templateMemberFunctionMslText.Contains($"float {name}(", StringComparison.Ordinal) ||
+        !templateMemberFunctionMslText.Contains($"biaser.{name}(", StringComparison.Ordinal)))
+{
+    Console.Error.WriteLine("error: expected overloaded method template instantiations to receive stable unique names.");
+    foreach (var name in combineMethodNames)
+    {
+        Console.Error.WriteLine($"  observed: {name}");
+    }
+    return 1;
+}
+if (!AssertNotContainsAny(
+        templateMemberFunctionHlslText + templateMemberFunctionGlslText + templateMemberFunctionMslText,
+        new[] { "template <", "template<", "biaser.Add(" },
+        "target shader sources must contain only concrete method template specializations."))
+{
+    return 1;
+}
+
+var templateStructResult = compiler.Compile(new CppslCompileOptions(
+    templateStructShader,
+    Path.Combine(outputDir, "template-struct"),
+    new[] { stdRoot },
+    "main_vs",
+    ShaderStage.Vertex));
+if (!templateStructResult.Succeeded || templateStructResult.Artifacts is null)
+{
+    Console.Error.WriteLine("error: expected template_struct fixture to compile.");
+    foreach (var diagnostic in templateStructResult.Diagnostics)
+    {
+        Console.Error.WriteLine(diagnostic.ToDisplayString());
+    }
+    return 1;
+}
+
+var templateStructShaderModelText = File.ReadAllText(templateStructResult.Artifacts.ShaderModelPath);
+var templateStructHlslText = File.ReadAllText(templateStructResult.Artifacts.GetOutputPath(CppslOutputTarget.Hlsl));
+var templateStructGlslText = File.ReadAllText(templateStructResult.Artifacts.GetOutputPath(CppslOutputTarget.Glsl));
+var templateStructMslText = File.ReadAllText(templateStructResult.Artifacts.GetOutputPath(CppslOutputTarget.Msl));
+if (!AssertContainsAll(
+        templateStructShaderModelText,
+        new[] { "\"EmittedName\": \"Pair_tpl_float\"", "\"EmittedName\": \"Pair_tpl_float3\"", "\"EmittedName\": \"Box_tpl_float\"", "\"IsTemplateInstantiation\": true" },
+        "expected shader model to include concrete template struct/class instantiations."))
+{
+    return 1;
+}
+if (!AssertContainsAll(
+        templateStructHlslText,
+        new[] { "struct Pair_tpl_float", "float left;", "float Sum()", "struct Pair_tpl_float3", "float3 left;", "float3 Sum()", "struct Box_tpl_float", "float value;", "float Twice()", "Pair_tpl_float scalar;", "Box_tpl_float boxed;", "Pair_tpl_float3 vector;", "float combined = (scalar.Sum() + boxed.Twice());", "float3 shifted = vector.Sum();" },
+        "expected HLSL template struct/class specializations and concrete variable types to be emitted."))
+{
+    return 1;
+}
+if (!AssertContainsAll(
+        templateStructGlslText,
+        new[] { "struct Pair_tpl_float", "float left;", "float Pair_tpl_float_Sum(Pair_tpl_float self)", "struct Pair_tpl_float3", "vec3 left;", "vec3 Pair_tpl_float3_Sum(Pair_tpl_float3 self)", "struct Box_tpl_float", "float value;", "float Box_tpl_float_Twice(Box_tpl_float self)", "Pair_tpl_float scalar;", "Box_tpl_float boxed;", "Pair_tpl_float3 vector;", "float combined = (Pair_tpl_float_Sum(scalar) + Box_tpl_float_Twice(boxed));", "vec3 shifted = Pair_tpl_float3_Sum(vector);" },
+        "expected GLSL template struct/class specializations and lowered method calls to be emitted."))
+{
+    return 1;
+}
+if (!AssertContainsAll(
+        templateStructMslText,
+        new[] { "struct Pair_tpl_float", "float left;", "float Sum()", "struct Pair_tpl_float3", "float3 left;", "float3 Sum()", "struct Box_tpl_float", "float value;", "float Twice()", "Pair_tpl_float scalar;", "Box_tpl_float boxed;", "Pair_tpl_float3 vector;", "float combined = (scalar.Sum() + boxed.Twice());", "float3 shifted = vector.Sum();" },
+        "expected MSL template struct/class specializations and concrete variable types to be emitted."))
+{
+    return 1;
+}
+if (!AssertNotContainsAny(
+        templateStructHlslText + templateStructGlslText + templateStructMslText,
+        new[] { "template <", "template<", "Pair<float", "Pair <float" },
+        "target shader sources must contain only concrete template struct specializations."))
 {
     return 1;
 }

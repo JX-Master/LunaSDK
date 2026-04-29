@@ -15,7 +15,7 @@ public sealed class CppslSemanticModelBuilder
             .ToArray();
 
         var structs = sourceTopLevelNodes
-            .Where(static node => node.Kind == CppslAstNodeKind.Struct)
+            .Where(static node => node.Kind is CppslAstNodeKind.Struct or CppslAstNodeKind.Class)
             .Select(ToStruct)
             .ToArray();
 
@@ -67,11 +67,16 @@ public sealed class CppslSemanticModelBuilder
             .ToArray();
 
         return new CppslStruct(
+            node.CanonicalDeclId,
             node.Spelling,
+            node.DisplayName,
             node.Location?.File,
             node.Location?.Line,
             node.Location?.Column,
             _attributeParser.GetAttributes(node),
+            node.IsTemplateInstantiation,
+            node.TemplatePatternDeclId,
+            node.TemplateArguments,
             fields,
             methods);
     }
@@ -171,6 +176,9 @@ public sealed class CppslSemanticModelBuilder
             node.ResultTypeName,
             parameters,
             attributes,
+            node.IsTemplateInstantiation,
+            node.TemplatePatternDeclId,
+            node.TemplateArguments,
             isEntryPoint,
             isEntryPoint ? stage : null,
             FindDeclaredStage(attributes),
@@ -194,6 +202,9 @@ public sealed class CppslSemanticModelBuilder
             node.ResultTypeName,
             parameters,
             _attributeParser.GetAttributes(node),
+            node.IsTemplateInstantiation,
+            node.TemplatePatternDeclId,
+            node.TemplateArguments,
             IsConstMethodType(node.TypeName),
             node.Location?.File,
             node.Location?.Line,

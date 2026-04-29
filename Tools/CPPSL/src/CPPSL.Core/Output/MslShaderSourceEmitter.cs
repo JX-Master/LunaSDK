@@ -11,6 +11,7 @@ internal sealed class MslShaderSourceEmitter : CppslShaderSourceEmitterBase
 
     public string Emit(CppslCompileOptions options, CppslSemanticModel model, CppslShaderModel shaderModel)
     {
+        BeginShaderModelEmission(shaderModel);
         var builder = new StringBuilder();
         builder.AppendLine("#include <metal_stdlib>");
         builder.AppendLine("using namespace metal;");
@@ -27,6 +28,7 @@ internal sealed class MslShaderSourceEmitter : CppslShaderSourceEmitterBase
         WriteFunctions(builder, entryPoint, model, shaderModel);
         WriteEntryPoint(builder, options, entryPoint, model, shaderModel);
         _resourceAccessByName = new Dictionary<string, string>(StringComparer.Ordinal);
+        EndShaderModelEmission();
         return builder.ToString();
     }
 
@@ -46,7 +48,7 @@ internal sealed class MslShaderSourceEmitter : CppslShaderSourceEmitterBase
 
             builder.Append(MapValueType(function.ReturnType ?? "void"));
             builder.Append(' ');
-            builder.Append(function.Name);
+            builder.Append(shaderModelFunction.EmittedName);
             builder.Append('(');
             builder.Append(string.Join(", ", function.Parameters.Select(parameter => $"{MapValueType(parameter.Type)} {parameter.Name}")));
             builder.AppendLine(")");
@@ -69,7 +71,8 @@ internal sealed class MslShaderSourceEmitter : CppslShaderSourceEmitterBase
         var packedStructs = StructuredBufferElementStructNames(model);
         foreach (var structure in model.Structs.Where(structure => !descriptorSetLayouts.Contains(structure.Name)))
         {
-            builder.AppendLine($"struct {structure.Name}");
+            var shaderModelStruct = shaderModel.Structs.FirstOrDefault(candidate => candidate.DeclId == structure.DeclId);
+            builder.AppendLine($"struct {shaderModelStruct?.EmittedName ?? structure.Name}");
             builder.AppendLine("{");
             foreach (var field in structure.Fields)
             {
@@ -87,8 +90,7 @@ internal sealed class MslShaderSourceEmitter : CppslShaderSourceEmitterBase
             }
             foreach (var method in structure.Methods)
             {
-                var shaderModelMethod = shaderModel.Structs
-                    .FirstOrDefault(candidate => candidate.Name == structure.Name)?
+                var shaderModelMethod = shaderModelStruct?
                     .Methods
                     .FirstOrDefault(candidate => candidate.DeclId == method.DeclId);
                 if (shaderModelMethod?.Body is null)
@@ -99,7 +101,7 @@ internal sealed class MslShaderSourceEmitter : CppslShaderSourceEmitterBase
                 builder.Append("    ");
                 builder.Append(MapValueType(method.ReturnType ?? "void"));
                 builder.Append(' ');
-                builder.Append(method.Name);
+                builder.Append(shaderModelMethod.EmittedName);
                 builder.Append('(');
                 builder.Append(string.Join(", ", method.Parameters.Select(parameter => $"{MapValueType(parameter.Type)} {parameter.Name}")));
                 builder.AppendLine(")");
@@ -265,11 +267,12 @@ internal sealed class MslShaderSourceEmitter : CppslShaderSourceEmitterBase
 
     protected override string MapValueType(string type)
     {
-        return type switch
+        var normalized = MapShaderTypeName(type);
+        return normalized switch
         {
             "_Bool" => "bool",
             "bool_t" => "bool",
-            _ => type
+            _ => normalized
         };
     }
 
@@ -330,7 +333,7 @@ internal sealed class MslShaderSourceEmitter : CppslShaderSourceEmitterBase
                 return $"{receiver}.write({AdaptTextureStoreValue(receiverNode, memberArguments[1], "float4", "int4", "uint4", "0.0f")}, {memberArguments[0]})";
             }
 
-            return LowerMemberCall(receiver, memberName, memberArguments);
+            return LowerMemberCall(receiver, MapMethodName(node.DirectCalleeDeclId, memberName), memberArguments);
         }
 
         var name = node.DisplayName ?? node.Spelling;

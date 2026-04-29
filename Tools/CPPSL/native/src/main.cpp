@@ -665,6 +665,41 @@ void WriteTemplateArgumentInfo(std::ostream& os, const TemplateArgumentInfo& arg
 AstNode MakeNode(const clang::Decl* decl, const clang::ASTContext& ast_context);
 AstNode MakeStmtNode(const clang::Stmt* stmt, const clang::ASTContext& ast_context);
 
+void AppendDeclNode(std::vector<AstNode>& children, const clang::Decl* decl, const clang::ASTContext& ast_context)
+{
+    if (decl->isImplicit() || !IsInterestingDecl(decl))
+    {
+        return;
+    }
+    if (const auto* record = llvm::dyn_cast<clang::RecordDecl>(decl); record && !record->isCompleteDefinition())
+    {
+        return;
+    }
+
+    children.push_back(MakeNode(decl, ast_context));
+
+    if (const auto* function_template = llvm::dyn_cast<clang::FunctionTemplateDecl>(decl))
+    {
+        for (const auto* specialization : function_template->specializations())
+        {
+            if (specialization && specialization->hasBody())
+            {
+                children.push_back(MakeNode(specialization, ast_context));
+            }
+        }
+    }
+    if (const auto* class_template = llvm::dyn_cast<clang::ClassTemplateDecl>(decl))
+    {
+        for (const auto* specialization : class_template->specializations())
+        {
+            if (specialization && specialization->isCompleteDefinition())
+            {
+                children.push_back(MakeNode(specialization, ast_context));
+            }
+        }
+    }
+}
+
 void AppendStmtChildren(std::vector<AstNode>& children, const clang::Stmt* stmt, const clang::ASTContext& ast_context)
 {
     for (const auto* child : stmt->children())
@@ -714,15 +749,7 @@ std::vector<AstNode> MakeChildren(const clang::Decl* decl, const clang::ASTConte
     {
         for (const auto* child : context->decls())
         {
-            if (child->isImplicit() || !IsInterestingDecl(child))
-            {
-                continue;
-            }
-            if (const auto* record = llvm::dyn_cast<clang::RecordDecl>(child); record && !record->isCompleteDefinition())
-            {
-                continue;
-            }
-            children.push_back(MakeNode(child, ast_context));
+            AppendDeclNode(children, child, ast_context);
         }
     }
     return children;
@@ -1006,6 +1033,11 @@ void WriteResult(
     os << "]}";
 }
 
+void AppendTopLevelAstNode(std::vector<AstNode>& ast_nodes, const clang::Decl* decl, const clang::ASTContext& ast_context)
+{
+    AppendDeclNode(ast_nodes, decl, ast_context);
+}
+
 Options ParseOptions(int argc, char** argv)
 {
     Options options;
@@ -1092,15 +1124,7 @@ int main(int argc, char** argv)
     const auto& ast_context = ast_unit->getASTContext();
     for (const auto* decl : ast_context.getTranslationUnitDecl()->decls())
     {
-        if (decl->isImplicit() || !IsInterestingDecl(decl))
-        {
-            continue;
-        }
-        if (const auto* record = llvm::dyn_cast<clang::RecordDecl>(decl); record && !record->isCompleteDefinition())
-        {
-            continue;
-        }
-        ast_nodes.push_back(MakeNode(decl, ast_context));
+        AppendTopLevelAstNode(ast_nodes, decl, ast_context);
     }
 
     std::vector<AstNode> declarations;

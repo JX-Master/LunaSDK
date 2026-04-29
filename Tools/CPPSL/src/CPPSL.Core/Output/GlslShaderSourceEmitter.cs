@@ -11,10 +11,12 @@ internal sealed class GlslShaderSourceEmitter : CppslShaderSourceEmitterBase
     private Dictionary<string, CppslMethod> _methodsByDeclId = new(StringComparer.Ordinal);
     private Dictionary<string, CppslMethod> _uniqueMethodsByOwnerAndName = new(StringComparer.Ordinal);
     private Dictionary<string, int> _methodOverloadCounts = new(StringComparer.Ordinal);
+    private Dictionary<string, string> _glslMethodNamesByDeclId = new(StringComparer.Ordinal);
     private HashSet<string>? _currentMethodFields;
 
     public string Emit(CppslCompileOptions options, CppslSemanticModel model, CppslShaderModel shaderModel)
     {
+        BeginShaderModelEmission(shaderModel);
         var builder = new StringBuilder();
         builder.AppendLine("#version 450");
         builder.AppendLine("#extension GL_EXT_samplerless_texture_functions : require");
@@ -25,7 +27,8 @@ internal sealed class GlslShaderSourceEmitter : CppslShaderSourceEmitterBase
             static global => global.ResourceKind is not null && global.AccessPath is not null,
             static global => global.Name);
         (_methodsByDeclId, _uniqueMethodsByOwnerAndName, _methodOverloadCounts) = BuildMethodMaps(model);
-        WriteStructs(builder, model);
+        _glslMethodNamesByDeclId = BuildGlslMethodNamesByDeclId(model, shaderModel);
+        WriteStructs(builder, model, shaderModel);
         WriteMethods(builder, model, shaderModel);
         WriteComputeLayout(builder, entryPoint);
         WriteGroupSharedGlobals(builder, model);
@@ -39,7 +42,9 @@ internal sealed class GlslShaderSourceEmitter : CppslShaderSourceEmitterBase
         _methodsByDeclId = new Dictionary<string, CppslMethod>(StringComparer.Ordinal);
         _uniqueMethodsByOwnerAndName = new Dictionary<string, CppslMethod>(StringComparer.Ordinal);
         _methodOverloadCounts = new Dictionary<string, int>(StringComparer.Ordinal);
+        _glslMethodNamesByDeclId = new Dictionary<string, string>(StringComparer.Ordinal);
         _currentMethodFields = null;
+        EndShaderModelEmission();
         return source;
     }
 
@@ -59,7 +64,7 @@ internal sealed class GlslShaderSourceEmitter : CppslShaderSourceEmitterBase
 
             builder.Append(MapValueType(function.ReturnType ?? "void"));
             builder.Append(' ');
-            builder.Append(function.Name);
+            builder.Append(shaderModelFunction.EmittedName);
             builder.Append('(');
             builder.Append(string.Join(", ", function.Parameters.Select(parameter => $"{MapValueType(parameter.Type)} {parameter.Name}")));
             builder.AppendLine(")");
@@ -68,12 +73,13 @@ internal sealed class GlslShaderSourceEmitter : CppslShaderSourceEmitterBase
         }
     }
 
-    private void WriteStructs(StringBuilder builder, CppslSemanticModel model)
+    private void WriteStructs(StringBuilder builder, CppslSemanticModel model, CppslShaderModel shaderModel)
     {
         var descriptorSetLayouts = DescriptorSetLayoutStructNames(model);
         foreach (var structure in model.Structs.Where(structure => !descriptorSetLayouts.Contains(structure.Name)))
         {
-            builder.AppendLine($"struct {structure.Name}");
+            var shaderModelStruct = shaderModel.Structs.FirstOrDefault(candidate => candidate.DeclId == structure.DeclId);
+            builder.AppendLine($"struct {shaderModelStruct?.EmittedName ?? structure.Name}");
             builder.AppendLine("{");
             foreach (var field in structure.Fields)
             {
@@ -89,10 +95,10 @@ internal sealed class GlslShaderSourceEmitter : CppslShaderSourceEmitterBase
         var descriptorSetLayouts = DescriptorSetLayoutStructNames(model);
         foreach (var structure in model.Structs.Where(structure => !descriptorSetLayouts.Contains(structure.Name)))
         {
+            var shaderModelStruct = shaderModel.Structs.FirstOrDefault(candidate => candidate.DeclId == structure.DeclId);
             foreach (var method in structure.Methods)
             {
-                var shaderModelMethod = shaderModel.Structs
-                    .FirstOrDefault(candidate => candidate.Name == structure.Name)?
+                var shaderModelMethod = shaderModelStruct?
                     .Methods
                     .FirstOrDefault(candidate => candidate.DeclId == method.DeclId);
                 if (shaderModelMethod?.Body is null)
@@ -106,7 +112,7 @@ internal sealed class GlslShaderSourceEmitter : CppslShaderSourceEmitterBase
                 builder.Append('(');
                 var parameters = new List<string>
                 {
-                    $"{(method.IsConst ? string.Empty : "inout ")}{structure.Name} self"
+                    $"{(method.IsConst ? string.Empty : "inout ")}{shaderModelStruct?.EmittedName ?? structure.Name} self"
                 };
                 parameters.AddRange(method.Parameters.Select(parameter => $"{MapValueType(parameter.Type)} {parameter.Name}"));
                 builder.Append(string.Join(", ", parameters));
@@ -548,6 +554,35 @@ internal sealed class GlslShaderSourceEmitter : CppslShaderSourceEmitterBase
         return (byDeclId, uniqueByOwnerAndName, overloadCounts);
     }
 
+    private static Dictionary<string, string> BuildGlslMethodNamesByDeclId(
+        CppslSemanticModel model,
+        CppslShaderModel shaderModel)
+    {
+        var result = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var structure in model.Structs)
+        {
+            var shaderModelStruct = shaderModel.Structs.FirstOrDefault(candidate => candidate.DeclId == structure.DeclId);
+            var ownerName = shaderModelStruct?.EmittedName ?? structure.Name;
+            foreach (var method in structure.Methods)
+            {
+                if (string.IsNullOrWhiteSpace(method.DeclId))
+                {
+                    continue;
+                }
+
+                var shaderModelMethod = shaderModelStruct?.Methods.FirstOrDefault(candidate => candidate.DeclId == method.DeclId);
+                var emittedMemberName = shaderModelMethod?.EmittedName ?? method.Name;
+                var baseName = $"{ownerName}_{emittedMemberName}";
+                var overloadCount = structure.Methods.Count(candidate => candidate.Name == method.Name);
+                result[method.DeclId] = !method.IsTemplateInstantiation &&
+                    overloadCount > 1
+                        ? $"{baseName}_ov_{StableIdentifierSuffix(method.DeclId ?? method.DisplayName ?? method.Name)}"
+                        : baseName;
+            }
+        }
+        return result;
+    }
+
     private bool TryGetMethodForCall(
         CppslShaderModelNode receiverNode,
         string methodName,
@@ -579,8 +614,15 @@ internal sealed class GlslShaderSourceEmitter : CppslShaderSourceEmitterBase
 
     private string GlslMethodName(CppslMethod method)
     {
-        var baseName = $"{NormalizeShaderTypeName(method.OwnerType)}_{method.Name}";
-        return _methodOverloadCounts.TryGetValue(MethodKey(method.OwnerType, method.Name), out var count) && count > 1
+        if (method.DeclId is not null && _glslMethodNamesByDeclId.TryGetValue(method.DeclId, out var emittedName))
+        {
+            return emittedName;
+        }
+
+        var emittedMemberName = MapMethodName(method.DeclId, method.Name);
+        var baseName = $"{MapShaderTypeName(method.OwnerType)}_{emittedMemberName}";
+        return !method.IsTemplateInstantiation &&
+            _methodOverloadCounts.TryGetValue(MethodKey(method.OwnerType, method.Name), out var count) && count > 1
             ? $"{baseName}_ov_{StableIdentifierSuffix(method.DeclId ?? method.DisplayName ?? method.Name)}"
             : baseName;
     }
@@ -600,7 +642,8 @@ internal sealed class GlslShaderSourceEmitter : CppslShaderSourceEmitterBase
 
     protected override string MapValueType(string type)
     {
-        return type switch
+        var normalized = MapShaderTypeName(type);
+        return normalized switch
         {
             "float2" => "vec2",
             "float3" => "vec3",
@@ -618,7 +661,7 @@ internal sealed class GlslShaderSourceEmitter : CppslShaderSourceEmitterBase
             "uint" => "uint",
             "_Bool" => "bool",
             "bool_t" => "bool",
-            _ => type
+            _ => normalized
         };
     }
 

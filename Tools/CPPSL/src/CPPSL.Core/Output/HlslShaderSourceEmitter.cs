@@ -11,6 +11,7 @@ internal sealed class HlslShaderSourceEmitter : CppslShaderSourceEmitterBase
 
     public string Emit(CppslCompileOptions options, CppslSemanticModel model, CppslShaderModel shaderModel)
     {
+        BeginShaderModelEmission(shaderModel);
         var builder = new StringBuilder();
         WriteHeader(builder, "HLSL", options);
         builder.AppendLine("#pragma pack_matrix(column_major)");
@@ -27,6 +28,7 @@ internal sealed class HlslShaderSourceEmitter : CppslShaderSourceEmitterBase
         WriteEntryPoint(builder, entryPoint, model, shaderModel);
         var source = RewriteResidualResourceAccessPaths(builder.ToString(), model, static global => global.Name);
         _resourceAccessByPath = new Dictionary<string, string>(StringComparer.Ordinal);
+        EndShaderModelEmission();
         return source;
     }
 
@@ -46,7 +48,7 @@ internal sealed class HlslShaderSourceEmitter : CppslShaderSourceEmitterBase
 
             builder.Append(MapValueType(function.ReturnType ?? "void"));
             builder.Append(' ');
-            builder.Append(function.Name);
+            builder.Append(shaderModelFunction.EmittedName);
             builder.Append('(');
             builder.Append(string.Join(", ", function.Parameters.Select(parameter => $"{MapValueType(parameter.Type)} {parameter.Name}")));
             builder.AppendLine(")");
@@ -68,7 +70,8 @@ internal sealed class HlslShaderSourceEmitter : CppslShaderSourceEmitterBase
         var descriptorSetLayouts = DescriptorSetLayoutStructNames(model);
         foreach (var structure in model.Structs.Where(structure => !descriptorSetLayouts.Contains(structure.Name)))
         {
-            builder.AppendLine($"struct {structure.Name}");
+            var shaderModelStruct = shaderModel.Structs.FirstOrDefault(candidate => candidate.DeclId == structure.DeclId);
+            builder.AppendLine($"struct {shaderModelStruct?.EmittedName ?? structure.Name}");
             builder.AppendLine("{");
             foreach (var field in structure.Fields)
             {
@@ -84,8 +87,7 @@ internal sealed class HlslShaderSourceEmitter : CppslShaderSourceEmitterBase
             }
             foreach (var method in structure.Methods)
             {
-                var shaderModelMethod = shaderModel.Structs
-                    .FirstOrDefault(candidate => candidate.Name == structure.Name)?
+                var shaderModelMethod = shaderModelStruct?
                     .Methods
                     .FirstOrDefault(candidate => candidate.DeclId == method.DeclId);
                 if (shaderModelMethod?.Body is null)
@@ -96,7 +98,7 @@ internal sealed class HlslShaderSourceEmitter : CppslShaderSourceEmitterBase
                 builder.Append("    ");
                 builder.Append(MapValueType(method.ReturnType ?? "void"));
                 builder.Append(' ');
-                builder.Append(method.Name);
+                builder.Append(shaderModelMethod.EmittedName);
                 builder.Append('(');
                 builder.Append(string.Join(", ", method.Parameters.Select(parameter => $"{MapValueType(parameter.Type)} {parameter.Name}")));
                 builder.AppendLine(")");
@@ -210,12 +212,13 @@ internal sealed class HlslShaderSourceEmitter : CppslShaderSourceEmitterBase
 
     protected override string MapValueType(string type)
     {
-        return type switch
+        var normalized = MapShaderTypeName(type);
+        return normalized switch
         {
             "_Bool" => "bool",
             "bool_t" => "bool",
-            _ when type.StartsWith("DepthTexture2D<", StringComparison.Ordinal) => $"Texture2D<{UnwrapTemplateArgument(type)}>",
-            _ => type
+            _ when normalized.StartsWith("DepthTexture2D<", StringComparison.Ordinal) => $"Texture2D<{UnwrapTemplateArgument(normalized)}>",
+            _ => normalized
         };
     }
 
