@@ -785,6 +785,15 @@ AstNode MakeStmtNode(const clang::Stmt* stmt, const clang::ASTContext& ast_conte
         return node;
     }
 
+    if (const auto* default_argument = llvm::dyn_cast<clang::CXXDefaultArgExpr>(stmt))
+    {
+        if (const auto* expression = default_argument->getExpr())
+        {
+            node.children.push_back(MakeStmtNode(expression, ast_context));
+        }
+        return node;
+    }
+
     AppendStmtChildren(node.children, stmt, ast_context);
     return node;
 }

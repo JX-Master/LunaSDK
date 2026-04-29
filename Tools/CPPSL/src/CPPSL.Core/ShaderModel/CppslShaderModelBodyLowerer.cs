@@ -37,10 +37,11 @@ internal sealed class CppslShaderModelBodyLowerer
         CppslAstNodeKind.Unknown
     };
 
-    public CppslShaderModelNode? LowerFunctionBody(IReadOnlyList<CppslAstNode> astNodes, string functionName)
+    public CppslShaderModelNode? LowerFunctionBody(IReadOnlyList<CppslAstNode> astNodes, string? functionDeclId, string functionName)
     {
         var functionNode = astNodes.FirstOrDefault(node =>
             node.Kind == CppslAstNodeKind.Function &&
+            (functionDeclId is null || node.CanonicalDeclId == functionDeclId) &&
             node.Spelling == functionName &&
             node.Children.Any(static child => child.Kind == CppslAstNodeKind.CompoundStatement));
 
@@ -48,13 +49,14 @@ internal sealed class CppslShaderModelBodyLowerer
         return bodyNode is null ? null : LowerNode(bodyNode);
     }
 
-    public CppslShaderModelNode? LowerMethodBody(IReadOnlyList<CppslAstNode> astNodes, string ownerType, string methodName)
+    public CppslShaderModelNode? LowerMethodBody(IReadOnlyList<CppslAstNode> astNodes, string? methodDeclId, string ownerType, string methodName)
     {
         var structNode = astNodes.FirstOrDefault(node =>
             node.Kind == CppslAstNodeKind.Struct &&
             node.Spelling == ownerType);
         var methodNode = structNode?.Children.FirstOrDefault(node =>
             node.Kind == CppslAstNodeKind.Method &&
+            (methodDeclId is null || node.CanonicalDeclId == methodDeclId) &&
             node.Spelling == methodName &&
             node.Children.Any(static child => child.Kind == CppslAstNodeKind.CompoundStatement));
 

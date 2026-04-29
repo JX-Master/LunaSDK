@@ -29,13 +29,14 @@ public sealed class CppslShaderModelBuilder
                     field.Location,
                     field.IsPosition)).ToArray(),
                 structure.Methods.Select(method => new CppslShaderModelMethod(
+                    method.DeclId,
                     method.OwnerType,
                     method.Name,
                     method.DisplayName,
                     method.ReturnType,
                     method.Parameters.Select(static parameter => new CppslShaderModelParameter(parameter.Name, parameter.Type)).ToArray(),
                     method.IsConst,
-                    _bodyLowerer.LowerMethodBody(astNodes, structure.Name, method.Name))).ToArray())).ToArray(),
+                    _bodyLowerer.LowerMethodBody(astNodes, method.DeclId, structure.Name, method.Name))).ToArray())).ToArray(),
             semanticModel.Globals
                 .Where(static global => global.ResourceKind is not null)
                 .Select(static global => new CppslShaderModelResource(
@@ -46,10 +47,11 @@ public sealed class CppslShaderModelBuilder
                     global.Binding!.Value)).ToArray(),
             semanticModel.Functions
                 .Select(function => new CppslShaderModelFunction(
+                    function.DeclId,
                     function.Name,
                     function.ReturnType,
                     function.Parameters.Select(static parameter => new CppslShaderModelParameter(parameter.Name, parameter.Type)).ToArray(),
-                    _bodyLowerer.LowerFunctionBody(astNodes, function.Name))).ToArray(),
+                    _bodyLowerer.LowerFunctionBody(astNodes, function.DeclId, function.Name))).ToArray(),
             semanticModel.Functions
                 .Where(static function => function.IsEntryPoint)
                 .Select(function => new CppslShaderModelEntryPoint(
@@ -58,7 +60,7 @@ public sealed class CppslShaderModelBuilder
                     function.DeclaredStage,
                     function.ReturnType,
                     function.Parameters.Select(static parameter => new CppslShaderModelParameter(parameter.Name, parameter.Type)).ToArray(),
-                    _bodyLowerer.LowerFunctionBody(astNodes, function.Name))).ToArray());
+                    _bodyLowerer.LowerFunctionBody(astNodes, function.DeclId, function.Name))).ToArray());
     }
 }
 
@@ -98,12 +100,14 @@ public sealed record CppslShaderModelEntryPoint(
     CppslShaderModelNode? Body);
 
 public sealed record CppslShaderModelFunction(
+    string? DeclId,
     string Name,
     string? ReturnType,
     IReadOnlyList<CppslShaderModelParameter> Parameters,
     CppslShaderModelNode? Body);
 
 public sealed record CppslShaderModelMethod(
+    string? DeclId,
     string OwnerType,
     string Name,
     string? DisplayName,

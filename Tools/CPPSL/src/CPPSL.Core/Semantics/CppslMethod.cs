@@ -1,6 +1,7 @@
 namespace CPPSL.Core.Semantics;
 
 public sealed record CppslMethod(
+    string? DeclId,
     string OwnerType,
     string Name,
     string? DisplayName,

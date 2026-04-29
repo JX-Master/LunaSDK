@@ -8,7 +8,9 @@ namespace CPPSL.Core.Output;
 internal sealed class GlslShaderSourceEmitter : CppslShaderSourceEmitterBase
 {
     private Dictionary<string, string> _resourceAccessByPath = new(StringComparer.Ordinal);
-    private Dictionary<string, CppslMethod> _methodsByOwnerAndName = new(StringComparer.Ordinal);
+    private Dictionary<string, CppslMethod> _methodsByDeclId = new(StringComparer.Ordinal);
+    private Dictionary<string, CppslMethod> _uniqueMethodsByOwnerAndName = new(StringComparer.Ordinal);
+    private Dictionary<string, int> _methodOverloadCounts = new(StringComparer.Ordinal);
     private HashSet<string>? _currentMethodFields;
 
     public string Emit(CppslCompileOptions options, CppslSemanticModel model, CppslShaderModel shaderModel)
@@ -22,7 +24,7 @@ internal sealed class GlslShaderSourceEmitter : CppslShaderSourceEmitterBase
             model,
             static global => global.ResourceKind is not null && global.AccessPath is not null,
             static global => global.Name);
-        _methodsByOwnerAndName = BuildMethodMap(model);
+        (_methodsByDeclId, _uniqueMethodsByOwnerAndName, _methodOverloadCounts) = BuildMethodMaps(model);
         WriteStructs(builder, model);
         WriteMethods(builder, model, shaderModel);
         WriteComputeLayout(builder, entryPoint);
@@ -34,7 +36,9 @@ internal sealed class GlslShaderSourceEmitter : CppslShaderSourceEmitterBase
         WriteMain(builder, entryPoint, model);
         var source = RewriteResidualResourceAccessPaths(builder.ToString(), model, static global => global.Name);
         _resourceAccessByPath = new Dictionary<string, string>(StringComparer.Ordinal);
-        _methodsByOwnerAndName = new Dictionary<string, CppslMethod>(StringComparer.Ordinal);
+        _methodsByDeclId = new Dictionary<string, CppslMethod>(StringComparer.Ordinal);
+        _uniqueMethodsByOwnerAndName = new Dictionary<string, CppslMethod>(StringComparer.Ordinal);
+        _methodOverloadCounts = new Dictionary<string, int>(StringComparer.Ordinal);
         _currentMethodFields = null;
         return source;
     }
@@ -47,7 +51,7 @@ internal sealed class GlslShaderSourceEmitter : CppslShaderSourceEmitterBase
     {
         foreach (var function in model.Functions.Where(function => function.Name != entryPoint?.Name))
         {
-            var shaderModelFunction = shaderModel.Functions.FirstOrDefault(candidate => candidate.Name == function.Name);
+            var shaderModelFunction = shaderModel.Functions.FirstOrDefault(candidate => candidate.DeclId == function.DeclId);
             if (shaderModelFunction?.Body is null)
             {
                 continue;
@@ -90,7 +94,7 @@ internal sealed class GlslShaderSourceEmitter : CppslShaderSourceEmitterBase
                 var shaderModelMethod = shaderModel.Structs
                     .FirstOrDefault(candidate => candidate.Name == structure.Name)?
                     .Methods
-                    .FirstOrDefault(candidate => candidate.Name == method.Name);
+                    .FirstOrDefault(candidate => candidate.DeclId == method.DeclId);
                 if (shaderModelMethod?.Body is null)
                 {
                     continue;
@@ -98,7 +102,7 @@ internal sealed class GlslShaderSourceEmitter : CppslShaderSourceEmitterBase
 
                 builder.Append(MapValueType(method.ReturnType ?? "void"));
                 builder.Append(' ');
-                builder.Append(GlslMethodName(structure.Name, method.Name));
+                builder.Append(GlslMethodName(method));
                 builder.Append('(');
                 var parameters = new List<string>
                 {
@@ -433,9 +437,9 @@ internal sealed class GlslShaderSourceEmitter : CppslShaderSourceEmitterBase
     {
         if (TryGetMemberCall(node, out var receiverNode, out var receiver, out var memberName, out var memberArguments))
         {
-            if (TryGetMethodOwner(receiverNode, memberName, out var ownerType))
+            if (TryGetMethodForCall(receiverNode, memberName, node.DirectCalleeDeclId, out var method))
             {
-                return $"{GlslMethodName(ownerType, memberName)}({receiver}{(memberArguments.Count == 0 ? string.Empty : ", ")}{string.Join(", ", memberArguments)})";
+                return $"{GlslMethodName(method)}({receiver}{(memberArguments.Count == 0 ? string.Empty : ", ")}{string.Join(", ", memberArguments)})";
             }
             if (memberName == "Sample" && memberArguments.Count == 2)
             {
@@ -507,31 +511,64 @@ internal sealed class GlslShaderSourceEmitter : CppslShaderSourceEmitterBase
         return base.LowerCallExpression(node);
     }
 
-    private static Dictionary<string, CppslMethod> BuildMethodMap(CppslSemanticModel model)
+    private static (Dictionary<string, CppslMethod> ByDeclId, Dictionary<string, CppslMethod> UniqueByOwnerAndName, Dictionary<string, int> OverloadCounts) BuildMethodMaps(CppslSemanticModel model)
     {
-        var map = new Dictionary<string, CppslMethod>(StringComparer.Ordinal);
+        var byDeclId = new Dictionary<string, CppslMethod>(StringComparer.Ordinal);
+        var byOwnerAndNameGroups = new Dictionary<string, List<CppslMethod>>(StringComparer.Ordinal);
         foreach (var structure in model.Structs)
         {
             foreach (var method in structure.Methods)
             {
-                map[MethodKey(structure.Name, method.Name)] = method;
+                if (!string.IsNullOrWhiteSpace(method.DeclId))
+                {
+                    byDeclId[method.DeclId] = method;
+                }
+
+                var key = MethodKey(structure.Name, method.Name);
+                if (!byOwnerAndNameGroups.TryGetValue(key, out var group))
+                {
+                    group = new List<CppslMethod>();
+                    byOwnerAndNameGroups.Add(key, group);
+                }
+                group.Add(method);
             }
         }
-        return map;
+
+        var uniqueByOwnerAndName = new Dictionary<string, CppslMethod>(StringComparer.Ordinal);
+        var overloadCounts = new Dictionary<string, int>(StringComparer.Ordinal);
+        foreach (var (key, group) in byOwnerAndNameGroups)
+        {
+            overloadCounts[key] = group.Count;
+            if (group.Count == 1)
+            {
+                uniqueByOwnerAndName[key] = group[0];
+            }
+        }
+
+        return (byDeclId, uniqueByOwnerAndName, overloadCounts);
     }
 
-    private bool TryGetMethodOwner(CppslShaderModelNode receiverNode, string methodName, out string ownerType)
+    private bool TryGetMethodForCall(
+        CppslShaderModelNode receiverNode,
+        string methodName,
+        string? directCalleeDeclId,
+        out CppslMethod method)
     {
+        if (!string.IsNullOrWhiteSpace(directCalleeDeclId) &&
+            _methodsByDeclId.TryGetValue(directCalleeDeclId, out method!))
+        {
+            return true;
+        }
+
         foreach (var candidate in EnumerateNodeTypeCandidates(receiverNode).Select(NormalizeShaderTypeName))
         {
-            if (_methodsByOwnerAndName.ContainsKey(MethodKey(candidate, methodName)))
+            if (_uniqueMethodsByOwnerAndName.TryGetValue(MethodKey(candidate, methodName), out method!))
             {
-                ownerType = candidate;
                 return true;
             }
         }
 
-        ownerType = string.Empty;
+        method = null!;
         return false;
     }
 
@@ -540,9 +577,25 @@ internal sealed class GlslShaderSourceEmitter : CppslShaderSourceEmitterBase
         return $"{NormalizeShaderTypeName(ownerType)}.{methodName}";
     }
 
-    private static string GlslMethodName(string ownerType, string methodName)
+    private string GlslMethodName(CppslMethod method)
     {
-        return $"{NormalizeShaderTypeName(ownerType)}_{methodName}";
+        var baseName = $"{NormalizeShaderTypeName(method.OwnerType)}_{method.Name}";
+        return _methodOverloadCounts.TryGetValue(MethodKey(method.OwnerType, method.Name), out var count) && count > 1
+            ? $"{baseName}_ov_{StableIdentifierSuffix(method.DeclId ?? method.DisplayName ?? method.Name)}"
+            : baseName;
+    }
+
+    private static string StableIdentifierSuffix(string value)
+    {
+        const uint offset = 2166136261u;
+        const uint prime = 16777619u;
+        var hash = offset;
+        foreach (var ch in value)
+        {
+            hash ^= ch;
+            hash *= prime;
+        }
+        return hash.ToString("x8");
     }
 
     protected override string MapValueType(string type)

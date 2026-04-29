@@ -165,6 +165,7 @@ public sealed class CppslSemanticModelBuilder
 
         var isEntryPoint = node.Spelling == entryPoint;
         return new CppslFunction(
+            node.CanonicalDeclId,
             node.Spelling,
             node.DisplayName,
             node.ResultTypeName,
@@ -186,6 +187,7 @@ public sealed class CppslSemanticModelBuilder
             .ToArray();
 
         return new CppslMethod(
+            node.CanonicalDeclId,
             ownerType,
             node.Spelling,
             node.DisplayName,

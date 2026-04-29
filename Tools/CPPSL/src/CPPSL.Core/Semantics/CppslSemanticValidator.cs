@@ -108,20 +108,6 @@ public sealed class CppslSemanticValidator
                     }
                 }
             }
-
-            foreach (var duplicateGroup in structure.Methods
-                .GroupBy(static method => method.Name, StringComparer.Ordinal)
-                .Where(static group => group.Count() > 1))
-            {
-                foreach (var method in duplicateGroup.Skip(1))
-                {
-                    diagnostics.Add(CppslDiagnostic.Error(
-                        $"CPPSL struct `{structure.Name}` declares duplicate method `{duplicateGroup.Key}`.",
-                        method.File,
-                        method.Line,
-                        method.Column));
-                }
-            }
         }
 
         foreach (var global in model.Globals)

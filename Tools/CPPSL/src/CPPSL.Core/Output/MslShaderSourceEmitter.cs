@@ -38,7 +38,7 @@ internal sealed class MslShaderSourceEmitter : CppslShaderSourceEmitterBase
     {
         foreach (var function in model.Functions.Where(function => function.Name != entryPoint?.Name))
         {
-            var shaderModelFunction = shaderModel.Functions.FirstOrDefault(candidate => candidate.Name == function.Name);
+            var shaderModelFunction = shaderModel.Functions.FirstOrDefault(candidate => candidate.DeclId == function.DeclId);
             if (shaderModelFunction?.Body is null)
             {
                 continue;
@@ -90,7 +90,7 @@ internal sealed class MslShaderSourceEmitter : CppslShaderSourceEmitterBase
                 var shaderModelMethod = shaderModel.Structs
                     .FirstOrDefault(candidate => candidate.Name == structure.Name)?
                     .Methods
-                    .FirstOrDefault(candidate => candidate.Name == method.Name);
+                    .FirstOrDefault(candidate => candidate.DeclId == method.DeclId);
                 if (shaderModelMethod?.Body is null)
                 {
                     continue;

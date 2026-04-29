@@ -24,8 +24,50 @@ var vectorConstructorShader = Path.Combine(fixturesRoot, "valid", "vector_constr
 var structMethodShader = Path.Combine(fixturesRoot, "valid", "struct_method", "StructMethod.cxx");
 var nonConstStructMethodShader = Path.Combine(fixturesRoot, "valid", "non_const_struct_method", "NonConstStructMethod.cxx");
 var schemaV3Shader = Path.Combine(fixturesRoot, "valid", "schema_v3", "SchemaV3.cxx");
+var defaultArgumentsOverloadShader = Path.Combine(fixturesRoot, "valid", "default_arguments_overload", "DefaultArgumentsOverload.cxx");
 
 if (!ExpectSchemaV3Facts(schemaV3Shader, stdRoot))
+{
+    return 1;
+}
+
+var defaultArgumentsOverloadResult = compiler.Compile(new CppslCompileOptions(
+    defaultArgumentsOverloadShader,
+    Path.Combine(outputDir, "default-arguments-overload"),
+    new[] { stdRoot },
+    "main_vs",
+    ShaderStage.Vertex));
+if (!defaultArgumentsOverloadResult.Succeeded || defaultArgumentsOverloadResult.Artifacts is null)
+{
+    Console.Error.WriteLine("error: expected default_arguments_overload fixture to compile.");
+    foreach (var diagnostic in defaultArgumentsOverloadResult.Diagnostics)
+    {
+        Console.Error.WriteLine(diagnostic.ToDisplayString());
+    }
+    return 1;
+}
+
+var defaultArgumentsOverloadHlslText = File.ReadAllText(defaultArgumentsOverloadResult.Artifacts.GetOutputPath(CppslOutputTarget.Hlsl));
+var defaultArgumentsOverloadGlslText = File.ReadAllText(defaultArgumentsOverloadResult.Artifacts.GetOutputPath(CppslOutputTarget.Glsl));
+var defaultArgumentsOverloadMslText = File.ReadAllText(defaultArgumentsOverloadResult.Artifacts.GetOutputPath(CppslOutputTarget.Msl));
+if (!AssertContainsAll(
+        defaultArgumentsOverloadHlslText,
+        new[] { "float MixValue(float value, float bias)", "float2 MixValue(float2 value, float bias)", "float Apply(float value)", "float3 Apply(float3 value)" },
+        "expected HLSL overload declarations to be emitted."))
+{
+    return 1;
+}
+if (!AssertContainsAll(
+        defaultArgumentsOverloadMslText,
+        new[] { "float MixValue(float value, float bias)", "float2 MixValue(float2 value, float bias)", "float Apply(float value)", "float3 Apply(float3 value)" },
+        "expected Metal overload declarations to be emitted."))
+{
+    return 1;
+}
+if (!AssertContainsAll(
+        defaultArgumentsOverloadGlslText,
+        new[] { "float MixValue(float value, float bias)", "vec2 MixValue(vec2 value, float bias)", "float Mixer_Apply_ov_", "vec3 Mixer_Apply_ov_", "MixValue(v.weight, 0.25" },
+        "expected GLSL default arguments and method overload lowering to be emitted."))
 {
     return 1;
 }
