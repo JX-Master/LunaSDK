@@ -2,6 +2,8 @@
 
 #include <Luna/Image/Image.hpp>
 #include <Luna/Runtime/Blob.hpp>
+#include <Luna/Runtime/Error.hpp>
+#include <Luna/Runtime/Interface.hpp>
 #include <Luna/Runtime/Memory.hpp>
 #include <Luna/Runtime/Module.hpp>
 #include <Luna/Runtime/Result.hpp>
@@ -26,6 +28,21 @@ LunaImageDesc from_image_desc(const Luna::Image::ImageDesc& desc)
         desc.width,
         desc.height
     };
+}
+
+Luna::Image::ImageDesc to_image_desc(const LunaImageDesc& desc)
+{
+    return Luna::Image::ImageDesc
+    {
+        static_cast<Luna::Image::ImageFormat>(desc.format),
+        desc.width,
+        desc.height
+    };
+}
+
+Luna::ISeekableStream* object_as_seekable_stream(luna_handle_t object)
+{
+    return object ? Luna::query_interface<Luna::ISeekableStream>(object) : nullptr;
 }
 
 void clear_image_data(LunaImageData& image)
@@ -91,6 +108,76 @@ LUNA_IMAGE_C_API luna_errcode_t luna_image_read_file(const void* data, uint64_t 
     out_image->data = image.detach();
     out_image->desc = from_image_desc(desc);
     return 0;
+}
+
+LUNA_IMAGE_C_API luna_errcode_t luna_image_write_png_file(luna_handle_t stream, const LunaImageDesc* desc, const void* data, uint64_t data_size)
+{
+    if (!stream || !desc || (!data && data_size))
+    {
+        return from_errcode(Luna::BasicError::bad_arguments());
+    }
+    Luna::ISeekableStream* native_stream = object_as_seekable_stream(stream);
+    if (!native_stream)
+    {
+        return from_errcode(Luna::BasicError::bad_arguments());
+    }
+    return from_result(Luna::Image::write_png_file(native_stream, to_image_desc(*desc), data, static_cast<Luna::usize>(data_size)));
+}
+
+LUNA_IMAGE_C_API luna_errcode_t luna_image_write_bmp_file(luna_handle_t stream, const LunaImageDesc* desc, const void* data, uint64_t data_size)
+{
+    if (!stream || !desc || (!data && data_size))
+    {
+        return from_errcode(Luna::BasicError::bad_arguments());
+    }
+    Luna::ISeekableStream* native_stream = object_as_seekable_stream(stream);
+    if (!native_stream)
+    {
+        return from_errcode(Luna::BasicError::bad_arguments());
+    }
+    return from_result(Luna::Image::write_bmp_file(native_stream, to_image_desc(*desc), data, static_cast<Luna::usize>(data_size)));
+}
+
+LUNA_IMAGE_C_API luna_errcode_t luna_image_write_tga_file(luna_handle_t stream, const LunaImageDesc* desc, const void* data, uint64_t data_size)
+{
+    if (!stream || !desc || (!data && data_size))
+    {
+        return from_errcode(Luna::BasicError::bad_arguments());
+    }
+    Luna::ISeekableStream* native_stream = object_as_seekable_stream(stream);
+    if (!native_stream)
+    {
+        return from_errcode(Luna::BasicError::bad_arguments());
+    }
+    return from_result(Luna::Image::write_tga_file(native_stream, to_image_desc(*desc), data, static_cast<Luna::usize>(data_size)));
+}
+
+LUNA_IMAGE_C_API luna_errcode_t luna_image_write_jpg_file(luna_handle_t stream, const LunaImageDesc* desc, const void* data, uint64_t data_size, uint32_t quality)
+{
+    if (!stream || !desc || (!data && data_size))
+    {
+        return from_errcode(Luna::BasicError::bad_arguments());
+    }
+    Luna::ISeekableStream* native_stream = object_as_seekable_stream(stream);
+    if (!native_stream)
+    {
+        return from_errcode(Luna::BasicError::bad_arguments());
+    }
+    return from_result(Luna::Image::write_jpg_file(native_stream, to_image_desc(*desc), data, static_cast<Luna::usize>(data_size), quality));
+}
+
+LUNA_IMAGE_C_API luna_errcode_t luna_image_write_hdr_file(luna_handle_t stream, const LunaImageDesc* desc, const void* data, uint64_t data_size)
+{
+    if (!stream || !desc || (!data && data_size))
+    {
+        return from_errcode(Luna::BasicError::bad_arguments());
+    }
+    Luna::ISeekableStream* native_stream = object_as_seekable_stream(stream);
+    if (!native_stream)
+    {
+        return from_errcode(Luna::BasicError::bad_arguments());
+    }
+    return from_result(Luna::Image::write_hdr_file(native_stream, to_image_desc(*desc), data, static_cast<Luna::usize>(data_size)));
 }
 
 LUNA_IMAGE_C_API void luna_image_free_data(LunaImageData* image)

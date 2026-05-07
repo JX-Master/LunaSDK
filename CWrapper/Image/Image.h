@@ -31,6 +31,11 @@ typedef struct LunaImageData
 LUNA_IMAGE_C_API luna_errcode_t luna_image_init_module(void);
 LUNA_IMAGE_C_API luna_errcode_t luna_image_read_file_desc(const void* data, uint64_t data_size, LunaImageDesc* out_desc);
 LUNA_IMAGE_C_API luna_errcode_t luna_image_read_file(const void* data, uint64_t data_size, uint32_t desired_format, LunaImageData* out_image);
+LUNA_IMAGE_C_API luna_errcode_t luna_image_write_png_file(luna_handle_t stream, const LunaImageDesc* desc, const void* data, uint64_t data_size);
+LUNA_IMAGE_C_API luna_errcode_t luna_image_write_bmp_file(luna_handle_t stream, const LunaImageDesc* desc, const void* data, uint64_t data_size);
+LUNA_IMAGE_C_API luna_errcode_t luna_image_write_tga_file(luna_handle_t stream, const LunaImageDesc* desc, const void* data, uint64_t data_size);
+LUNA_IMAGE_C_API luna_errcode_t luna_image_write_jpg_file(luna_handle_t stream, const LunaImageDesc* desc, const void* data, uint64_t data_size, uint32_t quality);
+LUNA_IMAGE_C_API luna_errcode_t luna_image_write_hdr_file(luna_handle_t stream, const LunaImageDesc* desc, const void* data, uint64_t data_size);
 LUNA_IMAGE_C_API void luna_image_free_data(LunaImageData* image);
 
 #ifdef __cplusplus

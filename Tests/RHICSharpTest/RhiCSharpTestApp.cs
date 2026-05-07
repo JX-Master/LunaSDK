@@ -75,6 +75,9 @@ internal static class RhiCSharpTestApp
         ValidateManagedDefaults();
         ValidateRhiUtilityContexts(device);
         ValidateDescriptorApi(device);
+        ValidateRhiDeviceFacilities(device);
+        ValidateRhiUtilityOperations(device, queue);
+        ValidateRhiCommandOperations(device, queue);
 
         switch (testCase)
         {
@@ -450,11 +453,11 @@ internal static class RhiCSharpTestApp
 
     private static void ValidateErrors()
     {
-        if (!Errors.Category.IsValid)
+        if (!Luna.RHI.Errors.Category.IsValid)
         {
             throw new InvalidOperationException("Errors.Category is invalid.");
         }
-        if (RuntimeErrors.GetCodeName(Errors.SwapChainOutOfDate) != "swap_chain_out_of_date")
+        if (RuntimeErrors.GetCodeName(Luna.RHI.Errors.SwapChainOutOfDate) != "swap_chain_out_of_date")
         {
             throw new InvalidOperationException("Errors.SwapChainOutOfDate returned an unexpected error code.");
         }
@@ -466,6 +469,10 @@ internal static class RhiCSharpTestApp
         if (actualWindow.GetNativeHandle() != expectedWindow.GetNativeHandle())
         {
             throw new InvalidOperationException("ISwapChain.Window returned an unexpected window.");
+        }
+        if (!Enum.IsDefined(swapChain.SurfaceTransform))
+        {
+            throw new InvalidOperationException("ISwapChain.SurfaceTransform returned an unexpected transform value.");
         }
     }
 
@@ -482,6 +489,7 @@ internal static class RhiCSharpTestApp
         IDevice device,
         ICommandBuffer commandBuffer,
         ITexture texture,
+        SubresourceIndex subresource,
         ImageData expectedImage,
         uint expectedRowPitch)
     {
@@ -491,7 +499,7 @@ internal static class RhiCSharpTestApp
         reader.Reset();
         var handle = reader.ReadTexture(
             texture,
-            new SubresourceIndex(0, 0),
+            subresource,
             0,
             0,
             0,
@@ -519,6 +527,16 @@ internal static class RhiCSharpTestApp
         }
     }
 
+    private static void ValidateTextureReadback(
+        IDevice device,
+        ICommandBuffer commandBuffer,
+        ITexture texture,
+        ImageData expectedImage,
+        uint expectedRowPitch)
+    {
+        ValidateTextureReadback(device, commandBuffer, texture, new SubresourceIndex(0, 0), expectedImage, expectedRowPitch);
+    }
+
     private static void ValidateRhiUtilityContexts(IDevice device)
     {
         using var writer = Luna.RHIUtility.Module.CreateResourceWriteContext(device);
@@ -536,6 +554,860 @@ internal static class RhiCSharpTestApp
         using var mipmapGenerator = Luna.RHIUtility.Module.CreateMipmapGenerationContext(device);
         mipmapGenerator.SetName("RHICSharpTest.ValidateMipmapGenerationContext");
         ValidateDeviceChild(mipmapGenerator, device, "IMipmapGenerationContext.Device");
+    }
+
+    private static void ValidateRhiUtilityOperations(IDevice device, uint queue)
+    {
+        using var uploadCommandBuffer = device.CreateCommandBuffer(queue);
+        uploadCommandBuffer.SetName("RHICSharpTest.RHIUtility.UploadCommandBuffer");
+        using var readbackCommandBuffer = device.CreateCommandBuffer(queue);
+        readbackCommandBuffer.SetName("RHICSharpTest.RHIUtility.ReadbackCommandBuffer");
+        using var graphicsCommandBuffer = device.CreateCommandBuffer(queue);
+        graphicsCommandBuffer.SetName("RHICSharpTest.RHIUtility.GraphicsCommandBuffer");
+        using var computeCommandBuffer = device.CreateCommandBuffer(queue);
+        computeCommandBuffer.SetName("RHICSharpTest.RHIUtility.ComputeCommandBuffer");
+
+        ValidateBufferRoundtrip(device, uploadCommandBuffer, readbackCommandBuffer);
+        ValidateBlitRoundtrip(device, uploadCommandBuffer, readbackCommandBuffer, graphicsCommandBuffer);
+        ValidateMipmaps(device, uploadCommandBuffer, readbackCommandBuffer, computeCommandBuffer);
+    }
+
+    private static void ValidateRhiCommandOperations(IDevice device, uint queue)
+    {
+        using var uploadCommandBuffer = device.CreateCommandBuffer(queue);
+        uploadCommandBuffer.SetName("RHICSharpTest.RHI.UploadCommandBuffer");
+        using var graphicsCommandBuffer = device.CreateCommandBuffer(queue);
+        graphicsCommandBuffer.SetName("RHICSharpTest.RHI.GraphicsCommandBuffer");
+        using var copySignalCommandBuffer = device.CreateCommandBuffer(queue);
+        copySignalCommandBuffer.SetName("RHICSharpTest.RHI.CopySignalCommandBuffer");
+        using var copyWaitCommandBuffer = device.CreateCommandBuffer(queue);
+        copyWaitCommandBuffer.SetName("RHICSharpTest.RHI.CopyWaitCommandBuffer");
+        using var computeCommandBuffer = device.CreateCommandBuffer(queue);
+        computeCommandBuffer.SetName("RHICSharpTest.RHI.ComputeCommandBuffer");
+        using var readbackCommandBuffer = device.CreateCommandBuffer(queue);
+        readbackCommandBuffer.SetName("RHICSharpTest.RHI.ReadbackCommandBuffer");
+
+        ValidateGraphicsCommands(device, uploadCommandBuffer, graphicsCommandBuffer, readbackCommandBuffer);
+        ValidateCopyCommands(device, uploadCommandBuffer, copySignalCommandBuffer, copyWaitCommandBuffer, readbackCommandBuffer);
+        ValidateComputeCommands(device, computeCommandBuffer, readbackCommandBuffer);
+    }
+
+    private static void ValidateRhiDeviceFacilities(IDevice device)
+    {
+        for (uint i = 0; i < device.CommandQueueCount; ++i)
+        {
+            var frequency = device.GetCommandQueueTimestampFrequency(i);
+            if (frequency <= 0.0)
+            {
+                throw new InvalidOperationException("IDevice.GetCommandQueueTimestampFrequency returned a non-positive value.");
+            }
+        }
+
+        using var fence = device.CreateFence();
+        fence.SetName("RHICSharpTest.ValidateFence");
+        ValidateDeviceChild(fence, device, "IFence.Device");
+
+        using var timestampQueryHeap = device.CreateQueryHeap(new QueryHeapDesc(QueryType.Timestamp, 4));
+        timestampQueryHeap.SetName("RHICSharpTest.ValidateTimestampQueryHeap");
+        ValidateDeviceChild(timestampQueryHeap, device, "IQueryHeap.Device");
+        if (timestampQueryHeap.Desc.Type != QueryType.Timestamp || timestampQueryHeap.Desc.Count != 4)
+        {
+            throw new InvalidOperationException("IQueryHeap.Desc returned unexpected timestamp heap data.");
+        }
+
+        using var occlusionQueryHeap = device.CreateQueryHeap(new QueryHeapDesc(QueryType.Occlusion, 2));
+        occlusionQueryHeap.SetName("RHICSharpTest.ValidateOcclusionQueryHeap");
+        if (occlusionQueryHeap.Desc.Type != QueryType.Occlusion || occlusionQueryHeap.Desc.Count != 2)
+        {
+            throw new InvalidOperationException("IQueryHeap.Desc returned unexpected occlusion heap data.");
+        }
+
+        var aliasingBufferDesc = new BufferDesc(BufferUsageFlags.CopySource | BufferUsageFlags.CopyDestination, 256);
+        if (!device.IsResourcesAliasingCompatible(MemoryType.Local, new[] { aliasingBufferDesc }, Array.Empty<TextureDesc>()))
+        {
+            throw new InvalidOperationException("IDevice.IsResourcesAliasingCompatible unexpectedly rejected a single buffer descriptor.");
+        }
+        using var aliasingBufferMemory = device.AllocateMemory(MemoryType.Local, new[] { aliasingBufferDesc }, Array.Empty<TextureDesc>());
+        if (aliasingBufferMemory.MemoryType != MemoryType.Local || aliasingBufferMemory.Size < aliasingBufferDesc.Size)
+        {
+            throw new InvalidOperationException("IDeviceMemory returned unexpected buffer allocation properties.");
+        }
+        using var aliasingBuffer = device.CreateAliasingBuffer(aliasingBufferMemory, aliasingBufferDesc);
+        if (aliasingBuffer.Desc.Size != aliasingBufferDesc.Size)
+        {
+            throw new InvalidOperationException("CreateAliasingBuffer returned an unexpected descriptor.");
+        }
+        using (var actualMemory = aliasingBuffer.Memory)
+        {
+            if (actualMemory.GetNativeHandle() != aliasingBufferMemory.GetNativeHandle())
+            {
+                throw new InvalidOperationException("Aliasing buffer did not report the expected backing memory.");
+            }
+        }
+
+        var aliasingTextureDesc = new TextureDesc(
+            TextureType.Tex2D,
+            Format.Rgba8Unorm,
+            4,
+            4,
+            1,
+            1,
+            1,
+            1,
+            TextureUsageFlags.CopySource | TextureUsageFlags.CopyDestination | TextureUsageFlags.ReadTexture,
+            ResourceFlags.None);
+        if (!device.IsResourcesAliasingCompatible(MemoryType.Local, Array.Empty<BufferDesc>(), new[] { aliasingTextureDesc }))
+        {
+            throw new InvalidOperationException("IDevice.IsResourcesAliasingCompatible unexpectedly rejected a single texture descriptor.");
+        }
+        using var aliasingTextureMemory = device.AllocateMemory(MemoryType.Local, Array.Empty<BufferDesc>(), new[] { aliasingTextureDesc });
+        if (aliasingTextureMemory.MemoryType != MemoryType.Local || aliasingTextureMemory.Size == 0)
+        {
+            throw new InvalidOperationException("IDeviceMemory returned unexpected texture allocation properties.");
+        }
+        using var aliasingTexture = device.CreateAliasingTexture(aliasingTextureMemory, aliasingTextureDesc);
+        if (aliasingTexture.Desc.Width != aliasingTextureDesc.Width || aliasingTexture.Desc.Height != aliasingTextureDesc.Height)
+        {
+            throw new InvalidOperationException("CreateAliasingTexture returned an unexpected descriptor.");
+        }
+        using (var actualMemory = aliasingTexture.Memory)
+        {
+            if (actualMemory.GetNativeHandle() != aliasingTextureMemory.GetNativeHandle())
+            {
+                throw new InvalidOperationException("Aliasing texture did not report the expected backing memory.");
+            }
+        }
+    }
+
+    private static void ValidateBufferRoundtrip(IDevice device, ICommandBuffer uploadCommandBuffer, ICommandBuffer readbackCommandBuffer)
+    {
+        var sourceData = new byte[64];
+        for (var i = 0; i < sourceData.Length; ++i)
+        {
+            sourceData[i] = unchecked((byte)(i * 3 + 1));
+        }
+
+        using var buffer = device.CreateBuffer(
+            MemoryType.Local,
+            new BufferDesc(BufferUsageFlags.CopyDestination | BufferUsageFlags.CopySource, (ulong)sourceData.Length));
+        using var writer = Luna.RHIUtility.Module.CreateResourceWriteContext(device);
+        writer.SetName("RHICSharpTest.RHIUtility.BufferWriter");
+        writer.Reset();
+        writer.WriteBuffer(buffer, 0, sourceData);
+        writer.Commit(uploadCommandBuffer, submitAndWait: true);
+
+        using var reader = Luna.RHIUtility.Module.CreateResourceReadContext(device);
+        reader.SetName("RHICSharpTest.RHIUtility.BufferReader");
+        reader.Reset();
+        var handle = reader.ReadBuffer(buffer, 0, (ulong)sourceData.Length);
+        reader.Commit(readbackCommandBuffer, submitAndWait: true);
+        var actualData = reader.GetBufferData(handle, (ulong)sourceData.Length);
+        if (!actualData.AsSpan().SequenceEqual(sourceData))
+        {
+            throw new InvalidOperationException("RHIUtility buffer roundtrip mismatch.");
+        }
+    }
+
+    private static void ValidateBlitRoundtrip(
+        IDevice device,
+        ICommandBuffer uploadCommandBuffer,
+        ICommandBuffer readbackCommandBuffer,
+        ICommandBuffer graphicsCommandBuffer)
+    {
+        var sourceImage = CreateQuadrantImageData();
+        var expectedRowPitch = checked(sourceImage.Desc.Width * ImageModule.PixelSize(sourceImage.Desc.Format));
+
+        using var sourceTexture = device.CreateTexture(MemoryType.Local, new TextureDesc(
+            TextureType.Tex2D,
+            Format.Rgba8Unorm,
+            sourceImage.Desc.Width,
+            sourceImage.Desc.Height,
+            1,
+            1,
+            1,
+            1,
+            TextureUsageFlags.CopySource | TextureUsageFlags.CopyDestination | TextureUsageFlags.ReadTexture,
+            ResourceFlags.None));
+        using var destinationTexture = device.CreateTexture(MemoryType.Local, new TextureDesc(
+            TextureType.Tex2D,
+            Format.Rgba8Unorm,
+            sourceImage.Desc.Width,
+            sourceImage.Desc.Height,
+            1,
+            1,
+            1,
+            1,
+            TextureUsageFlags.ColorAttachment | TextureUsageFlags.CopySource,
+            ResourceFlags.None));
+        using var writer = Luna.RHIUtility.Module.CreateResourceWriteContext(device);
+        writer.SetName("RHICSharpTest.RHIUtility.TextureWriter");
+        writer.Reset();
+        var writeInfo = writer.WriteTexture(
+            sourceTexture,
+            new SubresourceIndex(0, 0),
+            0,
+            0,
+            0,
+            sourceImage.Desc.Width,
+            sourceImage.Desc.Height,
+            1,
+            sourceImage.Data,
+            expectedRowPitch,
+            checked(expectedRowPitch * sourceImage.Desc.Height),
+            expectedRowPitch);
+        if (writeInfo.RowPitch < expectedRowPitch)
+        {
+            throw new InvalidOperationException("RHIUtility texture upload returned an unexpected row pitch.");
+        }
+        writer.Commit(uploadCommandBuffer, submitAndWait: true);
+
+        using var blitter = Luna.RHIUtility.Module.CreateBlitContext(device, Format.Rgba8Unorm);
+        blitter.SetName("RHICSharpTest.RHIUtility.Blitter");
+        blitter.Reset();
+        blitter.Blit(
+            destinationTexture,
+            new SubresourceIndex(0, 0),
+            TextureViewDesc.Tex2D(sourceTexture),
+            CreateLinearClampSampler(),
+            new BlitPoint(0.0f, 0.0f),
+            new BlitPoint(sourceImage.Desc.Width, 0.0f),
+            new BlitPoint(0.0f, sourceImage.Desc.Height),
+            new BlitPoint(sourceImage.Desc.Width, sourceImage.Desc.Height));
+        blitter.Commit(graphicsCommandBuffer, submitAndWait: true);
+
+        ValidateTextureReadback(device, readbackCommandBuffer, destinationTexture, sourceImage, expectedRowPitch);
+    }
+
+    private static void ValidateMipmaps(
+        IDevice device,
+        ICommandBuffer uploadCommandBuffer,
+        ICommandBuffer readbackCommandBuffer,
+        ICommandBuffer computeCommandBuffer)
+    {
+        var baseImage = CreateQuadrantImageData();
+        var mipImage = CreateQuadrantMipImageData();
+        var baseRowPitch = checked(baseImage.Desc.Width * ImageModule.PixelSize(baseImage.Desc.Format));
+        var mipRowPitch = checked(mipImage.Desc.Width * ImageModule.PixelSize(mipImage.Desc.Format));
+
+        using var texture = device.CreateTexture(MemoryType.Local, new TextureDesc(
+            TextureType.Tex2D,
+            Format.Rgba8Unorm,
+            baseImage.Desc.Width,
+            baseImage.Desc.Height,
+            1,
+            1,
+            3,
+            1,
+            TextureUsageFlags.CopySource | TextureUsageFlags.CopyDestination | TextureUsageFlags.ReadTexture | TextureUsageFlags.ReadWriteTexture,
+            ResourceFlags.None));
+        using var writer = Luna.RHIUtility.Module.CreateResourceWriteContext(device);
+        writer.SetName("RHICSharpTest.RHIUtility.MipmapWriter");
+        writer.Reset();
+        writer.WriteTexture(
+            texture,
+            new SubresourceIndex(0, 0),
+            0,
+            0,
+            0,
+            baseImage.Desc.Width,
+            baseImage.Desc.Height,
+            1,
+            baseImage.Data,
+            baseRowPitch,
+            checked(baseRowPitch * baseImage.Desc.Height),
+            baseRowPitch);
+        writer.Commit(uploadCommandBuffer, submitAndWait: true);
+
+        using var generator = Luna.RHIUtility.Module.CreateMipmapGenerationContext(device);
+        generator.SetName("RHICSharpTest.RHIUtility.MipmapGenerator");
+        generator.Reset();
+        generator.GenerateMipmaps(texture);
+        generator.Commit(computeCommandBuffer, submitAndWait: true);
+
+        ValidateTextureReadback(device, readbackCommandBuffer, texture, new SubresourceIndex(1, 0), mipImage, mipRowPitch);
+    }
+
+    private static void ValidateCopyCommands(
+        IDevice device,
+        ICommandBuffer uploadCommandBuffer,
+        ICommandBuffer copySignalCommandBuffer,
+        ICommandBuffer copyWaitCommandBuffer,
+        ICommandBuffer readbackCommandBuffer)
+    {
+        var bufferData = new byte[64];
+        for (var i = 0; i < bufferData.Length; ++i)
+        {
+            bufferData[i] = unchecked((byte)(0x30 + i));
+        }
+
+        using var sourceBuffer = device.CreateBuffer(
+            MemoryType.Local,
+            new BufferDesc(BufferUsageFlags.CopySource | BufferUsageFlags.CopyDestination, (ulong)bufferData.Length));
+        using var middleBuffer = device.CreateBuffer(
+            MemoryType.Local,
+            new BufferDesc(BufferUsageFlags.CopySource | BufferUsageFlags.CopyDestination, (ulong)bufferData.Length));
+        using var destinationBuffer = device.CreateBuffer(
+            MemoryType.Local,
+            new BufferDesc(BufferUsageFlags.CopySource | BufferUsageFlags.CopyDestination, (ulong)bufferData.Length));
+        using var writer = Luna.RHIUtility.Module.CreateResourceWriteContext(device);
+        writer.SetName("RHICSharpTest.RHI.CopyWriter");
+        writer.Reset();
+        writer.WriteBuffer(sourceBuffer, 0, bufferData);
+        writer.Commit(uploadCommandBuffer, submitAndWait: true);
+
+        using var fence = device.CreateFence();
+        fence.SetName("RHICSharpTest.RHI.CopyFence");
+        using var timestampQueryHeap = device.CreateQueryHeap(new QueryHeapDesc(QueryType.Timestamp, 2));
+        timestampQueryHeap.SetName("RHICSharpTest.RHI.CopyTimestampQueryHeap");
+
+        copySignalCommandBuffer.Reset();
+        copySignalCommandBuffer.BeginEvent("RHICSharpTest.CopySignal");
+        copySignalCommandBuffer.BeginCopyPass(new CopyPassDesc
+        {
+            TimestampQueryHeap = timestampQueryHeap,
+            TimestampQueryBeginPassWriteIndex = 0,
+            TimestampQueryEndPassWriteIndex = 1
+        });
+        copySignalCommandBuffer.CopyBuffer(middleBuffer, 0, sourceBuffer, 0, (ulong)bufferData.Length);
+        copySignalCommandBuffer.EndCopyPass();
+        copySignalCommandBuffer.EndEvent();
+        copySignalCommandBuffer.Submit(Array.Empty<IFence>(), new[] { fence }, allowHostWaiting: false);
+
+        copyWaitCommandBuffer.Reset();
+        copyWaitCommandBuffer.BeginEvent("RHICSharpTest.CopyWait");
+        copyWaitCommandBuffer.BeginCopyPass(new CopyPassDesc());
+        copyWaitCommandBuffer.CopyResource(destinationBuffer, middleBuffer);
+        copyWaitCommandBuffer.EndCopyPass();
+        copyWaitCommandBuffer.EndEvent();
+        copyWaitCommandBuffer.Submit(new[] { fence }, Array.Empty<IFence>(), allowHostWaiting: true);
+        copyWaitCommandBuffer.Wait();
+        if (!copyWaitCommandBuffer.TryWait())
+        {
+            throw new InvalidOperationException("Copy command buffer should report completion after Wait.");
+        }
+
+        ValidateTimestampValues(timestampQueryHeap, "copy");
+
+        using var reader = Luna.RHIUtility.Module.CreateResourceReadContext(device);
+        reader.SetName("RHICSharpTest.RHI.CopyReader");
+        reader.Reset();
+        var bufferHandle = reader.ReadBuffer(destinationBuffer, 0, (ulong)bufferData.Length);
+        reader.Commit(readbackCommandBuffer, submitAndWait: true);
+        var actualBufferData = reader.GetBufferData(bufferHandle, (ulong)bufferData.Length);
+        if (!actualBufferData.AsSpan().SequenceEqual(bufferData))
+        {
+            throw new InvalidOperationException("CopyBuffer/CopyResource roundtrip mismatch.");
+        }
+
+        var sourceImage = CreateQuadrantImageData();
+        var expectedRowPitch = checked(sourceImage.Desc.Width * ImageModule.PixelSize(sourceImage.Desc.Format));
+        var placement = device.GetTextureDataPlacementInfo(sourceImage.Desc.Width, sourceImage.Desc.Height, 1, Format.Rgba8Unorm);
+        using var sourceTexture = device.CreateTexture(MemoryType.Local, new TextureDesc(
+            TextureType.Tex2D,
+            Format.Rgba8Unorm,
+            sourceImage.Desc.Width,
+            sourceImage.Desc.Height,
+            1,
+            1,
+            1,
+            1,
+            TextureUsageFlags.CopySource | TextureUsageFlags.CopyDestination | TextureUsageFlags.ReadTexture,
+            ResourceFlags.None));
+        using var destinationTexture = device.CreateTexture(MemoryType.Local, new TextureDesc(
+            TextureType.Tex2D,
+            Format.Rgba8Unorm,
+            sourceImage.Desc.Width,
+            sourceImage.Desc.Height,
+            1,
+            1,
+            1,
+            1,
+            TextureUsageFlags.CopySource | TextureUsageFlags.CopyDestination | TextureUsageFlags.ReadTexture,
+            ResourceFlags.None));
+        using var copiedTexture = device.CreateTexture(MemoryType.Local, new TextureDesc(
+            TextureType.Tex2D,
+            Format.Rgba8Unorm,
+            sourceImage.Desc.Width,
+            sourceImage.Desc.Height,
+            1,
+            1,
+            1,
+            1,
+            TextureUsageFlags.CopySource | TextureUsageFlags.CopyDestination | TextureUsageFlags.ReadTexture,
+            ResourceFlags.None));
+        using var copyBuffer = device.CreateBuffer(
+            MemoryType.Local,
+            new BufferDesc(BufferUsageFlags.CopySource | BufferUsageFlags.CopyDestination, placement.Size));
+
+        writer.Reset();
+        writer.WriteTexture(
+            sourceTexture,
+            new SubresourceIndex(0, 0),
+            0,
+            0,
+            0,
+            sourceImage.Desc.Width,
+            sourceImage.Desc.Height,
+            1,
+            sourceImage.Data,
+            expectedRowPitch,
+            checked(expectedRowPitch * sourceImage.Desc.Height),
+            expectedRowPitch);
+        writer.Commit(uploadCommandBuffer, submitAndWait: true);
+
+        copySignalCommandBuffer.Reset();
+        copySignalCommandBuffer.BeginEvent("RHICSharpTest.TextureCopy");
+        copySignalCommandBuffer.BeginCopyPass(new CopyPassDesc());
+        copySignalCommandBuffer.CopyTexture(
+            destinationTexture,
+            new SubresourceIndex(0, 0),
+            0,
+            0,
+            0,
+            sourceTexture,
+            new SubresourceIndex(0, 0),
+            0,
+            0,
+            0,
+            sourceImage.Desc.Width,
+            sourceImage.Desc.Height,
+            1);
+        copySignalCommandBuffer.CopyTextureToBuffer(
+            copyBuffer,
+            0,
+            (uint)placement.RowPitch,
+            (uint)placement.SlicePitch,
+            destinationTexture,
+            new SubresourceIndex(0, 0),
+            0,
+            0,
+            0,
+            sourceImage.Desc.Width,
+            sourceImage.Desc.Height,
+            1);
+        copySignalCommandBuffer.CopyBufferToTexture(
+            copiedTexture,
+            new SubresourceIndex(0, 0),
+            0,
+            0,
+            0,
+            copyBuffer,
+            0,
+            (uint)placement.RowPitch,
+            (uint)placement.SlicePitch,
+            sourceImage.Desc.Width,
+            sourceImage.Desc.Height,
+            1);
+        copySignalCommandBuffer.EndCopyPass();
+        copySignalCommandBuffer.EndEvent();
+        copySignalCommandBuffer.Submit(allowHostWaiting: true);
+        copySignalCommandBuffer.Wait();
+
+        reader.Reset();
+        bufferHandle = reader.ReadBuffer(copyBuffer, 0, placement.Size);
+        reader.Commit(readbackCommandBuffer, submitAndWait: true);
+        var copiedTextureBytes = reader.GetBufferData(bufferHandle, placement.Size);
+        ValidateTextureBufferBytes(copiedTextureBytes, (uint)placement.RowPitch, sourceImage);
+        ValidateTextureReadback(device, readbackCommandBuffer, copiedTexture, sourceImage, expectedRowPitch);
+    }
+
+    private static void ValidateGraphicsCommands(
+        IDevice device,
+        ICommandBuffer uploadCommandBuffer,
+        ICommandBuffer graphicsCommandBuffer,
+        ICommandBuffer readbackCommandBuffer)
+    {
+        ValidateTriangleGraphicsCommands(device, graphicsCommandBuffer, readbackCommandBuffer);
+        ValidateTexturedQuadGraphicsCommands(device, uploadCommandBuffer, graphicsCommandBuffer, readbackCommandBuffer);
+    }
+
+    private static void ValidateTriangleGraphicsCommands(
+        IDevice device,
+        ICommandBuffer graphicsCommandBuffer,
+        ICommandBuffer readbackCommandBuffer)
+    {
+        using var colorTexture = device.CreateTexture(MemoryType.Local, new TextureDesc(
+            TextureType.Tex2D,
+            Format.Rgba8Unorm,
+            16,
+            16,
+            1,
+            1,
+            1,
+            1,
+            TextureUsageFlags.ColorAttachment | TextureUsageFlags.CopySource,
+            ResourceFlags.None));
+        using var occlusionQueryHeap = device.CreateQueryHeap(new QueryHeapDesc(QueryType.Occlusion, 1));
+        occlusionQueryHeap.SetName("RHICSharpTest.RHI.GraphicsOcclusionQueryHeap");
+        IQueryHeap? pipelineStatisticsQueryHeap = null;
+        try
+        {
+            if (Luna.RHI.Module.BackendType != BackendType.Metal)
+            {
+                pipelineStatisticsQueryHeap = device.CreateQueryHeap(new QueryHeapDesc(QueryType.PipelineStatistics, 1));
+                pipelineStatisticsQueryHeap.SetName("RHICSharpTest.RHI.GraphicsPipelineStatisticsQueryHeap");
+            }
+
+            using var pipelineLayout = device.CreatePipelineLayout(new PipelineLayoutDesc
+            {
+                Flags = PipelineLayoutFlags.AllowInputAssemblerInputLayout |
+                    PipelineLayoutFlags.DenyPixelShaderAccess |
+                    PipelineLayoutFlags.DenyVertexShaderAccess
+            });
+            using var pipelineState = device.CreateGraphicsPipelineState(new GraphicsPipelineStateDesc
+            {
+                InputBindings = new[]
+                {
+                    new InputBindingDesc(0, 24, InputRate.PerVertex)
+                },
+                InputAttributes = new[]
+                {
+                    new InputAttributeDesc(0, 0, 0, Format.Rg32Float),
+                    new InputAttributeDesc(1, 0, 8, Format.Rgba32Float)
+                },
+                PipelineLayout = pipelineLayout,
+                VertexShader = RhiTestShaders.LoadTriangleVertexShader(),
+                PixelShader = RhiTestShaders.LoadTrianglePixelShader(),
+                RasterizerState = new RasterizerDesc(depthClampEnable: true),
+                DepthStencilState = new DepthStencilDesc(depthTestEnable: false, depthWriteEnable: false),
+                BlendState = CreateAlphaBlendState(),
+                ColorFormats = new[] { Format.Rgba8Unorm }
+            });
+            var vertices = RhiTestAssets.CreateTriangleVertexData();
+            using var vertexBuffer = device.CreateBuffer(MemoryType.Upload, new BufferDesc(BufferUsageFlags.VertexBuffer, (ulong)vertices.Length));
+            vertexBuffer.Write(0, vertices);
+
+            graphicsCommandBuffer.Reset();
+            graphicsCommandBuffer.BeginEvent("RHICSharpTest.GraphicsTriangle");
+            graphicsCommandBuffer.AttachDeviceObject(colorTexture);
+            graphicsCommandBuffer.AttachDeviceObject(occlusionQueryHeap);
+            if (pipelineStatisticsQueryHeap is not null)
+            {
+                graphicsCommandBuffer.AttachDeviceObject(pipelineStatisticsQueryHeap);
+            }
+            graphicsCommandBuffer.AttachDeviceObject(pipelineLayout);
+            graphicsCommandBuffer.AttachDeviceObject(pipelineState);
+            graphicsCommandBuffer.AttachDeviceObject(vertexBuffer);
+            graphicsCommandBuffer.ResourceBarrier(
+                new[]
+                {
+                    new BufferBarrier(vertexBuffer, BufferStateFlags.Automatic, BufferStateFlags.VertexBuffer)
+                },
+                new[]
+                {
+                    new TextureBarrier(
+                        colorTexture,
+                        SubresourceIndex.AllSubresources,
+                        TextureStateFlags.Automatic,
+                        TextureStateFlags.ColorAttachmentWrite,
+                        ResourceBarrierFlags.DiscardContent)
+                });
+            graphicsCommandBuffer.BeginRenderPass(new RenderPassDesc
+            {
+                ColorAttachments = new[]
+                {
+                    new ColorAttachment(colorTexture, LoadOp.Clear, StoreOp.Store, new Color4(0.0f, 0.0f, 0.0f, 1.0f))
+                },
+                OcclusionQueryHeap = occlusionQueryHeap,
+                PipelineStatisticsQueryHeap = pipelineStatisticsQueryHeap,
+                PipelineStatisticsQueryWriteIndex = pipelineStatisticsQueryHeap is null ? uint.MaxValue : 0u
+            });
+            graphicsCommandBuffer.SetGraphicsPipelineState(pipelineState);
+            graphicsCommandBuffer.SetGraphicsPipelineLayout(pipelineLayout);
+            graphicsCommandBuffer.SetVertexBuffer(0, vertexBuffer, 0, (uint)vertices.Length, 24);
+            graphicsCommandBuffer.SetScissorRects(new[]
+            {
+                new RectI(0, 0, 16, 16)
+            });
+            graphicsCommandBuffer.SetViewports(new[]
+            {
+                new Viewport(0, 0, 16, 16, 0.0f, 1.0f)
+            });
+            graphicsCommandBuffer.SetBlendFactor(new Color4(1.0f, 1.0f, 1.0f, 1.0f));
+            graphicsCommandBuffer.SetStencilRef(0);
+            graphicsCommandBuffer.BeginOcclusionQuery(OcclusionQueryMode.Counting, 0);
+            graphicsCommandBuffer.DrawInstanced(3, 2, 0, 0);
+            graphicsCommandBuffer.EndOcclusionQuery(0);
+            graphicsCommandBuffer.EndRenderPass();
+            graphicsCommandBuffer.EndEvent();
+            graphicsCommandBuffer.Submit(allowHostWaiting: true);
+            graphicsCommandBuffer.Wait();
+
+            var occlusionValues = occlusionQueryHeap.GetOcclusionValues(0, 1);
+            if (occlusionValues.Length != 1 || occlusionValues[0] == 0)
+            {
+                throw new InvalidOperationException("Occlusion query did not report any rendered samples.");
+            }
+
+            if (pipelineStatisticsQueryHeap is not null)
+            {
+                var statistics = pipelineStatisticsQueryHeap.GetPipelineStatisticsValues(0, 1);
+                if (statistics.Length != 1 ||
+                    statistics[0].VertexShaderInvocations == 0 ||
+                    statistics[0].RenderedPrimitives == 0 ||
+                    statistics[0].PixelShaderInvocations == 0)
+                {
+                    throw new InvalidOperationException("Pipeline statistics query returned unexpected graphics values.");
+                }
+            }
+
+            ValidateTextureContainsColor(device, readbackCommandBuffer, colorTexture, 16, 16);
+        }
+        finally
+        {
+            pipelineStatisticsQueryHeap?.Dispose();
+        }
+    }
+
+    private static void ValidateTexturedQuadGraphicsCommands(
+        IDevice device,
+        ICommandBuffer uploadCommandBuffer,
+        ICommandBuffer graphicsCommandBuffer,
+        ICommandBuffer readbackCommandBuffer)
+    {
+        var image = CreateQuadrantImageData();
+        using var descriptorSetLayout = device.CreateDescriptorSetLayout(new DescriptorSetLayoutDesc
+        {
+            Bindings = new[]
+            {
+                DescriptorSetLayoutBinding.ReadTextureView(TextureViewType.Tex2D, 0, 1, ShaderVisibilityFlags.Pixel),
+                DescriptorSetLayoutBinding.Sampler(1, 1, ShaderVisibilityFlags.Pixel)
+            }
+        });
+        using var pipelineLayout = device.CreatePipelineLayout(new PipelineLayoutDesc
+        {
+            DescriptorSetLayouts = new[] { descriptorSetLayout },
+            Flags = PipelineLayoutFlags.AllowInputAssemblerInputLayout
+        });
+        using var pipelineState = device.CreateGraphicsPipelineState(new GraphicsPipelineStateDesc
+        {
+            InputBindings = new[]
+            {
+                new InputBindingDesc(0, 16, InputRate.PerVertex)
+            },
+            InputAttributes = new[]
+            {
+                new InputAttributeDesc(0, 0, 0, Format.Rg32Float),
+                new InputAttributeDesc(1, 0, 8, Format.Rg32Float)
+            },
+            PipelineLayout = pipelineLayout,
+            VertexShader = RhiTestShaders.LoadTextureVertexShader(),
+            PixelShader = RhiTestShaders.LoadTexturePixelShader(),
+            DepthStencilState = new DepthStencilDesc(depthTestEnable: false, depthWriteEnable: false),
+            ColorFormats = new[] { Format.Rgba8Unorm }
+        });
+        var vertices = RhiTestAssets.CreateTexturedQuadVertexData(image.Desc.Width, image.Desc.Height, image.Desc.Width, image.Desc.Height);
+        var indices = RhiTestAssets.CreateQuadIndexData();
+        using var vertexBuffer = device.CreateBuffer(MemoryType.Local, new BufferDesc(BufferUsageFlags.VertexBuffer | BufferUsageFlags.CopyDestination, (ulong)vertices.Length));
+        using var indexBuffer = device.CreateBuffer(MemoryType.Local, new BufferDesc(BufferUsageFlags.IndexBuffer | BufferUsageFlags.CopyDestination, (ulong)indices.Length));
+        using var sourceTexture = CreateAndUploadTexture(device, uploadCommandBuffer, image);
+        using var colorTexture = device.CreateTexture(MemoryType.Local, new TextureDesc(
+            TextureType.Tex2D,
+            Format.Rgba8Unorm,
+            image.Desc.Width,
+            image.Desc.Height,
+            1,
+            1,
+            1,
+            1,
+            TextureUsageFlags.ColorAttachment | TextureUsageFlags.CopySource,
+            ResourceFlags.None));
+        using var writer = Luna.RHIUtility.Module.CreateResourceWriteContext(device);
+        writer.SetName("RHICSharpTest.RHI.GraphicsQuadWriter");
+        writer.Reset();
+        writer.WriteBuffer(vertexBuffer, 0, vertices);
+        writer.WriteBuffer(indexBuffer, 0, indices);
+        writer.Commit(uploadCommandBuffer, submitAndWait: true);
+        using var descriptorSet = device.CreateDescriptorSet(new DescriptorSetDesc(descriptorSetLayout));
+        descriptorSet.SetReadTextureViews(0, 0, new[] { TextureViewDesc.Tex2D(sourceTexture) });
+        descriptorSet.SetSamplers(1, 0, new[] { CreateNearestClampSampler() });
+
+        graphicsCommandBuffer.Reset();
+        graphicsCommandBuffer.BeginEvent("RHICSharpTest.GraphicsTexturedQuad");
+        graphicsCommandBuffer.AttachDeviceObject(descriptorSetLayout);
+        graphicsCommandBuffer.AttachDeviceObject(descriptorSet);
+        graphicsCommandBuffer.AttachDeviceObject(pipelineLayout);
+        graphicsCommandBuffer.AttachDeviceObject(pipelineState);
+        graphicsCommandBuffer.AttachDeviceObject(vertexBuffer);
+        graphicsCommandBuffer.AttachDeviceObject(indexBuffer);
+        graphicsCommandBuffer.AttachDeviceObject(sourceTexture);
+        graphicsCommandBuffer.AttachDeviceObject(colorTexture);
+        graphicsCommandBuffer.ResourceBarrier(
+            new[]
+            {
+                new BufferBarrier(vertexBuffer, BufferStateFlags.Automatic, BufferStateFlags.VertexBuffer),
+                new BufferBarrier(indexBuffer, BufferStateFlags.Automatic, BufferStateFlags.IndexBuffer)
+            },
+            new[]
+            {
+                new TextureBarrier(sourceTexture, new SubresourceIndex(0, 0), TextureStateFlags.Automatic, TextureStateFlags.ShaderReadPs),
+                new TextureBarrier(colorTexture, SubresourceIndex.AllSubresources, TextureStateFlags.Automatic, TextureStateFlags.ColorAttachmentWrite, ResourceBarrierFlags.DiscardContent)
+            });
+        graphicsCommandBuffer.BeginRenderPass(new RenderPassDesc
+        {
+            ColorAttachments = new[]
+            {
+                new ColorAttachment(colorTexture, LoadOp.Clear, StoreOp.Store, new Color4(0.0f, 0.0f, 0.0f, 1.0f))
+            }
+        });
+        graphicsCommandBuffer.SetGraphicsPipelineState(pipelineState);
+        graphicsCommandBuffer.SetGraphicsPipelineLayout(pipelineLayout);
+        graphicsCommandBuffer.SetGraphicsDescriptorSets(0, new[] { descriptorSet });
+        graphicsCommandBuffer.SetVertexBuffers(0, new[]
+        {
+            new VertexBufferView(vertexBuffer, 0, (uint)vertices.Length, 16)
+        });
+        graphicsCommandBuffer.SetIndexBuffer(indexBuffer, 0, (uint)indices.Length, Format.R32Uint);
+        graphicsCommandBuffer.SetViewport(new Viewport(0, 0, image.Desc.Width, image.Desc.Height, 0.0f, 1.0f));
+        graphicsCommandBuffer.SetScissorRect(new RectI(0, 0, checked((int)image.Desc.Width), checked((int)image.Desc.Height)));
+        graphicsCommandBuffer.DrawIndexedInstanced(6, 1, 0, 0, 0);
+        graphicsCommandBuffer.EndRenderPass();
+        graphicsCommandBuffer.EndEvent();
+        graphicsCommandBuffer.Submit(allowHostWaiting: true);
+        graphicsCommandBuffer.Wait();
+
+        var expectedRowPitch = checked(image.Desc.Width * ImageModule.PixelSize(image.Desc.Format));
+        ValidateTextureReadback(device, readbackCommandBuffer, colorTexture, image, expectedRowPitch);
+    }
+
+    private static void ValidateComputeCommands(IDevice device, ICommandBuffer computeCommandBuffer, ICommandBuffer readbackCommandBuffer)
+    {
+        using var outputBuffer = device.CreateBuffer(
+            MemoryType.Local,
+            new BufferDesc(BufferUsageFlags.ReadWriteBuffer | BufferUsageFlags.CopySource, 4u * sizeof(uint)));
+        using var descriptorSetLayout = device.CreateDescriptorSetLayout(new DescriptorSetLayoutDesc
+        {
+            Bindings = new[]
+            {
+                DescriptorSetLayoutBinding.ReadWriteBufferView(0, 1, ShaderVisibilityFlags.Compute)
+            }
+        });
+        using var descriptorSet = device.CreateDescriptorSet(new DescriptorSetDesc(descriptorSetLayout));
+        descriptorSet.SetReadWriteBufferView(0, BufferViewDesc.StructuredBuffer(outputBuffer, 0, 4, sizeof(uint)));
+        using var pipelineLayout = device.CreatePipelineLayout(new PipelineLayoutDesc
+        {
+            DescriptorSetLayouts = new[] { descriptorSetLayout }
+        });
+        using var pipelineState = device.CreateComputePipelineState(new ComputePipelineStateDesc
+        {
+            PipelineLayout = pipelineLayout,
+            ComputeShader = RhiTestShaders.LoadComputeShader(),
+            MetalNumThreadsX = 4,
+            MetalNumThreadsY = 1,
+            MetalNumThreadsZ = 1
+        });
+        using var timestampQueryHeap = device.CreateQueryHeap(new QueryHeapDesc(QueryType.Timestamp, 2));
+        timestampQueryHeap.SetName("RHICSharpTest.RHI.ComputeTimestampQueryHeap");
+
+        computeCommandBuffer.Reset();
+        computeCommandBuffer.BeginEvent("RHICSharpTest.Compute");
+        computeCommandBuffer.BeginComputePass(new ComputePassDesc
+        {
+            TimestampQueryHeap = timestampQueryHeap,
+            TimestampQueryBeginPassWriteIndex = 0,
+            TimestampQueryEndPassWriteIndex = 1
+        });
+        computeCommandBuffer.SetComputePipelineLayout(pipelineLayout);
+        computeCommandBuffer.SetComputePipelineState(pipelineState);
+        computeCommandBuffer.SetComputeDescriptorSets(0, new[] { descriptorSet });
+        computeCommandBuffer.Dispatch(1, 1, 1);
+        computeCommandBuffer.EndComputePass();
+        computeCommandBuffer.EndEvent();
+        computeCommandBuffer.Submit(allowHostWaiting: true);
+        computeCommandBuffer.Wait();
+        if (!computeCommandBuffer.TryWait())
+        {
+            throw new InvalidOperationException("Compute command buffer should report completion after Wait.");
+        }
+
+        computeCommandBuffer.Reset();
+        computeCommandBuffer.BeginEvent("RHICSharpTest.ComputeSingleDescriptorSet");
+        computeCommandBuffer.BeginComputePass(new ComputePassDesc());
+        computeCommandBuffer.SetComputePipelineLayout(pipelineLayout);
+        computeCommandBuffer.SetComputePipelineState(pipelineState);
+        computeCommandBuffer.SetComputeDescriptorSet(0, descriptorSet);
+        computeCommandBuffer.Dispatch(1, 1, 1);
+        computeCommandBuffer.EndComputePass();
+        computeCommandBuffer.EndEvent();
+        computeCommandBuffer.Submit(allowHostWaiting: true);
+        computeCommandBuffer.Wait();
+
+        ValidateTimestampValues(timestampQueryHeap, "compute");
+
+        var expectedValues = new uint[] { 5u, 22u, 39u, 56u };
+        var expectedBytes = new byte[expectedValues.Length * sizeof(uint)];
+        Buffer.BlockCopy(expectedValues, 0, expectedBytes, 0, expectedBytes.Length);
+
+        using var reader = Luna.RHIUtility.Module.CreateResourceReadContext(device);
+        reader.SetName("RHICSharpTest.RHI.ComputeReader");
+        reader.Reset();
+        var handle = reader.ReadBuffer(outputBuffer, 0, (ulong)expectedBytes.Length);
+        reader.Commit(readbackCommandBuffer, submitAndWait: true);
+        var actualBytes = reader.GetBufferData(handle, (ulong)expectedBytes.Length);
+        if (!actualBytes.AsSpan().SequenceEqual(expectedBytes))
+        {
+            throw new InvalidOperationException("Compute pipeline output mismatch.");
+        }
+    }
+
+    private static void ValidateTimestampValues(IQueryHeap queryHeap, string passName)
+    {
+        var values = queryHeap.GetTimestampValues(0, 2);
+        if (values.Length != 2)
+        {
+            throw new InvalidOperationException($"Timestamp query heap returned an unexpected value count for {passName} pass.");
+        }
+        if (values[1] < values[0])
+        {
+            throw new InvalidOperationException($"Timestamp query heap returned a decreasing timestamp range for {passName} pass.");
+        }
+    }
+
+    private static void ValidateTextureBufferBytes(byte[] data, uint rowPitch, ImageData expectedImage)
+    {
+        var expectedRowPitch = checked(expectedImage.Desc.Width * ImageModule.PixelSize(expectedImage.Desc.Format));
+        for (uint y = 0; y < expectedImage.Desc.Height; ++y)
+        {
+            var expectedOffset = checked((int)(y * expectedRowPitch));
+            var actualOffset = checked((int)(y * rowPitch));
+            for (uint x = 0; x < expectedRowPitch; ++x)
+            {
+                var index = checked((int)x);
+                if (data[actualOffset + index] != expectedImage.Data[expectedOffset + index])
+                {
+                    throw new InvalidOperationException("Texture buffer copy data mismatch.");
+                }
+            }
+        }
+    }
+
+    private static void ValidateTextureContainsColor(
+        IDevice device,
+        ICommandBuffer readbackCommandBuffer,
+        ITexture texture,
+        uint width,
+        uint height)
+    {
+        using var reader = Luna.RHIUtility.Module.CreateResourceReadContext(device);
+        reader.SetName("RHICSharpTest.RHI.ColorTextureReader");
+        reader.Reset();
+        var handle = reader.ReadTexture(texture, new SubresourceIndex(0, 0), 0, 0, 0, width, height, 1);
+        reader.Commit(readbackCommandBuffer, submitAndWait: true);
+        var rowPitch = checked(width * (uint)ImageModule.PixelSize(ImageFormat.Rgba8Unorm));
+        var data = reader.GetTextureData(handle, rowPitch, height, 1);
+        var hasNonBlackPixel = false;
+        for (var i = 0; i < data.Data.Length; i += 4)
+        {
+            if (data.Data[i] != 0 || data.Data[i + 1] != 0 || data.Data[i + 2] != 0)
+            {
+                hasNonBlackPixel = true;
+                break;
+            }
+        }
+        if (!hasNonBlackPixel)
+        {
+            throw new InvalidOperationException("Offscreen graphics pass did not write any visible color.");
+        }
     }
 
     private static void ValidateManagedDefaults()
@@ -564,6 +1436,9 @@ internal static class RhiCSharpTestApp
         using var descriptorBuffer = device.CreateBuffer(
             MemoryType.Local,
             new BufferDesc(BufferUsageFlags.ReadBuffer | BufferUsageFlags.ReadWriteBuffer, 256));
+        using var descriptorUniformBuffer = device.CreateBuffer(
+            MemoryType.Upload,
+            new BufferDesc(BufferUsageFlags.UniformBuffer, 256));
         using var descriptorTexture = device.CreateTexture(MemoryType.Local, new TextureDesc(
             TextureType.Tex2D,
             Format.Rgba8Unorm,
@@ -583,7 +1458,13 @@ internal static class RhiCSharpTestApp
                 DescriptorSetLayoutBinding.ReadWriteBufferView(2, 1, ShaderVisibilityFlags.Compute),
                 DescriptorSetLayoutBinding.ReadTextureView(TextureViewType.Tex2D, 3, 2, ShaderVisibilityFlags.Pixel),
                 DescriptorSetLayoutBinding.ReadWriteTextureView(TextureViewType.Tex2D, 5, 1, ShaderVisibilityFlags.Compute),
-                DescriptorSetLayoutBinding.Sampler(6, 2, ShaderVisibilityFlags.Pixel)
+                DescriptorSetLayoutBinding.Sampler(6, 2, ShaderVisibilityFlags.Pixel),
+                DescriptorSetLayoutBinding.UniformBufferView(7, 2, ShaderVisibilityFlags.Vertex),
+                DescriptorSetLayoutBinding.ReadBufferView(8, 1, ShaderVisibilityFlags.Compute),
+                DescriptorSetLayoutBinding.ReadWriteBufferView(9, 2, ShaderVisibilityFlags.Compute),
+                DescriptorSetLayoutBinding.ReadTextureView(TextureViewType.Tex2D, 10, 1, ShaderVisibilityFlags.Pixel),
+                DescriptorSetLayoutBinding.ReadWriteTextureView(TextureViewType.Tex2D, 11, 2, ShaderVisibilityFlags.Compute),
+                DescriptorSetLayoutBinding.Sampler(12, 1, ShaderVisibilityFlags.Pixel)
             }
         });
         using var descriptorSet = device.CreateDescriptorSet(new DescriptorSetDesc(descriptorSetLayout));
@@ -610,6 +1491,24 @@ internal static class RhiCSharpTestApp
                 TextureAddressMode.Repeat,
                 TextureAddressMode.Repeat)
         });
+        descriptorSet.SetUniformBufferViews(7, 0, new[]
+        {
+            BufferViewDesc.UniformBuffer(descriptorUniformBuffer, 0, 64),
+            BufferViewDesc.UniformBuffer(descriptorUniformBuffer, 64, 64)
+        });
+        descriptorSet.SetReadBufferView(8, BufferViewDesc.StructuredBuffer(descriptorBuffer, 0, 4, 16));
+        descriptorSet.SetReadWriteBufferViews(9, 0, new[]
+        {
+            BufferViewDesc.StructuredBuffer(descriptorBuffer, 0, 4, 16),
+            BufferViewDesc.StructuredBuffer(descriptorBuffer, 4, 4, 16)
+        });
+        descriptorSet.SetReadTextureView(10, TextureViewDesc.Tex2D(descriptorTexture));
+        descriptorSet.SetReadWriteTextureViews(11, 0, new[]
+        {
+            TextureViewDesc.Tex2D(descriptorTexture),
+            TextureViewDesc.Tex2D(descriptorTexture)
+        });
+        descriptorSet.SetSampler(12, CreateNearestClampSampler());
     }
 
     private static BlendDesc CreateAlphaBlendState()
@@ -692,5 +1591,40 @@ internal static class RhiCSharpTestApp
             TextureAddressMode.Clamp,
             TextureAddressMode.Clamp,
             TextureAddressMode.Clamp);
+    }
+
+    private static SamplerDesc CreateNearestClampSampler()
+    {
+        return new SamplerDesc(
+            Filter.Nearest,
+            Filter.Nearest,
+            Filter.Nearest,
+            TextureAddressMode.Clamp,
+            TextureAddressMode.Clamp,
+            TextureAddressMode.Clamp);
+    }
+
+    private static ImageData CreateQuadrantImageData()
+    {
+        return new ImageData(
+            new byte[]
+            {
+                255, 0, 0, 255, 255, 0, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255,
+                255, 0, 0, 255, 255, 0, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255,
+                0, 0, 255, 255, 0, 0, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+                0, 0, 255, 255, 0, 0, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255
+            },
+            new ImageDesc(ImageFormat.Rgba8Unorm, 4, 4));
+    }
+
+    private static ImageData CreateQuadrantMipImageData()
+    {
+        return new ImageData(
+            new byte[]
+            {
+                255, 0, 0, 255, 0, 255, 0, 255,
+                0, 0, 255, 255, 255, 255, 255, 255
+            },
+            new ImageDesc(ImageFormat.Rgba8Unorm, 2, 2));
     }
 }

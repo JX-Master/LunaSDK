@@ -23,6 +23,42 @@ internal static class ImageNative
         uint desiredFormat,
         out NativeImageData outImage);
 
+    [DllImport(LibraryName, EntryPoint = "luna_image_write_png_file")]
+    internal static extern UIntPtr WritePngFile(
+        IntPtr stream,
+        in NativeImageDesc desc,
+        [In] byte[] data,
+        ulong dataSize);
+
+    [DllImport(LibraryName, EntryPoint = "luna_image_write_bmp_file")]
+    internal static extern UIntPtr WriteBmpFile(
+        IntPtr stream,
+        in NativeImageDesc desc,
+        [In] byte[] data,
+        ulong dataSize);
+
+    [DllImport(LibraryName, EntryPoint = "luna_image_write_tga_file")]
+    internal static extern UIntPtr WriteTgaFile(
+        IntPtr stream,
+        in NativeImageDesc desc,
+        [In] byte[] data,
+        ulong dataSize);
+
+    [DllImport(LibraryName, EntryPoint = "luna_image_write_jpg_file")]
+    internal static extern UIntPtr WriteJpgFile(
+        IntPtr stream,
+        in NativeImageDesc desc,
+        [In] byte[] data,
+        ulong dataSize,
+        uint quality);
+
+    [DllImport(LibraryName, EntryPoint = "luna_image_write_hdr_file")]
+    internal static extern UIntPtr WriteHdrFile(
+        IntPtr stream,
+        in NativeImageDesc desc,
+        [In] byte[] data,
+        ulong dataSize);
+
     [DllImport(LibraryName, EntryPoint = "luna_image_free_data")]
     internal static extern void FreeData(ref NativeImageData image);
 }

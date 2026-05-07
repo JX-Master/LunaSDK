@@ -42,3 +42,30 @@ luna_sdk_module_c_wrapper("ImageC")
         add_rpathdirs("@loader_path")
     end
 target_end()
+
+luna_sdk_module_c_wrapper("VFSC")
+    add_files("VFS/*.cpp")
+    add_headerfiles("VFS/*.h", {prefixdir = "Luna/CWrapper/VFS"})
+    add_deps("VFS")
+    if is_plat("macosx") then
+        add_rpathdirs("@loader_path")
+    end
+target_end()
+
+luna_sdk_module_c_wrapper("FontC")
+    add_files("Font/*.cpp")
+    add_headerfiles("Font/*.h", {prefixdir = "Luna/CWrapper/Font"})
+    add_deps("Font")
+    if is_plat("macosx") then
+        add_rpathdirs("@loader_path")
+    end
+target_end()
+
+luna_sdk_module_c_wrapper("AssetC")
+    add_files("Asset/*.cpp")
+    add_headerfiles("Asset/*.h", {prefixdir = "Luna/CWrapper/Asset"})
+    add_deps("Asset")
+    if is_plat("macosx") then
+        add_rpathdirs("@loader_path")
+    end
+target_end()

@@ -11,6 +11,10 @@ if is_plat("windows", "macosx", "linux") then
     includes("AHITest")
     if has_config("managed") then
         includes("RuntimeCSharpTest")
+        includes("ImageCSharpTest")
+        includes("VFSCSharpTest")
+        includes("FontCSharpTest")
+        includes("AssetCSharpTest")
         includes("WindowCSharpTest")
         includes("RHICSharpTest")
     end

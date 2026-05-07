@@ -4,6 +4,8 @@ CPPSL is LunaSDK's C++ Shader Language. It uses a controlled subset of C++ synta
 
 CPPSL currently focuses on common graphics and compute shader workflows. Its goal is not to run full C++ on the GPU. Instead, it uses the C++ frontend for name lookup, overload resolution, template instantiation, and type checking, then translates a controlled shader semantic layer into each platform shader language.
 
+Reflection is a first-class CPPSL output target, at the same level as HLSL, GLSL, and Metal. One compiler invocation can emit multiple target outputs from the same parsed AST, so shader source translation and reflection generation stay consistent.
+
 ## File Rules
 
 CPPSL files must stay separate from regular C++ files:
@@ -13,6 +15,7 @@ CPPSL files must stay separate from regular C++ files:
 - CPPSL files must not include regular LunaSDK C++ headers.
 - Regular LunaSDK C++ files must not directly include CPPSL `.hxx` files.
 - CPPSL code can only include headers from configured CPPSL include roots, such as `<cppsl/core.hxx>`.
+- Host-side C++ integration should use reflection data or generated helper artifacts, not shared CPPSL headers.
 
 Common headers:
 
@@ -291,6 +294,72 @@ any, distance, reflect, lerp, clamp
 
 CPPSL also supports common vector/scalar `+`, `-`, `*`, `/`, `+=`, `-=`, `*=`, and `/=` operators.
 
+## Methods, Templates, And Compile-Time Code
+
+CPPSL supports struct methods. HLSL and Metal keep methods in generated source when possible; Vulkan GLSL lowers methods to ordinary helper functions because GLSL does not support struct methods.
+
+```cpp
+struct Surface
+{
+    float3 base_color;
+    float roughness;
+
+    float3 apply_exposure(float exposure) const
+    {
+        return base_color * exposure;
+    }
+};
+```
+
+CPPSL supports function overloads, method overloads, and default function or method arguments:
+
+```cpp
+float3 apply_tint(float3 color, float strength = 1.0f)
+{
+    return lerp(color, float3{1.0f}, strength);
+}
+```
+
+Function templates, template methods, and template structs/classes are supported when they are fully instantiated by shader code:
+
+```cpp
+template <typename T>
+T identity(T value)
+{
+    return value;
+}
+
+template <typename T>
+struct Box
+{
+    T value;
+
+    T get() const
+    {
+        return value;
+    }
+};
+```
+
+`constexpr` variables, `constexpr` functions, and `if constexpr` can be used for compile-time shader decisions when the expression can be evaluated by the CPPSL frontend:
+
+```cpp
+constexpr uint channels = 4u;
+
+template <typename T>
+float weight(T value)
+{
+    if constexpr (channels == 4u)
+    {
+        return value.w;
+    }
+    else
+    {
+        return 1.0f;
+    }
+}
+```
+
 ## Current Restrictions
 
 CPPSL is a controlled C++ subset. Avoid the following:
@@ -300,6 +369,7 @@ CPPSL is a controlled C++ subset. Avoid the following:
 - Putting non-descriptor fields into a descriptor set layout.
 - Using `input` or `output` as function parameter or local variable names.
 - Exceptions, RTTI, virtual functions, lambdas, dynamic allocation, coroutines, or inline assembly.
+- Inheritance, virtual methods, constructors, destructors, and custom `operator` definitions.
 - Arbitrary raw pointers and pointer arithmetic. Currently, raw pointer syntax is only allowed for structured buffer semantics through `const T*` / `T*`.
 - Standard library containers or host-side runtime types.
 
@@ -335,4 +405,4 @@ add_luna_shader("Shaders/MyPS.cxx", {
 
 When debug is enabled, D3D12 keeps DXIL debug information, Vulkan emits SPIR-V nonsemantic debug information with embedded source for tools such as RenderDoc, and Metal emits source line information and records source text in the Metal compilation output.
 
-The project build prepares the CPPSL compiler and native extractor before compiling shader files, so shader compilation does not fail because `cppslc` or `cppsl-native-extractor` is missing.
+Normal LunaSDK builds use the prebuilt CPPSL compiler and native extractor installed from the SDK package. CPPSL tool sources are only built when developing the compiler itself, through the dedicated CPPSL build option.

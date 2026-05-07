@@ -13,4 +13,14 @@ internal struct NativeImageDesc
     {
         return new ImageDesc((ImageFormat)Format, Width, Height);
     }
+
+    public static NativeImageDesc FromManaged(ImageDesc desc)
+    {
+        return new NativeImageDesc
+        {
+            Format = (uint)desc.Format,
+            Width = desc.Width,
+            Height = desc.Height
+        };
+    }
 }

@@ -1,10 +1,20 @@
+target("RHICSharpShaderAssets")
+    add_luna_sdk_options()
+    add_rules("luna.shader")
+    set_group("Tests")
+    set_kind("binary")
+    set_default(false)
+    add_files("ShaderAssetsDummy.cpp")
+    add_luna_shader("TestComputeCS.cxx", {type = "compute", entry_point = "cs_main"})
+target_end()
+
 function luna_rhi_csharp_test_target(name, entrypoint)
     target(name)
         set_kind("binary")
         set_group("Tests")
         add_files("*.cs")
         add_files(entrypoint)
-        add_deps("Luna.Runtime", "Luna.Window", "Luna.RHI", "Luna.RHIUtility", "Luna.Image", "RHITest2_Triangle", "RHITest3_Texture", "RHITest4_Box")
+        add_deps("Luna.Runtime", "Luna.Window", "Luna.RHI", "Luna.RHIUtility", "Luna.Image", "RHITest2_Triangle", "RHITest3_Texture", "RHITest4_Box", "RHICSharpShaderAssets")
         set_luna_sdk_csharp_options()
         after_build(function(target)
             local target_dir = target:targetdir()
@@ -29,7 +39,8 @@ function luna_rhi_csharp_test_target(name, entrypoint)
                 { native_target = "RHITest3_Texture", shader_name = "TestTextureVS" },
                 { native_target = "RHITest3_Texture", shader_name = "TestTexturePS" },
                 { native_target = "RHITest4_Box", shader_name = "TestBoxVS" },
-                { native_target = "RHITest4_Box", shader_name = "TestBoxPS" }
+                { native_target = "RHITest4_Box", shader_name = "TestBoxPS" },
+                { native_target = "RHICSharpShaderAssets", shader_name = "TestComputeCS" }
             }
             for _, shader in ipairs(shaders) do
                 local source_path = path.join(
@@ -70,7 +81,10 @@ function luna_rhi_csharp_test_target(name, entrypoint)
                 "TestTextureVS.metallib",
                 "TestTexturePS.metallib",
                 "TestBoxVS.metallib",
-                "TestBoxPS.metallib"
+                "TestBoxPS.metallib",
+                "TestComputeCS.dxil",
+                "TestComputeCS.spv",
+                "TestComputeCS.metallib"
             }
             for _, file in ipairs(files) do
                 os.rm(path.join(target_dir, file))

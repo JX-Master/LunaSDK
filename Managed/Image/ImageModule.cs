@@ -29,6 +29,12 @@ public static class ImageModule
         return ReadFileDesc(RuntimeFile.LoadData(path));
     }
 
+    public static ImageDesc ReadFileDesc(IFile file)
+    {
+        ArgumentNullException.ThrowIfNull(file);
+        return ReadFileDesc(RuntimeFile.LoadData(file));
+    }
+
     public static ImageData ReadFile(byte[] fileData, ImageFormat desiredFormat)
     {
         ArgumentNullException.ThrowIfNull(fileData);
@@ -58,6 +64,119 @@ public static class ImageModule
         return ReadFile(RuntimeFile.LoadData(path), desiredFormat);
     }
 
+    public static ImageData ReadFile(IFile file, ImageFormat desiredFormat)
+    {
+        ArgumentNullException.ThrowIfNull(file);
+        return ReadFile(RuntimeFile.LoadData(file), desiredFormat);
+    }
+
+    public static void WritePng(ISeekableStream stream, ImageData image)
+    {
+        ArgumentNullException.ThrowIfNull(image);
+        WritePng(stream, image.Desc, image.Data);
+    }
+
+    public static void WritePng(ISeekableStream stream, ImageDesc desc, byte[] data)
+    {
+        Write(stream, desc, data, ImageNative.WritePngFile);
+    }
+
+    public static void WritePng(string path, ImageData image)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(path);
+        ArgumentNullException.ThrowIfNull(image);
+        using var file = OpenOutputFile(path);
+        WritePng(file, image);
+        file.Flush();
+    }
+
+    public static void WriteBmp(ISeekableStream stream, ImageData image)
+    {
+        ArgumentNullException.ThrowIfNull(image);
+        WriteBmp(stream, image.Desc, image.Data);
+    }
+
+    public static void WriteBmp(ISeekableStream stream, ImageDesc desc, byte[] data)
+    {
+        Write(stream, desc, data, ImageNative.WriteBmpFile);
+    }
+
+    public static void WriteBmp(string path, ImageData image)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(path);
+        ArgumentNullException.ThrowIfNull(image);
+        using var file = OpenOutputFile(path);
+        WriteBmp(file, image);
+        file.Flush();
+    }
+
+    public static void WriteTga(ISeekableStream stream, ImageData image)
+    {
+        ArgumentNullException.ThrowIfNull(image);
+        WriteTga(stream, image.Desc, image.Data);
+    }
+
+    public static void WriteTga(ISeekableStream stream, ImageDesc desc, byte[] data)
+    {
+        Write(stream, desc, data, ImageNative.WriteTgaFile);
+    }
+
+    public static void WriteTga(string path, ImageData image)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(path);
+        ArgumentNullException.ThrowIfNull(image);
+        using var file = OpenOutputFile(path);
+        WriteTga(file, image);
+        file.Flush();
+    }
+
+    public static void WriteJpg(ISeekableStream stream, ImageData image, uint quality)
+    {
+        ArgumentNullException.ThrowIfNull(image);
+        WriteJpg(stream, image.Desc, image.Data, quality);
+    }
+
+    public static void WriteJpg(ISeekableStream stream, ImageDesc desc, byte[] data, uint quality)
+    {
+        ValidateImageData(desc, data);
+        if (quality is < 1 or > 100)
+        {
+            throw new ArgumentOutOfRangeException(nameof(quality), "JPEG quality must be between 1 and 100.");
+        }
+        var nativeStream = GetNativeHandle(stream);
+        var nativeDesc = NativeImageDesc.FromManaged(desc);
+        RuntimeErrors.ThrowIfFailed(new ErrorCode(ImageNative.WriteJpgFile(nativeStream, in nativeDesc, data, (ulong)data.Length, quality)));
+    }
+
+    public static void WriteJpg(string path, ImageData image, uint quality)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(path);
+        ArgumentNullException.ThrowIfNull(image);
+        using var file = OpenOutputFile(path);
+        WriteJpg(file, image, quality);
+        file.Flush();
+    }
+
+    public static void WriteHdr(ISeekableStream stream, ImageData image)
+    {
+        ArgumentNullException.ThrowIfNull(image);
+        WriteHdr(stream, image.Desc, image.Data);
+    }
+
+    public static void WriteHdr(ISeekableStream stream, ImageDesc desc, byte[] data)
+    {
+        Write(stream, desc, data, ImageNative.WriteHdrFile);
+    }
+
+    public static void WriteHdr(string path, ImageData image)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(path);
+        ArgumentNullException.ThrowIfNull(image);
+        using var file = OpenOutputFile(path);
+        WriteHdr(file, image);
+        file.Flush();
+    }
+
     public static uint PixelSize(ImageFormat format)
     {
         return format switch
@@ -72,5 +191,45 @@ public static class ImageModule
             ImageFormat.Rgba32Float => 16,
             _ => 0
         };
+    }
+
+    private delegate UIntPtr ImageWriteCallback(IntPtr stream, in NativeImageDesc desc, byte[] data, ulong dataSize);
+
+    private static void Write(ISeekableStream stream, ImageDesc desc, byte[] data, ImageWriteCallback callback)
+    {
+        ValidateImageData(desc, data);
+        var nativeStream = GetNativeHandle(stream);
+        var nativeDesc = NativeImageDesc.FromManaged(desc);
+        RuntimeErrors.ThrowIfFailed(new ErrorCode(callback(nativeStream, in nativeDesc, data, (ulong)data.Length)));
+    }
+
+    private static void ValidateImageData(ImageDesc desc, byte[] data)
+    {
+        ArgumentNullException.ThrowIfNull(data);
+        var pixelSize = PixelSize(desc.Format);
+        if (pixelSize == 0)
+        {
+            throw new ArgumentException("The image format is not supported.", nameof(desc));
+        }
+        var requiredSize = checked((ulong)pixelSize * desc.Width * desc.Height);
+        if ((ulong)data.Length != requiredSize)
+        {
+            throw new ArgumentException($"The image data size ({data.Length}) does not match the image description requirement ({requiredSize}).", nameof(data));
+        }
+    }
+
+    private static IntPtr GetNativeHandle(ISeekableStream stream)
+    {
+        ArgumentNullException.ThrowIfNull(stream);
+        if (stream is not IObject obj)
+        {
+            throw new ArgumentException("The stream was not created by the Luna.Runtime binding.", nameof(stream));
+        }
+        return obj.GetNativeHandle();
+    }
+
+    private static IFile OpenOutputFile(string path)
+    {
+        return RuntimeFile.Open(path, FileOpenFlags.Write | FileOpenFlags.UserBuffering, FileCreationMode.CreateAlways);
     }
 }

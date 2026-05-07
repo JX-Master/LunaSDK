@@ -818,7 +818,7 @@ Suggested priority:
 3. RHI object-model completion: continue filling gaps in the managed interfaces that correspond to C++ RHI objects.
 4. RHI extensions: resources, descriptors, pipeline, shader, fence, and query.
 5. Image, VFS, and low-level Asset capabilities.
-6. ImGui, VG, Font, and other tool-facing modules as Studio migration requires.
+6. Font, then ImGui, VG, and other tool-facing modules as Studio migration requires.
 
 Exit criteria:
 
@@ -864,6 +864,11 @@ Current implementation slice:
 34. RHI optimized texture clear values are exposed through `ClearValue`, `ClearValueType`, and `IDevice.CreateTexture`/`CreateAliasingTexture` overloads that marshal to native `ClearValue*` only when the caller provides one.
 35. The temporary managed `IFrameContext` bridge and the native `luna_rhi_frame_context_*` C wrapper exports have been removed. `ManagedHostApp` now creates the real `IDevice`, `ISwapChain`, and `ICommandBuffer` objects directly, handles resize by resetting the swap chain, and records the clear/present pass in managed code.
 36. Zero-copy `Span<byte>`/`Memory<byte>` hot paths, async I/O, custom C# log handlers, and broader RHI object coverage remain follow-up work because each introduces additional ownership, pinning, callback, blocking UI, or scheduling rules.
+37. VFS now has a first managed slice (`Luna.VFS`) built directly on top of the existing Runtime file object wrappers. The current bridge exposes module init, platform filesystem driver lookup, mount/unmount/remount, VFS file open, file attribute query, copy/move/delete, directory open, directory creation, and VFS-to-native path translation, all using UTF-8 path strings instead of introducing managed `Name` or `Path` wrappers. `VFSCSharpTest` mounts a temporary native directory, exercises read/write/copy/move/remount/delete flows through VFS, and validates native-path translation.
+38. Font now has a first managed slice (`Luna.Font`) with a public `IFontFile` interface and internal native-backed implementation. The current bridge exposes module init, default font access, TTF loading from managed bytes or file data, font-face count, glyph lookup, pixel-height scaling, vertical and horizontal metrics, kerning, glyph shape extraction, glyph and bitmap bounding boxes, and CPU glyph bitmap rendering. Native font file data is copied into engine-owned memory on load, and `FontCSharpTest` validates the default embedded font plus a managed byte-roundtrip reload path.
+39. Asset now has its first managed base slice (`Luna.Asset`) covering `asset_t` handle wrapping, module init, register/new/get-by-path flows, GUID/path/name/type/state queries, metadata load/save, asset file enumeration, copy/move/delete, and opaque asset-data object forwarding through public `IObject`. `AssetCSharpTest` mounts a temporary VFS root, creates and registers sample assets, validates metadata files and path mappings, and exercises asset copy/move/delete workflows end to end.
+40. Asset also now has the first managed `AssetTypeDesc` registration bridge. Managed code can register native asset types with delegates for load, load-default-data, save, set-data, and referred-assets queries; the C wrapper stores callback sets by asset type name and forwards the native `AssetTypeDesc` callbacks back into C# through pinned delegates and GCHandle userdata.
+41. Managed callback exceptions are captured and rethrown on the original `AssetModule.LoadAsset`, `LoadAssetDefaultData`, `SetAssetData`, `SaveAsset`, and `GetReferredAssets` call paths instead of being silently flattened into generic native failures. The current `AssetCSharpTest` uses a managed callback-backed font asset type to validate the callback registration path, state transitions, save callback, set-data callback, and referred-assets callback.
 
 RHI completion battle plan:
 

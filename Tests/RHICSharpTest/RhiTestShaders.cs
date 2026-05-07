@@ -17,6 +17,8 @@ internal static class RhiTestShaders
 
     public static ShaderData LoadBoxPixelShader() => Load("TestBoxPS", "ps_main");
 
+    public static ShaderData LoadComputeShader() => Load("TestComputeCS", "cs_main");
+
     private static ShaderData Load(string shaderName, string entryPoint)
     {
         var asset = GetCurrentShaderAsset(shaderName, entryPoint);
