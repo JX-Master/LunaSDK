@@ -503,8 +503,8 @@ LUNA_RHI_UTILITY_C_API luna_errcode_t luna_rhi_utility_resource_read_context_get
         row_pitch,
         copy_bytes_per_row * height,
         slice_pitch);
-    out_info->row_pitch = row_pitch;
-    out_info->slice_pitch = slice_pitch;
+    out_info->row_pitch = copy_bytes_per_row;
+    out_info->slice_pitch = copy_bytes_per_row * height;
     return 0;
 }
 

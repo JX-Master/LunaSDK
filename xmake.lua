@@ -197,8 +197,12 @@ function luna_sdk_module_c_wrapper(target_name)
 end
 
 function set_luna_sdk_csharp_options()
+    set_toolchains("dotnet")
     set_values("csharp.target_framework", "net10.0")
     set_values("csharp.nullable", "enable")
+    if is_plat("windows") then
+        add_csflags("-m:1")
+    end
     local defines = {}
     if is_plat("windows") then
         table.insert(defines, "LUNA_PLATFORM_WINDOWS")
