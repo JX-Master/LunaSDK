@@ -18,8 +18,6 @@
 #include <Luna/ObjLoader/ObjLoader.hpp>
 #include <Luna/VFS/VFS.hpp>
 #include <Luna/Runtime/HashSet.hpp>
-#include <Luna/ShaderCompiler/ShaderCompiler.hpp>
-#include <Luna/RHI/ShaderCompileHelper.hpp>
 #include <Luna/VariantUtils/JSON.hpp>
 
 namespace Luna

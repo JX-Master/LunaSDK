@@ -11,7 +11,6 @@
 #define LUNA_RHI_UTILITY_API LUNA_EXPORT
 #include "MipmapGenerationContext.hpp"
 #include <Luna/Runtime/SpinLock.hpp>
-#include <Luna/RHI/ShaderCompileHelper.hpp>
 
 #include <MipmapGeneration1DCS.hpp>
 #include <MipmapGeneration2DCS.hpp>
@@ -40,7 +39,7 @@ namespace Luna
                         PipelineLayoutFlag::deny_pixel_shader_access)));
 
                     ComputePipelineStateDesc ps_desc;
-                    LUNA_FILL_COMPUTE_SHADER_DATA(ps_desc, MipmapGeneration1DCS);
+                    LUNA_CPPSL_FILL_COMPUTE_SHADER_DATA(ps_desc, MipmapGeneration1DCS);
                     ps_desc.pipeline_layout = m_playout_1d;
                     luset(m_pso_1d, device->new_compute_pipeline_state(ps_desc));
                 }
@@ -58,7 +57,7 @@ namespace Luna
                         PipelineLayoutFlag::deny_pixel_shader_access)));
 
                     ComputePipelineStateDesc ps_desc;
-                    LUNA_FILL_COMPUTE_SHADER_DATA(ps_desc, MipmapGeneration2DCS);
+                    LUNA_CPPSL_FILL_COMPUTE_SHADER_DATA(ps_desc, MipmapGeneration2DCS);
                     ps_desc.pipeline_layout = m_playout_2d;
                     luset(m_pso_2d, device->new_compute_pipeline_state(ps_desc));
                 }
@@ -76,7 +75,7 @@ namespace Luna
                         PipelineLayoutFlag::deny_pixel_shader_access)));
 
                     ComputePipelineStateDesc ps_desc;
-                    LUNA_FILL_COMPUTE_SHADER_DATA(ps_desc, MipmapGeneration3DCS);
+                    LUNA_CPPSL_FILL_COMPUTE_SHADER_DATA(ps_desc, MipmapGeneration3DCS);
                     ps_desc.pipeline_layout = m_playout_3d;
                     luset(m_pso_3d, device->new_compute_pipeline_state(ps_desc));
                 }

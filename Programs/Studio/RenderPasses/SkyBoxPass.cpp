@@ -13,7 +13,6 @@
 #include <Luna/Runtime/File.hpp>
 #include <Luna/Asset/Asset.hpp>
 #include <Luna/Runtime/Math/Matrix.hpp>
-#include <Luna/RHI/ShaderCompileHelper.hpp>
 #include <SkyboxCS.hpp>
 
 namespace Luna
@@ -35,7 +34,7 @@ namespace Luna
                 PipelineLayoutFlag::deny_vertex_shader_access |
                 PipelineLayoutFlag::deny_pixel_shader_access)));
             ComputePipelineStateDesc ps_desc;
-            LUNA_FILL_COMPUTE_SHADER_DATA(ps_desc, SkyboxCS);
+            LUNA_CPPSL_FILL_COMPUTE_SHADER_DATA(ps_desc, SkyboxCS);
             ps_desc.pipeline_layout = m_skybox_pass_playout;
             luset(m_skybox_pass_pso, device->new_compute_pipeline_state(ps_desc));
         }
@@ -108,7 +107,7 @@ namespace Luna
                 luexp(m_ds->update_descriptors({
                     WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(m_skybox_params_cb, 0, (u32)align_upper(sizeof(SkyboxParams), cb_align))),
                     WriteDescriptorSet::read_texture_view(1, TextureViewDesc::tex2d(skybox)),
-                    WriteDescriptorSet::read_texture_view(2, TextureViewDesc::tex2d(depth_tex)),
+                    WriteDescriptorSet::read_texture_view(2, TextureViewDesc::tex2d(depth_tex, Format::d32_float, 0, 1)),
                     WriteDescriptorSet::read_write_texture_view(3, TextureViewDesc::tex2d(output_tex)),
                     WriteDescriptorSet::sampler(4, SamplerDesc(Filter::linear, Filter::linear, Filter::linear, TextureAddressMode::repeat, TextureAddressMode::repeat, TextureAddressMode::repeat))
                     }));

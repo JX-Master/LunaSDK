@@ -16,10 +16,10 @@ namespace Luna
     {
         using namespace RHI;
         attributes.clear();
-        attributes.push_back(InputAttributeDesc("POSITION", 0, 0, 0, 0, Format::rgb32_float));
-        attributes.push_back(InputAttributeDesc("NORMAL", 0, 1, 0, 12, Format::rgb32_float));
-        attributes.push_back(InputAttributeDesc("TANGENT", 0, 2, 0, 24, Format::rgb32_float));
-        attributes.push_back(InputAttributeDesc("TEXCOORD", 0, 3, 0, 36, Format::rg32_float));
-        attributes.push_back(InputAttributeDesc("COLOR", 0, 4, 0, 44, Format::rgba32_float));
+        attributes.push_back(InputAttributeDesc(0, 0, 0, Format::rgb32_float));
+        attributes.push_back(InputAttributeDesc(1, 0, 12, Format::rgb32_float));
+        attributes.push_back(InputAttributeDesc(2, 0, 24, Format::rgb32_float));
+        attributes.push_back(InputAttributeDesc(3, 0, 36, Format::rg32_float));
+        attributes.push_back(InputAttributeDesc(4, 0, 44, Format::rgba32_float));
     }
 }

@@ -98,7 +98,7 @@ namespace Luna
                     PipelineLayoutFlag::deny_vertex_shader_access |
                     PipelineLayoutFlag::deny_pixel_shader_access)));
                 ComputePipelineStateDesc ps_desc;
-                LUNA_FILL_COMPUTE_SHADER_DATA(ps_desc, PrecomputeEnvironmentMapMips);
+                LUNA_CPPSL_FILL_COMPUTE_SHADER_DATA(ps_desc, PrecomputeEnvironmentMapMips);
                 ps_desc.pipeline_layout = m_env_mipmapping_playout;
                 luset(m_env_mipmapping_pso, g_env->device->new_compute_pipeline_state(ps_desc));
                 luset(m_mipmap_generation_ctx, RHIUtility::new_mipmap_generation_context(g_env->device));

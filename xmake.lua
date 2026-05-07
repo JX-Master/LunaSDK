@@ -3,7 +3,7 @@ set_project("Luna")
 add_moduledirs("Tools/xmake/modules")
 
 rule("luna.shader")
-    set_extensions(".hlsl")
+    set_extensions(".cxx")
     add_orders("luna.shader", "c++.build")
     on_load(function (target) 
         local headerdir = path.join(target:autogendir(), "shaders")
@@ -17,7 +17,6 @@ rule("luna.shader")
         target:rule_add(cpp_rule)
     end)
     on_build_file(function (target, sourcefile, opt)
-        import("compile_shader")
         import("utils.progress")
         import("core.project.depend")
 
@@ -25,11 +24,17 @@ rule("luna.shader")
         local headerdir = path.absolute(path.join(target:autogendir(), "shaders"))
         local targetfile = path.join(headerdir, path.basename(sourcefile) .. ".hpp")
         local configs = target:fileconfig(sourcefile) or {}
+        if configs.debug == nil and is_mode("debug") then
+            configs.debug = true
+        end
+        if configs.debug == true and configs.optimize == nil then
+            configs.optimize = "none"
+        end
 
         -- need build this object?
         local dependfile = target:dependfile(targetfile)
         local dependinfo = target:is_rebuilt() and {} or (depend.load(dependfile) or {})
-        if not depend.is_changed(dependinfo, {lastmtime = os.mtime(targetfile), values = configs}) then
+        if not depend.is_changed(dependinfo, {lastmtime = os.mtime(targetfile), values = configs, files = {sourcefile}}) then
             return
         end
 
@@ -39,7 +44,8 @@ rule("luna.shader")
         -- build this object.
         configs.output = targetfile
         configs.cpp_output = true
-        compile_shader.compile_shader(sourcefile, configs)
+        import("compile_cppsl")
+        compile_cppsl.compile_cppsl(sourcefile, configs)
 
         -- update files and values to the dependent file
         dependinfo.files = {sourcefile}
@@ -49,6 +55,9 @@ rule("luna.shader")
 rule_end()
 
 function add_luna_shader(file, config)
+    if path.extension(file) ~= ".cxx" then
+        os.raise("add_luna_shader only accepts CPPSL .cxx shader files: " .. file)
+    end
     if is_config("rhi_api", "D3D12") then
         config.target_format = "dxil"
     elseif is_config("rhi_api", "Vulkan") then
@@ -106,6 +115,12 @@ option("memory_profiler")
     set_showmenu(true)
     set_description("Whether to forcly enable memory profiler for LunaSDK.")
     add_defines("LUNA_ENABLE_MEMORY_PROFILER")
+option_end()
+
+option("build_cppsl_tools")
+    set_default(false)
+    set_showmenu(true)
+    set_description("Build CPPSL compiler tools from source instead of using the prebuilt SDK tools.")
 option_end()
 
 function get_default_rhi_api()
@@ -250,6 +265,35 @@ if is_os("windows") then
     add_defines("_UNICODE")
     add_defines("NOMINMAX")
     add_defines("_CRT_SECURE_NO_WARNINGS")
+end
+
+if has_config("build_cppsl_tools") then
+    includes("Tools/CPPSL/native")
+
+    target("CPPSL")
+        set_default(false)
+        set_group("Tools/CPPSL")
+        set_kind("phony")
+        add_deps("cppsl-native-extractor")
+        on_build(function ()
+            local cppslc = path.join(os.projectdir(), "Tools", "CPPSL", "src", "CPPSL.Cli", "bin", "Debug", "net9.0", is_host("windows") and "cppslc.exe" or "cppslc")
+            local native_extractor = path.join(os.projectdir(), "Tools", "CPPSL", "native", "bin", is_host("windows") and "cppsl-native-extractor.exe" or "cppsl-native-extractor")
+            local cli_project = path.join(os.projectdir(), "Tools", "CPPSL", "src", "CPPSL.Cli", "CPPSL.Cli.csproj")
+            os.runv("dotnet", {
+                "build",
+                cli_project,
+                "-m:1",
+                "/nr:false",
+                "--nologo",
+                "-p:UseSharedCompilation=false"
+            })
+            if not os.isfile(cppslc) then
+                os.raise("CPPSL CLI build did not produce: " .. cppslc)
+            end
+            if not os.isfile(native_extractor) then
+                os.raise("CPPSL native extractor build did not produce: " .. native_extractor)
+            end
+        end)
 end
 
 includes("Modules")

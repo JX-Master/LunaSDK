@@ -8,12 +8,15 @@ The first thing to do is to create an binary target for our demo program, so tha
 ```lua
 target("DemoApp")
     set_luna_sdk_program()
+    add_rules("luna.shader")
     add_files("**.cpp")
-    add_deps("Runtime", "Window", "RHI", "RHIUtility", "ShaderCompiler", "Image")
+    add_luna_shader("DemoAppVS.cxx", {type = "vertex", entry_point = "vs_main"})
+    add_luna_shader("DemoAppPS.cxx", {type = "pixel", entry_point = "ps_main"})
+    add_deps("Runtime", "Window", "RHI", "RHIUtility", "Image")
 target_end()
 ```
 
-`target` and `target_end` enclose a *target scope*, where all target definitions are specified. `set_luna_sdk_program` tells XMake that we are defining one LunaSDK program, this will let XMake set the target kind to "binary" and import all SDK options for the program. `add_files("**.cpp")` tells XMake to add all CPP files in the current directory and all subdirectories to the this target. `add_deps` lists all libraries that this program links to, in our example, we need to link to the SDK runtime (`Runtime`), the window module (`Window`) , the Graphics API module (`RHI`), the shader compiler module (`ShaderCompiler`) and the image file module (`Image`). If you got unresolved external symbol errors when compiling, make sure you already link correct libraries.
+`target` and `target_end` enclose a *target scope*, where all target definitions are specified. `set_luna_sdk_program` tells XMake that we are defining one LunaSDK program, this will let XMake set the target kind to "binary" and import all SDK options for the program. `add_rules("luna.shader")` enables CPPSL shader compilation for this target. `add_files("**.cpp")` tells XMake to add all CPP files in the current directory and all subdirectories to the this target. `add_luna_shader` declares CPPSL shader entry files that will be compiled before the C++ sources. `add_deps` lists all libraries that this program links to, in our example, we need to link to the SDK runtime (`Runtime`), the window module (`Window`), the Graphics API module (`RHI`), the RHI utility module (`RHIUtility`) and the image file module (`Image`). If you got unresolved external symbol errors when compiling, make sure you already link correct libraries.
 
 Then we need to create source CPP files for our program. Since out demo program is simple, we only create one "main. cpp" file to host all source codes. After this, the `DemoApp` directory should looks like this:
 ```
@@ -37,7 +40,6 @@ Next, fills `main.cpp` with the following initial content. As we go further, we 
 #include <Luna/Runtime/UniquePtr.hpp>
 #include <Luna/Window/Window.hpp>
 #include <Luna/RHI/RHI.hpp>
-#include <Luna/ShaderCompiler/ShaderCompiler.hpp>
 #include <Luna/Window/AppMain.hpp>
 
 using namespace Luna;
@@ -63,8 +65,7 @@ RV run_app()
 {
     auto result = add_modules({
         module_window(),
-        module_rhi(),
-        module_shader_compiler()
+        module_rhi()
     });
     if(failed(result)) return result;
     result = init_modules();
@@ -95,7 +96,6 @@ Fristly we include header files that we need to include to compile the program, 
 * <Luna/Runtime/UniquePtr. hpp> for `UniquePtr<T>`.
 * <Luna/Window/Window. hpp> for `module_window()`.
 * <Luna/RHI/RHI. hpp> for `module_rhi()`.
-* <Luna/ShaderCompiler/ShaderCompiler. hpp> for `module_shader_compiler()`
 * <Luna/Window/AppMain. hpp> for `luna_main()`
 
 You can include any SDK interface header files using similar syntax: `#include <Luna/Module/File>`. We set `{LUNA_ROOT_DIR}/Engine` as the global include directory, the user may check it for available header files. We will describe these modules and files when we reach the place for using them.
@@ -113,7 +113,6 @@ We then wrap the real program logic in one `run_app` function. The return type o
 In our `run_app` function, the first thing to do is calling `add_modules`, which will add all modules we need to use into the module system, so that we can initialize such modules by calling `init_modules`. The program only needs to add modules that are directly used by the program, if such modules have dependent modules, they will be added to the module system automatically when such modules are added. In our example, the following modules are added:
 1. `Window`: Provides functions for managing windows.
 2. `RHI`: Provides uniform interfaces to rendering backend (like D3D12\Vulkan\Metal).
-3. `ShaderCompiler`: Provides functions to compile shaders at run time.
 The `Runtime` module is always implicitly added to the module system, so the program should not add `Runtime` module explicitly. After adding modules, `run_app` then calls `init_modules`, which will initialize all linked SDK modules for our program. We deliberately separate module initialization from `Luna::init` so that the user get a chance to set module initialization parameters before initializing modules, and modules can also indicate initialization failure by returning error codes, since error handling system is available only after `Luna::init` .
 
 Then, we allocate and initialize one new object of `DemoApp` type by calling `memnew` function. The following table shows memory allocation functions used in LunaSDK:
@@ -260,7 +259,6 @@ So far, the complete code for `main.cpp` is:
 #include <Luna/Window/Window.hpp>
 #include <Luna/Window/Event.hpp>
 #include <Luna/RHI/RHI.hpp>
-#include <Luna/ShaderCompiler/ShaderCompiler.hpp>
 #include <Luna/Window/AppMain.hpp>
 
 using namespace Luna;
@@ -307,8 +305,7 @@ RV run_app()
 {
     auto result = add_modules({
         module_window(),
-        module_rhi(),
-        module_shader_compiler()
+        module_rhi()
     });
     if(failed(result)) return result;
     result = init_modules();
@@ -561,89 +558,18 @@ luset(desc_set, dev->new_descriptor_set (DescriptorSetDesc (dlayout)));
 
 We will fill descriptors in the set by calling `update_descriptors` later.
 
-## Compiling shaders
+## Creating CPPSL shaders
 
-The next thing to do is compiling shaders for the pipeline state object. LunaSDK uses HLSL as the source shader language, and uses `ShaderCompiler` module to compile HLSL to DXBC, DXIL, SPIR-V and other target shading languages. To compile shader, we need to include corresponding header files:
+The next thing to do is creating shaders for the pipeline state object. LunaSDK uses CPPSL shader files and compiles them at build time. The generated shader headers are included by C++ code and can be passed directly to RHI pipeline descriptors.
 
-```c++
-#include <Luna/RHI/ShaderCompileHelper.hpp>
-```
-
-`ShaderCompileHelper.hpp` includes `RHI::get_current_platform_shader_target_format()` function, which tell the shader compiler the native target target shader format for the current graphics API. Since our shader is rather simple, we declare our shader source code directly in the C++ source file, in `DemoApp::init` function:
+For this demo, create three shader files beside `main.cpp`: `DemoAppShader.hxx`, `DemoAppVS.cxx` and `DemoAppPS.cxx`. The `.hxx` file stores shared CPPSL structures and resource bindings, while each `.cxx` file contains one shader entry point.
 
 ```c++
-const char vs_shader_code[] = R"(
-cbuffer vertexBuffer : register(b0)
-{
-    float4x4 world_to_proj;
-};
-Texture2D tex : register(t1);
-SamplerState tex_sampler : register(s2);
-struct VS_INPUT
-{
-    [[vk::location(0)]]
-    float3 position : POSITION;
-    [[vk::location(1)]]
-    float2 texcoord : TEXCOORD;
-};
-struct PS_INPUT
-{
-    [[vk::location(0)]]
-    float4 position : SV_POSITION;
-    [[vk::location(1)]]
-    float2 texcoord : TEXCOORD;
-};
-PS_INPUT main(VS_INPUT input)
-{
-    PS_INPUT output;
-    output.position = mul(world_to_proj, float4(input.position, 1.0f));
-    output.texcoord = input.texcoord;
-    return output;
-})";
-
-const char ps_shader_code[] = R"(
-cbuffer vertexBuffer : register(b0)
-{
-    float4x4 world_to_proj;
-};
-Texture2D tex : register(t1);
-SamplerState tex_sampler : register(s2);
-struct PS_INPUT
-{
-    [[vk::location(0)]]
-    float4 position : SV_POSITION;
-    [[vk::location(1)]]
-    float2 texcoord : TEXCOORD;
-};
-[[vk::location(0)]]
-float4 main(PS_INPUT input) : SV_Target
-{
-    return float4(tex.Sample(tex_sampler, input.texcoord));
-})";
+#include <DemoAppVS.hpp>
+#include <DemoAppPS.hpp>
 ```
 
-here we use C++ raw string syntax `R" ()"` to declare multiline string without appending `\` for every string line. Note the register number specified in shader must match the binding slot specified in descriptor set layout we just created. Since we use the same slot numbering system for all descriptor types, the register number for `b`, `t`, `u` and `s` should not overlap.
-
-Then we can compile shaders using `ShaderCompiler::ICompiler` object:
-
-```c++
-auto compiler = ShaderCompiler::new_compiler();
-ShaderCompiler::ShaderCompileParameters params;
-params.source = { vs_shader_code, strlen(vs_shader_code) };
-params.source_name = "DemoAppVS";
-params.entry_point = "main";
-params.target_format = RHI::get_current_platform_shader_target_format();
-params.shader_type = ShaderCompiler::ShaderType::vertex;
-params.shader_model = {6, 0};
-params.optimization_level = ShaderCompiler::OptimizationLevel::full;
-lulet(vs_data, compiler->compile (params));
-params.source = { ps_shader_code, strlen(ps_shader_code) };
-params.source_name = "DemoAppPS";
-params.shader_type = ShaderCompiler::ShaderType::pixel;
-lulet(ps_data, compiler->compile(params));
-```
-
-The shader compilation process is fairly simple, we fill all shader compilation settings to one `ShaderCompileParameters` object, then pass that object to `IShaderCompiler::compile` to compile the shader source code. `IShaderCompiler::compile` returns one `ShaderCompileResult` object, will contains the shader compilation result, and can be converted to `RHI::ShaderData`, which is used to create RHI pipeline state objects.
+`add_luna_shader` in `xmake.lua` compiles these CPPSL entry files and generates the two headers above. The descriptor bindings declared in CPPSL must match the descriptor set layout created by the C++ code: binding `0` is the uniform buffer, binding `1` is the texture and binding `2` is the sampler.
 
 ## Creating pipeline layout and pipeline state
 
@@ -710,16 +636,16 @@ ps_desc.rasterizer_state = RasterizerDesc ();
 ps_desc.depth_stencil_state = DepthStencilDesc (true, true, CompareFunction::less_equal);
 ps_desc.ib_strip_cut_value = IndexBufferStripCutValue::disabled;
 InputAttributeDesc input_attributes[] = {
-    InputAttributeDesc("POSITION", 0, 0, 0, 0, Format::rgb32_float),
-    InputAttributeDesc("TEXCOORD", 0, 1, 0, 12, Format::rg32_float)
+    InputAttributeDesc(0, 0, 0, Format::rgb32_float),
+    InputAttributeDesc(1, 0, 12, Format::rg32_float)
 };
 InputBindingDesc input_bindings[] = {
     InputBindingDesc(0, 20, InputRate::per_vertex)
 };
 ps_desc.input_layout.attributes = {input_attributes, 2};
 ps_desc.input_layout.bindings = {input_bindings, 1};
-ps_desc.vs = get_shader_data_from_compile_result(vs_data);
-ps_desc.ps = get_shader_data_from_compile_result(ps_data);
+ps_desc.vs = LUNA_CPPSL_GET_SHADER_DATA(DemoAppVS);
+ps_desc.ps = LUNA_CPPSL_GET_SHADER_DATA(DemoAppPS);
 ps_desc.pipeline_layout = playout;
 ps_desc.num_color_attachments = 1;
 ps_desc.color_formats[0] = Format::rgba8_unorm;
@@ -727,7 +653,7 @@ ps_desc.depth_stencil_format = Format::d32_float;
 luset(pso, dev->new_graphics_pipeline_state(ps_desc));
 ```
 
-Note that `RHI::get_shader_data_from_compile_result` is from `<Luna/RHI/ShaderCompileHelper. hpp>` header, which converts one `ShaderCompiler::ShaderCompileResult` object to one `RHI::ShaderData` object conveniently. The user can also perform such conversion manually by assigning every properties of `RHI::ShaderData` using corresponding properties in `ShaderCompiler::ShaderCompileResult`.
+The `LUNA_CPPSL_GET_SHADER_DATA` macro is provided by the generated CPPSL shader headers and returns the `RHI::ShaderData` view required by the pipeline descriptor.
 
 ## Creating depth textures
 
@@ -976,8 +902,11 @@ Then fills `xmake. lua` with the following code:
 ```lua
 target ("DemoApp")
 	set_luna_sdk_program()
+	add_rules("luna.shader")
 	add_files("Source/**.cpp")
-	add_deps("Runtime", "Window", "RHI", "RHIUtility", "ShaderCompiler", "Image")
+	add_luna_shader("DemoAppVS.cxx", {type = "vertex", entry_point = "vs_main"})
+	add_luna_shader("DemoAppPS.cxx", {type = "pixel", entry_point = "ps_main"})
+	add_deps("Runtime", "Window", "RHI", "RHIUtility", "Image")
 	before_build (function (target)
 	    os.cp("$(scriptdir)/luna.png", target:targetdir() .. "/luna.png")
 	end)

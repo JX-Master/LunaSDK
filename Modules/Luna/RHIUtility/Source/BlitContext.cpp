@@ -12,7 +12,6 @@
 #include "BlitContext.hpp"
 #include <BlitVS.hpp>
 #include <BlitPS.hpp>
-#include <Luna/RHI/ShaderCompileHelper.hpp>
 
 namespace Luna
 {
@@ -47,13 +46,13 @@ namespace Luna
                     InputBindingDesc(0, sizeof(BlitVertex), InputRate::per_vertex)
                 };
                 InputAttributeDesc input_attributes[] = {
-                    InputAttributeDesc("POSITION", 0, 0, 0, 0, Format::rg32_float),
-                    InputAttributeDesc("TEXCOORD", 0, 1, 0, 8, Format::rg32_float)
+                    InputAttributeDesc(0, 0, 0, Format::rg32_float),
+                    InputAttributeDesc(1, 0, 8, Format::rg32_float)
                 };
                 ps_desc.input_layout.bindings = { input_bindings, 1 };
                 ps_desc.input_layout.attributes = { input_attributes , 2 };
-                ps_desc.vs = LUNA_GET_SHADER_DATA(BlitVS);
-                ps_desc.ps = LUNA_GET_SHADER_DATA(BlitPS);
+                ps_desc.vs = LUNA_CPPSL_GET_SHADER_DATA(BlitVS);
+                ps_desc.ps = LUNA_CPPSL_GET_SHADER_DATA(BlitPS);
                 ps_desc.pipeline_layout = m_playout.get();
                 ps_desc.num_color_attachments = 1;
                 ps_desc.color_formats[0] = dst_format;

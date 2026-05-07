@@ -30,6 +30,14 @@ jobs:
           xmake-version: latest
           actions-cache-folder: .xmake-cache-W${{ steps.cache_key.outputs.key }}
 
+      - name: Install .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Show .NET info
+        run: dotnet --info
+
       - name: Setup project
         run: |
           chmod +x ./setup.sh
