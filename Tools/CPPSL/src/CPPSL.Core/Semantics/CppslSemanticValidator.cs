@@ -1,5 +1,6 @@
 using CPPSL.Core.Compiler;
 using CPPSL.Core.Diagnostics;
+using CPPSL.Core.Frontend;
 using CPPSL.Core.ShaderModel;
 
 namespace CPPSL.Core.Semantics;
@@ -54,6 +55,60 @@ public sealed class CppslSemanticValidator
         return diagnostics;
     }
 
+    public IReadOnlyList<CppslDiagnostic> ValidateAst(string sourcePath, IReadOnlyList<CppslAstNode> astNodes)
+    {
+        sourcePath = Path.GetFullPath(sourcePath);
+        var diagnostics = new List<CppslDiagnostic>();
+        foreach (var node in Flatten(astNodes).Where(node => IsUserSourceNode(sourcePath, node)))
+        {
+            if (node.Kind is CppslAstNodeKind.Struct or CppslAstNodeKind.Class && node.HasBaseClasses)
+            {
+                diagnostics.Add(CppslDiagnostic.Error(
+                    $"CPPSL type `{node.Spelling}` must not use inheritance.",
+                    node.Location?.File,
+                    node.Location?.Line,
+                    node.Location?.Column));
+            }
+
+            if (node.IsVirtual && node.Kind is (CppslAstNodeKind.Method or CppslAstNodeKind.Destructor))
+            {
+                diagnostics.Add(CppslDiagnostic.Error(
+                    $"CPPSL method `{node.Spelling}` must not be virtual.",
+                    node.Location?.File,
+                    node.Location?.Line,
+                    node.Location?.Column));
+            }
+
+            if (node.Kind == CppslAstNodeKind.Constructor)
+            {
+                diagnostics.Add(CppslDiagnostic.Error(
+                    $"CPPSL type `{OwnerName(node)}` must not declare constructors.",
+                    node.Location?.File,
+                    node.Location?.Line,
+                    node.Location?.Column));
+            }
+
+            if (node.Kind == CppslAstNodeKind.Destructor)
+            {
+                diagnostics.Add(CppslDiagnostic.Error(
+                    $"CPPSL type `{OwnerName(node)}` must not declare destructors.",
+                    node.Location?.File,
+                    node.Location?.Line,
+                    node.Location?.Column));
+            }
+
+            if (node.IsUserDefinedOperator)
+            {
+                diagnostics.Add(CppslDiagnostic.Error(
+                    $"CPPSL type `{OwnerName(node)}` must not declare custom operators.",
+                    node.Location?.File,
+                    node.Location?.Line,
+                    node.Location?.Column));
+            }
+        }
+        return diagnostics;
+    }
+
     public IReadOnlyList<CppslDiagnostic> ValidateShaderModel(CppslShaderModel shaderModel)
     {
         var diagnostics = new List<CppslDiagnostic>();
@@ -64,6 +119,13 @@ public sealed class CppslSemanticValidator
         foreach (var function in shaderModel.Functions)
         {
             ValidateReservedLocalIdentifiers(function.Body, diagnostics);
+        }
+        foreach (var structure in shaderModel.Structs)
+        {
+            foreach (var method in structure.Methods)
+            {
+                ValidateReservedLocalIdentifiers(method.Body, diagnostics);
+            }
         }
         return diagnostics;
     }
@@ -84,6 +146,22 @@ public sealed class CppslSemanticValidator
                     ? new[] { "binding", "cbuffer", "structured_buffer", "sbuffer", "rwstructured_buffer", "rw_structured_buffer", "rwsbuffer" }
                     : new[] { "location", "position", "builtin" };
                 ValidateAttributeSet("field", field.Name, field.Attributes, allowed, diagnostics);
+            }
+            foreach (var method in structure.Methods)
+            {
+                ValidateAttributeSet("method", method.Name, method.Attributes, Array.Empty<string>(), diagnostics);
+                foreach (var parameter in method.Parameters)
+                {
+                    ValidateAttributeSet("parameter", parameter.Name, parameter.Attributes, Array.Empty<string>(), diagnostics);
+                    if (ReservedUserIdentifiers.Contains(parameter.Name))
+                    {
+                        diagnostics.Add(CppslDiagnostic.Error(
+                            $"CPPSL method parameter name `{parameter.Name}` is reserved; choose an explicit semantic name instead.",
+                            parameter.File,
+                            parameter.Line,
+                            parameter.Column));
+                    }
+                }
             }
         }
 
@@ -135,6 +213,55 @@ public sealed class CppslSemanticValidator
                 }
             }
         }
+    }
+
+    private static bool IsUserSourceNode(string sourcePath, CppslAstNode node)
+    {
+        if (node.Location?.File is null)
+        {
+            return false;
+        }
+
+        var file = Path.GetFullPath(node.Location.File);
+        if (file == sourcePath)
+        {
+            return true;
+        }
+
+        var normalized = file.Replace('\\', '/');
+        if (normalized.Contains("/Tools/CPPSL/std/", StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        return Path.GetExtension(file).Equals(".hxx", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static IEnumerable<CppslAstNode> Flatten(IEnumerable<CppslAstNode> nodes)
+    {
+        foreach (var node in nodes)
+        {
+            yield return node;
+            foreach (var child in Flatten(node.Children))
+            {
+                yield return child;
+            }
+        }
+    }
+
+    private static string OwnerName(CppslAstNode node)
+    {
+        var displayName = node.DisplayName ?? node.Spelling;
+        var paren = displayName.IndexOf('(', StringComparison.Ordinal);
+        if (paren > 0)
+        {
+            displayName = displayName[..paren];
+        }
+        if (displayName.StartsWith("~", StringComparison.Ordinal))
+        {
+            displayName = displayName[1..];
+        }
+        return string.IsNullOrWhiteSpace(displayName) ? node.Spelling : displayName;
     }
 
     private static void ValidateReservedLocalIdentifiers(CppslShaderModelNode? node, List<CppslDiagnostic> diagnostics)

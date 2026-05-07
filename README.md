@@ -51,7 +51,7 @@ The following requirements must be satisfied to run LunaSDK with Vulkan renderin
 
 ### macOS
 
-* macOS 10.15 (Catalina) and later.
+* macOS 15 (Sequoia) and later.
 
 ### Android
 
@@ -59,7 +59,7 @@ The following requirements must be satisfied to run LunaSDK with Vulkan renderin
 
 ### iOS
 
-* iOS 16 and later.
+* iOS 18 and later.
 
 ## Docs
 Docs are placed at `./LunaSDK-Docs` directory. Use [Obsidian](https://obsidian.md/) to open and read the docs.

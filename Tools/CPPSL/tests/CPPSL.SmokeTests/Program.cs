@@ -1,6 +1,7 @@
 using CPPSL.Core.Artifacts;
 using CPPSL.Core.Compiler;
 using CPPSL.Core.Diagnostics;
+using CPPSL.Core.Frontend;
 using CPPSL.Core.ShaderModel;
 using System.Text.RegularExpressions;
 
@@ -20,6 +21,308 @@ var resourceAttributesShader = Path.Combine(fixturesRoot, "valid", "resource_att
 var descriptorSetShader = Path.Combine(fixturesRoot, "valid", "descriptor_set", "DescriptorSet.cxx");
 var vectorSwizzleShader = Path.Combine(fixturesRoot, "valid", "vector_swizzle", "VectorSwizzle.cxx");
 var vectorConstructorShader = Path.Combine(fixturesRoot, "valid", "vector_constructor", "VectorConstructor.cxx");
+var structMethodShader = Path.Combine(fixturesRoot, "valid", "struct_method", "StructMethod.cxx");
+var nonConstStructMethodShader = Path.Combine(fixturesRoot, "valid", "non_const_struct_method", "NonConstStructMethod.cxx");
+var schemaV3Shader = Path.Combine(fixturesRoot, "valid", "schema_v3", "SchemaV3.cxx");
+var defaultArgumentsOverloadShader = Path.Combine(fixturesRoot, "valid", "default_arguments_overload", "DefaultArgumentsOverload.cxx");
+var constexprEvaluationShader = Path.Combine(fixturesRoot, "valid", "constexpr_evaluation", "ConstexprEvaluation.cxx");
+var functionTemplateShader = Path.Combine(fixturesRoot, "valid", "function_template", "FunctionTemplate.cxx");
+var templateMemberFunctionShader = Path.Combine(fixturesRoot, "valid", "template_member_function", "TemplateMemberFunction.cxx");
+var templateStructShader = Path.Combine(fixturesRoot, "valid", "template_struct", "TemplateStruct.cxx");
+
+if (!ExpectSchemaV3Facts(schemaV3Shader, stdRoot))
+{
+    return 1;
+}
+
+var constexprEvaluationResult = compiler.Compile(new CppslCompileOptions(
+    constexprEvaluationShader,
+    Path.Combine(outputDir, "constexpr-evaluation"),
+    new[] { stdRoot },
+    "main_vs",
+    ShaderStage.Vertex));
+if (!constexprEvaluationResult.Succeeded || constexprEvaluationResult.Artifacts is null)
+{
+    Console.Error.WriteLine("error: expected constexpr_evaluation fixture to compile.");
+    foreach (var diagnostic in constexprEvaluationResult.Diagnostics)
+    {
+        Console.Error.WriteLine(diagnostic.ToDisplayString());
+    }
+    return 1;
+}
+
+var constexprEvaluationHlslText = File.ReadAllText(constexprEvaluationResult.Artifacts.GetOutputPath(CppslOutputTarget.Hlsl));
+var constexprEvaluationGlslText = File.ReadAllText(constexprEvaluationResult.Artifacts.GetOutputPath(CppslOutputTarget.Glsl));
+var constexprEvaluationMslText = File.ReadAllText(constexprEvaluationResult.Artifacts.GetOutputPath(CppslOutputTarget.Msl));
+if (!AssertNotContainsAny(
+        constexprEvaluationHlslText + constexprEvaluationGlslText + constexprEvaluationMslText,
+        new[] { "kSteps", "kBias", "kUseBias", "999.0" },
+        "expected constexpr globals and discarded branches to be folded away."))
+{
+    return 1;
+}
+if (!AssertContainsAll(
+        constexprEvaluationGlslText,
+        new[] { "float ApplyConstexpr(float value)", "return ((value + 1.25) + 4.0);", "vec4(ApplyConstexpr(v.weight), 4.0, 0.625, 1.0)" },
+        "expected GLSL constexpr values to be folded into scalar literals."))
+{
+    return 1;
+}
+if (!AssertNotContainsAny(
+        constexprEvaluationHlslText + constexprEvaluationGlslText + constexprEvaluationMslText,
+        new[] { "local_scale" },
+        "expected constexpr local declarations to be folded away."))
+{
+    return 1;
+}
+
+var defaultArgumentsOverloadResult = compiler.Compile(new CppslCompileOptions(
+    defaultArgumentsOverloadShader,
+    Path.Combine(outputDir, "default-arguments-overload"),
+    new[] { stdRoot },
+    "main_vs",
+    ShaderStage.Vertex));
+if (!defaultArgumentsOverloadResult.Succeeded || defaultArgumentsOverloadResult.Artifacts is null)
+{
+    Console.Error.WriteLine("error: expected default_arguments_overload fixture to compile.");
+    foreach (var diagnostic in defaultArgumentsOverloadResult.Diagnostics)
+    {
+        Console.Error.WriteLine(diagnostic.ToDisplayString());
+    }
+    return 1;
+}
+
+var defaultArgumentsOverloadHlslText = File.ReadAllText(defaultArgumentsOverloadResult.Artifacts.GetOutputPath(CppslOutputTarget.Hlsl));
+var defaultArgumentsOverloadGlslText = File.ReadAllText(defaultArgumentsOverloadResult.Artifacts.GetOutputPath(CppslOutputTarget.Glsl));
+var defaultArgumentsOverloadMslText = File.ReadAllText(defaultArgumentsOverloadResult.Artifacts.GetOutputPath(CppslOutputTarget.Msl));
+if (!AssertContainsAll(
+        defaultArgumentsOverloadHlslText,
+        new[] { "float MixValue(float value, float bias)", "float2 MixValue(float2 value, float bias)", "float Apply(float value)", "float3 Apply(float3 value)" },
+        "expected HLSL overload declarations to be emitted."))
+{
+    return 1;
+}
+if (!AssertContainsAll(
+        defaultArgumentsOverloadMslText,
+        new[] { "float MixValue(float value, float bias)", "float2 MixValue(float2 value, float bias)", "float Apply(float value)", "float3 Apply(float3 value)" },
+        "expected Metal overload declarations to be emitted."))
+{
+    return 1;
+}
+if (!AssertContainsAll(
+        defaultArgumentsOverloadGlslText,
+        new[] { "float MixValue(float value, float bias)", "vec2 MixValue(vec2 value, float bias)", "float Mixer_Apply_ov_", "vec3 Mixer_Apply_ov_", "MixValue(v.weight, 0.25" },
+        "expected GLSL default arguments and method overload lowering to be emitted."))
+{
+    return 1;
+}
+
+var functionTemplateResult = compiler.Compile(new CppslCompileOptions(
+    functionTemplateShader,
+    Path.Combine(outputDir, "function-template"),
+    new[] { stdRoot },
+    "main_vs",
+    ShaderStage.Vertex));
+if (!functionTemplateResult.Succeeded || functionTemplateResult.Artifacts is null)
+{
+    Console.Error.WriteLine("error: expected function_template fixture to compile.");
+    foreach (var diagnostic in functionTemplateResult.Diagnostics)
+    {
+        Console.Error.WriteLine(diagnostic.ToDisplayString());
+    }
+    return 1;
+}
+
+var functionTemplateShaderModelText = File.ReadAllText(functionTemplateResult.Artifacts.ShaderModelPath);
+var functionTemplateHlslText = File.ReadAllText(functionTemplateResult.Artifacts.GetOutputPath(CppslOutputTarget.Hlsl));
+var functionTemplateGlslText = File.ReadAllText(functionTemplateResult.Artifacts.GetOutputPath(CppslOutputTarget.Glsl));
+var functionTemplateMslText = File.ReadAllText(functionTemplateResult.Artifacts.GetOutputPath(CppslOutputTarget.Msl));
+if (!AssertContainsAll(
+        functionTemplateShaderModelText,
+        new[] { "\"IsTemplateInstantiation\": true", "\"EmittedName\": \"AddBias_tpl_float\"", "\"EmittedName\": \"AddBias_tpl_float3\"", "\"EmittedName\": \"SelectValue_tpl_float\"" },
+        "expected shader model to include concrete function template instantiations."))
+{
+    return 1;
+}
+if (!AssertContainsAll(
+        functionTemplateHlslText,
+        new[] { "float AddBias_tpl_float(float value, float bias)", "float3 AddBias_tpl_float3(float3 value, float3 bias)", "float SelectValue_tpl_float(bool use_left, float left, float right)", "AddBias_tpl_float(v.weight, 0.25f)", "AddBias_tpl_float3(v.position, float3(0.5f, 0.5f, 0.5f))", "SelectValue_tpl_float(true, scalar, v.weight)" },
+        "expected HLSL function template specializations and rewritten calls to be emitted."))
+{
+    return 1;
+}
+if (!AssertContainsAll(
+        functionTemplateGlslText,
+        new[] { "float AddBias_tpl_float(float value, float bias)", "vec3 AddBias_tpl_float3(vec3 value, vec3 bias)", "float SelectValue_tpl_float(bool use_left, float left, float right)", "AddBias_tpl_float(v.weight, 0.25)", "AddBias_tpl_float3(v.position, vec3(0.5, 0.5, 0.5))", "SelectValue_tpl_float(true, scalar, v.weight)" },
+        "expected GLSL function template specializations and rewritten calls to be emitted."))
+{
+    return 1;
+}
+if (!AssertContainsAll(
+        functionTemplateMslText,
+        new[] { "float AddBias_tpl_float(float value, float bias)", "float3 AddBias_tpl_float3(float3 value, float3 bias)", "float SelectValue_tpl_float(bool use_left, float left, float right)", "AddBias_tpl_float(v.weight, 0.25f)", "AddBias_tpl_float3(v.position, float3(0.5f, 0.5f, 0.5f))", "SelectValue_tpl_float(true, scalar, v.weight)" },
+        "expected MSL function template specializations and rewritten calls to be emitted."))
+{
+    return 1;
+}
+var combineTemplateNames = Regex.Matches(functionTemplateHlslText, "\\bCombine_tpl_float_[0-9a-f]{8}\\b")
+    .Select(static match => match.Value)
+    .Distinct(StringComparer.Ordinal)
+    .ToArray();
+if (combineTemplateNames.Length != 2 ||
+    combineTemplateNames.Any(name =>
+        !functionTemplateShaderModelText.Contains($"\"EmittedName\": \"{name}\"", StringComparison.Ordinal) ||
+        !functionTemplateHlslText.Contains($"float {name}(", StringComparison.Ordinal) ||
+        !functionTemplateGlslText.Contains($"float {name}(", StringComparison.Ordinal) ||
+        !functionTemplateMslText.Contains($"float {name}(", StringComparison.Ordinal)))
+{
+    Console.Error.WriteLine("error: expected overloaded function template instantiations to receive stable unique names.");
+    foreach (var name in combineTemplateNames)
+    {
+        Console.Error.WriteLine($"  observed: {name}");
+    }
+    return 1;
+}
+if (!AssertNotContainsAny(
+        functionTemplateHlslText + functionTemplateGlslText + functionTemplateMslText,
+        new[] { "template <", "template<" },
+        "target shader sources must contain only concrete function template specializations."))
+{
+    return 1;
+}
+
+var templateMemberFunctionResult = compiler.Compile(new CppslCompileOptions(
+    templateMemberFunctionShader,
+    Path.Combine(outputDir, "template-member-function"),
+    new[] { stdRoot },
+    "main_vs",
+    ShaderStage.Vertex));
+if (!templateMemberFunctionResult.Succeeded || templateMemberFunctionResult.Artifacts is null)
+{
+    Console.Error.WriteLine("error: expected template_member_function fixture to compile.");
+    foreach (var diagnostic in templateMemberFunctionResult.Diagnostics)
+    {
+        Console.Error.WriteLine(diagnostic.ToDisplayString());
+    }
+    return 1;
+}
+
+var templateMemberFunctionShaderModelText = File.ReadAllText(templateMemberFunctionResult.Artifacts.ShaderModelPath);
+var templateMemberFunctionHlslText = File.ReadAllText(templateMemberFunctionResult.Artifacts.GetOutputPath(CppslOutputTarget.Hlsl));
+var templateMemberFunctionGlslText = File.ReadAllText(templateMemberFunctionResult.Artifacts.GetOutputPath(CppslOutputTarget.Glsl));
+var templateMemberFunctionMslText = File.ReadAllText(templateMemberFunctionResult.Artifacts.GetOutputPath(CppslOutputTarget.Msl));
+if (!AssertContainsAll(
+        templateMemberFunctionShaderModelText,
+        new[] { "\"IsTemplateInstantiation\": true", "\"EmittedName\": \"Add_tpl_float\"", "\"EmittedName\": \"Add_tpl_float3\"" },
+        "expected shader model to include concrete method template instantiations."))
+{
+    return 1;
+}
+if (!AssertContainsAll(
+        templateMemberFunctionHlslText,
+        new[] { "float Add_tpl_float(float value, float bias)", "float3 Add_tpl_float3(float3 value, float3 bias)", "biaser.Add_tpl_float(v.weight, biaser.base)", "biaser.Add_tpl_float3(v.position, float3(0.5f, 0.5f, 0.5f))" },
+        "expected HLSL method template specializations and rewritten member calls to be emitted."))
+{
+    return 1;
+}
+if (!AssertContainsAll(
+        templateMemberFunctionGlslText,
+        new[] { "float Biaser_Add_tpl_float(Biaser self, float value, float bias)", "vec3 Biaser_Add_tpl_float3(Biaser self, vec3 value, vec3 bias)", "Biaser_Add_tpl_float(biaser, v.weight, biaser.base)", "Biaser_Add_tpl_float3(biaser, v.position, vec3(0.5, 0.5, 0.5))" },
+        "expected GLSL method template specializations to lower to free functions and rewritten calls."))
+{
+    return 1;
+}
+if (!AssertContainsAll(
+        templateMemberFunctionMslText,
+        new[] { "float Add_tpl_float(float value, float bias)", "float3 Add_tpl_float3(float3 value, float3 bias)", "biaser.Add_tpl_float(v.weight, biaser.base)", "biaser.Add_tpl_float3(v.position, float3(0.5f, 0.5f, 0.5f))" },
+        "expected MSL method template specializations and rewritten member calls to be emitted."))
+{
+    return 1;
+}
+var combineMethodNames = Regex.Matches(templateMemberFunctionHlslText, "\\bCombine_tpl_float_[0-9a-f]{8}\\b")
+    .Select(static match => match.Value)
+    .Distinct(StringComparer.Ordinal)
+    .ToArray();
+if (combineMethodNames.Length != 2 ||
+    combineMethodNames.Any(name =>
+        !templateMemberFunctionShaderModelText.Contains($"\"EmittedName\": \"{name}\"", StringComparison.Ordinal) ||
+        !templateMemberFunctionHlslText.Contains($"float {name}(", StringComparison.Ordinal) ||
+        !templateMemberFunctionHlslText.Contains($"biaser.{name}(", StringComparison.Ordinal) ||
+        !templateMemberFunctionGlslText.Contains($"float Biaser_{name}(", StringComparison.Ordinal) ||
+        !templateMemberFunctionGlslText.Contains($"Biaser_{name}(biaser", StringComparison.Ordinal) ||
+        !templateMemberFunctionMslText.Contains($"float {name}(", StringComparison.Ordinal) ||
+        !templateMemberFunctionMslText.Contains($"biaser.{name}(", StringComparison.Ordinal)))
+{
+    Console.Error.WriteLine("error: expected overloaded method template instantiations to receive stable unique names.");
+    foreach (var name in combineMethodNames)
+    {
+        Console.Error.WriteLine($"  observed: {name}");
+    }
+    return 1;
+}
+if (!AssertNotContainsAny(
+        templateMemberFunctionHlslText + templateMemberFunctionGlslText + templateMemberFunctionMslText,
+        new[] { "template <", "template<", "biaser.Add(" },
+        "target shader sources must contain only concrete method template specializations."))
+{
+    return 1;
+}
+
+var templateStructResult = compiler.Compile(new CppslCompileOptions(
+    templateStructShader,
+    Path.Combine(outputDir, "template-struct"),
+    new[] { stdRoot },
+    "main_vs",
+    ShaderStage.Vertex));
+if (!templateStructResult.Succeeded || templateStructResult.Artifacts is null)
+{
+    Console.Error.WriteLine("error: expected template_struct fixture to compile.");
+    foreach (var diagnostic in templateStructResult.Diagnostics)
+    {
+        Console.Error.WriteLine(diagnostic.ToDisplayString());
+    }
+    return 1;
+}
+
+var templateStructShaderModelText = File.ReadAllText(templateStructResult.Artifacts.ShaderModelPath);
+var templateStructHlslText = File.ReadAllText(templateStructResult.Artifacts.GetOutputPath(CppslOutputTarget.Hlsl));
+var templateStructGlslText = File.ReadAllText(templateStructResult.Artifacts.GetOutputPath(CppslOutputTarget.Glsl));
+var templateStructMslText = File.ReadAllText(templateStructResult.Artifacts.GetOutputPath(CppslOutputTarget.Msl));
+if (!AssertContainsAll(
+        templateStructShaderModelText,
+        new[] { "\"EmittedName\": \"Pair_tpl_float\"", "\"EmittedName\": \"Pair_tpl_float3\"", "\"EmittedName\": \"Box_tpl_float\"", "\"IsTemplateInstantiation\": true" },
+        "expected shader model to include concrete template struct/class instantiations."))
+{
+    return 1;
+}
+if (!AssertContainsAll(
+        templateStructHlslText,
+        new[] { "struct Pair_tpl_float", "float left;", "float Sum()", "struct Pair_tpl_float3", "float3 left;", "float3 Sum()", "struct Box_tpl_float", "float value;", "float Twice()", "Pair_tpl_float scalar;", "Box_tpl_float boxed;", "Pair_tpl_float3 vector;", "float combined = (scalar.Sum() + boxed.Twice());", "float3 shifted = vector.Sum();" },
+        "expected HLSL template struct/class specializations and concrete variable types to be emitted."))
+{
+    return 1;
+}
+if (!AssertContainsAll(
+        templateStructGlslText,
+        new[] { "struct Pair_tpl_float", "float left;", "float Pair_tpl_float_Sum(Pair_tpl_float self)", "struct Pair_tpl_float3", "vec3 left;", "vec3 Pair_tpl_float3_Sum(Pair_tpl_float3 self)", "struct Box_tpl_float", "float value;", "float Box_tpl_float_Twice(Box_tpl_float self)", "Pair_tpl_float scalar;", "Box_tpl_float boxed;", "Pair_tpl_float3 vector;", "float combined = (Pair_tpl_float_Sum(scalar) + Box_tpl_float_Twice(boxed));", "vec3 shifted = Pair_tpl_float3_Sum(vector);" },
+        "expected GLSL template struct/class specializations and lowered method calls to be emitted."))
+{
+    return 1;
+}
+if (!AssertContainsAll(
+        templateStructMslText,
+        new[] { "struct Pair_tpl_float", "float left;", "float Sum()", "struct Pair_tpl_float3", "float3 left;", "float3 Sum()", "struct Box_tpl_float", "float value;", "float Twice()", "Pair_tpl_float scalar;", "Box_tpl_float boxed;", "Pair_tpl_float3 vector;", "float combined = (scalar.Sum() + boxed.Twice());", "float3 shifted = vector.Sum();" },
+        "expected MSL template struct/class specializations and concrete variable types to be emitted."))
+{
+    return 1;
+}
+if (!AssertNotContainsAny(
+        templateStructHlslText + templateStructGlslText + templateStructMslText,
+        new[] { "template <", "template<", "Pair<float", "Pair <float" },
+        "target shader sources must contain only concrete template struct specializations."))
+{
+    return 1;
+}
 
 var result = compiler.Compile(new CppslCompileOptions(
     boxShader,
@@ -60,16 +363,19 @@ if (!AssertContainsAll(
         {
             "main_vs",
             "\"frontendProvider\": \"Native\"",
-            "\"frontendModelVersion\": 2",
+            "\"frontendModelVersion\": 3",
             "\"frontendAst\"",
             "\"outputTargets\"",
             "\"Kind\": \"Function\"",
             "\"ProviderKind\": \"Function\"",
+            "\"DeclId\":",
+            "\"CanonicalDeclId\":",
             "\"Kind\": \"Field\"",
             "\"ProviderKind\": \"Field\"",
             "world_to_proj",
             "\"Kind\": \"Parameter\"",
             "\"ProviderKind\": \"ParmVar\"",
+            "\"OwnerDeclId\":",
             "\"Range\": {",
             "\"TypeInfo\": {",
             "\"TemplateArguments\"",
@@ -81,8 +387,11 @@ if (!AssertContainsAll(
             "\"Spelling\": \"o\"",
             "\"Kind\": \"CallExpression\"",
             "\"DisplayName\": \"mul\"",
+            "\"DirectCalleeDeclId\":",
             "\"Kind\": \"MemberExpression\"",
+            "\"ReferencedDeclId\":",
             "\"Kind\": \"DeclRefExpression\"",
+            "\"ConstantValue\":",
             "\"Kind\": \"ReturnStatement\"",
             "cppslSemanticModel",
             "cppslShaderModel",
@@ -272,6 +581,84 @@ if (!vectorConstructorHlslText.Contains("o.rgba = float4(v.color.rgb, v.weight);
     !vectorConstructorMslText.Contains("o.xyzw = float4(v.color.xy, v.color.zw);", StringComparison.Ordinal))
 {
     Console.Error.WriteLine("error: expected vector constructors to type-check and lower as shader constructors.");
+    return 1;
+}
+
+var structMethodResult = compiler.Compile(new CppslCompileOptions(
+    structMethodShader,
+    Path.Combine(outputDir, "struct-method"),
+    new[] { stdRoot },
+    "main_vs",
+    ShaderStage.Vertex));
+
+if (!structMethodResult.Succeeded || structMethodResult.Artifacts is null)
+{
+    Console.Error.WriteLine("error: expected struct_method fixture to compile.");
+    foreach (var diagnostic in structMethodResult.Diagnostics)
+    {
+        Console.Error.WriteLine(diagnostic.ToDisplayString());
+    }
+    return 1;
+}
+
+var structMethodShaderModelText = File.ReadAllText(structMethodResult.Artifacts.ShaderModelPath);
+var structMethodHlslText = File.ReadAllText(structMethodResult.Artifacts.GetOutputPath(CppslOutputTarget.Hlsl));
+var structMethodGlslText = File.ReadAllText(structMethodResult.Artifacts.GetOutputPath(CppslOutputTarget.Glsl));
+var structMethodMslText = File.ReadAllText(structMethodResult.Artifacts.GetOutputPath(CppslOutputTarget.Msl));
+if (!structMethodShaderModelText.Contains("\"Methods\": [", StringComparison.Ordinal) ||
+    !structMethodShaderModelText.Contains("\"Name\": \"Apply\"", StringComparison.Ordinal) ||
+    !structMethodHlslText.Contains("float3 Apply(float3 color)", StringComparison.Ordinal) ||
+    !structMethodHlslText.Contains("return ((color * exposure) + float3(0.25f, 0.25f, 0.25f));", StringComparison.Ordinal) ||
+    !structMethodHlslText.Contains("o.color = float4(mapper.Apply(v.color.rgb), 1.0f);", StringComparison.Ordinal) ||
+    !structMethodMslText.Contains("float3 Apply(float3 color)", StringComparison.Ordinal) ||
+    !structMethodMslText.Contains("return ((color * exposure) + float3(0.25f, 0.25f, 0.25f));", StringComparison.Ordinal) ||
+    !structMethodMslText.Contains("o.color = float4(mapper.Apply(v.color.rgb), 1.0f);", StringComparison.Ordinal) ||
+    !structMethodGlslText.Contains("vec3 ToneMapper_Apply(ToneMapper self, vec3 color)", StringComparison.Ordinal) ||
+    !structMethodGlslText.Contains("return ((color * self.exposure) + vec3(0.25, 0.25, 0.25));", StringComparison.Ordinal) ||
+    !structMethodGlslText.Contains("o.color = vec4(ToneMapper_Apply(mapper, v.color.rgb), 1.0);", StringComparison.Ordinal))
+{
+    Console.Error.WriteLine("error: expected struct methods to stay as methods in HLSL/MSL and lower to free functions in GLSL.");
+    return 1;
+}
+
+var nonConstStructMethodResult = compiler.Compile(new CppslCompileOptions(
+    nonConstStructMethodShader,
+    Path.Combine(outputDir, "non-const-struct-method"),
+    new[] { stdRoot },
+    "main_vs",
+    ShaderStage.Vertex));
+
+if (!nonConstStructMethodResult.Succeeded || nonConstStructMethodResult.Artifacts is null)
+{
+    Console.Error.WriteLine("error: expected non_const_struct_method fixture to compile.");
+    foreach (var diagnostic in nonConstStructMethodResult.Diagnostics)
+    {
+        Console.Error.WriteLine(diagnostic.ToDisplayString());
+    }
+    return 1;
+}
+
+var nonConstStructMethodShaderModelText = File.ReadAllText(nonConstStructMethodResult.Artifacts.ShaderModelPath);
+var nonConstStructMethodHlslText = File.ReadAllText(nonConstStructMethodResult.Artifacts.GetOutputPath(CppslOutputTarget.Hlsl));
+var nonConstStructMethodGlslText = File.ReadAllText(nonConstStructMethodResult.Artifacts.GetOutputPath(CppslOutputTarget.Glsl));
+var nonConstStructMethodMslText = File.ReadAllText(nonConstStructMethodResult.Artifacts.GetOutputPath(CppslOutputTarget.Msl));
+if (!nonConstStructMethodShaderModelText.Contains("\"Name\": \"Add\"", StringComparison.Ordinal) ||
+    !nonConstStructMethodShaderModelText.Contains("\"IsConst\": false", StringComparison.Ordinal) ||
+    !nonConstStructMethodShaderModelText.Contains("\"Name\": \"Read\"", StringComparison.Ordinal) ||
+    !nonConstStructMethodShaderModelText.Contains("\"IsConst\": true", StringComparison.Ordinal) ||
+    !nonConstStructMethodHlslText.Contains("void Add(float delta)", StringComparison.Ordinal) ||
+    !nonConstStructMethodHlslText.Contains("value += delta;", StringComparison.Ordinal) ||
+    !nonConstStructMethodHlslText.Contains("accumulator.Add(v.value);", StringComparison.Ordinal) ||
+    !nonConstStructMethodMslText.Contains("void Add(float delta)", StringComparison.Ordinal) ||
+    !nonConstStructMethodMslText.Contains("value += delta;", StringComparison.Ordinal) ||
+    !nonConstStructMethodMslText.Contains("accumulator.Add(v.value);", StringComparison.Ordinal) ||
+    !nonConstStructMethodGlslText.Contains("void Accumulator_Add(inout Accumulator self, float delta)", StringComparison.Ordinal) ||
+    !nonConstStructMethodGlslText.Contains("self.value += delta;", StringComparison.Ordinal) ||
+    !nonConstStructMethodGlslText.Contains("float Accumulator_Read(Accumulator self)", StringComparison.Ordinal) ||
+    !nonConstStructMethodGlslText.Contains("Accumulator_Add(accumulator, v.value);", StringComparison.Ordinal) ||
+    !nonConstStructMethodGlslText.Contains("o.value = Accumulator_Read(accumulator);", StringComparison.Ordinal))
+{
+    Console.Error.WriteLine("error: expected non-const struct methods to lower to GLSL inout self and stay as methods in HLSL/MSL.");
     return 1;
 }
 
@@ -559,7 +946,12 @@ var invalidFixtures = new[]
     new InvalidFixture("rwstructured_buffer_requires_mutable_pointer", "RWStructuredBufferRequiresMutablePointer.cxx", "main_vs", ShaderStage.Vertex, "must be declared as `T*`"),
     new InvalidFixture("legacy_resource_global", "LegacyResourceGlobal.cxx", "main_vs", ShaderStage.Vertex, "resource global"),
     new InvalidFixture("reserved_parameter_name", "ReservedParameterName.cxx", "main_vs", ShaderStage.Vertex, "parameter name `input` is reserved"),
-    new InvalidFixture("reserved_local_name", "ReservedLocalName.cxx", "main_cs", ShaderStage.Compute, "local variable name `output` is reserved")
+    new InvalidFixture("reserved_local_name", "ReservedLocalName.cxx", "main_cs", ShaderStage.Compute, "local variable name `output` is reserved"),
+    new InvalidFixture("inheritance", "Inheritance.cxx", "main_vs", ShaderStage.Vertex, "must not use inheritance"),
+    new InvalidFixture("virtual_method", "VirtualMethod.cxx", "main_vs", ShaderStage.Vertex, "must not be virtual"),
+    new InvalidFixture("constructor", "Constructor.cxx", "main_vs", ShaderStage.Vertex, "must not declare constructors"),
+    new InvalidFixture("destructor", "Destructor.cxx", "main_vs", ShaderStage.Vertex, "must not declare destructors"),
+    new InvalidFixture("custom_operator", "CustomOperator.cxx", "main_vs", ShaderStage.Vertex, "must not declare custom operators")
 };
 
 foreach (var fixture in invalidFixtures)
@@ -688,6 +1080,73 @@ static bool ExpectFixtureFailure(
     }
 
     return true;
+}
+
+static bool ExpectSchemaV3Facts(string shaderPath, string stdRoot)
+{
+    var frontend = new NativeExtractorFrontend();
+    var result = frontend.Parse(new CppslFrontendOptions(shaderPath, new[] { stdRoot }));
+    foreach (var diagnostic in result.Diagnostics)
+    {
+        Console.Error.WriteLine(diagnostic.ToDisplayString());
+    }
+
+    if (!result.Succeeded || result.ModelVersion != NativeExtractorFrontend.ModelVersion)
+    {
+        Console.Error.WriteLine("error: expected native extractor schema v3 fixture to parse.");
+        return false;
+    }
+
+    var nodes = Flatten(result.AstNodes).ToArray();
+    if (!nodes.Any(node => node.Kind == CppslAstNodeKind.GlobalVariable &&
+                           node.Spelling == "kBias" &&
+                           node.IsConstexpr &&
+                           !string.IsNullOrWhiteSpace(node.ConstantValue)))
+    {
+        Console.Error.WriteLine("error: expected constexpr declarations to carry evaluated constant values.");
+        return false;
+    }
+
+    if (!nodes.Any(node => node.Kind == CppslAstNodeKind.CallExpression &&
+                           node.DisplayName == "AddDefault" &&
+                           !string.IsNullOrWhiteSpace(node.DirectCalleeDeclId) &&
+                           node.Children.Any(static child => child.UsesDefaultArgument)))
+    {
+        Console.Error.WriteLine("error: expected default-argument calls to expose direct callee IDs and default argument nodes.");
+        return false;
+    }
+
+    if (!nodes.Any(node => node.Kind == CppslAstNodeKind.CallExpression &&
+                           node.DisplayName == "Identity" &&
+                           node.IsTemplateInstantiation &&
+                           !string.IsNullOrWhiteSpace(node.TemplatePatternDeclId) &&
+                           node.TemplateArguments.Count != 0))
+    {
+        Console.Error.WriteLine("error: expected template calls to expose pattern IDs and template arguments.");
+        return false;
+    }
+
+    if (!nodes.Any(node => node.Kind == CppslAstNodeKind.MemberExpression &&
+                           node.DisplayName == "bias" &&
+                           !string.IsNullOrWhiteSpace(node.ReferencedDeclId)))
+    {
+        Console.Error.WriteLine("error: expected member expressions to expose referenced declaration IDs.");
+        return false;
+    }
+
+    return true;
+}
+
+static IEnumerable<CppslAstNode> Flatten(IEnumerable<CppslAstNode> nodes)
+{
+    foreach (var node in nodes)
+    {
+        yield return node;
+        foreach (var child in Flatten(node.Children))
+        {
+            yield return child;
+        }
+    }
 }
 
 static string FindRepoRoot(string start)

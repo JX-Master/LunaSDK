@@ -15,6 +15,7 @@ public enum CppslAstNodeKind
     LocalVariable,
     Parameter,
     Constructor,
+    Destructor,
     Method,
     CompoundStatement,
     DeclarationStatement,
@@ -41,5 +42,6 @@ public enum CppslAstNodeKind
     InitializerListExpression,
     ImplicitCastExpression,
     ParenExpression,
+    DefaultArgumentExpression,
     ArraySubscriptExpression
 }

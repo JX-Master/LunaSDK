@@ -15,12 +15,12 @@ public sealed class CppslSemanticModelBuilder
             .ToArray();
 
         var structs = sourceTopLevelNodes
-            .Where(static node => node.Kind == CppslAstNodeKind.Struct)
+            .Where(static node => node.Kind is CppslAstNodeKind.Struct or CppslAstNodeKind.Class)
             .Select(ToStruct)
             .ToArray();
 
         var rawGlobals = sourceTopLevelNodes
-            .Where(static node => node.Kind == CppslAstNodeKind.GlobalVariable)
+            .Where(static node => node.Kind == CppslAstNodeKind.GlobalVariable && !node.IsConstexpr)
             .Select(ToGlobal)
             .ToArray();
         var globals = ExpandDescriptorSetGlobals(rawGlobals, structs).ToArray();
@@ -61,14 +61,24 @@ public sealed class CppslSemanticModelBuilder
             .Where(static child => child.Kind == CppslAstNodeKind.Field)
             .Select(ToField)
             .ToArray();
+        var methods = node.Children
+            .Where(static child => child.Kind == CppslAstNodeKind.Method)
+            .Select(child => ToMethod(node.Spelling, child))
+            .ToArray();
 
         return new CppslStruct(
+            node.CanonicalDeclId,
             node.Spelling,
+            node.DisplayName,
             node.Location?.File,
             node.Location?.Line,
             node.Location?.Column,
             _attributeParser.GetAttributes(node),
-            fields);
+            node.IsTemplateInstantiation,
+            node.TemplatePatternDeclId,
+            node.TemplateArguments,
+            fields,
+            methods);
     }
 
     private CppslField ToField(CppslAstNode node)
@@ -160,14 +170,42 @@ public sealed class CppslSemanticModelBuilder
 
         var isEntryPoint = node.Spelling == entryPoint;
         return new CppslFunction(
+            node.CanonicalDeclId,
             node.Spelling,
             node.DisplayName,
             node.ResultTypeName,
             parameters,
             attributes,
+            node.IsTemplateInstantiation,
+            node.TemplatePatternDeclId,
+            node.TemplateArguments,
             isEntryPoint,
             isEntryPoint ? stage : null,
             FindDeclaredStage(attributes),
+            node.Location?.File,
+            node.Location?.Line,
+            node.Location?.Column);
+    }
+
+    private CppslMethod ToMethod(string ownerType, CppslAstNode node)
+    {
+        var parameters = node.Children
+            .Where(static child => child.Kind == CppslAstNodeKind.Parameter)
+            .Select(ToParameter)
+            .ToArray();
+
+        return new CppslMethod(
+            node.CanonicalDeclId,
+            ownerType,
+            node.Spelling,
+            node.DisplayName,
+            node.ResultTypeName,
+            parameters,
+            _attributeParser.GetAttributes(node),
+            node.IsTemplateInstantiation,
+            node.TemplatePatternDeclId,
+            node.TemplateArguments,
+            IsConstMethodType(node.TypeName),
             node.Location?.File,
             node.Location?.Line,
             node.Location?.Column);
@@ -194,5 +232,11 @@ public sealed class CppslSemanticModelBuilder
             }
         }
         return null;
+    }
+
+    private static bool IsConstMethodType(string? typeName)
+    {
+        return typeName?.Contains(") const", StringComparison.Ordinal) == true ||
+            typeName?.EndsWith(" const", StringComparison.Ordinal) == true;
     }
 }
