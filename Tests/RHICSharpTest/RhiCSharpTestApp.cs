@@ -88,10 +88,10 @@ internal static class RhiCSharpTestApp
                 RunTriangleCase(window, device, commandBuffer, swapChain);
                 break;
             case RhiCSharpTestCase.Texture:
-                RunTextureCase(window, device, commandBuffer, swapChain);
+                RunTextureCase(window, device, queue, commandBuffer, swapChain);
                 break;
             case RhiCSharpTestCase.Box:
-                RunBoxCase(window, device, commandBuffer, swapChain);
+                RunBoxCase(window, device, queue, commandBuffer, swapChain);
                 break;
             default:
                 throw new InvalidOperationException($"Unsupported RHI C# test case: {testCase}.");
@@ -142,9 +142,11 @@ internal static class RhiCSharpTestApp
             framebufferSize => RhiTestCases.RenderTriangleFrame(commandBuffer, swapChain, framebufferSize, pipelineLayout, pipelineState, vertexBuffer, vertices));
     }
 
-    private static void RunTextureCase(IWindow window, IDevice device, ICommandBuffer commandBuffer, ISwapChain swapChain)
+    private static void RunTextureCase(IWindow window, IDevice device, uint queue, ICommandBuffer commandBuffer, ISwapChain swapChain)
     {
         var image = RhiTestAssets.LoadTextureTestImage();
+        using var uploadCommandBuffer = device.CreateCommandBuffer(queue);
+        using var readbackCommandBuffer = device.CreateCommandBuffer(queue);
         using var descriptorSetLayout = device.CreateDescriptorSetLayout(new DescriptorSetLayoutDesc
         {
             Bindings = new[]
@@ -180,16 +182,16 @@ internal static class RhiCSharpTestApp
         var indices = RhiTestAssets.CreateQuadIndexData();
         using var vertexBuffer = device.CreateBuffer(MemoryType.Local, new BufferDesc(BufferUsageFlags.VertexBuffer | BufferUsageFlags.CopyDestination, (ulong)vertices.Length));
         using var indexBuffer = device.CreateBuffer(MemoryType.Local, new BufferDesc(BufferUsageFlags.IndexBuffer | BufferUsageFlags.CopyDestination, (ulong)indices.Length));
-        using var texture = CreateAndUploadTexture(device, commandBuffer, image);
+        using var texture = CreateAndUploadTexture(device, uploadCommandBuffer, image);
         var textureRowPitch = checked(image.Desc.Width * ImageModule.PixelSize(image.Desc.Format));
-        ValidateTextureReadback(device, commandBuffer, texture, image, textureRowPitch);
+        ValidateTextureReadback(device, readbackCommandBuffer, texture, image, textureRowPitch);
         using var writer = Luna.RHIUtility.Module.CreateResourceWriteContext(device);
         writer.SetName("RHICSharpTest.TextureResourceWriteContext");
         ValidateDeviceChild(writer, device, "IResourceWriteContext.Device");
         writer.Reset();
         writer.WriteBuffer(vertexBuffer, 0, vertices);
         writer.WriteBuffer(indexBuffer, 0, indices);
-        writer.Commit(commandBuffer, submitAndWait: true);
+        writer.Commit(uploadCommandBuffer, submitAndWait: true);
         using var descriptorSet = device.CreateDescriptorSet(new DescriptorSetDesc(descriptorSetLayout));
         descriptorSet.SetReadTextureViews(0, 0, new[] { TextureViewDesc.Tex2D(texture) });
         descriptorSet.SetSamplers(1, 0, new[] { CreateLinearClampSampler() });
@@ -205,7 +207,7 @@ internal static class RhiCSharpTestApp
                     vertices = RhiTestAssets.CreateTexturedQuadVertexData(image.Desc.Width, image.Desc.Height, framebufferSize.Width, framebufferSize.Height);
                     writer.Reset();
                     writer.WriteBuffer(vertexBuffer, 0, vertices);
-                    writer.Commit(commandBuffer, submitAndWait: true);
+                    writer.Commit(uploadCommandBuffer, submitAndWait: true);
                 }
                 RhiTestCases.RenderTexturedQuadFrame(
                     commandBuffer,
@@ -223,9 +225,11 @@ internal static class RhiCSharpTestApp
             });
     }
 
-    private static void RunBoxCase(IWindow window, IDevice device, ICommandBuffer commandBuffer, ISwapChain swapChain)
+    private static void RunBoxCase(IWindow window, IDevice device, uint queue, ICommandBuffer commandBuffer, ISwapChain swapChain)
     {
         var image = RhiTestAssets.LoadBoxTestImage();
+        using var uploadCommandBuffer = device.CreateCommandBuffer(queue);
+        using var readbackCommandBuffer = device.CreateCommandBuffer(queue);
         using var descriptorSetLayout = device.CreateDescriptorSetLayout(new DescriptorSetLayoutDesc
         {
             Bindings = new[]
@@ -291,16 +295,16 @@ internal static class RhiCSharpTestApp
         using var indexBuffer = device.CreateBuffer(MemoryType.Local, new BufferDesc(BufferUsageFlags.IndexBuffer | BufferUsageFlags.CopyDestination, (ulong)indices.Length));
         using var uniformBuffer = device.CreateBuffer(MemoryType.Upload, new BufferDesc(BufferUsageFlags.UniformBuffer, uniformBufferSize));
         uniformBuffer.Write(0, uniformData);
-        using var texture = CreateAndUploadTexture(device, commandBuffer, image);
+        using var texture = CreateAndUploadTexture(device, uploadCommandBuffer, image);
         var textureRowPitch = checked(image.Desc.Width * ImageModule.PixelSize(image.Desc.Format));
-        ValidateTextureReadback(device, commandBuffer, texture, image, textureRowPitch);
+        ValidateTextureReadback(device, readbackCommandBuffer, texture, image, textureRowPitch);
         using var writer = Luna.RHIUtility.Module.CreateResourceWriteContext(device);
         writer.SetName("RHICSharpTest.BoxResourceWriteContext");
         ValidateDeviceChild(writer, device, "IResourceWriteContext.Device");
         writer.Reset();
         writer.WriteBuffer(vertexBuffer, 0, vertices);
         writer.WriteBuffer(indexBuffer, 0, indices);
-        writer.Commit(commandBuffer, submitAndWait: true);
+        writer.Commit(uploadCommandBuffer, submitAndWait: true);
         var depthTexture = CreateDepthTexture(device, framebufferSize);
         using var descriptorSet = device.CreateDescriptorSet(new DescriptorSetDesc(descriptorSetLayout));
         descriptorSet.SetUniformBufferView(0, BufferViewDesc.UniformBuffer(uniformBuffer));

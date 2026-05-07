@@ -50,7 +50,11 @@ namespace Luna
                 {
                     luset(m_upload_buffer, m_device->new_buffer(MemoryType::upload, BufferDesc(BufferUsageFlag::copy_source, m_last_batch_upload_buffer_required_size)));
                     set_upload_buffer_debug_name(m_upload_buffer);
-                    luexp(m_upload_buffer->map(0, m_last_batch_upload_buffer_required_size, &m_upload_buffer_mapped));
+                    upload_buffer_size = m_last_batch_upload_buffer_required_size;
+                }
+                if(m_upload_buffer && !m_upload_buffer_mapped)
+                {
+                    luexp(m_upload_buffer->map(0, upload_buffer_size, &m_upload_buffer_mapped));
                 }
             }
             lucatchret;
