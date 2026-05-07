@@ -19,6 +19,17 @@ internal sealed class RhiCommandBuffer : RhiDeviceChild, ICommandBuffer
         _icommandBuffer = nativeCommandBuffer;
     }
 
+    internal static IntPtr GetNativeCommandBufferPointer(ICommandBuffer commandBuffer)
+    {
+        ArgumentNullException.ThrowIfNull(commandBuffer);
+        if (commandBuffer is not RhiCommandBuffer nativeCommandBuffer)
+        {
+            throw new ArgumentException("The command buffer must be created by Luna.RHI.", nameof(commandBuffer));
+        }
+        nativeCommandBuffer.EnsureNotDisposed();
+        return nativeCommandBuffer._icommandBuffer;
+    }
+
     public uint CommandQueueIndex
     {
         get

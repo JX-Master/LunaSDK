@@ -1,0 +1,7 @@
+target("VGVisualCSharpTest")
+    set_kind("binary")
+    set_group("Tests")
+    add_files("Main.cs")
+    add_deps("Luna.Runtime", "Luna.Window", "Luna.RHI", "Luna.Font", "Luna.VG")
+    set_luna_sdk_csharp_options()
+target_end()

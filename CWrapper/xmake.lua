@@ -69,3 +69,12 @@ luna_sdk_module_c_wrapper("AssetC")
         add_rpathdirs("@loader_path")
     end
 target_end()
+
+luna_sdk_module_c_wrapper("VGC")
+    add_files("VG/*.cpp")
+    add_headerfiles("VG/*.h", {prefixdir = "Luna/CWrapper/VG"})
+    add_deps("VG", "RHI", "Font")
+    if is_plat("macosx") then
+        add_rpathdirs("@loader_path")
+    end
+target_end()

@@ -4,3 +4,4 @@ using System.Runtime.CompilerServices;
 [assembly: InternalsVisibleTo("Luna.VFS")]
 [assembly: InternalsVisibleTo("Luna.Font")]
 [assembly: InternalsVisibleTo("Luna.Asset")]
+[assembly: InternalsVisibleTo("Luna.VG")]

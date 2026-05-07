@@ -14,7 +14,10 @@ if is_plat("windows", "macosx", "linux") then
         includes("ImageCSharpTest")
         includes("VFSCSharpTest")
         includes("FontCSharpTest")
+        includes("FontArrangeCSharpTest")
         includes("AssetCSharpTest")
+        includes("VGCSharpTest")
+        includes("VGVisualCSharpTest")
         includes("WindowCSharpTest")
         includes("RHICSharpTest")
     end

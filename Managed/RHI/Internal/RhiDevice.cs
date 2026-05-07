@@ -21,6 +21,17 @@ internal sealed class RhiDevice : ObjectBase, IDevice
         _idevice = nativeDevice;
     }
 
+    internal static IntPtr GetNativeDevicePointer(IDevice device)
+    {
+        ArgumentNullException.ThrowIfNull(device);
+        if (device is not RhiDevice nativeDevice)
+        {
+            throw new ArgumentException("The device must be created by Luna.RHI.", nameof(device));
+        }
+        nativeDevice.EnsureNotDisposed();
+        return nativeDevice._idevice;
+    }
+
     public uint CommandQueueCount
     {
         get

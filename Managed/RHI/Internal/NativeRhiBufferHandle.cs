@@ -9,4 +9,10 @@ internal readonly struct NativeRhiBufferHandle
     public readonly IntPtr Object;
 
     public readonly IntPtr IBuffer;
+
+    public NativeRhiBufferHandle(IntPtr @object, IntPtr iBuffer)
+    {
+        Object = @object;
+        IBuffer = iBuffer;
+    }
 }

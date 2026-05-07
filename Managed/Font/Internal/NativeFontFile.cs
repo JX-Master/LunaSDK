@@ -131,4 +131,15 @@ internal sealed class NativeFontFile : ObjectBase, IFontFile
         RuntimeErrors.ThrowIfFailed(new ErrorCode(FontNative.IFontFileRenderGlyphBitmap(_ifontFile, fontIndex, glyph, result, width, height, rowPitch, scaleX, scaleY, shiftX, shiftY)));
         return result;
     }
+
+    internal static IntPtr GetNativeFontPointer(IFontFile fontFile)
+    {
+        ArgumentNullException.ThrowIfNull(fontFile);
+        if (fontFile is not NativeFontFile nativeFontFile)
+        {
+            throw new ArgumentException("The font file must be created by Luna.Font.", nameof(fontFile));
+        }
+        nativeFontFile.EnsureNotDisposed();
+        return nativeFontFile._ifontFile;
+    }
 }

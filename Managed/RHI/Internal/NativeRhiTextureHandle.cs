@@ -9,4 +9,10 @@ internal readonly struct NativeRhiTextureHandle
     public readonly IntPtr Object;
 
     public readonly IntPtr ITexture;
+
+    public NativeRhiTextureHandle(IntPtr @object, IntPtr iTexture)
+    {
+        Object = @object;
+        ITexture = iTexture;
+    }
 }
