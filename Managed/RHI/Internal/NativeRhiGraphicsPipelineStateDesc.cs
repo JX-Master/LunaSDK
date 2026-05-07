@@ -21,17 +21,13 @@ internal readonly struct NativeInputBindingDesc
 [StructLayout(LayoutKind.Sequential)]
 internal readonly struct NativeInputAttributeDesc
 {
-    public readonly IntPtr SemanticName;
-    public readonly uint SemanticIndex;
     public readonly uint Location;
     public readonly uint BindingSlot;
     public readonly uint Offset;
     public readonly uint Format;
 
-    internal NativeInputAttributeDesc(InputAttributeDesc desc, IntPtr semanticName)
+    internal NativeInputAttributeDesc(InputAttributeDesc desc)
     {
-        SemanticName = semanticName;
-        SemanticIndex = desc.SemanticIndex;
         Location = desc.Location;
         BindingSlot = desc.BindingSlot;
         Offset = desc.Offset;

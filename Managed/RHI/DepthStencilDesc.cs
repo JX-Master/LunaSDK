@@ -2,6 +2,16 @@ namespace Luna.RHI;
 
 public readonly struct DepthStencilDesc
 {
+    public static DepthStencilDesc Default => new(
+        depthTestEnable: true,
+        depthWriteEnable: true,
+        depthFunction: CompareFunction.Less,
+        stencilEnable: false,
+        stencilReadMask: 0xff,
+        stencilWriteMask: 0xff,
+        frontFace: DepthStencilOpDesc.Default,
+        backFace: DepthStencilOpDesc.Default);
+
     public DepthStencilDesc(
         bool depthTestEnable = true,
         bool depthWriteEnable = true,

@@ -2,7 +2,14 @@ namespace Luna.RHI;
 
 public readonly struct RasterizerDesc
 {
-    public static RasterizerDesc Default => new();
+    public static RasterizerDesc Default => new(
+        fillMode: FillMode.Solid,
+        cullMode: CullMode.Back,
+        depthBias: 0,
+        slopeScaledDepthBias: 0.0f,
+        depthBiasClamp: 0.0f,
+        frontCounterClockwise: false,
+        depthClampEnable: false);
 
     public RasterizerDesc(
         FillMode fillMode = FillMode.Solid,

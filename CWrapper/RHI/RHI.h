@@ -192,8 +192,6 @@ typedef struct LunaRhiInputBindingDesc
 
 typedef struct LunaRhiInputAttributeDesc
 {
-    const char* semantic_name;
-    uint32_t semantic_index;
     uint32_t location;
     uint32_t binding_slot;
     uint32_t offset;

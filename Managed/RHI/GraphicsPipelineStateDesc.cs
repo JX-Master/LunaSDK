@@ -16,7 +16,7 @@ public sealed class GraphicsPipelineStateDesc
 
     public RasterizerDesc RasterizerState { get; init; } = RasterizerDesc.Default;
 
-    public DepthStencilDesc DepthStencilState { get; init; } = new();
+    public DepthStencilDesc DepthStencilState { get; init; } = DepthStencilDesc.Default;
 
     public BlendDesc BlendState { get; init; } = new();
 

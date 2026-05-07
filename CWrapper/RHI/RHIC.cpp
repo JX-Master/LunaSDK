@@ -1085,8 +1085,6 @@ LUNA_RHI_C_API luna_errcode_t luna_rhi_device_new_graphics_pipeline_state(void* 
     {
         const LunaRhiInputAttributeDesc& attribute = desc->input_attributes[i];
         input_attributes.push_back(Luna::RHI::InputAttributeDesc(
-            attribute.semantic_name ? attribute.semantic_name : "",
-            attribute.semantic_index,
             attribute.location,
             attribute.binding_slot,
             attribute.offset,

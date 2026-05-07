@@ -3,7 +3,6 @@ using Luna.Image;
 using Luna.Runtime;
 using Luna.RHI;
 using Luna.RHIUtility;
-using Luna.ShaderCompiler;
 using Luna.Window;
 
 internal static class RhiCSharpTestApp
@@ -12,7 +11,6 @@ internal static class RhiCSharpTestApp
     {
         Runtime.Init();
         WindowModule.Init("RHICSharpTest");
-        ShaderCompilerModule.Init();
         ImageModule.Init();
 
         try
@@ -74,6 +72,7 @@ internal static class RhiCSharpTestApp
         commandBuffer.SetName($"RHICSharpTest.{testCase}.CommandBuffer");
         ValidateSwapChainWindow(swapChain, window);
         ValidateDeviceChild(commandBuffer, device, "IDeviceChild.Device");
+        ValidateManagedDefaults();
         ValidateRhiUtilityContexts(device);
         ValidateDescriptorApi(device);
 
@@ -117,12 +116,12 @@ internal static class RhiCSharpTestApp
             },
             InputAttributes = new[]
             {
-                new InputAttributeDesc("POSITION", 0, 0, 0, 0, Format.Rg32Float),
-                new InputAttributeDesc("COLOR", 0, 1, 0, 8, Format.Rgba32Float)
+                new InputAttributeDesc(0, 0, 0, Format.Rg32Float),
+                new InputAttributeDesc(1, 0, 8, Format.Rgba32Float)
             },
             PipelineLayout = pipelineLayout,
-            VertexShader = RhiTestShaders.Compile(RhiTestShaders.TriangleVertexShader, "RHICSharpTestTriangleVS", ShaderCompilerShaderType.Vertex),
-            PixelShader = RhiTestShaders.Compile(RhiTestShaders.TrianglePixelShader, "RHICSharpTestTrianglePS", ShaderCompilerShaderType.Pixel),
+            VertexShader = RhiTestShaders.LoadTriangleVertexShader(),
+            PixelShader = RhiTestShaders.LoadTrianglePixelShader(),
             RasterizerState = new RasterizerDesc(depthClampEnable: true),
             DepthStencilState = new DepthStencilDesc(
                 depthTestEnable: false,
@@ -145,7 +144,7 @@ internal static class RhiCSharpTestApp
 
     private static void RunTextureCase(IWindow window, IDevice device, ICommandBuffer commandBuffer, ISwapChain swapChain)
     {
-        var image = RhiTestAssets.LoadTestImage();
+        var image = RhiTestAssets.LoadTextureTestImage();
         using var descriptorSetLayout = device.CreateDescriptorSetLayout(new DescriptorSetLayoutDesc
         {
             Bindings = new[]
@@ -167,26 +166,30 @@ internal static class RhiCSharpTestApp
             },
             InputAttributes = new[]
             {
-                new InputAttributeDesc("POSITION", 0, 0, 0, 0, Format.Rg32Float),
-                new InputAttributeDesc("TEXCOORD", 0, 1, 0, 8, Format.Rg32Float)
+                new InputAttributeDesc(0, 0, 0, Format.Rg32Float),
+                new InputAttributeDesc(1, 0, 8, Format.Rg32Float)
             },
             PipelineLayout = pipelineLayout,
-            VertexShader = RhiTestShaders.Compile(RhiTestShaders.TextureVertexShader, "RHICSharpTestTextureVS", ShaderCompilerShaderType.Vertex),
-            PixelShader = RhiTestShaders.Compile(RhiTestShaders.TexturePixelShader, "RHICSharpTestTexturePS", ShaderCompilerShaderType.Pixel),
-            RasterizerState = new RasterizerDesc(depthClampEnable: true),
+            VertexShader = RhiTestShaders.LoadTextureVertexShader(),
+            PixelShader = RhiTestShaders.LoadTexturePixelShader(),
             DepthStencilState = new DepthStencilDesc(depthTestEnable: false, depthWriteEnable: false),
             ColorFormats = new[] { Format.Bgra8Unorm }
         });
         var framebufferSize = GetInitialFramebufferSize(window);
         var vertices = RhiTestAssets.CreateTexturedQuadVertexData(image.Desc.Width, image.Desc.Height, framebufferSize.Width, framebufferSize.Height);
         var indices = RhiTestAssets.CreateQuadIndexData();
-        using var vertexBuffer = device.CreateBuffer(MemoryType.Upload, new BufferDesc(BufferUsageFlags.VertexBuffer, (ulong)vertices.Length));
-        using var indexBuffer = device.CreateBuffer(MemoryType.Upload, new BufferDesc(BufferUsageFlags.IndexBuffer, (ulong)indices.Length));
-        vertexBuffer.Write(0, vertices);
-        indexBuffer.Write(0, indices);
+        using var vertexBuffer = device.CreateBuffer(MemoryType.Local, new BufferDesc(BufferUsageFlags.VertexBuffer | BufferUsageFlags.CopyDestination, (ulong)vertices.Length));
+        using var indexBuffer = device.CreateBuffer(MemoryType.Local, new BufferDesc(BufferUsageFlags.IndexBuffer | BufferUsageFlags.CopyDestination, (ulong)indices.Length));
         using var texture = CreateAndUploadTexture(device, commandBuffer, image);
         var textureRowPitch = checked(image.Desc.Width * ImageModule.PixelSize(image.Desc.Format));
         ValidateTextureReadback(device, commandBuffer, texture, image, textureRowPitch);
+        using var writer = Luna.RHIUtility.Module.CreateResourceWriteContext(device);
+        writer.SetName("RHICSharpTest.TextureResourceWriteContext");
+        ValidateDeviceChild(writer, device, "IResourceWriteContext.Device");
+        writer.Reset();
+        writer.WriteBuffer(vertexBuffer, 0, vertices);
+        writer.WriteBuffer(indexBuffer, 0, indices);
+        writer.Commit(commandBuffer, submitAndWait: true);
         using var descriptorSet = device.CreateDescriptorSet(new DescriptorSetDesc(descriptorSetLayout));
         descriptorSet.SetReadTextureViews(0, 0, new[] { TextureViewDesc.Tex2D(texture) });
         descriptorSet.SetSamplers(1, 0, new[] { CreateLinearClampSampler() });
@@ -200,7 +203,9 @@ internal static class RhiCSharpTestApp
                 {
                     framebufferSize = currentFramebufferSize;
                     vertices = RhiTestAssets.CreateTexturedQuadVertexData(image.Desc.Width, image.Desc.Height, framebufferSize.Width, framebufferSize.Height);
-                    vertexBuffer.Write(0, vertices);
+                    writer.Reset();
+                    writer.WriteBuffer(vertexBuffer, 0, vertices);
+                    writer.Commit(commandBuffer, submitAndWait: true);
                 }
                 RhiTestCases.RenderTexturedQuadFrame(
                     commandBuffer,
@@ -220,14 +225,14 @@ internal static class RhiCSharpTestApp
 
     private static void RunBoxCase(IWindow window, IDevice device, ICommandBuffer commandBuffer, ISwapChain swapChain)
     {
-        var image = RhiTestAssets.LoadTestImage();
+        var image = RhiTestAssets.LoadBoxTestImage();
         using var descriptorSetLayout = device.CreateDescriptorSetLayout(new DescriptorSetLayoutDesc
         {
             Bindings = new[]
             {
+                DescriptorSetLayoutBinding.Sampler(15, 1, ShaderVisibilityFlags.Pixel),
                 DescriptorSetLayoutBinding.UniformBufferView(0, 1, ShaderVisibilityFlags.Vertex),
-                DescriptorSetLayoutBinding.ReadTextureView(TextureViewType.Tex2D, 1, 1, ShaderVisibilityFlags.Pixel),
-                DescriptorSetLayoutBinding.Sampler(2, 1, ShaderVisibilityFlags.Pixel)
+                DescriptorSetLayoutBinding.ReadTextureView(TextureViewType.Tex2D, 8, 1, ShaderVisibilityFlags.Pixel)
             }
         });
         using var pipelineLayout = device.CreatePipelineLayout(new PipelineLayoutDesc
@@ -243,13 +248,35 @@ internal static class RhiCSharpTestApp
             },
             InputAttributes = new[]
             {
-                new InputAttributeDesc("POSITION", 0, 0, 0, 0, Format.Rgb32Float),
-                new InputAttributeDesc("TEXCOORD", 0, 1, 0, 12, Format.Rg32Float)
+                new InputAttributeDesc(0, 0, 0, Format.Rgb32Float),
+                new InputAttributeDesc(1, 0, 12, Format.Rg32Float)
             },
             PipelineLayout = pipelineLayout,
-            VertexShader = RhiTestShaders.Compile(RhiTestShaders.BoxVertexShader, "RHICSharpTestBoxVS", ShaderCompilerShaderType.Vertex),
-            PixelShader = RhiTestShaders.Compile(RhiTestShaders.BoxPixelShader, "RHICSharpTestBoxPS", ShaderCompilerShaderType.Pixel),
-            RasterizerState = new RasterizerDesc(depthClampEnable: true),
+            VertexShader = RhiTestShaders.LoadBoxVertexShader(),
+            PixelShader = RhiTestShaders.LoadBoxPixelShader(),
+            BlendState = new BlendDesc
+            {
+                Attachments = new[]
+                {
+                    new AttachmentBlendDesc(
+                        blendEnable: false,
+                        sourceBlendColor: BlendFactor.SourceAlpha,
+                        destinationBlendColor: BlendFactor.OneMinusSourceAlpha,
+                        blendOpColor: BlendOp.Add,
+                        sourceBlendAlpha: BlendFactor.OneMinusSourceAlpha,
+                        destinationBlendAlpha: BlendFactor.Zero,
+                        blendOpAlpha: BlendOp.Add,
+                        colorWriteMask: ColorWriteMask.All)
+                }
+            },
+            RasterizerState = new RasterizerDesc(
+                FillMode.Solid,
+                CullMode.Back,
+                0,
+                0.0f,
+                0.0f,
+                frontCounterClockwise: false,
+                depthClampEnable: true),
             DepthStencilState = new DepthStencilDesc(depthTestEnable: true, depthWriteEnable: true, depthFunction: CompareFunction.LessEqual),
             ColorFormats = new[] { Format.Bgra8Unorm },
             DepthStencilFormat = Format.D32Float
@@ -257,7 +284,8 @@ internal static class RhiCSharpTestApp
         var vertices = RhiTestAssets.CreateBoxVertexData();
         var indices = RhiTestAssets.CreateBoxIndexData();
         var framebufferSize = GetInitialFramebufferSize(window);
-        var uniformData = RhiTestAssets.CreateWorldToProjectionMatrix(framebufferSize.Width, framebufferSize.Height);
+        var cameraRotation = 0.0f;
+        var uniformData = RhiTestAssets.CreateWorldToProjectionMatrix(framebufferSize.Width, framebufferSize.Height, cameraRotation);
         var uniformBufferSize = RhiTestAssets.AlignUp((ulong)uniformData.Length, device.CheckFeature(DeviceFeature.UniformBufferDataAlignment).AsUInt32);
         using var vertexBuffer = device.CreateBuffer(MemoryType.Local, new BufferDesc(BufferUsageFlags.VertexBuffer | BufferUsageFlags.CopyDestination, (ulong)vertices.Length));
         using var indexBuffer = device.CreateBuffer(MemoryType.Local, new BufferDesc(BufferUsageFlags.IndexBuffer | BufferUsageFlags.CopyDestination, (ulong)indices.Length));
@@ -276,8 +304,8 @@ internal static class RhiCSharpTestApp
         var depthTexture = CreateDepthTexture(device, framebufferSize);
         using var descriptorSet = device.CreateDescriptorSet(new DescriptorSetDesc(descriptorSetLayout));
         descriptorSet.SetUniformBufferView(0, BufferViewDesc.UniformBuffer(uniformBuffer));
-        descriptorSet.SetReadTextureViews(1, 0, new[] { TextureViewDesc.Tex2D(texture) });
-        descriptorSet.SetSamplers(2, 0, new[] { CreateLinearClampSampler() });
+        descriptorSet.SetReadTextureViews(8, 0, new[] { TextureViewDesc.Tex2D(texture) });
+        descriptorSet.SetSamplers(15, 0, new[] { CreateLinearClampSampler() });
         try
         {
             RunInteractiveLoop(
@@ -286,11 +314,12 @@ internal static class RhiCSharpTestApp
                 RhiCSharpTestCase.Box,
                 currentFramebufferSize =>
                 {
+                    cameraRotation += 1.0f;
+                    uniformData = RhiTestAssets.CreateWorldToProjectionMatrix(currentFramebufferSize.Width, currentFramebufferSize.Height, cameraRotation);
+                    uniformBuffer.Write(0, uniformData);
                     if (currentFramebufferSize != framebufferSize)
                     {
                         framebufferSize = currentFramebufferSize;
-                        uniformData = RhiTestAssets.CreateWorldToProjectionMatrix(framebufferSize.Width, framebufferSize.Height);
-                        uniformBuffer.Write(0, uniformData);
                         depthTexture.Dispose();
                         depthTexture = CreateDepthTexture(device, framebufferSize);
                     }
@@ -503,6 +532,27 @@ internal static class RhiCSharpTestApp
         using var mipmapGenerator = Luna.RHIUtility.Module.CreateMipmapGenerationContext(device);
         mipmapGenerator.SetName("RHICSharpTest.ValidateMipmapGenerationContext");
         ValidateDeviceChild(mipmapGenerator, device, "IMipmapGenerationContext.Device");
+    }
+
+    private static void ValidateManagedDefaults()
+    {
+        var rasterizer = RasterizerDesc.Default;
+        if (rasterizer.FillMode != FillMode.Solid || rasterizer.CullMode != CullMode.Back || rasterizer.FrontCounterClockwise || rasterizer.DepthClampEnable)
+        {
+            throw new InvalidOperationException("RasterizerDesc.Default returned unexpected values.");
+        }
+
+        var depthStencil = DepthStencilDesc.Default;
+        if (!depthStencil.DepthTestEnable || !depthStencil.DepthWriteEnable || depthStencil.DepthFunction != CompareFunction.Less || depthStencil.StencilEnable || depthStencil.StencilReadMask != 0xff || depthStencil.StencilWriteMask != 0xff)
+        {
+            throw new InvalidOperationException("DepthStencilDesc.Default returned unexpected values.");
+        }
+
+        var graphicsPipeline = new GraphicsPipelineStateDesc();
+        if (graphicsPipeline.DepthStencilState.DepthFunction != CompareFunction.Less || !graphicsPipeline.DepthStencilState.DepthTestEnable || !graphicsPipeline.DepthStencilState.DepthWriteEnable)
+        {
+            throw new InvalidOperationException("GraphicsPipelineStateDesc default depth stencil state returned unexpected values.");
+        }
     }
 
     private static void ValidateDescriptorApi(IDevice device)

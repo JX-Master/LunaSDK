@@ -34,15 +34,6 @@ luna_sdk_module_c_wrapper("RHIUtilityC")
     end
 target_end()
 
-luna_sdk_module_c_wrapper("ShaderCompilerC")
-    add_files("ShaderCompiler/*.cpp")
-    add_headerfiles("ShaderCompiler/*.h", {prefixdir = "Luna/CWrapper/ShaderCompiler"})
-    add_deps("ShaderCompiler")
-    if is_plat("macosx") then
-        add_rpathdirs("@loader_path")
-    end
-target_end()
-
 luna_sdk_module_c_wrapper("ImageC")
     add_files("Image/*.cpp")
     add_headerfiles("Image/*.h", {prefixdir = "Luna/CWrapper/Image"})

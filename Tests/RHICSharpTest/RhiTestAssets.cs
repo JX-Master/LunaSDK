@@ -4,9 +4,19 @@ using Luna.Image;
 
 internal static class RhiTestAssets
 {
-    public static ImageData LoadTestImage()
+    public static ImageData LoadTextureTestImage()
     {
-        var image = ImageModule.ReadFile(Path.Combine(AppContext.BaseDirectory, "uv_checker.png"), ImageFormat.Rgba8Unorm);
+        return LoadImage("uv_checker.png");
+    }
+
+    public static ImageData LoadBoxTestImage()
+    {
+        return LoadImage("luna.png");
+    }
+
+    private static ImageData LoadImage(string fileName)
+    {
+        var image = ImageModule.ReadFile(Path.Combine(AppContext.BaseDirectory, fileName), ImageFormat.Rgba8Unorm);
         var expectedSize = checked((int)(image.Desc.Width * image.Desc.Height * ImageModule.PixelSize(image.Desc.Format)));
         if (image.Desc.Format != ImageFormat.Rgba8Unorm || image.Desc.Width == 0 || image.Desc.Height == 0 || image.Data.Length != expectedSize)
         {
@@ -108,14 +118,18 @@ internal static class RhiTestAssets
         return data;
     }
 
-    public static byte[] CreateWorldToProjectionMatrix(uint framebufferWidth, uint framebufferHeight)
+    public static byte[] CreateWorldToProjectionMatrix(uint framebufferWidth, uint framebufferHeight, float cameraRotationDegrees)
     {
-        var eye = (X: 2.3f, Y: 1.2f, Z: 1.7f);
+        var cameraRotationRadians = cameraRotationDegrees / 180.0f * MathF.PI;
+        var eye = (
+            X: MathF.Cos(cameraRotationRadians) * 3.0f,
+            Y: 1.0f,
+            Z: MathF.Sin(cameraRotationRadians) * 3.0f);
         var target = (X: 0.0f, Y: 0.0f, Z: 0.0f);
         var up = (X: 0.0f, Y: 1.0f, Z: 0.0f);
         var view = MakeLookAt(eye, target, up);
-        var projection = MakePerspective((float)Math.PI / 3.0f, (float)framebufferWidth / framebufferHeight, 1.0f, 4.0f);
-        var worldToProjection = Multiply(projection, view);
+        var projection = MakePerspectiveFov((float)Math.PI / 3.0f, (float)framebufferWidth / framebufferHeight, 1.0f, 4.0f);
+        var worldToProjection = Multiply(view, projection);
         var data = new byte[sizeof(float) * 16];
         for (var i = 0; i < 16; ++i)
         {
@@ -199,28 +213,35 @@ internal static class RhiTestAssets
         (float X, float Y, float Z) target,
         (float X, float Y, float Z) up)
     {
-        var z = Normalize((target.X - eye.X, target.Y - eye.Y, target.Z - eye.Z));
-        var x = Normalize(Cross(up, z));
-        var y = Cross(z, x);
+        var rz = Normalize((target.X - eye.X, target.Y - eye.Y, target.Z - eye.Z));
+        var rx = Cross(up, rz);
+        var ry = Cross(rz, rx);
+        var negativeEye = (-eye.X, -eye.Y, -eye.Z);
+        var tx = Dot(rx, negativeEye);
+        var ty = Dot(ry, negativeEye);
+        var tz = Dot(rz, negativeEye);
         return new[]
         {
-            x.X, x.Y, x.Z, -Dot(x, eye),
-            y.X, y.Y, y.Z, -Dot(y, eye),
-            z.X, z.Y, z.Z, -Dot(z, eye),
-            0.0f, 0.0f, 0.0f, 1.0f
+            rx.X, ry.X, rz.X, 0.0f,
+            rx.Y, ry.Y, rz.Y, 0.0f,
+            rx.Z, ry.Z, rz.Z, 0.0f,
+            tx, ty, tz, 1.0f
         };
     }
 
-    private static float[] MakePerspective(float fovY, float aspect, float nearZ, float farZ)
+    private static float[] MakePerspectiveFov(float fov, float aspect, float nearZ, float farZ)
     {
-        var yScale = 1.0f / MathF.Tan(fovY * 0.5f);
-        var xScale = yScale / aspect;
+        var halfFov = fov * 0.5f;
+        var diagonal = MathF.Tan(halfFov);
+        var height = diagonal / MathF.Sqrt(1.0f + aspect * aspect);
+        var width = height * aspect;
+        var range = farZ / (farZ - nearZ);
         return new[]
         {
-            xScale, 0.0f, 0.0f, 0.0f,
-            0.0f, yScale, 0.0f, 0.0f,
-            0.0f, 0.0f, farZ / (farZ - nearZ), -(nearZ * farZ) / (farZ - nearZ),
-            0.0f, 0.0f, 1.0f, 0.0f
+            1.0f / width, 0.0f, 0.0f, 0.0f,
+            0.0f, 1.0f / height, 0.0f, 0.0f,
+            0.0f, 0.0f, range, 1.0f,
+            0.0f, 0.0f, -range * nearZ, 0.0f
         };
     }
 

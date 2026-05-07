@@ -860,8 +860,7 @@ RV run_app()
     auto result = add_modules({
         module_window(),
         module_rhi(),
-        module_rhi_utility(), // Add this.
-        module_shader_compiler()
+        module_rhi_utility() // Add this.
     });
     //...
 }

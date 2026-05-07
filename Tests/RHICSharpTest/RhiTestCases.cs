@@ -261,7 +261,7 @@ internal static class RhiTestCases
         {
             ColorAttachments = new[]
             {
-                new ColorAttachment(backBuffer, LoadOp.Clear, StoreOp.Store, new Color4(1.0f, 1.0f, 0.0f, 1.0f))
+                new ColorAttachment(backBuffer, LoadOp.Clear, StoreOp.Store, new Color4(0.0f, 0.0f, 0.0f, 0.0f))
             },
             DepthStencilAttachment = new DepthStencilAttachment(depthTexture, readOnly: false, depthLoadOp: LoadOp.Clear, depthStoreOp: StoreOp.Store, depthClearValue: 1.0f)
         });

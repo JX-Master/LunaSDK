@@ -250,7 +250,6 @@ internal sealed class RhiDevice : ObjectBase, IDevice
             nativeBindings[i] = new NativeInputBindingDesc(desc.InputBindings[i]);
         }
 
-        var semanticNames = new IntPtr[desc.InputAttributes.Length];
         var nativeAttributes = new NativeInputAttributeDesc[desc.InputAttributes.Length];
         GCHandle bindingsHandle = default;
         GCHandle attributesHandle = default;
@@ -262,8 +261,7 @@ internal sealed class RhiDevice : ObjectBase, IDevice
         {
             for (var i = 0; i < desc.InputAttributes.Length; ++i)
             {
-                semanticNames[i] = StringToNativeUtf8(desc.InputAttributes[i].SemanticName);
-                nativeAttributes[i] = new NativeInputAttributeDesc(desc.InputAttributes[i], semanticNames[i]);
+                nativeAttributes[i] = new NativeInputAttributeDesc(desc.InputAttributes[i]);
             }
 
             bindingsHandle = nativeBindings.Length == 0 ? default : GCHandle.Alloc(nativeBindings, GCHandleType.Pinned);
@@ -315,13 +313,6 @@ internal sealed class RhiDevice : ObjectBase, IDevice
             if (pixelShaderHandle.IsAllocated) pixelShaderHandle.Free();
             if (vertexEntryPoint != IntPtr.Zero) Marshal.FreeHGlobal(vertexEntryPoint);
             if (pixelEntryPoint != IntPtr.Zero) Marshal.FreeHGlobal(pixelEntryPoint);
-            foreach (var semanticName in semanticNames)
-            {
-                if (semanticName != IntPtr.Zero)
-                {
-                    Marshal.FreeHGlobal(semanticName);
-                }
-            }
         }
     }
 
