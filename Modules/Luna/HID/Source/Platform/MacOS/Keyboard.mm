@@ -11,15 +11,77 @@
 #define LUNA_HID_API LUNA_EXPORT
 #include "../../../Keyboard.hpp"
 #include <Carbon/Carbon.h>
+#import <Cocoa/Cocoa.h>
+#include <atomic>
 
 namespace Luna
 {
     namespace HID
     {
+        namespace
+        {
+            constexpr usize key_state_count = 256;
+            std::atomic<u8> g_key_states[key_state_count] = {};
+
+            inline bool is_cached_key(KeyCode key)
+            {
+                return (u16)key < key_state_count;
+            }
+
+            inline bool get_cached_key_state(KeyCode key)
+            {
+                if(!is_cached_key(key)) return false;
+                return g_key_states[(u16)key].load(std::memory_order_relaxed) != 0;
+            }
+
+            inline void set_cached_key_state(KeyCode key, bool pressed)
+            {
+                if(!is_cached_key(key)) return;
+                g_key_states[(u16)key].store(pressed ? 1 : 0, std::memory_order_relaxed);
+            }
+
+            inline void reset_cached_key_states()
+            {
+                for(usize i = 0; i < key_state_count; ++i)
+                {
+                    g_key_states[i].store(0, std::memory_order_relaxed);
+                }
+            }
+        }
+
         LUNA_HID_API bool supports_keyboard()
         {
             return true;
         }
+
+        LUNA_HID_API void set_key_state_from_window_event(KeyCode key, bool pressed)
+        {
+            switch(key)
+            {
+                case KeyCode::ctrl:
+                case KeyCode::l_ctrl:
+                case KeyCode::r_ctrl:
+                case KeyCode::shift:
+                case KeyCode::l_shift:
+                case KeyCode::r_shift:
+                case KeyCode::menu:
+                case KeyCode::l_menu:
+                case KeyCode::r_menu:
+                case KeyCode::system:
+                case KeyCode::l_system:
+                case KeyCode::r_system:
+                case KeyCode::caps_lock:
+                    return;
+                default: break;
+            }
+            set_cached_key_state(key, pressed);
+        }
+
+        LUNA_HID_API void reset_key_states_from_window_event()
+        {
+            reset_cached_key_states();
+        }
+
         static CGKeyCode map_key_code(KeyCode key)
         {
             switch(key)
@@ -141,10 +203,25 @@ namespace Luna
             else if(key == KeyCode::system) return get_key_state(KeyCode::l_system) || get_key_state(KeyCode::r_system);
             @autoreleasepool
             {
-                CGKeyCode code = map_key_code(key);
-                if(code == 65535) return false;
-                bool pressed = CGEventSourceKeyState(kCGEventSourceStateHIDSystemState, code);
-                return pressed;
+                switch(key)
+                {
+                    case KeyCode::caps_lock:
+                        return ([NSEvent modifierFlags] & NSEventModifierFlagCapsLock) != 0;
+                    case KeyCode::l_shift:
+                    case KeyCode::r_shift:
+                        return ([NSEvent modifierFlags] & NSEventModifierFlagShift) != 0;
+                    case KeyCode::l_ctrl:
+                    case KeyCode::r_ctrl:
+                        return ([NSEvent modifierFlags] & NSEventModifierFlagControl) != 0;
+                    case KeyCode::l_menu:
+                    case KeyCode::r_menu:
+                        return ([NSEvent modifierFlags] & NSEventModifierFlagOption) != 0;
+                    case KeyCode::l_system:
+                    case KeyCode::r_system:
+                        return ([NSEvent modifierFlags] & NSEventModifierFlagCommand) != 0;
+                    default: break;
+                }
+                return get_cached_key_state(key);
             }
         }
     }

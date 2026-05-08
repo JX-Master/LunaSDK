@@ -23,6 +23,14 @@
 
 namespace Luna
 {
+    namespace HID
+    {
+        LUNA_EXPORT void set_key_state_from_window_event(KeyCode key, bool pressed);
+    }
+}
+
+namespace Luna
+{
     namespace Window
     {
         inline HID::KeyCode translate_key(CGKeyCode key)
@@ -278,6 +286,10 @@ namespace Luna
                         case NSEventTypeKeyDown:
                         {
                             HID::KeyCode key = translate_key([event keyCode]);
+                            if (key != HID::KeyCode::unknown)
+                            {
+                                HID::set_key_state_from_window_event(key, true);
+                            }
                             if(window->m_text_input_active)
                             {
                                 LunaTextInputView* view = window->m_input_view;
@@ -303,6 +315,7 @@ namespace Luna
                             HID::KeyCode key = translate_key([event keyCode]);
                             if (key != HID::KeyCode::unknown)
                             {
+                                HID::set_key_state_from_window_event(key, false);
                                 auto e = new_object<WindowKeyUpEvent>();
                                 e->window = window;
                                 e->key = key = key;

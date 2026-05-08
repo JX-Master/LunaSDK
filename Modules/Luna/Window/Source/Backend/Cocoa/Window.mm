@@ -11,12 +11,21 @@
 #define LUNA_WINDOW_API LUNA_EXPORT
 #include "Window.h"
 #include "../../Window.hpp"
+#include <Luna/HID/KeyCode.hpp>
 #include <Luna/Runtime/Thread.hpp>
 #include <Luna/Runtime/TSAssert.hpp>
 #include <Luna/Runtime/HashMap.hpp>
 #include "../../../Event.hpp"
 #include "EventDispatching.h"
 #import <objc/runtime.h>
+
+namespace Luna
+{
+    namespace HID
+    {
+        LUNA_EXPORT void reset_key_states_from_window_event();
+    }
+}
 
 inline void dispatch_event_to_handler(Luna::object_t event)
 {
@@ -805,6 +814,7 @@ namespace Luna
 {
     if (self.lunaWindow && !self.lunaWindow->is_closed())
     {
+        Luna::HID::reset_key_states_from_window_event();
         auto e = Luna::new_object<Luna::Window::WindowLoseInputFocusEvent>();
         e->window = self.lunaWindow;
         dispatch_event_to_handler(e.object());
@@ -852,6 +862,7 @@ namespace Luna
 {
     if (self.lunaWindow)
     {
+        Luna::HID::reset_key_states_from_window_event();
         objc_setAssociatedObject(self.lunaWindow->m_window, (const void*)Luna::Window::WINDOW_POINTER_KEY, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
         
         if(!self.lunaWindow->m_destructing)

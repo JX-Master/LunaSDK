@@ -34,5 +34,5 @@ luna_sdk_module_target("Window")
         add_headerfiles("(Android/**.hpp)", {prefixdir = "Luna/Window"})
         add_headerfiles("(Android/**.h)", {prefixdir = "Luna/Window"})
     end
-    add_deps("Runtime")
+    add_deps("Runtime", "HID")
 target_end()

@@ -8,16 +8,27 @@
 * @date 2023/8/13
 */
 #include "../../HID.hpp"
+
+namespace Luna
+{
+    namespace HID
+    {
+        void reset_key_states_from_window_event();
+    }
+}
+
 namespace Luna
 {
     namespace HID
     {
         RV platform_init()
         {
+            reset_key_states_from_window_event();
             return ok;
         }
         void platform_close()
         {
+            reset_key_states_from_window_event();
         }
     }
 }

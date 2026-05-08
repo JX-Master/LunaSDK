@@ -87,3 +87,21 @@ luna_sdk_module_c_wrapper("ImGuiC")
         add_rpathdirs("@loader_path")
     end
 target_end()
+
+luna_sdk_module_c_wrapper("HIDC")
+    add_files("HID/*.cpp")
+    add_headerfiles("HID/*.h", {prefixdir = "Luna/CWrapper/HID"})
+    add_deps("HID")
+    if is_plat("macosx") then
+        add_rpathdirs("@loader_path")
+    end
+target_end()
+
+luna_sdk_module_c_wrapper("AHIC")
+    add_files("AHI/*.cpp")
+    add_headerfiles("AHI/*.h", {prefixdir = "Luna/CWrapper/AHI"})
+    add_deps("AHI")
+    if is_plat("macosx") then
+        add_rpathdirs("@loader_path")
+    end
+target_end()
