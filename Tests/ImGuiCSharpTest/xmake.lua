@@ -1,0 +1,7 @@
+target("ImGuiCSharpTest")
+    set_kind("binary")
+    set_group("Tests")
+    add_files("Main.cs")
+    add_deps("Luna.Runtime", "Luna.Window", "Luna.RHI", "Luna.RHIUtility", "Luna.ImGui")
+    set_luna_sdk_csharp_options()
+target_end()

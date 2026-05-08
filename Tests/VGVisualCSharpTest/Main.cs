@@ -285,7 +285,7 @@ static (Vector3 Forward, Vector3 Left, Vector3 Up) ComputeCameraBasis(float yaw,
         MathF.Sin(yaw) * MathF.Cos(pitch),
         -MathF.Sin(pitch),
         MathF.Cos(yaw) * MathF.Cos(pitch)));
-    var left = Vector3.Normalize(Vector3.Cross(Vector3.UnitY, forward));
+    var left = Vector3.Normalize(Vector3.Cross(forward, Vector3.UnitY));
     if (!IsFinite(left))
     {
         left = Vector3.UnitX;

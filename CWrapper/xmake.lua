@@ -78,3 +78,12 @@ luna_sdk_module_c_wrapper("VGC")
         add_rpathdirs("@loader_path")
     end
 target_end()
+
+luna_sdk_module_c_wrapper("ImGuiC")
+    add_files("ImGui/*.cpp")
+    add_headerfiles("ImGui/*.h", {prefixdir = "Luna/CWrapper/ImGui"})
+    add_deps("ImGui")
+    if is_plat("macosx") then
+        add_rpathdirs("@loader_path")
+    end
+target_end()
