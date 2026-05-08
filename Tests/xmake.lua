@@ -21,6 +21,7 @@ if is_plat("windows", "macosx", "linux") then
         includes("ImGuiCSharpTest")
         includes("HIDCSharpTest")
         includes("AHICSharpTest")
+        includes("VariantUtilsCSharpTest")
         includes("WindowCSharpTest")
         includes("RHICSharpTest")
     end

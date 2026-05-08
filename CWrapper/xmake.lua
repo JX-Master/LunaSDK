@@ -105,3 +105,12 @@ luna_sdk_module_c_wrapper("AHIC")
         add_rpathdirs("@loader_path")
     end
 target_end()
+
+luna_sdk_module_c_wrapper("VariantUtilsC")
+    add_files("VariantUtils/*.cpp")
+    add_headerfiles("VariantUtils/*.h", {prefixdir = "Luna/CWrapper/VariantUtils"})
+    add_deps("VariantUtils")
+    if is_plat("macosx") then
+        add_rpathdirs("@loader_path")
+    end
+target_end()
