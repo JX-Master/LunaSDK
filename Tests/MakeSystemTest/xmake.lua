@@ -1,0 +1,6 @@
+target("MakeSystemTest")
+    set_luna_sdk_test()
+    set_kind("binary")
+    add_files("Main.cpp")
+    add_deps("Runtime", "MakeSystem")
+target_end()
