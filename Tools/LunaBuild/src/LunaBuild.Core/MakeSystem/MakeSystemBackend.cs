@@ -27,8 +27,10 @@ public sealed class MakeSystemBackend
         BuildWorkspace workspace,
         BuildGraph graph,
         IReadOnlyList<string>? requestedTargets = null,
+        MakeSystemBuildOptions? options = null,
         CancellationToken cancellationToken = default)
     {
+        options ??= new MakeSystemBuildOptions();
         var validated = ValidateGraph(graph);
         var targets = requestedTargets is { Count: > 0 } ? requestedTargets : graph.Targets;
         if(targets.Count == 0)
@@ -76,7 +78,7 @@ public sealed class MakeSystemBackend
 
             if(!string.IsNullOrWhiteSpace(node.Command))
             {
-                buildInfos[i].NeedsBuild = missingFile || commandChanged || maxDependencyTimestamp > currentTimestamp || dependencyNeedsBuild;
+                buildInfos[i].NeedsBuild = options.ForceRebuild || missingFile || commandChanged || maxDependencyTimestamp > currentTimestamp || dependencyNeedsBuild;
             }
             else if(node.Kind == BuildGraphNodeKind.File && missingFile && !sideOutputIds.Contains(node.Id))
             {
@@ -145,6 +147,62 @@ public sealed class MakeSystemBackend
 
         cache.Save();
         return new MakeSystemResult(orderedNodes.Count, executedActions, UpToDate: false);
+    }
+
+    public MakeSystemCleanResult Clean(
+        BuildWorkspace workspace,
+        BuildGraph graph,
+        IReadOnlyList<string>? requestedTargets = null)
+    {
+        var validated = ValidateGraph(graph);
+        var targets = requestedTargets is { Count: > 0 } ? requestedTargets : graph.Targets;
+        if(targets.Count == 0)
+        {
+            return new MakeSystemCleanResult(0, 0, 0);
+        }
+
+        var orderedNodes = CollectNodes(validated, targets);
+        using var cache = MakeSystemCache.Load(workspace);
+        var filesToDelete = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
+        var cacheRecordsRemoved = 0;
+
+        foreach(var node in orderedNodes)
+        {
+            if(cache.TryGet(node.Id, out var record))
+            {
+                foreach(var output in record.Outputs.Concat(record.Depfiles))
+                {
+                    filesToDelete.Add(workspace.ResolveRepositoryPath(output));
+                }
+            }
+
+            if(!string.IsNullOrWhiteSpace(node.Command))
+            {
+                foreach(var output in NodeOutputs(workspace, validated, node))
+                {
+                    filesToDelete.Add(output);
+                }
+            }
+
+            if(cache.Remove(node.Id))
+            {
+                ++cacheRecordsRemoved;
+            }
+        }
+
+        var filesDeleted = 0;
+        foreach(var file in filesToDelete)
+        {
+            if(!File.Exists(file))
+            {
+                continue;
+            }
+            File.Delete(file);
+            ++filesDeleted;
+        }
+
+        cache.Save();
+        return new MakeSystemCleanResult(orderedNodes.Count, filesDeleted, cacheRecordsRemoved);
     }
 
     private async Task ExecuteNodeAsync(

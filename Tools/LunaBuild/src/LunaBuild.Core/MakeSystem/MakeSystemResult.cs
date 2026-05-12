@@ -5,6 +5,13 @@ public sealed record MakeSystemResult(
     int ActionsExecuted,
     bool UpToDate);
 
+public sealed record MakeSystemBuildOptions(bool ForceRebuild = false);
+
+public sealed record MakeSystemCleanResult(
+    int NodesVisited,
+    int FilesDeleted,
+    int CacheRecordsRemoved);
+
 public class MakeSystemException : Exception
 {
     public MakeSystemException(string message)

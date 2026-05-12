@@ -66,6 +66,14 @@ internal sealed class MakeSystemCache : IDisposable
         }
     }
 
+    public bool Remove(string nodeId)
+    {
+        lock(_recordsLock)
+        {
+            return _records.Remove(nodeId);
+        }
+    }
+
     public void PruneTo(IEnumerable<string> nodeIds)
     {
         lock(_recordsLock)

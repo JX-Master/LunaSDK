@@ -22,6 +22,7 @@ public static class LunaBuildCli
                 "inspect" => Inspect(options),
                 "generate" => Generate(options),
                 "build" => Build(options),
+                "clean" => Clean(options),
                 _ => UnknownCommand(command),
             };
         }
@@ -57,12 +58,19 @@ public static class LunaBuildCli
         var workspace = BuildWorkspace.Discover(options.RootDirectory);
         var buildOptions = options.ToBuildOptions();
         var targets = new TargetDiscovery().DiscoverTargets(workspace, buildOptions);
-        var graph = GenerateGraph(workspace, buildOptions, targets, options.TargetName, options.AllTargets);
         var format = ResolveOutputFormat(options);
+        var effectiveAllTargets = options.AllTargets || (IsIdeOutputFormat(format) && string.IsNullOrWhiteSpace(options.TargetName));
+        var graph = GenerateGraph(
+            workspace,
+            buildOptions,
+            targets,
+            options.TargetName,
+            effectiveAllTargets);
+        var outputTargets = SelectTargetsForOutput(targets, options.TargetName, effectiveAllTargets);
         var outputPath = ResolveOutputPath(workspace, options, format);
 
-        WriteGraph(graph, outputPath, format);
-        Console.WriteLine($"Generated build graph ({format.ToString().ToLowerInvariant()}): {Path.GetFullPath(outputPath)}");
+        WriteOutput(workspace, buildOptions, graph, outputTargets, outputPath, format);
+        Console.WriteLine($"Generated {FormatName(format)}: {Path.GetFullPath(outputPath)}");
         Console.WriteLine($"Nodes: {graph.Nodes.Count}, Targets: {graph.Targets.Count}");
         return 0;
     }
@@ -78,7 +86,7 @@ public static class LunaBuildCli
         {
             var format = ResolveOutputFormat(options);
             var outputPath = ResolveOutputPath(workspace, options, format);
-            WriteGraph(graph, outputPath, format);
+            WriteOutput(workspace, buildOptions, graph, targets, outputPath, format);
             Console.WriteLine($"Dumped build graph ({format.ToString().ToLowerInvariant()}): {Path.GetFullPath(outputPath)}");
         }
 
@@ -93,7 +101,10 @@ public static class LunaBuildCli
                 new DotNetBuildActionExecutor(),
                 new AggregateActionExecutor(),
             });
-            var result = makeSystem.BuildAsync(workspace, graph).GetAwaiter().GetResult();
+            var result = makeSystem.BuildAsync(
+                workspace,
+                graph,
+                options: new MakeSystemBuildOptions(options.ForceRebuild)).GetAwaiter().GetResult();
             Console.WriteLine(result.UpToDate
                 ? $"Up to date. Nodes: {result.NodesVisited}"
                 : $"Build finished. Nodes: {result.NodesVisited}, Actions: {result.ActionsExecuted}");
@@ -104,6 +115,58 @@ public static class LunaBuildCli
             Console.Error.WriteLine(ex.Message);
             Console.Error.WriteLine("C# MakeSystem backend is wired, but the C++ action executors are not implemented yet.");
             return 2;
+        }
+    }
+
+    private static int Clean(CommandLineOptions options)
+    {
+        var workspace = BuildWorkspace.Discover(options.RootDirectory);
+        if(options.FullClean)
+        {
+            if(Directory.Exists(workspace.BuildDirectory))
+            {
+                Directory.Delete(workspace.BuildDirectory, recursive: true);
+            }
+            Console.WriteLine($"Removed LunaBuild directory: {workspace.BuildDirectory}");
+            return 0;
+        }
+
+        var buildOptions = options.ToBuildOptions();
+        var targets = new TargetDiscovery().DiscoverTargets(workspace, buildOptions);
+        var graph = GenerateGraph(workspace, buildOptions, targets, options.TargetName, options.AllTargets);
+        var makeSystem = new MakeSystemBackend(Array.Empty<IMakeActionExecutor>());
+        var result = makeSystem.Clean(workspace, graph);
+        Console.WriteLine($"Clean finished. Nodes: {result.NodesVisited}, Files: {result.FilesDeleted}, Cache records: {result.CacheRecordsRemoved}");
+        return 0;
+    }
+
+    private static IReadOnlyList<BuildTargetDefinition> SelectTargetsForOutput(
+        IReadOnlyList<BuildTargetDefinition> targets,
+        string? targetName,
+        bool allTargets)
+    {
+        if(allTargets || string.IsNullOrWhiteSpace(targetName))
+        {
+            return targets;
+        }
+
+        var targetMap = targets.ToDictionary(target => target.Name, StringComparer.OrdinalIgnoreCase);
+        var selected = new List<BuildTargetDefinition>();
+        var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        Visit(targetName);
+        return selected.OrderBy(target => target.Name, StringComparer.OrdinalIgnoreCase).ToArray();
+
+        void Visit(string name)
+        {
+            if(!visited.Add(name) || !targetMap.TryGetValue(name, out var target))
+            {
+                return;
+            }
+            foreach(var dependency in target.Dependencies.Order(StringComparer.OrdinalIgnoreCase))
+            {
+                Visit(dependency);
+            }
+            selected.Add(target);
         }
     }
 
@@ -150,8 +213,15 @@ public static class LunaBuildCli
             return options.OutputPath;
         }
 
-        var extension = format == BuildGraphOutputFormat.Json ? ".json" : ".lunarules";
-        return Path.Combine(workspace.BuildDirectory, $"graph{extension}");
+        return format switch
+        {
+            BuildGraphOutputFormat.Json => Path.Combine(workspace.BuildDirectory, "graph.json"),
+            BuildGraphOutputFormat.Rules => Path.Combine(workspace.BuildDirectory, "graph.lunarules"),
+            BuildGraphOutputFormat.CompileCommands => Path.Combine(workspace.BuildDirectory, "compile_commands.json"),
+            BuildGraphOutputFormat.Vs2022 => Path.Combine(workspace.BuildDirectory, "VS2022"),
+            BuildGraphOutputFormat.Vscode => Path.Combine(workspace.RootDirectory, ".vscode"),
+            _ => throw new ArgumentOutOfRangeException(nameof(format), format, null),
+        };
     }
 
     private static void WriteGraph(BuildGraph graph, string outputPath, BuildGraphOutputFormat format)
@@ -164,6 +234,34 @@ public static class LunaBuildCli
         BuildRuleFileWriter.Write(graph, outputPath);
     }
 
+    private static void WriteOutput(
+        BuildWorkspace workspace,
+        BuildOptions buildOptions,
+        BuildGraph graph,
+        IReadOnlyList<BuildTargetDefinition> targets,
+        string outputPath,
+        BuildGraphOutputFormat format)
+    {
+        switch(format)
+        {
+            case BuildGraphOutputFormat.Json:
+            case BuildGraphOutputFormat.Rules:
+                WriteGraph(graph, outputPath, format);
+                break;
+            case BuildGraphOutputFormat.CompileCommands:
+                CompileCommandsWriter.Write(workspace, graph, outputPath);
+                break;
+            case BuildGraphOutputFormat.Vs2022:
+                VisualStudioSolutionWriter.Write(workspace, buildOptions, graph, targets, outputPath);
+                break;
+            case BuildGraphOutputFormat.Vscode:
+                VSCodeWorkspaceWriter.Write(workspace, buildOptions, graph, targets, outputPath);
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(format), format, null);
+        }
+    }
+
     private static int UnknownCommand(string command)
     {
         Console.Error.WriteLine($"Unknown command: {command}");
@@ -173,16 +271,34 @@ public static class LunaBuildCli
 
     private static bool IsHelp(string value) => value is "-h" or "--help" or "help";
 
+    private static bool IsIdeOutputFormat(BuildGraphOutputFormat format)
+    {
+        return format is BuildGraphOutputFormat.CompileCommands or BuildGraphOutputFormat.Vs2022 or BuildGraphOutputFormat.Vscode;
+    }
+
+    private static string FormatName(BuildGraphOutputFormat format)
+    {
+        return format switch
+        {
+            BuildGraphOutputFormat.CompileCommands => "compile_commands",
+            BuildGraphOutputFormat.Vs2022 => "vs2022 project",
+            BuildGraphOutputFormat.Vscode => "vscode workspace files",
+            _ => $"build graph ({format.ToString().ToLowerInvariant()})",
+        };
+    }
+
     private static void PrintUsage()
     {
-        Console.WriteLine("Usage: lunabuild <inspect|generate|build> [options]");
+        Console.WriteLine("Usage: lunabuild <inspect|generate|build|clean> [options]");
         Console.WriteLine();
         Console.WriteLine("Options:");
         Console.WriteLine("  --root <path>       LunaSDK repository root. Defaults to auto-discovery.");
         Console.WriteLine("  --output <path>     Graph output path for generate, or optional debug dump for build.");
-        Console.WriteLine("  --format <name>     rules or json. Defaults to rules, or json for .json output.");
+        Console.WriteLine("  --format <name>     rules, json, compile_commands, vs2022, or vscode.");
         Console.WriteLine("  --target <name>     Generate/build one pure C++ target graph.");
         Console.WriteLine("  --all               Generate/build all discovered targets as a pure C++ graph.");
+        Console.WriteLine("  --force             Force build actions to run even when up to date.");
+        Console.WriteLine("  --full              Clean the whole build/LunaBuild directory.");
         Console.WriteLine("  --mode <name>       Debug, Profile, or Release. Default: Debug.");
         Console.WriteLine("  --platform <name>   Windows, MacOS, Linux, Android, or IOS. Default: host.");
         Console.WriteLine("  --arch <name>       Architecture string. Default: host architecture.");
@@ -201,6 +317,10 @@ internal sealed class CommandLineOptions
     public string? TargetName { get; private init; }
 
     public bool AllTargets { get; private init; }
+
+    public bool ForceRebuild { get; private init; }
+
+    public bool FullClean { get; private init; }
 
     public BuildGraphOutputFormat? OutputFormat { get; private init; }
 
@@ -230,13 +350,19 @@ internal sealed class CommandLineOptions
                     options.OutputPath = RequireValue(args, ref i, "--output");
                     break;
                 case "--format":
-                    options.OutputFormat = ParseEnum<BuildGraphOutputFormat>(RequireValue(args, ref i, "--format"), "--format");
+                    options.OutputFormat = ParseOutputFormat(RequireValue(args, ref i, "--format"));
                     break;
                 case "--target":
                     options.TargetName = RequireValue(args, ref i, "--target");
                     break;
                 case "--all":
                     options.AllTargets = true;
+                    break;
+                case "--force":
+                    options.ForceRebuild = true;
+                    break;
+                case "--full":
+                    options.FullClean = true;
                     break;
                 case "--mode":
                     options.Mode = ParseEnum<BuildMode>(RequireValue(args, ref i, "--mode"), "--mode");
@@ -318,12 +444,28 @@ internal sealed class CommandLineOptions
         throw new ArgumentException($"{optionName} has invalid value: {value}");
     }
 
+    private static BuildGraphOutputFormat ParseOutputFormat(string value)
+    {
+        return value.Replace("-", "_").ToLowerInvariant() switch
+        {
+            "rules" => BuildGraphOutputFormat.Rules,
+            "json" => BuildGraphOutputFormat.Json,
+            "compile_commands" => BuildGraphOutputFormat.CompileCommands,
+            "compilecommands" => BuildGraphOutputFormat.CompileCommands,
+            "vs2022" => BuildGraphOutputFormat.Vs2022,
+            "vscode" => BuildGraphOutputFormat.Vscode,
+            _ => throw new ArgumentException($"--format has invalid value: {value}"),
+        };
+    }
+
     private sealed class MutableOptions
     {
         public string? RootDirectory { get; set; }
         public string? OutputPath { get; set; }
         public string? TargetName { get; set; }
         public bool AllTargets { get; set; }
+        public bool ForceRebuild { get; set; }
+        public bool FullClean { get; set; }
         public BuildGraphOutputFormat? OutputFormat { get; set; }
         public BuildMode? Mode { get; set; }
         public BuildPlatform? Platform { get; set; }
@@ -340,6 +482,8 @@ internal sealed class CommandLineOptions
                 OutputPath = OutputPath,
                 TargetName = TargetName,
                 AllTargets = AllTargets,
+                ForceRebuild = ForceRebuild,
+                FullClean = FullClean,
                 OutputFormat = OutputFormat,
                 Mode = Mode,
                 Platform = Platform,
@@ -356,4 +500,7 @@ internal enum BuildGraphOutputFormat
 {
     Rules,
     Json,
+    CompileCommands,
+    Vs2022,
+    Vscode,
 }

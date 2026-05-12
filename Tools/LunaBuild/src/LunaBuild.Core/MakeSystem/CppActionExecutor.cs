@@ -86,52 +86,7 @@ public sealed class CppActionExecutor : IMakeActionExecutor
         Directory.CreateDirectory(Path.GetDirectoryName(output)!);
         Directory.CreateDirectory(Path.GetDirectoryName(depfile)!);
 
-        var args = new List<string>
-        {
-            "/c",
-            "/nologo",
-            RuntimeFlag(payload.Contains("runtime") ? payload.Required("runtime") : payload.Required("mode")),
-            "/Zi",
-            "/FS",
-            $"/Fd{Quote(Path.Combine(context.Workspace.BuildDirectory, context.OptionsDirectoryName(), "compile.LunaBuild.pdb"))}",
-            MsvcOptimizationFlag(payload.Required("mode")),
-            "/D_WINDOWS",
-            "/DUNICODE",
-            "/D_UNICODE",
-            "/DNOMINMAX",
-            "/D_CRT_SECURE_NO_WARNINGS",
-            $"/sourceDependencies {Quote(sourceDependencies)}",
-        };
-        if(payload.Required("language").Equals("c", StringComparison.OrdinalIgnoreCase))
-        {
-            args.Add("/TC");
-        }
-        else
-        {
-            args.Add("/TP");
-            args.Add("/std:c++20");
-        }
-
-        foreach(var include in payload.All("include"))
-        {
-            args.Add($"/I{Quote(context.Workspace.ResolveRepositoryPath(include))}");
-        }
-        foreach(var define in payload.All("define"))
-        {
-            args.Add($"/D{define}");
-        }
-        foreach(var undefine in payload.All("undefine"))
-        {
-            args.Add($"/U{undefine}");
-        }
-        if(payload.Required("mode").Equals("Debug", StringComparison.OrdinalIgnoreCase))
-        {
-            args.Add("/DLUNA_ENABLE_API_VALIDATION");
-        }
-
-        args.Add($"/Fo{Quote(output)}");
-        args.Add(Quote(source));
-
+        var args = CppCommandLineBuilder.BuildMsvcCompileArguments(context.Workspace, context.Graph.Options, payload);
         var rsp = WriteResponseFile(context.Workspace, context.Node.Id, "cl", args);
         var result = await RunVsToolAsync(context.Workspace, _msvcToolchain.Value.ClExe, rsp, cancellationToken);
         if(result.ExitCode != 0)
@@ -157,43 +112,8 @@ public sealed class CppActionExecutor : IMakeActionExecutor
         Directory.CreateDirectory(Path.GetDirectoryName(depfile)!);
 
         var language = payload.Required("language");
-        var args = new List<string>
-        {
-            "-c",
-            "-o",
-            output,
-            "-MMD",
-            "-MF",
-            depfile,
-            "-arch",
-            AppleArchitecture(payload.Required("arch")),
-            "-isysroot",
-            _appleToolchain.Value.SdkPath,
-            "-fPIC",
-            "-fno-exceptions",
-        };
-        AddAppleLanguageArgs(args, language);
-        AddAppleModeArgs(args, payload.Required("mode"));
-
-        foreach(var include in payload.All("include"))
-        {
-            args.Add("-I" + context.Workspace.ResolveRepositoryPath(include));
-        }
-        foreach(var define in payload.All("define"))
-        {
-            args.Add("-D" + define);
-        }
-        foreach(var undefine in payload.All("undefine"))
-        {
-            args.Add("-U" + undefine);
-        }
-        if(payload.Required("mode").Equals("Debug", StringComparison.OrdinalIgnoreCase))
-        {
-            args.Add("-DLUNA_ENABLE_API_VALIDATION");
-        }
-        args.Add(source);
-
-        var compiler = UsesCxxCompiler(language) ? _appleToolchain.Value.ClangCxx : _appleToolchain.Value.Clang;
+        var args = CppCommandLineBuilder.BuildAppleCompileArguments(context.Workspace, payload, _appleToolchain.Value.SdkPath);
+        var compiler = CppCommandLineBuilder.UsesCxxCompiler(language) ? _appleToolchain.Value.ClangCxx : _appleToolchain.Value.Clang;
         var result = await ProcessRunner.RunAsync(compiler, args, context.Workspace.RootDirectory, _actionTimeout, cancellationToken);
         if(result.ExitCode != 0)
         {
