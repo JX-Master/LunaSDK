@@ -23,6 +23,7 @@ public sealed record BuildTargetDefinition(
     IReadOnlyList<string> PackageNames,
     IReadOnlyList<string> LinkLibraryFiles,
     IReadOnlyList<string> SystemLibraries,
+    IReadOnlyList<string> Frameworks,
     IReadOnlyList<string> RuntimeFiles,
     IReadOnlyList<BuildEmbeddedHeaderDefinition> EmbeddedHeaders,
     IReadOnlyList<BuildShaderDefinition> Shaders,

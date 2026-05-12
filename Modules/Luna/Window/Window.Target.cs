@@ -28,11 +28,13 @@ public sealed class WindowTargetRules : TargetRules
         {
             Headers("Cocoa/*.hpp", "Source/Backend/Cocoa/*.h");
             Sources("Source/Backend/Cocoa/*.mm", "Source/Cocoa/*.mm");
+            Frameworks("AppKit", "UniformTypeIdentifiers");
         }
         else if(Platform == BuildPlatform.IOS)
         {
             Headers("UIKit/*.hpp", "Source/Backend/UIKit/*.h");
             Sources("Source/Backend/UIKit/*.mm", "Source/UIKit/*.mm");
+            Frameworks("UIKit", "CoreGraphics", "QuartzCore");
         }
         else if(Platform == BuildPlatform.Android)
         {

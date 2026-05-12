@@ -52,6 +52,7 @@ public sealed class RHITargetRules : TargetRules
                 Defines("LUNA_RHI_METAL");
                 Headers("Source/Metal/**.h");
                 Sources("Source/Metal/**.mm");
+                Frameworks("Foundation", "QuartzCore", "Metal", "CoreGraphics");
                 DependsOn("VariantUtils");
                 break;
             default:

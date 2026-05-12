@@ -57,7 +57,7 @@ public static class LunaBuildCli
         var workspace = BuildWorkspace.Discover(options.RootDirectory);
         var buildOptions = options.ToBuildOptions();
         var targets = new TargetDiscovery().DiscoverTargets(workspace, buildOptions);
-        var graph = GenerateGraph(workspace, buildOptions, targets, options.TargetName);
+        var graph = GenerateGraph(workspace, buildOptions, targets, options.TargetName, options.AllTargets);
         var format = ResolveOutputFormat(options);
         var outputPath = ResolveOutputPath(workspace, options, format);
 
@@ -72,7 +72,7 @@ public static class LunaBuildCli
         var workspace = BuildWorkspace.Discover(options.RootDirectory);
         var buildOptions = options.ToBuildOptions();
         var targets = new TargetDiscovery().DiscoverTargets(workspace, buildOptions);
-        var graph = GenerateGraph(workspace, buildOptions, targets, options.TargetName);
+        var graph = GenerateGraph(workspace, buildOptions, targets, options.TargetName, options.AllTargets);
 
         if(options.OutputPath is not null)
         {
@@ -111,8 +111,13 @@ public static class LunaBuildCli
         BuildWorkspace workspace,
         BuildOptions buildOptions,
         IReadOnlyList<BuildTargetDefinition> targets,
-        string? targetName)
+        string? targetName,
+        bool allTargets)
     {
+        if(allTargets)
+        {
+            return new CppTargetGraphGenerator().GenerateAll(workspace, buildOptions, targets);
+        }
         if(!string.IsNullOrWhiteSpace(targetName))
         {
             return new CppTargetGraphGenerator().Generate(workspace, buildOptions, targets, targetName);
@@ -177,9 +182,10 @@ public static class LunaBuildCli
         Console.WriteLine("  --output <path>     Graph output path for generate, or optional debug dump for build.");
         Console.WriteLine("  --format <name>     rules or json. Defaults to rules, or json for .json output.");
         Console.WriteLine("  --target <name>     Generate/build one pure C++ target graph.");
+        Console.WriteLine("  --all               Generate/build all discovered targets as a pure C++ graph.");
         Console.WriteLine("  --mode <name>       Debug, Profile, or Release. Default: Debug.");
         Console.WriteLine("  --platform <name>   Windows, MacOS, Linux, Android, or IOS. Default: host.");
-        Console.WriteLine("  --arch <name>       Architecture string. Default: x64.");
+        Console.WriteLine("  --arch <name>       Architecture string. Default: host architecture.");
         Console.WriteLine("  --rhi <name>        D3D12, Vulkan, or Metal. Default: platform default.");
         Console.WriteLine("  --static            Generate static target configuration.");
         Console.WriteLine("  --no-tests          Disable tests in generated options.");
@@ -193,6 +199,8 @@ internal sealed class CommandLineOptions
     public string? OutputPath { get; private init; }
 
     public string? TargetName { get; private init; }
+
+    public bool AllTargets { get; private init; }
 
     public BuildGraphOutputFormat? OutputFormat { get; private init; }
 
@@ -227,6 +235,9 @@ internal sealed class CommandLineOptions
                 case "--target":
                     options.TargetName = RequireValue(args, ref i, "--target");
                     break;
+                case "--all":
+                    options.AllTargets = true;
+                    break;
                 case "--mode":
                     options.Mode = ParseEnum<BuildMode>(RequireValue(args, ref i, "--mode"), "--mode");
                     break;
@@ -254,6 +265,10 @@ internal sealed class CommandLineOptions
                 default:
                     throw new ArgumentException($"Unknown option: {args[i]}");
             }
+        }
+        if(options.AllTargets && !string.IsNullOrWhiteSpace(options.TargetName))
+        {
+            throw new ArgumentException("--all cannot be combined with --target.");
         }
         return options.ToImmutable();
     }
@@ -308,6 +323,7 @@ internal sealed class CommandLineOptions
         public string? RootDirectory { get; set; }
         public string? OutputPath { get; set; }
         public string? TargetName { get; set; }
+        public bool AllTargets { get; set; }
         public BuildGraphOutputFormat? OutputFormat { get; set; }
         public BuildMode? Mode { get; set; }
         public BuildPlatform? Platform { get; set; }
@@ -323,6 +339,7 @@ internal sealed class CommandLineOptions
                 RootDirectory = RootDirectory,
                 OutputPath = OutputPath,
                 TargetName = TargetName,
+                AllTargets = AllTargets,
                 OutputFormat = OutputFormat,
                 Mode = Mode,
                 Platform = Platform,

@@ -22,10 +22,12 @@ public sealed class HIDTargetRules : TargetRules
         else if(Platform == BuildPlatform.MacOS)
         {
             Sources("Source/Platform/MacOS/*.mm");
+            Frameworks("ApplicationServices", "AppKit");
         }
         else if(Platform == BuildPlatform.IOS)
         {
             Sources("Source/Platform/iOS/*.mm");
+            Frameworks("GameController");
         }
     }
 }

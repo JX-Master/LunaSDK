@@ -12,6 +12,7 @@ public abstract class TargetRules
     private readonly List<string> _packageNames = new();
     private readonly List<string> _linkLibraryFiles = new();
     private readonly List<string> _systemLibraries = new();
+    private readonly List<string> _frameworks = new();
     private readonly List<string> _runtimeFilePatterns = new();
     private readonly List<EmbeddedHeaderRule> _embeddedHeaders = new();
     private readonly List<ShaderRule> _shaders = new();
@@ -111,6 +112,11 @@ public abstract class TargetRules
         _systemLibraries.AddRange(libraries);
     }
 
+    protected void Frameworks(params string[] frameworks)
+    {
+        _frameworks.AddRange(frameworks);
+    }
+
     protected void MsvcRuntimeLibrary(string runtimeLibrary)
     {
         _msvcRuntimeLibrary = runtimeLibrary;
@@ -187,6 +193,10 @@ public abstract class TargetRules
                     .Distinct(StringComparer.OrdinalIgnoreCase)
                     .Order(StringComparer.OrdinalIgnoreCase)
                     .ToArray(),
+                Frameworks: _frameworks
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .Order(StringComparer.OrdinalIgnoreCase)
+                    .ToArray(),
                 RuntimeFiles: TargetPatternExpander.ExpandPatterns(directory, _runtimeFilePatterns),
                 EmbeddedHeaders: _embeddedHeaders
                     .Select(header => new BuildEmbeddedHeaderDefinition(
@@ -243,6 +253,7 @@ public abstract class TargetRules
             PackageNames: _packageNames.Count,
             LinkLibraryFiles: _linkLibraryFiles.Count,
             SystemLibraries: _systemLibraries.Count,
+            Frameworks: _frameworks.Count,
             RuntimeFilePatterns: _runtimeFilePatterns.Count,
             EmbeddedHeaders: _embeddedHeaders.Count,
             Shaders: _shaders.Count,
@@ -263,6 +274,7 @@ public abstract class TargetRules
         Truncate(_packageNames, state.PackageNames);
         Truncate(_linkLibraryFiles, state.LinkLibraryFiles);
         Truncate(_systemLibraries, state.SystemLibraries);
+        Truncate(_frameworks, state.Frameworks);
         Truncate(_runtimeFilePatterns, state.RuntimeFilePatterns);
         Truncate(_embeddedHeaders, state.EmbeddedHeaders);
         Truncate(_shaders, state.Shaders);
@@ -300,6 +312,7 @@ public abstract class TargetRules
         int PackageNames,
         int LinkLibraryFiles,
         int SystemLibraries,
+        int Frameworks,
         int RuntimeFilePatterns,
         int EmbeddedHeaders,
         int Shaders,

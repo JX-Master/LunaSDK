@@ -4,12 +4,12 @@ using System.Text.Json;
 
 public sealed class CppActionExecutor : IMakeActionExecutor
 {
-    private readonly MsvcToolchain _toolchain;
+    private readonly Lazy<MsvcToolchain> _msvcToolchain = new(MsvcToolchainLocator.Locate);
+    private readonly Lazy<AppleClangToolchain> _appleToolchain = new(AppleClangToolchainLocator.LocateMacOS);
     private readonly TimeSpan _actionTimeout;
 
     public CppActionExecutor(TimeSpan? actionTimeout = null)
     {
-        _toolchain = MsvcToolchainLocator.Locate();
         _actionTimeout = actionTimeout ?? TimeSpan.FromMinutes(5);
     }
 
@@ -31,11 +31,51 @@ public sealed class CppActionExecutor : IMakeActionExecutor
         };
     }
 
-    private async Task CompileAsync(MakeActionContext context, CancellationToken cancellationToken)
+    private Task CompileAsync(MakeActionContext context, CancellationToken cancellationToken)
+    {
+        return context.Graph.Options.Platform switch
+        {
+            BuildPlatform.Windows => CompileMsvcAsync(context, cancellationToken),
+            BuildPlatform.MacOS => CompileAppleAsync(context, cancellationToken),
+            _ => throw new MakeSystemException($"C++ compile is not implemented for platform {context.Graph.Options.Platform}."),
+        };
+    }
+
+    private Task LinkSharedAsync(MakeActionContext context, CancellationToken cancellationToken)
+    {
+        return context.Graph.Options.Platform switch
+        {
+            BuildPlatform.Windows => LinkMsvcSharedAsync(context, cancellationToken),
+            BuildPlatform.MacOS => LinkAppleSharedAsync(context, cancellationToken),
+            _ => throw new MakeSystemException($"C++ shared linking is not implemented for platform {context.Graph.Options.Platform}."),
+        };
+    }
+
+    private Task LinkStaticAsync(MakeActionContext context, CancellationToken cancellationToken)
+    {
+        return context.Graph.Options.Platform switch
+        {
+            BuildPlatform.Windows => LinkMsvcStaticAsync(context, cancellationToken),
+            BuildPlatform.MacOS => LinkAppleStaticAsync(context, cancellationToken),
+            _ => throw new MakeSystemException($"C++ static linking is not implemented for platform {context.Graph.Options.Platform}."),
+        };
+    }
+
+    private Task LinkExecutableAsync(MakeActionContext context, CancellationToken cancellationToken)
+    {
+        return context.Graph.Options.Platform switch
+        {
+            BuildPlatform.Windows => LinkMsvcExecutableAsync(context, cancellationToken),
+            BuildPlatform.MacOS => LinkAppleExecutableAsync(context, cancellationToken),
+            _ => throw new MakeSystemException($"C++ executable linking is not implemented for platform {context.Graph.Options.Platform}."),
+        };
+    }
+
+    private async Task CompileMsvcAsync(MakeActionContext context, CancellationToken cancellationToken)
     {
         if(context.Workspace.OptionsHostPlatform() != BuildPlatform.Windows)
         {
-            throw new MakeSystemException("The initial C++ executor only supports Windows/MSVC.");
+            throw new MakeSystemException("Windows/MSVC C++ compilation requires a Windows host.");
         }
 
         var payload = ActionPayload.Parse(context.ActionPayload);
@@ -54,7 +94,7 @@ public sealed class CppActionExecutor : IMakeActionExecutor
             "/Zi",
             "/FS",
             $"/Fd{Quote(Path.Combine(context.Workspace.BuildDirectory, context.OptionsDirectoryName(), "compile.LunaBuild.pdb"))}",
-            OptimizationFlag(payload.Required("mode")),
+            MsvcOptimizationFlag(payload.Required("mode")),
             "/D_WINDOWS",
             "/DUNICODE",
             "/D_UNICODE",
@@ -93,7 +133,7 @@ public sealed class CppActionExecutor : IMakeActionExecutor
         args.Add(Quote(source));
 
         var rsp = WriteResponseFile(context.Workspace, context.Node.Id, "cl", args);
-        var result = await RunVsToolAsync(context.Workspace, _toolchain.ClExe, rsp, cancellationToken);
+        var result = await RunVsToolAsync(context.Workspace, _msvcToolchain.Value.ClExe, rsp, cancellationToken);
         if(result.ExitCode != 0)
         {
             throw new MakeSystemException($"C++ compile failed for {source}:{Environment.NewLine}{result.Output}");
@@ -102,44 +142,70 @@ public sealed class CppActionExecutor : IMakeActionExecutor
         WriteDepfile(depfile, output, source, ReadSourceDependencies(sourceDependencies));
     }
 
-    private async Task LinkSharedAsync(MakeActionContext context, CancellationToken cancellationToken)
+    private async Task CompileAppleAsync(MakeActionContext context, CancellationToken cancellationToken)
     {
+        if(context.Workspace.OptionsHostPlatform() != BuildPlatform.MacOS)
+        {
+            throw new MakeSystemException("macOS/Apple clang C++ compilation requires a macOS host.");
+        }
+
         var payload = ActionPayload.Parse(context.ActionPayload);
-        var output = context.Workspace.ResolveRepositoryPath(payload.Required("output"));
+        var source = context.Workspace.ResolveRepositoryPath(payload.Required("source"));
+        var output = context.Workspace.ResolveRepositoryPath(payload.Required("object"));
+        var depfile = context.Workspace.ResolveRepositoryPath(payload.Required("depfile"));
         Directory.CreateDirectory(Path.GetDirectoryName(output)!);
+        Directory.CreateDirectory(Path.GetDirectoryName(depfile)!);
 
-        var importLib = Path.ChangeExtension(output, ".lib");
-        var pdb = Path.ChangeExtension(output, ".pdb");
-
+        var language = payload.Required("language");
         var args = new List<string>
         {
-            "/dll",
-            "/nologo",
-            "/machine:x64",
-            "/debug",
-            $"/pdb:{Quote(pdb)}",
-            $"/out:{Quote(output)}",
+            "-c",
+            "-o",
+            output,
+            "-MMD",
+            "-MF",
+            depfile,
+            "-arch",
+            AppleArchitecture(payload.Required("arch")),
+            "-isysroot",
+            _appleToolchain.Value.SdkPath,
+            "-fPIC",
+            "-fno-exceptions",
         };
+        AddAppleLanguageArgs(args, language);
+        AddAppleModeArgs(args, payload.Required("mode"));
 
-        args.AddRange(context.Dependencies
-            .Where(node => node.Kind == BuildGraphNodeKind.File && node.Path is not null && IsLinkInput(node.Path))
-            .Select(node => Quote(context.Workspace.ResolveRepositoryPath(node.Path!))));
-        args.AddRange(payload.All("library"));
-        args.Add($"/implib:{Quote(importLib)}");
+        foreach(var include in payload.All("include"))
+        {
+            args.Add("-I" + context.Workspace.ResolveRepositoryPath(include));
+        }
+        foreach(var define in payload.All("define"))
+        {
+            args.Add("-D" + define);
+        }
+        foreach(var undefine in payload.All("undefine"))
+        {
+            args.Add("-U" + undefine);
+        }
+        if(payload.Required("mode").Equals("Debug", StringComparison.OrdinalIgnoreCase))
+        {
+            args.Add("-DLUNA_ENABLE_API_VALIDATION");
+        }
+        args.Add(source);
 
-        var rsp = WriteResponseFile(context.Workspace, context.Node.Id, "link", args);
-        var result = await RunVsToolAsync(context.Workspace, _toolchain.LinkExe, rsp, cancellationToken);
+        var compiler = UsesCxxCompiler(language) ? _appleToolchain.Value.ClangCxx : _appleToolchain.Value.Clang;
+        var result = await ProcessRunner.RunAsync(compiler, args, context.Workspace.RootDirectory, _actionTimeout, cancellationToken);
         if(result.ExitCode != 0)
         {
-            throw new MakeSystemException($"C++ link failed for {output}:{Environment.NewLine}{result.Output}");
+            throw new MakeSystemException($"C++ compile failed for {source}:{Environment.NewLine}{result.Output}");
         }
     }
 
     private async Task CompileResourceAsync(MakeActionContext context, CancellationToken cancellationToken)
     {
-        if(context.Workspace.OptionsHostPlatform() != BuildPlatform.Windows)
+        if(context.Graph.Options.Platform != BuildPlatform.Windows || context.Workspace.OptionsHostPlatform() != BuildPlatform.Windows)
         {
-            throw new MakeSystemException("The initial resource executor only supports Windows/MSVC.");
+            throw new MakeSystemException("Windows resource compilation requires a Windows/MSVC host and target.");
         }
 
         var payload = ActionPayload.Parse(context.ActionPayload);
@@ -166,7 +232,38 @@ public sealed class CppActionExecutor : IMakeActionExecutor
         }
     }
 
-    private async Task LinkStaticAsync(MakeActionContext context, CancellationToken cancellationToken)
+    private async Task LinkMsvcSharedAsync(MakeActionContext context, CancellationToken cancellationToken)
+    {
+        var payload = ActionPayload.Parse(context.ActionPayload);
+        var output = context.Workspace.ResolveRepositoryPath(payload.Required("output"));
+        Directory.CreateDirectory(Path.GetDirectoryName(output)!);
+
+        var importLib = Path.ChangeExtension(output, ".lib");
+        var pdb = Path.ChangeExtension(output, ".pdb");
+
+        var args = new List<string>
+        {
+            "/dll",
+            "/nologo",
+            "/machine:x64",
+            "/debug",
+            $"/pdb:{Quote(pdb)}",
+            $"/out:{Quote(output)}",
+        };
+
+        args.AddRange(LinkInputPaths(context).Select(Quote));
+        args.AddRange(payload.All("library"));
+        args.Add($"/implib:{Quote(importLib)}");
+
+        var rsp = WriteResponseFile(context.Workspace, context.Node.Id, "link", args);
+        var result = await RunVsToolAsync(context.Workspace, _msvcToolchain.Value.LinkExe, rsp, cancellationToken);
+        if(result.ExitCode != 0)
+        {
+            throw new MakeSystemException($"C++ link failed for {output}:{Environment.NewLine}{result.Output}");
+        }
+    }
+
+    private async Task LinkMsvcStaticAsync(MakeActionContext context, CancellationToken cancellationToken)
     {
         var payload = ActionPayload.Parse(context.ActionPayload);
         var output = context.Workspace.ResolveRepositoryPath(payload.Required("output"));
@@ -177,19 +274,17 @@ public sealed class CppActionExecutor : IMakeActionExecutor
             "/nologo",
             $"/out:{Quote(output)}",
         };
-        args.AddRange(context.Dependencies
-            .Where(node => node.Kind == BuildGraphNodeKind.File && node.Path is not null && IsLinkInput(node.Path))
-            .Select(node => Quote(context.Workspace.ResolveRepositoryPath(node.Path!))));
+        args.AddRange(LinkInputPaths(context).Select(Quote));
 
         var rsp = WriteResponseFile(context.Workspace, context.Node.Id, "lib", args);
-        var result = await RunVsToolAsync(context.Workspace, _toolchain.LibExe, rsp, cancellationToken);
+        var result = await RunVsToolAsync(context.Workspace, _msvcToolchain.Value.LibExe, rsp, cancellationToken);
         if(result.ExitCode != 0)
         {
             throw new MakeSystemException($"C++ static link failed for {output}:{Environment.NewLine}{result.Output}");
         }
     }
 
-    private async Task LinkExecutableAsync(MakeActionContext context, CancellationToken cancellationToken)
+    private async Task LinkMsvcExecutableAsync(MakeActionContext context, CancellationToken cancellationToken)
     {
         var payload = ActionPayload.Parse(context.ActionPayload);
         var output = context.Workspace.ResolveRepositoryPath(payload.Required("output"));
@@ -205,23 +300,189 @@ public sealed class CppActionExecutor : IMakeActionExecutor
             $"/out:{Quote(output)}",
         };
 
-        args.AddRange(context.Dependencies
-            .Where(node => node.Kind == BuildGraphNodeKind.File && node.Path is not null && IsLinkInput(node.Path))
-            .Select(node => Quote(context.Workspace.ResolveRepositoryPath(node.Path!))));
+        args.AddRange(LinkInputPaths(context).Select(Quote));
         args.AddRange(payload.All("library"));
 
         var rsp = WriteResponseFile(context.Workspace, context.Node.Id, "link", args);
-        var result = await RunVsToolAsync(context.Workspace, _toolchain.LinkExe, rsp, cancellationToken);
+        var result = await RunVsToolAsync(context.Workspace, _msvcToolchain.Value.LinkExe, rsp, cancellationToken);
         if(result.ExitCode != 0)
         {
             throw new MakeSystemException($"C++ executable link failed for {output}:{Environment.NewLine}{result.Output}");
         }
     }
 
+    private async Task LinkAppleSharedAsync(MakeActionContext context, CancellationToken cancellationToken)
+    {
+        var payload = ActionPayload.Parse(context.ActionPayload);
+        var output = context.Workspace.ResolveRepositoryPath(payload.Required("output"));
+        Directory.CreateDirectory(Path.GetDirectoryName(output)!);
+
+        var args = AppleLinkArgs(context, payload, output);
+        args.Insert(0, "-dynamiclib");
+        args.Add("-install_name");
+        args.Add("@rpath/" + Path.GetFileName(output));
+
+        var result = await ProcessRunner.RunAsync(_appleToolchain.Value.ClangCxx, args, context.Workspace.RootDirectory, _actionTimeout, cancellationToken);
+        if(result.ExitCode != 0)
+        {
+            throw new MakeSystemException($"C++ link failed for {output}:{Environment.NewLine}{result.Output}");
+        }
+    }
+
+    private async Task LinkAppleStaticAsync(MakeActionContext context, CancellationToken cancellationToken)
+    {
+        var payload = ActionPayload.Parse(context.ActionPayload);
+        var output = context.Workspace.ResolveRepositoryPath(payload.Required("output"));
+        Directory.CreateDirectory(Path.GetDirectoryName(output)!);
+
+        var args = new List<string>
+        {
+            "-static",
+            "-o",
+            output,
+        };
+        args.AddRange(LinkInputPaths(context).Where(path => path.EndsWith(".o", StringComparison.OrdinalIgnoreCase) || path.EndsWith(".a", StringComparison.OrdinalIgnoreCase)));
+
+        var result = await ProcessRunner.RunAsync(_appleToolchain.Value.Libtool, args, context.Workspace.RootDirectory, _actionTimeout, cancellationToken);
+        if(result.ExitCode != 0)
+        {
+            throw new MakeSystemException($"C++ static link failed for {output}:{Environment.NewLine}{result.Output}");
+        }
+    }
+
+    private async Task LinkAppleExecutableAsync(MakeActionContext context, CancellationToken cancellationToken)
+    {
+        var payload = ActionPayload.Parse(context.ActionPayload);
+        var output = context.Workspace.ResolveRepositoryPath(payload.Required("output"));
+        Directory.CreateDirectory(Path.GetDirectoryName(output)!);
+
+        var args = AppleLinkArgs(context, payload, output);
+        var result = await ProcessRunner.RunAsync(_appleToolchain.Value.ClangCxx, args, context.Workspace.RootDirectory, _actionTimeout, cancellationToken);
+        if(result.ExitCode != 0)
+        {
+            throw new MakeSystemException($"C++ executable link failed for {output}:{Environment.NewLine}{result.Output}");
+        }
+    }
+
+    private List<string> AppleLinkArgs(MakeActionContext context, ActionPayload payload, string output)
+    {
+        var args = new List<string>
+        {
+            "-arch",
+            AppleArchitecture(payload.Required("arch")),
+            "-isysroot",
+            _appleToolchain.Value.SdkPath,
+            "-o",
+            output,
+            "-Wl,-rpath,@loader_path",
+        };
+        args.AddRange(LinkInputPaths(context));
+        foreach(var library in payload.All("library"))
+        {
+            AddAppleLibrary(args, library);
+        }
+        foreach(var framework in payload.All("framework"))
+        {
+            args.Add("-framework");
+            args.Add(framework);
+        }
+        return args;
+    }
+
+    private IEnumerable<string> LinkInputPaths(MakeActionContext context)
+    {
+        return context.Dependencies
+            .Where(node => node.Kind == BuildGraphNodeKind.File && node.Path is not null && IsLinkInput(node.Path))
+            .Select(node => context.Workspace.ResolveRepositoryPath(node.Path!));
+    }
+
     private async Task<ProcessRunResult> RunVsToolAsync(BuildWorkspace workspace, string tool, string responseFile, CancellationToken cancellationToken)
     {
-        var command = $"call {Quote(_toolchain.VcVarsBat)} >nul && {Quote(tool)} @{Quote(responseFile)}";
+        var command = $"call {Quote(_msvcToolchain.Value.VcVarsBat)} >nul && {Quote(tool)} @{Quote(responseFile)}";
         return await ProcessRunner.RunAsync("cmd.exe", $"/d /s /c \"{command}\"", workspace.RootDirectory, _actionTimeout, cancellationToken);
+    }
+
+    private static void AddAppleLanguageArgs(List<string> args, string language)
+    {
+        switch(language.ToLowerInvariant())
+        {
+            case "c":
+                args.Add("-std=c17");
+                break;
+            case "c++20":
+                args.Add("-std=c++20");
+                break;
+            case "objective-c++20":
+                args.Add("-x");
+                args.Add("objective-c++");
+                args.Add("-std=c++20");
+                args.Add("-fobjc-arc");
+                break;
+            case "objective-c":
+                args.Add("-fobjc-arc");
+                break;
+            case "assembler":
+            case "assembler-with-cpp":
+                break;
+            default:
+                throw new MakeSystemException($"Unsupported Apple clang source language: {language}");
+        }
+    }
+
+    private static void AddAppleModeArgs(List<string> args, string mode)
+    {
+        if(mode.Equals("Release", StringComparison.OrdinalIgnoreCase))
+        {
+            args.Add("-O2");
+            args.Add("-DNDEBUG");
+            return;
+        }
+        if(mode.Equals("Profile", StringComparison.OrdinalIgnoreCase))
+        {
+            args.Add("-O2");
+            args.Add("-g");
+            return;
+        }
+        args.Add("-O0");
+        args.Add("-g");
+    }
+
+    private static void AddAppleLibrary(List<string> args, string library)
+    {
+        if(library.StartsWith("-", StringComparison.Ordinal) || Path.IsPathRooted(library))
+        {
+            args.Add(library);
+            return;
+        }
+
+        var name = library;
+        if(name.EndsWith(".lib", StringComparison.OrdinalIgnoreCase) ||
+            name.EndsWith(".a", StringComparison.OrdinalIgnoreCase) ||
+            name.EndsWith(".dylib", StringComparison.OrdinalIgnoreCase))
+        {
+            name = Path.GetFileNameWithoutExtension(name);
+        }
+        if(name.StartsWith("lib", StringComparison.OrdinalIgnoreCase))
+        {
+            name = name[3..];
+        }
+        args.Add("-l" + name);
+    }
+
+    private static bool UsesCxxCompiler(string language)
+    {
+        return language.Equals("c++20", StringComparison.OrdinalIgnoreCase) ||
+            language.Equals("objective-c++20", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string AppleArchitecture(string architecture)
+    {
+        return architecture.ToLowerInvariant() switch
+        {
+            "arm64" or "aarch64" => "arm64",
+            "x64" or "x86_64" => "x86_64",
+            _ => throw new MakeSystemException($"Unsupported macOS architecture: {architecture}"),
+        };
     }
 
     private static string WriteResponseFile(BuildWorkspace workspace, string nodeId, string toolName, IEnumerable<string> args)
@@ -253,7 +514,7 @@ public sealed class CppActionExecutor : IMakeActionExecutor
         };
     }
 
-    private static string OptimizationFlag(string mode)
+    private static string MsvcOptimizationFlag(string mode)
     {
         return mode.Equals("Release", StringComparison.OrdinalIgnoreCase) ? "/O2" : "/Od";
     }
@@ -275,9 +536,12 @@ public sealed class CppActionExecutor : IMakeActionExecutor
     private static bool IsLinkInput(string path)
     {
         return path.EndsWith(".obj", StringComparison.OrdinalIgnoreCase) ||
+            path.EndsWith(".o", StringComparison.OrdinalIgnoreCase) ||
             path.EndsWith(".res", StringComparison.OrdinalIgnoreCase) ||
             path.EndsWith(".lib", StringComparison.OrdinalIgnoreCase) ||
-            path.EndsWith(".a", StringComparison.OrdinalIgnoreCase);
+            path.EndsWith(".a", StringComparison.OrdinalIgnoreCase) ||
+            path.EndsWith(".dylib", StringComparison.OrdinalIgnoreCase) ||
+            path.EndsWith(".so", StringComparison.OrdinalIgnoreCase);
     }
 
     private static IReadOnlyList<string> ReadSourceDependencies(string path)
@@ -325,5 +589,42 @@ internal static class BuildWorkspaceExtensions
             context.Graph.Options.Platform.ToString(),
             context.Graph.Options.Architecture,
             context.Graph.Options.Mode.ToString());
+    }
+}
+
+internal sealed record AppleClangToolchain(string Clang, string ClangCxx, string Libtool, string SdkPath);
+
+internal static class AppleClangToolchainLocator
+{
+    public static AppleClangToolchain LocateMacOS()
+    {
+        if(!OperatingSystem.IsMacOS())
+        {
+            throw new MakeSystemException("Apple clang toolchain lookup requires a macOS host.");
+        }
+
+        return new AppleClangToolchain(
+            Clang: Xcrun("-sdk", "macosx", "-find", "clang"),
+            ClangCxx: Xcrun("-sdk", "macosx", "-find", "clang++"),
+            Libtool: Xcrun("-sdk", "macosx", "-find", "libtool"),
+            SdkPath: Xcrun("-sdk", "macosx", "--show-sdk-path"));
+    }
+
+    private static string Xcrun(params string[] arguments)
+    {
+        var result = ProcessRunner.RunAsync("xcrun", arguments, Directory.GetCurrentDirectory(), TimeSpan.FromSeconds(30), CancellationToken.None)
+            .GetAwaiter()
+            .GetResult();
+        if(result.ExitCode != 0)
+        {
+            throw new MakeSystemException($"xcrun {string.Join(' ', arguments)} failed:{Environment.NewLine}{result.Output}");
+        }
+
+        var value = result.Output.Trim();
+        if(string.IsNullOrWhiteSpace(value))
+        {
+            throw new MakeSystemException($"xcrun {string.Join(' ', arguments)} returned an empty path.");
+        }
+        return value;
     }
 }

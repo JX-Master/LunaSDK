@@ -23,6 +23,7 @@ internal sealed class MakeSystemCache : IDisposable
     private readonly string _path;
     private readonly FileStream _lockFile;
     private readonly Dictionary<string, MakeSystemCacheRecord> _records;
+    private readonly object _recordsLock = new();
 
     private MakeSystemCache(string path, FileStream lockFile, Dictionary<string, MakeSystemCacheRecord> records)
     {
@@ -51,22 +52,31 @@ internal sealed class MakeSystemCache : IDisposable
 
     public bool TryGet(string nodeId, out MakeSystemCacheRecord record)
     {
-        return _records.TryGetValue(nodeId, out record!);
+        lock(_recordsLock)
+        {
+            return _records.TryGetValue(nodeId, out record!);
+        }
     }
 
     public void Set(string nodeId, MakeSystemCacheRecord record)
     {
-        _records[nodeId] = record;
+        lock(_recordsLock)
+        {
+            _records[nodeId] = record;
+        }
     }
 
     public void PruneTo(IEnumerable<string> nodeIds)
     {
-        var live = nodeIds.ToHashSet(StringComparer.Ordinal);
-        foreach(var nodeId in _records.Keys.ToArray())
+        lock(_recordsLock)
         {
-            if(!live.Contains(nodeId))
+            var live = nodeIds.ToHashSet(StringComparer.Ordinal);
+            foreach(var nodeId in _records.Keys.ToArray())
             {
-                _records.Remove(nodeId);
+                if(!live.Contains(nodeId))
+                {
+                    _records.Remove(nodeId);
+                }
             }
         }
     }
@@ -79,7 +89,13 @@ internal sealed class MakeSystemCache : IDisposable
             Directory.CreateDirectory(directory);
         }
 
-        var file = new MakeSystemCacheFile(Version: 1, Records: _records);
+        Dictionary<string, MakeSystemCacheRecord> records;
+        lock(_recordsLock)
+        {
+            records = new Dictionary<string, MakeSystemCacheRecord>(_records, StringComparer.Ordinal);
+        }
+
+        var file = new MakeSystemCacheFile(Version: 1, Records: records);
         var tempPath = _path + ".tmp";
         File.WriteAllText(tempPath, JsonSerializer.Serialize(file, JsonOptions));
         File.Move(tempPath, _path, overwrite: true);

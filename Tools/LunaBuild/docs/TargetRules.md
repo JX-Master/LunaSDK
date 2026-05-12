@@ -161,7 +161,7 @@ SupportedPlatforms(BuildPlatform.Windows, BuildPlatform.MacOS, BuildPlatform.Lin
 `inspect` and graph generation filter unsupported targets before dependency
 resolution.
 
-## Includes, Defines, Packages
+## Includes, Defines, Packages, Frameworks
 
 ```csharp
 IncludeDirectories("Include", "ThirdParty/Headers");
@@ -182,10 +182,14 @@ Undefines("_DEBUG");
 MsvcRuntimeLibrary("MD");
 LinkLibraryFiles("ThirdParty/lib/example.lib");
 SystemLibraries("advapi32.lib", "user32.lib");
+Frameworks("AppKit", "Metal");
 ```
 
 Use this for toolchain-style targets only. Luna SDK modules should prefer
 normal target dependencies and package declarations.
+
+Use `Frameworks(...)` for Apple platform frameworks that must be passed to the
+linker as `-framework <name>`.
 
 ## Dependencies
 

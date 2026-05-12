@@ -49,9 +49,21 @@ public sealed record BuildOptions(
         return new BuildOptions(
             Mode: BuildMode.Debug,
             Platform: platform,
-            Architecture: "x64",
+            Architecture: HostArchitecture(),
             Shared: true,
             BuildTests: true,
             RhiApi: rhiApi);
+    }
+
+    private static string HostArchitecture()
+    {
+        return System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture switch
+        {
+            System.Runtime.InteropServices.Architecture.Arm64 => "arm64",
+            System.Runtime.InteropServices.Architecture.X64 => "x64",
+            System.Runtime.InteropServices.Architecture.X86 => "x86",
+            System.Runtime.InteropServices.Architecture.Arm => "arm",
+            _ => "x64",
+        };
     }
 }

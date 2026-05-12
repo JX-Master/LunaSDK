@@ -24,6 +24,39 @@ public sealed class CppTargetGraphGenerator
             Targets: new[] { BuildGraphIds.Target(target.Name) });
     }
 
+    public BuildGraph GenerateAll(
+        BuildWorkspace workspace,
+        BuildOptions options,
+        IReadOnlyList<BuildTargetDefinition> targets)
+    {
+        var targetMap = targets.ToDictionary(target => target.Name, StringComparer.OrdinalIgnoreCase);
+        var builder = new CppTargetGraphBuilder(workspace, options, targetMap);
+        foreach(var target in targets.OrderBy(target => target.Name, StringComparer.OrdinalIgnoreCase))
+        {
+            builder.AddTarget(target.Name);
+        }
+
+        var targetIds = targets
+            .Select(target => BuildGraphIds.Target(target.Name))
+            .Order(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        builder.AddNode(new BuildGraphNode(
+            Id: BuildGraphIds.AllTargets,
+            Kind: BuildGraphNodeKind.Phony,
+            Path: null,
+            Command: null,
+            Dependencies: targetIds,
+            OrderOnlyDependencies: Array.Empty<string>(),
+            Outputs: Array.Empty<string>(),
+            Depfiles: Array.Empty<string>()));
+
+        return new BuildGraph(
+            Version: 1,
+            Options: options,
+            Nodes: builder.Nodes,
+            Targets: new[] { BuildGraphIds.AllTargets });
+    }
+
     private sealed class CppTargetGraphBuilder
     {
         private readonly BuildWorkspace _workspace;
@@ -393,7 +426,7 @@ public sealed class CppTargetGraphGenerator
             return shaderHeaderIds;
         }
 
-        private void AddNode(BuildGraphNode node)
+        public void AddNode(BuildGraphNode node)
         {
             if(!_nodesById.TryAdd(node.Id, node))
             {
@@ -438,7 +471,9 @@ public sealed class CppTargetGraphGenerator
         var relativeSource = workspace.ToRepositoryRelativePath(sourceFile)
             .Replace('/', '_')
             .Replace(':', '_');
-        var extension = IsResourceSource(sourceFile) ? ".res" : ".obj";
+        var extension = IsResourceSource(sourceFile)
+            ? ".res"
+            : options.Platform == BuildPlatform.Windows ? ".obj" : ".o";
         return Path.Combine(GetTargetObjectDirectory(workspace, options, target), $"{relativeSource}{extension}");
     }
 
@@ -690,7 +725,8 @@ public sealed class CppTargetGraphGenerator
             $"platform={options.Platform}",
             $"arch={options.Architecture}")
             + string.Concat(inputIds.OrderBy(id => id, StringComparer.OrdinalIgnoreCase).Select(id => $"\ninput={id}"))
-            + string.Concat(target.SystemLibraries.OrderBy(id => id, StringComparer.OrdinalIgnoreCase).Select(library => $"\nlibrary={library}"));
+            + string.Concat(target.SystemLibraries.OrderBy(id => id, StringComparer.OrdinalIgnoreCase).Select(library => $"\nlibrary={library}"))
+            + string.Concat(target.Frameworks.OrderBy(id => id, StringComparer.OrdinalIgnoreCase).Select(framework => $"\nframework={framework}"));
     }
 
     private static string BuildTargetCommandDescription(
@@ -711,7 +747,8 @@ public sealed class CppTargetGraphGenerator
             $"shared={options.Shared}",
             $"rhi={options.RhiApi}",
             $"runtime_file_count={target.RuntimeFiles.Count}",
-            $"embedded_header_count={target.EmbeddedHeaders.Count}");
+            $"embedded_header_count={target.EmbeddedHeaders.Count}",
+            $"framework_count={target.Frameworks.Count}");
     }
 
     private static string BuildDotNetBuildCommandDescription(
