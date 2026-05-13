@@ -200,6 +200,10 @@ public static class LunaBuildCli
         {
             return BuildGraphOutputFormat.Json;
         }
+        if(extension.Equals(".xcodeproj", StringComparison.OrdinalIgnoreCase))
+        {
+            return BuildGraphOutputFormat.Xcode;
+        }
         return BuildGraphOutputFormat.Rules;
     }
 
@@ -220,6 +224,7 @@ public static class LunaBuildCli
             BuildGraphOutputFormat.CompileCommands => Path.Combine(workspace.BuildDirectory, "compile_commands.json"),
             BuildGraphOutputFormat.Vs2022 => Path.Combine(workspace.BuildDirectory, "VS2022"),
             BuildGraphOutputFormat.Vscode => Path.Combine(workspace.RootDirectory, ".vscode"),
+            BuildGraphOutputFormat.Xcode => Path.Combine(workspace.BuildDirectory, "Xcode"),
             _ => throw new ArgumentOutOfRangeException(nameof(format), format, null),
         };
     }
@@ -257,6 +262,9 @@ public static class LunaBuildCli
             case BuildGraphOutputFormat.Vscode:
                 VSCodeWorkspaceWriter.Write(workspace, buildOptions, graph, targets, outputPath);
                 break;
+            case BuildGraphOutputFormat.Xcode:
+                XcodeProjectWriter.Write(workspace, buildOptions, graph, targets, outputPath);
+                break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(format), format, null);
         }
@@ -273,7 +281,7 @@ public static class LunaBuildCli
 
     private static bool IsIdeOutputFormat(BuildGraphOutputFormat format)
     {
-        return format is BuildGraphOutputFormat.CompileCommands or BuildGraphOutputFormat.Vs2022 or BuildGraphOutputFormat.Vscode;
+        return format is BuildGraphOutputFormat.CompileCommands or BuildGraphOutputFormat.Vs2022 or BuildGraphOutputFormat.Vscode or BuildGraphOutputFormat.Xcode;
     }
 
     private static string FormatName(BuildGraphOutputFormat format)
@@ -283,6 +291,7 @@ public static class LunaBuildCli
             BuildGraphOutputFormat.CompileCommands => "compile_commands",
             BuildGraphOutputFormat.Vs2022 => "vs2022 project",
             BuildGraphOutputFormat.Vscode => "vscode workspace files",
+            BuildGraphOutputFormat.Xcode => "xcode project",
             _ => $"build graph ({format.ToString().ToLowerInvariant()})",
         };
     }
@@ -294,7 +303,7 @@ public static class LunaBuildCli
         Console.WriteLine("Options:");
         Console.WriteLine("  --root <path>       LunaSDK repository root. Defaults to auto-discovery.");
         Console.WriteLine("  --output <path>     Graph output path for generate, or optional debug dump for build.");
-        Console.WriteLine("  --format <name>     rules, json, compile_commands, vs2022, or vscode.");
+        Console.WriteLine("  --format <name>     rules, json, compile_commands, vs2022, vscode, or xcode.");
         Console.WriteLine("  --target <name>     Generate/build one pure C++ target graph.");
         Console.WriteLine("  --all               Generate/build all discovered targets as a pure C++ graph.");
         Console.WriteLine("  --force             Force build actions to run even when up to date.");
@@ -454,6 +463,8 @@ internal sealed class CommandLineOptions
             "compilecommands" => BuildGraphOutputFormat.CompileCommands,
             "vs2022" => BuildGraphOutputFormat.Vs2022,
             "vscode" => BuildGraphOutputFormat.Vscode,
+            "xcode" => BuildGraphOutputFormat.Xcode,
+            "xcodeproj" => BuildGraphOutputFormat.Xcode,
             _ => throw new ArgumentException($"--format has invalid value: {value}"),
         };
     }
@@ -503,4 +514,5 @@ internal enum BuildGraphOutputFormat
     CompileCommands,
     Vs2022,
     Vscode,
+    Xcode,
 }

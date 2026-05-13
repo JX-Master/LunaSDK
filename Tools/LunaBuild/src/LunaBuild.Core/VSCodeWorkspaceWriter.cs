@@ -1,7 +1,6 @@
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using LunaBuild.Core.MakeSystem;
 
 namespace LunaBuild.Core;
 
@@ -67,7 +66,7 @@ public static class VSCodeWorkspaceWriter
         var root = ReadObject(path);
         root["version"] = "0.2.0";
         var configurations = PreserveArray(root["configurations"], "name");
-        var executableOutputs = FindExecutableOutputs(workspace, graph)
+        var executableOutputs = IdeProjectModel.FindExecutableOutputs(workspace, graph)
             .ToDictionary(pair => pair.TargetName, pair => pair.OutputPath, StringComparer.OrdinalIgnoreCase);
 
         foreach(var target in targets
@@ -138,56 +137,15 @@ public static class VSCodeWorkspaceWriter
         bool all,
         bool force)
     {
-        var args = new List<string>
-        {
-            "run",
-            "--no-restore",
-            "--project",
-            "${workspaceFolder}/Tools/LunaBuild/src/LunaBuild.Cli/LunaBuild.Cli.csproj",
-            "--",
+        return IdeProjectModel.LunaBuildArguments(
+            workspace,
+            options,
             command,
-            "--root",
-            "${workspaceFolder}",
-        };
-        if(all)
-        {
-            args.Add("--all");
-        }
-        else if(targetName is not null)
-        {
-            args.Add("--target");
-            args.Add(targetName);
-        }
-        args.AddRange(new[]
-        {
-            "--mode", options.Mode.ToString(),
-            "--platform", options.Platform.ToString(),
-            "--arch", options.Architecture,
-            "--rhi", options.RhiApi.ToString(),
-            options.Shared ? "--shared" : "--static",
-        });
-        if(!options.BuildTests)
-        {
-            args.Add("--no-tests");
-        }
-        if(force)
-        {
-            args.Add("--force");
-        }
-        return args;
-    }
-
-    private static IEnumerable<(string TargetName, string OutputPath)> FindExecutableOutputs(BuildWorkspace workspace, BuildGraph graph)
-    {
-        foreach(var node in graph.Nodes)
-        {
-            if(node.Command is null || BuildActionKind.Extract(node.Command) != "cpp.link.executable" || node.Path is null)
-            {
-                continue;
-            }
-            var payload = ActionPayload.Parse(node.Command);
-            yield return (payload.Required("target"), workspace.ResolveRepositoryPath(node.Path));
-        }
+            targetName,
+            all,
+            force,
+            "${workspaceFolder}/Tools/LunaBuild/src/LunaBuild.Cli/LunaBuild.Cli.csproj",
+            "${workspaceFolder}");
     }
 
     private static JsonArray PreserveArray(JsonNode? node, string key)

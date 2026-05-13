@@ -540,7 +540,10 @@ internal static class AppleClangToolchainLocator
             throw new MakeSystemException($"xcrun {string.Join(' ', arguments)} failed:{Environment.NewLine}{result.Output}");
         }
 
-        var value = result.Output.Trim();
+        var value = result.Output
+            .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+            .Select(line => line.Trim())
+            .LastOrDefault(line => Path.IsPathFullyQualified(line));
         if(string.IsNullOrWhiteSpace(value))
         {
             throw new MakeSystemException($"xcrun {string.Join(' ', arguments)} returned an empty path.");

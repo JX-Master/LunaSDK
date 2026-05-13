@@ -1,7 +1,5 @@
-using System.Security.Cryptography;
 using System.Text;
 using System.Xml.Linq;
-using LunaBuild.Core.MakeSystem;
 
 namespace LunaBuild.Core;
 
@@ -24,8 +22,8 @@ public static class VisualStudioSolutionWriter
         var projectInfos = orderedTargets
             .Select(target => new ProjectInfo(
                 target,
-                StableGuid("LunaBuild.VS2022.Project:" + target.Name),
-                SanitizeFileName(target.Name) + ".vcxproj"))
+                IdeProjectModel.StableGuid("LunaBuild.VS2022.Project:" + target.Name),
+                IdeProjectModel.SanitizeFileName(target.Name) + ".vcxproj"))
             .ToArray();
         var projectGuidByName = projectInfos.ToDictionary(info => info.Target.Name, info => info.Guid, StringComparer.OrdinalIgnoreCase);
 
@@ -62,10 +60,10 @@ public static class VisualStudioSolutionWriter
     {
         var configuration = options.Mode.ToString();
         var platform = VisualStudioPlatform(options.Architecture);
-        var buildCommand = LunaBuildCommand(workspace, "build", target.Name, options, force: false);
-        var rebuildCommand = LunaBuildCommand(workspace, "build", target.Name, options, force: true);
-        var cleanCommand = LunaBuildCommand(workspace, "clean", target.Name, options, force: false);
-        var output = FindPrimaryOutput(workspace, graph, target.Name) ?? Path.Combine(workspace.BuildDirectory, "VS2022", target.Name + ".stamp");
+        var buildCommand = IdeProjectModel.LunaBuildCommand(workspace, "build", target.Name, options, all: false, force: false);
+        var rebuildCommand = IdeProjectModel.LunaBuildCommand(workspace, "build", target.Name, options, all: false, force: true);
+        var cleanCommand = IdeProjectModel.LunaBuildCommand(workspace, "clean", target.Name, options, all: false, force: false);
+        var output = IdeProjectModel.FindPrimaryOutput(workspace, graph, target.Name) ?? Path.Combine(workspace.BuildDirectory, "VS2022", target.Name + ".stamp");
         var includeSearchPath = string.Join(';', target.IncludeDirectories
             .Concat(new[] { workspace.ResolveRepositoryPath("Modules") })
             .Distinct(StringComparer.OrdinalIgnoreCase)
@@ -115,7 +113,7 @@ public static class VisualStudioSolutionWriter
 
     private static void WriteFilters(BuildWorkspace workspace, BuildGraph graph, BuildTargetDefinition target, string filtersPath)
     {
-        var files = EnumerateProjectFiles(workspace, graph, target).ToArray();
+        var files = IdeProjectModel.EnumerateProjectFiles(workspace, graph, target).ToArray();
         var filters = files
             .Select(file => Path.GetDirectoryName(workspace.ToRepositoryRelativePath(file.Path))?.Replace('/', '\\'))
             .Where(filter => !string.IsNullOrWhiteSpace(filter))
@@ -129,7 +127,7 @@ public static class VisualStudioSolutionWriter
                 new XElement(Msbuild + "ItemGroup",
                     filters.Select(filter => new XElement(Msbuild + "Filter",
                         new XAttribute("Include", filter!),
-                        new XElement(Msbuild + "UniqueIdentifier", StableGuid("LunaBuild.VS2022.Filter:" + filter))))),
+                        new XElement(Msbuild + "UniqueIdentifier", IdeProjectModel.StableGuid("LunaBuild.VS2022.Filter:" + filter))))),
                 CreateFilterFileItemGroups(workspace, files)));
 
         document.Save(filtersPath);
@@ -186,7 +184,7 @@ public static class VisualStudioSolutionWriter
 
     private static object[] CreateFileItemGroups(BuildWorkspace workspace, BuildGraph graph, BuildTargetDefinition target)
     {
-        return EnumerateProjectFiles(workspace, graph, target)
+        return IdeProjectModel.EnumerateProjectFiles(workspace, graph, target)
             .GroupBy(file => file.ItemType)
             .OrderBy(group => group.Key, StringComparer.Ordinal)
             .Select(group => new XElement(Msbuild + "ItemGroup",
@@ -196,7 +194,7 @@ public static class VisualStudioSolutionWriter
             .ToArray();
     }
 
-    private static object[] CreateFilterFileItemGroups(BuildWorkspace workspace, IReadOnlyList<ProjectFile> files)
+    private static object[] CreateFilterFileItemGroups(BuildWorkspace workspace, IReadOnlyList<IdeProjectFile> files)
     {
         return files
             .GroupBy(file => file.ItemType)
@@ -216,171 +214,6 @@ public static class VisualStudioSolutionWriter
             .ToArray();
     }
 
-    private static IEnumerable<ProjectFile> EnumerateProjectFiles(BuildWorkspace workspace, BuildGraph graph, BuildTargetDefinition target)
-    {
-        var files = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
-        Add(files, target.ScriptPath);
-        Add(files, target.SourceFiles);
-        Add(files, target.HeaderFiles);
-        Add(files, target.RuntimeFiles);
-        Add(files, target.EmbeddedHeaders.Select(header => header.SourceFile));
-        Add(files, target.Shaders.Select(shader => shader.SourceFile));
-        if(target.DotNetProjectFile is not null)
-        {
-            Add(files, target.DotNetProjectFile);
-        }
-        foreach(var generatedHeader in FindGeneratedHeaders(workspace, graph, target.Name))
-        {
-            Add(files, generatedHeader);
-        }
-
-        foreach(var file in files)
-        {
-            yield return new ProjectFile(file, ItemType(file));
-        }
-    }
-
-    private static IEnumerable<string> FindGeneratedHeaders(BuildWorkspace workspace, BuildGraph graph, string targetName)
-    {
-        var nodesById = graph.Nodes.ToDictionary(node => node.Id, StringComparer.Ordinal);
-        foreach(var node in graph.Nodes)
-        {
-            if(string.IsNullOrWhiteSpace(node.Command) || !ActionBelongsToTarget(node.Command, targetName))
-            {
-                continue;
-            }
-
-            foreach(var candidate in new[] { node.Id }.Concat(node.Outputs))
-            {
-                if(!nodesById.TryGetValue(candidate, out var fileNode) || fileNode.Kind != BuildGraphNodeKind.File || fileNode.Path is null)
-                {
-                    continue;
-                }
-                var path = workspace.ResolveRepositoryPath(fileNode.Path);
-                if(IsHeader(path))
-                {
-                    yield return path;
-                }
-            }
-        }
-    }
-
-    private static string? FindPrimaryOutput(BuildWorkspace workspace, BuildGraph graph, string targetName)
-    {
-        foreach(var node in graph.Nodes)
-        {
-            if(node.Command is null)
-            {
-                continue;
-            }
-            var kind = BuildActionKind.Extract(node.Command);
-            if(kind is not ("cpp.link.executable" or "cpp.link.shared" or "cpp.link.static" or "dotnet.build"))
-            {
-                continue;
-            }
-            if(!ActionBelongsToTarget(node.Command, targetName))
-            {
-                continue;
-            }
-            if(node.Path is not null)
-            {
-                return workspace.ResolveRepositoryPath(node.Path);
-            }
-        }
-        return null;
-    }
-
-    private static bool ActionBelongsToTarget(string command, string targetName)
-    {
-        var payload = ActionPayload.Parse(command);
-        var name = payload.Contains("target") ? payload.Required("target") : payload.Contains("name") ? payload.Required("name") : null;
-        return string.Equals(name, targetName, StringComparison.OrdinalIgnoreCase);
-    }
-
-    private static string LunaBuildCommand(BuildWorkspace workspace, string command, string targetName, BuildOptions options, bool force)
-    {
-        var args = new List<string>
-        {
-            "run",
-            "--no-restore",
-            "--project",
-            Quote(Path.Combine(workspace.RootDirectory, "Tools", "LunaBuild", "src", "LunaBuild.Cli", "LunaBuild.Cli.csproj")),
-            "--",
-            command,
-            "--root",
-            Quote(workspace.RootDirectory),
-            "--target",
-            targetName,
-            "--mode",
-            options.Mode.ToString(),
-            "--platform",
-            options.Platform.ToString(),
-            "--arch",
-            options.Architecture,
-            "--rhi",
-            options.RhiApi.ToString(),
-        };
-        args.Add(options.Shared ? "--shared" : "--static");
-        if(!options.BuildTests)
-        {
-            args.Add("--no-tests");
-        }
-        if(force)
-        {
-            args.Add("--force");
-        }
-        return "dotnet " + string.Join(' ', args);
-    }
-
-    private static void Add(SortedSet<string> files, IEnumerable<string> values)
-    {
-        foreach(var value in values)
-        {
-            Add(files, value);
-        }
-    }
-
-    private static void Add(SortedSet<string> files, string? value)
-    {
-        if(!string.IsNullOrWhiteSpace(value))
-        {
-            files.Add(Path.GetFullPath(value));
-        }
-    }
-
-    private static string ItemType(string path)
-    {
-        var extension = Path.GetExtension(path);
-        if(IsHeader(path))
-        {
-            return "ClInclude";
-        }
-        if(extension.Equals(".c", StringComparison.OrdinalIgnoreCase) ||
-            extension.Equals(".cpp", StringComparison.OrdinalIgnoreCase) ||
-            extension.Equals(".cc", StringComparison.OrdinalIgnoreCase) ||
-            extension.Equals(".cxx", StringComparison.OrdinalIgnoreCase) ||
-            extension.Equals(".m", StringComparison.OrdinalIgnoreCase) ||
-            extension.Equals(".mm", StringComparison.OrdinalIgnoreCase))
-        {
-            return "ClCompile";
-        }
-        if(extension.Equals(".rc", StringComparison.OrdinalIgnoreCase))
-        {
-            return "ResourceCompile";
-        }
-        return "None";
-    }
-
-    private static bool IsHeader(string path)
-    {
-        var extension = Path.GetExtension(path);
-        return extension.Equals(".h", StringComparison.OrdinalIgnoreCase) ||
-            extension.Equals(".hh", StringComparison.OrdinalIgnoreCase) ||
-            extension.Equals(".hpp", StringComparison.OrdinalIgnoreCase) ||
-            extension.Equals(".hxx", StringComparison.OrdinalIgnoreCase) ||
-            extension.Equals(".inl", StringComparison.OrdinalIgnoreCase);
-    }
-
     private static string VisualStudioPlatform(string architecture)
     {
         return architecture.ToLowerInvariant() switch
@@ -392,26 +225,5 @@ public static class VisualStudioSolutionWriter
         };
     }
 
-    private static string StableGuid(string value)
-    {
-        var hash = MD5.HashData(Encoding.UTF8.GetBytes(value));
-        return new Guid(hash).ToString("B").ToUpperInvariant();
-    }
-
-    private static string SanitizeFileName(string value)
-    {
-        var invalid = Path.GetInvalidFileNameChars().ToHashSet();
-        return string.Concat(value.Select(ch => invalid.Contains(ch) ? '_' : ch));
-    }
-
-    private static string Quote(string value)
-    {
-        return value.Contains(' ') || value.Contains('\t')
-            ? $"\"{value}\""
-            : value;
-    }
-
     private sealed record ProjectInfo(BuildTargetDefinition Target, string Guid, string FileName);
-
-    private sealed record ProjectFile(string Path, string ItemType);
 }
