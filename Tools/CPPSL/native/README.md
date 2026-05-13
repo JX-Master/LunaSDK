@@ -31,29 +31,21 @@ If macOS rejects the downloaded SDK dylibs, remove the quarantine attribute:
 xattr -dr com.apple.quarantine SDKs/llvm-21.1.1/macosx/arm64
 ```
 
-Build locally on macOS arm64 with xmake:
-
-```sh
-xmake f --plat=macosx --arch=arm64 --mode=debug -vD
-xmake build -vD cppsl-native-extractor
-```
-
-Build locally on Windows x64 with xmake:
-
-```sh
-xmake f --plat=windows --arch=x64 --mode=debug -vD
-xmake build -vD cppsl-native-extractor
-```
-
-The native extractor is included by the LunaSDK root xmake project as a named
-tool target. It is marked `set_default(false)`, so normal SDK builds do not
-build it unless `cppsl-native-extractor` is requested explicitly.
-
-The fallback direct build script is:
+Build locally on macOS arm64 with the direct native build script:
 
 ```sh
 sh Tools/CPPSL/native/build-macos-arm64.sh
 ```
+
+Build locally on Windows x64 with LunaBuild:
+
+```sh
+dotnet run --project Tools/LunaBuild/src/LunaBuild.Cli -- \
+  build --target cppsl-native-extractor --platform Windows --arch x64
+```
+
+Normal SDK builds consume the prebuilt extractor from `SDKs/CPPSL`; the source
+target is only for CPPSL tool development.
 
 Run through the C# CLI:
 

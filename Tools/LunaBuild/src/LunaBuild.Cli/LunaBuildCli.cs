@@ -23,6 +23,7 @@ public static class LunaBuildCli
                 "generate" => Generate(options),
                 "build" => Build(options),
                 "clean" => Clean(options),
+                "install" => Install(options),
                 _ => UnknownCommand(command),
             };
         }
@@ -137,6 +138,24 @@ public static class LunaBuildCli
         var makeSystem = new MakeSystemBackend(Array.Empty<IMakeActionExecutor>());
         var result = makeSystem.Clean(workspace, graph);
         Console.WriteLine($"Clean finished. Nodes: {result.NodesVisited}, Files: {result.FilesDeleted}, Cache records: {result.CacheRecordsRemoved}");
+        return 0;
+    }
+
+    private static int Install(CommandLineOptions options)
+    {
+        if(string.IsNullOrWhiteSpace(options.OutputPath))
+        {
+            throw new ArgumentException("install requires --output <dir>.");
+        }
+
+        var workspace = BuildWorkspace.Discover(options.RootDirectory);
+        var buildOptions = options.ToBuildOptions();
+        var targets = new TargetDiscovery().DiscoverTargets(workspace, buildOptions);
+        var effectiveAllTargets = options.AllTargets || string.IsNullOrWhiteSpace(options.TargetName);
+        var graph = GenerateGraph(workspace, buildOptions, targets, options.TargetName, effectiveAllTargets);
+        var outputTargets = SelectTargetsForOutput(targets, options.TargetName, effectiveAllTargets);
+        var result = InstallWriter.Install(workspace, graph, outputTargets, options.OutputPath);
+        Console.WriteLine($"Install finished. Files: {result.FilesCopied}, Output: {Path.GetFullPath(options.OutputPath)}");
         return 0;
     }
 
@@ -298,7 +317,7 @@ public static class LunaBuildCli
 
     private static void PrintUsage()
     {
-        Console.WriteLine("Usage: lunabuild <inspect|generate|build|clean> [options]");
+        Console.WriteLine("Usage: lunabuild <inspect|generate|build|clean|install> [options]");
         Console.WriteLine();
         Console.WriteLine("Options:");
         Console.WriteLine("  --root <path>       LunaSDK repository root. Defaults to auto-discovery.");

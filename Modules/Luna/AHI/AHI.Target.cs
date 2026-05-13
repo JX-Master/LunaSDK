@@ -10,8 +10,7 @@ public sealed class AHITargetRules : TargetRules
     {
         Headers("*.hpp", "Source/**.hpp");
         Sources("**.cpp");
-        Packages("miniaudio");
-        DependsOn("Runtime");
+        DependsOn("Runtime", "miniaudio");
     }
 
     protected override void Configure(BuildWorkspace workspace, BuildOptions options)

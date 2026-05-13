@@ -10,7 +10,6 @@ public sealed class FontTargetRules : TargetRules
     {
         Headers("*.hpp", "Source/**.hpp");
         Sources("Source/**.cpp");
-        Packages("stb");
-        DependsOn("Runtime");
+        DependsOn("Runtime", "stb");
     }
 }

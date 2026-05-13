@@ -105,6 +105,15 @@ public sealed class CppTargetGraphGenerator
                 .OrderBy(output => output.TargetId, StringComparer.OrdinalIgnoreCase)
                 .ToArray();
 
+            if(target.Kind == BuildTargetKind.External)
+            {
+                var externalOutputs = AddExternalTarget(target, dependencyOutputs);
+                _outputsByTarget[target.Name] = externalOutputs;
+                _visitedTargets.Add(targetName);
+                _visitingTargets.Remove(targetName);
+                return externalOutputs;
+            }
+
             if(target.Kind == BuildTargetKind.DotNetProject)
             {
                 var dotNetOutputs = AddDotNetTarget(target, dependencyOutputs);
@@ -162,7 +171,7 @@ public sealed class CppTargetGraphGenerator
                     Path: _workspace.ToRepositoryRelativePath(objectPath),
                     Command: isResource
                         ? BuildResourceCommandDescription(_workspace, _options, target, sourceFile, objectPath)
-                        : BuildCompileCommandDescription(_workspace, _options, target, sourceFile, objectPath, depfilePath),
+                        : BuildCompileCommandDescription(_workspace, _options, target, dependencyOutputs, sourceFile, objectPath, depfilePath),
                     Dependencies: new[] { sourceId }.Concat(generatedHeaderIds).ToArray(),
                     OrderOnlyDependencies: Array.Empty<string>(),
                     Outputs: Array.Empty<string>(),
@@ -173,37 +182,8 @@ public sealed class CppTargetGraphGenerator
 
             var binaryPath = GetTargetBinaryPath(_workspace, _options, target);
             var binaryId = BuildGraphIds.File(_workspace.ToRepositoryRelativePath(binaryPath));
-            var packageLinkInputIds = XmakePackageResolver.ResolveLinkLibraries(target.PackageNames)
-                .Select(path =>
-                {
-                    var id = BuildGraphIds.File(_workspace.ToRepositoryRelativePath(path));
-                    AddNode(new BuildGraphNode(
-                        Id: id,
-                        Kind: BuildGraphNodeKind.File,
-                        Path: _workspace.ToRepositoryRelativePath(path),
-                        Command: null,
-                        Dependencies: Array.Empty<string>(),
-                        OrderOnlyDependencies: Array.Empty<string>(),
-                        Outputs: Array.Empty<string>(),
-                        Depfiles: Array.Empty<string>()));
-                    return id;
-                })
-                .ToArray();
             var explicitLinkInputIds = target.LinkLibraryFiles
-                .Select(path =>
-                {
-                    var id = BuildGraphIds.File(_workspace.ToRepositoryRelativePath(path));
-                    AddNode(new BuildGraphNode(
-                        Id: id,
-                        Kind: BuildGraphNodeKind.File,
-                        Path: _workspace.ToRepositoryRelativePath(path),
-                        Command: null,
-                        Dependencies: Array.Empty<string>(),
-                        OrderOnlyDependencies: Array.Empty<string>(),
-                        Outputs: Array.Empty<string>(),
-                        Depfiles: Array.Empty<string>()));
-                    return id;
-                })
+                .Select(path => AddFileReferenceNode(path))
                 .ToArray();
             var sideOutputIds = GetLinkSideOutputs(_workspace, _options, binaryPath)
                 .Select(path =>
@@ -227,18 +207,23 @@ public sealed class CppTargetGraphGenerator
                 .SelectMany(output => output.LinkInputIds)
                 .Distinct(StringComparer.Ordinal)
                 .ToArray();
-            var linkDependencyIds = objectIds.Concat(dependencyTargetIds).Concat(dependencyLinkInputIds).Concat(packageLinkInputIds).Concat(explicitLinkInputIds).ToArray();
+            var dependencyFrameworks = dependencyOutputs
+                .SelectMany(output => output.Frameworks)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Order(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+            var linkDependencyIds = objectIds.Concat(dependencyTargetIds).Concat(dependencyLinkInputIds).Concat(explicitLinkInputIds).ToArray();
             AddNode(new BuildGraphNode(
                 Id: binaryId,
                 Kind: BuildGraphNodeKind.File,
                 Path: _workspace.ToRepositoryRelativePath(binaryPath),
-                Command: BuildLinkCommandDescription(_workspace, _options, target, binaryPath, objectIds.Concat(dependencyLinkInputIds).Concat(packageLinkInputIds).Concat(explicitLinkInputIds).ToArray()),
+                Command: BuildLinkCommandDescription(_workspace, _options, target, dependencyFrameworks, binaryPath, objectIds.Concat(dependencyLinkInputIds).Concat(explicitLinkInputIds).ToArray()),
                 Dependencies: linkDependencyIds,
                 OrderOnlyDependencies: Array.Empty<string>(),
                 Outputs: sideOutputIds,
                 Depfiles: Array.Empty<string>()));
 
-            var runtimeFileIds = AddRuntimeFileNodes(target, binaryPath);
+            var runtimeFileIds = AddRuntimeFileNodes(target, dependencyOutputs.SelectMany(output => output.RuntimeFiles), binaryPath);
             var linkInputId = target.Kind != BuildTargetKind.Executable && _options.Shared && _options.Platform == BuildPlatform.Windows
                 ? BuildGraphIds.File(_workspace.ToRepositoryRelativePath(Path.ChangeExtension(binaryPath, ".lib")))
                 : binaryId;
@@ -259,6 +244,26 @@ public sealed class CppTargetGraphGenerator
                 new[] { linkInputId }
                     .Concat(dependencyLinkInputIds)
                     .Distinct(StringComparer.Ordinal)
+                    .ToArray(),
+                target.PublicIncludeDirectories
+                    .Concat(dependencyOutputs.SelectMany(output => output.PublicIncludeDirectories))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToArray(),
+                target.PublicDefines
+                    .Concat(dependencyOutputs.SelectMany(output => output.PublicDefines))
+                    .Distinct(StringComparer.Ordinal)
+                    .ToArray(),
+                target.PublicUndefines
+                    .Concat(dependencyOutputs.SelectMany(output => output.PublicUndefines))
+                    .Distinct(StringComparer.Ordinal)
+                    .ToArray(),
+                target.Frameworks
+                    .Concat(dependencyFrameworks)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToArray(),
+                target.RuntimeFiles
+                    .Concat(dependencyOutputs.SelectMany(output => output.RuntimeFiles))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
                     .ToArray());
             _outputsByTarget[target.Name] = outputs;
             _visitedTargets.Add(targetName);
@@ -316,7 +321,89 @@ public sealed class CppTargetGraphGenerator
                 Outputs: Array.Empty<string>(),
                 Depfiles: Array.Empty<string>()));
 
-            return new TargetBuildOutputs(targetId, outputId, Array.Empty<string>());
+            return new TargetBuildOutputs(
+                targetId,
+                outputId,
+                Array.Empty<string>(),
+                target.PublicIncludeDirectories
+                    .Concat(dependencyOutputs.SelectMany(output => output.PublicIncludeDirectories))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToArray(),
+                target.PublicDefines
+                    .Concat(dependencyOutputs.SelectMany(output => output.PublicDefines))
+                    .Distinct(StringComparer.Ordinal)
+                    .ToArray(),
+                target.PublicUndefines
+                    .Concat(dependencyOutputs.SelectMany(output => output.PublicUndefines))
+                    .Distinct(StringComparer.Ordinal)
+                    .ToArray(),
+                target.Frameworks
+                    .Concat(dependencyOutputs.SelectMany(output => output.Frameworks))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToArray(),
+                target.RuntimeFiles
+                    .Concat(dependencyOutputs.SelectMany(output => output.RuntimeFiles))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToArray());
+        }
+
+        private TargetBuildOutputs AddExternalTarget(BuildTargetDefinition target, IReadOnlyList<TargetBuildOutputs> dependencyOutputs)
+        {
+            foreach(var includeDirectory in target.PublicIncludeDirectories)
+            {
+                if(!Directory.Exists(includeDirectory))
+                {
+                    throw new DirectoryNotFoundException($"External target `{target.Name}` references missing include directory: {includeDirectory}");
+                }
+            }
+
+            var requiredIds = target.RequiredFiles
+                .Concat(target.LinkLibraryFiles)
+                .Concat(target.RuntimeFiles)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Order(StringComparer.OrdinalIgnoreCase)
+                .Select(path => AddFileReferenceNode(path, target.Name))
+                .ToArray();
+            var dependencyTargetIds = dependencyOutputs.Select(output => output.TargetId).ToArray();
+            var targetId = BuildGraphIds.Target(target.Name);
+            AddNode(new BuildGraphNode(
+                Id: targetId,
+                Kind: BuildGraphNodeKind.Virtual,
+                Path: _workspace.ToRepositoryRelativePath(target.Directory),
+                Command: BuildExternalTargetCommandDescription(_workspace, _options, target),
+                Dependencies: requiredIds.Concat(dependencyTargetIds).ToArray(),
+                OrderOnlyDependencies: Array.Empty<string>(),
+                Outputs: Array.Empty<string>(),
+                Depfiles: Array.Empty<string>()));
+
+            return new TargetBuildOutputs(
+                targetId,
+                string.Empty,
+                target.LinkLibraryFiles
+                    .Select(path => AddFileReferenceNode(path, target.Name))
+                    .Concat(dependencyOutputs.SelectMany(output => output.LinkInputIds))
+                    .Distinct(StringComparer.Ordinal)
+                    .ToArray(),
+                target.PublicIncludeDirectories
+                    .Concat(dependencyOutputs.SelectMany(output => output.PublicIncludeDirectories))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToArray(),
+                target.PublicDefines
+                    .Concat(dependencyOutputs.SelectMany(output => output.PublicDefines))
+                    .Distinct(StringComparer.Ordinal)
+                    .ToArray(),
+                target.PublicUndefines
+                    .Concat(dependencyOutputs.SelectMany(output => output.PublicUndefines))
+                    .Distinct(StringComparer.Ordinal)
+                    .ToArray(),
+                target.Frameworks
+                    .Concat(dependencyOutputs.SelectMany(output => output.Frameworks))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToArray(),
+                target.RuntimeFiles
+                    .Concat(dependencyOutputs.SelectMany(output => output.RuntimeFiles))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToArray());
         }
 
         private IReadOnlyList<string> AddEmbeddedHeaderNodes(BuildTargetDefinition target)
@@ -351,16 +438,21 @@ public sealed class CppTargetGraphGenerator
             return headerIds;
         }
 
-        private IReadOnlyList<string> AddRuntimeFileNodes(BuildTargetDefinition target, string binaryPath)
+        private IReadOnlyList<string> AddRuntimeFileNodes(BuildTargetDefinition target, IEnumerable<string> dependencyRuntimeFiles, string binaryPath)
         {
             var outputIds = new List<string>();
-            if(target.RuntimeFiles.Count == 0)
+            var runtimeFiles = target.RuntimeFiles
+                .Concat(dependencyRuntimeFiles)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Order(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+            if(runtimeFiles.Length == 0)
             {
                 return outputIds;
             }
 
             var runtimeDirectory = Path.GetDirectoryName(binaryPath)!;
-            foreach(var runtimeFile in target.RuntimeFiles.OrderBy(path => path, StringComparer.OrdinalIgnoreCase))
+            foreach(var runtimeFile in runtimeFiles)
             {
                 var sourceId = BuildGraphIds.File(_workspace.ToRepositoryRelativePath(runtimeFile));
                 AddNode(new BuildGraphNode(
@@ -387,6 +479,26 @@ public sealed class CppTargetGraphGenerator
                 outputIds.Add(outputId);
             }
             return outputIds;
+        }
+
+        private string AddFileReferenceNode(string path, string? externalTargetName = null)
+        {
+            if(externalTargetName is not null && !File.Exists(path))
+            {
+                throw new FileNotFoundException($"External target `{externalTargetName}` references missing file: {path}", path);
+            }
+
+            var id = BuildGraphIds.File(_workspace.ToRepositoryRelativePath(path));
+            AddNode(new BuildGraphNode(
+                Id: id,
+                Kind: BuildGraphNodeKind.File,
+                Path: _workspace.ToRepositoryRelativePath(path),
+                Command: null,
+                Dependencies: Array.Empty<string>(),
+                OrderOnlyDependencies: Array.Empty<string>(),
+                Outputs: Array.Empty<string>(),
+                Depfiles: Array.Empty<string>()));
+            return id;
         }
 
         private IReadOnlyList<string> AddShaderNodes(BuildTargetDefinition target)
@@ -435,7 +547,15 @@ public sealed class CppTargetGraphGenerator
         }
     }
 
-    private sealed record TargetBuildOutputs(string TargetId, string BinaryId, IReadOnlyList<string> LinkInputIds);
+    private sealed record TargetBuildOutputs(
+        string TargetId,
+        string BinaryId,
+        IReadOnlyList<string> LinkInputIds,
+        IReadOnlyList<string> PublicIncludeDirectories,
+        IReadOnlyList<string> PublicDefines,
+        IReadOnlyList<string> PublicUndefines,
+        IReadOnlyList<string> Frameworks,
+        IReadOnlyList<string> RuntimeFiles);
 
     private static bool IsBuildSource(string path)
     {
@@ -569,6 +689,7 @@ public sealed class CppTargetGraphGenerator
         BuildWorkspace workspace,
         BuildOptions options,
         BuildTargetDefinition target,
+        IReadOnlyList<TargetBuildOutputs> dependencyOutputs,
         string sourceFile,
         string objectPath,
         string depfilePath)
@@ -595,7 +716,17 @@ public sealed class CppTargetGraphGenerator
             lines.Add($"runtime={target.MsvcRuntimeLibrary}");
         }
         lines.AddRange(target.Defines.Select(define => $"define={define}"));
+        lines.AddRange(dependencyOutputs
+            .SelectMany(output => output.PublicDefines)
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)
+            .Select(define => $"define={define}"));
         lines.AddRange(target.Undefines.Select(undefine => $"undefine={undefine}"));
+        lines.AddRange(dependencyOutputs
+            .SelectMany(output => output.PublicUndefines)
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)
+            .Select(undefine => $"undefine={undefine}"));
         if(target.Shaders.Count > 0)
         {
             lines.Add($"include={workspace.ToRepositoryRelativePath(GetGeneratedShaderHeaderDirectory(workspace, options, target))}");
@@ -605,9 +736,11 @@ public sealed class CppTargetGraphGenerator
             lines.Add($"include={workspace.ToRepositoryRelativePath(Path.GetDirectoryName(GetEmbeddedHeaderPath(workspace, options, target, target.EmbeddedHeaders[0].HeaderFile))!)}");
         }
         lines.AddRange(target.IncludeDirectories.Select(path => $"include={workspace.ToRepositoryRelativePath(path)}"));
-        lines.AddRange(XmakePackageResolver.ResolveIncludeDirectories(target.PackageNames)
+        lines.AddRange(dependencyOutputs
+            .SelectMany(output => output.PublicIncludeDirectories)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Order(StringComparer.OrdinalIgnoreCase)
             .Select(path => $"include={workspace.ToRepositoryRelativePath(path)}"));
-        lines.AddRange(target.PackageNames.Select(name => $"package={name}"));
         return string.Join('\n', lines);
     }
 
@@ -711,6 +844,7 @@ public sealed class CppTargetGraphGenerator
         BuildWorkspace workspace,
         BuildOptions options,
         BuildTargetDefinition target,
+        IReadOnlyList<string> dependencyFrameworks,
         string binaryPath,
         IReadOnlyList<string> inputIds)
     {
@@ -726,7 +860,11 @@ public sealed class CppTargetGraphGenerator
             $"arch={options.Architecture}")
             + string.Concat(inputIds.OrderBy(id => id, StringComparer.OrdinalIgnoreCase).Select(id => $"\ninput={id}"))
             + string.Concat(target.SystemLibraries.OrderBy(id => id, StringComparer.OrdinalIgnoreCase).Select(library => $"\nlibrary={library}"))
-            + string.Concat(target.Frameworks.OrderBy(id => id, StringComparer.OrdinalIgnoreCase).Select(framework => $"\nframework={framework}"));
+            + string.Concat(target.Frameworks
+                .Concat(dependencyFrameworks)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Order(StringComparer.OrdinalIgnoreCase)
+                .Select(framework => $"\nframework={framework}"));
     }
 
     private static string BuildTargetCommandDescription(
@@ -749,6 +887,26 @@ public sealed class CppTargetGraphGenerator
             $"runtime_file_count={target.RuntimeFiles.Count}",
             $"embedded_header_count={target.EmbeddedHeaders.Count}",
             $"framework_count={target.Frameworks.Count}");
+    }
+
+    private static string BuildExternalTargetCommandDescription(
+        BuildWorkspace workspace,
+        BuildOptions options,
+        BuildTargetDefinition target)
+    {
+        return string.Join('\n',
+            "kind=target.external",
+            $"name={target.Name}",
+            $"rules={workspace.ToRepositoryRelativePath(target.ScriptPath)}",
+            $"directory={workspace.ToRepositoryRelativePath(target.Directory)}",
+            $"include_count={target.PublicIncludeDirectories.Count}",
+            $"library_count={target.LinkLibraryFiles.Count}",
+            $"framework_count={target.Frameworks.Count}",
+            $"runtime_file_count={target.RuntimeFiles.Count}",
+            $"required_file_count={target.RequiredFiles.Count}",
+            $"mode={options.Mode}",
+            $"platform={options.Platform}",
+            $"arch={options.Architecture}");
     }
 
     private static string BuildDotNetBuildCommandDescription(

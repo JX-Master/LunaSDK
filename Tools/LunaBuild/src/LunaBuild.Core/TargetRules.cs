@@ -7,13 +7,16 @@ public abstract class TargetRules
     private readonly List<string> _excludedSourcePatterns = new();
     private readonly List<string> _headerPatterns = new();
     private readonly List<string> _includeDirectories = new();
+    private readonly List<string> _publicIncludeDirectories = new();
     private readonly List<string> _defines = new();
+    private readonly List<string> _publicDefines = new();
     private readonly List<string> _undefines = new();
-    private readonly List<string> _packageNames = new();
+    private readonly List<string> _publicUndefines = new();
     private readonly List<string> _linkLibraryFiles = new();
     private readonly List<string> _systemLibraries = new();
     private readonly List<string> _frameworks = new();
     private readonly List<string> _runtimeFilePatterns = new();
+    private readonly List<string> _requiredFiles = new();
     private readonly List<EmbeddedHeaderRule> _embeddedHeaders = new();
     private readonly List<ShaderRule> _shaders = new();
     private readonly HashSet<BuildPlatform> _supportedPlatforms = new();
@@ -87,9 +90,19 @@ public abstract class TargetRules
         _includeDirectories.AddRange(directories);
     }
 
+    protected void PublicIncludeDirectories(params string[] directories)
+    {
+        _publicIncludeDirectories.AddRange(directories);
+    }
+
     protected void Defines(params string[] defines)
     {
         _defines.AddRange(defines);
+    }
+
+    protected void PublicDefines(params string[] defines)
+    {
+        _publicDefines.AddRange(defines);
     }
 
     protected void Undefines(params string[] undefines)
@@ -97,9 +110,15 @@ public abstract class TargetRules
         _undefines.AddRange(undefines);
     }
 
+    protected void PublicUndefines(params string[] undefines)
+    {
+        _publicUndefines.AddRange(undefines);
+    }
+
     protected void Packages(params string[] packageNames)
     {
-        _packageNames.AddRange(packageNames);
+        throw new InvalidOperationException(
+            $"Target `{Name}` uses Packages(...), but LunaBuild no longer manages packages. Declare an external target and use DependsOn(...) instead.");
     }
 
     protected void LinkLibraryFiles(params string[] files)
@@ -130,6 +149,11 @@ public abstract class TargetRules
     protected void RuntimeFiles(params string[] patterns)
     {
         _runtimeFilePatterns.AddRange(patterns);
+    }
+
+    protected void RequiredFiles(params string[] files)
+    {
+        _requiredFiles.AddRange(files);
     }
 
     protected void EmbeddedHeader(string sourceFile, string headerFile, string dataSymbol, string sizeSymbol)
@@ -166,8 +190,13 @@ public abstract class TargetRules
                 SourceFiles: TargetPatternExpander.ExpandPatterns(directory, _sourcePatterns)
                     .Where(source => !excludedSources.Contains(source))
                     .ToArray(),
-            HeaderFiles: TargetPatternExpander.ExpandPatterns(directory, _headerPatterns),
-            IncludeDirectories: _includeDirectories
+                HeaderFiles: TargetPatternExpander.ExpandPatterns(directory, _headerPatterns),
+                IncludeDirectories: _includeDirectories
+                    .Select(includeDirectory => ResolveTargetPath(workspace, TargetDirectory, includeDirectory))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .Order(StringComparer.OrdinalIgnoreCase)
+                    .ToArray(),
+                PublicIncludeDirectories: _publicIncludeDirectories
                     .Select(includeDirectory => ResolveTargetPath(workspace, TargetDirectory, includeDirectory))
                     .Distinct(StringComparer.OrdinalIgnoreCase)
                     .Order(StringComparer.OrdinalIgnoreCase)
@@ -176,13 +205,17 @@ public abstract class TargetRules
                     .Distinct(StringComparer.Ordinal)
                     .Order(StringComparer.Ordinal)
                     .ToArray(),
+                PublicDefines: _publicDefines
+                    .Distinct(StringComparer.Ordinal)
+                    .Order(StringComparer.Ordinal)
+                    .ToArray(),
                 Undefines: _undefines
                     .Distinct(StringComparer.Ordinal)
                     .Order(StringComparer.Ordinal)
                     .ToArray(),
-                PackageNames: _packageNames
-                    .Distinct(StringComparer.OrdinalIgnoreCase)
-                    .Order(StringComparer.OrdinalIgnoreCase)
+                PublicUndefines: _publicUndefines
+                    .Distinct(StringComparer.Ordinal)
+                    .Order(StringComparer.Ordinal)
                     .ToArray(),
                 LinkLibraryFiles: _linkLibraryFiles
                     .Select(file => ResolveTargetPath(workspace, TargetDirectory, file))
@@ -197,7 +230,18 @@ public abstract class TargetRules
                     .Distinct(StringComparer.OrdinalIgnoreCase)
                     .Order(StringComparer.OrdinalIgnoreCase)
                     .ToArray(),
-                RuntimeFiles: TargetPatternExpander.ExpandPatterns(directory, _runtimeFilePatterns),
+                RuntimeFiles: Kind == BuildTargetKind.External
+                    ? _runtimeFilePatterns
+                        .Select(file => ResolveTargetPath(workspace, TargetDirectory, file))
+                        .Distinct(StringComparer.OrdinalIgnoreCase)
+                        .Order(StringComparer.OrdinalIgnoreCase)
+                        .ToArray()
+                    : TargetPatternExpander.ExpandPatterns(directory, _runtimeFilePatterns),
+                RequiredFiles: _requiredFiles
+                    .Select(file => ResolveTargetPath(workspace, TargetDirectory, file))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .Order(StringComparer.OrdinalIgnoreCase)
+                    .ToArray(),
                 EmbeddedHeaders: _embeddedHeaders
                     .Select(header => new BuildEmbeddedHeaderDefinition(
                         workspace.ResolveRepositoryPath(Path.Combine(TargetDirectory, header.SourceFile)),
@@ -248,13 +292,16 @@ public abstract class TargetRules
             ExcludedSourcePatterns: _excludedSourcePatterns.Count,
             HeaderPatterns: _headerPatterns.Count,
             IncludeDirectories: _includeDirectories.Count,
+            PublicIncludeDirectories: _publicIncludeDirectories.Count,
             Defines: _defines.Count,
+            PublicDefines: _publicDefines.Count,
             Undefines: _undefines.Count,
-            PackageNames: _packageNames.Count,
+            PublicUndefines: _publicUndefines.Count,
             LinkLibraryFiles: _linkLibraryFiles.Count,
             SystemLibraries: _systemLibraries.Count,
             Frameworks: _frameworks.Count,
             RuntimeFilePatterns: _runtimeFilePatterns.Count,
+            RequiredFiles: _requiredFiles.Count,
             EmbeddedHeaders: _embeddedHeaders.Count,
             Shaders: _shaders.Count,
             SupportedPlatforms: _supportedPlatforms.ToArray(),
@@ -269,13 +316,16 @@ public abstract class TargetRules
         Truncate(_excludedSourcePatterns, state.ExcludedSourcePatterns);
         Truncate(_headerPatterns, state.HeaderPatterns);
         Truncate(_includeDirectories, state.IncludeDirectories);
+        Truncate(_publicIncludeDirectories, state.PublicIncludeDirectories);
         Truncate(_defines, state.Defines);
+        Truncate(_publicDefines, state.PublicDefines);
         Truncate(_undefines, state.Undefines);
-        Truncate(_packageNames, state.PackageNames);
+        Truncate(_publicUndefines, state.PublicUndefines);
         Truncate(_linkLibraryFiles, state.LinkLibraryFiles);
         Truncate(_systemLibraries, state.SystemLibraries);
         Truncate(_frameworks, state.Frameworks);
         Truncate(_runtimeFilePatterns, state.RuntimeFilePatterns);
+        Truncate(_requiredFiles, state.RequiredFiles);
         Truncate(_embeddedHeaders, state.EmbeddedHeaders);
         Truncate(_shaders, state.Shaders);
         _supportedPlatforms.Clear();
@@ -307,13 +357,16 @@ public abstract class TargetRules
         int ExcludedSourcePatterns,
         int HeaderPatterns,
         int IncludeDirectories,
+        int PublicIncludeDirectories,
         int Defines,
+        int PublicDefines,
         int Undefines,
-        int PackageNames,
+        int PublicUndefines,
         int LinkLibraryFiles,
         int SystemLibraries,
         int Frameworks,
         int RuntimeFilePatterns,
+        int RequiredFiles,
         int EmbeddedHeaders,
         int Shaders,
         BuildPlatform[] SupportedPlatforms,

@@ -20,8 +20,8 @@ public sealed class BuildWorkspace
         var current = new DirectoryInfo(Path.GetFullPath(startDirectory ?? Environment.CurrentDirectory));
         while(current is not null)
         {
-            if(File.Exists(Path.Combine(current.FullName, "xmake.lua")) &&
-                Directory.Exists(Path.Combine(current.FullName, "Modules", "Luna")))
+            if(Directory.Exists(Path.Combine(current.FullName, "Modules", "Luna")) &&
+                Directory.Exists(Path.Combine(current.FullName, "Tools", "LunaBuild")))
             {
                 return new BuildWorkspace(current.FullName);
             }

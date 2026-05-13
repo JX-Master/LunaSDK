@@ -40,13 +40,13 @@ public sealed class RHITargetRules : TargetRules
                 Defines("LUNA_RHI_D3D12");
                 Headers("Source/DXGI/**.hpp", "Source/D3D12/**.hpp");
                 Sources("Source/D3D12/**.cpp");
-                Packages("d3d12-memory-allocator");
+                DependsOn("d3d12-memory-allocator");
                 break;
             case RhiApi.Vulkan:
                 Defines("LUNA_RHI_VULKAN");
                 Headers("Source/Vulkan/**.hpp");
                 Sources("Source/Vulkan/**.cpp", "Source/Vulkan/**.c");
-                Packages("volk", "vulkan-memory-allocator");
+                DependsOn("volk", "vulkan-memory-allocator");
                 break;
             case RhiApi.Metal:
                 Defines("LUNA_RHI_METAL");

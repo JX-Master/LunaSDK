@@ -68,6 +68,8 @@ Current common kinds:
 - `SharedLibrary`: Luna SDK modules such as `Runtime`, `RHI`, `Image`.
 - `Executable`: tests and programs that produce `.exe` on Windows.
 - `DotNetProject`: C# tool targets built through a `dotnet.build` action.
+- `External`: prebuilt or header-only third-party dependencies consumed through
+  existing files.
 
 ## Tests
 
@@ -161,17 +163,48 @@ SupportedPlatforms(BuildPlatform.Windows, BuildPlatform.MacOS, BuildPlatform.Lin
 `inspect` and graph generation filter unsupported targets before dependency
 resolution.
 
-## Includes, Defines, Packages, Frameworks
+## Includes, Defines, External Targets, Frameworks
 
 ```csharp
 IncludeDirectories("Include", "ThirdParty/Headers");
 Defines("LUNA_CUSTOM_DEFINE=1");
-Packages("stb", "d3d12-memory-allocator");
 ```
 
-`Packages(...)` currently resolves a small curated set through the transitional
-xmake package cache. Keep package names stable because they participate in the
-action payload and incremental rebuild key.
+LunaBuild is only a build system. It does not download packages, maintain SDK
+roots, or resolve package registries. Put SDK path helpers and platform-specific
+path composition in project rule files, then pass final paths to target APIs.
+
+Use `BuildTargetKind.External` for third-party dependencies that already exist
+on disk:
+
+```csharp
+public sealed class StbTargetRules : TargetRules
+{
+    public StbTargetRules()
+        : base("stb", ".", "ThirdParty.Target.cs")
+    {
+        Kind = BuildTargetKind.External;
+        PublicIncludeDirectories("SDKs/stb/include");
+        RequiredFiles("SDKs/stb/include/stb/stb_image.h");
+    }
+}
+```
+
+External targets do not compile sources or produce link actions. They only
+validate declared files and propagate public usage requirements through the same
+dependency graph as normal targets:
+
+```csharp
+PublicIncludeDirectories("SDKs/example/include");
+PublicDefines("EXAMPLE_USE_STATIC=1");
+LinkLibraryFiles("SDKs/example/lib/example.lib");
+Frameworks("Metal");
+RuntimeFiles("SDKs/example/bin/example.dll");
+RequiredFiles("SDKs/example/include/example.hpp");
+```
+
+`Packages(...)` is intentionally disabled. Migrate packages to external targets
+and use `DependsOn(...)` from ordinary targets.
 
 For native tools that link SDK-local libraries directly, use explicit link
 inputs and system libraries:
@@ -186,7 +219,7 @@ Frameworks("AppKit", "Metal");
 ```
 
 Use this for toolchain-style targets only. Luna SDK modules should prefer
-normal target dependencies and package declarations.
+normal target dependencies and external target declarations.
 
 Use `Frameworks(...)` for Apple platform frameworks that must be passed to the
 linker as `-framework <name>`.
@@ -201,6 +234,8 @@ DependsOn("Runtime", "RHI", "Window");
 
 Link inputs are transitive. If target `A` depends on `B`, and `B` depends on
 `Window`, executable `A` receives both `B` and `Window` import libraries.
+Public include directories, public defines, frameworks, and runtime files from
+external targets propagate through the same dependency closure.
 
 ## Shaders
 

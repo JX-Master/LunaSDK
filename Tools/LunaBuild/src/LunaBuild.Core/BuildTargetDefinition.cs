@@ -8,6 +8,7 @@ public enum BuildTargetKind
     Executable,
     HeaderOnly,
     DotNetProject,
+    External,
 }
 
 public sealed record BuildTargetDefinition(
@@ -18,13 +19,16 @@ public sealed record BuildTargetDefinition(
     IReadOnlyList<string> SourceFiles,
     IReadOnlyList<string> HeaderFiles,
     IReadOnlyList<string> IncludeDirectories,
+    IReadOnlyList<string> PublicIncludeDirectories,
     IReadOnlyList<string> Defines,
+    IReadOnlyList<string> PublicDefines,
     IReadOnlyList<string> Undefines,
-    IReadOnlyList<string> PackageNames,
+    IReadOnlyList<string> PublicUndefines,
     IReadOnlyList<string> LinkLibraryFiles,
     IReadOnlyList<string> SystemLibraries,
     IReadOnlyList<string> Frameworks,
     IReadOnlyList<string> RuntimeFiles,
+    IReadOnlyList<string> RequiredFiles,
     IReadOnlyList<BuildEmbeddedHeaderDefinition> EmbeddedHeaders,
     IReadOnlyList<BuildShaderDefinition> Shaders,
     BuildTargetKind Kind,
