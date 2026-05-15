@@ -45,8 +45,13 @@ public sealed class D3D12MemoryAllocatorTargetRules : TargetRules
         Kind = BuildTargetKind.External;
         SupportedPlatforms(BuildPlatform.Windows);
         PublicIncludeDirectories("SDKs/d3d12-memory-allocator/windows/x64/include");
-        LinkLibraryFiles("SDKs/d3d12-memory-allocator/windows/x64/lib/D3D12MA.lib");
         RequiredFiles("SDKs/d3d12-memory-allocator/windows/x64/include/D3D12MemAlloc.h");
+    }
+
+    protected override void Configure(BuildWorkspace workspace, BuildOptions options)
+    {
+        var configurationDirectory = options.Mode == BuildMode.Debug ? "Debug" : "Release";
+        LinkLibraryFiles($"SDKs/d3d12-memory-allocator/windows/x64/lib/{configurationDirectory}/D3D12MA.lib");
     }
 }
 

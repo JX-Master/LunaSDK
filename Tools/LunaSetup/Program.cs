@@ -161,7 +161,8 @@ internal static class LunaSetupApp
             commonRequired.AddRange(new[]
             {
                 Path.Combine(sdksDirectory, "d3d12-memory-allocator", "windows", "x64", "include", "D3D12MemAlloc.h"),
-                Path.Combine(sdksDirectory, "d3d12-memory-allocator", "windows", "x64", "lib", "D3D12MA.lib"),
+                Path.Combine(sdksDirectory, "d3d12-memory-allocator", "windows", "x64", "lib", "Debug", "D3D12MA.lib"),
+                Path.Combine(sdksDirectory, "d3d12-memory-allocator", "windows", "x64", "lib", "Release", "D3D12MA.lib"),
                 Path.Combine(sdksDirectory, "volk", "include", "volk.h"),
                 Path.Combine(sdksDirectory, "vulkan-memory-allocator", "include", "vk_mem_alloc.h"),
             });
