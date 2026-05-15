@@ -30,7 +30,7 @@ jobs:
           path: |
             SDKs
             build/LunaSetup
-          key: LunaSDK-SDKs-v6-macosx
+          key: LunaSDK-SDKs-v6-cppsl-stbrectpack-macosx
 
       - name: Setup project
         run: |

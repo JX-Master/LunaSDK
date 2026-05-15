@@ -32,7 +32,7 @@ jobs:
           path: |
             SDKs
             build/LunaSetup
-          key: LunaSDK-SDKs-v6-windows
+          key: LunaSDK-SDKs-v6-cppsl-stbrectpack-windows
 
       - name: Setup project
         run: ./setup.bat

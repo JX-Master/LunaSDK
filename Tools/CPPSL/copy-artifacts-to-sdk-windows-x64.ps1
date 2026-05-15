@@ -8,7 +8,10 @@ $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $RepoRoot = Resolve-Path (Join-Path $ScriptDir "..\..")
 
 $CliOutput = Join-Path $ScriptDir "src\CPPSL.Cli\bin\$Configuration\net9.0"
-$NativeExtractor = Join-Path $ScriptDir "native\bin\cppsl-native-extractor.exe"
+$NativeExtractor = Join-Path $RepoRoot "build\LunaBuild\Windows\x64\$Configuration\bin\cppsl-native-extractor.exe"
+if (-not (Test-Path $NativeExtractor -PathType Leaf)) {
+    $NativeExtractor = Join-Path $ScriptDir "native\bin\cppsl-native-extractor.exe"
+}
 $SdkBin = Join-Path $RepoRoot "SDKs\CPPSL\windows\x64\bin"
 
 if (-not (Test-Path $CliOutput -PathType Container)) {

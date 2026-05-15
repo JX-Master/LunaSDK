@@ -15,6 +15,7 @@ public sealed class StbTargetRules : TargetRules
         RequiredFiles(
             "SDKs/stb/include/stb/stb_image.h",
             "SDKs/stb/include/stb/stb_image_write.h",
+            "SDKs/stb/include/stb/stb_rect_pack.h",
             "SDKs/stb/include/stb/stb_truetype.h");
     }
 }

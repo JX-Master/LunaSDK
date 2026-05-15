@@ -39,7 +39,6 @@ internal static class LunaSetupApp
             var markerPath = Path.Combine(sdksDirectory, ".luna-sdk-version");
             if(!options.Force && IsSdkReady(sdksDirectory, markerPath, platform))
             {
-                WriteMarker(markerPath, platform, url);
                 Console.WriteLine($"SDKs {SdkVersion}/{platform} already present: {sdksDirectory}");
                 return 0;
             }
@@ -72,6 +71,7 @@ internal static class LunaSetupApp
                 }
             }
 
+            ValidateSdkReady(sdksDirectory, platform);
             WriteMarker(markerPath, platform, url);
             Console.WriteLine($"SDKs {SdkVersion}/{platform} installed: {sdksDirectory}");
             return 0;
@@ -113,43 +113,71 @@ internal static class LunaSetupApp
 
     private static bool IsSdkReady(string sdksDirectory, string markerPath, string platform)
     {
-        if(File.Exists(markerPath))
-        {
-            var marker = File.ReadAllText(markerPath);
-            if(marker.Contains($"version={SdkVersion}", StringComparison.OrdinalIgnoreCase) &&
-                marker.Contains($"platform={platform}", StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
-        }
-
         if(!Directory.Exists(sdksDirectory))
         {
             return false;
         }
 
-        var commonRequired = new[]
+        if(!File.Exists(markerPath))
+        {
+            return false;
+        }
+
+        var marker = File.ReadAllText(markerPath);
+        return marker.Contains($"version={SdkVersion}", StringComparison.OrdinalIgnoreCase) &&
+            marker.Contains($"platform={platform}", StringComparison.OrdinalIgnoreCase) &&
+            MissingSdkFiles(sdksDirectory, platform).Count == 0;
+    }
+
+    private static void ValidateSdkReady(string sdksDirectory, string platform)
+    {
+        var missingFiles = MissingSdkFiles(sdksDirectory, platform);
+        if(missingFiles.Count == 0)
+        {
+            return;
+        }
+
+        throw new FileNotFoundException(
+            "SDK archive was extracted, but required files are missing:" +
+            Environment.NewLine +
+            string.Join(Environment.NewLine, missingFiles.Select(path => $"  {path}")));
+    }
+
+    private static IReadOnlyList<string> MissingSdkFiles(string sdksDirectory, string platform)
+    {
+        var commonRequired = new List<string>
         {
             Path.Combine(sdksDirectory, "CPPSL"),
             Path.Combine(sdksDirectory, "llvm-21.1.1"),
             Path.Combine(sdksDirectory, "miniaudio", "include", "miniaudio.h"),
             Path.Combine(sdksDirectory, "stb", "include", "stb", "stb_image.h"),
+            Path.Combine(sdksDirectory, "stb", "include", "stb", "stb_image_write.h"),
+            Path.Combine(sdksDirectory, "stb", "include", "stb", "stb_rect_pack.h"),
+            Path.Combine(sdksDirectory, "stb", "include", "stb", "stb_truetype.h"),
         };
-        if(commonRequired.Any(path => !Path.Exists(path)))
-        {
-            return false;
-        }
 
         if(platform.Equals(WindowsPlatform, StringComparison.OrdinalIgnoreCase))
         {
-            return File.Exists(Path.Combine(sdksDirectory, "d3d12-memory-allocator", "windows", "x64", "include", "D3D12MemAlloc.h")) &&
-                File.Exists(Path.Combine(sdksDirectory, "d3d12-memory-allocator", "windows", "x64", "lib", "D3D12MA.lib")) &&
-                File.Exists(Path.Combine(sdksDirectory, "volk", "include", "volk.h")) &&
-                File.Exists(Path.Combine(sdksDirectory, "vulkan-memory-allocator", "include", "vk_mem_alloc.h"));
+            commonRequired.AddRange(new[]
+            {
+                Path.Combine(sdksDirectory, "d3d12-memory-allocator", "windows", "x64", "include", "D3D12MemAlloc.h"),
+                Path.Combine(sdksDirectory, "d3d12-memory-allocator", "windows", "x64", "lib", "D3D12MA.lib"),
+                Path.Combine(sdksDirectory, "volk", "include", "volk.h"),
+                Path.Combine(sdksDirectory, "vulkan-memory-allocator", "include", "vk_mem_alloc.h"),
+            });
+        }
+        else
+        {
+            commonRequired.AddRange(new[]
+            {
+                Path.Combine(sdksDirectory, "CPPSL", "macosx"),
+                Path.Combine(sdksDirectory, "llvm-21.1.1", "macosx"),
+            });
         }
 
-        return Directory.Exists(Path.Combine(sdksDirectory, "CPPSL", "macosx")) &&
-            Directory.Exists(Path.Combine(sdksDirectory, "llvm-21.1.1", "macosx"));
+        return commonRequired
+            .Where(path => !Path.Exists(path))
+            .ToArray();
     }
 
     private static async Task DownloadAsync(string url, string archivePath, bool force)
