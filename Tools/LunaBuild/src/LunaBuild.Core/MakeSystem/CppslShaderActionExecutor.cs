@@ -98,7 +98,12 @@ public sealed class CppslShaderActionExecutor : KnownActionExecutor
         var result = await ProcessRunner.RunAsync(cppslc, args, workspace.RootDirectory, _actionTimeout, cancellationToken);
         if(result.ExitCode != 0)
         {
-            throw new MakeSystemException($"CPPSL compile failed for {source}:{Environment.NewLine}{result.Output}");
+            throw new MakeSystemException(FormatToolFailure(
+                $"CPPSL compile failed for {source}",
+                workspace.RootDirectory,
+                cppslc,
+                args,
+                result.Output));
         }
     }
 
@@ -136,7 +141,12 @@ public sealed class CppslShaderActionExecutor : KnownActionExecutor
         var metalResult = await ProcessRunner.RunAsync("xcrun", metalArgs, workspace.RootDirectory, _actionTimeout, cancellationToken);
         if(metalResult.ExitCode != 0)
         {
-            throw new MakeSystemException($"Metal compile failed for {metal}:{Environment.NewLine}{metalResult.Output}");
+            throw new MakeSystemException(FormatToolFailure(
+                $"Metal compile failed for {metal}",
+                workspace.RootDirectory,
+                "xcrun",
+                metalArgs,
+                metalResult.Output));
         }
 
         var metallibResult = await ProcessRunner.RunAsync(
@@ -147,7 +157,12 @@ public sealed class CppslShaderActionExecutor : KnownActionExecutor
             cancellationToken);
         if(metallibResult.ExitCode != 0)
         {
-            throw new MakeSystemException($"Metal library link failed for {air}:{Environment.NewLine}{metallibResult.Output}");
+            throw new MakeSystemException(FormatToolFailure(
+                $"Metal library link failed for {air}",
+                workspace.RootDirectory,
+                "xcrun",
+                new[] { "metallib", air, "-o", metallib },
+                metallibResult.Output));
         }
         return metallib;
     }
@@ -179,8 +194,42 @@ public sealed class CppslShaderActionExecutor : KnownActionExecutor
         var result = await ProcessRunner.RunAsync(dxc, args, workspace.RootDirectory, _actionTimeout, cancellationToken);
         if(result.ExitCode != 0)
         {
-            throw new MakeSystemException($"DXC compile failed for {hlsl}:{Environment.NewLine}{result.Output}");
+            throw new MakeSystemException(FormatToolFailure(
+                $"DXC compile failed for {hlsl}",
+                workspace.RootDirectory,
+                dxc,
+                args,
+                result.Output));
         }
+    }
+
+    private static string FormatToolFailure(string title, string workingDirectory, string tool, IReadOnlyList<string> arguments, string output)
+    {
+        var builder = new StringBuilder();
+        builder.AppendLine(title);
+        builder.AppendLine($"  working directory: {workingDirectory}");
+        builder.AppendLine($"  tool: {tool}");
+        builder.AppendLine("  arguments:");
+        foreach(var argument in arguments.Take(256))
+        {
+            builder.AppendLine("    " + argument);
+        }
+        if(arguments.Count > 256)
+        {
+            builder.AppendLine($"    ... {arguments.Count - 256} more");
+        }
+        builder.AppendLine("  command line:");
+        builder.AppendLine("    " + tool + " " + string.Join(' ', arguments.Select(QuoteForLog)));
+        builder.AppendLine("  process output:");
+        builder.Append((output.Length == 0 ? "<empty>" : output).TrimEnd());
+        return builder.ToString();
+    }
+
+    private static string QuoteForLog(string value)
+    {
+        return value.Contains(' ') || value.Contains('\t') || value.Contains('"')
+            ? "\"" + value.Replace("\"", "\\\"") + "\""
+            : value;
     }
 
     private static string LocateNativeExtractor(BuildWorkspace workspace)

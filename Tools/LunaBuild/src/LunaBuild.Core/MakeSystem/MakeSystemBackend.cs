@@ -1,3 +1,5 @@
+using System.Text;
+
 namespace LunaBuild.Core.MakeSystem;
 
 public sealed class MakeSystemBackend
@@ -232,15 +234,110 @@ public sealed class MakeSystemBackend
             node.Outputs.Select(id => validated.NodesById[id]).ToArray(),
             node.Depfiles.Select(id => validated.NodesById[id]).ToArray());
 
-        await executor.ExecuteAsync(context, cancellationToken);
-        foreach(var output in NodeOutputs(workspace, validated, node))
+        try
         {
-            if(!File.Exists(output))
+            await executor.ExecuteAsync(context, cancellationToken);
+            foreach(var output in NodeOutputs(workspace, validated, node))
             {
-                throw new MakeSystemException($"Action `{actionKind}` for node `{node.Id}` did not produce output `{output}`.");
+                if(!File.Exists(output))
+                {
+                    throw new MakeSystemException($"Action `{actionKind}` for node `{node.Id}` did not produce output `{output}`.");
+                }
+            }
+            UpdateCache(workspace, validated, cache, node);
+        }
+        catch(Exception ex) when(ex is not OperationCanceledException)
+        {
+            if(ex.Message.Contains("Make action context:", StringComparison.Ordinal))
+            {
+                throw;
+            }
+            throw new MakeSystemException(
+                $"{ex.Message}{Environment.NewLine}{Environment.NewLine}{FormatActionContext(context)}",
+                ex);
+        }
+    }
+
+    private static string FormatActionContext(MakeActionContext context)
+    {
+        var options = context.Graph.Options;
+        var builder = new StringBuilder();
+        builder.AppendLine("Make action context:");
+        builder.AppendLine($"  action: {context.ActionKind}");
+        builder.AppendLine($"  node: {context.Node.Id}");
+        if(context.Node.Path is not null)
+        {
+            builder.AppendLine($"  node path: {context.Workspace.ResolveRepositoryPath(context.Node.Path)}");
+        }
+        builder.AppendLine($"  configuration: platform={options.Platform} arch={options.Architecture} mode={options.Mode} linkage={(options.Shared ? "shared" : "static")} rhi={options.RhiApi} tests={options.BuildTests}");
+
+        var payloadValues = ParsePayloadForDiagnostics(context.ActionPayload);
+        foreach(var key in new[] { "target", "name", "source", "object", "output", "header", "depfile", "format", "stage", "entry", "language" })
+        {
+            if(payloadValues.TryGetValue(key, out var values))
+            {
+                foreach(var value in values)
+                {
+                    builder.AppendLine($"  {key}: {value}");
+                }
             }
         }
-        UpdateCache(workspace, validated, cache, node);
+
+        AppendNodeList(builder, "dependencies", context.Dependencies);
+        AppendNodeList(builder, "outputs", context.Outputs);
+        AppendNodeList(builder, "depfiles", context.Depfiles);
+
+        builder.AppendLine("  action payload:");
+        using var reader = new StringReader(context.ActionPayload);
+        string? line;
+        while((line = reader.ReadLine()) is not null)
+        {
+            builder.AppendLine("    " + line);
+        }
+        return builder.ToString().TrimEnd();
+    }
+
+    private static Dictionary<string, List<string>> ParsePayloadForDiagnostics(string payload)
+    {
+        var values = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+        using var reader = new StringReader(payload);
+        string? line;
+        while((line = reader.ReadLine()) is not null)
+        {
+            line = line.Trim();
+            if(line.Length == 0)
+            {
+                continue;
+            }
+            var separator = line.IndexOf('=');
+            var key = separator < 0 ? line : line[..separator];
+            var value = separator < 0 ? string.Empty : line[(separator + 1)..];
+            if(!values.TryGetValue(key, out var bucket))
+            {
+                bucket = new List<string>();
+                values.Add(key, bucket);
+            }
+            bucket.Add(value);
+        }
+        return values;
+    }
+
+    private static void AppendNodeList(StringBuilder builder, string title, IReadOnlyList<BuildGraphNode> nodes)
+    {
+        builder.AppendLine($"  {title}: {nodes.Count}");
+        foreach(var node in nodes.Take(32))
+        {
+            builder.Append("    ").Append(node.Id);
+            if(node.Path is not null)
+            {
+                builder.Append(" -> ").Append(node.Path);
+            }
+            builder.AppendLine();
+        }
+        if(nodes.Count > 32)
+        {
+            builder.AppendLine($"    ... {nodes.Count - 32} more");
+        }
     }
 
     private IMakeActionExecutor ResolveExecutor(string actionKind, string nodeId)

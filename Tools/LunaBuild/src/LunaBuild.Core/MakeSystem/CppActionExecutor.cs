@@ -1,5 +1,6 @@
 namespace LunaBuild.Core.MakeSystem;
 
+using System.Text;
 using System.Text.Json;
 
 public sealed class CppActionExecutor : IMakeActionExecutor
@@ -91,7 +92,12 @@ public sealed class CppActionExecutor : IMakeActionExecutor
         var result = await RunVsToolAsync(context.Workspace, _msvcToolchain.Value.ClExe, rsp, cancellationToken);
         if(result.ExitCode != 0)
         {
-            throw new MakeSystemException($"C++ compile failed for {source}:{Environment.NewLine}{result.Output}");
+            throw new MakeSystemException(FormatResponseFileFailure(
+                $"C++ compile failed for {source}",
+                context.Workspace.RootDirectory,
+                _msvcToolchain.Value.ClExe,
+                rsp,
+                result.Output));
         }
 
         WriteDepfile(depfile, output, source, ReadSourceDependencies(sourceDependencies));
@@ -117,7 +123,12 @@ public sealed class CppActionExecutor : IMakeActionExecutor
         var result = await ProcessRunner.RunAsync(compiler, args, context.Workspace.RootDirectory, _actionTimeout, cancellationToken);
         if(result.ExitCode != 0)
         {
-            throw new MakeSystemException($"C++ compile failed for {source}:{Environment.NewLine}{result.Output}");
+            throw new MakeSystemException(FormatArgumentListFailure(
+                $"C++ compile failed for {source}",
+                context.Workspace.RootDirectory,
+                compiler,
+                args,
+                result.Output));
         }
     }
 
@@ -148,7 +159,12 @@ public sealed class CppActionExecutor : IMakeActionExecutor
         var result = await RunVsToolAsync(context.Workspace, "rc.exe", rsp, cancellationToken);
         if(result.ExitCode != 0)
         {
-            throw new MakeSystemException($"Resource compile failed for {source}:{Environment.NewLine}{result.Output}");
+            throw new MakeSystemException(FormatResponseFileFailure(
+                $"Resource compile failed for {source}",
+                context.Workspace.RootDirectory,
+                "rc.exe",
+                rsp,
+                result.Output));
         }
     }
 
@@ -179,7 +195,12 @@ public sealed class CppActionExecutor : IMakeActionExecutor
         var result = await RunVsToolAsync(context.Workspace, _msvcToolchain.Value.LinkExe, rsp, cancellationToken);
         if(result.ExitCode != 0)
         {
-            throw new MakeSystemException($"C++ link failed for {output}:{Environment.NewLine}{result.Output}");
+            throw new MakeSystemException(FormatResponseFileFailure(
+                $"C++ link failed for {output}",
+                context.Workspace.RootDirectory,
+                _msvcToolchain.Value.LinkExe,
+                rsp,
+                result.Output));
         }
     }
 
@@ -200,7 +221,12 @@ public sealed class CppActionExecutor : IMakeActionExecutor
         var result = await RunVsToolAsync(context.Workspace, _msvcToolchain.Value.LibExe, rsp, cancellationToken);
         if(result.ExitCode != 0)
         {
-            throw new MakeSystemException($"C++ static link failed for {output}:{Environment.NewLine}{result.Output}");
+            throw new MakeSystemException(FormatResponseFileFailure(
+                $"C++ static link failed for {output}",
+                context.Workspace.RootDirectory,
+                _msvcToolchain.Value.LibExe,
+                rsp,
+                result.Output));
         }
     }
 
@@ -227,7 +253,12 @@ public sealed class CppActionExecutor : IMakeActionExecutor
         var result = await RunVsToolAsync(context.Workspace, _msvcToolchain.Value.LinkExe, rsp, cancellationToken);
         if(result.ExitCode != 0)
         {
-            throw new MakeSystemException($"C++ executable link failed for {output}:{Environment.NewLine}{result.Output}");
+            throw new MakeSystemException(FormatResponseFileFailure(
+                $"C++ executable link failed for {output}",
+                context.Workspace.RootDirectory,
+                _msvcToolchain.Value.LinkExe,
+                rsp,
+                result.Output));
         }
     }
 
@@ -245,7 +276,12 @@ public sealed class CppActionExecutor : IMakeActionExecutor
         var result = await ProcessRunner.RunAsync(_appleToolchain.Value.ClangCxx, args, context.Workspace.RootDirectory, _actionTimeout, cancellationToken);
         if(result.ExitCode != 0)
         {
-            throw new MakeSystemException($"C++ link failed for {output}:{Environment.NewLine}{result.Output}");
+            throw new MakeSystemException(FormatArgumentListFailure(
+                $"C++ link failed for {output}",
+                context.Workspace.RootDirectory,
+                _appleToolchain.Value.ClangCxx,
+                args,
+                result.Output));
         }
     }
 
@@ -266,7 +302,12 @@ public sealed class CppActionExecutor : IMakeActionExecutor
         var result = await ProcessRunner.RunAsync(_appleToolchain.Value.Libtool, args, context.Workspace.RootDirectory, _actionTimeout, cancellationToken);
         if(result.ExitCode != 0)
         {
-            throw new MakeSystemException($"C++ static link failed for {output}:{Environment.NewLine}{result.Output}");
+            throw new MakeSystemException(FormatArgumentListFailure(
+                $"C++ static link failed for {output}",
+                context.Workspace.RootDirectory,
+                _appleToolchain.Value.Libtool,
+                args,
+                result.Output));
         }
     }
 
@@ -280,7 +321,12 @@ public sealed class CppActionExecutor : IMakeActionExecutor
         var result = await ProcessRunner.RunAsync(_appleToolchain.Value.ClangCxx, args, context.Workspace.RootDirectory, _actionTimeout, cancellationToken);
         if(result.ExitCode != 0)
         {
-            throw new MakeSystemException($"C++ executable link failed for {output}:{Environment.NewLine}{result.Output}");
+            throw new MakeSystemException(FormatArgumentListFailure(
+                $"C++ executable link failed for {output}",
+                context.Workspace.RootDirectory,
+                _appleToolchain.Value.ClangCxx,
+                args,
+                result.Output));
         }
     }
 
@@ -320,6 +366,48 @@ public sealed class CppActionExecutor : IMakeActionExecutor
     {
         var command = $"call {Quote(_msvcToolchain.Value.VcVarsBat)} >nul && {Quote(tool)} @{Quote(responseFile)}";
         return await ProcessRunner.RunAsync("cmd.exe", $"/d /s /c \"{command}\"", workspace.RootDirectory, _actionTimeout, cancellationToken);
+    }
+
+    private static string FormatResponseFileFailure(string title, string workingDirectory, string tool, string responseFile, string output)
+    {
+        var builder = new StringBuilder();
+        builder.AppendLine(title);
+        builder.AppendLine($"  working directory: {workingDirectory}");
+        builder.AppendLine($"  tool: {tool}");
+        builder.AppendLine($"  response file: {responseFile}");
+        if(File.Exists(responseFile))
+        {
+            builder.AppendLine("  response file contents:");
+            foreach(var line in File.ReadLines(responseFile).Take(256))
+            {
+                builder.AppendLine("    " + line);
+            }
+        }
+        builder.AppendLine("  process output:");
+        builder.Append((output.Length == 0 ? "<empty>" : output).TrimEnd());
+        return builder.ToString();
+    }
+
+    private static string FormatArgumentListFailure(string title, string workingDirectory, string tool, IReadOnlyList<string> arguments, string output)
+    {
+        var builder = new StringBuilder();
+        builder.AppendLine(title);
+        builder.AppendLine($"  working directory: {workingDirectory}");
+        builder.AppendLine($"  tool: {tool}");
+        builder.AppendLine("  arguments:");
+        foreach(var argument in arguments.Take(256))
+        {
+            builder.AppendLine("    " + argument);
+        }
+        if(arguments.Count > 256)
+        {
+            builder.AppendLine($"    ... {arguments.Count - 256} more");
+        }
+        builder.AppendLine("  command line:");
+        builder.AppendLine("    " + tool + " " + string.Join(' ', arguments.Select(QuoteForLog)));
+        builder.AppendLine("  process output:");
+        builder.Append((output.Length == 0 ? "<empty>" : output).TrimEnd());
+        return builder.ToString();
     }
 
     private static void AddAppleLanguageArgs(List<string> args, string language)
@@ -419,6 +507,13 @@ public sealed class CppActionExecutor : IMakeActionExecutor
     {
         return value.Contains(' ') || value.Contains('\t')
             ? $"\"{value}\""
+            : value;
+    }
+
+    private static string QuoteForLog(string value)
+    {
+        return value.Contains(' ') || value.Contains('\t') || value.Contains('"')
+            ? "\"" + value.Replace("\"", "\\\"") + "\""
             : value;
     }
 

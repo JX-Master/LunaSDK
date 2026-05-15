@@ -18,6 +18,11 @@ public class MakeSystemException : Exception
         : base(message)
     {
     }
+
+    public MakeSystemException(string message, Exception innerException)
+        : base(message, innerException)
+    {
+    }
 }
 
 public sealed class MissingMakeActionExecutorException : MakeSystemException
