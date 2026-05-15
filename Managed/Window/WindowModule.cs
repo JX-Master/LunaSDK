@@ -8,7 +8,7 @@ namespace Luna.Window;
 public static class WindowModule
 {
     public const int DefaultPosition = int.MaxValue;
-    private static readonly WindowNative.EventHandler NativeEventHandler = OnNativeEvent;
+    private static readonly WindowEventHandler NativeEventHandler = OnNativeEvent;
     private static Action<IObject>? s_eventHandler;
     private static ExceptionDispatchInfo? s_pendingEventException;
 
@@ -20,13 +20,13 @@ public static class WindowModule
         }
 
         ArgumentNullException.ThrowIfNull(appName);
-        RuntimeErrors.ThrowIfFailed(new ErrorCode(WindowNative.InitModule(appName)));
+        RuntimeErrors.ThrowIfFailed(new ErrorCode(WindowNativeGenerated.InitModule(appName)));
     }
 
     public static IWindow CreateWindow(WindowCreationDesc desc)
     {
         ArgumentNullException.ThrowIfNull(desc);
-        RuntimeErrors.ThrowIfFailed(new ErrorCode(WindowNative.NewWindow(
+        RuntimeErrors.ThrowIfFailed(new ErrorCode(WindowNativeGenerated.New(
             desc.Title,
             desc.X,
             desc.Y,
@@ -46,14 +46,16 @@ public static class WindowModule
 
     public static void PollEvents(bool waitEvents = false)
     {
-        WindowNative.PollEvents(waitEvents ? 1 : 0);
+        WindowNativeGenerated.PollEvents(waitEvents ? 1 : 0);
         ThrowPendingEventException();
     }
 
     public static void SetEventHandler(Action<IObject>? eventHandler)
     {
         s_eventHandler = eventHandler;
-        WindowNative.SetEventHandler(eventHandler is null ? null : NativeEventHandler, IntPtr.Zero);
+        WindowNativeGenerated.SetEventHandler(
+            eventHandler is null ? IntPtr.Zero : System.Runtime.InteropServices.Marshal.GetFunctionPointerForDelegate(NativeEventHandler),
+            IntPtr.Zero);
     }
 
     private static void OnNativeEvent(IntPtr eventObject, IntPtr userdata)

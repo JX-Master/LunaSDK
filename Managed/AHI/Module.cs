@@ -12,7 +12,7 @@ public static class Module
         {
             throw new InvalidOperationException("Luna runtime must be initialized before initializing the AHI module.");
         }
-        RuntimeErrors.ThrowIfFailed(new ErrorCode(AhiNative.InitModule()));
+        RuntimeErrors.ThrowIfFailed(new ErrorCode(AhiNativeGenerated.InitModule()));
     }
 
     public static ulong GetFrameSize(BitDepth bitDepth, uint numChannels)
@@ -31,16 +31,18 @@ public static class Module
 
     public static void GetAdapters(out IAdapter[] playbackAdapters, out IAdapter[] captureAdapters)
     {
-        RuntimeErrors.ThrowIfFailed(new ErrorCode(AhiNative.GetAdapters(null, 0, out var playbackCount, null, 0, out var captureCount)));
+        RuntimeErrors.ThrowIfFailed(new ErrorCode(AhiNativeGenerated.GetAdapters(IntPtr.Zero, 0, out var playbackCount, IntPtr.Zero, 0, out var captureCount)));
 
         var nativePlayback = playbackCount == 0 ? Array.Empty<NativeAdapterHandle>() : new NativeAdapterHandle[checked((int)playbackCount)];
         var nativeCapture = captureCount == 0 ? Array.Empty<NativeAdapterHandle>() : new NativeAdapterHandle[checked((int)captureCount)];
+        using var pinnedPlayback = PinnedArray<NativeAdapterHandle>.Create(nativePlayback);
+        using var pinnedCapture = PinnedArray<NativeAdapterHandle>.Create(nativeCapture);
 
-        RuntimeErrors.ThrowIfFailed(new ErrorCode(AhiNative.GetAdapters(
-            nativePlayback,
+        RuntimeErrors.ThrowIfFailed(new ErrorCode(AhiNativeGenerated.GetAdapters(
+            pinnedPlayback.Pointer,
             (ulong)nativePlayback.Length,
             out playbackCount,
-            nativeCapture,
+            pinnedCapture.Pointer,
             (ulong)nativeCapture.Length,
             out captureCount)));
 
@@ -60,7 +62,7 @@ public static class Module
     public static IDevice CreateDevice(DeviceDesc desc)
     {
         var nativeDesc = NativeDeviceDesc.FromPublic(desc);
-        RuntimeErrors.ThrowIfFailed(new ErrorCode(AhiNative.NewDevice(in nativeDesc, out var device)));
+        RuntimeErrors.ThrowIfFailed(new ErrorCode(AhiNativeGenerated.NewDevice(in nativeDesc, out var device)));
         return new NativeDevice(device, retain: false);
     }
 }

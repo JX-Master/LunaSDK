@@ -12,17 +12,17 @@ internal sealed class NativeFontFile : ObjectBase, IFontFile
     internal NativeFontFile(NativeFontHandle handle, bool retain)
         : base(handle.Object, retain)
     {
-        if (handle.IFontFile == IntPtr.Zero)
+        if (handle.IfontFile == IntPtr.Zero)
         {
             throw new ArgumentException("Native font handle is incomplete.", nameof(handle));
         }
-        _ifontFile = handle.IFontFile;
+        _ifontFile = handle.IfontFile;
     }
 
     public byte[] GetData()
     {
         EnsureNotDisposed();
-        RuntimeErrors.ThrowIfFailed(new ErrorCode(FontNative.IFontFileGetData(_ifontFile, out var data, out var size)));
+            RuntimeErrors.ThrowIfFailed(new ErrorCode(FontNativeGenerated.IfontFileGetData(_ifontFile, out var data, out var size)));
         try
         {
             if (size > int.MaxValue)
@@ -38,7 +38,7 @@ internal sealed class NativeFontFile : ObjectBase, IFontFile
         }
         finally
         {
-            RuntimeNative.FreeBuffer(data);
+            RuntimeNativeGenerated.FreeBuffer(data);
         }
     }
 
@@ -47,46 +47,46 @@ internal sealed class NativeFontFile : ObjectBase, IFontFile
         get
         {
             EnsureNotDisposed();
-            return FontNative.IFontFileGetNumFonts(_ifontFile);
+            return FontNativeGenerated.IfontFileGetNumFonts(_ifontFile);
         }
     }
 
     public int FindGlyph(uint fontIndex, uint codepoint)
     {
         EnsureNotDisposed();
-        return FontNative.IFontFileFindGlyph(_ifontFile, fontIndex, codepoint);
+        return FontNativeGenerated.IfontFileFindGlyph(_ifontFile, fontIndex, codepoint);
     }
 
     public float ScaleForPixelHeight(uint fontIndex, float pixels)
     {
         EnsureNotDisposed();
-        return FontNative.IFontFileScaleForPixelHeight(_ifontFile, fontIndex, pixels);
+        return FontNativeGenerated.IfontFileScaleForPixelHeight(_ifontFile, fontIndex, pixels);
     }
 
     public VMetrics GetVMetrics(uint fontIndex)
     {
         EnsureNotDisposed();
-        FontNative.IFontFileGetVMetrics(_ifontFile, fontIndex, out var metrics);
+        FontNativeGenerated.IfontFileGetVmetrics(_ifontFile, fontIndex, out var metrics);
         return metrics;
     }
 
     public GlyphHMetrics GetGlyphHMetrics(uint fontIndex, int glyph)
     {
         EnsureNotDisposed();
-        FontNative.IFontFileGetGlyphHMetrics(_ifontFile, fontIndex, glyph, out var metrics);
+        FontNativeGenerated.IfontFileGetGlyphHmetrics(_ifontFile, fontIndex, glyph, out var metrics);
         return metrics;
     }
 
     public int GetKernAdvance(uint fontIndex, int glyph1, int glyph2)
     {
         EnsureNotDisposed();
-        return FontNative.IFontFileGetKernAdvance(_ifontFile, fontIndex, glyph1, glyph2);
+        return FontNativeGenerated.IfontFileGetKernAdvance(_ifontFile, fontIndex, glyph1, glyph2);
     }
 
     public short[] GetGlyphShape(uint fontIndex, int glyph)
     {
         EnsureNotDisposed();
-        var firstPassCode = new ErrorCode(FontNative.IFontFileGetGlyphShape(_ifontFile, fontIndex, glyph, Array.Empty<short>(), 0, out var count));
+        var firstPassCode = new ErrorCode(FontNativeGenerated.IfontFileGetGlyphShape(_ifontFile, fontIndex, glyph, IntPtr.Zero, 0, out var count));
         var insufficientBuffer = RuntimeErrors.GetCodeByName("BasicError", "insufficient_user_buffer");
         if (firstPassCode.Failed && firstPassCode != insufficientBuffer)
         {
@@ -101,21 +101,22 @@ internal sealed class NativeFontFile : ObjectBase, IFontFile
             return Array.Empty<short>();
         }
         var result = new short[(int)count];
-        RuntimeErrors.ThrowIfFailed(new ErrorCode(FontNative.IFontFileGetGlyphShape(_ifontFile, fontIndex, glyph, result, count, out count)));
+        using var pinnedResult = PinnedShortArray.Create(result);
+        RuntimeErrors.ThrowIfFailed(new ErrorCode(FontNativeGenerated.IfontFileGetGlyphShape(_ifontFile, fontIndex, glyph, pinnedResult.Pointer, count, out count)));
         return result;
     }
 
     public RectI GetGlyphBoundingBox(uint fontIndex, int glyph)
     {
         EnsureNotDisposed();
-        RuntimeErrors.ThrowIfFailed(new ErrorCode(FontNative.IFontFileGetGlyphBoundingBox(_ifontFile, fontIndex, glyph, out var rect)));
+        RuntimeErrors.ThrowIfFailed(new ErrorCode(FontNativeGenerated.IfontFileGetGlyphBoundingBox(_ifontFile, fontIndex, glyph, out var rect)));
         return rect;
     }
 
     public RectI GetGlyphBitmapBox(uint fontIndex, int glyph, float scaleX, float scaleY, float shiftX, float shiftY)
     {
         EnsureNotDisposed();
-        RuntimeErrors.ThrowIfFailed(new ErrorCode(FontNative.IFontFileGetGlyphBitmapBox(_ifontFile, fontIndex, glyph, scaleX, scaleY, shiftX, shiftY, out var rect)));
+        RuntimeErrors.ThrowIfFailed(new ErrorCode(FontNativeGenerated.IfontFileGetGlyphBitmapBox(_ifontFile, fontIndex, glyph, scaleX, scaleY, shiftX, shiftY, out var rect)));
         return rect;
     }
 
@@ -128,7 +129,8 @@ internal sealed class NativeFontFile : ObjectBase, IFontFile
         }
         var bufferSize = checked(rowPitch * height);
         var result = new byte[bufferSize];
-        RuntimeErrors.ThrowIfFailed(new ErrorCode(FontNative.IFontFileRenderGlyphBitmap(_ifontFile, fontIndex, glyph, result, width, height, rowPitch, scaleX, scaleY, shiftX, shiftY)));
+        using var pinnedResult = PinnedByteArray.Create(result);
+        RuntimeErrors.ThrowIfFailed(new ErrorCode(FontNativeGenerated.IfontFileRenderGlyphBitmap(_ifontFile, fontIndex, glyph, pinnedResult.Pointer, width, height, rowPitch, scaleX, scaleY, shiftX, shiftY)));
         return result;
     }
 
@@ -141,5 +143,67 @@ internal sealed class NativeFontFile : ObjectBase, IFontFile
         }
         nativeFontFile.EnsureNotDisposed();
         return nativeFontFile._ifontFile;
+    }
+
+    private readonly struct PinnedByteArray : IDisposable
+    {
+        private readonly GCHandle m_handle;
+
+        public IntPtr Pointer { get; }
+
+        private PinnedByteArray(GCHandle handle, IntPtr pointer)
+        {
+            m_handle = handle;
+            Pointer = pointer;
+        }
+
+        public static PinnedByteArray Create(byte[] data)
+        {
+            if (data.Length == 0)
+            {
+                return new PinnedByteArray(default, IntPtr.Zero);
+            }
+            var handle = GCHandle.Alloc(data, GCHandleType.Pinned);
+            return new PinnedByteArray(handle, handle.AddrOfPinnedObject());
+        }
+
+        public void Dispose()
+        {
+            if (m_handle.IsAllocated)
+            {
+                m_handle.Free();
+            }
+        }
+    }
+
+    private readonly struct PinnedShortArray : IDisposable
+    {
+        private readonly GCHandle m_handle;
+
+        public IntPtr Pointer { get; }
+
+        private PinnedShortArray(GCHandle handle, IntPtr pointer)
+        {
+            m_handle = handle;
+            Pointer = pointer;
+        }
+
+        public static PinnedShortArray Create(short[] data)
+        {
+            if (data.Length == 0)
+            {
+                return new PinnedShortArray(default, IntPtr.Zero);
+            }
+            var handle = GCHandle.Alloc(data, GCHandleType.Pinned);
+            return new PinnedShortArray(handle, handle.AddrOfPinnedObject());
+        }
+
+        public void Dispose()
+        {
+            if (m_handle.IsAllocated)
+            {
+                m_handle.Free();
+            }
+        }
     }
 }

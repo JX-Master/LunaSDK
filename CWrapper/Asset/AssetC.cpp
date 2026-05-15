@@ -7,10 +7,7 @@
 #include <Luna/Runtime/Result.hpp>
 
 #include <cstring>
-#include <memory>
-#include <mutex>
 #include <string>
-#include <unordered_map>
 
 namespace
 {
@@ -62,22 +59,32 @@ const char* duplicate_string(const char* source)
 
 struct ManagedAssetTypeCallbacks
 {
+    lustruct("AssetC.ManagedAssetTypeCallbacks", "{6C6A9D59-3B88-47BC-8FA5-C921F9F0D717}");
     LunaAssetOnLoadAsset on_load_asset = nullptr;
     LunaAssetOnLoadAssetDefaultData on_load_asset_default_data = nullptr;
     LunaAssetOnSaveAsset on_save_asset = nullptr;
     LunaAssetOnSetAssetData on_set_asset_data = nullptr;
     LunaAssetOnGetReferredAssets on_get_referred_assets = nullptr;
     void* userdata = nullptr;
+    ManagedAssetTypeCallbacks() = default;
+    ManagedAssetTypeCallbacks(
+        LunaAssetOnLoadAsset on_load_asset,
+        LunaAssetOnLoadAssetDefaultData on_load_asset_default_data,
+        LunaAssetOnSaveAsset on_save_asset,
+        LunaAssetOnSetAssetData on_set_asset_data,
+        LunaAssetOnGetReferredAssets on_get_referred_assets,
+        void* userdata) :
+        on_load_asset(on_load_asset),
+        on_load_asset_default_data(on_load_asset_default_data),
+        on_save_asset(on_save_asset),
+        on_set_asset_data(on_set_asset_data),
+        on_get_referred_assets(on_get_referred_assets),
+        userdata(userdata) {}
 };
 
-std::mutex g_asset_type_callbacks_mutex;
-std::unordered_map<std::string, std::unique_ptr<ManagedAssetTypeCallbacks>> g_asset_type_callbacks;
-
-ManagedAssetTypeCallbacks* find_callbacks(const Luna::Name& type)
+ManagedAssetTypeCallbacks* get_callbacks(Luna::object_t userdata)
 {
-    std::lock_guard<std::mutex> guard(g_asset_type_callbacks_mutex);
-    auto iter = g_asset_type_callbacks.find(type.c_str());
-    return iter == g_asset_type_callbacks.end() ? nullptr : iter->second.get();
+    return reinterpret_cast<ManagedAssetTypeCallbacks*>(userdata);
 }
 
 Luna::Asset::asset_t to_asset_handle(LunaAssetHandle asset)
@@ -87,7 +94,7 @@ Luna::Asset::asset_t to_asset_handle(LunaAssetHandle asset)
 
 Luna::R<Luna::ObjRef> on_load_asset_trampoline(Luna::object_t userdata, Luna::Asset::asset_t asset, const Luna::Path& path)
 {
-    auto* callbacks = find_callbacks(Luna::Asset::get_asset_type(asset));
+    auto* callbacks = get_callbacks(userdata);
     if (!callbacks || !callbacks->on_load_asset)
     {
         return Luna::BasicError::not_supported();
@@ -103,7 +110,7 @@ Luna::R<Luna::ObjRef> on_load_asset_trampoline(Luna::object_t userdata, Luna::As
 
 Luna::R<Luna::ObjRef> on_load_asset_default_data_trampoline(Luna::object_t userdata, Luna::Asset::asset_t asset)
 {
-    auto* callbacks = find_callbacks(Luna::Asset::get_asset_type(asset));
+    auto* callbacks = get_callbacks(userdata);
     if (!callbacks || !callbacks->on_load_asset_default_data)
     {
         return Luna::BasicError::not_supported();
@@ -119,7 +126,7 @@ Luna::R<Luna::ObjRef> on_load_asset_default_data_trampoline(Luna::object_t userd
 
 Luna::RV on_save_asset_trampoline(Luna::object_t userdata, Luna::Asset::asset_t asset, const Luna::Path& path, Luna::object_t data)
 {
-    auto* callbacks = find_callbacks(Luna::Asset::get_asset_type(asset));
+    auto* callbacks = get_callbacks(userdata);
     if (!callbacks || !callbacks->on_save_asset)
     {
         return Luna::BasicError::not_supported();
@@ -130,7 +137,7 @@ Luna::RV on_save_asset_trampoline(Luna::object_t userdata, Luna::Asset::asset_t 
 
 Luna::RV on_set_asset_data_trampoline(Luna::object_t userdata, Luna::Asset::asset_t asset, Luna::object_t data)
 {
-    auto* callbacks = find_callbacks(Luna::Asset::get_asset_type(asset));
+    auto* callbacks = get_callbacks(userdata);
     if (!callbacks || !callbacks->on_set_asset_data)
     {
         return Luna::ok;
@@ -141,7 +148,7 @@ Luna::RV on_set_asset_data_trampoline(Luna::object_t userdata, Luna::Asset::asse
 
 void on_get_referred_assets_trampoline(Luna::object_t userdata, Luna::Asset::asset_t asset, Luna::Vector<Luna::Asset::asset_t>& out_referred_assets)
 {
-    auto* callbacks = find_callbacks(Luna::Asset::get_asset_type(asset));
+    auto* callbacks = get_callbacks(userdata);
     if (!callbacks || !callbacks->on_get_referred_assets)
     {
         return;
@@ -197,22 +204,18 @@ LUNA_ASSET_C_API void luna_asset_register_asset_type(
     {
         return;
     }
-
-    auto callbacks = std::make_unique<ManagedAssetTypeCallbacks>();
-    callbacks->on_load_asset = on_load_asset;
-    callbacks->on_load_asset_default_data = on_load_asset_default_data;
-    callbacks->on_save_asset = on_save_asset;
-    callbacks->on_set_asset_data = on_set_asset_data;
-    callbacks->on_get_referred_assets = on_get_referred_assets;
-    callbacks->userdata = userdata;
-
-    {
-        std::lock_guard<std::mutex> guard(g_asset_type_callbacks_mutex);
-        g_asset_type_callbacks[std::string(type)] = std::move(callbacks);
-    }
+    static bool s_callbacks_type_registered = []() { Luna::register_boxed_type<ManagedAssetTypeCallbacks>(); return true; }();
+    (void)s_callbacks_type_registered;
 
     Luna::Asset::AssetTypeDesc desc;
     desc.name = type;
+    desc.userdata = Luna::new_object<ManagedAssetTypeCallbacks>(
+        on_load_asset,
+        on_load_asset_default_data,
+        on_save_asset,
+        on_set_asset_data,
+        on_get_referred_assets,
+        userdata);
     desc.on_load_asset = on_load_asset ? on_load_asset_trampoline : nullptr;
     desc.on_load_asset_default_data = on_load_asset_default_data ? on_load_asset_default_data_trampoline : nullptr;
     desc.on_save_asset = on_save_asset ? on_save_asset_trampoline : nullptr;

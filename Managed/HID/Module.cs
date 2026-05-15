@@ -12,30 +12,30 @@ public static class Module
         {
             throw new InvalidOperationException("Luna runtime must be initialized before initializing the HID module.");
         }
-        RuntimeErrors.ThrowIfFailed(new ErrorCode(HidNative.InitModule()));
+        RuntimeErrors.ThrowIfFailed(new ErrorCode(HidNativeGenerated.InitModule()));
     }
 
-    public static bool SupportsKeyboard() => HidNative.SupportsKeyboard() != 0;
+    public static bool SupportsKeyboard() => HidNativeGenerated.SupportsKeyboard() != 0;
 
-    public static bool GetKeyState(KeyCode key) => HidNative.GetKeyState((ushort)key) != 0;
+    public static bool GetKeyState(KeyCode key) => HidNativeGenerated.GetKeyState((ushort)key) != 0;
 
-    public static bool SupportsMouse() => HidNative.SupportsMouse() != 0;
+    public static bool SupportsMouse() => HidNativeGenerated.SupportsMouse() != 0;
 
-    public static bool GetMouseButtonState(MouseButton mouseButton) => HidNative.GetMouseButtonState((byte)mouseButton) != 0;
+    public static bool GetMouseButtonState(MouseButton mouseButton) => HidNativeGenerated.GetMouseButtonState((byte)mouseButton) != 0;
 
-    public static Point2U GetMousePosition() => HidNative.GetMousePosition();
+    public static Point2U GetMousePosition() => HidNativeGenerated.GetMousePos();
 
     public static void SetMousePosition(int x, int y)
     {
-        RuntimeErrors.ThrowIfFailed(new ErrorCode(HidNative.SetMousePosition(x, y)));
+        RuntimeErrors.ThrowIfFailed(new ErrorCode(HidNativeGenerated.SetMousePos(x, y)));
     }
 
-    public static bool SupportsController() => HidNative.SupportsController() != 0;
+    public static bool SupportsController() => HidNativeGenerated.SupportsController() != 0;
 
-    public static ControllerInputState GetControllerState(uint index) => HidNative.GetControllerState(index).ToPublic();
+    public static ControllerInputState GetControllerState(uint index) => HidNativeGenerated.GetControllerState(index).ToPublic();
 
     public static void SetControllerState(uint index, ControllerOutputState state)
     {
-        RuntimeErrors.ThrowIfFailed(new ErrorCode(HidNative.SetControllerState(index, in state)));
+        RuntimeErrors.ThrowIfFailed(new ErrorCode(HidNativeGenerated.SetControllerState(index, in state)));
     }
 }

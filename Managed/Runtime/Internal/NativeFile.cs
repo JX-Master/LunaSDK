@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.InteropServices;
 
 namespace Luna.Runtime.Internal;
 
@@ -11,15 +12,15 @@ internal sealed class NativeFile : ObjectBase, IFile
     internal NativeFile(NativeFileHandle handle, bool retain)
         : base(handle.Object, retain)
     {
-        if (handle.IFile == IntPtr.Zero ||
-            handle.ISeekableStream == IntPtr.Zero ||
-            handle.IStream == IntPtr.Zero)
+        if (handle.Ifile == IntPtr.Zero ||
+            handle.IseekableStream == IntPtr.Zero ||
+            handle.Istream == IntPtr.Zero)
         {
             throw new ArgumentException("Native file handle is incomplete.", nameof(handle));
         }
-        _ifile = handle.IFile;
-        _iseekableStream = handle.ISeekableStream;
-        _istream = handle.IStream;
+        _ifile = handle.Ifile;
+        _iseekableStream = handle.IseekableStream;
+        _istream = handle.Istream;
     }
 
     internal IntPtr NativeFilePointer => _ifile;
@@ -29,7 +30,7 @@ internal sealed class NativeFile : ObjectBase, IFile
         get
         {
             EnsureNotDisposed();
-            RuntimeErrors.ThrowIfFailed(new ErrorCode(RuntimeNative.SeekableStreamTell(_iseekableStream, out var position)));
+            RuntimeErrors.ThrowIfFailed(new ErrorCode(RuntimeNativeGenerated.SeekableStreamTell(_iseekableStream, out var position)));
             return position;
         }
     }
@@ -39,12 +40,12 @@ internal sealed class NativeFile : ObjectBase, IFile
         get
         {
             EnsureNotDisposed();
-            return RuntimeNative.SeekableStreamGetSize(_iseekableStream);
+            return RuntimeNativeGenerated.SeekableStreamGetSize(_iseekableStream);
         }
         set
         {
             EnsureNotDisposed();
-            RuntimeErrors.ThrowIfFailed(new ErrorCode(RuntimeNative.SeekableStreamSetSize(_iseekableStream, value)));
+            RuntimeErrors.ThrowIfFailed(new ErrorCode(RuntimeNativeGenerated.SeekableStreamSetSize(_iseekableStream, value)));
         }
     }
 
@@ -64,7 +65,8 @@ internal sealed class NativeFile : ObjectBase, IFile
         }
 
         var temp = offset == 0 && count == buffer.Length ? buffer : new byte[count];
-        RuntimeErrors.ThrowIfFailed(new ErrorCode(RuntimeNative.StreamRead(_istream, temp, (ulong)count, out var readBytes)));
+        using var pinnedTemp = PinnedByteArray.Create(temp);
+        RuntimeErrors.ThrowIfFailed(new ErrorCode(RuntimeNativeGenerated.StreamRead(_istream, pinnedTemp.Pointer, (ulong)count, out var readBytes)));
         if (!ReferenceEquals(temp, buffer) && readBytes > 0)
         {
             Array.Copy(temp, 0, buffer, offset, checked((int)readBytes));
@@ -92,20 +94,21 @@ internal sealed class NativeFile : ObjectBase, IFile
         {
             Array.Copy(buffer, offset, temp, 0, count);
         }
-        RuntimeErrors.ThrowIfFailed(new ErrorCode(RuntimeNative.StreamWrite(_istream, temp, (ulong)count, out var writeBytes)));
+        using var pinnedTemp = PinnedByteArray.Create(temp);
+        RuntimeErrors.ThrowIfFailed(new ErrorCode(RuntimeNativeGenerated.StreamWrite(_istream, pinnedTemp.Pointer, (ulong)count, out var writeBytes)));
         return writeBytes;
     }
 
     public void Seek(long offset, SeekMode mode)
     {
         EnsureNotDisposed();
-        RuntimeErrors.ThrowIfFailed(new ErrorCode(RuntimeNative.SeekableStreamSeek(_iseekableStream, offset, (uint)mode)));
+        RuntimeErrors.ThrowIfFailed(new ErrorCode(RuntimeNativeGenerated.SeekableStreamSeek(_iseekableStream, offset, (uint)mode)));
     }
 
     public void Flush()
     {
         EnsureNotDisposed();
-        RuntimeNative.FileFlush(_ifile);
+        RuntimeNativeGenerated.FileFlush(_ifile);
     }
 
     private static void ValidateRange(byte[] buffer, int offset, int count)
@@ -114,6 +117,37 @@ internal sealed class NativeFile : ObjectBase, IFile
         if (offset < 0 || count < 0 || offset > buffer.Length - count)
         {
             throw new ArgumentOutOfRangeException(nameof(offset));
+        }
+    }
+
+    private readonly struct PinnedByteArray : IDisposable
+    {
+        private readonly GCHandle m_handle;
+
+        public IntPtr Pointer { get; }
+
+        private PinnedByteArray(GCHandle handle, IntPtr pointer)
+        {
+            m_handle = handle;
+            Pointer = pointer;
+        }
+
+        public static PinnedByteArray Create(byte[] data)
+        {
+            if (data.Length == 0)
+            {
+                return new PinnedByteArray(default, IntPtr.Zero);
+            }
+            var handle = GCHandle.Alloc(data, GCHandleType.Pinned);
+            return new PinnedByteArray(handle, handle.AddrOfPinnedObject());
+        }
+
+        public void Dispose()
+        {
+            if (m_handle.IsAllocated)
+            {
+                m_handle.Free();
+            }
         }
     }
 }

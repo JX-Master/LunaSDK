@@ -10,11 +10,11 @@ internal sealed class NativeFileIterator : ObjectBase, IFileIterator
     internal NativeFileIterator(NativeFileIteratorHandle handle, bool retain)
         : base(handle.Object, retain)
     {
-        if (handle.IFileIterator == IntPtr.Zero)
+        if (handle.IfileIterator == IntPtr.Zero)
         {
             throw new ArgumentException("Native file iterator handle is incomplete.", nameof(handle));
         }
-        _ifileIterator = handle.IFileIterator;
+        _ifileIterator = handle.IfileIterator;
     }
 
     public bool IsValid
@@ -22,7 +22,7 @@ internal sealed class NativeFileIterator : ObjectBase, IFileIterator
         get
         {
             EnsureNotDisposed();
-            return RuntimeNative.FileIteratorIsValid(_ifileIterator) != 0;
+            return RuntimeNativeGenerated.FileIteratorIsValid(_ifileIterator) != 0;
         }
     }
 
@@ -31,7 +31,7 @@ internal sealed class NativeFileIterator : ObjectBase, IFileIterator
         get
         {
             EnsureNotDisposed();
-            var value = RuntimeNative.FileIteratorGetFilename(_ifileIterator);
+            var value = RuntimeNativeGenerated.FileIteratorGetFilename(_ifileIterator);
             return value == IntPtr.Zero ? null : Marshal.PtrToStringUTF8(value);
         }
     }
@@ -41,13 +41,13 @@ internal sealed class NativeFileIterator : ObjectBase, IFileIterator
         get
         {
             EnsureNotDisposed();
-            return (FileAttributeFlags)RuntimeNative.FileIteratorGetAttributes(_ifileIterator);
+            return (FileAttributeFlags)RuntimeNativeGenerated.FileIteratorGetAttributes(_ifileIterator);
         }
     }
 
     public bool MoveNext()
     {
         EnsureNotDisposed();
-        return RuntimeNative.FileIteratorMoveNext(_ifileIterator) != 0;
+        return RuntimeNativeGenerated.FileIteratorMoveNext(_ifileIterator) != 0;
     }
 }

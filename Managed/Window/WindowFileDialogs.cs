@@ -16,9 +16,9 @@ public static class WindowFileDialogs
         FileDialogFlags flags = FileDialogFlags.None)
     {
         using var nativeFilters = new NativeFilterBuffer(filters);
-        RuntimeErrors.ThrowIfFailed(new ErrorCode(WindowNative.OpenFileDialog(
+        RuntimeErrors.ThrowIfFailed(new ErrorCode(WindowNativeGenerated.OpenFileDialog(
             title,
-            nativeFilters.Filters,
+            nativeFilters.Pointer,
             (ulong)nativeFilters.Filters.Length,
             initialDirectory,
             (uint)flags,
@@ -29,7 +29,7 @@ public static class WindowFileDialogs
         }
         finally
         {
-            WindowNative.FreeStringList(paths.Items, paths.Count);
+            WindowNativeGenerated.FreeStringList(paths.Items, paths.Count);
         }
     }
 
@@ -60,9 +60,9 @@ public static class WindowFileDialogs
     {
         var path = IntPtr.Zero;
         using var nativeFilters = new NativeFilterBuffer(filters);
-        RuntimeErrors.ThrowIfFailed(new ErrorCode(WindowNative.SaveFileDialog(
+        RuntimeErrors.ThrowIfFailed(new ErrorCode(WindowNativeGenerated.SaveFileDialog(
             title,
-            nativeFilters.Filters,
+            nativeFilters.Pointer,
             (ulong)nativeFilters.Filters.Length,
             initialFilePath,
             (uint)flags,
@@ -73,7 +73,7 @@ public static class WindowFileDialogs
         }
         finally
         {
-            WindowNative.FreeString(path);
+            WindowNativeGenerated.FreeString(path);
         }
     }
 
@@ -99,14 +99,14 @@ public static class WindowFileDialogs
     public static string OpenDirectory(string? title = null, string? initialDirectory = null)
     {
         var path = IntPtr.Zero;
-        RuntimeErrors.ThrowIfFailed(new ErrorCode(WindowNative.OpenDirDialog(title, initialDirectory, out path)));
+        RuntimeErrors.ThrowIfFailed(new ErrorCode(WindowNativeGenerated.OpenDirDialog(title, initialDirectory, out path)));
         try
         {
             return Marshal.PtrToStringUTF8(path) ?? string.Empty;
         }
         finally
         {
-            WindowNative.FreeString(path);
+            WindowNativeGenerated.FreeString(path);
         }
     }
 
@@ -124,7 +124,7 @@ public static class WindowFileDialogs
         }
     }
 
-    private static string[] ReadStringList(WindowNative.StringList list)
+    private static string[] ReadStringList(NativeStringList list)
     {
         if (list.Count == 0)
         {
@@ -157,11 +157,11 @@ public static class WindowFileDialogs
             {
                 if (filters is null || filters.Count == 0)
                 {
-                    Filters = Array.Empty<WindowNative.FileDialogFilter>();
+                    Filters = Array.Empty<NativeFileDialogFilter>();
                     return;
                 }
 
-                Filters = new WindowNative.FileDialogFilter[filters.Count];
+                Filters = new NativeFileDialogFilter[filters.Count];
                 for (var i = 0; i < filters.Count; ++i)
                 {
                     var filter = filters[i] ?? throw new ArgumentException("Filter cannot be null.", nameof(filters));
@@ -173,11 +173,12 @@ public static class WindowFileDialogs
                         var extension = AllocString(extensions[j]);
                         Marshal.WriteIntPtr(extensionArray, j * IntPtr.Size, extension);
                     }
-                    Filters[i] = new WindowNative.FileDialogFilter(
+                    Filters[i] = new NativeFileDialogFilter(
                         AllocString(filter.Name),
                         extensionArray,
                         (ulong)extensions.Count);
                 }
+                _pinnedFilters = PinnedArray<NativeFileDialogFilter>.Create(Filters);
             }
             catch
             {
@@ -186,10 +187,15 @@ public static class WindowFileDialogs
             }
         }
 
-        public WindowNative.FileDialogFilter[] Filters { get; private set; } = Array.Empty<WindowNative.FileDialogFilter>();
+        private PinnedArray<NativeFileDialogFilter> _pinnedFilters;
+
+        public NativeFileDialogFilter[] Filters { get; private set; } = Array.Empty<NativeFileDialogFilter>();
+
+        public IntPtr Pointer => _pinnedFilters.Pointer;
 
         public void Dispose()
         {
+            _pinnedFilters.Dispose();
             foreach (var extensionArray in _extensionArrays)
             {
                 Marshal.FreeCoTaskMem(extensionArray);

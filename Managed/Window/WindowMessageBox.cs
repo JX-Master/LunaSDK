@@ -14,7 +14,7 @@ public static class WindowMessageBox
     {
         ArgumentNullException.ThrowIfNull(text);
         ArgumentNullException.ThrowIfNull(caption);
-        RuntimeErrors.ThrowIfFailed(new ErrorCode(WindowNative.MessageBox(
+        RuntimeErrors.ThrowIfFailed(new ErrorCode(WindowNativeGenerated.MessageBox(
             text,
             caption,
             (uint)type,

@@ -10,7 +10,7 @@ internal static class AssetTypeRegistry
 {
     private static readonly Dictionary<string, Registration> s_registrations = new(StringComparer.Ordinal);
     private static readonly object s_lock = new();
-    private static readonly UIntPtr s_failureCode = RuntimeNative.ErrorGetCodeByName("BasicError", "failure");
+    private static readonly UIntPtr s_failureCode = RuntimeNativeGenerated.ErrorGetCodeByName("BasicError", "failure");
 
     [ThreadStatic]
     private static Exception? t_pendingException;
@@ -27,7 +27,7 @@ internal static class AssetTypeRegistry
             s_registrations[desc.Name] = registration;
         }
 
-        AssetNative.RegisterAssetType(
+        AssetNativeGenerated.RegisterAssetType(
             desc.Name,
             desc.OnLoadAsset is null ? null : Registration.LoadAssetThunk,
             desc.OnLoadAssetDefaultData is null ? null : Registration.LoadAssetDefaultDataThunk,
@@ -58,11 +58,11 @@ internal static class AssetTypeRegistry
         private readonly GCHandle _gcHandle;
         internal readonly AssetTypeDesc Desc;
 
-        internal static readonly AssetNative.OnLoadAsset LoadAssetThunk = OnLoadAsset;
-        internal static readonly AssetNative.OnLoadAssetDefaultData LoadAssetDefaultDataThunk = OnLoadAssetDefaultData;
-        internal static readonly AssetNative.OnSaveAsset SaveAssetThunk = OnSaveAsset;
-        internal static readonly AssetNative.OnSetAssetData SetAssetDataThunk = OnSetAssetData;
-        internal static readonly AssetNative.OnGetReferredAssets GetReferredAssetsThunk = OnGetReferredAssets;
+        internal static readonly OnLoadAsset LoadAssetThunk = OnLoadAsset;
+        internal static readonly OnLoadAssetDefaultData LoadAssetDefaultDataThunk = OnLoadAssetDefaultData;
+        internal static readonly OnSaveAsset SaveAssetThunk = OnSaveAsset;
+        internal static readonly OnSetAssetData SetAssetDataThunk = OnSetAssetData;
+        internal static readonly OnGetReferredAssets GetReferredAssetsThunk = OnGetReferredAssets;
 
         internal Registration(AssetTypeDesc desc)
         {

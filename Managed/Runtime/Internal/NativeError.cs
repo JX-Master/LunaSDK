@@ -12,12 +12,12 @@ internal static class NativeError
             return;
         }
 
-        var code = RuntimeNative.ErrorUnwrap(result);
-        var category = RuntimeNative.ErrorGetCodeCategory(code);
-        var message = Marshal.PtrToStringUTF8(RuntimeNative.ErrorExplain(result))
+        var code = RuntimeNativeGenerated.ErrorUnwrap(result);
+        var category = RuntimeNativeGenerated.ErrorGetCodeCategory(code);
+        var message = Marshal.PtrToStringUTF8(RuntimeNativeGenerated.ErrorExplain(result))
             ?? $"Luna native call failed with error code 0x{code.ToUInt64():x}.";
-        var codeName = Marshal.PtrToStringUTF8(RuntimeNative.ErrorGetCodeName(code));
-        var categoryName = Marshal.PtrToStringUTF8(RuntimeNative.ErrorGetCategoryName(category));
+        var codeName = Marshal.PtrToStringUTF8(RuntimeNativeGenerated.ErrorGetCodeName(code));
+        var categoryName = Marshal.PtrToStringUTF8(RuntimeNativeGenerated.ErrorGetCategoryName(category));
 
         throw new ErrorException(category, code, message, categoryName, codeName);
     }

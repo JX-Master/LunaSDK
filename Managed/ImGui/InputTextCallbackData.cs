@@ -39,7 +39,7 @@ public sealed class InputTextCallbackData
             {
                 if (value != IntPtr.Zero)
                 {
-                    RuntimeNative.FreeBuffer(value);
+                    RuntimeNativeGenerated.FreeBuffer(value);
                 }
             }
         }

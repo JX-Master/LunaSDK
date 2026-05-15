@@ -123,6 +123,12 @@ option("build_cppsl_tools")
     set_description("Build CPPSL compiler tools from source instead of using the prebuilt SDK tools.")
 option_end()
 
+option("build_binding_tools")
+    set_default(false)
+    set_showmenu(true)
+    set_description("Build native C# binding generator tools from source.")
+option_end()
+
 function get_default_rhi_api()
     local default_rhi_api = nil
     if is_plat("windows") then
@@ -298,6 +304,10 @@ if has_config("build_cppsl_tools") then
                 os.raise("CPPSL native extractor build did not produce: " .. native_extractor)
             end
         end)
+end
+
+if has_config("build_binding_tools") then
+    includes("Tools/CSharpBindingGen/native")
 end
 
 includes("Modules")

@@ -15,43 +15,43 @@ public static class RuntimeErrors
     {
         ArgumentException.ThrowIfNullOrEmpty(categoryName);
         ArgumentException.ThrowIfNullOrEmpty(codeName);
-        return new ErrorCode(RuntimeNative.ErrorGetCodeByName(categoryName, codeName));
+        return new ErrorCode(RuntimeNativeGenerated.ErrorGetCodeByName(categoryName, codeName));
     }
 
     public static ErrorCategory GetCategoryByName(string categoryName)
     {
         ArgumentException.ThrowIfNullOrEmpty(categoryName);
-        return new ErrorCategory(RuntimeNative.ErrorGetCategoryByName(categoryName));
+        return new ErrorCategory(RuntimeNativeGenerated.ErrorGetCategoryByName(categoryName));
     }
 
     public static string GetCodeName(ErrorCode code)
     {
-        return PtrToString(RuntimeNative.ErrorGetCodeName(code.Value));
+        return PtrToString(RuntimeNativeGenerated.ErrorGetCodeName(code.Value));
     }
 
     public static string GetCategoryName(ErrorCategory category)
     {
-        return PtrToString(RuntimeNative.ErrorGetCategoryName(category.Value));
+        return PtrToString(RuntimeNativeGenerated.ErrorGetCategoryName(category.Value));
     }
 
     public static ErrorCategory GetCodeCategory(ErrorCode code)
     {
-        return new ErrorCategory(RuntimeNative.ErrorGetCodeCategory(code.Value));
+        return new ErrorCategory(RuntimeNativeGenerated.ErrorGetCodeCategory(code.Value));
     }
 
     public static string Explain(ErrorCode code)
     {
-        return PtrToString(RuntimeNative.ErrorExplain(code.Value));
+        return PtrToString(RuntimeNativeGenerated.ErrorExplain(code.Value));
     }
 
     public static ErrorCode Unwrap(ErrorCode code)
     {
-        return new ErrorCode(RuntimeNative.ErrorUnwrap(code.Value));
+        return new ErrorCode(RuntimeNativeGenerated.ErrorUnwrap(code.Value));
     }
 
-    public static ErrorCode CurrentCode => new(RuntimeNative.ErrorGetCurrentCode());
+    public static ErrorCode CurrentCode => new(RuntimeNativeGenerated.ErrorGetCurrentCode());
 
-    public static string CurrentMessage => PtrToString(RuntimeNative.ErrorGetCurrentMessage());
+    public static string CurrentMessage => PtrToString(RuntimeNativeGenerated.ErrorGetCurrentMessage());
 
     private static string PtrToString(IntPtr value)
     {

@@ -4,32 +4,32 @@ namespace Luna.Runtime;
 
 public static class RuntimeTime
 {
-    public static ulong Ticks => RuntimeNative.TimeGetTicks();
+    public static ulong Ticks => RuntimeNativeGenerated.TimeGetTicks();
 
-    public static double TicksPerSecond => RuntimeNative.TimeGetTicksPerSecond();
+    public static double TicksPerSecond => RuntimeNativeGenerated.TimeGetTicksPerSecond();
 
-    public static long UtcTimestamp => RuntimeNative.TimeGetUtcTimestamp();
+    public static long UtcTimestamp => RuntimeNativeGenerated.TimeGetUtcTimestamp();
 
-    public static long LocalTimestamp => RuntimeNative.TimeGetLocalTimestamp();
+    public static long LocalTimestamp => RuntimeNativeGenerated.TimeGetLocalTimestamp();
 
     public static long LocalTimestampToUtcTimestamp(long localTimestamp)
     {
-        return RuntimeNative.TimeLocalToUtc(localTimestamp);
+        return RuntimeNativeGenerated.TimeLocalToUtc(localTimestamp);
     }
 
     public static long UtcTimestampToLocalTimestamp(long utcTimestamp)
     {
-        return RuntimeNative.TimeUtcToLocal(utcTimestamp);
+        return RuntimeNativeGenerated.TimeUtcToLocal(utcTimestamp);
     }
 
     public static DateTime TimestampToDateTime(long timestamp)
     {
-        RuntimeNative.TimeTimestampToDateTime(timestamp, out var dateTime);
+        RuntimeNativeGenerated.TimeTimestampToDatetime(timestamp, out var dateTime);
         return dateTime;
     }
 
     public static long DateTimeToTimestamp(DateTime dateTime)
     {
-        return RuntimeNative.TimeDateTimeToTimestamp(dateTime);
+        return RuntimeNativeGenerated.TimeDatetimeToTimestamp(dateTime);
     }
 }

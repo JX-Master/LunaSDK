@@ -975,7 +975,7 @@ Exit criteria:
 
 ## Risk List
 
-1. ABI drift: solve with generated or centrally maintained C# bindings and ABI tests.
+1. ABI drift: solve with generated or centrally maintained C# bindings and ABI tests. A native Clang-based generator prototype now exists under `Tools/CSharpBindingGen`. It is already driving the internal raw bindings for `Runtime`, `Image`, `VFS`, `HID`, `Font`, `VariantUtils`, `AHI`, `Window`, and `Asset`, while public managed APIs remain hand-written and continue to own array pinning, callback registration, exception translation, and other higher-level marshalling rules.
 2. Lifetime bugs: solve with strict ownership tables and `SafeHandle`.
 3. Callback and GC hazards: solve with pinned delegates, unregister APIs, and main-thread dispatch rules.
 4. Platform packaging: solve early by testing native host plus managed runtime deployment.
@@ -993,7 +993,7 @@ Exit criteria:
 1. Should the long-term engine app entry point be native-hosted managed code only, or should managed-first tools also be first-class?
 2. Should native ECS survive as a low-level data-oriented store, or should gameplay/editor ECS move fully to C#?
 3. Which desktop platform should be the first supported bridge target?
-4. How much of RHI should be hand-written C ABI versus generated from a schema?
+4. How much of RHI should be hand-written C ABI versus generated from a schema? Current direction: keep C wrapper hand-written, generate only the internal C# P/Invoke layer from C headers, and keep public managed APIs hand-written.
 5. Should C++ `Variant` remain part of the C ABI, or should it stay internal to native tooling only?
 6. What compatibility level is required for existing Studio asset files?
 7. Should managed wrappers use identity caching so the same `object_t` maps to the same C# wrapper instance?

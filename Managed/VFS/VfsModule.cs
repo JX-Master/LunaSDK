@@ -14,14 +14,14 @@ public static class VfsModule
         {
             throw new InvalidOperationException("Luna runtime must be initialized before initializing the VFS module.");
         }
-        RuntimeErrors.ThrowIfFailed(new ErrorCode(VfsNative.InitModule()));
+        RuntimeErrors.ThrowIfFailed(new ErrorCode(VfsNativeGenerated.InitModule()));
     }
 
     public static string PlatformFilesystemDriver
     {
         get
         {
-            RuntimeErrors.ThrowIfFailed(new ErrorCode(VfsNative.GetPlatformFilesystemDriver(out var name)));
+            RuntimeErrors.ThrowIfFailed(new ErrorCode(VfsNativeGenerated.GetPlatformFilesystemDriver(out var name)));
             return PtrToManagedAndFree(name);
         }
     }
@@ -31,33 +31,33 @@ public static class VfsModule
         ArgumentException.ThrowIfNullOrEmpty(driver);
         ArgumentException.ThrowIfNullOrEmpty(driverPath);
         ArgumentException.ThrowIfNullOrEmpty(mountPath);
-        RuntimeErrors.ThrowIfFailed(new ErrorCode(VfsNative.Mount(driver, driverPath, mountPath)));
+        RuntimeErrors.ThrowIfFailed(new ErrorCode(VfsNativeGenerated.Mount(driver, driverPath, mountPath)));
     }
 
     public static void Unmount(string mountPath)
     {
         ArgumentException.ThrowIfNullOrEmpty(mountPath);
-        RuntimeErrors.ThrowIfFailed(new ErrorCode(VfsNative.Unmount(mountPath)));
+        RuntimeErrors.ThrowIfFailed(new ErrorCode(VfsNativeGenerated.Unmount(mountPath)));
     }
 
     public static void Remount(string fromPath, string toPath)
     {
         ArgumentException.ThrowIfNullOrEmpty(fromPath);
         ArgumentException.ThrowIfNullOrEmpty(toPath);
-        RuntimeErrors.ThrowIfFailed(new ErrorCode(VfsNative.Remount(fromPath, toPath)));
+        RuntimeErrors.ThrowIfFailed(new ErrorCode(VfsNativeGenerated.Remount(fromPath, toPath)));
     }
 
     public static IFile OpenFile(string path, FileOpenFlags flags, FileCreationMode creation)
     {
         ArgumentException.ThrowIfNullOrEmpty(path);
-        RuntimeErrors.ThrowIfFailed(new ErrorCode(VfsNative.OpenFile(path, (uint)flags, (uint)creation, out var file)));
+        RuntimeErrors.ThrowIfFailed(new ErrorCode(VfsNativeGenerated.OpenFile(path, (uint)flags, (uint)creation, out var file)));
         return new NativeFile(file, retain: false);
     }
 
     public static FileAttribute GetFileAttribute(string path)
     {
         ArgumentException.ThrowIfNullOrEmpty(path);
-        RuntimeErrors.ThrowIfFailed(new ErrorCode(VfsNative.GetFileAttribute(path, out var attribute)));
+        RuntimeErrors.ThrowIfFailed(new ErrorCode(VfsNativeGenerated.GetFileAttribute(path, out var attribute)));
         return attribute;
     }
 
@@ -65,39 +65,39 @@ public static class VfsModule
     {
         ArgumentException.ThrowIfNullOrEmpty(fromPath);
         ArgumentException.ThrowIfNullOrEmpty(toPath);
-        RuntimeErrors.ThrowIfFailed(new ErrorCode(VfsNative.CopyFile(fromPath, toPath)));
+        RuntimeErrors.ThrowIfFailed(new ErrorCode(VfsNativeGenerated.CopyFile(fromPath, toPath)));
     }
 
     public static void MoveFile(string fromPath, string toPath)
     {
         ArgumentException.ThrowIfNullOrEmpty(fromPath);
         ArgumentException.ThrowIfNullOrEmpty(toPath);
-        RuntimeErrors.ThrowIfFailed(new ErrorCode(VfsNative.MoveFile(fromPath, toPath)));
+        RuntimeErrors.ThrowIfFailed(new ErrorCode(VfsNativeGenerated.MoveFile(fromPath, toPath)));
     }
 
     public static void DeleteFile(string path)
     {
         ArgumentException.ThrowIfNullOrEmpty(path);
-        RuntimeErrors.ThrowIfFailed(new ErrorCode(VfsNative.DeleteFile(path)));
+        RuntimeErrors.ThrowIfFailed(new ErrorCode(VfsNativeGenerated.DeleteFile(path)));
     }
 
     public static IFileIterator OpenDirectory(string path)
     {
         ArgumentException.ThrowIfNullOrEmpty(path);
-        RuntimeErrors.ThrowIfFailed(new ErrorCode(VfsNative.OpenDirectory(path, out var iterator)));
+        RuntimeErrors.ThrowIfFailed(new ErrorCode(VfsNativeGenerated.OpenDir(path, out var iterator)));
         return new NativeFileIterator(iterator, retain: false);
     }
 
     public static void CreateDirectory(string path)
     {
         ArgumentException.ThrowIfNullOrEmpty(path);
-        RuntimeErrors.ThrowIfFailed(new ErrorCode(VfsNative.CreateDirectory(path)));
+        RuntimeErrors.ThrowIfFailed(new ErrorCode(VfsNativeGenerated.CreateDir(path)));
     }
 
     public static string GetNativePath(string vfsPath)
     {
         ArgumentException.ThrowIfNullOrEmpty(vfsPath);
-        RuntimeErrors.ThrowIfFailed(new ErrorCode(VfsNative.GetNativePath(vfsPath, out var path)));
+        RuntimeErrors.ThrowIfFailed(new ErrorCode(VfsNativeGenerated.GetNativePath(vfsPath, out var path)));
         return PtrToManagedAndFree(path);
     }
 
@@ -113,7 +113,7 @@ public static class VfsModule
         }
         finally
         {
-            RuntimeNative.FreeBuffer(value);
+            RuntimeNativeGenerated.FreeBuffer(value);
         }
     }
 }

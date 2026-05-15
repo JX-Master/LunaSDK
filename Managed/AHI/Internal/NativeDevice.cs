@@ -25,8 +25,8 @@ internal sealed class NativeDevice : ObjectBase, IDevice, IDisposable
         public required CaptureDataCallback Callback;
     }
 
-    private static readonly AhiNative.NativePlaybackDataCallback s_playbackThunk = PlaybackThunk;
-    private static readonly AhiNative.NativeCaptureDataCallback s_captureThunk = CaptureThunk;
+    private static readonly NativePlaybackDataCallback s_playbackThunk = PlaybackThunk;
+    private static readonly NativeCaptureDataCallback s_captureThunk = CaptureThunk;
 
     private readonly IntPtr _idevice;
     private readonly Dictionary<ulong, CallbackRegistration> _playbackCallbacks = new();
@@ -50,7 +50,7 @@ internal sealed class NativeDevice : ObjectBase, IDevice, IDisposable
         {
             EnsureNotDisposed();
             ThrowIfPendingCallbackException();
-            return AhiNative.IDeviceGetSampleRate(_idevice);
+            return AhiNativeGenerated.IdeviceGetSampleRate(_idevice);
         }
     }
 
@@ -60,7 +60,7 @@ internal sealed class NativeDevice : ObjectBase, IDevice, IDisposable
         {
             EnsureNotDisposed();
             ThrowIfPendingCallbackException();
-            return (DeviceFlag)AhiNative.IDeviceGetFlags(_idevice);
+            return (DeviceFlag)AhiNativeGenerated.IdeviceGetFlags(_idevice);
         }
     }
 
@@ -70,7 +70,7 @@ internal sealed class NativeDevice : ObjectBase, IDevice, IDisposable
         {
             EnsureNotDisposed();
             ThrowIfPendingCallbackException();
-            return AhiNative.IDeviceGetPlaybackNumChannels(_idevice);
+            return AhiNativeGenerated.IdeviceGetPlaybackNumChannels(_idevice);
         }
     }
 
@@ -80,7 +80,7 @@ internal sealed class NativeDevice : ObjectBase, IDevice, IDisposable
         {
             EnsureNotDisposed();
             ThrowIfPendingCallbackException();
-            return (BitDepth)AhiNative.IDeviceGetPlaybackBitDepth(_idevice);
+            return (BitDepth)AhiNativeGenerated.IdeviceGetPlaybackBitDepth(_idevice);
         }
     }
 
@@ -90,7 +90,7 @@ internal sealed class NativeDevice : ObjectBase, IDevice, IDisposable
         {
             EnsureNotDisposed();
             ThrowIfPendingCallbackException();
-            return AhiNative.IDeviceGetCaptureNumChannels(_idevice);
+            return AhiNativeGenerated.IdeviceGetCaptureNumChannels(_idevice);
         }
     }
 
@@ -100,7 +100,7 @@ internal sealed class NativeDevice : ObjectBase, IDevice, IDisposable
         {
             EnsureNotDisposed();
             ThrowIfPendingCallbackException();
-            return (BitDepth)AhiNative.IDeviceGetCaptureBitDepth(_idevice);
+            return (BitDepth)AhiNativeGenerated.IdeviceGetCaptureBitDepth(_idevice);
         }
     }
 
@@ -114,7 +114,7 @@ internal sealed class NativeDevice : ObjectBase, IDevice, IDisposable
         var userdata = GCHandle.Alloc(state);
         try
         {
-            RuntimeErrors.ThrowIfFailed(new ErrorCode(AhiNative.IDeviceAddPlaybackDataCallback(_idevice, s_playbackThunk, GCHandle.ToIntPtr(userdata), out var handle)));
+            RuntimeErrors.ThrowIfFailed(new ErrorCode(AhiNativeGenerated.IdeviceAddPlaybackDataCallback(_idevice, s_playbackThunk, GCHandle.ToIntPtr(userdata), out var handle)));
             lock (_callbackLock)
             {
                 _playbackCallbacks.Add(handle, new CallbackRegistration { Userdata = userdata });
@@ -144,7 +144,7 @@ internal sealed class NativeDevice : ObjectBase, IDevice, IDisposable
                 registration = removed;
             }
         }
-        AhiNative.IDeviceRemovePlaybackDataCallback(_idevice, handle);
+        AhiNativeGenerated.IdeviceRemovePlaybackDataCallback(_idevice, handle);
         registration?.Userdata.Free();
     }
 
@@ -158,7 +158,7 @@ internal sealed class NativeDevice : ObjectBase, IDevice, IDisposable
         var userdata = GCHandle.Alloc(state);
         try
         {
-            RuntimeErrors.ThrowIfFailed(new ErrorCode(AhiNative.IDeviceAddCaptureDataCallback(_idevice, s_captureThunk, GCHandle.ToIntPtr(userdata), out var handle)));
+            RuntimeErrors.ThrowIfFailed(new ErrorCode(AhiNativeGenerated.IdeviceAddCaptureDataCallback(_idevice, s_captureThunk, GCHandle.ToIntPtr(userdata), out var handle)));
             lock (_callbackLock)
             {
                 _captureCallbacks.Add(handle, new CallbackRegistration { Userdata = userdata });
@@ -188,7 +188,7 @@ internal sealed class NativeDevice : ObjectBase, IDevice, IDisposable
                 registration = removed;
             }
         }
-        AhiNative.IDeviceRemoveCaptureDataCallback(_idevice, handle);
+        AhiNativeGenerated.IdeviceRemoveCaptureDataCallback(_idevice, handle);
         registration?.Userdata.Free();
     }
 
@@ -198,7 +198,7 @@ internal sealed class NativeDevice : ObjectBase, IDevice, IDisposable
         {
             foreach (var pair in _playbackCallbacks)
             {
-                AhiNative.IDeviceRemovePlaybackDataCallback(_idevice, pair.Key);
+                AhiNativeGenerated.IdeviceRemovePlaybackDataCallback(_idevice, pair.Key);
                 if (pair.Value.Userdata.IsAllocated)
                 {
                     pair.Value.Userdata.Free();
@@ -208,7 +208,7 @@ internal sealed class NativeDevice : ObjectBase, IDevice, IDisposable
 
             foreach (var pair in _captureCallbacks)
             {
-                AhiNative.IDeviceRemoveCaptureDataCallback(_idevice, pair.Key);
+                AhiNativeGenerated.IdeviceRemoveCaptureDataCallback(_idevice, pair.Key);
                 if (pair.Value.Userdata.IsAllocated)
                 {
                     pair.Value.Userdata.Free();

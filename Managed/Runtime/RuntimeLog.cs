@@ -19,7 +19,7 @@ public static class RuntimeLog
     {
         ArgumentNullException.ThrowIfNull(tag);
         ArgumentNullException.ThrowIfNull(message);
-        RuntimeNative.Log((uint)verbosity, tag, message);
+        RuntimeNativeGenerated.Log((uint)verbosity, tag, message);
     }
 
     public static void Verbose(string tag, string message)
@@ -49,17 +49,17 @@ public static class RuntimeLog
 
     public static bool PlatformOutputEnabled
     {
-        set => RuntimeNative.LogSetPlatformEnabled(value ? 1 : 0);
+        set => RuntimeNativeGenerated.LogSetPlatformEnabled(value ? 1 : 0);
     }
 
     public static LogVerbosity PlatformVerbosity
     {
-        set => RuntimeNative.LogSetPlatformVerbosity((uint)value);
+        set => RuntimeNativeGenerated.LogSetPlatformVerbosity((uint)value);
     }
 
     public static bool FileOutputEnabled
     {
-        set => RuntimeNative.LogSetFileEnabled(value ? 1 : 0);
+        set => RuntimeNativeGenerated.LogSetFileEnabled(value ? 1 : 0);
     }
 
     public static string File
@@ -67,17 +67,17 @@ public static class RuntimeLog
         set
         {
             ArgumentNullException.ThrowIfNull(value);
-            RuntimeNative.LogSetFile(value);
+            RuntimeNativeGenerated.LogSetFile(value);
         }
     }
 
     public static LogVerbosity FileVerbosity
     {
-        set => RuntimeNative.LogSetFileVerbosity((uint)value);
+        set => RuntimeNativeGenerated.LogSetFileVerbosity((uint)value);
     }
 
     public static void FlushFile()
     {
-        RuntimeNative.LogFlushFile();
+        RuntimeNativeGenerated.LogFlushFile();
     }
 }

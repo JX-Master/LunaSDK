@@ -9,7 +9,7 @@ public static class RuntimeFile
     public static IFile Open(string path, FileOpenFlags flags, FileCreationMode creation)
     {
         ArgumentException.ThrowIfNullOrEmpty(path);
-        RuntimeErrors.ThrowIfFailed(new ErrorCode(RuntimeNative.FileOpen(path, (uint)flags, (uint)creation, out var file)));
+        RuntimeErrors.ThrowIfFailed(new ErrorCode(RuntimeNativeGenerated.FileOpen(path, (uint)flags, (uint)creation, out var file)));
         return new NativeFile(file, retain: false);
     }
 
@@ -26,7 +26,7 @@ public static class RuntimeFile
             ?? throw new ArgumentException("The file was not created by the Luna.Runtime binding.", nameof(file));
 
         var data = IntPtr.Zero;
-        RuntimeErrors.ThrowIfFailed(new ErrorCode(RuntimeNative.FileLoadData(nativeFile.NativeFilePointer, out data, out var size)));
+        RuntimeErrors.ThrowIfFailed(new ErrorCode(RuntimeNativeGenerated.FileLoadData(nativeFile.NativeFilePointer, out data, out var size)));
         try
         {
             if (size > int.MaxValue)
@@ -42,14 +42,14 @@ public static class RuntimeFile
         }
         finally
         {
-            RuntimeNative.FreeBuffer(data);
+            RuntimeNativeGenerated.FreeBuffer(data);
         }
     }
 
     public static FileAttribute GetAttribute(string path)
     {
         ArgumentException.ThrowIfNullOrEmpty(path);
-        RuntimeErrors.ThrowIfFailed(new ErrorCode(RuntimeNative.FileGetAttribute(path, out var attribute)));
+        RuntimeErrors.ThrowIfFailed(new ErrorCode(RuntimeNativeGenerated.FileGetAttribute(path, out var attribute)));
         return attribute;
     }
 
@@ -57,32 +57,32 @@ public static class RuntimeFile
     {
         ArgumentException.ThrowIfNullOrEmpty(fromPath);
         ArgumentException.ThrowIfNullOrEmpty(toPath);
-        RuntimeErrors.ThrowIfFailed(new ErrorCode(RuntimeNative.FileCopy(fromPath, toPath)));
+        RuntimeErrors.ThrowIfFailed(new ErrorCode(RuntimeNativeGenerated.FileCopy(fromPath, toPath)));
     }
 
     public static void Move(string fromPath, string toPath)
     {
         ArgumentException.ThrowIfNullOrEmpty(fromPath);
         ArgumentException.ThrowIfNullOrEmpty(toPath);
-        RuntimeErrors.ThrowIfFailed(new ErrorCode(RuntimeNative.FileMove(fromPath, toPath)));
+        RuntimeErrors.ThrowIfFailed(new ErrorCode(RuntimeNativeGenerated.FileMove(fromPath, toPath)));
     }
 
     public static void Delete(string path)
     {
         ArgumentException.ThrowIfNullOrEmpty(path);
-        RuntimeErrors.ThrowIfFailed(new ErrorCode(RuntimeNative.FileDelete(path)));
+        RuntimeErrors.ThrowIfFailed(new ErrorCode(RuntimeNativeGenerated.FileDelete(path)));
     }
 
     public static void CreateDirectory(string path)
     {
         ArgumentException.ThrowIfNullOrEmpty(path);
-        RuntimeErrors.ThrowIfFailed(new ErrorCode(RuntimeNative.FileCreateDirectory(path)));
+        RuntimeErrors.ThrowIfFailed(new ErrorCode(RuntimeNativeGenerated.FileCreateDir(path)));
     }
 
     public static IFileIterator OpenDirectory(string path)
     {
         ArgumentException.ThrowIfNullOrEmpty(path);
-        RuntimeErrors.ThrowIfFailed(new ErrorCode(RuntimeNative.FileOpenDirectory(path, out var iterator)));
+        RuntimeErrors.ThrowIfFailed(new ErrorCode(RuntimeNativeGenerated.FileOpenDir(path, out var iterator)));
         return new NativeFileIterator(iterator, retain: false);
     }
 }

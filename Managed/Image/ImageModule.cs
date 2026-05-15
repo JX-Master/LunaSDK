@@ -13,14 +13,15 @@ public static class ImageModule
         {
             throw new InvalidOperationException("Luna runtime must be initialized before initializing the Image module.");
         }
-        RuntimeErrors.ThrowIfFailed(new ErrorCode(ImageNative.InitModule()));
+        RuntimeErrors.ThrowIfFailed(new ErrorCode(ImageNativeGenerated.InitModule()));
     }
 
     public static ImageDesc ReadFileDesc(byte[] fileData)
     {
         ArgumentNullException.ThrowIfNull(fileData);
-        RuntimeErrors.ThrowIfFailed(new ErrorCode(ImageNative.ReadFileDesc(fileData, (ulong)fileData.Length, out var desc)));
-        return desc.ToManaged();
+        using var pinnedData = PinnedByteArray.Create(fileData);
+        RuntimeErrors.ThrowIfFailed(new ErrorCode(ImageNativeGenerated.ReadFileDesc(pinnedData.Pointer, (ulong)fileData.Length, out var desc)));
+        return ToManaged(desc);
     }
 
     public static ImageDesc ReadFileDesc(string path)
@@ -38,7 +39,8 @@ public static class ImageModule
     public static ImageData ReadFile(byte[] fileData, ImageFormat desiredFormat)
     {
         ArgumentNullException.ThrowIfNull(fileData);
-        RuntimeErrors.ThrowIfFailed(new ErrorCode(ImageNative.ReadFile(fileData, (ulong)fileData.Length, (uint)desiredFormat, out var nativeImage)));
+        using var pinnedData = PinnedByteArray.Create(fileData);
+        RuntimeErrors.ThrowIfFailed(new ErrorCode(ImageNativeGenerated.ReadFile(pinnedData.Pointer, (ulong)fileData.Length, (uint)desiredFormat, out var nativeImage)));
         try
         {
             if (nativeImage.DataSize > int.MaxValue)
@@ -50,11 +52,11 @@ public static class ImageModule
             {
                 Marshal.Copy(nativeImage.Data, data, 0, data.Length);
             }
-            return new ImageData(data, nativeImage.Desc.ToManaged());
+            return new ImageData(data, ToManaged(nativeImage.Desc));
         }
         finally
         {
-            ImageNative.FreeData(ref nativeImage);
+            ImageNativeGenerated.FreeData(ref nativeImage);
         }
     }
 
@@ -78,7 +80,7 @@ public static class ImageModule
 
     public static void WritePng(ISeekableStream stream, ImageDesc desc, byte[] data)
     {
-        Write(stream, desc, data, ImageNative.WritePngFile);
+        Write(stream, desc, data, ImageNativeGenerated.WritePngFile);
     }
 
     public static void WritePng(string path, ImageData image)
@@ -98,7 +100,7 @@ public static class ImageModule
 
     public static void WriteBmp(ISeekableStream stream, ImageDesc desc, byte[] data)
     {
-        Write(stream, desc, data, ImageNative.WriteBmpFile);
+        Write(stream, desc, data, ImageNativeGenerated.WriteBmpFile);
     }
 
     public static void WriteBmp(string path, ImageData image)
@@ -118,7 +120,7 @@ public static class ImageModule
 
     public static void WriteTga(ISeekableStream stream, ImageDesc desc, byte[] data)
     {
-        Write(stream, desc, data, ImageNative.WriteTgaFile);
+        Write(stream, desc, data, ImageNativeGenerated.WriteTgaFile);
     }
 
     public static void WriteTga(string path, ImageData image)
@@ -144,8 +146,9 @@ public static class ImageModule
             throw new ArgumentOutOfRangeException(nameof(quality), "JPEG quality must be between 1 and 100.");
         }
         var nativeStream = GetNativeHandle(stream);
-        var nativeDesc = NativeImageDesc.FromManaged(desc);
-        RuntimeErrors.ThrowIfFailed(new ErrorCode(ImageNative.WriteJpgFile(nativeStream, in nativeDesc, data, (ulong)data.Length, quality)));
+        var nativeDesc = ToNative(desc);
+        using var pinnedData = PinnedByteArray.Create(data);
+        RuntimeErrors.ThrowIfFailed(new ErrorCode(ImageNativeGenerated.WriteJpgFile(nativeStream, in nativeDesc, pinnedData.Pointer, (ulong)data.Length, quality)));
     }
 
     public static void WriteJpg(string path, ImageData image, uint quality)
@@ -165,7 +168,7 @@ public static class ImageModule
 
     public static void WriteHdr(ISeekableStream stream, ImageDesc desc, byte[] data)
     {
-        Write(stream, desc, data, ImageNative.WriteHdrFile);
+        Write(stream, desc, data, ImageNativeGenerated.WriteHdrFile);
     }
 
     public static void WriteHdr(string path, ImageData image)
@@ -193,14 +196,15 @@ public static class ImageModule
         };
     }
 
-    private delegate UIntPtr ImageWriteCallback(IntPtr stream, in NativeImageDesc desc, byte[] data, ulong dataSize);
+    private delegate UIntPtr ImageWriteCallback(IntPtr stream, in NativeImageDesc desc, IntPtr data, ulong dataSize);
 
     private static void Write(ISeekableStream stream, ImageDesc desc, byte[] data, ImageWriteCallback callback)
     {
         ValidateImageData(desc, data);
         var nativeStream = GetNativeHandle(stream);
-        var nativeDesc = NativeImageDesc.FromManaged(desc);
-        RuntimeErrors.ThrowIfFailed(new ErrorCode(callback(nativeStream, in nativeDesc, data, (ulong)data.Length)));
+        var nativeDesc = ToNative(desc);
+        using var pinnedData = PinnedByteArray.Create(data);
+        RuntimeErrors.ThrowIfFailed(new ErrorCode(callback(nativeStream, in nativeDesc, pinnedData.Pointer, (ulong)data.Length)));
     }
 
     private static void ValidateImageData(ImageDesc desc, byte[] data)
@@ -231,5 +235,51 @@ public static class ImageModule
     private static IFile OpenOutputFile(string path)
     {
         return RuntimeFile.Open(path, FileOpenFlags.Write | FileOpenFlags.UserBuffering, FileCreationMode.CreateAlways);
+    }
+
+    private static ImageDesc ToManaged(NativeImageDesc desc)
+    {
+        return new ImageDesc((ImageFormat)desc.Format, desc.Width, desc.Height);
+    }
+
+    private static NativeImageDesc ToNative(ImageDesc desc)
+    {
+        return new NativeImageDesc
+        {
+            Format = (uint)desc.Format,
+            Width = desc.Width,
+            Height = desc.Height
+        };
+    }
+
+    private readonly struct PinnedByteArray : IDisposable
+    {
+        private readonly GCHandle m_handle;
+
+        public IntPtr Pointer { get; }
+
+        private PinnedByteArray(GCHandle handle, IntPtr pointer)
+        {
+            m_handle = handle;
+            Pointer = pointer;
+        }
+
+        public static PinnedByteArray Create(byte[] data)
+        {
+            if (data.Length == 0)
+            {
+                return new PinnedByteArray(default, IntPtr.Zero);
+            }
+            var handle = GCHandle.Alloc(data, GCHandleType.Pinned);
+            return new PinnedByteArray(handle, handle.AddrOfPinnedObject());
+        }
+
+        public void Dispose()
+        {
+            if (m_handle.IsAllocated)
+            {
+                m_handle.Free();
+            }
+        }
     }
 }

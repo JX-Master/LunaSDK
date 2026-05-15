@@ -20,7 +20,7 @@ internal sealed class NativeObjectHandle : SafeHandle
 
     protected override bool ReleaseHandle()
     {
-        RuntimeNative.ObjectRelease(handle);
+        RuntimeNativeGenerated.ObjectRelease(handle);
         return true;
     }
 }

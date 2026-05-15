@@ -15,7 +15,7 @@ public abstract class ObjectBase : IObject
         }
         if (retain)
         {
-            RuntimeNative.ObjectRetain(nativeObject);
+            RuntimeNativeGenerated.ObjectRetain(nativeObject);
         }
         _handle = new NativeObjectHandle(nativeObject);
     }
@@ -37,7 +37,7 @@ public abstract class ObjectBase : IObject
 
     protected IntPtr QueryInterface(Guid interfaceId)
     {
-        return RuntimeNative.ObjectQueryInterface(GetNativeHandle(), in interfaceId);
+        return RuntimeNativeGenerated.ObjectQueryInterface(GetNativeHandle(), in interfaceId);
     }
 
     public void Dispose()

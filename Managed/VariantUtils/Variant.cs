@@ -21,42 +21,42 @@ public sealed class Variant : IDisposable, IEquatable<Variant>
     }
 
     public Variant()
-        : this(VariantNative.Create((byte)VariantType.Null).Variant)
+        : this(VariantUtilsNativeGenerated.VariantCreate((byte)VariantType.Null).Variant)
     {
     }
 
     public Variant(VariantType type)
-        : this(VariantNative.Create((byte)type).Variant)
+        : this(VariantUtilsNativeGenerated.VariantCreate((byte)type).Variant)
     {
     }
 
     public Variant(long value)
-        : this(VariantNative.CreateI64(value).Variant)
+        : this(VariantUtilsNativeGenerated.VariantCreateI64(value).Variant)
     {
     }
 
     public Variant(ulong value)
-        : this(VariantNative.CreateU64(value).Variant)
+        : this(VariantUtilsNativeGenerated.VariantCreateU64(value).Variant)
     {
     }
 
     public Variant(double value)
-        : this(VariantNative.CreateF64(value).Variant)
+        : this(VariantUtilsNativeGenerated.VariantCreateF64(value).Variant)
     {
     }
 
     public Variant(string value)
-        : this(VariantNative.CreateString(value ?? string.Empty).Variant)
+        : this(VariantUtilsNativeGenerated.VariantCreateString(value ?? string.Empty).Variant)
     {
     }
 
     public Variant(bool value)
-        : this(VariantNative.CreateBoolean(value ? 1 : 0).Variant)
+        : this(VariantUtilsNativeGenerated.VariantCreateBoolean(value ? 1 : 0).Variant)
     {
     }
 
-    public Variant(byte[] blob, ulong alignment = 0)
-        : this(VariantNative.CreateBlob(blob, (ulong)(blob?.Length ?? 0), alignment).Variant)
+    public Variant(byte[]? blob, ulong alignment = 0)
+        : this(CreateBlobVariant(blob, alignment))
     {
     }
 
@@ -67,7 +67,7 @@ public sealed class Variant : IDisposable, IEquatable<Variant>
         get
         {
             EnsureNotDisposed();
-            return (VariantType)VariantNative.GetType(Handle);
+            return (VariantType)VariantUtilsNativeGenerated.VariantGetType(Handle);
         }
     }
 
@@ -76,7 +76,7 @@ public sealed class Variant : IDisposable, IEquatable<Variant>
         get
         {
             EnsureNotDisposed();
-            return (VariantNumberType)VariantNative.GetNumberType(Handle);
+            return (VariantNumberType)VariantUtilsNativeGenerated.VariantGetNumberType(Handle);
         }
     }
 
@@ -85,7 +85,7 @@ public sealed class Variant : IDisposable, IEquatable<Variant>
         get
         {
             EnsureNotDisposed();
-            return VariantNative.Valid(Handle) != 0;
+            return VariantUtilsNativeGenerated.VariantValid(Handle) != 0;
         }
     }
 
@@ -94,7 +94,7 @@ public sealed class Variant : IDisposable, IEquatable<Variant>
         get
         {
             EnsureNotDisposed();
-            return VariantNative.GetSize(Handle);
+            return VariantUtilsNativeGenerated.VariantGetSize(Handle);
         }
     }
 
@@ -110,27 +110,27 @@ public sealed class Variant : IDisposable, IEquatable<Variant>
     public Variant Clone()
     {
         EnsureNotDisposed();
-        return new Variant(VariantNative.Clone(Handle).Variant);
+        return new Variant(VariantUtilsNativeGenerated.VariantClone(Handle).Variant);
     }
 
     public bool Contains(string key)
     {
         ArgumentException.ThrowIfNullOrEmpty(key);
         EnsureNotDisposed();
-        return VariantNative.Contains(Handle, key) != 0;
+        return VariantUtilsNativeGenerated.VariantContains(Handle, key) != 0;
     }
 
     public Variant GetArrayItem(ulong index)
     {
         EnsureNotDisposed();
-        return new Variant(VariantNative.GetArrayItem(Handle, index).Variant);
+        return new Variant(VariantUtilsNativeGenerated.VariantGetArrayItem(Handle, index).Variant);
     }
 
     public Variant GetObjectItem(string key)
     {
         ArgumentException.ThrowIfNullOrEmpty(key);
         EnsureNotDisposed();
-        return new Variant(VariantNative.GetObjectItem(Handle, key).Variant);
+        return new Variant(VariantUtilsNativeGenerated.VariantGetObjectItem(Handle, key).Variant);
     }
 
     public string[] GetObjectKeys()
@@ -140,14 +140,14 @@ public sealed class Variant : IDisposable, IEquatable<Variant>
         var result = new string[checked((int)count)];
         for (ulong i = 0; i < count; ++i)
         {
-            RuntimeErrors.ThrowIfFailed(new ErrorCode(VariantNative.GetObjectKey(Handle, i, out var key)));
+            RuntimeErrors.ThrowIfFailed(new ErrorCode(VariantUtilsNativeGenerated.VariantGetObjectKey(Handle, i, out var key)));
             try
             {
                 result[i] = Marshal.PtrToStringUTF8(key) ?? string.Empty;
             }
             finally
             {
-                VariantNative.FreeString(key);
+                VariantUtilsNativeGenerated.FreeString(key);
             }
         }
         return result;
@@ -157,33 +157,33 @@ public sealed class Variant : IDisposable, IEquatable<Variant>
     {
         ArgumentNullException.ThrowIfNull(value);
         EnsureNotDisposed();
-        RuntimeErrors.ThrowIfFailed(new ErrorCode(VariantNative.SetArrayItem(Handle, index, value.Handle)));
+        RuntimeErrors.ThrowIfFailed(new ErrorCode(VariantUtilsNativeGenerated.VariantSetArrayItem(Handle, index, value.Handle)));
     }
 
     public void InsertArrayItem(ulong index, Variant value)
     {
         ArgumentNullException.ThrowIfNull(value);
         EnsureNotDisposed();
-        RuntimeErrors.ThrowIfFailed(new ErrorCode(VariantNative.InsertArrayItem(Handle, index, value.Handle)));
+        RuntimeErrors.ThrowIfFailed(new ErrorCode(VariantUtilsNativeGenerated.VariantInsertArrayItem(Handle, index, value.Handle)));
     }
 
     public void PushBack(Variant value)
     {
         ArgumentNullException.ThrowIfNull(value);
         EnsureNotDisposed();
-        RuntimeErrors.ThrowIfFailed(new ErrorCode(VariantNative.PushBack(Handle, value.Handle)));
+        RuntimeErrors.ThrowIfFailed(new ErrorCode(VariantUtilsNativeGenerated.VariantPushBack(Handle, value.Handle)));
     }
 
     public void EraseArrayItem(ulong index)
     {
         EnsureNotDisposed();
-        RuntimeErrors.ThrowIfFailed(new ErrorCode(VariantNative.EraseArrayItem(Handle, index)));
+        RuntimeErrors.ThrowIfFailed(new ErrorCode(VariantUtilsNativeGenerated.VariantEraseArrayItem(Handle, index)));
     }
 
     public void PopBack()
     {
         EnsureNotDisposed();
-        RuntimeErrors.ThrowIfFailed(new ErrorCode(VariantNative.PopBack(Handle)));
+        RuntimeErrors.ThrowIfFailed(new ErrorCode(VariantUtilsNativeGenerated.VariantPopBack(Handle)));
     }
 
     public void SetObjectItem(string key, Variant value)
@@ -191,58 +191,58 @@ public sealed class Variant : IDisposable, IEquatable<Variant>
         ArgumentException.ThrowIfNullOrEmpty(key);
         ArgumentNullException.ThrowIfNull(value);
         EnsureNotDisposed();
-        RuntimeErrors.ThrowIfFailed(new ErrorCode(VariantNative.SetObjectItem(Handle, key, value.Handle)));
+        RuntimeErrors.ThrowIfFailed(new ErrorCode(VariantUtilsNativeGenerated.VariantSetObjectItem(Handle, key, value.Handle)));
     }
 
     public void EraseObjectItem(string key)
     {
         ArgumentException.ThrowIfNullOrEmpty(key);
         EnsureNotDisposed();
-        RuntimeErrors.ThrowIfFailed(new ErrorCode(VariantNative.EraseObjectItem(Handle, key)));
+        RuntimeErrors.ThrowIfFailed(new ErrorCode(VariantUtilsNativeGenerated.VariantEraseObjectItem(Handle, key)));
     }
 
     public string GetString()
     {
         EnsureNotDisposed();
-        RuntimeErrors.ThrowIfFailed(new ErrorCode(VariantNative.GetString(Handle, out var text)));
+        RuntimeErrors.ThrowIfFailed(new ErrorCode(VariantUtilsNativeGenerated.VariantGetString(Handle, out var text)));
         try
         {
             return Marshal.PtrToStringUTF8(text) ?? string.Empty;
         }
         finally
         {
-            VariantNative.FreeString(text);
+            VariantUtilsNativeGenerated.FreeString(text);
         }
     }
 
     public long GetSignedNumber()
     {
         EnsureNotDisposed();
-        return VariantNative.GetI64(Handle);
+        return VariantUtilsNativeGenerated.VariantGetI64(Handle);
     }
 
     public ulong GetUnsignedNumber()
     {
         EnsureNotDisposed();
-        return VariantNative.GetU64(Handle);
+        return VariantUtilsNativeGenerated.VariantGetU64(Handle);
     }
 
     public double GetFloatingNumber()
     {
         EnsureNotDisposed();
-        return VariantNative.GetF64(Handle);
+        return VariantUtilsNativeGenerated.VariantGetF64(Handle);
     }
 
     public bool GetBoolean()
     {
         EnsureNotDisposed();
-        return VariantNative.GetBoolean(Handle) != 0;
+        return VariantUtilsNativeGenerated.VariantGetBoolean(Handle) != 0;
     }
 
     public byte[] GetBlob()
     {
         EnsureNotDisposed();
-        RuntimeErrors.ThrowIfFailed(new ErrorCode(VariantNative.GetBlob(Handle, out var data, out var size, out _)));
+        RuntimeErrors.ThrowIfFailed(new ErrorCode(VariantUtilsNativeGenerated.VariantGetBlob(Handle, out var data, out var size, out _)));
         try
         {
             if (size == 0 || data == IntPtr.Zero)
@@ -259,7 +259,7 @@ public sealed class Variant : IDisposable, IEquatable<Variant>
         }
         finally
         {
-            VariantNative.FreeBuffer(data);
+            VariantUtilsNativeGenerated.FreeBuffer(data);
         }
     }
 
@@ -271,7 +271,7 @@ public sealed class Variant : IDisposable, IEquatable<Variant>
         }
         EnsureNotDisposed();
         other.EnsureNotDisposed();
-        return VariantNative.Equals(Handle, other.Handle) != 0;
+        return VariantUtilsNativeGenerated.VariantEquals(Handle, other.Handle) != 0;
     }
 
     public override bool Equals(object? obj)
@@ -289,7 +289,7 @@ public sealed class Variant : IDisposable, IEquatable<Variant>
     {
         if (_nativeVariant != IntPtr.Zero)
         {
-            VariantNative.Destroy(new NativeVariantHandle(_nativeVariant));
+            VariantUtilsNativeGenerated.VariantDestroy(new NativeVariantHandle(_nativeVariant));
             _nativeVariant = IntPtr.Zero;
         }
         GC.SuppressFinalize(this);
@@ -333,6 +333,43 @@ public sealed class Variant : IDisposable, IEquatable<Variant>
         if (IsDisposed)
         {
             throw new ObjectDisposedException(nameof(Variant));
+        }
+    }
+
+    private static IntPtr CreateBlobVariant(byte[]? blob, ulong alignment)
+    {
+        using var pinnedBlob = PinnedByteArray.Create(blob);
+        return VariantUtilsNativeGenerated.VariantCreateBlob(pinnedBlob.Pointer, (ulong)(blob?.Length ?? 0), alignment).Variant;
+    }
+
+    private readonly struct PinnedByteArray : IDisposable
+    {
+        private readonly GCHandle _handle;
+
+        private PinnedByteArray(GCHandle handle, IntPtr pointer)
+        {
+            _handle = handle;
+            Pointer = pointer;
+        }
+
+        public IntPtr Pointer { get; }
+
+        public static PinnedByteArray Create(byte[]? data)
+        {
+            if (data is null || data.Length == 0)
+            {
+                return new PinnedByteArray(default, IntPtr.Zero);
+            }
+            var handle = GCHandle.Alloc(data, GCHandleType.Pinned);
+            return new PinnedByteArray(handle, handle.AddrOfPinnedObject());
+        }
+
+        public void Dispose()
+        {
+            if (_handle.IsAllocated)
+            {
+                _handle.Free();
+            }
         }
     }
 }

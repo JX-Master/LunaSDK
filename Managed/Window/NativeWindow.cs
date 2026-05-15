@@ -23,7 +23,7 @@ internal sealed class NativeWindow : ObjectBase, IWindow
         get
         {
             EnsureNotDisposed();
-            return WindowNative.IWindowIsClosed(_iwindow) != 0;
+            return WindowNativeGenerated.IwindowIsClosed(_iwindow) != 0;
         }
     }
 
@@ -32,7 +32,7 @@ internal sealed class NativeWindow : ObjectBase, IWindow
         get
         {
             EnsureNotDisposed();
-            return WindowNative.IWindowHasInputFocus(_iwindow) != 0;
+            return WindowNativeGenerated.IwindowHasInputFocus(_iwindow) != 0;
         }
     }
 
@@ -41,7 +41,7 @@ internal sealed class NativeWindow : ObjectBase, IWindow
         get
         {
             EnsureNotDisposed();
-            return WindowNative.IWindowHasMouseFocus(_iwindow) != 0;
+            return WindowNativeGenerated.IwindowHasMouseFocus(_iwindow) != 0;
         }
     }
 
@@ -50,7 +50,7 @@ internal sealed class NativeWindow : ObjectBase, IWindow
         get
         {
             EnsureNotDisposed();
-            return WindowNative.IWindowIsMinimized(_iwindow) != 0;
+            return WindowNativeGenerated.IwindowIsMinimized(_iwindow) != 0;
         }
     }
 
@@ -59,7 +59,7 @@ internal sealed class NativeWindow : ObjectBase, IWindow
         get
         {
             EnsureNotDisposed();
-            return WindowNative.IWindowIsMaximized(_iwindow) != 0;
+            return WindowNativeGenerated.IwindowIsMaximized(_iwindow) != 0;
         }
     }
 
@@ -68,7 +68,7 @@ internal sealed class NativeWindow : ObjectBase, IWindow
         get
         {
             EnsureNotDisposed();
-            return WindowNative.IWindowIsHovered(_iwindow) != 0;
+            return WindowNativeGenerated.IwindowIsHovered(_iwindow) != 0;
         }
     }
 
@@ -77,7 +77,7 @@ internal sealed class NativeWindow : ObjectBase, IWindow
         get
         {
             EnsureNotDisposed();
-            return WindowNative.IWindowIsVisible(_iwindow) != 0;
+            return WindowNativeGenerated.IwindowIsVisible(_iwindow) != 0;
         }
     }
 
@@ -86,12 +86,12 @@ internal sealed class NativeWindow : ObjectBase, IWindow
         get
         {
             EnsureNotDisposed();
-            return (WindowStyleFlags)WindowNative.IWindowGetStyle(_iwindow);
+            return (WindowStyleFlags)WindowNativeGenerated.IwindowGetStyle(_iwindow);
         }
         set
         {
             EnsureNotDisposed();
-            RuntimeErrors.ThrowIfFailed(new ErrorCode(WindowNative.IWindowSetStyle(_iwindow, (uint)value)));
+            RuntimeErrors.ThrowIfFailed(new ErrorCode(WindowNativeGenerated.IwindowSetStyle(_iwindow, (uint)value)));
         }
     }
 
@@ -100,13 +100,13 @@ internal sealed class NativeWindow : ObjectBase, IWindow
         get
         {
             EnsureNotDisposed();
-            WindowNative.IWindowGetPosition(_iwindow, out var x, out var y);
+            WindowNativeGenerated.IwindowGetPosition(_iwindow, out var x, out var y);
             return new Point2I(x, y);
         }
         set
         {
             EnsureNotDisposed();
-            RuntimeErrors.ThrowIfFailed(new ErrorCode(WindowNative.IWindowSetPosition(_iwindow, value.X, value.Y)));
+            RuntimeErrors.ThrowIfFailed(new ErrorCode(WindowNativeGenerated.IwindowSetPosition(_iwindow, value.X, value.Y)));
         }
     }
 
@@ -115,13 +115,13 @@ internal sealed class NativeWindow : ObjectBase, IWindow
         get
         {
             EnsureNotDisposed();
-            WindowNative.IWindowGetSize(_iwindow, out var width, out var height);
+            WindowNativeGenerated.IwindowGetSize(_iwindow, out var width, out var height);
             return new Size2U(width, height);
         }
         set
         {
             EnsureNotDisposed();
-            RuntimeErrors.ThrowIfFailed(new ErrorCode(WindowNative.IWindowSetSize(_iwindow, value.Width, value.Height)));
+            RuntimeErrors.ThrowIfFailed(new ErrorCode(WindowNativeGenerated.IwindowSetSize(_iwindow, value.Width, value.Height)));
         }
     }
 
@@ -130,7 +130,7 @@ internal sealed class NativeWindow : ObjectBase, IWindow
         get
         {
             EnsureNotDisposed();
-            WindowNative.IWindowGetFramebufferSize(_iwindow, out var width, out var height);
+            WindowNativeGenerated.IwindowGetFramebufferSize(_iwindow, out var width, out var height);
             return new Size2U(width, height);
         }
     }
@@ -140,7 +140,7 @@ internal sealed class NativeWindow : ObjectBase, IWindow
         get
         {
             EnsureNotDisposed();
-            return WindowNative.IWindowGetDpiScaleFactor(_iwindow);
+            return WindowNativeGenerated.IwindowGetDpiScaleFactor(_iwindow);
         }
     }
 
@@ -149,83 +149,83 @@ internal sealed class NativeWindow : ObjectBase, IWindow
         get
         {
             EnsureNotDisposed();
-            return WindowNative.IWindowIsTextInputActive(_iwindow) != 0;
+            return WindowNativeGenerated.IwindowIsTextInputActive(_iwindow) != 0;
         }
     }
 
     public void Close()
     {
         EnsureNotDisposed();
-        WindowNative.IWindowClose(_iwindow);
+        WindowNativeGenerated.IwindowClose(_iwindow);
     }
 
     public void SetForeground()
     {
         EnsureNotDisposed();
-        RuntimeErrors.ThrowIfFailed(new ErrorCode(WindowNative.IWindowSetForeground(_iwindow)));
+        RuntimeErrors.ThrowIfFailed(new ErrorCode(WindowNativeGenerated.IwindowSetForeground(_iwindow)));
     }
 
     public void SetMinimized()
     {
         EnsureNotDisposed();
-        RuntimeErrors.ThrowIfFailed(new ErrorCode(WindowNative.IWindowSetMinimized(_iwindow)));
+        RuntimeErrors.ThrowIfFailed(new ErrorCode(WindowNativeGenerated.IwindowSetMinimized(_iwindow)));
     }
 
     public void SetMaximized()
     {
         EnsureNotDisposed();
-        RuntimeErrors.ThrowIfFailed(new ErrorCode(WindowNative.IWindowSetMaximized(_iwindow)));
+        RuntimeErrors.ThrowIfFailed(new ErrorCode(WindowNativeGenerated.IwindowSetMaximized(_iwindow)));
     }
 
     public void SetRestored()
     {
         EnsureNotDisposed();
-        RuntimeErrors.ThrowIfFailed(new ErrorCode(WindowNative.IWindowSetRestored(_iwindow)));
+        RuntimeErrors.ThrowIfFailed(new ErrorCode(WindowNativeGenerated.IwindowSetRestored(_iwindow)));
     }
 
     public void SetVisible(bool visible)
     {
         EnsureNotDisposed();
-        RuntimeErrors.ThrowIfFailed(new ErrorCode(WindowNative.IWindowSetVisible(_iwindow, visible ? 1 : 0)));
+        RuntimeErrors.ThrowIfFailed(new ErrorCode(WindowNativeGenerated.IwindowSetVisible(_iwindow, visible ? 1 : 0)));
     }
 
     public void SetTitle(string title)
     {
         EnsureNotDisposed();
         ArgumentNullException.ThrowIfNull(title);
-        RuntimeErrors.ThrowIfFailed(new ErrorCode(WindowNative.IWindowSetTitle(_iwindow, title)));
+        RuntimeErrors.ThrowIfFailed(new ErrorCode(WindowNativeGenerated.IwindowSetTitle(_iwindow, title)));
     }
 
     public Point2I ScreenToClient(Point2I point)
     {
         EnsureNotDisposed();
-        WindowNative.IWindowScreenToClient(_iwindow, point.X, point.Y, out var x, out var y);
+        WindowNativeGenerated.IwindowScreenToClient(_iwindow, point.X, point.Y, out var x, out var y);
         return new Point2I(x, y);
     }
 
     public Point2I ClientToScreen(Point2I point)
     {
         EnsureNotDisposed();
-        WindowNative.IWindowClientToScreen(_iwindow, point.X, point.Y, out var x, out var y);
+        WindowNativeGenerated.IwindowClientToScreen(_iwindow, point.X, point.Y, out var x, out var y);
         return new Point2I(x, y);
     }
 
     public void BeginTextInput()
     {
         EnsureNotDisposed();
-        RuntimeErrors.ThrowIfFailed(new ErrorCode(WindowNative.IWindowBeginTextInput(_iwindow)));
+        RuntimeErrors.ThrowIfFailed(new ErrorCode(WindowNativeGenerated.IwindowBeginTextInput(_iwindow)));
     }
 
     public void SetTextInputArea(RectI inputRect, int cursor)
     {
         EnsureNotDisposed();
-        RuntimeErrors.ThrowIfFailed(new ErrorCode(WindowNative.IWindowSetTextInputArea(_iwindow, inputRect, cursor)));
+        RuntimeErrors.ThrowIfFailed(new ErrorCode(WindowNativeGenerated.IwindowSetTextInputArea(_iwindow, inputRect, cursor)));
     }
 
     public void EndTextInput()
     {
         EnsureNotDisposed();
-        RuntimeErrors.ThrowIfFailed(new ErrorCode(WindowNative.IWindowEndTextInput(_iwindow)));
+        RuntimeErrors.ThrowIfFailed(new ErrorCode(WindowNativeGenerated.IwindowEndTextInput(_iwindow)));
     }
 
     private void EnsureNotDisposed()

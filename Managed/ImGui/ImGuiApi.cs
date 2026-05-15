@@ -156,7 +156,7 @@ public static class ImGuiApi
         {
             if (value != IntPtr.Zero)
             {
-                RuntimeNative.FreeBuffer(value);
+                RuntimeNativeGenerated.FreeBuffer(value);
             }
         }
     }

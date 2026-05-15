@@ -12,20 +12,20 @@ public static class WindowClipboard
         get
         {
             var text = IntPtr.Zero;
-            RuntimeErrors.ThrowIfFailed(new ErrorCode(WindowNative.ClipboardGetText(out text)));
+            RuntimeErrors.ThrowIfFailed(new ErrorCode(WindowNativeGenerated.ClipboardGetText(out text)));
             try
             {
                 return Marshal.PtrToStringUTF8(text) ?? string.Empty;
             }
             finally
             {
-                WindowNative.FreeString(text);
+                WindowNativeGenerated.FreeString(text);
             }
         }
         set
         {
             ArgumentNullException.ThrowIfNull(value);
-            RuntimeErrors.ThrowIfFailed(new ErrorCode(WindowNative.ClipboardSetText(value)));
+            RuntimeErrors.ThrowIfFailed(new ErrorCode(WindowNativeGenerated.ClipboardSetText(value)));
         }
     }
 }

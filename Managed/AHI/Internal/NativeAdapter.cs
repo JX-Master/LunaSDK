@@ -23,14 +23,14 @@ internal sealed class NativeAdapter : ObjectBase, IAdapter
         get
         {
             EnsureNotDisposed();
-            RuntimeErrors.ThrowIfFailed(new ErrorCode(AhiNative.IAdapterGetName(_iadapter, out var name)));
+            RuntimeErrors.ThrowIfFailed(new ErrorCode(AhiNativeGenerated.IadapterGetName(_iadapter, out var name)));
             try
             {
                 return System.Runtime.InteropServices.Marshal.PtrToStringUTF8(name) ?? string.Empty;
             }
             finally
             {
-                AhiNative.FreeString(name);
+                AhiNativeGenerated.FreeString(name);
             }
         }
     }
@@ -40,14 +40,14 @@ internal sealed class NativeAdapter : ObjectBase, IAdapter
         get
         {
             EnsureNotDisposed();
-            return AhiNative.IAdapterIsPrimary(_iadapter) != 0;
+            return AhiNativeGenerated.IadapterIsPrimary(_iadapter) != 0;
         }
     }
 
     public WaveFormat[] GetNativeWaveFormats()
     {
         EnsureNotDisposed();
-        var firstPassCode = new ErrorCode(AhiNative.IAdapterGetNativeWaveFormats(_iadapter, null, 0, out var count));
+        var firstPassCode = new ErrorCode(AhiNativeGenerated.IadapterGetNativeWaveFormats(_iadapter, IntPtr.Zero, 0, out var count));
         var insufficientBuffer = RuntimeErrors.GetCodeByName("BasicError", "insufficient_user_buffer");
         if (firstPassCode.Failed && firstPassCode != insufficientBuffer)
         {
@@ -58,7 +58,8 @@ internal sealed class NativeAdapter : ObjectBase, IAdapter
             return Array.Empty<WaveFormat>();
         }
         var nativeFormats = new NativeWaveFormat[checked((int)count)];
-        RuntimeErrors.ThrowIfFailed(new ErrorCode(AhiNative.IAdapterGetNativeWaveFormats(_iadapter, nativeFormats, (ulong)nativeFormats.Length, out count)));
+        using var pinnedFormats = PinnedArray<NativeWaveFormat>.Create(nativeFormats);
+        RuntimeErrors.ThrowIfFailed(new ErrorCode(AhiNativeGenerated.IadapterGetNativeWaveFormats(_iadapter, pinnedFormats.Pointer, (ulong)nativeFormats.Length, out count)));
         var result = new WaveFormat[nativeFormats.Length];
         for (var i = 0; i < nativeFormats.Length; ++i)
         {
