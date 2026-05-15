@@ -9,7 +9,9 @@ public sealed class StbTargetRules : TargetRules
             rulesPath: "ThirdParty.Target.cs")
     {
         Kind = BuildTargetKind.External;
-        PublicIncludeDirectories("SDKs/stb/include");
+        PublicIncludeDirectories(
+            "SDKs/stb/include",
+            "SDKs/stb/include/stb");
         RequiredFiles(
             "SDKs/stb/include/stb/stb_image.h",
             "SDKs/stb/include/stb/stb_image_write.h",
