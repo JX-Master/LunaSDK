@@ -47,7 +47,7 @@ internal static class CppCommandLineBuilder
             RuntimeFlag(payload.Contains("runtime") ? payload.Required("runtime") : payload.Required("mode")),
             "/Zi",
             "/FS",
-            $"/Fd{Quote(Path.Combine(workspace.BuildDirectory, options.Platform.ToString(), options.Architecture, options.Mode.ToString(), "compile.LunaBuild.pdb"))}",
+            $"/Fd{Quote(Path.ChangeExtension(output, ".pdb"))}",
             MsvcOptimizationFlag(payload.Required("mode")),
             "/D_WINDOWS",
             "/DUNICODE",
