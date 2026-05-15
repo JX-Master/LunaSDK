@@ -26,6 +26,14 @@ jobs:
       - name: Show .NET info
         run: dotnet --info
 
+      - name: Restore SDK cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            SDKs
+            build/LunaSetup
+          key: LunaSDK-SDKs-v6-windows
+
       - name: Setup project
         run: ./setup.bat
 
