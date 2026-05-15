@@ -9,6 +9,7 @@ public sealed class CppslNativeExtractorTargetRules : TargetRules
             rulesPath: "Tools/CPPSL/native/cppsl-native-extractor.Target.cs")
     {
         SupportedPlatforms(BuildPlatform.Windows);
+        Category = BuildTargetCategory.Tools;
         Kind = BuildTargetKind.Executable;
         Sources("src/main.cpp");
         Defines("NDEBUG", "_ITERATOR_DEBUG_LEVEL=0");

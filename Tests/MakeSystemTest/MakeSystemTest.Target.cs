@@ -9,7 +9,7 @@ public sealed class MakeSystemTestTargetRules : TargetRules
             rulesPath: "Tests/MakeSystemTest/MakeSystemTest.Target.cs")
     {
         SupportedPlatforms(BuildPlatform.Windows, BuildPlatform.MacOS);
-        IsTest = true;
+        Category = BuildTargetCategory.Tests;
         Kind = BuildTargetKind.Executable;
         Sources("Main.cpp");
         DependsOn("Runtime", "MakeSystem");

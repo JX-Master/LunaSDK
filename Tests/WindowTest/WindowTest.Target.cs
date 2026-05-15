@@ -9,7 +9,7 @@ public sealed class WindowTestTargetRules : TargetRules
             rulesPath: "Tests/WindowTest/WindowTest.Target.cs")
     {
         SupportedPlatforms(BuildPlatform.Windows, BuildPlatform.MacOS, BuildPlatform.Linux);
-        IsTest = true;
+        Category = BuildTargetCategory.Tests;
         Kind = BuildTargetKind.Executable;
         Sources("Source/*.cpp");
         DependsOn("Runtime", "Window");

@@ -9,7 +9,7 @@ public sealed class RHITest1FillBackBufferTargetRules : TargetRules
             rulesPath: "Tests/RHITests/RHITest1_FillBackBuffer/RHITest1_FillBackBuffer.Target.cs")
     {
         SupportedPlatforms(BuildPlatform.Windows, BuildPlatform.MacOS, BuildPlatform.Linux);
-        IsTest = true;
+        Category = BuildTargetCategory.Tests;
         Kind = BuildTargetKind.Executable;
         Sources("*.cpp");
         DependsOn("Runtime", "RHI", "RHITestBed");

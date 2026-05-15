@@ -59,6 +59,7 @@ public sealed class BuildGraphGenerator
             $"platform={options.Platform}",
             $"arch={options.Architecture}",
             $"shared={options.Shared}",
+            $"category={target.Category}",
             $"rhi={options.RhiApi}");
     }
 }

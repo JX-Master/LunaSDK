@@ -9,7 +9,7 @@ public sealed class RHITest4BoxTargetRules : TargetRules
             rulesPath: "Tests/RHITests/RHITest4_Box/RHITest4_Box.Target.cs")
     {
         SupportedPlatforms(BuildPlatform.Windows, BuildPlatform.MacOS, BuildPlatform.Linux);
-        IsTest = true;
+        Category = BuildTargetCategory.Tests;
         Kind = BuildTargetKind.Executable;
         Sources("*.cpp");
         Shader("TestBoxVS.cxx", "vertex", "vs_main");

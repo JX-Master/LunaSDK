@@ -30,13 +30,7 @@ public sealed class TargetDiscovery
             }
         }
 
-        IEnumerable<BuildTargetDefinition> discoveredTargets = targets.Values;
-        if(!options.BuildTests)
-        {
-            discoveredTargets = discoveredTargets.Where(target => !target.IsTest);
-        }
-
-        return discoveredTargets
+        return targets.Values
             .OrderBy(target => target.Name, StringComparer.OrdinalIgnoreCase)
             .ToArray();
     }

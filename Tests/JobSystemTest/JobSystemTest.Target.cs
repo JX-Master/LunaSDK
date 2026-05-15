@@ -9,7 +9,7 @@ public sealed class JobSystemTestTargetRules : TargetRules
             rulesPath: "Tests/JobSystemTest/JobSystemTest.Target.cs")
     {
         SupportedPlatforms(BuildPlatform.Windows, BuildPlatform.MacOS, BuildPlatform.Linux);
-        IsTest = true;
+        Category = BuildTargetCategory.Tests;
         Kind = BuildTargetKind.Executable;
         Sources("**.cpp");
         DependsOn("Runtime", "JobSystem");

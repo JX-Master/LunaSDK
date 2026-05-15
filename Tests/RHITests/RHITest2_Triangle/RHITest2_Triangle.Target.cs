@@ -9,7 +9,7 @@ public sealed class RHITest2TriangleTargetRules : TargetRules
             rulesPath: "Tests/RHITests/RHITest2_Triangle/RHITest2_Triangle.Target.cs")
     {
         SupportedPlatforms(BuildPlatform.Windows, BuildPlatform.MacOS, BuildPlatform.Linux);
-        IsTest = true;
+        Category = BuildTargetCategory.Tests;
         Kind = BuildTargetKind.Executable;
         Sources("*.cpp");
         Shader("TestTriangleVS.cxx", "vertex", "vs_main");

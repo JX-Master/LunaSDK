@@ -8,7 +8,7 @@ public sealed class ExampleShaderTestTargetRules : TargetRules
             targetDirectory: "Tests/ExampleShaderTest",
             rulesPath: "Tests/ExampleShaderTest/ExampleShaderTest.Target.cs")
     {
-        IsTest = true;
+        Category = BuildTargetCategory.Tests;
         Kind = BuildTargetKind.Executable;
         Sources("*.cpp");
         Shader("ExampleVS.cxx", "vertex", "vs_main");

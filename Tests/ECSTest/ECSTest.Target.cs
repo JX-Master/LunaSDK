@@ -9,7 +9,7 @@ public sealed class ECSTestTargetRules : TargetRules
             rulesPath: "Tests/ECSTest/ECSTest.Target.cs")
     {
         SupportedPlatforms(BuildPlatform.Windows, BuildPlatform.MacOS, BuildPlatform.Linux);
-        IsTest = true;
+        Category = BuildTargetCategory.Tests;
         Kind = BuildTargetKind.Executable;
         Sources("*.cpp");
         DependsOn("Runtime", "JobSystem", "ECS");

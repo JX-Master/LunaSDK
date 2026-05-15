@@ -25,7 +25,7 @@ Common commands:
 dotnet run --project Tools/LunaBuild/src/LunaBuild.Cli -- inspect --root .
 dotnet run --project Tools/LunaBuild/src/LunaBuild.Cli -- generate --root . --target ObjLoader --output build/LunaBuild/ObjLoader.lunarules
 dotnet run --project Tools/LunaBuild/src/LunaBuild.Cli -- generate --root . --target ObjLoader --format json --output build/LunaBuild/ObjLoader.graph.json
-dotnet run --project Tools/LunaBuild/src/LunaBuild.Cli -- generate --root . --format xcode --platform MacOS --arch arm64 --no-tests
+dotnet run --project Tools/LunaBuild/src/LunaBuild.Cli -- generate --root . --format xcode --platform MacOS --arch arm64
 dotnet run --project Tools/LunaBuild/src/LunaBuild.Cli -- build --root . --target ObjLoader --output build/LunaBuild/ObjLoader.lunarules
 ```
 

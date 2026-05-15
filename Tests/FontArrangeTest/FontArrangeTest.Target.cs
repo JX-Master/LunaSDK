@@ -9,7 +9,7 @@ public sealed class FontArrangeTestTargetRules : TargetRules
             rulesPath: "Tests/FontArrangeTest/FontArrangeTest.Target.cs")
     {
         SupportedPlatforms(BuildPlatform.Windows, BuildPlatform.MacOS, BuildPlatform.Linux);
-        IsTest = true;
+        Category = BuildTargetCategory.Tests;
         Kind = BuildTargetKind.Executable;
         Sources("Source/**.cpp");
         DependsOn("Runtime", "Window", "RHI", "Font", "VG");

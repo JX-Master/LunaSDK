@@ -71,18 +71,27 @@ Current common kinds:
 - `External`: prebuilt or header-only third-party dependencies consumed through
   existing files.
 
-## Tests
+## Target Category
 
-Set `IsTest = true` for all test targets, including test helper libraries such
-as `RHITestBed`.
+Targets are grouped into build categories. `Engine` targets are built by
+default. `Tests` and `Tools` targets are built only when explicitly requested by
+category or target name.
 
 ```csharp
-IsTest = true;
+Category = BuildTargetCategory.Tools;
 ```
 
-`lunabuild inspect --no-tests` and future CI filters use this metadata. Do not
-infer test-ness from `Executable`, because some test support targets are
-libraries.
+Use `Tests` for all test targets, including test helper libraries such as
+`RHITestBed`. Do not infer test-ness from `Executable`, because some test
+support targets are libraries.
+
+```csharp
+Category = BuildTargetCategory.Tests;
+```
+
+Use `Tools` for build-time tools such as CPPSL. Tool targets remain visible to
+IDE generators and can still be built with `--target <name>` or
+`--category Tools`, but they are not part of the normal SDK `--all` build.
 
 ## Sources And Headers
 
@@ -326,7 +335,7 @@ Use the timeout wrapper for commands that may invoke compilers or tests:
 
 - Put `<TargetName>.Target.cs` beside the target's `xmake.lua`.
 - Keep `rulesPath` equal to the rule file's repository-relative path.
-- Use `IsTest = true` for every test and test helper target.
+- Use `Category = BuildTargetCategory.Tests` for every test and test helper target.
 - Declare target dependencies with `DependsOn(...)`.
 - Declare runtime assets with `RuntimeFiles(...)`, not ad-hoc copy commands.
 - Prefer simple patterns and explicit lists for special files.

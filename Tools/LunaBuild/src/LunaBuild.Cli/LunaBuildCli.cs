@@ -49,7 +49,7 @@ public static class LunaBuildCli
             var deps = target.Dependencies.Count == 0
                 ? "-"
                 : string.Join(", ", target.Dependencies);
-            Console.WriteLine($"  {target.Name} -> {deps}");
+            Console.WriteLine($"  {target.Name} [{target.Category}] -> {deps}");
         }
         return 0;
     }
@@ -60,14 +60,22 @@ public static class LunaBuildCli
         var buildOptions = options.ToBuildOptions();
         var targets = new TargetDiscovery().DiscoverTargets(workspace, buildOptions);
         var format = ResolveOutputFormat(options);
-        var effectiveAllTargets = options.AllTargets || (IsIdeOutputFormat(format) && string.IsNullOrWhiteSpace(options.TargetName));
+        var categoryFilter = TargetCategoryFilter(options);
+        var effectiveAllTargets = options.AllTargets || categoryFilter is not null || (IsIdeOutputFormat(format) && string.IsNullOrWhiteSpace(options.TargetName));
         var graph = GenerateGraph(
             workspace,
             buildOptions,
             targets,
             options.TargetName,
-            effectiveAllTargets);
-        var outputTargets = SelectTargetsForOutput(targets, options.TargetName, effectiveAllTargets);
+            effectiveAllTargets,
+            categoryFilter);
+        var outputTargets = SelectTargetsForOutput(
+            targets,
+            buildOptions,
+            options.TargetName,
+            effectiveAllTargets,
+            categoryFilter,
+            includeAllDiscoveredWhenUnfiltered: IsIdeOutputFormat(format) && categoryFilter is null && string.IsNullOrWhiteSpace(options.TargetName));
         var outputPath = ResolveOutputPath(workspace, options, format);
 
         WriteOutput(workspace, buildOptions, graph, outputTargets, outputPath, format);
@@ -81,13 +89,15 @@ public static class LunaBuildCli
         var workspace = BuildWorkspace.Discover(options.RootDirectory);
         var buildOptions = options.ToBuildOptions();
         var targets = new TargetDiscovery().DiscoverTargets(workspace, buildOptions);
-        var graph = GenerateGraph(workspace, buildOptions, targets, options.TargetName, options.AllTargets);
+        var categoryFilter = TargetCategoryFilter(options);
+        var graph = GenerateGraph(workspace, buildOptions, targets, options.TargetName, options.AllTargets || categoryFilter is not null, categoryFilter);
 
         if(options.OutputPath is not null)
         {
             var format = ResolveOutputFormat(options);
             var outputPath = ResolveOutputPath(workspace, options, format);
-            WriteOutput(workspace, buildOptions, graph, targets, outputPath, format);
+            var outputTargets = SelectTargetsForOutput(targets, buildOptions, options.TargetName, options.AllTargets || categoryFilter is not null, categoryFilter);
+            WriteOutput(workspace, buildOptions, graph, outputTargets, outputPath, format);
             Console.WriteLine($"Dumped build graph ({format.ToString().ToLowerInvariant()}): {Path.GetFullPath(outputPath)}");
         }
 
@@ -134,7 +144,8 @@ public static class LunaBuildCli
 
         var buildOptions = options.ToBuildOptions();
         var targets = new TargetDiscovery().DiscoverTargets(workspace, buildOptions);
-        var graph = GenerateGraph(workspace, buildOptions, targets, options.TargetName, options.AllTargets);
+        var categoryFilter = TargetCategoryFilter(options);
+        var graph = GenerateGraph(workspace, buildOptions, targets, options.TargetName, options.AllTargets || categoryFilter is not null, categoryFilter);
         var makeSystem = new MakeSystemBackend(Array.Empty<IMakeActionExecutor>());
         var result = makeSystem.Clean(workspace, graph);
         Console.WriteLine($"Clean finished. Nodes: {result.NodesVisited}, Files: {result.FilesDeleted}, Cache records: {result.CacheRecordsRemoved}");
@@ -151,9 +162,10 @@ public static class LunaBuildCli
         var workspace = BuildWorkspace.Discover(options.RootDirectory);
         var buildOptions = options.ToBuildOptions();
         var targets = new TargetDiscovery().DiscoverTargets(workspace, buildOptions);
-        var effectiveAllTargets = options.AllTargets || string.IsNullOrWhiteSpace(options.TargetName);
-        var graph = GenerateGraph(workspace, buildOptions, targets, options.TargetName, effectiveAllTargets);
-        var outputTargets = SelectTargetsForOutput(targets, options.TargetName, effectiveAllTargets);
+        var categoryFilter = TargetCategoryFilter(options);
+        var effectiveAllTargets = options.AllTargets || categoryFilter is not null || string.IsNullOrWhiteSpace(options.TargetName);
+        var graph = GenerateGraph(workspace, buildOptions, targets, options.TargetName, effectiveAllTargets, categoryFilter);
+        var outputTargets = SelectTargetsForOutput(targets, buildOptions, options.TargetName, effectiveAllTargets, categoryFilter);
         var result = InstallWriter.Install(workspace, graph, outputTargets, options.OutputPath);
         Console.WriteLine($"Install finished. Files: {result.FilesCopied}, Output: {Path.GetFullPath(options.OutputPath)}");
         return 0;
@@ -161,12 +173,29 @@ public static class LunaBuildCli
 
     private static IReadOnlyList<BuildTargetDefinition> SelectTargetsForOutput(
         IReadOnlyList<BuildTargetDefinition> targets,
+        BuildOptions options,
         string? targetName,
-        bool allTargets)
+        bool allTargets,
+        IReadOnlySet<BuildTargetCategory>? categoryFilter,
+        bool includeAllDiscoveredWhenUnfiltered = false)
     {
         if(allTargets || string.IsNullOrWhiteSpace(targetName))
         {
-            return targets;
+            if(categoryFilter is { Count: > 0 })
+            {
+                return targets
+                    .Where(target => categoryFilter.Contains(target.Category))
+                    .OrderBy(target => target.Name, StringComparer.OrdinalIgnoreCase)
+                    .ToArray();
+            }
+            if(includeAllDiscoveredWhenUnfiltered)
+            {
+                return targets;
+            }
+            return targets
+                .Where(target => BuildTargetCategoryPolicy.IsDefaultEnabled(target.Category))
+                .OrderBy(target => target.Name, StringComparer.OrdinalIgnoreCase)
+                .ToArray();
         }
 
         var targetMap = targets.ToDictionary(target => target.Name, StringComparer.OrdinalIgnoreCase);
@@ -194,17 +223,25 @@ public static class LunaBuildCli
         BuildOptions buildOptions,
         IReadOnlyList<BuildTargetDefinition> targets,
         string? targetName,
-        bool allTargets)
+        bool allTargets,
+        IReadOnlySet<BuildTargetCategory>? categoryFilter = null)
     {
         if(allTargets)
         {
-            return new CppTargetGraphGenerator().GenerateAll(workspace, buildOptions, targets);
+            return new CppTargetGraphGenerator().GenerateAll(workspace, buildOptions, targets, categoryFilter);
         }
         if(!string.IsNullOrWhiteSpace(targetName))
         {
             return new CppTargetGraphGenerator().Generate(workspace, buildOptions, targets, targetName);
         }
         return new BuildGraphGenerator().GenerateTargetInspectionGraph(workspace, buildOptions, targets);
+    }
+
+    private static IReadOnlySet<BuildTargetCategory>? TargetCategoryFilter(CommandLineOptions options)
+    {
+        return options.TargetCategories.Count == 0
+            ? null
+            : options.TargetCategories.ToHashSet();
     }
 
     private static BuildGraphOutputFormat ResolveOutputFormat(CommandLineOptions options)
@@ -325,6 +362,7 @@ public static class LunaBuildCli
         Console.WriteLine("  --format <name>     rules, json, compile_commands, vs2022, vscode, or xcode.");
         Console.WriteLine("  --target <name>     Generate/build one pure C++ target graph.");
         Console.WriteLine("  --all               Generate/build all discovered targets as a pure C++ graph.");
+        Console.WriteLine("  --category <name>   Filter all-target operations by Engine, Tests, or Tools. Can repeat or use commas.");
         Console.WriteLine("  --force             Force build actions to run even when up to date.");
         Console.WriteLine("  --full              Clean the whole build/LunaBuild directory.");
         Console.WriteLine("  --mode <name>       Debug, Profile, or Release. Default: Debug.");
@@ -332,7 +370,6 @@ public static class LunaBuildCli
         Console.WriteLine("  --arch <name>       Architecture string. Default: host architecture.");
         Console.WriteLine("  --rhi <name>        D3D12, Vulkan, or Metal. Default: platform default.");
         Console.WriteLine("  --static            Generate static target configuration.");
-        Console.WriteLine("  --no-tests          Disable tests in generated options.");
     }
 }
 
@@ -345,6 +382,8 @@ internal sealed class CommandLineOptions
     public string? TargetName { get; private init; }
 
     public bool AllTargets { get; private init; }
+
+    public IReadOnlyList<BuildTargetCategory> TargetCategories { get; private init; } = Array.Empty<BuildTargetCategory>();
 
     public bool ForceRebuild { get; private init; }
 
@@ -361,8 +400,6 @@ internal sealed class CommandLineOptions
     public RhiApi? RhiApi { get; private init; }
 
     public bool? Shared { get; private init; }
-
-    public bool? BuildTests { get; private init; }
 
     public static CommandLineOptions Parse(string[] args)
     {
@@ -385,6 +422,13 @@ internal sealed class CommandLineOptions
                     break;
                 case "--all":
                     options.AllTargets = true;
+                    break;
+                case "--category":
+                case "--categories":
+                    foreach(var category in ParseCategories(RequireValue(args, ref i, args[i])))
+                    {
+                        options.TargetCategories.Add(category);
+                    }
                     break;
                 case "--force":
                     options.ForceRebuild = true;
@@ -410,12 +454,6 @@ internal sealed class CommandLineOptions
                 case "--shared":
                     options.Shared = true;
                     break;
-                case "--no-tests":
-                    options.BuildTests = false;
-                    break;
-                case "--tests":
-                    options.BuildTests = true;
-                    break;
                 default:
                     throw new ArgumentException($"Unknown option: {args[i]}");
             }
@@ -423,6 +461,10 @@ internal sealed class CommandLineOptions
         if(options.AllTargets && !string.IsNullOrWhiteSpace(options.TargetName))
         {
             throw new ArgumentException("--all cannot be combined with --target.");
+        }
+        if(options.TargetCategories.Count > 0 && !string.IsNullOrWhiteSpace(options.TargetName))
+        {
+            throw new ArgumentException("--category cannot be combined with --target.");
         }
         return options.ToImmutable();
     }
@@ -437,7 +479,6 @@ internal sealed class CommandLineOptions
             Platform = platform,
             Architecture = Architecture ?? defaults.Architecture,
             Shared = Shared ?? defaults.Shared,
-            BuildTests = BuildTests ?? defaults.BuildTests,
             RhiApi = RhiApi ?? DefaultRhiApi(platform),
         };
     }
@@ -472,6 +513,14 @@ internal sealed class CommandLineOptions
         throw new ArgumentException($"{optionName} has invalid value: {value}");
     }
 
+    private static IEnumerable<BuildTargetCategory> ParseCategories(string value)
+    {
+        foreach(var part in value.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            yield return ParseEnum<BuildTargetCategory>(part, "--category");
+        }
+    }
+
     private static BuildGraphOutputFormat ParseOutputFormat(string value)
     {
         return value.Replace("-", "_").ToLowerInvariant() switch
@@ -494,6 +543,7 @@ internal sealed class CommandLineOptions
         public string? OutputPath { get; set; }
         public string? TargetName { get; set; }
         public bool AllTargets { get; set; }
+        public List<BuildTargetCategory> TargetCategories { get; } = new();
         public bool ForceRebuild { get; set; }
         public bool FullClean { get; set; }
         public BuildGraphOutputFormat? OutputFormat { get; set; }
@@ -502,7 +552,6 @@ internal sealed class CommandLineOptions
         public string? Architecture { get; set; }
         public RhiApi? RhiApi { get; set; }
         public bool? Shared { get; set; }
-        public bool? BuildTests { get; set; }
 
         public CommandLineOptions ToImmutable()
         {
@@ -512,6 +561,7 @@ internal sealed class CommandLineOptions
                 OutputPath = OutputPath,
                 TargetName = TargetName,
                 AllTargets = AllTargets,
+                TargetCategories = TargetCategories.Distinct().OrderBy(category => category.ToString(), StringComparer.Ordinal).ToArray(),
                 ForceRebuild = ForceRebuild,
                 FullClean = FullClean,
                 OutputFormat = OutputFormat,
@@ -520,7 +570,6 @@ internal sealed class CommandLineOptions
                 Architecture = Architecture,
                 RhiApi = RhiApi,
                 Shared = Shared,
-                BuildTests = BuildTests,
             };
         }
     }

@@ -8,7 +8,7 @@ public sealed class ExampleTestTargetRules : TargetRules
             targetDirectory: "Tests/ExampleTest",
             rulesPath: "Tests/ExampleTest/ExampleTest.Target.cs")
     {
-        IsTest = true;
+        Category = BuildTargetCategory.Tests;
         Kind = BuildTargetKind.Executable;
         Headers("Source/*.hpp");
         Sources("Source/*.cpp");

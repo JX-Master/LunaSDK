@@ -143,10 +143,6 @@ internal static class IdeProjectModel
             options.RhiApi.ToString(),
             options.Shared ? "--shared" : "--static",
         };
-        if(!options.BuildTests)
-        {
-            args.Add("--no-tests");
-        }
         return args;
     }
 

@@ -269,7 +269,7 @@ public sealed class MakeSystemBackend
         {
             builder.AppendLine($"  node path: {context.Workspace.ResolveRepositoryPath(context.Node.Path)}");
         }
-        builder.AppendLine($"  configuration: platform={options.Platform} arch={options.Architecture} mode={options.Mode} linkage={(options.Shared ? "shared" : "static")} rhi={options.RhiApi} tests={options.BuildTests}");
+        builder.AppendLine($"  configuration: platform={options.Platform} arch={options.Architecture} mode={options.Mode} linkage={(options.Shared ? "shared" : "static")} rhi={options.RhiApi}");
 
         var payloadValues = ParsePayloadForDiagnostics(context.ActionPayload);
         foreach(var key in new[] { "target", "name", "source", "object", "output", "header", "depfile", "format", "stage", "entry", "language" })

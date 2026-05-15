@@ -40,7 +40,7 @@ public abstract class TargetRules
 
     public BuildTargetKind Kind { get; protected set; } = BuildTargetKind.SharedLibrary;
 
-    public bool IsTest { get; protected set; }
+    public BuildTargetCategory Category { get; protected set; } = BuildTargetCategory.Engine;
 
     protected BuildWorkspace Workspace => _currentWorkspace ?? throw new InvalidOperationException("TargetRules workspace is only available during Configure/ToDefinition.");
 
@@ -260,7 +260,7 @@ public abstract class TargetRules
                     .OrderBy(shader => shader.SourceFile, StringComparer.OrdinalIgnoreCase)
                     .ToArray(),
                 Kind: Kind,
-                IsTest: IsTest,
+                Category: Category,
                 MsvcRuntimeLibrary: _msvcRuntimeLibrary,
                 DotNetProjectFile: _dotNetProject is null
                     ? null
@@ -305,6 +305,7 @@ public abstract class TargetRules
             EmbeddedHeaders: _embeddedHeaders.Count,
             Shaders: _shaders.Count,
             SupportedPlatforms: _supportedPlatforms.ToArray(),
+            Category: Category,
             MsvcRuntimeLibrary: _msvcRuntimeLibrary,
             DotNetProject: _dotNetProject);
     }
@@ -333,6 +334,7 @@ public abstract class TargetRules
         {
             _supportedPlatforms.Add(platform);
         }
+        Category = state.Category;
         _msvcRuntimeLibrary = state.MsvcRuntimeLibrary;
         _dotNetProject = state.DotNetProject;
     }
@@ -370,6 +372,7 @@ public abstract class TargetRules
         int EmbeddedHeaders,
         int Shaders,
         BuildPlatform[] SupportedPlatforms,
+        BuildTargetCategory Category,
         string? MsvcRuntimeLibrary,
         DotNetProjectRule? DotNetProject);
 }

@@ -9,6 +9,7 @@ public sealed class CPPSLTargetRules : TargetRules
             rulesPath: "Tools/CPPSL/CPPSL.Target.cs")
     {
         SupportedPlatforms(BuildPlatform.Windows);
+        Category = BuildTargetCategory.Tools;
         Kind = BuildTargetKind.DotNetProject;
         Sources("src/CPPSL.Cli/*.cs", "src/CPPSL.Core/**.cs");
         ExcludeSources("src/CPPSL.Core/bin/**.cs", "src/CPPSL.Core/obj/**.cs");

@@ -8,7 +8,7 @@ public sealed class ExampleRuntimeFilesTargetRules : TargetRules
             targetDirectory: "Tests/ExampleRuntimeFiles",
             rulesPath: "Tests/ExampleRuntimeFiles/ExampleRuntimeFiles.Target.cs")
     {
-        IsTest = true;
+        Category = BuildTargetCategory.Tests;
         Kind = BuildTargetKind.Executable;
         Sources("*.cpp");
         RuntimeFiles("asset.png", "config.json");

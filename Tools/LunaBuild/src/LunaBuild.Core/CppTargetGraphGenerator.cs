@@ -27,16 +27,20 @@ public sealed class CppTargetGraphGenerator
     public BuildGraph GenerateAll(
         BuildWorkspace workspace,
         BuildOptions options,
-        IReadOnlyList<BuildTargetDefinition> targets)
+        IReadOnlyList<BuildTargetDefinition> targets,
+        IReadOnlySet<BuildTargetCategory>? categoryFilter = null)
     {
+        var rootTargets = targets
+            .Where(target => ShouldIncludeRootTarget(target, categoryFilter))
+            .ToArray();
         var targetMap = targets.ToDictionary(target => target.Name, StringComparer.OrdinalIgnoreCase);
         var builder = new CppTargetGraphBuilder(workspace, options, targetMap);
-        foreach(var target in targets.OrderBy(target => target.Name, StringComparer.OrdinalIgnoreCase))
+        foreach(var target in rootTargets.OrderBy(target => target.Name, StringComparer.OrdinalIgnoreCase))
         {
             builder.AddTarget(target.Name);
         }
 
-        var targetIds = targets
+        var targetIds = rootTargets
             .Select(target => BuildGraphIds.Target(target.Name))
             .Order(StringComparer.OrdinalIgnoreCase)
             .ToArray();
@@ -55,6 +59,15 @@ public sealed class CppTargetGraphGenerator
             Options: options,
             Nodes: builder.Nodes,
             Targets: new[] { BuildGraphIds.AllTargets });
+    }
+
+    private static bool ShouldIncludeRootTarget(
+        BuildTargetDefinition target,
+        IReadOnlySet<BuildTargetCategory>? categoryFilter)
+    {
+        return categoryFilter is { Count: > 0 }
+            ? categoryFilter.Contains(target.Category)
+            : BuildTargetCategoryPolicy.IsDefaultEnabled(target.Category);
     }
 
     private sealed class CppTargetGraphBuilder

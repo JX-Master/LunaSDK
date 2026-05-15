@@ -28,7 +28,6 @@ public sealed record BuildOptions(
     BuildPlatform Platform,
     string Architecture,
     bool Shared,
-    bool BuildTests,
     RhiApi RhiApi)
 {
     public static BuildOptions HostDefault()
@@ -51,7 +50,6 @@ public sealed record BuildOptions(
             Platform: platform,
             Architecture: HostArchitecture(),
             Shared: true,
-            BuildTests: true,
             RhiApi: rhiApi);
     }
 

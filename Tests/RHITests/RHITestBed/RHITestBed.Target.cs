@@ -9,7 +9,7 @@ public sealed class RHITestBedTargetRules : TargetRules
             rulesPath: "Tests/RHITests/RHITestBed/RHITestBed.Target.cs")
     {
         SupportedPlatforms(BuildPlatform.Windows, BuildPlatform.MacOS, BuildPlatform.Linux);
-        IsTest = true;
+        Category = BuildTargetCategory.Tests;
         Headers("*.hpp");
         Sources("*.cpp");
         DependsOn("Runtime", "RHI", "RHIUtility", "Window");

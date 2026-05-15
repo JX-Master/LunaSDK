@@ -9,7 +9,7 @@ public sealed class VariantUtilsTestTargetRules : TargetRules
             rulesPath: "Tests/VariantUtilsTest/VariantUtilsTest.Target.cs")
     {
         SupportedPlatforms(BuildPlatform.Windows, BuildPlatform.MacOS, BuildPlatform.Linux);
-        IsTest = true;
+        Category = BuildTargetCategory.Tests;
         Kind = BuildTargetKind.Executable;
         Headers("Source/*.hpp");
         Sources("Source/**.cpp");

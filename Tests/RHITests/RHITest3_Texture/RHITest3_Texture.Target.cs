@@ -9,7 +9,7 @@ public sealed class RHITest3TextureTargetRules : TargetRules
             rulesPath: "Tests/RHITests/RHITest3_Texture/RHITest3_Texture.Target.cs")
     {
         SupportedPlatforms(BuildPlatform.Windows, BuildPlatform.MacOS, BuildPlatform.Linux);
-        IsTest = true;
+        Category = BuildTargetCategory.Tests;
         Kind = BuildTargetKind.Executable;
         Sources("*.cpp");
         Shader("TestTextureVS.cxx", "vertex", "vs_main");
