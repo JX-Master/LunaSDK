@@ -40,11 +40,11 @@ archives whenever CPPSL compiler changes must be distributed to normal users.
 
 Open `CPPSL.sln` in Rider or Visual Studio to inspect the tool projects.
 
-Enable CPPSL source-tool targets only when developing the compiler:
+Build CPPSL source-tool targets only when developing the compiler:
 
 ```sh
-xmake f --build_cppsl_tools=true
-xmake build CPPSL
+dotnet run --project Tools/LunaBuild/src/LunaBuild.Cli -- \
+  build --target CPPSL --platform Windows --arch x64
 ```
 
 Build the solution from command line:
@@ -53,12 +53,12 @@ Build the solution from command line:
 dotnet build Tools/CPPSL/CPPSL.sln -m:1 /nr:false
 ```
 
-Build the native extractor before running the compiler:
+Build the native extractor before running the compiler. On Windows, use the
+LunaBuild target:
 
 ```sh
-xmake f --plat=macosx --arch=arm64 --mode=debug
-xmake f --build_cppsl_tools=true
-xmake build cppsl-native-extractor
+dotnet run --project Tools/LunaBuild/src/LunaBuild.Cli -- \
+  build --target cppsl-native-extractor --platform Windows --arch x64
 ```
 
 Run the sample:

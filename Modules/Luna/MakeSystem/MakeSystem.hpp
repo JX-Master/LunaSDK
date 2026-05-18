@@ -19,6 +19,8 @@
 
 namespace Luna
 {
+    struct Module;
+
     namespace MakeSystem
     {
         struct IMakeSystem : virtual Interface
@@ -36,4 +38,6 @@ namespace Luna
 
         LUNA_MAKE_SYSTEM_API R<Ref<IMakeSystem>> new_make_system(const Path& build_dir, u32 max_num_parallel_tasks);
     }
+
+    LUNA_MAKE_SYSTEM_API Module* module_make_system();
 }

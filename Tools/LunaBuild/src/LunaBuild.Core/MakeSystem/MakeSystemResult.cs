@@ -1,0 +1,40 @@
+namespace LunaBuild.Core.MakeSystem;
+
+public sealed record MakeSystemResult(
+    int NodesVisited,
+    int ActionsExecuted,
+    bool UpToDate);
+
+public sealed record MakeSystemBuildOptions(bool ForceRebuild = false);
+
+public sealed record MakeSystemCleanResult(
+    int NodesVisited,
+    int FilesDeleted,
+    int CacheRecordsRemoved);
+
+public class MakeSystemException : Exception
+{
+    public MakeSystemException(string message)
+        : base(message)
+    {
+    }
+
+    public MakeSystemException(string message, Exception innerException)
+        : base(message, innerException)
+    {
+    }
+}
+
+public sealed class MissingMakeActionExecutorException : MakeSystemException
+{
+    public MissingMakeActionExecutorException(string actionKind, string nodeId)
+        : base($"No MakeSystem action executor registered for `{actionKind}` on node `{nodeId}`.")
+    {
+        ActionKind = actionKind;
+        NodeId = nodeId;
+    }
+
+    public string ActionKind { get; }
+
+    public string NodeId { get; }
+}

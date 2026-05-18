@@ -22,7 +22,7 @@ fi
 
 if [[ ! -x "$NATIVE_EXTRACTOR" ]]; then
     echo "error: CPPSL native extractor does not exist or is not executable: $NATIVE_EXTRACTOR" >&2
-    echo "build it first, for example: xmake f --build_cppsl_tools=true && xmake -b CPPSL" >&2
+    echo "build it first with the native extractor build script or LunaBuild target for this platform" >&2
     exit 1
 fi
 
