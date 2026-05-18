@@ -47,7 +47,8 @@ internal static class LunaSetupApp
             Directory.CreateDirectory(downloadDirectory);
             var archivePath = Path.Combine(downloadDirectory, $"SDKs-{SdkVersion}-{platform}.zip");
 
-            await DownloadAsync(url, archivePath, options.Force);
+            var refreshArchive = options.Force || !File.Exists(markerPath) || MissingSdkFiles(sdksDirectory, platform).Count > 0;
+            await DownloadAsync(url, archivePath, refreshArchive);
 
             if(options.Force && Directory.Exists(sdksDirectory))
             {
@@ -164,6 +165,9 @@ internal static class LunaSetupApp
                 Path.Combine(sdksDirectory, "d3d12-memory-allocator", "windows", "x64", "lib", "Debug", "D3D12MA.lib"),
                 Path.Combine(sdksDirectory, "d3d12-memory-allocator", "windows", "x64", "lib", "Release", "D3D12MA.lib"),
                 Path.Combine(sdksDirectory, "volk", "include", "volk.h"),
+                Path.Combine(sdksDirectory, "volk", "include", "volk.c"),
+                Path.Combine(sdksDirectory, "vulkan-headers", "include", "vulkan", "vk_platform.h"),
+                Path.Combine(sdksDirectory, "vulkan-headers", "include", "vulkan", "vulkan.h"),
                 Path.Combine(sdksDirectory, "vulkan-memory-allocator", "include", "vk_mem_alloc.h"),
             });
         }

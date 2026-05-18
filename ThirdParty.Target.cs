@@ -65,8 +65,55 @@ public sealed class VolkTargetRules : TargetRules
     {
         Kind = BuildTargetKind.External;
         SupportedPlatforms(BuildPlatform.Windows, BuildPlatform.Linux);
+        DependsOn("vulkan-headers");
         PublicIncludeDirectories("SDKs/volk/include");
-        RequiredFiles("SDKs/volk/include/volk.h");
+        RequiredFiles(
+            "SDKs/volk/include/volk.h",
+            "SDKs/volk/include/volk.c");
+    }
+}
+
+public sealed class VulkanHeadersTargetRules : TargetRules
+{
+    public VulkanHeadersTargetRules()
+        : base(
+            name: "vulkan-headers",
+            targetDirectory: ".",
+            rulesPath: "ThirdParty.Target.cs")
+    {
+        Kind = BuildTargetKind.External;
+        SupportedPlatforms(BuildPlatform.Windows, BuildPlatform.Linux);
+    }
+
+    protected override void Configure(BuildWorkspace workspace, BuildOptions options)
+    {
+        var projectIncludeDirectory = workspace.ResolveRepositoryPath("SDKs/vulkan-headers/include");
+        var includeDirectory = IsVulkanHeadersIncludeDirectory(projectIncludeDirectory)
+            ? projectIncludeDirectory
+            : FindVulkanSdkIncludeDirectory() ?? projectIncludeDirectory;
+
+        PublicIncludeDirectories(includeDirectory);
+        RequiredFiles(
+            Path.Combine(includeDirectory, "vulkan", "vk_platform.h"),
+            Path.Combine(includeDirectory, "vulkan", "vulkan.h"));
+    }
+
+    private static string? FindVulkanSdkIncludeDirectory()
+    {
+        var vulkanSdk = Environment.GetEnvironmentVariable("VULKAN_SDK");
+        if(string.IsNullOrWhiteSpace(vulkanSdk))
+        {
+            return null;
+        }
+
+        var includeDirectory = Path.Combine(vulkanSdk, OperatingSystem.IsWindows() ? "Include" : "include");
+        return IsVulkanHeadersIncludeDirectory(includeDirectory) ? includeDirectory : null;
+    }
+
+    private static bool IsVulkanHeadersIncludeDirectory(string includeDirectory)
+    {
+        return File.Exists(Path.Combine(includeDirectory, "vulkan", "vk_platform.h")) &&
+            File.Exists(Path.Combine(includeDirectory, "vulkan", "vulkan.h"));
     }
 }
 
@@ -80,6 +127,7 @@ public sealed class VulkanMemoryAllocatorTargetRules : TargetRules
     {
         Kind = BuildTargetKind.External;
         SupportedPlatforms(BuildPlatform.Windows, BuildPlatform.Linux);
+        DependsOn("vulkan-headers");
         PublicIncludeDirectories("SDKs/vulkan-memory-allocator/include");
         RequiredFiles("SDKs/vulkan-memory-allocator/include/vk_mem_alloc.h");
     }
