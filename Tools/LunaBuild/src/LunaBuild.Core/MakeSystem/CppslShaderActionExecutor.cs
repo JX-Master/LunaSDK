@@ -44,6 +44,21 @@ public sealed class CppslShaderActionExecutor : KnownActionExecutor
             return;
         }
 
+        if(format.Equals("spir_v", StringComparison.OrdinalIgnoreCase))
+        {
+            await RunCppslAsync(context.Workspace, source, intermediateDirectory, stage, entry, nativeExtractor, "glsl", cancellationToken);
+
+            var glsl = Path.Combine(intermediateDirectory, sourceName + ".glsl");
+            if(!File.Exists(glsl))
+            {
+                throw new MakeSystemException($"CPPSL did not produce expected GLSL output: {glsl}");
+            }
+
+            var spirv = await RunGlslangAsync(context.Workspace, glsl, intermediateDirectory, sourceName, stage, IsDebug(payload.Required("mode")), cancellationToken);
+            WriteShaderHeader(header, sourceName, spirv, "spirv", "main", 0, 0, 0);
+            return;
+        }
+
         if(format.Equals("msl", StringComparison.OrdinalIgnoreCase))
         {
             await RunCppslAsync(context.Workspace, source, intermediateDirectory, stage, entry, nativeExtractor, "msl,reflection", cancellationToken);
@@ -165,6 +180,49 @@ public sealed class CppslShaderActionExecutor : KnownActionExecutor
                 metallibResult.Output));
         }
         return metallib;
+    }
+
+    private async Task<string> RunGlslangAsync(
+        BuildWorkspace workspace,
+        string glsl,
+        string intermediateDirectory,
+        string sourceName,
+        string stage,
+        bool debug,
+        CancellationToken cancellationToken)
+    {
+        var spv = Path.Combine(intermediateDirectory, sourceName + ".spv");
+        var glslang = LocateGlslang(workspace);
+        var args = new List<string>
+        {
+            "-V",
+            "--target-env",
+            "vulkan1.4",
+            "--spirv-val",
+            "-S",
+            GlslangStage(stage),
+            "-e",
+            "main",
+            "-o",
+            spv,
+            glsl,
+        };
+        if(debug)
+        {
+            args.Insert(0, "-gVS");
+        }
+
+        var result = await ProcessRunner.RunAsync(glslang, args, workspace.RootDirectory, _actionTimeout, cancellationToken);
+        if(result.ExitCode != 0)
+        {
+            throw new MakeSystemException(FormatToolFailure(
+                $"GLSL to SPIR-V compile failed for {glsl}",
+                workspace.RootDirectory,
+                glslang,
+                args,
+                result.Output));
+        }
+        return spv;
     }
 
     private async Task RunDxcAsync(
@@ -303,6 +361,36 @@ public sealed class CppslShaderActionExecutor : KnownActionExecutor
         throw new MakeSystemException("DXC was not found. Install Vulkan SDK or provide SDKs/vulkan-tools/windows/x64/bin/dxc.exe.");
     }
 
+    private static string LocateGlslang(BuildWorkspace workspace)
+    {
+        var executable = OperatingSystem.IsWindows() ? "glslang.exe" : "glslang";
+        var candidates = new List<string>
+        {
+            Path.Combine(workspace.RootDirectory, "SDKs", "vulkan-tools", "macosx", "arm64", "bin", executable),
+            Path.Combine(workspace.RootDirectory, "SDKs", "vulkan-tools", "windows", "x64", "bin", "glslang.exe"),
+        };
+        var vulkanSdk = Environment.GetEnvironmentVariable("VULKAN_SDK");
+        if(!string.IsNullOrWhiteSpace(vulkanSdk))
+        {
+            candidates.Add(Path.Combine(vulkanSdk, OperatingSystem.IsWindows() ? "Bin" : "bin", executable));
+        }
+
+        var pathValue = Environment.GetEnvironmentVariable("PATH") ?? string.Empty;
+        foreach(var pathEntry in pathValue.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries))
+        {
+            candidates.Add(Path.Combine(pathEntry, executable));
+        }
+
+        foreach(var candidate in candidates)
+        {
+            if(File.Exists(candidate))
+            {
+                return candidate;
+            }
+        }
+        throw new MakeSystemException("glslang was not found. Install Vulkan SDK or provide SDKs/vulkan-tools/windows/x64/bin/glslang.exe.");
+    }
+
     private static string NormalizeStage(string stage)
     {
         return stage.Equals("pixel", StringComparison.OrdinalIgnoreCase)
@@ -318,6 +406,17 @@ public sealed class CppslShaderActionExecutor : KnownActionExecutor
             "fragment" or "pixel" => "ps_6_0",
             "compute" => "cs_6_0",
             _ => throw new MakeSystemException($"Unsupported DXIL shader stage: {stage}"),
+        };
+    }
+
+    private static string GlslangStage(string stage)
+    {
+        return stage.ToLowerInvariant() switch
+        {
+            "vertex" => "vert",
+            "fragment" or "pixel" => "frag",
+            "compute" => "comp",
+            _ => throw new MakeSystemException($"Unsupported SPIR-V shader stage: {stage}"),
         };
     }
 

@@ -94,7 +94,7 @@ if (-not $process.HasExited) {
         Write-Host $stdoutTask.Result
     }
     if($stderrTask.Result.Length -gt 0) {
-        Write-Error $stderrTask.Result
+        [Console]::Error.Write($stderrTask.Result)
     }
     Write-Host "TIMEOUT after $TimeoutSeconds seconds"
     Write-Host "stdout: $stdoutPath"
@@ -111,7 +111,7 @@ if($stdoutTask.Result.Length -gt 0) {
     Write-Host $stdoutTask.Result
 }
 if($stderrTask.Result.Length -gt 0) {
-    Write-Error $stderrTask.Result
+    [Console]::Error.Write($stderrTask.Result)
 }
 Write-Host "EXIT $($process.ExitCode)"
 Write-Host "stdout: $stdoutPath"
