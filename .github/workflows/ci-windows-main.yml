@@ -10,28 +10,13 @@ jobs:
         os: [ windows-latest ]
         arch: [ x64 ]
         toolchain: [ msvc ]
-        rhi_api : [D3D12, Vulkan]
-        shared : [shared, static]
+        rhi_api: [ D3D12, Vulkan ]
+        shared: [ shared, static ]
     name: ${{ matrix.toolchain }}-${{ matrix.arch }}-${{ matrix.rhi_api }}-${{ matrix.shared }}
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout code
         uses: nschloe/action-cached-lfs-checkout@v1
-
-      - name: Get current date as package key
-        id: cache_key
-        run: echo "key=$(date +'%W')" >> $GITHUB_OUTPUT
-        shell: bash
-
-      # For referring this directory in cache.
-      - name: Set xmake directory
-        run: echo "XMAKE_GLOBALDIR=${{ runner.workspace }}/xmake-global" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-        
-      - name: Install xmake
-        uses: xmake-io/github-action-setup-xmake@v1
-        with:
-          xmake-version: latest
-          actions-cache-folder: .xmake-cache-W${{ steps.cache_key.outputs.key }}
 
       - name: Install .NET
         uses: actions/setup-dotnet@v4
@@ -40,54 +25,49 @@ jobs:
 
       - name: Show .NET info
         run: dotnet --info
-      
+
+      - name: Restore SDK cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            SDKs
+            build/LunaSetup
+          key: LunaSDK-SDKs-v6-d3d12ma-config-libs-windows
+
       - name: Setup project
         run: ./setup.bat
 
-      - name: Update xmake repositories
-        run: xmake repo --update
+      - name: Build LunaBuild
+        run: dotnet build Tools/LunaBuild/src/LunaBuild.Cli/LunaBuild.Cli.csproj --nologo
 
-      # Fetch xmake dephash
-      - name: Calculate xmake dependencies hash
-        id: dep_hash
-        run: echo "hash=$(xmake l utils.ci.packageskey)" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
-
-      # Cache xmake dependencies
-      - name: Retrieve cached xmake dependencies
-        uses: actions/cache@v4
-        with:
-          path: ${{ env.XMAKE_GLOBALDIR }}\.xmake\packages
-          key: ${{ matrix.os }}-${{ matrix.toolchain }}-${{ matrix.arch }}-${{ steps.dep_hash.outputs.hash }}-W${{ steps.cache_key.outputs.key }}
-          
-      - name: Configure xmake debug
-        run: xmake f --mode=debug --api_validation=y --thread_safe_assertion=y --arch=${{ matrix.arch }} --toolchain=${{ matrix.toolchain }} -c -y -v --rhi_debug=y --rhi_api=${{ matrix.rhi_api }} --shared=${{ matrix.shared == 'shared' && 'y' || 'n'}}
-        
       - name: Build debug
-        run: xmake build -y -v
+        run: |
+          $linkage = if ("${{ matrix.shared }}" -eq "shared") { "--shared" } else { "--static" }
+          dotnet run --project Tools/LunaBuild/src/LunaBuild.Cli/LunaBuild.Cli.csproj -- build --all --mode Debug --platform Windows --arch ${{ matrix.arch }} --rhi ${{ matrix.rhi_api }} $linkage
 
       - name: Install debug
-        run: xmake install -o ./install/${{ matrix.toolchain }}-${{ matrix.arch }}-${{ matrix.rhi_api }}-debug
-
-      - name: Configure xmake release
-        run: xmake f --mode=release --api_validation=n --thread_safe_assertion=n --arch=${{ matrix.arch }} --toolchain=${{ matrix.toolchain }} -c -y -v --rhi_debug=n --rhi_api=${{ matrix.rhi_api }} --shared=${{ matrix.shared == 'shared' && 'y' || 'n'}}
+        run: |
+          $linkage = if ("${{ matrix.shared }}" -eq "shared") { "--shared" } else { "--static" }
+          dotnet run --project Tools/LunaBuild/src/LunaBuild.Cli/LunaBuild.Cli.csproj -- install --all --mode Debug --platform Windows --arch ${{ matrix.arch }} --rhi ${{ matrix.rhi_api }} $linkage --output ./install/${{ matrix.toolchain }}-${{ matrix.arch }}-${{ matrix.rhi_api }}-debug
 
       - name: Build release
-        run: xmake build -y -v
+        run: |
+          $linkage = if ("${{ matrix.shared }}" -eq "shared") { "--shared" } else { "--static" }
+          dotnet run --project Tools/LunaBuild/src/LunaBuild.Cli/LunaBuild.Cli.csproj -- build --all --mode Release --platform Windows --arch ${{ matrix.arch }} --rhi ${{ matrix.rhi_api }} $linkage
 
       - name: Install release
-        run: xmake install -o ./install/${{ matrix.toolchain }}-${{ matrix.arch }}-${{ matrix.rhi_api }}-release
+        run: |
+          $linkage = if ("${{ matrix.shared }}" -eq "shared") { "--shared" } else { "--static" }
+          dotnet run --project Tools/LunaBuild/src/LunaBuild.Cli/LunaBuild.Cli.csproj -- install --all --mode Release --platform Windows --arch ${{ matrix.arch }} --rhi ${{ matrix.rhi_api }} $linkage --output ./install/${{ matrix.toolchain }}-${{ matrix.arch }}-${{ matrix.rhi_api }}-release
 
       - name: Collect artifacts debug
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.os }}-${{ matrix.toolchain }}-${{ matrix.arch }}-${{ matrix.rhi_api }}-${{ matrix.shared }}-debug
           path: ./install/${{ matrix.toolchain }}-${{ matrix.arch }}-${{ matrix.rhi_api }}-debug
-          
+
       - name: Collect artifacts release
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.os }}-${{ matrix.toolchain }}-${{ matrix.arch }}-${{ matrix.rhi_api }}-${{ matrix.shared }}-release
           path: ./install/${{ matrix.toolchain }}-${{ matrix.arch }}-${{ matrix.rhi_api }}-release
-        
-        
-        

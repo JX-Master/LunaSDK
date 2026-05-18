@@ -3,9 +3,11 @@
 #include <Luna/Runtime/Log.hpp>
 #include <Luna/Runtime/UniquePtr.hpp>
 #include <Luna/Window/Window.hpp>
+#include <Luna/Window/Event.hpp>
 #include <Luna/RHI/RHI.hpp>
 #include <Luna/Runtime/Math/Matrix.hpp>
-#include <Luna/RHI/Utility.hpp>
+#include <Luna/RHIUtility/ResourceWriteContext.hpp>
+#include <Luna/RHIUtility/RHIUtility.hpp>
 #include <Luna/Runtime/File.hpp>
 #include <Luna/Image/Image.hpp>
 #include <Luna/Runtime/Math/Transform.hpp>
@@ -40,15 +42,22 @@ struct Vertex
     Float3U position;
     Float2U texcoord;
 };
+
+void handle_app_event(object_t event, void* userdata)
+{
+    DemoApp* app = (DemoApp*)userdata;
+    if(auto e = cast_object<Window::WindowFramebufferResizeEvent>(event))
+    {
+        lupanic_if_failed(app->resize(e->width, e->height));
+    }
+}
+
 RV DemoApp::init()
 {
     lutry
     {
         luset(window, Window::new_window("DemoApp"));
-        window->get_close_event().add_handler([](Window::IWindow* window) { window->close(); });
-        window->get_framebuffer_resize_event().add_handler([this](Window::IWindow* window, u32 width, u32 height) {
-            lupanic_if_failed(this->resize(width, height));
-            });
+        Window::set_event_handler(handle_app_event, this);
 
         dev = RHI::get_main_device();
         using namespace RHI;
@@ -127,21 +136,22 @@ RV DemoApp::init()
         auto ub_align = dev->check_feature(DeviceFeature::uniform_buffer_data_alignment).uniform_buffer_data_alignment;
         luset(ub, dev->new_buffer(MemoryType::upload, BufferDesc(BufferUsageFlag::uniform_buffer, align_upper(sizeof(Float4x4), ub_align))));
 
-        luexp(copy_resource_data(cmdbuf, {
-            CopyResourceData::write_buffer(vb, 0, vertices, sizeof(vertices)),
-            CopyResourceData::write_buffer(ib, 0, indices, sizeof(indices))
-        }));
-
-        lulet(image_file, open_file("Luna.png", FileOpenFlag::read, FileCreationMode::open_existing));
+        lulet(image_file, open_file("luna.png", FileOpenFlag::read, FileCreationMode::open_existing));
         lulet(image_file_data, load_file_data(image_file));
         Image::ImageDesc image_desc;
         lulet(image_data, Image::read_image_file(image_file_data.data(), image_file_data.size(), Image::ImageFormat::rgba8_unorm, image_desc));
         luset(file_tex, dev->new_texture(MemoryType::local, TextureDesc::tex2d(Format::rgba8_unorm, 
             TextureUsageFlag::copy_dest | TextureUsageFlag::read_texture, image_desc.width, image_desc.height, 1, 1)));
-        luexp(copy_resource_data(cmdbuf, {
-            CopyResourceData::write_texture(file_tex, SubresourceIndex(0, 0), 0, 0, 0, 
-                image_data.data(), image_desc.width * 4, image_desc.width * image_desc.height * 4, image_desc.width, image_desc.height, 1)
-        }));
+        auto writer = RHIUtility::new_resource_write_context(dev);
+        void* mapped;
+        luset(mapped, writer->write_buffer(vb, 0, sizeof(vertices)));
+        memcpy(mapped, vertices, sizeof(vertices));
+        luset(mapped, writer->write_buffer(ib, 0, sizeof(indices)));
+        memcpy(mapped, indices, sizeof(indices));
+        u32 row_pitch, slice_pitch;
+        luset(mapped, writer->write_texture(file_tex, SubresourceIndex(0, 0), 0, 0, 0, image_desc.width, image_desc.height, 1, row_pitch, slice_pitch));
+        memcpy_bitmap(mapped, image_data.data(), image_desc.width * 4, image_desc.height, row_pitch, image_desc.width * 4);
+        luexp(writer->commit(cmdbuf, true));
         luexp(desc_set->update_descriptors({
             WriteDescriptorSet::uniform_buffer_view(0, BufferViewDesc::uniform_buffer(ub)),
             WriteDescriptorSet::read_texture_view(1, TextureViewDesc::tex2d(file_tex)),
@@ -227,7 +237,8 @@ RV run_app()
 {
     auto result = add_modules({
         module_window(),
-        module_rhi()
+        module_rhi(),
+        module_rhi_utility()
     });
     if(failed(result)) return result;
     result = init_modules();

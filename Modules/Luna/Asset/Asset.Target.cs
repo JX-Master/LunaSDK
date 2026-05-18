@@ -1,0 +1,15 @@
+namespace LunaBuild.Core.Targets;
+
+public sealed class AssetTargetRules : TargetRules
+{
+    public AssetTargetRules()
+        : base(
+            name: "Asset",
+            targetDirectory: "Modules/Luna/Asset",
+            rulesPath: "Modules/Luna/Asset/Asset.Target.cs")
+    {
+        Headers("*.hpp", "Source/**.hpp");
+        Sources("Source/**.cpp");
+        DependsOn("Runtime", "VariantUtils", "VFS");
+    }
+}

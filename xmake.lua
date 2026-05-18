@@ -1,3 +1,7 @@
+-- Legacy/reference build script.
+-- LunaBuild Target.cs rules are authoritative for main-path and CI builds.
+-- Keep this file as migration reference for branches that still compare against xmake.
+
 set_project("Luna")
 
 add_moduledirs("Tools/xmake/modules")

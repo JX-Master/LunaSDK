@@ -90,7 +90,7 @@ LunaSDK uses the following third party SDKs:
 1. [.NET](https://dotnet.microsoft.com) for implementing CPPSL (Cpp Shader Language) compiler (MIT License).
 1. [LLVM](https://llvm.org) for implementing CPPSL (Cpp Shader Language) compiler (Apache-2.0 License).
 
-All SDKs are either embedded in the project, or can be fetched automatically by xmake scripts, the user does not need to install them manually.
+Run `setup.bat` on Windows or `setup.sh` on macOS to fetch the platform SDK archive into `SDKs`. The setup tool downloads LunaSDK's prebuilt third-party SDK bundle from the LunaSDK-ThirdPartySDKs release page.
 
 The following SDKs are not directly used LunaSDK, but part of their design and implementation is referred when developing similar functionalities in LunaSDK:
 
