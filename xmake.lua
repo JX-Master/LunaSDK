@@ -108,12 +108,6 @@ option("build_tests")
     set_description("Whether to build tests for LunaSDK")
 option_end()
 
-option("managed")
-    set_default(false)
-    set_showmenu(true)
-    set_description("Whether to build managed C# bindings and programs. Requires xmake 3.0.8 or newer.")
-option_end()
-
 option("memory_profiler")
     set_default(false)
     set_showmenu(true)
@@ -193,54 +187,6 @@ function luna_sdk_module_target(target_name)
     set_exceptions("none")
 end
 
-function luna_sdk_module_c_wrapper(target_name)
-    target(target_name)
-    add_luna_sdk_options()
-    set_group("CWrapper")
-    if has_config("shared") then
-        set_kind("shared")
-    else
-        set_kind("static")
-    end
-    set_basename("Luna" .. target_name)
-    set_exceptions("none")
-end
-
-function set_luna_sdk_csharp_options()
-    set_toolchains("dotnet")
-    set_values("csharp.target_framework", "net10.0")
-    set_values("csharp.nullable", "enable")
-    if is_plat("windows") then
-        add_csflags("-m:1")
-    end
-    local defines = {}
-    if is_plat("windows") then
-        table.insert(defines, "LUNA_PLATFORM_WINDOWS")
-        table.insert(defines, "LUNA_PLATFORM_DESKTOP")
-    elseif is_plat("macosx") then
-        table.insert(defines, "LUNA_PLATFORM_MACOS")
-        table.insert(defines, "LUNA_PLATFORM_DESKTOP")
-        table.insert(defines, "LUNA_PLATFORM_POSIX")
-        table.insert(defines, "LUNA_PLATFORM_APPLE")
-    elseif is_plat("linux") then
-        table.insert(defines, "LUNA_PLATFORM_LINUX")
-        table.insert(defines, "LUNA_PLATFORM_DESKTOP")
-        table.insert(defines, "LUNA_PLATFORM_POSIX")
-    elseif is_plat("iphoneos") then
-        table.insert(defines, "LUNA_PLATFORM_IOS")
-        table.insert(defines, "LUNA_PLATFORM_MOBILE")
-        table.insert(defines, "LUNA_PLATFORM_POSIX")
-        table.insert(defines, "LUNA_PLATFORM_APPLE")
-    elseif is_plat("android") then
-        table.insert(defines, "LUNA_PLATFORM_ANDROID")
-        table.insert(defines, "LUNA_PLATFORM_MOBILE")
-        table.insert(defines, "LUNA_PLATFORM_POSIX")
-    end
-    if #defines > 0 then
-        set_values("csharp.properties", "DefineConstants=" .. table.concat(defines, ";"))
-    end
-end
-
 function set_luna_sdk_test()
     add_luna_sdk_options()
     set_group("Tests")
@@ -315,10 +261,6 @@ if has_config("build_binding_tools") then
 end
 
 includes("Modules")
-includes("CWrapper")
-if has_config("managed") then
-    includes("Managed")
-end
 includes("Programs")
 includes("Samples")
 

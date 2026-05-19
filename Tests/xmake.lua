@@ -12,20 +12,4 @@ if is_plat("windows", "macosx", "linux") then
     end
     includes("ECSTest")
     includes("AHITest")
-    if has_config("managed") then
-        includes("RuntimeCSharpTest")
-        includes("ImageCSharpTest")
-        includes("VFSCSharpTest")
-        includes("FontCSharpTest")
-        includes("FontArrangeCSharpTest")
-        includes("AssetCSharpTest")
-        includes("VGCSharpTest")
-        includes("VGVisualCSharpTest")
-        includes("ImGuiCSharpTest")
-        includes("HIDCSharpTest")
-        includes("AHICSharpTest")
-        includes("VariantUtilsCSharpTest")
-        includes("WindowCSharpTest")
-        includes("RHICSharpTest")
-    end
 end

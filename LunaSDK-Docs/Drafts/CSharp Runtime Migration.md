@@ -138,14 +138,14 @@ Rules:
 11. Use `.h` and `.cpp` for C wrapper files.
 12. Keep `.h` files pure C-compatible headers.
 13. Use `.cpp` files for wrapper implementations that include and call LunaSDK C++ APIs.
-14. Build C wrapper DLLs through xmake.
+14. Build C wrapper DLLs through LunaBuild.
 15. If a C wrapper must return a variable-length UTF-8 string or string list, the wrapper allocates a copy with LunaSDK memory APIs and exports a matching free function. Managed code must free the result immediately after copying it into C# strings; do not keep static native `String` buffers alive across `Luna::close`.
 
 Possible repository layout:
 
 ```text
 CWrapper/
-    xmake.lua
+    CWrapper.Target.cs
     Runtime/
         Runtime.h
         RuntimeC.cpp
@@ -157,15 +157,13 @@ CWrapper/
         RHIC.cpp
 
 Managed/
-    xmake.lua
+    Managed.Target.cs
     Runtime/
-        xmake.lua
         Runtime.cs
         ObjectBase.cs
         Internal/
             RuntimeNative.cs
     Window/
-        xmake.lua
         IWindow.cs
         WindowModule.cs
         Internal/
@@ -180,41 +178,15 @@ Programs/
 
 Samples/
     HelloWindow/
-        xmake.lua
         Main.cs
 
 Tests/
+    CSharpTests.Target.cs
     RuntimeCSharpTest/
-        xmake.lua
         Main.cs
 ```
 
-The root `xmake.lua` should include both directories:
-
-```lua
-includes("Modules")
-includes("CWrapper")
-if has_config("managed") then
-    includes("Managed")
-end
-includes("Programs")
-includes("Samples")
-```
-
-During the first skeleton phase, managed C# targets should be guarded by a `managed` xmake option until the repository baseline requires xmake 3.0.8 or newer. Older xmake versions can still build native LunaSDK modules and C wrapper DLLs without parsing `.cs` targets.
-
-Possible C wrapper xmake target:
-
-```lua
-target("LunaRuntimeC")
-    set_kind("shared")
-    add_files("Runtime/*.cpp")
-    add_headerfiles("Runtime/*.h")
-    add_deps("Runtime")
-    if is_plat("macosx") then
-        add_rpathdirs("@loader_path")
-    end
-```
+LunaBuild discovers `*.Target.cs` rules directly. C wrapper targets should use native shared-library rules and preserve the exported binary names used by managed `DllImport`, such as `LunaRuntimeC`, `LunaWindowC`, and `LunaRHIC`. Managed targets should use generated SDK-style C# project rules rather than committed per-module `.csproj` files.
 
 On macOS, C wrapper dylibs should carry `@loader_path` in their rpath so transitive LunaSDK module dylibs can be resolved when the wrapper is loaded by .NET through P/Invoke instead of by a native executable link.
 
@@ -250,13 +222,12 @@ Every imported LunaSDK module should have a corresponding managed proxy module. 
 2. Internal C# binding layer, which imports the module's C wrapper through P/Invoke.
 3. Internal C wrapper layer, built as a native DLL and implemented in C++ by calling the module's public C++ APIs.
 
-Managed projects should also be maintained by xmake. Xmake supports C# targets with `add_files("*.cs")`, C# shared libraries, NuGet packages, and C# to C/C++ interop through P/Invoke. For P/Invoke programs and tests, xmake can use `add_deps` from a C# target to a native shared library target and handle native shared library search paths.
+Managed projects are maintained by LunaBuild. LunaBuild rules declare managed source files and dependencies, then generate temporary SDK-style `.csproj` files under `build/LunaBuild/.../generated/projects`. The repository should not carry per-module managed `.csproj` files for proxy modules, tests, or samples unless a target is an independent tool project.
 
 Example shape:
 
 ```text
 Managed/Window/
-    xmake.lua
     IWindow.cs
     WindowModule.cs
     Internal/
@@ -264,7 +235,6 @@ Managed/Window/
         NativeWindow.cs
 
 Samples/HelloWindow/
-    xmake.lua
     Main.cs
 
 CWrapper/Window/
@@ -272,42 +242,40 @@ CWrapper/Window/
     WindowC.cpp
 ```
 
-Possible managed xmake target:
+Possible managed LunaBuild target:
 
-```lua
-target("Luna.Window")
-    set_kind("shared")
-    add_files("Window/**/*.cs")
-    add_deps("LunaRuntimeC", "LunaWindowC")
-    set_values("csharp.target_framework", "net10.0")
-    set_values("csharp.nullable", "enable")
-    set_values("csharp.allow_unsafe_blocks", true)
+```csharp
+public sealed class LunaWindowTargetRules : TargetRules
+{
+    public LunaWindowTargetRules()
+        : base("Luna.Window", "Managed/Window", "Managed/Managed.Target.cs")
+    {
+        Kind = BuildTargetKind.ManagedLibrary;
+        DotNetSettings("net10.0");
+        Sources("*.cs", "Internal/*.cs", "Internal/Generated/*.cs");
+        DependsOn("Luna.Runtime", "WindowC");
+    }
+}
 ```
 
 Possible managed program target:
 
-```lua
-target("HelloWindow")
-    set_luna_sdk_sample()
-    add_files("*.cs")
-    add_deps("Luna.Window")
+```csharp
+public sealed class HelloWindowTargetRules : TargetRules
+{
+    public HelloWindowTargetRules()
+        : base("HelloWindow", "Samples/HelloWindow", "Samples/ManagedSamples.Target.cs")
+    {
+        Kind = BuildTargetKind.ManagedExecutable;
+        Sources("*.cs");
+        DependsOn("Luna.Window");
+    }
+}
 ```
 
 Samples, programs, and tests should be grouped by purpose, not by implementation language. A C# `HelloWindow` sample belongs under `Samples`, real user-facing tools and applications belong under `Programs`, and a C# Runtime test belongs under `Tests`.
 
-Managed sample and test targets should use the same `managed` option guard. Samples live under `Samples`, tests live under `Tests`:
-
-```lua
--- Samples/xmake.lua
-if has_config("managed") then
-    includes("HelloWindow")
-end
-
--- Tests/xmake.lua
-if has_config("managed") then
-    includes("RuntimeCSharpTest")
-end
-```
+Managed sample and test targets live under `Samples` and `Tests` with normal LunaBuild target categories. Desktop-only managed samples/tests should declare `SupportedPlatforms(BuildPlatform.Windows, BuildPlatform.MacOS, BuildPlatform.Linux)`.
 
 C# binding rules:
 
@@ -655,7 +623,7 @@ Tasks:
 2. Define C ABI basic types: `luna_errcode_t`, `luna_errcat_t`, `luna_handle_t`, `LunaGuid`, string rules, and buffer rules.
 3. Define the error boundary from C++ `Result` / `ErrCode` to C# `ErrorException`.
 4. Define boxed object exposure: owning `object_t` handles and non-owning cached interface pointers.
-5. Define xmake target naming conventions.
+5. Define LunaBuild target naming conventions.
 
 Exit criteria:
 
@@ -664,31 +632,31 @@ Exit criteria:
 
 ### Phase 1: Build Skeleton Loop
 
-Goal: Prove that xmake can build native C wrapper DLLs, C# proxy modules, and C# programs together.
+Goal: Prove that LunaBuild can build native C wrapper DLLs, C# proxy modules, and C# programs together.
 
 Tasks:
 
-1. Add `CWrapper/xmake.lua`.
-2. Add `Managed/xmake.lua`.
-3. Include `CWrapper` from root `xmake.lua`, and include `Managed` behind the `managed` option until xmake 3.0.8+ is the repository baseline.
+1. Add LunaBuild C wrapper target rules.
+2. Add LunaBuild managed module target rules.
+3. Generate temporary SDK-style `.csproj` files for managed libraries and executables.
 4. Add `CWrapper/Runtime`, producing `LunaRuntimeC`.
 5. Add `Managed/Runtime`, producing `Luna.Runtime`.
 6. Add `Tests/RuntimeCSharpTest`, proving that C# can P/Invoke into the Runtime C wrapper.
 
 Exit criteria:
 
-1. xmake can build the native Runtime C wrapper.
-2. xmake can build the managed Runtime proxy module.
-3. xmake can build and run a C# Runtime program or test.
+1. LunaBuild can build the native Runtime C wrapper.
+2. LunaBuild can build the managed Runtime proxy module.
+3. LunaBuild can build and run a C# Runtime program or test.
 4. C# can call `luna_runtime_init` and `luna_runtime_close`.
 5. A native failure can be translated into `ErrorException`.
 
 Current first implementation slice:
 
 1. `CWrapper/Runtime` is the first default-built native wrapper target.
-2. `Managed/Runtime` and `Tests/RuntimeCSharpTest` are present as xmake C# targets, guarded by `managed`.
-3. With xmake 3.0.8 and .NET 10 installed, `xmake build RuntimeCSharpTest` builds `LunaRuntimeC`, `Luna.Runtime`, and `RuntimeCSharpTest`.
-4. `xmake run RuntimeCSharpTest` successfully calls `luna_runtime_init`, observes `Runtime.IsInitialized == true`, and calls `luna_runtime_close`.
+2. `Managed/Runtime` and `Tests/RuntimeCSharpTest` are LunaBuild managed targets.
+3. With .NET 10 installed, `lunabuild build --target RuntimeCSharpTest` builds `LunaRuntimeC`, `Luna.Runtime`, and `RuntimeCSharpTest`.
+4. Running the generated `RuntimeCSharpTest.dll` successfully calls `luna_runtime_init`, observes `Runtime.IsInitialized == true`, and calls `luna_runtime_close`.
 
 ### Phase 2: Runtime ABI Foothold
 
@@ -1003,7 +971,7 @@ Exit criteria:
 
 1. Write the first per-module C ABI ownership and error-code conventions.
 2. Decide the exact root directory names for C wrapper and C# files.
-3. Add xmake target conventions for C wrapper DLLs and C# proxy modules.
+3. Add LunaBuild target conventions for C wrapper DLLs and C# proxy modules.
 4. Define `luna_errcode_t`, exported Runtime error query APIs, and the first `ErrorException` shape.
 5. Create a narrow Runtime and Window API list for `HelloWindow`.
 6. Decide the first platform and .NET SDK/runtime target.

@@ -132,7 +132,7 @@ Luna::RV on_save_asset_trampoline(Luna::object_t userdata, Luna::Asset::asset_t 
         return Luna::BasicError::not_supported();
     }
     auto result = callbacks->on_save_asset(from_asset(asset), path.encode().c_str(), data, callbacks->userdata);
-    return Luna::ErrCode(static_cast<Luna::usize>(result));
+    return result ? Luna::ErrCode(static_cast<Luna::usize>(result)) : Luna::ok;
 }
 
 Luna::RV on_set_asset_data_trampoline(Luna::object_t userdata, Luna::Asset::asset_t asset, Luna::object_t data)
@@ -143,7 +143,7 @@ Luna::RV on_set_asset_data_trampoline(Luna::object_t userdata, Luna::Asset::asse
         return Luna::ok;
     }
     auto result = callbacks->on_set_asset_data(from_asset(asset), data, callbacks->userdata);
-    return Luna::ErrCode(static_cast<Luna::usize>(result));
+    return result ? Luna::ErrCode(static_cast<Luna::usize>(result)) : Luna::ok;
 }
 
 void on_get_referred_assets_trampoline(Luna::object_t userdata, Luna::Asset::asset_t asset, Luna::Vector<Luna::Asset::asset_t>& out_referred_assets)

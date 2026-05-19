@@ -14,7 +14,7 @@ public sealed class WindowTargetRules : TargetRules
 
         Sources("Source/*.cpp");
 
-        DependsOn("Runtime");
+        DependsOn("Runtime", "HID");
     }
 
     protected override void Configure(BuildWorkspace workspace, BuildOptions options)

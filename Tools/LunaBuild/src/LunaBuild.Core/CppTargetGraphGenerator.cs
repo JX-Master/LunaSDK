@@ -127,7 +127,7 @@ public sealed class CppTargetGraphGenerator
                 return externalOutputs;
             }
 
-            if(target.Kind == BuildTargetKind.DotNetProject)
+            if(target.Kind is BuildTargetKind.DotNetProject or BuildTargetKind.ManagedLibrary or BuildTargetKind.ManagedExecutable)
             {
                 var dotNetOutputs = AddDotNetTarget(target, dependencyOutputs);
                 _outputsByTarget[target.Name] = dotNetOutputs;
@@ -252,8 +252,11 @@ public sealed class CppTargetGraphGenerator
                 Depfiles: Array.Empty<string>()));
 
             var outputs = new TargetBuildOutputs(
+                target.Name,
+                target.Kind,
                 targetId,
                 binaryId,
+                binaryPath,
                 new[] { linkInputId }
                     .Concat(dependencyLinkInputIds)
                     .Distinct(StringComparer.Ordinal)
@@ -274,6 +277,10 @@ public sealed class CppTargetGraphGenerator
                     .Concat(dependencyFrameworks)
                     .Distinct(StringComparer.OrdinalIgnoreCase)
                     .ToArray(),
+                dependencyOutputs
+                    .SelectMany(output => output.ManagedReferencePaths)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToArray(),
                 target.RuntimeFiles
                     .Concat(dependencyOutputs.SelectMany(output => output.RuntimeFiles))
                     .Distinct(StringComparer.OrdinalIgnoreCase)
@@ -291,8 +298,10 @@ public sealed class CppTargetGraphGenerator
                 throw new InvalidOperationException($"Target {target.Name} is a .NET project target but does not declare DotNetProject(...).");
             }
 
-            var sourceIds = target.SourceFiles
-                .Concat(new[] { target.DotNetProjectFile })
+            var sourceInputs = target.Kind == BuildTargetKind.DotNetProject
+                ? target.SourceFiles.Concat(new[] { target.DotNetProjectFile })
+                : target.SourceFiles;
+            var sourceIds = sourceInputs
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .Order(StringComparer.OrdinalIgnoreCase)
                 .Select(path =>
@@ -313,30 +322,42 @@ public sealed class CppTargetGraphGenerator
 
             var outputId = BuildGraphIds.File(_workspace.ToRepositoryRelativePath(target.DotNetOutputFile));
             var dependencyTargetIds = dependencyOutputs.Select(output => output.TargetId).ToArray();
+            var managedReferencePaths = dependencyOutputs
+                .Where(output => output.Kind is BuildTargetKind.ManagedLibrary or BuildTargetKind.ManagedExecutable or BuildTargetKind.DotNetProject)
+                .Select(output => output.BinaryPath)
+                .Concat(dependencyOutputs.SelectMany(output => output.ManagedReferencePaths))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Order(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
             AddNode(new BuildGraphNode(
                 Id: outputId,
                 Kind: BuildGraphNodeKind.File,
                 Path: _workspace.ToRepositoryRelativePath(target.DotNetOutputFile),
-                Command: BuildDotNetBuildCommandDescription(_workspace, _options, target),
+                Command: BuildDotNetBuildCommandDescription(_workspace, _options, target, managedReferencePaths),
                 Dependencies: sourceIds,
                 OrderOnlyDependencies: dependencyTargetIds,
                 Outputs: Array.Empty<string>(),
                 Depfiles: Array.Empty<string>()));
 
+            var runtimeFileIds = AddRuntimeFileNodes(target, dependencyOutputs.SelectMany(output => output.RuntimeFiles), target.DotNetOutputFile);
+            var shaderRuntimeFileIds = AddShaderRuntimeFileNodes(target, target.DotNetOutputFile);
             var targetId = BuildGraphIds.Target(target.Name);
             AddNode(new BuildGraphNode(
                 Id: targetId,
                 Kind: BuildGraphNodeKind.Virtual,
                 Path: _workspace.ToRepositoryRelativePath(target.Directory),
                 Command: BuildDotNetTargetCommandDescription(_workspace, _options, target, target.SourceFiles.Count),
-                Dependencies: new[] { outputId }.Concat(dependencyTargetIds).ToArray(),
+                Dependencies: new[] { outputId }.Concat(dependencyTargetIds).Concat(runtimeFileIds).Concat(shaderRuntimeFileIds).ToArray(),
                 OrderOnlyDependencies: Array.Empty<string>(),
                 Outputs: Array.Empty<string>(),
                 Depfiles: Array.Empty<string>()));
 
             return new TargetBuildOutputs(
+                target.Name,
+                target.Kind,
                 targetId,
                 outputId,
+                target.DotNetOutputFile,
                 Array.Empty<string>(),
                 target.PublicIncludeDirectories
                     .Concat(dependencyOutputs.SelectMany(output => output.PublicIncludeDirectories))
@@ -352,6 +373,12 @@ public sealed class CppTargetGraphGenerator
                     .ToArray(),
                 target.Frameworks
                     .Concat(dependencyOutputs.SelectMany(output => output.Frameworks))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToArray(),
+                managedReferencePaths
+                    .Concat(target.Kind is BuildTargetKind.ManagedLibrary or BuildTargetKind.ManagedExecutable or BuildTargetKind.DotNetProject
+                        ? new[] { target.DotNetOutputFile }
+                        : Array.Empty<string>())
                     .Distinct(StringComparer.OrdinalIgnoreCase)
                     .ToArray(),
                 target.RuntimeFiles
@@ -390,8 +417,11 @@ public sealed class CppTargetGraphGenerator
                 Depfiles: Array.Empty<string>()));
 
             return new TargetBuildOutputs(
+                target.Name,
+                target.Kind,
                 targetId,
                 string.Empty,
+                target.Directory,
                 target.LinkLibraryFiles
                     .Select(path => AddFileReferenceNode(path, target.Name))
                     .Concat(dependencyOutputs.SelectMany(output => output.LinkInputIds))
@@ -411,6 +441,10 @@ public sealed class CppTargetGraphGenerator
                     .ToArray(),
                 target.Frameworks
                     .Concat(dependencyOutputs.SelectMany(output => output.Frameworks))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToArray(),
+                dependencyOutputs
+                    .SelectMany(output => output.ManagedReferencePaths)
                     .Distinct(StringComparer.OrdinalIgnoreCase)
                     .ToArray(),
                 target.RuntimeFiles
@@ -494,6 +528,51 @@ public sealed class CppTargetGraphGenerator
             return outputIds;
         }
 
+        private IReadOnlyList<string> AddShaderRuntimeFileNodes(BuildTargetDefinition target, string binaryPath)
+        {
+            var outputIds = new List<string>();
+            if(target.ShaderRuntimeFiles.Count == 0)
+            {
+                return outputIds;
+            }
+
+            var runtimeDirectory = Path.GetDirectoryName(binaryPath)!;
+            var extension = RuntimeShaderExtension(_options.RhiApi);
+            foreach(var shader in target.ShaderRuntimeFiles)
+            {
+                if(!_targetMap.TryGetValue(shader.SourceTargetName, out var shaderTarget))
+                {
+                    throw new InvalidOperationException($"Target {target.Name} references shader runtime file from missing target {shader.SourceTargetName}.");
+                }
+
+                var matchingShader = shaderTarget.Shaders
+                    .FirstOrDefault(sourceShader => Path.GetFileNameWithoutExtension(sourceShader.SourceFile).Equals(shader.ShaderName, StringComparison.OrdinalIgnoreCase));
+                if(matchingShader is null)
+                {
+                    throw new InvalidOperationException($"Target {target.Name} references missing shader {shader.ShaderName} from target {shader.SourceTargetName}.");
+                }
+
+                var headerPath = GetShaderHeaderPath(_workspace, _options, shaderTarget, matchingShader.SourceFile);
+                var headerId = BuildGraphIds.File(_workspace.ToRepositoryRelativePath(headerPath));
+                var sourcePath = Path.Combine(
+                    GetGeneratedShaderIntermediateDirectory(_workspace, _options, shaderTarget, matchingShader.SourceFile),
+                    shader.ShaderName + extension);
+                var outputPath = Path.Combine(runtimeDirectory, shader.ShaderName + extension);
+                var outputId = BuildGraphIds.File(_workspace.ToRepositoryRelativePath(outputPath));
+                AddNode(new BuildGraphNode(
+                    Id: outputId,
+                    Kind: BuildGraphNodeKind.File,
+                    Path: _workspace.ToRepositoryRelativePath(outputPath),
+                    Command: BuildCopyCommandDescription(_workspace, target, sourcePath, outputPath),
+                    Dependencies: new[] { headerId },
+                    OrderOnlyDependencies: Array.Empty<string>(),
+                    Outputs: Array.Empty<string>(),
+                    Depfiles: Array.Empty<string>()));
+                outputIds.Add(outputId);
+            }
+            return outputIds;
+        }
+
         private string AddFileReferenceNode(string path, string? externalTargetName = null)
         {
             if(externalTargetName is not null && !File.Exists(path))
@@ -561,13 +640,17 @@ public sealed class CppTargetGraphGenerator
     }
 
     private sealed record TargetBuildOutputs(
+        string TargetName,
+        BuildTargetKind Kind,
         string TargetId,
         string BinaryId,
+        string BinaryPath,
         IReadOnlyList<string> LinkInputIds,
         IReadOnlyList<string> PublicIncludeDirectories,
         IReadOnlyList<string> PublicDefines,
         IReadOnlyList<string> PublicUndefines,
         IReadOnlyList<string> Frameworks,
+        IReadOnlyList<string> ManagedReferencePaths,
         IReadOnlyList<string> RuntimeFiles);
 
     private static bool IsBuildSource(string path)
@@ -652,6 +735,14 @@ public sealed class CppTargetGraphGenerator
         return Path.Combine(GetGeneratedShaderHeaderDirectory(workspace, options, target), Path.GetFileNameWithoutExtension(sourceFile) + ".hpp");
     }
 
+    private static string GetGeneratedShaderIntermediateDirectory(BuildWorkspace workspace, BuildOptions options, BuildTargetDefinition target, string sourceFile)
+    {
+        return Path.Combine(
+            GetGeneratedShaderHeaderDirectory(workspace, options, target),
+            ".cppsl",
+            Path.GetFileNameWithoutExtension(sourceFile));
+    }
+
     private static string GetEmbeddedHeaderPath(BuildWorkspace workspace, BuildOptions options, BuildTargetDefinition target, string headerFile)
     {
         return Path.Combine(
@@ -695,6 +786,30 @@ public sealed class CppTargetGraphGenerator
         {
             BuildPlatform.Windows => ".lib",
             _ => ".a",
+        };
+    }
+
+    private static string RuntimeShaderExtension(RhiApi rhiApi)
+    {
+        return rhiApi switch
+        {
+            RhiApi.D3D12 => ".dxil",
+            RhiApi.Vulkan => ".spv",
+            RhiApi.Metal => ".metallib",
+            _ => throw new ArgumentOutOfRangeException(nameof(rhiApi), rhiApi, null),
+        };
+    }
+
+    private static IReadOnlyList<string> PlatformDefineConstants(BuildPlatform platform)
+    {
+        return platform switch
+        {
+            BuildPlatform.Windows => new[] { "LUNA_PLATFORM_WINDOWS", "LUNA_PLATFORM_DESKTOP" },
+            BuildPlatform.MacOS => new[] { "LUNA_PLATFORM_MACOS", "LUNA_PLATFORM_DESKTOP", "LUNA_PLATFORM_POSIX", "LUNA_PLATFORM_APPLE" },
+            BuildPlatform.Linux => new[] { "LUNA_PLATFORM_LINUX", "LUNA_PLATFORM_DESKTOP", "LUNA_PLATFORM_POSIX" },
+            BuildPlatform.IOS => new[] { "LUNA_PLATFORM_IOS", "LUNA_PLATFORM_MOBILE", "LUNA_PLATFORM_POSIX", "LUNA_PLATFORM_APPLE" },
+            BuildPlatform.Android => new[] { "LUNA_PLATFORM_ANDROID", "LUNA_PLATFORM_MOBILE", "LUNA_PLATFORM_POSIX" },
+            _ => Array.Empty<string>(),
         };
     }
 
@@ -925,16 +1040,37 @@ public sealed class CppTargetGraphGenerator
     private static string BuildDotNetBuildCommandDescription(
         BuildWorkspace workspace,
         BuildOptions options,
-        BuildTargetDefinition target)
+        BuildTargetDefinition target,
+        IReadOnlyList<string> managedReferencePaths)
     {
-        return string.Join('\n',
+        var lines = new List<string>
+        {
             "kind=dotnet.build",
             $"name={target.Name}",
             $"project={workspace.ToRepositoryRelativePath(target.DotNetProjectFile!)}",
             $"output={workspace.ToRepositoryRelativePath(target.DotNetOutputFile!)}",
             $"mode={options.Mode}",
             $"platform={options.Platform}",
-            $"arch={options.Architecture}");
+            $"arch={options.Architecture}",
+        };
+        if(target.Kind is BuildTargetKind.ManagedLibrary or BuildTargetKind.ManagedExecutable)
+        {
+            lines.Add("generated=true");
+            lines.Add($"output_type={(target.Kind == BuildTargetKind.ManagedExecutable ? "Exe" : "Library")}");
+            lines.Add($"target_framework={target.DotNetTargetFramework ?? "net10.0"}");
+            lines.Add($"nullable={(target.DotNetNullable ? "enable" : "disable")}");
+            lines.Add($"implicit_usings={(target.DotNetImplicitUsings ? "enable" : "disable")}");
+            lines.Add($"allow_unsafe_blocks={(target.DotNetAllowUnsafeBlocks ? "true" : "false")}");
+            lines.Add($"assembly_name={target.Name}");
+            lines.Add($"output_dir={workspace.ToRepositoryRelativePath(Path.GetDirectoryName(target.DotNetOutputFile!)!)}");
+            lines.AddRange(PlatformDefineConstants(options.Platform).Select(define => $"define={define}"));
+            lines.AddRange(target.SourceFiles
+                .Where(source => Path.GetExtension(source).Equals(".cs", StringComparison.OrdinalIgnoreCase))
+                .Order(StringComparer.OrdinalIgnoreCase)
+                .Select(source => $"source={workspace.ToRepositoryRelativePath(source)}"));
+            lines.AddRange(managedReferencePaths.Select(reference => $"reference={workspace.ToRepositoryRelativePath(reference)}"));
+        }
+        return string.Join('\n', lines);
     }
 
     private static string BuildDotNetTargetCommandDescription(

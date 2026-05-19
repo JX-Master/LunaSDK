@@ -19,11 +19,16 @@ public abstract class TargetRules
     private readonly List<string> _requiredFiles = new();
     private readonly List<EmbeddedHeaderRule> _embeddedHeaders = new();
     private readonly List<ShaderRule> _shaders = new();
+    private readonly List<ShaderRuntimeFileRule> _shaderRuntimeFiles = new();
     private readonly HashSet<BuildPlatform> _supportedPlatforms = new();
     private BuildWorkspace? _currentWorkspace;
     private BuildOptions? _currentOptions;
     private string? _msvcRuntimeLibrary;
     private DotNetProjectRule? _dotNetProject;
+    private string? _dotNetTargetFramework;
+    private bool _dotNetNullable = true;
+    private bool _dotNetImplicitUsings = true;
+    private bool _dotNetAllowUnsafeBlocks;
 
     protected TargetRules(string name, string targetDirectory, string rulesPath)
     {
@@ -146,6 +151,18 @@ public abstract class TargetRules
         _dotNetProject = new DotNetProjectRule(projectFile, outputFile);
     }
 
+    protected void DotNetSettings(
+        string targetFramework = "net10.0",
+        bool nullable = true,
+        bool implicitUsings = true,
+        bool allowUnsafeBlocks = false)
+    {
+        _dotNetTargetFramework = targetFramework;
+        _dotNetNullable = nullable;
+        _dotNetImplicitUsings = implicitUsings;
+        _dotNetAllowUnsafeBlocks = allowUnsafeBlocks;
+    }
+
     protected void RuntimeFiles(params string[] patterns)
     {
         _runtimeFilePatterns.AddRange(patterns);
@@ -164,6 +181,11 @@ public abstract class TargetRules
     protected void Shader(string sourceFile, string stage, string entryPoint)
     {
         _shaders.Add(new ShaderRule(sourceFile, stage, entryPoint));
+    }
+
+    protected void RuntimeShaderFile(string sourceTargetName, string shaderName)
+    {
+        _shaderRuntimeFiles.Add(new ShaderRuntimeFileRule(sourceTargetName, shaderName));
     }
 
     protected virtual void Configure(BuildWorkspace workspace, BuildOptions options)
@@ -262,12 +284,18 @@ public abstract class TargetRules
                 Kind: Kind,
                 Category: Category,
                 MsvcRuntimeLibrary: _msvcRuntimeLibrary,
-                DotNetProjectFile: _dotNetProject is null
-                    ? null
-                    : workspace.ResolveRepositoryPath(Path.Combine(TargetDirectory, _dotNetProject.ProjectFile)),
-                DotNetOutputFile: _dotNetProject is null
-                    ? null
-                    : workspace.ResolveRepositoryPath(Path.Combine(TargetDirectory, _dotNetProject.OutputFile)));
+                DotNetProjectFile: ResolveDotNetProjectFile(workspace, options),
+                DotNetOutputFile: ResolveDotNetOutputFile(workspace, options),
+                DotNetTargetFramework: _dotNetTargetFramework,
+                DotNetNullable: _dotNetNullable,
+                DotNetImplicitUsings: _dotNetImplicitUsings,
+                DotNetAllowUnsafeBlocks: _dotNetAllowUnsafeBlocks,
+                ShaderRuntimeFiles: _shaderRuntimeFiles
+                    .Distinct()
+                    .OrderBy(file => file.SourceTargetName, StringComparer.OrdinalIgnoreCase)
+                    .ThenBy(file => file.ShaderName, StringComparer.OrdinalIgnoreCase)
+                    .Select(file => new BuildShaderRuntimeFileDefinition(file.SourceTargetName, file.ShaderName))
+                    .ToArray());
         }
         finally
         {
@@ -282,6 +310,46 @@ public abstract class TargetRules
         return Path.IsPathRooted(path)
             ? Path.GetFullPath(path)
             : workspace.ResolveRepositoryPath(Path.Combine(targetDirectory, path));
+    }
+
+    private string? ResolveDotNetProjectFile(BuildWorkspace workspace, BuildOptions options)
+    {
+        if(_dotNetProject is not null)
+        {
+            return workspace.ResolveRepositoryPath(Path.Combine(TargetDirectory, _dotNetProject.ProjectFile));
+        }
+        if(Kind is BuildTargetKind.ManagedLibrary or BuildTargetKind.ManagedExecutable)
+        {
+            return Path.Combine(
+                workspace.BuildDirectory,
+                options.Platform.ToString(),
+                options.Architecture,
+                options.Mode.ToString(),
+                "generated",
+                "projects",
+                Name,
+                Name + ".csproj");
+        }
+        return null;
+    }
+
+    private string? ResolveDotNetOutputFile(BuildWorkspace workspace, BuildOptions options)
+    {
+        if(_dotNetProject is not null)
+        {
+            return workspace.ResolveRepositoryPath(Path.Combine(TargetDirectory, _dotNetProject.OutputFile));
+        }
+        if(Kind is BuildTargetKind.ManagedLibrary or BuildTargetKind.ManagedExecutable)
+        {
+            return Path.Combine(
+                workspace.BuildDirectory,
+                options.Platform.ToString(),
+                options.Architecture,
+                options.Mode.ToString(),
+                "bin",
+                Name + ".dll");
+        }
+        return null;
     }
 
     private TargetRuleState CaptureState()
@@ -304,10 +372,15 @@ public abstract class TargetRules
             RequiredFiles: _requiredFiles.Count,
             EmbeddedHeaders: _embeddedHeaders.Count,
             Shaders: _shaders.Count,
+            ShaderRuntimeFiles: _shaderRuntimeFiles.Count,
             SupportedPlatforms: _supportedPlatforms.ToArray(),
             Category: Category,
             MsvcRuntimeLibrary: _msvcRuntimeLibrary,
-            DotNetProject: _dotNetProject);
+            DotNetProject: _dotNetProject,
+            DotNetTargetFramework: _dotNetTargetFramework,
+            DotNetNullable: _dotNetNullable,
+            DotNetImplicitUsings: _dotNetImplicitUsings,
+            DotNetAllowUnsafeBlocks: _dotNetAllowUnsafeBlocks);
     }
 
     private void RestoreState(TargetRuleState state)
@@ -329,6 +402,7 @@ public abstract class TargetRules
         Truncate(_requiredFiles, state.RequiredFiles);
         Truncate(_embeddedHeaders, state.EmbeddedHeaders);
         Truncate(_shaders, state.Shaders);
+        Truncate(_shaderRuntimeFiles, state.ShaderRuntimeFiles);
         _supportedPlatforms.Clear();
         foreach(var platform in state.SupportedPlatforms)
         {
@@ -337,6 +411,10 @@ public abstract class TargetRules
         Category = state.Category;
         _msvcRuntimeLibrary = state.MsvcRuntimeLibrary;
         _dotNetProject = state.DotNetProject;
+        _dotNetTargetFramework = state.DotNetTargetFramework;
+        _dotNetNullable = state.DotNetNullable;
+        _dotNetImplicitUsings = state.DotNetImplicitUsings;
+        _dotNetAllowUnsafeBlocks = state.DotNetAllowUnsafeBlocks;
     }
 
     private static void Truncate<T>(List<T> list, int count)
@@ -348,6 +426,8 @@ public abstract class TargetRules
     }
 
     private sealed record ShaderRule(string SourceFile, string Stage, string EntryPoint);
+
+    private sealed record ShaderRuntimeFileRule(string SourceTargetName, string ShaderName);
 
     private sealed record EmbeddedHeaderRule(string SourceFile, string HeaderFile, string DataSymbol, string SizeSymbol);
 
@@ -371,10 +451,15 @@ public abstract class TargetRules
         int RequiredFiles,
         int EmbeddedHeaders,
         int Shaders,
+        int ShaderRuntimeFiles,
         BuildPlatform[] SupportedPlatforms,
         BuildTargetCategory Category,
         string? MsvcRuntimeLibrary,
-        DotNetProjectRule? DotNetProject);
+        DotNetProjectRule? DotNetProject,
+        string? DotNetTargetFramework,
+        bool DotNetNullable,
+        bool DotNetImplicitUsings,
+        bool DotNetAllowUnsafeBlocks);
 }
 
 public interface ITargetRulesProvider

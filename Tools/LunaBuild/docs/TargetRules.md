@@ -67,7 +67,9 @@ Current common kinds:
 
 - `SharedLibrary`: Luna SDK modules such as `Runtime`, `RHI`, `Image`.
 - `Executable`: tests and programs that produce `.exe` on Windows.
-- `DotNetProject`: C# tool targets built through a `dotnet.build` action.
+- `ManagedLibrary`: generated SDK-style C# library targets such as `Luna.Runtime`.
+- `ManagedExecutable`: generated SDK-style C# tests and samples.
+- `DotNetProject`: existing C# tool projects built through a `dotnet.build` action.
 - `External`: prebuilt or header-only third-party dependencies consumed through
   existing files.
 
@@ -296,7 +298,24 @@ The generated header is placed under:
 build/LunaBuild/<Platform>/<Arch>/<Mode>/generated/<Target>/embedded
 ```
 
-## DotNet Projects
+## Managed And DotNet Projects
+
+Use `BuildTargetKind.ManagedLibrary` or `BuildTargetKind.ManagedExecutable`
+for Luna managed proxy modules, tests, and samples. LunaBuild generates a
+temporary SDK-style `.csproj` under `build/LunaBuild/.../generated/projects`
+and builds it with `dotnet build`; do not commit per-target `.csproj` files for
+these managed Luna targets.
+
+```csharp
+Kind = BuildTargetKind.ManagedLibrary;
+DotNetSettings("net10.0");
+Sources("*.cs", "Internal/*.cs", "Internal/Generated/*.cs");
+DependsOn("Luna.Runtime", "WindowC");
+```
+
+Managed dependencies are resolved transitively as assembly references. Native
+C wrapper dependencies should still be declared with `DependsOn(...)` so their
+shared libraries are built into the same output directory for P/Invoke.
 
 Use `BuildTargetKind.DotNetProject` for C# tool targets. Declare real source
 files as inputs and point LunaBuild at the project and expected output:
@@ -333,7 +352,8 @@ Use the timeout wrapper for commands that may invoke compilers or tests:
 
 ## Checklist For New Targets
 
-- Put `<TargetName>.Target.cs` beside the target's `xmake.lua`.
+- Put `<TargetName>.Target.cs` beside the target's project files, or use a
+  small grouped rules file for closely related generated managed targets.
 - Keep `rulesPath` equal to the rule file's repository-relative path.
 - Use `Category = BuildTargetCategory.Tests` for every test and test helper target.
 - Declare target dependencies with `DependsOn(...)`.

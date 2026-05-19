@@ -1,8 +1,0 @@
-target("Luna.Runtime")
-    set_kind("shared")
-    add_files("*.cs")
-    add_files("Internal/*.cs")
-    add_files("Internal/Generated/*.cs")
-    add_deps("RuntimeC")
-    set_luna_sdk_csharp_options()
-target_end()

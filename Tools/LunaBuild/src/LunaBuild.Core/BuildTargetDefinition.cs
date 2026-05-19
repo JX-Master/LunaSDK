@@ -6,6 +6,8 @@ public enum BuildTargetKind
     StaticLibrary,
     SharedLibrary,
     Executable,
+    ManagedLibrary,
+    ManagedExecutable,
     HeaderOnly,
     DotNetProject,
     External,
@@ -56,4 +58,9 @@ public sealed record BuildTargetDefinition(
     BuildTargetCategory Category,
     string? MsvcRuntimeLibrary,
     string? DotNetProjectFile,
-    string? DotNetOutputFile);
+    string? DotNetOutputFile,
+    string? DotNetTargetFramework,
+    bool DotNetNullable,
+    bool DotNetImplicitUsings,
+    bool DotNetAllowUnsafeBlocks,
+    IReadOnlyList<BuildShaderRuntimeFileDefinition> ShaderRuntimeFiles);

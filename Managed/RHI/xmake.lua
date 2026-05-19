@@ -1,7 +1,0 @@
-target("Luna.RHI")
-    set_kind("shared")
-    add_files("*.cs")
-    add_files("Internal/*.cs")
-    add_deps("Luna.Runtime", "Luna.Window", "RHIC")
-    set_luna_sdk_csharp_options()
-target_end()

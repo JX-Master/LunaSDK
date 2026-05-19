@@ -1,6 +1,0 @@
-target("HelloWindow")
-    set_luna_sdk_sample()
-    add_files("Main.cs")
-    add_deps("Luna.Window")
-    set_luna_sdk_csharp_options()
-target_end()
