@@ -6,6 +6,7 @@ if is_plat("windows", "macosx", "linux") then
     includes("VGTest")
     includes("FontArrangeTest")
     includes("ImGuiTest")
+    includes("GUITest")
     includes("JobSystemTest")
     if is_os("windows", "macosx") then
         includes("MakeSystemTest")
