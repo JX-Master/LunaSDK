@@ -34,6 +34,11 @@ public sealed class RHITargetRules : TargetRules
 
     protected override void Configure(BuildWorkspace workspace, BuildOptions options)
     {
+        if(options.Properties.GetBoolean("rhi_debug"))
+        {
+            Defines("LUNA_RHI_DEBUG");
+        }
+
         switch(RhiApi)
         {
             case RhiApi.D3D12:

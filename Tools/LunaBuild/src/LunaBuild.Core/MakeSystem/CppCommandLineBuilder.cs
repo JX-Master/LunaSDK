@@ -78,11 +78,6 @@ internal static class CppCommandLineBuilder
         {
             args.Add($"/U{undefine}");
         }
-        if(payload.Required("mode").Equals("Debug", StringComparison.OrdinalIgnoreCase))
-        {
-            args.Add("/DLUNA_ENABLE_API_VALIDATION");
-        }
-
         args.Add($"/Fo{Quote(output)}");
         args.Add(Quote(source));
         return args;
@@ -170,10 +165,6 @@ internal static class CppCommandLineBuilder
         foreach(var undefine in payload.All("undefine"))
         {
             args.Add("-U" + undefine);
-        }
-        if(payload.Required("mode").Equals("Debug", StringComparison.OrdinalIgnoreCase))
-        {
-            args.Add("-DLUNA_ENABLE_API_VALIDATION");
         }
     }
 

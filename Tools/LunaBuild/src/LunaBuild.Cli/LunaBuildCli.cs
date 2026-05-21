@@ -36,12 +36,22 @@ public static class LunaBuildCli
 
     private static int Inspect(CommandLineOptions options)
     {
-        var workspace = BuildWorkspace.Discover(options.RootDirectory);
-        var buildOptions = options.ToBuildOptions();
-        var targets = new TargetDiscovery().DiscoverTargets(workspace, buildOptions);
+        var context = CreateBuildContext(options);
+        var workspace = context.Workspace;
+        var buildOptions = context.BuildOptions;
+        var targets = context.Targets;
 
         Console.WriteLine($"Workspace: {workspace.RootDirectory}");
         Console.WriteLine($"Mode: {buildOptions.Mode}, Platform: {buildOptions.Platform}, Arch: {buildOptions.Architecture}, RHI: {buildOptions.RhiApi}");
+        Console.WriteLine($"Options: shared={buildOptions.Shared}");
+        if(buildOptions.Properties.Values.Count > 0)
+        {
+            Console.WriteLine("Project properties:");
+            foreach(var property in buildOptions.Properties.Values)
+            {
+                Console.WriteLine($"  {property.Name}={property.Value}");
+            }
+        }
         Console.WriteLine($"Targets: {targets.Count}");
 
         foreach(var target in targets)
@@ -56,9 +66,10 @@ public static class LunaBuildCli
 
     private static int Generate(CommandLineOptions options)
     {
-        var workspace = BuildWorkspace.Discover(options.RootDirectory);
-        var buildOptions = options.ToBuildOptions();
-        var targets = new TargetDiscovery().DiscoverTargets(workspace, buildOptions);
+        var context = CreateBuildContext(options);
+        var workspace = context.Workspace;
+        var buildOptions = context.BuildOptions;
+        var targets = context.Targets;
         var format = ResolveOutputFormat(options);
         var categoryFilter = TargetCategoryFilter(options);
         var effectiveAllTargets = options.AllTargets || categoryFilter is not null || (IsIdeOutputFormat(format) && string.IsNullOrWhiteSpace(options.TargetName));
@@ -86,9 +97,10 @@ public static class LunaBuildCli
 
     private static int Build(CommandLineOptions options)
     {
-        var workspace = BuildWorkspace.Discover(options.RootDirectory);
-        var buildOptions = options.ToBuildOptions();
-        var targets = new TargetDiscovery().DiscoverTargets(workspace, buildOptions);
+        var context = CreateBuildContext(options);
+        var workspace = context.Workspace;
+        var buildOptions = context.BuildOptions;
+        var targets = context.Targets;
         var categoryFilter = TargetCategoryFilter(options);
         var graph = GenerateGraph(workspace, buildOptions, targets, options.TargetName, options.AllTargets || categoryFilter is not null, categoryFilter);
 
@@ -142,8 +154,9 @@ public static class LunaBuildCli
             return 0;
         }
 
-        var buildOptions = options.ToBuildOptions();
-        var targets = new TargetDiscovery().DiscoverTargets(workspace, buildOptions);
+        var context = CreateBuildContext(options, workspace);
+        var buildOptions = context.BuildOptions;
+        var targets = context.Targets;
         var categoryFilter = TargetCategoryFilter(options);
         var graph = GenerateGraph(workspace, buildOptions, targets, options.TargetName, options.AllTargets || categoryFilter is not null, categoryFilter);
         var makeSystem = new MakeSystemBackend(Array.Empty<IMakeActionExecutor>());
@@ -159,9 +172,10 @@ public static class LunaBuildCli
             throw new ArgumentException("install requires --output <dir>.");
         }
 
-        var workspace = BuildWorkspace.Discover(options.RootDirectory);
-        var buildOptions = options.ToBuildOptions();
-        var targets = new TargetDiscovery().DiscoverTargets(workspace, buildOptions);
+        var context = CreateBuildContext(options);
+        var workspace = context.Workspace;
+        var buildOptions = context.BuildOptions;
+        var targets = context.Targets;
         var categoryFilter = TargetCategoryFilter(options);
         var effectiveAllTargets = options.AllTargets || categoryFilter is not null || string.IsNullOrWhiteSpace(options.TargetName);
         var graph = GenerateGraph(workspace, buildOptions, targets, options.TargetName, effectiveAllTargets, categoryFilter);
@@ -235,6 +249,36 @@ public static class LunaBuildCli
             return new CppTargetGraphGenerator().Generate(workspace, buildOptions, targets, targetName);
         }
         return new BuildGraphGenerator().GenerateTargetInspectionGraph(workspace, buildOptions, targets);
+    }
+
+    private static BuildContext CreateBuildContext(CommandLineOptions options, BuildWorkspace? existingWorkspace = null)
+    {
+        var workspace = existingWorkspace ?? BuildWorkspace.Discover(options.RootDirectory);
+        var provider = new ProjectTargetRulesProvider();
+        var projectRules = provider.GetProjectRules(workspace);
+        var projectDefinition = MergeProjectDefinitions(projectRules.Select(rules => rules.ToDefinition(workspace)).ToArray());
+        var buildOptions = options.ToBuildOptions(projectDefinition);
+        foreach(var rules in projectRules)
+        {
+            buildOptions = rules.ConfigureBuildOptions(workspace, buildOptions);
+        }
+        var targets = new TargetDiscovery(new ITargetRulesProvider[] { provider }).DiscoverTargets(workspace, buildOptions);
+        return new BuildContext(workspace, buildOptions, targets, projectDefinition);
+    }
+
+    private static BuildProjectDefinition MergeProjectDefinitions(IReadOnlyList<BuildProjectDefinition> definitions)
+    {
+        if(definitions.Count == 0)
+        {
+            return BuildProjectDefinition.Empty;
+        }
+
+        return new BuildProjectDefinition(
+            string.Join("+", definitions.Select(definition => definition.Name).Order(StringComparer.OrdinalIgnoreCase)),
+            definitions
+                .SelectMany(definition => definition.Properties)
+                .OrderBy(property => property.Name, StringComparer.OrdinalIgnoreCase)
+                .ToArray());
     }
 
     private static IReadOnlySet<BuildTargetCategory>? TargetCategoryFilter(CommandLineOptions options)
@@ -370,7 +414,15 @@ public static class LunaBuildCli
         Console.WriteLine("  --arch <name>       Architecture string. Default: host architecture.");
         Console.WriteLine("  --rhi <name>        D3D12, Vulkan, or Metal. Default: platform default.");
         Console.WriteLine("  --static            Generate static target configuration.");
+        Console.WriteLine("  --property <k=v>    Set one project-defined build property.");
+        Console.WriteLine("  --<property>        Set one project-defined boolean property to true.");
     }
+
+    private sealed record BuildContext(
+        BuildWorkspace Workspace,
+        BuildOptions BuildOptions,
+        IReadOnlyList<BuildTargetDefinition> Targets,
+        BuildProjectDefinition Project);
 }
 
 internal sealed class CommandLineOptions
@@ -400,6 +452,8 @@ internal sealed class CommandLineOptions
     public RhiApi? RhiApi { get; private init; }
 
     public bool? Shared { get; private init; }
+
+    public IReadOnlyDictionary<string, string?> ProjectPropertyOverrides { get; private init; } = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
 
     public static CommandLineOptions Parse(string[] args)
     {
@@ -454,7 +508,15 @@ internal sealed class CommandLineOptions
                 case "--shared":
                     options.Shared = true;
                     break;
+                case "--property":
+                    AddProjectProperty(options.ProjectPropertyOverrides, RequireValue(args, ref i, "--property"));
+                    break;
                 default:
+                    if(args[i].StartsWith("--", StringComparison.Ordinal))
+                    {
+                        AddProjectProperty(options.ProjectPropertyOverrides, ParseProjectPropertyOption(args, ref i));
+                        break;
+                    }
                     throw new ArgumentException($"Unknown option: {args[i]}");
             }
         }
@@ -469,10 +531,11 @@ internal sealed class CommandLineOptions
         return options.ToImmutable();
     }
 
-    public BuildOptions ToBuildOptions()
+    public BuildOptions ToBuildOptions(BuildProjectDefinition projectDefinition)
     {
         var defaults = BuildOptions.HostDefault();
         var platform = Platform ?? defaults.Platform;
+        var properties = projectDefinition.ResolveProperties(ProjectPropertyOverrides);
         return defaults with
         {
             Mode = Mode ?? defaults.Mode,
@@ -480,7 +543,40 @@ internal sealed class CommandLineOptions
             Architecture = Architecture ?? defaults.Architecture,
             Shared = Shared ?? defaults.Shared,
             RhiApi = RhiApi ?? DefaultRhiApi(platform),
+            Properties = properties,
         };
+    }
+
+    private static ProjectPropertyOverride ParseProjectPropertyOption(string[] args, ref int index)
+    {
+        var token = args[index][2..];
+        var equalsIndex = token.IndexOf('=');
+        if(equalsIndex >= 0)
+        {
+            return new ProjectPropertyOverride(token[..equalsIndex], token[(equalsIndex + 1)..]);
+        }
+        if(index + 1 < args.Length && !args[index + 1].StartsWith("--", StringComparison.Ordinal))
+        {
+            ++index;
+            return new ProjectPropertyOverride(token, args[index]);
+        }
+        return new ProjectPropertyOverride(token, null);
+    }
+
+    private static void AddProjectProperty(IDictionary<string, string?> properties, string value)
+    {
+        var equalsIndex = value.IndexOf('=');
+        if(equalsIndex < 0)
+        {
+            properties[value] = null;
+            return;
+        }
+        properties[value[..equalsIndex]] = value[(equalsIndex + 1)..];
+    }
+
+    private static void AddProjectProperty(IDictionary<string, string?> properties, ProjectPropertyOverride property)
+    {
+        properties[property.Name] = property.Value;
     }
 
     private static RhiApi DefaultRhiApi(BuildPlatform platform)
@@ -552,6 +648,7 @@ internal sealed class CommandLineOptions
         public string? Architecture { get; set; }
         public RhiApi? RhiApi { get; set; }
         public bool? Shared { get; set; }
+        public Dictionary<string, string?> ProjectPropertyOverrides { get; } = new(StringComparer.OrdinalIgnoreCase);
 
         public CommandLineOptions ToImmutable()
         {
@@ -570,9 +667,12 @@ internal sealed class CommandLineOptions
                 Architecture = Architecture,
                 RhiApi = RhiApi,
                 Shared = Shared,
+                ProjectPropertyOverrides = new Dictionary<string, string?>(ProjectPropertyOverrides, StringComparer.OrdinalIgnoreCase),
             };
         }
     }
+
+    private sealed record ProjectPropertyOverride(string Name, string? Value);
 }
 
 internal enum BuildGraphOutputFormat

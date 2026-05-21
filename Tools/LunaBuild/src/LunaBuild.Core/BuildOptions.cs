@@ -28,7 +28,10 @@ public sealed record BuildOptions(
     BuildPlatform Platform,
     string Architecture,
     bool Shared,
-    RhiApi RhiApi)
+    RhiApi RhiApi,
+    BuildProperties Properties,
+    IReadOnlyList<string> GlobalDefines,
+    IReadOnlyList<string> GlobalUndefines)
 {
     public static BuildOptions HostDefault()
     {
@@ -50,7 +53,10 @@ public sealed record BuildOptions(
             Platform: platform,
             Architecture: HostArchitecture(),
             Shared: true,
-            RhiApi: rhiApi);
+            RhiApi: rhiApi,
+            Properties: BuildProperties.Empty,
+            GlobalDefines: Array.Empty<string>(),
+            GlobalUndefines: Array.Empty<string>());
     }
 
     private static string HostArchitecture()

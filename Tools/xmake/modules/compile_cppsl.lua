@@ -1,3 +1,7 @@
+-- Legacy/reference xmake script.
+-- LunaBuild *.Target.cs rules are authoritative for main-path and CI builds.
+-- Keep this file only as migration reference while old branches are being ported.
+
 --[[
     Compiles one CPPSL shader entry file and emits a C++ shader header that
     depends only on RHI runtime types.

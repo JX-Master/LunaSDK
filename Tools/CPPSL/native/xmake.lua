@@ -1,3 +1,7 @@
+-- Legacy/reference xmake script.
+-- LunaBuild *.Target.cs rules are authoritative for main-path and CI builds.
+-- Keep this file only as migration reference while old branches are being ported.
+
 local native_dir = os.scriptdir()
 local repo_root = path.absolute(path.join(native_dir, "..", "..", ".."))
 local llvm_sdk = nil

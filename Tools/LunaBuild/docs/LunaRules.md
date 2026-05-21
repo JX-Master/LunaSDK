@@ -44,7 +44,8 @@ luna_make 1
 option <json-name> <json-value>
 ```
 
-Options are metadata copied from `BuildOptions`.
+Options are metadata copied from `BuildOptions`. Project-defined build
+properties are written as `property.<name>` options.
 
 ### Nodes
 
