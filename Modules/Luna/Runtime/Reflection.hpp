@@ -865,8 +865,8 @@ namespace Luna
         move_assign((_Ty*)dst, (_Ty*)src);
     }
 
-    //! Registers one structure type to the type system. The structure type must have one @ref lustruct
-    //! macro defined in the structure body.
+    //! Registers one structure type to the type system. The structure type must have metadata declared by
+    //! LunaMetaTool or one @ref lustruct macro defined in the structure body.
     //! @param[in] properties A list of properties that should be tracked by the type system. The user can use
     //! @ref luproperty macro to declare properties conveniently.
     //! @param[in] base_type The base type of the type to register. This can be `nullptr`.
@@ -875,8 +875,8 @@ namespace Luna
     typeinfo_t register_struct_type(Span<const StructurePropertyDesc> properties, typeinfo_t base_type = nullptr)
     {
         StructureTypeDesc desc;
-        desc.guid = _Ty::__guid;
-        desc.name = _Ty::__name;
+        desc.guid = Meta::StructMetaData<_Ty>::__guid;
+        desc.name = Meta::StructMetaData<_Ty>::__name;
         desc.alias = Name();
         desc.base_type = base_type;
         desc.size = sizeof(_Ty);
@@ -897,8 +897,8 @@ namespace Luna
     typeinfo_t register_abstract_struct_type(Span<const StructurePropertyDesc> properties, typeinfo_t base_type = nullptr)
     {
         StructureTypeDesc desc;
-        desc.guid = _Ty::__guid;
-        desc.name = _Ty::__name;
+        desc.guid = Meta::StructMetaData<_Ty>::__guid;
+        desc.name = Meta::StructMetaData<_Ty>::__name;
         desc.alias = Name();
         desc.base_type = base_type;
         desc.size = sizeof(_Ty);
@@ -926,8 +926,8 @@ namespace Luna
     typeinfo_t register_enum_type(Span<const EnumerationOptionDesc> options, bool multienum = false)
     {
         EnumerationTypeDesc desc;
-        desc.guid = EnumTypeInfo<_Ty>::__guid;
-        desc.name = EnumTypeInfo<_Ty>::__name;
+        desc.guid = Meta::EnumMetadata<_Ty>::__guid;
+        desc.name = Meta::EnumMetadata<_Ty>::__name;
         desc.alias = Name();
         desc.underlying_type = typeof<underlying_type_t<_Ty>>();
         desc.options = options;

@@ -55,10 +55,42 @@ namespace Luna
     //! @return Returns the type object for the GUID. Returns `nullptr` if the specified type is not found.
     LUNA_RUNTIME_API typeinfo_t get_type_by_guid(const Guid& guid);
 
+    template <typename _Ty>
+    struct EnumTypeInfo;
+
+    namespace Meta
+    {
+        //! Defines metadata for one reflected structure or class type.
+        //! @details This default implementation keeps compatibility with types that still use @ref lustruct.
+        template <typename _Ty> struct StructMetaData
+        {
+            static constexpr const c8* __name = _Ty::__name;
+            static constexpr Guid __guid { _Ty::__guid };
+        };
+
+        //! Defines metadata for one reflected enumeration type.
+        //! @details This default implementation keeps compatibility with types that still use @ref luenum.
+        template <typename _Ty> struct EnumMetadata
+        {
+            static constexpr const c8* __name = EnumTypeInfo<_Ty>::__name;
+            static constexpr Guid __guid { EnumTypeInfo<_Ty>::__guid };
+        };
+    }
+
     //! The functional obejct that can be overloaded to define custom behavior of @ref typeof for user-defined types.
     template <typename _Ty> struct typeof_t
     {
-        typeinfo_t operator()() const { return get_type_by_guid(_Ty::__guid); }
+        typeinfo_t operator()() const
+        {
+            if constexpr(is_enum_v<_Ty>)
+            {
+                return get_type_by_guid(Meta::EnumMetadata<_Ty>::__guid);
+            }
+            else
+            {
+                return get_type_by_guid(Meta::StructMetaData<_Ty>::__guid);
+            }
+        }
     };
 
     //! Gets the type object of the specified type.

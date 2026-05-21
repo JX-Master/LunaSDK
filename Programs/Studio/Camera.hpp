@@ -10,18 +10,17 @@
 #pragma once
 #include <Luna/Runtime/TypeInfo.hpp>
 #include <Luna/Runtime/Math/Transform.hpp>
+#include "Camera.generated.hpp"
 namespace Luna
 {
-    enum class CameraType : u32
+    enum class [[luna::enum("{920C8F7F-7CEC-4776-BF01-1F63A4C51D9F}")]] CameraType : u32
     {
         perspective = 0,
         orthographic = 1,
     };
-    struct Camera
+    struct [[luna::struct("{7c388740-d97a-4e6c-9b7f-dc04e704629f}")]] Camera
     {
     public:
-        lustruct("Camera", "{7c388740-d97a-4e6c-9b7f-dc04e704629f}");
-
         CameraType type = CameraType::perspective;
         f32 fov = PI / 3.0f;
         f32 size = 5.0f;
@@ -41,5 +40,4 @@ namespace Luna
             }
         }
     };
-    luenum(CameraType, "CameraType", "{920C8F7F-7CEC-4776-BF01-1F63A4C51D9F}");
 }

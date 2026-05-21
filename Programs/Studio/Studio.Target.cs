@@ -11,6 +11,7 @@ public sealed class StudioTargetRules : TargetRules
         SupportedPlatforms(BuildPlatform.Windows, BuildPlatform.MacOS, BuildPlatform.Linux);
         Kind = BuildTargetKind.Executable;
         Headers("**.hpp", "Shaders/*.hxx");
+        MetaHeaders("Camera.hpp");
         Sources("**.cpp");
         Shader("Shaders/SkyboxCS.cxx", "compute", "cs_main");
         Shader("Shaders/ToneMappingCS.cxx", "compute", "cs_main");

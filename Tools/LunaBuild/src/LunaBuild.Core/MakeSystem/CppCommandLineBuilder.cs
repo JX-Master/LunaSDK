@@ -186,11 +186,15 @@ internal static class CppCommandLineBuilder
                 break;
             case "c++20":
                 args.Add("-std=c++20");
+                args.Add("-Wno-unknown-attributes");
+                args.Add("-Wno-ignored-attributes");
                 break;
             case "objective-c++20":
                 args.Add("-x");
                 args.Add("objective-c++");
                 args.Add("-std=c++20");
+                args.Add("-Wno-unknown-attributes");
+                args.Add("-Wno-ignored-attributes");
                 args.Add("-fobjc-arc");
                 break;
             case "objective-c":

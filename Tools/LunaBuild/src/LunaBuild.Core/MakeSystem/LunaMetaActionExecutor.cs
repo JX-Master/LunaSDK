@@ -76,12 +76,12 @@ public sealed class LunaMetaActionExecutor : KnownActionExecutor
         var executable = OperatingSystem.IsWindows() ? "LunaMetaTool.exe" : "LunaMetaTool";
         var candidates = new[]
         {
-            Path.Combine(workspace.RootDirectory, "SDKs", "LunaMetaTool", "macosx", "arm64", "bin", executable),
-            Path.Combine(workspace.RootDirectory, "SDKs", "LunaMetaTool", "windows", "x64", "bin", executable),
-            Path.Combine(workspace.RootDirectory, "Tools", "LunaMetaTool", "bin", executable),
             Path.Combine(workspace.BuildDirectory, options.Platform.ToString(), options.Architecture, options.Mode.ToString(), "bin", executable),
             Path.Combine(workspace.BuildDirectory, "MacOS", "arm64", "Debug", "bin", executable),
             Path.Combine(workspace.BuildDirectory, "Windows", "x64", "Debug", "bin", executable),
+            Path.Combine(workspace.RootDirectory, "Tools", "LunaMetaTool", "bin", executable),
+            Path.Combine(workspace.RootDirectory, "SDKs", "LunaMetaTool", "macosx", "arm64", "bin", executable),
+            Path.Combine(workspace.RootDirectory, "SDKs", "LunaMetaTool", "windows", "x64", "bin", executable),
         };
         foreach(var candidate in candidates)
         {

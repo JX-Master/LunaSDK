@@ -54,7 +54,7 @@ namespace Luna
     void impl_interface_for_type()
     {
         InterfaceImplDesc desc;
-        desc.type_guid = _Ty::__guid;
+        desc.type_guid = Meta::StructMetaData<_Ty>::__guid;
         desc.interface_guid = _Ity1::__guid;
         desc.cast_to_interface = [](object_t obj) {return (void*)(static_cast<_Ity1*>((_Ty*)obj)); };
         impl_interface_for_type(desc);
