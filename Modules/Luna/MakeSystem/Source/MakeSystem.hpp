@@ -11,15 +11,14 @@
 #include "../MakeSystem.hpp"
 #include "BuildCache.hpp"
 #include <Luna/JobSystem/JobScheduler.hpp>
-
+#include "MakeSystem.generated.hpp"
 namespace Luna
 {
     namespace MakeSystem
     {
         void default_log_handler(LogVerbosity verbosity, const c8* tag, usize tag_length, const c8* message, usize message_length);
-        struct MakeSystem : IMakeSystem
+        struct [[luna::struct("{3374ca8c-5fe8-4d6e-ad19-07c42a7da1fc}")]] MakeSystem : IMakeSystem
         {
-            lustruct("MakeSystem::MakeSystem", "{3374ca8c-5fe8-4d6e-ad19-07c42a7da1fc}");
             luiimpl();
 
             Path m_build_dir;

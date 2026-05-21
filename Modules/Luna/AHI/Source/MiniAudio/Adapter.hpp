@@ -10,14 +10,13 @@
 #pragma once
 #include "../../Adapter.hpp"
 #include "Common.hpp"
-
+#include "Adapter.generated.hpp"
 namespace Luna
 {
     namespace AHI
     {
-        struct Adapter : IAdapter
+        struct [[luna::struct("{1bf1f33e-537c-4c34-98a6-b659378f734c}")]] Adapter : IAdapter
         {
-            lustruct("AHI::Adapter", "{1bf1f33e-537c-4c34-98a6-b659378f734c}");
             luiimpl();
 
             ma_device_info m_info;

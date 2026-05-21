@@ -16,7 +16,7 @@
 #include "PipelineState.hpp"
 #include "PipelineLayout.hpp"
 #include <Luna/Runtime/StackAllocator.hpp>
-
+#include "CommandBuffer.generated.hpp"
 namespace Luna
 {
     namespace RHI
@@ -114,10 +114,8 @@ namespace Luna
             ID3D12DescriptorHeap* m_depth_stencil_attachment = nullptr;
             u8 m_num_color_attachments;
         };
-
-        struct CommandBuffer : ICommandBuffer
+        struct [[luna::struct("{2aa94bb6-f36d-4aa2-826b-3076026c2cec}")]] CommandBuffer : ICommandBuffer
         {
-            lustruct("RHI::CommandBuffer", "{2aa94bb6-f36d-4aa2-826b-3076026c2cec}");
             luiimpl();
             lutsassert_lock();
 

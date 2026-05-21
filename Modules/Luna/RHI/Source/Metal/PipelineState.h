@@ -9,14 +9,14 @@
 */
 #pragma once
 #include "Device.h"
+#include "PipelineState.generated.hpp"
 namespace Luna
 {
     namespace RHI
     {
         constexpr usize VERTEX_BUFFER_SLOT_OFFSET = 16;
-        struct RenderPipelineState : IPipelineState
+        struct [[luna::struct("{78f9f67e-c86f-4c84-bba5-9bf05dac905b}")]] RenderPipelineState : IPipelineState
         {
-            lustruct("RHI::RenderPipelineState", "{78f9f67e-c86f-4c84-bba5-9bf05dac905b}");
             luiimpl();
 
             Ref<Device> m_device;
@@ -36,10 +36,8 @@ namespace Luna
             virtual IDevice* get_device() override { return m_device; }
             virtual void set_name(const c8* name) override  { }
         };
-
-        struct ComputePipelineState : IPipelineState
+        struct [[luna::struct("{77517afd-158a-43e6-b762-3e132fc287a8}")]] ComputePipelineState : IPipelineState
         {
-            lustruct("RHI::ComputePipelineState", "{77517afd-158a-43e6-b762-3e132fc287a8}");
             luiimpl();
 
             Ref<Device> m_device;

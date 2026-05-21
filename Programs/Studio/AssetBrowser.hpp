@@ -10,16 +10,14 @@
 #pragma once
 #include "StudioHeader.hpp"
 #include <Luna/Runtime/HashSet.hpp>
-
+#include "AssetBrowser.generated.hpp"
 namespace Luna
 {
     struct MainEditor;
 
     //! Asset browser context.
-    struct AssetBrowser
+    struct [[luna::struct("{D38682E6-CE9C-4317-870F-40944D82281F}")]] AssetBrowser
     {
-        lustruct("AssetBrowser", "{D38682E6-CE9C-4317-870F-40944D82281F}");
-
         MainEditor* m_editor;
 
         //u32 m_index;    // The index of the asset browser.

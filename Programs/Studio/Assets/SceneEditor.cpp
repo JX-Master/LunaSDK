@@ -8,6 +8,7 @@
 * @date 2020/5/15
 */
 #include "Scene.hpp"
+#include "SceneEditorTypes.hpp"
 #include "../SceneRenderer.hpp"
 #include "../MainEditor.hpp"
 #include "../Scene.hpp"
@@ -30,80 +31,6 @@
 
 namespace Luna
 {
-    struct SceneEditorUserData
-    {
-        lustruct("SceneEditorUserData", "{5b4aea33-e61a-4042-ba91-1f4ec84f8194}");
-
-        // Resources for rendering grids.
-        Ref<RHI::IBuffer> m_grid_vb;
-        Ref<RHI::IDescriptorSetLayout> m_grid_dlayout;
-        Ref<RHI::IPipelineLayout> m_grid_playout;
-        Ref<RHI::IPipelineState> m_grid_pso;
-
-        SceneEditorUserData() {}
-
-        RV init();
-    };
-    
-    struct SceneEditor : public IAssetEditor
-    {
-    public:
-        lustruct("SceneEditor", "{c973cc28-78e7-4be5-a391-8c2e5960fa48}");
-        luiimpl();
-
-        Ref<SceneEditorUserData> m_type;
-
-        Asset::asset_t m_scene;
-        World m_world;
-        bool m_world_initialized = false;
-
-        SceneRenderer m_renderer;
-
-        // States for actor list.
-        Guid m_editing_actor_guid = Guid(0, 0);
-
-        // States for scene viewport.
-
-        ImGui::GizmoMode m_gizmo_mode = ImGui::GizmoMode::local;
-        ImGui::GizmoOperation m_gizmo_op = ImGui::GizmoOperation::translate;
-
-        f32 m_camera_speed = 1.0f;
-
-        bool m_navigating = false;
-        Int2U m_scene_click_pos;    // Stores the click mouse position in screen space.
-
-        bool m_open = true;
-
-        SceneEditor() :
-            m_renderer(RHI::get_main_device()) {}
-
-        RV init();
-
-        void on_add_actor(usize actor_index);
-        void on_remove_actor(const Guid& guid);
-        void on_edit_actor_info(SceneActor& scene_actor);
-        void on_edit_actor_transform(SceneActor& scene_actor);
-        void on_actor_add_component(SceneActor& scene_actor, typeinfo_t component);
-        void on_actor_remove_component(SceneActor& scene_actor, typeinfo_t component);
-        void on_actor_edit_component(SceneActor& scene_actor, typeinfo_t component);
-
-        void edit_scene();
-        void draw_actor_list();
-        void draw_actor_tree_node(Actor* actor, bool& open_actor_list_popup);
-        void draw_scene_settings();
-        void draw_scene();
-
-        void draw_components_grid();
-
-        virtual void on_render() override;
-        virtual bool closed() override
-        {
-            return !m_open;
-        }
-
-        void capture_scene_to_file(const Path& path);
-    };
-
     RV SceneEditor::init()
     {
         lutry

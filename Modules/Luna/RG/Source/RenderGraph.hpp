@@ -9,13 +9,13 @@
 */
 #pragma once
 #include "../RenderGraph.hpp"
+#include "RenderGraph.generated.hpp"
 namespace Luna
 {
     namespace RG
     {
-        struct RenderGraph : IRenderGraph, IRenderGraphCompiler, IRenderPassContext
+        struct [[luna::struct("{feefd806-4b82-48cd-b350-f8fc9387fc65}")]] RenderGraph : IRenderGraph, IRenderGraphCompiler, IRenderPassContext
         {
-            lustruct("RG::RenderGraph", "{feefd806-4b82-48cd-b350-f8fc9387fc65}");
             luiimpl();
 
             Ref<RHI::IDevice> m_device;

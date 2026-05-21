@@ -13,14 +13,13 @@
 #include <Luna/Runtime/TSAssert.hpp>
 #include <Luna/RHI/Device.hpp>
 #include <Luna/Runtime/UniquePtr.hpp>
-
+#include "FontAtlas.generated.hpp"
 namespace Luna
 {
     namespace VG
     {
-        struct FontAtlas : IFontAtlas
+        struct [[luna::struct("{E25DC74A-20B6-4207-B0C1-3E4F8CDB45A2}")]] FontAtlas : IFontAtlas
         {
-            lustruct("VG::FontAtlas", "{E25DC74A-20B6-4207-B0C1-3E4F8CDB45A2}");
             luiimpl();
             lutsassert_lock();
 

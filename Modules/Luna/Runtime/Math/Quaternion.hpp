@@ -20,22 +20,20 @@ namespace Luna
 
     //! @addtogroup RuntimeMathQuaternion
     //! @{
-
-    struct alignas(16) Quaternion
+    struct [[luna::struct("79cdb8b6-9101-433e-b28a-1130a33359d3")]] alignas(16) Quaternion
     {
-        lustruct("Quaternion", "79cdb8b6-9101-433e-b28a-1130a33359d3");
         union
         {
             struct
             {
                 //! The fist component of the quaternion.
-                f32 x;
+                [[Luna::property]] f32 x;
                 //! The second component of the quaternion.
-                f32 y;
+                [[Luna::property]] f32 y;
                 //! The third component of the quaternion.
-                f32 z;
+                [[Luna::property]] f32 z;
                 //! The fourth component of the quaternion.
-                f32 w;
+                [[Luna::property]] f32 w;
             };
             //! The array of components.
             f32 m[4];
@@ -116,3 +114,4 @@ namespace Luna
 }
 
 #include "Impl/Quaternion.inl"
+#include "Quaternion.generated.hpp"

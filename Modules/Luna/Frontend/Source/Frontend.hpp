@@ -11,7 +11,7 @@
 #pragma once
 #include "../Frontend.hpp"
 #include <Luna/Runtime/Ref.hpp>
-
+#include "Frontend.generated.hpp"
 namespace Luna
 {
     namespace Frontend
@@ -107,9 +107,8 @@ namespace Luna
         };
 
         //! Concrete implementation of IFrontend.
-        struct Frontend : public IFrontend
+        struct [[luna::struct("{F0E1D2C3-B4A5-6789-0DEF-1A2B3C4D5E6F}")]] Frontend : public IFrontend
         {
-            lustruct("Luna::Frontend::Frontend", "{F0E1D2C3-B4A5-6789-0DEF-1A2B3C4D5E6F}");
             luiimpl();
 
             HashMap<Name, ResourceEntry> m_registry;

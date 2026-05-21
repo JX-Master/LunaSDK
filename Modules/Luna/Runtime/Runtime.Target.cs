@@ -15,6 +15,20 @@ public sealed class RuntimeTargetRules : TargetRules
             "Math/**.hpp",
             "Math/**.inl",
             "Source/**.hpp");
+        MetaHeaders(
+            "Math/Matrix.hpp",
+            "Math/Quaternion.hpp",
+            "Math/Vector.hpp",
+            "Source/Coroutine.hpp",
+            "Source/Fiber.hpp",
+            "Source/File.hpp",
+            "Source/Mutex.hpp",
+            "Source/Random.hpp",
+            "Source/ReadWriteLock.hpp",
+            "Source/Semaphore.hpp",
+            "Source/Signal.hpp",
+            "Source/StdIO.hpp",
+            "Source/Thread.hpp");
 
         Sources("Source/*.cpp");
     }

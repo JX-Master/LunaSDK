@@ -11,14 +11,13 @@
 #include "Common.h"
 #include "../../Adapter.hpp"
 #include <Luna/Runtime/String.hpp>
-
+#include "Adapter.generated.hpp"
 namespace Luna
 {
     namespace RHI
     {
-        struct Adapter : IAdapter
+        struct [[luna::struct("{0e5be888-fd9b-4036-a292-7d77ae01f111}")]] Adapter : IAdapter
         {
-            lustruct("RHI::Adapter", "{0e5be888-fd9b-4036-a292-7d77ae01f111}");
             luiimpl();
 
             id<MTLDevice> m_device = nil;

@@ -10,14 +10,13 @@
 #pragma once
 #include "../ResourceWriteContext.hpp"
 #include <Luna/RHI/Device.hpp>
-
+#include "ResourceWriteContext.generated.hpp"
 namespace Luna
 {
     namespace RHIUtility
     {
-        struct ResourceWriteContext : IResourceWriteContext
+        struct [[luna::struct("f47deab1-ebc1-45be-a229-58824379e533")]] ResourceWriteContext : IResourceWriteContext
         {
-            lustruct("RHIUtility::ResourceWriteContext", "f47deab1-ebc1-45be-a229-58824379e533");
             luiimpl();
 
             struct BufferWriteParams

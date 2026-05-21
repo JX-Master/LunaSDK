@@ -10,14 +10,13 @@
 #pragma once
 #include "DeviceMemory.hpp"
 #include "ImageView.hpp"
-
+#include "Resource.generated.hpp"
 namespace Luna
 {
     namespace RHI
     {
-        struct BufferResource : IBuffer
+        struct [[luna::struct("{2CE2F6F7-9CCB-4DD5-848A-DBE27F8A8B7A}")]] BufferResource : IBuffer
         {
-            lustruct("RHI::BufferResource", "{2CE2F6F7-9CCB-4DD5-848A-DBE27F8A8B7A}");
             luiimpl();
 
             Ref<Device> m_device;
@@ -45,10 +44,8 @@ namespace Luna
             VkImageLayout m_image_layout = VK_IMAGE_LAYOUT_UNDEFINED;
             u32 m_owning_queue_family_index = U32_MAX;
         };
-
-        struct ImageResource : ITexture
+        struct [[luna::struct("{731F1D3C-2864-44A4-B380-CF03CBB7AFED}")]] ImageResource : ITexture
         {
-            lustruct("RHI::ImageResource", "{731F1D3C-2864-44A4-B380-CF03CBB7AFED}");
             luiimpl();
         
             Ref<Device> m_device;

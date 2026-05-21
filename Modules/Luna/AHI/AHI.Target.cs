@@ -9,6 +9,9 @@ public sealed class AHITargetRules : TargetRules
             rulesPath: "Modules/Luna/AHI/AHI.Target.cs")
     {
         Headers("*.hpp", "Source/**.hpp");
+        MetaHeaders(
+            "Source/MiniAudio/Adapter.hpp",
+            "Source/MiniAudio/Device.hpp");
         Sources("**.cpp");
         DependsOn("Runtime", "miniaudio");
     }

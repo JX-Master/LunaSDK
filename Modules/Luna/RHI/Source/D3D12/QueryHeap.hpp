@@ -12,14 +12,13 @@
 #include "Device.hpp"
 #include <Luna/Runtime/TSAssert.hpp>
 #include "Resource.hpp"
-
+#include "QueryHeap.generated.hpp"
 namespace Luna
 {
     namespace RHI
     {
-        struct QueryHeap : IQueryHeap
+        struct [[luna::struct("{5e5c3f30-a388-4341-8343-1924d18793d3}")]] QueryHeap : IQueryHeap
         {
-            lustruct("RHI::QueryHeap", "{5e5c3f30-a388-4341-8343-1924d18793d3}");
             luiimpl();
             lutsassert_lock();
 

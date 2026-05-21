@@ -11,7 +11,7 @@
 
 #import <UIKit/UIKit.h>
 #include "../../../UIKit/UIKitWindow.hpp"
-
+#include "Window.generated.hpp"
 namespace Luna
 {
     namespace Window
@@ -67,9 +67,8 @@ namespace Luna
 {
     namespace Window
     {
-        struct UIKitWindow : IUIKitWindow
+        struct [[luna::struct("28cb0e59-1ef2-4c47-bb37-4fc5a827640f")]] UIKitWindow : IUIKitWindow
         {
-            lustruct("Window::UIKitWindow", "28cb0e59-1ef2-4c47-bb37-4fc5a827640f");
             luiimpl();
 
             UIWindow* m_window = nil;

@@ -12,14 +12,13 @@
 #include "Device.hpp"
 #include <Luna/Runtime/Ref.hpp>
 #include "D3D12Common.hpp"
-
+#include "PipelineLayout.generated.hpp"
 namespace Luna
 {
     namespace RHI
     {
-        struct PipelineLayout : IPipelineLayout
+        struct [[luna::struct("{0a7ccb6d-bcf0-433a-af5b-ee454c37e5e2}")]] PipelineLayout : IPipelineLayout
         {
-            lustruct("RHI::PipelineLayout", "{0a7ccb6d-bcf0-433a-af5b-ee454c37e5e2}");
             luiimpl();
 
             Ref<Device> m_device;

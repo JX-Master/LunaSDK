@@ -10,7 +10,7 @@
 #pragma once
 #include "../ShapeRenderer.hpp"
 #include <Luna/Runtime/TSAssert.hpp>
-
+#include "ShapeRenderer.generated.hpp"
 namespace Luna
 {
     namespace VG
@@ -25,10 +25,8 @@ namespace Luna
             usize num_draw_calls;
             Float4x4U transform_matrix;
         };
-
-        struct FillShapeRenderer : IShapeRenderer
+        struct [[luna::struct("{3E50DDB9-C896-4B87-9000-BA8E5C7632BE}")]] FillShapeRenderer : IShapeRenderer
         {
-            lustruct("RHI::FillShapeRenderer", "{3E50DDB9-C896-4B87-9000-BA8E5C7632BE}");
             luiimpl();
             lutsassert_lock();
 

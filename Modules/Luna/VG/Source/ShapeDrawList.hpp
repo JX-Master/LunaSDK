@@ -10,13 +10,13 @@
 #include "../ShapeDrawList.hpp"
 #include <Luna/Runtime/TSAssert.hpp>
 #include <Luna/RHI/Device.hpp>
+#include "ShapeDrawList.generated.hpp"
 namespace Luna
 {
     namespace VG
     {
-        struct ShapeDrawList : IShapeDrawList
+        struct [[luna::struct("{44732F66-CE52-4493-85C3-6E0164C4EA18}")]] ShapeDrawList : IShapeDrawList
         {
-            lustruct("VG::ShapeDrawList", "{44732F66-CE52-4493-85C3-6E0164C4EA18}");
             luiimpl();
             lutsassert_lock();
             Ref<RHI::IDevice> m_device;

@@ -13,13 +13,13 @@
 #include "Device.hpp"
 #include "DeviceMemory.hpp"
 #include <Luna/Runtime/TSAssert.hpp>
+#include "Resource.generated.hpp"
 namespace Luna
 {
     namespace RHI
     {
-        struct BufferResource : IBuffer
+        struct [[luna::struct("{A96361DD-C552-4C1C-8E4B-D50D52828626}")]] BufferResource : IBuffer
         {
-            lustruct("RHI::BufferResource", "{A96361DD-C552-4C1C-8E4B-D50D52828626}");
             luiimpl();
             lutsassert_lock();
 
@@ -39,9 +39,8 @@ namespace Luna
             virtual RV map(usize read_begin, usize read_end, void** data) override;
             virtual void unmap(usize write_begin, usize write_end) override;
         };
-        struct TextureResource : ITexture
+        struct [[luna::struct("{5AC5B94D-5EAE-4672-98F3-7C4C557C9F01}")]] TextureResource : ITexture
         {
-            lustruct("RHI::TextureResource", "{5AC5B94D-5EAE-4672-98F3-7C4C557C9F01}");
             luiimpl();
 
             Ref<Device> m_device;

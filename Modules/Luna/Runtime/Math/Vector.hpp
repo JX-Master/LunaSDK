@@ -43,17 +43,16 @@ namespace Luna
     //! 2D vector type with @ref f32 components.
     //! @details This vector type is 16-bytes aligned and will use SIMD to accelerate vector 
     //! calculations when possible.
-    struct alignas(16) Float2
+    struct [[luna::struct("{69D3BC60-3EDA-49F5-B622-E832118FD3D2}")]] alignas(16) Float2
     {
-        lustruct("Float2", "{69D3BC60-3EDA-49F5-B622-E832118FD3D2}");
         union
         {
             struct
             {
                 //! The fist component of the vector.
-                f32 x;
+                [[Luna::property]] f32 x;
                 //! The second component of the vector.
-                f32 y;
+                [[Luna::property]] f32 y;
             };
             //! The array of components.
             f32 m[2];
@@ -646,19 +645,18 @@ namespace Luna
     //! 3D vector type with @ref f32 components.
     //! @details This vector type is 16-bytes aligned and will use SIMD to accelerate vector 
     //! calculations when possible.
-    struct alignas(16) Float3
+    struct [[luna::struct("{7727472C-AF79-40E8-8385-CD7677389E4F}")]] alignas(16) Float3
     {
-        lustruct("Float3", "{7727472C-AF79-40E8-8385-CD7677389E4F}");
         union
         {
             struct
             {
                 //! The fist component of the vector.
-                f32 x;
+                [[Luna::property]] f32 x;
                 //! The second component of the vector.
-                f32 y;
+                [[Luna::property]] f32 y;
                 //! The third component of the vector.
-                f32 z;
+                [[Luna::property]] f32 z;
             };
             //! The array of components.
             f32 m[3];
@@ -1312,21 +1310,20 @@ namespace Luna
     //! 4D vector type with @ref f32 components.
     //! @details This vector type is 16-bytes aligned and will use SIMD to accelerate vector 
     //! calculations when possible.
-    struct alignas(16) Float4
+    struct [[luna::struct("{88547D46-4DF1-42ED-BB48-96571BBD651F}")]] alignas(16) Float4
     {
-        lustruct("Float4", "{88547D46-4DF1-42ED-BB48-96571BBD651F}");
         union
         {
             struct
             {
                 //! The fist component of the vector.
-                f32 x;
+                [[Luna::property]] f32 x;
                 //! The second component of the vector.
-                f32 y;
+                [[Luna::property]] f32 y;
                 //! The third component of the vector.
-                f32 z;
+                [[Luna::property]] f32 z;
                 //! The fourth component of the vector.
-                f32 w;
+                [[Luna::property]] f32 w;
             };
             //! The array of components.
             f32 m[4];
@@ -2033,3 +2030,4 @@ namespace Luna
 #include "Impl/Float2.inl"
 #include "Impl/Float3.inl"
 #include "Impl/Float4.inl"
+#include "Vector.generated.hpp"

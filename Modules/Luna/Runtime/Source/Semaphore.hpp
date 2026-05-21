@@ -11,12 +11,11 @@
 #pragma once
 #include "../Semaphore.hpp"
 #include "Platform/Semaphore.hpp"
-
+#include "Semaphore.generated.hpp"
 namespace Luna
 {
-    struct Semaphore : ISemaphore
+    struct [[luna::struct("{4d155da3-acdb-4ac6-aecb-70e43a5faedf}")]] Semaphore : ISemaphore
     {
-        lustruct("Semaphore", "{4d155da3-acdb-4ac6-aecb-70e43a5faedf}");
         luiimpl();
 
         Platform::Semaphore m_data;

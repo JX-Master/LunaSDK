@@ -12,11 +12,11 @@
 #include "../Signal.hpp"
 #include "Platform/Signal.hpp"
 #include "../Interface.hpp"
+#include "Signal.generated.hpp"
 namespace Luna
 {
-    struct Signal : ISignal
+    struct [[luna::struct("{95a2e5b2-d48a-4f19-bfb8-22c273c0ad4b}")]] Signal : ISignal
     {
-        lustruct("Signal", "{95a2e5b2-d48a-4f19-bfb8-22c273c0ad4b}");
         luiimpl();
 
         Platform::Signal m_data;

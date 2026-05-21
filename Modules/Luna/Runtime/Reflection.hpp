@@ -894,6 +894,34 @@ namespace Luna
     }
 
     template <typename _Ty>
+    Vector<StructurePropertyDesc> generated_struct_properties()
+    {
+        Vector<StructurePropertyDesc> properties;
+        if constexpr (requires { Meta::StructMetaData<_Ty>::__properties; })
+        {
+            for (const auto& property : Meta::StructMetaData<_Ty>::__properties)
+            {
+                properties.push_back(StructurePropertyDesc(property.name, property.type(), property.offset));
+            }
+        }
+        return properties;
+    }
+
+    template <typename _Ty>
+    typeinfo_t register_struct_type()
+    {
+        auto properties = generated_struct_properties<_Ty>();
+        return register_struct_type<_Ty>(Span<const StructurePropertyDesc>(properties.data(), properties.size()));
+    }
+
+    template <typename _Ty>
+    typeinfo_t register_struct_type(typeinfo_t base_type)
+    {
+        auto properties = generated_struct_properties<_Ty>();
+        return register_struct_type<_Ty>(Span<const StructurePropertyDesc>(properties.data(), properties.size()), base_type);
+    }
+
+    template <typename _Ty>
     typeinfo_t register_abstract_struct_type(Span<const StructurePropertyDesc> properties, typeinfo_t base_type = nullptr)
     {
         StructureTypeDesc desc;
@@ -915,6 +943,20 @@ namespace Luna
         return register_struct_type(desc);
     }
 
+    template <typename _Ty>
+    typeinfo_t register_abstract_struct_type()
+    {
+        auto properties = generated_struct_properties<_Ty>();
+        return register_abstract_struct_type<_Ty>(Span<const StructurePropertyDesc>(properties.data(), properties.size()));
+    }
+
+    template <typename _Ty>
+    typeinfo_t register_abstract_struct_type(typeinfo_t base_type)
+    {
+        auto properties = generated_struct_properties<_Ty>();
+        return register_abstract_struct_type<_Ty>(Span<const StructurePropertyDesc>(properties.data(), properties.size()), base_type);
+    }
+
     //! Registers one enumeration type to the type system. The enumeration type must have one @ref luenum
     //! macro defined directly in `Luna` namespace.
     //! @param[in] options A list of options that should be tracked by the type system. The user can use
@@ -933,6 +975,20 @@ namespace Luna
         desc.options = options;
         desc.multienum = multienum;
         return register_enum_type(desc);
+    }
+
+    template <typename _Ty>
+    typeinfo_t register_enum_type(bool multienum = false)
+    {
+        Vector<EnumerationOptionDesc> options;
+        if constexpr (requires { Meta::EnumMetadata<_Ty>::__options; })
+        {
+            for (const auto& option : Meta::EnumMetadata<_Ty>::__options)
+            {
+                options.push_back(EnumerationOptionDesc(option.name, option.value));
+            }
+        }
+        return register_enum_type<_Ty>(Span<const EnumerationOptionDesc>(options.data(), options.size()), multienum);
     }
 
     //! @}

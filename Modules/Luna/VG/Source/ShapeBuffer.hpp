@@ -9,14 +9,13 @@
 */
 #pragma once
 #include "../ShapeBuffer.hpp"
-
+#include "ShapeBuffer.generated.hpp"
 namespace Luna
 {
     namespace VG
     {
-        struct ShapeBuffer : IShapeBuffer
+        struct [[luna::struct("c8818774-b17f-4953-8820-1ff3543cd188")]] ShapeBuffer : IShapeBuffer
         {
-            lustruct("VG::ShapeBuffer", "c8818774-b17f-4953-8820-1ff3543cd188");
             luiimpl();
 
             Vector<f32> m_shape_points;

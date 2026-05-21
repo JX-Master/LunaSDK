@@ -9,13 +9,13 @@
 */
 #pragma once
 #include "Device.hpp"
+#include "PipelineLayout.generated.hpp"
 namespace Luna
 {
     namespace RHI
     {
-        struct PipelineLayout : IPipelineLayout
+        struct [[luna::struct("{5B246B1A-354C-446A-924C-1E0F6040A82A}")]] PipelineLayout : IPipelineLayout
         {
-            lustruct("RHI::PipelineLayout", "{5B246B1A-354C-446A-924C-1E0F6040A82A}");
             luiimpl();
 
             Ref<Device> m_device;

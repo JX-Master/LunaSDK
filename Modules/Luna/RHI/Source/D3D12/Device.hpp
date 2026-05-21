@@ -17,7 +17,7 @@
 #include <Luna/Runtime/List.hpp>
 #include <Luna/Runtime/SpinLock.hpp>
 #include <Luna/Runtime/UniquePtr.hpp>
-
+#include "Device.generated.hpp"
 namespace Luna
 {
     namespace RHI
@@ -79,9 +79,8 @@ namespace Luna
         };
 
         //! @class Device
-        struct Device : IDevice
+        struct [[luna::struct("{038b4cb4-5e16-41a1-ad6f-7e2a49e2241e}")]] Device : IDevice
         {
-            lustruct("RHI::Device", "{038b4cb4-5e16-41a1-ad6f-7e2a49e2241e}");
             luiimpl();
 
             ComPtr<IDXGIAdapter> m_adapter;

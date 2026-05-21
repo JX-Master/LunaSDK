@@ -10,14 +10,13 @@
 #pragma once
 #include "Device.h"
 #include "QueryHeap.h"
-
+#include "CommandBuffer.generated.hpp"
 namespace Luna
 {
     namespace RHI
     {
-        struct CommandBuffer : ICommandBuffer
+        struct [[luna::struct("{da3d7c91-2ae4-407e-81c6-276089faeb40}")]] CommandBuffer : ICommandBuffer
         {
-            lustruct("RHI::CommandBuffer", "{da3d7c91-2ae4-407e-81c6-276089faeb40}");
             luiimpl();
 
             Ref<Device> m_device;

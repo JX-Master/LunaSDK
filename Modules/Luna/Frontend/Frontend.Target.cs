@@ -9,6 +9,7 @@ public sealed class FrontendTargetRules : TargetRules
             rulesPath: "Modules/Luna/Frontend/Frontend.Target.cs")
     {
         Headers("*.hpp", "Source/**.hpp");
+        MetaHeaders("Source/Frontend.hpp");
         Sources("Source/**.cpp");
         DependsOn("Runtime");
     }

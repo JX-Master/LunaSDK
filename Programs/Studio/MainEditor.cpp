@@ -10,7 +10,7 @@
 #include "MainEditor.hpp"
 
 #include "Assets/Texture.hpp"
-#include "Assets/Mesh.hpp"
+#include "Assets/MeshAsset.hpp"
 #include "Assets/Scene.hpp"
 #include "Assets/Model.hpp"
 #include "Assets/Material.hpp"
@@ -198,20 +198,7 @@ namespace Luna
             luexp(register_tone_mapping_pass());
             luexp(register_buffer_visualization_pass());
 
-            register_enum_type<SceneRendererMode>({
-                luoption(SceneRendererMode, lit),
-                luoption(SceneRendererMode, wireframe),
-                luoption(SceneRendererMode, base_color),
-                luoption(SceneRendererMode, normal),
-                luoption(SceneRendererMode, roughness),
-                luoption(SceneRendererMode, metallic),
-                luoption(SceneRendererMode, depth),
-                luoption(SceneRendererMode, emissive),
-                luoption(SceneRendererMode, diffuse_lighting),
-                luoption(SceneRendererMode, specular_lighting),
-                luoption(SceneRendererMode, ambient_diffuse_lighting),
-                luoption(SceneRendererMode, ambient_specular_lighting)
-            });
+            register_enum_type<SceneRendererMode>();
         }
         lucatchret;
         return ok;
@@ -379,20 +366,10 @@ namespace Luna
 
     void register_components()
     {
-        register_enum_type<CameraType>({
-                luoption(CameraType, perspective),
-                luoption(CameraType, orthographic)
-            });
+        register_enum_type<CameraType>();
         set_serializable<CameraType>();
         
-        register_struct_type<Camera>({
-            luproperty(Camera, CameraType, type),
-            luproperty(Camera, f32, fov),
-            luproperty(Camera, f32, size),
-            luproperty(Camera, f32, near_clipping_plane),
-            luproperty(Camera, f32, far_clipping_plane),
-            luproperty(Camera, f32, aspect_ratio)
-            });
+        register_struct_type<Camera>();
         set_serializable<Camera>();
         g_env->component_types.insert(typeof<Camera>());
         set_property_attribute(typeof<Camera>(), "fov", "radian", true);
@@ -400,56 +377,29 @@ namespace Luna
         set_property_attribute(typeof<Camera>(), "fov", "gui_max", (f64)deg_to_rad(160));
         set_property_attribute(typeof<Camera>(), "aspect_ratio", "hide", true);
         
-        register_struct_type<ActorRef>({
-            luproperty(ActorRef, Guid, guid)
-        });
+        register_struct_type<ActorRef>();
         set_serializable<ActorRef>();
 
-        register_struct_type<ActorInfo>({});
+        register_struct_type<ActorInfo>();
 
-        register_struct_type<Transform>({
-            luproperty(Transform, Float3, position),
-            luproperty(Transform, Quaternion, rotation),
-            luproperty(Transform, Float3, scale)
-        });
+        register_struct_type<Transform>();
         set_serializable<Transform>();
 
-        register_enum_type<LightType>({
-            luoption(LightType, directional),
-            luoption(LightType, point),
-            luoption(LightType, spot)
-        });
+        register_enum_type<LightType>();
 
         set_serializable<LightType>();
 
-        register_struct_type<Light>({
-            luproperty(Light, LightType, type),
-            luproperty(Light, Float3, intensity),
-            luproperty(Light, f32, intensity_multiplier),
-            luproperty(Light, f32, attenuation_power),
-            luproperty(Light, f32, spot_power)
-            });
+        register_struct_type<Light>();
         set_serializable<Light>();
         g_env->component_types.insert(typeof<Light>());
 
         set_property_attribute(typeof<Light>(), "intensity", "color_gui", true);
 
-        register_struct_type<ModelRenderer>({
-            luproperty(ModelRenderer, Asset::asset_t, model)
-            });
+        register_struct_type<ModelRenderer>();
         set_serializable<ModelRenderer>();
         g_env->component_types.insert(typeof<ModelRenderer>());
 
-        register_struct_type<SceneSettings>({
-            luproperty(SceneSettings, ActorRef, camera_actor),
-            luproperty(SceneSettings, Asset::asset_t, skybox),
-            luproperty(SceneSettings, Float3, environment_color),
-            luproperty(SceneSettings, f32, skybox_rotation),
-            luproperty(SceneSettings, f32, exposure),
-            luproperty(SceneSettings, bool, auto_exposure),
-            luproperty(SceneSettings, f32, bloom_threshold),
-            luproperty(SceneSettings, f32, bloom_intensity)
-            });
+        register_struct_type<SceneSettings>();
         set_serializable<SceneSettings>();
         g_env->scene_component_types.insert(typeof<SceneSettings>());
         set_property_attribute(typeof<SceneSettings>(), "environment_color", "color_gui", true);
@@ -465,9 +415,9 @@ namespace Luna
     {
         register_boxed_type<MainEditor>();
         register_boxed_type<AssetBrowser>();
-        register_struct_type<Operation>({});
-        register_struct_type<AssetEditingOp>({}, typeof<Operation>());
-        register_struct_type<DiffAssetEditingOp>({}, typeof<AssetEditingOp>());
+        register_struct_type<Operation>();
+        register_struct_type<AssetEditingOp>(typeof<Operation>());
+        register_struct_type<DiffAssetEditingOp>(typeof<AssetEditingOp>());
 
         Ref<MainEditor> main_editor = new_object<MainEditor>();
         g_main_editor = main_editor;

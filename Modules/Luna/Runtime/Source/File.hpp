@@ -12,12 +12,11 @@
 #include "../File.hpp"
 #include "Platform/File.hpp"
 #include "Error.hpp"
-
+#include "File.generated.hpp"
 namespace Luna
 {
-    struct File : IFile
+    struct [[luna::struct("{915247e4-15b4-44ba-8781-dd7dcfd48f87}")]] File : IFile
     {
-        lustruct("File", "{915247e4-15b4-44ba-8781-dd7dcfd48f87}");
         luiimpl();
         lutsassert_lock();
 
@@ -63,9 +62,8 @@ namespace Luna
             Platform::flush_file(m_file);
         }
     };
-    struct FileIterator : IFileIterator
+    struct [[luna::struct("{bd87c27c-34ed-4764-8417-6ef37c316ed3}")]] FileIterator : IFileIterator
     {
-        lustruct("FileIterator", "{bd87c27c-34ed-4764-8417-6ef37c316ed3}");
         luiimpl();
         lutsassert_lock();
 

@@ -12,7 +12,7 @@
 #include "Common.hpp"
 #include <Luna/Runtime/Mutex.hpp>
 #include <Luna/Runtime/Event.hpp>
-
+#include "Device.generated.hpp"
 namespace Luna
 {
     namespace AHI
@@ -34,10 +34,8 @@ namespace Luna
                 m_valid_frames = m_callback(m_buffer.data(), format, num_frames);
             }
         };
-
-        struct Device : IDevice
+        struct [[luna::struct("{86cc0475-a167-4be5-913a-b3fa650061ac}")]] Device : IDevice
         {
-            lustruct("AHI::Device", "{86cc0475-a167-4be5-913a-b3fa650061ac}");
             luiimpl();
 
             Ref<IMutex> m_audio_sources_mutex;

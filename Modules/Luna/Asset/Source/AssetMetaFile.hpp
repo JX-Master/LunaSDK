@@ -3,7 +3,7 @@
 * For conditions of distribution and use, see the disclaimer
 * and license in LICENSE.txt
 * 
-* @file Asset.hpp
+* @file AssetMetaFile.hpp
 * @author JXMaster
 * @date 2022/5/11
 */
@@ -12,18 +12,16 @@
 #include <Luna/Runtime/SpinLock.hpp>
 #include <Luna/Runtime/Mutex.hpp>
 #include <Luna/Runtime/Signal.hpp>
-
+#include "AssetMetaFile.generated.hpp"
 namespace Luna
 {
     namespace Asset
     {
-        struct AssetMetaFile
+        struct [[luna::struct("{93C04F6C-BC6C-4586-8CB2-7DF1B249DA21}")]] AssetMetaFile
         {
-            lustruct("Asset::AssetMetaFile", "{93C04F6C-BC6C-4586-8CB2-7DF1B249DA21}");
-            Guid guid;
-            Name type;
+            [[Luna::property]] Guid guid;
+            [[Luna::property]] Name type;
         };
-
         // Maps to `asset_t`
         struct AssetEntry
         {

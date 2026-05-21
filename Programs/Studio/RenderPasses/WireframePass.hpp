@@ -13,13 +13,11 @@
 #include "../Scene.hpp"
 #include "../ModelRenderer.hpp"
 #include "../SceneRenderer.hpp"
-
+#include "WireframePass.generated.hpp"
 namespace Luna
 {
-    struct WireframePassGlobalData
+    struct [[luna::struct("{df0720b0-7ace-4cb4-94af-90260b82f8e7}")]] WireframePassGlobalData
     {
-        lustruct("WireframePassGlobalData", "{df0720b0-7ace-4cb4-94af-90260b82f8e7}");
-
         Ref<RHI::IPipelineState> m_debug_mesh_renderer_pso;
         Ref<RHI::IDescriptorSetLayout> m_debug_mesh_renderer_dlayout;
         Ref<RHI::IPipelineLayout> m_debug_mesh_renderer_playout;
@@ -28,10 +26,8 @@ namespace Luna
 
         RV init(RHI::IDevice* device);
     };
-
-    struct WireframePass : RG::IRenderPass
+    struct [[luna::struct("{849e92d5-6407-4018-9ee7-4ffa34ab3044}")]] WireframePass : RG::IRenderPass
     {
-        lustruct("WireframePass", "{849e92d5-6407-4018-9ee7-4ffa34ab3044}");
         luiimpl();
 
         Span<MeshRenderParams> mesh_render_params;

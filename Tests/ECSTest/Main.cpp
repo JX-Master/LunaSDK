@@ -12,22 +12,15 @@
 #include <Luna/ECS/ECS.hpp>
 #include <Luna/ECS/World.hpp>
 #include <Luna/Runtime/Math/Vector.hpp>
+#include "Position.hpp"
 
 #define lutest luassert_always
-
-struct Position
-{
-    lustruct("Position", "{13CA006E-8EC1-4ECE-B919-188281F2EEA2}");
-    Luna::Float3 position;
-};
 
 void ecs_test()
 {
     using namespace Luna;
     using namespace Luna::ECS;
-    register_struct_type<Position>({
-        luproperty(Position, Float3, position)
-        });
+    register_struct_type<Position>();
     {
         // Create world and task context.
         Ref<IWorld> world = new_world();

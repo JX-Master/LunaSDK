@@ -11,14 +11,13 @@
 #include "DescriptorSetLayout.hpp"
 #include "ImageView.hpp"
 #include "Sampler.hpp"
-
+#include "DescriptorSet.generated.hpp"
 namespace Luna
 {
     namespace RHI
     {
-        struct DescriptorSet : IDescriptorSet
+        struct [[luna::struct("{E215C4E0-69C5-4D04-8514-A980E1C6C74B}")]] DescriptorSet : IDescriptorSet
         {
-            lustruct("RHI::DescriptorSet", "{E215C4E0-69C5-4D04-8514-A980E1C6C74B}");
             luiimpl();
 
             Ref<Device> m_device;

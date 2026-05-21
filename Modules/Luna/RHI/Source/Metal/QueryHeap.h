@@ -9,13 +9,13 @@
 */
 #pragma once
 #include "Device.h"
+#include "QueryHeap.generated.hpp"
 namespace Luna
 {
     namespace RHI
     {
-        struct BufferQueryHeap : IQueryHeap
+        struct [[luna::struct("{5e568a4a-b522-441b-b421-efe46777d725}")]] BufferQueryHeap : IQueryHeap
         {
-            lustruct("RHI::BufferQueryHeap", "{5e568a4a-b522-441b-b421-efe46777d725}");
             luiimpl();
 
             Ref<Device> m_device;
@@ -31,10 +31,8 @@ namespace Luna
             virtual RV get_occlusion_values(u32 index, u32 count, u64* values) override;
             virtual RV get_pipeline_statistics_values(u32 index, u32 count, PipelineStatistics* values) override { return BasicError::not_supported(); }
         };
-
-        struct CounterSampleQueryHeap : IQueryHeap
+        struct [[luna::struct("{2660efc3-0198-45e6-b2c0-1f6539f82ccd}")]] CounterSampleQueryHeap : IQueryHeap
         {
-            lustruct("RHI::CounterSampleQueryHeap", "{2660efc3-0198-45e6-b2c0-1f6539f82ccd}");
             luiimpl();
 
             Ref<Device> m_device;

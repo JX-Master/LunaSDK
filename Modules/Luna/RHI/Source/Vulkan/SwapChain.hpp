@@ -13,14 +13,14 @@
 #include "Resource.hpp"
 #ifdef LUNA_PLATFORM_ANDROID
 #include <android/native_window.h>
+#include "SwapChain.generated.hpp"
 #endif
 namespace Luna
 {
     namespace RHI
     {
-        struct SwapChain : ISwapChain
+        struct [[luna::struct("{E62614A8-3AB3-46D1-8DD8-80671C571FBC}")]] SwapChain : ISwapChain
         {
-            lustruct("RHI::SwapChain", "{E62614A8-3AB3-46D1-8DD8-80671C571FBC}");
             luiimpl();
             Ref<Device> m_device;
             Name m_name;

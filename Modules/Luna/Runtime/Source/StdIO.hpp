@@ -10,11 +10,11 @@
 #include "../StdIO.hpp"
 #include "Platform/StdIO.hpp"
 #include "Error.hpp"
+#include "StdIO.generated.hpp"
 namespace Luna
 {
-    struct StdIOStream : IStream
+    struct [[luna::struct("4cbc48b8-b15b-423f-9535-d3435bef3055")]] StdIOStream : IStream
     {
-        lustruct("StdIOStream", "4cbc48b8-b15b-423f-9535-d3435bef3055");
         luiimpl();
         
         virtual RV read(void* buffer, usize size, usize* read_bytes) override

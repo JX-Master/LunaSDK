@@ -26,6 +26,7 @@
 #include <Luna/RHIUtility/ResourceWriteContext.hpp>
 #include <Luna/Window/Event.hpp>
 #include "Luna/Window/Clipboard.hpp"
+#include "SampledImage.hpp"
 #include <ImGuiVS.hpp>
 #include <ImGuiPS.hpp>
 namespace Luna
@@ -59,20 +60,6 @@ namespace Luna
         Vector<Ref<RHI::IDescriptorSet>> g_desc_sets;
 
         Ref<RHI::IBuffer> g_cb;
-
-        struct SampledImage : ISampledImage
-        {
-            lustruct("ImGuiUtils::SampledImage", "29378bf1-b58e-4c8a-a30f-d29239f9a713");
-            luiimpl();
-
-            Ref<RHI::ITexture> m_texture;
-            RHI::SamplerDesc m_sampler;
-
-            virtual RHI::ITexture* get_texture() override { return m_texture; }
-            virtual void set_texture(RHI::ITexture* texture) override { m_texture = texture; }
-            virtual RHI::SamplerDesc get_sampler() override { return m_sampler; }
-            virtual void set_sampler(const RHI::SamplerDesc& desc) override { m_sampler = desc; }
-        };
 
         LUNA_IMGUI_API Ref<ISampledImage> new_sampled_image(RHI::ITexture* texture, const RHI::SamplerDesc& sampler_desc)
         {

@@ -21,10 +21,7 @@ namespace Luna
 
     void register_model_asset_type()
     {
-        register_struct_type<Model>({
-            luproperty(Model, Asset::asset_t, mesh),
-            luproperty(Model, Vector<Asset::asset_t>, materials)
-            });
+        register_struct_type<Model>();
         set_serializable<Model>();
         Asset::AssetTypeDesc desc;
         desc.name = get_model_asset_type();

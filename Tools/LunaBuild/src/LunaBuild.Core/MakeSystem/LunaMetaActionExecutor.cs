@@ -43,6 +43,19 @@ public sealed class LunaMetaActionExecutor : KnownActionExecutor
             args.Add("--header");
             args.Add(context.Workspace.ResolveRepositoryPath(header));
         }
+        foreach(var language in payload.All("header_language"))
+        {
+            args.Add("--header-language");
+            args.Add(language);
+        }
+        if(context.Graph.Options.Platform == BuildPlatform.MacOS && OperatingSystem.IsMacOS())
+        {
+            var appleToolchain = AppleClangToolchainLocator.LocateMacOS();
+            args.Add("--isysroot");
+            args.Add(appleToolchain.SdkPath);
+            args.Add("--resource-dir");
+            args.Add(await LocateClangResourceDirectoryAsync(context.Workspace, appleToolchain.Clang, cancellationToken));
+        }
         foreach(var include in payload.All("include"))
         {
             args.Add("--include");
@@ -69,6 +82,32 @@ public sealed class LunaMetaActionExecutor : KnownActionExecutor
                 args,
                 result.Output));
         }
+    }
+
+    private async Task<string> LocateClangResourceDirectoryAsync(
+        BuildWorkspace workspace,
+        string clang,
+        CancellationToken cancellationToken)
+    {
+        var result = await ProcessRunner.RunAsync(
+            clang,
+            new[] { "-print-resource-dir" },
+            workspace.RootDirectory,
+            _actionTimeout,
+            cancellationToken);
+        if(result.ExitCode != 0)
+        {
+            throw new MakeSystemException($"Failed to locate clang resource directory:{Environment.NewLine}{result.Output}");
+        }
+        var path = result.Output
+            .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+            .Select(line => line.Trim())
+            .LastOrDefault(line => Path.IsPathFullyQualified(line));
+        if(string.IsNullOrWhiteSpace(path))
+        {
+            throw new MakeSystemException("clang -print-resource-dir returned an empty path.");
+        }
+        return path;
     }
 
     private static string LocateLunaMetaTool(BuildWorkspace workspace, BuildOptions options)

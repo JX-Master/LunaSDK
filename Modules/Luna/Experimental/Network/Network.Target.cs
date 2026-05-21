@@ -17,10 +17,14 @@ public sealed class NetworkTargetRules : TargetRules
     {
         if(Platform == BuildPlatform.Windows)
         {
+            Headers("Source/Platform/Windows/**.hpp");
+            MetaHeaders("Source/Platform/Windows/Socket.hpp");
             Sources("Source/Platform/Windows/**.cpp");
         }
         else if(Platform is BuildPlatform.Linux or BuildPlatform.MacOS or BuildPlatform.IOS)
         {
+            Headers("Source/Platform/POSIX/**.hpp");
+            MetaHeaders("Source/Platform/POSIX/Socket.hpp");
             Sources("Source/Platform/POSIX/**.cpp");
         }
     }

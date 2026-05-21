@@ -13,7 +13,7 @@
 #include "Device.hpp"
 #include "ResourceStateTrackingSystem.hpp"
 #include <Luna/Runtime/UniquePtr.hpp>
-
+#include "CommandBuffer.generated.hpp"
 namespace Luna
 {
     namespace RHI
@@ -30,9 +30,8 @@ namespace Luna
             R<VkSemaphore> submit_barrier(VkQueue queue, IMutex* queue_mtx, Span<const VkBufferMemoryBarrier> buffer_barriers, Span<const VkImageMemoryBarrier> texture_barriers);
             ~QueueTransferTracker();
         };
-        struct CommandBuffer : ICommandBuffer
+        struct [[luna::struct("{057DBF2F-5817-490B-9683-18A0D3C4C5CB}")]] CommandBuffer : ICommandBuffer
         {
-            lustruct("RHI::CommandBuffer", "{057DBF2F-5817-490B-9683-18A0D3C4C5CB}");
             luiimpl();
 
             Ref<Device> m_device;

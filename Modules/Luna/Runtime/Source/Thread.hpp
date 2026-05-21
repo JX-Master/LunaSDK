@@ -12,11 +12,11 @@
 #include "../Fiber.hpp"
 #include "Platform/Thread.hpp"
 #include "Error.hpp"
+#include "Thread.generated.hpp"
 namespace Luna
 {
-    struct ThreadBase : IThread
+    struct [[luna::struct("{3a99cfa4-5857-4135-82dc-f0dfb4ac5272}")]] ThreadBase : IThread
     {
-        lustruct("ThreadBase", "{3a99cfa4-5857-4135-82dc-f0dfb4ac5272}");
         luiimpl();
 
         Platform::Thread m_thread;
@@ -34,9 +34,8 @@ namespace Luna
             return m_native_fiber.get();
         }
     };
-    struct Thread : ThreadBase
+    struct [[luna::struct("{a29d30a1-e572-4e61-9e3e-5083b3e0ff64}")]] Thread : ThreadBase
     {
-        lustruct("Thread", "{a29d30a1-e572-4e61-9e3e-5083b3e0ff64}");
         luiimpl();
 
         void(*m_entry)(void*);
@@ -59,9 +58,8 @@ namespace Luna
             }
         }
     };
-    struct MainThread : ThreadBase
+    struct [[luna::struct("{384494c9-298b-47b8-af1f-83e26ecd429a}")]] MainThread : ThreadBase
     {
-        lustruct("MainThread", "{384494c9-298b-47b8-af1f-83e26ecd429a}");
         luiimpl();
 
         virtual void wait() override

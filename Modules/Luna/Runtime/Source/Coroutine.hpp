@@ -8,12 +8,11 @@
 * @date 2026/2/14
 */
 #include "../Coroutine.hpp"
-
+#include "Coroutine.generated.hpp"
 namespace Luna
 {
-    struct Coroutine : ICoroutine
+    struct [[luna::struct("{5d8c09eb-817c-411c-b49e-9335ec55a102}")]] Coroutine : ICoroutine
     {
-        lustruct("Coroutine", "{5d8c09eb-817c-411c-b49e-9335ec55a102}");
         luiimpl();
 
         Ref<IFiber> m_fiber;

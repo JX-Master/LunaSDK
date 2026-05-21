@@ -10,7 +10,7 @@
 #pragma once
 #include "Common.hpp"
 #include "../../Adapter.hpp"
-
+#include "Adapter.generated.hpp"
 namespace Luna
 {
     namespace RHI
@@ -31,10 +31,8 @@ namespace Luna
 
         RV init_physical_devices();
         void clear_physical_devices();
-
-        struct Adapter : IAdapter
+        struct [[luna::struct("{72cf1eb1-41b1-4465-a9ca-326d1817e13e}")]] Adapter : IAdapter
         {
-            lustruct("RHI::Adapter", "{72cf1eb1-41b1-4465-a9ca-326d1817e13e}");
             luiimpl();
 
             VkPhysicalDevice m_physical_device;

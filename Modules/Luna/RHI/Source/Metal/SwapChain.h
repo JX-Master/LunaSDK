@@ -10,7 +10,7 @@
 #pragma once
 #include "Device.h"
 #include "Resource.h"
-
+#include "SwapChain.generated.hpp"
 #import <QuartzCore/QuartzCore.h>
 #import <QuartzCore/CAMetalLayer.h>
 
@@ -18,9 +18,8 @@ namespace Luna
 {
     namespace RHI
     {
-        struct SwapChain : ISwapChain
+        struct [[luna::struct("{b0aba649-630a-44f7-9053-24711a974505}")]] SwapChain : ISwapChain
         {
-            lustruct("RHI::SwapChain", "{b0aba649-630a-44f7-9053-24711a974505}");
             luiimpl();
 
             Ref<Device> m_device;

@@ -8,35 +8,12 @@
 * @date 2020/5/29
 */
 #include "Material.hpp"
+#include "MaterialEditor.hpp"
 #include "../StudioHeader.hpp"
 #include <Luna/Window/MessageBox.hpp>
 #include "../EditObject.hpp"
 namespace Luna
 {
-    struct MaterialEditor : public IAssetEditor
-    {
-        lustruct("MaterialEditor", "{705b8d2f-75ef-4784-a72e-f99dcf3f67aa}");
-        luiimpl();
-
-        Asset::asset_t m_material;
-
-        String m_base_color_name;
-        String m_roughness_name;
-        String m_normal_name;
-        String m_metallic_name;
-        String m_emissive_name;
-
-        bool m_open = true;
-
-        MaterialEditor() {}
-
-        virtual void on_render() override;
-        virtual bool closed() override
-        {
-            return !m_open;
-        }
-    };
-
     void MaterialEditor::on_render()
     {
         char title[256];

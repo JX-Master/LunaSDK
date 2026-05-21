@@ -11,6 +11,8 @@ public sealed class MakeSystemTestTargetRules : TargetRules
         SupportedPlatforms(BuildPlatform.Windows, BuildPlatform.MacOS);
         Category = BuildTargetCategory.Tests;
         Kind = BuildTargetKind.Executable;
+        Headers("*.hpp");
+        MetaHeaders("WriteFileCommand.hpp");
         Sources("Main.cpp");
         DependsOn("Runtime", "MakeSystem");
     }

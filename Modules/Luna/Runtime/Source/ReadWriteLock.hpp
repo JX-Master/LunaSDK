@@ -10,12 +10,11 @@
 #pragma once
 #include "../ReadWriteLock.hpp"
 #include "Platform/ReadWriteLock.hpp"
-
+#include "ReadWriteLock.generated.hpp"
 namespace Luna
 {
-    struct ReadWriteLock : IReadWriteLock
+    struct [[luna::struct("{CF24C77D-6022-4777-9D68-A454DA2E209F}")]] ReadWriteLock : IReadWriteLock
     {
-        lustruct("ReadWriteLock", "{CF24C77D-6022-4777-9D68-A454DA2E209F}");
         luiimpl();
 
         Platform::ReadWriteLock m_lock;

@@ -9,13 +9,11 @@
 */
 #pragma once
 #include <Luna/RG/RenderPass.hpp>
-
+#include "ToneMappingPass.generated.hpp"
 namespace Luna
 {
-    struct ToneMappingPassGlobalData
+    struct [[luna::struct("{83957a6a-f27c-44d5-8b74-a83d8050db08}")]] ToneMappingPassGlobalData
     {
-        lustruct("ToneMappingPassGlobalData", "{83957a6a-f27c-44d5-8b74-a83d8050db08}");
-
         Ref<RHI::IDescriptorSetLayout> m_histogram_clear_pass_dlayout;
         Ref<RHI::IPipelineLayout> m_histogram_clear_pass_playout;
         Ref<RHI::IPipelineState> m_histogram_clear_pass_pso;
@@ -31,10 +29,8 @@ namespace Luna
 
         RV init(RHI::IDevice* device);
     };
-
-    struct ToneMappingPass : RG::IRenderPass
+    struct [[luna::struct("{66b97075-111b-4915-bc03-7a0f4c477d0b}")]] ToneMappingPass : RG::IRenderPass
     {
-        lustruct("ToneMappingPass", "{66b97075-111b-4915-bc03-7a0f4c477d0b}");
         luiimpl();
 
         f32 exposure;

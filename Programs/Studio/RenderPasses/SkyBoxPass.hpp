@@ -10,12 +10,11 @@
 #pragma once
 #include <Luna/RG/RenderPass.hpp>
 #include "../Camera.hpp"
+#include "SkyBoxPass.generated.hpp"
 namespace Luna
 {
-    struct SkyBoxPassGlobalData
+    struct [[luna::struct("{cc8658bc-ecbc-4659-9b10-e95b377c7581}")]] SkyBoxPassGlobalData
     {
-        lustruct("SkyBoxPassGlobalData", "{cc8658bc-ecbc-4659-9b10-e95b377c7581}");
-
         Ref<RHI::IPipelineState> m_skybox_pass_pso;
         Ref<RHI::IDescriptorSetLayout> m_skybox_pass_dlayout;
         Ref<RHI::IPipelineLayout> m_skybox_pass_playout;
@@ -24,10 +23,8 @@ namespace Luna
 
         RV init(RHI::IDevice* device);
     };
-
-    struct SkyBoxPass : RG::IRenderPass
+    struct [[luna::struct("{2f57e8a4-1d4b-41b2-8c3c-9a619276e4a7}")]] SkyBoxPass : RG::IRenderPass
     {
-        lustruct("SkyBoxPass", "{2f57e8a4-1d4b-41b2-8c3c-9a619276e4a7}");
         luiimpl();
 
         Ref<RHI::ITexture> skybox;

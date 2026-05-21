@@ -15,7 +15,7 @@
 #include <Luna/Runtime/SpinLock.hpp>
 #include <Luna/Runtime/RingDeque.hpp>
 #include <Luna/Runtime/SelfIndexedHashMap.hpp>
-
+#include "World.generated.hpp"
 namespace Luna
 {
     namespace ECS
@@ -84,10 +84,8 @@ namespace Luna
                 return r;
             }
         };
-
-        struct World : public IWorld
+        struct [[luna::struct("{945066F9-0292-46DC-8659-41D1C5874EA6}")]] World : public IWorld
         {
-            lustruct("ECS::World", "{945066F9-0292-46DC-8659-41D1C5874EA6}");
             luiimpl();
 
             //! Entity allocation and management.

@@ -9,14 +9,13 @@
 */
 #pragma once
 #include "../../../Windows/Win32Window.hpp"
-
+#include "Window.generated.hpp"
 namespace Luna
 {
     namespace Window
     {
-        struct Window : IWin32Window
+        struct [[luna::struct("{541DB2B8-3EB7-465B-BCCA-522AFFC157CA}")]] Window : IWin32Window
         {
-            lustruct("Window::Window", "{541DB2B8-3EB7-465B-BCCA-522AFFC157CA}");
             luiimpl();
 
             HWND m_hwnd;

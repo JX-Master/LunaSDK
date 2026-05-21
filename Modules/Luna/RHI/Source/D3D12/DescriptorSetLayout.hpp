@@ -10,14 +10,13 @@
 #pragma once
 #include "D3D12Common.hpp"
 #include "Device.hpp"
-
+#include "DescriptorSetLayout.generated.hpp"
 namespace Luna
 {
     namespace RHI
     {
-        struct DescriptorSetLayout : IDescriptorSetLayout
+        struct [[luna::struct("{158C811E-AED1-4672-A395-0618DF0E29BF}")]] DescriptorSetLayout : IDescriptorSetLayout
         {
-            lustruct("RHI::DescriptorSetLayout", "{158C811E-AED1-4672-A395-0618DF0E29BF}");
             luiimpl();
 
             Ref<Device> m_device;

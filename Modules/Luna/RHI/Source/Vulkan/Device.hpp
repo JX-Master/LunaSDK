@@ -14,6 +14,7 @@
 #include "RenderPassPool.hpp"
 #include <Luna/Runtime/SpinLock.hpp>
 #include <Luna/Runtime/UniquePtr.hpp>
+#include "Device.generated.hpp"
 namespace Luna
 {
     namespace RHI
@@ -26,10 +27,8 @@ namespace Luna
             u32 queue_index_in_family;
             Ref<IMutex> queue_mtx;
         };
-
-        struct Device : IDevice
+        struct [[luna::struct("{9C0F7754-FA08-4FF3-BF66-B23125FA19F9}")]] Device : IDevice
         {
-            lustruct("RHI::Device", "{9C0F7754-FA08-4FF3-BF66-B23125FA19F9}");
             luiimpl();
 
             VkDevice m_device = VK_NULL_HANDLE;

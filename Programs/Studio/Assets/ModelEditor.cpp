@@ -8,35 +8,13 @@
 * @date 2020/5/27
 */
 #include "Model.hpp"
+#include "ModelEditor.hpp"
 #include "../StudioHeader.hpp"
 #include <Luna/Window/MessageBox.hpp>
 #include "../EditObject.hpp"
 #include "../Mesh.hpp"
 namespace Luna
 {
-    class ModelEditor : public IAssetEditor
-    {
-    public:
-        lustruct("ModelEditor", "{46d8b09d-1d7d-4deb-95b1-ac008c7998d4}");
-        luiimpl();
-
-        Asset::asset_t m_model;
-
-        String m_mesh_name;
-
-        Vector<String> m_mat_names;
-
-        bool m_open = true;
-
-        ModelEditor() {}
-
-        virtual void on_render() override;
-        virtual bool closed() override
-        {
-            return !m_open;
-        }
-    };
-
     void ModelEditor::on_render()
     {
         char title[32];

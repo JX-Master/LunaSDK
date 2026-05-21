@@ -12,14 +12,13 @@
 #include "Device.hpp"
 #include "Resource.hpp"
 #include "PipelineLayout.hpp"
-
+#include "DescriptorSet.generated.hpp"
 namespace Luna
 {
     namespace RHI
     {
-        struct DescriptorSet : IDescriptorSet
+        struct [[luna::struct("{6937b6b1-ce6d-4211-a5d5-5af9a6eba60a}")]] DescriptorSet : IDescriptorSet
         {
-            lustruct("RHI::DescriptorSet", "{6937b6b1-ce6d-4211-a5d5-5af9a6eba60a}");
             luiimpl();
             lutsassert_lock();
 

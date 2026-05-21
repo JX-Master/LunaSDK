@@ -924,9 +924,11 @@ public sealed class CppTargetGraphGenerator
         {
             lines.Add($"runtime={target.MsvcRuntimeLibrary}");
         }
-        lines.AddRange(target.MetaHeaderFiles
+        var metaHeaders = target.MetaHeaderFiles
             .Order(StringComparer.OrdinalIgnoreCase)
-            .Select(path => $"header={workspace.ToRepositoryRelativePath(path)}"));
+            .ToArray();
+        lines.AddRange(metaHeaders.Select(path => $"header={workspace.ToRepositoryRelativePath(path)}"));
+        lines.AddRange(metaHeaders.Select(path => $"header_language={MetaHeaderLanguage(path)}"));
         lines.AddRange(target.Defines.Select(define => $"define={define}"));
         lines.AddRange(dependencyOutputs
             .SelectMany(output => output.PublicDefines)
@@ -1020,6 +1022,45 @@ public sealed class CppTargetGraphGenerator
             var extension when extension.Equals(".S", StringComparison.Ordinal) => "assembler-with-cpp",
             _ => "c++20",
         };
+    }
+
+    private static string MetaHeaderLanguage(string path)
+    {
+        if(Path.GetExtension(path).Equals(".h", StringComparison.OrdinalIgnoreCase) &&
+            path.Replace('\\', '/').Contains("/Metal/", StringComparison.Ordinal))
+        {
+            return "objective-c++20";
+        }
+        return LooksLikeObjectiveCxxHeader(path) ? "objective-c++20" : "c++20";
+    }
+
+    private static bool LooksLikeObjectiveCxxHeader(string path)
+    {
+        var extension = Path.GetExtension(path);
+        if(!extension.Equals(".h", StringComparison.OrdinalIgnoreCase) &&
+            !extension.Equals(".hpp", StringComparison.OrdinalIgnoreCase) &&
+            !extension.Equals(".hh", StringComparison.OrdinalIgnoreCase) &&
+            !extension.Equals(".hxx", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+        if(!File.Exists(path))
+        {
+            return false;
+        }
+
+        var text = File.ReadAllText(path);
+        return text.Contains("#import", StringComparison.Ordinal) ||
+            text.Contains("@class", StringComparison.Ordinal) ||
+            text.Contains("@interface", StringComparison.Ordinal) ||
+            text.Contains("@protocol", StringComparison.Ordinal) ||
+            text.Contains("id<", StringComparison.Ordinal) ||
+            text.Contains("NS_", StringComparison.Ordinal) ||
+            text.Contains("NSView", StringComparison.Ordinal) ||
+            text.Contains("NSWindow", StringComparison.Ordinal) ||
+            text.Contains("UIView", StringComparison.Ordinal) ||
+            text.Contains("UIWindow", StringComparison.Ordinal) ||
+            text.Contains("MTL", StringComparison.Ordinal);
     }
 
     private static bool IsResourceSource(string path)

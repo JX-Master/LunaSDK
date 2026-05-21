@@ -10,6 +10,7 @@
 #pragma once
 #include "Common.h"
 #include "../../Device.hpp"
+#include "Device.generated.hpp"
 namespace Luna
 {
     namespace RHI
@@ -29,9 +30,8 @@ namespace Luna
             blit = 0x04,
             dispatch = 0x08,
         };
-        struct Device : IDevice
+        struct [[luna::struct("{89ffffe6-a1d6-413e-bb30-3e0562dacddd}")]] Device : IDevice
         {
-            lustruct("RHI::Device", "{89ffffe6-a1d6-413e-bb30-3e0562dacddd}");
             luiimpl();
 
             id<MTLDevice> m_device;

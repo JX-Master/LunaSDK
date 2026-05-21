@@ -11,14 +11,13 @@
 
 #include "D3D12Common.hpp"
 #include "../../Adapter.hpp"
-
+#include "Adapter.generated.hpp"
 namespace Luna
 {
     namespace RHI
     {
-        struct Adapter : IAdapter
+        struct [[luna::struct("{81cec7a5-b7ed-4b53-9fa0-56dbcb3dd514}")]] Adapter : IAdapter
         {
-            lustruct("RHI::Adapter", "{81cec7a5-b7ed-4b53-9fa0-56dbcb3dd514}");
             luiimpl();
 
             ComPtr<IDXGIAdapter1> m_adapter;

@@ -10,14 +10,13 @@
 #pragma once
 #include "../ResourceReadContext.hpp"
 #include <Luna/RHI/Device.hpp>
-
+#include "ResourceReadContext.generated.hpp"
 namespace Luna
 {
     namespace RHIUtility
     {
-        struct ResourceReadContext : IResourceReadContext
+        struct [[luna::struct("6d0910c8-d0ad-4d38-8daf-3d92ba4a4d7b")]] ResourceReadContext : IResourceReadContext
         {
-            lustruct("RHIUtility::ResourceReadContext", "6d0910c8-d0ad-4d38-8daf-3d92ba4a4d7b");
             luiimpl();
 
             struct BufferReadParams

@@ -11,7 +11,7 @@
 #include "Device.h"
 #include "DescriptorSetLayout.h"
 #include "TextureView.h"
-
+#include "DescriptorSet.generated.hpp"
 namespace Luna
 {
     namespace RHI
@@ -25,9 +25,8 @@ namespace Luna
             // Used if this is a descriptor set for render pipeline.
             MTLRenderStages m_render_stages = 0;
         };
-        struct DescriptorSet : IDescriptorSet
+        struct [[luna::struct("{ff931d6c-44db-459b-b36b-786a7848613a}")]] DescriptorSet : IDescriptorSet
         {
-            lustruct("RHI::DescriptorSet", "{ff931d6c-44db-459b-b36b-786a7848613a}");
             luiimpl();
 
             Ref<Device> m_device;

@@ -9,14 +9,13 @@
 */
 #pragma once
 #include "Device.h"
-
+#include "Fence.generated.hpp"
 namespace Luna
 {
     namespace RHI
     {
-        struct Fence : IFence
+        struct [[luna::struct("{37e05539-048b-41e8-8315-aa2c40da32f4}")]] Fence : IFence
         {
-            lustruct("RHI::Fence", "{37e05539-048b-41e8-8315-aa2c40da32f4}");
             luiimpl();
 
             Ref<Device> m_device;

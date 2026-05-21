@@ -10,6 +10,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <map>
 #include <memory>
 #include <regex>
 #include <sstream>
@@ -23,6 +24,7 @@ namespace
 struct Options
 {
     std::vector<std::string> headers;
+    std::vector<std::string> header_languages;
     std::vector<std::string> include_roots;
     std::vector<std::string> defines;
     std::vector<std::string> undefines;
@@ -32,6 +34,8 @@ struct Options
     std::string mode;
     std::string platform;
     std::string arch;
+    std::string sysroot;
+    std::string resource_dir;
 };
 
 enum class ReflectedDeclKind
@@ -48,9 +52,23 @@ struct ReflectedDecl
     std::string qualified_name;
     std::string reflection_name;
     std::string guid;
+    std::string declaration_attributes;
     std::string enum_underlying_type;
     bool enum_scoped = false;
     std::vector<std::string> namespaces;
+    struct Property
+    {
+        std::string name;
+        std::string type;
+        uint64_t offset = 0;
+    };
+    struct Option
+    {
+        std::string name;
+        int64_t value = 0;
+    };
+    std::vector<Property> properties;
+    std::vector<Option> options;
 };
 
 struct ParsedAttribute
@@ -76,6 +94,10 @@ Options ParseOptions(int argc, char** argv)
         if (arg == "--header")
         {
             options.headers.push_back(next());
+        }
+        else if (arg == "--header-language")
+        {
+            options.header_languages.push_back(next());
         }
         else if (arg == "--include")
         {
@@ -112,6 +134,14 @@ Options ParseOptions(int argc, char** argv)
         else if (arg == "--arch")
         {
             options.arch = next();
+        }
+        else if (arg == "--isysroot")
+        {
+            options.sysroot = next();
+        }
+        else if (arg == "--resource-dir")
+        {
+            options.resource_dir = next();
         }
     }
     return options;
@@ -191,6 +221,12 @@ std::string TypeReference(const ReflectedDecl& decl)
     return "::" + decl.qualified_name;
 }
 
+std::string TypeofReference(std::string type)
+{
+    type = Trim(type);
+    return "&::Luna::typeof<" + type + ">";
+}
+
 bool WriteGeneratedHeader(const std::filesystem::path& path, const std::vector<ReflectedDecl>& declarations = {})
 {
     std::filesystem::create_directories(path.parent_path());
@@ -222,7 +258,12 @@ bool WriteGeneratedHeader(const std::filesystem::path& path, const std::vector<R
             }
             if (declaration.kind == ReflectedDeclKind::record)
             {
-                stream << declaration.declaration_keyword << " " << declaration.name << ";";
+                stream << declaration.declaration_keyword;
+                if (!declaration.declaration_attributes.empty())
+                {
+                    stream << " " << declaration.declaration_attributes;
+                }
+                stream << " " << declaration.name << ";";
             }
             else
             {
@@ -244,6 +285,17 @@ bool WriteGeneratedHeader(const std::filesystem::path& path, const std::vector<R
                 stream << "    {\n";
                 stream << "        static constexpr const c8* __name = \"" << EscapeCppString(declaration.reflection_name) << "\";\n";
                 stream << "        static constexpr Guid __guid { Guid(\"" << EscapeCppString(declaration.guid) << "\") };\n";
+                if (!declaration.properties.empty())
+                {
+                    stream << "        inline static constexpr StructPropertyMetaData __properties[] =\n";
+                    stream << "        {\n";
+                    for (const auto& property : declaration.properties)
+                    {
+                        stream << "            { \"" << EscapeCppString(property.name) << "\", "
+                            << TypeofReference(property.type) << ", " << property.offset << " },\n";
+                    }
+                    stream << "        };\n";
+                }
                 stream << "    };\n";
             }
             else
@@ -252,6 +304,16 @@ bool WriteGeneratedHeader(const std::filesystem::path& path, const std::vector<R
                 stream << "    {\n";
                 stream << "        static constexpr const c8* __name = \"" << EscapeCppString(declaration.reflection_name) << "\";\n";
                 stream << "        static constexpr Guid __guid { Guid(\"" << EscapeCppString(declaration.guid) << "\") };\n";
+                if (!declaration.options.empty())
+                {
+                    stream << "        inline static constexpr EnumOptionMetaData __options[] =\n";
+                    stream << "        {\n";
+                    for (const auto& option : declaration.options)
+                    {
+                        stream << "            { \"" << EscapeCppString(option.name) << "\", " << option.value << " },\n";
+                    }
+                    stream << "        };\n";
+                }
                 stream << "    };\n";
             }
         }
@@ -262,13 +324,16 @@ bool WriteGeneratedHeader(const std::filesystem::path& path, const std::vector<R
 
 bool PrecreateGeneratedHeaders(const Options& options)
 {
-    std::set<std::string> names;
+    std::map<std::string, std::string> generated_names;
     for (const auto& header : options.headers)
     {
         auto name = GeneratedHeaderName(header);
-        if (!names.insert(name).second)
+        auto [iter, inserted] = generated_names.emplace(name, header);
+        if (!inserted)
         {
-            std::cerr << "error: multiple meta headers generate the same file: " << name << "\n";
+            std::cerr << "error: multiple meta headers generate the same file: " << name << "\n"
+                << "  first: " << iter->second << "\n"
+                << "  second: " << header << "\n";
             return false;
         }
         if (!WriteGeneratedHeader(GeneratedHeaderPath(options, header)))
@@ -348,13 +413,32 @@ bool ValidateGeneratedIncludeOrder(const std::filesystem::path& header, const st
     return true;
 }
 
-bool IsInMainFile(const clang::SourceManager& sm, clang::SourceLocation location)
+bool IsInTargetFile(
+    const clang::SourceManager& sm,
+    clang::SourceLocation location,
+    const std::filesystem::path& target_file)
 {
     if (location.isInvalid())
     {
         return false;
     }
-    return sm.isWrittenInMainFile(sm.getSpellingLoc(location));
+    auto filename = sm.getFilename(sm.getSpellingLoc(location)).str();
+    if (filename.empty())
+    {
+        return false;
+    }
+    std::error_code error;
+    auto actual = std::filesystem::weakly_canonical(filename, error);
+    if (error)
+    {
+        actual = std::filesystem::absolute(filename);
+    }
+    auto expected = std::filesystem::weakly_canonical(target_file, error);
+    if (error)
+    {
+        expected = std::filesystem::absolute(target_file);
+    }
+    return actual == expected;
 }
 
 std::string DiagnosticLocation(
@@ -447,6 +531,172 @@ std::string ReflectionNameFromQualifiedName(std::string qualified_name)
     return qualified_name;
 }
 
+std::string RecordDeclarationAttributes(const std::string& source_text, std::string_view declaration_keyword)
+{
+    const std::regex head_regex("\\b" + std::string(declaration_keyword) + R"(\b\s*((?:\[\[[^\]]+\]\]\s*|alignas\s*\([^)]*\)\s*)*))");
+    std::smatch match;
+    if (!std::regex_search(source_text, match, head_regex))
+    {
+        return {};
+    }
+    auto attributes = match[1].str();
+    attributes = std::regex_replace(attributes, std::regex(R"(\[\[\s*luna::(struct|enum)\s*\([^)]*\)\s*\]\]\s*)"), "");
+    return Trim(attributes);
+}
+
+bool ContainsLunaMarkerAttribute(const std::string& source_text, std::string_view attribute_name)
+{
+    const std::regex attribute_regex(
+        std::string(R"(\[\[\s*(?:Luna|luna)::)") + std::string(attribute_name) + R"(\s*\]\])");
+    return std::regex_search(source_text, attribute_regex);
+}
+
+bool RecordTextContainsFieldAttribute(
+    const std::string& record_text,
+    const std::string& field_name,
+    std::string_view attribute_name)
+{
+    const std::regex attribute_regex(
+        std::string(R"(\[\[\s*(?:Luna|luna)::)") + std::string(attribute_name) + R"(\s*\]\][^;{}]*\b)" +
+        field_name +
+        R"(\b)");
+    return std::regex_search(record_text, attribute_regex);
+}
+
+bool EnumTextContainsOptionAttribute(
+    const std::string& enum_text,
+    const std::string& option_name,
+    std::string_view attribute_name)
+{
+    const std::regex prefix_attribute_regex(
+        std::string(R"(\[\[\s*(?:Luna|luna)::)") + std::string(attribute_name) + R"(\s*\]\]\s*)" +
+        option_name +
+        R"(\b)");
+    const std::regex suffix_attribute_regex(
+        std::string(R"(\b)") + option_name +
+        R"(\b\s*\[\[\s*(?:Luna|luna)::)" + std::string(attribute_name) + R"(\s*\]\])");
+    return std::regex_search(enum_text, prefix_attribute_regex) ||
+        std::regex_search(enum_text, suffix_attribute_regex);
+}
+
+std::string TypeSourceText(
+    const clang::DeclaratorDecl* decl,
+    const clang::ASTContext& ast_context)
+{
+    const auto& sm = ast_context.getSourceManager();
+    const auto& lang_options = ast_context.getLangOpts();
+    if (auto* type_source_info = decl->getTypeSourceInfo())
+    {
+        auto type_text = clang::Lexer::getSourceText(
+            clang::CharSourceRange::getTokenRange(type_source_info->getTypeLoc().getSourceRange()),
+            sm,
+            lang_options).str();
+        type_text = Trim(type_text);
+        if (!type_text.empty())
+        {
+            return type_text;
+        }
+    }
+
+    clang::PrintingPolicy policy(ast_context.getLangOpts());
+    policy.SuppressScope = false;
+    return decl->getType().getAsString(policy);
+}
+
+bool CollectRecordProperties(
+    const clang::CXXRecordDecl* record,
+    const std::string& record_text,
+    const clang::ASTContext& ast_context,
+    std::vector<ReflectedDecl::Property>& properties,
+    std::string& error)
+{
+    std::set<std::string> property_names;
+    auto collect_fields = [&](const clang::CXXRecordDecl* current_record, uint64_t base_bit_offset, const auto& collect_fields_ref) -> bool {
+        for (const auto* field : current_record->fields())
+        {
+            auto field_text = DeclSourceText(field, ast_context.getSourceManager(), ast_context.getLangOpts());
+            auto field_name = field->getNameAsString();
+            auto bit_offset = base_bit_offset + ast_context.getFieldOffset(field);
+            if (field_name.empty())
+            {
+                if (auto* anonymous_record = field->getType()->getAsCXXRecordDecl())
+                {
+                    if (!collect_fields_ref(anonymous_record, bit_offset, collect_fields_ref))
+                    {
+                        return false;
+                    }
+                }
+                continue;
+            }
+            const bool reflected = ContainsLunaMarkerAttribute(field_text, "property") ||
+                RecordTextContainsFieldAttribute(record_text, field_name, "property");
+            if (!reflected)
+            {
+                continue;
+            }
+            if (field->isBitField())
+            {
+                error = "[[Luna::property]] does not support bit-fields in this phase: " + field_name;
+                return false;
+            }
+            if (!property_names.insert(field_name).second)
+            {
+                error = "duplicate reflected property: " + field_name;
+                return false;
+            }
+            if (bit_offset % 8 != 0)
+            {
+                error = "property offset is not byte-aligned: " + field_name;
+                return false;
+            }
+
+            ReflectedDecl::Property property;
+            property.name = field_name;
+            property.type = TypeSourceText(field, ast_context);
+            property.offset = bit_offset / 8;
+            properties.push_back(std::move(property));
+        }
+        return true;
+    };
+    return collect_fields(record, 0, collect_fields);
+}
+
+bool CollectEnumOptions(
+    const clang::EnumDecl* enum_decl,
+    const std::string& enum_text,
+    std::vector<ReflectedDecl::Option>& options,
+    std::string& error)
+{
+    std::set<std::string> option_names;
+    for (const auto* option_decl : enum_decl->enumerators())
+    {
+        auto option_name = option_decl->getNameAsString();
+        auto option_text = DeclSourceText(option_decl, enum_decl->getASTContext().getSourceManager(), enum_decl->getASTContext().getLangOpts());
+        const bool reflected = ContainsLunaMarkerAttribute(option_text, "option") ||
+            EnumTextContainsOptionAttribute(enum_text, option_name, "option");
+        if (!reflected)
+        {
+            continue;
+        }
+        if (option_name.empty())
+        {
+            error = "[[Luna::option]] cannot be used on unnamed enum options";
+            return false;
+        }
+        if (!option_names.insert(option_name).second)
+        {
+            error = "duplicate reflected enum option: " + option_name;
+            return false;
+        }
+
+        ReflectedDecl::Option option;
+        option.name = option_name;
+        option.value = option_decl->getInitVal().getSExtValue();
+        options.push_back(std::move(option));
+    }
+    return true;
+}
+
 std::string EnumUnderlyingType(
     const clang::EnumDecl* enum_decl,
     const clang::ASTContext& ast_context,
@@ -513,6 +763,8 @@ bool ValidateSingleAttribute(
 bool AddReflectedRecord(
     const clang::CXXRecordDecl* record,
     const std::vector<ParsedAttribute>& attributes,
+    const std::string& source_text,
+    const clang::ASTContext& ast_context,
     const clang::SourceManager& sm,
     std::vector<ReflectedDecl>& reflected_decls,
     std::set<std::string>& reflected_names,
@@ -550,6 +802,11 @@ bool AddReflectedRecord(
     declaration.qualified_name = record->getQualifiedNameAsString();
     declaration.reflection_name = ReflectionNameFromQualifiedName(declaration.qualified_name);
     declaration.guid = guid;
+    declaration.declaration_attributes = RecordDeclarationAttributes(source_text, declaration.declaration_keyword);
+    if (!CollectRecordProperties(record, source_text, ast_context, declaration.properties, error))
+    {
+        return false;
+    }
     if (!BuildNamespaceList(record, declaration.namespaces, error))
     {
         return false;
@@ -600,6 +857,10 @@ bool AddReflectedEnum(
     declaration.guid = guid;
     declaration.enum_underlying_type = EnumUnderlyingType(enum_decl, ast_context, source_text);
     declaration.enum_scoped = enum_decl->isScoped();
+    if (!CollectEnumOptions(enum_decl, source_text, declaration.options, error))
+    {
+        return false;
+    }
     if (!BuildNamespaceList(enum_decl, declaration.namespaces, error))
     {
         return false;
@@ -616,6 +877,7 @@ bool AddReflectedEnum(
 bool VisitDecls(
     const clang::DeclContext* context,
     const clang::ASTContext& ast_context,
+    const std::filesystem::path& target_file,
     std::vector<ReflectedDecl>& reflected_decls,
     std::set<std::string>& reflected_names)
 {
@@ -624,13 +886,13 @@ bool VisitDecls(
     {
         if (const auto* record = llvm::dyn_cast<clang::CXXRecordDecl>(decl))
         {
-            if (record->isCompleteDefinition() && IsInMainFile(sm, record->getLocation()))
+            if (record->isCompleteDefinition() && IsInTargetFile(sm, record->getLocation(), target_file))
             {
                 auto decl_text = DeclSourceText(record, sm, ast_context.getLangOpts());
                 std::vector<ParsedAttribute> attributes;
                 std::string error;
                 if (!ExtractLunaAttributes(decl_text, attributes, error) ||
-                    !AddReflectedRecord(record, attributes, sm, reflected_decls, reflected_names, error))
+                    !AddReflectedRecord(record, attributes, decl_text, ast_context, sm, reflected_decls, reflected_names, error))
                 {
                     std::cerr << "error: " << DiagnosticLocation(sm, record->getLocation()) << ": " << error << "\n";
                     return false;
@@ -639,7 +901,7 @@ bool VisitDecls(
         }
         else if (const auto* enum_decl = llvm::dyn_cast<clang::EnumDecl>(decl))
         {
-            if (enum_decl->isCompleteDefinition() && IsInMainFile(sm, enum_decl->getLocation()))
+            if (enum_decl->isCompleteDefinition() && IsInTargetFile(sm, enum_decl->getLocation(), target_file))
             {
                 auto decl_text = DeclSourceText(enum_decl, sm, ast_context.getLangOpts());
                 std::vector<ParsedAttribute> attributes;
@@ -655,7 +917,7 @@ bool VisitDecls(
 
         if (const auto* child_context = llvm::dyn_cast<clang::DeclContext>(decl))
         {
-            if (!VisitDecls(child_context, ast_context, reflected_decls, reflected_names))
+            if (!VisitDecls(child_context, ast_context, target_file, reflected_decls, reflected_names))
             {
                 return false;
             }
@@ -664,16 +926,39 @@ bool VisitDecls(
     return true;
 }
 
-std::vector<std::string> BuildClangArgs(const Options& options, const std::filesystem::path& header)
+std::vector<std::string> BuildClangArgs(
+    const Options& options,
+    const std::filesystem::path& header,
+    const std::string& language)
 {
     std::vector<std::string> args = {
-        "-x",
-        "c++",
-        "-std=c++20",
         "-fsyntax-only",
         "-Wno-unknown-attributes",
         "-Wno-ignored-attributes"
     };
+    if (language == "objective-c++20")
+    {
+        args.push_back("-x");
+        args.push_back("objective-c++");
+        args.push_back("-std=c++20");
+        args.push_back("-fobjc-arc");
+    }
+    else
+    {
+        args.push_back("-x");
+        args.push_back("c++");
+        args.push_back("-std=c++20");
+    }
+    if (!options.sysroot.empty())
+    {
+        args.push_back("-isysroot");
+        args.push_back(options.sysroot);
+    }
+    if (!options.resource_dir.empty())
+    {
+        args.push_back("-resource-dir");
+        args.push_back(options.resource_dir);
+    }
     for (const auto& include : options.include_roots)
     {
         args.push_back("-I" + include);
@@ -690,7 +975,11 @@ std::vector<std::string> BuildClangArgs(const Options& options, const std::files
     return args;
 }
 
-bool ParseHeader(const Options& options, const std::filesystem::path& header, unsigned& reflected_decl_count)
+bool ParseHeader(
+    const Options& options,
+    const std::filesystem::path& header,
+    const std::string& language,
+    unsigned& reflected_decl_count)
 {
     std::string source_text;
     if (!ReadTextFile(header, source_text))
@@ -704,10 +993,12 @@ bool ParseHeader(const Options& options, const std::filesystem::path& header, un
         return false;
     }
 
+    auto wrapper_source = "#include \"" + EscapeCppString(std::filesystem::absolute(header).string()) + "\"\n";
+    auto wrapper_file_name = header.stem().string() + ".luna_meta.cpp";
     auto ast_unit = clang::tooling::buildASTFromCodeWithArgs(
-        source_text,
-        BuildClangArgs(options, header),
-        header.string(),
+        wrapper_source,
+        BuildClangArgs(options, header, language),
+        wrapper_file_name,
         "LunaMetaTool",
         std::make_shared<clang::PCHContainerOperations>(),
         clang::tooling::getClangStripDependencyFileAdjuster(),
@@ -722,7 +1013,7 @@ bool ParseHeader(const Options& options, const std::filesystem::path& header, un
 
     std::vector<ReflectedDecl> reflected_decls;
     std::set<std::string> reflected_names;
-    if (!VisitDecls(ast_unit->getASTContext().getTranslationUnitDecl(), ast_unit->getASTContext(), reflected_decls, reflected_names))
+    if (!VisitDecls(ast_unit->getASTContext().getTranslationUnitDecl(), ast_unit->getASTContext(), header, reflected_decls, reflected_names))
     {
         return false;
     }
@@ -790,6 +1081,19 @@ int main(int argc, char** argv)
         std::cerr << "error: missing --output-dir, --stamp, or --depfile\n";
         return 2;
     }
+    if (!options.header_languages.empty() && options.header_languages.size() != options.headers.size())
+    {
+        std::cerr << "error: --header-language count must match --header count\n";
+        return 2;
+    }
+    for (const auto& language : options.header_languages)
+    {
+        if (language != "c++20" && language != "objective-c++20")
+        {
+            std::cerr << "error: unsupported meta header language: " << language << "\n";
+            return 2;
+        }
+    }
 
     if (!PrecreateGeneratedHeaders(options))
     {
@@ -798,9 +1102,11 @@ int main(int argc, char** argv)
 
     unsigned reflected_decl_count = 0;
     bool succeeded = true;
-    for (const auto& header : options.headers)
+    for (size_t i = 0; i < options.headers.size(); ++i)
     {
-        if (!ParseHeader(options, header, reflected_decl_count))
+        const auto& header = options.headers[i];
+        const std::string language = options.header_languages.empty() ? "c++20" : options.header_languages[i];
+        if (!ParseHeader(options, header, language, reflected_decl_count))
         {
             succeeded = false;
         }

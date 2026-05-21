@@ -131,14 +131,7 @@ namespace Luna
         template <typename _QueryTy>
         static const Guid& internal_type_guid()
         {
-            if constexpr (is_base_of_v<Interface, _QueryTy>)
-            {
-                return _QueryTy::__guid;
-            }
-            else
-            {
-                return Meta::StructMetaData<_QueryTy>::__guid;
-            }
+            return Meta::StructMetaData<_QueryTy>::__guid;
         }
 
         template <bool _HasGetObject>

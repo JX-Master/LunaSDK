@@ -9,6 +9,7 @@ public sealed class JobSystemTargetRules : TargetRules
             rulesPath: "Modules/Luna/JobSystem/JobSystem.Target.cs")
     {
         Headers("*.hpp", "Source/**.hpp");
+        MetaHeaders("Source/JobScheduler.hpp");
         Sources("Source/**.cpp");
         DependsOn("Runtime");
     }

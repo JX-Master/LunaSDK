@@ -11,14 +11,13 @@
 #include "../../../Android/AndroidWindow.hpp"
 
 #include <android/native_window.h>
-
+#include "Window.generated.hpp"
 namespace Luna
 {
     namespace Window
     {
-        struct AndroidWindow : IAndroidWindow
+        struct [[luna::struct("41e2a511-bdf4-4003-8501-9aabeb566ab1")]] AndroidWindow : IAndroidWindow
         {
-            lustruct("Window::AndroidWindow", "41e2a511-bdf4-4003-8501-9aabeb566ab1");
             luiimpl();
             
             ANativeWindow* m_window = nullptr;

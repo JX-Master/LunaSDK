@@ -11,11 +11,11 @@
 #pragma once
 #include "../Mutex.hpp"
 #include "Platform/Mutex.hpp"
+#include "Mutex.generated.hpp"
 namespace Luna
 {
-    struct Mutex : IMutex
+    struct [[luna::struct("{0df3d468-0d98-4aee-b11d-905ad291def2}")]] Mutex : IMutex
     {
-        lustruct("Mutex", "{0df3d468-0d98-4aee-b11d-905ad291def2}");
         luiimpl();
 
         Platform::Mutex m_data;

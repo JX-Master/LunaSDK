@@ -10,13 +10,11 @@
 #pragma once
 #include <Luna/RG/RenderPass.hpp>
 #include "../Scene.hpp"
-
+#include "DeferredLightingPass.generated.hpp"
 namespace Luna
 {
-    struct DeferredLightingPassGlobalData
+    struct [[luna::struct("{b2d383e3-34ee-4f7e-a100-07b07301a4b3}")]] DeferredLightingPassGlobalData
     {
-        lustruct("DeferredLightingPassGlobalData", "{b2d383e3-34ee-4f7e-a100-07b07301a4b3}");
-
         Ref<RHI::IPipelineState> m_deferred_lighting_pass_pso;
         Ref<RHI::IDescriptorSetLayout> m_deferred_lighting_pass_dlayout;
         Ref<RHI::IPipelineLayout> m_deferred_lighting_pass_playout;
@@ -27,10 +25,8 @@ namespace Luna
 
         RV init(RHI::IDevice* device);
     };
-
-    struct DeferredLightingPass : RG::IRenderPass
+    struct [[luna::struct("{baae11d9-29ed-46ab-b369-cc80b9c5c073}")]] DeferredLightingPass : RG::IRenderPass
     {
-        lustruct("DeferredLightingPass", "{baae11d9-29ed-46ab-b369-cc80b9c5c073}");
         luiimpl();
 
         Ref<RHI::ITexture> skybox;

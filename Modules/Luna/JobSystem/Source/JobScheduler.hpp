@@ -13,7 +13,7 @@
 #include <Luna/Runtime/SpinLock.hpp>
 #include <Luna/Runtime/RingDeque.hpp>
 #include <Luna/Runtime/Signal.hpp>
-
+#include "JobScheduler.generated.hpp"
 namespace Luna
 {
     namespace JobSystem
@@ -29,10 +29,8 @@ namespace Luna
             Ref<IFiber> m_worker_thread_fiber;
             bool m_thread_dead = false; // Set to true when thread returns.
         };
-
-        struct JobScheduler : IJobScheduler
+        struct [[luna::struct("{f198bcbd-8cf1-4223-a777-1a2d6e9820d6}")]] JobScheduler : IJobScheduler
         {
-            lustruct("JobSystem::JobScheduler", "{f198bcbd-8cf1-4223-a777-1a2d6e9820d6}");
             luiimpl();
 
             RV init(u32 num_worker_threads);

@@ -10,6 +10,9 @@ public sealed class MakeSystemTargetRules : TargetRules
     {
         SupportedPlatforms(BuildPlatform.Windows, BuildPlatform.MacOS);
         Headers("*.hpp", "Source/**.hpp");
+        MetaHeaders(
+            "Source/BuildCache.hpp",
+            "Source/MakeSystem.hpp");
         Sources("Source/**.cpp");
         DependsOn("Runtime", "VariantUtils", "JobSystem");
     }

@@ -9,18 +9,15 @@
 */
 #pragma once
 #include "Device.h"
-
+#include "TextureView.generated.hpp"
 namespace Luna
 {
     namespace RHI
     {
         // Checks whether one view requries dedicated view object.
         bool require_view_object(const TextureDesc& texture_desc, const TextureViewDesc& validated_desc);
-
-        struct TextureView
+        struct [[luna::struct("{bca7d328-7c90-4c11-97b2-146814fd460b}")]] TextureView
         {
-            lustruct("RHI::TextureView", "{bca7d328-7c90-4c11-97b2-146814fd460b}");
-
             id<MTLTexture> m_texture;
 
             RV init(const TextureViewDesc& validated_desc);

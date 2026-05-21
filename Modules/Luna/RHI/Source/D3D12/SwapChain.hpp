@@ -15,7 +15,7 @@
 #include <Luna/Runtime/TSAssert.hpp>
 #include "Resource.hpp"
 #include <Luna/Runtime/StackAllocator.hpp>
-
+#include "SwapChain.generated.hpp"
 #pragma comment( lib, "dxguid.lib")
 
 namespace Luna
@@ -52,10 +52,8 @@ namespace Luna
                 }
             }
         };
-
-        struct SwapChain : ISwapChain
+        struct [[luna::struct("{067d14fa-59c7-4f66-8fb0-1981d90a5a45}")]] SwapChain : ISwapChain
         {
-            lustruct("RHI::SwapChain", "{067d14fa-59c7-4f66-8fb0-1981d90a5a45}");
             luiimpl();
             lutsassert_lock();
 

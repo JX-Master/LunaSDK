@@ -11,14 +11,13 @@
 #include "FontHeader.hpp"
 #include "StbTrueType.hpp"
 #include <Luna/Runtime/Vector.hpp>
-
+#include "FontFileTTF.generated.hpp"
 namespace Luna
 {
     namespace Font
     {
-        struct FontFileTTF : IFontFile
+        struct [[luna::struct("{5ead091d-2a74-49b8-9201-f97b7d19685f}")]] FontFileTTF : IFontFile
         {
-            lustruct("Font::FontFileTTF", "{5ead091d-2a74-49b8-9201-f97b7d19685f}");
             luiimpl();
 
             Blob m_data;

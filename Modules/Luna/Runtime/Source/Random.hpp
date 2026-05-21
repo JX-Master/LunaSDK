@@ -10,12 +10,11 @@
 #pragma once
 #include "../Random.hpp"
 #include <random>
-
+#include "Random.generated.hpp"
 namespace Luna
 {
-    struct Random : IRandom
+    struct [[luna::struct("{4f09c790-fa3c-4613-b511-2d0175e15582}")]] Random : IRandom
     {
-        lustruct("Random", "{4f09c790-fa3c-4613-b511-2d0175e15582}");
         luiimpl();
 
         std::mt19937 m_engine;

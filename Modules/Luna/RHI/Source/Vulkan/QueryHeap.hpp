@@ -9,14 +9,13 @@
 */
 #pragma once
 #include "Device.hpp"
-
+#include "QueryHeap.generated.hpp"
 namespace Luna
 {
     namespace RHI
     {
-        struct QueryHeap : IQueryHeap
+        struct [[luna::struct("{B744014B-48D0-417B-B7CC-F240CCBA59EE}")]] QueryHeap : IQueryHeap
         {
-            lustruct("RHI::QueryHeap", "{B744014B-48D0-417B-B7CC-F240CCBA59EE}");
             luiimpl();
 
             Ref<Device> m_device;

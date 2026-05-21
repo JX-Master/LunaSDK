@@ -9,7 +9,7 @@
 */
 #include <Luna/Runtime/PlatformDefines.hpp>
 #define LUNA_ASSET_API LUNA_EXPORT
-#include "Asset.hpp"
+#include "AssetMetaFile.hpp"
 #include <Luna/Runtime/UniquePtr.hpp>
 #include <Luna/Runtime/Mutex.hpp>
 #include <Luna/Runtime/Random.hpp>
@@ -38,10 +38,7 @@ namespace Luna
         HashMap<Path, asset_t> g_asset_path_mapping;
         void init_asset_registry()
         {
-            register_struct_type<AssetMetaFile>({
-                luproperty(AssetMetaFile, Guid, guid),
-                luproperty(AssetMetaFile, Name, type)
-                });
+            register_struct_type<AssetMetaFile>();
             set_serializable<AssetMetaFile>();
             g_assets_mutex = new_mutex();
         }
@@ -703,7 +700,7 @@ namespace Luna
             {
                 init_asset_type();
                 init_asset_registry();
-                register_struct_type<asset_t>({});
+                register_struct_type<asset_t>();
                 SerializableTypeDesc desc;
                 desc.serialize_func = [](typeinfo_t type, const void* inst) -> R<Variant>
                 {

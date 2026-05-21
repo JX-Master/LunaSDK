@@ -60,6 +60,21 @@ namespace Luna
 
     namespace Meta
     {
+        //! Describes one generated reflected property before it is resolved to Runtime type metadata.
+        struct StructPropertyMetaData
+        {
+            const c8* name;
+            typeinfo_t(*type)();
+            usize offset;
+        };
+
+        //! Describes one generated reflected enumeration option.
+        struct EnumOptionMetaData
+        {
+            const c8* name;
+            i64 value;
+        };
+
         //! Defines metadata for one reflected structure or class type.
         //! @details This default implementation keeps compatibility with types that still use @ref lustruct.
         template <typename _Ty> struct StructMetaData

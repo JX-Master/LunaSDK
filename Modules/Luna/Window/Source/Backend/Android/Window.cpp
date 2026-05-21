@@ -42,7 +42,7 @@ namespace Luna
         {
             lutry
             {
-                register_struct_type<AndroidWindow>({});
+                register_struct_type<AndroidWindow>();
                 impl_interface_for_type<AndroidWindow, IAndroidWindow, IWindow>();
                 luassert(g_android_app->window);
                 g_window = new_object<AndroidWindow>();

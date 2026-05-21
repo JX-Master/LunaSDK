@@ -9,14 +9,13 @@
 */
 #pragma once
 #include "Device.h"
-
+#include "DeviceMemory.generated.hpp"
 namespace Luna
 {
     namespace RHI
     {
-        struct DeviceMemory : IDeviceMemory
+        struct [[luna::struct("{e12753df-c132-46f8-9e94-b259c1cecb2b}")]] DeviceMemory : IDeviceMemory
         {
-            lustruct("RHI::DeviceMemory", "{e12753df-c132-46f8-9e94-b259c1cecb2b}");
             luiimpl();
 
             Ref<Device> m_device;

@@ -9,16 +9,14 @@
 */
 #pragma once
 #include "../MipmapGenerationContext.hpp"
-
+#include "MipmapGenerationContext.generated.hpp"
 namespace Luna
 {
     namespace RHIUtility
     {
         // constant state that can be shared in the same device.
-        struct MipmapGenerationPipelineState
+        struct [[luna::struct("294d027f-a80f-4be9-9fbf-65815e605f2e")]] MipmapGenerationPipelineState
         {
-            lustruct("RHIUtility::MipmapGenerationPipelineState", "294d027f-a80f-4be9-9fbf-65815e605f2e");
-
             Ref<RHI::IDescriptorSetLayout> m_dlayout_1d;
             Ref<RHI::IPipelineLayout> m_playout_1d;
             Ref<RHI::IPipelineState> m_pso_1d;
@@ -42,10 +40,8 @@ namespace Luna
             u32 source_mip;
             u32 end_mip;
         };
-        
-        struct MipmapGenerationContext : IMipmapGenerationContext
+        struct [[luna::struct("6b36094d-97f3-47ab-abab-c3b3fe71ed36")]] MipmapGenerationContext : IMipmapGenerationContext
         {
-            lustruct("RHIUtility::MipmapGenerationContext", "6b36094d-97f3-47ab-abab-c3b3fe71ed36");
             luiimpl();
 
             Ref<RHI::IDevice> m_device;

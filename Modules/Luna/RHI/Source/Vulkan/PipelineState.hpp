@@ -9,14 +9,13 @@
 */
 #pragma once
 #include "Device.hpp"
-
+#include "PipelineState.generated.hpp"
 namespace Luna
 {
     namespace RHI
     {
-        struct PipelineState : IPipelineState
+        struct [[luna::struct("{1033D006-D337-49FB-A307-1D22E143E825}")]] PipelineState : IPipelineState
         {
-            lustruct("RHI::PipelineState", "{1033D006-D337-49FB-A307-1D22E143E825}");
             luiimpl();
 
             Ref<Device> m_device;

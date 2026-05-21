@@ -12,13 +12,13 @@
 #include "Device.h"
 #include "TextureView.h"
 #include <Luna/Runtime/SpinLock.hpp>
+#include "Resource.generated.hpp"
 namespace Luna
 {
     namespace RHI
     {
-        struct Buffer : IBuffer
+        struct [[luna::struct("{ab58c9db-7ddc-42b6-ad2d-d73449632aa6}")]] Buffer : IBuffer
         {
-            lustruct("RHI::Buffer", "{ab58c9db-7ddc-42b6-ad2d-d73449632aa6}");
             luiimpl();
 
             Ref<Device> m_device;
@@ -38,9 +38,8 @@ namespace Luna
             virtual RV map(usize read_begin, usize read_end, void** data) override;
             virtual void unmap(usize write_begin, usize write_end) override {}
         };
-        struct Texture : ITexture
+        struct [[luna::struct("{ff44d364-6802-4cd9-8916-04cd5e2439e8}")]] Texture : ITexture
         {
-            lustruct("RHI::Texture", "{ff44d364-6802-4cd9-8916-04cd5e2439e8}");
             luiimpl();
 
             Ref<Device> m_device;

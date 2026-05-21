@@ -10,7 +10,7 @@
 #pragma once
 #include "../BlitContext.hpp"
 #include <Luna/RHI/RHI.hpp>
-
+#include "BlitContext.generated.hpp"
 namespace Luna 
 {
     namespace RHIUtility
@@ -26,9 +26,8 @@ namespace Luna
             Float2U bottom_left;
             Float2U bottom_right;
         };
-        struct BlitContext : IBlitContext
+        struct [[luna::struct("2bd56f72-ffe6-4475-a4f3-11fd235d2685")]] BlitContext : IBlitContext
         {
-            lustruct("RHIUtility::BlitContext", "2bd56f72-ffe6-4475-a4f3-11fd235d2685");
             luiimpl();
 
             Ref<RHI::IDevice> m_device;

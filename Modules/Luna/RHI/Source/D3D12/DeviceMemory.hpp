@@ -11,14 +11,13 @@
 #include "D3D12Common.hpp"
 #include "Device.hpp"
 #include <Luna/Runtime/StackAllocator.hpp>
-
+#include "DeviceMemory.generated.hpp"
 namespace Luna
 {
     namespace RHI
     {
-        struct DeviceMemory : IDeviceMemory
+        struct [[luna::struct("{070A7A5C-8C56-4F93-B13A-8E34BCFDAD67}")]] DeviceMemory : IDeviceMemory
         {
-            lustruct("RHI::DeviceMemory", "{070A7A5C-8C56-4F93-B13A-8E34BCFDAD67}");
             luiimpl();
 
             Ref<Device> m_device;

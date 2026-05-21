@@ -12,14 +12,13 @@
 #include "PipelineLayout.hpp"
 #include "../../PipelineState.hpp"
 #include "D3D12Common.hpp"
-
+#include "PipelineState.generated.hpp"
 namespace Luna
 {
     namespace RHI
     {
-        struct PipelineState : IPipelineState
+        struct [[luna::struct("{31F529FE-43C4-4DF1-842B-BAF52CCFCF3F}")]] PipelineState : IPipelineState
         {
-            lustruct("RHI::PipelineState", "{31F529FE-43C4-4DF1-842B-BAF52CCFCF3F}");
             luiimpl()
 
             Ref<Device> m_device;

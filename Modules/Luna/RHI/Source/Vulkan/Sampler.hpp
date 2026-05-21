@@ -9,15 +9,13 @@
 */
 #pragma once
 #include "Device.hpp"
-
+#include "Sampler.generated.hpp"
 namespace Luna
 {
     namespace RHI
     {
-        struct Sampler
+        struct [[luna::struct("{CF6D9848-D8CB-4F29-8BD7-270D4D123EC1}")]] Sampler
         {
-            lustruct("RHI::Sampler", "{CF6D9848-D8CB-4F29-8BD7-270D4D123EC1}");
-
             Ref<Device> m_device;
             VkSampler m_sampler = VK_NULL_HANDLE;
 

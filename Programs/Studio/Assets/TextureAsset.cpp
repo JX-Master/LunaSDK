@@ -8,6 +8,7 @@
 * @date 2020/5/9
 */
 #include "Texture.hpp"
+#include "TextureAssetUserdata.hpp"
 #include <Luna/RHI/RHI.hpp>
 #include <Luna/Runtime/File.hpp>
 #include <Luna/Image/Image.hpp>
@@ -19,17 +20,6 @@
 
 namespace Luna
 {
-    struct TextureAssetUserdata
-    {
-        lustruct("TextureAssetUserdata", "{816CDA20-AB1C-4E24-A7CE-59E2EFE9BE1E}");
-
-        Ref<RHIUtility::IMipmapGenerationContext> m_mipmap_generation_context;
-        SpinLock m_lock;
-
-        RV init();
-
-        RV generate_mipmaps(RHI::ITexture* resource_with_most_detailed_mip, RHI::ICommandBuffer* compute_cmdbuf);
-    };
     RV TextureAssetUserdata::init()
     {
         using namespace RHI;

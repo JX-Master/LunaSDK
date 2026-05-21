@@ -12,16 +12,15 @@
 #include "../../../Cocoa/CocoaWindow.hpp"
 #include <Luna/HID/KeyCode.hpp>
 #include <objc/objc.h>
-
+#include "Window.generated.hpp"
 #import <Cocoa/Cocoa.h>
 
 namespace Luna
 {
     namespace Window
     {
-        struct Window : public ICocoaWindow
+        struct [[luna::struct("093df112-37e0-40de-b0db-90931cb106f7")]] Window : public ICocoaWindow
         {
-            lustruct("Window::Window", "093df112-37e0-40de-b0db-90931cb106f7");
             luiimpl();
 
             id m_window; // NSWindow*
