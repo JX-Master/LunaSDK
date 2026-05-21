@@ -106,6 +106,7 @@ public static class LunaBuildCli
             var makeSystem = new MakeSystemBackend(new IMakeActionExecutor[]
             {
                 new CppActionExecutor(),
+                new LunaMetaActionExecutor(),
                 new CppslShaderActionExecutor(),
                 new FileCopyActionExecutor(),
                 new BinaryEmbedHeaderActionExecutor(),

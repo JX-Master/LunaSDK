@@ -15,6 +15,7 @@ internal static class IdeProjectModel
         Add(files, target.ScriptPath);
         Add(files, target.SourceFiles);
         Add(files, target.HeaderFiles);
+        Add(files, target.MetaHeaderFiles);
         Add(files, target.RuntimeFiles);
         Add(files, target.EmbeddedHeaders.Select(header => header.SourceFile));
         Add(files, target.Shaders.Select(shader => shader.SourceFile));

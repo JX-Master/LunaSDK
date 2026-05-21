@@ -269,6 +269,39 @@ Shader targets should include generated headers by name:
 
 The current executor supports Windows/D3D12 DXIL output first.
 
+## Meta Headers
+
+Use `MetaHeaders(...)` for C++ headers that should be scanned by
+LunaMetaTool before normal C++ compilation:
+
+```csharp
+Headers("Source/*.hpp");
+MetaHeaders("Source/MyType.hpp");
+```
+
+Each meta header must include its generated header by basename after all normal
+includes:
+
+```cpp
+#pragma once
+#include <Luna/Runtime/Runtime.hpp>
+#include "MyType.generated.hpp"
+
+struct [[luna::struct("{dbeecd7a-2dc5-423e-8e20-7521826c3f06}")]] MyType
+{
+};
+```
+
+The generated header is placed under:
+
+```text
+build/LunaBuild/<Platform>/<Arch>/<Mode>/generated/<Target>/meta
+```
+
+The generated meta include directory is added to the target and propagated as a
+public include directory to dependent targets. In the first phase these headers
+are intentionally empty except for `#pragma once`.
+
 ## Runtime Files
 
 Use `RuntimeFiles(...)` for files that must be copied next to the produced
