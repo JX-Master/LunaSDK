@@ -214,21 +214,37 @@ namespace Luna
                         {
                             GUI::Text("Recent Projects");
                             f32 recent_h = max((f32)sz.y - 260.0f, 120.0f);
-                            GUI::BeginScrollView("Recent Projects", GUI::GUISize::fixed(max((f32)sz.x - 32.0f, 120.0f), recent_h));
+                            f32 recent_w = max((f32)sz.x - 32.0f, 120.0f);
+                            GUI::BeginScrollView("Recent Projects", GUI::GUISize::fixed(recent_w, recent_h));
+                            GUI::GUITableDesc recent_table;
+                            recent_table.columns = 4;
+                            recent_table.style.padding = GUI::GUIEdgeInsets::xy(8.0f, 4.0f);
+                            recent_table.style.border_size = 1.0f;
+                            recent_table.style.background_mode = GUI::GUITableBackgroundMode::alternate_rows;
+                            recent_table.style.background_color = Float4U(0.08f, 0.10f, 0.12f, 0.72f);
+                            recent_table.style.alternate_background_color = Float4U(0.12f, 0.14f, 0.17f, 0.72f);
+                            recent_table.style.row_separators = true;
+                            recent_table.style.column_separators = true;
+                            recent_table.style.resize_fixed_columns = true;
+                            f32 recent_table_w = max(recent_w - 16.0f, 120.0f);
+                            recent_table.column_sizes.push_back(GUI::GUITableTrackSize::fixed(max(recent_table_w - 286.0f, 160.0f)));
+                            recent_table.column_sizes.push_back(GUI::GUITableTrackSize::fixed(120.0f));
+                            recent_table.column_sizes.push_back(GUI::GUITableTrackSize::fixed(72.0f));
+                            recent_table.column_sizes.push_back(GUI::GUITableTrackSize::fixed(88.0f));
+                            GUI::BeginTableLayout("Recent Project Table", recent_table);
                             for(usize i = 0; i < recents.size(); ++i)
                             {
                                 DateTime dt = timestamp_to_datetime(utc_timestamp_to_local_timestamp(recents[i].m_last_use_time));
                                 String time_text;
                                 strprintf(time_text, "%hu/%hu/%hu %02hu:%02hu", dt.year, dt.month, dt.day, dt.hour, dt.minute);
                                 GUI::PushID((u64)i);
-                                GUI::BeginHLayout("Recent Project");
                                 GUI::Text(recents[i].m_path.encode().c_str());
                                 GUI::Text(time_text.c_str());
                                 recent_open_buttons.push_back(GUI::Button("Open"));
                                 recent_remove_buttons.push_back(GUI::Button("Remove"));
-                                GUI::EndHLayout();
                                 GUI::PopID();
                             }
+                            GUI::EndTableLayout();
                             GUI::EndScrollView();
                         }
                         else

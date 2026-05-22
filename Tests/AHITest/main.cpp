@@ -354,17 +354,36 @@ namespace Luna
 
                                 GUI::SliderFloat("Input Audio Level", &input_audio_level, 0.0f, 1.0f);
                                 add_audio_source_button = GUI::Button("Add Audio Source");
-                                for (usize i = 0; i < app.audio_sources.size(); ++i)
+                                if(!app.audio_sources.empty())
                                 {
-                                    AudioSource& source = app.audio_sources[i];
-                                    GUI::PushID((u64)i);
-                                    GUI::BeginHLayout("Audio Source");
-                                    GUI::Text("Audio Source");
-                                    GUI::DragFloat("Frequency", &source.frequency, 1.0f, 8.176f, 15804.266f);
-                                    GUI::SliderFloat("Volume", &source.volume, 0.0f, 1.0f);
-                                    apply_audio_source_buttons.push_back(GUI::Button("Apply"));
-                                    GUI::EndHLayout();
-                                    GUI::PopID();
+                                    GUI::GUITableDesc source_table;
+                                    source_table.columns = 4;
+                                    source_table.style.padding = GUI::GUIEdgeInsets::xy(8.0f, 4.0f);
+                                    source_table.style.border_size = 1.0f;
+                                    source_table.style.background_mode = GUI::GUITableBackgroundMode::alternate_rows;
+                                    source_table.style.background_color = Float4U(0.08f, 0.10f, 0.12f, 0.72f);
+                                    source_table.style.alternate_background_color = Float4U(0.12f, 0.14f, 0.17f, 0.72f);
+                                    source_table.style.row_separators = true;
+                                    source_table.style.column_separators = true;
+                                    source_table.style.resize_fixed_columns = true;
+                                    f32 source_table_w = max((f32)sz.x - 40.0f, 480.0f);
+                                    f32 control_w = max((source_table_w - 226.0f) * 0.5f, 220.0f);
+                                    source_table.column_sizes.push_back(GUI::GUITableTrackSize::fixed(120.0f));
+                                    source_table.column_sizes.push_back(GUI::GUITableTrackSize::fixed(control_w));
+                                    source_table.column_sizes.push_back(GUI::GUITableTrackSize::fixed(control_w));
+                                    source_table.column_sizes.push_back(GUI::GUITableTrackSize::fixed(80.0f));
+                                    GUI::BeginTableLayout("Audio Sources", source_table);
+                                    for (usize i = 0; i < app.audio_sources.size(); ++i)
+                                    {
+                                        AudioSource& source = app.audio_sources[i];
+                                        GUI::PushID((u64)i);
+                                        GUI::Text("Audio Source");
+                                        GUI::DragFloat("Frequency", &source.frequency, 1.0f, 8.176f, 15804.266f);
+                                        GUI::SliderFloat("Volume", &source.volume, 0.0f, 1.0f);
+                                        apply_audio_source_buttons.push_back(GUI::Button("Apply"));
+                                        GUI::PopID();
+                                    }
+                                    GUI::EndTableLayout();
                                 }
                             }
                         }
