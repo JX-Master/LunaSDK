@@ -109,8 +109,8 @@ namespace Luna
         enum class GUINodeKind : u8
         {
             root,
-            column,
-            row,
+            v_layout,
+            h_layout,
             scroll_view,
             window,
             text,
@@ -118,7 +118,10 @@ namespace Luna
             checkbox,
             input_text,
             image,
-            collapsing_header
+            collapsing_header,
+            combo,
+            slider_float,
+            drag_float
         };
 
         struct GUIFrameDesc
@@ -170,6 +173,141 @@ namespace Luna
             }
         };
 
+        enum class GUISizePolicy : u8
+        {
+            fixed,
+            hug,
+            fill
+        };
+
+        enum class GUILayoutMainAxisAlignment : u8
+        {
+            begin,
+            center,
+            end,
+            space_between
+        };
+
+        enum class GUILayoutCrossAxisAlignment : u8
+        {
+            begin,
+            center,
+            end,
+            stretch
+        };
+
+        struct GUIEdgeInsets
+        {
+            f32 left = 0.0f;
+            f32 top = 0.0f;
+            f32 right = 0.0f;
+            f32 bottom = 0.0f;
+
+            static GUIEdgeInsets all(f32 value)
+            {
+                GUIEdgeInsets r;
+                r.left = value;
+                r.top = value;
+                r.right = value;
+                r.bottom = value;
+                return r;
+            }
+
+            static GUIEdgeInsets xy(f32 x, f32 y)
+            {
+                GUIEdgeInsets r;
+                r.left = x;
+                r.right = x;
+                r.top = y;
+                r.bottom = y;
+                return r;
+            }
+        };
+
+        struct GUILayoutMetrics
+        {
+            Float2U min_size = Float2U(0.0f);
+            Float2U preferred_size = Float2U(0.0f);
+            Float2U max_size = Float2U(F32_MAX, F32_MAX);
+        };
+
+        struct GUILayoutStyle
+        {
+            GUISizePolicy width_policy = GUISizePolicy::hug;
+            GUISizePolicy height_policy = GUISizePolicy::hug;
+            f32 fixed_width_value = 0.0f;
+            f32 fixed_height_value = 0.0f;
+            f32 fill_weight_x = 1.0f;
+            f32 fill_weight_y = 1.0f;
+            Float2U min_size = Float2U(0.0f);
+            Float2U max_size = Float2U(F32_MAX, F32_MAX);
+
+            static GUILayoutStyle hug()
+            {
+                return GUILayoutStyle();
+            }
+
+            static GUILayoutStyle fill(f32 weight = 1.0f)
+            {
+                GUILayoutStyle r;
+                r.width_policy = GUISizePolicy::fill;
+                r.height_policy = GUISizePolicy::fill;
+                r.fill_weight_x = weight;
+                r.fill_weight_y = weight;
+                return r;
+            }
+
+            static GUILayoutStyle fill_width(f32 weight = 1.0f)
+            {
+                GUILayoutStyle r;
+                r.width_policy = GUISizePolicy::fill;
+                r.fill_weight_x = weight;
+                return r;
+            }
+
+            static GUILayoutStyle fill_height(f32 weight = 1.0f)
+            {
+                GUILayoutStyle r;
+                r.height_policy = GUISizePolicy::fill;
+                r.fill_weight_y = weight;
+                return r;
+            }
+
+            static GUILayoutStyle fixed(f32 width, f32 height)
+            {
+                GUILayoutStyle r;
+                r.width_policy = GUISizePolicy::fixed;
+                r.height_policy = GUISizePolicy::fixed;
+                r.fixed_width_value = width;
+                r.fixed_height_value = height;
+                return r;
+            }
+
+            static GUILayoutStyle fixed_width(f32 width)
+            {
+                GUILayoutStyle r;
+                r.width_policy = GUISizePolicy::fixed;
+                r.fixed_width_value = width;
+                return r;
+            }
+
+            static GUILayoutStyle fixed_height(f32 height)
+            {
+                GUILayoutStyle r;
+                r.height_policy = GUISizePolicy::fixed;
+                r.fixed_height_value = height;
+                return r;
+            }
+        };
+
+        struct GUILayoutDesc
+        {
+            GUIEdgeInsets padding;
+            f32 gap = 6.0f;
+            GUILayoutMainAxisAlignment main_axis_alignment = GUILayoutMainAxisAlignment::begin;
+            GUILayoutCrossAxisAlignment cross_axis_alignment = GUILayoutCrossAxisAlignment::stretch;
+        };
+
         struct GUINode
         {
             GUIID id = 0;
@@ -182,8 +320,16 @@ namespace Luna
             String text;
             Ref<RHI::ITexture> texture;
             GUISize requested_size;
+            GUILayoutStyle layout_style;
+            GUILayoutDesc layout_desc;
             bool* bool_value = nullptr;
             String* string_value = nullptr;
+            i32* i32_value = nullptr;
+            f32* f32_value = nullptr;
+            f32 min_value = 0.0f;
+            f32 max_value = 0.0f;
+            f32 step_value = 0.0f;
+            Vector<String> items;
             bool interactive = false;
         };
 
@@ -228,10 +374,12 @@ namespace Luna
         LUNA_GUI_API void PushID(const c8* str);
         LUNA_GUI_API void PopID();
 
-        LUNA_GUI_API GUIItemHandle BeginColumn(const c8* label = nullptr);
-        LUNA_GUI_API void EndColumn();
-        LUNA_GUI_API GUIItemHandle BeginRow(const c8* label = nullptr);
-        LUNA_GUI_API void EndRow();
+        LUNA_GUI_API void SetNextItemLayout(const GUILayoutStyle& style);
+
+        LUNA_GUI_API GUIItemHandle BeginHLayout(const c8* label = nullptr, const GUILayoutDesc& desc = GUILayoutDesc());
+        LUNA_GUI_API void EndHLayout();
+        LUNA_GUI_API GUIItemHandle BeginVLayout(const c8* label = nullptr, const GUILayoutDesc& desc = GUILayoutDesc());
+        LUNA_GUI_API void EndVLayout();
         LUNA_GUI_API GUIItemHandle BeginScrollView(const c8* label, const GUISize& size);
         LUNA_GUI_API void EndScrollView();
         LUNA_GUI_API GUIItemHandle BeginWindow(const c8* label, const GUISize& size = GUISize());
@@ -243,6 +391,9 @@ namespace Luna
         LUNA_GUI_API GUIItemHandle InputText(const c8* label, String& value);
         LUNA_GUI_API GUIItemHandle Image(RHI::ITexture* texture, const GUISize& size);
         LUNA_GUI_API GUIItemHandle CollapsingHeader(const c8* label);
+        LUNA_GUI_API GUIItemHandle Combo(const c8* label, i32* current_item, Span<const c8*> items);
+        LUNA_GUI_API GUIItemHandle SliderFloat(const c8* label, f32* value, f32 min_value, f32 max_value);
+        LUNA_GUI_API GUIItemHandle DragFloat(const c8* label, f32* value, f32 speed, f32 min_value, f32 max_value);
 
         LUNA_GUI_API const Any* get_item_state_any(GUIItemHandle handle, const Name& key);
         LUNA_GUI_API void set_item_state_any(GUIItemHandle handle, const Name& key, const Any& value);

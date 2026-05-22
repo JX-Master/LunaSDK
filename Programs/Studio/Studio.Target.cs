@@ -38,6 +38,8 @@ public sealed class StudioTargetRules : TargetRules
             "RHI",
             "Image",
             "Font",
+            "GUI",
+            "GUIWindow",
             "ImGui",
             "Asset",
             "ObjLoader",

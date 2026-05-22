@@ -49,6 +49,8 @@ namespace Luna
         {
             RectF rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
             RectF clip_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
+            GUILayoutMetrics metrics;
+            bool metrics_valid = false;
         };
 
         struct GUIContext : IGUIContext
@@ -75,6 +77,8 @@ namespace Luna
             Float2U m_pointer_pos = Float2U(0.0f);
             bool m_pointer_inside = false;
             bool m_submitted = false;
+            bool m_has_next_item_layout = false;
+            GUILayoutStyle m_next_item_layout;
             u64 m_generation = 0;
             f64 m_time = 0.0;
             Ref<VG::IShapeDrawList> m_shape_draw_list;
@@ -96,6 +100,7 @@ namespace Luna
             const Any* get_state(GUIItemHandle handle, const Name& key);
             void set_state(GUIItemHandle handle, const Name& key, const Any& value);
             void remove_state(GUIItemHandle handle, const Name& key);
+            void set_next_item_layout(const GUILayoutStyle& style);
             void push_id(GUIID id);
             void pop_id();
 
@@ -103,13 +108,15 @@ namespace Luna
             ItemResult& get_or_create_current_result(GUIID id);
             PersistentItemState& get_or_create_persistent_state(GUIID id);
             RectF layout_node(u32 node_index, const RectF& rect, const RectF& clip_rect);
-            Float2U measure_node(u32 node_index);
+            GUILayoutMetrics measure_node(u32 node_index);
             GUIID hit_test(const Float2U& pos) const;
             GUIID hit_test_node_kind(const Float2U& pos, GUINodeKind kind) const;
+            GUINode* find_node(GUIID id);
+            void update_float_node_from_pointer(GUIID id, const Float2U& pos);
             void process_input_events();
             void render_node(u32 node_index);
             void render_rect(const RectF& rect, const RectF& clip_rect, const Float4U& color, f32 radius, RHI::ITexture* texture = nullptr);
-            void render_text(const RectF& rect, const RectF& clip_rect, const c8* text, f32 font_size, const Float4U& color);
+            void render_text(const RectF& rect, const RectF& clip_rect, const c8* text, f32 font_size, const Float4U& color, VG::TextAlignment horizontal_alignment, VG::TextAlignment vertical_alignment = VG::TextAlignment::center);
             RectF to_vg_rect(const RectF& rect) const;
         };
     }

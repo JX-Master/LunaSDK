@@ -1,0 +1,6 @@
+luna_sdk_module_target("GUIWindow")
+    add_headerfiles("*.hpp", {prefixdir = "Luna/GUIWindow"})
+    add_headerfiles("Source/**.hpp", {install = false})
+    add_files("Source/**.cpp")
+    add_deps("Runtime", "GUI", "Window", "HID")
+target_end()

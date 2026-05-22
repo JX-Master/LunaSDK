@@ -8,10 +8,8 @@
 * @date 2026/5/21
 */
 #include <Luna/GUI/GUI.hpp>
+#include <Luna/GUIWindow/GUIWindow.hpp>
 #include <Luna/Font/Font.hpp>
-#include <Luna/HID/HID.hpp>
-#include <Luna/HID/Keyboard.hpp>
-#include <Luna/HID/Mouse.hpp>
 #include <Luna/RHI/RHI.hpp>
 #include <Luna/Runtime/Log.hpp>
 #include <Luna/Runtime/Module.hpp>
@@ -40,166 +38,11 @@ namespace Luna
         String input_text = "Type here";
     };
 
-    static GUI::GUIPointerButton to_gui_button(HID::MouseButton button)
-    {
-        switch(button)
-        {
-        case HID::MouseButton::left: return GUI::GUIPointerButton::left;
-        case HID::MouseButton::right: return GUI::GUIPointerButton::right;
-        case HID::MouseButton::middle: return GUI::GUIPointerButton::middle;
-        case HID::MouseButton::function1: return GUI::GUIPointerButton::extra1;
-        case HID::MouseButton::function2: return GUI::GUIPointerButton::extra2;
-        default: return GUI::GUIPointerButton::left;
-        }
-    }
-
-    static GUI::GUIKey to_gui_key(HID::KeyCode key)
-    {
-        using namespace HID;
-        switch(key)
-        {
-        case KeyCode::tab: return GUI::GUIKey::tab;
-        case KeyCode::left: return GUI::GUIKey::left;
-        case KeyCode::right: return GUI::GUIKey::right;
-        case KeyCode::up: return GUI::GUIKey::up;
-        case KeyCode::down: return GUI::GUIKey::down;
-        case KeyCode::enter: return GUI::GUIKey::enter;
-        case KeyCode::esc: return GUI::GUIKey::esc;
-        case KeyCode::backspace: return GUI::GUIKey::backspace;
-        case KeyCode::del: return GUI::GUIKey::del;
-        case KeyCode::spacebar: return GUI::GUIKey::space;
-        case KeyCode::a: return GUI::GUIKey::a;
-        case KeyCode::b: return GUI::GUIKey::b;
-        case KeyCode::c: return GUI::GUIKey::c;
-        case KeyCode::d: return GUI::GUIKey::d;
-        case KeyCode::e: return GUI::GUIKey::e;
-        case KeyCode::f: return GUI::GUIKey::f;
-        case KeyCode::g: return GUI::GUIKey::g;
-        case KeyCode::h: return GUI::GUIKey::h;
-        case KeyCode::i: return GUI::GUIKey::i;
-        case KeyCode::j: return GUI::GUIKey::j;
-        case KeyCode::k: return GUI::GUIKey::k;
-        case KeyCode::l: return GUI::GUIKey::l;
-        case KeyCode::m: return GUI::GUIKey::m;
-        case KeyCode::n: return GUI::GUIKey::n;
-        case KeyCode::o: return GUI::GUIKey::o;
-        case KeyCode::p: return GUI::GUIKey::p;
-        case KeyCode::q: return GUI::GUIKey::q;
-        case KeyCode::r: return GUI::GUIKey::r;
-        case KeyCode::s: return GUI::GUIKey::s;
-        case KeyCode::t: return GUI::GUIKey::t;
-        case KeyCode::u: return GUI::GUIKey::u;
-        case KeyCode::v: return GUI::GUIKey::v;
-        case KeyCode::w: return GUI::GUIKey::w;
-        case KeyCode::x: return GUI::GUIKey::x;
-        case KeyCode::y: return GUI::GUIKey::y;
-        case KeyCode::z: return GUI::GUIKey::z;
-        default: return GUI::GUIKey::unknown;
-        }
-    }
-
-    static GUI::GUIKeyModifierFlag get_modifiers()
-    {
-        u8 flags = 0;
-        if(HID::get_key_state(HID::KeyCode::ctrl)) flags |= (u8)GUI::GUIKeyModifierFlag::ctrl;
-        if(HID::get_key_state(HID::KeyCode::shift)) flags |= (u8)GUI::GUIKeyModifierFlag::shift;
-        if(HID::get_key_state(HID::KeyCode::menu)) flags |= (u8)GUI::GUIKeyModifierFlag::alt;
-        if(HID::get_key_state(HID::KeyCode::system)) flags |= (u8)GUI::GUIKeyModifierFlag::system;
-        return (GUI::GUIKeyModifierFlag)flags;
-    }
-
-    static Float2U get_client_mouse_pos(Window::IWindow* window)
-    {
-        Int2U screen_pos = HID::get_mouse_pos();
-        Int2U client_pos = window->screen_to_client(screen_pos);
-        return Float2U((f32)client_pos.x, (f32)client_pos.y);
-    }
-
-    static void handle_window_event(object_t event, void* userdata)
-    {
-        App* app = (App*)userdata;
-        if(!app || !app->gui) return;
-        if(auto window_event = cast_object<Window::WindowEvent>(event))
-        {
-            if(window_event->window != app->window) return;
-            GUI::GUIInputEvent ge;
-            if(auto e = cast_object<Window::WindowMouseEnterEvent>(event))
-            {
-                ge.type = GUI::GUIInputEventType::pointer_enter;
-                ge.position = get_client_mouse_pos(app->window);
-                app->gui->add_input_event(ge);
-            }
-            else if(auto e = cast_object<Window::WindowMouseLeaveEvent>(event))
-            {
-                ge.type = GUI::GUIInputEventType::pointer_leave;
-                ge.position = get_client_mouse_pos(app->window);
-                app->gui->add_input_event(ge);
-            }
-            else if(auto e = cast_object<Window::WindowMouseMoveEvent>(event))
-            {
-                ge.type = GUI::GUIInputEventType::pointer_move;
-                ge.position = Float2U((f32)e->x, (f32)e->y);
-                app->gui->add_input_event(ge);
-            }
-            else if(auto e = cast_object<Window::WindowMouseDownEvent>(event))
-            {
-                ge.type = GUI::GUIInputEventType::pointer_down;
-                ge.position = get_client_mouse_pos(app->window);
-                ge.button = to_gui_button(e->button);
-                app->gui->add_input_event(ge);
-            }
-            else if(auto e = cast_object<Window::WindowMouseUpEvent>(event))
-            {
-                ge.type = GUI::GUIInputEventType::pointer_up;
-                ge.position = get_client_mouse_pos(app->window);
-                ge.button = to_gui_button(e->button);
-                app->gui->add_input_event(ge);
-            }
-            else if(auto e = cast_object<Window::WindowScrollEvent>(event))
-            {
-                ge.type = GUI::GUIInputEventType::pointer_wheel;
-                ge.position = get_client_mouse_pos(app->window);
-                ge.wheel_delta = Float2U(e->scroll_x, e->scroll_y);
-                app->gui->add_input_event(ge);
-            }
-            else if(auto e = cast_object<Window::WindowKeyDownEvent>(event))
-            {
-                ge.type = GUI::GUIInputEventType::key_down;
-                ge.key = to_gui_key(e->key);
-                ge.modifiers = get_modifiers();
-                app->gui->add_input_event(ge);
-            }
-            else if(auto e = cast_object<Window::WindowKeyUpEvent>(event))
-            {
-                ge.type = GUI::GUIInputEventType::key_up;
-                ge.key = to_gui_key(e->key);
-                ge.modifiers = get_modifiers();
-                app->gui->add_input_event(ge);
-            }
-            else if(auto e = cast_object<Window::WindowInputTextEvent>(event))
-            {
-                ge.type = GUI::GUIInputEventType::text_utf8;
-                ge.text = e->text;
-                app->gui->add_input_event(ge);
-            }
-            else if(auto e = cast_object<Window::WindowInputFocusEvent>(event))
-            {
-                ge.type = GUI::GUIInputEventType::focus;
-                app->gui->add_input_event(ge);
-            }
-            else if(auto e = cast_object<Window::WindowLoseInputFocusEvent>(event))
-            {
-                ge.type = GUI::GUIInputEventType::blur;
-                app->gui->add_input_event(ge);
-            }
-        }
-    }
-
     RV run_app()
     {
         lutry
         {
-            luexp(add_modules({module_window(), module_rhi(), module_font(), module_vg(), GUI::module_gui(), module_hid()}));
+            luexp(add_modules({module_window(), module_rhi(), module_font(), module_vg(), GUI::module_gui(), GUIWindow::module_gui_window()}));
             luexp(init_modules());
             set_log_to_platform_enabled(true);
             using namespace RHI;
@@ -221,7 +64,10 @@ namespace Luna
             luset(app.swap_chain, dev->new_swap_chain(app.queue, app.window, SwapChainDesc({0, 0, 2, Format::bgra8_unorm, true})));
             luset(app.cmdbuf, dev->new_command_buffer(app.queue));
             app.gui = GUI::new_context(dev);
-            Window::set_event_handler(handle_window_event, &app);
+            GUIWindow::GUIWindowInputAdapter input_adapter;
+            input_adapter.window = app.window;
+            input_adapter.gui = app.gui;
+            GUIWindow::install_window_event_handler(&input_adapter);
 
             while(true)
             {
@@ -251,12 +97,27 @@ namespace Luna
 
                 GUI::BeginWindow("Main", GUI::GUISize::fixed(420.0f, 360.0f));
                 GUI::Text("Luna GUI");
+                GUI::GUILayoutDesc toolbar_layout;
+                toolbar_layout.gap = 8.0f;
+                toolbar_layout.cross_axis_alignment = GUI::GUILayoutCrossAxisAlignment::center;
+                GUI::BeginHLayout("Toolbar", toolbar_layout);
+                GUI::Text("HLayout");
+                GUI::Button("One");
+                GUI::Button("Two");
+                GUI::SetNextItemLayout(GUI::GUILayoutStyle::fill_width());
+                GUI::InputText("Inline Name", app.input_text);
+                GUI::EndHLayout();
                 GUI::GUIItemHandle apply = GUI::Button("Apply");
                 GUI::GUIItemHandle header = GUI::CollapsingHeader("Details");
                 if(GUI::GetItemState(header, GUI::GUIState::open()))
                 {
+                    GUI::GUILayoutDesc detail_layout;
+                    detail_layout.padding = GUI::GUIEdgeInsets::xy(4.0f, 2.0f);
+                    detail_layout.gap = 4.0f;
+                    GUI::BeginVLayout("Detail Layout", detail_layout);
                     GUI::Checkbox("Enable option", &app.checkbox);
                     GUI::InputText("Name", app.input_text);
+                    GUI::EndVLayout();
                 }
                 GUI::BeginScrollView("Scroll", GUI::GUISize::fixed(380.0f, 110.0f));
                 GUI::Text("ScrollView");
@@ -264,10 +125,10 @@ namespace Luna
                 GUI::Text("The same GUIContext can be driven by a window adapter");
                 GUI::Text("or by game raycast coordinates.");
                 GUI::EndScrollView();
-                GUI::BeginRow("Images");
+                GUI::BeginHLayout("Images");
                 GUI::Image(nullptr, GUI::GUISize::fixed(64.0f, 64.0f));
                 GUI::Text("Image nodes use VG textured rects.");
-                GUI::EndRow();
+                GUI::EndHLayout();
                 GUI::EndWindow();
 
                 lulet(desc, app.gui->end_build());
@@ -296,6 +157,7 @@ namespace Luna
                 luexp(app.cmdbuf->reset());
                 luexp(app.swap_chain->present());
             }
+            GUIWindow::uninstall_window_event_handler(&input_adapter);
         }
         lucatchret;
         return ok;
