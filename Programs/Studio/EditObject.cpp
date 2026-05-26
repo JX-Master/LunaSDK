@@ -9,14 +9,41 @@
 */
 #include "EditObject.hpp"
 #include <Luna/Runtime/Reflection.hpp>
+#include <Luna/GUI/GUI.hpp>
 #include <Luna/ImGui/ImGui.hpp>
 #include <Luna/Runtime/Math/Color.hpp>
 #include <Luna/Runtime/Math/Transform.hpp>
-#include <Luna/Runtime/StackAllocator.hpp>
 #include "MainEditor.hpp"
 
 namespace Luna
 {
+    namespace
+    {
+        struct GUIPropertyRow
+        {
+            Float2 size;
+        };
+
+        GUIPropertyRow begin_gui_property_row(const c8* name, f32 height = 30.0f)
+        {
+            Float2 pos = ImGui::GetCursorScreenPos();
+            Float2 avail = ImGui::GetContentRegionAvail();
+            f32 width = max(avail.x, 240.0f);
+            GUI::GUILayoutDesc row;
+            row.cross_axis_alignment = GUI::GUILayoutCrossAxisAlignment::stretch;
+            GUI::BeginHLayout(name, RectF(pos.x, pos.y, width, height), row);
+            GUI::SetNextItemLayout(GUI::GUILayoutStyle::fill_width());
+            return GUIPropertyRow { Float2(width, height) };
+        }
+
+        bool end_gui_property_row(const GUIPropertyRow& row, GUI::GUIItemHandle item)
+        {
+            GUI::EndHLayout();
+            ImGui::Dummy(row.size);
+            return GUI::GetItemState(item, GUI::GUIState::value_changed());
+        }
+    }
+
     /*static bool edit_primitive(const Name& name, typeinfo_t type, void* obj)
     {
         if (type == boolean_type()) return ImGui::Checkbox(name.c_str(), (bool*)obj);
@@ -25,7 +52,6 @@ namespace Luna
 
     bool edit_enum(const c8* name, typeinfo_t type, void* obj)
     {
-        StackAllocator salloc;
         auto descs = get_enum_options(type);
         bool edited = false;
         if (is_multienum_type(type))
@@ -35,21 +61,30 @@ namespace Luna
         }
         else
         {
-            const c8** options = (const c8**)salloc.allocate(sizeof(const c8*) * descs.size());
+            if(descs.empty()) return false;
             i64 value = get_enum_instance_value(type, obj);
-            int current_item = -1;
+            usize current_item = 0;
             for (usize i = 0; i < descs.size(); ++i)
             {
                 auto& desc = descs[i];
-                options[i] = desc.name.c_str();
                 if (value == desc.value)
                 {
-                    current_item = (int)i;
+                    current_item = i;
+                    break;
                 }
             }
-            edited = ImGui::Combo(name, &current_item, options, (int)descs.size());
-            value = descs[current_item].value;
-            set_enum_instance_value(type, obj, value);
+            String label;
+            strprintf(label, "%s: %s", name, descs[current_item].name.c_str());
+            GUIPropertyRow row = begin_gui_property_row(name);
+            GUI::GUIItemHandle button = GUI::Button(label.c_str());
+            GUI::EndHLayout();
+            ImGui::Dummy(row.size);
+            if(GUI::IsItemClicked(button))
+            {
+                current_item = (current_item + 1) % descs.size();
+                set_enum_instance_value(type, obj, descs[current_item].value);
+                edited = true;
+            }
         }
         return edited;
     }
@@ -63,6 +98,7 @@ namespace Luna
         }
 
         ImGui::PushID((int)(usize)obj);
+        GUI::PushID(obj);
 
         bool edited = false;
 
@@ -104,13 +140,17 @@ namespace Luna
                     {
                         speed = (v_max - v_min) / 100.0f;
                     }
-                    edited = ImGui::DragFloat(name, data, speed, v_min, v_max);
+                    GUIPropertyRow row = begin_gui_property_row(name);
+                    GUI::GUIItemHandle item = GUI::DragFloat(name, data, speed, v_min, v_max);
+                    edited = end_gui_property_row(row, item);
                 }
             }
             else if (type == boolean_type())
             {
                 bool* data = (bool*)obj;
-                edited = ImGui::Checkbox(name, data);
+                GUIPropertyRow row = begin_gui_property_row(name, 26.0f);
+                GUI::GUIItemHandle item = GUI::Checkbox(name, data);
+                edited = end_gui_property_row(row, item);
             }
         }
         else if (is_enum_type(type))
@@ -121,7 +161,9 @@ namespace Luna
         else if (type == typeof<Float2>())
         {
             Float2* data = (Float2*)obj;
-            edited = ImGui::DragFloat2(name, data->m);
+            GUIPropertyRow row = begin_gui_property_row(name);
+            GUI::GUIItemHandle item = GUI::DragFloat2(name, data->m, 0.01f, 0.0f, 0.0f);
+            edited = end_gui_property_row(row, item);
         }
         else if (type == typeof<Float3>())
         {
@@ -129,12 +171,16 @@ namespace Luna
             if (color_gui == true)
             {
                 Float3* data = (Float3*)obj;
-                edited = ImGui::ColorEdit3(name, data->m);
+                GUIPropertyRow row = begin_gui_property_row(name);
+                GUI::GUIItemHandle item = GUI::ColorEdit3(name, data->m);
+                edited = end_gui_property_row(row, item);
             }
             else
             {
                 Float3* data = (Float3*)obj;
-                edited = ImGui::DragFloat3(name, data->m);
+                GUIPropertyRow row = begin_gui_property_row(name);
+                GUI::GUIItemHandle item = GUI::DragFloat3(name, data->m, 0.01f, 0.0f, 0.0f);
+                edited = end_gui_property_row(row, item);
             }
         }
         else if (type == typeof<Float4>())
@@ -160,7 +206,9 @@ namespace Luna
             else
             {
                 Float4* data = (Float4*)obj;
-                edited = ImGui::DragFloat4(name, data->m);
+                GUIPropertyRow row = begin_gui_property_row(name);
+                GUI::GUIItemHandle item = GUI::DragFloat4(name, data->m, 0.01f, 0.0f, 0.0f);
+                edited = end_gui_property_row(row, item);
             }
         }
         else if (type == typeof<Asset::asset_t>())
@@ -179,6 +227,7 @@ namespace Luna
             }
         }
 
+        GUI::PopID();
         ImGui::PopID();
         return edited;
     }

@@ -24,6 +24,7 @@ namespace Luna
         namespace GUIState
         {
             LUNA_GUI_API GUIStateKey<bool> clicked() { return {Name("gui.clicked"), false}; }
+            LUNA_GUI_API GUIStateKey<bool> right_clicked() { return {Name("gui.right_clicked"), false}; }
             LUNA_GUI_API GUIStateKey<bool> double_clicked() { return {Name("gui.double_clicked"), false}; }
             LUNA_GUI_API GUIStateKey<bool> hovered() { return {Name("gui.hovered"), false}; }
             LUNA_GUI_API GUIStateKey<bool> active() { return {Name("gui.active"), false}; }

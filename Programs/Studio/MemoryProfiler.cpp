@@ -11,6 +11,27 @@
 
 namespace Luna
 {
+    namespace
+    {
+        String memory_size_text(usize size)
+        {
+            String ret;
+            if(size >= 1_mb)
+            {
+                strprintf(ret, "%.2fMB", (f64)size / (f64)1_mb);
+            }
+            else if(size >= 1_kb)
+            {
+                strprintf(ret, "%.2fKB", (f64)size / (f64)1_kb);
+            }
+            else
+            {
+                strprintf(ret, "%llu", (u64)size);
+            }
+            return ret;
+        }
+    }
+
     void MemoryProfiler::on_allocate(void* ptr, usize size)
     {
         MemoryBlockInfo info;
@@ -80,44 +101,45 @@ namespace Luna
             iter2->second.first += b.second.size;
             iter2->second.second += 1;
         }
-        ImGui::SetNextWindowSize({ 500.0f, 1000.0f }, ImGuiCond_FirstUseEver);
-        ImGui::Begin("Memory Usages", nullptr, ImGuiWindowFlags_NoCollapse);
+        GUI::BeginWindow("Memory Usages", GUI::GUISize::fixed(500.0f, 1000.0f));
+        GUI::BeginScrollView("Memory Usage List", GUI::GUISize::fixed(484.0f, 940.0f));
         for(auto& h : heaps)
         {
-            if(ImGui::CollapsingHeader(h.first.c_str()))
+            GUI::GUIItemHandle heap_header = GUI::CollapsingHeader(h.first.c_str());
+            if(GUI::GetItemState(heap_header, GUI::GUIState::open()))
             {
-                if(ImGui::BeginTable(h.first.c_str(), 3))
+                GUI::GUITableDesc table;
+                table.columns = 3;
+                table.style.padding = GUI::GUIEdgeInsets::xy(8.0f, 4.0f);
+                table.style.border_size = 1.0f;
+                table.style.background_mode = GUI::GUITableBackgroundMode::alternate_rows;
+                table.style.background_color = Float4U(0.08f, 0.10f, 0.12f, 0.72f);
+                table.style.alternate_background_color = Float4U(0.12f, 0.14f, 0.17f, 0.72f);
+                table.style.row_separators = true;
+                table.style.column_separators = true;
+                table.style.resize_fixed_columns = true;
+                table.column_sizes.push_back(GUI::GUITableTrackSize::fixed(240.0f));
+                table.column_sizes.push_back(GUI::GUITableTrackSize::fixed(110.0f));
+                table.column_sizes.push_back(GUI::GUITableTrackSize::fixed(120.0f));
+                GUI::BeginTableLayout(h.first.c_str(), table);
                 {
-                    ImGui::TableSetupColumn("Type");
-                    ImGui::TableSetupColumn("Size");
-                    ImGui::TableSetupColumn("Allocation Count");
-                    ImGui::TableHeadersRow();
+                    GUI::Text("Type");
+                    GUI::Text("Size");
+                    GUI::Text("Allocation Count");
                     for(auto& a : h.second)
                     {
-                        ImGui::TableNextRow();
-                        ImGui::TableSetColumnIndex(0);
-                        ImGui::Text("%s", a.first.c_str());
-                        ImGui::TableSetColumnIndex(1);
-                        if(a.second.first >= 1_mb)
-                        {
-                            ImGui::Text("%.2fMB", (f64)a.second.first / (f64)1_mb);
-                        }
-                        else if(a.second.first >= 1_kb)
-                        {
-                            ImGui::Text("%.2fKB", (f64)a.second.first / (f64)1_kb);
-                        }
-                        else
-                        {
-                            ImGui::Text("%llu", (u64)a.second.first);
-                        }
-                        ImGui::TableSetColumnIndex(2);
-                        ImGui::Text("%llu", (u64)a.second.second);
+                        String count_text;
+                        strprintf(count_text, "%llu", (u64)a.second.second);
+                        GUI::Text(a.first.c_str());
+                        GUI::Text(memory_size_text(a.second.first).c_str());
+                        GUI::Text(count_text.c_str());
                     }
-                    ImGui::EndTable();
+                    GUI::EndTableLayout();
                 }
             }
         }
-        ImGui::End();
+        GUI::EndScrollView();
+        GUI::EndWindow();
     }
     void MemoryProfilerCallback::operator()(const ProfilerEvent& event)
     {

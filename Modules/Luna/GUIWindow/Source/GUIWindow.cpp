@@ -13,6 +13,7 @@
 #include <Luna/HID/HID.hpp>
 #include <Luna/HID/Keyboard.hpp>
 #include <Luna/HID/Mouse.hpp>
+#include <Luna/Window/Clipboard.hpp>
 #include <Luna/Window/Event.hpp>
 
 namespace Luna
@@ -248,6 +249,58 @@ namespace Luna
             }
             adapter->next_event_handler = nullptr;
             adapter->next_event_userdata = nullptr;
+        }
+
+        static RectI to_window_text_input_rect(const GUI::GUITextInputState& state)
+        {
+            return RectI(
+                (i32)floor(state.rect.offset_x),
+                (i32)floor(state.rect.offset_y),
+                max((i32)ceil(state.rect.width), 1),
+                max((i32)ceil(state.rect.height), 1));
+        }
+
+        static RV get_window_clipboard_text(String& out_text, void*)
+        {
+            return Window::get_clipboard_text(out_text);
+        }
+
+        static RV set_window_clipboard_text(const c8* text, usize size, void*)
+        {
+            return Window::set_clipboard_text(text, size);
+        }
+
+        LUNA_GUI_WINDOW_API RV update_text_input(Window::IWindow* window, GUI::IGUIContext* gui)
+        {
+            if(!window || !gui) return ok;
+            lutry
+            {
+                GUI::GUIClipboardIO clipboard_io;
+                clipboard_io.get_text = get_window_clipboard_text;
+                clipboard_io.set_text = set_window_clipboard_text;
+                gui->set_clipboard_io(clipboard_io);
+
+                GUI::GUITextInputState state = gui->get_text_input_state();
+                if(state.active)
+                {
+                    if(!window->is_text_input_active())
+                    {
+                        luexp(window->begin_text_input());
+                    }
+                    luexp(window->set_text_input_area(to_window_text_input_rect(state), state.cursor));
+                }
+                else if(window->is_text_input_active())
+                {
+                    luexp(window->end_text_input());
+                }
+            }
+            lucatchret;
+            return ok;
+        }
+
+        LUNA_GUI_WINDOW_API RV update_text_input(GUIWindowInputAdapter* adapter)
+        {
+            return adapter ? update_text_input(adapter->window, adapter->gui) : ok;
         }
 
         struct GUIWindowModule : public Module

@@ -230,9 +230,12 @@ namespace Luna
         char title[32];
         snprintf(title, 32, "Obj Mesh Importer###%d", (u32)(usize)this);
 
-        ImGui::Begin(title, &m_open, ImGuiWindowFlags_NoCollapse);
+        if(!m_open) return;
 
-        if (ImGui::Button("Select Source File"))
+        GUI::BeginWindow(title, &m_open, GUI::GUISize::fixed(620.0f, 720.0f));
+        GUI::GUIItemHandle select_source = GUI::Button("Select Source File");
+
+        if (GUI::IsItemClicked(select_source))
         {
             lutry
             {
@@ -283,26 +286,37 @@ namespace Luna
 
         if (m_source_file_path.empty())
         {
-            ImGui::Text("No obj file selected.");
+            GUI::Text("No obj file selected.");
         }
         else
         {
-            ImGui::Text("%s", m_source_file_path.encode().c_str());
-            ImGui::Text("Object Information:");
+            GUI::BeginScrollView("Obj Mesh Importer Content", GUI::GUISize::fixed(604.0f, 650.0f));
+            GUI::Text(m_source_file_path.encode().c_str());
+            GUI::Text("Object Information:");
 
-            ImGui::Text("Vertex entries count: %u", (u32)m_obj_file.attributes.vertices.size());
-            ImGui::Text("Normal entries count: %u", (u32)m_obj_file.attributes.normals.size());
-            ImGui::Text("TexCoord entries count: %u", (u32)m_obj_file.attributes.texcoords.size());
-            ImGui::Text("Color entries count: %u", (u32)m_obj_file.attributes.colors.size());
+            String vertex_count;
+            String normal_count;
+            String texcoord_count;
+            String color_count;
+            strprintf(vertex_count, "Vertex entries count: %u", (u32)m_obj_file.attributes.vertices.size());
+            strprintf(normal_count, "Normal entries count: %u", (u32)m_obj_file.attributes.normals.size());
+            strprintf(texcoord_count, "TexCoord entries count: %u", (u32)m_obj_file.attributes.texcoords.size());
+            strprintf(color_count, "Color entries count: %u", (u32)m_obj_file.attributes.colors.size());
+            GUI::Text(vertex_count.c_str());
+            GUI::Text(normal_count.c_str());
+            GUI::Text(texcoord_count.c_str());
+            GUI::Text(color_count.c_str());
 
             if (m_obj_file.shapes.empty())
             {
-                ImGui::Text("No Shape information detected, this model cannot be imported.");
+                GUI::Text("No Shape information detected, this model cannot be imported.");
             }
             else
             {
-                ImGui::Text("%u meshes found", (u32)m_obj_file.shapes.size());
-                if(ImGui::Button("Import All"))
+                String mesh_count;
+                strprintf(mesh_count, "%u meshes found", (u32)m_obj_file.shapes.size());
+                GUI::Text(mesh_count.c_str());
+                if(GUI::IsItemClicked(GUI::Button("Import All")))
                 {
                     for (u32 i = 0; i < (u32)m_obj_file.shapes.size(); ++i)
                     {
@@ -314,31 +328,39 @@ namespace Luna
                         }
                     }
                 }
-                if (ImGui::CollapsingHeader("Shapes"))
+                GUI::GUIItemHandle shapes_header = GUI::CollapsingHeader("Shapes");
+                if (GUI::GetItemState(shapes_header, GUI::GUIState::open()))
                 {
                     for (u32 i = 0; i < (u32)m_obj_file.shapes.size(); ++i)
                     {
-                        ImGui::Text("Name: %s", m_obj_file.shapes[i].name.c_str());
-                        ImGui::Text("Faces: %u", (u32)m_obj_file.shapes[i].mesh.num_face_vertices.size());
+                        String shape_name;
+                        String face_count;
+                        strprintf(shape_name, "Name: %s", m_obj_file.shapes[i].name.c_str());
+                        strprintf(face_count, "Faces: %u", (u32)m_obj_file.shapes[i].mesh.num_face_vertices.size());
+                        GUI::Text(shape_name.c_str());
+                        GUI::Text(face_count.c_str());
 
-                        ImGui::PushID(i);
-                        ImGui::InputText("Asset Name", m_import_names[i]);
+                        GUI::PushID(i);
+                        GUI::InputText("Asset Name", m_import_names[i]);
                         if (!m_import_names[i].empty())
                         {
                             Path file_path = m_create_dir;
                             file_path.push_back(m_import_names[i]);
-                            ImGui::Text("The mesh will be imported as: %s", file_path.encode().c_str());
-                            if (ImGui::Button("Import"))
+                            String import_path;
+                            strprintf(import_path, "The mesh will be imported as: %s", file_path.encode().c_str());
+                            GUI::Text(import_path.c_str());
+                            if (GUI::IsItemClicked(GUI::Button("Import")))
                             {
                                 import_static_mesh(file_path, m_obj_file, i);
                             }
                         }
-                        ImGui::PopID();
+                        GUI::PopID();
                     }
                 }
             }
+            GUI::EndScrollView();
         }
-        ImGui::End();
+        GUI::EndWindow();
     }
 
     static Ref<IAssetEditor> new_static_mesh_importer(const Path& create_dir)

@@ -15,6 +15,39 @@ namespace Luna
 {
     namespace GUI
     {
+        namespace
+        {
+            bool delete_input_text_selection(String& value, PersistentItemState& state)
+            {
+                if(!input_text_has_selection(value, state)) return false;
+                usize begin = 0;
+                usize end = 0;
+                input_text_selection_range(value, state, begin, end);
+                value.erase(begin, end - begin);
+                state.text_cursor = begin;
+                input_text_clear_selection(state);
+                return true;
+            }
+
+            String filter_input_text(const String& text)
+            {
+                String filtered;
+                usize offset = 0;
+                const c8* src = text.c_str();
+                while(offset < text.size() && src[offset])
+                {
+                    usize len = min(utf8_charlen(src + offset), text.size() - offset);
+                    c32 ch = utf8_decode_char(src + offset);
+                    if(ch >= 0x20 && ch != 0x7F)
+                    {
+                        filtered.append(src + offset, len);
+                    }
+                    offset += len;
+                }
+                return filtered;
+            }
+        }
+
         bool GUIContext::hit_test_table_separator(const Float2U& pos, GUIID& out_id, bool& out_column, u32& out_index) const
         {
             for(usize i = 0; i < m_submitted_desc.nodes.size(); ++i)
@@ -106,38 +139,45 @@ namespace Luna
             }
         }
 
-        GUIID GUIContext::hit_test(const Float2U& pos) const
+        GUIID GUIContext::hit_test_node(u32 node_index, const Float2U& pos, bool filter_kind, GUINodeKind kind) const
         {
             GUIID ret = 0;
-            for(usize i = 0; i < m_submitted_desc.nodes.size(); ++i)
+            const GUINode& node = m_submitted_desc.nodes[node_index];
+            const RectF& rect = m_layouts[node_index].rect;
+            const RectF& clip = m_layouts[node_index].clip_rect;
+            if((filter_kind ? node.kind == kind : node.interactive) && point_in_rect(pos, rect) && point_in_rect(pos, clip))
             {
-                const GUINode& node = m_submitted_desc.nodes[i];
-                if(!node.interactive) continue;
-                const RectF& rect = m_layouts[i].rect;
-                const RectF& clip = m_layouts[i].clip_rect;
-                if(point_in_rect(pos, rect) && point_in_rect(pos, clip))
+                ret = node.id;
+            }
+            for(u32 child = node.first_child; child != U32_MAX; child = m_submitted_desc.nodes[child].next_sibling)
+            {
+                if(is_absolute_node(m_submitted_desc.nodes[child])) continue;
+                GUIID child_hit = hit_test_node(child, pos, filter_kind, kind);
+                if(child_hit)
                 {
-                    ret = node.id;
+                    ret = child_hit;
+                }
+            }
+            for(u32 child = node.first_child; child != U32_MAX; child = m_submitted_desc.nodes[child].next_sibling)
+            {
+                if(!is_absolute_node(m_submitted_desc.nodes[child])) continue;
+                GUIID child_hit = hit_test_node(child, pos, filter_kind, kind);
+                if(child_hit)
+                {
+                    ret = child_hit;
                 }
             }
             return ret;
         }
 
+        GUIID GUIContext::hit_test(const Float2U& pos) const
+        {
+            return m_submitted_desc.nodes.empty() ? 0 : hit_test_node(0, pos, false, GUINodeKind::root);
+        }
+
         GUIID GUIContext::hit_test_node_kind(const Float2U& pos, GUINodeKind kind) const
         {
-            GUIID ret = 0;
-            for(usize i = 0; i < m_submitted_desc.nodes.size(); ++i)
-            {
-                const GUINode& node = m_submitted_desc.nodes[i];
-                if(node.kind != kind) continue;
-                const RectF& rect = m_layouts[i].rect;
-                const RectF& clip = m_layouts[i].clip_rect;
-                if(point_in_rect(pos, rect) && point_in_rect(pos, clip))
-                {
-                    ret = node.id;
-                }
-            }
-            return ret;
+            return m_submitted_desc.nodes.empty() ? 0 : hit_test_node(0, pos, true, kind);
         }
 
         GUINode* GUIContext::find_node(GUIID id)
@@ -149,7 +189,20 @@ namespace Luna
             return nullptr;
         }
 
-        void GUIContext::update_float_node_from_pointer(GUIID id, const Float2U& pos)
+        u32 GUIContext::hit_test_float_component(const GUINode& node, const RectF& rect, const Float2U& pos) const
+        {
+            u32 value_count = node.kind == GUINodeKind::slider_float ? 1 : f32_value_count(node);
+            if(value_count <= 1) return 0;
+            f32 label_w = min(max((f32)node.text.size() * 8.0f + 8.0f, 80.0f), rect.width * 0.45f);
+            f32 gap = 4.0f;
+            f32 value_area_x = rect.offset_x + label_w;
+            f32 value_area_w = max(rect.width - label_w - 8.0f, 1.0f);
+            f32 component_w = max((value_area_w - gap * (f32)(value_count - 1)) / (f32)value_count, 1.0f);
+            f32 rel = max(pos.x - value_area_x, 0.0f);
+            return min((u32)(rel / (component_w + gap)), value_count - 1);
+        }
+
+        void GUIContext::update_float_node_from_pointer(GUIID id, const Float2U& pos, const Float2U* old_pos)
         {
             GUINode* node = find_node(id);
             if(!node || !node->f32_value) return;
@@ -165,16 +218,68 @@ namespace Luna
                 }
             }
             f32 label_w = min(max((f32)node->text.size() * 8.0f + 8.0f, 80.0f), rect.width * 0.45f);
-            f32 track_x = rect.offset_x + label_w;
-            f32 track_w = max(rect.width - label_w - 8.0f, 1.0f);
-            f32 t = clamp((pos.x - track_x) / track_w, 0.0f, 1.0f);
-            f32 new_value = node->min_value + (node->max_value - node->min_value) * t;
-            if(*node->f32_value != new_value)
+            u32 value_count = node->kind == GUINodeKind::slider_float ? 1 : f32_value_count(*node);
+            f32 gap = 4.0f;
+            f32 value_area_x = rect.offset_x + label_w;
+            f32 value_area_w = max(rect.width - label_w - 8.0f, 1.0f);
+            f32 component_w = max((value_area_w - gap * (f32)(value_count - 1)) / (f32)value_count, 1.0f);
+            u32 component = hit_test_float_component(*node, rect, pos);
+            if(m_active_id == id && m_active_float_component != U32_MAX)
             {
-                *node->f32_value = new_value;
+                component = min(m_active_float_component, value_count - 1);
+            }
+            f32 component_x = value_area_x + (component_w + gap) * (f32)component;
+            f32 new_value = node->f32_value[component];
+            if(node->kind == GUINodeKind::drag_float && node->max_value <= node->min_value)
+            {
+                if(!old_pos) return;
+                f32 speed = node->step_value == 0.0f ? 1.0f : node->step_value;
+                new_value += (pos.x - old_pos->x) * speed;
+            }
+            else
+            {
+                f32 t = clamp((pos.x - component_x) / component_w, 0.0f, 1.0f);
+                new_value = node->min_value + (node->max_value - node->min_value) * t;
+            }
+            if(node->f32_value[component] != new_value)
+            {
+                node->f32_value[component] = new_value;
                 ItemResult& result = get_or_create_current_result(id);
                 result.states.insert_or_assign(Name("gui.value_changed"), Any(true));
             }
+        }
+
+        bool GUIContext::input_text_cursor_from_pointer(GUIID id, const Float2U& pos, usize& out_cursor)
+        {
+            GUINode* node = find_node(id);
+            if(!node || node->kind != GUINodeKind::input_text || !node->string_value) return false;
+            for(usize i = 0; i < m_submitted_desc.nodes.size(); ++i)
+            {
+                if(m_submitted_desc.nodes[i].id == id)
+                {
+                    RectF text_rect(m_layouts[i].rect.offset_x + 8.0f, m_layouts[i].rect.offset_y,
+                        max(m_layouts[i].rect.width - 16.0f, 1.0f), m_layouts[i].rect.height);
+                    out_cursor = input_text_cursor_from_x(*node->string_value, pos.x - text_rect.offset_x, 16.0f);
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        bool GUIContext::update_input_text_selection_from_pointer(GUIID id, const Float2U& pos)
+        {
+            GUINode* node = find_node(id);
+            if(!node || node->kind != GUINodeKind::input_text || !node->string_value) return false;
+            usize cursor = 0;
+            if(!input_text_cursor_from_pointer(id, pos, cursor)) return false;
+            PersistentItemState& state = get_or_create_persistent_state(id);
+            if(state.text_select_anchor == USIZE_MAX)
+            {
+                state.text_select_anchor = clamp_utf8_cursor(*node->string_value, state.text_cursor);
+            }
+            state.text_cursor = cursor;
+            state.text_cursor_blink_start = m_time;
+            return true;
         }
 
         void GUIContext::process_input_events()
@@ -193,6 +298,7 @@ namespace Luna
                 }
                 else if(e.type == GUIInputEventType::pointer_move)
                 {
+                    Float2U old_pos = m_pointer_pos;
                     m_pointer_inside = true;
                     m_pointer_pos = e.position;
                     if(m_active_table_resize_id)
@@ -201,13 +307,29 @@ namespace Luna
                     }
                     else if(m_active_id)
                     {
-                        update_float_node_from_pointer(m_active_id, e.position);
+                        update_input_text_selection_from_pointer(m_active_id, e.position);
+                        update_float_node_from_pointer(m_active_id, e.position, &old_pos);
                     }
                 }
                 else if(e.type == GUIInputEventType::pointer_down)
                 {
                     m_pointer_inside = true;
                     m_pointer_pos = e.position;
+                    m_active_float_component = U32_MAX;
+                    GUIID old_focused_id = m_focused_id;
+                    if(e.button != GUIPointerButton::left)
+                    {
+                        GUIID target = hit_test(e.position);
+                        if(target)
+                        {
+                            m_focused_id = target;
+                            if(old_focused_id && old_focused_id != target)
+                            {
+                                input_text_clear_selection(get_or_create_persistent_state(old_focused_id));
+                            }
+                        }
+                        continue;
+                    }
                     GUIID resize_table = 0;
                     bool resize_column = false;
                     u32 resize_index = U32_MAX;
@@ -215,6 +337,10 @@ namespace Luna
                     {
                         m_active_id = resize_table;
                         m_focused_id = resize_table;
+                        if(old_focused_id && old_focused_id != resize_table)
+                        {
+                            input_text_clear_selection(get_or_create_persistent_state(old_focused_id));
+                        }
                         m_active_table_resize_id = resize_table;
                         m_active_table_resize_column = resize_column;
                         m_active_table_resize_index = resize_index;
@@ -227,12 +353,37 @@ namespace Luna
                     GUIID target = hit_test(e.position);
                     m_active_id = target;
                     m_focused_id = target;
+                    if(old_focused_id && old_focused_id != target)
+                    {
+                        input_text_clear_selection(get_or_create_persistent_state(old_focused_id));
+                    }
                     if(target)
                     {
                         PersistentItemState& state = get_or_create_persistent_state(target);
                         state.pointer_down = true;
                         state.active = true;
                         state.focused = true;
+                        GUINode* node = find_node(target);
+                        if(node && node->kind == GUINodeKind::input_text && node->string_value)
+                        {
+                            usize cursor = 0;
+                            input_text_cursor_from_pointer(target, e.position, cursor);
+                            state.text_cursor = cursor;
+                            state.text_select_anchor = cursor;
+                            state.text_selecting = true;
+                            state.text_cursor_blink_start = m_time;
+                        }
+                        if(node && (node->kind == GUINodeKind::slider_float || node->kind == GUINodeKind::drag_float))
+                        {
+                            for(usize i = 0; i < m_submitted_desc.nodes.size(); ++i)
+                            {
+                                if(m_submitted_desc.nodes[i].id == target)
+                                {
+                                    m_active_float_component = hit_test_float_component(*node, m_layouts[i].rect, e.position);
+                                    break;
+                                }
+                            }
+                        }
                         update_float_node_from_pointer(target, e.position);
                     }
                 }
@@ -240,6 +391,22 @@ namespace Luna
                 {
                     m_pointer_inside = true;
                     m_pointer_pos = e.position;
+                    if(e.button == GUIPointerButton::right)
+                    {
+                        GUIID target = hit_test(e.position);
+                        if(target)
+                        {
+                            ItemResult& result = get_or_create_current_result(target);
+                            result.states.insert_or_assign(Name("gui.right_clicked"), Any(true));
+                            PersistentItemState& state = get_or_create_persistent_state(target);
+                            state.last_right_click_time = m_time;
+                        }
+                        continue;
+                    }
+                    if(e.button != GUIPointerButton::left)
+                    {
+                        continue;
+                    }
                     if(m_active_table_resize_id)
                     {
                         PersistentItemState& state = get_or_create_persistent_state(m_active_table_resize_id);
@@ -249,6 +416,7 @@ namespace Luna
                         m_active_table_resize_column = false;
                         m_active_table_resize_index = U32_MAX;
                         m_active_id = 0;
+                        m_active_float_component = U32_MAX;
                         continue;
                     }
                     GUIID target = hit_test(e.position);
@@ -280,6 +448,15 @@ namespace Luna
                                 *node.i32_value = (*node.i32_value + 1) % (i32)node.items.size();
                                 result.states.insert_or_assign(Name("gui.value_changed"), Any(true));
                             }
+                            else if(window_has_title_bar(node) && node.bool_value)
+                            {
+                                RectF rect = m_layouts[i].rect;
+                                if(point_in_rect(e.position, window_close_rect(rect)))
+                                {
+                                    *node.bool_value = false;
+                                    result.states.insert_or_assign(Name("gui.value_changed"), Any(true));
+                                }
+                            }
                             break;
                         }
                     }
@@ -288,8 +465,14 @@ namespace Luna
                         PersistentItemState& state = get_or_create_persistent_state(m_active_id);
                         state.pointer_down = false;
                         state.active = false;
+                        state.text_selecting = false;
+                        if(state.text_select_anchor == state.text_cursor)
+                        {
+                            state.text_select_anchor = USIZE_MAX;
+                        }
                     }
                     m_active_id = 0;
+                    m_active_float_component = U32_MAX;
                 }
                 else if(e.type == GUIInputEventType::pointer_wheel)
                 {
@@ -311,33 +494,163 @@ namespace Luna
                     {
                         if(node.id == m_focused_id && node.kind == GUINodeKind::input_text && node.string_value)
                         {
-                            node.string_value->append(e.text);
-                            ItemResult& result = get_or_create_current_result(node.id);
-                            result.states.insert_or_assign(Name("gui.value_changed"), Any(true));
+                            String filtered = filter_input_text(e.text);
+                            if(!filtered.empty())
+                            {
+                                PersistentItemState& state = get_or_create_persistent_state(node.id);
+                                state.text_cursor = clamp_utf8_cursor(*node.string_value, state.text_cursor);
+                                delete_input_text_selection(*node.string_value, state);
+                                node.string_value->insert(state.text_cursor, filtered);
+                                state.text_cursor += filtered.size();
+                                input_text_clear_selection(state);
+                                state.text_cursor_blink_start = m_time;
+                                ItemResult& result = get_or_create_current_result(node.id);
+                                result.states.insert_or_assign(Name("gui.value_changed"), Any(true));
+                            }
                             break;
                         }
                     }
                 }
                 else if(e.type == GUIInputEventType::key_down)
                 {
-                    if(e.key == GUIKey::backspace && m_focused_id)
+                    if(!m_focused_id) continue;
+                    for(GUINode& node : m_submitted_desc.nodes)
                     {
-                        for(GUINode& node : m_submitted_desc.nodes)
+                        if(node.id != m_focused_id || node.kind != GUINodeKind::input_text || !node.string_value)
                         {
-                            if(node.id == m_focused_id && node.kind == GUINodeKind::input_text && node.string_value && !node.string_value->empty())
+                            continue;
+                        }
+                        PersistentItemState& state = get_or_create_persistent_state(node.id);
+                        state.text_cursor = clamp_utf8_cursor(*node.string_value, state.text_cursor);
+                        bool changed = false;
+                        bool shortcut = has_modifier(e.modifiers, GUIKeyModifierFlag::ctrl) || has_modifier(e.modifiers, GUIKeyModifierFlag::system);
+                        bool shift = has_modifier(e.modifiers, GUIKeyModifierFlag::shift);
+                        if(shortcut && e.key == GUIKey::c)
+                        {
+                            if(input_text_has_selection(*node.string_value, state) && m_clipboard_io.set_text)
                             {
-                                pop_utf8_codepoint(*node.string_value);
-                                ItemResult& result = get_or_create_current_result(node.id);
-                                result.states.insert_or_assign(Name("gui.value_changed"), Any(true));
-                                break;
+                                usize begin = 0;
+                                usize end = 0;
+                                input_text_selection_range(*node.string_value, state, begin, end);
+                                String selected = node.string_value->substr(begin, end - begin);
+                                RV clipboard_result = m_clipboard_io.set_text(selected.c_str(), selected.size(), m_clipboard_io.userdata);
+                                (void)clipboard_result;
                             }
                         }
+                        else if(shortcut && e.key == GUIKey::v)
+                        {
+                            if(m_clipboard_io.get_text)
+                            {
+                                String clipboard_text;
+                                RV r = m_clipboard_io.get_text(clipboard_text, m_clipboard_io.userdata);
+                                if(succeeded(r))
+                                {
+                                    String filtered = filter_input_text(clipboard_text);
+                                    if(!filtered.empty() || input_text_has_selection(*node.string_value, state))
+                                    {
+                                        delete_input_text_selection(*node.string_value, state);
+                                        node.string_value->insert(state.text_cursor, filtered);
+                                        state.text_cursor += filtered.size();
+                                        input_text_clear_selection(state);
+                                        state.text_cursor_blink_start = m_time;
+                                        changed = true;
+                                    }
+                                }
+                            }
+                        }
+                        else if(e.key == GUIKey::backspace)
+                        {
+                            if(input_text_has_selection(*node.string_value, state))
+                            {
+                                changed = delete_input_text_selection(*node.string_value, state);
+                            }
+                            else
+                            {
+                                usize old_size = node.string_value->size();
+                                erase_previous_utf8_codepoint(*node.string_value, state.text_cursor);
+                                changed = node.string_value->size() != old_size;
+                            }
+                            state.text_cursor_blink_start = m_time;
+                        }
+                        else if(e.key == GUIKey::del)
+                        {
+                            if(input_text_has_selection(*node.string_value, state))
+                            {
+                                changed = delete_input_text_selection(*node.string_value, state);
+                            }
+                            else
+                            {
+                                usize old_size = node.string_value->size();
+                                erase_utf8_codepoint_at(*node.string_value, state.text_cursor);
+                                changed = node.string_value->size() != old_size;
+                            }
+                            state.text_cursor_blink_start = m_time;
+                        }
+                        else if(e.key == GUIKey::left)
+                        {
+                            if(shift && state.text_select_anchor == USIZE_MAX)
+                            {
+                                state.text_select_anchor = state.text_cursor;
+                            }
+                            if(!shift && input_text_has_selection(*node.string_value, state))
+                            {
+                                usize begin = 0;
+                                usize end = 0;
+                                input_text_selection_range(*node.string_value, state, begin, end);
+                                state.text_cursor = begin;
+                                input_text_clear_selection(state);
+                            }
+                            else
+                            {
+                                state.text_cursor = previous_utf8_cursor(*node.string_value, state.text_cursor);
+                                if(!shift) input_text_clear_selection(state);
+                            }
+                            state.text_cursor_blink_start = m_time;
+                        }
+                        else if(e.key == GUIKey::right)
+                        {
+                            if(shift && state.text_select_anchor == USIZE_MAX)
+                            {
+                                state.text_select_anchor = state.text_cursor;
+                            }
+                            if(!shift && input_text_has_selection(*node.string_value, state))
+                            {
+                                usize begin = 0;
+                                usize end = 0;
+                                input_text_selection_range(*node.string_value, state, begin, end);
+                                state.text_cursor = end;
+                                input_text_clear_selection(state);
+                            }
+                            else
+                            {
+                                state.text_cursor = next_utf8_cursor(*node.string_value, state.text_cursor);
+                                if(!shift) input_text_clear_selection(state);
+                            }
+                            state.text_cursor_blink_start = m_time;
+                        }
+                        else if(e.key == GUIKey::enter || e.key == GUIKey::esc)
+                        {
+                            m_focused_id = 0;
+                            state.focused = false;
+                            input_text_clear_selection(state);
+                        }
+                        if(changed)
+                        {
+                            ItemResult& result = get_or_create_current_result(node.id);
+                            result.states.insert_or_assign(Name("gui.value_changed"), Any(true));
+                        }
+                        break;
                     }
                 }
                 else if(e.type == GUIInputEventType::blur)
                 {
+                    if(m_focused_id)
+                    {
+                        input_text_clear_selection(get_or_create_persistent_state(m_focused_id));
+                    }
                     m_focused_id = 0;
                     m_active_id = 0;
+                    m_active_float_component = U32_MAX;
                     m_active_table_resize_id = 0;
                     m_active_table_resize_column = false;
                     m_active_table_resize_index = U32_MAX;
@@ -372,6 +685,7 @@ namespace Luna
                     ItemResult& result = get_or_create_current_result(node.id);
                     result.generation = m_generation;
                     result.states.insert_or_assign(Name("gui.clicked"), Any(false));
+                    result.states.insert_or_assign(Name("gui.right_clicked"), Any(false));
                     result.states.insert_or_assign(Name("gui.double_clicked"), Any(false));
                     result.states.insert_or_assign(Name("gui.hovered"), Any(false));
                     result.states.insert_or_assign(Name("gui.active"), Any(false));
@@ -381,6 +695,10 @@ namespace Luna
                     if(node.kind == GUINodeKind::collapsing_header)
                     {
                         result.states.insert_or_assign(Name("gui.open"), Any(persistent.open));
+                    }
+                    else if(node.kind == GUINodeKind::input_text && node.string_value)
+                    {
+                        persistent.text_cursor = clamp_utf8_cursor(*node.string_value, persistent.text_cursor);
                     }
                 }
                 RectF root_rect(0.0f, 0.0f, m_frame_desc.surface_size.x, m_frame_desc.surface_size.y);

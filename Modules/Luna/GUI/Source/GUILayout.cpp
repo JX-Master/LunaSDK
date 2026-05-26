@@ -101,6 +101,14 @@ namespace Luna
                 metrics.max_size = Float2U(F32_MAX, 30.0f);
                 break;
             }
+            case GUINodeKind::selectable:
+            {
+                f32 w = max(text_width + 24.0f, 72.0f);
+                metrics.min_size = Float2U(72.0f, 26.0f);
+                metrics.preferred_size = Float2U(w, 26.0f);
+                metrics.max_size = Float2U(F32_MAX, 26.0f);
+                break;
+            }
             case GUINodeKind::checkbox:
             {
                 f32 w = max(text_width + 30.0f, 80.0f);
@@ -147,6 +155,11 @@ namespace Luna
                 metrics.max_size = Float2U(F32_MAX, 30.0f);
                 break;
             }
+            case GUINodeKind::hit_box:
+                metrics.min_size = Float2U(1.0f, 1.0f);
+                metrics.preferred_size = Float2U(1.0f, 1.0f);
+                metrics.max_size = Float2U(F32_MAX, F32_MAX);
+                break;
             case GUINodeKind::table_layout:
             {
                 Vector<f32> min_columns;
@@ -193,8 +206,9 @@ namespace Luna
                 u32 child_count = 0;
                 for(u32 child = node.first_child; child != U32_MAX; child = m_submitted_desc.nodes[child].next_sibling)
                 {
-                    GUILayoutMetrics child_metrics = measure_node(child);
                     const GUINode& child_node = m_submitted_desc.nodes[child];
+                    if(is_absolute_node(child_node)) continue;
+                    GUILayoutMetrics child_metrics = measure_node(child);
                     f32 child_min_main = axis_value(child_metrics.min_size, horizontal);
                     f32 child_preferred_main = resolve_base_axis_size(child_node, child_metrics, horizontal);
                     f32 child_min_cross = axis_value(child_metrics.min_size, !horizontal);
@@ -227,6 +241,14 @@ namespace Luna
                 {
                     min_size = Float2U(max(min_cross, 1.0f), max(min_main, 1.0f));
                     preferred_size = Float2U(max(preferred_cross, 1.0f), max(preferred_main, 1.0f));
+                }
+                if(window_has_title_bar(node))
+                {
+                    f32 title_width = max(text_width + 48.0f, 96.0f);
+                    min_size.x = max(min_size.x, title_width);
+                    preferred_size.x = max(preferred_size.x, title_width);
+                    min_size.y += window_title_bar_height();
+                    preferred_size.y += window_title_bar_height();
                 }
                 metrics.min_size = min_size;
                 metrics.preferred_size = preferred_size;
@@ -295,6 +317,10 @@ namespace Luna
         {
             GUINode& node = m_submitted_desc.nodes[node_index];
             RectF effective_clip = intersect_rect(rect, clip_rect);
+            if(node.has_user_clip_rect)
+            {
+                effective_clip = intersect_rect(effective_clip, node.user_clip_rect);
+            }
             m_layouts[node_index].rect = rect;
             m_layouts[node_index].clip_rect = effective_clip;
 
@@ -320,6 +346,12 @@ namespace Luna
                 rect.offset_y + padding.top,
                 max(rect.width - padding.left - padding.right, 0.0f),
                 max(rect.height - padding.top - padding.bottom, 0.0f));
+            if(window_has_title_bar(node))
+            {
+                f32 title_bar_height = window_title_bar_height();
+                content_rect.offset_y += title_bar_height;
+                content_rect.height = max(content_rect.height - title_bar_height, 0.0f);
+            }
             if(node.kind == GUINodeKind::scroll_view)
             {
                 PersistentItemState& persistent = get_or_create_persistent_state(node.id);
@@ -327,6 +359,7 @@ namespace Luna
             }
 
             Vector<u32> children;
+            Vector<u32> absolute_children;
             Vector<GUILayoutMetrics> child_metrics;
             Vector<f32> main_sizes;
             f32 total_base_main = 0.0f;
@@ -334,8 +367,13 @@ namespace Luna
             f32 total_shrink_capacity = 0.0f;
             for(u32 child = node.first_child; child != U32_MAX; child = m_submitted_desc.nodes[child].next_sibling)
             {
-                GUILayoutMetrics metrics = measure_node(child);
                 GUINode& child_node = m_submitted_desc.nodes[child];
+                if(is_absolute_node(child_node))
+                {
+                    absolute_children.push_back(child);
+                    continue;
+                }
+                GUILayoutMetrics metrics = measure_node(child);
                 f32 base_main = resolve_base_axis_size(child_node, metrics, horizontal);
                 f32 min_main = axis_value(metrics.min_size, horizontal);
                 base_main = max(base_main, min_main);
@@ -350,7 +388,24 @@ namespace Luna
                 }
             }
 
-            if(children.empty()) return rect;
+            auto layout_absolute_children = [&]() {
+                RectF surface_clip(0.0f, 0.0f, m_frame_desc.surface_size.x, m_frame_desc.surface_size.y);
+                for(u32 child : absolute_children)
+                {
+                    GUINode& child_node = m_submitted_desc.nodes[child];
+                    GUILayoutMetrics metrics = measure_node(child);
+                    f32 width = resolve_base_axis_size(child_node, metrics, true);
+                    f32 height = resolve_base_axis_size(child_node, metrics, false);
+                    RectF child_rect(child_node.position.x, child_node.position.y, max(width, 1.0f), max(height, 1.0f));
+                    layout_node(child, child_rect, surface_clip);
+                }
+            };
+
+            if(children.empty())
+            {
+                layout_absolute_children();
+                return rect;
+            }
 
             f32 gap = node.layout_desc.gap;
             f32 total_gap = gap * (f32)(children.size() - 1);
@@ -444,6 +499,7 @@ namespace Luna
                 layout_node(children[i], child_rect, effective_clip);
                 main_cursor += main_sizes[i] + gap;
             }
+            layout_absolute_children();
             return rect;
         }
     }

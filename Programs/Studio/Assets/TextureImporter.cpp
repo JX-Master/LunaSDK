@@ -528,9 +528,10 @@ namespace Luna
         char title[32];
         snprintf(title, 32, "Texture Importer###%d", (u32)(usize)this);
 
-        ImGui::Begin(title, &m_open, ImGuiWindowFlags_NoCollapse);
+        if(!m_open) return;
 
-        if (ImGui::Button("Select Source File"))
+        GUI::BeginWindow(title, &m_open, GUI::GUISize::fixed(720.0f, 780.0f));
+        if (GUI::IsItemClicked(GUI::Button("Select Source File")))
         {
             lutry
             {
@@ -577,11 +578,11 @@ namespace Luna
 
         if(m_files.empty())
         {
-            ImGui::Text("No image file selected.");
+            GUI::Text("No image file selected.");
         }
         else
         {
-            if(ImGui::Button("Import All"))
+            if(GUI::IsItemClicked(GUI::Button("Import All")))
             {
                 for(auto& file : m_files)
                 {
@@ -591,14 +592,21 @@ namespace Luna
                     }    
                 }
             }
-            for(auto& file : m_files)
+            GUI::BeginScrollView("Texture Importer Content", GUI::GUISize::fixed(704.0f, 700.0f));
+            for(usize i = 0; i < m_files.size(); ++i)
             {
-                ImGui::Text("%s", file.m_path.encode().c_str());
-                ImGui::Text("Texture Information:");
+                auto& file = m_files[i];
+                GUI::PushID(i);
+                GUI::Text(file.m_path.encode().c_str());
+                GUI::Text("Texture Information:");
                 if(file.m_type == TextureFileType::image)
                 {
-                    ImGui::Text("Width: %u", file.m_desc.width);
-                    ImGui::Text("Height: %u", file.m_desc.height);
+                    String width_text;
+                    String height_text;
+                    strprintf(width_text, "Width: %u", file.m_desc.width);
+                    strprintf(height_text, "Height: %u", file.m_desc.height);
+                    GUI::Text(width_text.c_str());
+                    GUI::Text(height_text.c_str());
                     const char* fmt = nullptr;
                     switch (file.m_desc.format)
                     {
@@ -630,50 +638,69 @@ namespace Luna
                         lupanic();
                         break;
                     }
-                    ImGui::Text("Format: %s", fmt);
+                    String format_text;
+                    strprintf(format_text, "Format: %s", fmt);
+                    GUI::Text(format_text.c_str());
                 }
                 else if(file.m_type == TextureFileType::dds)
                 {
                     switch(file.m_dds_desc.dimension)
                     {
                         case Image::DDSDimension::tex1d:
-                            ImGui::Text("1D Texture");
+                            GUI::Text("1D Texture");
                             break;
                         case Image::DDSDimension::tex2d:
-                            ImGui::Text("2D Texture");
+                            GUI::Text("2D Texture");
                             break;
                         case Image::DDSDimension::tex3d:
-                            ImGui::Text("3D Texture");
+                            GUI::Text("3D Texture");
                             break;
                         default: lupanic();
                     }
-                    ImGui::Text("Width: %u", file.m_dds_desc.width);
-                    ImGui::Text("Height: %u", file.m_dds_desc.height);
-                    ImGui::Text("Depth: %u", file.m_dds_desc.depth);
-                    ImGui::Text("Mips: %u", file.m_dds_desc.mip_levels);
-                    ImGui::Text("Array Size: %u", file.m_dds_desc.array_size);
+                    String width_text;
+                    String height_text;
+                    String depth_text;
+                    String mips_text;
+                    String array_text;
+                    strprintf(width_text, "Width: %u", file.m_dds_desc.width);
+                    strprintf(height_text, "Height: %u", file.m_dds_desc.height);
+                    strprintf(depth_text, "Depth: %u", file.m_dds_desc.depth);
+                    strprintf(mips_text, "Mips: %u", file.m_dds_desc.mip_levels);
+                    strprintf(array_text, "Array Size: %u", file.m_dds_desc.array_size);
+                    GUI::Text(width_text.c_str());
+                    GUI::Text(height_text.c_str());
+                    GUI::Text(depth_text.c_str());
+                    GUI::Text(mips_text.c_str());
+                    GUI::Text(array_text.c_str());
                     const char* fmt = print_dds_format(file.m_dds_desc.format);
-                    ImGui::Text("Format: %s", fmt);
+                    String format_text;
+                    strprintf(format_text, "Format: %s", fmt);
+                    GUI::Text(format_text.c_str());
                 }
-                ImGui::Text("Import Settings:");
-                ImGui::InputText("Asset Name", file.m_asset_name);
+                GUI::Text("Import Settings:");
+                GUI::InputText("Asset Name", file.m_asset_name);
                 if(file.m_type == TextureFileType::image)
                 {
-                    int import_type = (int)file.m_prefiler_type;
-                    ImGui::Combo("Import Type", &import_type, "Texture\0Environment Map\0\0");
+                    i32 import_type = (i32)file.m_prefiler_type;
+                    const c8* import_options[] = {"Texture", "Environment Map"};
+                    GUI::Combo("Import Type", &import_type, Span<const c8*>(import_options, 2));
                     file.m_prefiler_type = (TexturePrefilerType)import_type;
                 }
                 if (!file.m_asset_name.empty())
                 {
-                    ImGui::Text("The texture will be imported as: %s%s", m_create_dir.encode().c_str(), file.m_asset_name.c_str());
-                    if (ImGui::Button("Import"))
+                    String import_path;
+                    strprintf(import_path, "The texture will be imported as: %s%s", m_create_dir.encode().c_str(), file.m_asset_name.c_str());
+                    GUI::Text(import_path.c_str());
+                    if (GUI::IsItemClicked(GUI::Button("Import")))
                     {
                         import_texture_asset(m_create_dir, file);
                     }
                 }
+                GUI::PopID();
             }
+            GUI::EndScrollView();
         }
-        ImGui::End();
+        GUI::EndWindow();
     }
     void register_texture_importer()
     {

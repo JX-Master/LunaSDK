@@ -11,6 +11,7 @@
 #include "../SceneRenderer.hpp"
 #include "../MainEditor.hpp"
 #include "../Scene.hpp"
+#include <Luna/GUI/GUI.hpp>
 #include <Luna/Runtime/Math/Color.hpp>
 #include <Luna/Window/MessageBox.hpp>
 #include <Luna/HID/Mouse.hpp>
@@ -30,6 +31,42 @@
 
 namespace Luna
 {
+    namespace
+    {
+        struct SceneGUIRow
+        {
+            Float2 size;
+        };
+
+        SceneGUIRow begin_scene_gui_row(const c8* label, f32 height = 30.0f)
+        {
+            Float2 pos = ImGui::GetCursorScreenPos();
+            Float2 avail = ImGui::GetContentRegionAvail();
+            f32 width = max(avail.x, 240.0f);
+            GUI::GUILayoutDesc row;
+            row.cross_axis_alignment = GUI::GUILayoutCrossAxisAlignment::stretch;
+            GUI::BeginHLayout(label, RectF(pos.x, pos.y, width, height), row);
+            GUI::SetNextItemLayout(GUI::GUILayoutStyle::fill_width());
+            return SceneGUIRow { Float2(width, height) };
+        }
+
+        bool end_scene_gui_row(const SceneGUIRow& row, GUI::GUIItemHandle item)
+        {
+            GUI::EndHLayout();
+            ImGui::Dummy(row.size);
+            return GUI::GetItemState(item, GUI::GUIState::value_changed());
+        }
+
+        void draw_scene_gui_text_line(const c8* text, f32 height = 24.0f)
+        {
+            Float2 pos = ImGui::GetCursorScreenPos();
+            f32 width = max(ImGui::GetContentRegionAvail().x, 1.0f);
+            GUI::DrawText(RectF(pos.x, pos.y, width, height), text, Color::white(), 16.0f,
+                GUI::GUITextAlignment::begin, GUI::GUITextAlignment::center);
+            ImGui::Dummy(Float2(width, height));
+        }
+    }
+
     struct SceneEditorUserData
     {
         lustruct("SceneEditorUserData", "{5b4aea33-e61a-4042-ba91-1f4ec84f8194}");
@@ -61,6 +98,14 @@ namespace Luna
 
         // States for actor list.
         Guid m_editing_actor_guid = Guid(0, 0);
+        Guid m_actor_name_editing_guid = Guid(0, 0);
+        String m_actor_name_editing_text;
+        bool m_actor_popup_open = false;
+        Float2U m_actor_popup_position = Float2U(0.0f);
+        bool m_new_component_popup_open = false;
+        Float2U m_new_component_popup_position = Float2U(0.0f);
+        i32 m_scene_menu_open = -1;
+        Float2U m_scene_menu_popup_position = Float2U(0.0f);
 
         // States for scene viewport.
 
@@ -227,11 +272,15 @@ namespace Luna
         auto s = get_asset_or_async_load_if_not_ready<Scene>(m_scene);
 
         // Draw  list.
-        ImGui::Text("Actor List");
+        SceneGUIRow header_row = begin_scene_gui_row("Actor List Header", 30.0f);
+        GUI::SetNextItemLayout(GUI::GUILayoutStyle::fixed_width(96.0f));
+        GUI::Text("Actor List");
+        GUI::SetNextItemLayout(GUI::GUILayoutStyle::fixed_width(110.0f));
+        GUI::GUIItemHandle new_actor_button = GUI::Button("New Actor");
+        GUI::EndHLayout();
+        ImGui::Dummy(header_row.size);
 
-        ImGui::SameLine();
-
-        if (ImGui::Button("New Actor"))
+        if (GUI::IsItemClicked(new_actor_button))
         {
             auto iter = s->actors.emplace_back();
             iter->guid = random_guid();
@@ -246,12 +295,10 @@ namespace Luna
 
         if (s->actors.empty())
         {
-            ImGui::Text("No actor in the scene.");
+            draw_scene_gui_text_line("No actor in the scene.");
         }
         else
         {
-            const char* actor_popup_id = "Entity Popup";
-
             bool open_actor_list_popup = false;
 
             for(auto& actor : s->actors)
@@ -265,12 +312,17 @@ namespace Luna
 
             if(open_actor_list_popup)
             {
-                ImGui::OpenPopup(actor_popup_id);
+                auto mouse_pos = ImGui::GetIO().MousePos;
+                m_actor_popup_open = true;
+                m_actor_popup_position = Float2U(mouse_pos.x, mouse_pos.y);
             }
 
-            if (ImGui::BeginPopup(actor_popup_id))
+            if (m_actor_popup_open)
             {
-                if (ImGui::Selectable("Remove"))
+                GUI::BeginPopup("Actor Popup", m_actor_popup_position, GUI::GUISize::fixed(150.0f, 42.0f));
+                GUI::GUIItemHandle remove_item = GUI::Selectable("Remove");
+                GUI::EndPopup();
+                if (GUI::IsItemClicked(remove_item))
                 {
                     usize remove_index = 0;
                     for(usize i = 0; i < s->actors.size(); ++i)
@@ -283,9 +335,8 @@ namespace Luna
                     }
                     on_remove_actor(m_editing_actor_guid);
                     s->actors.erase(s->actors.begin() + remove_index);
-                    ImGui::CloseCurrentPopup();
+                    m_actor_popup_open = false;
                 }
-                ImGui::EndPopup();
             }
         }
 
@@ -366,7 +417,7 @@ namespace Luna
     void SceneEditor::draw_scene_settings()
     {
         auto s = get_asset_or_async_load_if_not_ready<Scene>(m_scene);
-        ImGui::Text("Scene Settings");
+        draw_scene_gui_text_line("Scene Settings");
 
         ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 5.0f);
         if(ImGui::BeginChild("Scene Settings", Float2(0.0f, 0.0f), true))
@@ -382,7 +433,7 @@ namespace Luna
     {
         lutry
         {
-            ImGui::Text("Scene");
+            draw_scene_gui_text_line("Scene");
 
             Scene* s = get_asset_or_async_load_if_not_ready<Scene>(m_scene);
 
@@ -390,13 +441,13 @@ namespace Luna
             Actor* camera_actor = m_world.get_actor(s->settings.camera_actor.guid);
             if(!camera_actor)
             {
-                ImGui::Text("Set a camera in scene settings to start.");
+                draw_scene_gui_text_line("Set a camera in scene settings to start.");
                 return;
             }
             Camera* camera_component = camera_actor->get_component<Camera>();
             if(!camera_component)
             {
-                ImGui::Text("Actor camera actor does not have a camera component");
+                draw_scene_gui_text_line("Actor camera actor does not have a camera component");
                 return;
             }
 
@@ -425,118 +476,74 @@ namespace Luna
 
             ImGui::BeginChild("Scene Viewport", Float2(0.0f, 0.0f), false, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar);
 
-            ImGui::SetNextItemWidth(100.0f);
-            ImGui::SliderFloat("Camera Speed", &m_camera_speed, 0.1f, 10.0f, "%.3f");
-            ImGui::SameLine();
-            {
-                // Draw gizmo mode combo.
-                ImGui::Text("Gizmo Mode");
-                ImGui::SameLine();
-                auto mode = m_gizmo_mode;
-                if (m_gizmo_mode != ImGui::GizmoMode::local)
-                {
-                    ImGui::PushStyleColor(ImGuiCol_Text, Float4(1.0f, 1.0f, 1.0f, 0.5f));
-                }
-                if (ImGui::Button("Local"))
-                {
-                    mode = ImGui::GizmoMode::local;
-                }
-                if (m_gizmo_mode != ImGui::GizmoMode::local)
-                {
-                    ImGui::PopStyleColor();
-                }
-                ImGui::SameLine(0);
-                if (m_gizmo_mode != ImGui::GizmoMode::world)
-                {
-                    ImGui::PushStyleColor(ImGuiCol_Text, Float4(1.0f, 1.0f, 1.0f, 0.5f));
-                }
-                if (ImGui::Button("World"))
-                {
-                    mode = ImGui::GizmoMode::world;
-                }
-                if (m_gizmo_mode != ImGui::GizmoMode::world)
-                {
-                    ImGui::PopStyleColor();
-                }
-                m_gizmo_mode = mode;
-                ImGui::SameLine();
-
-                // Draw gizmo operation combo.
-                ImGui::Text("Gizmo Operation");
-                ImGui::SameLine();
-                auto op = m_gizmo_op;
-                if (m_gizmo_op != ImGui::GizmoOperation::translate)
-                {
-                    ImGui::PushStyleColor(ImGuiCol_Text, Float4(1.0f, 1.0f, 1.0f, 0.5f));
-                }
-                if (ImGui::Button("Translate"))
-                {
-                    op = ImGui::GizmoOperation::translate;
-                }
-                if (m_gizmo_op != ImGui::GizmoOperation::translate)
-                {
-                    ImGui::PopStyleColor();
-                }
-                ImGui::SameLine(0);
-                if (m_gizmo_op != ImGui::GizmoOperation::rotate)
-                {
-                    ImGui::PushStyleColor(ImGuiCol_Text, Float4(1.0f, 1.0f, 1.0f, 0.5f));
-                }
-                if (ImGui::Button("Rotate"))
-                {
-                    op = ImGui::GizmoOperation::rotate;
-                }
-                if (m_gizmo_op != ImGui::GizmoOperation::rotate)
-                {
-                    ImGui::PopStyleColor();
-                }
-                ImGui::SameLine(0);
-                if (m_gizmo_op != ImGui::GizmoOperation::scale)
-                {
-                    ImGui::PushStyleColor(ImGuiCol_Text, Float4(1.0f, 1.0f, 1.0f, 0.5f));
-                }
-                if (ImGui::Button("Scale"))
-                {
-                    op = ImGui::GizmoOperation::scale;
-                }
-                if (m_gizmo_op != ImGui::GizmoOperation::scale)
-                {
-                    ImGui::PopStyleColor();
-                }
-                m_gizmo_op = op;
-            }
-
             auto settings = m_renderer.get_settings();
 
-            ImGui::SameLine();
-            ImGui::SetNextItemWidth(150.0f);
+            Float2 toolbar_pos = ImGui::GetCursorScreenPos();
+            Float2 toolbar_avail = ImGui::GetContentRegionAvail();
+            f32 toolbar_width = max(toolbar_avail.x, 1.0f);
+            f32 toolbar_height = 32.0f;
+            auto render_mode_type = typeof<SceneRendererMode>();
+            auto options = get_enum_options(render_mode_type);
+            Name current_name;
+            usize current_mode_index = 0;
+            for(usize i = 0; i < options.size(); ++i)
             {
-                auto render_mode_type = typeof<SceneRendererMode>();
-                auto options = get_enum_options(render_mode_type);
-                Name current_name;
-                for(auto& option : options)
+                if(options[i].value == (i64)settings.mode)
                 {
-                    if(option.value == (i64)settings.mode)
-                    {
-                        current_name = option.name;
-                        break;
-                    }
-                }
-                if(ImGui::BeginCombo("Render Mode", current_name.c_str()))
-                {
-                    for(auto& option : options)
-                    {
-                        bool selected = (option.value == (i64)settings.mode);
-                        if(ImGui::Selectable(option.name.c_str(), selected))
-                        {
-                            settings.mode = (SceneRendererMode)option.value;
-                        }
-                    }
-                    ImGui::EndCombo();
+                    current_name = options[i].name;
+                    current_mode_index = i;
+                    break;
                 }
             }
-            ImGui::SameLine();
-            ImGui::Checkbox("Time Profiling", &settings.frame_profiling);
+            if(current_name.empty() && !options.empty())
+            {
+                current_name = options[0].name;
+            }
+            String render_mode_label;
+            strprintf(render_mode_label, "Render: %s", current_name.c_str());
+
+            GUI::PushID(this);
+            GUI::GUILayoutDesc toolbar_layout;
+            toolbar_layout.gap = 6.0f;
+            toolbar_layout.cross_axis_alignment = GUI::GUILayoutCrossAxisAlignment::stretch;
+            GUI::BeginHLayout("Scene Viewport Toolbar", RectF(toolbar_pos.x, toolbar_pos.y, toolbar_width, toolbar_height), toolbar_layout);
+            GUI::SetNextItemLayout(GUI::GUILayoutStyle::fixed_width(190.0f));
+            GUI::SliderFloat("Camera Speed", &m_camera_speed, 0.1f, 10.0f);
+            GUI::SetNextItemLayout(GUI::GUILayoutStyle::fixed_width(84.0f));
+            GUI::Text("Mode");
+            GUI::SetNextItemLayout(GUI::GUILayoutStyle::fixed_width(64.0f));
+            GUI::GUIItemHandle local_mode = GUI::Selectable("Local", m_gizmo_mode == ImGui::GizmoMode::local);
+            GUI::SetNextItemLayout(GUI::GUILayoutStyle::fixed_width(64.0f));
+            GUI::GUIItemHandle world_mode = GUI::Selectable("World", m_gizmo_mode == ImGui::GizmoMode::world);
+            GUI::SetNextItemLayout(GUI::GUILayoutStyle::fixed_width(72.0f));
+            GUI::Text("Operation");
+            GUI::SetNextItemLayout(GUI::GUILayoutStyle::fixed_width(90.0f));
+            GUI::GUIItemHandle translate_op = GUI::Selectable("Translate", m_gizmo_op == ImGui::GizmoOperation::translate);
+            GUI::SetNextItemLayout(GUI::GUILayoutStyle::fixed_width(72.0f));
+            GUI::GUIItemHandle rotate_op = GUI::Selectable("Rotate", m_gizmo_op == ImGui::GizmoOperation::rotate);
+            GUI::SetNextItemLayout(GUI::GUILayoutStyle::fixed_width(64.0f));
+            GUI::GUIItemHandle scale_op = GUI::Selectable("Scale", m_gizmo_op == ImGui::GizmoOperation::scale);
+            GUI::SetNextItemLayout(GUI::GUILayoutStyle::fixed_width(170.0f));
+            GUI::GUIItemHandle render_mode_button = GUI::Button(render_mode_label.c_str());
+            GUI::SetNextItemLayout(GUI::GUILayoutStyle::fixed_width(140.0f));
+            GUI::GUIItemHandle profiling_button = GUI::Selectable("Time Profiling", settings.frame_profiling);
+            GUI::EndHLayout();
+            GUI::PopID();
+            ImGui::Dummy(Float2(toolbar_width, toolbar_height));
+
+            if(GUI::IsItemClicked(local_mode)) m_gizmo_mode = ImGui::GizmoMode::local;
+            if(GUI::IsItemClicked(world_mode)) m_gizmo_mode = ImGui::GizmoMode::world;
+            if(GUI::IsItemClicked(translate_op)) m_gizmo_op = ImGui::GizmoOperation::translate;
+            if(GUI::IsItemClicked(rotate_op)) m_gizmo_op = ImGui::GizmoOperation::rotate;
+            if(GUI::IsItemClicked(scale_op)) m_gizmo_op = ImGui::GizmoOperation::scale;
+            if(GUI::IsItemClicked(render_mode_button) && !options.empty())
+            {
+                settings.mode = (SceneRendererMode)options[(current_mode_index + 1) % options.size()].value;
+            }
+            if(GUI::IsItemClicked(profiling_button))
+            {
+                settings.frame_profiling = !settings.frame_profiling;
+            }
 
             Float2 scene_sz = ImGui::GetContentRegionAvail();
             Float2 scene_pos = ImGui::GetCursorScreenPos();
@@ -550,7 +557,8 @@ namespace Luna
             // Draw Overlays.
             luexp(m_renderer.command_buffer->submit({}, {}, true));
 
-            ImGui::Image(m_renderer.render_texture, scene_sz);
+            GUI::DrawImage(m_renderer.render_texture.get(), RectF(scene_pos.x, scene_pos.y, scene_sz.x, scene_sz.y));
+            ImGui::Dummy(scene_sz);
 
             auto& scene_settings = s->settings;
 
@@ -573,28 +581,34 @@ namespace Luna
                     }
                 }
 
-                // Draw scene debug info.
-                auto backup_pos = ImGui::GetCursorPos();
-                ImGui::SetCursorScreenPos(scene_pos);
-
                 if (m_renderer.get_settings().frame_profiling)
                 {
-                    ImGui::Text("Frame Size: %ux%u", (u32)(scene_sz.x * io.DisplayFramebufferScale.x), (u32)(scene_sz.y * io.DisplayFramebufferScale.y));
-                    ImGui::Text("FPS: %f", ImGui::GetIO().Framerate);
+                    f32 debug_y = scene_pos.y + 6.0f;
+                    auto draw_debug_text = [&](const c8* text)
+                    {
+                        GUI::DrawText(RectF(scene_pos.x + 8.0f, debug_y, max(scene_sz.x - 16.0f, 1.0f), 18.0f),
+                            text, Color::white(), 14.0f, GUI::GUITextAlignment::begin, GUI::GUITextAlignment::center);
+                        debug_y += 18.0f;
+                    };
+                    String debug_text;
+                    strprintf(debug_text, "Frame Size: %ux%u", (u32)(scene_sz.x * io.DisplayFramebufferScale.x), (u32)(scene_sz.y * io.DisplayFramebufferScale.y));
+                    draw_debug_text(debug_text.c_str());
+                    strprintf(debug_text, "FPS: %f", ImGui::GetIO().Framerate);
+                    draw_debug_text(debug_text.c_str());
                     for (usize i = 0; i < m_renderer.pass_time_intervals.size(); ++i)
                     {
                         f64 interval = m_renderer.pass_time_intervals[i];
                         if(interval < 0.001)
                         {
-                            ImGui::Text("%s: %fus", m_renderer.enabled_passes[i].c_str(), m_renderer.pass_time_intervals[i] * 1000000.0);
+                            strprintf(debug_text, "%s: %fus", m_renderer.enabled_passes[i].c_str(), m_renderer.pass_time_intervals[i] * 1000000.0);
                         }
                         else
                         {
-                            ImGui::Text("%s: %fms", m_renderer.enabled_passes[i].c_str(), m_renderer.pass_time_intervals[i] * 1000.0);
+                            strprintf(debug_text, "%s: %fms", m_renderer.enabled_passes[i].c_str(), m_renderer.pass_time_intervals[i] * 1000.0);
                         }
+                        draw_debug_text(debug_text.c_str());
                     }
                 }
-                ImGui::SetCursorPos(backup_pos);
 
                 // Draw scene gizmos.
                 if(camera_actor)
@@ -608,13 +622,12 @@ namespace Luna
                     Float4 y_gizmo = mul(Float4(0.0f, 1.0f, 0.0f, 0.0f) * gizmo_len, view_mat);
                     Float4 z_gizmo = mul(Float4(0.0f, 0.0f, 1.0f, 0.0f) * gizmo_len, view_mat);
 
-                    ImDrawList* dw = ImGui::GetWindowDrawList();
                     Float2 origin_point = { scene_pos.x + gizmo_size, scene_pos.y + scene_sz.y - gizmo_size };
 
                     struct GizmoLine
                     {
                         Float3U line;
-                        u32 color;
+                        Float4U color;
 
                         bool operator<(const GizmoLine& rhs) const
                         {
@@ -624,16 +637,16 @@ namespace Luna
                     };
 
                     Vector<GizmoLine> lines;
-                    lines.push_back({ x_gizmo.xyz(), Color::to_rgba8(Color::red()) });
-                    lines.push_back({ y_gizmo.xyz(), Color::to_rgba8(Color::green()) });
-                    lines.push_back({ z_gizmo.xyz(), Color::to_rgba8(Color::blue()) });
+                    lines.push_back({ x_gizmo.xyz(), Color::red() });
+                    lines.push_back({ y_gizmo.xyz(), Color::green() });
+                    lines.push_back({ z_gizmo.xyz(), Color::blue() });
 
                     // Sort by depth to ensure correct drawing order.
                     sort(lines.begin(), lines.end());
                     for (auto& line : lines)
                     {
                         // Revert y axis, since y axis of ImGui points to down, not up.
-                        dw->AddLine(origin_point, origin_point + Float2(line.line.x, -line.line.y), line.color, 5.0f);
+                        GUI::DrawLine(origin_point, origin_point + Float2(line.line.x, -line.line.y), line.color, 5.0f);
                     }
                 }
             }
@@ -716,12 +729,11 @@ namespace Luna
             {
                 luexp(m_renderer.reset(settings));
             }
-            ImGui::Dummy(ImVec2(0, 0));
             ImGui::EndChild();
         }
         lucatch
         {
-            ImGui::Text("%s", explain(luerr));
+            draw_scene_gui_text_line(explain(luerr));
         }
     }
 
@@ -729,7 +741,9 @@ namespace Luna
     {
         bool edited = false;
 
-        edited = edited || ImGui::DragFloat3("Position", t->position.m, 0.01f);
+        SceneGUIRow position_row = begin_scene_gui_row("Position");
+        GUI::GUIItemHandle position_item = GUI::DragFloat3("Position", t->position.m, 0.01f, 0.0f, 0.0f);
+        edited = edited || end_scene_gui_row(position_row, position_item);
 
         auto euler = AffineMatrix::euler_angles(AffineMatrix::make_rotation(t->rotation));
         euler *= 180.0f / PI;
@@ -745,7 +759,9 @@ namespace Luna
             t->rotation = Quaternion::from_euler_angles(euler);
         }
 
-        edited = edited || ImGui::DragFloat3("Scale", t->scale.m, 0.01f);
+        SceneGUIRow scale_row = begin_scene_gui_row("Scale");
+        GUI::GUIItemHandle scale_item = GUI::DragFloat3("Scale", t->scale.m, 0.01f, 0.0f, 0.0f);
+        edited = edited || end_scene_gui_row(scale_row, scale_item);
 
         return edited;
     }
@@ -754,7 +770,7 @@ namespace Luna
     {
         // Draw component property grid.
 
-        ImGui::Text("Components Grid");
+        draw_scene_gui_text_line("Components Grid");
 
         ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 5.0f);
         ImGui::BeginChild("Components Grid", Float2(0.0f, 0.0f), true);
@@ -767,10 +783,19 @@ namespace Luna
         if (actor)
         {
             // Draw name.
-            String name = actor->name;
-            if(ImGui::InputText("Name", name))
+            if(m_actor_name_editing_guid != actor->guid)
             {
-                actor->name = name;
+                m_actor_name_editing_guid = actor->guid;
+                m_actor_name_editing_text = actor->name.c_str();
+            }
+            SceneGUIRow name_row = begin_scene_gui_row("Actor Name");
+            GUI::SetNextItemLayout(GUI::GUILayoutStyle::fixed_width(72.0f));
+            GUI::Text("Name");
+            GUI::SetNextItemLayout(GUI::GUILayoutStyle::fill_width());
+            GUI::GUIItemHandle name_item = GUI::InputText("Actor Name", m_actor_name_editing_text);
+            if(end_scene_gui_row(name_row, name_item))
+            {
+                actor->name = m_actor_name_editing_text;
                 on_edit_actor_info(*actor);
             }
             // Draw transform.
@@ -783,7 +808,7 @@ namespace Luna
 
             if (components.empty())
             {
-                ImGui::Text("No components");
+                draw_scene_gui_text_line("No components");
             }
             else
             {
@@ -792,26 +817,32 @@ namespace Luna
                 while (iter != components.end())
                 {
                     auto& obj = *iter;
-                    if (ImGui::CollapsingHeader(get_type_name(obj.type()).c_str(), ImGuiTreeNodeFlags_DefaultOpen))
+                    Name type_name = get_type_name(obj.type());
+                    GUI::PushID((const void*)obj.type().handle);
+                    SceneGUIRow header_row = begin_scene_gui_row(type_name.c_str());
+                    GUI::GUIItemHandle header = GUI::CollapsingHeader(type_name.c_str());
+                    bool open = GUI::GetItemState(header, GUI::GUIState::open());
+                    end_scene_gui_row(header_row, header);
+                    bool remove_component = false;
+                    if (open)
                     {
                         bool edited = edit_scene_object(&m_world, obj.type(), obj.get());
                         if(edited)
                         {
                             on_actor_edit_component(*actor, obj.type());
                         }
-                        ImGui::PushID(obj.type());
 
-                        if (ImGui::Button("Remove"))
-                        {
-                            on_actor_remove_component(*actor, obj.type());
-                            iter = components.erase(iter);
-                        }
-                        else
-                        {
-                            ++iter;
-                        }
+                        SceneGUIRow remove_row = begin_scene_gui_row("Remove Component", 28.0f);
+                        GUI::SetNextItemLayout(GUI::GUILayoutStyle::fixed_width(120.0f));
+                        GUI::GUIItemHandle remove_button = GUI::Button("Remove");
+                        remove_component = end_scene_gui_row(remove_row, remove_button);
+                    }
+                    GUI::PopID();
 
-                        ImGui::PopID();
+                    if (remove_component)
+                    {
+                        on_actor_remove_component(*actor, obj.type());
+                        iter = components.erase(iter);
                     }
                     else
                     {
@@ -820,18 +851,25 @@ namespace Luna
                 }
             }
 
-            const char* new_comp_popup = "NewCompPopup";
-
-            if (ImGui::Button("New Component"))
+            SceneGUIRow new_component_row = begin_scene_gui_row("New Component", 30.0f);
+            GUI::SetNextItemLayout(GUI::GUILayoutStyle::fixed_width(150.0f));
+            GUI::GUIItemHandle new_component_button = GUI::Button("New Component");
+            end_scene_gui_row(new_component_row, new_component_button);
+            if(GUI::IsItemClicked(new_component_button))
             {
-                ImGui::OpenPopup(new_comp_popup);
+                m_new_component_popup_open = !m_new_component_popup_open;
+                m_new_component_popup_position = GUI::GetPointerPosition();
             }
-
-            if (ImGui::BeginPopup(new_comp_popup))
+            if(m_new_component_popup_open)
             {
+                f32 popup_width = 240.0f;
+                f32 popup_height = max((f32)g_env->component_types.size() * 26.0f + 10.0f, 36.0f);
+                GUI::BeginPopup("New Component Popup", m_new_component_popup_position, GUI::GUISize::fixed(popup_width, popup_height));
+                Vector<Pair<typeinfo_t, GUI::GUIItemHandle>> component_items;
+                component_items.reserve(g_env->component_types.size());
                 for (auto& i : g_env->component_types)
                 {
-                    auto exists = false;
+                    bool exists = false;
                     for(auto& c : components)
                     {
                         if(c.type() == i)
@@ -840,33 +878,35 @@ namespace Luna
                             break;
                         }
                     }
-                    auto name = get_type_name(i);
+                    auto comp_name = get_type_name(i);
                     if (!exists)
                     {
-                        // Show enabled.
-                        if (ImGui::Selectable(name.c_str()))
-                        {
-                            object_t comp = object_alloc(i);
-                            construct_type(i, comp);
-                            ObjRef comp_obj;
-                            comp_obj.attach(comp);
-                            components.push_back(move(comp_obj));
-                            on_actor_add_component(*actor, i);
-                            ImGui::CloseCurrentPopup();
-                        }
+                        component_items.push_back(make_pair(i, GUI::Selectable(comp_name.c_str())));
                     }
                     else
                     {
-                        // Show disabled.
-                        ImGui::Selectable(name.c_str(), false, ImGuiSelectableFlags_Disabled);
+                        GUI::Text(comp_name.c_str());
                     }
                 }
-                ImGui::EndPopup();
+                GUI::EndPopup();
+                for(auto& item : component_items)
+                {
+                    if(GUI::IsItemClicked(item.second))
+                    {
+                        object_t comp = object_alloc(item.first);
+                        construct_type(item.first, comp);
+                        ObjRef comp_obj;
+                        comp_obj.attach(comp);
+                        components.push_back(move(comp_obj));
+                        on_actor_add_component(*actor, item.first);
+                        m_new_component_popup_open = false;
+                    }
+                }
             }
         }
         else
         {
-            ImGui::Text("Select an entity to see components.");
+            draw_scene_gui_text_line("Select an entity to see components.");
         }
 
         ImGui::EndChild();
@@ -877,11 +917,11 @@ namespace Luna
         char title[32];
         snprintf(title, 32, "Scene Editor###%d", (u32)(usize)this);
         ImGui::SetNextWindowSize(Float2(1000, 500), ImGuiCond_FirstUseEver);
-        ImGui::Begin(title, &m_open, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_MenuBar);
+        ImGui::Begin(title, &m_open, ImGuiWindowFlags_NoCollapse);
         auto s = get_asset_or_async_load_if_not_ready<Scene>(m_scene);
         if (!s)
         {
-            ImGui::Text("Asset Unloaded");
+            draw_scene_gui_text_line("Asset Unloaded");
             ImGui::End();
             return;
         }
@@ -896,7 +936,7 @@ namespace Luna
         }
         if (Asset::get_asset_state(m_scene) != Asset::AssetState::loaded)
         {
-            ImGui::Text("Scene Loading");
+            draw_scene_gui_text_line("Scene Loading");
             ImGui::End();
             return;
         }
@@ -904,42 +944,58 @@ namespace Luna
         bool capture_scene = false;
         Path capture_save_path;
 
-        if (ImGui::BeginMenuBar())
+        Float2 menu_pos = ImGui::GetCursorScreenPos();
+        GUI::GUIItemHandle file_menu_button = GUI::Button("File", RectF(menu_pos.x, menu_pos.y, 56.0f, 26.0f));
+        GUI::GUIItemHandle tools_menu_button = GUI::Button("Tools", RectF(menu_pos.x + 62.0f, menu_pos.y, 70.0f, 26.0f));
+        ImGui::Dummy(Float2(138.0f, 30.0f));
+        if(GUI::IsItemClicked(file_menu_button))
         {
-            if (ImGui::BeginMenu("File"))
+            m_scene_menu_open = m_scene_menu_open == 0 ? -1 : 0;
+            m_scene_menu_popup_position = Float2U(menu_pos.x, menu_pos.y + 30.0f);
+        }
+        if(GUI::IsItemClicked(tools_menu_button))
+        {
+            m_scene_menu_open = m_scene_menu_open == 1 ? -1 : 1;
+            m_scene_menu_popup_position = Float2U(menu_pos.x + 62.0f, menu_pos.y + 30.0f);
+        }
+        if(m_scene_menu_open == 0)
+        {
+            GUI::BeginPopup("Scene Editor File Menu", m_scene_menu_popup_position, GUI::GUISize::fixed(180.0f, 42.0f));
+            GUI::GUIItemHandle save_item = GUI::Selectable("Save");
+            GUI::EndPopup();
+            if(GUI::IsItemClicked(save_item))
             {
-                if (ImGui::MenuItem("Save"))
+                lutry
                 {
-                    lutry
-                    {
-                        luexp(Asset::save_asset(m_scene));
-                    }
-                    lucatch
-                    {
-                        auto _ = Window::message_box(explain(luerr), "Failed to save scene", Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
-                    }
+                    luexp(Asset::save_asset(m_scene));
                 }
-                ImGui::EndMenu();
+                lucatch
+                {
+                    auto _ = Window::message_box(explain(luerr), "Failed to save scene", Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
+                }
+                m_scene_menu_open = -1;
             }
-            if(ImGui::BeginMenu("Tools"))
+        }
+        else if(m_scene_menu_open == 1)
+        {
+            GUI::BeginPopup("Scene Editor Tools Menu", m_scene_menu_popup_position, GUI::GUISize::fixed(180.0f, 42.0f));
+            GUI::GUIItemHandle capture_item = GUI::Selectable("Capture scene");
+            GUI::EndPopup();
+            if(GUI::IsItemClicked(capture_item))
             {
-                if(ImGui::MenuItem("Capture scene"))
+                Window::FileDialogFilter filter;
+                filter.name = "BMP File";
+                const c8* ext = "bmp";
+                filter.extensions = {&ext, 1};
+                auto r = Window::save_file_dialog("Save Capture File", {&filter, 1});
+                if(succeeded(r))
                 {
-                    Window::FileDialogFilter filter;
-                    filter.name = "BMP File";
-                    const c8* ext = "bmp";
-                    filter.extensions = {&ext, 1};
-                    auto r = Window::save_file_dialog("Save Capture File", {&filter, 1});
-                    if(succeeded(r))
-                    {
-                        capture_scene = true;
-                        capture_save_path = r.get();
-                        capture_save_path.replace_extension("bmp");
-                    }
+                    capture_scene = true;
+                    capture_save_path = r.get();
+                    capture_save_path.replace_extension("bmp");
                 }
-                ImGui::EndMenu();
+                m_scene_menu_open = -1;
             }
-            ImGui::EndMenuBar();
         }
 
         ImGui::Columns(3, nullptr, true);

@@ -17,6 +17,7 @@ namespace Luna
         namespace GUIState
         {
             LUNA_GUI_API GUIStateKey<bool> clicked();
+            LUNA_GUI_API GUIStateKey<bool> right_clicked();
             LUNA_GUI_API GUIStateKey<bool> double_clicked();
             LUNA_GUI_API GUIStateKey<bool> hovered();
             LUNA_GUI_API GUIStateKey<bool> active();
@@ -47,6 +48,7 @@ namespace Luna
         }
 
         LUNA_GUI_API bool IsItemClicked(GUIItemHandle handle);
+        LUNA_GUI_API bool IsItemRightClicked(GUIItemHandle handle);
         LUNA_GUI_API bool IsItemDoubleClicked(GUIItemHandle handle);
         LUNA_GUI_API bool IsItemHovered(GUIItemHandle handle);
         LUNA_GUI_API bool IsItemActive(GUIItemHandle handle);

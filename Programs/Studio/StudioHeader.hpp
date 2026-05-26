@@ -10,6 +10,7 @@
 #pragma once
 #include <Luna/HID/HID.hpp>
 #include <Luna/RHI/RHI.hpp>
+#include <Luna/GUI/GUI.hpp>
 #include <Luna/ImGui/ImGui.hpp>
 #include <Luna/Image/Image.hpp>
 #include <Luna/Image/DDSImage.hpp>

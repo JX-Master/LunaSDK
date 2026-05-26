@@ -29,6 +29,7 @@ namespace Luna
         Ref<Window::IWindow> m_window;
         Ref<RHI::ISwapChain> m_swap_chain;
         Ref<RHI::ICommandBuffer> m_cmdbuf;
+        Ref<GUI::IGUIContext> m_gui;
 
         Ref<AssetBrowser> m_asset_browsers[4];
         bool m_asset_browsers_enabled[4] = { true, false, false, false };
@@ -38,6 +39,8 @@ namespace Luna
         MemoryProfiler m_memory_profiler;
         usize m_memory_profiler_callback_handle;
         bool m_memory_profiler_window_enabled = false;
+        i32 m_open_main_menu = -1;
+        Float2U m_main_menu_popup_position = Float2U(0.0f);
 
         Ref<JobSystem::IJobScheduler> m_job_scheduler;
 

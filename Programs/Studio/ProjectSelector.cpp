@@ -257,6 +257,7 @@ namespace Luna
 
                 lulet(gui_desc, gui->end_build());
                 luexp(gui->submit(gui_desc));
+                luexp(GUIWindow::update_text_input(&input_adapter));
 
                 if (GUI::IsItemClicked(create_project_button))
                 {

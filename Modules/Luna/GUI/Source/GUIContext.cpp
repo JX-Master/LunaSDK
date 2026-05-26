@@ -37,6 +37,7 @@ namespace Luna
             m_build_desc.generation = m_generation;
             m_parent_stack.clear();
             m_id_stack.clear();
+            m_clip_stack.clear();
             m_child_ordinals.clear();
 
             GUINode root;
@@ -62,6 +63,40 @@ namespace Luna
         {
             lutsassert();
             m_input_events.insert(m_input_events.end(), events.begin(), events.end());
+        }
+
+        void GUIContext::set_clipboard_io(const GUIClipboardIO& io)
+        {
+            lutsassert();
+            m_clipboard_io = io;
+        }
+
+        GUITextInputState GUIContext::get_text_input_state()
+        {
+            lutsassert();
+            GUITextInputState ret;
+            if(!m_focused_id || m_submitted_desc.nodes.empty() || m_layouts.size() != m_submitted_desc.nodes.size())
+            {
+                return ret;
+            }
+            for(usize i = 0; i < m_submitted_desc.nodes.size(); ++i)
+            {
+                const GUINode& node = m_submitted_desc.nodes[i];
+                if(node.id != m_focused_id || node.kind != GUINodeKind::input_text || !node.string_value)
+                {
+                    continue;
+                }
+                const RectF& rect = m_layouts[i].rect;
+                PersistentItemState& state = get_or_create_persistent_state(node.id);
+                state.text_cursor = clamp_utf8_cursor(*node.string_value, state.text_cursor);
+                f32 font_size = 16.0f;
+                RectF text_rect(rect.offset_x + 8.0f, rect.offset_y, max(rect.width - 16.0f, 1.0f), rect.height);
+                ret.active = true;
+                ret.rect = text_rect;
+                ret.cursor = (i32)(input_text_cursor_x(*node.string_value, state.text_cursor, font_size) + 0.5f);
+                return ret;
+            }
+            return ret;
         }
 
         R<GUIDescription> GUIContext::end_build()
@@ -90,6 +125,11 @@ namespace Luna
             node.text = text ? text : "";
             node.interactive = interactive;
             node.layout_style = default_layout_style(kind);
+            if(!m_clip_stack.empty())
+            {
+                node.has_user_clip_rect = true;
+                node.user_clip_rect = m_clip_stack.back();
+            }
             if(m_has_next_item_layout)
             {
                 node.layout_style = m_next_item_layout;
@@ -156,6 +196,24 @@ namespace Luna
             lutsassert();
             luassert(m_id_stack.size() > 1);
             m_id_stack.pop_back();
+        }
+
+        void GUIContext::push_clip_rect(const RectF& rect)
+        {
+            lutsassert();
+            RectF clipped = rect;
+            if(!m_clip_stack.empty())
+            {
+                clipped = intersect_rect(m_clip_stack.back(), rect);
+            }
+            m_clip_stack.push_back(clipped);
+        }
+
+        void GUIContext::pop_clip_rect()
+        {
+            lutsassert();
+            luassert(!m_clip_stack.empty());
+            m_clip_stack.pop_back();
         }
 
         ItemResult* GUIContext::get_query_result(GUIItemHandle handle)

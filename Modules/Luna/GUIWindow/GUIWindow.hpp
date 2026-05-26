@@ -41,6 +41,14 @@ namespace Luna
         //! Restores the event handler that was active before @ref install_window_event_handler.
         LUNA_GUI_WINDOW_API void uninstall_window_event_handler(GUIWindowInputAdapter* adapter);
 
+        //! Synchronizes the window text input/IME state with the focused GUI item.
+        //! Call this after IGUIContext::submit().
+        LUNA_GUI_WINDOW_API RV update_text_input(Window::IWindow* window, GUI::IGUIContext* gui);
+
+        //! Synchronizes the adapter window text input/IME state with the focused GUI item.
+        //! Call this after IGUIContext::submit().
+        LUNA_GUI_WINDOW_API RV update_text_input(GUIWindowInputAdapter* adapter);
+
         LUNA_GUI_WINDOW_API Module* module_gui_window();
     }
 }

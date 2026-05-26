@@ -106,6 +106,13 @@ namespace Luna
             system = 0x08
         };
 
+        enum class GUITextAlignment : u8
+        {
+            begin,
+            center,
+            end
+        };
+
         struct GUIFrameDesc
         {
             Float2U surface_size = Float2U(0.0f);
@@ -125,6 +132,20 @@ namespace Luna
             GUIKey key = GUIKey::unknown;
             GUIKeyModifierFlag modifiers = GUIKeyModifierFlag::none;
             String text;
+        };
+
+        struct GUITextInputState
+        {
+            bool active = false;
+            RectF rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
+            i32 cursor = 0;
+        };
+
+        struct GUIClipboardIO
+        {
+            void* userdata = nullptr;
+            RV(*get_text)(String& out_text, void* userdata) = nullptr;
+            RV(*set_text)(const c8* text, usize size, void* userdata) = nullptr;
         };
 
         struct GUIItemHandle

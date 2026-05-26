@@ -41,7 +41,12 @@ namespace Luna
         //----- End of States for tile context -----
 
         //----- Begin of States for asset popup menu -----
+        i32 m_open_menu = -1;
+        Float2U m_menu_popup_position = Float2U(0.0f);
+        bool m_host_focused = false;
         Name m_popup_asset;
+        bool m_asset_popup_open = false;
+        Float2U m_asset_popup_position = Float2U(0.0f);
         Name m_editing_asset_name;
         String m_asset_name_editing_buf;
         //----- End of States for asset popup menu -----

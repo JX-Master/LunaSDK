@@ -9,8 +9,8 @@
 */
 #include "Material.hpp"
 #include "../StudioHeader.hpp"
+#include "../StudioGUI.hpp"
 #include <Luna/Window/MessageBox.hpp>
-#include "../EditObject.hpp"
 namespace Luna
 {
     struct MaterialEditor : public IAssetEditor
@@ -49,50 +49,46 @@ namespace Luna
         {
             snprintf(title, 256, "Material Editor###%d", (u32)(usize)this);
         }
-        ImGui::Begin(title, &m_open, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_MenuBar);
+        if(!m_open) return;
+        GUI::BeginWindow(title, &m_open, GUI::GUISize::fixed(720.0f, 520.0f));
 
         Ref<Material> mat = get_asset_or_async_load_if_not_ready<Material>(m_material);
         if (!mat || (Asset::get_asset_state(m_material) != Asset::AssetState::loaded))
         {
-            ImGui::Text("Material Asset is not loaded.");
+            GUI::Text("Material Asset is not loaded.");
         }
         else
         {
-            if (ImGui::BeginMenuBar())
+            if (GUI::IsItemClicked(GUI::Button("Save")))
             {
-                if (ImGui::BeginMenu("File"))
+                lutry
                 {
-                    if (ImGui::MenuItem("Save"))
-                    {
-                        lutry
-                        {
-                            luexp(Asset::save_asset(m_material));
-                        }
-                        lucatch
-                        {
-                            auto _ = Window::message_box(explain(luerr), "Failed to save asset", Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
-                        }
-                    }
-                    ImGui::EndMenu();
+                    luexp(Asset::save_asset(m_material));
                 }
-                ImGui::EndMenuBar();
+                lucatch
+                {
+                    auto _ = Window::message_box(explain(luerr), "Failed to save asset", Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
+                }
             }
-            edit_enum("Material Type", mat->material_type);
+            i32 material_type = (i32)mat->material_type;
+            const c8* material_types[] = {"lit", "unlit"};
+            GUI::Combo("Material Type", &material_type, Span<const c8*>(material_types, 2));
+            mat->material_type = (MeterialType)material_type;
             if (mat->material_type == MeterialType::lit)
             {
-                edit_asset("Base Color", mat->base_color);
-                edit_asset("Roughness", mat->roughness);
-                edit_asset("Normal", mat->normal);
-                edit_asset("Metallic", mat->metallic);
-                edit_asset("Emissive", mat->emissive);
+                gui_edit_asset_path("Base Color", mat->base_color, m_base_color_name);
+                gui_edit_asset_path("Roughness", mat->roughness, m_roughness_name);
+                gui_edit_asset_path("Normal", mat->normal, m_normal_name);
+                gui_edit_asset_path("Metallic", mat->metallic, m_metallic_name);
+                gui_edit_asset_path("Emissive", mat->emissive, m_emissive_name);
             }
             else
             {
-                edit_asset("Emissive", mat->emissive);
+                gui_edit_asset_path("Emissive", mat->emissive, m_emissive_name);
             }
-            ImGui::DragFloat("Emissive Intensity", &mat->emissive_intensity);
+            GUI::DragFloat("Emissive Intensity", &mat->emissive_intensity, 0.01f, 0.0f, 20.0f);
         }
-        ImGui::End();
+        GUI::EndWindow();
     }
     static Ref<IAssetEditor> material_new_editor(object_t userdata, Asset::asset_t editing_asset)
     {

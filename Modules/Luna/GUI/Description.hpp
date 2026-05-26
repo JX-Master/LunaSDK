@@ -21,16 +21,24 @@ namespace Luna
             h_layout,
             scroll_view,
             window,
+            popup,
             table_layout,
             text,
             button,
+            selectable,
             checkbox,
             input_text,
             image,
             collapsing_header,
             combo,
             slider_float,
-            drag_float
+            drag_float,
+            hit_box,
+            draw_rect,
+            draw_circle,
+            draw_line,
+            draw_text,
+            draw_image
         };
 
         struct GUINode
@@ -50,10 +58,26 @@ namespace Luna
             GUITableDesc table_desc;
             bool has_table_cell_color = false;
             Float4U table_cell_color = Float4U(0.0f);
+            bool absolute_position = false;
+            Float2U position = Float2U(0.0f);
+            bool has_user_clip_rect = false;
+            RectF user_clip_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
+            bool selected = false;
+            RectF paint_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
+            Float2U paint_line_begin = Float2U(0.0f);
+            Float2U paint_line_end = Float2U(0.0f);
+            Float4U paint_color = Float4U(1.0f);
+            f32 paint_radius = 0.0f;
+            f32 paint_line_width = 1.0f;
+            f32 paint_font_size = 16.0f;
+            GUITextAlignment paint_horizontal_alignment = GUITextAlignment::begin;
+            GUITextAlignment paint_vertical_alignment = GUITextAlignment::center;
             bool* bool_value = nullptr;
             String* string_value = nullptr;
             i32* i32_value = nullptr;
             f32* f32_value = nullptr;
+            u8 f32_value_count = 1;
+            bool f32_color = false;
             f32 min_value = 0.0f;
             f32 max_value = 0.0f;
             f32 step_value = 0.0f;

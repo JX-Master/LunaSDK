@@ -11,6 +11,7 @@
 #include "../GUI.hpp"
 #include <Luna/Runtime/HashSet.hpp>
 #include <Luna/Runtime/TSAssert.hpp>
+#include <Luna/Runtime/Unicode.hpp>
 #include <Luna/VG/ShapeDrawList.hpp>
 #include <Luna/VG/ShapeRenderer.hpp>
 #include <Luna/VG/TextArranger.hpp>
@@ -131,6 +132,36 @@ namespace Luna
             return table_track_size(node, column, index).policy == GUITableTrackSizePolicy::fixed;
         }
 
+        inline bool window_has_title_bar(const GUINode& node)
+        {
+            return node.kind == GUINodeKind::window && node.bool_value;
+        }
+
+        inline f32 window_title_bar_height()
+        {
+            return 30.0f;
+        }
+
+        inline u32 f32_value_count(const GUINode& node)
+        {
+            return clamp((u32)node.f32_value_count, 1u, 4u);
+        }
+
+        inline bool is_absolute_node(const GUINode& node)
+        {
+            return node.absolute_position || node.kind == GUINodeKind::popup;
+        }
+
+        inline RectF window_close_rect(const RectF& window_rect)
+        {
+            f32 size = 22.0f;
+            return RectF(
+                window_rect.offset_x + max(window_rect.width - size - 4.0f, 0.0f),
+                window_rect.offset_y + 4.0f,
+                size,
+                size);
+        }
+
         inline f32 resolve_base_axis_size(const GUINode& node, const GUILayoutMetrics& metrics, bool x_axis)
         {
             if(axis_policy(node.layout_style, x_axis) == GUISizePolicy::fixed)
@@ -173,6 +204,7 @@ namespace Luna
                 kind == GUINodeKind::combo ||
                 kind == GUINodeKind::slider_float ||
                 kind == GUINodeKind::drag_float ||
+                kind == GUINodeKind::selectable ||
                 kind == GUINodeKind::table_layout)
             {
                 style.width_policy = GUISizePolicy::fill;
@@ -207,6 +239,110 @@ namespace Luna
             value.erase(begin, size - begin);
         }
 
+        inline usize clamp_utf8_cursor(const String& value, usize cursor)
+        {
+            if(cursor == USIZE_MAX || cursor > value.size())
+            {
+                return value.size();
+            }
+            while(cursor > 0 && cursor < value.size() && (((u8)value[cursor]) & 0xC0) == 0x80)
+            {
+                --cursor;
+            }
+            return cursor;
+        }
+
+        inline usize previous_utf8_cursor(const String& value, usize cursor)
+        {
+            cursor = clamp_utf8_cursor(value, cursor);
+            if(!cursor) return 0;
+            --cursor;
+            while(cursor > 0 && (((u8)value[cursor]) & 0xC0) == 0x80)
+            {
+                --cursor;
+            }
+            return cursor;
+        }
+
+        inline usize next_utf8_cursor(const String& value, usize cursor)
+        {
+            cursor = clamp_utf8_cursor(value, cursor);
+            if(cursor >= value.size()) return value.size();
+            usize len = utf8_charlen(value.c_str() + cursor);
+            return min(cursor + len, value.size());
+        }
+
+        inline void erase_previous_utf8_codepoint(String& value, usize& cursor)
+        {
+            cursor = clamp_utf8_cursor(value, cursor);
+            usize begin = previous_utf8_cursor(value, cursor);
+            if(begin == cursor) return;
+            value.erase(begin, cursor - begin);
+            cursor = begin;
+        }
+
+        inline void erase_utf8_codepoint_at(String& value, usize& cursor)
+        {
+            cursor = clamp_utf8_cursor(value, cursor);
+            if(cursor >= value.size()) return;
+            usize end = next_utf8_cursor(value, cursor);
+            value.erase(cursor, end - cursor);
+        }
+
+        inline VG::TextArrangeResult arrange_input_text_for_cursor(const String& value, f32 font_size)
+        {
+            VG::TextArrangeSection section;
+            section.font_file = Font::get_default_font();
+            section.font_index = 0;
+            section.font_size = font_size;
+            section.num_chars = value.size();
+            return VG::arrange_text(value.c_str(), value.size(), {&section, 1},
+                RectF(0.0f, 0.0f, 1000000.0f, font_size * 2.0f),
+                VG::TextAlignment::center, VG::TextAlignment::begin);
+        }
+
+        inline f32 measure_input_text_width(const String& value, usize bytes, f32 font_size)
+        {
+            bytes = clamp_utf8_cursor(value, bytes);
+            if(!bytes) return 0.0f;
+            String view(value.c_str(), bytes);
+            VG::TextArrangeResult arranged = arrange_input_text_for_cursor(view, font_size);
+            return arranged.bounding_rect.width;
+        }
+
+        inline f32 input_text_cursor_x(const String& value, usize cursor, f32 font_size)
+        {
+            cursor = clamp_utf8_cursor(value, cursor);
+            return measure_input_text_width(value, cursor, font_size);
+        }
+
+        inline usize input_text_cursor_from_x(const String& value, f32 x, f32 font_size)
+        {
+            if(x <= 0.0f) return 0;
+            VG::TextArrangeResult arranged = arrange_input_text_for_cursor(value, font_size);
+            if(arranged.lines.empty()) return value.size();
+            const VG::TextLineArrangeResult& line = arranged.lines[0];
+            if(line.glyphs.empty()) return value.size();
+            for(usize i = 0; i < line.glyphs.size(); ++i)
+            {
+                const VG::TextGlyphArrangeResult& glyph = line.glyphs[i];
+                f32 next_origin = i + 1 < line.glyphs.size() ?
+                    line.glyphs[i + 1].origin_offset :
+                    glyph.origin_offset + glyph.advance_length;
+                f32 threshold = (glyph.origin_offset + next_origin) * 0.5f;
+                if(x < threshold)
+                {
+                    return glyph.index;
+                }
+            }
+            return value.size();
+        }
+
+        inline bool has_modifier(GUIKeyModifierFlag flags, GUIKeyModifierFlag flag)
+        {
+            return (((u8)flags) & ((u8)flag)) != 0;
+        }
+
         struct GUIIDHash
         {
             usize operator()(GUIID value) const
@@ -229,9 +365,36 @@ namespace Luna
             bool pointer_down = false;
             f32 scroll_y = 0.0f;
             f64 last_click_time = -1000.0;
+            f64 last_right_click_time = -1000.0;
+            usize text_cursor = USIZE_MAX;
+            usize text_select_anchor = USIZE_MAX;
+            bool text_selecting = false;
+            f64 text_cursor_blink_start = 0.0;
             Vector<f32> table_column_sizes;
             Vector<f32> table_row_sizes;
         };
+
+        inline void input_text_selection_range(const String& value, const PersistentItemState& state, usize& out_begin, usize& out_end)
+        {
+            usize cursor = clamp_utf8_cursor(value, state.text_cursor);
+            usize anchor = state.text_select_anchor == USIZE_MAX ? cursor : clamp_utf8_cursor(value, state.text_select_anchor);
+            out_begin = min(cursor, anchor);
+            out_end = max(cursor, anchor);
+        }
+
+        inline bool input_text_has_selection(const String& value, const PersistentItemState& state)
+        {
+            usize begin = 0;
+            usize end = 0;
+            input_text_selection_range(value, state, begin, end);
+            return begin != end;
+        }
+
+        inline void input_text_clear_selection(PersistentItemState& state)
+        {
+            state.text_select_anchor = USIZE_MAX;
+            state.text_selecting = false;
+        }
 
         struct NodeLayout
         {
@@ -261,15 +424,18 @@ namespace Luna
             Vector<GUIInputEvent> m_input_events;
             Vector<u32> m_parent_stack;
             Vector<GUIID> m_id_stack;
+            Vector<RectF> m_clip_stack;
             Vector<u32> m_child_ordinals;
             HashMap<GUIID, ItemResult, GUIIDHash> m_last_results;
             HashMap<GUIID, ItemResult, GUIIDHash> m_current_results;
             HashMap<GUIID, PersistentItemState, GUIIDHash> m_persistent_states;
+            GUIClipboardIO m_clipboard_io;
             GUIID m_active_id = 0;
             GUIID m_focused_id = 0;
             GUIID m_hovered_id = 0;
             Float2U m_pointer_pos = Float2U(0.0f);
             bool m_pointer_inside = false;
+            u32 m_active_float_component = U32_MAX;
             bool m_submitted = false;
             bool m_has_next_item_layout = false;
             GUILayoutStyle m_next_item_layout;
@@ -293,6 +459,8 @@ namespace Luna
             virtual void add_input_events(Span<const GUIInputEvent> events) override;
             virtual R<GUIDescription> end_build() override;
             virtual RV submit(const GUIDescription& desc) override;
+            virtual void set_clipboard_io(const GUIClipboardIO& io) override;
+            virtual GUITextInputState get_text_input_state() override;
             virtual RV render(RHI::ICommandBuffer* cmdbuf, RHI::ITexture* render_target) override;
 
             GUIItemHandle add_node(GUINodeKind kind, const c8* text, bool interactive);
@@ -305,6 +473,8 @@ namespace Luna
             void set_next_table_cell_color(const Float4U& color);
             void push_id(GUIID id);
             void pop_id();
+            void push_clip_rect(const RectF& rect);
+            void pop_clip_rect();
 
             ItemResult* get_query_result(GUIItemHandle handle);
             ItemResult& get_or_create_current_result(GUIID id);
@@ -316,13 +486,19 @@ namespace Luna
             void render_table_node(u32 node_index);
             bool hit_test_table_separator(const Float2U& pos, GUIID& out_id, bool& out_column, u32& out_index) const;
             void update_table_resize_from_pointer(const Float2U& pos);
+            GUIID hit_test_node(u32 node_index, const Float2U& pos, bool filter_kind, GUINodeKind kind) const;
             GUIID hit_test(const Float2U& pos) const;
             GUIID hit_test_node_kind(const Float2U& pos, GUINodeKind kind) const;
             GUINode* find_node(GUIID id);
-            void update_float_node_from_pointer(GUIID id, const Float2U& pos);
+            u32 hit_test_float_component(const GUINode& node, const RectF& rect, const Float2U& pos) const;
+            void update_float_node_from_pointer(GUIID id, const Float2U& pos, const Float2U* old_pos = nullptr);
+            bool input_text_cursor_from_pointer(GUIID id, const Float2U& pos, usize& out_cursor);
+            bool update_input_text_selection_from_pointer(GUIID id, const Float2U& pos);
             void process_input_events();
             void render_node(u32 node_index);
             void render_rect(const RectF& rect, const RectF& clip_rect, const Float4U& color, f32 radius, RHI::ITexture* texture = nullptr);
+            void render_circle(const RectF& rect, const RectF& clip_rect, const Float4U& color);
+            void render_line(const GUINode& node, const RectF& rect, const RectF& clip_rect);
             void render_text(const RectF& rect, const RectF& clip_rect, const c8* text, f32 font_size, const Float4U& color, VG::TextAlignment horizontal_alignment, VG::TextAlignment vertical_alignment = VG::TextAlignment::center);
             RectF to_vg_rect(const RectF& rect) const;
         };

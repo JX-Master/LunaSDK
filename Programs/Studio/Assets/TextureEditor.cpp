@@ -41,19 +41,21 @@ namespace Luna
         char name[32];
         snprintf(name, 32, "Texture###%d", (u32)(usize)this);
 
-        ImGui::Begin(name, &m_open, ImGuiWindowFlags_NoCollapse);
+        if(!m_open) return;
 
         lutry
         {
             auto desc = tex->get_desc();
-            ImGui::Image(tex.get(), { (f32)desc.width, (f32)desc.height });
+            GUI::BeginWindow(name, &m_open, GUI::GUISize::fixed(max((f32)desc.width + 16.0f, 220.0f), max((f32)desc.height + 46.0f, 120.0f)));
+            GUI::Image(tex.get(), GUI::GUISize::fixed((f32)desc.width, (f32)desc.height));
+            GUI::EndWindow();
         }
         lucatch
         {
-            ImGui::Text("Texture Unavailable.");
+            GUI::BeginWindow(name, &m_open, GUI::GUISize::fixed(260.0f, 120.0f));
+            GUI::Text("Texture Unavailable.");
+            GUI::EndWindow();
         }
-
-        ImGui::End();
     }
     static void on_draw_tex_tile(object_t userdata, Asset::asset_t asset, const RectF& draw_rect)
     {
@@ -62,17 +64,12 @@ namespace Luna
             Ref<RHI::ITexture> tex = get_asset_or_async_load_if_not_ready<RHI::ITexture>(asset);
             if (tex)
             {
-                ImGui::SetCursorScreenPos({ draw_rect.offset_x, draw_rect.offset_y });
-                ImGui::Image(tex.get(), {draw_rect.width, draw_rect.height});
+                GUI::DrawImage(tex.get(), draw_rect);
             }
         }
         else
         {
-            // Draw tex.
-            auto text_sz = ImGui::CalcTextSize("Texture");
-            Float2 center = Float2(draw_rect.offset_x + draw_rect.width / 2.0f, draw_rect.offset_y + draw_rect.height / 2.0f);
-            ImGui::SetCursorScreenPos({ center.x - text_sz.x / 2.0f, center.y - text_sz.y / 2.0f });
-            ImGui::Text("Texture");
+            GUI::DrawText(draw_rect, "Texture", Float4U(1.0f), 16.0f, GUI::GUITextAlignment::center, GUI::GUITextAlignment::center);
         }
     }
     static Ref<IAssetEditor> new_tex_editor(object_t userdata, Asset::asset_t editing_asset)

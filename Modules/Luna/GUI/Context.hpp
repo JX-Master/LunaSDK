@@ -23,6 +23,8 @@ namespace Luna
             virtual void add_input_events(Span<const GUIInputEvent> events) = 0;
             virtual R<GUIDescription> end_build() = 0;
             virtual RV submit(const GUIDescription& desc) = 0;
+            virtual void set_clipboard_io(const GUIClipboardIO& io) = 0;
+            virtual GUITextInputState get_text_input_state() = 0;
             virtual RV render(RHI::ICommandBuffer* cmdbuf, RHI::ITexture* render_target) = 0;
         };
 

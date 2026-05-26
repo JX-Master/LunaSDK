@@ -39,16 +39,15 @@ namespace Luna
             lutsassert();
             u32 current_batch = m_current_batch;
             DrawListState new_state = state ? *state : get_state();
-            if(allow_merge)
+            if(allow_merge && !m_batches.empty())
             {
-                // try to merge to a existing batch.
-                for(u32 i = current_batch; i < m_batches.size(); ++i)
+                // Preserve GUI painter order: only merge with the latest emitted
+                // batch, otherwise later backgrounds can be reordered over text.
+                u32 last_batch = (u32)m_batches.size() - 1;
+                if(m_batches[last_batch].m_state == new_state)
                 {
-                    if(m_batches[i].m_state == new_state)
-                    {
-                        m_current_batch = i;
-                        return current_batch;
-                    }
+                    m_current_batch = last_batch;
+                    return current_batch;
                 }
             }
             // allocates a new batch.
