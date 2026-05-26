@@ -117,6 +117,14 @@ namespace Luna
                 metrics.max_size = Float2U(F32_MAX, 26.0f);
                 break;
             }
+            case GUINodeKind::toggle_switch:
+            {
+                f32 w = max(text_width + 58.0f, 72.0f);
+                metrics.min_size = Float2U(46.0f, 28.0f);
+                metrics.preferred_size = Float2U(w, 28.0f);
+                metrics.max_size = Float2U(F32_MAX, 28.0f);
+                break;
+            }
             case GUINodeKind::input_text:
                 metrics.min_size = Float2U(80.0f, 30.0f);
                 metrics.preferred_size = Float2U(240.0f, 30.0f);
@@ -352,11 +360,7 @@ namespace Luna
                 content_rect.offset_y += title_bar_height;
                 content_rect.height = max(content_rect.height - title_bar_height, 0.0f);
             }
-            if(node.kind == GUINodeKind::scroll_view)
-            {
-                PersistentItemState& persistent = get_or_create_persistent_state(node.id);
-                content_rect.offset_y -= persistent.scroll_y;
-            }
+            RectF viewport_rect = content_rect;
 
             Vector<u32> children;
             Vector<u32> absolute_children;
@@ -403,12 +407,77 @@ namespace Luna
 
             if(children.empty())
             {
+                if(node.kind == GUINodeKind::scroll_view)
+                {
+                    NodeLayout& layout = m_layouts[node_index];
+                    layout.scroll_viewport_size = Float2U(max(viewport_rect.width, 1.0f), max(viewport_rect.height, 1.0f));
+                    layout.scroll_content_size = layout.scroll_viewport_size;
+                    layout.scroll_has_vertical = false;
+                    layout.scroll_has_horizontal = false;
+                    PersistentItemState& persistent = get_or_create_persistent_state(node.id);
+                    persistent.scroll_x = 0.0f;
+                    persistent.scroll_y = 0.0f;
+                }
                 layout_absolute_children();
                 return rect;
             }
 
             f32 gap = node.layout_desc.gap;
             f32 total_gap = gap * (f32)(children.size() - 1);
+            if(node.kind == GUINodeKind::scroll_view)
+            {
+                f32 content_main = total_base_main + total_gap;
+                f32 content_cross = 0.0f;
+                for(usize i = 0; i < children.size(); ++i)
+                {
+                    GUINode& child_node = m_submitted_desc.nodes[children[i]];
+                    bool cross_x_axis = !horizontal;
+                    f32 child_cross = node.layout_desc.cross_axis_alignment == GUILayoutCrossAxisAlignment::stretch &&
+                        axis_policy(child_node.layout_style, cross_x_axis) != GUISizePolicy::fixed ?
+                        axis_value(child_metrics[i].min_size, cross_x_axis) :
+                        resolve_base_axis_size(child_node, child_metrics[i], cross_x_axis);
+                    child_cross = clamp(child_cross,
+                        axis_value(child_metrics[i].min_size, cross_x_axis),
+                        axis_value(child_metrics[i].max_size, cross_x_axis));
+                    content_cross = max(content_cross, child_cross);
+                }
+
+                f32 raw_content_width = horizontal ? content_main : content_cross;
+                f32 raw_content_height = horizontal ? content_cross : content_main;
+                bool has_vertical_bar = raw_content_height > viewport_rect.height + 0.5f;
+                bool has_horizontal_bar = raw_content_width > viewport_rect.width + 0.5f;
+                f32 bar_padding = scroll_bar_padding();
+                f32 padded_viewport_width = max(viewport_rect.width - (has_vertical_bar ? bar_padding : 0.0f), 1.0f);
+                f32 padded_viewport_height = max(viewport_rect.height - (has_horizontal_bar ? bar_padding : 0.0f), 1.0f);
+                if(has_vertical_bar && raw_content_width > padded_viewport_width + 0.5f)
+                {
+                    has_horizontal_bar = true;
+                    padded_viewport_height = max(viewport_rect.height - bar_padding, 1.0f);
+                }
+                if(has_horizontal_bar && raw_content_height > padded_viewport_height + 0.5f)
+                {
+                    has_vertical_bar = true;
+                    padded_viewport_width = max(viewport_rect.width - bar_padding, 1.0f);
+                }
+
+                NodeLayout& layout = m_layouts[node_index];
+                layout.scroll_has_vertical = has_vertical_bar;
+                layout.scroll_has_horizontal = has_horizontal_bar;
+                layout.scroll_viewport_size = Float2U(padded_viewport_width, padded_viewport_height);
+                layout.scroll_content_size = Float2U(
+                    max(raw_content_width, padded_viewport_width),
+                    max(raw_content_height, padded_viewport_height));
+
+                PersistentItemState& persistent = get_or_create_persistent_state(node.id);
+                persistent.scroll_x = clamp(persistent.scroll_x, 0.0f, scroll_max_x(layout));
+                persistent.scroll_y = clamp(persistent.scroll_y, 0.0f, scroll_max_y(layout));
+
+                content_rect = viewport_rect;
+                content_rect.width = padded_viewport_width;
+                content_rect.height = padded_viewport_height;
+                content_rect.offset_x -= persistent.scroll_x;
+                content_rect.offset_y -= persistent.scroll_y;
+            }
             f32 available_main = horizontal ? content_rect.width : content_rect.height;
             if(node.kind == GUINodeKind::scroll_view)
             {
@@ -461,6 +530,14 @@ namespace Luna
             f32 main_cursor = (horizontal ? content_rect.offset_x : content_rect.offset_y) + main_offset;
             f32 cross_start = horizontal ? content_rect.offset_y : content_rect.offset_x;
             f32 available_cross = horizontal ? content_rect.height : content_rect.width;
+            RectF child_clip = effective_clip;
+            if(node.kind == GUINodeKind::scroll_view)
+            {
+                const NodeLayout& layout = m_layouts[node_index];
+                child_clip = intersect_rect(
+                    RectF(viewport_rect.offset_x, viewport_rect.offset_y, layout.scroll_viewport_size.x, layout.scroll_viewport_size.y),
+                    effective_clip);
+            }
             for(usize i = 0; i < children.size(); ++i)
             {
                 GUINode& child_node = m_submitted_desc.nodes[children[i]];
@@ -496,7 +573,7 @@ namespace Luna
                 {
                     child_rect = RectF(cross_start + cross_offset, main_cursor, cross_size, main_sizes[i]);
                 }
-                layout_node(children[i], child_rect, effective_clip);
+                layout_node(children[i], child_rect, child_clip);
                 main_cursor += main_sizes[i] + gap;
             }
             layout_absolute_children();

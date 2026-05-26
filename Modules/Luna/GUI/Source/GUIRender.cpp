@@ -32,6 +32,15 @@ namespace Luna
             }
         }
 
+        static Float4U lerp_color(const Float4U& a, const Float4U& b, f32 t)
+        {
+            return Float4U(
+                a.x + (b.x - a.x) * t,
+                a.y + (b.y - a.y) * t,
+                a.z + (b.z - a.z) * t,
+                a.w + (b.w - a.w) * t);
+        }
+
         RectF GUIContext::to_vg_rect(const RectF& rect) const
         {
             return RectF(rect.offset_x, m_frame_desc.surface_size.y - rect.offset_y - rect.height, rect.width, rect.height);
@@ -79,6 +88,36 @@ namespace Luna
             VG::ShapeBuilder::add_circle_filled(points, r.width * 0.5f, r.height * 0.5f, radius);
             u32 end = (u32)points.size();
             m_gui_draw_list->add_shape(begin, end - begin,
+                Float2U(r.offset_x, r.offset_y), Float2U(r.offset_x + r.width, r.offset_y + r.height),
+                Float2U(0.0f, 0.0f), Float2U(r.width, r.height),
+                color, Float2U(0.0f, 0.0f), Float2U(1.0f, 1.0f));
+            m_gui_draw_list->pop_state(pop_id);
+        }
+
+        void GUIContext::render_line_segment(const Float2U& begin, const Float2U& end, const RectF& clip_rect, const Float4U& color, f32 width)
+        {
+            f32 margin = max(width, 1.0f);
+            f32 dx = end.x > begin.x ? end.x - begin.x : begin.x - end.x;
+            f32 dy = end.y > begin.y ? end.y - begin.y : begin.y - end.y;
+            RectF bounds(
+                min(begin.x, end.x) - margin,
+                min(begin.y, end.y) - margin,
+                max(dx + margin * 2.0f, 1.0f),
+                max(dy + margin * 2.0f, 1.0f));
+            RectF r = to_vg_rect(bounds);
+            RectF c = to_vg_rect(clip_rect);
+            DrawListState state = m_gui_draw_list->get_state();
+            state.shape_buffer = m_gui_draw_list->get_shape_buffer();
+            state.texture = nullptr;
+            state.clip_rect = c;
+            u32 pop_id = m_gui_draw_list->push_state(&state);
+            auto& points = m_gui_draw_list->get_shape_buffer()->get_shape_points(true);
+            u32 shape_begin = (u32)points.size();
+            Float2U p1(begin.x - bounds.offset_x, bounds.height - (begin.y - bounds.offset_y));
+            Float2U p2(end.x - bounds.offset_x, bounds.height - (end.y - bounds.offset_y));
+            VG::ShapeBuilder::add_line(points, p1.x, p1.y, p2.x, p2.y, width);
+            u32 shape_end = (u32)points.size();
+            m_gui_draw_list->add_shape(shape_begin, shape_end - shape_begin,
                 Float2U(r.offset_x, r.offset_y), Float2U(r.offset_x + r.width, r.offset_y + r.height),
                 Float2U(0.0f, 0.0f), Float2U(r.width, r.height),
                 color, Float2U(0.0f, 0.0f), Float2U(1.0f, 1.0f));
@@ -222,6 +261,51 @@ namespace Luna
             }
         }
 
+        void GUIContext::render_scrollbars(u32 node_index)
+        {
+            const GUINode& node = m_submitted_desc.nodes[node_index];
+            const NodeLayout& layout = m_layouts[node_index];
+            if(!scroll_has_vertical_bar(layout) && !scroll_has_horizontal_bar(layout)) return;
+
+            PersistentItemState& state = get_or_create_persistent_state(node.id);
+            bool hovered = false;
+            if(m_pointer_inside)
+            {
+                if(scroll_has_vertical_bar(layout) && point_in_rect(m_pointer_pos, scroll_vertical_track_rect(layout)))
+                {
+                    hovered = true;
+                }
+                if(scroll_has_horizontal_bar(layout) && point_in_rect(m_pointer_pos, scroll_horizontal_track_rect(layout)))
+                {
+                    hovered = true;
+                }
+            }
+            bool active = m_active_scrollbar_id == node.id;
+            f32 target_opacity = (hovered || active) ? 0.92f : 0.35f;
+            f32 blend = clamp(m_frame_desc.delta_time * 12.0f, 0.0f, 1.0f);
+            state.scrollbar_opacity += (target_opacity - state.scrollbar_opacity) * blend;
+            f32 alpha = clamp(state.scrollbar_opacity, 0.20f, 1.0f);
+            const RectF& clip = layout.clip_rect;
+            f32 radius = scroll_bar_size() * 0.5f;
+            Float4U track_color(0.02f, 0.025f, 0.03f, alpha * 0.45f);
+            Float4U thumb_color(0.58f, 0.68f, 0.80f, alpha);
+
+            if(scroll_has_vertical_bar(layout))
+            {
+                RectF track = scroll_vertical_track_rect(layout);
+                RectF thumb = scroll_vertical_thumb_rect(layout, state);
+                render_rect(track, clip, track_color, radius);
+                render_rect(thumb, clip, thumb_color, radius);
+            }
+            if(scroll_has_horizontal_bar(layout))
+            {
+                RectF track = scroll_horizontal_track_rect(layout);
+                RectF thumb = scroll_horizontal_thumb_rect(layout, state);
+                render_rect(track, clip, track_color, radius);
+                render_rect(thumb, clip, thumb_color, radius);
+            }
+        }
+
         void GUIContext::render_node(u32 node_index)
         {
             const GUINode& node = m_submitted_desc.nodes[node_index];
@@ -279,8 +363,50 @@ namespace Luna
             case GUINodeKind::checkbox:
             {
                 RectF box(rect.offset_x + 2.0f, rect.offset_y + 4.0f, 18.0f, 18.0f);
-                render_rect(box, clip, node.bool_value && *node.bool_value ? Float4U(0.22f, 0.55f, 0.32f, 1.0f) : Float4U(0.18f, 0.20f, 0.23f, 1.0f), 3.0f);
+                bool checked = node.bool_value && *node.bool_value;
+                render_rect(RectF(box.offset_x - 1.0f, box.offset_y - 1.0f, box.width + 2.0f, box.height + 2.0f),
+                    clip, hovered ? Float4U(0.34f, 0.39f, 0.46f, 1.0f) : Float4U(0.25f, 0.29f, 0.35f, 1.0f), 4.0f);
+                render_rect(box, clip, checked ? Float4U(0.22f, 0.55f, 0.32f, 1.0f) : Float4U(0.18f, 0.20f, 0.23f, 1.0f), 3.0f);
+                if(checked)
+                {
+                    render_line_segment(
+                        Float2U(box.offset_x + 4.0f, box.offset_y + 9.5f),
+                        Float2U(box.offset_x + 7.5f, box.offset_y + 13.0f),
+                        clip, Color::white(), 2.4f);
+                    render_line_segment(
+                        Float2U(box.offset_x + 7.5f, box.offset_y + 13.0f),
+                        Float2U(box.offset_x + 14.5f, box.offset_y + 5.5f),
+                        clip, Color::white(), 2.4f);
+                }
                 RectF label(rect.offset_x + 28.0f, rect.offset_y, max(rect.width - 28.0f, 1.0f), rect.height);
+                render_text(label, clip, node.text.c_str(), 16.0f, Color::white(), VG::TextAlignment::begin);
+                break;
+            }
+            case GUINodeKind::toggle_switch:
+            {
+                bool checked = node.bool_value && *node.bool_value;
+                PersistentItemState& state = get_or_create_persistent_state(node.id);
+                if(!state.switch_animation_initialized)
+                {
+                    state.switch_animation = checked ? 1.0f : 0.0f;
+                    state.switch_animation_initialized = true;
+                }
+                f32 target = checked ? 1.0f : 0.0f;
+                f32 blend = clamp(m_frame_desc.delta_time * 14.0f, 0.0f, 1.0f);
+                state.switch_animation += (target - state.switch_animation) * blend;
+                f32 t = clamp(state.switch_animation, 0.0f, 1.0f);
+
+                RectF track(rect.offset_x + 2.0f, rect.offset_y + 3.0f, 44.0f, 22.0f);
+                Float4U off_track = hovered ? Float4U(0.18f, 0.20f, 0.23f, 1.0f) : Float4U(0.12f, 0.14f, 0.16f, 1.0f);
+                Float4U on_track = hovered ? Float4U(0.25f, 0.62f, 0.38f, 1.0f) : Float4U(0.20f, 0.55f, 0.32f, 1.0f);
+                render_rect(track, clip, lerp_color(off_track, on_track, t), track.height * 0.5f);
+
+                f32 knob_size = 18.0f;
+                f32 knob_x = track.offset_x + 2.0f + (track.width - knob_size - 4.0f) * t;
+                RectF knob(knob_x, track.offset_y + 2.0f, knob_size, knob_size);
+                render_circle(knob, clip, lerp_color(Float4U(0.78f, 0.80f, 0.84f, 1.0f), Color::white(), t));
+
+                RectF label(rect.offset_x + 56.0f, rect.offset_y, max(rect.width - 56.0f, 1.0f), rect.height);
                 render_text(label, clip, node.text.c_str(), 16.0f, Color::white(), VG::TextAlignment::begin);
                 break;
             }
@@ -406,6 +532,10 @@ namespace Luna
             {
                 if(!is_absolute_node(m_submitted_desc.nodes[child])) continue;
                 render_node(child);
+            }
+            if(node.kind == GUINodeKind::scroll_view)
+            {
+                render_scrollbars(node_index);
             }
         }
 

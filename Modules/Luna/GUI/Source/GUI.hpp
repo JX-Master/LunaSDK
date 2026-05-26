@@ -363,7 +363,11 @@ namespace Luna
             bool active = false;
             bool focused = false;
             bool pointer_down = false;
+            f32 scroll_x = 0.0f;
             f32 scroll_y = 0.0f;
+            f32 scrollbar_opacity = 0.35f;
+            f32 switch_animation = 0.0f;
+            bool switch_animation_initialized = false;
             f64 last_click_time = -1000.0;
             f64 last_right_click_time = -1000.0;
             usize text_cursor = USIZE_MAX;
@@ -408,7 +412,95 @@ namespace Luna
             Vector<f32> table_row_heights;
             u32 table_columns = 0;
             u32 table_rows = 0;
+            Float2U scroll_content_size = Float2U(0.0f);
+            Float2U scroll_viewport_size = Float2U(0.0f);
+            bool scroll_has_vertical = false;
+            bool scroll_has_horizontal = false;
         };
+
+        inline f32 scroll_bar_size()
+        {
+            return 10.0f;
+        }
+
+        inline f32 scroll_bar_margin()
+        {
+            return 3.0f;
+        }
+
+        inline f32 scroll_bar_padding()
+        {
+            return scroll_bar_size() + scroll_bar_margin() * 2.0f;
+        }
+
+        inline f32 scroll_min_thumb_size()
+        {
+            return 24.0f;
+        }
+
+        inline f32 scroll_max_x(const NodeLayout& layout)
+        {
+            return max(layout.scroll_content_size.x - layout.scroll_viewport_size.x, 0.0f);
+        }
+
+        inline f32 scroll_max_y(const NodeLayout& layout)
+        {
+            return max(layout.scroll_content_size.y - layout.scroll_viewport_size.y, 0.0f);
+        }
+
+        inline bool scroll_has_vertical_bar(const NodeLayout& layout)
+        {
+            return layout.scroll_has_vertical && scroll_max_y(layout) > 0.0f;
+        }
+
+        inline bool scroll_has_horizontal_bar(const NodeLayout& layout)
+        {
+            return layout.scroll_has_horizontal && scroll_max_x(layout) > 0.0f;
+        }
+
+        inline RectF scroll_vertical_track_rect(const NodeLayout& layout)
+        {
+            f32 size = scroll_bar_size();
+            f32 margin = scroll_bar_margin();
+            f32 bottom_reserved = scroll_has_horizontal_bar(layout) ? size + margin : 0.0f;
+            return RectF(
+                layout.rect.offset_x + max(layout.rect.width - size - margin, 0.0f),
+                layout.rect.offset_y + margin,
+                size,
+                max(layout.rect.height - margin * 2.0f - bottom_reserved, 1.0f));
+        }
+
+        inline RectF scroll_horizontal_track_rect(const NodeLayout& layout)
+        {
+            f32 size = scroll_bar_size();
+            f32 margin = scroll_bar_margin();
+            f32 right_reserved = scroll_has_vertical_bar(layout) ? size + margin : 0.0f;
+            return RectF(
+                layout.rect.offset_x + margin,
+                layout.rect.offset_y + max(layout.rect.height - size - margin, 0.0f),
+                max(layout.rect.width - margin * 2.0f - right_reserved, 1.0f),
+                size);
+        }
+
+        inline RectF scroll_vertical_thumb_rect(const NodeLayout& layout, const PersistentItemState& state)
+        {
+            RectF track = scroll_vertical_track_rect(layout);
+            f32 ratio = layout.scroll_content_size.y > 0.0f ? clamp(layout.scroll_viewport_size.y / layout.scroll_content_size.y, 0.0f, 1.0f) : 1.0f;
+            f32 thumb_height = min(max(track.height * ratio, min(scroll_min_thumb_size(), track.height)), track.height);
+            f32 travel = max(track.height - thumb_height, 0.0f);
+            f32 t = scroll_max_y(layout) > 0.0f ? clamp(state.scroll_y / scroll_max_y(layout), 0.0f, 1.0f) : 0.0f;
+            return RectF(track.offset_x, track.offset_y + travel * t, track.width, thumb_height);
+        }
+
+        inline RectF scroll_horizontal_thumb_rect(const NodeLayout& layout, const PersistentItemState& state)
+        {
+            RectF track = scroll_horizontal_track_rect(layout);
+            f32 ratio = layout.scroll_content_size.x > 0.0f ? clamp(layout.scroll_viewport_size.x / layout.scroll_content_size.x, 0.0f, 1.0f) : 1.0f;
+            f32 thumb_width = min(max(track.width * ratio, min(scroll_min_thumb_size(), track.width)), track.width);
+            f32 travel = max(track.width - thumb_width, 0.0f);
+            f32 t = scroll_max_x(layout) > 0.0f ? clamp(state.scroll_x / scroll_max_x(layout), 0.0f, 1.0f) : 0.0f;
+            return RectF(track.offset_x + travel * t, track.offset_y, thumb_width, track.height);
+        }
 
         struct GUIContext : IGUIContext
         {
@@ -445,6 +537,9 @@ namespace Luna
             GUIID m_active_table_resize_id = 0;
             bool m_active_table_resize_column = false;
             u32 m_active_table_resize_index = U32_MAX;
+            GUIID m_active_scrollbar_id = 0;
+            bool m_active_scrollbar_vertical = false;
+            f32 m_active_scrollbar_grab_offset = 0.0f;
             u64 m_generation = 0;
             f64 m_time = 0.0;
             Ref<VG::IShapeDrawList> m_shape_draw_list;
@@ -486,6 +581,9 @@ namespace Luna
             void render_table_node(u32 node_index);
             bool hit_test_table_separator(const Float2U& pos, GUIID& out_id, bool& out_column, u32& out_index) const;
             void update_table_resize_from_pointer(const Float2U& pos);
+            void clamp_scroll_state(GUIID id);
+            bool hit_test_scrollbar(const Float2U& pos, GUIID& out_id, bool& out_vertical, RectF& out_thumb_rect) const;
+            void update_scrollbar_from_pointer(const Float2U& pos);
             GUIID hit_test_node(u32 node_index, const Float2U& pos, bool filter_kind, GUINodeKind kind) const;
             GUIID hit_test(const Float2U& pos) const;
             GUIID hit_test_node_kind(const Float2U& pos, GUINodeKind kind) const;
@@ -496,8 +594,10 @@ namespace Luna
             bool update_input_text_selection_from_pointer(GUIID id, const Float2U& pos);
             void process_input_events();
             void render_node(u32 node_index);
+            void render_scrollbars(u32 node_index);
             void render_rect(const RectF& rect, const RectF& clip_rect, const Float4U& color, f32 radius, RHI::ITexture* texture = nullptr);
             void render_circle(const RectF& rect, const RectF& clip_rect, const Float4U& color);
+            void render_line_segment(const Float2U& begin, const Float2U& end, const RectF& clip_rect, const Float4U& color, f32 width);
             void render_line(const GUINode& node, const RectF& rect, const RectF& clip_rect);
             void render_text(const RectF& rect, const RectF& clip_rect, const c8* text, f32 font_size, const Float4U& color, VG::TextAlignment horizontal_alignment, VG::TextAlignment vertical_alignment = VG::TextAlignment::center);
             RectF to_vg_rect(const RectF& rect) const;

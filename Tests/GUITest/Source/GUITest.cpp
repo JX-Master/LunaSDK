@@ -39,6 +39,8 @@ namespace Luna
         u32 right_click_count = 0;
         bool checkbox_a = true;
         bool checkbox_b = false;
+        bool switch_a = true;
+        bool switch_b = false;
         bool popup_open = false;
         bool floating_window_open = false;
         Float2U popup_position = Float2U(120.0f, 120.0f);
@@ -145,6 +147,11 @@ namespace Luna
         GUI::BeginHLayout("Checks", row);
         GUI::Checkbox("Feature A", &app.checkbox_a);
         GUI::Checkbox("Feature B", &app.checkbox_b);
+        GUI::EndHLayout();
+
+        GUI::BeginHLayout("Switches", row);
+        GUI::Switch("Realtime Preview", &app.switch_a);
+        GUI::Switch("Network Sync", &app.switch_b);
         GUI::EndHLayout();
 
         GUI::BeginHLayout("Text Inputs", row);

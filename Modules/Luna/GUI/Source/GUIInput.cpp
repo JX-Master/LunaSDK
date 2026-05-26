@@ -139,6 +139,99 @@ namespace Luna
             }
         }
 
+        void GUIContext::clamp_scroll_state(GUIID id)
+        {
+            if(!id || m_layouts.size() != m_submitted_desc.nodes.size()) return;
+            for(usize i = 0; i < m_submitted_desc.nodes.size(); ++i)
+            {
+                const GUINode& node = m_submitted_desc.nodes[i];
+                if(node.id != id || node.kind != GUINodeKind::scroll_view) continue;
+                const NodeLayout& layout = m_layouts[i];
+                PersistentItemState& state = get_or_create_persistent_state(id);
+                state.scroll_x = clamp(state.scroll_x, 0.0f, scroll_max_x(layout));
+                state.scroll_y = clamp(state.scroll_y, 0.0f, scroll_max_y(layout));
+                return;
+            }
+        }
+
+        bool GUIContext::hit_test_scrollbar(const Float2U& pos, GUIID& out_id, bool& out_vertical, RectF& out_thumb_rect) const
+        {
+            if(m_layouts.size() != m_submitted_desc.nodes.size()) return false;
+            for(usize i = m_submitted_desc.nodes.size(); i > 0; --i)
+            {
+                u32 node_index = (u32)(i - 1);
+                const GUINode& node = m_submitted_desc.nodes[node_index];
+                if(node.kind != GUINodeKind::scroll_view) continue;
+                const NodeLayout& layout = m_layouts[node_index];
+                if(!point_in_rect(pos, layout.rect) || !point_in_rect(pos, layout.clip_rect)) continue;
+
+                PersistentItemState empty_state;
+                auto iter = m_persistent_states.find(node.id);
+                const PersistentItemState& state = iter == m_persistent_states.end() ? empty_state : iter->second;
+                if(scroll_has_vertical_bar(layout))
+                {
+                    RectF track = scroll_vertical_track_rect(layout);
+                    if(point_in_rect(pos, track))
+                    {
+                        out_id = node.id;
+                        out_vertical = true;
+                        out_thumb_rect = scroll_vertical_thumb_rect(layout, state);
+                        return true;
+                    }
+                }
+                if(scroll_has_horizontal_bar(layout))
+                {
+                    RectF track = scroll_horizontal_track_rect(layout);
+                    if(point_in_rect(pos, track))
+                    {
+                        out_id = node.id;
+                        out_vertical = false;
+                        out_thumb_rect = scroll_horizontal_thumb_rect(layout, state);
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        void GUIContext::update_scrollbar_from_pointer(const Float2U& pos)
+        {
+            if(!m_active_scrollbar_id || m_layouts.size() != m_submitted_desc.nodes.size()) return;
+            for(usize i = 0; i < m_submitted_desc.nodes.size(); ++i)
+            {
+                const GUINode& node = m_submitted_desc.nodes[i];
+                if(node.id != m_active_scrollbar_id || node.kind != GUINodeKind::scroll_view) continue;
+                const NodeLayout& layout = m_layouts[i];
+                PersistentItemState& state = get_or_create_persistent_state(node.id);
+                f32 old_scroll_x = state.scroll_x;
+                f32 old_scroll_y = state.scroll_y;
+                if(m_active_scrollbar_vertical)
+                {
+                    RectF thumb = scroll_vertical_thumb_rect(layout, state);
+                    RectF track = scroll_vertical_track_rect(layout);
+                    f32 travel = max(track.height - thumb.height, 0.0f);
+                    f32 t = travel > 0.0f ? (pos.y - track.offset_y - m_active_scrollbar_grab_offset) / travel : 0.0f;
+                    state.scroll_y = clamp(t, 0.0f, 1.0f) * scroll_max_y(layout);
+                }
+                else
+                {
+                    RectF thumb = scroll_horizontal_thumb_rect(layout, state);
+                    RectF track = scroll_horizontal_track_rect(layout);
+                    f32 travel = max(track.width - thumb.width, 0.0f);
+                    f32 t = travel > 0.0f ? (pos.x - track.offset_x - m_active_scrollbar_grab_offset) / travel : 0.0f;
+                    state.scroll_x = clamp(t, 0.0f, 1.0f) * scroll_max_x(layout);
+                }
+                clamp_scroll_state(node.id);
+                if(state.scroll_x != old_scroll_x || state.scroll_y != old_scroll_y)
+                {
+                    ItemResult& result = get_or_create_current_result(node.id);
+                    result.states.insert_or_assign(Name("gui.value_changed"), Any(true));
+                    m_layout_dirty = true;
+                }
+                return;
+            }
+        }
+
         GUIID GUIContext::hit_test_node(u32 node_index, const Float2U& pos, bool filter_kind, GUINodeKind kind) const
         {
             GUIID ret = 0;
@@ -301,7 +394,11 @@ namespace Luna
                     Float2U old_pos = m_pointer_pos;
                     m_pointer_inside = true;
                     m_pointer_pos = e.position;
-                    if(m_active_table_resize_id)
+                    if(m_active_scrollbar_id)
+                    {
+                        update_scrollbar_from_pointer(e.position);
+                    }
+                    else if(m_active_table_resize_id)
                     {
                         update_table_resize_from_pointer(e.position);
                     }
@@ -328,6 +425,38 @@ namespace Luna
                                 input_text_clear_selection(get_or_create_persistent_state(old_focused_id));
                             }
                         }
+                        continue;
+                    }
+                    GUIID scrollbar_id = 0;
+                    bool scrollbar_vertical = false;
+                    RectF scrollbar_thumb;
+                    if(hit_test_scrollbar(e.position, scrollbar_id, scrollbar_vertical, scrollbar_thumb))
+                    {
+                        m_active_id = scrollbar_id;
+                        m_focused_id = scrollbar_id;
+                        if(old_focused_id && old_focused_id != scrollbar_id)
+                        {
+                            input_text_clear_selection(get_or_create_persistent_state(old_focused_id));
+                        }
+                        m_active_scrollbar_id = scrollbar_id;
+                        m_active_scrollbar_vertical = scrollbar_vertical;
+                        if(point_in_rect(e.position, scrollbar_thumb))
+                        {
+                            m_active_scrollbar_grab_offset = scrollbar_vertical ?
+                                e.position.y - scrollbar_thumb.offset_y :
+                                e.position.x - scrollbar_thumb.offset_x;
+                        }
+                        else
+                        {
+                            m_active_scrollbar_grab_offset = scrollbar_vertical ?
+                                scrollbar_thumb.height * 0.5f :
+                                scrollbar_thumb.width * 0.5f;
+                        }
+                        PersistentItemState& state = get_or_create_persistent_state(scrollbar_id);
+                        state.pointer_down = true;
+                        state.active = true;
+                        state.focused = true;
+                        update_scrollbar_from_pointer(e.position);
                         continue;
                     }
                     GUIID resize_table = 0;
@@ -407,6 +536,18 @@ namespace Luna
                     {
                         continue;
                     }
+                    if(m_active_scrollbar_id)
+                    {
+                        PersistentItemState& state = get_or_create_persistent_state(m_active_scrollbar_id);
+                        state.pointer_down = false;
+                        state.active = false;
+                        m_active_scrollbar_id = 0;
+                        m_active_scrollbar_vertical = false;
+                        m_active_scrollbar_grab_offset = 0.0f;
+                        m_active_id = 0;
+                        m_active_float_component = U32_MAX;
+                        continue;
+                    }
                     if(m_active_table_resize_id)
                     {
                         PersistentItemState& state = get_or_create_persistent_state(m_active_table_resize_id);
@@ -432,7 +573,7 @@ namespace Luna
                         {
                             GUINode& node = m_submitted_desc.nodes[i];
                             if(node.id != target) continue;
-                            if(node.kind == GUINodeKind::checkbox && node.bool_value)
+                            if((node.kind == GUINodeKind::checkbox || node.kind == GUINodeKind::toggle_switch) && node.bool_value)
                             {
                                 *node.bool_value = !*node.bool_value;
                                 result.states.insert_or_assign(Name("gui.value_changed"), Any(true));
@@ -478,13 +619,27 @@ namespace Luna
                 {
                     m_pointer_inside = true;
                     m_pointer_pos = e.position;
-                    GUIID scroll_target = hit_test_node_kind(e.position, GUINodeKind::scroll_view);
+                    GUIID scroll_target = 0;
+                    bool scrollbar_vertical = false;
+                    RectF scrollbar_thumb;
+                    if(!hit_test_scrollbar(e.position, scroll_target, scrollbar_vertical, scrollbar_thumb))
+                    {
+                        scroll_target = hit_test_node_kind(e.position, GUINodeKind::scroll_view);
+                    }
                     if(scroll_target)
                     {
                         PersistentItemState& state = get_or_create_persistent_state(scroll_target);
-                        state.scroll_y = max(0.0f, state.scroll_y - e.wheel_delta.y * 24.0f);
-                        ItemResult& result = get_or_create_current_result(scroll_target);
-                        result.states.insert_or_assign(Name("gui.value_changed"), Any(true));
+                        f32 old_scroll_x = state.scroll_x;
+                        f32 old_scroll_y = state.scroll_y;
+                        state.scroll_x -= e.wheel_delta.x * 24.0f;
+                        state.scroll_y -= e.wheel_delta.y * 24.0f;
+                        clamp_scroll_state(scroll_target);
+                        if(state.scroll_x != old_scroll_x || state.scroll_y != old_scroll_y)
+                        {
+                            ItemResult& result = get_or_create_current_result(scroll_target);
+                            result.states.insert_or_assign(Name("gui.value_changed"), Any(true));
+                            m_layout_dirty = true;
+                        }
                     }
                 }
                 else if(e.type == GUIInputEventType::text_utf8)
@@ -654,13 +809,21 @@ namespace Luna
                     m_active_table_resize_id = 0;
                     m_active_table_resize_column = false;
                     m_active_table_resize_index = U32_MAX;
+                    m_active_scrollbar_id = 0;
+                    m_active_scrollbar_vertical = false;
+                    m_active_scrollbar_grab_offset = 0.0f;
                 }
             }
             m_input_events.clear();
 
             if(m_pointer_inside)
             {
-                m_hovered_id = hit_test(m_pointer_pos);
+                GUIID scrollbar_id = 0;
+                bool scrollbar_vertical = false;
+                RectF scrollbar_thumb;
+                m_hovered_id = hit_test_scrollbar(m_pointer_pos, scrollbar_id, scrollbar_vertical, scrollbar_thumb) ?
+                    scrollbar_id :
+                    hit_test(m_pointer_pos);
             }
             else
             {
@@ -714,7 +877,12 @@ namespace Luna
                     layout_node(0, root_rect, root_rect);
                     if(m_pointer_inside)
                     {
-                        m_hovered_id = hit_test(m_pointer_pos);
+                        GUIID scrollbar_id = 0;
+                        bool scrollbar_vertical = false;
+                        RectF scrollbar_thumb;
+                        m_hovered_id = hit_test_scrollbar(m_pointer_pos, scrollbar_id, scrollbar_vertical, scrollbar_thumb) ?
+                            scrollbar_id :
+                            hit_test(m_pointer_pos);
                     }
                 }
                 for(const GUINode& node : m_submitted_desc.nodes)

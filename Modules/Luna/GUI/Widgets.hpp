@@ -46,6 +46,7 @@ namespace Luna
         LUNA_GUI_API GUIItemHandle Selectable(const c8* label, bool selected = false);
         LUNA_GUI_API GUIItemHandle Text(const c8* text);
         LUNA_GUI_API GUIItemHandle Checkbox(const c8* label, bool* value);
+        LUNA_GUI_API GUIItemHandle Switch(const c8* label, bool* value);
         LUNA_GUI_API GUIItemHandle InputText(const c8* label, String& value);
         LUNA_GUI_API GUIItemHandle Image(RHI::ITexture* texture, const GUISize& size);
         LUNA_GUI_API GUIItemHandle CollapsingHeader(const c8* label);

@@ -38,7 +38,8 @@ namespace Luna
             draw_circle,
             draw_line,
             draw_text,
-            draw_image
+            draw_image,
+            toggle_switch
         };
 
         struct GUINode

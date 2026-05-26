@@ -212,6 +212,14 @@ namespace Luna
             return handle;
         }
 
+        LUNA_GUI_API GUIItemHandle Switch(const c8* label, bool* value)
+        {
+            GUIContext* ctx = require_current_context();
+            GUIItemHandle handle = ctx->add_node(GUINodeKind::toggle_switch, label ? label : "", true);
+            ctx->m_build_desc.nodes.back().bool_value = value;
+            return handle;
+        }
+
         LUNA_GUI_API GUIItemHandle InputText(const c8* label, String& value)
         {
             GUIContext* ctx = require_current_context();
