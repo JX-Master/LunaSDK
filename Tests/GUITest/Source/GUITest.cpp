@@ -120,6 +120,21 @@ namespace Luna
     };
 
     constexpr u32 DEMO_TAB_COUNT = (u32)(sizeof(DEMO_TABS) / sizeof(DEMO_TABS[0]));
+    enum DemoTab : u32
+    {
+        DEMO_TAB_OVERVIEW,
+        DEMO_TAB_WIDGETS,
+        DEMO_TAB_LAYOUT,
+        DEMO_TAB_TABLES,
+        DEMO_TAB_DRAWING,
+        DEMO_TAB_TOOLTIPS,
+        DEMO_TAB_POPUPS,
+        DEMO_TAB_STATE,
+        DEMO_TAB_TREES,
+        DEMO_TAB_TABS,
+        DEMO_TAB_DRAG_DROP
+    };
+    static_assert((u32)DEMO_TAB_DRAG_DROP + 1 == DEMO_TAB_COUNT);
     constexpr u32 TREE_NODE_COUNT = 8;
 
     void demo_section(const c8* title)
@@ -496,11 +511,14 @@ namespace Luna
         GUI::Text("Tooltip over an absolute canvas hit-box:");
         GUI::GUIItemHandle canvas = GUI::Image(nullptr, GUI::GUISize::fixed(260.0f, 72.0f));
         RectF rect = GUI::GetItemState(canvas, GUI::GUIState::rect());
-        RectF hit_rect(rect.offset_x + 8.0f, rect.offset_y + 12.0f, 220.0f, 46.0f);
-        handles.canvas_hit = GUI::HitBox("Tooltip Canvas Hit", hit_rect);
-        GUI::DrawRect(hit_rect, GUI::IsItemHovered(handles.canvas_hit) ? Float4U(0.25f, 0.43f, 0.68f, 1.0f) : Float4U(0.14f, 0.21f, 0.30f, 1.0f), 6.0f);
-        GUI::DrawText(hit_rect, "Hover canvas region", Color::white(), 16.0f, GUI::GUITextAlignment::center);
-        GUI::SetItemTooltip(handles.canvas_hit, "Tooltips can attach to regular widgets or explicit hit boxes.");
+        if(rect.width > 1.0f && rect.height > 1.0f)
+        {
+            RectF hit_rect(rect.offset_x + 8.0f, rect.offset_y + 12.0f, 220.0f, 46.0f);
+            handles.canvas_hit = GUI::HitBox("Tooltip Canvas Hit", hit_rect);
+            GUI::DrawRect(hit_rect, GUI::IsItemHovered(handles.canvas_hit) ? Float4U(0.25f, 0.43f, 0.68f, 1.0f) : Float4U(0.14f, 0.21f, 0.30f, 1.0f), 6.0f);
+            GUI::DrawText(hit_rect, "Hover canvas region", Color::white(), 16.0f, GUI::GUITextAlignment::center);
+            GUI::SetItemTooltip(handles.canvas_hit, "Tooltips can attach to regular widgets or explicit hit boxes.");
+        }
     }
 
     void draw_state_tab(App& app, FrameHandles& handles)
@@ -711,37 +729,37 @@ namespace Luna
         GUI::PushID(tab);
         switch(tab)
         {
-        case 0:
+        case DEMO_TAB_OVERVIEW:
             draw_overview_tab(app);
             break;
-        case 1:
+        case DEMO_TAB_WIDGETS:
             draw_widgets_tab(app, handles);
             break;
-        case 2:
+        case DEMO_TAB_LAYOUT:
             draw_layout_tab(app, handles);
             break;
-        case 3:
+        case DEMO_TAB_TABLES:
             draw_tables_tab(app);
             break;
-        case 4:
+        case DEMO_TAB_DRAWING:
             draw_drawing_tab(app, handles);
             break;
-        case 5:
+        case DEMO_TAB_TOOLTIPS:
             draw_tooltips_tab(app, handles);
             break;
-        case 6:
+        case DEMO_TAB_POPUPS:
             draw_popups_tab(app, handles);
             break;
-        case 7:
+        case DEMO_TAB_STATE:
             draw_state_tab(app, handles);
             break;
-        case 8:
+        case DEMO_TAB_TREES:
             draw_trees_tab(app, handles);
             break;
-        case 9:
+        case DEMO_TAB_TABS:
             draw_tabs_tab(app);
             break;
-        case 10:
+        case DEMO_TAB_DRAG_DROP:
             draw_drag_drop_tab(app, handles);
             break;
         default:
@@ -857,7 +875,7 @@ namespace Luna
                     app.popup_open = false;
                 }
 
-                if(built_tab == 1)
+                if(built_tab == DEMO_TAB_WIDGETS)
                 {
                     if(GUI::IsItemClicked(handles.primary_button))
                     {
@@ -875,21 +893,21 @@ namespace Luna
                         app.popup_text = "Widget context popup";
                     }
                 }
-                else if(built_tab == 2)
+                else if(built_tab == DEMO_TAB_LAYOUT)
                 {
                     if(GUI::IsItemClicked(handles.open_window_button))
                     {
                         app.floating_window_open = true;
                     }
                 }
-                else if(built_tab == 4)
+                else if(built_tab == DEMO_TAB_DRAWING)
                 {
                     if(GUI::IsItemClicked(handles.canvas_hit))
                     {
                         app.state_text = "Canvas HitBox clicked";
                     }
                 }
-                else if(built_tab == 5)
+                else if(built_tab == DEMO_TAB_POPUPS)
                 {
                     if(GUI::IsItemClicked(handles.menu_new))
                     {
@@ -941,7 +959,7 @@ namespace Luna
                         app.popup_text = "Popup opened by right click";
                     }
                 }
-                else if(built_tab == 6)
+                else if(built_tab == DEMO_TAB_STATE)
                 {
                     bool hovered = GUI::IsItemHovered(handles.primary_button);
                     bool active = GUI::IsItemActive(handles.primary_button);
@@ -954,7 +972,7 @@ namespace Luna
                         GUI::IsItemClicked(handles.primary_button) ? "true" : "false");
                     app.state_text = state;
                 }
-                else if(built_tab == 7)
+                else if(built_tab == DEMO_TAB_TREES)
                 {
                     for(u32 i = 0; i < TREE_NODE_COUNT; ++i)
                     {
@@ -967,7 +985,7 @@ namespace Luna
                         }
                     }
                 }
-                else if(built_tab == 9)
+                else if(built_tab == DEMO_TAB_DRAG_DROP)
                 {
                     Name number_type = demo_number_payload_type();
                     Name text_type = demo_text_payload_type();

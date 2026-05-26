@@ -410,7 +410,9 @@ namespace Luna
                 {
                     first_open = child_node.id;
                 }
-                if(child_node.selected && !test_flags(child_node.tab_item_flags, GUITabItemFlag::button))
+                // node.selected is build-time visibility; persistent selection is authoritative
+                // after input-triggered relayouts.
+                if(!selected && child_node.selected && !test_flags(child_node.tab_item_flags, GUITabItemFlag::button))
                 {
                     selected = child_node.id;
                 }
