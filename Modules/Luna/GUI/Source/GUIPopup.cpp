@@ -89,6 +89,18 @@ namespace Luna
             return is_popup_open(node.id);
         }
 
+        u32 GUIContext::find_submitted_node_index(GUIID id) const
+        {
+            for(usize i = 0; i < m_submitted_desc.nodes.size(); ++i)
+            {
+                if(m_submitted_desc.nodes[i].id == id)
+                {
+                    return (u32)i;
+                }
+            }
+            return U32_MAX;
+        }
+
         void GUIContext::rebuild_popup_node_indices()
         {
             m_popup_node_indices.clear();
@@ -274,12 +286,20 @@ namespace Luna
             i32 level = popup_level_at_pos(pos);
             if(level < 0)
             {
+                GUIID target = hit_test(pos);
+                GUINode* target_node = target ? find_node(target) : nullptr;
+                bool menu_target = target_node && target_node->kind == GUINodeKind::menu;
                 GUIPopupFlag flags = m_open_popup_stack.back().flags;
+                if(menu_target && target_node->menu_popup_id && is_popup_open(target_node->menu_popup_id))
+                {
+                    close_popup(GUIItemHandle{get_object(), target_node->menu_popup_id, m_generation});
+                    return true;
+                }
                 if(test_flags(flags, GUIPopupFlag::close_on_outside_click))
                 {
                     close_all_popups();
                 }
-                return true;
+                return !menu_target;
             }
             if((usize)level + 1 < m_open_popup_stack.size())
             {

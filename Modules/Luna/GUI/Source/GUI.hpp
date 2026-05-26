@@ -300,6 +300,9 @@ namespace Luna
                 kind == GUINodeKind::combo ||
                 kind == GUINodeKind::slider_float ||
                 kind == GUINodeKind::drag_float ||
+                kind == GUINodeKind::menu_bar ||
+                kind == GUINodeKind::menu_item ||
+                kind == GUINodeKind::menu_separator ||
                 kind == GUINodeKind::selectable ||
                 kind == GUINodeKind::tree_node ||
                 kind == GUINodeKind::table_layout ||
@@ -313,6 +316,26 @@ namespace Luna
                 style.height_policy = GUISizePolicy::fill;
             }
             return style;
+        }
+
+        inline f32 menu_bar_height()
+        {
+            return 30.0f;
+        }
+
+        inline f32 menu_item_height()
+        {
+            return 26.0f;
+        }
+
+        inline f32 menu_separator_height()
+        {
+            return 7.0f;
+        }
+
+        inline f32 menu_text_width(const String& text, f32 font_size = 15.0f)
+        {
+            return (f32)text.size() * font_size * 0.52f;
         }
 
         inline void apply_requested_size(GUINode& node, const GUISize& size)
@@ -954,12 +977,15 @@ namespace Luna
             bool is_popup_open(GUIItemHandle popup) const;
             bool is_popup_open(GUIID id) const;
             bool popup_node_visible(const GUINode& node) const;
+            u32 find_submitted_node_index(GUIID id) const;
             void rebuild_popup_node_indices();
             void prune_popup_stack();
             void close_popup_stack_from(usize index);
             i32 popup_stack_index(GUIID id) const;
             i32 popup_level_at_pos(const Float2U& pos) const;
             bool close_popups_for_pointer_down(const Float2U& pos);
+            void open_menu_popup(GUIID menu_id);
+            void update_menu_hover();
             const Any* get_state(GUIItemHandle handle, const Name& key);
             void set_state(GUIItemHandle handle, const Name& key, const Any& value);
             void remove_state(GUIItemHandle handle, const Name& key);

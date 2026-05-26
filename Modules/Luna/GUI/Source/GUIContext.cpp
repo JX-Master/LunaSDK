@@ -198,7 +198,7 @@ namespace Luna
 
         void GUIContext::begin_container(GUINodeKind kind, const c8* label, const GUISize& size, GUIItemHandle* out_handle)
         {
-            bool interactive = kind == GUINodeKind::scroll_view || kind == GUINodeKind::popup || kind == GUINodeKind::table_layout || kind == GUINodeKind::tab_bar;
+            bool interactive = kind == GUINodeKind::scroll_view || kind == GUINodeKind::popup || kind == GUINodeKind::menu_bar || kind == GUINodeKind::table_layout || kind == GUINodeKind::tab_bar;
             GUIItemHandle handle = add_node(kind, label, interactive);
             u32 index = (u32)m_build_desc.nodes.size() - 1;
             apply_requested_size(m_build_desc.nodes[index], size);
@@ -215,6 +215,12 @@ namespace Luna
             {
                 m_build_desc.nodes[index].layout_desc.padding = GUIEdgeInsets::all(0.0f);
                 m_build_desc.nodes[index].layout_desc.gap = 0.0f;
+            }
+            if(kind == GUINodeKind::menu_bar)
+            {
+                m_build_desc.nodes[index].layout_desc.padding = GUIEdgeInsets::xy(4.0f, 2.0f);
+                m_build_desc.nodes[index].layout_desc.gap = 2.0f;
+                m_build_desc.nodes[index].layout_desc.cross_axis_alignment = GUILayoutCrossAxisAlignment::center;
             }
             m_parent_stack.push_back(index);
             m_id_stack.push_back(handle.id);

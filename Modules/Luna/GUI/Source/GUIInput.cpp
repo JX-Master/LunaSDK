@@ -784,6 +784,32 @@ namespace Luna
             }
         }
 
+        void GUIContext::open_menu_popup(GUIID menu_id)
+        {
+            GUINode* menu = find_node(menu_id);
+            if(!menu || menu->kind != GUINodeKind::menu || !menu->enabled || !menu->menu_popup_id) return;
+            open_popup(GUIItemHandle{get_object(), menu->menu_popup_id, m_generation});
+            ItemResult& result = get_or_create_current_result(menu->id);
+            result.states.insert_or_assign(Name("gui.open"), Any(true));
+        }
+
+        void GUIContext::update_menu_hover()
+        {
+            if(m_open_popup_stack.empty()) return;
+            i32 popup_level = popup_level_at_pos(m_pointer_pos);
+            GUINode* hovered = m_hovered_id ? find_node(m_hovered_id) : nullptr;
+            if(hovered && hovered->kind == GUINodeKind::menu && hovered->enabled && hovered->menu_popup_id)
+            {
+                if(is_popup_open(hovered->menu_popup_id)) return;
+                open_menu_popup(hovered->id);
+                return;
+            }
+            if(popup_level >= 0 && (usize)popup_level + 1 < m_open_popup_stack.size())
+            {
+                close_popup_stack_from((usize)popup_level + 1);
+            }
+        }
+
         GUIID GUIContext::hit_test_node(u32 node_index, const Float2U& pos, bool filter_kind, GUINodeKind kind) const
         {
             GUIID ret = 0;
@@ -870,11 +896,31 @@ namespace Luna
 
         GUIID GUIContext::hit_test(const Float2U& pos) const
         {
+            if(m_layouts.size() == m_submitted_desc.nodes.size())
+            {
+                for(usize i = m_open_popup_stack.size(); i > 0; --i)
+                {
+                    auto iter = m_popup_node_indices.find(m_open_popup_stack[i - 1].id);
+                    if(iter == m_popup_node_indices.end()) continue;
+                    GUIID popup_hit = hit_test_node(iter->second, pos, false, GUINodeKind::root);
+                    if(popup_hit) return popup_hit;
+                }
+            }
             return m_submitted_desc.nodes.empty() ? 0 : hit_test_node(0, pos, false, GUINodeKind::root);
         }
 
         GUIID GUIContext::hit_test_node_kind(const Float2U& pos, GUINodeKind kind) const
         {
+            if(m_layouts.size() == m_submitted_desc.nodes.size())
+            {
+                for(usize i = m_open_popup_stack.size(); i > 0; --i)
+                {
+                    auto iter = m_popup_node_indices.find(m_open_popup_stack[i - 1].id);
+                    if(iter == m_popup_node_indices.end()) continue;
+                    GUIID popup_hit = hit_test_node(iter->second, pos, true, kind);
+                    if(popup_hit) return popup_hit;
+                }
+            }
             return m_submitted_desc.nodes.empty() ? 0 : hit_test_node(0, pos, true, kind);
         }
 
@@ -1712,7 +1758,30 @@ namespace Luna
                         {
                             GUINode& node = m_submitted_desc.nodes[i];
                             if(node.id != target) continue;
-                            if((node.kind == GUINodeKind::checkbox || node.kind == GUINodeKind::toggle_switch) && node.bool_value)
+                            if(node.kind == GUINodeKind::menu && node.enabled && node.menu_popup_id)
+                            {
+                                if(is_popup_open(node.menu_popup_id))
+                                {
+                                    close_popup(GUIItemHandle{get_object(), node.menu_popup_id, m_generation});
+                                    result.states.insert_or_assign(Name("gui.open"), Any(false));
+                                }
+                                else
+                                {
+                                    open_menu_popup(node.id);
+                                    result.states.insert_or_assign(Name("gui.open"), Any(true));
+                                }
+                            }
+                            else if(node.kind == GUINodeKind::menu_item && node.enabled)
+                            {
+                                if(node.bool_value)
+                                {
+                                    *node.bool_value = !*node.bool_value;
+                                    node.selected = *node.bool_value;
+                                    result.states.insert_or_assign(Name("gui.value_changed"), Any(true));
+                                }
+                                close_all_popups();
+                            }
+                            else if((node.kind == GUINodeKind::checkbox || node.kind == GUINodeKind::toggle_switch) && node.bool_value)
                             {
                                 *node.bool_value = !*node.bool_value;
                                 result.states.insert_or_assign(Name("gui.value_changed"), Any(true));
@@ -2083,6 +2152,7 @@ namespace Luna
             {
                 m_hovered_id = 0;
             }
+            update_menu_hover();
         }
 
         RV GUIContext::submit(const GUIDescription& desc)
@@ -2151,6 +2221,11 @@ namespace Luna
                     {
                         persistent.open = popup_node_visible(node);
                         result.states.insert_or_assign(Name("gui.open"), Any(persistent.open));
+                    }
+                    else if(node.kind == GUINodeKind::menu)
+                    {
+                        bool open = node.menu_popup_id && is_popup_open(node.menu_popup_id);
+                        result.states.insert_or_assign(Name("gui.open"), Any(open));
                     }
                     else if(node.kind == GUINodeKind::tab_item)
                     {
@@ -2270,6 +2345,11 @@ namespace Luna
                     {
                         persistent.open = popup_node_visible(node);
                         result.states.insert_or_assign(Name("gui.open"), Any(persistent.open));
+                    }
+                    else if(node.kind == GUINodeKind::menu)
+                    {
+                        bool open = node.menu_popup_id && is_popup_open(node.menu_popup_id);
+                        result.states.insert_or_assign(Name("gui.open"), Any(open));
                     }
                     else if(node.kind == GUINodeKind::tab_item)
                     {

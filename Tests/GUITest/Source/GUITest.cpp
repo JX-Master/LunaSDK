@@ -43,6 +43,8 @@ namespace Luna
         bool checkbox_b = false;
         bool switch_a = true;
         bool switch_b = false;
+        bool menu_show_grid = true;
+        bool menu_snap_to_grid = false;
         bool dock_panel_a_open = true;
         bool dock_panel_b_open = true;
         bool tab_document_open[4] = { true, true, true, true };
@@ -88,6 +90,10 @@ namespace Luna
         GUI::GUIItemHandle nested_popup_button;
         GUI::GUIItemHandle nested_popup;
         GUI::GUIItemHandle nested_popup_close;
+        GUI::GUIItemHandle menu_new;
+        GUI::GUIItemHandle menu_save;
+        GUI::GUIItemHandle menu_show_grid;
+        GUI::GUIItemHandle menu_theme_dark;
         GUI::GUIItemHandle canvas_hit;
         GUI::GUIItemHandle drag_number_target;
         GUI::GUIItemHandle drag_text_target;
@@ -394,6 +400,24 @@ namespace Luna
 
     void draw_popups_tab(App& app, FrameHandles& handles)
     {
+        demo_section("MenuBar and MenuItem");
+        GUI::BeginMenuBar("Demo Menu Bar");
+        GUI::BeginMenu("File");
+        handles.menu_new = GUI::MenuItem("New Scene", "Ctrl+N");
+        handles.menu_save = GUI::MenuItem("Save", "Ctrl+S");
+        GUI::MenuSeparator();
+        GUI::MenuItem("Disabled Action", "Ctrl+D", false, false);
+        GUI::EndMenu();
+        GUI::BeginMenu("View");
+        handles.menu_show_grid = GUI::MenuItem("Show Grid", nullptr, &app.menu_show_grid);
+        GUI::MenuItem("Snap To Grid", nullptr, &app.menu_snap_to_grid);
+        GUI::BeginMenu("Theme");
+        handles.menu_theme_dark = GUI::MenuItem("Dark");
+        GUI::MenuItem("Light", nullptr, false, false);
+        GUI::EndMenu();
+        GUI::EndMenu();
+        GUI::EndMenuBar();
+
         demo_section("Popups and context menus");
         GUI::Text("Right-click the selectable below, or click the buttons to open legacy and stack-managed popups.");
         handles.right_click_item = GUI::Selectable("Right click me", app.popup_open);
@@ -804,6 +828,22 @@ namespace Luna
                 }
                 else if(built_tab == 5)
                 {
+                    if(GUI::IsItemClicked(handles.menu_new))
+                    {
+                        app.popup_text = "Menu: New Scene";
+                    }
+                    if(GUI::IsItemClicked(handles.menu_save))
+                    {
+                        app.popup_text = "Menu: Save";
+                    }
+                    if(GUI::IsItemClicked(handles.menu_show_grid))
+                    {
+                        app.popup_text = app.menu_show_grid ? "Menu: Show Grid on" : "Menu: Show Grid off";
+                    }
+                    if(GUI::IsItemClicked(handles.menu_theme_dark))
+                    {
+                        app.popup_text = "Menu: Dark theme";
+                    }
                     if(GUI::IsItemClicked(handles.primary_button))
                     {
                         app.popup_open = true;

@@ -109,6 +109,30 @@ namespace Luna
                 metrics.max_size = Float2U(F32_MAX, 26.0f);
                 break;
             }
+            case GUINodeKind::menu:
+            {
+                bool top_level = node.parent != U32_MAX && m_submitted_desc.nodes[node.parent].kind == GUINodeKind::menu_bar;
+                f32 w = top_level ? max(text_width + 22.0f, 42.0f) : max(text_width + 62.0f, 132.0f);
+                f32 h = top_level ? menu_bar_height() - 6.0f : menu_item_height();
+                metrics.min_size = Float2U(top_level ? min(w, 42.0f) : 96.0f, h);
+                metrics.preferred_size = Float2U(w, h);
+                metrics.max_size = Float2U(F32_MAX, h);
+                break;
+            }
+            case GUINodeKind::menu_item:
+            {
+                f32 shortcut_width = node.shortcut.empty() ? 0.0f : menu_text_width(node.shortcut) + 28.0f;
+                f32 w = max(text_width + shortcut_width + 42.0f, 132.0f);
+                metrics.min_size = Float2U(96.0f, menu_item_height());
+                metrics.preferred_size = Float2U(w, menu_item_height());
+                metrics.max_size = Float2U(F32_MAX, menu_item_height());
+                break;
+            }
+            case GUINodeKind::menu_separator:
+                metrics.min_size = Float2U(1.0f, menu_separator_height());
+                metrics.preferred_size = Float2U(96.0f, menu_separator_height());
+                metrics.max_size = Float2U(F32_MAX, menu_separator_height());
+                break;
             case GUINodeKind::checkbox:
             {
                 f32 w = max(text_width + 30.0f, 80.0f);
@@ -245,7 +269,7 @@ namespace Luna
             }
             default:
             {
-                bool horizontal = node.kind == GUINodeKind::h_layout;
+                bool horizontal = node.kind == GUINodeKind::h_layout || node.kind == GUINodeKind::menu_bar;
                 const GUIEdgeInsets& padding = node.layout_desc.padding;
                 f32 gap = node.layout_desc.gap;
                 f32 min_main = 0.0f;
@@ -1064,7 +1088,7 @@ namespace Luna
 
             if(node.first_child == U32_MAX) return rect;
 
-            bool horizontal = node.kind == GUINodeKind::h_layout;
+            bool horizontal = node.kind == GUINodeKind::h_layout || node.kind == GUINodeKind::menu_bar;
             const GUIEdgeInsets& padding = node.layout_desc.padding;
             RectF content_rect(
                 rect.offset_x + padding.left,
@@ -1117,7 +1141,40 @@ namespace Luna
                     GUILayoutMetrics metrics = measure_node(child);
                     f32 width = resolve_base_axis_size(child_node, metrics, true);
                     f32 height = resolve_base_axis_size(child_node, metrics, false);
-                    RectF child_rect(child_node.position.x, child_node.position.y, max(width, 1.0f), max(height, 1.0f));
+                    Float2U position = child_node.position;
+                    if(child_node.kind == GUINodeKind::popup && child_node.popup_owner_id)
+                    {
+                        u32 owner_index = find_submitted_node_index(child_node.popup_owner_id);
+                        if(owner_index != U32_MAX)
+                        {
+                            const GUINode& owner = m_submitted_desc.nodes[owner_index];
+                            const RectF& owner_rect = m_layouts[owner_index].rect;
+                            bool owner_in_menu_bar = owner.parent != U32_MAX && m_submitted_desc.nodes[owner.parent].kind == GUINodeKind::menu_bar;
+                            width = min(max(width, 1.0f), max(m_frame_desc.surface_size.x, 1.0f));
+                            height = min(max(height, 1.0f), max(m_frame_desc.surface_size.y, 1.0f));
+                            if(owner_in_menu_bar)
+                            {
+                                position.x = owner_rect.offset_x;
+                                position.y = owner_rect.offset_y + owner_rect.height + 2.0f;
+                                if(position.y + height > m_frame_desc.surface_size.y && owner_rect.offset_y - height - 2.0f >= 0.0f)
+                                {
+                                    position.y = owner_rect.offset_y - height - 2.0f;
+                                }
+                            }
+                            else
+                            {
+                                position.x = owner_rect.offset_x + owner_rect.width - 2.0f;
+                                position.y = owner_rect.offset_y - 5.0f;
+                                if(position.x + width > m_frame_desc.surface_size.x && owner_rect.offset_x - width + 2.0f >= 0.0f)
+                                {
+                                    position.x = owner_rect.offset_x - width + 2.0f;
+                                }
+                            }
+                            position.x = clamp(position.x, 0.0f, max(m_frame_desc.surface_size.x - width, 0.0f));
+                            position.y = clamp(position.y, 0.0f, max(m_frame_desc.surface_size.y - height, 0.0f));
+                        }
+                    }
+                    RectF child_rect(position.x, position.y, max(width, 1.0f), max(height, 1.0f));
                     layout_node(child, child_rect, surface_clip);
                 }
             };

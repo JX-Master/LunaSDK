@@ -712,6 +712,11 @@ namespace Luna
             case GUINodeKind::popup:
                 render_rect(rect, clip, Float4U(0.08f, 0.10f, 0.13f, 0.98f), 5.0f);
                 break;
+            case GUINodeKind::menu_bar:
+                render_rect(rect, clip, Float4U(0.08f, 0.10f, 0.13f, 0.92f), 0.0f);
+                render_rect(RectF(rect.offset_x, rect.offset_y + max(rect.height - 1.0f, 0.0f), rect.width, 1.0f),
+                    clip, Float4U(0.20f, 0.24f, 0.30f, 1.0f), 0.0f);
+                break;
             case GUINodeKind::table_layout:
                 render_table_node(node_index);
                 break;
@@ -726,6 +731,60 @@ namespace Luna
                 }
                 render_text(RectF(rect.offset_x + 8.0f, rect.offset_y, max(rect.width - 16.0f, 1.0f), rect.height), clip, node.text.c_str(), 15.0f, Color::white(), VG::TextAlignment::begin);
                 break;
+            case GUINodeKind::menu:
+            {
+                bool top_level = node.parent != U32_MAX && m_submitted_desc.nodes[node.parent].kind == GUINodeKind::menu_bar;
+                bool open = node.menu_popup_id && is_popup_open(node.menu_popup_id);
+                Float4U text_color = node.enabled ? Float4U(1.0f) : Float4U(0.55f, 0.59f, 0.65f, 1.0f);
+                if(open || hovered || active)
+                {
+                    render_rect(rect, clip, active || open ? Float4U(0.20f, 0.36f, 0.62f, 1.0f) : Float4U(0.20f, 0.30f, 0.44f, 1.0f), top_level ? 4.0f : 3.0f);
+                }
+                render_text(RectF(rect.offset_x + (top_level ? 10.0f : 26.0f), rect.offset_y,
+                    max(rect.width - (top_level ? 20.0f : 50.0f), 1.0f), rect.height),
+                    clip, node.text.c_str(), 15.0f, text_color, VG::TextAlignment::begin);
+                if(!top_level)
+                {
+                    render_text(RectF(rect.offset_x + max(rect.width - 22.0f, 0.0f), rect.offset_y, 18.0f, rect.height),
+                        clip, ">", 15.0f, text_color, VG::TextAlignment::center);
+                }
+                break;
+            }
+            case GUINodeKind::menu_item:
+            {
+                bool checked = node.bool_value ? *node.bool_value : node.selected;
+                Float4U text_color = node.enabled ? Float4U(1.0f) : Float4U(0.55f, 0.59f, 0.65f, 1.0f);
+                if(hovered || active)
+                {
+                    render_rect(rect, clip, active ? Float4U(0.20f, 0.36f, 0.62f, 1.0f) : Float4U(0.20f, 0.30f, 0.44f, 1.0f), 3.0f);
+                }
+                if(checked)
+                {
+                    f32 x0 = rect.offset_x + 8.0f;
+                    f32 y0 = rect.offset_y + rect.height * 0.56f;
+                    f32 x1 = rect.offset_x + 13.0f;
+                    f32 y1 = rect.offset_y + rect.height * 0.72f;
+                    f32 x2 = rect.offset_x + 22.0f;
+                    f32 y2 = rect.offset_y + rect.height * 0.32f;
+                    render_line_segment(Float2U(x0, y0), Float2U(x1, y1), clip, text_color, 2.0f);
+                    render_line_segment(Float2U(x1, y1), Float2U(x2, y2), clip, text_color, 2.0f);
+                }
+                render_text(RectF(rect.offset_x + 30.0f, rect.offset_y, max(rect.width - 74.0f, 1.0f), rect.height),
+                    clip, node.text.c_str(), 15.0f, text_color, VG::TextAlignment::begin);
+                if(!node.shortcut.empty())
+                {
+                    render_text(RectF(rect.offset_x + max(rect.width - 88.0f, 0.0f), rect.offset_y, 80.0f, rect.height),
+                        clip, node.shortcut.c_str(), 14.0f, Float4U(text_color.x, text_color.y, text_color.z, 0.72f), VG::TextAlignment::end);
+                }
+                break;
+            }
+            case GUINodeKind::menu_separator:
+            {
+                f32 y = rect.offset_y + rect.height * 0.5f;
+                render_line_segment(Float2U(rect.offset_x + 8.0f, y), Float2U(rect.offset_x + max(rect.width - 8.0f, 8.0f), y),
+                    clip, Float4U(0.24f, 0.29f, 0.36f, 1.0f), 1.0f);
+                break;
+            }
             case GUINodeKind::text:
                 render_text(rect, clip, node.text.c_str(), 16.0f, Color::white(), VG::TextAlignment::begin);
                 break;

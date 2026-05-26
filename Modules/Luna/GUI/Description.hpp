@@ -22,6 +22,10 @@ namespace Luna
             scroll_view,
             window,
             popup,
+            menu_bar,
+            menu,
+            menu_item,
+            menu_separator,
             table_layout,
             text,
             button,
@@ -63,6 +67,7 @@ namespace Luna
             u32 next_sibling = U32_MAX;
             u32 depth = 0;
             String text;
+            String shortcut;
             Ref<RHI::ITexture> texture;
             GUISize requested_size;
             GUILayoutStyle layout_style;
@@ -74,6 +79,8 @@ namespace Luna
             GUITabItemFlag tab_item_flags = GUITabItemFlag::none;
             GUIPopupFlag popup_flags = GUIPopupFlag::none;
             GUIID popup_parent_id = 0;
+            GUIID popup_owner_id = 0;
+            GUIID menu_popup_id = 0;
             GUITableDesc table_desc;
             bool has_table_cell_color = false;
             Float4U table_cell_color = Float4U(0.0f);
@@ -84,6 +91,7 @@ namespace Luna
             bool has_user_clip_rect = false;
             RectF user_clip_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
             bool selected = false;
+            bool enabled = true;
             RectF paint_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
             Float2U paint_line_begin = Float2U(0.0f);
             Float2U paint_line_end = Float2U(0.0f);

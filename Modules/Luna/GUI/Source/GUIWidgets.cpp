@@ -288,6 +288,91 @@ namespace Luna
             return require_current_context()->is_popup_open(popup);
         }
 
+        LUNA_GUI_API GUIItemHandle BeginMenuBar(const c8* label, const GUILayoutDesc& desc)
+        {
+            GUIItemHandle handle;
+            GUIContext* ctx = require_current_context();
+            ctx->begin_container(GUINodeKind::menu_bar, label ? label : "MenuBar", GUISize(), &handle);
+            GUINode& node = ctx->m_build_desc.nodes.back();
+            GUILayoutDesc default_desc;
+            if(desc.padding.left == 0.0f && desc.padding.top == 0.0f && desc.padding.right == 0.0f && desc.padding.bottom == 0.0f &&
+                desc.gap == default_desc.gap &&
+                desc.main_axis_alignment == default_desc.main_axis_alignment &&
+                desc.cross_axis_alignment == default_desc.cross_axis_alignment)
+            {
+                node.layout_desc.padding = GUIEdgeInsets::xy(4.0f, 2.0f);
+                node.layout_desc.gap = 2.0f;
+                node.layout_desc.cross_axis_alignment = GUILayoutCrossAxisAlignment::center;
+            }
+            else
+            {
+                node.layout_desc = desc;
+            }
+            return handle;
+        }
+
+        LUNA_GUI_API void EndMenuBar()
+        {
+            require_current_context()->end_container();
+        }
+
+        LUNA_GUI_API GUIItemHandle BeginMenu(const c8* label, bool enabled)
+        {
+            GUIContext* ctx = require_current_context();
+            GUIItemHandle handle = ctx->add_node(GUINodeKind::menu, label ? label : "", enabled);
+            u32 menu_index = (u32)ctx->m_build_desc.nodes.size() - 1;
+            GUINode& menu_node = ctx->m_build_desc.nodes[menu_index];
+            menu_node.enabled = enabled;
+
+            GUIPopupDesc popup_desc;
+            popup_desc.flags = GUIPopupFlag::managed | GUIPopupFlag::close_on_outside_click | GUIPopupFlag::close_on_escape | GUIPopupFlag::close_on_blur;
+            GUIItemHandle popup = ctx->begin_popup("##MenuPopup", popup_desc);
+            GUINode& popup_node = ctx->m_build_desc.nodes.back();
+            popup_node.popup_owner_id = handle.id;
+            popup_node.layout_desc.padding = GUIEdgeInsets::xy(6.0f, 5.0f);
+            popup_node.layout_desc.gap = 1.0f;
+            popup_node.layout_desc.cross_axis_alignment = GUILayoutCrossAxisAlignment::stretch;
+            ctx->m_build_desc.nodes[menu_index].menu_popup_id = popup.id;
+            return handle;
+        }
+
+        LUNA_GUI_API void EndMenu()
+        {
+            require_current_context()->end_popup();
+        }
+
+        LUNA_GUI_API GUIItemHandle MenuItem(const c8* label, const c8* shortcut, bool selected, bool enabled)
+        {
+            GUIContext* ctx = require_current_context();
+            GUIItemHandle handle = ctx->add_node(GUINodeKind::menu_item, label ? label : "", enabled);
+            GUINode& node = ctx->m_build_desc.nodes.back();
+            node.shortcut = shortcut ? shortcut : "";
+            node.selected = selected;
+            node.enabled = enabled;
+            return handle;
+        }
+
+        LUNA_GUI_API GUIItemHandle MenuItem(const c8* label, const c8* shortcut, bool* selected, bool enabled)
+        {
+            GUIContext* ctx = require_current_context();
+            GUIItemHandle handle = ctx->add_node(GUINodeKind::menu_item, label ? label : "", enabled);
+            GUINode& node = ctx->m_build_desc.nodes.back();
+            node.shortcut = shortcut ? shortcut : "";
+            node.bool_value = selected;
+            node.selected = selected ? *selected : false;
+            node.enabled = enabled;
+            return handle;
+        }
+
+        LUNA_GUI_API GUIItemHandle MenuSeparator()
+        {
+            GUIContext* ctx = require_current_context();
+            GUIItemHandle handle = ctx->add_node(GUINodeKind::menu_separator, "##MenuSeparator", false);
+            GUINode& node = ctx->m_build_desc.nodes.back();
+            node.enabled = false;
+            return handle;
+        }
+
         LUNA_GUI_API GUIItemHandle BeginTabBar(const c8* label, GUITabBarFlag flags)
         {
             GUIItemHandle handle;
