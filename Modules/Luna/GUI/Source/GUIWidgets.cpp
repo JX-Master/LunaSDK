@@ -263,6 +263,113 @@ namespace Luna
             require_current_context()->end_container();
         }
 
+        LUNA_GUI_API GUIItemHandle BeginTabBar(const c8* label, GUITabBarFlag flags)
+        {
+            GUIItemHandle handle;
+            GUIContext* ctx = require_current_context();
+            ctx->begin_container(GUINodeKind::tab_bar, label ? label : "TabBar", GUISize(), &handle);
+            GUINode& node = ctx->m_build_desc.nodes.back();
+            node.tab_bar_flags = flags;
+
+            PersistentItemState& state = ctx->get_or_create_persistent_state(handle.id);
+            TabBuildScope scope;
+            scope.tab_bar_id = handle.id;
+            scope.selected_id = state.tab_selected_id;
+            scope.flags = flags;
+            scope.had_existing_tabs = !state.tab_order.empty();
+            ctx->m_tab_build_stack.push_back(scope);
+            return handle;
+        }
+
+        LUNA_GUI_API void EndTabBar()
+        {
+            GUIContext* ctx = require_current_context();
+            luassert(!ctx->m_tab_build_stack.empty());
+            TabBuildScope scope = ctx->m_tab_build_stack.back();
+            ctx->m_tab_build_stack.pop_back();
+            if(!scope.visible_tab_chosen && scope.first_open_id)
+            {
+                PersistentItemState& state = ctx->get_or_create_persistent_state(scope.tab_bar_id);
+                state.tab_selected_id = scope.first_open_id;
+            }
+            ctx->end_container();
+        }
+
+        LUNA_GUI_API bool BeginTabItem(const c8* label, bool* open, GUITabItemFlag flags)
+        {
+            GUIContext* ctx = require_current_context();
+            luassert(!ctx->m_tab_build_stack.empty());
+            GUIItemHandle handle = ctx->add_node(GUINodeKind::tab_item, label ? label : "", true);
+            u32 index = (u32)ctx->m_build_desc.nodes.size() - 1;
+            GUINode& node = ctx->m_build_desc.nodes[index];
+            node.bool_value = open;
+            node.tab_item_flags = flags;
+            bool item_open = !open || *open;
+
+            TabBuildScope& scope = ctx->m_tab_build_stack.back();
+            if(item_open && !scope.first_open_id)
+            {
+                scope.first_open_id = handle.id;
+            }
+            PersistentItemState& bar_state = ctx->get_or_create_persistent_state(scope.tab_bar_id);
+            bool auto_select_new = item_open &&
+                test_flags(scope.flags, GUITabBarFlag::auto_select_new_tabs) &&
+                scope.had_existing_tabs &&
+                !tab_order_contains(bar_state, handle.id) &&
+                !test_flags(flags, GUITabItemFlag::button);
+            if(item_open && (test_flags(flags, GUITabItemFlag::selected) || auto_select_new) &&
+                !test_flags(flags, GUITabItemFlag::button))
+            {
+                scope.selected_id = handle.id;
+                bar_state.tab_selected_id = handle.id;
+            }
+            bool explicit_selected = item_open && scope.selected_id == handle.id;
+            bool visible = item_open && !test_flags(flags, GUITabItemFlag::button) &&
+                ((scope.selected_id && scope.selected_id == handle.id) ||
+                    (!scope.selected_id && !scope.visible_tab_chosen) ||
+                    explicit_selected);
+            node.selected = visible;
+            if(visible)
+            {
+                scope.visible_tab_chosen = true;
+                ctx->m_parent_stack.push_back(index);
+                ctx->m_id_stack.push_back(handle.id);
+            }
+            return visible;
+        }
+
+        LUNA_GUI_API void EndTabItem()
+        {
+            require_current_context()->end_container();
+        }
+
+        LUNA_GUI_API GUIItemHandle TabItemButton(const c8* label, GUITabItemFlag flags)
+        {
+            GUIContext* ctx = require_current_context();
+            GUIItemHandle handle = ctx->add_node(GUINodeKind::tab_item, label ? label : "", true);
+            GUINode& node = ctx->m_build_desc.nodes.back();
+            node.tab_item_flags = (GUITabItemFlag)((u32)flags | (u32)GUITabItemFlag::button);
+            return handle;
+        }
+
+        LUNA_GUI_API void SetTabItemClosed(const c8* label)
+        {
+            GUIContext* ctx = require_current_context();
+            if(ctx->m_parent_stack.empty()) return;
+            u32 parent = ctx->m_parent_stack.back();
+            if(parent >= ctx->m_build_desc.nodes.size()) return;
+            for(u32 child = ctx->m_build_desc.nodes[parent].first_child; child != U32_MAX; child = ctx->m_build_desc.nodes[child].next_sibling)
+            {
+                GUINode& node = ctx->m_build_desc.nodes[child];
+                if(node.kind != GUINodeKind::tab_item || strcmp(node.text.c_str(), label ? label : "") != 0) continue;
+                if(node.bool_value)
+                {
+                    *node.bool_value = false;
+                }
+                break;
+            }
+        }
+
         LUNA_GUI_API GUIItemHandle Button(const c8* label)
         {
             return require_current_context()->add_node(GUINodeKind::button, label ? label : "", true);

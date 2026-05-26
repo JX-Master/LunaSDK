@@ -615,13 +615,196 @@ namespace Luna
             }
         }
 
+        bool GUIContext::hit_test_tab_header(const Float2U& pos, GUIID& out_tab_bar_id, GUIID& out_tab_item_id, bool& out_close) const
+        {
+            if(m_layouts.size() != m_submitted_desc.nodes.size()) return false;
+            for(usize i = m_submitted_desc.nodes.size(); i > 0; --i)
+            {
+                u32 node_index = (u32)(i - 1);
+                const GUINode& node = m_submitted_desc.nodes[node_index];
+                if(node.kind != GUINodeKind::tab_item) continue;
+                const NodeLayout& layout = m_layouts[node_index];
+                if(layout.tab_header_rect.width <= 0.0f || layout.tab_header_rect.height <= 0.0f) continue;
+                if(!point_in_rect(pos, layout.tab_header_rect) || !point_in_rect(pos, layout.tab_header_clip_rect)) continue;
+                if(layout.dock_panel_child && !layout.dock_panel_visible) continue;
+                out_tab_item_id = node.id;
+                out_tab_bar_id = 0;
+                if(node.parent != U32_MAX && node.parent < m_submitted_desc.nodes.size())
+                {
+                    out_tab_bar_id = m_submitted_desc.nodes[node.parent].id;
+                }
+                out_close = layout.tab_close_rect.width > 0.0f && point_in_rect(pos, layout.tab_close_rect);
+                return out_tab_bar_id != 0;
+            }
+            return false;
+        }
+
+        bool GUIContext::hit_test_tab_scroll_button(const Float2U& pos, GUIID& out_tab_bar_id, bool& out_left) const
+        {
+            if(m_layouts.size() != m_submitted_desc.nodes.size()) return false;
+            for(usize i = m_submitted_desc.nodes.size(); i > 0; --i)
+            {
+                u32 node_index = (u32)(i - 1);
+                const GUINode& node = m_submitted_desc.nodes[node_index];
+                if(node.kind != GUINodeKind::tab_bar) continue;
+                const NodeLayout& layout = m_layouts[node_index];
+                if(!layout.tab_scrollable) continue;
+                if(point_in_rect(pos, layout.tab_scroll_left_rect) && point_in_rect(pos, layout.clip_rect))
+                {
+                    out_tab_bar_id = node.id;
+                    out_left = true;
+                    return true;
+                }
+                if(point_in_rect(pos, layout.tab_scroll_right_rect) && point_in_rect(pos, layout.clip_rect))
+                {
+                    out_tab_bar_id = node.id;
+                    out_left = false;
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        GUIID GUIContext::hit_test_tab_scroll_area(const Float2U& pos) const
+        {
+            if(m_layouts.size() != m_submitted_desc.nodes.size()) return 0;
+            for(usize i = m_submitted_desc.nodes.size(); i > 0; --i)
+            {
+                u32 node_index = (u32)(i - 1);
+                const GUINode& node = m_submitted_desc.nodes[node_index];
+                if(node.kind != GUINodeKind::tab_bar) continue;
+                const NodeLayout& layout = m_layouts[node_index];
+                if(!layout.tab_scrollable) continue;
+                if((point_in_rect(pos, layout.tab_header_area_rect) ||
+                    point_in_rect(pos, layout.tab_scroll_left_rect) ||
+                    point_in_rect(pos, layout.tab_scroll_right_rect)) &&
+                    point_in_rect(pos, layout.clip_rect))
+                {
+                    return node.id;
+                }
+            }
+            return 0;
+        }
+
+        GUIID GUIContext::fallback_tab_item(GUIID tab_bar_id, GUIID excluded_tab_item_id) const
+        {
+            for(usize i = 0; i < m_submitted_desc.nodes.size(); ++i)
+            {
+                const GUINode& tab_bar = m_submitted_desc.nodes[i];
+                if(tab_bar.id != tab_bar_id || tab_bar.kind != GUINodeKind::tab_bar) continue;
+                GUIID fallback = 0;
+                for(u32 child = tab_bar.first_child; child != U32_MAX; child = m_submitted_desc.nodes[child].next_sibling)
+                {
+                    const GUINode& tab = m_submitted_desc.nodes[child];
+                    if(tab.kind != GUINodeKind::tab_item || tab.id == excluded_tab_item_id) continue;
+                    if(test_flags(tab.tab_item_flags, GUITabItemFlag::button)) continue;
+                    if(tab.bool_value && !*tab.bool_value) continue;
+                    fallback = tab.id;
+                    break;
+                }
+                return fallback;
+            }
+            return 0;
+        }
+
+        void GUIContext::select_tab_item(GUIID tab_bar_id, GUIID tab_item_id)
+        {
+            if(!tab_bar_id || !tab_item_id) return;
+            PersistentItemState& state = get_or_create_persistent_state(tab_bar_id);
+            if(state.tab_selected_id == tab_item_id) return;
+            state.tab_selected_id = tab_item_id;
+            ItemResult& result = get_or_create_current_result(tab_bar_id);
+            result.states.insert_or_assign(Name("gui.value_changed"), Any(true));
+        }
+
+        bool GUIContext::reorder_tab_item_from_pointer(GUIID tab_bar_id, GUIID tab_item_id, const Float2U& pos)
+        {
+            if(!tab_bar_id || !tab_item_id) return false;
+            PersistentItemState& state = get_or_create_persistent_state(tab_bar_id);
+            usize old_index = USIZE_MAX;
+            for(usize i = 0; i < state.tab_order.size(); ++i)
+            {
+                if(state.tab_order[i] == tab_item_id)
+                {
+                    old_index = i;
+                    break;
+                }
+            }
+            if(old_index == USIZE_MAX) return false;
+
+            usize new_index = state.tab_order.size();
+            for(usize i = 0; i < state.tab_order.size(); ++i)
+            {
+                GUIID id = state.tab_order[i];
+                if(id == tab_item_id) continue;
+                for(usize node_index = 0; node_index < m_submitted_desc.nodes.size(); ++node_index)
+                {
+                    const GUINode& node = m_submitted_desc.nodes[node_index];
+                    if(node.id != id || node.kind != GUINodeKind::tab_item) continue;
+                    if(node.parent == U32_MAX || node.parent >= m_submitted_desc.nodes.size() ||
+                        m_submitted_desc.nodes[node.parent].id != tab_bar_id) break;
+                    const RectF& rect = m_layouts[node_index].tab_header_rect;
+                    if(pos.x < rect.offset_x + rect.width * 0.5f)
+                    {
+                        new_index = i;
+                    }
+                    break;
+                }
+                if(new_index != state.tab_order.size()) break;
+            }
+            if(new_index > old_index) --new_index;
+            new_index = min(new_index, state.tab_order.size() - 1);
+            if(new_index == old_index) return false;
+            state.tab_order.erase(state.tab_order.begin() + old_index);
+            state.tab_order.insert(state.tab_order.begin() + new_index, tab_item_id);
+            ItemResult& result = get_or_create_current_result(tab_bar_id);
+            result.states.insert_or_assign(Name("gui.value_changed"), Any(true));
+            return true;
+        }
+
+        void GUIContext::scroll_tab_bar(GUIID tab_bar_id, f32 delta)
+        {
+            if(!tab_bar_id || delta == 0.0f) return;
+            for(usize i = 0; i < m_submitted_desc.nodes.size(); ++i)
+            {
+                const GUINode& node = m_submitted_desc.nodes[i];
+                if(node.id != tab_bar_id || node.kind != GUINodeKind::tab_bar) continue;
+                const NodeLayout& layout = m_layouts[i];
+                if(!layout.tab_scrollable) return;
+                PersistentItemState& state = get_or_create_persistent_state(tab_bar_id);
+                f32 old_scroll = state.tab_scroll_x;
+                state.tab_scroll_x = clamp(state.tab_scroll_x + delta, 0.0f, layout.tab_scroll_max);
+                if(state.tab_scroll_x != old_scroll)
+                {
+                    ItemResult& result = get_or_create_current_result(tab_bar_id);
+                    result.states.insert_or_assign(Name("gui.value_changed"), Any(true));
+                    m_layout_dirty = true;
+                }
+                return;
+            }
+        }
+
         GUIID GUIContext::hit_test_node(u32 node_index, const Float2U& pos, bool filter_kind, GUINodeKind kind) const
         {
             GUIID ret = 0;
             const GUINode& node = m_submitted_desc.nodes[node_index];
             const RectF& rect = m_layouts[node_index].rect;
             const RectF& clip = m_layouts[node_index].clip_rect;
-            if((filter_kind ? node.kind == kind : node.interactive) && point_in_rect(pos, rect) && point_in_rect(pos, clip))
+            if(node.kind == GUINodeKind::tab_item)
+            {
+                const NodeLayout& layout = m_layouts[node_index];
+                if((filter_kind ? node.kind == kind : node.interactive) &&
+                    point_in_rect(pos, layout.tab_header_rect) &&
+                    point_in_rect(pos, layout.tab_header_clip_rect))
+                {
+                    ret = node.id;
+                }
+                if(!layout.tab_content_visible)
+                {
+                    return ret;
+                }
+            }
+            else if((filter_kind ? node.kind == kind : node.interactive) && point_in_rect(pos, rect) && point_in_rect(pos, clip))
             {
                 ret = node.id;
             }
@@ -916,6 +1099,26 @@ namespace Luna
                     {
                         update_table_resize_from_pointer(e.position);
                     }
+                    else if(m_active_tab_scroll_id)
+                    {
+                    }
+                    else if(m_active_tab_item_id)
+                    {
+                        if(m_active_tab_reorder_allowed)
+                        {
+                            f32 dx = e.position.x - m_active_tab_start_pos.x;
+                            f32 dy = e.position.y - m_active_tab_start_pos.y;
+                            if(!m_active_tab_reordering && dx * dx + dy * dy >= 16.0f)
+                            {
+                                m_active_tab_reordering = true;
+                                select_tab_item(m_active_tab_bar_id, m_active_tab_item_id);
+                            }
+                            if(m_active_tab_reordering && reorder_tab_item_from_pointer(m_active_tab_bar_id, m_active_tab_item_id, e.position))
+                            {
+                                m_layout_dirty = true;
+                            }
+                        }
+                    }
                     else if(m_active_id)
                     {
                         update_input_text_selection_from_pointer(m_active_id, e.position);
@@ -1151,6 +1354,57 @@ namespace Luna
                         state.focused = true;
                         continue;
                     }
+                    GUIID tab_scroll_bar_id = 0;
+                    bool tab_scroll_left = false;
+                    if(hit_test_tab_scroll_button(e.position, tab_scroll_bar_id, tab_scroll_left))
+                    {
+                        m_active_id = tab_scroll_bar_id;
+                        m_focused_id = tab_scroll_bar_id;
+                        if(old_focused_id && old_focused_id != tab_scroll_bar_id)
+                        {
+                            input_text_clear_selection(get_or_create_persistent_state(old_focused_id));
+                        }
+                        m_active_tab_scroll_id = tab_scroll_bar_id;
+                        m_active_tab_scroll_left = tab_scroll_left;
+                        PersistentItemState& state = get_or_create_persistent_state(tab_scroll_bar_id);
+                        state.pointer_down = true;
+                        state.active = true;
+                        state.focused = true;
+                        scroll_tab_bar(tab_scroll_bar_id, tab_scroll_left ? -96.0f : 96.0f);
+                        continue;
+                    }
+                    GUIID tab_bar_id = 0;
+                    GUIID tab_item_id = 0;
+                    bool tab_close = false;
+                    if(hit_test_tab_header(e.position, tab_bar_id, tab_item_id, tab_close))
+                    {
+                        m_active_id = tab_item_id;
+                        m_focused_id = tab_item_id;
+                        if(old_focused_id && old_focused_id != tab_item_id)
+                        {
+                            input_text_clear_selection(get_or_create_persistent_state(old_focused_id));
+                        }
+                        m_active_tab_bar_id = tab_bar_id;
+                        m_active_tab_item_id = tab_item_id;
+                        m_active_tab_close = tab_close;
+                        m_active_tab_start_pos = e.position;
+                        m_active_tab_reordering = false;
+                        m_active_tab_reorder_allowed = false;
+                        GUINode* tab_bar = find_node(tab_bar_id);
+                        GUINode* tab_item = find_node(tab_item_id);
+                        if(tab_bar && tab_item && tab_bar->kind == GUINodeKind::tab_bar && tab_item->kind == GUINodeKind::tab_item)
+                        {
+                            m_active_tab_reorder_allowed = test_flags(tab_bar->tab_bar_flags, GUITabBarFlag::reorderable) &&
+                                !tab_close &&
+                                !test_flags(tab_item->tab_item_flags, GUITabItemFlag::button) &&
+                                !test_flags(tab_item->tab_item_flags, GUITabItemFlag::no_reorder);
+                        }
+                        PersistentItemState& state = get_or_create_persistent_state(tab_item_id);
+                        state.pointer_down = true;
+                        state.active = true;
+                        state.focused = true;
+                        continue;
+                    }
                     GUIID target = hit_test(e.position);
                     Name drag_drop_type;
                     GUIID drag_drop_source = hit_test_drag_drop_source(e.position, drag_drop_type);
@@ -1365,6 +1619,66 @@ namespace Luna
                         m_active_float_component = U32_MAX;
                         continue;
                     }
+                    if(m_active_tab_scroll_id)
+                    {
+                        PersistentItemState& state = get_or_create_persistent_state(m_active_tab_scroll_id);
+                        state.pointer_down = false;
+                        state.active = false;
+                        m_active_tab_scroll_id = 0;
+                        m_active_tab_scroll_left = false;
+                        m_active_id = 0;
+                        m_active_float_component = U32_MAX;
+                        continue;
+                    }
+                    if(m_active_tab_item_id)
+                    {
+                        GUIID tab_bar_id = 0;
+                        GUIID tab_item_id = 0;
+                        bool tab_close = false;
+                        bool hit_tab = hit_test_tab_header(e.position, tab_bar_id, tab_item_id, tab_close);
+                        if(hit_tab && tab_item_id == m_active_tab_item_id && !m_active_tab_reordering)
+                        {
+                            ItemResult& item_result = get_or_create_current_result(tab_item_id);
+                            item_result.states.insert_or_assign(Name("gui.clicked"), Any(true));
+                            PersistentItemState& item_state = get_or_create_persistent_state(tab_item_id);
+                            bool dbl = (m_time - item_state.last_click_time) <= 0.4;
+                            item_result.states.insert_or_assign(Name("gui.double_clicked"), Any(dbl));
+                            item_state.last_click_time = m_time;
+                            for(GUINode& node : m_submitted_desc.nodes)
+                            {
+                                if(node.id != tab_item_id || node.kind != GUINodeKind::tab_item) continue;
+                                if((m_active_tab_close || tab_close) && node.bool_value && !test_flags(node.tab_item_flags, GUITabItemFlag::no_close_button))
+                                {
+                                    *node.bool_value = false;
+                                    item_result.states.insert_or_assign(Name("gui.open"), Any(false));
+                                    item_result.states.insert_or_assign(Name("gui.value_changed"), Any(true));
+                                    PersistentItemState& bar_state = get_or_create_persistent_state(tab_bar_id);
+                                    if(bar_state.tab_selected_id == tab_item_id)
+                                    {
+                                        bar_state.tab_selected_id = fallback_tab_item(tab_bar_id, tab_item_id);
+                                        ItemResult& bar_result = get_or_create_current_result(tab_bar_id);
+                                        bar_result.states.insert_or_assign(Name("gui.value_changed"), Any(true));
+                                    }
+                                }
+                                else if(!test_flags(node.tab_item_flags, GUITabItemFlag::button))
+                                {
+                                    select_tab_item(tab_bar_id, tab_item_id);
+                                }
+                                break;
+                            }
+                        }
+                        PersistentItemState& state = get_or_create_persistent_state(m_active_tab_item_id);
+                        state.pointer_down = false;
+                        state.active = false;
+                        m_active_tab_bar_id = 0;
+                        m_active_tab_item_id = 0;
+                        m_active_tab_close = false;
+                        m_active_tab_reorder_allowed = false;
+                        m_active_tab_reordering = false;
+                        m_active_id = 0;
+                        m_active_float_component = U32_MAX;
+                        continue;
+                    }
                     GUIID target = hit_test(e.position);
                     GUIID target_dock_space = 0;
                     GUIID target_dock_panel = 0;
@@ -1457,6 +1771,13 @@ namespace Luna
                     i32 dropdown_item = -1;
                     if(hit_test_combo_dropdown(e.position, dropdown_combo, dropdown_item))
                     {
+                        continue;
+                    }
+                    GUIID tab_scroll_area = hit_test_tab_scroll_area(e.position);
+                    if(tab_scroll_area)
+                    {
+                        f32 delta = e.wheel_delta.x != 0.0f ? -e.wheel_delta.x * 48.0f : -e.wheel_delta.y * 48.0f;
+                        scroll_tab_bar(tab_scroll_area, delta);
                         continue;
                     }
                     GUIID scroll_target = 0;
@@ -1652,6 +1973,13 @@ namespace Luna
                     m_active_scrollbar_id = 0;
                     m_active_scrollbar_vertical = false;
                     m_active_scrollbar_grab_offset = 0.0f;
+                    m_active_tab_bar_id = 0;
+                    m_active_tab_item_id = 0;
+                    m_active_tab_close = false;
+                    m_active_tab_reorder_allowed = false;
+                    m_active_tab_reordering = false;
+                    m_active_tab_scroll_id = 0;
+                    m_active_tab_scroll_left = false;
                     m_active_dock_space_id = 0;
                     m_active_dock_panel_id = 0;
                     m_active_dock_panel_resize = false;
@@ -1683,9 +2011,18 @@ namespace Luna
                 u32 dock_split_node = U32_MAX;
                 GUIDockSplitAxis dock_split_axis = GUIDockSplitAxis::x;
                 u32 dock_leaf_index = U32_MAX;
+                GUIID tab_bar_id = 0;
+                GUIID tab_item_id = 0;
+                bool tab_close = false;
+                GUIID tab_scroll_bar_id = 0;
+                bool tab_scroll_left = false;
                 if(hit_test_combo_dropdown(m_pointer_pos, combo_id, combo_item))
                 {
                     m_hovered_id = combo_id;
+                }
+                else if(hit_test_tab_scroll_button(m_pointer_pos, tab_scroll_bar_id, tab_scroll_left))
+                {
+                    m_hovered_id = tab_scroll_bar_id;
                 }
                 else if(hit_test_scrollbar(m_pointer_pos, scrollbar_id, scrollbar_vertical, scrollbar_thumb))
                 {
@@ -1702,6 +2039,10 @@ namespace Luna
                 else if(hit_test_dock_panel_chrome(m_pointer_pos, dock_space_id, dock_panel_id, dock_resize, dock_close))
                 {
                     m_hovered_id = dock_panel_id;
+                }
+                else if(hit_test_tab_header(m_pointer_pos, tab_bar_id, tab_item_id, tab_close))
+                {
+                    m_hovered_id = tab_item_id;
                 }
                 else
                 {
@@ -1774,6 +2115,11 @@ namespace Luna
                         }
                         result.states.insert_or_assign(Name("gui.open"), Any(persistent.open));
                     }
+                    else if(node.kind == GUINodeKind::tab_item)
+                    {
+                        bool open = !node.bool_value || *node.bool_value;
+                        result.states.insert_or_assign(Name("gui.open"), Any(open));
+                    }
                     else if(node.kind == GUINodeKind::input_text && node.string_value)
                     {
                         persistent.text_cursor = clamp_utf8_cursor(*node.string_value, persistent.text_cursor);
@@ -1824,9 +2170,18 @@ namespace Luna
                         u32 dock_split_node = U32_MAX;
                         GUIDockSplitAxis dock_split_axis = GUIDockSplitAxis::x;
                         u32 dock_leaf_index = U32_MAX;
+                        GUIID tab_bar_id = 0;
+                        GUIID tab_item_id = 0;
+                        bool tab_close = false;
+                        GUIID tab_scroll_bar_id = 0;
+                        bool tab_scroll_left = false;
                         if(hit_test_combo_dropdown(m_pointer_pos, combo_id, combo_item))
                         {
                             m_hovered_id = combo_id;
+                        }
+                        else if(hit_test_tab_scroll_button(m_pointer_pos, tab_scroll_bar_id, tab_scroll_left))
+                        {
+                            m_hovered_id = tab_scroll_bar_id;
                         }
                         else if(hit_test_scrollbar(m_pointer_pos, scrollbar_id, scrollbar_vertical, scrollbar_thumb))
                         {
@@ -1843,6 +2198,10 @@ namespace Luna
                         else if(hit_test_dock_panel_chrome(m_pointer_pos, dock_space_id, dock_panel_id, dock_resize, dock_close))
                         {
                             m_hovered_id = dock_panel_id;
+                        }
+                        else if(hit_test_tab_header(m_pointer_pos, tab_bar_id, tab_item_id, tab_close))
+                        {
+                            m_hovered_id = tab_item_id;
                         }
                         else
                         {
@@ -1869,6 +2228,11 @@ namespace Luna
                     else if(node.kind == GUINodeKind::combo)
                     {
                         result.states.insert_or_assign(Name("gui.open"), Any(persistent.open));
+                    }
+                    else if(node.kind == GUINodeKind::tab_item)
+                    {
+                        bool open = !node.bool_value || *node.bool_value;
+                        result.states.insert_or_assign(Name("gui.open"), Any(open));
                     }
                 }
                 m_submitted = true;

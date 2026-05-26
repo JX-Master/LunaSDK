@@ -45,6 +45,7 @@ namespace Luna
         bool switch_b = false;
         bool dock_panel_a_open = true;
         bool dock_panel_b_open = true;
+        bool tab_document_open[4] = { true, true, true, true };
         bool popup_open = false;
         bool floating_window_open = false;
         Float2U popup_position = Float2U(120.0f, 120.0f);
@@ -73,7 +74,7 @@ namespace Luna
 
     struct FrameHandles
     {
-        GUI::GUIItemHandle tabs[9];
+        GUI::GUIItemHandle tabs[10];
         GUI::GUIItemHandle tree_nodes[8];
         GUI::GUIItemHandle primary_button;
         GUI::GUIItemHandle double_click_item;
@@ -97,6 +98,7 @@ namespace Luna
         "Popups",
         "State",
         "Trees",
+        "Tabs",
         "DragDrop"
     };
 
@@ -512,28 +514,94 @@ namespace Luna
         GUI::EndHLayout();
     }
 
-    void draw_showcase(App& app, FrameHandles& handles, const Float2U& surface_size)
+    void draw_tabs_tab(App& app)
     {
-        app.showcase_size = Float2U(max(surface_size.x, 1.0f), max(surface_size.y, 1.0f));
-        app.showcase_content_size = Float2U(max(app.showcase_size.x - 32.0f, 240.0f), max(app.showcase_size.y - 92.0f, 140.0f));
-        GUI::BeginWindow("Luna GUI Showcase", GUI::GUISize::fixed(app.showcase_size.x, app.showcase_size.y));
-        GUI::Text("Luna GUI Showcase");
-
-        GUI::GUILayoutDesc tabs_layout;
-        tabs_layout.gap = 4.0f;
-        tabs_layout.cross_axis_alignment = GUI::GUILayoutCrossAxisAlignment::center;
-        GUI::BeginHLayout("Tab Bar", tabs_layout);
-        f32 tab_width = clamp((app.showcase_content_size.x - tabs_layout.gap * (f32)(DEMO_TAB_COUNT - 1)) / (f32)DEMO_TAB_COUNT, 44.0f, 112.0f);
-        for(u32 i = 0; i < DEMO_TAB_COUNT; ++i)
+        demo_section("Basic TabBar");
+        GUI::SetNextItemLayout(GUI::GUILayoutStyle::fixed_height(150.0f));
+        GUI::BeginTabBar("Basic Nested Tabs");
+        if(GUI::BeginTabItem("Scene"))
         {
-            GUI::SetNextItemLayout(GUI::GUILayoutStyle::fixed_width(tab_width));
-            handles.tabs[i] = GUI::Selectable(DEMO_TABS[i], app.selected_tab == i);
+            GUI::Text("Scene tab content");
+            GUI::Text("Only the selected tab builds its body.");
+            GUI::EndTabItem();
         }
-        GUI::EndHLayout();
+        if(GUI::BeginTabItem("Inspector"))
+        {
+            GUI::Text("Inspector tab content");
+            GUI::Checkbox("Visible", &app.checkbox_a);
+            GUI::EndTabItem();
+        }
+        if(GUI::BeginTabItem("Console"))
+        {
+            GUI::Text("Console tab content");
+            GUI::InputText("Console Filter", app.state_text);
+            GUI::EndTabItem();
+        }
+        GUI::EndTabBar();
 
+        demo_section("Closable Documents");
+        GUI::SetNextItemLayout(GUI::GUILayoutStyle::fixed_height(170.0f));
+        GUI::BeginTabBar("Closable Document Tabs");
+        bool any_open = false;
+        for(u32 i = 0; i < 4; ++i)
+        {
+            if(!app.tab_document_open[i]) continue;
+            any_open = true;
+            c8 label[32];
+            snprintf(label, 32, "Document %u", i + 1);
+            GUI::GUITabItemFlag flags = i == 1 ? GUI::GUITabItemFlag::unsaved_document : GUI::GUITabItemFlag::none;
+            if(GUI::BeginTabItem(label, &app.tab_document_open[i], flags))
+            {
+                c8 text[96];
+                snprintf(text, 96, "Document %u body. Close this tab with its X button.", i + 1);
+                GUI::Text(text);
+                GUI::EndTabItem();
+            }
+        }
+        if(!any_open)
+        {
+            GUI::TabItemButton("All documents closed");
+        }
+        GUI::EndTabBar();
+
+        demo_section("Scrollable Reorderable Tabs");
+        GUI::SetNextItemLayout(GUI::GUILayoutStyle::fixed_height(150.0f));
+        GUI::GUITabBarFlag reorder_scroll_flags = (GUI::GUITabBarFlag)(
+            (u32)GUI::GUITabBarFlag::fitting_scroll |
+            (u32)GUI::GUITabBarFlag::reorderable |
+            (u32)GUI::GUITabBarFlag::auto_select_new_tabs);
+        GUI::BeginTabBar("Overflow Reorder Tabs", reorder_scroll_flags);
+        constexpr const c8* labels[] =
+        {
+            "Pinned",
+            "Scene View",
+            "Inspector",
+            "Animation",
+            "Profiler",
+            "Console",
+            "Material Graph",
+            "Lighting",
+            "Import Queue",
+            "Build Output"
+        };
+        for(u32 i = 0; i < (u32)(sizeof(labels) / sizeof(labels[0])); ++i)
+        {
+            GUI::GUITabItemFlag flags = i == 0 ? GUI::GUITabItemFlag::no_reorder : GUI::GUITabItemFlag::none;
+            if(GUI::BeginTabItem(labels[i], nullptr, flags))
+            {
+                GUI::Text("Use the arrow buttons or wheel over the tab strip to scroll.");
+                GUI::Text("Drag a non-pinned tab header horizontally to reorder it.");
+                GUI::EndTabItem();
+            }
+        }
+        GUI::EndTabBar();
+    }
+
+    void draw_showcase_tab(App& app, FrameHandles& handles, u32 tab)
+    {
         GUI::BeginScrollView("Showcase Content", GUI::GUISize::fixed(app.showcase_content_size.x, app.showcase_content_size.y));
-        GUI::PushID(app.selected_tab);
-        switch(app.selected_tab)
+        GUI::PushID(tab);
+        switch(tab)
         {
         case 0:
             draw_overview_tab(app);
@@ -560,6 +628,9 @@ namespace Luna
             draw_trees_tab(app, handles);
             break;
         case 8:
+            draw_tabs_tab(app);
+            break;
+        case 9:
             draw_drag_drop_tab(app, handles);
             break;
         default:
@@ -567,6 +638,28 @@ namespace Luna
         }
         GUI::PopID();
         GUI::EndScrollView();
+    }
+
+    void draw_showcase(App& app, FrameHandles& handles, const Float2U& surface_size, u32& built_tab)
+    {
+        app.showcase_size = Float2U(max(surface_size.x, 1.0f), max(surface_size.y, 1.0f));
+        app.showcase_content_size = Float2U(max(app.showcase_size.x - 32.0f, 240.0f), max(app.showcase_size.y - 92.0f, 140.0f));
+        GUI::BeginWindow("Luna GUI Showcase", GUI::GUISize::fixed(app.showcase_size.x, app.showcase_size.y));
+        GUI::Text("Luna GUI Showcase");
+
+        GUI::SetNextItemLayout(GUI::GUILayoutStyle::fill());
+        GUI::BeginTabBar("Showcase Tabs", GUI::GUITabBarFlag::fitting_shrink);
+        for(u32 i = 0; i < DEMO_TAB_COUNT; ++i)
+        {
+            if(GUI::BeginTabItem(DEMO_TABS[i]))
+            {
+                built_tab = i;
+                app.selected_tab = i;
+                draw_showcase_tab(app, handles, i);
+                GUI::EndTabItem();
+            }
+        }
+        GUI::EndTabBar();
         GUI::EndWindow();
     }
 
@@ -629,7 +722,7 @@ namespace Luna
 
                 FrameHandles handles = {};
                 u32 built_tab = app.selected_tab;
-                draw_showcase(app, handles, frame.surface_size);
+                draw_showcase(app, handles, frame.surface_size, built_tab);
                 if(app.popup_open)
                 {
                     GUI::BeginPopup("Popup Test", app.popup_position, GUI::GUISize::fixed(180.0f, 72.0f));
@@ -641,14 +734,6 @@ namespace Luna
                 lulet(desc, app.gui->end_build());
                 luexp(app.gui->submit(desc));
                 luexp(GUIWindow::update_text_input(&input_adapter));
-
-                for(u32 i = 0; i < DEMO_TAB_COUNT; ++i)
-                {
-                    if(GUI::IsItemClicked(handles.tabs[i]))
-                    {
-                        app.selected_tab = i;
-                    }
-                }
 
                 if(GUI::IsItemClicked(handles.popup_action))
                 {
@@ -734,7 +819,7 @@ namespace Luna
                         }
                     }
                 }
-                else if(built_tab == 8)
+                else if(built_tab == 9)
                 {
                     Name number_type = demo_number_payload_type();
                     Name text_type = demo_text_payload_type();

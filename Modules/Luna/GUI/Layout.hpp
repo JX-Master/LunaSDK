@@ -172,6 +172,25 @@ namespace Luna
             open_on_arrow = 0x08
         };
 
+        enum class GUITabBarFlag : u32
+        {
+            none = 0x00,
+            reorderable = 0x01,
+            fitting_shrink = 0x02,
+            fitting_scroll = 0x04,
+            auto_select_new_tabs = 0x08
+        };
+
+        enum class GUITabItemFlag : u32
+        {
+            none = 0x00,
+            selected = 0x01,
+            no_close_button = 0x02,
+            unsaved_document = 0x04,
+            no_reorder = 0x08,
+            button = 0x10
+        };
+
         enum class GUIDockPanelMode : u8
         {
             docking,

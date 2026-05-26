@@ -393,6 +393,90 @@ namespace Luna
             }
         }
 
+        void GUIContext::render_tab_item(u32 node_index)
+        {
+            const GUINode& node = m_submitted_desc.nodes[node_index];
+            const NodeLayout& layout = m_layouts[node_index];
+            RectF rect = layout.tab_header_rect;
+            RectF clip = layout.tab_header_clip_rect;
+            if(rect.width <= 0.0f || rect.height <= 0.0f) return;
+
+            bool hovered = node.id == m_hovered_id;
+            bool active = node.id == m_active_id;
+            bool selected = layout.tab_content_visible;
+            bool button = test_flags(node.tab_item_flags, GUITabItemFlag::button);
+            Float4U color = selected ?
+                Float4U(0.17f, 0.27f, 0.42f, 1.0f) :
+                (active ? Float4U(0.17f, 0.24f, 0.34f, 1.0f) :
+                    (hovered ? Float4U(0.15f, 0.20f, 0.28f, 1.0f) : Float4U(0.09f, 0.11f, 0.15f, 1.0f)));
+            if(button)
+            {
+                color = active ? Float4U(0.20f, 0.36f, 0.62f, 1.0f) :
+                    (hovered ? Float4U(0.20f, 0.30f, 0.44f, 1.0f) : Float4U(0.12f, 0.16f, 0.22f, 1.0f));
+            }
+            f32 radius = 5.0f;
+            render_rect(rect, clip, color, radius);
+            render_rect(RectF(rect.offset_x, rect.offset_y + max(rect.height - radius, 0.0f), rect.width, min(radius, rect.height)),
+                clip, color, 0.0f);
+            if(selected)
+            {
+                render_rect(RectF(rect.offset_x, rect.offset_y, rect.width, 2.0f), clip, Float4U(0.34f, 0.60f, 0.92f, 1.0f), 1.0f);
+            }
+
+            f32 left = rect.offset_x + 9.0f;
+            f32 right = rect.offset_x + rect.width - 8.0f;
+            if(test_flags(node.tab_item_flags, GUITabItemFlag::unsaved_document))
+            {
+                f32 dot = 6.0f;
+                render_circle(RectF(left, rect.offset_y + (rect.height - dot) * 0.5f, dot, dot), clip, Float4U(0.95f, 0.64f, 0.28f, 1.0f));
+                left += dot + 6.0f;
+            }
+            if(layout.tab_close_rect.width > 0.0f)
+            {
+                bool close_hovered = m_pointer_inside && point_in_rect(m_pointer_pos, layout.tab_close_rect);
+                if(close_hovered)
+                {
+                    render_rect(layout.tab_close_rect, clip, Float4U(0.46f, 0.18f, 0.18f, 1.0f), 4.0f);
+                }
+                render_text(layout.tab_close_rect, clip, "X", 12.0f, Color::white(), VG::TextAlignment::center);
+                right = min(right, layout.tab_close_rect.offset_x - 4.0f);
+            }
+            render_text(RectF(left, rect.offset_y, max(right - left, 1.0f), rect.height),
+                clip, node.text.c_str(), 15.0f, Color::white(), VG::TextAlignment::begin);
+        }
+
+        void GUIContext::render_tab_scroll_buttons(u32 node_index)
+        {
+            const GUINode& node = m_submitted_desc.nodes[node_index];
+            const NodeLayout& layout = m_layouts[node_index];
+            if(!layout.tab_scrollable) return;
+            PersistentItemState& state = get_or_create_persistent_state(node.id);
+            auto render_button = [&](const RectF& rect, bool left) {
+                bool enabled = left ? state.tab_scroll_x > 0.5f : state.tab_scroll_x < layout.tab_scroll_max - 0.5f;
+                bool hovered = enabled && m_pointer_inside && point_in_rect(m_pointer_pos, rect);
+                bool active = enabled && m_active_tab_scroll_id == node.id && m_active_tab_scroll_left == left;
+                Float4U color = !enabled ? Float4U(0.09f, 0.10f, 0.12f, 0.82f) :
+                    (active ? Float4U(0.20f, 0.36f, 0.62f, 1.0f) :
+                        (hovered ? Float4U(0.18f, 0.25f, 0.35f, 1.0f) : Float4U(0.11f, 0.14f, 0.19f, 0.95f)));
+                render_rect(rect, layout.clip_rect, color, 4.0f);
+                Float4U arrow_color = enabled ? Float4U(1.0f) : Float4U(0.45f, 0.48f, 0.52f, 1.0f);
+                f32 cx = rect.offset_x + rect.width * 0.5f;
+                f32 cy = rect.offset_y + rect.height * 0.5f;
+                if(left)
+                {
+                    render_line_segment(Float2U(cx + 4.0f, cy - 6.0f), Float2U(cx - 3.0f, cy), layout.clip_rect, arrow_color, 1.8f);
+                    render_line_segment(Float2U(cx - 3.0f, cy), Float2U(cx + 4.0f, cy + 6.0f), layout.clip_rect, arrow_color, 1.8f);
+                }
+                else
+                {
+                    render_line_segment(Float2U(cx - 4.0f, cy - 6.0f), Float2U(cx + 3.0f, cy), layout.clip_rect, arrow_color, 1.8f);
+                    render_line_segment(Float2U(cx + 3.0f, cy), Float2U(cx - 4.0f, cy + 6.0f), layout.clip_rect, arrow_color, 1.8f);
+                }
+            };
+            render_button(layout.tab_scroll_left_rect, true);
+            render_button(layout.tab_scroll_right_rect, false);
+        }
+
         void GUIContext::render_dock_panel_chrome(u32 node_index)
         {
             const GUINode& node = m_submitted_desc.nodes[node_index];
@@ -594,6 +678,14 @@ namespace Luna
 
             switch(node.kind)
             {
+            case GUINodeKind::tab_bar:
+                render_rect(rect, clip, Float4U(0.08f, 0.10f, 0.13f, 0.70f), 4.0f);
+                render_rect(RectF(rect.offset_x, rect.offset_y + tab_bar_header_height() - 1.0f, rect.width, 1.0f),
+                    clip, Float4U(0.22f, 0.27f, 0.34f, 1.0f), 0.0f);
+                break;
+            case GUINodeKind::tab_item:
+                render_tab_item(node_index);
+                break;
             case GUINodeKind::dock_space:
                 render_rect(rect, clip, Float4U(0.07f, 0.08f, 0.10f, 1.0f), 0.0f);
                 break;
@@ -919,14 +1011,21 @@ namespace Luna
             }
             else
             {
-                for(u32 child = node.first_child; child != U32_MAX; child = m_submitted_desc.nodes[child].next_sibling)
+                if(node.kind != GUINodeKind::tab_item || m_layouts[node_index].tab_content_visible)
                 {
-                    render_node(child);
+                    for(u32 child = node.first_child; child != U32_MAX; child = m_submitted_desc.nodes[child].next_sibling)
+                    {
+                        render_node(child);
+                    }
                 }
             }
             if(node.kind == GUINodeKind::scroll_view)
             {
                 render_scrollbars(node_index);
+            }
+            if(node.kind == GUINodeKind::tab_bar)
+            {
+                render_tab_scroll_buttons(node_index);
             }
             if(dock_panel_layer_pop != U32_MAX)
             {

@@ -224,6 +224,30 @@ namespace Luna
             return RectF(x, y, 18.0f, 18.0f);
         }
 
+        inline f32 tab_bar_header_height()
+        {
+            return 32.0f;
+        }
+
+        inline f32 tab_item_min_width()
+        {
+            return 56.0f;
+        }
+
+        inline f32 tab_scroll_button_size()
+        {
+            return 24.0f;
+        }
+
+        inline f32 tab_item_ideal_width(const GUINode& node)
+        {
+            f32 font_size = 15.0f;
+            f32 text_width = (f32)node.text.size() * font_size * 0.52f;
+            f32 close_width = (node.bool_value && !test_flags(node.tab_item_flags, GUITabItemFlag::no_close_button)) ? 22.0f : 0.0f;
+            f32 unsaved_width = test_flags(node.tab_item_flags, GUITabItemFlag::unsaved_document) ? 12.0f : 0.0f;
+            return max(text_width + 24.0f + close_width + unsaved_width, tab_item_min_width());
+        }
+
         inline RectF window_close_rect(const RectF& window_rect)
         {
             f32 size = 22.0f;
@@ -279,11 +303,12 @@ namespace Luna
                 kind == GUINodeKind::selectable ||
                 kind == GUINodeKind::tree_node ||
                 kind == GUINodeKind::table_layout ||
-                kind == GUINodeKind::dock_space)
+                kind == GUINodeKind::dock_space ||
+                kind == GUINodeKind::tab_bar)
             {
                 style.width_policy = GUISizePolicy::fill;
             }
-            if(kind == GUINodeKind::dock_space)
+            if(kind == GUINodeKind::dock_space || kind == GUINodeKind::tab_bar)
             {
                 style.height_policy = GUISizePolicy::fill;
             }
@@ -515,6 +540,28 @@ namespace Luna
             f64 text_cursor_blink_start = 0.0;
             Vector<f32> table_column_sizes;
             Vector<f32> table_row_sizes;
+            GUIID tab_selected_id = 0;
+            f32 tab_scroll_x = 0.0f;
+            Vector<GUIID> tab_order;
+        };
+
+        inline bool tab_order_contains(const PersistentItemState& state, GUIID id)
+        {
+            for(GUIID item : state.tab_order)
+            {
+                if(item == id) return true;
+            }
+            return false;
+        }
+
+        struct TabBuildScope
+        {
+            GUIID tab_bar_id = 0;
+            GUIID selected_id = 0;
+            GUIID first_open_id = 0;
+            GUITabBarFlag flags = GUITabBarFlag::none;
+            bool had_existing_tabs = false;
+            bool visible_tab_chosen = false;
         };
 
         inline void input_text_selection_range(const String& value, const PersistentItemState& state, usize& out_begin, usize& out_end)
@@ -551,6 +598,15 @@ namespace Luna
             Vector<f32> table_row_heights;
             u32 table_columns = 0;
             u32 table_rows = 0;
+            RectF tab_header_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
+            RectF tab_header_clip_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
+            RectF tab_close_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
+            RectF tab_scroll_left_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
+            RectF tab_scroll_right_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
+            RectF tab_header_area_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
+            bool tab_scrollable = false;
+            f32 tab_scroll_max = 0.0f;
+            bool tab_content_visible = true;
             Float2U scroll_content_size = Float2U(0.0f);
             Float2U scroll_viewport_size = Float2U(0.0f);
             bool scroll_has_vertical = false;
@@ -806,6 +862,7 @@ namespace Luna
             bool m_has_next_dock_panel_style = false;
             GUIDockPanelStyle m_next_dock_panel_style;
             bool* m_next_dock_panel_open = nullptr;
+            Vector<TabBuildScope> m_tab_build_stack;
             GUIID m_last_item_id = 0;
             u32 m_tree_depth = 0;
             bool m_layout_dirty = false;
@@ -834,6 +891,14 @@ namespace Luna
             f32 m_active_dock_split_start_ratio = 0.5f;
             Float2U m_active_dock_split_start_pos = Float2U(0.0f);
             GUIID m_open_combo_id = 0;
+            GUIID m_active_tab_bar_id = 0;
+            GUIID m_active_tab_item_id = 0;
+            bool m_active_tab_close = false;
+            bool m_active_tab_reorder_allowed = false;
+            bool m_active_tab_reordering = false;
+            Float2U m_active_tab_start_pos = Float2U(0.0f);
+            GUIID m_active_tab_scroll_id = 0;
+            bool m_active_tab_scroll_left = false;
             GUIID m_drag_drop_candidate_source_id = 0;
             Name m_drag_drop_candidate_type;
             Float2U m_drag_drop_start_pos = Float2U(0.0f);
@@ -910,8 +975,11 @@ namespace Luna
             GUILayoutMetrics measure_node(u32 node_index);
             void measure_table_tracks(u32 node_index, Vector<f32>& out_column_widths, Vector<f32>& out_row_heights, bool preferred);
             void arrange_table_node(u32 node_index, const RectF& rect, const RectF& clip_rect);
+            void arrange_tab_bar_node(u32 node_index, const RectF& rect, const RectF& clip_rect);
             void arrange_dock_space_node(u32 node_index, const RectF& rect, const RectF& clip_rect);
             void render_table_node(u32 node_index);
+            void render_tab_item(u32 node_index);
+            void render_tab_scroll_buttons(u32 node_index);
             void render_dock_panel_chrome(u32 node_index);
             bool hit_test_table_separator(const Float2U& pos, GUIID& out_id, bool& out_column, u32& out_index) const;
             void update_table_resize_from_pointer(const Float2U& pos);
@@ -935,6 +1003,13 @@ namespace Luna
             void deliver_drag_drop_payload(GUIID target_id);
             bool hit_test_combo_dropdown(const Float2U& pos, GUIID& out_id, i32& out_item) const;
             void close_combo_dropdowns_except(GUIID keep_id);
+            bool hit_test_tab_header(const Float2U& pos, GUIID& out_tab_bar_id, GUIID& out_tab_item_id, bool& out_close) const;
+            bool hit_test_tab_scroll_button(const Float2U& pos, GUIID& out_tab_bar_id, bool& out_left) const;
+            GUIID hit_test_tab_scroll_area(const Float2U& pos) const;
+            void select_tab_item(GUIID tab_bar_id, GUIID tab_item_id);
+            GUIID fallback_tab_item(GUIID tab_bar_id, GUIID excluded_tab_item_id) const;
+            bool reorder_tab_item_from_pointer(GUIID tab_bar_id, GUIID tab_item_id, const Float2U& pos);
+            void scroll_tab_bar(GUIID tab_bar_id, f32 delta);
             GUIID hit_test_node(u32 node_index, const Float2U& pos, bool filter_kind, GUINodeKind kind) const;
             GUIID hit_test(const Float2U& pos) const;
             GUIID hit_test_node_kind(const Float2U& pos, GUINodeKind kind) const;

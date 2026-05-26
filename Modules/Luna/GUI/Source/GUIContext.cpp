@@ -44,6 +44,7 @@ namespace Luna
             m_child_ordinals.clear();
             m_has_next_dock_panel_style = false;
             m_next_dock_panel_open = nullptr;
+            m_tab_build_stack.clear();
             m_last_item_id = 0;
             m_tree_depth = 0;
             m_drag_drop_preview_built = false;
@@ -196,7 +197,7 @@ namespace Luna
 
         void GUIContext::begin_container(GUINodeKind kind, const c8* label, const GUISize& size, GUIItemHandle* out_handle)
         {
-            bool interactive = kind == GUINodeKind::scroll_view || kind == GUINodeKind::table_layout;
+            bool interactive = kind == GUINodeKind::scroll_view || kind == GUINodeKind::table_layout || kind == GUINodeKind::tab_bar;
             GUIItemHandle handle = add_node(kind, label, interactive);
             u32 index = (u32)m_build_desc.nodes.size() - 1;
             apply_requested_size(m_build_desc.nodes[index], size);
@@ -205,6 +206,11 @@ namespace Luna
                 m_build_desc.nodes[index].layout_desc.padding = GUIEdgeInsets::all(8.0f);
             }
             if(kind == GUINodeKind::dock_space)
+            {
+                m_build_desc.nodes[index].layout_desc.padding = GUIEdgeInsets::all(0.0f);
+                m_build_desc.nodes[index].layout_desc.gap = 0.0f;
+            }
+            if(kind == GUINodeKind::tab_bar)
             {
                 m_build_desc.nodes[index].layout_desc.padding = GUIEdgeInsets::all(0.0f);
                 m_build_desc.nodes[index].layout_desc.gap = 0.0f;

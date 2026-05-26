@@ -41,7 +41,9 @@ namespace Luna
             draw_text,
             draw_image,
             toggle_switch,
-            dock_space
+            dock_space,
+            tab_bar,
+            tab_item
         };
 
         enum class GUIRenderLayer : u8
@@ -68,6 +70,8 @@ namespace Luna
             bool has_dock_panel_style = false;
             GUIDockPanelStyle dock_panel_style;
             bool* dock_panel_open = nullptr;
+            GUITabBarFlag tab_bar_flags = GUITabBarFlag::none;
+            GUITabItemFlag tab_item_flags = GUITabItemFlag::none;
             GUITableDesc table_desc;
             bool has_table_cell_color = false;
             Float4U table_cell_color = Float4U(0.0f);

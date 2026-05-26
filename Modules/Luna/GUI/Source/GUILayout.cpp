@@ -211,6 +211,38 @@ namespace Luna
                 metrics.max_size = Float2U(F32_MAX, F32_MAX);
                 break;
             }
+            case GUINodeKind::tab_bar:
+            {
+                f32 min_header_width = 0.0f;
+                f32 preferred_header_width = 0.0f;
+                GUILayoutMetrics content_metrics;
+                bool has_content = false;
+                for(u32 child = node.first_child; child != U32_MAX; child = m_submitted_desc.nodes[child].next_sibling)
+                {
+                    const GUINode& child_node = m_submitted_desc.nodes[child];
+                    if(child_node.kind != GUINodeKind::tab_item) continue;
+                    if(child_node.bool_value && !*child_node.bool_value) continue;
+                    f32 ideal_width = tab_item_ideal_width(child_node);
+                    min_header_width += tab_item_min_width();
+                    preferred_header_width += ideal_width;
+                    if(child_node.selected || (get_or_create_persistent_state(node.id).tab_selected_id == child_node.id))
+                    {
+                        content_metrics = measure_node(child);
+                        has_content = true;
+                    }
+                }
+                f32 header_height = tab_bar_header_height();
+                if(!has_content)
+                {
+                    content_metrics.min_size = Float2U(1.0f, 1.0f);
+                    content_metrics.preferred_size = Float2U(1.0f, 1.0f);
+                    content_metrics.max_size = Float2U(F32_MAX, F32_MAX);
+                }
+                metrics.min_size = Float2U(max(min_header_width, 1.0f), header_height + content_metrics.min_size.y);
+                metrics.preferred_size = Float2U(max(preferred_header_width, content_metrics.preferred_size.x), header_height + content_metrics.preferred_size.y);
+                metrics.max_size = Float2U(F32_MAX, F32_MAX);
+                break;
+            }
             default:
             {
                 bool horizontal = node.kind == GUINodeKind::h_layout;
@@ -278,6 +310,196 @@ namespace Luna
             m_layouts[node_index].metrics = metrics;
             m_layouts[node_index].metrics_valid = true;
             return metrics;
+        }
+
+        void GUIContext::arrange_tab_bar_node(u32 node_index, const RectF& rect, const RectF& clip_rect)
+        {
+            GUINode& node = m_submitted_desc.nodes[node_index];
+            PersistentItemState& state = get_or_create_persistent_state(node.id);
+            Vector<u32> live_tabs;
+            live_tabs.reserve(8);
+            GUIID selected = state.tab_selected_id;
+            GUIID first_open = 0;
+            bool selected_open = false;
+
+            for(u32 child = node.first_child; child != U32_MAX; child = m_submitted_desc.nodes[child].next_sibling)
+            {
+                GUINode& child_node = m_submitted_desc.nodes[child];
+                if(child_node.kind != GUINodeKind::tab_item) continue;
+                bool open = !child_node.bool_value || *child_node.bool_value;
+                if(!open)
+                {
+                    m_layouts[child].tab_content_visible = false;
+                    m_layouts[child].rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
+                    m_layouts[child].clip_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
+                    continue;
+                }
+                live_tabs.push_back(child);
+                if(!first_open && !test_flags(child_node.tab_item_flags, GUITabItemFlag::button))
+                {
+                    first_open = child_node.id;
+                }
+                if(child_node.selected && !test_flags(child_node.tab_item_flags, GUITabItemFlag::button))
+                {
+                    selected = child_node.id;
+                }
+                if(selected && selected == child_node.id)
+                {
+                    selected_open = !test_flags(child_node.tab_item_flags, GUITabItemFlag::button);
+                }
+            }
+            if(!selected || !selected_open)
+            {
+                selected = first_open;
+            }
+            state.tab_selected_id = selected;
+
+            auto live_tab_index = [&](GUIID id) -> u32 {
+                for(u32 tab : live_tabs)
+                {
+                    if(m_submitted_desc.nodes[tab].id == id) return tab;
+                }
+                return U32_MAX;
+            };
+            for(usize i = 0; i < state.tab_order.size();)
+            {
+                if(live_tab_index(state.tab_order[i]) == U32_MAX)
+                {
+                    state.tab_order.erase(state.tab_order.begin() + i);
+                }
+                else
+                {
+                    ++i;
+                }
+            }
+            for(u32 tab : live_tabs)
+            {
+                GUIID id = m_submitted_desc.nodes[tab].id;
+                if(!tab_order_contains(state, id))
+                {
+                    state.tab_order.push_back(id);
+                }
+            }
+
+            Vector<u32> tabs;
+            tabs.reserve(live_tabs.size());
+            for(GUIID id : state.tab_order)
+            {
+                u32 tab = live_tab_index(id);
+                if(tab != U32_MAX) tabs.push_back(tab);
+            }
+
+            RectF header_rect(rect.offset_x, rect.offset_y, rect.width, min(tab_bar_header_height(), max(rect.height, 1.0f)));
+            RectF header_area_rect(header_rect.offset_x + 4.0f, header_rect.offset_y, max(header_rect.width - 8.0f, 1.0f), header_rect.height);
+            RectF content_rect(
+                rect.offset_x,
+                rect.offset_y + header_rect.height,
+                rect.width,
+                max(rect.height - header_rect.height, 1.0f));
+            RectF content_clip = intersect_rect(content_rect, clip_rect);
+
+            NodeLayout& bar_layout = m_layouts[node_index];
+            bar_layout.tab_scrollable = false;
+            bar_layout.tab_scroll_max = 0.0f;
+            bar_layout.tab_scroll_left_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
+            bar_layout.tab_scroll_right_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
+
+            Vector<f32> widths;
+            widths.reserve(tabs.size());
+            f32 total_width = 0.0f;
+            f32 shrink_capacity = 0.0f;
+            for(u32 tab : tabs)
+            {
+                f32 width = tab_item_ideal_width(m_submitted_desc.nodes[tab]);
+                widths.push_back(width);
+                total_width += width;
+                shrink_capacity += max(width - tab_item_min_width(), 0.0f);
+            }
+            bool use_scroll = test_flags(node.tab_bar_flags, GUITabBarFlag::fitting_scroll);
+            if(use_scroll && total_width > header_area_rect.width + 0.5f)
+            {
+                f32 button_size = tab_scroll_button_size();
+                bar_layout.tab_scrollable = true;
+                bar_layout.tab_scroll_left_rect = RectF(
+                    header_rect.offset_x + 4.0f,
+                    header_rect.offset_y + 4.0f,
+                    button_size,
+                    max(header_rect.height - 8.0f, 1.0f));
+                bar_layout.tab_scroll_right_rect = RectF(
+                    header_rect.offset_x + max(header_rect.width - button_size - 4.0f, 0.0f),
+                    header_rect.offset_y + 4.0f,
+                    button_size,
+                    max(header_rect.height - 8.0f, 1.0f));
+                header_area_rect = RectF(
+                    bar_layout.tab_scroll_left_rect.offset_x + button_size + 4.0f,
+                    header_rect.offset_y,
+                    max(bar_layout.tab_scroll_right_rect.offset_x - (bar_layout.tab_scroll_left_rect.offset_x + button_size + 4.0f) - 4.0f, 1.0f),
+                    header_rect.height);
+            }
+            f32 available_width = max(header_area_rect.width, 1.0f);
+            if(!bar_layout.tab_scrollable && test_flags(node.tab_bar_flags, GUITabBarFlag::fitting_shrink) &&
+                total_width > available_width && shrink_capacity > 0.0f)
+            {
+                f32 deficit = total_width - available_width;
+                for(usize i = 0; i < widths.size(); ++i)
+                {
+                    f32 capacity = max(widths[i] - tab_item_min_width(), 0.0f);
+                    widths[i] -= min(capacity, deficit * (capacity / shrink_capacity));
+                }
+                total_width = 0.0f;
+                for(f32 width : widths) total_width += width;
+            }
+
+            bar_layout.tab_header_area_rect = header_area_rect;
+            bar_layout.tab_scroll_max = max(total_width - available_width, 0.0f);
+            state.tab_scroll_x = bar_layout.tab_scrollable ? clamp(state.tab_scroll_x, 0.0f, bar_layout.tab_scroll_max) : 0.0f;
+
+            RectF header_clip = intersect_rect(header_area_rect, clip_rect);
+            f32 cursor_x = header_area_rect.offset_x - state.tab_scroll_x;
+            for(usize i = 0; i < tabs.size(); ++i)
+            {
+                u32 tab = tabs[i];
+                GUINode& tab_node = m_submitted_desc.nodes[tab];
+                NodeLayout& tab_layout = m_layouts[tab];
+                bool content_visible = tab_node.id == selected && !test_flags(tab_node.tab_item_flags, GUITabItemFlag::button);
+                RectF tab_header(cursor_x, header_rect.offset_y + 3.0f, max(widths[i], 1.0f), max(header_rect.height - 4.0f, 1.0f));
+                tab_layout.tab_header_rect = tab_header;
+                tab_layout.tab_header_clip_rect = header_clip;
+                tab_layout.tab_content_visible = content_visible;
+                tab_layout.tab_close_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
+                if(tab_node.bool_value && !test_flags(tab_node.tab_item_flags, GUITabItemFlag::no_close_button))
+                {
+                    f32 close_size = 18.0f;
+                    tab_layout.tab_close_rect = RectF(
+                        tab_header.offset_x + max(tab_header.width - close_size - 4.0f, 0.0f),
+                        tab_header.offset_y + max((tab_header.height - close_size) * 0.5f, 0.0f),
+                        close_size,
+                        close_size);
+                }
+                cursor_x += widths[i];
+                if(content_visible)
+                {
+                    layout_node(tab, content_rect, content_clip);
+                    tab_layout.tab_header_rect = tab_header;
+                    tab_layout.tab_header_clip_rect = header_clip;
+                    tab_layout.tab_close_rect = tab_layout.tab_close_rect.width > 0.0f ? tab_layout.tab_close_rect : RectF(0.0f, 0.0f, 0.0f, 0.0f);
+                    tab_layout.tab_content_visible = true;
+                }
+                else
+                {
+                    tab_layout.rect = content_rect;
+                    tab_layout.clip_rect = content_clip;
+                    tab_layout.metrics = measure_node(tab);
+                    tab_layout.metrics_valid = true;
+                    ItemResult& result = get_or_create_current_result(tab_node.id);
+                    result.states.insert_or_assign(Name("gui.rect"), Any(tab_header));
+                    result.states.insert_or_assign(Name("gui.clip_rect"), Any(header_clip));
+                }
+                ItemResult& result = get_or_create_current_result(tab_node.id);
+                result.states.insert_or_assign(Name("gui.rect"), Any(tab_header));
+                result.states.insert_or_assign(Name("gui.clip_rect"), Any(header_clip));
+                result.states.insert_or_assign(Name("gui.open"), Any(true));
+            }
         }
 
         void GUIContext::arrange_table_node(u32 node_index, const RectF& rect, const RectF& clip_rect)
@@ -827,6 +1049,11 @@ namespace Luna
             if(node.kind == GUINodeKind::table_layout)
             {
                 arrange_table_node(node_index, rect, effective_clip);
+                return rect;
+            }
+            if(node.kind == GUINodeKind::tab_bar)
+            {
+                arrange_tab_bar_node(node_index, rect, effective_clip);
                 return rect;
             }
             if(node.kind == GUINodeKind::dock_space)
