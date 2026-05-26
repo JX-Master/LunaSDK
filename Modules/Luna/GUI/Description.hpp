@@ -32,6 +32,7 @@ namespace Luna
             button,
             selectable,
             checkbox,
+            radio_button,
             input_text,
             image,
             collapsing_header,
@@ -48,7 +49,8 @@ namespace Luna
             toggle_switch,
             dock_space,
             tab_bar,
-            tab_item
+            tab_item,
+            button_group
         };
 
         enum class GUIRenderLayer : u8
@@ -106,6 +108,7 @@ namespace Luna
             bool* bool_value = nullptr;
             String* string_value = nullptr;
             i32* i32_value = nullptr;
+            i32 item_value = 0;
             f32* f32_value = nullptr;
             u8 f32_value_count = 1;
             bool f32_color = false;

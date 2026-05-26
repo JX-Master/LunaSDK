@@ -167,6 +167,14 @@ namespace Luna
                 metrics.max_size = Float2U(F32_MAX, 26.0f);
                 break;
             }
+            case GUINodeKind::radio_button:
+            {
+                f32 w = max(text_width + 30.0f, 80.0f);
+                metrics.min_size = Float2U(26.0f, 26.0f);
+                metrics.preferred_size = Float2U(w, 26.0f);
+                metrics.max_size = Float2U(F32_MAX, 26.0f);
+                break;
+            }
             case GUINodeKind::toggle_switch:
             {
                 f32 w = max(text_width + 58.0f, 72.0f);
@@ -211,6 +219,19 @@ namespace Luna
                 metrics.min_size = Float2U(140.0f, 30.0f);
                 metrics.preferred_size = Float2U(w, 30.0f);
                 metrics.max_size = Float2U(F32_MAX, 30.0f);
+                break;
+            }
+            case GUINodeKind::button_group:
+            {
+                f32 width = 0.0f;
+                for(const String& item : node.items)
+                {
+                    width += max((f32)item.size() * font_size * 0.52f + 32.0f, 76.0f);
+                }
+                if(node.items.empty()) width = 76.0f;
+                metrics.min_size = Float2U(max((f32)node.items.size() * 44.0f, 44.0f), 28.0f);
+                metrics.preferred_size = Float2U(max(width, metrics.min_size.x), 28.0f);
+                metrics.max_size = Float2U(F32_MAX, 28.0f);
                 break;
             }
             case GUINodeKind::slider_float:

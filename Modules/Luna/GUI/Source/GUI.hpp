@@ -158,6 +158,31 @@ namespace Luna
             return RectF(rect.offset_x + label_w, rect.offset_y, max(rect.width - label_w, 1.0f), rect.height);
         }
 
+        inline bool radio_button_selected(const GUINode& node)
+        {
+            if(node.i32_value) return *node.i32_value == node.item_value;
+            if(node.bool_value) return *node.bool_value;
+            return node.selected;
+        }
+
+        inline RectF button_group_item_rect(const GUINode& node, const RectF& rect, u32 index)
+        {
+            u32 count = max((u32)node.items.size(), 1u);
+            f32 item_width = rect.width / (f32)count;
+            f32 x = rect.offset_x + item_width * (f32)index;
+            f32 w = index + 1 == count ? max(rect.offset_x + rect.width - x, 1.0f) : max(item_width, 1.0f);
+            return RectF(x, rect.offset_y, w, rect.height);
+        }
+
+        inline i32 button_group_item_at(const GUINode& node, const RectF& rect, const Float2U& pos)
+        {
+            u32 count = (u32)node.items.size();
+            if(!count || !point_in_rect(pos, rect)) return -1;
+            f32 item_width = max(rect.width / (f32)count, 1.0f);
+            i32 index = (i32)((pos.x - rect.offset_x) / item_width);
+            return index >= 0 && (u32)index < count ? index : (i32)count - 1;
+        }
+
         inline f32 combo_item_height()
         {
             return 26.0f;
@@ -558,6 +583,9 @@ namespace Luna
             f32 scrollbar_opacity = 0.35f;
             f32 switch_animation = 0.0f;
             bool switch_animation_initialized = false;
+            f32 button_group_selection_animation = 0.0f;
+            bool button_group_selection_animation_initialized = false;
+            Vector<f32> button_group_item_animations;
             u32 dock_next_z_order = 1;
             HashMap<GUIID, DockPanelPersistentState, GUIIDHash> dock_panels;
             Vector<DockTreeNode> dock_nodes;
@@ -1080,6 +1108,8 @@ namespace Luna
             void render_drag_drop_overlay();
             void render_scrollbars(u32 node_index);
             void render_rect(const RectF& rect, const RectF& clip_rect, const Float4U& color, f32 radius, RHI::ITexture* texture = nullptr);
+            void render_rect_corners(const RectF& rect, const RectF& clip_rect, const Float4U& color, f32 radius,
+                bool top_left, bool top_right, bool bottom_right, bool bottom_left);
             void render_circle(const RectF& rect, const RectF& clip_rect, const Float4U& color);
             void render_line_segment(const Float2U& begin, const Float2U& end, const RectF& clip_rect, const Float4U& color, f32 width);
             void render_line(const GUINode& node, const RectF& rect, const RectF& clip_rect);

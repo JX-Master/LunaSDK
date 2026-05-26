@@ -43,6 +43,7 @@ namespace Luna
         bool checkbox_b = false;
         bool switch_a = true;
         bool switch_b = false;
+        bool radio_manual = false;
         bool menu_show_grid = true;
         bool menu_snap_to_grid = false;
         bool dock_panel_a_open = true;
@@ -60,6 +61,8 @@ namespace Luna
         String dropped_text = "Drop text payload here";
         String mixed_drop_text = "Drop either payload type here";
         i32 dropped_number = -1;
+        i32 radio_choice = 1;
+        i32 button_group_choice = 0;
         i32 combo_index = 0;
         f32 slider_value = 0.35f;
         f32 drag_value = 42.0f;
@@ -68,6 +71,7 @@ namespace Luna
         Float4 drag4_value = Float4(0.0f, 1.0f, 2.0f, 3.0f);
         Float3 color_value = Float3(0.20f, 0.55f, 0.90f);
         bool table_checks[4] = { true, false, true, false };
+        bool button_group_multi[3] = { true, false, true };
         f32 table_values[4] = { 0.25f, 0.5f, 0.75f, 1.0f };
         bool clip_enabled = true;
         Float2U showcase_size = Float2U(920.0f, 700.0f);
@@ -231,6 +235,26 @@ namespace Luna
         GUI::BeginHLayout("Switches", row);
         GUI::Switch("Realtime Preview", &app.switch_a);
         GUI::Switch("Network Sync", &app.switch_b);
+        GUI::EndHLayout();
+
+        GUI::BeginHLayout("Radio Buttons", row);
+        GUI::RadioButton("Low", &app.radio_choice, 0);
+        GUI::RadioButton("Medium", &app.radio_choice, 1);
+        GUI::RadioButton("High", &app.radio_choice, 2);
+        GUI::RadioButton("Manual Bool", &app.radio_manual);
+        GUI::EndHLayout();
+
+        const c8* group_items[] = {"Title", "Settings", "Preview"};
+        GUI::BeginHLayout("Button Group Single", row);
+        demo_two_column_label("ButtonGroup single");
+        GUI::SetNextItemLayout(GUI::GUILayoutStyle::fixed_width(360.0f));
+        GUI::ButtonGroup("Single Button Group", &app.button_group_choice, Span<const c8*>(group_items, 3));
+        GUI::EndHLayout();
+
+        GUI::BeginHLayout("Button Group Multi", row);
+        demo_two_column_label("ButtonGroup multi");
+        GUI::SetNextItemLayout(GUI::GUILayoutStyle::fixed_width(360.0f));
+        GUI::ButtonGroup("Multi Button Group", Span<bool>(app.button_group_multi, 3), Span<const c8*>(group_items, 3));
         GUI::EndHLayout();
 
         GUI::BeginHLayout("Text Inputs", row);

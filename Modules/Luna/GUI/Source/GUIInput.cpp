@@ -1790,6 +1790,24 @@ namespace Luna
                                 *node.bool_value = !*node.bool_value;
                                 result.states.insert_or_assign(Name("gui.value_changed"), Any(true));
                             }
+                            else if(node.kind == GUINodeKind::radio_button)
+                            {
+                                if(node.i32_value)
+                                {
+                                    if(*node.i32_value != node.item_value)
+                                    {
+                                        *node.i32_value = node.item_value;
+                                        node.selected = true;
+                                        result.states.insert_or_assign(Name("gui.value_changed"), Any(true));
+                                    }
+                                }
+                                else if(node.bool_value && !*node.bool_value)
+                                {
+                                    *node.bool_value = true;
+                                    node.selected = true;
+                                    result.states.insert_or_assign(Name("gui.value_changed"), Any(true));
+                                }
+                            }
                             else if(node.kind == GUINodeKind::collapsing_header)
                             {
                                 state.open = !state.open;
@@ -1823,6 +1841,26 @@ namespace Luna
                                     m_open_combo_id = 0;
                                 }
                                 result.states.insert_or_assign(Name("gui.open"), Any(state.open));
+                            }
+                            else if(node.kind == GUINodeKind::button_group && !node.items.empty())
+                            {
+                                i32 item = button_group_item_at(node, m_layouts[i].rect, e.position);
+                                if(item >= 0)
+                                {
+                                    if(node.i32_value)
+                                    {
+                                        if(*node.i32_value != item)
+                                        {
+                                            *node.i32_value = item;
+                                            result.states.insert_or_assign(Name("gui.value_changed"), Any(true));
+                                        }
+                                    }
+                                    else if(node.bool_value)
+                                    {
+                                        node.bool_value[item] = !node.bool_value[item];
+                                        result.states.insert_or_assign(Name("gui.value_changed"), Any(true));
+                                    }
+                                }
                             }
                             else if(window_has_title_bar(node) && node.bool_value)
                             {

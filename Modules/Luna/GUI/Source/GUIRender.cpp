@@ -34,11 +34,61 @@ namespace Luna
 
         static Float4U lerp_color(const Float4U& a, const Float4U& b, f32 t)
         {
+            t = clamp(t, 0.0f, 1.0f);
+            t = t * t * (3.0f - 2.0f * t);
             return Float4U(
                 a.x + (b.x - a.x) * t,
                 a.y + (b.y - a.y) * t,
                 a.z + (b.z - a.z) * t,
                 a.w + (b.w - a.w) * t);
+        }
+
+        static void add_selective_rounded_rectangle(Vector<f32>& points, f32 width, f32 height, f32 radius,
+            bool top_left, bool top_right, bool bottom_right, bool bottom_left)
+        {
+            radius = clamp(radius, 0.0f, min(width, height) * 0.5f);
+            if(radius <= 0.0f || (!top_left && !top_right && !bottom_right && !bottom_left))
+            {
+                VG::ShapeBuilder::add_rectangle_filled(points, 0.0f, 0.0f, width, height);
+                return;
+            }
+            VG::ShapeBuilder::move_to(points, 0.0f, bottom_left ? radius : 0.0f);
+            VG::ShapeBuilder::line_to(points, 0.0f, height - (top_left ? radius : 0.0f));
+            if(top_left)
+            {
+                VG::ShapeBuilder::circle_to(points, radius, 180.0f, 90.0f);
+            }
+            else
+            {
+                VG::ShapeBuilder::line_to(points, 0.0f, height);
+            }
+            VG::ShapeBuilder::line_to(points, width - (top_right ? radius : 0.0f), height);
+            if(top_right)
+            {
+                VG::ShapeBuilder::circle_to(points, radius, 90.0f, 0.0f);
+            }
+            else
+            {
+                VG::ShapeBuilder::line_to(points, width, height);
+            }
+            VG::ShapeBuilder::line_to(points, width, bottom_right ? radius : 0.0f);
+            if(bottom_right)
+            {
+                VG::ShapeBuilder::circle_to(points, radius, 0.0f, -90.0f);
+            }
+            else
+            {
+                VG::ShapeBuilder::line_to(points, width, 0.0f);
+            }
+            VG::ShapeBuilder::line_to(points, bottom_left ? radius : 0.0f, 0.0f);
+            if(bottom_left)
+            {
+                VG::ShapeBuilder::circle_to(points, radius, -90.0f, -180.0f);
+            }
+            else
+            {
+                VG::ShapeBuilder::line_to(points, 0.0f, 0.0f);
+            }
         }
 
         RectF GUIContext::to_vg_rect(const RectF& rect) const
@@ -65,6 +115,27 @@ namespace Luna
             {
                 VG::ShapeBuilder::add_rectangle_filled(points, 0.0f, 0.0f, r.width, r.height);
             }
+            u32 end = (u32)points.size();
+            m_active_draw_list->add_shape(begin, end - begin,
+                Float2U(r.offset_x, r.offset_y), Float2U(r.offset_x + r.width, r.offset_y + r.height),
+                Float2U(0.0f, 0.0f), Float2U(r.width, r.height),
+                color, Float2U(0.0f, 0.0f), Float2U(1.0f, 1.0f));
+            m_active_draw_list->pop_state(pop_id);
+        }
+
+        void GUIContext::render_rect_corners(const RectF& rect, const RectF& clip_rect, const Float4U& color, f32 radius,
+            bool top_left, bool top_right, bool bottom_right, bool bottom_left)
+        {
+            RectF r = to_vg_rect(rect);
+            RectF c = to_vg_rect(clip_rect);
+            DrawListState state = m_active_draw_list->get_state();
+            state.shape_buffer = m_active_draw_list->get_shape_buffer();
+            state.texture = nullptr;
+            state.clip_rect = c;
+            u32 pop_id = m_active_draw_list->push_state(&state);
+            auto& points = m_active_draw_list->get_shape_buffer()->get_shape_points(true);
+            u32 begin = (u32)points.size();
+            add_selective_rounded_rectangle(points, r.width, r.height, radius, top_left, top_right, bottom_right, bottom_left);
             u32 end = (u32)points.size();
             m_active_draw_list->add_shape(begin, end - begin,
                 Float2U(r.offset_x, r.offset_y), Float2U(r.offset_x + r.width, r.offset_y + r.height),
@@ -821,6 +892,22 @@ namespace Luna
                 render_text(label, clip, node.text.c_str(), 16.0f, Color::white(), VG::TextAlignment::begin);
                 break;
             }
+            case GUINodeKind::radio_button:
+            {
+                RectF outer(rect.offset_x + 2.0f, rect.offset_y + 4.0f, 18.0f, 18.0f);
+                bool checked = radio_button_selected(node);
+                render_circle(RectF(outer.offset_x - 1.0f, outer.offset_y - 1.0f, outer.width + 2.0f, outer.height + 2.0f),
+                    clip, hovered ? Float4U(0.38f, 0.43f, 0.50f, 1.0f) : Float4U(0.27f, 0.31f, 0.37f, 1.0f));
+                render_circle(outer, clip, Float4U(0.10f, 0.12f, 0.15f, 1.0f));
+                if(checked)
+                {
+                    render_circle(RectF(outer.offset_x + 5.0f, outer.offset_y + 5.0f, 8.0f, 8.0f),
+                        clip, Float4U(0.34f, 0.58f, 0.92f, 1.0f));
+                }
+                RectF label(rect.offset_x + 28.0f, rect.offset_y, max(rect.width - 28.0f, 1.0f), rect.height);
+                render_text(label, clip, node.text.c_str(), 16.0f, Color::white(), VG::TextAlignment::begin);
+                break;
+            }
             case GUINodeKind::toggle_switch:
             {
                 bool checked = node.bool_value && *node.bool_value;
@@ -1000,6 +1087,100 @@ namespace Luna
                     render_text(RectF(component_rect.offset_x + 6.0f, component_rect.offset_y, max(component_rect.width - 12.0f, 1.0f), component_rect.height), clip, value_text.c_str(), 15.0f, Color::white(), VG::TextAlignment::begin);
                 }
                 render_text(RectF(rect.offset_x, rect.offset_y, label_w, rect.height), clip, node.text.c_str(), 16.0f, Color::white(), VG::TextAlignment::begin);
+                break;
+            }
+            case GUINodeKind::button_group:
+            {
+                u32 count = (u32)node.items.size();
+                if(!count) break;
+                i32 hover_item = hovered ? button_group_item_at(node, rect, m_pointer_pos) : -1;
+                i32 active_item = active ? button_group_item_at(node, rect, m_pointer_pos) : -1;
+                f32 radius = min(5.0f, min(rect.width, rect.height) * 0.5f);
+                RectF inner(rect.offset_x + 1.0f, rect.offset_y + 1.0f, max(rect.width - 2.0f, 1.0f), max(rect.height - 2.0f, 1.0f));
+                f32 inner_radius = max(radius - 1.0f, 0.0f);
+                Float4U border_color = Float4U(0.25f, 0.29f, 0.35f, 1.0f);
+                Float4U bg_color = Float4U(0.07f, 0.08f, 0.10f, 1.0f);
+                Float4U selected_color = Float4U(0.16f, 0.24f, 0.38f, 1.0f);
+                Float4U selected_hot_color = Float4U(0.20f, 0.33f, 0.54f, 1.0f);
+                Float4U hover_color = Float4U(0.14f, 0.17f, 0.22f, 1.0f);
+
+                render_rect(rect, clip, border_color, radius);
+                render_rect(inner, clip, bg_color, inner_radius);
+
+                PersistentItemState& state = get_or_create_persistent_state(node.id);
+                f32 blend = clamp(m_frame_desc.delta_time * 14.0f, 0.0f, 1.0f);
+                bool single_select = node.i32_value != nullptr;
+                if(single_select)
+                {
+                    f32 target = (f32)clamp(*node.i32_value, 0, (i32)count - 1);
+                    if(!state.button_group_selection_animation_initialized)
+                    {
+                        state.button_group_selection_animation = target;
+                        state.button_group_selection_animation_initialized = true;
+                    }
+                    state.button_group_selection_animation += (target - state.button_group_selection_animation) * blend;
+                    f32 item_width = inner.width / (f32)count;
+                    RectF selection(inner.offset_x + item_width * state.button_group_selection_animation, inner.offset_y, item_width, inner.height);
+                    f32 max_x = inner.offset_x + inner.width;
+                    if(selection.offset_x + selection.width > max_x)
+                    {
+                        selection.width = max(max_x - selection.offset_x, 1.0f);
+                    }
+                    render_rect(selection, clip, active_item == (i32)target ? selected_hot_color : selected_color, inner_radius);
+                }
+                else if(node.bool_value)
+                {
+                    if(state.button_group_item_animations.size() != count)
+                    {
+                        state.button_group_item_animations.assign(count, 0.0f);
+                        for(u32 i = 0; i < count; ++i)
+                        {
+                            state.button_group_item_animations[i] = node.bool_value[i] ? 1.0f : 0.0f;
+                        }
+                    }
+                    for(u32 i = 0; i < count; ++i)
+                    {
+                        f32 target = node.bool_value[i] ? 1.0f : 0.0f;
+                        state.button_group_item_animations[i] += (target - state.button_group_item_animations[i]) * blend;
+                        f32 t = clamp(state.button_group_item_animations[i], 0.0f, 1.0f);
+                        RectF item_rect = button_group_item_rect(node, inner, i);
+                        Float4U base_color = bg_color;
+                        if(active_item == (i32)i)
+                        {
+                            base_color = hover_color;
+                        }
+                        else if(hover_item == (i32)i)
+                        {
+                            base_color = hover_color;
+                        }
+                        if(t > 0.001f || hover_item == (i32)i || active_item == (i32)i)
+                        {
+                            Float4U color = lerp_color(base_color, selected_color, t);
+                            render_rect_corners(item_rect, clip, color, inner_radius,
+                                i == 0, i + 1 == count, i + 1 == count, i == 0);
+                        }
+                    }
+                }
+                if(single_select && hover_item >= 0 && hover_item != *node.i32_value)
+                {
+                    RectF item_rect = button_group_item_rect(node, inner, (u32)hover_item);
+                    render_rect_corners(item_rect, clip, hover_color, inner_radius,
+                        hover_item == 0, (u32)hover_item + 1 == count, (u32)hover_item + 1 == count, hover_item == 0);
+                }
+                for(u32 i = 1; i < count; ++i)
+                {
+                    f32 x = rect.offset_x + rect.width * ((f32)i / (f32)count);
+                    render_line_segment(Float2U(x, rect.offset_y + 2.0f), Float2U(x, rect.offset_y + max(rect.height - 2.0f, 2.0f)),
+                        clip, Float4U(0.20f, 0.23f, 0.28f, 0.90f), 1.0f);
+                }
+                for(u32 i = 0; i < count; ++i)
+                {
+                    RectF item_rect = button_group_item_rect(node, inner, i);
+                    bool selected = node.i32_value ? *node.i32_value == (i32)i : (node.bool_value && node.bool_value[i]);
+                    Float4U text_color = selected ? Float4U(1.0f) : Float4U(0.58f, 0.63f, 0.70f, 1.0f);
+                    render_text(RectF(item_rect.offset_x + 8.0f, item_rect.offset_y, max(item_rect.width - 16.0f, 1.0f), item_rect.height),
+                        clip, node.items[i].c_str(), 15.0f, text_color, VG::TextAlignment::center);
+                }
                 break;
             }
             case GUINodeKind::draw_rect:

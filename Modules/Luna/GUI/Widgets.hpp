@@ -76,12 +76,17 @@ namespace Luna
         LUNA_GUI_API GUIItemHandle Selectable(const c8* label, bool selected = false);
         LUNA_GUI_API GUIItemHandle Text(const c8* text);
         LUNA_GUI_API GUIItemHandle Checkbox(const c8* label, bool* value);
+        LUNA_GUI_API GUIItemHandle RadioButton(const c8* label, bool selected);
+        LUNA_GUI_API GUIItemHandle RadioButton(const c8* label, bool* value);
+        LUNA_GUI_API GUIItemHandle RadioButton(const c8* label, i32* value, i32 button_value);
         LUNA_GUI_API GUIItemHandle Switch(const c8* label, bool* value);
         LUNA_GUI_API GUIItemHandle InputText(const c8* label, String& value);
         LUNA_GUI_API GUIItemHandle Image(RHI::ITexture* texture, const GUISize& size);
         LUNA_GUI_API GUIItemHandle CollapsingHeader(const c8* label);
         LUNA_GUI_API GUIItemHandle TreeNode(const c8* label, GUITreeNodeFlag flags = GUITreeNodeFlag::none);
         LUNA_GUI_API GUIItemHandle Combo(const c8* label, i32* current_item, Span<const c8*> items);
+        LUNA_GUI_API GUIItemHandle ButtonGroup(const c8* label, i32* current_item, Span<const c8*> items);
+        LUNA_GUI_API GUIItemHandle ButtonGroup(const c8* label, Span<bool> selected, Span<const c8*> items);
         LUNA_GUI_API GUIItemHandle SliderFloat(const c8* label, f32* value, f32 min_value, f32 max_value);
         LUNA_GUI_API GUIItemHandle DragFloat(const c8* label, f32* value, f32 speed, f32 min_value, f32 max_value);
         LUNA_GUI_API GUIItemHandle DragFloat2(const c8* label, f32* value, f32 speed, f32 min_value, f32 max_value);

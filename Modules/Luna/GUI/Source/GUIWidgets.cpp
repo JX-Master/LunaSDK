@@ -542,6 +542,33 @@ namespace Luna
             return handle;
         }
 
+        LUNA_GUI_API GUIItemHandle RadioButton(const c8* label, bool selected)
+        {
+            GUIContext* ctx = require_current_context();
+            GUIItemHandle handle = ctx->add_node(GUINodeKind::radio_button, label ? label : "", true);
+            ctx->m_build_desc.nodes.back().selected = selected;
+            return handle;
+        }
+
+        LUNA_GUI_API GUIItemHandle RadioButton(const c8* label, bool* value)
+        {
+            GUIContext* ctx = require_current_context();
+            GUIItemHandle handle = ctx->add_node(GUINodeKind::radio_button, label ? label : "", true);
+            ctx->m_build_desc.nodes.back().bool_value = value;
+            return handle;
+        }
+
+        LUNA_GUI_API GUIItemHandle RadioButton(const c8* label, i32* value, i32 button_value)
+        {
+            GUIContext* ctx = require_current_context();
+            GUIItemHandle handle = ctx->add_node(GUINodeKind::radio_button, label ? label : "", true);
+            GUINode& node = ctx->m_build_desc.nodes.back();
+            node.i32_value = value;
+            node.item_value = button_value;
+            node.selected = value && *value == button_value;
+            return handle;
+        }
+
         LUNA_GUI_API GUIItemHandle Switch(const c8* label, bool* value)
         {
             GUIContext* ctx = require_current_context();
@@ -598,6 +625,39 @@ namespace Luna
             if(current_item && !node.items.empty())
             {
                 *current_item = clamp(*current_item, 0, (i32)node.items.size() - 1);
+            }
+            return handle;
+        }
+
+        LUNA_GUI_API GUIItemHandle ButtonGroup(const c8* label, i32* current_item, Span<const c8*> items)
+        {
+            GUIContext* ctx = require_current_context();
+            GUIItemHandle handle = ctx->add_node(GUINodeKind::button_group, label ? label : "ButtonGroup", true);
+            GUINode& node = ctx->m_build_desc.nodes.back();
+            node.i32_value = current_item;
+            node.items.reserve(items.size());
+            for(const c8* item : items)
+            {
+                node.items.push_back(item ? item : "");
+            }
+            if(current_item && !node.items.empty())
+            {
+                *current_item = clamp(*current_item, 0, (i32)node.items.size() - 1);
+            }
+            return handle;
+        }
+
+        LUNA_GUI_API GUIItemHandle ButtonGroup(const c8* label, Span<bool> selected, Span<const c8*> items)
+        {
+            GUIContext* ctx = require_current_context();
+            GUIItemHandle handle = ctx->add_node(GUINodeKind::button_group, label ? label : "ButtonGroup", true);
+            GUINode& node = ctx->m_build_desc.nodes.back();
+            node.bool_value = selected.data();
+            usize count = min(selected.size(), items.size());
+            node.items.reserve(count);
+            for(usize i = 0; i < count; ++i)
+            {
+                node.items.push_back(items[i] ? items[i] : "");
             }
             return handle;
         }
