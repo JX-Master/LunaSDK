@@ -13,5 +13,6 @@
 #include "Description.hpp"
 #include "State.hpp"
 #include "DrawList.hpp"
+#include "DragDrop.hpp"
 #include "Context.hpp"
 #include "Widgets.hpp"

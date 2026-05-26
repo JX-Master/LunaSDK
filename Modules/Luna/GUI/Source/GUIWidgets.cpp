@@ -46,6 +46,61 @@ namespace Luna
             require_current_context()->pop_clip_rect();
         }
 
+        LUNA_GUI_API void TreePush()
+        {
+            require_current_context()->tree_push();
+        }
+
+        LUNA_GUI_API void TreePop()
+        {
+            require_current_context()->tree_pop();
+        }
+
+        LUNA_GUI_API bool BeginDragDropSource(GUIItemHandle source, const Name& payload_type)
+        {
+            return require_current_context()->begin_drag_drop_source(source, payload_type);
+        }
+
+        LUNA_GUI_API void SetDragDropPayload(const void* data, usize data_size)
+        {
+            require_current_context()->set_drag_drop_payload(data, data_size);
+        }
+
+        LUNA_GUI_API void EndDragDropSource()
+        {
+            require_current_context()->end_drag_drop_source();
+        }
+
+        LUNA_GUI_API bool BeginDragDropTarget(GUIItemHandle target, const Name& payload_type)
+        {
+            return require_current_context()->begin_drag_drop_target(target, payload_type);
+        }
+
+        LUNA_GUI_API const GUIDragDropPayload* AcceptDragDropPayload(const Name& payload_type)
+        {
+            return require_current_context()->accept_drag_drop_payload(payload_type);
+        }
+
+        LUNA_GUI_API const GUIDragDropPayload* AcceptDragDropPayload(GUIItemHandle target, const Name& payload_type)
+        {
+            return require_current_context()->accept_drag_drop_payload(target, payload_type);
+        }
+
+        LUNA_GUI_API void EndDragDropTarget()
+        {
+            require_current_context()->end_drag_drop_target();
+        }
+
+        LUNA_GUI_API bool IsDragDropActive()
+        {
+            return require_current_context()->is_drag_drop_active();
+        }
+
+        LUNA_GUI_API const GUIDragDropPayload* GetDragDropPayload()
+        {
+            return require_current_context()->get_drag_drop_payload();
+        }
+
         LUNA_GUI_API void SetNextItemLayout(const GUILayoutStyle& style)
         {
             require_current_context()->set_next_item_layout(style);
@@ -274,6 +329,17 @@ namespace Luna
         LUNA_GUI_API GUIItemHandle CollapsingHeader(const c8* label)
         {
             return require_current_context()->add_node(GUINodeKind::collapsing_header, label ? label : "", true);
+        }
+
+        LUNA_GUI_API GUIItemHandle TreeNode(const c8* label, GUITreeNodeFlag flags)
+        {
+            GUIContext* ctx = require_current_context();
+            GUIItemHandle handle = ctx->add_node(GUINodeKind::tree_node, label ? label : "", true);
+            GUINode& node = ctx->m_build_desc.nodes.back();
+            node.tree_flags = flags;
+            node.tree_depth = ctx->m_tree_depth;
+            node.selected = test_flags(flags, GUITreeNodeFlag::selected);
+            return handle;
         }
 
         LUNA_GUI_API GUIItemHandle Combo(const c8* label, i32* current_item, Span<const c8*> items)

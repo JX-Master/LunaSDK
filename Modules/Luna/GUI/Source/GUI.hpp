@@ -198,6 +198,32 @@ namespace Luna
             return node.render_layer == GUIRenderLayer::overlay;
         }
 
+        inline bool contains_name(const Vector<Name>& names, const Name& name)
+        {
+            for(const Name& item : names)
+            {
+                if(item == name) return true;
+            }
+            return false;
+        }
+
+        inline bool tree_node_is_leaf(const GUINode& node)
+        {
+            return test_flags(node.tree_flags, GUITreeNodeFlag::leaf);
+        }
+
+        inline f32 tree_node_indent_width()
+        {
+            return 18.0f;
+        }
+
+        inline RectF tree_node_arrow_rect(const GUINode& node, const RectF& rect)
+        {
+            f32 x = rect.offset_x + 4.0f + tree_node_indent_width() * (f32)node.tree_depth;
+            f32 y = rect.offset_y + max((rect.height - 18.0f) * 0.5f, 0.0f);
+            return RectF(x, y, 18.0f, 18.0f);
+        }
+
         inline RectF window_close_rect(const RectF& window_rect)
         {
             f32 size = 22.0f;
@@ -251,6 +277,7 @@ namespace Luna
                 kind == GUINodeKind::slider_float ||
                 kind == GUINodeKind::drag_float ||
                 kind == GUINodeKind::selectable ||
+                kind == GUINodeKind::tree_node ||
                 kind == GUINodeKind::table_layout ||
                 kind == GUINodeKind::dock_space)
             {
@@ -448,9 +475,26 @@ namespace Luna
             HashMap<Name, Any> states;
         };
 
+        struct DragDropPayloadStorage
+        {
+            Name type;
+            Vector<byte_t> data;
+            GUIItemHandle source;
+            GUIItemHandle target;
+            bool preview = false;
+            bool delivery = false;
+        };
+
+        struct DragDropTargetScope
+        {
+            GUIItemHandle target;
+            Name type;
+        };
+
         struct PersistentItemState
         {
             bool open = true;
+            bool open_initialized = false;
             bool active = false;
             bool focused = false;
             bool pointer_down = false;
@@ -762,6 +806,8 @@ namespace Luna
             bool m_has_next_dock_panel_style = false;
             GUIDockPanelStyle m_next_dock_panel_style;
             bool* m_next_dock_panel_open = nullptr;
+            GUIID m_last_item_id = 0;
+            u32 m_tree_depth = 0;
             bool m_layout_dirty = false;
             GUIID m_active_table_resize_id = 0;
             bool m_active_table_resize_column = false;
@@ -788,6 +834,19 @@ namespace Luna
             f32 m_active_dock_split_start_ratio = 0.5f;
             Float2U m_active_dock_split_start_pos = Float2U(0.0f);
             GUIID m_open_combo_id = 0;
+            GUIID m_drag_drop_candidate_source_id = 0;
+            Name m_drag_drop_candidate_type;
+            Float2U m_drag_drop_start_pos = Float2U(0.0f);
+            bool m_drag_drop_active = false;
+            bool m_drag_drop_payload_set = false;
+            bool m_drag_drop_preview_built = false;
+            GUIID m_drag_drop_source_id = 0;
+            Name m_drag_drop_type;
+            Vector<byte_t> m_drag_drop_payload_data;
+            HashMap<GUIID, DragDropPayloadStorage, GUIIDHash> m_last_drag_drop_deliveries;
+            HashMap<GUIID, DragDropPayloadStorage, GUIIDHash> m_current_drag_drop_deliveries;
+            Vector<DragDropTargetScope> m_drag_drop_target_stack;
+            GUIDragDropPayload m_drag_drop_payload_view;
             u64 m_generation = 0;
             f64 m_time = 0.0;
             Ref<VG::IShapeDrawList> m_shape_draw_list;
@@ -821,10 +880,23 @@ namespace Luna
             void pop_id();
             void push_clip_rect(const RectF& rect);
             void pop_clip_rect();
+            void tree_push();
+            void tree_pop();
+            bool begin_drag_drop_source(GUIItemHandle source, const Name& payload_type);
+            void set_drag_drop_payload(const void* data, usize data_size);
+            void end_drag_drop_source();
+            bool begin_drag_drop_target(GUIItemHandle target, const Name& payload_type);
+            const GUIDragDropPayload* accept_drag_drop_payload(const Name& payload_type);
+            const GUIDragDropPayload* accept_drag_drop_payload(GUIItemHandle target, const Name& payload_type);
+            void end_drag_drop_target();
+            bool is_drag_drop_active() const;
+            const GUIDragDropPayload* get_drag_drop_payload();
+            const GUIDragDropPayload* make_drag_drop_payload_view(const DragDropPayloadStorage& storage);
 
             ItemResult* get_query_result(GUIItemHandle handle);
             ItemResult& get_or_create_current_result(GUIID id);
             PersistentItemState& get_or_create_persistent_state(GUIID id);
+            GUINode* find_build_node(GUIItemHandle handle);
             DockPanelPersistentState& get_or_create_dock_panel_state(PersistentItemState& dock_state, GUIID panel_id);
             u32 new_dock_leaf(PersistentItemState& dock_state, GUIID panel_id, u32 parent = U32_MAX);
             void dock_tree_add_panel(PersistentItemState& dock_state, GUIID panel_id);
@@ -856,6 +928,11 @@ namespace Luna
             void clamp_scroll_state(GUIID id);
             bool hit_test_scrollbar(const Float2U& pos, GUIID& out_id, bool& out_vertical, RectF& out_thumb_rect) const;
             void update_scrollbar_from_pointer(const Float2U& pos);
+            GUIID hit_test_drag_drop_source(const Float2U& pos, Name& out_type) const;
+            GUIID hit_test_drag_drop_target(const Name& type, const Float2U& pos) const;
+            void start_drag_drop(GUIID source_id, const Name& type);
+            void clear_drag_drop();
+            void deliver_drag_drop_payload(GUIID target_id);
             bool hit_test_combo_dropdown(const Float2U& pos, GUIID& out_id, i32& out_item) const;
             void close_combo_dropdowns_except(GUIID keep_id);
             GUIID hit_test_node(u32 node_index, const Float2U& pos, bool filter_kind, GUINodeKind kind) const;
@@ -869,6 +946,7 @@ namespace Luna
             void process_input_events();
             void render_node(u32 node_index);
             void render_combo_dropdown(const GUINode& node, const RectF& rect);
+            void render_drag_drop_overlay();
             void render_scrollbars(u32 node_index);
             void render_rect(const RectF& rect, const RectF& clip_rect, const Float4U& color, f32 radius, RHI::ITexture* texture = nullptr);
             void render_circle(const RectF& rect, const RectF& clip_rect, const Float4U& color);

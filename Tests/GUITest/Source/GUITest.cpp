@@ -19,6 +19,7 @@
 #include <Luna/Window/AppMain.hpp>
 #include <Luna/Window/Event.hpp>
 #include <cstdio>
+#include <cstring>
 
 using namespace Luna;
 
@@ -34,6 +35,7 @@ namespace Luna
         u32 width = 0;
         u32 height = 0;
         u32 selected_tab = 0;
+        u32 tree_selected = 2;
         u32 click_count = 0;
         u32 double_click_count = 0;
         u32 right_click_count = 0;
@@ -52,6 +54,9 @@ namespace Luna
         String layout_column_text = "Layout column input";
         String popup_text = "No popup action";
         String state_text = "Interact with the controls";
+        String dropped_text = "Drop text payload here";
+        String mixed_drop_text = "Drop either payload type here";
+        i32 dropped_number = -1;
         i32 combo_index = 0;
         f32 slider_value = 0.35f;
         f32 drag_value = 42.0f;
@@ -68,7 +73,8 @@ namespace Luna
 
     struct FrameHandles
     {
-        GUI::GUIItemHandle tabs[7];
+        GUI::GUIItemHandle tabs[9];
+        GUI::GUIItemHandle tree_nodes[8];
         GUI::GUIItemHandle primary_button;
         GUI::GUIItemHandle double_click_item;
         GUI::GUIItemHandle right_click_item;
@@ -76,6 +82,9 @@ namespace Luna
         GUI::GUIItemHandle popup_action;
         GUI::GUIItemHandle popup_close;
         GUI::GUIItemHandle canvas_hit;
+        GUI::GUIItemHandle drag_number_target;
+        GUI::GUIItemHandle drag_text_target;
+        GUI::GUIItemHandle drag_mixed_target;
     };
 
     constexpr const c8* DEMO_TABS[] =
@@ -86,8 +95,13 @@ namespace Luna
         "Tables",
         "Drawing",
         "Popups",
-        "State"
+        "State",
+        "Trees",
+        "DragDrop"
     };
+
+    constexpr u32 DEMO_TAB_COUNT = (u32)(sizeof(DEMO_TABS) / sizeof(DEMO_TABS[0]));
+    constexpr u32 TREE_NODE_COUNT = 8;
 
     void demo_section(const c8* title)
     {
@@ -99,6 +113,54 @@ namespace Luna
         GUI::SetNextItemLayout(GUI::GUILayoutStyle::fixed_width(150.0f));
         GUI::Text(label);
         GUI::SetNextItemLayout(GUI::GUILayoutStyle::fill_width());
+    }
+
+    GUI::GUIItemHandle demo_tree_node(App& app, FrameHandles& handles, u32 index, const c8* label, GUI::GUITreeNodeFlag flags = GUI::GUITreeNodeFlag::none)
+    {
+        if(app.tree_selected == index)
+        {
+            flags |= GUI::GUITreeNodeFlag::selected;
+        }
+        handles.tree_nodes[index] = GUI::TreeNode(label, flags);
+        return handles.tree_nodes[index];
+    }
+
+    Name demo_number_payload_type()
+    {
+        return Name("demo.number");
+    }
+
+    Name demo_text_payload_type()
+    {
+        return Name("demo.text");
+    }
+
+    void demo_number_drag_source(const c8* label, i32 value)
+    {
+        GUI::GUIItemHandle source = GUI::Selectable(label);
+        Name type = demo_number_payload_type();
+        if(GUI::BeginDragDropSource(source, type))
+        {
+            GUI::SetDragDropPayload(&value, sizeof(value));
+            c8 preview[96];
+            snprintf(preview, 96, "Dragging number %d", value);
+            GUI::Text(preview);
+            GUI::EndDragDropSource();
+        }
+    }
+
+    void demo_text_drag_source(const c8* label, const c8* value)
+    {
+        GUI::GUIItemHandle source = GUI::Selectable(label);
+        Name type = demo_text_payload_type();
+        if(GUI::BeginDragDropSource(source, type))
+        {
+            GUI::SetDragDropPayload(value, strlen(value) + 1);
+            c8 preview[128];
+            snprintf(preview, 128, "Dragging text: %s", value);
+            GUI::Text(preview);
+            GUI::EndDragDropSource();
+        }
     }
 
     void draw_overview_tab(App& app)
@@ -348,6 +410,108 @@ namespace Luna
         GUI::Text(app.state_text.c_str());
     }
 
+    void draw_trees_tab(App& app, FrameHandles& handles)
+    {
+        demo_section("TreeNode");
+        GUI::Text("TreeNode supports open state, selection, leaf rows, and indentation.");
+        GUI::Text("The first node only toggles when the arrow is clicked.");
+
+        GUI::GUIItemHandle scene = demo_tree_node(app, handles, 0, "Scene",
+            GUI::GUITreeNodeFlag::default_open | GUI::GUITreeNodeFlag::open_on_arrow);
+        if(GUI::GetItemState(scene, GUI::GUIState::open()))
+        {
+            GUI::TreePush();
+            demo_tree_node(app, handles, 1, "Camera", GUI::GUITreeNodeFlag::leaf);
+            demo_tree_node(app, handles, 2, "Directional Light", GUI::GUITreeNodeFlag::leaf);
+
+            GUI::GUIItemHandle actor = demo_tree_node(app, handles, 3, "Sponza Actor", GUI::GUITreeNodeFlag::default_open);
+            if(GUI::GetItemState(actor, GUI::GUIState::open()))
+            {
+                GUI::TreePush();
+                demo_tree_node(app, handles, 4, "Transform", GUI::GUITreeNodeFlag::leaf);
+                demo_tree_node(app, handles, 5, "Mesh Renderer", GUI::GUITreeNodeFlag::leaf);
+
+                GUI::GUIItemHandle material = demo_tree_node(app, handles, 6, "Materials");
+                if(GUI::GetItemState(material, GUI::GUIState::open()))
+                {
+                    GUI::TreePush();
+                    demo_tree_node(app, handles, 7, "Material Slot 0", GUI::GUITreeNodeFlag::leaf);
+                    GUI::TreePop();
+                }
+                GUI::TreePop();
+            }
+            GUI::TreePop();
+        }
+
+        c8 selected[96];
+        snprintf(selected, 96, "Selected tree node index: %u", app.tree_selected);
+        GUI::Text(selected);
+    }
+
+    void draw_drag_drop_tab(App& app, FrameHandles& handles)
+    {
+        demo_section("Drag and Drop");
+        GUI::Text("Drag number payloads and text payloads to the matching targets.");
+        GUI::Text("Only targets that explicitly accept the payload type should be highlighted.");
+
+        GUI::GUILayoutDesc columns;
+        columns.gap = 18.0f;
+        columns.cross_axis_alignment = GUI::GUILayoutCrossAxisAlignment::begin;
+        GUI::BeginHLayout("DragDrop Columns", columns);
+
+        GUI::SetNextItemLayout(GUI::GUILayoutStyle::fixed_width(220.0f));
+        GUI::BeginVLayout("Drag Sources");
+        GUI::Text("Sources");
+        demo_number_drag_source("Number: 7", 7);
+        demo_number_drag_source("Number: 42", 42);
+        demo_text_drag_source("Text: Luna", "Luna");
+        demo_text_drag_source("Text: Studio", "Studio");
+        GUI::EndVLayout();
+
+        GUI::SetNextItemLayout(GUI::GUILayoutStyle::fixed_width(280.0f));
+        GUI::BeginVLayout("Drop Targets");
+        GUI::Text("Targets");
+
+        GUI::SetNextItemLayout(GUI::GUILayoutStyle::fixed_width(240.0f));
+        handles.drag_number_target = GUI::Button("Accept Number");
+        Name number_type = demo_number_payload_type();
+        if(GUI::BeginDragDropTarget(handles.drag_number_target, number_type))
+        {
+            (void)GUI::AcceptDragDropPayload(number_type);
+            GUI::EndDragDropTarget();
+        }
+        c8 number_text[96];
+        snprintf(number_text, 96, "Number target: %d", app.dropped_number);
+        GUI::Text(number_text);
+
+        GUI::SetNextItemLayout(GUI::GUILayoutStyle::fixed_width(240.0f));
+        handles.drag_text_target = GUI::Button("Accept Text");
+        Name text_type = demo_text_payload_type();
+        if(GUI::BeginDragDropTarget(handles.drag_text_target, text_type))
+        {
+            (void)GUI::AcceptDragDropPayload(text_type);
+            GUI::EndDragDropTarget();
+        }
+        GUI::Text(app.dropped_text.c_str());
+
+        GUI::SetNextItemLayout(GUI::GUILayoutStyle::fixed_width(240.0f));
+        handles.drag_mixed_target = GUI::Button("Accept Both");
+        if(GUI::BeginDragDropTarget(handles.drag_mixed_target, number_type))
+        {
+            (void)GUI::AcceptDragDropPayload(number_type);
+            GUI::EndDragDropTarget();
+        }
+        if(GUI::BeginDragDropTarget(handles.drag_mixed_target, text_type))
+        {
+            (void)GUI::AcceptDragDropPayload(text_type);
+            GUI::EndDragDropTarget();
+        }
+        GUI::Text(app.mixed_drop_text.c_str());
+        GUI::EndVLayout();
+
+        GUI::EndHLayout();
+    }
+
     void draw_showcase(App& app, FrameHandles& handles, const Float2U& surface_size)
     {
         app.showcase_size = Float2U(max(surface_size.x, 1.0f), max(surface_size.y, 1.0f));
@@ -359,8 +523,8 @@ namespace Luna
         tabs_layout.gap = 4.0f;
         tabs_layout.cross_axis_alignment = GUI::GUILayoutCrossAxisAlignment::center;
         GUI::BeginHLayout("Tab Bar", tabs_layout);
-        f32 tab_width = clamp((app.showcase_content_size.x - tabs_layout.gap * 6.0f) / 7.0f, 44.0f, 112.0f);
-        for(u32 i = 0; i < 7; ++i)
+        f32 tab_width = clamp((app.showcase_content_size.x - tabs_layout.gap * (f32)(DEMO_TAB_COUNT - 1)) / (f32)DEMO_TAB_COUNT, 44.0f, 112.0f);
+        for(u32 i = 0; i < DEMO_TAB_COUNT; ++i)
         {
             GUI::SetNextItemLayout(GUI::GUILayoutStyle::fixed_width(tab_width));
             handles.tabs[i] = GUI::Selectable(DEMO_TABS[i], app.selected_tab == i);
@@ -391,6 +555,12 @@ namespace Luna
             break;
         case 6:
             draw_state_tab(app, handles);
+            break;
+        case 7:
+            draw_trees_tab(app, handles);
+            break;
+        case 8:
+            draw_drag_drop_tab(app, handles);
             break;
         default:
             break;
@@ -457,7 +627,7 @@ namespace Luna
                 frame.delta_time = 1.0f / 60.0f;
                 app.gui->begin_frame(frame);
 
-                FrameHandles handles;
+                FrameHandles handles = {};
                 u32 built_tab = app.selected_tab;
                 draw_showcase(app, handles, frame.surface_size);
                 if(app.popup_open)
@@ -472,7 +642,7 @@ namespace Luna
                 luexp(app.gui->submit(desc));
                 luexp(GUIWindow::update_text_input(&input_adapter));
 
-                for(u32 i = 0; i < 7; ++i)
+                for(u32 i = 0; i < DEMO_TAB_COUNT; ++i)
                 {
                     if(GUI::IsItemClicked(handles.tabs[i]))
                     {
@@ -550,6 +720,62 @@ namespace Luna
                         focused ? "true" : "false",
                         GUI::IsItemClicked(handles.primary_button) ? "true" : "false");
                     app.state_text = state;
+                }
+                else if(built_tab == 7)
+                {
+                    for(u32 i = 0; i < TREE_NODE_COUNT; ++i)
+                    {
+                        if(GUI::IsItemClicked(handles.tree_nodes[i]))
+                        {
+                            app.tree_selected = i;
+                            c8 state[96];
+                            snprintf(state, 96, "Tree node %u clicked", i);
+                            app.state_text = state;
+                        }
+                    }
+                }
+                else if(built_tab == 8)
+                {
+                    Name number_type = demo_number_payload_type();
+                    Name text_type = demo_text_payload_type();
+                    if(const GUI::GUIDragDropPayload* payload = GUI::AcceptDragDropPayload(handles.drag_number_target, number_type))
+                    {
+                        if(const i32* value = payload->data_as<i32>())
+                        {
+                            app.dropped_number = *value;
+                            c8 state[96];
+                            snprintf(state, 96, "Number target received %d", *value);
+                            app.state_text = state;
+                        }
+                    }
+                    if(const GUI::GUIDragDropPayload* payload = GUI::AcceptDragDropPayload(handles.drag_text_target, text_type))
+                    {
+                        app.dropped_text = "Text target: ";
+                        if(payload->data && payload->data_size)
+                        {
+                            app.dropped_text.append((const c8*)payload->data, payload->data_size - 1);
+                        }
+                        app.state_text = app.dropped_text;
+                    }
+                    if(const GUI::GUIDragDropPayload* payload = GUI::AcceptDragDropPayload(handles.drag_mixed_target, number_type))
+                    {
+                        if(const i32* value = payload->data_as<i32>())
+                        {
+                            c8 state[96];
+                            snprintf(state, 96, "Mixed target: number %d", *value);
+                            app.mixed_drop_text = state;
+                            app.state_text = state;
+                        }
+                    }
+                    if(const GUI::GUIDragDropPayload* payload = GUI::AcceptDragDropPayload(handles.drag_mixed_target, text_type))
+                    {
+                        app.mixed_drop_text = "Mixed target: text ";
+                        if(payload->data && payload->data_size)
+                        {
+                            app.mixed_drop_text.append((const c8*)payload->data, payload->data_size - 1);
+                        }
+                        app.state_text = app.mixed_drop_text;
+                    }
                 }
 
                 c8 buf[128];

@@ -691,6 +691,85 @@ namespace Luna
             return m_submitted_desc.nodes.empty() ? 0 : hit_test_node(0, pos, true, kind);
         }
 
+        GUIID GUIContext::hit_test_drag_drop_source(const Float2U& pos, Name& out_type) const
+        {
+            if(m_layouts.size() != m_submitted_desc.nodes.size()) return 0;
+            for(usize i = m_submitted_desc.nodes.size(); i > 0; --i)
+            {
+                u32 node_index = (u32)(i - 1);
+                const GUINode& node = m_submitted_desc.nodes[node_index];
+                if(node.drag_drop_source_types.empty()) continue;
+                const NodeLayout& layout = m_layouts[node_index];
+                if(layout.dock_panel_child && !layout.dock_panel_visible) continue;
+                if(!point_in_rect(pos, layout.rect) || !point_in_rect(pos, layout.clip_rect)) continue;
+                out_type = node.drag_drop_source_types[0];
+                return node.id;
+            }
+            return 0;
+        }
+
+        GUIID GUIContext::hit_test_drag_drop_target(const Name& type, const Float2U& pos) const
+        {
+            if(!type || m_layouts.size() != m_submitted_desc.nodes.size()) return 0;
+            GUIID best = 0;
+            f32 best_area = F32_MAX;
+            for(usize i = 0; i < m_submitted_desc.nodes.size(); ++i)
+            {
+                const GUINode& node = m_submitted_desc.nodes[i];
+                if(!contains_name(node.drag_drop_target_types, type)) continue;
+                if(node.id == m_drag_drop_source_id) continue;
+                const NodeLayout& layout = m_layouts[i];
+                if(layout.dock_panel_child && !layout.dock_panel_visible) continue;
+                if(!point_in_rect(pos, layout.rect) || !point_in_rect(pos, layout.clip_rect)) continue;
+                f32 area = max(layout.rect.width, 1.0f) * max(layout.rect.height, 1.0f);
+                if(area < best_area)
+                {
+                    best = node.id;
+                    best_area = area;
+                }
+            }
+            return best;
+        }
+
+        void GUIContext::start_drag_drop(GUIID source_id, const Name& type)
+        {
+            if(!source_id || !type) return;
+            m_drag_drop_active = true;
+            m_drag_drop_source_id = source_id;
+            m_drag_drop_type = type;
+            m_drag_drop_payload_set = false;
+            m_drag_drop_payload_data.clear();
+            ItemResult& result = get_or_create_current_result(source_id);
+            result.states.insert_or_assign(Name("gui.active"), Any(true));
+        }
+
+        void GUIContext::clear_drag_drop()
+        {
+            m_drag_drop_candidate_source_id = 0;
+            m_drag_drop_candidate_type.reset();
+            m_drag_drop_active = false;
+            m_drag_drop_payload_set = false;
+            m_drag_drop_source_id = 0;
+            m_drag_drop_type.reset();
+            m_drag_drop_payload_data.clear();
+        }
+
+        void GUIContext::deliver_drag_drop_payload(GUIID target_id)
+        {
+            if(!m_drag_drop_active || !target_id || !m_drag_drop_payload_set) return;
+            DragDropPayloadStorage storage;
+            storage.type = m_drag_drop_type;
+            storage.data = m_drag_drop_payload_data;
+            storage.source = GUIItemHandle{get_object(), m_drag_drop_source_id, m_generation};
+            storage.target = GUIItemHandle{get_object(), target_id, m_generation};
+            storage.preview = true;
+            storage.delivery = true;
+            m_current_drag_drop_deliveries.insert_or_assign(target_id, move(storage));
+            ItemResult& result = get_or_create_current_result(target_id);
+            result.states.insert_or_assign(Name("gui.value_changed"), Any(true));
+            result.states.insert_or_assign(Name("gui.drag_drop_delivered"), Any(true));
+        }
+
         GUINode* GUIContext::find_node(GUIID id)
         {
             for(GUINode& node : m_submitted_desc.nodes)
@@ -812,6 +891,15 @@ namespace Luna
                     Float2U old_pos = m_pointer_pos;
                     m_pointer_inside = true;
                     m_pointer_pos = e.position;
+                    if(m_drag_drop_candidate_source_id && !m_drag_drop_active)
+                    {
+                        f32 dx = e.position.x - m_drag_drop_start_pos.x;
+                        f32 dy = e.position.y - m_drag_drop_start_pos.y;
+                        if(dx * dx + dy * dy >= 16.0f)
+                        {
+                            start_drag_drop(m_drag_drop_candidate_source_id, m_drag_drop_candidate_type);
+                        }
+                    }
                     if(m_active_dock_split_space_id)
                     {
                         update_dock_splitter_from_pointer(e.position);
@@ -1064,6 +1152,11 @@ namespace Luna
                         continue;
                     }
                     GUIID target = hit_test(e.position);
+                    Name drag_drop_type;
+                    GUIID drag_drop_source = hit_test_drag_drop_source(e.position, drag_drop_type);
+                    m_drag_drop_candidate_source_id = drag_drop_source;
+                    m_drag_drop_candidate_type = drag_drop_type;
+                    m_drag_drop_start_pos = e.position;
                     m_active_id = target;
                     m_focused_id = target;
                     if(old_focused_id && old_focused_id != target)
@@ -1120,6 +1213,24 @@ namespace Luna
                     {
                         continue;
                     }
+                    if(m_drag_drop_active)
+                    {
+                        GUIID drop_target = hit_test_drag_drop_target(m_drag_drop_type, e.position);
+                        deliver_drag_drop_payload(drop_target);
+                        if(m_active_id)
+                        {
+                            PersistentItemState& state = get_or_create_persistent_state(m_active_id);
+                            state.pointer_down = false;
+                            state.active = false;
+                            state.text_selecting = false;
+                        }
+                        clear_drag_drop();
+                        m_active_id = 0;
+                        m_active_float_component = U32_MAX;
+                        continue;
+                    }
+                    m_drag_drop_candidate_source_id = 0;
+                    m_drag_drop_candidate_type.reset();
                     if(m_active_dock_split_space_id)
                     {
                         PersistentItemState& state = get_or_create_persistent_state(m_active_dock_split_space_id);
@@ -1283,6 +1394,20 @@ namespace Luna
                                 state.open = !state.open;
                                 result.states.insert_or_assign(Name("gui.open"), Any(state.open));
                                 result.states.insert_or_assign(Name("gui.value_changed"), Any(true));
+                            }
+                            else if(node.kind == GUINodeKind::tree_node && !tree_node_is_leaf(node))
+                            {
+                                bool toggle = true;
+                                if(test_flags(node.tree_flags, GUITreeNodeFlag::open_on_arrow))
+                                {
+                                    toggle = point_in_rect(e.position, tree_node_arrow_rect(node, m_layouts[i].rect));
+                                }
+                                if(toggle)
+                                {
+                                    state.open = !state.open;
+                                    result.states.insert_or_assign(Name("gui.open"), Any(state.open));
+                                    result.states.insert_or_assign(Name("gui.value_changed"), Any(true));
+                                }
                             }
                             else if(node.kind == GUINodeKind::combo && node.i32_value && !node.items.empty())
                             {
@@ -1539,6 +1664,7 @@ namespace Luna
                     m_active_dock_split_space_id = 0;
                     m_active_dock_split_node = U32_MAX;
                     close_combo_dropdowns_except(0);
+                    clear_drag_drop();
                 }
             }
             m_input_events.clear();
@@ -1615,6 +1741,24 @@ namespace Luna
                     PersistentItemState& persistent = get_or_create_persistent_state(node.id);
                     if(node.kind == GUINodeKind::collapsing_header)
                     {
+                        if(!persistent.open_initialized)
+                        {
+                            persistent.open = true;
+                            persistent.open_initialized = true;
+                        }
+                        result.states.insert_or_assign(Name("gui.open"), Any(persistent.open));
+                    }
+                    else if(node.kind == GUINodeKind::tree_node)
+                    {
+                        if(!persistent.open_initialized)
+                        {
+                            persistent.open = !tree_node_is_leaf(node) && test_flags(node.tree_flags, GUITreeNodeFlag::default_open);
+                            persistent.open_initialized = true;
+                        }
+                        if(tree_node_is_leaf(node))
+                        {
+                            persistent.open = false;
+                        }
                         result.states.insert_or_assign(Name("gui.open"), Any(persistent.open));
                     }
                     else if(node.kind == GUINodeKind::combo)
@@ -1638,6 +1782,22 @@ namespace Luna
                 if(m_open_combo_id && !open_combo_submitted)
                 {
                     m_open_combo_id = 0;
+                }
+                if(m_drag_drop_active)
+                {
+                    bool source_live = false;
+                    for(const GUINode& node : m_submitted_desc.nodes)
+                    {
+                        if(node.id == m_drag_drop_source_id && contains_name(node.drag_drop_source_types, m_drag_drop_type))
+                        {
+                            source_live = true;
+                            break;
+                        }
+                    }
+                    if(!source_live)
+                    {
+                        clear_drag_drop();
+                    }
                 }
                 RectF root_rect(0.0f, 0.0f, m_frame_desc.surface_size.x, m_frame_desc.surface_size.y);
                 m_layout_dirty = false;
@@ -1699,6 +1859,10 @@ namespace Luna
                     result.states.insert_or_assign(Name("gui.active"), Any(node.id == m_active_id || persistent.active));
                     result.states.insert_or_assign(Name("gui.focused"), Any(node.id == m_focused_id));
                     if(node.kind == GUINodeKind::collapsing_header)
+                    {
+                        result.states.insert_or_assign(Name("gui.open"), Any(persistent.open));
+                    }
+                    else if(node.kind == GUINodeKind::tree_node)
                     {
                         result.states.insert_or_assign(Name("gui.open"), Any(persistent.open));
                     }

@@ -33,6 +33,8 @@ namespace Luna
             m_submitted = false;
             m_last_results = m_current_results;
             m_current_results.clear();
+            m_last_drag_drop_deliveries = m_current_drag_drop_deliveries;
+            m_current_drag_drop_deliveries.clear();
             ++m_generation;
             m_build_desc = GUIDescription();
             m_build_desc.generation = m_generation;
@@ -42,6 +44,15 @@ namespace Luna
             m_child_ordinals.clear();
             m_has_next_dock_panel_style = false;
             m_next_dock_panel_open = nullptr;
+            m_last_item_id = 0;
+            m_tree_depth = 0;
+            m_drag_drop_preview_built = false;
+            m_drag_drop_target_stack.clear();
+            if(m_drag_drop_active)
+            {
+                m_drag_drop_payload_set = false;
+                m_drag_drop_payload_data.clear();
+            }
 
             GUINode root;
             root.id = 1;
@@ -179,6 +190,7 @@ namespace Luna
             }
             parent_node.last_child = index;
 
+            m_last_item_id = node.id;
             return GUIItemHandle{get_object(), node.id, m_generation};
         }
 
@@ -243,6 +255,147 @@ namespace Luna
             m_clip_stack.pop_back();
         }
 
+        void GUIContext::tree_push()
+        {
+            lutsassert();
+            luassert(m_last_item_id != 0);
+            ++m_tree_depth;
+            m_id_stack.push_back(m_last_item_id);
+        }
+
+        void GUIContext::tree_pop()
+        {
+            lutsassert();
+            luassert(m_tree_depth > 0);
+            --m_tree_depth;
+            luassert(m_id_stack.size() > 1);
+            m_id_stack.pop_back();
+        }
+
+        bool GUIContext::begin_drag_drop_source(GUIItemHandle source, const Name& payload_type)
+        {
+            lutsassert();
+            if(!payload_type) return false;
+            GUINode* node = find_build_node(source);
+            if(!node) return false;
+            if(!contains_name(node->drag_drop_source_types, payload_type))
+            {
+                node->drag_drop_source_types.push_back(payload_type);
+            }
+            if(!m_drag_drop_active || m_drag_drop_source_id != source.id || m_drag_drop_type != payload_type)
+            {
+                return false;
+            }
+
+            m_drag_drop_preview_built = true;
+            GUIItemHandle preview;
+            Float2U preview_pos(
+                min(m_pointer_pos.x + 14.0f, max(m_frame_desc.surface_size.x - 8.0f, 0.0f)),
+                min(m_pointer_pos.y + 18.0f, max(m_frame_desc.surface_size.y - 8.0f, 0.0f)));
+            begin_container(GUINodeKind::popup, "DragDropPreview", GUISize(), &preview);
+            GUINode& preview_node = m_build_desc.nodes.back();
+            preview_node.render_layer = GUIRenderLayer::overlay;
+            preview_node.absolute_position = true;
+            preview_node.position = preview_pos;
+            preview_node.layout_desc.padding = GUIEdgeInsets::all(6.0f);
+            preview_node.layout_desc.gap = 2.0f;
+            return true;
+        }
+
+        void GUIContext::set_drag_drop_payload(const void* data, usize data_size)
+        {
+            lutsassert();
+            if(!m_drag_drop_active) return;
+            m_drag_drop_payload_data.resize(data_size);
+            if(data_size && data)
+            {
+                memcpy(m_drag_drop_payload_data.data(), data, data_size);
+            }
+            m_drag_drop_payload_set = true;
+        }
+
+        void GUIContext::end_drag_drop_source()
+        {
+            lutsassert();
+            end_container();
+        }
+
+        bool GUIContext::begin_drag_drop_target(GUIItemHandle target, const Name& payload_type)
+        {
+            lutsassert();
+            if(!payload_type) return false;
+            GUINode* node = find_build_node(target);
+            if(!node) return false;
+            if(!contains_name(node->drag_drop_target_types, payload_type))
+            {
+                node->drag_drop_target_types.push_back(payload_type);
+            }
+            if(!m_drag_drop_active || m_drag_drop_type != payload_type)
+            {
+                return false;
+            }
+            m_drag_drop_target_stack.push_back({target, payload_type});
+            return true;
+        }
+
+        const GUIDragDropPayload* GUIContext::accept_drag_drop_payload(const Name& payload_type)
+        {
+            lutsassert();
+            if(m_drag_drop_target_stack.empty()) return nullptr;
+            return accept_drag_drop_payload(m_drag_drop_target_stack.back().target, payload_type);
+        }
+
+        const GUIDragDropPayload* GUIContext::accept_drag_drop_payload(GUIItemHandle target, const Name& payload_type)
+        {
+            lutsassert();
+            if(!payload_type || target.context != get_object()) return nullptr;
+            const HashMap<GUIID, DragDropPayloadStorage, GUIIDHash>& deliveries = m_submitted ? m_current_drag_drop_deliveries : m_last_drag_drop_deliveries;
+            auto iter = deliveries.find(target.id);
+            if(iter == deliveries.end() || iter->second.type != payload_type) return nullptr;
+            return make_drag_drop_payload_view(iter->second);
+        }
+
+        void GUIContext::end_drag_drop_target()
+        {
+            lutsassert();
+            if(!m_drag_drop_target_stack.empty())
+            {
+                m_drag_drop_target_stack.pop_back();
+            }
+        }
+
+        bool GUIContext::is_drag_drop_active() const
+        {
+            lutsassert();
+            return m_drag_drop_active;
+        }
+
+        const GUIDragDropPayload* GUIContext::get_drag_drop_payload()
+        {
+            lutsassert();
+            if(!m_drag_drop_active) return nullptr;
+            m_drag_drop_payload_view.type = m_drag_drop_type;
+            m_drag_drop_payload_view.data = m_drag_drop_payload_data.empty() ? nullptr : m_drag_drop_payload_data.data();
+            m_drag_drop_payload_view.data_size = m_drag_drop_payload_data.size();
+            m_drag_drop_payload_view.source = GUIItemHandle{get_object(), m_drag_drop_source_id, m_generation};
+            m_drag_drop_payload_view.target = GUIItemHandle();
+            m_drag_drop_payload_view.preview = true;
+            m_drag_drop_payload_view.delivery = false;
+            return &m_drag_drop_payload_view;
+        }
+
+        const GUIDragDropPayload* GUIContext::make_drag_drop_payload_view(const DragDropPayloadStorage& storage)
+        {
+            m_drag_drop_payload_view.type = storage.type;
+            m_drag_drop_payload_view.data = storage.data.empty() ? nullptr : storage.data.data();
+            m_drag_drop_payload_view.data_size = storage.data.size();
+            m_drag_drop_payload_view.source = storage.source;
+            m_drag_drop_payload_view.target = storage.target;
+            m_drag_drop_payload_view.preview = storage.preview;
+            m_drag_drop_payload_view.delivery = storage.delivery;
+            return &m_drag_drop_payload_view;
+        }
+
         void GUIContext::set_next_dock_panel_style(const GUIDockPanelStyle& style, bool* open)
         {
             lutsassert();
@@ -287,6 +440,16 @@ namespace Luna
             return iter->second;
         }
 
+        GUINode* GUIContext::find_build_node(GUIItemHandle handle)
+        {
+            if(handle.context != get_object() || handle.generation != m_generation) return nullptr;
+            for(GUINode& node : m_build_desc.nodes)
+            {
+                if(node.id == handle.id) return &node;
+            }
+            return nullptr;
+        }
+
         DockPanelPersistentState& GUIContext::get_or_create_dock_panel_state(PersistentItemState& dock_state, GUIID panel_id)
         {
             auto iter = dock_state.dock_panels.find(panel_id);
@@ -302,6 +465,18 @@ namespace Luna
         {
             lutsassert();
             ItemResult* result = get_query_result(handle);
+            if(!result && !m_submitted && handle.context == get_object() && handle.generation == m_generation && key == Name("gui.open"))
+            {
+                for(const GUINode& node : m_build_desc.nodes)
+                {
+                    if(node.id != handle.id || node.kind != GUINodeKind::tree_node) continue;
+                    ItemResult& fallback = get_or_create_current_result(handle.id);
+                    bool default_open = !tree_node_is_leaf(node) && test_flags(node.tree_flags, GUITreeNodeFlag::default_open);
+                    fallback.states.insert_or_assign(key, Any(default_open));
+                    result = &fallback;
+                    break;
+                }
+            }
             if(!result) return nullptr;
             auto iter = result->states.find(key);
             return iter == result->states.end() ? nullptr : &iter->second;

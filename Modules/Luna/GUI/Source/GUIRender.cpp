@@ -349,6 +349,50 @@ namespace Luna
             }
         }
 
+        void GUIContext::render_drag_drop_overlay()
+        {
+            if(!m_drag_drop_active || !m_drag_drop_type || m_layouts.size() != m_submitted_desc.nodes.size()) return;
+            RectF surface_clip(0.0f, 0.0f, m_frame_desc.surface_size.x, m_frame_desc.surface_size.y);
+            GUIID hovered_target = hit_test_drag_drop_target(m_drag_drop_type, m_pointer_pos);
+            for(usize i = 0; i < m_submitted_desc.nodes.size(); ++i)
+            {
+                const GUINode& node = m_submitted_desc.nodes[i];
+                if(!contains_name(node.drag_drop_target_types, m_drag_drop_type) || node.id == m_drag_drop_source_id) continue;
+                const NodeLayout& layout = m_layouts[i];
+                if(layout.dock_panel_child && !layout.dock_panel_visible) continue;
+                RectF rect = layout.rect;
+                if(rect.width <= 0.0f || rect.height <= 0.0f) continue;
+                RectF clip = intersect_rect(layout.clip_rect, surface_clip);
+                bool hovered = node.id == hovered_target;
+                Float4U color = hovered ? Float4U(0.40f, 0.68f, 1.0f, 1.0f) : Float4U(0.28f, 0.50f, 0.86f, 0.62f);
+                f32 width = hovered ? 3.0f : 2.0f;
+                f32 l = rect.offset_x + 1.0f;
+                f32 t = rect.offset_y + 1.0f;
+                f32 r = rect.offset_x + max(rect.width - 1.0f, 1.0f);
+                f32 b = rect.offset_y + max(rect.height - 1.0f, 1.0f);
+                render_line_segment(Float2U(l, t), Float2U(r, t), clip, color, width);
+                render_line_segment(Float2U(r, t), Float2U(r, b), clip, color, width);
+                render_line_segment(Float2U(r, b), Float2U(l, b), clip, color, width);
+                render_line_segment(Float2U(l, b), Float2U(l, t), clip, color, width);
+            }
+
+            if(!m_drag_drop_preview_built)
+            {
+                const c8* type_name = m_drag_drop_type.c_str();
+                f32 width = max((f32)m_drag_drop_type.size() * 8.0f + 84.0f, 132.0f);
+                RectF rect(
+                    min(m_pointer_pos.x + 14.0f, max(m_frame_desc.surface_size.x - width - 8.0f, 0.0f)),
+                    min(m_pointer_pos.y + 18.0f, max(m_frame_desc.surface_size.y - 34.0f, 0.0f)),
+                    width,
+                    30.0f);
+                render_rect(rect, surface_clip, Float4U(0.08f, 0.10f, 0.13f, 0.96f), 5.0f);
+                String label;
+                strprintf(label, "Payload: %s", type_name);
+                render_text(RectF(rect.offset_x + 8.0f, rect.offset_y, max(rect.width - 16.0f, 1.0f), rect.height),
+                    surface_clip, label.c_str(), 15.0f, Color::white(), VG::TextAlignment::begin);
+            }
+        }
+
         void GUIContext::render_dock_panel_chrome(u32 node_index)
         {
             const GUINode& node = m_submitted_desc.nodes[node_index];
@@ -683,6 +727,48 @@ namespace Luna
                 render_rect(rect, clip, hovered ? Float4U(0.22f, 0.27f, 0.34f, 1.0f) : Float4U(0.16f, 0.19f, 0.24f, 1.0f), 4.0f);
                 render_text(RectF(rect.offset_x + 8.0f, rect.offset_y, rect.width - 8.0f, rect.height), clip, node.text.c_str(), 16.0f, Color::white(), VG::TextAlignment::begin);
                 break;
+            case GUINodeKind::tree_node:
+            {
+                bool open = false;
+                auto open_iter = m_current_results.find(node.id);
+                if(open_iter != m_current_results.end())
+                {
+                    auto state_iter = open_iter->second.states.find(Name("gui.open"));
+                    open = state_iter != open_iter->second.states.end() && state_iter->second.as<bool>() && *state_iter->second.as<bool>();
+                }
+                bool leaf = tree_node_is_leaf(node);
+                if(node.selected || hovered || active)
+                {
+                    render_rect(rect, clip, active ? Float4U(0.20f, 0.36f, 0.62f, 1.0f) :
+                        (node.selected ? Float4U(0.16f, 0.25f, 0.38f, 1.0f) :
+                            Float4U(0.18f, 0.24f, 0.32f, 1.0f)), 4.0f);
+                }
+                RectF arrow = tree_node_arrow_rect(node, rect);
+                Float4U icon_color = leaf ? Float4U(0.58f, 0.65f, 0.74f, 1.0f) : Float4U(1.0f);
+                if(leaf)
+                {
+                    f32 dot = 5.0f;
+                    render_circle(RectF(arrow.offset_x + (arrow.width - dot) * 0.5f, arrow.offset_y + (arrow.height - dot) * 0.5f, dot, dot), clip, icon_color);
+                }
+                else if(open)
+                {
+                    f32 cx = arrow.offset_x + arrow.width * 0.5f;
+                    f32 cy = arrow.offset_y + arrow.height * 0.5f + 2.0f;
+                    render_line_segment(Float2U(cx - 5.0f, cy - 3.0f), Float2U(cx, cy + 3.0f), clip, icon_color, 1.8f);
+                    render_line_segment(Float2U(cx, cy + 3.0f), Float2U(cx + 5.0f, cy - 3.0f), clip, icon_color, 1.8f);
+                }
+                else
+                {
+                    f32 cx = arrow.offset_x + arrow.width * 0.5f + 2.0f;
+                    f32 cy = arrow.offset_y + arrow.height * 0.5f;
+                    render_line_segment(Float2U(cx - 3.0f, cy - 5.0f), Float2U(cx + 3.0f, cy), clip, icon_color, 1.8f);
+                    render_line_segment(Float2U(cx + 3.0f, cy), Float2U(cx - 3.0f, cy + 5.0f), clip, icon_color, 1.8f);
+                }
+                f32 label_x = arrow.offset_x + arrow.width + 2.0f;
+                render_text(RectF(label_x, rect.offset_y, max(rect.offset_x + rect.width - label_x - 6.0f, 1.0f), rect.height),
+                    clip, node.text.c_str(), 15.0f, Color::white(), VG::TextAlignment::begin);
+                break;
+            }
             case GUINodeKind::combo:
             {
                 f32 label_w = combo_label_width(node, rect);
@@ -862,6 +948,7 @@ namespace Luna
                 render_node(0);
                 m_active_draw_list = m_overlay_draw_list.get();
                 render_dock_preview();
+                render_drag_drop_overlay();
                 m_active_draw_list = nullptr;
                 m_main_draw_list->end();
                 m_overlay_draw_list->end();

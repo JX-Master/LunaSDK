@@ -146,6 +146,15 @@ namespace Luna
                 metrics.max_size = Float2U(F32_MAX, 30.0f);
                 break;
             }
+            case GUINodeKind::tree_node:
+            {
+                f32 indent = tree_node_indent_width() * (f32)node.tree_depth;
+                f32 w = max(text_width + indent + 34.0f, 80.0f);
+                metrics.min_size = Float2U(min(w, 80.0f), 26.0f);
+                metrics.preferred_size = Float2U(w, 26.0f);
+                metrics.max_size = Float2U(F32_MAX, 26.0f);
+                break;
+            }
             case GUINodeKind::combo:
             {
                 f32 w = max(text_width + 160.0f, 220.0f);

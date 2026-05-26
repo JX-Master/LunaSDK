@@ -163,6 +163,15 @@ namespace Luna
             GUILayoutCrossAxisAlignment cross_axis_alignment = GUILayoutCrossAxisAlignment::stretch;
         };
 
+        enum class GUITreeNodeFlag : u32
+        {
+            none = 0x00,
+            selected = 0x01,
+            leaf = 0x02,
+            default_open = 0x04,
+            open_on_arrow = 0x08
+        };
+
         enum class GUIDockPanelMode : u8
         {
             docking,

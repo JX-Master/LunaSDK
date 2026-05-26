@@ -21,6 +21,8 @@ namespace Luna
         LUNA_GUI_API void PopID();
         LUNA_GUI_API void PushClipRect(const RectF& rect);
         LUNA_GUI_API void PopClipRect();
+        LUNA_GUI_API void TreePush();
+        LUNA_GUI_API void TreePop();
 
         LUNA_GUI_API void SetNextItemLayout(const GUILayoutStyle& style);
         LUNA_GUI_API void SetNextDockPanelStyle(const GUIDockPanelStyle& style, bool* open = nullptr);
@@ -55,6 +57,7 @@ namespace Luna
         LUNA_GUI_API GUIItemHandle InputText(const c8* label, String& value);
         LUNA_GUI_API GUIItemHandle Image(RHI::ITexture* texture, const GUISize& size);
         LUNA_GUI_API GUIItemHandle CollapsingHeader(const c8* label);
+        LUNA_GUI_API GUIItemHandle TreeNode(const c8* label, GUITreeNodeFlag flags = GUITreeNodeFlag::none);
         LUNA_GUI_API GUIItemHandle Combo(const c8* label, i32* current_item, Span<const c8*> items);
         LUNA_GUI_API GUIItemHandle SliderFloat(const c8* label, f32* value, f32 min_value, f32 max_value);
         LUNA_GUI_API GUIItemHandle DragFloat(const c8* label, f32* value, f32 speed, f32 min_value, f32 max_value);

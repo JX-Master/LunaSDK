@@ -33,6 +33,7 @@ namespace Luna
             combo,
             slider_float,
             drag_float,
+            tree_node,
             hit_box,
             draw_rect,
             draw_circle,
@@ -70,6 +71,8 @@ namespace Luna
             GUITableDesc table_desc;
             bool has_table_cell_color = false;
             Float4U table_cell_color = Float4U(0.0f);
+            GUITreeNodeFlag tree_flags = GUITreeNodeFlag::none;
+            u32 tree_depth = 0;
             bool absolute_position = false;
             Float2U position = Float2U(0.0f);
             bool has_user_clip_rect = false;
@@ -94,6 +97,8 @@ namespace Luna
             f32 max_value = 0.0f;
             f32 step_value = 0.0f;
             Vector<String> items;
+            Vector<Name> drag_drop_source_types;
+            Vector<Name> drag_drop_target_types;
             bool interactive = false;
         };
 
