@@ -51,6 +51,11 @@ namespace Luna
             require_current_context()->set_next_item_layout(style);
         }
 
+        LUNA_GUI_API void SetNextDockPanelStyle(const GUIDockPanelStyle& style, bool* open)
+        {
+            require_current_context()->set_next_dock_panel_style(style, open);
+        }
+
         LUNA_GUI_API GUIItemHandle BeginHLayout(const c8* label, const GUILayoutDesc& desc)
         {
             GUIItemHandle handle;
@@ -120,6 +125,33 @@ namespace Luna
         LUNA_GUI_API void SetNextTableCellColor(const Float4U& color)
         {
             require_current_context()->set_next_table_cell_color(color);
+        }
+
+        LUNA_GUI_API GUIItemHandle BeginDockSpace(const c8* label, const GUISize& size)
+        {
+            GUIItemHandle handle;
+            require_current_context()->begin_container(GUINodeKind::dock_space, label ? label : "DockSpace", size, &handle);
+            return handle;
+        }
+
+        LUNA_GUI_API void EndDockSpace()
+        {
+            require_current_context()->end_container();
+        }
+
+        LUNA_GUI_API GUIItemHandle BeginDockPanel(const c8* label, bool* open, const GUIDockPanelStyle& style, const GUILayoutDesc& desc)
+        {
+            GUIItemHandle handle;
+            GUIContext* ctx = require_current_context();
+            ctx->set_next_dock_panel_style(style, open);
+            ctx->begin_container(GUINodeKind::v_layout, label ? label : "DockPanel", GUISize(), &handle);
+            ctx->m_build_desc.nodes.back().layout_desc = desc;
+            return handle;
+        }
+
+        LUNA_GUI_API void EndDockPanel()
+        {
+            require_current_context()->end_container();
         }
 
         LUNA_GUI_API GUIItemHandle BeginScrollView(const c8* label, const GUISize& size)

@@ -321,6 +321,109 @@ namespace Luna
             }
         }
 
+        void GUIContext::arrange_dock_space_node(u32 node_index, const RectF& rect, const RectF& clip_rect)
+        {
+            GUINode& node = m_submitted_desc.nodes[node_index];
+            PersistentItemState& dock_state = get_or_create_persistent_state(node.id);
+            Vector<u32> docking_children;
+            Vector<u32> floating_children;
+
+            for(u32 child = node.first_child; child != U32_MAX; child = m_submitted_desc.nodes[child].next_sibling)
+            {
+                GUINode& child_node = m_submitted_desc.nodes[child];
+                GUIDockPanelStyle style = child_node.has_dock_panel_style ? child_node.dock_panel_style : GUIDockPanelStyle();
+                DockPanelPersistentState& panel_state = get_or_create_dock_panel_state(dock_state, child_node.id);
+                if(!panel_state.initialized)
+                {
+                    panel_state.initialized = true;
+                    panel_state.closed = false;
+                    panel_state.mode = style.initial_mode;
+                    panel_state.rect = RectF(
+                        rect.offset_x + style.floating_position.x,
+                        rect.offset_y + style.floating_position.y,
+                        max(style.floating_size.x, style.min_floating_size.x),
+                        max(style.floating_size.y, style.min_floating_size.y));
+                    panel_state.z_order = dock_state.dock_next_z_order++;
+                }
+                if(child_node.dock_panel_open && *child_node.dock_panel_open)
+                {
+                    panel_state.closed = false;
+                }
+                bool visible = child_node.dock_panel_open ? *child_node.dock_panel_open : !panel_state.closed;
+
+                NodeLayout& child_layout = m_layouts[child];
+                child_layout.dock_panel_child = true;
+                child_layout.dock_panel_visible = visible;
+                child_layout.dock_space_id = node.id;
+                child_layout.dock_panel_style = style;
+                child_layout.dock_panel_floating = panel_state.mode == GUIDockPanelMode::floating;
+                child_layout.dock_panel_z_order = panel_state.z_order;
+
+                if(!visible)
+                {
+                    child_layout.rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
+                    child_layout.clip_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
+                    continue;
+                }
+                if(panel_state.mode == GUIDockPanelMode::floating)
+                {
+                    child_node.render_layer = GUIRenderLayer::overlay;
+                    floating_children.push_back(child);
+                }
+                else
+                {
+                    child_node.render_layer = node.render_layer;
+                    docking_children.push_back(child);
+                }
+            }
+
+            f32 docking_gap = node.layout_desc.gap;
+            f32 docking_height = docking_children.empty() ? 0.0f :
+                max((rect.height - docking_gap * (f32)(docking_children.size() - 1)) / (f32)docking_children.size(), 1.0f);
+            f32 docking_y = rect.offset_y;
+            for(u32 child : docking_children)
+            {
+                NodeLayout& child_layout = m_layouts[child];
+                GUIDockPanelStyle style = child_layout.dock_panel_style;
+                RectF panel_rect(rect.offset_x, docking_y, max(rect.width, 1.0f), docking_height);
+                RectF content_rect = dock_panel_content_rect(panel_rect, style);
+                child_layout.dock_panel_rect = panel_rect;
+                child_layout.dock_panel_clip_rect = intersect_rect(panel_rect, clip_rect);
+                child_layout.dock_panel_title_rect = style.title_bar ? dock_panel_title_rect(panel_rect, style) : RectF(0.0f, 0.0f, 0.0f, 0.0f);
+                child_layout.dock_panel_close_rect = style.title_bar && style.close_button && m_submitted_desc.nodes[child].dock_panel_open ?
+                    dock_panel_close_rect(child_layout.dock_panel_title_rect) :
+                    RectF(0.0f, 0.0f, 0.0f, 0.0f);
+                child_layout.dock_panel_resize_rect = style.resize_border ? dock_panel_resize_rect(panel_rect, style) : RectF(0.0f, 0.0f, 0.0f, 0.0f);
+                layout_node(child, content_rect, intersect_rect(panel_rect, clip_rect));
+                docking_y += docking_height + docking_gap;
+            }
+
+            for(u32 child : floating_children)
+            {
+                GUINode& child_node = m_submitted_desc.nodes[child];
+                NodeLayout& child_layout = m_layouts[child];
+                PersistentItemState& dock_state_ref = get_or_create_persistent_state(node.id);
+                DockPanelPersistentState& panel_state = get_or_create_dock_panel_state(dock_state_ref, child_node.id);
+                GUIDockPanelStyle style = child_layout.dock_panel_style;
+                panel_state.rect.width = max(panel_state.rect.width, style.min_floating_size.x);
+                panel_state.rect.height = max(panel_state.rect.height, style.min_floating_size.y);
+                panel_state.rect.width = min(panel_state.rect.width, max(rect.width, 1.0f));
+                panel_state.rect.height = min(panel_state.rect.height, max(rect.height, 1.0f));
+                panel_state.rect.offset_x = clamp(panel_state.rect.offset_x, rect.offset_x, max(rect.offset_x + rect.width - panel_state.rect.width, rect.offset_x));
+                panel_state.rect.offset_y = clamp(panel_state.rect.offset_y, rect.offset_y, max(rect.offset_y + rect.height - panel_state.rect.height, rect.offset_y));
+                RectF panel_rect = panel_state.rect;
+                RectF content_rect = dock_panel_content_rect(panel_rect, style);
+                child_layout.dock_panel_rect = panel_rect;
+                child_layout.dock_panel_clip_rect = intersect_rect(panel_rect, clip_rect);
+                child_layout.dock_panel_title_rect = style.title_bar ? dock_panel_title_rect(panel_rect, style) : RectF(0.0f, 0.0f, 0.0f, 0.0f);
+                child_layout.dock_panel_close_rect = style.title_bar && style.close_button && child_node.dock_panel_open ?
+                    dock_panel_close_rect(child_layout.dock_panel_title_rect) :
+                    RectF(0.0f, 0.0f, 0.0f, 0.0f);
+                child_layout.dock_panel_resize_rect = style.resize_border ? dock_panel_resize_rect(panel_rect, style) : RectF(0.0f, 0.0f, 0.0f, 0.0f);
+                layout_node(child, content_rect, intersect_rect(panel_rect, clip_rect));
+            }
+        }
+
         RectF GUIContext::layout_node(u32 node_index, const RectF& rect, const RectF& clip_rect)
         {
             GUINode& node = m_submitted_desc.nodes[node_index];
@@ -342,6 +445,11 @@ namespace Luna
             if(node.kind == GUINodeKind::table_layout)
             {
                 arrange_table_node(node_index, rect, effective_clip);
+                return rect;
+            }
+            if(node.kind == GUINodeKind::dock_space)
+            {
+                arrange_dock_space_node(node_index, rect, effective_clip);
                 return rect;
             }
 

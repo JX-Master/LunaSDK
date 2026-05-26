@@ -163,6 +163,30 @@ namespace Luna
             GUILayoutCrossAxisAlignment cross_axis_alignment = GUILayoutCrossAxisAlignment::stretch;
         };
 
+        enum class GUIDockPanelMode : u8
+        {
+            docking,
+            floating
+        };
+
+        struct GUIDockPanelStyle
+        {
+            bool title_bar = true;
+            bool close_button = true;
+            bool resize_border = true;
+            f32 title_bar_height = 28.0f;
+            f32 border_size = 1.0f;
+            f32 resize_border_size = 6.0f;
+            GUIDockPanelMode initial_mode = GUIDockPanelMode::docking;
+            Float2U floating_position = Float2U(24.0f, 24.0f);
+            Float2U floating_size = Float2U(320.0f, 220.0f);
+            Float2U min_floating_size = Float2U(120.0f, 80.0f);
+            Float4U background_color = Float4U(0.09f, 0.11f, 0.14f, 0.96f);
+            Float4U title_bar_color = Float4U(0.13f, 0.17f, 0.22f, 1.0f);
+            Float4U active_title_bar_color = Float4U(0.16f, 0.24f, 0.36f, 1.0f);
+            Float4U border_color = Float4U(0.24f, 0.29f, 0.36f, 1.0f);
+        };
+
         enum class GUITableTrackSizePolicy : u8
         {
             hug,

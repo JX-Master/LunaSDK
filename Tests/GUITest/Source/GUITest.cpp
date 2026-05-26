@@ -41,6 +41,8 @@ namespace Luna
         bool checkbox_b = false;
         bool switch_a = true;
         bool switch_b = false;
+        bool dock_panel_a_open = true;
+        bool dock_panel_b_open = true;
         bool popup_open = false;
         bool floating_window_open = false;
         Float2U popup_position = Float2U(120.0f, 120.0f);
@@ -218,6 +220,28 @@ namespace Luna
             GUI::Text(line);
         }
         GUI::EndScrollView();
+
+        GUI::Text("DockSpace");
+        GUI::BeginDockSpace("Layout DockSpace", GUI::GUISize::fixed(max(app.showcase_content_size.x - 16.0f, 260.0f), 260.0f));
+        if(app.dock_panel_a_open)
+        {
+            GUI::BeginDockPanel("Docked Panel", &app.dock_panel_a_open);
+            GUI::Text("This panel starts in docking mode.");
+            GUI::Button("Docked Action");
+            GUI::EndDockPanel();
+        }
+        if(app.dock_panel_b_open)
+        {
+            GUI::GUIDockPanelStyle floating_style;
+            floating_style.initial_mode = GUI::GUIDockPanelMode::floating;
+            floating_style.floating_position = Float2U(220.0f, 34.0f);
+            floating_style.floating_size = Float2U(240.0f, 150.0f);
+            GUI::BeginDockPanel("Floating Panel", &app.dock_panel_b_open, floating_style);
+            GUI::Text("Drag the title bar or resize from the corner.");
+            GUI::Switch("Live", &app.switch_a);
+            GUI::EndDockPanel();
+        }
+        GUI::EndDockSpace();
 
         handles.open_window_button = GUI::Button("Open Closeable Floating Window");
         if(app.floating_window_open)

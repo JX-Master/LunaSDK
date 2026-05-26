@@ -23,6 +23,7 @@ namespace Luna
         LUNA_GUI_API void PopClipRect();
 
         LUNA_GUI_API void SetNextItemLayout(const GUILayoutStyle& style);
+        LUNA_GUI_API void SetNextDockPanelStyle(const GUIDockPanelStyle& style, bool* open = nullptr);
 
         LUNA_GUI_API GUIItemHandle BeginHLayout(const c8* label = nullptr, const GUILayoutDesc& desc = GUILayoutDesc());
         LUNA_GUI_API GUIItemHandle BeginHLayout(const c8* label, const RectF& rect, const GUILayoutDesc& desc = GUILayoutDesc());
@@ -33,6 +34,10 @@ namespace Luna
         LUNA_GUI_API GUIItemHandle BeginTableLayout(const c8* label, const GUITableDesc& desc);
         LUNA_GUI_API void EndTableLayout();
         LUNA_GUI_API void SetNextTableCellColor(const Float4U& color);
+        LUNA_GUI_API GUIItemHandle BeginDockSpace(const c8* label, const GUISize& size = GUISize());
+        LUNA_GUI_API void EndDockSpace();
+        LUNA_GUI_API GUIItemHandle BeginDockPanel(const c8* label, bool* open = nullptr, const GUIDockPanelStyle& style = GUIDockPanelStyle(), const GUILayoutDesc& desc = GUILayoutDesc());
+        LUNA_GUI_API void EndDockPanel();
         LUNA_GUI_API GUIItemHandle BeginScrollView(const c8* label, const GUISize& size);
         LUNA_GUI_API void EndScrollView();
         LUNA_GUI_API GUIItemHandle BeginWindow(const c8* label, const GUISize& size = GUISize());

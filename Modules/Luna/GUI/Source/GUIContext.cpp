@@ -40,6 +40,8 @@ namespace Luna
             m_id_stack.clear();
             m_clip_stack.clear();
             m_child_ordinals.clear();
+            m_has_next_dock_panel_style = false;
+            m_next_dock_panel_open = nullptr;
 
             GUINode root;
             root.id = 1;
@@ -144,6 +146,19 @@ namespace Luna
                 node.table_cell_color = m_next_table_cell_color;
                 m_has_next_table_cell_color = false;
             }
+            if(m_has_next_dock_panel_style && m_build_desc.nodes[parent].kind == GUINodeKind::dock_space)
+            {
+                node.has_dock_panel_style = true;
+                node.dock_panel_style = m_next_dock_panel_style;
+                node.dock_panel_open = m_next_dock_panel_open;
+                m_has_next_dock_panel_style = false;
+                m_next_dock_panel_open = nullptr;
+            }
+            else if(m_has_next_dock_panel_style)
+            {
+                m_has_next_dock_panel_style = false;
+                m_next_dock_panel_open = nullptr;
+            }
 
             u32 index = (u32)m_build_desc.nodes.size();
             m_build_desc.nodes.push_back(node);
@@ -172,6 +187,11 @@ namespace Luna
             if(kind == GUINodeKind::window || kind == GUINodeKind::scroll_view)
             {
                 m_build_desc.nodes[index].layout_desc.padding = GUIEdgeInsets::all(8.0f);
+            }
+            if(kind == GUINodeKind::dock_space)
+            {
+                m_build_desc.nodes[index].layout_desc.padding = GUIEdgeInsets::all(0.0f);
+                m_build_desc.nodes[index].layout_desc.gap = 0.0f;
             }
             m_parent_stack.push_back(index);
             m_id_stack.push_back(handle.id);
@@ -219,6 +239,14 @@ namespace Luna
             m_clip_stack.pop_back();
         }
 
+        void GUIContext::set_next_dock_panel_style(const GUIDockPanelStyle& style, bool* open)
+        {
+            lutsassert();
+            m_has_next_dock_panel_style = true;
+            m_next_dock_panel_style = style;
+            m_next_dock_panel_open = open;
+        }
+
         ItemResult* GUIContext::get_query_result(GUIItemHandle handle)
         {
             if(handle.context != get_object()) return nullptr;
@@ -251,6 +279,17 @@ namespace Luna
             {
                 PersistentItemState state;
                 iter = m_persistent_states.insert(make_pair(id, state)).first;
+            }
+            return iter->second;
+        }
+
+        DockPanelPersistentState& GUIContext::get_or_create_dock_panel_state(PersistentItemState& dock_state, GUIID panel_id)
+        {
+            auto iter = dock_state.dock_panels.find(panel_id);
+            if(iter == dock_state.dock_panels.end())
+            {
+                DockPanelPersistentState state;
+                iter = dock_state.dock_panels.insert(make_pair(panel_id, state)).first;
             }
             return iter->second;
         }

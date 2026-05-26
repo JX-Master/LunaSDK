@@ -139,6 +139,110 @@ namespace Luna
             }
         }
 
+        DockPanelPersistentState* GUIContext::find_dock_panel_state(GUIID dock_space_id, GUIID panel_id)
+        {
+            auto dock_iter = m_persistent_states.find(dock_space_id);
+            if(dock_iter == m_persistent_states.end()) return nullptr;
+            auto panel_iter = dock_iter->second.dock_panels.find(panel_id);
+            return panel_iter == dock_iter->second.dock_panels.end() ? nullptr : &panel_iter->second;
+        }
+
+        void GUIContext::raise_dock_panel(GUIID dock_space_id, GUIID panel_id)
+        {
+            if(!dock_space_id || !panel_id) return;
+            PersistentItemState& dock_state = get_or_create_persistent_state(dock_space_id);
+            DockPanelPersistentState& panel_state = get_or_create_dock_panel_state(dock_state, panel_id);
+            panel_state.z_order = dock_state.dock_next_z_order++;
+        }
+
+        bool GUIContext::hit_test_dock_panel(const Float2U& pos, GUIID& out_space_id, GUIID& out_panel_id) const
+        {
+            bool found = false;
+            u32 best_z = 0;
+            if(m_layouts.size() != m_submitted_desc.nodes.size()) return false;
+            for(usize i = 0; i < m_submitted_desc.nodes.size(); ++i)
+            {
+                const GUINode& dock_node = m_submitted_desc.nodes[i];
+                if(dock_node.kind != GUINodeKind::dock_space) continue;
+                if(!point_in_rect(pos, m_layouts[i].rect) || !point_in_rect(pos, m_layouts[i].clip_rect)) continue;
+                for(u32 child = dock_node.first_child; child != U32_MAX; child = m_submitted_desc.nodes[child].next_sibling)
+                {
+                    const NodeLayout& layout = m_layouts[child];
+                    if(!layout.dock_panel_child || !layout.dock_panel_visible) continue;
+                    if(!point_in_rect(pos, layout.dock_panel_rect) || !point_in_rect(pos, layout.dock_panel_clip_rect)) continue;
+                    u32 z = layout.dock_panel_floating ? layout.dock_panel_z_order : 0;
+                    if(!found || z >= best_z)
+                    {
+                        found = true;
+                        best_z = z;
+                        out_space_id = dock_node.id;
+                        out_panel_id = m_submitted_desc.nodes[child].id;
+                    }
+                }
+            }
+            return found;
+        }
+
+        bool GUIContext::hit_test_dock_panel_chrome(const Float2U& pos, GUIID& out_space_id, GUIID& out_panel_id, bool& out_resize, bool& out_close) const
+        {
+            bool found = false;
+            u32 best_z = 0;
+            out_resize = false;
+            out_close = false;
+            if(m_layouts.size() != m_submitted_desc.nodes.size()) return false;
+            for(usize i = 0; i < m_submitted_desc.nodes.size(); ++i)
+            {
+                const GUINode& dock_node = m_submitted_desc.nodes[i];
+                if(dock_node.kind != GUINodeKind::dock_space) continue;
+                if(!point_in_rect(pos, m_layouts[i].rect) || !point_in_rect(pos, m_layouts[i].clip_rect)) continue;
+                for(u32 child = dock_node.first_child; child != U32_MAX; child = m_submitted_desc.nodes[child].next_sibling)
+                {
+                    const NodeLayout& layout = m_layouts[child];
+                    if(!layout.dock_panel_child || !layout.dock_panel_visible) continue;
+                    if(!point_in_rect(pos, layout.dock_panel_rect) || !point_in_rect(pos, layout.dock_panel_clip_rect)) continue;
+                    bool close_hit = layout.dock_panel_style.close_button && m_submitted_desc.nodes[child].dock_panel_open &&
+                        point_in_rect(pos, layout.dock_panel_close_rect);
+                    bool resize_hit = layout.dock_panel_style.resize_border && point_in_rect(pos, layout.dock_panel_resize_rect);
+                    bool title_hit = layout.dock_panel_style.title_bar && point_in_rect(pos, layout.dock_panel_title_rect);
+                    if(!close_hit && !resize_hit && !title_hit) continue;
+                    u32 z = layout.dock_panel_floating ? layout.dock_panel_z_order : 0;
+                    if(!found || z >= best_z)
+                    {
+                        found = true;
+                        best_z = z;
+                        out_space_id = dock_node.id;
+                        out_panel_id = m_submitted_desc.nodes[child].id;
+                        out_close = close_hit;
+                        out_resize = !close_hit && resize_hit;
+                    }
+                }
+            }
+            return found;
+        }
+
+        void GUIContext::update_dock_panel_from_pointer(const Float2U& pos)
+        {
+            if(!m_active_dock_space_id || !m_active_dock_panel_id) return;
+            DockPanelPersistentState* panel_state = find_dock_panel_state(m_active_dock_space_id, m_active_dock_panel_id);
+            if(!panel_state) return;
+            if(m_active_dock_panel_close) return;
+            panel_state->mode = GUIDockPanelMode::floating;
+            if(m_active_dock_panel_resize)
+            {
+                panel_state->rect = m_active_dock_panel_start_rect;
+                panel_state->rect.width = max(pos.x - m_active_dock_panel_start_rect.offset_x, 1.0f);
+                panel_state->rect.height = max(pos.y - m_active_dock_panel_start_rect.offset_y, 1.0f);
+            }
+            else if(!m_active_dock_panel_close)
+            {
+                panel_state->rect.offset_x = pos.x - m_active_dock_panel_grab_offset.x;
+                panel_state->rect.offset_y = pos.y - m_active_dock_panel_grab_offset.y;
+                panel_state->rect.width = m_active_dock_panel_start_rect.width;
+                panel_state->rect.height = m_active_dock_panel_start_rect.height;
+            }
+            m_layout_dirty = true;
+        }
+
         void GUIContext::clamp_scroll_state(GUIID id)
         {
             if(!id || m_layouts.size() != m_submitted_desc.nodes.size()) return;
@@ -275,6 +379,41 @@ namespace Luna
             if((filter_kind ? node.kind == kind : node.interactive) && point_in_rect(pos, rect) && point_in_rect(pos, clip))
             {
                 ret = node.id;
+            }
+            if(node.kind == GUINodeKind::dock_space)
+            {
+                Vector<u32> floating_children;
+                for(u32 child = node.first_child; child != U32_MAX; child = m_submitted_desc.nodes[child].next_sibling)
+                {
+                    if(!m_layouts[child].dock_panel_visible) continue;
+                    if(m_layouts[child].dock_panel_floating)
+                    {
+                        floating_children.push_back(child);
+                    }
+                    else
+                    {
+                        GUIID child_hit = hit_test_node(child, pos, filter_kind, kind);
+                        if(child_hit) ret = child_hit;
+                    }
+                }
+                for(usize i = 0; i < floating_children.size(); ++i)
+                {
+                    for(usize j = i + 1; j < floating_children.size(); ++j)
+                    {
+                        if(m_layouts[floating_children[j]].dock_panel_z_order < m_layouts[floating_children[i]].dock_panel_z_order)
+                        {
+                            u32 tmp = floating_children[i];
+                            floating_children[i] = floating_children[j];
+                            floating_children[j] = tmp;
+                        }
+                    }
+                }
+                for(u32 child : floating_children)
+                {
+                    GUIID child_hit = hit_test_node(child, pos, filter_kind, kind);
+                    if(child_hit) ret = child_hit;
+                }
+                return ret;
             }
             for(u32 child = node.first_child; child != U32_MAX; child = m_submitted_desc.nodes[child].next_sibling)
             {
@@ -428,7 +567,11 @@ namespace Luna
                     Float2U old_pos = m_pointer_pos;
                     m_pointer_inside = true;
                     m_pointer_pos = e.position;
-                    if(m_active_scrollbar_id)
+                    if(m_active_dock_panel_id)
+                    {
+                        update_dock_panel_from_pointer(e.position);
+                    }
+                    else if(m_active_scrollbar_id)
                     {
                         update_scrollbar_from_pointer(e.position);
                     }
@@ -484,6 +627,42 @@ namespace Luna
                         {
                             close_combo_dropdowns_except(0);
                         }
+                    }
+                    GUIID dock_space_id = 0;
+                    GUIID dock_panel_id = 0;
+                    bool dock_resize = false;
+                    bool dock_close = false;
+                    if(hit_test_dock_panel_chrome(e.position, dock_space_id, dock_panel_id, dock_resize, dock_close))
+                    {
+                        m_active_id = dock_panel_id;
+                        m_focused_id = dock_panel_id;
+                        m_active_dock_space_id = dock_space_id;
+                        m_active_dock_panel_id = dock_panel_id;
+                        m_active_dock_panel_resize = dock_resize;
+                        m_active_dock_panel_close = dock_close;
+                        raise_dock_panel(dock_space_id, dock_panel_id);
+                        DockPanelPersistentState* panel_state = find_dock_panel_state(dock_space_id, dock_panel_id);
+                        if(panel_state && !dock_close)
+                        {
+                            m_active_dock_panel_start_rect = panel_state->rect;
+                        }
+                        for(usize i = 0; i < m_submitted_desc.nodes.size(); ++i)
+                        {
+                            if(m_submitted_desc.nodes[i].id == dock_panel_id)
+                            {
+                                m_active_dock_panel_start_rect = m_layouts[i].dock_panel_rect;
+                                m_active_dock_panel_grab_offset = Float2U(
+                                    e.position.x - m_layouts[i].dock_panel_rect.offset_x,
+                                    e.position.y - m_layouts[i].dock_panel_rect.offset_y);
+                                break;
+                            }
+                        }
+                        PersistentItemState& state = get_or_create_persistent_state(dock_panel_id);
+                        state.pointer_down = true;
+                        state.active = true;
+                        state.focused = true;
+                        m_layout_dirty = true;
+                        continue;
                     }
                     GUIID scrollbar_id = 0;
                     bool scrollbar_vertical = false;
@@ -594,6 +773,34 @@ namespace Luna
                     {
                         continue;
                     }
+                    if(m_active_dock_panel_id)
+                    {
+                        if(m_active_dock_panel_close)
+                        {
+                            for(usize i = 0; i < m_submitted_desc.nodes.size(); ++i)
+                            {
+                                GUINode& node = m_submitted_desc.nodes[i];
+                                if(node.id != m_active_dock_panel_id) continue;
+                                if(node.dock_panel_open && point_in_rect(e.position, m_layouts[i].dock_panel_close_rect))
+                                {
+                                    *node.dock_panel_open = false;
+                                    ItemResult& result = get_or_create_current_result(node.id);
+                                    result.states.insert_or_assign(Name("gui.value_changed"), Any(true));
+                                }
+                                break;
+                            }
+                        }
+                        PersistentItemState& state = get_or_create_persistent_state(m_active_dock_panel_id);
+                        state.pointer_down = false;
+                        state.active = false;
+                        m_active_dock_space_id = 0;
+                        m_active_dock_panel_id = 0;
+                        m_active_dock_panel_resize = false;
+                        m_active_dock_panel_close = false;
+                        m_active_id = 0;
+                        m_active_float_component = U32_MAX;
+                        continue;
+                    }
                     GUIID dropdown_combo = 0;
                     i32 dropdown_item = -1;
                     if(hit_test_combo_dropdown(e.position, dropdown_combo, dropdown_item))
@@ -656,6 +863,12 @@ namespace Luna
                         continue;
                     }
                     GUIID target = hit_test(e.position);
+                    GUIID target_dock_space = 0;
+                    GUIID target_dock_panel = 0;
+                    if(hit_test_dock_panel(e.position, target_dock_space, target_dock_panel))
+                    {
+                        raise_dock_panel(target_dock_space, target_dock_panel);
+                    }
                     if(target && target == m_active_id)
                     {
                         ItemResult& result = get_or_create_current_result(target);
@@ -922,6 +1135,10 @@ namespace Luna
                     m_active_scrollbar_id = 0;
                     m_active_scrollbar_vertical = false;
                     m_active_scrollbar_grab_offset = 0.0f;
+                    m_active_dock_space_id = 0;
+                    m_active_dock_panel_id = 0;
+                    m_active_dock_panel_resize = false;
+                    m_active_dock_panel_close = false;
                     close_combo_dropdowns_except(0);
                 }
             }

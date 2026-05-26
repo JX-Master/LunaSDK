@@ -251,9 +251,14 @@ namespace Luna
                 kind == GUINodeKind::slider_float ||
                 kind == GUINodeKind::drag_float ||
                 kind == GUINodeKind::selectable ||
-                kind == GUINodeKind::table_layout)
+                kind == GUINodeKind::table_layout ||
+                kind == GUINodeKind::dock_space)
             {
                 style.width_policy = GUISizePolicy::fill;
+            }
+            if(kind == GUINodeKind::dock_space)
+            {
+                style.height_policy = GUISizePolicy::fill;
             }
             return style;
         }
@@ -397,6 +402,15 @@ namespace Luna
             }
         };
 
+        struct DockPanelPersistentState
+        {
+            bool initialized = false;
+            bool closed = false;
+            GUIDockPanelMode mode = GUIDockPanelMode::docking;
+            RectF rect = RectF(0.0f, 0.0f, 320.0f, 220.0f);
+            u32 z_order = 0;
+        };
+
         struct ItemResult
         {
             u64 generation = 0;
@@ -414,6 +428,8 @@ namespace Luna
             f32 scrollbar_opacity = 0.35f;
             f32 switch_animation = 0.0f;
             bool switch_animation_initialized = false;
+            u32 dock_next_z_order = 1;
+            HashMap<GUIID, DockPanelPersistentState, GUIIDHash> dock_panels;
             f64 last_click_time = -1000.0;
             f64 last_right_click_time = -1000.0;
             usize text_cursor = USIZE_MAX;
@@ -462,7 +478,59 @@ namespace Luna
             Float2U scroll_viewport_size = Float2U(0.0f);
             bool scroll_has_vertical = false;
             bool scroll_has_horizontal = false;
+            bool dock_panel_child = false;
+            bool dock_panel_visible = true;
+            bool dock_panel_floating = false;
+            GUIID dock_space_id = 0;
+            RectF dock_panel_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
+            RectF dock_panel_clip_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
+            RectF dock_panel_title_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
+            RectF dock_panel_close_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
+            RectF dock_panel_resize_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
+            GUIDockPanelStyle dock_panel_style;
+            u32 dock_panel_z_order = 0;
         };
+
+        inline RectF dock_panel_content_rect(const RectF& panel_rect, const GUIDockPanelStyle& style)
+        {
+            f32 border = max(style.border_size, 0.0f);
+            f32 title_height = style.title_bar ? max(style.title_bar_height, 0.0f) : 0.0f;
+            return RectF(
+                panel_rect.offset_x + border,
+                panel_rect.offset_y + border + title_height,
+                max(panel_rect.width - border * 2.0f, 1.0f),
+                max(panel_rect.height - border * 2.0f - title_height, 1.0f));
+        }
+
+        inline RectF dock_panel_title_rect(const RectF& panel_rect, const GUIDockPanelStyle& style)
+        {
+            f32 border = max(style.border_size, 0.0f);
+            return RectF(
+                panel_rect.offset_x + border,
+                panel_rect.offset_y + border,
+                max(panel_rect.width - border * 2.0f, 1.0f),
+                max(style.title_bar_height, 1.0f));
+        }
+
+        inline RectF dock_panel_close_rect(const RectF& title_rect)
+        {
+            f32 size = 20.0f;
+            return RectF(
+                title_rect.offset_x + max(title_rect.width - size - 4.0f, 0.0f),
+                title_rect.offset_y + max((title_rect.height - size) * 0.5f, 0.0f),
+                size,
+                size);
+        }
+
+        inline RectF dock_panel_resize_rect(const RectF& panel_rect, const GUIDockPanelStyle& style)
+        {
+            f32 size = max(style.resize_border_size, 1.0f);
+            return RectF(
+                panel_rect.offset_x + max(panel_rect.width - size, 0.0f),
+                panel_rect.offset_y + max(panel_rect.height - size, 0.0f),
+                size,
+                size);
+        }
 
         inline f32 scroll_bar_size()
         {
@@ -579,6 +647,9 @@ namespace Luna
             GUILayoutStyle m_next_item_layout;
             bool m_has_next_table_cell_color = false;
             Float4U m_next_table_cell_color = Float4U(0.0f);
+            bool m_has_next_dock_panel_style = false;
+            GUIDockPanelStyle m_next_dock_panel_style;
+            bool* m_next_dock_panel_open = nullptr;
             bool m_layout_dirty = false;
             GUIID m_active_table_resize_id = 0;
             bool m_active_table_resize_column = false;
@@ -586,6 +657,12 @@ namespace Luna
             GUIID m_active_scrollbar_id = 0;
             bool m_active_scrollbar_vertical = false;
             f32 m_active_scrollbar_grab_offset = 0.0f;
+            GUIID m_active_dock_space_id = 0;
+            GUIID m_active_dock_panel_id = 0;
+            bool m_active_dock_panel_resize = false;
+            bool m_active_dock_panel_close = false;
+            Float2U m_active_dock_panel_grab_offset = Float2U(0.0f);
+            RectF m_active_dock_panel_start_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
             GUIID m_open_combo_id = 0;
             u64 m_generation = 0;
             f64 m_time = 0.0;
@@ -615,6 +692,7 @@ namespace Luna
             void remove_state(GUIItemHandle handle, const Name& key);
             void set_next_item_layout(const GUILayoutStyle& style);
             void set_next_table_cell_color(const Float4U& color);
+            void set_next_dock_panel_style(const GUIDockPanelStyle& style, bool* open);
             void push_id(GUIID id);
             void pop_id();
             void push_clip_rect(const RectF& rect);
@@ -623,13 +701,21 @@ namespace Luna
             ItemResult* get_query_result(GUIItemHandle handle);
             ItemResult& get_or_create_current_result(GUIID id);
             PersistentItemState& get_or_create_persistent_state(GUIID id);
+            DockPanelPersistentState& get_or_create_dock_panel_state(PersistentItemState& dock_state, GUIID panel_id);
             RectF layout_node(u32 node_index, const RectF& rect, const RectF& clip_rect);
             GUILayoutMetrics measure_node(u32 node_index);
             void measure_table_tracks(u32 node_index, Vector<f32>& out_column_widths, Vector<f32>& out_row_heights, bool preferred);
             void arrange_table_node(u32 node_index, const RectF& rect, const RectF& clip_rect);
+            void arrange_dock_space_node(u32 node_index, const RectF& rect, const RectF& clip_rect);
             void render_table_node(u32 node_index);
+            void render_dock_panel_chrome(u32 node_index);
             bool hit_test_table_separator(const Float2U& pos, GUIID& out_id, bool& out_column, u32& out_index) const;
             void update_table_resize_from_pointer(const Float2U& pos);
+            bool hit_test_dock_panel(const Float2U& pos, GUIID& out_space_id, GUIID& out_panel_id) const;
+            bool hit_test_dock_panel_chrome(const Float2U& pos, GUIID& out_space_id, GUIID& out_panel_id, bool& out_resize, bool& out_close) const;
+            void update_dock_panel_from_pointer(const Float2U& pos);
+            void raise_dock_panel(GUIID dock_space_id, GUIID panel_id);
+            DockPanelPersistentState* find_dock_panel_state(GUIID dock_space_id, GUIID panel_id);
             void clamp_scroll_state(GUIID id);
             bool hit_test_scrollbar(const Float2U& pos, GUIID& out_id, bool& out_vertical, RectF& out_thumb_rect) const;
             void update_scrollbar_from_pointer(const Float2U& pos);

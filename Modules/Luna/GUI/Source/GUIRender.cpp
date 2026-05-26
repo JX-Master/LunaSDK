@@ -349,13 +349,67 @@ namespace Luna
             }
         }
 
+        void GUIContext::render_dock_panel_chrome(u32 node_index)
+        {
+            const GUINode& node = m_submitted_desc.nodes[node_index];
+            const NodeLayout& layout = m_layouts[node_index];
+            if(!layout.dock_panel_child || !layout.dock_panel_visible) return;
+            const GUIDockPanelStyle& style = layout.dock_panel_style;
+            const RectF& panel_rect = layout.dock_panel_rect;
+            const RectF& clip = layout.dock_panel_clip_rect;
+            bool active = node.id == m_active_dock_panel_id || node.id == m_focused_id;
+            render_rect(panel_rect, clip, style.background_color, 5.0f);
+            if(style.title_bar)
+            {
+                render_rect(layout.dock_panel_title_rect, clip, active ? style.active_title_bar_color : style.title_bar_color, 5.0f);
+                render_text(RectF(layout.dock_panel_title_rect.offset_x + 8.0f, layout.dock_panel_title_rect.offset_y,
+                    max(layout.dock_panel_title_rect.width - 40.0f, 1.0f), layout.dock_panel_title_rect.height),
+                    clip, node.text.c_str(), 15.0f, Color::white(), VG::TextAlignment::begin);
+                if(style.close_button && node.dock_panel_open)
+                {
+                    bool close_hovered = m_pointer_inside && point_in_rect(m_pointer_pos, layout.dock_panel_close_rect);
+                    render_rect(layout.dock_panel_close_rect, clip,
+                        close_hovered ? Float4U(0.55f, 0.18f, 0.18f, 1.0f) : Float4U(0.23f, 0.27f, 0.33f, 1.0f),
+                        4.0f);
+                    render_text(layout.dock_panel_close_rect, clip, "X", 13.0f, Color::white(), VG::TextAlignment::center);
+                }
+            }
+            if(style.border_size > 0.0f)
+            {
+                f32 b = style.border_size;
+                render_rect(RectF(panel_rect.offset_x, panel_rect.offset_y, panel_rect.width, b), clip, style.border_color, 0.0f);
+                render_rect(RectF(panel_rect.offset_x, panel_rect.offset_y + panel_rect.height - b, panel_rect.width, b), clip, style.border_color, 0.0f);
+                render_rect(RectF(panel_rect.offset_x, panel_rect.offset_y, b, panel_rect.height), clip, style.border_color, 0.0f);
+                render_rect(RectF(panel_rect.offset_x + panel_rect.width - b, panel_rect.offset_y, b, panel_rect.height), clip, style.border_color, 0.0f);
+            }
+            if(style.resize_border && layout.dock_panel_floating)
+            {
+                RectF r = layout.dock_panel_resize_rect;
+                Float4U color = m_pointer_inside && point_in_rect(m_pointer_pos, r) ? Float4U(0.55f, 0.68f, 0.86f, 1.0f) : Float4U(0.36f, 0.42f, 0.50f, 0.85f);
+                render_line_segment(Float2U(r.offset_x + r.width - 2.0f, r.offset_y + 2.0f),
+                    Float2U(r.offset_x + 2.0f, r.offset_y + r.height - 2.0f), clip, color, 1.5f);
+            }
+        }
+
         void GUIContext::render_node(u32 node_index)
         {
             const GUINode& node = m_submitted_desc.nodes[node_index];
             const RectF& rect = m_layouts[node_index].rect;
             const RectF& clip = m_layouts[node_index].clip_rect;
             IDrawList* previous_draw_list = m_active_draw_list;
-            m_active_draw_list = is_overlay_node(node) ? m_overlay_draw_list.get() : m_main_draw_list.get();
+            bool force_overlay = previous_draw_list == m_overlay_draw_list.get() || m_layouts[node_index].dock_panel_floating;
+            m_active_draw_list = (force_overlay || is_overlay_node(node)) ? m_overlay_draw_list.get() : m_main_draw_list.get();
+            u32 dock_panel_layer_pop = U32_MAX;
+            if(m_layouts[node_index].dock_panel_child && !m_layouts[node_index].dock_panel_visible)
+            {
+                m_active_draw_list = previous_draw_list;
+                return;
+            }
+            if(m_layouts[node_index].dock_panel_child && m_layouts[node_index].dock_panel_floating)
+            {
+                DrawListState state = m_active_draw_list->get_state();
+                dock_panel_layer_pop = m_active_draw_list->push_state(&state, false);
+            }
             bool hovered = false;
             bool active = false;
             auto iter = m_current_results.find(node.id);
@@ -367,8 +421,16 @@ namespace Luna
                 active = a != iter->second.states.end() && a->second.as<bool>() && *a->second.as<bool>();
             }
 
+            if(m_layouts[node_index].dock_panel_child)
+            {
+                render_dock_panel_chrome(node_index);
+            }
+
             switch(node.kind)
             {
+            case GUINodeKind::dock_space:
+                render_rect(rect, clip, Float4U(0.07f, 0.08f, 0.10f, 1.0f), 0.0f);
+                break;
             case GUINodeKind::window:
                 render_rect(rect, clip, Float4U(0.10f, 0.12f, 0.14f, 0.92f), 6.0f);
                 if(window_has_title_bar(node))
@@ -589,13 +651,52 @@ namespace Luna
                 break;
             }
 
-            for(u32 child = node.first_child; child != U32_MAX; child = m_submitted_desc.nodes[child].next_sibling)
+            if(node.kind == GUINodeKind::dock_space)
             {
-                render_node(child);
+                Vector<u32> floating_children;
+                for(u32 child = node.first_child; child != U32_MAX; child = m_submitted_desc.nodes[child].next_sibling)
+                {
+                    if(!m_layouts[child].dock_panel_visible) continue;
+                    if(m_layouts[child].dock_panel_floating)
+                    {
+                        floating_children.push_back(child);
+                    }
+                    else
+                    {
+                        render_node(child);
+                    }
+                }
+                for(usize i = 0; i < floating_children.size(); ++i)
+                {
+                    for(usize j = i + 1; j < floating_children.size(); ++j)
+                    {
+                        if(m_layouts[floating_children[j]].dock_panel_z_order < m_layouts[floating_children[i]].dock_panel_z_order)
+                        {
+                            u32 tmp = floating_children[i];
+                            floating_children[i] = floating_children[j];
+                            floating_children[j] = tmp;
+                        }
+                    }
+                }
+                for(u32 child : floating_children)
+                {
+                    render_node(child);
+                }
+            }
+            else
+            {
+                for(u32 child = node.first_child; child != U32_MAX; child = m_submitted_desc.nodes[child].next_sibling)
+                {
+                    render_node(child);
+                }
             }
             if(node.kind == GUINodeKind::scroll_view)
             {
                 render_scrollbars(node_index);
+            }
+            if(dock_panel_layer_pop != U32_MAX)
+            {
+                m_active_draw_list->pop_state(dock_panel_layer_pop);
             }
             m_active_draw_list = previous_draw_list;
         }
