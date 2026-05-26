@@ -129,6 +129,10 @@ namespace Luna
             node.depth = m_build_desc.nodes[parent].depth + 1;
             node.text = text ? text : "";
             node.interactive = interactive;
+            if(m_build_desc.nodes[parent].kind == GUINodeKind::dock_space)
+            {
+                node.interactive = true;
+            }
             node.layout_style = default_layout_style(kind);
             if(!m_clip_stack.empty())
             {

@@ -152,6 +152,7 @@ namespace Luna
             if(!dock_space_id || !panel_id) return;
             PersistentItemState& dock_state = get_or_create_persistent_state(dock_space_id);
             DockPanelPersistentState& panel_state = get_or_create_dock_panel_state(dock_state, panel_id);
+            if(panel_state.mode != GUIDockPanelMode::floating) return;
             panel_state.z_order = dock_state.dock_next_z_order++;
         }
 
@@ -200,8 +201,7 @@ namespace Luna
                     const NodeLayout& layout = m_layouts[child];
                     if(!layout.dock_panel_child || !layout.dock_panel_visible) continue;
                     if(!point_in_rect(pos, layout.dock_panel_rect) || !point_in_rect(pos, layout.dock_panel_clip_rect)) continue;
-                    bool close_hit = layout.dock_panel_style.close_button && m_submitted_desc.nodes[child].dock_panel_open &&
-                        point_in_rect(pos, layout.dock_panel_close_rect);
+                    bool close_hit = layout.dock_panel_style.close_button && point_in_rect(pos, layout.dock_panel_close_rect);
                     bool resize_hit = layout.dock_panel_style.resize_border && point_in_rect(pos, layout.dock_panel_resize_rect);
                     bool title_hit = layout.dock_panel_style.title_bar && point_in_rect(pos, layout.dock_panel_title_rect);
                     if(!close_hit && !resize_hit && !title_hit) continue;
@@ -220,18 +220,263 @@ namespace Luna
             return found;
         }
 
+        bool GUIContext::hit_test_dock_panel_tab(const Float2U& pos, GUIID& out_space_id, GUIID& out_panel_id, u32& out_leaf_index) const
+        {
+            bool found = false;
+            u32 best_z = 0;
+            if(m_layouts.size() != m_submitted_desc.nodes.size()) return false;
+            GUIID top_space = 0;
+            GUIID top_panel = 0;
+            if(hit_test_dock_panel(pos, top_space, top_panel))
+            {
+                for(usize i = 0; i < m_submitted_desc.nodes.size(); ++i)
+                {
+                    if(m_submitted_desc.nodes[i].id == top_panel && m_layouts[i].dock_panel_floating)
+                    {
+                        return false;
+                    }
+                }
+            }
+            for(usize i = 0; i < m_submitted_desc.nodes.size(); ++i)
+            {
+                const GUINode& dock_node = m_submitted_desc.nodes[i];
+                if(dock_node.kind != GUINodeKind::dock_space) continue;
+                auto dock_state_iter = m_persistent_states.find(dock_node.id);
+                if(dock_state_iter == m_persistent_states.end()) continue;
+                const PersistentItemState& dock_state = dock_state_iter->second;
+                if(!point_in_rect(pos, m_layouts[i].rect) || !point_in_rect(pos, m_layouts[i].clip_rect)) continue;
+                for(u32 child = dock_node.first_child; child != U32_MAX; child = m_submitted_desc.nodes[child].next_sibling)
+                {
+                    const NodeLayout& layout = m_layouts[child];
+                    if(!layout.dock_panel_child || !layout.dock_panel_visible || layout.dock_panel_floating) continue;
+                    if(layout.dock_leaf_index >= dock_state.dock_nodes.size()) continue;
+                    const DockTreeNode& leaf = dock_state.dock_nodes[layout.dock_leaf_index];
+                    if(leaf.split || leaf.tabs.empty()) continue;
+                    for(usize tab_index = 0; tab_index < leaf.tabs.size(); ++tab_index)
+                    {
+                        RectF tab_rect = dock_panel_tab_rect(layout.dock_panel_title_rect, tab_index, leaf.tabs.size(), layout.dock_panel_style.close_button);
+                        if(!point_in_rect(pos, tab_rect)) continue;
+                        u32 z = layout.dock_panel_z_order;
+                        if(!found || z >= best_z)
+                        {
+                            found = true;
+                            best_z = z;
+                            out_space_id = dock_node.id;
+                            out_panel_id = leaf.tabs[tab_index];
+                            out_leaf_index = layout.dock_leaf_index;
+                        }
+                    }
+                }
+            }
+            return found;
+        }
+
+        bool GUIContext::hit_test_dock_splitter(const Float2U& pos, GUIID& out_space_id, u32& out_node_index, GUIDockSplitAxis& out_axis) const
+        {
+            if(m_layouts.size() != m_submitted_desc.nodes.size()) return false;
+            GUIID top_space = 0;
+            GUIID top_panel = 0;
+            if(hit_test_dock_panel(pos, top_space, top_panel))
+            {
+                for(usize i = 0; i < m_submitted_desc.nodes.size(); ++i)
+                {
+                    if(m_submitted_desc.nodes[i].id == top_panel && m_layouts[i].dock_panel_floating)
+                    {
+                        return false;
+                    }
+                }
+            }
+            for(usize i = 0; i < m_submitted_desc.nodes.size(); ++i)
+            {
+                const GUINode& dock_node = m_submitted_desc.nodes[i];
+                if(dock_node.kind != GUINodeKind::dock_space) continue;
+                auto dock_state_iter = m_persistent_states.find(dock_node.id);
+                if(dock_state_iter == m_persistent_states.end()) continue;
+                const PersistentItemState& dock_state = dock_state_iter->second;
+                if(!point_in_rect(pos, m_layouts[i].rect) || !point_in_rect(pos, m_layouts[i].clip_rect)) continue;
+                if(dock_state.dock_root_node == U32_MAX || dock_state.dock_root_node >= dock_state.dock_nodes.size()) continue;
+                Vector<u32> stack;
+                stack.push_back(dock_state.dock_root_node);
+                while(!stack.empty())
+                {
+                    u32 node_index = stack.back();
+                    stack.pop_back();
+                    if(node_index >= dock_state.dock_nodes.size()) continue;
+                    const DockTreeNode& tree_node = dock_state.dock_nodes[node_index];
+                    if(!tree_node.split) continue;
+                    stack.push_back(tree_node.child1);
+                    stack.push_back(tree_node.child0);
+                    if(!point_in_rect(pos, tree_node.split_rect)) continue;
+                    out_space_id = dock_node.id;
+                    out_node_index = (u32)node_index;
+                    out_axis = tree_node.split_axis;
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        void GUIContext::update_dock_splitter_from_pointer(const Float2U& pos)
+        {
+            if(!m_active_dock_split_space_id || m_active_dock_split_node == U32_MAX) return;
+            PersistentItemState& dock_state = get_or_create_persistent_state(m_active_dock_split_space_id);
+            if(m_active_dock_split_node >= dock_state.dock_nodes.size()) return;
+            DockTreeNode& tree_node = dock_state.dock_nodes[m_active_dock_split_node];
+            if(!tree_node.split) return;
+            f32 splitter_size = dock_panel_splitter_size();
+            f32 axis_size = tree_node.split_axis == GUIDockSplitAxis::x ? tree_node.rect.width : tree_node.rect.height;
+            f32 available = max(axis_size - splitter_size, 1.0f);
+            f32 delta = tree_node.split_axis == GUIDockSplitAxis::x ? pos.x - m_active_dock_split_start_pos.x : pos.y - m_active_dock_split_start_pos.y;
+            f32 ratio = m_active_dock_split_start_ratio + delta / available;
+            tree_node.split_ratio = clamp(ratio, 0.08f, 0.92f);
+            m_layout_dirty = true;
+        }
+
+        bool GUIContext::find_dock_drop_target(GUIID payload_panel, const Float2U& pos, GUIID& out_space_id, u32& out_leaf_index, GUIDockDropDirection& out_direction) const
+        {
+            if(m_layouts.size() != m_submitted_desc.nodes.size()) return false;
+            for(usize i = 0; i < m_submitted_desc.nodes.size(); ++i)
+            {
+                const GUINode& dock_node = m_submitted_desc.nodes[i];
+                if(dock_node.kind != GUINodeKind::dock_space) continue;
+                auto dock_state_iter = m_persistent_states.find(dock_node.id);
+                if(dock_state_iter == m_persistent_states.end()) continue;
+                const PersistentItemState& dock_state = dock_state_iter->second;
+                if(!point_in_rect(pos, m_layouts[i].rect) || !point_in_rect(pos, m_layouts[i].clip_rect)) continue;
+                if(dock_state.dock_root_node == U32_MAX || dock_state.dock_root_node >= dock_state.dock_nodes.size())
+                {
+                    out_space_id = dock_node.id;
+                    out_leaf_index = U32_MAX;
+                    out_direction = point_in_rect(pos, dock_drop_icon_rect(m_layouts[i].rect, GUIDockDropDirection::center)) ?
+                        GUIDockDropDirection::center :
+                        GUIDockDropDirection::none;
+                    return true;
+                }
+                Vector<u32> stack;
+                stack.push_back(dock_state.dock_root_node);
+                while(!stack.empty())
+                {
+                    u32 node_index = stack.back();
+                    stack.pop_back();
+                    if(node_index >= dock_state.dock_nodes.size()) continue;
+                    const DockTreeNode& leaf = dock_state.dock_nodes[node_index];
+                    if(leaf.split)
+                    {
+                        stack.push_back(leaf.child1);
+                        stack.push_back(leaf.child0);
+                        continue;
+                    }
+                    if(leaf.tabs.empty()) continue;
+                    if(!point_in_rect(pos, leaf.rect)) continue;
+                    bool payload_is_only_tab = leaf.tabs.size() == 1 && leaf.tabs[0] == payload_panel;
+                    if(payload_is_only_tab) continue;
+                    static const GUIDockDropDirection directions[] = {
+                        GUIDockDropDirection::center,
+                        GUIDockDropDirection::left,
+                        GUIDockDropDirection::right,
+                        GUIDockDropDirection::up,
+                        GUIDockDropDirection::down
+                    };
+                    for(GUIDockDropDirection direction : directions)
+                    {
+                        if(point_in_rect(pos, dock_drop_icon_rect(leaf.rect, direction)))
+                        {
+                            out_space_id = dock_node.id;
+                            out_leaf_index = (u32)node_index;
+                            out_direction = direction;
+                            return true;
+                        }
+                    }
+                    out_space_id = dock_node.id;
+                    out_leaf_index = (u32)node_index;
+                    out_direction = GUIDockDropDirection::none;
+                    return true;
+                }
+            }
+            return false;
+        }
+
         void GUIContext::update_dock_panel_from_pointer(const Float2U& pos)
         {
             if(!m_active_dock_space_id || !m_active_dock_panel_id) return;
             DockPanelPersistentState* panel_state = find_dock_panel_state(m_active_dock_space_id, m_active_dock_panel_id);
             if(!panel_state) return;
             if(m_active_dock_panel_close) return;
+            if(m_active_dock_panel_title_drag && !m_active_dock_panel_was_floating && !m_active_dock_panel_undocked)
+            {
+                RectF release_rect = m_active_dock_panel_start_title_rect;
+                release_rect.offset_x -= 8.0f;
+                release_rect.offset_y -= 8.0f;
+                release_rect.width += 16.0f;
+                release_rect.height += 16.0f;
+                if(point_in_rect(pos, release_rect))
+                {
+                    return;
+                }
+                PersistentItemState& dock_state = get_or_create_persistent_state(m_active_dock_space_id);
+                dock_tree_remove_panel(dock_state, m_active_dock_panel_id);
+                panel_state->mode = GUIDockPanelMode::floating;
+                panel_state->rect = m_active_dock_panel_restore_rect;
+                panel_state->rect.width = max(panel_state->rect.width, 1.0f);
+                panel_state->rect.height = max(panel_state->rect.height, 1.0f);
+                panel_state->z_order = dock_state.dock_next_z_order++;
+                m_active_dock_panel_start_rect = panel_state->rect;
+                m_active_dock_panel_grab_offset.x = clamp(m_active_dock_panel_grab_offset.x, 8.0f, max(panel_state->rect.width - 8.0f, 8.0f));
+                m_active_dock_panel_grab_offset.y = clamp(m_active_dock_panel_grab_offset.y, 4.0f, max(panel_state->rect.height - 4.0f, 4.0f));
+                m_active_dock_panel_undocked = true;
+            }
+            if(m_active_dock_panel_resize && !m_active_dock_panel_was_floating)
+            {
+                DockPanelPersistentState* neighbor_state = find_dock_panel_state(m_active_dock_space_id, m_active_dock_panel_resize_neighbor_id);
+                if(!neighbor_state) return;
+                f32 active_min_height = 32.0f;
+                f32 neighbor_min_height = 32.0f;
+                for(usize i = 0; i < m_submitted_desc.nodes.size(); ++i)
+                {
+                    const GUINode& node = m_submitted_desc.nodes[i];
+                    if(node.id == m_active_dock_panel_id)
+                    {
+                        active_min_height = dock_panel_min_height(m_layouts[i].dock_panel_style);
+                    }
+                    else if(node.id == m_active_dock_panel_resize_neighbor_id)
+                    {
+                        neighbor_min_height = dock_panel_min_height(m_layouts[i].dock_panel_style);
+                    }
+                }
+                f32 total_height = max(m_active_dock_panel_start_rect.height + m_active_dock_panel_start_neighbor_height, 1.0f);
+                f32 delta = pos.y - (m_active_dock_panel_start_rect.offset_y + m_active_dock_panel_start_rect.height);
+                f32 active_height = m_active_dock_panel_start_rect.height + delta;
+                if(total_height <= active_min_height + neighbor_min_height)
+                {
+                    active_height = total_height * active_min_height / max(active_min_height + neighbor_min_height, 1.0f);
+                }
+                else
+                {
+                    active_height = clamp(active_height, active_min_height, total_height - neighbor_min_height);
+                }
+                panel_state->docking_height = active_height;
+                neighbor_state->docking_height = max(total_height - active_height, 1.0f);
+                m_layout_dirty = true;
+                return;
+            }
+
             panel_state->mode = GUIDockPanelMode::floating;
             if(m_active_dock_panel_resize)
             {
+                f32 min_width = 1.0f;
+                f32 min_height = 1.0f;
+                for(usize i = 0; i < m_submitted_desc.nodes.size(); ++i)
+                {
+                    if(m_submitted_desc.nodes[i].id == m_active_dock_panel_id)
+                    {
+                        min_width = max(m_layouts[i].dock_panel_style.min_floating_size.x, 1.0f);
+                        min_height = dock_panel_min_height(m_layouts[i].dock_panel_style);
+                        break;
+                    }
+                }
                 panel_state->rect = m_active_dock_panel_start_rect;
-                panel_state->rect.width = max(pos.x - m_active_dock_panel_start_rect.offset_x, 1.0f);
-                panel_state->rect.height = max(pos.y - m_active_dock_panel_start_rect.offset_y, 1.0f);
+                panel_state->rect.width = max(pos.x - m_active_dock_panel_start_rect.offset_x, min_width);
+                panel_state->rect.height = max(pos.y - m_active_dock_panel_start_rect.offset_y, min_height);
             }
             else if(!m_active_dock_panel_close)
             {
@@ -567,7 +812,11 @@ namespace Luna
                     Float2U old_pos = m_pointer_pos;
                     m_pointer_inside = true;
                     m_pointer_pos = e.position;
-                    if(m_active_dock_panel_id)
+                    if(m_active_dock_split_space_id)
+                    {
+                        update_dock_splitter_from_pointer(e.position);
+                    }
+                    else if(m_active_dock_panel_id)
                     {
                         update_dock_panel_from_pointer(e.position);
                     }
@@ -628,6 +877,79 @@ namespace Luna
                             close_combo_dropdowns_except(0);
                         }
                     }
+                    GUIID split_space_id = 0;
+                    u32 split_node_index = U32_MAX;
+                    GUIDockSplitAxis split_axis = GUIDockSplitAxis::x;
+                    if(hit_test_dock_splitter(e.position, split_space_id, split_node_index, split_axis))
+                    {
+                        m_active_id = split_space_id;
+                        m_focused_id = split_space_id;
+                        m_active_dock_split_space_id = split_space_id;
+                        m_active_dock_split_node = split_node_index;
+                        m_active_dock_split_axis = split_axis;
+                        m_active_dock_split_start_pos = e.position;
+                        PersistentItemState& dock_state = get_or_create_persistent_state(split_space_id);
+                        if(split_node_index < dock_state.dock_nodes.size())
+                        {
+                            m_active_dock_split_start_ratio = dock_state.dock_nodes[split_node_index].split_ratio;
+                        }
+                        PersistentItemState& state = get_or_create_persistent_state(split_space_id);
+                        state.pointer_down = true;
+                        state.active = true;
+                        state.focused = true;
+                        continue;
+                    }
+                    GUIID tab_space_id = 0;
+                    GUIID tab_panel_id = 0;
+                    u32 tab_leaf_index = U32_MAX;
+                    if(hit_test_dock_panel_tab(e.position, tab_space_id, tab_panel_id, tab_leaf_index))
+                    {
+                        PersistentItemState& dock_state = get_or_create_persistent_state(tab_space_id);
+                        if(tab_leaf_index < dock_state.dock_nodes.size())
+                        {
+                            dock_state.dock_nodes[tab_leaf_index].selected_tab = tab_panel_id;
+                        }
+                        m_active_id = tab_panel_id;
+                        m_focused_id = tab_panel_id;
+                        m_active_dock_space_id = tab_space_id;
+                        m_active_dock_panel_id = tab_panel_id;
+                        m_active_dock_panel_resize = false;
+                        m_active_dock_panel_close = false;
+                        m_active_dock_panel_title_drag = true;
+                        m_active_dock_panel_was_floating = false;
+                        m_active_dock_panel_undocked = false;
+                        m_active_dock_panel_resize_neighbor_id = 0;
+                        m_active_dock_panel_start_neighbor_height = 0.0f;
+                        DockPanelPersistentState* panel_state = find_dock_panel_state(tab_space_id, tab_panel_id);
+                        m_active_dock_panel_restore_rect = panel_state ? panel_state->rect : RectF(0.0f, 0.0f, 320.0f, 220.0f);
+                        if(tab_leaf_index < dock_state.dock_nodes.size())
+                        {
+                            m_active_dock_panel_start_rect = dock_state.dock_nodes[tab_leaf_index].rect;
+                            GUINode* tab_node = find_node(tab_panel_id);
+                            GUIDockPanelStyle style;
+                            if(tab_node)
+                            {
+                                for(usize i = 0; i < m_submitted_desc.nodes.size(); ++i)
+                                {
+                                    if(m_submitted_desc.nodes[i].id == tab_panel_id)
+                                    {
+                                        style = m_layouts[i].dock_panel_style;
+                                        break;
+                                    }
+                                }
+                            }
+                            m_active_dock_panel_start_title_rect = dock_panel_title_rect(m_active_dock_panel_start_rect, style);
+                            m_active_dock_panel_grab_offset = Float2U(
+                                e.position.x - m_active_dock_panel_start_rect.offset_x,
+                                e.position.y - m_active_dock_panel_start_rect.offset_y);
+                        }
+                        PersistentItemState& state = get_or_create_persistent_state(tab_panel_id);
+                        state.pointer_down = true;
+                        state.active = true;
+                        state.focused = true;
+                        m_layout_dirty = true;
+                        continue;
+                    }
                     GUIID dock_space_id = 0;
                     GUIID dock_panel_id = 0;
                     bool dock_resize = false;
@@ -640,20 +962,45 @@ namespace Luna
                         m_active_dock_panel_id = dock_panel_id;
                         m_active_dock_panel_resize = dock_resize;
                         m_active_dock_panel_close = dock_close;
+                        m_active_dock_panel_title_drag = !dock_resize && !dock_close;
+                        m_active_dock_panel_was_floating = false;
+                        m_active_dock_panel_undocked = false;
+                        m_active_dock_panel_resize_neighbor_id = 0;
+                        m_active_dock_panel_start_neighbor_height = 0.0f;
                         raise_dock_panel(dock_space_id, dock_panel_id);
                         DockPanelPersistentState* panel_state = find_dock_panel_state(dock_space_id, dock_panel_id);
                         if(panel_state && !dock_close)
                         {
                             m_active_dock_panel_start_rect = panel_state->rect;
+                            m_active_dock_panel_restore_rect = panel_state->rect;
+                        }
+                        else
+                        {
+                            m_active_dock_panel_restore_rect = RectF(0.0f, 0.0f, 320.0f, 220.0f);
                         }
                         for(usize i = 0; i < m_submitted_desc.nodes.size(); ++i)
                         {
                             if(m_submitted_desc.nodes[i].id == dock_panel_id)
                             {
                                 m_active_dock_panel_start_rect = m_layouts[i].dock_panel_rect;
+                                m_active_dock_panel_start_title_rect = m_layouts[i].dock_panel_title_rect;
+                                m_active_dock_panel_was_floating = m_layouts[i].dock_panel_floating;
                                 m_active_dock_panel_grab_offset = Float2U(
                                     e.position.x - m_layouts[i].dock_panel_rect.offset_x,
                                     e.position.y - m_layouts[i].dock_panel_rect.offset_y);
+                                if(dock_resize && !m_layouts[i].dock_panel_floating)
+                                {
+                                    for(u32 sibling = m_submitted_desc.nodes[i].next_sibling; sibling != U32_MAX; sibling = m_submitted_desc.nodes[sibling].next_sibling)
+                                    {
+                                        if(!m_layouts[sibling].dock_panel_child || !m_layouts[sibling].dock_panel_visible || m_layouts[sibling].dock_panel_floating)
+                                        {
+                                            continue;
+                                        }
+                                        m_active_dock_panel_resize_neighbor_id = m_submitted_desc.nodes[sibling].id;
+                                        m_active_dock_panel_start_neighbor_height = m_layouts[sibling].dock_panel_rect.height;
+                                        break;
+                                    }
+                                }
                                 break;
                             }
                         }
@@ -773,21 +1120,61 @@ namespace Luna
                     {
                         continue;
                     }
+                    if(m_active_dock_split_space_id)
+                    {
+                        PersistentItemState& state = get_or_create_persistent_state(m_active_dock_split_space_id);
+                        state.pointer_down = false;
+                        state.active = false;
+                        m_active_dock_split_space_id = 0;
+                        m_active_dock_split_node = U32_MAX;
+                        m_active_id = 0;
+                        continue;
+                    }
                     if(m_active_dock_panel_id)
                     {
                         if(m_active_dock_panel_close)
                         {
+                            DockPanelPersistentState* panel_state = find_dock_panel_state(m_active_dock_space_id, m_active_dock_panel_id);
                             for(usize i = 0; i < m_submitted_desc.nodes.size(); ++i)
                             {
                                 GUINode& node = m_submitted_desc.nodes[i];
                                 if(node.id != m_active_dock_panel_id) continue;
-                                if(node.dock_panel_open && point_in_rect(e.position, m_layouts[i].dock_panel_close_rect))
+                                if(point_in_rect(e.position, m_layouts[i].dock_panel_close_rect))
                                 {
-                                    *node.dock_panel_open = false;
+                                    if(node.dock_panel_open)
+                                    {
+                                        *node.dock_panel_open = false;
+                                    }
+                                    else if(panel_state)
+                                    {
+                                        panel_state->closed = true;
+                                    }
                                     ItemResult& result = get_or_create_current_result(node.id);
                                     result.states.insert_or_assign(Name("gui.value_changed"), Any(true));
+                                    result.states.insert_or_assign(Name("gui.open"), Any(false));
+                                    m_layout_dirty = true;
                                 }
                                 break;
+                            }
+                        }
+                        else if(m_active_dock_panel_title_drag && !m_active_dock_panel_resize)
+                        {
+                            GUIID target_space_id = 0;
+                            u32 target_leaf = U32_MAX;
+                            GUIDockDropDirection drop_direction = GUIDockDropDirection::none;
+                            DockPanelPersistentState* panel_state = find_dock_panel_state(m_active_dock_space_id, m_active_dock_panel_id);
+                            if(panel_state && panel_state->mode == GUIDockPanelMode::floating &&
+                                find_dock_drop_target(m_active_dock_panel_id, e.position, target_space_id, target_leaf, drop_direction) &&
+                                target_space_id == m_active_dock_space_id && drop_direction != GUIDockDropDirection::none)
+                            {
+                                PersistentItemState& dock_state = get_or_create_persistent_state(target_space_id);
+                                dock_tree_dock_panel(dock_state, m_active_dock_panel_id, target_leaf, drop_direction);
+                                panel_state->mode = GUIDockPanelMode::docking;
+                                panel_state->closed = false;
+                                ItemResult& result = get_or_create_current_result(m_active_dock_panel_id);
+                                result.states.insert_or_assign(Name("gui.value_changed"), Any(true));
+                                result.states.insert_or_assign(Name("gui.open"), Any(true));
+                                m_layout_dirty = true;
                             }
                         }
                         PersistentItemState& state = get_or_create_persistent_state(m_active_dock_panel_id);
@@ -797,6 +1184,11 @@ namespace Luna
                         m_active_dock_panel_id = 0;
                         m_active_dock_panel_resize = false;
                         m_active_dock_panel_close = false;
+                        m_active_dock_panel_title_drag = false;
+                        m_active_dock_panel_was_floating = false;
+                        m_active_dock_panel_undocked = false;
+                        m_active_dock_panel_resize_neighbor_id = 0;
+                        m_active_dock_panel_start_neighbor_height = 0.0f;
                         m_active_id = 0;
                         m_active_float_component = U32_MAX;
                         continue;
@@ -1139,6 +1531,13 @@ namespace Luna
                     m_active_dock_panel_id = 0;
                     m_active_dock_panel_resize = false;
                     m_active_dock_panel_close = false;
+                    m_active_dock_panel_title_drag = false;
+                    m_active_dock_panel_was_floating = false;
+                    m_active_dock_panel_undocked = false;
+                    m_active_dock_panel_resize_neighbor_id = 0;
+                    m_active_dock_panel_start_neighbor_height = 0.0f;
+                    m_active_dock_split_space_id = 0;
+                    m_active_dock_split_node = U32_MAX;
                     close_combo_dropdowns_except(0);
                 }
             }
@@ -1151,11 +1550,37 @@ namespace Luna
                 GUIID scrollbar_id = 0;
                 bool scrollbar_vertical = false;
                 RectF scrollbar_thumb;
-                m_hovered_id = hit_test_combo_dropdown(m_pointer_pos, combo_id, combo_item) ?
-                    combo_id :
-                    (hit_test_scrollbar(m_pointer_pos, scrollbar_id, scrollbar_vertical, scrollbar_thumb) ?
-                        scrollbar_id :
-                        hit_test(m_pointer_pos));
+                GUIID dock_space_id = 0;
+                GUIID dock_panel_id = 0;
+                bool dock_resize = false;
+                bool dock_close = false;
+                u32 dock_split_node = U32_MAX;
+                GUIDockSplitAxis dock_split_axis = GUIDockSplitAxis::x;
+                u32 dock_leaf_index = U32_MAX;
+                if(hit_test_combo_dropdown(m_pointer_pos, combo_id, combo_item))
+                {
+                    m_hovered_id = combo_id;
+                }
+                else if(hit_test_scrollbar(m_pointer_pos, scrollbar_id, scrollbar_vertical, scrollbar_thumb))
+                {
+                    m_hovered_id = scrollbar_id;
+                }
+                else if(hit_test_dock_splitter(m_pointer_pos, dock_space_id, dock_split_node, dock_split_axis))
+                {
+                    m_hovered_id = dock_space_id;
+                }
+                else if(hit_test_dock_panel_tab(m_pointer_pos, dock_space_id, dock_panel_id, dock_leaf_index))
+                {
+                    m_hovered_id = dock_panel_id;
+                }
+                else if(hit_test_dock_panel_chrome(m_pointer_pos, dock_space_id, dock_panel_id, dock_resize, dock_close))
+                {
+                    m_hovered_id = dock_panel_id;
+                }
+                else
+                {
+                    m_hovered_id = hit_test(m_pointer_pos);
+                }
             }
             else
             {
@@ -1232,11 +1657,37 @@ namespace Luna
                         GUIID scrollbar_id = 0;
                         bool scrollbar_vertical = false;
                         RectF scrollbar_thumb;
-                        m_hovered_id = hit_test_combo_dropdown(m_pointer_pos, combo_id, combo_item) ?
-                            combo_id :
-                            (hit_test_scrollbar(m_pointer_pos, scrollbar_id, scrollbar_vertical, scrollbar_thumb) ?
-                                scrollbar_id :
-                                hit_test(m_pointer_pos));
+                        GUIID dock_space_id = 0;
+                        GUIID dock_panel_id = 0;
+                        bool dock_resize = false;
+                        bool dock_close = false;
+                        u32 dock_split_node = U32_MAX;
+                        GUIDockSplitAxis dock_split_axis = GUIDockSplitAxis::x;
+                        u32 dock_leaf_index = U32_MAX;
+                        if(hit_test_combo_dropdown(m_pointer_pos, combo_id, combo_item))
+                        {
+                            m_hovered_id = combo_id;
+                        }
+                        else if(hit_test_scrollbar(m_pointer_pos, scrollbar_id, scrollbar_vertical, scrollbar_thumb))
+                        {
+                            m_hovered_id = scrollbar_id;
+                        }
+                        else if(hit_test_dock_splitter(m_pointer_pos, dock_space_id, dock_split_node, dock_split_axis))
+                        {
+                            m_hovered_id = dock_space_id;
+                        }
+                        else if(hit_test_dock_panel_tab(m_pointer_pos, dock_space_id, dock_panel_id, dock_leaf_index))
+                        {
+                            m_hovered_id = dock_panel_id;
+                        }
+                        else if(hit_test_dock_panel_chrome(m_pointer_pos, dock_space_id, dock_panel_id, dock_resize, dock_close))
+                        {
+                            m_hovered_id = dock_panel_id;
+                        }
+                        else
+                        {
+                            m_hovered_id = hit_test(m_pointer_pos);
+                        }
                     }
                 }
                 for(const GUINode& node : m_submitted_desc.nodes)

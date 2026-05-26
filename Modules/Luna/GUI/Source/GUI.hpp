@@ -408,7 +408,38 @@ namespace Luna
             bool closed = false;
             GUIDockPanelMode mode = GUIDockPanelMode::docking;
             RectF rect = RectF(0.0f, 0.0f, 320.0f, 220.0f);
+            f32 docking_height = 0.0f;
             u32 z_order = 0;
+        };
+
+        enum class GUIDockSplitAxis : u8
+        {
+            x,
+            y
+        };
+
+        enum class GUIDockDropDirection : u8
+        {
+            none,
+            center,
+            left,
+            right,
+            up,
+            down
+        };
+
+        struct DockTreeNode
+        {
+            bool split = false;
+            u32 parent = U32_MAX;
+            u32 child0 = U32_MAX;
+            u32 child1 = U32_MAX;
+            GUIDockSplitAxis split_axis = GUIDockSplitAxis::x;
+            f32 split_ratio = 0.5f;
+            RectF rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
+            RectF split_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
+            Vector<GUIID> tabs;
+            GUIID selected_tab = 0;
         };
 
         struct ItemResult
@@ -430,6 +461,8 @@ namespace Luna
             bool switch_animation_initialized = false;
             u32 dock_next_z_order = 1;
             HashMap<GUIID, DockPanelPersistentState, GUIIDHash> dock_panels;
+            Vector<DockTreeNode> dock_nodes;
+            u32 dock_root_node = U32_MAX;
             f64 last_click_time = -1000.0;
             f64 last_right_click_time = -1000.0;
             usize text_cursor = USIZE_MAX;
@@ -489,6 +522,7 @@ namespace Luna
             RectF dock_panel_resize_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
             GUIDockPanelStyle dock_panel_style;
             u32 dock_panel_z_order = 0;
+            u32 dock_leaf_index = U32_MAX;
         };
 
         inline RectF dock_panel_content_rect(const RectF& panel_rect, const GUIDockPanelStyle& style)
@@ -530,6 +564,84 @@ namespace Luna
                 panel_rect.offset_y + max(panel_rect.height - size, 0.0f),
                 size,
                 size);
+        }
+
+        inline RectF dock_panel_docked_resize_rect(const RectF& panel_rect, const GUIDockPanelStyle& style)
+        {
+            f32 size = max(style.resize_border_size, 4.0f);
+            return RectF(
+                panel_rect.offset_x,
+                panel_rect.offset_y + max(panel_rect.height - size * 0.5f, 0.0f),
+                max(panel_rect.width, 1.0f),
+                size);
+        }
+
+        inline f32 dock_panel_min_height(const GUIDockPanelStyle& style)
+        {
+            f32 chrome_height = max(style.border_size, 0.0f) * 2.0f + (style.title_bar ? max(style.title_bar_height, 0.0f) : 0.0f);
+            return max(max(style.min_floating_size.y, chrome_height + 24.0f), 32.0f);
+        }
+
+        inline f32 dock_panel_splitter_size()
+        {
+            return 6.0f;
+        }
+
+        inline RectF dock_panel_tab_rect(const RectF& title_rect, usize tab_index, usize tab_count, bool has_close_button)
+        {
+            f32 right_reserved = has_close_button ? 28.0f : 4.0f;
+            f32 tab_area_width = max(title_rect.width - right_reserved - 4.0f, 1.0f);
+            f32 tab_width = max(tab_area_width / (f32)max(tab_count, (usize)1), 48.0f);
+            return RectF(
+                title_rect.offset_x + 4.0f + tab_width * (f32)tab_index,
+                title_rect.offset_y + 3.0f,
+                min(tab_width, max(tab_area_width - tab_width * (f32)tab_index, 1.0f)),
+                max(title_rect.height - 4.0f, 1.0f));
+        }
+
+        inline RectF dock_drop_icon_rect(const RectF& parent, GUIDockDropDirection direction)
+        {
+            f32 shorter = min(parent.width, parent.height);
+            f32 center_size = clamp(shorter * 0.12f, 22.0f, 36.0f);
+            f32 side_w = center_size * 1.2f;
+            f32 side_h = center_size * 0.78f;
+            f32 offset = center_size * 1.95f;
+            f32 cx = parent.offset_x + parent.width * 0.5f;
+            f32 cy = parent.offset_y + parent.height * 0.5f;
+            switch(direction)
+            {
+            case GUIDockDropDirection::center:
+                return RectF(cx - center_size * 0.5f, cy - center_size * 0.5f, center_size, center_size);
+            case GUIDockDropDirection::left:
+                return RectF(cx - offset - side_h * 0.5f, cy - side_w * 0.5f, side_h, side_w);
+            case GUIDockDropDirection::right:
+                return RectF(cx + offset - side_h * 0.5f, cy - side_w * 0.5f, side_h, side_w);
+            case GUIDockDropDirection::up:
+                return RectF(cx - side_w * 0.5f, cy - offset - side_h * 0.5f, side_w, side_h);
+            case GUIDockDropDirection::down:
+                return RectF(cx - side_w * 0.5f, cy + offset - side_h * 0.5f, side_w, side_h);
+            default:
+                return RectF(0.0f, 0.0f, 0.0f, 0.0f);
+            }
+        }
+
+        inline RectF dock_drop_preview_rect(const RectF& parent, GUIDockDropDirection direction)
+        {
+            switch(direction)
+            {
+            case GUIDockDropDirection::center:
+                return dock_panel_content_rect(parent, GUIDockPanelStyle());
+            case GUIDockDropDirection::left:
+                return RectF(parent.offset_x, parent.offset_y, parent.width * 0.5f, parent.height);
+            case GUIDockDropDirection::right:
+                return RectF(parent.offset_x + parent.width * 0.5f, parent.offset_y, parent.width * 0.5f, parent.height);
+            case GUIDockDropDirection::up:
+                return RectF(parent.offset_x, parent.offset_y, parent.width, parent.height * 0.5f);
+            case GUIDockDropDirection::down:
+                return RectF(parent.offset_x, parent.offset_y + parent.height * 0.5f, parent.width, parent.height * 0.5f);
+            default:
+                return RectF(0.0f, 0.0f, 0.0f, 0.0f);
+            }
         }
 
         inline f32 scroll_bar_size()
@@ -661,8 +773,20 @@ namespace Luna
             GUIID m_active_dock_panel_id = 0;
             bool m_active_dock_panel_resize = false;
             bool m_active_dock_panel_close = false;
+            bool m_active_dock_panel_was_floating = false;
+            bool m_active_dock_panel_title_drag = false;
+            bool m_active_dock_panel_undocked = false;
+            GUIID m_active_dock_panel_resize_neighbor_id = 0;
             Float2U m_active_dock_panel_grab_offset = Float2U(0.0f);
             RectF m_active_dock_panel_start_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
+            RectF m_active_dock_panel_restore_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
+            RectF m_active_dock_panel_start_title_rect = RectF(0.0f, 0.0f, 0.0f, 0.0f);
+            f32 m_active_dock_panel_start_neighbor_height = 0.0f;
+            GUIID m_active_dock_split_space_id = 0;
+            u32 m_active_dock_split_node = U32_MAX;
+            GUIDockSplitAxis m_active_dock_split_axis = GUIDockSplitAxis::x;
+            f32 m_active_dock_split_start_ratio = 0.5f;
+            Float2U m_active_dock_split_start_pos = Float2U(0.0f);
             GUIID m_open_combo_id = 0;
             u64 m_generation = 0;
             f64 m_time = 0.0;
@@ -702,6 +826,14 @@ namespace Luna
             ItemResult& get_or_create_current_result(GUIID id);
             PersistentItemState& get_or_create_persistent_state(GUIID id);
             DockPanelPersistentState& get_or_create_dock_panel_state(PersistentItemState& dock_state, GUIID panel_id);
+            u32 new_dock_leaf(PersistentItemState& dock_state, GUIID panel_id, u32 parent = U32_MAX);
+            void dock_tree_add_panel(PersistentItemState& dock_state, GUIID panel_id);
+            bool dock_tree_contains_panel(const PersistentItemState& dock_state, GUIID panel_id) const;
+            bool dock_tree_remove_panel(PersistentItemState& dock_state, GUIID panel_id);
+            void dock_tree_dock_panel(PersistentItemState& dock_state, GUIID panel_id, u32 target_leaf, GUIDockDropDirection direction);
+            void dock_tree_prune_missing(PersistentItemState& dock_state, const HashSet<GUIID, GUIIDHash>& live_panels);
+            GUIID dock_tree_selected_panel(PersistentItemState& dock_state, u32 leaf_index);
+            void arrange_dock_tree_node(GUIID dock_space_id, u32 node_index, const RectF& rect, const RectF& clip_rect, const HashMap<GUIID, u32, GUIIDHash>& panel_indices);
             RectF layout_node(u32 node_index, const RectF& rect, const RectF& clip_rect);
             GUILayoutMetrics measure_node(u32 node_index);
             void measure_table_tracks(u32 node_index, Vector<f32>& out_column_widths, Vector<f32>& out_row_heights, bool preferred);
@@ -714,6 +846,11 @@ namespace Luna
             bool hit_test_dock_panel(const Float2U& pos, GUIID& out_space_id, GUIID& out_panel_id) const;
             bool hit_test_dock_panel_chrome(const Float2U& pos, GUIID& out_space_id, GUIID& out_panel_id, bool& out_resize, bool& out_close) const;
             void update_dock_panel_from_pointer(const Float2U& pos);
+            bool hit_test_dock_panel_tab(const Float2U& pos, GUIID& out_space_id, GUIID& out_panel_id, u32& out_leaf_index) const;
+            bool hit_test_dock_splitter(const Float2U& pos, GUIID& out_space_id, u32& out_node_index, GUIDockSplitAxis& out_axis) const;
+            void update_dock_splitter_from_pointer(const Float2U& pos);
+            bool find_dock_drop_target(GUIID payload_panel, const Float2U& pos, GUIID& out_space_id, u32& out_leaf_index, GUIDockDropDirection& out_direction) const;
+            void render_dock_preview();
             void raise_dock_panel(GUIID dock_space_id, GUIID panel_id);
             DockPanelPersistentState* find_dock_panel_state(GUIID dock_space_id, GUIID panel_id);
             void clamp_scroll_state(GUIID id);

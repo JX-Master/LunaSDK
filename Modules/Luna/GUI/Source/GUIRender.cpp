@@ -362,10 +362,40 @@ namespace Luna
             if(style.title_bar)
             {
                 render_rect(layout.dock_panel_title_rect, clip, active ? style.active_title_bar_color : style.title_bar_color, 5.0f);
-                render_text(RectF(layout.dock_panel_title_rect.offset_x + 8.0f, layout.dock_panel_title_rect.offset_y,
-                    max(layout.dock_panel_title_rect.width - 40.0f, 1.0f), layout.dock_panel_title_rect.height),
-                    clip, node.text.c_str(), 15.0f, Color::white(), VG::TextAlignment::begin);
-                if(style.close_button && node.dock_panel_open)
+                const DockTreeNode* leaf = nullptr;
+                auto dock_state_iter = m_persistent_states.find(layout.dock_space_id);
+                if(dock_state_iter != m_persistent_states.end() && layout.dock_leaf_index < dock_state_iter->second.dock_nodes.size())
+                {
+                    const DockTreeNode& dock_leaf = dock_state_iter->second.dock_nodes[layout.dock_leaf_index];
+                    if(!dock_leaf.split && dock_leaf.tabs.size() > 1)
+                    {
+                        leaf = &dock_leaf;
+                    }
+                }
+                if(leaf)
+                {
+                    for(usize tab_index = 0; tab_index < leaf->tabs.size(); ++tab_index)
+                    {
+                        GUIID tab_id = leaf->tabs[tab_index];
+                        RectF tab_rect = dock_panel_tab_rect(layout.dock_panel_title_rect, tab_index, leaf->tabs.size(), style.close_button);
+                        bool tab_selected = tab_id == leaf->selected_tab;
+                        bool tab_hovered = m_pointer_inside && point_in_rect(m_pointer_pos, tab_rect);
+                        Float4U tab_color = tab_selected ? (active ? style.active_title_bar_color : Float4U(0.16f, 0.21f, 0.28f, 1.0f)) :
+                            (tab_hovered ? Float4U(0.18f, 0.24f, 0.32f, 1.0f) : Float4U(0.10f, 0.13f, 0.17f, 1.0f));
+                        render_rect(tab_rect, clip, tab_color, 4.0f);
+                        GUINode* tab_node = find_node(tab_id);
+                        const c8* label = tab_node ? tab_node->text.c_str() : "";
+                        render_text(RectF(tab_rect.offset_x + 7.0f, tab_rect.offset_y, max(tab_rect.width - 14.0f, 1.0f), tab_rect.height),
+                            clip, label, 14.0f, Color::white(), VG::TextAlignment::begin);
+                    }
+                }
+                else
+                {
+                    render_text(RectF(layout.dock_panel_title_rect.offset_x + 8.0f, layout.dock_panel_title_rect.offset_y,
+                        max(layout.dock_panel_title_rect.width - 40.0f, 1.0f), layout.dock_panel_title_rect.height),
+                        clip, node.text.c_str(), 15.0f, Color::white(), VG::TextAlignment::begin);
+                }
+                if(style.close_button)
                 {
                     bool close_hovered = m_pointer_inside && point_in_rect(m_pointer_pos, layout.dock_panel_close_rect);
                     render_rect(layout.dock_panel_close_rect, clip,
@@ -388,6 +418,98 @@ namespace Luna
                 Float4U color = m_pointer_inside && point_in_rect(m_pointer_pos, r) ? Float4U(0.55f, 0.68f, 0.86f, 1.0f) : Float4U(0.36f, 0.42f, 0.50f, 0.85f);
                 render_line_segment(Float2U(r.offset_x + r.width - 2.0f, r.offset_y + 2.0f),
                     Float2U(r.offset_x + 2.0f, r.offset_y + r.height - 2.0f), clip, color, 1.5f);
+            }
+            else if(style.resize_border && layout.dock_panel_resize_rect.width > 0.0f && layout.dock_panel_resize_rect.height > 0.0f)
+            {
+                RectF r = layout.dock_panel_resize_rect;
+                Float4U color = (m_pointer_inside && point_in_rect(m_pointer_pos, r)) || node.id == m_active_dock_panel_id ?
+                    Float4U(0.55f, 0.68f, 0.86f, 1.0f) :
+                    Float4U(0.30f, 0.35f, 0.42f, 0.85f);
+                f32 y = r.offset_y + r.height * 0.5f;
+                render_line_segment(Float2U(r.offset_x + 8.0f, y), Float2U(r.offset_x + max(r.width - 8.0f, 8.0f), y), clip, color, 1.5f);
+            }
+        }
+
+        void GUIContext::render_dock_preview()
+        {
+            if(!m_active_dock_panel_id || !m_active_dock_panel_title_drag) return;
+            DockPanelPersistentState* panel_state = find_dock_panel_state(m_active_dock_space_id, m_active_dock_panel_id);
+            if(!panel_state || panel_state->mode != GUIDockPanelMode::floating) return;
+
+            GUIID target_space_id = 0;
+            u32 target_leaf = U32_MAX;
+            GUIDockDropDirection direction = GUIDockDropDirection::none;
+            if(!find_dock_drop_target(m_active_dock_panel_id, m_pointer_pos, target_space_id, target_leaf, direction)) return;
+            RectF target_rect(0.0f, 0.0f, 0.0f, 0.0f);
+            bool empty_dock_space = target_leaf == U32_MAX;
+            if(empty_dock_space)
+            {
+                for(usize i = 0; i < m_submitted_desc.nodes.size(); ++i)
+                {
+                    if(m_submitted_desc.nodes[i].id == target_space_id && m_submitted_desc.nodes[i].kind == GUINodeKind::dock_space)
+                    {
+                        target_rect = m_layouts[i].rect;
+                        break;
+                    }
+                }
+            }
+            else
+            {
+                auto dock_state_iter = m_persistent_states.find(target_space_id);
+                if(dock_state_iter == m_persistent_states.end() || target_leaf >= dock_state_iter->second.dock_nodes.size()) return;
+                const DockTreeNode& leaf = dock_state_iter->second.dock_nodes[target_leaf];
+                if(leaf.split || leaf.tabs.empty()) return;
+                target_rect = leaf.rect;
+            }
+            if(target_rect.width <= 0.0f || target_rect.height <= 0.0f) return;
+
+            RectF surface_clip(0.0f, 0.0f, m_frame_desc.surface_size.x, m_frame_desc.surface_size.y);
+            if(direction != GUIDockDropDirection::none)
+            {
+                RectF preview = empty_dock_space ? target_rect : dock_drop_preview_rect(target_rect, direction);
+                render_rect(preview, surface_clip, Float4U(0.20f, 0.42f, 0.78f, 0.30f), 4.0f);
+                render_rect(RectF(preview.offset_x, preview.offset_y, preview.width, 2.0f), surface_clip, Float4U(0.42f, 0.68f, 1.0f, 0.95f), 0.0f);
+                render_rect(RectF(preview.offset_x, preview.offset_y + max(preview.height - 2.0f, 0.0f), preview.width, 2.0f), surface_clip, Float4U(0.42f, 0.68f, 1.0f, 0.95f), 0.0f);
+                render_rect(RectF(preview.offset_x, preview.offset_y, 2.0f, preview.height), surface_clip, Float4U(0.42f, 0.68f, 1.0f, 0.95f), 0.0f);
+                render_rect(RectF(preview.offset_x + max(preview.width - 2.0f, 0.0f), preview.offset_y, 2.0f, preview.height), surface_clip, Float4U(0.42f, 0.68f, 1.0f, 0.95f), 0.0f);
+            }
+
+            static const GUIDockDropDirection directions[] = {
+                GUIDockDropDirection::center,
+                GUIDockDropDirection::left,
+                GUIDockDropDirection::right,
+                GUIDockDropDirection::up,
+                GUIDockDropDirection::down
+            };
+            for(GUIDockDropDirection icon_direction : directions)
+            {
+                if(empty_dock_space && icon_direction != GUIDockDropDirection::center) continue;
+                RectF icon = dock_drop_icon_rect(target_rect, icon_direction);
+                bool selected = icon_direction == direction;
+                Float4U fill = selected ? Float4U(0.27f, 0.52f, 0.88f, 0.96f) : Float4U(0.10f, 0.14f, 0.19f, 0.86f);
+                Float4U stroke = selected ? Float4U(0.74f, 0.87f, 1.0f, 1.0f) : Float4U(0.46f, 0.56f, 0.68f, 0.95f);
+                render_rect(icon, surface_clip, fill, 5.0f);
+                f32 l = icon.offset_x + 5.0f;
+                f32 r = icon.offset_x + max(icon.width - 5.0f, 5.0f);
+                f32 t = icon.offset_y + 5.0f;
+                f32 b = icon.offset_y + max(icon.height - 5.0f, 5.0f);
+                f32 cx = icon.offset_x + icon.width * 0.5f;
+                f32 cy = icon.offset_y + icon.height * 0.5f;
+                if(icon_direction == GUIDockDropDirection::center)
+                {
+                    render_line_segment(Float2U(l, t), Float2U(r, t), surface_clip, stroke, 1.6f);
+                    render_line_segment(Float2U(r, t), Float2U(r, b), surface_clip, stroke, 1.6f);
+                    render_line_segment(Float2U(r, b), Float2U(l, b), surface_clip, stroke, 1.6f);
+                    render_line_segment(Float2U(l, b), Float2U(l, t), surface_clip, stroke, 1.6f);
+                }
+                else if(icon_direction == GUIDockDropDirection::left || icon_direction == GUIDockDropDirection::right)
+                {
+                    render_line_segment(Float2U(cx, t), Float2U(cx, b), surface_clip, stroke, 2.0f);
+                }
+                else
+                {
+                    render_line_segment(Float2U(l, cy), Float2U(r, cy), surface_clip, stroke, 2.0f);
+                }
             }
         }
 
@@ -666,6 +788,32 @@ namespace Luna
                         render_node(child);
                     }
                 }
+                auto dock_state_iter = m_persistent_states.find(node.id);
+                if(dock_state_iter != m_persistent_states.end())
+                {
+                    const PersistentItemState& dock_state = dock_state_iter->second;
+                    if(dock_state.dock_root_node != U32_MAX && dock_state.dock_root_node < dock_state.dock_nodes.size())
+                    {
+                        Vector<u32> stack;
+                        stack.push_back(dock_state.dock_root_node);
+                        while(!stack.empty())
+                        {
+                            u32 dock_node_index = stack.back();
+                            stack.pop_back();
+                            if(dock_node_index >= dock_state.dock_nodes.size()) continue;
+                            const DockTreeNode& dock_node = dock_state.dock_nodes[dock_node_index];
+                            if(!dock_node.split) continue;
+                            stack.push_back(dock_node.child1);
+                            stack.push_back(dock_node.child0);
+                            if(dock_node.split_rect.width <= 0.0f || dock_node.split_rect.height <= 0.0f) continue;
+                            bool hovered_splitter = m_pointer_inside && point_in_rect(m_pointer_pos, dock_node.split_rect);
+                            bool active_splitter = m_active_dock_split_space_id == node.id && m_active_dock_split_node == dock_node_index;
+                            Float4U splitter_color = active_splitter ? Float4U(0.36f, 0.58f, 0.90f, 1.0f) :
+                                (hovered_splitter ? Float4U(0.28f, 0.42f, 0.62f, 0.95f) : Float4U(0.11f, 0.14f, 0.18f, 0.90f));
+                            render_rect(dock_node.split_rect, clip, splitter_color, 0.0f);
+                        }
+                    }
+                }
                 for(usize i = 0; i < floating_children.size(); ++i)
                 {
                     for(usize j = i + 1; j < floating_children.size(); ++j)
@@ -712,6 +860,8 @@ namespace Luna
                 m_overlay_draw_list->begin(m_shape_draw_list);
                 m_active_draw_list = m_main_draw_list.get();
                 render_node(0);
+                m_active_draw_list = m_overlay_draw_list.get();
+                render_dock_preview();
                 m_active_draw_list = nullptr;
                 m_main_draw_list->end();
                 m_overlay_draw_list->end();
