@@ -818,6 +818,10 @@ namespace Luna
             {
                 return 0;
             }
+            if(node.kind == GUINodeKind::tooltip)
+            {
+                return 0;
+            }
             const RectF& rect = m_layouts[node_index].rect;
             const RectF& clip = m_layouts[node_index].clip_rect;
             if(node.kind == GUINodeKind::tab_item)
@@ -2153,6 +2157,11 @@ namespace Luna
                 m_hovered_id = 0;
             }
             update_menu_hover();
+            if(m_hovered_id != m_tooltip_hovered_id)
+            {
+                m_tooltip_hovered_id = m_hovered_id;
+                m_tooltip_hover_start = m_time;
+            }
         }
 
         RV GUIContext::submit(const GUIDescription& desc)
@@ -2167,8 +2176,13 @@ namespace Luna
                 prune_popup_stack();
                 HashSet<GUIID> ids;
                 bool open_combo_submitted = false;
+                bool tooltip_submitted = false;
                 for(const GUINode& node : m_submitted_desc.nodes)
                 {
+                    if(node.kind == GUINodeKind::tooltip)
+                    {
+                        tooltip_submitted = true;
+                    }
                     if(!node.interactive) continue;
                     auto r = ids.insert(node.id);
                     luassert_msg(r.second, "Duplicate GUI item ID detected.");
@@ -2261,6 +2275,10 @@ namespace Luna
                 m_layout_dirty = false;
                 layout_node(0, root_rect, root_rect);
                 process_input_events();
+                if(tooltip_submitted)
+                {
+                    m_layout_dirty = true;
+                }
                 if(m_layout_dirty)
                 {
                     for(NodeLayout& layout : m_layouts)
@@ -2320,6 +2338,11 @@ namespace Luna
                             m_hovered_id = hit_test(m_pointer_pos);
                         }
                     }
+                }
+                if(m_hovered_id != m_tooltip_hovered_id)
+                {
+                    m_tooltip_hovered_id = m_hovered_id;
+                    m_tooltip_hover_start = m_time;
                 }
                 for(const GUINode& node : m_submitted_desc.nodes)
                 {

@@ -648,6 +648,10 @@ namespace Luna
             {
                 return;
             }
+            if(node.kind == GUINodeKind::tooltip && !tooltip_node_visible(node))
+            {
+                return;
+            }
             const RectF& rect = m_layouts[node_index].rect;
             const RectF& clip = m_layouts[node_index].clip_rect;
             IDrawList* previous_draw_list = m_active_draw_list;
@@ -711,6 +715,13 @@ namespace Luna
                 break;
             case GUINodeKind::popup:
                 render_rect(rect, clip, Float4U(0.08f, 0.10f, 0.13f, 0.98f), 5.0f);
+                break;
+            case GUINodeKind::tooltip:
+                render_rect(rect, clip, Float4U(0.05f, 0.06f, 0.07f, 0.97f), 4.0f);
+                render_rect(RectF(rect.offset_x, rect.offset_y, rect.width, 1.0f), clip, Float4U(0.28f, 0.33f, 0.40f, 1.0f), 0.0f);
+                render_rect(RectF(rect.offset_x, rect.offset_y + max(rect.height - 1.0f, 0.0f), rect.width, 1.0f), clip, Float4U(0.28f, 0.33f, 0.40f, 1.0f), 0.0f);
+                render_rect(RectF(rect.offset_x, rect.offset_y, 1.0f, rect.height), clip, Float4U(0.28f, 0.33f, 0.40f, 1.0f), 0.0f);
+                render_rect(RectF(rect.offset_x + max(rect.width - 1.0f, 0.0f), rect.offset_y, 1.0f, rect.height), clip, Float4U(0.28f, 0.33f, 0.40f, 1.0f), 0.0f);
                 break;
             case GUINodeKind::menu_bar:
                 render_rect(rect, clip, Float4U(0.08f, 0.10f, 0.13f, 0.92f), 0.0f);

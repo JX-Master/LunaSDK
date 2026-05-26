@@ -22,6 +22,7 @@ namespace Luna
             scroll_view,
             window,
             popup,
+            tooltip,
             menu_bar,
             menu,
             menu_item,
@@ -78,6 +79,7 @@ namespace Luna
             GUITabBarFlag tab_bar_flags = GUITabBarFlag::none;
             GUITabItemFlag tab_item_flags = GUITabItemFlag::none;
             GUIPopupFlag popup_flags = GUIPopupFlag::none;
+            GUITooltipDesc tooltip_desc;
             GUIID popup_parent_id = 0;
             GUIID popup_owner_id = 0;
             GUIID menu_popup_id = 0;

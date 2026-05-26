@@ -184,73 +184,53 @@ namespace Luna
         GUI::DrawRect(host_rect, Float4U(0.06f, 0.07f, 0.08f, 1.0f), 0.0f);
 
         Float2 menu_pos = ImGui::GetCursorScreenPos();
-        GUI::GUIItemHandle new_menu_button = GUI::Button("New", RectF(menu_pos.x, menu_pos.y, 56.0f, 26.0f));
-        GUI::GUIItemHandle import_menu_button = GUI::Button("Import", RectF(menu_pos.x + 62.0f, menu_pos.y, 76.0f, 26.0f));
+        GUI::BeginMenuBar("Asset Browser Menu Bar", RectF(menu_pos.x, menu_pos.y, 146.0f, 30.0f));
+        GUI::BeginMenu("New");
+        GUI::GUIItemHandle folder_item = GUI::MenuItem("Folder");
+        Vector<Pair<Name, GUI::GUIItemHandle>> asset_items;
+        asset_items.reserve(g_env->new_asset_types.size());
+        for(auto& i : g_env->new_asset_types)
+        {
+            asset_items.push_back(make_pair(i, GUI::MenuItem(i.c_str())));
+        }
+        GUI::EndMenu();
+        GUI::BeginMenu("Import");
+        Vector<Pair<Name, GUI::GUIItemHandle>> import_items;
+        import_items.reserve(g_env->importer_types.size());
+        for(auto& i : g_env->importer_types)
+        {
+            import_items.push_back(make_pair(i.first, GUI::MenuItem(i.first.c_str())));
+        }
+        GUI::EndMenu();
+        GUI::EndMenuBar();
         ImGui::Dummy(Float2(146.0f, 30.0f));
-        if(GUI::IsItemClicked(new_menu_button))
+
+        if(GUI::IsItemClicked(folder_item))
         {
-            m_open_menu = m_open_menu == 0 ? -1 : 0;
-            m_menu_popup_position = Float2U(menu_pos.x, menu_pos.y + 30.0f);
-        }
-        if(GUI::IsItemClicked(import_menu_button))
-        {
-            m_open_menu = m_open_menu == 1 ? -1 : 1;
-            m_menu_popup_position = Float2U(menu_pos.x + 62.0f, menu_pos.y + 30.0f);
-        }
-        if(m_open_menu == 0)
-        {
-            f32 popup_height = 32.0f + (f32)g_env->new_asset_types.size() * 26.0f + 10.0f;
-            GUI::BeginPopup("Asset Browser New Menu", m_menu_popup_position, GUI::GUISize::fixed(220.0f, popup_height));
-            GUI::GUIItemHandle folder_item = GUI::Selectable("Folder");
-            Vector<Pair<Name, GUI::GUIItemHandle>> asset_items;
-            asset_items.reserve(g_env->new_asset_types.size());
-            for(auto& i : g_env->new_asset_types)
+            Path new_folder_path = get_new_folder_path(m_path);
+            auto r = VFS::create_dir(new_folder_path);
+            if(succeeded(r))
             {
-                asset_items.push_back(make_pair(i, GUI::Selectable(i.c_str())));
-            }
-            GUI::EndPopup();
-            if(GUI::IsItemClicked(folder_item))
-            {
-                Path new_folder_path = get_new_folder_path(m_path);
-                auto r = VFS::create_dir(new_folder_path);
-                if(succeeded(r))
-                {
-                    m_asset_name_editing_buf = new_folder_path.back().c_str();
-                    m_editing_asset_name = new_folder_path.back();
-                }
-                m_open_menu = -1;
-            }
-            for(auto& item : asset_items)
-            {
-                if(GUI::IsItemClicked(item.second))
-                {
-                    create_new_asset_in_folder(m_path, item.first, m_editing_asset_name, m_asset_name_editing_buf);
-                    m_open_menu = -1;
-                }
+                m_asset_name_editing_buf = new_folder_path.back().c_str();
+                m_editing_asset_name = new_folder_path.back();
             }
         }
-        else if(m_open_menu == 1)
+        for(auto& item : asset_items)
         {
-            f32 popup_height = max((f32)g_env->importer_types.size() * 26.0f + 10.0f, 36.0f);
-            GUI::BeginPopup("Asset Browser Import Menu", m_menu_popup_position, GUI::GUISize::fixed(220.0f, popup_height));
-            Vector<Pair<Name, GUI::GUIItemHandle>> import_items;
-            import_items.reserve(g_env->importer_types.size());
-            for(auto& i : g_env->importer_types)
+            if(GUI::IsItemClicked(item.second))
             {
-                import_items.push_back(make_pair(i.first, GUI::Selectable(i.first.c_str())));
+                create_new_asset_in_folder(m_path, item.first, m_editing_asset_name, m_asset_name_editing_buf);
             }
-            GUI::EndPopup();
-            for(auto& item : import_items)
+        }
+        for(auto& item : import_items)
+        {
+            if(GUI::IsItemClicked(item.second))
             {
-                if(GUI::IsItemClicked(item.second))
+                auto iter = g_env->importer_types.find(item.first);
+                if(iter != g_env->importer_types.end())
                 {
-                    auto iter = g_env->importer_types.find(item.first);
-                    if(iter != g_env->importer_types.end())
-                    {
-                        auto editor = iter->second.new_importer(m_path);
-                        m_editor->m_editors.push_back(editor);
-                    }
-                    m_open_menu = -1;
+                    auto editor = iter->second.new_importer(m_path);
+                    m_editor->m_editors.push_back(editor);
                 }
             }
         }

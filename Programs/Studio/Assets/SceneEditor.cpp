@@ -104,8 +104,6 @@ namespace Luna
         Float2U m_actor_popup_position = Float2U(0.0f);
         bool m_new_component_popup_open = false;
         Float2U m_new_component_popup_position = Float2U(0.0f);
-        i32 m_scene_menu_open = -1;
-        Float2U m_scene_menu_popup_position = Float2U(0.0f);
 
         // States for scene viewport.
 
@@ -945,56 +943,39 @@ namespace Luna
         Path capture_save_path;
 
         Float2 menu_pos = ImGui::GetCursorScreenPos();
-        GUI::GUIItemHandle file_menu_button = GUI::Button("File", RectF(menu_pos.x, menu_pos.y, 56.0f, 26.0f));
-        GUI::GUIItemHandle tools_menu_button = GUI::Button("Tools", RectF(menu_pos.x + 62.0f, menu_pos.y, 70.0f, 26.0f));
+        GUI::BeginMenuBar("Scene Editor Menu Bar", RectF(menu_pos.x, menu_pos.y, 138.0f, 30.0f));
+        GUI::BeginMenu("File");
+        GUI::GUIItemHandle save_item = GUI::MenuItem("Save");
+        GUI::EndMenu();
+        GUI::BeginMenu("Tools");
+        GUI::GUIItemHandle capture_item = GUI::MenuItem("Capture scene");
+        GUI::EndMenu();
+        GUI::EndMenuBar();
         ImGui::Dummy(Float2(138.0f, 30.0f));
-        if(GUI::IsItemClicked(file_menu_button))
+
+        if(GUI::IsItemClicked(save_item))
         {
-            m_scene_menu_open = m_scene_menu_open == 0 ? -1 : 0;
-            m_scene_menu_popup_position = Float2U(menu_pos.x, menu_pos.y + 30.0f);
-        }
-        if(GUI::IsItemClicked(tools_menu_button))
-        {
-            m_scene_menu_open = m_scene_menu_open == 1 ? -1 : 1;
-            m_scene_menu_popup_position = Float2U(menu_pos.x + 62.0f, menu_pos.y + 30.0f);
-        }
-        if(m_scene_menu_open == 0)
-        {
-            GUI::BeginPopup("Scene Editor File Menu", m_scene_menu_popup_position, GUI::GUISize::fixed(180.0f, 42.0f));
-            GUI::GUIItemHandle save_item = GUI::Selectable("Save");
-            GUI::EndPopup();
-            if(GUI::IsItemClicked(save_item))
+            lutry
             {
-                lutry
-                {
-                    luexp(Asset::save_asset(m_scene));
-                }
-                lucatch
-                {
-                    auto _ = Window::message_box(explain(luerr), "Failed to save scene", Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
-                }
-                m_scene_menu_open = -1;
+                luexp(Asset::save_asset(m_scene));
+            }
+            lucatch
+            {
+                auto _ = Window::message_box(explain(luerr), "Failed to save scene", Window::MessageBoxType::ok, Window::MessageBoxIcon::error);
             }
         }
-        else if(m_scene_menu_open == 1)
+        if(GUI::IsItemClicked(capture_item))
         {
-            GUI::BeginPopup("Scene Editor Tools Menu", m_scene_menu_popup_position, GUI::GUISize::fixed(180.0f, 42.0f));
-            GUI::GUIItemHandle capture_item = GUI::Selectable("Capture scene");
-            GUI::EndPopup();
-            if(GUI::IsItemClicked(capture_item))
+            Window::FileDialogFilter filter;
+            filter.name = "BMP File";
+            const c8* ext = "bmp";
+            filter.extensions = {&ext, 1};
+            auto r = Window::save_file_dialog("Save Capture File", {&filter, 1});
+            if(succeeded(r))
             {
-                Window::FileDialogFilter filter;
-                filter.name = "BMP File";
-                const c8* ext = "bmp";
-                filter.extensions = {&ext, 1};
-                auto r = Window::save_file_dialog("Save Capture File", {&filter, 1});
-                if(succeeded(r))
-                {
-                    capture_scene = true;
-                    capture_save_path = r.get();
-                    capture_save_path.replace_extension("bmp");
-                }
-                m_scene_menu_open = -1;
+                capture_scene = true;
+                capture_save_path = r.get();
+                capture_save_path.replace_extension("bmp");
             }
         }
 

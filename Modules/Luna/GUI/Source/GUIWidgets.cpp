@@ -311,6 +311,31 @@ namespace Luna
             return handle;
         }
 
+        LUNA_GUI_API GUIItemHandle BeginMenuBar(const c8* label, const RectF& rect, const GUILayoutDesc& desc)
+        {
+            GUIItemHandle handle;
+            GUIContext* ctx = require_current_context();
+            ctx->begin_container(GUINodeKind::menu_bar, label ? label : "MenuBar", GUISize::fixed(max(rect.width, 1.0f), max(rect.height, 1.0f)), &handle);
+            GUINode& node = ctx->m_build_desc.nodes.back();
+            GUILayoutDesc default_desc;
+            if(desc.padding.left == 0.0f && desc.padding.top == 0.0f && desc.padding.right == 0.0f && desc.padding.bottom == 0.0f &&
+                desc.gap == default_desc.gap &&
+                desc.main_axis_alignment == default_desc.main_axis_alignment &&
+                desc.cross_axis_alignment == default_desc.cross_axis_alignment)
+            {
+                node.layout_desc.padding = GUIEdgeInsets::xy(4.0f, 2.0f);
+                node.layout_desc.gap = 2.0f;
+                node.layout_desc.cross_axis_alignment = GUILayoutCrossAxisAlignment::center;
+            }
+            else
+            {
+                node.layout_desc = desc;
+            }
+            node.absolute_position = true;
+            node.position = Float2U(rect.offset_x, rect.offset_y);
+            return handle;
+        }
+
         LUNA_GUI_API void EndMenuBar()
         {
             require_current_context()->end_container();

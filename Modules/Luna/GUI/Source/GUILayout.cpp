@@ -88,9 +88,35 @@ namespace Luna
             case GUINodeKind::text:
             {
                 f32 w = max(text_width, 1.0f);
-                metrics.min_size = Float2U(min(w, 32.0f), font_size + 4.0f);
-                metrics.preferred_size = Float2U(w, font_size + 4.0f);
-                metrics.max_size = Float2U(F32_MAX, font_size + 4.0f);
+                f32 h = font_size + 4.0f;
+                f32 max_width = F32_MAX;
+                if(node.parent != U32_MAX)
+                {
+                    const GUINode& parent = m_submitted_desc.nodes[node.parent];
+                    if(parent.kind == GUINodeKind::tooltip)
+                    {
+                        f32 tooltip_width = parent.requested_size.width > 0.0f ? parent.requested_size.width : parent.tooltip_desc.max_width;
+                        if(tooltip_width <= 0.0f)
+                        {
+                            tooltip_width = m_frame_desc.surface_size.x;
+                        }
+                        tooltip_width = min(tooltip_width, max(m_frame_desc.surface_size.x, 1.0f));
+                        max_width = max(tooltip_width - parent.layout_desc.padding.left - parent.layout_desc.padding.right, 1.0f);
+                        VG::TextArrangeSection section;
+                        section.font_file = Font::get_default_font();
+                        section.font_index = 0;
+                        section.font_size = font_size;
+                        section.num_chars = node.text.size();
+                        auto arranged = VG::arrange_text(node.text.c_str(), node.text.size(), {&section, 1},
+                            RectF(0.0f, 0.0f, max_width, 100000.0f),
+                            VG::TextAlignment::begin, VG::TextAlignment::begin);
+                        w = max(arranged.bounding_rect.width, 1.0f);
+                        h = max(arranged.bounding_rect.height, h);
+                    }
+                }
+                metrics.min_size = Float2U(min(w, 32.0f), h);
+                metrics.preferred_size = Float2U(min(w, max_width), h);
+                metrics.max_size = Float2U(max_width, h);
                 break;
             }
             case GUINodeKind::button:
@@ -1142,7 +1168,25 @@ namespace Luna
                     f32 width = resolve_base_axis_size(child_node, metrics, true);
                     f32 height = resolve_base_axis_size(child_node, metrics, false);
                     Float2U position = child_node.position;
-                    if(child_node.kind == GUINodeKind::popup && child_node.popup_owner_id)
+                    if(child_node.kind == GUINodeKind::tooltip)
+                    {
+                        f32 max_width = child_node.tooltip_desc.max_width > 0.0f ? child_node.tooltip_desc.max_width : m_frame_desc.surface_size.x;
+                        width = min(max(width, 1.0f), min(max_width, max(m_frame_desc.surface_size.x, 1.0f)));
+                        height = min(max(height, 1.0f), max(m_frame_desc.surface_size.y, 1.0f));
+                        position.x = m_pointer_pos.x + child_node.tooltip_desc.offset.x;
+                        position.y = m_pointer_pos.y + child_node.tooltip_desc.offset.y;
+                        if(position.x + width > m_frame_desc.surface_size.x && m_pointer_pos.x - width - child_node.tooltip_desc.offset.x >= 0.0f)
+                        {
+                            position.x = m_pointer_pos.x - width - child_node.tooltip_desc.offset.x;
+                        }
+                        if(position.y + height > m_frame_desc.surface_size.y && m_pointer_pos.y - height - child_node.tooltip_desc.offset.y >= 0.0f)
+                        {
+                            position.y = m_pointer_pos.y - height - child_node.tooltip_desc.offset.y;
+                        }
+                        position.x = clamp(position.x, 0.0f, max(m_frame_desc.surface_size.x - width, 0.0f));
+                        position.y = clamp(position.y, 0.0f, max(m_frame_desc.surface_size.y - height, 0.0f));
+                    }
+                    else if(child_node.kind == GUINodeKind::popup && child_node.popup_owner_id)
                     {
                         u32 owner_index = find_submitted_node_index(child_node.popup_owner_id);
                         if(owner_index != U32_MAX)

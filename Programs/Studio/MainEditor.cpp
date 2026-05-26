@@ -48,98 +48,39 @@ namespace Luna
 
     void MainEditor::draw_main_menu_bar()
     {
-        GUI::GUILayoutDesc bar_layout;
-        bar_layout.gap = 2.0f;
-        bar_layout.cross_axis_alignment = GUI::GUILayoutCrossAxisAlignment::center;
-        bar_layout.padding = GUI::GUIEdgeInsets::xy(4.0f, 2.0f);
         GUI::SetNextItemLayout(GUI::GUILayoutStyle::fixed_height(34.0f));
-        GUI::BeginHLayout("Main Menu Bar", bar_layout);
-        GUI::GUIItemHandle file_menu = GUI::Button("File");
-        GUI::GUIItemHandle edit_menu = GUI::Button("Edit");
-        GUI::GUIItemHandle view_menu = GUI::Button("View");
-        GUI::EndHLayout();
+        GUI::BeginMenuBar("Main Menu Bar");
+        GUI::BeginMenu("File");
+        GUI::GUIItemHandle save_all_item = GUI::MenuItem("Save All");
+        GUI::EndMenu();
 
-        auto update_open_menu = [&](GUI::GUIItemHandle handle, i32 index) {
-            if(GUI::IsItemClicked(handle))
-            {
-                m_open_main_menu = (m_open_main_menu == index) ? -1 : index;
-                RectF rect = GUI::GetItemState(handle, GUI::GUIState::rect());
-                m_main_menu_popup_position = Float2U(rect.offset_x, rect.offset_y + rect.height + 2.0f);
-            }
-        };
-        update_open_menu(file_menu, 0);
-        update_open_menu(edit_menu, 1);
-        update_open_menu(view_menu, 2);
+        GUI::BeginMenu("Edit");
+        GUI::GUIItemHandle undo_item = GUI::MenuItem("Undo", "Ctrl+Z", false, can_undo());
+        GUI::GUIItemHandle redo_item = GUI::MenuItem("Redo", "Ctrl+Shift+Z", false, can_redo());
+        GUI::EndMenu();
 
-        if(m_open_main_menu == 0)
+        GUI::BeginMenu("View");
+        for(usize i = 0; i < 4; ++i)
         {
-            GUI::BeginPopup("File Menu", m_main_menu_popup_position, GUI::GUISize::fixed(180.0f, 42.0f));
-            GUI::GUIItemHandle save_all_item = GUI::Selectable("Save All");
-            GUI::EndPopup();
-            if(GUI::IsItemClicked(save_all_item))
-            {
-                auto _ = save_all();
-                m_open_main_menu = -1;
-            }
+            c8 buf[32];
+            snprintf(buf, 32, "Asset Browser %u", (u32)i);
+            GUI::MenuItem(buf, nullptr, &m_asset_browsers_enabled[i]);
         }
-        else if(m_open_main_menu == 1)
+        GUI::MenuItem("Memory Profiler", nullptr, &m_memory_profiler_window_enabled);
+        GUI::EndMenu();
+        GUI::EndMenuBar();
+
+        if(GUI::IsItemClicked(save_all_item))
         {
-            GUI::BeginPopup("Edit Menu", m_main_menu_popup_position, GUI::GUISize::fixed(220.0f, 68.0f));
-            GUI::GUIItemHandle undo_item;
-            GUI::GUIItemHandle redo_item;
-            if(can_undo())
-            {
-                undo_item = GUI::Selectable("Undo  Ctrl+Z");
-            }
-            else
-            {
-                GUI::Text("Undo  Ctrl+Z");
-            }
-            if(can_redo())
-            {
-                redo_item = GUI::Selectable("Redo  Ctrl+Shift+Z");
-            }
-            else
-            {
-                GUI::Text("Redo  Ctrl+Shift+Z");
-            }
-            GUI::EndPopup();
-            if(GUI::IsItemClicked(undo_item))
-            {
-                undo();
-                m_open_main_menu = -1;
-            }
-            if(GUI::IsItemClicked(redo_item))
-            {
-                redo();
-                m_open_main_menu = -1;
-            }
+            auto _ = save_all();
         }
-        else if(m_open_main_menu == 2)
+        if(GUI::IsItemClicked(undo_item))
         {
-            GUI::BeginPopup("View Menu", m_main_menu_popup_position, GUI::GUISize::fixed(240.0f, 160.0f));
-            GUI::GUIItemHandle browser_items[4];
-            for(usize i = 0; i < 4; ++i)
-            {
-                c8 buf[32];
-                snprintf(buf, 32, "Asset Browser %u", (u32)i);
-                browser_items[i] = GUI::Selectable(buf, m_asset_browsers_enabled[i]);
-            }
-            GUI::GUIItemHandle memory_profiler = GUI::Selectable("Memory Profiler", m_memory_profiler_window_enabled);
-            GUI::EndPopup();
-            for(usize i = 0; i < 4; ++i)
-            {
-                if(GUI::IsItemClicked(browser_items[i]))
-                {
-                    m_asset_browsers_enabled[i] = !m_asset_browsers_enabled[i];
-                    m_open_main_menu = -1;
-                }
-            }
-            if(GUI::IsItemClicked(memory_profiler))
-            {
-                m_memory_profiler_window_enabled = !m_memory_profiler_window_enabled;
-                m_open_main_menu = -1;
-            }
+            undo();
+        }
+        if(GUI::IsItemClicked(redo_item))
+        {
+            redo();
         }
     }
 

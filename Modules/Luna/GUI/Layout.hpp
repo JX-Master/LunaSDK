@@ -208,6 +208,14 @@ namespace Luna
             GUIPopupFlag flags = GUIPopupFlag::managed | GUIPopupFlag::close_on_outside_click | GUIPopupFlag::close_on_escape | GUIPopupFlag::close_on_blur;
         };
 
+        struct GUITooltipDesc
+        {
+            Float2U offset = Float2U(14.0f, 18.0f);
+            GUISize size;
+            f32 delay = 0.35f;
+            f32 max_width = 360.0f;
+        };
+
         enum class GUIDockPanelMode : u8
         {
             docking,

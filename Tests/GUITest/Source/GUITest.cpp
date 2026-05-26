@@ -76,7 +76,7 @@ namespace Luna
 
     struct FrameHandles
     {
-        GUI::GUIItemHandle tabs[10];
+        GUI::GUIItemHandle tabs[12];
         GUI::GUIItemHandle tree_nodes[8];
         GUI::GUIItemHandle primary_button;
         GUI::GUIItemHandle double_click_item;
@@ -107,6 +107,7 @@ namespace Luna
         "Layout",
         "Tables",
         "Drawing",
+        "Tooltips",
         "Popups",
         "State",
         "Trees",
@@ -443,6 +444,41 @@ namespace Luna
         GUI::EndPopup();
     }
 
+    void draw_tooltips_tab(App& app, FrameHandles& handles)
+    {
+        demo_section("Tooltip");
+        GUI::Text("Hover these controls to show text-only and custom overlay tooltips.");
+
+        GUI::GUIItemHandle button = GUI::Button("Hover for tooltip");
+        GUI::SetItemTooltip(button, "Tooltip content is built every frame but only rendered after the hover delay.");
+
+        GUI::GUITooltipDesc quick_desc;
+        quick_desc.delay = 0.0f;
+        GUI::GUIItemHandle instant = GUI::Selectable("Instant tooltip");
+        GUI::SetItemTooltip(instant, "This tooltip has zero delay and follows the pointer.", quick_desc);
+
+        GUI::GUITooltipDesc custom_desc;
+        custom_desc.delay = 0.2f;
+        custom_desc.max_width = 280.0f;
+        GUI::GUIItemHandle custom = GUI::Button("Hover for custom tooltip");
+        GUI::BeginTooltip(custom, "Custom Tooltip", custom_desc);
+        GUI::Text("Custom tooltip");
+        GUI::Text("Multiple nodes can be placed here.");
+        c8 state[96];
+        snprintf(state, 96, "Checkbox A: %s", app.checkbox_a ? "checked" : "unchecked");
+        GUI::Text(state);
+        GUI::EndTooltip();
+
+        GUI::Text("Tooltip over an absolute canvas hit-box:");
+        GUI::GUIItemHandle canvas = GUI::Image(nullptr, GUI::GUISize::fixed(260.0f, 72.0f));
+        RectF rect = GUI::GetItemState(canvas, GUI::GUIState::rect());
+        RectF hit_rect(rect.offset_x + 8.0f, rect.offset_y + 12.0f, 220.0f, 46.0f);
+        handles.canvas_hit = GUI::HitBox("Tooltip Canvas Hit", hit_rect);
+        GUI::DrawRect(hit_rect, GUI::IsItemHovered(handles.canvas_hit) ? Float4U(0.25f, 0.43f, 0.68f, 1.0f) : Float4U(0.14f, 0.21f, 0.30f, 1.0f), 6.0f);
+        GUI::DrawText(hit_rect, "Hover canvas region", Color::white(), 16.0f, GUI::GUITextAlignment::center);
+        GUI::SetItemTooltip(handles.canvas_hit, "Tooltips can attach to regular widgets or explicit hit boxes.");
+    }
+
     void draw_state_tab(App& app, FrameHandles& handles)
     {
         demo_section("State queries");
@@ -667,18 +703,21 @@ namespace Luna
             draw_drawing_tab(app, handles);
             break;
         case 5:
-            draw_popups_tab(app, handles);
+            draw_tooltips_tab(app, handles);
             break;
         case 6:
-            draw_state_tab(app, handles);
+            draw_popups_tab(app, handles);
             break;
         case 7:
-            draw_trees_tab(app, handles);
+            draw_state_tab(app, handles);
             break;
         case 8:
-            draw_tabs_tab(app);
+            draw_trees_tab(app, handles);
             break;
         case 9:
+            draw_tabs_tab(app);
+            break;
+        case 10:
             draw_drag_drop_tab(app, handles);
             break;
         default:

@@ -190,7 +190,7 @@ namespace Luna
 
         inline bool is_absolute_node(const GUINode& node)
         {
-            return node.absolute_position || node.kind == GUINodeKind::popup;
+            return node.absolute_position || node.kind == GUINodeKind::popup || node.kind == GUINodeKind::tooltip;
         }
 
         inline bool is_overlay_node(const GUINode& node)
@@ -945,6 +945,8 @@ namespace Luna
             HashMap<GUIID, DragDropPayloadStorage, GUIIDHash> m_current_drag_drop_deliveries;
             Vector<DragDropTargetScope> m_drag_drop_target_stack;
             GUIDragDropPayload m_drag_drop_payload_view;
+            GUIID m_tooltip_hovered_id = 0;
+            f64 m_tooltip_hover_start = 0.0;
             u64 m_generation = 0;
             f64 m_time = 0.0;
             Ref<VG::IShapeDrawList> m_shape_draw_list;
@@ -977,6 +979,7 @@ namespace Luna
             bool is_popup_open(GUIItemHandle popup) const;
             bool is_popup_open(GUIID id) const;
             bool popup_node_visible(const GUINode& node) const;
+            bool tooltip_node_visible(const GUINode& node) const;
             u32 find_submitted_node_index(GUIID id) const;
             void rebuild_popup_node_indices();
             void prune_popup_stack();
@@ -986,6 +989,8 @@ namespace Luna
             bool close_popups_for_pointer_down(const Float2U& pos);
             void open_menu_popup(GUIID menu_id);
             void update_menu_hover();
+            GUIItemHandle begin_tooltip(GUIItemHandle owner, const c8* label, const GUITooltipDesc& desc);
+            void end_tooltip();
             const Any* get_state(GUIItemHandle handle, const Name& key);
             void set_state(GUIItemHandle handle, const Name& key, const Any& value);
             void remove_state(GUIItemHandle handle, const Name& key);

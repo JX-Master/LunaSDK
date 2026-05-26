@@ -39,8 +39,6 @@ namespace Luna
         MemoryProfiler m_memory_profiler;
         usize m_memory_profiler_callback_handle;
         bool m_memory_profiler_window_enabled = false;
-        i32 m_open_main_menu = -1;
-        Float2U m_main_menu_popup_position = Float2U(0.0f);
 
         Ref<JobSystem::IJobScheduler> m_job_scheduler;
 
