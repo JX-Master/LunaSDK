@@ -788,6 +788,10 @@ namespace Luna
         {
             GUIID ret = 0;
             const GUINode& node = m_submitted_desc.nodes[node_index];
+            if(node.kind == GUINodeKind::popup && !popup_node_visible(node))
+            {
+                return 0;
+            }
             const RectF& rect = m_layouts[node_index].rect;
             const RectF& clip = m_layouts[node_index].clip_rect;
             if(node.kind == GUINodeKind::tab_item)
@@ -1131,6 +1135,16 @@ namespace Luna
                     m_pointer_pos = e.position;
                     m_active_float_component = U32_MAX;
                     GUIID old_focused_id = m_focused_id;
+                    if(close_popups_for_pointer_down(e.position))
+                    {
+                        if(old_focused_id)
+                        {
+                            input_text_clear_selection(get_or_create_persistent_state(old_focused_id));
+                        }
+                        m_active_id = 0;
+                        m_active_float_component = U32_MAX;
+                        continue;
+                    }
                     if(e.button != GUIPointerButton::left)
                     {
                         GUIID target = hit_test(e.position);
@@ -1829,6 +1843,14 @@ namespace Luna
                 }
                 else if(e.type == GUIInputEventType::key_down)
                 {
+                    if(e.key == GUIKey::esc && !m_open_popup_stack.empty())
+                    {
+                        if(test_flags(m_open_popup_stack.back().flags, GUIPopupFlag::close_on_escape))
+                        {
+                            close_current_popup();
+                        }
+                        continue;
+                    }
                     if(!m_focused_id) continue;
                     for(GUINode& node : m_submitted_desc.nodes)
                     {
@@ -1992,6 +2014,14 @@ namespace Luna
                     m_active_dock_split_space_id = 0;
                     m_active_dock_split_node = U32_MAX;
                     close_combo_dropdowns_except(0);
+                    for(usize i = 0; i < m_open_popup_stack.size(); ++i)
+                    {
+                        if(test_flags(m_open_popup_stack[i].flags, GUIPopupFlag::close_on_blur))
+                        {
+                            close_popup_stack_from(i);
+                            break;
+                        }
+                    }
                     clear_drag_drop();
                 }
             }
@@ -2063,6 +2093,8 @@ namespace Luna
                 m_submitted_desc = desc;
                 m_layouts.clear();
                 m_layouts.resize(m_submitted_desc.nodes.size());
+                rebuild_popup_node_indices();
+                prune_popup_stack();
                 HashSet<GUIID> ids;
                 bool open_combo_submitted = false;
                 for(const GUINode& node : m_submitted_desc.nodes)
@@ -2113,6 +2145,11 @@ namespace Luna
                         {
                             persistent.open = false;
                         }
+                        result.states.insert_or_assign(Name("gui.open"), Any(persistent.open));
+                    }
+                    else if(node.kind == GUINodeKind::popup)
+                    {
+                        persistent.open = popup_node_visible(node);
                         result.states.insert_or_assign(Name("gui.open"), Any(persistent.open));
                     }
                     else if(node.kind == GUINodeKind::tab_item)
@@ -2227,6 +2264,11 @@ namespace Luna
                     }
                     else if(node.kind == GUINodeKind::combo)
                     {
+                        result.states.insert_or_assign(Name("gui.open"), Any(persistent.open));
+                    }
+                    else if(node.kind == GUINodeKind::popup)
+                    {
+                        persistent.open = popup_node_visible(node);
                         result.states.insert_or_assign(Name("gui.open"), Any(persistent.open));
                     }
                     else if(node.kind == GUINodeKind::tab_item)

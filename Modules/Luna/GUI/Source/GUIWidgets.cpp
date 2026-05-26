@@ -246,21 +246,46 @@ namespace Luna
 
         LUNA_GUI_API GUIItemHandle BeginPopup(const c8* label, const Float2U& position, const GUISize& size)
         {
-            GUIItemHandle handle;
-            GUIContext* ctx = require_current_context();
-            ctx->begin_container(GUINodeKind::popup, label ? label : "Popup", size, &handle);
-            GUINode& node = ctx->m_build_desc.nodes.back();
-            node.render_layer = GUIRenderLayer::overlay;
-            node.absolute_position = true;
-            node.position = position;
-            node.layout_desc.padding = GUIEdgeInsets::all(6.0f);
-            node.layout_desc.gap = 2.0f;
-            return handle;
+            GUIPopupDesc desc;
+            desc.position = position;
+            desc.size = size;
+            desc.flags = GUIPopupFlag::none;
+            return require_current_context()->begin_popup(label, desc);
+        }
+
+        LUNA_GUI_API GUIItemHandle BeginPopup(const c8* label, const GUIPopupDesc& desc)
+        {
+            return require_current_context()->begin_popup(label, desc);
         }
 
         LUNA_GUI_API void EndPopup()
         {
-            require_current_context()->end_container();
+            require_current_context()->end_popup();
+        }
+
+        LUNA_GUI_API void OpenPopup(GUIItemHandle popup)
+        {
+            require_current_context()->open_popup(popup);
+        }
+
+        LUNA_GUI_API void ClosePopup(GUIItemHandle popup)
+        {
+            require_current_context()->close_popup(popup);
+        }
+
+        LUNA_GUI_API void CloseCurrentPopup()
+        {
+            require_current_context()->close_current_popup();
+        }
+
+        LUNA_GUI_API void CloseAllPopups()
+        {
+            require_current_context()->close_all_popups();
+        }
+
+        LUNA_GUI_API bool IsPopupOpen(GUIItemHandle popup)
+        {
+            return require_current_context()->is_popup_open(popup);
         }
 
         LUNA_GUI_API GUIItemHandle BeginTabBar(const c8* label, GUITabBarFlag flags)

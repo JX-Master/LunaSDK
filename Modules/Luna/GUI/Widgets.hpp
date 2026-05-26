@@ -46,7 +46,13 @@ namespace Luna
         LUNA_GUI_API GUIItemHandle BeginWindow(const c8* label, bool* open, const GUISize& size = GUISize());
         LUNA_GUI_API void EndWindow();
         LUNA_GUI_API GUIItemHandle BeginPopup(const c8* label, const Float2U& position, const GUISize& size = GUISize());
+        LUNA_GUI_API GUIItemHandle BeginPopup(const c8* label, const GUIPopupDesc& desc);
         LUNA_GUI_API void EndPopup();
+        LUNA_GUI_API void OpenPopup(GUIItemHandle popup);
+        LUNA_GUI_API void ClosePopup(GUIItemHandle popup);
+        LUNA_GUI_API void CloseCurrentPopup();
+        LUNA_GUI_API void CloseAllPopups();
+        LUNA_GUI_API bool IsPopupOpen(GUIItemHandle popup);
         LUNA_GUI_API GUIItemHandle BeginTabBar(const c8* label, GUITabBarFlag flags = GUITabBarFlag::fitting_shrink);
         LUNA_GUI_API void EndTabBar();
         LUNA_GUI_API bool BeginTabItem(const c8* label, bool* open = nullptr, GUITabItemFlag flags = GUITabItemFlag::none);

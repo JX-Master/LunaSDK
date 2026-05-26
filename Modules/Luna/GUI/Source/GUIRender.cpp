@@ -644,6 +644,10 @@ namespace Luna
         void GUIContext::render_node(u32 node_index)
         {
             const GUINode& node = m_submitted_desc.nodes[node_index];
+            if(node.kind == GUINodeKind::popup && !popup_node_visible(node))
+            {
+                return;
+            }
             const RectF& rect = m_layouts[node_index].rect;
             const RectF& clip = m_layouts[node_index].clip_rect;
             IDrawList* previous_draw_list = m_active_draw_list;

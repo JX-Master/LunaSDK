@@ -82,6 +82,12 @@ namespace Luna
         GUI::GUIItemHandle open_window_button;
         GUI::GUIItemHandle popup_action;
         GUI::GUIItemHandle popup_close;
+        GUI::GUIItemHandle managed_popup_button;
+        GUI::GUIItemHandle managed_popup;
+        GUI::GUIItemHandle managed_popup_action;
+        GUI::GUIItemHandle nested_popup_button;
+        GUI::GUIItemHandle nested_popup;
+        GUI::GUIItemHandle nested_popup_close;
         GUI::GUIItemHandle canvas_hit;
         GUI::GUIItemHandle drag_number_target;
         GUI::GUIItemHandle drag_text_target;
@@ -389,10 +395,28 @@ namespace Luna
     void draw_popups_tab(App& app, FrameHandles& handles)
     {
         demo_section("Popups and context menus");
-        GUI::Text("Right-click the selectable below, or click the button to open a popup.");
+        GUI::Text("Right-click the selectable below, or click the buttons to open legacy and stack-managed popups.");
         handles.right_click_item = GUI::Selectable("Right click me", app.popup_open);
-        handles.primary_button = GUI::Button("Open Popup");
+        handles.primary_button = GUI::Button("Open Legacy Popup");
+        handles.managed_popup_button = GUI::Button("Open Stack Popup");
         GUI::Text(app.popup_text.c_str());
+
+        GUI::GUIPopupDesc popup_desc;
+        popup_desc.position = app.popup_position;
+        popup_desc.size = GUI::GUISize::fixed(220.0f, 100.0f);
+        handles.managed_popup = GUI::BeginPopup("Managed Popup", popup_desc);
+        GUI::Text("Stack-managed popup");
+        handles.managed_popup_action = GUI::Selectable("Action");
+        handles.nested_popup_button = GUI::Selectable("Open child popup");
+
+        GUI::GUIPopupDesc nested_desc;
+        nested_desc.position = Float2U(app.popup_position.x + 180.0f, app.popup_position.y + 34.0f);
+        nested_desc.size = GUI::GUISize::fixed(190.0f, 72.0f);
+        handles.nested_popup = GUI::BeginPopup("Nested Managed Popup", nested_desc);
+        GUI::Text("Nested overlay layer");
+        handles.nested_popup_close = GUI::Selectable("Close child");
+        GUI::EndPopup();
+        GUI::EndPopup();
     }
 
     void draw_state_tab(App& app, FrameHandles& handles)
@@ -785,6 +809,27 @@ namespace Luna
                         app.popup_open = true;
                         app.popup_position = GUI::GetPointerPosition();
                         app.popup_text = "Popup opened by button";
+                    }
+                    if(GUI::IsItemClicked(handles.managed_popup_button))
+                    {
+                        app.popup_position = GUI::GetPointerPosition();
+                        app.popup_text = "Stack popup opened";
+                        GUI::OpenPopup(handles.managed_popup);
+                    }
+                    if(GUI::IsItemClicked(handles.managed_popup_action))
+                    {
+                        app.popup_text = "Stack popup action clicked";
+                        GUI::CloseCurrentPopup();
+                    }
+                    if(GUI::IsItemClicked(handles.nested_popup_button))
+                    {
+                        app.popup_text = "Nested popup opened";
+                        GUI::OpenPopup(handles.nested_popup);
+                    }
+                    if(GUI::IsItemClicked(handles.nested_popup_close))
+                    {
+                        app.popup_text = "Nested popup closed";
+                        GUI::ClosePopup(handles.nested_popup);
                     }
                     if(GUI::IsItemRightClicked(handles.right_click_item))
                     {

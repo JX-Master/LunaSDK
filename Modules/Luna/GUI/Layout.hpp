@@ -191,6 +191,23 @@ namespace Luna
             button = 0x10
         };
 
+        enum class GUIPopupFlag : u32
+        {
+            none = 0x00,
+            managed = 0x01,
+            close_on_outside_click = 0x02,
+            close_on_escape = 0x04,
+            close_on_blur = 0x08,
+            modal = 0x10
+        };
+
+        struct GUIPopupDesc
+        {
+            Float2U position = Float2U(0.0f);
+            GUISize size;
+            GUIPopupFlag flags = GUIPopupFlag::managed | GUIPopupFlag::close_on_outside_click | GUIPopupFlag::close_on_escape | GUIPopupFlag::close_on_blur;
+        };
+
         enum class GUIDockPanelMode : u8
         {
             docking,

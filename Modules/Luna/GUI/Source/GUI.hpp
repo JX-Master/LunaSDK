@@ -516,6 +516,13 @@ namespace Luna
             Name type;
         };
 
+        struct PopupStackEntry
+        {
+            GUIID id = 0;
+            GUIID parent_id = 0;
+            GUIPopupFlag flags = GUIPopupFlag::none;
+        };
+
         struct PersistentItemState
         {
             bool open = true;
@@ -891,6 +898,9 @@ namespace Luna
             f32 m_active_dock_split_start_ratio = 0.5f;
             Float2U m_active_dock_split_start_pos = Float2U(0.0f);
             GUIID m_open_combo_id = 0;
+            Vector<PopupStackEntry> m_open_popup_stack;
+            Vector<GUIID> m_popup_build_stack;
+            HashMap<GUIID, u32, GUIIDHash> m_popup_node_indices;
             GUIID m_active_tab_bar_id = 0;
             GUIID m_active_tab_item_id = 0;
             bool m_active_tab_close = false;
@@ -935,6 +945,21 @@ namespace Luna
             GUIItemHandle add_node(GUINodeKind kind, const c8* text, bool interactive);
             void begin_container(GUINodeKind kind, const c8* label, const GUISize& size, GUIItemHandle* out_handle);
             void end_container();
+            GUIItemHandle begin_popup(const c8* label, const GUIPopupDesc& desc);
+            void end_popup();
+            void open_popup(GUIItemHandle popup);
+            void close_popup(GUIItemHandle popup);
+            void close_current_popup();
+            void close_all_popups();
+            bool is_popup_open(GUIItemHandle popup) const;
+            bool is_popup_open(GUIID id) const;
+            bool popup_node_visible(const GUINode& node) const;
+            void rebuild_popup_node_indices();
+            void prune_popup_stack();
+            void close_popup_stack_from(usize index);
+            i32 popup_stack_index(GUIID id) const;
+            i32 popup_level_at_pos(const Float2U& pos) const;
+            bool close_popups_for_pointer_down(const Float2U& pos);
             const Any* get_state(GUIItemHandle handle, const Name& key);
             void set_state(GUIItemHandle handle, const Name& key, const Any& value);
             void remove_state(GUIItemHandle handle, const Name& key);

@@ -72,6 +72,8 @@ namespace Luna
             bool* dock_panel_open = nullptr;
             GUITabBarFlag tab_bar_flags = GUITabBarFlag::none;
             GUITabItemFlag tab_item_flags = GUITabItemFlag::none;
+            GUIPopupFlag popup_flags = GUIPopupFlag::none;
+            GUIID popup_parent_id = 0;
             GUITableDesc table_desc;
             bool has_table_cell_color = false;
             Float4U table_cell_color = Float4U(0.0f);
