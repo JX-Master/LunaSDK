@@ -232,6 +232,40 @@ namespace Luna
             }
         }
 
+        bool GUIContext::hit_test_combo_dropdown(const Float2U& pos, GUIID& out_id, i32& out_item) const
+        {
+            if(!m_open_combo_id || m_layouts.size() != m_submitted_desc.nodes.size()) return false;
+            for(usize i = m_submitted_desc.nodes.size(); i > 0; --i)
+            {
+                u32 node_index = (u32)(i - 1);
+                const GUINode& node = m_submitted_desc.nodes[node_index];
+                if(node.kind != GUINodeKind::combo || node.id != m_open_combo_id) continue;
+                auto iter = m_persistent_states.find(node.id);
+                if(iter == m_persistent_states.end() || !iter->second.open) continue;
+                RectF dropdown = combo_dropdown_rect(node, m_layouts[node_index].rect, m_frame_desc.surface_size);
+                if(!point_in_rect(pos, dropdown)) continue;
+                out_id = node.id;
+                out_item = combo_dropdown_item_at(node, dropdown, pos);
+                return true;
+            }
+            return false;
+        }
+
+        void GUIContext::close_combo_dropdowns_except(GUIID keep_id)
+        {
+            if(m_open_combo_id && m_open_combo_id != keep_id)
+            {
+                get_or_create_persistent_state(m_open_combo_id).open = false;
+            }
+            m_open_combo_id = keep_id;
+            for(const GUINode& node : m_submitted_desc.nodes)
+            {
+                if(node.kind != GUINodeKind::combo) continue;
+                PersistentItemState& state = get_or_create_persistent_state(node.id);
+                state.open = node.id == keep_id;
+            }
+        }
+
         GUIID GUIContext::hit_test_node(u32 node_index, const Float2U& pos, bool filter_kind, GUINodeKind kind) const
         {
             GUIID ret = 0;
@@ -427,6 +461,30 @@ namespace Luna
                         }
                         continue;
                     }
+                    GUIID dropdown_combo = 0;
+                    i32 dropdown_item = -1;
+                    if(hit_test_combo_dropdown(e.position, dropdown_combo, dropdown_item))
+                    {
+                        m_active_id = dropdown_combo;
+                        m_focused_id = dropdown_combo;
+                        if(old_focused_id && old_focused_id != dropdown_combo)
+                        {
+                            input_text_clear_selection(get_or_create_persistent_state(old_focused_id));
+                        }
+                        PersistentItemState& state = get_or_create_persistent_state(dropdown_combo);
+                        state.pointer_down = true;
+                        state.active = true;
+                        state.focused = true;
+                        continue;
+                    }
+                    if(m_open_combo_id)
+                    {
+                        GUIID target = hit_test(e.position);
+                        if(target != m_open_combo_id)
+                        {
+                            close_combo_dropdowns_except(0);
+                        }
+                    }
                     GUIID scrollbar_id = 0;
                     bool scrollbar_vertical = false;
                     RectF scrollbar_thumb;
@@ -536,6 +594,43 @@ namespace Luna
                     {
                         continue;
                     }
+                    GUIID dropdown_combo = 0;
+                    i32 dropdown_item = -1;
+                    if(hit_test_combo_dropdown(e.position, dropdown_combo, dropdown_item))
+                    {
+                        if(dropdown_combo && dropdown_combo == m_active_id)
+                        {
+                            ItemResult& result = get_or_create_current_result(dropdown_combo);
+                            result.states.insert_or_assign(Name("gui.clicked"), Any(true));
+                            PersistentItemState& state = get_or_create_persistent_state(dropdown_combo);
+                            bool dbl = (m_time - state.last_click_time) <= 0.4;
+                            result.states.insert_or_assign(Name("gui.double_clicked"), Any(dbl));
+                            state.last_click_time = m_time;
+                            for(GUINode& node : m_submitted_desc.nodes)
+                            {
+                                if(node.id != dropdown_combo || node.kind != GUINodeKind::combo || !node.i32_value) continue;
+                                if(dropdown_item >= 0 && (usize)dropdown_item < node.items.size())
+                                {
+                                    if(*node.i32_value != dropdown_item)
+                                    {
+                                        *node.i32_value = dropdown_item;
+                                        result.states.insert_or_assign(Name("gui.value_changed"), Any(true));
+                                    }
+                                }
+                                break;
+                            }
+                            close_combo_dropdowns_except(0);
+                        }
+                        if(m_active_id)
+                        {
+                            PersistentItemState& state = get_or_create_persistent_state(m_active_id);
+                            state.pointer_down = false;
+                            state.active = false;
+                        }
+                        m_active_id = 0;
+                        m_active_float_component = U32_MAX;
+                        continue;
+                    }
                     if(m_active_scrollbar_id)
                     {
                         PersistentItemState& state = get_or_create_persistent_state(m_active_scrollbar_id);
@@ -586,8 +681,17 @@ namespace Luna
                             }
                             else if(node.kind == GUINodeKind::combo && node.i32_value && !node.items.empty())
                             {
-                                *node.i32_value = (*node.i32_value + 1) % (i32)node.items.size();
-                                result.states.insert_or_assign(Name("gui.value_changed"), Any(true));
+                                state.open = !state.open;
+                                if(state.open)
+                                {
+                                    close_combo_dropdowns_except(node.id);
+                                    state.open = true;
+                                }
+                                else if(m_open_combo_id == node.id)
+                                {
+                                    m_open_combo_id = 0;
+                                }
+                                result.states.insert_or_assign(Name("gui.open"), Any(state.open));
                             }
                             else if(window_has_title_bar(node) && node.bool_value)
                             {
@@ -619,6 +723,12 @@ namespace Luna
                 {
                     m_pointer_inside = true;
                     m_pointer_pos = e.position;
+                    GUIID dropdown_combo = 0;
+                    i32 dropdown_item = -1;
+                    if(hit_test_combo_dropdown(e.position, dropdown_combo, dropdown_item))
+                    {
+                        continue;
+                    }
                     GUIID scroll_target = 0;
                     bool scrollbar_vertical = false;
                     RectF scrollbar_thumb;
@@ -812,18 +922,23 @@ namespace Luna
                     m_active_scrollbar_id = 0;
                     m_active_scrollbar_vertical = false;
                     m_active_scrollbar_grab_offset = 0.0f;
+                    close_combo_dropdowns_except(0);
                 }
             }
             m_input_events.clear();
 
             if(m_pointer_inside)
             {
+                GUIID combo_id = 0;
+                i32 combo_item = -1;
                 GUIID scrollbar_id = 0;
                 bool scrollbar_vertical = false;
                 RectF scrollbar_thumb;
-                m_hovered_id = hit_test_scrollbar(m_pointer_pos, scrollbar_id, scrollbar_vertical, scrollbar_thumb) ?
-                    scrollbar_id :
-                    hit_test(m_pointer_pos);
+                m_hovered_id = hit_test_combo_dropdown(m_pointer_pos, combo_id, combo_item) ?
+                    combo_id :
+                    (hit_test_scrollbar(m_pointer_pos, scrollbar_id, scrollbar_vertical, scrollbar_thumb) ?
+                        scrollbar_id :
+                        hit_test(m_pointer_pos));
             }
             else
             {
@@ -840,6 +955,7 @@ namespace Luna
                 m_layouts.clear();
                 m_layouts.resize(m_submitted_desc.nodes.size());
                 HashSet<GUIID> ids;
+                bool open_combo_submitted = false;
                 for(const GUINode& node : m_submitted_desc.nodes)
                 {
                     if(!node.interactive) continue;
@@ -859,10 +975,27 @@ namespace Luna
                     {
                         result.states.insert_or_assign(Name("gui.open"), Any(persistent.open));
                     }
+                    else if(node.kind == GUINodeKind::combo)
+                    {
+                        if(node.id == m_open_combo_id)
+                        {
+                            open_combo_submitted = true;
+                            persistent.open = true;
+                        }
+                        else
+                        {
+                            persistent.open = false;
+                        }
+                        result.states.insert_or_assign(Name("gui.open"), Any(persistent.open));
+                    }
                     else if(node.kind == GUINodeKind::input_text && node.string_value)
                     {
                         persistent.text_cursor = clamp_utf8_cursor(*node.string_value, persistent.text_cursor);
                     }
+                }
+                if(m_open_combo_id && !open_combo_submitted)
+                {
+                    m_open_combo_id = 0;
                 }
                 RectF root_rect(0.0f, 0.0f, m_frame_desc.surface_size.x, m_frame_desc.surface_size.y);
                 m_layout_dirty = false;
@@ -877,12 +1010,16 @@ namespace Luna
                     layout_node(0, root_rect, root_rect);
                     if(m_pointer_inside)
                     {
+                        GUIID combo_id = 0;
+                        i32 combo_item = -1;
                         GUIID scrollbar_id = 0;
                         bool scrollbar_vertical = false;
                         RectF scrollbar_thumb;
-                        m_hovered_id = hit_test_scrollbar(m_pointer_pos, scrollbar_id, scrollbar_vertical, scrollbar_thumb) ?
-                            scrollbar_id :
-                            hit_test(m_pointer_pos);
+                        m_hovered_id = hit_test_combo_dropdown(m_pointer_pos, combo_id, combo_item) ?
+                            combo_id :
+                            (hit_test_scrollbar(m_pointer_pos, scrollbar_id, scrollbar_vertical, scrollbar_thumb) ?
+                                scrollbar_id :
+                                hit_test(m_pointer_pos));
                     }
                 }
                 for(const GUINode& node : m_submitted_desc.nodes)
@@ -894,6 +1031,10 @@ namespace Luna
                     result.states.insert_or_assign(Name("gui.active"), Any(node.id == m_active_id || persistent.active));
                     result.states.insert_or_assign(Name("gui.focused"), Any(node.id == m_focused_id));
                     if(node.kind == GUINodeKind::collapsing_header)
+                    {
+                        result.states.insert_or_assign(Name("gui.open"), Any(persistent.open));
+                    }
+                    else if(node.kind == GUINodeKind::combo)
                     {
                         result.states.insert_or_assign(Name("gui.open"), Any(persistent.open));
                     }

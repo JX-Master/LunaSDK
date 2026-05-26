@@ -147,9 +147,55 @@ namespace Luna
             return clamp((u32)node.f32_value_count, 1u, 4u);
         }
 
+        inline f32 combo_label_width(const GUINode& node, const RectF& rect)
+        {
+            return min(max((f32)node.text.size() * 8.0f + 8.0f, 80.0f), rect.width * 0.45f);
+        }
+
+        inline RectF combo_value_rect(const GUINode& node, const RectF& rect)
+        {
+            f32 label_w = combo_label_width(node, rect);
+            return RectF(rect.offset_x + label_w, rect.offset_y, max(rect.width - label_w, 1.0f), rect.height);
+        }
+
+        inline f32 combo_item_height()
+        {
+            return 26.0f;
+        }
+
+        inline RectF combo_dropdown_rect(const GUINode& node, const RectF& rect, const Float2U& surface_size)
+        {
+            RectF value = combo_value_rect(node, rect);
+            f32 item_height = combo_item_height();
+            f32 dropdown_width = max(value.width, 120.0f);
+            f32 dropdown_height = max((f32)node.items.size() * item_height, item_height);
+            dropdown_width = min(dropdown_width, max(surface_size.x, 1.0f));
+            dropdown_height = min(dropdown_height, max(surface_size.y, item_height));
+            f32 x = min(value.offset_x, max(surface_size.x - dropdown_width, 0.0f));
+            f32 y = value.offset_y + value.height + 2.0f;
+            if(y + dropdown_height > surface_size.y && value.offset_y - dropdown_height - 2.0f >= 0.0f)
+            {
+                y = value.offset_y - dropdown_height - 2.0f;
+            }
+            y = min(y, max(surface_size.y - dropdown_height, 0.0f));
+            return RectF(x, y, dropdown_width, dropdown_height);
+        }
+
+        inline i32 combo_dropdown_item_at(const GUINode& node, const RectF& dropdown_rect, const Float2U& pos)
+        {
+            if(!point_in_rect(pos, dropdown_rect) || node.items.empty()) return -1;
+            i32 index = (i32)((pos.y - dropdown_rect.offset_y) / combo_item_height());
+            return index >= 0 && (usize)index < node.items.size() ? index : -1;
+        }
+
         inline bool is_absolute_node(const GUINode& node)
         {
             return node.absolute_position || node.kind == GUINodeKind::popup;
+        }
+
+        inline bool is_overlay_node(const GUINode& node)
+        {
+            return node.render_layer == GUIRenderLayer::overlay;
         }
 
         inline RectF window_close_rect(const RectF& window_rect)
@@ -540,10 +586,13 @@ namespace Luna
             GUIID m_active_scrollbar_id = 0;
             bool m_active_scrollbar_vertical = false;
             f32 m_active_scrollbar_grab_offset = 0.0f;
+            GUIID m_open_combo_id = 0;
             u64 m_generation = 0;
             f64 m_time = 0.0;
             Ref<VG::IShapeDrawList> m_shape_draw_list;
-            Ref<IDrawList> m_gui_draw_list;
+            Ref<IDrawList> m_main_draw_list;
+            Ref<IDrawList> m_overlay_draw_list;
+            IDrawList* m_active_draw_list = nullptr;
             Ref<VG::IShapeRenderer> m_shape_renderer;
             Ref<VG::IFontAtlas> m_font_atlas;
 
@@ -584,6 +633,8 @@ namespace Luna
             void clamp_scroll_state(GUIID id);
             bool hit_test_scrollbar(const Float2U& pos, GUIID& out_id, bool& out_vertical, RectF& out_thumb_rect) const;
             void update_scrollbar_from_pointer(const Float2U& pos);
+            bool hit_test_combo_dropdown(const Float2U& pos, GUIID& out_id, i32& out_item) const;
+            void close_combo_dropdowns_except(GUIID keep_id);
             GUIID hit_test_node(u32 node_index, const Float2U& pos, bool filter_kind, GUINodeKind kind) const;
             GUIID hit_test(const Float2U& pos) const;
             GUIID hit_test_node_kind(const Float2U& pos, GUINodeKind kind) const;
@@ -594,6 +645,7 @@ namespace Luna
             bool update_input_text_selection_from_pointer(GUIID id, const Float2U& pos);
             void process_input_events();
             void render_node(u32 node_index);
+            void render_combo_dropdown(const GUINode& node, const RectF& rect);
             void render_scrollbars(u32 node_index);
             void render_rect(const RectF& rect, const RectF& clip_rect, const Float4U& color, f32 radius, RHI::ITexture* texture = nullptr);
             void render_circle(const RectF& rect, const RectF& clip_rect, const Float4U& color);

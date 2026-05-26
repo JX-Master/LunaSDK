@@ -50,12 +50,12 @@ namespace Luna
         {
             RectF r = to_vg_rect(rect);
             RectF c = to_vg_rect(clip_rect);
-            DrawListState state = m_gui_draw_list->get_state();
-            state.shape_buffer = m_gui_draw_list->get_shape_buffer();
+            DrawListState state = m_active_draw_list->get_state();
+            state.shape_buffer = m_active_draw_list->get_shape_buffer();
             state.texture = texture;
             state.clip_rect = c;
-            u32 pop_id = m_gui_draw_list->push_state(&state);
-            auto& points = m_gui_draw_list->get_shape_buffer()->get_shape_points(true);
+            u32 pop_id = m_active_draw_list->push_state(&state);
+            auto& points = m_active_draw_list->get_shape_buffer()->get_shape_points(true);
             u32 begin = (u32)points.size();
             if(radius > 0.0f)
             {
@@ -66,32 +66,32 @@ namespace Luna
                 VG::ShapeBuilder::add_rectangle_filled(points, 0.0f, 0.0f, r.width, r.height);
             }
             u32 end = (u32)points.size();
-            m_gui_draw_list->add_shape(begin, end - begin,
+            m_active_draw_list->add_shape(begin, end - begin,
                 Float2U(r.offset_x, r.offset_y), Float2U(r.offset_x + r.width, r.offset_y + r.height),
                 Float2U(0.0f, 0.0f), Float2U(r.width, r.height),
                 color, Float2U(0.0f, 0.0f), Float2U(1.0f, 1.0f));
-            m_gui_draw_list->pop_state(pop_id);
+            m_active_draw_list->pop_state(pop_id);
         }
 
         void GUIContext::render_circle(const RectF& rect, const RectF& clip_rect, const Float4U& color)
         {
             RectF r = to_vg_rect(rect);
             RectF c = to_vg_rect(clip_rect);
-            DrawListState state = m_gui_draw_list->get_state();
-            state.shape_buffer = m_gui_draw_list->get_shape_buffer();
+            DrawListState state = m_active_draw_list->get_state();
+            state.shape_buffer = m_active_draw_list->get_shape_buffer();
             state.texture = nullptr;
             state.clip_rect = c;
-            u32 pop_id = m_gui_draw_list->push_state(&state);
-            auto& points = m_gui_draw_list->get_shape_buffer()->get_shape_points(true);
+            u32 pop_id = m_active_draw_list->push_state(&state);
+            auto& points = m_active_draw_list->get_shape_buffer()->get_shape_points(true);
             u32 begin = (u32)points.size();
             f32 radius = min(r.width, r.height) * 0.5f;
             VG::ShapeBuilder::add_circle_filled(points, r.width * 0.5f, r.height * 0.5f, radius);
             u32 end = (u32)points.size();
-            m_gui_draw_list->add_shape(begin, end - begin,
+            m_active_draw_list->add_shape(begin, end - begin,
                 Float2U(r.offset_x, r.offset_y), Float2U(r.offset_x + r.width, r.offset_y + r.height),
                 Float2U(0.0f, 0.0f), Float2U(r.width, r.height),
                 color, Float2U(0.0f, 0.0f), Float2U(1.0f, 1.0f));
-            m_gui_draw_list->pop_state(pop_id);
+            m_active_draw_list->pop_state(pop_id);
         }
 
         void GUIContext::render_line_segment(const Float2U& begin, const Float2U& end, const RectF& clip_rect, const Float4U& color, f32 width)
@@ -106,44 +106,44 @@ namespace Luna
                 max(dy + margin * 2.0f, 1.0f));
             RectF r = to_vg_rect(bounds);
             RectF c = to_vg_rect(clip_rect);
-            DrawListState state = m_gui_draw_list->get_state();
-            state.shape_buffer = m_gui_draw_list->get_shape_buffer();
+            DrawListState state = m_active_draw_list->get_state();
+            state.shape_buffer = m_active_draw_list->get_shape_buffer();
             state.texture = nullptr;
             state.clip_rect = c;
-            u32 pop_id = m_gui_draw_list->push_state(&state);
-            auto& points = m_gui_draw_list->get_shape_buffer()->get_shape_points(true);
+            u32 pop_id = m_active_draw_list->push_state(&state);
+            auto& points = m_active_draw_list->get_shape_buffer()->get_shape_points(true);
             u32 shape_begin = (u32)points.size();
             Float2U p1(begin.x - bounds.offset_x, bounds.height - (begin.y - bounds.offset_y));
             Float2U p2(end.x - bounds.offset_x, bounds.height - (end.y - bounds.offset_y));
             VG::ShapeBuilder::add_line(points, p1.x, p1.y, p2.x, p2.y, width);
             u32 shape_end = (u32)points.size();
-            m_gui_draw_list->add_shape(shape_begin, shape_end - shape_begin,
+            m_active_draw_list->add_shape(shape_begin, shape_end - shape_begin,
                 Float2U(r.offset_x, r.offset_y), Float2U(r.offset_x + r.width, r.offset_y + r.height),
                 Float2U(0.0f, 0.0f), Float2U(r.width, r.height),
                 color, Float2U(0.0f, 0.0f), Float2U(1.0f, 1.0f));
-            m_gui_draw_list->pop_state(pop_id);
+            m_active_draw_list->pop_state(pop_id);
         }
 
         void GUIContext::render_line(const GUINode& node, const RectF& rect, const RectF& clip_rect)
         {
             RectF r = to_vg_rect(rect);
             RectF c = to_vg_rect(clip_rect);
-            DrawListState state = m_gui_draw_list->get_state();
-            state.shape_buffer = m_gui_draw_list->get_shape_buffer();
+            DrawListState state = m_active_draw_list->get_state();
+            state.shape_buffer = m_active_draw_list->get_shape_buffer();
             state.texture = nullptr;
             state.clip_rect = c;
-            u32 pop_id = m_gui_draw_list->push_state(&state);
-            auto& points = m_gui_draw_list->get_shape_buffer()->get_shape_points(true);
+            u32 pop_id = m_active_draw_list->push_state(&state);
+            auto& points = m_active_draw_list->get_shape_buffer()->get_shape_points(true);
             u32 begin = (u32)points.size();
             Float2U p1(node.paint_line_begin.x - rect.offset_x, rect.height - (node.paint_line_begin.y - rect.offset_y));
             Float2U p2(node.paint_line_end.x - rect.offset_x, rect.height - (node.paint_line_end.y - rect.offset_y));
             VG::ShapeBuilder::add_line(points, p1.x, p1.y, p2.x, p2.y, node.paint_line_width);
             u32 end = (u32)points.size();
-            m_gui_draw_list->add_shape(begin, end - begin,
+            m_active_draw_list->add_shape(begin, end - begin,
                 Float2U(r.offset_x, r.offset_y), Float2U(r.offset_x + r.width, r.offset_y + r.height),
                 Float2U(0.0f, 0.0f), Float2U(r.width, r.height),
                 node.paint_color, Float2U(0.0f, 0.0f), Float2U(1.0f, 1.0f));
-            m_gui_draw_list->pop_state(pop_id);
+            m_active_draw_list->pop_state(pop_id);
         }
 
         void GUIContext::render_text(const RectF& rect, const RectF& clip_rect, const c8* text, f32 font_size, const Float4U& color, VG::TextAlignment horizontal_alignment, VG::TextAlignment vertical_alignment)
@@ -158,16 +158,16 @@ namespace Luna
             section.color = color;
             section.num_chars = strlen(text);
             auto arranged = VG::arrange_text(text, section.num_chars, {&section, 1}, r, vertical_alignment, horizontal_alignment);
-            DrawListState state = m_gui_draw_list->get_state();
+            DrawListState state = m_active_draw_list->get_state();
             state.shape_buffer = m_font_atlas->get_shape_buffer();
             state.texture = nullptr;
             state.clip_rect = c;
-            u32 pop_id = m_gui_draw_list->push_state(&state);
+            u32 pop_id = m_active_draw_list->push_state(&state);
             Vector<VG::Vertex> vertices;
             Vector<u32> indices;
             VG::generate_text_arrange_result_draw_vertices(arranged, {&section, 1}, m_font_atlas, vertices, indices);
-            m_gui_draw_list->add_shape_raw(vertices.cspan(), indices.cspan());
-            m_gui_draw_list->pop_state(pop_id);
+            m_active_draw_list->add_shape_raw(vertices.cspan(), indices.cspan());
+            m_active_draw_list->pop_state(pop_id);
         }
 
         void GUIContext::render_table_node(u32 node_index)
@@ -306,11 +306,56 @@ namespace Luna
             }
         }
 
+        void GUIContext::render_combo_dropdown(const GUINode& node, const RectF& rect)
+        {
+            if(node.kind != GUINodeKind::combo || node.id != m_open_combo_id) return;
+            PersistentItemState& state = get_or_create_persistent_state(node.id);
+            if(!state.open) return;
+            RectF surface_clip(0.0f, 0.0f, m_frame_desc.surface_size.x, m_frame_desc.surface_size.y);
+            RectF dropdown = combo_dropdown_rect(node, rect, m_frame_desc.surface_size);
+            render_rect(dropdown, surface_clip, Float4U(0.07f, 0.09f, 0.12f, 0.98f), 5.0f);
+
+            i32 hovered_item = -1;
+            if(m_pointer_inside)
+            {
+                hovered_item = combo_dropdown_item_at(node, dropdown, m_pointer_pos);
+            }
+            i32 selected_item = node.i32_value ? *node.i32_value : -1;
+            for(usize item_index = 0; item_index < node.items.size(); ++item_index)
+            {
+                RectF item_rect(
+                    dropdown.offset_x,
+                    dropdown.offset_y + combo_item_height() * (f32)item_index,
+                    dropdown.width,
+                    combo_item_height());
+                if(item_rect.offset_y >= dropdown.offset_y + dropdown.height) break;
+                bool selected = selected_item == (i32)item_index;
+                bool item_hovered = hovered_item == (i32)item_index;
+                if(selected || item_hovered)
+                {
+                    render_rect(item_rect, dropdown,
+                        selected ? Float4U(0.20f, 0.36f, 0.62f, 1.0f) : Float4U(0.17f, 0.23f, 0.32f, 1.0f),
+                        0.0f);
+                }
+                render_text(RectF(item_rect.offset_x + 8.0f, item_rect.offset_y, max(item_rect.width - 34.0f, 1.0f), item_rect.height),
+                    dropdown, node.items[item_index].c_str(), 15.0f, Color::white(), VG::TextAlignment::begin);
+                if(selected)
+                {
+                    f32 x = item_rect.offset_x + item_rect.width - 20.0f;
+                    f32 y = item_rect.offset_y + item_rect.height * 0.5f;
+                    render_line_segment(Float2U(x, y), Float2U(x + 4.0f, y + 4.0f), dropdown, Color::white(), 2.0f);
+                    render_line_segment(Float2U(x + 4.0f, y + 4.0f), Float2U(x + 12.0f, y - 5.0f), dropdown, Color::white(), 2.0f);
+                }
+            }
+        }
+
         void GUIContext::render_node(u32 node_index)
         {
             const GUINode& node = m_submitted_desc.nodes[node_index];
             const RectF& rect = m_layouts[node_index].rect;
             const RectF& clip = m_layouts[node_index].clip_rect;
+            IDrawList* previous_draw_list = m_active_draw_list;
+            m_active_draw_list = is_overlay_node(node) ? m_overlay_draw_list.get() : m_main_draw_list.get();
             bool hovered = false;
             bool active = false;
             auto iter = m_current_results.find(node.id);
@@ -456,16 +501,37 @@ namespace Luna
                 break;
             case GUINodeKind::combo:
             {
-                f32 label_w = min(max((f32)node.text.size() * 8.0f + 8.0f, 80.0f), rect.width * 0.45f);
+                f32 label_w = combo_label_width(node, rect);
                 render_text(RectF(rect.offset_x, rect.offset_y, label_w, rect.height), clip, node.text.c_str(), 16.0f, Color::white(), VG::TextAlignment::begin);
-                RectF value_rect(rect.offset_x + label_w, rect.offset_y, max(rect.width - label_w, 1.0f), rect.height);
-                render_rect(value_rect, clip, hovered ? Float4U(0.20f, 0.30f, 0.44f, 1.0f) : Float4U(0.12f, 0.16f, 0.22f, 1.0f), 4.0f);
+                RectF value_rect = combo_value_rect(node, rect);
+                PersistentItemState& state = get_or_create_persistent_state(node.id);
+                bool open = state.open && node.id == m_open_combo_id;
+                render_rect(value_rect, clip, open ? Float4U(0.20f, 0.36f, 0.62f, 1.0f) : (hovered ? Float4U(0.20f, 0.30f, 0.44f, 1.0f) : Float4U(0.12f, 0.16f, 0.22f, 1.0f)), 4.0f);
                 const c8* item_name = "";
                 if(node.i32_value && *node.i32_value >= 0 && (usize)*node.i32_value < node.items.size())
                 {
                     item_name = node.items[*node.i32_value].c_str();
                 }
-                render_text(RectF(value_rect.offset_x + 8.0f, value_rect.offset_y, max(value_rect.width - 16.0f, 1.0f), value_rect.height), clip, item_name, 16.0f, Color::white(), VG::TextAlignment::begin);
+                render_text(RectF(value_rect.offset_x + 8.0f, value_rect.offset_y, max(value_rect.width - 34.0f, 1.0f), value_rect.height), clip, item_name, 16.0f, Color::white(), VG::TextAlignment::begin);
+                f32 arrow_x = value_rect.offset_x + value_rect.width - 18.0f;
+                f32 arrow_y = value_rect.offset_y + value_rect.height * 0.5f;
+                if(open)
+                {
+                    render_line_segment(Float2U(arrow_x - 5.0f, arrow_y + 3.0f), Float2U(arrow_x, arrow_y - 3.0f), clip, Color::white(), 1.8f);
+                    render_line_segment(Float2U(arrow_x, arrow_y - 3.0f), Float2U(arrow_x + 5.0f, arrow_y + 3.0f), clip, Color::white(), 1.8f);
+                }
+                else
+                {
+                    render_line_segment(Float2U(arrow_x - 5.0f, arrow_y - 3.0f), Float2U(arrow_x, arrow_y + 3.0f), clip, Color::white(), 1.8f);
+                    render_line_segment(Float2U(arrow_x, arrow_y + 3.0f), Float2U(arrow_x + 5.0f, arrow_y - 3.0f), clip, Color::white(), 1.8f);
+                }
+                if(open)
+                {
+                    IDrawList* combo_draw_list = m_active_draw_list;
+                    m_active_draw_list = m_overlay_draw_list.get();
+                    render_combo_dropdown(node, rect);
+                    m_active_draw_list = combo_draw_list;
+                }
                 break;
             }
             case GUINodeKind::slider_float:
@@ -525,18 +591,13 @@ namespace Luna
 
             for(u32 child = node.first_child; child != U32_MAX; child = m_submitted_desc.nodes[child].next_sibling)
             {
-                if(is_absolute_node(m_submitted_desc.nodes[child])) continue;
-                render_node(child);
-            }
-            for(u32 child = node.first_child; child != U32_MAX; child = m_submitted_desc.nodes[child].next_sibling)
-            {
-                if(!is_absolute_node(m_submitted_desc.nodes[child])) continue;
                 render_node(child);
             }
             if(node.kind == GUINodeKind::scroll_view)
             {
                 render_scrollbars(node_index);
             }
+            m_active_draw_list = previous_draw_list;
         }
 
         RV GUIContext::render(RHI::ICommandBuffer* cmdbuf, RHI::ITexture* render_target)
@@ -546,9 +607,13 @@ namespace Luna
             lutry
             {
                 m_shape_draw_list->reset();
-                m_gui_draw_list->begin(m_shape_draw_list);
+                m_main_draw_list->begin(m_shape_draw_list);
+                m_overlay_draw_list->begin(m_shape_draw_list);
+                m_active_draw_list = m_main_draw_list.get();
                 render_node(0);
-                m_gui_draw_list->end();
+                m_active_draw_list = nullptr;
+                m_main_draw_list->end();
+                m_overlay_draw_list->end();
                 luexp(m_shape_draw_list->compile());
                 luexp(m_shape_renderer->begin(render_target));
                 Float4x4 mat = ProjectionMatrix::make_orthographic_off_center(0.0f, m_frame_desc.surface_size.x, 0.0f, m_frame_desc.surface_size.y, 0.0f, 1.0f);

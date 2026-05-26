@@ -19,7 +19,8 @@ namespace Luna
         GUIContext::GUIContext()
         {
             m_shape_draw_list = VG::new_shape_draw_list(m_device);
-            m_gui_draw_list = new_draw_list();
+            m_main_draw_list = new_draw_list();
+            m_overlay_draw_list = new_draw_list();
             m_shape_renderer = VG::new_fill_shape_renderer();
             m_font_atlas = VG::new_font_atlas();
         }
@@ -43,6 +44,7 @@ namespace Luna
             GUINode root;
             root.id = 1;
             root.kind = GUINodeKind::root;
+            root.render_layer = GUIRenderLayer::main;
             root.parent = U32_MAX;
             root.depth = 0;
             apply_requested_size(root, GUISize::fixed(desc.surface_size.x, desc.surface_size.y));
@@ -120,6 +122,7 @@ namespace Luna
             GUINode node;
             node.id = h ? h : 1;
             node.kind = kind;
+            node.render_layer = m_build_desc.nodes[parent].render_layer;
             node.parent = parent;
             node.depth = m_build_desc.nodes[parent].depth + 1;
             node.text = text ? text : "";

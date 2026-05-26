@@ -165,7 +165,7 @@ namespace Luna
         GUI::EndHLayout();
 
         const c8* combo_items[] = {"Alpha", "Beta", "Gamma", "Delta"};
-        GUI::Combo("Combo cycles on click", &app.combo_index, Span<const c8*>(combo_items, 4));
+        GUI::Combo("Combo dropdown", &app.combo_index, Span<const c8*>(combo_items, 4));
         GUI::SliderFloat("SliderFloat", &app.slider_value, 0.0f, 1.0f);
         GUI::DragFloat("DragFloat", &app.drag_value, 0.25f, -100.0f, 100.0f);
         GUI::DragFloat2("DragFloat2", app.drag2_value.m, 0.05f, 0.0f, 0.0f);

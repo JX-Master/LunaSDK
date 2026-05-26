@@ -163,6 +163,7 @@ namespace Luna
             GUIContext* ctx = require_current_context();
             ctx->begin_container(GUINodeKind::popup, label ? label : "Popup", size, &handle);
             GUINode& node = ctx->m_build_desc.nodes.back();
+            node.render_layer = GUIRenderLayer::overlay;
             node.absolute_position = true;
             node.position = position;
             node.layout_desc.padding = GUIEdgeInsets::all(6.0f);

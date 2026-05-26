@@ -42,10 +42,17 @@ namespace Luna
             toggle_switch
         };
 
+        enum class GUIRenderLayer : u8
+        {
+            main,
+            overlay
+        };
+
         struct GUINode
         {
             GUIID id = 0;
             GUINodeKind kind = GUINodeKind::root;
+            GUIRenderLayer render_layer = GUIRenderLayer::main;
             u32 parent = U32_MAX;
             u32 first_child = U32_MAX;
             u32 last_child = U32_MAX;
