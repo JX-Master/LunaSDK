@@ -34,11 +34,18 @@ namespace Luna
             checkbox,
             radio_button,
             input_text,
+            input_float,
+            input_int,
+            color_edit,
+            color_preview,
+            color_picker,
             image,
             collapsing_header,
             combo,
             slider_float,
+            slider_int,
             drag_float,
+            drag_int,
             tree_node,
             hit_box,
             draw_rect,
@@ -57,6 +64,20 @@ namespace Luna
         {
             main,
             overlay
+        };
+
+        enum class GUIColorValueType : u8
+        {
+            f32,
+            u8,
+            rgba8
+        };
+
+        enum class GUIColorEditPart : u8
+        {
+            none,
+            rgb,
+            hsv
         };
 
         struct GUINode
@@ -81,6 +102,7 @@ namespace Luna
             GUITabBarFlag tab_bar_flags = GUITabBarFlag::none;
             GUITabItemFlag tab_item_flags = GUITabItemFlag::none;
             GUIPopupFlag popup_flags = GUIPopupFlag::none;
+            GUINumericEditFlag numeric_flags = GUINumericEditFlag::none;
             GUITooltipDesc tooltip_desc;
             GUIID popup_parent_id = 0;
             GUIID popup_owner_id = 0;
@@ -108,9 +130,15 @@ namespace Luna
             bool* bool_value = nullptr;
             String* string_value = nullptr;
             i32* i32_value = nullptr;
+            u8 i32_value_count = 1;
             i32 item_value = 0;
             f32* f32_value = nullptr;
             u8 f32_value_count = 1;
+            u8* u8_value = nullptr;
+            u32* u32_value = nullptr;
+            GUIColorValueType color_value_type = GUIColorValueType::f32;
+            GUIID color_owner_id = 0;
+            GUIColorEditPart color_edit_part = GUIColorEditPart::none;
             bool f32_color = false;
             f32 min_value = 0.0f;
             f32 max_value = 0.0f;

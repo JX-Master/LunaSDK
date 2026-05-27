@@ -201,6 +201,12 @@ namespace Luna
             modal = 0x10
         };
 
+        enum class GUINumericEditFlag : u32
+        {
+            none = 0x00,
+            input_on_double_click = 0x01
+        };
+
         struct GUIPopupDesc
         {
             Float2U position = Float2U(0.0f);

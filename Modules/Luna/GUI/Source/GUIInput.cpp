@@ -8,6 +8,7 @@
 * @date 2026/5/21
 */
 #include <Luna/Runtime/PlatformDefines.hpp>
+#include <Luna/Runtime/StringUtils.hpp>
 #define LUNA_GUI_API LUNA_EXPORT
 #include "GUI.hpp"
 
@@ -29,6 +30,12 @@ namespace Luna
                 return true;
             }
 
+            void clear_text_edit_state(PersistentItemState& state)
+            {
+                input_text_clear_selection(state);
+                state.numeric_editing = false;
+            }
+
             String filter_input_text(const String& text)
             {
                 String filtered;
@@ -45,6 +52,95 @@ namespace Luna
                     offset += len;
                 }
                 return filtered;
+            }
+
+            String filter_numeric_text(const String& text, bool floating_point)
+            {
+                String filtered;
+                for(c8 ch : text)
+                {
+                    if(ch >= '0' && ch <= '9')
+                    {
+                        filtered.push_back(ch);
+                    }
+                    else if(ch == '-' || ch == '+')
+                    {
+                        filtered.push_back(ch);
+                    }
+                    else if(floating_point && (ch == '.' || ch == 'e' || ch == 'E'))
+                    {
+                        filtered.push_back(ch);
+                    }
+                }
+                return filtered;
+            }
+
+            bool parse_i32_text(const String& text, i32& value)
+            {
+                if(text.empty()) return false;
+                c8* end = nullptr;
+                i64 parsed = strtoi64(text.c_str(), &end, 10);
+                if(end == text.c_str() || (end && *end)) return false;
+                value = (i32)clamp(parsed, (i64)I32_MIN, (i64)I32_MAX);
+                return true;
+            }
+
+            bool parse_f32_text(const String& text, f32& value)
+            {
+                if(text.empty()) return false;
+                c8* end = nullptr;
+                f32 parsed = strtof32(text.c_str(), &end);
+                if(end == text.c_str() || (end && *end)) return false;
+                value = parsed;
+                return true;
+            }
+
+            i32 round_to_i32(f32 value)
+            {
+                f32 rounded = value >= 0.0f ? value + 0.5f : value - 0.5f;
+                return (i32)clamp((i64)rounded, (i64)I32_MIN, (i64)I32_MAX);
+            }
+
+            bool apply_numeric_edit_text(GUIContext& ctx, GUINode& node, PersistentItemState& state)
+            {
+                if(!is_numeric_input_node(node) || !state.numeric_editing) return false;
+                u32 component = min(state.numeric_edit_component, numeric_value_count(node) - 1);
+                bool changed = false;
+                if(is_float_numeric_node(node))
+                {
+                    if(!node.f32_value) return false;
+                    f32 value = 0.0f;
+                    if(!parse_f32_text(state.numeric_edit_text, value)) return false;
+                    if(node.max_value > node.min_value)
+                    {
+                        value = clamp(value, node.min_value, node.max_value);
+                    }
+                    if(node.f32_value[component] != value)
+                    {
+                        node.f32_value[component] = value;
+                        changed = true;
+                    }
+                }
+                else
+                {
+                    if(!node.i32_value) return false;
+                    i32 value = 0;
+                    if(!parse_i32_text(state.numeric_edit_text, value)) return false;
+                    if(node.max_value > node.min_value)
+                    {
+                        value = clamp(value, (i32)node.min_value, (i32)node.max_value);
+                    }
+                    if(node.i32_value[component] != value)
+                    {
+                        node.i32_value[component] = value;
+                        changed = true;
+                    }
+                }
+                if(changed)
+                {
+                    ctx.mark_value_changed(node.id);
+                }
+                return changed;
             }
         }
 
@@ -1016,11 +1112,139 @@ namespace Luna
             return nullptr;
         }
 
-        u32 GUIContext::hit_test_float_component(const GUINode& node, const RectF& rect, const Float2U& pos) const
+        void GUIContext::mark_value_changed(GUIID id)
         {
-            u32 value_count = node.kind == GUINodeKind::slider_float ? 1 : f32_value_count(node);
+            if(!id) return;
+            ItemResult& result = get_or_create_current_result(id);
+            result.states.insert_or_assign(Name("gui.value_changed"), Any(true));
+            GUINode* node = find_node(id);
+            if(node && node->color_owner_id)
+            {
+                apply_color_edit_numeric_state(node->color_owner_id, node->color_edit_part);
+                ItemResult& owner_result = get_or_create_current_result(node->color_owner_id);
+                owner_result.states.insert_or_assign(Name("gui.value_changed"), Any(true));
+                return;
+            }
+            while(node && node->parent != U32_MAX)
+            {
+                node = &m_submitted_desc.nodes[node->parent];
+                if(node->kind == GUINodeKind::popup && node->popup_owner_id)
+                {
+                    ItemResult& owner_result = get_or_create_current_result(node->popup_owner_id);
+                    owner_result.states.insert_or_assign(Name("gui.value_changed"), Any(true));
+                    break;
+                }
+            }
+        }
+
+        void GUIContext::sync_color_edit_numeric_state(GUIID owner_id)
+        {
+            GUINode* owner = find_node(owner_id);
+            if(!owner || owner->kind != GUINodeKind::color_edit) return;
+            PersistentItemState& state = get_or_create_persistent_state(owner_id);
+            ensure_color_edit_state_channels(state);
+            Float4U color = read_color_value(*owner);
+            state.color_edit_rgb[0] = (i32)color_channel_to_u8(color.x);
+            state.color_edit_rgb[1] = (i32)color_channel_to_u8(color.y);
+            state.color_edit_rgb[2] = (i32)color_channel_to_u8(color.z);
+            state.color_edit_rgb[3] = (i32)color_channel_to_u8(color.w);
+            f32 h = 0.0f;
+            f32 s = 0.0f;
+            f32 v = 0.0f;
+            color_rgb_to_hsv(color.x, color.y, color.z, h, s, v);
+            state.color_edit_hsv[0] = (i32)color_channel_to_u8(h);
+            state.color_edit_hsv[1] = (i32)color_channel_to_u8(s);
+            state.color_edit_hsv[2] = (i32)color_channel_to_u8(v);
+        }
+
+        void GUIContext::apply_color_edit_numeric_state(GUIID owner_id, GUIColorEditPart part)
+        {
+            GUINode* owner = find_node(owner_id);
+            if(!owner || owner->kind != GUINodeKind::color_edit) return;
+            PersistentItemState& state = get_or_create_persistent_state(owner_id);
+            ensure_color_edit_state_channels(state);
+            Float4U color = read_color_value(*owner);
+            if(part == GUIColorEditPart::rgb)
+            {
+                color.x = color_u8_to_channel((u8)clamp(state.color_edit_rgb[0], 0, 255));
+                color.y = color_u8_to_channel((u8)clamp(state.color_edit_rgb[1], 0, 255));
+                color.z = color_u8_to_channel((u8)clamp(state.color_edit_rgb[2], 0, 255));
+                if(owner->f32_value_count > 3)
+                {
+                    color.w = color_u8_to_channel((u8)clamp(state.color_edit_rgb[3], 0, 255));
+                }
+            }
+            else if(part == GUIColorEditPart::hsv)
+            {
+                f32 h = color_u8_to_channel((u8)clamp(state.color_edit_hsv[0], 0, 255));
+                f32 s = color_u8_to_channel((u8)clamp(state.color_edit_hsv[1], 0, 255));
+                f32 v = color_u8_to_channel((u8)clamp(state.color_edit_hsv[2], 0, 255));
+                color = color_hsv_to_rgb(h, s, v, color.w);
+            }
+            write_color_value(*owner, color);
+            sync_color_edit_numeric_state(owner_id);
+        }
+
+        void GUIContext::update_color_picker_from_pointer(GUIID id, const Float2U& pos)
+        {
+            GUINode* node = find_node(id);
+            if(!node || node->kind != GUINodeKind::color_picker) return;
+            GUIID owner_id = node->color_owner_id ? node->color_owner_id : id;
+            GUINode* owner = find_node(owner_id);
+            if(!owner) owner = node;
+            RectF rect;
+            for(usize i = 0; i < m_submitted_desc.nodes.size(); ++i)
+            {
+                if(m_submitted_desc.nodes[i].id == id)
+                {
+                    rect = m_layouts[i].rect;
+                    break;
+                }
+            }
+            PersistentItemState& state = get_or_create_persistent_state(owner_id);
+            if(m_active_color_part == 3)
+            {
+                if(state.color_edit_original_valid)
+                {
+                    write_color_value(*owner, state.color_edit_original);
+                    sync_color_edit_numeric_state(owner_id);
+                    mark_value_changed(owner_id);
+                }
+                return;
+            }
+            Float4U color = read_color_value(*owner);
+            f32 x = 0.0f;
+            f32 y = 0.0f;
+            f32 bar = 0.0f;
+            i32 axis = color_edit_axis_ref(state);
+            color_picker_channels_from_color(axis, color, x, y, bar);
+            if(m_active_color_part == 1)
+            {
+                RectF square = color_picker_square_rect(rect);
+                x = clamp((pos.x - square.offset_x) / max(square.width, 1.0f), 0.0f, 1.0f);
+                y = 1.0f - clamp((pos.y - square.offset_y) / max(square.height, 1.0f), 0.0f, 1.0f);
+            }
+            else if(m_active_color_part == 2)
+            {
+                RectF bar_rect = color_picker_bar_rect(rect);
+                f32 bar_t = clamp((pos.y - bar_rect.offset_y) / max(bar_rect.height, 1.0f), 0.0f, 1.0f);
+                bar = axis == 0 ? bar_t : 1.0f - bar_t;
+            }
+            else
+            {
+                return;
+            }
+            color = color_from_picker_channels(axis, x, y, bar, color.w);
+            write_color_value(*owner, color);
+            sync_color_edit_numeric_state(owner_id);
+            mark_value_changed(owner_id);
+        }
+
+        u32 GUIContext::hit_test_numeric_component(const GUINode& node, const RectF& rect, const Float2U& pos) const
+        {
+            u32 value_count = numeric_value_count(node);
             if(value_count <= 1) return 0;
-            f32 label_w = min(max((f32)node.text.size() * 8.0f + 8.0f, 80.0f), rect.width * 0.45f);
+            f32 label_w = numeric_label_width(node, rect);
             f32 gap = 4.0f;
             f32 value_area_x = rect.offset_x + label_w;
             f32 value_area_w = max(rect.width - label_w - 8.0f, 1.0f);
@@ -1029,11 +1253,13 @@ namespace Luna
             return min((u32)(rel / (component_w + gap)), value_count - 1);
         }
 
-        void GUIContext::update_float_node_from_pointer(GUIID id, const Float2U& pos, const Float2U* old_pos)
+        void GUIContext::update_numeric_node_from_pointer(GUIID id, const Float2U& pos, const Float2U* old_pos)
         {
             GUINode* node = find_node(id);
-            if(!node || !node->f32_value) return;
-            if(node->kind != GUINodeKind::slider_float && node->kind != GUINodeKind::drag_float) return;
+            if(!node || !is_numeric_pointer_edit_node(*node)) return;
+            if(get_or_create_persistent_state(id).numeric_editing) return;
+            if(is_float_numeric_node(*node) && !node->f32_value) return;
+            if(is_int_numeric_node(*node) && !node->i32_value) return;
 
             RectF rect;
             for(usize i = 0; i < m_submitted_desc.nodes.size(); ++i)
@@ -1044,35 +1270,59 @@ namespace Luna
                     break;
                 }
             }
-            f32 label_w = min(max((f32)node->text.size() * 8.0f + 8.0f, 80.0f), rect.width * 0.45f);
-            u32 value_count = node->kind == GUINodeKind::slider_float ? 1 : f32_value_count(*node);
+            f32 label_w = numeric_label_width(*node, rect);
+            u32 value_count = numeric_value_count(*node);
             f32 gap = 4.0f;
             f32 value_area_x = rect.offset_x + label_w;
             f32 value_area_w = max(rect.width - label_w - 8.0f, 1.0f);
             f32 component_w = max((value_area_w - gap * (f32)(value_count - 1)) / (f32)value_count, 1.0f);
-            u32 component = hit_test_float_component(*node, rect, pos);
+            u32 component = hit_test_numeric_component(*node, rect, pos);
             if(m_active_id == id && m_active_float_component != U32_MAX)
             {
                 component = min(m_active_float_component, value_count - 1);
             }
             f32 component_x = value_area_x + (component_w + gap) * (f32)component;
-            f32 new_value = node->f32_value[component];
-            if(node->kind == GUINodeKind::drag_float && node->max_value <= node->min_value)
+            f32 new_value = is_float_numeric_node(*node) ? node->f32_value[component] : (f32)node->i32_value[component];
+            if(node->kind == GUINodeKind::drag_float || node->kind == GUINodeKind::drag_int)
             {
                 if(!old_pos) return;
                 f32 speed = node->step_value == 0.0f ? 1.0f : node->step_value;
                 new_value += (pos.x - old_pos->x) * speed;
+                if(node->max_value > node->min_value)
+                {
+                    new_value = clamp(new_value, node->min_value, node->max_value);
+                }
             }
             else
             {
                 f32 t = clamp((pos.x - component_x) / component_w, 0.0f, 1.0f);
                 new_value = node->min_value + (node->max_value - node->min_value) * t;
             }
-            if(node->f32_value[component] != new_value)
+            bool changed = false;
+            if(is_float_numeric_node(*node))
             {
-                node->f32_value[component] = new_value;
-                ItemResult& result = get_or_create_current_result(id);
-                result.states.insert_or_assign(Name("gui.value_changed"), Any(true));
+                if(node->f32_value[component] != new_value)
+                {
+                    node->f32_value[component] = new_value;
+                    changed = true;
+                }
+            }
+            else
+            {
+                i32 int_value = round_to_i32(new_value);
+                if(node->max_value > node->min_value)
+                {
+                    int_value = clamp(int_value, (i32)node->min_value, (i32)node->max_value);
+                }
+                if(node->i32_value[component] != int_value)
+                {
+                    node->i32_value[component] = int_value;
+                    changed = true;
+                }
+            }
+            if(changed)
+            {
+                mark_value_changed(id);
             }
         }
 
@@ -1107,6 +1357,64 @@ namespace Luna
             state.text_cursor = cursor;
             state.text_cursor_blink_start = m_time;
             return true;
+        }
+
+        bool GUIContext::numeric_text_cursor_from_pointer(GUIID id, const Float2U& pos, usize& out_cursor)
+        {
+            GUINode* node = find_node(id);
+            if(!node || !is_numeric_input_node(*node)) return false;
+            for(usize i = 0; i < m_submitted_desc.nodes.size(); ++i)
+            {
+                if(m_submitted_desc.nodes[i].id == id)
+                {
+                    PersistentItemState& state = get_or_create_persistent_state(id);
+                    RectF component = numeric_component_rect(*node, m_layouts[i].rect, state.numeric_edit_component);
+                    RectF text_rect(component.offset_x + 6.0f, component.offset_y, max(component.width - 12.0f, 1.0f), component.height);
+                    out_cursor = input_text_cursor_from_x(state.numeric_edit_text, pos.x - text_rect.offset_x, 16.0f);
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        bool GUIContext::update_numeric_text_selection_from_pointer(GUIID id, const Float2U& pos)
+        {
+            GUINode* node = find_node(id);
+            if(!node || !is_numeric_input_node(*node)) return false;
+            PersistentItemState& state = get_or_create_persistent_state(id);
+            if(!state.numeric_editing) return false;
+            usize cursor = 0;
+            if(!numeric_text_cursor_from_pointer(id, pos, cursor)) return false;
+            if(state.text_select_anchor == USIZE_MAX)
+            {
+                state.text_select_anchor = clamp_utf8_cursor(state.numeric_edit_text, state.text_cursor);
+            }
+            state.text_cursor = cursor;
+            state.text_cursor_blink_start = m_time;
+            return true;
+        }
+
+        void GUIContext::begin_numeric_text_edit(GUIID id, const Float2U& pos, u32 component, bool select_all)
+        {
+            GUINode* node = find_node(id);
+            if(!node || !is_numeric_input_node(*node)) return;
+            PersistentItemState& state = get_or_create_persistent_state(id);
+            state.numeric_edit_component = min(component, numeric_value_count(*node) - 1);
+            state.numeric_edit_text = numeric_value_text(*node, state.numeric_edit_component);
+            state.numeric_editing = true;
+            state.text_select_anchor = USIZE_MAX;
+            state.text_selecting = true;
+            state.text_cursor = state.numeric_edit_text.size();
+            if(select_all)
+            {
+                state.text_select_anchor = 0;
+            }
+            else
+            {
+                numeric_text_cursor_from_pointer(id, pos, state.text_cursor);
+                state.text_select_anchor = state.text_cursor;
+            }
+            state.text_cursor_blink_start = m_time;
         }
 
         void GUIContext::process_input_events()
@@ -1175,8 +1483,31 @@ namespace Luna
                     }
                     else if(m_active_id)
                     {
-                        update_input_text_selection_from_pointer(m_active_id, e.position);
-                        update_float_node_from_pointer(m_active_id, e.position, &old_pos);
+                        GUINode* active_node = find_node(m_active_id);
+                        if(active_node && active_node->kind == GUINodeKind::color_picker)
+                        {
+                            update_color_picker_from_pointer(m_active_id, e.position);
+                        }
+                        else
+                        {
+                            update_input_text_selection_from_pointer(m_active_id, e.position);
+                            update_numeric_text_selection_from_pointer(m_active_id, e.position);
+                            if(m_active_numeric_defer_until_drag)
+                            {
+                                f32 dx = e.position.x - m_active_numeric_start_pos.x;
+                                f32 dy = e.position.y - m_active_numeric_start_pos.y;
+                                if(dx * dx + dy * dy >= 16.0f)
+                                {
+                                    Float2U start_pos = m_active_numeric_start_pos;
+                                    m_active_numeric_defer_until_drag = false;
+                                    update_numeric_node_from_pointer(m_active_id, e.position, &start_pos);
+                                }
+                            }
+                            else
+                            {
+                                update_numeric_node_from_pointer(m_active_id, e.position, &old_pos);
+                            }
+                        }
                     }
                 }
                 else if(e.type == GUIInputEventType::pointer_down)
@@ -1184,15 +1515,19 @@ namespace Luna
                     m_pointer_inside = true;
                     m_pointer_pos = e.position;
                     m_active_float_component = U32_MAX;
+                    m_active_numeric_defer_until_drag = false;
+                    m_active_color_part = 0;
                     GUIID old_focused_id = m_focused_id;
                     if(close_popups_for_pointer_down(e.position))
                     {
                         if(old_focused_id)
                         {
-                            input_text_clear_selection(get_or_create_persistent_state(old_focused_id));
+                            clear_text_edit_state(get_or_create_persistent_state(old_focused_id));
                         }
                         m_active_id = 0;
                         m_active_float_component = U32_MAX;
+                        m_active_numeric_defer_until_drag = false;
+                        m_active_color_part = 0;
                         continue;
                     }
                     if(e.button != GUIPointerButton::left)
@@ -1203,7 +1538,7 @@ namespace Luna
                             m_focused_id = target;
                             if(old_focused_id && old_focused_id != target)
                             {
-                                input_text_clear_selection(get_or_create_persistent_state(old_focused_id));
+                                clear_text_edit_state(get_or_create_persistent_state(old_focused_id));
                             }
                         }
                         continue;
@@ -1216,7 +1551,7 @@ namespace Luna
                         m_focused_id = dropdown_combo;
                         if(old_focused_id && old_focused_id != dropdown_combo)
                         {
-                            input_text_clear_selection(get_or_create_persistent_state(old_focused_id));
+                            clear_text_edit_state(get_or_create_persistent_state(old_focused_id));
                         }
                         PersistentItemState& state = get_or_create_persistent_state(dropdown_combo);
                         state.pointer_down = true;
@@ -1375,7 +1710,7 @@ namespace Luna
                         m_focused_id = scrollbar_id;
                         if(old_focused_id && old_focused_id != scrollbar_id)
                         {
-                            input_text_clear_selection(get_or_create_persistent_state(old_focused_id));
+                            clear_text_edit_state(get_or_create_persistent_state(old_focused_id));
                         }
                         m_active_scrollbar_id = scrollbar_id;
                         m_active_scrollbar_vertical = scrollbar_vertical;
@@ -1407,7 +1742,7 @@ namespace Luna
                         m_focused_id = resize_table;
                         if(old_focused_id && old_focused_id != resize_table)
                         {
-                            input_text_clear_selection(get_or_create_persistent_state(old_focused_id));
+                            clear_text_edit_state(get_or_create_persistent_state(old_focused_id));
                         }
                         m_active_table_resize_id = resize_table;
                         m_active_table_resize_column = resize_column;
@@ -1426,7 +1761,7 @@ namespace Luna
                         m_focused_id = tab_scroll_bar_id;
                         if(old_focused_id && old_focused_id != tab_scroll_bar_id)
                         {
-                            input_text_clear_selection(get_or_create_persistent_state(old_focused_id));
+                            clear_text_edit_state(get_or_create_persistent_state(old_focused_id));
                         }
                         m_active_tab_scroll_id = tab_scroll_bar_id;
                         m_active_tab_scroll_left = tab_scroll_left;
@@ -1446,7 +1781,7 @@ namespace Luna
                         m_focused_id = tab_item_id;
                         if(old_focused_id && old_focused_id != tab_item_id)
                         {
-                            input_text_clear_selection(get_or_create_persistent_state(old_focused_id));
+                            clear_text_edit_state(get_or_create_persistent_state(old_focused_id));
                         }
                         m_active_tab_bar_id = tab_bar_id;
                         m_active_tab_item_id = tab_item_id;
@@ -1479,7 +1814,7 @@ namespace Luna
                     m_focused_id = target;
                     if(old_focused_id && old_focused_id != target)
                     {
-                        input_text_clear_selection(get_or_create_persistent_state(old_focused_id));
+                        clear_text_edit_state(get_or_create_persistent_state(old_focused_id));
                     }
                     if(target)
                     {
@@ -1497,18 +1832,61 @@ namespace Luna
                             state.text_selecting = true;
                             state.text_cursor_blink_start = m_time;
                         }
-                        if(node && (node->kind == GUINodeKind::slider_float || node->kind == GUINodeKind::drag_float))
+                        if(node && node->kind == GUINodeKind::color_picker)
+                        {
+                            RectF rect;
+                            for(usize i = 0; i < m_submitted_desc.nodes.size(); ++i)
+                            {
+                                if(m_submitted_desc.nodes[i].id == target)
+                                {
+                                    rect = m_layouts[i].rect;
+                                    break;
+                                }
+                            }
+                            if(point_in_rect(e.position, color_picker_square_rect(rect)))
+                            {
+                                m_active_color_part = 1;
+                                update_color_picker_from_pointer(target, e.position);
+                            }
+                            else if(point_in_rect(e.position, color_picker_bar_rect(rect)))
+                            {
+                                m_active_color_part = 2;
+                                update_color_picker_from_pointer(target, e.position);
+                            }
+                            else if(point_in_rect(e.position, color_picker_original_rect(rect)))
+                            {
+                                m_active_color_part = 3;
+                                update_color_picker_from_pointer(target, e.position);
+                            }
+                        }
+                        if(node && is_numeric_node(*node))
                         {
                             for(usize i = 0; i < m_submitted_desc.nodes.size(); ++i)
                             {
                                 if(m_submitted_desc.nodes[i].id == target)
                                 {
-                                    m_active_float_component = hit_test_float_component(*node, m_layouts[i].rect, e.position);
+                                    m_active_float_component = hit_test_numeric_component(*node, m_layouts[i].rect, e.position);
                                     break;
                                 }
                             }
+                            if(node->kind == GUINodeKind::input_float || node->kind == GUINodeKind::input_int)
+                            {
+                                begin_numeric_text_edit(target, e.position, m_active_float_component == U32_MAX ? 0 : m_active_float_component, false);
+                            }
+                            else if(state.numeric_editing && is_numeric_input_node(*node))
+                            {
+                                begin_numeric_text_edit(target, e.position, m_active_float_component == U32_MAX ? 0 : m_active_float_component, false);
+                            }
+                            else if(is_numeric_input_node(*node))
+                            {
+                                m_active_numeric_defer_until_drag = true;
+                                m_active_numeric_start_pos = e.position;
+                            }
                         }
-                        update_float_node_from_pointer(target, e.position);
+                        if(!state.numeric_editing && !m_active_numeric_defer_until_drag)
+                        {
+                            update_numeric_node_from_pointer(target, e.position);
+                        }
                     }
                 }
                 else if(e.type == GUIInputEventType::pointer_up)
@@ -1545,6 +1923,7 @@ namespace Luna
                         clear_drag_drop();
                         m_active_id = 0;
                         m_active_float_component = U32_MAX;
+                        m_active_numeric_defer_until_drag = false;
                         continue;
                     }
                     m_drag_drop_candidate_source_id = 0;
@@ -1557,6 +1936,7 @@ namespace Luna
                         m_active_dock_split_space_id = 0;
                         m_active_dock_split_node = U32_MAX;
                         m_active_id = 0;
+                        m_active_numeric_defer_until_drag = false;
                         continue;
                     }
                     if(m_active_dock_panel_id)
@@ -1620,6 +2000,7 @@ namespace Luna
                         m_active_dock_panel_start_neighbor_height = 0.0f;
                         m_active_id = 0;
                         m_active_float_component = U32_MAX;
+                        m_active_numeric_defer_until_drag = false;
                         continue;
                     }
                     GUIID dropdown_combo = 0;
@@ -1657,6 +2038,7 @@ namespace Luna
                         }
                         m_active_id = 0;
                         m_active_float_component = U32_MAX;
+                        m_active_numeric_defer_until_drag = false;
                         continue;
                     }
                     if(m_active_scrollbar_id)
@@ -1762,7 +2144,11 @@ namespace Luna
                         {
                             GUINode& node = m_submitted_desc.nodes[i];
                             if(node.id != target) continue;
-                            if(node.kind == GUINodeKind::menu && node.enabled && node.menu_popup_id)
+                            if(is_numeric_node(node) && is_numeric_input_node(node) && dbl)
+                            {
+                                begin_numeric_text_edit(target, e.position, m_active_float_component == U32_MAX ? 0 : m_active_float_component, true);
+                            }
+                            else if(node.kind == GUINodeKind::menu && node.enabled && node.menu_popup_id)
                             {
                                 if(is_popup_open(node.menu_popup_id))
                                 {
@@ -1842,6 +2228,30 @@ namespace Luna
                                 }
                                 result.states.insert_or_assign(Name("gui.open"), Any(state.open));
                             }
+                            else if(node.kind == GUINodeKind::color_edit && node.menu_popup_id)
+                            {
+                                if(is_popup_open(node.menu_popup_id))
+                                {
+                                    close_popup(GUIItemHandle{get_object(), node.menu_popup_id, m_generation});
+                                    PersistentItemState& color_state = get_or_create_persistent_state(node.id);
+                                    color_state.color_edit_original_valid = false;
+                                    PersistentItemState& popup_state = get_or_create_persistent_state(node.menu_popup_id);
+                                    popup_state.popup_anchor_valid = false;
+                                    result.states.insert_or_assign(Name("gui.open"), Any(false));
+                                }
+                                else
+                                {
+                                    PersistentItemState& color_state = get_or_create_persistent_state(node.id);
+                                    color_state.color_edit_original = read_color_value(node);
+                                    color_state.color_edit_original_valid = true;
+                                    sync_color_edit_numeric_state(node.id);
+                                    PersistentItemState& popup_state = get_or_create_persistent_state(node.menu_popup_id);
+                                    popup_state.popup_anchor_position = e.position;
+                                    popup_state.popup_anchor_valid = true;
+                                    open_popup(GUIItemHandle{get_object(), node.menu_popup_id, m_generation});
+                                    result.states.insert_or_assign(Name("gui.open"), Any(true));
+                                }
+                            }
                             else if(node.kind == GUINodeKind::button_group && !node.items.empty())
                             {
                                 i32 item = button_group_item_at(node, m_layouts[i].rect, e.position);
@@ -1887,6 +2297,8 @@ namespace Luna
                     }
                     m_active_id = 0;
                     m_active_float_component = U32_MAX;
+                    m_active_numeric_defer_until_drag = false;
+                    m_active_color_part = 0;
                 }
                 else if(e.type == GUIInputEventType::pointer_wheel)
                 {
@@ -1933,7 +2345,8 @@ namespace Luna
                     if(!m_focused_id) continue;
                     for(GUINode& node : m_submitted_desc.nodes)
                     {
-                        if(node.id == m_focused_id && node.kind == GUINodeKind::input_text && node.string_value)
+                        if(node.id != m_focused_id) continue;
+                        if(node.kind == GUINodeKind::input_text && node.string_value)
                         {
                             String filtered = filter_input_text(e.text);
                             if(!filtered.empty())
@@ -1947,6 +2360,23 @@ namespace Luna
                                 state.text_cursor_blink_start = m_time;
                                 ItemResult& result = get_or_create_current_result(node.id);
                                 result.states.insert_or_assign(Name("gui.value_changed"), Any(true));
+                            }
+                            break;
+                        }
+                        if(is_numeric_input_node(node))
+                        {
+                            PersistentItemState& state = get_or_create_persistent_state(node.id);
+                            if(!state.numeric_editing) break;
+                            String filtered = filter_numeric_text(e.text, is_float_numeric_node(node));
+                            if(!filtered.empty())
+                            {
+                                state.text_cursor = clamp_utf8_cursor(state.numeric_edit_text, state.text_cursor);
+                                delete_input_text_selection(state.numeric_edit_text, state);
+                                state.numeric_edit_text.insert(state.text_cursor, filtered);
+                                state.text_cursor += filtered.size();
+                                input_text_clear_selection(state);
+                                state.text_cursor_blink_start = m_time;
+                                apply_numeric_edit_text(*this, node, state);
                             }
                             break;
                         }
@@ -1965,23 +2395,30 @@ namespace Luna
                     if(!m_focused_id) continue;
                     for(GUINode& node : m_submitted_desc.nodes)
                     {
-                        if(node.id != m_focused_id || node.kind != GUINodeKind::input_text || !node.string_value)
-                        {
-                            continue;
-                        }
+                        if(node.id != m_focused_id) continue;
+                        bool edit_input_text = node.kind == GUINodeKind::input_text && node.string_value;
+                        bool edit_numeric = is_numeric_input_node(node);
+                        if(!edit_input_text && !edit_numeric) continue;
                         PersistentItemState& state = get_or_create_persistent_state(node.id);
-                        state.text_cursor = clamp_utf8_cursor(*node.string_value, state.text_cursor);
+                        if(edit_numeric && !state.numeric_editing)
+                        {
+                            state.numeric_edit_component = min(state.numeric_edit_component, numeric_value_count(node) - 1);
+                            state.numeric_edit_text = numeric_value_text(node, state.numeric_edit_component);
+                            state.numeric_editing = true;
+                        }
+                        String& edit_value = edit_input_text ? *node.string_value : state.numeric_edit_text;
+                        state.text_cursor = clamp_utf8_cursor(edit_value, state.text_cursor);
                         bool changed = false;
                         bool shortcut = has_modifier(e.modifiers, GUIKeyModifierFlag::ctrl) || has_modifier(e.modifiers, GUIKeyModifierFlag::system);
                         bool shift = has_modifier(e.modifiers, GUIKeyModifierFlag::shift);
                         if(shortcut && e.key == GUIKey::c)
                         {
-                            if(input_text_has_selection(*node.string_value, state) && m_clipboard_io.set_text)
+                            if(input_text_has_selection(edit_value, state) && m_clipboard_io.set_text)
                             {
                                 usize begin = 0;
                                 usize end = 0;
-                                input_text_selection_range(*node.string_value, state, begin, end);
-                                String selected = node.string_value->substr(begin, end - begin);
+                                input_text_selection_range(edit_value, state, begin, end);
+                                String selected = edit_value.substr(begin, end - begin);
                                 RV clipboard_result = m_clipboard_io.set_text(selected.c_str(), selected.size(), m_clipboard_io.userdata);
                                 (void)clipboard_result;
                             }
@@ -1994,46 +2431,48 @@ namespace Luna
                                 RV r = m_clipboard_io.get_text(clipboard_text, m_clipboard_io.userdata);
                                 if(succeeded(r))
                                 {
-                                    String filtered = filter_input_text(clipboard_text);
-                                    if(!filtered.empty() || input_text_has_selection(*node.string_value, state))
+                                    String filtered = edit_input_text ? filter_input_text(clipboard_text) : filter_numeric_text(clipboard_text, is_float_numeric_node(node));
+                                    if(!filtered.empty() || input_text_has_selection(edit_value, state))
                                     {
-                                        delete_input_text_selection(*node.string_value, state);
-                                        node.string_value->insert(state.text_cursor, filtered);
+                                        delete_input_text_selection(edit_value, state);
+                                        edit_value.insert(state.text_cursor, filtered);
                                         state.text_cursor += filtered.size();
                                         input_text_clear_selection(state);
                                         state.text_cursor_blink_start = m_time;
-                                        changed = true;
+                                        changed = edit_numeric ? apply_numeric_edit_text(*this, node, state) : true;
                                     }
                                 }
                             }
                         }
                         else if(e.key == GUIKey::backspace)
                         {
-                            if(input_text_has_selection(*node.string_value, state))
+                            if(input_text_has_selection(edit_value, state))
                             {
-                                changed = delete_input_text_selection(*node.string_value, state);
+                                changed = delete_input_text_selection(edit_value, state);
                             }
                             else
                             {
-                                usize old_size = node.string_value->size();
-                                erase_previous_utf8_codepoint(*node.string_value, state.text_cursor);
-                                changed = node.string_value->size() != old_size;
+                                usize old_size = edit_value.size();
+                                erase_previous_utf8_codepoint(edit_value, state.text_cursor);
+                                changed = edit_value.size() != old_size;
                             }
                             state.text_cursor_blink_start = m_time;
+                            if(edit_numeric) changed = apply_numeric_edit_text(*this, node, state);
                         }
                         else if(e.key == GUIKey::del)
                         {
-                            if(input_text_has_selection(*node.string_value, state))
+                            if(input_text_has_selection(edit_value, state))
                             {
-                                changed = delete_input_text_selection(*node.string_value, state);
+                                changed = delete_input_text_selection(edit_value, state);
                             }
                             else
                             {
-                                usize old_size = node.string_value->size();
-                                erase_utf8_codepoint_at(*node.string_value, state.text_cursor);
-                                changed = node.string_value->size() != old_size;
+                                usize old_size = edit_value.size();
+                                erase_utf8_codepoint_at(edit_value, state.text_cursor);
+                                changed = edit_value.size() != old_size;
                             }
                             state.text_cursor_blink_start = m_time;
+                            if(edit_numeric) changed = apply_numeric_edit_text(*this, node, state);
                         }
                         else if(e.key == GUIKey::left)
                         {
@@ -2041,17 +2480,17 @@ namespace Luna
                             {
                                 state.text_select_anchor = state.text_cursor;
                             }
-                            if(!shift && input_text_has_selection(*node.string_value, state))
+                            if(!shift && input_text_has_selection(edit_value, state))
                             {
                                 usize begin = 0;
                                 usize end = 0;
-                                input_text_selection_range(*node.string_value, state, begin, end);
+                                input_text_selection_range(edit_value, state, begin, end);
                                 state.text_cursor = begin;
                                 input_text_clear_selection(state);
                             }
                             else
                             {
-                                state.text_cursor = previous_utf8_cursor(*node.string_value, state.text_cursor);
+                                state.text_cursor = previous_utf8_cursor(edit_value, state.text_cursor);
                                 if(!shift) input_text_clear_selection(state);
                             }
                             state.text_cursor_blink_start = m_time;
@@ -2062,17 +2501,17 @@ namespace Luna
                             {
                                 state.text_select_anchor = state.text_cursor;
                             }
-                            if(!shift && input_text_has_selection(*node.string_value, state))
+                            if(!shift && input_text_has_selection(edit_value, state))
                             {
                                 usize begin = 0;
                                 usize end = 0;
-                                input_text_selection_range(*node.string_value, state, begin, end);
+                                input_text_selection_range(edit_value, state, begin, end);
                                 state.text_cursor = end;
                                 input_text_clear_selection(state);
                             }
                             else
                             {
-                                state.text_cursor = next_utf8_cursor(*node.string_value, state.text_cursor);
+                                state.text_cursor = next_utf8_cursor(edit_value, state.text_cursor);
                                 if(!shift) input_text_clear_selection(state);
                             }
                             state.text_cursor_blink_start = m_time;
@@ -2082,8 +2521,9 @@ namespace Luna
                             m_focused_id = 0;
                             state.focused = false;
                             input_text_clear_selection(state);
+                            state.numeric_editing = false;
                         }
-                        if(changed)
+                        if(changed && edit_input_text)
                         {
                             ItemResult& result = get_or_create_current_result(node.id);
                             result.states.insert_or_assign(Name("gui.value_changed"), Any(true));
@@ -2095,11 +2535,14 @@ namespace Luna
                 {
                     if(m_focused_id)
                     {
-                        input_text_clear_selection(get_or_create_persistent_state(m_focused_id));
+                        PersistentItemState& state = get_or_create_persistent_state(m_focused_id);
+                        input_text_clear_selection(state);
+                        state.numeric_editing = false;
                     }
                     m_focused_id = 0;
                     m_active_id = 0;
                     m_active_float_component = U32_MAX;
+                    m_active_numeric_defer_until_drag = false;
                     m_active_table_resize_id = 0;
                     m_active_table_resize_column = false;
                     m_active_table_resize_index = U32_MAX;
@@ -2279,6 +2722,11 @@ namespace Luna
                         bool open = node.menu_popup_id && is_popup_open(node.menu_popup_id);
                         result.states.insert_or_assign(Name("gui.open"), Any(open));
                     }
+                    else if(node.kind == GUINodeKind::color_edit)
+                    {
+                        bool open = node.menu_popup_id && is_popup_open(node.menu_popup_id);
+                        result.states.insert_or_assign(Name("gui.open"), Any(open));
+                    }
                     else if(node.kind == GUINodeKind::tab_item)
                     {
                         bool open = !node.bool_value || *node.bool_value;
@@ -2287,6 +2735,10 @@ namespace Luna
                     else if(node.kind == GUINodeKind::input_text && node.string_value)
                     {
                         persistent.text_cursor = clamp_utf8_cursor(*node.string_value, persistent.text_cursor);
+                    }
+                    else if(is_numeric_input_node(node) && persistent.numeric_editing)
+                    {
+                        persistent.text_cursor = clamp_utf8_cursor(persistent.numeric_edit_text, persistent.text_cursor);
                     }
                 }
                 if(m_open_combo_id && !open_combo_submitted)
@@ -2408,6 +2860,11 @@ namespace Luna
                         result.states.insert_or_assign(Name("gui.open"), Any(persistent.open));
                     }
                     else if(node.kind == GUINodeKind::menu)
+                    {
+                        bool open = node.menu_popup_id && is_popup_open(node.menu_popup_id);
+                        result.states.insert_or_assign(Name("gui.open"), Any(open));
+                    }
+                    else if(node.kind == GUINodeKind::color_edit)
                     {
                         bool open = node.menu_popup_id && is_popup_open(node.menu_popup_id);
                         result.states.insert_or_assign(Name("gui.open"), Any(open));

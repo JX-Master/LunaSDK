@@ -188,6 +188,24 @@ namespace Luna
                 metrics.preferred_size = Float2U(240.0f, 30.0f);
                 metrics.max_size = Float2U(F32_MAX, 30.0f);
                 break;
+            case GUINodeKind::color_edit:
+            {
+                f32 w = max(text_width + 140.0f, 220.0f);
+                metrics.min_size = Float2U(150.0f, 30.0f);
+                metrics.preferred_size = Float2U(w, 30.0f);
+                metrics.max_size = Float2U(F32_MAX, 30.0f);
+                break;
+            }
+            case GUINodeKind::color_preview:
+                metrics.min_size = Float2U(120.0f, 44.0f);
+                metrics.preferred_size = Float2U(240.0f, 44.0f);
+                metrics.max_size = Float2U(F32_MAX, 44.0f);
+                break;
+            case GUINodeKind::color_picker:
+                metrics.min_size = Float2U(360.0f, 240.0f);
+                metrics.preferred_size = Float2U(520.0f, 300.0f);
+                metrics.max_size = Float2U(F32_MAX, 300.0f);
+                break;
             case GUINodeKind::image:
             {
                 Float2U image_size(max(node.requested_size.width, 1.0f), max(node.requested_size.height, 1.0f));
@@ -235,11 +253,23 @@ namespace Luna
                 break;
             }
             case GUINodeKind::slider_float:
+            case GUINodeKind::slider_int:
+            case GUINodeKind::input_float:
+            case GUINodeKind::input_int:
             case GUINodeKind::drag_float:
+            case GUINodeKind::drag_int:
             {
                 f32 w = max(text_width + 220.0f, 280.0f);
-                metrics.min_size = Float2U(180.0f, 30.0f);
-                metrics.preferred_size = Float2U(w, 30.0f);
+                if(node.color_owner_id)
+                {
+                    metrics.min_size = Float2U(88.0f, 30.0f);
+                    metrics.preferred_size = Float2U(max(text_width + 92.0f, 116.0f), 30.0f);
+                }
+                else
+                {
+                    metrics.min_size = Float2U(180.0f, 30.0f);
+                    metrics.preferred_size = Float2U(w, 30.0f);
+                }
                 metrics.max_size = Float2U(F32_MAX, 30.0f);
                 break;
             }
@@ -1226,6 +1256,35 @@ namespace Luna
                                 if(position.y + height > m_frame_desc.surface_size.y && owner_rect.offset_y - height - 2.0f >= 0.0f)
                                 {
                                     position.y = owner_rect.offset_y - height - 2.0f;
+                                }
+                            }
+                            else if(owner.kind == GUINodeKind::color_edit)
+                            {
+                                PersistentItemState& popup_state = get_or_create_persistent_state(child_node.id);
+                                if(popup_state.popup_anchor_valid)
+                                {
+                                    Float2U anchor = popup_state.popup_anchor_position;
+                                    position.x = anchor.x;
+                                    position.y = anchor.y + 8.0f;
+                                    if(position.x + width > m_frame_desc.surface_size.x && anchor.x - width >= 0.0f)
+                                    {
+                                        position.x = anchor.x - width;
+                                    }
+                                    if(position.y + height > m_frame_desc.surface_size.y && anchor.y - height - 8.0f >= 0.0f)
+                                    {
+                                        position.y = anchor.y - height - 8.0f;
+                                    }
+                                }
+                                else
+                                {
+                                    f32 label_w = owner.text.empty() ? 0.0f :
+                                        min(max((f32)owner.text.size() * 8.0f + 8.0f, 80.0f), owner_rect.width * 0.45f);
+                                    position.x = owner_rect.offset_x + label_w;
+                                    position.y = owner_rect.offset_y + owner_rect.height + 4.0f;
+                                    if(position.y + height > m_frame_desc.surface_size.y && owner_rect.offset_y - height - 4.0f >= 0.0f)
+                                    {
+                                        position.y = owner_rect.offset_y - height - 4.0f;
+                                    }
                                 }
                             }
                             else

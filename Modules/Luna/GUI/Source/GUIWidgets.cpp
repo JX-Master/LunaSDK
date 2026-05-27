@@ -662,19 +662,231 @@ namespace Luna
             return handle;
         }
 
-        LUNA_GUI_API GUIItemHandle SliderFloat(const c8* label, f32* value, f32 min_value, f32 max_value)
+        static GUIItemHandle add_slider_float_node(const c8* label, f32* value, u8 count, f32 min_value, f32 max_value)
         {
             GUIContext* ctx = require_current_context();
             GUIItemHandle handle = ctx->add_node(GUINodeKind::slider_float, label ? label : "", true);
             GUINode& node = ctx->m_build_desc.nodes.back();
             node.f32_value = value;
+            node.f32_value_count = count;
             node.min_value = min_value;
             node.max_value = max_value;
-            if(value) *value = clamp(*value, min_value, max_value);
+            if(value)
+            {
+                for(u32 i = 0; i < count; ++i)
+                {
+                    value[i] = clamp(value[i], min_value, max_value);
+                }
+            }
             return handle;
         }
 
-        static GUIItemHandle add_drag_float_node(const c8* label, f32* value, u8 count, f32 speed, f32 min_value, f32 max_value, bool color)
+        LUNA_GUI_API GUIItemHandle SliderFloat(const c8* label, f32* value, f32 min_value, f32 max_value)
+        {
+            return add_slider_float_node(label, value, 1, min_value, max_value);
+        }
+
+        LUNA_GUI_API GUIItemHandle SliderFloat2(const c8* label, f32* value, f32 min_value, f32 max_value)
+        {
+            return add_slider_float_node(label, value, 2, min_value, max_value);
+        }
+
+        LUNA_GUI_API GUIItemHandle SliderFloat3(const c8* label, f32* value, f32 min_value, f32 max_value)
+        {
+            return add_slider_float_node(label, value, 3, min_value, max_value);
+        }
+
+        LUNA_GUI_API GUIItemHandle SliderFloat4(const c8* label, f32* value, f32 min_value, f32 max_value)
+        {
+            return add_slider_float_node(label, value, 4, min_value, max_value);
+        }
+
+        static GUIItemHandle add_slider_int_node(const c8* label, i32* value, u8 count, i32 min_value, i32 max_value)
+        {
+            GUIContext* ctx = require_current_context();
+            GUIItemHandle handle = ctx->add_node(GUINodeKind::slider_int, label ? label : "", true);
+            GUINode& node = ctx->m_build_desc.nodes.back();
+            node.i32_value = value;
+            node.i32_value_count = count;
+            node.min_value = (f32)min_value;
+            node.max_value = (f32)max_value;
+            if(value)
+            {
+                for(u32 i = 0; i < count; ++i)
+                {
+                    value[i] = clamp(value[i], min_value, max_value);
+                }
+            }
+            return handle;
+        }
+
+        LUNA_GUI_API GUIItemHandle SliderInt(const c8* label, i32* value, i32 min_value, i32 max_value)
+        {
+            return add_slider_int_node(label, value, 1, min_value, max_value);
+        }
+
+        LUNA_GUI_API GUIItemHandle SliderInt2(const c8* label, i32* value, i32 min_value, i32 max_value)
+        {
+            return add_slider_int_node(label, value, 2, min_value, max_value);
+        }
+
+        LUNA_GUI_API GUIItemHandle SliderInt3(const c8* label, i32* value, i32 min_value, i32 max_value)
+        {
+            return add_slider_int_node(label, value, 3, min_value, max_value);
+        }
+
+        LUNA_GUI_API GUIItemHandle SliderInt4(const c8* label, i32* value, i32 min_value, i32 max_value)
+        {
+            return add_slider_int_node(label, value, 4, min_value, max_value);
+        }
+
+        static GUIItemHandle add_input_float_node(const c8* label, f32* value, u8 count, f32 min_value, f32 max_value)
+        {
+            GUIContext* ctx = require_current_context();
+            GUIItemHandle handle = ctx->add_node(GUINodeKind::input_float, label ? label : "", true);
+            GUINode& node = ctx->m_build_desc.nodes.back();
+            node.f32_value = value;
+            node.f32_value_count = count;
+            node.min_value = min_value;
+            node.max_value = max_value;
+            if(value && max_value > min_value)
+            {
+                for(u32 i = 0; i < count; ++i)
+                {
+                    value[i] = clamp(value[i], min_value, max_value);
+                }
+            }
+            return handle;
+        }
+
+        static GUIItemHandle add_input_int_node(const c8* label, i32* value, u8 count, i32 min_value, i32 max_value)
+        {
+            GUIContext* ctx = require_current_context();
+            GUIItemHandle handle = ctx->add_node(GUINodeKind::input_int, label ? label : "", true);
+            GUINode& node = ctx->m_build_desc.nodes.back();
+            node.i32_value = value;
+            node.i32_value_count = count;
+            node.min_value = (f32)min_value;
+            node.max_value = (f32)max_value;
+            if(value && max_value > min_value)
+            {
+                for(u32 i = 0; i < count; ++i)
+                {
+                    value[i] = clamp(value[i], min_value, max_value);
+                }
+            }
+            return handle;
+        }
+
+        static GUIItemHandle add_slider_float_with_input_component(const c8* label, f32* value, f32 min_value, f32 max_value)
+        {
+            GUILayoutDesc row;
+            row.gap = 8.0f;
+            row.cross_axis_alignment = GUILayoutCrossAxisAlignment::stretch;
+            GUIItemHandle handle = BeginHLayout(label ? label : "SliderFloatWithInput", row);
+            SetNextItemLayout(GUILayoutStyle::fill());
+            add_slider_float_node(label, value, 1, min_value, max_value);
+            SetNextItemLayout(GUILayoutStyle::fixed_width(72.0f));
+            add_input_float_node("", value, 1, min_value, max_value);
+            EndHLayout();
+            return handle;
+        }
+
+        static GUIItemHandle add_slider_int_with_input_component(const c8* label, i32* value, i32 min_value, i32 max_value)
+        {
+            GUILayoutDesc row;
+            row.gap = 8.0f;
+            row.cross_axis_alignment = GUILayoutCrossAxisAlignment::stretch;
+            GUIItemHandle handle = BeginHLayout(label ? label : "SliderIntWithInput", row);
+            SetNextItemLayout(GUILayoutStyle::fill());
+            add_slider_int_node(label, value, 1, min_value, max_value);
+            SetNextItemLayout(GUILayoutStyle::fixed_width(72.0f));
+            add_input_int_node("", value, 1, min_value, max_value);
+            EndHLayout();
+            return handle;
+        }
+
+        static GUIItemHandle add_slider_float_with_input_node(const c8* label, f32* value, u8 count, f32 min_value, f32 max_value)
+        {
+            if(count <= 1) return add_slider_float_with_input_component(label, value, min_value, max_value);
+            GUILayoutDesc column;
+            column.gap = 4.0f;
+            GUIItemHandle handle = BeginVLayout(label ? label : "SliderFloatWithInput", column);
+            const c8* components[] = { "X", "Y", "Z", "W" };
+            for(u32 i = 0; i < count; ++i)
+            {
+                PushID(i);
+                String component_label;
+                if(label && label[0]) strprintf(component_label, "%s %s", label, components[i]);
+                else component_label = components[i];
+                add_slider_float_with_input_component(component_label.c_str(), value ? value + i : nullptr, min_value, max_value);
+                PopID();
+            }
+            EndVLayout();
+            return handle;
+        }
+
+        static GUIItemHandle add_slider_int_with_input_node(const c8* label, i32* value, u8 count, i32 min_value, i32 max_value)
+        {
+            if(count <= 1) return add_slider_int_with_input_component(label, value, min_value, max_value);
+            GUILayoutDesc column;
+            column.gap = 4.0f;
+            GUIItemHandle handle = BeginVLayout(label ? label : "SliderIntWithInput", column);
+            const c8* components[] = { "X", "Y", "Z", "W" };
+            for(u32 i = 0; i < count; ++i)
+            {
+                PushID(i);
+                String component_label;
+                if(label && label[0]) strprintf(component_label, "%s %s", label, components[i]);
+                else component_label = components[i];
+                add_slider_int_with_input_component(component_label.c_str(), value ? value + i : nullptr, min_value, max_value);
+                PopID();
+            }
+            EndVLayout();
+            return handle;
+        }
+
+        LUNA_GUI_API GUIItemHandle SliderFloatWithInput(const c8* label, f32* value, f32 min_value, f32 max_value)
+        {
+            return add_slider_float_with_input_node(label, value, 1, min_value, max_value);
+        }
+
+        LUNA_GUI_API GUIItemHandle SliderFloat2WithInput(const c8* label, f32* value, f32 min_value, f32 max_value)
+        {
+            return add_slider_float_with_input_node(label, value, 2, min_value, max_value);
+        }
+
+        LUNA_GUI_API GUIItemHandle SliderFloat3WithInput(const c8* label, f32* value, f32 min_value, f32 max_value)
+        {
+            return add_slider_float_with_input_node(label, value, 3, min_value, max_value);
+        }
+
+        LUNA_GUI_API GUIItemHandle SliderFloat4WithInput(const c8* label, f32* value, f32 min_value, f32 max_value)
+        {
+            return add_slider_float_with_input_node(label, value, 4, min_value, max_value);
+        }
+
+        LUNA_GUI_API GUIItemHandle SliderIntWithInput(const c8* label, i32* value, i32 min_value, i32 max_value)
+        {
+            return add_slider_int_with_input_node(label, value, 1, min_value, max_value);
+        }
+
+        LUNA_GUI_API GUIItemHandle SliderInt2WithInput(const c8* label, i32* value, i32 min_value, i32 max_value)
+        {
+            return add_slider_int_with_input_node(label, value, 2, min_value, max_value);
+        }
+
+        LUNA_GUI_API GUIItemHandle SliderInt3WithInput(const c8* label, i32* value, i32 min_value, i32 max_value)
+        {
+            return add_slider_int_with_input_node(label, value, 3, min_value, max_value);
+        }
+
+        LUNA_GUI_API GUIItemHandle SliderInt4WithInput(const c8* label, i32* value, i32 min_value, i32 max_value)
+        {
+            return add_slider_int_with_input_node(label, value, 4, min_value, max_value);
+        }
+
+        static GUIItemHandle add_drag_float_node(const c8* label, f32* value, u8 count, f32 speed, f32 min_value, f32 max_value, bool color, GUINumericEditFlag flags)
         {
             GUIContext* ctx = require_current_context();
             GUIItemHandle handle = ctx->add_node(GUINodeKind::drag_float, label ? label : "", true);
@@ -682,6 +894,7 @@ namespace Luna
             node.f32_value = value;
             node.f32_value_count = count;
             node.f32_color = color;
+            node.numeric_flags = flags;
             node.min_value = min_value;
             node.max_value = max_value;
             node.step_value = speed;
@@ -695,29 +908,210 @@ namespace Luna
             return handle;
         }
 
-        LUNA_GUI_API GUIItemHandle DragFloat(const c8* label, f32* value, f32 speed, f32 min_value, f32 max_value)
+        LUNA_GUI_API GUIItemHandle DragFloat(const c8* label, f32* value, f32 speed, f32 min_value, f32 max_value, GUINumericEditFlag flags)
         {
-            return add_drag_float_node(label, value, 1, speed, min_value, max_value, false);
+            return add_drag_float_node(label, value, 1, speed, min_value, max_value, false, flags);
         }
 
-        LUNA_GUI_API GUIItemHandle DragFloat2(const c8* label, f32* value, f32 speed, f32 min_value, f32 max_value)
+        LUNA_GUI_API GUIItemHandle DragFloat2(const c8* label, f32* value, f32 speed, f32 min_value, f32 max_value, GUINumericEditFlag flags)
         {
-            return add_drag_float_node(label, value, 2, speed, min_value, max_value, false);
+            return add_drag_float_node(label, value, 2, speed, min_value, max_value, false, flags);
         }
 
-        LUNA_GUI_API GUIItemHandle DragFloat3(const c8* label, f32* value, f32 speed, f32 min_value, f32 max_value)
+        LUNA_GUI_API GUIItemHandle DragFloat3(const c8* label, f32* value, f32 speed, f32 min_value, f32 max_value, GUINumericEditFlag flags)
         {
-            return add_drag_float_node(label, value, 3, speed, min_value, max_value, false);
+            return add_drag_float_node(label, value, 3, speed, min_value, max_value, false, flags);
         }
 
-        LUNA_GUI_API GUIItemHandle DragFloat4(const c8* label, f32* value, f32 speed, f32 min_value, f32 max_value)
+        LUNA_GUI_API GUIItemHandle DragFloat4(const c8* label, f32* value, f32 speed, f32 min_value, f32 max_value, GUINumericEditFlag flags)
         {
-            return add_drag_float_node(label, value, 4, speed, min_value, max_value, false);
+            return add_drag_float_node(label, value, 4, speed, min_value, max_value, false, flags);
+        }
+
+        static GUIItemHandle add_drag_int_node(const c8* label, i32* value, u8 count, f32 speed, i32 min_value, i32 max_value, GUINumericEditFlag flags)
+        {
+            GUIContext* ctx = require_current_context();
+            GUIItemHandle handle = ctx->add_node(GUINodeKind::drag_int, label ? label : "", true);
+            GUINode& node = ctx->m_build_desc.nodes.back();
+            node.i32_value = value;
+            node.i32_value_count = count;
+            node.numeric_flags = flags;
+            node.min_value = (f32)min_value;
+            node.max_value = (f32)max_value;
+            node.step_value = speed;
+            if(value && max_value > min_value)
+            {
+                for(u32 i = 0; i < count; ++i)
+                {
+                    value[i] = clamp(value[i], min_value, max_value);
+                }
+            }
+            return handle;
+        }
+
+        LUNA_GUI_API GUIItemHandle DragInt(const c8* label, i32* value, f32 speed, i32 min_value, i32 max_value, GUINumericEditFlag flags)
+        {
+            return add_drag_int_node(label, value, 1, speed, min_value, max_value, flags);
+        }
+
+        LUNA_GUI_API GUIItemHandle DragInt2(const c8* label, i32* value, f32 speed, i32 min_value, i32 max_value, GUINumericEditFlag flags)
+        {
+            return add_drag_int_node(label, value, 2, speed, min_value, max_value, flags);
+        }
+
+        LUNA_GUI_API GUIItemHandle DragInt3(const c8* label, i32* value, f32 speed, i32 min_value, i32 max_value, GUINumericEditFlag flags)
+        {
+            return add_drag_int_node(label, value, 3, speed, min_value, max_value, flags);
+        }
+
+        LUNA_GUI_API GUIItemHandle DragInt4(const c8* label, i32* value, f32 speed, i32 min_value, i32 max_value, GUINumericEditFlag flags)
+        {
+            return add_drag_int_node(label, value, 4, speed, min_value, max_value, flags);
+        }
+
+        static void sync_color_edit_build_state(PersistentItemState& state, const Float4U& color)
+        {
+            ensure_color_edit_state_channels(state);
+            state.color_edit_rgb[0] = (i32)color_channel_to_u8(color.x);
+            state.color_edit_rgb[1] = (i32)color_channel_to_u8(color.y);
+            state.color_edit_rgb[2] = (i32)color_channel_to_u8(color.z);
+            state.color_edit_rgb[3] = (i32)color_channel_to_u8(color.w);
+            f32 h = 0.0f;
+            f32 s = 0.0f;
+            f32 v = 0.0f;
+            color_rgb_to_hsv(color.x, color.y, color.z, h, s, v);
+            state.color_edit_hsv[0] = (i32)color_channel_to_u8(h);
+            state.color_edit_hsv[1] = (i32)color_channel_to_u8(s);
+            state.color_edit_hsv[2] = (i32)color_channel_to_u8(v);
+        }
+
+        static void assign_color_binding(GUINode& node, f32* f32_value, u8* u8_value, u32* u32_value, GUIColorValueType type, u8 count)
+        {
+            node.f32_value = f32_value;
+            node.u8_value = u8_value;
+            node.u32_value = u32_value;
+            node.color_value_type = type;
+            node.f32_value_count = count;
+        }
+
+        static GUIItemHandle add_color_picker_node(const c8* label, f32* f32_value, u8* u8_value, u32* u32_value, GUIColorValueType type, u8 count, GUIID owner_id)
+        {
+            GUIContext* ctx = require_current_context();
+            GUIItemHandle handle = ctx->add_node(GUINodeKind::color_picker, label ? label : "ColorPicker", true);
+            GUINode& node = ctx->m_build_desc.nodes.back();
+            assign_color_binding(node, f32_value, u8_value, u32_value, type, count);
+            node.color_owner_id = owner_id;
+            return handle;
+        }
+
+        static void tag_color_numeric_node(GUIContext* ctx, GUIItemHandle handle, GUIID owner_id, GUIColorEditPart part)
+        {
+            if(GUINode* node = ctx->find_build_node(handle))
+            {
+                node->color_owner_id = owner_id;
+                node->color_edit_part = part;
+            }
+        }
+
+        static GUIItemHandle add_color_channel_drag(const c8* label, i32* value, GUIID owner_id, GUIColorEditPart part)
+        {
+            GUIContext* ctx = require_current_context();
+            GUIItemHandle handle = DragInt(label, value, 1.0f, 0, 255, GUINumericEditFlag::input_on_double_click);
+            tag_color_numeric_node(ctx, handle, owner_id, part);
+            return handle;
+        }
+
+        static GUIItemHandle add_color_edit_node(const c8* label, f32* f32_value, u8* u8_value, u32* u32_value, GUIColorValueType type, u8 count)
+        {
+            GUIContext* ctx = require_current_context();
+            GUIItemHandle handle = ctx->add_node(GUINodeKind::color_edit, label ? label : "", true);
+            u32 color_index = (u32)ctx->m_build_desc.nodes.size() - 1;
+            GUINode& node = ctx->m_build_desc.nodes[color_index];
+            assign_color_binding(node, f32_value, u8_value, u32_value, type, count);
+            write_color_value(node, read_color_value(node));
+
+            PersistentItemState& color_state = ctx->get_or_create_persistent_state(handle.id);
+            color_edit_axis_ref(color_state) = clamp(color_edit_axis_ref(color_state), 0, 5);
+            ensure_color_edit_state_channels(color_state);
+            sync_color_edit_build_state(color_state, read_color_value(node));
+
+            GUIPopupDesc popup_desc;
+            popup_desc.size = GUISize::fixed(476.0f, count == 4 ? 470.0f : 432.0f);
+            popup_desc.flags = GUIPopupFlag::managed | GUIPopupFlag::close_on_outside_click | GUIPopupFlag::close_on_escape | GUIPopupFlag::close_on_blur;
+            ctx->push_id(handle.id);
+            GUIItemHandle popup = ctx->begin_popup("##ColorEditPopup", popup_desc);
+            GUINode& popup_node = ctx->m_build_desc.nodes.back();
+            popup_node.popup_owner_id = handle.id;
+            popup_node.layout_desc.padding = GUIEdgeInsets::all(10.0f);
+            popup_node.layout_desc.gap = 8.0f;
+            popup_node.layout_desc.cross_axis_alignment = GUILayoutCrossAxisAlignment::stretch;
+
+            SetNextItemLayout(GUILayoutStyle::fixed_height(300.0f));
+            add_color_picker_node("##ColorPicker", f32_value, u8_value, u32_value, type, count, handle.id);
+
+            const c8* axis_items[] = { "H", "S", "V", "R", "G", "B" };
+            SetNextItemLayout(GUILayoutStyle::fixed_height(28.0f));
+            ButtonGroup("Channel", &color_edit_axis_ref(color_state), Span<const c8*>(axis_items, 6));
+
+            GUILayoutDesc row;
+            row.gap = 6.0f;
+            row.cross_axis_alignment = GUILayoutCrossAxisAlignment::stretch;
+            SetNextItemLayout(GUILayoutStyle::fixed_height(30.0f));
+            BeginHLayout("RGB", row);
+            add_color_channel_drag("R", &color_state.color_edit_rgb[0], handle.id, GUIColorEditPart::rgb);
+            add_color_channel_drag("G", &color_state.color_edit_rgb[1], handle.id, GUIColorEditPart::rgb);
+            add_color_channel_drag("B", &color_state.color_edit_rgb[2], handle.id, GUIColorEditPart::rgb);
+            EndHLayout();
+
+            SetNextItemLayout(GUILayoutStyle::fixed_height(30.0f));
+            BeginHLayout("HSV", row);
+            add_color_channel_drag("H", &color_state.color_edit_hsv[0], handle.id, GUIColorEditPart::hsv);
+            add_color_channel_drag("S", &color_state.color_edit_hsv[1], handle.id, GUIColorEditPart::hsv);
+            add_color_channel_drag("V", &color_state.color_edit_hsv[2], handle.id, GUIColorEditPart::hsv);
+            EndHLayout();
+
+            if(count == 4)
+            {
+                SetNextItemLayout(GUILayoutStyle::fixed_height(30.0f));
+                BeginHLayout("Alpha", row);
+                add_color_channel_drag("A", &color_state.color_edit_rgb[3], handle.id, GUIColorEditPart::rgb);
+                EndHLayout();
+            }
+
+            ctx->end_popup();
+            ctx->pop_id();
+            ctx->m_build_desc.nodes[color_index].menu_popup_id = popup.id;
+            return handle;
         }
 
         LUNA_GUI_API GUIItemHandle ColorEdit3(const c8* label, f32* value)
         {
-            return add_drag_float_node(label, value, 3, 0.01f, 0.0f, 1.0f, true);
+            return add_color_edit_node(label, value, nullptr, nullptr, GUIColorValueType::f32, 3);
+        }
+
+        LUNA_GUI_API GUIItemHandle ColorEdit4(const c8* label, f32* value)
+        {
+            return add_color_edit_node(label, value, nullptr, nullptr, GUIColorValueType::f32, 4);
+        }
+
+        LUNA_GUI_API GUIItemHandle ColorEdit3(const c8* label, u8* value)
+        {
+            return add_color_edit_node(label, nullptr, value, nullptr, GUIColorValueType::u8, 3);
+        }
+
+        LUNA_GUI_API GUIItemHandle ColorEdit4(const c8* label, u8* value)
+        {
+            return add_color_edit_node(label, nullptr, value, nullptr, GUIColorValueType::u8, 4);
+        }
+
+        LUNA_GUI_API GUIItemHandle ColorEdit3(const c8* label, u32* value)
+        {
+            return add_color_edit_node(label, nullptr, nullptr, value, GUIColorValueType::rgba8, 3);
+        }
+
+        LUNA_GUI_API GUIItemHandle ColorEdit4(const c8* label, u32* value)
+        {
+            return add_color_edit_node(label, nullptr, nullptr, value, GUIColorValueType::rgba8, 4);
         }
 
         LUNA_GUI_API GUIItemHandle HitBox(const c8* label, const RectF& rect)

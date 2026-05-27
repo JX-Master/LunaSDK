@@ -64,12 +64,26 @@ namespace Luna
         i32 radio_choice = 1;
         i32 button_group_choice = 0;
         i32 combo_index = 0;
+        i32 slider_int_value = 4;
+        i32 slider_int3_value[3] = { 2, 5, 8 };
+        i32 slider_int_with_input_value = 64;
+        i32 drag_int_value = 16;
+        i32 drag_int2_value[2] = { -8, 8 };
+        i32 drag_int3_value[3] = { -4, 0, 4 };
+        i32 drag_int4_value[4] = { -6, -2, 2, 6 };
         f32 slider_value = 0.35f;
+        Float3 slider3_value = Float3(0.15f, 0.45f, 0.75f);
+        f32 slider_with_input_value = 0.72f;
         f32 drag_value = 42.0f;
         Float2 drag2_value = Float2(1.0f, -2.0f);
         Float3 drag3_value = Float3(0.0f, 1.0f, 2.0f);
         Float4 drag4_value = Float4(0.0f, 1.0f, 2.0f, 3.0f);
         Float3 color_value = Float3(0.20f, 0.55f, 0.90f);
+        Float4 color4_value = Float4(0.85f, 0.36f, 0.18f, 0.72f);
+        u8 color_u8_value[3] = { 48, 190, 126 };
+        u8 color4_u8_value[4] = { 210, 80, 170, 200 };
+        u32 color_rgba8_value = 0xff3366ccu;
+        u32 color4_rgba8_value = 0xcc20c0ffu;
         bool table_checks[4] = { true, false, true, false };
         bool button_group_multi[3] = { true, false, true };
         f32 table_values[4] = { 0.25f, 0.5f, 0.75f, 1.0f };
@@ -285,11 +299,25 @@ namespace Luna
         const c8* combo_items[] = {"Alpha", "Beta", "Gamma", "Delta"};
         GUI::Combo("Combo dropdown", &app.combo_index, Span<const c8*>(combo_items, 4));
         GUI::SliderFloat("SliderFloat", &app.slider_value, 0.0f, 1.0f);
-        GUI::DragFloat("DragFloat", &app.drag_value, 0.25f, -100.0f, 100.0f);
-        GUI::DragFloat2("DragFloat2", app.drag2_value.m, 0.05f, 0.0f, 0.0f);
-        GUI::DragFloat3("DragFloat3", app.drag3_value.m, 0.05f, 0.0f, 0.0f);
-        GUI::DragFloat4("DragFloat4", app.drag4_value.m, 0.05f, 0.0f, 0.0f);
+        GUI::SliderFloat3("SliderFloat3", app.slider3_value.m, 0.0f, 1.0f);
+        GUI::SliderInt("SliderInt", &app.slider_int_value, 0, 10);
+        GUI::SliderInt3("SliderInt3", app.slider_int3_value, 0, 10);
+        GUI::SliderFloatWithInput("SliderFloatWithInput", &app.slider_with_input_value, 0.0f, 1.0f);
+        GUI::SliderIntWithInput("SliderIntWithInput", &app.slider_int_with_input_value, 0, 100);
+        GUI::DragFloat("DragFloat", &app.drag_value, 0.25f, -100.0f, 100.0f, GUI::GUINumericEditFlag::input_on_double_click);
+        GUI::DragFloat2("DragFloat2", app.drag2_value.m, 0.05f, 0.0f, 0.0f, GUI::GUINumericEditFlag::input_on_double_click);
+        GUI::DragFloat3("DragFloat3", app.drag3_value.m, 0.05f, 0.0f, 0.0f, GUI::GUINumericEditFlag::input_on_double_click);
+        GUI::DragFloat4("DragFloat4", app.drag4_value.m, 0.05f, 0.0f, 0.0f, GUI::GUINumericEditFlag::input_on_double_click);
+        GUI::DragInt("DragInt", &app.drag_int_value, 1.0f, -100, 100, GUI::GUINumericEditFlag::input_on_double_click);
+        GUI::DragInt2("DragInt2", app.drag_int2_value, 1.0f, -100, 100, GUI::GUINumericEditFlag::input_on_double_click);
+        GUI::DragInt3("DragInt3", app.drag_int3_value, 1.0f, -100, 100, GUI::GUINumericEditFlag::input_on_double_click);
+        GUI::DragInt4("DragInt4", app.drag_int4_value, 1.0f, -100, 100, GUI::GUINumericEditFlag::input_on_double_click);
         GUI::ColorEdit3("ColorEdit3", app.color_value.m);
+        GUI::ColorEdit4("ColorEdit4", app.color4_value.m);
+        GUI::ColorEdit3("ColorEdit3 u8", app.color_u8_value);
+        GUI::ColorEdit4("ColorEdit4 u8", app.color4_u8_value);
+        GUI::ColorEdit3("ColorEdit3 RGBA8", &app.color_rgba8_value);
+        GUI::ColorEdit4("ColorEdit4 RGBA8", &app.color4_rgba8_value);
     }
 
     void draw_layout_tab(App& app, FrameHandles& handles)

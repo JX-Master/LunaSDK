@@ -147,6 +147,276 @@ namespace Luna
             return clamp((u32)node.f32_value_count, 1u, 4u);
         }
 
+        inline u32 i32_value_count(const GUINode& node)
+        {
+            return clamp((u32)node.i32_value_count, 1u, 4u);
+        }
+
+        inline bool is_float_numeric_node(const GUINode& node)
+        {
+            return node.kind == GUINodeKind::slider_float ||
+                node.kind == GUINodeKind::input_float ||
+                node.kind == GUINodeKind::drag_float;
+        }
+
+        inline bool is_int_numeric_node(const GUINode& node)
+        {
+            return node.kind == GUINodeKind::slider_int ||
+                node.kind == GUINodeKind::input_int ||
+                node.kind == GUINodeKind::drag_int;
+        }
+
+        inline bool is_numeric_node(const GUINode& node)
+        {
+            return is_float_numeric_node(node) || is_int_numeric_node(node);
+        }
+
+        inline bool is_numeric_input_node(const GUINode& node)
+        {
+            return node.kind == GUINodeKind::input_float ||
+                node.kind == GUINodeKind::input_int ||
+                ((node.kind == GUINodeKind::drag_float || node.kind == GUINodeKind::drag_int) &&
+                    test_flags(node.numeric_flags, GUINumericEditFlag::input_on_double_click));
+        }
+
+        inline bool is_numeric_pointer_edit_node(const GUINode& node)
+        {
+            return node.kind == GUINodeKind::slider_float ||
+                node.kind == GUINodeKind::slider_int ||
+                node.kind == GUINodeKind::drag_float ||
+                node.kind == GUINodeKind::drag_int;
+        }
+
+        inline u32 numeric_value_count(const GUINode& node)
+        {
+            return is_float_numeric_node(node) ? f32_value_count(node) : i32_value_count(node);
+        }
+
+        inline f32 numeric_label_width(const GUINode& node, const RectF& rect)
+        {
+            if(node.text.empty()) return 0.0f;
+            if(node.color_owner_id) return 48.0f;
+            return min(max((f32)node.text.size() * 8.0f + 8.0f, 80.0f), rect.width * 0.45f);
+        }
+
+        inline RectF numeric_component_rect(const GUINode& node, const RectF& rect, u32 component)
+        {
+            f32 label_w = numeric_label_width(node, rect);
+            u32 value_count = numeric_value_count(node);
+            f32 gap = 4.0f;
+            f32 value_area_x = rect.offset_x + label_w;
+            f32 value_area_w = max(rect.width - label_w - 8.0f, 1.0f);
+            f32 component_w = max((value_area_w - gap * (f32)(value_count - 1)) / (f32)value_count, 1.0f);
+            return RectF(value_area_x + (component_w + gap) * (f32)min(component, value_count - 1), rect.offset_y + 3.0f,
+                component_w, max(rect.height - 6.0f, 1.0f));
+        }
+
+        inline String numeric_value_text(const GUINode& node, u32 component)
+        {
+            String value_text;
+            if(is_float_numeric_node(node))
+            {
+                f32 value = node.f32_value ? node.f32_value[min(component, f32_value_count(node) - 1)] : 0.0f;
+                strprintf(value_text, "%.3f", value);
+            }
+            else
+            {
+                i32 value = node.i32_value ? node.i32_value[min(component, i32_value_count(node) - 1)] : 0;
+                strprintf(value_text, "%d", value);
+            }
+            return value_text;
+        }
+
+        inline u8 color_channel_to_u8(f32 value)
+        {
+            return (u8)clamp(value * 255.0f + 0.5f, 0.0f, 255.0f);
+        }
+
+        inline f32 color_u8_to_channel(u8 value)
+        {
+            return (f32)value / 255.0f;
+        }
+
+        inline Float4U read_color_value(const GUINode& node)
+        {
+            if(node.color_value_type == GUIColorValueType::u8 && node.u8_value)
+            {
+                return Float4U(
+                    color_u8_to_channel(node.u8_value[0]),
+                    color_u8_to_channel(node.u8_value[1]),
+                    color_u8_to_channel(node.u8_value[2]),
+                    node.f32_value_count > 3 ? color_u8_to_channel(node.u8_value[3]) : 1.0f);
+            }
+            if(node.color_value_type == GUIColorValueType::rgba8 && node.u32_value)
+            {
+                u32 value = *node.u32_value;
+                return Float4U(
+                    color_u8_to_channel((u8)(value & 0xffu)),
+                    color_u8_to_channel((u8)((value >> 8) & 0xffu)),
+                    color_u8_to_channel((u8)((value >> 16) & 0xffu)),
+                    node.f32_value_count > 3 ? color_u8_to_channel((u8)((value >> 24) & 0xffu)) : 1.0f);
+            }
+            if(node.f32_value)
+            {
+                return Float4U(
+                    clamp(node.f32_value[0], 0.0f, 1.0f),
+                    clamp(node.f32_value_count > 1 ? node.f32_value[1] : 0.0f, 0.0f, 1.0f),
+                    clamp(node.f32_value_count > 2 ? node.f32_value[2] : 0.0f, 0.0f, 1.0f),
+                    clamp(node.f32_value_count > 3 ? node.f32_value[3] : 1.0f, 0.0f, 1.0f));
+            }
+            return Float4U(0.0f, 0.0f, 0.0f, 1.0f);
+        }
+
+        inline void write_color_value(GUINode& node, Float4U color)
+        {
+            color.x = clamp(color.x, 0.0f, 1.0f);
+            color.y = clamp(color.y, 0.0f, 1.0f);
+            color.z = clamp(color.z, 0.0f, 1.0f);
+            color.w = node.f32_value_count > 3 ? clamp(color.w, 0.0f, 1.0f) : 1.0f;
+            if(node.color_value_type == GUIColorValueType::u8 && node.u8_value)
+            {
+                node.u8_value[0] = color_channel_to_u8(color.x);
+                node.u8_value[1] = color_channel_to_u8(color.y);
+                node.u8_value[2] = color_channel_to_u8(color.z);
+                if(node.f32_value_count > 3) node.u8_value[3] = color_channel_to_u8(color.w);
+            }
+            else if(node.color_value_type == GUIColorValueType::rgba8 && node.u32_value)
+            {
+                u32 r = (u32)color_channel_to_u8(color.x);
+                u32 g = (u32)color_channel_to_u8(color.y);
+                u32 b = (u32)color_channel_to_u8(color.z);
+                u32 a = node.f32_value_count > 3 ? (u32)color_channel_to_u8(color.w) : 255u;
+                *node.u32_value = r | (g << 8) | (b << 16) | (a << 24);
+            }
+            else if(node.f32_value)
+            {
+                node.f32_value[0] = color.x;
+                node.f32_value[1] = color.y;
+                node.f32_value[2] = color.z;
+                if(node.f32_value_count > 3) node.f32_value[3] = color.w;
+            }
+        }
+
+        inline void color_rgb_to_hsv(f32 r, f32 g, f32 b, f32& h, f32& s, f32& v)
+        {
+            f32 max_value = max(max(r, g), b);
+            f32 min_value = min(min(r, g), b);
+            f32 delta = max_value - min_value;
+            v = max_value;
+            s = max_value <= 0.0f ? 0.0f : delta / max_value;
+            if(delta <= 0.000001f)
+            {
+                h = 0.0f;
+            }
+            else if(max_value == r)
+            {
+                h = (g - b) / delta;
+                if(h < 0.0f) h += 6.0f;
+                h /= 6.0f;
+            }
+            else if(max_value == g)
+            {
+                h = ((b - r) / delta + 2.0f) / 6.0f;
+            }
+            else
+            {
+                h = ((r - g) / delta + 4.0f) / 6.0f;
+            }
+            h = clamp(h, 0.0f, 1.0f);
+        }
+
+        inline Float4U color_hsv_to_rgb(f32 h, f32 s, f32 v, f32 a = 1.0f)
+        {
+            h = clamp(h, 0.0f, 1.0f);
+            s = clamp(s, 0.0f, 1.0f);
+            v = clamp(v, 0.0f, 1.0f);
+            f32 r = v;
+            f32 g = v;
+            f32 b = v;
+            if(s > 0.0f)
+            {
+                f32 scaled = h * 6.0f;
+                i32 sector = (i32)floorf(scaled);
+                f32 f = scaled - (f32)sector;
+                f32 p = v * (1.0f - s);
+                f32 q = v * (1.0f - s * f);
+                f32 t = v * (1.0f - s * (1.0f - f));
+                switch(sector % 6)
+                {
+                case 0: r = v; g = t; b = p; break;
+                case 1: r = q; g = v; b = p; break;
+                case 2: r = p; g = v; b = t; break;
+                case 3: r = p; g = q; b = v; break;
+                case 4: r = t; g = p; b = v; break;
+                default: r = v; g = p; b = q; break;
+                }
+            }
+            return Float4U(r, g, b, clamp(a, 0.0f, 1.0f));
+        }
+
+        inline void color_picker_channels_from_color(i32 axis, const Float4U& color, f32& x, f32& y, f32& bar)
+        {
+            axis = clamp(axis, 0, 5);
+            if(axis < 3)
+            {
+                f32 h = 0.0f;
+                f32 s = 0.0f;
+                f32 v = 0.0f;
+                color_rgb_to_hsv(color.x, color.y, color.z, h, s, v);
+                if(axis == 0) { x = s; y = v; bar = h; }
+                else if(axis == 1) { x = h; y = v; bar = s; }
+                else { x = h; y = s; bar = v; }
+            }
+            else
+            {
+                if(axis == 3) { x = color.y; y = color.z; bar = color.x; }
+                else if(axis == 4) { x = color.x; y = color.z; bar = color.y; }
+                else { x = color.x; y = color.y; bar = color.z; }
+            }
+        }
+
+        inline Float4U color_from_picker_channels(i32 axis, f32 x, f32 y, f32 bar, f32 alpha)
+        {
+            axis = clamp(axis, 0, 5);
+            x = clamp(x, 0.0f, 1.0f);
+            y = clamp(y, 0.0f, 1.0f);
+            bar = clamp(bar, 0.0f, 1.0f);
+            alpha = clamp(alpha, 0.0f, 1.0f);
+            if(axis == 0) return color_hsv_to_rgb(bar, x, y, alpha);
+            if(axis == 1) return color_hsv_to_rgb(x, bar, y, alpha);
+            if(axis == 2) return color_hsv_to_rgb(x, y, bar, alpha);
+            if(axis == 3) return Float4U(bar, x, y, alpha);
+            if(axis == 4) return Float4U(x, bar, y, alpha);
+            return Float4U(x, y, bar, alpha);
+        }
+
+        inline RectF color_picker_square_rect(const RectF& rect)
+        {
+            f32 right_width = 112.0f;
+            f32 bar_width = 24.0f;
+            f32 gap = 10.0f;
+            f32 square_size = min(rect.height, max(rect.width - right_width - bar_width - gap * 2.0f, 1.0f));
+            return RectF(rect.offset_x, rect.offset_y, square_size, square_size);
+        }
+
+        inline RectF color_picker_bar_rect(const RectF& rect)
+        {
+            RectF square = color_picker_square_rect(rect);
+            return RectF(square.offset_x + square.width + 10.0f, square.offset_y, 24.0f, square.height);
+        }
+
+        inline RectF color_picker_current_rect(const RectF& rect)
+        {
+            RectF bar = color_picker_bar_rect(rect);
+            return RectF(bar.offset_x + bar.width + 10.0f, bar.offset_y + 28.0f, 102.0f, 58.0f);
+        }
+
+        inline RectF color_picker_original_rect(const RectF& rect)
+        {
+            RectF cur = color_picker_current_rect(rect);
+            return RectF(cur.offset_x, cur.offset_y + cur.height + 44.0f, cur.width, cur.height);
+        }
+
         inline f32 combo_label_width(const GUINode& node, const RectF& rect)
         {
             return min(max((f32)node.text.size() * 8.0f + 8.0f, 80.0f), rect.width * 0.45f);
@@ -322,9 +592,16 @@ namespace Luna
         {
             GUILayoutStyle style;
             if(kind == GUINodeKind::input_text ||
+                kind == GUINodeKind::input_float ||
+                kind == GUINodeKind::input_int ||
+                kind == GUINodeKind::color_edit ||
+                kind == GUINodeKind::color_preview ||
+                kind == GUINodeKind::color_picker ||
                 kind == GUINodeKind::combo ||
                 kind == GUINodeKind::slider_float ||
+                kind == GUINodeKind::slider_int ||
                 kind == GUINodeKind::drag_float ||
+                kind == GUINodeKind::drag_int ||
                 kind == GUINodeKind::menu_bar ||
                 kind == GUINodeKind::menu_item ||
                 kind == GUINodeKind::menu_separator ||
@@ -596,12 +873,45 @@ namespace Luna
             usize text_select_anchor = USIZE_MAX;
             bool text_selecting = false;
             f64 text_cursor_blink_start = 0.0;
+            u32 numeric_edit_component = 0;
+            String numeric_edit_text;
+            bool numeric_editing = false;
             Vector<f32> table_column_sizes;
             Vector<f32> table_row_sizes;
             GUIID tab_selected_id = 0;
             f32 tab_scroll_x = 0.0f;
             Vector<GUIID> tab_order;
+            Vector<i32> color_edit_axis;
+            Vector<i32> color_edit_rgb;
+            Vector<i32> color_edit_hsv;
+            Float4U color_edit_original = Float4U(0.0f, 0.0f, 0.0f, 1.0f);
+            bool color_edit_original_valid = false;
+            Float2U popup_anchor_position = Float2U(0.0f, 0.0f);
+            bool popup_anchor_valid = false;
         };
+
+        inline void ensure_color_edit_state_channels(PersistentItemState& state)
+        {
+            if(state.color_edit_axis.size() != 1)
+            {
+                state.color_edit_axis.resize(1, 0);
+            }
+            if(state.color_edit_rgb.size() != 4)
+            {
+                state.color_edit_rgb.resize(4, 0);
+                state.color_edit_rgb[3] = 255;
+            }
+            if(state.color_edit_hsv.size() != 3)
+            {
+                state.color_edit_hsv.resize(3, 0);
+            }
+        }
+
+        inline i32& color_edit_axis_ref(PersistentItemState& state)
+        {
+            ensure_color_edit_state_channels(state);
+            return state.color_edit_axis[0];
+        }
 
         inline bool tab_order_contains(const PersistentItemState& state, GUIID id)
         {
@@ -912,6 +1222,9 @@ namespace Luna
             Float2U m_pointer_pos = Float2U(0.0f);
             bool m_pointer_inside = false;
             u32 m_active_float_component = U32_MAX;
+            Float2U m_active_numeric_start_pos = Float2U(0.0f);
+            bool m_active_numeric_defer_until_drag = false;
+            u32 m_active_color_part = 0;
             bool m_submitted = false;
             bool m_has_next_item_layout = false;
             GUILayoutStyle m_next_item_layout;
@@ -1098,18 +1411,28 @@ namespace Luna
             GUIID hit_test(const Float2U& pos) const;
             GUIID hit_test_node_kind(const Float2U& pos, GUINodeKind kind) const;
             GUINode* find_node(GUIID id);
-            u32 hit_test_float_component(const GUINode& node, const RectF& rect, const Float2U& pos) const;
-            void update_float_node_from_pointer(GUIID id, const Float2U& pos, const Float2U* old_pos = nullptr);
+            u32 hit_test_numeric_component(const GUINode& node, const RectF& rect, const Float2U& pos) const;
+            void update_numeric_node_from_pointer(GUIID id, const Float2U& pos, const Float2U* old_pos = nullptr);
+            void update_color_picker_from_pointer(GUIID id, const Float2U& pos);
+            void sync_color_edit_numeric_state(GUIID owner_id);
+            void apply_color_edit_numeric_state(GUIID owner_id, GUIColorEditPart part);
             bool input_text_cursor_from_pointer(GUIID id, const Float2U& pos, usize& out_cursor);
             bool update_input_text_selection_from_pointer(GUIID id, const Float2U& pos);
+            bool numeric_text_cursor_from_pointer(GUIID id, const Float2U& pos, usize& out_cursor);
+            bool update_numeric_text_selection_from_pointer(GUIID id, const Float2U& pos);
+            void begin_numeric_text_edit(GUIID id, const Float2U& pos, u32 component, bool select_all);
+            void mark_value_changed(GUIID id);
             void process_input_events();
             void render_node(u32 node_index);
             void render_combo_dropdown(const GUINode& node, const RectF& rect);
             void render_drag_drop_overlay();
             void render_scrollbars(u32 node_index);
             void render_rect(const RectF& rect, const RectF& clip_rect, const Float4U& color, f32 radius, RHI::ITexture* texture = nullptr);
+            void render_gradient_rect(const RectF& rect, const RectF& clip_rect,
+                const Float4U& top_left, const Float4U& top_right, const Float4U& bottom_right, const Float4U& bottom_left);
             void render_rect_corners(const RectF& rect, const RectF& clip_rect, const Float4U& color, f32 radius,
                 bool top_left, bool top_right, bool bottom_right, bool bottom_left);
+            void render_color_swatch(const RectF& rect, const RectF& clip_rect, const Float4U& color, f32 radius);
             void render_circle(const RectF& rect, const RectF& clip_rect, const Float4U& color);
             void render_line_segment(const Float2U& begin, const Float2U& end, const RectF& clip_rect, const Float4U& color, f32 width);
             void render_line(const GUINode& node, const RectF& rect, const RectF& clip_rect);

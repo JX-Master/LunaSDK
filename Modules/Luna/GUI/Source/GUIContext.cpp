@@ -99,19 +99,32 @@ namespace Luna
             for(usize i = 0; i < m_submitted_desc.nodes.size(); ++i)
             {
                 const GUINode& node = m_submitted_desc.nodes[i];
-                if(node.id != m_focused_id || node.kind != GUINodeKind::input_text || !node.string_value)
+                if(node.id != m_focused_id)
                 {
                     continue;
                 }
-                const RectF& rect = m_layouts[i].rect;
                 PersistentItemState& state = get_or_create_persistent_state(node.id);
-                state.text_cursor = clamp_utf8_cursor(*node.string_value, state.text_cursor);
                 f32 font_size = 16.0f;
-                RectF text_rect(rect.offset_x + 8.0f, rect.offset_y, max(rect.width - 16.0f, 1.0f), rect.height);
-                ret.active = true;
-                ret.rect = text_rect;
-                ret.cursor = (i32)(input_text_cursor_x(*node.string_value, state.text_cursor, font_size) + 0.5f);
-                return ret;
+                if(node.kind == GUINodeKind::input_text && node.string_value)
+                {
+                    const RectF& rect = m_layouts[i].rect;
+                    state.text_cursor = clamp_utf8_cursor(*node.string_value, state.text_cursor);
+                    RectF text_rect(rect.offset_x + 8.0f, rect.offset_y, max(rect.width - 16.0f, 1.0f), rect.height);
+                    ret.active = true;
+                    ret.rect = text_rect;
+                    ret.cursor = (i32)(input_text_cursor_x(*node.string_value, state.text_cursor, font_size) + 0.5f);
+                    return ret;
+                }
+                if(is_numeric_input_node(node) && state.numeric_editing)
+                {
+                    state.text_cursor = clamp_utf8_cursor(state.numeric_edit_text, state.text_cursor);
+                    RectF component = numeric_component_rect(node, m_layouts[i].rect, state.numeric_edit_component);
+                    RectF text_rect(component.offset_x + 6.0f, component.offset_y, max(component.width - 12.0f, 1.0f), component.height);
+                    ret.active = true;
+                    ret.rect = text_rect;
+                    ret.cursor = (i32)(input_text_cursor_x(state.numeric_edit_text, state.text_cursor, font_size) + 0.5f);
+                    return ret;
+                }
             }
             return ret;
         }
